@@ -148,5 +148,10 @@ again:		/* 100 tries for the same file means we're hosed.  */
 		if (rs->opts->debug) {
 			fprintf(stderr, "%s returns 0\n", rf[i].name);
 		}
+		/*
+		 * reap any background processes
+		 * so we don't overflow our proc table.
+		 */
+		while (waitpid((pid_t)-1, 0, WNOHANG) > 0);
 	}
 }
