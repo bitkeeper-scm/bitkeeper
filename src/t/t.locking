@@ -493,5 +493,8 @@ for i in 1 2 3 4
 do	bk _locktest LOCK 100 &
 done > OUT 2>&1
 wait
-grep O_EXCL OUT && exit 1
+grep -q O_EXCL OUT && {
+	cat OUT
+	exit 1
+}
 echo OK

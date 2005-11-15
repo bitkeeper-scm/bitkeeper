@@ -420,7 +420,9 @@ do	for dir in tagpush tagchild
 	done
 done
 cd $HERE
-tar cf tagchild.TAR tagchild
+# Running over NFS gets this whine: 
+# tar: tagchild/BitKeeper/etc/csets-in: file changed as we read it
+tar cf tagchild.TAR tagchild 2>/dev/null
 cd $HERE/tagchild
 #  ( echo ""
 #   echo x

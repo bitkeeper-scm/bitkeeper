@@ -226,6 +226,9 @@ setup_env()
 	BK_PAGER=cat
 	export BK_PAGER
 
+	# Turn on sccs_lockfile() debugging; set to 2 for more debugging
+	BK_DBGLOCKS=1
+
 	# Force GUI tools to autoplace
 	BK_GEOM=+1+1
 	export BK_GEOM

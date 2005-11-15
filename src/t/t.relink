@@ -114,19 +114,20 @@ grep -q "relink: unable to write lock clone" OUT || {
 echo OK
 
 echo $N Try to relink with read lock in the to repo, should work ....$NL
+cp -rp project relink
 cd project
 bk lock -tr > L &
 bk lock -L
 LOCKURL=`cat L`
 cd ..
-bk relink clone project 2>OUT || {
+bk relink relink project 2>OUT || {
 	bk _kill $LOCKURL
 	cat OUT
 	exit 1
 }
 bk _kill $LOCKURL
 bk lock -U project
-grep -q "relinked 0/$NFILE files, 0 different, $NFILE already linked." OUT || {
+grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 	echo Bad status message
 	cat OUT
 	exit 1
