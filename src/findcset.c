@@ -1,6 +1,3 @@
-/*
- * Copyright (c) 2001 L.W.McVoy, Andrew W. Chang
- */
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
@@ -43,7 +40,6 @@ typedef	struct {
 					 * for debugging only.
 					 */
 } fopts;
-
 
 fopts	opts;
 delta	*oldest;			/* The oldest user delta */
@@ -146,8 +142,12 @@ next:		sccs_free(s);
 
 	/* update rootkey embedded in files */
 	unlink("BitKeeper/log/ROOTKEY");
+	proj_reset(0);
 	cmd = aprintf("bk -r admin -C'%s'", proj_rootkey(0));
-	system(cmd);
+ 	if (system(cmd)) {
+ 		fprintf(stderr, "bk -r admin -Cid: failed\n");
+ 		exit(1);
+	}
 	free(cmd);
 	return (0);
 }
@@ -618,32 +618,60 @@ mkDeterministicKeys(void)
 	sccs_free(cset);
 }
 
-private void
-mkCset(MDBM *db, delta *d, char **syms, MDBM *csetComment)
-{
-	FILE	*f;
-	int	v, iflags = INIT_NOCKSUM;
-	ser_t	k;
-	kvpair	kv;
+typedef struct {
+	MDBM	*view;
+	MDBM	*db;
+	MDBM	*csetComment;
+	FILE	*patch;
+	sum_t	sum;
+	int	rev;
+	char	parent[MAXKEY];
+	char	patchFile[MAXPATH];
 	sccs	*cset;
+	int	date;
+} mkcs_t;
+
+private void
+mkCset(mkcs_t *cur, delta *d)
+{
+	int	v;
+	ser_t	k;
+	kvpair	kv, vk;
 	delta	*top;
 	delta	*e = calloc(sizeof(delta), 1);
-	char	diffFile[MAXPATH];
-	MMAP	*dF;
+	char	dkey[MAXKEY];
+	char	dline[2 * MAXKEY + 4];
+	char	**lines;
+	int	prs_flags = (PRS_PATCH|SILENT);
+	int	i;
+	int	added;
 
-	unless (opts.verbose) iflags |= SILENT;
 
-	cset = sccs_init(CHANGESET, iflags);
-	cset->state |= S_IMPORT; /* import mode */
-	assert(cset && cset->tree);
-	if (sccs_get(cset, 0, 0, 0, 0, SILENT|GET_EDIT|GET_SKIPGET, "-")) {
-		exit(1);
-	}
-	bktmp(diffFile, "cdiff");
-	f = fopen(diffFile, "wb");
-	assert(f);
-	fprintf(f, "0a0\n"); /* Fake diff header */
-	EACH_KV(db) {
+	/*
+	 * Force check in date/user/host to match delta "d", the last delta.
+	 * The person who make the last delta is likely to be the person
+	 * making the cset.
+	 */
+	fix_delta(d, e, -1);
+
+	/* Need to set parent right somehow */
+	e = sccs_dInit(e, 'D', cur->cset, 1);
+	e->flags |= D_CSET; /* copied from cset.c, probably redundant */
+	e->comments = db2line(cur->csetComment);
+
+	/*
+	 * Need to do diff into a file before outputting the
+	 * header, because we need lines added in the header
+	 * even though the importer just sets it to be one.
+	 * also need to get the delta checksum.
+	 */
+	lines = 0;
+	added = 0;
+// fprintf(stderr, "cur=%u\n", cur->sum);
+	EACH_KV(cur->db) {
+		sum_t	linesum, sumch;
+		u8	*ch;
+
 		/*
 		 * Extract filename and top delta for this cset
 		 */
@@ -653,41 +681,79 @@ mkCset(MDBM *db, delta *d, char **syms, MDBM *csetComment)
 
 		saveCsetMark(k, top->rev);
 
+		sccs_sdelta(0, top, dkey);
+		sprintf(dline, "%s %s\n", keylist[k], dkey);
+		lines = addLine(lines, strdup(dline));
+		linesum = 0;
+		for (ch = dline; *ch; ch++) {
+			sumch = *ch;
+			linesum += sumch;
+		}
 		/*
-		 * Print "> root_key delta_key" to diffFile
+		 * XXX Do the checksum thing here
+		 * Key is in keylist[k].
+		 * value is checksum of whole line
+		 * dbval = mdbm_fetch(cur->view, dbkey);
+		 * then memcpy
 		 */
-		fprintf(f, "> %s ", keylist[k]);
-		sccs_pdelta(0, top, f);
-		fputs("\n", f);
+		if (ch = mdbm_fetch_str(cur->view, keylist[k])) {
+			memcpy(&sumch, ch, sizeof(sum_t));
+			cur->sum -= sumch;
+// fprintf(stderr, "--- cur=%u %u\n", cur->sum, sumch);
+		}
+		cur->sum += linesum;
+// fprintf(stderr, "+++ cur=%u %u\n", cur->sum, linesum);
+		vk.key.dptr = keylist[k];
+		vk.key.dsize = strlen(keylist[k])+1;
+		vk.val.dptr = (void *)&linesum;
+		vk.val.dsize = sizeof(linesum);
+		if (mdbm_store(cur->view, vk.key, vk.val, MDBM_REPLACE)) {
+			assert("insert failed" == 0);
+		}
+		added++;
 	}
-	fclose(f);
+	e->added = added;
+	e->sum = cur->sum;
+//  fprintf(stderr, "SUM=%u\n", e->sum);
 
-	/*
-	 * Force check in date/user/host to match delta "d", the last delta.
-	 * The person who make the last delta is likely to be the person
-	 * making the cset.
-	 */
-	fix_delta(d, e, -1);
+	/* Some hacks to get sccs_prs to do some work for us */
+	cur->cset->rstart = cur->cset->rstop = e;
+	if (cur->cset->tree->pathname && !e->pathname) {
+		e->pathname = cur->cset->tree->pathname;
+		e->flags |= D_DUPPATH;
+	}
+	if (cur->cset->tree->zone && !e->zone) {
+		e->zone = cur->cset->tree->zone;
+		e->flags |= D_DUPZONE;
+	}
+	sprintf(dkey, "1.%u", cur->rev++);
+	assert(!e->rev);
+	e->rev = strdup(dkey);
 
-	e = sccs_dInit(e, 'D', cset, 1);
-	e->flags |= D_CSET; /* copied from cset.c, probably redundant */
-	e->comments = db2line(csetComment);
+	unless (cur->date < e->date) {
+		int	fudge = (cur->date - e->date) + 1;
 
-	/*
-	 * TODO we need to sort the key to make sure we get the same
-	 * order on evry run
-	 */
-	dF = mopen(diffFile, "b");
-	assert(dF);
+		e->date += fudge;
+		e->dateFudge += fudge;
+	}
+	cur->date = e->date;
 
-	/*
-	 * The main event, make a new cset delta
-	 * XXX This is slow, it rewrite the whole ChangeSet file for every cset.
-	 */
-	sccs_delta(cset, DELTA_DONTASK|SILENT, e, 0, dF, syms);
-	sccs_free(cset);
-	unlink(diffFile);
+	/* spit out parent key */
+	fputs(cur->parent, cur->patch);
+	fputs("\n", cur->patch);
+	sccs_sdelta(cur->cset, e, cur->parent);
+	/* need checksum */
+	if (sccs_prs(cur->cset, prs_flags, 0, NULL, cur->patch)) exit(1);
+	sortLines(lines, 0);
+	fputs("\n0a0\n", cur->patch); /* Fake diff header */
+	EACH(lines) {
+		fputs("> ", cur->patch);
+		fputs(lines[i], cur->patch);
+	}
+	fputs("\n", cur->patch);
+	freeLines(lines, free);
 }
+
 
 /*
  * We dump the comments into a mdbm to factor out repeated comments
@@ -771,24 +837,65 @@ isBreakPoint(time_t now, delta *d)
 private	void
 findcset(void)
 {
-	int	j;
+	int	i, j;
 	delta	*d = 0, *previous;
-	MDBM	*db = 0;
 	datum	key, val;
 	char	*p;
-	MDBM	*csetComment = mdbm_mem();
 	FILE	*f;
+	delta	*d2;
 	time_t	now, tagDate = 0;
 	char	*nextTag;
 	int	ret;
-	char	**syms;
+	char	**syms = 0;
 	int	skip = 0;
+	mkcs_t  cur;
+	int     flags = 0;
+	char	buf[MAXLINE];
 
+	cur.db = mdbm_mem();
+	cur.view = mdbm_mem();
+	cur.csetComment = mdbm_mem();
+	cur.sum = 0;
+	cur.parent[0] = 0;
+	cur.rev = 2;
+	cur.date = 0;
+	bktmp(cur.patchFile, "cpatch");
+	sprintf(buf, "bk _adler32 > %s", cur.patchFile);
+	unless (cur.patch = popen(buf, "w")) {
+		perror("findcset");
+		exit (1);
+	}
+
+	unless (opts.verbose) flags |= SILENT;
+	cur.cset = sccs_init(CHANGESET, INIT_NOCKSUM|flags);
+	assert(cur.cset && cur.cset->tree);
+
+	/*
+	 * Force 1.0 and 1.1 cset delta to match oldest
+	 * delta in the repository. Warning; this changes the cset root key!
+	 */
+	assert(oldest);
+	d2 = cur.cset->tree;
+	fix_delta(oldest, d2, 0);
+	d2 = d2->kid;
+	assert(d2);
+	fix_delta(oldest, d2, 1);
+	sccs_newchksum(cur.cset);
+
+	fputs("\001 Patch start\n", cur.patch);
+	fputs("# Patch vers:\t1.3\n# Patch type:\tREGULAR\n\n", cur.patch);
+	fputs("== ChangeSet ==\n", cur.patch);
+	sccs_pdelta(cur.cset, sccs_ino(cur.cset), cur.patch);
+	fputs("\n", cur.patch);
+
+	d2 = sccs_top(cur.cset);
+	sccs_sdelta(cur.cset, d2, cur.parent);
+	cur.sum = d2->sum;
+	cur.date = d2->date;
 
 	nextTag = readTag(&tagDate);
 
 	f = stderr;
-	db = mdbm_mem();
 	now = time(0);
 	for (j = 0; j < n; ++j) {
 		d = sorted[j];
@@ -801,19 +908,19 @@ findcset(void)
 				nextTag = readTag(&tagDate);
 			}
 			if (isCsetBoundary(previous, d, tagDate, now, &skip)) {
-				syms = 0;
+				mkCset(&cur, previous);
 				while (nextTag && tagDate >= previous->date &&
 				    tagDate < d->date) {
-					syms = addLine(syms, nextTag);
+					syms = addLine(syms,
+					   aprintf("%d %s",
+					       cur.rev-1, nextTag));
 					nextTag = readTag(&tagDate);
 				}
-				mkCset(db, previous, syms, csetComment);
-				if (syms) freeLines(syms, free);
 				if (isBreakPoint(now, d)) goto done;
-				freeComment(csetComment);
-				csetComment = mdbm_mem();
-				mdbm_close(db);
-				db = mdbm_mem();
+				freeComment(cur.csetComment);
+				cur.csetComment = mdbm_mem();
+				mdbm_close(cur.db);
+				cur.db = mdbm_mem();
 			}
 		}
 
@@ -827,14 +934,14 @@ findcset(void)
 		val.dptr = (char *) &j;
 		val.dsize = sizeof (int);
 		/* last entry wins */
-		ret = mdbm_store(db, key, val, MDBM_REPLACE);
+		ret = mdbm_store(cur.db, key, val, MDBM_REPLACE);
 		assert(ret == 0);
 
 		/*
 		 * Extract per file comment and copy them to cset comment
 		 */
 		p = line2str(d->comments);
-		saveComment(csetComment, d->rev, p, d->pathname);
+		saveComment(cur.csetComment, d->rev, p, d->pathname);
 		free(p);
 		/* pathname will be freeed in freeComment() */
 	}
@@ -845,15 +952,33 @@ findcset(void)
 	}
 	assert(d == sorted[n - 1]);
 	if (isBreakPoint(now, d)) goto done;
-	syms = 0;
+	mkCset(&cur, d);
 	while (nextTag && tagDate >= d->date) {
-		syms = addLine(syms, nextTag);
+		syms = addLine(syms, aprintf("%d %s", cur.rev-1, nextTag));
 		nextTag = readTag(&tagDate);
 	}
-	mkCset(db, d, syms, csetComment);
-	if (syms) freeLines(syms, free);
-done:	freeComment(csetComment);
-	mdbm_close(db);
+done:	freeComment(cur.csetComment);
+	fputs("\001 End\n", cur.patch);
+	pclose(cur.patch);
+	/* currently patch is in PPP, and patchfile not used */
+	sccs_free(cur.cset);
+	mdbm_close(cur.db);
+	mdbm_close(cur.view);
+	sys("cp", cur.patchFile, "/tmp/PPP", SYS); // XXX
+	if (sys("bk", "takepatch", "-f", cur.patchFile, SYS)) {
+		sys("cat", cur.patchFile, SYS);
+		exit(1);
+	}
+	sys("mv", "RESYNC/SCCS/s.ChangeSet", "SCCS/s.ChangeSet", SYS);
+	system("rm -rf RESYNC");
+	unlink(cur.patchFile);
+	EACH (syms) {
+		p = strchr(syms[i], ' ');
+		*p++ = 0;
+		sprintf(buf, "-r1.%s", syms[i]); /* rev */
+		sys("bk", "tag", "-q", buf, p, SYS);
+	}
+	freeLines(syms, free);
 }
 
 /*

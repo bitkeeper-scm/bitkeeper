@@ -243,7 +243,7 @@ E
 EOF
 bk diff -Nur A B >> $HERE/patch
 cd $HERE/EDIT
-bk import $Q -tpatch  $HERE/patch  $HERE/EDIT
+bk import $Q -tpatch  $HERE/patch  $HERE/EDIT || exit 1
 cat > bar.ref <<EOF
 B
 C
@@ -840,9 +840,10 @@ if [ $PLATFORM != "WIN32" ]
 then #-----------------------------------------------------------------
 test -d $TESTDATA/import-RCS+x && {
 echo $N Make import w/ undos does not lose execute bits .............$NL
+
 cd $HERE
 commercial import-RCS+x
-bk import -quftRCS $TESTDATA/import-RCS+x .
+bk import -quftRCS $TESTDATA/import-RCS+x . || exit 1
 bk get -q 
 test -x ixadm.cgi || {
 	echo lost execute bits on ixadm.cgi
@@ -870,7 +871,7 @@ test -d $TESTDATA/import-CVS.1 && {
 echo $N Make sure that import handles Attic files ...................$NL
 cd $HERE
 commercial import-CVS.1
-bk import -quftCVS $TESTDATA/import-CVS.1 .
+bk import -quftCVS $TESTDATA/import-CVS.1 . || exit 1
 bk get -q
 P1=BitKeeper/deleted/SCCS/s..del-pkginfo*
 test -f $P1 || {
@@ -904,7 +905,7 @@ cd $HERE
 commercial import-CVS.2
 bk edit $Q BitKeeper/etc/config
 echo checkout:get >> BitKeeper/etc/config
-bk import -quftCVS $TESTDATA/import-CVS.1 .
+bk import -quftCVS $TESTDATA/import-CVS.1 . || exit 1
 test -f COPYING || {
 	echo failed to get COPYING after import
 	exit 1
