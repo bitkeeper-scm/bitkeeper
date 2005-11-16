@@ -687,7 +687,11 @@ cmdlog_end(int ret)
 #ifndef	NOPROC
 	rmdir_findprocs();
 #endif
+#ifdef	MACOS_VER
+	if (getenv("BK_REGRESSION") && (MACOS_VER != 1040)) {
+#else
 	if (getenv("BK_REGRESSION")) {
+#endif
 		int	i;
 		struct	stat sbuf;
 		char	buf[100];

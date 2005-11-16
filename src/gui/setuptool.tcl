@@ -260,7 +260,7 @@ proc computeSize {wvar hvar} \
 	# under no circumstances do we make a window bigger than the
 	# screen
 	set maxwidth  [winfo screenwidth .]
-	set maxheight [expr {[winfo screenheight .] * .95}]
+	set maxheight [expr {round([winfo screenheight .] * .95)}]
 	set width  [expr {$width > $maxwidth? $maxwidth : $width}]
 	set height [expr {$height > $maxheight? $maxheight: $height}]
 }

@@ -16,7 +16,7 @@ libtomcrypt.a: $(OBJS)
 	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
 
 clean distclean:
-	rm -f *.o
+	rm -f *.o demos/*.o
 	bk clean
 
 clobber:

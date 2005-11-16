@@ -1,11 +1,6 @@
 /*
  * Stat the file and print out the time as YYYY-MM-DD-HH-MM-SS
  */
-#include <stdio.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include "system.h"
 #include "sccs.h"
 
@@ -19,7 +14,7 @@ mtime_main(int ac, char **av)
 		fprintf(stderr, "usage: %s file\n", av[0]);
 		return (1);
 	}
-	if (fast_lstat(av[1], &st)) {
+	if (lstat(av[1], &st)) {
 		perror(av[1]);
 		return (2);
 	}

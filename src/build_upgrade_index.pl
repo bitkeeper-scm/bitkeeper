@@ -22,7 +22,7 @@ my(%versions);
 
 my(%seen);
 
-open(I, ">INDEX") or die;
+open(I, ">INDEX") or die "Can't open INDEX file: $!";
 print I "# file,md5sum,ver,utc,platform,codeline\n";
 foreach $file (@ARGV) {
     my($base);
@@ -63,7 +63,7 @@ my %obsoletes;
 # find which releases are obsoleted by the current versions
 
 foreach my $release (@releases) {
-    chdir $release || die;
+    chdir $release || die "Can't chdir to $release: $!";
    
     foreach $version (keys %versions) {
 	$base = `bk r2c -r1.1 src/upgrade.c 2> /dev/null`;
@@ -86,7 +86,7 @@ foreach (sort keys %obsoletes) {
 print I "\n# checksum\n";
 close(I);
 my $sum = `bk crypto -h - 'WXVTpmDYN1GusoFq5hkAoA' < INDEX`;
-open(I, ">>INDEX") or die;
+open(I, ">>INDEX") or die "Can't append to INDEX: $!";
 print I $sum;
 close(I);
     

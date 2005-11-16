@@ -390,24 +390,35 @@ transfer() {
 	NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 	if [ $FORCE = NO ]
 	then	echo
-		echo $N "Would you like to edit the list of $NFILES files to be imported? " $NL
-		read x
-		echo ""
-		case X"$x" in
-		    Xy*)
-			echo $N "Editor to use [$EDITOR] " $NL
-			read editor
-			echo
-			if [ X$editor != X ]
-			then	eval $editor ${TMP}import$$
-			else	eval $EDITOR ${TMP}import$$
-			fi
-			if [ $? -ne 0 ]; then
-			    echo ERROR: aborting...
-			    Done 1
-			fi
-			NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
-		esac
+		echo $N "Would you like to edit the list of $NFILES files to be imported? [No] " $NL
+		DONE=0
+		while [ $DONE -ne 1 ] ; do
+			read x
+			echo ""
+			case X"$x" in
+			    X[Yy]*)
+				echo $N "Editor to use [$EDITOR] " $NL
+				read editor
+				echo
+				if [ X$editor != X ]
+				then	eval $editor ${TMP}import$$
+				else	eval $EDITOR ${TMP}import$$
+				fi
+				if [ $? -ne 0 ]; then
+				    echo ERROR: aborting...
+				    Done 1
+				fi
+				NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
+				DONE=1
+				;;
+			    X|X[Nn]*)
+			    	DONE=1
+				;;
+			    *)
+			    	echo $N "Please answer yes or no [No] " $NL
+				;;
+			esac
+		done
 	fi
 	if [ X$QUIET = X ]
 	then	echo Transfering files

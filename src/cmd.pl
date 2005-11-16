@@ -195,6 +195,7 @@ lock
 _locktest
 lod
 _logging
+_lstat
 mailsplit
 mail
 makepatch
@@ -256,6 +257,7 @@ sinfo
 smerge
 _shellSplit_test
 _sort
+_stattest
 status
 stripdel
 _strings

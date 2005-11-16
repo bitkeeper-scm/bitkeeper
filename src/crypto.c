@@ -794,7 +794,7 @@ crypto_symDecrypt(char *key, FILE *fin, FILE *fout)
  * only setup the special key in the environment for restricted commands
  */
 void
-bk_preSpawnHook(int flags, char *const av[])
+bk_preSpawnHook(int flags, char *av[])
 {
 	rand_setSeed((flags & _P_DETACH) ? 0 : 1);
 }

@@ -2060,7 +2060,7 @@ delete_cset_cache(char *rootpath, int save)
 		if (strneq(files[i], "csetcache.", 10)) {
 			struct	stat statbuf;
 			strcpy(p, files[i]);
-			fast_lstat(buf, &statbuf);
+			lstat(buf, &statbuf);
 			/* invert time to get newest first */
 			keep = addLine(keep,
 			    aprintf("%08x %s", (u32)~statbuf.st_atime, buf));
@@ -2105,7 +2105,7 @@ cset2rev(sccs *s, char *rev)
 	/*  stat cset file once per process */
 	unless (csetstat.st_mtime) {
 		s_cset = aprintf("%s/" CHANGESET, rootpath);
-		if (fast_lstat(s_cset, &csetstat)) goto ret;
+		if (lstat(s_cset, &csetstat)) goto ret;
 	}
 	mpath = aprintf("%s/BitKeeper/tmp/csetcache.%x", rootpath,
 	    adler32(0, rev, strlen(rev)));
@@ -4015,7 +4015,7 @@ check_gfile(sccs *s, int flags)
 {
 	struct	stat sbuf;
 
-	if (fast_lstat(s->gfile, &sbuf) == 0) {
+	if (lstat(s->gfile, &sbuf) == 0) {
 		unless ((flags & INIT_NOGCHK) || fileTypeOk(sbuf.st_mode)) {
 			verbose((stderr,
 			    "unsupported file type: %s (%s) 0%06o\n",
@@ -4106,7 +4106,7 @@ sccs_init(char *name, u32 flags)
 	} else {
 		if (check_gfile(s, flags)) return (0);
 	}
-	rc = fast_lstat(s->sfile, &sbuf);
+	rc = lstat(s->sfile, &sbuf);
 	if (rc == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
@@ -4236,7 +4236,7 @@ bad:		sccs_free(s);
 		return (0);
 	}
 	bzero(&sbuf, sizeof(sbuf));	/* file may not be there */
-	if (fast_lstat(s->sfile, &sbuf) == 0) {
+	if (lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= S_SFILE;
@@ -4370,7 +4370,7 @@ chk_gmode(sccs *s)
 	if (!s || !HASGRAPH(s)) return; /* skip new file */
 
 	gfile = sccs2name(s->sfile); /* Don't trust s->gfile, see bk admin -i */
-	gfileExists = !fast_lstat(gfile, &sbuf);
+	gfileExists = !lstat(gfile, &sbuf);
 	gfileWritable = (gfileExists && (sbuf.st_mode & 0200));
 	if (S_ISLNK(sbuf.st_mode)) return; /* skip smylink */
 	pfileExists = exists(sccs_Xfile(s, 'p'));

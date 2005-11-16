@@ -26,6 +26,10 @@ touch import_dir/src/boo.c
 	cat $HERE/import.out
 	exit 1
 }
+grep -q "Please answer yes or no" import.out && {
+	echo Failed
+	exit 1
+}
 cd $HERE/project/src
 test -f SCCS/s.foo.c || exit 1
 bk get $Q foo.c
@@ -33,6 +37,21 @@ cmp -s foo.c $HERE/import_dir/src/foo.c
 test -f SCCS/s.boo.c || exit 1
 bk get $Q boo.c
 cmp boo.c $HERE/import_dir/src/boo.c || exit 1
+echo OK
+
+echo $N Check prompts to edit files .................................$NL
+cd $HERE/project
+bk undo $Q -sfr+
+cd $HERE
+bk import -tplain import_dir project \
+    > import.out 2>&1 <<EOF 
+vi
+no
+EOF
+grep -q "Please answer yes or no" import.out || {
+	echo Failed
+	exit 1
+}
 echo OK
 
 echo $N Test import of a patch into a tree with edited BK files .....$NL

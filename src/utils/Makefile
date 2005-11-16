@@ -25,8 +25,7 @@ else
 	STRIP=strip
 	RESOURCES=
 endif
-SFIO_OBJS=sfio.o sfio_utils.o \
-	../port/fast_lstat.c ../port/fileinfo.o ../port/utils.o
+SFIO_OBJS=sfio.o sfio_utils.o ../port/fileinfo.o ../port/utils.o
 SYSTEM_OBJS=../port/system.o ../port/spawn.o ../liblines.o ../purify.o \
 	../port/utils.o ../libc/libc.a stubs.o
 SFIO=sfio$(EXE)

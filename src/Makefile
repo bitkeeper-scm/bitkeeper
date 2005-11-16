@@ -129,7 +129,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	pending.o preference.o proj.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
-	port/fast_lstat.o port/filecopy.o port/fileinfo.o port/findpid.o \
+	port/filecopy.o port/fileinfo.o port/findpid.o \
 	port/fullname.o port/gethomedir.o \
 	port/gethost.o port/getinput.o port/getnull.o \
 	port/getrealname.o port/globalroot.o port/gui.o \
@@ -153,7 +153,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs2bk.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
-	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
+	slib.o smerge.o sort.o stat.o stattest.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o tclsh.o takepatch.o testdates.o timestamp.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
@@ -274,7 +274,7 @@ clean-obj: FORCE
 	-@rm -f bk bk.o cscope.out $(OBJ) $(SCRIPTS)
 	-@rm -f substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out cmd.c cmd.h
-	-@rm -f bkver.h
+	-@rm -f bkver.h tclkey.h
 	-@rm -f core $(WIN_TMP)
 	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
@@ -306,7 +306,7 @@ rebuild:
 	-@rm -f substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
-	-@rm -f bkver.h bk.ver cmd.c cmd.h
+	-@rm -f bkver.h bk.ver cmd.c cmd.h tclkey.h
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(PROGS)
 	-@rm -f Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkl.lic bkcl.lic
 	-@rm -f tmp bkl5_hashs.h kw2val_lookup.c cmd.[ch] bkver.h
@@ -618,10 +618,13 @@ depend: $(SRCS)
 
 $(OBJ) bk.o: $(HDRS)
 
+tclkey.h: genkeys.pl
+	perl genkeys.pl > tclkey.h
+
 tclwrap: blowfish.o tclwrap.o
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tclwrap.o blowfish.o
 
-tclwrap.o blowfish.o: blowfish.h
+tclwrap.o blowfish.o: blowfish.h tclkey.h
 
 cmd.c cmd.h: cmd.pl bk.sh
 	perl cmd.pl || (rm -f cmd.c cmd.h; exit 1)

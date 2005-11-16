@@ -931,7 +931,7 @@ relink(char *a, char *b)
 		fprintf(stderr, "relink: can't cross mount points\n");
 		return (-1);
 	}
-	if (sa.st_ino == sb.st_ino) return (2);
+	if (hardlinked(a, b)) return (2);
 	if (access(b, R_OK)) return (0);	/* I can't read it */
 	if (sameFiles(a, b)) {
 		char	buf[MAXPATH];

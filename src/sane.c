@@ -14,7 +14,6 @@
 private	int	chk_permissions(void);
 private	int	chk_idcache(void);
 private void	chk_id(void);
-private	void	chk_code(void);
 
 int
 sane_main(int ac, char **av)
@@ -81,7 +80,6 @@ sane(int readonly, int resync)
 	//chk_ssh();
 	//chk_http();
 	chk_id();
-	chk_code();	/* various code sanity checks */
 	return (errors);
 }
 
@@ -289,40 +287,4 @@ chk_id(void)
 	fprintf(f, "%s\n", rand);
 
 	fclose(f);
-}
-
-private void
-chk_code(void)
-{
-	struct	stat	sb1, sb2;
-
-	if (lstat(CHANGESET, &sb1)) return; /* it happens in t.gone */
-	if (fast_lstat(CHANGESET, &sb2)) {
-		fprintf(stderr, "chk_code: failed to faststat ChangeSet\n");
-		exit(1);
-	}
-	unless (getenv("TZ")) {
-		/* The win32 _stat() function doesn't work if TZ is set! */
-		if (sb1.st_mode != sb2.st_mode) {
-			fprintf(stderr, "chk_code: st_mode %o %o\n",
-			    sb1.st_mode, sb2.st_mode);
-			exit(1);
-		}
-		if (sb1.st_mtime != sb2.st_mtime) {
-			fprintf(stderr, "chk_code: st_mtime %u %u\n",
-			    (u32)sb1.st_mtime, (u32)sb2.st_mtime);
-			exit(1);
-		}
-		if (sb1.st_ctime != sb2.st_ctime) {
-			fprintf(stderr, "chk_code: st_ctime %u %u\n",
-			    (u32)sb1.st_ctime, (u32)sb2.st_ctime);
-			exit(1);
-		}
-		/* don't test st_atime, the stat changes it */
-	}
-	if (sb1.st_size != sb2.st_size) {
-		fprintf(stderr, "chk_code: st_size %u %u\n",
-		    (u32)sb1.st_size, (u32)sb2.st_size);
-		exit(1);
-	}
 }

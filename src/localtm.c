@@ -10,7 +10,7 @@
 #include "system.h"
 
 struct tm *
-localtimez(const time_t *timep, long *offsetp)
+localtimez(time_t *timep, long *offsetp)
 {
 	struct tm	*tm;
 	int		offset;
