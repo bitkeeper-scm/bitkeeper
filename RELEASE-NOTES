@@ -1,4 +1,22 @@
 ===============================================================================
+Release notes for BitKeeper version 3.2.7.
+
+This is a spot release to fix a daylight savings bug on Windows.
+
+Repositories created on Windows before October 30th will have a problem
+if they accessed with bk-3.2.6 (bk-3.2.5 works fine).
+
+Other changes:
+
+- fix bug 1999-07-13-003 - import: limit answers to a prompt to y or n
+- NFS file locking improvements
+- bk sendbug - window stretchs (part of the request in 2005-10-31-002)
+- bk citool - exit cleanly if progress bar window closed
+- Fix gui working on desktop with odd (as opposed to even) geometries
+- Windows process table overflow (Windows users on 3.2.6 are encouraged
+  to upgrade if they resolve merges on Windows)
+
+===============================================================================
 Release notes for BitKeeper version 3.2.6.   These release notes cover
 the following topics:
 
