@@ -268,7 +268,7 @@ clean-obj: FORCE
 	-@rm -f bk bk.o cscope.out $(OBJ) $(SCRIPTS)
 	-@rm -f substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out cmd.c cmd.h
-	-@rm -f bkver.h
+	-@rm -f bkver.h tclkey.h
 	-@rm -f core $(WIN_TMP)
 	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
@@ -300,7 +300,7 @@ rebuild:
 	-@rm -f substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
-	-@rm -f bkver.h bk.ver cmd.c cmd.h
+	-@rm -f bkver.h bk.ver cmd.c cmd.h tclkey.h
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(PROGS)
 	-@rm -rf tmp bkl5_hashs.h
 	-@rm -f Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkl.lic bkcl.lic
@@ -608,10 +608,13 @@ depend: $(SRCS)
 
 $(OBJ) bk.o: $(HDRS)
 
+tclkey.h: genkeys.pl
+	perl genkeys.pl > tclkey.h
+
 tclwrap: blowfish.o tclwrap.o
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tclwrap.o blowfish.o
 
-tclwrap.o blowfish.o: blowfish.h
+tclwrap.o blowfish.o: blowfish.h tclkey.h
 
 cmd.c cmd.h: mk-cmd.pl bk.sh
 	perl mk-cmd.pl || (rm -f cmd.c cmd.h; exit 1)
