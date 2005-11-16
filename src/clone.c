@@ -613,7 +613,13 @@ out2:		repository_rdunlock(0);
 	unless (to) to = basenm(r->path);
 	if (exists(to)) {
 		fprintf(stderr, "clone: %s exists\n", to);
-out:		repository_wrunlock(0);
+out:
+		/*
+		 * This could be a wrunlock() because as of the writing of this
+		 * comment there wasn't a way to get here after going through a
+		 * trigger that would have downgraded.  But just in case...
+		 */
+		repository_unlock(0);
 		chdir(from);
 		repository_rdunlock(0);
 		remote_free(r);
@@ -689,7 +695,12 @@ out:		repository_wrunlock(0);
 		goto out;
 	}
 	in_trigger("BK_STATUS=OK", opts.rev, from, fromid);
-	repository_wrunlock(0);
+
+	/*
+	 * The repo may be readlocked (if there were triggers then the
+	 * lock got downgraded to a readlock) or writelocked (no triggers).
+	 */
+	repository_unlock(0);
 	free(fromid);
 	chdir(from);
 

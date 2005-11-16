@@ -45,6 +45,16 @@ test -f $HERE/tst/project/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || {
 	echo failed
 	exit 1
 }
+# If no triggers then it's a write lock
+test -d $HERE/tst/project/BitKeeper/writer && {
+	echo failed to clean up writer lock
+	exit 1
+}
+# If triggers then it's a read lock
+test -d $HERE/tst/project/BitKeeper/readers && {
+	echo failed to clean up reader lock
+	exit 1
+}
 cd $HERE/project
 bk level 2
 cd $HERE
@@ -97,11 +107,27 @@ cat > post-outgoing <<EOF
 echo hi mom > $HERE/post-outgoing
 EOF
 chmod +x post-outgoing
+cat > post-incoming <<EOF
+#!/bin/sh
+
+echo hi mom > $HERE/post-incoming
+EOF
+chmod +x post-incoming
+bk new $Q post-incoming
+bk commit $Q -ytrigger
 cd $HERE
-rm -f $HERE/post-outgoing
+rm -f post-outgoing post-incoming
 bk clone $Q -l project trigger
-test -f $HERE/post-outgoing || {
-	echo failed to run trigger
+test -f post-outgoing || {
+	echo failed to run post-outgoing trigger
+	exit 1
+}
+test -f post-incoming || {
+	echo failed to run post-incoming trigger
+	exit 1
+}
+test -d trigger/BitKeeper/readers && {
+	echo failed to clean up read lock after clone
 	exit 1
 }
 echo OK
