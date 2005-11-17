@@ -223,8 +223,8 @@ repository_lockers(project *p)
 {
 	char	path[MAXPATH];
 	char	**lines;
-	int	freeit = 0;
-	int	i, n = 0;
+	int	freeit = 0, n = 0;
+	int	i, rm;
 
 	unless (p) {
 		unless (p = getproj()) return (0);
@@ -251,13 +251,17 @@ repository_lockers(project *p)
 	}
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	lines = lockers(path);
+	rm = 0;
 	EACH(lines) {
 		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, lines[i]);
 		if (sccs_stalelock(path, 0)) {
 			char	lock[MAXPATH];
 
 			sprintf(lock, "%s/%s/lock", p->root, WRITER_LOCK_DIR);
-			if (sameFiles(path, lock)) unlink(lock);
+			if (sameFiles(path, lock)) {
+				unlink(lock);
+				rm = 1;
+			}
 			unlink(path);
 			continue;
 		}
@@ -266,17 +270,30 @@ repository_lockers(project *p)
 		n++;
 	}
 	freeLines(lines, free);
+	if (rm) {
+		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
+		(void)rmdir(path);
+	}
 
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	lines = lockers(path);
+	rm = 0;
 	EACH(lines) {
 		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, lines[i]);
-		if (sccs_stalelock(path, 1)) continue;
+		if (sccs_stalelock(path, 1)) {
+			rm = 1;
+			continue;
+		}
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		fprintf(stderr, "\tRead  locker: %s\n", lines[i]);
 		n++;
 	}
 	freeLines(lines, free);
+	if (rm) {
+		sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
+		(void)rmdir(path);
+	}
+
     	if (freeit) proj_free(p);
 	return (n);
 }

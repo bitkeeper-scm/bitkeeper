@@ -46,6 +46,7 @@ if [ -f SCCS/z.A ]; then echo failed to remove zlock; exit 1; fi
 if [ -f A ]; then echo failed to remove A; exit 1; fi
 echo OK
 
+# XXX - what is this testing?
 echo $N Check edit with existing stale read lock ....................$NL
 bk lock -tr >L &
 bk lock -L
@@ -55,12 +56,33 @@ if [ ! -w A ]; then echo failed to get writable file; exit 1; fi
 bk clean A
 bk _kill $LOCKURL
 bk lock -U
-echo OK
-
-echo $N Check edit with existing stale write lock ...................$NL
 if [ -d BitKeeper/readers ]
 then	echo failed to clean up read lock; ls -l BitKeeper/readers; exit 1
 fi
+echo OK
+
+echo $N Check that an existing stale read lock is discarded .........$NL
+# I'm counting on 2^31-1 being an unsigned that is not a pid
+if [ "`uname -s`" = SCO_SV ]
+then	PID=32767	# SCO wraps at 30000, use 2^15-1 to avoid sign bit
+else	PID=2147483647
+fi
+HOST=`bk gethost -r`
+mkdir BitKeeper/readers
+touch BitKeeper/readers/"${PID}@${HOST}.lock"
+bk lock -l > LOCKERS 2>&1
+grep -q 'No active lock in repository' LOCKERS || {
+	echo failed
+	cat LOCKERS
+	ls -l BitKeeper/readers
+	exit 1
+}
+if [ -d BitKeeper/readers ]
+then	echo failed to clean up read lock; ls -l BitKeeper/readers; exit 1
+fi
+echo OK
+
+echo $N Check edit with existing stale write lock ...................$NL
 bk lock -tw >L &
 bk lock -L
 LOCKURL=`cat L`
@@ -75,7 +97,7 @@ bk clean A
 bk lock -tr >L &
 bk lock -L
 LOCKURL=`cat L`
-mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
+mv BitKeeper/readers/* BitKeeper/readers/1234@DO_NOT_USE_THIS_NAME.lock
 bk edit $Q A
 writable A || { echo failed to lock A; exit 1; }
 echo OK
@@ -156,7 +178,7 @@ bk lock -U
 bk lock -tr >L &
 bk lock -L
 LOCKURL=`cat L`
-mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
+mv BitKeeper/readers/* BitKeeper/readers/1234@DO_NOT_USE_THIS_NAME.lock
 cd $HERE
 bk clone $Q project clone 2>/dev/null
 EXIT=$?
@@ -209,7 +231,7 @@ bk lock -U
 bk lock -tr >L &
 bk lock -L
 LOCKURL=`cat L`
-mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
+mv BitKeeper/readers/* BitKeeper/readers/1234@DO_NOT_USE_THIS_NAME.lock
 cd $HERE/clone
 bk pull -t $Q -R 2>/dev/null
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi

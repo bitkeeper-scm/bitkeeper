@@ -268,27 +268,63 @@ sccs_mylock(char *file)
 private int
 readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp)
 {
-	int	fd, flen;
+	int	i, n, fd, flen;
 	int	try = 0;
-	char	buf[1024];
 	char	*host, *p;
-	int	i, n;
+	struct	stat sb;
+	char	buf[1024];
 
 	unless ((fd = open(file, O_RDONLY, 0)) >= 0) return (-1);
 
-	bzero(buf, sizeof(buf));
-	if ((flen = fsize(fd)) < 0) {
-		perror("readlockf: read");
-		close(fd);
-		return (-1);
-	}
-	if (flen == 0) {
-		close(fd);
-		if ((p = getenv("BK_DBGLOCKS")) && (atoi(p) > 1)) {
-			fprintf(stderr,
-			     "readlockf: empty file: %s\n", file);
+	/*
+	 * Once again, OpenBSD is weird.  On a local filesystem I've seen it
+	 * get a zero length in the write lock.  It's very weird since it
+	 * happens on the 3rd test in t.import, consistently, which is single
+	 * threaded unless I'm mistaken.
+	 * So we wait for up to a half second for it to sort itself out but
+	 * only if it is a lock that we don't expect to be zero lengthed.
+	 */
+	for (i = 0; i < 10; i++) {
+		if ((flen = fsize(fd)) < 0) {
+			perror("readlockf: read");
+			close(fd);
+			return (-1);
 		}
-		return (-1);
+		if (flen) break;
+		if (strstr(file, READER_LOCK_DIR)) break;
+		usleep(50000);
+	}
+	if (flen == 0) {	/* expect BitKeeper/readers/pid@host.lock */
+		unless (strstr(file, READER_LOCK_DIR)) {
+			/*
+			 * We get lots of short file reads under stress tests.
+			 * In all other cases the user needs to know.
+			 */
+			unless (getenv("_BK_NFS_TEST")) {
+				fprintf(stderr,
+				    "readlockf: empty lock: %s\n", file);
+			}
+			close(fd);
+			return (-1);
+		}
+
+		i = fstat(fd, &sb);
+		assert(i != -1);
+		*tp = sb.st_mtime;
+		close(fd);
+		p = basenm(file);
+		*pidp = atoi(p);
+		unless (p = strchr(p, '@')) {
+err:			fprintf(stderr,
+			     "readlockf: malformed empty lock: %s\n", file);
+			return (-1);
+		}
+		host = ++p;
+		unless ((p = strrchr(p, '.')) && streq(p, ".lock")) goto err;
+		*p = 0;
+		*hostp = strdup(host);
+		*p = '.';
+		return (0);
 	}
 
 	/*
@@ -308,7 +344,7 @@ readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp)
 			return (-1);
 		}
 		buf[n] = 0;
-		for (p = buf, i= 0; *p; p++) if (*p == ' ') i++;
+		for (p = buf, i = 0; *p; p++) if (*p == ' ') i++;
 		if (i == 2) break;	/* should be pid host time_t */
 		if (++try >= 100) {
 			close(fd);
@@ -393,6 +429,7 @@ locktest_main(int ac, char **av)
 		net++;
 		av++;
 		ac--;
+		putenv("_BK_NFS_TEST=1");
 	}
 	unless (lock = av[1]) exit(1);
 	if (av[2]) n = atoi(av[2]);
