@@ -83,7 +83,7 @@ foreach my $release (@releases) {
 chdir $olddir;
 
 foreach (sort keys %obsoletes) {
-    print I "old $_\n" unless $versions{$_};
+    print I "old $_\n";
 }
 print I "\n# checksum\n";
 close(I);
