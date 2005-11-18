@@ -40,6 +40,9 @@ mp_add_d (mp_int * a, mp_digit b, mp_int * c)
      /* fix sign  */
      a->sign = c->sign = MP_NEG;
 
+     /* clamp */
+     mp_clamp(c);
+
      return res;
   }
 
@@ -105,5 +108,5 @@ mp_add_d (mp_int * a, mp_digit b, mp_int * c)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_mp_add_d.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/10/02 13:04:27 $ */

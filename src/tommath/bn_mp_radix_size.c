@@ -36,7 +36,7 @@ int mp_radix_size (mp_int * a, int radix, int *size)
   }
 
   if (mp_iszero(a) == MP_YES) {
-     *size = 2;
+    *size = 2;
     return MP_OKAY;
   }
 
@@ -74,5 +74,5 @@ int mp_radix_size (mp_int * a, int radix, int *size)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_mp_radix_size.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/10/04 22:14:38 $ */

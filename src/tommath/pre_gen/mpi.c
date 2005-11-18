@@ -913,6 +913,9 @@ mp_add_d (mp_int * a, mp_digit b, mp_int * c)
      /* fix sign  */
      a->sign = c->sign = MP_NEG;
 
+     /* clamp */
+     mp_clamp(c);
+
      return res;
   }
 
@@ -978,8 +981,8 @@ mp_add_d (mp_int * a, mp_digit b, mp_int * c)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_mp_add_d.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/10/02 13:04:27 $ */
 
 /* End: bn_mp_add_d.c */
 
@@ -6241,7 +6244,7 @@ int mp_radix_size (mp_int * a, int radix, int *size)
   }
 
   if (mp_iszero(a) == MP_YES) {
-     *size = 2;
+    *size = 2;
     return MP_OKAY;
   }
 
@@ -6279,8 +6282,8 @@ int mp_radix_size (mp_int * a, int radix, int *size)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_mp_radix_size.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/10/04 22:14:38 $ */
 
 /* End: bn_mp_radix_size.c */
 
@@ -6395,6 +6398,9 @@ int mp_read_radix (mp_int * a, const char *str, int radix)
   int     y, res, neg;
   char    ch;
 
+  /* zero the digit bignum */
+  mp_zero(a);
+
   /* make sure the radix is ok */
   if (radix < 2 || radix > 64) {
     return MP_VAL;
@@ -6452,8 +6458,8 @@ int mp_read_radix (mp_int * a, const char *str, int radix)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_mp_read_radix.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/10/04 22:14:38 $ */
 
 /* End: bn_mp_read_radix.c */
 
@@ -7562,6 +7568,10 @@ mp_sub_d (mp_int * a, mp_digit b, mp_int * c)
      a->sign = MP_ZPOS;
      res     = mp_add_d(a, b, c);
      a->sign = c->sign = MP_NEG;
+
+     /* clamp */
+     mp_clamp(c);
+
      return res;
   }
 
@@ -7611,8 +7621,8 @@ mp_sub_d (mp_int * a, mp_digit b, mp_int * c)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_mp_sub_d.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/10/02 13:47:39 $ */
 
 /* End: bn_mp_sub_d.c */
 
@@ -8448,12 +8458,12 @@ int mp_toradix_n(mp_int * a, char *str, int radix, int maxlen)
   char   *_s = str;
 
   /* check range of the maxlen, radix */
-  if (maxlen < 3 || radix < 2 || radix > 64) {
+  if (maxlen < 2 || radix < 2 || radix > 64) {
     return MP_VAL;
   }
 
   /* quick out if its zero */
-  if (mp_iszero(a) == 1) {
+  if (mp_iszero(a) == MP_YES) {
      *str++ = '0';
      *str = '\0';
      return MP_OKAY;
@@ -8478,21 +8488,20 @@ int mp_toradix_n(mp_int * a, char *str, int radix, int maxlen)
 
   digs = 0;
   while (mp_iszero (&t) == 0) {
+    if (--maxlen < 1) {
+       /* no more room */
+       break;
+    }
     if ((res = mp_div_d (&t, (mp_digit) radix, &t, &d)) != MP_OKAY) {
       mp_clear (&t);
       return res;
     }
     *str++ = mp_s_rmap[d];
     ++digs;
-
-    if (--maxlen == 1) {
-       /* no more room */
-       break;
-    }
   }
 
   /* reverse the digits of the string.  In this case _s points
-   * to the first digit [exluding the sign] of the number]
+   * to the first digit [exluding the sign] of the number
    */
   bn_reverse ((unsigned char *)_s, digs);
 
@@ -8506,8 +8515,8 @@ int mp_toradix_n(mp_int * a, char *str, int radix, int maxlen)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_mp_toradix_n.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2005/10/04 22:14:38 $ */
 
 /* End: bn_mp_toradix_n.c */
 

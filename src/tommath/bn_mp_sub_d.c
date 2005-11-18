@@ -36,6 +36,10 @@ mp_sub_d (mp_int * a, mp_digit b, mp_int * c)
      a->sign = MP_ZPOS;
      res     = mp_add_d(a, b, c);
      a->sign = c->sign = MP_NEG;
+
+     /* clamp */
+     mp_clamp(c);
+
      return res;
   }
 
@@ -85,5 +89,5 @@ mp_sub_d (mp_int * a, mp_digit b, mp_int * c)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_mp_sub_d.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/10/02 13:47:39 $ */
