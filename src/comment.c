@@ -188,9 +188,7 @@ getfiles(char *csetrev)
 	char	*av[30];
 	int	i;
 	char	*rev = aprintf("-r%s", csetrev);
-	pid_t	pid;
 	int	status;
-	int	pfd;
 	FILE	*f;
 	char	buf[MAXLINE];
 	char	*t;
@@ -200,16 +198,11 @@ getfiles(char *csetrev)
 	av[++i] = rev;
 	av[++i] = 0;
 
-	pid = spawnvp_rPipe(av, &pfd, 0);
-	if (pid == -1) {
-		perror("spawnvp_rPipe");
-		return (0);
-	}
-	free(rev);
-	unless (f = fdopen(pfd, "r")) {
-		perror("fdopen");
+	unless (f = popenvp(av, "r")) {
+		perror("popenvp");
 		return(0);
 	}
+	free(rev);
 	while (fgets(buf, sizeof(buf), f)) {
 		char	*sfile;
 		chomp(buf);
@@ -226,7 +219,7 @@ getfiles(char *csetrev)
 	/* Makes it easier to find stuff if you are wacking a big cset */
 	sortLines(files, 0);
 
-	waitpid(pid, &status, 0);
+	status = pclose(f);
 	if (!WIFEXITED(status) || (WEXITSTATUS(status) != 0)) {
 		freeLines(files, free);
 		return (0);

@@ -4,11 +4,10 @@ int
 cmd_chg_part1(int ac, char **av)
 {
 	int	newline = 1;
-	int 	rfd, i, j;
+	int 	i, j;
 	char 	buf[MAXLINE];
 	char	*new_av[100];
 	FILE 	*f;
-	pid_t	pid;
 
 	if (ac == 2 && streq(av[1], "-K")) return (cmd_synckeys(ac, av));
 
@@ -28,15 +27,14 @@ cmd_chg_part1(int ac, char **av)
 	for (j = 2, i = 1; av[i]; j++, i++) new_av[j] = av[i];
 	new_av[j] = 0;
 
-	pid = spawnvp_rPipe(new_av, &rfd, 0);
-	f = fdopen(rfd, "rt");
+	f = popenvp(new_av, "r");
 	out("@CHANGES INFO@\n");
 	while (fnext(buf, f)) {
 		if (newline) outc(BKD_DATA);
 		newline = (strchr(buf, '\n') != 0);
 		if (out(buf) <= 0) break;
 	}
-	fclose(f);
+	pclose(f);
 	unless (newline) out("\n");
 	out("@END@\n");
 	return (0);
@@ -47,9 +45,8 @@ cmd_chg_part2(int ac, char **av)
 {
 	char	*p, buf[MAXKEY], cmd[MAXPATH];
 	char	*new_av[50];
-	int	rc, status, fd, fd1, wfd, i, j;
+	int	rc, status, fd, fd1, i, j;
 	int	newline = 1;
-	pid_t	pid;
 	FILE	*f;
 
 	setmode(0, _O_BINARY);
@@ -107,18 +104,16 @@ cmd_chg_part2(int ac, char **av)
 		exit(1);
 	}
 	assert(fd == 1);
-	pid = spawnvp_wPipe(new_av, &wfd, 0);
+	f = popenvp(new_av, "wb");
 	dup2(fd1, 1); close(fd1); /* restore fd1 */
 
-	f = fdopen(wfd, "wb");
 	assert(f);
 	while (getline(0, buf, sizeof(buf)) > 0) {
 		if (streq("@END@", buf)) break;
 		fprintf(f, "%s\n",  buf);
 		fflush(f);
 	}
-	fclose(f);
-	waitpid(pid, &status, 0);
+	status = pclose(f);
 
 	if (!WIFEXITED(status) || (WEXITSTATUS(status) > 1)) {
 		perror(cmd);

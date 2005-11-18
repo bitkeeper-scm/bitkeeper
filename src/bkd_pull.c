@@ -30,9 +30,8 @@ cmd_pull_part1(int ac, char **av)
 {
 	char	*p, buf[4096];
 	char	*probekey_av[] = {"bk", "_probekey", 0, 0};
-	int	status, rfd;
+	int	status;
 	int	rc = 1;
-	pid_t	pid;
 	FILE	*f;
 
 	if (av[1] && strneq(av[1], "-r", 2)) {
@@ -55,8 +54,7 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
-	pid = spawnvp_rPipe(probekey_av, &rfd, 0);
-	f = fdopen(rfd, "r");
+	f = popenvp(probekey_av, "r");
 	/* look to see if probekey returns an error */
 	unless (fnext(buf, f) && streq("@LOD PROBE@\n", buf)) {
 		fputs(buf, stdout);
@@ -69,10 +67,9 @@ cmd_pull_part1(int ac, char **av)
 	}
 	rc = 0;
 done:
-	fclose(f);
+	status = pclose(f);
 	fflush(stdout);
-	unless ((waitpid(pid, &status, 0) == pid) &&
-	    WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
 		return (1);
 	}
 	return (rc);
