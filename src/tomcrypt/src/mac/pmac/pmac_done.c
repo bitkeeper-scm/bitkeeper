@@ -49,7 +49,9 @@ int pmac_done(pmac_state *state, unsigned char *out, unsigned long *outlen)
    }
 
    /* encrypt it */
-   cipher_descriptor[state->cipher_idx].ecb_encrypt(state->checksum, state->checksum, &state->key);
+   if ((err = cipher_descriptor[state->cipher_idx].ecb_encrypt(state->checksum, state->checksum, &state->key)) != CRYPT_OK) {
+      return err;
+   }
    cipher_descriptor[state->cipher_idx].done(&state->key);
 
    /* store it */
@@ -68,5 +70,5 @@ int pmac_done(pmac_state *state, unsigned char *out, unsigned long *outlen)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/mac/pmac/pmac_done.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2005/10/08 10:31:48 $ */

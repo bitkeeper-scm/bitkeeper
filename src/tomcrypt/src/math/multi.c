@@ -34,6 +34,7 @@ int ltc_init_multi(void **a, ...)
           va_end(clean_list);
           return CRYPT_MEM;
        }
+       ++np;
        cur = va_arg(args, void**);
    }
    va_end(args);
@@ -56,5 +57,5 @@ void ltc_deinit_multi(void *a, ...)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/math/multi.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/07/23 13:39:46 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/10/28 20:30:52 $ */

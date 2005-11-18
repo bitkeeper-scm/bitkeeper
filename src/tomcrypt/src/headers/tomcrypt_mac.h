@@ -200,6 +200,7 @@ int s_ocb_done(ocb_state *ocb, const unsigned char *pt, unsigned long ptlen,
 
 int ccm_memory(int cipher,
     const unsigned char *key,    unsigned long keylen,
+    symmetric_key       *uskey,
     const unsigned char *nonce,  unsigned long noncelen,
     const unsigned char *header, unsigned long headerlen,
           unsigned char *pt,     unsigned long ptlen,
@@ -297,5 +298,5 @@ int pelican_memory(const unsigned char *key, unsigned long keylen,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_mac.h,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2005/05/05 14:35:58 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2005/09/02 01:30:48 $ */

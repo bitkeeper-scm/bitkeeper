@@ -329,8 +329,9 @@ int saferp_setup(const unsigned char *key, int keylen, int num_rounds, symmetric
   @param pt The input plaintext (16 bytes)
   @param ct The output ciphertext (16 bytes)
   @param skey The key as scheduled
+  @return CRYPT_OK if successful
 */
-void saferp_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *skey)
+int saferp_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *skey)
 {
    unsigned char b[16];
    int x;
@@ -384,6 +385,7 @@ void saferp_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_ke
 #ifdef LTC_CLEAN_STACK
    zeromem(b, sizeof(b));
 #endif
+   return CRYPT_OK;
 }
 
 /**
@@ -391,8 +393,9 @@ void saferp_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_ke
   @param ct The input ciphertext (16 bytes)
   @param pt The output plaintext (16 bytes)
   @param skey The key as scheduled 
+  @return CRYPT_OK if successful
 */
-void saferp_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *skey)
+int saferp_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *skey)
 {
    unsigned char b[16];
    int x;
@@ -446,6 +449,7 @@ void saferp_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_ke
 #ifdef LTC_CLEAN_STACK
    zeromem(b, sizeof(b));
 #endif
+   return CRYPT_OK;
 }
 
 /**
@@ -551,5 +555,5 @@ int saferp_keysize(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/safer/saferp.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2005/05/05 14:35:58 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2005/10/06 01:19:53 $ */

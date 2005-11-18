@@ -551,7 +551,7 @@ void ccm_gen(void)
             plaintext[z] = (unsigned char)(z & 255);
          }
          len = sizeof(tag);
-         if ((err = ccm_memory(x, key, kl, nonce, 13, plaintext, y1, plaintext, y1, plaintext, tag, &len, CCM_ENCRYPT)) != CRYPT_OK) {
+         if ((err = ccm_memory(x, key, kl, NULL, nonce, 13, plaintext, y1, plaintext, y1, plaintext, tag, &len, CCM_ENCRYPT)) != CRYPT_OK) {
             printf("Error CCM'ing: %s\n", error_to_string(err));
             exit(EXIT_FAILURE);
          }
@@ -682,7 +682,7 @@ void ecc_gen(void)
         mp_set(G->z, 1);  
 
         while (mp_cmp(k, order) == LTC_MP_LT) {
-            ltc_ecc_mulmod(k, G, R, modulus, 1);
+            ltc_mp.ecc_ptmul(k, G, R, modulus, 1);
             mp_tohex(k,    str); fprintf(out, "%s, ", str);
             mp_tohex(R->x, str); fprintf(out, "%s, ", str);
             mp_tohex(R->y, str); fprintf(out, "%s\n", str);
@@ -714,5 +714,5 @@ int main(void)
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/demos/tv_gen.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2005/07/24 14:52:47 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2005/11/01 14:01:08 $ */

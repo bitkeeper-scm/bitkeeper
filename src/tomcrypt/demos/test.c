@@ -22,12 +22,13 @@ int main(void)
    printf("\nmac_test......"); fflush(stdout); x = mac_test();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\npkcs_1_test..."); fflush(stdout); x = pkcs_1_test();      printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\nrsa_test......"); fflush(stdout); x = rsa_test();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
-   printf("\necc_test......"); fflush(stdout); x = ecc_tests();        printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
+   printf("\necc_test......"); fflush(stdout); x = ecc_tests();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\ndsa_test......"); fflush(stdout); x = dsa_test();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
+   printf("\nkatja_test...."); fflush(stdout); x = katja_test();       printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\n");
    return EXIT_SUCCESS;
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/demos/test.c,v $ */
-/* $Revision: 1.16 $ */
-/* $Date: 2005/07/23 13:59:28 $ */
+/* $Revision: 1.24 $ */
+/* $Date: 2005/11/18 01:34:25 $ */

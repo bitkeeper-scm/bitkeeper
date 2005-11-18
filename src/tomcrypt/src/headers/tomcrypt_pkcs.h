@@ -3,8 +3,8 @@
 /* ===> PKCS #1 -- RSA Cryptography <=== */
 #ifdef PKCS_1
 
-int pkcs_1_mgf1(const unsigned char *seed, unsigned long seedlen,
-                      int            hash_idx,
+int pkcs_1_mgf1(      int            hash_idx,
+                const unsigned char *seed, unsigned long seedlen,
                       unsigned char *mask, unsigned long masklen);
 
 int pkcs_1_i2osp(void *n, unsigned long modulus_len, unsigned char *out);
@@ -54,5 +54,5 @@ int pkcs_5_alg2(const unsigned char *password, unsigned long password_len,
 #endif  /* PKCS_5 */
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_pkcs.h,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/07/17 23:38:54 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2005/10/08 10:31:48 $ */

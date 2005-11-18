@@ -54,6 +54,14 @@ int   XMEMCMP(const void *s1, const void *s2, size_t n);
    #define LTC_FAST_TYPE    unsigned long
 #endif
 
+/* detect PPC32 */
+#if defined(LTC_PPC32)
+   #define ENDIAN_BIG
+   #define ENDIAN_32BITWORD
+   #define LTC_FAST
+   #define LTC_FAST_TYPE    unsigned long
+#endif   
+
 /* detect sparc and sparc64 */
 #if defined(__sparc__)
   #define ENDIAN_BIG
@@ -101,5 +109,5 @@ int   XMEMCMP(const void *s1, const void *s2, size_t n);
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_cfg.h,v $ */
-/* $Revision: 1.10 $ */
-/* $Date: 2005/07/30 01:38:49 $ */
+/* $Revision: 1.11 $ */
+/* $Date: 2005/11/09 19:08:47 $ */

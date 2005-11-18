@@ -63,7 +63,9 @@ int omac_init(omac_state *omac, int cipher, const unsigned char *key, unsigned l
 
    /* first calc L which is Ek(0) */
    zeromem(omac->Lu[0], cipher_descriptor[cipher].block_length);
-   cipher_descriptor[cipher].ecb_encrypt(omac->Lu[0], omac->Lu[0], &omac->key);
+   if ((err = cipher_descriptor[cipher].ecb_encrypt(omac->Lu[0], omac->Lu[0], &omac->key)) != CRYPT_OK) {
+      return err;
+   }
 
    /* now do the mults, whoopy! */
    for (x = 0; x < 2; x++) {
@@ -95,5 +97,5 @@ int omac_init(omac_state *omac, int cipher, const unsigned char *key, unsigned l
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/mac/omac/omac_init.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/06/06 10:22:44 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/10/08 10:31:48 $ */

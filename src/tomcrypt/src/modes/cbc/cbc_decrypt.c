@@ -59,11 +59,13 @@ int cbc_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, s
 #endif
    
    if (cipher_descriptor[cbc->cipher].accel_cbc_decrypt != NULL) {
-      cipher_descriptor[cbc->cipher].accel_cbc_decrypt(ct, pt, len / cbc->blocklen, cbc->IV, &cbc->key);
+      return cipher_descriptor[cbc->cipher].accel_cbc_decrypt(ct, pt, len / cbc->blocklen, cbc->IV, &cbc->key);
    } else {
       while (len) {
          /* decrypt */
-         cipher_descriptor[cbc->cipher].ecb_decrypt(ct, tmp, &cbc->key);
+         if ((err = cipher_descriptor[cbc->cipher].ecb_decrypt(ct, tmp, &cbc->key)) != CRYPT_OK) {
+            return err;
+         }
 
          /* xor IV against plaintext */
          #if defined(LTC_FAST)
@@ -91,5 +93,5 @@ int cbc_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, s
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/cbc/cbc_decrypt.c,v $ */
-/* $Revision: 1.10 $ */
-/* $Date: 2005/07/28 03:21:09 $ */
+/* $Revision: 1.12 $ */
+/* $Date: 2005/10/08 10:31:48 $ */

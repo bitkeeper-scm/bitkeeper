@@ -43,7 +43,9 @@ int ofb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
    
    while (len-- > 0) {
        if (ofb->padlen == ofb->blocklen) {
-          cipher_descriptor[ofb->cipher].ecb_encrypt(ofb->IV, ofb->IV, &ofb->key);
+          if ((err = cipher_descriptor[ofb->cipher].ecb_encrypt(ofb->IV, ofb->IV, &ofb->key)) != CRYPT_OK) {
+             return err;
+          }
           ofb->padlen = 0;
        }
        *ct++ = *pt++ ^ ofb->IV[ofb->padlen++];
@@ -54,5 +56,5 @@ int ofb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/ofb/ofb_encrypt.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/10/08 10:31:48 $ */

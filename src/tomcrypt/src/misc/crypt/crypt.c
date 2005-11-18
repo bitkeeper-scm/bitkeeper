@@ -229,15 +229,18 @@ const char *crypt_build_settings =
 #if defined(MDSA)
     "   DSA\n"
 #endif
+#if defined(MKAT)
+    "   Katja\n"
+#endif    
 
     "\nCompiler:\n"
 #if defined(WIN32)
     "   WIN32 platform detected.\n"
 #endif
-#if defined(LBL_CYGWIN__)
+#if defined(__CYGWIN__)
     "   CYGWIN Detected.\n"
 #endif
-#if defined(LBL_DJGPP__)
+#if defined(__DJGPP__)
     "   DJGPP Detected.\n"
 #endif
 #if defined(_MSC_VER)
@@ -249,9 +252,12 @@ const char *crypt_build_settings =
 #if defined(INTEL_CC)
     "   Intel C Compiler detected.\n"
 #endif
-#if defined(LBL_x86_64__)
+#if defined(__x86_64__)
     "   x86-64 detected.\n"
 #endif
+#if defined(LTC_PPC32)
+    "   LTC_PPC32 defined \n"
+#endif    
 
     "\nVarious others: "
 #if defined(BASE64)
@@ -315,5 +321,5 @@ const char *crypt_build_settings =
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt.c,v $ */
-/* $Revision: 1.13 $ */
-/* $Date: 2005/07/24 20:42:35 $ */
+/* $Revision: 1.15 $ */
+/* $Date: 2005/11/09 17:56:16 $ */

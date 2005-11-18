@@ -51,7 +51,8 @@ int gcm_memory(      int           cipher,
     }
  
     if (cipher_descriptor[cipher].accel_gcm_memory != NULL) {
-       cipher_descriptor[cipher].accel_gcm_memory
+       return 
+         cipher_descriptor[cipher].accel_gcm_memory
                                           (key,   keylen,
                                            IV,    IVlen,
                                            adata, adatalen,
@@ -59,7 +60,6 @@ int gcm_memory(      int           cipher,
                                            ct,
                                            tag,   taglen,
                                            direction);
-       return CRYPT_OK;
     }
 
 
@@ -89,5 +89,5 @@ LTC_ERR:
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/encauth/gcm/gcm_memory.c,v $ */
-/* $Revision: 1.19 $ */
-/* $Date: 2005/05/05 14:35:58 $ */
+/* $Revision: 1.20 $ */
+/* $Date: 2005/08/27 14:00:25 $ */

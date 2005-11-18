@@ -29,7 +29,7 @@ int ecc_tests (void)
 	
   DO(ecc_test ());
 
-  for (s = 0; s < (int)(sizeof(sizes)/sizeof(sizes[0])); s++) {
+  for (s = 0; s < (sizeof(sizes)/sizeof(sizes[0])); s++) {
      /* make up two keys */
      DO(ecc_make_key (&yarrow_prng, find_prng ("yarrow"), sizes[s], &usera));
      DO(ecc_make_key (&yarrow_prng, find_prng ("yarrow"), sizes[s], &userb));
@@ -133,5 +133,5 @@ int ecc_tests(void)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/testprof/ecc_test.c,v $ */
-/* $Revision: 1.9 $ */
-/* $Date: 2005/06/14 19:43:29 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2005/10/31 14:02:24 $ */

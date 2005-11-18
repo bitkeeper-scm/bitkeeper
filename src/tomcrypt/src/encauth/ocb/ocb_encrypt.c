@@ -51,7 +51,9 @@ int ocb_encrypt(ocb_state *ocb, const unsigned char *pt, unsigned char *ct)
    for (x = 0; x < ocb->block_len; x++) {
        tmp[x] = pt[x] ^ Z[x];
    }
-   cipher_descriptor[ocb->cipher].ecb_encrypt(tmp, ct, &ocb->key);
+   if ((err = cipher_descriptor[ocb->cipher].ecb_encrypt(tmp, ct, &ocb->key)) != CRYPT_OK) {
+      return err;
+   }
    for (x = 0; x < ocb->block_len; x++) {
        ct[x] ^= Z[x];
    }
@@ -66,5 +68,5 @@ int ocb_encrypt(ocb_state *ocb, const unsigned char *pt, unsigned char *ct)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/encauth/ocb/ocb_encrypt.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/05 14:35:58 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/10/06 01:38:51 $ */

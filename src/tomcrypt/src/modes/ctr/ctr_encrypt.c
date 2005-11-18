@@ -52,7 +52,9 @@ int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
    
    /* handle acceleration only if pad is empty, accelerator is present and length is >= a block size */
    if ((ctr->padlen == ctr->blocklen) && cipher_descriptor[ctr->cipher].accel_ctr_encrypt != NULL && (len >= (unsigned long)ctr->blocklen)) {
-      cipher_descriptor[ctr->cipher].accel_ctr_encrypt(pt, ct, len/ctr->blocklen, ctr->ctr, ctr->mode, &ctr->key);
+      if ((err = cipher_descriptor[ctr->cipher].accel_ctr_encrypt(pt, ct, len/ctr->blocklen, ctr->ctr, ctr->mode, &ctr->key)) != CRYPT_OK) {
+         return err;
+      }
       len %= ctr->blocklen;
    }
 
@@ -79,7 +81,9 @@ int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
          }
 
          /* encrypt it */
-         cipher_descriptor[ctr->cipher].ecb_encrypt(ctr->ctr, ctr->pad, &ctr->key);
+         if ((err = cipher_descriptor[ctr->cipher].ecb_encrypt(ctr->ctr, ctr->pad, &ctr->key)) != CRYPT_OK) {
+            return err;
+         }
          ctr->padlen = 0;
       }
 #ifdef LTC_FAST
@@ -104,5 +108,5 @@ int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/ctr/ctr_encrypt.c,v $ */
-/* $Revision: 1.14 $ */
-/* $Date: 2005/07/28 03:21:11 $ */
+/* $Revision: 1.16 $ */
+/* $Date: 2005/10/08 10:31:48 $ */

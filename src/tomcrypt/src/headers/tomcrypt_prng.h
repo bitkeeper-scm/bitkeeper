@@ -4,6 +4,7 @@ struct yarrow_prng {
     int                   cipher, hash;
     unsigned char         pool[MAXBLOCKSIZE];
     symmetric_CTR         ctr;
+    LTC_MUTEX_TYPE(prng_lock)
 };
 #endif
 
@@ -28,6 +29,7 @@ struct fortuna_prng {
                   wd;            
 
     ulong64       reset_cnt;  /* number of times we have reset */
+    LTC_MUTEX_TYPE(prng_lock)
 };
 #endif
 
@@ -192,5 +194,5 @@ int rng_make_prng(int bits, int wprng, prng_state *prng, void (*callback)(void))
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_prng.h,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/07/30 23:13:00 $ */
+/* $Revision: 1.7 $ */
+/* $Date: 2005/11/08 16:44:31 $ */

@@ -61,7 +61,9 @@ int omac_done(omac_state *omac, unsigned char *out, unsigned long *outlen)
    }
 
    /* encrypt it */
-   cipher_descriptor[omac->cipher_idx].ecb_encrypt(omac->block, omac->block, &omac->key);
+   if ((err = cipher_descriptor[omac->cipher_idx].ecb_encrypt(omac->block, omac->block, &omac->key)) != CRYPT_OK) {
+      return err;
+   }
    cipher_descriptor[omac->cipher_idx].done(&omac->key);
  
    /* output it */
@@ -80,5 +82,5 @@ int omac_done(omac_state *omac, unsigned char *out, unsigned long *outlen)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/mac/omac/omac_done.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/05/05 14:35:58 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2005/10/08 10:31:48 $ */

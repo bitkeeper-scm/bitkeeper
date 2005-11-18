@@ -45,14 +45,12 @@ int ctr_setiv(const unsigned char *IV, unsigned long len, symmetric_CTR *ctr)
    
    /* force next block */
    ctr->padlen = 0;
-   cipher_descriptor[ctr->cipher].ecb_encrypt(IV, ctr->pad, &ctr->key);
-   
-   return CRYPT_OK;
+   return cipher_descriptor[ctr->cipher].ecb_encrypt(IV, ctr->pad, &ctr->key);
 }
 
 #endif 
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/ctr/ctr_setiv.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/10/08 10:31:48 $ */

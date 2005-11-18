@@ -98,7 +98,9 @@ int gcm_init(gcm_state *gcm, int cipher,
 
    /* H = E(0) */
    zeromem(B, 16);
-   cipher_descriptor[cipher].ecb_encrypt(B, gcm->H, &gcm->K);
+   if ((err = cipher_descriptor[cipher].ecb_encrypt(B, gcm->H, &gcm->K)) != CRYPT_OK) {
+      return err;
+   }
 
    /* setup state */
    zeromem(gcm->buf, sizeof(gcm->buf));
@@ -141,5 +143,5 @@ int gcm_init(gcm_state *gcm, int cipher,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/encauth/gcm/gcm_init.c,v $ */
-/* $Revision: 1.15 $ */
-/* $Date: 2005/05/21 15:05:19 $ */
+/* $Revision: 1.16 $ */
+/* $Date: 2005/10/06 01:26:44 $ */

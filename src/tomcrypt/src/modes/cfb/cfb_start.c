@@ -54,14 +54,12 @@ int cfb_start(int cipher, const unsigned char *IV, const unsigned char *key,
    }
 
    /* encrypt the IV */
-   cipher_descriptor[cfb->cipher].ecb_encrypt(cfb->IV, cfb->IV, &cfb->key);
    cfb->padlen = 0;
-
-   return CRYPT_OK;
+   return cipher_descriptor[cfb->cipher].ecb_encrypt(cfb->IV, cfb->IV, &cfb->key);
 }
 
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/cfb/cfb_start.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/10/08 10:31:48 $ */

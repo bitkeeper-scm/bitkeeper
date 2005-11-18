@@ -31,6 +31,7 @@ int dsa_import(const unsigned char *in, unsigned long inlen, dsa_key *key)
 
    LTC_ARGCHK(in  != NULL);
    LTC_ARGCHK(key != NULL);
+   LTC_ARGCHK(ltc_mp.name != NULL);
 
    /* init key */
    if (mp_init_multi(&key->p, &key->g, &key->q, &key->x, &key->y, NULL) != CRYPT_OK) {
@@ -85,5 +86,5 @@ error:
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_import.c,v $ */
-/* $Revision: 1.10 $ */
-/* $Date: 2005/07/30 23:13:01 $ */
+/* $Revision: 1.11 $ */
+/* $Date: 2005/11/14 04:29:23 $ */

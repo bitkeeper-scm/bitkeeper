@@ -33,6 +33,7 @@ int dsa_make_key(prng_state *prng, int wprng, int group_size, int modulus_size, 
    unsigned char *buf;
 
    LTC_ARGCHK(key  != NULL);
+   LTC_ARGCHK(ltc_mp.name != NULL);
 
    /* check prng */
    if ((err = prng_is_valid(wprng)) != CRYPT_OK) {
@@ -133,5 +134,5 @@ done:
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_make_key.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2005/07/24 14:44:52 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2005/11/14 04:29:23 $ */

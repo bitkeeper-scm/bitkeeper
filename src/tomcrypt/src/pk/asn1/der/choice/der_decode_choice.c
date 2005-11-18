@@ -96,6 +96,7 @@ int der_decode_choice(const unsigned char *in,   unsigned long *inlen,
            case LTC_ASN1_NULL:
                if (*inlen == 2 && in[x] == 0x05 && in[x+1] == 0x00) {
                   *inlen = 2;
+                  list[x].used   = 1;
                   return CRYPT_OK;
                }
                break;
@@ -164,5 +165,5 @@ int der_decode_choice(const unsigned char *in,   unsigned long *inlen,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/choice/der_decode_choice.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/06/19 11:25:01 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2005/10/07 11:27:14 $ */
