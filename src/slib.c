@@ -1420,7 +1420,16 @@ cleanPath(char *path, char cleanPath[])
 		}
 	}
 
-	if (top[0] == '/') *r-- = '/';
+	if (top[0] == '/') {
+#ifdef WIN32
+		/* if network drive //host/path .. */
+		if (!isEmpty(buf, r) && (top == path)
+		    && (top[1] == '/') && (top[2] != '/')) {
+			*r-- = '/';
+		}
+#endif
+		*r-- = '/';
+	}
 	if (top != path) { *r-- = path[1]; *r-- = path[0]; }
 	if (*++r) {
 		strcpy(cleanPath, r);
