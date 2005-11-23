@@ -2375,6 +2375,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	int hasKeyword = 0, buf_size;
 #define EXTRA 1024
 
+	a[0] = a[1] = a[2] = a[3] = 0;
 	/* pre scan the line to determine if it needs keyword expansion */
 	*expanded = 0;
 	for (t = l; *t != '\n'; t++) {
@@ -14980,9 +14981,8 @@ sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec)
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
 	end = &dspec[strlen(dspec) - 1];
-	s->prs_output = 0;
 	fprintDelta(0, &buf, dspec, end, s, d);
-	if (s->prs_output) {
+	if (data_length(buf)) {
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) buf = str_append(buf, "\n", 0);
 	}

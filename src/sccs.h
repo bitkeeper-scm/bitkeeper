@@ -998,7 +998,6 @@ search	search_parse(char *str);
 int	search_glob(char *s, search search);
 int	search_regex(char *s, search search);
 int	search_either(char *s, search search);
-char	*whichp(char *prog, int internal, int external);
 int	which(char *prog, int internal, int external);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);

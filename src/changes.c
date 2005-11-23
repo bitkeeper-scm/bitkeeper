@@ -36,10 +36,10 @@ private struct {
 
 typedef struct slog {
 	time_t	date;
-	time_t	dateFudge;
+	char	*gfile;
 	char	*log;
 	delta	*delta;
-	struct	slog *next;
+	ser_t	serial;
 } slog;
 
 private int	doit(int dash);
@@ -52,7 +52,9 @@ private int	changes_part2(remote *r, char **av, char *key_list, int ret);
 private int	_doit_remote(char **av, char *url);
 private int	doit_remote(char **nav, char *url);
 private int	doit_local(int nac, char **nav, char **urls);
-private void	cset(sccs *s, FILE *f, char *dspec);
+private	void	cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec);
+private	MDBM	*loadcset(sccs *cset);
+private	void	fileFilt(sccs *s, MDBM *csetDB);
 
 private	HASH	*seen; /* list of keys seen already */
 
@@ -73,9 +75,9 @@ changes_main(int ac, char **av)
 	nav[nac++] = "changes";
 	/*
 	 * XXX Warning: The 'changes' command can NOT use the -K
-	 * option.  that is used internally by the bkd command.
+	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "ac;Dd;efhi;kLmnqRr|tTu;U;v/;x;")) != -1) {
+	while ((c = getopt(ac, av, "ac;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
 		unless (c == 'L' || c == 'R') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -86,7 +88,7 @@ changes_main(int ac, char **av)
 		switch (c) {
 		    /*
 		     * Note: do not add option 'K', it is reserved
-		     * for internal use
+		     * for internal use by bkd_changes.c, part1
 		     */
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'c': opts.date = optarg; break;
@@ -94,14 +96,14 @@ changes_main(int ac, char **av)
 		    case 'd': opts.dspec = optarg; break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
-		    case 'h': opts.html = 1; break;
+		    case 'h': opts.html = 1; opts.urls = 0; break;
 		    case 'i':
 			opts.inc = addLine(opts.inc, strdup(optarg));
 			break;
 		    /* case 'K': reserved */
 		    case 'k':
-			opts.keys = opts.all = 1;
-			opts.noempty = 0;
+		    	opts.keys = opts.all = 1; opts.noempty = 0; /* -a */
+			opts.urls = opts.showdups = 0;		    /* -D */
 			break;
 		    case 'm': opts.nomerge = 1; break;
 		    case 'n': opts.newline = 1; break;
@@ -133,26 +135,35 @@ usage:			system("bk help -s changes");
 		}
 		optarg = 0;
 	}
-	nav[nac] = 0;
-	if ((opts.local || opts.remote) && opts.rev) goto usage;
-	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
+	nav[nac] = 0;	/* terminate list of args with -L and -R removed */
 
-	if(opts.local || opts.remote || av[optind] == 0) {
+	/* ERROR check options */
+	/* XXX: could have rev range limit output -- whose name space? */
+	if ((opts.local || opts.remote) && opts.rev) goto usage;
+
+	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
+	if (opts.html && opts.dspec) goto usage;
+
+	if (opts.local || opts.remote || (av[optind] == 0)) {
 		unless (proj_root(0)) {
 			fprintf(stderr, "bk: Cannot find package root.\n");
 			return (1);
 		}
+	} else if (streq(av[optind], "-") && av[optind + 1]) {
+		fprintf(stderr,
+		    "changes: either '-' or URL list, but not both\n");
+		return (1);
 	}
 
 	/*
 	 * There are 5 major cases
 	 * 1) bk changes -L (url_list | -)
 	 * 2) bk changes -R (url_list | -)
-	 * 3) bk changes url
-	 * 4) bk changes [-]
+	 * 3) bk changes [-]
+	 * 4) bk changes url_list
 	 * 5) bk changes -L -R (url_list | -)
 	 * Note: the dash in cases 1, 2, and 5 is a url list,
-	 *       the dash in case 4 is a key list.
+	 *       the dash in case 3 is a key list.
 	 */
 	if (opts.local || opts.remote) {
 		if (av[optind] && streq("-", av[optind])) {
@@ -172,7 +183,7 @@ usage:			system("bk help -s changes");
 			}
 		} else {
 			/* proj_root(0) test above ensures this succeeds */
-			(void)proj_cd2root();
+			(void)proj_cd2root();	/* need for pushp and pullp */
 			if (opts.local) lurls = parent_pushp();
 			if (opts.remote) rurls = parent_pullp();
 			unless (lurls || rurls) {
@@ -189,12 +200,11 @@ usage:			system("bk help -s changes");
 	}
 
 	if (opts.local) {
-		rc = doit_local(nac, nav, lurls);
+		if (rc = doit_local(nac, nav, lurls)) goto out;
 	}
 	if (opts.remote) {
 		EACH(rurls) {
-			if ((opts.local && opts.remote) ||
-			    (opts.urls && (nLines(rurls) > 1))) {
+			if (opts.urls) {
 				printf("==== changes -R %s ====\n", rurls[i]);
 				fflush(stdout);
 			}
@@ -214,13 +224,16 @@ usage:			system("bk help -s changes");
 		pid2 = mkpager();
 		putenv("BK_PAGER=cat");
 		EACH(urls) {
-			if (opts.urls && (nLines(urls) > 1)) {
+			if (opts.urls) {
 				printf("==== changes %s ====\n", urls[i]);
 				fflush(stdout);
 			}
-			rc = doit_remote(nav, urls[i]);
+			rc |= doit_remote(nav, urls[i]);
 		}
-		if (pid2 > 0) waitpid(pid2, 0, 0);
+		if (pid2 > 0) {
+			fclose(stdout);
+			waitpid(pid2, 0, 0);
+		}
 	} else {
 		if (proj_cd2root()) {
 			fprintf(stderr, "Can't find package root\n");
@@ -253,22 +266,26 @@ out:	if (pid > 0)  {
 private int
 _doit_local(char **nav, char *url)
 {
-	int	wfd, status;
-	pid_t	pid = 0, rc = 0;
+	FILE	*f = 0;
+	int	status;
+	int	rc = 0;
 	FILE	*p;
 	char	buf[MAXKEY];
 
 	/*
 	 * What we get here is: bk synckey -lk url | bk changes opts -
 	 */
-	if (opts.showdups) pid = spawnvp_wPipe(nav, &wfd, 0);
+	if (opts.showdups) {
+		f = popenvp(nav, "w");
+		assert(f);
+	}
 
 	sprintf(buf, "bk synckeys -lk %s", url);
 	p = popen(buf, "r");
 	assert(p);
 	while (fnext(buf, p)) {
 		if (opts.showdups) {
-			write(wfd, buf, strlen(buf));
+			fputs(buf, f);
 		} else {
 			int *v = hash_fetchAlloc(seen, buf, 0, sizeof(int));
 
@@ -276,65 +293,56 @@ _doit_local(char **nav, char *url)
 		}
 	}
 	status = pclose(p);
-	if (status == -1) rc = 1;
-	else unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc = 1;
-
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc = 1;
 	if (opts.showdups) {
-		close(wfd);
-		if (waitpid(pid, &status, 0) == -1) rc = 1;
-		else unless (WIFEXITED(status)) rc = 1; /* interrupted */
-		else if (WEXITSTATUS(status) != 0) rc = 1;
+		status = pclose(f);
+		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc=1;
 	}
-
 	return (rc);
 }
 
 private int
 doit_local(int nac, char **nav, char **urls)
 {
-	int	wfd, status, i;
-	pid_t	pid;
+	FILE	*f;
+	int	status, i;
 	kvpair	kv;
-	int	m = 0, ac = nac, rc = 0;
+	int	ac = nac, rc = 0;
+	int	all = 0;
 	char	*p;
 
-	nav[ac++] = strdup("-a");
 	nav[ac++] = strdup("-");
 	assert(ac < 30);
 	nav[ac] = 0;
 	EACH(urls) {
-		if ((opts.local && opts.remote) ||
-		    (opts.urls && (nLines(urls) > 1))) {
+		if (opts.urls) {
 			printf("==== changes -L %s ====\n", urls[i]);
 			fflush(stdout);
 		}
-		rc |= _doit_local(nav, urls[i]);
+		if (rc = _doit_local(nav, urls[i])) goto done;
+		all++;
 	}
 	unless (opts.showdups) {
-		/* If opts.showdups was unset, _doit_local() filled up the
-		 * seen HASH with a set of keys, and the number of repositories
-		 * they were not seen in.  Iterate through the keys, and print
-		 * out the keys that were not seen in any repository.
+		/* Note: for Local case, we are not filtering dups per se.
+		 * We are only listing changes that are unique to this repo.
+		 * That means only list output that has been seen in all
+		 * of the _doit_local cases above.
+		 *
+		 * Optimize: see if we are going to list anything
+		 * and skip starting a process if we aren't.
 		 */
+		f = popenvp(nav, "w");
+		assert(f);
 		EACH_HASH(seen) {
-			int	x = *(int *)kv.val.dptr;
-			if (x > m) m = x;
-		}
-		if (m > 0) {
-			pid = spawnvp_wPipe(nav, &wfd, 0);
-			EACH_HASH(seen) {
-				if (*(int *)kv.val.dptr == m) {
-					p = kv.key.dptr;
-					write(wfd, p, strlen(p));
-				}
+			if (*(int *)kv.val.dptr == all) {
+				p = kv.key.dptr;
+				fputs(p, f);
 			}
-			close(wfd);
-			if (waitpid(pid, &status, 0) == -1) rc = 1;
-			/* interrupted */
-			else unless (WIFEXITED(status)) rc = 1;
-			else if (WEXITSTATUS(status) != 0) rc = 1;
 		}
+		status = pclose(f);
+		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc=1;
 	}
+done:
 	while(ac > nac) free(nav[--ac]);
 	nav[nac] = 0;
 	return (rc);
@@ -351,8 +359,8 @@ pdelta(delta *e)
 		if (opts.all || (e->type == 'D')) {
 			int	flags = opts.all ? PRS_ALL : 0;
 
+			if (opts.newline) flags |= PRS_LF;
 			sccs_prsdelta(opts.s, e, flags, opts.spec, opts.f);
-			if (opts.newline) fputc('\n', opts.f);
 		}
 	}
 	return (fflush(opts.f));
@@ -419,9 +427,11 @@ doit(int dash)
 	char	s_cset[] = CHANGESET;
 	char	*spec;
 	pid_t	pid;
-	sccs	*s;
+	sccs	*s = 0;
 	delta	*e;
 	int	noisy = 0;
+	int	rc = 1;
+	MDBM	*csetDB = 0;
 	RANGE_DECL;
 
 	if (opts.dspec && !opts.html) {
@@ -468,13 +478,22 @@ doit(int dash)
 			unless (e) {
 				fprintf(stderr,
 				    "changes: can't find key: %s\n", cmd);
-				sccs_free(s);
-				return (1);
+				goto next;
 			}
+#ifdef	CRAZY_WOW
+			/* this has cause more problems than solved
+			 * in that customers would have a tag difference
+			 * and up would pop a delta being different.
+			 * Wayne forced -a on -L as a way to address
+			 * this confusion.  In marking this as not compiled
+			 * in, I pulled the forced -a as well.  People can
+			 * choose what they want to see: only deltas.
+			 */
 			while (!opts.all && (e->type == 'R')) {
 				e = e->parent;
 				assert(e);
 			}
+#endif
 			if (want(s, e)) e->flags |= D_SET;
 		}
 	} else {
@@ -483,6 +502,12 @@ doit(int dash)
 		}
 	}
 	//assert(!SET(s));
+	if (opts.verbose || opts.inc || opts.exc) {
+		/* loads all file key pairs for csets marked D_SET */
+		csetDB = loadcset(s);
+	}
+	sccs_close(s);
+	if (opts.inc || opts.exc) fileFilt(s, csetDB);
 
 	/*
 	 * What we want is: this process | pager
@@ -498,7 +523,7 @@ doit(int dash)
 		fflush(stdout);
 	}
 	if (opts.verbose) {
-		cset(s, stdout, spec);
+		cset(s, csetDB, stdout, spec);
 	} else {
 		opts.f = stdout;
 		opts.s = s;
@@ -514,123 +539,129 @@ doit(int dash)
 	if (opts.html) {
 		fprintf(stdout, "</td></tr></table></table></body></html>\n");
 	}
-	sccs_free(s);
 	if (pid > 0) {
 		fclose(stdout);
 		waitpid(pid, 0, 0);
 	}
-	return (0);
+	rc = 0;
+next:
+	if (csetDB) {
+		kvpair	kv;
+		char	**keys;
 
-next:	return (1);
+		EACH_KV(csetDB) {
+			memcpy(&keys, kv.val.dptr, sizeof (char **));
+			freeLines(keys, free);
+		}
+		mdbm_close(csetDB);
+	}
+	if (s) sccs_free(s);
+	return (rc);
 }
 
+private	void
+fileFilt(sccs *s, MDBM *csetDB)
+{
+	delta	*d;
+	datum	k, v;
+		
+	/* Unset any csets that don't contain files from -i and -x */
+	for (d = s->table; d; d = d->next) {
+		unless (d->flags & D_SET) continue;
+		/* if cset changed nothing, keep it if not filtering by inc */
+		if (!opts.inc && !d->added) continue;
+		k.dptr = d->rev;
+		k.dsize = strlen(d->rev);
+		v = mdbm_fetch(csetDB, k);
+		unless (v.dptr) d->flags &= ~D_SET;
+	}
+}
 /*
- * Note that these two are identical except for the d1/d2 assignment.
+ * Note that the next two are identical except for
+ * the date and serial subtraction orders is flipped
  */
+
 private int
 dateback(const void *a, const void *b)
 {
-        register        slog *d1, *d2;
+	slog	*d1, *d2;
+	int	cmp;
 
-        d1 = *((slog**)a);
-        d2 = *((slog**)b);
-	if (d1->date == d2->date) {
-        	return (d2->dateFudge - d1->dateFudge);
-	}
-        return (d2->date - d1->date);
+	d1 = *((slog**)a);
+	d2 = *((slog**)b);
+	if (cmp = (d2->date - d1->date)) return (cmp);
+	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
+	return (d2->serial - d1->serial);
 }
 
 private int
 dateforw(const void *a, const void *b)
 {
-        register        slog *d1, *d2;
+	slog	*d1, *d2;
+	int	cmp;
 
-        d1 = *((slog**)b);
-        d2 = *((slog**)a);
-	if (d1->date == d2->date) {
-        	return (d2->dateFudge - d1->dateFudge);
-	}
-        return (d2->date - d1->date);
+	d1 = *((slog**)a);
+	d2 = *((slog**)b);
+	if (cmp = (d1->date - d2->date)) return (cmp);
+	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
+	return (d1->serial - d2->serial);
 }
 
 /*
- * Note that these two are identical except for the d1/d2 assignment.
+ * Mostly same as dateback/dateforw - but swap gfile and date check
  */
-#if 0
 private int
 strback(const void *a, const void *b)
 {
-        slog	*d1, *d2;
+	slog	*d1, *d2;
 	int	cmp;
 
-        d1 = *((slog**)a);
-        d2 = *((slog**)b);
-	cmp = strcmp(d1->log, d2->log);
-	if (cmp) return (cmp);
-	if (d1->date == d2->date) {
-        	return (d2->dateFudge - d1->dateFudge);
-	}
-        return (d2->date - d1->date);
+	d1 = *((slog**)a);
+	d2 = *((slog**)b);
+	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
+	if (cmp = (d2->date - d1->date)) return (cmp);
+	return (d2->serial - d1->serial);
 }
-#endif
 
+/* mostly same as dateforw - swap gfile and time stamp check */
 private int
 strforw(const void *a, const void *b)
 {
-        slog	*d1, *d2;
+	slog	*d1, *d2;
 	int	cmp;
 
-        d1 = *((slog**)a);
-        d2 = *((slog**)b);
-	cmp = strcmp(d1->log, d2->log);
-	if (cmp) return (cmp);
-	if (d1->date == d2->date) {
-        	return (d2->dateFudge - d1->dateFudge);
-	}
-        return (d2->date - d1->date);
+	d1 = *((slog**)a);
+	d2 = *((slog**)b);
+	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
+	if (cmp = (d1->date - d2->date)) return (cmp);
+	return (d1->serial - d2->serial);
 }
 
-
-private slog *
-dumplog(slog *list, int *n, FILE *f)
+private	void
+dumplog(char **list, FILE *f)
 {
 	slog	*ll;
-	slog 	**sorted;	
-	int	i = *n;
+	int	i;
 
-	unless (i) return (0);
-	assert(i > 0);
-
-	/*
-	 * Stuff the list in an array so we can sort it.
-	 */
-	sorted = malloc(i * sizeof(sorted));
-	for (ll = list; ll; ll = ll->next) sorted[--i] = ll;
-	assert(i == 0);
 	if (opts.timesort) {
-		qsort(sorted,
-		    *n, sizeof(sorted), opts.forwards ? dateforw : dateback);
+		sortLines(list, opts.forwards ? dateforw : dateback);
 	} else {
-		qsort(sorted, *n, sizeof(sorted), strforw);
+		sortLines(list, opts.forwards ? strforw : strback);
 	}
 
 	/*
 	 * Print the sorted list
 	 */
-	for (i = 0; i < *n; ++i) {
-		ll = sorted[i];
+	EACH(list) {
+		ll = (slog *)list[i];
 		fprintf(f, "%s", ll->log);
-		if (opts.newline) fputc('\n', f);
 		free(ll->log);
+		free(ll->gfile);
 		free(ll);
 	}
 
-	/*
-	 * Reset the list
-	 */
-	free(sorted);
-	*n = 0;
-	return (0);
+	freeLines(list, 0);
+	return;
 }
 
 /*
@@ -684,8 +715,8 @@ sccs_keyinitAndCache(char *key,
  * Given a "top" delta "d", this function computes ChangeSet boundaries
  * It collect all the deltas inside a changeset and stuff them to "list".
  */
-private slog *
-collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n)
+private char **
+collectDelta(sccs *s, delta *d, char **list, char *dspec, int flags)
 {
 	slog	*ll;
 	delta	*e;
@@ -699,22 +730,20 @@ collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n)
 
 		/* add delta to list */
 		ll = calloc(sizeof (slog), 1);
-		ll->log = sccs_prsbuf(s, d, PRS_ALL, dspec);
-		ll->date = NOFUDGE(d);
-		ll->dateFudge = d->dateFudge;
-		ll->next = list;
-		list = ll;
-		(*n)++;
+		ll->log = sccs_prsbuf(s, d, flags, dspec);
+		ll->date = d->date;
+		ll->gfile = strdup(s->gfile);
+		ll->serial = d->serial;
+		list = addLine(list, ll);
 
 		if (d->merge) {
 			e = sfind(s, d->merge);
 			assert(e);
 			unless (e->flags & (D_SET|D_CSET)) {
-				list = collectDelta(s, e, list, dspec, n);
+				list = collectDelta(s, e, list, dspec, flags);
 			}
 		}
-		
-		d =  d->parent;
+		d = d->parent;
 	} while (d && !(d->flags & (D_SET|D_CSET)));
 	return (list);
 }
@@ -739,12 +768,13 @@ saveKey(MDBM *db, char *rev, char **keylist)
 private MDBM *
 loadcset(sccs *cset)
 {
-	char	tmp[MAXPATH], buf[2 * MAXKEY + 100];
 	char	*rev = NULL;
-	char	**keylist = NULL;
+	char	**keylist = 0;
+	char	*keypath, *pipe;
 	char	*p;
 	FILE	*f;
 	MDBM	*db;
+	char	tmp[MAXPATH], buf[2 * MAXKEY + 100], path[MAXPATH];
 
 	bktmp(tmp, "loadcset");
 	sccs_cat(cset, SILENT|GET_NOHASH|GET_REVNUMS|PRINT, tmp);
@@ -757,6 +787,23 @@ loadcset(sccs *cset)
 		p = strchr(buf, '\t');
 		assert(p);
 		*p++ = 0;
+		if (opts.inc || opts.exc) {
+			keypath = separator(p);
+			keypath = strchr(keypath, '|');
+			assert(keypath);
+			keypath++;
+			pipe = strchr(keypath, '|');
+			assert(pipe);
+			path[0] = 0;
+			strncat(path, keypath, pipe - keypath);
+			if (opts.inc && 
+			    !match_globs(path, opts.inc, 0)) {
+				continue;
+			}
+			if (opts.exc && match_globs(path, opts.exc, 0)){
+				continue;
+			}
+		}
 		if (!rev) {
 			rev = strdup(buf);
 			assert(keylist == NULL);
@@ -764,7 +811,7 @@ loadcset(sccs *cset)
 			saveKey(db, rev, keylist);
 			free(rev);
 			rev = strdup(buf);
-			keylist = NULL;
+			keylist = 0;
 		}
 		keylist = addLine(keylist, strdup(p));
 	}
@@ -780,17 +827,16 @@ loadcset(sccs *cset)
 }
 
 private void
-cset(sccs *cset, FILE *f, char *dspec)
+cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 {
 	int	flags = PRS_ALL, iflags = INIT_NOCKSUM;
-	int 	i, j, m = 0, n = 0;
-	char	**keys;
-	slog	*list = 0, *ll, *ee;
-	slog 	**sorted;	
+	int 	i, j;
+	char	**keys, **csets = 0;
+	char	**list;
 	delta	*e;
 	kvpair	kv;
 	datum	k, v;
-	MDBM 	*idDB, *goneDB, *graphDB, *csetDB;
+	MDBM 	*idDB, *goneDB, *graphDB;
 
 	assert(dspec);
 	if (opts.newline) flags |= PRS_LF; /* for sccs_prsdelta() */
@@ -807,111 +853,67 @@ cset(sccs *cset, FILE *f, char *dspec)
 		char tmp_gone[MAXPATH];
 
 		bktmp(tmp_gone, "change_gone");
-		sysio(0, tmp_gone, 0, "bk", "get", "-kpsr@+", GONE, SYS);
+		sysio(0, tmp_gone, 0, "bk", "get", "-qkp", GONE, SYS);
 		goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
 		unlink(tmp_gone);
 	}
 	graphDB = mdbm_mem();
-	csetDB = loadcset(cset);
-	sccs_close(cset);
 
 	/*
 	 * Collect the cset in a list
 	 */
 	for (e = cset->table; e; e = e->next) {
 		unless (e->flags & D_SET) continue;
-		ll = calloc(sizeof (slog), 1);
-		ll->date = NOFUDGE(e);
-		ll->dateFudge = e->dateFudge;
-		ll->delta = e;
-		ll->next = list;
-		list = ll;
-		m++;
+		csets = addLine(csets, e);
 	}
 
-	/*
-	 * Stuff the cset list in a array so we can sort it
-	 */
-	if (m == 0) return; /* no work needed */
-	sorted = malloc(m * sizeof(sorted));
-	for (i = m, ll = list; ll; ll = ll->next) sorted[--i] = ll;
-	assert(i == 0);
-	qsort(sorted, m, sizeof(sorted), opts.forwards ? dateforw : dateback);
+	if (opts.forwards) reverseLines(csets);
 
 	/*
-	 * Walk the sorted cset list and dump the file deltas contain in
+	 * Walk the ordered cset list and dump the file deltas contain in
 	 * each cset. The file deltas are also sorted on the fly in dumplog().
 	 */
-	list = NULL;
-	for (j = 0; j < m; ++j) {
-		int	done = 0;
 
-		ee = sorted[j];
-		sorted[j] = NULL;
-		e = ee->delta;
+	EACH_INDEX(csets, j) {
+		e = (delta *)csets[j];
 
+		sccs_prsdelta(cset, e, flags, dspec, f);
 		/* get key list */
 		k.dptr = e->rev;
 		k.dsize = strlen(e->rev);
 		v = mdbm_fetch(csetDB, k);
-		unless (v.dptr) continue; /* merge cset are usually empty */
+		unless (v.dptr) continue;	/* no files */
+		
 		memcpy(&keys, v.dptr, v.dsize);
 		mdbm_delete(csetDB, k);
 
-		EACH (keys) {
+		list = 0;
+		EACH_INDEX(keys, i) {
 			sccs	*s;
 			delta	*d;
-			char	*dkey, *path, *pipe;
+			char	*dkey;
 
 			dkey = separator(keys[i]);
 			assert(dkey);
 			*dkey++ = 0;
-			if (opts.inc || opts.exc) {
-				path = strchr(dkey, '|');
-				assert(path);
-				path++;
-				pipe = strchr(path, '|');
-				assert(pipe);
-				*pipe = 0;
-				if (opts.inc && 
-				    !match_globs(path, opts.inc, 0)) {
-					*pipe = '|';
-					continue;
-				}
-				if (opts.exc && match_globs(path, opts.exc, 0)){
-					*pipe = '|';
-					continue;
-				}
-				*pipe = '|';
-			}
 			s = sccs_keyinitAndCache(
 				keys[i], iflags, &idDB, graphDB, goneDB);
 			unless (s && !CSET(s)) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);
 
-			/* delay until we are going to print something else
-			 * in case the inc/exc filtered everything out.
-			 */
-			unless (done) {
-				/* print cset dspec */
-				sccs_prsdelta(cset, e, flags, dspec, f);
-				done = 1;
-			}
-
 			/*
 			 * CollectDelta() compute cset boundaries,
 			 * when this function returns, "list" will contain
 			 * all member deltas/dspec in "s" for this cset
 			 */
-			list = collectDelta(s, d, list, dspec, &n);
+			list = collectDelta(s, d, list, dspec, flags);
 		}
 		/* reduce mem foot print, could be huge */
 		freeLines(keys, free);
-		free(ee);
 
-		/* sort file dspec and print it */
-		list = dumplog(list, &n, f);
+		/* sort file dspec, print it, then free it */
+		dumplog(list, f);
 		if (fflush(f)) break;
 	}
 
@@ -920,11 +922,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 	 * The above loop may break out prematurely if pager exit
 	 * We need to account for it.
 	 */
-	for (i = 0; i < m; ++i) {
-		ee = sorted[i];
-		if (ee) free(ee);
-	}
-	free(sorted);
+	freeLines(csets, 0);
 
 	EACH_KV(graphDB) {
 		sccs	*s;
@@ -933,15 +931,9 @@ cset(sccs *cset, FILE *f, char *dspec)
 		if (s) sccs_free(s);
 	}
 
-	EACH_KV(csetDB) {
-		memcpy(&keys, kv.val.dptr, sizeof (char **));
-		freeLines(keys, free);
-	}
-
 	mdbm_close(graphDB);
 	mdbm_close(idDB);
 	mdbm_close(goneDB);
-	mdbm_close(csetDB);
 	return;
 }
 
@@ -1133,7 +1125,6 @@ changes_part1(remote *r, char **av, char *key_list)
 				if (write(1, "\n", 1) < 0) break;
 			}
 		}
-		fclose(stdout);
 		return (0);
 	}
 

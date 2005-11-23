@@ -10,11 +10,12 @@ bk changes \- show changeset history
 .B ]
 .br
 .B bk changes [opts]
-.Bc [
-.OPTreq \-r revs
- |\ - \c
-.B ]
-.I repo
+." XXX: in 3.2.x docs, but not implemented
+." .Bc [
+." .OPTreq \-r revs
+." |\ - \c
+." .B ]
+.I repo[s]
 .br
 .B bk changes 
 .B \-L
@@ -44,20 +45,21 @@ If the last argument is a "-" then the revisions to be listed are
 specified, as keys, tags, and/or revisions, on stdin.
 .LI
 The second form shown above shows changes in the named repository.
-If the second to the last argument is a "-" then the revisions to be
-listed are specified, as keys, tags, and/or revisions, on stdin.
+." XXX: this was in 3.2.x, but was not implemented:
+." If the second to the last argument is a "-" then the revisions to be
+." listed are specified, as keys, tags, and/or revisions, on stdin.
 .LI
 The third form shown above lists changes found in the local repository
 but not in the remote repository.
 If the remote repository is not specified, the outgoing parent[s] of the
 local repository is/are used, i.e.,
-the listing is what would be sent on a push.
+the listing is what would be sent on a push (when used with -a).
 .LI
 The fourth form shown above lists changes found in the remote repository
 but not in the local repository.
 If the remote repository is not specified, the incoming parent[s] of the
 local repository is/are used, i.e.,
-the listing is what would be received on a pull.
+the listing is what would be received on a pull (when used with -a).
 .LI
 The fifth form shown above lists changes unique to either the remote or the 
 local repository.
@@ -107,10 +109,14 @@ there may be duplicate changesets which are present in more than one
 repository.
 If this option is specified, then the duplicates are filtered out such
 that the changesets listed are a unique set.
-This option is used to ask the questions: "What is only in this
-repository relative to all of the specified repositories" or "What is
+This option combined with
+.BR -aL
+or
+.BR -aR
+is used to answer the questions: "What is only in this
+repository relative to all of the specified repositories?" or "What is
 only in one or more of the remote repositories but not in this local
-repository".
+repository?" respectively.
 .tp
 .OPTreq \-d dspec
 Override the default dspec, allows for arbitrary output formats.
@@ -134,12 +140,16 @@ pattern (see below).
 .B \-k
 Produce a list of matching changeset keys, usually for scripts.
 Equivalent to 
-.BI \-and :KEY:
+.BI \-Dand:KEY:
 .tp
 .B \-L
-List only those changesets which are unique to the local repository,
-i.e., those which would be sent back with a bk push.
+List only those changesets which are unique to the local repository.
 Requires either a BK url or a valid repository parent.
+Will not report tags, or empty merges.
+Use with
+.BR -a
+to see tags and empty merges,
+i.e., everything which would be sent back with a bk push.
 .tp
 .B \-m
 Do not show any merge changesets, empty or not.
@@ -152,18 +162,29 @@ add a newline to each printed record (sometimes useful with
 When listing local/remote changes from multiple parents (or remote
 repositories) do not print the location of the remote repositories.
 This option is implied by
-.BR -k .
+.BR -D .
 .tp
 .OPTreq \-r revs
 Specifies the changesets to be listed, i.e., 1.100..
 .tp
 .B \-R
 List only those changesets which are unique to the remote repository,
-i.e., those which would be brought over with a bk pull.
 Requires either a BK url or a valid repository parent.
+Will not report tags, or empty merges.
+Use with
+.BR -a
+to see tags and empty merges,
+i.e., everything which would be brought over with a bk pull.
 .tp
 .B \-t
 Only list changesets which are tagged.
+.tp
+.B \-T
+Sort the deltas in a changeset in time order.
+The default is to sort by current file name.
+This option only affects verbose
+.BR (-v)
+output.
 .tp
 .OPTreq \-u user
 Only list changesets created by
