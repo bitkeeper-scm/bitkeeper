@@ -90,7 +90,7 @@ changes_main(int ac, char **av)
 		     */
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'c': opts.date = optarg; break;
-		    case 'D': opts.showdups = 0; break;
+		    case 'D': opts.urls = opts.showdups = 0; break;
 		    case 'd': opts.dspec = optarg; break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
@@ -101,7 +101,7 @@ changes_main(int ac, char **av)
 		    /* case 'K': reserved */
 		    case 'k':
 			opts.keys = opts.all = 1;
-			opts.urls = opts.noempty = 0;
+			opts.noempty = 0;
 			break;
 		    case 'm': opts.nomerge = 1; break;
 		    case 'n': opts.newline = 1; break;
@@ -251,11 +251,17 @@ out:	if (pid > 0)  {
 }
 
 private int
-_doit_local(int nac, char **nav, char *url, int wfd)
+_doit_local(char **nav, char *url)
 {
+	int	wfd, status;
+	pid_t	pid = 0, rc = 0;
 	FILE	*p;
-	int	status;
 	char	buf[MAXKEY];
+
+	/*
+	 * What we get here is: bk synckey -lk url | bk changes opts -
+	 */
+	if (opts.showdups) pid = spawnvp_wPipe(nav, &wfd, 0);
 
 	sprintf(buf, "bk synckeys -lk %s", url);
 	p = popen(buf, "r");
@@ -270,9 +276,17 @@ _doit_local(int nac, char **nav, char *url, int wfd)
 		}
 	}
 	status = pclose(p);
-	if (status == -1) return (1);
-	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) return (1);
-	return (0);
+	if (status == -1) rc = 1;
+	else unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc = 1;
+
+	if (opts.showdups) {
+		close(wfd);
+		if (waitpid(pid, &status, 0) == -1) rc = 1;
+		else unless (WIFEXITED(status)) rc = 1; /* interrupted */
+		else if (WEXITSTATUS(status) != 0) rc = 1;
+	}
+
+	return (rc);
 }
 
 private int
@@ -281,46 +295,48 @@ doit_local(int nac, char **nav, char **urls)
 	int	wfd, status, i;
 	pid_t	pid;
 	kvpair	kv;
-	int	m = 0, rc = 0;
+	int	m = 0, ac = nac, rc = 0;
+	char	*p;
 
-	/*
-	 * What we want is: bk synckey -lk url | bk changes opts -
-	 */
-	nav[nac++] = strdup("-a");
-	nav[nac++] = strdup("-");
-	assert(nac < 30);
-	nav[nac] = 0;
-	pid = spawnvp_wPipe(nav, &wfd, 0);
-
+	nav[ac++] = strdup("-a");
+	nav[ac++] = strdup("-");
+	assert(ac < 30);
+	nav[ac] = 0;
 	EACH(urls) {
 		if ((opts.local && opts.remote) ||
-		    (opts.urls && (nLines(urls) > 1) && opts.showdups)) {
+		    (opts.urls && (nLines(urls) > 1))) {
 			printf("==== changes -L %s ====\n", urls[i]);
 			fflush(stdout);
 		}
-		rc |= _doit_local(nac, nav, urls[i], wfd);
+		rc |= _doit_local(nav, urls[i]);
 	}
-	close(wfd);
-	if (waitpid(pid, &status, 0) == -1) return (1);
-	unless (WIFEXITED(status)) return (1); /* interrupted */
-	if (WEXITSTATUS(status) != 0) return (1);
-
-	unless (opts.showdups) return (rc);
-
-	/* If opts.showdups was set, _doit_local() filled up the
-	 * seen HASH with a set of keys, and the number of repositories
-	 * they were not seen in.  Iterate through the keys, and print
-	 * out the keys that were not seen in any repository.
-	 */
-	EACH_HASH(seen) {
-		int	x = *(int *)kv.val.dptr;
-
-		if (x > m) m = x;
+	unless (opts.showdups) {
+		/* If opts.showdups was unset, _doit_local() filled up the
+		 * seen HASH with a set of keys, and the number of repositories
+		 * they were not seen in.  Iterate through the keys, and print
+		 * out the keys that were not seen in any repository.
+		 */
+		EACH_HASH(seen) {
+			int	x = *(int *)kv.val.dptr;
+			if (x > m) m = x;
+		}
+		if (m > 0) {
+			pid = spawnvp_wPipe(nav, &wfd, 0);
+			EACH_HASH(seen) {
+				if (*(int *)kv.val.dptr == m) {
+					p = kv.key.dptr;
+					write(wfd, p, strlen(p));
+				}
+			}
+			close(wfd);
+			if (waitpid(pid, &status, 0) == -1) rc = 1;
+			/* interrupted */
+			else unless (WIFEXITED(status)) rc = 1;
+			else if (WEXITSTATUS(status) != 0) rc = 1;
+		}
 	}
-	EACH_HASH(seen) {
-		if (*(int *)kv.val.dptr == m) fputs(kv.key.dptr, stdout);
-	}
-
+	while(ac > nac) free(nav[--ac]);
+	nav[nac] = 0;
 	return (rc);
 }
 
