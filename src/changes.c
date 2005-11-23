@@ -374,7 +374,9 @@ recurse(delta *d)
 		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"+:LI: -:LD:\n" \
 		"$each(:C:){$if(:DPN:!=ChangeSet){  }  (:C:)\n}" \
-		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
+		"$if(:MERGE:){$if(:DPN:!=ChangeSet){  }  MERGE: " \
+		":MPARENT:\n}\n"
 #define	VSPEC	"$if(:DPN:=ChangeSet){\n#### :DPN: ####\n}" \
 		"$if(:DPN:!=ChangeSet){\n==== :DPN: ====\n}" \
 		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
