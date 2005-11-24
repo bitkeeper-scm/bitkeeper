@@ -44,6 +44,8 @@ void der_sequence_free(ltc_asn1_list *in)
       }
       
       switch (in->type) { 
+         case LTC_ASN1_SET:
+         case LTC_ASN1_SETOF:
          case LTC_ASN1_SEQUENCE: break;
          case LTC_ASN1_INTEGER : if (in->data != NULL) { mp_clear(in->data); } break;
          default               : if (in->data != NULL) { XFREE(in->data);    }
@@ -59,5 +61,5 @@ void der_sequence_free(ltc_asn1_list *in)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/sequence/der_sequence_free.c,v $ */
-/* $Revision: 1.1 $ */
-/* $Date: 2005/11/17 20:45:01 $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2005/11/20 14:19:40 $ */

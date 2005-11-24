@@ -53,6 +53,8 @@ int der_encode_sequence_multi(unsigned char *out, unsigned long *outlen, ...)
            case LTC_ASN1_PRINTABLE_STRING:
            case LTC_ASN1_UTCTIME:
            case LTC_ASN1_SEQUENCE:
+           case LTC_ASN1_SET:
+           case LTC_ASN1_SETOF:
                 ++x; 
                 break;
           
@@ -96,6 +98,8 @@ int der_encode_sequence_multi(unsigned char *out, unsigned long *outlen, ...)
            case LTC_ASN1_PRINTABLE_STRING:
            case LTC_ASN1_UTCTIME:
            case LTC_ASN1_SEQUENCE:
+           case LTC_ASN1_SET:
+           case LTC_ASN1_SETOF:
                 list[x].type   = type;
                 list[x].size   = size;
                 list[x++].data = data;
@@ -119,5 +123,5 @@ LBL_ERR:
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/sequence/der_encode_sequence_multi.c,v $ */
-/* $Revision: 1.6 $ */
-/* $Date: 2005/06/18 19:20:23 $ */
+/* $Revision: 1.7 $ */
+/* $Date: 2005/11/20 02:25:13 $ */

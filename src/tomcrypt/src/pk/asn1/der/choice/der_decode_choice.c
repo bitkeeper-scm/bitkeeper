@@ -144,6 +144,8 @@ int der_decode_choice(const unsigned char *in,   unsigned long *inlen,
                }
                break;
 
+           case LTC_ASN1_SET:
+           case LTC_ASN1_SETOF:
            case LTC_ASN1_SEQUENCE:
                if (der_decode_sequence(in, *inlen, data, size) == CRYPT_OK) {
                   if (der_length_sequence(data, size, &z) == CRYPT_OK) {
@@ -165,5 +167,5 @@ int der_decode_choice(const unsigned char *in,   unsigned long *inlen,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/choice/der_decode_choice.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/10/07 11:27:14 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/11/20 04:23:55 $ */

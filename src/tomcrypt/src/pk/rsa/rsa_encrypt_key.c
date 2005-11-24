@@ -70,11 +70,11 @@ int rsa_encrypt_key(const unsigned char *in,     unsigned long inlen,
   }                                
 
   /* rsa exptmod the OAEP pad */
-  return rsa_exptmod(out, x, out, outlen, PK_PUBLIC, key);
+  return ltc_mp.rsa_me(out, x, out, outlen, PK_PUBLIC, key);
 }
 
 #endif /* MRSA */
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/rsa/rsa_encrypt_key.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/07/17 23:38:55 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2005/11/24 01:53:19 $ */

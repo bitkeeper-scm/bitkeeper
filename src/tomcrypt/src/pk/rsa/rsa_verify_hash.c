@@ -68,7 +68,7 @@ int rsa_verify_hash(const unsigned char *sig,      unsigned long siglen,
       
   /* RSA decode it  */
   x = siglen;
-  if ((err = rsa_exptmod(sig, siglen, tmpbuf, &x, PK_PUBLIC, key)) != CRYPT_OK) {
+  if ((err = ltc_mp.rsa_me(sig, siglen, tmpbuf, &x, PK_PUBLIC, key)) != CRYPT_OK) {
      XFREE(tmpbuf);
      return err;
   }
@@ -82,5 +82,5 @@ int rsa_verify_hash(const unsigned char *sig,      unsigned long siglen,
 #endif /* MRSA */
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/rsa/rsa_verify_hash.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/07/17 23:38:55 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2005/11/24 01:53:19 $ */

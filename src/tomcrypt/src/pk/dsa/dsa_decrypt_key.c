@@ -15,7 +15,7 @@
   DSA Crypto, Tom St Denis
 */  
 
-#ifdef MECC
+#ifdef MDSA
 
 /**
   Decrypt an DSA encrypted key
@@ -133,6 +133,6 @@ LBL_ERR:
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_decrypt_key.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/10/30 18:53:36 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/11/24 02:04:22 $ */
 

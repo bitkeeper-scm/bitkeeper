@@ -428,17 +428,25 @@ const ltc_math_descriptor ltm_desc = {
    &exptmod,
    &isprime,
 
+#ifdef MECC
    &ltc_ecc_mulmod,
    &ltc_ecc_projective_add_point,
    &ltc_ecc_map,
+#else
+   NULL, NULL, NULL,
+#endif
 
-   NULL,
-   NULL
+#ifdef MRSA
+   &rsa_make_key,
+   &rsa_exptmod,
+#else
+   NULL, NULL
+#endif
 };
 
 
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/math/ltm_desc.c,v $ */
-/* $Revision: 1.18 $ */
-/* $Date: 2005/11/01 03:11:58 $ */
+/* $Revision: 1.20 $ */
+/* $Date: 2005/11/24 01:54:29 $ */

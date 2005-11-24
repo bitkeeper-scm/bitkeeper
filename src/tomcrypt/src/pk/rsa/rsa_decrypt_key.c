@@ -70,7 +70,7 @@ int rsa_decrypt_key(const unsigned char *in,       unsigned long  inlen,
 
   /* rsa decode the packet */
   x = inlen;
-  if ((err = rsa_exptmod(in, inlen, tmp, &x, PK_PRIVATE, key)) != CRYPT_OK) {
+  if ((err = ltc_mp.rsa_me(in, inlen, tmp, &x, PK_PRIVATE, key)) != CRYPT_OK) {
      XFREE(tmp);
      return err;
   }
@@ -89,5 +89,5 @@ int rsa_decrypt_key(const unsigned char *in,       unsigned long  inlen,
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/rsa/rsa_decrypt_key.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/07/17 23:38:55 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2005/11/24 02:04:22 $ */
