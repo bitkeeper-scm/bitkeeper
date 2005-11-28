@@ -67,8 +67,12 @@ which_main(int ac, char **av)
 		switch (c) {
 		    case 'i': external = 0; break;
 		    case 'e': internal = 0; break;
+usage:		    default:
+			fprintf(stderr, "usage: bk which [-i] [-e] cmd\n");
+			return (2);
 		}
 	}
+	unless (av[optind]) goto usage;
 	if (path = whichp(av[optind], internal, external)) {
 		puts(path);
 		free(path);

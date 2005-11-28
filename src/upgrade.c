@@ -217,7 +217,7 @@ usage:			system("bk help -s upgrade");
 		fprintf(stderr, "upgrade: install failed\n");
 		goto out;
 	}
-
+	unlink(data[1]);
 	rc = 0;
  out:
 	if (data) freeLines(data, free);
