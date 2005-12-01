@@ -1450,8 +1450,10 @@ _install()
 	cd "$DEST"
 	if [ $CRANKTURN = NO ]
 	then
-		(find . | xargs chown root) 2> /dev/null
-		(find . | xargs chgrp root) 2> /dev/null
+		test "X$OSTYPE" != "Xmsys" && {
+			(find . | xargs chown root) 2> /dev/null
+			(find . | xargs chgrp root) 2> /dev/null
+		}
 		find . | grep -v bkuninstall.exe | xargs chmod ugo-w
 	else
 		find . -type d | xargs chmod 777
