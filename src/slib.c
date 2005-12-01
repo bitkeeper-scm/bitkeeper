@@ -16541,10 +16541,12 @@ generateTimestampDB(project *p)
 	/* want to use the timestamp database */
 	FILE	*f = 0;
 	HASH	*db;
-	char	*tsname;
+	char	*tsname, *skew;
 	char	buf[MAXLINE];
 
-	if (streq(user_preference("clock_skew"), "off")) return (0);
+	assert(p);
+	skew = mdbm_fetch_str(proj_config(p), "clock_skew");
+	if (skew && streq(skew, "off")) return (0);
 
 	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
 	db = hash_new();
@@ -16579,6 +16581,7 @@ dumpTimestampDB(project *p, HASH *db)
 	char	*tsname;
 	kvpair	kv;
 
+	assert(p);
 	unless (timestampDBChanged) return;
 
 	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
@@ -16617,7 +16620,7 @@ timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps)
 	int	ret = 0;
 	struct	stat	sb;
 
-	unless (proj) return (0);
+	assert(proj);
 	relpath = proj_relpath(proj, gfile);
 	ts = (tsrec *)hash_fetch(timestamps, relpath, 0, 0);
 	free(relpath);
@@ -16655,10 +16658,12 @@ updateTimestampDB(sccs *s, HASH *timestamps, int different)
 	static time_t clock_skew = 0;
 	time_t now;
 
+	assert(s->proj);
 	unless (clock_skew) {
-		char	*p = user_preference("clock_skew");
+		char	*p;
 
-		if (streq(p, "off")) {
+		p = mdbm_fetch_str(proj_config(s->proj), "clock_skew");
+		if (!p || streq(p, "off")) {
 			clock_skew = 2147483647;  /* 2^31 */
 		} else {
 			clock_skew = strtoul(p, 0, 0);
