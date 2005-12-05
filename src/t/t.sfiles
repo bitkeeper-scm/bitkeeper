@@ -509,3 +509,18 @@ bk sfiles -gU | grep -q BitKeeper/triggers/pre-commit || {
 	exit 1
 }
 echo OK
+
+echo $N Test sfiles -c outside of repo .............................$NL
+cd $HERE
+mkdir -p foo/SCCS
+cd foo
+date > file
+bk new $Q file
+bk edit $Q file
+date >> file
+bk sfiles -cg > out || exit 1
+cat <<EOF > want
+file
+EOF
+cmpfiles out want
+echo OK

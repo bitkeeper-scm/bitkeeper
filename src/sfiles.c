@@ -960,7 +960,8 @@ sccsdir(winfo *wi)
 			sfile = buf;
 			if (strneq(sfile, "./", 2)) sfile += 2;
 			gfile = sccs2name(sfile);
-			if (opts.changed && opts.timestamps && !timestamps) {
+			if (opts.changed && opts.timestamps &&
+			    wi->proj && !timestamps) {
 				timestamps = generateTimestampDB(wi->proj);
 			}
 			if (opts.changed &&
