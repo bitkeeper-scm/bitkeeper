@@ -449,20 +449,6 @@ nameOK(opts *opts, sccs *s)
 	int	ret;
 
 	/*
-	 * Are we in the right sfile? (through LOD shuffling, might not be)
-	 * XXX: still true with single tip LOD design
-	 */
-	sccs_setpathname(s);
-	unless (streq(s->spathname, s->sfile)) {
-		if (opts->debug) {
-			fprintf(stderr, "nameOK(%s) => sfile %s is not same "
-			    "path as current top %s\n", s->gfile, s->sfile,
-			    s->spathname);
-		}
-		return (0);
-	}
-
-	/*
 	 * Same path slot and key?
 	 */
 	sprintf(path, "%s/%s", RESYNC2ROOT, s->sfile);
@@ -912,13 +898,6 @@ again:
 		    rs->s->gfile,
 		    rs->gnames->local, rs->gnames->gca, rs->gnames->remote);
 	}
-
-	/* XXX: resolve across LODs can have this assert fail 
-	 * remote: new lod, then rename, then commit
-	 * pull back in, sfile has new name, but in this lod has no rename
-	 * used to have:
-	 * -> assert(!streq(rs->gnames->local, rs->gnames->remote));
-	 */
 
 	/*
 	 * See if we can just slide the file into place.
@@ -1784,7 +1763,7 @@ checkins(opts *opts, char *comment)
  * Merge a conflict, manually or automatically.
  * We handle permission conflicts here as well.
  *
- * XXX - we need to handle descriptive text, lods, and symbols.
+ * XXX - we need to handle descriptive text and symbols.
  * The symbol case is weird: a conflict is when the same symbol name
  * is in both branches without one below the trunk.
  */

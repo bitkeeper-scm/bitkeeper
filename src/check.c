@@ -1126,12 +1126,12 @@ check(sccs *s, HASH *db)
 	unless (d = sccs_top(s)) {
 		fprintf(stderr, "check: can't get TOT in %s\n", s->gfile);
 		errors++;
-	} else unless (sccs_setpathname(s)) {
-		fprintf(stderr, "check: can't get spathname in %s\n", s->gfile);
-		errors++;
-	} else unless (resync || streq(s->sfile, s->spathname)) {
+	} else unless (resync || streq(s->gfile, d->pathname)) {
+		char	*x = name2sccs(d->pathname);
+
 		fprintf(stderr,
-		    "check: %s should be %s\n", s->sfile, s->spathname);
+		    "check: %s should be %s\n", s->sfile, x);
+		free(x);
 		errors++;
 		names = 1;
 	}

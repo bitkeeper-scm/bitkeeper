@@ -545,7 +545,6 @@ typedef	struct sccs {
 	char	*zfile;		/* SCCS/z.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
-	char	*spathname;	/* current spathname in view or not in view */
 	char	**usersgroups;	/* lm, beth, staff, etc */
 	int	encoding;	/* ascii, uuencode, gzip, etc. */
 	char	**flags;	/* flags in the middle that we didn't grok */
@@ -898,7 +897,6 @@ int	cset_inex(int flags, char *op, char *revs);
 void	sccs_fixDates(sccs *);
 int	sccs_xflags(delta *d);
 void	sccs_mkroot(char *root);
-char	*sccs_nivPath(sccs *s);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
 delta	*sccs_next(sccs *s, delta *d);
@@ -1026,9 +1024,6 @@ delta	*host_get(delta *);
 void	user_done(void);
 delta	*user_get(delta *);
 char	*shell(void);
-void	names_init(void);
-int	names_rename(char *old_spath, char *new_spath, u32 flags);
-void	names_cleanup(u32 flags);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
 MDBM	*loadConfig(char *root);

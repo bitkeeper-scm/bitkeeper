@@ -460,9 +460,8 @@ error:		if (perfile) sccs_free(perfile);
 			}
 			s->state &= ~S_PFILE; 
 		}
-		sccs_setpathname(s);
-		unless (streq(s->spathname, s->sfile)) {
-			tmp = sccs_top(s);
+		tmp = sccs_top(s);
+		unless (streq(tmp->pathname, s->gfile)) {
 			badpath(s, tmp);
 			goto error;
 		}

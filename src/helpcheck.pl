@@ -4,7 +4,7 @@ eval "exec perl -Ssw $0 $@"
 
 @undoc = ( 'adler32', 'config', 'fdiff', 'g2bk', 'gethelp', 'getuser',
 'graft', 'helpaliases', 'lines', 'log', 'mtime', 'names', 'rcsparse',
-'rev2cset', 'setlod', 'sids', 'smoosh', 'unlink', 'zone', );
+'rev2cset', 'sids', 'smoosh', 'unlink', 'zone', );
 foreach $_ (@undoc) {
 	$topics{$_} = 1;
 }

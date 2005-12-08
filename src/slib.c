@@ -20,7 +20,6 @@
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
-private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s, int flags);
 private int	printstate(const serlist *state, const ser_t *slist);
@@ -694,7 +693,7 @@ dinsert(sccs *s, delta *d, int fixDate)
 		debug((stderr, " -> %s (kid)\n", p->rev));
 
 	} else if ((p->kid->type == 'D') &&
-	    samebranch_bk(p, p->kid, 1)) { /* in right place */
+	    samebranch(p, p->kid)) { /* in right place */
 		/*
 		 * If there are siblings, add d at the end.
 		 */
@@ -1324,19 +1323,6 @@ samebranch(delta *a, delta *b)
 		(a->r[2] == b->r[2]));
 }
 
-/*
- * This one assumes SCCS style branch numbering, i.e., x.y.z.d
- */
-private int
-samebranch_bk(delta *a, delta *b, int bk_mode)
-{
-	if (!a->r[2] && !b->r[2])
-		return (bk_mode? (a->r[0] == b->r[0]) : 1);
-	return ((a->r[0] == b->r[0]) &&
-		(a->r[1] == b->r[1]) &&
-		(a->r[2] == b->r[2]));
-}
-
 private char *
 branchname(delta *d)
 {
@@ -1817,7 +1803,7 @@ findrev(sccs *s, char *rev)
 }
 
 /*
- * Return the top of the default branch/lod.
+ * Return the top of the default branch.
  *
  * XXX - this could be much faster in big files by starting at the table
  * end and returning the first real delta which matches the default branch.
@@ -1852,9 +1838,9 @@ again:	if (rev[0] == '@') {
 }
 
 /*
- * Find the first delta (in this LOD) that is > date.
+ * Find the first delta that is > date.
  *
- * XXX - if there are two children in the same LOD, this finds only one of them.
+ * XXX - if there are two children, this finds only one of them.
  */
 private delta *
 findDate(delta *d, time_t date)
@@ -1871,78 +1857,6 @@ findDate(delta *d, time_t date)
 		}
 	}
 	return (0);
-}
-
-/*
- * Calculate the Not In View (NIV) path corresponding to s
- * XXX: Change to use timestamp of the x.1 ChangeSet for this
- *      LOD.
- */
-
-#define	NIVROOT	"BitKeeper/other/"
-
-char	*
-sccs_nivPath(sccs *s)
-{
-	char	buf[MAXKEY];
-	char	path[MAXKEY];
-	char	*parts[6];
-	char	*p;
-	delta	*d;
-
-	assert(s);
-	d = sccs_ino(s);
-
-	sccs_sdelta(s, d, buf);
-	explodeKey(buf, parts);
-
-	/* the use of conditions on parts 1,4 and 5 comes from
-	 * seeing code in samekeystr
-	 */
-	strcpy(path, NIVROOT);
-	strcat(path, parts[2]);
-	p = path + strlen(path);
-	*p++ = '-';
-	strcpy(p, parts[0]);
-	if (parts[1]) {
-		strcat(p, "-at-");
-		strcat(p, parts[1]);
-	}
-	p = path + strlen(path);
-	*p++ = '-';
-	strcpy(p, parts[3]);
-	if (parts[4]) {
-		p = path + strlen(path);
-		*p++ = '-';
-		strcpy(p, parts[4]);
-	}
-	if (parts[5]) {
-		p = path + strlen(path);
-		*p++ = '-';
-		strcpy(p, parts[5]);
-	}
-	return (name2sccs(path));
-}
-
-/*
- * set the s->pathname variable to be the name of the file at
- * tip of current or to a special Not In View (NIV) name
- */
-
-char	*
-sccs_setpathname(sccs *s)
-{
-	delta	*d;
-
-	assert(s);
-	/* XXX: If 'not in view file' -- get a name to use
-	 * and store it in s->spathname:
-	 * For now, just store pathname in spathname
-	 */
-	if (s->spathname) free(s->spathname);
-	unless (d = sccs_top(s)) return (0);
-	s->spathname = name2sccs(d->pathname);
-	return (s->spathname);
 }
 
 /*
@@ -2179,10 +2093,9 @@ isbranch(delta *d)
 }
 
 private inline int
-morekids(delta *d, int bk_mode)
+morekids(delta *d)
 {
-	return (d->kid && (d->kid->type != 'R')
-		&& samebranch_bk(d, d->kid, bk_mode));
+	return (d->kid && (d->kid->type != 'R') && samebranch(d, d->kid));
 }
 
 /*
@@ -2223,7 +2136,7 @@ ok:
 	 * Just continue trunk/branch
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
-	if (!morekids(e, BITKEEPER(s))) {
+	unless (morekids(e)) {
 		a = e->r[0];
 		b = e->r[1];
 		c = e->r[2];
@@ -2729,7 +2642,6 @@ sccs_whynot(char *who, sccs *s)
 /*
  * Add this meta delta into the symbol graph.
  * Set this symbol's leaf flag and clear the parent's.
- * XXX - need to do this per lod.
  */
 void
 symGraph(sccs *s, delta *d)
@@ -2776,7 +2688,6 @@ metaSyms(sccs *sc)
 
 }
 
-/* XXX - does not handle lods */
 int
 sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 {
@@ -4440,7 +4351,6 @@ sccs_free(sccs *s)
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
 	if (s->findkeydb) mdbm_close(s->findkeydb);
-	if (s->spathname) free(s->spathname);
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
 	if (s->rrevs) freenames(s->rrevs, 1);
@@ -9459,7 +9369,7 @@ isleaf(register sccs *s, register delta *d)
 	 * We'll later add back the support for 2.x, 3.x, style numbering
 	 * and then we'll need to remove this.
 	 */
-	if (d->r[0] > 1) return (0);
+	assert(d->r[0] == 1);
 
 	if (d->flags & D_MERGED) {
 		delta	*t;
@@ -10238,8 +10148,8 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 	}
 
 	/*
-	 * "sym" means TOT of current LOD.
-	 * "sym|" means TOT of current LOD.
+	 * "sym" means TOT
+	 * "sym|" means TOT
 	 * "sym|1.2" means that rev.
 	 */
 	for (i = 0; s && s[i].flags; ++i) {
@@ -12283,8 +12193,6 @@ out:
 				 * If we have random bits, we are the root of
 				 * some other file, so make our rev start at
 				 * .0
-				 *
-				 * LODXXX - this screws up the LOD stuff.
 				 */
 				if (prefilled->random) dot0(s, prefilled);
 			}
@@ -12520,8 +12428,7 @@ out:
 	 * If the new delta is a top-of-trunk, update the xflags
 	 * This is needed to maintain the xflags invariant:
 	 * s->state should always match sccs_xflags(tot);
-	 * where "tot" is the top-of-trunk delta in the
-	 * current LOD
+	 * where "tot" is the top-of-trunk delta.
  	 */
 	if (init && (flags&DELTA_PATCH) && (n->flags & D_XFLAGS)) {
 		if (n == sccs_top(s)) s->xflags = n->xflags;
@@ -13634,7 +13541,6 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		/* branch flag */
 		/* BitKeeper does not have a branch flag */
 		/* but we can derive the value		 */
-		// re-check this when LOD is done
 		if (d->rev) {
 			int i;
 			/* count the number of dot */
@@ -14491,19 +14397,6 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	case KW_TIP: /* TIP */ {
 		if (sccs_isleaf(s, d)) {
 			fs(d->rev);
-			return (strVal);
-		}
-		return (nullVal);
-	}
-
-	case KW_LODKEY: /* LODKEY */ {
-		char key[MAXKEY];
-
-		while (d && d->r[2]) d = d->parent;
-		while (d && (d->r[1] != 1)) d = d->parent;
-		if (d) {
-			sccs_sdelta(s, d, key);
-			fs(key);
 			return (strVal);
 		}
 		return (nullVal);

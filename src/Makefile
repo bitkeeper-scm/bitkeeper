@@ -122,7 +122,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o lines.o \
-	localtm.o lock.o locking.o lod.o \
+	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mkdir.o mklock.o \
 	mailsplit.o mmap.o mtime.o mv.o names.o newroot.o \
 	opark.o parent.o park.o \

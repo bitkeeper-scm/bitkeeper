@@ -5,9 +5,8 @@
 #include "logging.h"
 
 /*
- * Send the probe keys for this lod.
- * XXX - all the lods will overlap near the top, if we have a lot of
- * lods, this may become an issue.
+ * Send the probe keys for D deltas.
+ * Design supports multiple LODs.
  */
 private void
 lod_probekey(sccs *s, delta *d, FILE *f)

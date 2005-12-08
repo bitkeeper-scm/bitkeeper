@@ -193,7 +193,6 @@ _link
 _listkey restricted
 lock
 _locktest
-lod
 _logging
 _lstat
 mailsplit

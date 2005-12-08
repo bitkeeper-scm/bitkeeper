@@ -166,24 +166,6 @@ sum as used for the entire file.  If the
 size is 0, then the sum is the bottom 5 digits of the microsecond portion
 of the time of day.
 .TP
-.RB ^A L
-\*(BK introduces the concept of a \fIline of development\fP (LOD) to \*S. 
-This field is is the marker which names the start of an LOD.  The symbol is
-placed on the \fB.0\fR version of the LOD, in other words, the LOD symbol
-is placed on the last node before the start of the LOD.   If there are 
-deltas in the LOD, i.e., LOD.1, LOD.2, etc., then there will be at least
-one serial number following the LOD marker.  
-When the first node of a new LOD is created, the serial number of that node is
-added after the .0 delta's LOD marker.
-When a LOD moves from one branch (or the trunk) to another
-branch, then the serial number of the 
-head of the new branch will be added to the .0 delta's LOD marker.  The 
-LOD serial numbers are always in lowest to highest (oldest to most recent)
-order.
-See
-.BR lod.ps
-in the \*(BK DocSet for more details on lines of development.
-.TP
 .RB ^A M
 The serial number of the delta which was merged into this delta.  When
 branches are merged, creating a new delta which is the merge of the 
@@ -368,7 +350,6 @@ control line.
 .BR fm (1),
 .BR get (1),
 .BR mkpatch (1),
-.BR lod (5),
 .BR prs (1),
 .BR rmdel (1),
 .BR sccssh (1),
