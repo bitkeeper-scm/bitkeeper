@@ -31,26 +31,17 @@ void
 bkversion(FILE *f)
 {
 	FILE	*f1;
-	u32	bits;
 	float	exp;
-	char	*key, *t;
+	char	*key;
 	char	buf[MAXLINE];
 
-	lease_refresh(0, O_RDONLY);	/* get a lease, but don't fail */
+	(void)lease_bkl(0, 0);	/* get a lease, but don't fail */
+	buf[0] = 0;
 	if (key = lease_latestbkl()) {
-		bits = license_bklbits(key);
+		license_info(key, buf+1, 0);
+		if (buf[1]) buf[0] = '/';
 		free(key);
-		if (t = eula_type(bits)) sprintf(buf, "/%s", t);
-	} else {
-		buf[0] = 0;
-		bits = 0;
 	}
-
-	// XXX - I really want this to have it's own line
-	if (bits & LIC_WEB) strcat(buf, ",bkweb");
-	if (bits & LIC_EVAL) strcat(buf, ",eval");
-	if (bits & LIC_IMPORT) strcat(buf, ",import");
-	if (bits & LIC_BUGDB) strcat(buf, ",bugdb");
 	getMsg("version", buf, 0, f);
 
 	if (f1 = popen("uname -s -r", "r")) {

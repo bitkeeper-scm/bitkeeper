@@ -57,7 +57,6 @@ private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private	int	skipPatch(MMAP *p);
-private	void	getConfig(void);
 private	void	getGone(void);
 private	void	loadskips(void);
 
@@ -229,8 +228,6 @@ usage:		system("bk help -s takepatch");
 		cleanup(CLEAN_RESYNC | CLEAN_PENDING | CLEAN_OK);
 	}
 
-	getConfig();
-
 	/*
 	 * The ideas here are to (a) automerge any hash-like files which
 	 * we maintain, and (b) converge on the oldest inode for a
@@ -264,23 +261,6 @@ usage:		system("bk help -s takepatch");
 		error = WEXITSTATUS(i);
 	}
 	exit(error);
-}
-
-/*
- * It's probably an error to move the config file, but just in case
- * they did, if there is no config file, use the contents of the
- * enclosing repository.
- */
-private void
-getConfig(void)
-{
-	chdir(ROOT2RESYNC);
-	unless (exists("BitKeeper/etc/SCCS/s.config")) {
-		assert(exists(RESYNC2ROOT "/BitKeeper/etc/SCCS/s.config"));
-		system("bk cat " RESYNC2ROOT
-		    "/BitKeeper/etc/config > BitKeeper/etc/config");
-	}
-	chdir(RESYNC2ROOT);
 }
 
 private void

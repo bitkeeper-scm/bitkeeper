@@ -55,17 +55,12 @@ char *
 package_name(void)
 {
 	MDBM	*m;
-	char	*n;
-	static	char *name = 0;
+	char	*name;
 
-	if (name) return (name);
-	unless (m = loadConfig(".")) return ("");
-	unless (n = mdbm_fetch_str(m, "description")) {
-		mdbm_close(m);
+	m = proj_config(0);
+	unless (name = mdbm_fetch_str(m, "description")) {
 		return ("");
 	}
-	name = (strdup)(n);	/* hide it from purify */
-	mdbm_close(m);
 	return (name);
 }
 

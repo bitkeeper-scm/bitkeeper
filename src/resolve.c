@@ -1631,7 +1631,6 @@ nocommit:
 		if (opts->log) {
 			fprintf(opts->log, "==== Pass 3 autocommits ====\n");
 		}
-		unless (opts->noconflicts) ok_commit();
 		commit(opts);
 		return (0);
 	}
@@ -1709,7 +1708,6 @@ nocommit:
 
 	if (!opts->partial && pending(0)) {
 		assert(!opts->noconflicts);
-		ok_commit();
 		commit(opts);
 	}
 
@@ -2130,12 +2128,6 @@ commit(opts *opts)
 {
 	int	i;
 	char	*cmds[10], *cmt = 0;
-
-	unless (ok_commit()) {
-		fprintf(stderr,
-		   "Commit aborted because of licensing, no changes applied\n");
-		resolve_cleanup(opts, 0);
-	}
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";

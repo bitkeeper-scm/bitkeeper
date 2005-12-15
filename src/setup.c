@@ -124,7 +124,7 @@ again:
 		fclose(f1);
 	}
 
-	unless (m = loadConfig(".")) {
+	unless (m = loadConfig(".", 1)) {
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
@@ -159,8 +159,6 @@ err:			unlink("BitKeeper/etc/config");
 	sccs_free(s);
 	defaultIgnore();
 
-	unless (ok_commit()) return (1);
-
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		fprintf(stderr, "setup: bk commit failed.\n");
@@ -171,7 +169,7 @@ err:			unlink("BitKeeper/etc/config");
                 return (1);
         }
 	enableFastPendingScan();
-	sendConfig();
+	logChangeSet();
 	return (0);
 }
 

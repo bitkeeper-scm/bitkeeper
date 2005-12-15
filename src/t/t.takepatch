@@ -32,7 +32,8 @@ bk clone $Q -r1.2 project clone1
 cd project
 bk makepatch $Q -r1.2..+ > $HERE/patch
 cd $HERE/clone1
-bk takepatch $Q -a < $HERE/patch
+bk lease flush -a
+bk takepatch $Q -a < $HERE/patch || exit 1
 bk changes -L $HERE/project > c1 || [ -s c1 ] || {
        echo "unexpected output from changes -L:"
        cat c1

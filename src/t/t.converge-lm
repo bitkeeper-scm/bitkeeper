@@ -46,9 +46,7 @@ bk commit $Q -yuser-content
 cd ../project
 bk pull -R $Q ../copy
 cd RESYNC || exit 1
-# The invariant is that you always get config but none of the others for updates
 test -f BitKeeper/etc/SCCS/s.ignore && { echo Copied ignore; exit 1; }
-test -f BitKeeper/etc/config || { echo No config; exit 1; }
 cd ..
 bk abort -f
 echo OK
@@ -60,9 +58,7 @@ bk commit $Q -ydate
 bk pull -R $Q ../copy
 cores
 cd RESYNC || exit 1
-# The invariant is that you always get config and all others for conflicts
 test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
-test -f BitKeeper/etc/config || { echo No config; exit 1; }
 cd ..
 bk abort -f
 echo OK

@@ -3905,13 +3905,18 @@ loadEnvConfig(MDBM *db)
 
 /*
  * Load both local and global config
+ *
+ * if forcelocal is set, then we must find a repo config file.
  */
 MDBM *
-loadConfig(char *root)
+loadConfig(char *root, int forcelocal)
 {
 	MDBM	*db;
 
-	unless (db = loadRepoConfig(root)) db = mdbm_mem();
+	unless (db = loadRepoConfig(root)) {
+		if (forcelocal) return (0);
+		db = mdbm_mem();
+	}
 	loadDotBkConfig(db);
 	unless (getenv("BK_REGRESSION")) loadGlobalConfig(db);
 	loadBinConfig(db);

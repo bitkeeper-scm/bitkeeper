@@ -417,13 +417,13 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 	printnavbar();
 
 	unless (include(path, "header.txt")) {
-		m = loadConfig(".");
-		if (m && (t = mdbm_fetch_str(m, "description")) && strlen(t) < 2000) {
+		m = proj_config(0);
+		if ((t = mdbm_fetch_str(m, "description")) &&
+		    strlen(t) < 2000) {
 			title(fmt, t, color);
 		} else {
 			pwd_title(fmt, color);
 		}
-		if (m) mdbm_close(m);
 	}
 	out("</td></tr></table>\n");
 }
@@ -1381,7 +1381,7 @@ http_index(char *page)
 	}
 	sccs_free(s);
 
-	if (m = loadConfig(".")) {
+	if (m = proj_config(0)) {
 		desc = mdbm_fetch_str(m, "description");
 		contact = mdbm_fetch_str(m, "contact");
 		email = mdbm_fetch_str(m, "email");
@@ -1539,7 +1539,6 @@ http_index(char *page)
 	out("</table>");
 	out("</table>");
 	if (!embedded) trailer(0);
-	if (m) mdbm_close(m);
 }
 
 /*

@@ -174,12 +174,10 @@ do_commit(char **av,
 	char	commentFile[MAXPATH];
 	char	buf[MAXLINE];
 
-	unless (ok_commit()) {
-out:		if (pendingFiles) unlink(pendingFiles);
+	if (enforceLicense()) {
+		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
-
-	if (!opts.resync && enforceLicense(opts.quiet)) goto out;
 	/*
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?
 	 */

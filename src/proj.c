@@ -159,6 +159,9 @@ proj_free(project *p)
 	unless (--p->refcnt == 0) return;
 
 	if (p->rparent) {
+		if (p->config && (p->config == p->rparent->config)) {
+			p->config = 0;
+		}
 		proj_free(p->rparent);
 		p->rparent = 0;
 	}
@@ -265,13 +268,20 @@ proj_relpath(project *p, char *path)
 
 /*
  * Return a populated MDBM for the config file in the current project.
- * XXX - remove all other calls to loadConfig ??
  */
 MDBM *
 proj_config(project *p)
 {
 	unless (p || (p = curr_proj())) p = proj_fakenew();
-	unless (p->config) p->config = loadConfig(proj_root(p));
+
+	if (p->config) return (p->config);
+	if (p->rparent) {
+		/* If RESYNC doesn't have a config file, then don't use it. */
+		p->config = loadConfig(p->root, 1);
+		unless (p->config) p->config = proj_config(p->rparent);
+	} else {
+		p->config = loadConfig(p->root, 0);
+	}
 	return (p->config);
 }
 
@@ -449,7 +459,8 @@ proj_bkl(project *p)
 	 */
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->bkl) p->bkl = lease_bkl(p);
+	unless (p->bkl) p->bkl = lease_bkl(p, 1);
+	unless (p->bkl) exit(1);
 	return (p->bkl);
 }
 

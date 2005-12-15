@@ -275,8 +275,8 @@ a count of the pending logs: use the following command:
 	bk _lconfig -p
 
 If the pending count is still non-zero after bk commit is done, please run
-the following command and attach/include its output in the form
-presented by running 'bk support'.
+the following command and include its output in an email to
+support@bitmover.com.
 
 	bk _lconfig -d
 $
@@ -291,8 +291,9 @@ There are two possible causes for this error:
 a) Network connectivity problems such as firewall/proxy configuration.
 b) Problems with the server at www.bitkeeper.com
 
-Please run the following command and attach/include its output in the form
-presented by running 'bk support'.
+
+Please run the following command and include in an email to
+support@bitmover.com.
 
 	bk _lconfig -d
 $

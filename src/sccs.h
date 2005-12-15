@@ -317,6 +317,7 @@
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
 #define	LEASE_URL	getenv("BK_LEASE_URL")
+#define	LEASE_URL2	getenv("BK_LEASE_URL2")
 #define	BK_WEBMAIL_URL	getenv("BK_WEBMAIL_URL")
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	BK_CONFIG_URL	getenv("BK_CONFIG_URL")
@@ -1026,7 +1027,7 @@ delta	*user_get(delta *);
 char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
-MDBM	*loadConfig(char *root);
+MDBM	*loadConfig(char *root, int forcelocal);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s);
 int	sccs_rm(char *name, int force);
