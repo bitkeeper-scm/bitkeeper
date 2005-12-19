@@ -533,7 +533,6 @@ prunekey_main(int ac, char **av)
 	remote	r;
 	sccs	*s;
 	delta	*d;
-	char	path[] = CHANGESET;
 	char	*dspec =
 		    "$if(:DT:=D){C}$unless(:DT:=D){:DT:} "
 		    ":I: :D: :T::TZ: :P:@:HOST:"
@@ -547,7 +546,11 @@ prunekey_main(int ac, char **av)
 	r.rfd = 0;
 	r.wfd = -1;
 	proj_cd2root();
-	s = sccs_init(path, 0);
+	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
+		fprintf(stderr, "prunekey: Can't open ChangeSet\n");
+		if (s) sccs_free(s);
+		return (-1);
+	}
 	prunekey(s, &r, NULL, -1, 0, 0, 0, 0, 0);
 	s->state &= ~S_SET;
 	for (d = s->table; d; d = d->next) {
@@ -557,7 +560,7 @@ prunekey_main(int ac, char **av)
 		d->flags &= ~D_SET;
 	}
 	sccs_free(s);
-	exit(0);
+	return (0);
 }
 
 
@@ -578,72 +581,81 @@ send_sync_msg(remote *r)
 	fclose(f);
 
 	cmd = aprintf("bk _probekey  >> %s", buf);
-	system(cmd);
+	rc = system(cmd);
 	free(cmd);
 
-	rc = send_file(r, buf, 0);
-	unlink(buf);
+	unless (rc) {
+		rc = send_file(r, buf, 0);
+		unlink(buf);
+	}
 	return (rc);
 }
 
 /*
- * Negative returns indicate error, positive returns are from prunekey.
+ * Ret	0 on success
+ *	1 on error.
+ *	2 to force bkd unlock
+ *	3 empty dir
  */
 private int
 synckeys(remote *r, int flags)
 {
-	int	rc;
-	sccs	*s;
-	char	buf[MAXPATH], s_cset[] = CHANGESET;
+	int	rc = 1, i;
+	sccs	*s = 0;
+	char	buf[MAXPATH];
 
-	if (bkd_connect(r, 0, 1)) return (-1);
-	if (send_sync_msg(r)) return (-1);
-	if (r->rfd < 0) return (-1);
+	if (bkd_connect(r, 0, 1)) return (1);
+	if (send_sync_msg(r)) goto out;
+	if (r->rfd < 0) goto out;
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
-	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
-	if ((rc = remote_lock_fail(buf, 1))) {
-		return (rc); /* -2 means locked */
+	if (getline2(r, buf, sizeof(buf)) <= 0) goto out;
+	if ((i = remote_lock_fail(buf, 1))) {
+		rc = -i;		/* 2 means locked */
+		goto out;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) return (-1);
+		if (getServerInfoBlock(r)) goto out;
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
-		return (-1);
+		goto out;
 	}
-	if (get_ok(r, buf, 1)) return (-1);
+	if (get_ok(r, buf, 1)) goto out;
 
 	/*
 	 * What we want is: "remote => bk _prunekey => stdout"
 	 */
-	s = sccs_init(s_cset, 0);
+	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
+		fprintf(stderr, "synckeys: Unable to read SCCS/s.ChangeSet\n");
+		goto out;
+	}
 	flags |= PK_REVPREFIX;
-	rc = prunekey(s, r, NULL, 1, flags, 0, NULL, NULL, NULL);
-	if (rc < 0) {
+	i = prunekey(s, r, NULL, 1, flags, 0, NULL, NULL, NULL);
+	if (i < 0) {
 		switch (rc) {
-		    case -2:
+		    case -2:	/* needed to force bkd unlock */
 			getMsg("unrelated_repos", 0, '=', stderr);
-			sccs_free(s);
-			return (-1); /* needed to force bkd unlock */
-		    case -3:
+			break;
+		    case -3:	/* empty dir */
 			getMsg("no_repo", 0, '=', stderr);
-			sccs_free(s);
-			return (-1); /* empty dir */
 			break;
 		}
-		rc = -1;
+		rc = -i;
+		goto out;
 	}
-	sccs_free(s);
+	rc = 0;
+out:	if (s) sccs_free(s);
 	disconnect(r, 2);
 	return (rc);
 }
 
+/* return same as synckeys */
 
 int
 synckeys_main(int ac, char **av)
 {
-	int	c;
-	remote  *r;
+	int	c, rc = 1;
+	remote  *r = 0;
 	int 	flags = 0;
 
 	while ((c = getopt(ac, av, "l|r|")) != -1) {
@@ -671,9 +683,9 @@ synckeys_main(int ac, char **av)
 
 	if (proj_cd2root()) { 
 		fprintf(stderr, "synckeys: cannot find package root.\n"); 
-		exit(1);
+		goto out;
 	}
-	c = synckeys(r, flags);
-	remote_free(r);
-	return (c >= 0 ? 0 : -c);
+	rc = synckeys(r, flags);
+out:	if (r) remote_free(r);
+	return (rc);
 }
