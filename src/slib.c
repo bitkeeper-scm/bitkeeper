@@ -7965,7 +7965,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, "\n", out);
 		}
 		EACH(d->comments) {
-			/* metadata */
 			p = fmts(buf, "\001c ");
 			p = fmts(p, d->comments[i]);
 			*p++ = '\n';
@@ -8470,10 +8469,7 @@ hasComments(delta *d)
 {
 	int	i;
 
-	EACH(d->comments) {
-		assert(d->comments[i][0] != '\001');
-		return (1);
-	}
+	EACH(d->comments) return (1);
 	return (0);
 }
 
@@ -15214,10 +15210,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	if (d->csetFile) fprintf(out, "B %s\n", d->csetFile);
 	if (d->flags & D_CSET) fprintf(out, "C\n");
 	if (d->dangling) fprintf(out, "D\n");
-	EACH(d->comments) {
-		assert(d->comments[i][0] != '\001');
-		fprintf(out, "c %s\n", d->comments[i]);
-	}
+	EACH(d->comments) fprintf(out, "c %s\n", d->comments[i]);
 	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
 	EACH(d->include) {
 		delta	*e = sfind(s, d->include[i]);
