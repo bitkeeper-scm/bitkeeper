@@ -123,7 +123,7 @@ doit(char *file, char *cvsbranch)
 		 */
 		s = sccs_init(sfile, 0);
 		d = sccs_top(s);
-		unless (streq(d->pathname, s->gfile)) {
+		unless (sccs_patheq(d->pathname, s->gfile)) {
 			char	*p, *q;
 			int	ret;
 

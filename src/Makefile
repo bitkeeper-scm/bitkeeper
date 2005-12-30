@@ -638,7 +638,7 @@ kw2val_lookup.c: slib.c kw2val.pl
 hidestring: hidestring.c	
 	$(CC) $(CC_FAST) -o hidestring hidestring.c
 
-MLA.lic: MLA.preamble Enterprise.lic.txt
+MLA.lic: MLA.preamble Enterprise.lic.txt $(BK)
 	cat MLA.preamble Enterprise.lic.txt | \
 	    ./bk crypto -E 048d6aa55c30b3b4 > MLA.lic
 

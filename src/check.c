@@ -1126,7 +1126,7 @@ check(sccs *s, HASH *db)
 	unless (d = sccs_top(s)) {
 		fprintf(stderr, "check: can't get TOT in %s\n", s->gfile);
 		errors++;
-	} else unless (resync || streq(s->gfile, d->pathname)) {
+	} else unless (resync || sccs_patheq(d->pathname, s->gfile)) {
 		char	*x = name2sccs(d->pathname);
 
 		fprintf(stderr,
@@ -1144,7 +1144,8 @@ check(sccs *s, HASH *db)
 	if (all) {
 		do {
 			sccs_sdelta(s, ino, buf);
-			if (s->grafted || !streq(ino->pathname, s->gfile)) {
+			if (s->grafted ||
+			    !sccs_patheq(ino->pathname, s->gfile)) {
 				fprintf(idcache, "%s %s\n", buf, s->gfile);
 				idsum(buf);
 				idsum(s->gfile);

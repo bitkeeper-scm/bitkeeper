@@ -441,7 +441,7 @@ error:		if (perfile) sccs_free(perfile);
 			s->state &= ~S_PFILE; 
 		}
 		tmp = sccs_top(s);
-		unless (streq(tmp->pathname, s->gfile)) {
+		unless (sccs_patheq(tmp->pathname, s->gfile)) {
 			badpath(s, tmp);
 			goto error;
 		}

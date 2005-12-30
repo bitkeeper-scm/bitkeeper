@@ -1814,6 +1814,39 @@ sccs_top(sccs *s)
 	return (findrev(s,0));
 }
 
+/*
+ * Compare two pathnames relative to the root of the repository and
+ * return true if they are the same.  Either gfiles or sfiles can
+ * be used.
+ *
+ * This is useful since some old repos have a sfile pathname stored
+ * in d->pathname.
+ */
+int
+sccs_patheq(char *file1, char *file2)
+{
+	int	s1, s2;
+	int	ret;
+
+	unless (ret = streq(file1, file2)) {
+		/*
+		 * if the files don't match check to see if one is a sfile
+		 * and the other isn't
+		 */
+		s1 = (strstr(file1, "SCCS/s.") != 0);
+		s2 = (strstr(file2, "SCCS/s.") != 0);
+		if (s1 ^ s2) {
+			/* normalize the mismatch case */
+			file1 = name2sccs(file1);
+			file2 = name2sccs(file2);
+			ret = streq(file1, file2);
+			free(file1);
+			free(file2);
+		}
+	}
+	return (ret);
+}
+
 delta	*
 sccs_findrev(sccs *s, char *rev)
 {

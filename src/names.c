@@ -39,7 +39,7 @@ names_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		if (streq(d->pathname, s->gfile)) {
+		if (sccs_patheq(d->pathname, s->gfile)) {
 			sccs_free(s);
 			continue;
 		}
