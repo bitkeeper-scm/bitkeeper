@@ -3,8 +3,8 @@ SRC = ../../../gnu/patch
 VPATH = $(SRC)
 DFLAGS = -DHAVE_CONFIG_H -Ded_PROGRAM=\"vim\"
 CFLAGS = -O2 -g $(DFLAGS)
-CPPFLAGS = -I../../../libc/include -I. -I$(SRC)
-LDLIBS = ../../uwtlib/libuwt.a ../../../libc/libc.a -lws2_32
+CPPFLAGS = -I../../../libc -I../../../libc/win32 -I. -I$(SRC)
+LDLIBS = ../../../libc/libc.a -lws2_32
 OBJS = addext.o argmatch.o backupfile.o basename.o inp.o error.o \
         maketime.o partime.o patch.o pch.o quotearg.o quotesys.o \
         util.o version.o xmalloc.o malloc.o realloc.o

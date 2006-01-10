@@ -3,89 +3,6 @@
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
-#ifndef WIN32
-int
-cat(char *file)
-{
-	MMAP	*m = mopen(file, "r");
-
-	unless (m) return (-1);
-	unless (write(1, m->mmap, m->size) == m->size) {
-		mclose(m);
-		return (-1);
-	}
-	mclose(m);
-	return (0);
-}
-#else
-/*
- * We need a win32 version beacuse win32 write interface cannot
- * handle large buffer, do _not_ change this code unless you tested it 
- * on win32. I coded ths once before and someone removed it. - awc
- *
- * XXX TODO move this to the port directory.
- */
-int
-cat(char *file)
-{
-	MMAP	*m = mopen(file, "r");
-	char	*p;
-	int	n;
-
-	unless (m) return (-1);
-
-	p = m->mmap;
-	n = m->size;
-	while (n) {
-		if (n >=  MAXLINE) {
-			write(1, p, MAXLINE);
-			n -= MAXLINE;
-			p += MAXLINE;
-		} else {
-			write(1, p, n);
-			n = 0;
-			p = 0;
-		}
-	};
-	mclose(m);
-	return (0);
-}
-#endif
-
-char *
-loadfile(char *file, int *size)
-{
-	FILE	*f;
-	struct	stat	statbuf;
-	char	*ret;
-	int	len;
-
-	f = fopen(file, "r");
-	unless (f) return (0);
-
-	if (fstat(fileno(f), &statbuf)) {
- err:		fclose(f);
-		return (0);
-	}
-	len = statbuf.st_size;
-	ret = malloc(len+1);
-	unless (ret) goto err;
-	fread(ret, 1, len, f);
-	fclose(f);
-	ret[len] = 0;
-
-	if (size) *size = len;
-	return (ret);
-}
-
-int
-touch(char *file, int mode)
-{
-	int	fh = open(file, O_CREAT|O_EXCL|O_WRONLY, mode);
-
-	if (fh < 0) return (fh);
-	return (close(fh));
-}
 
 /*
  * Write the data to either the gzip channel or to 1.
@@ -1091,64 +1008,6 @@ remote_lock_fail(char *buf, int verbose)
 	return (0);
 }
 
-/*
- * This function works like sprintf(), except it return a
- * malloc'ed buffer which caller should free when done
- */
-char *
-aprintf(char *fmt, ...)
-{
-	va_list	ptr;
-	int	rc;
-	char	*buf;
-	int	size = strlen(fmt) + 64;
-
-	while (1) {
-		buf = malloc(size);
-		va_start(ptr, fmt);
-		rc = vsnprintf(buf, size, fmt, ptr);
-		va_end(ptr);
-		if (rc >= 0 && rc < size - 1) break;
-		free(buf);
-		if (rc < 0 || rc == size - 1) {
-			/*
-			 * Older C libraries return -1 to indicate
-			 * the buffer was too small.
-			 *
-			 * On IRIX, it truncates and returns size-1.
-			 * We can't assume that that is OK, even
-			 * though that might be a perfect fit.  We
-			 * always bump up the size and try again.
-			 * This can rarely lead to an extra alloc that
-			 * we didn't need, but that's tough.
-			 */
-			size *= 2;
-		} else {
-			/* In C99 the number of characters needed 
-			 * is always returned. 
-			 */
-			size = rc + 2;	/* extra byte for IRIX */
-		}
-	}
-	return (buf); /* caller should free */
-}
-
-/*
- * Print a message on /dev/tty
- */
-void
-ttyprintf(char *fmt, ...)
-{
-	FILE	*f = fopen(DEV_TTY, "w");
-	va_list	ptr;
-
-	unless (f) f = stderr;
-	va_start(ptr, fmt);
-	vfprintf(f, fmt, ptr);
-	va_end(ptr);
-	if (f != stderr) fclose(f);
-}
-
 int
 isLocalHost(char *h)
 {
@@ -1389,29 +1248,6 @@ run_check(char *partial, int fix, int quiet)
 	return (ret);
 }
 
-#undef	isatty
-
-int
-myisatty(int fd)
-{
-	int	ret;
-	char	*p;
-	char	buf[16];
-
-	if (getenv("_BK_IN_BKD") && !getenv("_BK_BKD_IS_LOCAL")) return (0);
-
-	sprintf(buf, "BK_ISATTY%d", fd);
-	if (p = getenv(buf)) {
-		ret = atoi(p);
-	} else if (getenv("BK_NOTTY")) {
-		ret = 0;
-	} else {
-		ret = isatty(fd);
-	}
-	return (ret);
-}
-
-#define	isatty	myisatty
 
 /*
  * Print progress bar.
@@ -1555,3 +1391,16 @@ rmdir_findprocs(void)
 }
 
 #endif
+
+int
+shellSplit_test_main(int ac, char **av)
+{
+	int	i;
+	char	**lines = shellSplit(av[1]);
+
+	EACH (lines) {
+		printf("%d: (%s)\n", i, lines[i]);
+	}
+	return (0);
+}
+

@@ -18,6 +18,6 @@ root_main(int ac, char **av)
 		fprintf(stderr, "cannot find package root\n");
 		exit(1);
 	}
-	printf("%s\n", fullname(p, 0));
+	printf("%s\n", fullname(p));
 	return(0);
 }

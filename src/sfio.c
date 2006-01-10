@@ -16,12 +16,12 @@
  *	char	mode[3];	(VERSMODE only)
  * repeats, except for the version number.
  */
+#include "system.h"
+#include "zlib/zlib.h"
 #ifdef SFIO_STANDALONE
 #include "utils/sfio.h"
 #else
-#include "system.h"
 #include "sccs.h"
-#include "zlib/zlib.h"
 #endif
 
 #undef	unlink		/* I know the files are writable, I created them */
@@ -138,7 +138,9 @@ reg:			if (out_reg(buf, &sb, &byte_count)) return (1);
 			fprintf(stderr, "unknown file type %s ignored\n",  buf);
 		}
 	}
+#ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
+#endif
 	return (0);
 }
 
@@ -582,9 +584,9 @@ file);
 #endif
 
 	if (access(file, F_OK) == 0) {
+#ifndef SFIO_STANDALONE
 		char	realname[MAXPATH];
 
-#ifndef SFIO_STANDALONE
 		getRealName(file, NULL, realname);
 		unless (streq(file, realname)) {
 			fprintf(stderr,

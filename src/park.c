@@ -1081,9 +1081,9 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 	/*
 	 * Get full path, because we chdir() below
 	 */
-	unless (streq(parkfile, "-")) strcpy(parkfile, fullname(parkfile, 0));
-	strcpy(sfio_list, fullname(sfio_list, 0));
-	strcpy(unpark_list, fullname(unpark_list, 0));
+	unless (streq(parkfile, "-")) strcpy(parkfile, fullname(parkfile));
+	strcpy(sfio_list, fullname(sfio_list));
+	strcpy(unpark_list, fullname(unpark_list));
 
 	mkdirp(PARKDIR);
 	if (chdir(PARKDIR)) {

@@ -32,8 +32,7 @@
  */
 
 /* From @(#)dirname.c	8.4 (Berkeley) 5/4/95 */
-#include <stdlib.h>
-#include <string.h>
+#include "system.h"
 
 char *
 dirname(char *path)

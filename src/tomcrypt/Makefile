@@ -10,18 +10,29 @@ RANLIB=ranlib
 OBJS = aes.o ampi.o base64.o bits.o crypt.o ctr.o cfb.o hash.o hmac.o md5.o \
 	mem.o mpi.o packet.o prime.o rsa.o rsa_sys.o yarrow.o randseed.o \
 	demos/test.o
+SRCS = $(OBJS:%.o=%.c)
+HDRS =  mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
+
+all: libtomcrypt.a
 
 libtomcrypt.a: $(OBJS)
 	$(AR) $@ $(OBJS)
 	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
 
-clean distclean:
-	rm -f *.o demos/*.o
-	bk clean
+.PHONY: clean
+clean:
+	rm -f $(OBJS) libtomcrypt.a tags.local
 
-clobber:
-	@make clean
-	rm -f libtomcrypt.a
+.PHONY: clobber
+clobber: clean
+	-bk -r. clean
+
+srcs: $(SRCS) $(HDRS)
+
+tags.local: $(SRCS) $(HDRS)
+	cd ..;\
+	ctags -f tomcrypt/$@ --file-tags=yes --c-types=d+f+s+t \
+		$(patsubst %,tomcrypt/%,$^)
 
 aes.o:		aes.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h \
 		aes_tab.c

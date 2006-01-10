@@ -25,15 +25,15 @@
 #include <winsock2.h>
 #undef ERROR
 #undef DELETE
-#include "../../uwtlib/sys/wait.h"
-#include "../../uwtlib/misc.h"
-#include "../../uwtlib/stat.h"
-#include "../../uwtlib/mman.h"
-#include "../../uwtlib/times.h"
-#include "../../uwtlib/dirent.h"
-#include "../../uwtlib/utsname.h"
-#include "../../uwtlib/re_map_decl.h"
-#include "../../uwtlib/re_map.h"
+#include "sys/wait.h"
+#include "misc.h"
+#include "stat.h"
+#include "mman.h"
+#include "times.h"
+#include "dirent.h"
+#include "utsname.h"
+#include "re_map_decl.h"
+#include "re_map.h"
 
 #undef	SHORT_FILE_NAMES 
 #undef	INHIBIT_STRING_HEADER

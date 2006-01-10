@@ -1,4 +1,3 @@
-#include "../system.h"
 #include "../sccs.h"
 
 extern	char	*bin;

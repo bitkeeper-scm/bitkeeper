@@ -42,18 +42,14 @@ os: ../utils/os ../utils/gnu-os
 
 # win32, can not clean the current Makefile when we are
 # running this make file
-clean clean-obj: os
+.PHONY: clean
+clean: os
 	-@OS=$(_OS); \
 	for i in $(DIRS); \
 	do	(cd $$i && rm -rf BIN-* ); \
 	done
 	-@rm -rf bin
-	-@bk sfiles | grep -v "^SCCS/s.Makefile" | bk clean -
-clobber: clean clean-obj
-	-@OS=$(_OS); \
-	for i in $(DIRS); \
-	do	(cd $$i && \
-		 rm -rf config.log config.cache config.status \
-		    configure config.h Makefile stamp-h *.exe *.o $$OS); \
-	done
-	@rm -f config.cache os
+	$(RM) os config.cache
+
+clobber: clean
+	-bk -r. clean

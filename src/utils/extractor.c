@@ -2,28 +2,18 @@
  * %K%
  * Copyright (c) 1999 Larry McVoy
  */
-#include "../system.h"
+#include "system.h"
 #include "../zlib/zlib.h"
-#ifdef WIN32
-#include "../win32/uwtlib/misc.h"
-#endif
 #undef	malloc
-#undef	mkdir
-#undef	putenv
 #undef	strdup
-#undef	unlink
-#undef	fclose
 
 #ifndef MAXPATH
 #define	MAXPATH		1024
 #endif
 #ifdef	WIN32
-#define	mkdir(a, b)	_mkdir(a)
-#define	RMDIR		"rmdir /s /q"
 #define	PFKEY		"\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
 #define	WIN_UNSUPPORTED	"Windows 2000 or later required to install BitKeeper"
 #else
-#define	RMDIR		"/bin/rm -rf"
 #endif
 #define	TMP		"bksetup"
 
@@ -39,8 +29,6 @@ void	chomp(char *buf);
 void	extract(char *, char *, u32, char *);
 char*	findtmp(void);
 char*	getdest(void);
-int	isdir(char*);
-void	rmTree(char *dir);
 void	symlinks(void);
 
 int
@@ -299,7 +287,7 @@ main(int ac, char **av)
 		 */
 		for (i = 0; i < 10; ) {
 			/* careful */
-			rmTree(buf);
+			rmtree(buf);
 			unless (isdir(buf)) break;
 			sleep(++i);
 		}
@@ -430,7 +418,8 @@ getdest(void)
 	return (strdup(buf));
 }
 
-int
+#ifdef WIN32
+private int
 istmp(char *path)
 {
 	char	*p = &path[strlen(path)];
@@ -451,6 +440,7 @@ err:		*p = 0;
 	*p = 0;
 	return (1);
 }
+#endif
 
 /*
  * I'm not at all convinced we need this.
@@ -487,54 +477,6 @@ findtmp(void)
 	return ("/tmp");
 #endif
 }
-
-int
-size(char *path)
-{
-	struct	stat sbuf;
-
-	if (stat(path, &sbuf)) return (0);
-	return ((int)sbuf.st_size);
-}
-
-int
-exists(char *path)
-{
-	struct	stat sbuf;
-
-	return (stat(path, &sbuf) == 0);
-}
-
-int
-isdir(char *path)
-{
-	struct	stat sbuf;
-
-	if (stat(path, &sbuf)) return (0);
-	return (S_ISDIR(sbuf.st_mode));
-}
-
-#ifdef	WIN32
-void
-rmTree(char *dir)
-{
-	char buf[MAXPATH], cmd[MAXPATH + 12];
-
-	sprintf(cmd, "rmdir /s /q %s", dir);
-	/* use native system() funtion  so we get cmd.exe/command.com */
-	(system)(cmd);
-}
-
-#else
-void
-rmTree(char *dir)
-{
-	char cmd[MAXPATH + 11];
-
-	sprintf(cmd, "/bin/rm -rf %s", dir);
-	system(cmd);
-}
-#endif
 
 #ifdef	WIN32
 

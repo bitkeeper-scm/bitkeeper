@@ -12,7 +12,7 @@ ifeq "$(OSTYPE)" "msys"
 	H=../win32.h
 	CFLAGS=-O
 	LD=$(CC)
-	LIBS = ../win32/uwtlib/libuwt.a -lws2_32
+	LIBS = -lws2_32
 	STRIP=strip
 	RESOURCES=resources.o
 else
@@ -25,12 +25,11 @@ else
 	STRIP=strip
 	RESOURCES=
 endif
-SFIO_OBJS=sfio.o sfio_utils.o ../port/fileinfo.o ../port/utils.o
-SYSTEM_OBJS=../port/system.o ../port/spawn.o ../liblines.o ../purify.o \
-	../port/utils.o ../libc/libc.a
+SFIO_OBJS=sfio.o sfio_utils.o
+SYSTEM_OBJS=../libc/libc.a
 SFIO=sfio$(EXE)
-CPPFLAGS=-I../libc/include
-VERS	:= $(shell test -x vers || bk get vers; ./vers)
+CPPFLAGS=-I../libc
+VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
 IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 
 all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE) inskeys
@@ -52,23 +51,20 @@ $(IMAGE): extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
 	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
 	    ../zlib/libz.a $(RESOURCES) -o $@
 
-extractor.o: extractor.c
-	$(CC) $(CFLAGS) -c extractor.c
-
 resources.o: resources.rc ../win32/data/box_software.ico
 	windres -o $@ resources.rc
 
 sfio.o: ../sfio.c sfio.h
-	$(CC) -c $(CFLAGS) -DSFIO_STANDALONE ../sfio.c
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) -DSFIO_STANDALONE ../sfio.c
 
 sfio_utils.o: sfio_utils.c
-	$(CC) -c $(CFLAGS) -DSFIO_STANDALONE sfio_utils.c -o $@
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) -DSFIO_STANDALONE sfio_utils.c -o $@
 
 sfio$(EXE): $(SFIO_OBJS)
-	$(LD) $(LFLAGS) $(SFIO_OBJS) $(LIBS) ../zlib/libz.a -o $@
+	$(LD) $(LFLAGS) $(SFIO_OBJS) $(SYSTEM_OBJS) $(LIBS) ../zlib/libz.a -o $@
 
-inskeys: inskeys.c
-	$(CC) $(LFLAGS) $< $(LIBS) -o $@
+inskeys: inskeys.o
+	$(CC) $(LFLAGS) $< $(SYSTEM_OBJS) $(LIBS) -o $@
 
 installtool: ../port/$(SYS)_platform.tcl installtool.tcl font.tcl \
 	../gui/tkwizard.tcl ../gui/common.tcl \
@@ -90,17 +86,17 @@ html: inskeys A P
 	inskeys /home/lm/public_html/bk-academic.bin A
 	inskeys /home/lm/public_html/bk-pro.bin P
 
-munge.o: munge.c $H
-	$(CC) -c $(CFLAGS) munge.c $(CC_OUT)
-
 munge$(EXE): munge.o
-	$(LD) $(LFLAGS) munge.o $(LIBS) ../zlib/libz.a -o $@
+	$(LD) $(LFLAGS) munge.o $(SYSTEM_OBJS) $(LIBS) ../zlib/libz.a -o $@
 
-zz$(EXE): zz.c
-	$(CC) $(CFLAGS) -c zz.c
-	$(LD) $(LFLAGS) zz.o $(LIBS) ../zlib/libz.a -o $@
+zz$(EXE): zz.o
+	$(LD) $(LFLAGS) zz.o $(SYSTEM_OBJS) $(LIBS) ../zlib/libz.a -o $@
 
-clobber clean clean-obj:
-	/bin/rm -f _data _data.c _data.o a.out munge$(EXE) sfioball sfio zz \
-	core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz installtool inskeys
-	bk -r. clean
+.PHONY: clean
+clean:
+	$(RM) _data _data.c _data.o a.out munge$(EXE) sfioball sfio zz \
+		core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz \
+		installtool inskeys
+
+clobber: clean
+	-bk clean

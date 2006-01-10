@@ -1352,95 +1352,6 @@ branchname(delta *d)
 	return (buf);
 }
 
-char	*
-basenm(char *s)
-{
-	char	*t;
-
-	for (t = s; *t; t++);
-	do {
-		t--;
-	} while (*t != '/' && t > s);
-	if (*t == '/') t++;
-	return (t);
-}
-
-/*
- * clean up "..", "." and "//" in a path name
- */
-void
-cleanPath(char *path, char cleanPath[])
-{
-	char	buf[MAXPATH], *p, *r, *top;
-	int	dotCnt = 0;	/* number of "/.." */
-#define isEmpty(buf, r) 	(r ==  &buf[sizeof (buf) - 2])
-
-	r = &buf[sizeof (buf) - 1]; *r-- = 0;
-	p = &path[strlen(path) - 1];
-
-	/* for win32 path */
-	top = (path[1] == ':') ? &path[2] : path;
-
-	/* trim trailing slash(s) */
-	while ((p >= top) && (*p == '/')) p--;
-
-	while (p >= top) { 	/* scan backward */
-		if ((p == top) && (p[0] == '.')) {
-			p = &p[-1];		/* process "." in the front */
-			break;
-		} else if (p == &top[1] && (p[-1] == '.') && (p[0] == '.')) {
-			dotCnt++; p = &p[-2];	/* process ".." in the front */
-			break;
-		} else if ((p >= &top[2]) && (p[-2] == '/') &&
-		    (p[-1] == '.') && (p[0] == '.')) {
-			dotCnt++; p = &p[-3];	/* process "/.." */
-		} else if ((p >= &top[1]) && (p[-1] == '/') &&
-		    	 (p[0] == '.')) {
-			p = &p[-2];		/* process "/." */
-		} else {
-			if (dotCnt) {
-				/* skip dir impacted by ".." */
-				while ((p >= top) && (*p != '/')) p--;
-				dotCnt--;
-			} else {
-				/* copy regular directory */
-				unless (isEmpty(buf, r)) *r-- = '/';
-				while ((p >= top) && (*p != '/')) *r-- = *p--;
-			}
-		}
-		/* skip "/", "//" etc.. */
-		while ((p >= top) && (*p == '/')) p--;
-	}
-
-	if (isEmpty(buf, r) || (top[0] != '/')) {
-		/* put back any ".." with no known parent directory  */
-		while (dotCnt--) {
-			if (!isEmpty(buf, r) && (r[1] != '/')) *r-- = '/';
-			*r-- = '.'; *r-- = '.';
-		}
-	}
-
-	if (top[0] == '/') {
-#ifdef WIN32
-		/* if network drive //host/path .. */
-		if (!isEmpty(buf, r) && (top == path)
-		    && (top[1] == '/') && (top[2] != '/')) {
-			*r-- = '/';
-		}
-#endif
-		*r-- = '/';
-	}
-	if (top != path) { *r-- = path[1]; *r-- = path[0]; }
-	if (*++r) {
-		strcpy(cleanPath, r);
-		/* for win32 path */
-		if ((r[1] == ':') && (r[2] == '\0')) strcat(cleanPath, "/");
-	} else {
-		strcpy(cleanPath, ".");
-	}
-#undef	isEmpty
-}
-
 /*
  * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  * All of this pathname/changeset shit needs to be reworked.
@@ -1611,7 +1522,7 @@ _relativeName(char *gName, int isDir, int withsccs,
 	char	tmp[MAXPATH], buf[MAXPATH];
 	static  char buf2[MAXPATH];
 
-	strcpy(tmp, fullname(gName, 0));
+	strcpy(tmp, fullname(gName));
 	if (!IsFullPath(tmp)) return (0);
 	t = tmp;
 
@@ -1619,7 +1530,7 @@ _relativeName(char *gName, int isDir, int withsccs,
 		int len;
 		
 		if (!IsFullPath(proj->root)) {
-			s = strdup(fullname(proj->root, 0));
+			s = strdup(fullname(proj->root));
 			free(proj->root);
 			proj->root = s;
 		}
@@ -2571,7 +2482,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 {
 	char 	*buf;
 	char	*t;
-	char	*tmp, *g;
+	char	*tmp;
 	time_t	now = 0;
 	struct	tm *tm = 0;
 	ser_t	a[4];
@@ -2702,9 +2613,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'P':	/* full: /u/lm/smt/sccs/SCCS/s.slib.c */
-			g = sccs2name(s->sfile);
-			tmp = fullname(g, 1);
-			free(g);
+			tmp = fullname(s->sfile);
 			strcpy(t, tmp); t += strlen(tmp);
 			break;
 
@@ -4010,8 +3919,7 @@ no_match:	remote_free(r);
 	if (r->path && bk_proj) {
 		char	*root = bk_proj->root;
 		unless (IsFullPath(root)) {
-			root = fullname(root, 0);
-			
+			root = fullname(root);
 			assert(root);
 		}
 		unless (match_one(root, r->path, !mixedCasePath())) {
@@ -4325,20 +4233,6 @@ proj_free(project *p)
 	free(p);
 }
 
-#if	defined(linux) && defined(sparc)
-flushDcache()
-{
-	u32	i, j;
-#define	SZ	(17<<8)	/* 17KB buffer of ints */
-	u32	buf[SZ];
-
-	for (i = j = 0; i < SZ; i++) {
-		j += buf[i];
-	}
-	fchmod(-1, j);	/* use the result */
-}
-#endif
-
 /*
  * Return 0 for OK, -1 for error.
  */
@@ -4647,16 +4541,6 @@ sccs_open(sccs *s, struct stat *sp)
 		s->fd = -1;
 		return (-1);
 	}
-#if	defined(linux) && defined(sparc)
-	/*
-	 * Sparc linux has an aliasing bug where the data gets
-	 * screwed up.  We can work around it by invalidating the
-	 * dache by stepping through it.
-	 */
-	else {
-		flushDcache();
-	}
-#endif
 	s->state |= S_SOPEN;
 	return (0);
 }
@@ -4677,9 +4561,6 @@ sccs_close(sccs *s)
 		return;
 	}
 	munmap(s->mmap, s->size);
-#if	defined(linux) && defined(sparc)
-	flushDcache();
-#endif
 	close(s->fd);
 	s->mmap = (caddr_t) -1;
 	s->fd = -1;
@@ -9595,7 +9476,7 @@ out:		sccs_unlock(s, 'z');
 			if (buf[0]) d->random = strdup(buf);
 		}
 		unless (hasComments(d)) {
-			sprintf(buf, "BitKeeper file %s",fullname(s->gfile, 0));
+			sprintf(buf, "BitKeeper file %s", fullname(s->gfile));
 			d->comments = addLine(d->comments, strdup(buf));
 		}
 		if ((d == n0) && !hasComments(n)) {
@@ -16540,86 +16421,3 @@ stripChecks(sccs *s, delta *d, char *who)
 	}
 	return (0);
 }
-
-int
-smartUnlink(char *file)
-{
-	int	rc;
-	int	save = 0;
-	char 	*dir, tmp[MAXPATH];
-
-#undef	unlink
-	unless (rc = unlink(file)) return (0);
-	save = errno;
-	strcpy(tmp, file); dir = dirname(tmp);
-	if (access(dir, W_OK) == -1) {
-		if (errno != ENOENT) {
-			char	*full = fullname(dir, 0);
-			fprintf(stderr,
-			    "Unable to unlink %s, dir %s not writable.\n",
-			    file, full);
-		}
-		errno = save;
-		return (-1);
-	}
-	chmod(file, 0700);
-	unless (rc = unlink(file)) return (0);
-	unless (access(file, 0)) {
-		char	*full = fullname(file, 0);
-		fprintf(stderr,
-		    "unlink: cannot unlink %s, errno = %d\n", full, save);
-	}
-	errno = save;
-	return (rc);
-}
-
-int
-smartRename(char *old, char *new)
-{
-	int	rc;
-	int	save = 0;
-
-#undef	rename
-	unless (rc = rename(old, new)) return (0);
-	if (streq(old, new)) return (0);
-	save = errno;
-	if (chmod(new, 0700)) {
-		debug((stderr, "smartRename: chmod failed for %s, errno=%d\n",
-		    new, errno));
-	} else {
-		unless (rc = rename(old, new)) return (0);
-		old = fullname(old, 0);
-		new = fullname(new, 0);
-		if (streq(old, new)) return (0);
-		fprintf(stderr,
-		    "rename: cannot rename from %s to %s, errno=%d\n",
-		    old, new, errno);
-	}
-	errno = save;
-	return (rc);
-}
-
-int
-smartMkdir(char *dir, mode_t mode)
-{
-	if (isdir(dir)) return (0);
-	return (realmkdir(dir, mode));
-}
-
-#if	defined(linux) && defined(sparc)
-#undef	fclose
-
-sparc_fclose(FILE *f)
-{
-	int	ret;
-
-#ifdef	PURIFY_FILES
-	ret = purify_fclose(f, "sparc me, baby", 666);
-#else
-	ret = fclose(f);
-#endif
-	unless (getenv("BK_NO_SPARC_FLUSH")) flushDcache();
-	return (ret);
-}
-
-#endif

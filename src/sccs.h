@@ -2,7 +2,35 @@
 #ifndef	_SCCS_H_
 #define	_SCCS_H_
 
-#include "mmap.h"
+#include "system.h"
+#include "mdbm/mdbm.h"
+#include "purify.h"
+
+#define	mdbm_mem()	mdbm_open(NULL, 0, 0, GOOD_PSIZE)
+#define	EACH_KV(d)	for (kv = mdbm_first(d); \
+			    kv.key.dsize; kv = mdbm_next(d))
+
+#define	MAXKEY	(MAXPATH + 512)
+#define SPLIT_ROOT	/* enable split_root support */
+#define BK_FS		'|' /* Field seperator used in file|rev names */
+
+void	reserveStdFds(void);
+struct tm *localtimez(time_t *timep, long *offsetp);
+
+#ifdef	WIN32
+#define	win32_close(s)	sccs_close(s)
+#define	win32_open(s)	sccs_open(s, 0)
+int	getReg(HKEY hive, char *key, char *valname, char *valbuf, int *buflen);
+#else
+#define	win32_close(s)
+#define	win32_open(s)
+#endif
+
+#ifndef	NOPROC
+void	rmdir_findprocs(void);
+int	checking_rmdir(char *dir);
+#define	rmdir(d)	checking_rmdir(d)
+#endif
 
 /*
  * Flags that modify some operation (passed to sccs_*).
@@ -295,12 +323,6 @@
 #define CMD_RETRYLOCK	0x00000040	/* if lock failed, retry */
 
 /*
- * Signal handling.
- */
-#define	SIG_IGNORE	0x0001		/* ignore the specified signal */
-#define	SIG_DEFAULT	0x0002		/* restore old handler */
-
-/*
  * Hash behaviour.  Bitmask.
  */
 #define	DB_NODUPS       0x01		/* keys must be unique */
@@ -372,7 +394,6 @@ typedef	u32		ser_t;
 typedef	unsigned short	sum_t;
 typedef	char		**globv;
 
-#include "liblines.h"
 #include "bkver.h"
 
 /*
@@ -784,6 +805,7 @@ typedef struct {
 } search;
 
 
+
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
@@ -871,23 +893,14 @@ int	sccs_markMeta(sccs *);
 delta	*modeArg(delta *d, char *arg);
 FILE	*fastPopen(const char*, const char*);
 int	fastPclose(FILE*);
-char    *fullname(char *, int);
 int	fileType(mode_t m);
 char	chop(char *s);
 int	chomp(char *s);
 int	atoi_p(char **p);
 int	sccs_filetype(char *name);
-void	concat_path(char *, char *, char *);
-void	cleanPath(char *path, char cleanPath[]);
-int	isdir(char *s);
-int	isreg(char *s);
 int	isValidHost(char *h);
 int	isValidUser(char *u);
 int	readable(char *f);
-void 	randomBits(char *);
-int	samepath(char *a, char *b);
-int	writable(char *f);
-char	*basenm(char *);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, char kind, char *opts, char *out);
@@ -896,11 +909,6 @@ char	*lock_dir(void);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
-typedef	void (*handler)(int);
-void	sig_catch(handler);
-void	sig_restore(void);
-int	sig_ignore(void);
-void	sig_default(void);
 int	isCsetFile(char *);
 int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
@@ -932,19 +940,6 @@ sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
 void	sccs_renumber(sccs *s, u32 flags, int spinners);
 char 	*sccs_iskeylong(char *key);
-#ifdef	PURIFY_FILES
-MMAP	*purify_mopen(char *file, char *mode, char *, int);
-void	purify_mclose(MMAP *, char *, int);
-#else
-MMAP	*mopen(char *file, char *mode); void	mclose(MMAP *);
-#endif
-char	*mnext(MMAP *);
-int	mcmp(MMAP *, char *);
-int	mpeekc(MMAP *);
-void	mseekto(MMAP *m, off_t off);
-off_t	mtell(MMAP *m);
-size_t	msize(MMAP *m);
-MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
 char	*licenses_accepted(void);
 int	eula_known(char *lic);
@@ -952,24 +947,14 @@ int	eula_accept(int prompt, char *lic);
 char	*eula_name(void);
 char	*eula_type(void);
 char	*mkline(char *mmap);
-int	mkdirp(char *dir);
-int	test_mkdirp(char *dir);
-int	mkdirf(char *file);
 char    *mode2FileType(mode_t m);
 int	getline(int in, char *buf, int size);
 void	explodeKey(char *key, char *parts[6]);
-int	smartUnlink(char *name);
-int	smartRename(char *old, char *new);
 void	free_pfile(pfile *pf);
 int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
 int	sccs_rewrite_pfile(sccs *s, pfile *pf);
 int	sccs_isleaf(sccs *s, delta *d);
-int	exists(char *file);
 int	emptyDir(char *dir);
-char	*dirname(char *path);
-char	*dirname_alloc(char *path);
-int	fileCopy(char *from, char *to);
-off_t	size(char *s);
 int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
@@ -1012,7 +997,6 @@ int	which(char *prog, int internal, int external);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, void *buf, int size);
-long	almostUnique(int harder);
 int	repository_downgrade(void);
 int	repository_locked(project *p);
 int	repository_mine(char type);
@@ -1050,7 +1034,6 @@ char 	**get_http_proxy(char *host);
 int	confirm(char *msg);
 int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags);
-off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int want_http_hdr);
@@ -1059,7 +1042,6 @@ int	cmdlog_end(int ret);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
-int	cat(char *file);
 char	*getHomeDir(void);
 char	*getDotBk(void);
 char	*age(time_t secs, char *space);
@@ -1086,9 +1068,6 @@ void	bktmpcleanup(void);
 char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
-char	*aprintf(char *fmt, ...);
-char	*vaprintf(const char *fmt, va_list ptr);
-void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
 int	gui_useDisplay(void);
@@ -1111,24 +1090,18 @@ pid_t	mkpager(void);
 int	getRealName(char *path, MDBM *db, char *realname);
 int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 int	delta_table(sccs *s, FILE *out, int willfix);
-char	**getdir(char *);
-typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
-int	walkdir(char *dir, walkfn fn, void *data);
 char	*getParent(void);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);
 int	isLocalHost(char *h);
-void	core(void);
 void	ids(void);
 void	http_hdr(void);
 int	check_rsh(char *remsh);
-int	smartMkdir(char *pathname, mode_t mode);
 void	sccs_color(sccs *s, delta *d);
 int	out(char *buf);
 int	getlevel(void);
-int	isSymlnk(char *s);
 delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
 int	cset_map(sccs *s, int extras);
 int	cset_write(sccs *s);
@@ -1138,8 +1111,6 @@ int	cweave_init(sccs *s, int extras);
 int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
-int	onelink(char *s);
-int	isEffectiveDir(char *s);
 int	fileTypeOk(mode_t m);
 void	sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag);
 int	sccs_scompress(sccs *s, int flags);
@@ -1180,13 +1151,11 @@ char	*secure_hashstr(char *str, int len, char *key);
 char	*makestring(char *out, char *in, char seed, int size);
 void	delete_cset_cache(char *rootpath, int save);
 void	notice(char *key, char *arg, char *type);
-pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
 int	isCaseFoldingFS(char *root);
 void	line2av(char *cmd, char **av);
 void	smerge_saveseq(u32 seq);
-char	*loadfile(char *file, int *size);
 char	*repo_id(void);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
@@ -1205,7 +1174,6 @@ void	bk_preSpawnHook(int flags, char *av[]);
 int	upgrade_decrypt(FILE *fin, FILE *fout);
 int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
 int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
-int	rmtree(char *dir);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));

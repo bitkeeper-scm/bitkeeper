@@ -1,4 +1,3 @@
-#include "../system.h"
 #include "../sccs.h"
 
 private void	gethost(char *host, int hlen, int envOK);

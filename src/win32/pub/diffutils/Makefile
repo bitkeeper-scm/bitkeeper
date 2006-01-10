@@ -2,9 +2,9 @@ GET = bk get -s
 SRC = ../../../gnu/diffutils
 VPATH = $(SRC)
 DFLAGS = -DHAVE_CONFIG_H -DDIFF_PROGRAM=\"diff\" -DPR_PROGRAM=\"pr\"
-CPPFLAGS = -I../../../libc/include -I. -I../../uwtlib -I$(SRC)
+CPPFLAGS = -I../../../libc -I. -I../../../libc/win32 -I$(SRC)
 CFLAGS = -O2 -g $(DFLAGS)
-LDLIBS = ../../uwtlib/libuwt.a ../../../libc/libc.a -lws2_32
+LDLIBS = ../../../libc/libc.a -lws2_32
 L_OBJ = regex.o alloca.o
 L_SRC = $(patsubst %.o,%.c,$(L_OBJ))
 D_OBJ = diff.o analyze.o cmpbuf.o dir.o io.o util.o \
