@@ -33,6 +33,23 @@ grep -q "BitKeeper version .* is available for download." OUT || {
 }
 echo OK
 
+echo $N Test upgrade where we already have the latest ...............$NL
+BK_UPGRADE_FORCEMATCH=1 bk upgrade -fl bk >OUT 2>ERR && {
+	echo should have failed
+	cat OUT
+	cat ERR
+	exit 1
+}
+cat <<END > WANT
+Fetching http://upgrades.bitkeeper.com/upgrades/INDEX
+END
+checkfiles ERR WANT
+cat <<END > WANT
+upgrade: no new version of bitkeeper found
+END
+checkfiles OUT WANT
+echo OK
+
 echo $N Test upgrade to get status from bitmover using a proxy.......$NL
 # squid proxy running on work.  Only accepts 10.0.0.0/8 connections.
 # XXX test proxy passwords too?

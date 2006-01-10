@@ -39,14 +39,12 @@ dist:
 	cp PS2 /home/lm/ht/bitkeeper/bk-manpages-2up.ps
 	ps2pdf PS2 /home/lm/ht/bitkeeper/bk-manpages-2up.pdf
 
-clean clean-obj:
-	-bk clean -q man1
-	-bk clean -q .
+.PHONY: clean
+clean:
+	$(RM) PS PS2 PS4 ALL
 	rm -rf bk-man
-	-@cd man2help && make clobber
-	-@cd man2html && make clobber
+	$(MAKE) -C man2help clean
+	$(MAKE) -C man2html clean
 
-clobber:
-	@make clean
-	/bin/rm -f PS PS2 PS4 ALL
-	rm -rf bk-man
+clobber: clean
+	bk -r. clean

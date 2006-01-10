@@ -1,7 +1,6 @@
 /*
  * Stat the file and print out the time as YYYY-MM-DD-HH-MM-SS
  */
-#include "system.h"
 #include "sccs.h"
 
 int

@@ -34,7 +34,7 @@ setup_main(int ac, char **av)
 				exit(1);
 			}
 			localName2bkName(optarg, optarg);
-			config_path = fullname(optarg, 0);
+			config_path = fullname(optarg);
 			break;
 		    case 'e': allowNonEmptyDir = 1; break;
 		    case 'f': force = 1; break;

@@ -7,7 +7,7 @@
  * %K%
  * Copyright (c) 1999 Larry McVoy
  */
-#include "../system.h"
+#include "system.h"
 #include "../zlib/zlib.h"
 #undef	system
 #undef	perror
@@ -27,16 +27,15 @@
  */
 uchar	init[] = { 255, 6, 1, 2, 3, 4, 255, 3, 9, 62, 255, 10, 4, 61, 255, 0 };
 
-int
+private int
 writen(int fd, char *buf)
 {
 	return (write(fd, buf, strlen(buf)));
 }
 
-off_t
+private off_t
 setup(int out, char *prog, int fd)
 {
-	
 	struct	stat sb;
 	uchar	buf[1024];
 	int	i;
@@ -66,7 +65,7 @@ setup(int out, char *prog, int fd)
 	return (size);
 }
 
-uchar	*
+private uchar	*
 install(uchar *map, uchar *start, off_t size, int fd)
 {
 	uchar	*p, *end;

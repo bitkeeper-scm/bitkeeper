@@ -140,6 +140,10 @@ usage:			system("bk help -s upgrade");
 	 * installed.  We compare UTC to catch releases that get
 	 * tagged more than once. (like bk-3.2.3)
 	 */
+	if (data && getenv("BK_REGRESSION")) {
+		/* control matches for regressions */
+		data [4] = strdup(getenv("BK_UPGRADE_FORCEMATCH")?bk_utc:"");
+	}
 	if (data && streq(data[4], bk_utc) && !(fetchonly && force)) {
 		freeLines(data, free);
 		data = 0;
@@ -206,7 +210,7 @@ usage:			system("bk help -s upgrade");
 		fprintf(stderr, "upgrade: install failed\n");
 		goto out;
 	}
-
+	unlink(data[1]);
 	rc = 0;
  out:
 	if (data) freeLines(data, free);

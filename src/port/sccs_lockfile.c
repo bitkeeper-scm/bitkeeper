@@ -1,4 +1,3 @@
-#include "../system.h"
 #include "../sccs.h"
 #include "../lib_tcp.h"
 

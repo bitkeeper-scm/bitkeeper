@@ -1,62 +1,38 @@
-SRCS =	$(patsubst %,string/%, \
-	bcmp.c \
-	bcopy.c \
-	bzero.c \
-	ffs.c \
-	index.c \
-	memccpy.c \
-	memchr.c \
-	memcmp.c \
-	memcpy.c \
-	memmove.c \
-	memset.c \
-	rindex.c \
-	strcasecmp.c \
-	strcat.c \
-	strchr.c \
-	strcmp.c \
-	strcpy.c \
-	strcspn.c \
-	strdup.c \
-	strlen.c \
-	strncat.c \
-	strncmp.c \
-	strncpy.c \
-	strndup.c \
-	strpbrk.c \
-	strrchr.c \
-	strsep.c \
-	strspn.c \
-	strstr.c \
-	strtok.c) \
-	dirname.c
+all: libc.a
 
-OBJS := $(SRCS:.c=.o)
+include string/Makefile
+include utils/Makefile
+ifeq "$(OSTYPE)" "msys"
+include win32/Makefile
+endif
+
+OBJS = $(STRING_OBJS) $(UTILS_OBJS) $(WIN32_OBJS)
+SRCS = $(OBJS:%.o=%.c)
+HDRS = $(STRING_HDRS) $(UTILS_HDRS) $(WIN32_HDRS)
 
 CC = gcc
-WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wredundant-decls
+CFLAGS = -g -O2 -Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wchar-subscripts -Wredundant-decls -Wextra -Wno-sign-compare -Wno-unused-parameter -Wdeclaration-after-statement -Wmissing-prototypes
+CPPFLAGS = -I.
 AR=ar rc
 RANLIB=ranlib
-
-%.o: %.c
-	$(CC) -Iinclude $(WARNINGS) -O2 -D__NO_INLINE__ -o $@ -c $<
 
 libc.a: $(OBJS)
 	rm -f $@
 	$(AR) $@ $(OBJS)
 	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
 
-clean distclean:
-	rm -f *.o string/*.o
-	bk clean
+.PHONY: clean
+clean:
+	rm -f $(OBJS) libc.a tags.local
 
-clobber:
-	@make clean
-	rm -f libc.a
+.PHONY: clobber
+clobber: clean
+	-bk -r. clean
 
-$(OBJS): include/string.h
+.PHONY: srcs
+srcs: $(SRCS) $(HDRS)
 
-string/strchr.o: string/index.c
-string/strrchr.o: string/rindex.c
-string/memcpy.o: string/bcopy.c
-string/memmove.o: string/bcopy.c
+tags.local: $(SRCS) $(HDRS)
+	cd ..;\
+	ctags -f libc/$@ --file-tags=yes --c-types=d+f+s+t \
+		$(patsubst %,libc/%,$^)

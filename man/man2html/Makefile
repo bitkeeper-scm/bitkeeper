@@ -44,7 +44,10 @@ links:
 
 FRC:
 
-clobber clean:
-	/bin/rm -rf data
-	/bin/rm -f *.html *.fmt *.sum helptxt
+.PHONY: clean
+clean:
+	$(RM) -r data
+	$(RM) *.html *.fmt *.sum helptxt
+
+clobber: clean
 	-bk clean

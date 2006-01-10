@@ -14,9 +14,7 @@ ps: bk_refcard.ps
 pdf: bk_refcard.pdf
 
 bk_refcard.ps: bk_refcard.tr flip
-	groff -P-g -P-l bk_refcard.tr > tmp.ps
-	perl flip < tmp.ps > bk_refcard.ps
-	/bin/rm -f tmp.ps
+	groff -P-g -P-l bk_refcard.tr | perl flip > bk_refcard.ps
 
 bk_refcard.pdf: bk_refcard.tr bk_refcard.ps
 	-ps2pdf bk_refcard.ps
@@ -30,6 +28,9 @@ gv: bk_refcard.tr
 g: bk_refcard.tr
 	g groff -P-g -P-l bk_refcard.tr
 
-clean-obj clean clobber:
+.PHONY: clean
+clean:
 	rm -f *.ps PS PDF *.pdf
-	bk clean
+
+clobber: clean
+	-bk clean

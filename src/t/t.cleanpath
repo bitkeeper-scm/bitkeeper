@@ -59,6 +59,19 @@ echo $N checking "C://a//b" ...........................................$NL
 P=`bk _cleanpath C://a//b`
 if [ "$P" != "C:/a/b" ]; then echo failed: expect /a/b, got $P; exit 1; fi
 echo OK
+test "$PLATFORM" = "WIN32" && {
+echo $N checking network drive "//work/path//to//repo" ................$NL
+W=//work/path/to/repo
+P=`bk _cleanpath //work/path//to/repo`
+if [ "$P" != "$W" ]; then echo failed: expect $W, got $P; exit 1; fi
+echo OK
+echo $N checking non-network path "///work/path//to//repo" ............$NL
+# do it like cygwin
+W=/work/path/to/repo
+P=`bk _cleanpath ///work/path//to/repo`
+if [ "$P" != "$W" ]; then echo failed: expect $W, got $P; exit 1; fi
+echo OK
+}
 test "$PLATFORM" != "WIN32" && {
 echo $N checking "/" ..................................................$NL
 P=`bk _cleanpath /`

@@ -98,6 +98,11 @@ A=`cat foo`
 bk delta $Q -y"$A odd comment" foo || exit 1
 bk get $Q foo || exit 1
 bk -r check -acf || exit 1
+bk commit $Q -yfoo
+bk push $Q $HERE/copy || exit 1
+cd ..
+bk clone $Q project cntl-a-comment || exit 1
+cd project
 echo OK
 
 # XX TODO need to get diff to produce 'i' command, and check

@@ -1,4 +1,4 @@
-#include "../system.h"
+#include "system.h"
 #include "../zlib/zlib.h"
 
 int

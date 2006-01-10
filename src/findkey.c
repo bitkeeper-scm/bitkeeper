@@ -134,7 +134,9 @@ findkey(sccs *s, look l)
 
 			*at = 0;
 			unless (streq(d->user, l.email) &&
-			    streq(d->hostname, at+1)) {
+			    /* matching no host or matching host */
+			    ((!at[1] && !d->hostname) ||
+			    (d->hostname && streq(d->hostname, at+1)))) {
 				*at = '@';
 				continue;
 			}
