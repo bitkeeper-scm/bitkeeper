@@ -15,6 +15,11 @@
 #
 # tags.local	build ctags for srcs under current directory relative to top
 #
+#---
+# Special make variables commonly used this makefile:
+#   $@	target
+#   $^  all sources
+#   $<  first source
 
 HERE    := $(shell pwd)
 REPO    := $(shell basename "`bk root`")
@@ -277,7 +282,7 @@ srcs: $(SRCS) $(HDRS) FORCE
 	for sub in $(SUBDIRS); do $(MAKE) -C$$sub $@; done
 
 tags: $(patsubst %,%/tags.local, $(SUBDIRS)) tags.local
-	cat $^ > $@
+	sort $^ > $@
 	@echo ctags completed
 
 tags.local: $(SRCS) $(HDRS)
