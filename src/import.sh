@@ -318,7 +318,7 @@ EOF
 	TRY=yes
 	while [ $TRY = yes ]
 	do	echo $N "Type of files to import? " $NL
-		read type
+		read type || exit 1
 		TRY=no
 		case "$type" in
 		    pa*) type=patch;;
@@ -393,12 +393,12 @@ transfer() {
 		echo $N "Would you like to edit the list of $NFILES files to be imported? [No] " $NL
 		DONE=0
 		while [ $DONE -ne 1 ] ; do
-			read x
+			read x || exit 1
 			echo ""
 			case X"$x" in
 			    X[Yy]*)
 				echo $N "Editor to use [$EDITOR] " $NL
-				read editor
+				read editor || exit 1
 				echo
 				if [ X$editor != X ]
 				then	eval $editor ${TMP}import$$
@@ -820,7 +820,7 @@ validate_SCCS () {
 		echo
 		echo Skipping $NOT non-SCCS files
 		echo $N "Do you want to see this list of skipped files? [No] " $NL
-		read x
+		read x || exit 1
 		case "$x" in
 		y*)	sed 's/^/	/' < ${TMP}notsccs$$ | more ;;
 		esac
@@ -862,14 +862,14 @@ EOF
 		sed 's/ BitKeeper$//' < ${TMP}reparent$$ | sed 's/^/	/'
 		echo ""
 		echo $N "Reparent the BitKeeper files? [No] " $NL
-		read x
+		read x || exit 1
 		case "$x" in
 		y*)	;;
 		*)	$RM -f ${TMP}sccs$$ ${TMP}import$$ ${TMP}reparent$$
 			Done 1
 		esac
 		echo $N "Are you sure? [No] " $NL
-		read x
+		read x || exit 1
 		case "$x" in
 		y*)	;;
 		*)	$RM -f ${TMP}sccs$$ ${TMP}import$$
@@ -889,7 +889,7 @@ validate_RCS () {
 		echo
 		echo Skipping $NOT non-RCS files
 		echo $N "Do you want to see this list of files? [No] " $NL
-		read x
+		read x || exit 1
 		case "$x" in
 		y*)	sed 's/^/	/' < ${TMP}notrcs$$ | more ;;
 		esac
@@ -913,7 +913,7 @@ validate_text () {
 		echo
 		echo Skipping $NOT non-text files
 		echo $N "Do you want to see this list of files? [No] " $NL
-		read x
+		read x || exit 1
 		case "$x" in
 		y*)	sed 's/^/	/' < ${TMP}nottext$$ | more ;;
 		esac

@@ -224,12 +224,13 @@ getMsgv(char *msg_name, char **bkargs, char *prefix, char b, FILE *outf)
 			fputs(bkargs[n], outf);
 			fputs(p, outf);
 		} else if (p = strstr(buf, "#BKEXEC#")) {
-			f1 = popen(&p[8], "r");
-			while (fgets(buf, sizeof (buf), f1)) {
-				fputs("\t", outf);
-				fputs(buf, outf);
+			if (f1 = popen(&p[8], "r")) {
+				while (fgets(buf, sizeof (buf), f1)) {
+					fputs("\t", outf);
+					fputs(buf, outf);
+				}
+				pclose(f1);
 			}
-			pclose(f1);
 			*p = 0;
 		} else {
 			fputs(buf, outf);

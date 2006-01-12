@@ -280,6 +280,7 @@ confirm(char *msg)
 int
 usleep_main(int ac, char **av)
 {
+	unless (av[1]) return (1);
 	usleep(atoi(av[1]));
 	return (0);
 }
@@ -1476,8 +1477,10 @@ int
 shellSplit_test_main(int ac, char **av)
 {
 	int	i;
-	char	**lines = shellSplit(av[1]);
+	char	**lines;
 
+	unless (av[1] && !av[2]) return (1);
+	lines = shellSplit(av[1]);
 	EACH (lines) {
 		printf("%d: (%s)\n", i, lines[i]);
 	}

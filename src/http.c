@@ -293,6 +293,7 @@ http_connect(remote *r)
 	char	*proxy_host;
 	char	*cred;
 
+	unless (r && r->host) return (-1);
 	if (streq(r->host, "localhost") || in_no_proxy(r->host)) goto no_proxy;
 
 	/*
@@ -521,7 +522,10 @@ httpfetch_main(int ac, char **av)
 		fprintf(stderr, "usage: bk _httpfetch <url>\n");
 		return (1);
 	}
-	r = remote_parse(av[1], 0);
+	unless (r = remote_parse(av[1], 0)) {
+		fprintf(stderr, "httpfetch: can't parse url '%s'\n", av[1]);
+		return (1);
+	}
 	r->httppath = r->path;
 	if (http_connect(r)) return (1);
 	return (http_fetch(r, "-"));

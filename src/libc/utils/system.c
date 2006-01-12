@@ -351,7 +351,7 @@ popensystem_main(int ac, char **av)
 		return (1);
 	}
 #endif
-	unless (av[1]) return (0);
+	unless (av[1] && av[1][0]) return (0);
 	status = safe_system(av[1]);
 	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 7)) {
 		fprintf(stderr, "Incorrect status from system(%s)\n", av[1]);
