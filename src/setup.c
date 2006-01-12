@@ -136,7 +136,7 @@ again:
 		if (config_path) {
 err:			unlink("BitKeeper/etc/config");
 			unlink("BitKeeper/log/cmd_log");
-			mdbm_close(m);
+			if (m) mdbm_close(m);
 			sccs_unmkroot("."); /* reverse  sccs_mkroot */
 			unless (allowNonEmptyDir) {
 				chdir(here);
@@ -147,6 +147,7 @@ err:			unlink("BitKeeper/etc/config");
 		goto again;
 	}
 	mdbm_close(m);
+	m = 0;
 
 	if (cset_setup(SILENT)) goto err;
 	unless (eula_accept(accept ? EULA_ACCEPT : EULA_PROMPT, 0)) exit(1);
