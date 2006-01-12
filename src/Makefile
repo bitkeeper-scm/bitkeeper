@@ -172,7 +172,7 @@ LOCALSCR= build
 PSCR	= t/doit t/guitest
 PROGS	= hidestring mdbm/mtst
 LIBS	= libc/libc.a zlib/libz.a mdbm/libmdbm.a \
-	  tomcrypt/libtomcrypt.a regex/libregex.a
+	  tomcrypt/libtomcrypt.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic
@@ -189,7 +189,7 @@ SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bkd.h lib_tcp.h logging.h \
 	  purify.h range.h rcs.h resolve.h sccs.h zgets.h \
-	  cmd.h bkver.h
+	  cmd.h bkver.h proj.h redblack.h
 
 # list of non-C sources in bk
 SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
@@ -264,7 +264,7 @@ clean: FORCE
 		bk.ico bk16.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
-		t/doit t/guitest
+		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe
 	$(RM) -r tmp
 
 clobber: clean FORCE

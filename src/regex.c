@@ -1,7 +1,7 @@
 /* regex.c Copyright (c) 2004 BitMover, Inc. */
 
-#include "system.h"
-#include "regex/regex.h"	/* has to be second, conflicts w/ system .h's */
+#include "sccs.h"
+#include "regex.h"	/* has to be second, conflicts w/ system .h's */
 
 /*
  * This file contains routines to match file names against lists of

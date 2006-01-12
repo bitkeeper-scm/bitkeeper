@@ -2,7 +2,7 @@ GET = bk get -s
 SRC = ../../../gnu/diffutils
 VPATH = $(SRC)
 DFLAGS = -DHAVE_CONFIG_H -DDIFF_PROGRAM=\"diff\" -DPR_PROGRAM=\"pr\"
-CPPFLAGS = -I../../../libc -I. -I../../../libc/win32 -I$(SRC)
+CPPFLAGS = -I. -I../../../libc -I../../../libc/win32 -I$(SRC)
 CFLAGS = -O2 -g $(DFLAGS)
 LDLIBS = ../../../libc/libc.a -lws2_32
 L_OBJ = regex.o alloca.o

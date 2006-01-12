@@ -11,7 +11,7 @@ bk_spawnvp(int flags, char *cmdname, char *av[])
 	char	*exec;
 
 	/* Tell the calling process right away if there is no such program */
-	unless (exec = whichp((char*)cmdname, 0, 1)) return (-1);
+	unless (exec = which((char*)cmdname)) return (-1);
 
 	if (spawn_preHook) spawn_preHook(flags, av);
 	if (pid = fork()) {	/* parent */
@@ -59,7 +59,7 @@ bk_spawnvp(int flags, char *cmdname, char *av[])
 	char	*exec;
 
 	/* Tell the calling process right away if there is no such program */
-	unless (exec = whichp((char*)cmdname, 0, 1)) return (-1);
+	unless (exec = which((char*)cmdname)) return (-1);
 
 	if (spawn_preHook) spawn_preHook(flags, av);
 	/*

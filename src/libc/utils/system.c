@@ -313,10 +313,10 @@ shell(void)
 	 */
 #ifndef	WIN32
 	if (sh = getenv("BK_SHELL")) return (sh);
-	if (sh = whichp("bash", 0, 1)) return (sh);
-	if (sh = whichp("ksh", 0, 1)) return (sh);
+	if (sh = which("bash")) return (sh);
+	if (sh = which("ksh")) return (sh);
 #endif
-	if (sh = whichp("sh", 0, 1)) return (sh);
+	if (sh = which("sh")) return (sh);
 	assert("No shell" == 0);
 	return (0);	/* Windows warns otherwise */
 }

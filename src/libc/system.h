@@ -126,10 +126,6 @@ int	mkdirf(char *file);
 #define	putenv(s)	safe_putenv("%s", s)
 void	safe_putenv(char *fmt, ...);
 
-/* randomBits.c */
-void 	randomBits(char *);
-long	almostUnique(int harder);
-
 /* rlimit.c */
 void	core(void);
 
@@ -197,5 +193,8 @@ int	myisatty(int fd);
 /* util.c */
 void	my_perror(char *, int, char *);
 #define	perror(msg)	my_perror(__FILE__, __LINE__, msg)
+
+/* which.c */
+char	*which(char *prog);
 
 #endif /* _SYSTEM_H */

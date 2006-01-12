@@ -13,9 +13,8 @@
  *	- \<something\> is substantially slower than just "something"
  */
 /* Copyright 2003 BitMover, Inc. */
-#include "system.h"
 #include "sccs.h"
-#include "regex/regex.h"	/* has to be second, conflicts w/ system .h's */
+#include "regex.h"	/* has to be second, conflicts w/ system .h's */
 
 private	void	doit(FILE *f);
 private char	*getfile(char *buf);

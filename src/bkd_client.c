@@ -360,18 +360,20 @@ bkd(int compress, remote *r)
 	char	*remsh = "ssh";
 	char	*remopts = compress ? "-C" : 0;
 	char	*cmd[100];
-	int	i;
+	int	i, nossh;
 	pid_t	p;
 
 	if (r->port) {
 		assert(r->host);
 		return (bkd_tcp_connect(r));
 	}
-	if (r->host) { 
+	if (r->host) {
+		if (t = which("ssh")) free(t);
+		nossh = !t;
 		if ((r->type == ADDR_RSH) ||
 		    (r->type == ADDR_NFS &&
 			(t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
-		    !which("ssh", 0, 1)) {
+		    nossh) {
 			remsh = "rsh";
 #ifdef	hpux
 			remsh = "remsh";

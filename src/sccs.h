@@ -9,6 +9,8 @@
 #define	mdbm_mem()	mdbm_open(NULL, 0, 0, GOOD_PSIZE)
 #define	EACH_KV(d)	for (kv = mdbm_first(d); \
 			    kv.key.dsize; kv = mdbm_next(d))
+#define EACH_KEY(d)     for (k = mdbm_firstkey(d); \
+                            k.dsize; k = mdbm_nextkey(d))
 
 #define	MAXKEY	(MAXPATH + 512)
 #define SPLIT_ROOT	/* enable split_root support */
@@ -983,7 +985,6 @@ search	search_parse(char *str);
 int	search_glob(char *s, search search);
 int	search_regex(char *s, search search);
 int	search_either(char *s, search search);
-int	which(char *prog, int internal, int external);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, void *buf, int size);
@@ -1214,6 +1215,9 @@ int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
 int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
 int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
+void	randomBits(char *buf);
+int	almostUnique(void);
+
 extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;

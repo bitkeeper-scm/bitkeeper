@@ -1159,6 +1159,7 @@ char *
 pager(void)
 {
 	char	*pagers[3] = {"more", "less", 0};
+	char	*cmd = 0;
 	static	char	*pg;
 	int	i;
 
@@ -1170,13 +1171,15 @@ pager(void)
 	if (pg) {
 		char	**cmds = shellSplit(pg);
 
-		unless (cmds && cmds[1] && which(cmds[1], 0, 1)) pg = 0;
+		unless (cmds && cmds[1] && (cmd = which(cmds[1]))) pg = 0;
+		if (cmd) free(cmd);
 		freeLines(cmds, free);
 	}
 	if (pg) return (strdup(pg));	/* don't trust env to not change */
 
 	for (i = 0; pagers[i]; i++) {
-		if (which(pagers[i], 0, 1)) {
+		if (cmd = which(pagers[i])) {
+			free(cmd);
 			pg = pagers[i];
 			return (pg);
 		}

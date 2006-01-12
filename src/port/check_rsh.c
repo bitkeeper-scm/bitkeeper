@@ -18,12 +18,14 @@ check_rsh(char *remsh)
 int
 check_rsh(char *remsh)
 {
-	char *t;
+	char	*t = 0;
+	int	rc = 0;
 
-	if (!(t = whichp(remsh, 0, 1)) || strstr(t, "system32/rsh")) {
+	if (!(t = which(remsh)) || strstr(t, "system32/rsh")) {
 		getMsg("missing_rsh", remsh, '=', stderr);
-		return (-1);
+		rc = -1;
 	}
-	return (0);
+	if (t) free(t);
+	return (rc);
 }
 #endif

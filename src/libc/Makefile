@@ -1,14 +1,15 @@
 all: libc.a
 
+include regex/Makefile
 include string/Makefile
 include utils/Makefile
 ifeq "$(OSTYPE)" "msys"
 include win32/Makefile
 endif
 
-OBJS = $(STRING_OBJS) $(UTILS_OBJS) $(WIN32_OBJS)
+OBJS = $(REGEX_OBJS) $(STRING_OBJS) $(UTILS_OBJS) $(WIN32_OBJS)
 SRCS = $(OBJS:%.o=%.c)
-HDRS = $(STRING_HDRS) $(UTILS_HDRS) $(WIN32_HDRS)
+HDRS = $(REGEX_HDRS) $(STRING_HDRS) $(UTILS_HDRS) $(WIN32_HDRS)
 
 CC = gcc
 CFLAGS = -g -O2 -Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wchar-subscripts -Wredundant-decls -Wextra -Wno-sign-compare -Wno-unused-parameter -Wdeclaration-after-statement -Wmissing-prototypes

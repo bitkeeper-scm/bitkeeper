@@ -12,10 +12,11 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	mkdir.o \
 	mmap.o \
 	putenv.o \
-	randomBits.o rlimit.o rmtree.o \
+	rlimit.o rmtree.o \
 	samepath.o sig.o smartrename.o spawn.o system.o \
 	tty.o \
-	utils.o)
+	utils.o \
+	which.o)
 
 UTILS_HDRS = lines.h mmap.h style.h system.h unix.h win32.h
 

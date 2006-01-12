@@ -1,3 +1,4 @@
+#include "sccs.h"
 #include "rcs.h"
 
 private	char	*sccsname(char *path);
@@ -49,7 +50,7 @@ rcs2bk_main(int ac, char **av)
 		if (executable("/usr/local/bin/co")) {
 			co_prog = "/usr/local/bin/co";
 		} else {
-			co_prog = whichp("co", 0, 1);
+			co_prog = which("co");
 		}
 	}
 	unless (co_prog && executable(co_prog)) {

@@ -425,7 +425,7 @@ parent_normalize(char *url)
 
 	if ((r = remote_parse(url, REMOTE_BKDURL))
 	    && (r->type ==  ADDR_FILE) && r->path) {
-		url = fullname(r->path, 0);
+		url = fullname(r->path);
 	}
 	if (r) remote_free(r);
 	return (strdup(url));

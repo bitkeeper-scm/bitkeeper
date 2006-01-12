@@ -117,7 +117,7 @@ proj_init(char *dir)
 	if (ret = projcache_lookup(fdir)) goto done;
 
 	/* missed the cache */
-	unless (root = find_root(fullname(dir, 0))) return (0);
+	unless (root = find_root(fullname(dir))) return (0);
 
 	unless (streq(root, fdir)) {
 		/* fdir is not a root, was root in cache? */
@@ -254,7 +254,7 @@ proj_relpath(project *p, char *path)
 	int	len;
 
 	assert(root);
-	unless (IsFullPath(path)) path = fullname(path, 0);
+	unless (IsFullPath(path)) path = fullname(path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {
 		assert(path[len] == '/');
