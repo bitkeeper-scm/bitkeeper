@@ -341,4 +341,5 @@ patch cprog
 cmp cprog
 diff cprog
 diff3 cprog
+inskeys cprog
 sdiff cprog

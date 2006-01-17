@@ -926,6 +926,16 @@ proc widgets {} \
 					# if the license is invalid
 					break
 				}
+				# save a copy of the license in config
+				# so that bk install installs it
+				set cfgpath "[exec bk bin]/config"
+				set fd [open $cfgpath w]
+				puts $fd [join [list \
+				    "license: $::wizData(license)" \
+				    "licsign1: $::wizData(licsign1)" \
+				    "licsign2: $::wizData(licsign2)" \
+				    "licsign3: $::wizData(licsign3)"] \n]
+				catch {close $fd}
 				if {![info exists ::licenseInfo(text)] ||
 				    $::licenseInfo(text) eq ""} {
 					set ::licenseInfo(text) [getEulaText \
