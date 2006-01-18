@@ -353,7 +353,6 @@ chomp(char *s)
 	while ((p > s) && ((p[-1] == '\n') || (p[-1] == '\r'))) --p, any = 1;
 	*p = 0;
 	return (any);
-	return (any);
 }
 
 /*

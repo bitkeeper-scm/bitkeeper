@@ -892,7 +892,7 @@ add(FILE *diffs, char *buf)
 	char	*p, *rev = 0;	/* lint */
 	delta	*d;
 
-	unless ((chop(buf) == '\n') && (rev = strrchr(buf, BK_FS))) {
+	unless (chomp(buf) && (rev = strrchr(buf, BK_FS))) {
 		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
 		system("bk clean -u ChangeSet");
 		cset_exit(1);
@@ -943,7 +943,7 @@ private delta	*
 mkChangeSet(sccs *cset, char *files, FILE *diffs)
 {
 	delta	*d;
-	FILE	*f = fopen(files, "r");
+	FILE	*f = fopen(files, "rt");
 	char	buf[MAXPATH];
 
 	/*
