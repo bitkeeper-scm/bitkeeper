@@ -9,7 +9,7 @@ bk sfio \- \*(BK file archiver
 .B bk sfio [\-m] \-p <
 .ARG archive.sfio
 .br
-.B bk sfio [\-qm] -o < 
+.B bk sfio [\-qmf] -o < 
 .ARG filelist
 .SH DESCRIPTION
 .LP
@@ -61,5 +61,9 @@ List contents of an archive.
 .B \-q
 Quiet mode, when combined with the create or extract, does not list files
 as they are added or extracted.
+.tp
+.B \-f
+Force mode, when combined with extract, will overwrite existing files
+that exist in the archive.
 .SH CATEGORY
 .B Repository

@@ -41,6 +41,7 @@ private	int	mkfile(char *file);
 private	int	quiet;
 private	int	doModes;
 private	int	echo;		/* echo files to stdout as they are written */
+private	int	force;		/* overwrite existing files */
 
 #define M_IN	1
 #define M_OUT	2
@@ -52,9 +53,10 @@ sfio_main(int ac, char **av)
 	int	c, mode = 0;
 
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "eimopq")) != -1) {
+	while ((c = getopt(ac, av, "efimopq")) != -1) {
 		switch (c) {
 		    case 'e': echo = 1; break;			/* doc 2.3 */
+		    case 'f': force = 1; break;			/* doc */
 		    case 'i': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_IN;   break;
 		    case 'o': 					/* doc 2.0 */
@@ -282,6 +284,7 @@ in_link(char *file, int pathlen, int extract)
 	if (extract) {
 		if (symlink(buf, file)) {
 			mkdirf(file);
+			if (force) unlink(file);
 			if (symlink(buf, file)) {
 				perror(file);
 				return (1);
@@ -441,7 +444,11 @@ bad_name:	getMsg("reserved_name", file, '=', stderr);
 		unless (streq(file, realname)) {
 			getMsg2("case_conflict", file, realname, '=', stderr);
 			errno = EINVAL;
-		} else { 
+		} else {
+			if (force) {
+				unlink(file);
+				goto again;
+			}
 			errno = EEXIST;
 		}
 #endif
@@ -460,7 +467,6 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 			fputs("\n", stderr);
 			perror(file);
 			if (errno == EINVAL) goto bad_name;
-		
 		}
 		first = 0;
 		goto again;
