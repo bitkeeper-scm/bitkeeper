@@ -113,7 +113,7 @@ CC_DEBUG=$(GCCOPTS) $G $(WARNINGS)
 CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS)
-BINS	= $(BK)
+BINS	= $(BK) inskeys$(EXE)
 
 # List of all objects in bk other than bk.o. Keep it sorted.
 OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
@@ -344,6 +344,9 @@ bk.ico: win32/data/bk.ico
 $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(XLIBS) 
 
+inskeys$(EXE): inskeys.o $(LIBS)
+	$(LD) $(LDFLAGS) -o $@ inskeys.o $(LIBS) $(XLIBS)
+
 bk.script: bk.sh port/$(SYS)_platform.sh
 	cat port/$(SYS)_platform.sh bk.sh > bk.script
 	chmod +x bk.script 
@@ -474,6 +477,23 @@ cranksave: crank.sh remote.sh
 
 crankstatus: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
+
+crankrelease: crank.sh remote.sh
+	@(TAG=$(shell bk changes -r+ -d:TAG:) ; \
+	test x$$TAG = x && { \
+		echo Cannot crankrelease with a non-tagged tip ; \
+		exit 1 ; \
+	} ; \
+	test -d /home/bk/$$TAG-images || mkdir -p /home/bk/$$TAG-images ; \
+	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh \
+	    LOG=$(LOG) bash crank.sh release ; \
+	bk -R get -qS RELEASE-NOTES ; \
+	cp ../RELEASE-NOTES /home/bk/$$TAG-images ; \
+	cd /home/bk/$$TAG-images ; \
+	rm -f MD5SUMS ; \
+	md5sum bk-* >> MD5SUMS ; \
+	echo "Your images are in /home/bk/$$TAG-images" )
+	@echo "Don't forget to run build_upgrade_index.pl"
 
 # It is OK if we fail to "rm build" on win32.
 # We can not "rm build" when we are running it.

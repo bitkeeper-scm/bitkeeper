@@ -770,7 +770,8 @@ listFound(MDBM *db)
 	if (goneKey) return;
 
 	for (kv = mdbm_first(db); kv.key.dsize; kv = mdbm_next(db)) {
-		fprintf(stderr, "Missing file (chk3) %s\n", kv.key.dptr);
+		fprintf(stderr,
+		    "Missing file (bk help chk3) %s\n", kv.key.dptr);
 	}
 }
 
@@ -1101,7 +1102,7 @@ check(sccs *s, MDBM *db)
 			errors++;
 			unless ((fix & 2) || goneKey) {
 				fprintf(stderr,
-				    "Obsolete LOD data (chk4): %s|%s\n",
+				    "Obsolete LOD data(bk help chk4): %s|%s\n",
 		    		    s->gfile, d->rev);
 			}
 		}
@@ -1342,7 +1343,8 @@ checkKeys(sccs *s, char *root)
 			/* let them know if they need to delete the file */
 			if (isGone(s, 0)) {
 				fprintf(stderr,
-				    "Marked gone (chk1): %s\n", s->gfile);
+				    "Marked gone (bk help chk1): %s\n",
+				    s->gfile);
 				continue;
 			} else {
 		    		errors++;
@@ -1355,7 +1357,7 @@ checkKeys(sccs *s, char *root)
 			 * so complain about it.
 			 */
 			fprintf(stderr,
-			    "Missing delta (chk2) in %s\n", s->gfile);
+			    "Missing delta (bk help chk2) in %s\n", s->gfile);
 			unless (details) continue;
 			a = csetFind(csetKeys.deltas[i]);
 			fprintf(stderr,

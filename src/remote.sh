@@ -28,7 +28,7 @@ failed() {
 }
 
 case $CMD in
-    build|save)
+    build|save|release)
 	exec > /build/$LOG 2>&1
 	set -e
 	rm -rf /build/$BKDIR
@@ -51,6 +51,14 @@ case $CMD in
 	test "`bk changes -r+ -d'$if(:SYMBOL:){1}'`" && {
 		echo Tagged tree: removing /build/obj
 		/bin/rm -rf /build/obj/*
+		# On Windows the obj cache might be somewhere else
+		test -d /cygdrive/c/build/obj && rm -rf /cygdrive/c/build/obj/*
+		test -d /cygdrive/r/build/obj && rm -rf /cygdrive/r/build/obj/*
+		# On Mac OS, we want to blow the temporary trees too
+		# XXX: this should be removed when we move to a newer Tcl/Tk
+		# that doesn't need to build outside the BK tree
+		test -d /build/tcl-$USER && rm -rf /build/tcl-$USER
+		test -d /build/tk-$USER && rm -rf /build/tk-$USER
 	}
 	bk get Makefile build.sh
 	make build || failed
@@ -61,7 +69,41 @@ case $CMD in
 
 	test -d /build/.images || mkdir /build/.images
 	cp utils/bk-* /build/.images
-
+	test $CMD = release && {
+		# Copy the image to /home/bk/<repo name>
+		TAG=`bk changes -r+ -d:TAG:`
+		test x$TAG = x && {
+			echo "Tip not tagged, not copying images"	
+			exit 1
+		}
+		ARCH=`utils/os`
+		test x$ARCH = x && {
+			echo "Architecture unknown, not copying images"
+			exit 1
+		}
+		if [ $OSTYPE = "msys" -o $OSTYPE = "cygwin" ] ; 
+		then	# we're on Windows
+			IMG=$TAG-$ARCH.exe
+			DEST="work:/home/bk/$TAG-images"
+			CP="rcp"
+			# We only want images done on WinXP
+			test $HOSTNAME = "winxp" || exit 0
+		else
+			IMG=$TAG-$ARCH.bin
+			DEST="/home/bk/$TAG-images"
+			test -d $DEST || mkdir $DEST
+			CP="cp"
+		fi
+		test -f /build/.images/$IMG || {
+			echo "Could not find image /build/.images/$IMG"
+			exit 1
+		}
+		# Copy the images
+		$CP /build/.images/$IMG $DEST || {
+			echo "Could not $CP $IMG to $DEST"
+			exit 1
+		}
+	}
 	# Leave the directory there only if they asked for a saved build
 	test $CMD = save || {
 		cd /build	# windows won't remove .
