@@ -594,6 +594,23 @@ cranksave: crank.sh remote.sh
 crankstatus: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
 
+crankrelease: crank.sh remote.sh
+	@(TAG=$(shell bk changes -r+ -d:TAG:) ; \
+	test x$$TAG = x && { \
+		echo Cannot crankrelease with a non-tagged tip ; \
+		exit 1 ; \
+	} ; \
+	test -d /home/bk/$$TAG-images || mkdir -p /home/bk/$$TAG-images ; \
+	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh \
+	    LOG=$(LOG) bash crank.sh release ; \
+	bk -R get -qS RELEASE-NOTES ; \
+	cp ../RELEASE-NOTES /home/bk/$$TAG-images ; \
+	cd /home/bk/$$TAG-images ; \
+	rm -f MD5SUMS ; \
+	md5sum bk-* >> MD5SUMS ; \
+	echo "Your images are in /home/bk/$$TAG-images" )
+	@echo "Don't forget to run build_upgrade_index.pl"
+
 # It is OK if we fail to "rm build" on win32.
 # We can not "rm build" when we are running it.
 build: build.sh
