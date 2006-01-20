@@ -252,7 +252,7 @@ echo $N Test check -ag ..............................................$NL
 echo y | bk commit $Q -ycset
 rm -f CCCC/SCCS/s.file6
 bk -r check -a 2>  ck.out
-grep -q 'Missing file (chk3) bk@free.bk'  ck.out || {
+grep -q 'Missing file (bk help chk3) bk@free.bk'  ck.out || {
 	echo Bad error message
 	cat ck.out
 	exit 1
