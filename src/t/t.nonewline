@@ -126,3 +126,51 @@ grep -q '^.E [0-9][0-9]*N$' SCCS/s.x && {
 	exit 1
 }
 echo OK
+
+echo $N No newline corner case with closing E after delete ..........$NL
+cd $HERE/project
+printf "a\nb" > afterdel
+bk new $Q afterdel
+bk edit $Q afterdel
+printf "a\nc\n" > afterdel
+bk delta $Q -y1.2 afterdel
+bk edit $Q afterdel
+printf "a\nc\nd\n" > afterdel
+bk delta $Q -y1.3 afterdel
+bk edit $Q -x1.2 afterdel
+bk delta $Q -y1.4 afterdel
+bk edit $Q afterdel
+printf "a\nb\n" > afterdel
+bk delta $Q -y1.4 afterdel 2> ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "no newline corner case" ERR || {
+	echo wrong message
+	exit 1
+}
+echo OK
+
+echo $N No newline corner case with closing E before delete .........$NL
+# this mimics what customers hit - a merge case
+# comes from fm3tool adding a newline at end of merge
+# when it ideally should not.
+printf "a\n" > beforedel
+bk new $Q beforedel
+bk get $Q -e beforedel
+printf "a\nb\n" > beforedel
+bk delta $Q -ynewline beforedel
+bk _get $Q -e -r1.1 beforedel
+printf "a\nc" > beforedel
+bk delta $Q -ynonewline beforedel
+bk get $Q -e -M1.1.1.1 beforedel
+printf "a\nc\n" > beforedel
+bk delta $Q -y'merge and delete end' beforedel 2> ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "no newline corner case" ERR || {
+	echo wrong message
+	exit 1
+}
+echo OK

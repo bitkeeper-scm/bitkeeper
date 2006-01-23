@@ -11311,17 +11311,18 @@ doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 }
 
 void
-finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
+finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 	ser_t *slist)
 {
 	int	print = *pp, incr = *ip;
 	sum_t	sum;
 	register char	*buf;
 	ser_t	serial;
-	int	lf_pend = 0;
+	int	lf_pend = *last;
 
 	debug((stderr, "finish(incr=%d, sum=%d, print=%d) ",
 		incr, s->dsum, print));
+	if (lf_pend) s->dsum -= '\n';
 	while (!eof(s)) {
 		unless (buf = nextdata(s)) break;
 		debug2((stderr, "G> %.*s", linelen(buf), buf));
@@ -11340,6 +11341,7 @@ finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
 				}
 				continue;
 			}
+			*last = 0;
 			unless (lf_pend) sum -= '\n';
 			lf_pend = print;
 			s->dsum += sum;
@@ -11360,19 +11362,24 @@ finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
 		changestate(state, buf[1], serial);
 		print = printstate((const serlist*)state, (const ser_t*)slist);
 	}
+	unless (lf_pend) *last = 0;
 	*ip = incr;
 	*pp = print;
 	debug((stderr, "incr=%d, sum=%d\n", incr, s->dsum));
 }
 
-#define	nextline(inc)	nxtline(s, &inc, 0, &lines, &print, out, state, slist)
-#define	beforeline(inc) nxtline(s, &inc, 1, &lines, &print, out, state, slist)
+#define	nextline(inc)	\
+    nxtline(s, &inc, 0, &lines, &print, &last, out, state, slist)
+#define	beforeline(inc) \
+    nxtline(s, &inc, 1, &lines, &print, &last, out, state, slist)
 
 void
-nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
+nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
 	register serlist *state, ser_t *slist)
 {
 	int	print = *pp, incr = *ip, lines = *lp;
+	int	serial;
+	char	*n;
 	sum_t	sum;
 	register char	*buf;
 
@@ -11396,7 +11403,14 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
 			}
 			continue;
 		}
-		changestate(state, buf[1], atoi(&buf[3]));
+		n = &buf[3];
+		serial = atoi_p(&n);
+		if ((buf[1] == 'E') && (*last == serial) &&
+		    (whatstate((const serlist*)state) == serial) &&
+		    (*n != 'N')) {
+			*last = 0;
+		}
+		changestate(state, buf[1], serial);
 		print = printstate((const serlist*)state, (const ser_t*)slist);
 	}
 	*ip = incr;
@@ -11513,6 +11527,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	ser_t	*slist = 0;
 	int	print = 0;
 	int	lines = 0;
+	int	last = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
 	sum_t	sum;
 	char	*b;
@@ -11570,6 +11585,7 @@ newcmd:
 			 */
 			nextline(unchanged);
 		}
+		last = print;
 		switch (what) {
 		    case 'c':
 		    case 'd':
@@ -11585,12 +11601,14 @@ newcmd:
 					goto newcmd;
 				}
 				nextline(deleted);
+				if (last == print) last = 0;
 			}
 			s->dsum = sum;
 			if (what != 'c') break;
 			ctrl("\001E ", n->serial, "");
 			/* fall through to */
 		    case 'a':
+			last = 0;
 			ctrl("\001I ", n->serial, "");
 			while (b = mnext(diffs)) {
 				if (strneq(b, "\\ No", 4)) {
@@ -11612,6 +11630,7 @@ newcmd:
 		    case 'N':
 		    case 'I':
 		    case 'i':
+			last = 0;
 			ctrl("\001I ", n->serial, "");
 			while (howmany--) {
 				/* XXX: not break but error */
@@ -11638,13 +11657,14 @@ newcmd:
 			sum = s->dsum;
 			while (howmany--) {
 				nextline(deleted);
+				if (last == print) last = 0;
 			}
 			s->dsum = sum;
 			break;
 		}
 		ctrl("\001E ", n->serial, no_lf ? "N" : "");
 	}
-	finish(s, &unchanged, &print, out, state, slist);
+	finish(s, &unchanged, &print, &last, out, state, slist);
 	*ap = added;
 	*dp = deleted;
 	*up = unchanged;
@@ -11654,6 +11674,10 @@ newcmd:
 		if (zgets_done()) return (-1);
 	}
 	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
+		return (-1);
+	}
+	if (last) {
+		fprintf(stderr, "delta: no newline corner case\n");
 		return (-1);
 	}
 
