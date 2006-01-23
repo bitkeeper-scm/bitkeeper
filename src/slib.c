@@ -1232,7 +1232,7 @@ scandiff(char *s, int *where, char *what, int *howmany)
 		*howmany = atoi_p(&s);
 		return (0);
 	}
-	*howmany = 0;	/* not used by this part */
+	*howmany = 0;	/* not used by this part, but used by nonl fixer */
 	*where = atoi_p(&s);
 	if (*s == ',') {
 		s++;
@@ -11369,13 +11369,13 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 }
 
 #define	nextline(inc)	\
-    nxtline(s, &inc, 0, &lines, &print, &last, out, state, slist)
+    nxtline(s, &inc, 0, &lines, &print, &last, out, state, slist, &savenext)
 #define	beforeline(inc) \
-    nxtline(s, &inc, 1, &lines, &print, &last, out, state, slist)
+    nxtline(s, &inc, 1, &lines, &print, &last, out, state, slist, &savenext)
 
 void
 nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
-	register serlist *state, ser_t *slist)
+	register serlist *state, ser_t *slist, char ***savenext)
 {
 	int	print = *pp, incr = *ip, lines = *lp;
 	int	serial;
@@ -11395,6 +11395,14 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
 		sum = fputdata(s, buf, out);
 		if (isData(buf)) {
 			if (print) {
+				if (*savenext) {
+					char	*p = strchr(buf, '\n');
+
+					assert(p);
+					**savenext = strndup(buf, p - buf + 1);
+					assert(**savenext);
+					*savenext = 0;
+				}
 				/* CNTLA_ESCAPE is not part of the check sum */
 				if (buf[0] == CNTLA_ESCAPE) sum -= CNTLA_ESCAPE;
 				s->dsum += sum;
@@ -11523,15 +11531,21 @@ bad:		fprintf(stderr, "bad diffs: '%.*s'\n", linelen(buf), buf);
 int
 delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 {
-	serlist *state = 0;
-	ser_t	*slist = 0;
-	int	print = 0;
-	int	lines = 0;
-	int	last = 0;
-	int	added = 0, deleted = 0, unchanged = 0;
+	serlist *state;
+	ser_t	*slist;
+	int	print;
+	int	lines;
+	int	last;
+	int	lastdel;
+	int	fixdel = 0;
+	char	*addthis;
+	char	**savenext;
+	long	offset;
+	int	added, deleted, unchanged;
+	sum_t	cksumsave;
 	sum_t	sum;
 	char	*b;
-	int	no_lf = 0;
+	int	no_lf;
 
 	if (binaryCheck(diffs)) {
 		assert(!(s->encoding & E_BINARY));
@@ -11542,7 +11556,22 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	}
 	assert(!READ_ONLY(s));
 	assert(s->state & S_ZFILE);
+	offset = ftell(out);
+	cksumsave = s->cksum;
+again:
 	*ap = *dp = *up = 0;
+	state = 0;
+	slist = 0;
+	print = 0;
+	lines = 0;
+	last = 0;
+	lastdel = 0;
+	addthis = 0;
+	savenext = 0;
+	added = 0;
+	deleted = 0;
+	unchanged = 0;
+	no_lf = 0;
 	/*
 	 * Do the actual delta.
 	 */
@@ -11577,6 +11606,15 @@ newcmd:
 		if (what == 'c' || what == 'd' || what == 'D' || what == 'x')
 		{
 			where--;
+			lastdel = where;
+			if (where && (fixdel == where)) {
+				where--;
+				howmany++;
+				while (lines < where) {
+					nextline(unchanged);
+				}
+				savenext = &addthis;
+			}
 		}
 		while (lines < where) {
 			/*
@@ -11592,6 +11630,8 @@ newcmd:
 			beforeline(unchanged);
 			ctrl("\001D ", n->serial, "");
 			sum = s->dsum;
+			/* howmany != 0 only for nonewline corner fixer */
+			while (howmany--) nextline(deleted);
 			while (b = mnext(diffs)) {
 				if (strneq(b, "---\n", 4)) break;
 				if (strneq(b, "\\ No", 4)) continue;
@@ -11664,6 +11704,14 @@ newcmd:
 		}
 		ctrl("\001E ", n->serial, no_lf ? "N" : "");
 	}
+	if (addthis) {
+		last = 0;
+		ctrl("\001I ", n->serial, "");
+		s->dsum += fputdata(s, addthis, out);
+		if (addthis[0] == CNTLA_ESCAPE) s->dsum -= CNTLA_ESCAPE;
+		ctrl("\001E ", n->serial, "");
+		free(addthis);
+	}
 	finish(s, &unchanged, &print, &last, out, state, slist);
 	*ap = added;
 	*dp = deleted;
@@ -11673,11 +11721,22 @@ newcmd:
 	if (s->encoding & E_GZIP) {
 		if (zgets_done()) return (-1);
 	}
-	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
-		return (-1);
-	}
 	if (last) {
-		fprintf(stderr, "delta: no newline corner case\n");
+		off_t	end = offset;
+		int	fd = fileno(out);
+
+		assert(!fixdel);	/* no infinite loops */
+		fixdel = lastdel;
+		if (fflushdata(s, out) || fseek(out, offset, SEEK_SET)) {
+			perror("delta");
+			return (-1);
+		}
+		ftruncate(fd, end);	/* In case gzip file gets smaller */
+		mseekto(diffs, 0);
+		s->cksum = cksumsave;
+		goto again;
+	}
+	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
 		return (-1);
 	}
 
