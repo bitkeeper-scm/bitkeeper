@@ -34,6 +34,8 @@
 #include "style.h"
 #include "lines.h"
 #include "mmap.h"
+#include "hash.h"
+#include "mdbm/mdbm.h"
 
 #ifndef	isascii
 #define	isascii(x)	(((x) & ~0x7f) == 0)

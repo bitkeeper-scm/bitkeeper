@@ -13,8 +13,6 @@ STRING_OBJS = $(patsubst %,string/%, \
 
 STRING_HDRS = string.h
 
-$(STRING_OBJS): $(STRING_HDRS)
-
 string/strchr.o: string/index.c
 string/strrchr.o: string/rindex.c
 string/memcpy.o: string/bcopy.c

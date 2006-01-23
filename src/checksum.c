@@ -339,15 +339,15 @@ typedef struct serset {
 #define	SSE_SIZE sizeof(struct _sse)
 
 private void
-add_ins(HASH *h, char *root, int len, ser_t ser, u16 sum)
+add_ins(hash *h, char *root, int len, ser_t ser, u16 sum)
 {
 	serset	**ssp, *ss;
 
-	ssp = (serset **)hash_fetchAlloc(h, root, len, sizeof(serset *));
-	unless (*ssp) {
-		*ssp = malloc(SS_SIZE + 4*SSE_SIZE);
-		(*ssp)->num = 0;
-		(*ssp)->size = 4;
+	unless (ssp = hash_fetch(h, root, len)) {
+		ss = malloc(SS_SIZE + 4*SSE_SIZE);
+		ss->num = 0;
+		ss->size = 4;
+		ssp = hash_insert(h, root, len, &ss, sizeof(serset *));
 	} else if ((*ssp)->num == (*ssp)->size - 1) {
 		/* realloc 2X */
 		ss = malloc(SS_SIZE + (2 * (*ssp)->size)*SSE_SIZE);
@@ -367,7 +367,7 @@ add_ins(HASH *h, char *root, int len, ser_t ser, u16 sum)
 int
 cset_resum(sccs *s, int diags, int fix, int spinners)
 {
-	HASH	*root2map = hash_new();
+	hash	*root2map = hash_new(HASH_MDBM);
 	ser_t	ins_ser = 0;
 	char	*p, *q, *e;
 	char	*end = s->mmap + s->size;
@@ -378,7 +378,6 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 	struct	_sse *sse;
 	delta	*d;
 	int	found = 0;
-	kvpair	kv;
 	char	*spin = "|/-\\";
 
 	if (spinners) fprintf(stderr, "checking checksums ");
@@ -406,7 +405,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 	map = malloc(cnt * sizeof(serset *));
 	cnt = 0;
 	EACH_HASH(root2map) {
-		map[cnt] = *(serset **)kv.val.dptr;
+		map[cnt] = *(serset **)root2map->vptr;
 		++cnt;
 	}
 	/* the above is very fast, no need to optimize further */

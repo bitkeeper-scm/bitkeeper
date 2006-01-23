@@ -171,9 +171,8 @@ SCRIPTS	= applypatch bk.script import resync \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
 PSCR	= t/doit t/guitest
-PROGS	= hidestring mdbm/mtst
-LIBS	= libc/libc.a zlib/libz.a mdbm/libmdbm.a \
-	  tomcrypt/libtomcrypt.a
+PROGS	= hidestring libc/mtst
+LIBS	= libc/libc.a zlib/libz.a tomcrypt/libtomcrypt.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkl.lic bkcl.lic
@@ -181,7 +180,7 @@ ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc -Izlib -Imdbm
+CPPFLAGS= -Ilibc -Izlib
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -205,7 +204,7 @@ export	GET
 default:
 	bk cat BUILD.txt
 
-SUBDIRS = libc mdbm tomcrypt zlib
+SUBDIRS = libc tomcrypt zlib
 
 
 all: $(ALL)
@@ -329,9 +328,9 @@ win32: FORCE
 %.a: FORCE
 	$(MAKE) -C $(dir $@) "CC=$(CC)" "CFLAGS=$(CFLAGS)" $(notdir $@)
 
-mdbm/mtst: FORCE
-	$(MAKE) -C mdbm  "CC=$(CC)" "CFLAGS=$(CFLAGS)" all
- 
+libc/mtst: FORCE
+	$(MAKE) -C libc "CC=$(CC)" "CFLAGS=$(CFLAGS)" mtst
+
 bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o
 

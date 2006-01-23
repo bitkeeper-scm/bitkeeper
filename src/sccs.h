@@ -3,7 +3,6 @@
 #define	_SCCS_H_
 
 #include "system.h"
-#include "mdbm/mdbm.h"
 #include "purify.h"
 
 #define	mdbm_mem()	mdbm_open(NULL, 0, 0, GOOD_PSIZE)
