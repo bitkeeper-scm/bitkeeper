@@ -458,10 +458,7 @@ int fast_s_mp_mul_digs (mp_int * a, mp_int * b, mp_int * c, int digs)
 
       /* make next carry */
       _W = _W >> ((mp_word)DIGIT_BIT);
-  }
-
-  /* store final carry */
-  W[ix] = (mp_digit)(_W & MP_MASK);
+ }
 
   /* setup dest */
   olduse  = c->used;
@@ -486,8 +483,8 @@ int fast_s_mp_mul_digs (mp_int * a, mp_int * b, mp_int * c, int digs)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_fast_s_mp_mul_digs.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2006/01/07 04:30:53 $ */
 
 /* End: bn_fast_s_mp_mul_digs.c */
 
@@ -564,9 +561,6 @@ int fast_s_mp_mul_high_digs (mp_int * a, mp_int * b, mp_int * c, int digs)
       _W = _W >> ((mp_word)DIGIT_BIT);
   }
   
-  /* store final carry */
-  W[ix] = (mp_digit)(_W & MP_MASK);
-
   /* setup dest */
   olduse  = c->used;
   c->used = pa;
@@ -591,8 +585,8 @@ int fast_s_mp_mul_high_digs (mp_int * a, mp_int * b, mp_int * c, int digs)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_fast_s_mp_mul_high_digs.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2006/01/07 04:30:53 $ */
 
 /* End: bn_fast_s_mp_mul_high_digs.c */
 
