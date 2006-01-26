@@ -36,7 +36,7 @@ const struct ltc_cipher_descriptor rc2_desc = {
    &rc2_test,
    &rc2_done,
    &rc2_keysize,
-   NULL, NULL, NULL, NULL, NULL, NULL, NULL
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 /* 256-entry permutation table, probably derived somehow from pi */
@@ -358,5 +358,5 @@ int rc2_keysize(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/rc2.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2005/10/06 01:19:52 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2006/01/26 15:07:25 $ */

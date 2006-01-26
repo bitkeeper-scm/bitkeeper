@@ -28,7 +28,7 @@ const struct ltc_cipher_descriptor skipjack_desc =
     &skipjack_test,
     &skipjack_done,
     &skipjack_keysize,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 static const unsigned char sbox[256] = {
@@ -339,5 +339,5 @@ int skipjack_keysize(int *keysize)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/skipjack.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2005/10/06 01:19:52 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2006/01/26 15:07:25 $ */

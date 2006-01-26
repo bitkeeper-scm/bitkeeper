@@ -19,6 +19,13 @@
 
 #ifdef LTC_DER
 
+/**
+  Encode a SEQUENCE type using a VA list
+  @param out    [out] Destination for data
+  @param outlen [in/out] Length of buffer and resulting length of output
+  @remark <...> is of the form <type, size, data> (int, unsigned long, void*)
+  @return CRYPT_OK on success
+*/  
 int der_encode_sequence_multi(unsigned char *out, unsigned long *outlen, ...)
 {
    int           err, type;
@@ -123,5 +130,5 @@ LBL_ERR:
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/sequence/der_encode_sequence_multi.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2005/11/20 02:25:13 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2005/12/27 19:30:53 $ */

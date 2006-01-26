@@ -29,7 +29,7 @@ const struct ltc_cipher_descriptor anubis_desc = {
    &anubis_test,
    &anubis_done,
    &anubis_keysize,
-   NULL, NULL, NULL, NULL, NULL, NULL, NULL
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 #define MIN_N           4 
@@ -1554,5 +1554,5 @@ int anubis_keysize(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/anubis.c,v $ */
-/* $Revision: 1.9 $ */
-/* $Date: 2005/10/06 01:19:52 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2006/01/26 15:07:25 $ */

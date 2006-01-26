@@ -18,9 +18,8 @@
 
 #ifdef LTC_DER
 
-/* Exports a positive integer as DER format (upto 32-bits in size) */
 /**
-  Store a mp_int integer
+  Store a short integer in the range (0,2^32-1)
   @param num      The integer to encode
   @param out      [out] The destination for the DER encoded integers
   @param outlen   [in/out] The max size and resulting size of the DER encoded integers
@@ -93,5 +92,5 @@ int der_encode_short_integer(unsigned long num, unsigned char *out, unsigned lon
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/short_integer/der_encode_short_integer.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2005/05/23 01:27:03 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2005/12/27 19:34:30 $ */

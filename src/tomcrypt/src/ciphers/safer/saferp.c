@@ -28,7 +28,7 @@ const struct ltc_cipher_descriptor saferp_desc =
     &saferp_test,
     &saferp_done,
     &saferp_keysize,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 /* ROUND(b,i) 
@@ -555,5 +555,5 @@ int saferp_keysize(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/safer/saferp.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2005/10/06 01:19:53 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2006/01/26 15:07:26 $ */

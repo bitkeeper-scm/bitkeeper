@@ -16,8 +16,8 @@ extern "C" {
 #endif
 
 /* version */
-#define CRYPT   0x0108
-#define SCRYPT  "1.08"
+#define CRYPT   0x0109
+#define SCRYPT  "1.09"
 
 /* max size of either a cipher/hash block or symmetric key [largest of the two] */
 #define MAXBLOCKSIZE  128
@@ -82,5 +82,5 @@ enum {
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt.h,v $ */
-/* $Revision: 1.11 $ */
-/* $Date: 2005/11/18 06:58:52 $ */
+/* $Revision: 1.12 $ */
+/* $Date: 2005/12/27 19:36:55 $ */

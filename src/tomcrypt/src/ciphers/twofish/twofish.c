@@ -35,7 +35,7 @@ const struct ltc_cipher_descriptor twofish_desc =
     &twofish_test,
     &twofish_done,
     &twofish_keysize,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 /* the two polynomials */
@@ -709,5 +709,5 @@ int twofish_keysize(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/twofish/twofish.c,v $ */
-/* $Revision: 1.9 $ */
-/* $Date: 2005/10/06 01:19:53 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2006/01/26 15:07:26 $ */

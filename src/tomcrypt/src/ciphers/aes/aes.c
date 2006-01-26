@@ -49,7 +49,7 @@ const struct ltc_cipher_descriptor rijndael_desc =
     6,
     16, 32, 16, 10,
     SETUP, ECB_ENC, ECB_DEC, ECB_TEST, ECB_DONE, ECB_KS,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 const struct ltc_cipher_descriptor aes_desc =
@@ -58,7 +58,7 @@ const struct ltc_cipher_descriptor aes_desc =
     6,
     16, 32, 16, 10,
     SETUP, ECB_ENC, ECB_DEC, ECB_TEST, ECB_DONE, ECB_KS,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 #else
@@ -74,7 +74,7 @@ const struct ltc_cipher_descriptor rijndael_enc_desc =
     6,
     16, 32, 16, 10,
     SETUP, ECB_ENC, NULL, NULL, ECB_DONE, ECB_KS,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 const struct ltc_cipher_descriptor aes_enc_desc =
@@ -83,7 +83,7 @@ const struct ltc_cipher_descriptor aes_enc_desc =
     6,
     16, 32, 16, 10,
     SETUP, ECB_ENC, NULL, NULL, ECB_DONE, ECB_KS,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 #endif
@@ -757,5 +757,5 @@ int ECB_KS(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/aes/aes.c,v $ */
-/* $Revision: 1.9 $ */
-/* $Date: 2005/10/06 01:19:53 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2006/01/26 15:07:26 $ */

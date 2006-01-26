@@ -28,7 +28,7 @@ const struct ltc_cipher_descriptor khazad_desc = {
    &khazad_test,
    &khazad_done,
    &khazad_keysize,
-   NULL, NULL, NULL, NULL, NULL, NULL, NULL
+   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 #define R      8 
@@ -851,5 +851,5 @@ int khazad_keysize(int *keysize)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/khazad.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2005/10/06 01:19:52 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2006/01/26 15:07:25 $ */

@@ -29,7 +29,7 @@ const struct ltc_cipher_descriptor rc5_desc =
     &rc5_test,
     &rc5_done,
     &rc5_keysize,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 static const ulong32 stab[50] = {
@@ -318,5 +318,5 @@ int rc5_keysize(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/rc5.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2005/10/06 01:19:52 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2006/01/26 15:07:25 $ */

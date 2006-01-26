@@ -27,7 +27,7 @@ const struct ltc_cipher_descriptor blowfish_desc =
     &blowfish_test,
     &blowfish_done,
     &blowfish_keysize,
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 static const ulong32 ORIG_P[16 + 2] = {
@@ -590,5 +590,5 @@ int blowfish_keysize(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/blowfish.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2005/10/06 01:19:52 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2006/01/26 15:07:25 $ */
