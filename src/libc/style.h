@@ -1,14 +1,6 @@
 #ifndef	_STYLE_H_
 #define	_STYLE_H_
 
-#ifdef	PROFILE
-#define	inline
-#else
-#if	defined(ANSIC) || defined(DEBUG)
-#define	inline /* nothing */
-#endif
-#endif
-
 #define	private		static
 #define	max(a,b)	((a)>(b)?(a):(b))
 #define	min(a,b)	((a)<(b)?(a):(b))

@@ -113,7 +113,7 @@ CC_DEBUG=$(GCCOPTS) $G $(WARNINGS)
 CC_FAST_DEBUG=$(GCCOPTS) $G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS)
-BINS	= $(BK)
+BINS	= $(BK) inskeys$(EXE)
 
 # List of all objects in bk other than bk.o. Keep it sorted.
 OBJ =	abort.o adler32.o admin.o annotate.o \
@@ -175,9 +175,8 @@ SCRIPTS	= applypatch bk.script import resync \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
 PSCR	= t/doit t/guitest
-PROGS	= hidestring mdbm/mtst
-LIBS	= libc/libc.a zlib/libz.a mdbm/libmdbm.a \
-	  tomcrypt/libtomcrypt.a
+PROGS	= hidestring libc/mtst$(EXE)
+LIBS	= libc/libc.a zlib/libz.a tomcrypt/libtomcrypt.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic
@@ -185,7 +184,7 @@ ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc -Izlib -Imdbm
+CPPFLAGS= -Ilibc -Izlib
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -210,7 +209,7 @@ export	GET
 default:
 	bk cat BUILD.txt
 
-SUBDIRS = libc mdbm tomcrypt zlib
+SUBDIRS = libc tomcrypt zlib
 
 
 all: $(ALL)
@@ -335,9 +334,9 @@ win32: FORCE
 %.a: FORCE
 	$(MAKE) -C $(dir $@) "CC=$(CC)" "CFLAGS=$(CFLAGS)" $(notdir $@)
 
-mdbm/mtst: FORCE
-	$(MAKE) -C mdbm  "CC=$(CC)" "CFLAGS=$(CFLAGS)" all
- 
+libc/mtst$(EXE): FORCE
+	$(MAKE) -C libc "CC=$(CC)" "CFLAGS=$(CFLAGS)" mtst$(EXE)
+
 bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o
 
@@ -349,6 +348,9 @@ bk.ico: win32/data/bk.ico
 
 $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(XLIBS) 
+
+inskeys$(EXE): inskeys.o $(LIBS)
+	$(LD) $(LDFLAGS) -o $@ inskeys.o $(LIBS) $(XLIBS)
 
 bk.script: bk.sh port/$(SYS)_platform.sh
 	cat port/$(SYS)_platform.sh bk.sh > bk.script
@@ -480,6 +482,23 @@ cranksave: crank.sh remote.sh
 
 crankstatus: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh status
+
+crankrelease: crank.sh remote.sh
+	@(TAG=$(shell bk changes -r+ -d:TAG:) ; \
+	test x$$TAG = x && { \
+		echo Cannot crankrelease with a non-tagged tip ; \
+		exit 1 ; \
+	} ; \
+	test -d /home/bk/$$TAG-images || mkdir -p /home/bk/$$TAG-images ; \
+	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh \
+	    LOG=$(LOG) bash crank.sh release ; \
+	bk -R get -qS RELEASE-NOTES ; \
+	cp ../RELEASE-NOTES /home/bk/$$TAG-images ; \
+	cd /home/bk/$$TAG-images ; \
+	rm -f MD5SUMS ; \
+	md5sum bk-* >> MD5SUMS ; \
+	echo "Your images are in /home/bk/$$TAG-images" )
+	@echo "Don't forget to run build_upgrade_index.pl"
 
 crankclean: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh clean

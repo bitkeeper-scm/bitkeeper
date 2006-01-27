@@ -126,3 +126,62 @@ grep -q '^.E [0-9][0-9]*N$' SCCS/s.x && {
 	exit 1
 }
 echo OK
+
+echo $N No newline corner case with closing E after delete ..........$NL
+cd $HERE/project
+printf "a\nb" > afterdel
+bk new $Q afterdel
+bk edit $Q afterdel
+printf "a\nc\n" > afterdel
+bk delta $Q -y1.2 afterdel
+bk edit $Q afterdel
+printf "a\nc\nd\n" > afterdel
+bk delta $Q -y1.3 afterdel
+bk edit $Q -x1.2 afterdel
+bk delta $Q -y1.4 afterdel
+cp SCCS/s.afterdel afterdel.bkup
+bk edit $Q afterdel
+printf "a\nb\n" > afterdel
+cp afterdel WANT
+bk delta $Q -y1.4 afterdel
+bk get $Q afterdel
+checkfiles WANT afterdel
+# run through it again, with gzipped sfile
+cp -f afterdel.bkup SCCS/s.afterdel
+bk admin -Zgzip afterdel
+bk edit $Q afterdel
+printf "a\nb\n" > afterdel
+bk delta $Q -y1.4 afterdel
+bk get $Q afterdel
+checkfiles WANT afterdel
+echo OK
+
+echo $N No newline corner case with closing E before delete .........$NL
+# this mimics what customers hit - a merge case
+# comes from fm3tool adding a newline at end of merge
+# when it ideally should not.
+# Also test that a line that starts with ^A gets right checksum
+printf "a\n" > beforedel
+bk new $Q beforedel
+bk get $Q -e beforedel
+printf "a\nb\n" > beforedel
+bk delta $Q -ynewline beforedel
+bk _get $Q -e -r1.1 beforedel
+printf "a\n\001c" > beforedel
+bk delta $Q -ynonewline beforedel
+cp SCCS/s.beforedel beforedel.bkup
+bk get $Q -e -M1.1.1.1 beforedel
+printf "a\n\001c\n" > beforedel
+cp beforedel WANT
+bk delta $Q -y'merge and delete end' beforedel
+bk get $Q beforedel
+checkfiles WANT beforedel
+# run through it again, with gzipped sfile
+cp -f beforedel.bkup SCCS/s.beforedel
+bk admin -Zgzip beforedel
+bk get $Q -e -M1.1.1.1 beforedel
+printf "a\n\001c\n" > beforedel
+bk delta $Q -y'merge and delete end' beforedel
+bk get $Q beforedel
+checkfiles WANT beforedel
+echo OK

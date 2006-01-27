@@ -32,7 +32,7 @@ CPPFLAGS=-I../libc
 VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
 IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 
-all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE) inskeys
+all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE)
 	$(STRIP) $(IMAGE)
 
 sfioball: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE)
@@ -63,9 +63,6 @@ sfio_utils.o: sfio_utils.c
 sfio$(EXE): $(SFIO_OBJS)
 	$(LD) $(LFLAGS) $(SFIO_OBJS) $(SYSTEM_OBJS) $(LIBS) ../zlib/libz.a -o $@
 
-inskeys: inskeys.o
-	$(CC) $(LFLAGS) $< $(SYSTEM_OBJS) $(LIBS) -o $@
-
 installtool: ../port/$(SYS)_platform.tcl installtool.tcl font.tcl \
 	../gui/tkwizard.tcl ../gui/common.tcl \
 	../gui/imgsrc/bklogo.gif ../bk
@@ -75,7 +72,7 @@ installtool: ../port/$(SYS)_platform.tcl installtool.tcl font.tcl \
 	 echo "main"\
 	) > installtool
 
-html: inskeys A P
+html: ../bk$(EXE) A P
 	test `find . -name 'bk*' | wc -l` -eq 1 || { \
 		echo Wrong number of images; \
 		exit 1; \
@@ -83,8 +80,8 @@ html: inskeys A P
 	cp bk* /home/lm/public_html/bk-no-lic.bin
 	cp bk* /home/lm/public_html/bk-academic.bin
 	cp bk* /home/lm/public_html/bk-pro.bin
-	inskeys /home/lm/public_html/bk-academic.bin A
-	inskeys /home/lm/public_html/bk-pro.bin P
+	../bk inskeys /home/lm/public_html/bk-academic.bin A
+	../bk inskeys /home/lm/public_html/bk-pro.bin P
 
 munge$(EXE): munge.o
 	$(LD) $(LFLAGS) munge.o $(SYSTEM_OBJS) $(LIBS) ../zlib/libz.a -o $@

@@ -20,6 +20,4 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 
 UTILS_HDRS = lines.h mmap.h style.h system.h unix.h win32.h
 
-$(UTILS_OBJS): $(UTILS_HDRS)
-
 utils: $(UTILS_OBJS)

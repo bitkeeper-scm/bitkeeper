@@ -17,6 +17,7 @@ print C <<EOF;
 %struct-type
 %language=ANSI-C
 %define lookup-function-name cmd_lookup
+%define hash-function-name cmd_hash
 %includes
 
 struct CMD;
@@ -342,4 +343,5 @@ patch cprog
 cmp cprog
 diff cprog
 diff3 cprog
+inskeys cprog
 sdiff cprog

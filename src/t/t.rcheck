@@ -48,7 +48,7 @@ bk rcheck bk://localhost:$P/$HERE/copy || { echo failed; exit 1; }
 rm -f $HERE/copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR'
 cd $HERE/project
 bk rcheck bk://localhost:$P/$HERE/copy |
-    grep -q 'Missing file (chk3) bk@bk_regression.bk' || {
+    grep -q 'Missing file (bk help chk3) bk@bk_regression.bk' || {
 	echo failed with bad output
 	bk rcheck bk://localhost:$P/$HERE/copy 
 	exit 1
@@ -65,7 +65,7 @@ bk rcheck http://localhost:$P/$HERE/copy2 || { echo failed; exit 1; }
 # force a error
 rm -f $HERE/copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR'
 bk rcheck http://localhost:$P/$HERE/copy2 |
-    grep -q 'Missing file (chk3) bk@bk_regression.bk' || {
+    grep -q 'Missing file (bk help chk3) bk@bk_regression.bk' || {
 	echo failed with bad output
 	bk rcheck http://localhost:$P/$HERE/copy 
 	exit 1
