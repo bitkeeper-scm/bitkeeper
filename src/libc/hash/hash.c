@@ -53,9 +53,9 @@ hash_open(int type, char *file, int flags, mode_t mode, ...)
 	va_list	ap;
 
 	assert((type >= 0) && (type < (sizeof(ops)/sizeof(ops[0]))));
-	assert(ops[type].open);
+	assert(ops[type].hashopen);
 	va_start(ap, mode);
-	ret = ops[type].open(file, flags, mode, ap);
+	ret = ops[type].hashopen(file, flags, mode, ap);
 	va_end(ap);
 	if (ret) ret->ops = &ops[type];
 	return (ret);

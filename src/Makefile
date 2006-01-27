@@ -171,7 +171,7 @@ SCRIPTS	= applypatch bk.script import resync \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
 PSCR	= t/doit t/guitest
-PROGS	= hidestring libc/mtst
+PROGS	= hidestring libc/mtst$(EXE)
 LIBS	= libc/libc.a zlib/libz.a tomcrypt/libtomcrypt.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
@@ -328,8 +328,8 @@ win32: FORCE
 %.a: FORCE
 	$(MAKE) -C $(dir $@) "CC=$(CC)" "CFLAGS=$(CFLAGS)" $(notdir $@)
 
-libc/mtst: FORCE
-	$(MAKE) -C libc "CC=$(CC)" "CFLAGS=$(CFLAGS)" mtst
+libc/mtst$(EXE): FORCE
+	$(MAKE) -C libc "CC=$(CC)" "CFLAGS=$(CFLAGS)" mtst$(EXE)
 
 bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o

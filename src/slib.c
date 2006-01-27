@@ -440,7 +440,7 @@ sertoa(register char *buf, ser_t val)
 }
 
 #define	atoi	myatoi
-private inline int
+private int
 atoi(register char *s)
 {
 	register int val = 0;
@@ -486,7 +486,7 @@ atoiMult_p(char **p)
 }
 
 /* Free one delta.  */
-private inline void
+private void
 freedelta(delta *d)
 {
 	freeLines(d->comments, free);
@@ -1248,7 +1248,7 @@ scandiff(char *s, int *where, char *what, int *howmany)
 /*
  * Convert ascii 1.2.3.4 -> 1, 2, 3, 4
  */
-private inline int
+private int
 scanrev(char *s, ser_t *a, ser_t *b, ser_t *c, ser_t *d)
 {
 	if (!isdigit(*s)) return (0);
@@ -1268,7 +1268,7 @@ scanrev(char *s, ser_t *a, ser_t *b, ser_t *c, ser_t *d)
 	} else return (1);
 }
 
-private inline void
+private void
 explode_rev(delta *d)
 {
 	register char *s = d->rev;
@@ -1767,7 +1767,7 @@ findSym(symbol *s, char *name)
  *		If the revision is on the trunk and they wanted to bump
  *		the release, do so.
  */
-private inline int
+private int
 name2rev(sccs *s, char **rp)
 {
 	char	*rev = *rp;
@@ -2382,7 +2382,7 @@ ok:
 }
 
 
-inline char *
+private inline char *
 peek(sccs *s)
 {
 	if (s->encoding & E_GZIP) return (zpeek()); 
@@ -2395,7 +2395,7 @@ sccstell(sccs *s)
 	return (s->where - s->mmap);
 }
 
-private inline char	*
+private char	*
 fastnext(sccs *s)
 {
 	register char *t = s->where;
@@ -5672,7 +5672,7 @@ fnnlputs(char *buf, FILE *out)
 	}
 }
 
-private inline void
+private void
 fnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
@@ -5825,7 +5825,7 @@ fflushdata(sccs *s, FILE *out)
 #define	ENC(c)	((((uchar)c) & 0x3f) + ' ')
 #define	DEC(c)	((((uchar)c) - ' ') & 0x3f)
 
-inline int
+private inline int
 uuencode1(register uchar *from, register char *to, int n)
 {
 	int	space[4];
@@ -5914,7 +5914,7 @@ uuencode(FILE *in, FILE *out)
 	return (++added);
 }
 
-inline int
+private inline int
 uudecode1(register char *from, register uchar *to)
 {
 	int	length, save;
@@ -7517,7 +7517,7 @@ badcksum(sccs *s, int flags)
 	return ((sum_t)sum != filesum);
 }
 
-inline int
+private inline int
 isAscii(int c)
 {
 	if (c & 0x60) return (1);
@@ -8068,7 +8068,7 @@ SCCS:
 /*
  * If we are trying to compare with expanded strings, do so.
  */
-private inline int
+private int
 expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 {
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
@@ -15409,7 +15409,7 @@ samekeystr(char *a, char *b)
 	return (1);
 }
 
-private inline int
+private int
 samekey(delta *d, char *user, char *host, char *path, time_t date,
 	sum_t *cksump)
 {

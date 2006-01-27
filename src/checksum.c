@@ -339,24 +339,34 @@ typedef struct serset {
 #define	SSE_SIZE sizeof(struct _sse)
 
 private void
-add_ins(hash *h, char *root, int len, ser_t ser, u16 sum)
+add_ins(MDBM *h, char *root, int len, ser_t ser, u16 sum)
 {
-	serset	**ssp, *ss;
+	serset	*ss, *tmp;
+	datum	k, v;
 
-	unless (ssp = hash_fetch(h, root, len)) {
+	k.dptr = root;
+	k.dsize = len;
+	v = mdbm_fetch(h, k);
+	ss = v.dptr ? *(serset **)v.dptr : 0;
+	unless (ss) {
+		/* new entry */
 		ss = malloc(SS_SIZE + 4*SSE_SIZE);
 		ss->num = 0;
 		ss->size = 4;
-		ssp = hash_insert(h, root, len, &ss, sizeof(serset *));
-	} else if ((*ssp)->num == (*ssp)->size - 1) {
+		v.dptr = (void *)&ss;
+		v.dsize = sizeof(serset *);
+		mdbm_store(h, k, v, MDBM_INSERT);
+	} else if (ss->num == (ss->size - 1)) {
 		/* realloc 2X */
-		ss = malloc(SS_SIZE + (2 * (*ssp)->size)*SSE_SIZE);
-		memcpy(ss, *ssp, SS_SIZE + (*ssp)->size*SSE_SIZE);
-		ss->size = 2 * (*ssp)->size;
-		free(*ssp);
-		*ssp = ss;
+		tmp = malloc(SS_SIZE + (2 * ss->size)*SSE_SIZE);
+		memcpy(tmp, ss, SS_SIZE + ss->size*SSE_SIZE);
+		free(ss);
+		ss = tmp;
+		ss->size *= 2;
+		v.dptr = (void *)&ss;
+		v.dsize = sizeof(serset *);
+		mdbm_store(h, k, v, MDBM_REPLACE);
 	}
-	ss = *ssp;
 	ss->data[ss->num].ser = ser;
 	ss->data[ss->num].sum = sum;
 	++ss->num;
@@ -367,7 +377,7 @@ add_ins(hash *h, char *root, int len, ser_t ser, u16 sum)
 int
 cset_resum(sccs *s, int diags, int fix, int spinners)
 {
-	hash	*root2map = hash_new(HASH_MDBM);
+	MDBM	*root2map = mdbm_mem();
 	ser_t	ins_ser = 0;
 	char	*p, *q, *e;
 	char	*end = s->mmap + s->size;
@@ -379,6 +389,10 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 	delta	*d;
 	int	found = 0;
 	char	*spin = "|/-\\";
+	kvpair	kv;
+
+	mdbm_set_alignment(root2map,
+	    (sizeof(void *) == 8) ? _MDBM_ALGN64 : _MDBM_ALGN32);
 
 	if (spinners) fprintf(stderr, "checking checksums ");
 
@@ -401,11 +415,11 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 		p = e;
 	}
 	cnt = 0;
-	EACH_HASH(root2map) ++cnt;
+	EACH_KV(root2map) ++cnt;
 	map = malloc(cnt * sizeof(serset *));
 	cnt = 0;
-	EACH_HASH(root2map) {
-		map[cnt] = *(serset **)root2map->vptr;
+	EACH_KV(root2map) {
+		map[cnt] = *(serset **)kv.val.dptr;
 		++cnt;
 	}
 	/* the above is very fast, no need to optimize further */
@@ -492,7 +506,7 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 	s->state &= ~S_SET;	/* if set, then done with it: clean up */
 	for (i = 0; i < cnt; i++) free(map[i]);
 	free(map);
-	hash_free(root2map);
+	mdbm_close(root2map);
 	return (found);
 }
 

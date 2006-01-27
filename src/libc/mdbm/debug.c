@@ -4,7 +4,7 @@
 #include <stdio.h>
 #endif
 #include "common.h"
-#include "system.h"
+#include "style.h"
 WHATSTR("%W%");
 
 #define P(p) ((unsigned long)(p))   /* cast pointer to integer for printf */

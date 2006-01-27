@@ -1,3 +1,7 @@
+ifeq "$(OSTYPE)" "msys"
+	XLIBS=-lws2_32
+	EXE=.exe
+endif
 all: libc.a mtst$(EXE)
 
 include hash/Makefile
@@ -5,8 +9,6 @@ include mdbm/Makefile
 include string/Makefile
 include utils/Makefile
 ifeq "$(OSTYPE)" "msys"
-	XLIBS=-lws2_32
-	EXE=.exe
 include win32/Makefile
 endif
 
@@ -29,7 +31,7 @@ libc.a: $(OBJS)
 	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
 
 mtst$(EXE): mdbm/mtst.o libc.a
-	$(CC) -o $@ $^ libc.a $(XLIBS)
+	$(CC) -o $@ $^ $(XLIBS)
 
 .PHONY: clean
 clean:
