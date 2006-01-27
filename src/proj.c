@@ -47,7 +47,7 @@ private char	*find_root(char *dir);
 private struct {
 	project	*curr;
 	project	*last;
-	HASH	*cache;
+	hash	*cache;
 	char	cwd[MAXPATH];
 } proj;
 
@@ -57,8 +57,8 @@ projcache_lookup(char *dir)
 	project	*ret = 0;
 	project	**p;
 
-	unless (proj.cache) proj.cache = hash_new();
-	if (p = hash_fetch(proj.cache, dir, 0, 0)) ret = *p;
+	unless (proj.cache) proj.cache = hash_new(HASH_MEMHASH);
+	if (p = hash_fetchStr(proj.cache, dir)) ret = *p;
 	return (ret);
 }
 
@@ -73,7 +73,7 @@ projcache_store(char *dir, project *p)
 		dl->next = p->dirs;
 		p->dirs = dl;
 	}
-	*(project **)hash_alloc(proj.cache, dir, 0, sizeof(p)) = p;
+	hash_store(proj.cache, dir, strlen(dir)+1, &p, sizeof(p));
 }
 
 private void
@@ -81,12 +81,12 @@ projcache_delete(project *p)
 {
 	dirlist	*dl;
 
-	hash_delete(proj.cache, p->root, 0);
+	hash_deleteStr(proj.cache, p->root);
 	dl = p->dirs;
 	while (dl) {
 		dirlist	*tmp = dl;
 
-		hash_delete(proj.cache, dl->dir, 0);
+		hash_deleteStr(proj.cache, dl->dir);
 
 		free(dl->dir);
 		dl = dl->next;
@@ -357,8 +357,6 @@ proj_md5rootkey(project *p)
 void
 proj_reset(project *p)
 {
-	kvpair	kv;
-
 	if (p) {
 		if (p->rootkey) {
 			free(p->rootkey);
@@ -377,11 +375,7 @@ proj_reset(project *p)
 		p->bklbits = 0;
 		p->leaseok = -1;
 	} else {
-		kv = hash_first(proj.cache);
-		while (kv.key.dptr) {
-			proj_reset(*(project **)kv.val.dptr);
-			kv = hash_next(proj.cache);
-		}
+		EACH_HASH(proj.cache) proj_reset(*(project **)proj.cache->vptr);
 		/* free the current project for purify */
 		if (proj.curr) {
 			proj_free(proj.curr);

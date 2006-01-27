@@ -325,7 +325,7 @@ get_key(char *buf, int flags)
 }
 
 private int
-skipit(HASH *skip, char *key)
+skipit(hash *skip, char *key)
 {
 	if (skip == NULL) return (0);
 	if (hash_fetchStr(skip, key)) return (1);
@@ -347,7 +347,7 @@ skipit(HASH *skip, char *key)
  * @END@
  */
 int
-prunekey(sccs *s, remote *r, HASH *skip, int outfd, int flags,
+prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	int quiet, int *local_only, int *remote_csets, int *remote_tags)
 {
 	char	key[MAXKEY + 512] = ""; /* rev + tag + key */

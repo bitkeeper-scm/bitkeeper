@@ -214,8 +214,6 @@ typedef	struct page {
 	struct	page *next;
 } mpage_t;
 
-#include "memhash.h"
-
 /*
  * In memory handle structure.	Fields are duplicated from the
  * header so that we don't have to byte swap on each access.
@@ -243,7 +241,7 @@ struct	mdbm {
 	char	    *mem_dir;	/* LMXXX - is this right? */
 	ubig	    pmapSize;	/* size of the page map hash array */
 	mpage_t	    **page_map;	/* hash buckets */
-	HASH	    *memdb;
+	hash	    *memdb;
 };
 
 typedef	struct mdbm MDBM;

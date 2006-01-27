@@ -134,7 +134,7 @@ char	**getClientInfoBlock(void);
 void	sendServerInfoBlock(int);
 int	bk_hasFeature(char *f);
 int	bkd_hasFeature(char *f);
-int	prunekey(sccs *, remote *, HASH *, int, int, int, int *, int *, int *);
+int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);

@@ -8,12 +8,8 @@
 #endif
 #endif
 
-#ifdef	SGI
-#include "synonyms.h"
-#endif
-#include <sys/types.h>
-#include <stdio.h>
-#include "mdbm.h"
+#include "system.h"
+
 WHATSTR("%W%");
 
 static uint32  crc32_table[256] = {

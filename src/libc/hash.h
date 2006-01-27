@@ -9,6 +9,7 @@ typedef	struct	hash	hash;
 typedef	struct	hashops	hashops;
 
 #define	HASH_MDBM	0	/* A file-based DB */
+#define	HASH_MEMHASH	1	/* a in-memory hash */
 
 /*
  * User visible hash struct.  This contains the ops struct with the per-class
@@ -72,7 +73,7 @@ int	hash_close(hash *h);
  *   operation that modifies the hash. (store/insert/delete).
  *
  * methods:
- *   wrapmdbm_fetch
+ *   memhash_fetch wrapmdbm_fetch
  */
 private inline void *
 hash_fetch(hash *h, void *key, int klen)
@@ -102,7 +103,7 @@ hash_fetchStr(hash *h, void *key)
  *   pointer to where 'val' was stored in the hash, or NULL for error.
  *
  * methods:
- *   wrapmdbm_store
+ *   memhash_store wrapmdbm_store
  */
 private inline void *
 hash_store(hash *h, void *key, int klen, void *val, int vlen)
@@ -132,7 +133,7 @@ hash_storeStr(hash *h, void *key, void *val)
  *   exists.
  *
  * methods:
- *   wrapmdbm_insert
+ *   memhash_insert wrapmdbm_insert
  */
 private inline void *
 hash_insert(hash *h, void *key, int klen, void *val, int vlen)
@@ -156,7 +157,7 @@ hash_insertStr(hash *h, void *key, void *val)
  *    0 if key was deleted successfully
  *
  * methods:
- *   wrapmdbm_delete
+ *   memhash_delete wrapmdbm_delete
  */
 private inline int
 hash_delete(hash *h, void *key, int klen)
@@ -182,7 +183,7 @@ hash_deleteStr(hash *h, void *key)
  *   A pointer to the data for the first item, or NULL if the hash is empty.
  *
  * methods:
- *   wrapmdbm_first
+ *   memhash_first wrapmdbm_first
  */
 private inline void *
 hash_first(hash *h)
@@ -199,7 +200,7 @@ hash_first(hash *h)
  *   A pointer to the data for that item, or NULL of no items remain in hash.
  *
  * methods:
- *   wrapmdbm_next
+ *   memhash_next wrapmdbm_next
  */
 private inline void *
 hash_next(hash *h)

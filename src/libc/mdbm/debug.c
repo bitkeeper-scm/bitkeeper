@@ -1,10 +1,4 @@
-#ifdef	SGI
-#include "synonyms.h"
-#else
-#include <stdio.h>
-#endif
 #include "common.h"
-#include "style.h"
 WHATSTR("%W%");
 
 #define P(p) ((unsigned long)(p))   /* cast pointer to integer for printf */

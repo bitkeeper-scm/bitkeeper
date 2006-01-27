@@ -56,7 +56,7 @@ private	void	cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec);
 private	MDBM	*loadcset(sccs *cset);
 private	void	fileFilt(sccs *s, MDBM *csetDB);
 
-private	HASH	*seen; /* list of keys seen already */
+private	hash	*seen; /* list of keys seen already */
 
 int
 changes_main(int ac, char **av)
@@ -193,7 +193,7 @@ usage:			system("bk help -s changes");
 		}
 		unless (lurls || rurls) goto usage;
 		unless (rurls) rurls = lurls;
-		seen = hash_new();
+		seen = hash_new(HASH_MEMHASH);
 		pid = mkpager();
 		putenv("BK_PAGER=cat");
 		proj_cd2root();
@@ -287,8 +287,12 @@ _doit_local(char **nav, char *url)
 		if (opts.showdups) {
 			fputs(buf, f);
 		} else {
-			int *v = hash_fetchAlloc(seen, buf, 0, sizeof(int));
+			int	*v;
 
+			unless (v = hash_fetchStr(seen, buf)) {
+				v = hash_insert(seen,
+				    buf, strlen(buf) + 1, 0, sizeof(int));
+			}
 			*v += 1;
 		}
 	}
@@ -306,10 +310,8 @@ doit_local(int nac, char **nav, char **urls)
 {
 	FILE	*f;
 	int	status, i;
-	kvpair	kv;
 	int	ac = nac, rc = 0;
 	int	all = 0;
-	char	*p;
 
 	nav[ac++] = strdup("-");
 	assert(ac < 30);
@@ -334,10 +336,7 @@ doit_local(int nac, char **nav, char **urls)
 		f = popenvp(nav, "w");
 		assert(f);
 		EACH_HASH(seen) {
-			if (*(int *)kv.val.dptr == all) {
-				p = kv.key.dptr;
-				fputs(p, f);
-			}
+			if (*(int *)seen->vptr == all) fputs(seen->kptr, f);
 		}
 		status = pclose(f);
 		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc=1;

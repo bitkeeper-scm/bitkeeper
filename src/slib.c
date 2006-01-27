@@ -16392,12 +16392,12 @@ parseTimestamps(char *buf, tsrec *ts)
  * generate a timestamp database - cannot use loadDB as it can't cope with
  * this format - or I couldn't figure out how! (andyc).
  */
-HASH *
+hash *
 generateTimestampDB(project *p)
 {
 	/* want to use the timestamp database */
 	FILE	*f = 0;
-	HASH	*db;
+	hash	*db;
 	char	*tsname, *skew;
 	char	buf[MAXLINE];
 
@@ -16406,7 +16406,7 @@ generateTimestampDB(project *p)
 	if (skew && streq(skew, "off")) return (0);
 
 	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
-	db = hash_new();
+	db = hash_new(HASH_MEMHASH);
 	assert(db);
 	if (f = fopen(tsname, "r")) {
 		while (fnext(buf, f)) {
@@ -16422,7 +16422,10 @@ bad:				/* the database has invalid information in it
 				continue;
 			}
 			*p++ = 0;
-			ts = hash_fetchAlloc(db, buf, 0, sizeof(tsrec));
+			unless (ts = hash_fetchStr(db, buf)) {
+				ts = hash_store(db,
+				    buf, strlen(buf)+1, 0, sizeof(tsrec));
+			}
 			unless (parseTimestamps(p, ts)) goto bad;
 		}
 		fclose(f);
@@ -16432,11 +16435,10 @@ bad:				/* the database has invalid information in it
 }
 
 void
-dumpTimestampDB(project *p, HASH *db)
+dumpTimestampDB(project *p, hash *db)
 {
 	FILE	*f = 0;
 	char	*tsname;
-	kvpair	kv;
 
 	assert(p);
 	unless (timestampDBChanged) return;
@@ -16446,12 +16448,12 @@ dumpTimestampDB(project *p, HASH *db)
 		free(tsname);
 		return;			/* leave stale timestamp file there */
 	}
-	for (kv = hash_first(db); kv.key.dptr; kv = hash_next(db)) {
-		tsrec	*ts = (tsrec *)kv.val.dptr;
+	EACH_HASH(db) {
+		tsrec   *ts = (tsrec *)db->vptr;
 
-		assert(kv.val.dsize == sizeof(*ts));
+		assert(db->vlen == sizeof(*ts));
 		fprintf(f, "%s%c%lx%c%ld%c0%o%c%lx%c%ld\n",
-		    kv.key.dptr, BK_FS,
+		    db->kptr, BK_FS,
 		    ts->gfile_mtime, BK_FS, ts->gfile_size, BK_FS,
 		    ts->permissions, BK_FS,
 		    ts->sfile_mtime, BK_FS, ts->sfile_size);
@@ -16470,7 +16472,7 @@ dumpTimestampDB(project *p, HASH *db)
  * of the given file
  */
 int
-timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps)
+timeMatch(project *proj, char *gfile, char *sfile, hash *timestamps)
 {
 	tsrec	*ts;
 	char	*relpath;
@@ -16479,7 +16481,7 @@ timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps)
 
 	assert(proj);
 	relpath = proj_relpath(proj, gfile);
-	ts = (tsrec *)hash_fetch(timestamps, relpath, 0, 0);
+	ts = (tsrec *)hash_fetchStr(timestamps, relpath);
 	free(relpath);
 	unless (ts) goto out;			/* no entry for file */
 
@@ -16506,9 +16508,9 @@ timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps)
 }
 
 void
-updateTimestampDB(sccs *s, HASH *timestamps, int different)
+updateTimestampDB(sccs *s, hash *timestamps, int different)
 {
-	tsrec	ts, *tsp;
+	tsrec	ts;
 	struct	stat	sb;
 	char	*relpath;
 	const time_t one_week = 7 * 24 * 60 * 60;   /* # of seconds in week */
@@ -16530,7 +16532,7 @@ updateTimestampDB(sccs *s, HASH *timestamps, int different)
 
 	relpath = proj_relpath(s->proj, s->gfile);
 	if (different) {
-		hash_delete(timestamps, relpath, 0);
+		hash_deleteStr(timestamps, relpath);
 		goto out;
 	}
 
@@ -16548,10 +16550,10 @@ updateTimestampDB(sccs *s, HASH *timestamps, int different)
 
 	now = time(0);
 	if ((now - ts.gfile_mtime) < clock_skew) {
-		hash_delete(timestamps, relpath, 0);
+		hash_deleteStr(timestamps, relpath);
 	} else {
-		tsp = hash_fetchAlloc(timestamps, relpath, 0, sizeof(tsrec));
-		memcpy(tsp, &ts, sizeof(ts));
+		hash_store(timestamps,
+		    relpath, strlen(relpath) + 1, &ts, sizeof(ts));
 		timestampDBChanged = 1;
 	}
 out:	free(relpath);

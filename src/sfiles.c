@@ -59,7 +59,7 @@ typedef struct {
 } options;
 
 private	jmp_buf	sfiles_exit;
-private HASH	*timestamps = 0;
+private hash	*timestamps = 0;
 private options	opts;
 private char	**ignore, **dont_ignore;
 private u32	d_count, s_count, x_count; /* progress counter */

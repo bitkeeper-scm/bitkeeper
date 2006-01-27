@@ -1,27 +1,9 @@
 //#define	MEMORY_ONLY /* XXX */
 #define	ERRMSGS
 
-#ifndef	WIN32
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/file.h>
-#include <strings.h>
-#ifdef	SGI
-#include <bstring.h>
-#endif
-#else
-#include <string.h>
-#include <errno.h>
-#endif
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <memory.h>
-#include <errno.h>
-#include <stddef.h>
-#include <stdlib.h>
 #include "tune.h"	/* has to be before mdbm.h */
 #define	__mdbm_c
-#include "mdbm.h"
+#include "system.h"
 
 #ifndef	SUPPORT_64BIT
 /* for win32 and any 32 bit environment */

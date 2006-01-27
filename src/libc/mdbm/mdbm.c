@@ -60,17 +60,8 @@
 #endif
 #endif	/* SGI */
 
-
-#ifdef	WIN32
-#include <io.h>
-#endif
-#include <stdio.h>
-
-#ifdef	SGI
-#include "synonyms.h"
-#include <abi_mutex.h>
-#endif
 #include "common.h"
+
 WHATSTR("%W%");
 
 static datum   nullitem;
@@ -143,7 +134,7 @@ mdbm_open(char *file, int flags, int mode, int psize)
 		db->m_flags = _MDBM_MEM;
 		db->m_fd = -1;
 		flags |= (O_RDWR|O_CREAT|O_TRUNC);
-		db->memdb = hash_new();
+		db->memdb = hash_new(HASH_MEMHASH);
 		return (db);
 	}
 
@@ -291,8 +282,8 @@ mdbm_fetch(MDBM *db, datum key)
 		datum	ret;
 
 		ret.dsize = 0;
-		ret.dptr = hash_fetch(db->memdb,
-		    key.dptr, key.dsize, &ret.dsize);
+		ret.dptr = hash_fetch(db->memdb, key.dptr, key.dsize);
+		ret.dsize = db->memdb->vlen;
 		return (ret);
 	}
 	if (!_Mdbm_memdb(db) && SIZE_CHANGED(db) && !remap(db))
@@ -383,15 +374,14 @@ mdbm_store(MDBM *db, datum key, datum val, int flags)
 		void	*m;
 
 		if (flags == MDBM_INSERT) {
-			if (!(m = hash_alloc(db->memdb,
-				  key.dptr, key.dsize, val.dsize))) {
+			unless (m = hash_insert(db->memdb,
+				  key.dptr, key.dsize, val.dptr, val.dsize)) {
 				return errno = EEXIST, 1;
 			}
 		} else {
-			m = hash_fetchAlloc(db->memdb,
-			    key.dptr, key.dsize, val.dsize);
+			hash_store(db->memdb,
+			    key.dptr, key.dsize, val.dptr, val.dsize);
 		}
-		memcpy(m, val.dptr, val.dsize);
 		return (0);
 	}
 	if  (_write_access_check(db))
@@ -519,7 +509,16 @@ mdbm_first(MDBM *db)
 	if (db == NULL)
 		return errno = EINVAL, nullkv;
 
-	if (_Mdbm_memdb(db)) return (hash_first(db->memdb));
+	if (_Mdbm_memdb(db)) {
+		kvpair	kv;
+
+		kv.key.dptr = hash_first(db->memdb);
+		kv.key.dsize = db->memdb->klen;
+		kv.val.dptr = db->memdb->vptr;
+		kv.val.dsize = db->memdb->vlen;
+		return (kv);
+	}
+
 	/*
 	 * start at page 0
 	 */
@@ -544,7 +543,15 @@ mdbm_next(MDBM *db)
 	if ((db == NULL))
 		return errno = EINVAL, nullkv;
 
-	if (_Mdbm_memdb(db)) return (hash_next(db->memdb));
+	if (_Mdbm_memdb(db)) {
+		kvpair	kv;
+
+		kv.key.dptr = hash_next(db->memdb);
+		kv.key.dsize = db->memdb->klen;
+		kv.val.dptr = db->memdb->vptr;
+		kv.val.dsize = db->memdb->vlen;
+		return (kv);
+	}
 	debug((stderr, "mdbm_next page=%d next=%d kino=%d\n",
 	    (int)db->m_pageno, db->m_next, db->m_kino));
 
@@ -992,7 +999,7 @@ mdbm_set_alignment(MDBM *db, int amask) {
 		error((stderr, "can not set alignment of read only db\n"));
 		return errno = EINVAL, -1;
 	}
-
+	if (db->memdb) return (0);
 	db->m_amask = (amask & 0x07);
 	DB_HDR(db)->mh_dbflags |= (amask & 0x07);
 	return 0;
