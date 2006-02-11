@@ -16,12 +16,12 @@
 */
 
 struct ltc_cipher_descriptor cipher_descriptor[TAB_SIZE] = {
-{ NULL, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
+{ NULL, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
  };
 
 LTC_MUTEX_GLOBAL(ltc_cipher_mutex)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_cipher_descriptor.c,v $ */
-/* $Revision: 1.9 $ */
-/* $Date: 2005/07/30 23:13:01 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2006/02/11 09:17:23 $ */

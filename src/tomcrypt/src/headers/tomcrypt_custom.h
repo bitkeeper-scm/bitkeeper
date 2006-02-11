@@ -192,8 +192,6 @@
 #define OCB_MODE
 #define CCM_MODE
 #define GCM_MODE
-/* disabled waiting on test vectors */
-/* #define NLS_MODE */
 
 /* Use 64KiB tables */
 #ifndef LTC_NO_TABLES
@@ -343,5 +341,5 @@
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_custom.h,v $ */
-/* $Revision: 1.38 $ */
-/* $Date: 2006/01/26 18:15:52 $ */
+/* $Revision: 1.39 $ */
+/* $Date: 2006/01/29 15:53:39 $ */

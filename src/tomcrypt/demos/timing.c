@@ -18,6 +18,7 @@ time_keysched();
 time_cipher();
 time_cipher2();
 time_cipher3();
+time_cipher4();
 time_hash();
 time_macs();
 time_encmacs();
@@ -34,5 +35,5 @@ return EXIT_SUCCESS;
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/demos/timing.c,v $ */
-/* $Revision: 1.29 $ */
-/* $Date: 2005/10/26 02:51:23 $ */
+/* $Revision: 1.30 $ */
+/* $Date: 2006/01/27 21:26:20 $ */
