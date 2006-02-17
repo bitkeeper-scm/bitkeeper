@@ -374,27 +374,6 @@ proc adjustHeight {diff list} \
 	.diffs.right configure -height $gc(cset.diffHeight)
 }
 
-proc fontSize {dir} \
-{
-	global	gc app
-
-	foreach t {.l.filelist.t .l.sccslog.t \
-	    .diffs.right .diffs.left .diffs.status.l .diffs.status.l_lnum \
-	    .diffs.status.r .diffs.status.r_lnum .diffs.status.middle} {
-		set junk [split [$t cget -font]]
-		set font [lindex $junk 0]
-		set size [lindex $junk 1]
-		incr size $dir
-		$t configure -font [list $font $size]
-	}
-	set junk [split $gc($app.fixedBoldFont)]
-	set font [lindex $junk 0]
-	set size [lindex $junk 1]
-	incr size $dir
-	set gc($app.fixedBoldFont) [list $font $size bold]
-	dot
-}
-
 proc widgets {} \
 {
 	global	scroll gc wish d search fmenu app env
@@ -739,9 +718,6 @@ proc keyboard_bindings {} \
 	bind all <Control-n>		nextFile
 	bind all <Control-p>		prevFile
 	bind all <s>			exportCset
-	bind all <Control-plus>		{ fontSize 1 }
-	bind all <Control-equal>	{ fontSize 1 }
-	bind all <Control-minus>	{ fontSize -1 }
 
 	if {$gc(windows) || $gc(aqua)} {
 		bind all <MouseWheel> {
@@ -779,6 +755,12 @@ proc keyboard_bindings {} \
 	bindtags $search(text) { .menu.search Entry . }
 }
 
+proc usage {} \
+{
+	puts stderr "usage: bk csettool \[-f<file>] \[-r<rev>] \[-]"
+}
+
+
 proc main {} \
 {
 	global argv0 argv argc app showAnnotations gc
@@ -802,6 +784,11 @@ proc main {} \
 		    "^-r.*" {
 			set rev [lindex $argv $argindex]
 		   	regexp {^[ \t]*-r(.*)} $rev dummy revs
+			# make sure we don't get an empty revision
+			if {$revs eq ""} {
+				usage
+				exit 1
+			}
 		    }
 		    "^-$" {
 			set stdin 1
@@ -819,7 +806,10 @@ proc main {} \
 	}
 	#displayMessage "csetttool: revs=($revs) file=($file_rev)"
 	bk_init
-	cd2root [file dirname $file_rev]
+	if {[cd2root [file dirname $file_rev]] == -1} {
+		displayMessage "CsetTool must be run in a repository"
+		exit 0
+	}
 	if {$stdin == 0} {
 		set dspec "-d\$if(:Li: -gt 0){(:I:)\n}"
 		set fd [open "| bk prs -hr$revs {$dspec} ChangeSet" r]

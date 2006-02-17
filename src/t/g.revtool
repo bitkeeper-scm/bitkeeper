@@ -93,7 +93,7 @@ echo OK
 
 # this does a very shallow test for whether the graph is correct;
 # it simply checks that one data structure has been initialized. 
-echo $N Simple graph test ........... ...............................$NL
+echo $N Simple graph test ...........................................$NL
 bk guitest revtool >$OUT 2>&1 <<'EOF'
     global rev2date w
     set revs [lsort [array names rev2date]]
@@ -107,3 +107,16 @@ if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
 if [ -s $OUT ] ; then echo failed; cat $OUT ; exit 1 ; fi
 echo OK
 
+echo $N Test revision given in command line..........................$NL
+bk guitest revtool -r1.1 file1 >$OUT 2>&1 <<'EOF'
+	global anchor
+	if {$anchor ne "1.1-bk"} {
+		puts stderr "Revision 1.1 specified in command line, \
+		    but not selected in GUI"
+		exit 1
+	}
+	exit 0
+EOF
+if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
+if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
+echo OK

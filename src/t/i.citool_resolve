@@ -37,6 +37,7 @@ echo OK
 echo "Discard newfile{1,2,3} and make sure that the counts decrement"
 echo "correctly and the file content is listed in the bottom pane"
 echo
+bk commit $Q -yfoo
 echo $N Check citool for delete problems .............................$NL
 cd $HERE/project/src
 echo new > newfile1
@@ -61,8 +62,10 @@ mv foo.x foo.c
 bk delta $Q -yrogue2 foo.c
 cd ..
 bk commit $Q -yrogue2
-bk pull $Q
-bk resolve <<EOF
+bk pull $Q >$DEV_NULL 2>&1
+bk resolve >$DEV_NULL 2>&1 <<EOF
 ul
+merged
+.
 EOF
 echo OK

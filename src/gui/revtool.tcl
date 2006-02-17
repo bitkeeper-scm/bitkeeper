@@ -20,9 +20,11 @@ array set month {
 
 proc main {} \
 {
+	global	env
 	wm title . "revtool"
 
-	init
+	bk_init
+	
 	arguments
 	widgets
 	loadState
@@ -232,7 +234,7 @@ proc revMap {file} \
 
 proc orderSelectedNodes {reva revb} \
 {
-	global rev1 rev2 anchor rev2rev_name w rev2serial
+	global rev1 rev2 rev2rev_name w rev2serial
 
  	if {[info exists rev2rev_name($reva)]} {
  		set reva $rev2rev_name($reva)
@@ -265,10 +267,16 @@ proc doDiff {{difftool 0}} \
 	set b ""
 	if {![info exists anchor] || $anchor == ""} return
 
+	set r $anchor
+	if {[string match *-* $anchor]} {
+		# anchor is wrong (1.223-lm) instead of just 1.223
+		set r [lindex [split $anchor -] 0]
+	}
+
 	# No second rev? Get the parent
 	if {![info exists rev2] || "$rev2" == "$rev1" || "$rev2" == ""} {
 		set rev2 $anchor
-		set rev1 [exec bk prs -d:PARENT: -hr${anchor} $file]
+		set rev1 [exec bk prs -d:PARENT: -hr${r} $file]
 	}
 
 	orderSelectedNodes $rev1 $rev2
@@ -338,6 +346,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 	busy 1
 
 	# Search for annotated file output or annotated diff output
+	# display comment window if we are in annotated file output
 	switch -regexp -- $ttype {
 	    "^annotated$" {
 	    	if {![regexp {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} \
@@ -349,6 +358,26 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		# to view when a line is selected. Line has precedence over
 		# a selected node
 		set rev1 $rev
+		$w(aptext) configure -height 15
+		$w(ctext) configure -height $gc(rev.commentHeight) 
+		$w(aptext) configure -height 50
+		if {[winfo ismapped $w(ctext)]} {
+			set comments_mapped 1
+		} else {
+			set comments_mapped 0
+		}
+		if {$bindtype == "B1"} {
+			commentsWindow show
+			set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
+			filltext $w(ctext) $prs 1 "ctext"
+			set wht [winfo height $w(cframe)]
+			set cht [font metrics $gc(rev.fixedFont) -linespace]
+			set adjust [expr {int($wht) / $cht}]
+			#puts "cheight=($wht) char_height=($cht) adj=($adjust)"
+			if {($curLine > $adjust) && ($comments_mapped == 0)} {
+				$w(aptext) yview scroll $adjust units
+			}
+		}
 	    }
 	    "^.*_prs$" {
 		# walk backwards up the screen until we find a line with a 
@@ -1107,12 +1136,7 @@ proc highlightAncestry {rev1} \
 proc getLeftRev { {id {}} } \
 {
 	global	rev1 rev2 w gc fname dev_null file
-	global anchor
 
-	# destroy comment window if user is using mouse to click on the canvas
-	if {$id == ""} {
-		commentsWindow hide
-	}
 	unsetNodes
 	.menus.cset configure -state disabled -text "View Changeset "
 	set rev1 [getRev "old" $id]
@@ -1136,7 +1160,6 @@ proc getLeftRev { {id {}} } \
 		updateShortcutMenu
 	}
 	if {[info exists rev2]} { unset rev2 }
-	commentsWindow fill
 }
 
 proc getRightRev { {id {}} } \
@@ -1223,7 +1246,7 @@ proc getId {} \
 # Returns the revision number (without the -username portion)
 proc getRev {type {id {}} } \
 {
-	global w anchor
+	global w anchor merge
 
 	if {$id == ""} {
 		set id [getId]
@@ -1233,7 +1256,14 @@ proc getRev {type {id {}} } \
 	if {("$id" == "current") || ("$id" == "")} { return "" }
 	if {$id == "anchor"} {set id $anchor}
 	$w(graph) select clear
-	highlight $id $type 
+	set hl 1
+	catch {
+		set r [lindex [split $id -] 0]
+		if {$r eq $merge(G) || $r eq $merge(l) || $r eq $merge(r)} {
+			set hl 0
+		}
+	}
+	if {$hl} {highlight $id $type}
 	regsub -- {-.*} $id "" id
 	return $id
 }
@@ -1415,7 +1445,6 @@ proc csettool {} \
 proc diff2 {difftool {id {}} } \
 {
 	global file rev1 rev2 Opts dev_null bk_cset tmp_dir w
-	global anchor
 
 	if {![info exists rev1] || ($rev1 == "")} { return }
 	if {$difftool == 0} { getRightRev $id }
@@ -1860,9 +1889,8 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  fname app ttype sem comments_mapped chgdspec
+	global  fname app ttype sem chgdspec
 
-	set comments_mapped 0
 	set sem "start"
 	set ttype ""
 	set dspec \
@@ -2071,15 +2099,6 @@ proc widgets {} \
 			-command { .p.b.c.t yview } \
 			-background $gc(rev.scrollColor) \
 			-troughcolor $gc(rev.troughColor)
-		    button .p.b.c.dismiss -text "x" \
-	    		-width 2 \
-	    		-borderwidth 2 -relief groove \
-	    		-background $gc(rev.buttonColor) \
-	    		-command "commentsWindow hide" \
-	    		-highlightthickness 0 \
-	    		-padx 0 -pady 0 
-		    place .p.b.c.dismiss -in .p.b.c.t \
-	    		-relx 1.0 -rely 1.0 -anchor se
 
 		grid .p.b.c.yscroll -row 0 -column 1 -sticky ns
 		grid .p.b.c.xscroll -row 1 -column 0 -sticky ew
@@ -2252,18 +2271,8 @@ proc widgets {} \
 	$w(aptext) tag configure "oldTag" -background $gc(rev.oldColor)
 	$w(aptext) tag configure "select" -background $gc(rev.selectColor)
 
-	bindtags $w(aptext) {Bk TimedEvent .p.b.p.t . all}
+	bindtags $w(aptext) {Bk .p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
-
-	# If we aren't viewing the ChangeSet file, set up a timed event
-	# to show the comments window if the user clicks and holds for
-	# half a second or more
-	if {"$fname" != "ChangeSet"} {
-		timedEvent TimedEvent <ButtonPress-1> \
-		    <ButtonRelease-1> $gc(rev.doubleclick)  {
-			    commentsWindow show
-		    }
-	}
 
 	# standard text widget mouse button 1 events are overridden to
 	# do other things, which makes selection of text impossible.
@@ -2310,55 +2319,19 @@ proc widgets {} \
 
 proc commentsWindow {action} \
 {
-	global w comments_mapped gc anchor
-	global anchor file dspec dev_null
-
-	switch -exact $action {
-		hide {
-			catch {
-				pack forget $w(cframe)
-				set comments_mapped 0
-			}
-		}
-
-		show {
-
-			if {$comments_mapped} return
-			$w(ctext) configure -height $gc(rev.commentHeight) 
-			
-			pack configure $w(cframe) \
-			    -fill x \
-			    -expand false \
-			    -anchor n \
-			    -before $w(apframe)
-			pack configure $w(apframe) \
-			    -fill both \
-			    -expand true \
-			    -anchor n
-			
-			set foo [list after 1 commentsWindow adjust]
-			after cancel $foo
-			after idle $foo
-
-			set comments_mapped 1
-			commentsWindow fill
-		}
-
-		adjust {
-			set wht [winfo height $w(cframe)]
-			set cht [font metrics $gc(rev.fixedFont) -linespace]
-			set adjust [expr {int($wht) / $cht}]
-			$w(aptext) yview scroll $adjust units
-		}
-
-		fill {
-			if {!$comments_mapped || 
-			    ![info exists anchor] || 
-			    "$anchor" == ""} return
-			set cmd [list bk prs $dspec -hr$anchor $file]
-			set prs [open "| $cmd 2>$dev_null"]
-			filltext $w(ctext) $prs 1 "ctext"
-		}
+	global w comments_mapped
+	if {$action == "hide"} {
+		catch {pack forget $w(cframe); set comments_mapped 0}
+	} else {
+		pack configure $w(cframe) \
+		    -fill x \
+		    -expand false \
+		    -anchor n \
+		    -before $w(apframe)
+		pack configure $w(apframe) \
+		    -fill both \
+		    -expand true \
+		    -anchor n
 	}
 }
 
@@ -2502,7 +2475,6 @@ The file $lfname was last modified ($ago) ago."
 	} else {
 		if {[info exists diffpair(left)] && ($diffpair(left) != "")} {
 			set rev1 [lineOpts $diffpair(left)]
-			set anchor $rev1
 			highlightAncestry $diffpair(left)
 			centerRev $rev1
 			setAnchor $rev1
@@ -2522,14 +2494,6 @@ The file $lfname was last modified ($ago) ago."
 	return
 } ;#revtool
 
-proc init {} \
-{
-	global env
-
-	bk_init
-	set env(BK_YEAR4) 1
-}
-
 #
 # rev1	- left-side revision (or revision to warp to on startup)
 # rev2	- right-side revision
@@ -2537,7 +2501,7 @@ proc init {} \
 #
 proc arguments {} \
 {
-	global anchor rev1 rev2 dfile argv argc fname gca errorCode
+	global rev1 rev2 dfile argv argc fname gca errorCode
 	global searchString startingLineNumber
 
 	set rev1 ""
@@ -2565,9 +2529,9 @@ proc arguments {} \
 		    "^-d.*" {
 			set dfile [string range $arg 2 end]
 		    }
-		    {^\-@[0-9]+$} {
+		    {^\+[0-9]+$} {
 			    set startingLineNumber \
-				[string range $arg 2 end]
+				[string range $arg 1 end]
 		    }
 		    {^-/.+/?$} {
 			    # we're a bit forgiving and don't strictly
@@ -2814,41 +2778,6 @@ proc saveState {} \
 	}
 }
 
-# this will execute a script <time> milliseconds after the start
-# event has happened. If a stopEvent is given, the script will not
-# run if the event occurs before <time> milliseconds has elapsed.
-# 
-# usage:
-#    timedEvent pathName startEvent time script
-#    timedEvent pathName startEevent stopEvent time script
-#
-# Typically the start and stop events will be button or key press
-# and release events (eg: <ButtonPress-1> <ButtonRelease-1>).
-proc timedEvent {args} \
-{
-	if {[llength $args] == 4} {
-		set stopEvent ""
-		foreach {w startEvent time script} $args {break}
-
-	} elseif {[llength $args] == 5} {
-		foreach {w startEvent stopEvent time script} $args {break}
-	} else {
-		return -code error "wrong # args: should be\
-		    timedEvent pathName startEvent ?stopEvent? time script"
-	}
-
-	set genEvent [list event generate %W <<DoTimedEvent>> -when tail]
-	bind $w $startEvent "
-		[list bind $w <<DoTimedEvent>> $script];
-		[list after $time $genEvent]
-	"
-	if {[string length $stopEvent] > 0} {
-		bind $w $stopEvent "
-			[list bind $w <<DoTimedEvent>> {}];
-			after cancel $genEvent
-		"
-	}
-}
 proc updateShortcutMenu {} \
 {
 	global rev1 rev2 w anchor fname

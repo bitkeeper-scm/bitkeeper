@@ -272,8 +272,6 @@ proc reread {} \
 
 proc usage {} \
 {
-	global	argv0
-
 	puts "usage:\tbk difftool"
 	puts "\tbk difftool file"
 	puts "\tbk difftool -r<rev> file"
@@ -285,7 +283,7 @@ proc usage {} \
 
 proc getFiles {} \
 {
-	global argv0 argv argc dev_null lfile rfile tmp_dir unique
+	global argv argc dev_null lfile rfile tmp_dir unique
 	global gc tmps menu rev1 rev2 Diffs DiffsEnd
 
 	if {$argc > 3} { usage }

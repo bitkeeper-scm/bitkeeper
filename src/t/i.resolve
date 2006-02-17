@@ -83,7 +83,7 @@ echo "Resolve by choosing first the right addition, then the left."
 echo "Commit on the commandline but just quit out of citool without"
 echo "doing anything."
 echo "================================================================="
-bk resolve file < /dev/tty
+bk resolve -ifile < /dev/tty
 echo "================================================================="
 echo "Make sure citool shows only the file you resolved."
 echo "Quit without doing anything."
