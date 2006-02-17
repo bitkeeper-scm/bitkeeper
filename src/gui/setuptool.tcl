@@ -152,7 +152,6 @@ proc app_init {} \
 		keyword,expand1 0
 		keyword       "none"
 		license       ""
-		licenseType   "commercial"
 		licsign1      ""
 		licsign2      ""
 		licsign3      ""
@@ -171,7 +170,7 @@ proc app_init {} \
 	# some are allowed is simply that I haven't found the time to
 	# disable the particular widgets or steps for the other
 	# options.
-	set allowedRO {checkout repository autofix compression licenseType}
+	set allowedRO {checkout repository autofix compression}
 
 	# process command line args, which may also override some of
 	# the defaults. Note that -F and -S aren't presently

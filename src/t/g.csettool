@@ -92,3 +92,28 @@ if [ -s $OUT ] ; then
 fi
 echo OK
 
+echo $N Test revision given in command line..........................$NL
+bk guitest csettool -r1.1 >$OUT 2>&1 <<'EOF'
+	global currentCset
+	if {$currentCset ne "1.1"} {
+		puts "Gave -r1.1 in command line, \
+		    but currentCset is $currentCset"
+		exit 1
+	}
+	exit 0
+EOF
+if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
+if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
+echo OK
+
+echo $N Test no revision given in command line.......................$NL
+# since csettool expects -r<rev> and NOT "-r <rev>"
+# we pass it "-r 1.1" which it should take as no revision given
+bk guitest csettool -r 1.1 >$OUT 2>&1 <<'EOF'
+	puts stderr "CsetTool should have exited 1 with an error message \
+	    but it didn't"
+	exit 0
+EOF
+if [ $? -eq 0 ]; then echo failed; cat $OUT; exit 1; fi
+echo OK
+
