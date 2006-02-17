@@ -107,3 +107,71 @@ if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
 if [ -s $OUT ] ; then echo failed; cat $OUT ; exit 1 ; fi
 echo OK
 
+echo $N Annotations test.............................................$NL
+cd $HERE/project/src
+bk annotate -R -Aur file1 > WANT
+bk guitest revtool file1 > GOT 2>&1 <<'EOF'
+	global w
+	test_inputString "c"
+	# the end-2c is because there are two extra new lines in the text
+	# widget...
+	puts [$w(aptext) get 1.0 end-2c]
+	test_buttonPress "Quit"
+	after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Annotations with preferences.................................$NL
+cd $HERE/project/src
+bk annotate -R -Abdnpru file1 > WANT
+echo 'set gc(rev.annotate) "-Abdnpru"' > `bk dotbk`/config-gui
+bk guitest revtool file1 > GOT 2>&1 <<'EOF'
+	global w
+	test_inputString "c"
+	# the end-2c is because there are two extra new lines in the text
+	# widget...
+	puts [$w(aptext) get 1.0 end-2c]
+	test_buttonPress "Quit"
+	after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Annotations for tip..........................................$NL
+cd $HERE/project/src
+rm -f `bk dotbk`/config-gui
+bk get $Q -Aru -Pr+ file1 > WANT
+bk guitest revtool file1 > GOT 2>&1 <<'EOF'
+	global w
+	# get the TIP in a form that revtool likes
+	set TIP [exec bk prs -r+ -hnd:REV:-:P: file1]
+	prs $TIP
+	test_inputString "a"
+	# the end-2c is because there are two extra new lines in the text
+	# widget...
+	puts [$w(aptext) get 1.0 end-2c]
+	test_buttonPress "Quit"
+	after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Annotations for tip with custom format.......................$NL
+cd $HERE/project/src
+echo 'set gc(rev.annotate) "-Abdnpru"' > `bk dotbk`/config-gui
+bk get $Q -Abdnpru -Pr+ file1 > WANT
+bk guitest revtool file1 > GOT 2>&1 <<'EOF'
+	global w
+	# get the TIP in a form that revtool likes
+	set TIP [exec bk prs -r+ -hnd:REV:-:P: file1]
+	prs $TIP
+	test_inputString "a"
+	# the end-2c is because there are two extra new lines in the text
+	# widget...
+	puts [$w(aptext) get 1.0 end-2c]
+	test_buttonPress "Quit"
+	after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+cmpfiles WANT GOT
+echo OK

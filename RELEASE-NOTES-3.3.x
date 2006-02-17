@@ -64,9 +64,9 @@ bk get
     top delta for 'file' and exclude deltas such that its contents are
     identical to REV.
 
-bk get/sccscat/grep
+bk annotate/diffs/get/grep
     All commands which take options to enable annotations have had those 
-    options changed.  The commands are: grep, get, annotate, sccscat, diffs.
+    options changed.  The commands are: grep, get, annotate, diffs.
     The new interface is in general:
 	-A<opts>
 	-a<opts>
@@ -74,6 +74,11 @@ bk get/sccscat/grep
     and the second one is asking for program readable output.  The option
     argument specifies which annotations, see the get man page for a full
     list.
+
+bk sccscat
+    This command has been removed.  Before it was removed, the options
+    were changed as described above in the differences to annnotate.
+    The functionality is now accessed using bk annotate -R.
 
 bk grep
     bk grep has been rewritten, it mimics GNU grep for the most part.  
@@ -193,6 +198,11 @@ bk glob
 
 Misc
     BK_DATE_TIME_ZONE useful to force dates for import scripts
+
+GUIs
+    the rev.sccscat config variable has been renamed to rev.annotate .
+    This variable was used only to control the formatting when 'c' was
+    typed.  Now it affects both the 'c' page and the regular annotations.
 
 Performance fixes
     An optional clock_skew configuation option is now provided to

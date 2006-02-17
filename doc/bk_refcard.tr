@@ -684,9 +684,9 @@ bk annotate [\fIoptions\fP] [\fIfiles\fP]
 .LP
 Show an annotated listing
 .H2
-bk sccscat [\fIoptions\fP] [\fIfiles\fP]
+bk annotate -R [\fIoptions\fP] [\fIfiles\fP]
 .LP
-Show an annotated listing of \fBall\fR versions of a file
+Show a listing of \fBall\fR versions of a file
 .B2
 .\" ############################
 .\" #

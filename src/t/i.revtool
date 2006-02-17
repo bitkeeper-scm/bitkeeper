@@ -20,3 +20,13 @@ echo $N Revtool will be run in \`bk bin\' .............................$NL
 cd `bk bin`
 bk revtool
 echo OK
+
+echo $N Look at \`c\' page and tip version page for normal annotations.$NL
+bk revtool get.c
+echo OK
+
+echo $N Look at \`c\' page and tip version page for many annotations...$NL
+echo 'set gc(rev.annotate) "-Abdnpru"' > `bk dotbk`/config-gui
+bk revtool get.c
+rm `bk dotbk`/config-gui
+echo OK
