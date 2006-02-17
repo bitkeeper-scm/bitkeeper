@@ -1376,16 +1376,16 @@ proc sfile {} \
 }
 
 #
-# Displays the sccscat output in the lower text window. bound to <c>
+# Displays the annotate output in the lower text window. bound to <c>
 #
-proc sccscat {} \
+proc annotate {} \
 {
 	global file w ttype gc
 
 	busy 1
-	set fd [open "| bk sccscat $gc(rev.sccscat) \"$file\"" r]
+	set fd [open "| bk annotate -R $gc(rev.annotate) \"$file\"" r]
 	set ttype "annotated"
-	filltext $w(aptext) $fd 1 "No sccscat data"
+	filltext $w(aptext) $fd 1 "No annotate data"
 }
 
 
@@ -1396,7 +1396,7 @@ proc sccscat {} \
 #
 proc selectNode { type {val {}}} \
 {
-	global file dev_null rev1 rev2 Opts w ttype sem lock
+	global file dev_null rev1 rev2 w ttype sem lock gc
 
 	if {[info exists lock] && ($lock == "inprs")} {
 		set sem "show_sccslog"
@@ -1411,8 +1411,8 @@ proc selectNode { type {val {}}} \
 	busy 1
 	set base [file tail $file]
 	if {$base != "ChangeSet"} {
-		set get \
-		    [open "| bk get $Opts(get) -Pr$rev1 \"$file\" 2>$dev_null"]
+		set Aur $gc(rev.annotate)
+		set get [open "| bk get $Aur -Pr$rev1 \"$file\" 2>$dev_null"]
 		set ttype "annotated"
 		filltext $w(aptext) $get 1 "No annotation"
 		return
@@ -1441,7 +1441,7 @@ proc csettool {} \
 
 proc diff2 {difftool {id {}} } \
 {
-	global file rev1 rev2 Opts dev_null bk_cset tmp_dir w
+	global file rev1 rev2 dev_null bk_cset tmp_dir w
 
 	if {![info exists rev1] || ($rev1 == "")} { return }
 	if {$difftool == 0} { getRightRev $id }
@@ -1463,12 +1463,13 @@ proc diff2 {difftool {id {}} } \
 # Display the difference text between two revisions. 
 proc displayDiff {rev1 rev2} \
 {
-	global file w tmp_dir dev_null Opts ttype
+	global file w tmp_dir dev_null Opts ttype gc
 
 	set r1 [file join $tmp_dir $rev1-[pid]]
-	catch { exec bk get $Opts(get) -kPr$rev1 $file >$r1}
+	set Aur $gc(rev.annotate)
+	catch { exec bk get $Aur -kPr$rev1 $file >$r1}
 	set r2 [file join $tmp_dir $rev2-[pid]]
-	catch {exec bk get $Opts(get) -kPr$rev2 $file >$r2}
+	catch {exec bk get $Aur -kPr$rev2 $file >$r2}
 	set diffs [open "| diff $Opts(diff) $r1 $r2"]
 	set l 3
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
@@ -1899,7 +1900,6 @@ proc widgets {} \
 	set chgdspec \
 "-d\$if(:DPN:!=ChangeSet){  }:DPN:\n    :I: :Dy:/:Dm:/:Dd: :T: :P:\$if(:HT:){@:HT:} +:LI: -:LD: \n\$each(:C:){    (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
 	set Opts(diff) "-u"
-	set Opts(get) "-Aur"
 	set Opts(line) "-u -t"
 	set yspace 20
 	# graph		- graph canvas window
@@ -2158,7 +2158,7 @@ proc widgets {} \
 	bind $w(graph) <Button-2>	{ history; break }
 	bind $w(graph) <$gc(rev.quit)>	"done"
 	bind $w(graph) <s>		"sfile"
-	bind $w(graph) <c>		"sccscat"
+	bind $w(graph) <c>		"annotate"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
 	bind $w(graph) <Next>		"$w(aptext) yview scroll  1 pages"
 	bind $w(graph) <space>		"$w(aptext) yview scroll  1 pages"

@@ -152,7 +152,7 @@ proc getConfig {prog} \
 	# XXX: not documented yet
 	set _d(rev.savehistory) 5	  ;# Max # of files to save in file list
 	set _d(rev.hlineColor) $WHITE	;# Color of highlight lines XXX:NOTDOC
-	set _d(rev.sccscat) "-Aur"	  ;# Options given to sccscat
+	set _d(rev.annotate) "-Aur"	  ;# Options given to annotate
 
 	set _d(setup.stripeColor) $BLUE ;# color of horizontal separator
 	set _d(setup.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
