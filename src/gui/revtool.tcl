@@ -1133,7 +1133,6 @@ proc getLeftRev { {id {}} } \
 			    -text "View Changeset "
 		}
 		.menus.difftool configure -state normal
-		updateShortcutMenu
 	}
 	if {[info exists rev2]} { unset rev2 }
 	commentsWindow fill
@@ -1167,7 +1166,6 @@ proc getRightRev { {id {}} } \
 
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
-		updateShortcutMenu
 		catch {exec bk prs -hr$rev2 -d:CSETKEY: $file} info
 		if {$info == ""} {
 			.menus.cset configure \
@@ -1200,7 +1198,6 @@ proc unsetNodes {} \
 	set anchor ""
 	$w(graph) delete anchor new old
 	.menus.difftool configure -state disabled
-	updateShortcutMenu
 	highlightAncestry ""
 }
 
@@ -1887,7 +1884,6 @@ proc widgets {} \
 	set w(ctext)	.p.b.c.t
 	set w(apframe)	.p.b.p
 	set w(aptext)	.p.b.p.t
-	set w(shortcutMenu) .menus.bk.bkMenu
 	set stacked 1
 
 	getConfig "rev"
@@ -1992,22 +1988,6 @@ proc widgets {} \
 		    pack .menus.quit .menus.help .menus.difftool \
 			.menus.mb .menus.cset .menus.fmb -side left -fill y
 	    }
-
-	    # shortcut menu
-	    menubutton .menus.bk \
-	        -font $gc(rev.buttonFont) \
-		-bg $gc(rev.buttonColor) \
-	        -borderwidth 1 \
-	        -relief raised \
-	    	-indicatoron 1 \
-	        -text "Shortcuts" \
-	        -menu $w(shortcutMenu)
-	
-	    menu $w(shortcutMenu) -bd 1 -relief raised \
-	        -title "Revtool shortcuts menu" \
-	        -postcommand updateShortcutMenu
-
-	    pack .menus.bk -side left -after .menus.help
 
 	frame .p
 	    frame .p.top -borderwidth 1 -relief sunken
@@ -2272,33 +2252,6 @@ proc widgets {} \
 	bind Bk <Shift-Button-1>	"[bind Text <Button-1>];break"
 	bind Bk <Shift-B1-Motion>	"[bind Text <B1-Motion>]"
 	bind Bk <ButtonRelease-1>	"[bind Text <ButtonRelease-1>]"
-
-	# populate shortcut menu; this needs to be done after
-	# the bindings are created, as we use the bindings 
-	# themselves to define the menu items
-	populateShortcutMenu .menus.bk.bkMenu rev {
-		$w(graph) <d> d
-			{Diff parent or selected nodes}
-		$w(graph) <h> h
-			{Show all revision history comments}
-		$w(graph) <t> t
-			{Show csets that have tags}
-		$w(graph) <c> c
-			{Show annotated listing of all versions}
-		$w(graph) <s> s
-			{Show raw SCCS file}
-		-- -- -- --
-		.	<question> ? 
-			{Reverse search}
-		. 	<slash> / 
-			{Forward search}
-		. 	<p> p 
-			{Search for previous occurance}
-		. 	<n> n 
-			{Search for next occurance}
-		-- -- -- --
-		$w(graph) _quit_ {} {Quit revtool}
-	}
 		
 	# In the search window, don't listen to "all" tags. (This is now done
 	# in the search.tcl lib) <remove if all goes well> -ask
@@ -2517,7 +2470,6 @@ The file $lfname was last modified ($ago) ago."
 	set search(prompt) "Welcome"
 	focus $w(graph)
 	currentMenu
-	updateShortcutMenu
 	busy 0
 	return
 } ;#revtool
@@ -2847,42 +2799,6 @@ proc timedEvent {args} \
 			[list bind $w <<DoTimedEvent>> {}];
 			after cancel $genEvent
 		"
-	}
-}
-proc updateShortcutMenu {} \
-{
-	global rev1 rev2 w anchor fname
-
-	set changeset [expr {"$fname" == "ChangeSet"}]
-	set first 0
-	if {[$w(shortcutMenu) cget -tearoff]} {
-		set first 1
-	}
-
-	if {[info exists rev2] && "$rev2" != ""} {
-		if {$changeset} {
-			$w(shortcutMenu) entryconfigure $first \
-			    -label "Show history between selected nodes" \
-			    -state normal
-		} else {
-			$w(shortcutMenu) entryconfigure $first \
-			    -label "Diff selected nodes" \
-			    -state normal
-		}
-	} else {
-		if {$changeset} {
-			$w(shortcutMenu) entryconfigure $first \
-			    -label "Show history of node and its parent" \
-			    -state normal
-		} else {
-			$w(shortcutMenu) entryconfigure $first \
-			    -label "Diff node against parent" \
-			    -state normal
-		}
-		if {![info exists anchor] || "$anchor" == ""} {
-			$w(shortcutMenu) entryconfigure $first \
-			    -state disabled
-		}
 	}
 }
 

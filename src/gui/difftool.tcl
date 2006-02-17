@@ -55,10 +55,6 @@ proc widgets {} \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(diff.buttonFont) -text "Help" \
 		-command { exec bk helptool difftool & }
-	    menubutton .menu.shortcuts -bg $gc(diff.buttonColor) \
-		-pady $gc(py) -padx $gc(px) -borderwid 1 -relief raised \
-		-font $gc(diff.buttonFont) -text "Shortcuts" \
-		-menu .menu.shortcuts.menu -indicatoron 1
 	    button .menu.dot -bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(diff.buttonFont) -text "Current diff" \
@@ -89,13 +85,8 @@ proc widgets {} \
                 -borderwid $gc(bw) -text "Files" -state normal \
                 -menu .menu.fmb.menu -indicatoron 1
 
-	    menu .menu.shortcuts.menu \
-	        -title "Difftool shortcuts menu" \
-	        -borderwidth 1
-
 	    pack .menu.quit -side left -fill y
 	    pack .menu.help -side left -fill y
-	    pack .menu.shortcuts -side left -fill y
 	    pack .menu.discard -side left -fill y
 	    pack .menu.revtool -side left -fill y
 	    pack .menu.reread -side left -fill y
@@ -127,57 +118,6 @@ proc widgets {} \
 	search_keyboard_bindings
 	searchreset
 	. configure -background $gc(BG)
-
-	# populate shortcut menu; this needs to be done after
-	# the bindings are created, as we use the bindings 
-	# themselves to define the menu items
-	populateShortcutMenu .menu.shortcuts.menu diff {
-		all <Control-p> 	{Control-p}
-			{Go to previous file}
-		all <Control-n>	{Control-n}
-			{Go to next file}
-		-- --  -- --
-		all <p>		{p}
-			{Go to previous diff}
-		all <space>		{n or space}
-			{Go to next diff}
-		all <period> 		{.}
-			{Center current diff on screen}
-		-- --  -- --
-		all <Home>		{Home}
-		        {Scroll to the top}
-		all <End>		{End}
-			{Scroll to the bottom}
-		all <Prior>		{PageUp}
-			{Scroll up 1 screen}
-		all <Next>		{PageDown}
-			{Scroll down 1 screen}
-		all <Up>		{Up Arrow}
-			{Scroll up 1 line}
-		all <Down>		{Down Arrow}
-			{Scroll down 1 line}
-		all <Right>		{Right Arrow}
-			{Scroll to the right}
-		all <Left>		{Left Arrow}
-			{Scroll to the left}
-		-- --  -- --
-		.	<question> ? 
-			{Reverse search}
-		. 	<slash> / 
-			{Forward search}
-		all 	<p> p 
-			{Search for previous occurance}
-		all 	<n> n 
-			{Search for next occurance}
-		-- --  -- --
-		all  _quit_ {} {Quit}
-	}
-	
-	# Whenever notification is sent that the current diff has
-	# changed, the shortcut menu needs to be updated. 
-	bind . <<DiffChanged>> {
-		updateButtons
-	}
 }
 
 # Set up keyboard accelerators.
@@ -714,27 +654,6 @@ proc revtool {} \
 	}
 	lappend command $file
 	eval exec $command &
-}
-
-proc updateButtons {} \
-{
-	global menu
-
-	if {$menu(selected) == 1} {
-		.menu.shortcuts.menu entryconfigure "Go to previous file" \
-		    -state disabled
-	} else {
-		.menu.shortcuts.menu entryconfigure "Go to previous file" \
-		    -state normal
-	}
-
-	if {$menu(selected) == $menu(max)} {
-		.menu.shortcuts.menu entryconfigure "Go to next file" \
-		    -state disabled
-	} else {
-		.menu.shortcuts.menu entryconfigure "Go to next file" \
-		    -state normal
-	}
 }
 
 # the purpose of this proc is merely to load the persistent state;

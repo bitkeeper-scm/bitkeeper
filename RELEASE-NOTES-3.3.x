@@ -47,10 +47,6 @@ bk changes
     -d<dspec> option to generate a stable, easy to parse output.
     (XXX provide original DSPEC here?)
 
-bk citool/csettool/difftool/revtool
-    Added a series of keyboard shortcuts and a new menu to show them
-    to the user.
-
 bk diffs
     diffs -C is gone; use diffs -r@REV instead.
 
