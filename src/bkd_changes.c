@@ -12,8 +12,10 @@ cmd_chg_part1(int ac, char **av)
 	if (ac == 2 && streq(av[1], "-K")) return (cmd_synckeys(ac, av));
 
 	setmode(0, _O_BINARY);
-	sendServerInfoBlock(0);
-
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	unless(isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
@@ -50,7 +52,10 @@ cmd_chg_part2(int ac, char **av)
 	FILE	*f;
 
 	setmode(0, _O_BINARY);
-	sendServerInfoBlock(0);
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {

@@ -35,9 +35,9 @@ bkversion(FILE *f)
 	char	*key;
 	char	buf[MAXLINE];
 
-	(void)lease_bkl(0, 0);	/* get a lease, but don't fail */
 	buf[0] = 0;
-	if (key = lease_latestbkl()) {
+	/* get a lease, but don't fail */
+	if (key = lease_bkl(0, 0)) {
 		license_info(key, buf+1, 0);
 		if (buf[1]) buf[0] = '/';
 		free(key);

@@ -14,7 +14,7 @@ cmd_push_part1(int ac, char **av)
 	char	*lktmp;
 	int	ret;
 
-	while ((c = getopt(ac, av, "denz|")) != -1) {
+	while ((c = getopt(ac, av, "dnz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -28,8 +28,10 @@ cmd_push_part1(int ac, char **av)
 
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock(0);
-
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */
 		drain();
@@ -115,7 +117,7 @@ cmd_push_part2(int ac, char **av)
 	static	char *takepatch[5] = { "bk", "takepatch"};
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 
-	while ((c = getopt(ac, av, "deGnqz|")) != -1) {
+	while ((c = getopt(ac, av, "dGnqz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -136,7 +138,10 @@ cmd_push_part2(int ac, char **av)
 		goto done;
 	}
 
-	sendServerInfoBlock(0);
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@ABORT@")) {

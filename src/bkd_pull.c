@@ -37,7 +37,10 @@ cmd_pull_part1(int ac, char **av)
 	if (av[1] && strneq(av[1], "-r", 2)) {
 		probekey_av[2] = av[1];
 	}
-	sendServerInfoBlock(0);
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
@@ -107,7 +110,10 @@ cmd_pull_part2(int ac, char **av)
 		}
 	}
 
-	sendServerInfoBlock(0);
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	s = sccs_csetInit(0);
 	assert(s && HASGRAPH(s));
 	if (rev) {

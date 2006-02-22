@@ -16,17 +16,10 @@ cmd_clone(int ac, char **av)
 	int	gzip = 0, delay = -1;
 	char 	*t, *p, *rev = 0;
 
-	/*
-	 * If BK_REMOTE_PROTOCOL is not defined,
-	 * assumes bkd protocol version 1.2
-	 */
-	p = getenv("BK_REMOTE_PROTOCOL");
-	if (p) {
-		sendServerInfoBlock(0);
-	} else {
-		out("ERROR-Clone is not supported in compatibility mode.\n");
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
 	}
-
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
@@ -69,13 +62,12 @@ cmd_clone(int ac, char **av)
 				out(rev);
 				out(" doesn't exist\n");
 				drain();
-				exit(1);
+				return (1);
 			}
 		}
 	}
-	if (!p) {
-		out("OK-read lock granted\n");
-	} else if (streq(p, BKD_VERSION)) {
+	p = getenv("BK_REMOTE_PROTOCOL");
+	if (p && streq(p, BKD_VERSION)) {
 		out("@OK@\n");
 	} else {
 		out("ERROR-protocol version mismatch, want: ");
@@ -84,7 +76,7 @@ cmd_clone(int ac, char **av)
 		out(p ? p : "");
 		out("\n");
 		drain();
-		exit(1);
+		return (1);
 	}
 	if (rev) {
 		safe_putenv("BK_CSETS=1.0..%s", rev);

@@ -807,12 +807,18 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		}
 	}
 	unless (flags & SENDENV_NOLICENSE) {
-		/*
-		 * Send information on the current license.
-		 */
-		if (lic = lease_latestbkl()) {
-			fprintf(f, "putenv BK_LICENSE=%s\n", lic);
-			free(lic);
+		if (flags & SENDENV_NOREPO) {
+			/*
+			 * Send information on the current license, but
+			 * don't fail if we can't find a license
+			 */
+			if (lic = lease_bkl(0, 0)) {
+				fprintf(f, "putenv BK_LICENSE=%s\n", lic);
+				free(lic);
+			}
+		} else {
+			/* Require a license or die */
+			fprintf(f, "putenv BK_LICENSE=%s\n", proj_bkl(0));
 		}
 	}
 	/*
@@ -842,6 +848,15 @@ getServerInfoBlock(remote *r)
 			break;
 		}
 		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
+
+		if (strneq(buf, "ERROR-", 6)) {
+			if (streq(buf+6, "no-bkd-lease")) {
+				notice("bkd-err-nolease", 0, "-e");
+			} else {
+				notice("bkd-err-other", buf+6, "-e");
+			}
+			return (1);
+		}
 		if (strneq(buf, "PROTOCOL", 8)) {
 			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
@@ -878,13 +893,21 @@ getServerInfoBlock(remote *r)
  * NOTE: When editing this function be sure to make the same changes in
  *       clone.c:in_trigger()
  */
-void
+int
 sendServerInfoBlock(int is_rclone)
 {
-	char	buf[MAXPATH];
 	char	*repoid, *p;
+	char	buf[MAXPATH];
 
 	out("@SERVER INFO@\n");
+	unless (is_rclone) {
+		if (p = lease_bkl(0, 0)) {
+			free(p);
+		} else {
+			out("ERROR-no-bkd-lease\n");
+			return (1);
+		}
+	}
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
 	out(buf);
 
@@ -935,6 +958,7 @@ sendServerInfoBlock(int is_rclone)
 		out(p);
 	}
 	out("\n@END@\n");
+	return (0);
 }
 
 private int

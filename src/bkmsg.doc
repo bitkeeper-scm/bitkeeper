@@ -811,6 +811,16 @@ reached the usage limit allowed for this license.  To continue
 your work you will need a commercial license.  Please contact  
 sales@bitmover.com
 $
+#bkd-err-nolease
+The remote BitKeeper daemon was unable to obtain a valid license for
+this operation.
+$
+#bkd-err-other
+The remote BitKeeper daemon for this connection had an error.
+The error code returned from BitMover was:
+	#BKARG#
+Please send email to support@bitmover.com for assistance.
+$
 #gui-support-submitter
 Please enter your valid email address here so we can reach you
 to provide support.

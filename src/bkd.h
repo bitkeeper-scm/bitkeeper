@@ -131,7 +131,7 @@ int	bkd_connect(remote *r, int compress, int verbose);
 void	disconnect(remote *r, int how);
 void	drain(void);
 char	**getClientInfoBlock(void);
-void	sendServerInfoBlock(int);
+int	sendServerInfoBlock(int);
 int	bk_hasFeature(char *f);
 int	bkd_hasFeature(char *f);
 int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
@@ -140,7 +140,7 @@ void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
 int	getServerInfoBlock(remote *r);
 
-#define	SENDENV_NOREPO	   1 /* in clone, don't send info from this repo */
+#define	SENDENV_NOREPO	   1 /* don't assume we are called from a repo */
 #define	SENDENV_NOLICENSE  2 /* don't send BK_LICENSE, in lease code */
 void	sendEnv(FILE *f, char **envVar, remote *r, u32 flags);
 

@@ -456,13 +456,6 @@ cmdlog_start(char **av, int httpMode)
 	 * we enter part 2, with the up-to-date pid.
 	 */
 	if (httpMode) {
-		if (strneq(av[0], "remote push part", 16)) {
-			int	meta = 0;
-			for (i = 1; av[i]; i++) {
-				if (streq("-e", av[i])) meta = 1;
-			}
-			if (meta) cmdlog_flags &= ~(CMD_WRLOCK|CMD_WRUNLOCK);
-		}
 		if (cmdlog_flags & CMD_WRLOCK) cmdlog_flags |= CMD_WRUNLOCK;
 		if (cmdlog_flags & CMD_WRUNLOCK) cmdlog_flags |= CMD_WRLOCK;
 		if (cmdlog_flags & CMD_RDLOCK) cmdlog_flags |= CMD_RDUNLOCK;

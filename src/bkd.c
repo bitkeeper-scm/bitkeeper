@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "logging.h"
 #include "tomcrypt/mycrypt.h"
 #include "tomcrypt/randseed.h"
 
@@ -224,6 +225,11 @@ do_cmds(void)
 		signal(SIGALRM, exit);
 		alarm(Opts.alarm);
 	}
+	/* Don't allow existing env to be used */
+	putenv("BK_AUTH_HMAC=BAD");
+	putenv("BK_LICENSE=");
+	lease_inbkd();		/* enable bkd-mode in lease code */
+
 	httpMode = Opts.http_hdr_out;
 	while (getav(&ac, &av, &httpMode)) {
 		if (debug) {

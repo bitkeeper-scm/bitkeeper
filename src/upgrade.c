@@ -79,7 +79,7 @@ usage:			system("bk help -s upgrade");
 		}
 		want_codeline = strndup(bk_vers, p - bk_vers);
 	}
-	if (key = lease_latestbkl()) {
+	if (key = lease_bkl(0, 0)) {
 		free(key);
 	} else {
 		notice("upgrade-require-lease", 0, "-e");
