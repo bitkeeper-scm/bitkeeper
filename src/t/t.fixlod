@@ -64,6 +64,7 @@ echo OK
 
 # use tar because clone will not work since it has illegal structures
 cd $HERE/project
+rm BitKeeper/log/repo_id
 tar cf ../save.tar .
 
 echo $N Fix version 1 LOD structures ................................$NL

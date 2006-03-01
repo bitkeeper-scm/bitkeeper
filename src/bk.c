@@ -436,6 +436,8 @@ void
 cmdlog_start(char **av, int httpMode)
 {
 	int	i, len, do_lock = 1;
+	int	is_remote = strneq("remote ", av[0], 7);
+	char	*repo1, *repo2;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -488,9 +490,19 @@ cmdlog_start(char **av, int httpMode)
 		}
 	}
 
+	if (is_remote && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
+	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = repo_id())) {
+		i = streq(repo1, repo2);
+		free(repo2);
+		if (i) {
+			out("ERROR-can't connect to same repo_id\n");
+			drain();
+			exit(1);
+		}
+	}
 	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
 		if (i = repository_wrlock()) {
-			unless (strneq("remote ", av[0], 7) || !proj_root(0)) {
+			unless (is_remote || !proj_root(0)) {
 				repository_lockers(0);
 			}
 			switch (i) {
@@ -513,13 +525,13 @@ cmdlog_start(char **av, int httpMode)
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (strneq("remote ", av[0], 7)) drain();
+			if (is_remote) drain();
 			exit(1);
 		}
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		if (i = repository_rdlock()) {
-			unless (strneq("remote ", av[0], 7) || !proj_root(0)) {
+			unless (is_remote || !proj_root(0)) {
 				repository_lockers(0);
 			}
 			switch (i) {
@@ -539,12 +551,12 @@ cmdlog_start(char **av, int httpMode)
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (strneq("remote ", av[0], 7)) drain();
+			if (is_remote) drain();
 			exit(1);
 		}
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
-	if (strneq("remote ", av[0], 7)) {
+	if (is_remote) {
 		char	*repoid = getenv("BK_REPO_ID");
 		if (repoid) cmdlog_addnote("rmtc", repoid);
 	}

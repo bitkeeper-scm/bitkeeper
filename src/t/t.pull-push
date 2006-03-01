@@ -422,3 +422,27 @@ grep -q "Cannot resolve host 'badhostname'." ERR || {
 	exit 1
 }
 echo OK
+
+echo $N Try pulling from myself .....................................$NL
+bk pull $Q . 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "can't connect to same repo_id" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Try pushing to myself .......................................$NL
+bk push $Q . 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "can't connect to same repo_id" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK

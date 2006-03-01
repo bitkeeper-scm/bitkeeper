@@ -76,6 +76,7 @@ cores
 bk -r check -a
 echo $N Save a tarball of the repository ............................$NL
 cd $HERE
+rm -f project/BitKeeper/log/repo_id
 tar cf SAVE project 2> /dev/null
 echo OK
 
