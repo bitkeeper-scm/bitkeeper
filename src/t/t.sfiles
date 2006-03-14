@@ -25,6 +25,7 @@ bk delta $Q -i foo s.foo bar/s.foo bar/blech/s.foo
 touch SCCS/c.gone
 touch "SCCS/c.gone${CFS}1.1"
 touch "SCCS/c.gone${CFS}1.2"
+touch bar/SCCS/c.s.foo
 trap '' 0
 set +e
 echo OK
@@ -108,6 +109,7 @@ echo OK
 bk commit $Q -yblah - <SFILES
 bk co $Q -l s.foo bar/s.foo
 ls >> bar/s.foo
+echo hi > bar/SCCS/c.s.foo
 echo $N Check the list of changed files .............................$NL
 bk sfiles -c | sort > SFILES
 sort <<EOF > LIST
@@ -156,6 +158,62 @@ bar/blech/SCCS/s.s.foo
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
+echo OK
+
+echo $N Check sfiles -e .............................................$NL
+cat <<EOF > LIST
+-----d- .
+-----D- BitKeeper
+-----d- bar
+-----D- BitKeeper/deleted
+-----d- BitKeeper/etc
+-----D- BitKeeper/log
+-----D- BitKeeper/tmp
+u------ SCCS/s.ChangeSet
+u------ SCCS/s.foo
+l--G--- SCCS/s.s.foo
+jjjjjjj SCCS/c.gone
+jjjjjjj SCCS/c.gone@1.1
+jjjjjjj SCCS/c.gone@1.2
+xxxxxxx LIST
+xxxxxxx .sfiles
+xxxxxxx SFILES
+u--G--- BitKeeper/etc/SCCS/s.config
+u--G--- BitKeeper/etc/SCCS/s.ignore
+-----d- bar/blech
+l--G--y bar/SCCS/s.s.foo
+u------ bar/blech/SCCS/s.s.foo
+EOF
+bk sfiles -e > SFILES || exit 1
+cmpfiles LIST SFILES
+echo OK
+
+echo $N Check sfiles -E .............................................$NL
+cat <<EOF > LIST
+-----d- .
+-----D- BitKeeper
+-----d- bar
+-----D- BitKeeper/deleted
+-----d- BitKeeper/etc
+-----D- BitKeeper/log
+-----D- BitKeeper/tmp
+u------ SCCS/s.ChangeSet
+u------ SCCS/s.foo
+l--G--- SCCS/s.s.foo
+jjjjjjj SCCS/c.gone
+jjjjjjj SCCS/c.gone@1.1
+jjjjjjj SCCS/c.gone@1.2
+xxxxxxx LIST
+xxxxxxx .sfiles
+xxxxxxx SFILES
+u--G--- BitKeeper/etc/SCCS/s.config
+u--G--- BitKeeper/etc/SCCS/s.ignore
+-----d- bar/blech
+lc-G--y bar/SCCS/s.s.foo
+u------ bar/blech/SCCS/s.s.foo
+EOF
+bk sfiles -E > SFILES || exit 1
+cmpfiles LIST SFILES
 echo OK
 
 echo $N Check the list of clean, unlocked files .....................$NL
@@ -408,22 +466,22 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 fi
 
-echo $N Test sfile -cGjlnvxp with s.file w no pathname ..............$NL
+echo $N Test sfile -cGjlnvxyp with s.file w no pathname .............$NL
 # create a s.file which has no pathname
 perl -ne 'print unless /^.cP/' SCCS/s.foo  | bk undos > SCCS/s.bad
 bk admin -z  SCCS/s.bad
 rm -f SCCS/?.impostor
 sort > $HERE/sfiles.ref <<EOF
-jjjjjj SCCS/OLD-s.foo
-jjjjjj SCCS/c.gone
-jjjjjj SCCS/c.gone@1.1
-jjjjjj SCCS/c.gone@1.2
-xxxxxx SFILES
-lc-G-- BitKeeper/etc/SCCS/s.ignore
-u---n- SCCS/s.bad
-u--G-- BitKeeper/etc/SCCS/s.config
+jjjjjjj SCCS/OLD-s.foo
+jjjjjjj SCCS/c.gone
+jjjjjjj SCCS/c.gone@1.1
+jjjjjjj SCCS/c.gone@1.2
+xxxxxxx SFILES
+lc-G--- BitKeeper/etc/SCCS/s.ignore
+u---n-- SCCS/s.bad
+u--G--- BitKeeper/etc/SCCS/s.config
 EOF
-bk sfiles -cGjlnvxp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
+bk sfiles -cGjlnvxyp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
 cmp -s $HERE/sfiles.ref $HERE/sfiles.out || {
 	echo failed 2
 	sdiff -w80 $HERE/sfiles.ref $HERE/sfiles.out
@@ -431,28 +489,28 @@ cmp -s $HERE/sfiles.ref $HERE/sfiles.out || {
 }
 echo OK
 
-echo $N Test sfile -cdDGjlnvxp with s.file w no pathname ............$NL
+echo $N Test sfile -cdDGjlnvxyp with s.file w no pathname ...........$NL
 sort > $HERE/sfiles.ref <<EOF
-jjjjjj SCCS/OLD-s.foo
-jjjjjj SCCS/c.gone
-jjjjjj SCCS/c.gone@1.1
-jjjjjj SCCS/c.gone@1.2
-xxxxxx SFILES
-lc-G-- BitKeeper/etc/SCCS/s.ignore
-u--G-- BitKeeper/etc/SCCS/s.config
-u---n- SCCS/s.bad
------D BitKeeper
------D BitKeeper/deleted
------D BitKeeper/log
------D BitKeeper/tmp
------D bar/not
------D bar/notquite
------d .
------d BitKeeper/etc
------d bar
------d bar/blech
+jjjjjjj SCCS/OLD-s.foo
+jjjjjjj SCCS/c.gone
+jjjjjjj SCCS/c.gone@1.1
+jjjjjjj SCCS/c.gone@1.2
+xxxxxxx SFILES
+lc-G--- BitKeeper/etc/SCCS/s.ignore
+u--G--- BitKeeper/etc/SCCS/s.config
+u---n-- SCCS/s.bad
+-----D- BitKeeper
+-----D- BitKeeper/deleted
+-----D- BitKeeper/log
+-----D- BitKeeper/tmp
+-----D- bar/not
+-----D- bar/notquite
+-----d- .
+-----d- BitKeeper/etc
+-----d- bar
+-----d- bar/blech
 EOF
-bk sfiles -cdDGjlnvxp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
+bk sfiles -cdDGjlnvxyp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
 cmp -s $HERE/sfiles.ref $HERE/sfiles.out || {
 	echo failed 2
 	sdiff -w80 $HERE/sfiles.ref $HERE/sfiles.out
@@ -462,17 +520,17 @@ echo OK
 
 echo $N Test limiting sfiles to one level ...........................$NL
 sort > $HERE/sfiles.ref <<EOF
-jjjjjj SCCS/OLD-s.foo
-jjjjjj SCCS/c.gone
-jjjjjj SCCS/c.gone@1.1
-jjjjjj SCCS/c.gone@1.2
-xxxxxx SFILES
-u---n- SCCS/s.bad
------D BitKeeper
------d .
------d bar
+jjjjjjj SCCS/OLD-s.foo
+jjjjjjj SCCS/c.gone
+jjjjjjj SCCS/c.gone@1.1
+jjjjjjj SCCS/c.gone@1.2
+xxxxxxx SFILES
+u---n-- SCCS/s.bad
+-----D- BitKeeper
+-----d- .
+-----d- bar
 EOF
-bk sfiles -1cdDjlnvxp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
+bk sfiles -1cdDjlnvxyp | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
 cmp -s $HERE/sfiles.ref $HERE/sfiles.out || {
 	echo failed 2
 	sdiff -w80 $HERE/sfiles.ref $HERE/sfiles.out
@@ -510,7 +568,7 @@ bk sfiles -gU | grep -q BitKeeper/triggers/pre-commit || {
 }
 echo OK
 
-echo $N Test sfiles -c outside of repo .............................$NL
+echo $N Test sfiles -c outside of repo ..............................$NL
 cd $HERE
 mkdir -p foo/SCCS
 cd foo
@@ -523,4 +581,15 @@ cat <<EOF > want
 file
 EOF
 cmpfiles out want
+echo OK
+
+echo $N Test explicit listing of the -c files .......................$NL
+cd $HERE/project
+touch bar/SCCS/c.s.foo
+bk sfiles -eg | grep 'bar/s\.foo' > GREP
+bk sfiles -eg bar/s.foo > PARAM
+checkfiles GREP PARAM
+echo bar/s.foo > WANT
+bk sfiles -gy bar/s.foo > GOT
+checkfiles WANT GOT
 echo OK

@@ -111,12 +111,13 @@ bk sfiles
 
     The changed interfaces are:
     Old		New	Meaning
-    -e		-e	-dDGjluvx (adds -d -D -G)
-    -E		-E	-cdDGjlnpuvx (adds -d -D -G)
+    -e		-e	-dDGjluvxy (adds -d -D -G -y)
+    -E		-E	-cdDGjlnpuvxy (adds -d -D -G -y)
     <none>	-G	list files which are checked out
+    <none>	-y	list files with saved comments
     -S		-S	now lists -d/-D/-G summaries as well
-    -v		-v	now a 6 column listing instead of 4 with slots for
-    			-l/-u/-c/-p/-G/-n/-d/-D/-j/-x (see man page)
+    -v		-v	now a 7 column listing instead of 4 with slots for
+    			-l/-u,-c,-p,-G,-n,-d/-D,-y && -j/-x (see man page)
     -C		-pC	remove undocumented alias
     -A		-pA	remove undocumented alias
 
