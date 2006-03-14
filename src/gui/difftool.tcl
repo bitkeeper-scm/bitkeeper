@@ -243,7 +243,8 @@ proc getFiles {} \
 		# lc---- Makefile
 		# lc---- annotate.c
 		while {[gets $fd str] >= 0} {
-			set fname [string range $str 7 [string length $str]]
+			set index [expr {1 + [string first " " $str]}]
+			set fname [string range $str $index end]
 			#puts "fname=($fname)"
 			set rfile $fname
 			set lfile [getRev $rfile "+" 1]

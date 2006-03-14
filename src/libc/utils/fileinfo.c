@@ -31,21 +31,21 @@ isdir(char *s)
 }
 
 /*
- * Ture if s a dir or a symlink to a dir
+ * True if it is a dir or a symlink to a dir
  */
 #if WIN32
 int
-isEffectiveDir(char *s)
+isdir_follow(char *s)
 {
 	return (isdir(s));
 }
 #else
 int
-isEffectiveDir(char *s)
+isdir_follow(char *s)
 {
 	struct	stat sbuf;
 
-	if (stat(s, &sbuf) == -1) return 0; /* use stat() instead of lstat() */
+	if (stat(s, &sbuf)) return (0); /* follow symlinks to dirs */
 	return (S_ISDIR(sbuf.st_mode));
 }
 #endif
@@ -70,7 +70,7 @@ int isSymlnk(char *s)
 {
 	struct	stat sbuf;
 
-	if (lstat(s, &sbuf) == -1) return 0;
+	if (lstat(s, &sbuf)) return (0);
 	return (S_ISLNK(sbuf.st_mode));
 }
 #endif
@@ -158,7 +158,7 @@ fsize(int fd)
 {
 	struct	stat sbuf;
 
-	if (fstat(fd, &sbuf) == -1) return 0;
+	if (fstat(fd, &sbuf)) return (0);
 	unless (S_ISREG(sbuf.st_mode)) return (0);
 	return (sbuf.st_size);
 }

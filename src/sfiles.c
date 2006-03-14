@@ -15,9 +15,10 @@
 #define	GSTATE	3	/* checked out state, 'G', ' ' */
 #define	NSTATE	4	/* name state: n,' ' */
 #define	DSTATE	5	/* directory state: d, D, ' ' */
+#define	YSTATE	6	/* comments status: y, ' ' */
 
 typedef struct winfo winfo;
-typedef	char	STATE[7];
+typedef	char	STATE[8];
 
 private	void	append_rev(MDBM *db, char *name, char *rev);
 private int	chk_diffs(sccs *s);
@@ -54,6 +55,7 @@ typedef struct {
 	u32     summarize:1;     	/* summarize output only */
 	u32     useronly:1;     	/* list user file only 	*/
 	u32	timestamps:1;		/* whether to use the timestamp DB */
+	u32	cfiles:1;		/* -y: list files with comments */
 	FILE	*out;			/* send output here */
 	char	*glob;			/* only files which match this */
 } options;
@@ -116,7 +118,7 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "1acdDeEgGjlno:p|P|SuUvx")) != -1) {
+	while ((c = getopt(ac, av, "1acdDeEgGjlno:p|P|SuUvxy")) != -1) {
 		switch (c) {
 		    case '1':	opts.onelevel = 1; break;
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
@@ -131,7 +133,8 @@ sfiles_main(int ac, char **av)
 			    /* fall thru */
 		    case 'e':	opts.dirs = opts.xdirs = opts.gotten =
 				opts.junk = opts.locked = opts.unlocked =
-				opts.show_markers = opts.extras = 1;
+				opts.show_markers = opts.extras =
+				opts.cfiles = 1;
 				break;
 		    case 'g':	opts.gfile = 1; break;		/* doc 2.0 */
 		    case 'G':	opts.gotten = 1; break;		/* doc */
@@ -166,6 +169,7 @@ sfiles_main(int ac, char **av)
 		    case 'v':	opts.show_markers = 1; break;	/* doc 2.0 */
 		    case 'x':					/* doc 2.0 */
 				opts.extras = opts.junk = 1; break;
+		    case 'y':	opts.cfiles = 1; break;		/* doc */
 		    default:
 usage:				system("bk help -s sfiles");
 				return (1);
@@ -188,7 +192,7 @@ usage:				system("bk help -s sfiles");
 	 */
 	if (!opts.unlocked && !opts.locked && !opts.junk && !opts.extras &&
 	    !opts.changed && !opts.pending && !opts.names &&
-	    !opts.gotten && !opts.dirs && !opts.xdirs) {
+	    !opts.gotten && !opts.dirs && !opts.xdirs && !opts.cfiles) {
 		opts.unlocked = 1;
 		opts.locked = 1;
 	}
@@ -256,6 +260,8 @@ chk_sfile(char *name, STATE state)
 	s = strrchr(name, '/');
 
 	if (s[1] == 's') {
+		s[1] = 'c';
+		if (opts.cfiles && exists(name)) state[YSTATE] = 'y';
 		s[1] = 'p';
 		if (exists(name)) {
 			state[LSTATE] = 'l';
@@ -406,7 +412,7 @@ file(char *f)
 {
 	char	name[MAXPATH], buf[MAXPATH];
 	char    *s, *sfile;
-	STATE	state = "      ";
+	STATE	state = "       ";
 	sccs	*sc = 0;
 
 	if (strlen(f) >= sizeof(name)) {
@@ -592,11 +598,11 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 				if (opts.xdirs && nonsccs) {
 					D_count++;
 					unless (opts.summarize) {
-						print_it("     D", file, 0);
+						print_it("     D ", file, 0);
 					}
 				}
 				if (opts.dirs && !nonsccs && !opts.summarize) {
-					print_it("     d", file, 0);
+					print_it("     d ", file, 0);
 				}
 			}
 			if (opts.onelevel) {
@@ -621,7 +627,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 			}
 		}
 		/* else just printit */
-		do_print("xxxxxx", file, 0);
+		do_print("xxxxxxx", file, 0);
 	}
 	return (0);
 }
@@ -809,8 +815,8 @@ print_it(STATE state, char *file, char *rev)
 
 	if (opts.show_markers) {
 		if (state[CSTATE] == 'j') {
-			assert(streq(state, " j    "));
-			if (fprintf(opts.out, "jjjjjj ") != 7) {
+			assert(streq(state, " j     "));
+			if (fprintf(opts.out, "jjjjjjj ") != 8) {
 error:				perror("output error");
 				fflush(stderr);
 				longjmp(sfiles_exit, 1); /* back to sfiles_main */
@@ -821,7 +827,7 @@ error:				perror("output error");
 
 			strcpy(tmp, state);
 			for (p = tmp; *p; p++) if (*p == ' ') *p = '-';
-			if (fprintf(opts.out, "%s ", tmp) != 7) {
+			if (fprintf(opts.out, "%s ", tmp) != 8) {
 				ttyprintf("STATE[%s]\n", tmp);
 				goto error;
 			}
@@ -887,6 +893,7 @@ do_print(STATE state, char *file, char *rev)
 
 	if ((state[NSTATE] == 'n') && opts.names) goto print;
 	if ((state[GSTATE] == 'G') && opts.gotten) goto print;
+	if ((state[YSTATE] == 'y') && opts.cfiles) goto print;
 	return;
 
 print:	print_it(state, file, rev);
@@ -938,7 +945,7 @@ sccsdir(winfo *wi)
 	 */
 	EACH (slist) {
 		char 	*file;
-		STATE	state = "      ";
+		STATE	state = "       ";
 
 		p = slist[i];
 		s = 0;
@@ -998,6 +1005,11 @@ sccsdir(winfo *wi)
 		if (opts.gotten && mdbm_fetch_str(gDB, &file[2])) {
 		    	state[GSTATE] = 'G';
 		}
+		if (opts.cfiles) {
+			file[0] = 'c';
+			if (mdbm_fetch_str(sDB, file)) state[YSTATE] = 'y';
+			file[0] = 's';
+		}
 		concat_path(buf, dir, gfile);
 		if (opts.pending) {
 			/*
@@ -1040,7 +1052,7 @@ sccsdir(winfo *wi)
 			}
 			concat_path(buf1, buf, kv.key.dptr);
 			if (kv.val.dsize == 0) {
-				do_print(" j    ", buf1, 0);
+				do_print(" j     ", buf1, 0);
 			} else {
 				/*
 				 * We only get here when we get
@@ -1061,7 +1073,7 @@ sccsdir(winfo *wi)
 					} else {
 						t = buf1;
 					}
-					do_print(" j    ", t, 0);
+					do_print(" j     ", t, 0);
 					p = q;
 				}
 			}
@@ -1078,7 +1090,7 @@ sccsdir(winfo *wi)
 			strcpy(&buf[2], k.dptr);
 			if (mdbm_fetch_str(sDB, buf)) continue;
 			concat_path(buf, dir, k.dptr);
-			do_print("xxxxxx", buf, 0);
+			do_print("xxxxxxx", buf, 0);
 		}
 	}
 	mdbm_close(wi->gDB);

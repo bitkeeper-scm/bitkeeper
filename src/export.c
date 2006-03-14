@@ -80,8 +80,9 @@ usage:			system("bk help -s export");
 	    default: goto usage;
 	}
 
-	unless (isdir(src)) {
-		fprintf(stderr, "export: %s does not exist.\n", src);
+	unless (isdir_follow(src)) {
+		fprintf(stderr,
+		    "export: %s does not exist or is not a directory.\n", src);
 		exit(1);
 	}
 
@@ -160,12 +161,8 @@ usage:			system("bk help -s export");
 			fprintf(stderr, "cannot export to %s\n", output);
 		}
 		sccs_free(s);
-		if (wflag) {
-			if (stat(output, &sb)) {
-				perror(output);
-			} else {
-				chmod(output, sb.st_mode | S_IWUSR);
-			}
+		if (wflag && !lstat(output, &sb) && S_ISREG(sb.st_mode)) {
+			chmod(output, sb.st_mode | S_IWUSR);
 		}
 next:		;
 	}

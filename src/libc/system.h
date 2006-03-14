@@ -82,7 +82,7 @@ int	fileCopy(char *from, char *to);
 /* fileinfo.c */
 int	exists(char *s);
 int	isdir(char *s);
-int	isEffectiveDir(char *s);
+int	isdir_follow(char *s);
 int	isreg(char *s);
 int	isSymlnk(char *s);
 int	hardlinked(char *a, char *b);

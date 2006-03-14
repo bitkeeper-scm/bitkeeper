@@ -4,7 +4,7 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc bk [-r] sfiles [\-1acCdDeEgGjlnSuUvx] [
+.Bc bk [-r] sfiles [\-1acCdDeEgGjlnSuUvxy] [
 .OPTreq \-o file
 .Bc ] [
 .OPTopt \-p A|C
@@ -66,11 +66,11 @@ List directories with no (or empty) SCCS subdirs.
 .tp
 .B \-e
 Shorthand for 
-.B \-dDGjluvx
+.B \-dDGjluvxy
 .tp
 .B \-E
 Shorthand for 
-.B \-cdDGjlnuvxp
+.B \-cdDGjlnuvxyp
 .tp
 .B \-g
 List the gfile name, not the sfile name.
@@ -128,44 +128,50 @@ other than
 .tp
 .B \-v
 Prefix the output with information about the state of the s.file.
-The information is in a 6 character field, followed by a space,
+The information is in a 7 character field, followed by a space,
 then followed by the filename.  Each of the columns are described
 below, with the notation, then the option, then description.
 .RS
 .tp 1.4i
-\f(CBl-----\fR\ \ (-l)
+\f(CBl------\fR\ \ (-l)
 the file is locked
 .tp
-\f(CBu-----\fR\ \ (-u)
+\f(CBu------\fR\ \ (-u)
 the file is unlocked
 .tp
-\f(CB-c----\fR\ \ (-c)
+\f(CB-c-----\fR\ \ (-c)
 the file is modified (changed)
 .tp
-\f(CB--p---\fR\ \ (-p)
+\f(CB--p----\fR\ \ (-p)
 the file has pending deltas
 .tp
-\f(CB---G--\fR\ \ (-G)
+\f(CB---G---\fR\ \ (-G)
 the file is checked out i.e., "gotten"
 .tp
-\f(CB----n-\fR\ \ (-n)
+\f(CB----n--\fR\ \ (-n)
 the file is not in its recorded location
 .tp
-\f(CB-----d\fR\ \ (-d)
+\f(CB-----d-\fR\ \ (-d)
 a directory containing \*(BK files
 .tp
-\f(CB-----D\fR\ \ (-D)
+\f(CB-----D-\fR\ \ (-D)
 a directory containing no \*(BK files
 .tp
-\f(CBjjjjjj\fR\ \ (-j)
+\f(CB------y\fR\ \ (-y)
+the file has saved checkin comments
+.tp
+\f(CBjjjjjjj\fR\ \ (-j)
 the file is junk
 .tp
-\f(CBxxxxxx\fR\ \ (-x)
+\f(CBxxxxxxx\fR\ \ (-x)
 file is not yet under \*(BK control
 .RE
 .tp
 .B \-x
 List files which have no revision control files.
+.tp
+.B \-y
+List files which have saved checkin comments.
 .SH NOTES
 .LP
 .B bk sfiles

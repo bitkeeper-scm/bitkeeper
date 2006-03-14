@@ -325,3 +325,27 @@ test -d $HERE/whoops-plain && {
 	exit 1
 }
 echo OK
+
+if [ "$PLATFORM" = UNIX ]
+then #-------------------------------------------------------------------
+echo $N Export should work if source is a symlink to a directory ....$NL
+cd $HERE
+ln -s project projlink
+bk export projlink fromlink || exit 1
+cd fromlink || exit 1
+test -f lod.c || exit 1
+cd ..
+ln -s fromlink/lod.c filelink
+bk export filelink fromlink 2>ERR && exit 1
+grep -q "not a directory" ERR || exit 1
+echo OK
+
+echo $N Check export \-w with symlink ................................$NL
+cd $HERE/project/src
+ln -s no/such/file symlnk
+bk new $Q symlnk
+bk commit $Q -ysym
+bk export -w $HERE/project $HERE/exp-sym
+islink $HERE/exp-sym/src/symlnk || { echo failed; exit 1; }
+echo OK
+fi #---------------------------------------------------------------------

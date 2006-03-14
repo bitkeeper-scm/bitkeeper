@@ -160,6 +160,11 @@ verbose() {
 	test -z "$Q" && echo ${1+"$@"}
 }
 
+islink() {
+	# test -L is not portable - freebsd[34] and mac102 do not support
+	perl -e "exit ((-l '$1') ? 0 : 1)"
+}
+
 cd "$HERE" || exit 1
 
 # We need this because ksh on Solaris override $PATH from .profile

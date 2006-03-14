@@ -9,7 +9,7 @@ do_mkdir(char *dir, int mode)
 	if (ret = mkdir(dir, mode)) {
 		if (errno == EEXIST)  return (0);
 		save = errno;
-		if (isEffectiveDir(dir)) return (0);
+		if (isdir_follow(dir)) return (0);
 		errno = save;
 	}
 	return (ret);
@@ -74,7 +74,7 @@ mkdirf(char *file)
 
 	unless (s = strrchr(file, '/')) return (0);
 	*s = 0;
-	if (isEffectiveDir(file)) {
+	if (isdir_follow(file)) {
 		*s = '/';
 		return (0);
 	}
