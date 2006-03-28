@@ -174,6 +174,7 @@ gone
 graft
 grep
 _gzip
+_hashstr_test
 help
 helpsearch
 helptopics

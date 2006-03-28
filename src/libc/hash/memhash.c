@@ -118,7 +118,6 @@ memhash_fetch(hash *_h, void *kptr, int klen)
 	memhash	*h = (memhash *)_h;
 	node	*n, **nn;
 
-	assert(klen);
 	nn = find_nodep(h, kptr, klen);
 	if (n = *nn) {
 		h->hdr.vptr = &n->key[DOFF(n->klen, n->dlen)];

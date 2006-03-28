@@ -80,6 +80,7 @@ int	walkdir(char *dir, walkfn fn, void *data);
 int	fileCopy(char *from, char *to);
 
 /* fileinfo.c */
+time_t	mtime(char *s);
 int	exists(char *s);
 int	isdir(char *s);
 int	isdir_follow(char *s);

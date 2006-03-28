@@ -618,7 +618,10 @@ _pullup(u32 *bytep, char **space, int null)
 	char	*data;
 	dinfo	*s;
 
-	unless (space) return (0);
+	unless (space) {
+		if (bytep) *bytep = 0;
+		return (0);
+	}
 	s = (dinfo*)space[1];
 	data = malloc(s->bytes + (null ? 1 : 0));
 	for (i = 2; i <= s->len[1]; i++) {

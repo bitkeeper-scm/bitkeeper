@@ -238,4 +238,8 @@ hash_prev(hash *h)
 #define EACH_HASH(h) \
         for (hash_first(h); (h)->kptr; hash_next(h))
 
+
+char	*hash_toStr(hash *h);
+int	hash_fromStr(hash *h, char *str);
+
 #endif

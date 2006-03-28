@@ -1153,7 +1153,6 @@ char	*secure_hashstr(char *str, int len, char *key);
 char	*makestring(int keynum);
 
 void	delete_cset_cache(char *rootpath, int save);
-time_t	mtime(char *path);
 void	notice(char *key, char *arg, char *type);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
