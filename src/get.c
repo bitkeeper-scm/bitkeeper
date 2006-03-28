@@ -65,7 +65,7 @@ get_main(int ac, char **av)
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */
 		    case 'q': flags |= SILENT; break;		/* doc 2.0 */
 		    case 'r': Rev = optarg; break;		/* doc 2.0 */
-		    case 'R': sf_flags |= SF_HASREVS; break;	/* doc 2.0 */
+		    case 'R': break;            /* compat, noop, undoc */
 		    case 's': flags |= SILENT; break;		/* undoc */
 		    case 'S': flags |= GET_NOREGET; break;	/* doc 2.0 */
 		    case 't': break;		/* compat, noop, undoc 2.0 */

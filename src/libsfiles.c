@@ -112,7 +112,7 @@ again:
 	 * XXX TODO someday we'll handle escaped BK_FS in the filename
 	 * But why would anyone want ^A in their file name ?
 	 */
-	if (flags & SF_HASREVS)  {
+	unless (flags & SF_NOHASREVS)  {
 		char	*r = strrchr(buf, BK_FS);
 
 		rev[0] = 0;	/* paranoia is your friend */
@@ -183,7 +183,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	if (sfilesDied(0)) return (0);
 	rev[0] = 0;
 	prog = cmd;
-	flags = Flags|SF_HASREVS; 
+	flags = Flags;
 	if (Av[0]) {
 		int	i;
 

@@ -9007,11 +9007,17 @@ out:		sccs_unlock(s, 'z');
 		fprintf(stderr, "delta: lost checkin race on %s\n", s->sfile);
 		goto out;
 	}
+
+	/* pathname, we need this below */
+	buf[0] = 0;
+	t = relativeName(s, 0);
+	assert(t);
+	strcpy(buf, t);
+
 	/*
 	 * Disallow BK_FS character in file name.
 	 * Some day we may allow caller to escape the BK_FS character
 	 */
-	t = basenm(s->sfile);
 	if (strchr(t, BK_FS)) {
 		fprintf(stderr,
 			"delta: %s: filename must not contain \"%c\"\n",
@@ -9022,15 +9028,12 @@ out:		sccs_unlock(s, 'z');
 	/*
 	 * Disallow BKSKIP
 	 */
+	t = basenm(s->sfile);
 	if (streq(&t[2], BKSKIP)) {
-		fprintf(stderr, 
+		fprintf(stderr,
 			"delta: checking in %s is not allowed\n", BKSKIP);
 		goto out;
 	}
-
-	/* pathname, we need this below */
-	buf[0] = 0;
-	if (t = relativeName(s, 0)) strcpy(buf, t);
 
 	sfile = fopen(sccsXfile(s, 'x'), "wb");
 	unless (s) {

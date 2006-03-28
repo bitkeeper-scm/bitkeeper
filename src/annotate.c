@@ -63,7 +63,7 @@ usage:			system("bk help -s annotate");
 
 	/* original annotate only, not -R sccscat replacement */
 	if (!range && (flags == BASE_FLAGS)) flags |= GET_REVNUMS|GET_USER;
-	name = sfileFirst(ME, &av[optind], SF_HASREVS);
+	name = sfileFirst(ME, &av[optind], 0);
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {

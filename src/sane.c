@@ -146,6 +146,10 @@ chk_user(void)
 {
 	char	*user = sccs_getuser();
 
+	unless (user) {
+		fprintf(stderr, "ERROR: bk: Can't find a valid username.\n");
+		return (1);
+	}
 	if (streq(user, "root")) {
 		fprintf(stderr,
 		    "Warning: running BitKeeper as root is not a good idea!\n");
