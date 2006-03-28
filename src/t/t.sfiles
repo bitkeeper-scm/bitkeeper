@@ -30,6 +30,32 @@ trap '' 0
 set +e
 echo OK
 
+echo $N Check -0 does null termination of files in list .............$NL
+# Want null termination
+perl -e 'print "SCCS/s.ChangeSet\0SCCS/s.foo\0SCCS/s.s.foo\0"' > WANT
+bk sfiles -0 -1 > GOT
+checkfiles WANT GOT
+rm -f WANT GOT
+echo OK
+
+echo $N Check explicit list with some files left out ................$NL
+sort <<EOF > X
+SCCS/s.ChangeSet
+SCCS/s.s.foo
+bar/blech/s.foo
+EOF
+bk undos X > .sfiles
+rm -f X
+bk sfiles `cat .sfiles` | sort > SFILES
+sort <<EOF > LIST
+SCCS/s.ChangeSet
+SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+echo OK
+
 echo $N Check the list of SCCS files ................................$NL
 bk sfiles | sort > SFILES
 sort <<EOF > LIST

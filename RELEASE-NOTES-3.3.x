@@ -120,6 +120,7 @@ bk sfiles
     			-l/-u,-c,-p,-G,-n,-d/-D,-y && -j/-x (see man page)
     -C		-pC	remove undocumented alias
     -A		-pA	remove undocumented alias
+    <none>	-0	print null between files instead of \n
 
     Removed interfaces:
     -s		<none>	we have options for everything now
