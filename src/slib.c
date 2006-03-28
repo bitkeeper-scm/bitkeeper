@@ -16250,7 +16250,10 @@ stripDeltas(sccs *s, FILE *out)
 }
 
 /*
- * Strip out the deltas marked with D_SET.
+ * Strip out the deltas marked with D_SET and D_GONE.
+ * E.g. to remove top rev: 
+ * delta *d = sccs_top(s); MK_GONE(d); d->flags |= D_SET;
+ * sccs_stripdel(s, "die");
  */
 int
 sccs_stripdel(sccs *s, char *who)

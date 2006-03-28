@@ -1435,6 +1435,85 @@ noDiffs(void)
 }
 
 /*
+ * Sanity check: the ChangeSet file has to have 2 tips if we 
+ * got this far. If it doesn't, it means someone (possibly the
+ * 3.2.x citool) has already committed part of the work.
+ */
+private int
+fix_singletip(opts *opts)
+{
+	sccs	*s = 0, *sf = 0;
+	delta	*a, *b;
+	FILE	*f = 0;
+	char	*rev;
+	char	buf[MAXPATH];
+
+	unless (s = sccs_csetInit(INIT_NOCKSUM)) {
+		fprintf(stderr, 
+		    "Can't init ChangeSet file in RESYNC directory\n");
+err:		if (s) sccs_free(s);
+		if (sf) sccs_free(sf);
+		if (f) pclose(f);
+		return (1);
+	}
+		
+	if (sccs_findtips(s, &a, &b)) {
+		/* everything's fine, graph has two tips */
+		sccs_free(s);
+		return (0);
+	}
+	unless (a->merge) {
+		fprintf(stderr, "Failed assertion: "
+		    "ChangeSet is single tip but not a merge.\n");
+		goto err;
+	}
+	unless (opts->quiet) fprintf(stderr, "Autofixing partial merge\n");
+	unless (f = popen("bk changes "
+	    "-r+ -vnd'$unless(:CHANGESET:){:SFILE:|:REV:}'", "r")) {
+		fprintf(stderr, "Could not popen changes\n");
+		goto err;
+	}
+	while(fgets(buf, sizeof(buf), f)) {
+		chomp(buf);
+		rev = strchr(buf, '|');
+		*rev++ = 0;
+		unless (sf = sccs_init(buf, INIT_NOCKSUM)) {
+			fprintf(stderr, "Could not init %s\n", buf);
+			goto err;
+		}
+		unless (b = sccs_findrev(sf, rev)) {
+			fprintf(stderr,
+			    "Could not find revision %s in %s\n", rev, buf);
+			goto err;
+		}
+		b->flags &= ~D_CSET;
+		sccs_admin(sf, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+		sccs_free(sf);
+		sf = 0;
+	}       
+	pclose(f);
+	f = 0;
+	/* preserve ChangeSet comments */
+	lines2File(a->comments, CCHANGESET);
+	/* now stripdel the top revision of the ChangeSet file */
+	a->flags |= D_SET;
+	MK_GONE(s, a);
+	if (sccs_stripdel(s, "resolve_autofix")) {
+		fprintf(stderr, "Unable to stripdel ChangeSet "
+		    "file in the RESYNC directory\n");
+		goto err;
+	}
+	sccs_free(s);
+	s = 0;
+	if (system("bk get -q -eM -g " CHANGESET)) {
+	        fprintf(stderr, "Get of ChangeSet failed\n");
+	        goto err;
+	}
+	opts->willMerge = 1;
+	return (0);
+}
+
+/*
  * Handle all the non-rename conflicts.
  * Handle committing anything which needs a commit.
  *
@@ -1634,6 +1713,8 @@ nocommit:
 		commit(opts);
 		return (0);
 	}
+
+	if (fix_singletip(opts)) goto err;
 
 	/*
 	 * Unless we are in textonly mode, let citool do all the work.

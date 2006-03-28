@@ -14,58 +14,43 @@
 
 # Things that need to be added
 # 
-MYHOST=`bk gethost`
 
-echo $N Create initial repository ...................................$NL
-commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-echo OK
 echo $N Create some data ............................................$NL
-cd $HERE/project/BitKeeper/etc
-mkdir $HERE/project/src
-cd $HERE/project/src
-echo foo > foo.c
-echo bar > bar.c
-bk ci $Q -i foo.c bar.c
-echo h > h.h
-bk ci $Q -i h.h
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+commercial project
+mkdir src
+cd src || exit 1
+echo foo > 'foo bar'
+echo baz > baz
+bk new $Q 'foo bar' baz
+bk commit $Q -ybaseline
 echo OK
-echo "Discard newfile{1,2,3} and make sure that the counts decrement"
-echo "correctly and the file content is listed in the bottom pane"
+
 echo
-bk commit $Q -yfoo
-echo $N Check citool for delete problems .............................$NL
-cd $HERE/project/src
-echo new > newfile1
-echo new > newfile2
-echo new > newfile3
-bk citool 
-echo OK
-echo $N Check citool for argument problems during resolve.............$NL
+echo Comment one file, press commit, and you should see a message about
+echo not being able to commit because all files need to be commented.
+echo Press control-L and comment the other file, then press commit twice.
+echo $N Make sure cannot commit before all files are commented ......$NL
 cd $HERE
-bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
-cd $HERE/project/src
-bk get $Q -e foo.c
-sed 's/foo/fool/' < foo.c > foo.x
-mv foo.x foo.c
-bk delta $Q -yrogue1 foo.c
-cd ..
-bk commit $Q -yrogue1
+bk clone $Q project copy || exit 1
+cd project/src
+bk edit $Q 'foo bar' baz
+echo project > 'foo bar'
+echo project > baz
+bk delta $Q -yproject 'foo bar' baz
+bk commit $Q -yproject
 cd $HERE/copy/src
-bk get $Q -e foo.c
-sed 's/foo/food/' < foo.c > foo.x
-mv foo.x foo.c
-bk delta $Q -yrogue2 foo.c
+bk edit $Q 'foo bar' baz
+echo copy > 'foo bar'
+echo copy > baz
+bk delta $Q -ycopy 'foo bar' baz
+bk commit $Q -ycopy
 cd ..
-bk commit $Q -yrogue2
-bk pull $Q >$DEV_NULL 2>&1
-bk resolve >$DEV_NULL 2>&1 <<EOF
-ul
-merged
-.
-EOF
+bk pull $Q -R
+cd RESYNC/src
+bk edit $Q -M 'foo bar' baz
+bk edit $Q -M 'foo bar' baz
+echo resolve > 'foo bar'
+echo resolve > baz
+cd ../..
+bk resolve $Q
 echo OK
