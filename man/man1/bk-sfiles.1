@@ -4,7 +4,7 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc bk [-r] sfiles [\-1acCdDeEgGjlnSuUvxy] [
+.Bc bk [-r] sfiles [\-01acCdDeEgGjlnSuUvxy] [
 .OPTreq \-o file
 .Bc ] [
 .OPTopt \-p A|C
@@ -40,6 +40,10 @@ the
 options.
 .if n .TP 1i
 .if t .TP .6i
+.B \-0
+Use a null character (instead of a newline) to seperate each filename
+printed.  This is to useful with 
+.BR "GNU xargs -0" .
 .B \-1
 Only examine one directory level.  Do not go into subdirectories.
 .tp
@@ -193,6 +197,8 @@ not foo/bar/blech/s.*
 .SA ignore 1
 .br
 .SA new 1
+.br
+.SA xargs 1
 .SH CATEGORY
 .B File
 .\" help://Files/gfiles

@@ -56,6 +56,7 @@ typedef struct {
 	u32     useronly:1;     	/* list user file only 	*/
 	u32	timestamps:1;		/* whether to use the timestamp DB */
 	u32	cfiles:1;		/* -y: list files with comments */
+	u32	null:1;			/* put nulls afters sfiles */
 	FILE	*out;			/* send output here */
 	char	*glob;			/* only files which match this */
 } options;
@@ -118,8 +119,9 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "1acdDeEgGjlno:p|P|SuUvxy")) != -1) {
+	while ((c = getopt(ac, av, "01acdDeEgGjlno:p|P|SuUvxy")) != -1) {
 		switch (c) {
+		    case '0':	opts.null = 1; break;		/* doc */
 		    case '1':	opts.onelevel = 1; break;
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
 		    case 'c':	opts.changed = opts.timestamps = 1;
@@ -845,7 +847,7 @@ error:				perror("output error");
 		int rlen = strlen(rev) + 1;
 		if (fprintf(opts.out, "%c%s", BK_FS, rev) != rlen) goto error;
 	}
-	if (fputs("\n", opts.out) < 0) goto error;
+	if (fputc((opts.null ? '\0' : '\n'), opts.out) < 0) goto error;
 }
 
 private void
