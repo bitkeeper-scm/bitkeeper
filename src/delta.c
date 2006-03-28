@@ -122,7 +122,7 @@ delta_main(int ac, char **av)
 	int	iflags = 0;
 	int	dflags = 0;
 	int	gflags = 0;
-	int	sflags = SF_GFILE|SF_WRITE_OK;
+	int	sflags = SF_GFILE|SF_WRITE_OK|SF_NOHASREVS;
 	int	isci = 0;
 	int	checkout = 0, ignorePreference = 0;
 	int	c, rc, enc;

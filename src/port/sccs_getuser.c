@@ -15,9 +15,10 @@ cleanup(char *s)
 	unless (s && *s) return (0);
 	for (t = s; *t; t++) {
 		if (*t == ' ') *t = '.';
-		unless ((*t == '\r') || (*t == '\n')) continue;
+		unless ((*t == '\r') || (*t == '\n') || (*t == '|')) continue;
 		fprintf(stderr,
-		    "Bad user name '%s'; names may not contain LR or CR\n", s);
+		    "Bad user name '%s'; names may not contain LR, CR or "
+		    "'|' characters.\n", s);
 		*s = 0;
 		return (0);
 	}

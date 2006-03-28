@@ -391,6 +391,75 @@ grep -q "not allowed" new.out
 if [ $? -ne 0 ]; then echo failed 2; exit 1; fi
 echo OK
 
+if [ X$PLATFORM != X"WIN32" ]
+then #------------------------------------------------------------------
+
+echo $N Make sure we don\'t allow files with \|\'s .....................$NL
+touch 'test|file'
+bk new $Q 'test|file' 2>new.out && {
+	echo should have failed
+	exit 1
+}
+grep -q "must not contain" new.out || {
+	echo wrong error
+	cat new.out
+	exit 1
+}
+echo OK
+
+echo $N Make sure we don\'t allow pathnames with \|\'s .................$NL
+mkdir 'bad|dir'
+touch 'bad|dir/test'
+bk new $Q 'bad|dir/test' 2>new.out && {
+	echo should have failed
+	exit 1
+}
+grep -q "must not contain" new.out || {
+	echo wrong error
+	cat new.out
+	exit 1
+}
+cd 'bad|dir'
+bk new $Q test 2>new.out && {
+	echo should have failed
+	exit 1
+}
+grep -q "must not contain" new.out || {
+	echo wrong error
+	cat new.out
+	exit 1
+}
+echo OK
+
+fi #--------------------------------------------------------------------
+
+echo $N Make sure we don\'t allow usernames with \|\'s .................$NL
+cd $HERE/project
+touch testfile
+BK_USER='test|user' bk new $Q testfile 2>new.out && {
+	echo should have failed
+	exit 1
+}
+grep -q "Bad user name" new.out || {
+	echo wrong error
+	cat new.out
+	exit 1
+}
+echo OK
+
+echo $N Make sure we don\'t allow hostnames with \|\'s .................$NL
+touch testfile
+BK_HOST='test|host.sample.com' bk new $Q testfile 2>new.out && {
+	echo should have failed
+	exit 1
+}
+grep -q "bad host name" new.out || {
+	echo wrong error
+	cat new.out
+	exit 1
+}
+echo OK
+
 echo $N Check compresssion: gzip preference .........................$NL
 cd $HERE/project/BitKeeper/etc
 bk edit $Q config

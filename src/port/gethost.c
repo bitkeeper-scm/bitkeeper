@@ -192,10 +192,10 @@ out:
 	}
 
 	if (host[0]) {
-		if (strchr(host, '\n') || strchr(host, '\r')) {
+		if (strcspn(host, "\n\r|") != strlen(host)) {
 			fprintf(stderr,
-			    "bad host name: host name must not contain LF or "
-			    "CR  character\n");
+			    "bad host name: host name must not contain LF, CR "
+			    "or |  character\n");
 			host[0] = 0; /* erase bad host name */
 		}
 	}

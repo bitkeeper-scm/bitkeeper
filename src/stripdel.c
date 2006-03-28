@@ -318,7 +318,7 @@ strip_list(s_opts opts)
 	int 	rc = 1;
 	int	iflags = opts.iflags|SILENT;
 
-	for (name = sfileFirst("stripdel", av, SF_HASREVS);
+	for (name = sfileFirst("stripdel", av, 0);
 	    name; name = sfileNext()) {
 		if (!s || !streq(s->sfile, name)) {
 			if (s && doit(s, opts)) goto fail;

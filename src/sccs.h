@@ -143,7 +143,7 @@ int	checking_rmdir(char *dir);
 #define	SF_GFILE	0x00000001	/* gfile should be readable */
 #define	SF_WRITE_OK	0x00000002	/* gfile should be writable */
 #define	SF_NODIREXPAND	0x00000004	/* don't auto expand directories */
-#define	SF_HASREVS	0x00000008	/* sfiles - filename:rev */
+#define	SF_NOHASREVS	0x00000008	/* don't expect |rev on files */
 #define	SF_SILENT	0x00000010	/* sfiles - don't complain */
 #define	SF_DELETES	0x00000020	/* expand files like .del-whatever */
 #define	SF_NOCSET	0x00000040	/* do not autoexpand cset files */
