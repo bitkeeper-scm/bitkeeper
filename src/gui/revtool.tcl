@@ -26,10 +26,11 @@ proc main {} \
 	bk_init
 	
 	arguments
-	widgets
-	loadState
 
-	restoreGeometry "rev" 
+	loadState rev
+	widgets
+	restoreGeometry rev
+	
 	after idle [list wm deiconify .]
 	after idle [list focus -force .]
 
@@ -2337,7 +2338,6 @@ proc revtool {lfname {R {}}} \
 	global  Opts gc file rev2rev_name cdim firstnode fname
 	global  merge diffpair firstrev
 	global rev1 rev2 anchor
-	global State
 
 	# Set global so that other procs know what file we should be
 	# working on. Need this when menubutton is selected
@@ -2610,7 +2610,7 @@ proc startup {} \
 {
 	global fname rev2rev_name w rev1 rev2 gca errorCode gc dev_null
 	global file merge diffpair dfile
-	global State percent preferredGraphSize
+	global percent preferredGraphSize
 	global startingLineNumber searchString
 
 	if {$gca != ""} {
@@ -2661,7 +2661,7 @@ proc startup {} \
 
 	bind . <Destroy> {
 		if {[string match %W "."]} {
-			saveState
+			saveState rev
 		}
 	}
 }
@@ -2691,43 +2691,6 @@ proc printCanvas {} \
 	#    -width $width -height $h]
 	catch { close $fd } err
 	exit
-}
-
-# the purpose of this proc is merely to load the persistent state;
-# it does not do anything with the data (such as set the window 
-# geometry). That is best done elsewhere. This proc does, however,
-# attempt to make sure the data is in a usable form.
-proc loadState {} \
-{
-	global State
-
-	catch {::appState load rev State}
-
-}
-
-proc saveState {} \
-{
-	global State
-
-	# Copy state to a temporary variable, the re-load in the
-	# state file in case some other process has updated it
-	# (for example, setting the geometry for a different
-	# resolution). Then add in the geometry information unique
-	# to this instance.
-	array set tmp [array get State]
-	catch {::appState load rev tmp}
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	set tmp(geometry@$res) [wm geometry .]
-
-	# Generally speaking, errors at this point are no big
-	# deal. It's annoying we can't save state, but it's no 
-	# reason to stop running. So, a message to stderr is 
-	# probably sufficient. Plus, given we may have been run
-	# from a <Destroy> event on ".", it's too late to pop
-	# up a message dialog.
-	if {[catch {::appState save rev tmp} result]} {
-		puts stderr "error writing config file: $result"
-	}
 }
 
 main

@@ -8,9 +8,6 @@ proc widgets {} \
 	global	scroll wish search gc d app
 	global State env
 
-	getConfig "diff"
-	loadState
-
 	option add *background $gc(BG)
 
 	set gc(bw) 1
@@ -655,50 +652,15 @@ proc revtool {} \
 	eval exec $command &
 }
 
-# the purpose of this proc is merely to load the persistent state;
-# it does not do anything with the data (such as set the window 
-# geometry). That is best done elsewhere. This proc does, however,
-# attempt to make sure the data is in a usable form.
-proc loadState {} \
-{
-	global State
-
-	catch {::appState load diff State}
-
-}
-
-proc saveState {} \
-{
-	global State
-
-	# Copy state to a temporary variable, the re-load in the
-	# state file in case some other process has updated it
-	# (for example, setting the geometry for a different
-	# resolution). Then add in the geometry information unique
-	# to this instance.
-	array set tmp [array get State]
-	catch {::appState load diff tmp}
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	set tmp(geometry@$res) [wm geometry .]
-
-	# Generally speaking, errors at this point are no big
-	# deal. It's annoying we can't save state, but it's no 
-	# reason to stop running. So, a message to stderr is 
-	# probably sufficient. Plus, given we may have been run
-	# from a <Destroy> event on ".", it's too late to pop
-	# up a message dialog.
-	if {[catch {::appState save diff tmp} result]} {
-		puts stderr "error writing config file: $result"
-	}
-}
-
 proc main {} \
 {
 	wm title . "Diff Tool - initializing..."
 
 	bk_init
-	widgets
+	getConfig diff
 
+	loadState diff
+	widgets
 	restoreGeometry diff
 
 	# if the user is on a slow box and just does "bk difftool", it 
@@ -721,7 +683,7 @@ proc main {} \
 	# up
 	bind . <Destroy> {
 		if {[string match %W "."]} {
-			saveState
+			saveState diff
 		}
 	}
 

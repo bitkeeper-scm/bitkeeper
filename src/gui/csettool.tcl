@@ -580,8 +580,6 @@ proc widgets {} \
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
 	. configure -background $gc(BG)
-	wm deiconify .
-	focus .l.filelist
 }
 
 # Set up keyboard accelerators.
@@ -731,10 +729,9 @@ proc main {} \
 		catch {close $fd}
 	}
 
-	loadState
-	restoreGeometry cset
-
+	loadState cset
 	widgets
+	restoreGeometry cset
 
 	if {$gc(cset.annotation) != ""} {
 		set showAnnotations 1
@@ -748,7 +745,7 @@ proc main {} \
 
 	bind . <Destroy> {
 		if {[string match "." %W]} {
-			saveState
+			saveState cset .
 		}
 	}
 
@@ -756,37 +753,4 @@ proc main {} \
 	after idle [list focus -force .]
 }
 
-proc loadState {} \
-{
-	global State
-
-	catch {::appState load cset State}
-
-}
-
-proc saveState {} \
-{
-	global State
-
-	# Copy state to a temporary variable, the re-load in the
-	# state file in case some other process has updated it
-	# (for example, setting the geometry for a different
-	# resolution). Then add in the geometry information unique
-	# to this instance.
-	array set tmp [array get State]
-	catch {::appState load cset tmp}
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	set tmp(geometry@$res) [wm geometry .]
-
-	# Generally speaking, errors at this point are no big
-	# deal. It's annoying we can't save state, but it's no 
-	# reason to stop running. So, a message to stderr is 
-	# probably sufficient. Plus, given we may have been run
-	# from a <Destroy> event on ".", it's too late to pop
-	# up a message dialog.
-	if {[catch {::appState save cset tmp} result]} {
-		puts stderr "error writing config file: $result"
-	}
-
-}
 main
