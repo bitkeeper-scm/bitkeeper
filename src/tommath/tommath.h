@@ -10,7 +10,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@iahu.ca, http://math.libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://math.libtomcrypt.com
  */
 #ifndef BN_H_
 #define BN_H_
@@ -580,5 +580,5 @@ extern const char *mp_s_rmap;
 
 
 /* $Source: /cvs/libtom/libtommath/tommath.h,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2005/07/22 14:04:39 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2006/03/31 14:18:44 $ */

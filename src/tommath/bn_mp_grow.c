@@ -12,7 +12,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@iahu.ca, http://math.libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://math.libtomcrypt.com
  */
 
 /* grow as required */
@@ -53,5 +53,5 @@ int mp_grow (mp_int * a, int size)
 #endif
 
 /* $Source: /cvs/libtom/libtommath/bn_mp_grow.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/05/05 14:38:45 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2006/03/31 14:18:44 $ */
