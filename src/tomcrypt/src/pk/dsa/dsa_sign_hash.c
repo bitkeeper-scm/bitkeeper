@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -74,7 +74,7 @@ retry:
       if ((err = mp_read_unsigned_bin(k, buf, key->qord)) != CRYPT_OK)                 { goto error; }
 
       /* k > 1 ? */
-      if (mp_cmp_d(k, 1) != LTC_MP_GT)                                                    { goto retry; }
+      if (mp_cmp_d(k, 1) != LTC_MP_GT)                                                 { goto retry; }
 
       /* test gcd */
       if ((err = mp_gcd(k, key->q, tmp)) != CRYPT_OK)                                  { goto error; }
@@ -87,7 +87,7 @@ retry:
    if ((err = mp_exptmod(key->g, k, key->p, r)) != CRYPT_OK)                           { goto error; }
    if ((err = mp_mod(r, key->q, r)) != CRYPT_OK)                                       { goto error; }
 
-   if (mp_iszero(r) == LTC_MP_YES)                                                        { goto retry; }
+   if (mp_iszero(r) == LTC_MP_YES)                                                     { goto retry; }
 
    /* now find s = (in + xr)/k mod q */
    if ((err = mp_read_unsigned_bin(tmp, (unsigned char *)in, inlen)) != CRYPT_OK)      { goto error; }
@@ -95,7 +95,7 @@ retry:
    if ((err = mp_add(s, tmp, s)) != CRYPT_OK)                                          { goto error; }
    if ((err = mp_mulmod(s, kinv, key->q, s)) != CRYPT_OK)                              { goto error; }
 
-   if (mp_iszero(s) == LTC_MP_YES)                                                        { goto retry; }
+   if (mp_iszero(s) == LTC_MP_YES)                                                     { goto retry; }
 
    err = CRYPT_OK;
    goto LBL_ERR;
@@ -154,5 +154,5 @@ LBL_ERR:
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_sign_hash.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2005/07/18 02:42:39 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

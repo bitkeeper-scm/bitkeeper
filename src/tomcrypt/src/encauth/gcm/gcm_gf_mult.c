@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 
 /**
@@ -216,6 +216,6 @@ void gcm_gf_mult(const unsigned char *a, const unsigned char *b, unsigned char *
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/encauth/gcm/gcm_gf_mult.c,v $ */
-/* $Revision: 1.22 $ */
-/* $Date: 2006/01/28 22:22:43 $ */
+/* $Revision: 1.23 $ */
+/* $Date: 2006/03/31 14:15:35 $ */
  

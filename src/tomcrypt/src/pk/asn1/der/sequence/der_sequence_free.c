@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -61,5 +61,5 @@ void der_sequence_free(ltc_asn1_list *in)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/sequence/der_sequence_free.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/11/20 14:19:40 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

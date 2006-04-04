@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -31,5 +31,5 @@ void katja_free(katja_key *key)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/katja/katja_free.c,v $ */
-/* $Revision: 1.1 $ */
-/* $Date: 2005/08/22 23:40:48 $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

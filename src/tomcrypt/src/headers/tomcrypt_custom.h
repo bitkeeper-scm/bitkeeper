@@ -257,13 +257,17 @@
 #define MRSA
 
 /* Include Katja (a Rabin variant like RSA) */
-// #define MKAT 
+/* #define MKAT */ 
 
 /* Digital Signature Algorithm */
 #define MDSA
 
 /* ECC */
 #define MECC
+
+#if defined(TFM_DESC) && defined(MECC)
+   #define MECC_ACCEL
+#endif   
 
 /* Timing Resistant? */
 /* #define LTC_ECC_TIMING_RESISTANT */
@@ -341,5 +345,5 @@
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_custom.h,v $ */
-/* $Revision: 1.39 $ */
-/* $Date: 2006/01/29 15:53:39 $ */
+/* $Revision: 1.41 $ */
+/* $Date: 2006/03/31 14:53:54 $ */

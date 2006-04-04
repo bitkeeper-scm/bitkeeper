@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -68,5 +68,5 @@ int dsa_export(unsigned char *out, unsigned long *outlen, int type, dsa_key *key
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_export.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2005/07/18 02:36:47 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

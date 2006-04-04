@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -336,5 +336,5 @@ int  sha256_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/sha2/sha256.c,v $ */
-/* $Revision: 1.6 $ */
-/* $Date: 2005/07/16 19:56:37 $ */
+/* $Revision: 1.7 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

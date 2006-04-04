@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 
 /* Implements ECC over Z/pZ for curve y^2 = x^3 - 3x + b
@@ -157,6 +157,6 @@ done:
 #endif
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/ecc/ltc_ecc_mulmod_timing.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2005/11/01 03:12:00 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2006/03/31 14:15:35 $ */
 

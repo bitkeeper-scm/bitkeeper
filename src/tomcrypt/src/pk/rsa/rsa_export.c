@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -65,5 +65,5 @@ int rsa_export(unsigned char *out, unsigned long *outlen, int type, rsa_key *key
 #endif /* MRSA */
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/rsa/rsa_export.c,v $ */
-/* $Revision: 1.14 $ */
-/* $Date: 2005/09/21 05:55:35 $ */
+/* $Revision: 1.15 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -340,5 +340,5 @@ error:
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/encauth/ccm/ccm_memory.c,v $ */
-/* $Revision: 1.15 $ */
-/* $Date: 2005/10/06 01:32:49 $ */
+/* $Revision: 1.16 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

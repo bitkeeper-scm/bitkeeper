@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 
 /**
@@ -364,5 +364,5 @@ int gcm_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/encauth/gcm/gcm_test.c,v $ */
-/* $Revision: 1.15 $ */
-/* $Date: 2005/05/05 14:35:58 $ */
+/* $Revision: 1.16 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

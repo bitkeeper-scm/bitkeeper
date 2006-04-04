@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -61,7 +61,7 @@ int lrw_start(               int   cipher,
    }
 
    /* schedule key */
-   if ((err = cipher_descriptor[cipher].setup(key, keylen, 0, &lrw->key)) != CRYPT_OK) {
+   if ((err = cipher_descriptor[cipher].setup(key, keylen, num_rounds, &lrw->key)) != CRYPT_OK) {
       return err;
    }
    lrw->cipher = cipher;
@@ -99,5 +99,5 @@ int lrw_start(               int   cipher,
 
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/lrw/lrw_start.c,v $ */
-/* $Revision: 1.8 $ */
-/* $Date: 2006/01/28 19:26:03 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 
 /**
@@ -339,5 +339,5 @@ int skipjack_keysize(int *keysize)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/skipjack.c,v $ */
-/* $Revision: 1.9 $ */
-/* $Date: 2006/01/26 15:07:25 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2006/03/31 14:15:34 $ */

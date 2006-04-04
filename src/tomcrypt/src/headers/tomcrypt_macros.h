@@ -242,7 +242,7 @@ asm __volatile__ (             \
 #define RORc(x,n) _lrotr(x,n)
 #define ROLc(x,n) _lrotl(x,n)
 
-#elif defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__)) && !defined(INTEL_CC) && !defined(LTC_NO_ASM)
+#elif !defined(__STRICT_ANSI__) && defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__)) && !defined(INTEL_CC) && !defined(LTC_NO_ASM)
 
 static inline unsigned ROL(unsigned word, int i)
 {
@@ -285,7 +285,7 @@ static inline unsigned RORc(unsigned word, const int i)
 
 #endif
 
-#elif defined(LTC_PPC32)
+#elif !defined(__STRICT_ANSI__) && defined(LTC_PPC32)
 
 static inline unsigned ROL(unsigned word, int i)
 {
@@ -341,7 +341,7 @@ static inline unsigned RORc(unsigned word, const int i)
 
 
 /* 64-bit Rotates */
-#if defined(__GNUC__) && defined(__x86_64__) && !defined(LTC_NO_ASM)
+#if !defined(__STRICT_ANSI__) && defined(__GNUC__) && defined(__x86_64__) && !defined(LTC_NO_ASM)
 
 static inline unsigned long ROL64(unsigned long word, int i)
 {
@@ -420,5 +420,5 @@ static inline unsigned long ROR64c(unsigned long word, const int i)
 #endif   
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_macros.h,v $ */
-/* $Revision: 1.11 $ */
-/* $Date: 2005/11/12 04:09:09 $ */
+/* $Revision: 1.12 $ */
+/* $Date: 2006/03/31 14:53:54 $ */

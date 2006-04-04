@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -46,5 +46,5 @@ int lrw_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
 
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/lrw/lrw_encrypt.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2006/01/26 18:29:03 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

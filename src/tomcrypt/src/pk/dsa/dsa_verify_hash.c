@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -124,5 +124,5 @@ LBL_ERR:
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_verify_hash.c,v $ */
-/* $Revision: 1.11 $ */
-/* $Date: 2005/07/18 03:00:42 $ */
+/* $Revision: 1.12 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

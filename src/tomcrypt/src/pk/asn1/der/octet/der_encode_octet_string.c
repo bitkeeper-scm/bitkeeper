@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -81,5 +81,5 @@ int der_encode_octet_string(const unsigned char *in, unsigned long inlen,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/octet/der_encode_octet_string.c,v $ */
-/* $Revision: 1.1 $ */
-/* $Date: 2005/05/16 15:08:11 $ */
+/* $Revision: 1.2 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

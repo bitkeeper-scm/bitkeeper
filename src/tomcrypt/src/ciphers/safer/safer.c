@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 
 /*******************************************************************************
@@ -487,5 +487,5 @@ int safer_sk128_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/safer/safer.c,v $ */
-/* $Revision: 1.10 $ */
-/* $Date: 2006/01/26 15:07:26 $ */
+/* $Revision: 1.11 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

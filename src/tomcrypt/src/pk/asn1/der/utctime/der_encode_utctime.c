@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -78,5 +78,5 @@ int der_encode_utctime(ltc_utctime *utctime,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/utctime/der_encode_utctime.c,v $ */
-/* $Revision: 1.6 $ */
-/* $Date: 2005/07/16 20:29:31 $ */
+/* $Revision: 1.7 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

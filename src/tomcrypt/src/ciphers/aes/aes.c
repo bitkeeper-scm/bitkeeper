@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 
 /* AES implementation by Tom St Denis
@@ -757,5 +757,5 @@ int ECB_KS(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/aes/aes.c,v $ */
-/* $Revision: 1.10 $ */
-/* $Date: 2006/01/26 15:07:26 $ */
+/* $Revision: 1.11 $ */
+/* $Date: 2006/03/31 14:15:34 $ */

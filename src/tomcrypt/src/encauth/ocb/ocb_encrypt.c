@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 
 /** 
@@ -68,5 +68,5 @@ int ocb_encrypt(ocb_state *ocb, const unsigned char *pt, unsigned char *ct)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/encauth/ocb/ocb_encrypt.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/10/06 01:38:51 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

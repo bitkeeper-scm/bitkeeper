@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 
 #include "tomcrypt.h"
@@ -294,5 +294,5 @@ int chc_test(void)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/chc/chc.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/07/16 19:56:37 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

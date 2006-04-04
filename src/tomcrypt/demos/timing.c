@@ -10,6 +10,8 @@ reg_algs();
    ltc_mp = ltm_desc;
 #elif defined(USE_TFM)
    ltc_mp = tfm_desc;
+#elif defined(USE_GMP)
+   ltc_mp = gmp_desc;
 #else
    extern ltc_math_descriptor EXT_MATH_LIB;
    ltc_mp = EXT_MATH_LIB;
@@ -35,5 +37,5 @@ return EXIT_SUCCESS;
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/demos/timing.c,v $ */
-/* $Revision: 1.30 $ */
-/* $Date: 2006/01/27 21:26:20 $ */
+/* $Revision: 1.33 $ */
+/* $Date: 2006/03/18 05:31:46 $ */

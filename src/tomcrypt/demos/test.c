@@ -9,6 +9,8 @@ int main(void)
    ltc_mp = ltm_desc;
 #elif defined(USE_TFM)
    ltc_mp = tfm_desc;
+#elif defined(USE_GMP)
+   ltc_mp = gmp_desc;
 #else
    extern ltc_math_descriptor EXT_MATH_LIB;
    ltc_mp = EXT_MATH_LIB;
@@ -30,5 +32,5 @@ int main(void)
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/demos/test.c,v $ */
-/* $Revision: 1.24 $ */
-/* $Date: 2005/11/18 01:34:25 $ */
+/* $Revision: 1.25 $ */
+/* $Date: 2006/03/18 03:48:33 $ */

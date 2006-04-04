@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -29,7 +29,7 @@
 int lrw_process(const unsigned char *pt, unsigned char *ct, unsigned long len, int mode, symmetric_LRW *lrw)
 {
    unsigned char prod[16];
-   int           x;
+   int           x, err;
 #ifdef LRW_TABLES
    int           y;
 #endif
@@ -85,9 +85,13 @@ int lrw_process(const unsigned char *pt, unsigned char *ct, unsigned long len, i
 
       /* send through cipher */
       if (mode == LRW_ENCRYPT) {
-         cipher_descriptor[lrw->cipher].ecb_encrypt(ct, ct, &lrw->key);
+         if ((err = cipher_descriptor[lrw->cipher].ecb_encrypt(ct, ct, &lrw->key)) != CRYPT_OK) {
+            return err;
+         }
       } else {
-         cipher_descriptor[lrw->cipher].ecb_decrypt(ct, ct, &lrw->key);
+         if ((err = cipher_descriptor[lrw->cipher].ecb_decrypt(ct, ct, &lrw->key)) != CRYPT_OK) {
+            return err;
+         }
       }               
 
       /* xor prod */
@@ -112,5 +116,5 @@ int lrw_process(const unsigned char *pt, unsigned char *ct, unsigned long len, i
       
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/lrw/lrw_process.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2006/01/27 21:30:47 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

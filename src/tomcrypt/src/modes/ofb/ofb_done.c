@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -38,5 +38,5 @@ int ofb_done(symmetric_OFB *ofb)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/ofb/ofb_done.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

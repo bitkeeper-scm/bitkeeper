@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -97,5 +97,5 @@ int der_decode_bit_string(const unsigned char *in,  unsigned long inlen,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/bit/der_decode_bit_string.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/10/07 11:27:14 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

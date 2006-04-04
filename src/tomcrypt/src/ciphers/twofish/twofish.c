@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 
  /** 
@@ -709,5 +709,5 @@ int twofish_keysize(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/twofish/twofish.c,v $ */
-/* $Revision: 1.10 $ */
-/* $Date: 2006/01/26 15:07:26 $ */
+/* $Revision: 1.11 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

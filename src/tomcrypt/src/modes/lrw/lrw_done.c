@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -38,5 +38,5 @@ int lrw_done(symmetric_LRW *lrw)
 
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/lrw/lrw_done.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/01/26 18:29:03 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

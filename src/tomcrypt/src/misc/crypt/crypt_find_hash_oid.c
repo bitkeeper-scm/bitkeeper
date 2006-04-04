@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -31,5 +31,5 @@ int find_hash_oid(const unsigned long *ID, unsigned long IDlen)
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt_find_hash_oid.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2005/07/27 00:09:02 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2006/03/31 14:15:35 $ */

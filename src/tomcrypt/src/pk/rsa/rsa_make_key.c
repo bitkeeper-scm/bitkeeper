@@ -6,7 +6,7 @@
  * The library is free for all purposes without any express
  * guarantee it works.
  *
- * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.org
+ * Tom St Denis, tomstdenis@gmail.com, http://libtomcrypt.com
  */
 #include "tomcrypt.h"
 
@@ -111,5 +111,5 @@ done:
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/rsa/rsa_make_key.c,v $ */
-/* $Revision: 1.11 $ */
-/* $Date: 2005/11/24 01:53:19 $ */
+/* $Revision: 1.12 $ */
+/* $Date: 2006/03/31 14:15:35 $ */
