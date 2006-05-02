@@ -1,4 +1,3 @@
-
 # Try to find the project root, limiting ourselves to 40 directories
 proc cd2root { {startpath {}} } \
 {
@@ -94,21 +93,6 @@ proc balloon_aux {w msg} \
 	bind $t <Leave> "catch {destroy .balloon_help}"
 }
 
-#
-# Tcl version 8.0.5 doesn't have array unset 
-# Consider moving to common lib area?
-#
-proc array_unset {var} \
-{
-	upvar #0 $var lvar
-
-	foreach i [array names lvar] {
-		#puts "unsetting $var ($i)"
-		unset lvar($i)
-
-	}
-}
-
 # usage: centerWindow pathName ?width height?
 #
 # If width and height are supplied the window will be set to
@@ -177,91 +161,6 @@ proc print_stacktrace {} \
 		puts "\t[info level $i]"
 	}
 }
-proc _parray {a {pattern *}} \
-{
-	upvar 1 $a array
-	if {![array exists array]} {
-		error "\"$a\" isn't an array"
-	}
-	set maxl 0
-	foreach name [lsort [array names array $pattern]] {
-		if {[string length $name] > $maxl} {
-			set maxl [string length $name]
-		}
-	}
-	set maxl [expr {$maxl + [string length $a] + 2}]
-	set answer ""
-	foreach name [lsort [array names array $pattern]] {
-		set nameString [format %s(%s) $a $name]
-		append answer \
-		    [format "%-*s = %s\n" $maxl $nameString $array($name)]
-	}
-	return $answer
-}
-
-# usage: constrainSize ?toplevel? ?maxwidth? ?maxheight?
-# Adds code to constrain the size of the toplevel to the width of the
-# display and 95% of the height
-proc constrainSize {{toplevel .} {maxWidth -1} {maxHeight -1}} \
-{
-	if {$maxWidth == -1} {
-		set maxWidth  [winfo screenwidth $toplevel]
-	}
-	if {$maxHeight == -1} {
-		set maxHeight [expr {int([winfo screenheight $toplevel]*.95)}]
-	}
-
-	# Setting the maxsize is only a hint to the window manager; 
-	# therefore, we need to also do some binding magic to constrain
-	# window sizes manually. This is more trouble than it ought to
-	# be.
-	wm maxsize $toplevel $maxWidth $maxHeight
-
-	# Note: we do NOT want the binding on the window itself
-	# because that will cause it to fire for every widget
-	# (assuming the window is a toplevel). That would hurt. 
-	bindtags $toplevel [concat "resize-$toplevel" [bindtags $toplevel]]
-	bind resize-$toplevel <Configure> \
-	    [list resizeRequest $toplevel $maxWidth $maxHeight %w %h %T]
-}
-
-# this is used by constrainSize, and is executed in response to a GUI
-# being resized.
-proc resizeRequest {pathName maxWidth maxHeight width height type} \
-{
-
-	if {[info exists ::inResizeRequest]} {return} 
-
-	set ::inResizeRequest 1
-
-	# the test for constrain is critically important; if we 
-	# unconditionally call wm geometry we can get into an
-	# endless loop.
-	set constrain 0
-	if {$width > $maxWidth} {set width $maxWidth; set constrain 1}
-	if {$height > $maxHeight} {set height $maxHeight; set constrain 1}
-
-	if {$constrain} {
-		# Note that we must configure the window width and 
-		# height rather than use the "wm geometry" command.
-		# If we use "wm geometry" and the window is gridded
-		# (ie: some subwidget has -grid set to true), the
-		# width and height will be interpreted as a number 
-		# of grid units. This will cause this proc to resize 
-		# the window to some huge size, which will trigger 
-		# this proc, which will ... (read: infinite loop)
-		$pathName configure -width $width -height $height
-		
-		# turn off geometry propagation, so the children
-		# and this proc don't get into a fight for who says
-		# what the size of the window should be. 
-		catch {pack propagate $pathName 0}
-		catch {grid propagate $pathName 0}
-
-	}
-
-	unset ::inResizeRequest
-}
 
 proc tmpfile {name} \
 {
@@ -276,118 +175,188 @@ proc tmpfile {name} \
 	return $filename
 }
 
-# the purpose of this proc is merely to load the persistent state;
-# it does not do anything with the data (such as set the window 
-# geometry). That is best done elsewhere. This proc does, however,
-# attempt to make sure the data is in a usable form.
 proc loadState {appname} \
 {
-	global State
-
-	catch {::appState load $appname State}
+	catch {::appState load $appname ::State}
 }
 
-proc saveState {appname {w .}} \
+proc saveState {appname} \
 {
-	global State
+	catch {::appState save $appname ::State}
+}
 
-	# Copy state to a temporary variable, the re-load in the
-	# state file in case some other process has updated it
-	# (for example, setting the geometry for a different
-	# resolution). Then add in the geometry information unique
-	# to this instance.
-	array set tmp [array get State]
-	catch {::appState load $appname tmp}
-	set res [winfo screenwidth $w]x[winfo screenheight $w]
-	set tmp(geometry@$res) [wm geometry $w]
+proc trackGeometry {w1 w2 width height} \
+{	
+	# The event was caused by a different widget
+	if {$w1 ne $w2} {return}
 
-	# Generally speaking, errors at this point are no big
-	# deal. It's annoying we can't save state, but it's no 
-	# reason to stop running. So, a message to stderr is 
-	# probably sufficient. Plus, given we may have been run
-	# from a <Destroy> event on ".", it's too late to pop
-	# up a message dialog.
-	if {[catch {::appState save $appname tmp} result]} {
-		puts stderr "error writing config file: $result"
+	# We don't want to save the geometry if the user maximized
+	# the window, so only save if it's a 'normal' resize operation.
+	# XXX: Only works on MS Windows
+	if {[wm state $w1] eq "normal"} {
+		set res [winfo vrootwidth $w1]x[winfo vrootheight $w1]
+		foreach {- - ox x oy y} [goodGeometry [wm geometry $w1]] {break}
+		# We can't get widht/height from wm geometry because if the 
+		# app is gridded, we'll get grid units instead of pixels.
+		set width [$w1 cget -width]
+		set height [$w1 cget -height]
+		set ::State(geometry@$res) "${width}x${height}${ox}${x}${oy}${y}"
+		debugGeom "Remembering $::State(geometry@$res)"
 	}
 }
 
-proc restoreGeometry {app {w .} {force 0}} \
+# See if a geometry string is good. Returns a list with 
+# [width, height, ox, x, oy , y] where ox and oy are the sign
+# of the geometry string (+|-)
+proc goodGeometry {geometry} \
+{
+	if {[regexp \
+    	    {(([0-9]+)[xX]([0-9]+))?(([\+\-])([\+\-]?[0-9]+)([\+\-])([\+\-]?[0-9]+))?} \
+	    $geometry - - width height - ox x oy y]} {
+		return [list $width $height $ox $x $oy $y]
+	}
+	return ""
+}
+
+proc debugGeom {args} \
+{
+	global env
+
+	if {[info exists env(BK_DEBUG_GEOMETRY)]} {
+		puts stderr [join $args " "]
+	}
+}
+
+proc restoreGeometry {app {w .}} \
 {
 	global State gc env
 
-	# The presence of the global variable 'geometry' means that the
-	# user specified a geometry on the command line. If that happens
-	# we don't want to override that here.
-	if {!$force && [info exists ::geometry]} return
+	debugGeom "start"
+	# track geometry changes 
+	bindtags $w [concat "geometry" [bindtags $w]]
+	bind geometry <Configure> [list trackGeometry $w %W %w %h]
 
 	set rwidth [winfo vrootwidth $w]
 	set rheight [winfo vrootheight $w]
-
 	set res ${rwidth}x${rheight}
-	if {[info exists State(geometry@$res)]} {
-		set geometry $State(geometry@$res)
-	} elseif {[info exists gc($app.geometry)]} {
-		set geometry $gc($app.geometry)
-	}
-	if {[info exists env(BK_GEOM)]} { set geometry $env(BK_GEOM) }
-	if {![info exists geometry]} return
+	debugGeom "res $res"
 
-	if {[catch {
-		regexp {([0-9]+)x([0-9]+)} $geometry -> width height
-		# Truncate sizes down to actual screen size
-		set width [expr {$width > $rwidth ? $rwidth : $width}]
-		set height [expr {$height > $rheight ? $rheight : $height}]
-	} message]} {
-		# See if we have just the +x+y form
-		if {[catch {
-			regexp {^([-+][0-9]+)([-+][0-9]+)$} $geometry -> x y
-			wm geometry $w $x$y
-			return
-		} message]} {
-			# OK, now we can punt
-			return
-		}
+	# get geometry from the following priority list (most to least)
+	# 1. -geometry on the command line (which means ::geometry)
+	# 2. BK_GEOM environment variable
+	# 3. State(geometry@res) (see loadState && saveState)
+	# 4. gc(app.geometry) (see config.tcl)
+	# 5. App request (whatever Tk wants)
+	# We stop at the first usable geometry...
+
+	if {[info exists ::geometry] && 
+	    ([set g [goodGeometry $::geometry]] ne "")} {
+		debugGeom "Took ::geometry"
+	} elseif {[info exists env(BK_GEOM)] &&
+	    ([set g [goodGeometry $env(BK_GEOM)]] ne "")} {
+		debugGeom "Took BK_GEOM"
+	} elseif {[info exists State(geometry@$res)] &&
+	    ([set g [goodGeometry $State(geometry@$res)]] ne "")} {
+		debugGeom "Took State"
+	} elseif {[info exists gc($app.geometry)] &&
+	    ([set g [goodGeometry $gc($app.geometry)]] ne "")} {
+		debugGeom "Took app.geometry"
 	}
+	
+	# now get the variables
+	foreach {width height ox x oy y} $g {break}
+	debugGeom "config: $width $height $ox $x $oy $y"
+	
+	if {$width eq ""} {
+		# We need to call update to force the recalculation of
+		# geometry. We're assuming the state of the widget is
+		# withdrawn so this won't cause a screen update.
+		update
+		set width [winfo reqwidth $w]
+		set height [winfo reqheight $w]
+	}
+	
+	if {$x eq ""} {
+		foreach {- - ox x oy y} [goodGeometry [wm geometry $w]] {break}
+	}
+	debugGeom "using: $width $height $ox $x $oy $y"
+	
+	# The geometry rules are different for each platform.
+	# E.g. in Mac OS X negative positions for the geometry DO NOT
+	# correspond to the lower right corner of the app, it's ALWAYS
+	# the top left corner. (This will change with Tk-8.4.12 XXX)
+	# Thus, we ALWAYS specify the geometry as top left corner for
+	# BOTH the app and the screen. The math may be harder, but it'll
+	# be right.
+
+	# Usable space
+	set ux $gc(padLeft)
+	set uy $gc(padTop)
+	set uwidth [expr {$rwidth - $gc(padLeft) - $gc(padRight)}]
+	set uheight [expr {$rheight - $gc(padTop) 
+	    - $gc(padBottom) - $gc(titlebarHeight)}]
+	debugGeom "ux: $ux uy: $uy uwidth: $uwidth uheight: $uheight"
+	debugGeom "padLeft $gc(padLeft) padRight $gc(padRight)"
+	debugGeom "padTop $gc(padTop) padBottom $gc(padBottom)"
+	debugGeom "titlebarHeight $gc(titlebarHeight)"
+
+	# Normalize the app's position. I.e. (x, y) is top left corner of app
+	if {$ox eq "-"} {set x [expr {$rwidth - $x - $width}]}
+	if {$oy eq "-"} {set y [expr {$rheight - $y - $height}]}
+
+	if {![info exists env(BK_GUI_OFFSCREEN)]} {
+		# make sure 100% of the GUI is visible
+		debugGeom "Size start $width $height"
+		set width [expr {($width > $uwidth)?$uwidth:$width}]
+		set height [expr {($height > $uheight)?$uheight:$height}]
+		debugGeom "Size end $width $height"
+
+		debugGeom "Pos start $x $y"
+		if {$x < $ux} {set x $ux}
+		if {$y < $uy} {set y $uy}
+		if {($x + $width) > ($ux + $uwidth)} {
+			debugGeom "1a $ox $x $oy $y"
+			set x [expr {$ux + $uwidth - $width}]
+			debugGeom "1b $ox $x $oy $y"
+		}
+		if {($y + $height) > ($uy + $uheight)} {
+			debugGeom "2a $ox $x $oy $y"
+			set y [expr {$uy + $uheight - $height}]
+			debugGeom "2b $ox $x $oy $y"
+		}
+		debugGeom "Pos end $x $y"
+	} else {
+		debugGeom "Pos start offscreen $x $y"
+		# make sure at least some part of the window is visible
+		# i.e. we don't care about size, only position
+		# if the app is offscreen, we pull it so that 1/10th of it
+		# is visible
+		if {$x > ($ux + $uwidth)} {
+			set x [expr {$ux + $uwidth - int($uwidth/10)}]
+		} elseif {($x + $width) < $ux} {
+			set x $ux
+		}
+		if {$y > ($uy + $uheight)} {
+			set y [expr {$uy + $uheight - int($uheight/10)}]
+		} elseif {($y + $height) < $uy} {
+			set y $uy
+		}
+		debugGeom "Pos end offscreen $x $y"
+	}
+
 
 	# Since we are setting the size of the window we must turn
 	# geometry propagation off
 	catch {grid propagate $w 0}
 	catch {pack propagate $w 0}
 
-	# The MacOSX X11 implementation has a bug when saving
-	# and restoring geometry, such that repeated saving/restoring
-	# causes the window to get progressively taller. Subtracting
-	# the size of the window manager border works around this
-	# annoyance.
-	# For the time being we'll hide this in an undocumented
-	# gc variable since no customers have complained about this
-	# and the problem may go away in the next release of MacOSX.
-	# (for the record, "22" is the magic number for MacOS 10.2.x)
-	if {[info exists gc($app.geometryHack)]} {
-		incr height $gc($app.geometryHack)
-	}
-
-	# Instead of using [wm geometry] we directly configure the width
-	# and height of the window. This is because "wm geometry" will 
-	# treat its arguments as grid units if "gridding" is turned on. We
-	# want to deal with raw pixel values. 
-	#
-	# Also note that only the width/height is restored; the position of
-	# the window on the screen is not restored. We did this in 3.0 but
-	# discovered this caused problems with some virtual desktops (ie:
-	# a window might be restored to a virtual desktop that is not 
-	# presently visible).
+	debugGeom "${width}x${height}"
+	# Don't use [wm geometry] for width and height because it 
+	# treats the arguments as grid units if the widget is in grid mode.
 	$w configure -width $width -height $height
 
-	# Bzzt.  I like the restore feature.  --lm
-	if {![info exists gc($app.noAutoRestoreXY)]} {
-		# Skip the width by ht stuff
-		set loc [string trimleft $geometry "0123456789x"]
-		if {$loc != ""} {
-			wm geometry $w $loc
-		}
-	}
+	debugGeom "+$x +$y"
+	wm geometry $w +${x}+${y}
 }
 
 # this removes hardcoded newlines from paragraphs so that the paragraphs

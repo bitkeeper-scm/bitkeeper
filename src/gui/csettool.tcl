@@ -745,7 +745,7 @@ proc main {} \
 
 	bind . <Destroy> {
 		if {[string match "." %W]} {
-			saveState cset .
+			saveState cset
 		}
 	}
 

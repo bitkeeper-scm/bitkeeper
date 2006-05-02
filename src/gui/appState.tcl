@@ -24,12 +24,7 @@ namespace eval ::appState {
 proc ::appState {command app varname} \
 {
 
-	# wrap the whole thing into a catch. If an error is caught
-	# it will be rethrown, trimmed of excessive cruft
-	if {[catch {uplevel ::appState::$command $app $varname} result]} {
-		return -code error $result
-	}
-
+	catch {uplevel ::appState::$command $app $varname} result
 	return $result
 }
 

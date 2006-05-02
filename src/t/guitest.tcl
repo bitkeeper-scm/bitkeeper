@@ -327,6 +327,48 @@ proc bgerror {string} {
 	exit 1
 }
 
+# Test geometry of a window to make sure it is visible
+# all == 1 means it must be completely visible, otherwise
+# we're happy with some part being visible
+proc test_isvisible {w {all 0}} \
+{
+	set sw [winfo screenwidth $w]
+	set sh [winfo screenheight $w]
+	set x1 [winfo x $w]
+	set y1 [winfo y $w]
+	set width [winfo width $w]
+	set height [winfo height $w]
+	set x2 [expr {$x1 + $width}]
+	set y2 [expr {$y1 + $height}]
+	# now do the test
+	if {$all} {
+		# All must be visible
+		if {$x1 < 0 || ($x1 > $sw) || ($y1 < 0) || ($y1 > $sh) ||
+	    	   ($x2 < 0) || ($x2 > $sw) || ($y2 < 0) || ($y2 > $sh)} {
+			return 0
+		}
+		return 1
+	} else {
+		# Some of it must be visible
+		set x1v [expr {$x1 >= 0 && $x1 <= $sw}]
+		set x2v [expr {$x2 >= 0 && $x2 <= $sw}]
+		set y1v [expr {$y1 >= 0 && $y1 <= $sh}]
+		set y2v [expr {$y2 >= 0 && $y2 <= $sh}]
+		if {($x1v || $x2v) && ($y1v || $y2v)} {
+			return 1
+		}
+		return 0
+		
+	}
+	return -code error -1
+}
+
+proc test_geometry {w} \
+{
+	return "[winfo width $w]x[winfo height $w]+[winfo x $w]+[winfo y $w]"
+}
+
+
 # Citool has a rather annoying design in that it calls
 # vwait for its main loop. By overriding that command we can catch
 # when that happens so the test script can be run
