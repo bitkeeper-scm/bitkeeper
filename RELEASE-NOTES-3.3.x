@@ -47,10 +47,16 @@ bk changes
     -d<dspec> option to generate a stable, easy to parse output.
     (XXX provide original DSPEC here?)
 
+    Add -i/-x include/exclude processing.
+
 bk diffs
     diffs -C is gone; use diffs -r@REV instead.
 
     Add -N option to treat extra files as new.
+
+    Add -f to force diffing against read only files.
+
+    Add -H to prefix diffs with checkin comments
 
 bk get
     get -C is gone; use get -r@+ instead.  This @+ rev is special cased for
@@ -83,9 +89,15 @@ bk grep
 bk import -tCVS
     The CVS import code has greatly improved from previous versions.
 
+bk lease show
+    Now show license options and when the current license renews.
+
 bk mv/mvdir
     The 'bk mvdir' has now been deprecated and 'bk mv dir1 dir2' is
     the prefered method of moving a directory.
+
+bk sccscat
+    This command has been removed.  Use 'bk annotate -R' instead.
     
 bk sfiles
     bk sfiles has many subtle interface changes to support GUI integration.
@@ -145,12 +157,15 @@ bk sfiles
 
     The sfiles options to 'bk' have similar changes.  See 'bk help bk'.
 
+bk sfio
+    Add -f option to overwrite existing files
+
 bk prs, changes, sccslog ...
     In commands which produce date output, such as prs, changes, sccslog,
     the old default was YY/MM/DD or YY-MM-DD but you could force it into
     4 digits with BK_YEAR4=1.  The 4 digit years are now the default.
 
-    New dspecs :UDIFFS: :CHANGESET:
+    New dspecs :DIFFS: :DIFFS_U: :DIFFS_UP: :CHANGESET:
 
 bk pull
     (see multiple parents above)
@@ -160,10 +175,18 @@ bk pull
     A new -u option is for an update-only pull.  This causes pull to
     fail if any local csets exist in the tree.
 
+    New -s option is to tell the resolver to fail if an automerge is
+    not possible.  (non-interactive pull)
+
+    New -r option to only pull upto a give rev in the remote repository.
+
 bk push
     (see multiple parents above)
 
     The -l and -n options are removed.  Use 'bk changes -R' instead.
+
+bk relink
+    With no arguments it relinks with parent. (if local)
 
 bk resolve
     bk resolve now goes straight into merge mode after attempting to automerge
@@ -174,8 +197,11 @@ bk resolve
 
     New 'S' command: skip this file and resolve it later.
 
+    New -s option to tell bk to not go interactive
+
 bk repogca
-    A new -k option returns :KEY: instead of :REV:.
+    A new -d<dspec> option returns a given dspec instead of :KEY:
+    A new -k is a shorthand for -d:KEY:
 
     Multiple remote URLs can now be passed on the repogca command line
     and the lastest cset that exists is all remote URLs is returned.
@@ -231,6 +257,7 @@ Performance fixes
 Bugs fixed:
     2000-04-17-003
     2002-02-15-001
+    2002-03-14-008
     2002-04-06-004
     2002-05-10-003
     2002-06-11-001
@@ -252,18 +279,33 @@ Bugs fixed:
     2003-10-20-003
     2003-12-09-001
     2004-01-07-001
+    2004-01-13-001
+    2004-01-13-002
     2004-01-14-002
     2004-01-15-003
     2004-06-09-002
+    2005-12-05-003
+    2006-01-09-001
+    2006-03-31-001
 
 XXX undocumented?
 
-  - remote license support
   - bkd virtual hosts
-  - bk pending
   - mdiff/newdifftool
   - bk get -eM
   - lots of other GUI changes I don't understand
   - win32 socks (no win98 support)
-  - license from lease (working in expired repo)
   - review stuff
+  - remove openlogging & single_user support
+  - license work
+    - remove licenses
+    - proxy support
+    - no openlogging & single_user
+    - license from lease (working in expired repo)
+    - no read-only access with expired license
+    - read tracking
+    - BK_CONFIG_SHUTUP
+
+XXX Notes
+
+  - include undocumentated sccscat alias?
