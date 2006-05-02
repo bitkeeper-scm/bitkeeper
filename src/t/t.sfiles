@@ -619,3 +619,35 @@ echo bar/s.foo > WANT
 bk sfiles -gy bar/s.foo > GOT
 checkfiles WANT GOT
 echo OK
+
+echo $N Test -v with pending deltas .................................$NL
+cd $HERE
+commercial clone2
+echo hi > file2
+bk new $Q -ynew file2 || exit 1
+bk commit $Q -ynew || exit 1
+bk edit $Q file2 || exit 1
+echo bye >> file2
+bk ci $Q -ybye file2 || exit 1
+bk edit $Q file2 || exit 1
+echo bye2 >> file2
+bk ci $Q -ybye2 file2 || exit 1
+bk edit $Q file2 || exit 1
+echo bye3 >> file2
+echo bye3 > SCCS/c.file2
+bk sfiles -E -pA | grep file2 > GOT
+cat <<EOF > WANT
+ppppppp SCCS/s.file2|1.3
+ppppppp SCCS/s.file2|1.2
+lcpG--y SCCS/s.file2
+EOF
+cmpfiles WANT GOT
+bk sfiles -E -pA file2 > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test -E with pending deltas .................................$NL
+bk sfiles -E file2 > GOT
+echo "lcpG--y SCCS/s.file2" > WANT
+cmpfiles WANT GOT
+echo OK
