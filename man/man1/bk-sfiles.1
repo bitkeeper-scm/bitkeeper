@@ -4,10 +4,10 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc bk [-r] sfiles [\-01acCdDeEgGjlnSuUvxy] [
+.Bc bk [-r] sfiles [\-01acCdDeEgGjlnpSuUvxy] [
 .OPTreq \-o file
 .Bc ] [
-.OPTopt \-p A|C
+.OPTreq \-p A|C
 .Bc ] [
 .ARGc dirs
 .B ]
@@ -98,18 +98,18 @@ Send output to
 .ARG file
 and progress information to stdout.
 .tp
-.OPTopt \-p A|C
-List files with pending deltas.  If 
-.B \-pC
-then list 
-leaves which are not in a changeset as 
+.B \-p
+List s.files with pending deltas.
+.tp
+.B \-pA
+In addition to other output, lists pending deltas that are not part of
+a changeset as
 .B file|1.3
-If
-.BR \-pA ,
-that implies 
-.BR \-pC ,
-and 
-lists all revisions, not just the tip.
+.tp
+.B \-pC
+Like
+.B \-pA
+but only the latest delta from each file is shown.
 .tp
 .B \-P
 Like -p, but don't trust the d.file.  Use the s.file for verification
@@ -169,6 +169,15 @@ the file is junk
 .tp
 \f(CBxxxxxxx\fR\ \ (-x)
 file is not yet under \*(BK control
+.tp
+\f(CBppppppp\fR\ \ (-pC -pA)
+this is a pending delta
+.LP
+NOTE: In the future new columns might be added to the end of the
+existing columns. When parsing in programs and scripts assume the
+filename starts at the first character after the first space on the
+line.
+.LP
 .RE
 .tp
 .B \-x
