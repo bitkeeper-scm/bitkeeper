@@ -25,7 +25,7 @@ echo "more stuff" >> file2
 echo OK
 
 echo $N Bogus geometry, normal case [citool].........................$NL
-unset BK_GEOM
+unset _BK_GEOM
 bk guitest >`bk dotbk`/ci.rc 2>&1 <<'EOF'
 	set sw [winfo screenwidth .]
 	set sh [winfo screenheight .]
@@ -49,7 +49,7 @@ if [ -s OUT ] ; then echo failed; cat OUT; exit 1; fi
 echo OK
 
 echo $N GUI offscreen, naive user [csettool].........................$NL
-unset BK_GEOM
+unset _BK_GEOM
 bk guitest >`bk dotbk`/cset.rc 2>&1 <<'EOF'
 	set sw [winfo screenwidth .]
 	set sh [winfo screenheight .]
@@ -72,7 +72,7 @@ if [ -s OUT ] ; then echo failed; cat OUT; exit 1; fi
 echo OK
 
 echo $N GUI slightly offscreen, expert user [difftool]...............$NL
-unset BK_GEOM
+unset _BK_GEOM
 bk guitest >`bk dotbk`/diff.rc 2>&1 <<'EOF'
 	set sw [winfo screenwidth .]
 	set sh [winfo screenheight .]
@@ -97,7 +97,7 @@ if [ -s OUT ] ; then echo failed; cat OUT; exit 1; fi
 echo OK
 
 echo $N Negative geometry [fm3tool]..................................$NL
-unset BK_GEOM
+unset _BK_GEOM
 unset BK_GUI_OFFSCREEN
 bk guitest >`bk dotbk`/fm3.rc 2>&1 <<'EOF'
 	set sw [winfo screenwidth .]
@@ -122,7 +122,7 @@ if [ -s OUT ] ; then echo failed; cat OUT; exit 1; fi
 echo OK
 
 echo $N Double negative geometry [revtool]...........................$NL
-unset BK_GEOM
+unset _BK_GEOM
 export BK_GUI_OFFSCREEN=1
 bk guitest >`bk dotbk`/rev.rc 2>&1 <<'EOF'
 	set sw [winfo screenwidth .]

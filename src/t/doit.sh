@@ -240,8 +240,8 @@ setup_env()
 	BK_DBGLOCKS=1
 
 	# Force GUI tools to autoplace
-	BK_GEOM=+1+1
-	export BK_GEOM
+	_BK_GEOM=+1+1
+	export _BK_GEOM
 
 	unset _BK_GMODE_DEBUG
 	BK_REGRESSION=`cd $TST_DIR; bk pwd -s`/.regression-$USER

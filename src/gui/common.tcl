@@ -243,7 +243,7 @@ proc restoreGeometry {app {w .}} \
 
 	# get geometry from the following priority list (most to least)
 	# 1. -geometry on the command line (which means ::geometry)
-	# 2. BK_GEOM environment variable
+	# 2. _BK_GEOM environment variable
 	# 3. State(geometry@res) (see loadState && saveState)
 	# 4. gc(app.geometry) (see config.tcl)
 	# 5. App request (whatever Tk wants)
@@ -252,9 +252,9 @@ proc restoreGeometry {app {w .}} \
 	if {[info exists ::geometry] && 
 	    ([set g [goodGeometry $::geometry]] ne "")} {
 		debugGeom "Took ::geometry"
-	} elseif {[info exists env(BK_GEOM)] &&
-	    ([set g [goodGeometry $env(BK_GEOM)]] ne "")} {
-		debugGeom "Took BK_GEOM"
+	} elseif {[info exists env(_BK_GEOM)] &&
+	    ([set g [goodGeometry $env(_BK_GEOM)]] ne "")} {
+		debugGeom "Took _BK_GEOM"
 	} elseif {[info exists State(geometry@$res)] &&
 	    ([set g [goodGeometry $State(geometry@$res)]] ne "")} {
 		debugGeom "Took State"
