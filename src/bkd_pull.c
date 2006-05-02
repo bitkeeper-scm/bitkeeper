@@ -30,7 +30,7 @@ cmd_pull_part1(int ac, char **av)
 {
 	char	*p, buf[4096];
 	char	*probekey_av[] = {"bk", "_probekey", 0};
-	int	status, rfd;
+	int	status, rfd, hdr = 1;
 	pid_t	pid;
 	FILE	*f;
 
@@ -59,15 +59,25 @@ cmd_pull_part1(int ac, char **av)
 		return (1);
 	}
 
-	fputs("@OK@\n", stdout);
 	pid = spawnvp_rPipe(probekey_av, &rfd, 0);
 	f = fdopen(rfd, "r");
 	while (fnext(buf, f)) {
+		if (hdr) {
+			fputs("@OK@\n", stdout);
+			hdr = 0;
+		}
 		fputs(buf, stdout);
 	}
 	fclose(f);
 	fflush(stdout);
-	waitpid(pid, &status, 0);
+	unless ((waitpid(pid, &status, 0) > 0) &&
+	    WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+		sprintf(buf, "ERROR-probekey failed (status=%d)\n",
+		    WEXITSTATUS(status));
+		out(buf);
+		out("@END@\n");
+		return (1);
+	}
 	return (0);
 }
 

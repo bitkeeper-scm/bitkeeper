@@ -216,7 +216,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 	}
-	if (get_ok(r, buf, !opts.quiet)) {
+	if (get_ok(r, buf, 1)) {
 		disconnect(r, 2);
 		goto done;
 	}
