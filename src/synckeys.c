@@ -568,26 +568,30 @@ private int
 send_sync_msg(remote *r)
 {
 	FILE 	*f;
-	int	rc;
-	char	*cmd, buf[MAXPATH];
+	int	rc, i;
+	char	*probef;
+	char	buf[MAXPATH];
 
 	bktmp(buf, "synccmds");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, 0);
 	if (r->path) add_cd_command(f, r);
-	fprintf(f, "synckeys");
-	fputs("\n", f);
+	fprintf(f, "synckeys\n");
 	fclose(f);
 
-	cmd = aprintf("bk _probekey  >> %s", buf);
-	rc = system(cmd);
-	free(cmd);
-
-	unless (rc) {
-		rc = send_file(r, buf, 0);
+	probef = bktmp(0, 0);
+	unless (rc = sysio(0, probef, 0, "bk", "_probekey", SYS)) {
+		rc = send_file(r, buf, size(probef));
 		unlink(buf);
+		f = fopen(probef, "rb");
+		while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
+			writen(r->wfd, buf, i);
+		}
+		fclose(f);
 	}
+	unlink(probef);
+	free(probef);
 	return (rc);
 }
 

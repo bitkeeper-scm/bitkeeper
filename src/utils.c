@@ -565,6 +565,10 @@ send_file(remote *r, char *file, int extra)
 			remote_perror(r, "write");
 			rc = -1;
 		}
+		if (r->trace) {
+			fprintf(stderr, "Sending...\n");
+			fwrite(m->mmap, 1, len, stderr);
+		}
 	}
 	mclose(m);
 	return (rc);

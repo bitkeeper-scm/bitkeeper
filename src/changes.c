@@ -979,14 +979,15 @@ want(sccs *s, delta *e)
 private int
 send_part1_msg(remote *r, char **av)
 {
-	char	*cmd, buf[MAXPATH];
-	int	rc, i;
+	int	rc = 0, i, extra = 0;
 	FILE 	*f;
+	char	*cmdf, *probef = 0;	/* tmpfiles */
+	char	buf[MAXLINE];
 
-	bktmp(buf, "changes");
-	f = fopen(buf, "w");
+	cmdf = bktmp(0, "changes");
+	f = fopen(cmdf, "w");
 	assert(f);
-	sendEnv(f, 0, r, (opts.remote ? 0 : SENDENV_NOREPO));
+	sendEnv(f, 0, r, ((opts.remote || opts.local) ? 0 : SENDENV_NOREPO));
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "chg_part1");
 	if (opts.remote) {
@@ -1003,13 +1004,23 @@ send_part1_msg(remote *r, char **av)
 	fclose(f);
 
 	if (opts.remote) {
-		cmd = aprintf("bk _probekey  >> %s", buf);
-		system(cmd);
-		free(cmd);
+		probef = bktmp(0, 0);
+		unless (rc = sysio(0, probef, 0, "bk", "_probekey", SYS)) {
+			extra = size(probef);
+		}
 	}
-
-	rc = send_file(r, buf, 0);
-	unlink(buf);
+	unless (rc) rc = send_file(r, cmdf, extra);
+	unlink(cmdf);
+	free(cmdf);
+	if (probef) {
+		f = fopen(probef, "rb");
+		while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
+			writen(r->wfd, buf, i);
+		}
+		fclose(f);
+		unlink(probef);
+		free(probef);
+	}
 	return (rc);
 }
 
@@ -1023,20 +1034,18 @@ send_end_msg(remote *r, char *msg)
 	bktmp(msgfile, "changes_end");
 	f = fopen(msgfile, "w");
 	assert(f);
-	sendEnv(f, 0, r, (opts.remote ? 0 : SENDENV_NOREPO));
+	sendEnv(f, 0, r, ((opts.remote || opts.local) ? 0 : SENDENV_NOREPO));
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in part 1
 	 */
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
-	fprintf(f, "chg_part2");
-	fputs("\n", f);
-
-	fputs(msg, f);
+	fprintf(f, "chg_part2\n");
 	fclose(f);
 
-	rc = send_file(r, msgfile, 0);
+	rc = send_file(r, msgfile, strlen(msg));
+	writen(r->wfd, msg, strlen(msg));
 	unlink(msgfile);
 	return (rc);
 }
@@ -1051,7 +1060,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	bktmp(msgfile, "changes_msg");
 	f = fopen(msgfile, "w");
 	assert(f);
-	sendEnv(f, 0, r, (opts.remote ? 0 : SENDENV_NOREPO));
+	sendEnv(f, 0, r, ((opts.remote || opts.local) ? 0 : SENDENV_NOREPO));
 
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "chg_part2");

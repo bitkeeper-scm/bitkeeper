@@ -253,22 +253,23 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	if (opts.verbose) fprintf(f, " -v");
 	if (r->path) fprintf(f, " %s", r->path);
 	fputs("\n", f);
-	fprintf(f, "@SFIO@\n");
 	fclose(f);
 
 	/*
 	 * Httpd wants the message length in the header
 	 * We have to compute the file size before we sent
+	 * 7 is the size of "@SFIO@"
 	 * 6 is the size of "@END@" string
-	 */ 
+	 */
 	if (r->type == ADDR_HTTP) {
 		m = sfio_size(opts, gzip);
 		assert(m > 0);
-		extra = m + 6;
+		extra = m + 7 + 6;
 	}
 	rc = send_file(r, buf, extra);
 	unlink(buf);
 
+	writen(r->wfd, "@SFIO@\n", 7);
 	n = gensfio(opts, opts.verbose, gzip, r->wfd);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(stderr,
