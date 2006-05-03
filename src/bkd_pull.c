@@ -72,8 +72,13 @@ cmd_pull_part1(int ac, char **av)
 done:
 	status = pclose(f);
 	fflush(stdout);
-	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
-		return (1);
+	unless ((waitpid(pid, &status, 0) > 0) &&
+	    WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+		sprintf(buf, "ERROR-probekey failed (status=%d)\n",
+		    WEXITSTATUS(status));
+		out(buf);
+		out("@END@\n");
+		rc = 1;
 	}
 	return (rc);
 }

@@ -242,7 +242,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		disconnect(r, 2);
 		return (1);
 	}
-	if (get_ok(r, buf, !opts.quiet)) {
+	if (get_ok(r, buf, 1)) {
 		disconnect(r, 2);
 		return (1);
 	}
@@ -346,7 +346,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		if (getServerInfoBlock(r)) goto err;
 		getline2(r, buf, sizeof(buf));
 	}
-	if (get_ok(r, buf, !opts.quiet)) {
+	if (get_ok(r, buf, 1)) {
  err:		putenv("BK_STATUS=PROTOCOL ERROR");
 		rc = 1;
 		goto done;

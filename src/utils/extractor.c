@@ -173,7 +173,7 @@ main(int ac, char **av)
 	sprintf(tmp, "PATH=%s%c%s/bitkeeper%c%s",
 	    tmpdir, PATH_DELIM, tmpdir, PATH_DELIM, getenv("PATH"));
 	putenv(tmp);
-	
+
 	/* The name "sfio.exe" should work on all platforms */
 	extract("sfio.exe", sfio_data, sfio_size, tmpdir);
 	extract("sfioball", data_data, data_size, tmpdir);
@@ -186,6 +186,14 @@ main(int ac, char **av)
 #else
 	if (system("sfio.exe -iqm < sfioball")) {
 #endif
+		if (errno == EPERM) {
+			fprintf(stderr,
+"bk install failed because it was unabled to execute sfio in %s.\n"
+"On some systems this might be /tmp does not have execute permissions.\n"
+"In that case try rerunning with TMPDIR set to a new directory.\n",
+			    tmpdir);
+			exit(1);
+		}
 		perror("sfio");
 		exit(1);
 	}
@@ -448,6 +456,9 @@ err:		*p = 0;
 char*
 findtmp(void)
 {
+	char	*p;
+
+	if (p = getenv("TMPDIR")) return (p);
 #ifdef	WIN32
 	char	*places[] = {
 			"Temp",

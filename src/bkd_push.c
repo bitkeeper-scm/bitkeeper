@@ -77,9 +77,10 @@ cmd_push_part1(int ac, char **av)
 	status = pclose(l);
 	if (!WIFEXITED(status) || (WEXITSTATUS(status) > 1)) {
 		perror(cmd);
- badlistkey:
-		out("@END@\n"); /* just in case list key did not send one */
-		out("ERROR-listkey failed\n");
+		sprintf(buf, "ERROR-listkey failed (status=%d)\n",
+		    WEXITSTATUS(status));
+		out(buf);
+		unlink(lktmp);
 		return (1);
 	}
 
@@ -87,7 +88,9 @@ cmd_push_part1(int ac, char **av)
 	m = mopen(lktmp, "r");
 	unless (m && msize(m)) {
 		if (m) mclose(m);
-		goto badlistkey;
+		out("@END@\n");
+		out("ERROR-listkey empty\n");
+		return (1);
 	}
 	if (debug) {
 		fprintf(stderr, "cmd_push_part1: sending key list\n");

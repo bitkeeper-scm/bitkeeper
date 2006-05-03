@@ -125,7 +125,7 @@ rclone_part1(opts opts, remote *r, char **envVar)
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 	}
-	if (get_ok(r, buf, opts.verbose)) return (-1);
+	if (get_ok(r, buf, 1)) return (-1);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	return (0);
 }
