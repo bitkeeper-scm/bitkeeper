@@ -1,0 +1,21 @@
+
+# this test is "by-hand" because it is slow and transfers alot of
+# data from bkbits.
+
+echo $N Run bkdemo ..................................................$NL
+
+BK_CONFIG="license:$BKL_PRO;
+licsign1:$BKL_P1; licsign2:$BKL_P2; licsign3:$BKL_P3;
+single_user:; single_host:; logging:none"
+export BK_CONFIG
+_BK_EVAL=1
+export _BK_EVAL
+bk _eula -a  || exit 1
+
+echo y |
+  bk clone $Q http://bkdemo.bkbits.net/bk_demo my_parent 2> /dev/null || exit 1
+cd my_parent
+touch foo
+bk new $Q foo || exit 1
+bk commit $Q -yTest || exit 1
+echo OK
