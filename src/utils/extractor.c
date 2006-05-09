@@ -204,8 +204,8 @@ main(int ac, char **av)
 	 * but don't overwrite an existing config file.
 	 * If we find a license in the old dir, set BK_CONFIG with it.
 	 */
-	sprintf(buf, "%s/config", dest);
-	unless (upgrade && exists(buf)) {
+	if (dest) sprintf(buf, "%s/config", dest);
+	unless (upgrade && dest && exists(buf)) {
 		system("bk _eula -v < config > bitkeeper/config 2>"
 		    DEV_NULL);
 		unlink("config");
