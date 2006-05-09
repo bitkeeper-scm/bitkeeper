@@ -1065,6 +1065,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 {
 	delta	*d;
 	int	error = 0;
+	int	fd0;
 	MMAP	*diffs;
 	FILE	*fdiffs;
 	char	filename[MAXPATH];
@@ -1095,18 +1096,30 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 
 	/*
 	 * Make /dev/tty where we get input.
+	 * XXX This really belongs in port/getinput.c
+	 *     We shouldn't do this if we are not getting comments
+	 *     interactively.
 	 */
 #undef	close
 #undef	open
+	fd0 = dup(0);
 	close(0);
-	open(DEV_TTY, 0, 0);
+	if (open(DEV_TTY, 0, 0) < 0) {
+		dup2(fd0, 0);
+		close(fd0);
+		fd0 = -1;
+	}
 	if (flags & DELTA_DONTASK) d = comments_get(d);
 	if (sccs_delta(cset, flags, d, 0, diffs, syms) == -1) {
 		sccs_whynot("cset", cset);
 		error = -1;
 		goto out;
 	}
-
+	if (fd0 >= 0) {
+		dup2(fd0, 0);
+		close(fd0);
+		fd0 = -1;
+	}
 	if (marklist(filename)) {
 		error = -1;
 		goto out;
