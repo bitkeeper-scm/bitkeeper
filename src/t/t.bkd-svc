@@ -278,8 +278,15 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N check http clone with bad -r from bkd .......................$NL
-bk clone $Q -rbad http://localhost:$PORT $HERE/junk2
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+bk clone $Q -rbad http://localhost:$PORT $HERE/junk2 2> err && {
+	echo should have failed
+	exit 1
+}
+grep -q "ERROR-rev bad doesn't exist" err || {
+	echo wrong error
+	cat err
+	exit 1
+}
 bk service uninstall $BKDNAME
 echo OK
 

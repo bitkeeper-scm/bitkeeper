@@ -231,7 +231,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	}
-	if (get_ok(r, buf, opts.verbose)) goto err;
+	if (get_ok(r, buf, 1)) goto err;
 
 	/*
 	 * What we want is: "remote => bk _prunekey => keys"

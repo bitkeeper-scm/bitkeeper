@@ -237,6 +237,13 @@ getIncExc () {
 	fi
 }
 
+no_sccs() {
+	echo SCCS imports are unsupported in this version of BitKeeper.
+	echo Please contact support@bitmover.com for assistance.
+	echo Thank you.
+	Done 1
+}
+
 gettype() {
 	type=
 	if [ "X$1" != X ]
@@ -245,7 +252,7 @@ gettype() {
 		    patch)	type=patch;;
 		    mail|email)	type=email;;
 		    RCS|CVS)	type=RCS;;
-		    SCCS)	type=SCCS;;
+		    SCCS)	no_sccs;;
 		esac
 		if [ X$type != X ]
 		then	TYPE=$type
