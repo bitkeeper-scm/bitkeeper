@@ -22,8 +22,8 @@ know what to use.  You can call your own file viewer.
 Suppose you knew that the file was a gif and you wanted to look at each
 of them to choose which one to use.  You could do a
 .DS
-logo.gif>> \f(CB!xv $BK_LOCAL\fP
-logo.gif>> \f(CB!xv $BK_REMOTE\fP
+logo.gif>> \f(CB!xv \s-1$BK_LOCAL\s0\fP
+logo.gif>> \f(CB!xv \s-1$BK_REMOTE\s0\fP
 logo.gif>> \f(CBul\fP
 .DE
 to view each and then choose the local version.
@@ -40,16 +40,16 @@ will be run with the appropriate environment variables set.
 This technique may be used to use any external merge tool.
 .SH ENVIRONMENT VARIABLES
 .TP 1i
-BK_LOCAL
+.V BK_LOCAL
 pathname of a temp file containing the local version
 .tp
-BK_GCA
+.V BK_GCA
 pathname of a temp file containing the common ancestor
 .tp
-BK_REMOTE
+.V BK_REMOTE
 pathname of a temp file containing the remote version
 .tp
-BK_MERGE
+.V BK_MERGE
 pathname where the merged content should be placed
 .LP
 .SH NON-BINARY FILES

@@ -1,17 +1,14 @@
 .so ../bk-macros
 .TH "bk resolve" "\*[BKVER]" %E% "\*(BC" "\*(UM"
-.\"    ============== BitKeeper resolve ==============
 .SH NAME
-bk resolve \- merge and/or apply new work after a push or a pull
+bk resolve \- merge and/or apply new work after a pull
 .SH SYNOPSIS
-.\" -F undoc
-.B bk resolve [\-options] 
-.[OPT] repo
+.B bk resolve
+.[B] \-options 
+.[ARG] repo
 .SH DESCRIPTION
 .LP
 After a 
-.BR bk\ push , 
-or 
 .BR bk\ pull , 
 use resolve to merge and/or apply
 new work.  Resolve is automatically run by the 
@@ -23,7 +20,8 @@ commands but may be rerun to finish a previously uncompleted resolve.
 In order to preview the new changesets before merging, run
 .B bk csets 
 and that will run csettool on the list of changes (which may
-be found in RESYNC/BitKeeper/etc/csets).
+be found in 
+.IR RESYNC/BitKeeper/etc/csets-in ).
 .LP
 Resolve traverses all of the files, prompting you with a list of files
 needing to be merged.  The following are the stages when resolving files:

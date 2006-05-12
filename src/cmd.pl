@@ -195,6 +195,7 @@ _link
 _listkey restricted
 lock
 _locktest
+log
 _logging
 _lstat
 mailsplit
@@ -302,6 +303,7 @@ comment => comments	# alias for Linus, remove...
 _fix_lod1 => _fixlod
 info => sinfo
 _mail => mail
+pager => more
 _preference => preference
 rechksum => checksum
 rev2cset => r2c

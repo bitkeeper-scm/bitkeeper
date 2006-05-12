@@ -13127,6 +13127,11 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	case KW_D_: /* D_ */ {
+		/* date */
+		KW("Dy"); fc('-'); KW("Dm"); fc('-'); KW("Dd");
+		return (strVal);
+	}
 
 	case KW_T: /* T */ {
 		/* Time */
@@ -13779,13 +13784,44 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		
 	}
 
-	case KW_DEFAULT: /* DEFAULT */ {
+	case KW_DEFAULT: /* DEFAULT */
+	case KW_PRS: /* PRS */ {
 		KW("DSUMMARY");
 		fc('\n');
 		KW("PATH");
 		KW("SYMBOLS");
 		KW("COMMENTS");
 		fs("------------------------------------------------\n");
+		return (strVal);
+	}
+
+	case KW_LOG: /* LOG */ {
+		int	i;
+		symbol	*sym;
+
+		fs(d->pathname);
+		fc(' ');
+		KW("REV");
+		fs("\n  ");
+		KW("D_"); fc(' '); KW("T"); KW("TZ");
+		fc(' '); KW("P");
+		if (d->hostname) { fc('@'); fs(d->hostname); } fc(' ');
+		fc('+'); KW("LI"); fs(" -"); KW("LI"); fc('\n');
+		EACH(d->comments) {
+			fs("  ");
+			fs(d->comments[i]);
+			fc('\n');
+		}
+		fc('\n');
+		unless (d && (d->flags & D_SYMBOLS)) return (strVal);
+		for (i = 0, sym = s->symbols; sym; sym = sym->next) {
+			unless (sym->d == d) continue;
+			i++;
+			fs("  TAG: ");
+			fs(sym->symname);
+			fc('\n');
+		}
+		fc('\n');
 		return (strVal);
 	}
 

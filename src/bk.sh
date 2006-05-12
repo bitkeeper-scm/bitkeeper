@@ -34,12 +34,8 @@ __cd2root() {
 # shorthand to dig out renames
 _renames() {
 	case "X$1" in
-	    X-r[0-9]*|X-r+)
-		;;
-	    *)
-	    	echo 'usage renames -r<rev> OR renames -r<rev>,<rev>'
-		exit 1
-		;;
+	    X-r*)	;;
+	    *)		bk help -s renames; exit 1;;
 	esac
 	__cd2root
 	bk rset -h "$1" | awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
@@ -328,11 +324,18 @@ _clear() {
 # Run csettool on the list of csets, if any
 _csets() {		# /* doc 2.0 */
 	test X$1 = X"--help" && {
-		bk help csets
+		bk help -s csets
 		exit 0
 	}
+	COPTS=
 	GUI=YES
-	test X$1 = X-t && GUI=NO
+	while getopts tv opt
+	do	case "$opt" in
+		t) GUI=NO;;
+		v) GUI=NO; COPTS="$COPTS -v";;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	__cd2root
 	if [ -f RESYNC/BitKeeper/etc/csets-in ]
 	then	if [ $GUI = YES ]
@@ -342,7 +345,7 @@ _csets() {		# /* doc 2.0 */
 			    bk csettool "$@" -
 			exit 0
 		else
-			bk changes - < BitKeeper/etc/csets-in
+			bk changes $COPTS - < BitKeeper/etc/csets-in
 			exit 0
 		fi
 	fi
@@ -353,7 +356,7 @@ _csets() {		# /* doc 2.0 */
 			    bk csettool "$@" -
 			exit 0
 		else
-			bk changes - < BitKeeper/etc/csets-in
+			bk changes $COPTS - < BitKeeper/etc/csets-in
 			exit 0
 		fi
 	fi
@@ -1033,6 +1036,37 @@ EOF
 	rm -f $O1 $NEW
 }
 
+# If the top rev is a merge, redo the merge and leave it in an edited gfile
+_remerge()
+{
+	SMERGE=NO
+	while getopts t opt
+	do	case "$opt" in
+		t) SMERGE=YES;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	for i in "$@"
+	do	MPARENT=`bk prs -r+ -hnd:MPARENT: "$i"`
+		test "$MPARENT" != "" || {
+			echo Skipping "$i" because top delta is not a merge
+			continue
+		}
+		PARENT=`bk prs -r+ -hnd:PARENT: "$i"`
+		bk clean -q "$i" || {
+			echo Skipping "$i" because it contains changes
+			continue
+		}
+		bk edit -qg "$i"
+		if [ $SMERGE = YES ]
+		then	bk smerge -g -l$MPARENT -r$PARENT "$i" > $i
+			test $? = 1 &&
+			    echo remerge: conflicts during merge of "$i"
+		else	bk fm3tool -o "$i" -l$MPARENT -r$PARENT "$i"
+		fi
+	done
+}
+
 _explore_merge()
 {
 	while getopts r: opt
@@ -1075,7 +1109,7 @@ _explore_merge()
 		    echo
 		    cat <<EOF
 d - diff merge file with original merge
-D - use GUI diff
+D - graphically diff merge file with original merge
 e - edit merge file
 f - run fm3tool on merge file
 m - recreate merge with BitKeeper's merge tool

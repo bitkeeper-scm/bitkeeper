@@ -3,14 +3,14 @@
 .SH NAME
 bk merge \- three-way text based file merge
 .SH SYNOPSIS
-.B merge
+.B bk merge
 .[B] \-s
 .ARG local
 .ARG ancestor
 .ARG remote
 .ARG merge
 .br
-.B merge
+.B bk merge
 .[B] \-s
 .ARG path/to/gfile
 .SH DESCRIPTION
@@ -57,8 +57,7 @@ It is up to the caller to edit the
 .ARG merge 
 file and resolve any conflicts.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1i
+.TP
 .B \-s
 Perform a set merge instead on a normal file merge.  In this case the
 files are assumed to be lists of items, one item per line, and the
@@ -68,12 +67,12 @@ sorted order.  Conflicts cannot occur in this mode.
 0 for no conflicts, 1 for conflicts, 2 for errors.
 .SH "SEE ALSO"
 .BR diff3 (1),
-.SA explore_merge
 .SA fmtool
-.SA ignore
+.SA remerge
 .SA resolve
 .SA resolving
 .SA smerge
+.SA triggers
 .SH CATEGORY
 .B Repository
 .br

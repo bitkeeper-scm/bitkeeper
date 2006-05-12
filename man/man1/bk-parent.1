@@ -4,32 +4,27 @@
 bk parent \- manage repository parent pointer[s]
 .SH SYNOPSIS
 .SS SETTING PARENT POINTERS
-.Bc bk parent -s [
-.B -inoq]
+.B bk parent \-s 
+.[B] \-inoq
 .ARG repository
-.Bc [
-.ARGc repository
-.B ]
-.br
+.[ARG] repository
 .SS ADDING PARENT POINTERS
-.Bc bk parent -a [
-.B -inoq]
+.B bk parent \-a 
+.[B] \-inoq
 .ARG repository
-.Bc [
-.ARGc repository
-.B ]
-.br
+.[ARG] repository
 .SS REMOVING PARENT POINTERS
-.Bc bk parent -r [
-.Bc -ioq] [
+.B bk parent \-r 
+.[B] \-ioq
 .ARG repository
-.B ...]
-.br
+.[ARG] repository
 .SS LISTING PARENT POINTERS
-.Bc bk parent [-1iloq]
+.B bk parent
+.[B] -1iloq
 .SH DESCRIPTION
-.LP
-The parent command is used to set, add, adjust,
+The 
+.B bk parent
+command is used to set, add, adjust,
 remove or list parent pointers for a repository.
 A parent pointer is a \*[BK] URL which is the location from or
 to which  a repository gets or sends updates when running
@@ -77,7 +72,7 @@ or
 to list just the incoming or outgoing parents respectively.
 .tp
 .B \-n
-Do not "normalize the specified parent pointer, use it literally.
+Do not "normalize" the specified parent pointer, use it literally.
 Without this option, the pointer is normalized, i.e.,
 "localhost" is changed to the real hostname, relative paths are
 changed to absolute paths, etc.  Forcing a relative path can sometimes

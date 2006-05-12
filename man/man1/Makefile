@@ -14,6 +14,9 @@ g3:
 	g groff -I.. -rC1 -rD1 -d BKVER=$(VER) bk-[m-r]*.1
 
 g4: 
+	g groff -I.. -rC1 -rD1 -d BKVER=$(VER) bk-r*.1
+
+g5: 
 	g groff -I.. -rC1 -rD1 -d BKVER=$(VER) bk-[s-z]*.1
 
 

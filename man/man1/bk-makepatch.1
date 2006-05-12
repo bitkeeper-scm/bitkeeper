@@ -6,7 +6,7 @@ bk makepatch \- creates \*(BK patches
 .B bk makepatch
 .[B] \-vd
 .[OPTreq] \-r range
-.[B] -
+.[B] \-
 .SH DESCRIPTION
 .LP
 The makepatch command is a low level command used to generate \*(BK patches.
@@ -22,6 +22,12 @@ Generate a \*(BK patch of the changesets in
 .tp
 .B \-v
 Be more verbose for each instance.
+.tp
+.B \-
+Instead of specifying the range with
+.BR \-r ,
+this form expects the revisions on the standard input, one per line,
+either as keys or revisions.
 .SH NOTES
 In general, users do not use this command directly, it is called by
 .B bk pull

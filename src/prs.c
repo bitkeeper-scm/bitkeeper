@@ -6,22 +6,32 @@
 int
 prs_main(int ac, char **av)
 {
+	return (log_main(ac, av));
+}
+
+int
+log_main(int ac, char **av)
+{
 	sccs	*s;
 	delta	*e;
-	int	reverse = 0, doheader = 1;
+	int	log = streq(av[0], "log");
+	int	reverse = 0, doheader = !log;
 	int	init_flags = INIT_NOCKSUM;
 	int	flags = 0, sf_flags = 0;
 	int	opposite = 0;
 	int	rc = 0, c;
 	char	*name, *xrev = 0;
-	char	*cset = 0;
+	char	*cset = 0, *tip = 0;
 	int	noisy = 0;
 	int	expand = 1;
 	int	want_parent = 0;
-	char	*dspec = NULL;
+	pid_t	pid = 0;	/* pager */
+	char	*dspec = getenv("BK_PRS_DSPEC");
 	RANGE_DECL;
 
-	while ((c = getopt(ac, av, "abc;C;d:DfhmMnopr|x:vY")) != -1) {
+	unless (dspec) dspec = log ? ":LOG:" : ":PRS:";
+
+	while ((c = getopt(ac, av, "abc;C;d:DfhMnopr|t|x:vY")) != -1) {
 		switch (c) {
 		    case 'a':					/* doc 2.0 */
 			/* think: -Ma, the -M set expand already */
@@ -34,27 +44,28 @@ prs_main(int ac, char **av)
 		    case 'd': dspec = optarg; break;		/* doc 2.0 */
 		    case 'D': sf_flags |= SF_DELETES; break;
 		    case 'h': doheader = 0; break;		/* doc 2.0 */
-		    case 'm': flags |= PRS_META; break;		/* doc 2.0 */
 		    case 'M': expand = 3; break;		/* doc 2.0 */
 		    case 'n': flags |= PRS_LF; break;		/* doc 2.0 */
 		    case 'o': opposite = 1; doheader = 0; break; /* doc 2.0 */
 		    case 'p': want_parent = 1; break;
+		    case 't': tip = optarg; break;
 		    case 'x': xrev = optarg; break;		/* doc 2.0 */
 		    case 'v': noisy = 1; break;			/* doc 2.0 */
 		    case 'Y': 	/* for backward compat, undoc 2.0 */
 			      break;
 		    RANGE_OPTS('c', 'r');			/* doc 2.0 */
 		    default:
-usage:			system("bk help -s prs");
+usage:			system("bk help -s log");
 			return (1);
 		}
 	}
 
-	if (things && cset) {
-		fprintf(stderr, "prs: -r or -C but not both.\n");
+	if (things && (cset || tip)) {
+		fprintf(stderr, "log: -r, -C, -t are mutually exclusive.\n");
 		exit(1);
 	}
-	for (name = sfileFirst("prs", &av[optind], sf_flags);
+	if (log) pid = mkpager();
+	for (name = sfileFirst("log", &av[optind], sf_flags);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, init_flags)) continue;
 		unless (HASGRAPH(s)) goto next;
@@ -66,9 +77,25 @@ usage:			system("bk help -s prs");
 				goto next;
 			}
 			rangeCset(s, d);
+		} else if (tip) {
+			unless (e = sccs_findrev(s, tip)) {
+				unless (noisy) goto next;
+				fprintf(stderr,
+				    "log: can't find %s|%s\n", s->gfile, tip);
+				goto next;
+			}
+			sccs_color(s, e);
+			if (CSET(s) && (flags & PRS_ALL)) sccs_tagcolor(s, e);
+			for (e = s->table; e; e = e->next) {
+				unless (e->flags & (D_RED|D_BLUE)) continue;
+				unless (s->rstop) s->rstop = e;
+				s->rstart = e;
+				e->flags |=D_SET;
+			}
+			s->state |= S_SET;
 		} else {
 			if (flags & PRS_ALL) s->state |= S_SET;
-			RANGE("prs", s, expand, noisy);
+			RANGE("log", s, expand, noisy);
 			/* happens when we have only 1.0 delta */
 			unless (s->rstart) goto next;
 		}
@@ -154,5 +181,9 @@ next:		rc = 1;
 		sccs_free(s);
 	}
 	if (sfileDone()) rc = 1;
+	if (log && (pid > 0)) {
+		fclose(stdout);
+		waitpid(pid, 0, 0);
+	}
 	return (rc);
 }

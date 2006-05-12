@@ -3,6 +3,11 @@
 .if !d bk-macros \{\
 .ds bk-macros 1
 .so man.tmac
+.rn TP GROFF_TP
+.de TP
+.	ie '\\$1'' .GROFF_TP 4
+.	el .GROFF_TP \\$1
+..
 .de DS
 .	br
 .	ne 2
@@ -52,6 +57,10 @@
 .\" Like .BR but for constant width
 .de CR
 \f(CW\\$1\fR\\$2
+..
+.\" Like .V but for variables like BK_SHOWPROC
+.de V
+\s-1\f(CB\\$1\fP\s0\\$2
 ..
 .\" Non-breaking bold
 .de Bc
@@ -143,7 +152,7 @@
 .	if t .sp -(u;\\n[PD]u)
 .	if t .sp (u;\\n[PD]u/4)
 .	if n .sp -\\n[PD]u
-.	TP \\$1
+.	GROFF_TP \\$1
 ..
 .de ip
 .	if t .sp -(u;\\n[PD]u)

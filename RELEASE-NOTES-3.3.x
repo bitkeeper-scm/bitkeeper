@@ -14,12 +14,6 @@ You may override the shell used with
 Interface changes:
 
 bk bkd
-    New -B option to enable "buffered clones". (Unix only)
-    This greatly reduces the length of time a remote client can keep a
-    repository read locked during a clone operation by writing the
-    data to be transmitted to <repo>/BitKeeper/tmp and dropping the
-    lock before transmitting.
-
     -u/-g options have been removed, use su(1) instead, it interacts 
     better with license management.
 
@@ -63,10 +57,6 @@ bk commit
     Used to have an undocumented -f<file_list> option.  That option
     has been renamed to -l<file_list> and -f is now used to force a
     non-interactive commit.
-
-bk citool/csettool/difftool/revtool
-    Added a series of keyboard shortcuts and a new menu to show them
-    to the user.
 
 bk cset
     -l/-r are removed.  Use bk changes instead, see the bk cset manpage.
@@ -113,6 +103,11 @@ bk grep
 
 bk import -tCVS
     The CVS import code has greatly improved from previous versions.
+
+bk log
+    This is a new name for bk prs, bk prs is left for compat and maintains
+    the old output format.  bk log has a more pleasant output format but
+    otherwise behaves as prs.
 
 bk lease show
     Now show license options and when the current license renews.
@@ -198,7 +193,7 @@ bk pull
     The -l and -n options are removed.  Use 'bk changes -R' instead.
 
     A new -u option is for an update-only pull.  This causes pull to
-    fail if any local csets exist in the tree.
+    fail if any local csets/tags exist in the tree.
 
     New -s option is to tell the resolver to fail if an automerge is
     not possible.  (non-interactive pull)
@@ -215,7 +210,7 @@ bk relink
 
 bk resolve
     bk resolve now goes straight into merge mode after attempting to automerge
-    all conflicts.
+    all conflicts.  There is an option to disable interactive mode (-s).
 
     bk resolve may be used to resolve part of a set of conflicts, see the
     man page for details.

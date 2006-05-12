@@ -1,6 +1,5 @@
 .so ../bk-macros
 .TH "bk pending" "\*[BKVER]" %E% "\*(BC" "\*(UM"
-.\"    ====================== Uncommitted changes ======================
 .SH NAME
 bk pending \- list deltas which need to be in a changeset
 .SH SYNOPSIS
@@ -15,8 +14,15 @@ To see what needs to be committed to a change set, run:
 .DS
 $ bk pending
 .DE
+.SH NOTE
+This command is roughly the same as
+.DS
+$ bk -R sfiles -pA | bk -R log -
+.DE
 .SH "SEE ALSO"
 .SA commit
 .SA changes
+.SA log
+.SA sfiles
 .SH CATEGORY
 .B Repository

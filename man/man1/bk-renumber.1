@@ -3,12 +3,13 @@
 .SH NAME
 bk renumber \- regenerate the revision history numbers
 .SH SYNOPSIS
-.B bk renumber [\-nq] 
+.B bk renumber
+.[B] \-nq 
 .BKARGS
 .SH DESCRIPTION
 This command exists primarily because Sun's Teamware had some bugs at one 
-point and put nonsensical revision numbers in the s.files.  Lucky for
-Sun, \*(SC does not really care about the revision numbers, it maintains
+point and put nonsensical revision numbers in the s.files.  Fortunately,
+\*(SC does not really care about the revision numbers, it maintains
 the graph structure elsewhere.  This program uses that other information
 to start over and renumber the entire graph.
 .SH OPTIONS

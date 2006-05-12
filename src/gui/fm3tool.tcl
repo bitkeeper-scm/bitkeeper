@@ -1164,7 +1164,7 @@ proc revtool {} \
 	set l [lindex $argv 0]
 	set r [lindex $argv 1]
 	set f [lindex $argv 2]
-	exec bk revtool -l$l -r$r "$f" &
+	exec bk revtool $l $r "$f" &
 }
 
 proc csettool {what} \

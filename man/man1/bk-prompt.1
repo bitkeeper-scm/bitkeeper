@@ -3,7 +3,9 @@
 .SH NAME
 bk prompt \- prompt a user with a message
 .SH SYNOPSIS
-.Bc bk prompt [opts] [message]
+.B bk prompt
+.[B] opts
+.[ARG] message
 .SH DESCRIPTION
 .B bk prompt
 is used to prompt a user with a message, get a positive or negative response,
@@ -11,23 +13,28 @@ and exit accordingly.
 .LP
 This interface may be used for either command line or graphical environments.
 .LP
-If the environment variable \s-2\fBBK_GUI\fP\s0 is set, then the
-graphical tool will be used instead of the command line version.
+If the environment variable 
+.V BK_GUI
+is set, then the graphical version will be used instead of the command
+line version.
 All of the \*[BK] GUI tools set this variable automatically such that any
 call to bk prompt from inside the graphical tools will result in a
 graphical prompt, including the execution of any user supplied triggers.
 .LP
-If the environment
-variable \s-2\fBBK_MSG_GEOM\fP\s0 is set, the graphical tool will use the
+If the environment variable 
+.V BK_MSG_GEOM
+is set, the graphical tool will use the
 value of this variable to locate itself on the screen.  The format of the
-variable must be in the for 
+variable must be in the form 
 .I +x+y
-where "x" and "y" are screen coordinates.  bk citool sets this variable 
+where "x" and "y" are screen coordinates. 
+.B bk citool
+sets this variable 
 automatically such that the prompt will be at the same x/y location as
 the upper left corner of citool.
 .SH OPTIONS
-.if t .TP
-.if n .TP 1.2i
+.if t .TP .5i
+.if n .TP 1.0i
 .B \-c
 Only for command line prompts, print the message and exit 0.
 .tp
@@ -42,7 +49,9 @@ option is present,
 the last command line argument must be present and is used as the message.
 .tp
 .B \-g
-Override the BK_GUI variable and force a command line prompt if called in 
+Override the 
+.V BK_GUI
+variable and force a command line prompt if called in 
 a graphical context.
 .tp
 .B \-i
