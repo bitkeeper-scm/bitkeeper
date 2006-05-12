@@ -1,10 +1,10 @@
 .so ../bk-macros
-.TH "bk level" 1 %E% "\*(BC" "\*(UM"
+.TH "bk level" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk level \- set or show the level of the repository
 .SH SYNOPSIS
-.Bc bk level [
-.ARG num ]
+.B bk level
+.[ARG] num
 .SH DESCRIPTION
 .LP
 The level command prints or sets the level of the repository.  A repository
@@ -22,9 +22,9 @@ use for levels is to create a stable or bugfix repository.  If that repository
 has a lower level than the development repository, changes may be moved from
 stable to development, but not the other way.
 .SH "SEE ALSO"
-.SA clone 1
-.SA pull 1
-.SA push 1
+.SA clone
+.SA pull
+.SA push
 .\" help://workflow
 .SH CATEGORY
 .B Repository

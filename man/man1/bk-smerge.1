@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk smerge" 1 %E% "\*(BC" "\*(UM"
+.TH "bk smerge" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk smerge \- smart text-based 3-way file merge
 .SH SYNOPSIS
@@ -11,11 +11,11 @@ bk smerge \- smart text-based 3-way file merge
 .OPTreq \-a n
 .B ]
 .\".Bc ] [
-.\".OPTreq \-r r
+.\".OPTreq \-R r
 .\".B ] 
+.OPTreq \-l local
+.OPTreq \-r remote
 .ARG file
-.ARG local
-.ARG remote
 .SH DESCRIPTION
 .LP
 The bk smerge command compares the three versions of the file and 
@@ -37,13 +37,13 @@ only be run on SCCS files.
 In some scripts users may want to call smerge directly.  If so, an example
 for usage is:
 .DS
-bk smerge -g slib.c 1.661 1.660.1.4 > slib.c.merged
+bk smerge -g -l1.661 -r1.660.1.4 slib.c > slib.c.merged
 .DE
 where 1.661 is the local revision and 1.660.1.4 is the remote
 revision, slib.c is the file name and slib.c.merged is the file to
 which merge output is redirected.
 .LP
-The string for the local remote versions of the file can be
+The string for the local or remote versions of the file can be
 expressed in the form "rev+includes-excludes" where rev is a normal
 revision number like "1.661" and includes and excludes are a comma
 separated list if revisions to include or exclude from the base
@@ -175,7 +175,7 @@ where
 .ARG n
 is a comma separated list of automerge algorithms specified by number.
 .OPTreq \-a all
-\ will enable all automerge algorithms.   
+will enable all automerge algorithms.   
 Use 'bk smerge -h' to find the algorithms enabled by
 default.
 .tp
@@ -186,7 +186,7 @@ where
 .ARG n
 is a comma separated list of automerge algorithms specified by number.
 .OPTreq \-A all
-\ will turn off all automerging.
+will turn off all automerging.
 .tp
 .B \-f
 Enable fdiff output.  (Used internally by 
@@ -209,8 +209,8 @@ If used in conjunction with \-a or \-A, asterisks denote enabled algorithms.
 .SH "SEE ALSO"
 .BR diff3 (1)
 .br
-.SA merging 1
-.SA resolve 1
-.SA merge 1
+.SA merging
+.SA resolve
+.SA merge
 .SH CATEGORY
 .B Utility

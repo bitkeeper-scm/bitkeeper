@@ -1,61 +1,86 @@
 .so ../bk-macros
-.TH "bk history" 1 %E% "\*(BC" "\*(UM"
-.\"    ================= Viewing changeset and file history =================
+.TH "bk history" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk history \- guide to viewing changes over time of files and repositories
-.SH DESCRIPTION
+bk history \- guide to viewing changes to files and/or repositories
+.SH TEXTUAL HISTORY
+There are multiple tools to view the history of the repository, of 
+a file, or of a collection of files such as a directory.  
+All tools are described more completely on their own man pages.
 .LP
-Note: there is a GUI tool for viewing changes, see
-.BR "bk revtool" .
-.LP
-If you want to view the high\-level changes to a package, (i.e. the changes
-associated with the ChangeSet) type:
+To view the high-level changes to a repository then type:
 .DS
 $ bk changes
 .DE
-Two ways to view file history are on a per\-file basis and a method
-which shows the changes over a set of files.  A third method is to
-use "bk revtool" which is a graphical file viewer.
+.B bk changes
+has many options to control which changesets are shown, how they are shown,
+etc.  It is the primary way for finding out what happened in the repository
+and reading the changes man page is highly recommended.
 .LP
 The revision history of a file can be accessed by typing:
 .DS
 $ bk prs foo.c
 .DE
-Prs has many options. The most useful is probably the \-r option that
-lets you specify a revision.
-.LP
-To see the most recent check\-in for every file in the current directory:
+.B bk prs
+has many options. The most commonly used is the
+.B \-r
+option which is used to select a particular revision of the file.
+For example,
+to see the most recent check-in for every file in the current directory:
 .DS
 $ bk prs \-r+
 .DE
-To see all changes from Alpha to Beta, (assuming you tagged the changesets
-with those tags) try:
-.DS
-$ bk prs \-c@Alpha..@Beta
-.DE
+The
+.B bk prs
+command documents the metadata associated with a \*(BK file as well as how
+to display it.  Reading the prs man page is highly recommended.
+.LP
 The 
 .B bk sccslog
-command is useful when you are interested in the history
-of the entire tree or subdirectory, not just the per\-file revision history.
-The 
-.B bk sccslog 
-command sorts all the changes based on date, so you see deltas 
-from different files in chronological order.  This process can take 
-substantial CPU and memory resources in large trees,
-but the following is a very useful thing to see:
+command is a time ordered view of changes over a set of files.
+Unlike 
+.BR "bk prs" ,
+.B bk sccslog
+sorts all changes from all of the specified (or implied) files and then
+displays each change in chronological order.
+The following will display the changes which have happened to all the
+files in the current directory:
 .DS
-$ bk -r sccslog 
+$ bk sccslog 
 .DE
-.B bk sccslog 
-supports the same range notation as prs.
+.LP
+All three commands support the same range notation as well as a
+method of controlling the output format known as "dspecs" which
+are documented on the 
+.B bk prs
+man page.
+.SH GRAPHICAL HISTORY
+There are two graphical tools which are primarily used to view changes
+to files or repositories.
+These tools are described more completely on their man pages.
+.LP
+.B bk csettool
+is a graphical changeset viewer which displays the list of
+changes in each changeset, the ChangeSet history, and the
+file differences (in a side by side display) for each file
+in each changeset.
+It is the graphical version of
+.BR "bk changes" .
+.LP
+.B bk revtool
+as a tool which shows the revision history graph of either a specified file
+or of the the ChangeSet file.
+Nodes in the graph may be selected to view that version of the file.  
+If two nodes are selected then the differences between the two versions
+are shown.
 .SH "SEE ALSO"
-.SA changes 1
-.SA grep 1
-.SA prs 1
-.SA range 1
-.SA revtool 1
-.SA sccslog 1
-.SA set 1
+.SA changes
+.SA csettool
+.SA difftool
+.SA prs
+.SA range
+.SA revtool
+.SA sccslog
+.SA set
 .SH CATEGORY
 .B Overview
 .br

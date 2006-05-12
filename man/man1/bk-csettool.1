@@ -1,14 +1,12 @@
 .so ../bk-macros
-.TH "bk csettool" 1 %E% "\*(BC" "\*(UM"
-.\"    =============== BitKeeper Graphical ChangeSet Browser ===============
+.TH "bk csettool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk csettool \- \*(BK graphical changeset browser
 .SH SYNOPSIS
-.Bc bk csettool [
-.OPTreq \-r revs
-.Bc ] [
-.OPTreq \-f file@rev
-.B ] [-]
+.B bk csettool
+.[OPTreq] \-r revs
+.[OPTreq] \-f file@rev
+.[B] -
 .SH DESCRIPTION
 .LP
 csettool is used to view detailed information about the specified
@@ -57,7 +55,7 @@ or on the file highlighted in the upper-left window.
 .LP
 All options are mutually exclusive, i.e., pick one (or none) of the
 following.
-.TP
+.if t .TP 16
 .OPTreq \-r revs
 ChangeSet revision to examine. Can be a single revision or a range of 
 revisions. If no -r option is given, 
@@ -142,12 +140,12 @@ diff
 We plan on having a single screen diff window option where the changes
 are all shown color coded in one window.  
 .SH "SEE ALSO"
-.SA changes 1
-.SA cset 1
-.SA difftool 1
-.SA revtool 1
-.SA ranges 1
+.SA changes
 .SA config-gui
+.SA cset
+.SA difftool
+.SA ranges
+.SA revtool
 .SH CATEGORY
 .B GUI-tools
 .br

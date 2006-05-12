@@ -305,7 +305,7 @@ setup_env()
 		BK_NO_GUI_PROMPT=YES
 		export BK_NO_GUI_PROMPT
 	}
-	BK_GLOB_TRANSLATE_EQUAL=NO
+	BK_GLOB_EQUAL=NO
 }
 
 clean_up()
@@ -384,7 +384,7 @@ init_main_loop()
 	export BKL_MLA BKL_M1 BKL_M2 BKL_M3
 	export BKL_EX BKL_EX1 BKL_EX2 BKL_EX3
 	export BKL_REMOTE BKL_R1 BKL_R2 BKL_R3
-	export BK_GLOB_TRANSLATE_EQUAL
+	export BK_GLOB_EQUAL
 	export BK_BIN
 	mkdir -p $BK_CACHE
 }

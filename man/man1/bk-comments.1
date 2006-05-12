@@ -1,19 +1,25 @@
-.\" help://comment
 .so ../bk-macros
-.TH "bk comments" 1 %E% "\*(BC" "\*(UM"
+.\" help://comment
+.TH "bk comments" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk comments \- change checkin comments
 .SH SYNOPSIS
-.Bc bk comments [\-p] [
-.OPTreq \-C csetrev
-.Bc ] [
-.OPTreq \-r rev
-.Bc ] [
-.OPTreq \-y cmt
-.Bc ] [
-.OPTreq \-Y file
-.B ]
-[file...|\-]
+XXX - needs work
+.br
+.\" bk comments [-r<rev>] [-y|-Y] file ....
+.\" bk comments [-y|-Y] -
+.\" bk comments -C<rev> 
+.B bk comments [\-p]
+.[OPTreq] \-C cset
+.[OPTreq] \-r rev
+.BKARGS
+.br
+.B bk comments
+.[OPTreq] \-C cset
+.[OPTreq] \-r rev
+.[OPTreq] \-y cmt
+.[OPTreq] \-Y file
+.BKARGS
 .SH DESCRIPTION
 .LP
 The
@@ -53,6 +59,8 @@ as the new comment for all files.
 .tp
 .OPTreq \-C rev
 Edit all the file comments on the requested changeset at once.
+May not be combined with 
+.BR \-r .
 .tp
 .B \-p
 Generate the list of all comments in the files requested and write them to
@@ -73,7 +81,7 @@ this only on uncommitted deltas which have not  been pulled or cloned.
 In the future, we will add a way of enforcing this.
 .SH SEE ALSO
 .LP
-.SA prs 1
-.SA sccslog 1
+.SA prs
+.SA sccslog
 .SH CATEGORY
 .B File

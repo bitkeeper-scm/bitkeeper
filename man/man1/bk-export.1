@@ -1,24 +1,21 @@
 .so ../bk-macros
-.TH "bk export" 1 %E% "\*(BC" "\*(UM"
+.TH "bk export" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
-bk export \- checks out clear-text version of all \*(BK files
+bk export \- export a patch or version of a \*(BK repository
 .SH SYNOPSIS
-.Bc bk export \-tpatch [\-d[u|c|p]] [\-hT] [
-.OPTreq \-i pat
-.Bc ] [
-.OPTreq \-x pat
-.B ]
+.B bk export \-tpatch
+.[OPTopt] \-d u|c|p
+.[B] \-hT
+.[OPTreq] \-i pat
+.[OPTreq] \-x pat
 .OPTreq \-r rev1,rev2
 .br
-.Bc bk export [\-tplain] [\-kTvw] [
-.OPTreq \-i pat
-.Bc ] [
-.OPTreq \-x pat
-.B ]
+.B bk export \-tplain
+.[B] \-kTvw
+.[OPTreq] \-i pat
+.[OPTreq] \-x pat
 .OPTreq \-r rev
-.Bc \ [
-.ARGc from
-.B ]
+.[ARG] from
 .ARG to
 .SH DESCRIPTION
 .LP
@@ -37,24 +34,8 @@ changed with the
 and 
 .B \-x
 options.
-.LP
-If you are trying the export a patch for a sub-directory, and
-some of the files in that directory have been moved out of the
-directory, make the out-of-view file look like a deleted file.
-This is done by replacing the 
-.I |rev 
-part of the out-of-view file with
-.IR |1.0 . 
-You can do this using the following command:
-.DS
-.B bk rset \c
-.RI -hr A,B \c
-.B \ | \c
-.I your_script \c
-.B | bk gnupatch 
-.DE
 .SH OPTIONS
-.if t .TP
+.if t .TP .6i
 .if n .TP 1.2i
 .OPTopt \-d u|c|p
 Select the style of 
@@ -95,7 +76,8 @@ Set gfile modification time to check-in time.
 .OPTreq \-t type
 Select export format via 
 .ARG type :
-.RS .4i
+.if t .RS .125i
+.if n .RS .4i
 .tp
 .B plain 
 export file in plain text to a directory tree. 
@@ -121,7 +103,7 @@ Include and/or exclude patterns may be used to control which
 files are  exported.
 There may be multiple include and/or exclude patterns.
 The patterns are a file glob the same as used by 
-.B bk ignore.
+.BR "bk glob" .
 Patterns are matched against the partial pathname from the root
 of the repository.
 If the partial pathname matches any of the exclude patterns then
@@ -141,9 +123,10 @@ at the time of the patch was in \f(CWsrc/foo.c\fP.
 If you told the system to export \f(CWsrc/*\fP then the file will
 be in the set.
 .SH SEE ALSO
-.BR diff (1)
-.br
-.SA gnupatch 1
-.SA rset 1
+.BR diff (1),
+.BR patch (1),
+.SA glob
+.SA gnupatch
+.SA rset
 .SH CATEGORY
 .B Compat

@@ -197,13 +197,11 @@ main(int ac, char **av, char **env)
 			return (0);
 		}
 		is_bk = 1;
-		while ((c = getopt(ac, av, "1acCdDeEgGjlnpr|RSuUx")) != -1) {
+		while ((c = getopt(ac, av, "1acCdDgGjlnpr|RuUx")) != -1) {
 			switch (c) {
-			    case '1': case 'C': case 'D': case 'E':
-			    case 'G': case 'S': case 'U': case 'a':
-			    case 'c': case 'd': case 'e': case 'g':
-			    case 'j': case 'l': case 'n': case 'p':
-			    case 'u': case 'x':
+			    case '1': case 'a': case 'c': case 'C': case 'd':
+			    case 'D': case 'g': case 'G': case 'j': case 'l':
+			    case 'n': case 'p': case 'u': case 'U': case 'x':
 				sopts[++si] = c;
 				break;
 			    case 'r':				/* doc 2.0 */

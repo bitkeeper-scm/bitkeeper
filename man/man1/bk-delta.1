@@ -1,20 +1,12 @@
 .so ../bk-macros
-.TH "bk delta" 1 %E% "\*(BC" "\*(UM"
+.TH "bk delta" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk delta \- check in modified files
 .SH SYNOPSIS
-.if n \{\
-.	ds Sz z
-.	ds Sy c
-.\}
-.if t \{
-.	ds Sz alg
-.	ds Sy comment
-.\}
-.Bc bk delta [\-acChilpquY] [
-.OPTopt \-y msg
-.if n .B ] [more]
-.if t .B ] [more options]
+.B bk delta
+.[B] \-acilpqu
+.[OPTreq] \-y msg
+.[OPTreq] \-Y file
 .BKARGS
 .SH DESCRIPTION
 .LP
@@ -22,10 +14,9 @@ The
 .B bk delta 
 command is used to check in changes made to revision controlled files.
 This command is fairly rich in features and is the preferred interface
-for scripting.  For humans, easier interfaces are
-.B bk ci 
-and 
-.BR "bk citool" .
+for scripting.  For interactive checkins, 
+.B "bk citool" 
+is the preferred interface.
 .SH OPTIONS
 .if t .TP .75i
 .if n .TP 1.25i
@@ -48,7 +39,7 @@ When called with this option, bk delta will not create a null delta on
 an edited, but unmodified file.
 .sp
 .tp
-.B \-C
+.B \-c
 Take checkin comments from 
 .if t .IR SCCS/c.filename .
 .if n SCCS/c.<filename>.
@@ -61,9 +52,9 @@ Take diffs from
 .tp
 .OPTreq \-E enc
 Set file encoding (like admin).
-.tp
-.B \-h
-Invert sense of file's hash flag.
+.\" .tp
+.\" .B \-h
+.\" Invert sense of file's hash flag.
 .tp
 .OPTreq \-I file
 Use init 
@@ -101,23 +92,25 @@ Sets the revision comment to
 .if t .IR comment .
 .if n <comment>.
 .tp
-.OPTreq \-Z,\ \-Z alg
+.OPTreq \-Z alg
 Compress stored s.file with 
-.if t .IR alg ,
-.if n <alg>,
+.ARG alg
 which may be:
 .br
-gzip - like
+.ARG gzip
+- like
 .BR gzip (1) 
 .br
-none -  no compression
+.ARG none
+-  no compression
 .SH BUGS
 The format of the init file is not documented.
 .SH "SEE ALSO"
-.SA ci 1
-.SA citool 1
-.SA co 1
-.SA edit 1
-.SA get 1
+.SA admin
+.SA ci
+.SA citool
+.SA co
+.SA edit
+.SA get
 .SH CATEGORY
 .B File

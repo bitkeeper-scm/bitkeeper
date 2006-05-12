@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk Basics-Overview" 1 %E% "\*(BC" "\*(UM"
+.TH "Basics-Overview" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk Basics-Overview \- \*(BK basics to help get a new user started
 .SH DESCRIPTION
@@ -19,13 +19,9 @@ as well as the RCS
 commands 
 .RB ( ci ,
 .BR co ).
-Typically, use
-.B ci/co
-as a shorthand way of doing
-simple operations, but use
+The
 .B delta/get
-in automated scripts and when
-doing more complicated operations.
+are the preferred interfaces.
 .LP
 As an example, go to the directory where you would like to make changes:
 .DS
@@ -56,7 +52,7 @@ will access many files in a tree.
 Once you are finished making changes to files, you can check in the files
 as follows:
 .DS
-$ bk ci file1 file2 file3
+$ bk delta file1 file2 file3
 .DE
 However, we recommend using the graphical checkin tool which is invoked with 
 the following command:
@@ -70,7 +66,7 @@ will help you check in both new, modified, and pending files.
 Each command in \*(BK has command-specific help.  You can access
 individual help topics by typing:
 .DS
-$ bk help <command>		# e.g., "bk help co"
+$ bk help \*<command\*>		# e.g., "bk help co"
 .DE
 There are also a number of other topics that describe various areas
 in detail. Try
@@ -78,10 +74,11 @@ in detail. Try
 for a listing of help topics.
 .SH SEE ALSO
 .LP
-.SA ci 1
-.SA edit 1
-.SA get 1
-.SA new 1
-.SA citool 1
+.SA ci
+.SA edit
+.SA get
+.SA help
+.SA new
+.SA citool
 .SH CATEGORY
 .B Overview

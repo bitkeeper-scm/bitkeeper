@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk crypto" 1 %E% "\*(BC" "\*(UM"
+.TH "bk crypto" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk crypto \- Cryptography services
 .SH SYNOPSIS
@@ -39,10 +39,14 @@ can take a long time to complete.
 .tp
 .B \-s
 Create a RSA signature for data read from stdin using a private key. 
-Given a RSA private key created with the 'bk crypto -i' command, the
+Given a RSA private key created with the 
+.B bk crypto -i
+command, the
 .B \-s
 option will read arbitrary data from stdin and then write a signature
-to standard out that can be verified with the 'bk crypto -v' command.
+to standard out that can be verified with the 
+.B bk crypto -v
+command.
 .tp
 .B \-v
 Validate a RSA signature using a public key.  This command will read
@@ -52,6 +56,6 @@ be created by the matching private key.
 .SH EXIT STATUS
 0 if no problems and if RSA signature validates correctly.
 .SH "SEE ALSO"
-.SA base64 1
+.SA base64
 .SH CATEGORY
 .B Utility

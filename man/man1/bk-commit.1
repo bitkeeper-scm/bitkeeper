@@ -1,61 +1,57 @@
 .so ../bk-macros
-.TH "bk commit" 1 %E% "\*(BC" "\*(UM"
+.TH "bk commit" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    ========== Committing changes to a BitKeeper changeset =========
 .SH NAME
 bk commit \- commit deltas to a changeset
 .SH SYNOPSIS
-.Bc bk commit [\-adRq] [
-.OPTreq \-S  tag
-.Bc ] [
-.OPTreq \-y x
-.B ]
-.br
-.Bc bk commit [\-adRq] [
-.OPTreq \-S tag
-.Bc ] [
-.OPTreq \-Y file 
-.Bc ] [\-] 
+.B bk commit
+.[B] \-fq
+.[OPTreq] \-l file 
+.[OPTreq] \-S tag
+.[OPTreq] \-y comment
+.[OPTreq] \-Y file 
+.[B] \-
 .SH DESCRIPTION
 .LP
 This command commits work to a changeset, creating a logical group of
-changes which can span multiple files and/or multiple deltas within a
-single file.
+changes which can span multiple files and/or multiple deltas within 
+one or more files.
 .LP
-The first form will search the repository for any files which are in
+If the command line does not have a trailing dash then 
+.B bk commit
+will search the repository for any files which are in
 "pending" state, i.e., have deltas which do not yet belong to a changeset,
-and groups all of them into a changeset.  The second form, typically used
-by
-.BR "bk citool" ,
-takes the list of files to commit from 
-.IR stdin .
+and groups all of them into a changeset.  
+If the trailing dash is present, then the command
+takes the list of files to commit from the standard input.
 .LP
-You can see what will be added to a changeset when you commit by
-running:
+You can see what will be added to a changeset when you commit by running:
 .DS
 $ bk pending
 .DE
 Pending lists only files which have checked in deltas; files that
 are not yet checked in are not shown.  Use 
 .B bk status
+or
+.B bk sfiles
 if you want to see both.
 .LP
-Using citool is the best way to commit. Not only will citool help
-with checking in files, it will also create a changeset if you enter
-ChangeSet comments.  If you must do a command line commit, use:
-.DS
-$ bk commit
-.DE
 All revisions which you have checked in will become part of a
 changeset.  As part of the commit step, you will be prompted for
-comments. The comments should describe the changes that you have made.
-It's useful to have the output of 
-.B bk pending
-in another window to see what you did.
+comments (if non were provided on the command line).
+The comments should describe the logical change that you have made;
+these comments are what will be displayed by 
+.BR "bk changes" .
 .LP
 If no comments are provided and there is a 
 .I BitKeeper/templates/commit
 file present in the repository,
 then the default comments are the contents of that file.
+.LP
+.B Note:
+using citool is the preferred way to commit. Not only will citool help
+with checking in files, it will also create a changeset if you enter
+ChangeSet comments.  
 .LP
 .B Note:
 using the default comments on an import is not advisable.  The default
@@ -64,14 +60,16 @@ comment entries in the ChangeSet file.  The ChangeSet file is the center
 of activity in \*(BK, and having an unnecessarily large one will not help
 performance.
 .SH OPTIONS
-.if t .TP
-.if n .TP 1i
-.B \-d
+.if t .TP .8i
+.if n .TP 1.2i
+.B \-f
 Don't run interactively; do the commit with the default comments.
 Ignores the commit template, if any.
 .tp
-.B \-R
-Tell commit that it is processing the resync directory.
+.OPTreq \-l file
+Get the list of files to commit from
+.ARG file .
+XXX - get the exact format - rick says file|rev
 .tp
 .B \-q
 Run quietly.
@@ -85,16 +83,18 @@ at the same time as the commit.
 Get check-in comment for changeset from
 .ARG file .
 .tp
-.OPTreq \-y x
+.OPTreq \-y comment
 Set check-in comment of changeset to
-.ARG  x .
+.ARG  comment .
 .SH "SEE ALSO"
-.SA changes 1
-.SA citool 1
-.SA import 1
-.SA pending 1
-.SA templates 1
-.SA tag 1
+.SA changes
+.SA citool
+.SA import
+.SA pending
+.SA sfiles
+.SA status
+.SA tag
+.SA templates
 .\" help://changeset
 .\" help://changesets
 .SH CATEGORY

@@ -1,18 +1,17 @@
-.so bk-macros
-.TH "bk get" 1 %E% "\*(BC" "\*(UM"
-.\"    =================== Editing BitKeeper files ===================
+.so ../bk-macros
+.TH "bk get" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk get \- check out \*(BK files
 .SH SYNOPSIS
 .B bk get 
-.OPT opts
+.[OPT] opts
 .BKARGS
 .SH DESCRIPTION
 .LP
 .B get
 is used to check out ("get") files for viewing or editing.
-By default, files are checked out unlocked and in a read-only mode.
-.LP
+By default, files are checked out unlocked and read-only.
+.SH NOTE
 You may not need to check out every file in order to compile your
 program since most versions of the Make program will check files out
 as they are needed.  In order for this to work, the get command needs
@@ -65,7 +64,8 @@ Get the latest revision before
 .ARG date .
 .tp
 .B \-e
-Checkout the file for editing (same as bk edit).
+Checkout the file for editing (same as
+.BR "bk edit" ).
 .tp
 .B \-g
 Suppress the retrieval of any text; sometimes useful with \fB\-e\fP.
@@ -83,7 +83,10 @@ Include revs in
 .ARG list .
 .tp
 .B \-k
-Don't expand RCS or SCCS keywords. \-k is implied by \-e.
+Don't expand RCS or SCCS keywords.
+.B \-k
+is implied by
+.BR \-e .
 .tp
 .B \-p
 Write file to standard output (useful in scripts).
@@ -99,7 +102,9 @@ Run quietly, suppressing diagnostics.
 Get this revision. (Or key or changeset revision. See 
 .B bk help terms
 under 'rev argument')
-If combined with -e (edit), \*(BK will check out the tip revision
+If combined with
+.B \-e
+(edit), \*(BK will check out the tip revision
 combined with a set of include and exclude deltas needed to produce
 the requested revision.
 .tp
@@ -114,9 +119,9 @@ creation time.
 Exclude revs in 
 .ARG list .
 .SH "SEE ALSO"
-.SA co 1
-.SA edit 1
-.SA keywords 1
-make(1)
+.BR make (1),
+.SA co
+.SA edit
+.SA keywords
 .SH CATEGORY
 .B File

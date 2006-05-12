@@ -1,12 +1,12 @@
 .so ../bk-macros
-.TH "bk abort" 1 %E% "\*(BC" "\*(UM"
+.TH "bk abort" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    ============ Aborting a failed pull/push/resync  ============
 .SH NAME
 bk abort \- abort a failed pull or push
 .SH SYNOPSIS
-.Bc bk abort [\-f] [
-.ARGc repository_root
-.B ]
+.B bk abort
+.[B] \-f
+.[ARG] repository_root
 .SH DESCRIPTION
 .LP
 The abort command can be used to clean up a failed update of a repository
@@ -23,14 +23,25 @@ to figure out what went wrong and try to fix it.
 .TP
 .B \-f
 Do not prompt for confirmation, just do it.
+.SH FILES
+.if t .TP .8i
+.if n .TP .9i
+.I PENDING
+This directory, found at the root of your repository, is used to hold 
+incoming data while it is transferred.
+.TP
+.I RESYNC
+This directory, found at the root of your repository, is used to hold 
+copies of your revision control files while they are being merged.
 .SH BUGS
 .LP
-Abort should go look to see if you have done any work and refuse to
+Abort should go look to see if you have done any merging and refuse to
 abort without
 .B \-f
 if you have.
 .SH "SEE ALSO"
-.SA pull 1
-.SA push 1
+.SA pull
+.SA push
+.SA resolve
 .SH CATEGORY
 .B Repository

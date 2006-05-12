@@ -641,8 +641,6 @@ test -d PENDING || {
 }
 echo OK
 
-BK_DEBUGX=yes
-export BK_DEBUGX
 echo $N Do it again to see that it can rename RESYNC twice ..........$NL
 bk pull $Q && {
 	echo failed to exit non zero with failed pre-apply trigger

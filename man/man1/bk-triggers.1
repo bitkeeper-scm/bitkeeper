@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk triggers" 1 %E% "\*(BC" "\*(UM"
+.TH "bk triggers" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk triggers \- using \*(BK event triggers
 .SH DESCRIPTION
@@ -202,7 +202,7 @@ example of such a trigger, which would typically be named
 # be sneaky and create the file in an earlier
 # changeset and then move it.
 
-test `bk sfiles -g BitKeeper/triggers | wc -l` -gt 0 || exit 0
+test `bk sfiles -g BitKeeper/triggers | wc -l\` -gt 0 || exit 0
 
 if [ $BK_SIDE = server ]
 then    echo Refusing to accept any changes to triggers on push,
@@ -211,7 +211,7 @@ then    echo Refusing to accept any changes to triggers on push,
 fi
 
 rm -f BitKeeper/tmp/t_reject
-for i in `bk sfiles -g BitKeeper/triggers`
+for i in \`bk sfiles -g BitKeeper/triggers\`
 do      (
         echo Please review the following trigger for security risks.
         echo Do not accept it if you think it is a problem.
@@ -463,15 +463,15 @@ exit 0
 .ft
 .DE
 .SH SEE ALSO
-.SA clone 1
-.SA commit 1
-.SA delta 1
-.SA fix 1
-.SA delta 1
-.SA prompt 1
-.SA pull 1
-.SA push 1
-.SA resolve 1
-.SA tag 1
+.SA clone
+.SA commit
+.SA delta
+.SA fix
+.SA delta
+.SA prompt
+.SA pull
+.SA push
+.SA resolve
+.SA tag
 .SH CATEGORY
 .B Repository

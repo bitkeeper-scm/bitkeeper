@@ -1,7 +1,7 @@
 .so ../bk-macros
-.TH "bk admin" 1 %E% "\*(BC" "\*(UM"
+.TH "bk admin" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk admin \- administer \*(BK files (tags, checksums, validation)
+bk admin \- administer \*(BK files
 .SH SYNOPSIS
 .B bk admin 
 .I
@@ -11,74 +11,88 @@ options
 .LP
 The 
 .B admin
-command is used to create and/or administer \*(BK files.
+command is used to administer \*(BK files.
+There are options for changing per file features, modifying file metadata,
+verifying file checksum and metadata, changing the file compression mode,
+and/or recalculating the file checksum.
 .SH OPTIONS
-.\" Undocumented on purpose:
-.\" ATT compat: -a, -e, -d, -n
-.\" -s
-.if t .TP .8i
+.if t .TP 1.2i
 .if n .TP 1.6i
-.B \-0
-add a 1.0 delta if there is not one already.
-.nr tp_space .065i
-.tp
 .OPTopt \-C csetfile
-set or remove the changeset file pointer in the 1.0 delta
+set or remove the changeset file string in the 1.0 delta
 (very rarely used, \fBnot\fP recommended).
+The string is used to associate the file with a particular repository
+idea and usually the same as the output of
+.BR "bk id" .
 .tp
 .B \-D
-remove the delta changeset marks (very rarely used, \fBnot\fP recommended).
+remove the delta changeset marks (rarely used, \fBnot\fP recommended unless
+followed by a 
+.BR "bk cset -M1.0.." ).
 .tp
 .OPTreq \-f flag
-set 
-.ARG flag 
-which can be any of:
-.if t .RS .8i
-.if n .RS .4i
-.tp
-.B BITKEEPER
+set a per file flag.
+Many of the flags may be set automatically upon file creation by adding 
+an entry to the
+.I BitKeeper/etc/config
+file.
+See
+.B "bk help config-etc"
+for information on how to do so.
+The possible values for
+.ARG flag
+are:
+.if t .RS .125i
+.if t .tp 1.075i
+.if n .RS .2i
+.if n .tp 1.4i
+.I BITKEEPER
 mark the file as a \*(BK file (very rarely used, \fBnot\fP recommended)
 .tp
-.B EXPAND1
+.I EXPAND1
 expand keywords in first line that contains keywords only (printf conflicts)
-EXPAND1 must be explicitly set or set in the BitKeeper/etc/config file.
-See bk help config-etc.
+(May be set in \fIBitKeeper/etc/config\fP).
 .tp
-.B EOLN_NATIVE
-use the operating system's native end-of-line termination.
-EOLN_NATIVE is set to "on" by default.  To make the
-default have EOLN_NATIVE be set to "off" put eoln:unix in the
-BitKeeper/etc/config file (see bk help config-etc).
+.I EOLN_NATIVE
+use the operating system's native end-of-line termination (i.e., 
+.B \er\en
+on Windows and
+.B \en
+on all other platforms.)
+.I EOLN_NATIVE
+is set to "on" by default.  To make the
+default be to always have 
+.B \en
+line endings, put
+.B eoln:unix
+in the
+.I BitKeeper/etc/config
+file.
 .tp
-.B NOMERGE
+.I NOMERGE
 do not attempt to automerge this file, treat it as if it were a
 binary file and force a choose local or choose remote style merge.
 .tp
-.B RCS
+.I RCS
 expand RCS keywords, i.e., $\fIkeyword\fP$ etc.
-RCS must be explicitly set or set in the BitKeeper/etc/config file.
-See bk help config-etc.
+(May be set in \fIBitKeeper/etc/config\fP).
 .tp
-.B SCCS
+.I SCCS
 expand SCCS keywords, i.e., %\fIK\fP% etc.
-SCCS must be explicitly set or set in the BitKeeper/etc/config file.
-See bk help config-etc.
-.tp
-.B YEAR4
-display dates as 4 digit years 
+(May be set in \fIBitKeeper/etc/config\fP).
 .RE
-.LP
-.tp
-.OPTreq \-F f
+.if t .tp 1.2i
+.if n .TP 1.6i
+.OPTreq \-F flag
 delete flag 
-.ARG f ,
-reverting to default behavior
+.ARG flag ,
+reverting to default behavior.
 .tp
 .B \-h
 check s.file structure in general, but limited to \*[ATT] features.
 .tp
 .B \-hh
-as above, but also check \*(BK structure.
+as above, but also check \*(BK specific (in addition to \*[ATT]) features.
 .tp
 .B \-hhh
 as above, but also check time stamps.
@@ -91,63 +105,30 @@ read initial text from
 .ARG file
 (default stdin).
 .tp
-.OPTreq \-M merge
-Mark branch specified by revision
-.ARG merge
-as merged into 
-.ARG rev ,
-if specified, or top of trunk.
-.tp
-.OPTopt \-p path
-set path of the most recent delta to 
-.ARG path ,
-if
-.ARG path
-was specified, otherwise use the current file location.  Note: not a timesafe
-operation, typically used only by 
-.BR bk\ import .
-.tp
 .B \-q
 run quietly.
-.tp
-.OPTreq \-r rev
-may be used with 
-.B \-M
-to specify a revision other than top of trunk,
-and, when not in a \*(BK repository, with 
-.B \-i
-to specify the initial revision.
-.tp
-.OPTreq \-t file
-read description text from 
-.ARG file
-and replace the current descriptive text, if any.
-.tp
-.B \-T
-clear description text.
-.tp
-.B \-u
-force all timestamps to be increasing (very dangerous, this changes the keys).
 .tp
 .OPTreq \-y comment
 make 
 .ARG comment
 be the checkin comment for the initial checkin (only valid with 
-.B \-i
-and
-.BR \-n ).
+.BR \-i ).
 .tp
 .B \-z
 recalculate file checksum.
 .tp
 .OPTreq \-Z alg
 compress stored s.file with 
+.ARG alg .
+Compression is on by default because the space savings are substantial and
+there is little or no performance difference.
+The default may be set in \fIBitKeeper/etc/config\fP.
 .ARG alg
-which may be:
-.if t .RS .7i
-.if n .RS .7i
-.if t .tp
-.if n .tp
+may be:
+.if t .RS .17i
+.if t .tp 1.03i
+.if n .RS .2i
+.if n .tp 1.4i
 .B  gzip
 like 
 .BR gzip (1)
@@ -164,12 +145,15 @@ This command does way too much and is likely to be split apart.
 Do not depend on these options for scripts.
 .SH SEE ALSO
 .LP
-.SA chmod 1
-.SA delta 1
-.SA get 1
-.SA new 1
-.SA prs 1
-.SA tag 1
+.SA check
+.SA checksum
+.SA chmod
+.SA cset
+.SA delta
+.SA get
+.SA id
+.SA new
+.SA prs
 .SA keywords
 .SA config-etc
 .SH CATEGORY

@@ -2039,7 +2039,7 @@ nomerge:	rs->opts->hadConflicts++;
 
 	/*
 	 * The interface to the merge program is
-	 * "smerge left_ver gca_ver right_ver"
+	 * "smerge -lleft_ver -rright_ver"
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
@@ -2047,8 +2047,13 @@ nomerge:	rs->opts->hadConflicts++;
 		ret = sys("bk", rs->opts->mergeprog,
 		    n->local, n->gca, n->remote, rs->s->gfile, SYS);
 	} else {
-		ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", rs->s->gfile, 
-		    rs->revs->local, rs->revs->remote, SYS);
+		char	*l = aprintf("-l%s", rs->revs->local);
+		char	*r = aprintf("-r%s", rs->revs->remote);
+
+		ret = sysio(0,
+		    rs->s->gfile, 0, "bk", "smerge", l, r, rs->s->gfile, SYS);
+		free(l);
+		free(r);
 	}
 
 	if (do_free) {
@@ -2544,6 +2549,7 @@ err:			unapply(save);
 		    "resolve: running consistency check, please wait...\n");
 	}
 
+	sync();
 	if (strieq("yes", user_preference("partial_check"))) {
 		fflush(save); /*  important */
 		ret = run_check(APPLIED, 0, opts->quiet);

@@ -1,12 +1,14 @@
 .so ../bk-macros
-.TH "bk fix" 1 %E% "\*(BC" "\*(UM"
+.TH "bk fix" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk fix \- re-edit a checked in (but uncommitted) delta
+bk fix \- re-edit a checked in work
 .SH SYNOPSIS
-.B bk fix [-v]
+.B bk fix
+.[B] -v
 .ARG file.c
 .br
-.B bk fix -c [-sv]
+.B bk fix -c
+.[B] -sv
 .SH DESCRIPTION
 .LP
 The
@@ -48,10 +50,12 @@ be verbose.
 Symbolic tags are not preserved.
 .SH SEE ALSO
 .LP
-.SA ci 1
-.SA edit 1
-.SA makepatch 1
-.SA stripdel 1
-.SA undo 1
+.SA ci
+.SA edit
+.SA makepatch
+.SA stripdel
+.SA undo
 .SH CATEGORY
 .B File
+.br
+.B Repository

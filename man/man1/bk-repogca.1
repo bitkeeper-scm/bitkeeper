@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk repogca" 1 %E% "\*(BC" "\*(UM"
+.TH "bk repogca" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk repogca \- show greatest common ancestor across a set of repositories
 .SH SYNOPSIS
@@ -17,7 +17,7 @@ bk repogca \- show greatest common ancestor across a set of repositories
 This command will print the latest revision in the current repository
 that exists in all of the the remote repositories either listed on the
 command line or implied in the parent pointer.
-By default, `bk parent` is the remote repository. 
+By default, \`bk parent\` is the remote repository. 
 .SH OPTIONS
 .TP 1i
 .OPTreq \-d dspec
@@ -31,12 +31,12 @@ A short hand for asking for a dspec of ":KEY:".
 .LP
 To generate a GNU patch for the changes that exist only in the local repository:
 .DS
-bk export -tpatch -r`bk repogca`,+ > patch
+bk export -tpatch -r\`bk repogca\`,+ > patch
 .DE
 .LP
 To throw away all local work that doesn't exist in a remote repository:
 .DS
-bk undo -a`bk repogca URL`
+bk undo -a\`bk repogca URL\`
 .DE
 Warning: This 
 .I might
@@ -46,7 +46,7 @@ That can happen if there are multiple common ancestors on different
 branches.
 The ancestor choosen is the one created most recently.
 .SH "SEE ALSO"
-.SA gca 1
-.SA dspec 1
+.SA gca
+.SA dspec
 .SH CATEGORY
 .B Utility

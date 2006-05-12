@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk grep" 1 %E% "\*(BC" "\*(UM"
+.TH "bk grep" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk grep \- search some/all revisions of one or more files for a pattern
 .SH SYNOPSIS
@@ -70,6 +70,7 @@ Prefix each line with the revision of last modification.
 .B u
 Prefix each line the name of the user who last modified it.
 .RE
+.SP
 There is some redundancy between the b/p options and the traditional GNU
 options for listing file names.  The \*(BK options are slightly different
 in the following ways: the file names listed are either the basename or
@@ -213,13 +214,11 @@ Binary files are never searched, they are silently ignored.
 There really ought to be a way to grep changes made by a changeset
 or range of changesets.
 .SH "SEE ALSO"
-.BR grep (1)
-.br
-.SA annotate 1
-.SA bk 1
-.SA cat 1
-.SA get 1
-.SA range 1
-.SA regex 1
+.SA annotate
+.SA bk
+.SA cat
+.SA get
+.SA range
+.SA regex
 .SH CATEGORY
 .B File

@@ -238,6 +238,10 @@ sfileFirst(char *cmd, char **Av, int Flags)
 					perror(prefix);
 				}
 			}
+			/*
+			 * If they specify argv then they must mean it.
+			 */
+			flags |= SF_DELETES;
 			return (sfileNext());
 		}
 		/*

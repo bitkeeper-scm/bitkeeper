@@ -1,16 +1,19 @@
 .so ../bk-macros
-.TH "bk cat" 1 %E% "\*(BC" "\*(UM"
+.TH "bk cat" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk cat \- concatenate and display file contents
 .SH SYNOPSIS
 .B bk cat
-.FILES
+.FILESreq
 .SH DESCRIPTION
-bk cat is used to send one or more files to standard output.
+.B bk cat
+is used to send one or more files to the standard output.
 It is used when a file's contents are wanted but the caller
-does not know if the file is or is not under revision control.
+does not know if the file is or is not under revision control
+or is or is not checked out.
 .LP
-bk cat differs from the standard Unix cat command in two ways:
+.B bk cat
+differs from the standard Unix cat command in two ways:
 a) it does not support any of the Unix cat options, and
 b) if a file is specified which does not exist, but a
 corresponding s.file does exist, the most recent version of

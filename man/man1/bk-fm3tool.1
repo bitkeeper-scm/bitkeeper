@@ -1,35 +1,44 @@
 .so ../bk-macros
-.TH "bk fm3tool" 1 20%E% "\*(BC" "\*(UM"
-.\"    =============== BitKeeper 3-way File Merge Tool ===============
+.TH "bk fm3tool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk fm3tool \- \*(BK three-way merge tool
 .SH SYNOPSIS
 .B bk fm3tool
-.br
-.B bk fm3tool
-.B [\-o filename]
-.B [\-f]
-.ARG local
-.ARG ancestor
-.ARG remote
-.ARG merge
+.[OPTreq] \-o filename
+.[B] \-fn
+.OPTreq \-l local
+.OPTreq \-r remote
+.ARG file
 .SH DESCRIPTION
 .LP
-fm3tool is a three-way merge tool used for resolving differences
+fm3tool is a three-way merge tool used for resolving conflicting changes
 between two different versions of a file that have a common ancestor. 
 Normally fm3tool is not run from the command line; it is started
-during the resolve part of a pull by responding with 'f' at the
+during the resolve phase of a pull by responding with '\f(CBf\fP' at the
 merge prompt.
 .LP
-When fm3tool is started, there are six main areas on the screen.
+The default behaviour of
+.B bk fm3tool
+is to go to the first conflict requiring resolution; any preceeding conflicts
+which may have been automerged are placed in the merge window as completed
+work.  
+The navigation buttons may be used to go back to the beginning of the file
+and examine each change, including all automerges.
+Doing so is frequently helpful in understanding the changes which have
+occurred.
+.SH SCREEN LAYOUT
+.LP
+When 
+.B bk fm3tool
+is started, there are six main areas on the screen.
 Notice that information about the local repository is on the left
 and remote repository is on the right.
 .DS
 +--------------------+------------------- +
 | Local change info  | Remote change info |
 +--------------------+--------------------+
-| Local diff         | Remote diff        |
-|                    |                    |
+| GCA baseline       | GCA baseline       |
+| Local change       | Remote change      |
 |                    |                    |
 +--------------------+-----+--------------+
 | Merge                    | Messages     |
@@ -37,19 +46,19 @@ and remote repository is on the right.
 |                          |              |
 +--------------------------+--------------+
 .DE
-.LP
-.TP 4
+.if t .TP 1.3i
+.if n .TP 1.9i
 .B Local change info
-Revision information for the local copy of the file
+Revision history for the local changes to the file
 .tp
 .B "Remote change info"
-Revision information for the remote copy of the file
+Revision history for the remote changes to the file
 .tp
 .B "Local diff"
 Diff of local file versus the greatest common ancestor (GCA)
 .tp
 .B "Remote diff"
-Diff of remote file versus the greatest common ancestor
+Diff of remote file versus the GCA
 .tp
 .B "Merge"
 Result of the merge
@@ -57,28 +66,38 @@ Result of the merge
 .B "Messages"
 Informational messages and navigation controls
 .LP 
+As the tool moves from change to change, the top two windows will change 
+to show revision history of the current highlighted change. 
 .SH OPTIONS
-.TP 14
-.B -o filename
-Save output to the named file.
+.if t .TP 12
+.if n .TP 15
+.OPTreq \-o filename
+save output to the specified file.
 .tp
 .B -f 
 force overwrite of existing file. By default fm3tool will
 not overwrite an existing merge file.
-
+.tp
+.OPTreq -l local_rev
+the revision in the file to be considered the most recent local work.
+.tp
+.B -n 
+do not write any merged output, put the tool in readonly mode.
+.tp
+.OPTreq -r remote_rev
+the revision in the file to be considered the most recent remote work.
 .SH HAND-EDITING
 A merge conflict may be edited manually by single-clicking over a
 highlighted diff in the merge window. The merge window will then
 enter a special edit mode where you can make changes. 
 To exit the edit mode, press
-<escape> or click on area that divides the merge area from the areas
+<\f(CWescape\fP> or click on area that divides the merge area from the areas
 above it.
 .SH KEYBOARD BINDINGS
 fm3tool has two major modes: one for navigating through the diffs and
 conflicts and one for hand-editing a merge. Each of these modes has
 its own set of key bindings.
-.tp
-.SH NAVIGATION MODE
+.SS NAVIGATION MODE
 .LP
 .TP 14
 .B Left-Click
@@ -165,8 +184,7 @@ merge region.
 .tp
 .B Control-q
 Exit from fm3tool.
-.TP
-.SH EDIT MODE
+.SS EDIT MODE
 .TP 14
 .B <escape>
 Exit edit mode

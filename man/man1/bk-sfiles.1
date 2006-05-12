@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk sfiles" 1 %E% "\*(BC" "\*(UM"
+.TH "bk sfiles" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    ======================== Sfiles Help ===========================
 .SH NAME
 bk sfiles \- generates lists of revision control files
@@ -48,19 +48,24 @@ printed.  This is to useful with
 Only examine one directory level.  Do not go into subdirectories.
 .tp
 .B \-a
-Examine all files, even if listed in BitKeeper/etc/ignore.
+Examine all files, even if listed in
+.IR BitKeeper/etc/ignore .
 .tp
 .B \-c
 List changed files (locked and modified).
-If clock_skew is set in the config file then the file timestamps
+If
+.I clock_skew
+is set in the config file then the file timestamps
 and other attributes are used to speed scanning.
-The acceptible clock skew can be configured, see 'clock_skew' in
-bk help config-etc.
+The acceptible clock skew can be configured, see
+.I clock_skew
+in
+.B bk help config-etc.
 .tp
 .B \-C
 Identical to 
 .B \-c
-except the timestamp DB is not consulted.
+except the file timestamps are not trusted.
 .tp
 .B \-d
 List directories under \*(BK control (SCCS subdir exists).
@@ -201,13 +206,10 @@ Files under BitKeeper/{log,readers,writers}/ are always ignored.
 Revision control files must look like SCCS/s.*,
 not foo/bar/blech/s.*
 .SH "SEE ALSO"
-.SA history 1
-.br
-.SA ignore 1
-.br
-.SA new 1
-.br
-.SA xargs 1
+.SA history
+.SA ignore
+.SA new
+.SA xargs
 .SH CATEGORY
 .B File
 .\" help://Files/gfiles

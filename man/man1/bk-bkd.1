@@ -1,24 +1,22 @@
 .so ../bk-macros
-.TH "bk bkd" 1 %E% "\*(BC" "\*(UM"
+.TH "bk bkd" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk bkd \- the \*(BK daemon
 .SH SYNOPSIS
-.Bc bk bkd [\-BCdDhR] [more opts]
+.B bk bkd
+.[OPT] options
 .SH DESCRIPTION
 .LP
 The \*(BK daemon, bkd, is used to synchronize and query repositories.
 It is typically run in one of the following ways:
-.TP 4
-a)
+.LI
 automatically started when accessing a remote repository via rsh, ssh, http,
 and/or the file system;
-.tp
-b)
+.LI
 automatically started via ssh as a login shell;
-.tp
-c)
+.LI
 manually started as a long running stand-alone daemon;
-d)
+.LI
 automatically started as a long running service at boot time.
 .LP
 The method used usually depends on how the remote repository is named.
@@ -112,7 +110,7 @@ and add a user with that path as their shell.
 .LP
 An example 
 .B bkd
-shell script which works for us is:
+shell script which works is known to work:
 .DS
 #!/bin/sh
 exec bk bkd -C -xcd
@@ -120,7 +118,7 @@ exec bk bkd -C -xcd
 .LP
 .B Note:
 using the bkd as a login shell when accessing the system using
-.BR rsh 
+.B rsh 
 is unsupported and is known not to work due to a long standing rsh bug.
 .SH BK/WEB
 The bkd is a self contained http server which provides the optional
@@ -129,8 +127,9 @@ repository served by the bkd must contain (or reference) a commercial
 license which has the BK/Web option enabled.
 .SH WINDOWS BASED BKD
 .LP
-It is possible to install a single bkd as a Windows service,
-see bk help service.
+It is possible to install a one or more bkd's as Windows services,
+see 
+.B bk help service.
 .SH OPTIONS
 .TP 1i
 .B \-C
@@ -157,7 +156,7 @@ to
 (This option is not supported on the Windows platform.)
 .tp
 .B \-d
-Run as a daemon in the background.
+Run as a daemon, typically in the background (but see the next option).
 .tp
 .B \-D
 Debug mode, do not fork and run in the background.
@@ -209,7 +208,7 @@ version.
 .LP
 We use the following in 
 .B /var/bitkeeper/repositories
-to provide anonymous read only access to some \*(BK repositories.  
+to provide anonymous read only access to some \*(BK repositories:  
 .DS
 #----------------------\ cut\ here\ --------------------------
 nobody /home/bk/bk-3.2.x -C -xpush -p3200
@@ -217,19 +216,15 @@ nobody /home/bk/bk-3.3.x -C -xpush -p3300
 #----------------------\ cut\ here\ --------------------------
 .DE
 .LP
-The init script shown below can be generated with a 
+The following init script is known to work on Red Hat Linux based systems.
+The init script shown can be generated with a 
 .DS
 $ bk getmsg bitkeeper.init
-.DE
-We use the it in
-.BR /etc/rc.d/init.d/bitkeeper
-to start up \*(BK on bkbits.net (a Linux system):
-.DS
 #----------------------\ cut\ here\ --------------------------
 #!/bin/sh
 #
 # chkconfig: 2345 24 84
-# description: BitKeeper server for bkbits.net
+# description: BitKeeper server
 
 # Source networking configuration.
 if [ \-f /etc/sysconfig/network ]
@@ -247,7 +242,7 @@ case "$1" in
     stop_msg)	echo "Stop BitKeeper daemons"
 		;;
     restart)	$0 stop
-		$0 start
+			$0 start
 		;;
     start)	cd $VAR || exit 1
 		test \-f repositories || {
@@ -257,7 +252,7 @@ case "$1" in
 		while read user dir opts
 		do	(
 			cd $dir || exit 1
-			F=`basename $dir`
+			F=\`basename $dir\`
 			CMD="bk bkd \-d $opts \-l$VAR/log.$F \-P$VAR/pid.$F"
 			su -c "$CMD" $user 2>> $VAR/errors
 			echo Started $CMD in $dir
@@ -269,14 +264,14 @@ case "$1" in
 		cd $VAR || exit 1
 		echo Shutting down BitKeeper daemons
 		for i in pid.*
-		do	kill `cat $i`
+		do	kill \`cat $i\`
 			rm $i
 		done
 		;;
 
     status)	cd $VAR || exit 1
 		for i in pid.*
-		do	echo This pid should be running: `cat $i`
+		do	echo This pid should be running: \`cat $i\`
 		done
 		ps \-axf | grep bkd
 		
@@ -299,16 +294,16 @@ One could argue that this is code reuse rather than a bug.
 \*(BM
 does not ship
 .B ssh
-since it is export controlled.
+since it is widely available.
 .LP
 On Windows the bkd service does not work when started from a network drive.
 .LP
 On Windows the bkd service does not work when started from a subst'ed drive.
 .SH "SEE ALSO"
 .SA parent
-.SA service
+.SA "service (Windows only)"
 .SA url
-.SA Howto-bkd 1
+.SA Howto-bkd
 .\" help://anonymous
 .\" help://deamon
 .\" help://daemon

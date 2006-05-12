@@ -1,13 +1,12 @@
 .so ../bk-macros
-.TH "bk checksum" 1 %E% "\*(BC" "\*(UM"
+.TH "bk checksum" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk checksum \- check and/or fix \*(BK checksums
+bk checksum \- check and/or fix \*(BK per file checksums
 .SH SYNOPSIS
-.B bk checksum [
-.OPTopt \-s offset
-.Bc ] [-fv] [
-.OPTreq \-r REV
-.B ]
+.B bk checksum 
+.[OPTopt] \-s offset
+.[B] -fv
+.[OPTreq] \-r REV
 .BKARGS
 .SH DESCRIPTION
 \*(BK has more integrity checksums than the original \*(SC had
@@ -18,8 +17,11 @@ This command is typically used to check and/or regenerate the
 per delta checksums.
 Without any options, the default behavior is to just check each
 checksum warn about any checksums that are missing or incorrect.
+.LP
 This command may also be used to print a list of checksums of
-arbitrary data, see the -s option.
+arbitrary data, see the
+.B \-s
+option.
 .SH WARNING
 The per delta checksums are part of the delta keys which are contained in 
 the ChangeSet file.  These keys are part of the metadata which \*(BK uses
@@ -28,7 +30,7 @@ in the ChangeSet file must be correspondingly changed, and the process
 repeated for each copy of the repository.  Needless to say, we do not
 encourage the use of this command with the
 .B \-f 
-option unless you are sure of what you are doing.
+option unless you are very sure of what you are doing.
 .SH OPTIONS
 .TP 10
 .B \-f
@@ -41,9 +43,9 @@ problem delta is known.
 .OPTopt \-s off
 generate and print the \*(SC style 16 bit unsigned checksum starting
 at offset
-.BR off .
+.IR off .
 If 
-.B off 
+.I off 
 is 8, then this generates the same checksum as the per file checksum.
 If there are no file arguments, reads data from stdin (note: differs from
 other options which obey the normal \*(BK file expansion rules).
@@ -51,6 +53,9 @@ other options which obey the normal \*(BK file expansion rules).
 .B \-v
 be verbose.
 .SH "SEE ALSO"
-.SA check 1
+.SA check
+.SH WARNINGS
+Do not depend on per file checksums being \*(SC compatible, \*(BK is likely
+to move to a CRC in a future release.
 .SH CATEGORY
 .B Admin

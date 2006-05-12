@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk gone" 1 %E% "\*(BC" "\*(UM"
+.TH "bk gone" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk gone \- mark a file (key) as gone
 .SH SYNOPSIS
@@ -15,7 +15,7 @@ command is used when a file has been lost or physically deleted
 and the administrator of the repository has decided that the file should
 be marked as gone.
 .LP
-The key of the file can be generated from an existing file like this:
+The key of the file can be generated from an existing file as follows:
 .DS
 $ bk prs -hr+ -d:ROOTKEY: file
 .DE
@@ -46,6 +46,6 @@ the file, and run  \fBbk \-r check \-a\fR.  If that complains, run the
 command on the listed keys.
 .SH SEE ALSO
 .LP
-.SA check 1
+.SA check
 .SH CATEGORY
 .B Admin

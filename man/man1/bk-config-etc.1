@@ -1,13 +1,15 @@
 .so ../bk-macros
-.TH "bk config-etc" 1 %E% "\*(BC" "\*(UM"
+.TH "bk config-etc" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk config-etc \- configuring \*(BK
 .SH DESCRIPTION
 \*(BK config files contain repository configuration information including
 project description, licensing information, 
-user preferences, BKWeb preferences, and contact information.
+user preferences, BK/Web preferences, and contact information.
 Each \*(BK repository must have the minimum configuration
 information available in order to properly execute \*(BK commands.
+.LP
+XXX - needs updating w/ Wayne's ordering.
 .LP
 Repository configuration information is searched for in the following 
 places, in order:
@@ -15,16 +17,16 @@ places, in order:
 .B $BK_CONFIG
 Environment variable.
 .tp
-.B `bk root`/BitKeeper/etc/config
+.BI \`bk\ root\` /BitKeeper/etc/config
 Repository level config file
 .tp
-.B `bk dotbk`/config
+.BI \`bk\ dotbk\` /config
 Personal config file
 .tp
-.B /etc/BitKeeper/etc/config
+.I /etc/BitKeeper/etc/config
 Per-machine config file
 .tp
-.B `bk bin`/config
+.BI \`bk\ bin\` /config
 Per-installation config file
 .LP
 For each key/value pair, the first instance of a key found is the one
@@ -35,8 +37,9 @@ value (not the key) with an exclamation point like so:
 checkout: get!
 .DE
 The
-.I BK_CONFIG
-may contain a list of key:value pairs separated by semicolons.
+.B BK_CONFIG
+environment variable may contain a list of key:value
+pairs separated by semicolons.
 For example:
 .DS
 BK_CONFIG=key1:value2;key2:value2;key3:value3
@@ -59,7 +62,7 @@ consistent for every repository on the system by creating a template:
 .DS
 /etc/BitKeeper/etc/config.template
 or
-`bk dotbk`/config.template
+\`bk dotbk\`/config.template
 .DE
 If this file exists, bk setup will automatically use that as the 
 BitKeeper/etc/config file.  See bk help setup for more information.

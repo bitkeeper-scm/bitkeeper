@@ -1,15 +1,17 @@
 .so ../bk-macros
-.TH "bk merge" 1 %E% "\*(BC" "\*(UM"
+.TH "bk merge" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk merge \- three-way text based file merge
 .SH SYNOPSIS
-.B merge [\-s]
+.B merge
+.[B] \-s
 .ARG local
 .ARG ancestor
 .ARG remote
 .ARG merge
 .br
-.B merge [\-s]
+.B merge
+.[B] \-s
 .ARG path/to/gfile
 .SH DESCRIPTION
 The
@@ -62,21 +64,16 @@ Perform a set merge instead on a normal file merge.  In this case the
 files are assumed to be lists of items, one item per line, and the
 merge does an automatic union of the lists and writes the result in
 sorted order.  Conflicts cannot occur in this mode.
-.SH WARNING
-Nobody likes to hear this, but this sort of automatic merge can get you
-in trouble.  The problem is that this is a syntactic merge, not a semantic
-merge.  In other words, just because the files do not have overlapping
-changes does not mean that the merge will work.  It's up to the user to
-look carefully at the results and verify their correctness.
 .SH EXIT STATUS
 0 for no conflicts, 1 for conflicts, 2 for errors.
 .SH "SEE ALSO"
-.BR diff3 (1)
-.br
-.SA smerge 1
-.SA fmtool 1
-.SA merging 1
-.SA resolve 1
+.BR diff3 (1),
+.SA explore_merge
+.SA fmtool
+.SA ignore
+.SA resolve
+.SA resolving
+.SA smerge
 .SH CATEGORY
 .B Repository
 .br

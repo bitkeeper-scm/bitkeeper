@@ -1,9 +1,10 @@
 .so ../bk-macros
-.TH "bk csets" 1 %E% "\*(BC" "\*(UM"
+.TH "bk csets" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk csets \- run csettool on last set of imported changes
+bk csets \- run changes or csettool on last set of incoming changes
 .SH SYNOPSIS
 .B bk csets
+.[B] \-t
 .SH DESCRIPTION
 .LP
 The
@@ -16,10 +17,18 @@ changesets imported into this repository with a
 or
 .BR bk\ push .
 This is useful for tracking down problems and/or doing a quick review.
+.SH OPTIONS
+.tp
+.B \-t
+Use 
+.B bk changes
+to display the changesets (text mode).
+.SH BUGS
+The -t option should be implied if there is no graphical display to be found.
 .SH "SEE ALSO"
-.SA changes 1
-.SA csettool 1
-.SA pull 1
-.SA push 1
+.SA changes
+.SA csettool
+.SA pull
+.SA push
 .SH CATEGORY
 .B Repository

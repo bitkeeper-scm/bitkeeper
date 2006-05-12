@@ -49,6 +49,31 @@ bk changes
 
     Add -i/-x include/exclude processing.
 
+bk csets -t
+    Text mode version of bk csets.
+
+bk revtool
+    -G option is gone, it is automatically calculated from the local/remotes.
+
+bk smerge / fm3tool
+    both now take "-l<local> -r<remote> file" as their arguments to be
+    consistent with bk revtool.  GCA is automatically calculated.
+
+bk commit
+    Used to have an undocumented -f<file_list> option.  That option
+    has been renamed to -l<file_list> and -f is now used to force a
+    non-interactive commit.
+
+bk citool/csettool/difftool/revtool
+    Added a series of keyboard shortcuts and a new menu to show them
+    to the user.
+
+bk cset
+    -l/-r are removed.  Use bk changes instead, see the bk cset manpage.
+
+bk delta
+    -C is now -c (take comments from SCCS/c.file)
+
 bk diffs
     diffs -C is gone; use diffs -r@REV instead.
 
@@ -211,11 +236,20 @@ bk conflicts
     directory.  It may be used to examine changes to see who should resolve 
     those changes.
 
+bk extras
+    Old syntax: bk extras [dir] [-a]
+    New syntax: bk extras [-a] [dir]
+
 filetypes.1
     This is a rename of the files.1 man page.
 
 bk files
     This is a demo program to show file name expansion
+
+bk fixtool
+    Documentation is added for this interface.  It is used to walk through
+    files that have changed and modify the changes prior to checkin.  It's
+    like the entry in the Edit menu of citool.
 
 bk glob
     BitKeeper now respects globs on the command line.  If you say

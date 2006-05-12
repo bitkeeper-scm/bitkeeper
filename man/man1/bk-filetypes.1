@@ -1,7 +1,7 @@
 .so ../bk-macros
-.TH "bk filetypes" 1 %E% "\*(BC" "\*(UM"
+.TH "bk filetypes" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
-bk filetypes \- summary of BitKeeper file types
+bk filetypes \- summary of \*(BK file types
 .SH DESCRIPTION
 .LP
 For each file under revision control, there are a number of files
@@ -37,7 +37,8 @@ contains the following columns:
 .if t .ft
 This file is an exclusive lock whose existence indicates 
 that the gfile has been checked out for editing.  Unlike 
-ATT SCCS, \*(BK allows only one locker at a time.
+ATT SCCS, \*(BK allows only one locker at a time within a
+single repository.
 .TP
 .I SCCS/z.foo.c
 .IR z.file \ -

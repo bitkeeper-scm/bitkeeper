@@ -1,0 +1,88 @@
+.so ../bk-macros
+.TH "bk fixtool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk fixtool \- fix up pending changes
+.SH SYNOPSIS
+.B bk fixtool
+.[B] \-fpsuw
+.FILES
+.SH DESCRIPTION
+.B bk fixtool
+allows you to revise changes made to one or more working files prior to
+creating a delta.
+Typically, this feature is used immediately before a check in when it is
+realized that that there is unwanted work, such as debugging messages,
+mixed in with useful work which should be saved.
+.LP
+.B bk fixtool
+calls
+.B bk sfiles -cg
+to find files which have been changed.
+The default is to find all files which have been changed but this may be
+controlled by specifying a set of files and/or directories.
+.LP
+For each changed file 
+.B bk fixtool
+.LI
+clears the screen
+.LI
+shows the changes (via
+.BR "bk diffs" )
+.LI
+and prompts for an action.
+.LP
+The action must be a letter followed by \f(CBEnter\fP. 
+The choices are:
+.TP 4
+.B n
+(no) skips this file and continues to the next file.
+.tp
+.B q
+(quit) stop processing files.
+.tp
+.B u
+(unedit) discards all changes made to the named file.
+.tp
+.B y
+(yes) run 
+.B bk fmtool
+on the previously checked in version of the file and the current working file.
+This is most commonly used to remove debugging statements while leaving the
+new work.
+.br
+.B Note:  
+if the file is saved then the saved file replaces the original working file.
+.SH OPTIONS
+.TP 4
+.B \-f
+forces the answer to all prompts to be "\fBy\fP".
+.tp
+.B \-p
+passed through to 
+.B bk diffs
+to get procedural diffs.
+.tp
+.B \-s
+passed through to 
+.B bk diffs
+to get side-by-side diffs.
+.tp
+.B \-u
+passed through to 
+.B bk diffs
+to get unified diffs.
+.tp
+.B \-w
+passed through to 
+.B bk diffs
+to ignore whitespace in diffs.
+.SH "SEE ALSO"
+.SA citool
+.SA diffs
+.SA fmtool
+.SH CATEGORY
+.B File
+.br
+.B GUI-tools
+.br
+.B Repository

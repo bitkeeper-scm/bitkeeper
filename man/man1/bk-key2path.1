@@ -1,0 +1,17 @@
+.so ../bk-macros
+.TH "bk key2path" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk key2path \- convert \*(BK keys to pathnames
+.SH SYNOPSIS
+.B cat keys
+|
+.B bk key2path
+.SH DESCRIPTION
+This utility takes one or more root keys on the standard input and
+prints the corresponding path of the file named by the key.
+If a key is not found an error message is printed.
+.SH SEE ALSO
+.SA key2rev
+.SA prs
+.SH CATEGORY
+.B Utility

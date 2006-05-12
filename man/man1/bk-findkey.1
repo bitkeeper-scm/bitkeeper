@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk findkey" 1 %E% "\*(BC" "\*(UM"
+.TH "bk findkey" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk findkey \- look for keys in files
 .SH SYNOPSIS
@@ -8,12 +8,15 @@ bk findkey \- look for keys in files
 .SH DESCRIPTION
 .B bk findkey
 may be used to look for keys in one or more files.  In \*[BK], keys
-are the internal names for files and for file deltas.  
+are the internal names for files and/or file deltas.  
 .LP
-Either entire keys or one or more portions of a key may be specified.
+The keys may be either the long form or the MD5 form (see 
+.BR "bk prs" ).
+You may search for keys using only a portion of the key as described
+below.
 Each delta in each file that matches all specified parts is listed.
 .SH OPTIONS
-.if t .TP
+.if t .TP .8i
 .if n .TP 1.2i
 .OPTreq \-b random
 specify the random bits part of a key.
@@ -37,6 +40,6 @@ either YYYYMMDDHHMMSS or YYYY/MM/DD\ HH:MM:SS.
 .OPTreq \-u user
 specify the username part of a key.
 .SH "SEE ALSO"
-.SA prs 1
+.SA prs
 .SH CATEGORY
-.B File
+.B Utility

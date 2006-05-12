@@ -1079,6 +1079,9 @@ proc smerge {} \
 	# present. Hiding it only hides it from the human eye; dealing
 	# with the text widget at the programming level still sees the data.
 	set annotate 1
+
+	# If we're called with one argument then assume that that is the
+	# output of smerge.  For debugging/testing.  Undocumented.
 	if {$argc == 1} {
 		set filename [lindex $argv 0]
 		exec cp $filename $smerge
@@ -1091,21 +1094,24 @@ proc smerge {} \
 		set force 1
 		incr argc -1
 		set argv [lreplace $argv 0 0]
-	} elseif {[lindex $argv 0] == "-N"} {
+	} elseif {[lindex $argv 0] == "-n"} {
+		set nowrite 1
+		incr argc -1
+		set argv [lreplace $argv 0 0]
+	} elseif {[lindex $argv 0] == "-N"} {	# compat, remove in 2008
 		set nowrite 1
 		incr argc -1
 		set argv [lreplace $argv 0 0]
 	}
-	if {$argc != 4} {
-		puts "Usage: fm3tool \[-o filename\] \[-f | -N\]\
-		      <local> <gca> <remote> <file>"
+	if {$argc != 3} {
+		puts "Usage: fm3tool \[-o filename\] \[-f | -n\]\
+		      -l<local> -r<remote> <file>"
 		exit 1
 	}
 	set l [lindex $argv 0]
-	set g [lindex $argv 1]
-	set r [lindex $argv 2]
-	set f [lindex $argv 3]
-	set ret [catch {exec bk smerge -Im -f $f $l $r > $smerge}]
+	set r [lindex $argv 1]
+	set f [lindex $argv 2]
+	set ret [catch {exec bk smerge -Im -f $l $r $f > $smerge}]
 	set filename $f
 }
 
@@ -1156,10 +1162,9 @@ proc revtool {} \
 	global	argv
 
 	set l [lindex $argv 0]
-	set g [lindex $argv 1]
-	set r [lindex $argv 2]
-	set f [lindex $argv 3]
-	exec bk revtool -l$l -G$g -r$r "$f" &
+	set r [lindex $argv 1]
+	set f [lindex $argv 2]
+	exec bk revtool -l$l -r$r "$f" &
 }
 
 proc csettool {what} \

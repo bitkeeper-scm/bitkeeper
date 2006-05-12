@@ -1,34 +1,41 @@
 .so ../bk-macros
-.TH "bk import" 1 %E% "\*(BC" "\*(UM"
+.TH "bk import" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    ================= Importing files into BitKeeper =================
 .SH NAME
 bk import \- import files or changes into a \*(BK package
 .SH SYNOPSIS
-.B bk import -tpatch [OPTIONS] 
+.B bk import -tpatch 
+.[B] options
 .ARG patch
 .ARG destination
 .br
 .B bk import -temail
-.OPT destination
-< mbox
+.[OPT] destination
+<
+.ARG mbox
 .br
-.B bk import -tplain [OPTIONS]
+.B bk import -tplain
+.[B] options
 .ARG directory
 .ARG destination
 .br
-.B bk import -tCVS\ \  [OPTIONS]
+.B bk import -tCVS
+.[B] options
 .ARG directory
 .ARG destination
 .br
-.B bk import -tMKS\ \  [OPTIONS]
+.B bk import -tMKS
+.[B] options
 .ARG directory
 .ARG destination
 .br
-.B bk import -tRCS\ \  [OPTIONS]
+.B bk import -tRCS
+.[B] options
 .ARG directory
 .ARG destination
 .br
-.B bk import -tSCCS\  [OPTIONS]
+.B bk import -tSCCS
+.[B] options
 .ARG directory
 .ARG destination
 .SH DESCRIPTION
@@ -37,7 +44,8 @@ Use bk import to put plain text files, patches (diff -Nur),
 patches and comments in the form of email messages, SCCS files, and 
 RCS/CVS files (in this document RCS will mean CVS, MKS and RCS)
 into a \*(BK package.  For file (text, SCCS, RCS, etc) imports,
-bk import does its work outside of your original tree
+.B bk import does
+its work outside of your original tree
 thus leaving the original files intact while importing them into a 
 \*(BK package.
 .LP
@@ -73,7 +81,7 @@ See below for information specific types of imports.
 .\"bk import -v -tCVS warehouse new
 .\".DE
 .SH OPTIONS
-.if t .TP
+.if t .TP .8i
 .if n .TP 1i
 .B \-C
 Do not commit the ChangeSet.
@@ -120,7 +128,7 @@ to the changeset created around the import
 Specify import file type.  
 .ARG type
 can be one of:
-.if t .RS .5i
+.if t .RS .3i
 .if n .RS .3i
 .tp
 .B plain
@@ -161,10 +169,10 @@ Be verbose.
 Prompts for a regular expression to apply to the list
 of files.  All matches are excluded.  (For use with all types except patches.)
 .SH "RCS OPTIONS"
-.if t .TP
+.if t .TP .8i
 .if n .TP .8i
 .B \-h 
-turn off verification of contents (faster, unsafe).
+turn off verification of contents (faster, less safe).
 .tp
 .B \-T
 Do not import tags. The default is to import tags.
@@ -173,8 +181,8 @@ Do not import tags. The default is to import tags.
 Run files through bk undos first; this will convert
 DOS style end of lines to Unix style end of lines.
 .SH "PATCH OPTIONS"
-.if t .TP
-.if n .TP .4i
+.if t .TP .8i
+.if n .TP .8i
 .tp
 .OPTreq \-p num
 Strip  the  smallest prefix containing
@@ -293,13 +301,13 @@ the necessary metadata is in the mainline.
 Importing \*(BK files is not supported; use bk clone.
 .SH "ERROR HANDLING"
 .LP
-Import does not handle errors in a robust way.  If unsuccessful, import
+Import does not handle all errors in a robust way.  If unsuccessful, import
 may leave work half done in the destination package.  It is suggested that
 the import destination repository is a clone of the original package in case of
 a failed import.
 .SH "SEE ALSO"
-.SA prs 1
-.SA rcs2bk 1
-.SA undos 1
+.SA prs
+.SA rcs2bk
+.SA undos
 .SH CATEGORY
 .B Repository

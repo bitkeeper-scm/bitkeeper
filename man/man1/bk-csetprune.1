@@ -1,11 +1,11 @@
 .so ../bk-macros
-.TH "bk csetprune" 1 %E% "\*(BC" "\*(UM"
+.TH "bk csetprune" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk csetprune \- shrink a repository by removing files
 .SH SYNOPSIS
-.B bk csetprune [\-S] [
-.OPTreq \-k 16hexDigits
-.B ]
+.B bk csetprune
+.[B] \-S
+.[OPTreq] \-k 16hexDigits
 < keylist
 .SH DESCRIPTION
 .LP
@@ -46,7 +46,6 @@ used in a repository root key.
 This is needed when doing a csetprunes over time on
 same key set and wanting the resulting repository to communicate
 with a repository created by an earlier csetprune.
-.tp
 .SH "GENERATING KEYS"
 .LP
 The
@@ -91,8 +90,8 @@ cd ../docs
 bk -r prs -hr+ -nd:ROOTKEY: | grep '|src/' | bk csetprune
 .DE
 .SH "SEE ALSO"
-.SA newroot 1
-.SA prs 1
-.SA sfiles 1
+.SA newroot
+.SA prs
+.SA sfiles
 .SH CATEGORY
 .B Admin

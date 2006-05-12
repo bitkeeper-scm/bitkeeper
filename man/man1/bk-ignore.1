@@ -1,14 +1,10 @@
 .so ../bk-macros
-.TH "bk ignore" 1 %E% "\*(BC" "\*(UM"
+.TH "bk ignore" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk ignore \- ignore shell glob patterns
 .SH SYNOPSIS
-.Bc bk ignore [
-.ARG 'glob' 
-.Bc [
-.ARGc 'glob'
-.Ic .\|.\|.
-.B ]]
+.B bk ignore 
+.[ARG] "glob .\|.\|."
 .SH DESCRIPTION
 .LP
 The 
@@ -18,7 +14,7 @@ be ignored when looking for extras files not under revision control.
 It affects the output of 
 .B bk sfiles \-x
 and all commands which use that output, such as 
-.B bk status
+.B bk citool
 and 
 .B bk
 .BR extras .
@@ -30,7 +26,7 @@ pathname of the file.  If you are trying to never have the file
 .ARG JUNK
 match, regardless of which directory it is in, you can say
 .DS
-bk ignore 'JUNK'
+bk ignore JUNK
 .DE
 .ft R
 and that will match 
@@ -80,7 +76,9 @@ list, nor is there a
 .I ~/ \.bkignore list.
 .SH SEE ALSO
 .LP
-.SA sfiles 1
-.SA extras 1
+.SA citool
+.SA extras
+.SA sfiles
+.SA status
 .SH CATEGORY
 .B Admin

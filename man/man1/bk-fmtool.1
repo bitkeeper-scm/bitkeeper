@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk fmtool" 1 %E% "\*(BC" "\*(UM"
+.TH "bk fmtool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    =============== BitKeeper 2-way File Merge Tool ===============
 .SH NAME
 bk fmtool \- \*(BK side-by-side merge tool
@@ -29,19 +29,16 @@ arranges to have the local version of the file on the left side and the
 remote version on the right.
 .LP
 Merging is done as follows: 
-.TP
-.B 1.
+.LI
 fmtool starts scanning both files from the top until difference
 are found. The identical work (i.e the work up to the point where
 the differences are found) is put in the merge window.
-.tp
-.B 2.
+.LI
 The user selects whether the remote or local version of the change
 will be used by clicking the "Use Left" or "Use Right" buttons.
 When the user picks a version, the changes are placed in the merge
 window.
-.tp
-.B 3.
+.LI
 Repeat the process until all changes are placed in the merge file.
 .LP
 The changes in the merge window are colored so that it is easy to tell whether

@@ -1,15 +1,15 @@
 .so ../bk-macros
-.TH "bk service" 1 %E% "\*(BC" "\*(UM"
+.TH "bk service" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk service \- manage a bkd as a Windows service
 .SH SYNOPSIS
 .B bk service install
-.OPT name
-.OPT bkdargs
+.[OPT] name
+.[OPT] bkdargs
 .br
 .B bk service uninstall
 [-a]
-.OPT name
+.[OPT] name
 .br
 .B bk service status
 [-a]
@@ -89,7 +89,7 @@ bk uninstall may require a reboot in order to completely remove the
 service.
 .SH "SEE ALSO"
 .SA bkd
-.SA Howto-bkd 1
+.SA Howto-bkd
 .SH CATEGORY
 .B Repository
 .br

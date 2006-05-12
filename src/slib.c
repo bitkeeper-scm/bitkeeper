@@ -15385,9 +15385,9 @@ bad:	if (lmap) free (lmap);
 }
 
 delta	*
-sccs_gca(sccs *s, delta *left, delta *right, char **inc, char **exc, int best)
+sccs_gca(sccs *s, delta *left, delta *right, char **inc, char **exc)
 {
-	return (best ? gca3(s, left, right, inc, exc) : gca(left, right));
+	return (gca3(s, left, right, inc, exc));
 }
 
 /*

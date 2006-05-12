@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk config-gui" 1 %E% "\*(BC" "\*(UM"
+.TH "bk config-gui" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk config-gui \- configuration for \*(BK graphical tools
 .SH DESCRIPTION
@@ -86,18 +86,18 @@ GUI tool's name with the trailing \*(lqtool\*(rq dropped, i.e.,
 The following tcl/tk commands may be useful for display specific
 customization:
 .TP
-[winfo depth .] 
+\f(CW[winfo depth .]\fP
 returns the color depth of the screen in bits, i.e., 16 means the screen
 can do 65536 different colors.
 .TP
-[winfo screen .] 
+\f(CW[winfo screen .]\fP
 Returns the name of the screen in the form displayName.screenIndex,
 i.e., "disks.bitmover.com:0.0".
 .TP
-[winfo screenheight .] 
+\f(CW[winfo screenheight .]\fP
 returns the height of the screen in pixels.
 .TP
-[winfo screenwidth .] 
+\f(CW[winfo screenwidth .]\fP
 returns the width of the screen in pixels.
 .SH GUI CONFIGURATION
 .SS GLOBAL CONFIGURATION
@@ -450,14 +450,14 @@ Default:\ #181818
 .br
 .BR X (1)
 .br
-.SA citool 1
-.SA config 1
-.SA csettool 1
-.SA difftool 1
-.SA helptool 1
-.SA revtool 1
-.SA fmtool 1
-.SA renametool 1
+.SA citool
+.SA csettool
+.SA difftool
+.SA fmtool
+.SA fm3tool
+.SA helptool
+.SA revtool
+.SA renametool
 .\" help://GUI
 .\" help://gui
 .\" help://GUI-config

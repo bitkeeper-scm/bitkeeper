@@ -949,7 +949,7 @@ int	emptyDir(char *dir);
 int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
-delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
+delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x);
 char	*_relativeName(char *gName, int isDir,
 	    int mustHaveRmarker, int wantRealName, project *proj);
 char	*findBin(void);

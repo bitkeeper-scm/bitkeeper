@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk initscripts" 1 %E% "\*(BC" "\*(UM"
+.TH "bk initscripts" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk initscripts \- sample script for starting the \*(BK daemon
 .SH EXAMPLES
@@ -52,7 +52,7 @@ case "$1" in
 		while read dir opts
 		do	(
 			cd $dir || exit 1
-			F=`basename $dir`
+			F=\`basename $dir\`
 			bk bkd $opts -l$VAR/log.$F -P$VAR/pid.$F
 			echo Started bkd $opts in $dir
 			)
@@ -63,7 +63,7 @@ case "$1" in
 		cd $VAR || exit 1
 		echo Shutting down BitKeeper daemons
 		for i in pid.*
-		do	kill -HUP `cat $i`
+		do	kill -HUP \`cat $i\`
 			rm $i
 		done
 		;;

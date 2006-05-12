@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk setup" 1 %E% "\*(BC" "\*(UM"
+.TH "bk setup" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    ====================== BitKeeper setup ======================
 .SH NAME
 bk setup \- create a new \*(BK package
@@ -27,7 +27,7 @@ A system wide default config template file may be created in either
 or in
 .I /etc/BitKeeper/etc/config.template
 or in
-.IR `bk\ bin`/etc/config.template .
+.IR \`bk\ bin\`/etc/config.template .
 If this file is detected when 
 bk setup is run, without the -c option, it will be used as the 
 default
@@ -127,11 +127,11 @@ If you have an existing set of files that you want to add to the
 repository, see 
 .BR "bk import" .
 .SH "SEE ALSO"
-.SA Howto 1
-.SA Howto-setup 1
+.SA Howto
+.SA Howto-setup
 .SA config-etc
-.SA import 1
-.SA license 1
-.SA setuptool 1
+.SA import
+.SA license
+.SA setuptool
 .SH CATEGORY
 .B Repository

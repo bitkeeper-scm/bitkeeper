@@ -98,7 +98,7 @@ if [ ! -d RESYNC ]; then echo failed to create RESYNC directory; exit 1; fi
 echo OK
 echo $N Hand-edit that joins block with previous line................$NL
 cd $HERE/local/RESYNC
-bk guitest fm3tool -o merge.raw -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
+bk guitest fm3tool -o merge.raw -f -l1.1.1.1 -r1.2 src/file1 >$OUT 2>&1 <<'EOF'
     # find beginning of unmerged section, then simulate a button
     # click there
     set index [.merge.t index d1]

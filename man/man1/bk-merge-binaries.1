@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk merge-binaries" 1 %E% "\*(BC" "\*(UM"
+.TH "bk merge-binaries" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk merge-binaries \- help on merging binary conflicts
 .SH DESCRIPTION
@@ -22,19 +22,15 @@ know what to use.  You can call your own file viewer.
 Suppose you knew that the file was a gif and you wanted to look at each
 of them to choose which one to use.  You could do a
 .DS
-logo.gif>>\ \c
-.B !xv $BK_LOCAL
-logo.gif>>\ \c
-.B !xv $BK_REMOTE
-logo.gif>>\ \c
-.B ul
+logo.gif>> \f(CB!xv $BK_LOCAL\fP
+logo.gif>> \f(CB!xv $BK_REMOTE\fP
+logo.gif>> \f(CBul\fP
 .DE
 to view each and then choose the local version.
 .LP
 You may also call an external tool to merge changes. 
 .DS
-logo.gif>>\ \c
-.Bc !
+logo.gif>> \f(CB!\fP\c
 .ARG command
 .DE
 .ft R
@@ -62,11 +58,9 @@ means that normal text based tools would work on this file.  You may force
 the file to be treated as a text file with the "t" command.  This drops
 into the normal text file resolver.
 .SH "SEE ALSO"
-.SA merge 1
-.SA merging 1
-.SA fmtool 1
-.SA revtool 1
-.SA resolve 1
+.SA revtool
+.SA resolve
+.SA resolving
 .SH CATEGORY
 .B Overview
 .br

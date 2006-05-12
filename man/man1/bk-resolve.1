@@ -1,12 +1,12 @@
 .so ../bk-macros
-.TH "bk resolve" 1 %E% "\*(BC" "\*(UM"
+.TH "bk resolve" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    ============== BitKeeper resolve ==============
 .SH NAME
 bk resolve \- merge and/or apply new work after a push or a pull
 .SH SYNOPSIS
 .\" -F undoc
 .B bk resolve [\-options] 
-.OPT repo
+.[OPT] repo
 .SH DESCRIPTION
 .LP
 After a 
@@ -213,11 +213,11 @@ working directory is left intact.  The user can then fix the problems
 that caused the error, then re-run the resolver to apply the changes
 to the local repository.
 .SH "SEE ALSO"
-.SA conflicts 1
-.SA csets 1
-.SA merging 1
-.SA pull 1
-.SA push 1
-.SA conflicts 1
+.SA conflicts
+.SA csets
+.SA merging
+.SA pull
+.SA push
+.SA conflicts
 .SH CATEGORY
 .B Repository

@@ -1,36 +1,31 @@
 .so ../bk-macros
-.TH "bk extras" 1 %E% "\*(BC" "\*(UM"
+.TH "bk extras" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    ======================= Finding extra files =======================
 .SH NAME
 bk extras \- list extra files not under revision control
 .SH SYNOPSIS
-.Bc bk extras [
-.ARGc dir
-.B ] [\-a]
+.B bk extras 
+.[B] \-a
+.[ARG] dir
 .SH DESCRIPTION
 .LP
 The extras command finds files which are not under revision control and 
-are not listed in the ignore file (see bk help ignore).
+are not listed in the ignore file.
 .LP
 The default behavior is to find all extra files in the entire tree, this
 can be changed by specifying a subdirectory like so
 .DS
-    bk extras .
+bk extras .
 .DE
 The default behavior is to respect the ignore file, this can be changed
 by adding the \-a flag (which must follow the optional directory argument)
 like so
 .DS
-    bk extras -a	# find all extra files
-    bk extras . -a
+bk extras -a	# find all extra files in entire repo
+bk extras -a .	# find all extra files at or below "."
 .DE
-.SH BUGS
-.LP
-The
-.B \-a
-position is lame.
 .SH "SEE ALSO"
-.SA ignore 1
-.SA sfiles 1
+.SA ignore
+.SA sfiles
 .SH CATEGORY
 .B File

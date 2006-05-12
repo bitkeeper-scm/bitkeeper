@@ -32,6 +32,11 @@ rclone_main(int ac, char **av)
 		switch (c) {
 		    case 'd': opts.debug = 1; break;
 		    case 'E':
+			unless (strneq("BKU_", optarg, 4)) {
+				fprintf(stderr,
+				    "clone: vars must start with BKU_\n");
+				return (1);
+			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'q': opts.verbose = 0; break;
 		    case 'r': opts.rev = optarg; break;

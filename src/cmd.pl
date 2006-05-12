@@ -155,12 +155,12 @@ _eula
 _exists
 export
 f2csets
-files
 _find
 _findcset
 findkey
 fix
 _fixlod
+fixtool
 gca
 get
 gethelp

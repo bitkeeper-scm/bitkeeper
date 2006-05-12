@@ -1,45 +1,38 @@
 .so ../bk-macros
-.TH "bk changes" 1 %E% "\*(BC" "\*(UM"
+.TH "bk changes" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk changes \- show changeset history
 .SH SYNOPSIS
-.B bk changes [opts]
-.Bc [
-.OPTreq \-r revs
- |\ - \c
-.B ]
+.B bk changes
+.[OPT] opts
+.[OPTreq] \-r revs " | -"
 .br
-.B bk changes [opts]
-." XXX: in 3.2.x docs, but not implemented
-." .Bc [
-." .OPTreq \-r revs
-." |\ - \c
-." .B ]
+.B bk changes
+.[OPT] opts
 .I repo[s]
 .br
 .B bk changes 
 .B \-L
-.B [opts]
-.OPT repo[s]
+.[OPT] opts
+.[OPT] repo[s]
 .br
 .B bk changes 
 .B \-R
-.B [opts]
-.OPT repo[s]
+.[OPT] opts
+.[OPT] repo[s]
 .br
 .B bk changes 
 .B \-L
 .B \-R
-.B [opts]
-.OPT repo[s]
+.[OPT] opts
+.[OPT] repo[s]
 .SH DESCRIPTION
 The changes command is used to get an overview of the changes made to
 a repository.  There are options to search for particular changesets,
 view only tagged changesets, limit the search to a particular user,
 view only local changes, view only remote changes, view changes relative
 to a set of repositories, etc.
-.LP
-.LI 4
+.LI 
 The first form shown above shows changes in the local repository.
 If the last argument is a "-" then the revisions to be listed are 
 specified, as keys, tags, and/or revisions, on stdin.
@@ -253,15 +246,15 @@ ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@host.com
   An aborted attempt at key compression.
 .DE
 .SH "SEE ALSO"
-.SA commit 1
-.SA glob 1
-.SA pending 1
-.SA prs 1
-.SA pull 1
-.SA push 1
-.SA regex 1
-.SA revtool 1
-.SA sccslog 1
-.SA set 1
+.SA commit
+.SA glob
+.SA pending
+.SA prs
+.SA pull
+.SA push
+.SA regex
+.SA revtool
+.SA sccslog
+.SA set
 .SH CATEGORY
 .B Repository

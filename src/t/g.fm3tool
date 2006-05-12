@@ -94,7 +94,7 @@ echo OK
 
 echo $N Simple startup and exit......................................$NL
 cd $HERE/local/RESYNC
-bk guitest fm3tool -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
+bk guitest fm3tool -f -l1.1.1.1 -r1.2 src/file1 >$OUT 2>&1 <<'EOF'
     test_invokeMenu File->Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
@@ -106,7 +106,7 @@ echo OK
 echo $N Create dotbk/fm3.rc .........................................$NL
 test -f $RC && rm -f $RC
 cd $HERE/local/RESYNC
-bk guitest fm3tool -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
+bk guitest fm3tool -f -l1.1.1.1 -r1.2 src/file1 >$OUT 2>&1 <<'EOF'
     test_invokeMenu File->Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
@@ -115,7 +115,7 @@ echo "OK"
 
 echo $N Proper count of diffs and conflicts..........................$NL
 cd $HERE/local/RESYNC
-bk guitest fm3tool -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
+bk guitest fm3tool -f -l1.1.1.1 -r1.2 src/file1 >$OUT 2>&1 <<'EOF'
     global diffCount conf_todo
     if {$conf_todo != 1 || $diffCount != 3} {
 	puts "conf_todo is $conf_to; expected 1"

@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk revtool" 1 %E% "\*(BC" "\*(UM"
+.TH "bk revtool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 
 
 .\"    =============== BitKeeper Graphical History Browser ===============
@@ -7,10 +7,7 @@
 bk revtool \- \*(BK graphical history browser
 .SH SYNOPSIS
 .Bc bk revtool [
-.OPTreq -G gca
-\ 
 .OPTreq -l local
-\ 
 .OPTreq -r remote
 .B ] [
 .ARGc file
@@ -39,7 +36,6 @@ package history is shown.
 Revtool has an upper window which shows the graph of revision history
 and a lower window which can show either the checkin comments or
 differences between versions.
-
 .SH "HISTORY AND DIFFERENCES"
 .LP
 Upon startup, the bottom window displays the last month's revision
@@ -203,7 +199,7 @@ Search for the next occurrence of the string.
 .B Control\-q
 Quit revtool.
 .SH "SEE ALSO"
-.SA Basics-Overview 1
+.SA Basics-Overview
 .SA config-gui
 .SH CATEGORY
 .B GUI-tools
