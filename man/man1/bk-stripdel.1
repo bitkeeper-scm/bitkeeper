@@ -3,9 +3,9 @@
 .SH NAME
 bk stripdel \- strip deltas out of an s.file
 .SH SYNOPSIS
-.Bc bk stripdel [-bCcdq] [
-.OPTreq \-r rev
-.B ]
+.B bk stripdel
+.[OPT] \-bCcdq
+.[OPTreq] \-r rev
 .ARG filename
 .SH DESCRIPTION
 The 
@@ -35,25 +35,24 @@ option, it can corrupt your repository.  Instead, consider the
 .B \-x
 option of bk get.
 .SH OPTIONS
-.if t .TP .8i
-.if n .TP 1i
-.B -b
+.TP 8
+.B \-b
 Strip all branch deltas.  
 .tp
-.B -C
+.B \-C
 Do not respect cset boundaries, used by 
 .BR "bk undo" .
 .tp
-.B -c
+.B \-c
 Checks if the specified rev[s] can be stripped but do not strip them.
 .tp
-.B -d
+.B \-d
 Strip deltas which are part of a MONOTONIC file.
 .tp
-.B -q
+.B \-q
 Run quietly.
 .tp
-.OPTreq -r rev
+.OPTreq \-r rev
 Set of revisions to be removed.
 .SH "SEE ALSO"
 .SA admin

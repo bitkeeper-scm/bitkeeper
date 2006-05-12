@@ -3,9 +3,9 @@
 .SH NAME
 bk superset \- check to see if the parent is ahead of the current repository
 .SH SYNOPSIS
-.Bc bk superset [\-q] [
-.ARGc parent
-.B ]
+.B bk superset
+.[OPT] \-q
+.[ARG] parent
 .SH DESCRIPTION
 .LP
 superset does checks to see if removing the current repository is a lossless
@@ -26,11 +26,13 @@ there are no extra files
 \*(BU
 there are no parked files
 .LP
-Unless the -q option is present superset lists all things which are not
+Unless the
+.B \-q
+option is present superset lists all things which are not
 in the parent.
 .SH OPTIONS
 .TP
-.B -q
+.B \-q
 Be quiet
 .SH "EXIT STATUS"
 .LP

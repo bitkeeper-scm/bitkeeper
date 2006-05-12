@@ -4,18 +4,18 @@
 .SH NAME
 bk setup \- create a new \*(BK package
 .SH SYNOPSIS
-.Bc bk setup [-fp] [
-.OPTreq \-F key=val
-.Bc ] [
-.OPTreq \-c config_file
-.B ] 
+.B bk setup
+.[OPT] -fp
+.[OPTreq] \-F key\fB=\fIval
+.[OPTreq] \-c config_file
 .ARG directory
 .SH DESCRIPTION
-There is a graphical version of this command, bk setuptool.
+There is a graphical version of this command,
+.BR "bk setuptool" .
 .LP
 To set up a \*(BK package, you need to create and populate an initial tree.
 The 
-.B setup 
+.B bk setup 
 command will create a mostly empty package tree containing a
 few files and directories that are used by \*(BK.
 .LP
@@ -23,33 +23,34 @@ The setup command will prompt you for a description of the package as
 well as other information about your new package.
 .LP
 A system wide default config template file may be created in either
-.I $HOME/.bk/config.template 
+.B $HOME/.bk/config.template 
 or in
-.I /etc/BitKeeper/etc/config.template
+.B /etc/BitKeeper/etc/config.template
 or in
-.IR \`bk\ bin\`/etc/config.template .
+.BR \`bk\ bin\`/etc/config.template .
 If this file is detected when 
-bk setup is run, without the -c option, it will be used as the 
-default
-.I BitKeeper/etc/config
+.B bk setup
+is run, without the
+.B \-c
+option, it will be used as the default
+.B BitKeeper/etc/config
 file automatically.
 The first file found is used.
 .SH OPTIONS
-.if t .TP .9i
-.if n .TP 1.6i
-.OPTreq -c config_file
+.TP 16
+.OPTreq \-c config_file
 Use 
 .ARG config_file
 as the configuration file to setup the repository.
 .tp
-.B -f
+.B \-f
 Don't ask for confirmation.
 .tp
-.B -Fkey=val
+.OPTreq \-F key\fB=\fIval
 Override default values for the specified field.
 Typically used in combination with a config template.
 .tp
-.B -p
+.B \-p
 print the field names to stdout (used by setuptool).
 .SH EXAMPLES
 .LP
@@ -59,23 +60,17 @@ the following command:
 $ bk setup ~/mypackage
 .DE
 The following shows the directory structure of a new package.
-.TP 17
+.TP 16
 .B mypackage/
-.if t .sp -.3
-.if n .sp -1
-.RS .3i
-.TP 17
+.RS 8
+.TP 18
 .B ChangeSet
 Index of all changes to the repository.
-.if t .sp -.3
-.if n .sp -1
-.TP
+.tp
 .B BitKeeper/
 Directory where administrative files are kept.
 .RE
-.if t .sp -.3
-.if n .sp -1
-.RS 1i
+.RS 16
 .TP 10
 .B etc/
 Config files, in the future, policy files.
@@ -103,8 +98,8 @@ Once the repository is created, you should make a hierarchy to store
 your source files. For example, you could create the following tree:
 .TP
 .B mypackage/
-.RS .6i
-.tp
+.RS 8
+.TP 18
 .B src/
 source code
 .tp
@@ -116,7 +111,8 @@ user guides, papers, docs...
 .RE
 .LP
 At this point, if you are creating a new package from scratch, 
-cd to ~/mypackage/src
+cd to
+.B ~/mypackage/src
 and start creating files.  See 
 .B bk help Basics-Overview
 and

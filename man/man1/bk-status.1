@@ -4,12 +4,14 @@
 .SH NAME
 bk status \- show repository status
 .SH SYNOPSIS
-.Bc bk status [\-v] [
-.ARGc repository
-]
+.B bk status
+.[OPT] \-v
+.[ARG] repository
 .SH DESCRIPTION
 .LP
-The status command gives a quick overview of the tree. 
+The 
+.B bk status
+command gives a quick overview of the tree. 
 The default output looks something like:
 .DS
 Status for \*(BK repository /u01/package/bk
@@ -26,7 +28,7 @@ Pending patches
 .DE
 .SH OPTIONS
 .TP
-.B -v
+.B \-v
 Verbose listing.  Lists users, files not under
 revision control, files modified and not checked in, and
 files with checked in, but not committed deltas, one per line.

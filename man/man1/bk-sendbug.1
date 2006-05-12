@@ -3,16 +3,21 @@
 .SH NAME
 bk sendbug \- file a bug report
 .SH SYNOPSIS
-.Bc bk sendbug [\-t] [
-.ARG email@host ]
+.B bk sendbug
+.[OPT] \-t
+.[ARG] email@host
 .SH DESCRIPTION
 .LP
 File a bug or request for enhancement (RFE) against a project.
 .LP
 The default behavior is to display the graphical version of sendbug
-when the DISPLAY environment variable is set (UNIX) or if it is
+when the
+.SM DISPLAY
+environment variable is set (\*[UN]) or if it is
 run on a Windows operating system.  To
-use a text editor rather than the gui, use the -t option.
+use a text editor rather than the GUI, use the
+.B \-t
+option.
 .LP
 If email address is specified, the bug will be sent to that email address.
 .LP

@@ -4,9 +4,10 @@
 .SH NAME
 bk takepatch \- apply a \*(BK patch
 .SH SYNOPSIS
-.Bc bk takepatch [\-acimStv] [\-f[ 
-.ARGc file
-.B ]]
+.B bk takepatch
+.[OPT] \-acimStv
+.[OPTopt] \-f file
+.\" XXX should -f use [OPTreq]?
 .SH DESCRIPTION
 .LP
 The takepatch command is used to apply a \*(BK patch.  \*(BK patches
@@ -18,8 +19,7 @@ Users do not normally invoke this command, it is called directly by
 or
 .BR bk\ receive .
 .SH OPTIONS
-.if t .TP
-.if n .TP 1i
+.TP 8
 .B \-a
 Apply the changes (call 
 .BR bk\ resolve .)

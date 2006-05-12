@@ -4,13 +4,13 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc bk [-r] sfiles [\-01acCdDeEgGjlnpSuUvxy] [
-.OPTreq \-o file
-.Bc ] [
-.OPTreq \-p A|C
-.Bc ] [
-.ARGc dirs
-.B ]
+.B bk
+.[OPT] \-r
+.B sfiles
+.[OPT] \-01acCdDeEgGjlnpSuUvxy
+.[OPTreq] \-o file
+.[OPTopt] \-p \fBA\fP|\fBC\fP
+.[ARG] dirs
 .SH DESCRIPTION
 .B bk sfiles
 is used to generate lists of revision control files, files related to
@@ -38,18 +38,18 @@ If you want a one pass with different sorts of files listed, look at
 the 
 .B \-e/E/v
 options.
-.if n .TP 1i
-.if t .TP .6i
+.TP 12
 .B \-0
 Use a null character (instead of a newline) to seperate each filename
 printed.  This is to useful with 
 .BR "GNU xargs -0" .
+.tp
 .B \-1
 Only examine one directory level.  Do not go into subdirectories.
 .tp
 .B \-a
 Examine all files, even if listed in
-.IR BitKeeper/etc/ignore .
+.BR BitKeeper/etc/ignore .
 .tp
 .B \-c
 List changed files (locked and modified).
@@ -96,7 +96,8 @@ List locked files (p.file and/or z.file).
 .tp
 .B \-n
 List s.files that are not in the correct location.  (Must be run from
-repository root, bk -r sfiles -n.)
+repository root,
+.BR "bk\ \-r\ sfiles\ \-n" .)
 .tp
 .OPTreq \-o file
 Send output to
@@ -199,12 +200,18 @@ file.  This allows you to prune entire subtrees from processing.
 If the directory containing
 .B .bk_skip
 also contains an SCCS subdirectory then the SCCS subdirectory also
-needs a .bk_skip if you really want to prune that tree.
+needs a
+.B .bk_skip
+if you really want to prune that tree.
 .LP
-Files under BitKeeper/{log,readers,writers}/ are always ignored.
+Files under
+.B BitKeeper/{log,readers,writers}/
+are always ignored.
 .LP
-Revision control files must look like SCCS/s.*,
-not foo/bar/blech/s.*
+Revision control files must look like
+.BR SCCS/s.* ,
+not
+.BR foo/bar/blech/s.* .
 .SH "SEE ALSO"
 .SA history
 .SA ignore

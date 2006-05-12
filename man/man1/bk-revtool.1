@@ -6,23 +6,16 @@
 .SH NAME
 bk revtool \- \*(BK graphical history browser
 .SH SYNOPSIS
-.Bc bk revtool [
-.OPTreq -l local
-.OPTreq -r remote
-.B ] [
-.ARGc file
-.B ]
+.B bk revtool
+.[OPTreq] -l local
+.[OPTreq] -r remote
+.[ARG] file
 .br
-.Bc bk revtool [
-.OPTreq -r rev
-.Bc ] [
-.OPTreq \-/ string /
-.Bc ] [
-.OPTreq + number
-.B ] 
-.Bc [
-.ARGc file
-.B ]
+.B bk revtool
+.[OPTreq] -r rev
+.[OPTreq] \-/ string /
+.[OPTreq] + number
+.[ARG] file
 .SH DESCRIPTION
 .LP
 revtool is one of the primary tools used when doing code reviews,
@@ -39,8 +32,12 @@ differences between versions.
 .SH "HISTORY AND DIFFERENCES"
 .LP
 Upon startup, the bottom window displays the last month's revision
-history for the file or project. If a line number (+<number>) 
-or search string (-/<string>/)
+history for the file or project. If a line number (\c
+.OPTreq + number \c
+) 
+or search string (\c
+.OPTreq \-/ string /\c
+)
 is specified on the command line along with a file name an annotated 
 listing of the filename will be displayed instead.
 .LP
@@ -75,7 +72,9 @@ shows all of the other files that were modified in the same changeset
 as the selected line.
 .LP
 To get a side\-by\-side view of the differences, select the two revisions
-and click on the "Diff tool" button.
+and click on the
+.B Diff tool
+button.
 .SH CHANGESETS
 .LP
 When operating on the ChangeSet file, the behavior is slightly
@@ -85,7 +84,9 @@ in that changeset.
 .LP
 If you click left/right on a range of changesets, you will get the
 history of the entire range of changesets.  To see the history and the
-differences in detail, you can click on the "View changeset" button
+differences in detail, you can click on the
+.B View changeset
+button
 to bring up the changeset browser tool, csettool.  Typical usage is
 to browse the ChangeSet file with revtool and drill down using
 .B bk
@@ -98,7 +99,7 @@ See bk config-gui for more information.
 .LP
 The scrollbars can be used to orient the view of either window. 
 In addition, there are the following keyboard bindings:
-.TP 18
+.TP 20
 .B LeftArrow
 Scroll graph window left 1 line.
 .tp
@@ -128,7 +129,7 @@ Scroll graph window to the first revision.
 .tp
 .B Shift\-End
 Scroll graph window to the last revision.
-.TP
+.tp
 .B UpArrow
 Scroll text window up 1 line (also Control\-y).
 .tp
@@ -155,7 +156,7 @@ Scroll the graph left or right.
 .tp
 .B Control-MouseWheel
 Scroll the graph up or down.
-.TP
+.tp
 .B s
 Show the raw SCCS file.
 .tp
@@ -167,7 +168,7 @@ Run csettool. If the selected node in the graph is for a changeset,
 that changeset will be displayed. If the selected node is a file, the
 changeset that introduces the selected version of the file will be
 displayed. If no node is selected this will do nothing.
-.TP
+.tp
 .B c
 Show an annotated listing of all versions of the file.
 The data shown is the union of all lines ever added to the file

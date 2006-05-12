@@ -100,7 +100,7 @@
 .de BKARGS
 [\c
 .	ARGc file
-\fI\ .\|.\|.\ \fR|\ \fI-\fR]
+\fI\ .\|.\|.\ \fR|\ \fI\\-\fR]
 ..
 .\" Print [file ...], i.e., optional file list
 .de FILES
@@ -115,7 +115,7 @@
 ..
 .\" .[OPT] foo ==> [foo]
 .de [OPT]
-[\fI\\$1\fP]
+[\fB\\$1\fP]
 ..
 .de [B]
 [\fB\\$1\fP]

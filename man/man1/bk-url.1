@@ -10,7 +10,7 @@ is accessed following each form.
 .LP
 In all cases below if the
 .ARG pathname
-part of the URL starts with a "/" then the pathname is absolute,
+part of the URL starts with a \*(lq/\*(rq then the pathname is absolute,
 otherwise it is relative to the location of the bkd.
 If
 .ARG pathname
@@ -195,7 +195,12 @@ The following are the environmental variables are available for use:
 .ARG port
 .RE
 .LP
-Note: if SOCKS_HOST is set, SOCK_PORT must also be set.
+.B Note:
+if
+.SM SOCKS_HOST
+is set,
+.SM SOCK_PORT
+must also be set.
 If you are not sure if you should set environment variables, please consult
 your system administrator.
 .LP
@@ -232,7 +237,7 @@ To clone from a repository named
 .B /home/bk/mysql
 on a host named
 .ARG host 
-using ssh (note there are 2 slashes before "home"):
+using ssh (note there are 2 slashes before \*(lqhome\*(rq):
 .DS
 bk clone ssh://host//home/bk/mysql new
 .DE

@@ -4,34 +4,43 @@
 .SH NAME
 bk undo \- Undo a changeset or set of changesets
 .SH SYNOPSIS
-.B "bk undo [\-fqsv]"
-.Bc [
-.OPTreq \-p patch
-.B ]
-.Bc [
-.OPTreq \-a rev
-.Bc "] or ["
-.OPTreq \-r rev
-.B ]
+.B bk undo
+.[OPT] \-fqsv
+.[OPTreq] \-p patch
+.[OPTreq] \-a rev
+.[OPTreq] \-r rev
 .SH DESCRIPTION
-The undo command can be used to remove any changeset or set of
+The
+.B bk undo
+command can be used to remove any changeset or set of
 changesets.   There are options to select specific changesets or all
 changesets after some point (which is what
 .B "bk clone \-r"
-uses.)
+uses).
 .LP
-To undo a bk pull use bk unpull.
+To undo a
+.B bk pull
+use
+.BR "bk unpull" .
 .SH WARNING
 With one exception, the changes removed by an undo cannot be restored.
-Use undo with care, if the data was only present in your
+Use
+.B bk undo
+with care, if the data was only present in your
 repository, when you undo it, it is gone for good.
 .LP
 If the 
 .B \-s
-option is not present then undo saves a normal \*[BK] patch in
-.IR BitKeeper/tmp/undo.patch .
+option is not present then
+.B bk undo
+saves a normal \*[BK] patch in
+.nh
+.BR BitKeeper/tmp/undo.patch .
+.hy
 Only the most recent undo is saved there, i.e., the patch is overwritten
-each time undo is run.
+each time 
+.B bk undo
+is run.
 To restore the patch try this:
 .DS
 bk takepatch -vvvaf BitKeeper/tmp/undo.patch
@@ -40,8 +49,7 @@ There is a a shorthand, bk repatch, which is an alias for the above command.
 The repatch command can take an optional argument which species an alternate
 patch to reapply.
 .SH OPTIONS
-.if t .TP 
-.if n .TP 1i
+.TP 8
 .OPTreq \-a rev
 Remove all changesets which occurred after 
 .ARG rev .
@@ -66,7 +74,8 @@ Remove the list of changesets specified by
 .ARG revs .
 .ARG revs
 must be of the form r1,r2,r3, etc. and can be either the
-changeset number or the changeset key.  See bk help terms
+changeset number or the changeset key.  See
+.B bk help terms
 for more information.
 .tp
 .B \-s

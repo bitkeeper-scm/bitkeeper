@@ -4,24 +4,35 @@
 .SH NAME
 bk unedit \- destroy any unchecked in changes to specified files
 .SH SYNOPSIS
-.B bk unedit [\-q]
+.B bk unedit
+.[OPT] \-q
 .FILES
 .br
-.B bk unget [\-q]
+.B bk unget
+.[OPT] \-q
 .FILES
 .SH DESCRIPTION
 .LP
 If you wish to discard any modifications you have made to a file,
-you can use the unedit command.  For each listed file, unedit will
-discard the write lock and discard the checked out file and ANY CHANGES
+you can use the
+.B bk unedit
+command.  For each listed file,
+.B bk unedit
+will discard the write lock and discard the checked out file and ANY CHANGES
 YOU HAVE MADE TO THE FILE.  Use this command only when you have made
 changes to a file that you want to throw away.  If you want to clean
 up only those files without changes, use the bk clean command.
 .LP
-The unedit command will not autoexpand the file list, you must explicitly
+The
+.B bk unedit
+command will not autoexpand the file list, you must explicitly
 name each file you want to unedit.
 .LP
-unget is an alias for unedit; unget is the \*[ATT] compatible name.
+.B bk unget
+is an alias for
+.BR "bk unedit" ;
+.B bk unget
+is the \*[ATT] compatible name.
 .SH OPTIONS
 .TP
 .B \-q

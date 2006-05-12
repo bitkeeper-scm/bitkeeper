@@ -7,12 +7,19 @@ bk unrm \- resurrect a removed \*(BK file
 .ARG file
 .SH DESCRIPTION
 .LP
-Use unrm to resurrect a file that has been deleted using bk rm.
-Please note that unrm can not resurrect files that have been removed 
-from the source tree using bk gone.
+Use
+.B bk unrm
+to resurrect a file that has been deleted using
+.BR "bk rm" .
+Please note that
+.B bk unrm
+cannot resurrect files that have been removed 
+from the source tree using
+.BR "bk gone" .
 .LP
-If you know the path to the original file, for example src/Makefile, then
-to resurrect:
+If you know the path to the original file, for example
+.BR src/Makefile ,
+then to resurrect:
 .DS
 cd ~/projects/myproject/src
 bk unrm Makefile
@@ -23,10 +30,18 @@ cd ~/projects/myproject
 bk unrm Makefile
 .DE
 There will be an interactive interface for choosing whether or not to 
-resurrect the file.  Type "y" to resurrect the file, "n" to do nothing or
-go to the next option, or "q" to quit.  If there are more than one files
-with the same name, choose "y" if the pathname shown is the one you want,
-or choose "n" until the correct file is shown.
+resurrect the file.  Type
+.B y
+to resurrect the file,
+.B n
+to do nothing or go to the next option, or
+.B q
+to quit.  If there are more than one files
+with the same name, choose
+.B y
+if the pathname shown is the one you want, or choose
+.B n
+until the correct file is shown.
 .SH SEE ALSO
 .SA gone
 .SA rm
