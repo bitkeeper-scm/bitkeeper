@@ -172,6 +172,8 @@ pid_t	spawnvp_wPipe(char *ab[], int *wfd, int pipe_size);
 pid_t	spawnvp_rPipe(char *ab[], int *rfd, int pipe_size);
 pid_t	spawnvp_rwPipe(char *ab[], int *rfd, int *wfd, int pipe_size);
 
+/* stdioext.c */
+char	*gets_alloc(char *(*fcn)(char *buf, int size, void *arg), void *arg);
 
 /* system.c */
 #define	system(cmd)	safe_system(cmd)
@@ -193,9 +195,10 @@ int	tty_getchar(void);
 void	tty_clear(void);
 int	myisatty(int fd);
 
-/* util.c */
+/* utils.c */
 void	my_perror(char *, int, char *);
 #define	perror(msg)	my_perror(__FILE__, __LINE__, msg)
+int	chomp(char *str);
 
 /* which.c */
 char	*which(char *prog);

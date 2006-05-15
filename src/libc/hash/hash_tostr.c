@@ -7,8 +7,8 @@
  */
 
 private	int	is_encoded(int c);
-private	void	wrapstr(u8 *ptr, int len, char ***buf);
-private	int	unwrapstr(char **data, char ***buf);
+private	char	**wrapstr(char **buf, u8 *ptr, int len);
+private	char	*unwrapstr(char *data, char **buf, int *size);
 
 char *
 hash_toStr(hash *h)
@@ -18,9 +18,9 @@ hash_toStr(hash *h)
 	char	*ret;
 
 	EACH_HASH(h) {
-		wrapstr(h->kptr, h->klen, &buf);
+		buf = wrapstr(buf, h->kptr, h->klen);
 		buf = str_nappend(buf, "=", 1, 0);
-		wrapstr(h->vptr, h->vlen, &buf);
+		buf = wrapstr(buf, h->vptr, h->vlen);
 		data = addLine(data, str_pullup(0, buf));
 		buf = 0;
 	}
@@ -34,138 +34,111 @@ int
 hash_fromStr(hash *h, char *str)
 {
 	char	*p = str;
-	char	**k, **v;
-	char	*kptr, *vptr;
-	u32	i, klen, vlen;
+	char	*k = 0, *v = 0;
+	u32	klen, vlen;
 
 	while (*p) {
-		k = v = 0;
-		i = unwrapstr(&p, &k);
-		if (i || (*p != '=')) {
+		unless (p = unwrapstr(p, &k, &klen)) {
 err:			fprintf(stderr,
 			    "ERROR: hash_fromStr() can't parse '%s'\n",
 			    str);
+			if (k) free(k);
+			if (v) free(v);
 			return (-1);
 		}
-		++p;
-		if (i = unwrapstr(&p, &v)) goto err;
-		kptr = data_pullup(&klen, k);
-		vptr = data_pullup(&vlen, v);
-		hash_store(h, kptr, klen, vptr, vlen);
-		if (kptr) free(kptr);
-		if (vptr) free(vptr);
+		unless (*p++ == '=') goto err;
+		unless (p = unwrapstr(p, &v, &vlen)) goto err;
+		hash_store(h, k, klen, v, vlen);
+		if (k) free(k);
+		if (v) free(v);
+		k = v = 0;
 		unless (*p) break;
-		if (*p != '&') goto err;
-		++p;
+		unless (*p++ == '&') goto err;
 	}
 	return (0);
 }
-
 
 /*
  * Encode the data in ptr/len and add it to buf
  * using data_append().
  */
-private void
-wrapstr(u8 *ptr, int len, char ***buf)
+private	char	**
+wrapstr(char **buf, u8 *ptr, int len)
 {
 	char	hex[4];
 
 	while (len > 0) {
+		/* suppress trailing null (common) */
+		if ((len == 1) && !*ptr) break;
+
 		if (*ptr == ' ') {
 			hex[0] = '+';
-			*buf = str_nappend(*buf, hex, 1, 0);
+			buf = str_nappend(buf, hex, 1, 0);
 		} else if (is_encoded(*ptr)) {
 			sprintf(hex, "%%%02x", *ptr);
-			*buf = str_nappend(*buf, hex, 3, 0);
+			buf = str_nappend(buf, hex, 3, 0);
 		} else {
-			*buf = str_nappend(*buf, ptr, 1, 0);
+			buf = str_nappend(buf, ptr, 1, 0);
 		}
 		++ptr;
 		--len;
-		/* suppress trailing null (common) */
-		if ((len == 1) && !*ptr) break;
 	}
 	/* %FF(captials) is a special bk marker for no trailing null */
-	if (len == 0) *buf = str_nappend(*buf, "%FF", 3, 0);
-}
-
-/* translate hex char to int or -1 if error */
-private inline int
-hexchar(int c)
-{
-	if (c >= '0' && c <= '9') return (c - '0');
-	if (c >= 'a' && c <= 'f') return (c - ('a' - 10));
-	if (c >= 'A' && c <= 'F') return (c - ('A' - 10));
-	return (-1);
-}
-
-/* translate 2 char hex string to int or -1 if error */
-private inline int
-fromhex(u8 *p)
-{
-	int	c, ret;
-
-	if ((c = hexchar(*p++)) < 0) return (-1);
-	ret = (c << 4);
-	if ((c = hexchar(*p)) < 0) return (-1);
-	ret |= c;
-	return (ret);
+	if (len == 0) buf = str_nappend(buf, "%FF", 3, 0);
+	return (buf);
 }
 
 /*
- * unpack wrapped string from *data and put it in the buffer buf.
- * If successful, returns 0 and *data is updated to point after string.
- * Else -1 is returned.
+ * unpack a wrapped string from *data and put it in the buffer buf.
+ * If successful, returns new pointer to data and set size.
+ * Else return 0.
  * Any whitespace in the string a ignored and skipped.
  */
-private int
-unwrapstr(char **data, char ***buf)
+private char *
+unwrapstr(char *data, char **buf, int *sizep)
 {
-	u8	*p = (u8 *)*data;
+	u8	*p = (u8 *)data;
 	int	c;
 	int	bin = 0;
+	char	**lines = 0;
 	char	tmp[4];
 
 	while (1) {
 		switch (*p) {
 		    case '+':
 			tmp[0] = ' ';
-			*buf = data_append(*buf, tmp, 1, 0);
-			p += 1;
+			lines = data_append(lines, tmp, 1, 0);
 			break;
 		    case '%':
 			if ((p[1] == 'F') && (p[2] == 'F')) {
 				bin = 1;
-				p += 3;
+				p += 2;
 				break;
 			}
-			if ((c = fromhex(p+1)) < 0) {
-				fprintf(stderr, "ERROR: can't decode %s\n", p);
-				exit(1);
-			}
+			unless (sscanf(p+1, "%2x", &c) == 1) goto err;
 			tmp[0] = c;
-			*buf = data_append(*buf, tmp, 1, 0);
-			p += 3;
+			lines = data_append(lines, tmp, 1, 0);
+			p += 2;
 			break;
 		    case ' ': case '\n': case '\r': case '\t':
-			p += 1;	/* skip whitespace */
 			break;
 		    case '&': case '=': case 0:
-			*data = (char *)p;
 			unless (bin) { /* add trailing null */
 				tmp[0] = 0;
-				*buf = data_append(*buf, tmp, 1, 0);
+				lines = data_append(lines, tmp, 1, 0);
 			}
-			return (0);
+			*buf = data_pullup(sizep, lines);
+			return (p);
 		    default:
-			*buf = data_append(*buf, p++, 1, 0);
+			lines = data_append(lines, p, 1, 0);
 			break;
 		}
+		p++;
 	}
-	return (-1);
+err:
+	fprintf(stderr, "ERROR: can't decode %s\n", p);
+	return (0);
 }
-
 
 /*
  * Return true if this character should be encoded according to RFC1738

@@ -620,7 +620,7 @@ _pullup(u32 *bytep, char **space, int null)
 
 	unless (space) {
 		if (bytep) *bytep = 0;
-		return (0);
+		return (null ? strdup("") : 0);
 	}
 	s = (dinfo*)space[1];
 	data = malloc(s->bytes + (null ? 1 : 0));
@@ -628,6 +628,7 @@ _pullup(u32 *bytep, char **space, int null)
 		memcpy(&data[len], space[i], s->len[i]);
 		len += s->len[i];
 	}
+	assert(len == s->bytes);
 	if (bytep) *bytep = len;
 	if (null) data[s->bytes] = 0;
 	freeLines(space, free);

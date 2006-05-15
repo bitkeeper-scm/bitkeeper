@@ -434,12 +434,16 @@ bad:
 	putenv("BK_AUTH_HMAC=BAD");
 }
 
-private int
-nextbyte(void)
+static	int	content_len = -1;	/* content-length from http header */
+
+private char *
+nextbyte(char *buf, int size, void *unused)
 {
         char    ret;
 	char	*h;
 
+	if (content_len == 0) return (0);
+	--content_len;
 	unless (in(&ret, 1)) return (0);
 	if (hmac.buf) {
 		hmac.buf[hmac.i++] = ret;
@@ -454,7 +458,9 @@ nextbyte(void)
 			memset(&hmac, 0, sizeof(hmac));
 		}
 	}
-	return (ret);
+	buf[0] = ret;
+	buf[1] = 0;
+	return (buf);
 }
 
 private	int
@@ -462,25 +468,25 @@ getav(int *acp, char ***avp, int *httpMode)
 {
 #define	MAX_AV	50
 #define	QUOTE(c)	(((c) == '\'') || ((c) == '"'))
-	static	char buf[MAXKEY * 2];		/* room for two keys */
-	static	char *av[MAX_AV];
-	static	int  len = -1;		/* content-length from http header */
+	static	char	*buf;
+	static	char	*av[MAX_AV];
 	remote	r;
 	int	i, inspace = 1, inQuote = 0;
 	int	ac;
 
 	bzero(&r, sizeof (remote));
 	r.wfd = 1;
+
+nextline:
+	/* read a line into a malloc'ed buffer */
+	if (buf) free(buf);
+	unless ((buf = gets_alloc(nextbyte, 0)) && *buf) return (0);
+
 	/*
 	 * XXX TODO need to handle escaped quote character in args
 	 *     This can be done easily with shellSplit()
 	 */
-	for (ac = i = 0; len != 0 && (buf[i] = nextbyte()); i++) {
-		--len;
-		if (i >= sizeof(buf) - 1) {
-			out("ERROR-command line too long\n");
-			return (0);
-		}
+	for (ac = i = 0; buf[i]; i++) {
 		if (ac >= MAX_AV - 1) {
 			out("ERROR-too many arguments\n");
 			return (0);
@@ -498,42 +504,6 @@ getav(int *acp, char ***avp, int *httpMode)
 			inQuote = 1;
 			continue;
 		}
-		/* skip \r */
-		if (buf[i] == '\r') {
-			buf[i] = nextbyte();
-			--len;
-		}
-		if (buf[i] == '\n') {
-			buf[i] = 0;
-			av[ac] = 0;
-
-			/*
-			 * Process http post command used in
-			 * http based push/pull/clone
-			 * Strip the http header so we can access 
-			 * the real push/pull/clone command
-			 */
-			if ((ac >= 1) && streq("POST", av[0])) {
-				skip_http_hdr(&r);
-				len = r.contentlen;
-				http_hdr();
-				*httpMode = 1;
-				ac = i = 0;
-				inspace = 1;
-				continue;
-			}
-
-			/*
-			 * Process HMAC header
-			 */
-			if ((ac == 2) && streq("putenv", av[0]) &&
-			    strneq("BK_AUTH_HMAC=", av[1], 13)) {
-				parse_hmac(av[1] + 13);
-			}
-			*acp = ac;
-			*avp = av;
-			return (1);
-		}
 		if (isspace(buf[i])) {
 			buf[i] = 0;
 			inspace = 1;
@@ -542,9 +512,36 @@ getav(int *acp, char ***avp, int *httpMode)
 			inspace = 0;
 		}
 	}
-	return (0);
-}
+	/* end of line */
+	av[ac] = 0;
 
+	/*
+	 * Process http post command used in http based
+	 * push/pull/clone Strip the http header so we can access the
+	 * real push/pull/clone command
+	 */
+	if ((ac >= 1) && streq("POST", av[0])) {
+		skip_http_hdr(&r);
+		content_len = r.contentlen;
+		http_hdr();
+		*httpMode = 1;
+		ac = i = 0;
+		inspace = 1;
+		goto nextline;
+	}
+
+	/*
+	 * Process HMAC header
+	 */
+	if ((ac == 2) && streq("putenv", av[0]) &&
+	    strneq("BK_AUTH_HMAC=", av[1], 13)) {
+		parse_hmac(av[1] + 13);
+	}
+
+	*acp = ac;
+	*avp = av;
+	return (1);
+}
 
 /*
  * The following routines are used to setup a handshake between

@@ -324,7 +324,10 @@ strnonleq(register char *s, register char *t)
 }
 #endif
 
-/* remove last character from string and return it */
+/*
+ * remove last character from string and return it
+ * XXX this function is deprecated, pls use chomp() instead.
+ */
 char
 chop(char *s)
 {
@@ -338,22 +341,6 @@ chop(char *s)
 	return (c);
 }
 
-/*
- * Remove any trailing newline or CR from a string.
- * Returns true if anything stripped.
- */
-int
-chomp(char *s)
-{
-	int	any = 0;
-	char	*p;
-
-	assert(s);
-	p = s + strlen(s);
-	while ((p > s) && ((p[-1] == '\n') || (p[-1] == '\r'))) --p, any = 1;
-	*p = 0;
-	return (any);
-}
 
 /*
  * Keys are like u@h|path|date|.... whatever
@@ -14601,7 +14588,7 @@ kw2buf(char *buf, const char *kw, sccs *s, delta *d)
 	rc = kw2val(0, buf ? &vbuf : 0, "", 0, kw, "", 0, s, d);
 	if (buf) {
 		char	*p = str_pullup(0, vbuf);
-		strcpy(buf, notnull(p));
+		strcpy(buf, p);
 		free(p);
 	}
 	return (rc);
