@@ -6,7 +6,6 @@
 
 private	void	doit(char *file, FILE *f);
 private	char	*ignore(char *s);
-private void	chomp(char *s);
 private void	context(char *arg);
 
 struct	grep {
@@ -154,14 +153,6 @@ context(char *arg)
 		}
 		while (*arg && isdigit(*arg)) arg++;
 	}
-}
-
-private void
-chomp(char *s)
-{
-	while (*s) s++;
-	while ((s[-1] == '\n') || (s[-1] == '\r')) s--;
-	*s = 0;
 }
 
 /* sleazy beyond belief.  I suspect there is some way to wack the tables

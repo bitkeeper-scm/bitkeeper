@@ -25,7 +25,6 @@ extern unsigned int keys_size;
 extern unsigned char keys_data[];
 
 void	cd(char *dir);
-void	chomp(char *buf);
 void	extract(char *, char *, u32, char *);
 char*	findtmp(void);
 char*	getdest(void);
@@ -314,14 +313,6 @@ main(int ac, char **av)
 	}
 #endif
 	exit(0);
-}
-
-void
-chomp(char *buf)
-{
-	char	*p;
-
-	if ((p = strchr(buf, '\r')) || (p = strchr(buf, '\n'))) *p = 0;
 }
 
 /*

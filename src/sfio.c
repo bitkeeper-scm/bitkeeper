@@ -98,7 +98,7 @@ sfio_out(void)
 	byte_count = 10;
 	while (fnext(buf, stdin)) {
 		unless (quiet) fputs(buf, stderr);
-		chop(buf);
+		chomp(buf);
 		n = strlen(buf);
 		sprintf(len, "%04d", n);
 		writen(1, len, 4);

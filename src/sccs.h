@@ -886,7 +886,6 @@ int	sccs_markMeta(sccs *);
 delta	*modeArg(delta *d, char *arg);
 int	fileType(mode_t m);
 char	chop(char *s);
-int	chomp(char *s);
 int	atoi_p(char **p);
 char	*p2str(void *p);
 int	sccs_filetype(char *name);

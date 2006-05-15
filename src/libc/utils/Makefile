@@ -13,7 +13,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	mmap.o \
 	putenv.o \
 	rlimit.o rmtree.o \
-	samepath.o sig.o smartrename.o spawn.o system.o \
+	samepath.o sig.o smartrename.o spawn.o stdioext.o system.o \
 	tty.o \
 	utils.o \
 	which.o)

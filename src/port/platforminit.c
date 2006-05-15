@@ -56,9 +56,9 @@ platformInit(char **av)
 	putKV("BK_CONFIG_URL2",
 	    "http://config2.bitkeeper.com/cgi-bin/bk_config2");
 	putKV("BK_LEASE_URL",
-	    "http://lease.bitkeeper.com/cgi-bin/bk_lease2");
+	    "http://lease.bitkeeper.com/cgi-bin/bk_lease3");
 	putKV("BK_LEASE_URL2",
-	    "http://lease2.bitkeeper.com/cgi-bin/bk_lease2");
+	    "http://lease2.bitkeeper.com/cgi-bin/bk_lease3");
 	putKV("BK_WEBMAIL_URL", "http://webmail.bitkeeper.com:80");
 
 #ifdef WIN32
