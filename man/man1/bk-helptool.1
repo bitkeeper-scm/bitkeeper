@@ -8,7 +8,7 @@ bk helptool \- graphical front-end to the \*(BK help system
 .SH DESCRIPTION
 .LP
 The
-.B helptool
+.B bk helptool
 command is a graphical interface to the online help system.
 .LP
 There are two text windows displayed, a window of topics on the left
@@ -17,28 +17,39 @@ group related topics together.  A topic is slightly indented, the
 section heading is not.
 .LP
 You can move around using the mouse, clicking on topics.  You can
-also page through the entire help using PageDown or PageUp.  To move
-from section to section, use the Left arrow to move up and the Right
-arrow to move forward.  This is fairly useful since the first entry
+also page through the entire help using
+.Q PageDown
+or
+.QR PageUp .
+To move from section to section, use the
+.Q Left arrow
+to move up and the
+.Q Right arrow
+to move forward.  This is fairly useful since the first entry
 in each section tries to give a brief overview of that section.
 .SH "HYPERLINK STACK"
 .LP
 .B Helptool
 has a stack of places that you have visited, very similar
 to  the hyperlink stack in Netscape.  If you click on a topic you will
-notice that the "Back" button becomes enabled.  Clicking it will move
+notice that the
+.Q Back
+button becomes enabled.  Clicking it will move
 back to the previous topic.  Similarly for forward.  The same hot keys
 which work in Netscape are used here for forward and back.
 .SH SEARCHING
 .LP
 .B Helptool
-includes a simple search facility.  To search for information,
-you type a word or phrase and hit return (or click on Search).  The search
-facility is fairly basic, single word searches tend to work better
-than phrases.  If a phrase is wanted, it must be put in quotes, i.e.,
-"lock file".  By default, the search will return approximate matches,
-i.e., searching on "a" will return anything with the letter "a".  There
-is a config option to turn this off.
+includes a simple search facility.
+To search for information, you type a word or phrase and hit
+return (or click on
+.QR Search ).
+The search facility is fairly basic, single word searches tend to
+work better than phrases.
+If a phrase is wanted, it must be put in quotes, i.e., \*(lqlock
+file.\*(rq By default, the search will return approximate matches,
+i.e., searching on \*(lqa\*(rq will return anything with the
+letter \*(lqa.\*(rq There is a config option to turn this off.
 .LP
 The lines which match, if any, are shown slightly indented.  Above the
 indent lines is the name of the command or help page which contains
@@ -47,15 +58,16 @@ or page which contains the search phrase will be be highlighted in orange
 so that you click through each of the pages which contain the information.
 .LP
 If you go to a page and it was not what you wanted, and you wish
-to look at the summary lines again, jump back by clicking Search or
-hitting return.  Note that the search results are not part of the
+to look at the summary lines again, jump back by clicking
+.Q Search
+or hitting return.  Note that the search results are not part of the
 hyperlink stack of visited pages, but you can get back to the 
 search results at any time by hitting Return.
 .SH BINDINGS
 .LP
 The up/down bindings will move through topics, so when they hit the end
 and the key is pressed again, the topic changes to the next or previous.
-.TP 15
+.TP \fBControl-Right\fP
 .B DownArrow
 Scroll the help text down one line.
 .tp
@@ -99,7 +111,8 @@ Move backwards to the previously visited topic.
 Move forwards to the to the next topic in the stack.
 .tp
 .B Escape
-Exit bk helptool.
+Exit
+.BR "bk helptool" .
 .tp
 .B Control-b
 Scroll the help text up one screen.
@@ -114,7 +127,8 @@ Scroll the help text down one line.
 Scroll the help text up one line.
 .tp
 .B Control-q
-Exit from helptool.
+Exit from
+.BR "bk helptool" .
 .SH "SEE ALSO"
 .SA config-gui
 .SA help

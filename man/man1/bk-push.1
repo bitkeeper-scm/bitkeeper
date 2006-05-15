@@ -8,12 +8,14 @@ bk push \- send local changes to parent repository
 .[OPTequal] \-E env var
 .[OPTreq] \-z d
 .[OPTreq] \-c n
-.[ARG] parent[s]
+.[ARG] parent \ \.\|.\|.
 .SH DESCRIPTION
-Push sends changes in the current repository back to its parent[s] if
+.B bk push
+sends changes in the current repository back to its parent[s] if
 and only if the current repository is a superset of the parent.
 When a parent has changes not found in the current repository,
-push will fail and you will need to do a
+.B bk push
+will fail and you will need to do a
 .BR "bk pull" ,
 merge those changes, and retry the push.
 The reason is that the parent is typically a shared
@@ -35,8 +37,7 @@ a
 and specify the child as the 
 .BR bk\ parent .
 .SH OPTIONS
-.if t .TP .7i
-.if n .TP 1.4i
+.TP \-E\*<env\*>=\*<val\*>
 .B \-a
 If the parent is ahead of your repository, turn the push into a pull
 to merge the new work in your repository.
@@ -49,20 +50,23 @@ times before giving up (default forever).
 .OPTequal \-E env val
 Export environment variable to remote site.
 .tp
-.B -g
-Allow the use of GUI tools during the resolve (unlike resolve -t).
+.B \-g
+Allow the use of GUI tools during the resolve (unlike
+.QR "bk resolve \-t" ).
 .tp
 .B \-q
 Run quietly.
 .tp
 .B \-t
 Pass 
-.B \-t
-to resolve (
-.B \-t
+.Q \-t
+to
+.B bk resolve
+(\c
+.Q \-t
 means do not use the GUI tools) during
 the pull operation (requires 
-.B \-a
+.Q \-a
 and that the parent is a superset).
 .tp
 .OPTreq \-z d
@@ -70,7 +74,7 @@ Do compression at level
 .ARG d ,
 if possible;
 default is 
-.BR \-z6 .
+.QR \-z6 .
 Compression is possible when using ssh or the BK daemon,
 but not with rsh.
 .SH "SEE ALSO"

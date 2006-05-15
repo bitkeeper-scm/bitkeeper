@@ -5,7 +5,7 @@
 bk setup \- create a new \*(BK package
 .SH SYNOPSIS
 .B bk setup
-.[OPT] -fp
+.[B] \-fp
 .[OPTreq] \-F key\fB=\fIval
 .[OPTreq] \-c config_file
 .ARG directory
@@ -27,17 +27,17 @@ A system wide default config template file may be created in either
 or in
 .B /etc/BitKeeper/etc/config.template
 or in
-.BR \`bk\ bin\`/etc/config.template .
+.BR "\`bk\ bin\`/etc/config.template" .
 If this file is detected when 
 .B bk setup
 is run, without the
-.B \-c
+.Q \-c
 option, it will be used as the default
 .B BitKeeper/etc/config
 file automatically.
 The first file found is used.
 .SH OPTIONS
-.TP 16
+.TP \-c\*<config_file\*>
 .OPTreq \-c config_file
 Use 
 .ARG config_file

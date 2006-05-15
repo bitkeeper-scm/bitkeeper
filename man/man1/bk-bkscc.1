@@ -4,21 +4,35 @@
 bk bkscc \- BitKeeper and SCC API
 .SH DESCRIPTION
 .LP
-The bkscc.dll is a dynamic library which allows \*[BK] to integrate with
+The
+.B bkscc.dll
+is a dynamic library which allows \*[BK] to integrate with
 any IDE which supports the Microsoft SCC API interface.
 In this document we will assume the IDE is Microsoft Visual C++ (VC++).
-After bkscc.dll is installed VC++ will discover the library automatically
+After
+.B bkscc.dll
+is installed VC++ will discover the library automatically
 by looking it up in the registry.
-VC++ will automatically add a "source control" entry under the "project"
+VC++ will automatically add a
+.B source control
+entry under the
+.B project
 menu.
 Many of the \*[BK] functions can be accessed via the new menu entry.
 .LP
 Experienced \*[BK] users will notice there are some conflicts between
 \*[BK] terminology and VC++ terminology.
-What the SCC API calls a "project" is not the same as a \*[BK] repository.
+What the SCC API calls a
+.B project
+is not the same as a \*[BK] repository.
 A typical SCC API Project usually contains one binary for example, a
-".exe" or ".dll" file.
-A typical \*[BK] repository may contain multiple ".exe" and ".dll" files.
+.B .exe
+or
+.B .dll file.
+A typical \*[BK] repository may contain multiple
+.B .exe
+and
+.B .dll files.
 .LP
 A VC++ workspace is roughly equivalent to a \*[BK] repository.
 .LP
@@ -40,12 +54,16 @@ scenario is as follows:
 .LI
 Start up the VC++ GUI
 .LI
-Left  click on file->new->workspace
+Left  click on
+.B file->new->workspace
 .LI
 After the workspace file is created, right click on 
-the workspace file icon and select "add to source control".
+the workspace file icon and select
+.BR "add to source control" .
 A \*[BK] setup screen to create a Master repository will pop-up. 
-Fill in the form and left click the "create repository" button. 
+Fill in the form and left click the
+.B create repository
+button. 
 This automatically creates a \*[BK] root directory as the 
 parent directory of the workspace file.
 .LI
@@ -55,21 +73,29 @@ VC++ workspace directory is the same as the \*[BK] root
 directory, we can use the term \*[BK] root and workspace
 interchangeably.)
 .LI
-Left click on file->new->project;
+Left click on
+.BR file->new->project ;
 .B IMPORTANT: 
-always select "add to current workspace",
+always select
+.BR "add to current workspace" ,
 when this menu is used.  This will create a sub-directory
 under the \*[BK] root where all files associated with the project will go.
 .LI
 Follow the usual VC++ procedure to create the type of VC++ project
 wanted.( e.g a win32 application)
 .LI
-Right click on the project file and select "add to source control"
+Right click on the project file and select
+.BR "add to source control" .
 .LI
 Edit/compile/debug source code until ready to create a changeset.
-To create a changeset: left click on project->source\ control->BitKeeper.
-This will invoke bk citool.  Add checkin comments
-and push the "commit" button to create a \*[BK] changeset.
+To create a changeset: left click on
+.BR "project->source\ control->BitKeeper" .
+This will invoke
+.BR "bk citool" .
+Add checkin comments
+and push the
+.B commit
+button to create a \*[BK] changeset.
 .SH NOTES
 .LP
 Some IDEs do not set the current directory correctly,
@@ -80,13 +106,15 @@ The method to set the current directory depends on the IDE used.
 .TP
 .B CodeWright
 .RS
-.TP .3i
+.TP
 .B 1.
-left click on Tools-> Version\ Control-> Maintenance-> Current\ Directory and
-type in the root path of the \*(BK repository
-.TP .3i
+left click on
+.B Tools-> Version\ Control-> Maintenance-> Current\ Directory
+and type in the root path of the \*(BK repository
+.tp
 .B 2.
-go to Tools->Version Control->Setup and do Open Project-> Existing
+go to
+.BR "Tools->Version Control->Setup and do Open Project-> Existing" .
 .RE
 .SH BUGS
 .LP

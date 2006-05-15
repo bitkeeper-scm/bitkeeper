@@ -4,23 +4,23 @@
 bk chmod \- change the mode of a file and save it
 .SH SYNOPSIS
 .B bk chmod 
-.[ARGc] ugoa
+.[ARGc] scope
 .Bc +
-.ARG rwxs
+.ARG perms
 .ARG file
 .FILES
 .br
 .B bk chmod 
-.[ARGc] ugoa
-.Bc -
-.ARG rwxs
+.[ARGc] scope
+.Bc \-
+.ARG perms
 .ARG file
 .FILES
 .br
 .B bk chmod 
-.[ARGc] ugoa
+.[ARGc] scope
 .Bc =
-.ARG rwxs
+.ARG perms
 .ARG file
 .FILES
 .br
@@ -34,30 +34,52 @@ The
 .B chmod
 command changes the stored file modes (permissions) for files in the repository.
 File modes are normally whatever modes were present on the file was
-when it was checked in to BitKeeper.
+when it was checked in to \*[BK].
 When changes to the file mode need to be made, the
 .B bk chmod
 command is used to record the new modes.
 .LP
 The syntax is one of
-.if t .TP 1i
-.if n .TP 1.2i
-.B [ugoa]+rwxs
-A symbolic way of adding permissions.  The prefix before the "+"
-indicates the users to which the permissions apply: "u" is user, "g"
-is group, "o" is other, "a" is all.  If none are specified the default
-is "a".  
-The postfix after the "+" indicates the permission to add: "r" is read,
-"w" is write, "x" is execute, "s" is setuid or setgid depending on the
-prefix.
+.TP [\*<scope\*>]\-\*<perms\*>n
+\fR[\fP\*<scope\*>\fR]\fB+\fI\*<perms\*>\fP
+A symbolic way of adding permissions.  The
+.ARG scope
+before the
+.Q +
+indicates the users to which the permissions apply, a combination
+of one or more of the following:
+.Q u
+for user,
+.Q g
+for group,
+.Q o
+for other, and
+.Q a
+for all.
+If none are specified the default is
+.QR a .  
+The
+.ARG perms
+after the
+.Q +
+indicate the permission to add, a combination of one or more of the following:
+.Q r
+for read,
+.Q w
+for write,
+.Q x
+for execute,
+.Q s
+for setuid or setgid depending on
+.ARG scope .
 .tp
-.B [ugoa]-rwxs
+\fR[\fP\*<scope\*>\fR]\fB\-\fI\*<perms\*>\fP
 A symbolic way of removing permissions.  As above.
 .tp
-.B [ugoa]=rwxs
+\fR[\fP\*<scope\*>\fR]\fB=\fI\*<perms\*>\fP
 A symbolic way of setting permissions absolutely.  As above.
 .tp
-.B octal
+.ARG octal
 A 4 digit octal number wherein
 .B 04000
 means setuid,
@@ -83,6 +105,7 @@ permission if the file is checked out unlocked and add write permission
 if the file is checked out with a lock.
 .SH SEE ALSO
 .LP
+.\" XXX deprecated?
 .SA prs
 .SH CATEGORY
 .B File

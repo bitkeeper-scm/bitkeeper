@@ -1,7 +1,7 @@
 .so ../bk-macros
 .TH "bk editor" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk editor \- automatically check out \*(BK files when using \f(CW$EDITOR\fP
+bk editor \- automatically check out \*(BK files when using $EDITOR
 .SH SYNOPSIS
 .B bk editor
 .ARG file
@@ -16,17 +16,23 @@ will
 the file then exec the editor of choice on that file.  If the
 file is not under revision control, it will exec the editor on that file.
 .LP
-The \f(CWEDITOR\fP environment variable must be set to the editor of 
+The
+.V $EDITOR
+environment variable must be set to the editor of 
 your choice.
 .LP
 bk editor can be used as follows:
 .DS
 bk editor foo.c
 .DE
-Another method is to set the EDITOR environment variable and alias
+Another method is to set the
+.V $EDITOR
+environment variable and alias
 the editor name to 
 .B bk editor
-Using xemacs as an example, set EDITOR and then alias:
+Using xemacs as an example, set
+.V $EDITOR
+and then alias:
 .DS
 EDITOR=xemacs
 alias xemacs='bk editor'

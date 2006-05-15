@@ -10,15 +10,14 @@ options
 .SH DESCRIPTION
 .LP
 The 
-.B admin
+.B bk admin
 command is used to administer \*(BK files.
 There are options for changing per file features, modifying file metadata,
 verifying file checksum and metadata, changing the file compression mode,
 and/or recalculating the file checksum.
 .SH OPTIONS
-.if t .TP 1.2i
-.if n .TP 1.6i
-.OPTopt \-C csetfile
+.TP \-y\*<comment\*>
+.OPTopt \-C id
 set or remove the changeset file string in the 1.0 delta
 (very rarely used, \fBnot\fP recommended).
 The string is used to associate the file with a particular repository
@@ -28,13 +27,13 @@ idea and usually the same as the output of
 .B \-D
 remove the delta changeset marks (rarely used, \fBnot\fP recommended unless
 followed by a 
-.BR "bk cset -M1.0.." ).
+.BR "bk cset \-M1.0.." ).
 .tp
 .OPTreq \-f flag
 set a per file flag.
 Many of the flags may be set automatically upon file creation by adding 
 an entry to the
-.I BitKeeper/etc/config
+.B BitKeeper/etc/config
 file.
 See
 .B "bk help config-etc"
@@ -42,47 +41,47 @@ for information on how to do so.
 The possible values for
 .ARG flag
 are:
-.if t .RS .125i
-.if t .tp 1.075i
-.if n .RS .2i
-.if n .tp 1.4i
-.I BITKEEPER
+.RS
+.TP \fBEOLN_NATIVE\fP
+.B BITKEEPER
 mark the file as a \*(BK file (very rarely used, \fBnot\fP recommended)
 .tp
-.I EXPAND1
+.B EXPAND1
 expand keywords in first line that contains keywords only (printf conflicts)
-(May be set in \fIBitKeeper/etc/config\fP).
+(May be set in
+.BR BitKeeper/etc/config ).
 .tp
-.I EOLN_NATIVE
+.B EOLN_NATIVE
 use the operating system's native end-of-line termination (i.e., 
 .B \er\en
 on Windows and
 .B \en
 on all other platforms.)
-.I EOLN_NATIVE
-is set to "on" by default.  To make the
+.B EOLN_NATIVE
+is set to \*(lqon\*(rq by default.  To make the
 default be to always have 
 .B \en
 line endings, put
 .B eoln:unix
 in the
-.I BitKeeper/etc/config
+.B BitKeeper/etc/config
 file.
 .tp
-.I NOMERGE
+.B NOMERGE
 do not attempt to automerge this file, treat it as if it were a
 binary file and force a choose local or choose remote style merge.
 .tp
-.I RCS
+.B RCS
 expand RCS keywords, i.e., $\fIkeyword\fP$ etc.
-(May be set in \fIBitKeeper/etc/config\fP).
+(May be set in
+.BR BitKeeper/etc/config ).
 .tp
-.I SCCS
+.B SCCS
 expand SCCS keywords, i.e., %\fIK\fP% etc.
-(May be set in \fIBitKeeper/etc/config\fP).
+(May be set in
+.BR BitKeeper/etc/config ).
 .RE
-.if t .tp 1.2i
-.if n .TP 1.6i
+.tp
 .OPTreq \-F flag
 delete flag 
 .ARG flag ,
@@ -98,7 +97,9 @@ as above, but also check \*(BK specific (in addition to \*[ATT]) features.
 as above, but also check time stamps.
 .tp
 .B \-H
-same as -h, plus check that file contents are ASCII.
+same as
+.BR \-h ,
+plus check that file contents are ASCII.
 .tp
 .OPTopt \-i file
 read initial text from
@@ -122,13 +123,12 @@ compress stored s.file with
 .ARG alg .
 Compression is on by default because the space savings are substantial and
 there is little or no performance difference.
-The default may be set in \fIBitKeeper/etc/config\fP.
+The default may be set in
+.BR BitKeeper/etc/config .
 .ARG alg
 may be:
-.if t .RS .17i
-.if t .tp 1.03i
-.if n .RS .2i
-.if n .tp 1.4i
+.RS
+.TP \fBEOLN_NATIVE\fP
 .B  gzip
 like 
 .BR gzip (1)

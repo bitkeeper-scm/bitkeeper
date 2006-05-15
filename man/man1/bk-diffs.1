@@ -4,7 +4,7 @@
 bk diffs \- show differences in revision controlled files
 .SH SYNOPSIS
 .B bk diffs 
-.[OPT] opts
+.[ARG] opts
 .BKARGS
 .SH DESCRIPTION
 The 
@@ -29,10 +29,8 @@ $ bk \-r diffs -up
 .DE
 See the examples section for more ideas on how to use this useful command.
 .SH OPTIONS
-.if t .TP .7i
-.if n .TP 1.1i
-.if t \fB\-A\fP\fIbdpru\fP
-.if n \fB\-A\fP\fI<bdpru>\fP
+.TP \-A\*<bdpru\*>n
+.OPTreq \-A bdpru
 Align prefix output in a human readable form.
 The set of annotations will be followed by a vertical bar and a space
 before the data from each line of the file starts.
@@ -58,12 +56,10 @@ Prefix each line with the revision of last modification.
 .B u
 Prefix each line the name of the user who last modified it.
 .RE
-.if t .TP .7i
-.if n .TP 1.1i
-.if t \fB\-a\fP\fIbdpru\fP
-.if n \fB\-a\fP\fI<bdpru>\fP
+.tp
+.OPTreq \-a bdpru
 Similar to
-.B \-A 
+.Q \-A 
 but without the alignment.
 .tp
 .B \-b
@@ -110,18 +106,18 @@ Do RCS style diffs.
 If a specified file is not under revision control treat it as if it were under
 revision control and the previous checked in version was empty.
 Without this option specified files not under revision control are listed
-as "New file: \*<filename\*>".
+as \*(lqNew file: \*<filename\*>\*(rq.
 .tp
 .B \-p
 Procedural diffs, like
-.B diff \-p.
+.QR "diff \-p" .
 .tp
 .OPTreq \-r rev
 Diff revision 
 .ARG rev .
 (Or key or changeset revision. See 
 .B bk help terms
-under 'rev argument')
+under \*(lqrev argument.\*(rq)
 .tp
 .OPTreq \-R rev
 Show diffs between parent of 

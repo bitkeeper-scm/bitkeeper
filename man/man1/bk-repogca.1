@@ -6,22 +6,23 @@ bk repogca \- show greatest common ancestor across a set of repositories
 .B bk repogca
 .[OPTreq] \-d spec
 .[B] \-k
-.[ARG] repository \ ...
+.[ARG] repository\ .\|.\|.
 .SH DESCRIPTION
 This command will print the latest revision in the current repository
 that exists in all of the the remote repositories either listed on the
 command line or implied in the parent pointer[s].
-By default, \`bk parent\` is the remote repository. 
+By default,
+.C \`bk parent\`
+is the remote repository. 
 .SH OPTIONS
-.if n .TP 1i
-.if t .TP .5i
+.TP \-d\*<spec\*>
 .OPTreq \-d spec
 Use
 .ARG spec
 as the specification for displaying the revision.
 .tp
 .B \-k
-A short hand for asking for a spec of ":KEY:".
+A short hand for asking for a spec of \*(lq:KEY:\*(rq.
 .SH EXAMPLES
 To generate a GNU patch for the changes that exist only in the local repository:
 .DS
@@ -31,7 +32,8 @@ To throw away all local work that doesn't exist in a remote repository:
 .DS
 bk undo -a\`bk repogca URL\`
 .DE
-Warning: This 
+.B Warning:
+This 
 .I might
 also throw away some local csets which also exist in the remote
 repository.

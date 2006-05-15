@@ -4,7 +4,7 @@
 bk stripdel \- strip deltas out of an s.file
 .SH SYNOPSIS
 .B bk stripdel
-.[OPT] \-bCcdq
+.[B] \-bCcdq
 .[OPTreq] \-r rev
 .ARG filename
 .SH DESCRIPTION
@@ -18,24 +18,26 @@ This command is typically called by the
 or the 
 .B bk undo
 commands, and perhaps the
-.B bk import command.
+.B bk import
+command.
 It can be called directly if you wish to remove certain deltas from a
 file.
 .LP
 The 
-.B stripdel
+.B bk stripdel
 command will fail if the specified revisions are included in a changeset
 and the 
-.B \-C 
+.Q \-C 
 option is not present.
 .SH WARNING
 It is an extremely bad idea to use the 
-.B \-C
+.Q \-C
 option, it can corrupt your repository.  Instead, consider the 
-.B \-x
-option of bk get.
+.Q \-x
+option of
+.BR "bk get" .
 .SH OPTIONS
-.TP 8
+.TP \-r\*<rev\*>
 .B \-b
 Strip all branch deltas.  
 .tp
@@ -47,7 +49,9 @@ Do not respect cset boundaries, used by
 Checks if the specified rev[s] can be stripped but do not strip them.
 .tp
 .B \-d
-Strip deltas which are part of a MONOTONIC file.
+Strip deltas which are part of a
+.SB MONOTONIC
+file.
 .tp
 .B \-q
 Run quietly.

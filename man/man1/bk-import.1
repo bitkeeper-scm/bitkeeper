@@ -4,48 +4,51 @@
 .SH NAME
 bk import \- import files or changes into a \*(BK package
 .SH SYNOPSIS
-.B bk import -tpatch 
-.[B] options
+.B bk import \-tpatch 
+.[ARG] options
 .ARG patch
 .ARG destination
 .br
-.B bk import -temail
-.[OPT] destination
-<
+.B bk import \-temail
+.[ARG] destination
+.B <
 .ARG mbox
 .br
-.B bk import -tplain
-.[B] options
+.B bk import \-tplain
+.[ARG] options
 .ARG directory
 .ARG destination
 .br
-.B bk import -tCVS
-.[B] options
+.B bk import \-tCVS
+.[ARG] options
 .ARG directory
 .ARG destination
 .br
-.B bk import -tMKS
-.[B] options
+.B bk import \-tMKS
+.[ARG] options
 .ARG directory
 .ARG destination
 .br
-.B bk import -tRCS
-.[B] options
+.B bk import \-tRCS
+.[ARG] options
 .ARG directory
 .ARG destination
 .br
-.B bk import -tSCCS
-.[B] options
+.B bk import \-tSCCS
+.[ARG] options
 .ARG directory
 .ARG destination
 .SH DESCRIPTION
 .LP
-Use bk import to put plain text files, patches (diff -Nur),
+Use
+.B bk import
+to put plain text files, patches (\c
+.QR "diff \-Nur" ),
 patches and comments in the form of email messages, SCCS files, and 
 RCS/CVS files (in this document RCS will mean CVS, MKS and RCS)
 into a \*(BK package.  For file (text, SCCS, RCS, etc) imports,
-.B bk import does
-its work outside of your original tree
+.B bk import
+does its work outside of your original tree
 thus leaving the original files intact while importing them into a 
 \*(BK package.
 .LP
@@ -81,8 +84,7 @@ See below for information specific types of imports.
 .\"bk import -v -tCVS warehouse new
 .\".DE
 .SH OPTIONS
-.if t .TP .8i
-.if n .TP 1i
+.TP \-H\*<hostname\*>
 .B \-C
 Do not commit the ChangeSet.
 .tp
@@ -128,9 +130,8 @@ to the changeset created around the import
 Specify import file type.  
 .ARG type
 can be one of:
-.if t .RS .3i
-.if n .RS .3i
-.tp
+.RS
+.TP \fBpatch\fP
 .B plain
 Import plain text files
 .tp
@@ -141,7 +142,9 @@ Import a patch (diffs)
 Import RCS files
 .tp
 .B CVS
-Import CVS files. The only difference from -tRCS is that Attic directories
+Import CVS files. The only difference from
+.Q \-tRCS
+is that Attic directories
 are processed and deleted files are detected.
 All RCS options may be used with CVS imports.
 .tp
@@ -169,8 +172,7 @@ Be verbose.
 Prompts for a regular expression to apply to the list
 of files.  All matches are excluded.  (For use with all types except patches.)
 .SH "RCS OPTIONS"
-.if t .TP .8i
-.if n .TP .8i
+.TP \-H\*<hostname\*>
 .B \-h 
 turn off verification of contents (faster, less safe).
 .tp
@@ -178,12 +180,12 @@ turn off verification of contents (faster, less safe).
 Do not import tags. The default is to import tags.
 .tp
 .B \-u
-Run files through bk undos first; this will convert
+Run files through
+.B bk undos
+first; this will convert
 DOS style end of lines to Unix style end of lines.
 .SH "PATCH OPTIONS"
-.if t .TP .8i
-.if n .TP .8i
-.tp
+.TP \-H\*<hostname\*>
 .OPTreq \-p num
 Strip  the  smallest prefix containing
 .ARG num
@@ -199,38 +201,44 @@ and exit with a failure.
 .OPTreq \-y comment
 Set the message for the delta comments for all files to
 .B <comment>
-rather than "Import patch PATCHNAME".
+rather than \*(lqImport patch PATCHNAME.\*(rq
 .tp
 .OPTreq \-z fuzz
 Control the acceptance of fuzz by
 .B bk patch
 by passing the argument
-.B \-F
-.ARG fuzz
+.Qreq \-F fuzz
 to
-.B patch
+.\" XXX deprecated?
+.B bk patch
 rather than the default
-.B \-F0
+.Q \-F0
 , which indicates strict matching.  See the
 .B bk help patch
 manpage for further information. 
 .SH "IMPORTING PATCHES"
 .LP
-\*(BK can be used to track external work by importing patches (diff -Nur)
+\*(BK can be used to track external work by importing patches (\c
+.QR "diff \-Nur" )
 into a \*(BK package.  \*(BK can help with downsides of patches, namely that
 renames are not tracked well and that there generally aren't very good comments 
 if any at all attached to the changes being made.
 .\" XXX - I don't know
 .\" if the above is a completely true and pertinent statement.
 A rename in a patch is viewed as the deletion of one file and the
-creation of another file, so to track these, bk import will launch 
-bk renametool which is the graphical tool used to manually 
+creation of another file, so to track these,
+.B bk import
+will launch
+.B bk renametool
+which is the graphical tool used to manually 
 match the deleted files with the newly created files.
 .SH "IMPORTING EMAILS"
 .LP
 \*(BK can import patches contained in email messages.  This style of import
 is an additional layer over the normal patch import.  The usage for this
-version of bk import is
+version of
+.B bk import
+is
 .DS
 bk import -temail repo < mailbox
 .DE
@@ -244,7 +252,10 @@ line of the changeset comment.  If there is any preamble above the patch,
 that is used as the rest of the changeset comments.  Note that importing 
 an email patch records the name of the importer as well as the name of
 author (which is derived from the email).  The importer name is available
-via the :IMPORTER: key word, see bk help prs for more information.
+via the :IMPORTER: key word, see
+.\" XXX deprecated?
+.B bk help prs
+for more information.
 .LP
 This part of import makes use of code copyrighted by Linus Torvalds
 and is used with permission.
@@ -265,12 +276,18 @@ If there is already a file in the package that has the same name as a
 file to be imported the import will fail.  
 .LP
 If a package is already
-populated with files use the -i, -x or -l options 
-to avoid trying to import files already in the package.  Because of the
-preceding constraints, import does not catch renames with plain text files.
-If a file has been renamed, it can be imported, but the original file will
-still exist in the package so it is necessary to remove the original file
-from the package tree after the import of the renamed file.
+populated with files use the
+.QR "\-i" ,
+.Q \-x
+or
+.Q \-l
+options to avoid trying to import files already in the package.
+Because of the preceding constraints, import does not catch
+renames with plain text files.
+If a file has been renamed, it can be imported, but the original
+file will still exist in the package so it is necessary to remove
+the original file from the package tree after the import of the
+renamed file.
 .LP
 Plain text files can be imported from a directory, 
 .DS
@@ -298,7 +315,8 @@ Teamware and other SCCS files can be imported.  The history of the file is
 preserved, but the unmerged branches are discarded.  This is okay because 
 the necessary metadata is in the mainline.  
 .LP
-Importing \*(BK files is not supported; use bk clone.
+Importing \*(BK files is not supported; use
+.BR "bk clone" .
 .SH "ERROR HANDLING"
 .LP
 Import does not handle all errors in a robust way.  If unsuccessful, import

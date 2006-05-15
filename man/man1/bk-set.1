@@ -4,7 +4,7 @@
 bk set \- set operations
 .SH SYNOPSIS
 .B bk set
-.[OPT] \-adeklnosx
+.[B] \-adeklnosx
 .[OPTreq] \-r rev
 .[OPTopt] \-t type
 .[ARG] file
@@ -53,7 +53,7 @@ or as a \*(BK key.  It may also be specified as a \*(lq\-\*(rq, for the second
 set only, in which case it expects a list of revisions (or keys) on
 stdin, one per line.
 .SH SET OPERATIONS
-.SS UNION (\fIsetA\fB | \fIsetB\fB)
+.SS UNION (\*[<]setA\*[>] | \*[<]setB\*[>])
 .B bk set
 .[ARG] "output opts"
 .B \-o
@@ -63,7 +63,7 @@ stdin, one per line.
 .LP
 The union operation, familiar to programmers as a \*(lqbitwise or\*(rq,
 lists all members which occur in either set.
-.SS INTERSECTION (\fIsetA\fB & \fIsetB\fB)
+.SS INTERSECTION (\*[<]setA\*[>] & \*[<]setB\*[>])
 .B bk set
 .[ARG] "output opts"
 .B \-a
@@ -73,7 +73,7 @@ lists all members which occur in either set.
 .LP
 The intersection operator, familiar to programmers as a \*(lqbitwise and\*(rq,
 lists all members which occur in both sets.
-.SS DIFFERENCE (~\fIsetA\fBA & \fIsetB\fB)
+.SS DIFFERENCE (~\*[<]setA\*[>] & \*[<]setB\*[>])
 .B bk set
 .[ARG] "output opts"
 .B \-d
@@ -86,7 +86,7 @@ The difference operator lists all members in
 which are not in
 .IR setA .
 This is the most useful of the set operations, see the examples below.
-.SS SYMMETRIC DIFFERENCE (\fIsetA\fBA ^ \fIsetB\fB)
+.SS SYMMETRIC DIFFERENCE (\*[<]setA\*[>] ^ \*[<]setB\*[>])
 .B bk set
 .[ARG] "output opts"
 .B \-x

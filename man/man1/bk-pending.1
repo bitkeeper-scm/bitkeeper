@@ -6,9 +6,12 @@ bk pending \- list deltas which need to be in a changeset
 .B bk pending
 .SH DESCRIPTION
 .LP
-The pending command shows changes that have been checked into your
-local work area, but not yet committed to a changeset.  You have to
-commit to a changeset in order to send the change to other work areas.
+The
+.B bk pending
+command shows changes that have been checked into your local work
+area, but not yet committed to a changeset.
+You have to commit to a changeset in order to send the change to
+other work areas.
 .LP
 To see what needs to be committed to a change set, run:
 .DS
@@ -17,12 +20,12 @@ $ bk pending
 .SH NOTE
 This command is roughly the same as
 .DS
-$ bk -R sfiles -pA | bk -R log -
+$ bk -R sfiles -pA | bk -R prs -
 .DE
 .SH "SEE ALSO"
 .SA commit
 .SA changes
-.SA log
+.SA prs
 .SA sfiles
 .SH CATEGORY
 .B Repository

@@ -1,16 +1,17 @@
 .so ../bk-macros
-.TH "regex" "\*[BKVER]" 20%E% "\*(BC" "\*(UM"
+.TH "regex" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk regex \- demo progam to show regular expressions in \*(BK
 .SH SYNOPSIS
 .B bk regex
 .ARG regex
 .ARG string
-.[ARG] string ...
+.[ARG] string\ .\|.\|.
 .SH DESCRIPTION
 .LP
-Some commands, most notably bk grep, can take a regular expression as an
-argument.
+Some commands, most notably
+.BR "bk grep" ,
+can take a regular expression as an argument.
 This man page describes the \*(BK version of regular expressions.
 This command may be used to match a regex against one or more strings to
 see examples of how the regular expression matching works.
@@ -19,24 +20,25 @@ Regular expressions are used to search text for approximate (or exact)
 matches.
 Knowing how regular expressions work can be useful, they are quite 
 powerful.
-Suppose that the words "foo", "bar", "blech" were considered inappropriate
-in your source tree, the following command would find all files which 
-contain any of those words:
+Suppose that the words \*(lqfoo,\*(rq \*(lqbar,\*(rq and
+\*(lqblech\*(rq were considered inappropriate in your source tree;
+the following command would find all files which contain any of
+those words:
 .DS
 bk -r grep 'foo|bar|blech'
 .DE
 It is our intent that the regular expression support is a subset of the
 POSIX 1003.2 regular expression specification.
-If you find this to not be true, please send us an example and we will
+If you find this not to be true, please send us an example and we will
 correct our implementation.
 .LP
-A regular expression (``RE'') is one or more non-empty 
+A regular expression (\*(lqRE\*(rq) is one or more non-empty 
 .IR branches ,
 separated by `|'.
 It matches anything that matches one of the branches.
 .LP
 A branch is made up of one or more of the following:
-.TP 14
+.TP "[1]	\fBchar\fPn"
 [1]	\fBchar\fP
 matches itself, unless it is a special character (metachar): . \\ [ ] * + ^ $
 .tp
@@ -52,12 +54,12 @@ When used in a set ([4]), it is treated as an ordinary character.
 .tp
 [4]	\fB[set]\fP
 matches one of the characters in the set.
-If the first character in the set is "^", it matches a character 
+If the first character in the set is \*(lq^\*(rq, it matches a character 
 .B not
 in the set, i.e. complements the set.
 A shorthand S-E is used to specify a set of characters S upto E, inclusive.
-The special characters "]" and "-" have no special meaning if they appear
-as the first chars in the set.
+The special characters \*(lq]\*(rq and \*(lq\-\*(rq have no
+special meaning if they appear as the first chars in the set.
 .tp
 [5]	\fB*\fP
 any regular expression form [1] to [4], followed by closure char (*)
@@ -81,7 +83,7 @@ regular expression starting with a \< construct and/or ending
 with a \> construct, restricts the pattern matching to the
 beginning of a word, and/or the end of a word.
 A word is defined to be a character string beginning and/or
-ending with the characters A-Z a-z 0-9 and _.
+ending with the characters A\-Z, a\-z, 0\-9, and _.
 It must also be preceded and/or followed by any character
 outside those mentioned.
 .tp
@@ -98,25 +100,24 @@ Elsewhere in the pattern, ^ and $ are treated as ordinary characters.
 Exit status is 0 if any matches are found, 1 if none, 2 for other errors.
 .SH EXAMPLE REGEX EXPRESSIONS
 .ft CW
-.if t .TP .8i
-.if n .TP 1.2i
-.B [a-z]
+.TP "\fB^the line$\fP"
+.B [a\-z]
 matches any lower case alpha.
 .tp
-.B [^]-]
-matches any char except "]" and "-".
+.B [^]\-]
+matches any char except \*(lq]\*(rq and \*(lq-\*(rq.
 .tp
-.B [^A-Z]
+.B [^A\-Z]
 any char except uppercase alpha.
 .tp
 .B foo|bar
-either "foo" or "bar".
+either \*(lqfoo\*(rq or \*(lqbar\*(rq.
 .tp
 .B ^the line$
-a line which is exactly "the line".
+a line which is exactly \*(lqthe line\*(rq.
 .tp
 .B \\<word\\>
-any word "word" but not "theword".
+any word \*(lqword\*(rq but not \*(lqtheword\*(rq.
 .SH "SEE ALSO"
 .br
 \f(CWhttp://en.wikipedia.org/wiki/Regular_expression\fP

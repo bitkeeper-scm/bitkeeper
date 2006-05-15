@@ -59,9 +59,7 @@ configuration of the graphical tools such as citool, revtool,
 difftool, etc.  The configuration file is used to modify
 colors, fonts, and widget dimensions. 
 .LP
-On 
-.SM UNIX
-systems, this configuration file is searched for in
+On \*(UN systems, this configuration file is searched for in
 .B $HOME/.bkgui
 where 
 .B $HOME 

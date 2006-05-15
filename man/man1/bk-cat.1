@@ -13,8 +13,8 @@ does not know if the file is or is not under revision control
 or is or is not checked out.
 .LP
 .B bk cat
-differs from the standard Unix cat command in two ways:
-a) it does not support any of the Unix cat options, and
+differs from the standard \*(UN cat command in two ways:
+a) it does not support any of the \*(UN cat options, and
 b) if a file is specified which does not exist, but a
 corresponding s.file does exist, the most recent version of
 s.file is sent to standard output.
@@ -27,7 +27,7 @@ do       if [ -f $i ]
          else    # ignore error messages
                  bk get -kp $i 2>/dev/null
          fi
- done
+done
 .DE
 .SH CATEGORY
 .B File

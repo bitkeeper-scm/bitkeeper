@@ -13,7 +13,7 @@ bk tags \- list tagged changesets
 .SH DESCRIPTION
 .LP
 Tags (aka symbols or labels) are used when you want to record the state of 
-a tree.  It is quite common to ``tag the tree'' with a release name when 
+a tree.  It is quite common to \*(lqtag the tree\*(rq with a release name when 
 shipping a product to customers.  
 .LP
 To add a tag to the repository, make sure that you've checked everything
@@ -23,7 +23,8 @@ be checked in and/or committed to a changeset. Tag the tree by typing:
 $ bk tag Alpha
 .DE
 The Alpha tag will be set on the most recent changeset.  Or you
-can commit a changeset and tag the tree at the same time with the \-S
+can commit a changeset and tag the tree at the same time with the
+.Q \-S
 option to commit:
 .DS
 $ bk commit \-SAlpha
@@ -45,11 +46,11 @@ the Alpha changeset.
 .LP
 If you discover that you should have tagged a changeset after more
 changesets have been added to the repository, use the 
-.B \-r 
+.Q \-r 
 option to
 select the proper changeset.  You can find out which revision to tag
 by running 
-.BR bk\ changes .
+.BR "bk\ changes" .
 .LP
 A frequent problem is that you tag a changeset with \*(lqDone\*(rq and then
 discover you aren't done.  You may update the tag to the later changeset
@@ -75,7 +76,8 @@ vertical bar \*(lq|\*(rq, newline \*(lq\\n\*(rq, or carriage
 return \*(lq\\r\*(rq.
 .SH BUGS
 .LP
-Need a way of setting a tag in citool.
+Need a way of setting a tag in
+.BR "bk citool" .
 .SH "SEE ALSO"
 .SA admin
 .SA changes

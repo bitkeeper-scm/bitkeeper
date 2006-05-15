@@ -3,19 +3,19 @@
 .SH NAME
 bk crypto \- Cryptography services
 .SH SYNOPSIS
-.B bk crypto -i
+.B bk crypto \-i
 .ARG bits
 .ARG secret-key
 .ARG public-key
 .br
-.B bk crypto -s
+.B bk crypto \-s
 .ARG secret-key
 .B <
 .ARG data
 .B >
 .ARG signature
 .br
-.B bk crypto -v
+.B bk crypto \-v
 .ARG public-key
 .ARG signature
 .B <
@@ -25,12 +25,11 @@ bk crypto \- Cryptography services
 .LP
 The
 .B bk crypto
-command allow access to the cryptography subsystem of BitKeeper for
+command allow access to the cryptography subsystem of \*[BK] for
 use in scripts to sign and validate data.  This code uses a straight
 RSA signature scheme.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1i
+.TP
 .B \-i
 Create a new RSA key pair.  This option creates a new random RSA keypair
 and saves the output in two filenames given on the command line. This 
@@ -40,12 +39,12 @@ can take a long time to complete.
 .B \-s
 Create a RSA signature for data read from stdin using a private key. 
 Given a RSA private key created with the 
-.B bk crypto -i
+.Q bk crypto \-i
 command, the
-.B \-s
+.Q \-s
 option will read arbitrary data from stdin and then write a signature
 to standard out that can be verified with the 
-.B bk crypto -v
+.Q bk crypto \-v
 command.
 .tp
 .B \-v

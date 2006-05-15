@@ -4,7 +4,7 @@
 bk prompt \- prompt a user with a message
 .SH SYNOPSIS
 .B bk prompt
-.[B] opts
+.[ARG] opts
 .[ARG] message
 .SH DESCRIPTION
 .B bk prompt
@@ -26,15 +26,19 @@ If the environment variable
 is set, the graphical tool will use the
 value of this variable to locate itself on the screen.  The format of the
 variable must be in the form 
-.I +x+y
-where "x" and "y" are screen coordinates. 
+.RI + x\c
+.RI + y
+where
+.ARG x
+and
+.ARG y
+are screen coordinates. 
 .B bk citool
 sets this variable 
 automatically such that the prompt will be at the same x/y location as
 the upper left corner of citool.
 .SH OPTIONS
-.if t .TP .5i
-.if n .TP 1.0i
+.TP \-t\*<title\*>
 .B \-c
 Only for command line prompts, print the message and exit 0.
 .tp
@@ -59,24 +63,25 @@ Indicates that the prompt is an informational message.
 .tp
 .OPTreq \-n no
 If set, specifies the message for the label in the graphical tool which
-is to be used if the user does not agree.  Default is "NO".  Not used
+is to be used if the user does not agree.  Default is \*(lqNO\*(rq.  Not used
 in command line context.
 .tp
 .B \-o
-OK only, clears the default "no" value.  Not used in command line context.
+OK only, clears the default \*(lqNO\*(rq value.
+Not used in command line context.
 .tp
 .OPTreq \-p prog
 If set, specifies a program which, when run, will produce the message contents.
 .tp
 .OPTreq \-t title
 If set, specifies the title of the graphical tool.
-Default is "BitKeeper Message".
+Default is \*(lqBitKeeper Message\*(rq.
 Not used in command line context.
 .tp
 .OPTreq \-y yes
 If set, specifies the message for the label in the graphical tool, or 
 the prompt in the command line tool,
-which is to be used if the user does agree.  Default is "OK".  
+which is to be used if the user does agree.  Default is \*(lqOK\*(rq.  
 .tp
 .B \-w
 Indicates that the prompt is a warning message.

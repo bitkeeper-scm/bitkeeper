@@ -7,18 +7,17 @@ bk newroot \- change the identity of a repository
 .[OPTreq] \-k randombits
 .SH DESCRIPTION
 .LP
-.B newroot
+.B bk newroot
 is an administrative command used to generate a new 
 .I identity
 for a repository.  It is typically used only after having repaired a
 repository.  After running
-.B newroot
+.B bk newroot
 that repository will not be able to push to or pull from it's parent or
 any other related repository.
 .SH OPTIONS
-.if t .TP 8
-.if n .TP 12
-.[OPTreq] \-k bits
+.TP \-K\*<bits\*>
+.OPTreq \-k bits
 Specify the string of random bits used as part of the repository identity.
 The string must be 16 hex digits.
 .SH "SEE ALSO"

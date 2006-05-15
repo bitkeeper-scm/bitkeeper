@@ -8,17 +8,17 @@ bk service \- manage a bkd as a Windows service
 .[ARG] bkdargs
 .br
 .B bk service uninstall
-.[OPT] \-a
+.[B] \-a
 .[ARG] name
 .br
 .B bk service status
-.[OPT] \-a
+.[B] \-a
 .ARG name
 .br
 .B bk service list
 .SH DESCRIPTION
 .LP
-The \*(BK daemon,
+The \*[BK] daemon,
 .BR bkd ,
 is used to synchronize and query repositories.
 See
@@ -42,7 +42,7 @@ The names are stored in the registry and we suggest a single word, using mixed
 case if you want to a name like \*(lqMyBitkeeperDaemon\*(rq.
 .LP
 Some commands take an optional 
-.B \-a
+.Q \-a
 instead of a name which 
 means operate on all installed \*(BK daemons.
 .SH PERMISSIONS
@@ -62,38 +62,38 @@ to be run as the user who owns the repositories, described below.
 .SH RUNNING AS A SPECIFIC USER
 .LI
 The user account must have a password.  If not, go to 
-.BR "Control Panel->User Accounts" ,
+.QR "Control Panel\->User Accounts" ,
 select the user, and create a password.
 Close that window.
 .LI
 The user account must be allowed to log on as a service.  This is not
 on by default, so go to
-.B Control Panel->Administrative Tools->Local Security Policy->Local Policies
+.Q Control Panel\->Administrative Tools\->Local Security Policy\->Local Policies
 and double click on
-.BR "User Rights Assignments" .
+.QR "User Rights Assignments" .
 Find
-.B Log on as a service
+.Q Log on as a service
 and double click that.  Click
-.B Add User or Group
+.Q Add User or Group
 and add the user.
 Close that window.
 .LI
 The service needs to be modified to run as the user.  Go to
-.BR "Control Panel->Administrative Tools->Services" ,
+.QR "Control Panel\->Administrative Tools\->Services" ,
 find the \*(BK daemon, double-click it.
 Click
-.B Stop
+.Q Stop
 to stop the service, then click the
-.B Log On
+.Q Log On
 tab, change from
-.B Local System account
+.Q Local System account
 to the user, entering the password as well.
 Click
-.BR Apply .
+.QR Apply .
 Click the 
-.B General
+.Q General
 tab and then click
-.BR Start .
+.QR Start .
 The daemon will restart as the selected user.
 .LP
 After installing a service it is a good idea to test that it works by 

@@ -11,13 +11,13 @@ may be used to look for keys in one or more files.  In \*[BK], keys
 are the internal names for files and/or file deltas.  
 .LP
 The keys may be either the long form or the MD5 form (see 
+.\" XXX deprecated?
 .BR "bk prs" ).
 You may search for keys using only a portion of the key as described
 below.
 Each delta in each file that matches all specified parts is listed.
 .SH OPTIONS
-.if t .TP .8i
-.if n .TP 1.2i
+.TP \-b\*<random\*>
 .OPTreq \-b random
 specify the random bits part of a key.
 .tp
@@ -35,7 +35,14 @@ specify the path part of a key.
 .tp
 .OPTreq \-t utc
 specify the timestamp part of a key.  Date formats accepted are
-either YYYYMMDDHHMMSS or YYYY/MM/DD\ HH:MM:SS.
+either
+.I yyyymmddhhmmss
+or
+.IB yyyy /\c
+.IB mm /\c
+.IB "dd\ hh" :\c
+.IB mm :\c
+.IB ss .
 .tp
 .OPTreq \-u user
 specify the username part of a key.

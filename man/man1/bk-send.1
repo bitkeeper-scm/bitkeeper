@@ -5,8 +5,8 @@
 bk send \- send a \*(BK patch
 .SH SYNOPSIS
 .B bk send
-.[OPT] \-dfq
-.[OPTopt] \-w wr
+.[B] \-dfq
+.[OPTreq] \-w wr
 .[OPTreq] \-r revs
 .[OPTreq] \-u URL
 .ARG u@h.ca "| \-"
@@ -81,7 +81,7 @@ exist):
 $ bk send \-wuu \-r..1.5 - | bk receive /tmp/foo
 .DE
 .SH OPTIONS
-.TP 8
+.TP \-r\*<revs\*>
 .B \-d
 Prepend the patch with unified diffs.  This is because some
 people like looking at the diffs to decide if
@@ -101,13 +101,13 @@ Instead of consulting the send log, connect to the remote repository
 specified by the URL, figure out what needs to be sent, and send it
 to the specified email address.
 .tp
-.OPTreq \-w WR
+.OPTreq \-w wr
 Wrap the patch with 
 .ARG WR
 before sending it.
 The current set of wrappers are:
 .RS
-.TP 10
+.TP \fBgzip_b64\fPn
 .B b64
 base-64 encoding
 .tp

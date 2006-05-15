@@ -6,7 +6,7 @@ bk checksum \- check and/or fix \*(BK per file checksums
 .B bk checksum 
 .[OPTopt] \-s offset
 .[B] -fv
-.[OPTreq] \-r REV
+.[OPTreq] \-r rev
 .BKARGS
 .SH DESCRIPTION
 \*(BK has more integrity checksums than the original \*(SC had
@@ -32,11 +32,11 @@ encourage the use of this command with the
 .B \-f 
 option unless you are very sure of what you are doing.
 .SH OPTIONS
-.TP 10
+.TP \-s[\*<off\*>]
 .B \-f
 fix any missing or incorrect checksums.
 .tp
-.OPTreq \-r REV
+.OPTreq \-r rev
 Limit checks to one revision.  Faster than checking the whole file if the
 problem delta is known.
 .tp

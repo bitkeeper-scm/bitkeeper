@@ -11,11 +11,20 @@ bk abort \- abort a failed pull or push
 .LP
 The abort command can be used to clean up a failed update of a repository
 so that you can try the update again.  Updates sometimes fail, leaving
-the PENDING and RESYNC directories behind.  Since the existence of the
-RESYNC directory acts as a global repository lock, you probably don't
+the
+.B PENDING
+and
+.B RESYNC
+directories behind.  Since the existence of the
+.B RESYNC
+directory acts as a global repository lock, you probably don't
 want to leave it there for an extended period of time.
 .LP
-If the update (i.e., a bk pull or bk push) failed and there has been no
+If the update (i.e., a
+.B bk pull
+or
+.BR "bk push" )
+failed and there has been no
 manual resolve work done yet, there is no harm in aborting and trying
 again.  If manual resolution has been done, it may be worth the effort
 to figure out what went wrong and try to fix it.
@@ -24,13 +33,12 @@ to figure out what went wrong and try to fix it.
 .B \-f
 Do not prompt for confirmation, just do it.
 .SH FILES
-.if t .TP .8i
-.if n .TP .9i
-.I PENDING
+.TP PENDING
+.B PENDING
 This directory, found at the root of your repository, is used to hold 
 incoming data while it is transferred.
-.TP
-.I RESYNC
+.tp
+.B RESYNC
 This directory, found at the root of your repository, is used to hold 
 copies of your revision control files while they are being merged.
 .SH BUGS

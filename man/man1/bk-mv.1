@@ -4,8 +4,9 @@
 bk mv \- rename file[s]
 .SH SYNOPSIS
 .B bk mv [\-f]
-.ARG "source file[s]"
-.ARG "destination file or directory"
+.ARG "source-file-or-dir"
+.FILES
+.ARG "dest-file-or-dir"
 .SH DESCRIPTION
 .LP
 To rename a file/directory from
@@ -18,7 +19,7 @@ $ bk mv A B
 .DE
 .ft R
 The
-.B mv
+.B bk mv
 command will rename the checked out file (if any) as well as the
 revision control file.  Edited files are also renamed and then reedited,
 preserving any changes made but not yet checked in.
@@ -39,14 +40,14 @@ second.  It is an error if more than two files are listed and the last
 argument is not a directory.
 The intent is that
 .B bk mv
-behaves like the traditional Unix 
+behaves like the traditional \*[UN]
 .B mv
 command, except that it knows about the additional
-BitKeeper files and records the rename event.
+\*[BK] files and records the rename event.
 .SH NOTES
 .LP
 .B bk mv
-will refuse to move BitKeeper metafiles without the 
+will refuse to move \*[BK] metafiles without the 
 .B \-f
 option (use of which is not recommended).
 .SH SEE ALSO

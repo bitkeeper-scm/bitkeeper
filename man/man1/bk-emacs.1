@@ -27,7 +27,7 @@ You cannot create changesets with
 use
 .B bk citool
 or
-.BR "bk commit".
+.BR "bk commit" .
 .B vc-mode
 does not understand \*(BK's symbol handling,
 as that was not part of the original \*(SC.
@@ -37,9 +37,7 @@ symbol, snapshot, and branch commands with \*(BK.
 .LP
 .B vc-mode
 expects to be able to refer to \*(SC commands directly instead of
-via the
-.B bk
-front end.  In theory, it should suffice to put
+via the \*[BK] front end.  In theory, it should suffice to put
 .DS
 setq vc-path /usr/libexec/bitkeeper
 .DE
@@ -57,9 +55,10 @@ wants to run are:
 .BR unget ,
 .BR rmdel ,
 and
-.BR bk\ prs .
+.\" XXX is this deprecated?
+.BR "bk\ prs" .
 This just happens to be the list of commands that we symlink into
-.I /usr/bin
+.B /usr/bin
 during a standard installation.
 .LP
 If you check in a file using

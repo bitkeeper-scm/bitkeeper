@@ -8,15 +8,15 @@ bk gca \- show the greatest common ancestor
 .OPTreq \-r rev2
 .ARG file
 .SH DESCRIPTION
-This command will print the revision which is the greatest common ancestor
-of the specified two revisions.  If there is no node in the graph which is
-an exact match, the printed revision will have an include list and/or
-an exclude list of revisions which must be added to the revision in
-order to get the actual gca.
+This command will print the revision which is the greatest common
+ancestor (GCA) of the specified two revisions.
+If there is no node in the graph which is an exact match, the
+printed revision will have an include list and/or an exclude list
+of revisions which must be added to the revision in order to get
+the actual GCA.
 .SH OPTIONS
-.if t .TP .4i
-.if n .TP \w'\-r<rev>\ \ 'u
-.OPTreq -r rev
+.TP \-r\*<rev\*>
+.OPTreq \-r rev
 specify the first and second rev (both are required).
 .SH CATEGORY
 .B Utility

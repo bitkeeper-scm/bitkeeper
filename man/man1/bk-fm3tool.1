@@ -11,11 +11,13 @@ bk fm3tool \- \*(BK three-way merge tool
 .ARG file
 .SH DESCRIPTION
 .LP
-fm3tool is a three-way merge tool used for resolving conflicting changes
+.B bk fm3tool
+is a three-way merge tool used for resolving conflicting changes
 between two different versions of a file that have a common ancestor. 
 Normally fm3tool is not run from the command line; it is started
-during the resolve phase of a pull by responding with '\f(CBf\fP' at the
-merge prompt.
+during the resolve phase of a pull by responding with 
+.Q f
+at the merge prompt.
 .LP
 The default behaviour of
 .B bk fm3tool
@@ -46,8 +48,7 @@ and remote repository is on the right.
 |                          |              |
 +--------------------------+--------------+
 .DE
-.if t .TP 1.3i
-.if n .TP 1.9i
+.TP "\fBRemote Change info\fP"
 .B Local change info
 Revision history for the local changes to the file
 .tp
@@ -69,22 +70,21 @@ Informational messages and navigation controls
 As the tool moves from change to change, the top two windows will change 
 to show revision history of the current highlighted change. 
 .SH OPTIONS
-.if t .TP 12
-.if n .TP 15
+.TP \-r\*<remote_rev\*>
 .OPTreq \-o filename
 save output to the specified file.
 .tp
-.B -f 
+.B \-f 
 force overwrite of existing file. By default fm3tool will
 not overwrite an existing merge file.
 .tp
-.OPTreq -l local_rev
+.OPTreq \-l local_rev
 the revision in the file to be considered the most recent local work.
 .tp
-.B -n 
+.B \-n 
 do not write any merged output, put the tool in readonly mode.
 .tp
-.OPTreq -r remote_rev
+.OPTreq \-r remote_rev
 the revision in the file to be considered the most recent remote work.
 .SH HAND-EDITING
 A merge conflict may be edited manually by single-clicking over a
@@ -99,7 +99,7 @@ conflicts and one for hand-editing a merge. Each of these modes has
 its own set of key bindings.
 .SS NAVIGATION MODE
 .LP
-.TP 14
+.TP \fBShift-Right-Click\fP
 .B Left-Click
 Over a highighted block in the upper windows, a left-click will append
 the highlighted block of text to the current merge region in the merge
@@ -185,7 +185,7 @@ merge region.
 .B Control-q
 Exit from fm3tool.
 .SS EDIT MODE
-.TP 14
+.TP \fBShift-Right-Click\fP
 .B <escape>
 Exit edit mode
 .tp

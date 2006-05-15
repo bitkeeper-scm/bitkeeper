@@ -24,17 +24,20 @@ for more info)
 .LP
 You may specify both end-points at once like so:
 .sp
+.\" XXX deprecated?
 .DS
 bk prs \-r1.1..1.5
 .DE
 .LP
-Revision ranges have a way to say "after" or "before".  You may say
+Revision ranges have a way to say \*(lqafter\*(rq or
+\*(lqbefore.\*(rq You may say
 .DS
 -r1.3..1.7 to mean 1.3, 1.4, 1.5, 1.6, 1.7
 -r1.3,.1.7 to mean 1.4, 1.5, 1.6, 1.7
 -r1.3,,1.7 to mean 1.4, 1.5, 1.6
 .DE
-The "," operator means "after" or "before" the specified revision.
+The \*(lq,\*(rq operator means \*(lqafter\*(rq or \*(lqbefore\*(rq
+the specified revision.
 .LP
 You may specify dates instead of revisions like so
 .sp
@@ -42,14 +45,16 @@ You may specify dates instead of revisions like so
 bk prs \-c98..98
 .DE
 .LP
-If there are two dates, or there is a date and a revision, then the
-date format is [+\-]YYMMDDHHMMSS with missing fields either rounded up
-or rounded down.  Rounding is explicit if there is a "+" (rounds up)
-or a "\-" (rounds down) prefix on the date.  If there is no prefix, then
-the rounding is context sensitive.  If the date is the first date i.e.,
-the starting point, then the date is rounded down.  If it is the second
-date in the range, then it is rounded up.  So 98..98 is the same as
-980101000000 ..  981231235959.
+If there are two dates, or there is a date and a revision, then
+the date format is [+\-]YYMMDDHHMMSS with missing fields either
+rounded up or rounded down.
+Rounding is explicit if there is a \*(lq+\*(rq (rounds up) or a
+\*(lq\-\*(rq (rounds down) prefix on the date.
+If there is no prefix, then the rounding is context sensitive.
+If the date is the first date i.e., the starting point, then the
+date is rounded down.
+If it is the second date in the range, then it is rounded up.
+So 98..98 is the same as 980101000000 .. 981231235959.
 .LP
 Note: the mixing of dates and revisions is deprecated.
 .LP
@@ -101,10 +106,13 @@ from Beta forward, you could type:
 bk changes \-cBeta..
 .DE
 .LP
-A single \-r, because it is the first revision seen, rounds down and means
-1.1.  To get the most recent delta, type "\-r+".
+A single
+.QR \-r ,
+because it is the first revision seen, rounds down and means
+1.1.  To get the most recent delta, type
+.QR \-r+ .
 .SH OPTIONS
-.TP 1i
+.TP \-c\*<range\*>
 .OPTreq \-c range
 Specify deltas by a date range
 .tp

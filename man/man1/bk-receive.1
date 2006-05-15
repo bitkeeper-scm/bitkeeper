@@ -7,8 +7,8 @@ bk receive \- receive a \*(BK patch
 .[ARG] takepatch_options
 .[ARG] repository
 .SH DESCRIPTION
-Use when applying a \*(BK patch you received via email.  You can
-take a \*(BK patch and pipe the whole email message through
+Use when applying a \*[BK] patch you received via email.  You can
+take a \*[BK] patch and pipe the whole email message through
 .BR "bk receive" .
 Headers and footers are stripped automatically.
 .LP
@@ -17,7 +17,9 @@ When someone sends you a patch with the following command:
 $ bk send -rbeta.. you@your.host.com
 .DE
 You will receive an email message which needs to be saved so you can
-feed it to the receive command:
+feed it to the
+.B bk receive
+command:
 .DS
 $ bk receive ~/mypackage < patch
 .DE
@@ -33,8 +35,9 @@ a new repository by adding the
 option.
 \*(BK does not create repositories by default.
 .LP
-Specifying the repository is optional; if it is unspecified, receive tries
-to use the current working directory.
+Specifying the repository is optional; if it is unspecified,
+.B bk receive
+tries to use the current working directory.
 .LP
 Patches may be wrapped. If they are you will see something like
 .DS

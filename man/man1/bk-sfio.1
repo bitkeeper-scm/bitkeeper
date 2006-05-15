@@ -4,17 +4,17 @@
 bk sfio \- \*(BK file archiver
 .SH SYNOPSIS
 .B bk sfio
-.[OPT] \-qm
+.[B] \-qm
 .B \-i <
 .ARG archive.sfio
 .br
 .B bk sfio
-.[OPT] \-m
+.[B] \-m
 .B \-p <
 .ARG archive.sfio
 .br
 .B bk sfio
-.[OPT] \-qmf
+.[B] \-qmf
 .B \-o < 
 .ARG filelist
 .SH DESCRIPTION
@@ -42,7 +42,7 @@ and the third creates an archive from the specified list of files.
 .B \-e
 Echo mode. After each file is archived or extracted print the file to stdout.
 This is separate from the print to stderr controlled by
-.B \-q.
+.QR \-q .
 It is intended to be used by programs that want to perform actions after
 each file is unpacked when reading over a slow pipe.
 .tp
@@ -52,9 +52,9 @@ Extract all files from the archive.
 .B \-m
 Transfer file modes (default not to do so).  If the archive was created
 with 
-.B \-m
+.Q \-m
 then it must be extracted with
-.BR \-m .
+.QR \-m .
 We will not turn this on by default, transferring the file modes is not
 always the correct answer so we force it to be explicit.
 .tp

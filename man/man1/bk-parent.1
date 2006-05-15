@@ -20,7 +20,7 @@ bk parent \- manage repository parent pointer[s]
 .[ARG] repository
 .SS LISTING PARENT POINTERS
 .B bk parent
-.[B] -1iloq
+.[B] \-1iloq
 .SH DESCRIPTION
 The 
 .B bk parent
@@ -46,17 +46,17 @@ named according to the access method (see bk help url for more information).
 .B \-1
 List only the first parent found.  
 May be combined with
-.B \-i
+.Q \-i
 or
-.B \-o 
+.Q \-o 
 to list the first incoming or outgoing parent pointer[s] respectively.
 .tp
 .B \-a
 Add the specfied parent pointer to the list of parents.
 May be combined with
-.B \-i
+.Q \-i
 or
-.B \-o
+.Q \-o
 to add just the incoming or outgoing parent pointer[s] respectively.
 .tp
 .B \-i
@@ -66,15 +66,15 @@ setting, adding, adjusting, removing, or listing parents.
 .B \-l
 List the parent pointer[s] without any annotations, one per line.
 May be combined with
-.B \-i
+.Q \-i
 or
-.B \-o
+.Q \-o
 to list just the incoming or outgoing parents respectively.
 .tp
 .B \-n
-Do not "normalize" the specified parent pointer, use it literally.
+Do not \*(lqnormalize\*(rq the specified parent pointer, use it literally.
 Without this option, the pointer is normalized, i.e.,
-"localhost" is changed to the real hostname, relative paths are
+\*(lqlocalhost\*(rq is changed to the real hostname, relative paths are
 changed to absolute paths, etc.  Forcing a relative path can sometimes
 be useful.
 .tp
@@ -85,9 +85,9 @@ setting, adding, adjusting, removing, or listing parents.
 .B \-q
 Do not produce output when adding/removing/listing parents.
 May be combined with
-.B \-i
+.Q \-i
 or 
-.B \-o
+.Q \-o
 to query whether the repository has an incoming (pull) or outgoing (push)
 parent pointer, exit status will be 0 if any matching parent pointers where
 found, otherwise exit status is 1.
@@ -95,14 +95,14 @@ found, otherwise exit status is 1.
 .B \-r
 Remove the parent pointer.
 May be combined with
-.B \-i
+.Q \-i
 or
-.B \-o
+.Q \-o
 to remove just the incoming or outgoing parent pointer[s] respectively.
 Using 
-.B \-i
+.Q \-i
 or
-.B \-o
+.Q \-o
 on a bidirectional parent pointer converts the parent pointer to unidirectional.
 .tp
 .B \-s

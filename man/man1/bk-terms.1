@@ -5,8 +5,7 @@ bk terms \- definitions of \*(BK terms
 .SH DESCRIPTION
 .LP
 .SS "\*(BK definitions:"
-.if t .TP
-.if n .TP 2
+.TP
 .B package
 This term is used when a distinction needs to be drawn between
 two different repositories which do not contain the same data,
@@ -53,11 +52,11 @@ talking about the differences contained in that delta.
 .B rev argument
 Many commands take file revision numbers as arguments, usually
 to the
-.B \-r
+.Q \-r
 option.  On the command line anytime a revision number is expected,
 the delta key can be used instead.  Or after an @ sign, a changeset
 revision, tag, or changeset key can be used.  So
-.B \-r@1.4
+.Q \-r@1.4
 finds the version number as of changeset revision 1.4. So the
 following are all legal:
 .DS

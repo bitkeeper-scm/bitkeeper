@@ -23,18 +23,18 @@ follows:
 .DS
 lpr \`bk bin\`/bk_refcard.ps
 .DE
-or on Windows/NT, click on the ``Quick Reference'' title in the start
+or on Windows/NT, click on the \*(lqQuick Reference\*(rq title in the start
 menu, and assuming Acrobat is installed, the card will be displayed.
-To print on Windows/NT, click on the ``file->print'' menu entry of
-the Acrobat reader.
+To print on Windows/NT, click on the
+.Q file \-> print
+menu entry of the Acrobat reader.
 .LP
 To get a list of all bk help topics use
 .DS
 .B bk help topics
 .DE
 .SH OPTIONS
-.if t .TP .5i
-.if n .TP .9i
+.TP \-f\*<file\*>
 .B \-a
 Just search the docs for the string
 .ARG topic .
@@ -48,7 +48,7 @@ as the helptext file.
 .tp
 .B \-k
 Similar to
-.BR -a ,
+.QR \-a ,
 but only matches whole words.
 .tp
 .B \-p

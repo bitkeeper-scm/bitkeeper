@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk conflicts" "\*[BKVER]" 20%E% "\*(BC" "\*(UM"
+.TH "bk conflicts" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk conflicts \- list unresolved files which contain conflicts
 .SH SYNOPSIS
@@ -13,18 +13,20 @@ The
 command lists unmerged files which contain content conflicts and need to
 be resolved.
 Both filenames and directory names may be specified and they are treated
-as in bk sfiles.
+as in \*[BK] sfiles.
 Only files that contain conflicts are actually listed.
 .LP
 Any options specified will operate only on the set of files that would
 normally be listed.
 .SH OPTIONS
-.tp
+.TP \fB\-vv\fPn
 .B \-d
-Invoke bk diffs on the file, showing the differences between the local
+Invoke
+.B bk diffs
+on the file, showing the differences between the local
 and remote files.
 .tp
-.B -D
+.B \-D
 Like
 .B \-d
 but using the graphical diff tool instead of text diffs.

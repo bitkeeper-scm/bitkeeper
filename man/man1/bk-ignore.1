@@ -28,27 +28,26 @@ match, regardless of which directory it is in, you can say
 .DS
 bk ignore JUNK
 .DE
-.ft R
 and that will match 
-.ARG JUNK
+.B JUNK
 and
-.ARG sub/dir/JUNK
+.B sub/dir/JUNK
 but not
-.ARG JUNK-PRECIOUS .
+.BR JUNK-PRECIOUS .
 .LP
 If you want to match a file in just one subdirectory, you can do
 .DS
 bk ignore sub/directory/this_one
 .DE
 which will match 
-.ARG sub/directory/this_one
+.B sub/directory/this_one
 but not
-.ARG other_dir/this_one .
+.BR other_dir/this_one .
 .LP
 If you give ignore no arguments it will print out the current ignore list.
 .LP
 The ignore list is saved in the file
-.I BitKeeper/etc/ignore.
+.BR BitKeeper/etc/ignore .
 You may edit this file if you wish; the format is simply one glob per line.
 Editing the ignore file is the only way to remove entries from the list.
 .LP
@@ -71,9 +70,9 @@ core
 .SH BUGS
 .LP
 There is no per directory
-.I \.bkignore
+.B \.bkignore
 list, nor is there a
-.I ~/ \.bkignore list.
+.BR "~/\.bkignore list" .
 .SH SEE ALSO
 .LP
 .SA citool

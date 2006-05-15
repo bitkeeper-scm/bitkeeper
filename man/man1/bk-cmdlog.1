@@ -8,26 +8,31 @@ bk cmdlog \- show the log of commands executed in this repository
 .SH DESCRIPTION
 List the history of repository level commands run in repository of
 current directory.
-Repository level commands are clone, commit, export, pull, and push.
+Repository level commands are
+.BR "bk clone" ,
+.BR "bk commit" ,
+.BR "bk export" ,
+.BR "bk pull" ,
+and
+.BR "bk push" .
 .LP
 Commands are listed in least recent to most recent order.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1.1i
+.TP \-c\*<cutoff\*>
 .B \-a
 List history of all commands run in the repository, not just repository level
 commands.
-.TP
+.tp
 .OPTreq \-c cutoff
 List commands which happened during the date range specified by
 .ARG cutoff .
 .SH NOTES
 The two command logs are maintained by \*(BK in the
-.I BitKeeper/log
+.B BitKeeper/log
 directory.
-.I repo_log
+.B repo_log
 contains all repository level commands ever run in that repository.
-.I cmd_log
+.B cmd_log
 contains recent commands run in that repository.
 .SH "SEE ALSO"
 .SA range

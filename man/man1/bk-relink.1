@@ -7,7 +7,7 @@ bk relink \- recreate broken hardlinks
 .B bk relink
 .[B] \-q
 .ARG from
-.[ARG] from2 ...
+.[ARG] from2\ .\|.\|.
 .ARG to
 .br
 .B bk relink
@@ -16,7 +16,7 @@ bk relink \- recreate broken hardlinks
 The relink command is used to conserve disk space.  It is typical for
 a single user to have many repositories, each one representing a different
 work in progress.  It is also typical to use the
-.B \-l
+.Q \-l
 option to
 .B bk clone
 to create hard linked repositories.

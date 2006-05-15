@@ -4,7 +4,7 @@
 bk sccslog \- list deltas sorted by date across all files
 .SH SYNOPSIS
 .B bk sccslog
-.[OPT] \-ADfnpsv
+.[B] \-ADfnpsv
 .[OPTreq] \-c dates
 .[OPTreq] \-i d
 .[OPTreq] \-r r
@@ -14,6 +14,7 @@ bk sccslog \- list deltas sorted by date across all files
 .B bk sccslog
 is used to get a time sorted listing of changes over all of the specified
 or implied files.  It is similar to
+.\" XXX deprecated?
 .BR "bk prs" ,
 with the difference being
 that
@@ -34,7 +35,7 @@ By default,
 runs the output through your pager, which can
 be controlled with \s-2$PAGER\s0.
 .SH OPTIONS
-.TP 8
+.TP \fB\-c9207..92\fP
 .B \-A
 Select all uncommitted deltas in a file.
 .tp
@@ -71,7 +72,7 @@ default is backwards order.
 .tp
 .B \-n
 Add  a newline to each printed record (sometimes useful with
-.BR \-d ).
+.QR \-d ).
 .tp
 .B \-p
 Show basenames instead of full pathnames.
@@ -80,7 +81,10 @@ Show basenames instead of full pathnames.
 Specify a revision or a range.
 .tp
 .B \-s
-Produce sorted output for post processing in ``filename|rev'' format.
+Produce sorted output for post processing in \*(lq\c
+.IB filename |\c
+.IR rev \*(rq
+format.
 .tp
 .B \-v
 Be verbose about errors and processing.
@@ -91,7 +95,7 @@ may be a symbol, which implies the date of the delta which matches the symbol.
 .LP
 Range or date specifications:
 .\" XXX format for the below list?
-.TP 16
+.TP \fB\-c9207..92\fP
 .B \-r+
 prints the most recent delta
 .tp

@@ -4,13 +4,13 @@
 bk superset \- check to see if the parent is ahead of the current repository
 .SH SYNOPSIS
 .B bk superset
-.[OPT] \-q
+.[B] \-q
 .[ARG] parent
 .SH DESCRIPTION
 .LP
 superset does checks to see if removing the current repository is a lossless
 event.  It checks that:
-.TP .3i
+.TP 3
 \*(BU
 the parent has all changesets that are in the current repository
 .tp
@@ -27,7 +27,7 @@ there are no extra files
 there are no parked files
 .LP
 Unless the
-.B \-q
+.Q \-q
 option is present superset lists all things which are not
 in the parent.
 .SH OPTIONS

@@ -11,8 +11,7 @@ bk makepatch \- creates \*(BK patches
 .LP
 The makepatch command is a low level command used to generate \*(BK patches.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1i
+.TP \-r\*<range\*>
 .B \-d
 Add a header with the unified diffs to the top of the \*(BK patch.
 .tp
@@ -25,7 +24,7 @@ Be more verbose for each instance.
 .tp
 .B \-
 Instead of specifying the range with
-.BR \-r ,
+.QR \-r ,
 this form expects the revisions on the standard input, one per line,
 either as keys or revisions.
 .SH NOTES

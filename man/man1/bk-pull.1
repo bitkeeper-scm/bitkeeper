@@ -4,19 +4,16 @@
 .SH NAME
 bk pull \- update a repository from its parent[s]
 .SH SYNOPSIS
-.Bc bk pull [\-iqRstu] [
-.OPTreq \-r rev
-.Bc ] [
-.OPTequal \-E env var
-.Bc ] [
-.OPTreq \-c n
-.Bc ] [
-.ARGc parent
- ...\c
-.B ]
+.B bk pull
+.[B] \-iqRstu
+.[OPTreq] \-r rev
+.[OPTequal] \-E env var
+.[OPTreq] \-c n
+.[ARG] parent \ .\|.\|.
 .SH DESCRIPTION
 .LP
-Pull updates a repository from its incoming parent[s].
+.B bk pull
+updates a repository from its incoming parent[s].
 Changes are retrieved and automatically applied, if possible.
 You will only be asked to resolve conflicts by hand if a file
 has overlapping changes (changes where both repositories have
@@ -28,7 +25,8 @@ bk changes -R
 .DE
 .\" XXX - do I really want to tell them this?
 .LP
-The pull will refuse bring in changes to files which are modified in the
+.B bk pull
+will refuse bring in changes to files which are modified in the
 local repository.
 Should this occur, one way around it is to do
 .DS
@@ -41,11 +39,14 @@ If that works, you are done.  If that does not work then the best thing
 is to unedit the attempted patch, unpull the changes, redo the patch
 (which will now work), commit those changes and redo the pull.
 .LP
-Pull normally runs resolve, the tool which applies the pulled changes,
+.B bk pull
+normally runs resolve, the tool which applies the pulled changes,
 automatically.  Resolve will look at each change, make sure there are
 no conflicts that it can't merge, and apply the change.  You may have to
 (or want to) run resolve manually.  If you do not want automatic merges,
-i.e., you want to diff them by hand, then use the \-i option.  If resolve
+i.e., you want to diff them by hand, then use the
+.Q \-i
+option.  If resolve
 was run automatically and it found conflicts, the changes have 
 .B not
 been applied;
@@ -61,8 +62,7 @@ Please read the
 .B bk unpull
 man page for important information about what is and is not unpulled.
 .SH OPTIONS
-.if t .TP .7i
-.if n .TP 1.4i
+.TP \-E\*<env\*>=\*<val\*>
 .OPTreq \-c n
 try to get the remote lock
 .ARG n
@@ -70,7 +70,8 @@ times before giving up (default forever).
 .tp
 .OPTequal \-E env val
 Export environment variable to remote site.
-The environment variable must start with "BKU_".
+The environment variable must start with
+.V BKU_ .
 .tp
 .B \-i
 Turn off automerge feature in resolve.
@@ -91,16 +92,16 @@ under 'rev argument')
 .tp
 .B \-s
 Pass 
-.B \-s
+.Q \-s
 to resolve (\c
-.B \-s
+.Q \-s
 means do not do interactive resolve of any conflicts, leave that for later.)
 .tp
 .B \-t
 Pass 
-.B \-t
+.Q \-t
 to resolve (\c
-.B \-t
+.Q \-t
 means do not use the GUI tools.)
 .tp
 .B \-u

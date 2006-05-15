@@ -18,8 +18,7 @@ for scripting.  For interactive checkins,
 .B "bk citool" 
 is the preferred interface.
 .SH OPTIONS
-.if t .TP .75i
-.if n .TP 1.25i
+.TP \-y\*<comment\*>
 .B \-a
 Normally, 
 .B delta
@@ -41,8 +40,7 @@ an edited, but unmodified file.
 .tp
 .B \-c
 Take checkin comments from 
-.if t .IR SCCS/c.filename .
-.if n SCCS/c.<filename>.
+.BI SCCS/c. filename\fR.
 It is an error if the c.file does not exist.
 .tp
 .OPTreq \-D file
@@ -65,7 +63,8 @@ for meta data.
 Initial check-in, create a new revision history.
 .tp
 .B \-l
-Follow check in with a locked check out like bk get -e.
+Follow check in with a locked check out like
+.QR "bk get \-e" .
 .tp
 .OPTreq \-M mode
 Set the permissions on the new delta to
@@ -96,13 +95,15 @@ Sets the revision comment to
 Compress stored s.file with 
 .ARG alg
 which may be:
-.br
-.ARG gzip
-- like
+.RS
+.TP \fBnone\fP
+.B gzip
+like
 .BR gzip (1) 
-.br
-.ARG none
--  no compression
+.tp
+.B none
+no compression
+.RE
 .SH BUGS
 The format of the init file is not documented.
 .SH "SEE ALSO"

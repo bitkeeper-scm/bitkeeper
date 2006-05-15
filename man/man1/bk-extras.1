@@ -9,7 +9,9 @@ bk extras \- list extra files not under revision control
 .[ARG] dir
 .SH DESCRIPTION
 .LP
-The extras command finds files which are not under revision control and 
+The
+.B bk extras
+command finds files which are not under revision control and 
 are not listed in the ignore file.
 .LP
 The default behavior is to find all extra files in the entire tree, this
@@ -18,12 +20,15 @@ can be changed by specifying a subdirectory like so
 bk extras .
 .DE
 The default behavior is to respect the ignore file, this can be changed
-by adding the \-a flag (which must follow the optional directory argument)
+by adding the
+.Q \-a
+flag (which must follow the optional directory argument)
 like so
 .DS
 bk extras -a	# find all extra files in entire repo
 bk extras -a .	# find all extra files at or below "."
 .DE
+.\" XXX need OPTIONS section?
 .SH "SEE ALSO"
 .SA ignore
 .SA sfiles

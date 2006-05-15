@@ -4,25 +4,23 @@
 bk get \- check out \*(BK files
 .SH SYNOPSIS
 .B bk get 
-.[OPT] opts
+.[B] options
 .BKARGS
 .SH DESCRIPTION
 .LP
 .B get
-is used to check out ("get") files for viewing or editing.
+is used to check out (\*(lqget\*(rq) files for viewing or editing.
 By default, files are checked out unlocked and read-only.
 .SH NOTE
 You may not need to check out every file in order to compile your
 program since most versions of the Make program will check files out
 as they are needed.  In order for this to work, the get command needs
 to be in your path and the dependencies need to be correct in the
-Makefile.  If that is true, a simple "make" will check out and 
+Makefile.  If that is true, a simple \*(lqmake\*(rq will check out and 
 build your product.
 .SH OPTIONS 
-.if t .TP .7i
-.if n .TP 1.1i
-.if t \fB\-A\fP\fIbdnpru\fP
-.if n \fB\-A\fP\fI<bdnpru>\fP
+.TP \-A\*<bdnpru\*>
+.OPTreq \-A bdnpru
 Align prefix output in a human readable form.
 The set of annotations will be followed by a vertical bar and a space
 before the data from each line of the file starts.
@@ -31,7 +29,7 @@ The option argument[s] turn on one
 or more annotations as a prefix to each line.
 The possible annotations are:
 .RS
-.TP 4
+.TP
 .B b
 Prefix each line with the basename of the file.
 .tp
@@ -51,12 +49,10 @@ Prefix each line with the revision of last modification.
 .B u
 Prefix each line the name of the user who last modified it.
 .RE
-.if t .TP .7i
-.if n .TP 1.1i
-.if t \fB\-a\fP\fIbdnpru\fP
-.if n \fB\-a\fP\fI<bdnpru>\fP
+.TP \-A\*<bdnpru\*>
+.OPTreq \-a bdnpru
 Similar to
-.B \-A 
+.Q \-A 
 but without the alignment.
 .tp
 .OPTreq \-c date
@@ -68,7 +64,8 @@ Checkout the file for editing (same as
 .BR "bk edit" ).
 .tp
 .B \-g
-Suppress the retrieval of any text; sometimes useful with \fB\-e\fP.
+Suppress the retrieval of any text; sometimes useful with
+.QR \-e .
 .tp
 .OPTreq \-G name
 Place the checked out file in 
@@ -84,9 +81,9 @@ Include revs in
 .tp
 .B \-k
 Don't expand RCS or SCCS keywords.
-.B \-k
+.Q \-k
 is implied by
-.BR \-e .
+.QR \-e .
 .tp
 .B \-p
 Write file to standard output (useful in scripts).
@@ -101,9 +98,9 @@ Run quietly, suppressing diagnostics.
 .OPTreq \-r rev
 Get this revision. (Or key or changeset revision. See 
 .B bk help terms
-under 'rev argument')
-If combined with
-.B \-e
+under \*(lqrev argument\*(rq)
+If combined with 
+.Q \-e
 (edit), \*(BK will check out the tip revision
 combined with a set of include and exclude deltas needed to produce
 the requested revision.

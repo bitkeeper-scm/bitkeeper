@@ -2,9 +2,10 @@
 .TH "bk config-gui" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk config-gui \- configuration for \*(BK graphical tools
+.\" XXX TP indents could use some tweaking 
 .SH DESCRIPTION
 .LP
-BitKeeper uses a configuration file called 
+\*[BK] uses a configuration file called 
 .B config-gui
 for the 
 configuration of the \*(BK graphical tools.
@@ -13,7 +14,7 @@ colors, fonts, and widget dimensions.
 .LP
 The location of this configuration file can be determined
 for your platform by running the command
-.BR bk\ dotbk .
+.BR "bk\ dotbk" .
 This command will return the pathname of the directory where
 the \*(BK graphical tools will look for the 
 .B config-gui
@@ -67,9 +68,9 @@ set gc(fixedBoldFont) {fixed 12 roman bold}
 .DE
 As an example, if you
 want pink buttons in 
-.BR citool ,
+.BR "bk citool" ,
 yellow buttons in
-.BR helptool ,
+.BR "bk helptool" ,
 and blue in all of the rest of the tools, add the 
 following to your config file:
 .DS
@@ -81,22 +82,22 @@ set gc(help.buttonColor) yellow
 The tool names used to get to tool specific
 variables (or to have a change only apply to that tool) are the
 GUI tool's name with the trailing \*(lqtool\*(rq dropped, i.e.,
-\*(lqdiff\*(rq for \*(lqdifftool.\*(rq
+\*(lqdiff\*(rq for \*(lqdifftool\*(rq.
 .SH TCL INFORMATION
 The following tcl/tk commands may be useful for display specific
 customization:
-.TP
+.TP "\f(CW[winfo screenheight .]\fP"
 \f(CW[winfo depth .]\fP
 returns the color depth of the screen in bits, i.e., 16 means the screen
 can do 65536 different colors.
-.TP
+.tp
 \f(CW[winfo screen .]\fP
 Returns the name of the screen in the form displayName.screenIndex,
-i.e., "disks.bitmover.com:0.0".
-.TP
+i.e., \*(lqdisks.bitmover.com:0.0\*(rq.
+.tp
 \f(CW[winfo screenheight .]\fP
 returns the height of the screen in pixels.
-.TP
+.tp
 \f(CW[winfo screenwidth .]\fP
 returns the width of the screen in pixels.
 .SH GUI CONFIGURATION
@@ -114,7 +115,7 @@ but in the list below we just show the
 .ARG variable
 part.
 .nr I 18
-.TP \n[I]
+.TP \fBfixedBoldFont\fP
 .B fixedFont
 Font used in all of the text widgets such as file lists,
 entry boxes, and text widgets showing contents of files.
@@ -122,7 +123,9 @@ Default:\ {fixed 12 roman}
 .tp
 .B fixedBoldFont
 Bold font used to highlight text such as difference within
-lines in difftool.  Default:\ {fixed 12 roman bold}
+lines in
+.BR "bk difftool" .
+Default:\ {fixed 12 roman bold}
 .tp
 .B buttonFont
 Font used in buttons.  Default:\ {times 12 roman bold}
@@ -130,7 +133,7 @@ Font used in buttons.  Default:\ {times 12 roman bold}
 .B scrollWidth
 Width of the scrollbar widget in pixels. Default:\ 12
 in everything except 
-.B helptool
+.B bk helptool
 where the default is 14.
 .tp
 .B buttonColor
@@ -152,19 +155,35 @@ Default:\ #b48cff
 Color for warnings and messages.  Default:\ #b0b0e0
 .tp
 .B searchColor
-Highlight color for search matches. Used in difftool
-and revtool.  Default:\ yellow
+Highlight color for search matches. Used in
+.B bk difftool
+and
+.BR "bk revtool" .
+Default:\ yellow
 .tp
 .B selectColor
-Color of the current file in citool and csettool. Color of
-the current topic in helptool. Default:\ yellow
+Color of the current file in
+.B bk citool
+and
+.BR "bk csettool" .
+Color of the current topic in
+.BR "bk helptool" .
+Default:\ yellow
 .tp
 .B statusColor
-Status windows in csettool, difftool, and renametool.
+Status windows in
+.BR "bk csettool" ,
+.BR "bk difftool" ,
+and
+.BR "bk renametool" .
 Default:\ lightblue
 .tp
 .B warnColor
-Color of the error messages. Used in citool, difftool and csettool.
+Color of the error messages. Used in
+.BR "bk citool" ,
+.BR "bk difftool"
+and
+.BR "bk csettool" .
 Default:\ yellow
 .tp
 .B textBG
@@ -188,15 +207,27 @@ above. Default:\ #f0f0f0
 .tp
 .B diffHeight
 Height of a difference window in number of lines. Used
-in citool, csettool, difftool, fmtool,
-and renametool.  Default:\ 30 in everything except
-.B difftool 
+in
+.BR "bk citool" ,
+.BR "bk csettool" ,
+.BR "bk difftool" ,
+.BR "bk fmtool" ,
+and
+.BR "bk renametool" .
+Default:\ 30 in everything except
+.B bk difftool 
 where it is 50 lines.
 .tp
 .B diffWidth
 Width of a difference window in number of characters.
-Used in csettool, difftool, and fmtool,
-and renametool.  Default:\ 65
+Used in
+.BR "bk csettool" ,
+.BR "bk difftool" ,
+and
+.BR "bk fmtool" ,
+and
+.BR "bk renametool" .
+Default:\ 65
 .tp
 .B geometry
 Default size/location. Follows the standard X11 notation.
@@ -204,12 +235,12 @@ See
 .BR X (1).
 Geometry is WIDTHxHEIGHT+XOFF+YOFF.
 .RS
-.tp
+.TP \fB+XOFF\fP
 .B +XOFF
 The left edge is to be placed XOFF
 pixels from the left edge of the screen
 .tp
-.B -XOFF
+.B \-XOFF
 The right edge is to be placed XOFF
 pixels from the right edge of the screen
 .tp
@@ -217,22 +248,23 @@ pixels from the right edge of the screen
 The top edge of the window is to be
 placed YOFF pixels from the top of the screen
 .tp
-.B -YOFF
+.B \-YOFF
 The bottom edge of the window is to be
 placed YOFF pixels from the bottom of the screen
-.RE
-.tp
-\ 
-For example, a value of "+0+0" indicates that the tool
+.LP
+For example, a value of \*(lq+0+0\*(rq indicates that the tool
 should be placed at the upper left of the screen.
 Default:\ none
+.RE
 .tp
 .B mergeHeight
-Height of a merge window. Used in fmtool.
+Height of a merge window. Used in
+.BR "bk fmtool" .
 Default 20
 .tp
 .B mergeWidth
-Width of a merge window. Used in fmtool.
+Width of a merge window. Used in
+.BR "bk fmtool" .
 Default 80
 .tp
 .B tabwidth
@@ -242,7 +274,7 @@ Default:\ 8.
 .B quit
 Key used to exit from the gui tools. Default:\ <Control-q>
 .SS CITOOL CONFIGURATION
-.TP \n[I]
+.TP \fBci.commentsHeight\fP
 .B ci.commentsHeight
 height of the comments window.
 .tp
@@ -250,7 +282,9 @@ height of the comments window.
 height of the diffs window (the lower window).
 .tp
 .B ci.display_bytes
-Number of bytes to show in new files in citool. If set to 0, the entire
+Number of bytes to show in new files in
+.BR "bk citool" .
+If set to 0, the entire
 file is displayed. Default:\ 8192
 .tp
 .B ci.editHeight
@@ -266,25 +300,32 @@ Color of the exclude icon (X character). Default:\ red
 number of files in the top window.
 .tp
 .B ci.rescan
-Set this to option to 1 if you would like citool to run again after
+Set this to option to 1 if you would like
+.B bk citool
+to run again after
 doing the commit. Rescanning is useful if you do development in the
 manner where you modify many files that logically belong to separate
-changesets. This option then allows you to stay in citool and create
-different changesets for the files without restarting citool each
-time. Default:\ 0
+changesets. This option then allows you to stay in
+.B bk citool
+and create different changesets for the files without restarting
+citool each time. Default:\ 0
 .SS CSETTOOL CONFIGURATION
-.TP \n[I]
+.TP \fBci.commentsHeight\fP
 .B cset.annotation
 Annotation options to apply when getting files to be diffed. 
-See the -a option to bk get. 
-Example: "-aum". 
-Default: "" (do not display annotations)
+See the
+.Q \-a
+option to
+.BR "bk get" . 
+Example:
+.QR \-aum . 
+Default: \*(lq\|\*(rq (do not display annotations)
 .tp
 .B cset.listHeight
 Number of lines in the list windows.
 Default:\ 12
 .SS DIFFTOOL CONFIGURATION
-.TP \n[I]
+.TP \fBci.commentsHeight\fP
 .B diff.diffHeight
 Number of lines in the diff windows.
 Default:\ 50
@@ -293,7 +334,7 @@ Default:\ 50
 Highlight color for search matches.
 Default:\ lightblue
 .SS FM3TOOL CONFIGURATION
-.TP \n[I]
+.TP \fBfm3.toggleAnnotations\fPn
 .B fm3.charColor
 Color used to highlight portions of a line which has changed.
 Default:\ orange
@@ -312,7 +353,7 @@ Default:\ yellow.
 .tp
 .B fm3.firstDiff
 Keyboard accelerator for going to the first change.
-Default:\ "-".
+Default:\ \*(lq\-\*(rq.
 .tp
 .B fm3.handColor
 Color used to highlight hand selected merge choices in the side by side 
@@ -321,7 +362,7 @@ Default:\ lightyellow.
 .tp
 .B fm3.lastDiff
 Keyboard accelerator for going to the last change.
-Default:\ "+".
+Default:\ \*(lq+\*(rq.
 .tp
 .B fm3.mergeColor
 Color used to highlight merge choices, both manual and automatic, in the 
@@ -330,20 +371,20 @@ Default:\ lightblue.
 .tp
 .B fm3.nextConflict
 Keyboard accelerator for going to the next conflict (skips automerged changes).
-Default:\ "}".
+Default:\ \*(lq}\*(rq.
 .tp
 .B fm3.nextDiff
 Keyboard accelerator for going to the next change.
-Default:\ "]".
+Default:\ \*(lq]\*(rq.
 .tp
 .B fm3.prevConflict
 Keyboard accelerator for going to the previous conflict
 (skips automerged changes).
-Default:\ "{".
+Default:\ \*(lq{\*(rq.
 .tp
 .B fm3.prevDiff
 Keyboard accelerator for going to the previous change.
-Default:\ "[".
+Default:\ \*(lq[\*(rq.
 .tp
 .B fm3.sameColor
 Color used to highlight the portion of a conflict consisting of unchanged lines.
@@ -355,46 +396,52 @@ displayed that you can click on to exit edit mode.
 Default:\ 1.
 .tp
 .B fm3.spaceColor
-Color used to highlight the beginnings of lines which are "spacers" inserted
-to make the changes line up horizontally.
+Color used to highlight the beginnings of lines which are 
+\*(lqspacers\*(rq inserted to make the changes line up horizontally.
 Default:\ black.
 .tp
 .B fm3.toggleAnnotations
 Keyboard accelerator for toggling the display of annotations.
-Default:\ "z"
+Default:\ \*(lqz\*(rq.
 .tp
 .B fm3.toggleGCA
 Keyboard accelerator for toggling the display of the GCA.
-Default:\ "x"
+Default:\ \*(lqx\*(rq.
 .tp
 .B fm3.undo
 Keyboard accelerator for undoing the last merge selection.
-Default:\ "u".
+Default:\ \*(lqu\*(rq.
 .SS HELPTOOL CONFIGURATION
-.TP \n[I]
+.TP \fBrev.commentHeight\fP
 .B help.linkColor
-Color of the hyperlinks in helptool. Default:\ blue
+Color of the hyperlinks in
+.BR "bk helptool" .
+Default:\ blue
 .tp
 .B help.topicsColor
 Highlight color for topic search matches.
 Default:\ orange
 .tp
 .B help.height
-Number of rows to display in helptool. Default:\ 50
+Number of rows to display in
+.BR "bk helptool" .
+Default:\ 50
 .tp
 .B help.width
-Number of columns to display in helptool. Default:\ 72
+Number of columns to display in
+.BR "bk helptool" . Default:\ 72
 .tp
 .B help.exact
 Only return full word/phrase matches.
 Default:\ 0, set to 1 to enable.
 .SS RENAMETOOL CONFIGURATION
-.TP \n[I]
+.TP \fBrev.commentHeight\fP
 .B rename.listHeight
-Height of the file list widget in renametool (in
-lines). Default:\ 8
+Height of the file list widget in
+.B bk renametool
+(in lines). Default:\ 8
 .SS REVTOOL CONFIGURATION
-.TP \n[I]
+.TP \fBrev.commentHeight\fP
 .B rev.canvasBG
 Color of the graph background. Default:\ #9fb6b8
 .tp 
@@ -427,14 +474,18 @@ Height of the comment window above the annotated file listing. Default:\ 5
 Width of widget that displays the file content. Default:\ 92
 .tp
 .B rev.annotate
-Arguments to the annotate command. Default:\ -Aur
+Arguments to the annotate command. Default:
+.QR \-Aur .
 .tp
 .B rev.textHeight
 Height of widget that displays the file content. Default:\ 50
 .tp
 .B rev.showHistory
 The time period of revisions that are shown. The value needs to be a
-valid entry for the prs -R option. Default:\ 1M
+valid entry for the prs
+.Q \-R
+option. Default:\ 1M
+.\" XXX prs? Is this a deprecated command?
 .tp
 .B rev.tagOutline
 Color of the outline around nodes in the ChangeSet graph that have

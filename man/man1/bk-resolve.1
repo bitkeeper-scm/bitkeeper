@@ -4,7 +4,7 @@
 bk resolve \- merge and/or apply new work after a pull
 .SH SYNOPSIS
 .B bk resolve
-.[B] \-options 
+.[OPTreq] \- options
 .[ARG] repo
 .SH DESCRIPTION
 .LP
@@ -21,11 +21,11 @@ In order to preview the new changesets before merging, run
 .B bk csets 
 and that will run csettool on the list of changes (which may
 be found in 
-.IR RESYNC/BitKeeper/etc/csets-in ).
+.BR RESYNC/BitKeeper/etc/csets-in ).
 .LP
 Resolve traverses all of the files, prompting you with a list of files
 needing to be merged.  The following are the stages when resolving files:
-.TP .4i
+.TP 3
 .B \*(BU
 create and rename conflicts
 .tp
@@ -39,8 +39,11 @@ file flag conflicts
 file content conflicts
 .tp
 .B \*(BU
-symbol "conflicts" (local and remote added the "alpha" symbol to
-different deltas)
+symbol
+.Q conflicts
+(local and remote added the
+.Q alpha
+symbol to different deltas)
 .LP
 When there are no conflicts left to be merged, resolve groups any merge
 changes into a changeset and moves everything into your repository.
@@ -52,36 +55,39 @@ up the merge process.
 For detailed help on the merge process, see 
 .BR bk\ help\ resolving .
 .SH OPTIONS
-.if t .TP .8i
-.if n .TP 1i
+.TP \-y\*<comment\*>
 .B \-1
 Run only pass 1; similarly for 2 3 and 4.
 See PASSES section below.
 .tp
 .B \-a
-Automerge.  This will run a diff3\-based merge of
-all non\-overlapping lines.  If there are overlapping
+Automerge.  This will run a diff3-based merge of
+all non-overlapping lines.  If there are overlapping
 lines in merged files, the merge will fail and the files
 will not be resolved; you have to run resolve again
 without the 
-.B \-a
+.Q \-a
 option to finish the resolve.
 .tp
 .B \-A
 Auto advance.  Normally, when doing an interactive resolve,
 the resolution is not complete until you tell the system
-to commit the file ("C" in the content resolve menu).  This
+to commit the file (\c
+.Q C
+in the content resolve menu).  This
 allows for several false starts on a merge, you can use
-"m" to merge, decide that you didn't like it, and use
-"m" again to try over.  If 
-.B \-A
+.Q m
+to merge, decide that you didn't like it, and use
+.Q m
+again to try over.  If 
+.Q \-A
 is used, any sort of merge
 which completes is immediately used and the resolver 
 advances to the next file.
 .tp
 .B \-c
 No conflicts.  This option tells resolve to complete if and
-only if new non\-conflicting work appears in the patch.
+only if new non-conflicting work appears in the patch.
 .tp
 .B \-d
 Debugging (mainly useful to \*(BK developers).
@@ -101,7 +107,8 @@ yet complete.
 .OPTreq \-m merge
 Use 
 .ARG merge
-as the merge program called when you press "m"
+as the merge program called when you press
+.Q m
 in the content resolver.  The merge program takes four file
 arguments: the local version of the file, the ancestor
 version of the file, the remote version of the file,
@@ -112,18 +119,20 @@ to merge the changes into the merge file.
 Be quiet.
 .tp
 .B \-r
-Re\-merge.  If you started to resolve, exited the resolver,
+Re-merge.  If you started to resolve, exited the resolver,
 and then restarted, files already merged will be skipped.
-This options allows you to re\-merge files which need
+This options allows you to re-merge files which need
 help, yet allows you to skip past the ones you are happy
-with by hitting "C" in the resolve menu.
+with by hitting
+.Q C
+in the resolve menu.
 .tp
 .B \-s
 do not do interactive resolve of any conflicts, do only whatever can be
 automerged and then exit.
 .tp
 .B \-t
-Text\-only. Enables the text\-based resolve menu when doing 
+Text-only. Enables the text-based resolve menu when doing 
 the final commit instead of using citool.
 .tp
 .OPTreq \-x glob
@@ -134,7 +143,7 @@ See RESOLVING SUBSETS section below.
 .OPTreq \-y comment
 Use 
 .ARG comment
-as the changeset check\-in message.  This option
+as the changeset check-in message.  This option
 is typically set by the calling program, i.e., 
 .BR bk\ pull .
 If 
@@ -166,8 +175,10 @@ Currently, the include/exclude selection process is applied to
 the name used after the rename resolution, which can be
 confusing.
 It may be easiest to run the rename resolution passes first with
-"bk resolve -12", list the conflicts with "bk conflicts", and
-then rerun resolve selecting the files to be resolved.
+.QR "bk resolve \-12" ,
+list the conflicts with
+.BR "bk conflicts" ,
+and then rerun resolve selecting the files to be resolved.
 .LP
 bk resolve must be run without specifying any subset of the files in order
 to fully complete.
@@ -191,7 +202,8 @@ pathname in each.  If this is the case, the user is prompted to resolve
 the conflict.  In the other cases, the resolver can infer the correct
 pathname and relocates the file out of the special BK-managed namespace
 and into the proper place in the resolver working directory (usually
-named RESYNC).
+named
+.BR RESYNC ).
 .LP
 The third pass examines all files looking for content conflicts.
 Content conflicts arise when either the contents, symbolic link

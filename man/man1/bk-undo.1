@@ -5,7 +5,7 @@
 bk undo \- Undo a changeset or set of changesets
 .SH SYNOPSIS
 .B bk undo
-.[OPT] \-fqsv
+.[B] \-fqsv
 .[OPTreq] \-p patch
 .[OPTreq] \-a rev
 .[OPTreq] \-r rev
@@ -15,7 +15,7 @@ The
 command can be used to remove any changeset or set of
 changesets.   There are options to select specific changesets or all
 changesets after some point (which is what
-.B "bk clone \-r"
+.Q "bk clone \-r"
 uses).
 .LP
 To undo a
@@ -30,7 +30,7 @@ with care, if the data was only present in your
 repository, when you undo it, it is gone for good.
 .LP
 If the 
-.B \-s
+.Q \-s
 option is not present then
 .B bk undo
 saves a normal \*[BK] patch in
@@ -49,7 +49,7 @@ There is a a shorthand, bk repatch, which is an alias for the above command.
 The repatch command can take an optional argument which species an alternate
 patch to reapply.
 .SH OPTIONS
-.TP 8
+.TP \-P\*<patch\*>
 .OPTreq \-a rev
 Remove all changesets which occurred after 
 .ARG rev .
@@ -64,7 +64,7 @@ prompt with a list of deltas which will be removed.
 .tp
 .OPTreq \-p patch
 Specify the location of the backup patch.  Overrides 
-.BR \-s .
+.QR \-s .
 .tp
 .B \-q
 Run quietly; do not list files.

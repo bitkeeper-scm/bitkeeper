@@ -352,7 +352,7 @@ test -f ../SCCS/p.ChangeSet && {
 	echo ChangeSet file shouldn\'t be locked
 	exit 1
 }
-bk sfiles -c | bk delta $Q -C -
+bk sfiles -c | bk delta $Q -c -
 bk commit -Y../SCCS/c.ChangeSet $Q || exit 1
 echo OK
 

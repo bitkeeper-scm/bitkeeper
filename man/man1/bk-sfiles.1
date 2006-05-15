@@ -5,9 +5,9 @@
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
 .B bk
-.[OPT] \-r
+.[B] \-r
 .B sfiles
-.[OPT] \-01acCdDeEgGjlnpSuUvxy
+.[B] \-01acCdDeEgGjlnpSuUvxy
 .[OPTreq] \-o file
 .[OPTopt] \-p \fBA\fP|\fBC\fP
 .[ARG] dirs
@@ -21,8 +21,7 @@ of files, you've come to the right place.
 .B bk sfiles 
 without any arguments finds all s.files in or below the current working
 directory.  This is what
-.B bk\ \-r\ \c
-.ARG command
+.Qreq "bk\ \-r\ " command
 uses to generate the list of files to feed to 
 .ARG command .
 .LP
@@ -36,11 +35,11 @@ with both kinds of files if you do.
 .LP
 If you want a one pass with different sorts of files listed, look at
 the 
-.B \-e/E/v
+.Q \-e/E/v
 options.
-.TP 12
+.TP \fB\-p[A|C]\fPnn
 .B \-0
-Use a null character (instead of a newline) to seperate each filename
+Use a null character (instead of a newline) to separate each filename
 printed.  This is to useful with 
 .BR "GNU xargs -0" .
 .tp
@@ -60,11 +59,11 @@ and other attributes are used to speed scanning.
 The acceptible clock skew can be configured, see
 .I clock_skew
 in
-.B bk help config-etc.
+.BR "bk help config-etc" .
 .tp
 .B \-C
 Identical to 
-.B \-c
+.Q \-c
 except the file timestamps are not trusted.
 .tp
 .B \-d
@@ -75,11 +74,11 @@ List directories with no (or empty) SCCS subdirs.
 .tp
 .B \-e
 Shorthand for 
-.B \-dDGjluvxy
+.Q \-dDGjluvx
 .tp
 .B \-E
 Shorthand for 
-.B \-cdDGjlnuvxyp
+.Q \-cdDGjlnuvxp
 .tp
 .B \-g
 List the gfile name, not the sfile name.
@@ -97,33 +96,37 @@ List locked files (p.file and/or z.file).
 .B \-n
 List s.files that are not in the correct location.  (Must be run from
 repository root,
-.BR "bk\ \-r\ sfiles\ \-n" .)
+.QR "bk\ \-r\ sfiles\ \-n" .)
 .tp
 .OPTreq \-o file
 Send output to
 .ARG file
 and progress information to stdout.
 .tp
-.B \-p
-List s.files with pending deltas.
-.tp
-.B \-pA
-In addition to other output, lists pending deltas that are not part of
-a changeset as
+.Q \-pC
+then list leaves which are not in a changeset as 
 .B file|1.3
+If
+.QR \-pA ,
+that implies 
+.QR \-pC ,
+and 
+lists all revisions, not just the tip.
 .tp
 .B \-pC
 Like
-.B \-pA
+.Q \-pA
 but only the latest delta from each file is shown.
 .tp
 .B \-P
-Like -p, but don't trust the d.file.  Use the s.file for verification
+Like
+.QR \-p ,
+but don't trust the d.file.  Use the s.file for verification
 and create or delete the d.file to match the status of the s.file.
 .tp
 .B \-S
 Produce a summary listing only, typically combined with 
-.BR \-E .
+.QR \-E .
 .tp
 .B \-u
 List unlocked files.
@@ -142,41 +145,41 @@ The information is in a 7 character field, followed by a space,
 then followed by the filename.  Each of the columns are described
 below, with the notation, then the option, then description.
 .RS
-.tp 1.4i
-\f(CBl------\fR\ \ (-l)
+.TP "\f(CBl------\fR\ \ (\fB\-l\fP)n"
+\f(CBl------\fR\ \ (\fB\-l\fP)
 the file is locked
 .tp
-\f(CBu------\fR\ \ (-u)
+\f(CBu------\fR\ \ (\fB\-u\fP)
 the file is unlocked
 .tp
-\f(CB-c-----\fR\ \ (-c)
+\f(CB-c-----\fR\ \ (\fB\-c\fP)
 the file is modified (changed)
 .tp
-\f(CB--p----\fR\ \ (-p)
+\f(CB--p----\fR\ \ (\fB\-p\fP)
 the file has pending deltas
 .tp
-\f(CB---G---\fR\ \ (-G)
+\f(CB---G---\fR\ \ (\fB\-G\fP)
 the file is checked out i.e., "gotten"
 .tp
-\f(CB----n--\fR\ \ (-n)
+\f(CB----n--\fR\ \ (\fB\-n\fP)
 the file is not in its recorded location
 .tp
-\f(CB-----d-\fR\ \ (-d)
+\f(CB-----d-\fR\ \ (\fB\-d\fP)
 a directory containing \*(BK files
 .tp
-\f(CB-----D-\fR\ \ (-D)
+\f(CB-----D-\fR\ \ (\fB\-D\fP\fP)
 a directory containing no \*(BK files
 .tp
-\f(CB------y\fR\ \ (-y)
+\f(CB------y\fR\ \ (\fB\-y\fP)
 the file has saved checkin comments
 .tp
-\f(CBjjjjjjj\fR\ \ (-j)
+\f(CBjjjjjjj\fR\ \ (\fB\-j\fP)
 the file is junk
 .tp
-\f(CBxxxxxxx\fR\ \ (-x)
+\f(CBxxxxxxx\fR\ \ (\fB\-x\fP)
 file is not yet under \*(BK control
 .tp
-\f(CBppppppp\fR\ \ (-pC -pA)
+\f(CBppppppp\fR\ \ (\fB\-pC \fB\-pA\fP)
 this is a pending delta
 .LP
 NOTE: In the future new columns might be added to the end of the

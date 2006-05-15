@@ -17,7 +17,9 @@ point at which each cset occurs (there can be multiple deltas in a file
 all of which belong to one cset; the marker records the cset boundary).
 .LP
 Since csets propagate between repositories, it is important that
-the ChangeSet file is correct.  "Check" is used to make sure that
+the ChangeSet file is correct.
+.B bk check
+is used to make sure that
 nothing has gone wrong (and if it has, it gives you a rough idea of
 how to fix it).
 .LP
@@ -39,7 +41,7 @@ While you can specify a list of files instead of using
 .B bk \-r
 to get all of them, this is not recommended.
 .SH OPTIONS
-.TP .5i
+.TP \-ggg
 .B \-a
 Ensures that the ChangeSet file and the repository
 agree on what files are in the repository;
@@ -49,7 +51,7 @@ in the repository history timeline.
 .B \-c
 Check file and the per delta checksums.  Note that only the most recent
 delta's checksum is checked, see 
-.B "bk checksum"
+.B bk checksum
 to check all of the checksums.
 .tp
 .B \-d
@@ -63,21 +65,21 @@ a option.  This will check to make sure that:
 .RS .51i
 .LI
 the state of the
-.I EOLN_NATIVE
+.B EOLN_NATIVE
 flag in each sfile is consistent with 
 what is set in the
-.I BitKeeper/etc/config file
+.B BitKeeper/etc/config file
 (see
 .BR "bk admin" ).
 .LI
 a bk file on a win32 operating system that has the
-.I EOLN_NATIVE
+.B EOLN_NATIVE
 flag set has the expected line termination: \fB\\r\\n\fR
 .LI
-a file on a unix operating system has the expected line termination: \fB\\n\fR
+a file on a \*(UN operating system has the expected line termination: \fB\\n\fR
 .LI
 a file that does not have the
-.I EOLN_NATIVE
+.B EOLN_NATIVE
 flag is has the expected line termination: \fB\\n\fR
 .RE
 .tp
@@ -94,6 +96,7 @@ This option is on by default if the auto_fix config option is set.
 Fix any fixable errors which have destructive fixes.
 This option will
 remove any old LOD information except the 1.x LOD.
+XXX - we've added other stuff.
 .tp
 .B \-g
 List each missing file as the file's identifier (root key), but do
@@ -118,7 +121,9 @@ command.
 List deltas which are in more than one changeset.
 .tp
 .B \-R
-Only do checks which make sense in the RESYNC dir.
+Only do checks which make sense in the
+.B RESYNC
+dir.
 .tp
 .B \-v
 Be more verbose.  Each

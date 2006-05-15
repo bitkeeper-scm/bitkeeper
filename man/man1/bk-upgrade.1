@@ -4,7 +4,7 @@
 bk upgrade \- Check for new versions of BitKeeper
 .SH SYNOPSIS
 .B bk upgrade
-.[OPT] \-infq
+.[B] \-infq
 .[ARG] srcurl
 .SH DESCRIPTION
 .LP
@@ -38,7 +38,7 @@ If the
 command is unable to determine if the currently installed version of
 \*[BK] has been replaced by a newly released version, then an
 warning message is printed and the upgrade is aborted.  The
-.B \-f
+.Q \-f
 option allow the user to force the new version to be used.
 .tp
 .B \-q
@@ -63,7 +63,7 @@ bk upgrade -nf
 .SH NOTES
 The default URL that \*[BK] uses to search for new updates can be
 overridden with the
-.B upgrade-url
+.Q upgrade-url
 config option.  This will usually be
 used in a corporate environment to prevent users from using a new
 version of \*[BK] that hasn't been certified locally. Usually an

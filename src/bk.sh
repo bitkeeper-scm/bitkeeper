@@ -120,10 +120,6 @@ _templates() {
 	exec bk help templates
 }
 
-_merge-binaries() {
-	exec bk help merge-binaries
-}
-
 _resolving() {
 	exec bk help resolving
 }
@@ -1718,9 +1714,9 @@ __conflict() {
 	' /tmp/awk$$
 	rm -f /tmp/awk$$
 	test "$GFILE" = "$LPN" -a "$GFILE" = "$RPN" || {
-		echo "     GCA path:     $GPN"
-		echo "     Local path:   $LPN"
-		echo "     Remote path:  $RPN"
+		echo "    GCA path:     $GPN"
+		echo "    Local path:   $LPN"
+		echo "    Remote path:  $RPN"
 	}
 }
 

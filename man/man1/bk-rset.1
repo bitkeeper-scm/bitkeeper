@@ -1,14 +1,14 @@
 .so ../bk-macros
 .TH "bk rset" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk rset \- generate a ``release set''
+bk rset \- generate a \*(lqrelease set\*(rq
 .SH SYNOPSIS
 .B bk rset
-.[OPT] \-ah 
+.[B] \-ah 
 .OPTreq \-r rev
 .br
 .B bk rset
-.[OPT] \-ah 
+.[B] \-ah 
 .OPTreq \-l rev
 .SH DESCRIPTION
 .B bk rset
@@ -22,7 +22,7 @@ $ bk rset -r1.201
 ChangeSet|1.200..1.201
 src/gui/fmtool.tcl|1.17..1.21
 .DE
-.BR Note :
+.B Note:
 the first revision listed in the 1.17..1.21
 is the revision of the last delta created before the start of the
 specified changeset.  It is done this way so that programs which
@@ -40,12 +40,12 @@ combined with
 .hy
 to generate traditional patches.
 .SH OPTIONS
-.TP 8
+.TP \-r\*<r1\*>,\*<r2\*>
 .B \-a
 show deleted files which are normally suppressed.
 .tp
 .B \-h
-show the ``historic'' paths of the file as well as the current path.
+show the \*(lqhistoric\*(rq paths of the file as well as the current path.
 This makes the output look like
 .ARGc current
 |\c
@@ -65,7 +65,7 @@ and the pathname of the file at the end of the last changeset.
 list the entire repository as of changeset 
 .ARG rev .
 Mutually exclusive with
-.BR \-r .
+.QR \-r .
 .tp
 .OPTreq \-r rev
 specify the changeset revision to show.  This will show all the files

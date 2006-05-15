@@ -16,8 +16,7 @@ of \*(BK's per file metadata),
 to reinclude one or more changesets which were previously excluded,
 or to exclude one or more changesets.
 .SH OPTIONS
-.if t .TP .7i
-.if n .TP 1i
+.TP \-x\*<list\*>
 .B \-C
 Clear and remark all changeset boundaries in all files under \*(BK control.
 .tp
@@ -38,7 +37,9 @@ Create a new changeset that excludes the changesets in
 .ARG list .
 .SH BUGS
 The 
-.B \-i/\-x
+.Q \-i
+and
+.Q \-x
 options currently work only on file contents, not renames, creates, 
 mode changes, or xflags.
 .SH REMOVED INTERFACES

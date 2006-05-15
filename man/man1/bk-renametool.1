@@ -7,40 +7,55 @@ bk renametool \- graphical tool for finding renames
 .B bk renametool \<
 .ARG filelist
 .SH DESCRIPTION
-The renametool command is a graphical interface for finding renames.
-Renametool is invoked automatically by the 
+The
+.B bk renametool
+command is a graphical interface for finding renames.
+.B bk renametool
+is invoked automatically by the 
 .B bk import
 command when importing patches.
 .LP
 The purpose of this tool is to maintain revision history across file
 renames.  A repository which is managed entirely by \*(BK manages
 revision history across file renames. However, a system managed by
-\*(BK, but which imports traditional patches (i.e. diff \-Nur)
+\*(BK, but which imports traditional patches (i.e.
+.BR "diff \-Nur" ).
 needs some help because patches do not directly record renames.
 .LP
 Conceptually, a patch rename is seen as a deletion of one file and a
 creation of another file.  When \*(BK imports a patch, it detects
 the set of created and deleted files.  These files are then fed to
-renametool where you are given the chance to find files which are
+.B bk renametool
+where you are given the chance to find files which are
 actually renames and record that information.  
 .LP
-When renametool starts up, you are looking at several text windows.
+When
+.B bk renametool
+starts up, you are looking at several text windows.
 The goal is to match up files in the create window with files in the
 delete window.
 You can click on files in each window and the tool will show you diffs.
 When you find two files which you think are the same, you can click the
-rename button to rename them and remove them from the lists.
-The guess button tries to find matches for you, based on the basename of
+.Q rename
+button to rename them and remove them from the lists.
+The
+.Q guess
+button tries to find matches for you, based on the basename of
 the files.
-When you click on a created file, the guess button is invoked once
-automatically.
-You can click on the guess button again to find the next potential match.
+When you click on a created file, the
+.Q guess
+button is invoked once automatically.
+You can click on the
+.Q guess
+button again to find the next potential match.
 .LP
 After you have matched up every file there is to match up, click
-"create all" and "delete all" to finish up any stragglers, and then
-click apply.
+.Q create all
+and
+.Q delete all
+to finish up any stragglers, and then click apply.
 .SH BINDINGS
-.TP 12
+.TP \fBRightArrow\fP
 .B Home
 Scroll both diff windows to the top
 .tp
@@ -66,8 +81,8 @@ Scroll both diff windows to the left
 Scroll both diff windows to the right
 .LP
 These bindings are the same as clicking the associated buttons:
-.TP 1i
-.B space,\ n
+.TP \fBRightArrow\fP
+.B \s-1SPACE\s0,\ n
 Next diff
 .tp
 .B a

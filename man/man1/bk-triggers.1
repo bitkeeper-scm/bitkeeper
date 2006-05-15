@@ -1,10 +1,10 @@
 .so ../bk-macros
 .TH "bk triggers" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk triggers \- using \*(BK event triggers
+bk triggers \- using \*[BK] event triggers
 .SH DESCRIPTION
 .LP
-\*(BK supports a variety of trigger types.   Triggers are simple programs,
+\*[BK] supports a variety of trigger types.   Triggers are simple programs,
 usually shell scripts, which may be called before and/or after certain
 events, such as a commit, pull, push, resolve, etc.
 Triggers can be used for event notification 
@@ -38,16 +38,16 @@ When an event occurs, if there exists a
 file
 .BI BitKeeper/triggers/ event_class
 in the repository root that corresponds to the event, 
-\*(BK will execute that trigger.  For example, if there is
+\*[BK] will execute that trigger.  For example, if there is
 a push from repository B going into repository A 
 and repository A has a file
-.BR BitKeeper/triggers/pre\-incoming ,
+.BR BitKeeper/triggers/pre-incoming ,
 the pre-incoming script will be run before the push event 
 applies to repository A.
 .LP
 All triggers for a particular class must be named with
 the class name and prefix, for example
-.BR pre\-incoming .
+.BR pre-incoming .
 More than one trigger per event class is allowed; each trigger program
 has the class name and prefix and a suffix of your choosing.  The trigger
 programs are sorted and run alphabetically (C locale sort order).  
@@ -64,7 +64,7 @@ TRIGGER CLASSES
 .LP
 There are multiple event classes which may activate triggers: incoming
 events, outgoing events, deltas, commits, tags, and
-.BR "bk fix \-c" .
+.QR "bk fix \-c" .
 The incoming event is broken into
 multiple events: incoming, resolve, and apply.
 .LP
@@ -105,8 +105,8 @@ calling delta command treats it as a successful delta.
 .LI
 Other than 2, all other non-zero exit values will fail the delta.
 .EV pre-fix
-called before a changeset is fixed (see bk-\c
-.BR fix )
+called before a changeset is fixed (see
+.BR bk fix ).
 Typically used as part of a process to record the renaming of changesets in
 bug tracking systems.
 .LI
@@ -121,7 +121,7 @@ non-zero exit status fails the incoming event.
 typically used for locking down a repository.
 .LI
 may be used to fail the event based on remote user, host, directory,
-and/or \*(BK version.
+and/or \*[BK] version.
 .EV post-incoming
 called after the data has been applied to the tree.
 .LI
@@ -190,7 +190,7 @@ and the
 .B RESYNC
 tree in
 .nf
-.BR PENDING/RESYNC\-\fIdate\fP .
+.BR PENDING/RESYNC-\fIdate\fP .
 .hy
 .LI
 typically used to examine changes before taking them.
@@ -212,7 +212,7 @@ and without warning.  It is possible that a malicious person could add
 a trigger which effect a security breach, damage files, etc.  If you are
 operating in a non-trusted environment, you may disable all triggers by
 setting the 
-.SM BK_NO_TRIGGERS
+.V BK_NO_TRIGGERS
 environment variable.  This is the
 safest thing to do but then the trigger functionality is lost.
 .LP
@@ -272,47 +272,44 @@ Information which might be useful to the trigger is passed in environment
 variables.  There are variables for user, host, location, \*[BK] version,
 repository level, amongst others.
 There are two classes of variables, client side variables (\c
-.SM BK_*\c
-)
+.V BK_* )
 and server side variables (\c
-.SM BKD_*\c
-).
+.V BKD_* ).
 The client side variables are associated with the user who
 initiated the command.
 The server side variables, if present, are associated with the \*(lqother\*(rq
 repository.  For example, if a user on host \*(lqto\*(rq does a pull from host
 \*(lqfrom\*(rq, then
-.SM BK_HOST\c
-=to and
-.SM BKD_HOST\c
-=from.
+.V BK_HOST =to
+and
+.V BKD_HOST =from.
 In the list of variables which follow,
-.SM BKD_*
+.V BKD_*
 variables are not present unless the command has two end points,
 such as  a pull, push, or clone.
 The
-.SM BKD_*
+.V BKD_*
 variables are not defined for commit, resolve,
 and apply events.
 In all other cases, the variable is present in all triggers
 unless otherwise stated.
 .LP
-.TP 20
-BK_CSETLIST 
+.TP \fBBK_COMMENTFILE\fP
+.V BK_CSETLIST 
 If set, contains the name of a file which contains the list of changesets
 being received.  Valid in pre-outgoing, post-outgoing,
 pre-resolve, pre-apply, and post-incoming triggers.
 .tp
-BK_CSETS
+.V BK_CSETS
 If set, contains the list of changesets being sent.
 Valid only in pre-outgoing and post-outgoing clone events.
 .tp
-BK_COMMENTFILE
+.V BK_COMMENTFILE
 Location of the comment file for the changeset. Useful when writing
 triggers that need to parse the changeset comments. See example
 below.
 .tp
-BK_EVENT
+.V BK_EVENT
 The event from the point of view of the trigger.  The full list of values
 for this variable is
 commit,
@@ -324,63 +321,68 @@ incoming pull,
 outgoing pull, 
 resolve and apply.
 .tp
-BK_FILE
+.V BK_FILE
 Valid only in the pre-delta trigger, and contains the filename of the file
 about to be delta-ed.
 .tp
-BK_HOST
+.V BK_HOST
 The hostname of the client side host.
 .tp
-BKD_HOST
+.V BKD_HOST
 The hostname of the server side host.
 .tp
-BK_LEVEL
+.V BK_LEVEL
 The \*(lqlevel\*(rq of the client side repository.
 .tp
-BKD_LEVEL
+.V BKD_LEVEL
 The \*(lqlevel\*(rq of the server side repository.
 .tp
-BK_LOCALCSETS
+.V BK_LOCALCSETS
 The number of changesets (and/or tags) which are not
 present in the remote repository but are present in the local repository.
-Note that this variable does not have a BKD_ version because it
+Note that this variable does not have a
+.V BKD_
+version because it
 is valid only on the outgoing end of a pull or a push.
-The other variable is BK_REMOTECSETS.
+The other variable is
+.V BK_REMOTECSETS .
 Both variables are valid in pre-outgoing and post-outgoing
 triggers only.
 .tp
-BK_PATCH
+.V BK_PATCH
 Valid only in the pre-resolve trigger,
 and contains the full pathname of the file containing the patch being resolved.
 .tp
-BK_PENDING
+.V BK_PENDING
 Contains the name of a file which
 contains the list of files with pending deltas.
 Valid only in pre-commit.
 .tp
-BK_REMOTECSETS
+.V BK_REMOTECSETS
 The number of remote changesets (and/or tags) which are not
 present in the local repository but are present in the remote
 repository.
-Goes with BK_LOCALCSETS and is valid only in pre-outgoing and
+Goes with
+.V BK_LOCALCSETS
+and is valid only in pre-outgoing and
 post-outgoing triggers.
 .tp
-BK_ROOT
+.V BK_ROOT
 The full path name to the root of the client side repository.
 .tp
-BKD_ROOT
+.V BKD_ROOT
 The full path name to the root of the server side repository.
 .tp
-BK_SIDE
+.V BK_SIDE
 If the trigger is part of a two-sided operation (i.e., pull, push), then
 this is set to \*(lqserver\*(rq if the trigger is running on the 
 server repository.
-Otherwise this is set to \*(lqclient\*(rq.
+Otherwise this is set to \*(lqclient.\*(rq
 .tp
-BK_STATUS
+.V BK_STATUS
 The status of the command, if known.  Values may include:
 .RS 4
-.TP 16
+.TP LOCAL_WORK
 NOTHING
 There was nothing to pull or push.
 .tp
@@ -388,8 +390,8 @@ FAILED
 The command did not complete because of an error.
 .tp
 DRYRUN
-The command did not complete because it was a \*(lqdry run\*(rq, i.e., a 
-.B bk pull \-n
+The command did not complete because it was a \*(lqdry run,\*(rq i.e., a 
+.Q bk pull \-n
 to look to see if there is anything to pull.
 .tp
 CONFLICTS
@@ -409,46 +411,44 @@ UNKNOWN
 Unknown status.
 .RE
 .tp
-BK_TAG
+.V BK_TAG
 If set, contains the value of the symbolic tag to be added to the repository.
 Valid only in pre-tag trigger.
 .tp
-BK_TAG_REV
+.V BK_TAG_REV
 If set, contains the changeset revision on which the tag will be placed.
 This will be set if and only if the revision is not the most recent revision.
 Valid only in pre-tag trigger.
 .tp
-BK_TIME_T
-The Unix style timestamp of the client side BK binary.
+.V BK_TIME_T
+The \*[UN] style timestamp of the client side \*[BK] binary.
 .tp
-BKD_TIME_T
-The Unix style timestamp of the server side BK binary.
+.V BKD_TIME_T
+The \*[UN] style timestamp of the server side \*[BK] binary.
 .tp
-BK_TRIGGER
+.V BK_TRIGGER
 The basename name of the trigger program.
 .tp
-BK_USER
+.V BK_USER
 The user name of the user who ran the command on the client.
 .tp
-BKD_USER
+.V BKD_USER
 The user name of the user who ran the command on the server.
 .tp
-BK_UTC
-The time stamp of the client side BK binary expressed as YYYYMMDDHHMMSS.
+.V BK_UTC
+The time stamp of the client side \*[BK] binary expressed as YYYYMMDDHHMMSS.
 .tp
-BKD_UTC
-The time stamp of the server side BK binary expressed as YYYYMMDDHHMMSS.
+.V BKD_UTC
+The time stamp of the server side \*[BK] binary expressed as YYYYMMDDHHMMSS.
 .tp
-BK_VERSION
-The version of the client side BK binary as the symbolic name or the UTC.
+.V BK_VERSION
+The version of the client side \*[BK] binary as the symbolic name or the UTC.
 .tp
-BKD_VERSION
-The version of the server side BK binary as the symbolic name or the UTC.
+.V BKD_VERSION
+The version of the server side \*[BK] binary as the symbolic name or the UTC.
 .SS
 .SH "EXAMPLE 1"
 .DS
-.ft CW
-.LP
 #!/bin/sh
 
 # Display info about incoming and outgoing csets.
@@ -514,8 +514,6 @@ fi
 .DE
 .SH "EXAMPLE 2"
 .DS
-.ft CW
-.LP
 #!/bin/sh
 #
 # Using pre-commit trigger to verify changeset comment

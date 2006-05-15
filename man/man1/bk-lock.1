@@ -4,7 +4,7 @@
 bk lock \- lock a repository or show lockers
 .SH SYNOPSIS
 .B bk lock
-.[B] \-l|r|w|L|U
+.[B] \-lrwLU
 .[B] \-q
 .[ARG] directory
 .SH DESCRIPTION
@@ -42,16 +42,16 @@ Wait for the repository to become unlocked (primarily used for testing).
 .SH "EXIT STATUS"
 .LP
 If called with no options or if called with the 
-.B \-l
+.Q \-l
 option, 
 .B bk lock
 exits 1 if the repository has locks and exits 0 if the repository
 has no locks.
 .LP
 If called with either 
-.B \-r 
+.Q \-r 
 or 
-.BR \-w ,
+.QR \-w ,
 .B bk lock
 exits 1 if unable to lock the repository.
 .SH "SEE ALSO"

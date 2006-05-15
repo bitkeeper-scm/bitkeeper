@@ -16,10 +16,10 @@ bk delta -l
 .SH SCCS
 The BSD based \f(CWsccs\fP front end to \*(SC has a number of commands
 emulated by \*(BK:
-.TP 1i
+.TP \fBsccsdiff\fP
 .B add
 Add a file to the repository.  Same as
-.BR bk\ new .
+.BR "bk\ new" .
 .tp
 .B create
 Create (initialize) history files.  Same as
@@ -29,11 +29,11 @@ bk new && bk get
 .tp
 .B deledit
 Follow a check-in with a locked check-out.  Same as
-.BR "bk delta -l" .
+.QR "bk delta \-l" .
 .tp
 .B delget
 Follow a check-in with an unlocked check-out.  Same as
-.BR "bk delta -u" .
+.QR "bk delta \-u" .
 .tp
 .B enter
 Add a new file to the repository.  Same as
@@ -45,9 +45,9 @@ Show differences in revision control files.  Similar to
 .tp
 .B val
 Check s.file structure and time stamps.  Similar to
-.BR "bk admin -hhhh" .
+.QR "bk admin \-hhhh" .
 .SH RCS
-.TP
+.TP \fBsccsdiff\fP
 .B ci
 Check in a file.  Same as
 .BR "bk delta" .

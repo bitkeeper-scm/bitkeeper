@@ -26,11 +26,12 @@ If that ancestor was already tagged with the same tag, the duplicate tag
 is discarded.
 .LP
 After all files have been removed, the identity of the ChangeSet file
-is changed (using bk newroot) and the remaining files are ``reparented''
+is changed (using
+.BR "bk newroot" )
+and the remaining files are \*(lqreparented\*(rq
 to the new ChangeSet file.
 .SH OPTIONS 
-.if t .TP .6i
-.if n .TP 1i
+.TP \-k\*<16hexDigits\*>n
 .B \-S
 Keep the symbol structure intact.
 This is needed when doing a csetprunes over time on
@@ -49,15 +50,20 @@ with a repository created by an earlier csetprune.
 .SH "GENERATING KEYS"
 .LP
 The
-.B prs
+.\" XXX deprecated?
+.B bk prs
 command may be used to generate the list of keys.  
 When generating keys, it is important to realize that looking in a particular
 subdirectory is likely to miss some of the files that you may want to remove.
 The files may have been moved to another directory or they may have been 
-removed (which is really just a move to the BitKeeper/deleted subdirectory).
+removed (which is really just a move to the
+.B BitKeeper/deleted
+subdirectory).
 .LP
 The following command will generate a list of keys for all files originally
-created in the ``junk'' subdirectory, including all deleted and/or moved
+created in the
+.B junk
+subdirectory, including all deleted and/or moved
 files:
 .DS
 bk -r prs -hr+ -nd:ROOTKEY: | grep '|junk/'
@@ -65,7 +71,10 @@ bk -r prs -hr+ -nd:ROOTKEY: | grep '|junk/'
 .SH EXAMPLE
 .LP
 Suppose there is a repository which has two major subsections, called
-``docs'' and ``src'' respectively.  The repository has grown to be too
+.B docs
+and
+.B src
+respectively.  The repository has grown to be too
 large and the goal is to split it in two.  The process for doing so would
 be to 
 .IP (1) 4
@@ -73,7 +82,10 @@ Make sure all users have pushed their changes into the main repository.
 Changes made after the split will have to exported as a traditional patch
 and imported, which loses the checkin comments.
 .IP (2)
-Clone the repository twice, once for each of ``docs'' and ``src''.
+Clone the repository twice, once for each of
+.B docs
+and
+.BR src .
 .IP (3)
 In each new repository, strip out the files which will be in the other
 repository.

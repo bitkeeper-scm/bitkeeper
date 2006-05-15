@@ -4,11 +4,17 @@
 bk unpull \- remove changesets added by bk pull
 .SH SYNOPSIS
 .B bk unpull 
-.[OPT] \-fqs
+.[B] \-fqs
 .SH DESCRIPTION
-bk unpull will remove changesets added by the most recent bk pull command.
-If a local changeset has been committed, bk unpull can not be executed
-until that changeset is removed by bk undo.
+.B bk unpull
+will remove changesets added by the most recent
+.B bk pull
+command.
+If a local changeset has been committed,
+.B bk unpull
+can not be executed
+until that changeset is removed by
+.BR "bk undo" .
 .SH NOTE
 .B bk unpull
 will discard the merge changeset, if any; that is not considered part of

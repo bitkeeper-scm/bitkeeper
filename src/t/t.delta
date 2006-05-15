@@ -501,14 +501,14 @@ test 1.2 = `bk prs -hr+ -nd:I: init3` || {
 }
 echo OK
 
-echo $N Check that delta picks up comments from c.files, -C case ....$NL
+echo $N Check that delta picks up comments from c.files, -c case ....$NL
 cd $HERE/project
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
  ) > SCCS/c.init3
 cp SCCS/c.init3 C
-bk delta -qC init3 > OUT 2>&1 < /dev/null || exit 1
+bk delta -qc init3 > OUT 2>&1 < /dev/null || { cat OUT; exit 1; }
 test -f SCCS/p.init3 && {
 	echo failed to delta
 	exit 1
