@@ -154,6 +154,15 @@ getlogin(void)
 	return (name);
 }
 
+/*
+ * Not sure what to do here, we need admin privs to make this work.
+ */
+int
+sync()
+{
+	return (0);
+}
+
 int
 fsync (int fd)
 {
