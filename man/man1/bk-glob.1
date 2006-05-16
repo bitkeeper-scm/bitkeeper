@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk glob" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk glob" "\*[BKVER]" 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk glob \- demo program to show glob pattern expansion
 .SH SYNOPSIS
@@ -9,8 +9,8 @@ bk glob \- demo program to show glob pattern expansion
 .[ARG] "string string .\|.\|."
 .SH DESCRIPTION
 .LP
-Some \*(BK interfaces use what are called "glob patterns", sometimes known as
-wild cards.
+Some \*(BK interfaces use what are called \*(lqglob patterns,\*(rq
+sometimes known as wild cards.
 Examples include the configuration file, history listing (\fBbk changes\fP), and
 file name expansion (\fBbk files\fR).
 .LP
@@ -18,50 +18,55 @@ This command may be used to match a glob against one or more strings to see
 examples of how the pattern matching works.
 .SH WILDCARD MATCHING
 A string is a glob pattern if it contains one of the characters
-"*",
-"?",
-"[",
+\*(lq*\*(rq,
+\*(lq?\*(rq,
+\*(lq[\*(rq,
 or sometimes
-"=".
-(The last one, "=", is an alias for "*", to avoid shell quoting in many cases.
+\*(lq=\*(rq.
+(The last one, \*(lq=\*(rq, is an alias for \*(lq*\*(rq, to avoid shell quoting in many cases.
 See \s-2CONFIGURATION\s0 below.)
 The glob pattern is used to match one or more strings (or file names), usually
 in a process that takes a glob pattern and a list of possible matches and 
 returns the subset of the list which matches the glob pattern.  Matching
 works as follows:
 .SP
-.tp 8
+.TP \fB[^.\|.\|.]\fP
 .B ?
-Matches any single character (unless "?" is between brackets).
+Matches any single character (unless \*(lq?\*(rq is between brackets).
 .SP
 .tp
 .B *
-Matches any string (unless "*" is between brackets).
+Matches any string (unless \*(lq*\*(rq is between brackets).
 .SP
 .tp
-.B [...]
+.B [\fR.\|.\|.\fP]
 A set of characters enclosed in brackets matches a single character if and
 only if the character is in the set.
 .SP
 .tp
-.B [^...]
-As above but inverts the set.  In other words "[^abc]" matches any character
-except "a", "b", or "c".
+.B [^\fR.\|.\|.\fP]
+As above but inverts the set.
+In other words \*(lq[^abc]\*(rq matches any character except
+\*(lqa\*(rq, \*(lqb\*(rq, or \*(lqc\*(rq.
 .SH CONFIGURATION
 It is possible to disable all use of globs in file name expansion by setting
-the environment variable \f(CBBK_NO_FILE_GLOB\fP to any value.
+the environment variable
+.V BK_NO_FILE_GLOB
+to any value.
 .LP
-Since aliasing "=" for "*" is not a standard feature and it may
-cause problems when processing files with "=" as part of their
+Since aliasing \*(lq=\*(rq for \*(lq*\*(rq is not a standard feature and it may
+cause problems when processing files with \*(lq=\*(rq as part of their
 name, it must be explictly  enabled by setting
-\f(CBBK_GLOB_EQUAL\fP to the value of \f(CBYES\fP.
+.V BK_GLOB_EQUAL
+to the value of
+.BR YES .
 No other value will enable this feature.
 .SH EXAMPLES
 Test a simple pattern match that matches file.c and file.h:
 .DS
 bk glob '*.[ch]' file.c file.h file.1
 .DE
-List all files ending in ".1":
+List all files ending in \*(lq.1\*(rq:
 .DS
 export BK_GLOB_EQUAL=YES
 bk -r files =.1
@@ -70,12 +75,13 @@ See changes in all header files in the current directory:
 .DS
 bk diffs '*.h'
 .DE
-See the revision history for all C/header files with the phrase "sccs" in their
-name:
+See the revision history for all C/header files with the phrase
+\*(lqsccs\*(rq in their name:
 .DS
 bk sccslog '*sccs*.[ch]'
 .DE
-See all changesets which include the phrase "BUGID:" followed by a number:
+See all changesets which include the phrase \*(lqBUGID:\*(rq
+followed by a number:
 .DS
 bk changes '-/BUGID:[123456789]/'
 .DE
