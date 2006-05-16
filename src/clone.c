@@ -520,29 +520,35 @@ void
 rmEmptyDirs(int quiet)
 {
 	FILE	*f;
-	int	n;
-	char	buf[MAXPATH], *p;
+	int	i;
+	char	*p, **dirs = 0;
+	char	buf[MAXPATH];
 
 	unless (quiet) {
 		fprintf(stderr, "Removing any directories left empty ...\n");
 	}
-	do {
-		n = 0;
-		f = popen("bk sfiles -D", "r");
-		while (fnext(buf, f)) {
-			chop(buf);
-			p = strchr(buf, '/');
-			if (p) *p = 0;
+	f = popen("bk sfiles -D", "r");
+	while (fnext(buf, f)) {
+		chomp(buf);
+		if (p = strchr(buf, '/')) {
+			*p = 0;
 			/* skip the directories under <root>/BitKeeper */
 			if (streq("BitKeeper", buf)) continue;
-			if (p) *p = '/';
-			strcat(buf, "/SCCS");
-			rmdir(buf);
-			*strrchr(buf, '/') = 0;
-			if (rmdir(buf) == 0) n++;
+			*p = '/';
 		}
-		pclose(f);
-	} while (n);
+		/* remove any SCCS dir */
+		p = buf + strlen(buf);
+		strcpy(p, "/SCCS");
+		rmdir(buf);
+		*p = 0;
+		dirs = addLine(dirs, strdup(buf));
+	}
+	pclose(f);
+	reverseLines(dirs);	/* nested dirs first */
+	EACH(dirs) {
+		if (emptyDir(dirs[i])) rmdir(dirs[i]);
+	}
+	freeLines(dirs, free);
 }
 
 /*

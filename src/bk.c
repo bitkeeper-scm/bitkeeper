@@ -693,7 +693,8 @@ cmdlog_end(int ret)
 	rmdir_findprocs();
 #endif
 #ifdef	MACOS_VER
-	if (getenv("BK_REGRESSION") && (MACOS_VER != 1040)) {
+	/* XXX - someday maybe they'll fix this and we can enable this check */
+	if (getenv("BK_REGRESSION") && (MACOS_VER < 1030)) {
 #else
 	if (getenv("BK_REGRESSION")) {
 #endif

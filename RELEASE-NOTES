@@ -1,4 +1,16 @@
 ===============================================================================
+Release notes for BitKeeper version 3.2.8.
+
+Minor sustaining release before releasing bk-4.0
+
+- Don't core dump when running the gui installer on Solaris
+- Provide a workaround for /tmp with no execute permission
+- Better error messages when encountering an expired license.
+- Disable SCCS imports (need 4.0 to do those properly)
+- Avoid windows locking issues when cleaning up empty directories.
+- Fix a problem with commits without a tty.
+
+===============================================================================
 Release notes for BitKeeper version 3.2.7b.
 
 This is a maintenance release to fix an installer bug.
