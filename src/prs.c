@@ -38,11 +38,11 @@ log_main(int ac, char **av)
 			if (expand < 2) expand = 2;
 			flags |= PRS_ALL;
 			break;
+		    case 'D':	/* obsoleted in 4.0 */
 		    case 'f':					/* doc */
 		    case 'b': reverse++; break;			/* undoc */
 		    case 'C': cset = optarg; break;		/* doc 2.0 */
 		    case 'd': dspec = optarg; break;		/* doc 2.0 */
-		    case 'D': sf_flags |= SF_DELETES; break;
 		    case 'h': doheader = 0; break;		/* doc 2.0 */
 		    case 'M': expand = 3; break;		/* doc 2.0 */
 		    case 'n': flags |= PRS_LF; break;		/* doc 2.0 */

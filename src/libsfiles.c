@@ -40,15 +40,6 @@ private	pid_t spid;		/* pid of sfiles for -r */
 private	int oksccs(char *s, int flags, int complain);
 private	int sfilesDied(int killit);
 
-private int
-isDelete(char *s)
-{
-	char	*t = strrchr(s, '/');
-
-	t = t ? t+1 : s;
-	return (strneq("s..del-", t, 5));
-}
-
 /*
  * Get the next file and munge it into an s.file name.
  */
@@ -137,12 +128,6 @@ norev:
 		strcpy(buf, name);
 		free(name);
 	}
-	/*
-	 * Don't expand deleted file names unless they asked.
-	 */
-	if (isDelete(buf) && !(flags & SF_DELETES)) {
-		goto again;
-	}
 	if (glob) {
 		char	*f = strrchr(buf, '/');
 
@@ -209,12 +194,6 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			}
 			flist = stdin;
 			flags |= SF_SILENT;
-			/*
-			 * If they specify a file on stdin then they must
-			 * mean it.  (Doing otherwise breaks pending, commit,
-			 * resolve on deleted files.)
-			 */
-			flags |= SF_DELETES;
 			return (sfileNext());
 		}
 		localName2bkName(Av[0], Av[0]);
@@ -238,16 +217,8 @@ sfileFirst(char *cmd, char **Av, int Flags)
 					perror(prefix);
 				}
 			}
-			/*
-			 * If they specify argv then they must mean it.
-			 */
-			flags |= SF_DELETES;
 			return (sfileNext());
 		}
-		/*
-		 * If they specify a file in argv then they must mean it.
-		 */
-		flags |= SF_DELETES;
 		av = Av;
 		ac = 0;
 		return (sfileNext());

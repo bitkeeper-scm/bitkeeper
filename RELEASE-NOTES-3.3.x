@@ -264,6 +264,21 @@ bk glob
 
     There is a glob man page.
 
+All commands:
+    Most commands used to supress the retrieval of files named .del-*
+    because BitKeeper had two ways of deleting files, one which just
+    renamed it to .del-filename and the other that renamed it to
+    `bk root`/BitKeeper/deleted/.del-filename.  The second form has
+    been the default since February 2000.
+
+    What this means is if you do a "bk get" and there is a SCCS/s..del-foo
+    then that will check out .del-foo where before it wouldn't have.  If
+    you have cases like that and want to get rid of them just say
+
+    	bk rm .del-foo
+
+    and it will get moved off to BitKeeper/deleted.
+
 Misc
     BK_DATE_TIME_ZONE useful to force dates for import scripts
 
