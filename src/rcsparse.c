@@ -1267,20 +1267,12 @@ err:		perror("EOF in delta?");
 	advance(m, ';');
 	skip_white(m);
 
-	/* drop owner/group/permissions/hardlinks on the floor */
-	if (strneq("owner", m->where, 5)) {
-		advance(m, ';');
-		skip_white(m);
-	}
-	if (strneq("group", m->where, 5)) {
-		advance(m, ';');
-		skip_white(m);
-	}
-	if (strneq("permissions", m->where, 11)) {
-		advance(m, ';');
-		skip_white(m);
-	}
-	if (strneq("hardlinks", m->where, 9)) {
+	/* drop unused RCS data on the floor */
+	while (strneq("commitid", m->where, 8) ||
+	    strneq("owner", m->where, 5) ||
+	    strneq("group", m->where, 5) ||
+	    strneq("permissions", m->where, 11) ||
+	    strneq("hardlinks", m->where, 9)) {
 		advance(m, ';');
 		skip_white(m);
 	}
