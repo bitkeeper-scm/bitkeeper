@@ -5,7 +5,7 @@ STRING_OBJS = $(patsubst %,string/%, \
 	bcmp.o bcopy.o bzero.o \
 	ffs.o \
 	index.o \
-	memccpy.o memchr.o memcmp.o memcpy.o memmove.o memset.o \
+	memccpy.o memchr.o memcmp.o memcpy.o memmem.o memmove.o memset.o \
 	rindex.o \
 	strcasecmp.o strcat.o strchr.o strcmp.o strcpy.o strcspn.o strdup.o \
 	strlen.o strncat.o strncmp.o strncpy.o strndup.o strpbrk.o strrchr.o \

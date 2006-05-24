@@ -1173,6 +1173,7 @@ void	bk_preSpawnHook(int flags, char *av[]);
 int	upgrade_decrypt(FILE *fin, FILE *fout);
 int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
 int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
+int	inskeys(char *image, char *keys);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));

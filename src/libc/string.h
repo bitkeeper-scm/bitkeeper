@@ -14,6 +14,7 @@ void *memccpy(void *t, const void *f, int c, size_t n);
 void *memchr(const void *s, int c, size_t n);
 int memcmp(const void *s1, const void *s2, size_t n);
 void *memcpy(void *dst, const void *src, size_t n);
+char *memmem(char *data, int datalen, char *sub, int sublen);
 void *memmove(void *dst, const void *src, size_t length);
 void *memset(void *dst0, int c0, size_t length);
 char *rindex(const char *p, int ch);

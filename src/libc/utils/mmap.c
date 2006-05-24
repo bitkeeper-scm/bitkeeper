@@ -25,8 +25,14 @@ mopen(char *file, char *mode)
 	MMAP	*m;
 	int	fd;
 	struct	stat st;
+	int	oflags = O_RDONLY;
+	int	mprot = PROT_READ;
 
-	unless ((fd = open(file, 0, 0)) >= 0) {
+	if (*mode == 'w') {
+		oflags = O_RDWR;
+		mprot |= PROT_WRITE;
+	}
+	unless ((fd = open(file, oflags, 0)) >= 0) {
 		perror(file);
 		return (0);
 	}
@@ -37,7 +43,7 @@ mopen(char *file, char *mode)
 		return (0);
 	}
 	m = calloc(1, sizeof(*m));
-	if (*mode == 'b') m->flags |= MMAP_BIN_MODE;
+	if (strchr(mode, 'b')) m->flags |= MMAP_BIN_MODE;
 	/*
 	 * Allow zero sized mappings,
 	 * and force !regular files to zero sized.
@@ -47,7 +53,7 @@ mopen(char *file, char *mode)
 		close(fd);
 		return (m);
 	}
-	m->mmap = mmap(0, m->size, PROT_READ, MAP_SHARED, fd, 0);
+	m->mmap = mmap(0, m->size, mprot, MAP_SHARED, fd, 0);
 	if (m->mmap == (caddr_t)-1) {
 		perror(file);
 		free(m);
