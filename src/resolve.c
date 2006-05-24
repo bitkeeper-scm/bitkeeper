@@ -105,6 +105,7 @@ usage:			system("bk help -s resolve");
 			exit(1);
 		}
     	}
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	/*
 	 * It is the responsibility of the calling code to set this env
 	 * var to indicate that we were not run standalone, we are called

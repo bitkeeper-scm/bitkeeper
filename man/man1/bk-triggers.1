@@ -41,11 +41,17 @@ the pre-incoming script will be run before the push event
 applies to repository A.
 .LP
 All triggers for a particular class must be named with
-the class name and prefix, for example \f(CWpre-incoming\fP.
+the class name and prefix, for example \f(CWpre-incoming-ok\fP.
 More than one trigger per event class is allowed; each trigger program
 has the class name and prefix and a suffix of your choosing.  The trigger
 programs are sorted and run alphabetically (C locale sort order).  
-Files ending in ~ are ignored to avoid editor backup files.
+.LP
+If there are multiple pre- triggers (see below), the first trigger to
+exit with a non-zero status will halt the trigger processing.
+If there are pre- triggers that must always be run, they must be named
+such that their name will sort earlier than any other trigger of that
+class.
+.LP
 In order
 to avoid name space conflicts, the typical approach is to use the reason
 for the trigger as the suffix, i.e.,
@@ -53,6 +59,7 @@ for the trigger as the suffix, i.e.,
 post-incoming.mail
 post-incoming.regression-test
 .DE
+Files ending in ~ are ignored to avoid editor backup files.
 .SS
 TRIGGER CLASSES
 .LP
