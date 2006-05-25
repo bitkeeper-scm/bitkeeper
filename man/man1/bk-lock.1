@@ -1,18 +1,24 @@
 .so ../bk-macros
-.TH "bk lock" 1 %E% "\*(BC" "\*(UM"
-.\"    =============== Locking a repository ===============
+.TH "bk lock" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk lock \- lock a repository or show lockers
 .SH SYNOPSIS
-.B bk lock [\-l|r|w|L|U] [\-q] [directory]
+.B bk lock
+.[B] \-lrwLU
+.[B] \-q
+.[ARG] directory
 .SH DESCRIPTION
 .LP
-The lock command can be used to lock an entire repository or to list the
+The 
+.B bk lock
+command can be used to lock an entire repository or to list the
 lockers of a repository.  If a directory is specified, the operation
 applies to the repository rooted at that directory.
 .LP
 Since a lock is valid only as long as the locking process exists, when
-placing  lock, the lock command does not exit, it goes to sleep waiting
+placing  lock the 
+.B bk lock
+command does not exit, it goes to sleep waiting
 for a signal.
 .SH OPTIONS
 .TP
@@ -23,10 +29,10 @@ List the lockers of a repository.
 quiet, exit status only
 .tp
 .B \-r
-Add a read lock (non-exclusive).
+Add a read lock (non-exclusive) and sleep until interrupted.
 .tp
 .B \-w
-Add a write lock (exclusive).
+Add a write lock (exclusive) and sleep until interrupted.
 .tp
 .B \-L
 Wait for the repository to become locked (primarily used for testing).
@@ -36,18 +42,19 @@ Wait for the repository to become unlocked (primarily used for testing).
 .SH "EXIT STATUS"
 .LP
 If called with no options or if called with the 
-.B \-l
-option, lock
+.Q \-l
+option, 
+.B bk lock
 exits 1 if the repository has locks and exits 0 if the repository
 has no locks.
 .LP
 If called with either 
-.B \-r 
+.Q \-r 
 or 
-.BR \-w ,
-lock exits 1 if unable to lock the
-repository.
+.QR \-w ,
+.B bk lock
+exits 1 if unable to lock the repository.
 .SH "SEE ALSO"
-.SA unlock 1
+.SA unlock
 .SH CATEGORY
 .B Repository

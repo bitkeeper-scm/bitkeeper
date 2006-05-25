@@ -1,53 +1,53 @@
 .so ../bk-macros
-.TH "bk annotate" 1 %E% "\*(BC" "\*(UM"
+.TH "bk annotate" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk annotate \- provide annotated listing of source files
+bk annotate \- provide annotated listings of one or more source files
 .SH SYNOPSIS
-.B bk annotate [opts] 
+.B bk annotate [\fIoptions\fP] 
 .BKARGS
 .SH DESCRIPTION
 .LP
+\*[BK] annotations add an extra level of information, such as date, author,
+etc., when viewing file contents.
 Annotated listings are useful for deeper understanding of your source
-base, i.e., when you are tracking down bugs.  The annotations add an
-extra level of information which can be useful.
+base, i.e., when you are tracking down bugs.  
 .LP
-\*(BK has two kinds of annotations:  annotations of a specific version,
-and annotations of all (or some) versions (the second form is unique to \*(BK).
+\*(BK has two kinds of annotations: annotations of a specific version of a file,
+and annotations of all (or some) versions of a file
+(the second form is unique to \*(BK).
 .LP
 By default, the
-.B annotate
+.B bk annotate
 command will display a specific version of a file with annotations. 
 The default version of file is the most recent version; the 
-.B \-r
+.Q \-r
 option may be used to specify an alternative version.
 The default annotations are the revision in which the change was
 made and the user who made that change.  
 Selecting any annotations overrides all of the default annotations.
 .LP
 An alternate form of the
-.B annotate
+.B bk annotate
 command may be used to show or annotate either all lines added by
 all versions or just the lines added by one or more versions (in
 the latter case, the whole file is not displayed, instead, only
 the lines which were added in that range of changes are
 displayed.)
 The
-.B \-R
-option turns on this form of annotate.
+.Q \-R
+option turns on this form of annotation.
 Each version of a line is grouped closely with other versions of
 that line.
 This can be useful for determining when a particular feature was
 added or modified.
-This form of annotate has no annotations by default, any desired
-annotations may be specified.
+This form of annotation has no annotations by default; the desired
+annotations must be specified.
 If no annotations are specified then the selected lines are shown
 without annotations.
 .SH OPTIONS
-.if t .TP .7i
-.if n .TP 1.1i
-.if t \fB\-A\fP\fIbdnpru\fP
-.if n \fB\-A\fP\fI<bdnpru>\fP
-Align prefix output in a human readable form.
+.TP \-A\*<bdnpru\*>
+.OPTreq \-A bdnpru
+Align annotations in a human readable form.
 The set of annotations will be followed by a vertical bar and a space
 before the data from each line of the file starts.
 Each annotation is aligned in a column.
@@ -55,7 +55,7 @@ The option argument[s] turn on one
 or more annotations as a prefix to each line.
 The possible annotations are:
 .RS
-.TP 4
+.TP
 .B b
 Prefix each line with the basename of the file.
 .tp
@@ -75,23 +75,23 @@ Prefix each line with the revision of last modification.
 .B u
 Prefix each line the name of the user who last modified it.
 .RE
-.if t .TP .7i
-.if n .TP 1.1i
-.if t \fB\-a\fP\fIbdnpru\fP
-.if n \fB\-a\fP\fI<bdnpru>\fP
+.tp
+.OPTreq \-a bdnpru
 Similar to
-.B \-A 
+.Q \-A 
 but without the alignment (each annotation is followed by a tab).
 .tp
 .OPTreq \-c date
 annotate the latest version before
 .ARG date .
-See bk range for date specs.
+See
+.B bk range
+for information on specifying dates.
 .tp
 .B \-k
 do not expand RCS or SCCS keywords.
 This option is implied by
-.B \-R.
+.QR \-R .
 .tp
 .OPTreq \-r rev
 annotate this version of the file.
@@ -100,23 +100,25 @@ annotate this version of the file.
 annotate the lines added by the specified revision (or range of revisions).
 If
 .ARG rev
-is not specified, that implies all revisions (i.e., 1.0..+).
+is not specified, that implies all revisions (i.e., 1.0..).
 The difference between this option and the previous option
 is that in this case
-.B "bk annotate"
-looks in the lines 
+.B bk annotate
+shows only those lines 
 .B added
-by the specified revision, but in the 
-.B \-r
+by the specified revision[s], but in the 
+.Q \-r
 case, the entire contents of the specified version is annotated.
 .SH NOTES
-The -R form is a replacement for the removed command "sccscat".
+The
+.Q \-R
+form is a replacement for the removed command \*(lqsccscat\*(rq.
 .SH SEE ALSO
 .LP
-.SA get 1
-.SA grep 1
-.SA range 1
-.SA revtool 1
+.SA get
+.SA grep
+.SA range
+.SA revtool
 .\" help://sccscat
 .\" help://bk-sccscat
 .\" help://sccscat.1

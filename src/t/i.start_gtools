@@ -90,7 +90,13 @@ bk fmtool foo foobar out > /dev/null 2>&1
 echo OK
 echo $N Test fm3tool  ...............................................$NL
 cd $HERE/project/src
-bk fm3tool foobar foo foobaz foo_output
+bk edit $Q foobaz
+echo local >> foobaz
+bk delta -ywhatever $Q foobaz
+bk _get -er1.1 $Q foobaz
+echo remote >> foobaz
+bk delta -ywhatever $Q foobaz
+bk fm3tool -l1.2 -r1.1.1.1 foobaz
 echo OK
 echo $N Test csettool ...............................................$NL
 cd $HERE/project/src

@@ -145,8 +145,7 @@ int	checking_rmdir(char *dir);
 #define	SF_NODIREXPAND	0x00000004	/* don't auto expand directories */
 #define	SF_NOHASREVS	0x00000008	/* don't expect |rev on files */
 #define	SF_SILENT	0x00000010	/* sfiles - don't complain */
-#define	SF_DELETES	0x00000020	/* expand files like .del-whatever */
-#define	SF_NOCSET	0x00000040	/* do not autoexpand cset files */
+#define	SF_NOCSET	0x00000020	/* do not autoexpand cset files */
 
 /*
  * Flags (s->state) that indicate the state of a file.  Set up in init.
@@ -948,7 +947,7 @@ int	emptyDir(char *dir);
 int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
-delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
+delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x);
 char	*_relativeName(char *gName, int isDir,
 	    int mustHaveRmarker, int wantRealName, project *proj);
 char	*findBin(void);

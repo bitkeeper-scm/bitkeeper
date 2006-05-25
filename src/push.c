@@ -52,7 +52,12 @@ push_main(int ac, char **av)
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
-				envVar = addLine(envVar, strdup(optarg)); break;
+			unless (strneq("BKU_", optarg, 4)) {
+				fprintf(stderr,
+				    "push: vars must start with BKU_\n");
+				return (1);
+			}
+			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.forceInit = 1; break;	/* undoc? 2.0 */
 		    case 'l': opts.list++; break;		/* doc 2.0 */
@@ -548,7 +553,6 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		goto done;
 	}
 
-	putenv("BK_CMD=push");
 	if (ret == 0){
 		putenv("BK_STATUS=NOTHING");
 		send_end_msg(r, "@NOTHING TO SEND@\n", rev_list, envVar);

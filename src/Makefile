@@ -127,8 +127,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	delta.o diffs.o diffsplit.o dir_gif.o \
-	eula.o export.o file_gif.o files.o \
-	find.o findcset.o findkey.o fix.o fixlod.o \
+	eula.o export.o file_gif.o \
+	find.o findcset.o findkey.o fix.o fixlod.o fixtool.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o getreg.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \

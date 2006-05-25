@@ -1,3 +1,4 @@
+.so ../bk-macros
 .\" patch man page
 .de Id
 .ds Dt \\$4
@@ -8,7 +9,7 @@
 .if t .sp .3
 .if n .sp
 ..
-.TH PATCH 1 \*(Dt GNU
+.TH PATCH "\*[BKVER]" \*(Dt GNU
 .ta 3n
 .SH NAME
 patch \- apply a diff file to an original
@@ -764,7 +765,7 @@ controlling terminal; used to get answers to questions asked of the user
 .SH "SEE ALSO"
 .BR diff (1),
 .BR ed (1),
-.SA gpl 1
+.SA gpl
 .Sp
 Marshall T. Rose and Einar A. Stefferud,
 Proposed Standard for Message Encapsulation,

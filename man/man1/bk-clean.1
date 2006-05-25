@@ -1,35 +1,41 @@
 .so ../bk-macros
-.TH "bk clean" 1 %E% "\*(BC" "\*(UM"
+.TH "bk clean" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk clean \- removes unmodified files
 .SH SYNOPSIS
-.B bk clean [\-pqv]
+.B bk clean
+.[B] \-pqv
 .BKARGS
 .SH DESCRIPTION
 The
-.B clean
+.B bk clean
 command is used to remove (clean) all unmodified files from
 the current directory, regardless of whether they are checked-out in
 a locked or unlocked state.
 .LP
 If there are files which are both locked and modified,
-.B clean
+.B bk clean
 will refuse to delete them and will instead list them as needing a check-in.
 .SH OPTIONS
 .TP
 .B \-p
 Prints diffs for all modified files. The diffs are printed
 in the least readable diff format; you may prefer to use
-.B bk sfiles -c | bk diffs \-u -
+.DS
+bk sfiles -c | bk diffs \-u -
+.DE
 .tp
 .B \-q
 Run quietly.
 .tp
 .B \-v
-Run verbosely.  List files deleted as well as modified files.
+Run verbosely.
+.LP
+XXX - go figure out what each of those means and spell it out.
 .SH SEE ALSO
-.SA unedit 1
-.SA unlock 1
+.SA diffs
+.SA unedit
+.SA unlock
 .SH CATEGORY
 .B Common
 .br

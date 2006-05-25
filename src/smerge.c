@@ -100,7 +100,7 @@ smerge_main(int ac, char **av)
 	}
 
 	mode = MODE_3WAY;
-	while ((c = getopt(ac, av, "234A:a:defghI:npr:s")) != -1) {
+	while ((c = getopt(ac, av, "234A;a;defghI;l;npr;R;s")) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
@@ -128,13 +128,19 @@ smerge_main(int ac, char **av)
 		    case 'e': /* show examples */
 			getMsg("smerge_examples", 0, 0, stdout);
 			return(2);
+		    case 'l':
+			revs[LEFT] = strdup(optarg);
+			break;
+		    case 'r':
+			revs[RIGHT] = strdup(optarg);
+			break;
 #ifdef	SHOW_SEQ
 /*
  * This stuff is removed for 3.0.
  * If it gets added back, there is also a regression for this
  * in the t.smerge history that should be recovered.
  */
-		    case 'r': /* show output in the range <r> */
+		    case 'R': /* show output in the range <r> */
 			if (parse_range(optarg, &start, &end)) {
 				usage();
 				return (2);
@@ -150,15 +156,12 @@ smerge_main(int ac, char **av)
 			return (2);
 		}
 	}
-	if (ac - optind != 3) {
+	unless (av[optind] && !av[optind+1] && revs[LEFT] && revs[RIGHT]) {
 		usage();
 		return (2);
 	}
 	if (fdiff && mode == MODE_3WAY) mode = MODE_GCA;
-
 	file = av[optind];
-	revs[LEFT] = strdup(av[optind + 1]);
-	revs[RIGHT] = strdup(av[optind + 2]);
 	revs[GCA] = find_gca(file, revs[LEFT], revs[RIGHT]);
 
 	for (i = 0; i < 3; i++) {
@@ -344,7 +347,7 @@ find_gca(char *file, char *left, char *right)
 		sccs_free(s);
 		exit(2);
 	}
-	dg = sccs_gca(s, dl, dr, &inc, &exc, 1);
+	dg = sccs_gca(s, dl, dr, &inc, &exc);
 	strcpy(buf, dg->rev);
 	if (inc) {
 		strcat(buf, "+");

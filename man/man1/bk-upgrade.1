@@ -1,16 +1,17 @@
 .so ../bk-macros
-.TH "bk upgrade" 1 %E% "\*(BC" "\*(UM"
+.TH "bk upgrade" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk upgrade \- Check for new versions of BitKeeper
 .SH SYNOPSIS
-.B bk upgrade [\-infq]
-.OPT srcurl
+.B bk upgrade
+.[B] \-infq
+.[ARG] srcurl
 .SH DESCRIPTION
 .LP
 The
-.B upgrade
-command contacts BitMover's servers using HTTP to see if new versions
-of BitKeeper are available for download.  If a new version is found
+.B bk upgrade
+command contacts \*[BM]'s servers using HTTP to see if new versions
+of \*[BK] are available for download.  If a new version is found
 for this platform, then the user is notified.
 .LP
 New versions are fetched from the following location:
@@ -18,27 +19,26 @@ New versions are fetched from the following location:
 http://upgrades.bitkeeper.com/upgrades/
 .DE
 This source URL can be replaced with a different URL or local pathname
-on the command line.  This can be used if BitKeeper cannot make
+on the command line.  This can be used if \*[BK] cannot make
 external HTTP connections to the upgrades site, for local mirrors, or
 special releases.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1i
+.TP
 .B \-i
-If a new version of BitKeeper is found for this platform, then
+If a new version of \*[BK] is found for this platform, then
 download it and run the installer.
 .tp
 .B \-n
-Only fetch the installer for a new version of BitKeeper, but don't
+Only fetch the installer for a new version of \*[BK], but don't
 install it.
 .tp
 .B \-f
 If the
-.B upgrade
+.B bk upgrade
 command is unable to determine if the currently installed version of
-BitKeeper has been replaced by a newly released version, then an
+\*[BK] has been replaced by a newly released version, then an
 warning message is printed and the upgrade is aborted.  The
-.B \-f
+.Q \-f
 option allow the user to force the new version to be used.
 .tp
 .B \-q
@@ -61,14 +61,16 @@ To fetch the latest installer:
 bk upgrade -nf
 .DE
 .SH NOTES
-The default URL that BitKeeper uses to search for new updates can be
-overridden with the 'upgrade-url' config option.  This will usually be
+The default URL that \*[BK] uses to search for new updates can be
+overridden with the
+.Q upgrade-url
+config option.  This will usually be
 used in a corporate environment to prevent users from using a new
-version of BitKeeper that hasn't been certified locally. Usually an
-internal URL will be put in a config file in the BitKeeper install
+version of \*[BK] that hasn't been certified locally. Usually an
+internal URL will be put in a config file in the \*[BK] install
 directory.
 .SH EXIT STATUS
-0 if a new version of BitKeeper is found
+0 if a new version of \*[BK] is found
 .br
 1 if no updates are available.
 .br

@@ -1,7 +1,7 @@
 .so ../bk-macros
-.TH "bk compatibility" 1 %E%  "\*(BC" "\*(UM"
+.TH "bk compatibility" "\*[BKVER]" %E%  "\*(BC" "\*(UM"
 .SH NAME
-bk compatibility \- Commands compatible between other SCM tools and \*(BK
+bk compatibility \- commands compatible between other SCM tools and \*(BK
 .SH DESCRIPTION
 .LP
 \*(BK tries to make a transition from other source control management 
@@ -14,41 +14,52 @@ bk deledit
 bk delta -l
 .DE
 .SH SCCS
-.TP 1i
+The BSD based \f(CWsccs\fP front end to \*(SC has a number of commands
+emulated by \*(BK:
+.TP \fBsccsdiff\fP
 .B add
-Add a file to the repository.  Same as bk delta.
+Add a file to the repository.  Same as
+.BR "bk\ new" .
 .tp
 .B create
-Create (initialize) history files.  Same as bk new && bk get.
-.\" XXX what is it really?  looks like bk get.  not bk new.  what am i missing?
+Create (initialize) history files.  Same as
+.DS
+bk new && bk get
+.DE
 .tp
 .B deledit
-Follow a check-in with a locked check-out.  Same as bk delta -l.
+Follow a check-in with a locked check-out.  Same as
+.QR "bk delta \-l" .
 .tp
 .B delget
-Follow a check-in with an unlocked check-out.  Same as bk delta -u.
+Follow a check-in with an unlocked check-out.  Same as
+.QR "bk delta \-u" .
 .tp
 .B enter
-Add a new file to the repository.  Same as bk new.
+Add a new file to the repository.  Same as
+.BR "bk new" .
 .tp
 .B sccsdiff
-Show differences in revision control files.  Same as bk diffs.
+Show differences in revision control files.  Similar to
+.BR "bk diffs" .
 .tp
 .B val
-Check s.file structure and time stamps.  Same as bk admin -hhhh
-.\" XXX I don't know what admin -hhhh does.
+Check s.file structure and time stamps.  Similar to
+.QR "bk admin \-hhhh" .
 .SH RCS
-.TP
+.TP \fBsccsdiff\fP
 .B ci
-Check in a file.  Same as bk delta.
+Check in a file.  Same as
+.BR "bk delta" .
 .tp
 .B co
-Check out a file.  Same as bk edit.
+Check out a file.  Same as
+.BR "bk get" .
 .SH "SEE ALSO"
-.SA delta 1
+.SA admin
+.SA delta
 .SA diffs
-.SA get 1
-.SA new 1
-.SA admin 1
+.SA get
+.SA new
 .SH CATEGORY
 .B Compat

@@ -6,11 +6,11 @@ BK = ../../src/bk
 	$(BK) get -q $@
 
 # Order is important, this is the order they will show up in helptool.
-SUM=All Overview Common Repository GUI-tools File Admin Licensing Compat Utility 
+SUM=All Overview Common Repository GUI-tools File Admin Compat Utility 
 
 helptxt: summaries
 
-pages: ../bk-macros man2help.pl FORCE
+pages: ../bk-macros ../man.tmac man2help.pl FORCE
 	@$(BK) get -STq ../man1
 	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- `ls ../man1/*.1`
 
