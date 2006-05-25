@@ -30,13 +30,13 @@ upgrade_main(int ac, char **av)
 	int	force = 0;
 	int	obsolete = 0;
 	char	*indexfn, *index;
-	char	*p, *e, *key;
+	char	*p, *e;
 	char	**data = 0;
 	int	len;
 	char	*want_codeline = 0;
 	FILE	*f, *fout;
-	MDBM	*configDB = proj_config(bk_proj);
-	char	*license, *licf;
+	MDBM	*configDB = proj_config(0);
+	char	*licf;
 	int	rc = 2;
 	char	*tmpbin = 0;
 	char	buf[MAXLINE];
