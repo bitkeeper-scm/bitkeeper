@@ -7,6 +7,7 @@ private void    usage(void);
 private void	defaultIgnore(void);
 private void	printField(FILE *out, MDBM *flist, char *field);
 private MDBM	*addField(MDBM *flist, char *field);
+private	int	licensebad(MDBM *m);
 
 int
 setup_main(int ac, char **av)
@@ -132,7 +133,7 @@ again:
 	/* When eula_name() stopped returning bkl on invalid signatures
 	 * we needed this to force a good error message.
 	 */
-	if (mdbm_fetch_str(m, "license") && !getlicense(m, config_path != 0)) {
+	if (mdbm_fetch_str(m, "license") && licensebad(m)) {
 		if (config_path) {
 err:			unlink("BitKeeper/etc/config");
 			unlink("BitKeeper/log/cmd_log");
@@ -356,4 +357,17 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		fprintf(out, "%s: %s\n", kv.key.dptr, kv.val.dptr);
 	}
 	return (0);
+}
+
+private int
+licensebad(MDBM *m)
+{
+	hash	*req = hash_new(HASH_MEMHASH);
+	char	*err;
+	int	rc = !getlicense(m, req);
+
+	if (err = hash_fetchStr(req, "ERROR")) lease_printerr(err);
+	hash_free(req);
+
+	return (rc);
 }

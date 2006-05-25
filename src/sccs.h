@@ -772,6 +772,7 @@ typedef struct {
 	char	*seed;		/* seed saved to validate bkd */
 	int	contentlen;	/* len from http header (recieve only) */
 	pid_t	pid;		/* if pipe, pid of the child */
+	hash	*errs;		/* encode error messages */
 } remote;
 
 #define	ADDR_NFS	0x000	/* host:/path */

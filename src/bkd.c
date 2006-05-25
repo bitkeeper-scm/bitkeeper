@@ -31,7 +31,6 @@ bkd_main(int ac, char **av)
 	 *	unenabled = addLine(unenabled, "dangerous_command");
 	 * Note the freeLines below does not free the line itself.
 	 */
-	unenabled = addLine(unenabled, "license");
 	unenabled = addLine(unenabled, "kill");
 
 	/*

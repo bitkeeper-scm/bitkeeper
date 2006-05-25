@@ -190,6 +190,7 @@ _keyunlink
 _kill
 _lconfig
 lease
+_lease_errtest
 level
 _lines restricted
 _link
