@@ -54,7 +54,7 @@ usage:			system("bk help -s upgrade");
 	if (av[optind]) {
 		if (av[optind+1]) goto usage;
 		urlbase = av[optind];
-	} else if ((p = user_preference("upgrade-url")) && *p) {
+	} else if ((p = proj_configval(0, "upgrade-url")) && *p) {
 		urlbase = p;
 	} else {
 		urlbase = UPGRADEBASE;

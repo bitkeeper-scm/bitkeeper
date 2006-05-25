@@ -216,7 +216,6 @@ parent
 park
 pending
 _popensystem
-preference
 _probekey restricted
 prompt
 prs
@@ -302,7 +301,7 @@ comment => comments	# alias for Linus, remove...
 _fix_lod1 => _fixlod
 info => sinfo
 _mail => mail
-_preference => preference
+_preference => config
 rechksum => checksum
 rev2cset => r2c
 sccsdiff => diffs

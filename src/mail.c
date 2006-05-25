@@ -31,7 +31,7 @@ mail_main(int ac, char **av)
 	if (!av[optind]) goto usage;
 	for (c = optind; av[c]; c++) to = addLine(to, strdup(av[c]));
 
-	unless (url) url = user_preference("mail-proxy");
+	unless (url) url = proj_configval(0, "mail-proxy");
 
 	if (streq(url, "")) {
 		fprintf(stderr, "mail: failed must provide mail proxy\n");

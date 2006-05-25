@@ -1049,7 +1049,6 @@ int	stripdel_markSet(sccs *s, delta *d);
 int     http_connect(remote *r);
 int	http_send(remote *, char *msg, size_t len, size_t ex, char *ua);
 int	http_fetch(remote *r, char *file);
-char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
 void	bktmpenv(void);
 char	*bktmpdir(char *buf, const char *template);

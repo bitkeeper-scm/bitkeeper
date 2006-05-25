@@ -285,6 +285,44 @@ proj_config(project *p)
 	return (p->config);
 }
 
+char *
+proj_configval(project *p, char *key)
+{
+	char	*ret;
+	MDBM	*db = proj_config(p);
+
+	assert(db);
+	unless (ret = mdbm_fetch_str(db, key)) {
+		if (streq(key, "clock_skew")) {
+			ret = mdbm_fetch_str(db, "trust_window");
+		}
+	}
+	return (ret ? ret : "");
+}
+
+int
+proj_configbool(project *p, char *key)
+{
+	char	*val;
+	MDBM	*db = proj_config(p);
+
+	assert(db);
+	val = mdbm_fetch_str(db, key);
+	unless (val) return (0);
+	switch(tolower(*val)) {
+	    case '0': if (streq(val, "0")) return (0);
+	    case '1': if (streq(val, "1")) return (1);
+	    case 'f': if (strieq(val, "false")) return (0);
+	    case 't': if (strieq(val, "true")) return (1);
+	    case 'n': if (strieq(val, "no")) return (0);
+	    case 'y': if (strieq(val, "yes")) return (1);
+	}
+	fprintf(stderr,
+	    "WARNING: config key '%s' should be a boolean.\n"
+	    "Meaning of '%s' unknown. Assuming false.\n", key, val);
+	return (0);
+}
+
 /* Return the root key of the ChangeSet file in the current project. */
 char	*
 proj_rootkey(project *p)

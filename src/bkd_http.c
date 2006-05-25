@@ -377,11 +377,9 @@ printnavbar(void)
 private void
 header(char *path, char *color, char *titlestr, char *headerstr, ...)
 {
-	char buf[MAXPATH];
-	va_list ptr;
-	MDBM *m;
-	char *t;
-	char *fmt = 0;
+	char	*t, *fmt = 0;
+	va_list	ptr;
+	char	buf[MAXPATH];
 
 	out("<html>");
 	out("<head>");
@@ -417,9 +415,8 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 	printnavbar();
 
 	unless (include(path, "header.txt")) {
-		m = proj_config(0);
-		if ((t = mdbm_fetch_str(m, "description")) &&
-		    strlen(t) < 2000) {
+		t = proj_configval(0, "description");
+		if (*t && (strlen(t) < 2000)) {
 			title(fmt, t, color);
 		} else {
 			pwd_title(fmt, color);

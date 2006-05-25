@@ -167,14 +167,9 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 
 	if (check_eoln) {
-		eoln_native = !streq(user_preference("eoln"), "unix"); 
+		eoln_native = !streq(proj_configval(0, "eoln"), "unix");
 	}
-	unless (fix) {
-		if (t = user_preference("autofix")) {
-			/* Note: this sets it to 1, not 2. */
-			fix = streq(t, "yes") || streq(t, "on");
-		}
-	}
+	unless (fix) fix = proj_configbool(0, "autofix");
 
 	want_dfile = exists(DFILE);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);

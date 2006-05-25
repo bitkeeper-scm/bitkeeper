@@ -178,7 +178,7 @@ admin_main(int ac, char **av)
 		goto usage;
 	}
 
-	ckopts = user_preference("checkout");
+	ckopts = proj_configval(0, "checkout");
 	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
 		init_flags |= INIT_FIXSTIME;
 	}

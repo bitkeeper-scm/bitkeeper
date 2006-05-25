@@ -128,7 +128,7 @@ usage:			system("bk help -s resolve");
 		    "Using %s as graphical display\n", gui_displayName());
 	}
 
-	checkout = user_preference("checkout");
+	checkout = proj_configval(0, "checkout");
 	if (strieq(checkout, "edit")) {
 		default_getFlags = GET_EDIT;
 	} else if (strieq(checkout, "get")) {
@@ -2544,7 +2544,7 @@ err:			unapply(save);
 		    "resolve: running consistency check, please wait...\n");
 	}
 
-	if (strieq("yes", user_preference("partial_check"))) {
+	if (proj_configbool(0, "partial_check")) {
 		fflush(save); /*  important */
 		ret = run_check(APPLIED, 0, opts->quiet);
 	} else {

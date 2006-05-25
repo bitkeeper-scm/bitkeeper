@@ -87,10 +87,10 @@ echo $N Check that checkout:get works ...............................$NL
 cd $HERE/project/BitKeeper/etc
 bk edit $Q config
 echo "checkout:get" >> config
-bk delta $Q -ycheckout config
+bk delta $Q -ycheckout config || exit 1
 bk commit $Q -ycheckout
 cd $HERE
-bk clone $Q -l project checkout
+bk clone $Q -l project checkout || exit 1
 test -f checkout/src/'F!O#O$ B%A^R&RR(R)RR' || {
 	echo failed to check out user file in src
 	exit 1
@@ -133,7 +133,7 @@ test -d trigger/BitKeeper/readers && {
 echo OK
 
 echo $N Check that clone -l -r works ................................$NL
-bk clone $Q -l -r1.1 $HERE/project $HERE/undo
+bk clone $Q -l -r1.1 $HERE/project $HERE/undo || exit 1
 cd $HERE/undo || exit 1
 REV=`bk prs -hr+ -d:I: ChangeSet`
 test X$REV = X1.1 || {

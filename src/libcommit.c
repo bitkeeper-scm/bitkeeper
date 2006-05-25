@@ -51,19 +51,6 @@ get(char *path, int flags, char *output)
 	return (ret ? -1 : 0);
 }
 
-char *
-package_name(void)
-{
-	MDBM	*m;
-	char	*name;
-
-	m = proj_config(0);
-	unless (name = mdbm_fetch_str(m, "description")) {
-		return ("");
-	}
-	return (name);
-}
-
 void
 status(int verbose, FILE *f)
 {

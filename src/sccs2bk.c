@@ -62,7 +62,7 @@ usage:			system("bk help -s sccs2bk");
 
 	unless (csetkey) goto usage;
 
-	putenv("BK_CONFIG=checkout:none");
+	putenv("BK_CONFIG=checkout:none!");
 	for (name = sfileFirst("sccs2bk", &av[optind], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
