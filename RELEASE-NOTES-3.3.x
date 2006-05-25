@@ -235,6 +235,29 @@ bk glob
 
     There is a glob man page.
 
+Triggers
+    Remote trigger output format has been changed so that you may see the
+    trigger which caused the output.  The new format is
+
+    >> Trigger "<trigger name>" (exit status was <non-zero>)
+    trigger output line 1
+    trigger output line 2
+    ...
+
+    and it repeats for all triggers.
+
+    The trigger system has been reworked to ensure that all trigger output
+    is sent to stderr (before remote output went to stderr and local may
+    or may not have gone to stderr, it depended on the trigger writer).
+
+    Triggers which silently exited non-zero now always produce a warning.
+
+    Triggers which exit zero but produced output may now be consistently
+    held silent with the -q option (for pull, push, clone, resolve).
+
+    As triggers are run, the trigger name will be displayed in the diffs
+    window of citool (this helps people know which triggers are long running).
+
 Misc
     BK_DATE_TIME_ZONE useful to force dates for import scripts
 

@@ -56,6 +56,8 @@ commit_main(int ac, char **av)
 		}
 	}
 
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+
 	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find root directory\n");
 		return (1);

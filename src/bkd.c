@@ -127,6 +127,7 @@ bkd_main(int ac, char **av)
 		}
 		if (check) return (0);
 		safe_putenv("BKD_PORT=%d", port);
+		if (Opts.logfile) safe_putenv("_BKD_LOGFILE=%s", Opts.logfile);
 		bkd_server(ac, av);
 		exit(1);
 		/* NOTREACHED */
