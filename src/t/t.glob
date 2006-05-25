@@ -88,8 +88,8 @@ echo OK
 
 # ============================================================================
 
-BK_GLOB_TRANSLATE_EQUAL=YES
-export BK_GLOB_TRANSLATE_EQUAL
+BK_GLOB_EQUAL=YES
+export BK_GLOB_EQUAL
 
 echo $N Create a file named \"=.c\" ...................................$NL
 echo equal > '=.c'
@@ -151,12 +151,12 @@ echo OK
 }
 
 # ============================================================================
-BK_GLOB_TRANSLATE_EQUAL=NO
-export BK_GLOB_TRANSLATE_EQUAL
+BK_GLOB_EQUAL=NO
+export BK_GLOB_EQUAL
 
 echo $N Make sure we can disable = as an alias for \* ................$NL
 cd `bk root`/src
-BK_GLOB_TRANSLATE_EQUAL=NO bk gfiles =.c > GOT
+BK_GLOB_EQUAL=NO bk gfiles =.c > GOT
 cat > WANT <<EOF
 =.c
 EOF
@@ -226,7 +226,7 @@ echo OK
 
 echo $N Make sure we can enable = as an alias for \* .................$NL
 cd `bk root`/src
-BK_GLOB_TRANSLATE_EQUAL=YES bk gfiles =.c | bk _sort > GOT
+BK_GLOB_EQUAL=YES bk gfiles =.c | bk _sort > GOT
 cat > WANT <<EOF
 *.c
 =.c

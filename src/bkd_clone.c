@@ -14,7 +14,7 @@ cmd_clone(int ac, char **av)
 {
 	int	c, rc;
 	int	gzip = 0, delay = -1;
-	char 	*t, *p, *rev = 0;
+	char 	*p, *rev = 0;
 
 	if (sendServerInfoBlock(0)) {
 		drain();
@@ -27,10 +27,7 @@ cmd_clone(int ac, char **av)
 		return (1);
 	}
 #ifndef	WIN32
-	if ((t = user_preference("bufferclone")) &&
-	    (strieq(t, "yes") || streq(t, "1"))) {
-		Opts.buffer_clone = 1;
-	}
+	if (proj_configbool(0, "bufferclone")) Opts.buffer_clone = 1;
 #endif
 	while ((c = getopt(ac, av, "qr|w|z|")) != -1) {
 		switch (c) {

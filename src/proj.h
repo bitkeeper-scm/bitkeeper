@@ -8,6 +8,8 @@ u32		proj_bklbits(project *p);
 int		proj_cd2root(void);
 int		proj_chdir(char *newdir);
 MDBM*		proj_config(project *p);
+char*		proj_configval(project *p, char *key);
+int		proj_configbool(project *p, char *key);
 char*		proj_cwd(void);
 void		proj_free(project *p);
 int		proj_isCaseFoldingFS(project *p);

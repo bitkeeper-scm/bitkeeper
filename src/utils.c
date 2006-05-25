@@ -574,16 +574,33 @@ send_file(remote *r, char *file, int extra)
 	return (rc);
 }
 
+/*
+ * Skip to the end of a http header.  This is called in both the bkd
+ * and the client so it processes both request and response headers.
+ */
 int
 skip_http_hdr(remote *r)
 {
+	char	*p;
+	int	line = 0;
 	char	buf[1024];
 
 	r->contentlen = -1;
 
 	while (getline2(r, buf, sizeof(buf)) >= 0) {
+		if ((line == 0) && strneq(buf, "HTTP/", 5)) {
+			/* detect response header and handle errs */
+			unless (p = strchr(buf, ' ')) return (-1);
+			unless (atoi(p+1) == 200) {
+				if (r->errs) {
+					lease_mkerror(r->errs, "http-err", buf);
+				}
+				return (-1);
+			}
+		}
 		sscanf(buf, "Content-Length: %d", &r->contentlen);
 		if (buf[0] == 0) return (0); /*ok */
+		++line;
 	}
 	return (-1); /* failed */
 }
@@ -854,11 +871,7 @@ getServerInfoBlock(remote *r)
 		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
 
 		if (strneq(buf, "ERROR-", 6)) {
-			if (streq(buf+6, "no-bkd-lease")) {
-				notice("bkd-err-nolease", 0, "-e");
-			} else {
-				notice("bkd-err-other", buf+6, "-e");
-			}
+			lease_printerr(buf+6);
 			return (1);
 		}
 		if (strneq(buf, "PROTOCOL", 8)) {
@@ -900,15 +913,18 @@ getServerInfoBlock(remote *r)
 int
 sendServerInfoBlock(int is_rclone)
 {
-	char	*repoid, *p;
+	char	*repoid, *p, *errs = 0;
 	char	buf[MAXPATH];
 
 	out("@SERVER INFO@\n");
 	unless (is_rclone) {
-		if (p = lease_bkl(0, 0)) {
+		if (p = lease_bkl(0, &errs)) {
 			free(p);
 		} else {
-			out("ERROR-no-bkd-lease\n");
+			assert(errs);
+			out("ERROR-");
+			out(errs);
+			out("\n");
 			return (1);
 		}
 	}
@@ -995,18 +1011,19 @@ bkd_hasFeature(char *f)
 	return (has_feature("BKD", f));
 }
 
+/*
+ * Generate a http response header from a bkd back to the client.
+ */
 void
 http_hdr(void)
 {
 	static	int done = 0;
 
 	if (done) return; /* do not send it twice */
-	if (getenv("BKD_DAEMON")) {
-		out("HTTP/1.0 200 OK\r\n");
-		out("Server: BitKeeper daemon ");
-		out(bk_vers);
-		out("\r\n");
-	}
+	out("HTTP/1.0 200 OK\r\n");
+	out("Server: BitKeeper daemon ");
+	out(bk_vers);
+	out("\r\n");
 	out("Cache-Control: no-cache\r\n");	/* for http 1.1 */
 	out("Pragma: no-cache\r\n");		/* for http 1.0 */
 	out("Content-type: text/plain\r\n");

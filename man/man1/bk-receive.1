@@ -1,31 +1,28 @@
 .so ../bk-macros
-.TH "bk receive" 1 %E% "\*(BC" "\*(UM"
-.\"    =============== Receiving BitKeeper patches ===============
+.TH "bk receive" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk receive \- receive a \*(BK patch
 .SH SYNOPSIS
-.Bc bk receive [
-.ARGc takepatch_options
-.Bc ] [
-.ARGc repository
-.B ]
+.B bk receive 
+.[ARG] takepatch_options
+.[ARG] repository
 .SH DESCRIPTION
-.LP
-Use when applying a \*(BK patch you received via email.  You can
-take a \*(BK patch and pipe the whole email message through
-bk receive. Headers and footers are stripped automatically.
+Use when applying a \*[BK] patch you received via email.  You can
+take a \*[BK] patch and pipe the whole email message through
+.BR "bk receive" .
+Headers and footers are stripped automatically.
 .LP
 When someone sends you a patch with the following command:
 .DS
 $ bk send -rbeta.. you@your.host.com
 .DE
-.LP
 You will receive an email message which needs to be saved so you can
-feed it to the receive command:
+feed it to the
+.B bk receive
+command:
 .DS
 $ bk receive ~/mypackage < patch
 .DE
-.LP
 Many Unix email programs (pine, elm, etc) will allow you to pipe a
 message directly to a program. For example, when you are reading a
 message in pine, you can hit the '|' key, and you will be prompted
@@ -33,11 +30,14 @@ with a message asking you for a program name where the message should
 be piped.
 .LP
 Remember that if you are getting the very first patch, you need to create
-a new repository by adding the "\-i" option.  \*(BK does not create
-repositories by default.
+a new repository by adding the 
+.B \-i
+option.
+\*(BK does not create repositories by default.
 .LP
-Specifying the repository is optional; if it is unspecified, receive tries
-to use the current working directory.
+Specifying the repository is optional; if it is unspecified,
+.B bk receive
+tries to use the current working directory.
 .LP
 Patches may be wrapped. If they are you will see something like
 .DS
@@ -45,15 +45,27 @@ Patches may be wrapped. If they are you will see something like
 .DE
 near the top of the patch.  \*(BK knows how to unwrap patches which
 it wrapped.  We currently support only uuencoded wrappers, but it is
-trivial to create different ones, see bk help wrap for more information.
+trivial to create different ones, see
+.B bk wrap
+for more information.
 .LP
-Once a patch is run through bk receive, run bk resolve to apply 
-the changes.
+Once a patch is run through
+.BR "bk receive" ,
+run
+.B bk resolve
+to apply the changes.
 .SH OPTIONS
-.LP
-All options are sent to takepatch.  With no options, takepatch is
-completely silent.  If you want to see the progress reports you
-see with bk pull, add \-vv to the options.
+All options are passed through to
+.BR "bk takepatch" . 
+With no options,
+.B bk takepatch
+is completely silent.
+If you want to see the progress reports you
+see with
+.BR "bk pull" ,
+add
+.B \-vv
+to the options.
 .TP
 .B \-a
 Apply the changes (call 
@@ -66,10 +78,12 @@ Do not accept conflicts with this patch.
 Initial patch, create a new repository.
 .tp
 .B \-v
-Verbose level, more is more verbose, \-vv is suggested.
+Verbose level, more is more verbose,
+.B \-vv
+is suggested.
 .SH "SEE ALSO"
-.SA send 1
-.SA takepatch 1
-.SA wrap 1
+.SA send
+.SA takepatch
+.SA wrap
 .SH CATEGORY
 .B File

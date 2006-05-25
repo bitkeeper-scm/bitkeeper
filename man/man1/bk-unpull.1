@@ -1,14 +1,25 @@
 .so ../bk-macros
-.TH "bk unpull" 1 %E% "\*(BC" "\*(UM"
+.TH "bk unpull" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk unpull \- remove changesets added by bk pull
 .SH SYNOPSIS
-.B bk unpull [-fqs]
+.B bk unpull 
+.[B] \-fqs
 .SH DESCRIPTION
-.LP
-bk unpull will remove changesets added by the most recent bk pull command.
-If a local changeset has been committed, bk unpull can not be executed
-until that changeset is removed by bk undo.
+.B bk unpull
+will remove changesets added by the most recent
+.B bk pull
+command.
+If a local changeset has been committed,
+.B bk unpull
+can not be executed
+until that changeset is removed by
+.BR "bk undo" .
+.SH NOTE
+.B bk unpull
+will discard the merge changeset, if any; that is not considered part of
+the local work in this context.
+If the merge was complicated it is advisable to save a patch.
 .SH OPTIONS
 .TP
 .B \-f
@@ -19,9 +30,9 @@ Quiet mode.
 .tp
 .B \-s
 Do not save a backup patch in
-.IR BitKeeper/tmp/unpull.patch .
+.BR BitKeeper/tmp/unpull.patch .
 .SH "SEE ALSO"
-.SA pull 1
-.SA undo 1
+.SA pull
+.SA undo
 .SH CATEGORY
 .B Repository

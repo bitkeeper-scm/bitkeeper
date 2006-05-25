@@ -129,8 +129,13 @@ c_merge(resolve *rs)
 		ret = sys("bk", rs->opts->mergeprog,
 		    n->local, n->gca, n->remote, rs->s->gfile, SYS);
 	} else {
-		ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", rs->s->gfile,
-		    rs->revs->local, rs->revs->remote, SYS);
+		char	*l = aprintf("-l%s", rs->revs->local);
+		char	*r = aprintf("-r%s", rs->revs->remote);
+
+		ret = sysio(0,
+		    rs->s->gfile, 0, "bk", "smerge", l, r, rs->s->gfile, SYS);
+		free(l);
+		free(r);
 	}
 	sccs_restart(rs->s);
 	unless (WIFEXITED(ret)) {
@@ -181,17 +186,15 @@ int
 c_revtool(resolve *rs)
 {
 	char    *av[7];
-	char    revs[3][MAXREV+2];
+	char    revs[2][MAXREV+2];
 	int     i;
 
 	av[i=0] = "bk";
 	av[++i] = "revtool";
 	sprintf(revs[0], "-l%s", rs->revs->local);
 	sprintf(revs[1], "-r%s", rs->revs->remote);
-	sprintf(revs[2], "-G%s", rs->revs->gca);
 	av[++i] = revs[0];
 	av[++i] = revs[1];
-	av[++i] = revs[2];
 	av[++i] = rs->s->gfile;
 	av[++i] = 0;
 	spawnvp(_P_NOWAIT, "bk", av);
@@ -204,16 +207,20 @@ c_fm3tool(resolve *rs)
 {
 	char	*av[10];
 	int	i;
+	char	*revs[2];
 
 	av[i=0] = "bk";
 	av[++i] = "fm3tool";
 	av[++i] = "-f";
-	av[++i] = rs->revs->local;
-	av[++i] = rs->revs->gca;
-	av[++i] = rs->revs->remote;
+	revs[0] = aprintf("-l%s", rs->revs->local);
+	revs[1] = aprintf("-r%s", rs->revs->remote);
+	av[++i] = revs[0];
+	av[++i] = revs[1];
 	av[++i] = rs->s->gfile;
 	av[++i] = 0;
 	spawnvp(_P_NOWAIT, "bk", av);
+	free(revs[0]);
+	free(revs[1]);
 	return (0);
 }
 

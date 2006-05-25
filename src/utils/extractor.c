@@ -217,18 +217,18 @@ main(int ac, char **av)
 
 			unlink("bitkeeper/config");
 			cd(pwd);
-			sprintf(buf, "bk _preference|bk _eula -v 2>"DEVNULL_WR);
+			sprintf(buf, "bk config |bk _eula -v 2>"DEVNULL_WR);
 			f = popen(buf, "r");
 			while (fgets(buf, sizeof(buf), f)) {
 				chomp(buf);
 				if (strneq("license:", buf, 8)) {
 					config = malloc(2000);
-					sprintf(config, "BK_CONFIG=%s;", buf);
+					sprintf(config, "BK_CONFIG=%s!;", buf);
 					continue;
 				}
 				unless (strneq("licsign", buf, 7)) continue;
 				strcat(config, buf);
-				strcat(config, ";");
+				strcat(config, "!;");
 			}
 			pclose(f);
 			if (config) putenv(config);

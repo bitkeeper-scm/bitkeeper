@@ -27,7 +27,7 @@ undo_main(int ac,  char **av)
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
 	char	*qflag = "";
-	char	*cmd = 0, *rev = 0;
+	char	*cmd = 0, *rev = 0, *t;
 	int	aflg = 0, quiet = 0, verbose = 0;
 	char	**fileList = 0;
 	char	*checkfiles;	/* filename of list of files to check */
@@ -58,8 +58,9 @@ usage:			system("bk help -s undo");
 	unless (rev) goto usage;
 
 	/* do checkouts? */
-	if (strieq(user_preference("checkout"), "get")) checkout = 1;
-	if (strieq(user_preference("checkout"), "edit")) checkout = 2;
+	t = proj_configval(0, "checkout");
+	if (strieq(t, "get")) checkout = 1;
+	if (strieq(t, "edit")) checkout = 2;
 
 	save_log_markers();
 	unlink(BACKUP_SFIO); /* remove old backup file */
@@ -151,7 +152,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	rmEmptyDirs(quiet);
 	if (!quiet && save) printf("Backup patch left in \"%s\".\n", patch);
 	unless (quiet) printf("Running consistency check...\n");
-	if (strieq("yes", user_preference("partial_check"))) {
+	if (proj_configbool(0, "partial_check")) {
 		rc = run_check(checkfiles, 1, quiet);
 	} else {
 		rc = run_check(0, 1, quiet);

@@ -135,8 +135,8 @@ import() {
 
 	# disable checkout:edit mode
 	if [ X"$BK_CONFIG" != X ]
-	then	BK_CONFIG="$BK_CONFIG;checkout:none"
-	else	BK_CONFIG="checkout:none"
+	then	BK_CONFIG="$BK_CONFIG;checkout:none!"
+	else	BK_CONFIG="checkout:none!"
 	fi
 	export BK_CONFIG
 	if [ ! -d "$2" ]
@@ -623,7 +623,7 @@ import_patch() {
 
 	msg Done.
 	unset BK_CONFIG
-	o=`bk _preference checkout`
+	o=`bk config checkout`
 	test X$o = Xedit && bk -Ur edit -q
 	test X$o = Xget && bk -Ur get -qS
 	Done 0
@@ -804,7 +804,7 @@ import_finish () {
 	fi
 	bk -r check -ac
 	unset BK_CONFIG
-	o=`bk _preference checkout`
+	o=`bk config checkout`
 	test X$o = Xedit && bk -Ur edit -q
 	test X$o = Xget && bk -Ur get -qS
 }
@@ -833,16 +833,16 @@ validate_SCCS () {
 	# need lease from BK repo to do ops in the SCCS repo
 	# only need for one operation, as then we'll have a lease
 	mycd "$TO"
-	val=`bk _preference license`
+	val=`bk config license`
 	test "$val" || {
 		echo "No commercial license found."
 		Done 1
 	}
-	SCFG="license:$val"
+	SCFG="license:$val!"
 	for key in licsign1 licsign2 licsign3
 	do
-		val=`bk _preference $key`
-		test "$val" && SCFG="$SCFG;$key:$val"
+		val=`bk config $key`
+		test "$val" && SCFG="$SCFG;$key:$val!"
 	done
 	mycd "$FROM"
 	grep 'SCCS/s\.' ${TMP}import$$ | \

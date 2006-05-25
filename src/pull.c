@@ -80,6 +80,7 @@ pull_main(int ac, char **av)
 			return(1);
 		}
 	}
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 
 	/*
 	 * Get pull parent(s)

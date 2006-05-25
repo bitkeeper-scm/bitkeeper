@@ -74,7 +74,7 @@ private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
-private	int	parseConfig(char *buf, char **k, char **v);
+private	void	parseConfig(char *buf, MDBM *db);
 private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
@@ -3642,12 +3642,15 @@ filterMatch(char *buf)
 }
 
 private int
-parseConfig(char *buf, char **kp, char **vp)
+parseConfigKV(char *buf, char **kp, char **vp)
 {
 	char	*p;
 
+	/* trim leading whitespace */
 	while (*buf && isspace(*buf)) buf++;
 	if ((*buf == '#') || !strchr(buf, ':')) return (0);
+
+	/* handle leading filters */
 	if (*buf == '[') {
 		unless (buf = filterMatch(buf)) return (0);
 		for (buf++; isspace(*buf); buf++);
@@ -3662,10 +3665,9 @@ parseConfig(char *buf, char **kp, char **vp)
 		for (p++; *p != ':'; p++);
 	}
 	for (*p++ = 0; isspace(*p); p++);
-	unless (*p) return (0);
 
 	if (streq(buf, "logging_ok")) return (0);
-		
+
 	*kp = buf;
 	*vp = p;
 
@@ -3678,29 +3680,38 @@ parseConfig(char *buf, char **kp, char **vp)
 	return (1);
 }
 
+/*
+ * parse a line of config file and insert that line into 'db'.
+ */
+private void
+parseConfig(char *buf, MDBM *db)
+{
+	char	*k, *v, *p;
+	int	flags = MDBM_INSERT;
+
+	unless (parseConfigKV(buf, &k, &v)) return;
+	if (*v) {
+		for (p = v; p[1]; p++);	/* find end of value */
+		if (*p == '!') {
+			*p = 0;
+			flags = MDBM_REPLACE;
+		}
+	}
+	mdbm_store_str(db, k, v, flags);
+}
+
 private void
 config2mdbm(MDBM *db, char *config)
 {
-	char 	*k, *v, buf[MAXLINE];
 	FILE	*f;
+	char 	buf[MAXLINE];
 
 	if (f = fopen(config, "rt")) {
-		while (fnext(buf, f)) {
-			int	flags = MDBM_INSERT;
-			char	*p;
-			unless (parseConfig(buf, &k, &v)) continue;
-			p = v;
-			while (p[1]) ++p;
-			if (*p == '!') {
-				*p = 0;
-				flags = MDBM_REPLACE;
-			}
-			mdbm_store_str(db, k, v, flags);
-		}
+		while (fnext(buf, f)) parseConfig(buf, db);
 		fclose(f);
 	}
 }
- 
+
 /*
  * Load config file into a MDBM DB
  */
@@ -3809,32 +3820,11 @@ loadEnvConfig(MDBM *db)
 	char	*env = getenv("BK_CONFIG");
 	char	**values;
 	int	i;
-	char	*k, *v, *p;
 
 	unless (env) return (db);
 	assert(db);
 	values = splitLine(env, ";", 0);
-	EACH (values) {
-		p = values[i];
-
-		while (isspace(*p)) p++;
-		k = p;
-		while (*p != ':' && *p) p++;
-		unless (*p) continue;
-		v = p+1;
-		while (isspace(p[-1])) --p;
-		*p = 0;
-		while (isspace(*v)) ++v;
-		if (*v) {
-			p = v;
-			while (*p) ++p;
-			while (isspace(p[-1])) --p;
-			*p = 0;
-			mdbm_store_str(db, k, v, MDBM_REPLACE);
-		} else {
-			mdbm_delete_str(db, k);
-		}
-	}
+	EACH (values) parseConfig(values[i], db);
 	freeLines(values, free);
 	return (db);
 }
@@ -3858,6 +3848,138 @@ loadConfig(char *root, int forcelocal)
 	loadBinConfig(db);
 	loadEnvConfig(db);
 	return (db);
+}
+
+private void
+printconfig(char *file, MDBM *db, MDBM *cfg)
+{
+	kvpair	kv;
+	int	i, j;
+	char	*k, *v1, *v2, *t;
+	char	**keys = 0;
+	FILE	*f;
+	MDBM	*freeme = 0;
+	char 	buf[MAXLINE];
+
+	unless (db) {
+		db = freeme = mdbm_mem();
+
+		if (f = fopen(file, "rt")) {
+			while (fnext(buf, f)) {
+				unless (parseConfigKV(buf, &k, &v1)) continue;
+				mdbm_store_str(db, k, v1, MDBM_INSERT);
+			}
+			fclose(f);
+		}
+	}
+	EACH_KV(db) keys = addLine(keys, kv.key.dptr);
+	sortLines(keys, 0);
+	printf("%s:\n", file);
+	EACH(keys) {
+		k = keys[i];
+		v1 = mdbm_fetch_str(db, k);
+		assert(v1);
+		v2 = mdbm_fetch_str(cfg, k);
+		assert(v2);
+
+		/* mark the config that doesn't get used */
+		if (!*v1 || streq(v1, "!")) {
+			if (*v2) putchar('#');
+		} else {
+			t = strdup(v1);
+			j = strlen(t) - 1;
+			if (t[j] == '!') t[j] = 0;
+			unless (streq(t, v2)) putchar('#');
+			free(t);
+		}
+		printf("\t%s:", k);
+		if ((j = 15 - strlen(k)) > 0) {
+			while (j--) putchar(' ');
+		}
+		puts(v1);
+	}
+	freeLines(keys, 0);
+	putchar('\n');
+	if (freeme) mdbm_close(freeme);
+}
+
+int
+config_main(int ac, char **av)
+{
+	char	*root, *file, *env;
+	MDBM	*db;
+	MDBM	*cfg = proj_config(0);
+	char	**values = 0;
+	char	*k, *v;
+	int	i, c;
+	int	verbose = 0;
+	kvpair	kv;
+
+	while ((c = getopt(ac, av, "v")) != -1) {
+		switch (c) {
+		    case 'v': verbose = 1; break;
+		    default:
+usage:			sys("bk", "help", "-s", "config", SYS);
+			return (1);
+		}
+	}
+	unless (verbose) {
+		if (av[optind+1]) goto usage;
+		if (av[optind]) {
+			if (v = mdbm_fetch_str(cfg, av[optind])) {
+				puts(v);
+				return (0);
+			} else {
+				return (1);
+			}
+		}
+		EACH_KV(cfg) {
+			values = addLine(values,
+			    aprintf("%s: %s", kv.key.dptr, kv.val.dptr));
+		}
+		sortLines(values, 0);
+		EACH(values) puts(values[i]);
+		freeLines(values, free);
+		return (0);
+	}
+	if (av[optind]) goto usage;
+
+	if (root = proj_root(0)) {
+		file = aprintf("%s/BitKeeper/etc/config", root);
+		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
+		printconfig(file, 0, cfg);
+		free(file);
+	}
+
+	/* dotbk config */
+	file = aprintf("%s/config", getDotBk());
+	printconfig(file, 0, cfg);
+	free(file);
+
+	unless (getenv("BK_REGRESSION")) {
+		/* global config */
+		file = aprintf("%s/BitKeeper/etc/config", globalroot());
+		printconfig(file, 0, cfg);
+		free(file);
+	}
+
+	/* bin config */
+	file = aprintf("%s/config", bin);
+	printconfig(file, 0, cfg);
+	free(file);
+
+	/* $BK_CONFIG */
+	db = mdbm_mem();
+	if (env = getenv("BK_CONFIG")) values = splitLine(env, ";", 0);
+	EACH (values) {
+		unless (parseConfigKV(values[i], &k, &v)) continue;
+		mdbm_store_str(db, k, v, MDBM_REPLACE);
+	}
+	freeLines(values, free);
+	printconfig("$BK_CONFIG", db, cfg);
+	mdbm_close(db);
+
+	return (0);
 }
 
 /*
@@ -6004,7 +6126,8 @@ getKey(MDBM *DB, char *buf, int flags)
 	if (len) strncpy(data, buf, len);
 	data[len] = 0;
 	if (flags & DB_CONFIG) {
-		unless (parseConfig(data, &k, &v)) return (1);
+		parseConfig(data, DB);
+		return (1);
 	} else if (flags & DB_KEYFORMAT) {
 		k = data;
 		if (v = separator(data)) *v++ = 0;
@@ -8423,7 +8546,7 @@ sccs_clean(sccs *s, u32 flags)
 		free_pfile(&pf);
 		return (1);
 	}
-		
+
 	unless (d = findrev(s, pf.oldrev)) {
 		free_pfile(&pf);
 		return (1);
@@ -8548,22 +8671,20 @@ int
 sccs_unedit(sccs *s, u32 flags)
 {
 	int	modified = 0;
-	MDBM	*config = proj_config(s->proj);
 	int	getFlags = 0;
 	char	*co;
 	int	currState = 0;
-	
+
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
 		verbose((stderr, "%s not under SCCS control\n", s->gfile));
 		return (0);
 	}
 
-	if (config && (co = mdbm_fetch_str(config, "checkout"))) {
-		if (strieq(co, "get")) getFlags = GET_EXPAND;
-		if (strieq(co, "edit")) getFlags = GET_EDIT;
-	}
-	
+	co = proj_configval(s->proj, "checkout");
+	if (strieq(co, "get")) getFlags = GET_EXPAND;
+	if (strieq(co, "edit")) getFlags = GET_EDIT;
+
 	if (HAS_PFILE(s)) {
 		if (!getFlags || sccs_hasDiffs(s, flags, 1)) modified = 1;
 		currState = GET_EDIT;
@@ -13114,6 +13235,11 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	case KW_D_: /* D_ */ {
+		/* date */
+		KW("Dy"); fc('-'); KW("Dm"); fc('-'); KW("Dd");
+		return (strVal);
+	}
 
 	case KW_T: /* T */ {
 		/* Time */
@@ -13766,13 +13892,44 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		
 	}
 
-	case KW_DEFAULT: /* DEFAULT */ {
+	case KW_DEFAULT: /* DEFAULT */
+	case KW_PRS: /* PRS */ {
 		KW("DSUMMARY");
 		fc('\n');
 		KW("PATH");
 		KW("SYMBOLS");
 		KW("COMMENTS");
 		fs("------------------------------------------------\n");
+		return (strVal);
+	}
+
+	case KW_LOG: /* LOG */ {
+		int	i;
+		symbol	*sym;
+
+		fs(d->pathname);
+		fc(' ');
+		KW("REV");
+		fs("\n  ");
+		KW("D_"); fc(' '); KW("T"); KW("TZ");
+		fc(' '); KW("P");
+		if (d->hostname) { fc('@'); fs(d->hostname); } fc(' ');
+		fc('+'); KW("LI"); fs(" -"); KW("LI"); fc('\n');
+		EACH(d->comments) {
+			fs("  ");
+			fs(d->comments[i]);
+			fc('\n');
+		}
+		fc('\n');
+		unless (d && (d->flags & D_SYMBOLS)) return (strVal);
+		for (i = 0, sym = s->symbols; sym; sym = sym->next) {
+			unless (sym->d == d) continue;
+			i++;
+			fs("  TAG: ");
+			fs(sym->symname);
+			fc('\n');
+		}
+		fc('\n');
 		return (strVal);
 	}
 
@@ -15372,9 +15529,9 @@ bad:	if (lmap) free (lmap);
 }
 
 delta	*
-sccs_gca(sccs *s, delta *left, delta *right, char **inc, char **exc, int best)
+sccs_gca(sccs *s, delta *left, delta *right, char **inc, char **exc)
 {
-	return (best ? gca3(s, left, right, inc, exc) : gca(left, right));
+	return (gca3(s, left, right, inc, exc));
 }
 
 /*
@@ -16391,12 +16548,11 @@ generateTimestampDB(project *p)
 	/* want to use the timestamp database */
 	FILE	*f = 0;
 	hash	*db;
-	char	*tsname, *skew;
+	char	*tsname;
 	char	buf[MAXLINE];
 
 	assert(p);
-	skew = mdbm_fetch_str(proj_config(p), "clock_skew");
-	if (skew && streq(skew, "off")) return (0);
+	if (streq(proj_configval(p, "clock_skew"), "off")) return (0);
 
 	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
 	db = hash_new(HASH_MEMHASH);
@@ -16506,21 +16662,18 @@ updateTimestampDB(sccs *s, hash *timestamps, int different)
 	tsrec	ts;
 	struct	stat	sb;
 	char	*relpath;
-	const time_t one_week = 7 * 24 * 60 * 60;   /* # of seconds in week */
 	static time_t clock_skew = 0;
 	time_t now;
 
 	assert(s->proj);
 	unless (clock_skew) {
-		char	*p;
+		char	*p = proj_configval(s->proj, "check_skew");
 
-		p = mdbm_fetch_str(proj_config(s->proj), "clock_skew");
-		if (!p || streq(p, "off")) {
+		if (streq(p, "off")) {
 			clock_skew = 2147483647;  /* 2^31 */
 		} else {
-			clock_skew = strtoul(p, 0, 0);
+			unless (clock_skew = strtoul(p, 0,0)) clock_skew = WEEK;
 		}
-		unless (clock_skew) clock_skew = one_week;
 	}
 
 	relpath = proj_relpath(s->proj, s->gfile);

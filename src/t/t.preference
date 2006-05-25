@@ -352,7 +352,7 @@ test -f ../SCCS/p.ChangeSet && {
 	echo ChangeSet file shouldn\'t be locked
 	exit 1
 }
-bk sfiles -c | bk delta $Q -C -
+bk sfiles -c | bk delta $Q -c -
 bk commit -Y../SCCS/c.ChangeSet $Q || exit 1
 echo OK
 
@@ -405,17 +405,127 @@ echo OK
 echo $N verify BK_CONFIG overrides ..................................$NL
 BK_CONFIG='foo:bar; foo2  : bar2 ; checkout : delete '
 export BK_CONFIG
-test X`bk _preference foo`X != XbarX && {
+test X`bk config foo`X != XbarX && {
 	echo override failed
 	exit 1
 }
-test X`bk _preference foo2`X != Xbar2X && {
+test X`bk config foo2`X != Xbar2X && {
 	echo override failed
 	exit 1
 }
-test X`bk _preference checkout`X != XdeleteX && {
+test X`bk config checkout`X != XdeleteX && {
 	echo override failed
 	exit 1
 }
 unset BK_CONFIG
+echo OK
+
+echo $N check that config overriding and bk config -v work ..........$NL
+
+bk edit $Q BitKeeper/etc/config || exit 1
+perl -e '@a=("", "!", "foo", "foo!"); for $i (0..3) { for $j (0..3) { print "t$i$j:$a[$i]\n" } }' >> BitKeeper/etc/config
+perl -e '@a=("", "!", "bar", "bar!"); for $i (0..3) { for $j (0..3) { print "t$i$j:$a[$j]\n" } }' > `bk dotbk`/config
+bk config -v | perl -ne 'print if /^#?\tt/' > GOT
+
+cat <<EOF > WANT
+	t00:            
+	t01:            
+	t02:            
+#	t03:            
+	t10:            !
+	t11:            !
+	t12:            !
+#	t13:            !
+	t20:            foo
+#	t21:            foo
+	t22:            foo
+#	t23:            foo
+	t30:            foo!
+#	t31:            foo!
+	t32:            foo!
+#	t33:            foo!
+	t00:            
+	t01:            !
+#	t02:            bar
+	t03:            bar!
+	t10:            
+	t11:            !
+#	t12:            bar
+	t13:            bar!
+#	t20:            
+	t21:            !
+#	t22:            bar
+	t23:            bar!
+#	t30:            
+	t31:            !
+#	t32:            bar
+	t33:            bar!
+EOF
+cmpfiles WANT GOT
+
+bk config | grep '^t' > GOT
+cat <<EOF > WANT
+t00: 
+t01: 
+t02: 
+t03: bar
+t10: 
+t11: 
+t12: 
+t13: bar
+t20: foo
+t21: 
+t22: foo
+t23: bar
+t30: foo
+t31: 
+t32: foo
+t33: bar
+EOF
+cmpfiles WANT GOT
+
+echo OK
+
+echo $N check again with BK_CONFIG ..................................$NL
+rm `bk dotbk`/config
+BK_CONFIG=`perl -e '@a=("", "!", "bar", "bar!"); for $i (0..3) { for $j (0..3) { push(@b, "t$i$j:$a[$j]") } } print join(";", @b)'`
+export BK_CONFIG
+bk config -v | perl -ne 'print if /^#?\tt/ || /\$/' > GOT
+
+cat <<EOF > WANT
+	t00:            
+	t01:            
+	t02:            
+#	t03:            
+	t10:            !
+	t11:            !
+	t12:            !
+#	t13:            !
+	t20:            foo
+#	t21:            foo
+	t22:            foo
+#	t23:            foo
+	t30:            foo!
+#	t31:            foo!
+	t32:            foo!
+#	t33:            foo!
+\$BK_CONFIG:
+	t00:            
+	t01:            !
+#	t02:            bar
+	t03:            bar!
+	t10:            
+	t11:            !
+#	t12:            bar
+	t13:            bar!
+#	t20:            
+	t21:            !
+#	t22:            bar
+	t23:            bar!
+#	t30:            
+	t31:            !
+#	t32:            bar
+	t33:            bar!
+EOF
+cmpfiles WANT GOT
 echo OK

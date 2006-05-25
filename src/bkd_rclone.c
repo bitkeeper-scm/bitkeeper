@@ -193,7 +193,7 @@ cmd_rclone_part2(int ac, char **av)
 		run_check(0, 1, !opts.verbose);
 	}
 
-	p = user_preference("checkout");
+	p = proj_configval(0, "checkout");
 	if (strieq(p, "edit")) {
 		sys("bk", "-Ur", "edit", "-q", SYS);
 	} else if (strieq(p, "get")) {

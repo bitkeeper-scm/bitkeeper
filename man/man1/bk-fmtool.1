@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk fmtool" 1 %E% "\*(BC" "\*(UM"
+.TH "bk fmtool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    =============== BitKeeper 2-way File Merge Tool ===============
 .SH NAME
 bk fmtool \- \*(BK side-by-side merge tool
@@ -12,50 +12,57 @@ bk fmtool \- \*(BK side-by-side merge tool
 .ARG merged_file
 .SH DESCRIPTION
 .LP
-fmtool is a side-by-side merge tool used for resolving differences
+.B bk fmtool
+is a side-by-side merge tool used for resolving differences
 between two different versions of a file.
 .LP
-If fmtool is started without arguments, use the Open button to select
-the files that you wish to merge.
+If
+.B bk fmtool
+is started without arguments, use the
+.Q Open
+button to select the files that you wish to merge.
 .LP
 When fmtool is started, there are three main windows, the ``local''
 window on the left, the ``remote'' window on the right, and the ``merge''
 window on the bottom.  When doing a
-.B bk
-.BR pull ,
+.BR "bk pull" ,
 your repository
 is considered local and the other one is considered remote, and \*(BK
 arranges to have the local version of the file on the left side and the
 remote version on the right.
 .LP
 Merging is done as follows: 
-.TP
-.B 1.
-fmtool starts scanning both files from the top until difference
+.LI
+.B bk fmtool
+starts scanning both files from the top until difference
 are found. The identical work (i.e the work up to the point where
 the differences are found) is put in the merge window.
-.tp
-.B 2.
+.LI
 The user selects whether the remote or local version of the change
-will be used by clicking the "Use Left" or "Use Right" buttons.
+will be used by clicking the
+.Q Use Left
+or
+.Q Use Right
+buttons.
 When the user picks a version, the changes are placed in the merge
 window.
-.tp
-.B 3.
+.LI
 Repeat the process until all changes are placed in the merge file.
 .LP
 The changes in the merge window are colored so that it is easy to tell whether
 the work was from the local or remote file.
 .LP
-Each merge may be undone either by clicking the "Undo" button or using
+Each merge may be undone either by clicking the
+.Q Undo
+button or using
 the keys listed below.  The undo works all the way to the start of
 the file.
 .LP
 If you need to make adjustments to the merge, you can edit the work in 
-the merge window.  The merge window is a simple editor - move the mouse
+the merge window.  The merge window is a simple editor \- move the mouse
 pointer where you want to make the changes and start typing.
 .SH BINDINGS
-.TP 20
+.TP \fBControl-Right-Arrow\fP
 .B Control-LeftArrow
 Use the diff in the left window.
 .tp
@@ -69,7 +76,8 @@ Skip the current diff, using neither.
 Undo the last choice.
 .tp
 .B Control-q
-Exit from fmtool.
+Exit from
+.BR "bk fmtool" .
 .tp
 .B Alt-UpArrow
 Grow the merge window and shrink the diff windows.
@@ -79,8 +87,7 @@ Grow the diff windows and shrink the merge window.
 .LP
 The following keys operate on the set of windows that have the focus.
 Click in the diff windows or the merge window to set the focus.
-.if t .TP .9i
-.if n .TP 10
+.TP \fBControl-Right-Arrow\fP
 .B PageDown
 Scroll the diffs or the merge window up one screen.
 .tp

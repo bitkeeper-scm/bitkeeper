@@ -285,6 +285,44 @@ proj_config(project *p)
 	return (p->config);
 }
 
+char *
+proj_configval(project *p, char *key)
+{
+	char	*ret;
+	MDBM	*db = proj_config(p);
+
+	assert(db);
+	unless (ret = mdbm_fetch_str(db, key)) {
+		if (streq(key, "clock_skew")) {
+			ret = mdbm_fetch_str(db, "trust_window");
+		}
+	}
+	return (ret ? ret : "");
+}
+
+int
+proj_configbool(project *p, char *key)
+{
+	char	*val;
+	MDBM	*db = proj_config(p);
+
+	assert(db);
+	val = mdbm_fetch_str(db, key);
+	unless (val) return (0);
+	switch(tolower(*val)) {
+	    case '0': if (streq(val, "0")) return (0);
+	    case '1': if (streq(val, "1")) return (1);
+	    case 'f': if (strieq(val, "false")) return (0);
+	    case 't': if (strieq(val, "true")) return (1);
+	    case 'n': if (strieq(val, "no")) return (0);
+	    case 'y': if (strieq(val, "yes")) return (1);
+	}
+	fprintf(stderr,
+	    "WARNING: config key '%s' should be a boolean.\n"
+	    "Meaning of '%s' unknown. Assuming false.\n", key, val);
+	return (0);
+}
+
 /* Return the root key of the ChangeSet file in the current project. */
 char	*
 proj_rootkey(project *p)
@@ -443,18 +481,27 @@ proj_fakenew(void)
 	return (ret);
 }
 
-/* return the BKL.... key as a string */
+/*
+ * return the BKL.... key as a string
+ * Will exit(1) on failure, so the function always returns a key.
+ */
 char *
 proj_bkl(project *p)
 {
+	char	*errs = 0;
+
 	/*
 	 * If we are outside of any repository then we must get a
 	 * licence from the global config or a license server.
 	 */
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->bkl) p->bkl = lease_bkl(p, 1);
-	unless (p->bkl) exit(1);
+	if (p->bkl) return (p->bkl);
+	unless (p->bkl = lease_bkl(p, &errs)) {
+		assert(errs);
+		lease_printerr(errs);
+		exit(1);
+	}
 	return (p->bkl);
 }
 

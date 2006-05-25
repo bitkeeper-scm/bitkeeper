@@ -1,11 +1,13 @@
 .so ../bk-macros
-.TH "bk HOWTO-bkd" 1 %E% "\*(BC" "\*(UM"
+.TH "HOWTO-bkd" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    =================== Quickstart Admin =========================
 .SH NAME
 bk Howto-bkd \- howto: configuring the \*(BK daemon
 .SH DESCRIPTION
 .LP
-Here are examples how to configure the bk daemon for both read-only and
+Here are examples how to configure the
+.B bk
+daemon for both read-only and
 read-write modes.  We show how to export all repositories on a system
 in both read-write and read-only mode and we show how to export only
 a specific repository in read-write and read-only mode.
@@ -36,8 +38,8 @@ bk bkd -d -p4444 -xcd -xpush
 bk clone bk://host.domain:6666 ~/my_tree
 .DE
 .SH "SEE ALSO"
-.SA bkd 1
-.SA Howto 1
+.SA bkd
+.SA Howto
 .SH CATEGORY
 .B Overview
 .\" help://qs_admin

@@ -4,17 +4,32 @@ bk upgrade -fl bk 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "commercial customers only" ERR || {
+grep -q "valid commercial license" ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
 }
 echo OK
-	
-echo $N Test upgrade to get status from bitmover ....................$NL
+
+echo $N Test upgrade with just a commercial lease ...................$NL
 commercial junk2
 bk lease renew
 cd $HERE
+bk upgrade -fl bk 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q "valid commercial license" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Test upgrade to get status from bitmover ....................$NL
+cd junk2
+bk lease flush -a
 bk upgrade -fl bk >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
@@ -73,6 +88,10 @@ grep -q "BitKeeper version .* is available for download." OUT || {
 }
 echo OK
 
+
+# create a fake upgrade area and test the whole encryption decryption loop
+
+
 # This should also skip Windows machines...
 test -d /home/bk/bk-3.2.x || exit 0
 
@@ -82,18 +101,33 @@ test -x /usr/bin/perl || exit 0
 # Not everyone has strict.pm or understands it.
 test `uname` = NetBSD && exit 0
 
-# create a fake upgrade area and test the whole encryption decryption loop
 echo $N Create local upgrade area ...................................$NL
+cd $HERE
+BK_INSTALLER=
+# Lazy way to get full path
+find `bk bin`/utils -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
+test `wc -l < /tmp/bk$$` -gt 1 && {
+	echo skipped
+	$RM -f /tmp/bk$$
+	exit 0
+}
+test `wc -l < /tmp/bk$$` -eq 1 && BK_INSTALLER=`cat /tmp/bk$$`
+$RM /tmp/bk$$
+test X$BK_INSTALLER = X && {
+	echo skipped
+	exit 0
+}
+
 OS=`bk version | sed -n 's/.* for //p'`
 INSTALLER=bk-3.2.6-$OS.bin
-cp "$BIN1" $INSTALLER
+cp $BK_INSTALLER $INSTALLER
 mkdir upgrade
 cd upgrade
 bk get $Q -S `bk bin`/build_upgrade_index.pl `bk bin`/bkupgrade.key
 `bk bin`/build_upgrade_index.pl ../$INSTALLER
 cd ..
-mv $INSTALLER ORIG
-bk upgrade -nfl bk `pwd`/upgrade >OUT || {
+cd junk2
+bk upgrade -nfl bk $HERE/upgrade >OUT || {
 	echo should not have failed
 	exit 1
 }
@@ -101,7 +135,10 @@ grep -q "New version of bk fetched: $INSTALLER" OUT || {
 	echo Wrong message
 	exit 1
 }
-cmp -s $INSTALLER ORIG || {
+cp ../$INSTALLER foo
+bk _preference | grep ^lic > foo.keys
+bk inskeys foo foo.keys >/dev/null || exit 1
+cmp -s $INSTALLER foo-licensed || {
 	echo wrong file
 	exit 1
 }

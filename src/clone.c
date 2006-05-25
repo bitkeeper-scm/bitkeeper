@@ -62,6 +62,7 @@ clone_main(int ac, char **av)
 			usage();
 	    	}
 	}
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	unless (av[optind]) usage();
 	localName2bkName(av[optind], av[optind]);
 	if (av[optind + 1]) localName2bkName(av[optind + 1], av[optind + 1]);
@@ -338,7 +339,7 @@ clone2(opts opts, remote *r)
 		unless (opts.quiet) {
 			fprintf(stderr, "Running consistency check ...\n");
 		}
-		if (strieq("yes", user_preference("partial_check"))) {
+		if (proj_configbool(0, "partial_check")) {
 			rc = run_check(checkfiles, 1, opts.quiet);
 		} else {
 			rc = run_check(0, 1, opts.quiet);
@@ -352,7 +353,7 @@ clone2(opts opts, remote *r)
 	unlink(checkfiles);
 	free(checkfiles);
 
-	p = user_preference("checkout");
+	p = proj_configval(0, "checkout");
 	if (strieq(p, "edit")) {
 		unless (opts.quiet) fprintf(stderr, "Checking out files...\n");
 		sys("bk", "-Ur", "edit", "-Tq", SYS);

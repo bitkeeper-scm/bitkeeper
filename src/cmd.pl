@@ -155,12 +155,12 @@ _eula
 _exists
 export
 f2csets
-files
 _find
 _findcset
 findkey
 fix
 _fixlod
+fixtool
 gca
 get
 gethelp
@@ -182,6 +182,7 @@ _httpfetch
 hostme
 idcache
 isascii
+inskeys
 key2rev
 _key2path
 keycache
@@ -189,12 +190,14 @@ _keyunlink
 _kill
 _lconfig
 lease
+_lease_errtest
 level
 _lines restricted
 _link
 _listkey restricted
 lock
 _locktest
+log
 _logging
 _lstat
 mailsplit
@@ -216,7 +219,6 @@ parent
 park
 pending
 _popensystem
-preference
 _probekey restricted
 prompt
 prs
@@ -302,7 +304,8 @@ comment => comments	# alias for Linus, remove...
 _fix_lod1 => _fixlod
 info => sinfo
 _mail => mail
-_preference => preference
+pager => more
+_preference => config
 rechksum => checksum
 rev2cset => r2c
 sccsdiff => diffs
@@ -344,5 +347,4 @@ patch cprog
 cmp cprog
 diff cprog
 diff3 cprog
-inskeys cprog
 sdiff cprog

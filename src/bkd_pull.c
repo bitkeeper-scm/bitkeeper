@@ -84,7 +84,7 @@ int
 cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
-	int	gzip = 0, dont = 0, verbose = 1, list = 0;
+	int	gzip = 0, dont = 0, verbose = 1, list = 0, triggers_failed = 0;
 	int	rtags, update_only = 0, delay = -1;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
@@ -193,7 +193,7 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	if (trigger(av[0],  "pre")) {
-		rc = 1;
+		triggers_failed = rc = 1;
 		goto done;
 	}
 
@@ -270,9 +270,9 @@ done:	fflush(stdout);
 		unlink(keys);	/* if we copied because they were in /tmp */
 	}
 	/*
-	 * Fire up the post-trigger
+	 * Fire up the post-trigger but only if we didn't fail pre-triggers.
 	 */
-	trigger(av[0], "post");
+	unless (triggers_failed) trigger(av[0], "post");
 	if (delay > 0) sleep(delay);
 	free(keys);
 	return (rc);

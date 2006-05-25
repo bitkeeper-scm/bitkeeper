@@ -5,11 +5,6 @@ eval "exec perl -Ssw $0 $@"
 sub main
 {
 	$ENV{'GROFF_NO_SGR'} = 1;
-	$MAN = "-man";
-        unless (($^O eq "MSWin32") ||
-		system("echo | groff -mgan >/dev/null 2>/dev/null")) {
-                $MAN = "-mgan";
-        }
 
 	# We are trying to generate All.sum and each of the category.sum's.
 	# All we do is put the data in the file.
@@ -40,7 +35,7 @@ sub main
 					open($_, ">>$_.summaries");
 					$cat{$_} = 1;
 				}
-				print $_ "$line\n";
+				print $_ "$line";
 				$_ = <>;
 			}
 		}
@@ -94,7 +89,7 @@ sub summary
 		print F "help://command\n";
 		print F "help://commands\n";
 	}
-	open(G, "groff -rhelpdoc=1 $MAN -P-u -P-b -Tascii < $section.roff |");
+	open(G, "groff -rhelpdoc=1 -I.. -P-u -P-b -Tascii < $section.roff |");
 	$nl = 0;
 	while (<G>) {
 		if (/^$/) {

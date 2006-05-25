@@ -1,13 +1,14 @@
 .so ../bk-macros
-.TH "bk citool" 1 %E% "\*(BC" "\*(UM"
+.TH "bk citool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk citool \- \*(BK graphical check-in tool
 .SH SYNOPSIS
-.Bc bk citool [
+.B bk citool 
+[\c
 .ARG dir
-.B | 
+| 
 .ARGc file_list
-.B ]
+]
 .SH DESCRIPTION
 The
 .B citool
@@ -24,7 +25,8 @@ and have to follow the restrictions imposed by
 .B bk
 .BR sfiles .
 .LP
-Citool has three main windows that are positioned vertically.
+.B bk citool
+has three main windows that are positioned vertically.
 The top window contains the list of files that can be checked in to a
 changeset.  The middle window is used for entering comments about the
 selected file while the bottom window displays different things depending
@@ -35,20 +37,28 @@ shown.
 .LP
 Along the upper right side of the upper two windows are a group
 of buttons. Some of the buttons have different purposes depending
-on what the user is doing.  For example, the Checkin/Commit button
-becomes the Commit button when there are comments for the ChangeSet
-file. Otherwise, the button is the Checkin button which signifies that
-the files will be checked in, but no ChangeSet will be created. The
-Checkin feature is useful when checkpointing files to save state when
-you know you want to make changes that may break things. Other times
-you want to checkpoint when you've created distinct new work and want
-to get back to it in the future.
+on what the user is doing.  For example, the
+.Q Checkin/Commit
+button becomes the
+.Q Commit
+button when there are comments for the ChangeSet file.
+Otherwise, the button is the
+.Q Checkin
+button which signifies that the files will be checked in, but no
+ChangeSet will be created.
+The Checkin feature is useful when checkpointing files to save
+state when you know you want to make changes that may break
+things.
+Other times you want to checkpoint when you've created distinct
+new work and want to get back to it in the future.
 .LP
 Typical usage is to move to each file, add comments, and repeat
-until done. When all files are commented and a comment exists for
-the ChangeSet file, the
-.B commit
-button is pressed to make the changes part of a ChangeSet. Citool's
+until done.
+When all files are commented and a comment exists for the
+ChangeSet file, the
+.Q commit
+button is pressed to make the changes part of a ChangeSet.
+.BR "bk citool" 's
 default behavior is to exit after the commit finishes. However, the
 ci.rescan configuration option forces citool to rescan the repository
 for files that still need to be added to a changeset. This feature is
@@ -62,30 +72,42 @@ from restarting citool multiple times if all files are not added to
 a changeset.
 .LP
 You can move around within the file list by clicking on a file name or using 
-the keyboard accelerators Control-n (next file) and Control-p (previous file).
+the keyboard accelerators
+.B Control-n
+(next file) and
+.B Control-p
+(previous file).
 You may add comments, move around, come back, and update the comments.
 The comments are not applied to the files until 
-.BR [Commit]
+.QR [Commit]
 is clicked.
 .LP
 The question mark icon to the left of the file name denotes files that 
 are not under revision control. To add the new files to the changeset, 
-click on the question mark icon or use the Control-t key to add the file 
+click on the question mark icon or use the
+.B Control-t
+key to add the file 
 to the current changeset.  Clicking on the question mark changes the icon to
 a check mark, indicating that the file will be part of the cset.
 .LP
 Some of the new files might be files that you do not wish to put
 under revision control and having them visible clutters up the file
 window. When a new file is highlighted, the 
-.B Ignore
+.Q Ignore
 button is
-activated on the button bar menu. If you click the ignore button,
-the selected file will be added to the BitKeeper/etc/ignore file
-so that when citool is run again, the selected file will not be
-shown. If you accidentally click ignore on a file that you want, click
-the
-.B Unignore
-button. The \*(BK /etc/ignore file is not updated
+activated on the button bar menu. If you click the
+.Q ignore
+button, the selected file will be added to the
+.B BitKeeper/etc/ignore
+file so that when citool is run again, the
+selected file will not be shown.
+If you accidentally click
+.Q ignore
+on a file that you want, click the
+.Q Unignore
+button. The
+.B BitKeeper/etc/ignore
+file is not updated
 until the changeset is committed. The ignore file is a revision
 controlled file like any other \*(BK file and can be edited with a
 text editor if you want to remove or add files to the ignore list.
@@ -110,7 +132,7 @@ the window).  While this can be done using the mouse and the scrollbar,
 the following keyboard accelerators will work at all times, even when
 typing in the comments window:
 .SH COMMENT TEMPLATES
-.B citool
+.B bk citool
 supports the ability to define a system-wide template to be used
 for the ChangeSet comments. This file is documented in the bk
 templates man page. 
@@ -121,10 +143,10 @@ usual; if the comments are not modified they will be treated
 as if there are no comments. That is, if the ChangeSet comments are
 identical to the template no changeset will be created, as is the
 case when there are no comments in the window and you press the
-checkin button.
+.Q checkin
+button.
 .SH "KEYBOARD BINDINGS"
-.if t .TP 1.2i
-.if n .TP 1.7i
+.TP \fBShift-MouseWheel\fPn
 .B Home
 Scroll to the start of the differences
 .tp
@@ -148,8 +170,7 @@ Scroll the differences 1 screen
 .tp
 .B Shift-MouseWheel
 Scroll the file list window 1 screen
-.if t .TP 1.2i
-.if n .TP 1.7i
+.tp
 .B Control-c
 Copy the contents of the comments window to the cut buffer.
 .tp
@@ -162,8 +183,7 @@ advance to the next file.
 .tp
 .B Middle-Button
 On Unix, this will paste the X11 selection buffer into the comments window.
-.if t .TP 1.2i
-.if n .TP 1.7i
+.tp
 .B Control-n
 Go to the next file
 .tp
@@ -181,12 +201,15 @@ about include/exclude and new files.
 Toggle all new files into or out off the changeset. 
 .tp
 .B Control-Enter
-Do the commit. Same as clicking on the Commit button.
+Do the commit. Same as clicking on the
+.Q Commit
+button.
 .tp
 .B Control-q
-Same as clicking the [Quit] button.
-.if t .TP 1.2i
-.if n .TP 1.7i
+Same as clicking the
+.Q [Quit]
+button.
+.tp
 .B Control-b
 Scroll the differences up 1 screen
 .tp
@@ -208,14 +231,18 @@ Scroll the differences up 1 line
 .LP
 The comments window is a standard TK text widget with word and line 
 erase added.  Moving around is done with the arrow keys, backspace
-to delete the previous character, Control-w (or Alt-w) to erase a word, and
-Alt-u to erase a line.
+to delete the previous character,
+.B Control-w
+(or
+.BR Alt-w )
+to erase a word, and
+.B Alt-u
+to erase a line.
 .SH BUTTONS
 .LP
 There are a series of buttons on the right.  They perform the following
 functions:
-.if t .TP 1.2i
-.if n .TP 1.7i
+.TP \fBShift-MouseWheel\fPn
 .B [Cut comments]
 takes the contents of the current comment window and saves them in a buffer.
 .tp
@@ -227,12 +254,15 @@ displays all comments in the differences window and asks if you want to commit.
 .tp
 .B [Edit]
 a pull down menu, giving you the choice of running a simple TK based editor
-or your $EDITOR on the current file.  Saving the file in the editor will
-overwrite the current file.  The pull down also has an option to 
-pop you into bk fmtool on the checked in version and the current version
-of the file.   You may then select the changes you do not want to keep
-and "merge" the two versions to a new version, which will replace the 
-current file.
+or your
+.V $EDITOR
+on the current file.
+Saving the file in the editor will overwrite the current file.
+The pull down also has an option to pop you into bk fmtool on the
+checked in version and the current version of the file.
+You may then select the changes you do not want to keep and
+\*(lqmerge\*(rq the two versions to a new version, which will
+replace the current file.
 .tp
 .B [History]
 starts up revtool on the current file
@@ -246,11 +276,16 @@ throws away the differences.
 .tp
 .B [Ignore]
 When a new file is selected, the ignore button will add the selected 
-file to the \*(BK /etc/ignore file.
+file to the
+.B BitKeeper/etc/ignore
+file.
 .tp
 .B [Unignore]
-When a new file is selected and is in the ignore state, the Unignore button 
-prevents the selected file from being added to the \*(BK /etc/ignore file.
+When a new file is selected and is in the ignore state, the
+.Q Unignore
+button prevents the selected file from being added to the
+.B BitKeeper/etc/ignore
+file.
 .tp
 .B [Help]
 Starts up the \*(BK help tool and displays this help.
@@ -261,10 +296,8 @@ comments or discard you comments.
 .SH LOCKING
 .LP 
 If the repository is locked, and you try to
-.BR commit ,
-the
-.B commit
-will fail.
+.BR "bk commit" ,
+the commit will fail.
 You can wait for the lock to go away and then try the
 .B commit
 again; it should succeed.  If the lock is an invalid one (left over from an old
@@ -273,12 +306,12 @@ repository.   After it is unlocked, the
 .B commit
 should work.
 .SH SEE ALSO
-.SA ci 1
+.SA ci
 .SA config-gui
-.SA fmtool 1
-.SA ignore 1
-.SA sfiles 1
-.SA templates 1
+.SA fmtool
+.SA ignore
+.SA sfiles
+.SA templates
 .SH CATEGORY
 .B GUI-tools
 .br

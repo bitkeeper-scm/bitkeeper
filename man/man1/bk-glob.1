@@ -1,22 +1,18 @@
 .so ../bk-macros
-.TH "bk glob" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk glob" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk glob \- demo program to show glob pattern expansion
 .SH SYNOPSIS
 .B bk glob
 .ARG pattern
 .ARG string
-[\c
-.ARG string
-.ARG string
-.ARGc ...
-]
+.[ARG] "string string .\|.\|."
 .SH DESCRIPTION
 .LP
 Some \*(BK interfaces use what are called "glob patterns", sometimes known as
 wild cards.
-Examples include the configuration file, history listing (bk changes), and
-file name expansion (bk files).
+Examples include the configuration file, history listing (\fBbk changes\fP), and
+file name expansion (\fBbk files\fR).
 .LP
 This command may be used to match a glob against one or more strings to see
 examples of how the pattern matching works.
@@ -35,30 +31,30 @@ returns the subset of the list which matches the glob pattern.  Matching
 works as follows:
 .SP
 .tp 8
-?
+.B ?
 Matches any single character (unless "?" is between brackets).
 .SP
 .tp
-*
+.B *
 Matches any string (unless "*" is between brackets).
 .SP
 .tp
-[...]
+.B [...]
 A set of characters enclosed in brackets matches a single character if and
 only if the character is in the set.
 .SP
 .tp
-[^...]
+.B [^...]
 As above but inverts the set.  In other words "[^abc]" matches any character
 except "a", "b", or "c".
 .SH CONFIGURATION
 It is possible to disable all use of globs in file name expansion by setting
-the environment variable BK_NO_FILE_GLOB to any value.
+the environment variable \f(CBBK_NO_FILE_GLOB\fP to any value.
 .LP
 Since aliasing "=" for "*" is not a standard feature and it may
 cause problems when processing files with "=" as part of their
 name, it must be explictly  enabled by setting
-\f(CWBK_GLOB_TRANSLATE_EQUAL\fP to the value of \f(CWYES\fP.
+\f(CBBK_GLOB_EQUAL\fP to the value of \f(CBYES\fP.
 No other value will enable this feature.
 .SH EXAMPLES
 Test a simple pattern match that matches file.c and file.h:
@@ -67,7 +63,7 @@ bk glob '*.[ch]' file.c file.h file.1
 .DE
 List all files ending in ".1":
 .DS
-export BK_GLOB_TRANSLATE_EQUAL=YES
+export BK_GLOB_EQUAL=YES
 bk -r files =.1
 .DE
 See changes in all header files in the current directory:
@@ -87,10 +83,10 @@ bk changes '-/BUGID:[123456789]/'
 Sets of characters, i.e., [A-Z], have only marginal support.  
 Escaping the minus in the set is not supported.
 .SH SEE ALSO
-.SA config-etc 1
-.SA changes 1
-.SA files 1
+.SA config-etc
+.SA changes
+.SA files
 .SH CATEGORY
-.B Files
+.B File
 .br
 .B Repository

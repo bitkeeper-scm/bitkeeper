@@ -200,8 +200,8 @@ comment:		comments_save(optarg);
 				goto usage;
 			}
 			break;
-		    case 'c': iflags |= INIT_NOCKSUM; break; 	/* doc 2.0 */
-		    case 'C': dflags |= DELTA_CFILE; break;	/* doc */
+		    case 'C': iflags |= INIT_NOCKSUM; break; 	/* undoc */
+		    case 'c': dflags |= DELTA_CFILE; break;	/* doc */
 		    case 'd': /* internal interface */ 		/* undoc 2.0 */
 			      dflags |= DELTA_NOPENDING; break;
 		    case 'D': diffsFile = optarg;		 /* doc 2.0 */
@@ -232,15 +232,15 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 	}
 
-	unless (ignorePreference || *ckopts) { 
-		ckopts  = user_preference("checkout");
+	unless (ignorePreference || *ckopts) {
+		ckopts  = proj_configval(0, "checkout");
 	}
 
 	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
 		iflags |= INIT_FIXSTIME;
 	}
 
-	def_compp  = user_preference("compression");
+	def_compp  = proj_configval(0, "compression");
 	unless (def_compp && *def_compp) def_compp = NULL;
 
 	if ((encp || compp) && !(dflags & NEWFILE)) {

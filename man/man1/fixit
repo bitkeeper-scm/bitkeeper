@@ -1,0 +1,38 @@
+#!/usr/bin/perl -w
+
+while (<>) {
+	if (/^.TH\s/) {
+		s/ 1 / "\\*[BKVER]" /;
+	}
+	unless (/^\.SA/) {
+		print;
+		next;
+    	}
+	last;
+}
+exit 0 unless defined($_) && /^\.SA/;
+
+# Eat all of them, strip any comments, spit them back out correctly.
+push(@SA, $_);
+while (<>) {
+	if (/^\.SA/) {
+		push(@SA, $_);
+	} else {
+		push(@the_rest, $_);
+	}
+}
+
+pop(@SA) while ($SA[$#SA] eq ".SA |\n");
+for ($i = 0; $i <= $#SA; ++$i) {
+	$_ = $SA[$i];
+	if (/"/) {
+		warn "Passing verbatum: $_"
+		print;
+	} else {
+		@_ = split;
+		print ".SA $_[1]\n";
+	}
+}
+foreach $_ (@the_rest) {
+	print;
+}
