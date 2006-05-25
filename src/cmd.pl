@@ -182,6 +182,7 @@ _httpfetch
 hostme
 idcache
 isascii
+inskeys
 key2rev
 _key2path
 keycache
@@ -344,5 +345,4 @@ patch cprog
 cmp cprog
 diff cprog
 diff3 cprog
-inskeys cprog
 sdiff cprog

@@ -35,6 +35,8 @@ upgrade_main(int ac, char **av)
 	int	len;
 	char	*want_codeline = 0;
 	FILE	*f, *fout;
+	MDBM	*configDB = proj_config(bk_proj);
+	char	*license, *licf;
 	int	rc = 2;
 	char	*tmpbin = 0;
 	char	buf[MAXLINE];
@@ -79,10 +81,9 @@ usage:			system("bk help -s upgrade");
 		}
 		want_codeline = strndup(bk_vers, p - bk_vers);
 	}
-	if (key = lease_bkl(0, 0)) {
-		free(key);
-	} else {
-		notice("upgrade-require-lease", 0, "-e");
+	/* XXX licenseurl users can't run upgrade */
+	unless (getlicense(configDB, 0)) {
+		notice("upgrade-require-license", 0, "-e");
 		goto out;
 	}
 	indexfn = bktmp(0, "upgrade-idx");
@@ -198,13 +199,24 @@ usage:			system("bk help -s upgrade");
 	free(tmpbin);
 	tmpbin = 0;
 
+	/* embed bk license */
+	licf = bktmp(0, 0);
+	sprintf(buf, "bk _preference | bk _eula -v > '%s'", licf);
+	system(buf);
+	rc = inskeys(data[1], licf);
+	unlink(licf);
+	free(licf);
+	if (rc) goto out;
+	rc = 2;
+
 	chmod(data[1], 0500);
+
 	if (fetchonly) {
 		printf("New version of bk fetched: %s\n", data[1]);
 		rc = 0;
 		goto out;
 	}
-	putenv("BK_NOLINKS=1");
+	putenv("BK_NOLINKS=1");	/* XXX -u already does this */
 	sprintf(buf, "./%s -u", data[1]);
 	if (system(buf)) {
 		fprintf(stderr, "upgrade: install failed\n");

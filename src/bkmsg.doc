@@ -1214,12 +1214,9 @@ BitKeeper installed at:
 Please rerun the upgrade command from an account with the needed
 permissions.
 $
-#upgrade-require-lease
-The current version of BitKeeper is tagged as being available for
-commercial customers only.  A valid lease for any commercial repository
-is required to upgrade this version of bk.  Please chdir to a repo setup
-with a current commercial license and run:
-	bk lease renew
+#upgrade-require-license
+The bk upgrade process requires a valid commercial license.
+Please chdir to a repository setup with a current commercial license
 and then repeat this upgrade command.
 $
 #upgrade-msys-shell

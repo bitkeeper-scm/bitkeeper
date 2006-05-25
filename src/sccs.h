@@ -1176,6 +1176,7 @@ void	bk_preSpawnHook(int flags, char *av[]);
 int	upgrade_decrypt(FILE *fin, FILE *fout);
 int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
 int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
+int	inskeys(char *image, char *keys);
 void	lockfile_cleanup(void);
 void	set_timestamps(char *sfile);
 
