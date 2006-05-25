@@ -1,11 +1,11 @@
 .so ../bk-macros
-.TH "bk help" 1 %E% "\*(BC" "\*(UM"
+.TH "bk help" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk help \- get help for \*(BK commands
 .SH SYNOPSIS
-.Bc bk help [\-akp] [
-.OPTreq \-f\  filename
-.B ]
+.B bk help 
+.[B] \-akp
+.[OPTreq] \-f filename
 .ARG specific-topic
 .br
 .B bk help topics
@@ -21,19 +21,20 @@ for information about the graphical interface for help.
 A quick reference guide can be printed on Unix systems as
 follows:
 .DS
-lpr `bk bin`/bk_refcard.ps
+lpr \`bk bin\`/bk_refcard.ps
 .DE
-or on Windows/NT, click on the ``Quick Reference'' title in the start
+or on Windows/NT, click on the \*(lqQuick Reference\*(rq title in the start
 menu, and assuming Acrobat is installed, the card will be displayed.
-To print on Windows/NT, click on the ``file->print'' menu entry of
-the Acrobat reader.
+To print on Windows/NT, click on the
+.Q file \-> print
+menu entry of the Acrobat reader.
 .LP
 To get a list of all bk help topics use
 .DS
 .B bk help topics
 .DE
 .SH OPTIONS
-.TP .9i
+.TP \-f\*<file\*>
 .B \-a
 Just search the docs for the string
 .ARG topic .
@@ -47,7 +48,7 @@ as the helptext file.
 .tp
 .B \-k
 Similar to
-.BR -a ,
+.QR \-a ,
 but only matches whole words.
 .tp
 .B \-p
@@ -56,11 +57,7 @@ disable the use of any pager just send the output to stdout.
 We will be adding a
 .B bk man
 command to format the man pages on the fly.
-.SH TODO
-The help system is actually useful for other docs besides \*(BK.  At
-\*(BM we have the Tcl/Tk docs reformatted into a helpdoc and some
-day we need to explain how other people can do this.
 .SH "SEE ALSO"
-.SA helptool 1
+.SA helptool
 .SH CATEGORY
 .B Common

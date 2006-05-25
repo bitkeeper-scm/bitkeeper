@@ -1,14 +1,14 @@
 .so ../bk-macros
-.\" XXX - lm, we could macro-string-ify SCCS here, but not sure if it's A or S
-.TH "bk emacs" 1 %E% "\*(BC" "\*(UM"
+.TH "bk emacs" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk emacs \- info on how to use emacs' vc-mode
 .SH DESCRIPTION
-\*(BK is similar to SCCS, and
+\*(BK is similar to \*(SC, and
 .B vc-mode
-more or less supports SCCS,
+more or less supports \*(SC,
 so most of the things that you can do with
-.B vc-mode work:
+.B vc-mode
+work:
 .I visit-file
 will check out files automatically,
 .I C-x C-q
@@ -16,8 +16,9 @@ locks files for editing,
 .I C-x v v
 will prompt for comments and check in an individual file,
 .I C-x v =
-will compare versions, and so on.  Filename completion doesn't know
-about sfiles; this appears to be a general problem with
+will compare versions, and so on.
+Filename completion doesn't know about sfiles;
+this appears to be a general problem with
 .BR vc-mode ,
 not a \*(BK specific issue.
 .LP
@@ -26,20 +27,17 @@ You cannot create changesets with
 use
 .B bk citool
 or
-.B bk
-.BR commit .
+.BR "bk commit" .
 .B vc-mode
-does not understand \*(BK's symbol handling and lines of
-development, neither of which were in the original SCCS.  Do not
-attempt to use
+does not understand \*(BK's symbol handling,
+as that was not part of the original \*(SC.
+Do not attempt to use
 .BR vc 's
 symbol, snapshot, and branch commands with \*(BK.
 .LP
 .B vc-mode
-expects to be able to refer to SCCS commands directly instead of
-via the
-.B bk
-front end.  In theory, it should suffice to put
+expects to be able to refer to \*(SC commands directly instead of
+via the \*[BK] front end.  In theory, it should suffice to put
 .DS
 setq vc-path /usr/libexec/bitkeeper
 .DE
@@ -51,15 +49,16 @@ but this didn't work when last tested
 The commands
 .B vc
 wants to run are:
-.BR bk\ admin ,
-.BR bk\ get ,
-.BR bk\ delta ,
-.BR bk\ unget ,
-.BR bk\ rmdel ,
+.BR admin ,
+.BR get ,
+.BR delta ,
+.BR unget ,
+.BR rmdel ,
 and
-.BR bk\ prs .
+.\" XXX is this deprecated?
+.BR "bk\ prs" .
 This just happens to be the list of commands that we symlink into
-.I /usr/bin
+.B /usr/bin
 during a standard installation.
 .LP
 If you check in a file using

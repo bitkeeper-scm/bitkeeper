@@ -1,0 +1,230 @@
+.so ../bk-macros
+.TH "bk fm3tool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk fm3tool \- \*(BK three-way merge tool
+.SH SYNOPSIS
+.B bk fm3tool
+.[OPTreq] \-o filename
+.[B] \-fn
+.OPTreq \-l local
+.OPTreq \-r remote
+.ARG file
+.SH DESCRIPTION
+.LP
+.B bk fm3tool
+is a three-way merge tool used for resolving conflicting changes
+between two different versions of a file that have a common ancestor. 
+Normally fm3tool is not run from the command line; it is started
+during the resolve phase of a pull by responding with 
+.Q f
+at the merge prompt.
+.LP
+The default behaviour of
+.B bk fm3tool
+is to go to the first conflict requiring resolution; any preceeding conflicts
+which may have been automerged are placed in the merge window as completed
+work.  
+The navigation buttons may be used to go back to the beginning of the file
+and examine each change, including all automerges.
+Doing so is frequently helpful in understanding the changes which have
+occurred.
+.SH SCREEN LAYOUT
+.LP
+When 
+.B bk fm3tool
+is started, there are six main areas on the screen.
+Notice that information about the local repository is on the left
+and remote repository is on the right.
+.DS
++--------------------+------------------- +
+| Local change info  | Remote change info |
++--------------------+--------------------+
+| GCA baseline       | GCA baseline       |
+| Local change       | Remote change      |
+|                    |                    |
++--------------------+-----+--------------+
+| Merge                    | Messages     |
+|                          |              |
+|                          |              |
++--------------------------+--------------+
+.DE
+.TP "\fBRemote Change info\fP"
+.B Local change info
+Revision history for the local changes to the file
+.tp
+.B "Remote change info"
+Revision history for the remote changes to the file
+.tp
+.B "Local diff"
+Diff of local file versus the greatest common ancestor (GCA)
+.tp
+.B "Remote diff"
+Diff of remote file versus the GCA
+.tp
+.B "Merge"
+Result of the merge
+.tp
+.B "Messages"
+Informational messages and navigation controls
+.LP 
+As the tool moves from change to change, the top two windows will change 
+to show revision history of the current highlighted change. 
+.SH OPTIONS
+.TP \-r\*<remote_rev\*>
+.OPTreq \-o filename
+save output to the specified file.
+.tp
+.B \-f 
+force overwrite of existing file. By default fm3tool will
+not overwrite an existing merge file.
+.tp
+.OPTreq \-l local_rev
+the revision in the file to be considered the most recent local work.
+.tp
+.B \-n 
+do not write any merged output, put the tool in readonly mode.
+.tp
+.OPTreq \-r remote_rev
+the revision in the file to be considered the most recent remote work.
+.SH HAND-EDITING
+A merge conflict may be edited manually by single-clicking over a
+highlighted diff in the merge window. The merge window will then
+enter a special edit mode where you can make changes. 
+To exit the edit mode, press
+<\f(CWescape\fP> or click on area that divides the merge area from the areas
+above it.
+.SH KEYBOARD BINDINGS
+fm3tool has two major modes: one for navigating through the diffs and
+conflicts and one for hand-editing a merge. Each of these modes has
+its own set of key bindings.
+.SS NAVIGATION MODE
+.LP
+.TP \fBShift-Right-Click\fP
+.B Left-Click
+Over a highighted block in the upper windows, a left-click will append
+the highlighted block of text to the current merge region in the merge
+window. 
+.B Left-Click
+Over the merge window will enter hand-edit mode. See the section on
+HAND EDITING, above.
+.tp
+.B Right-Click
+Over a highlighted block in the upper windows, a right-click will
+append the single line that was clicked on to the current merge region
+in the merge window.
+.tp
+.B Shift-Left-Click
+Works like a left click, but replaces the contents of the current
+merge rather than adding on to it.
+.tp 
+.B Shift-Right-Click
+Works like a right click, but replaces the contents of the current
+merge with the line that was clicked on.
+.tp
+.B PageUp
+Scroll up one page.
+.tp
+.B PageDown
+Scroll down one page.
+.tp
+.B UpArrow
+Scroll up one line.
+.tp
+.B DownArrow
+Scroll down one line.
+.tp
+.B LeftArrow
+Scroll left.
+.tp
+.B RightArrow
+Scroll right.
+.tp
+.B <space>
+move to the next conflict.
+.tp
+.B [
+Move to previous difference.
+.tp
+.B ]
+Move to next difference.
+.tp
+.B { 
+Move to previous conflict.
+.tp
+.B }
+Move to next conflict.
+.tp
+.B \-
+Move to first difference.
+.tp
+.B \+
+Move to last difference.
+.tp
+.B "x"
+Toggle the display of the GCA.
+.tp
+.B "z"
+Toggle the display of annotations.
+.tp
+.B "c"
+Clears the current merge region.
+.tp
+.B "a"
+Restores the auto-merge.
+.tp
+.B "m"
+Restores the manual merge.
+.tp
+.B "s"
+Saves the merge file.
+.tp
+.B "u"
+Will undo the effects that the last mouse click had on the current
+merge region.
+.tp
+.B Control-q
+Exit from fm3tool.
+.SS EDIT MODE
+.TP \fBShift-Right-Click\fP
+.B <escape>
+Exit edit mode
+.tp
+.B Control-a
+move to start of line.
+.tp
+.B Control-e
+move to end of line.
+.tp
+.B Control-n
+move to next line.
+.tp
+.B Control-p
+move to previous line.
+.tp
+.B Control-d
+delete character under cursor.
+.tp
+.B UpArrow
+Move the cursor up one line.
+.tp
+.B DownArrow
+Move the cursor down one line.
+.tp
+.B LeftArrow
+Move the cursor left one character.
+.tp
+.B RightArrow
+Move the cursor right one character.
+.tp
+.B PageUp
+Scroll up one page.
+.tp
+.B PageDown
+Scroll down one page.
+.SH "SEE ALSO"
+.SA config-gui
+.SA merging
+.SA smerge
+.SA fmtool
+.SH CATEGORY
+.B GUI-tools

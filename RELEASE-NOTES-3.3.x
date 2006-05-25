@@ -14,12 +14,6 @@ You may override the shell used with
 Interface changes:
 
 bk bkd
-    New -B option to enable "buffered clones". (Unix only)
-    This greatly reduces the length of time a remote client can keep a
-    repository read locked during a clone operation by writing the
-    data to be transmitted to <repo>/BitKeeper/tmp and dropping the
-    lock before transmitting.
-
     -u/-g options have been removed, use su(1) instead, it interacts 
     better with license management.
 
@@ -48,6 +42,27 @@ bk changes
     (XXX provide original DSPEC here?)
 
     Add -i/-x include/exclude processing.
+
+bk csets -t
+    Text mode version of bk csets.
+
+bk revtool
+    -G option is gone, it is automatically calculated from the local/remotes.
+
+bk smerge / fm3tool
+    both now take "-l<local> -r<remote> file" as their arguments to be
+    consistent with bk revtool.  GCA is automatically calculated.
+
+bk commit
+    Used to have an undocumented -f<file_list> option.  That option
+    has been renamed to -l<file_list> and -f is now used to force a
+    non-interactive commit.
+
+bk cset
+    -l/-r are removed.  Use bk changes instead, see the bk cset manpage.
+
+bk delta
+    -C is now -c (take comments from SCCS/c.file)
 
 bk diffs
     diffs -C is gone; use diffs -r@REV instead.
@@ -88,6 +103,11 @@ bk grep
 
 bk import -tCVS
     The CVS import code has greatly improved from previous versions.
+
+bk log
+    This is a new name for bk prs, bk prs is left for compat and maintains
+    the old output format.  bk log has a more pleasant output format but
+    otherwise behaves as prs.
 
 bk lease show
     Now show license options and when the current license renews.
@@ -173,7 +193,7 @@ bk pull
     The -l and -n options are removed.  Use 'bk changes -R' instead.
 
     A new -u option is for an update-only pull.  This causes pull to
-    fail if any local csets exist in the tree.
+    fail if any local csets/tags exist in the tree.
 
     New -s option is to tell the resolver to fail if an automerge is
     not possible.  (non-interactive pull)
@@ -190,7 +210,7 @@ bk relink
 
 bk resolve
     bk resolve now goes straight into merge mode after attempting to automerge
-    all conflicts.
+    all conflicts.  There is an option to disable interactive mode (-s).
 
     bk resolve may be used to resolve part of a set of conflicts, see the
     man page for details.
@@ -211,11 +231,20 @@ bk conflicts
     directory.  It may be used to examine changes to see who should resolve 
     those changes.
 
+bk extras
+    Old syntax: bk extras [dir] [-a]
+    New syntax: bk extras [-a] [dir]
+
 filetypes.1
     This is a rename of the files.1 man page.
 
 bk files
     This is a demo program to show file name expansion
+
+bk fixtool
+    Documentation is added for this interface.  It is used to walk through
+    files that have changed and modify the changes prior to checkin.  It's
+    like the entry in the Edit menu of citool.
 
 bk glob
     BitKeeper now respects globs on the command line.  If you say
@@ -234,6 +263,44 @@ bk glob
 	bk command './*.c'
 
     There is a glob man page.
+
+Triggers
+    Remote trigger output format has been changed so that you may see the
+    trigger which caused the output.  The new format is
+
+    >> Trigger "<trigger name>" (exit status was <non-zero>)
+    trigger output line 1
+    trigger output line 2
+    ...
+
+    and it repeats for all triggers.
+
+    The trigger system has been reworked to ensure that all trigger output
+    is sent to stderr (before remote output went to stderr and local may
+    or may not have gone to stderr, it depended on the trigger writer).
+
+    Triggers which silently exited non-zero now always produce a warning.
+
+    Triggers which exit zero but produced output may now be consistently
+    held silent with the -q option (for pull, push, clone, resolve).
+
+    As triggers are run, the trigger name will be displayed in the diffs
+    window of citool (this helps people know which triggers are long running).
+
+All commands:
+    Most commands used to supress the retrieval of files named .del-*
+    because BitKeeper had two ways of deleting files, one which just
+    renamed it to .del-filename and the other that renamed it to
+    `bk root`/BitKeeper/deleted/.del-filename.  The second form has
+    been the default since February 2000.
+
+    What this means is if you do a "bk get" and there is a SCCS/s..del-foo
+    then that will check out .del-foo where before it wouldn't have.  If
+    you have cases like that and want to get rid of them just say
+
+    	bk rm .del-foo
+
+    and it will get moved off to BitKeeper/deleted.
 
 Misc
     BK_DATE_TIME_ZONE useful to force dates for import scripts

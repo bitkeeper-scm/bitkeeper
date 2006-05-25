@@ -180,17 +180,12 @@ test -f BitKeeper/deleted/SCCS/s..del-file3 || {
 }
 echo OK
 
-echo $N Check implied file lists for rm-ed files ....................$NL
+echo $N Explicitly get a removed file ...............................$NL
 mkdir C
 cd C
 echo foo > foo
 bk new $Q foo
 bk mv foo .del-foo
-bk co $Q
-if [ -f .del-foo ]; then echo Failed - file was gotten; exit 1; fi
-echo OK
-
-echo $N Explicitly get a removed file ...............................$NL
 bk co $Q .del-foo
 if [ ! -f .del-foo ]; then echo Failed to get file; exit 1; fi
 echo OK

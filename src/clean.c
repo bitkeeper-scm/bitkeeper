@@ -30,7 +30,7 @@ clean_main(int ac, char **av)
 		}
 	}
 
-	name = sfileFirst("clean", &av[optind], SF_DELETES|sflags);
+	name = sfileFirst("clean", &av[optind], sflags);
 	while (name) {
 		unless (hasGfile(name)) goto next;
 		s = sccs_init(name, SILENT|INIT_NOCKSUM);

@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk files" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk files" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk files \- demo program to show file name expansion
 .SH SYNOPSIS
@@ -10,34 +10,37 @@ bk files \- demo program to show file name expansion
 Most \*(BK commands operate on a set of files.
 File names can be implied, be specified as arguments, be implied with
 a directory name argument, or be specified as a list on stdin.
-.LP
-.tp 4
-Implied (nothing specified)
-If no files are specified, the default list is \f(CWSCCS/s.*\fP, i.e.,
-the set of revision controlled files associated with the current working
-directory.
-.TP
-Listed
+.TP "\fBAll files\fP"
+\fBImplied\fP (nothing specified)
+If no files are specified, the default list is
+.BR SCCS/s.* ,
+i.e., the set of revision controlled files associated with the
+current working directory.
+.tp
+.B Listed
 If the command invocation includes a list of files at the end then those 
 files and only those files are operated upon by the command.
 If any of the specified files are a directory then the list is expanded
 to include all revision controlled files associated with the specified
 directory.
-.TP
-All files
+.tp
+.B All files
 A common thing to want to do is to run a command against all files under
 revision control.
 There is an easy way to do this:
 .DS
-bk -r command
+bk -r \*<command\*>
 .DE
 is the same as 
 .DS
-cd `bk root`			# go to the top of the repository
-bk sfiles | bk command -	# run command on all files
+# Go to the root of the repository,
+# generate a list of revision controlled files,
+# and send them to the command.
+cd \`bk root\`			
+bk sfiles | bk \*<command\*> -		
 .DE
-.TP
-All files at or below a directory
+.tp
+.B All files at or below a directory
 A common thing to want to do is to run a command against all files under
 revision control in a sub tree.
 There is an easy way to do this:
@@ -46,49 +49,61 @@ bk -r. command
 .DE
 is the same as 
 .DS
-bk sfiles | bk command -	# run command on all files
+bk sfiles | bk command -
 .DE
 It is just the same as the previous form except it does not change to the
 top of the repository first.
-Any directory may be specified, not just ".".
-.TP
-STDIN
-If the command invocation has as its last argument a "-" then the command
-reads the standard input stream for a list of files, one per line, on
-which to operate.
-.TP
-WILDCARDS
+Any directory may be specified, not just \*(lq.\*(rq.
+.tp
+.B STDIN
+If the command invocation has as its last argument a \*(lq\-\*(rq
+then the command reads the standard input stream for a list of
+files, one per line, on which to operate.
+If the list is in the form
+.DS
+file.c|1.5
+header.h|1.8
+manpage|1.8..1.20
+.DE
+then the receiving command will operate on the supplied revision[s].
+.tp
+.B WILDCARDS
 It is possible to restrict the command to a specified set of files using
 what are called wild cards (or globs in Unix terminology).
 If a name specified includes a glob pattern then only files matching
 that pattern are processed.
 Only the basename of the file is compared against the glob, not the 
 full path name.
-The patterns are standard Unix glob patterns (see bk help glob) with one
-exception for convience: a "=" may be used in place of a "*" to match 
-any pattern.  In order for the "=" alias to work, an environment variable
-\f(CWBK_GLOB_TRANSLATE_EQUAL\fP
-must be set to the value
-\f(CWYES\fP.
+The patterns are standard Unix glob patterns (see
+.QR "bk help glob" )
+with one exception for convience: a \*(lq=\*(rq may be used in
+place of a \*(lq*\*(rq to match any pattern.
+In order for the \*(lq=\*(rq alias to work, an environment
+variable
+.V BK_GLOB_EQUAL
+must be set to the value \s-1YES\s0.
 To match all header files both of the following do the same thing:
 .DS
-export BK_GLOB_TRANSLATE_EQUAL=YES
+export BK_GLOB_EQUAL=YES
 bk diffs =.h
 bk diffs '*.h'
 .DE
-If you have a file with an "=" or other glob characters in its name
-you will need to either quote those characters with a proceeding 
-backslash (i.e., "\\*.h" matches a file named "*.h"), or if the file
-name specified contains a "/" then no glob expansion is applied. 
+If you have a file with an \*(lq=\*(rq or other glob characters in
+its name you will need to either quote those characters with a
+proceeding backslash (i.e., \*(lq\\*.h\*(rq matches a file named
+\*(lq*.h\*(rq), or if the file name specified contains a
+\*(lq/\*(rq then no glob expansion is applied.
 This makes it possible to do things like
 .DS
 bk diffs './*.h'
 .DE
-and have that match the file named "*.h".
+and have that match the file named \*(lq*.h\*(rq.
 .SH EXCEPTIONS
 Certain commands do not autoexpand directories because the commands are 
 destructive.
-An example is bk unedit, this command throws away any changes made to files
+An example is
+.BR "bk unedit" ,
+this command throws away any changes made to files
 and it refuses to autoexpand to all files, the files must be specified.
 .SH EXAMPLES
 See changes in the current directory:
@@ -103,18 +118,20 @@ See all changes to header files in the repository:
 .DS
 bk -r diffs =.h
 .DE
-List all C or header files containing the phrase "sccs" in their name:
+List all C or header files containing the phrase \*(lqsccs\*(rq in their name:
 .DS
 bk -r files '*sccs*.[ch]'
 .DE
-.\" Not until I merge in sfiles -1
-.\" See all modified files in directory "DIR":
-.\" .DS
-.\" bk -rDIR files -c
-.\" .DE
+See all modified files in directory
+.QR DIR :
+.DS
+bk -c1rDIR files
+.DE
 .SH SEE ALSO
-.SA glob 1
-.SA sfiles 1
+.SA bk
+.SA diffs
+.SA glob
+.SA sfiles
 .SH CATEGORY
 .B File
 .br

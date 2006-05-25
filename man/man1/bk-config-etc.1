@@ -1,30 +1,32 @@
 .so ../bk-macros
-.TH "bk config-etc" 1 %E% "\*(BC" "\*(UM"
+.TH "bk config-etc" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk config-etc \- configuring \*(BK
 .SH DESCRIPTION
 \*(BK config files contain repository configuration information including
 project description, licensing information, 
-user preferences, BKWeb preferences, and contact information.
+user preferences, BK/Web preferences, and contact information.
 Each \*(BK repository must have the minimum configuration
 information available in order to properly execute \*(BK commands.
 .LP
+XXX - needs updating w/ Wayne's ordering.
+.LP
 Repository configuration information is searched for in the following 
 places, in order:
-.TP 3.2i
+.TP "\fB`bk root`/BitKeeper/etc/config\fP"
 .B $BK_CONFIG
 Environment variable.
 .tp
-.B `bk root`/BitKeeper/etc/config
+.B \`bk\ root\`/BitKeeper/etc/config
 Repository level config file
 .tp
-.B `bk dotbk`/config
+.B \`bk\ dotbk\`/config
 Personal config file
 .tp
 .B /etc/BitKeeper/etc/config
 Per-machine config file
 .tp
-.B `bk bin`/config
+.B \`bk\ bin\`/config
 Per-installation config file
 .LP
 For each key/value pair, the first instance of a key found is the one
@@ -35,14 +37,17 @@ value (not the key) with an exclamation point like so:
 checkout: get!
 .DE
 The
-.I BK_CONFIG
-may contain a list of key:value pairs separated by semicolons.
+.B BK_CONFIG
+environment variable may contain a list of key:value
+pairs separated by semicolons.
 For example:
 .DS
 BK_CONFIG=key1:value2;key2:value2;key3:value3
 .DE
 .LP
-Minimum content requirements for the BitKeeper/etc/config file 
+Minimum content requirements for the
+.B BitKeeper/etc/config
+file 
 are the key value pairs for 
 .DS
 description:
@@ -59,10 +64,13 @@ consistent for every repository on the system by creating a template:
 .DS
 /etc/BitKeeper/etc/config.template
 or
-`bk dotbk`/config.template
+\`bk dotbk\`/config.template
 .DE
 If this file exists, bk setup will automatically use that as the 
-BitKeeper/etc/config file.  See bk help setup for more information.
+.BR BitKeeper/etc/config file .
+See
+.B bk help setup
+for more information.
 .SH "CONFIG FILE ENTRIES"
 .SS LICENSE KEY
 .LP
@@ -70,7 +78,8 @@ The use of \*(BK requires a commercial
 license key.  You can obtain a 30-day license for evaluation by
 emailing a request to sales@bitmover.com.
 .LP
-Once a license key is obtained, add lines to BitKeeper/etc/config
+Once a license key is obtained, add lines to
+.B BitKeeper/etc/config
 that look like:
 .DS
 license: <license key>
@@ -89,7 +98,7 @@ The value for this entry can be anything.
 .SS "CONTACT INFORMATION"
 .LP
 By filling in the contact information, you are providing a contact
-person for the project in the event that BitKeeper discovers a 
+person for the project in the event that \*[BK] discovers a 
 problem that requires local intervention.
 The email field is the only required field.
 .DS
@@ -98,14 +107,16 @@ email:
 .DE
 .SS USER PREFERENCES
 .LP
-Repository preferences can be defined in the BitKeeper/etc/config file.
+Repository preferences can be defined in the
+.B BitKeeper/etc/config
+file.
 The general format for the repository preference config file is 
 .DS
 [filter]preference:option
 .DE
 .LP
 The optional filter can be any of the following:
-.TP 1.4i
+.TP "\fBper repository\fP"
 .B no filter
 preference:option
 .tp
@@ -139,10 +150,12 @@ the most restrictive directives should appear first.
 .br
 Keyword expansion is turned OFF by default.  To have keyword expansion
 flags applied to a file automatically upon checkin, add the keyword
-preference to the BitKeeper/etc/config file.
+preference to the
+.B BitKeeper/etc/config
+file.
 .LP
 Keyword preference options are:
-.TP .80i
+.TP "\fBper repository\fP"
 .B sccs
 expand SCCS keywords (%keyword%).
 .tp
@@ -170,7 +183,9 @@ To force the UNIX eoln mode on all platforms use:
 .DS
 eoln:unix
 .DE
-to the BitKeeper/etc/config file.  
+to the
+.B BitKeeper/etc/config
+file.  
 .LP
 There is no way to force the Windows eoln mode on all 
 platforms.
@@ -179,12 +194,14 @@ platforms.
 Specify checkout mode for a repository.  The default is to not show 
 gfiles unless files are checked out.  To override the default, to 
 have gfiles checked out in read-only or read-write mode, a line
-must be added to the BitKeeper/etc/config file as follows:
+must be added to the
+.B BitKeeper/etc/config
+file as follows:
 .DS
 [filter]checkout:option
 .DE
 Where option is one of:
-.TP
+.TP \fBnone\fP
 .B get
 Automatically do a bk get
 .ARG file
@@ -211,8 +228,9 @@ Clear the gfile after doing a bk delta
 .SS COMPRESSION
 .br
 By default, when you setup a repository the compression algorithm
-will be set to gzip in the BitKeeper/etc/config file with a line
-as follows:
+will be set to gzip in the
+.B BitKeeper/etc/config
+file with a line as follows:
 .DS
 compression:gzip
 .DE
@@ -226,12 +244,17 @@ what really happens is
 bk new -Zgzip
 .DE
 To make the repository use no compression by default, 
-change the compression line in the BitKeeper/etc/config
+change the compression line in the
+.B BitKeeper/etc/config
 file to be:
 .DS
 compression:none
 .DE
-See bk help delta for more information about the -Z option for compression.
+See
+.B bk help delta
+for more information about the
+.Q \-Z
+option for compression.
 .SS AUTOFIX
 .br
 The 
@@ -239,10 +262,11 @@ The
 command can automatically fix a number of problems found in a repository.
 The default is that this variable is on in newly created repositories,
 and that the variable will be passed through as the 
-.B \-f
+.Q \-f
 option to bk check.
 To enable
-or disable autofix, one of the following should be in BitKeeper/etc/config
+or disable autofix, one of the following should be in
+.B BitKeeper/etc/config
 file:
 .DS
 autofix:yes
@@ -251,7 +275,7 @@ autofix:no
 .SS CLOCK_SKEW
 .br
 When using the 
-.B \-c
+.Q \-c
 option to 
 .BR "bk sfiles" ,
 file timestamps may be compared to a cached list to determine when
@@ -267,10 +291,12 @@ clock_skew: off         # disable trusting of timestamps
 .DE
 .SS BKWEB PREFERENCES
 .LP
-BKWeb preferences can be specified in the BitKeeper/etc/config file.
+BKWeb preferences can be specified in the
+.B BitKeeper/etc/config
+file.
 If these preferences are specified, information given will appear on the
 BKWeb site for the project.
-.TP 1i
+.TP \fBhomepage\fP
 .B bkweb
 specify the BKWeb address for a project
 .tp
@@ -288,8 +314,8 @@ homepage: http://www.mysql.com
 .DE
 .SS UPGRADE URL
 .LP
-The upgrade command normally looks for new versions of BitKeeper here:
-.I http://upgrades.bitkeeper.com/upgrades/
+The upgrade command normally looks for new versions of \*[BK] here:
+.B http://upgrades.bitkeeper.com/upgrades/
 but that location may be overridden by setting the
 .I upgrade-url
 field to an different URL.

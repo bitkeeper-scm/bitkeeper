@@ -24,10 +24,12 @@ commit_main(int ac, char **av)
 	int	dflags = 0;
 	c_opts	opts  = {0, 0};
 
-	while ((c = getopt(ac, av, "df:FRqsS:y:Y:")) != -1) {
+	while ((c = getopt(ac, av, "dfFl:RqsS:y:Y:")) != -1) {
 		switch (c) {
-		    case 'd': 	doit = 1; break;		/* doc 2.0 */
-		    case 'f':					/* undoc 2.0 */
+		    case 'd': 
+		    case 'f':
+			doit = 1; break;			/* doc 2.0 */
+		    case 'l':					/* doc */
 			strcpy(pendingFiles, optarg); break;
 		    case 'F':	force = 1; break;		/* undoc */
 		    case 'R':	BitKeeper = "../BitKeeper/";	/* doc 2.0 */
@@ -56,6 +58,8 @@ commit_main(int ac, char **av)
 		}
 	}
 
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+
 	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find root directory\n");
 		return (1);
@@ -70,7 +74,7 @@ commit_main(int ac, char **av)
 	if (pendingFiles[0]) {
 		if (av[optind] && streq("-", av[optind])) {
 			fprintf(stderr,
-			    "commit: can't use -f when using \"-\"\n");
+			    "commit: can't use -l when using \"-\"\n");
 			return (1);
 		}
 	} else {

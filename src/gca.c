@@ -12,12 +12,11 @@ gca_main(int ac, char **av)
 	sccs	*s;
 	char	*name, *r1 = 0, *r2 = 0;
 	delta	*d1, *d2;
-	int	trunk = 0, c;
+	int	c;
 	char	*inc = 0, *exc = 0;
 
-	while ((c = getopt(ac, av, "r|t")) != -1) {
+	while ((c = getopt(ac, av, "r|")) != -1) {
 		switch (c) {
-		    case 't': trunk++; break;			/* undoc? 2.0 */
 		    case 'r':					/* doc 2.0 */
 			unless (r1) {
 				r1 = optarg;
@@ -51,7 +50,7 @@ usage:			system("bk help -s gca");
 		fprintf(stderr, "gca: could not find '%s' or '%s'\n", r1, r2);
 		return (1);
 	}
-	d1 = sccs_gca(s, d1, d2, &inc, &exc, trunk ? 0 : 1);
+	d1 = sccs_gca(s, d1, d2, &inc, &exc);
 	fputs(d1->rev, stdout);
 	if (inc) printf(" -i%s", inc);
 	if (exc) printf(" -x%s", exc);

@@ -1,26 +1,35 @@
-.so bk-macros
-.TH "bk base64" 1 %E% "\*(BC" "\*(UM"
+.so ../bk-macros
+.TH "bk base64" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk base64 \- RFC 1341 base64 encoding and decoding
 .SH SYNOPSIS
-.B bk base64 [\-d]
+.B bk base64
+.[B] \-d
 .SH DESCRIPTION
 .LP
 The
-.B base64
+.B bk base64
 command is a filter that encodes arbitrary data from stdin to a ASCII
-format that only uses the characters A-Z,a-z,0-9,/,+,= and newline to
-encode the data.  This data can easily be emailed without being mangled.
+format that only uses the characters
+.CR A-Z ,
+.CR a-z ,
+.CR 0-9 ,
+.CR / ,
+.CR + ,
+.C =
+and newline to encode the data.
+This data can easily be emailed without being mangled.
 If the 
 .B \-d
 option is passed then the encoding is unpacked to the original
 data.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1i
+.TP
 .B \-d
 Decode base64 data to the original byte stream.
 .SH "SEE ALSO"
-.SA crypto 1
+.SA crypto
+.SA unwrap
+.SA wrap
 .SH CATEGORY
 .B Utility
