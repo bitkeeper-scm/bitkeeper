@@ -1,16 +1,15 @@
 .so ../bk-macros
-.TH "bk links" 1 %E% "\*(BC" "\*(UM"
+.TH "bk links" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk links \- make links to the BitKeeper binary installation directory
+bk links \- make links to the \*(BK binary installation directory
 .SH SYNOPSIS
 .\"
 .B bk links
 .ARG public_dir
 .SH DESCRIPTION
-.LP
-Makes links from BitKeeper commands in the specified public directory to 
-the executables for the version of BitKeeper being run.
-This is typically used after installing BitKeeper as a non-root user.
+Creates symbolic links from \*(BK commands in the specified public
+directory to the executables for the version of \*(BK being run.
+This is typically used after installing \*(BK as a non-root user.
 .LP
 The purpose of the symbolic links is to provide compatible interfaces for
 those tools which understand the \*[ATT] system.  \*[BK] deliberately 

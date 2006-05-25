@@ -41,6 +41,7 @@ cset_inex(int flags, char *op, char *revs)
 	av[++i] = revarg;
 	av[++i] = 0;
 
+	flags &= ~PRINT;	/* can't edit and print */
 	unless (f = popenvp(av, "r")) {
 		perror("popenvp");
 		free(revarg);

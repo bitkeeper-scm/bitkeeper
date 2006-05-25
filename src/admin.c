@@ -58,17 +58,17 @@ admin_main(int ac, char **av)
 		    case 'i':	newfile = optarg ? optarg : "-"; /* doc 2.0 */
 				flags |= NEWFILE; break;
 		    case 'n':	flags |= NEWFILE; break;   	/* undoc? 2.0 */
-		    case 'r':	rev = optarg; break;		/* doc 2.0 */
+		    case 'r':	rev = optarg; break;		/* undoc */
 		    case 'y':	comment = optarg; break;	/* doc 2.0 */
-		    case 'M':					/* doc 2.0 */
+		    case 'M':					/* undoc */
 				merge = optarg; flags |= NEWCKSUM; break;
 		/* mode */
-		    case 'm':	m = optarg;			/* doc 2.0 */
+		    case 'm':	m = optarg;			/* undoc */
 				new_delta = 1;
 		   		/* NEWCKSUM done in sccs_admin */
 				break;
 		/* pathname */
-		    case 'p':	path = optarg;			/* doc 2.0 */
+		    case 'p':	path = optarg;			/* undoc */
 		    		flags |= ADMIN_SHUTUP|NEWCKSUM;
 				dopath++;
 				break;
@@ -77,9 +77,9 @@ admin_main(int ac, char **av)
 				touchGfile++;
 		   		/* NEWCKSUM done in sccs_admin */
 				break;
-		    case 'E':	encp = optarg; break;		/* doc 2.0 */
+		    case 'E':	encp = optarg; break;		/* undoc */
 		/* symbols */
-		    case 'S':	OP(s, optarg, A_ADD); break;	/* doc 2.0 */
+		    case 'S':	OP(s, optarg, A_ADD); break;	/* undoc */
 		/* text */
 		    case 't':					/* doc 2.0 */
 			text = optarg ? optarg : ""; new_delta = 1; break;
@@ -88,7 +88,6 @@ admin_main(int ac, char **av)
 		/* singletons */
 		    case '0':					/* doc 2.0 */
 			flags |= ADMIN_ADD1_0|NEWCKSUM; break;
-		    case 'B':	 break;		/* ignored */	/* doc 2.0 */
 		    case 'C':					/* doc 2.0 */
 			csetFile = optarg; newCset++; flags |= NEWCKSUM; break;
 		    case 'D':					/* doc 2.0 */
@@ -106,13 +105,13 @@ admin_main(int ac, char **av)
 				break;
 		    case 's':					/* undoc? 2.0 */
 		    case 'q':	flags |= SILENT; break;		/* doc 2.0 */
-		    case 'u':					/* doc 2.0 */
+		    case 'u':					/* undoc */
 			doDates = 1; flags |= NEWCKSUM; break;
 		    case 'z':	init_flags |= INIT_NOCKSUM;	/* doc 2.0 */
 		    		flags |= NEWCKSUM;
 				touchGfile++;
 				break;
-		    case 'O':
+		    case 'O':					/* undoc */
 			unless (getenv("BK_FORCE")) {
 				fprintf(stderr, "Set BK_FORCE to do this\n");
 				exit(1);

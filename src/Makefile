@@ -127,12 +127,12 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	delta.o diffs.o diffsplit.o dir_gif.o \
-	eula.o export.o file_gif.o files.o \
-	find.o findcset.o findkey.o fix.o fixlod.o \
+	eula.o export.o file_gif.o \
+	find.o findcset.o findkey.o fix.o fixlod.o fixtool.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o getreg.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	idcache.o isascii.o key2rev.o key2path.o kill.o kvfile.o \
+	idcache.o isascii.o inskeys.o key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o librange.o \
 	libsfiles.o libusers.o lines.o \
@@ -349,8 +349,8 @@ bk.ico: win32/data/bk.ico
 $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
 	$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(XLIBS) 
 
-inskeys$(EXE): inskeys.o $(LIBS)
-	$(LD) $(LDFLAGS) -o $@ inskeys.o $(LIBS) $(XLIBS)
+inskeys$(EXE): inskeys.o inskeys_main.o $(LIBS)
+	$(LD) $(LDFLAGS) -o $@ inskeys.o inskeys_main.o $(LIBS) $(XLIBS)
 
 bk.script: bk.sh port/$(SYS)_platform.sh
 	cat port/$(SYS)_platform.sh bk.sh > bk.script

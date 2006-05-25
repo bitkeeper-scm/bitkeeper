@@ -1146,7 +1146,7 @@ proc getLeftRev { {id {}} } \
 	highlightAncestry $rev1
 
 	if {$rev1 != ""} {
-		catch {exec bk prs -hr$rev1 -d:CSETKEY: $file} info
+		catch {exec bk r2c -r$rev1 $file} info
 		#puts "info=($info)"
 		if {$info == ""} {
 			.menus.cset configure \
@@ -1190,7 +1190,7 @@ proc getRightRev { {id {}} } \
 
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
-		catch {exec bk prs -hr$rev2 -d:CSETKEY: $file} info
+		catch {exec bk r2c -r$rev2 $file} info
 		if {$info == ""} {
 			.menus.cset configure \
 			    -state disabled \
@@ -2467,15 +2467,18 @@ proc arguments {} \
 	while {$argindex < $argc} {
 		set arg [lindex $argv $argindex]
 		switch -regexp -- $arg {
-		    "^-G.*" {
-			set gca [string range $arg 2 end]
-		    }
 		    "^-r.*" {
-			#set rev2_tmp [lindex $argv $argindex]
-		   	#regexp {^[ \t]*-r(.*)} $rev2_tmp dummy revs
+			if {$rev2 != ""} {
+				puts stderr "Only one -r allowed"
+				exit
+			}
 			set rev2 [string range $arg 2 end]
 		    }
 		    "^-l.*" {
+			if {$rev1 != ""} {
+				puts stderr "Only one -l allowed"
+				exit
+			}
 			set rev1 [string range $arg 2 end]
 		    }
 		    "^-d.*" {
@@ -2502,10 +2505,7 @@ proc arguments {} \
 	}
 	set arg [lindex $argv $argindex]
 
-	if {($gca != "") && (($rev2 == "") || ($rev1 == ""))} {
-		puts stderr "error: GCA options requires -l and -r"
-		exit
-	} elseif {"$rev1" == "" && "$rev2" != ""} {
+	if {"$rev1" == "" && "$rev2" != ""} {
 		set rev1 $rev2
 		set rev2 ""
 	}
@@ -2589,6 +2589,11 @@ proc arguments {} \
 			exit
 		}
 	}
+	if {($rev2 != "") && ($rev1 != "")} {
+		# XXX - this is where we drop the -i/-x stuff on the floor
+		# if it is a complicated GCA.
+		set gca [lindex [split [exec bk gca -r$rev1 -r$rev2 $fname]] 0]
+    	}
 } ;# proc arguments
 
 # Return the revision and user name (1.147.1.1-akushner) so that

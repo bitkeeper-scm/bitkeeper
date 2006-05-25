@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk merge-binaries" 1 %E% "\*(BC" "\*(UM"
+.TH "bk merge-binaries" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk merge-binaries \- help on merging binary conflicts
 .SH DESCRIPTION
@@ -22,19 +22,15 @@ know what to use.  You can call your own file viewer.
 Suppose you knew that the file was a gif and you wanted to look at each
 of them to choose which one to use.  You could do a
 .DS
-logo.gif>>\ \c
-.B !xv $BK_LOCAL
-logo.gif>>\ \c
-.B !xv $BK_REMOTE
-logo.gif>>\ \c
-.B ul
+logo.gif>> \f(CB!xv \s-1$BK_LOCAL\s0\fP
+logo.gif>> \f(CB!xv \s-1$BK_REMOTE\s0\fP
+logo.gif>> \f(CBul\fP
 .DE
 to view each and then choose the local version.
 .LP
 You may also call an external tool to merge changes. 
 .DS
-logo.gif>>\ \c
-.Bc !
+logo.gif>> \f(CB!\fP\c
 .ARG command
 .DE
 .ft R
@@ -44,16 +40,16 @@ will be run with the appropriate environment variables set.
 This technique may be used to use any external merge tool.
 .SH ENVIRONMENT VARIABLES
 .TP 1i
-BK_LOCAL
+.V BK_LOCAL
 pathname of a temp file containing the local version
 .tp
-BK_GCA
+.V BK_GCA
 pathname of a temp file containing the common ancestor
 .tp
-BK_REMOTE
+.V BK_REMOTE
 pathname of a temp file containing the remote version
 .tp
-BK_MERGE
+.V BK_MERGE
 pathname where the merged content should be placed
 .LP
 .SH NON-BINARY FILES
@@ -62,11 +58,9 @@ means that normal text based tools would work on this file.  You may force
 the file to be treated as a text file with the "t" command.  This drops
 into the normal text file resolver.
 .SH "SEE ALSO"
-.SA merge 1
-.SA merging 1
-.SA fmtool 1
-.SA revtool 1
-.SA resolve 1
+.SA revtool
+.SA resolve
+.SA resolving
 .SH CATEGORY
 .B Overview
 .br

@@ -200,8 +200,8 @@ comment:		comments_save(optarg);
 				goto usage;
 			}
 			break;
-		    case 'c': iflags |= INIT_NOCKSUM; break; 	/* doc 2.0 */
-		    case 'C': dflags |= DELTA_CFILE; break;	/* doc */
+		    case 'C': iflags |= INIT_NOCKSUM; break; 	/* undoc */
+		    case 'c': dflags |= DELTA_CFILE; break;	/* doc */
 		    case 'd': /* internal interface */ 		/* undoc 2.0 */
 			      dflags |= DELTA_NOPENDING; break;
 		    case 'D': diffsFile = optarg;		 /* doc 2.0 */

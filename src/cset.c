@@ -112,9 +112,7 @@ cset_main(int ac, char **av)
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while (
-	    (c =
-	    getopt(ac, av, "Cd|DfHhi;lm|M|pqr|svx;")) != -1) {
+	while ((c = getopt(ac, av, "Cd|DfHhi;lm|M|qr|svx;")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
@@ -162,7 +160,6 @@ cset_main(int ac, char **av)
 				things = tokens(notnull(optarg));
 			}
 			break;
-		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
 		    case 'q':					/* doc 2.0 */
 		    case 's': flags |= SILENT; break;		/* undoc? 2.0 */
 		    case 'v': copts.verbose++; break;		/* undoc? 2.0 */

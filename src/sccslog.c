@@ -246,6 +246,7 @@ private void
 pdelta(delta *d, FILE *f)
 {
 	int	indent, i;
+	char	*y;
 
 	if (opts.dspec) {
 		if (d->comments && d->comments[1]) {
@@ -282,7 +283,8 @@ pdelta(delta *d, FILE *f)
 			fprintf(f, "%s ", basenm(d->pathname));
 		}
 	}
-	fprintf(f, "%s %s %s", d->rev, d->sdate, d->user);
+	y = (atoi(d->sdate) > 69) ? "19" : "20";
+	fprintf(f, "%s %s%s %s", d->rev, y, d->sdate, d->user);
 	if (d->hostname) fprintf(f, "@%s", d->hostname);
 	fprintf(f, " +%d -%d\n", d->added, d->deleted);
 	EACH(d->comments) {

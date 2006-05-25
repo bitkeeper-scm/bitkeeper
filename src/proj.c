@@ -481,18 +481,27 @@ proj_fakenew(void)
 	return (ret);
 }
 
-/* return the BKL.... key as a string */
+/*
+ * return the BKL.... key as a string
+ * Will exit(1) on failure, so the function always returns a key.
+ */
 char *
 proj_bkl(project *p)
 {
+	char	*errs = 0;
+
 	/*
 	 * If we are outside of any repository then we must get a
 	 * licence from the global config or a license server.
 	 */
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->bkl) p->bkl = lease_bkl(p, 1);
-	unless (p->bkl) exit(1);
+	if (p->bkl) return (p->bkl);
+	unless (p->bkl = lease_bkl(p, &errs)) {
+		assert(errs);
+		lease_printerr(errs);
+		exit(1);
+	}
 	return (p->bkl);
 }
 

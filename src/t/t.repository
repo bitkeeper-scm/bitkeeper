@@ -78,7 +78,7 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
 echo OK
 
-echo $N Try to commit via -f ........................................$NL
+echo $N Try to commit via -l ........................................$NL
 cd $HERE/project/src
 bk co $Q -l h.h
 echo new-stuff > h.h
@@ -86,7 +86,7 @@ bk ci $Q -ytest_cmt1 h.h
 date > q.c
 bk ci $Q -ytest_cmt2 -i q.c
 bk -R sfiles -pC > $HERE/flist
-bk commit $Q -ycmt4 -f$HERE/flist 
+bk commit $Q -ycmt4 -l$HERE/flist 
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 cat > X <<EOF

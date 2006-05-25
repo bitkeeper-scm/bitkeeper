@@ -213,7 +213,7 @@ BitMover can be reached at:
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
-#license_expired
+#license-expired
 Your license for BitKeeper has expired.  You are beyond the
 grace period and you may not create any changesets until you
 have contacted BitMover to purchase a new license.
@@ -224,7 +224,7 @@ BitMover can be reached at:
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
-#license_none
+#license-none
 You do not have a license for BitKeeper and you need one to create
 any changesets.
 
@@ -236,6 +236,45 @@ BitMover can be reached at:
    888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
+$
+#authentication-failed
+The bkd license proxy had problems determining the version of BitKeeper
+used for this connection.  Please contact BitMover for support at
+support@bitmover.com.
+$
+#badurl
+The URL provided to contact a bk license proxy cannot be parsed.
+	#BKARG#
+
+Please see 'bk help url' for how valid bkd URLs should be formed.
+$
+#lease-bkd-error
+An unexpected error was received from the remote bkd when making a license
+request:
+	#BKARG#
+
+Please correct the problem or contact BitMover for help. support@bitmover.com
+$
+#unexpected-response
+An unexpected response was received from the remote bkd when making a license
+request:
+	#BKARG#
+
+Please correct the problem or contact BitMover for help. support@bitmover.com
+$
+#cannot-connect
+BitKeeper was unable to make a connection to the license server at:
+	#BKARG#
+
+Please correct the problem or contact BitMover for help. support@bitmover.com
+$
+#http-err
+An unexpected http error response was returned when trying to make a
+license request.  The response was:
+	#BKARG#
+
+Perhaps the licenseurl config field was set incorrectly?
+Please correct the problem or contact BitMover for help. support@bitmover.com
 $
 #missing_config_install
 No config file was found containing a license.  A license is required
@@ -756,7 +795,7 @@ changed and you need to accept the new version in order to make changes in
 this repository.  Your acceptance will be recorded on this machine and you
 will not be asked again.
 $
-#missing_key_sig
+#missing-key-sig
 This repository is configured to use a commercial license 
 	#BKARG#
 but does not contain a license key signature in
@@ -768,7 +807,7 @@ BitMover can be reached at:
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
-#invalid_key_sig
+#invalid-key-sig
 The configured license key signature for the current repository
 doesn't match the current license key: #BKARG#
 
@@ -794,13 +833,12 @@ The version of BK that you are currently using (#BKARG#) is no
 longer supported by your license server.  Please use 'bk upgrade'
 to obtain the latest version of BitKeeper.
 $
-#lease_other_error
-BitKeeper was unable to validate this version of BitKeeper.
-The error code returned from BitMover was:
+#lease-other-error
+The error code returned from BitKeeper was:
 	#BKARG#
-Please run 'bk support' to request assistance.
+Please send mail to support@bitmover.com to request assistance.
 $
-#lease_timesync
+#timesync
 The time on the local machine is out of sync with your license server.
 Please verify the time on your computer and that the timezone is set
 correctly and try again.
@@ -1214,12 +1252,9 @@ BitKeeper installed at:
 Please rerun the upgrade command from an account with the needed
 permissions.
 $
-#upgrade-require-lease
-The current version of BitKeeper is tagged as being available for
-commercial customers only.  A valid lease for any commercial repository
-is required to upgrade this version of bk.  Please chdir to a repo setup
-with a current commercial license and run:
-	bk lease renew
+#upgrade-require-license
+The bk upgrade process requires a valid commercial license.
+Please chdir to a repository setup with a current commercial license
 and then repeat this upgrade command.
 $
 #upgrade-msys-shell

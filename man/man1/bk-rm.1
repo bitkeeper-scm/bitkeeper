@@ -1,9 +1,10 @@
 .so ../bk-macros
-.TH "bk rm" 1 %E% "\*(BC" "\*(UM"
+.TH "bk rm" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk rm \- remove \*(BK file[s]
 .SH SYNOPSIS
-.B bk rm [\-f]
+.B bk rm
+.[B] \-f
 .ARG file1
 .FILES
 .SH DESCRIPTION
@@ -13,12 +14,14 @@ To delete a file, do this:
 $ bk rm foo.c
 .DE
 Removing the file actually moves it to the
-.I
-BitKeeper/deleted/
+.B BitKeeper/deleted/
 directory.
 All future operations will ignore the file unless you name it
 explicitly, but it will still exist in the repository and will still be
-propagated by bk pull and/or bk push.
+propagated by 
+.B bk pull
+and/or
+.BR "bk push" .
 Edited files may not be deleted, you must check them in first.
 .LP
 If you wish to obliterate all traces of a file, use the 
@@ -36,12 +39,12 @@ will not remove directories, use
 for that.
 .LP
 .B bk rm
-will refuse to remove BitKeeper metafiles without the 
-.B \-f
+will refuse to remove \*[BK] metafiles without the 
+.Q \-f
 option (use of which is not recommended).
 .SH SEE ALSO
-.SA gone 1
-.SA rmdir 1
-.SA unrm 1
+.SA gone
+.SA rmdir
+.SA unrm
 .SH CATEGORY
 .B File

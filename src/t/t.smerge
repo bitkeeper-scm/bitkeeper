@@ -77,8 +77,8 @@ bk delta $Q -ylocal gca || exit 1
 echo OK
 
 echo $N Check default smerge output .................................$NL
-bk smerge gca 1.2 1.1.1.1 > out
-bk smerge $D3 gca 1.2 1.1.1.1 > out.open
+bk smerge -l1.2 -r1.1.1.1 gca > out
+bk smerge $D3 -l1.2 -r1.1.1.1 gca > out.open
 checkfiles out out.open
 cat - > out2 <<EOF
    won't change
@@ -127,9 +127,9 @@ echo OK
 echo $N Check gca smerge output .....................................$NL
 #also edit file
 bk edit $Q gca || exit 1
-bk smerge -g gca 1.2 1.1.1.1 > out
+bk smerge -g -l1.2 -r1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
-bk smerge $D3 -g gca 1.2 1.1.1.1 > out.open
+bk smerge $D3 -g -l1.2 -r1.1.1.1 gca > out.open
 checkfiles out out.open
 cat > out2 <<EOF
    won't change
@@ -179,9 +179,9 @@ checkfiles out out2
 echo OK
 
 echo $N Check 2WAY smerge output ....................................$NL
-bk smerge -2 gca 1.2 1.1.1.1 > out
+bk smerge -2 -l1.2 -r1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
-bk smerge $D3 -2 gca 1.2 1.1.1.1 > out.open
+bk smerge $D3 -2 -l1.2 -r1.1.1.1 gca > out.open
 checkfiles out out.open
 cmp -s out - <<EOF
    won't change
@@ -216,9 +216,9 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Check new-only smerge output ................................$NL
-bk smerge -n gca 1.2 1.1.1.1 > out
+bk smerge -n -l1.2 -r1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
-bk smerge $D3 -n gca 1.2 1.1.1.1 > out.open
+bk smerge $D3 -n -l1.2 -r1.1.1.1 gca > out.open
 checkfiles out out.open
 cmp -s out - <<EOF
    won't change
@@ -290,7 +290,7 @@ cat > gca <<EOF
    won't change
 EOF
 bk delta $Q -y1.1.1.2 gca || exit 1
-bk smerge -g -Aall gca 1.2.1.1 1.3 > out
+bk smerge -g -Aall -l1.2.1.1 -r1.3 gca > out
 # exit 1
 cat - > out2<<EOF
    won't change
@@ -344,15 +344,15 @@ checkfiles out out2
 echo OK
 
 echo $N Check handling of bad versions ..............................$NL
-bk smerge -n gca 1.2 1.1.1.3 > out 2> err
+bk smerge -n -l1.2 -r1.1.1.3 gca > out 2> err
 if [ $? -ne 2 ]; then echo failed; exit 1; fi
 grep -q 'ERROR: couldn.t find 1.1.1.3' err || exit 1
 echo OK
 
 echo $N Trying adding annotations ...................................$NL
-bk smerge -gIm gca 1.2 1.1.1.1 > out
+bk smerge -gIm -l1.2 -r1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
-bk smerge $D3 -gIm gca 1.2 1.1.1.1 > out.open
+bk smerge $D3 -gIm -l1.2 -r1.1.1.1 gca > out.open
 checkfiles out out.open
 cat - > new <<EOF
 1.1           |    won't change
@@ -423,9 +423,9 @@ cat > gca <<EOF
    won't change
 EOF
 bk delta $Q -ylocal2 gca || exit 1
-bk smerge gca 1.1.2.1 1.1.1.1 > out
+bk smerge -l1.1.2.1 -r1.1.1.1 gca > out
 if [ $? -ne 0 ]; then echo failed; cat out; exit 1; fi
-bk smerge $D3 gca 1.1.2.1 1.1.1.1 > out.open
+bk smerge $D3 -l1.1.2.1 -r1.1.1.1 gca > out.open
 checkfiles out out.open
 cat > out2 <<EOF
    won't change much
@@ -448,9 +448,9 @@ checkfiles out out2
 echo OK
 
 echo $N Verify that content merge was needed ........................$NL
-bk smerge -gA3 gca 1.1.2.1 1.1.1.1 > out
+bk smerge -gA3 -l1.1.2.1 -r1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
-bk smerge $D3 -gA3 gca 1.1.2.1 1.1.1.1 > out.open
+bk smerge $D3 -gA3 -l1.1.2.1 -r1.1.1.1 gca > out.open
 checkfiles out out.open
 cmp -s out - <<EOF
    won't change much
@@ -489,11 +489,11 @@ echo OK
 
 echo $N "Check version argument parsing...............................$NL"
 # too many versions
-bk smerge gca 1.1.2.1 1.1.1.1 1 2> err && exit 1
+bk smerge -l1.1.2.1 -r1.1.1.1 gca 1 2> err && exit 1
 # too few versions
-bk smerge gca 1.1.2.1 2> err && exit 1
+bk smerge -l1.1.2.1 gca 2> err && exit 1
 # bad string
-#bk smerge gca 1.1.2.1 1.1.b 2> err
+#bk smerge -l1.1.2.1 -r1.1.b gca 2> err
 #grep -q 'ERROR: Unable to parse version' err || exit 1
 echo OK
 
@@ -509,9 +509,9 @@ echo b > bar
 echo $NX line without NL $NXL >> bar
 cp bar bar.want
 bk delta $Q -ylocal bar || exit 1
-bk smerge bar 1.1 1.1.1.1 > bar.out
+bk smerge -l1.1 -r1.1.1.1 bar > bar.out
 cmp -s bar.out bar.want || { echo Failed to get correct merge; exit 1; }
-bk smerge $D3 bar 1.1 1.1.1.1 > bar.out.open
+bk smerge $D3 -l1.1 -r1.1.1.1 bar > bar.out.open
 checkfiles bar.out bar.out.open
 echo OK
 
@@ -545,7 +545,7 @@ last line of block matches
 EOF
 bk ci $Q -m'foo' foo
 # Collide the mess..
-bk smerge -g foo 1.3 1.1.1.1 > OUT
+bk smerge -g -l1.3 -r1.1.1.1 foo > OUT
 cmp -s OUT - <<EOF
 D
 E
@@ -567,7 +567,7 @@ if [ $? -ne 0 ]; then echo failed; cat OUT; exit 1; fi
 echo OK
 
 echo $N show bug with common trailing lines .........................$NL
-bk smerge -g -A7 foo 1.3 1.1.1.1 > OUT
+bk smerge -g -A7 -l1.3 -r1.1.1.1 foo > OUT
 cmp -s OUT - <<EOF
 <<<<<<< local foo 1.1 vs 1.3
 -A
@@ -610,8 +610,8 @@ c
 branch end
 EOF
 bk delta $Q -ynone fdiffm
-bk smerge -Im -f fdiffm 1.1 1.1.1.1 > fdiffm_R
-bk smerge $D3 -Im -f fdiffm 1.1 1.1.1.1 > fdiffm_RD3
+bk smerge -Im -f -l1.1 -r1.1.1.1 fdiffm > fdiffm_R
+bk smerge $D3 -Im -f -l1.1 -r1.1.1.1 fdiffm > fdiffm_RD3
 cat <<EOF > fdiffm_D
 M
  1.1.1.1       | branch
@@ -675,7 +675,7 @@ remote start
 EOF
 echo $NX "end"$NXL >> nonl.txt
 bk delta $Q -yremote nonl.txt
-bk smerge -Im -f nonl.txt 1.1.1.1 1.2 > nonl_R
+bk smerge -Im -f -l1.1.1.1 -r1.2 nonl.txt > nonl_R
 cat <<EOF >nonl_D
 L
 -1.1           | gca start
@@ -717,11 +717,11 @@ cat <<EOF >nonl_D
 2
 3
 EOF
-bk smerge -g nonl.txt 1.1.1.1 1.2 > GOT
+bk smerge -g -l1.1.1.1 -r1.2 nonl.txt > GOT
 cp nonl_D WANT
 echo $NX "end"$NXL >>WANT
 checkfiles GOT WANT
-bk smerge -g -Aall nonl.txt 1.1.1.1 1.2 > GOT
+bk smerge -g -Aall -l1.1.1.1 -r1.2 nonl.txt > GOT
 cp nonl_D WANT
 cat <<EOF >>WANT
 <<<<<<< local nonl.txt 1.1 vs 1.1.1.1

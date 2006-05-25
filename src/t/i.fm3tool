@@ -106,7 +106,7 @@ echo OK
 
 echo $N "Starting fm3tool interactively; you must quit manually.......$NL"
 cd $HERE/local/RESYNC
-bk fm3tool -geometry 800x600 -o merge.raw -f 1.1.1.1 1.1 1.2 src/file1
+bk fm3tool -geometry 800x600 -o merge.raw -f -l1.1.1.1 -r1.2 src/file1
 echo OK
 
 echo $N Boundary bug - left click on left block, then type s.........$NL
@@ -150,7 +150,7 @@ EOF
 bk delta $Q -y1.3 foo
 # "merge" and run fm3tool - fails in bk-3.2.4
 bk edit $Q -M1.1.1.1 foo
-bk fm3tool -f 1.3 1.1 1.1.1.1 foo
+bk fm3tool -f -l1.3 -r1.1.1.1 foo
 bk get $Q foo
 cat - <<'EOF' > WANT
 left click on this line, then type s

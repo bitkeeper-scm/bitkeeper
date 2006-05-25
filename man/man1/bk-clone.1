@@ -1,20 +1,15 @@
 .so ../bk-macros
-.\" help://lclone
-.TH "bk clone" 1 %E% "\*(BC" "\*(UM"
-.\"    ====================== BitKeeper clone ======================
+.TH "bk clone" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk clone \- create a new copy of a package
 .SH SYNOPSIS
-.Bc bk clone [\-ql] [
-.OPTequal \-E env val
-.Bc ] [
-.OPTreq \-r rev
-.Bc ] [
-.OPTopt \-z d
-.B ]
+.B bk clone
+.[B] \-ql 
+.[OPTequal] \-E env val
+.[OPTreq] \-r rev
+.[OPTopt] \-z d
 .ARG from
-.Bc [
-.ARG to ]
+.[ARG] to
 .SH DESCRIPTION
 .LP
 The clone command copies from the 
@@ -24,10 +19,10 @@ copy at
 .ARG to .
 If 
 .ARG to 
-is not specified then the basename of the
+is not specified then the basename of
 .ARG from
 is the implied destination.  This works for fully and partially specified
-pathnames as well as BK URLs.
+pathnames as well as \*(BK URLs.
 See 
 .B bk help url
 for further naming information.
@@ -41,25 +36,31 @@ changesets up to and including
 The cloned repository remembers from which repository it was cloned.
 The 
 .ARG from
-repository is known as the "parent", while the newly cloned
-repository is known as the "child".
+repository is known as the \*(lqparent,\*(rq while the newly cloned
+repository is known as the \*(lqchild.\*(rq
 .LP
 Subsequent updates to the child can be done by running 
 .BR bk\ pull .
 Changes made in the child can be pushed back into the parent by running
 .BR bk\ push .
-.LP
+.SH NOTE
 Only completed changesets are cloned.  Any pending deltas are removed
 from the child before the clone completes.
 .SH OPTIONS
-.TP \w'\-E<var>=<x>\ 'u
-.OPTequal \-E var x
-Export an environment variable to remote \*(BK repository.
+.TP \-E\*<env\*>=\*<val\*>
+.OPTequal \-E env val
+Export an environment variable to the 
+.B bkd
+running in the remote \*(BK repository.
+Typically used to pass information to remote triggers.
+Only variables with the prefix
+.V BKU_
+are allowed.
 .tp
 .B \-l
 Clone using hardlinks instead of copying the data.  
-This is much faster and saves disk space, but only works 
-within a single Unix filesystem.
+This is faster and saves disk space, but only works 
+within filesystems supporting hardlinks.
 .tp
 .B \-q
 Run quietly.
@@ -69,24 +70,30 @@ Clone the repository up to and including cset
 .ARG rev .
 A changeset number or changeset key can be used to specify
 .ARG rev .
-See bk help terms for more information.
+See
+.B bk help terms
+for more information.
 .tp
 .OPTreq \-z d
 Do compression at level 
 .ARG d ,
-if possible; default is \-z6.
-Compression is possible when using ssh or the \*(BK daemon,
-but not with rsh.
+if possible; default is
+.BR \-z6 .
+Compression is possible when using
+\f(CWssh\fP
+or the \*(BK daemon, but not with
+.BR rsh .
 .SH "SEE ALSO"
-.SA bkd 1
-.SA parent 1
-.SA pull 1
-.SA push 1
-.SA relink 1
-.SA terms 1
-.SA triggers 1
-.SA url 1
+.SA bkd
+.SA parent
+.SA pull
+.SA push
+.SA relink
+.SA terms
+.SA triggers
+.SA url
 .SH CATEGORY
 .B Repository
 .br
 .B Common
+.\" help://lclone

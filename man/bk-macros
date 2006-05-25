@@ -1,4 +1,20 @@
-.\" Copyright (c) 1998-2001 BitMover, Inc.
+.\" Copyright (c) 1998-2006 BitMover, Inc.
+.\" Do all this stuff only once
+.if !d bk-macros \{\
+.ds bk-macros 1
+.so man.tmac
+.rn TP GROFF_TP
+.de TP
+.	ie '\\$1'' .GROFF_TP 4
+.	el \{\
+.		ie \B'\\$1' .GROFF_TP \\$1
+.		el \{\
+.			if n .nr tw-width \w'\\$1'+\w'n'
+.			if t .nr tw-width (\w'\\$1'-(\w'\\$1'%(4*\w'n')))+(4*\w'n')
+.			GROFF_TP \\n[tw-width]u
+.		\}
+.	\}
+..
 .de DS
 .	br
 .	ne 2
@@ -6,12 +22,15 @@
 .	if n .sp
 .	if t .sp .5
 .	nf
-.	in +4
+.	ie '\\$1'' .nr ds-indent 4
+.	el .nr ds-indent \\$1
+.	in +\\n[ds-indent]
 ..
 .de DE
 .	if n .sp
 .	if t .sp .5
-.	in -4
+.	ie '\\n[ds-indent]'' .in -4
+.	el .in -\\n[ds-indent]
 .	fi
 .	if t .ft R
 ..
@@ -31,103 +50,137 @@
 .	ds UN UNIX
 .\}
 .if t \{\
-.	ds BM B\s-3IT\s0M\s-3OVER\s0
-.	ds BC \*(BM, \s-3INC.\s0
+.	ds BM B\s-2IT\s0M\s-2OVER\s0
+.	ds BC \*(BM, \s-2INC.\s0
 .	ds BS \s-1B\s0\s-2IT\s0\s-1SCCS\s0
-.	ds BK B\s-3IT\s0K\s-3EEPER\s0
+.	ds BK B\s-2IT\s0K\s-2EEPER\s0
 .	ds UM \*(BK User's Manual
 .	ds ATT \s-1ATT SCCS\s0
 .	ds SC \s-1SCCS\s0
 .	ds R \s-1RCS\s0
 .	ds UN \s-1UNIX\s0
 .\}
+.\" Like .B but for constant width
+.de C
+\f(CW\\$*\fP
+..
+.\" Like .BR but for constant width
+.de CR
+\f(CW\\$1\fR\\$2
+..
+.\" Like .V but for variables like BK_SHOWPROC
+.de V
+\s-1\fB\\$1\fP\s0\\$2
+..
 .\" Non-breaking bold
 .de Bc
-.B \fB\\$*\fP\c
+.	B \\$*\c
 ..
 .\" Non-breaking italic
 .de Ic
-.I \fI\\$*\fP\c
+.	I \fI\\$*\fP\c
 ..
-.\" Italic for troff, <> for nroff.
+.ds < \\fI
+.ds > \\fP
+.if n \{\
+.	if \n[helpdoc]=1 \{\
+.		rm <
+.		rm >
+.		ds < <
+.		ds > >
+.	\}
+.\}
+.\" .ARG foo ==> <foo>
 .de ARG
-.	if t \fI\\$1\fP\\$2
-.	if n <\\$1>\\$2
-.. 
-.\" Italic for troff, <> for nroff.  no break.
+\*<\\$1\*>\\$2
+..
+.\" .[ARG] foo ==> [<foo>]
+.de [ARG]
+[\*<\\$1\*>\\$2]
+..
+.\" .[ARGc] foo ==> [<foo>] w/o newline
+.de [ARGc]
+[\*<\\$1\*>\\$2]\c
+..
+.\" .ARGc foo ==> <foo>, without newline
 .de ARGc
-.	if t \fI\\$1\fP\\$2\c
-.	if n <\\$1>\\$2\c
-.. 
+\*<\\$1\*>\\$2\c
+..
 .\" Print [files ... | -], i.e., optional list of files or "-".
 .de BKARGS
-.	B [\c
+[\c
 .	ARGc file
-\fI\ .\|.\|.\ \fR|\ \fI-\fB]\fR
+\fI\ .\|.\|.\ \fR|\ \fI\\-\fR]
 ..
 .\" Print [file ...], i.e., optional file list
 .de FILES
-.	B [\c
+[\c
 .	ARGc file
-\fI\ .\|.\|.\fB]\fR
+\fI\ .\|.\|.\fR]
 ..
-.de OPT
-.\" For synopsis line with bold/italic combo ([Crev] for instance)
-.if t \fB[\fP\fI\\$1\fP\fB]\fP
-.if n \fB[\fP<\\$1>\fB]\fP
+.\" Print file [file ...], i.e., one or more files
+.de FILESreq
+.	ARG file
+.	FILES
 ..
-.de OA
-.\" For synopsis line with bold/italic combo ([Crev] for instance)
-.if t \fB[\\$1\fP\fI\\$2\fP\fB]\fP
-.if n \fB[\\$1\fP<\\$2>\fB]\fP
+.\" .[OPT] foo ==> [foo]
+.\" XXX Think this should be removed in favor of [B]
+.\".de [OPT]
+.\"[\fB\\$1\fP]
+..\"..
+.\" Q foo ==> "foo" in helptool
+.\" no quotes in nroff and troff
+.de Q
+.	ie \n[helpdoc]=1 "\\$*"
+.	el \fB\\$*\fP
 ..
-.de OB
-.\" For synopsis line with bold/italic combo ([C[rev]] for instance)
-.if t \fB[\\$1[\fP\fI\\$2\fP\fB]]\fP
-.if n \fB[\\$1[\fP<\\$2>\fB]]\fP
+.\" Like .BR
+.de QR
+.	ie \n[helpdoc]=1 "\\$1"\\$2
+.	el \fB\\$1\fR\\$2
 ..
+.\" Qreq foo bar ==> "foo<bar>" in helptool
+.\" no quotes in nroff and troff
+.de Qreq
+.	ie \n[helpdoc]=1 "\\$1\*<\\$2\*>"
+.	el \fB\\$1\fR\*<\\$2\*>
+..
+.de [B]
+[\fB\\$*\fP]
+..
+.\" OPTreq -f filename ==> -f<filename>
 .de OPTreq
-.\" Bold Italic for option arg no space (optionarg)
-.\" option character with a required argument with no space
-.\" -cREQUIRED or -c<REQUIRED>
-.if t \fB\\$1\fP\fI\\$2\fP\\$3\c
-.if n \fB\\$1\fP<\\$2>\\$3\c
+\fB\\$1\fP\*<\\$2\*>\\$3
 ..
-.de OPT_req
-.\" Bold Italic for option arg with space (option arg)
-.\" option character with a required argument with a space
-.\" -c REQUIRED or -c <REQUIRED>
-.if t \fB\\$1\fP \ \fI\\$2\fP\c
-.if n \fB\\$1\fP <\\$2>\c
+.\" [OPTreq] -f filename ==> [-f<filename>]
+.de [OPTreq]
+.\" bk-changes.1 is the only user of $3
+[\fB\\$1\fP\*<\\$2\*>\\$3]
 ..
+.\" OPTopt -f filename ==> -f[<filename>]
 .de OPTopt
-.\" Bold Italic for option arg with [] (option[arg])
-.\" option character with a optional argument with no space
-.\" -c[OPTIONAL] or -c[<OPTIONAL>]
-.if t \fB\\$1[\fI\\$2\fB]\fR\c
-.if n \fB \\$1[\fP<\\$2>\fB]\fR\c
+\fB\\$1\fP[\*<\\$2\*>]
 ..
-.de OPT_opt
-.\" option character with a optional argument with a space
-.\" -c [ OPTIONAL ] or -c [ <OPTIONAL> ]
-.       if t \fB\\$1 [\fP\fI\\$2\fP\fB]\fP\c
-.       if n \fB\\$1 [\fP<\\$2\fP>\fB]\fP\c
+.\" [OPTopt] -f filename ==> [-f[<filename>]]
+.de [OPTopt]
+[\fB\\$1\fP[\*<\\$2\*>]]
 ..
-.de OPTcolon
-.\" Bold Italic for option arg:arg
-.if t .BI \\$1\\$2:\\$3\c
-.if n \fB\\$1\fP<\\$2>:<\\$3>\c
-..
+.\" OPTequal -f key value ==> -f<key>=<value>
 .de OPTequal
-.\" Bold Italic for option arg=arg
-.if t .BI \\$1\\$2=\\$3\c
-.if n \fB\\$1\fP<\\$2>=<\\$3>\c
+\fB\\$1\fP\*<\\$2\*>\fB=\fP\*<\\$3\*>
+..
+.\" [OPTequal] -f key value ==> [-f<key>=<value>]
+.de [OPTequal]
+[\fB\\$1\fP\*<\\$2\*>\fB=\fP\*<\\$3\*>]
+..
+.de ENV
+\*<\\$1\*>\fB=\fP\*<\\$2\*>
 ..
 .de tp
 .	if t .sp -(u;\\n[PD]u)
 .	if t .sp (u;\\n[PD]u/4)
 .	if n .sp -\\n[PD]u
-.	TP \\$1
+.	GROFF_TP \\$1
 ..
 .de ip
 .	if t .sp -(u;\\n[PD]u)
@@ -135,24 +188,20 @@
 .	if n .sp -\\n[PD]u
 .	IP \\$1 \\$2
 ..
+.
 .if t .ds BU \(bu
 .if n .ds BU \(rh
+.
 .de LI
-.	ip \*[BU] \\$1
-..
-.de _SA
-.\" SEE ALSO sections...  printed=bk man; online=bk help
-.	if t .BR bk-\\$1 (\\$2)
-.	if n \{\
-.		ie \n[helpdoc]=1 \{\
-.			B bk help \\$1
-.		\}
-.		el \{\
-.			BR bk-\\$1 (\\$2)
-.		\}
+.	ie '\\$2'' \{\
+.		if t .IP \*[BU] \\$1 2
+.		if n .IP \*[BU] \\$1 4
+.	\}
+.	el \{\
+.		if t .IP \*[BU] \\$1 \\$2
+.		if n .IP \*[BU] \\$1 \\$2
 .	\}
 ..
-.de SA
-.	_SA \\$1 \\$2
-.	br
-..
+.
+.if '\*[BKVER]'' .ds BKVER \\s-23.2.7\\s0
+.\}
