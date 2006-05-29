@@ -21,7 +21,7 @@
   ECC Crypto, Tom St Denis
 */  
 
-#if defined(MECC) && !defined(MECC_ACCEL)
+#if defined(MECC) && (!defined(MECC_ACCEL) || defined(LTM_DESC))
 
 /**
    Double an ECC point
@@ -143,6 +143,6 @@ done:
 }
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/ecc/ltc_ecc_projective_dbl_point.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2006/04/17 18:48:58 $ */
 

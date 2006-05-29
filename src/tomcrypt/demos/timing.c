@@ -37,5 +37,5 @@ return EXIT_SUCCESS;
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/demos/timing.c,v $ */
-/* $Revision: 1.33 $ */
-/* $Date: 2006/03/18 05:31:46 $ */
+/* $Revision: 1.41 $ */
+/* $Date: 2006/05/26 08:46:18 $ */

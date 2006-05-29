@@ -24,7 +24,7 @@ int main(void)
    printf("\nmac_test......"); fflush(stdout); x = mac_test();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\npkcs_1_test..."); fflush(stdout); x = pkcs_1_test();      printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\nrsa_test......"); fflush(stdout); x = rsa_test();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
-   printf("\necc_test......"); fflush(stdout); x = ecc_tests();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
+   printf("\necc_test......"); fflush(stdout); x = ecc_tests();        printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE); 
    printf("\ndsa_test......"); fflush(stdout); x = dsa_test();         printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\nkatja_test...."); fflush(stdout); x = katja_test();       printf(x ? "failed" : "passed");if (x) exit(EXIT_FAILURE);
    printf("\n");
@@ -32,5 +32,5 @@ int main(void)
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/demos/test.c,v $ */
-/* $Revision: 1.25 $ */
-/* $Date: 2006/03/18 03:48:33 $ */
+/* $Revision: 1.28 $ */
+/* $Date: 2006/05/25 10:50:08 $ */

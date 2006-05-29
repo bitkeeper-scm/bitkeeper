@@ -269,6 +269,9 @@
    #define MECC_ACCEL
 #endif   
 
+/* do we want fixed point ECC */
+/* #define MECC_FP */
+
 /* Timing Resistant? */
 /* #define LTC_ECC_TIMING_RESISTANT */
 
@@ -345,5 +348,5 @@
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_custom.h,v $ */
-/* $Revision: 1.41 $ */
-/* $Date: 2006/03/31 14:53:54 $ */
+/* $Revision: 1.44 $ */
+/* $Date: 2006/05/29 11:21:26 $ */

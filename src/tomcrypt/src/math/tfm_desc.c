@@ -148,6 +148,12 @@ static int count_bits(void *a)
    return fp_count_bits(a);
 }
 
+static int count_lsb_bits(void *a)
+{
+   LTC_ARGCHK(a != NULL);
+   return fp_cnt_lsb(a);
+}
+
 static int twoexpt(void *a, int n)
 {
    LTC_ARGCHK(a != NULL);
@@ -681,6 +687,7 @@ const ltc_math_descriptor tfm_desc = {
    &compare,
    &compare_d,
    &count_bits,
+   &count_lsb_bits,
    &twoexpt,
 
    &read_radix,
@@ -714,7 +721,11 @@ const ltc_math_descriptor tfm_desc = {
    &isprime,
 
 #ifdef MECC
+#ifdef MECC_FP
+   &ltc_ecc_fp_mulmod,
+#else
    &ltc_ecc_mulmod,
+#endif /* MECC_FP */
 #ifdef MECC_ACCEL
    &tfm_ecc_projective_add_point,
    &tfm_ecc_projective_dbl_point,
@@ -740,5 +751,5 @@ const ltc_math_descriptor tfm_desc = {
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/math/tfm_desc.c,v $ */
-/* $Revision: 1.18 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.20 $ */
+/* $Date: 2006/05/24 01:45:41 $ */

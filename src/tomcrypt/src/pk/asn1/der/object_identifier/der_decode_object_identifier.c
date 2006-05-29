@@ -67,14 +67,8 @@ int der_decode_object_identifier(const unsigned char *in,    unsigned long  inle
       return CRYPT_INVALID_PACKET;
    }
 
-   /* decode word1 and word2 */
-   --len;
-   t = in[x++];
-   words[0] = t/40;
-   words[1] = t%40;
-
-   /* decode rest */
-   y = 2;
+   /* decode words */
+   y = 0;
    t = 0;
    while (len--) {
        t = (t << 7) | (in[x] & 0x7F);
@@ -83,7 +77,13 @@ int der_decode_object_identifier(const unsigned char *in,    unsigned long  inle
            if (y >= *outlen) {
               return CRYPT_BUFFER_OVERFLOW;
            }
-           words[y++] = t;
+	   if (y == 0) {
+	      words[0] = t / 40;
+	      words[1] = t % 40;
+	      y = 2;
+	   } else {
+              words[y++] = t;
+	   }
            t          = 0;
        }
    }
@@ -95,5 +95,5 @@ int der_decode_object_identifier(const unsigned char *in,    unsigned long  inle
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/object_identifier/der_decode_object_identifier.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2006/04/22 17:28:40 $ */

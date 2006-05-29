@@ -15,7 +15,7 @@ static int sizes[] = {
 #ifdef ECC384
 48,
 #endif
-#ifdef ECC512
+#ifdef ECC521
 65
 #endif
 };
@@ -27,6 +27,10 @@ int ecc_tests (void)
   int           stat, stat2;
   ecc_key usera, userb, pubKey, privKey;
 	
+  DO(ecc_test ());
+  DO(ecc_test ());
+  DO(ecc_test ());
+  DO(ecc_test ());
   DO(ecc_test ());
 
   for (s = 0; s < (sizeof(sizes)/sizeof(sizes[0])); s++) {
@@ -133,5 +137,5 @@ int ecc_tests(void)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/testprof/ecc_test.c,v $ */
-/* $Revision: 1.10 $ */
-/* $Date: 2005/10/31 14:02:24 $ */
+/* $Revision: 1.13 $ */
+/* $Date: 2006/05/25 11:14:28 $ */

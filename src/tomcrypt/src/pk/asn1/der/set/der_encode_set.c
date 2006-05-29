@@ -21,6 +21,7 @@
 static int ltc_to_asn1(int v)
 {
    switch (v) {
+      case LTC_ASN1_BOOLEAN:                 return 0x01;
       case LTC_ASN1_INTEGER:
       case LTC_ASN1_SHORT_INTEGER:           return 0x02;
       case LTC_ASN1_BIT_STRING:              return 0x03;
@@ -97,5 +98,5 @@ int der_encode_set(ltc_asn1_list *list, unsigned long inlen,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/set/der_encode_set.c,v $ */
-/* $Revision: 1.9 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.10 $ */
+/* $Date: 2006/04/22 17:24:09 $ */

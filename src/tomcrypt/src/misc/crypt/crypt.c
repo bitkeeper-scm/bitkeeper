@@ -330,12 +330,14 @@ const char *crypt_build_settings =
 #if defined(LTC_EASY)
     " (easy) "
 #endif    
-
+#if defined(MECC_FP)
+   " MECC_FP "
+#endif
     "\n"
     "\n\n\n"
     ;
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt.c,v $ */
-/* $Revision: 1.19 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.20 $ */
+/* $Date: 2006/05/25 17:51:45 $ */

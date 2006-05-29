@@ -49,6 +49,7 @@ int der_decode_sequence_multi(const unsigned char *in, unsigned long inlen, ...)
        }
 
        switch (type) {
+           case LTC_ASN1_BOOLEAN:
            case LTC_ASN1_INTEGER:
            case LTC_ASN1_SHORT_INTEGER:
            case LTC_ASN1_BIT_STRING:
@@ -95,6 +96,7 @@ int der_decode_sequence_multi(const unsigned char *in, unsigned long inlen, ...)
        }
 
        switch (type) {
+           case LTC_ASN1_BOOLEAN:
            case LTC_ASN1_INTEGER:
            case LTC_ASN1_SHORT_INTEGER:
            case LTC_ASN1_BIT_STRING:
@@ -131,5 +133,5 @@ LBL_ERR:
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/sequence/der_decode_sequence_multi.c,v $ */
-/* $Revision: 1.10 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.11 $ */
+/* $Date: 2006/04/22 17:24:09 $ */

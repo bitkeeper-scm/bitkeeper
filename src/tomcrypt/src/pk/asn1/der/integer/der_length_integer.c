@@ -49,6 +49,7 @@ int der_length_integer(void *num, unsigned long *outlen)
       leading_zero = 0;
       z = mp_count_bits(num);
       z = z + (8 - (z & 7));
+      if (((mp_cnt_lsb(num)+1)==mp_count_bits(num)) && ((mp_count_bits(num)&7)==0)) --z;
       len = z = z >> 3;
    }
 
@@ -77,5 +78,5 @@ int der_length_integer(void *num, unsigned long *outlen)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/integer/der_length_integer.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2006/04/22 01:22:55 $ */
