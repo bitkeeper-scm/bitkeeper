@@ -182,8 +182,6 @@ usage:			system("bk help -s changes");
 				lurls = addLine(lurls, normal);
 			}
 		} else {
-			/* proj_root(0) test above ensures this succeeds */
-			(void)proj_cd2root();	/* need for pushp and pullp */
 			if (opts.local) lurls = parent_pushp();
 			if (opts.remote) rurls = parent_pullp();
 			unless (lurls || rurls) {
