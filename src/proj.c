@@ -269,6 +269,24 @@ proj_relpath(project *p, char *path)
 }
 
 /*
+ * When given a relative path from the root, turn the path into an absolute
+ * path from the root of the file system.
+ *
+ * Note: returns a malloced pointer that you must not free.  Not safe across
+ * multiple calls.
+ */
+char	*
+proj_fullpath(project *p, char *file)
+{
+	char	*root = proj_root(p);
+	static	char *path;
+
+	unless (root) return (0);
+	if (path) free(path);	// XXX - if this gets called a lot use a static
+	return (path = aprintf("%s/%s", root, file));
+}
+
+/*
  * Return a populated MDBM for the config file in the current project.
  */
 MDBM *

@@ -1257,7 +1257,7 @@ The bk upgrade process requires a valid commercial license.
 Please chdir to a repository setup with a current commercial license
 and then repeat this upgrade command.
 $
-#upgrade-msys-shell
+#upgrade-nomsys
 The upgrade command may not be run from an Msys shell, the removal of the
 existing BitKeeper will fail.  Please try again from a command shell.
 $

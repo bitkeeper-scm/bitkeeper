@@ -930,11 +930,13 @@ proc widgets {} \
 				# so that bk install installs it
 				set cfgpath "[exec bk bin]/config"
 				set fd [open $cfgpath w]
+				set data [read $cfgpath]
 				puts $fd [join [list \
 				    "license: $::wizData(license)" \
 				    "licsign1: $::wizData(licsign1)" \
 				    "licsign2: $::wizData(licsign2)" \
 				    "licsign3: $::wizData(licsign3)"] \n]
+				puts $fd $data
 				catch {close $fd}
 				if {![info exists ::licenseInfo(text)] ||
 				    $::licenseInfo(text) eq ""} {
@@ -950,7 +952,7 @@ proc widgets {} \
 				}
 			}
 			Welcome {
-				if {[catch {set b [exec bk _eula -u]}]} {
+				if {[eula_u b]} {
 					# No license found, so prompt for it
 					wizInsertStep LicenseKey
 					. configure -step LicenseKey
@@ -967,6 +969,15 @@ proc widgets {} \
 			}
 		}
 	}
+}
+
+proc eula_u {text} \
+{
+	upvar 1 $text t
+	set ::env(BK_NO_GUI_PROMPT) 1	;# make bk _eula shut up
+	set r [catch {set t [exec bk _eula -u]}]
+	unset ::env(BK_NO_GUI_PROMPT)
+	return $r
 }
 
 proc doInstall {} \
