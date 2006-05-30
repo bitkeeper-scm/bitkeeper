@@ -1,14 +1,11 @@
 .so ../bk-macros
 .TH "bk sfiles" "\*[BKVER]" %E% "\*(BC" "\*(UM"
-.\"    ======================== Sfiles Help ===========================
 .SH NAME
-bk sfiles \- generates lists of revision control files
+bk sfiles \- generate lists of \*[BK] controlled files
 .SH SYNOPSIS
-.Bc bk [-r] sfiles [\-01acCdDeEgGjlnSuUvxy] [
 .B bk
-.[B] \-r
 .B sfiles
-.[B] \-01acCdDeEgGjlnpSuUvxy
+.[B] \-01acCdDgGijlnRsSuUvxy
 .[OPTreq] \-o file
 .[OPTopt] \-p \fBA\fP|\fBC\fP
 .[ARG] dirs
@@ -29,15 +26,14 @@ uses to generate the list of files to feed to
 If a directory and/or file list is specified, then each of the items in 
 the list is processed; directories are processed recursively.
 .SH OPTIONS
-When examining the options, bear in mind that if you want a list of files
-in one particular state, do not combine the option which specifies that
-state with options which specify different states; you'll get one list 
-with both kinds of files if you do.
+Most of the options below may be combined to list files which are in 
+different states, for example, 
+.B \-cx 
+would list modified files and extra files not yet under \*(BK control.
 .LP
-If you want a one pass with different sorts of files listed, look at
-the 
-.Q \-e/E/v
-options.
+When combining options it is best to also add
+.B \-v
+so that what is listed is unambiguous.
 .TP \fB\-p[A|C]\fPnn
 .B \-0
 Use a null character (instead of a newline) to separate each filename
@@ -45,7 +41,8 @@ printed.  This is to useful with
 .BR "GNU xargs -0" .
 .tp
 .B \-1
-Only examine one directory level.  Do not go into subdirectories.
+Only examine the current (or named) directory.
+Do not go into subdirectories.
 .tp
 .B \-a
 Examine all files, even if listed in
@@ -73,19 +70,23 @@ List directories under \*(BK control (SCCS subdir exists).
 .B \-D
 List directories with no (or empty) SCCS subdirs.
 .tp
-.B \-e
-Shorthand for 
-.Q \-dDGjluvx
-.tp
 .B \-E
-Shorthand for 
-.Q \-cdDGjlnuvxp
+Shorthand which means "show everything interesting in verbose format".
+Currently the same as:
+.Q \-cdDGijlnRsuvxyp
 .tp
 .B \-g
 List the gfile name, not the sfile name.
 .tp
 .B \-G
-List files if and only if they are checked out ("gotten").
+List files only if they are checked out ("gotten").
+.tp
+.B \-i
+List files which would normally be listed as extras (see
+.B \-x 
+below) but are suppressed because they are present in the 
+.B BitKeeper/etc/ignore 
+file.
 .tp
 .B \-j
 List junk files, i.e., files in \*(SC subdirectories which are not 
@@ -95,9 +96,7 @@ metadata.
 List locked files (p.file and/or z.file).
 .tp
 .B \-n
-List s.files that are not in the correct location.  (Must be run from
-repository root,
-.QR "bk\ \-r\ sfiles\ \-n" .)
+List s.files that are not in the correct location.  
 .tp
 .OPTreq \-o file
 Send output to
@@ -132,6 +131,10 @@ Like
 but don't trust the d.file.  Use the s.file for verification
 and create or delete the d.file to match the status of the s.file.
 .tp
+.B \-R
+List sub-repositories, i.e., any repository root within your tree other
+than your repository root.
+.tp
 .B \-S
 Produce a summary listing only, typically combined with 
 .QR \-E .
@@ -150,50 +153,64 @@ other than
 .B \-v
 Prefix the output with information about the state of the s.file.
 The information is in a 7 character field, followed by a space,
-then followed by the filename.  Each of the columns are described
+then followed by the filename.
+Each of the columns are described
 below, with the notation, then the option, then description.
 .RS
-.TP "\f(CBl------\fR\ \ (\fB\-l\fP)n"
-\f(CBl------\fR\ \ (\fB\-l\fP)
-the file is locked
-.tp
-\f(CBu------\fR\ \ (\fB\-u\fP)
-the file is unlocked
-.tp
-\f(CB-c-----\fR\ \ (\fB\-c\fP)
-the file is modified (changed)
-.tp
-\f(CB--p----\fR\ \ (\fB\-p\fP)
-the file has pending deltas
-.tp
-\f(CB---G---\fR\ \ (\fB\-G\fP)
-the file is checked out i.e., "gotten"
-.tp
-\f(CB----n--\fR\ \ (\fB\-n\fP)
-the file is not in its recorded location
-.tp
-\f(CB-----d-\fR\ \ (\fB\-d\fP)
+.TP "\f(CBs-----y\ (\-y)\fP"
+\f(CBd------\ (-d)\fP
 a directory containing \*(BK files
 .tp
-\f(CB-----D-\fR\ \ (\fB\-D\fP\fP)
-a directory containing no \*(BK files
+\f(CBD------\ (-D)\fP
+a directory containing no \*(BK files (but may have subdirectories with 
+\*(BK files).
 .tp
-\f(CB------y\fR\ \ (\fB\-y\fP)
-the file has saved checkin comments
+\f(CBi------\ (-i)\fP
+a file that is extra but is normally ignored
 .tp
-\f(CBjjjjjjj\fR\ \ (\fB\-j\fP)
-the file is junk
+\f(CBj------\ (-j)\fP
+extra file under \*[SCCS]/ dir
 .tp
-\f(CBxxxxxxx\fR\ \ (\fB\-x\fP)
-file is not yet under \*(BK control
-\f(CBppppppp\fR\ \ (\fB\-pC \fB\-pA\fP)
+\f(CBR------\ (-R)\fP
+the file is a subrepository root (overrides \-d)
+.tp
+\f(CBs------\ (-s)\fP
+a file that is under \*(BK control
+.tp
+\f(CBx------\ (-x)\fP
+a file that is not under \*(BK control
+.tp
+\f(CBsl-----\ (-l)\fP
+a \*(BK file that is locked
+.tp
+\f(CBsu-----\ (-u)\fP
+a \*(BK file that is not locked
+.tp
+\f(CBslc----\ (-c)\fP
+a \*(BK file that is locked and modified (aka changed)
+.tp
+\f(CBs--p---\ (-p)\fP
+a \*(BK file that has one or more pending deltas
+.tp
+\f(CBs---G--\ (-G)\fP
+a \*(BK file that is checked out (aka gotten)
+.tp
+\f(CBs----n-\ (-n)\fP
+a \*(BK file that is not in its recorded location
+.tp
+\f(CBs-----y\ (-y)\fP
+a \*(BK file that has saved checkin comments
+.tp
+\f(CBx-----y\ (-y)\fP
+an extra file that has saved checkin comments
 .RE
 .tp
 .B \-x
 List files which have no revision control files.
 .tp
 .B \-y
-List files which have saved checkin comments.
+List files which have saved checkin comments, the files listed
+may be either extra files and/or files under \*(BK control.
 .SH NOTES
 .LP
 .B bk sfiles

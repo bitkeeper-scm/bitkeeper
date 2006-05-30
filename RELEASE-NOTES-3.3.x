@@ -121,6 +121,14 @@ bk sccscat
     
 bk sfiles
     bk sfiles has many subtle interface changes to support GUI integration.
+    Please read the man page if the summary below is too detailed, the man
+    page is easier because it documents how things work now, this is mixing
+    old and new.
+
+    Note that -i and -n no longer require that you run sfiles at the repo root.
+    Which means that "bk citool ." will not show files which are normally 
+    ignored.
+
     The unchanged interfaces are:
     -1 (stop at first directory)
     -a (consider all files)
@@ -143,22 +151,19 @@ bk sfiles
 
     The changed interfaces are:
     Old		New	Meaning
-    -e		-e	-dDGjluvxy (adds -d -D -G -y)
-    -E		-E	-cdDGjlnpuvxy (adds -d -D -G -y)
+    -e		-E	-e is no longer supported, see -E
+    -E		-E	-cdDGijlnRsuvxyp (shows all interesting information)
+    -i		-i	now means list files which are ignored
     <none>	-G	list files which are checked out
     <none>	-y	list files with saved comments
-    -S		-S	now lists -d/-D/-G summaries as well
+    <none>	-R	list subrepository roots
+    -S		-S	now lists -d/-D/-G/-i/-R summaries as well
     -v		-v	now a 7 column listing instead of 4 with slots for
     			-l/-u,-c,-p,-G,-n,-d/-D,-y && -j/-x (see man page)
     -C		-pC	remove undocumented alias
     -A		-pA	remove undocumented alias
+    -C		-C	now means don't trust timestamp db
     <none>	-0	print null between files instead of \n
-
-    Removed interfaces:
-    -s		<none>	we have options for everything now
-    -i			-e is pretty close
-
-    XXX - leave in -i as undocumented alias after making regressions work?
 
     The sfiles options to 'bk' have similar changes.  See 'bk help bk'.
 

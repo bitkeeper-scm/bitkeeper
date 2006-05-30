@@ -133,46 +133,46 @@ echo OK
 
 echo $N Check that -a lists tags and empty merges ...................$NL
 cd $HERE/diamond
-bk changes -a -nd:KEY: | bk _sort > WITH
+bk changes -a -nd:KEY: | bk sort > WITH
 bk changes -nd:KEY: > WITHOUT
 bk changes -ar1.3 -nd:KEY: > EMPTY
 bk changes -ad'$if(:DT:=T){:KEY:\n}' > TAG
 test -s WITH -a -s WITHOUT -a -s EMPTY -a -s TAG || fail
-cat WITHOUT EMPTY TAG | bk _sort > SORT
+cat WITHOUT EMPTY TAG | bk sort > SORT
 checkfiles WITH SORT
 echo OK
 
 echo $N Check that -e adds in empty merges ..........................$NL
 # continuation from above
-bk changes -e -nd:KEY: | bk _sort > WITH
-cat WITHOUT EMPTY | bk _sort > SORT
+bk changes -e -nd:KEY: | bk sort > WITH
+cat WITHOUT EMPTY | bk sort > SORT
 checkfiles WITH SORT
 echo OK
 
 echo $N Check that -e toggles: -ae means tag with no empty ..........$NL
 # continuation from above
-bk changes -ae -nd:KEY: | bk _sort > WITH
-cat WITHOUT TAG | bk _sort > SORT
+bk changes -ae -nd:KEY: | bk sort > WITH
+cat WITHOUT TAG | bk sort > SORT
 checkfiles WITH SORT
 # show reverse order changes output: -e has no affect
-bk changes -ea -nd:KEY: | bk _sort > WITH
-cat WITHOUT EMPTY TAG | bk _sort > SORT
+bk changes -ea -nd:KEY: | bk sort > WITH
+cat WITHOUT EMPTY TAG | bk sort > SORT
 checkfiles WITH SORT
 echo OK
 
 echo $N Check that -k implies -a ....................................$NL
 # continuation from above / check -k implies -D later down
-bk changes -k | bk _sort > WITH
-cat WITHOUT EMPTY TAG | bk _sort > SORT
+bk changes -k | bk sort > WITH
+cat WITHOUT EMPTY TAG | bk sort > SORT
 checkfiles WITH SORT
 echo OK
 
 echo $N Check that -m removes all merges ............................$NL
-bk changes -e -nd:KEY: | bk _sort > WITH
+bk changes -e -nd:KEY: | bk sort > WITH
 bk changes -m -nd:KEY: > WITHOUT
 bk changes -a -d'$if(:MERGE:){:KEY:\n}' > MERGES
 test -s WITH -a -s WITHOUT -a -s MERGES || fail
-cat WITHOUT MERGES | bk _sort > SORT
+cat WITHOUT MERGES | bk sort > SORT
 checkfiles WITH SORT
 echo OK
 
@@ -343,12 +343,12 @@ cmp -s DASH_D PLAIN && fail
 echo OK
 
 echo $N Check that -D removes dups when multiple remote repos .......$NL
-bk changes -q -nd:KEY: simple simple | bk _sort > DASH_Q
-bk changes -D -nd:KEY: simple simple | bk _sort > DASH_D
+bk changes -q -nd:KEY: simple simple | bk sort > DASH_Q
+bk changes -D -nd:KEY: simple simple | bk sort > DASH_D
 if cmp -s DASH_D DASH_Q
 then	echo "failed (bug - feature not implemented)"
 else
-	bk _sort -u < DASH_Q > UNIQ
+	bk sort -u < DASH_Q > UNIQ
 	checkfiles DASH_D UNIQ
 	echo OK
 fi
@@ -356,7 +356,7 @@ fi
 ## check this in the -L section
 #
 # echo $N Check that -k implies -D ....................................$NL
-# bk changes -k simple simple | bk _sort > DASH_K
+# bk changes -k simple simple | bk sort > DASH_K
 # checkfiles DASH_K DASH_D
 # echo OK
 

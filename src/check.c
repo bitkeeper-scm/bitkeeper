@@ -708,7 +708,7 @@ checkAll(hash *db)
 			goto full;
 		}
 		sprintf(buf,
-		    "bk annotate -R -h %s/ChangeSet | bk _sort", RESYNC2ROOT);
+		    "bk annotate -R -h %s/ChangeSet | bk sort", RESYNC2ROOT);
 		f = popen(buf, "r");
 		while (fgets(buf, sizeof(buf), f)) {
 			unless (hash_insertStr(local, buf, 0)) {
@@ -831,7 +831,7 @@ buildKeys(sccs *cset, MDBM *idDB)
 		fprintf(stderr, "bktmp failed to get temp file\n");
 		exit(1);
 	}
-	sprintf(buf, "bk _sort > %s", ctmp);
+	sprintf(buf, "bk sort > %s", ctmp);
 	f = popen(buf, "w");
 	s = t = cset->mmap + cset->data;
 	r = cset->mmap + cset->size;

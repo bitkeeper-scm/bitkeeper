@@ -257,11 +257,13 @@ proj_relpath(project *p, char *path)
 	unless (IsFullPath(path)) path = fullname(path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {
-		assert(path[len] == '/');
-		return(strdup(&path[len+1]));
+		if (!path[len]) {
+			return (strdup("."));
+		} else {
+                       assert(path[len] == '/');
+                       return(strdup(&path[len+1]));
+		}
 	} else {
-		fprintf(stderr, "Path mismatch?: %s <=> %s\n",
-			root, path);
 		return (0);
 	}
 }

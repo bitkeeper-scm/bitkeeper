@@ -82,7 +82,7 @@ do	echo $i > man/${i}.1
 done
 bk extras | bk new $Q -
 bk commit $Q -ywhatever
-bk sfiles -gU | bk _sort | while read x
+bk sfiles -gU | bk sort | while read x
 do echo ./$x
 done > ../LIST
 echo OK
@@ -93,7 +93,7 @@ echo $N Exclude src subdirectory ....................................$NL
 rm -rf ../EXPORT
 bk export -tplain -x'src/*' ../EXPORT
 cd ../EXPORT
-find . -type f | bk _sort > ../GOT
+find . -type f | bk sort > ../GOT
 cd ..
 grep -v src/ < LIST > WANT
 checkfiles GOT WANT
@@ -104,7 +104,7 @@ cd $HERE/project
 rm -rf ../EXPORT
 bk export -tplain -x'man/*' -x'html/*' ../EXPORT
 cd ../EXPORT
-find . -type f | bk _sort > ../GOT
+find . -type f | bk sort > ../GOT
 cd ..
 grep -v man/ < LIST | grep -v html/ > WANT
 checkfiles GOT WANT
@@ -115,7 +115,7 @@ cd $HERE/project
 rm -rf ../EXPORT
 bk export -tplain -x'*.c' -x'*.h' ../EXPORT
 cd ../EXPORT
-find . -type f | bk _sort > ../GOT
+find . -type f | bk sort > ../GOT
 cd ..
 grep -v 'src/' < LIST > WANT
 checkfiles GOT WANT
@@ -126,7 +126,7 @@ cd $HERE/project
 rm -rf ../EXPORT
 bk export -tplain -i'*.html' ../EXPORT
 cd ../EXPORT
-find . -type f | bk _sort > ../GOT
+find . -type f | bk sort > ../GOT
 cd ..
 grep 'html/' < LIST > WANT
 checkfiles GOT WANT
@@ -137,7 +137,7 @@ cd $HERE/project
 rm -rf ../EXPORT
 bk export -tplain -x'*.c' -x'*.h' -i'*.1' ../EXPORT
 cd ../EXPORT
-find . -type f | bk _sort > ../GOT
+find . -type f | bk sort > ../GOT
 cd ..
 grep man/ < LIST > WANT
 checkfiles GOT WANT
@@ -148,7 +148,7 @@ cd $HERE/project
 rm -rf ../EXPORT
 bk export -tplain -i'*.c' -i'*.h' ../EXPORT
 cd ../EXPORT
-find . -type f | bk _sort > ../GOT
+find . -type f | bk sort > ../GOT
 cd ..
 grep src/ < LIST > WANT
 checkfiles GOT WANT
@@ -159,7 +159,7 @@ cd $HERE/project
 rm -rf ../EXPORT
 bk export -tplain -i'*.c' -i'*.h' -xsrc/foo.c ../EXPORT
 cd ../EXPORT
-find . -type f | bk _sort > ../GOT
+find . -type f | bk sort > ../GOT
 cd ..
 grep src/ < LIST | grep -v foo.c > WANT
 checkfiles GOT WANT

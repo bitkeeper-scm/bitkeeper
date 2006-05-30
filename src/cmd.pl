@@ -259,7 +259,7 @@ shrink
 sinfo
 smerge
 _shellSplit_test
-_sort
+sort
 _stattest
 status
 stripdel
@@ -310,6 +310,7 @@ rechksum => checksum
 rev2cset => r2c
 sccsdiff => diffs
 sfind => sfiles
+_sort => sort
 support => sendbug
 unget => unedit
 user => users

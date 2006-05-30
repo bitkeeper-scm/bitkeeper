@@ -22,12 +22,12 @@ bk commit $Q -ycheckout
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-commit <<EOF
 #!/bin/bash
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/pre-commit
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort > $HERE/pre-commit
 exit 0
 EOF
 cat > BitKeeper/triggers/post-commit <<EOF
 #!/bin/bash
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/post-commit
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort > $HERE/post-commit
 exit 0
 EOF
 chmod +x BitKeeper/triggers/*
@@ -310,7 +310,7 @@ tar xf TAR
 cd project
 cat > BitKeeper/triggers/pre-tag <<EOF
 #!/bin/bash
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/pre-tag
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort > $HERE/pre-tag
 exit 0
 EOF
 chmod +x BitKeeper/triggers/pre-tag
@@ -411,7 +411,7 @@ set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
 	grep -v _FEATURES |
 	grep -v BK_LICENSE= |
- 	grep -v BK_AUTH_HMAC=GOOD | bk _sort > $HERE/pre-outgoing
+ 	grep -v BK_AUTH_HMAC=GOOD | bk sort > $HERE/pre-outgoing
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
@@ -420,7 +420,7 @@ set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
 	grep -v BK_LICENSE= |
 	grep -v _FEATURES |
-	grep -v BK_AUTH_HMAC=GOOD | bk _sort > $HERE/post-outgoing
+	grep -v BK_AUTH_HMAC=GOOD | bk sort > $HERE/post-outgoing
 EOF
 chmod +x BitKeeper/triggers/*
 project_repoid=`bk identity -r`
@@ -478,7 +478,7 @@ cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v BK_LICENSE= |
-	bk _sort > $HERE/pre-outgoing-l
+	bk sort > $HERE/pre-outgoing-l
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
@@ -487,7 +487,7 @@ set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v BK_LICENSE= |
 	grep -v BK_NO_REPO_LOCK= |
 	grep -v BK_IGNORE_WRLOCK= |
-	bk _sort > $HERE/post-outgoing-l
+	bk sort > $HERE/post-outgoing-l
 EOF
 chmod +x BitKeeper/triggers/*
 cd $HERE
@@ -561,7 +561,7 @@ set | grep $DASHA ^BK | grep -v _BK_ |
     grep -v BKD_LICTYPE |
     grep -v BKD_SEED= |
     grep -v BKD_SEED_OK=1 |
-    bk _sort > $HERE/post-incoming-clone
+    bk sort > $HERE/post-incoming-clone
 exit 0
 EOF
 chmod +x BitKeeper/triggers/post-incoming
@@ -599,7 +599,7 @@ set | grep $DASHA ^BK |
     grep -v BK_REPO_ID |
     grep -v BK_IGNORE_WRLOCK |
     grep -v BK_NO_REPO_LOCK |
-    bk _sort > $HERE/post-incoming-clone-l
+    bk sort > $HERE/post-incoming-clone-l
 exit 0
 EOF
 chmod +x BitKeeper/triggers/post-incoming
@@ -633,7 +633,7 @@ echo $N Make sure pull is passed the right variables ................$NL
 cd $HERE/project
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/pre-outgoing
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort > $HERE/pre-outgoing
 cp \$BK_CSETLIST $HERE/CSETS
 exit 1
 EOF
@@ -675,7 +675,7 @@ cd $HERE/clone
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-incoming <<EOF
 #!/bin/bash
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/pre-incoming
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort > $HERE/pre-incoming
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -700,7 +700,7 @@ cd $HERE/clone
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/bash
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/pre-resolve
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort > $HERE/pre-resolve
 pwd > $HERE/PWD
 exit 1
 EOF
@@ -802,7 +802,7 @@ cd $HERE/apply
 test -d BitKeeper/triggers || mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-apply <<EOF
 #!/bin/bash
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort -u > $HERE/pre-apply
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort -u > $HERE/pre-apply
 pwd > $HERE/apply-pwd
 exit 1
 EOF
@@ -975,7 +975,7 @@ rm BitKeeper/triggers/* $HERE/changes
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 bk changes - < \$BK_CSETLIST > $HERE/changes
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort -u > $HERE/post-incoming
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort -u > $HERE/post-incoming
 EOF
 chmod +x BitKeeper/triggers/*
 clone_repoid=`bk identity -r`
@@ -1018,7 +1018,7 @@ rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-incoming <<EOF
 #!/bin/bash
 echo I am the remote pre-incoming trigger and I am failing
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/pre-incoming
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort > $HERE/pre-incoming
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -1056,7 +1056,7 @@ rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 echo I am the post-incoming trigger
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/post-incoming
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort > $HERE/post-incoming
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -1106,7 +1106,7 @@ rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/bash
 echo pre-resolve failing
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort >> $HERE/pre-resolve
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort >> $HERE/pre-resolve
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -1144,7 +1144,7 @@ rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/bash
 echo pre-resolve failing but leaving patch
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort >> $HERE/pre-resolve
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort >> $HERE/pre-resolve
 exit 2
 EOF
 chmod +x BitKeeper/triggers/*
@@ -1330,7 +1330,7 @@ cd $HERE/delta/BitKeeper/triggers
 cat > pre-delta <<EOF
 #!/bin/bash
 
-set | grep $DASHA ^BK | grep -v _BK_ | bk _sort > $HERE/pre-delta
+set | grep $DASHA ^BK | grep -v _BK_ | bk sort > $HERE/pre-delta
 echo You bozo, you forgot to cstyle \$BK_FILE
 exit 1
 EOF

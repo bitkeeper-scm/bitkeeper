@@ -204,9 +204,9 @@ bk diff -iu CMP1 CMP2 || {
 
 bk undos > CMP1 <<EOF
 a/b/c/Data
-  BitKeeper file ${HERE}/project/a/b/c/Data
 
 a/b/c/Data
+  BitKeeper file ${HERE}/project/a/b/c/Data
 
 a/b/c/Data
   Rev 2
@@ -238,7 +238,7 @@ a/b/c/Data
 EOF
 bk sccslog -f a/b/c/Data | grep -v bk_regression.bk | bk undos > CMP2
 bk diff -i CMP1 CMP2 > /dev/null
-if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; bk sccslog -f a/b/c/Data; exit 1; fi
 echo OK
 
 echo $N Checking sccslog with dspec .................................$NL

@@ -187,7 +187,7 @@ _superset() {
 	 bk sfiles -xa BitKeeper/triggers
 	 bk sfiles -xa BitKeeper/etc |
 	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in|etc/level'
-	) | bk _sort > $TMP2
+	) | bk sort > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2
@@ -457,7 +457,7 @@ _unrm () {
 
 	# Find all the possible files, sort with most recent delete first.
 	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
-		bk _sort -r -n | awk -F'|' '{print $2}' | \
+		bk sort -r -n | awk -F'|' '{print $2}' | \
 		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
 
@@ -587,7 +587,7 @@ _rmdir() {		# /* doc 2.0 */
 		exit 1
 	fi
 	bk sfiles "$1" | bk clean -q -
-	bk sfiles "$1" | bk _sort | bk rm -
+	bk sfiles "$1" | bk sort | bk rm -
 	SNUM=`bk sfiles "$1" | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
@@ -871,7 +871,7 @@ _meta_union() {
 	do	test -d BitKeeper/$d/SCCS || continue
 		bk _find BitKeeper/$d/SCCS -name "s.${1}*"
 	done | bk prs -hr1.0 -nd'$if(:DPN:=BitKeeper/etc/'$1'){:GFILE:}' - |
-		bk annotate -R - | bk _sort -u
+		bk annotate -R - | bk sort -u
 }
 
 # Convert a changeset revision, tag, or key to the file rev 
@@ -1136,7 +1136,7 @@ EOF
 # in case someone calls _keysort after some merge or something.
 __keysort()
 {
-    bk _sort "$@"
+    bk sort "$@"
 }
 
 __quoteSpace()
@@ -1642,7 +1642,7 @@ _conflicts() {
 
 	bk gfiles "$@" | grep -v '^ChangeSet$' | bk prs -hnr+ \
 	-d'$if(:RREV:){:GPN:|:LPN:|:RPN:|:GFILE:|:LREV:|:RREV:|:GREV:}' - | \
-	bk _sort | while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
+	bk sort | while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
 	do	if [ "$GFILE" != "$LPN" ]
 		then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
 		else	test "$GFILE" = "$LPN" || {

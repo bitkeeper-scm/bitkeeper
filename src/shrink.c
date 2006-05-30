@@ -158,7 +158,7 @@ sort(MDBM *m)
 	int	i;
 	char	*s;
 	char	buf[MAXKEY];
-	FILE	*sort = popen("bk _sort -nr > .sort", "w");
+	FILE	*sort = popen("bk sort -nr > .sort", "w");
 	FILE	*encode = fopen(".encode", "w");
 
 	for (kv = mdbm_first(m); kv.key.dsize != 0; kv = mdbm_next(m)) {

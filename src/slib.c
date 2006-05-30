@@ -4559,8 +4559,11 @@ name2sccs(char *name)
 	char	*s, *newname;
 
 	/* maybe it has the SCCS in it already */
-	s = rindex(name, '/');
-	if ((s >= name + 4) && strneq(s - 4, "SCCS/", 5)) {
+	if (s = rindex(name, '/')) s -= 4;	/* point it at start of SCCS/ */
+	unless (s >= name) s = 0;
+
+	/* DIR_WITH_SCCS/GOTTEN screwed us up, this should fix it */
+	if (s && strneq(s, "SCCS/", 5) && ((s == name) || (s[-1] == '/'))) {
 		unless (sccs_filetype(name)) return (0);
 		name = strdup(name);
 		s = strrchr(name, '/');
@@ -9249,11 +9252,7 @@ out:		sccs_unlock(s, 'z');
 			randomBits(buf);
 			if (buf[0]) d->random = strdup(buf);
 		}
-		unless (hasComments(d)) {
-			sprintf(buf, "BitKeeper file %s", fullname(s->gfile));
-			d->comments = addLine(d->comments, strdup(buf));
-		}
-		if ((d == n0) && !hasComments(n)) {
+		unless (hasComments(n)) {
 			if (comments_readcfile(s, 0, n)) {
 				if (flags & DELTA_CFILE) {
 					fprintf(stderr,
@@ -9262,6 +9261,10 @@ out:		sccs_unlock(s, 'z');
 					goto out;
 				}
 			}
+		}
+		unless (hasComments(n)) {
+			sprintf(buf, "BitKeeper file %s", fullname(s->gfile));
+			n->comments = addLine(d->comments, strdup(buf));
 		}
 	}
 	if (BITKEEPER(s)) {

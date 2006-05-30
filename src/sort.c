@@ -74,12 +74,13 @@ sort_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "k:nru")) != -1) {
 		switch (c) {
+		    case '+': sortfield = atoi(optarg) - 1; break;
 		    case 'k': sortfield = atoi(optarg); break;
 		    case 'n': nflag = 1; break;
 		    case 'r': rflag = 1; break;
 		    case 'u': uflag = 1; break;
 		    default:
-			system("bk help -s _sort");
+			system("bk help -s sort");
 		}
 	}
 

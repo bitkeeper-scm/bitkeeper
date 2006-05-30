@@ -149,8 +149,8 @@ checkfiles XXX WANT
 echo OK
 
 echo $N Check that keys work . ......................................$NL
-bk prs -hr1.0.. -nd:KEY: ChangeSet | bk _sort > WANT
-bk changes -k | bk _sort > GOT
+bk prs -hr1.0.. -nd:KEY: ChangeSet | bk sort > WANT
+bk changes -k | bk sort > GOT
 checkfiles WANT GOT
 echo OK
 
@@ -214,9 +214,9 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check remote key listing ....................................$NL
-bk prs -hr1.0.. -nd:KEY: ChangeSet | bk _sort > WANT
+bk prs -hr1.0.. -nd:KEY: ChangeSet | bk sort > WANT
 cd $HERE
-bk changes -k $HERE/clone | bk _sort > GOT
+bk changes -k $HERE/clone | bk sort > GOT
 checkfiles clone/WANT GOT
 echo OK
 
@@ -245,9 +245,9 @@ cd $HERE/project
 bk changes -R -k $HERE/clone $HERE/clone2 > keylist2
 cmp -s keylist1 keylist2 && { echo new key did not appear; exit 1; }
 bk prs -nhr+ -d':KEY:' $HERE/clone2/ChangeSet >> keylist1
-bk _sort < keylist1 > keylist1_sorted
-bk _sort < keylist2 > keylist2_sorted
-checkfiles keylist1_sorted keylist2_sorted
+bk sort < keylist1 > keylist1sorted
+bk sort < keylist2 > keylist2sorted
+checkfiles keylist1sorted keylist2sorted
 echo OK
 
 echo $N Check bk changes -R - .......................................$NL
@@ -259,8 +259,8 @@ cd $HERE/project
 echo $HERE/clone | bk changes -R -k - > GOT
 checkfiles GOT $HERE/K1
 ( echo $HERE/clone
-  echo $HERE/clone2 ) | bk changes -R -k - | bk _sort > GOT
-cat $HERE/K1 $HERE/K2 | bk _sort > WANT
+  echo $HERE/clone2 ) | bk changes -R -k - | bk sort > GOT
+cat $HERE/K1 $HERE/K2 | bk sort > WANT
 checkfiles WANT GOT
 echo OK
 
@@ -463,7 +463,7 @@ echo $N Check date formats ..........................................$NL
 Y=`bk prs -Yhnd:Dy: -r+ ChangeSet`
 bk changes -nd:Dy: > OUT
 bk changes -v -nd:Dy: >> OUT
-test `grep -v 1971 OUT | bk _sort -u` = $Y || {
+test `grep -v 1971 OUT | bk sort -u` = $Y || {
 	echo not all YEAR4 dates
 	exit 1
 }

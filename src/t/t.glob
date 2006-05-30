@@ -34,7 +34,7 @@ if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 
 echo $N Retrieve \*.c ................................................$NL
-bk -r cat '*.c' | bk _sort > GOT
+bk -r cat '*.c' | bk sort > GOT
 cat <<EOF > WANT
 bar
 foo
@@ -65,7 +65,7 @@ echo star | cmp -s - GOT || {
 echo OK
 
 echo $N Check out \"*.c\" .............................................$NL
-bk cat '*.c' | bk _sort > GOT
+bk cat '*.c' | bk sort > GOT
 cat > WANT <<EOF
 bar
 foo
@@ -75,7 +75,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check out '[z*].c' ............................................$NL
-bk -r cat '*[z*].c' | bk _sort > GOT
+bk -r cat '*[z*].c' | bk sort > GOT
 cat <<EOF > WANT
 star
 z
@@ -111,7 +111,7 @@ echo equal | cmp -s - GOT || {
 echo OK
 
 echo $N Check out \"=.c\" .............................................$NL
-bk cat '=.c' | bk _sort > GOT
+bk cat '=.c' | bk sort > GOT
 cat > WANT <<EOF
 bar
 equal
@@ -126,7 +126,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check out '[z=].c' ............................................$NL
-bk -r cat '[z=].c' | bk _sort > GOT
+bk -r cat '[z=].c' | bk sort > GOT
 cat <<EOF > WANT
 equal
 z
@@ -140,7 +140,7 @@ echo OK
 
 test "$PLATFORM" = "WIN32" || {
 echo $N Check out '[z=*].c' ...........................................$NL
-bk -r cat '[z=*].c' | bk _sort > GOT
+bk -r cat '[z=*].c' | bk sort > GOT
 cat <<EOF > WANT
 equal
 star
@@ -165,7 +165,7 @@ echo OK
 
 echo $N Check sets of characters in globs ...........................$NL
 cd `bk root`
-bk gfiles '[bf]*' | bk _sort > GOT
+bk gfiles '[bf]*' | bk sort > GOT
 cat > WANT <<EOF
 src/bar.c
 src/foo.c
@@ -175,7 +175,7 @@ echo OK
 
 echo $N Check inverse sets of characters in globs ...................$NL
 cd `bk root`
-bk gfiles '[^bf]*' | bk _sort > GOT
+bk gfiles '[^bf]*' | bk sort > GOT
 cat > WANT <<EOF
 BitKeeper/etc/config
 BitKeeper/etc/ignore
@@ -194,7 +194,7 @@ echo OK
 
 echo $N Check single character matches in globs .....................$NL
 cd `bk root`
-bk gfiles '???.c' | bk _sort > GOT
+bk gfiles '???.c' | bk sort > GOT
 cat > WANT <<EOF
 src/bar.c
 src/foo.c
@@ -204,7 +204,7 @@ echo OK
 
 echo $N Check single character combined with a set match ............$NL
 cd `bk root`
-bk gfiles '[bf]??.c' | bk _sort > GOT
+bk gfiles '[bf]??.c' | bk sort > GOT
 cat > WANT <<EOF
 src/bar.c
 src/foo.c
@@ -226,7 +226,7 @@ echo OK
 
 echo $N Make sure we can enable = as an alias for \* .................$NL
 cd `bk root`/src
-BK_GLOB_EQUAL=YES bk gfiles =.c | bk _sort > GOT
+BK_GLOB_EQUAL=YES bk gfiles =.c | bk sort > GOT
 cat > WANT <<EOF
 *.c
 =.c

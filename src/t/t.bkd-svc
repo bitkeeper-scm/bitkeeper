@@ -53,15 +53,15 @@ cmpfiles WANT2 GOT
 echo OK
 
 echo $N Check that bk service list shows them both ..................$NL
-bk service list | grep "^$BKDNAME" | bk _sort > GOT
+bk service list | grep "^$BKDNAME" | bk sort > GOT
 echo $BKDNAME > WANT
 echo ${BKDNAME}2 >> WANT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Check that bk status -a shows them both .....................$NL
-( cat $HERE/WANT1 WANT2; echo --- ) | bk _sort > WANT
-bk service status -a | bk _sort > GOT
+( cat $HERE/WANT1 WANT2; echo --- ) | bk sort > WANT
+bk service status -a | bk sort > GOT
 cmpfiles WANT GOT
 echo OK
 

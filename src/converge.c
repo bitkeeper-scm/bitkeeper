@@ -235,7 +235,7 @@ done:		mdbm_close(vals);
 			sccs_free(winner);
 			winner = 0;
 			sys("bk", "get", "-qeg", gfile, SYS);
-			sysio(CTMP, gfile, 0, "bk", "_sort", "-u", SYS);
+			sysio(CTMP, gfile, 0, "bk", "sort", "-u", SYS);
 			sys("bk", "ci", "-qy'Auto converge'", gfile, SYS);
 		} else {
 			/*
@@ -244,7 +244,7 @@ done:		mdbm_close(vals);
 			 */
 			if (exists(sfile)) sys("bk", "rm", "-f", gfile, SYS);
 
-			sysio(CTMP, gfile, 0, "bk", "_sort", "-u", SYS);
+			sysio(CTMP, gfile, 0, "bk", "sort", "-u", SYS);
 			sys("bk", "delta",
 				"-qiy'Auto converge/create'", gfile, SYS);
 		}

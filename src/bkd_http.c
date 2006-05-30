@@ -1240,7 +1240,7 @@ http_stats(char *page)
 	char	buf[200];
 	FILE	*p;
 
-	unless (p = popen("bk prs -h -d'$if(:Li: -gt 0){:USER: :AGE:\n}' ChangeSet | bk _sort", "r"))
+	unless (p = popen("bk prs -h -d'$if(:Li: -gt 0){:USER: :AGE:\n}' ChangeSet | bk sort", "r"))
 		http_error(500, "bk prs failed: %s", strerror(errno));
 
 	c_user[0] = 0;

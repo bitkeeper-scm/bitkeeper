@@ -137,7 +137,7 @@ commit_main(int ac, char **av)
 			fclose(f1);
 		}
 		pclose(f);
-		cmd = aprintf("bk _sort -u | "
+		cmd = aprintf("bk sort -u | "
 			"bk sccslog -DA - >> %s", commentFile);
 		f = popen(cmd, "w");
 		f1 = fopen(pendingFiles, "rt");

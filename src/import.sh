@@ -464,7 +464,7 @@ import_patch() {
 	    sed -e 's/Removing file //' \
 		-e 's/Creating file //' \
 		-e 's/Patching file //' | \
-	    			bk _sort -u  > ${TMP}plist$$
+	    			bk sort -u  > ${TMP}plist$$
 	CONFLICT=NO
 	MCNT=`bk sfiles -c - < ${TMP}plist$$ | wc -l`
 	if [ $MCNT -ne 0 ]
@@ -513,7 +513,7 @@ import_patch() {
 	# We need to "sort -u" beacuse patchfile created by "interdiff"
 	# can patch the same target file multiple time!!
 	grep '^Patching file ' ${TMP}plog$$ |
-	    sed 's/Patching file //' | bk _sort -u > ${TMP}patching$$
+	    sed 's/Patching file //' | bk sort -u > ${TMP}patching$$
 
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink -
 	while read x
@@ -617,7 +617,7 @@ import_patch() {
 	msg Creating changeset for $PNAME in `pwd` ...
 	bk _key2path < ${TMP}keys$$ > ${TMP}patching$$
 	cat ${TMP}creates$$ ${TMP}patching$$ |
-	    bk _sort -u | bk sfiles -pC - > ${TMP}commit$$
+	    bk sort -u | bk sfiles -pC - > ${TMP}commit$$
 	BK_NO_REPO_LOCK=YES bk commit \
 	    $QUIET $SYMBOL -y"`basename $PNAME`" - < ${TMP}commit$$
 
@@ -673,7 +673,7 @@ import_RCS () {
 			Done 1
 		}
 		mv ${TMP}import$$ ${TMP}Attic$$
-		sed 's|Attic/||' < ${TMP}Attic$$ | bk _sort -u > ${TMP}import$$
+		sed 's|Attic/||' < ${TMP}Attic$$ | bk sort -u > ${TMP}import$$
 		$RM -f ${TMP}Attic$$
 	fi
 	if [ $TYPE = RCS ]
@@ -707,7 +707,7 @@ import_RCS () {
 		rm -f ${TAGFILE}.raw
 		Done 1
 	}
-	bk _sort -k2 -n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
+	bk sort -k2 -n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
 	rm -f ${TAGFILE}.raw
 	
 	if [ "X$BRANCH" != "X" ]
@@ -751,8 +751,8 @@ explain_tag_problem ()
     	bk rcsparse -d -t $BRANCH - < ${TMP}import$$ |
 		grep "^-${B}_BASE " > ${TMP}tagdbg$$
 
-	file1=`bk _sort -k2 -nr < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
-	file2=`bk _sort -k3 -n < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
+	file1=`bk sort -k2 -nr < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
+	file2=`bk sort -k3 -n < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
 	echo "       The files $file1 and $file2 don't agree when"
 	echo "       the branch $B was created!"
 	rm -f ${TMP}tagdbg$$

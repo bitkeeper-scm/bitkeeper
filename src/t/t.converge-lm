@@ -392,7 +392,7 @@ copy34
 copy44
 project34
 EOF
-bk get -kp $Q BitKeeper/etc/gone | bk _sort > GOT
+bk get -kp $Q BitKeeper/etc/gone | bk sort > GOT
 cmp -s GOT DATA || {
 	echo failed to union data
 	echo GOT vs WANTED
