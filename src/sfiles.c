@@ -41,7 +41,6 @@ typedef struct {
 	u32	gotten:1;		/* -G: list checked out files */
 	u32	names:1;		/* -n: list files in wrong path */
 	u32	pending:1;		/* -p: list pending files */
-	u32	chkpending:1;		/* run chk_pending() */
 	u32     gfile:1;     		/* print gfile name	*/
 	u32     Aflg:1;			/* use with -p show	*/
 					/* all pending deltas	*/
@@ -132,8 +131,7 @@ sfiles_main(int ac, char **av)
 				break;
 		    case 'd':	opts.dirs = 1; break;
 		    case 'D':	opts.xdirs = 1; break;
-		    case 'E':	opts.changed = opts.names = opts.pending =
-				opts.chkpending = 1;
+		    case 'E':	opts.changed = opts.names = opts.pending = 1;
 			    /* fall thru */
 		    case 'e':	opts.dirs = opts.xdirs = opts.gotten =
 				opts.junk = opts.locked = opts.unlocked =
@@ -155,9 +153,7 @@ sfiles_main(int ac, char **av)
 				break;
 		    case 'P':	opts.fixdfile = 1;	  	/* undoc 2.0 */
 				/* fall thru */
-		    case 'p':					/* doc 2.0 */
-			opts.chkpending = 1;
-			if (optarg) {
+		    case 'p':	opts.pending =1;		/* doc 2.0 */
 				for (s = optarg; s && *s; s++) {
 					if (*s == 'A') {
 						opts.Aflg = 1;
@@ -168,10 +164,7 @@ sfiles_main(int ac, char **av)
 						goto usage;
 					}
 				}
-			} else {
-				opts.pending = 1;
-			}
-			break;
+				break;
 		    case 'S':	opts.summarize = 1; break;
 		    case 'u':	opts.unlocked = 1; break;	/* doc 2.0 */
 		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
@@ -200,7 +193,7 @@ usage:				system("bk help -s sfiles");
 	 * setup a default mode for them
 	 */
 	if (!opts.unlocked && !opts.locked && !opts.junk && !opts.extras &&
-	    !opts.changed && !opts.chkpending && !opts.names &&
+	    !opts.changed && !opts.pending && !opts.names &&
 	    !opts.gotten && !opts.dirs && !opts.xdirs && !opts.cfiles) {
 		opts.unlocked = 1;
 		opts.locked = 1;
@@ -317,21 +310,27 @@ private void
 chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 {
 	delta	*d;
-	int	local_s = 0;
+	int	local_s = 0, printed = 0;
 	char	buf[MAXPATH], *dfile = 0, *p;
 
-	state[PSTATE] = ' ';
+
 	if (opts.dfile) {
 		if (sDB) {
 			strcpy(buf, "d.");
 			strcpy(&buf[2], basenm(gfile));
-			unless (mdbm_fetch_str(sDB, buf)) return;
+			unless (mdbm_fetch_str(sDB, buf)) {
+				state[PSTATE] = ' ';
+				do_print(state, gfile, 0);
+				return;
+			}
 		} else {
 			dfile = name2sccs(gfile);
 			p = basenm(dfile);
 			*p = 'd';
 			unless (exists(dfile)) {
 				free(dfile);
+				state[PSTATE] = ' ';
+				do_print(state, gfile, 0);
 				return;
 			}
 		}
@@ -360,7 +359,8 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	/*
 	 * check for pending deltas
 	 */
-	unless (d = sccs_top(s))  goto out;
+	state[PSTATE] = ' ';
+	unless (d = sccs_top(s))  goto out;	
 	if (d->flags & D_CSET) goto out;
 
 	/*
@@ -381,17 +381,19 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	}
 
 	assert(!(d->flags & D_CSET));
-	if (opts.pending) state[PSTATE] = 'p';
+	state[PSTATE] = 'p';
 	if (opts.Aflg) {
 		do {
-			print_it("ppppppp", gfile, d->rev);
+			do_print(state, gfile, d->rev);
 			d = d->parent;
 		} while (d && !(d->flags & D_CSET));
+		printed = 1;
 	} else if (opts.Cflg) {
-		print_it("ppppppp", gfile, d->rev);
+		do_print(state, gfile, d->rev);
+		printed = 1;
 	}
 
-out:
+out:	unless (printed) do_print(state, gfile, 0);
 	/*
 	 * Do not sccs_free() if it is passed in from outside
 	 */
@@ -456,19 +458,24 @@ file(char *f)
 		strcpy(buf, f);
 	}
 
-	if (state[CSTATE] == 'x' || state[CSTATE] == 'j') {
-		if (exists(buf)) {
-			state[LSTATE] = state[PSTATE] = ' ';
+	/*
+	 * When we get here. buf contains the gname
+	 * Now we check for pending deltas
+	 */
+	if (opts.pending && state[CSTATE] != 'x' &&  state[CSTATE] != 'j') {
+		if (opts.gotten && exists(buf)) state[GSTATE] = 'G';
+		chk_pending(sc, buf, state, 0, 0);
+	} else  {
+		if (state[CSTATE] == 'x' || state[CSTATE] == 'j') {
+			if (exists(buf)) {
+				state[LSTATE] = state[PSTATE] = ' ';
+				do_print(state, buf, 0);
+			}
+		} else {
+			state[PSTATE] = ' ';
+			if (opts.gotten && exists(buf)) state[GSTATE] = 'G';
 			do_print(state, buf, 0);
 		}
-	} else {
-		/*
-		 * When we get here. buf contains the gname
-		 * Now we check for pending deltas
-		 */
-		if (opts.chkpending) chk_pending(sc, buf, state, 0, 0);
-		if (opts.gotten && exists(buf)) state[GSTATE] = 'G';
-		do_print(state, buf, 0);
 	}
 	if (sc) sccs_free(sc);
 }
@@ -829,7 +836,7 @@ error:				perror("output error");
 		}
 	}
 	if (opts.gfile || (state[CSTATE] == 'x') || (state[CSTATE] == 'j') ||
-	    (tolower(state[DSTATE]) == 'd'))  {
+	    (state[DSTATE] != ' '))  {
 		if (fputs(gfile, opts.out) < 0) goto error;
 	} else {
 		sfile = name2sccs(gfile);
@@ -1006,8 +1013,15 @@ sccsdir(winfo *wi)
 			file[0] = 's';
 		}
 		concat_path(buf, dir, gfile);
-		if (opts.chkpending) chk_pending(s, buf, state, sDB, gDB);
-		do_print(state, buf, 0);
+		if (opts.pending) {
+			/*
+			 * check for pending deltas
+			 */
+			chk_pending(s, buf, state, sDB, gDB);
+		} else {
+			state[PSTATE] = ' ';
+			do_print(state, buf, 0);
+		}
 		if (s) sccs_free(s);
 	}
 	freeLines(slist, free);

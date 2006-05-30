@@ -158,21 +158,6 @@ bk sfiles
     -s		<none>	we have options for everything now
     -i			-e is pretty close
 
-    The behavior of -pA (and -pC) has changed.
-    (assume file is edited with a pending delta)
-
-    cmd			old		  new
-    ------------------  ----------------  ----------------
-    bk sfiles -p	file		  file
-    bk sfiles -pA	file|1.3	  file|1.3
-    bk sfiles -p -pA	file|1.3	  file|1.3
-					  file
-    bk sfiles -vlp	l-p---- file	  l-p---- file
-    bk sfiles -vlpA	l-p---- file|1.3  ppppppp file|1.3
-					  l------ file
-    bk sfiles -vlp -pA	l-p---- file|1.3  ppppppp file|1.3
-					  l-p---- file
-
     XXX - leave in -i as undocumented alias after making regressions work?
 
     The sfiles options to 'bk' have similar changes.  See 'bk help bk'.
