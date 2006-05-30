@@ -52,6 +52,11 @@ test "$PLATFORM" = "WIN32" && FILE="`echo $FILE | tr '[a-z]' '[A-Z]'`"
 test "$PARENT" = "$FILE" || exit 1
 echo OK
 
+echo $N Make sure we do not have the new pull/push pointers .........$NL
+test -f BitKeeper/log/pull_parent && exit 1
+test -f BitKeeper/log/push_parent && exit 1
+echo OK
+
 echo $N Test backwards compat way of setting parent pointer .........$NL
 bk parent -q bk://some.host.com || exit 1
 PARENT=bk://some.host.com
@@ -525,10 +530,10 @@ bk parent -roq bogus && exit 1
 echo OK
 
 echo $N Remove all parents, check files and listing .................$NL
-bk parent -qr || exit 1
-test -f BitKeeper/log/push-parent && exit 1
-test -f BitKeeper/log/pull-parent && exit 1
-test -f BitKeeper/log/parent && exit 1
+bk parent -qr || { echo parent failed; ls BitKeeper/log; exit 1; }
+test -f BitKeeper/log/push-parent && { ls BitKeeper/log; exit 1; }
+test -f BitKeeper/log/pull-parent && { ls BitKeeper/log; exit 1; }
+test -f BitKeeper/log/parent && { ls BitKeeper/log; exit 1; }
 echo OK
 
 echo $N Make sure we normalize parent pointers by default ...........$NL

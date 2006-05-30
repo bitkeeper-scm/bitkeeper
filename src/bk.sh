@@ -903,11 +903,11 @@ _clonemod() {
 		exit 1
 	fi
 
-	bk clone -lq $2 $3 || exit 1
-	cd $3 || exit 1
-	bk parent -siq $1 || exit 1
+	bk clone -lq "$2" "$3" || exit 1
+	cd "$3" || exit 1
+	bk parent -siq "$1" || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
-	bk pull `bk parent -il1`
+	bk pull 
 }
 
 # XXX undocumented alias from 3.0.4 
