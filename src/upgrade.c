@@ -62,7 +62,8 @@ usage:			system("bk help -s upgrade");
 		urlbase = UPGRADEBASE;
 	}
 	if (win32() && (p = getenv("OSTYPE"))
-	    && streq(p, "msys") && (fetchonly || install)) {
+	    && streq(p, "msys") && (fetchonly || install)
+	    && !getenv("BK_REGRESSION")) {
 		notice("upgrade-nomsys", 0, "-e");
 		goto out;
 	}
@@ -183,6 +184,7 @@ usage:			system("bk help -s upgrade");
 	unless (streq(p, data[2])) {
 		fprintf(stderr, "upgrade: file %s fails to match checksum\n",
 		    data[1]);
+		fclose(f);
 		free(p);
  		goto out;
 	}
