@@ -36,8 +36,10 @@ foreach $file (@ARGV) {
     #   CODELINE-VERSION-PLATFORM.{bin,exe}
     #   CODELINE may contain dashes and always starts with 'bk'
     #   VERSION starts with digit and . and can't contain dashes
+    #           is also optionally ends in -alpha\d+ -beta\d+ -rc\d+
     #   PLATFORM may contain dashes
-    ($version, $codeline, $platform) = ($base =~ /^((bk.*?)-\d+\..*?)-(.*)\./);
+    ($version, $codeline, $platform) =
+	($base =~ /^((bk.*?)-\d+\..*?(?:-(?:rc|alpha|beta)\d+)?)-(.*)\./);
     die "Can't include $base, all revs must be tagged\n" unless $version;
 
     $utc = undef;
