@@ -18,28 +18,30 @@ and reading the changes man page is highly recommended.
 .LP
 The revision history of a file can be accessed by typing:
 .DS
-$ bk prs foo.c
+$ bk log foo.c
 .DE
-.B bk prs
+.B bk log
 has many options. The most commonly used is the
 .B \-r
 option which is used to select a particular revision of the file.
 For example,
 to see the most recent check-in for every file in the current directory:
 .DS
-$ bk prs \-r+
+$ bk log \-r+
 .DE
 The
-.B bk prs
+.B bk log
 command documents the metadata associated with a \*(BK file as well as how
-to display it.  Reading the prs man page is highly recommended.
+to display it.  Reading the
+.B bk log
+man page is highly recommended.
 .LP
 The 
 .B bk sccslog
 command is a time ordered view of changes over a set of files.
 Unlike 
 .\" XXX deprecated?
-.BR "bk prs" ,
+.BR "bk log" ,
 .B bk sccslog
 sorts all changes from all of the specified (or implied) files and then
 displays each change in chronological order.
@@ -52,7 +54,7 @@ $ bk sccslog
 All three commands support the same range notation as well as a
 method of controlling the output format known as \*(lqdspecs\*(rq which
 are documented on the 
-.B bk prs
+.B bk log
 man page.
 .SH GRAPHICAL HISTORY
 There are two graphical tools which are primarily used to view changes
@@ -77,7 +79,7 @@ are shown.
 .SA changes
 .SA csettool
 .SA difftool
-.SA prs
+.SA log
 .SA range
 .SA revtool
 .SA sccslog

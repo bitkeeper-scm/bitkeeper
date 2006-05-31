@@ -9,9 +9,9 @@ bk clean \- removes unmodified files
 .SH DESCRIPTION
 The
 .B bk clean
-command is used to remove (clean) all unmodified files from
-the current directory, regardless of whether they are checked-out in
-a locked or unlocked state.
+command is used to remove (clean) all unmodified, checked out files from
+the current directory, regardless of whether they are checked-out in a
+locked or unlocked state.
 .LP
 If there are files which are both locked and modified,
 .B bk clean
@@ -22,7 +22,7 @@ will refuse to delete them and will instead list them as needing a check-in.
 Prints diffs for all modified files. The diffs are printed
 in the least readable diff format; you may prefer to use
 .DS
-bk sfiles -c | bk diffs \-u -
+bk -cr diffs -up
 .DE
 .tp
 .B \-q

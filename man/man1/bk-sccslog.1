@@ -14,11 +14,10 @@ bk sccslog \- list deltas sorted by date across all files
 .B bk sccslog
 is used to get a time sorted listing of changes over all of the specified
 or implied files.  It is similar to
-.\" XXX deprecated?
-.BR "bk prs" ,
+.BR "bk log" ,
 with the difference being
 that
-.B bk prs
+.B bk log
 respects file boundaries, i.e., lists all changes in a file 
 before going on, but
 .B bk sccslog
@@ -57,7 +56,7 @@ libdiff.c, gnupatch.c:
 .tp
 .OPTreq \-d dspec
 Format output according to the data specification string.  See
-.B bk prs
+.B bk log
 documentation for information on data specifications.
 .tp
 .B \-f
@@ -121,5 +120,5 @@ on success.
 on failure.
 .SH SEE ALSO
 .SA changes
-.SA prs
+.SA log
 .SA range

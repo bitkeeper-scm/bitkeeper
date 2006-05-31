@@ -11,13 +11,6 @@ bk get \- check out \*(BK files
 .B get
 is used to check out (\*(lqget\*(rq) files for viewing or editing.
 By default, files are checked out unlocked and read-only.
-.SH NOTE
-You may not need to check out every file in order to compile your
-program since most versions of the Make program will check files out
-as they are needed.  In order for this to work, the get command needs
-to be in your path and the dependencies need to be correct in the
-Makefile.  If that is true, a simple \*(lqmake\*(rq will check out and 
-build your product.
 .SH OPTIONS 
 .TP \-A\*<bdnpru\*>
 .OPTreq \-A bdnpru
@@ -115,6 +108,13 @@ creation time.
 .OPTreq \-x list
 Exclude revs in 
 .ARG list .
+.SH NOTE
+You may not need to check out every file in order to compile your
+program since most versions of the Make program will check files out
+as they are needed.  In order for this to work, the get command needs
+to be in your path and the dependencies need to be correct in the
+Makefile.  If that is true, a simple \*(lqmake\*(rq will check out and 
+build your product.
 .SH EXIT STATUS
 .LP
 .B bk get

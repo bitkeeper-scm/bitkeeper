@@ -35,7 +35,7 @@ test drive at
 .TP \*<sfiles_opts\*>
 .B \-R
 Change directories to the root of the repository before running
-.IR command .
+.ARG command .
 .tp
 .OPTopt \-r dir
 Starting at 
@@ -43,19 +43,19 @@ Starting at
 or the repository root if 
 .ARG dir
 was not specified, apply
-.I command
+.ARG command
 recursively to
 .ARG dir
 and all subdirectories.
 This works by generating a list of sfiles and passing them to
-.I command
+.ARG command
 on the standard input.
 .tp
 .ARG sfiles_opts
 One or more options may be used in combination with 
 .Q \-r
 to limit the set of files passed to
-.IR command .
+.ARG command .
 The following sfiles options may be passed:
 .\" HEY!  YOU!  Man page hacker.  If you change these make sure you follow
 .\" whatever bk-sfiles.1 says, that's the authoritative source, OK?  Thanks!
@@ -86,7 +86,7 @@ List directories with no (or empty) SCCS subdirs.
 List the gfile name, not the sfile name.
 .tp
 .B \-G
-List files if and only if they are checked out (\*(lqgotten\*rq).
+List files if and only if they are checked out (\*(lqgotten\*(rq).
 .tp
 .B \-j
 List junk files, i.e., files in \*(SC subdirectories which are not

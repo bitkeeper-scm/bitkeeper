@@ -16,7 +16,7 @@ mixed in with useful work which should be saved.
 .LP
 .B bk fixtool
 calls
-.B bk sfiles \-cg
+.Q bk sfiles \-cg
 to find files which have been changed.
 The default is to find all files which have been changed but this may be
 controlled by specifying a set of files and/or directories.
@@ -31,7 +31,8 @@ shows the changes (via
 .LI
 and prompts for an action.
 .LP
-The action must be a letter followed by \f(CBEnter\fP. 
+The action must be a letter followed by
+.QR Enter .
 The choices are:
 .TP
 .B n
@@ -51,7 +52,9 @@ This is most commonly used to remove debugging statements while leaving the
 new work.
 .br
 .B Note:  
-if the file is saved then the saved file replaces the original working file.
+When you have selected the changes you want, clicking
+.Q Done
+saves your merges, overwriting the current working file.
 .SH OPTIONS
 .TP
 .B \-f
@@ -93,7 +96,8 @@ on failure.
 .SA fmtool
 .SH CATEGORY
 .B File
-.br
-.B GUI-tools
+.\" XXX not a GUI tool...
+.\".br
+.\".B GUI-tools
 .br
 .B Repository

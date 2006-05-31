@@ -50,8 +50,7 @@ with a repository created by an earlier csetprune.
 .SH "GENERATING KEYS"
 .LP
 The
-.\" XXX deprecated?
-.B bk prs
+.B bk log
 command may be used to generate the list of keys.  
 When generating keys, it is important to realize that looking in a particular
 subdirectory is likely to miss some of the files that you may want to remove.
@@ -66,7 +65,7 @@ created in the
 subdirectory, including all deleted and/or moved
 files:
 .DS
-bk -r prs -hr+ -nd:ROOTKEY: | grep '|junk/'
+bk -r log -hr+ -nd:ROOTKEY: | grep '|junk/'
 .DE
 .SH EXAMPLE
 .LP
@@ -96,10 +95,10 @@ bk clone master src
 bk clone master docs
 # Remove the docs files from the src repository
 cd src
-bk -r prs -hr+ -nd:ROOTKEY: | grep '|docs/' | bk csetprune
+bk -r log -hr+ -nd:ROOTKEY: | grep '|docs/' | bk csetprune
 # Remove the src files from the docs repository
 cd ../docs
-bk -r prs -hr+ -nd:ROOTKEY: | grep '|src/' | bk csetprune
+bk -r log -hr+ -nd:ROOTKEY: | grep '|src/' | bk csetprune
 .DE
 .SH EXIT STATUS
 .LP
@@ -113,7 +112,7 @@ on success.
 on failure.
 .SH "SEE ALSO"
 .SA newroot
-.SA prs
+.SA log
 .SA sfiles
 .SH CATEGORY
 .B Admin
