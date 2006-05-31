@@ -29,7 +29,24 @@ will search the repository for any files which are in
 \*(lqpending\*(lq state, i.e., have deltas which do not yet belong
 to a changeset, and groups all of them into a changeset.
 If the trailing dash is present, then the command takes the list
-of files to commit from the standard input.
+of files to commit from the standard input; each line of input must be of
+the format:
+.DS
+\*<sfile\*>|\*<rev\*>
+.DE
+.LP
+where
+.ARG sfile
+is an sfile name as described in
+.B bk filetypes
+and
+.ARG rev
+is a file revision number, such as 1.1 or 1.2. Example:
+.BR SCCS/s.foo|1.2 .
+This is the same format produced by
+.Q bk sfiles \-pA
+and
+.QR "bk sfiles \-pC" .
 .LP
 You can see what will be added to a changeset when you commit by running:
 .DS
@@ -77,7 +94,9 @@ Ignores the commit template, if any.
 .OPTreq \-l file
 Get the list of files to commit from
 .ARG file .
-XXX - get the exact format - rick says file|rev
+Each line of this file must use the
+.B \*<sfile\*>|\*<rev\*>
+format described above.
 .tp
 .B \-q
 Run quietly.

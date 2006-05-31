@@ -5,7 +5,12 @@ bk csettool \- \*(BK graphical changeset browser
 .SH SYNOPSIS
 .B bk csettool
 .[OPTreq] \-r revs
-.[OPTreq] \-f file@rev
+[\c
+.Bc \-f
+.ARGc file
+.Bc |
+.ARGc rev
+]
 .[B] \-
 .SH DESCRIPTION
 .LP
@@ -77,7 +82,7 @@ defaults to
 .QR \-r+ ,
 i.e. the most recent changeset.
 .tp
-.OPTreq \-f file@rev
+.B \-f\*<file\*>|\*<rev\*>
 Given a filename and revision,
 .B csettool
 starts up with the specified file and revision selected.

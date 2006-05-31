@@ -3,22 +3,21 @@
 .SH NAME
 bk parent \- manage repository parent pointer[s]
 .SH SYNOPSIS
-.SS SETTING PARENT POINTERS
 .B bk parent \-s 
 .[B] \-inoq
 .ARG repository
 .[ARG] repository
-.SS ADDING PARENT POINTERS
+.br
 .B bk parent \-a 
 .[B] \-inoq
 .ARG repository
 .[ARG] repository
-.SS REMOVING PARENT POINTERS
+.br
 .B bk parent \-r 
 .[B] \-ioq
 .ARG repository
 .[ARG] repository
-.SS LISTING PARENT POINTERS
+.br
 .B bk parent
 .[B] \-1iloq
 .SH DESCRIPTION
@@ -33,7 +32,7 @@ or
 .BR "bk push" .
 The typical case is that a repository has only one ``parent''
 but it is possible for a repository to have multiple parent
-pointers and each pointer may be incoming, outcoming, or both.
+pointers and each pointer may be incoming, outgoing, or both.
 .LP
 When setting the parent pointer, the parent command is backwards compatible
 with earlier versions if and only if there is currently no parent pointer
