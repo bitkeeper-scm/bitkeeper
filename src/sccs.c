@@ -31,7 +31,7 @@ deledit_main(int ac, char **av)
 	char	**nav = malloc((ac + 3) * sizeof(char*));
 
 	nav[0] = "delta";
-	nav[1] = "-l";
+	nav[1] = "-lf";
         nav[2] = "-Y";
 	i = 1;
 	while (nav[i+2] = av[i]) i++;
@@ -45,7 +45,7 @@ delget_main(int ac, char **av)
 	char	**nav = malloc((ac + 3) * sizeof(char*));
 
 	nav[0] = "delta";
-	nav[1] = "-u";
+	nav[1] = "-uf";
 	nav[2] = "-Y";
 	i = 1;
 	while (nav[i+2] = av[i]) i++;

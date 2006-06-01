@@ -849,7 +849,7 @@ sc_rml(resolve *rs)
 		exit(1);
 	}
 	sprintf(repo, "-PyDelete: %s", ((sccs*)rs->opaque)->gfile);
-	if (sys("bk", "delta", repo, resync, SYS)) {
+	if (sys("bk", "delta", "-f", repo, resync, SYS)) {
 		perror(repo);
 		exit(1);
 	}
@@ -889,7 +889,7 @@ sc_rmr(resolve *rs)
 		exit(1);
 	}
 	sprintf(repo, "-PyDelete: %s", rs->d->pathname);
-	if (sys("bk", "delta", repo, resync, SYS)) {
+	if (sys("bk", "delta", "-f", repo, resync, SYS)) {
 		perror(repo);
 		exit(1);
 	}

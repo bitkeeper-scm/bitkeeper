@@ -691,7 +691,7 @@ bk new $Q NORMAL PENDING MODIFIED LOCKED UNLOCKED GOTTEN NAME MODIFIED_W_COMMENT
 bk ignore '*.o'
 bk commit $Q -ywhatever || exit 1
 bk edit $Q LOCKED PENDING MODIFIED MODIFIED_W_COMMENTS
-bk delta $Q -ywhatever PENDING
+bk delta $Q -fywhatever PENDING
 echo foo > MODIFIED
 echo foo > MODIFIED_W_COMMENTS
 bk co $Q GOTTEN

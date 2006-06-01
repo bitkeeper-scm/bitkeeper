@@ -142,8 +142,6 @@ delta_main(int ac, char **av)
 	else prog = av[0];
 	if (streq(prog, "ci")) {
 		isci = 1;
-	} else if (streq(prog, "delta")) {
-		dflags = DELTA_FORCE;
 	} else if (streq(prog, "new") ||
 	    streq(prog, "enter") || streq(prog, "add")) {
 		dflags |= NEWFILE;
@@ -209,7 +207,10 @@ comment:		comments_save(optarg);
 			      break;
 		    case 'G': iflags |= INIT_FIXDTIME; break;	/* undoc? 2.0 */
 		    case 'h': dflags |= DELTA_HASH; break;	/* doc 2.0 */
-		    case 'I': initFile = optarg; break;		/* doc 2.0 */
+		    case 'I':
+			initFile = optarg;
+			dflags |= DELTA_FORCE;
+			break;
 		    case 'M': mode = optarg; break;		/* doc 2.0 */
 		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */

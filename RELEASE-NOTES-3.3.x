@@ -63,6 +63,11 @@ bk cset
 
 bk delta
     -C is now -c (take comments from SCCS/c.file)
+    Delta behaviour has been changed to be more like the old ci; if there 
+    are no changes to the file no delta is made automatically.  This breaks
+    compatibility with ATT SCCS but nobody seems to mind.  There is a -f option
+    which may be used to force the creation of a null delta.
+    
 
 bk diffs
     diffs -C is gone; use diffs -r@REV instead.

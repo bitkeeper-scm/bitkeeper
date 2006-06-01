@@ -261,7 +261,7 @@ bk new $Q FILE3
 for i in 1 2 3
 do	bk co -ql FILE3
 	ls >> FILE3
-	bk delta -qy'' FILE3
+	bk delta -fqy'' FILE3
 done
 echo $N Range test -c87..87 on multiple files .......................$NL
 for i in FILE FILE1 FILE2 FILE3 FILE4
