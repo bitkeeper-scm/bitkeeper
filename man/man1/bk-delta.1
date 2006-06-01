@@ -4,12 +4,14 @@
 bk delta \- check in modified files
 .SH SYNOPSIS
 .B bk delta
-.[B] \-acilpqu
+.[B] \-acflpqu
+.[OPTreq] \-D file
 .[OPTreq] \-Y file
 .BKARGS
 .br
 .B bk delta
-.[B] \-acilpqu
+.[B] \-acflpqu
+.[OPTreq] \-D file
 .[OPTreq] \-y msg
 .BKARGS
 .SH DESCRIPTION
@@ -26,15 +28,9 @@ is the preferred interface.
 .B \-a
 Normally, 
 .B delta
-wants a 
-.B \-i
-to add a file to the revision control system.  If this option is set,
-then the following do the same thing:
-.DS
-bk delta -a newfile
-bk delta -i newfile
-bk new newfile
-.DE
+is used to modify existing files.
+This option changes delta to act like bk new for new files and bk delta
+for existing files.
 The usefulness of this option is more apparent when you consider having
 a mixed list of files, some under revision control and some not.
 For example,
@@ -49,7 +45,6 @@ on all the modified
 files.  When called with this option,
 .B bk delta
 does not create a null delta on an edited but unmodified file.
-.sp
 .tp
 .B \-c
 Take checkin comments from 
@@ -61,20 +56,8 @@ Take diffs from
 .if t .IR file .
 .if n <file>.
 .tp
-.OPTreq \-E enc
-Set file encoding (like
-.BR "bk admin" ).
-.\" .tp
-.\" .B \-h
-.\" Invert sense of file's hash flag.
-.tp
-.OPTreq \-I file
-Use init 
-.ARG file
-for meta data.
-.tp
-.B \-i
-Initial check-in, create a new revision history.
+.B \-f
+Force the creation of a null delta even if there are no changes to the file.
 .tp
 .B \-l
 Follow check in with a locked check out like
@@ -84,6 +67,7 @@ Follow check in with a locked check out like
 Set the permissions on the new delta to
 .if t .IR mode .
 .if n <mode>.
+More commonly used with bk new.
 .tp
 .B \-p
 Print differences before prompting for comments.
@@ -95,30 +79,15 @@ Run silently.
 Follow check in with an unlocked check out like
 .BR "bk get" .
 .tp
-.OPTopt \-Y file
-Prompt for one comment, then use it for all the files.
-If
+.OPTreq \-Y file
+Use the comment specified in 
 .ARG file
-is specified then take the comments from that file.
+for comments for all files.
 .tp
 .OPTreq \-y comment
 Sets the revision comment to 
 .if t .IR comment .
 .if n <comment>.
-.tp
-.OPTreq \-Z alg
-Compress stored s.file with 
-.ARG alg
-which may be:
-.RS
-.TP \fBnone\fP
-.B gzip
-like
-.BR gzip (1) 
-.tp
-.B none
-no compression
-.RE
 .SH EXIT STATUS
 .LP
 .B bk delta
@@ -132,11 +101,9 @@ on failure.
 .SH BUGS
 The format of the init file is not documented.
 .SH "SEE ALSO"
-.SA admin
-.SA ci
 .SA citool
-.SA co
 .SA edit
 .SA get
+.SA new
 .SH CATEGORY
 .B File

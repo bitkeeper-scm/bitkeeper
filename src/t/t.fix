@@ -205,11 +205,11 @@ cd $HERE
 bk clone $Q save clone
 cd save
 bk edit $Q FILE
-bk delta -ysave $Q FILE
+bk delta -fysave $Q FILE
 bk commit -ysave $Q
 cd ../clone
 bk edit $Q FILE
-bk delta -yclone $Q FILE
+bk delta -fyclone $Q FILE
 bk commit -yclone $Q
 bk pull $Q
 bk fix -c 2>OUT && {
@@ -403,7 +403,7 @@ bk stripdel $Q -C -r+ ChangeSet
 bk admin -D foo
 bk cset -M1.1..
 bk edit $Q foo
-bk delta $Q -ywhatever foo
+bk delta $Q -fywhatever foo
 bk -R sfiles -P >/dev/null
 bk -r check -ac || exit 1
 

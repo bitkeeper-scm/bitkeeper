@@ -109,7 +109,7 @@ bk guitest >`bk dotbk`/fm3.rc 2>&1 <<'EOF'
 	puts "define geometry@$res ${res}+${x}+${y}"
 	exit 0
 EOF
-bk guitest fm3tool 1.1 1.1 1.1 file1 >OUT 2>&1 <<'EOF'
+bk guitest fm3tool -l1.1 -r1.1 file1 >OUT 2>&1 <<'EOF'
 	if {[test_isvisible . 1] != 1} {
 		puts "Window not fully visible \
 		    [test_geometry .]"

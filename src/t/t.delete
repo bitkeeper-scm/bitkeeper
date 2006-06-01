@@ -49,7 +49,7 @@ cd src
 mv SCCS/s.bar.c SCCS/s.moved.c
 cd $HERE/project/src
 bk get $Q -e bar.c
-bk delta -ywhatever $Q bar.c
+bk delta -fywhatever $Q bar.c
 bk commit $Q -ywhatever
 cd $HERE/clone
 bk pull $Q 2>ERROR

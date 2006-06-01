@@ -5,23 +5,12 @@ bk new \- add a file to the repository
 .SH SYNOPSIS
 .B bk new
 .[B] \-bq
-.ARG file
-.FILES
-.br
-.B bk new
-.[B] \-bq
-.B \-
+.[OPTreq] \-M mode
+.BKARGS
 .SH DESCRIPTION
-.LP
 The 
 .B bk new
 command is used to initially place files under \*[BK] control.
-The first form checks in the specified file. The second form reads the list
-of files from stdin and checks them in.
-The
-.B bk new
-command is an alias for
-.QR "bk delta \-i" .
 .LP
 A useful way to add new files in the current directory is:
 .DS
@@ -30,7 +19,7 @@ bk sfiles -x *.[ch] | bk new -
 When you want to add files in the current directory and all 
 subdirectories, do the following:
 .DS
-bk -xr. new
+bk -xr. new	# same as bk sfiles -x | bk new -
 .DE
 After the files are checked in, don't be surprised to see that
 the files are no longer in your directory. The process of checking
@@ -44,11 +33,15 @@ commands.  Most versions of the
 \*[UN] make command know about SCCS and will automatically check out
 files as they are needed.
 .SH OPTIONS
-.TP
+.TP  "\-M \*<mode\*>"
 .B \-b
 force binary encoding with no keyword expansion;
-recommended for all binaries and Postscript files, but will work
-on text files as well. 
+recommended for all binary files, but will work
+on text files as well (with a corresponding increase in the size of the 
+revision history file).
+.tp
+.OPTreq \-M mode
+Set the permissions on the new delta to \*<mode\*>.
 .tp
 .B \-q
 be quiet.

@@ -35,7 +35,7 @@ cd $HERE/project
 echo foo > foo.c
 bk ci $Q -i foo.c 
 bk edit $Q bar.c
-bk delta $Q -ynull bar.c
+bk delta $Q -fynull bar.c
 bk commit $S -yCset
 cd $HERE/copy
 bk pull $Q || exit 1
@@ -71,7 +71,7 @@ cd $HERE/copy
 bk pull $Q || exit 1
 test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
 bk edit $Q snafu.c
-bk delta $Q -ynull snafu.c
+bk delta $Q -fynull snafu.c
 bk commit $Q -yhoho
 bk unpull -f $Q 2> OUT && {
 	echo unpull should have failed
