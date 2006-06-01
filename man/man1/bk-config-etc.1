@@ -9,14 +9,9 @@ user preferences, BK/Web preferences, and contact information.
 Each \*(BK repository must have the minimum configuration
 information available in order to properly execute \*(BK commands.
 .LP
-XXX - needs updating w/ Wayne's ordering.
-.LP
 Repository configuration information is searched for in the following 
 places, in order:
 .TP "\fB`bk root`/BitKeeper/etc/config\fP"
-.B $BK_CONFIG
-Environment variable.
-.tp
 .B \`bk\ root\`/BitKeeper/etc/config
 Repository level config file
 .tp
@@ -28,11 +23,14 @@ Per-machine config file
 .tp
 .B \`bk\ bin\`/config
 Per-installation config file
+.tp
+.V $BK_CONFIG
+Environment variable
 .LP
-For each key/value pair, the first instance of a key found is the one
-used by default.
-An earlier value may be overridden by a later value by following the
-value (not the key) with an exclamation point like so:
+For each key/value pair, the first instance of a key found is the
+one that's used.
+An earlier value may be overridden by a later value, however, by
+following the value (not the key) with an exclamation point:
 .DS
 checkout: get!
 .DE

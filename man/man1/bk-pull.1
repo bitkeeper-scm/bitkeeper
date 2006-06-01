@@ -24,6 +24,7 @@ To see what would be pulled run
 bk changes -R
 .DE
 .\" XXX - do I really want to tell them this?
+.ig
 .LP
 .B bk pull
 will refuse bring in changes to files which are modified in the
@@ -38,6 +39,7 @@ bk patch -p1 -g1 < DIFFS
 If that works, you are done.  If that does not work then the best thing
 is to unedit the attempted patch, unpull the changes, redo the patch
 (which will now work), commit those changes and redo the pull.
+..
 .LP
 .B bk pull
 normally runs resolve, the tool which applies the pulled changes,
@@ -75,6 +77,9 @@ The environment variable must start with
 .tp
 .B \-i
 Turn off automerge feature in resolve.
+Each file with parallel work will prompt you
+to examine the changes and either manually or automatically
+merge them.
 .tp
 .B \-q
 Be quiet.
@@ -85,7 +90,7 @@ Do not run resolve at all.  You must run
 later.
 .tp
 .OPTreq \-r rev
-Pull up to and including this revision.
+Pull up to and including this revision, but exclude later changes.
 (Or key or changeset revision. See 
 .B bk help terms
 under 'rev argument')

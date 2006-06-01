@@ -6,7 +6,10 @@ bk repogca \- show greatest common ancestor across a set of repositories
 .B bk repogca
 .[OPTreq] \-d spec
 .[B] \-k
-.[ARG] repository\ .\|.\|.
+[\c
+.ARG repo
+.ARGc repo
+\ .\|.\|.]
 .SH DESCRIPTION
 This command will print the latest revision in the current repository
 that exists in all of the the remote repositories either listed on the
@@ -24,7 +27,8 @@ as the specification for displaying the revision.
 .B \-k
 A short hand for asking for a spec of \*(lq:KEY:\*(rq.
 .SH EXAMPLES
-To generate a GNU patch for the changes that exist only in the local repository:
+To generate a traditional patch for the changes that exist only in the
+local repository:
 .DS
 bk export -tpatch -r\`bk repogca\`,+ > patch
 .DE

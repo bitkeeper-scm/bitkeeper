@@ -9,24 +9,24 @@ bk changes \- show changeset history
 .br
 .B bk changes
 .[ARG] options
-.I repo
-.[ARG] "repo\ .\|.\|."
+.ARG repo
+.[ARG] repo "\ .\|.\|."
 .br
 .B bk changes 
 .B \-L
 .[ARG] options
-.[ARG] "repo\ .\|.\|."
+.[ARG] repo "\ .\|.\|."
 .br
 .B bk changes 
 .B \-R
 .[ARG] options
-.[ARG] "repo\ .\|.\|."
+.[ARG] repo "\ .\|.\|."
 .br
 .B bk changes 
 .B \-L
 .B \-R
 .[ARG] options
-.[ARG] "repo\ .\|.\|."
+.[ARG] repo "\ .\|.\|."
 .SH DESCRIPTION
 The changes command is used to get an overview of the changes made to
 a repository.  There are options to search for particular changesets,
@@ -39,9 +39,9 @@ If the last argument is a \*(lq\-\*(rq then the revisions to be listed are
 specified, as keys, tags, and/or revisions, on stdin.
 .LI
 The second form shown above shows changes in the named repository.
-." XXX: this was in 3.2.x, but was not implemented:
-." If the second to the last argument is a "-" then the revisions to be
-." listed are specified, as keys, tags, and/or revisions, on stdin.
+.\" XXX: this was in 3.2.x, but was not implemented:
+.\" If the second to the last argument is a "-" then the revisions to be
+.\" listed are specified, as keys, tags, and/or revisions, on stdin.
 .LI
 The third form shown above lists changes found in the local repository
 but not in the remote repository.
@@ -68,8 +68,7 @@ named repository is the remote repository.  All the other selection
 options are applied to the list of local or remote only changesets.
 .LP
 The changesets to be listed may be specified as a revision, a range of
-revisions, or a list of revisions on 
-.IR stdin .
+revisions, or a list of revisions on stdin.
 The default is all revisions.
 Specifying revisions is incompatible with the 
 .Q \-R/\-L

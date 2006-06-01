@@ -111,15 +111,20 @@ on failure.
 .SH NOTES
 This interface works only on Windows.
 .LP
-Environment variables must be explictly passed on the bkd options list,
-i.e.,
+Environment variables must be explictly passed on the
+.B bkd
+options list, i.e.,
 .DS
 bk service DOCS -EBK_USER=docs -p8000
 .DE
 .LP
-On the bkd service does not work when started from a network drive.
+The
+.B bkd
+service does not work when started from a network drive.
 .LP
-On the bkd service does not work when started from a subst'ed drive.
+The
+.B bkd
+service does not work when started from a subst'ed drive.
 .LP
 bk uninstall may require a reboot in order to completely remove the
 service.

@@ -4,8 +4,9 @@
 bk sccslog \- list deltas sorted by date across all files
 .SH SYNOPSIS
 .B bk sccslog
-.[B] \-ADfnpsv
+.[B] \-bDfnv
 .[OPTreq] \-c dates
+.[OPTreq] \-d dspec
 .[OPTreq] \-i d
 .[OPTreq] \-r r
 .BKARGS
@@ -35,8 +36,8 @@ runs the output through your pager, which can
 be controlled with \s-2$PAGER\s0.
 .SH OPTIONS
 .TP \fB\-c9207..92\fP
-.B \-A
-Select all uncommitted deltas in a file.
+.B \-b
+Show basenames instead of full pathnames.
 .tp
 .OPTreq \-c dates
 Cut off dates.  See Range Specifications (below) or
@@ -73,17 +74,8 @@ default is backwards order.
 Add  a newline to each printed record (sometimes useful with
 .QR \-d ).
 .tp
-.B \-p
-Show basenames instead of full pathnames.
-.tp
 .OPTreq \-r r
 Specify a revision or a range.
-.tp
-.B \-s
-Produce sorted output for post processing in \*(lq\c
-.IB filename |\c
-.IR rev \*(rq
-format.
 .tp
 .B \-v
 Be verbose about errors and processing.

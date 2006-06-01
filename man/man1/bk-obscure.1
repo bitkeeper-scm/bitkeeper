@@ -4,14 +4,14 @@
 bk obscure \- obscure \*(BK file comments and contents
 .SH SYNOPSIS
 .B bk obscure 
-.SH NOTICE
+.SH WARNING
 This command will destroy your repository; do it if and only if the
 repository in question is an unneeded copy.
 .SH DESCRIPTION
 The
 .B bk obscure
-command is typically used if you wish to send someone a
-repository for performance analysis and/or debugging.
+command is typically used if you wish to send a
+repository to \*[BM] for performance analysis and/or debugging.
 All data files have their contents and comments obscured.
 The intent is that the obscuring of the repository data will result in a
 repository which has the same size, shape, number of deltas, number of
@@ -28,7 +28,7 @@ ussromleeeecbaP
 .DE
 The obscuring is currently fairly simple and is theoretically reversible
 with enough compute power so this is not a means to encrypt a repository.
-All commercial customers of \*[BM] are covered by an non-disclosure
+All \*[BM] customers are covered by an non-disclosure
 clause in their commercial contract; the combination of that clause and
 the obfuscation are a reasonable way to provide \*[BM] access to a
 repository.

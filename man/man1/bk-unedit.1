@@ -1,14 +1,10 @@
 .so ../bk-macros
-.TH "bk unget" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk unedit" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    =============== Un-editing files ===============
 .SH NAME
 bk unedit \- destroy any unchecked in changes to specified files
 .SH SYNOPSIS
 .B bk unedit
-.[B] \-q
-.FILES
-.br
-.B bk unget
 .[B] \-q
 .FILES
 .SH DESCRIPTION
@@ -27,12 +23,6 @@ The
 .B bk unedit
 command will not autoexpand the file list, you must explicitly
 name each file you want to unedit.
-.LP
-.B bk unget
-is an alias for
-.BR "bk unedit" ;
-.B bk unget
-is the \*[ATT] compatible name.
 .SH OPTIONS
 .TP
 .B \-q
@@ -51,6 +41,6 @@ on failure.
 .SA clean
 .SA edit
 .SA unlock
-.\" help://unget
+.\" help://unedit
 .SH CATEGORY
 .B File

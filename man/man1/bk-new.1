@@ -6,33 +6,31 @@ bk new \- add a file to the repository
 .B bk new
 .[B] \-bq
 .ARG file
+.FILES
 .br
-.B bk sfiles \-x \fR|\fP bk new \-
+.B bk new
+.[B] \-bq
+.B \-
 .SH DESCRIPTION
 .LP
 The 
 .B bk new
 command is used to initially place files under \*[BK] control.
-The first form checks in a single file, the second form checks in
-all files in the repository which are not under \*[BK] control
-(be careful, the second form will check in anything, such as
-.BR  a.out ,
-.BR *.o ,
-.BR core ,
-etc.).
+The first form checks in the specified file. The second form reads the list
+of files from stdin and checks them in.
 The
 .B bk new
 command is an alias for
 .QR "bk delta \-i" .
 .LP
-When checking in multiple files in a directory, do:
+A useful way to add new files in the current directory is:
 .DS
 bk sfiles -x *.[ch] | bk new - 
 .DE
-When you want to check in files in the current directory and all 
+When you want to add files in the current directory and all 
 subdirectories, do the following:
 .DS
-bk sfiles -x | egrep '*.[ch]$' | bk new -
+bk -xr. new
 .DE
 After the files are checked in, don't be surprised to see that
 the files are no longer in your directory. The process of checking

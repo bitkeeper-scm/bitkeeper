@@ -7,7 +7,6 @@ bk clone \- create a new copy of a package
 .[B] \-ql 
 .[OPTequal] \-E env val
 .[OPTreq] \-r rev
-.[OPTopt] \-z d
 .ARG from
 .[ARG] to
 .SH DESCRIPTION
@@ -73,16 +72,6 @@ A changeset number or changeset key can be used to specify
 See
 .B bk help terms
 for more information.
-.tp
-.OPTreq \-z d
-Do compression at level 
-.ARG d ,
-if possible; default is
-.BR \-z6 .
-Compression is possible when using
-\f(CWssh\fP
-or the \*(BK daemon, but not with
-.BR rsh .
 .SH "SEE ALSO"
 .SA bkd
 .SA parent
