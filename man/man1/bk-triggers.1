@@ -499,7 +499,7 @@ if [ X$BK_PENDING != X ]
 then	(
 	echo $VERB the following deltas
 	echo
-	bk prs - < $BK_PENDING
+	bk log - < $BK_PENDING
 	) | sed 's/^/    /'
 fi
 if [ X$BK_CSETLIST != X ]

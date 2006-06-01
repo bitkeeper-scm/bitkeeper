@@ -26,7 +26,7 @@ You may specify both end-points at once like so:
 .sp
 .\" XXX deprecated?
 .DS
-bk prs \-r1.1..1.5
+bk log \-r1.1..1.5
 .DE
 .LP
 Revision ranges have a way to say \*(lqafter\*(rq or
@@ -42,7 +42,7 @@ the specified revision.
 You may specify dates instead of revisions like so
 .sp
 .DS
-bk prs \-c98..98
+bk log \-c98..98
 .DE
 .LP
 If there are two dates, or there is a date and a revision, then
@@ -63,33 +63,33 @@ very useful form of the date is to specify a recent period of time,
 such as 
 .sp
 .DS
-bk prs \-c\-1d
+bk log \-c\-1d
 .DE
 .LP
 which will display the last 24 hours worth of changes.  This works
 the same way for Years/Months/days/hours/minutes/seconds, i.e.,
 .sp
 .DS
-In the last year:	prs \-c\-1Y (or \-1y)
-In the last month:	prs \-c\-1M
-In the last week:	prs \-c\-1W (or \-1w)
-In the last day:	prs \-c\-1D (or \-1d)
-In the last hour:	prs \-c\-1h
-In the last minute:	prs \-c\-1m
-In the last second:	prs \-c\-1s
+In the last year:	log \-c\-1Y (or \-1y)
+In the last month:	log \-c\-1M
+In the last week:	log \-c\-1W (or \-1w)
+In the last day:	log \-c\-1D (or \-1d)
+In the last hour:	log \-c\-1h
+In the last minute:	log \-c\-1m
+In the last second:	log \-c\-1s
 .DE
 If you leave off the multiplier, 1 is assumed.
 .LP
 While you may not build up specific dates as \-1Y2m3d, you can specify 
 fractions, i.e., to get the last 6 months worth, try
 .DS
-bk prs \-c\-.5Y
+bk log \-c\-.5Y
 .DE
 .\" .LP
 .\" You can mix and match revisions and date.  If you want everything in
 .\" 98, but not past revision 1.5, you would type:
 .\" .DS
-.\" bk prs \-c98 \-r1.5
+.\" bk log \-c98 \-r1.5
 .\" .DE
 .LP
 Dates can also be in the form of symbolic tags (ChangeSet file only).  
@@ -97,7 +97,7 @@ If you tagged a changeset with Alpha and another changeset with Beta,
 you can type:
 .DS
 bk changes \-cAlpha..Beta
-bk prs -r@Alpha..@Beta foo.c
+bk log -r@Alpha..@Beta foo.c
 .DE
 .LP
 Ranges need not include both endpoints.  If you wanted to see everything
@@ -121,11 +121,21 @@ Specify deltas by revision number
 .tp
 .B \-q
 run quietly; default is to warn about all files which do not match the range
+.SH EXIT STATUS
+.LP
+.B bk range
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
 .SA annotate
 .SA diffs
 .SA get
-.SA prs
+.SA log
 .\" help://date
 .\" help://dates
 .\" help://ranges

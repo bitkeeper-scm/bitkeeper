@@ -5,8 +5,12 @@ bk delta \- check in modified files
 .SH SYNOPSIS
 .B bk delta
 .[B] \-acilpqu
-.[OPTreq] \-y msg
 .[OPTreq] \-Y file
+.BKARGS
+.br
+.B bk delta
+.[B] \-acilpqu
+.[OPTreq] \-y msg
 .BKARGS
 .SH DESCRIPTION
 .LP
@@ -33,9 +37,18 @@ bk new newfile
 .DE
 The usefulness of this option is more apparent when you consider having
 a mixed list of files, some under revision control and some not.
-.sp
-When called with this option, bk delta will not create a null delta on
-an edited, but unmodified file.
+For example,
+.DS
+bk -xcr delta -a -y'mass checkin'
+.DE
+runs
+.B bk new
+on all the new files and
+.B bk delta
+on all the modified
+files.  When called with this option,
+.B bk delta
+does not create a null delta on an edited but unmodified file.
 .sp
 .tp
 .B \-c
@@ -49,7 +62,8 @@ Take diffs from
 .if n <file>.
 .tp
 .OPTreq \-E enc
-Set file encoding (like admin).
+Set file encoding (like
+.BR "bk admin" ).
 .\" .tp
 .\" .B \-h
 .\" Invert sense of file's hash flag.
@@ -78,7 +92,8 @@ Print differences before prompting for comments.
 Run silently.
 .tp
 .B \-u
-Follow check in with an unlocked check out like bk get.
+Follow check in with an unlocked check out like
+.BR "bk get" .
 .tp
 .OPTopt \-Y file
 Prompt for one comment, then use it for all the files.
@@ -104,6 +119,16 @@ like
 .B none
 no compression
 .RE
+.SH EXIT STATUS
+.LP
+.B bk delta
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH BUGS
 The format of the init file is not documented.
 .SH "SEE ALSO"

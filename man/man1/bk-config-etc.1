@@ -72,6 +72,196 @@ See
 .B bk help setup
 for more information.
 .SH "CONFIG FILE ENTRIES"
+.SS AUTOFIX
+.br
+The 
+.B "bk check"
+command can automatically fix a number of problems found in a repository.
+The default is that this variable is on in newly created repositories,
+and that the variable will be passed through as the 
+.Q \-f
+option to bk check.
+To enable
+or disable autofix, one of the following should be in
+.B BitKeeper/etc/config
+file:
+.DS
+autofix:yes
+autofix:no
+.DE
+.SS BKWEB PREFERENCES
+.LP
+BKWeb preferences can be specified in the
+.B BitKeeper/etc/config
+file.
+If these preferences are specified, information given will appear on the
+BKWeb site for the project.
+.TP \fBhomepage\fP
+.B bkweb
+specify the BKWeb address for a project
+.tp
+.B homepage
+the home page for your project or company
+.tp
+.B master
+the location from which source can be cloned
+.LP
+For example,
+.DS
+bkweb:    http://mysql.bkbits.net:8080/mysql-5.0
+master:   bk://mysql.bkbits.net/mysql-5.0
+homepage: http://www.mysql.com
+.DE
+.SS CHECKOUT MODE
+.br
+Specify checkout mode for a repository.  The default is to not show 
+gfiles unless files are checked out.  To override the default, to 
+have gfiles checked out in read-only or read-write mode, a line
+must be added to the
+.B BitKeeper/etc/config
+file as follows:
+.DS
+[filter]checkout:option
+.DE
+Where option is one of:
+.TP \fBnone\fP
+.B get
+Automatically do a bk get
+.ARG file
+after doing a bk delta
+.ARG file .
+(Checkout in read-only mode.)
+.tp
+.B edit
+Automatically do a bk edit
+.ARG file
+after doing a bk delta
+.ARG file .
+Note: This will also
+adjust the modification time of the s.file to be one second before the 
+modification time
+of the gfile, which is needed in order to prevent make(1) from attempting
+to reget the file.
+(Checkout in edit mode.)
+.tp
+.B none
+Clear the gfile after doing a bk delta
+.ARG file .
+(This is the default.)
+.SS CLOCK_SKEW
+.br
+When using the 
+.Q \-c
+option to 
+.BR "bk sfiles" ,
+file timestamps may be compared to a cached list to determine when
+files are unmodified and don't need to be diff'ed again.  The
+.Q clock_skew
+parameter controls how old a file must be before file timestamps are to 
+be trusted.  
+A certain amount of clock skew is strongly advised since the use of network
+file systems can can cause the timestamps to be incorrect.
+The time is in seconds and defaults to 604800 (one week).
+.DS
+clock_skew: on          # use system defaults
+clock_skew: 86400       # one day
+clock_skew: off         # disable trusting of timestamps
+.DE
+.SS COMPRESSION
+.br
+By default, when you setup a repository the compression algorithm
+will be set to gzip in the
+.B BitKeeper/etc/config
+file with a line as follows:
+.DS
+compression:gzip
+.DE
+This results in the compression of stored
+s.files.  In other words, when you run
+.DS
+bk new
+.DE
+what really happens is
+.DS
+bk new -Zgzip
+.DE
+To make the repository use no compression by default, 
+change the compression line in the
+.B BitKeeper/etc/config
+file to be:
+.DS
+compression:none
+.DE
+.B Note:
+Setting this option affects
+.I only
+files created subsequently.
+See
+.B bk help delta
+for more information about the
+.Q \-Z
+option for compression.
+.SS "CONTACT INFORMATION"
+.LP
+By filling in the contact information, you are providing a contact
+person for the project in the event that \*[BK] discovers a 
+problem that requires local intervention.
+The email field is the only required field.
+.DS
+contact:
+email:
+.DE
+.SS "DESCRIPTION"
+.LP
+The config file can contain information that helps describe the project.
+The description field is required.
+.DS
+description:
+.DE
+The value for this entry can be anything.
+.SS KEYWORD EXPANSION
+.br
+Keyword expansion is turned OFF by default.  To have keyword expansion
+flags applied to a file automatically upon checkin, add the keyword
+preference to the
+.B BitKeeper/etc/config
+file.
+.LP
+Keyword preference options are:
+.TP "\fBper repository\fP"
+.B sccs
+expand SCCS keywords (%keyword%).
+.tp
+.B expand1
+expand keywords in the first line that contains keywords only (avoids printf
+conflicts).
+.tp
+.B rcs
+expand rcs keywords ($keyword$)
+.LP
+For example, having
+.DS
+keyword: sccs, expand1
+.DE
+in the config file will expand SCCS keywords only in the first line
+encountered that contains sccs keywords. 
+.B Note:
+Setting this option affects
+.I only
+files created subsequently.
+.SS UPGRADE URL
+.LP
+The upgrade command normally looks for new versions of \*[BK] here:
+.B http://upgrades.bitkeeper.com/upgrades/
+but that location may be overridden by setting the
+.I upgrade-url
+field to an different URL.
+.LP
+For example,
+.DS
+upgrade-url:	http://www.example.com/bk-release/
+.DE
+The contents of that directory needs to be mirrored from a BitMover release.
 .SS LICENSE KEY
 .LP
 The use of \*(BK requires a commercial
@@ -87,24 +277,36 @@ licsig1: <sig1>
 licsig2: <sig2>
 licsig3: <sig3>
 .DE
-.SS "DESCRIPTION"
-.LP
-The config file can contain information that helps describe the project.
-The description field is required.
+.SS LINE TERMINATION
+.br
+The unix and win32 operating systems use different characters to represent
+line terminations (eoln).  \*(BK, by default, sets the EOLN_NATIVE flag
+to "on" when an sfile is created.  EOLN_NATIVE mode means that files checked
+out on Windows will have the Windows eoln and files checked out on UNIX will
+have the UNIX eoln.
+To force the UNIX eoln mode on all platforms use:
 .DS
-description:
+eoln:unix
 .DE
-The value for this entry can be anything.
-.SS "CONTACT INFORMATION"
+to the
+.B BitKeeper/etc/config
+file.  
 .LP
-By filling in the contact information, you are providing a contact
-person for the project in the event that \*[BK] discovers a 
-problem that requires local intervention.
-The email field is the only required field.
+There is no way to force the Windows eoln mode on all 
+platforms.
+.SS UPGRADE URL
+.LP
+The upgrade command normally looks for new versions of \*[BK] here:
+.B http://upgrades.bitkeeper.com/upgrades/
+but that location may be overridden by setting the
+.I upgrade-url
+field to an different URL.
+.LP
+For example,
 .DS
-contact:
-email:
+upgrade-url:	http://www.example.com/bk-release/
 .DE
+The contents of that directory needs to be mirrored from a BitMover release.
 .SS USER PREFERENCES
 .LP
 Repository preferences can be defined in the
@@ -146,185 +348,6 @@ Preferences can be listed multiple times with different filters.
 The filters are examined in order and the first line that
 matches the current user, host, and pathname is used.  So in general
 the most restrictive directives should appear first.
-.SS KEYWORD EXPANSION
-.br
-Keyword expansion is turned OFF by default.  To have keyword expansion
-flags applied to a file automatically upon checkin, add the keyword
-preference to the
-.B BitKeeper/etc/config
-file.
-.LP
-Keyword preference options are:
-.TP "\fBper repository\fP"
-.B sccs
-expand SCCS keywords (%keyword%).
-.tp
-.B expand1
-expand keywords in the first line that contains keywords only (avoids printf
-conflicts).
-.tp
-.B rcs
-expand rcs keywords ($keyword$)
-.LP
-For example, having
-.DS
-keyword: sccs, expand1
-.DE
-in the config file will expand SCCS keywords only in the first line
-encountered that contains sccs keywords. 
-.SS LINE TERMINATION
-.br
-The unix and win32 operating systems use different characters to represent
-line terminations (eoln).  \*(BK, by default, sets the EOLN_NATIVE flag
-to "on" when an sfile is created.  EOLN_NATIVE mode means that files checked
-out on Windows will have the Windows eoln and files checked out on UNIX will
-have the UNIX eoln.
-To force the UNIX eoln mode on all platforms use:
-.DS
-eoln:unix
-.DE
-to the
-.B BitKeeper/etc/config
-file.  
-.LP
-There is no way to force the Windows eoln mode on all 
-platforms.
-.SS CHECKOUT MODE
-.br
-Specify checkout mode for a repository.  The default is to not show 
-gfiles unless files are checked out.  To override the default, to 
-have gfiles checked out in read-only or read-write mode, a line
-must be added to the
-.B BitKeeper/etc/config
-file as follows:
-.DS
-[filter]checkout:option
-.DE
-Where option is one of:
-.TP \fBnone\fP
-.B get
-Automatically do a bk get
-.ARG file
-after doing a bk delta
-.ARG file .
-(Checkout in read-only mode.)
-.tp
-.B edit
-Automatically do a bk edit
-.ARG file
-after doing a bk delta
-.ARG file .
-Note: This will also
-adjust the modification time of the s.file to be one second before the 
-modification time
-of the gfile, which is needed in order to prevent make(1) from attempting
-to reget the file.
-(Checkout in edit mode.)
-.tp
-.B none
-Clear the gfile after doing a bk delta
-.ARG file .
-(This is the default.)
-.SS COMPRESSION
-.br
-By default, when you setup a repository the compression algorithm
-will be set to gzip in the
-.B BitKeeper/etc/config
-file with a line as follows:
-.DS
-compression:gzip
-.DE
-This results in the compression of stored
-s.files.  In other words, when you run
-.DS
-bk new
-.DE
-what really happens is
-.DS
-bk new -Zgzip
-.DE
-To make the repository use no compression by default, 
-change the compression line in the
-.B BitKeeper/etc/config
-file to be:
-.DS
-compression:none
-.DE
-See
-.B bk help delta
-for more information about the
-.Q \-Z
-option for compression.
-.SS AUTOFIX
-.br
-The 
-.B "bk check"
-command can automatically fix a number of problems found in a repository.
-The default is that this variable is on in newly created repositories,
-and that the variable will be passed through as the 
-.Q \-f
-option to bk check.
-To enable
-or disable autofix, one of the following should be in
-.B BitKeeper/etc/config
-file:
-.DS
-autofix:yes
-autofix:no
-.DE
-.SS CLOCK_SKEW
-.br
-When using the 
-.Q \-c
-option to 
-.BR "bk sfiles" ,
-file timestamps may be compared to a cached list to determine when
-files are unmodified and don't need to be diff'ed again.  The 'clock_skew' 
-parameter controls how old a file must be before file timestamps are to 
-be trusted.  
-A certain amount of clock skew is strongly advised since the use of network
-file systems can can cause the timestamps to be incorrect.
-The time is in seconds and defaults to 604800 (one week).
-.DS
-clock_skew: 86400       # one day
-clock_skew: off         # disable trusting of timestamps
-.DE
-.SS BKWEB PREFERENCES
-.LP
-BKWeb preferences can be specified in the
-.B BitKeeper/etc/config
-file.
-If these preferences are specified, information given will appear on the
-BKWeb site for the project.
-.TP \fBhomepage\fP
-.B bkweb
-specify the BKWeb address for a project
-.tp
-.B homepage
-the home page for your project or company
-.tp
-.B master
-the location from which source can be cloned
-.LP
-For example,
-.DS
-bkweb:    http://mysql.bkbits.net:8080/mysql-5.0
-master:   bk://mysql.bkbits.net/mysql-5.0
-homepage: http://www.mysql.com
-.DE
-.SS UPGRADE URL
-.LP
-The upgrade command normally looks for new versions of \*[BK] here:
-.B http://upgrades.bitkeeper.com/upgrades/
-but that location may be overridden by setting the
-.I upgrade-url
-field to an different URL.
-.LP
-For example,
-.DS
-upgrade-url:	http://www.example.com/bk-release/
-.DE
-The contents of that directory needs to be mirrored from a BitMover release.
 .SH "SEE ALSO"
 .SA admin
 .SA config-gui

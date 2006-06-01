@@ -244,6 +244,7 @@ equality;
 .B \ \-ge\ \c
 .ARG rhs
 equal or greater than;
+.br
 .ARGc lhs
 .B \ \-gt\ \c
 .ARG rhs
@@ -253,6 +254,7 @@ greater than;
 .B \ \-le\ \c
 .ARG rhs
 equal or less than;
+.br
 .ARGc lhs
 .B \ \-lt\ \c
 .ARG rhs
@@ -449,7 +451,7 @@ PN	D	pathname of s.file, same as SFILE
 .xx
 PREV	D	previous entry before D in delta table
 .xx
-PRS	D	old-style prs default output
+PRS	D	old-style bk prs default output
 .xx
 R	D	the first field in D's rev (R.L.B.S)
 .xx
@@ -516,6 +518,16 @@ W	D	what string
 X_FLAGS	D	D's per file flags as 0xFFFF
 .xx
 Z	D	@(#)
+.SH EXIT STATUS
+.LP
+.B bk log
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH NOTES
 There used to be a
 .Q \-m
@@ -528,6 +540,5 @@ bk changes -d'$if(:TAG:){$each(:TAGS:){S (:TAGS:)\\n}}'
 .br
 .B File
 .\" help://dspec
-.\" help://prs
 .\" XXX - break the dspec stuff into it's own man page and reference it
 .\" XXX - verify that the examples are all correct, I think $each may be wrong

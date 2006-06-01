@@ -68,8 +68,9 @@ in the
 file.
 .tp
 .B NOMERGE
-do not attempt to automerge this file, treat it as if it were a
-binary file and force a choose local or choose remote style merge.
+do not attempt to automerge this file; treat it as if it were a binary
+file and always force a choice between the local and remote versions of
+the file.
 .tp
 .B RCS
 expand RCS keywords, i.e., $\fIkeyword\fP$ etc.
@@ -78,8 +79,13 @@ expand RCS keywords, i.e., $\fIkeyword\fP$ etc.
 .tp
 .B SCCS
 expand SCCS keywords, i.e., %\fIK\fP% etc.
-(May be set in
-.BR BitKeeper/etc/config ).
+(Setting this in
+.B BitKeeper/etc/config
+applies this behavior to all subsequently created files; it does
+.I not
+affect existing files! You must use
+.B bk admin
+to explicitly on existing files.)
 .RE
 .tp
 .OPTreq \-F flag
@@ -139,6 +145,16 @@ no compression
 .br
 .if t .ll 6.5i
 .if n .ll 6.5i
+.SH EXIT STATUS
+.LP
+.B bk admin
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH BUGS
 .LP
 This command does way too much and is likely to be split apart.
@@ -153,7 +169,7 @@ Do not depend on these options for scripts.
 .SA get
 .SA id
 .SA new
-.SA prs
+.SA log
 .SA keywords
 .SA config-etc
 .SH CATEGORY

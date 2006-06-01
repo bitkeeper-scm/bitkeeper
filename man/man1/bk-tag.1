@@ -74,6 +74,16 @@ or \*(lq,,\*(rq since those are used to specify ranges.
 Tags may not contain any of the following characters: Control-A \*(lq^A\*(rq,
 vertical bar \*(lq|\*(rq, newline \*(lq\\n\*(rq, or carriage 
 return \*(lq\\r\*(rq.
+.SH EXIT STATUS
+.LP
+.B bk tag
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH BUGS
 .LP
 Need a way of setting a tag in
@@ -82,7 +92,7 @@ Need a way of setting a tag in
 .SA admin
 .SA changes
 .SA commit
-.SA prs
+.SA log
 .\" help://tags
 .\" help://label
 .\" help://labels

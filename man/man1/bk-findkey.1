@@ -11,8 +11,7 @@ may be used to look for keys in one or more files.  In \*[BK], keys
 are the internal names for files and/or file deltas.  
 .LP
 The keys may be either the long form or the MD5 form (see 
-.\" XXX deprecated?
-.BR "bk prs" ).
+.BR "bk log" ).
 You may search for keys using only a portion of the key as described
 below.
 Each delta in each file that matches all specified parts is listed.
@@ -46,7 +45,17 @@ or
 .tp
 .OPTreq \-u user
 specify the username part of a key.
+.SH EXIT STATUS
+.LP
+.B bk findkey
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA prs
+.SA log
 .SH CATEGORY
 .B Utility

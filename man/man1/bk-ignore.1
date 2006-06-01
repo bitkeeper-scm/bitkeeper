@@ -4,7 +4,8 @@
 bk ignore \- ignore shell glob patterns
 .SH SYNOPSIS
 .B bk ignore 
-.[ARG] "glob .\|.\|."
+.ARG glob
+.[ARG] glob " .\|.\|."
 .SH DESCRIPTION
 .LP
 The 
@@ -67,6 +68,16 @@ core
 *.rej
 *.orig
 .DE
+.SH EXIT STATUS
+.LP
+.B bk ignore
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH BUGS
 .LP
 There is no per directory

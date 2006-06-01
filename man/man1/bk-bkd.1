@@ -30,7 +30,7 @@ The stand-alone daemon method has no security, other than the
 ability to run in read-only mode and/or the ability to limit chdir.
 If security is a requirement, use 
 .B ssh
-to get to the daemon.  See below for information on
+to access the daemon.  See below for information on
 configuring the daemon as a login shell.
 .SH "ANONYMOUS ACCESS"
 .LP
@@ -69,7 +69,7 @@ i.e.,
 .DS
 $ bk clone bk://host.domain:5555 my_tree
 .DE
-Use the HTTP URLs allows access through most firewalls.  \*(BK supports
+These HTTP URLs allow access through most firewalls.  \*(BK supports
 accessing repositories through HTTP proxies, including authenticated
 proxies.
 .SH SECURED ACCESS VIA SSH
@@ -80,9 +80,8 @@ There two ways to invoke
 .TP
 a)
 when the repository is specified in this form: 
-[\c
-.ARGc user @]
-.ARGc host :
+.[ARGc] user\fB@\fP
+.ARGc host\fB:\fP
 .ARG pathname ,
 .B ssh
 will be called to run
@@ -95,12 +94,21 @@ daemon goes away.
 .tp
 b)
 when the repository is specified in this form: 
-.Bc bk://user@host[
-.ARG pathname \fB]\fR,
+.Bc bk://
+.ARGc user
+.Bc @
+.ARGc host
+.[ARGc] pathname
+,
 .B ssh
 will be called to remote login to 
-.B host
+.ARG host
 and will expect that the login shell is the \*(BK daemon.
+.B Note:
+This is the most secure way to run
+.B bk bkd
+because it restricts the user's access to
+.ARG host .
 .LP
 .SS BKD LOGIN SHELL
 On Red Hat Linux, the following steps are necessary to add a \*(BK 
@@ -169,8 +177,15 @@ Run as a daemon, typically in the background (but see the next option).
 Debug mode, do not fork and run in the background.
 .tp
 .B \-h
-Make bkd print HTTP headers on all outgoing bk push, bk pull,
-and bk clone messages.  Use when bkd is called from a cgi script.
+For all outgoing
+.BR "bk push" ,
+.BR "bk pull" ,
+and
+.B bk clone
+operations, wrap command responses in HTTP protocol.
+Use when
+.B bk bkd
+is called from a CGI script.
 .tp
 .OPTreq \-l log
 Log accesses in 
