@@ -224,7 +224,6 @@ main(int ac, char **av, char **env)
 					return(1);
 				}
 				break;
-			    case 'h':				/* undoc */
 			    default:
 				usage();
 			}
