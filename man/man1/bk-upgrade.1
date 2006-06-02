@@ -30,7 +30,8 @@ download it and run the installer.
 .tp
 .B \-n
 Only fetch the installer for a new version of \*[BK], but don't
-install it.
+install it.  Note: installer images that are downloaded will have
+the user's license key embedded in them. 
 .tp
 .B \-f
 If the
@@ -43,6 +44,11 @@ option allow the user to force the new version to be used.
 .tp
 .B \-q
 This causes the upgrade program to suppress extra output when running.
+.tp
+.B \-a arch
+Request an installer image for another architecture.  Usually used with
+.B \-n
+to fetch a \*[BK] installer for another platform.
 .SH EXAMPLES
 To check for new upgrades:
 .DS
@@ -59,6 +65,10 @@ To upgrade a given installation of bk on this machine:
 To fetch the latest installer:
 .DS
 bk upgrade -nf
+.DE
+To fetch the latest installer for Windows:
+.DS
+bk upgrade -nf -a x86-win32
 .DE
 .SH NOTES
 The default URL that \*[BK] uses to search for new updates can be

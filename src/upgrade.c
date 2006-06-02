@@ -24,13 +24,15 @@ private	int	flags = 0;
 int
 upgrade_main(int ac, char **av)
 {
-	int	c;
+	int	c, i;
 	int	fetchonly = 0;
 	int	install = 0;
 	int	force = 0;
 	int	obsolete = 0;
 	char	*indexfn, *index;
 	char	*p, *e;
+	char	*platform = 0;
+	char	**platforms;
 	char	**data = 0;
 	int	len;
 	char	*want_codeline = 0;
@@ -41,12 +43,13 @@ upgrade_main(int ac, char **av)
 	char	*tmpbin = 0;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "il:nfq")) != -1) {
+	while ((c = getopt(ac, av, "a:fil:nq")) != -1) {
 		switch (c) {
+		    case 'a': platform = optarg; break;	/* arch */
+		    case 'f': force = 1; break;
 		    case 'i': install = 1; break;
 		    case 'l': want_codeline = optarg; break;
 		    case 'n': fetchonly = 1; break;
-		    case 'f': force = 1; break;
 		    case 'q': flags |= SILENT; break;
 		    default:
 usage:			system("bk help -s upgrade");
@@ -60,6 +63,14 @@ usage:			system("bk help -s upgrade");
 		urlbase = p;
 	} else {
 		urlbase = UPGRADEBASE;
+	}
+	if (platform) {
+		if (install && !streq(platform, bk_platform)) {
+			notice("upgrade-install-other-platform", 0, "-e");
+			goto out;
+		}
+	} else {
+		platform = bk_platform;
 	}
 	if (win32() && (p = getenv("OSTYPE"))
 	    && streq(p, "msys") && (fetchonly || install)
@@ -76,6 +87,7 @@ usage:			system("bk help -s upgrade");
 		goto out;
 	}
 	unless (want_codeline) {
+		// XXX doesn't parse bk-4.0-rc1
 		if (!(p = strrchr(bk_vers, '-'))) {
 			notice("upgrade-devbuild", 0, "-e");
 			goto out;
@@ -117,6 +129,7 @@ usage:			system("bk help -s upgrade");
 	 * 6 codeline
 	 * -- new fields ALWAYS go at the end! --
 	 */
+	platforms = allocLines(20);
 	p = index;
 	while (*p) {
 		if (e = strchr(p, '\n')) *e++ = 0;
@@ -126,17 +139,35 @@ usage:			system("bk help -s upgrade");
 			if (streq(p + 4, bk_vers)) obsolete = 1;
 		} else if (!data) {
 			data = splitLine(p, ",", 0);
-			unless ((nLines(data) == 6) &&
-			    streq(data[5], bk_platform) &&
-			    streq(data[6], want_codeline)) {
-				freeLines(data, free);
+			if (nLines(data) < 6) goto next;
+			if (platforms) { /* remember platforms */
+				platforms =
+				    addLine(platforms, strdup(data[5]));
+			}
+			unless (streq(data[5], platform)) goto next;
+			/* found this platform */
+			freeLines(platforms, free);
+			platforms = 0;
+			unless (streq(data[6], want_codeline)) {
+next:				freeLines(data, free);
 				data = 0;
-			};
+			}
 		}
 		p = e;
 	}
 	free(index);
 	index = 0;
+
+	if (platforms) {	/* didn't find this platform */
+		uniqLines(platforms, free);
+		fprintf(stderr,
+"No upgrade for the for arch %s found. Available architectures:\n",
+		    platform);
+		EACH(platforms) fprintf(stderr, "  %s\n", platforms[i]);
+		freeLines(platforms, free);
+		rc = 2;
+		goto out;
+	}
 	/*
 	 * Look to see if we already have the current version
 	 * installed.  We compare UTC to catch releases that get

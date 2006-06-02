@@ -1266,6 +1266,11 @@ This version of bk is a development build and cannot be upgraded
 automatically.  Please specify a valid code line and the -f option.
 Example: bk upgrade -l bk -f
 $
+#upgrade-install-other-platform
+If the upgrade command is given the -a option to request the binary
+for another architecture, then it cannot also be given the -i option to
+install that binary.
+$
 #comments-badfmt
 Illegal format for input to the 'bk comments' command.  Lines should
 match this format:
