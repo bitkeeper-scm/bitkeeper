@@ -4,14 +4,144 @@
 bk config \- show repository configuration information
 .SH SYNOPSIS
 .B bk config
+.[B] \-v
 .SH DESCRIPTION
 .LP
 The
 .B bk config
-command displays configuration information associated
-with a \*(BK repository.  It is not typically used by users.
+command displays configuration information, consisting of
+key-value pairs, associated with a \*(BK repository.
 .LP
-XXX - needs update w/ Wayne's config parsing.
+Repository configuration information is searched for in the following 
+places, in order:
+.TP "\fB`bk root`/BitKeeper/etc/config\fP"
+.B \`bk\ root\`/BitKeeper/etc/config
+Repository level config file
+.tp
+.B \`bk\ dotbk\`/config
+Personal config file
+.tp
+.B /etc/BitKeeper/etc/config
+Per-machine config file
+.tp
+.B \`bk\ bin\`/config
+Per-installation config file
+.tp
+.V $BK_CONFIG
+Environment variable
+.LP
+For each key-value pair, the first instance of a key found is used.
+A later value can override an earlier value, however, by
+appending an exclamation point to the value (not the key):
+.DS
+checkout: get!
+.DE
+If multiple instances of a key value are found with this trailing
+exclamation point, the last such value found is used.
+.LP
+The
+.B BK_CONFIG
+environment variable may contain a list of
+.ARGc key
+.OPTreq : value
+pairs separated by semicolons.
+For example:
+.DS
+BK_CONFIG=key1:value1;key2:value2;key3:value3
+.DE
+.LP
+Minimum content requirements for the
+.B BitKeeper/etc/config
+file 
+are the key-value pairs for 
+.DS
+description:
+email:
+license:
+licsig1:
+licsig2:
+licsig3:
+.DE
+(See
+"CONFIG FILE ENTRIES" in
+.B bk help config-etc
+for allowed values.)
+.LP
+A default config file may be created in order to make setup easier
+consistent for every repository on the system by creating a template in
+.B /etc/BitKeeper/etc/config.template
+or
+.BR "\`bk dotbk\`/config.template" .
+If either file exists,
+.B bk setup
+automatically uses that as the 
+.B BitKeeper/etc/config
+file.
+See
+.B bk help setup
+for more information.
+.SH OPTIONS
+.TP
+.B \-v
+Displays the location of all config key-value pairs in the current
+configuration.
+This allows you to determine which config file is controlling each
+item in your configuration.
+Items that are
+.I not
+being used because they are preceded or overridden by other values
+are shown with a leading pound sign (`#').
+This is useful for debugging your configuration.
+.SH EXAMPLES
+Suppose a user is trying to determine why his email address is not
+set as desired, even though he has put it in
+.V $BK_CONFIG .
+.Q bk config \-v
+shows that the repository config file value for
+.Q email
+is taking precedence over that in
+.V $BK_CONFIG .
+.DS
+$ bk config -v
+/repos/fred/testrepo/BitKeeper/etc/config:
+#	autofix:        no
+	description:    Fred's Test repository
+	email:          
+	eoln:           unix
+	foo:            bar
+#	keyword:        sccs
+	license:        BKL6ffffffedcbb98888876554443322211000000
+	licsign1:       zzwvuuusssrpokjjgggeedbbbZZYYRRQQOGFFEEDCB
+AAAAAAAAAAA9875553210/
+	licsign2:       zzxwvuuutttssrrrqpponlkkiecbaaZYXXWVVVVVTS
+SRRPONNNLLJJHEBAAA9862
+	licsign3:       zzywwvvtttsomllkihhggffffebZYSSRRQOOMLLKJH
+GEDC87665321110/++
+
+	trail:          
+
+/home/fred/.bk/config:
+	keyword:        sccs,expand1!
+
+/etc/BitKeeper/etc/config:
+
+/usr/libexec/bitkeeper/config:
+
+$BK_CONFIG:
+	autofix:        yes!
+#	email:          fredheinz@example.com
+.DE
+.LP
+The output also shows that the
+.B autofix
+value in
+.V $BK_CONFIG
+and the
+.B keyword
+value in the user's
+.B .bk/config
+file are overriding the corresponding values in the repository config file
+because the exclamation mark is appended.
 .SH EXIT STATUS
 .LP
 .B bk config

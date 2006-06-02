@@ -3,72 +3,20 @@
 .SH NAME 
 bk config-etc \- configuring \*(BK
 .SH DESCRIPTION
-\*(BK config files contain repository configuration information including
+\*[BK] config files contain repository configuration information including
 project description, licensing information, 
 user preferences, BK/Web preferences, and contact information.
-Each \*(BK repository must have the minimum configuration
-information available in order to properly execute \*(BK commands.
+Config file entries take the form of key-value pairs.
+This page describes the various configuration keys and their
+possible values.
 .LP
-Repository configuration information is searched for in the following 
-places, in order:
-.TP "\fB`bk root`/BitKeeper/etc/config\fP"
-.B \`bk\ root\`/BitKeeper/etc/config
-Repository level config file
-.tp
-.B \`bk\ dotbk\`/config
-Personal config file
-.tp
-.B /etc/BitKeeper/etc/config
-Per-machine config file
-.tp
-.B \`bk\ bin\`/config
-Per-installation config file
-.tp
-.V $BK_CONFIG
-Environment variable
-.LP
-For each key/value pair, the first instance of a key found is the
-one that's used.
-An earlier value may be overridden by a later value, however, by
-following the value (not the key) with an exclamation point:
-.DS
-checkout: get!
-.DE
-The
-.B BK_CONFIG
-environment variable may contain a list of key:value
-pairs separated by semicolons.
-For example:
-.DS
-BK_CONFIG=key1:value2;key2:value2;key3:value3
-.DE
-.LP
-Minimum content requirements for the
-.B BitKeeper/etc/config
-file 
-are the key value pairs for 
-.DS
-description:
-email:
-license:
-licsig1:
-licsig2:
-licsig3:
-.DE
-(See "CONFIG FILE ENTRIES" section below for allowed values.)
-.LP
-A default config file may be created in order to make setup easier
-consistent for every repository on the system by creating a template:
-.DS
-/etc/BitKeeper/etc/config.template
-or
-\`bk dotbk\`/config.template
-.DE
-If this file exists, bk setup will automatically use that as the 
-.BR BitKeeper/etc/config file .
-See
-.B bk help setup
-for more information.
+Each \*(BK repository must have some minimum configuration
+information available in order to properly execute \*(BK commands;
+this information can be stored in a number of different
+locations.
+For more about this and how the \*[BK] configuration is derived
+for a particular repository, see
+.BR "bk help config" .
 .SH "CONFIG FILE ENTRIES"
 .SS AUTOFIX
 .br
