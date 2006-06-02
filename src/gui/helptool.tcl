@@ -640,9 +640,15 @@ proc getHelp {} \
 	catch {close $f} dummy
 	.ctrl.topics configure -state disabled
 	.text.help configure -state disabled
-	if {$keyword == ""} { set keyword "Common" }
-	getSelection $keyword
+	if {$keyword == ""} {
+		getSelection Common
+	} else {
+		getSelection $keyword
+	}
 	doSelect 1
+	if {$keyword == ""} {
+		.ctrl.topics yview moveto 0
+	}
 }
 
 main

@@ -16,7 +16,7 @@ sub main
 	$ENV{'GROFF_NO_SGR'} = 1;
 	chop($BKVER = `bk version -s`);
 	if ($BKVER =~ /^(\d\d\d\d)(\d\d)(\d\d)/) {
-		$BKVER="${1}-${2}-${3}-test";	# YYYY-MM-DD
+		$BKVER="${1}-${2}-${3}";	# YYYY-MM-DD
 	}
 	foreach $page (@ARGV) {
 		&man2help;

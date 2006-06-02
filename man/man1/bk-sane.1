@@ -4,6 +4,7 @@
 bk sane \- check for various \*[BK] requirements
 .SH SYNOPSIS
 .B bk sane
+.[B] \-c
 .SH DESCRIPTION
 Run this command from within a repository to check whether the repository
 is configured correctly.
@@ -14,7 +15,14 @@ the idcache.  If everything is sane, the command exits with a 0 exit
 status and no output.  If there are problems, a detailed error message
 is displayed on stderr and a non-zero exit status is returned.
 .LP
-When submitting bug reports, please include the output of this command.
+When submitting bug reports, please include the output of this command
+run with the 
+.B \-c
+option.
+.SH OPTIONS
+.TP
+.B \-c
+In addition to the basic checks, run a full repository integrity check.
 .SH EXIT STATUS
 .LP
 .B bk sane
@@ -26,6 +34,9 @@ on success.
 1
 on failure.
 .SH "SEE ALSO"
+.SA check
 .SA sendbug
 .SH CATEGORY
 .B Admin
+.br
+.B Common
