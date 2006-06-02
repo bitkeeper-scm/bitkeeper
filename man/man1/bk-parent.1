@@ -3,21 +3,35 @@
 .SH NAME
 bk parent \- manage repository parent pointer[s]
 .SH SYNOPSIS
+.B bk parent
+[\c
+.Bc \-a
+\||\|\c
+.Bc \-r
+\||\|\c
+.BR \-s ]
+.[B] \-1iloq
+.[ARG] repository
+.[ARG] repository
+.SS SETTING PARENT POINTERS
 .B bk parent \-s 
 .[B] \-inoq
 .ARG repository
 .[ARG] repository
 .br
+.SS ADDING PARENT POINTERS
 .B bk parent \-a 
 .[B] \-inoq
 .ARG repository
 .[ARG] repository
 .br
+.SS REMOVING PARENT POINTERS
 .B bk parent \-r 
 .[B] \-ioq
 .ARG repository
 .[ARG] repository
 .br
+.SS LISTING PARENT POINTERS
 .B bk parent
 .[B] \-1iloq
 .SH DESCRIPTION

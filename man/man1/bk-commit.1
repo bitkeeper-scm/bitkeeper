@@ -48,16 +48,22 @@ This is the same format produced by
 and
 .QR "bk sfiles \-pC" .
 .LP
+.B Note:
+.ARG rev
+specifies the most recent change to commit; all uncommitted changes prior to
+.ARG rev
+are also included.
+.LP
 You can see what will be added to a changeset when you commit by running:
 .DS
 $ bk pending
 .DE
-Pending lists only files which have checked in deltas; files that
-are not yet checked in are not shown.  Use 
-.B bk status
-or
-.B bk sfiles
-if you want to see both.
+.\"Pending lists only files which have checked in deltas; files that
+.\"are not yet checked in are not shown.  Use 
+.\".B bk status
+.\"or
+.\".B bk sfiles
+.\"if you want to see both.
 .LP
 All revisions which you have checked in will become part of a
 changeset.  As part of the commit step, you will be prompted for
