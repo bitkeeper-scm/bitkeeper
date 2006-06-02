@@ -31,7 +31,7 @@ Per-installation config file
 Environment variable
 .LP
 For each key-value pair, the first instance of a key found is used.
-A later value can override an earlier value, however, by
+You can override an earlier value with a later value, however, by
 appending an exclamation point to the value (not the key):
 .DS
 checkout: get!
@@ -52,8 +52,7 @@ BK_CONFIG=key1:value1;key2:value2;key3:value3
 .LP
 Minimum content requirements for the
 .B BitKeeper/etc/config
-file 
-are the key-value pairs for 
+file are the key-value pairs for 
 .DS
 description:
 email:
@@ -67,8 +66,9 @@ licsig3:
 .B bk help config-etc
 for allowed values.)
 .LP
-A default config file may be created in order to make setup easier
-consistent for every repository on the system by creating a template in
+You can specify a default config file to make setup easier
+and more consistent for every repository on the system by creating
+a template in
 .B /etc/BitKeeper/etc/config.template
 or
 .BR "\`bk dotbk\`/config.template" .
