@@ -33,7 +33,7 @@ upgrade_main(int ac, char **av)
 	char	*p, *e;
 	char	**data = 0;
 	int	len;
-	char	*want_codeline = 0;
+	char	*want_codeline = "bk";
 	FILE	*f, *fout;
 	MDBM	*configDB = proj_config(0);
 	char	*licf;
@@ -74,13 +74,6 @@ usage:			system("bk help -s upgrade");
 	if (install && noperms(bin)) {
 		notice("upgrade-badperms", bin, "-e");
 		goto out;
-	}
-	unless (want_codeline) {
-		if (!(p = strrchr(bk_vers, '-'))) {
-			notice("upgrade-devbuild", 0, "-e");
-			goto out;
-		}
-		want_codeline = strndup(bk_vers, p - bk_vers);
 	}
 	/* XXX licenseurl users can't run upgrade */
 	unless (getlicense(configDB, 0)) {
