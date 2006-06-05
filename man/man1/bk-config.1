@@ -93,12 +93,12 @@ being used because they are preceded or overridden by other values
 are shown with a leading pound sign (`#').
 This is useful for debugging your configuration.
 .SH EXAMPLES
-Suppose a user is trying to determine why his email address is not
-set as desired, even though he has put it in
+Suppose a user is trying to determine why his keywords are not being expanded
+as desired, even though he has put it in
 .V $BK_CONFIG .
 .Q bk config \-v
-shows that the repository config file value for
-.Q email
+shows that the his personal config file value for
+.Q keyword
 is taking precedence over that in
 .V $BK_CONFIG .
 .DS
@@ -106,22 +106,14 @@ $ bk config -v
 /repos/fred/testrepo/BitKeeper/etc/config:
 #	autofix:        no
 	description:    Fred's Test repository
-	email:          
-	eoln:           unix
-	foo:            bar
 #	keyword:        sccs
 	license:        BKL6ffffffedcbb98888876554443322211000000
-	licsign1:       zzwvuuusssrpokjjgggeedbbbZZYYRRQQOGFFEEDCB
-AAAAAAAAAAA9875553210/
-	licsign2:       zzxwvuuutttssrrrqpponlkkiecbaaZYXXWVVVVVTS
-SRRPONNNLLJJHEBAAA9862
-	licsign3:       zzywwvvtttsomllkihhggffffebZYSSRRQOOMLLKJH
-GEDC87665321110/++
-
-	trail:          
+	licsign1:       lic_sig_part1
+	licsign2:       lic_sig_part2
+	licsign3:       lic_sig_part3
 
 /home/fred/.bk/config:
-	keyword:        sccs,expand1!
+	keyword:        rcs!
 
 /etc/BitKeeper/etc/config:
 
@@ -129,18 +121,14 @@ GEDC87665321110/++
 
 $BK_CONFIG:
 	autofix:        yes!
-#	email:          fredheinz@example.com
+#	keyword:        sccs
 .DE
 .LP
 The output also shows that the
 .B autofix
 value in
 .V $BK_CONFIG
-and the
-.B keyword
-value in the user's
-.B .bk/config
-file are overriding the corresponding values in the repository config file
+is overriding the corresponding value in the repository config file
 because the exclamation mark is appended.
 .SH EXIT STATUS
 .LP

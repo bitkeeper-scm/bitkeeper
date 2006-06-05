@@ -37,3 +37,21 @@ C
 EOF
 cmp -s WANT GOT || { echo failed; diff -u WANT GOT; exit 1; }
 echo OK
+
+echo $N Test commit with revs on stdin ..............................$NL
+for i in 2 3 4 5
+do	bk edit $Q file
+	bk delta -fywhatever $Q file
+done
+bk sfiles -pA > BEFORE
+echo 'SCCS/s.file|1.4' | bk commit $Q -ywhatever -
+bk sfiles -pA > AFTER
+bk pending > LEFT
+grep -q 1.5 LEFT || exit 1
+cmp -s BEFORE AFTER && {
+	echo failed
+	cat BEFORE
+	cat AFTER
+	exit 1
+}
+echo OK
