@@ -255,7 +255,7 @@ main(int ac, char **av)
 			dolinks ? "-S" : "",
 			upgrade ? "-f" : "",
 			dest);
-		unless (system(buf)) {
+		unless (rc = system(buf)) {
 			fprintf(stderr, "\nInstalled version information:\n\n");
 			sprintf(buf, "'%s/bk' version", dest);
 			system(buf);
@@ -310,7 +310,7 @@ out:	unless (getenv("BK_SAVE_INSTALL")) {
 		    "Do you want to reboot the system now?\n");
 	}
 #endif
-	exit(0);
+	exit(rc);
 }
 
 int
