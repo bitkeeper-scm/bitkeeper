@@ -27,13 +27,13 @@ Currently, the following are checked:
 .LI
 for each file specified, make sure that deltas marked as recorded in
 the ChangeSet file are recorded in the ChangeSet file.
-.LI
+.li
 for each file specified and for each delta of that file which is recorded
 in the ChangeSet file, make sure that the delta exists in the file.
-.LI
+.li
 for each file specified, make sure that the file has no unresolved
 branches.
-.LI
+.li
 make sure that every delta recorded in ChangeSet file is in the
 repository (only with \-a).
 .LP
@@ -63,7 +63,7 @@ Typically used with the
 .Q \-a
 option.  This will check to make sure that:
 .RS .51i
-.LI
+.li
 the state of the
 .B EOLN_NATIVE
 flag in each sfile is consistent with 
@@ -71,13 +71,13 @@ what is set in the
 .B BitKeeper/etc/config
 file (see
 .BR "bk admin" ).
-.LI
+.li
 a bk file on a win32 operating system that has the
 .B EOLN_NATIVE
 flag set has the expected line termination: \fB\\r\\n\fR
-.LI
+.li
 a file on a \*(UN operating system has the expected line termination: \fB\\n\fR
-.LI
+.li
 a file that does not have the
 .B EOLN_NATIVE
 flag is has the expected line termination: \fB\\n\fR
