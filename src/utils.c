@@ -433,38 +433,6 @@ err:		system("bk help -s prompt");
 }
 
 /*
- * Return an MDBM with all the keys from the ChangeSet file
- * after subtracting the keys from the "not" database.
- * The result are stored as db{key} = rev.
- */
-MDBM	*
-csetDiff(MDBM *not,  int wantTag)
-{
-	char	buf[MAXKEY], s_cset[MAXPATH] = CHANGESET;
-	sccs	*s;
-	delta	*d;
-	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	int	n = 0;
-		
-	unless (s = sccs_init(s_cset, INIT_NOCKSUM)) {
-		mdbm_close(db);
-		return (0);
-	}
-	for (d = s->table; d; d = d->next) {
-		if (!wantTag && (d->type == 'R')) continue;
-		sccs_sdelta(s, d, buf);
-		unless (not && mdbm_fetch_str(not, buf)) {
-			mdbm_store_str(db, buf, d->rev, 0);
-			n++;
-		}
-	}
-	sccs_free(s);
-	if (n) return (db);
-	mdbm_close(db);
-	return (0);
-}
-
-/*
  * Return true if spath is the real ChangeSet file.
  * Must be light weight, it is called from sccs_init().
  * It assumes ChangeSet and BitKeeper/etc share the same parent dir.

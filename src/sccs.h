@@ -1055,7 +1055,6 @@ char	*bktmpdir(char *buf, const char *template);
 char	*bktmp_local(char *buf, const char *template);
 void	bktmpcleanup(void);
 int	smallTree(int threshold);
-MDBM	*csetDiff(MDBM *, int);
 char	*strdup_tochar(const char *s, int c);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
