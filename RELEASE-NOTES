@@ -231,8 +231,8 @@ bk changes
     to changes that apply to certain files.
 
 bk ci
-    Replaces bk delta as the preferred interface for checking in files from
-    the command line.
+    This command replaces bk delta as the preferred interface for checking
+    in files from the command line.
 
     The "-i" option, which put a file under revision control, is
     deprecated.  Use bk new instead.
@@ -240,14 +240,16 @@ bk ci
     bk ci picks up all the options that used to be unique to bk delta.
 
 bk co
-    Replaces bk get as the preferred interface for checking out files from
-    the command line.
+    This command replaces bk get as the preferred interface for checking
+    out files from the command line.
 
-    Both -l and -e will continue to work as ways to lock the file but the
-    -l option is the preferred interface; -e will go away in bk 5.0.
+    Both "-l" and "-e" will continue to work as ways to lock the file
+    but the "-l" option is the preferred interface; "-e" will go away
+    in BitKeeper 5.0.
 
-    The "-C" option specified the revision most recently committed to a
-    changeset. In this release, this option is removed. use "-r@+" instead.
+    The "-C" option specified the revision most recently committed to
+    a changeset. In this release, this option is removed. use "-r@+"
+    instead.
 
     Old syntax:
 	bk co -C
@@ -293,9 +295,9 @@ bk cset
     A new "-t" option provides a text-mode version of bk csets.
 
 bk delta
-    Has been merged into the bk ci interface and is deprecated.  You 
-    may use either interface, they both do the same thing but going 
-    forward only bk ci will be documented.
+    This command has been merged into the bk ci interface and is
+    deprecated.  You may use either interface; they both do the same
+    thing, but going forward only bk ci will be documented.
 
     The "-C" option, which directed the command to take comments from
     SCCS/c.<file>, is changed to lower case ("-c").
@@ -307,7 +309,7 @@ bk delta
 
     This command's behavior has been changed to be more like the old ci;
     if there are no changes to the file, no delta is made automatically.
-    There is a new -f option to force the creation of a null delta.
+    There is a new "-f" option to force the creation of a null delta.
     This breaks compatibility with ATT SCCS.
 
 bk diffs
@@ -353,8 +355,8 @@ bk fixtool
     Fmtool from the Edit menu.
 
 bk get
-    Is replaced with bk co; both will continue to work but only bk co
-    will be documented.
+    This command is replaced by bk co and is deprecated; both will
+    continue to work but only bk co will be documented.
 
 bk glob
     BitKeeper now respects wildcards (globs) on the command line.
@@ -505,9 +507,9 @@ bk sfiles
     integration.  The summary below compares old and new syntax. For a
     more concise description of just the new syntax, see bk help sfiles.
 
-    Note that -i and -n no longer require that you run bk sfiles at the
-    repository root.  This means that "bk citool ." does not show files
-    that are normally ignored.
+    Note that "-i" and "-n" no longer require that you run bk sfiles at
+    the repository root.  This means that "bk citool ." does not show
+    files that are normally ignored.
 
     The unchanged interfaces are:
     -1 (stop at first directory)
@@ -527,7 +529,7 @@ bk sfiles
     -U (user files only)
     -x (extras)
  
-    The -d and -D options now work when combined with other options.
+    The "-d" and "-D" options now work when combined with other options.
 
     The changed interfaces are:
     Old		New	Meaning
