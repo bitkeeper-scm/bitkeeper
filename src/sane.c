@@ -20,13 +20,8 @@ sane_main(int ac, char **av)
 {
 	int	c, readonly = 0, resync = 0;
 
-	while ((c = getopt(ac, av, "crR")) != -1) {
+	while ((c = getopt(ac, av, "rR")) != -1) {
 		switch (c) {
-		    case 'c':
-			if (sys("bk", "-r", "check", "-acv", SYS)) {
-				return (1);
-			}
-			return (0);
 		    case 'r':
 			readonly = 1; /* Do not check write access */
 			break;

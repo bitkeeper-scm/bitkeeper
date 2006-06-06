@@ -3,7 +3,7 @@ Release notes for BitKeeper version 4.0-beta
 
 This is a major release that improves performance, introduces
 significant new features, regularizes interfaces, and fixes a number
-of customer-reported problems.  For upgrade instructions, see Intalling
+of customer-reported problems.  For upgrade instructions, see Installing
 4.0-beta, below.
 
 Performance Improvements
@@ -12,10 +12,10 @@ Performance Improvements
     bk csettool is 3 times faster
     bk revtool comes up at least twice as fast
 
-    There is a new timestamp database that can be used to safely improve
+    There is a new time stamp database that can be used to safely improve
     performance of bk commands that are looking for modified files.
-    It uses the timestamps on the files in a way that works even with NFS
-    clients/servers that produce incorrect timestamps.  This speeds up
+    It uses the time stamps on the files in a way that works even with NFS
+    clients/servers that produce incorrect time stamps.  This speeds up
     "bk -cr diffs" and bk citool among other commands.
 
 New Features
@@ -171,7 +171,7 @@ release.  Wherever practical, the old syntax is contrasted with the new
 syntax to help you update your scripts for 4.0.x.
 
 All commands
-    In past releases, most commands supressed the retrieval of files
+    In past releases, most commands suppressed the retrieval of files
     named .del-* because BitKeeper had two ways of deleting a file:
     one renamed it as .del-<filename> and the other renamed it as 
     `bk root`/BitKeeper/deleted/.del-<filename>.  The second form has 
@@ -179,22 +179,22 @@ All commands
 
     As of this release, retrieval of these files is no longer
     suppressed.  This means that if there is an SCCS/s..del-foo file,
-    bk get checks out .del-foo whereas in earlier releases it wouldn't 
+    bk co checks out .del-foo whereas in earlier releases it wouldn't 
     have.  If you have a file like this and want to get rid of it, run:
 
     	bk rm .del-<filename>
 
     This moves the file to BitKeeper/deleted.
 
-bk annotate/diffs/get/grep
+bk annotate/diffs/co/grep
     All commands that take options to enable annotations have had those 
-    options changed.  The commands are: grep, get, annotate, diffs.
+    options changed.  The commands are: grep, co, annotate, diffs.
     The new interface is in general:
 	-A<opts>
 	-a<opts>
     where the first form requests aligned ("human readable") annotations
     and the second form requests program-readable output.  <opts>
-    specifies which annotations to include.  See bk help get for a
+    specifies which annotations to include.  See bk help co for a
     full list.
 
 bk bkd
@@ -212,7 +212,7 @@ bk bkd
 bk changes
     bk changes now supports multiple parents and "bk changes -L"
     can summarize the list of changes relative to a series of remote
-    locations, either seperately or as a union.  You can combine "-L"
+    locations, either separately or as a union.  You can combine "-L"
     and "-R" to see all changesets local to this repository in addition
     to seeing remote changesets.
 
@@ -224,11 +224,35 @@ bk changes
     bk log, below.)
 
     The default output format for 'bk changes' has changed slightly.
-    Scripts that need to parse bk changes output are encourged to use
+    Scripts that need to parse bk changes output are encouraged to use
     the -d<dspec> option to generate a stable, easy to parse output.
 
     New -i (include) and -x (exclude) options allow you to limit output
     to changes that apply to certain files.
+
+bk ci
+    Replaces bk delta as the preferred interface for checking in files from
+    the command line.
+
+    The "-i" option, which put a file under revision control, is
+    deprecated.  Use bk new instead.
+
+    bk ci picks up all the options that used to be unique to bk delta.
+
+bk co
+    Replaces bk get as the preferred interface for checking out files from
+    the command line.
+
+    Both -l and -e will continue to work as ways to lock the file but the
+    -l option is the preferred interface; -e will go away in bk 5.0.
+
+    The "-C" option specified the revision most recently committed to a
+    changeset. In this release, this option is removed. use "-r@+" instead.
+
+    Old syntax:
+	bk co -C
+    New syntax:
+	bk co -r@+
 
 bk commit
     This command formerly had an undocumented -f<file_list> option that
@@ -269,13 +293,17 @@ bk cset
     A new "-t" option provides a text-mode version of bk csets.
 
 bk delta
+    Has been merged into the bk ci interface and is deprecated.  You 
+    may use either interface, they both do the same thing but going 
+    forward only bk ci will be documented.
+
     The "-C" option, which directed the command to take comments from
     SCCS/c.<file>, is changed to lower case ("-c").
 
     Old syntax:
-	bk delta -C <file>
+	bk ci -C <file>
     New syntax:
-	bk delta -c <file>
+	bk ci -c <file>
 
     This command's behavior has been changed to be more like the old ci;
     if there are no changes to the file, no delta is made automatically.
@@ -291,11 +319,16 @@ bk diffs
     New syntax:
 	bk diffs -r@<cset-rev>
 
-    A new "-N" option treats extra files as new.
+    A new "-N" option treats extra files as new and diffs against /dev/null
 
     A new "-f" option forces diffing against read-only files.
 
     A new "-H" option lets you prefix diffs with checkin comments
+
+bk edit
+    There is a new "rollback" feature: "bk edit -r<rev> <file>"
+    that edits the top delta for <file> and excludes deltas such that
+    its contents are identical to <rev>.
 
 bk extras
     This command formerly required the "-a" option to follow the optional
@@ -320,19 +353,8 @@ bk fixtool
     Fmtool from the Edit menu.
 
 bk get
-    The "-C" option specified the revision most recently committed to a
-    changeset. In this release, this option is removed. use "-r@+" instead.
-
-    Old syntax:
-	bk get -C
-    New syntax:
-	bk get -r@+
-    
-    The "@+" revision is special-cased for performance.
-
-    There is also a new "rollback" feature: "bk get -r<rev> -e <file>"
-    that edits the top delta for <file> and excludes deltas such that
-    its contents are identical to <rev>.
+    Is replaced with bk co; both will continue to work but only bk co
+    will be documented.
 
 bk glob
     BitKeeper now respects wildcards (globs) on the command line.
@@ -388,7 +410,7 @@ bk lease show
     renew.
 
 bk mv/mvdir
-    bk mvdir is deprecated. bk mv is now the prefered way to move
+    bk mvdir is deprecated. bk mv is now the preferred way to move
     directories.
 
     Old syntax:
@@ -464,7 +486,7 @@ bk repogca
     A new "-k" option is a shorthand for "-d:KEY:"
 
     Multiple remote URLs can now be passed on the repogca command line
-    and the lastest cset that exists in all remote URLs is returned.
+    and the latest cset that exists in all remote URLs is returned.
 
 bk revtool
     The "-G" option is removed; the GCA is automatically calculated.
@@ -520,7 +542,7 @@ bk sfiles
     			-l/-u,-c,-p,-G,-n,-d/-D,-y && -j/-x (see man page)
     -C		-pC	remove undocumented alias
     -A		-pA	remove undocumented alias
-    -C		-C	now means don't trust timestamp db
+    -C		-C	now means don't trust time stamp db
     <none>	-0	print null between files instead of \n
 
     The sfiles options to 'bk' have similar changes.  See 'bk help bk'.
@@ -569,14 +591,14 @@ Misc
 
     When BK_DATE_TIME_ZONE, BK_USER, and BK_HOST are set in the
     environment, BitKeeper operations that create deltas or changesets
-    use them to specify user, host, and timestamp.  For example:
+    use them to specify user, host, and time stamp.  For example:
 
     export BK_USER=dmr
     export BK_HOST=example.com
-    BK_DATE_TIME_ZONE='2006/05/31 17:34:15-07:00' bk delta foo.c
+    BK_DATE_TIME_ZONE='2006/05/31 17:34:15-07:00' bk ci foo.c
 
 Bugs fixed
-    2000-04-17-003	su root; bk delta foo.c - checks in as root
+    2000-04-17-003	su root; bk ci foo.c - checks in as root
     2002-02-15-001	bkWeb doesn't understand virtual hosting/CNAMEs
     2002-03-14-008	bk changes -v should show information about merges
     2002-04-06-004	bk changes -d... may hang
@@ -592,7 +614,7 @@ Bugs fixed
     2002-10-16-002	changes uses up a lot of memory and takes too long
     2002-12-10-004	giving an unknown command to bk sends an error message  
 			to stdout
-    2002-12-27-001	bk sfiles -U <dir> does not skip BitKeepet file
+    2002-12-27-001	bk sfiles -U <dir> does not skip BitKeeper file
     2003-03-04-001	Need list of files req'd for manual merge OR skip  
 			resolve functionality
     2003-03-12-002	sfiles -ct doesn't work as expected in a sub-directory  

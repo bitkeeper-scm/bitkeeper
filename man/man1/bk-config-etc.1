@@ -72,16 +72,16 @@ file as follows:
 Where option is one of:
 .TP \fBnone\fP
 .B get
-Automatically do a bk get
+Automatically do a bk co
 .ARG file
-after doing a bk delta
+after doing a bk ci
 .ARG file .
 (Checkout in read-only mode.)
 .tp
 .B edit
 Automatically do a bk edit
 .ARG file
-after doing a bk delta
+after doing a bk ci
 .ARG file .
 Note: This will also
 adjust the modification time of the s.file to be one second before the 
@@ -91,7 +91,7 @@ to reget the file.
 (Checkout in edit mode.)
 .tp
 .B none
-Clear the gfile after doing a bk delta
+Clear the gfile after doing a bk ci
 .ARG file .
 (This is the default.)
 .SS CLOCK_SKEW
@@ -143,7 +143,7 @@ Setting this option affects
 .I only
 files created subsequently.
 See
-.B bk help delta
+.B bk help ci
 for more information about the
 .Q \-Z
 option for compression.

@@ -1,23 +1,23 @@
 .so ../bk-macros
-.TH "bk delta" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk ci" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk delta \- check in modified files
+bk ci \- check in modified files
 .SH SYNOPSIS
-.B bk delta
-.[B] \-acflpqu
-.[OPTreq] \-D file
-.[OPTreq] \-Y file
-.BKARGS
-.br
-.B bk delta
+.B bk ci
 .[B] \-acflpqu
 .[OPTreq] \-D file
 .[OPTreq] \-y msg
 .BKARGS
+.br
+.B bk ci
+.[B] \-acflpqu
+.[OPTreq] \-D file
+.[OPTreq] \-Y file
+.BKARGS
 .SH DESCRIPTION
 .LP
 The
-.B bk delta 
+.B bk ci 
 command is used to check in changes made to revision controlled files.
 This command is fairly rich in features and is the preferred interface
 for scripting.  For interactive checkins, 
@@ -27,23 +27,23 @@ is the preferred interface.
 .TP \-y\*<comment\*>
 .B \-a
 Normally, 
-.B delta
+.B bk ci
 is used to modify existing files.
-This option changes delta to act like bk new for new files and bk delta
+This option changes bk ci to act like bk new for new files and bk ci
 for existing files.
 The usefulness of this option is more apparent when you consider having
 a mixed list of files, some under revision control and some not.
 For example,
 .DS
-bk -xcr delta -a -y'mass checkin'
+bk -xcr ci -a -y'mass checkin'
 .DE
 runs
 .B bk new
 on all the new files and
-.B bk delta
+.B bk ci
 on all the modified
 files.  When called with this option,
-.B bk delta
+.B bk ci
 does not create a null delta on an edited but unmodified file.
 .tp
 .B \-c
@@ -61,7 +61,7 @@ Force the creation of a null delta even if there are no changes to the file.
 .tp
 .B \-l
 Follow check in with a locked check out like
-.QR "bk get \-e" .
+.QR "bk edit" .
 .tp
 .OPTreq \-M mode
 Set the permissions on the new delta to
@@ -76,8 +76,7 @@ Print differences before prompting for comments.
 Run silently.
 .tp
 .B \-u
-Follow check in with an unlocked check out like
-.BR "bk get" .
+Follow check in with an unlocked check out.
 .tp
 .OPTreq \-Y file
 Use the comment specified in 
@@ -90,7 +89,7 @@ Sets the revision comment to
 .if n <comment>.
 .SH EXIT STATUS
 .LP
-.B bk delta
+.B bk ci
 returns exit status:
 .TP
 0
@@ -102,8 +101,8 @@ on failure.
 The format of the init file is not documented.
 .SH "SEE ALSO"
 .SA citool
+.SA co
 .SA edit
-.SA get
 .SA new
 .SH CATEGORY
 .B File
