@@ -344,7 +344,7 @@ find_gca(char *file, char *left, char *right)
 	char	*sfile = name2sccs(file);
 	delta	*dl, *dr, *dg;
 	char	*inc = 0, *exc = 0;
-	char	buf[MAXLINE];
+	char	**revlist = 0;
 
 	s = sccs_init(sfile, INIT_NOCKSUM, 0);
 	free(sfile);
@@ -365,19 +365,19 @@ find_gca(char *file, char *left, char *right)
 		exit(2);
 	}
 	dg = sccs_gca(s, dl, dr, &inc, &exc, 1);
-	strcpy(buf, dg->rev);
+	revlist = str_append(0, dg->rev, 0);
 	if (inc) {
-		strcat(buf, "+");
-		strcat(buf, inc);
+		revlist = str_append(revlist, "+", 0);
+		revlist = str_append(revlist, inc, 0);
 		free(inc);
 	}
 	if (exc) {
-		strcat(buf, "-");
-		strcat(buf, exc);
+		revlist = str_append(revlist, "-", 0);
+		revlist = str_append(revlist, exc, 0);
 		free(exc);
 	}
 	sccs_free(s);
-	return (strdup(buf));
+	return (str_pullup(0, revlist));
 }
 
 private void
