@@ -36,7 +36,7 @@ and a lower window which can show either the checkin comments or
 differences between versions.
 .SH "HISTORY AND DIFFERENCES"
 .LP
-Upon startup, the bottom window displays the last month's revision
+Upon startup, the bottom window displays the recent revision
 history for the file or project. If a line number (\c
 .OPTreq + number \c
 ) 
@@ -67,7 +67,7 @@ To see the contents of a file, double click the left mouse button
 on the revision node in the graph.  The text shown for the file is
 annotated with the user name and the latest revision that modified
 the line. The file text is generated with the
-.Q bk get \-ump
+.Q bk co \-Aur
 command.
 .LP
 Once the annotated file listing is shown, you can then click on
@@ -218,11 +218,9 @@ Quit
 .SA Basics-Overview
 .SA config-gui
 .SH CATEGORY
-.B GUI-tools
-.br
 .B Common
 .br
-.B File
+.B GUI-tools
 .br
 .B Repository
 .\" help://bk-sccstool.1

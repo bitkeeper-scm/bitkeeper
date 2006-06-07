@@ -27,18 +27,18 @@ Currently, the following are checked:
 .LI
 for each file specified, make sure that deltas marked as recorded in
 the ChangeSet file are recorded in the ChangeSet file.
-.LI
+.li
 for each file specified and for each delta of that file which is recorded
 in the ChangeSet file, make sure that the delta exists in the file.
-.LI
+.li
 for each file specified, make sure that the file has no unresolved
 branches.
-.LI
+.li
 make sure that every delta recorded in ChangeSet file is in the
 repository (only with \-a).
 .LP
 While you can specify a list of files instead of using 
-.B bk \-r
+.Q bk \-r
 to get all of them, this is not recommended.
 .SH OPTIONS
 .TP \-ggg
@@ -60,24 +60,24 @@ Provide more details about what is wrong.  Mainly for debugging.
 .B \-e
 Check for end of line (eoln) inconsistencies in text files.  
 Typically used with the 
-.B \-a
-a option.  This will check to make sure that:
+.Q \-a
+option.  This will check to make sure that:
 .RS .51i
-.LI
+.li
 the state of the
 .B EOLN_NATIVE
 flag in each sfile is consistent with 
 what is set in the
-.B BitKeeper/etc/config file
-(see
+.B BitKeeper/etc/config
+file (see
 .BR "bk admin" ).
-.LI
+.li
 a bk file on a win32 operating system that has the
 .B EOLN_NATIVE
 flag set has the expected line termination: \fB\\r\\n\fR
-.LI
+.li
 a file on a \*(UN operating system has the expected line termination: \fB\\n\fR
-.LI
+.li
 a file that does not have the
 .B EOLN_NATIVE
 flag is has the expected line termination: \fB\\n\fR
@@ -95,8 +95,7 @@ This option is on by default if the auto_fix config option is set.
 .B \-ff
 Fix any fixable errors which have destructive fixes.
 This option will
-remove any old LOD information except the 1.x LOD.
-XXX - we've added other stuff.
+remove any old line-of-development (LOD) information except the 1.x LOD.
 .tp
 .B \-g
 List each missing file as the file's identifier (root key), but do
@@ -127,15 +126,15 @@ dir.
 .tp
 .B \-v
 Be more verbose.  Each
-.B \-v
+.Q \-v
 adds additional verbosity.  With just one, 
-.B check
+.B bk check
 will display a progress bar. 
 With two, 
-.B check 
+.B bk check 
 will list each file which is OK.  More than two is for debugging only.
 Without the
-.B \-v 
+.Q \-v 
 option, there is no output
 if the repository is OK; there is only output if things are broken.
 .tp
@@ -148,7 +147,7 @@ XXX - list error codes here.
 .SA checksum
 .SA config-etc
 .SA gone
-.SA prs
+.SA log
 .SA xflags
 .SH CATEGORY
 .B Repository

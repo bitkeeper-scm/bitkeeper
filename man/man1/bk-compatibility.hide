@@ -24,7 +24,7 @@ Add a file to the repository.  Same as
 .B create
 Create (initialize) history files.  Same as
 .DS
-bk new && bk get
+bk new && bk co
 .DE
 .tp
 .B deledit
@@ -53,8 +53,7 @@ Check in a file.  Same as
 .BR "bk delta" .
 .tp
 .B co
-Check out a file.  Same as
-.BR "bk get" .
+Check out a file.
 .SH "SEE ALSO"
 .SA admin
 .SA delta

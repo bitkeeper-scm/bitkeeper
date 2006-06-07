@@ -42,7 +42,7 @@ echo OK
 
 echo $N Make version 1 LOD structures ...............................$NL
 bk edit $Q d1/a || exit 1
-bk delta $Q -y'new lod' d1/a || exit 1
+bk delta $Q -fy'new lod' d1/a || exit 1
 bk commit $S -yCset || exit 1
 rev=`bk prs -r+ -hnd:I: ChangeSet`
 perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" SCCS/s.ChangeSet > tmp

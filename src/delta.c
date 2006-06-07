@@ -123,7 +123,6 @@ delta_main(int ac, char **av)
 	int	dflags = 0;
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK|SF_NOHASREVS;
-	int	isci = 0;
 	int	checkout = 0, ignorePreference = 0;
 	int	c, rc, enc;
 	char	*initFile = 0;
@@ -140,11 +139,7 @@ delta_main(int ac, char **av)
 	prog = strrchr(av[0], '/');
 	if (prog) prog++;
 	else prog = av[0];
-	if (streq(prog, "ci")) {
-		isci = 1;
-	} else if (streq(prog, "delta")) {
-		dflags = DELTA_FORCE;
-	} else if (streq(prog, "new") ||
+	if (streq(prog, "new") ||
 	    streq(prog, "enter") || streq(prog, "add")) {
 		dflags |= NEWFILE;
 		sflags |= SF_NODIREXPAND;
@@ -152,13 +147,14 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "abcCdD:E|fg;GhI;ilm|M;npPqRrsuy|Y|Z|")) != -1) {
+	    getopt(ac, av, "abcCdD:E|fGhI;ilm|M;npPqRsuy|Y|Z|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
 		    case 'p': dflags |= PRINT; break; 		/* doc 2.0 */
+		    case 'm':					/* ci compat */
 		    case 'y': 					/* doc 2.0 */
-comment:		comments_save(optarg);
+			comments_save(optarg);
 			dflags |= DELTA_DONTASK;
 			break;
 		    case 's': /* fall through */		/* undoc 2.0 */
@@ -176,17 +172,6 @@ comment:		comments_save(optarg);
 			      break;
 		    case 'u': ckopts = "get";			/* doc 2.0 */
 			      break;
-
-		    /* flags with different meaning in RCS and SCCS */
-		    case 'm':					/* undoc? 2.0 */
-			    if (isci) goto comment;
-			    /* else fall through */
-
-		    /* obsolete SCCS flags */
-		    case 'g':					/* undoc 2.0 */
-		    case 'r':					/* undoc 2.0 */
-			    fprintf(stderr, "-%c not implemented.\n", c);
-			    goto usage;
 
 		    /* LM flags */
 		    case 'a':					/* doc 2.0 */
@@ -209,7 +194,10 @@ comment:		comments_save(optarg);
 			      break;
 		    case 'G': iflags |= INIT_FIXDTIME; break;	/* undoc? 2.0 */
 		    case 'h': dflags |= DELTA_HASH; break;	/* doc 2.0 */
-		    case 'I': initFile = optarg; break;		/* doc 2.0 */
+		    case 'I':
+			initFile = optarg;
+			dflags |= DELTA_FORCE;
+			break;
 		    case 'M': mode = optarg; break;		/* doc 2.0 */
 		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */

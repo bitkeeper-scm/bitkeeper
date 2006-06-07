@@ -170,7 +170,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
 	zone.o
-SCRIPTS	= applypatch bk.script import resync \
+SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
@@ -200,7 +200,7 @@ SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
 	  port/unix_platform.sh port/unix_platform.perl \
 	  port/win32_platform.perl port/win32_platform.sh \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh \
-	  resync.sh substvars.sh b64wrap.sh gzip_b64wrap.sh \
+	  substvars.sh b64wrap.sh gzip_b64wrap.sh \
 	  unb64wrap.sh ungzip_b64wrap.sh
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 

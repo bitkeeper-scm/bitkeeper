@@ -3,21 +3,34 @@
 .SH NAME
 bk parent \- manage repository parent pointer[s]
 .SH SYNOPSIS
+.B bk parent
+[\c
+.Bc \-a
+\||\|\c
+.Bc \-r
+\||\|\c
+.BR \-s ]
+.[B] \-1iloq
+.[ARG] repository
+.[ARG] repository
 .SS SETTING PARENT POINTERS
 .B bk parent \-s 
 .[B] \-inoq
 .ARG repository
 .[ARG] repository
+.br
 .SS ADDING PARENT POINTERS
 .B bk parent \-a 
 .[B] \-inoq
 .ARG repository
 .[ARG] repository
+.br
 .SS REMOVING PARENT POINTERS
 .B bk parent \-r 
 .[B] \-ioq
 .ARG repository
 .[ARG] repository
+.br
 .SS LISTING PARENT POINTERS
 .B bk parent
 .[B] \-1iloq
@@ -33,7 +46,7 @@ or
 .BR "bk push" .
 The typical case is that a repository has only one ``parent''
 but it is possible for a repository to have multiple parent
-pointers and each pointer may be incoming, outcoming, or both.
+pointers and each pointer may be incoming, outgoing, or both.
 .LP
 When setting the parent pointer, the parent command is backwards compatible
 with earlier versions if and only if there is currently no parent pointer
@@ -111,6 +124,16 @@ pointers.  This option is always required to override any existing parent
 pointers
 except in the case that there is only one bidirectional parent pointer and it
 is being replaced with one bidirectional parent pointer (backwards compat).
+.SH EXIT STATUS
+.LP
+.B bk parent
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH BUGS
 The term parent is somewhat of a misnomer in a peer to peer system.
 Since it is quite common to use \*[BK] repositories  in a

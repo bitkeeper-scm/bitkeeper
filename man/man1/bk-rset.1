@@ -77,10 +77,20 @@ changed after changeset
 .ARG r1 
 up to and including changeset
 .ARG r2 .
+.SH EXIT STATUS
+.LP
+.B bk rset
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
 .SA export
 .SA gnupatch
-.SA prs
+.SA log
 .BR diff (1),
 .BR patch (1),
 .SH CATEGORY

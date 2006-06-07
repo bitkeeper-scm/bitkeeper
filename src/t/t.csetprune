@@ -32,7 +32,7 @@ rm -rf line
 bk clone $Q simple line
 cd line
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y1.3 || exit 1
 bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
@@ -48,10 +48,10 @@ rm -rf host_inh
 bk clone $Q simple host_inh
 cd host_inh
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 TZ=UTC+0 bk commit $Q -y1.3
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 TZ=UTC+0 bk commit $Q -y1.4
 bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
@@ -66,14 +66,14 @@ rm -rf tag
 bk clone $Q simple tag
 cd tag
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -STAG1_3 -y1.3
 bk edit $Q a
-bk delta $Q -y1.3 a
+bk delta $Q -fy1.3 a
 bk commit $Q -y1.4
 bk tag $Q TAG1_4
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -STAG1_5 -y1.5
 bk tag $Q TAG1_6
 bk csetprune < ../KEYS 2> ERROR
@@ -95,10 +95,10 @@ rm -rf tagdup
 bk clone $Q simple tagdup
 cd tagdup
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -STAGDUP -y1.3
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y1.4
 bk tag $Q TAGDUP
 bk csetprune < ../KEYS 2> ERROR
@@ -113,40 +113,40 @@ bk clone $Q simple tag_b
 cd $HERE/tag_b
 bk tag $Q -r1.1 OLDEST-OLD
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -STAG_B1 -y"Tagged node on trunk"
 cd $HERE/tag_a
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -STAG_A1 -y"Tagged node before fork on branch"
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -y"nothing node"
 cd $HERE
 bk clone $Q tag_a tag_c
 cd $HERE/tag_a
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -y"node on trunk of branch with no label"
 cd $HERE/tag_c
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -STAG_C1 -y"Tagged node on branch of branch"
 cd $HERE/tag_b
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -STAG_B2 -y"Tagged node on trunk"
 cd $HERE/tag_c
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -STAG_C2 -y"Tagged node on branch of branch (again)"
 bk pull $Q -t $HERE/tag_a
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -STAG_C3 -y"Tagged node on branch after merge"
 bk pull $Q -t $HERE/tag_b
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y"tip to be deleted"
 bk tag $Q -r1.1 OLDEST-NEW
 bk csetprune < ../KEYS 2> ERROR
@@ -167,10 +167,10 @@ rm -rf remove
 bk clone $Q simple remove
 cd remove
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y1.3
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -y1.4
 key=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
 bk csetprune < ../KEYS 2> ERROR
@@ -194,12 +194,12 @@ bk clone $Q merge copy
 
 cd merge
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y1.3
 
 cd ../copy
 bk edit $Q c
-bk delta $Q -y1.2 c
+bk delta $Q -fy1.2 c
 bk commit $Q -y1.3
 
 bk pull $Q
@@ -219,12 +219,12 @@ bk clone $Q merge_m copy_m
 
 cd merge_m
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y1.3
 
 cd ../copy_m
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -y1.3
 key=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
 
@@ -243,13 +243,13 @@ bk clone $Q merge_p copy_p
 
 cd merge_p
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -y1.3
 key=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
 
 cd ../copy_p
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y1.3
 
 bk pull $Q
@@ -267,12 +267,12 @@ bk clone $Q merge_pb copy_pb
 
 cd merge_pb
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -y1.3
 
 cd ../copy_pb
 bk edit $Q d
-bk delta $Q -y1.2 d
+bk delta $Q -fy1.2 d
 bk commit $Q -y1.3
 
 bk pull $Q
@@ -298,17 +298,17 @@ bk clone $Q copy_mm copy2_mm
 
 cd copy2_mm
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -y1.3
 
 cd ../copy_mm
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y1.3
 
 cd ../merge_mm
 bk edit $Q d
-bk delta $Q -y1.2 d
+bk delta $Q -fy1.2 d
 bk commit $Q -y1.3
 
 cd ../copy_mm
@@ -331,12 +331,12 @@ bk clone $Q corner copy_corner
 
 cd copy_corner
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -y1.3
 
 cd ../corner
 bk edit $Q d
-bk delta $Q -y1.2 d
+bk delta $Q -fy1.2 d
 bk commit $Q -y1.3
 
 cd ../copy_corner
@@ -345,7 +345,7 @@ key=`bk prs -h -r+ -d':KEY:\n' ChangeSet | sed 's/\(.*\)|.*/\1/'`
 
 cd ../corner
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y1.4
 
 cd ../copy_corner
@@ -365,17 +365,17 @@ bk clone $Q renum copy_renum
 
 cd copy_renum
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -y1.3
 
 cd ../renum
 bk edit $Q b
-bk delta $Q -y1.2 b
+bk delta $Q -fy1.2 b
 bk commit $Q -y1.3
 
 cd ../copy_renum
 bk edit $Q d
-bk delta $Q -y1.2 d
+bk delta $Q -fy1.2 d
 bk commit $Q -y1.4
 bk pull $Q
 bk csetprune < ../KEYS 2> ERROR
@@ -401,10 +401,10 @@ rm -rf kg1
 bk clone $Q simple kg1
 cd kg1
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -SKG1A -y1.3
 bk edit $Q a
-bk delta $Q -y1.3 a
+bk delta $Q -fy1.3 a
 bk commit $Q -SKG1B -y1.4
 bk cset $Q -x1.4
 bk tag $Q KG1C
@@ -425,7 +425,7 @@ rm -rf ranbit
 bk clone $Q simple ranbit
 cd ranbit
 bk edit $Q a
-bk delta $Q -y1.2 a
+bk delta $Q -fy1.2 a
 bk commit $Q -SKG2A -y1.3
 # Test for invalid keys not working ..
 bk csetprune -k 12345 < ../KEYS 2> ERROR && {

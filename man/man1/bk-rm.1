@@ -5,7 +5,7 @@ bk rm \- remove \*(BK file[s]
 .SH SYNOPSIS
 .B bk rm
 .[B] \-f
-.ARG file1
+.ARG file
 .FILES
 .SH DESCRIPTION
 .LP
@@ -41,10 +41,12 @@ for that.
 .B bk rm
 will refuse to remove \*[BK] metafiles without the 
 .Q \-f
-option (use of which is not recommended).
+option (the use of which is not recommended except in the case of triggers).
 .SH SEE ALSO
 .SA gone
 .SA rmdir
 .SA unrm
 .SH CATEGORY
-.B File
+.B Common
+.br
+.B Repository

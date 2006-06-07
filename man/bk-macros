@@ -202,6 +202,12 @@
 .		if n .IP \*[BU] \\$1 \\$2
 .	\}
 ..
+.de li
+.	if t .sp -(u;\\n[PD]u)
+.	if t .sp (u;\\n[PD]u/4)
+.	if n .sp -\\n[PD]u
+.	LI \\$1 \\$2
+..
 .
 .if '\*[BKVER]'' .ds BKVER \\s-23.2.7\\s0
 .\}

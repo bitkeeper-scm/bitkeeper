@@ -17,7 +17,7 @@ be marked as gone.
 .LP
 The key of the file can be generated from an existing file as follows:
 .DS
-$ bk prs -hr+ -d:ROOTKEY: file
+$ bk log -hr+ -d:ROOTKEY: file
 .DE
 The key that is returned from the above command  needs to be marked
 as gone if the file is to be removed from the repository.
@@ -45,6 +45,16 @@ the file, and run
 .QR "bk \-r check \-a" .  If that complains, run the
 .B bk gone
 command on the listed keys.
+.SH EXIT STATUS
+.LP
+.B bk gone
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH SEE ALSO
 .LP
 .SA check

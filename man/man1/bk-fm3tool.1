@@ -19,15 +19,53 @@ during the resolve phase of a pull by responding with
 .Q f
 at the merge prompt.
 .LP
-The default behaviour of
-.B bk fm3tool
-is to go to the first conflict requiring resolution; any preceeding conflicts
-which may have been automerged are placed in the merge window as completed
-work.  
-The navigation buttons may be used to go back to the beginning of the file
-and examine each change, including all automerges.
-Doing so is frequently helpful in understanding the changes which have
-occurred.
+The purpose of this tool is to aid in the resolving of parallel
+work that contains conflicts.
+A conflict is defined as one or more lines that were added,
+deleted, or modified in the local version of the file, at or
+adjacent to one or more lines that were added, deleted, or
+modified in the remote version of the file.
+.LP
+When the tool is started up, all of the changes that could be 
+automerged have been automerged.
+The rest of the changes are noted as
+.DS
+<<<<<<
+UNMERGED
+>>>>>>
+.DE
+.LP
+in the merged file window (see below).
+The tool's default behavior is to go to the first conflict and
+wait for you to merge it.
+Typically, you merge that conflict, go to the next
+conflict, and repeat until done.
+It is not necessary to merge the conflicts in order;
+you may look at them all and merge them in any order.
+You must merge all conflicts, however, before you may
+save the file and exit.
+.LP
+When you are finished, you must save the file to complete
+the merge.
+.SH RUNNING OTHER GUI TOOLS
+It might be useful to look at other information associated with
+the changes.
+The
+.Q File
+menu allows you to run several other tools:
+.TP \fBcsettool\fP
+.B revtool
+This shows you the file history with the GCA, local,
+and remote versions highlighted.
+This is useful to see the progression of changes by selecting the
+GCA and then diffing down one side and then the other side one
+delta at a time.
+.\" XXX - wouldn't it be cool to have a flash demo of this?
+.tp
+.B csettool
+May be run on the additions, deletions, or both.
+This can be useful when the context needed to resolve the conflict is 
+contained elsewhere in the changeset that caused the conflict.
 .SH SCREEN LAYOUT
 .LP
 When 
@@ -39,11 +77,11 @@ and remote repository is on the right.
 +--------------------+------------------- +
 | Local change info  | Remote change info |
 +--------------------+--------------------+
-| GCA baseline       | GCA baseline       |
-| Local change       | Remote change      |
+| - GCA baseline     | - GCA baseline     |
+| + Local change     | + Remote change    |
 |                    |                    |
 +--------------------+-----+--------------+
-| Merge                    | Messages     |
+| Merge                    | Information  |
 |                          |              |
 |                          |              |
 +--------------------------+--------------+
@@ -64,7 +102,7 @@ Diff of remote file versus the GCA
 .B "Merge"
 Result of the merge
 .tp
-.B "Messages"
+.B "Information"
 Informational messages and navigation controls
 .LP 
 As the tool moves from change to change, the top two windows will change 
@@ -94,10 +132,11 @@ To exit the edit mode, press
 <\f(CWescape\fP> or click on area that divides the merge area from the areas
 above it.
 .SH KEYBOARD BINDINGS
-fm3tool has two major modes: one for navigating through the diffs and
-conflicts and one for hand-editing a merge. Each of these modes has
-its own set of key bindings.
-.SS NAVIGATION MODE
+fm3tool has two major modes: \*(lqmerging mode,\*(rq for
+navigating through the diffs and conflicts and \*(lqediting
+mode,\*(rq for hand-editing a merge.
+Each of these modes has its own set of key bindings.
+.SS MERGING MODE
 .LP
 .TP \fBShift-Right-Click\fP
 .B Left-Click
@@ -184,7 +223,7 @@ merge region.
 .tp
 .B Control-q
 Exit from fm3tool.
-.SS EDIT MODE
+.SS EDITING MODE
 .TP \fBShift-Right-Click\fP
 .B <escape>
 Exit edit mode

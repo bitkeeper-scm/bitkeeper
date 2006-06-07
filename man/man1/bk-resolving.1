@@ -9,7 +9,9 @@ See
 .B bk resolve
 for details on using resolve.
 .LP
-While in resolve, you can hit the return key to see a summary of
+While in resolve, you can press
+.SB ENTER
+to see a summary of
 the commands.
 .LP
 The 
@@ -32,7 +34,7 @@ person changed the file to 0755 mode and another changed it to 0777 mode.
 The resolve process for all conflicts is fairly similar.  For each
 type of conflict on each file, you will be prompted for an action.
 To view a brief summary of the conflict and a list of available
-actions, hit
+actions, press
 .SB ENTER
 (or
 .B ?
@@ -156,8 +158,8 @@ difftool,
 to do the merge, and then
 .Q e
 to edit the merged file.
-The file browser is run in so you can look at the various changes as
-described above.
+The file browser is run in the background so you can look at the various
+changes as described above.
 .B Warning:
 if you are running your editor and the
 file merge program, then both are working on the same output file
@@ -202,12 +204,13 @@ exit the file browser, and type
 at the prompt to commit
 the file and move on to the next one.
 .SH "SEE ALSO"
-.SA smerge
-.SA merge
-.SA fmtool
-.SA revtool
-.SA resolve
 .SA conflicts
+.SA fm3tool
+.SA fmtool
+.SA merge
+.SA resolve
+.SA revtool
+.SA smerge
 .\" help://merging
 .SH CATEGORY
 .B Overview

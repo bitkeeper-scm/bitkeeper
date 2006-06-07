@@ -23,17 +23,17 @@ XXX - needs work
 .SH DESCRIPTION
 .LP
 The
-.B comments
+.B bk comments
 command changes the stored comments for a revision controlled file.
 The comments may be specified on the command line, or if they are
 not, you will be placed in your editor to type in the comments.
 .LP
 If given
 .Q \-
-for a file argument, then 
-.B comments
-will read a list of files and comments to be edited in batch.
-The format is like:
+for a file argument,
+.B bk comments
+reads a list of files and comments to be edited from stdin.
+The format looks like this:
 .DS
 ### Comments for file.c|1.23
 this is a sample comment
@@ -71,6 +71,16 @@ If no files to edit is given on the command line then
 .Q \-C+
 is assumed and the comments for the files in the last changeset are
 edited.
+.SH EXIT STATUS
+.LP
+.B bk comments
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH BUGS
 .B Nota bene:
 if the deltas being commented have been committed to a changeset and
@@ -82,7 +92,7 @@ this only on uncommitted deltas which have not  been pulled or cloned.
 In the future, we will add a way of enforcing this.
 .SH SEE ALSO
 .LP
-.SA prs
+.SA log
 .SA sccslog
 .SH CATEGORY
 .B File

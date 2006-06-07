@@ -21,7 +21,7 @@ ls > branch
 bk ci -i $Q branch
 for i in 2 3 4
 do	bk co -l $Q branch
-	bk delta -y'foo' $S branch
+	bk delta -fy'foo' $S branch
 done
 bk admin $Q -fd1.2 branch
 grep -q '^.f d 1.2' SCCS/s.branch

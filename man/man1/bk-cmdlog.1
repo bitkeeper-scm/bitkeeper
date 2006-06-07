@@ -5,6 +5,7 @@ bk cmdlog \- show the log of commands executed in this repository
 .SH SYNOPSIS
 .B bk cmdlog
 .[B] \-a
+.[OPTreq] \-c cutoff
 .SH DESCRIPTION
 List the history of repository level commands run in repository of
 current directory.
@@ -26,6 +27,10 @@ commands.
 .OPTreq \-c cutoff
 List commands which happened during the date range specified by
 .ARG cutoff .
+.SH EXIT STATUS
+.LP
+.B bk cmdlog
+returns exit status 0.
 .SH NOTES
 The two command logs are maintained by \*(BK in the
 .B BitKeeper/log

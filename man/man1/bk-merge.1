@@ -59,10 +59,18 @@ file and resolve any conflicts.
 .SH OPTIONS
 .TP
 .B \-s
-Perform a set merge instead on a normal file merge.  In this case the
+Perform a set merge instead of a normal file merge.  In this case the
 files are assumed to be lists of items, one item per line, and the
 merge does an automatic union of the lists and writes the result in
-sorted order.  Conflicts cannot occur in this mode.
+sorted order.  Conflicts cannot occur in this mode.  This option is
+automatically used to merge these \*[BK] files:
+.RS
+.B BitKeeper/etc/gone
+.br
+.B BitKeeper/etc/ignore
+.br
+.B BitKeeper/etd/skipkeys
+.RE
 .SH EXIT STATUS
 0 for no conflicts, 1 for conflicts, 2 for errors.
 .SH "SEE ALSO"

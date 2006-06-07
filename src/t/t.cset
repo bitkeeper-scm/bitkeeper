@@ -84,7 +84,7 @@ fi
 echo OK
 
 echo $N Cset -x with a uncommitted deltas should fail ...............$NL
-bk delta -ywhatever $Q C
+bk delta -fywhatever $Q C
 bk cset $Q -x+ 2>/dev/null
 if [ $? = 0 ]
 then	echo failed to fail
@@ -110,11 +110,11 @@ cd $HERE
 bk clone $Q project copy
 cd project
 bk edit $Q foo
-bk delta $Q -yfoo foo
+bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
 cd ../copy
 bk edit $Q bar
-bk delta $Q -ybar bar
+bk delta $Q -fybar bar
 bk commit $Q -ybar
 bk pull $Q ../project
 bk cset $Q -x+ > OUT 2> ERR && {

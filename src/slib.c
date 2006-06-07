@@ -4041,9 +4041,17 @@ sccs_init(char *name, u32 flags)
 	sccs	*s;
 	struct	stat sbuf;
 	char	*t;
-	static	int _YEAR4;
 	int	rc;
 	delta	*d;
+	static	int _YEAR4;
+	static	char *glob = 0;
+	static	int show = -1;
+
+	if (show == -1) {
+		glob = getenv("BK_SHOWINIT");
+		show = glob != 0;
+	}
+	if (show && match_one(name, glob, 0)) ttyprintf("init(%s)\n", name);
 
 	if (strchr(name, '\n') || strchr(name, '\r')) {
 		fprintf(stderr,

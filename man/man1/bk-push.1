@@ -4,9 +4,8 @@
 bk push \- send local changes to parent repository
 .SH SYNOPSIS
 .B bk push
-.[B] \-agqt
+.[B] \-aqt
 .[OPTequal] \-E env var
-.[OPTreq] \-z d
 .[OPTreq] \-c n
 .[ARG] parent \ \.\|.\|.
 .SH DESCRIPTION
@@ -26,7 +25,7 @@ will be sent to the parent and auto-applied.
 .LP
 To see what would be pushed run
 .DS
-bk changes -L
+bk changes -aL
 .DE
 You can override the default parent by specifying a different one.
 Doing so changes the parent[s] for the duration of this command only.
@@ -50,10 +49,6 @@ times before giving up (default forever).
 .OPTequal \-E env val
 Export environment variable to remote site.
 .tp
-.B \-g
-Allow the use of GUI tools during the resolve (unlike
-.QR "bk resolve \-t" ).
-.tp
 .B \-q
 Run quietly.
 .tp
@@ -68,15 +63,16 @@ means do not use the GUI tools) during
 the pull operation (requires 
 .Q \-a
 and that the parent is a superset).
+.SH EXIT STATUS
+.LP
+.B bk push
+returns exit status:
+.TP
+0
+on success.
 .tp
-.OPTreq \-z d
-Do compression at level 
-.ARG d ,
-if possible;
-default is 
-.QR \-z6 .
-Compression is possible when using ssh or the BK daemon,
-but not with rsh.
+1
+on failure.
 .SH "SEE ALSO"
 .SA pull
 .SA parent
@@ -84,6 +80,6 @@ but not with rsh.
 .SA resolve
 .SA triggers
 .SH CATEGORY
-.B Repository
-.br
 .B Common
+.br
+.B Repository

@@ -1760,7 +1760,7 @@ cat > BitKeeper/triggers/pre-commit <<EOF
 exit 0
 EOF
 bk edit $Q h.h
-echo "h2" > h.h
+echo "h2" >> h.h
 bk delta $Q -yh3 h.h
 bk commit $S -yCset_h3 2> $HERE/out
 grep -q "Cannot expand shell path" $HERE/out || { echo failed; exit 1; }
@@ -1783,7 +1783,7 @@ EOF
 chmod +x BitKeeper/triggers/*
 cd $HERE/proj3
 bk edit $Q foo 
-bk delta $Q -yfoo foo 2>ERR && {
+bk delta $Q -f -yfoo foo 2>ERR && {
 	echo Failed
 	exit 1 
 }
@@ -1795,7 +1795,7 @@ cd $HERE/proj3
 # checking in the pre-delta trigger...
 BK_NO_TRIGGERS=1 bk new $Q BitKeeper/triggers/pre-delta || exit 1
 bk edit $Q foo 
-bk delta $Q -ybar foo 2>/dev/null && {
+bk delta $Q -f -ybar foo 2>/dev/null && {
 	echo "failed (bug 2005-04-13-001)"
 	exit 1
 }

@@ -20,7 +20,7 @@ version_main(int ac, char **av)
 			return (0);
 		    default:
 			system("bk help -s version");
-			return (0);
+			return (1);
 		}
 	}
 	bkversion(stdout);

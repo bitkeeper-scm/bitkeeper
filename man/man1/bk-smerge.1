@@ -220,7 +220,16 @@ asterisks denote enabled algorithms.
 .\"just the sequence numbers after (not including) 'start' and before (not 
 .\"including) 'end'.  start or end can be omitted to go to the end of the file.
 .SH EXIT STATUS
-0 for no conflicts, 1 for conflicts, 2 for errors.
+.B bk smerge
+returns exit status:
+.TP
+0
+if there are no conflicts.
+.TP
+1
+if there are conflicts.
+2
+on failure.
 .SH "SEE ALSO"
 .BR diff3 (1),
 .SA merging

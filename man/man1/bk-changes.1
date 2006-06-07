@@ -9,24 +9,24 @@ bk changes \- show changeset history
 .br
 .B bk changes
 .[ARG] options
-.I repo
-.[ARG] "repo\ .\|.\|."
+.ARG repo
+.[ARG] repo "\ .\|.\|."
 .br
 .B bk changes 
 .B \-L
 .[ARG] options
-.[ARG] "repo\ .\|.\|."
+.[ARG] repo "\ .\|.\|."
 .br
 .B bk changes 
 .B \-R
 .[ARG] options
-.[ARG] "repo\ .\|.\|."
+.[ARG] repo "\ .\|.\|."
 .br
 .B bk changes 
 .B \-L
 .B \-R
 .[ARG] options
-.[ARG] "repo\ .\|.\|."
+.[ARG] repo "\ .\|.\|."
 .SH DESCRIPTION
 The changes command is used to get an overview of the changes made to
 a repository.  There are options to search for particular changesets,
@@ -37,26 +37,26 @@ to a set of repositories, etc.
 The first form shown above shows changes in the local repository.
 If the last argument is a \*(lq\-\*(rq then the revisions to be listed are 
 specified, as keys, tags, and/or revisions, on stdin.
-.LI
+.li
 The second form shown above shows changes in the named repository.
-." XXX: this was in 3.2.x, but was not implemented:
-." If the second to the last argument is a "-" then the revisions to be
-." listed are specified, as keys, tags, and/or revisions, on stdin.
-.LI
+.\" XXX: this was in 3.2.x, but was not implemented:
+.\" If the second to the last argument is a "-" then the revisions to be
+.\" listed are specified, as keys, tags, and/or revisions, on stdin.
+.li
 The third form shown above lists changes found in the local repository
 but not in the remote repository.
 If the remote repository is not specified, the outgoing parent[s] of the
 local repository is/are used, i.e.,
 the listing is what would be sent on a push (when used with
 .QR \-a ).
-.LI
+.li
 The fourth form shown above lists changes found in the remote repository
 but not in the local repository.
 If the remote repository is not specified, the incoming parent[s] of the
 local repository is/are used, i.e.,
 the listing is what would be received on a pull (when used with
 .QR \-a).
-.LI
+.li
 The fifth form shown above lists changes unique to either the remote or the 
 local repository.
 The local changes are listed first, then the remote changes, and both
@@ -68,8 +68,7 @@ named repository is the remote repository.  All the other selection
 options are applied to the list of local or remote only changesets.
 .LP
 The changesets to be listed may be specified as a revision, a range of
-revisions, or a list of revisions on 
-.IR stdin .
+revisions, or a list of revisions on stdin.
 The default is all revisions.
 Specifying revisions is incompatible with the 
 .Q \-R/\-L
@@ -253,11 +252,21 @@ ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@host.com
   Fix a diagnostic in pull.
   An aborted attempt at key compression.
 .DE
+.SH EXIT STATUS
+.LP
+.B bk changes
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
 .SA commit
 .SA glob
 .SA pending
-.SA prs
+.SA log
 .SA pull
 .SA push
 .SA regex
@@ -265,4 +274,6 @@ ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@host.com
 .SA sccslog
 .SA set
 .SH CATEGORY
+.B Common
+.br
 .B Repository

@@ -20,8 +20,8 @@ commands
 .RB ( ci ,
 .BR co ).
 The
-.B delta/get
-are the preferred interfaces.
+.B ci/co
+are the preferred interfaces (they stand for "check in" and "check out").
 .LP
 As an example, go to the directory where you would like to make changes:
 .DS
@@ -52,7 +52,7 @@ will access many files in a tree.
 Once you are finished making changes to files, you can check in the files
 as follows:
 .DS
-$ bk delta file1 file2 file3
+$ bk ci file1 file2 file3
 .DE
 However, we recommend using the graphical checkin tool which is invoked with 
 the following command:
@@ -75,10 +75,10 @@ for a listing of help topics.
 .SH SEE ALSO
 .LP
 .SA ci
+.SA citool
+.SA co
 .SA edit
-.SA get
 .SA help
 .SA new
-.SA citool
 .SH CATEGORY
 .B Overview

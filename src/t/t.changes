@@ -19,10 +19,10 @@ echo foo > f
 BK_USER=adam bk delta $Q -i -y'Initial checkin' f
 BK_USER=adam bk commit $Q -y'Initial checkin' || exit 1
 bk edit $Q f
-BK_USER=second bk delta $Q -y'Second checkin' f
+BK_USER=second bk delta $Q -fy'Second checkin' f
 BK_USER=second bk commit $Q -Ssecond -y'Second checkin' || exit 1
 bk edit $Q f
-BK_USER=third bk delta $Q -y'Third checkin' f
+BK_USER=third bk delta $Q -fy'Third checkin' f
 BK_USER=third bk commit $Q -Sthird -y'Third checkin' || exit 1
 echo OK
 
@@ -474,7 +474,7 @@ cd $HERE
 bk clone $Q project clone1
 cd clone1
 bk edit $Q f
-bk delta $Q -y'clone1 delta 1' f
+bk delta $Q -fy'clone1 delta 1' f
 bk commit $Q -y'clone1 checkin 1' || exit 1
 
 cd $HERE
@@ -482,7 +482,7 @@ rm -rf clone2
 bk clone $Q project clone2 || exit 1
 cd clone2 || exit 1
 bk edit $Q f
-bk delta $Q -y'clone2 delta' f
+bk delta $Q -fy'clone2 delta' f
 bk commit $Q -y'clone2 checkin' || exit 1
 
 (bk changes -kL ../clone1; bk changes -kR ../clone1) > WANT

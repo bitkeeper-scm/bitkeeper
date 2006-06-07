@@ -5,7 +5,12 @@ bk csettool \- \*(BK graphical changeset browser
 .SH SYNOPSIS
 .B bk csettool
 .[OPTreq] \-r revs
-.[OPTreq] \-f file@rev
+[\c
+.Bc \-f
+.ARGc file
+.Bc |
+.ARGc rev
+]
 .[B] \-
 .SH DESCRIPTION
 .LP
@@ -13,11 +18,11 @@ bk csettool \- \*(BK graphical changeset browser
 is used to view detailed information about the specified
 changeset[s].
 .B bk csettool
-displays the list of changes in each changeset,
-the ChangeSet history, and the differences found in each file contained
-in each changeset.
+displays the list of changes in each changeset, the file and ChangeSet
+checkin comments, and the differences found in each file contained in
+each changeset.
 .LP
-Csettool is a very useful aide when tracking down bugs. For example,
+Csettool is a useful aide when tracking down bugs. For example,
 when using
 .B revtool
 to view comments for a specific file in order to track when a change
@@ -77,7 +82,7 @@ defaults to
 .QR \-r+ ,
 i.e. the most recent changeset.
 .tp
-.OPTreq \-f file@rev
+.B \-f\*<file\*>|\*<rev\*>
 Given a filename and revision,
 .B csettool
 starts up with the specified file and revision selected.

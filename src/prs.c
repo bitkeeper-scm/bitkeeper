@@ -26,7 +26,7 @@ log_main(int ac, char **av)
 	int	expand = 1;
 	int	want_parent = 0;
 	pid_t	pid = 0;	/* pager */
-	char	*dspec = getenv("BK_PRS_DSPEC");
+	char	*dspec = getenv("BK_LOG_DSPEC");
 	RANGE_DECL;
 
 	unless (dspec) dspec = log ? ":LOG:" : ":PRS:";
@@ -38,7 +38,7 @@ log_main(int ac, char **av)
 			if (expand < 2) expand = 2;
 			flags |= PRS_ALL;
 			break;
-		    case 'D':	/* obsoleted in 4.0 */
+		    case 'D': break;	/* obsoleted in 4.0 */
 		    case 'f':					/* doc */
 		    case 'b': reverse++; break;			/* undoc */
 		    case 'C': cset = optarg; break;		/* doc 2.0 */

@@ -4,8 +4,8 @@
 bk resolve \- merge and/or apply new work after a pull
 .SH SYNOPSIS
 .B bk resolve
-.[OPTreq] \- options
-.[ARG] repo
+.[ARG] options
+.FILES
 .SH DESCRIPTION
 .LP
 After a 
@@ -23,8 +23,10 @@ and that will run csettool on the list of changes (which may
 be found in 
 .BR RESYNC/BitKeeper/etc/csets-in ).
 .LP
-Resolve traverses all of the files, prompting you with a list of files
-needing to be merged.  The following are the stages when resolving files:
+Resolve traverses all files in the repository (or the specified
+set of files), prompting you with a list of files needing to be
+merged.
+The following are the stages when resolving files:
 .TP 3
 .B \*(BU
 create and rename conflicts
@@ -56,12 +58,8 @@ For detailed help on the merge process, see
 .BR bk\ help\ resolving .
 .SH OPTIONS
 .TP \-y\*<comment\*>
-.B \-1
-Run only pass 1; similarly for 2 3 and 4.
-See PASSES section below.
-.tp
 .B \-a
-Automerge.  This will run a diff3-based merge of
+Automerge.  This will run a diff3-like merge of
 all non-overlapping lines.  If there are overlapping
 lines in merged files, the merge will fail and the files
 will not be resolved; you have to run resolve again
@@ -88,14 +86,6 @@ advances to the next file.
 .B \-c
 No conflicts.  This option tells resolve to complete if and
 only if new non-conflicting work appears in the patch.
-.tp
-.B \-d
-Debugging (mainly useful to \*(BK developers).
-.tp
-.OPTreq \-i glob
-Include (resolve) files matching the glob pattern specified. 
-This option may be specified multiple times.
-See RESOLVING SUBSETS section below.
 .tp
 .OPTreq \-l log
 Log operations to 
@@ -184,11 +174,13 @@ bk resolve must be run without specifying any subset of the files in order
 to fully complete.
 .SH PASSES
 .LP
-The resolver has four passes (phases), each with a different function.
-A given pass must be completed before the next pass can be started.
+The resolver currently has four passes (phases), each with a
+different function.
+A given pass must be completed before the next pass can be
+started.
 Using options listed below, the user can specify which passes are
-to be run on a particular invocation of the resolver.  By default,
-the resolver attempts to complete all four passes.
+to be run on a particular invocation of the resolver.
+By default, the resolver attempts to complete all four passes.
 .LP
 The first pass looks through both the incoming and local changes to see
 if any files have been renamed.  If there are files that have been
@@ -222,6 +214,16 @@ changes made to the local repository are removed, and the resolver
 working directory is left intact.  The user can then fix the problems
 that caused the error, then re-run the resolver to apply the changes
 to the local repository.
+.SH EXIT STATUS
+.LP
+.B bk resolve
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
 .SA conflicts
 .SA csets

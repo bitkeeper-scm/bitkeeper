@@ -224,7 +224,6 @@ main(int ac, char **av, char **env)
 					return(1);
 				}
 				break;
-			    case 'h':				/* undoc */
 			    default:
 				usage();
 			}
@@ -802,8 +801,21 @@ int
 launch_wish(char *script, char **av)
 {
 	char	*path;
-	int	i, ret;
+	int	i, j, ac, ret;
 	pid_t	pid;
+	struct	{
+		char	*name;	/* -colormap */
+		int	hasarg;	/* like -colormap name */
+	}	wishargs[] = {
+			{ "-colormap", 1 },
+			{ "-display", 1 },
+			{ "-geometry", 1 },
+			{ "-name", 1 },
+			{ "-sync", 0 },
+			{ "-use", 1 },
+			{ "-visual", 1 },
+			{ 0, 0 }
+		};
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
 
@@ -836,23 +848,51 @@ launch_wish(char *script, char **av)
 		exit(1);
 	}
 	sig_catch(SIG_IGN);
-	argv[0] = path;
+	argv[ac=0] = path;
 	if (strchr(script, '/')) {
 		strcpy(cmd_path, script);
 	} else {
 		sprintf(cmd_path, "%s/gui/lib/%s", bin, script);
 	}
-	argv[1] = cmd_path;
-	i = 0;
-	while (1) {
-		if (i >= (MAXARGS-10)) {
+	argv[++ac] = cmd_path;
+	/*
+	 * Pass 1, get all the wish args first.
+	 */
+	for (i = 0; av[i]; i++) {
+		if (ac >= (MAXARGS-10)) {
 			fprintf(stderr, "bk: too many args\n");
 			exit(1);
 		}
-		argv[i+2] = av[i];
-		unless (av[i]) break;
-		i++;
+		for (j = 0; wishargs[j].name; j++) {
+			if (streq(wishargs[j].name, av[i])) {
+				argv[++ac] = av[i];
+				if (wishargs[j].hasarg) argv[++ac] = av[++i];
+				break;
+			}
+		}
 	}
+	argv[++ac] = "--";
+	/*
+	 * Pass two, get all the other args.
+	 */
+	for (i = 0; av[i]; i++) {
+		if (ac >= (MAXARGS-10)) {
+			fprintf(stderr, "bk: too many args\n");
+			exit(1);
+		}
+		for (j = 0; wishargs[j].name; j++) {
+			if (streq(wishargs[j].name, av[i])) {
+				break;
+			}
+		}
+		if (wishargs[j].name) {
+			if (wishargs[j].hasarg) i++;
+			continue;
+		}
+		argv[++ac] = av[i];
+	}
+	argv[ac+1] = 0;
+	if (streq(argv[ac], "--")) argv[ac] = 0;
 	if ((pid = spawnvp(_P_NOWAIT, argv[0], argv)) < 0) {
 		fprintf(stderr, "bk: cannot spawn %s\n", argv[0]);
 	}
