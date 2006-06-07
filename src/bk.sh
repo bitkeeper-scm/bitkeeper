@@ -142,6 +142,7 @@ _superset() {
 	EXIT=0
 	TMP1=${TMP}/bksup$$
 	TMP2=${TMP}/bksup2$$
+	TMP3=${TMP}/bksup3$$
 	while getopts q opt
 	do
 		case "$opt" in
@@ -167,7 +168,6 @@ _superset() {
 		echo === Local changesets === >> $TMP1
 		grep -ve --------------------- $TMP2 |
 		sed 's/^/    /'  >> $TMP1
-		EXIT=1
 	}
 	bk pending $QUIET > $TMP2 2>&1 && {
 		test $LIST = NO && {
@@ -176,7 +176,6 @@ _superset() {
 		}
 		echo === Pending files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	bk sfiles -cg > $TMP2
 	test -s $TMP2 && {
@@ -186,7 +185,6 @@ _superset() {
 		}
 		echo === Modified files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	(bk sfiles -x
 	 bk sfiles -xa BitKeeper/triggers
@@ -200,7 +198,6 @@ _superset() {
 		}
 		echo === Extra files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	bk _find BitKeeper/tmp -name 'park*' > $TMP2
 	test -s $TMP2 && {
@@ -210,7 +207,6 @@ _superset() {
 		}
 		echo === Parked files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	rm -f $TMP2
 	test -d PENDING &&  bk _find PENDING -type f > $TMP2
@@ -221,7 +217,6 @@ _superset() {
 		}
 		echo === Possible pending patches === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	rm -f $TMP2
 	test -d RESYNC &&  bk _find RESYNC -type f > $TMP2
@@ -232,23 +227,62 @@ _superset() {
 		}
 		echo === Unresolved pull === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
-
-	test $EXIT = 0 && {
-		rm -f $TMP1 $TMP2
+	test -f BitKeeper/tmp/fix.patch && {
+		test $LIST = NO && {
+			rm -f $TMP1 $TMP2
+			exit 1
+		}
+		echo === Fix patch === >> $TMP1
+		echo "    `ls -l BitKeeper/tmp/fix.patch`" >> $TMP1
+	}
+	test -f BitKeeper/tmp/undo.patch && {
+		test $LIST = NO && {
+			rm -f $TMP1 $TMP2
+			exit 1
+		}
+		echo === Undo patch === >> $TMP1
+		echo "    `ls -l BitKeeper/tmp/undo.patch`" >> $TMP1
+	}
+	bk sfiles -R > $TMP2
+	test -s $TMP2 && {
+		# If they didn't give us a parent then we can use the
+		# the subrepos parent
+		test "X$@" = X && {
+			EXIT=${TMP}/bkexit$$
+			rm -f $EXIT
+			HERE=`bk pwd`
+			while read repo
+			do	cd "$HERE/$repo"
+				bk superset $QUIET > $TMP3 2>&1 || touch $EXIT
+				test -s $TMP3 -o -f $EXIT || continue
+				test $LIST = NO && break
+				(
+				echo "    === Subrepository $repo ==="
+				sed -e 's/^/    /' < $TMP3
+				) >> $TMP1
+			done < $TMP2
+			cd "$HERE"
+			test $LIST = NO -a -f $EXIT && {
+				rm -f $TMP1 $TMP2 $TMP3 $EXIT
+				exit 1
+			}
+			rm -f $EXIT
+		}
+	}
+	test -s $TMP1 || {
+		rm -f $TMP1 $TMP2 $TMP3
 		exit 0
 	}
+	echo "Repo:   `bk gethost`:`pwd`"
 	if [ $# -eq 0 ]
-	then	PARENT=`bk parent -il1`
-	else	PARENT="$@"
+	then	for i in `bk parent -li`
+		do	echo "Parent: $i"
+		done
+	else	echo "Parent: $@"
 	fi
-	echo "Child:  `bk gethost`:`pwd`"
-	for i in $PARENT
-	do	echo "Parent: $i"
-	done
 	cat $TMP1
-	rm -f $TMP1 $TMP2
+	rm -f $TMP1 $TMP2 $TMP3
 	exit 1
 }
 

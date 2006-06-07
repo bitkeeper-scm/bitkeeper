@@ -9,22 +9,34 @@ bk superset \- check to see if the parent is ahead of the current repository
 .SH DESCRIPTION
 .LP
 superset does checks to see if removing the current repository is a lossless
-event.  It checks that:
-.TP 3
-\*(BU
-the parent has all changesets that are in the current repository
-.tp
-\*(BU
+event. 
+.LP
+It checks that:
+.LP
+.li
+there are no local only changesets and/or tags
+.li
 there are no pending deltas
-.tp
-\*(BU
+.li
 there are no modified files
-.tp
-\*(BU
+.li
 there are no extra files
-.tp
-\*(BU
-there are no parked files
+.\" .li
+.\" there are no parked files
+.li
+there are no pending patches from aborted pulls
+.li
+there are no unresolved pulls
+.li
+there are no saved patches from a fix -c operation
+.li
+there are no saved patches from an undo/unpull operation
+.li
+if there are subrepositories and 
+.B no parent was specified 
+in the call to 
+.BR "bk superset" ,
+then the subrepositories are also similarly checked against their parent
 .LP
 Unless the
 .Q \-q

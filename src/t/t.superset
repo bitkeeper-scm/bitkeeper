@@ -1,0 +1,200 @@
+echo $N Create initial repository ...................................$NL
+commercial project
+echo foo > file
+bk new $Q file
+bk commit $Q -ywhatever file
+echo OK
+
+echo $N Check superset with no changes...............................$NL
+cd $HERE
+bk clone $Q project superset
+cd superset
+bk superset > ../GOT
+test $? -ne 0 && {
+	echo superset with no changes should exit 0
+	exit 1
+}
+test -s ../GOT && {
+	echo superset with no changes should be silent
+	exit 1
+}
+echo OK
+
+# We want to make sure that superset finds:
+# - any extra files
+# - any parked patches
+# - any {undo,fix,unpull} patches
+# - any pending patches (pulls)
+# - any pending files
+# - any local tags
+# - any local changesets
+# - any subrepos with any of the above
+# but allows subrepos with no changes
+echo $N Check superset with an extra file ...........................$NL
+cd $HERE/superset
+echo FOO > FOO
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with changes should exit 1
+	exit 1
+}
+grep -q FOO ../GOT || {
+	echo superset missed an extra file
+	exit 1
+}
+grep -q '=== Extra files ===' ../GOT || {
+	echo superset failed to flag the file as an extra
+	exit 1
+}
+echo OK
+
+echo $N Check superset with a parked patch ..........................$NL
+bk park -a -ywhatever 2>/dev/null
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with parked changes should exit 1
+	exit 1
+}
+grep -q '=== Parked files ===' ../GOT || {
+	echo superset failed to flag the file as parked
+	exit 1
+}
+rm -f BitKeeper/tmp/park*
+echo OK
+
+# XXX - should have a test to make sure fix actually leaves it in fix.patch
+echo $N Check superset with a saved fix patch .......................$NL
+echo bogus > BitKeeper/tmp/fix.patch
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with fix patch should exit 1
+	exit 1
+}
+grep -q '=== Fix patch ===' ../GOT || {
+	echo superset failed to flag it as a fix patch
+	exit 1
+}
+rm -f BitKeeper/tmp/fix.patch
+echo OK
+
+# XXX - should have a test to make sure undo actually leaves it in undo.patch
+# XXX - note that the user can specify a patch name, maybe we need to rm that?
+echo $N Check superset with a saved undo patch ......................$NL
+echo bogus > BitKeeper/tmp/undo.patch
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with undo patch should exit 1
+	exit 1
+}
+grep -q '=== Undo patch ===' ../GOT || {
+	echo superset failed to flag it as a undo patch
+	exit 1
+}
+rm -f BitKeeper/tmp/undo.patch
+echo OK
+
+echo $N Check superset with a pull patch in PENDING .................$NL
+mkdir PENDING
+echo bogus > PENDING/2006-06-06
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with pending should exit 1
+	exit 1
+}
+grep -q '=== Possible pending patches ===' ../GOT || {
+	echo superset failed to flag it as a pending patch
+	exit 1
+}
+rm -rf PENDING
+echo OK
+
+echo $N Check superset with a pending file ..........................$NL
+mkdir pending
+cd pending
+echo foo > bar
+bk new $Q bar
+cd ..
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with pending should exit 1
+	exit 1
+}
+grep -q pending/bar ../GOT || {
+	echo superset missed a pending file
+	exit 1
+}
+grep -q '=== Pending files ===' ../GOT || {
+	echo superset failed to flag it as a pending file
+	exit 1
+}
+rm -rf pending
+echo OK
+
+echo $N Check superset with a clean subrepo .........................$NL
+bk clone $Q $HERE/project subrepo
+bk superset > ../GOT
+test $? -ne 0 && {
+	echo superset with no changes should exit 0
+	exit 1
+}
+test -s ../GOT && {
+	echo superset with no changes should be silent
+	exit 1
+}
+echo OK
+
+echo $N Check superset with a dirty subrepo .........................$NL
+echo foo > subrepo/bar
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with dirty subrepo should exit 1
+	exit 1
+}
+grep -q '=== Subrepository subrepo ===' ../GOT || {
+	echo superset with dirty subrepo should flag it as a subrepo
+	exit 1
+}
+grep -q '    === Extra files ===' ../GOT || {
+	echo superset with dirty subrepo should have extra files title
+	exit 1
+}
+grep -q '    bar' ../GOT || {
+	echo superset with dirty subrepo should list the extras
+	cat ../GOT
+	exit 1
+}
+rm -f subrepo/bar
+echo OK
+
+# XXX - need to test when we have a subrepo but we don't know what they are
+# comparing against because they named a different parent.
+
+echo $N Check superset with a local cset ............................$NL
+echo foo > bar
+bk new $Q bar
+bk commit $Q -ywhatever 
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with local changeset should exit 1
+	exit 1
+}
+grep -q '=== Local changesets ===' ../GOT || {
+	echo superset should mark local changesets
+	exit 1
+}
+bk undo -qfsr+
+rm -f bar
+echo OK
+
+echo $N Check superset with a local tag .............................$NL
+bk tag $Q some_tag
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with local tag should exit 1
+	exit 1
+}
+grep -q '=== Local changesets ===' ../GOT || {
+	echo superset should mark local changesets
+	exit 1
+}
+echo OK

@@ -422,43 +422,6 @@ grep -q "1.6" out || {
 }
 echo OK
 
-echo $N Check superset with no changes...............................$NL
-cd $HERE
-bk clone $Q project superset
-cd superset
-bk superset > ../GOT
-test $? -ne 0 && {
-	echo superset with no changes should exit 0
-	exit 1
-}
-GOT=`cat ../GOT`
-test "X$GOT" != "X" && {
-	echo superset with no changes should be silent
-	exit 1
-}
-echo OK
-
-echo $N Check superset with changes..................................$NL
-cd $HERE/superset
-echo FOO > FOO
-bk new $Q FOO
-BK_USER=joe bk commit $Q -yproject
-echo BAR > BAR
-bk superset > ../GOT
-test $? -ne 1 && {
-	echo superset with changes should exit 1
-	exit 1
-}
-grep FOO ../GOT >/dev/null || {
-	echo superset missed a changeset
-	exit 1
-}
-grep BAR ../GOT >/dev/null || {
-	echo superset missed an extra file
-	exit 1
-}
-echo OK
-
 echo $N Check date formats ..........................................$NL
 Y=`bk prs -Yhnd:Dy: -r+ ChangeSet`
 bk changes -nd:Dy: > OUT
