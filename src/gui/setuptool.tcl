@@ -92,20 +92,47 @@ proc main {} \
 	# which occurs on different steps for different license types
 	bind . <<WizNextStep>> {
 		switch -exact -- [. cget -step] {
+			Begin	{
+				if {![findLicense]} {
+					set ::licInRepo 1
+					wizInsertStep LicenseKey
+				} else {
+					set ::licInRepo 0
+					if {$::licenseInfo(text) ne ""} {
+						wizInsertStep EndUserLicense
+					}
+				}
+			}
 			EndUserLicense	{exec bk _eula -a}
 			LicenseKey      {
 				if {![checkLicense]} {
 					break
 				}
-				getLicenseData
-				set path "commercial"
 				if {$::licenseInfo(text) ne ""} {
-					append path "-lic"
+					wizInsertStep EndUserLicense
 				}
-				. configure -path $path
 			}
 		}
 	}
+}
+
+proc findLicense {} \
+{
+	global dev_null licenseInfo tmp_dir wizData
+
+	set rc 0
+	set pwd [pwd]
+	cd $tmp_dir
+	set ::env(BK_NO_GUI_PROMPT) 1
+	catch {exec bk _logging} result
+	unset ::env(BK_NO_GUI_PROMPT)
+	if {[regexp -- {license is current} $result]} {
+		# we have a current license, let's grab the EULA
+		set licenseInfo(text) [exec bk _eula -u]
+		set rc 1
+	}
+	cd $pwd
+	return $rc
 }
 
 proc app_init {} \
@@ -264,6 +291,31 @@ proc computeSize {wvar hvar} \
 	set height [expr {$height > $maxheight? $maxheight: $height}]
 }
 
+# Insert a step right after the current step
+# Side Effect: The global variable paths is modified with the 
+# new path
+proc wizInsertStep {step} \
+{
+	global paths
+
+	set curPath [. configure -path]
+	set curStep [. configure -step]
+	if {![info exists paths($curPath)]} {
+		return -code error "paths($curPath) doesn't exist"
+	}
+	set i [lsearch -exact $paths($curPath) $curStep]
+	incr i
+
+	# Bail if the step was already in the path as the next step
+	if {[lindex $paths($curPath) $i] eq $step} {return}
+
+	# I don't know how to modify a path, so I just add a new one
+	set newpath "${curPath}_${step}"
+	set paths($newpath) [linsert $paths($curPath) $i $step]
+	. add path $newpath -steps $paths($newpath)
+	. configure -path $newpath
+}
+
 proc widgets {} \
 {
 	global	bkuser readonly env
@@ -296,16 +348,14 @@ proc widgets {} \
 		set i [lsearch -exact $common "Autofix"]
 		set common [lreplace $common $i $i]
 	}
-
-	. add path commercial-lic  \
-	    -steps [concat Begin LicenseKey EndUserLicense $common]
-	. add path commercial \
-	    -steps [concat Begin LicenseKey $common]
+	
+	set ::paths(commercial) [concat Begin $common]
+	. add path commercial  -steps $::paths(commercial)
 
 	. add path BadUser -steps BadUser
 
 	# We'll assume this for the moment; it may change later
-	. configure -path commercial-lic
+	. configure -path commercial
 
 	#-----------------------------------------------------------------------
 	. add step BadUser \
@@ -830,8 +880,10 @@ proc createConfigData {} \
 		append configData "$key: $wizData($key)\n"
 	}
 
-	foreach key $licenseOptions {
-		append configData "$key: $wizData($key)\n"
+	if {$::licInRepo} {
+		foreach key $licenseOptions {
+			append configData "$key: $wizData($key)\n"
+		}
 	}
 
 	return $configData
@@ -842,7 +894,6 @@ proc createRepo {errorVar} \
 	global wizData option eflag env
 	upvar $errorVar message
 
-	catch {unset env(BK_CONFIG)}
 	set pid [pid]
 	set filename [file join $::tmp_dir "config.$pid"]
 	set f [open $filename w]
@@ -926,10 +977,11 @@ proc focusEntry {w} \
 	}
 }
 
+# side effect: licenseInfo(text) might get filled with EULA
 proc checkLicense {} \
 {
 	
-	global wizData dev_null
+	global env licenseInfo wizData dev_null
 
 	set f [open "|bk _eula -v > $dev_null" w]
 	puts $f "
@@ -945,6 +997,15 @@ proc checkLicense {} \
 	if {($::errorCode == "NONE") || 
 	    ([lindex $::errorCode 0] == "CHILDSTATUS" &&
 	     [lindex $::errorCode 2] == 0)} {
+		# need to override any config currently in effect...
+		set BK_CONFIG "logging:none!;"
+		append BK_CONFIG "license:$wizData(license)!;"
+		append BK_CONFIG "licsign1:$wizData(licsign1)!;"
+		append BK_CONFIG "licsign2:$wizData(licsign2)!;"
+		append BK_CONFIG "licsign3:$wizData(licsign3)!;"
+		append BK_CONFIG "single_user:!;single_host:!;"
+		set env(BK_CONFIG) $BK_CONFIG
+		set licenseInfo(text) [exec bk _eula -u]
 		return 1
 	}
 		      
@@ -952,22 +1013,6 @@ proc checkLicense {} \
 	popupMessage -W [getmsg "setuptool_invalid_license"]
 
 	return 0
-}
-
-# must be called after user has entered license keys
-proc getLicenseData {} \
-{
-	global licenseInfo wizData env
-
-	# need to override any config currently in effect...
-	set BK_CONFIG "logging:none!;"
-	append BK_CONFIG "license:$wizData(license)!;"
-	append BK_CONFIG "licsign1:$wizData(licsign1)!;"
-	append BK_CONFIG "licsign2:$wizData(licsign2)!;"
-	append BK_CONFIG "licsign3:$wizData(licsign3)!;"
-	append BK_CONFIG "single_user:!;single_host:!;"
-	set env(BK_CONFIG) $BK_CONFIG
-	set licenseInfo(text) [exec bk _eula -u]
 }
 
 proc moreInfo {which} {
