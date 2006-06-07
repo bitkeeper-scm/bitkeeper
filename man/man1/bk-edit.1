@@ -5,6 +5,7 @@ bk edit \- check out a file for editing
 .SH SYNOPSIS
 .B bk edit
 .[B] \-q
+.[OPTreq] \-r rev
 .BKARGS
 .SH DESCRIPTION
 If a file is not locked for writing, i.e., it is not visible in a
@@ -16,9 +17,29 @@ to check out the file and lock it, making it available for writing.
 .B bk edit
 with no options will check out all files in a directory.
 .SH OPTIONS
-.TP
+.TP \-r\*<rev\*>
 .B \-q
 run quietly
+.tp
+.OPTreq \-r rev
+Edit the file, rolling it back to the contents specified by
+.ARG rev .
+(Or key or changeset revision. See 
+.B bk help terms
+under \*(lqrev argument\*(rq)
+\*(BK will check out the tip revision
+combined with a set of include and exclude deltas needed to produce
+the requested revision.
+.SH EXIT STATUS
+.LP
+.B bk edit
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH NOTES
 While it may seem like this step could be done with a simple
 .DS
@@ -37,13 +58,9 @@ more be \f(CBfoo.c 1.2\fP, which is not likely to be the desired result.
 One could argue that \*(BK should try and catch this case (and it does,
 .B bk check
 will frequently fix it), but it is impossible to do so correctly in all cases.
-.LP
-.B bk edit
-is simply an alias for
-.QR "bk get \-e" .
 .SH SEE ALSO
-.SA co
-.SA get
-.SA new
+.SA terms
 .SH CATEGORY
 .B File
+.br
+.B Common

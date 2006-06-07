@@ -31,6 +31,11 @@ __cd2root() {
 	cd "$root"
 }
 
+# faster way to get repository status
+_repocheck() {
+	bk -r check -acv
+}
+
 # shorthand to dig out renames
 _renames() {
 	case "X$1" in

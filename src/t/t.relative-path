@@ -32,7 +32,7 @@ bk ci $Q -i symlink/foo
 P=`bk prs -r1.1 -h -d':DPN:' symlink/foo`
 if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
 bk co $Q -l src/foo
-bk delta $Q -ysym-path symlink/foo
+bk delta $Q -fysym-path symlink/foo
 P=`bk prs -r1.2 -h -d':DPN:' symlink/foo`
 if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
 bk co $Q -l symlink/foo

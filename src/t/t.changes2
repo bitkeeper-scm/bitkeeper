@@ -67,11 +67,11 @@ cd ../diamond
 bk pull $Q
 cd ../simple
 bk edit $Q f
-BK_USER=$NAME2 bk delta $Q -y'Second checkin' f
+BK_USER=$NAME2 bk delta $Q -fy'Second checkin' f
 BK_USER=$NAME2 bk commit $Q -Ssecond -y'Second checkin' || fail
 cd ../diamond
 bk edit $Q f g
-BK_USER=$NAME2 bk delta $Q -y'Branch checkin' f g
+BK_USER=$NAME2 bk delta $Q -fy'Branch checkin' f g
 BK_USER=$NAME2 bk commit $Q -Sbranch -y'Branch checkin' || fail
 bk pull $Q
 BK_USER=$TAGGER bk tag $Q MYTAG
@@ -290,16 +290,16 @@ BK_DATE_TIME_ZONE="05/10/23 13:16:00-8:00" bk new $Q b
 bk commit $Q -ybaseline
 # first delta is same time - ties are sorted by gfile name
 bk edit $Q a b
-BK_DATE_TIME_ZONE="05/10/23 13:16:10-8:00" bk delta $Q -ya a
-BK_DATE_TIME_ZONE="05/10/23 13:16:10-8:00" bk delta $Q -yb b
+BK_DATE_TIME_ZONE="05/10/23 13:16:10-8:00" bk delta $Q -fya a
+BK_DATE_TIME_ZONE="05/10/23 13:16:10-8:00" bk delta $Q -fyb b
 # next delta is a older than b
 bk edit $Q a b
-BK_DATE_TIME_ZONE="05/10/23 13:16:20-8:00" bk delta $Q -ya a
-BK_DATE_TIME_ZONE="05/10/23 13:16:25-8:00" bk delta $Q -yb b
+BK_DATE_TIME_ZONE="05/10/23 13:16:20-8:00" bk delta $Q -fya a
+BK_DATE_TIME_ZONE="05/10/23 13:16:25-8:00" bk delta $Q -fyb b
 # next delta is b older than a
 bk edit $Q a b
-BK_DATE_TIME_ZONE="05/10/23 13:16:35-8:00" bk delta $Q -ya a
-BK_DATE_TIME_ZONE="05/10/23 13:16:30-8:00" bk delta $Q -yb b
+BK_DATE_TIME_ZONE="05/10/23 13:16:35-8:00" bk delta $Q -fya a
+BK_DATE_TIME_ZONE="05/10/23 13:16:30-8:00" bk delta $Q -fyb b
 bk commit $Q -yfoo
 LIST=`bk changes -vr+ -d":GFILE::I: "`
 test "ChangeSet1.5 a1.4 a1.3 a1.2 b1.4 b1.3 b1.2 " = "$LIST" || fail

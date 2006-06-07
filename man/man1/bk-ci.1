@@ -1,17 +1,23 @@
 .so ../bk-macros
-.TH "bk delta" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk ci" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk delta \- check in modified files
+bk ci \- check in modified files
 .SH SYNOPSIS
-.B bk delta
-.[B] \-acilpqu
+.B bk ci
+.[B] \-acflpqu
+.[OPTreq] \-D file
 .[OPTreq] \-y msg
+.BKARGS
+.br
+.B bk ci
+.[B] \-acflpqu
+.[OPTreq] \-D file
 .[OPTreq] \-Y file
 .BKARGS
 .SH DESCRIPTION
 .LP
 The
-.B bk delta 
+.B bk ci 
 command is used to check in changes made to revision controlled files.
 This command is fairly rich in features and is the preferred interface
 for scripting.  For interactive checkins, 
@@ -21,22 +27,24 @@ is the preferred interface.
 .TP \-y\*<comment\*>
 .B \-a
 Normally, 
-.B delta
-wants a 
-.B \-i
-to add a file to the revision control system.  If this option is set,
-then the following do the same thing:
-.DS
-bk delta -a newfile
-bk delta -i newfile
-bk new newfile
-.DE
+.B bk ci
+is used to modify existing files.
+This option changes bk ci to act like bk new for new files and bk ci
+for existing files.
 The usefulness of this option is more apparent when you consider having
 a mixed list of files, some under revision control and some not.
-.sp
-When called with this option, bk delta will not create a null delta on
-an edited, but unmodified file.
-.sp
+For example,
+.DS
+bk -xcr ci -a -y'mass checkin'
+.DE
+runs
+.B bk new
+on all the new files and
+.B bk ci
+on all the modified
+files.  When called with this option,
+.B bk ci
+does not create a null delta on an edited but unmodified file.
 .tp
 .B \-c
 Take checkin comments from 
@@ -48,28 +56,18 @@ Take diffs from
 .if t .IR file .
 .if n <file>.
 .tp
-.OPTreq \-E enc
-Set file encoding (like admin).
-.\" .tp
-.\" .B \-h
-.\" Invert sense of file's hash flag.
-.tp
-.OPTreq \-I file
-Use init 
-.ARG file
-for meta data.
-.tp
-.B \-i
-Initial check-in, create a new revision history.
+.B \-f
+Force the creation of a null delta even if there are no changes to the file.
 .tp
 .B \-l
 Follow check in with a locked check out like
-.QR "bk get \-e" .
+.QR "bk edit" .
 .tp
 .OPTreq \-M mode
 Set the permissions on the new delta to
 .if t .IR mode .
 .if n <mode>.
+More commonly used with bk new.
 .tp
 .B \-p
 Print differences before prompting for comments.
@@ -78,40 +76,33 @@ Print differences before prompting for comments.
 Run silently.
 .tp
 .B \-u
-Follow check in with an unlocked check out like bk get.
+Follow check in with an unlocked check out.
 .tp
-.OPTopt \-Y file
-Prompt for one comment, then use it for all the files.
-If
+.OPTreq \-Y file
+Use the comment specified in 
 .ARG file
-is specified then take the comments from that file.
+for comments for all files.
 .tp
 .OPTreq \-y comment
 Sets the revision comment to 
 .if t .IR comment .
 .if n <comment>.
+.SH EXIT STATUS
+.LP
+.B bk ci
+returns exit status:
+.TP
+0
+on success.
 .tp
-.OPTreq \-Z alg
-Compress stored s.file with 
-.ARG alg
-which may be:
-.RS
-.TP \fBnone\fP
-.B gzip
-like
-.BR gzip (1) 
-.tp
-.B none
-no compression
-.RE
+1
+on failure.
 .SH BUGS
 The format of the init file is not documented.
 .SH "SEE ALSO"
-.SA admin
-.SA ci
 .SA citool
 .SA co
 .SA edit
-.SA get
+.SA new
 .SH CATEGORY
 .B File

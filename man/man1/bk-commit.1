@@ -8,8 +8,14 @@ bk commit \- commit deltas to a changeset
 .[B] \-fq
 .[OPTreq] \-l file 
 .[OPTreq] \-S tag
-.[OPTreq] \-y comment
 .[OPTreq] \-Y file 
+.[B] \-
+.br
+.B bk commit
+.[B] \-fq
+.[OPTreq] \-l file 
+.[OPTreq] \-S tag
+.[OPTreq] \-y comment
 .[B] \-
 .SH DESCRIPTION
 .LP
@@ -23,22 +29,45 @@ will search the repository for any files which are in
 \*(lqpending\*(lq state, i.e., have deltas which do not yet belong
 to a changeset, and groups all of them into a changeset.
 If the trailing dash is present, then the command takes the list
-of files to commit from the standard input.
+of files to commit from the standard input; each line of input must be of
+the format:
+.DS
+\*<sfile\*>|\*<rev\*>
+.DE
+.LP
+where
+.ARG sfile
+is an sfile name as described in
+.B bk filetypes
+and
+.ARG rev
+is a file revision number, such as 1.1 or 1.2. Example:
+.BR SCCS/s.foo|1.2 .
+This is the same format produced by
+.Q bk sfiles \-pA
+and
+.QR "bk sfiles \-pC" .
+.LP
+.B Note:
+.ARG rev
+specifies the most recent change to commit; all uncommitted changes prior to
+.ARG rev
+are also included.
 .LP
 You can see what will be added to a changeset when you commit by running:
 .DS
 $ bk pending
 .DE
-Pending lists only files which have checked in deltas; files that
-are not yet checked in are not shown.  Use 
-.B bk status
-or
-.B bk sfiles
-if you want to see both.
+.\"Pending lists only files which have checked in deltas; files that
+.\"are not yet checked in are not shown.  Use 
+.\".B bk status
+.\"or
+.\".B bk sfiles
+.\"if you want to see both.
 .LP
 All revisions which you have checked in will become part of a
 changeset.  As part of the commit step, you will be prompted for
-comments (if non were provided on the command line).
+comments (if none were provided on the command line).
 The comments should describe the logical change that you have made;
 these comments are what will be displayed by 
 .BR "bk changes" .
@@ -71,7 +100,9 @@ Ignores the commit template, if any.
 .OPTreq \-l file
 Get the list of files to commit from
 .ARG file .
-XXX - get the exact format - rick says file|rev
+Each line of this file must use the
+.B \*<sfile\*>|\*<rev\*>
+format described above.
 .tp
 .B \-q
 Run quietly.

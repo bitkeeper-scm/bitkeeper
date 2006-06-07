@@ -78,7 +78,7 @@ cp(char *from, char *to)
 	err = sys("bk", "edit", "-q", to, SYS);
 	unless (WIFEXITED(err) && WEXITSTATUS(err) == 0) return (1);
 	tmp = aprintf("-ybk cp %s %s", from, to);
-	err = sys("bk", "delta", tmp, to, SYS);
+	err = sys("bk", "delta", "-f", tmp, to, SYS);
 	free(tmp);
 	unless (WIFEXITED(err) && WEXITSTATUS(err) == 0) return (1);
 	return (0);

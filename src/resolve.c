@@ -1078,9 +1078,9 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	 */
 	win32_close(rs->s);
 	if (rs->opts->log) {
-		sys("bk", "delta", buf, sfile, SYS);
+		sys("bk", "delta", "-f", buf, sfile, SYS);
 	} else {
-		sys("bk", "delta", "-q", buf, sfile, SYS);
+		sys("bk", "delta", "-qf", buf, sfile, SYS);
 	}
 }
 
@@ -1141,7 +1141,7 @@ type_delta(resolve *rs,
 	/* bk delta -qPy'Merge file types: {o->mode} {n->mode} sfile */
 	sprintf(buf, "-qPyMerge file types: %s -> %s", 
 	    mode2FileType(o->mode), mode2FileType(n->mode));
-	if (sys("bk", "delta", buf, sfile, SYS)) {
+	if (sys("bk", "delta", "-f", buf, sfile, SYS)) {
 		syserr("failed\n");
 		resolve_cleanup(rs->opts, 0);
 	}
@@ -1178,7 +1178,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 	/* bk delta -[q]Py'Change mode to {a}' -M{a} sfile */
 	sprintf(buf, "-%sPyChange mode to %s", rs->opts->log ? "" : "q", a);
 	sprintf(opt, "-M%s", a);
-	if (sys("bk", "delta", buf, opt, sfile, SYS)) {
+	if (sys("bk", "delta", "-f", buf, opt, sfile, SYS)) {
 		syserr("failed\n");
 		resolve_cleanup(rs->opts, 0);
 	}

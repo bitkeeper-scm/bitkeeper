@@ -65,7 +65,7 @@ The user account must have a password.  If not, go to
 .QR "Control Panel\->User Accounts" ,
 select the user, and create a password.
 Close that window.
-.LI
+.li
 The user account must be allowed to log on as a service.  This is not
 on by default, so go to
 .Q Control Panel\->Administrative Tools\->Local Security Policy\->Local Policies
@@ -77,7 +77,7 @@ and double click that.  Click
 .Q Add User or Group
 and add the user.
 Close that window.
-.LI
+.li
 The service needs to be modified to run as the user.  Go to
 .QR "Control Panel\->Administrative Tools\->Services" ,
 find the \*(BK daemon, double-click it.
@@ -98,18 +98,33 @@ The daemon will restart as the selected user.
 .LP
 After installing a service it is a good idea to test that it works by 
 trying a clone, pull, and/or changes from a client.
+.SH EXIT STATUS
+.LP
+.B bk service
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH NOTES
 This interface works only on Windows.
 .LP
-Environment variables must be explictly passed on the bkd options list,
-i.e.,
+Environment variables must be explictly passed on the
+.B bkd
+options list, i.e.,
 .DS
 bk service DOCS -EBK_USER=docs -p8000
 .DE
 .LP
-On the bkd service does not work when started from a network drive.
+The
+.B bkd
+service does not work when started from a network drive.
 .LP
-On the bkd service does not work when started from a subst'ed drive.
+The
+.B bkd
+service does not work when started from a subst'ed drive.
 .LP
 bk uninstall may require a reboot in order to completely remove the
 service.

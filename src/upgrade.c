@@ -35,7 +35,6 @@ upgrade_main(int ac, char **av)
 	char	**platforms;
 	char	**data = 0;
 	int	len;
-	char	*want_codeline = "bk";
 	FILE	*f, *fout;
 	MDBM	*configDB = proj_config(0);
 	char	*licf;
@@ -43,12 +42,11 @@ upgrade_main(int ac, char **av)
 	char	*tmpbin = 0;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "a:fil:nq")) != -1) {
+	while ((c = getopt(ac, av, "a:finq")) != -1) {
 		switch (c) {
 		    case 'a': platform = optarg; break;	/* arch */
 		    case 'f': force = 1; break;
 		    case 'i': install = 1; break;
-		    case 'l': want_codeline = optarg; break;
 		    case 'n': fetchonly = 1; break;
 		    case 'q': flags |= SILENT; break;
 		    default:
@@ -118,7 +116,7 @@ usage:			system("bk help -s upgrade");
 	 * 3 version
 	 * 4 utc
 	 * 5 platform
-	 * 6 codeline
+	 * 6 unused
 	 * -- new fields ALWAYS go at the end! --
 	 */
 	platforms = allocLines(20);
@@ -136,11 +134,11 @@ usage:			system("bk help -s upgrade");
 				platforms =
 				    addLine(platforms, strdup(data[5]));
 			}
-			unless (streq(data[5], platform)) goto next;
-			/* found this platform */
-			freeLines(platforms, free);
-			platforms = 0;
-			unless (streq(data[6], want_codeline)) {
+			if (streq(data[5], platform)) {
+				/* found this platform */
+				freeLines(platforms, free);
+				platforms = 0;
+			} else {
 next:				freeLines(data, free);
 				data = 0;
 			}

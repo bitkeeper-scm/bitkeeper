@@ -97,6 +97,10 @@ unix_common_setup()
 
 	test `uname` = SCO_SV && return
 
+	# Force the number of processes up to be enough for t.import
+	test `hostname` = freebsd && ulimit -u 128
+	test `hostname` = openbsd && ulimit -p 128
+
 	BK_LIMITPATH=/build/.bktools-$USER
 	rm -rf $BK_LIMITPATH
 	mkdir $BK_LIMITPATH

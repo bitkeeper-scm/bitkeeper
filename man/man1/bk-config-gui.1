@@ -316,7 +316,7 @@ Annotation options to apply when getting files to be diffed.
 See the
 .Q \-a
 option to
-.BR "bk get" . 
+.BR "bk co" . 
 Example:
 .QR \-aum . 
 Default: \*(lq\|\*(rq (do not display annotations)
@@ -482,10 +482,11 @@ Height of widget that displays the file content. Default:\ 50
 .tp
 .B rev.showHistory
 The time period of revisions that are shown. The value needs to be a
-valid entry for the prs
+valid entry for the
 .Q \-R
-option. Default:\ 1M
-.\" XXX prs? Is this a deprecated command?
+option to
+.BR bk log .
+Default:\ 1M
 .tp
 .B rev.tagOutline
 Color of the outline around nodes in the ChangeSet graph that have

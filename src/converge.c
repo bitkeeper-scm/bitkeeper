@@ -117,7 +117,7 @@ resync_list(char *gfile)
 		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
 		sys("cp", cmd, t, SYS);
 		sys("bk", "get", "-qe", t, SYS);
-		sys("bk", "delta", "-dqy'Auto converge rename'", t, SYS);
+		sys("bk", "delta", "-fdqy'Auto converge rename'", t, SYS);
 		mdbm_store_str(vals, kv.key.dptr, t, 0);
 		free(t);
 	}
@@ -246,7 +246,7 @@ done:		mdbm_close(vals);
 
 			sysio(CTMP, gfile, 0, "bk", "sort", "-u", SYS);
 			sys("bk", "delta",
-				"-qiy'Auto converge/create'", gfile, SYS);
+				"-fqiy'Auto converge/create'", gfile, SYS);
 		}
 	}
 	mdbm_close(vals);

@@ -174,9 +174,8 @@ proc bkhelp {topic} \
 		}
 		incr lineno
 	}
-	.text.help tag add "bold" 2.0 "2.0 lineend + 1 char"
 	set i "$lineno.0"
-	.text.help tag add "bold" "$i - 2 lines" end
+	.text.help delete "$i" end
 	catch {close $f} dummy
 	.text.help configure -state disabled
 	bk_highlight
@@ -436,9 +435,15 @@ proc widgets {} \
 		-width $gc(help.scrollWidth) \
 		-command ".ctrl.topics xview"
 
-	    grid .ctrl.topics -row 0 -column 0 -sticky nsew
-	    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
-	    grid .ctrl.xscroll -row 1 -column 0 -sticky ew
+	    if {[info exists gc(help.center_scrollbars)]} {
+		    grid .ctrl.topics -row 0 -column 0 -sticky nsew
+		    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
+		    grid .ctrl.xscroll -row 1 -column 0 -sticky ew
+	    } else {
+		    grid .ctrl.topics -row 0 -column 1 -sticky nsew
+		    grid .ctrl.yscroll -row 0 -column 0 -sticky nse
+		    grid .ctrl.xscroll -row 1 -column 1 -sticky ew
+	    }
 	    grid rowconfigure .ctrl 0 -weight 1
 
 	frame .text -borderwidth 0 -relief flat
@@ -640,9 +645,15 @@ proc getHelp {} \
 	catch {close $f} dummy
 	.ctrl.topics configure -state disabled
 	.text.help configure -state disabled
-	if {$keyword == ""} { set keyword "Common" }
-	getSelection $keyword
+	if {$keyword == ""} {
+		getSelection Common
+	} else {
+		getSelection $keyword
+	}
 	doSelect 1
+	if {$keyword == ""} {
+		.ctrl.topics yview moveto 0
+	}
 }
 
 main

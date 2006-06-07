@@ -35,7 +35,7 @@ test drive at
 .TP \*<sfiles_opts\*>
 .B \-R
 Change directories to the root of the repository before running
-.IR command .
+.ARG command .
 .tp
 .OPTopt \-r dir
 Starting at 
@@ -43,38 +43,42 @@ Starting at
 or the repository root if 
 .ARG dir
 was not specified, apply
-.I command
+.ARG command
 recursively to
 .ARG dir
 and all subdirectories.
 This works by generating a list of sfiles and passing them to
-.I command
+.ARG command
 on the standard input.
 .tp
 .ARG sfiles_opts
 One or more options may be used in combination with 
 .Q \-r
 to limit the set of files passed to
-.IR command .
+.ARG command .
 The following sfiles options may be passed:
 .\" HEY!  YOU!  Man page hacker.  If you change these make sure you follow
 .\" whatever bk-sfiles.1 says, that's the authoritative source, OK?  Thanks!
 .RS
-.TP
+.TP \fB\-p[A|C]\fPnn
 .B \-1
-Only examine one directory level.  Do not go into subdirectories.
+Only examine the current (or named) directory.
+Do not go into subdirectories.
 .tp
 .B \-a
-examine all files, even if listed in
+Examine all files, even if listed in
 .BR BitKeeper/etc/ignore .
 .tp
 .B \-c
 List changed files (locked and modified).
-.tp
-.B \-C
-Identical to
-.Q \-c
-except the file timestamps are not trusted.
+If
+.I clock_skew
+is set in the config file then the file timestamps
+and other attributes are used to speed scanning.
+The acceptible clock skew can be configured, see
+.I clock_skew
+in
+.BR "bk help config-etc" .
 .tp
 .B \-d
 List directories under \*(BK control (SCCS subdir exists).
@@ -86,42 +90,72 @@ List directories with no (or empty) SCCS subdirs.
 List the gfile name, not the sfile name.
 .tp
 .B \-G
-List files if and only if they are checked out (\*(lqgotten\*rq).
+List files only if they are checked out ("gotten").
+.tp
+.B \-i
+List files which would normally be listed as extras (see
+.B \-x 
+below) but are suppressed because they are present in the 
+.B BitKeeper/etc/ignore 
+file.
 .tp
 .B \-j
-List junk files, i.e., files in \*(SC subdirectories which are not
+List junk files, i.e., files in \*(SC subdirectories which are not 
 metadata.
 .tp
 .B \-l
 List locked files (p.file and/or z.file).
 .tp
 .B \-n
-list s.files that are not in their correct location.
+List s.files that are not in the correct location.  
 .tp
-.B \-p
-list files with pending deltas.
+.OPTopt \-p A|C
+List files with pending deltas.  If 
+.B \-pC
+then list 
+leaves which are not in a changeset as 
+.Q \-pC
+then list leaves which are not in a changeset as 
+.B file|1.3
+If
+.QR \-pA ,
+that implies 
+.QR \-pC ,
+and 
+lists all revisions, not just the tip.
+If
+.BR \-pA ,
+that implies 
+.BR \-pC ,
+and 
+lists all revisions, not just the tip.
+.Q \-pA
 .tp
 .B \-u
 List unlocked files.
 .tp
 .B \-U
-List user files only, skipping
-the ChangeSet file
+List user files only, skipping 
+the ChangeSet file 
 and everything below
 .B BitKeeper/
-other than
+other than 
 .BR BitKeeper/triggers/* .
 .tp
 .B \-x
 List files which have no revision control files.
+.tp
+.B \-y
+List files which have saved checkin comments, the files listed
+may be either extra files and/or files under \*(BK control.
 .RE
 .SH EXAMPLES
 .LP
 The following commands are equivalent:
 .DS 6
-bk -r get
-bk -R sfiles | bk -R get -
-cd \`bk root\`; bk sfiles | bk get -
+bk -r co
+bk -R sfiles | bk -R co -
+cd \`bk root\`; bk sfiles | bk co -
 .DE
 .SH "SEE ALSO"
 .SA sfiles

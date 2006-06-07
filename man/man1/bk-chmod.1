@@ -4,23 +4,23 @@
 bk chmod \- change the mode of a file and save it
 .SH SYNOPSIS
 .B bk chmod 
-.[ARGc] scope
+.[ARGc] ugoa
 .Bc +
-.ARG perms
+.ARG rwxs
 .ARG file
 .FILES
 .br
 .B bk chmod 
-.[ARGc] scope
+.[ARGc] ugoa
 .Bc \-
-.ARG perms
+.ARG rwxs
 .ARG file
 .FILES
 .br
 .B bk chmod 
-.[ARGc] scope
+.[ARGc] ugoa
 .Bc =
-.ARG perms
+.ARG rwxs
 .ARG file
 .FILES
 .br
@@ -40,12 +40,10 @@ When changes to the file mode need to be made, the
 command is used to record the new modes.
 .LP
 The syntax is one of
-.TP [\*<scope\*>]\-\*<perms\*>n
-\fR[\fP\*<scope\*>\fR]\fB+\fI\*<perms\*>\fP
-A symbolic way of adding permissions.  The
-.ARG scope
-before the
-.Q +
+.TP [\*<ugoa\*>]\-\*<rwxs\*>n
+\fR[\fP\*<ugoa\*>\fR]\fB+\fI\*<rwxs\*>\fP
+A symbolic way of adding permissions.
+.ARG ugoa
 indicates the users to which the permissions apply, a combination
 of one or more of the following:
 .Q u
@@ -58,11 +56,8 @@ for other, and
 for all.
 If none are specified the default is
 .QR a .  
-The
-.ARG perms
-after the
-.Q +
-indicate the permission to add, a combination of one or more of the following:
+.ARG rwxs
+indicates the permission to add, a combination of one or more of the following:
 .Q r
 for read,
 .Q w
@@ -71,12 +66,12 @@ for write,
 for execute,
 .Q s
 for setuid or setgid depending on
-.ARG scope .
+.ARG ugoa .
 .tp
-\fR[\fP\*<scope\*>\fR]\fB\-\fI\*<perms\*>\fP
+\fR[\fP\*<ugoa\*>\fR]\fB\-\fI\*<rwxs\*>\fP
 A symbolic way of removing permissions.  As above.
 .tp
-\fR[\fP\*<scope\*>\fR]\fB=\fI\*<perms\*>\fP
+\fR[\fP\*<ugoa\*>\fR]\fB=\fI\*<rwxs\*>\fP
 A symbolic way of setting permissions absolutely.  As above.
 .tp
 .ARG octal
@@ -95,6 +90,16 @@ means execute permission.
 The last three digits are for user, group, other permissions respectively.
 This form sets the mode absolutely, it is not relative to the previously
 recorded mode.
+.SH EXIT STATUS
+.LP
+.B bk chmod
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH NOTES
 Setuid and setgid are not recommended since Windows does not support that
 concept.
@@ -105,7 +110,6 @@ permission if the file is checked out unlocked and add write permission
 if the file is checked out with a lock.
 .SH SEE ALSO
 .LP
-.\" XXX deprecated?
-.SA prs
+.SA log
 .SH CATEGORY
 .B File

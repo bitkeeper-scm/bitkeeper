@@ -35,7 +35,7 @@ It is an extremely bad idea to use the
 option, it can corrupt your repository.  Instead, consider the 
 .Q \-x
 option of
-.BR "bk get" .
+.BR "bk co" .
 .SH OPTIONS
 .TP \-r\*<rev\*>
 .B \-b
@@ -58,10 +58,20 @@ Run quietly.
 .tp
 .OPTreq \-r rev
 Set of revisions to be removed.
+.SH EXIT STATUS
+.LP
+.B bk stripdel
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
 .SA admin
 .SA clone
-.SA get
+.SA co
 .SA undo
 .SH CATEGORY
 .B File

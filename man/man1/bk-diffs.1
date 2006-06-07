@@ -126,7 +126,8 @@ and
 .ARG rev .
 If no revision is specified and the files are listed on standard input
 as
-.ARG file|rev
+.ARGc file
+.OPTreq | rev
 then the revision is taken from the standard input.
 .tp
 .B \-s
@@ -145,7 +146,9 @@ You may diff specific revisions:
 .DS
 $ bk diffs -r1.2..1.4 foo.c
 .DE
-When only one revision is supplied with -r, then that revision is
+When only one revision is supplied with
+.QR \-r ,
+then that revision is
 compared to the working file or the top of trunk if the file is not
 edited.
 .LP
@@ -185,6 +188,6 @@ This command does not currently handle displaying differences for binary files.
 .\" help://differences
 .\" help://sdiffs
 .SH CATEGORY
-.B File
-.br
 .B Common
+.br
+.B File

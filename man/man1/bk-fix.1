@@ -1,7 +1,7 @@
 .so ../bk-macros
 .TH "bk fix" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk fix \- re-edit a checked in work
+bk fix \- re-edit previously committed work for further revisions
 .SH SYNOPSIS
 .B bk fix
 .[B] \-v
@@ -13,9 +13,10 @@ bk fix \- re-edit a checked in work
 .LP
 The
 .B bk fix
-command allows you to revise changes made to the most recent delta
-in a file.  Typically, this feature is used immediately after a check in
-when it is realized that that delta was not done or was incorrect.
+command allows you to revise changes made to the most recent
+delta[s] in a file or a changeset.
+Typically, this feature is used immediately after a check in when
+it is realized that that change was not done or was incorrect.
 .LP
 In general,
 only deltas which have not yet been committed to a changeset may be modified.
@@ -30,7 +31,7 @@ which will fix all deltas in the most recent changeset.  It is not an error
 if there are other copies of the changeset, it just means you will have
 to merge the two versions of the same change.
 .LP
-The checkin comments are preserved if the subsequent check is made bi
+The checkin comments are preserved if the subsequent check is made by
 .B bk citool.
 .SH OPTIONS
 .TP
@@ -46,6 +47,16 @@ This option disables the saving of the patch.
 .tp
 .B \-v
 be verbose.
+.SH EXIT STATUS
+.LP
+.B bk fix
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH BUGS
 Symbolic tags are not preserved.
 .SH SEE ALSO

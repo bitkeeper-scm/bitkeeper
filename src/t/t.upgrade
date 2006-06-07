@@ -1,6 +1,6 @@
 
 echo $N Test upgrade without a commercial lease .....................$NL
-bk upgrade -fl bk 2>ERR && {
+bk upgrade -f 2>ERR && {
 	echo should have failed
 	exit 1
 }
@@ -15,7 +15,7 @@ echo $N Test upgrade with just a commercial lease ...................$NL
 commercial junk2
 bk lease renew
 cd $HERE
-bk upgrade -fl bk 2>ERR && {
+bk upgrade -f 2>ERR && {
 	echo should have failed
 	cat ERR
 	exit 1
@@ -30,7 +30,7 @@ echo OK
 echo $N Test upgrade to get status from bitmover ....................$NL
 cd junk2
 bk lease flush -a
-bk upgrade -fl bk >OUT 2>ERR || {
+bk upgrade -f >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
 	cat ERR
@@ -49,7 +49,7 @@ grep -q "BitKeeper version .* is available for download." OUT || {
 echo OK
 
 echo $N Test upgrade where we already have the latest ...............$NL
-BK_UPGRADE_FORCEMATCH=1 bk upgrade -fl bk >OUT 2>ERR && {
+BK_UPGRADE_FORCEMATCH=1 bk upgrade -f >OUT 2>ERR && {
 	echo should have failed
 	cat OUT
 	cat ERR
@@ -70,7 +70,7 @@ echo $N Test upgrade to get status from bitmover using a proxy.......$NL
 # XXX test proxy passwords too?
 http_proxy=http://data.bitmover.com:3128
 export http_proxy
-bk upgrade -fl bk >OUT 2>ERR || {
+bk upgrade -f >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
 	cat ERR
@@ -124,10 +124,10 @@ cp $BK_INSTALLER $INSTALLER
 mkdir upgrade
 cd upgrade
 bk get $Q -S `bk bin`/build_upgrade_index.pl `bk bin`/bkupgrade.key
-`bk bin`/build_upgrade_index.pl ../$INSTALLER
+`bk bin`/build_upgrade_index.pl  bk-3.2.6 ../$INSTALLER
 cd ..
 cd junk2
-bk upgrade -nfl bk $HERE/upgrade >OUT || {
+bk upgrade -nf $HERE/upgrade >OUT || {
 	echo should not have failed
 	exit 1
 }

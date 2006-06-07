@@ -94,7 +94,7 @@ ls > file
 bk new $Q file
 bk commit -SRELEASE -ywhatever $Q
 bk edit -q file
-bk delta $Q -ywhatever file
+bk delta $Q -fywhatever file
 bk commit -ywhatever $Q
 bk tag $Q RELEASE
 bk tag $Q -r1.2 RELEASE
@@ -116,7 +116,7 @@ bk clone $Q merge merge-clone
 for i in merge merge-clone
 do	cd $HERE/$i
 	bk edit -q file
-	bk delta $Q -y$i file
+	bk delta $Q -fy$i file
 	bk commit -y$i $Q
 done
 cd $HERE/merge-clone

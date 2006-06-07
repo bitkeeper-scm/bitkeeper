@@ -50,7 +50,7 @@ checkperm -rwxrwx--x prog
 echo OK
 echo $N Change permissions and check in .............................$NL
 chmod 777 prog
-bk delta $S -yperms prog
+bk delta $S -fyperms prog
 grep -q '^.cO-rwxrwxrwx' SCCS/s.prog
 if [ $? -eq 0 ]; then echo added permissions and should not have; exit 1; fi
 if [ -f "SCCS/p.prog" ]; then echo Failed to remove p.prog; exit 1; fi

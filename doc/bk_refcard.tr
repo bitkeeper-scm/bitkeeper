@@ -1,6 +1,6 @@
 .\" File: bk_refcard amy@lioness.bitmover.com|doc/bk_refcard.tr|20030623210852|47231
 .\" groff bk_refcard
-.nr HM 0.25i      \" Header Margin
+.nr HM 0.15i      \" Header Margin
 .nr FM 0.25i      \" Footer Margin
 .nr LL 3.0i       \" Line Length
 .nr GUTTER .5i	  \" Gutter
@@ -108,14 +108,13 @@
 BitKeeper Reference Card
 .sp 1.25
 .ps 10
-BitMover, Inc.
-.br
-+1-650-872-9900 (international & California)
++1-408-370-9911 (international & California)
 .br
 1-888-401-8808 (toll free in US & Canada)
 .br
-http://www.bitkeeper.com 
+Copyright (c) 1998-2006 BitMover, Inc.
 .br
+\f(CBhttp://www.bitkeeper.com \fP
 .ce 0
 .sp .5
 .B1
@@ -159,21 +158,24 @@ Abort a failed pull or push
 .H2
 bk changes
 .LP
-List changesets in this repository.  See also 
-\fBbk revtool\fP.
+Main command for browsing the repository history.
+See docs for other useful options.
+See also \fBbk revtool\fP.
 .IP -L
 List changes in local that are not in remote
 .IP -R
 List changes in remote that are not in local
+.IP -/\fIpat\fP/
+List changesets whose comments include \fIpat\fP.
+.IP -u\fIuser\fP
+List changesets created by \fIuser\fP.
 .\" # 
 .\" # Check
 .\" # 
 .H2
-bk -r check -acv [\fIoptions\fP]
+bk repocheck
 .LP
 Run a consistency check (like fsck).
-.IP -f
-Fix any fixable errors found during check.
 .\" # 
 .\" # Clone
 .\" # 
@@ -208,17 +210,13 @@ See also \fBbk citool\fP.
 bk export [\fIoptions\fP] [\fIsource\fP] \fIdest\fP
 .LP
 Extract a particular version as a tree or a patch
-.IP -i\fIpat\fP    
-Export only pathnames matching pattern \fIpat\fP.
 .IP -k             
 Do not expand keywords.
 .IP -r\fIrev\fP        
 Export the tree as of revision \fIrev\fP.
 .IP -t\fIpatch\fP
 Export the specified revision[s] as a traditional patch.
-.IP -x\fIpat\fP    
-Export all pathnames not matching pattern \fIpat\fP.
-.sp 1.3
+.sp .5
 .B2
 .B1
 .H1
@@ -241,7 +239,8 @@ Import a CVS (one time only).
 .H2
 bk parent [\fIrepository\fP]
 .LP
-Show or set the repository from which we pull or to which we push
+Show or set the repository from which we pull or to which we push (note:
+repos may have multiple parents, see docs)
 .\" # 
 .\" # Pending
 .\" # 
@@ -259,6 +258,8 @@ bk pull [\fIoptions\fP] [\fIsource\fP]
 Pulls changes from the parent or source to this repository
 .IP -i
 Turn off automerge
+.IP -r\fIrev\fP
+Pull up to, but not past, \fIrev\fP.
 .\" # 
 .\" # Push
 .\" # 
@@ -269,10 +270,19 @@ Push changes from this repository to the parent or dest
 .IP -a
 Automatically do a pull if the push has conflicts
 .\" # 
+.\" # Conflicts
+.\" # 
+.H2
+bk conflicts [\fIoptions\fP]
+.LP
+Show files which are in conflict in an unresolved pull.
+.IP -v
+Be more verbose about who/what.  -vv is yet more verbose.
+.\" # 
 .\" # Resolve
 .\" # 
 .H2
-bk resolve [\fIoptions\fP] [\fIproject_root\fP]
+bk resolve [\fIoptions\fP] [\fIfile\fP ...]
 .LP
 Merge conflicts created by a pull
 .IP -a
@@ -331,7 +341,7 @@ merge\fP if any.
 bk version
 .LP
 Shows BitKeeper software version.
-.sp 5.1
+.sp 3.2
 .B2
 .B1
 .\" ############################
@@ -361,7 +371,7 @@ revision control
 See also \fBbk sfiles\fP.
 .sp .5
 .\" # 
-.\" # Ci
+.\" # Delta
 .\" # 
 .H2
 bk ci [\fIoptions\fP] [\fIfiles\fP]
@@ -378,8 +388,6 @@ Prints differences before prompting for comments
 bk clean [\fIoptions\fP] [\fIfiles\fP]
 .LP
 Unlock and remove unmodified working files
-.IP -p
-Shows differences for all modified files
 .\" # 
 .\" # Co
 .\" # 
@@ -402,15 +410,6 @@ Diff revision \fIr1\fP against revision \fIr2\fP
 Diff working file against version in changeset \fIcset\fP
 .IP -u
 Do unified diffs
-.\" #
-.\" # Fix
-.\" #
-.H2
-bk fix [\fIfile.c\fP]
-.LP
-Re-edit a checked in, but uncommitted, delta
-.IP \-c
-Re-edit the most recent changeset (use with caution).
 .\" # 
 .\" # Edit
 .\" # 
@@ -433,12 +432,12 @@ bk new [\fIoptions\fP] [\fIfiles\fP]
 .LP
 Add a new file to the repository
 .\" # 
-.\" # Prs
+.\" # Log
 .\" # 
 .H2
-bk prs [\fIoptions\fP] [\fIfiles\fP]
+bk log [\fIoptions\fP] [\fIfiles\fP]
 .LP
-View revision history of a file or repository
+View revision history of a file 
 .IP -c\fIdate\fP
 Cut-off dates.
 .IP -d\fIspec\fP
@@ -454,17 +453,6 @@ Specify a revision, or part of a range
 bk rm \fIfiles\fP
 .LP
 Remove a file in a recoverable way
-.B2
-.B1 
-.H1
-File-Level Commands...
-.\" # 
-.\" # Sccslog
-.\" # 
-.H2
-bk sccslog [\fIoptions\fP] [\fIfiles\fP]
-.LP
-Time ordered listing of deltas over all files
 .\" # 
 .\" # Sfiles
 .\" # 
@@ -474,14 +462,19 @@ bk sfiles [\fIoptions\fP] [\fIdirectory\fP]
 Generates a list of files.
 .IP -c
 List locked and modified files
-.IP -d
-List directories under revision control
 .IP -n
 List files not in the correct location (names)
 .IP -p
 List files with pending deltas
 .IP -x
 List files not under revision control
+.IP -E
+List "everything" in an ls -l style format
+.sp .2
+.B2
+.B1 
+.H1
+File-Level Commands...
 .\" # 
 .\" # Undo
 .\" # 
@@ -493,8 +486,6 @@ Remove one or more changesets
 Remove all changesets which occurred after \fIrev\fP
 .IP -f
 Do not prompt for confirmation
-.IP -s
-Do not save undone changes as a patch
 .IP -r\fIrevs\fP
 Remove the list of changesets specified by \fIrevs\fP
 .\" # 
@@ -518,13 +509,13 @@ BitKeeper File Types
 .IP foo.c 1i
 gfile, this is your source file
 .IP SCCS/s.foo.c
-s.file - file with all revision history
+sfile - file with all revision history
 .IP SCCS/p.foo.c
-p.file - lock file created when file is edited
+pfile - lock file created when file is edited
 .IP SCCS/z.foo.c
-z.file - lock file created when checking in a new version 
+zfile - lock file created when checking in a new version 
 .IP SCCS/x.foo.c
-x.file - temporary file containing s.file underway
+xfile - temporary file containing s.file underway
 .B2
 .\" ############################
 .\" #
@@ -537,13 +528,19 @@ Common operations
 .H2
 Get a working copy of a tree
 .LP
-\fBbk clone bk://linux.bkbits.net/linux-2.5\fP
+\fBbk clone bk://mysql.bkbits.net/mysql-3.23\fP
 .H2
 Edit some files
 .LP
-\fBcd linux-25\fP
-.br
-\fBbk vi Maintainers\fP
+\fBcd mysql-3.23 && bk vi README\fP
+.H2
+Create new files
+.LP
+\fBbk new *.[ch]\fP
+.H2
+Create a patch of all changed or new files
+.LP
+\fBbk -xcr diffs -Nu > /tmp/patch\fP
 .H2
 Check in the files, creating a changeset
 .LP
@@ -556,6 +553,18 @@ Push the changes back up
 Pull updates
 .LP
 \fBbk pull\fP
+.H2
+View a changeset as diffs plus comments
+.LP
+\fBbk changes -vvr\fIrev\fR
+.H2
+Search for a string in the most recent version
+.LP
+\fBbk -r grep -r+ \fIstring\fR
+.H2
+Search for a string in all versions
+.LP
+\fBbk -r grep -R \fIstring\fR
 .H2
 Graphically browse a file's history
 .LP
@@ -590,7 +599,7 @@ bk difftool \fIleft\fP \fIright\fP
 Side-by-side file difference viewer.  If \fIright\fP is a directory the
 implied name is \fIright/left\fP, like diff(1).
 .H2
-bk fm3tool \fIlocal gca remote file\fP
+bk fm3tool -l\fIlocal\fP -r\fIremote\fP -o\fImerge file\fP
 .LP
 3-way side-by-side merge tool for resolving differences.  Walks through each
 change, allows you to select either, places the selection in a merge
@@ -634,19 +643,18 @@ Graphical tool (or text based with -t) tool to report a bug.
 Range and Date Syntax
 .sp .25
 .ps 10
-Commands that take a revision option, \fI-r\fP, can
+Commands that take a revision option, \fI-r\fP, can usually
 take either a range of deltas or a range of dates as
-the argument.
-.sp .5
-Specify both endpoints:
+the argument. 
+.sp .2 
+Date format is YYMMDDhhmmss.
+.sp .2
+-r1.1..1.5	# specify both endpoints
 .br
--r1.1..1.5
+-c06..06	# all changes in 2006
 .br
-.sp .5
-Specify dates:
-.br
--c98..98
-.sp .5
+-c-1M		# all changes in the last month
+.sp .2
 .B2
 .\" ############################
 .\" #
@@ -658,7 +666,7 @@ Specify dates:
 Merging
 .sp .5
 .H2
-bk help merging
+bk help resolving
 .LP
 Get help on the merge process
 .H2
@@ -679,6 +687,7 @@ Searching
 bk grep [\fIoptions\fP] pattern [\fIfiles\fP]
 .LP
 Search some/all revisions of one or more files for a string.
+See the docs, this command is now much closer to GNU grep.
 .H2
 bk annotate [\fIoptions\fP] [\fIfiles\fP]
 .LP
@@ -719,13 +728,17 @@ Online user guide.
 .H2
 bk sendbug
 .LP
-To report a bug or request a feature.
+To report a bug or request a feature
+.H2
+http://db.bitkeeper.com/
+.LP
+To search existing bug reports
 .H2
 mail support@bitmover.com
 .LP
 For support from BitMover.
 .H2
-+1-650-872-9900 (international & California)
++1-408-370-9911 (international & California)
 .br
 1-888-401-8808 (toll free in US & Canada)
 .br

@@ -1,6 +1,5 @@
 .so ../bk-macros
 .TH "bk abort" "\*[BKVER]" %E% "\*(BC" "\*(UM"
-.\"    ============ Aborting a failed pull/push/resync  ============
 .SH NAME
 bk abort \- abort a failed pull or push
 .SH SYNOPSIS
@@ -32,6 +31,16 @@ to figure out what went wrong and try to fix it.
 .TP
 .B \-f
 Do not prompt for confirmation, just do it.
+.SH EXIT STATUS
+.LP
+.B bk abort
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH FILES
 .TP PENDING
 .B PENDING

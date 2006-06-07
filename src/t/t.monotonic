@@ -58,7 +58,7 @@ echo $N Clone a repo with uncommitted deltas, should be stripped ....$NL
 cd $HERE/project
 WANT=`bk prs -hr+ -nd:I: BitKeeper/etc/config`
 bk edit $Q BitKeeper/etc/config
-bk delta -ypending $Q BitKeeper/etc/config
+bk delta -fypending $Q BitKeeper/etc/config
 TOP=`bk prs -hr+ -nd:I: BitKeeper/etc/config`
 cd $HERE
 bk clone $Q project pending || exit 1

@@ -3,8 +3,10 @@
 .SH NAME
 bk what \- look for \*(SC what strings
 .SH SYNOPSIS
-.B bk what
-.FILES
+.B bk
+.[B] \-r
+.B what
+.BKARGS
 .SH DESCRIPTION
 The
 .B bk what
@@ -28,6 +30,16 @@ will produce
 a.out:
     some ident info
 .DE
+.SH EXIT STATUS
+.LP
+.B bk what
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
 .SA keywords
 .SH CATEGORY

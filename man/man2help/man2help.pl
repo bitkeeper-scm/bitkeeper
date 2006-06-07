@@ -14,6 +14,14 @@ sub main
 		$prefix = shift(@ARGV);
 	}
 	$ENV{'GROFF_NO_SGR'} = 1;
+	if (-x "../../src/bk" || -x "../../src/bk.exe") {
+		chop($BKVER = `../../src/bk version -s`);
+	} else {
+		chop($BKVER = `bk version -s`);
+	}
+	if ($BKVER =~ /^(\d\d\d\d)(\d\d)(\d\d)/) {
+		$BKVER="${1}-${2}-${3}";	# YYYY-MM-DD
+	}
 	foreach $page (@ARGV) {
 		&man2help;
 	}
@@ -53,7 +61,7 @@ sub man2help
 	}
 	close(D);
 	close(F);
-	$cmd = "groff -I.. -rhelpdoc=1 -P-u -P-b -Tascii < tmp";
+	$cmd = "groff -I.. -dBKVER='$BKVER' -rhelpdoc=1 -P-u -P-b -Tascii < tmp";
 	open(G, "$cmd |");
 	$nl = 0;
 	while (<G>) {

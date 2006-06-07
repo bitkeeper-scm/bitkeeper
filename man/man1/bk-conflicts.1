@@ -13,7 +13,8 @@ The
 command lists unmerged files which contain content conflicts and need to
 be resolved.
 Both filenames and directory names may be specified and they are treated
-as in \*[BK] sfiles.
+as in
+.BR "bk sfiles" .
 Only files that contain conflicts are actually listed.
 .LP
 Any options specified will operate only on the set of files that would
@@ -49,6 +50,16 @@ in the file.
 More verbose listing.
 As above but shows the number of lines in conflict with the authors of
 those lines.
+.SH EXIT STATUS
+.LP
+.B bk conflicts
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH EXAMPLES
 .DS
 $ \f(CBbk conflicts '*.h'\fP
