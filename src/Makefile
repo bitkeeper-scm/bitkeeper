@@ -491,8 +491,8 @@ crankrelease: crank.sh remote.sh
 	cd /home/bk/$$TAG-images ; \
 	rm -f MD5SUMS ; \
 	md5sum bk-* >> MD5SUMS ; \
-	echo "Your images are in /home/bk/$$TAG-images" )
-	@echo "Don't forget to run build_upgrade_index.pl"
+	echo "Your images are in /home/bk/$$TAG-images" ; \
+	echo "Run './mkupgrades $$TAG' to create upgrade area." )
 
 # It is OK if we fail to "rm build" on win32.
 # We can not "rm build" when we are running it.

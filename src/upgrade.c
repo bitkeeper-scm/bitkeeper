@@ -40,7 +40,6 @@ upgrade_main(int ac, char **av)
 	char	*p, *e;
 	char	**data = 0;
 	int	len;
-	char	*want_codeline = 0;
 	FILE	*f, *fout;
 	MDBM	*configDB = proj_config(bk_proj);
 	char	*license, *licf;
@@ -49,10 +48,9 @@ upgrade_main(int ac, char **av)
 	char	salt[sizeof(key) + 1];
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "il:nfq")) != -1) {
+	while ((c = getopt(ac, av, "infq")) != -1) {
 		switch (c) {
 		    case 'i': install = 1; break;
-		    case 'l': want_codeline = optarg; break;
 		    case 'n': fetchonly = 1; break;
 		    case 'f': force = 1; break;
 		    case 'q': flags |= SILENT; break;
@@ -81,13 +79,6 @@ usage:			system("bk help -s upgrade");
 	if (install && noperms(bin)) {
 		notice("upgrade-badperms", bin, "-e");
 		goto out;
-	}
-	unless (want_codeline) {
-		if (!(p = strrchr(bk_vers, '-'))) {
-			notice("upgrade-devbuild", 0, "-e");
-			goto out;
-		}
-		want_codeline = strndup(bk_vers, p - bk_vers);
 	}
 	unless ((license = mdbm_fetch_str(configDB, "license")) &&
 	    validLicense(license, configDB)) {
@@ -122,7 +113,7 @@ usage:			system("bk help -s upgrade");
 	 * 3 version
 	 * 4 utc
 	 * 5 platform
-	 * 6 codeline
+	 * 6 unused
 	 * -- new fields ALWAYS go at the end! --
 	 */
 	p = index;
@@ -134,9 +125,8 @@ usage:			system("bk help -s upgrade");
 			if (streq(p + 4, bk_vers)) obsolete = 1;
 		} else if (!data) {
 			data = splitLine(p, ",", 0);
-			unless ((nLines(data) == 6) &&
-			    streq(data[5], bk_platform) &&
-			    streq(data[6], want_codeline)) {
+			unless ((nLines(data) >= 6) &&
+			    streq(data[5], bk_platform)) {
 				freeLines(data, free);
 				data = 0;
 			};
