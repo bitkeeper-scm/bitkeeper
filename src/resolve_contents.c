@@ -139,7 +139,8 @@ c_merge(resolve *rs)
 	}
 	sccs_restart(rs->s);
 	unless (WIFEXITED(ret)) {
-	    	fprintf(stderr, "Cannot execute '%s'\n", rs->opts->mergeprog);
+	    	fprintf(stderr, "Cannot execute '%s'\n",
+		    rs->opts->mergeprog ? rs->opts->mergeprog : "bk smerge");
 		rs->opts->errors = 1;
 		return (0);
 	}
