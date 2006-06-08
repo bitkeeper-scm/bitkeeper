@@ -32,6 +32,11 @@ help_main(int ac,  char **av)
 		sysio(0, out, 0, "bk", "_eula", "-S", SYS);
 		goto print;
 	}
+	if (av[i=optind] && !strcasecmp(av[i], "release-notes")) {
+		sprintf(buf, "%s/RELEASE-NOTES", bin);
+		fileCopy(buf, out);
+		goto print;
+	}
 	unless (av[optind]) {
 		av = new_av;
 		optind = -0;

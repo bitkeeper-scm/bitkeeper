@@ -51,11 +51,11 @@ test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ:' foo`" || {
 echo OK
 
 echo $N Set a time backwards, check fudge ...........................$NL
-DATE="98/05/21 18:47:01"
+DATE="98/05/21.18:47:01"
 ZONE="-09:00"
 bk edit $Q foo
 BK_DATE_TIME_ZONE="$DATE$ZONE" bk delta -fydate $Q foo
-test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ:' foo`" || {
+test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D:.:T::TZ:' foo`" || {
 	echo bad date, wanted vs got
 	echo ${DATE}$ZONE
 	bk prs -hr+ -nd':D: :T::TZ' foo
@@ -64,6 +64,20 @@ test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ:' foo`" || {
 }
 test "62" = "`bk prs -hr+ -nd':FUDGE:' foo`" || {
 	echo bad fudged, wanted vs got is 62 `bk prs -hr+ -nd':FUDGE:' foo`
+	head SCCS/s.foo
+	exit 1
+}
+echo OK
+
+echo $N Check that we can use all dashes between the numbers ........$NL
+DATE="99-05-21-18-47-01"
+ZONE="+09-00"
+bk edit $Q foo
+BK_DATE_TIME_ZONE="$DATE$ZONE" bk delta -fydate $Q foo
+test "99/05/21 18:47:01+09:00" = "`bk prs -hr+ -nd':D: :T::TZ:' foo`" || {
+	echo bad date, wanted vs got
+	echo ${DATE}$ZONE
+	bk prs -hr+ -nd':D: :T::TZ' foo
 	head SCCS/s.foo
 	exit 1
 }

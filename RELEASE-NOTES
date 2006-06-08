@@ -1,0 +1,655 @@
+===============================================================================
+Release notes for BitKeeper version 4.0-beta
+
+This is a major release that improves performance, introduces
+significant new features, regularizes interfaces, and fixes a number of
+customer-reported problems.
+
+For installation instructions please see:
+
+    http://www.bitkeeper.com/Installing4.0-beta.txt
+
+Performance Improvements
+    bk changes is much faster (up to 7.5X), especially with remote URLs
+    bk check is about 1.75X faster
+    bk csettool is 3X faster on startup
+    bk revtool is 2X faster on startup
+
+    There is a new time stamp database that can be used to safely improve
+    performance of bk commands that are looking for modified files.
+    It uses the time stamps on the files in a way that works even with NFS
+    clients/servers that produce incorrect time stamps.  This speeds up
+    "bk -cr diffs" and bk citool among other commands.  Performance is 10x
+    faster for trees with all edited files (checkout:edit).
+
+New Features
+
+In addition to the features described here, a number of smaller features
+are described for individual commands under Interface Changes, below.
+
+GUIs
+    All GUI tools do a much nicer job of managing their geometry.
+
+    The rev.sccscat config variable has been renamed to rev.annotate.
+    This variable was used only to control the formatting when 'c'
+    was typed to show all annotations.  Now it affects both the 'c'
+    display and the regular annotations ('a').
+
+bk citool Enhancements
+    Trigger names are shown in the diffs window as they are run so you
+    can know what is "hanging" the tool.
+
+bk fm3tool Enhancements
+    Annotations and/or GCA lines may be toggled on or off.
+    Autoscrolling has been added for large conflict blocks which improves
+    the likelihood of a correct merge when the conflicts are
+    "taller" than the window.  See bk help fm3tool for details.
+
+bk revtool Enhancements
+    When displaying package history, bk revtool now displays a yellow
+    outline around changeset nodes that have been tagged using bk tag.
+    Clicking on the outlined changeset shows the the tag name, prefixed
+    by "TAG:", following the changeset comments.
+
+    A new "+<line-number>" command-line option is provided, which displays an
+    annotated listing of the specified file and scrolls to <line-number>.
+
+    A "-/<search-string>/" option is also available; it scrolls the
+    annotated file listing to the first occurrence of <search-string> in the
+    file (or the first occurrence following <line-number>, if specified).
+
+Trigger Enhancements
+    Remote trigger output format has been changed so that you can see
+    which trigger which caused which output.  The new format is
+
+    >> Trigger "<trigger name>" (exit status was <non-zero>)
+    trigger output line 1
+    trigger output line 2
+    ...
+
+    This format repeats for all triggers.
+
+    The trigger system has been reworked to ensure that all trigger
+    output is sent to stderr (formerly, remote output went to stderr
+    and local output might or might not go to stderr, depending on the
+    trigger writer).
+
+    Triggers that in previous releases silently exited non-zero now
+    always produce a warning.
+
+    Triggers that exit zero but produce output may now be consistently
+    made silent with the -q option (for bk pull, bk push, bk clone,
+    and bk resolve).
+
+    As triggers are run, the trigger name is displayed in the diffs window
+    of bk citool, which helps you know which triggers are long running.
+
+Selective Pulls
+    In this release, bk pull has a "-r" option that allows you to specify
+    a revision.  All changes up to and including that changeset are
+    pulled; subsequent changesets are not.
+
+Multiple Parents
+    As of this release, a repository may have multiple parents.  You can
+    designate each parent as an incoming (pull) parent, an outgoing
+    (push) parent, or both.  In general, for simplicity, it is best to
+    avoid using multiple parents.  This feature can be useful, however,
+    as in the case of a repository that needs to pull from both a local
+    master and a mirror of a remote master, but needs to push only to
+    the local master.
+
+    Notes:
+    - Running "bk changes -L" in a repository with multiple parents shows
+    changes relative only to the push parents; pull-only parents are
+    not considered.  This is correct behavior, but might not be obvious.
+    To see changes relative to a pull-only parent, you can specify
+    the parent repository:
+    
+	bk changes -L <pull-parent>
+
+    - After making changes to parent relationships (using "bk parent -s"
+    and "bk parent -a"), it's a good idea to run bk parent to view the
+    results of those changes.
+
+Simplified Patching and Backporting
+    This release adds to bk changes a "-vv" option that shows diffs for all
+    changes, including full diffs for new files.  You can use this in
+    conjunction with bk patch to easily create a patch from the changesets
+    found:
+
+	(cd <some_repo> && bk changes -vvr+) | bk patch -p1 -g1
+
+    You can combine this with "bk comments -C+" to backport the changes to
+    another repository.
+
+Wildcards for File Arguments
+    BitKeeper now supports wildcards as file arguments.  To diff all .c
+    files in an entire repository, you can do:
+
+	bk -r diffs '*.c'
+
+    See bk help glob for examples.
+
+Lease Server
+    This release introduces a simplified method for license/lease
+    management.  In previous releases, when a license key expired, the
+    BitKeeper administrator had to find and update license keys wherever
+    they were stored, which was both inconvenient and error prone.
+
+    In the new model, leases are obtained as needed from a lease server
+    maintained at bitmover.com.  When you pay your annual renewal fee, your
+    records are updated on this server, allowing you to receive leases
+    automatically.  No manual license update is required on your part.
+    
+    For existing BitKeeper installations, you do not need to move or
+    update your license keys; so long as your account with BitMover
+    is current, the license keys will continue to work, even if they
+    are expired.  For new installations, it is recommended that you
+    store your license key in the `bk bin`/config file.
+
+    The new model also supports tracking BitKeeper usage on a
+    per-cost-center basis.  If this is important to you, it is recommended
+    that you install BitKeeper separately in each cost center and store
+    the license for that cost center in the `bk bin`/config file for
+    that installation.
+
+    Note:  This new license/lease model requires that BitKeeper have
+    access to the Internet so it can fetch leases from the lease
+    server as needed.  For performance, however, leases are cached,
+    so connections to the lease server are infrequent.  If you expect
+    to be disconnected from the Internet for more than a day or so,
+    you should run "bk lease renew" to explicitly get a lease before
+    disconnecting.  There are two kinds of leases (read and write),
+    so if you will be performing write operations, such as bk edit or
+    bk commit, you should include the "-w" option:
+
+	bk lease renew -w
+
+    See bk help lease for more information.
+
+Interface Changes
+
+This section describes changes to command syntax and semantics in this
+release.  Wherever practical, the old syntax is contrasted with the new
+syntax to help you update your scripts for 4.0.x.
+
+All commands
+    In past releases, most commands suppressed the retrieval of files
+    named .del-* because BitKeeper had two ways of deleting a file:
+    one renamed it as .del-<filename> and the other renamed it as 
+    `bk root`/BitKeeper/deleted/.del-<filename>.  The second form has 
+    been the default since February 2000.
+
+    As of this release, retrieval of these files is no longer
+    suppressed.  This means that if there is an SCCS/s..del-foo file,
+    bk co checks out .del-foo whereas in earlier releases it wouldn't 
+    have.  If you have a file like this and want to get rid of it, run:
+
+    	bk rm .del-<filename>
+
+    This moves the file to BitKeeper/deleted.
+
+bk annotate/diffs/co/grep
+    All commands that take options to enable annotations have had those 
+    options changed.  The commands are: grep, co, annotate, diffs.
+    The new interface is in general:
+	-A<opts>
+	-a<opts>
+    where the first form requests aligned ("human readable") annotations
+    and the second form requests program-readable output.  <opts>
+    specifies which annotations to include.  See bk help co for a
+    full list.
+
+bk bkd
+    The -u and -g options allowed you to specify the the effective user
+    and group IDs for the bkd process.
+
+    In this release, these options are removed.  It is recommended that
+    you assign a dedicated user ID to own the bkd process and use su(1).
+
+    Old method:
+	bkd -u <bkd-user>
+    New method:
+	su <bkd-user> && bkd
+
+bk changes
+    bk changes now supports multiple parents and "bk changes -L"
+    can summarize the list of changes relative to a series of remote
+    locations, either separately or as a union.  You can combine "-L"
+    and "-R" to see all changesets local to this repository in addition
+    to seeing remote changesets.
+
+    Now 'bk changes -/<pattern>/' can handle regular expressions.
+    See bk help regex for more information.
+
+    The new "bk changes -vv" option displays diffs after every delta
+    is printed.  This uses the new :UDIFFS: dspec.  (See the notes on
+    bk log, below.)
+
+    The default output format for 'bk changes' has changed slightly.
+    Scripts that need to parse bk changes output are encouraged to use
+    the -d<dspec> option to generate a stable, easy to parse output.
+
+    New -i (include) and -x (exclude) options allow you to limit output
+    to changes that apply to certain files.
+
+bk ci
+    This command replaces bk delta as the preferred interface for checking
+    in files from the command line.
+
+    The "-i" option, which put a file under revision control, is
+    deprecated.  Use bk new instead.
+
+    bk ci picks up all the options that used to be unique to bk delta.
+
+bk co
+    This command replaces bk get as the preferred interface for checking
+    out files from the command line.
+
+    Both "-l" and "-e" will continue to work as ways to lock the file
+    but the "-l" option is the preferred interface; "-e" will go away
+    in BitKeeper 5.0.
+
+    The "-C" option specified the revision most recently committed to
+    a changeset. In this release, this option is removed. use "-r@+"
+    instead.
+
+    Old syntax:
+	bk co -C
+    New syntax:
+	bk co -r@+
+
+bk commit
+    This command formerly had an undocumented -f<file_list> option that
+    allowed you to specify a file containing a list of files to commit.
+
+    That option has been renamed to -l<file_list> and -f is now used to
+    force a non-interactive commit.
+
+    Old syntax:
+	bk commit -f<file_list>
+    New syntax:
+	bk commit -l<file_list>
+
+bk conflicts
+    This is a new command that lists the files in the RESYNC directory
+    that have conflicts.  This is useful for examining changes to see
+    who should resolve the conflicts.
+
+bk cset
+    The "-l" option allowed you to specify a list of changeset revisions or
+    keys on stdin and display a list of deltas in each changeset.
+
+    The "-r<rev>" option allowed you to specify a revision and display
+    a list of deltas for that revision.
+
+    In this release, these options are removed.  Use bk changes instead.
+
+    Old syntax:
+	cat <rev-list-file> | bk cset -l
+    New syntax:
+	cat <rev-list-file> | bk changes -
+
+    Old syntax:
+	bk cset -r<rev>
+    New syntax:
+	bk changes -r<rev>
+
+bk csets
+    A new "-t" option provides a text-mode version of bk csets.
+
+bk delta
+    This command has been merged into the bk ci interface and is
+    deprecated.  You may use either interface; they both do the same
+    thing, but going forward only bk ci will be documented.
+
+    The "-C" option, which directed the command to take comments from
+    SCCS/c.<file>, is changed to lower case ("-c").
+
+    Old syntax:
+	bk ci -C <file>
+    New syntax:
+	bk ci -c <file>
+
+    This command's behavior has been changed to be more like the old ci;
+    if there are no changes to the file, no delta is made automatically.
+    There is a new "-f" option to force the creation of a null delta.
+    This breaks compatibility with ATT SCCS.
+
+bk diffs
+    The "-C" option specified a changeset revision. In this release,
+    this option is removed. Use the "-r" option instead.
+
+    Old syntax:
+	bk diffs -C<cset-rev>
+    New syntax:
+	bk diffs -r@<cset-rev>
+
+    A new "-N" option treats extra files as new and diffs against /dev/null
+    i.e., to get a patch of your changes do "bk -xcr diffs -Nu > /tmp/patch"
+    and that will pick up modified and new files.
+
+    A new "-f" option forces diffing against read-only files.
+
+    A new "-H" option lets you prefix diffs with checkin comments
+
+bk edit
+    There is a new "rollback" feature: "bk edit -r<rev> <file>"
+    that edits the top delta for <file> and excludes deltas such that
+    its contents are identical to <rev>.
+
+bk extras
+    This command formerly required the "-a" option to follow the optional
+    directory argument. In this release, the order is reversed to be more
+    conventional.
+    
+    Old syntax:
+	bk extras [<dir>] [-a]
+    New syntax:
+	bk extras [-a] [<dir>]
+
+bk files
+    This is a demo program to show file-name expansion.
+
+bk filetypes man page
+    This is a rename of the bk files man page.
+
+bk fixtool
+    Documentation is added for this interface.  It is used to walk through
+    files that have changed and modify the changes prior to checkin.
+    This is the command-line equivalent of running bk citool and choosing
+    Fmtool from the Edit menu.
+
+bk get
+    This command is replaced by bk co and is deprecated; both will
+    continue to work but only bk co will be documented.
+
+bk glob
+    BitKeeper now respects wildcards (globs) on the command line.
+    For example:
+
+	bk <command> '*.c'
+
+    means operate on all files that match *.c, not run the command
+    on the single file named '*.c'.  To get the old behavior you can
+    use either
+
+	bk command './*.c'	# This does not do glob expansion
+
+    or 
+
+	export BK_NO_FILE_GLOB=TRUE
+	bk command '*.c'
+
+    See bk help glob for more information.
+
+bk grep
+    bk grep has been rewritten to mimic GNU grep for the most part.
+    Backwards compatibility is broken, but the new version is much better
+    and more standard.  See help bk grep for details.
+
+bk import -tCVS
+    The CVS import code has greatly improved from previous versions.
+
+bk log
+    This is a new name for bk prs, which is deprecated but continues to
+    work for backward compatibility and maintains its old output format.
+    bk log has a greatly improved output format and pages its output,
+    but otherwise behaves like bk prs.
+
+bk log, changes, sccslog ...
+    In commands that produce date output, such as bk log, bk changes,
+    and bk sccslog, the old default was <YY>/<MM>/<DD> or <YY>-<MM>-<DD>
+    but you could force a 4-digit year with BK_YEAR4=1.  The 4-digit
+    year is now the default.
+
+    New data specifications (dspecs) are introduced in this release:
+	:DIFFS:		The diffs of the implied delta (like diff)
+	:DIFFS_U:	Like "diff -u"
+	:DIFFS_UP:	Like "diff -up"
+
+	For a file in the RESYNC directory with conflicts:
+	:GREV:		GCA revision
+	:LREV:		local revision
+	:RREV:		remote revision
+
+bk lease show
+    This now shows license options and when the current license will
+    renew.
+
+bk mv/mvdir
+    bk mvdir is deprecated. bk mv is now the preferred way to move
+    directories.
+
+    Old syntax:
+	bk mvdir <src> <dst>
+    New syntax:
+	bk mv <src> <dst>
+
+bk prs
+    This command, used to display file revision history, is
+    deprecated. Use bk log instead.
+
+    Old syntax:
+	bk prs
+    New syntax:
+ 	bk log
+
+bk pull
+    (See Multiple Parents above.)
+
+    The deprecated "-l" and "-n" options, which together were used to
+    display a list of changes in the parent repository that were available
+    to be pulled should not be used.  Instead use "bk changes -R", which
+    lists changes that are available to be pulled from all pull parents.
+
+    Old syntax:
+	bk pull -nl
+    New syntax:
+	bk changes -aR
+
+    A new "-u" option is for an update-only pull.  This makes bk pull
+    fail if any local csets/tags exist in the tree.
+
+    A new "-s" option tells the resolver to fail if an automerge is not
+    possible. This is useful for non-interactive pulls.
+
+    A new "-r" option pulls only up to a specified revision in the
+    remote repository.
+
+bk push
+    (See Multiple Parents above.)
+
+    The deprecated "-l" and "-n" options were used together to display
+    a list of changes in the current repository that could be pushed to
+    the parent.
+
+    In this release, these options are removed. Instead use 
+    "bk changes -L", which lists changes in the current repository that 
+    can be pushed to all push parents.
+
+    Old syntax:
+	bk push -nl
+    New syntax:
+	bk changes -aL
+
+bk relink
+    With no arguments, this command relinks the current repository with its
+    parents if they reside on the same machine.
+
+bk resolve
+    bk resolve now goes straight into merge mode after attempting to
+    automerge all conflicts.  There is an option to disable interactive
+    mode ("-s").
+
+    You can now use bk resolve to resolve part of a set of conflicts. See
+    the man page for details.
+
+    A new "S" command allows you to skip this file and resolve it later.
+
+bk repogca
+    A new "-d<dspec>" option returns a given dspec instead of :KEY:
+    A new "-k" option is a shorthand for "-d:KEY:"
+
+    Multiple remote URLs can now be passed on the repogca command line
+    and the latest cset that exists in all remote URLs is returned.
+
+bk revtool
+    The "-G" option is removed; the GCA is automatically calculated.
+
+bk sccscat
+    This command, used to annotate the lines added by a specified
+    revision, has been removed.  Use "bk annotate -R" instead.
+
+    Old syntax:
+	bk sccscat -r<rev> <file>
+    New syntax:
+	bk annotate -R<rev> <file>
+
+bk sfiles
+    bk sfiles has many subtle interface changes to support GUI
+    integration.  The summary below compares old and new syntax. For a
+    more concise description of just the new syntax, see bk help sfiles.
+
+    To see the new format try "bk sfiles -E"
+
+    Note that "-i" and "-n" no longer require that you run bk sfiles at
+    the repository root.  This means that "bk citool ." does not show
+    files that are normally ignored.
+
+    The unchanged interfaces are:
+    -1 (stop at first directory)
+    -a (consider all files)
+    -c (list changed files)
+    -d (list directories with BK controlled files)
+    -D (list directories without BK controlled files)
+    -g (list gfile name, not sfile name)
+    -j (list junk files)
+    -l (list locked files)
+    -n (list files not in the correct location)
+    -o (output)
+    -p (pending)
+    -P (pending)
+    -S (summary)
+    -u (unlocked)
+    -U (user files only)
+    -x (extras)
+ 
+    The "-d" and "-D" options now work when combined with other options.
+
+    The changed interfaces are:
+    Old		New	Meaning
+    -e		-E	-e is no longer supported, see -E
+    -E		-E	-cdDGijlnRsuvxyp (shows all interesting information)
+    -i		-i	now means list files that are ignored
+    <none>	-G	list files that are checked out
+    <none>	-y	list files with saved comments
+    <none>	-R	list subrepository roots
+    -S		-S	now lists -d/-D/-G/-i/-R summaries as well
+    -v		-v	now a 7 column listing instead of 4 with slots for
+    			-l/-u,-c,-p,-G,-n,-d/-D,-y && -j/-x (see man page)
+    -C		-pC	remove undocumented alias
+    -A		-pA	remove undocumented alias
+    -C		-C	now means don't trust time stamp db
+    <none>	-0	print null between files instead of \n
+
+    The sfiles options to 'bk' have similar changes.  See 'bk help bk'.
+
+bk sfio
+    A new "-f" option overwrites existing files
+
+bk smerge
+    This command now takes "-l<local> -r<remote> <file>" arguments to
+    be consistent with bk revtool.  The GCA is automatically calculated.
+
+    Old syntax:
+	bk smerge <file> <local> <remote>
+    New syntax:
+	bk smerge -l<local> -r<remote> <file>
+
+Default Shell
+    All platforms default to using bash to run any shell-based functions.
+    We know that bash always works, but you can also try ksh if you
+    don't have bash.  We look for bash, ksh, and sh in that order,
+    and use the first thing found anywhere in your path.
+
+    You may override the shell used with 
+	setenv BK_SHELL /usr/local/bin/bash
+	BK_SHELL=/usr/local/bin/bash
+
+Misc
+    A new BK_DATE_TIME_ZONE environment variable is useful for forcing
+    dates in import scripts. Its value has the format:
+
+    <YYYY>/<MM>/<DD> <HH>:<MM>:<SS><+-><ZH>:<ZM>
+
+    The fields have the following meanings:
+	<YYYY>	four-digit year
+	<MM>	two-digit month (01 .. 12)
+	<DD>	two-digit day
+	<HH>	two-digit hour
+	<MM>	two-digit minute
+	<SS>	two-digit second
+	<+->	"+" for positive time-zone offsets from GMT and
+		"-" for negative offsets
+	<ZH>	time-zone offset hour
+	<ZM>	time-zone offset minute
+
+    Example: 2006/05/31 17:34:15-07:00
+
+    To ease quoting problems on the command line, the date may be written
+    as:
+    	YYYY-MM-DD-HH-MM-SS-ZH-ZM
+    or (note the + for the zone offset):
+    	YYYY-MM-DD-HH-MM-SS+ZH-ZM
+
+    When BK_DATE_TIME_ZONE, BK_USER, and BK_HOST are set in the
+    environment, BitKeeper operations that create deltas or changesets
+    use them to specify user, host, and time stamp.  For example:
+
+    export BK_USER=dmr
+    export BK_HOST=research.att.com
+    BK_DATE_TIME_ZONE='2006/05/31 17:34:15-07:00' bk ci foo.c
+
+Bugs fixed
+    2000-04-17-003	su root; bk ci foo.c - checks in as root
+    2002-02-15-001	bkWeb doesn't understand virtual hosting/CNAMEs
+    2002-03-14-008	bk changes -v should show information about merges
+    2002-04-06-004	bk changes -d... may hang
+    2002-05-10-003	bk tag -r<REV> doesn't accept KEYs
+    2002-06-11-001	bk clone can leave an empty RESYNC directory
+    2002-07-09-001	bkd http server shouldn't use a <base href> tag
+    2002-07-31-001	Too many SCCS/c..* files: bk sfiles ==> append_rev:  
+			Assertion `strlen(buf) < 1024' failed
+    2002-08-05-001	Missing "than"?
+    2002-08-27-001	bk/web doesn't escape address-of (&amp;) which can  
+			lead to incorrect display
+    2002-09-18-001	citool includes explicitly excluded deltas
+    2002-10-16-002	changes uses up a lot of memory and takes too long
+    2002-12-10-004	giving an unknown command to bk sends an error message  
+			to stdout
+    2002-12-27-001	bk sfiles -U <dir> does not skip BitKeeper file
+    2003-03-04-001	Need list of files req'd for manual merge OR skip  
+			resolve functionality
+    2003-03-12-002	sfiles -ct doesn't work as expected in a sub-directory  
+			of the repo
+    2003-07-03-001	revtool doesn't show gone-to line [PATCH]
+    2003-09-09-001	'bk diffs -up' behaves differently than 'bk diffs -pu'  
+			and neither give me what I want.
+    2003-09-10-003	bk diffs should work like "gnu diff" (--new-file and -p)
+    2003-09-11-001	changes -Rv uses inconsistent date formats
+    2003-09-11-002	bk pull -ll output removed useful information
+    2003-10-20-003	Changeset browsing concatenates tags
+    2003-12-09-001	if a repo has no parent, bk changes -L gives a not-so- 
+			useful error message
+    2004-01-07-001	push to a bkd with -xpush gives obscure message
+    2004-01-13-001	changes -L repo1 repo2 is broken
+    2004-01-13-002	changes -D -L is broken
+    2004-01-14-002	bk pull gives incorrect error message when run in a  
+			repo with no parent
+    2004-01-15-003	the import function (at least from CVS) does not set  
+			the EOLN_NATIVE flags
+    2004-06-09-002	bk send sends error message to STDOUT
+    2005-12-05-003	findkey dumps core for email address searching
+    2006-01-09-001	bk setup segv's
+    2006-03-31-001	"nonexistant" is not a real word
