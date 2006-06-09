@@ -12,7 +12,7 @@ private	void	usage(void);
 private	void	do_cmds(void);
 private int	svc_uninstall(void);
 
-char		*bkd_getopt = "BcCdDeE:hi:l|L:p:P:qRSt:V:x:";
+char		*bkd_getopt = "cCdDeE:hi:l|L:p:P:qRSt:V:x:";
 char 		*logRoot;
 private char	**exCmds;
 
@@ -44,7 +44,6 @@ bkd_main(int ac, char **av)
 	 */
 	while ((c = getopt(ac, av, bkd_getopt)) != -1) {
 		switch (c) {
-		    case 'B': Opts.buffer_clone = 1; break;
 		    case 'c': check = 1; break;
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': daemon = 1; break;		/* doc 2.0 */

@@ -6,7 +6,6 @@ bk undo \- Undo a changeset or set of changesets
 .SH SYNOPSIS
 .B bk undo
 .[B] \-fqsv
-.[OPTreq] \-p patch
 .[OPTreq] \-a rev
 .[OPTreq] \-r rev
 .SH DESCRIPTION
@@ -61,10 +60,6 @@ use this option.
 .B \-f
 Force the undo to complete if it can.  Normally, undo will
 prompt with a list of deltas which will be removed.
-.tp
-.OPTreq \-p patch
-Specify the location of the backup patch.  Overrides 
-.QR \-s .
 .tp
 .B \-q
 Run quietly; do not list files.

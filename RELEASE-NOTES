@@ -3,14 +3,15 @@ Release notes for BitKeeper version 4.0-beta
 
 This is a major release that improves performance, introduces
 significant new features, regularizes interfaces, and fixes a number of
-customer-reported problems.
+customer-reported issues.  Version 4.0 does not change any file formats,
+so it is completely compatible with 3.2.x versions of BitKeeper.
 
 For installation instructions please see:
 
     http://www.bitkeeper.com/Installing4.0-beta.txt
 
 Performance Improvements
-    bk changes is much faster (up to 7.5X), especially with remote URLs
+    bk changes is significantly faster (up to 7.5X), especially with remote URLs
     bk check is about 1.75X faster
     bk csettool is 3X faster on startup
     bk revtool is 2X faster on startup
@@ -24,7 +25,7 @@ Performance Improvements
 
 New Features
 
-In addition to the features described here, a number of smaller features
+In addition to the features described here, a number of more minor features
 are described for individual commands under Interface Changes, below.
 
 GUIs
@@ -60,7 +61,7 @@ bk revtool Enhancements
 
 Trigger Enhancements
     Remote trigger output format has been changed so that you can see
-    which trigger which caused which output.  The new format is
+    which trigger caused which output.  The new format is
 
     >> Trigger "<trigger name>" (exit status was <non-zero>)
     trigger output line 1
@@ -132,20 +133,20 @@ Wildcards for File Arguments
 
 Lease Server
     This release introduces a simplified method for license/lease
-    management.  In previous releases, when a license key expired, the
-    BitKeeper administrator had to find and update license keys wherever
-    they were stored, which was both inconvenient and error prone.
+    management.  In previous releases, when a license key expired,
+    the BitKeeper administrator had to locate and update all license
+    keys wherever they were stored, which was both inconvenient and
+    error prone.
 
-    In the new model, leases are obtained as needed from a lease server
-    maintained at bitmover.com.  When you pay your annual renewal fee, your
-    records are updated on this server, allowing you to receive leases
-    automatically.  No manual license update is required on your part.
-    
+    In the new model, leases are obtained as needed from a master lease
+    server.  At the time of your annual renewal, your records will be
+    updated on this server, allowing you to receive leases automatically.
+    No manual license update will be required on your part.
+
     For existing BitKeeper installations, you do not need to move or
-    update your license keys; so long as your account with BitMover
-    is current, the license keys will continue to work, even if they
-    are expired.  For new installations, it is recommended that you
-    store your license key in the `bk bin`/config file.
+    update your license keys; your existing license keys will continue
+    to work after your next renewal.  Starting with this release, the
+    installer will store your license keys in the `bk bin`/config file.
 
     The new model also supports tracking BitKeeper usage on a
     per-cost-center basis.  If this is important to you, it is recommended
@@ -153,9 +154,9 @@ Lease Server
     the license for that cost center in the `bk bin`/config file for
     that installation.
 
-    Note:  This new license/lease model requires that BitKeeper have
-    access to the Internet so it can fetch leases from the lease
-    server as needed.  For performance, however, leases are cached,
+    Note:  This new license/lease model requires that BitKeeper
+    periodically access the Internet so it can fetch leases from
+    the lease server.  For performance, however, leases are cached,
     so connections to the lease server are infrequent.  If you expect
     to be disconnected from the Internet for more than a day or so,
     you should run "bk lease renew" to explicitly get a lease before
@@ -201,7 +202,7 @@ bk annotate/diffs/co/grep
     full list.
 
 bk bkd
-    The -u and -g options allowed you to specify the the effective user
+    The -u and -g options allowed you to specify the effective user
     and group IDs for the bkd process.
 
     In this release, these options are removed.  It is recommended that
