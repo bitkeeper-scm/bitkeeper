@@ -598,9 +598,10 @@ proc checkLicense {license licsign1 licsign2 licsign3} \
 }
 
 # Side Effect: the license data is put in the environment variable BK_CONFIG
-proc getEulaText {license licsign1 licsign2 licsign3} \
+proc getEulaText {license licsign1 licsign2 licsign3 text} \
 {
 	global env
+	upvar $text txt
 
 	# need to override any config currently in effect...
 	set BK_CONFIG "logging:none!;"
@@ -610,7 +611,9 @@ proc getEulaText {license licsign1 licsign2 licsign3} \
 	append BK_CONFIG "licsign3:$licsign3!;"
 	append BK_CONFIG "single_user:!;single_host:!;"
 	set env(BK_CONFIG) $BK_CONFIG
-	return [exec bk _eula -u]
+	set r [catch {exec bk _eula -u} txt]
+	if {$r} {set txt ""}
+	return $r
 }
 
 # Aqua stuff

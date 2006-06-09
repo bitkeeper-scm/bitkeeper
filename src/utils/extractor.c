@@ -122,14 +122,14 @@ main(int ac, char **av)
 	/*
 	 * If they want to upgrade, go find that dir before we fix the path.
 	 */
+	bkpath = getbkpath();
 	if (av[1] && (streq(av[1], "-u") || streq(av[1], "--upgrade"))) {
 		upgrade = 1;
-		unless (bkpath = dest = getbkpath()) {
+		unless (dest = bkpath) {
 			fprintf(stderr, UPGRADE_ERROR);
 			exit(1);
 		}
 	} else if (av[1] && (av[1][0] != '-')) {
-		bkpath = getbkpath();
 		dest = strdup(fullname(av[1]));
 #ifndef	WIN32
 		unless (getenv("BK_NOLINKS")) dolinks = 1;
@@ -210,6 +210,7 @@ main(int ac, char **av)
 	 */
 	if (hasLicense("config")) {
 		fileCopy("config", "bitkeeper/config");
+		chmod("bitkeeper/config", 0666);
 		striplic = 1;
 	}
 
@@ -229,6 +230,7 @@ main(int ac, char **av)
 				free (a);
 			} else {
 				fileCopy(buf, "bitkeeper/config");
+				chmod("bitkeeper/config", 0666);
 			}
 		}
 	}
