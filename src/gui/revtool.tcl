@@ -2400,6 +2400,7 @@ select a new file to view"
 	} else {
 		set ago ""
 		catch {set ago [exec bk prs -hr+ -d:AGE: $lfname]}
+		if {[lindex $::errorCode 2] != 0} {exit [lindex $::errorCode 2]}
 		# XXX: Highlight this in a different color? Yellow?
 		$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 		$w(aptext) insert end  "Error: No data within the given time\
