@@ -3,6 +3,8 @@
 #include "tomcrypt/mycrypt.h"
 #include "tomcrypt/randseed.h"
 
+#define	LOG_STDERR	(char *)1
+
 private	void	exclude(char *cmd, int verbose);
 private void	unexclude(char **list, char *cmd);
 private	int	findcmd(int ac, char **av);
@@ -54,7 +56,7 @@ bkd_main(int ac, char **av)
 			break;
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
-			Opts.logfile = optarg ? optarg : (char*)1;
+			Opts.logfile = optarg ? optarg : LOG_STDERR;
 			break;
 		    case 'V':	/* XXX - should be documented */
 			Opts.vhost_dirpath = strdup(optarg); break;
@@ -99,7 +101,7 @@ bkd_main(int ac, char **av)
 	unless (Opts.vhost_dirpath) Opts.vhost_dirpath = strdup(".");
 
 	if (port) daemon = 1;
-	if (daemon && (Opts.logfile == (char*)1) && !Opts.foreground) {
+	if (daemon && (Opts.logfile == LOG_STDERR) && !Opts.foreground) {
 		fprintf(stderr, "bkd: Can't log to stderr in daemon mode\n");
 		return (1);
 	}
@@ -125,7 +127,9 @@ bkd_main(int ac, char **av)
 		}
 		if (check) return (0);
 		safe_putenv("BKD_PORT=%d", port);
-		if (Opts.logfile) safe_putenv("_BKD_LOGFILE=%s", Opts.logfile);
+		if (Opts.logfile && (Opts.logfile != LOG_STDERR)) {
+			safe_putenv("_BKD_LOGFILE=%s", Opts.logfile);
+		}
 		bkd_server(ac, av);
 		exit(1);
 		/* NOTREACHED */
@@ -299,7 +303,7 @@ log_cmd(char *peer, int ac, char **av)
 		return;
 	}
 
-	log = (Opts.logfile == (char*)1) ? stderr : fopen(Opts.logfile, "a");
+	log = (Opts.logfile == LOG_STDERR) ? stderr : fopen(Opts.logfile, "a");
 	unless (log) return;
 
 	time(&t);

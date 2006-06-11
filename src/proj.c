@@ -330,12 +330,16 @@ proj_configbool(project *p, char *key)
 	val = mdbm_fetch_str(db, key);
 	unless (val) return (0);
 	switch(tolower(*val)) {
-	    case '0': if (streq(val, "0")) return (0);
-	    case '1': if (streq(val, "1")) return (1);
-	    case 'f': if (strieq(val, "false")) return (0);
-	    case 't': if (strieq(val, "true")) return (1);
-	    case 'n': if (strieq(val, "no")) return (0);
-	    case 'y': if (strieq(val, "yes")) return (1);
+	    case '0': if (streq(val, "0")) return (0); break;
+	    case '1': if (streq(val, "1")) return (1); break;
+	    case 'f': if (strieq(val, "false")) return (0); break;
+	    case 't': if (strieq(val, "true")) return (1); break;
+	    case 'n': if (strieq(val, "no")) return (0); break;
+	    case 'y': if (strieq(val, "yes")) return (1); break;
+	    case 'o':
+		if (strieq(val, "on")) return (1);
+		if (strieq(val, "off")) return (0);
+		break;
 	}
 	fprintf(stderr,
 	    "WARNING: config key '%s' should be a boolean.\n"

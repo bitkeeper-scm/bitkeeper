@@ -65,6 +65,26 @@ cd $HERE
 rm -rf junk
 echo OK
 
+echo $N Make sure bkd logs to stderr do not dump core ...............$NL
+cd $HERE/project
+P=`port 50000`
+bk bkd -d -D -l -p$P -ikill 2> $HERE/STDERR &
+cd $HERE/copy
+bk _usleep 250000	# let the other guy get started
+bk changes -r+ bk://localhost:$P/$HERE/project > changes.out 2>&1
+bk lock -U $HERE/project
+bk _kill bk://localhost:$P || exit 1
+grep -q changes $HERE/STDERR || {
+	echo failed
+	echo STDERR
+	cat $HERE/STDERR
+	echo changes.out
+	cat changes.out
+	exit 1
+}
+cores
+echo OK
+
 echo $N Make sure that we leave the pid file there - background .....$NL
 cd $HERE/project
 rm -f $HERE/LOG
