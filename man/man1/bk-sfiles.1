@@ -54,7 +54,7 @@ If
 .I clock_skew
 is set in the config file then the file timestamps
 and other attributes are used to speed scanning.
-The acceptible clock skew can be configured, see
+The acceptable clock skew can be configured, see
 .I clock_skew
 in
 .BR "bk help config-etc" .
@@ -154,8 +154,11 @@ other than
 Prefix the output with information about the state of the s.file.
 The information is in a 7 character field, followed by a space,
 then followed by the filename.
-Each of the columns are described
-below, with the notation, then the option, then description.
+Each of the columns are described below, with the notation, then the option,
+then description.
+Script writers may depend on the format below with the following caveat:
+any addition information will be added in columns 8,9,10 etc.  The first
+space found will be the separator between the annotations and the filename.
 .RS
 .TP "\f(CBs-----y\ (\-y)\fP"
 \f(CBd------\ (-d)\fP
@@ -203,6 +206,17 @@ a \*(BK file that has saved checkin comments
 .tp
 \f(CBx-----y\ (-y)\fP
 an extra file that has saved checkin comments
+.LP
+Note: when verbose output is requested as much information as possible is
+generated.
+Currently, the information requested by the 
+.B \-n
+option is suppressed unless that option was specifically requested because of
+the performance implications.
+In other words, unless you add
+.B \-n
+to the options, that field will always be "-".
+.LP
 .RE
 .tp
 .B \-x

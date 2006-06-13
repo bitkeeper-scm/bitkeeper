@@ -1063,7 +1063,7 @@ sccsdir(winfo *wi)
 				state[CSTATE] = 'c';
 			}
 			free(gfile);
-			if (opts.names || opts.verbose) {
+			if (opts.names) {
 				unless (s) {
 					s = init(buf, INIT_NOCKSUM, sDB, gDB);
 				}
@@ -1076,6 +1076,11 @@ sccsdir(winfo *wi)
 				free(relp);
 			}
 		} else {
+			/*
+			 * LMXXX - note that if we get here and the gfile
+			 * is writable it may have diffs and we are not
+			 * listing them.
+			 */
 			file[0] = 'z';
 			if (mdbm_fetch_str(sDB, file)) {
 				state[LSTATE] = 'l';
@@ -1085,7 +1090,7 @@ sccsdir(winfo *wi)
 			file[0] = 's';
 			concat_path(buf, dir, "SCCS");
 			concat_path(buf, buf, file);
-			if ((opts.names || opts.verbose) &&
+			if (opts.names &&
 			    (s = init(buf, INIT_NOCKSUM, sDB, gDB))) {
 				d = sccs_top(s);
 				relp = proj_relpath(s->proj, s->gfile);
