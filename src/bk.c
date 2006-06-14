@@ -27,6 +27,10 @@ private	int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
+private int	showproc_connect(void);
+private	void	showproc(char **lines);
+private	void	showproc_start(char **av);
+private	void	showproc_end(char *cmdlog_buffer, int ret);
 
 private int
 usage(void)
@@ -84,16 +88,7 @@ main(int ac, char **av, char **env)
 	for (i = 3; i < 20; i++) close(i);
 	reserveStdFds();
 	spawn_preHook = bk_preSpawnHook;
-	if (getenv("BK_SHOWPROC")) {
-		FILE	*f;
-
-		if (f = fopen(DEV_TTY, "w")) {
-			fprintf(f, "BK (%u t: %5s)", getpid(), milli());
-			for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
-			fprintf(f, "\n");
-			fclose(f);
-		}
-	}
+	showproc_start(av);
 
 	if (getenv("BK_REGRESSION") && exists("/build/die")) {
 		fprintf(stderr, "Forced shutdown.\n");
@@ -629,15 +624,7 @@ cmdlog_end(int ret)
 		cmdlog_addnote("xfered", buf);
 	}
 
-	if (getenv("BK_SHOWPROC")) {
-		FILE	*f;
-
-		if (f = fopen(DEV_TTY, "w")) {
-			fprintf(f, "END(%u t: %5s)", getpid(), milli());
-			fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
-			fclose(f);
-		}
-	}
+	showproc_end(cmdlog_buffer, ret);
 
 	/* If we have no project root then bail out */
 	unless (proj_root(0)) goto out;
@@ -700,6 +687,7 @@ cmdlog_end(int ret)
 		char	buf[100];
 
 		for (i = 3; i < 20; i++) {
+		    	buf[0] = i;	// so gcc doesn't warn us it's unused
 			if (fstat(i, &sbuf)) continue;
 #if	defined(F_GETFD) && defined(FD_CLOEXEC)
 			if (fcntl(i, F_GETFD) & FD_CLOEXEC) continue;
@@ -912,4 +900,64 @@ launch_wish(char *script, char **av)
 	} else {
 		return (WEXITSTATUS(ret));
 	}
+}
+
+private	FILE	*tty;
+private	int	sock;
+
+private int
+showproc_connect(void)
+{
+	char	*t, *p;
+	int	port;
+
+	unless (t = getenv("BK_SHOWPROC")) return (0);
+	if (IsFullPath(t)) {
+		return ((tty = fopen(t, "a+")) != NULL);
+	}
+	if ((p = strchr(t, ':')) && ((port = atoi(p+1)) > 0)) {
+		*p = 0;
+		sock = tcp_connect(t, port);
+		*p = ':';
+		return (sock >= 0);
+	} 
+	return ((tty = fopen(DEV_TTY, "w")) != NULL);
+}
+
+private void
+showproc(char **lines)
+{
+	int	i;
+
+	EACH(lines) {
+		if (tty) fprintf(tty, "%s", lines[i]);
+		if (sock) writen(sock, lines[i], strlen(lines[i]));
+	}
+	freeLines(lines, free);
+	if (tty) fclose(tty);
+	if (sock) close(sock);
+}
+
+private void
+showproc_start(char **av)
+{
+	char	**lines;
+	int	i;
+
+	unless (showproc_connect()) return;
+	lines = addLine(0, aprintf("BK  (%u t: %5s)", getpid(), milli()));
+	for (i = 0; av[i]; ++i) lines = addLine(lines, aprintf(" %s", av[i]));
+	lines = addLine(lines, strdup("\n"));
+	showproc(lines);	/* it frees */
+}
+
+private void
+showproc_end(char *cmdlog_buffer, int ret)
+{
+	char	**lines;
+
+	unless (showproc_connect()) return;
+	lines = addLine(0, aprintf("END (%u t: %5s)", getpid(), milli()));
+	lines = addLine(lines, aprintf(" %s = %d\n", cmdlog_buffer, ret));
+	showproc(lines);	/* it frees */
 }

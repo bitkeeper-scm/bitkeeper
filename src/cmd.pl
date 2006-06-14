@@ -328,6 +328,7 @@ newdifftool gui
 renametool gui
 revtool gui
 setuptool gui
+showproc gui
 
 # gui aliases
 csetool => csettool

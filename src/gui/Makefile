@@ -12,7 +12,8 @@ endif
 REPO   := $(shell basename `bk root`)
 LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
-	  msgtool renametool setuptool bugform supportform newdifftool
+	  msgtool renametool setuptool bugform supportform newdifftool \
+	  showproc
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
 GUITEST = ../t/guitest.tcl
@@ -24,7 +25,7 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  fm3tool.tcl fmtool.tcl helptool.tcl msgtool.tcl progress.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
 	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl \
-	  newdifftool.tcl
+	  newdifftool.tcl showproc.tcl
 IMAGES  = imgsrc/bklogo.gif \
 	  imgsrc/ci-cset.xbm imgsrc/ci-done.xbm	\
 	  imgsrc/ci-exclude.xbm imgsrc/ci-modified.xbm \
@@ -131,3 +132,6 @@ newdifftool: $(COMMON) search.tcl appState.tcl newdifflib.tcl \
 	comm.tcl bktalk.tcl actions.tcl tooltip.tcl appState.tcl \
 	 newsearchlib.tcl newdifftool.tcl
 	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/newdifftool
+
+showproc: showproc.tcl
+	(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/showproc
