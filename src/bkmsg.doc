@@ -1276,7 +1276,8 @@ match this format:
    Other changes
 $
 #license-invalid-bkl5
-The license used by this repostory is not valid.
+#license-parse
+The license used by this repository is not valid.
 	#BKARG#
 
 Please contact BitMover at sales@bitmover.com and request assistance.
