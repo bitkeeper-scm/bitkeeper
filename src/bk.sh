@@ -1489,6 +1489,8 @@ _install()
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
 		test $VERBOSE = YES && echo "Updating registry and path ..."
+		# When extractor.c is upgrading, we're called with -f (FORCE)
+		test $FORCE -eq 1 && DLLOPTS="-u"
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
 		# This tells extract.c to reboot if it is needed
