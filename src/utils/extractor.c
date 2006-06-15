@@ -24,7 +24,7 @@ static char LICENSE_ERROR[] =
 "to sales@bitmover.com.\n"
 "\n"
 "BitMover can be reached at:\n"
-"   +1-650-872-9900 (international and California)\n"
+"   +1-408-370-9911 (international and California)\n"
 "   888-401-8808 (toll free in the US & Canada)\n"
 "during business hours (PST) or via email at sales@bitmover.com.\n"
 "Thanks!\n";
@@ -36,7 +36,7 @@ static char UPGRADE_ERROR[] =
 "and that you can run 'bk version'\n"
 "\n"
 "If you still have trouble, BitMover can be reached at:\n"
-"   +1-650-872-9900 (international and California)\n"
+"   +1-408-370-9911 (international and California)\n"
 "   888-401-8808 (toll free in the US & Canada)\n"
 "during business hours (PST) or via email at sales@bitmover.com.\n"
 "Thanks!\n";

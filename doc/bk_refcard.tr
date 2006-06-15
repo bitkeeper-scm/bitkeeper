@@ -216,7 +216,6 @@ Do not expand keywords.
 Export the tree as of revision \fIrev\fP.
 .IP \-t\fIpatch\fP
 Export the specified revision[s] as a traditional patch.
-.sp .5
 .B2
 .B1
 .H1
@@ -341,7 +340,7 @@ merge\fP, if any.
 bk version
 .LP
 Show BitKeeper software version.
-.sp 3.2
+.sp 3.7
 .B2
 .B1
 .\" ############################
@@ -470,7 +469,7 @@ List files with pending deltas
 List files not under revision control
 .IP \-E
 List "everything" in an ls \-l style format
-.sp .2
+.sp .7
 .B2
 .B1 
 .H1
@@ -637,7 +636,6 @@ Graphical tool (or text-based with \fB\-t\fP) to report a bug.
 .\" # Ranges and Dates
 .\" #
 .\" ############################
-.sp .7
 .B1
 .H1
 Range and Date Syntax
@@ -654,7 +652,7 @@ Date format is YYMMDDhhmmss.
 \-c06..06	# all changes in 2006
 .br
 \-c\-1M		# all changes in the last month
-.sp .2
+.sp 1.5
 .B2
 .\" ############################
 .\" #
@@ -744,4 +742,5 @@ For support from BitMover.
 .br
 .LP
 For \fBright now\fP support.
+.sp 4.05
 .B2
