@@ -42,6 +42,7 @@ int hash_filehandle(int hash, FILE *in, unsigned char *out, unsigned long *outle
     }
 
     if (*outlen < hash_descriptor[hash].hashsize) {
+       *outlen = hash_descriptor[hash].hashsize;
        return CRYPT_BUFFER_OVERFLOW;
     }
     if ((err = hash_descriptor[hash].init(&md)) != CRYPT_OK) {
@@ -66,5 +67,5 @@ int hash_filehandle(int hash, FILE *in, unsigned char *out, unsigned long *outle
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/helper/hash_filehandle.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

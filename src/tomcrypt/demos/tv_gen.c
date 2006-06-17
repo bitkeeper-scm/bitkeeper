@@ -685,9 +685,9 @@ void ecc_gen(void)
 
         while (mp_cmp(k, order) == LTC_MP_LT) {
             ltc_mp.ecc_ptmul(k, G, R, modulus, 1);
-            mp_tohex(k,    str); fprintf(out, "%s, ", str);
-            mp_tohex(R->x, str); fprintf(out, "%s, ", str);
-            mp_tohex(R->y, str); fprintf(out, "%s\n", str);
+            mp_tohex(k,    (char*)str); fprintf(out, "%s, ", (char*)str);
+            mp_tohex(R->x, (char*)str); fprintf(out, "%s, ", (char*)str);
+            mp_tohex(R->y, (char*)str); fprintf(out, "%s\n", (char*)str);
             mp_mul_d(k, 3, k);
         }
    }
@@ -782,5 +782,5 @@ int main(void)
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/demos/tv_gen.c,v $ */
-/* $Revision: 1.14 $ */
-/* $Date: 2006/03/18 14:10:56 $ */
+/* $Revision: 1.15 $ */
+/* $Date: 2006/06/09 22:10:27 $ */

@@ -38,6 +38,7 @@ int hash_memory(int hash, const unsigned char *in, unsigned long inlen, unsigned
     }
 
     if (*outlen < hash_descriptor[hash].hashsize) {
+       *outlen = hash_descriptor[hash].hashsize;
        return CRYPT_BUFFER_OVERFLOW;
     }
 
@@ -64,5 +65,5 @@ LBL_ERR:
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/src/hashes/helper/hash_memory.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

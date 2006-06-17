@@ -359,7 +359,7 @@ typedef struct ltc_asn1_list_ {
       int LTC_MACRO_temp            = (index);       \
       ltc_asn1_list *LTC_MACRO_list = (list);        \
       LTC_MACRO_list[LTC_MACRO_temp].type = (Type);  \
-      LTC_MACRO_list[LTC_MACRO_temp].data = (Data);  \
+      LTC_MACRO_list[LTC_MACRO_temp].data = (void*)(Data);  \
       LTC_MACRO_list[LTC_MACRO_temp].size = (Size);  \
       LTC_MACRO_list[LTC_MACRO_temp].used = 0;       \
    } while (0);
@@ -483,5 +483,5 @@ int der_length_utctime(ltc_utctime *utctime, unsigned long *outlen);
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_pk.h,v $ */
-/* $Revision: 1.66 $ */
-/* $Date: 2006/05/25 10:33:01 $ */
+/* $Revision: 1.67 $ */
+/* $Date: 2006/06/07 22:03:41 $ */

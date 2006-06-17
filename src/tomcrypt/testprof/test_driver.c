@@ -8,6 +8,6 @@ void run_cmd(int res, int line, char *file, char *cmd)
    }
 }
 
-/* $Source: /cvs/libtom/libtomcrypt/testprof/test.c,v $ */
-/* $Revision: 1.6 $ */
-/* $Date: 2005/05/05 14:35:59 $ */
+/* $Source: /cvs/libtom/libtomcrypt/testprof/test_driver.c,v $ */
+/* $Revision: 1.1 $ */
+/* $Date: 2006/06/07 22:05:09 $ */

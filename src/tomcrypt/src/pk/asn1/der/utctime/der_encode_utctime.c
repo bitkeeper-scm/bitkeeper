@@ -44,6 +44,7 @@ int der_encode_utctime(ltc_utctime *utctime,
        return err;
     }
     if (tmplen > *outlen) {
+        *outlen = tmplen;
         return CRYPT_BUFFER_OVERFLOW;
     }
     
@@ -78,5 +79,5 @@ int der_encode_utctime(ltc_utctime *utctime,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/utctime/der_encode_utctime.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

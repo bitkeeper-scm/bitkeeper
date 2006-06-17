@@ -29,12 +29,12 @@
 */
 void ecc_free(ecc_key *key)
 {
-   LTC_ARGCHK(key != NULL);
+   LTC_ARGCHKVD(key != NULL);
    mp_clear_multi(key->pubkey.x, key->pubkey.y, key->pubkey.z, key->k, NULL);
 }
 
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/ecc/ecc_free.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2006/06/09 01:38:14 $ */
 

@@ -31,6 +31,10 @@ int modes_test(void)
       return 1;
    }
    
+#ifdef LTC_F8_MODE
+   DO(f8_test_mode());
+#endif   
+   
 #ifdef LRW_MODE
    DO(lrw_test());
 #endif
@@ -128,5 +132,5 @@ int modes_test(void)
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/testprof/modes_test.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2006/01/26 06:24:46 $ */
+/* $Revision: 1.9 $ */
+/* $Date: 2006/06/16 23:52:08 $ */

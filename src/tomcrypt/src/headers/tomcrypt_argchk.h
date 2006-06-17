@@ -7,23 +7,32 @@
 /* this is the default LibTomCrypt macro  */
 void crypt_argchk(char *v, char *s, int d);
 #define LTC_ARGCHK(x) if (!(x)) { crypt_argchk(#x, __FILE__, __LINE__); }
+#define LTC_ARGCHKVD(x) LTC_ARGCHK(x)
 
 #elif ARGTYPE == 1
 
 /* fatal type of error */
 #define LTC_ARGCHK(x) assert((x))
+#define LTC_ARGCHKVD(x) LTC_ARGCHK(x)
 
 #elif ARGTYPE == 2
 
 #define LTC_ARGCHK(x) if (!(x)) { fprintf(stderr, "\nwarning: ARGCHK failed at %s:%d\n", __FILE__, __LINE__); }
+#define LTC_ARGCHKVD(x) LTC_ARGCHK(x)
 
 #elif ARGTYPE == 3
 
 #define LTC_ARGCHK(x) 
+#define LTC_ARGCHKVD(x) LTC_ARGCHK(x)
+
+#elif ARGTYPE == 4
+
+#define LTC_ARGCHK(x)   return CRYPT_INVALID_ARG;
+#define LTC_ARGCHKVD(x) return;
 
 #endif
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_argchk.h,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2003/01/06 06:03:08 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2006/06/09 01:38:13 $ */

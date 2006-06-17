@@ -140,6 +140,9 @@
 #define CBC
 #define CTR
 
+/* F8 chaining mode */
+#define LTC_F8_MODE
+
 /* LRW mode */
 #define LRW_MODE
 #ifndef LTC_NO_TABLES
@@ -348,5 +351,5 @@
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/headers/tomcrypt_custom.h,v $ */
-/* $Revision: 1.44 $ */
-/* $Date: 2006/05/29 11:21:26 $ */
+/* $Revision: 1.45 $ */
+/* $Date: 2006/06/16 22:49:25 $ */

@@ -41,6 +41,7 @@ int der_encode_integer(void *num, unsigned char *out, unsigned long *outlen)
    }
 
    if (*outlen < tmplen) {
+      *outlen = tmplen;
       return CRYPT_BUFFER_OVERFLOW;
    }
 
@@ -125,5 +126,5 @@ int der_encode_integer(void *num, unsigned char *out, unsigned long *outlen)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/integer/der_encode_integer.c,v $ */
-/* $Revision: 1.6 $ */
-/* $Date: 2006/04/22 01:22:55 $ */
+/* $Revision: 1.7 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

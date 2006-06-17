@@ -26,8 +26,8 @@
 void ecc_sizes(int *low, int *high)
 {
  int i;
- LTC_ARGCHK(low  != NULL);
- LTC_ARGCHK(high != NULL);
+ LTC_ARGCHKVD(low  != NULL);
+ LTC_ARGCHKVD(high != NULL);
 
  *low = INT_MAX;
  *high = 0;
@@ -43,6 +43,6 @@ void ecc_sizes(int *low, int *high)
 
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/ecc/ecc_sizes.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2006/06/09 01:38:14 $ */
 

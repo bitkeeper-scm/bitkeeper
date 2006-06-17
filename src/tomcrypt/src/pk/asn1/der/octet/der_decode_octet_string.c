@@ -66,6 +66,7 @@ int der_decode_octet_string(const unsigned char *in, unsigned long inlen,
 
    /* is it too long? */
    if (len > *outlen) {
+      *outlen = len;
       return CRYPT_BUFFER_OVERFLOW;
    }
 
@@ -86,5 +87,5 @@ int der_decode_octet_string(const unsigned char *in, unsigned long inlen,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/octet/der_decode_octet_string.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

@@ -42,6 +42,7 @@ int der_encode_bit_string(const unsigned char *in, unsigned long inlen,
    }
 
    if (len > *outlen) {
+      *outlen = len;
       return CRYPT_BUFFER_OVERFLOW;
    }
 
@@ -83,5 +84,5 @@ int der_encode_bit_string(const unsigned char *in, unsigned long inlen,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/bit/der_encode_bit_string.c,v $ */
-/* $Revision: 1.2 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.3 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

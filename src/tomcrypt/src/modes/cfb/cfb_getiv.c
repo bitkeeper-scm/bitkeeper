@@ -30,6 +30,7 @@ int cfb_getiv(unsigned char *IV, unsigned long *len, symmetric_CFB *cfb)
    LTC_ARGCHK(len != NULL);
    LTC_ARGCHK(cfb != NULL);
    if ((unsigned long)cfb->blocklen > *len) {
+      *len = cfb->blocklen;
       return CRYPT_BUFFER_OVERFLOW;
    }
    XMEMCPY(IV, cfb->IV, cfb->blocklen);
@@ -41,5 +42,5 @@ int cfb_getiv(unsigned char *IV, unsigned long *len, symmetric_CFB *cfb)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/cfb/cfb_getiv.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

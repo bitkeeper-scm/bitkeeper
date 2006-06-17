@@ -48,13 +48,13 @@ void ltc_ecc_del_point(ecc_point *p)
 {
    /* prevents free'ing null arguments */
    if (p != NULL) {
-      mp_clear_multi(p->x, p->y, p->z, NULL);
+      mp_clear_multi(p->x, p->y, p->z, NULL); /* note: p->z may be NULL but that's ok with this function anyways */
       XFREE(p);
    }
 }
 
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/ecc/ltc_ecc_points.c,v $ */
-/* $Revision: 1.3 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.4 $ */
+/* $Date: 2006/06/09 21:46:17 $ */
 

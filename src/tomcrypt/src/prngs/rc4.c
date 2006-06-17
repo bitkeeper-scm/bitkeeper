@@ -171,6 +171,7 @@ int rc4_export(unsigned char *out, unsigned long *outlen, prng_state *prng)
    LTC_ARGCHK(prng   != NULL);
 
    if (*outlen < 32) {
+      *outlen = 32;
       return CRYPT_BUFFER_OVERFLOW;
    }
 
@@ -260,5 +261,5 @@ int rc4_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/prngs/rc4.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

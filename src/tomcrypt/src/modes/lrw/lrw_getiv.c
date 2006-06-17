@@ -30,6 +30,7 @@ int lrw_getiv(unsigned char *IV, unsigned long *len, symmetric_LRW *lrw)
    LTC_ARGCHK(len != NULL);
    LTC_ARGCHK(lrw != NULL);
    if (*len < 16) {
+       *len = 16;
        return CRYPT_BUFFER_OVERFLOW;
    }
 
@@ -40,5 +41,5 @@ int lrw_getiv(unsigned char *IV, unsigned long *len, symmetric_LRW *lrw)
 
 #endif
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/lrw/lrw_getiv.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

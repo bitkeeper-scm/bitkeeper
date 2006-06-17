@@ -129,6 +129,7 @@ int pkcs_1_pss_encode(const unsigned char *msghash, unsigned long msghashlen,
 
    /* output is DB || hash || 0xBC */
    if (*outlen < modulus_len) {
+      *outlen = modulus_len;
       err = CRYPT_BUFFER_OVERFLOW;
       goto LBL_ERR;
    }
@@ -170,5 +171,5 @@ LBL_ERR:
 #endif /* PKCS_1 */
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/pkcs1/pkcs_1_pss_encode.c,v $ */
-/* $Revision: 1.6 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.7 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

@@ -175,6 +175,9 @@ const char *crypt_build_settings =
 #endif
     "\n"
 #endif
+#if defined(LTC_F8_MODE)
+    "   F8 MODE\n"
+#endif    
 
     "\nMACs:\n"
 #if defined(HMAC)
@@ -339,5 +342,5 @@ const char *crypt_build_settings =
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/misc/crypt/crypt.c,v $ */
-/* $Revision: 1.20 $ */
-/* $Date: 2006/05/25 17:51:45 $ */
+/* $Revision: 1.21 $ */
+/* $Date: 2006/06/17 00:06:06 $ */

@@ -30,6 +30,7 @@ int cbc_getiv(unsigned char *IV, unsigned long *len, symmetric_CBC *cbc)
    LTC_ARGCHK(len != NULL);
    LTC_ARGCHK(cbc != NULL);
    if ((unsigned long)cbc->blocklen > *len) {
+      *len = cbc->blocklen;
       return CRYPT_BUFFER_OVERFLOW;
    }
    XMEMCPY(IV, cbc->IV, cbc->blocklen);
@@ -41,5 +42,5 @@ int cbc_getiv(unsigned char *IV, unsigned long *len, symmetric_CBC *cbc)
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/modes/cbc/cbc_getiv.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

@@ -39,6 +39,7 @@ int der_encode_object_identifier(unsigned long *words, unsigned long  nwords,
       return err;
    }
    if (x > *outlen) {
+      *outlen = x;
       return CRYPT_BUFFER_OVERFLOW;
    }
 
@@ -106,5 +107,5 @@ int der_encode_object_identifier(unsigned long *words, unsigned long  nwords,
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/object_identifier/der_encode_object_identifier.c,v $ */
-/* $Revision: 1.4 $ */
-/* $Date: 2006/04/16 20:17:42 $ */
+/* $Revision: 1.5 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

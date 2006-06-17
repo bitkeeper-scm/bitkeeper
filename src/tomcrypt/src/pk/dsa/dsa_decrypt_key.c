@@ -105,6 +105,7 @@ int dsa_decrypt_key(const unsigned char *in,  unsigned long  inlen,
 
    /* avoid buffer overflow */
    if (*outlen < decode[2].size) {
+      *outlen = decode[2].size;
       err = CRYPT_BUFFER_OVERFLOW;
       goto LBL_ERR;
    }
@@ -133,6 +134,6 @@ LBL_ERR:
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/dsa/dsa_decrypt_key.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2006/06/16 21:53:41 $ */
 

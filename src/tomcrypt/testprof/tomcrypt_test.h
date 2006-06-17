@@ -5,7 +5,7 @@
 #include <tomcrypt.h>
 
 /* enable stack testing */
-// #define STACK_TEST
+/* #define STACK_TEST */
 
 /* stack testing, define this if stack usage goes downwards [e.g. x86] */
 #define STACK_DOWN
@@ -73,5 +73,5 @@ void time_encmacs(void);
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/testprof/tomcrypt_test.h,v $ */
-/* $Revision: 1.11 $ */
-/* $Date: 2005/08/23 00:41:33 $ */
+/* $Revision: 1.12 $ */
+/* $Date: 2006/06/07 22:00:56 $ */

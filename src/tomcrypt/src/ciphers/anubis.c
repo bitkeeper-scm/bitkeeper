@@ -1554,5 +1554,5 @@ int anubis_keysize(int *keysize)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/ciphers/anubis.c,v $ */
-/* $Revision: 1.11 $ */
-/* $Date: 2006/03/31 14:15:34 $ */
+/* $Revision: 1.12 $ */
+/* $Date: 2006/06/07 21:46:09 $ */

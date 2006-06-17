@@ -273,6 +273,7 @@ int yarrow_export(unsigned char *out, unsigned long *outlen, prng_state *prng)
    /* we'll write 64 bytes for s&g's */
    if (*outlen < 64) {
       LTC_MUTEX_UNLOCK(&prng->yarrow.prng_lock);
+      *outlen = 64;
       return CRYPT_BUFFER_OVERFLOW;
    }
 
@@ -348,5 +349,5 @@ int yarrow_test(void)
 
 
 /* $Source: /cvs/libtom/libtomcrypt/src/prngs/yarrow.c,v $ */
-/* $Revision: 1.7 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.8 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

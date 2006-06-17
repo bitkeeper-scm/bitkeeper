@@ -23,12 +23,12 @@
 void zeromem(void *out, size_t outlen)
 {
    unsigned char *mem = out;
-   LTC_ARGCHK(out != NULL);
+   LTC_ARGCHKVD(out != NULL);
    while (outlen-- > 0) {
       *mem++ = 0;
    }
 }
 
 /* $Source: /cvs/libtom/libtomcrypt/src/misc/zeromem.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2006/06/09 01:38:13 $ */

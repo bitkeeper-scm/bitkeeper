@@ -42,6 +42,7 @@ int der_encode_short_integer(unsigned long num, unsigned char *out, unsigned lon
    }
 
    if (*outlen < len) {
+      *outlen = len;
       return CRYPT_BUFFER_OVERFLOW;
    }
 
@@ -92,5 +93,5 @@ int der_encode_short_integer(unsigned long num, unsigned char *out, unsigned lon
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/asn1/der/short_integer/der_encode_short_integer.c,v $ */
-/* $Revision: 1.5 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.6 $ */
+/* $Date: 2006/06/16 21:53:41 $ */

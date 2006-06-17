@@ -83,6 +83,7 @@ int rsa_exptmod(const unsigned char *in,   unsigned long inlen,
    /* read it back */
    x = (unsigned long)mp_unsigned_bin_size(key->N);
    if (x > *outlen) {
+      *outlen = x;
       err = CRYPT_BUFFER_OVERFLOW;
       goto done;
    }
@@ -110,5 +111,5 @@ done:
 #endif
 
 /* $Source: /cvs/libtom/libtomcrypt/src/pk/rsa/rsa_exptmod.c,v $ */
-/* $Revision: 1.12 $ */
-/* $Date: 2006/03/31 14:15:35 $ */
+/* $Revision: 1.13 $ */
+/* $Date: 2006/06/16 21:53:41 $ */
