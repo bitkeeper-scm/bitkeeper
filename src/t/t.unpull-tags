@@ -1,0 +1,36 @@
+
+echo $N Unpull after a pull which has a tag as the newest thing .....$NL
+commercial project
+cd ..
+bk clone $Q project tag
+cd project
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ../tag
+bk tag $Q TAGIT
+bk pull $Q || exit 1
+bk unpull -f $Q 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Unpull after a pull which has a delta as the newest thing ...$NL
+cd $HERE
+bk clone $Q project chg
+cd project
+bk tag $Q TAGIT
+cd ../chg
+touch bar
+bk new $Q bar
+bk commit $Q -ybar
+bk pull $Q || exit 1
+bk unpull -f $Q 2> ERR > OUT
+if [ $? -ne 0 ]; then
+	echo 'failed (bug 2002-11-30-001)'
+else
+	echo 'bug 2002-11-30-001 fixed! update test.'
+	exit 1
+fi

@@ -235,9 +235,10 @@ getrev(char *top_rev, int aflg)
 	if (aflg) {
 		cmd = aprintf("bk -R prs -ohnMa -r'1.0..%s' -d:REV: ChangeSet",
 		    top_rev);
-	} else{
-		cmd = aprintf("bk -R prs -hnr'%s' -d:REV: ChangeSet", 
-		    top_rev);
+	} else if (streq(top_rev, "-")) {
+		cmd = strdup("bk -R key2rev ChangeSet");
+	} else {
+		cmd = aprintf("bk -R prs -hnr'%s' -d:REV: ChangeSet", top_rev);
 	}
 	f = popen(cmd, "r");
 	free(cmd);
