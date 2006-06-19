@@ -314,44 +314,38 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 	return (0);
 }
 
-private int
-fix_rev(sccs *s, char **rev, char rev_buf[])
+private char *
+fix_rev(sccs *s, char *rev)
 {
 	delta	*d;
 
-	d = sccs_findrev(s, (*rev && **rev) ? *rev : "+");
-	unless (d) {
-		fprintf(stderr, "Cannot find revision \"%s\"\n", 
-		    (*rev && **rev) ? *rev : "+");
-		return (-1); /* failed */
+	unless (rev && *rev) rev = "+";
+	unless (d = sccs_findrev(s, rev)) {
+		fprintf(stderr, "Cannot find revision \"%s\"\n", rev);
+		return (0); /* failed */
 	}
 	assert(d);
-	strcpy(rev_buf, d->rev);
-	*rev = rev_buf;
-	return (0); /* ok */
+	return (strdup(d->rev)); /* ok */
 }
 
 private int
 parse_rev(sccs	*s,
-	char	*args, char **rev1, char **revM, char **rev2, char rev_buf[])
+	char	*args, char **rev1, char **revM, char **rev2)
 {
 	char	*p;
 
-	unless (args) args = "+";
 	p = strchr(args, ',');
 	unless (p) {
 		for (p = strchr(args, '.');
 		    p && (p[1] != '.'); p = strchr(p+1, '.'));
 	}
 	if (p) {
-		*rev1 = args;
 		if (*p == '.') *p++ = 0;
 		*p++ = 0;
-		*rev2 = p;
-		if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
+		unless (*rev1 = fix_rev(s, args)) return (1); /* failed */
+		unless (*rev2 = fix_rev(s, p)) return (1); /* failed */
 	} else {
-		*rev2 = args;
-		if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
+		unless (*rev2 = fix_rev(s, args)) return (1); /* failed */
 		if (sccs_parent_revs(s, *rev2, rev1, revM)) {
 			return (1); /* failed */
 		}
@@ -365,7 +359,6 @@ rset_main(int ac, char **av)
 	int	c;
 	char	*rev1 = 0, *rev2 = 0, *revM = 0;
 	char	s_cset[] = CHANGESET;
-	char	rbuf[20];
 	sccs	*s = 0;
 	MDBM	*db1, *db2 = 0, *idDB;
 	options	opts;
@@ -378,7 +371,7 @@ rset_main(int ac, char **av)
 	s = sccs_init(s_cset, SILENT);
 	assert(s);
 
-	while ((c = getopt(ac, av, "ahHl|r|")) != -1) {
+	while ((c = getopt(ac, av, "ahHl;r;")) != -1) {
 		switch (c) {
 		case 'a':					/* doc 2.0 */	
 				opts.show_all = 1;  /* show deleted files */
@@ -390,11 +383,11 @@ rset_main(int ac, char **av)
 				opts.hide_cset = 1; /* hide ChangeSet file */
 				break;
 		case 'l':	opts.lflg = 1;			/* doc 2.0 */
-				rev1 = optarg;
+				rev1 = strdup(optarg);
 				break;
 		case 'r':	opts.rflg = 1;			/* doc 2.0 */
 				if (parse_rev(s, optarg,
-						&rev1, &revM, &rev2, rbuf)) {
+					&rev1, &revM, &rev2)) {
 					sccs_free(s);
 					return (1); /* parse failed */
 				}
@@ -442,5 +435,8 @@ usage:				system("bk help -s rset");
 	} else {
 		rel_list(db1, idDB, rev1, opts);
 	}
+	if (rev1) free(rev1);
+	if (rev2) free(rev2);
+	if (revM) free(revM);
 	return (0);
 }
