@@ -29,6 +29,7 @@ upgrade_main(int ac, char **av)
 	int	install = 0;
 	int	force = 0;
 	int	obsolete = 0;
+	char	*oldversion, *errs = 0, *lic;
 	char	*indexfn, *index;
 	char	*p, *e;
 	char	*platform = 0;
@@ -192,6 +193,19 @@ next:				freeLines(data, free);
 		rc = 0;
 		goto out;
 	}
+
+	/* obtain new lease here */
+	oldversion = bk_vers;
+	bk_vers = data[3];
+	unless (lic = lease_bkl(0, &errs)) {
+		lease_printerr(errs);
+		free(errs);
+		rc = 2;
+		goto out;
+	}
+	bk_vers = oldversion;
+	free(lic);
+
 	tmpbin = aprintf("%s.tmp", data[1]);
 	if (upgrade_fetch(data[1], tmpbin)) {
 		fprintf(stderr, "upgrade: unable to fetch %s\n", data[1]);

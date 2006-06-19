@@ -1266,6 +1266,14 @@ If the upgrade command is given the -a option to request the binary
 for another architecture, then it cannot also be given the -i option to
 install that binary.
 $
+#license-restricted
+A license request was rejected by the license server.
+
+If this error occurs in 'bk upgrade' you may be attempting to fetch a release
+with a limited distribution.
+
+Please send mail to support@bitmover.com to request assistance.
+$
 #comments-badfmt
 Illegal format for input to the 'bk comments' command.  Lines should
 match this format:
