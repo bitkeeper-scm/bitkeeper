@@ -50,7 +50,11 @@ repogca_main(int ac, char **av)
 		d->flags |= D_RED;
 	}
 	status = pclose(f);
-
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+		sccs_free(s);
+		fprintf(stderr, "repogca: connection to parent failed\n");
+		return (2);
+	}
 	for (d = s->table; d; d = d->next) {
 		if ((d->type == 'D') && !(d->flags & D_RED)) {
 			sccs_prsdelta(s, d, 0, dspec, stdout);
