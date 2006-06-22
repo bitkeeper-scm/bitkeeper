@@ -456,8 +456,6 @@ cmdlog_start(char **av, int httpMode)
 		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
 	}
 
-	unless (proj_root(0)) return;
-
 	for (len = 1, i = 0; av[i]; i++) {
 		len += strlen(av[i]) + 1;
 		if (len >= sizeof(cmdlog_buffer)) continue;
@@ -465,6 +463,8 @@ cmdlog_start(char **av, int httpMode)
 		strcat(cmdlog_buffer, av[i]);
 	}
 	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
+
+	unless (proj_root(0)) return;
 
 	/*
 	 * Provide a way to do nested repo operations.  Used by import
@@ -702,10 +702,10 @@ cmdlog_end(int ret)
 #endif
 		}
 	}
+out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
 	cmdlog_flags = 0;
-out:
 	return (flags);
 }
 
@@ -945,7 +945,7 @@ showproc_start(char **av)
 	int	i;
 
 	unless (showproc_connect()) return;
-	lines = addLine(0, aprintf("BK  (%u t: %5s)", getpid(), milli()));
+	lines = addLine(0, aprintf("BK  (%5u: %5s)", getpid(), milli()));
 	for (i = 0; av[i]; ++i) lines = addLine(lines, aprintf(" %s", av[i]));
 	lines = addLine(lines, strdup("\n"));
 	showproc(lines);	/* it frees */
@@ -957,7 +957,7 @@ showproc_end(char *cmdlog_buffer, int ret)
 	char	**lines;
 
 	unless (showproc_connect()) return;
-	lines = addLine(0, aprintf("END (%u t: %5s)", getpid(), milli()));
+	lines = addLine(0, aprintf("END (%5u: %5s)", getpid(), milli()));
 	lines = addLine(lines, aprintf(" %s = %d\n", cmdlog_buffer, ret));
 	showproc(lines);	/* it frees */
 }

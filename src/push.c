@@ -46,7 +46,7 @@ push_main(int ac, char **av)
 	opts.doit = opts.verbose = 1;
 	opts.out = stderr;
 
-	while ((c = getopt(ac, av, "ac:deE:Gilno;qtz|")) != -1) {
+	while ((c = getopt(ac, av, "ac:deE:Gilno;qtTz|")) != -1) {
 		switch (c) {
 		    case 'a': opts.autopull = 1; break;		/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
@@ -66,6 +66,7 @@ push_main(int ac, char **av)
 		    case 'o': opts.out = fopen(optarg, "w"); 
 			      unless (opts.out) perror(optarg);
 			      break;
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
@@ -577,7 +578,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		if (trigger(av[0], "pre")) {
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
-			done = 1;
+			done = 2;
 		} else if (send_patch_msg(r, rev_list, envVar)) {
 			rc = 1;
 			done = 1;
@@ -668,7 +669,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 
 done:
 	if (rc) putenv("BK_STATUS=CONFLICTS");
-	trigger(av[0], "post");
+	unless (done == 2) trigger(av[0], "post");
 	if (rev_list[0]) unlink(rev_list);
 
 	/*
