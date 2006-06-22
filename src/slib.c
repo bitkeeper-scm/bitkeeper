@@ -3719,40 +3719,34 @@ private MDBM *
 loadRepoConfig(char *root)
 {
 	MDBM	*DB = 0;
-	char 	*config;
 	sccs	*s = 0;
+	char	config[MAXPATH];
 
 	/*
 	 * If the config is already checked out, use that.
 	 */
-	config = aprintf("%s/BitKeeper/etc/config", root);
+	concat_path(config, root, "/BitKeeper/etc/config");
 	if (exists(config)) {
 		DB = mdbm_mem();
 		config2mdbm(DB, config);
-		free(config);
 		return (DB);
 	}
-	free(config);
 
 	/*
 	 * No g file, so load it directly from the s.file
 	 */
-	config = aprintf("%s/BitKeeper/etc/SCCS/s.config", root);
-	unless (exists(config)) {
-out:		free(config);
-		return (0);
-	}
+	concat_path(config, root, "BitKeeper/etc/SCCS/s.config");
+	unless (exists(config)) return (0);
 
-	unless (s = sccs_init(config, SILENT)) goto out;
+	unless (s = sccs_init(config, SILENT)) return (0);
 	s->state |= S_CONFIG; /* This should really be stored on disk */
 	if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASH|GET_HASHONLY, 0)) {
 		sccs_free(s);
-		goto out;
+		return (0);
 	}
 	DB = s->mdbm;
 	s->mdbm = 0;
 	sccs_free(s);
-	free(config);
 	return (DB);
 }
 

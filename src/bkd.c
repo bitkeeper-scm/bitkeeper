@@ -179,7 +179,7 @@ get_byte_count(void)
 	FILE *f = 0;
 
 	unless (proj_root(0)) return (0);
-	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
+	concat_path(buf, proj_root(0), "/BitKeeper/log/byte_count");
 	f = fopen(buf, "r");
 	if (f && fgets(buf, sizeof(buf), f)) {
 		if (strlen(buf) > 11) {
@@ -201,7 +201,7 @@ save_byte_count(unsigned int byte_count)
 	char	buf[MAXPATH];
 
 	unless (proj_root(0)) return;
-	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
+	concat_path(buf, proj_root(0), "/BitKeeper/log/byte_count");
 	f = fopen(buf, "w");
 	if (f) {
 		fprintf(f, "%u\n", byte_count);

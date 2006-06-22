@@ -437,8 +437,8 @@ findRoot(char *name)
 	char	*s, *t;
 	char	path[MAXPATH];
 	int	tries = 256;
-	
-	sprintf(path, "%s/BitKeeper/etc", name);
+
+	concat_path(path, name, "/BitKeeper/etc");
 	if (isdir(path)) {
 		chdir(name);
 		strcpy(root, url(name));
@@ -446,7 +446,7 @@ findRoot(char *name)
 	}
 	for (s = strrchr(name, '/'); s && (s != name); ) {
 		*s = 0;
-		sprintf(path, "%s/BitKeeper/etc", name);
+		concat_path(path, name, "/BitKeeper/etc");
 		unless (--tries) break;		/* just in case */
 		if (isdir(path)) {
 			chdir(name);
@@ -919,7 +919,7 @@ http_src(char *path)
 	EACH (d) {
 		if (streq("SCCS", d[i])) continue;
 		if (path[1]) {
-			sprintf(buf, "%s/%s", path, d[i]);
+			concat_path(buf, path, d[i]);
 		} else {
 			strcpy(buf, d[i]);
 		}

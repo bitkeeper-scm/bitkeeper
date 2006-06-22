@@ -571,11 +571,13 @@ write_log(char *root, char *file, int rotate, char *format, ...)
 	off_t	logsize;
 	va_list	ap;
 
-	sprintf(path, "%s/BitKeeper/log/%s", root, file);
+	concat_path(path, root, "/BitKeeper/log/");
+	concat_path(path, path, file);
 	unless (f = fopen(path, "a")) {
-		sprintf(path, "%s/%s", root, BKROOT);
+		concat_path(path, root, BKROOT);
 		unless (exists(path)) return (1);
-		sprintf(path, "%s/BitKeeper/log/%s", root, file);
+		concat_path(path, root, "/BitKeeper/log/");
+		concat_path(path, path, file);
 		unless (mkdirf(path)) return (1);
 		unless (f = fopen(path, "a")) {
 			fprintf(stderr, "Cannot open %s\n", path);
@@ -732,8 +734,8 @@ usage:			system("bk help cmdlog");
 		}
 	}
 	if (things && d[0]) cutoff = rangeCutOff(d[0]);
-	sprintf(buf, "%s/BitKeeper/log/%s", proj_root(0),
-	    (all ? "cmd_log" : "repo_log"));
+	concat_path(buf, proj_root(0), "/BitKeeper/log/");
+	concat_path(buf, buf, (all ? "cmd_log" : "repo_log"));
 	f = fopen(buf, "r");
 	unless (f) return;
 	while (fgets(buf, sizeof(buf), f)) {

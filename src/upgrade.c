@@ -288,7 +288,7 @@ upgrade_fetch(char *name, char *file)
 	char	buf[MAXPATH];
 
 	unlink(file);
-	sprintf(buf, "%s/%s", urlbase, name);
+	concat_path(buf, urlbase, name);
 	unless (strneq(buf, "http://", 7)) {
 		/* urlbase might contain a local pathname */
 		return (fileCopy(buf, file));
