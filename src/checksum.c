@@ -496,32 +496,3 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 	mdbm_close(root2map);
 	return (found);
 }
-
-#define	LINUX_ROOTKEY \
-"torvalds@athlon.transmeta.com|ChangeSet|20020205173056|16047|c1d11a41ed024864"
-#define	BADKEY	"4076e392jtslXUMZRrRU0ZIm6P7uVg"
-#define	GOODKEY	"4076e392K8UBsl4E_GBNx5_z2ywdfg"
-
-sccs *
-cset_fixLinuxKernelChecksum(sccs *s)
-{
-	delta	*d;
-	char	key[MAXKEY];
-
-	sccs_sdelta(s, sccs_ino(s), key);
-	unless (streq(key, LINUX_ROOTKEY)) return (s); /* linux only */
-	unless (d = sccs_findMD5(s, BADKEY)) return (s);
-
-	if (sccs_findMD5(s, GOODKEY)) {
-		getMsg("bad-linux-kern-tree", 0, 0, stderr);
-		return (0);
-	}
-	unless (sccs_resum(s, d, 0, 1)) {
-		fprintf(stderr, "failed to fix linux checksum error\n");
-		return (0);
-	}
-	sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
-	sccs_restart(s);
-	sccs_findKeyDB(s, 0);
-	return (s);
-}
