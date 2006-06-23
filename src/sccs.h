@@ -1163,7 +1163,7 @@ char	*findDotFile(char *old, char *new, char *buf);
 char	*platform(void);
 char	*pager(void);
 int	bkmail(char *url, char **to, char *subject, char *file);
-int	sfiles_skipdir(char *dir);
+int	sfiles_skipdir(project *proj, char *dir);
 void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);

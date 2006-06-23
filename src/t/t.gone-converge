@@ -12,8 +12,13 @@
 # Copyright (c) 2000 Larry McVoy
 # %K%
 
+# Don't create gone in 'bk setup'
+# (use fresh_commercial so this don't effect cache)
+_BK_SETUP_NOGONE=1
+export _BK_SETUP_NOGONE
+
 echo $N Create two copies of a repository ...........................$NL
-commercial project
+fresh_commercial project
 bk clone $Q $HERE/project $HERE/copy
 echo OK
 echo $N Create two different gone files .............................$NL

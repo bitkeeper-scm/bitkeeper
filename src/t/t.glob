@@ -178,6 +178,7 @@ cd `bk root`
 bk gfiles '[^bf]*' | bk sort > GOT
 cat > WANT <<EOF
 BitKeeper/etc/config
+BitKeeper/etc/gone
 BitKeeper/etc/ignore
 ChangeSet
 src/*.c

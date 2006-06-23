@@ -22,8 +22,13 @@ and
 .LP
 Typical things to ignore are object files, core files, a.out, *.exe, etc.
 .LP
-The patterns are matched against both the basename of the file and the
-pathname of the file.  If you are trying to never have the file 
+The patterns that do not contain a slash are matched against the
+basename of the file and patterns with a slash are matched against the
+pathname of the file relative to the root of the repository.  A './'
+can be added to the start of a pattern to force it to match in the
+repository root.
+.LP
+If you are trying to never have the file
 .ARG JUNK
 match, regardless of which directory it is in, you can say
 .DS
@@ -45,6 +50,16 @@ which will match
 but not
 .BR other_dir/this_one .
 .LP
+If you want to ignore just the JUNK file at the root of the
+repository, you can do
+.DS
+bk ignore ./JUNK
+.DE
+which will match
+.B JUNK
+but not
+.BR sub/dir/JUNK .
+.LP
 If you give ignore no arguments it will print out the current ignore list.
 .LP
 The ignore list is saved in the file
@@ -52,10 +67,28 @@ The ignore list is saved in the file
 You may edit this file if you wish; the format is simply one glob per line.
 Editing the ignore file is the only way to remove entries from the list.
 .LP
+The
+.B BitKeeper/etc/ignore
+file can also be used to prune certain subdirectories of your
+repository.
+By adding a line with the path to a directory from the root of the
+repository followed by " -prune" no BitKeeper operations will descend
+into that directory.
+Pruning large non-revision controlled directory trees that appear in
+your repository can significantly improve performance in some cases.
+The -prune feature only matches the entire directory path from the root
+of the repository and may not contain globs.
+.LP
 The default ignore list is
 .DS
-BitKeeper/*/*
-PENDING/*
+PENDING -prune
+BitKeeper/log -prune
+BitKeeper/tmp -prune
+BitKeeper/writer -prune
+BitKeeper/readers -prune
+BitKeeper/etc/level
+BitKeeper/etc/csets-in
+BitKeeper/etc/csets-out
 .DE
 The following additions are suggested:
 .DS

@@ -567,6 +567,7 @@ lclone(opts opts, remote *r, char *to)
 	char	**files;
 	int	i;
 	int	hasrev;
+	project	*fromproj = 0;
 	char	here[MAXPATH];
 	char	from[MAXPATH];
 	char	dest[MAXPATH];
@@ -626,6 +627,7 @@ out:
 		 * comment there wasn't a way to get here after going through a
 		 * trigger that would have downgraded.  But just in case...
 		 */
+		if (fromproj) proj_free(fromproj);
 		repository_unlock(0);
 		chdir(from);
 		repository_rdunlock(0);
@@ -645,6 +647,7 @@ out:
 		goto out;
 	}
 	chdir(from);
+	fromproj = proj_init("."); /* XXX cleanup */
 	unless (f = popen("bk sfiles -d", "r")) goto out;
 	level = getlevel();
 	chdir(dest);
@@ -656,7 +659,7 @@ out:
 			if (exists(skip)) continue;
 		}
 		sprintf(skip, "%s/%s", from, buf);
-		if(sfiles_skipdir(skip)) continue;
+		if (sfiles_skipdir(fromproj, skip)) continue;
 		unless (opts.quiet || streq(".", buf)) {
 			fprintf(stderr, "Linking %s\n", buf);
 		}
@@ -710,6 +713,7 @@ out:
 	repository_unlock(0);
 	free(fromid);
 	chdir(from);
+	proj_free(fromproj);
 
 	putenv("BKD_REPO_ID=");
 	out_trigger("BK_STATUS=OK", opts.rev, "post");

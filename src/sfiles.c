@@ -64,7 +64,11 @@ private	jmp_buf	sfiles_exit;
 private hash	*timestamps = 0;
 private options	opts;
 private	project	*proj;
-private char	**ignore, **dont_ignore;
+
+private	char	**ignore;	/* list of file pathname globs to ignore */
+private	char	**ignorebase;	/* list of file basename globs to ignore */
+private	hash	*prunedirs;	/* set of dirs to prune */
+
 private u32	d_count, s_count, x_count; /* progress counter */
 private u32	s_last, x_last; /* progress counter */
 private u32	R_count, D_count, C_count, c_count, n_count, p_count, i_count;
@@ -619,7 +623,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 		/*
 		 * Special processing for .bk_skip file
 		 */
-		if (sfiles_skipdir(file)) return (-1);
+		if (sfiles_skipdir(proj, file)) return (-1);
 
 		n = strlen(file);
 
@@ -687,17 +691,57 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 private void
 load_ignore(project *p)
 {
+	char	*file;
+	char	*pat;
+	int	len, isbase;
 	FILE	*ignoref;
-	char	tmp[MAXPATH];
+	char	buf[MAXLINE];
 
-	if (opts.all || !p) return;
-	sprintf(tmp, "%s/BitKeeper/etc/ignore", proj_root(p));
-	unless (exists(tmp)) get(tmp, SILENT, "-");
-	if (ignoref = fopen(tmp, "rt")) {
-		ignore = read_globs(ignoref, 0);
-		fclose(ignoref);
+	ignore = 0;
+	prunedirs = hash_new(HASH_MEMHASH);
+
+	/* add default pruned dirs */
+	hash_storeStr(prunedirs, "BitKeeper/log", 0);
+	hash_storeStr(prunedirs, "BitKeeper/tmp", 0);
+	hash_storeStr(prunedirs, "BitKeeper/writer", 0);
+	hash_storeStr(prunedirs, "BitKeeper/readers", 0);
+	hash_storeStr(prunedirs, "PENDING", 0);
+
+	/* add default ignore patterns */
+	ignore = addLine(ignore, strdup("BitKeeper/etc/level"));
+	ignore = addLine(ignore, strdup("BitKeeper/etc/csets-out"));
+	ignore = addLine(ignore, strdup("BitKeeper/etc/csets-in"));
+
+	if (opts.all) return;
+
+	file = aprintf("%s/BitKeeper/etc/ignore", proj_root(p));
+	unless (exists(file)) get(file, SILENT, "-");
+	ignoref = fopen(file, "r");
+	free(file);
+	unless (ignoref) return;
+	while (fnext(buf, ignoref)) {
+		chomp(buf);
+
+		isbase = (strchr(buf, '/') == 0);
+
+		pat = buf;
+		if (*pat == '/') ++pat;	/* skip leading slash */
+		if (strneq(pat, "./", 2)) pat += 2; /* skip leading ./ */
+
+		unless (len = strlen(pat)) continue; /* blank lines */
+		if ((len > 7) && streq(pat + len - 7, " -prune")) {
+			pat[len-7] = 0;
+			hash_storeStr(prunedirs, pat, 0);
+			continue;
+		}
+		if (isbase) {
+			ignorebase = addLine(ignorebase, strdup(pat));
+		} else {
+			/* pathname glob */
+			ignore = addLine(ignore, strdup(pat));
+		}
 	}
-	dont_ignore = addLine(0, strdup("BitKeeper/etc/gone"));
+	fclose(ignoref);
 }
 
 private void
@@ -731,7 +775,6 @@ walk(char *dir)
 	if (wi.sccsdir) sccsdir(&wi);
 
 	if (ignore) free_globs(ignore);  ignore = 0;
-	if (dont_ignore) free_globs(dont_ignore);  dont_ignore = 0;
 	if (opts.timestamps && timestamps && proj) {
 		dumpTimestampDB(proj, timestamps);
 		hash_free(timestamps);
@@ -779,10 +822,9 @@ chk_diffs(sccs *s)
 private int
 isIgnored(char *file)
 {
-	char	*gfile, *p, *q, save;
-	int	len, rc = 1;
-	struct stat sbuf;
-	char	buf[MAXPATH];
+	char	*gfile;
+	int	rc = 0;
+	struct	stat sbuf;
 
 	/* if not in a repo, don't bother */
 	unless (proj_root(proj)) return (0);
@@ -790,63 +832,14 @@ isIgnored(char *file)
 	/* If this file is not from our repo, then no */
 	unless (gfile = proj_relpath(proj, file)) return (0);
 
-	unless (opts.all || match_globs(gfile, dont_ignore, 0)) {
-		if (match_globs(gfile, ignore, 0)) {
-			debug((stderr, "SKIP\t%s\n", gfile));
-			goto ignored;
-		}
-
-		/*
-		 * For backward compat with "bk sfiles"
-		 * trimed "./" and match against ignore list.
-		 */
-		sprintf(buf, "./%s", gfile);
-		if (match_globs(buf, ignore, 0)) {
-			debug((stderr, "SKIP\t%s\n", gfile));
-			goto ignored;
-		}
-
-		/*
-		 * For backward compat with "bk sfiles"
-		 * match basename/dirname against ignore list.
-		 */
-		p = gfile;
-		while (p) {
-			for (q = p; *q && (*q != '/'); q++);
-			save = *q;
-			*q = 0;
-			if (match_globs(p, ignore, 0)) {
-				*q = save;
-				debug((stderr, "SKIP\t%s\n", gfile));
-				goto ignored;
-			}
-			*q = save;
-			if (save == 0) break;
-			p = ++q;
-		}
-
-		/* ignore special file e.g. char/block/fifo file */
-		if (lstat(file, &sbuf)) goto ignored;
-		unless (sbuf.st_mode && S_IFREG|S_IFLNK) goto ignored;
+	if (match_globs(gfile, ignore, 0) ||		 /* pathname match */
+	    match_globs(basenm(gfile), ignorebase, 0) || /* basename match */
+	    lstat(file, &sbuf) ||			 /* gone? */
+	    !(sbuf.st_mode && S_IFREG|S_IFLNK)) {	 /* not reg file */
+		rc = 1;
 	}
-
-	/*
-	 * HACK to hide stuff in the log and locks directory
-	 * This assumes that sfiles is ran from project root
-	 * If you run "bk sfiles" under <project root>/BitKeeper directory,
-	 * these file will show up. It is probably OK.
-	 */
-	len = strlen(gfile);
-	if (pathneq("BitKeeper/log/", gfile, 14)) goto ignored;
-	if (pathneq("BitKeeper/writer/", gfile, 17)) goto ignored;
-	if (pathneq("BitKeeper/readers/", gfile, 18)) goto ignored;
-	if (pathneq("PENDING/", gfile, 8)) goto ignored;
-
-	rc = 0;
-ignored:
 	free(gfile);
 	return (rc);
-
 }
 
 private int
@@ -1234,10 +1227,19 @@ enableFastPendingScan(void)
  * and return false, because that is likely to be a mistake.
  */
 int
-sfiles_skipdir(char *dir)
+sfiles_skipdir(project *proj, char *dir)
 {
 	char	*p;
+	int	rc;
 	char	buf[MAXPATH];
+
+	/* Handle pruned dirs */
+	if (proj_root(proj) && (p = proj_relpath(proj, dir))) {
+		unless (prunedirs) load_ignore(proj);
+		rc = (hash_fetchStr(prunedirs, p) != 0);
+		free(p);
+		if (rc) return (1);
+	}
 
 	/* No .bk_skip? */
 	snprintf(buf, sizeof(buf), "%s/%s", dir, BKSKIP);
@@ -1270,6 +1272,8 @@ private int
 findsfiles(char *file, struct stat *sb, void *data)
 {
 	char	*p = strrchr(file, '/');
+	char	*gfile;
+	int	rc;
 	sinfo	*si = (sinfo *)data;
 
 	unless (p) return (0);
@@ -1282,6 +1286,11 @@ findsfiles(char *file, struct stat *sb, void *data)
 			strcat(file, "/etc");
 			if (exists(file)) return (-2);
 		}
+		if (proj && (gfile = proj_relpath(proj, file))) {
+			rc = (hash_fetchStr(prunedirs, gfile) != 0);
+			free(gfile);
+			if (rc) return (-1);
+		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
 			return (si->fn(file, sb, si->data));
@@ -1290,7 +1299,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 * Skip directory containing a .bk_skip file
 			 */
 			p[1] = 0;
-			if (sfiles_skipdir(file)) return (-2);
+			if (sfiles_skipdir(0, file)) return (-2);
 		}
 	}
 	return (0);
@@ -1300,9 +1309,15 @@ int
 walksfiles(char *dir, walkfn fn, void *data)
 {
 	sinfo	si;
+	int	rc;
 
 	si.fn = fn;
 	si.data = data;
 	si.rootlen = strlen(dir);
-	return (walkdir(dir, findsfiles, &si));
+	if (proj = proj_init(dir)) {
+		load_ignore(proj);
+	}
+	rc = walkdir(dir, findsfiles, &si);
+	if (proj) proj_free(proj);
+	return (rc);
 }
