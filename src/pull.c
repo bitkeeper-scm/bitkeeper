@@ -12,7 +12,7 @@ typedef	struct {
 	u32	nospin:1;		/* -Q: no spin for the GUI */
 	u32	fullPatch:1;		/* -F force fullpatch */
 	u32	noresolve:1;		/* -R: don't run resolve at all */
-	u32	textOnly:1;		/* -t: pass -t to resolve */
+	u32	textOnly:1;		/* -T: pass -T to resolve */
 	u32	autoOnly:1;		/* -s: pass -s to resolve */
 	u32	debug:1;		/* -d: debug */
 	u32	update_only:1;		/* -u: pull iff no local csets */
@@ -47,7 +47,7 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:dE:GFilnqr;Rstuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:dE:GFilnqr;RstTuw|z|")) != -1) {
 		switch (c) {
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
@@ -58,6 +58,7 @@ pull_main(int ac, char **av)
 		    case 'r': opts.rev = optarg; break;
 		    case 'R': opts.noresolve = 1; break;	/* doc 2.0 */
 		    case 's': opts.autoOnly = 1; break;
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'F': opts.fullPatch = 1; break;	/* undoc 2.0 */

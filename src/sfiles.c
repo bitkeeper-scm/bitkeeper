@@ -573,6 +573,7 @@ struct winfo {
 	char	*sccsdir;
 	int	sccsdirlen;
 	int	seenfirst;
+	int	rootlen;
 };
 
 private void
@@ -612,6 +613,19 @@ add_to_winfo(winfo *wi, char *file, int sccs)
 	mdbm_store_str((sccs ? wi->sDB : wi->gDB), file, "", MDBM_INSERT);
 }
 
+private void
+winfo_free(winfo *wi)
+{
+	mdbm_close(wi->gDB);
+	wi->gDB = 0;
+	mdbm_close(wi->sDB);
+	wi->sDB = 0;
+	free(wi->sccsdir);
+	wi->sccsdir = 0;
+	wi->sfiles = 0;
+}
+
+
 private int
 sfiles_walk(char *file, struct stat *sb, void *data)
 {
@@ -620,33 +634,47 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 	int	n, nonsccs, root;
 
 	if (S_ISDIR(sb->st_mode)) {
-		/*
-		 * Special processing for .bk_skip file
-		 */
-		if (sfiles_skipdir(proj, file)) return (-1);
-
-		n = strlen(file);
-
-		/* Handle subrepos */
-		if (wi->sccsdir) {
-			strcpy(&file[n], "/" BKROOT);
-			root = exists(file);
-			file[n] = 0;
-			if (root) {
-				do_print("R      ", file, 0);
-				return (-1);
-			}
-		}
-
 		/* if SCCS dir start new processing */
-		p = 0;
-		if ((p = strrchr(file, '/')) && patheq(p+1, "SCCS")) {
+		p = strrchr(file, '/');
+		if (p && patheq(p+1, "SCCS")) {
 			if (wi->sccsdir) sccsdir(wi);
 			wi->sccsdir = strdup(file);
 			if (p = strrchr(wi->sccsdir, '/')) *++p = 0;
 			wi->sccsdirlen = strlen(wi->sccsdir);
 		} else {
+			if (p && ((p - file) > wi->rootlen) &&
+			    patheq(p+1, "BitKeeper")) {
+				/*
+				 * Do not cross into other package roots
+				 * (e.g. RESYNC).
+				 */
+				strcpy(p+1, BKROOT);
+				root = exists(file);
+				if (root) {
+					*p = 0;
+					do_print("R      ", file, 0);
+					winfo_free(wi);
+					return (-2);
+				}
+				strcpy(p+1, "BitKeeper");
+			}
+			unless (wi->sccsdir) {
+				/*
+				 * Special processing for .bk_skip file
+				 */
+				if (sfiles_skipdir(file)) return (-1);
+			}
 			if (opts.dirs || opts.xdirs) {
+				n = strlen(file);
+				if (n > wi->rootlen) {
+					strcpy(&file[n], "/" BKROOT);
+					root = exists(file);
+					file[n] = 0;
+					if (root) {
+						do_print("R      ", file, 0);
+						return (-1);
+					}
+				}
 				strcpy(&file[n], "/SCCS");
 				nonsccs = !exists(file) || emptyDir(file);
 				file[n] = 0;
@@ -654,10 +682,6 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 					do_print("D      ", file, 0);
 				}
 				if (opts.dirs && !nonsccs) {
-					strcat(&file[n], "/");
-					strcat(&file[n+1], BKROOT);
-					root = exists(file);
-					file[n] = 0;
 					do_print("d      ", file, 0);
 				}
 			}
@@ -678,6 +702,11 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 				p += 5;
 			}
 			if (!strchr(p, '/')) {
+				if (patheq(p, BKSKIP)) {
+					/* abort current dir */
+					winfo_free(wi);
+					return (-2);
+				}
 				add_to_winfo(wi, p, sccs);
 				return (0);
 			}
@@ -771,6 +800,7 @@ walk(char *dir)
 	s_count = x_count = 0;
 #endif
 
+	wi.rootlen = strlen(dir);
 	walkdir(dir, sfiles_walk, &wi);
 	if (wi.sccsdir) sccsdir(&wi);
 
@@ -1202,13 +1232,7 @@ sccsdir(winfo *wi)
 			}
 		}
 	}
-	mdbm_close(wi->gDB);
-	wi->gDB = 0;
-	mdbm_close(wi->sDB);
-	wi->sDB = 0;
-	free(wi->sccsdir);
-	wi->sccsdir = 0;
-	wi->sfiles = 0;
+	winfo_free(wi);
 }
 
 /*
@@ -1242,18 +1266,18 @@ sfiles_skipdir(project *proj, char *dir)
 	}
 
 	/* No .bk_skip? */
-	snprintf(buf, sizeof(buf), "%s/%s", dir, BKSKIP);
+	concat_path(buf, dir, BKSKIP);
 	unless (exists(buf)) return (0);
 
 	/* There is a .bk_skip; if we are in SCCS already then we skip */
 	if ((p = strrchr(dir, '/')) && streq(p, "/SCCS")) return (1);
 
 	/* We are not in SCCS; if there is no SCCS dir then skip */
-	snprintf(buf, sizeof(buf), "%s/SCCS", dir);
+	concat_path(buf, dir, "SCCS");
 	unless (isdir(buf)) return (1);
 
 	/* We're not in SCCS, there is an SCCS, if SCCS/.bk_skip then skip */
-	snprintf(buf, sizeof(buf), "%s/SCCS/%s", dir, BKSKIP);
+	concat_path(buf, buf, BKSKIP);
 	if (exists(buf)) return (1);
 
 	/* OK, .bk_skip without SCCS/.bk_skip - flag it and keep going */
