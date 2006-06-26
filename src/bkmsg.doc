@@ -370,6 +370,16 @@ If you were running takepatch, then generate a new patch file from the
 source repository using the same method as you have.  If the problem
 occurs again, please run "bk support" and fill in the details. 
 $
+#tp1
+When a file is modified in the destination repository and an incoming
+patch also modifies that file, the incoming patch is not applied; the
+pull/push is aborted.  The reason for this is that BitKeeper has no
+way of performing a "bk unpull" if it auto-merges your uncommitted work;
+there is no audit trail to use to unpull the work.
+
+In order to complete the pull or push, the pending work in the destination
+repository must be committed first.
+$
 #bugtemplate
 BitKeeper Bug Report
 --------------------
@@ -501,7 +511,7 @@ problems are:
       leaves two open branches in the ChangeSet file.
     - Removing a delta which is included by another delta.
 
-It is frequently helpful to look at the ChangeSet file using sccstool to
+It is frequently helpful to look at the ChangeSet file using revtool to
 get a feel for which changesets must be undone together to leave a clean
 tree.
 

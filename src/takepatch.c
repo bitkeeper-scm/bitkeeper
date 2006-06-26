@@ -35,7 +35,7 @@ left||right->path == s->gfile.
 #define	SHOUT() fputs("\n=================================== "\
 		    "ERROR ====================================\n", stderr);
 #define	SHOUT2() fputs("======================================="\
-		    "=======================================\n\n", stderr);
+		    "=======================================\n", stderr);
 #define	NOTICE() fputs("------------------------------------"\
 		    "---------------------------------------\n", stderr);
 
@@ -81,6 +81,7 @@ private	char	*spin = "|/-\\";
 private	int	compat;		/* we are eating a compat patch, fail on tags */
 private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
+private	char	**edited;	/* files that were in modified state */
 
 /*
  * Structure for keys we skip when incoming, used for old LOD keys that
@@ -422,11 +423,9 @@ error:		if (perfile) sccs_free(perfile);
 			int cleanflags = SILENT|CLEAN_SHUTUP|CLEAN_CHECKONLY;
 
 			if (sccs_clean(s, cleanflags)) {
-				shout();
-				fprintf(stderr,
-				    "takepatch: %s is edited and modified; "
-				    "unsafe to overwrite.\n",
-				    s->sfile);
+				edited = addLine(edited, sccs2name(s->sfile));
+				sccs_free(s);
+				s = 0;
 				goto error;
 			} else {
 				sccs_restart(s);
@@ -2079,6 +2078,15 @@ done:
 	if (what & CLEAN_OK) {
 		rc = 0;
 	} else {
+		if (edited) {
+			shout();
+			fprintf(stderr,
+			    "The following files are modified locally and "
+			    "in the patch:\n");
+			EACH(edited) fprintf(stderr, "\t%s\n", edited[i]);
+			fprintf(stderr,
+			    "For more information run \"bk help tp1\"\n");
+		}
 		SHOUT2();
 		if (errfiles) {
 			fprintf(stderr,

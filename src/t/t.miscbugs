@@ -68,7 +68,8 @@ bk pull $Q 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "SCCS/s.foo is edited and modified" ERR || exit 1
+grep -q "The following files are modified locally and in the" ERR || exit 1
+grep -q "	foo" ERR || exit 1
 grep -q "Assertion" ERR && exit 1
 echo OK
 
