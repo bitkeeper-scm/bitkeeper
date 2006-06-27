@@ -1303,6 +1303,64 @@ chmod +x pre-incoming
 cd $HERE
 echo "OK"
 
+echo $N Make sure that outgoing sees the file list when using rsfio..$NL
+cd $HERE/project/BitKeeper/triggers
+cat > pre-outgoing-sfio <<EOF
+echo "EVENT=\$BK_EVENT"
+test "\$BK_EVENT" = "outgoing sfio" || exit 0
+cat "\$BK_FILES" > $HERE/sfio.list
+EOF
+chmod +x pre-outgoing-sfio
+bk rsfio -v@$HERE/project BitKeeper/etc/config 2> OUT | bk sfio -iq
+test -f $HERE/sfio.list -a -s $HERE/sfio.list || {
+	echo Failed
+	cat OUT
+	exit 1
+}
+test `cat $HERE/sfio.list` = "BitKeeper/etc/SCCS/s.config" || {
+	echo failed 
+	cat $HERE/sfio.list
+	exit 1
+}
+rm -rf BitKeeper	# Note we are in $HERE/project/BitKeeper/triggers
+echo OK
+
+echo $N Same thing with post-outgoing ...............................$NL
+cat > post-outgoing-sfio <<EOF
+test "\$BK_EVENT" = "outgoing sfio" || exit 0
+cat "\$BK_FILES" > $HERE/sfio.list
+EOF
+rm $HERE/sfio.list
+bk rsfio -v@$HERE/project BitKeeper/etc/config 2> OUT | bk sfio -iq
+test -f $HERE/sfio.list -a -s $HERE/sfio.list || {
+	echo Failed
+	cat OUT
+	exit 1
+}
+test `cat $HERE/sfio.list` = "BitKeeper/etc/SCCS/s.config" || {
+	echo failed 
+	cat $HERE/sfio.list
+	exit 1
+}
+rm -rf BitKeeper	# Note we are in $HERE/project/BitKeeper/triggers
+echo OK
+
+echo $N Make sure that we can fail the copying of a file ............$NL
+cat > pre-outgoing-sfio <<EOF
+test "\$BK_EVENT" = "outgoing sfio" || exit 0
+grep -q etc "\$BK_FILES" && {
+	echo No etc files for you
+	exit 1
+}
+EOF
+bk rsfio -v@$HERE/project BitKeeper/etc/config 2> OUT 
+grep -q 'No etc files for you' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
 echo $N Clone w/trivial triggers ....................................$NL
 cd $HERE
 bk clone $Q $HERE/project $HERE/copy 2> /dev/null || { echo failed; exit 1; }

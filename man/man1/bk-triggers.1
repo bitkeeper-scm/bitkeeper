@@ -332,6 +332,10 @@ resolve and apply.
 Valid only in the pre-delta trigger, and contains the filename of the file
 about to be delta-ed.
 .tp
+.V BK_FILES
+Valid only in outgoing triggers and, if set, contains the filename of a file
+containing the list of files being transferred via bk rsfio.
+.tp
 .V BK_HOST
 The hostname of the client side host.
 .tp
@@ -553,6 +557,7 @@ exit 0
 .SA pull
 .SA push
 .SA resolve
+.SA rsfio
 .SA tag
 .SH CATEGORY
 .B Repository

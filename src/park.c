@@ -496,15 +496,12 @@ copyFileOrLink(char *from, char *to)
 }
 
 private int
-badSpath(char *root, char *Gpath)
+badSpath(char *root, char *sfile)
 {
 	char	tmp[MAXPATH];
-	char	*Spath;
 
-	if (!Gpath) return (1);
-	Spath = name2sccs(Gpath);
-	sprintf(tmp, "%s/%s", root, Spath); 
-	free(Spath);
+	unless (sfile) return (1);
+	sprintf(tmp, "%s/%s", root, sfile); 
 	/*
 	 * XXX TODO, To be sure we need to extract the root key and compare them
 	 * For now we trust the idcache, which is probaly good enough
@@ -601,17 +598,17 @@ tname2cname(char *tname)
 private char *
 key2Gpath(char *key, MDBM **idDB)
 {
-	char	*gpath;
+	char	*sfile, *gfile;
 	int	try = 0;
 
-retry:	gpath = key2path(key, *idDB);
-	if (badSpath(PARK2ROOT, gpath)) {
+retry:	sfile = key2path(key, *idDB);
+	if (badSpath(PARK2ROOT, sfile)) {
 		if (try == 0) {
 			chdir(PARK2ROOT);
 			sys("bk", "idcache", SYS);
 			mdbm_close(*idDB);
-			unless (*idDB = loadDB(IDCACHE, 0,
-						DB_KEYFORMAT|DB_NODUPS)) {
+			unless (*idDB =
+			    loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 				perror("idcache");
 				exit(1);
 			}
@@ -619,13 +616,13 @@ retry:	gpath = key2path(key, *idDB);
 			try++;
 			goto retry;
 		} else {
-			return(NULL);
+			return (0);
 		}
 	}
-	return (gpath);
+	gfile = sccs2name(sfile);
+	free(sfile);
+	return (gfile);
 }
-
-
 
 /*
  * Copy gfile, sfile and pfile from user tree to PARKDIR, "bk edit" if necessary
