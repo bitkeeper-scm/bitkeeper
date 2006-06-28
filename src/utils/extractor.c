@@ -281,8 +281,8 @@ main(int ac, char **av)
 	}
 
 	/* Clean up your room, kids. */
-	cd(tmpdir);
-out:	unless (getenv("BK_SAVE_INSTALL")) {
+out:	cd(tmpdir);
+	unless (getenv("BK_SAVE_INSTALL")) {
 		cd("..");
 		fprintf(stderr,
 		    "Cleaning up temp files in %s%u ...\n", TMP, pid);
