@@ -1,0 +1,59 @@
+
+# Force bk to use the _real_ 'bk pull' code.
+BK_FORCE_RESOLVE_RERUN=1
+export BK_FORCE_RESOLVE_RERUN
+
+echo $N checkout:EDIT w aborted simple content conflict on pull .....$NL
+#echo checkout:edit >> `bk dotbk`/config
+commercial testparent
+cd BitKeeper/etc
+bk edit $Q config
+echo checkout:edit >> config
+bk ci $Q -yco:edit config || exit 1
+bk commit $Q -yco:edit || exit !
+cd $HERE
+bk clone $Q testparent testc1 || exit 1
+bk clone $Q testparent testc2 || exit 1
+cd testc1
+echo hi > testfile.cpp
+bk new $Q testfile.cpp || exit 1
+bk commit $Q -ynewfile || exit 1
+bk push $Q || exit 1
+cd ../testc2
+bk pull $Q || exit 1
+echo a conflict > testfile.cpp
+bk ci -yconflict $Q testfile.cpp || exit 1
+bk commit $Q -yconflict || exit 1
+cd ../testc1
+echo another conflict >> testfile.cpp
+bk ci -yconflict2 $Q testfile.cpp || exit 1
+bk commit $Q -yconflict2 || exit 1
+bk push $Q || exit 1
+cd ../testc2
+echo q | bk pull $Q 2> ERR && {
+	echo should error
+	exit 1
+}
+test -w testfile.cpp || {
+	echo failed to preserve file
+	exit 1
+}
+echo OK
+
+echo $N checkout:EDIT w resolved simple content conflict on pull ....$NL
+cd $HERE
+bk clone $Q -r1.3 testparent testc3 || exit 1
+cd testc3
+echo 'different conflict' > testfile.cpp
+bk ci $Q -yconflict3 testfile.cpp || exit 1
+bk commit $Q -yconflict3
+(echo ul; echo comment; echo .) | bk pull $Q 2> ERR || {
+	echo should pass
+	cat ERR
+	exit 1
+}
+test -w testfile.cpp || {
+	echo failed to preserve file
+	exit 1
+}
+echo OK

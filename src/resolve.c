@@ -1641,8 +1641,9 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		opts->notmerged = 0;
 		chdir(RESYNC2ROOT);
 		sccs_unlockfile(RESOLVE_LOCK);
-		execvp("bk", nav);
-		exit(1);
+		i = spawnvp(P_WAIT, "bk", nav);
+		restore_checkouts(opts);
+		exit(WIFEXITED(i) ? WEXITSTATUS(i) : 1);
 	}
 
 	/*
