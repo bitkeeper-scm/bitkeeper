@@ -2705,7 +2705,7 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	sprintf(buf,
 	    "M 0.0 %s%s %s@%s 0 0 0/0/0\nP ChangeSet\n"
 	    "%s%s%ss g\ns l\ns %s\ns %s\n%s\n",
-	    time2date(tt), sccs_zone(tt), sccs_getuser(), sccs_gethost(),
+	    time2date(tt), sccs_zone(tt), sccs_user(), sccs_host(),
 	    tag ? "S " : "",
 	    tag ? tag : "",
 	    tag ? "\n" : "",
@@ -2745,7 +2745,7 @@ sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
 	sccs_sdelta(s, md, k1);
 	assert(tag);
 	buf = aprintf("M 0.0 %s%s %s@%s 0 0 0/0/0\nS %s\ns g\ns l\ns %s\n%s\n",
-	    time2date(tt), sccs_zone(tt), sccs_getuser(), sccs_gethost(),
+	    time2date(tt), sccs_zone(tt), sccs_user(), sccs_host(),
 	    tag,
 	    k1,
 	    "------------------------------------------------");
@@ -7553,7 +7553,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	int	i;	/* used by EACH */
 	int	first = willfix;
 	char	buf[MAXLINE];
-	char	*p, *t;
+	char	*p;
 	int	bits = 0;
 	int	gonechkd = 0;
 	int	strip_tags = CSET(s) && getenv("_BK_STRIPTAGS");
@@ -7733,18 +7733,14 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 
-		t = 0;
 		if (d->hostname && !(d->flags & D_DUPHOST)) {
-			t = d->hostname;
-		}
-		if (t) {
 			p = fmts(buf, "\001cH");
-			p = fmts(p, t);
+			p = fmts(p, d->hostname);
 			*p++ = '\n';
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		
+
 		if (first) {
 			fputmeta(s, "\001cK", out);
 			s->sumOff = ftell(out);
@@ -8930,7 +8926,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	if (nodefault) {
 		unless (d->user) d->user = strdup("Anon");
 	} else {
-		unless (d->user) d->user = strdup(sccs_getuser());
+		unless (d->user) d->user = strdup(sccs_user());
 		unless (d->hostname && sccs_gethost()) {
 			char	*imp, *h;
 
@@ -8939,7 +8935,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				hostArg(d, h);
 				free(h);
 			} else {
-				hostArg(d, sccs_gethost());
+				hostArg(d, sccs_host());
 			}
 		}
 		unless (d->pathname && s) {

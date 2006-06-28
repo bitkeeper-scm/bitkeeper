@@ -61,7 +61,7 @@ KEY=`bk prs -hr+ -d:KEY: LS`
 MONTH=`bk prs -hr+ -d:Dm: LS`
 BADKEY=`echo "$KEY" | sed s/$MONTH/00/`
 mv SCCS/s.ChangeSet SCCS/s-ChangeSet
-sed "s/$KEY/$BADKEY/" < SCCS/s-ChangeSet > X
+sed "s,$KEY,$BADKEY," < SCCS/s-ChangeSet > X
 bk undos X > SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk checksum -f ChangeSet 2>/dev/null
@@ -87,7 +87,7 @@ rm -f RESYNC/SCCS/s.LS
 bk resolve -t $Q 2>ERRORS
 if [ $? -eq 0 ]; then echo failed to exit with an error; exit 1; fi
 if [ ! -d RESYNC ]; then echo failed to leave RESYNC; exit 1; fi
-grep -q 'Missing file (bk help chk3) bk@bk_regression.bk' ERRORS || {
+grep -q 'Missing file (bk help chk3) bk/.*@bk_regression.bk' ERRORS || {
 	echo Bad error message
 	cat ERRORS
 	exit 1

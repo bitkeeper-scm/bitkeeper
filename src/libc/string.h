@@ -39,4 +39,16 @@ size_t strspn(const char *s1, const char *s2);
 char *strstr(const char *s, const char *find);
 char *strtok(char *s, const char *delim);
 
+/*
+ * Returns pointer to first charector in 's' that contains on of the
+ * characters in 'chrs', or NULL if none found.
+ */
+static inline char *
+strchrs(char *s, char *chrs)
+{
+	char	*ret;
+
+	ret = s + strcspn(s, chrs);
+	return (*ret ? ret : 0);
+}
 #endif

@@ -203,17 +203,17 @@ echo OK
 echon Test bk conflicts -vv .......................................
 cat <<EOF > WANT
 dir1/ff has 1 conflict block
-   1 local lines by copy3
-   1 remote lines by proj
+   1 local lines by copy3/$USER
+   1 remote lines by proj/$USER
 dir2/gg has 1 conflict block
-   1 local lines by copy3
-   1 remote lines by proj
+   1 local lines by copy3/$USER
+   1 remote lines by proj/$USER
 dir2/space file has 1 conflict block
-   1 local lines by copy3
-   1 remote lines by proj
+   1 local lines by copy3/$USER
+   1 remote lines by proj/$USER
 BitKeeper/RENAMES/1 has 1 conflict block
-   1 local lines by copy3
-   1 remote lines by proj
+   1 local lines by copy3/$USER
+   1 remote lines by proj/$USER
     GCA path:     file
     Local path:   file.copy3
     Remote path:  file.proj
