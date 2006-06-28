@@ -1567,3 +1567,27 @@ echo OK
 # LMXXX - should do all of that with -g as well.  Oy.  
 # LMXXX - should test that we don't descend into subreposities
 # LMXXX - should test summary output
+
+echo $N Sfiles white box test of .bk_skip in non-sccs directory .....$NL
+cd $HERE
+rm -rf project
+commercial project
+mkdir test
+cd test
+touch .a .b .bk_skip .c a b c
+cd ..
+cat <<EOF > WANT
+GOT
+WANT
+EOF
+bk -r sfiles -x > GOT
+checkfiles WANT GOT
+echo OK
+
+echo $N Sfiles white box test of .bk_skip in sccs directory .........$NL
+cd test
+bk new $Q a
+cd ..
+bk -r sfiles -x > GOT
+checkfiles WANT GOT
+echo OK
