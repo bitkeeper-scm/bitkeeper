@@ -37,6 +37,7 @@ char *strrchr(const char *p, int ch);
 char *strsep(char **stringp, const char *delim);
 size_t strspn(const char *s1, const char *s2);
 char *strstr(const char *s, const char *find);
+char *strcasestr(const char *s, const char *find);
 char *strtok(char *s, const char *delim);
 
 #endif
