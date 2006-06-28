@@ -12,6 +12,8 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+test "$PLATFORM" = "WIN32" && USER=`bk getuser -r`
+
 SAVE=`bk getuser`
 commercial project
 echo Hallo > date

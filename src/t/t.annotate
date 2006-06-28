@@ -9,6 +9,8 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+test "$PLATFORM" = "WIN32" && USER=`bk getuser -r`
+
 echo $N Create initial repository ...................................$NL
 commercial project
 mkdir subdir

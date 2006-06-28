@@ -12,6 +12,8 @@
 # Copyright (c) 2002 Wayne Scott
 # %K%
 
+test "$PLATFORM" = "WIN32" && USER=`bk getuser -r`
+
 echo $N Test resolving file missing a newline .......................$NL
 commercial proj
 echo line 1 > file
