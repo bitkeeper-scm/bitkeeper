@@ -27,8 +27,6 @@ private	int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
-private int	showproc_connect(void);
-private	void	showproc(char **lines);
 private	void	showproc_start(char **av);
 private	void	showproc_end(char *cmdlog_buffer, int ret);
 
@@ -902,62 +900,26 @@ launch_wish(char *script, char **av)
 	}
 }
 
-private	FILE	*tty;
-private	int	sock;
-
-private int
-showproc_connect(void)
-{
-	char	*t, *p;
-	int	port;
-
-	unless (t = getenv("BK_SHOWPROC")) return (0);
-	if (IsFullPath(t)) {
-		return ((tty = fopen(t, "a+")) != NULL);
-	}
-	if ((p = strchr(t, ':')) && ((port = atoi(p+1)) > 0)) {
-		*p = 0;
-		sock = tcp_connect(t, port);
-		*p = ':';
-		return (sock >= 0);
-	} 
-	return ((tty = fopen(DEV_TTY, "w")) != NULL);
-}
-
-private void
-showproc(char **lines)
-{
-	int	i;
-
-	EACH(lines) {
-		if (tty) fprintf(tty, "%s", lines[i]);
-		if (sock) writen(sock, lines[i], strlen(lines[i]));
-	}
-	freeLines(lines, free);
-	if (tty) fclose(tty);
-	if (sock) close(sock);
-}
-
 private void
 showproc_start(char **av)
 {
-	char	**lines;
 	int	i;
+	FILE	*f;
 
-	unless (showproc_connect()) return;
-	lines = addLine(0, aprintf("BK  (%u t: %5s)", getpid(), milli()));
-	for (i = 0; av[i]; ++i) lines = addLine(lines, aprintf(" %s", av[i]));
-	lines = addLine(lines, strdup("\n"));
-	showproc(lines);	/* it frees */
+	unless (f = efopen("BK_SHOWPROC")) return;
+	fprintf(f, "BK  (%u t: %5s)", getpid(), milli());
+	for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
+	fprintf(f, "\n");
+	fclose(f);
 }
 
 private void
 showproc_end(char *cmdlog_buffer, int ret)
 {
-	char	**lines;
+	FILE	*f;
 
-	unless (showproc_connect()) return;
-	lines = addLine(0, aprintf("END (%u t: %5s)", getpid(), milli()));
-	lines = addLine(lines, aprintf(" %s = %d\n", cmdlog_buffer, ret));
-	showproc(lines);	/* it frees */
+	unless (f = efopen("BK_SHOWPROC")) return;
+	fprintf(f, "END (%u t: %5s)", getpid(), milli());
+	fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
+	fclose(f);
 }

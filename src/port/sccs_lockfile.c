@@ -1,5 +1,4 @@
 #include "../sccs.h"
-#include "../lib_tcp.h"
 
 #ifdef	WIN32
 #define		ino(file)	0

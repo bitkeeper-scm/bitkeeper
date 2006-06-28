@@ -134,7 +134,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
 	idcache.o isascii.o inskeys.o key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
-	lib_tcp.o libcommit.o libdiff.o librange.o \
+	libcommit.o libdiff.o librange.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
@@ -191,7 +191,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bkd.h lib_tcp.h logging.h \
+HDRS	= bkd.h logging.h \
 	  purify.h range.h rcs.h resolve.h sccs.h zgets.h \
 	  cmd.h bkver.h proj.h redblack.h
 
@@ -268,7 +268,8 @@ clean: FORCE
 		bk.ico bk16.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
-		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe
+		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
+		diff.exe diff3.exe hidestring.exe inskeys_main.o patch.exe
 	$(RM) -r tmp
 
 clobber: clean FORCE
