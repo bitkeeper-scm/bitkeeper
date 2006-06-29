@@ -902,17 +902,23 @@ launch_wish(char *script, char **av)
 	}
 }
 
+static	char	*prefix;
+
 private void
 showproc_start(char **av)
 {
 	int	i;
 	FILE	*f;
 
+	prefix = getenv("_BK_SP_PREFIX");
+	unless (prefix) prefix = "";
+
 	unless (f = efopen("BK_SHOWPROC")) return;
-	fprintf(f, "BK  (%5u %5s)", getpid(), milli());
+	fprintf(f, "BK  (%5u %5s)%s", getpid(), milli(), prefix);
 	for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
 	fprintf(f, "\n");
 	fclose(f);
+	safe_putenv("_BK_SP_PREFIX=%s  ", prefix);
 }
 
 private void
@@ -921,7 +927,7 @@ showproc_end(char *cmdlog_buffer, int ret)
 	FILE	*f;
 
 	unless (f = efopen("BK_SHOWPROC")) return;
-	fprintf(f, "END (%5u %5s)", getpid(), milli());
+	fprintf(f, "END (%5u %5s)%s", getpid(), milli(), prefix);
 	fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
 	fclose(f);
 }
