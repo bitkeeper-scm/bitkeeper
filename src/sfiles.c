@@ -1061,10 +1061,11 @@ sccsdir(winfo *wi)
 {
 	char	*dir = wi->sccsdir;
 	char	**slist = wi->sfiles;
+	char	**gfiles = 0;
 	MDBM	*gDB = wi->gDB;
 	MDBM	*sDB = wi->sDB;
 	char	*relp, *p, *gfile;
-	datum	k;
+	kvpair  kv;
 	sccs	*s = 0;
 	delta	*d;
 	int	i;
@@ -1082,6 +1083,7 @@ sccsdir(winfo *wi)
 	 * entry while we are in the first/next loop, it screw up
 	 * the mdbm internal index.
 	 */
+	sortLines(slist, 0);	/* walkdir() has a funny sort */
 	EACH (slist) {
 		char 	*file;
 		STATE	state = "       ";
@@ -1184,8 +1186,6 @@ sccsdir(winfo *wi)
 	 * XXX TODO: Do we consider the r.file and m.file "junk" file?
 	 */
 	if (opts.verbose || opts.junk) {
-		kvpair  kv;
-
 		concat_path(buf, dir, "SCCS");
 		EACH_KV (sDB) {
 			/*
@@ -1252,20 +1252,22 @@ sccsdir(winfo *wi)
 	 * Everything left in the gDB is extra
 	 */
 	if (opts.extras || opts.ignored || opts.verbose) {
-		for (k = mdbm_firstkey(gDB); k.dsize != 0;
-						k = mdbm_nextkey(gDB)) {
+		EACH_KV(gDB) gfiles = addLine(gfiles, kv.key.dptr);
+		sortLines(gfiles, 0);
+		EACH(gfiles) {
 			buf[0] = 's'; buf[1] = '.';
-			strcpy(&buf[2], k.dptr);
+			strcpy(&buf[2], gfiles[i]);
 			if (mdbm_fetch_str(sDB, buf)) continue;
-			concat_path(buf, dir, k.dptr);
+			concat_path(buf, dir, gfiles[i]);
 			buf1[0] = 'c'; buf1[1] = '.';
-			strcpy(&buf1[2], k.dptr);
+			strcpy(&buf1[2], gfiles[i]);
 			if (mdbm_fetch_str(sDB, buf1)) {
 				do_print("x-----y", buf, 0);
 			} else {
 				do_print("x------", buf, 0);
 			}
 		}
+		freeLines(gfiles, 0);
 	}
 	winfo_free(wi);
 }

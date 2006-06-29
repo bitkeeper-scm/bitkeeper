@@ -13,6 +13,7 @@ static char sccsid[] = "%W% (Berkeley) %G%";
 #endif /* LIBC_SCCS and not lint */
 
 #include <string.h>
+#include <ctype.h>
 
 /*
  * Find the first occurrence of find in s.
