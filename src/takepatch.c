@@ -836,7 +836,6 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 		}
 		goto err;
 	}
-	unless (s = cset_fixLinuxKernelChecksum(s)) goto err;
 apply:
 	p = patchList;
 	if (p && p->pid) cweave_init(s, nfound);

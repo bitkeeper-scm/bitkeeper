@@ -104,6 +104,12 @@ find_nodep(memhash *h, void *kptr, int klen)
 	    !(klen == n->klen && !memcmp(n->key, kptr, klen))) {
 		nn = &(n->next);
 	}
+	if (n) {
+		h->hdr.kptr = n->key;
+		h->hdr.klen = klen;
+		h->hdr.vptr = n->key + DOFF(klen, n->dlen);
+		h->hdr.vlen = n->dlen;
+	}
 	return (nn);
 }
 
@@ -119,12 +125,9 @@ memhash_fetch(hash *_h, void *kptr, int klen)
 	node	*n, **nn;
 
 	nn = find_nodep(h, kptr, klen);
-	if (n = *nn) {
-		h->hdr.vptr = &n->key[DOFF(n->klen, n->dlen)];
-		h->hdr.vlen = n->dlen;
-	} else {
-		h->hdr.vptr = 0;
-		h->hdr.vlen = 0;
+	unless (n = *nn) {
+		h->hdr.kptr = h->hdr.vptr = 0;
+		h->hdr.klen = h->hdr.vlen = 0;
 		errno = EINVAL;
 	}
 	return (h->hdr.vptr);
@@ -134,19 +137,22 @@ memhash_fetch(hash *_h, void *kptr, int klen)
  * Allocate a new code and add it to the chain at nn
  */
 private inline void *
-new_node(node **nn, void *kptr, int klen, int dlen)
+new_node(memhash *h, node **nn, void *kptr, int klen, int dlen)
 {
 	node	*n;
 	int	doff;
 
 	doff = DOFF(klen, dlen);
 	n = malloc(sizeof(node) + doff + dlen);
-	memcpy(n->key, kptr, klen);
-	n->klen = klen;
-	n->dlen = dlen;
+	h->hdr.kptr = memcpy(n->key, kptr, klen);
+	h->hdr.klen = n->klen = klen;
+	h->hdr.vptr = n->key + doff;
+	h->hdr.vlen = n->dlen = dlen;
 	n->next = *nn;
 	*nn = n;
-	return (&n->key[doff]);
+	if (++h->nodes >= h->mask) memhash_split(h);
+	++h->nodes;
+	return (h->hdr.vptr);
 }
 
 /*
@@ -164,11 +170,11 @@ memhash_insert(hash *_h, void *kptr, int klen, void *dptr, int dlen)
 
 	nn = find_nodep(h, kptr, klen);
 	if (*nn) {
+		/* ret 0, but h->kptr points at existing data */
 		errno = EEXIST;
 		return (0);
 	}
-	ret = new_node(nn, kptr, klen, dlen);
-	++h->nodes;
+	ret = new_node(h, nn, kptr, klen, dlen);
 	if (dlen) {
 		if (dptr) {
 			memcpy(ret, dptr, dlen);
@@ -176,7 +182,6 @@ memhash_insert(hash *_h, void *kptr, int klen, void *dptr, int dlen)
 			memset(ret, 0, dlen);
 		}
 	}
-	if (h->nodes >= h->mask) memhash_split(h);
 	return (ret);
 }
 
@@ -199,10 +204,7 @@ memhash_store(hash *_h, void *kptr, int klen, void *dptr, int dlen)
 			ret = &n->key[DOFF(klen, dlen)];
 		}
 	}
-	unless (ret) {
-		ret = new_node(nn, kptr, klen, dlen);
-		++h->nodes;
-	}
+	unless (ret) ret = new_node(h, nn, kptr, klen, dlen);
 	if (dlen) {
 		if (dptr) {
 			memcpy(ret, dptr, dlen);
@@ -210,7 +212,6 @@ memhash_store(hash *_h, void *kptr, int klen, void *dptr, int dlen)
 			memset(ret, 0, dlen);
 		}
 	}
-	if (h->nodes >= h->mask) memhash_split(h);
 	return (ret);
 }
 

@@ -22,12 +22,12 @@ line3
 EOF
 BK_DATE_TIME_ZONE="04/08/01 13:13:13-8:00" BK_USER=joe BK_HOST=blow.com \
     bk new $Q file
-bk commit $Q -yfirst
+bk commit $Q -yfirst || exit 1
 bk edit $Q file
 echo line4 >> file
 BK_DATE_TIME_ZONE="04/08/23 14:14:14-8:00" BK_USER=jane BK_HOST=shoes.com \
     bk delta -ywhatever $Q file
-bk commit $Q -ysecond
+bk commit $Q -ysecond || exit 1
 echo OK
 
 echo $N Check bk annotate -ab .......................................$NL
