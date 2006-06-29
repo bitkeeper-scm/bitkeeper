@@ -110,7 +110,7 @@ takepatch_main(int ac, char **av)
 
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
-	while ((c = getopt(ac, av, "acFf:iLmqsStvy;")) != -1) {
+	while ((c = getopt(ac, av, "acFf:iLmqsStTvy;")) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
@@ -125,6 +125,7 @@ takepatch_main(int ac, char **av)
 		    case 'i': newProject++; break;		/* doc 2.0 */
 		    case 'm': mkpatch++; break;			/* doc 2.0 */
 		    case 'S': saveDirs++; break;		/* doc 2.0 */
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': textOnly++; break;		/* doc 2.0 */
 		    case 'v': echo++; flags &= ~SILENT; break;	/* doc 2.0 */
 		    case 'y': comments = optarg; break;
@@ -836,7 +837,6 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 		}
 		goto err;
 	}
-	unless (s = cset_fixLinuxKernelChecksum(s)) goto err;
 apply:
 	p = patchList;
 	if (p && p->pid) cweave_init(s, nfound);

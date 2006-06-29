@@ -325,7 +325,7 @@ bk clone $Q project clone || exit 1
 cd clone
 # this one should print a warning
 touch d1/sub1/.bk_skip
-bk -r check -a >OUT 2>ERRS
+bk -r check -a >OUT 2>ERRS && exit 1
 rm d1/sub1/.bk_skip
 [ -s ERRS ] || {
 	echo ".bk_skip didn't cause a warning; output was"
@@ -333,8 +333,8 @@ rm d1/sub1/.bk_skip
 	echo "error output was empty!"
 	exit 1
 }
-grep "^Missing" ERRS > /dev/null && {
-	echo ".bk_skip seems to have broken check; output was"
+grep "^Missing" ERRS > /dev/null || {
+	echo "Wrong errors; output was"
 	cat OUT
 	echo "error output was"
 	cat ERRS

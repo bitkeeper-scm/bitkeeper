@@ -185,6 +185,20 @@ FILE *	safe_popen(char *cmd, char *type);
 FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);
 
+/* tcp/tcp.c */
+int	tcp_server(int port, int quiet);
+int	tcp_connect(char *host, int port);
+int	tcp_accept(int sock);
+void	tcp_ndelay(int sock, int val);
+void	tcp_reuse(int sock);
+void	tcp_keepalive(int sock);
+int	sockport(int s);
+char	*sockaddr(int);
+char	*hostaddr(char *);
+int	tcp_pair(int fds[2]);
+char	*peeraddr(int s);
+int	issock(int);
+
 /* tty.c */
 #define	isatty		myisatty
 int	tty_init(void);
@@ -196,9 +210,14 @@ void	tty_clear(void);
 int	myisatty(int fd);
 
 /* utils.c */
+FILE	*efopen(char *env);
 void	my_perror(char *, int, char *);
 #define	perror(msg)	my_perror(__FILE__, __LINE__, msg)
 int	chomp(char *str);
+
+/* webencode.c */
+char	**webencode(char **buf, u8 *ptr, int len);
+char	*webdecode(char *data, char **buf, int *sizep);
 
 /* which.c */
 char	*which(char *prog);

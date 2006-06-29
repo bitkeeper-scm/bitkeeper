@@ -39,17 +39,17 @@ private int
 hasTriggers(void)
 {
 	char	*t, **lines;
-	char	*dir;
 	int	ret;
+	char	dir[MAXPATH];
 
 	if (getenv("_IN_DELTA")) return (0);
 	unless (t = proj_root(0)) {
 		return (0);
 	}
 	unless (streq(t, ".")) {
-		dir = aprintf("%s/BitKeeper/triggers", t);
+		concat_path(dir, t, "/BitKeeper/triggers");
 	} else {
-		dir = strdup("BitKeeper/triggers");
+		strcpy(dir, "BitKeeper/triggers");
 	}
 	if (isdir(dir)) {
 		sys("bk", "get", "-Sq", dir, SYS);
@@ -59,7 +59,6 @@ hasTriggers(void)
 	} else {
 		ret = 0;
 	}
-	free(dir);
 	return (ret);
 }
 

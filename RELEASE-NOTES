@@ -73,7 +73,13 @@ Trigger Enhancements
     The trigger system has been reworked to ensure that all trigger
     output is sent to stderr (formerly, remote output went to stderr
     and local output might or might not go to stderr, depending on the
-    trigger writer).
+    trigger writer).  This may cause problems for people who had scripts
+    which prompted for input; the input is likely to be hidden now.
+    The suggested fix is to use "bk prompt" because it reconnects to
+    /dev/tty.  Alternatively, redirect your read from /dev/tty and
+    to /dev/tty like so:
+
+    	read -p "This is the question" < /dev/tty 2>/dev/tty
 
     Triggers that in previous releases silently exited non-zero now
     always produce a warning.
@@ -435,6 +441,11 @@ bk prs
 	bk prs
     New syntax:
  	bk log
+
+bk prompt
+    Uses -G to force GUI prompts and -T to force text prompts.  -T is now
+    the preferred option for saying "text only" and is used in csets, prompt,
+    pull, push, resolve, remerge, sendbug, support, and takepatch.
 
 bk pull
     (See Multiple Parents above.)

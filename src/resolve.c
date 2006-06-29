@@ -64,7 +64,7 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstvx;1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstTvx;1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -83,6 +83,7 @@ resolve_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
 		    case 's': opts.autoOnly = 1; break;		/* doc */
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'i':
 			opts.partial = 1;

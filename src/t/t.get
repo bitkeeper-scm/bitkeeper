@@ -12,6 +12,8 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+test "$PLATFORM" = "WIN32" && USER=`bk getuser -r`
+
 SAVE=`bk getuser`
 commercial project
 echo Hallo > date
@@ -118,9 +120,9 @@ echo OK
 
 echo $N Check hosts in file .........................................$NL
 hostname=bk_regression.bk
-grep -q "^.cH.*$hostname\$" SCCS/s.date
+grep -q "^.cH.*$hostname/" SCCS/s.date
 if [ $? -ne 0 ]; then echo No host found.; exit 1; fi
-X=`grep -c "^.cH.*$hostname\$" SCCS/s.date`
+X=`grep -c "^.cH.*$hostname/" SCCS/s.date`
 if [ $X -ne 1 ]; then echo Duplicate hosts.; exit 1; fi
 echo OK
 
@@ -225,7 +227,7 @@ if [ "`bk get $S -paO T`" != "$name.1	HI" ]; then echo Failed.; exit 1; fi
 echo OK
 
 echo $N Make sure get -au works .....................................$NL
-if [ "`bk get $S -pau T`" != "bk	HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pau T`" != "bk/$USER	HI" ]; then echo Failed.; exit 1; fi
 echo OK
 
 echo $N Make sure get -Ab works .....................................$NL
@@ -239,7 +241,11 @@ if [ "`bk get $S -pAr T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
 echo OK
 
 echo $N Make sure get -Au works .....................................$NL
-if [ "`bk get $S -pAu T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
+test "`bk get $S -pAu T | sed 's/ +/\\s/g'`" != "bk/$USER\s|\sHI" || {
+	echo Failed
+	bk get $S -pAu T | sed 's/ +/\\s/g'
+	exit 1
+}
 echo OK
 
 echo $N Make sure get does not get ChangeSet ........................$NL

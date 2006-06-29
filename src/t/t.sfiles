@@ -61,6 +61,7 @@ bk sfiles | sort > GOT
 sort <<EOF > WANT
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 SCCS/s.foo
 SCCS/s.s.foo
@@ -93,6 +94,7 @@ bk sfiles -g | sort > GOT
 sort <<EOF > WANT
 ChangeSet
 BitKeeper/etc/config
+BitKeeper/etc/gone
 BitKeeper/etc/ignore
 foo
 s.foo
@@ -170,6 +172,7 @@ echo $N Check the list of unlocked files ............................$NL
 bk sfiles -u | sort > GOT
 sort <<EOF > WANT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 SCCS/s.ChangeSet
 SCCS/s.foo
@@ -193,12 +196,6 @@ BitKeeper
 bar
 BitKeeper/deleted
 BitKeeper/etc
-BitKeeper/log
-BitKeeper/log/ROOTKEY
-BitKeeper/log/cmd_log
-BitKeeper/log/repo_id
-BitKeeper/log/repo_log
-BitKeeper/tmp
 SCCS/c.gone
 SCCS/c.gone@1.1
 SCCS/c.gone@1.2
@@ -209,6 +206,7 @@ WANT
 .sfiles
 GOT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 bar/blech
 bar/SCCS/s.s.foo
@@ -226,12 +224,6 @@ D------ BitKeeper
 d------ bar
 D------ BitKeeper/deleted
 d------ BitKeeper/etc
-D------ BitKeeper/log
-D------ BitKeeper/tmp
-i------ BitKeeper/log/ROOTKEY
-i------ BitKeeper/log/cmd_log
-i------ BitKeeper/log/repo_id
-i------ BitKeeper/log/repo_log
 su----- SCCS/s.ChangeSet
 su----- SCCS/s.foo
 sl--G-- SCCS/s.s.foo
@@ -243,6 +235,7 @@ j------ SCCS/c.gone
 j------ SCCS/c.gone@1.1
 j------ SCCS/c.gone@1.2
 su--G-- BitKeeper/etc/SCCS/s.config
+su--G-- BitKeeper/etc/SCCS/s.gone
 su--G-- BitKeeper/etc/SCCS/s.ignore
 d------ bar/blech
 slc-G-y bar/SCCS/s.s.foo
@@ -260,6 +253,7 @@ bk ci $Q -mblech s.foo
 bk sfiles -u | sort > GOT
 sort <<EOF > WANT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 SCCS/s.ChangeSet
 SCCS/s.foo
@@ -420,6 +414,7 @@ echo OK
 echo $N Test disabling ignore lists with -au ........................$NL
 sort <<EOF > WANT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 SCCS/s.ChangeSet
 SCCS/s.foo
 SCCS/s.s.foo
@@ -479,6 +474,7 @@ mv impostor SCCS/s.impostor
 bk sfiles | sort > GOT
 sort <<EOF > WANT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 SCCS/s.s.foo
 bar/SCCS/s.s.foo
@@ -499,6 +495,7 @@ echo $N Test mildly paranoid mode ...................................$NL
 bk sfiles -P | sort > GOT
 sort <<EOF > WANT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 SCCS/s.s.foo
 bar/SCCS/s.s.foo
@@ -518,6 +515,7 @@ bk sfiles -PP
 bk sfiles -PP | sort > GOT
 sort <<EOF > WANT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 SCCS/s.s.foo
 bar/SCCS/s.s.foo
@@ -543,6 +541,7 @@ j------ SCCS/c.gone
 j------ SCCS/c.gone@1.1
 j------ SCCS/c.gone@1.2
 x------ GOT
+su--G-- BitKeeper/etc/SCCS/s.gone
 slc-G-- BitKeeper/etc/SCCS/s.ignore
 su---n- SCCS/s.bad
 su--G-- BitKeeper/etc/SCCS/s.config
@@ -564,13 +563,12 @@ j------ SCCS/c.gone
 j------ SCCS/c.gone@1.1
 j------ SCCS/c.gone@1.2
 x------ GOT
+su--G-- BitKeeper/etc/SCCS/s.gone
 slc-G-- BitKeeper/etc/SCCS/s.ignore
 su--G-- BitKeeper/etc/SCCS/s.config
 su---n- SCCS/s.bad
 D------ BitKeeper
 D------ BitKeeper/deleted
-D------ BitKeeper/log
-D------ BitKeeper/tmp
 D------ bar/not
 D------ bar/notquite
 d------ .
@@ -701,13 +699,13 @@ echo OK
 
 echo $N Test summary output .........................................$NL
 cat <<EOF > $HERE/WANT
-    11 files under revision control.
+    12 files under revision control.
      1 subrepositories.
      4 files not under revision control (and not ignored).
-     5 ignored files not under revision control.
+     1 ignored files not under revision control.
      3 directories containing revision controlled files.
-     5 directories with no revision controlled files.
-     6 files checked out.
+     3 directories with no revision controlled files.
+     7 files checked out.
      2 files modified and not checked in.
      1 files with checked in, but not committed, deltas.
      1 files in incorrect locations.
@@ -728,17 +726,11 @@ cd $HERE/lmtest
 cat <<EOF > $HERE/WANT
 D------ BitKeeper
 D------ BitKeeper/deleted
-D------ BitKeeper/log
-D------ BitKeeper/tmp
 D------ DIR_WITH_NO_SCCS
 R------ subrepo
 d------ .
 d------ BitKeeper/etc
 d------ DIR_WITH_SCCS
-i------ BitKeeper/log/ROOTKEY
-i------ BitKeeper/log/cmd_log
-i------ BitKeeper/log/repo_id
-i------ BitKeeper/log/repo_log
 i------ ignored.o
 j------ SCCS/JUNK
 j------ SCCS/c.NO_SFILE_NO_GFILE
@@ -750,6 +742,7 @@ su----- DIR_WITH_SCCS/SCCS/s.UNLOCKED
 su----- SCCS/s.ChangeSet
 su---n- DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 su--G-- BitKeeper/etc/SCCS/s.config
+su--G-- BitKeeper/etc/SCCS/s.gone
 su--G-- BitKeeper/etc/SCCS/s.ignore
 su--G-- DIR_WITH_SCCS/SCCS/s.GOTTEN
 su-p--- DIR_WITH_SCCS/SCCS/s.PENDING
@@ -767,17 +760,11 @@ cd $HERE
 cat <<EOF > $HERE/WANT
 D------ lmtest/BitKeeper
 D------ lmtest/BitKeeper/deleted
-D------ lmtest/BitKeeper/log
-D------ lmtest/BitKeeper/tmp
 D------ lmtest/DIR_WITH_NO_SCCS
 R------ lmtest/subrepo
 d------ lmtest
 d------ lmtest/BitKeeper/etc
 d------ lmtest/DIR_WITH_SCCS
-i------ lmtest/BitKeeper/log/ROOTKEY
-i------ lmtest/BitKeeper/log/cmd_log
-i------ lmtest/BitKeeper/log/repo_id
-i------ lmtest/BitKeeper/log/repo_log
 i------ lmtest/ignored.o
 j------ lmtest/SCCS/JUNK
 j------ lmtest/SCCS/c.NO_SFILE_NO_GFILE
@@ -789,6 +776,7 @@ su----- lmtest/DIR_WITH_SCCS/SCCS/s.UNLOCKED
 su----- lmtest/SCCS/s.ChangeSet
 su---n- lmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 su--G-- lmtest/BitKeeper/etc/SCCS/s.config
+su--G-- lmtest/BitKeeper/etc/SCCS/s.gone
 su--G-- lmtest/BitKeeper/etc/SCCS/s.ignore
 su--G-- lmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN
 su-p--- lmtest/DIR_WITH_SCCS/SCCS/s.PENDING
@@ -868,8 +856,6 @@ cd $HERE/lmtest
 sort <<EOF > $HERE/WANT
 BitKeeper
 BitKeeper/deleted
-BitKeeper/log
-BitKeeper/tmp
 DIR_WITH_NO_SCCS
 EOF
 bk sfiles -D | sort > $HERE/GOT
@@ -881,8 +867,6 @@ cd $HERE/lmtest
 sort <<EOF > $HERE/WANT
 D------ BitKeeper
 D------ BitKeeper/deleted
-D------ BitKeeper/log
-D------ BitKeeper/tmp
 D------ DIR_WITH_NO_SCCS
 EOF
 bk sfiles -vD | sort > $HERE/GOT
@@ -900,10 +884,6 @@ echo OK
 echo $N Look for ignored files from the root ........................$NL
 cd $HERE/lmtest
 sort <<EOF > $HERE/WANT
-BitKeeper/log/ROOTKEY
-BitKeeper/log/cmd_log
-BitKeeper/log/repo_id
-BitKeeper/log/repo_log
 ignored.o
 EOF
 bk sfiles -i | sort > $HERE/GOT
@@ -913,10 +893,6 @@ echo OK
 echo $N Look for ignored files from the root in verbose mode ........$NL
 cd $HERE/lmtest
 sort <<EOF > $HERE/WANT
-i------ BitKeeper/log/ROOTKEY
-i------ BitKeeper/log/cmd_log
-i------ BitKeeper/log/repo_id
-i------ BitKeeper/log/repo_log
 i------ ignored.o
 EOF
 bk sfiles -vi | sort > $HERE/GOT
@@ -997,6 +973,7 @@ echo $N Look for sfiles from the root ...............................$NL
 cd $HERE/lmtest
 sort <<EOF > $HERE/WANT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 DIR_WITH_SCCS/SCCS/s.GOTTEN
 DIR_WITH_SCCS/SCCS/s.LOCKED
@@ -1016,6 +993,7 @@ echo $N Look for sfiles from the root in verbose mode ...............$NL
 cd $HERE/lmtest
 bk sort +1 <<EOF > $HERE/WANT
 su--G-- BitKeeper/etc/SCCS/s.config
+su--G-- BitKeeper/etc/SCCS/s.gone
 su--G-- BitKeeper/etc/SCCS/s.ignore
 su--G-- DIR_WITH_SCCS/SCCS/s.GOTTEN
 sl--G-- DIR_WITH_SCCS/SCCS/s.LOCKED
@@ -1149,6 +1127,7 @@ echo $N Look for unlocked sfiles from the root ......................$NL
 cd $HERE/lmtest
 sort <<EOF > $HERE/WANT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 DIR_WITH_SCCS/SCCS/s.GOTTEN
 DIR_WITH_SCCS/SCCS/s.NORMAL
@@ -1165,6 +1144,7 @@ echo $N Look for unlocked sfiles from the root in verbose mode ......$NL
 cd $HERE/lmtest
 bk sort +1 <<EOF > $HERE/WANT
 su--G-- BitKeeper/etc/SCCS/s.config
+su--G-- BitKeeper/etc/SCCS/s.gone
 su--G-- BitKeeper/etc/SCCS/s.ignore
 su--G-- DIR_WITH_SCCS/SCCS/s.GOTTEN
 su----- DIR_WITH_SCCS/SCCS/s.NORMAL
@@ -1249,6 +1229,7 @@ echo $N Look for gotten sfiles from the root ........................$NL
 cd $HERE/lmtest
 sort <<EOF > $HERE/WANT
 BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
 DIR_WITH_SCCS/SCCS/s.GOTTEN
 DIR_WITH_SCCS/SCCS/s.LOCKED
@@ -1263,6 +1244,7 @@ echo $N Look for gotten sfiles from the root in verbose mode ........$NL
 cd $HERE/lmtest
 bk sort +1 <<EOF > $HERE/WANT
 su--G-- BitKeeper/etc/SCCS/s.config
+su--G-- BitKeeper/etc/SCCS/s.gone
 su--G-- BitKeeper/etc/SCCS/s.ignore
 su--G-- DIR_WITH_SCCS/SCCS/s.GOTTEN
 sl--G-- DIR_WITH_SCCS/SCCS/s.LOCKED
@@ -1363,8 +1345,6 @@ echo $N Look for non-BK directories from the outside repo ...........$NL
 sort <<EOF > $HERE/WANT
 lmtest/BitKeeper
 lmtest/BitKeeper/deleted
-lmtest/BitKeeper/log
-lmtest/BitKeeper/tmp
 lmtest/DIR_WITH_NO_SCCS
 EOF
 bk sfiles -D lmtest | sort > $HERE/GOT
@@ -1377,10 +1357,6 @@ echo OK
 
 echo $N Look for ignored files from the outside repo ................$NL
 sort <<EOF > $HERE/WANT
-lmtest/BitKeeper/log/ROOTKEY
-lmtest/BitKeeper/log/cmd_log
-lmtest/BitKeeper/log/repo_id
-lmtest/BitKeeper/log/repo_log
 lmtest/ignored.o
 EOF
 bk sfiles -i lmtest | sort > $HERE/GOT
@@ -1427,6 +1403,7 @@ echo OK
 echo $N Look for sfiles from the outside repo .......................$NL
 sort <<EOF > $HERE/WANT
 lmtest/BitKeeper/etc/SCCS/s.config
+lmtest/BitKeeper/etc/SCCS/s.gone
 lmtest/BitKeeper/etc/SCCS/s.ignore
 lmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN
 lmtest/DIR_WITH_SCCS/SCCS/s.LOCKED
@@ -1497,6 +1474,7 @@ echo OK
 echo $N Look for unlocked sfiles from the outside repo ..............$NL
 sort <<EOF > $HERE/WANT
 lmtest/BitKeeper/etc/SCCS/s.config
+lmtest/BitKeeper/etc/SCCS/s.gone
 lmtest/BitKeeper/etc/SCCS/s.ignore
 lmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN
 lmtest/DIR_WITH_SCCS/SCCS/s.NORMAL
@@ -1544,6 +1522,7 @@ echo OK
 echo $N Look for gotten sfiles from the outside repo ................$NL
 sort <<EOF > $HERE/WANT
 lmtest/BitKeeper/etc/SCCS/s.config
+lmtest/BitKeeper/etc/SCCS/s.gone
 lmtest/BitKeeper/etc/SCCS/s.ignore
 lmtest/DIR_WITH_SCCS/SCCS/s.GOTTEN
 lmtest/DIR_WITH_SCCS/SCCS/s.LOCKED
@@ -1588,3 +1567,27 @@ echo OK
 # LMXXX - should do all of that with -g as well.  Oy.  
 # LMXXX - should test that we don't descend into subreposities
 # LMXXX - should test summary output
+
+echo $N Sfiles white box test of .bk_skip in non-sccs directory .....$NL
+cd $HERE
+rm -rf project
+commercial project
+mkdir test
+cd test
+touch .a .b .bk_skip .c a b c
+cd ..
+cat <<EOF > WANT
+GOT
+WANT
+EOF
+bk -r sfiles -x > GOT
+checkfiles WANT GOT
+echo OK
+
+echo $N Sfiles white box test of .bk_skip in sccs directory .........$NL
+cd test
+bk new $Q a
+cd ..
+bk -r sfiles -x > GOT
+checkfiles WANT GOT
+echo OK
