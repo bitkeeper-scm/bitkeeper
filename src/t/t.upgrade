@@ -30,7 +30,7 @@ echo OK
 echo $N Test upgrade to get status from bitmover ....................$NL
 cd junk2
 bk lease flush -a
-bk upgrade -f >OUT 2>ERR || {
+BK_NOTTY=1 bk upgrade -f >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
 	cat ERR
@@ -49,7 +49,7 @@ grep -q "BitKeeper version .* is available for download." OUT || {
 echo OK
 
 echo $N Test upgrade where we already have the latest ...............$NL
-BK_UPGRADE_FORCEMATCH=1 bk upgrade -f >OUT 2>ERR && {
+BK_NOTTY=1 BK_UPGRADE_FORCEMATCH=1 bk upgrade -f >OUT 2>ERR && {
 	echo should have failed
 	cat OUT
 	cat ERR
@@ -70,7 +70,7 @@ echo $N Test upgrade to get status from bitmover using a proxy.......$NL
 # XXX test proxy passwords too?
 http_proxy=http://data.bitmover.com:3128
 export http_proxy
-bk upgrade -f >OUT 2>ERR || {
+BK_NOTTY=1 bk upgrade -f >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
 	cat ERR
