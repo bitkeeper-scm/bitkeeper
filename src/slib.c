@@ -12977,10 +12977,10 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 		lrev = 0;
 		rrev = "?";
 	}
-	unless (findrev(s, lrev)) {
+	unless (sccs_findrev(s, lrev)) {
 		return (-2);
 	}
-	if (r2 && !findrev(s, r2)) {
+	if (r2 && !sccs_findrev(s, r2)) {
 		return (-3);
 	}
 	if (!rrev) rrev = findrev(s, 0)->rev;
@@ -12995,7 +12995,7 @@ getHistoricPath(sccs *s, char *rev)
 {
 	delta *d;
 
-	d = findrev(s, rev);
+	d = sccs_findrev(s, rev);
 	if (d && d->pathname) {
 		return (d->pathname);
 	} else {

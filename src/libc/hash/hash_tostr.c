@@ -6,10 +6,6 @@
  * query strings.
  */
 
-private	int	is_encoded(int c);
-private	char	**wrapstr(char **buf, u8 *ptr, int len);
-private	char	*unwrapstr(char *data, char **buf, int *size);
-
 char *
 hash_toStr(hash *h)
 {
@@ -18,9 +14,9 @@ hash_toStr(hash *h)
 	char	*ret;
 
 	EACH_HASH(h) {
-		buf = wrapstr(buf, h->kptr, h->klen);
+		buf = webencode(buf, h->kptr, h->klen);
 		buf = str_nappend(buf, "=", 1, 0);
-		buf = wrapstr(buf, h->vptr, h->vlen);
+		buf = webencode(buf, h->vptr, h->vlen);
 		data = addLine(data, str_pullup(0, buf));
 		buf = 0;
 	}
@@ -38,7 +34,7 @@ hash_fromStr(hash *h, char *str)
 	u32	klen, vlen;
 
 	while (*p) {
-		unless (p = unwrapstr(p, &k, &klen)) {
+		unless (p = webdecode(p, &k, &klen)) {
 err:			fprintf(stderr,
 			    "ERROR: hash_fromStr() can't parse '%s'\n",
 			    str);
@@ -47,7 +43,7 @@ err:			fprintf(stderr,
 			return (-1);
 		}
 		unless (*p++ == '=') goto err;
-		unless (p = unwrapstr(p, &v, &vlen)) goto err;
+		unless (p = webdecode(p, &v, &vlen)) goto err;
 		hash_store(h, k, klen, v, vlen);
 		if (k) free(k);
 		if (v) free(v);
@@ -56,113 +52,6 @@ err:			fprintf(stderr,
 		unless (*p++ == '&') goto err;
 	}
 	return (0);
-}
-
-/*
- * Encode the data in ptr/len and add it to buf
- * using data_append().
- */
-private	char	**
-wrapstr(char **buf, u8 *ptr, int len)
-{
-	char	hex[4];
-
-	while (len > 0) {
-		/* suppress trailing null (common) */
-		if ((len == 1) && !*ptr) break;
-
-		if (*ptr == ' ') {
-			hex[0] = '+';
-			buf = str_nappend(buf, hex, 1, 0);
-		} else if (is_encoded(*ptr)) {
-			sprintf(hex, "%%%02x", *ptr);
-			buf = str_nappend(buf, hex, 3, 0);
-		} else {
-			buf = str_nappend(buf, ptr, 1, 0);
-		}
-		++ptr;
-		--len;
-	}
-	/* %FF(captials) is a special bk marker for no trailing null */
-	if (len == 0) buf = str_nappend(buf, "%FF", 3, 0);
-	return (buf);
-}
-
-/*
- * unpack a wrapped string from *data and put it in the buffer buf.
- * If successful, returns new pointer to data and set size.
- * Else return 0.
- * Any whitespace in the string a ignored and skipped.
- */
-private char *
-unwrapstr(char *data, char **buf, int *sizep)
-{
-	u8	*p = (u8 *)data;
-	int	c;
-	int	bin = 0;
-	char	**lines = 0;
-	char	tmp[4];
-
-	while (1) {
-		switch (*p) {
-		    case '+':
-			tmp[0] = ' ';
-			lines = data_append(lines, tmp, 1, 0);
-			break;
-		    case '%':
-			if ((p[1] == 'F') && (p[2] == 'F')) {
-				bin = 1;
-				p += 2;
-				break;
-			}
-			unless (sscanf(p+1, "%2x", &c) == 1) goto err;
-			tmp[0] = c;
-			lines = data_append(lines, tmp, 1, 0);
-			p += 2;
-			break;
-		    case ' ': case '\n': case '\r': case '\t':
-			break;
-		    case '&': case '=': case 0:
-			unless (bin) { /* add trailing null */
-				tmp[0] = 0;
-				lines = data_append(lines, tmp, 1, 0);
-			}
-			*buf = data_pullup(sizep, lines);
-			return (p);
-		    default:
-			lines = data_append(lines, p, 1, 0);
-			break;
-		}
-		p++;
-	}
-err:
-	fprintf(stderr, "ERROR: can't decode %s\n", p);
-	return (0);
-}
-
-/*
- * Return true if this character should be encoded according to RFC1738
- */
-private int
-is_encoded(int c)
-{
-	static	u8	*binchars = 0;
-
-	unless (binchars) {
-		int	i;
-		char	*p;
-
-		binchars = malloc(256);
-		/* all encoded by default */
-		for (i = 0; i < 256; i++) binchars[i] = 1;
-
-		/* these don't need encoding */
-		for (i = 'A'; i <= 'Z'; i++) binchars[i] = 0;
-		for (i = 'a'; i <= 'z'; i++) binchars[i] = 0;
-		for (i = '0'; i <= '9'; i++) binchars[i] = 0;
-		for (p = "-_.~/@"; *p; p++) binchars[(int)*p] = 0;
-	}
-	return (binchars[c]);
 }
 
 #define	MAXBUF	512
