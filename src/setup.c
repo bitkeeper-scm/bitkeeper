@@ -4,7 +4,7 @@
 
 private int	mkconfig(FILE *out, MDBM *flist, int verbose);
 private void    usage(void);
-private void	defaultIgnore(void);
+private void	defaultFiles(void);
 private void	printField(FILE *out, MDBM *flist, char *field);
 private MDBM	*addField(MDBM *flist, char *field);
 private	int	licensebad(MDBM *m);
@@ -159,7 +159,7 @@ err:			unlink("BitKeeper/etc/config");
 	assert(s);
 	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
 	sccs_free(s);
-	defaultIgnore();
+	defaultFiles();
 
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
@@ -176,18 +176,21 @@ err:			unlink("BitKeeper/etc/config");
 }
 
 private void
-defaultIgnore(void)
+defaultFiles(void)
 {
-	int	fd = open("BitKeeper/etc/ignore", O_CREAT|O_RDWR, 0664);
+	FILE	*f;
 
-	if (write(fd, "BitKeeper/*/*\n", 14) != 14) {
-err:		perror("write");
-		close(fd);
-		return;
-	}
-	if (write(fd, "PENDING/*\n", 10) != 10) goto err;
-	close(fd);
+	f = fopen("BitKeeper/etc/ignore", "w");
+	fprintf(f, "\n");
+	fclose(f);
 	system("bk new -Pq BitKeeper/etc/ignore");
+
+	unless (getenv("_BK_SETUP_NOGONE")) {
+		f = fopen("BitKeeper/etc/gone", "w");
+		fprintf(f, "\n");
+		fclose(f);
+		system("bk new -Pq BitKeeper/etc/gone");
+	}
 }
 
 private void

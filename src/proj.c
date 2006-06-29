@@ -365,7 +365,7 @@ proj_rootkey(project *p)
 	if (p->rootkey) return (p->rootkey);
 	if (p->rparent && (ret = proj_rootkey(p->rparent))) return (ret);
 
-	sprintf(rkfile, "%s/BitKeeper/log/ROOTKEY", p->root);
+	concat_path(rkfile, p->root, "/BitKeeper/log/ROOTKEY");
 	if (f = fopen(rkfile, "rt")) {
 		fnext(buf, f);
 		chomp(buf);
@@ -375,7 +375,7 @@ proj_rootkey(project *p)
 		p->md5rootkey = strdup(buf);
 		fclose(f);
 	} else {
-		sprintf(buf, "%s/%s", p->root, CHANGESET);
+		concat_path(buf, p->root, CHANGESET);
 		if (exists(buf)) {
 			sc = sccs_init(buf,
 			    INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
@@ -497,7 +497,7 @@ proj_fakenew(void)
 
 	if (ret = projcache_lookup("/")) return (ret);
 	new(ret);
-	ret->root = strdup("/");
+	ret->root = strdup("/.");
 	ret->rootkey = strdup("SCCS");
 	ret->md5rootkey = strdup("SCCS");
 	projcache_store("/", ret);
@@ -566,8 +566,9 @@ proj_leaseChecked(project *p, int write)
 int
 proj_isCaseFoldingFS(project *p)
 {
+	char	*t;
 	char	s_cset[] = CHANGESET;
-	char	*t, *q;
+	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (-1);
 	if (p->casefolding != -1) return (p->casefolding);
@@ -577,9 +578,8 @@ proj_isCaseFoldingFS(project *p)
 		t = strrchr(s_cset, '/');
 		assert(t && (t[1] == 's'));
 		t[1] = 'S';  /* change to upper case */
-		q = aprintf("%s/%s", p->root, s_cset);
-		p->casefolding = exists(q);
-		free(q);
+		concat_path(buf, p->root, s_cset);
+		p->casefolding = exists(buf);
 	}
 	return (p->casefolding);
 }

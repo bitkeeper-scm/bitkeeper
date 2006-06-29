@@ -571,7 +571,6 @@ lclone(opts opts, remote *r, char *to)
 	char	from[MAXPATH];
 	char	dest[MAXPATH];
 	char	buf[MAXPATH];
-	char	skip[MAXPATH];
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -651,12 +650,6 @@ out:
 	setlevel(level);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		unless (streq(buf, ".")) {
-			sprintf(skip, "%s/%s/%s", from, buf, BKROOT);
-			if (exists(skip)) continue;
-		}
-		sprintf(skip, "%s/%s", from, buf);
-		if(sfiles_skipdir(skip)) continue;
 		unless (opts.quiet || streq(".", buf)) {
 			fprintf(stderr, "Linking %s\n", buf);
 		}

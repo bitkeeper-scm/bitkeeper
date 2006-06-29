@@ -366,7 +366,7 @@ _csets() {		# /* doc 2.0 */
 	GUI=YES
 	while getopts tv opt
 	do	case "$opt" in
-		t) GUI=NO;;
+		T) GUI=NO;;
 		v) GUI=NO; COPTS="$COPTS -v";;
 		esac
 	done
@@ -1077,7 +1077,7 @@ _remerge()
 	SMERGE=NO
 	while getopts t opt
 	do	case "$opt" in
-		t) SMERGE=YES;;
+		T) SMERGE=YES;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
