@@ -77,6 +77,11 @@
 #define	NOPROC
 #define ELOOP		40
 
+/* tcp/tcp.c */
+#define SOCK_ADDR_CAST
+#define SOCK_OPT_CAST (char *)
+#define SOCK_PORT_CAST (unsigned short)
+
 typedef int uid_t;
 
 int	Reserved(char *basename);

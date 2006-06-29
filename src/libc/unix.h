@@ -73,4 +73,9 @@
 
 char	*fast_getcwd(char *buf, int len);
 
+/* tcp/tcp.c */
+#define SOCK_ADDR_CAST (struct in_addr)
+#define SOCK_OPT_CAST
+#define SOCK_PORT_CAST
+
 #endif
