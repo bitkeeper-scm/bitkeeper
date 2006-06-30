@@ -197,7 +197,11 @@ test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 || {
 	exit 1
 }
 bk renumber $Q BitKeeper/etc/config
-bk -r check -ac || exit 1
+bk -r check -ac || {
+	bk config -v
+	bk log -r1.0.. -nd':I: :FLAGS:' BitKeeper/etc/config
+	exit 1
+}
 echo OK
 
 echo $N Edit a MONOTONIC file, delta it, should strip danglers ......$NL
@@ -225,7 +229,7 @@ test `bk prs -r+ -hnd:I: BitKeeper/etc/config` = 1.2 || {
 	bk prs -nd':I: :DANGLING:' BitKeeper/etc/config
 	exit 1
 }
-test `bk prs -r+ -hnd:FLAGS: BitKeeper/etc/config` = "BITKEEPER,CSETMARKED,SCCS,MONOTONIC" || {
+test `bk prs -r+ -hnd:FLAGS: BitKeeper/etc/config` = "BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX,MONOTONIC" || {
 	echo failed to preserve flags
 	bk prs -r+ -hnd'GOT :FLAGS:' BitKeeper/etc/config
 	echo Wanted BITKEEPER,CSETMARKED,SCCS,MONOTONIC

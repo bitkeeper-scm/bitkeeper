@@ -604,7 +604,7 @@ chk_eoln(sccs *s, int eoln_native)
 #ifdef WIN32 /* eoln */
 	vrfy_eoln(s, EOLN_NATIVE(s));
 #else
-	vrfy_eoln(s, 0); /* on unix, we do not want CRLF */
+	vrfy_eoln(s, EOLN_WINDOWS(s));
 #endif
 
 	if (eoln_native) {
