@@ -1,5 +1,74 @@
 ===============================================================================
-Release notes for BitKeeper version 4.0-beta
+Release notes for BitKeeper version 4.0-beta3 (released 2006-06-30)
+
+bk export -tpatch -r$KEY",+ could fail because an underlying command couldn't
+handle keys.  It works now.
+
+Bugs: 2006-01-24-001 2006-03-24-001 fixed a problem where bk unpull said
+"Arg list too long".
+
+BK_SHOWPROC=/dev/tty bk <command> logs commands to /dev/tty.  The value can
+be an arbitrary file, "YES" is an alias for /dev/tty, or a host:port pair
+for tcp based logging.  Quite useful for debugging on windows is to create
+an autoexec.bat line that says
+
+	set BK_SHOWPROC C:/bk.log
+
+bk sfiles has a number of performance fixes, there was a bug that prevented
+the promised performance from being realized in citool.
+
+bk ignore gets a new syntax to prune directories:
+
+	path/to/dir -prune
+
+.bk_skip is deprecated, use -prune, it's higher performance and works better.
+
+bk check uses substantially less memory, increasing performance for repos 
+that just barely fit in memory.
+
+bk takepatch (finally!) gets the fix that lists the edited files at the end
+in a nice format so you can go decide what you want to do with them.
+
+Fix a Bluearc reported bug where checkout:edit was not respected in some cases.
+
+Fix a problem for MySQL where they set BK_HOST=mysql.com, removing entropy from
+the keys.  We now use `bk getuser`/`bk getuser -r`@`bk gethost`/`bk gethost -r`
+when get{user,host} != get{user,host} -r.  Makes for longer keys but they'll
+be unique.
+
+BK/Web is a lot nicer, it auto generates a top level page listing all repos.
+Still needs works to pretty it up but it closes a ton of bugs:
+
+    2001-05-30-003   URL-encoding for searching doesn't work
+    2002-07-02-001   bkweb search fails for multiple words
+    2004-01-30-002   bk web does not support multiword search
+    2004-04-06-001   bk/web shows multiple tags without seperator
+    2004-06-03-001   bk/web search in file contents is broken
+    2006-02-07-002   Spaces in a filename break changeset/annotation
+
+Fix a bug where extra files weren't sorted in the citool window.
+
+Fix a bug where GUI geometries weren't being saved properly.
+
+In sendbug, don't guess user names - bugid 2006-06-20-002
+
+For Starent, add support to have three different line endings: native,
+unix, or windows (windows is new).
+
+===============================================================================
+Release notes for BitKeeper version 4.0-beta2 (released 2006-06-15)
+
+Mostly bugs reported by Harold @ Starnet (thanks!)
+
+Fix some windows bugs related to the visual studio and shell extension plugins.
+
+Fix a bug in citool where it didn't create SCCS directories "hidden" on
+windows; this interacted badly with Visual Studio 2005.
+
+Windows installer fixes.
+
+===============================================================================
+Release notes for BitKeeper version 4.0-beta1 (released 2006-06-07)
 
 This is a major release that improves performance, introduces
 significant new features, regularizes interfaces, and fixes a number of
