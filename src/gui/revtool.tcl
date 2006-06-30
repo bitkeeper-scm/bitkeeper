@@ -1146,7 +1146,11 @@ proc getLeftRev { {id {}} } \
 	highlightAncestry $rev1
 
 	if {$rev1 != ""} {
-		catch {exec bk r2c -r$rev1 $file} info
+		if {$file eq "ChangeSet"} {
+			set info $rev1
+		} else {
+			catch {exec bk r2c -r$rev1 $file} info
+		}
 		#puts "info=($info)"
 		if {$info == ""} {
 			.menus.cset configure \
@@ -1190,7 +1194,11 @@ proc getRightRev { {id {}} } \
 
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
-		catch {exec bk r2c -r$rev2 $file} info
+		if {$file eq "ChangeSet"} {
+			set info $rev2
+		} else {
+			catch {exec bk r2c -r$rev2 $file} info
+		}
 		if {$info == ""} {
 			.menus.cset configure \
 			    -state disabled \
