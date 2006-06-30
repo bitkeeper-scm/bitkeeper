@@ -59,6 +59,10 @@ bk revtool Enhancements
     annotated file listing to the first occurrence of <search-string> in the
     file (or the first occurrence following <line-number>, if specified).
 
+bk sendbug Enhancements
+    The submitter field can be set automatically from the environment 
+    variable REPLYTO.
+
 Trigger Enhancements
     Remote trigger output format has been changed so that you can see
     which trigger caused which output.  The new format is
