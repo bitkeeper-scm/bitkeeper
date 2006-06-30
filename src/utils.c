@@ -300,11 +300,10 @@ prompt_main(int ac, char **av)
 	char	buf[1024];
 	char	**lines = 0;
 
-	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:y:")) != -1) {
+	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:Ty:")) != -1) {
 		switch (c) {
 		    case 'c': ask = 0; break;
 		    case 'e': type = "-E"; break;
-		    case 'g': nogui = 1; break;
 		    case 'G': gui = 1; break;
 		    case 'i': type = "-I"; break;
 		    case 'w': type = "-W"; break;
@@ -314,6 +313,9 @@ prompt_main(int ac, char **av)
 		    case 'o': no = 0; break;
 		    case 'p': prog = optarg; break;
 		    case 't': title = optarg; break;	/* Only for GUI */
+		    case 'T': /* text, supported option */
+		    case 'g': /* old, do not doc */
+		    	nogui = 1; break;
 		    case 'y': yes = optarg; break;
 		}
 	}
@@ -366,6 +368,15 @@ err:		system("bk help -s prompt");
 		if (prog) unlink(msgtmp);
 		if (WIFEXITED(ret)) exit(WEXITSTATUS(ret));
 		exit(2);
+	}
+
+	if (getenv("BK_EVENT")) {	/* in trigger and in text mode */
+		close(0);
+		close(1);
+		close(2);
+		open(DEV_TTY, O_RDWR, 0);
+		dup(0);
+		dup(1);
 	}
 
 	if (type) {

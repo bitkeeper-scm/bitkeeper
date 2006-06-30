@@ -18,7 +18,7 @@ sendbug_main(int ac,  char **av)
 	} else {
 		name = av[0];
 	}
-	while ((c = getopt(ac, av, "twe")) != -1) {
+	while ((c = getopt(ac, av, "etTw")) != -1) {
 		switch (c) {
 		    case 'w':
 			url = "http://bitmover.com/cgi-bin/bkdmail";
@@ -26,6 +26,7 @@ sendbug_main(int ac,  char **av)
 		    case 'e':
 			url = "SMTP";
 			break;
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't':   textmode = 1; break;
 		    default:
 			sys("bk", "help", "-s", name, SYS);

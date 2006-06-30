@@ -6,6 +6,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	cleanpath.o \
 	concat_path.o \
 	dirname.o dirs.o \
+	efopen.o \
 	filecopy.o fileutils.o findpid.o fullname.o fileinfo.o \
 	getnull.o getopt.o \
 	lines.o \
@@ -16,6 +17,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	samepath.o sig.o smartrename.o spawn.o stdioext.o system.o \
 	tty.o \
 	utils.o \
+	webencode.o \
 	which.o)
 
 UTILS_HDRS = lines.h mmap.h style.h system.h unix.h win32.h

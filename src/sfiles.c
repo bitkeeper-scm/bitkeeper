@@ -64,7 +64,11 @@ private	jmp_buf	sfiles_exit;
 private hash	*timestamps = 0;
 private options	opts;
 private	project	*proj;
-private char	**ignore, **dont_ignore;
+
+private	char	**ignore;	/* list of file pathname globs to ignore */
+private	char	**ignorebase;	/* list of file basename globs to ignore */
+private	hash	*prunedirs;	/* set of dirs to prune */
+
 private u32	d_count, s_count, x_count; /* progress counter */
 private u32	s_last, x_last; /* progress counter */
 private u32	R_count, D_count, C_count, c_count, n_count, p_count, i_count;
@@ -563,12 +567,20 @@ print_summary(void)
 	}
 }
 
+/*
+ * This struct contains the information that is passed sfiles_walk() by
+ * walkdir() as it is traversing the respository.  Information from the
+ * walkdir() is collected here and then processed once per directory with
+ * a call to sccsdir().
+ */
 struct winfo {
-	char	**sfiles;
-	MDBM	*sDB, *gDB;
-	char	*sccsdir;
-	int	sccsdirlen;
-	int	seenfirst;
+	char	**sfiles;	/* The sfiles in the current directory */
+	MDBM	*sDB;		/* all files in the SCCS subdirectory */
+	MDBM	*gDB;		/* all files in the current directory */
+	char	*sccsdir;	/* path to dir this data represents */
+	int	seenfirst;	/* flag for -1 (one level) */
+	int	rootlen;	/* length of directory passed to walkdir */
+	char	*proj_prefix;	/* prefex needed to get sfile relpath */
 };
 
 private void
@@ -608,78 +620,118 @@ add_to_winfo(winfo *wi, char *file, int sccs)
 	mdbm_store_str((sccs ? wi->sDB : wi->gDB), file, "", MDBM_INSERT);
 }
 
+private void
+winfo_free(winfo *wi)
+{
+	mdbm_close(wi->gDB);
+	wi->gDB = 0;
+	mdbm_close(wi->sDB);
+	wi->sDB = 0;
+	freeLines(wi->sfiles, free);
+	wi->sfiles = 0;
+	free(wi->sccsdir);
+	wi->sccsdir = 0;
+}
+
+
 private int
 sfiles_walk(char *file, struct stat *sb, void *data)
 {
 	winfo	*wi = (winfo *)data;
 	char	*p;
-	int	n, nonsccs, root;
+	int	sccs;
+	int	n, nonsccs;
+	char	buf[MAXPATH];
+
+	p = strrchr(file, '/');
+	/* make 'buf' match the directory we are in */
+	if (S_ISDIR(sb->st_mode)) {
+		if (p) {
+			strncpy(buf, file, p-file);
+			buf[p-file] = 0;
+		} else {
+			strcpy(buf, file);
+		}
+	} else {
+		assert(p);
+		*p++ = 0;
+		if ((p - file) > 6 && streq(p-6, "/SCCS")) {
+			strncpy(buf, file, p-file-6);
+			buf[p-file-6] = 0;
+		} else {
+			strcpy(buf, file);
+		}
+	}
+	/* if directory has changed then process old directory */
+	if (wi->sccsdir) {
+		unless (patheq(buf, wi->sccsdir)) {
+			sccsdir(wi);
+			wi->sccsdir = strdup(buf);
+		}
+	}
+	unless (wi->sccsdir) wi->sccsdir = strdup(buf);
 
 	if (S_ISDIR(sb->st_mode)) {
-		/*
-		 * Special processing for .bk_skip file
-		 */
-		if (sfiles_skipdir(file)) return (-1);
-
-		n = strlen(file);
-
-		/* Handle subrepos */
-		if (wi->sccsdir) {
-			strcpy(&file[n], "/" BKROOT);
-			root = exists(file);
-			file[n] = 0;
-			if (root) {
+		if (p && patheq(p, "/SCCS")) return (0);
+		if (p &&((p-file) > wi->rootlen) && patheq(p+1, "BitKeeper")) {
+			/*
+			 * Do not cross into other package roots
+			 * (e.g. RESYNC).
+			 */
+			concat_path(buf, file, "etc");
+			if (exists(buf)) {
+				*p = 0;
 				do_print("R      ", file, 0);
+				*p = '/';
+				winfo_free(wi);
+				return (-2);
+			}
+		}
+		if (proj) {
+			concat_path(buf, wi->proj_prefix,
+			    p ? (file + wi->rootlen + 1) : "");
+			if (hash_fetchStr(prunedirs, buf) != 0) {
 				return (-1);
 			}
 		}
-
-		/* if SCCS dir start new processing */
-		p = 0;
-		if ((p = strrchr(file, '/')) && patheq(p+1, "SCCS")) {
-			if (wi->sccsdir) sccsdir(wi);
-			wi->sccsdir = strdup(file);
-			if (p = strrchr(wi->sccsdir, '/')) *++p = 0;
-			wi->sccsdirlen = strlen(wi->sccsdir);
-		} else {
-			if (opts.dirs || opts.xdirs) {
-				strcpy(&file[n], "/SCCS");
-				nonsccs = !exists(file) || emptyDir(file);
-				file[n] = 0;
-				if (opts.xdirs && nonsccs) {
-					do_print("D      ", file, 0);
-				}
-				if (opts.dirs && !nonsccs) {
-					strcat(&file[n], "/");
-					strcat(&file[n+1], BKROOT);
-					root = exists(file);
-					file[n] = 0;
-					do_print("d      ", file, 0);
+		if (opts.dirs || opts.xdirs) {
+			n = strlen(file);
+			if (n > wi->rootlen) {
+				concat_path(buf, file, BKROOT);
+				if (exists(buf)) {
+					do_print("R      ", file, 0);
+					return (-1);
 				}
 			}
-			if (opts.onelevel) {
-				if (wi->seenfirst) return (-1);
-				wi->seenfirst = 1;
+			strcpy(&file[n], "/SCCS");
+			nonsccs = !exists(file) || emptyDir(file);
+			file[n] = 0;
+			if (opts.xdirs && nonsccs) {
+				do_print("D      ", file, 0);
 			}
+			if (opts.dirs && !nonsccs) {
+				do_print("d      ", file, 0);
+			}
+		}
+		if (opts.onelevel) {
+			if (wi->seenfirst) return (-1);
+			wi->seenfirst = 1;
 		}
 	} else {
-		/* are we in the same SCCS dir? then save */
-		if (wi->sccsdir &&
-		    pathneq(file, wi->sccsdir, wi->sccsdirlen)) {
-			int	sccs = 0;
-
-			p = file + wi->sccsdirlen;
-			if (pathneq(p, "SCCS/", 5)) {
-				sccs = 1;
-				p += 5;
-			}
-			if (!strchr(p, '/')) {
-				add_to_winfo(wi, p, sccs);
-				return (0);
-			}
+		if (patheq(p, BKSKIP)) {
+			/* abort current dir */
+			winfo_free(wi);
+			return (-2);
 		}
-		/* else just printit */
-		do_print("x------", file, 0);
+		if (((p - file) > 6) && patheq(p - 6, "/SCCS")) {
+			sccs = 1;
+			p[-6] = 0;
+		} else {
+			sccs = 0;
+		}
+		add_to_winfo(wi, p, sccs);
+		p[-1] = '/';
+		if (sccs) p[-6] = '/';
 	}
 	return (0);
 }
@@ -687,25 +739,68 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 private void
 load_ignore(project *p)
 {
+	char	*file;
+	char	*pat;
+	int	len, isbase;
 	FILE	*ignoref;
-	char	tmp[MAXPATH];
+	char	buf[MAXLINE];
 
-	if (opts.all || !p) return;
-	sprintf(tmp, "%s/BitKeeper/etc/ignore", proj_root(p));
-	unless (exists(tmp)) get(tmp, SILENT, "-");
-	if (ignoref = fopen(tmp, "rt")) {
-		ignore = read_globs(ignoref, 0);
-		fclose(ignoref);
+	ignore = 0;
+	prunedirs = hash_new(HASH_MEMHASH);
+
+	/* add default pruned dirs */
+	hash_storeStr(prunedirs, "BitKeeper/log", 0);
+	hash_storeStr(prunedirs, "BitKeeper/tmp", 0);
+	hash_storeStr(prunedirs, "BitKeeper/writer", 0);
+	hash_storeStr(prunedirs, "BitKeeper/readers", 0);
+	hash_storeStr(prunedirs, "PENDING", 0);
+
+	/* add default ignore patterns */
+	ignore = addLine(ignore, strdup("BitKeeper/etc/level"));
+	ignore = addLine(ignore, strdup("BitKeeper/etc/csets-out"));
+	ignore = addLine(ignore, strdup("BitKeeper/etc/csets-in"));
+
+	if (opts.all) return;
+
+	file = aprintf("%s/BitKeeper/etc/ignore", proj_root(p));
+	unless (exists(file)) get(file, SILENT, "-");
+	ignoref = fopen(file, "r");
+	free(file);
+	unless (ignoref) return;
+	while (fnext(buf, ignoref)) {
+		chomp(buf);
+
+		isbase = (strchr(buf, '/') == 0);
+
+		pat = buf;
+		if (*pat == '/') ++pat;	/* skip leading slash */
+		if (strneq(pat, "./", 2)) pat += 2; /* skip leading ./ */
+
+		unless (len = strlen(pat)) continue; /* blank lines */
+		if ((len > 7) && streq(pat + len - 7, " -prune")) {
+			pat[len-7] = 0;
+			hash_storeStr(prunedirs, pat, 0);
+			continue;
+		}
+		if (isbase) {
+			ignorebase = addLine(ignorebase, strdup(pat));
+		} else {
+			/* pathname glob */
+			ignore = addLine(ignore, strdup(pat));
+		}
 	}
-	dont_ignore = addLine(0, strdup("BitKeeper/etc/gone"));
+	fclose(ignoref);
 }
 
 private void
-walk(char *dir)
+walk(char *indir)
 {
 	winfo	wi = {0};
 	char	tmp[MAXPATH];
+	char	dir[MAXPATH];
 
+	cleanPath(indir, dir);
+	if (streq(dir, "/")) strcpy(dir, "/.");
 	if (proj) proj_free(proj);
 	if (proj = proj_init(dir)) {
 		load_ignore(proj);
@@ -727,11 +822,25 @@ walk(char *dir)
 	s_count = x_count = 0;
 #endif
 
+	wi.rootlen = strlen(dir);
+	if (proj) {
+		wi.proj_prefix = proj_relpath(proj, dir);
+		if (streq(wi.proj_prefix, ".")) {
+			free(wi.proj_prefix);
+			wi.proj_prefix = strdup("");
+		}
+	}
 	walkdir(dir, sfiles_walk, &wi);
 	if (wi.sccsdir) sccsdir(&wi);
 
-	if (ignore) free_globs(ignore);  ignore = 0;
-	if (dont_ignore) free_globs(dont_ignore);  dont_ignore = 0;
+	if (proj) {
+		free_globs(ignore);
+		free_globs(ignorebase);
+		ignore = ignorebase = 0;
+		hash_free(prunedirs);
+		prunedirs = 0;
+		free(wi.proj_prefix);
+	}
 	if (opts.timestamps && timestamps && proj) {
 		dumpTimestampDB(proj, timestamps);
 		hash_free(timestamps);
@@ -779,10 +888,9 @@ chk_diffs(sccs *s)
 private int
 isIgnored(char *file)
 {
-	char	*gfile, *p, *q, save;
-	int	len, rc = 1;
-	struct stat sbuf;
-	char	buf[MAXPATH];
+	char	*gfile;
+	int	rc = 0;
+	struct	stat sbuf;
 
 	/* if not in a repo, don't bother */
 	unless (proj_root(proj)) return (0);
@@ -790,63 +898,14 @@ isIgnored(char *file)
 	/* If this file is not from our repo, then no */
 	unless (gfile = proj_relpath(proj, file)) return (0);
 
-	unless (opts.all || match_globs(gfile, dont_ignore, 0)) {
-		if (match_globs(gfile, ignore, 0)) {
-			debug((stderr, "SKIP\t%s\n", gfile));
-			goto ignored;
-		}
-
-		/*
-		 * For backward compat with "bk sfiles"
-		 * trimed "./" and match against ignore list.
-		 */
-		sprintf(buf, "./%s", gfile);
-		if (match_globs(buf, ignore, 0)) {
-			debug((stderr, "SKIP\t%s\n", gfile));
-			goto ignored;
-		}
-
-		/*
-		 * For backward compat with "bk sfiles"
-		 * match basename/dirname against ignore list.
-		 */
-		p = gfile;
-		while (p) {
-			for (q = p; *q && (*q != '/'); q++);
-			save = *q;
-			*q = 0;
-			if (match_globs(p, ignore, 0)) {
-				*q = save;
-				debug((stderr, "SKIP\t%s\n", gfile));
-				goto ignored;
-			}
-			*q = save;
-			if (save == 0) break;
-			p = ++q;
-		}
-
-		/* ignore special file e.g. char/block/fifo file */
-		if (lstat(file, &sbuf)) goto ignored;
-		unless (sbuf.st_mode && S_IFREG|S_IFLNK) goto ignored;
+	if (match_globs(gfile, ignore, 0) ||		 /* pathname match */
+	    match_globs(basenm(gfile), ignorebase, 0) || /* basename match */
+	    lstat(file, &sbuf) ||			 /* gone? */
+	    !(sbuf.st_mode && S_IFREG|S_IFLNK)) {	 /* not reg file */
+		rc = 1;
 	}
-
-	/*
-	 * HACK to hide stuff in the log and locks directory
-	 * This assumes that sfiles is ran from project root
-	 * If you run "bk sfiles" under <project root>/BitKeeper directory,
-	 * these file will show up. It is probably OK.
-	 */
-	len = strlen(gfile);
-	if (pathneq("BitKeeper/log/", gfile, 14)) goto ignored;
-	if (pathneq("BitKeeper/writer/", gfile, 17)) goto ignored;
-	if (pathneq("BitKeeper/readers/", gfile, 18)) goto ignored;
-	if (pathneq("PENDING/", gfile, 8)) goto ignored;
-
-	rc = 0;
-ignored:
 	free(gfile);
 	return (rc);
-
 }
 
 private int
@@ -995,17 +1054,18 @@ append_rev(MDBM *db, char *name, char *rev)
 }
 
 /*
- * Called for each directory that has an SCCS subdirectory
+ * Called for each directory traversed by sfiles_walk()
  */
 private void
 sccsdir(winfo *wi)
 {
 	char	*dir = wi->sccsdir;
 	char	**slist = wi->sfiles;
+	char	**gfiles = 0;
 	MDBM	*gDB = wi->gDB;
 	MDBM	*sDB = wi->sDB;
 	char	*relp, *p, *gfile;
-	datum	k;
+	kvpair  kv;
 	sccs	*s = 0;
 	delta	*d;
 	int	i;
@@ -1023,6 +1083,7 @@ sccsdir(winfo *wi)
 	 * entry while we are in the first/next loop, it screw up
 	 * the mdbm internal index.
 	 */
+	sortLines(slist, 0);	/* walkdir() has a funny sort */
 	EACH (slist) {
 		char 	*file;
 		STATE	state = "       ";
@@ -1119,15 +1180,12 @@ sccsdir(winfo *wi)
 		}
 		if (s) sccs_free(s);
 	}
-	freeLines(slist, free);
 
 	/*
 	 * Check the sDB for "junk" file
 	 * XXX TODO: Do we consider the r.file and m.file "junk" file?
 	 */
 	if (opts.verbose || opts.junk) {
-		kvpair  kv;
-
 		concat_path(buf, dir, "SCCS");
 		EACH_KV (sDB) {
 			/*
@@ -1194,28 +1252,24 @@ sccsdir(winfo *wi)
 	 * Everything left in the gDB is extra
 	 */
 	if (opts.extras || opts.ignored || opts.verbose) {
-		for (k = mdbm_firstkey(gDB); k.dsize != 0;
-						k = mdbm_nextkey(gDB)) {
+		EACH_KV(gDB) gfiles = addLine(gfiles, kv.key.dptr);
+		sortLines(gfiles, 0);
+		EACH(gfiles) {
 			buf[0] = 's'; buf[1] = '.';
-			strcpy(&buf[2], k.dptr);
+			strcpy(&buf[2], gfiles[i]);
 			if (mdbm_fetch_str(sDB, buf)) continue;
-			concat_path(buf, dir, k.dptr);
+			concat_path(buf, dir, gfiles[i]);
 			buf1[0] = 'c'; buf1[1] = '.';
-			strcpy(&buf1[2], k.dptr);
+			strcpy(&buf1[2], gfiles[i]);
 			if (mdbm_fetch_str(sDB, buf1)) {
 				do_print("x-----y", buf, 0);
 			} else {
 				do_print("x------", buf, 0);
 			}
 		}
+		freeLines(gfiles, 0);
 	}
-	mdbm_close(wi->gDB);
-	wi->gDB = 0;
-	mdbm_close(wi->sDB);
-	wi->sDB = 0;
-	free(wi->sccsdir);
-	wi->sccsdir = 0;
-	wi->sfiles = 0;
+	winfo_free(wi);
 }
 
 /*
@@ -1229,41 +1283,15 @@ enableFastPendingScan(void)
 }
 
 /*
- * Return true if we should skip this directory (it contains .bk_skip).
- * If there is an SCCS directory without a SCCS/.bk_skip then complain,
- * and return false, because that is likely to be a mistake.
+ * This struct contains the data that is passed to findsfiles() by walkdir()
+ * when called by walksfiles().
  */
-int
-sfiles_skipdir(char *dir)
-{
-	char	*p;
-	char	buf[MAXPATH];
-
-	/* No .bk_skip? */
-	snprintf(buf, sizeof(buf), "%s/%s", dir, BKSKIP);
-	unless (exists(buf)) return (0);
-
-	/* There is a .bk_skip; if we are in SCCS already then we skip */
-	if ((p = strrchr(dir, '/')) && streq(p, "/SCCS")) return (1);
-
-	/* We are not in SCCS; if there is no SCCS dir then skip */
-	snprintf(buf, sizeof(buf), "%s/SCCS", dir);
-	unless (isdir(buf)) return (1);
-
-	/* We're not in SCCS, there is an SCCS, if SCCS/.bk_skip then skip */
-	snprintf(buf, sizeof(buf), "%s/SCCS/%s", dir, BKSKIP);
-	if (exists(buf)) return (1);
-
-	/* OK, .bk_skip without SCCS/.bk_skip - flag it and keep going */
-	getMsg("bk_skip_and_sccs", dir, 0, stderr);
-	return (0);
-}
-
 typedef struct sinfo sinfo;
 struct sinfo {
-	walkfn	fn;
-	void	*data;
-	int	rootlen;
+	walkfn	fn;		/* call this function on each sfile */
+	void	*data;		/* pass this to the fn() */
+	int	rootlen;	/* the len of the dir passed to walksfiles() */
+	char	*proj_prefix;	/* the prefix needed to make a relpath */
 };
 
 private int
@@ -1271,6 +1299,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 {
 	char	*p = strrchr(file, '/');
 	sinfo	*si = (sinfo *)data;
+	char	buf[MAXPATH];
 
 	unless (p) return (0);
 	if (S_ISDIR(sb->st_mode)) {
@@ -1282,6 +1311,11 @@ findsfiles(char *file, struct stat *sb, void *data)
 			strcat(file, "/etc");
 			if (exists(file)) return (-2);
 		}
+		if (proj) {
+			concat_path(buf, si->proj_prefix,
+			    file + si->rootlen + 1);
+			if (hash_fetchStr(prunedirs, buf) != 0) return (-1);
+		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
 			return (si->fn(file, sb, si->data));
@@ -1289,8 +1323,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 			/*
 			 * Skip directory containing a .bk_skip file
 			 */
-			p[1] = 0;
-			if (sfiles_skipdir(file)) return (-2);
+			return (-2);
 		}
 	}
 	return (0);
@@ -1299,10 +1332,24 @@ findsfiles(char *file, struct stat *sb, void *data)
 int
 walksfiles(char *dir, walkfn fn, void *data)
 {
-	sinfo	si;
+	sinfo	si = {0};
+	int	rc;
 
 	si.fn = fn;
 	si.data = data;
 	si.rootlen = strlen(dir);
-	return (walkdir(dir, findsfiles, &si));
+	if (proj = proj_init(dir)) {
+		load_ignore(proj);
+		si.proj_prefix = proj_relpath(proj, dir);
+		if (streq(si.proj_prefix, ".")) {
+			free(si.proj_prefix);
+			si.proj_prefix = strdup("");
+		}
+	}
+	rc = walkdir(dir, findsfiles, &si);
+	if (proj) {
+		free(si.proj_prefix);
+		proj_free(proj);
+	}
+	return (rc);
 }

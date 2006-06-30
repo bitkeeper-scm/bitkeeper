@@ -41,7 +41,7 @@ xflags_main(int ac, char **av)
 		s->state |= S_READ_ONLY;
 		ret |= xflagsDefault(s, CSET(s), what);
 		ret |= xflags(s, s->tree, what);
-		if (!(what & XF_DRYRUN) && !(s->state & S_READ_ONLY)) {
+		unless ((what & XF_DRYRUN) || (s->state & S_READ_ONLY)) {
 		    	sccs_newchksum(s);
 		}
 next:		sccs_free(s);
@@ -92,11 +92,7 @@ xflags(sccs *s, delta *d, int what)
 	int	ret = 0;
 
 	unless (d) return (0);
-	if (!d->added && !d->deleted && (d->type == 'D') &&
-	    d->comments && (t = d->comments[1]) &&
-	    (strneq(t, "Turn on ", 8) || strneq(t, "Turn off ", 9))) {
-	    	ret = checkXflags(s, d, what);
-	}
+	ret = checkXflags(s, d, what);
 	ret |= xflags(s, d->kid, what);
 	ret |= xflags(s, d->siblings, what);
 	return (ret);
@@ -125,13 +121,15 @@ checkXflags(sccs *s, delta *d, int what)
 		if (strneq(d->comments[i], "Turn on ", 8)) {
 			t = &(d->comments[i][8]);
 			p = &added;
-		} else {
+		} else if (strneq(d->comments[i], "Turn off ", 9)) {
 			t = &(d->comments[i][9]);
 			p = &deleted;
+		} else {
+			continue;
 		}
 		f = t;
-		unless (t = strchr(f, ' ')) return (0);
-		unless (streq(t, " flag")) return (0);
+		unless (t = strchr(f, ' ')) continue;
+		unless (streq(t, " flag")) continue;
 		*t = 0; *p |= a2xflag(f); *t = ' ';
 	}
 	assert(d->parent);
@@ -140,6 +138,26 @@ checkXflags(sccs *s, delta *d, int what)
 	want = old | added;
 	want &= ~deleted;
 	if (new == want) return (0);
+	/*
+	 * We screwed this one up, the fix is to add some comments to the
+	 * 1.1 delta like so: 
+	 * Turn off EOLN_NATIVE flag
+	 * Turn on EXPAND1 flag
+	 * Turn on SCCS flag
+	 * but that's too much of a pain.
+	 */
+	if (streq("src/libc/utils/lines.c", s->gfile)) return (0);
+
+	/* just in case this blows up in the field */
+	if (getenv("_BK_NO_XFLAGS_CHECK")) return (0);
+
+	// fprintf(stderr, "\ndelta = %s, %s\n", d->rev, d->comments[1]);
+	// fprintf(stderr, "old\t"); pflags(old);
+	// fprintf(stderr, "\nnew\t"); pflags(new);
+	// fprintf(stderr, "\nwant\t"); pflags(want);
+	// fprintf(stderr, "\nadd\t"); pflags(added);
+	// fprintf(stderr, "\ndel\t"); pflags(deleted);
+	// fprintf(stderr, "\n");
 	if (what & XF_STATUS) return (1);
 	if (what & XF_DRYRUN) {
 		fprintf(stderr, "%s|%s ", s->gfile, d->rev);
@@ -197,6 +215,12 @@ pflags(u32 flags)
 	if (flags & X_EOLN_NATIVE) {
 		if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
 	}
+	if (flags & X_EOLN_WINDOWS) {
+		if (comma) fs(","); fs("EOLN_WINDOWS"); comma = 1;
+	}
+	unless (flags & (X_EOLN_NATIVE|X_EOLN_WINDOWS)) {
+		if (comma) fs(","); fs("EOLN_UNIX"); comma = 1;
+	}
 	if (flags & X_LONGKEY) {
 		if (comma) fs(","); fs("LONGKEY"); comma = 1;
 	}
@@ -224,6 +248,7 @@ a2xflag(char *flag)
 	if (streq(flag, "HASH")) return (X_HASH);
 	if (streq(flag, "SCCS")) return (X_SCCS);
 	if (streq(flag, "EOLN_NATIVE")) return (X_EOLN_NATIVE);
+	if (streq(flag, "EOLN_WINDOWS")) return (X_EOLN_WINDOWS);
 	if (streq(flag, "LONGKEY")) return (X_LONGKEY);
 	if (streq(flag, "NOMERGE")) return (X_NOMERGE);
 	if (streq(flag, "MONOTONIC")) return (X_MONOTONIC);

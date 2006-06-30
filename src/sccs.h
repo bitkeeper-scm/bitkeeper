@@ -223,8 +223,12 @@ int	checking_rmdir(char *dir);
 #define	X_NOMERGE	0x00004000	/* treat as binary even if ascii */
 					/* flags which can be changed */
 #define	X_MONOTONIC	0x00008000	/* file rolls forward only */
+#define	X_EOLN_WINDOWS	0x00010000	/* produce \r\n line endings */
+/* Note: X_EOLN_UNIX is fake, it does not go on disk */
+#define	X_EOLN_UNIX	0x00020000	/* produce \n style endings */
 #define	X_MAYCHANGE	(X_RCS | X_YEAR4 | X_SHELL | X_EXPAND1 | \
-			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE | X_MONOTONIC)
+			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE | \
+			X_MONOTONIC | X_EOLN_WINDOWS | X_EOLN_UNIX)
 /* default set of flags when we create a file */
 #define	X_DEFAULT	(X_BITKEEPER|X_CSETMARKED|X_EOLN_NATIVE)
 #define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
@@ -281,6 +285,7 @@ int	checking_rmdir(char *dir);
 #define	KV(s)		((s)->xflags & X_KV)
 #define	NOMERGE(s)	((s)->xflags & X_NOMERGE)
 #define	MONOTONIC(s)	((s)->xflags & X_MONOTONIC)
+#define	EOLN_WINDOWS(s)	((s)->xflags & X_EOLN_WINDOWS)
 
 /*
  * Flags (d->flags) that indicate some state on the delta.
@@ -1163,7 +1168,6 @@ char	*findDotFile(char *old, char *new, char *buf);
 char	*platform(void);
 char	*pager(void);
 int	bkmail(char *url, char **to, char *subject, char *file);
-int	sfiles_skipdir(char *dir);
 void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);

@@ -4,7 +4,7 @@
 bk push \- send local changes to parent repository
 .SH SYNOPSIS
 .B bk push
-.[B] \-aqt
+.[B] \-aqT
 .[OPTequal] \-E env var
 .[OPTreq] \-c n
 .[ARG] parent \ \.\|.\|.
@@ -52,13 +52,13 @@ Export environment variable to remote site.
 .B \-q
 Run quietly.
 .tp
-.B \-t
+.B \-T
 Pass 
-.Q \-t
+.Q \-T
 to
 .B bk resolve
 (\c
-.Q \-t
+.Q \-T
 means do not use the GUI tools) during
 the pull operation (requires 
 .Q \-a

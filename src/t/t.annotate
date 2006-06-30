@@ -9,6 +9,8 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+test "$PLATFORM" = "WIN32" && USER=`bk getuser -r`
+
 echo $N Create initial repository ...................................$NL
 commercial project
 mkdir subdir
@@ -20,12 +22,12 @@ line3
 EOF
 BK_DATE_TIME_ZONE="04/08/01 13:13:13-8:00" BK_USER=joe BK_HOST=blow.com \
     bk new $Q file
-bk commit $Q -yfirst
+bk commit $Q -yfirst || exit 1
 bk edit $Q file
 echo line4 >> file
 BK_DATE_TIME_ZONE="04/08/23 14:14:14-8:00" BK_USER=jane BK_HOST=shoes.com \
     bk delta -ywhatever $Q file
-bk commit $Q -ysecond
+bk commit $Q -ysecond || exit 1
 echo OK
 
 echo $N Check bk annotate -ab .......................................$NL
@@ -85,10 +87,10 @@ echo OK
 echo $N Check bk annotate -au .......................................$NL
 bk annotate -au file > GOT
 cat <<EOF > WANT
-joe	line1
-joe	line2
-joe	line3
-jane	line4
+joe/$USER	line1
+joe/$USER	line2
+joe/$USER	line3
+jane/$USER	line4
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -107,10 +109,10 @@ echo OK
 echo $N Check bk annotate -abdnru ...................................$NL
 bk annotate -abdnru file > GOT
 cat <<EOF > WANT
-file	2004/08/01	joe	1.1	1	line1
-file	2004/08/01	joe	1.1	2	line2
-file	2004/08/01	joe	1.1	3	line3
-file	2004/08/23	jane	1.2	4	line4
+file	2004/08/01	joe/$USER	1.1	1	line1
+file	2004/08/01	joe/$USER	1.1	2	line2
+file	2004/08/01	joe/$USER	1.1	3	line3
+file	2004/08/23	jane/$USER	1.2	4	line4
 EOF
 cmpfiles WANT GOT
 echo OK

@@ -269,7 +269,9 @@ sfiles(char *opts)
 {
 	int	pfd;
 	char	*sav[4] = {"bk", "sfiles", 0, 0};
+	char	ignore[] = "BitKeeper/etc/ignore";
 
+	unless (exists(ignore)) get(ignore, SILENT, "-");
 	sav[2] = opts;
 	if ((spid = spawnvp_rPipe(sav, &pfd, 0)) == -1) {
 		fprintf(stderr, "cannot spawn bk sfiles\n");

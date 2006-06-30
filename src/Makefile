@@ -117,24 +117,24 @@ BINS	= $(BK) inskeys$(EXE)
 
 # List of all objects in bk other than bk.o. Keep it sorted.
 OBJ =	abort.o adler32.o admin.o annotate.o \
-	arrow_gif.o back_gif.o bkd.o bkd_cd.o \
+	bkd.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
 	bkd_kill.o bkd_license.o bkd_misc.o \
 	bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
-	bkpowered.o bkusers.o bkver.o cat.o changes.o \
+	bkusers.o bkver.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o cmd.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	delta.o diffs.o diffsplit.o dir_gif.o \
-	eula.o export.o file_gif.o \
+	delta.o diffs.o diffsplit.o \
+	eula.o export.o \
 	find.o findcset.o findkey.o fix.o fixlod.o fixtool.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o getreg.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
 	idcache.o isascii.o inskeys.o key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
-	lib_tcp.o libcommit.o libdiff.o librange.o \
+	libcommit.o libdiff.o librange.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
@@ -173,7 +173,9 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
-LOCALSCR= build
+LOCALSCR= build \
+	www/arrow.gif www/bkpowered.gif www/repo.gif www/back.gif www/dir.gif \
+	www/file.gif www/trailer.gif
 PSCR	= t/doit t/guitest
 PROGS	= hidestring libc/mtst$(EXE)
 LIBS	= libc/libc.a zlib/libz.a tomcrypt/libtomcrypt.a
@@ -191,7 +193,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bkd.h lib_tcp.h logging.h \
+HDRS	= bkd.h logging.h \
 	  purify.h range.h rcs.h resolve.h sccs.h zgets.h \
 	  cmd.h bkver.h proj.h redblack.h
 
@@ -268,7 +270,8 @@ clean: FORCE
 		bk.ico bk16.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
-		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe
+		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
+		diff.exe diff3.exe hidestring.exe inskeys_main.o patch.exe
 	$(RM) -r tmp
 
 clobber: clean FORCE
@@ -440,7 +443,8 @@ install: installdir
 installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)
-	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images | \
+	bk get -S www
+	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images www/*.gif | \
 		(cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
 	if [ $(SYS) = unix ]; \

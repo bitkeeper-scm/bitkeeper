@@ -13,7 +13,7 @@
 # %K%
 
 cd "$HERE"	# For Windows
-HOST=@bk_regression.bk
+HOST=@bk_regression.bk/`bk gethost -r`
 fresh_commercial project
 mkdir -p a/b/c
 echo 1.1 > a/b/c/Data
@@ -196,7 +196,7 @@ ChangeSet
   Initial repository create
 
 EOF
-bk sccslog -f | grep -v $HOST | bk undos > CMP2
+bk sccslog -f | grep -v bk_regression | bk undos > CMP2
 bk diff -iu CMP1 CMP2 || {
 	echo Failed
 	exit 1

@@ -64,7 +64,7 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstvx;1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstTvx;1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -83,6 +83,7 @@ resolve_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
 		    case 's': opts.autoOnly = 1; break;		/* doc */
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'i':
 			opts.partial = 1;
@@ -1234,6 +1235,7 @@ flags_delta(resolve *rs,
 	doit(X_EXPAND1, "EXPAND1");
 	doit(X_SCCS, "SCCS");
 	doit(X_EOLN_NATIVE, "EOLN_NATIVE");
+	doit(X_EOLN_WINDOWS, "EOLN_WINDOWS");
 	doit(X_NOMERGE, "NOMERGE");
 	doit(X_MONOTONIC, "MONOTONIC");
 	for (i = 0; i < f; ++i) av[++n] = fbuf[i];
@@ -1641,8 +1643,9 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		opts->notmerged = 0;
 		chdir(RESYNC2ROOT);
 		sccs_unlockfile(RESOLVE_LOCK);
-		execvp("bk", nav);
-		exit(1);
+		i = spawnvp(P_WAIT, "bk", nav);
+		restore_checkouts(opts);
+		exit(WIFEXITED(i) ? WEXITSTATUS(i) : 1);
 	}
 
 	/*

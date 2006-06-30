@@ -13,8 +13,13 @@
 # Copyright (c) 2002 Rick Smith
 # %K%
 
+# Don't create gone in 'bk setup'
+# (use fresh_commercial so this don't effect cache)
+_BK_SETUP_NOGONE=1
+export _BK_SETUP_NOGONE
+
 echo $N Create initial repository ...................................$NL
-commercial project
+fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`

@@ -48,6 +48,7 @@
 .	ds SC SCCS
 .	ds R RCS
 .	ds UN UNIX
+.	ds UNIX UNIX
 .\}
 .if t \{\
 .	ds BM B\s-2IT\s0M\s-2OVER\s0
@@ -59,6 +60,7 @@
 .	ds SC \s-1SCCS\s0
 .	ds R \s-1RCS\s0
 .	ds UN \s-1UNIX\s0
+.	ds UNIX \s-1UNIX\s0
 .\}
 .\" Like .B but for constant width
 .de C

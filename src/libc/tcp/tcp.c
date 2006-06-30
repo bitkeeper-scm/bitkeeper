@@ -1,0 +1,233 @@
+/*
+ * tcp_lib.c - routines for managing TCP connections.
+ *
+ * Copyright (c) 1994-1999 Larry McVoy.
+ */
+#include "system.h"
+
+/*
+ * Get a TCP socket, bind it, figure out the port,
+ * and advertise the port as program "prog".
+ */
+int
+tcp_server(int port, int quiet)
+{
+	int	sock;
+	struct	sockaddr_in s;
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+		if (!quiet) perror("socket server");
+		return (-1);
+	}
+	memset((void*)&s, 0, sizeof(s));
+	s.sin_family = AF_INET;
+	s.sin_port = htons(SOCK_PORT_CAST port);
+	if (port) tcp_reuse(sock);
+	tcp_keepalive(sock);
+	if (bind(sock, (struct sockaddr*)&s, sizeof(s)) < 0) {
+		if (!quiet) perror("bind");
+		return (-2);
+	}
+	if (listen(sock, 100) < 0) {
+		if (!quiet) perror("listen");
+		return (-3);
+	}
+	return (sock);
+}
+
+/*
+ * Accept a connection and return it
+ */
+int
+tcp_accept(int sock)
+{
+	struct	sockaddr_in s;
+	int	newsock;
+	int	namelen;
+
+	namelen = sizeof(s);
+	memset((void*)&s, 0, namelen);
+
+retry:
+	if ((newsock = accept(sock, (struct sockaddr*)&s, &namelen)) < 0) {
+		if (errno == EINTR)
+			goto retry;
+		perror("accept");
+		return (-1);
+	}
+	tcp_keepalive(newsock);
+	return (newsock);
+}
+
+/*
+ * Connect to the TCP socket advertised as "port" on "host" and
+ * return the connected socket.
+ */
+int
+tcp_connect(char *host, int port)
+{
+	struct	hostent *h;
+	struct	sockaddr_in s;
+	int	sock;
+	char	*freeme;
+
+	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+		perror("socket connect");
+		return (-1);
+	}
+	if (freeme = strrchr(host, ':')) {
+		host = strdup(host);
+		freeme = strrchr(host, ':');
+		*freeme++ = 0;
+		port = atoi(freeme);
+		freeme = host;
+	}
+	if (!(h = gethostbyname(host))) {
+		if (freeme) free(freeme);
+		closesocket(sock);
+		return (-2);
+	}
+	memset((void *) &s, 0, sizeof(s));
+	s.sin_family = AF_INET;
+	memmove((void *)&s.sin_addr, (void*)h->h_addr, h->h_length);
+	s.sin_port = SOCK_PORT_CAST htons(SOCK_PORT_CAST port);
+	if (connect(sock, (struct sockaddr*)&s, sizeof(s)) < 0) {
+		//fprintf(stderr, "connect(%s:%u) failed.\n", host, port);
+		closesocket(sock);
+		if (freeme) free(freeme);
+		return (-3);
+	}
+	tcp_keepalive(sock);
+	if (freeme) free(freeme);
+	return (sock);
+}
+
+int
+sockport(int s)
+{
+	int	namelen;
+	struct sockaddr_in sin;
+
+	namelen = sizeof(sin);
+	if (getsockname(s, (struct sockaddr *)&sin, &namelen) < 0) {
+		perror("getsockname");
+		return(-1);
+	}
+	return ((int)ntohs(sin.sin_port));
+}
+
+char *
+peeraddr(int s)
+{
+	int	namelen;
+	struct sockaddr_in sin;
+
+	namelen = sizeof(sin);
+	if (getpeername(s, (struct sockaddr *)&sin, &namelen) < 0) {
+		perror("getpeername");
+		return(0);
+	}
+	return (inet_ntoa(SOCK_ADDR_CAST sin.sin_addr));
+}
+
+char *
+sockaddr(int s)
+{
+	int	namelen;
+	struct sockaddr_in sin;
+
+	namelen = sizeof(sin);
+	if (getsockname(s, (struct sockaddr *)&sin, &namelen) < 0) {
+		perror("getsockname");
+		return(0);
+	}
+	return (inet_ntoa(SOCK_ADDR_CAST sin.sin_addr));
+}
+
+int
+issock(int s)
+{
+        int rc, t = 1;
+
+        rc = getsockopt(s, SOL_SOCKET, SO_TYPE, SOCK_OPT_CAST &t, &t);
+        if (rc) return (0);
+        return (1);
+}
+
+char	*
+hostaddr(char *host)
+{
+	struct	hostent *h;
+	struct	in_addr a;
+
+	if (!(h = gethostbyname(host))) return (0);
+	memmove((void *)&a, (void*)h->h_addr, h->h_length);
+	return (inet_ntoa(a));
+}
+
+/*
+ * Emulate socketpair.
+ */
+int
+tcp_pair(int fds[2])
+{
+	int	fd;
+
+	if ((fd = tcp_server(0, 0)) == -1) {
+		perror("tcp_server");
+		return (-1);
+	}
+	fds[0] = fd;
+	if ((fd = tcp_connect("127.0.0.1", sockport(fds[0]))) == -1) {
+		perror("tcp_connect");
+		closesocket(fd);
+		return (-1);
+	}
+	fds[1] = fd;
+	if ((fd = tcp_accept(fds[0])) == -1) {
+		perror("tcp_accept");
+		closesocket(fds[0]);
+		closesocket(fds[1]);
+		return (-1);
+	}
+	closesocket(fds[0]);
+	fds[0] = fd;
+	return (0);
+}
+
+void
+tcp_ndelay(int sock, int val)
+{
+#ifdef	TCP_NDELAY
+	if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+	    SOCK_OPT_CAST  &val, sizeof(val))) {
+		fprintf(stderr, "TCP_NODELAY failed %s(%d)\n",
+		    strerror(errno), errno);
+	}
+#endif
+}
+
+void
+tcp_reuse(int sock)
+{
+#ifdef	SO_REUSEADDR
+	int	one = 1;
+
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, SOCK_OPT_CAST &one, sizeof(one))) {
+		fprintf(stderr, "SO_REUSEADDR failed %s(%d)\n",
+		    strerror(errno), errno);
+	}
+#endif
+}
+
+void
+tcp_keepalive(int sock)
+{
+#ifdef	SO_KEEPALIVE
+	int	one = 1;
+
+	if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, SOCK_OPT_CAST &one, sizeof(one))) {
+		perror("SO_KEEPALIVE");
+	}
+#endif
+}

@@ -2705,7 +2705,7 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	sprintf(buf,
 	    "M 0.0 %s%s %s@%s 0 0 0/0/0\nP ChangeSet\n"
 	    "%s%s%ss g\ns l\ns %s\ns %s\n%s\n",
-	    time2date(tt), sccs_zone(tt), sccs_getuser(), sccs_gethost(),
+	    time2date(tt), sccs_zone(tt), sccs_user(), sccs_host(),
 	    tag ? "S " : "",
 	    tag ? tag : "",
 	    tag ? "\n" : "",
@@ -2745,7 +2745,7 @@ sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
 	sccs_sdelta(s, md, k1);
 	assert(tag);
 	buf = aprintf("M 0.0 %s%s %s@%s 0 0 0/0/0\nS %s\ns g\ns l\ns %s\n%s\n",
-	    time2date(tt), sccs_zone(tt), sccs_getuser(), sccs_gethost(),
+	    time2date(tt), sccs_zone(tt), sccs_user(), sccs_host(),
 	    tag,
 	    k1,
 	    "------------------------------------------------");
@@ -3719,40 +3719,34 @@ private MDBM *
 loadRepoConfig(char *root)
 {
 	MDBM	*DB = 0;
-	char 	*config;
 	sccs	*s = 0;
+	char	config[MAXPATH];
 
 	/*
 	 * If the config is already checked out, use that.
 	 */
-	config = aprintf("%s/BitKeeper/etc/config", root);
+	concat_path(config, root, "/BitKeeper/etc/config");
 	if (exists(config)) {
 		DB = mdbm_mem();
 		config2mdbm(DB, config);
-		free(config);
 		return (DB);
 	}
-	free(config);
 
 	/*
 	 * No g file, so load it directly from the s.file
 	 */
-	config = aprintf("%s/BitKeeper/etc/SCCS/s.config", root);
-	unless (exists(config)) {
-out:		free(config);
-		return (0);
-	}
+	concat_path(config, root, "BitKeeper/etc/SCCS/s.config");
+	unless (exists(config)) return (0);
 
-	unless (s = sccs_init(config, SILENT)) goto out;
+	unless (s = sccs_init(config, SILENT)) return (0);
 	s->state |= S_CONFIG; /* This should really be stored on disk */
 	if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASH|GET_HASHONLY, 0)) {
 		sccs_free(s);
-		goto out;
+		return (0);
 	}
 	DB = s->mdbm;
 	s->mdbm = 0;
 	sccs_free(s);
-	free(config);
 	return (DB);
 }
 
@@ -5739,7 +5733,7 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 	    case (E_GZIP|E_UUENCODE):
 		/*
 		 * Note: This has no effect when we print to stdout
-		 * We want this becuase we want diff_gfile() to
+		 * We want this because we want diff_gfile() to
 		 * diffs file with normlized to LF.
 		 *
 		 * Win32 note: t.bkd regression failed if ChangeSet have
@@ -6207,12 +6201,14 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	int	hashFlags = 0;
 	int	sccs_expanded, rcs_expanded;
 	int	lf_pend = 0;
+	char	*eol = "\n";
 	ser_t	serial;
 	char	align[16];
 	char	lnamebuf[64]; /* md5sum + '.' + linenumber */
 	MDBM	*namedb = 0;
 	u32	*lnum = 0;
 
+	if (EOLN_WINDOWS(s)) eol = "\r\n";
 	slist = d ? serialmap(s, d, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
 	if (error) {
@@ -6366,7 +6362,7 @@ out:			if (slist) free(slist);
 				    lf_pend == whatstate((const serlist*)state))
 				{
 					unless (flags & GET_SUM) {
-						fputc('\n', out);
+						fputs(eol, out);
 					}
 					if (flags & NEWCKSUM) sum += '\n';
 					lf_pend = 0;
@@ -6390,7 +6386,7 @@ out:			if (slist) free(slist);
 			}
 			lines++;
 			if (lf_pend) {
-				unless (flags & GET_SUM) fputc('\n', out);
+				unless (flags & GET_SUM) fputs(eol, out);
 				if (flags & NEWCKSUM) sum += '\n';
 				lf_pend = 0;
 			}
@@ -6495,7 +6491,7 @@ write:
 			char	*n = &buf[3];
 			while (isdigit(*n)) n++;
 			if (*n != 'N') {
-				unless (flags & GET_SUM) fputc('\n', out);
+				unless (flags & GET_SUM) fputs(eol, out);
 				lf_pend = 0;
 				if (flags & NEWCKSUM) sum += '\n';
 			} else {
@@ -7553,7 +7549,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	int	i;	/* used by EACH */
 	int	first = willfix;
 	char	buf[MAXLINE];
-	char	*p, *t;
+	char	*p;
 	int	bits = 0;
 	int	gonechkd = 0;
 	int	strip_tags = CSET(s) && getenv("_BK_STRIPTAGS");
@@ -7733,18 +7729,14 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 
-		t = 0;
 		if (d->hostname && !(d->flags & D_DUPHOST)) {
-			t = d->hostname;
-		}
-		if (t) {
 			p = fmts(buf, "\001cH");
-			p = fmts(p, t);
+			p = fmts(p, d->hostname);
 			*p++ = '\n';
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		
+
 		if (first) {
 			fputmeta(s, "\001cK", out);
 			s->sumOff = ftell(out);
@@ -8930,7 +8922,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	if (nodefault) {
 		unless (d->user) d->user = strdup("Anon");
 	} else {
-		unless (d->user) d->user = strdup(sccs_getuser());
+		unless (d->user) d->user = strdup(sccs_user());
 		unless (d->hostname && sccs_gethost()) {
 			char	*imp, *h;
 
@@ -8939,7 +8931,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				hostArg(d, h);
 				free(h);
 			} else {
-				hostArg(d, sccs_gethost());
+				hostArg(d, sccs_host());
 			}
 		}
 		unless (d->pathname && s) {
@@ -9220,6 +9212,11 @@ out:		sccs_unlock(s, 'z');
 					char *p = mdbm_fetch_str(db, "eoln");
 					if (p && streq("unix", p)) {
 						s->xflags &= ~X_EOLN_NATIVE;
+						s->xflags &= ~X_EOLN_WINDOWS;
+					}
+					if (p && streq("windows", p)) {
+						s->xflags &= ~X_EOLN_NATIVE;
+						s->xflags |= X_EOLN_WINDOWS;
 					}
 
 					if (p = mdbm_fetch_str(db, "keyword")) {
@@ -10348,6 +10345,10 @@ name2xflg(char *fl)
 		return X_SCCS;
 	} else if (streq(fl, "EOLN_NATIVE")) {
 		return X_EOLN_NATIVE;
+	} else if (streq(fl, "EOLN_WINDOWS")) {
+		return X_EOLN_WINDOWS;
+	} else if (streq(fl, "EOLN_UNIX")) {
+		return X_EOLN_UNIX;
 	} else if (streq(fl, "KV")) {
 		return X_KV;
 	} else if (streq(fl, "NOMERGE")) {
@@ -10375,37 +10376,83 @@ private int
 changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 {
 	char	buf[50];
-	u32	xflags, mask;
+	u32	xflags, changing, eoln;
 
 	assert(flag);
 
-	mask = name2xflg(flag);
-	xflags = sccs_xflags(n);
-	unless (xflags) xflags = sc->xflags;
+	changing = name2xflg(flag);
+	unless (xflags = sccs_xflags(n)) xflags = sc->xflags;
 
 	if (add) {
-		if (xflags & mask) {
+		if (xflags & changing) {
 			verbose((stderr,
 			    "admin: warning: %s %s flag is already on\n",
 			    sc->sfile, flag));
 			return (0);
 		} 
-		xflags |= mask;
+		xflags |= changing;
 	} else {
-		unless (xflags & mask) {
+		unless ((changing == X_EOLN_UNIX) || (xflags & changing)) {
 			verbose((stderr,
 			    "admin: warning: %s %s flag is already off\n",
 			    sc->sfile, flag));
 			return (0);
 		}
-		xflags &= ~mask;
+		xflags &= ~changing;
 	}
 	sc->xflags = xflags;
 	assert(n);
 	n->flags |= D_XFLAGS;
 	n->xflags = xflags;
-	sprintf(buf, "Turn %s %s flag", add ? "on": "off", flag);
-	n->comments = addLine(n->comments, strdup(buf));
+	/* pseudo flag, we speak only native & windows */
+	unless (changing == X_EOLN_UNIX) {
+		sprintf(buf, "Turn %s %s flag", add ? "on": "off", flag);
+		n->comments = addLine(n->comments, strdup(buf));
+	}
+	/*
+	 * We have two real EOLN xflags: X_EOLN_NATIVE and X_WINDOWS
+	 * and one fake one: X_EOLN_UNIX = !X_EOLN_NATIVE
+	 * and they are all mutually exclusive.
+	 * Setting any one clears the others.
+	 * Setting X_EOLN_UNIX clears all of them.
+	 */
+	eoln = X_EOLN_NATIVE|X_EOLN_WINDOWS|X_EOLN_UNIX;
+	if (add && (eoln & changing)) {
+		if (changing == X_EOLN_NATIVE) {
+			if (n->xflags & X_EOLN_WINDOWS) {
+				sprintf(buf, "Turn off EOLN_WINDOWS flag");
+				n->comments = addLine(n->comments, strdup(buf));
+				n->xflags &= ~X_EOLN_WINDOWS;
+			}
+		}
+		if (changing == X_EOLN_WINDOWS) {
+			if (n->xflags & X_EOLN_NATIVE) {
+				sprintf(buf, "Turn off EOLN_NATIVE flag");
+				n->comments = addLine(n->comments, strdup(buf));
+				n->xflags &= ~X_EOLN_NATIVE;
+			}
+		}
+		if (changing == X_EOLN_UNIX) {
+			if (n->xflags & X_EOLN_WINDOWS) {
+				sprintf(buf, "Turn off EOLN_WINDOWS flag");
+				n->comments = addLine(n->comments, strdup(buf));
+				n->xflags &= ~X_EOLN_WINDOWS;
+			}
+			if (n->xflags & X_EOLN_NATIVE) {
+				sprintf(buf, "Turn off EOLN_NATIVE flag");
+				n->comments = addLine(n->comments, strdup(buf));
+				n->xflags &= ~X_EOLN_NATIVE;
+			}
+		}
+		n->xflags &= ~X_EOLN_UNIX;	/* fake, in mem only */
+	} else if (!add) {
+		if (changing & (X_EOLN_WINDOWS|X_EOLN_UNIX)) {
+			sprintf(buf, "Turn on EOLN_NATIVE flag");
+			n->comments = addLine(n->comments, strdup(buf));
+			n->xflags |= X_EOLN_NATIVE;
+		}
+	}
+	assert(!(n->xflags & X_EOLN_UNIX));
 	return (1);
 }
 
@@ -12981,10 +13028,10 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 		lrev = 0;
 		rrev = "?";
 	}
-	unless (findrev(s, lrev)) {
+	unless (sccs_findrev(s, lrev)) {
 		return (-2);
 	}
-	if (r2 && !findrev(s, r2)) {
+	if (r2 && !sccs_findrev(s, r2)) {
 		return (-3);
 	}
 	if (!rrev) rrev = findrev(s, 0)->rev;
@@ -12999,7 +13046,7 @@ getHistoricPath(sccs *s, char *rev)
 {
 	delta *d;
 
-	d = findrev(s, rev);
+	d = sccs_findrev(s, rev);
 	if (d && d->pathname) {
 		return (d->pathname);
 	} else {
@@ -14039,6 +14086,12 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		}
 		if (flags & X_EOLN_NATIVE) {
 			if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
+		}
+		if (flags & X_EOLN_WINDOWS) {
+			if (comma) fs(","); fs("EOLN_WINDOWS"); comma = 1;
+		}
+		unless (flags & (X_EOLN_NATIVE|X_EOLN_WINDOWS)) {
+			if (comma) fs(","); fs("EOLN_UNIX"); comma = 1;
 		}
 		if (flags & X_LONGKEY) {
 			if (comma) fs(","); fs("LONGKEY"); comma = 1;
@@ -15264,7 +15317,10 @@ text:	if (d->flags & D_TEXT) {
 		sccs_pdelta(s, e, out);
 		fprintf(out, "\n");
 	}
-	if (d->flags & D_XFLAGS) fprintf(out, "X 0x%x\n", d->xflags);
+	if (d->flags & D_XFLAGS) {
+		assert((d->xflags & X_EOLN_UNIX) == 0);
+		fprintf(out, "X 0x%x\n", d->xflags);
+	}
 	if (s->tree->zone) assert(d->zone);
 	fprintf(out, "------------------------------------------------\n");
 	return (0);

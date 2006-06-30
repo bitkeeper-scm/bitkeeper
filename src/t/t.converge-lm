@@ -20,8 +20,13 @@ export ME BK_USER BK_HOST BK_YEAR2
 NUM=0
 FILE=test$NUM
 
+# Don't create gone in 'bk setup'
+# (use fresh_commercial so this don't effect cache)
+_BK_SETUP_NOGONE=1
+export _BK_SETUP_NOGONE
+
 echo $N Create repository ...........................................$NL
-commercial project
+fresh_commercial project
 echo OK
 
 echo $N Add content to ignore, gone, logging_ok .....................$NL
@@ -103,7 +108,7 @@ done
 echo $N Create repository, clone, make csets as same users ..........$NL
 cd $HERE
 rm -rf project copy
-commercial project
+fresh_commercial project
 cd ..
 bk clone $Q project copy
 cd project
@@ -144,7 +149,7 @@ echo OK
 echo $N Create repository, clone, csets as diff users, same time_t ..$NL
 cd $HERE
 rm -rf project copy
-commercial project
+fresh_commercial project
 cd ..
 bk clone $Q project copy
 cd project
@@ -160,7 +165,7 @@ echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
 JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
 J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/gone`
 mv BitKeeper/etc/SCCS/s.gone OLD
-perl -pe "s|$JUNK BBB |$DATE BBB |" < OLD | bk undos > BitKeeper/etc/SCCS/s.gone
+perl -pe "s|$JUNK BBB/|$DATE BBB/|" < OLD | bk undos > BitKeeper/etc/SCCS/s.gone
 bk admin -z BitKeeper/etc/gone
 mv SCCS/s.ChangeSet OLD2
 sed "s?BitKeeper/etc/gone|$J_UTC?BitKeeper/etc/gone|$UTC?" < OLD2 >  X
@@ -228,7 +233,7 @@ echo OK
 echo $N Create repository ...........................................$NL
 cd $HERE
 rm -rf project copy
-commercial project
+fresh_commercial project
 echo OK
 
 echo $N Force cset derived root key, clone ..........................$NL
@@ -302,7 +307,7 @@ echo OK
 echo $N Create repo, clone, commit in both and save .................$NL
 cd $HERE
 rm -rf project copy
-commercial project
+fresh_commercial project
 cd ..
 bk clone $Q project copy
 cd project

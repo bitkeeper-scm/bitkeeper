@@ -42,14 +42,9 @@ The possible values for
 .ARG flag
 are:
 .RS
-.TP \fBEOLN_NATIVE\fP
+.TP \fBEOLN_WINDOWS\fP
 .B BITKEEPER
 mark the file as a \*(BK file (very rarely used, \fBnot\fP recommended)
-.tp
-.B EXPAND1
-expand keywords in first line that contains keywords only (printf conflicts)
-(May be set in
-.BR BitKeeper/etc/config ).
 .tp
 .B EOLN_NATIVE
 use the operating system's native end-of-line termination (i.e., 
@@ -58,14 +53,22 @@ on Windows and
 .B \en
 on all other platforms.)
 .B EOLN_NATIVE
-is set to \*(lqon\*(rq by default.  To make the
-default be to always have 
-.B \en
-line endings, put
-.B eoln:unix
-in the
-.B BitKeeper/etc/config
-file.
+is set to \*(lqon\*(rq by default. 
+.tp
+.B EOLN_UNIX
+use the \*[UNIX] end-of-line termination (i.e., 
+.BR \en )
+on all platforms.
+.tp
+.B EOLN_WINDOWS
+use the Windows end-of-line termination (i.e., 
+.BR \er\en )
+on all platforms.
+.tp
+.B EXPAND1
+expand keywords in first line that contains keywords only (printf conflicts)
+(May be set in
+.BR BitKeeper/etc/config ).
 .tp
 .B NOMERGE
 do not attempt to automerge this file; treat it as if it were a binary

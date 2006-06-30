@@ -39,17 +39,17 @@ private int
 hasTriggers(void)
 {
 	char	*t, **lines;
-	char	*dir;
 	int	ret;
+	char	dir[MAXPATH];
 
 	if (getenv("_IN_DELTA")) return (0);
 	unless (t = proj_root(0)) {
 		return (0);
 	}
 	unless (streq(t, ".")) {
-		dir = aprintf("%s/BitKeeper/triggers", t);
+		concat_path(dir, t, "/BitKeeper/triggers");
 	} else {
-		dir = strdup("BitKeeper/triggers");
+		strcpy(dir, "BitKeeper/triggers");
 	}
 	if (isdir(dir)) {
 		sys("bk", "get", "-Sq", dir, SYS);
@@ -59,7 +59,6 @@ hasTriggers(void)
 	} else {
 		ret = 0;
 	}
-	free(dir);
 	return (ret);
 }
 
@@ -110,6 +109,15 @@ strip_danglers(char *name, u32 flags)
 	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
 	sccs_renumber(s, (flags&SILENT)|INIT_WACKGRAPH, 0);
+	/*
+	 * If we are preserving the monotonic flag but our parent didn't
+	 * have it, make a note of that.
+	 */
+	d = sccs_top(s);
+	if ((d->xflags & X_MONOTONIC) && !(d->parent->xflags & X_MONOTONIC)) {
+		p = strdup("Turn on MONOTONIC flag");
+		d->comments = addLine(d->comments, p);
+	}
 	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0, 0);
 	sccs_free(s);
 	return (0);
