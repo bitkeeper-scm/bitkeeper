@@ -1235,6 +1235,7 @@ flags_delta(resolve *rs,
 	doit(X_EXPAND1, "EXPAND1");
 	doit(X_SCCS, "SCCS");
 	doit(X_EOLN_NATIVE, "EOLN_NATIVE");
+	doit(X_EOLN_WINDOWS, "EOLN_WINDOWS");
 	doit(X_NOMERGE, "NOMERGE");
 	doit(X_MONOTONIC, "MONOTONIC");
 	for (i = 0; i < f; ++i) av[++n] = fbuf[i];
