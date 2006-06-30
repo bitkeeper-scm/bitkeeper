@@ -155,3 +155,18 @@ echo $N Make sure it doesn\'t walk down...............................$NL
 bk revtool foo
 echo OK
 
+echo $N Resize it....................................................$NL
+bk revtool foo
+echo OK
+
+echo $N Did it remember its size\?....................................$NL
+bk revtool foo
+echo OK
+
+echo $N Resize it \(yes, again\).......................................$NL
+bk csettool
+echo OK
+
+echo $N Did it remember its size\?....................................$NL
+bk csettool
+echo OK

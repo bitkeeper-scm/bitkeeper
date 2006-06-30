@@ -195,11 +195,11 @@ proc trackGeometry {w1 w2 width height} \
 	# XXX: Only works on MS Windows
 	if {[wm state $w1] eq "normal"} {
 		set res [winfo vrootwidth $w1]x[winfo vrootheight $w1]
-		foreach {- - ox x oy y} [goodGeometry [wm geometry $w1]] {break}
-		# We can't get widht/height from wm geometry because if the 
+		# We can't get width/height from wm geometry because if the 
 		# app is gridded, we'll get grid units instead of pixels.
-		set width [$w1 cget -width]
-		set height [$w1 cget -height]
+		# The parameters (%w %h) however, seem to 
+		# be correct on all platforms.
+		foreach {- - ox x oy y} [goodGeometry [wm geometry $w1]] {break}
 		set ::State(geometry@$res) "${width}x${height}${ox}${x}${oy}${y}"
 		debugGeom "Remembering $::State(geometry@$res)"
 	}
