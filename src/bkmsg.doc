@@ -507,7 +507,8 @@ tree.
 The error caused by this undo is:
 $
 #version
-BitKeeper#BKARG# version is @version@
+BitKeeper version is @version@
+Options: #BKARG#
 Built by: @builder@
 Built on: @built_date@
 $

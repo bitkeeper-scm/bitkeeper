@@ -38,8 +38,7 @@ bkversion(FILE *f)
 	buf[0] = 0;
 	/* get a lease, but don't fail */
 	if (key = lease_bkl(0, 0)) {
-		license_info(key, buf+1, 0);
-		if (buf[1]) buf[0] = '/';
+		license_info(key, buf, 0);
 		free(key);
 	}
 	getMsg("version", buf, 0, f);
