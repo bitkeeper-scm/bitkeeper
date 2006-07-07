@@ -102,7 +102,7 @@ resolve_main(int ac, char **av)
 		    case '4': opts.pass4 = 0; break;		/* doc 2.0 */
 		    default:
 		    	fprintf(stderr, "resolve: bad opt %c\n", optopt);
-usage:			system("bk help -s resolve");
+			system("bk help -s resolve");
 			exit(1);
 		}
     	}
@@ -117,7 +117,10 @@ usage:			system("bk help -s resolve");
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind++]);
-	if (av[optind]) goto usage;
+	while (av[optind]) {
+		opts.includes = addLine(opts.includes, strdup(av[optind++]));
+		opts.partial = 1;
+	}
 	if (opts.partial) opts.pass4 = 0;
 
 	unless (opts.textOnly) putenv("BK_GUI=WANT_CITOOL");
