@@ -26,7 +26,7 @@ usage:		    default:
 	if (internal) {
 		assert(bin);
 		if (cmd = cmd_lookup(exe, strlen(exe))) {
-			printf("%s/bk %s", bin, exe);
+			printf("%s/bk %s\n", bin, exe);
 			return (0);
 		}
 	}
