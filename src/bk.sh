@@ -364,10 +364,11 @@ _csets() {		# /* doc 2.0 */
 	}
 	COPTS=
 	GUI=YES
-	while getopts tv opt
+	while getopts Tv opt
 	do	case "$opt" in
 		T) GUI=NO;;
 		v) GUI=NO; COPTS="$COPTS -v";;
+		*) bk help -s csets;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
