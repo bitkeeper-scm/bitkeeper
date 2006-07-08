@@ -469,7 +469,9 @@ symlnkCopy(char *from, char *to)
 		fprintf(stderr, "Cannot read symlink %s\n", from);
 		return (-1);
 	}
-	assert(len < MAXPATH);
+	symTarget[len] = 0;	/* stupid readlink */
+	assert(strlen(symTarget) < MAXPATH);
+	assert(strlen(to) < MAXPATH);
 	if (symlink(symTarget, to)) {
 		perror(to);
 		return (-1);
