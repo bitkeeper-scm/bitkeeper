@@ -20,6 +20,34 @@ test -s ../GOT && {
 }
 echo OK
 
+echo $N Check superset with no parent ...............................$NL
+bk parent -qr
+bk superset -d > ../GOT 2>&1
+test $? -ne 1 && {
+	echo superset with no parent should exit 1
+	exit 1
+}
+grep -q 'has no pull parent.' ../GOT || {
+	echo superset with no parent should tell you that
+	cat ../GOT
+	exit 1
+}
+echo OK
+
+echo $N Check superset with no changes, no parent, w/ parent named ..$NL
+bk superset ../project > ../GOT 2>&1
+test $? -ne 0 && {
+	echo superset with no changes should exit 0
+	cat ../GOT
+	exit 1
+}
+test -s ../GOT && {
+	echo superset with no changes should be silent
+	exit 1
+}
+echo OK
+bk parent -q ../project
+
 # We want to make sure that superset finds:
 # - any extra files
 # - any parked patches
@@ -156,6 +184,34 @@ grep -q '=== Subrepository subrepo ===' ../GOT || {
 }
 grep -q '    === Extra files ===' ../GOT || {
 	echo superset with dirty subrepo should have extra files title
+	exit 1
+}
+grep -q '    bar' ../GOT || {
+	echo superset with dirty subrepo should list the extras
+	cat ../GOT
+	exit 1
+}
+echo OK
+
+echo $N Check superset with a dirty subrepo with no parent ..........$NL
+cd subrepo
+bk parent -qr
+cd ..
+BK_SHOWPROC=$HERE/LOG bk superset > ../GOT 2>&1
+test $? -ne 1 && {
+	echo superset with dirty subrepo should exit 1
+	exit 1
+}
+grep -q '=== Subrepository subrepo ===' ../GOT || {
+	echo failed to look at subrepo
+	exit 1
+}
+grep -q '    === Extra files ===' ../GOT || {
+	echo superset with dirty subrepo should have extra files title
+	cat ../GOT
+	cat $HERE/LOG
+	cd subrepo
+	bk sfiles -ax
 	exit 1
 }
 grep -q '    bar' ../GOT || {

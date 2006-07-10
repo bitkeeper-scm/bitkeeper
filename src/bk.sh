@@ -140,12 +140,14 @@ _superset() {
 	QUIET=
 	CHANGES=-v
 	EXIT=0
+	NOPARENT=NO
 	TMP1=${TMP}/bksup$$
 	TMP2=${TMP}/bksup2$$
 	TMP3=${TMP}/bksup3$$
-	while getopts q opt
+	while getopts dq opt
 	do
 		case "$opt" in
+		d) set -x;;
 		q) QUIET=-q; CHANGES=; LIST=NO;;
 		*) echo "Usage: superset [-q] [parent]"
 		   exit 1;;
@@ -153,21 +155,28 @@ _superset() {
 	done
 	shift `expr $OPTIND - 1`
 	export PAGER=cat
+
+	# No parent means we're dirty by definition
 	test "X$@" = X && {
-		test "X`bk parent -il1`" = "X" && exit 1
-	}
-	bk changes -Laq $CHANGES "$@" > $TMP2 || {
-		rm -f $TMP1 $TMP2
-		exit 1
-	}
-	test -s $TMP2 && {
-		test $LIST = NO && {
-			rm -f $TMP1 $TMP2
-			exit 1
-		}
-		echo === Local changesets === >> $TMP1
-		grep -ve --------------------- $TMP2 |
-		sed 's/^/    /'  >> $TMP1
+		bk parent -qil1 
+		if [ $? -ne 0 ]
+		then
+			NOPARENT=YES
+		else
+			bk changes -Laq $CHANGES "$@" > $TMP2 || {
+				rm -f $TMP1 $TMP2
+				exit 1
+			}
+			test -s $TMP2 && {
+				test $LIST = NO && {
+					rm -f $TMP1 $TMP2
+					exit 1
+				}
+				echo === Local changesets === >> $TMP1
+				grep -ve --------------------- $TMP2 |
+				sed 's/^/    /'  >> $TMP1
+			}
+		fi
 	}
 	bk pending $QUIET > $TMP2 2>&1 && {
 		test $LIST = NO && {
@@ -270,13 +279,13 @@ _superset() {
 			rm -f $EXIT
 		}
 	}
-	test -s $TMP1 || {
+	test -s $TMP1 -o $NOPARENT = YES || {
 		rm -f $TMP1 $TMP2 $TMP3
 		exit 0
 	}
 	echo "Repo:   `bk gethost`:`pwd`"
 	if [ $# -eq 0 ]
-	then	for i in `bk parent -li`
+	then	bk parent -li | while read i
 		do	echo "Parent: $i"
 		done
 	else	echo "Parent: $@"
