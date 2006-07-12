@@ -48,6 +48,19 @@ grep -q 'D 1.2' SCCS/s.bar.c && {
 }
 echo OK
 
+echo $N Check that the unpull prompt works ..........................$NL
+bk pull $Q || exit 1
+test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
+echo n | bk unpull $Q > OUT && exit 1
+test -f SCCS/s.foo.c || exit 1
+echo y | bk unpull $Q > OUT || exit 1
+test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
+grep -q 'D 1.2' SCCS/s.bar.c && {
+	echo failed to remove 1.2 delta in bar.c
+	exit 1
+}
+echo OK
+
 echo $N Pull with automerge, unpull, make sure both are gone ........$NL
 cd $HERE/copy
 echo snafu > snafu.c

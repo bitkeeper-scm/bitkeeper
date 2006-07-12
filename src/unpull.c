@@ -35,10 +35,11 @@ unpull(int force, int quiet, char *patch)
 {
 	sccs	*s;
 	delta	*d, *e, *tag, *chg;
-	FILE	*f, *fout;
+	FILE	*f;
 	char	*av[10];
 	int	i;
 	int	status;
+	char	path[MAXPATH];
 	char	buf[MAXLINE];
 
 	if (proj_cd2root()) {
@@ -75,6 +76,7 @@ unpull(int force, int quiet, char *patch)
 			tag = e;
 		}
 	}
+	fclose(f);
 	unless (e) {
 		fprintf(stderr, "unpull: nothing to unpull.\n");
 		sccs_free(s);
@@ -87,8 +89,7 @@ unpull(int force, int quiet, char *patch)
 			fprintf(stderr,
 			    "unpull: will not unpull local changeset %s\n",
 			    d->rev);
-err:			fclose(f);
-			sccs_free(s);
+err:			sccs_free(s);
 			return (1);
 		}
 	}
@@ -109,15 +110,12 @@ err:			fclose(f);
 	av[++i] = patch ? patch : "-s";
 	if (force) av[++i] = "-f";
 	if (quiet) av[++i] = "-q";
-	av[++i] = "-r-";
+	sprintf(path, "-r%s", proj_fullpath(0, CSETS_IN));
+	av[++i] = path;
 	av[++i] = 0;
-	fout = popenvp(av, "w");
-	fseek(f, 0L, SEEK_SET);
-	while (fnext(buf, f)) fputs(buf, fout);
-	fclose(f);
-
 	/* undo deletes csets-in */
-	status = pclose(fout);
+	status = spawnvp(P_WAIT, av[0], av);
+
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));
 	} else {
