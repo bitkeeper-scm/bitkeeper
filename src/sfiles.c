@@ -67,7 +67,7 @@ private	project	*proj;
 
 private	char	**ignore;	/* list of file pathname globs to ignore */
 private	char	**ignorebase;	/* list of file basename globs to ignore */
-private	hash	*prunedirs;	/* set of dirs to prune */
+private	char	**prunedirs;	/* set of dirs to prune */
 
 private u32	d_count, s_count, x_count; /* progress counter */
 private u32	s_last, x_last; /* progress counter */
@@ -690,7 +690,7 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 		if (proj) {
 			concat_path(buf, wi->proj_prefix,
 			    p ? (file + wi->rootlen + 1) : "");
-			if (hash_fetchStr(prunedirs, buf) != 0) {
+			if (match_globs(buf, prunedirs, 0) != 0) {
 				return (-1);
 			}
 		}
@@ -745,20 +745,19 @@ load_ignore(project *p)
 	FILE	*ignoref;
 	char	buf[MAXLINE];
 
-	ignore = 0;
-	prunedirs = hash_new(HASH_MEMHASH);
+	ignore = ignorebase = prunedirs = 0;
 
 	/* add default pruned dirs */
-	hash_storeStr(prunedirs, "BitKeeper/log", 0);
-	hash_storeStr(prunedirs, "BitKeeper/tmp", 0);
-	hash_storeStr(prunedirs, "BitKeeper/writer", 0);
-	hash_storeStr(prunedirs, "BitKeeper/readers", 0);
-	hash_storeStr(prunedirs, "PENDING", 0);
+	prunedirs = addLine(prunedirs, strdup("BitKeeper/log"));
+	prunedirs = addLine(prunedirs, strdup("BitKeeper/tmp"));
+	prunedirs = addLine(prunedirs, strdup("BitKeeper/writer"));
+	prunedirs = addLine(prunedirs, strdup("BitKeeper/readers"));
+	prunedirs = addLine(prunedirs, strdup("PENDING"));
 
 	/* add default ignore patterns */
-	ignore = addLine(ignore, strdup("BitKeeper/etc/level"));
-	ignore = addLine(ignore, strdup("BitKeeper/etc/csets-out"));
-	ignore = addLine(ignore, strdup("BitKeeper/etc/csets-in"));
+	ignore = addLine(ignore, strdup("/BitKeeper/etc/level"));
+	ignore = addLine(ignore, strdup("/BitKeeper/etc/csets-out"));
+	ignore = addLine(ignore, strdup("/BitKeeper/etc/csets-in"));
 
 	if (opts.all) return;
 
@@ -779,14 +778,15 @@ load_ignore(project *p)
 		unless (len = strlen(pat)) continue; /* blank lines */
 		if ((len > 7) && streq(pat + len - 7, " -prune")) {
 			pat[len-7] = 0;
-			hash_storeStr(prunedirs, pat, 0);
+			prunedirs = addLine(prunedirs, strdup(pat));
 			continue;
 		}
 		if (isbase) {
 			ignorebase = addLine(ignorebase, strdup(pat));
 		} else {
 			/* pathname glob */
-			ignore = addLine(ignore, strdup(pat));
+			ignore = addLine(ignore,
+			    (pat[0] == '*') ? strdup(pat) : aprintf("/%s", pat));
 		}
 	}
 	fclose(ignoref);
@@ -836,9 +836,8 @@ walk(char *indir)
 	if (proj) {
 		free_globs(ignore);
 		free_globs(ignorebase);
-		ignore = ignorebase = 0;
-		hash_free(prunedirs);
-		prunedirs = 0;
+		free_globs(prunedirs);
+		ignore = ignorebase = prunedirs = 0;
 		free(wi.proj_prefix);
 	}
 	if (opts.timestamps && timestamps && proj) {
@@ -888,24 +887,35 @@ chk_diffs(sccs *s)
 private int
 isIgnored(char *file)
 {
-	char	*gfile;
-	int	rc = 0;
+	char	*p;
 	struct	stat sbuf;
+	char	gfile[MAXPATH];
 
 	/* if not in a repo, don't bother */
 	unless (proj_root(proj)) return (0);
 
 	/* If this file is not from our repo, then no */
-	unless (gfile = proj_relpath(proj, file)) return (0);
+	unless (p = proj_relpath(proj, file)) return (0);
+	sprintf(gfile, "/%s", p);
+	free(p);
 
 	if (match_globs(gfile, ignore, 0) ||		 /* pathname match */
 	    match_globs(basenm(gfile), ignorebase, 0) || /* basename match */
 	    lstat(file, &sbuf) ||			 /* gone? */
-	    !(sbuf.st_mode && S_IFREG|S_IFLNK)) {	 /* not reg file */
-		rc = 1;
+ 	    !(sbuf.st_mode && S_IFREG|S_IFLNK)) {	 /* not reg file */
+		return (1);
 	}
-	free(gfile);
-	return (rc);
+	if (getenv("BK_IGNOREDIRS")) {
+		/* check if directory is ignored */
+		while (p = strrchr(gfile, '/')) {
+			*p = 0;
+			if (match_globs(gfile, ignore, 0) ||
+			    match_globs(basenm(gfile), ignorebase, 0)) {
+				return (1);
+			}
+		}
+	}
+	return (0);
 }
 
 private int
@@ -1314,7 +1324,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 		if (proj) {
 			concat_path(buf, si->proj_prefix,
 			    file + si->rootlen + 1);
-			if (hash_fetchStr(prunedirs, buf) != 0) return (-1);
+			if (match_globs(buf, prunedirs, 0)) return (-1);
 		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
