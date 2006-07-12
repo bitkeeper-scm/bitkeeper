@@ -216,6 +216,29 @@ if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
 echo OK
 
+cd $HERE
+tar cf TAR edit_1 edit_2
+echo $N checkout:EDIT w resolve automerge and autorename change .....$NL
+cd $HERE/edit_1/src
+echo new3 >> foo1.c
+bk delta $Q -ynew2 foo1.c
+bk mv foo1.c renamed.c
+bk commit $Q -ynew2
+cd $HERE/edit_2/src
+grep -v "^new$" foo1.c > foo.tmp
+cp foo.tmp foo1.c
+bk delta $Q -ydelete_line_1 foo1.c
+bk commit $Q -ydelete_line_1
+bk pull $Q $HERE/edit_1
+if [ -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
+if [ ! -f $HERE/edit_2/src/renamed.c ]; then echo failed 1; exit 1; fi
+if [ ! -w $HERE/edit_2/src/renamed.c ]; then echo failed 2; exit 1; fi
+if [ ! -f $HERE/edit_2/src/SCCS/p.renamed.c ]; then echo failed; exit 1; fi
+echo OK
+
+cd $HERE
+rm -rf edit_1 edit_2
+tar xf TAR
 echo $N checkout:EDIT w resolve automerge content change ............$NL
 cd $HERE/edit_1/src
 echo new3 >> foo1.c
@@ -261,7 +284,7 @@ echo "checkout:EDIT" >> BitKeeper/etc/config
 cd src
 bk mv foo.c foo3.c
 bk commit $Q -yrename
-BK_FORCE_RESOLVE_RERUN=Y bk pull -t $Q $HERE/edit_1 2> /dev/null <<EOF
+bk pull -t $Q $HERE/edit_1 2> /dev/null <<EOF
 r
 EOF
 if [ ! -f $HERE/edit_2/src/foo2.c ]; then echo failed 1; exit 1; fi
