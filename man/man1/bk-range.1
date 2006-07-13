@@ -12,67 +12,76 @@ bk range \- demo program to show ranges & dates
 .BKARGS
 .SH DESCRIPTION
 .LP
-Many commands may take ranges of deltas as an argument.  A range is a
-graphically contiguous region of deltas computed by taking the list
-of upper bound and its ancestors and removing the lower bound and its
-ancestors.
-Deltas may be specified by their revision number (1.2), delta key
+Many commands may take as arguments date ranges or graph differences.
+The
+.B graph difference
+between revision
+.ARG A
+and revision
+.ARG B
+is the set of deltas in
+.ARG A 's
+history that are not in
+.ARG B 's
+history.
+You may specify deltas
+by revision number (1.2), delta key
 ('amy@bitmover.com|man/man1/bk-terms.1|20020714011327|59990'), a
-symbolic name (@tag), changeset rev (@1.33), or changeset key
-(@'lm@disks.bitmover.com|ChangeSet|20020912140445|17593').  (see
+symbolic name (@tag), changeset revision (@1.33), or changeset key
+(@'lm@disks.bitmover.com|ChangeSet|20020912140445|17593').
+The graph difference between revisions
+.ARG A
+and
+.ARG B
+is represented by the notation
+.ARGc B
+.Bc .\|.\|
+.ARG A ,
+as in:
+.DS
+bk changes -r1.1820.2.1..1.1822
+.DE
+.LP
+See \*(lqgraph difference\*(rq in
 .B bk help terms
-for more info)
+for more information.
 .LP
-You may specify both end-points at once, or separately.
-These are equivalent
+You may specify a date range this way:
 .DS
-bk log \-r1.3..1.5
-bk log \-r1.3 \-r1.5
+bk log -c98..98
 .DE
 .LP
-The result answers the question of "what is in the history of 1.5 that
-is not in the history of 1.3?"
-For example, if revision 1.2 forked 1.2.1.1 and 1.3, and 1.4 merged
-in 1.2.1.1, then the range 1.3..1.5 expands to 1.2.1.1, 1.4, and 1.5.
-.LP
-You may specify dates instead of revisions like so
-.sp
-.DS
-bk log \-c98..98
-.DE
-.LP
-If there are two dates, or there is a date and a revision, then
-the date format is [+\-]YYMMDDHHMMSS with missing fields either
+If there are two dates,
+the date format is [+\-]YYYY/MM/DD-HH:MM:SS with missing fields either
 rounded up or rounded down.
+Optionally, you can append a time zone offset of the form -ZH:ZM for
+negative offsets from GMT or +ZH:ZM for positive offsets.
 Rounding is explicit if there is a \*(lq+\*(rq (rounds up) or a
 \*(lq\-\*(rq (rounds down) prefix on the date.
 If there is no prefix, then the rounding is context sensitive.
-If the date is the first date i.e., the starting point, then the
-date is rounded down.
-If it is the second date in the range, then it is rounded up.
-So 98..98 is the same as 980101000000 .. 981231235959.
+The starting date is rounded down and the ending date is rounded up,
+so 1998..1998 is the same as 1998/01/01-00:00:00..1998/12/31/23:59:59.
 .LP
 Note: the mixing of dates and revisions is deprecated.
 .LP
 If there is only one date specified, without a revision, then a 
 very useful form of the date is to specify a recent period of time, 
 such as 
-.sp
 .DS
 bk log \-c\-1d
 .DE
 .LP
 which will display the last 24 hours worth of changes.  This works
 the same way for Years/Months/days/hours/minutes/seconds, i.e.,
-.sp
 .DS
-In the last year:	log \-c\-1Y (or \-1y)
-In the last month:	log \-c\-1M
-In the last week:	log \-c\-1W (or \-1w)
-In the last day:	log \-c\-1D (or \-1d)
-In the last hour:	log \-c\-1h
-In the last minute:	log \-c\-1m
-In the last second:	log \-c\-1s
+.\" Using spaces for alignment here because the single tab was spazzing out
+In the last year:       log \-c\-1Y (or \-1y)
+In the last month:      log \-c\-1M
+In the last week:       log \-c\-1W (or \-1w)
+In the last day:        log \-c\-1D (or \-1d)
+In the last hour:       log \-c\-1h
+In the last minute:     log \-c\-1m
+In the last second:     log \-c\-1s
 .DE
 If you leave off the multiplier, 1 is assumed.
 .LP
@@ -129,9 +138,11 @@ on success.
 on failure.
 .SH "SEE ALSO"
 .SA annotate
+.SA changes
 .SA co
 .SA diffs
 .SA log
+.SA terms
 .\" help://date
 .\" help://dates
 .\" help://ranges
