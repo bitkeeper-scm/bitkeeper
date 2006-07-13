@@ -1,0 +1,81 @@
+if [ X$PLATFORM != X"WIN32" ]
+then
+	echo "For win32 only...............................................skipped"
+	exit 0;
+fi
+REGKEY="HKEY_LOCAL_MACHINE\\Software\\BitMover\\Regressions"
+echo $N Set and get a key in the registry............................$NL
+bk _registry set $REGKEY test foo
+val=`bk _registry get $REGKEY test`
+test x"$val" == xfoo || {
+	echo failed
+	echo $val
+	exit 1
+}
+echo OK
+
+echo $N delete the key we have just created..........................$NL
+bk _registry delete $REGKEY
+val=`bk _registry get $REGKEY test`
+test $? -ne 0 || {
+	echo failed
+	echo wrong exit code
+	exit 1
+}
+test x"$val" = x"entry not found" || {
+	echo failed
+	echo $val
+	exit 1
+}
+echo OK
+
+echo $N create a bunch of subkeys and look them up...................$NL
+SK="a b c d e f g h i"
+for k in $SK
+do
+	bk _registry set $REGKEY\\$k
+	echo $k >> WANT
+done
+bk _registry keys $REGKEY > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N create a bunch of values and look them up....................$NL
+rm -f WANT GOT
+VAL="v1 v2 v3 v4 v5 v6"
+for v in $VAL
+do
+	bk _registry set $REGKEY $v $v
+	echo $v >> WANT
+done
+bk _registry values $REGKEY > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N test registry dump...........................................$NL
+rm -f WANT GOT
+cat > WANT <<EOF
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions]
+v1 = v1
+v2 = v2
+v3 = v3
+v4 = v4
+v5 = v5
+v6 = v6
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions\a]
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions\b]
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions\c]
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions\d]
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions\e]
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions\f]
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions\g]
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions\h]
+[HKEY_LOCAL_MACHINE\Software\BitMover\Regressions\i]
+EOF
+bk _registry dump $REGKEY > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N making sure we don\'t pollute the registry....................$NL
+bk _registry delete $REGKEY
+echo OK

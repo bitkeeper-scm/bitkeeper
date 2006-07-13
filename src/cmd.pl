@@ -166,7 +166,6 @@ get
 gethelp
 gethost
 getmsg
-_getreg
 getuser
 glob
 gnupatch
@@ -234,6 +233,7 @@ rcs2bk
 rcsparse
 receive
 regex
+_registry
 renumber
 repogca
 relink

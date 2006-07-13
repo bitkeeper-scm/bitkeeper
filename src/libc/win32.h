@@ -84,8 +84,18 @@
 
 typedef int uid_t;
 
-int	Reserved(char *basename);
+/* utils/fileinfo.c */
 void	closeBadFds(void);
+int	Reserved(char *basename);
+/* win32/wapi_intf.c */
 int	win_supported(void);
+/* win32/registry.c */
+void 	*reg_get(char *key, char *value, long *len);
+int	reg_set(char *key, char *value, DWORD type, void *data, long len);
+DWORD	reg_type(char *key, char *value);
+char	*reg_typestr(DWORD type);
+int	reg_delete(char *key, char *value);
+char 	**reg_keys(char *key);
+char 	**reg_values(char *key);
 
 #endif

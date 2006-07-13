@@ -9,7 +9,7 @@
 #define	MAXPATH		1024
 #endif
 #ifdef	WIN32
-#define	PFKEY		"\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
+#define	PFKEY		"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
 #define	SFIOCMD		"sfio.exe -im < sfioball"
 #define	WIN_UNSUPPORTED	"Windows 2000 or later required to install BitKeeper"
 #else
@@ -61,9 +61,6 @@ char*	getbkpath(void);
 void	symlinks(void);
 int	hasDisplay(void);
 char	*getBinDir(void);
-#ifdef WIN32
-int	getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp);
-#endif
 int	hasLicense(char *file);
 
 int
@@ -335,13 +332,11 @@ getBinDir(void)
 {
 #ifdef WIN32
 	char	*bindir;
-	char	regbuf[1024], buf[MAXPATH];
-	int	len = sizeof(regbuf);
+	char	*buf;
 
-	if (getReg(HKEY_LOCAL_MACHINE,
-	    PFKEY, "ProgramFilesDir", regbuf, &len)) {
-		sprintf(buf, "%s/BitKeeper", regbuf);
-		bindir = strdup(buf);
+	if (buf = reg_get(PFKEY, "ProgramFilesDir", 0)) {
+		bindir = aprintf("%s/BitKeeper", buf);
+		free(buf);
 	} else {
 		bindir = "C:/Program Files/BitKeeper";
 	}
@@ -517,26 +512,3 @@ findtmp(void)
 	return ("/tmp");
 #endif
 }
-
-#ifdef	WIN32
-
-/* stolen from BK source */
-int
-getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
-{
-        int	rc;
-        HKEY    hKey;
-        DWORD   valType = REG_SZ;
-	DWORD	len = *lenp;
-
-	valbuf[0] = 0;
-        rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
-        if (rc != ERROR_SUCCESS) return (0);
-
-        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, &len);
-	*lenp = len;
-        if (rc != ERROR_SUCCESS) return (0);
-        RegCloseKey(hKey);
-        return (1);
-}
-#endif
