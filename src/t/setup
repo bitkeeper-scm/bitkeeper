@@ -18,7 +18,7 @@
 cores()
 {
 	# Win32 have no core file
-	if [ "PLATFORM" = "WIN32" ]; then return; fi
+	if [ "$PLATFORM" = "WIN32" ]; then return; fi
 
 	OUT="$BK_REGRESSION/cores"
         find "$BK_REGRESSION" -name core -print > "$OUT"
