@@ -41,11 +41,13 @@ static char UPGRADE_ERROR[] =
 "during business hours (PST) or via email at sales@bitmover.com.\n"
 "Thanks!\n";
 
+#ifdef	WIN32
 static char MSYS_ERROR[] =
 "You seem to be running the installer under MINGW-MSYS. The installer\n"
 "is not supported under this configuration. Please start a cmd.exe console\n"
 "and run the installer from there.\n"
 "Thanks!\n";
+#endif
 
 extern unsigned int sfio_size;
 extern unsigned char sfio_data[];
@@ -64,7 +66,6 @@ char	*getBinDir(void);
 #ifdef WIN32
 int	getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp);
 #endif
-int	hasLicense(char *file);
 
 int
 main(int ac, char **av)
@@ -188,7 +189,6 @@ main(int ac, char **av)
 	/* The name "sfio.exe" should work on all platforms */
 	extract("sfio.exe", sfio_data, sfio_size, tmpdir);
 	extract("sfioball", data_data, data_size, tmpdir);
-	extract("config", keys_data, keys_size, tmpdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
 	if (system(SFIOCMD)) {
@@ -206,33 +206,28 @@ main(int ac, char **av)
 	symlinks();
 
 	/*
-	 * Try to find an embedded license.
+	 * extract the embedded config file
 	 */
-	if (hasLicense("config")) {
-		fileCopy("config", "bitkeeper/config");
-		chmod("bitkeeper/config", 0666);
-		striplic = 1;
-	}
-
-	/* preserve as much of `bk bin`/config as possible */
-	if (bkpath) {
-		concat_path(buf, bkpath, "config");
-		if (exists(buf)) {
-			if (striplic) {
-				char	*a;
-				a = aprintf("bitkeeper/bk grep -v ^lic < '%s'"
-				    " >>bitkeeper/config", buf);
-				unless (system(a)) {
-					fprintf(stderr, "system failed\n");
-					rc = 1;
-					goto out;
-				}
-				free (a);
-			} else {
-				fileCopy(buf, "bitkeeper/config");
-				chmod("bitkeeper/config", 0666);
-			}
+	if (bkpath) concat_path(buf, bkpath, "config");
+	if (keys_data[0]) {
+		if (bkpath && exists(buf)) {
+			/* merge embedded file into existing config */
+			sprintf(buf,
+			    "bk config -m '%s'/config - > bitkeeper/config",
+			    bkpath);
+			f = popen(buf, "w");
+			fputs(keys_data, f);
+			pclose(f);
+		} else {
+			/* Just write embedded config */
+			f = fopen("bitkeeper/config", "w");
+			fputs(keys_data, f);
+			fclose(f);
 		}
+	} else if (bkpath && exists(buf)) {
+		/* just copy existing config */
+		fileCopy(buf, "bitkeeper/config");
+		chmod("bitkeeper/config", 0666);
 	}
 
 	mkdir("bitkeeper/gnu/tmp", 0777);
@@ -313,21 +308,6 @@ out:	cd(tmpdir);
 	}
 #endif
 	exit(rc);
-}
-
-int
-hasLicense(char *file)
-{
-	FILE	*fd = 0;
-	int	rc = 0;
-	char	buf[MAXPATH];
-
-	fd = fopen(file, "r");
-	unless (fd) goto out;
-	unless (fgets(buf, sizeof(buf), fd)) goto out;
-	unless (strneq(buf, "license: BKLXXXXXXXX", 20)) rc = 1;
- out:	if (fd) fclose(fd);
-	return (rc);
 }
 
 char *

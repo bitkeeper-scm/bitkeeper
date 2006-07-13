@@ -552,3 +552,43 @@ cat <<EOF > WANT
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N check config file merging ...................................$NL
+cat << EOF > file1
+# comments
+key3: val3!
+key1: val1
+
+overlap: old
+
+bad line
+
+EOF
+cat <<EOF > file2
+key2: val2
+key1: val1new!
+
+# new comments
+key3: junk
+
+overlap: new
+
+another bad line
+
+key0: val0!
+EOF
+bk config -m file1 file2 > GOT
+cat <<EOF > WANT
+# comments
+key3: val3!
+key1: val1
+
+overlap: old
+
+bad line
+
+key0: val0!
+key2: val2
+EOF
+cmpfiles GOT WANT
+echo OK

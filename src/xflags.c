@@ -88,7 +88,6 @@ xflagsDefault(sccs *s, int cset, int what)
 private int
 xflags(sccs *s, delta *d, int what)
 {
-	char	*t;
 	int	ret = 0;
 
 	unless (d) return (0);

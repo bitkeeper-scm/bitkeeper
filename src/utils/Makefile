@@ -41,11 +41,11 @@ sfioball: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE)
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
 	    bk sfio -mqo) > sfioball
 
-_data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball config
+_data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball
 	@echo Compressing data
 	@./zz sfio.zz < sfio$(EXE)
 	@./zz sfioball.zz < sfioball
-	@./munge sfio.zz sfioball.zz config
+	@./munge sfio.zz sfioball.zz
 
 $(IMAGE): extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
 	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
