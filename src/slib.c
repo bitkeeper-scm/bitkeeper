@@ -3091,6 +3091,8 @@ meta(sccs *s, delta *d, char *buf)
 	    case 'X':
 		assert(d);
 		d->xflags = strtol(&buf[3], 0, 0); /* hex or dec */
+		/* reenable longkeys for old KEY_FORMAT2 trees */
+		if (CSET(s) && (s->xflags & X_LONGKEY)) d->xflags |= X_LONGKEY;
 		d->xflags &= ~X_SINGLE; /* clear old single_user bit */
 		d->flags |= D_XFLAGS;
 		break;
@@ -10175,6 +10177,11 @@ symArg(sccs *s, delta *d, char *name)
 	 */
 	if (CSET(s) && streq(d->rev, "1.0") && streq(sym->symname, KEY_FORMAT2)) {
 	    	s->xflags |= X_LONGKEY;
+		/* get any previous xflags deltas */
+		for (d = s->table; d; d = d->next) {
+			if (d->flags & D_XFLAGS) d->xflags |= X_LONGKEY;
+		}
+		/* then meta() pushes this to all following deltas */
 	}
 }
 

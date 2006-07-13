@@ -1155,7 +1155,7 @@ checkKeys(sccs *s, char *root)
 {
 	int	errors = 0;
 	char	*a, *dkey;
-	delta	*d, **dp;
+	delta	*d;
 	char	*p;
 	hash	*findkey;
 	hash	*deltas;
@@ -1168,18 +1168,18 @@ checkKeys(sccs *s, char *root)
 	for (d = s->table; d; d = d->next) {
 		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, key);
-		unless (dp = (delta **)hash_fetchStr(findkey, key)) {
-			dp = (delta **)hash_store(findkey,
-			    key, strlen(key) + 1, 0, sizeof(delta *));
+		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {
+			fprintf(stderr, "check: insert error for %s\n", key);
+			hash_free(findkey);
+			return (1);
 		}
-		*dp = d;
 		unless (mixed) continue;
 		*strrchr(key, '|') = 0;
-		unless (dp = (delta **)hash_fetchStr(findkey, key)) {
-			dp = (delta **)hash_store(findkey,
-			    key, strlen(key) + 1, 0, sizeof(delta *));
+		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {
+			fprintf(stderr, "check: insert error for %s\n", key);
+			hash_free(findkey);
+			return (1);
 		}
-		*dp = d;
 	}
 	EACH_HASH(deltas) {
 		dkey = (char *)deltas->kptr;
