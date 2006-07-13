@@ -55,7 +55,7 @@ echo OK
 
 echo $N checking per delta path name :DPN: ..........................$NL
 bk undos > CMP1 <<EOF
-======== FILE 1.2-1.5 ========
+======== FILE 1.1..1.5 ========
 this/is/the/pathname.5
 this/is/the/pathname.4
 this/is/the/pathname.3
@@ -67,7 +67,7 @@ echo OK
 
 echo $N checking comment :C: ........................................$NL
 bk undos > CMP1 <<EOF
-======== FILE 1.2-1.5 ========
+======== FILE 1.1..1.5 ========
 This is revision 1.5 of 98/01/30 17:45:17-05:00
 This the second comment of 1.5
 This is revision 1.4 of 97/06/23 01:33:45+06:30
@@ -136,7 +136,7 @@ echo OK
 
 echo $N checking time :T: ...........................................$NL
 bk undos > CMP1 <<EOF
-======== FILE 1.2-1.5 ========
+======== FILE 1.1..1.5 ========
 17:45:17
 01:33:45
 01:34:11
@@ -234,7 +234,7 @@ echo OK
 
 echo $N checking default output......................................$NL
 bk undos > CMP1 <<EOF
-======== FILE 1.1-1.5 ========
+======== FILE .. ========
 D 1.5 98/01/30 17:45:17-05:00 ${USER}@bk_regression.bk 5 4 1/0/4
 P this/is/the/pathname.5
 C This is revision 1.5 of 98/01/30 17:45:17-05:00
@@ -267,7 +267,7 @@ echo OK
 
 echo $N checking conditional prefix/suffix...........................$NL
 bk undos > CMP1 <<EOF
-======== FILE 1.2-1.5 ========
+======== FILE 1.1..1.5 ========
 1.5 This is revision 1.5 of 98/01/30 17:45:17-05:00
 1.5 This the second comment of 1.5
 1.4 This is revision 1.4 of 97/06/23 01:33:45+06:30
@@ -283,7 +283,7 @@ echo OK
 
 echo $N checking conditional with colon..............................$NL
 bk undos > CMP1 <<EOF
-======== FILE 1.1-1.5 ========
+======== FILE .. ========
 FOO Comment: This is revision 1.5 of 98/01/30 17:45:17-05:00
 Comment: This the second comment of 1.5
 FOO Comment: This is revision 1.4 of 97/06/23 01:33:45+06:30
@@ -296,13 +296,12 @@ FOO Comment: This is revision 1.1 of 87/05/28 23:49:57
 Comment: This the second comment of 1.1
 EOF
 bk prs -r.. -d'FOO $each(:C:){Comment: (:C:)\n}' FILE > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+cmpfiles CMP1 CMP2
 echo OK
 
 echo $N checking nested conditional..................................$NL
 bk undos > CMP1 <<EOF
-======== FILE 1.1-1.5 ========
+======== FILE .. ========
 this/is/the/pathname.5
 1.5 This is revision 1.5 of 98/01/30 17:45:17-05:00
 1.5 This the second comment of 1.5
@@ -513,6 +512,75 @@ grep -q '@@ some_function' GOT || {
 grep -q '@@ other_function' GOT || {
 	echo should have noted the other function name
 	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N checking prs -C on branch side of merge .....................$NL
+cd $HERE
+rm -fr project copy
+commercial project
+echo XXX > bar
+bk new $Q bar
+bk commit $Q -ycset1
+cd ..
+bk clone $Q project copy
+cd project
+# at the time of this writing; mv first doesn't mean it records first
+# so make a normal mergable delta to claim trunk, then mv to force
+# a delta on the branch during the merge.
+bk edit $Q bar
+printf "before\nXXX\n" > bar
+bk delta $Q -ybar bar
+bk mv bar newbar
+bk commit $Q -ycset2
+cd ../copy
+bk edit $Q bar
+printf "XXX\nafter\n" > bar
+bk delta $Q -ybar bar
+bk commit $Q -ycset3
+bk pull $Q
+bk prs -hC1.1.1.2 -nd:I: newbar > GOT
+printf "1.4\n1.1.1.2\n" > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N checking prs -C on pending deltas returns an empty list .....$NL
+bk edit $Q newbar
+bk delta $Q -fybar newbar
+bk prs -hC+ -nd:I: newbar > GOT || exit 1
+test -s GOT && {
+	echo failed
+	echo expected nothing, got
+	cat GOT
+	exit 1
+}
+bk stripdel -qr+ newbar
+echo OK
+
+echo $N checking prs -p fails on a range and on a merge .............$NL
+bk prs -phnd:I: newbar 2> ERR && {
+	echo failed range
+	exit 1
+}
+grep -q "requires a single non-merge revision" ERR || {
+	echo failed range msg
+	exit 1
+}
+bk prs -phnd:I: -r+ newbar 2> ERR && {
+	echo failed merge
+	exit 1
+}
+grep -q "requires a single non-merge revision" ERR || {
+	echo failed merge msg
+	exit 1
+}
+bk prs -phnd:I: -r1.2 newbar > OUT || {
+	echo failed valid
+	exit 1
+}
+grep -q "1.1" OUT || {
+	echo failed valid msg
 	exit 1
 }
 echo OK

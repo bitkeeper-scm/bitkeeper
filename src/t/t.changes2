@@ -414,14 +414,14 @@ checkfiles LOCAL REMOTE
 test "`wc -l < LOCAL`" -eq 1 || fail
 echo OK
 
-echo $N Check out a tag difference using -L and -R = nothing ........$NL
+echo $N Check out a tag difference using -L and -R = -a activated ...$NL
 cd $HERE/clone
 bk changes -L -qnd:I: ../simple > ../REMOTE
 cd ../simple
 bk changes -R -qnd:I: ../clone > ../LOCAL
 cd ..
 checkfiles LOCAL REMOTE
-test "`wc -l < LOCAL`" -eq 0 || fail
+test "`wc -l < LOCAL`" -eq 1 || fail
 echo OK
 
 echo $N Check out a tag difference using -aL and -aR ................$NL
@@ -434,7 +434,7 @@ checkfiles LOCAL REMOTE
 test "`wc -l < LOCAL`" -eq 1 || fail
 echo OK
 
-echo $N Check out an empty merge difference using -L, -eL, -R, -eR ..$NL
+echo $N Check out an empty merge difference using -L, -R ............$NL
 cd $HERE/clone
 touch h
 bk new $Q h
@@ -447,20 +447,11 @@ cd ../clone
 bk pull $Q ../simple
 bk changes -L -qnd:KEY: ../clone2 > LOCAL
 bk changes -R -qnd:KEY: ../clone2 > REMOTE
-checkfiles LOCAL REMOTE
-test "`wc -l < LOCAL`" -eq 0 || fail
-bk changes -eL -qnd:KEY: ../clone2 > LOCAL
-bk changes -eR -qnd:KEY: ../clone2 > REMOTE
 cmp -s LOCAL REMOTE && fail
 cd ../clone2
 bk changes -L -qnd:KEY: ../clone > LOCAL
 bk changes -R -qnd:KEY: ../clone > REMOTE
-checkfiles LOCAL REMOTE
-test "`wc -l < LOCAL`" -eq 0 || fail
-bk changes -eL -qnd:KEY: ../clone > LOCAL
-bk changes -eR -qnd:KEY: ../clone > REMOTE
 cmp -s LOCAL REMOTE && fail
 checkfiles LOCAL ../clone/REMOTE
 checkfiles REMOTE ../clone/LOCAL
 echo OK
-

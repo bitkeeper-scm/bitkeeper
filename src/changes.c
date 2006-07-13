@@ -139,7 +139,6 @@ usage:			system("bk help -s changes");
 		}
 		optarg = 0;
 	}
-	nav[nac] = 0;	/* terminate list of args with -L and -R removed */
 
 	/* ERROR check options */
 	/* XXX: could have rev range limit output -- whose name space? */
@@ -158,6 +157,13 @@ usage:			system("bk help -s changes");
 		    "changes: either '-' or URL list, but not both\n");
 		return (1);
 	}
+	/* force a -a if -L or -R and no -a */
+	if ((opts.local || opts.remote) && !opts.all) {
+		nav[nac++] = strdup("-a");
+		opts.all = 1;
+		opts.noempty = 0;
+	}
+	nav[nac] = 0;	/* terminate list of args with -L and -R removed */
 
 	/*
 	 * There are 5 major cases
@@ -453,9 +459,10 @@ doit(int dash)
 		for (e = s->rstop; e; e = e->next) {
 			if ((e->flags & D_SET) && !want(s, e)) {
 				e->flags &= ~D_SET;
-				if (e == s->rstart) break;
 			}
+			if (e == s->rstart) break;
 		}
+		if (opts.all) range_markMeta(s);
 	} else if (dash) {
 		while (fgets(cmd, sizeof(cmd), stdin)) {
 			/* ignore blank lines and comments */

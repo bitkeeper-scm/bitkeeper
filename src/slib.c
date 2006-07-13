@@ -4849,36 +4849,6 @@ time2date(time_t tt)
 }
 
 /*
- * Expand the set of deltas already tagged with D_SET to include all
- * metadata children of those deltas.
- * This is subtle.  You might think that the inner loop was unnecessary,
- * but it isn't: we want to tag only meta deltas whose _data_ parent is
- * already tagged.  If more than one meta delta is hanging off a data delta,
- * just checking d->parent won't work.
- *
- * Returns the total number of deltas with D_SET on.
- */
-int
-sccs_markMeta(sccs *s)
-{
-	int	n;
-	delta	*d, *e;
-	
-	for (n = 0, e = s->table; e; e = e->next) {
-		if (e->flags & D_SET) n++;
-		unless (e->flags & D_META) continue;
-		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
-		if (d && (d->flags & D_SET)) {
-			unless (e->flags & D_SET) {
-				e->flags |= D_SET;
-				n++;
-			}
-		}
-	}
-	return (n);
-}
-
-/*
  * Save a serial in an array.  If the array is out of space, reallocate it.
  * The size of the array is in array[0].
  * The serial number is stored in ascending order.
@@ -16074,6 +16044,38 @@ sccs_md5delta(sccs *s, delta *d, char *b64)
 	hash = hashstr(key, strlen(key));
 	sprintf(b64, "%08x%s", (u32)d->date, hash);
 	free(hash);
+}
+
+/*
+ * Given a delta, return the delta which is the cset marked one for the cset
+ * which contains this delta.  Note Rick's cool code that handles going through
+ * merges.
+ * If the delta is not in a cset (i.e., it's pending) then return null.
+ */
+delta	*
+sccs_csetBoundary(sccs *s, delta *d)
+{
+	delta	*e;
+
+again:	
+	/* find newest delta on this tree with cset mark */
+	while (!(d->flags & D_CSET) && d->kid && (d->kid->type == 'D')) {
+		d = d->kid;
+	}
+	/* might be merge side of a cset created by resolve (see test) */
+	if (!(d->flags & D_CSET) && (d->flags & D_MERGED)) {
+		for (e = s->table; e && e != d; e = e->next) {
+			if (e->merge == d->serial) {
+				d = e;
+				goto again;
+			}
+		}
+		fprintf(stderr,
+		    "ERROR: delta %s marked merge, but no merge found\n",
+		    d->rev);
+		exit(1);
+	}
+	return ((d->flags & D_CSET) ? d : 0);
 }
 
 /*

@@ -530,7 +530,7 @@ c Another using 1.5
 EOF
 bk delta $Q -IINIT u
 # Want to have INIT_SHUTUP passed in, but no hooks, so just divert stderr
-bk prs -ahnd':DT: :I: :D: :T: :FUDGE: :P:' u > PRE 2> WARN || {
+bk prs -r.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' u > PRE 2> WARN || {
 	echo Fail
 	echo Error message:
 	cat WARN
@@ -571,7 +571,7 @@ D 1.2 80/01/01 00:00:02 bk@bk
 c trunk
 EOF
 bk delta $Q -IINIT x
-bk prs -ahnd':DT: :I: :D: :T: :FUDGE: :P:' x > PRE
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' x > PRE
 cat - <<EOF > WANTPRE
 D 1.2 80/01/01 00:00:02 0 bk
 D 1.1.1.1 80/01/01 00:00:01 0 bk
@@ -608,7 +608,7 @@ D 1.3 80/01/01 00:00:03 bk@bk
 c merge on trunk
 EOF
 bk delta $Q -IINIT z
-bk prs -ahnd':DT: :I: :D: :T: :FUDGE: :P:' z > PRE
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' z > PRE
 cat - <<EOF > WANTPRE
 D 1.3 80/01/01 00:00:03 0 bk
 D 1.2 80/01/01 00:00:02 0 bk
@@ -632,7 +632,7 @@ bk import -v -tSCCS -lflist -f import_sccs nonconform  > import.out 2>&1 || {
 	exit 1
 }
 cd nonconform/src
-bk prs -ahnd':DT: :I: :D: :T: :FUDGE: :P:' u > POST
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' u > POST
 cat - <<EOF > WANTPOST
 D 1.6 80/01/01 00:00:30 0 realuser
 D 1.5 80/01/01 00:00:20 0 realuser
@@ -648,7 +648,7 @@ cmp WANTPOST POST || {
 	diff WANTPOST POST
 	exit 1
 }
-bk prs -ahnd':DT: :I: :D: :T: :FUDGE: :P:' x > POST
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' x > POST
 cat - <<EOF > WANTPOST
 D 1.3 80/01/01 00:00:02 0 bk
 D 1.2 80/01/01 00:00:01 0 bk
@@ -661,7 +661,7 @@ cmp WANTPOST POST || {
 	diff WANTPOST POST
 	exit 1
 }
-bk prs -ahnd':DT: :I: :D: :T: :FUDGE: :P:' z > POST
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' z > POST
 cat - <<EOF > WANTPOST
 D 1.3 80/01/01 00:00:03 0 bk
 D 1.1.1.1 80/01/01 00:00:02 0 bk

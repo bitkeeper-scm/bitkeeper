@@ -131,8 +131,8 @@ range_cset(sccs *s, delta *d)
 	delta	*e;
 	ser_t	last;
 
-	/* find newest delta on this tree with cset mark */
-	while (!(d->flags & D_CSET) && d->kid) d = d->kid;
+	unless (d = sccs_csetBoundary(s, d)) return; /* if pending */
+
 	d->flags |= D_SET;
 	s->rstop = d;
 
@@ -265,7 +265,6 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 		}
 		/* s->rstart & s->rstop set by walkrevs */
 	}
-	sccs_markMeta(s);
 	rc = 0;
  out:	if (restore) memcpy(rargs, &save, sizeof(save));
 	return (rc);
@@ -275,13 +274,15 @@ private int
 range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 {
 	delta	*d;
+	char	*rstart = rargs->rstart;
+	char	*rstop = rargs->rstop;
 	time_t	cutoff;
 
 	s->state |= S_SET;
 
 	/* handle -c-9d */
-	if (!rargs->rstop && (rargs->rstart[0] == '-')) {
-		cutoff = range_cutoff(rargs->rstart + 1);
+	if (!rstop && (rstart[0] == '-')) {
+		cutoff = range_cutoff(rstart + 1);
 		for (d = s->table; d; d = d->next) {
 			if (d->date < cutoff) continue;
 			d->flags |= D_SET;
@@ -291,21 +292,21 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 		return (0);
 	}
 
-	if (*rargs->rstart) {
+	if (*rstart) {
 		unless (s->rstart =
-		    sccs_getrev(s, 0, rargs->rstart, ROUNDDOWN)) {
+		    sccs_getrev(s, 0, rstart, ROUNDDOWN)) {
 			verbose((stderr, "%s: Can't find date %s in %s\n",
-				    me, rargs->rstart, s->gfile));
+				    me, rstart, s->gfile));
 			return (1);
 		}
 	} else {
 		s->rstart = s->tree;
 	}
-	unless (rargs->rstop) rargs->rstop = rargs->rstart;
-	if (*rargs->rstop) {
-		unless (s->rstop = sccs_getrev(s, 0, rargs->rstop, ROUNDUP)) {
+	unless (rstop) rstop = rstart;
+	if (*rstop) {
+		unless (s->rstop = sccs_getrev(s, 0, rstop, ROUNDUP)) {
 			verbose((stderr, "%s: Can't find date %s in %s\n",
-				    me, rargs->rstop, s->gfile));
+				    me, rstop, s->gfile));
 			return (1);
 		}
 	} else {
@@ -343,10 +344,17 @@ range_walkrevs(sccs *s, delta *from, delta *to,
 	int	ret = 0;
 	u32	color;
 	ser_t	last;		/* the last delta we marked (for cleanup) */
-	int	marked = 1;	/* number of RED nodes marked */
+	int	marked = 1;	/* number of RED nodes marked if all == 0 */
+	int	all = 0;	/* set if all deltas in 'to' */
 
-	unless (to) to = sccs_top(s);
-	s->rstop = to;
+	unless (to) {		/* no upper bound - get all tips */
+		all = 1;
+		to = s->table;
+		s->rstop = 0;
+	} else {
+		to->flags |= D_RED;
+		s->rstop = to;
+	}
 	last = to->serial;
 	d = to;			/* start here in table */
 	if (from) {
@@ -357,10 +365,11 @@ range_walkrevs(sccs *s, delta *from, delta *to,
 		}
 		from->flags |= D_BLUE;
 	}
-	to->flags |= D_RED;
 
 	/* compute RED - BLUE */
-	for (; d && (marked > 0); d = d->next) {
+	for (; d && (all || (marked > 0)); d = d->next) {
+		unless (d->type == 'D') continue;
+		if (all) d->flags |= D_RED;
 		unless (color = (d->flags & (D_RED|D_BLUE))) continue;
 		d->flags &= ~color; /* clear bits */
 		if (color & D_RED) marked--;
@@ -379,6 +388,7 @@ range_walkrevs(sccs *s, delta *from, delta *to,
 		}
 		if (color == D_RED) {
 			if (ret = fcn(s, d, token)) break;
+			unless (s->rstop) s->rstop = d;
 			s->rstart = d;
 		}
 	}
@@ -395,4 +405,104 @@ walkrevs_setFlags(sccs *s, delta *d, void *token)
 {
 	d->flags |= (u32)token;
 	return (0);
+}
+
+/*
+ * Expand the set of deltas already tagged with D_SET to include:
+ * The meta data that is in would be here if the deltas newer that D_SET
+ * were gone, and wouldn't be here if the D_SET were gone.
+ * Assuming: D_SET is set and s->rstart is the smallest serial set
+ * and s->rstop is the largest serial set.
+ *
+ * Expands the s->rstart and s->rstop range to include all D_SET nodes.
+ */
+void
+range_markMeta(sccs *s)
+{
+	int	i;
+	delta	*d, *e;
+	delta	*lower = 0, *upper = 0;	/* region to clean up D_BLUE */
+	
+	unless (s->rstart && s->rstop) return;	/* no D_SET */
+	/*
+	 * Non-meta nodes are in one of three categories: 
+	 *   D_SET - The region of consideration
+	 *   Ancestor of D_SET - Inside the region. Mark D_RED, leave cleared
+	 *   What's left -- Outside the region.  Mark and leave D_BLUE
+	 */
+	for (d = s->table; d; d = d->next){
+		unless (d->type == 'D') continue;
+		unless (d->flags & (D_SET|D_RED)) {
+			d->flags |= D_BLUE;
+			unless (upper) upper = d;
+			lower = d;
+			continue;
+		}
+		d->flags &= ~D_RED;
+		if ((e = d->parent) && !(e->flags & (D_SET|D_RED))) {
+			e->flags |= D_RED;
+		}
+		if (d->merge && (e = sfind(s, d->merge))
+		    && !(e->flags & (D_SET|D_RED))) {
+			e->flags |= D_RED;
+		}
+	}
+	/*
+	 * The start point could be more optimal, as we really want the
+	 * first meta node that is newer than the lower bound or rstart,
+	 * and could have searched for that in the above loop, adding
+	 * complexity.  Also could save newest meta node as a
+	 * termination point.  What was done gives a good savings by
+	 * having it be newer than the D_SET region in most cases.
+	 */
+	i = (lower && (lower->serial < s->rstart->serial))
+	    ? lower->serial : s->rstart->serial;
+	for (; i < s->nextserial; i++) {
+		unless ((d = sfind(s, i)) && (d->type != 'D')) continue;
+		/* e = tagged real delta */
+		for (e = d->parent; e && (e->type != 'D'); e = e->parent);
+		/* filter out meta attached to nodes outside the region */
+		if ((e->flags & D_BLUE) ||
+		    (d->ptag && (sfind(s, d->ptag)->flags & D_BLUE)) ||
+		    (d->mtag && (sfind(s, d->mtag)->flags & D_BLUE))) {
+			d->flags |= D_BLUE;
+			if (upper->serial < d->serial) upper = d;
+			continue;
+		}
+		/* select meta nodes that attached to the region in some way */
+		if ((e->flags & D_SET) ||
+		    (d->ptag && (sfind(s, d->ptag)->flags & D_SET)) ||
+		    (d->mtag && (sfind(s, d->mtag)->flags & D_SET))) {
+			d->flags |= D_SET;
+			if (s->rstop->serial < d->serial) {
+				s->rstop = d;
+			}
+		}
+	}
+
+	/* cleanup */
+	for (d = upper; d; d = d->next) {
+		d->flags &= ~D_BLUE;
+		if (d == lower) break;
+	}
+}
+
+int
+range_gone(sccs *s, delta *d, u32 dflags)
+{
+	int	count = 0;
+
+	range_walkrevs(s, d, 0, walkrevs_setFlags, (void*)D_SET);
+	range_markMeta(s);
+	for (d = s->rstop; d; d = d->next) {
+		if (d->flags & D_SET) {
+			count++;
+			d->flags &= ~D_SET;
+			d->flags |= dflags;
+		}
+		if (d == s->rstart) break;
+	}
+	unless (dflags & D_SET) s->state &= ~S_SET;
+	if (dflags & D_GONE) s->hasgone = 1;
+	return (count);
 }

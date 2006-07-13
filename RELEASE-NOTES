@@ -1,4 +1,29 @@
 ===============================================================================
+Range rework
+
+changes -L and -R now imply -a -- show all that would go on a push or pull.
+changes -a and prs -a is now undocumented.  Tags will be moved from being
+part of the changeset file, so start to pull support for them.
+
+range A..B is now a graph subtraction, similar to how prs -MrA..B worked.
+Except A is not included in the final result as it was in the prs.
+The '.,' and ',.' range have been removed.  
+
+Tag graph inclusion in a range is now based on what would go in a push
+or pull.  That is, a tag that is not attached to a changeset in the range
+can now appear in the 'bk changes -a' output if it is tag parented on
+a tag that is attached to a changeset in the range.
+
+bk makepatch -r1.0.. and bk cset -M1.0.. means all instead of
+all except 1.0 .  These are the two cases that work like they used to.
+
+bk log -o has been removed.
+bk log -C<rev> now prints nothing if the revision is not in a cset;
+it used to list pending deltas.
+bk log -pr<rev> is now limited to a single non-merge revision.
+bk stripdel -b has been removed.
+
+===============================================================================
 Release notes for BitKeeper version 4.0-beta3 (released 2006-06-30)
 
 bk export -tpatch -r$KEY",+ could fail because an underlying command couldn't

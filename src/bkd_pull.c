@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "range.h"
 
 private void
 listIt(sccs *s, int list)
@@ -119,8 +120,6 @@ cmd_pull_part2(int ac, char **av)
 	s = sccs_csetInit(0);
 	assert(s && HASGRAPH(s));
 	if (rev) {
-		int	count = 0;
-
 		unless (d = sccs_findrev(s, rev)) {
 			p = aprintf(
 			    "ERROR-Can't find revision %s\n", rev);
@@ -128,19 +127,10 @@ cmd_pull_part2(int ac, char **av)
 			free(p);
 			out("@END@\n");
 		}
-		stripdel_markSet(s, d);
-		stripdel_setMeta(s, 0, &count);
 		/*
-		 * The above sets D_GONE, but leaves other flags
-		 * altered.  We need D_RED intead of D_GONE and we
-		 * need D_BLUE to be cleared.  Might as well clean up
-		 * D_SET as well.
+		 * Need the 'gone' region marked RED
 		 */
-		for (d = s->table; d; d = d->next) {
-			d->flags &= ~(D_RED|D_BLUE|D_SET);
-			if (d->flags & D_GONE) d->flags |= D_RED;
-		}
-		s->state &= ~S_SET;
+		range_gone(s, d, D_RED);
 	}
 
 	/*

@@ -233,7 +233,7 @@ getrev(char *top_rev, int aflg)
 	char	revline[MAXREV+1];
 
 	if (aflg) {
-		cmd = aprintf("bk -R prs -hna -r'%s..' -d:REV: ChangeSet",
+		cmd = aprintf("bk -R prs -hnr'%s..' -d:REV: ChangeSet",
 		    top_rev);
 	} else if (IsFullPath(top_rev) && isreg(top_rev)) {
 		cmd = aprintf("bk -R key2rev ChangeSet < %s", top_rev);

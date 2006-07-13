@@ -10,11 +10,13 @@ range_main(int ac, char **av)
 	char	*name;
 	int	expand = 1;
 	int	quiet = 0;
+	int	all = 0;
 	int	c;
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "ec;qr;")) != -1) {
+	while ((c = getopt(ac, av, "aec;qr;")) != -1) {
 		switch (c) {
+		    case 'a': all++; break;
 		    case 'e': expand++; break;
 		    case 'q': quiet++; break;
 		    case 'c':
@@ -47,6 +49,7 @@ usage:			fprintf(stderr,
 			continue;
 		}
 		if (range_process("range", s, RANGE_SET, &rargs)) goto next;
+		if (all) range_markMeta(s);
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);
 			for (e = s->table; e; e = e->next) {

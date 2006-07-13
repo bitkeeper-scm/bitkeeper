@@ -18,7 +18,7 @@ echo HHHH > FILE
 bk ci $Q -i -l FILE
 writable FILE || { echo Failed; exit 1; }
 cat > CMP1 << EOF
-======== FILE 1.1 ========
+======== FILE ========
 1.1
 EOF
 bk prs -d':I:\n' FILE > CMP2
@@ -29,7 +29,7 @@ echo $N Check ci -l .................................................$NL
 echo JJJ >>FILE
 bk ci $Q -y -l FILE
 cat > CMP1 << EOF
-======== FILE 1.1-1.2 ========
+======== FILE ========
 1.2
 1.1
 EOF

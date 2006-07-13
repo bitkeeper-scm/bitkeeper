@@ -61,6 +61,10 @@ makepatch_main(int ac, char **av)
 		    case 'r':					/* doc 2.0 */
 		    	c = 'm';
 			if (range) goto usage;
+			/* makepatch idiom: -r1.0.. means -r.. */
+			if (optarg && streq(optarg, "1.0..")) {
+				optarg = &optarg[3];
+			}
 			range = malloc((optarg ? strlen(optarg) : 0) + 10);
 			sprintf(range, "-%c%s", c, optarg ? optarg : "");
 			nav[++i] = range;
@@ -137,7 +141,13 @@ cset_main(int ac, char **av)
 			if (c == 'd') copts.doDiffs++;
 		    	/* fall through */
 		    case 'M':					/* doc 2.0 */
-			if (c == 'M') copts.mark++;
+			if (c == 'M') {
+				copts.mark++;
+				/* documented idiom: -M1.0.. means -M.. */
+				if (optarg && streq(optarg, "1.0..")) {
+					optarg = &optarg[3];
+				}
+			}
 			/* fall through */
 		    case 'm':					/* undoc? 2.0 */
 			if (c == 'm') copts.makepatch = 1;

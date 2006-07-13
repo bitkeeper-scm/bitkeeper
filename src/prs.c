@@ -18,7 +18,6 @@ log_main(int ac, char **av)
 	int	reverse = 0, doheader = !log;
 	int	init_flags = INIT_NOCKSUM;
 	int	flags = 0, sf_flags = 0;
-	int	opposite = 0;
 	int	rc = 0, c;
 	char	*name;
 	char	*cset = 0, *tip = 0;
@@ -44,7 +43,10 @@ log_main(int ac, char **av)
 		    case 'M': 	/* for backward compat, undoc 2.0 */
 			      break;
 		    case 'n': flags |= PRS_LF; break;		/* doc 2.0 */
-		    case 'o': opposite = 1; doheader = 0; break; /* doc 2.0 */
+		    case 'o': 
+			 fprintf(stderr,
+			     "%s: the -o option has been removed\n", av[0]);
+			 goto usage;
 		    case 'p': want_parent = 1; break;
 		    case 'x':
 			fprintf(stderr, "prs: -x support dropped\n");
@@ -63,9 +65,13 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 			return (1);
 		}
 	}
-
 	if (rargs.rstart && (cset || tip)) {
 		fprintf(stderr, "%s: -c, -C, and -r are mutually exclusive.\n",
+		    av[0]);
+		exit(1);
+	}
+	if (cset && want_parent) {
+		fprintf(stderr, "%s: -p and -C are mutually exclusive.\n",
 		    av[0]);
 		exit(1);
 	}
@@ -75,12 +81,29 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 		unless (s = sccs_init(name, init_flags)) continue;
 		unless (HASGRAPH(s)) goto next;
 		if (cset) {
-			unless (e = sccs_findrev(s, cset)) {
-				rc = 1;
+			unless (e = sccs_findrev(s, cset)) goto next;
+			range_cset(s, e);
+		} else if (want_parent) {
+			if (range_process(av[0], s,
+				SILENT|RANGE_SET, &rargs)) {
 				goto next;
 			}
-			range_cset(s, e);
-			if (flags & PRS_ALL) sccs_markMeta(s);
+			unless (s->rstart && (s->rstart == s->rstop)
+			    && !s->rstart->merge) {
+				fprintf(stderr,
+				    "Warning: %s: -p requires a single "
+				    "non-merge revision\n", s->gfile);
+				goto next;
+			}
+			unless (s->rstart = s->rstart->parent) {
+				fprintf(stderr,
+				    "Warning: %s: %s has no parent\n",
+				    s->gfile, s->rstop->rev);
+				goto next;
+			}
+			s->rstop->flags &= ~D_SET;
+			s->rstart->flags |= D_SET;
+			s->rstop = s->rstart;
 		} else {
 			if (range_process(av[0], s,
 				SILENT|RANGE_SET, &rargs)) {
@@ -94,55 +117,16 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 					s->rstart = s->tree->kid;
 				}
 			}
-			/* happens when we have only 1.0 delta */
-			unless (s->rstart) goto next;
 		}
-		assert(s->rstop);
+		if (flags & PRS_ALL) range_markMeta(s);
 		if (doheader) {
-			printf("======== %s %s%s",
-			    s->gfile,
-			    opposite ? "!" : "",
-			    s->rstart->rev);
-			if (s->rstop != s->rstart) {
-				printf("-%s", s->rstop->rev);
+			printf("======== %s ", s->gfile);
+			if (rargs.rstart) {
+				printf("%s", rargs.rstart);
+				if (rargs.rstop) printf("..%s", rargs.rstop);
+				putchar(' ');
 			}
-			printf(" ========\n");
-		}
-		if (opposite) {
-			for (e = s->table; e; e = e->next) {
-				if (e->flags & D_SET) {
-					e->flags &= ~D_SET;
-				} else {
-					e->flags |= D_SET;
-				}
-			}
-		}
-		if (want_parent) {
-			unless (SET(s)) {
-				for (e = s->rstop; e; e = e->next) {
-					e->flags |= D_SET;
-					if (e == s->rstart) break;
-				}
-				s->state |= S_SET;
-			}
-			for (e = s->table; e; e = e->next) {
-				if (e->flags & D_SET) {
-					e->flags &= ~D_SET;
-					if (e->parent) {
-						e->parent->flags |= D_RED;
-					} else {
-						fprintf(stderr,
-					      "Warning: %s: %s has no parent\n",
-						    s->gfile, e->rev);
-					}
-				}
-			}
-			for (e = s->table; e; e = e->next) {
-				if (e->flags & D_RED) {
-					e->flags |= D_SET;
-					e->flags &= ~D_RED;
-				}
-			}
+			printf("========\n");
 		}
 		sccs_prs(s, flags, reverse, dspec, stdout);
 		sccs_free(s);

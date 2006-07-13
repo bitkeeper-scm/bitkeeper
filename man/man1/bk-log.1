@@ -5,7 +5,7 @@ bk log \- print file revision history and/or metadata
 .SH SYNOPSIS
 .if n .ll 7.49i
 .B bk log
-.[B] \-adDfhov
+.[B] \-dDfhv
 .if t .ds d date
 .if n .ds d d
 .if t .ds r rev
@@ -36,9 +36,6 @@ path from root of repository is to that file, the comments that go
 with that revision, and documents if the file has been renamed.
 .SH OPTIONS
 .TP \fB\-c9207..92\fP
-.B \-a
-Print info on all deltas, not just data deltas.
-.tp
 .OPTreq \-c date
 Cut-off dates.  See range specifications (below) or 
 .B bk help range
@@ -68,10 +65,6 @@ Suppress the range header.
 .B \-n
 Add a newline to each printed record.
 .tp
-.B \-o
-Reverse the sense of which deltas to print, i.e., print all unspecified
-deltas.
-.tp
 .OPTreq \-r rev
 Specify a revision, or part of a range.
 (Or key or changeset revision. See 
@@ -93,7 +86,7 @@ which matches the symbolic tag.
 prints the most recent delta
 .tp
 .B \-r1.3..1.6
-prints all deltas 1.3 through 1.6
+prints all deltas in 1.6's ancestory, but not in 1.3's ancestory.
 .tp
 .B \-c9207..92
 prints all deltas from July 1 '92 to Dec 31 '92
@@ -521,6 +514,8 @@ option which did what this does:
 .DS
 bk changes -d'$if(:TAG:){$each(:TAGS:){S (:TAGS:)\\n}}'
 .DE
+.SH "SEE ALSO"
+.SA range
 .SH CATEGORY
 .B File
 .\" help://dspec

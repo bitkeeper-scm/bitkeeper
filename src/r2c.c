@@ -20,7 +20,7 @@ r2c_main(int ac, char **av)
 	int	len;
 	char	tmpfile[MAXPATH];
 	char	buf[MAXKEY*2];
-	RANGE	rargs;
+	RANGE	rargs = {0};
 
 	unless (av[1] && strneq(av[1], "-r", 2) && av[2] && !av[3]) { 
 		/* doc 2.0 */
@@ -41,8 +41,7 @@ r2c_main(int ac, char **av)
 		    &av[1][2], name);
 	    	exit(1);
 	}
-	while (e && !(e->flags & D_CSET)) e = e->kid;
-	unless (e) {
+	unless (e = sccs_csetBoundary(s, e)) {
 		fprintf(stderr,
 		    "r2c: cannot find cset marker at or below %s in %s\n",
 		    &av[1][2], name);
