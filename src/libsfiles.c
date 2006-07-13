@@ -99,12 +99,8 @@ again:
 		debug((stderr, "sfiles::AV got %s\n", buf));
 	}
 
-	/*
-	 * XXX TODO someday we'll handle escaped BK_FS in the filename
-	 * But why would anyone want ^A in their file name ?
-	 */
 	unless (flags & SF_NOHASREVS)  {
-		char	*r = strrchr(buf, BK_FS);
+		char	*r = strchr(buf, BK_FS);
 
 		rev[0] = 0;	/* paranoia is your friend */
 		if (!r) goto norev;

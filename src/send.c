@@ -127,7 +127,7 @@ send_main(int ac,  char **av)
 	int	c, rc = 0, force = 0;
 	char	*to, *out, *cmd, *dflag = "", *qflag = "-vv";
 	char	*wrapper = 0,*patch = 0, *keysFile = 0, *revArgs = 0;
-	char	*wrapperArgs = "", *rev = "1.0..";
+	char	*wrapperArgs = "", *rev = "..";
 	char	*url = NULL;
 	FILE	*f;
 

@@ -22,7 +22,7 @@ lines_main(int ac, char **av)
 	int	n = 0, c, rc = 1;
 	char	*name;
 	delta	*e;
-	RANGE_DECL;
+	RANGE	rargs = {0};
 
 	while ((c = getopt(ac, av, "n;ur;R;tT")) != -1) {
 		switch (c) {
@@ -39,7 +39,9 @@ lines_main(int ac, char **av)
 		    case 'r':
 			rev = optarg; 
 			break;
-		    RANGE_OPTS(' ', 'R');
+		    case 'R':
+			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			break;
 		    default:
 usage:			fprintf(stderr,
 			    "Usage: _lines [-utT] [-n<n>] [-r<r> | -R<r>] file.\n");
@@ -58,8 +60,12 @@ usage:			fprintf(stderr,
 			for (c = n, e = sccs_top(s); e && c--; e = e->parent);
 			if (e) e = ancestor(s, e);
 			prevs(e ? e : s->tree);
-		} else if (things) {
-			RANGE_ERR("lines", s, 1, 1, rc);
+		} else if (rargs.rstart) {
+			if (range_process("lines", s,
+				RANGE_ENDPOINTS, &rargs)) {
+				rc = 1;
+				goto next;
+			}
 			unless (s->rstart) goto next;
 			e = ancestor(s, s->rstart);
 			e->merge = 0;

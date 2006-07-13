@@ -25,7 +25,7 @@ echo BitKeeper rocks > SCCS/c.comments
 bk delta $S -i comments
 test "BitKeeper rocks" = "`bk prs -hr+ -nd:C: comments`" || {
 	echo failed
-	bk prs -r1.0.. comments
+	bk prs comments
 	exit 1
 }
 echo OK

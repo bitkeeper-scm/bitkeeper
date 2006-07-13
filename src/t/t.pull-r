@@ -44,8 +44,13 @@ bk pull $Q -rT1 || {
 }
 bk changes -kr+ > KEY
 checkfiles ../KEY KEY
-bk changes -rNOT_THIS -ndx && {
+bk changes -rNOT_THIS -ndx 2> ERR && {
 	echo failed: NOT_THIS tag sent
+	exit 1
+}
+grep -q "no such delta.*NOT_THIS" ERR || {
+	echo wrong error message
+	cat ERR
 	exit 1
 }
 # XXX: How to test if top tag is marked as a leaf node?

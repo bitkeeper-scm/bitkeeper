@@ -1809,6 +1809,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	delta	*tmp, *d = 0;
 	time_t	date;
 	char	*s = rev ? rev : dateSym;
+	int	dateround = roundup;
 	char	ru = 0;
 
 	unless (sc && sc->table) return (0);
@@ -1820,20 +1821,21 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 		switch (*s) {
 		    case '+':
 			ru = *s;
-			roundup = ROUNDUP;
+			dateround = ROUNDUP;
 			s++;
 			break;
 		    case '-':
 			ru = *s;
-			roundup = ROUNDDOWN;
+			dateround = ROUNDDOWN;
 			s++;
 			break;
 		}
 	}
 
 	/* Allow null revisions to mean TOT or first delta */
+	// XXX still needed?
 	if (!s || !*s) {
-		unless (sc->state & S_RANGE2) {	/* this is first call */
+		if (roundup == ROUNDDOWN) {	/* this is first call */
 			unless (ru == '+') return (sc->tree);
 		}
 		return (findrev(sc, 0));
@@ -1858,9 +1860,9 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	 * The order returned is rstart == 1.1 and rstop == 1.5, i.e.,
 	 * oldest delta .. newest.
 	 */
-	date = date2time(s, 0, roundup);
+	date = date2time(s, 0, dateround);
 
-	unless (sc->state & S_RANGE2) {	/* first call */
+	if (roundup == ROUNDDOWN) {	/* first call */
 		if (date < sc->tree->date) return (sc->tree);
 		if (date > sc->table->date) return (0);
 	} else {			/* second call */
@@ -1884,7 +1886,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 		 *             ^tmp  ^d
 		 */
 		if (d->date < date) {
-			unless (sc->state & S_RANGE2) {	/* first call */
+			if (roundup == ROUNDDOWN) {	/* first call */
 				return (tmp);
 			} else {
 				return (d);

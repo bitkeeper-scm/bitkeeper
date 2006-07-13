@@ -13,7 +13,6 @@ bk log \- print file revision history and/or metadata
 .[OPTreq] \-c \*d
 .[OPTreq] \-C \*r
 .[OPTreq] \-r \*r
-.[OPTreq] \-x \*r
 .if n .ll
 .BKARGS
 .SH DESCRIPTION
@@ -78,19 +77,6 @@ Specify a revision, or part of a range.
 (Or key or changeset revision. See 
 .B bk help terms
 under \*(lqrev argument.\*(rq)
-.tp
-.OPTreq \-x rev
-Exclude
-.ARG rev
-from the selection in 
-.QR \-r .
-If
-.ARG rev
-is the special value
-.BR 1st ,
-then exclude the first (earliest) revision in the selection (useful when
-combined with the output of 
-.BR bk\ rset ).
 .tp
 .B \-v
 Complain about \*(BK files that do not match the range.

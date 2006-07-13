@@ -20,7 +20,7 @@ r2c_main(int ac, char **av)
 	int	len;
 	char	tmpfile[MAXPATH];
 	char	buf[MAXKEY*2];
-	RANGE_DECL;
+	RANGE	rargs;
 
 	unless (av[1] && strneq(av[1], "-r", 2) && av[2] && !av[3]) { 
 		/* doc 2.0 */
@@ -65,7 +65,7 @@ r2c_main(int ac, char **av)
 		perror("bktmp");
 		exit(1);
 	}
-	RANGE("r2c", cset, 2, 1);
+	if (range_process("r2c", cset, RANGE_SET, &rargs)) goto out;
 	if (sccs_cat(cset, PRINT|GET_NOHASH|GET_REVNUMS, tmpfile)) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr, "r2c: annotate of ChangeSet failed.\n");
@@ -111,7 +111,6 @@ notfound:	if (shortkey) {
 		}
 	}
 	goto notfound;
-next:	/* for range */
 out:	fclose(f);
 	unlink(tmpfile);
 	exit(0);

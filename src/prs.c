@@ -20,22 +20,19 @@ log_main(int ac, char **av)
 	int	flags = 0, sf_flags = 0;
 	int	opposite = 0;
 	int	rc = 0, c;
-	char	*name, *xrev = 0;
+	char	*name;
 	char	*cset = 0, *tip = 0;
 	int	noisy = 0;
-	int	expand = 1;
 	int	want_parent = 0;
 	pid_t	pid = 0;	/* pager */
 	char	*dspec = getenv("BK_LOG_DSPEC");
-	RANGE_DECL;
+	RANGE	rargs = {0};
 
 	unless (dspec) dspec = log ? ":LOG:" : ":PRS:";
 
-	while ((c = getopt(ac, av, "abc;C;d:DfhMnopr|t|x:vY")) != -1) {
+	while ((c = getopt(ac, av, "abc;C;d:DfhMnopr;vY")) != -1) {
 		switch (c) {
 		    case 'a':					/* doc 2.0 */
-			/* think: -Ma, the -M set expand already */
-			if (expand < 2) expand = 2;
 			flags |= PRS_ALL;
 			break;
 		    case 'D': break;	/* obsoleted in 4.0 */
@@ -44,74 +41,70 @@ log_main(int ac, char **av)
 		    case 'C': cset = optarg; break;		/* doc 2.0 */
 		    case 'd': dspec = optarg; break;		/* doc 2.0 */
 		    case 'h': doheader = 0; break;		/* doc 2.0 */
-		    case 'M': expand = 3; break;		/* doc 2.0 */
+		    case 'M': 	/* for backward compat, undoc 2.0 */
+			      break;
 		    case 'n': flags |= PRS_LF; break;		/* doc 2.0 */
 		    case 'o': opposite = 1; doheader = 0; break; /* doc 2.0 */
 		    case 'p': want_parent = 1; break;
-		    case 't': tip = optarg; break;
-		    case 'x': xrev = optarg; break;		/* doc 2.0 */
+		    case 'x':
+			fprintf(stderr, "prs: -x support dropped\n");
+			goto usage;
 		    case 'v': noisy = 1; break;			/* doc 2.0 */
 		    case 'Y': 	/* for backward compat, undoc 2.0 */
 			      break;
-		    RANGE_OPTS('c', 'r');			/* doc 2.0 */
+		    case 'c':
+			if (range_addArg(&rargs, optarg, 1)) goto usage;
+			break;
+		    case 'r':
+			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			break;
 		    default:
-usage:			system("bk help -s log");
+usage:			sys("bk", "help", "-s", av[0], SYS);
 			return (1);
 		}
 	}
 
-	if (things && (cset || tip)) {
-		fprintf(stderr, "log: -r, -C, -t are mutually exclusive.\n");
+	if (rargs.rstart && (cset || tip)) {
+		fprintf(stderr, "%s: -c, -C, and -r are mutually exclusive.\n",
+		    av[0]);
 		exit(1);
 	}
 	if (log) pid = mkpager();
-	for (name = sfileFirst("log", &av[optind], sf_flags);
+	for (name = sfileFirst(av[0], &av[optind], sf_flags);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, init_flags)) continue;
 		unless (HASGRAPH(s)) goto next;
 		if (cset) {
-			delta	*d = sccs_findrev(s, cset);
-
-			if (!d) {
+			unless (e = sccs_findrev(s, cset)) {
 				rc = 1;
 				goto next;
 			}
-			rangeCset(s, d);
-		} else if (tip) {
-			unless (e = sccs_findrev(s, tip)) {
-				unless (noisy) goto next;
-				fprintf(stderr,
-				    "log: can't find %s|%s\n", s->gfile, tip);
+			range_cset(s, e);
+			if (flags & PRS_ALL) sccs_markMeta(s);
+		} else {
+			if (range_process(av[0], s,
+				SILENT|RANGE_SET, &rargs)) {
 				goto next;
 			}
-			sccs_color(s, e);
-			if (CSET(s) && (flags & PRS_ALL)) sccs_tagcolor(s, e);
-			for (e = s->table; e; e = e->next) {
-				unless (e->flags & (D_RED|D_BLUE)) continue;
-				unless (s->rstop) s->rstop = e;
-				s->rstart = e;
-				e->flags |=D_SET;
+			if (!rargs.rstart && !sfileRev() &&
+			    streq(s->tree->rev, "1.0")) {
+				/* we don't want 1.0 by default */
+				s->tree->flags &= ~D_SET;
+				if (s->rstart == s->tree) {
+					s->rstart = s->tree->kid;
+				}
 			}
-			s->state |= S_SET;
-		} else {
-			if (flags & PRS_ALL) s->state |= S_SET;
-			RANGE("log", s, expand, noisy);
 			/* happens when we have only 1.0 delta */
 			unless (s->rstart) goto next;
 		}
 		assert(s->rstop);
-		if (flags & PRS_ALL) {
-			assert(s->state & S_SET);
-			sccs_markMeta(s);
-		}
 		if (doheader) {
-			printf("======== %s %s%s%s",
+			printf("======== %s %s%s",
 			    s->gfile,
 			    opposite ? "!" : "",
-			    s->rstart->rev,
-			    (xrev && streq(xrev, "1st")) ? "+" : "");
+			    s->rstart->rev);
 			if (s->rstop != s->rstart) {
-				printf("..%s", s->rstop->rev);
+				printf("-%s", s->rstop->rev);
 			}
 			printf(" ========\n");
 		}
@@ -124,28 +117,6 @@ usage:			system("bk help -s log");
 				}
 			}
 		}
-		if (xrev) {
-			unless (s->state & S_SET) { 
-				int	check = strcmp(xrev, "1st");
-
-				for (e = s->rstop; e; e = e->next) {
-					unless (check && streq(xrev, e->rev)) {
-						e->flags |= D_SET;
-					}
-					if (e == s->rstart) break;
-				}
-				s->state |= S_SET;
-				unless (check) s->rstart->flags &= ~D_SET;
-			} else {
-				if (streq(xrev, "1st")) {
-					s->rstart->flags &= ~D_SET;
-				} else {
-					e = sccs_findrev(s, xrev);
-					if (e) e->flags &= ~D_SET;
-				}
-			}
-		}
-
 		if (want_parent) {
 			unless (SET(s)) {
 				for (e = s->rstop; e; e = e->next) {

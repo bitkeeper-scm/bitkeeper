@@ -75,11 +75,7 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	if (rev) {
-		safe_putenv("BK_CSETS=1.0..%s", rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	if (p && trigger(av[0], "pre")) return (1);
 	if (p) out("@SFIO@\n");
 	if (p) {

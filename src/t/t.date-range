@@ -56,55 +56,55 @@ fi
 echo OK
 echo $N Forward range of dates test 1................................$NL
 X=`bk prs -c${DATE3}.. FILE | head -1`
-if [ "$X" != "======== FILE 1.3..1.5 ========" ]
+if [ "$X" != "======== FILE 1.3-1.5 ========" ]
 then	echo DATE3 failed - got bad range $X; exit 1
 fi
 echo OK
 echo $N Forward range of dates test 2................................$NL
 X=`bk prs -c${DATE2}.. FILE | head -1`
-if [ "$X" != "======== FILE 1.2..1.5 ========" ]
+if [ "$X" != "======== FILE 1.2-1.5 ========" ]
 then	echo DATE2 failed - got bad range $X; exit 1
 fi
 echo OK
 echo $N Forward range of dates test 3................................$NL
 X=`bk prs -c${DATE2a}.. FILE | head -1`
-if [ "$X" != "======== FILE 1.3..1.5 ========" ]
+if [ "$X" != "======== FILE 1.3-1.5 ========" ]
 then	echo DATE2a failed - got bad range $X; exit 1
 fi
 echo OK
 echo $N Backward range of dates test 1 ..............................$NL
 X=`bk prs -c..${DATE3} FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.3 ========" ]
+if [ "$X" != "======== FILE 1.1-1.3 ========" ]
 then	echo DATE3 failed - got bad range $X; exit 1
 fi
 echo OK
 echo $N Backward range of dates test 2 ..............................$NL
 X=`bk prs -c..${DATE3a} FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.2 ========" ]
+if [ "$X" != "======== FILE 1.1-1.2 ========" ]
 then	echo DATE3a failed - got bad range $X; exit 1
 fi
 echo OK
 echo $N Backward range of dates test 3 ..............................$NL
 X=`bk prs -c..${DATE2} FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.2 ========" ]
+if [ "$X" != "======== FILE 1.1-1.2 ========" ]
 then	echo DATE2 failed - got bad range $X; exit 1
 fi
 echo OK
 echo $N Backward range of dates test 4 ..............................$NL
 X=`bk prs -c..${DATE2a} FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.2 ========" ]
+if [ "$X" != "======== FILE 1.1-1.2 ========" ]
 then	echo DATE2a failed - got bad range $X; exit 1
 fi
 echo OK
 echo $N Range test 1.1..1.3 as dates ................................$NL
 X=`bk prs -c${DATE1}..${DATE3} FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.3 ========" ]
+if [ "$X" != "======== FILE 1.1-1.3 ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
 echo $N Range test 1.2..1.3 as dates ................................$NL
 X=`bk prs -c${DATE2}..${DATE3} FILE | head -1`
-if [ "$X" != "======== FILE 1.2..1.3 ========" ]
+if [ "$X" != "======== FILE 1.2-1.3 ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
@@ -134,12 +134,6 @@ if [ "$X" != "======== FILE ${REV5} ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
-echo $N Range test -r ...............................................$NL
-X=`bk prs -r FILE | head -1`
-if [ "$X" != "======== FILE 1.1 ========" ]
-then	echo got bad range $X; exit 1
-fi
-echo OK
 echo $N Range test -r+ ..............................................$NL
 X=`bk prs -r+ FILE | head -1`
 if [ "$X" != "======== FILE 1.5 ========" ]
@@ -148,23 +142,23 @@ fi
 echo OK
 echo $N Range test 1.1.. and 1.3.. ..................................$NL
 X=`bk prs -r1.1.. FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.5 ========" ]
+if [ "$X" != "======== FILE 1.2-1.5 ========" ]
 then	echo got bad range $X; exit 1
 fi
 X=`bk prs -r1.3.. FILE | head -1`
-if [ "$X" != "======== FILE 1.3..1.5 ========" ]
+if [ "$X" != "======== FILE 1.4-1.5 ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
-echo $N Range test 1.5.. ............................................$NL
-X=`bk prs -r1.5.. FILE | head -1`
+echo $N Range test 1.4.. ............................................$NL
+X=`bk prs -r1.4.. FILE | head -1`
 if [ "$X" != "======== FILE 1.5 ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
 echo $N Range test ..1.2 ............................................$NL
 X=`bk prs -r..1.2 FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.2 ========" ]
+if [ "$X" != "======== FILE 1.1-1.2 ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
@@ -176,13 +170,13 @@ fi
 echo OK
 echo $N Range test 1.1..1.3 .........................................$NL
 X=`bk prs -r${REV1}..${REV3} FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.3 ========" ]
+if [ "$X" != "======== FILE 1.2-1.3 ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
 echo $N Range test 1.2..1.3 .........................................$NL
 X=`bk prs -r${REV2}..${REV3} FILE | head -1`
-if [ "$X" != "======== FILE 1.2..1.3 ========" ]
+if [ "$X" != "======== FILE 1.3 ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
@@ -197,13 +191,13 @@ fi
 echo OK
 echo $N Everything after the start of 1987 ..........................$NL
 X=`bk prs -c87.. FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.5 ========" ]
+if [ "$X" != "======== FILE 1.1-1.5 ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
 echo $N Everything after the end of 1987 ............................$NL
 X=`bk prs -c+87.. FILE | head -1`
-if [ "$X" != "======== FILE 1.2..1.5 ========" ]
+if [ "$X" != "======== FILE 1.2-1.5 ========" ]
 then	echo got bad range $X; exit 1
 fi
 echo OK
@@ -221,25 +215,25 @@ fi
 echo OK
 echo $N Range test 87..97 on 1.1..1.4 ...............................$NL
 X=`bk prs -c87..97 FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.4 ========" ]
+if [ "$X" != "======== FILE 1.1-1.4 ========" ]
 then	echo failed with paren - got bad range $X; exit 1
 fi
 echo OK
 echo $N Range test 77..07 on 1.1..1.5 ...............................$NL
 X=`bk prs -c77..07 FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.5 ========" ]
+if [ "$X" != "======== FILE 1.1-1.5 ========" ]
 then	echo failed with paren - got bad range $X; exit 1
 fi
 echo OK
 echo $N Range test 77..7 on 1.1..1.5 ................................$NL
 X=`bk prs -c77..7 FILE | head -1`
-if [ "$X" != "======== FILE 1.1..1.5 ========" ]
+if [ "$X" != "======== FILE 1.1-1.5 ========" ]
 then	echo failed with paren - got bad range $X; exit 1
 fi
 echo OK
 echo $N Range test 97..97 on 1.2..1.4 ...............................$NL
 X=`bk prs -c97..97 FILE | head -1`
-if [ "$X" != "======== FILE 1.2..1.4 ========" ]
+if [ "$X" != "======== FILE 1.2-1.4 ========" ]
 then	echo failed with paren - got bad range $X; exit 1
 fi
 echo OK
@@ -395,7 +389,7 @@ echo $N Getting a range from 98..01 with -c .........................$NL
 bk prs -c98..01 FILE | awk '{print $1, $2, $3}' | sed 's/  *$//' > X
 bk undos X > CMP1
 cat > X <<EOF
-======== FILE 1.5..1.7
+======== FILE 1.5-1.7
 D 1.7 01/05/28
 P FILE
 C This is
@@ -454,7 +448,7 @@ bk get $S -r1.5 -GYEAR4 YEAR4
 if [ '02/22/2001' != "`cat YEAR4`" ]
 then	echo Failed on 1.5.
 	cat YEAR4
-	bk prs -hr1.0.. -nd:FLAGS: YEAR4
+	bk prs -h -nd:FLAGS: YEAR4
 	cat SCCS/s.YEAR4
 	exit 1
 fi

@@ -177,7 +177,6 @@ err:			sccs_free(s);
 			continue;
 		}
 		if (cdate) {
-			s->state |= S_RANGE2;
 			unless (d = sccs_getrev(s, 0, cdate, ROUNDUP)) {
 				fprintf(stderr,
 				    "No delta like %s in %s\n",

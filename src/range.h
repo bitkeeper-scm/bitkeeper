@@ -1,42 +1,24 @@
 #ifndef	_RANGE_H
 #define	_RANGE_H
 
-void	rangeReset(sccs *sc);
-int	rangeAdd(sccs *sc, char *rev, char *date, int empty);
-int	rangeConnect(sccs *s);
-void	rangeCset(sccs *s, delta *d);
-void	rangeSetExpand(sccs *s);
-int	rangeList(sccs *sc, char *rev);
-int	rangeProcess(char *me, sccs *s, int expand, int noisy, int empty,
-		     int *things, int rd, char **r, char **d);
-time_t	rangeCutOff(char *spec);
-int	closedRange(char *s);
+typedef struct range RANGE;
+struct	range {
+	char	*rstart, *rstop;
+	u32	isdate:1;
+	u32	isrev:1;
+};
 
-#define	RANGE_DECL	int	things = 0, rd = 1; \
-			char	*r[2], *d[2]; \
-			\
-			rd--; /* lint - I want it to be 0 */ \
-			r[0] = r[1] = d[0] = d[1] = 0
+#define RANGE_ENDPOINTS	0x10
+#define	RANGE_SET	0x20
 
-#define	RANGE_OPTS(date, rev) \
-	case date: \
-	    if (things == 2) goto usage; \
-	    d[rd++] = optarg; \
-	    things += tokens(optarg); \
-	    break; \
-	case rev: \
-	    if (things == 2) goto usage; \
-	    r[rd++] = notnull(optarg); \
-	    things += tokens(notnull(optarg)); \
-	    break
+int	range_process(char *me, sccs *s, u32 flags, RANGE *rargs);
+int	range_addArg(RANGE *rargs, char *arg, int isdate);
 
-#define	RANGE(me, s, expand, noisy) \
-	if (rangeProcess(me, s, expand, noisy, 0, &things, rd, r, d)) goto next;
+void	range_cset(sccs *s, delta *d);
+time_t	range_cutoff(char *spec);
+
+int	range_walkrevs(sccs *s, delta *from, delta *to,
+    int (*fcn)(sccs *s, delta *d, void *token), void *token);
+int	walkrevs_setFlags(sccs *s, delta *d, void *token);
 
 #endif
-
-#define	RANGE_ERR(me, s, expand, noisy, err) \
-	if (rangeProcess(me, s, expand, noisy, 0, &things, rd, r, d)) { \
-		err = 1; \
-		goto next; \
-	}

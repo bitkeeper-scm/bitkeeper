@@ -163,7 +163,6 @@ int	checking_rmdir(char *dir);
 #define	S_CSET		0x00000200	/* this is a changeset file */
 #define S_MAPPRIVATE	0x00000400	/* hack for hpux */
 #define S_READ_ONLY	0x00000800	/* force read only mode */
-#define	S_RANGE2	0x00001000	/* second call for date|rev range */
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
@@ -872,7 +871,6 @@ char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 int	sfileDone(void);
 int	sfiles(char *opts);
-int	tokens(char *s);
 delta	*sccs_findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);

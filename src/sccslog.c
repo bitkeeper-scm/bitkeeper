@@ -48,7 +48,7 @@ sccslog_main(int ac, char **av)
 	char	*name;
 	int	errors = 0;
 	int	save, c, flags = SILENT;
-	RANGE_DECL;
+	RANGE	rargs = {0};
 
 	setmode(1, _O_TEXT);
 	while ((c = getopt(ac, av, "AbCc;d|Dfi;npr|sv")) != -1) {
@@ -66,7 +66,12 @@ sccslog_main(int ac, char **av)
 		    case 'p': opts.basenames = 1; break;	/* doc 2.0 */
 		    case 's': opts.sort = 1; break;		/* doc 2.0 */
 		    case 'v': flags &= ~SILENT; break;		/* doc 2.0 */
-		    RANGE_OPTS('c', 'r');			/* doc 2.0 */
+		    case 'c':
+			if (range_addArg(&rargs, optarg, 1)) goto usage;
+			break;
+		    case 'r':
+			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			break;
 		    default:
 usage:			system("bk help -s sccslog");
 			return (1);
@@ -90,9 +95,11 @@ usage:			system("bk help -s sccslog");
 					d = d->parent;
 				}
 				s->state |= S_SET;
-			} else if (things || sfileRev()) {
-				s->state |= S_SET;
-				RANGE("sccslog", s, 2, 0);
+			} else if (rargs.rstart || sfileRev()) {
+				if (range_process("sccslog", s,
+					RANGE_SET, &rargs)) {
+					goto next;
+				}
 			}
 		} while ((name = sfileNext()) && streq(s->sfile, name));
 		save = n;

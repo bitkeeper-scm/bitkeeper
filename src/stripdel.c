@@ -28,7 +28,7 @@ stripdel_main(int ac, char **av)
 	MDBM	*config;
 	char	*co;
 	s_opts	opts = {1, 0, 0, 0, 0};
-	RANGE_DECL;
+	RANGE	rargs = {0};
 
 	while ((c = getopt(ac, av, "bcCdqr;")) != -1) {
 		switch (c) {
@@ -40,7 +40,9 @@ stripdel_main(int ac, char **av)
 			opts.iflags = INIT_WACKGRAPH;
 			break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
-		    RANGE_OPTS('!', 'r');			/* doc 2.0 */
+		    case 'r':
+			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			break;
 		    default:
 usage:			system("bk help -s stripdel");
 			return (1);
@@ -50,7 +52,7 @@ usage:			system("bk help -s stripdel");
 		rc = strip_list(opts);
 		goto done;
 	}
-	unless (opts.stripBranches || (things && r[0])) {
+	unless (opts.stripBranches || rargs.rstart) {
 		fprintf(stderr, "stripdel: must specify revisions.\n");
 		return (1);
 	}
@@ -80,13 +82,15 @@ usage:			system("bk help -s stripdel");
 		return (1);
 	}
 
-	unless (opts.stripBranches) RANGE("stripdel", s, 2, 1);
+	if (!opts.stripBranches &&
+	    range_process("stripdel", s, RANGE_SET, &rargs)) {
+		return (1);
+	}
 	rc = doit(s, opts);
 	sccs_free(s);
 	sfileDone();
-done:   
+done:
 	return (rc);
-next:	return (1);
 }
 
 private int

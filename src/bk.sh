@@ -727,7 +727,7 @@ _after() {		# /* undoc? 2.0 */
 	if [ "X$AFTER" = X ]
 	then	echo "Usage: after -r<rev>"
 	fi
-	bk -R prs -ohMa -r1.0..$AFTER -d':REV:,\c' ChangeSet 
+	bk -R prs -ha -r$AFTER.. -d':REV:,\c' ChangeSet 
 	echo ""
 	return $?
 }

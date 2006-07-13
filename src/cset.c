@@ -106,8 +106,7 @@ cset_main(int ac, char **av)
 	int	c, list = 0;
 	int	ignoreDeleted = 0;
 	char	*cFile = 0;
-	char	allRevs[6] = "1.0..";
-	RANGE_DECL;
+	RANGE	rargs = {0};
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
@@ -121,7 +120,7 @@ cset_main(int ac, char **av)
 		    case 'i':					/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
 			copts.include++;
-			r[rd++] = optarg;
+			if (range_addArg(&rargs, optarg, 0)) goto usage;
 			break;
 		    case 'r':					/* doc 2.0 */
 			if (streq(av[0], "makepatch")) {
@@ -143,9 +142,8 @@ cset_main(int ac, char **av)
 		    case 'm':					/* undoc? 2.0 */
 			if (c == 'm') copts.makepatch = 1;
 		    	list |= 1;
-			if (optarg) {
-				r[rd++] = notnull(optarg);
-				things += tokens(notnull(optarg));
+			if (optarg && range_addArg(&rargs, optarg, 0)) {
+				goto usage;
 			}
 			break;
 		    case 'C':					/* doc 2.0 */
@@ -155,9 +153,6 @@ cset_main(int ac, char **av)
 				copts.mark++;
 				copts.remark++;
 				copts.force++;
-				r[0] = allRevs;
-				rd = 1;
-				things = tokens(notnull(optarg));
 			}
 			break;
 		    case 'q':					/* doc 2.0 */
@@ -166,7 +161,7 @@ cset_main(int ac, char **av)
 		    case 'x':					/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
 			copts.exclude++;
-			r[rd++] = optarg;
+			if (range_addArg(&rargs, optarg, 0)) goto usage;
 			break;
 		    default:
 usage:			sys("bk", "help", "-s", av[0], SYS);
@@ -174,7 +169,7 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 		}
 	}
 
-	if ((things > 1) && (list != 1)) {
+	if (rargs.rstop && (list != 1)) {
 		fprintf(stderr, "%s: only one rev allowed with -t\n", av[0]);
 		goto usage;
 	}
@@ -210,35 +205,26 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 	/*
 	 * If doing include/exclude, go do it.
 	 */
-	if (copts.include) return (cset_inex(flags, "-i", r[0]));
-	if (copts.exclude) return (cset_inex(flags, "-x", r[0]));
+	if (copts.include) return (cset_inex(flags, "-i", rargs.rstart));
+	if (copts.exclude) return (cset_inex(flags, "-x", rargs.rstart));
 
 	cset = sccs_init(csetFile, flags & SILENT);
 	if (!cset) return (101);
 	copts.mixed = !LONGKEY(cset);
 
-	if (list && (things < 1) && !copts.dash) {
+	if (list && !rargs.rstart && !copts.dash) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
 		cset_exit(1);
 	}
 
 	if (list) {
-		int	expand;
-
-		if (copts.dash) {
-			expand = 0;
-		} else if (r[1]) {
-			expand = 3; 
-		} else if (closedRange(r[0]) == 1) {
-			expand = 3;
-		} else {
-			expand = 2;
+		if (copts.dash ||
+		    !range_process("cset", cset, RANGE_SET, &rargs)) {
+			sig_default();
+			csetlist(&copts, cset);
 		}
-		RANGE("cset", cset, expand, 1);
-		sig_default();
-		csetlist(&copts, cset);
-next:		sccs_free(cset);
+		sccs_free(cset);
 		if (cFile) free(cFile);
 		return (0);
 	}

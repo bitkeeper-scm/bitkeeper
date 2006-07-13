@@ -149,7 +149,7 @@ checkfiles XXX WANT
 echo OK
 
 echo $N Check that keys work . ......................................$NL
-bk prs -hr1.0.. -nd:KEY: ChangeSet | bk sort > WANT
+bk prs -r.. -hnd:KEY: ChangeSet | bk sort > WANT
 bk changes -k | bk sort > GOT
 checkfiles WANT GOT
 echo OK
@@ -214,7 +214,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check remote key listing ....................................$NL
-bk prs -hr1.0.. -nd:KEY: ChangeSet | bk sort > WANT
+bk prs -r.. -h -nd:KEY: ChangeSet | bk sort > WANT
 cd $HERE
 bk changes -k $HERE/clone | bk sort > GOT
 checkfiles clone/WANT GOT

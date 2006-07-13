@@ -80,7 +80,7 @@ grep_main(int ac, char **av)
 			if (optarg && optarg[0]) {
 				range = aprintf("-R%s", optarg);
 			} else {
-				range = aprintf("-R1.0..");
+				range = aprintf("-R..");
 			}
 			break;
 

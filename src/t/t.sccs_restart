@@ -17,26 +17,23 @@ echo $N Check ci -i -l ..............................................$NL
 echo HHHH > FILE
 bk ci $Q -i -l FILE
 writable FILE || { echo Failed; exit 1; }
-cat > X << EOF
+cat > CMP1 << EOF
 ======== FILE 1.1 ========
 1.1
 EOF
-bk undos X > CMP1
 bk prs -d':I:\n' FILE > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+cmpfiles CMP1 CMP2
 echo OK
+
 echo $N Check ci -l .................................................$NL
 echo JJJ >>FILE
 bk ci $Q -y -l FILE
-cat > X << EOF
-======== FILE 1.1..1.2 ========
+cat > CMP1 << EOF
+======== FILE 1.1-1.2 ========
 1.2
 1.1
 EOF
-bk undos X > CMP1
 writable FILE || { echo Failed; exit 1; }
-bk prs -r1.1.. -d':I:\n' FILE  > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+bk prs -d':I:\n' FILE  > CMP2
+cmpfiles CMP1 CMP2
 echo OK

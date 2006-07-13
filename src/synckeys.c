@@ -141,7 +141,7 @@ listkey_main(int ac, char **av)
 	int	i, c, debug = 0, quiet = 0, nomatch = 1;
 	int	sndRev = 0;
 	int	matched_tot = 0;
-	int	ForceFullPatch = 0; /* force a "makepatch -r1.0.." */
+	int	ForceFullPatch = 0; /* force a "makepatch -r.." */
 	char	key[MAXKEY], rootkey[MAXKEY];
 	char	s_cset[] = CHANGESET;
 	char	**lines = 0;
