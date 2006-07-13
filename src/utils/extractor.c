@@ -71,7 +71,7 @@ int
 main(int ac, char **av)
 {
 	int	i;
-	int	rc = 0, dolinks = 0, upgrade = 0, striplic = 0;
+	int	rc = 0, dolinks = 0, upgrade = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
 	char	*dest = 0, *bkpath = 0, *tmp = findtmp();
