@@ -377,7 +377,7 @@ _csets() {		# /* doc 2.0 */
 	do	case "$opt" in
 		T) GUI=NO;;
 		v) GUI=NO; COPTS="$COPTS -v";;
-		*) bk help -s csets;;
+		*) bk help -s csets; exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`

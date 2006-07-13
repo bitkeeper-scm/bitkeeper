@@ -469,6 +469,10 @@ symlnkCopy(char *from, char *to)
 		fprintf(stderr, "Cannot read symlink %s\n", from);
 		return (-1);
 	}
+	unless (len < MAXPATH) {
+		fprintf(stderr, "Symlink value for %s too long\n", from);
+		return (-1);
+	}
 	symTarget[len] = 0;	/* stupid readlink */
 	assert(strlen(symTarget) < MAXPATH);
 	assert(strlen(to) < MAXPATH);
