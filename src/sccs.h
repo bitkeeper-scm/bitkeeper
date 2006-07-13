@@ -163,7 +163,6 @@ int	checking_rmdir(char *dir);
 #define	S_CSET		0x00000200	/* this is a changeset file */
 #define S_MAPPRIVATE	0x00000400	/* hack for hpux */
 #define S_READ_ONLY	0x00000800	/* force read only mode */
-#define	S_RANGE2	0x00001000	/* second call for date|rev range */
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
@@ -854,6 +853,7 @@ int	sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);                            
+delta	*sccs_csetBoundary(sccs *s, delta *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners);
@@ -872,7 +872,6 @@ char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 int	sfileDone(void);
 int	sfiles(char *opts);
-int	tokens(char *s);
 delta	*sccs_findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
@@ -885,7 +884,6 @@ void	sccs_resetuser(void);
 void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
-int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
 int	fileType(mode_t m);
@@ -1048,7 +1046,6 @@ int	sccs_tagleaves(sccs *, delta **, delta **);
 ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc);
 int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
-int	stripdel_markSet(sccs *s, delta *d);
 
 int     http_connect(remote *r);
 int	http_send(remote *, char *msg, size_t len, size_t ex, char *ua);

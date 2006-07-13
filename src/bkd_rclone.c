@@ -141,11 +141,7 @@ cmd_rclone_part2(int ac, char **av)
 	}
 	free(path);
 
-	if (opts.rev) {
-		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 
 	getline(0, buf, sizeof(buf));
 	if (!streq(buf, "@SFIO@")) {

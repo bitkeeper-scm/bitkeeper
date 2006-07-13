@@ -3,7 +3,6 @@
 #include "sccs.h"
 #include "range.h"
 
-private	int	cset_boundries(sccs *s, char *rev);
 private int	nulldiff(char *name, u32 kind, u32 flags);
 
 /*
@@ -58,7 +57,7 @@ diffs_main(int ac, char **av)
 	pid_t	pid = 0; /* lint */
 	char	*name;
 	char	*Rev = 0, *boundaries = 0;
-	RANGE_DECL;
+	RANGE	rargs = {0};
 
 	while ((c = getopt(ac, av, "a;A;bBcC|d;efhHIl|m|nNpr|R|suvw")) != -1) {
 		switch (c) {
@@ -97,14 +96,19 @@ diffs_main(int ac, char **av)
 		    case 'u': kind |= DF_UNIFIED; break;	/* doc 2.0 */
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
 		    case 'w': kind |= DF_GNUw; break;		/* doc 2.0 */
-		    RANGE_OPTS('d', 'r');			/* doc 2.0 */
+		    case 'd':
+			if (range_addArg(&rargs, optarg, 1)) goto usage;
+			break;
+		    case 'r':
+			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			break;
 		    default:
 usage:			system("bk help -s diffs");
 			return (1);
 		}
 	}
 
-	if ((things && (boundaries || Rev)) || (boundaries && Rev)) {
+	if ((rargs.rstart && (boundaries || Rev)) || (boundaries && Rev)) {
 		fprintf(stderr, "%s: -C/-R must be alone\n", av[0]);
 		return (1);
 	}
@@ -115,9 +119,8 @@ usage:			system("bk help -s diffs");
 	 * do the parent against that rev if no gfile.
 	 * If we specified no revs then there must be a gfile.
 	 */
-	if (boundaries) things = 2;
 	if ((flags & GET_PREFIX) &&
-	    !Rev && (things != 2) && !streq("-", av[ac-1])) {
+	    !Rev && (!rargs.rstop || boundaries) && !streq("-", av[ac-1])) {
 		fprintf(stderr,
 		    "%s: must have both revisions with -A|U|M|O\n", av[0]);
 		return (1);
@@ -147,15 +150,15 @@ usage:			system("bk help -s diffs");
 	while (name) {
 		int	ex = 0;
 		sccs	*s = 0;
+		delta	*d;
 		char	*r1 = 0, *r2 = 0;
-		int	save = things;
 
 		/*
 		 * Unless we are given endpoints, don't diff.
 		 * This is a big performance win.
 		 * 2005-06: Endpoints meaning extended for diffs -N.
 		 */
-		unless (force || things || boundaries || Rev || sfileRev()) {
+		unless (force || rargs.rstart || boundaries || Rev || sfileRev()) {
 			char	*gfile = sccs2name(name);
 
 			unless (writable(gfile) ||
@@ -171,7 +174,13 @@ usage:			system("bk help -s diffs");
 			goto next;
 		}
 		if (boundaries) {
-			if (cset_boundries(s, boundaries)) goto next;
+			unless (d = sccs_findrev(s, boundaries)) {
+				fprintf(stderr,
+				    "No delta %s in %s\n",
+				    boundaries, s->gfile);
+				goto next;
+			}
+			range_cset(s, d);
 		} else if (Rev) {
 			/* r1 == r2  means diff against the parent(s)(s)  */
 			/* XXX TODO: probably needs to support -R+	  */
@@ -192,45 +201,35 @@ usage:			system("bk help -s diffs");
 			 * edited file as an arg, we should make this code
 			 * be a function.  export/rset/gnupatch use it.
 			 */
-			if (r[0] && (things == 1) && streq(r[0], ".")) {
+			// XXX
+			if (rargs.rstart && streq(rargs.rstart, ".")) {
 				restore = 1;
 				if (HAS_GFILE(s) && IS_WRITABLE(s)) {
-					things = 0;
-					r[0] = 0;
+					rargs.rstart = 0;
 				} else {
-					r[0] = "+";
+					rargs.rstart = "+";
 				}
 			}
-			if (rangeProcess("diffs", s, 0,
-			    (flags & SILENT) == 0, 1, &things, rd, r, d)) {
+			if (range_process("diffs", s, RANGE_ENDPOINTS,&rargs)) {
 				unless (empty) goto next;
 				s->rstart = s->tree;
 			}
-			if (restore) r[0] = ".";
+			if (restore) rargs.rstart = ".";
 		}
-		if (things) {
-			unless (s->rstart && (r1 = s->rstart->rev)) goto next;
-			if ((things == 2) && (s->rstart == s->rstop)) goto next;
+		if (s->rstart) {
+			unless (r1 = s->rstart->rev) goto next;
+			if ((rargs.rstop) && (s->rstart == s->rstop)) goto next;
 			if (s->rstop) r2 = s->rstop->rev;
-			/*
-			 * If we did a date specification and that covered only
-			 * one delta, bump it backwards to get some diffs.
-			 */
-			if (d[0] && (!r[1] || d[1]) &&
-			    (s->rstart == s->rstop) && s->rstart->parent) {
-				s->rstart = s->rstart->parent;
-				r1 = s->rstart->rev;
-			}
 		}
 #if	0
-		/* 
+		/*
 		 * The ONLY time keyword expansion should be enabled
 		 * is for 'bk diffs -r+ file' where there is an unlocked
 		 * gfile.  This is where the user wants to verify that
 		 * the gfile actually matches the TOT.  All other times
-		 * we are comparing committed versions to each other or an 
+		 * we are comparing committed versions to each other or an
 		 * editted gfile.
-		 * XXX  The case above is currently broken, so I just 
+		 * XXX  The case above is currently broken, so I just
 		 * disabled keywork expansion entirely.
 		 */
 		if (HAS_GFILE(s) && !IS_WRITABLE(s) && (things <= 1)) {
@@ -247,7 +246,7 @@ usage:			system("bk help -s diffs");
 		 * XXX - I'm not sure this works with -C but we'll fix it in
 		 * the 3.1 tree.
 		 */
-		if (!force && !things && !Rev && !IS_WRITABLE(s)) goto next;
+		if (!force && !r1 && !IS_WRITABLE(s)) goto next;
 
 		/*
 		 * Optimize out the case where we have a locked file with
@@ -255,12 +254,11 @@ usage:			system("bk help -s diffs");
 		 * IS_EDITED() doesn't work because they could have chmod +w
 		 * the file.
 		 */
-		if (!things && IS_WRITABLE(s) && HAS_PFILE(s) &&
-		    !MONOTONIC(s) && !Rev &&
-		    !sccs_hasDiffs(s, flags|ex, 1)) {
+		if (!r1 && IS_WRITABLE(s) && HAS_PFILE(s) &&
+		    !MONOTONIC(s) && !sccs_hasDiffs(s, flags|ex, 1)) {
 			goto next;
 		}
-		
+
 		/*
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
@@ -288,7 +286,6 @@ next:		if (s) {
 			s = 0;
 		}
 		name = sfileNext();
-		things = save;
 	}
 out:	if (sfileDone()) errors |= 4;
 	if (mdiff) {
@@ -342,42 +339,4 @@ nulldiff(char *name, u32 kind, u32 flags)
 	free(file);
 out:	free(name);
 	return (ret);
-}
-
-private int
-cset_boundries(sccs *s, char *rev)
-{
-	delta	*d = sccs_findrev(s, rev);
-
-	unless (d) {
-		fprintf(stderr, "No delta %s in %s\n", rev, s->gfile);
-		return (1);
-	}
-	d->flags |= D_RED;
-	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_CSET) s->rstop = d;
-		if (d->flags & D_RED) break;
-	}
-	unless (d) {
-		fprintf(stderr, "No csets in %s?\n", s->gfile);
-		return (1);
-	}
-	s->rstart = d;
-	while (d && (d != s->tree)) {
-		s->rstart = d;
-		if ((d != s->rstop) && (d->flags & D_CSET)) {
-			break;
-		}
-		d = d->parent;
-	}
-	/*
-	 * If they picked a delta which is pending, use the last delta
-	 * as the boundry.
-	 */
-	unless (s->rstop) {
-		for (d = s->rstart;
-		    d && d->kid && (d->kid->type == 'D'); d = d->kid);
-		s->rstop = d;
-	}
-	return (0);
 }

@@ -47,15 +47,13 @@ The third form shown above lists changes found in the local repository
 but not in the remote repository.
 If the remote repository is not specified, the outgoing parent[s] of the
 local repository is/are used, i.e.,
-the listing is what would be sent on a push (when used with
-.QR \-a ).
+the listing is what would be sent on a push.
 .li
 The fourth form shown above lists changes found in the remote repository
 but not in the local repository.
 If the remote repository is not specified, the incoming parent[s] of the
 local repository is/are used, i.e.,
-the listing is what would be received on a pull (when used with
-.QR \-a).
+the listing is what would be received on a pull.
 .li
 The fifth form shown above lists changes unique to either the remote or the 
 local repository.
@@ -82,15 +80,6 @@ List only those changesets whose comments contain the string
 may be a regular expression.
 If there is a trailing \*(lqi\*(rq then ignore case in the search.
 .tp
-.B \-a
-List all deltas, including tag deltas.  Implies
-.QR \-e .
-An additional
-.Q \-e
-after this option will turn off the listing of the empty merge deltas (the
-.Q \-e 
-option is inverted from its previous value each time the option is seen).
-.tp
 .OPTreq \-c dates
 Specifies the changesets to be listed as a date range, i.e.,
 .Q \-c\-6W
@@ -104,9 +93,9 @@ repository.
 If this option is specified, then the duplicates are filtered out such
 that the changesets listed are a unique set.
 This option combined with
-.QR \-aL
+.QR \-L
 or
-.QR \-aR
+.QR \-R
 is used to answer the questions: \*(lqWhat is only in this
 repository relative to all of the specified repositories?\*(rq or \*(lqWhat is
 only in one or more of the remote repositories but not in this local
@@ -137,13 +126,8 @@ Equivalent to
 .QI \-Dand:KEY:
 .tp
 .B \-L
-List only those changesets which are unique to the local repository.
+List everything that would be sent with a bk push.
 Requires either a BK url or a valid repository parent.
-Will not report tags, or empty merges.
-Use with
-.QR \-a
-to see tags and empty merges,
-i.e., everything which would be sent back with a bk push.
 .tp
 .B \-m
 Do not show any merge changesets, empty or not.
@@ -162,13 +146,8 @@ This option is implied by
 Specifies the changesets to be listed, i.e., 1.100..
 .tp
 .B \-R
-List only those changesets which are unique to the remote repository,
+List everything which would be brought over with a bk pull.
 Requires either a BK url or a valid repository parent.
-Will not report tags, or empty merges.
-Use with
-.QR \-a
-to see tags and empty merges,
-i.e., everything which would be brought over with a bk pull.
 .tp
 .B \-t
 Only list changesets which are tagged.
@@ -269,6 +248,7 @@ on failure.
 .SA log
 .SA pull
 .SA push
+.SA range
 .SA regex
 .SA revtool
 .SA sccslog

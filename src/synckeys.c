@@ -3,6 +3,7 @@
  */
 #include "bkd.h"
 #include "logging.h"
+#include "range.h"
 
 /*
  * Send the probe keys for D deltas.
@@ -62,7 +63,6 @@ probekey_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d = 0;
-	int	count = 0;
 
 	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
 		out("ERROR-Can't init changeset\n@END@\n");
@@ -73,12 +73,7 @@ probekey_main(int ac, char **av)
 			printf("ERROR-Can't find revision %s\n", &av[1][2]);
 			return (1);
 		}
-		/*
-		 * optimize: don't send tags that don't need to be sent
-		 * XXX: is it worth it?
-		 */
-		stripdel_markSet(s, d);
-		stripdel_setMeta(s, 0, &count);
+		range_gone(s, d, D_GONE);
 	} else {
 		d = sccs_top(s);
 	}
@@ -141,7 +136,7 @@ listkey_main(int ac, char **av)
 	int	i, c, debug = 0, quiet = 0, nomatch = 1;
 	int	sndRev = 0;
 	int	matched_tot = 0;
-	int	ForceFullPatch = 0; /* force a "makepatch -r1.0.." */
+	int	ForceFullPatch = 0; /* force a "makepatch -r.." */
 	char	key[MAXKEY], rootkey[MAXKEY];
 	char	s_cset[] = CHANGESET;
 	char	**lines = 0;

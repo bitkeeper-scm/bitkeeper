@@ -18,8 +18,9 @@ annotate_main(int ac, char **av)
 	int	flags = BASE_FLAGS, errors = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	c;
-	char	*t, *name, *range = 0, *Rev = 0, *rev = 0, *cdate = 0;
-	char	all[10];
+	char	*t, *name, *Rev = 0, *rev = 0, *cdate = 0;
+	int	range = 0;
+	RANGE	rargs = {0};
 
 	name = strrchr(av[0], '/');
 
@@ -45,9 +46,9 @@ annotate_main(int ac, char **av)
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
 		    case 'r': Rev = optarg; break;		/* doc 2.0 */
 		    case 'R':
-			unless (range = optarg) {
-		    		sprintf(all, "1.0..");
-				range = all;
+			range = 1;
+			if (optarg && range_addArg(&rargs, optarg, 0)) {
+				goto usage;
 			}
 			flags &= ~GET_EXPAND;
 			break;
@@ -57,12 +58,14 @@ usage:			system("bk help -s annotate");
 		}
 	}
 
-	if (Rev && closedRange(Rev)) goto usage;
-	if (cdate && closedRange(cdate)) goto usage;
+	if (Rev && strstr(Rev, "..")) goto usage;
+	if (cdate && strstr(cdate, "..")) goto usage;
 	if (range && (Rev || cdate)) goto usage;
 
 	/* original annotate only, not -R sccscat replacement */
-	if (!range && (flags == BASE_FLAGS)) flags |= GET_REVNUMS|GET_USER;
+	if (!range && (flags == BASE_FLAGS)) {
+		flags |= GET_REVNUMS|GET_USER;
+	}
 	name = sfileFirst(ME, &av[optind], 0);
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
@@ -73,14 +76,8 @@ err:			errors = 1;
 		}
 		if (s->encoding & E_BINARY) goto err;
 		if (range) {
-			int	e = closedRange(range) ? 3 : 2;
-			int	things = 1;
-			char	*d[2] = { 0, 0 };
-
-			c = rangeProcess(ME, s, e, 0, 0, &things, 1, &range, d);
-			if (c) goto err;
+			if (range_process(ME, s, RANGE_SET, &rargs)) goto err;
 		} else if (cdate) {
-			s->state |= S_RANGE2;
 			d = sccs_getrev(s, 0, cdate, ROUNDUP);
 			unless (d) {
 				fprintf(stderr,
@@ -111,6 +108,7 @@ err:			errors = 1;
 			errors = 1;
 		}
 		sccs_free(s);
+		s = 0;
 	}
 	if (sfileDone()) errors = 1;
 	return (errors);

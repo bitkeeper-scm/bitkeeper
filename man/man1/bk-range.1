@@ -11,33 +11,29 @@ bk range \- demo program to show ranges & dates
 .OPTreq \-r rev ]
 .BKARGS
 .SH DESCRIPTION
-XXX - leaving for Rick
 .LP
 Many commands may take ranges of deltas as an argument.  A range is a
-continuous sequence of deltas, such as 1.1, 1.2, 1.3, and 1.4.  Deltas
-may be specified by their revision number (1.2), delta key
+graphically contiguous region of deltas computed by taking the list
+of upper bound and its ancestors and removing the lower bound and its
+ancestors.
+Deltas may be specified by their revision number (1.2), delta key
 ('amy@bitmover.com|man/man1/bk-terms.1|20020714011327|59990'), a
 symbolic name (@tag), changeset rev (@1.33), or changeset key
 (@'lm@disks.bitmover.com|ChangeSet|20020912140445|17593').  (see
 .B bk help terms
 for more info)
 .LP
-You may specify both end-points at once like so:
-.sp
-.\" XXX deprecated?
+You may specify both end-points at once, or separately.
+These are equivalent
 .DS
-bk log \-r1.1..1.5
+bk log \-r1.3..1.5
+bk log \-r1.3 \-r1.5
 .DE
 .LP
-Revision ranges have a way to say \*(lqafter\*(rq or
-\*(lqbefore.\*(rq You may say
-.DS
--r1.3..1.7 to mean 1.3, 1.4, 1.5, 1.6, 1.7
--r1.3,.1.7 to mean 1.4, 1.5, 1.6, 1.7
--r1.3,,1.7 to mean 1.4, 1.5, 1.6
-.DE
-The \*(lq,\*(rq operator means \*(lqafter\*(rq or \*(lqbefore\*(rq
-the specified revision.
+The result answers the question of "what is in the history of 1.5 that
+is not in the history of 1.3?"
+For example, if revision 1.2 forked 1.2.1.1 and 1.3, and 1.4 merged
+in 1.2.1.1, then the range 1.3..1.5 expands to 1.2.1.1, 1.4, and 1.5.
 .LP
 You may specify dates instead of revisions like so
 .sp

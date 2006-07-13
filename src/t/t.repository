@@ -130,7 +130,7 @@ echo OK
 #date >  new.c
 #bk new $Q -ycopy2-new new.c
 #bk commit $Q -ycopy2-new
-#bk makepatch $Q -e1.0.. > $HERE/patch
+#bk makepatch $Q -e.. > $HERE/patch
 #cd $HERE/proj_log
 #bk takepatch $Q < $HERE/patch
 #bk resolve -d -t -c

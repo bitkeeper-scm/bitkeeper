@@ -10,14 +10,21 @@ range_main(int ac, char **av)
 	char	*name;
 	int	expand = 1;
 	int	quiet = 0;
+	int	all = 0;
 	int	c;
-	RANGE_DECL;
+	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "ec;qr;")) != -1) {
+	while ((c = getopt(ac, av, "aec;qr;")) != -1) {
 		switch (c) {
+		    case 'a': all++; break;
 		    case 'e': expand++; break;
 		    case 'q': quiet++; break;
-		    RANGE_OPTS('c', 'r');
+		    case 'c':
+			if (range_addArg(&rargs, optarg, 1)) goto usage;
+			break;
+		    case 'r':
+			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			break;
 		    default:
 usage:			fprintf(stderr,
 			    "usage: %s [-q] [-r<rev>] [-c<date>]\n", av[0]);
@@ -41,7 +48,8 @@ usage:			fprintf(stderr,
 			s = 0;
 			continue;
 		}
-		RANGE("range", s, expand, !quiet);
+		if (range_process("range", s, RANGE_SET, &rargs)) goto next;
+		if (all) range_markMeta(s);
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);
 			for (e = s->table; e; e = e->next) {

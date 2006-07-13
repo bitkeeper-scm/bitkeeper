@@ -1809,6 +1809,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	delta	*tmp, *d = 0;
 	time_t	date;
 	char	*s = rev ? rev : dateSym;
+	int	dateround = roundup;
 	char	ru = 0;
 
 	unless (sc && sc->table) return (0);
@@ -1820,20 +1821,21 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 		switch (*s) {
 		    case '+':
 			ru = *s;
-			roundup = ROUNDUP;
+			dateround = ROUNDUP;
 			s++;
 			break;
 		    case '-':
 			ru = *s;
-			roundup = ROUNDDOWN;
+			dateround = ROUNDDOWN;
 			s++;
 			break;
 		}
 	}
 
 	/* Allow null revisions to mean TOT or first delta */
+	// XXX still needed?
 	if (!s || !*s) {
-		unless (sc->state & S_RANGE2) {	/* this is first call */
+		if (roundup == ROUNDDOWN) {	/* this is first call */
 			unless (ru == '+') return (sc->tree);
 		}
 		return (findrev(sc, 0));
@@ -1858,9 +1860,9 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	 * The order returned is rstart == 1.1 and rstop == 1.5, i.e.,
 	 * oldest delta .. newest.
 	 */
-	date = date2time(s, 0, roundup);
+	date = date2time(s, 0, dateround);
 
-	unless (sc->state & S_RANGE2) {	/* first call */
+	if (roundup == ROUNDDOWN) {	/* first call */
 		if (date < sc->tree->date) return (sc->tree);
 		if (date > sc->table->date) return (0);
 	} else {			/* second call */
@@ -1884,7 +1886,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 		 *             ^tmp  ^d
 		 */
 		if (d->date < date) {
-			unless (sc->state & S_RANGE2) {	/* first call */
+			if (roundup == ROUNDDOWN) {	/* first call */
 				return (tmp);
 			} else {
 				return (d);
@@ -4844,36 +4846,6 @@ time2date(time_t tt)
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S",
 		 localtimez(&tt, 0));
 	return (tmp);
-}
-
-/*
- * Expand the set of deltas already tagged with D_SET to include all
- * metadata children of those deltas.
- * This is subtle.  You might think that the inner loop was unnecessary,
- * but it isn't: we want to tag only meta deltas whose _data_ parent is
- * already tagged.  If more than one meta delta is hanging off a data delta,
- * just checking d->parent won't work.
- *
- * Returns the total number of deltas with D_SET on.
- */
-int
-sccs_markMeta(sccs *s)
-{
-	int	n;
-	delta	*d, *e;
-	
-	for (n = 0, e = s->table; e; e = e->next) {
-		if (e->flags & D_SET) n++;
-		unless (e->flags & D_META) continue;
-		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
-		if (d && (d->flags & D_SET)) {
-			unless (e->flags & D_SET) {
-				e->flags |= D_SET;
-				n++;
-			}
-		}
-	}
-	return (n);
 }
 
 /*
@@ -16072,6 +16044,38 @@ sccs_md5delta(sccs *s, delta *d, char *b64)
 	hash = hashstr(key, strlen(key));
 	sprintf(b64, "%08x%s", (u32)d->date, hash);
 	free(hash);
+}
+
+/*
+ * Given a delta, return the delta which is the cset marked one for the cset
+ * which contains this delta.  Note Rick's cool code that handles going through
+ * merges.
+ * If the delta is not in a cset (i.e., it's pending) then return null.
+ */
+delta	*
+sccs_csetBoundary(sccs *s, delta *d)
+{
+	delta	*e;
+
+again:	
+	/* find newest delta on this tree with cset mark */
+	while (!(d->flags & D_CSET) && d->kid && (d->kid->type == 'D')) {
+		d = d->kid;
+	}
+	/* might be merge side of a cset created by resolve (see test) */
+	if (!(d->flags & D_CSET) && (d->flags & D_MERGED)) {
+		for (e = s->table; e && e != d; e = e->next) {
+			if (e->merge == d->serial) {
+				d = e;
+				goto again;
+			}
+		}
+		fprintf(stderr,
+		    "ERROR: delta %s marked merge, but no merge found\n",
+		    d->rev);
+		exit(1);
+	}
+	return ((d->flags & D_CSET) ? d : 0);
 }
 
 /*

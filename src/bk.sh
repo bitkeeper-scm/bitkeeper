@@ -723,25 +723,6 @@ _chmod() {		# /* doc 2.0 */
 	exit 0
 }
 
-_after() {		# /* undoc? 2.0 */
-	AFTER=
-	while getopts r: opt
-	do	case "$opt" in
-		    r)	AFTER=$OPTARG
-		    	;;
-		    *)	echo "Usage: after -r<rev>"
-			;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	if [ "X$AFTER" = X ]
-	then	echo "Usage: after -r<rev>"
-	fi
-	bk -R prs -ohMa -r1.0..$AFTER -d':REV:,\c' ChangeSet 
-	echo ""
-	return $?
-}
-
 _man() {
 	B=`bk bin`/man
 	test -f ../man/bk-man/man1/bkd.1 && {

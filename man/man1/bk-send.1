@@ -31,9 +31,9 @@ $ bk send user@host.com
 .LP
 \*(BK will generate the (huge) patch and mail it to user@host.com.
 .LP
-If you happen to know that you want to send a specific change (and
-you know that the other repository has the changes leading up to the
-change you want to send), you can do this:
+If you happen to know that you want to send changes that occured
+after a specific changeset (and you know that the other repository
+has that changeset), you can do this:
 .DS
 $ bk send \-rbeta.. user@host.com
 .DE
@@ -121,7 +121,7 @@ gzip and uuencode
 uuencode
 .RE
 .SH "SEE ALSO"
-.SA ranges
+.SA range
 .SA receive
 .SA wrap
 .SH CATEGORY

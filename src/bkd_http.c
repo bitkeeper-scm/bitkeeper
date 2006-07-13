@@ -1429,6 +1429,7 @@ http_related(char *page)
 	char    dspec[MAXPATH];
 	FILE	*f;
 	int	count = 0;
+	delta	*d;
 	sccs	*s = sccs_csetInit(INIT_NOCKSUM|INIT_NOSTAT);
 
 	unless (s) http_error(500, "cannot initialize " CHANGESET);
@@ -1456,8 +1457,9 @@ http_related(char *page)
 
 	while (fnext(buf, f)) {
 		chop(buf);
-		if (rangeList(s, buf) == 0) count++;
+		if (d = sccs_findrev(s, buf)) d->flags |= D_SET;
 	}
+	s->state |= S_SET;
 	pclose(f);
 
 	httphdr(".html");

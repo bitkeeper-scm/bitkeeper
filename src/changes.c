@@ -20,9 +20,7 @@ private struct {
 	u32	diffs:1;	/* show diffs with verbose mode */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
-	char	*date;		/* list this range of dates */
 	char	*dspec;		/* override dspec */
-	char	*rev;		/* list this rev or range of revs */
 	char	**users;	/* lines list of users to include */
 	char	**notusers;	/* lines list of users to exclude */
 	char	**inc;		/* list of globs for files to include */
@@ -32,6 +30,8 @@ private struct {
 	FILE	*f;		/* global for recursion */
 	sccs	*s;		/* global for recursion */
 	char	*spec;		/* global for recursion */
+
+	RANGE	rargs;
 } opts;
 
 typedef struct slog {
@@ -91,7 +91,9 @@ changes_main(int ac, char **av)
 		     * for internal use by bkd_changes.c, part1
 		     */
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
-		    case 'c': opts.date = optarg; break;
+		    case 'c':
+			if (range_addArg(&opts.rargs, optarg, 1)) goto usage;
+			break;
 		    case 'D': opts.urls = opts.showdups = 0; break;
 		    case 'd': opts.dspec = optarg; break;
 		    case 'e': opts.noempty = !opts.noempty; break;
@@ -120,7 +122,9 @@ changes_main(int ac, char **av)
 		    	if (opts.verbose) opts.diffs = 1;
 			opts.verbose =1 ;
 			break;
-		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
+		    case 'r':
+			if (range_addArg(&opts.rargs, optarg, 0)) goto usage;
+			break;
 		    case 'x':
 			opts.exc = addLine(opts.exc, strdup(optarg));
 			break;
@@ -135,11 +139,10 @@ usage:			system("bk help -s changes");
 		}
 		optarg = 0;
 	}
-	nav[nac] = 0;	/* terminate list of args with -L and -R removed */
 
 	/* ERROR check options */
 	/* XXX: could have rev range limit output -- whose name space? */
-	if ((opts.local || opts.remote) && opts.rev) goto usage;
+	if ((opts.local || opts.remote) && opts.rargs.rstart) goto usage;
 
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
 	if (opts.html && opts.dspec) goto usage;
@@ -154,6 +157,13 @@ usage:			system("bk help -s changes");
 		    "changes: either '-' or URL list, but not both\n");
 		return (1);
 	}
+	/* force a -a if -L or -R and no -a */
+	if ((opts.local || opts.remote) && !opts.all) {
+		nav[nac++] = strdup("-a");
+		opts.all = 1;
+		opts.noempty = 0;
+	}
+	nav[nac] = 0;	/* terminate list of args with -L and -R removed */
 
 	/*
 	 * There are 5 major cases
@@ -426,10 +436,8 @@ doit(int dash)
 	pid_t	pid;
 	sccs	*s = 0;
 	delta	*e;
-	int	noisy = 0;
 	int	rc = 1;
 	MDBM	*csetDB = 0;
-	RANGE_DECL;
 
 	if (opts.dspec && !opts.html) {
 		spec = opts.dspec;
@@ -443,29 +451,18 @@ doit(int dash)
 		system("bk help -s changes");
 		exit(1);
 	}
-	if (opts.rev || opts.date) {
-		if (opts.rev) {
-			r[0] = notnull(opts.rev);
-			things += tokens(r[0]);
-			if (things == 1) opts.noempty = 0;
-		} else {
-			d[0] = notnull(opts.date);
-			things += tokens(d[0]);
+	if (opts.rargs.rstart) {
+		unless (opts.rargs.rstop) opts.noempty = 0;
+		if (range_process("changes", s, RANGE_SET, &opts.rargs)) {
+			goto next;
 		}
-		rd = 1;
-		RANGE("changes", s, opts.all ? 2 : 1, noisy);
-		if (SET(s)) {
-			for (e = s->rstop; e; e = e->next) {
-				if ((e->flags & D_SET) && !want(s, e)) {
-					e->flags &= ~D_SET;
-				}
+		for (e = s->rstop; e; e = e->next) {
+			if ((e->flags & D_SET) && !want(s, e)) {
+				e->flags &= ~D_SET;
 			}
-		} else {
-			for (e = s->rstop; e; e = e->next) {
-				if (want(s, e)) e->flags |= D_SET;
-				if (e == s->rstart) break;
-			}
+			if (e == s->rstart) break;
 		}
+		if (opts.all) range_markMeta(s);
 	} else if (dash) {
 		while (fgets(cmd, sizeof(cmd), stdin)) {
 			/* ignore blank lines and comments */

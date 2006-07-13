@@ -184,11 +184,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 			(local ? local : "current directory"), strerror(errno));
 		usage();
 	}
-	if (opts.rev) {
-		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	if (bkd_connect(r, opts.gzip, !opts.quiet)) goto done;
 	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
 
@@ -730,11 +726,7 @@ out_trigger(char *status, char *rev, char *when)
 	}
 	safe_putenv("BK_LICENSE=%s", proj_bkl(0));
 	if (status) putenv(status);
-	if (rev) {
-		safe_putenv("BK_CSETS=1.0..%s", rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	putenv("_BK_LCLONE=YES");
 	return (trigger("remote clone", when));
 }
@@ -752,11 +744,7 @@ in_trigger(char *status, char *rev, char *root, char *repoid)
 	safe_putenv("BKD_REALHOST=%s", sccs_realhost());
 	safe_putenv("BKD_PLATFORM=%s", platform());
 	if (status) putenv(status);
-	if (rev) {
-		safe_putenv("BK_CSETS=1.0..%s", rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	if (repoid) safe_putenv("BKD_REPO_ID=%s", repoid);
 	putenv("_BK_LCLONE=YES");
 	return (trigger("clone", "post"));

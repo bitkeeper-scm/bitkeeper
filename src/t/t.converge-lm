@@ -220,7 +220,7 @@ test -f BitKeeper/etc/SCCS/s.gone || {
 KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/etc/gone`
 if [ "$KEY" != AAA ]
 then	echo failed to use older key, got $KEY
-	bk -R prs -r1.0.. -nd:USER: BitKeeper/etc/gone
+	bk -R prs -nd:USER: BitKeeper/etc/gone
 	exit 1
 fi
 KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/deleted/SCCS/s.*`
@@ -244,7 +244,7 @@ perl -ne 's,cPChangeSet,cPBitKeeper/etc/gone,; print unless /^.cC$/ || /^.cS/ ||
     < ../../SCCS/s.ChangeSet | bk undos > X
 mv X SCCS/s.gone
 bk admin -z gone
-bk stripdel $Q -r1.1.. gone
+bk stripdel $Q -r1.0.. gone
 bk gone $Q project44
 echo y | bk commit $Q -ywhatever >/dev/null 2>&1
 KEY=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`

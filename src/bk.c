@@ -719,19 +719,19 @@ cmdlog_dump(int ac, char **av)
 	char	*user;
 	char	buf[MAXPATH*3];
 	int	yelled = 0, c, all = 0;
-	RANGE_DECL;
 
 	unless (proj_root(0)) return;
 	while ((c = getopt(ac, av, "ac;")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
-		    RANGE_OPTS('c', 0);
+		    case 'c':
+			cutoff = range_cutoff(optarg + 1);
+			break;
 		    default:
-usage:			system("bk help cmdlog");
+			system("bk help cmdlog");
 			return;
 		}
 	}
-	if (things && d[0]) cutoff = rangeCutOff(d[0]);
 	concat_path(buf, proj_root(0), "/BitKeeper/log/");
 	concat_path(buf, buf, (all ? "cmd_log" : "repo_log"));
 	f = fopen(buf, "r");

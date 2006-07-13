@@ -47,7 +47,7 @@ bk -r prs -c90.. -hnd:SHORTKEY: | bk sort > WANT
 cmp -s WANT GOT || {
 	echo failed to regenerate the same keycache
 	diff WANT GOT
-	bk prs -r1.0.. -nd:KEY: BitKeeper/etc/config
+	bk prs -nd:KEY: BitKeeper/etc/config
     	exit 1
 }
 echo OK
@@ -64,7 +64,7 @@ bk sort < $KEYS > GOT
 cmp -s WANT GOT || {
 	echo failed to regenerate the same keycache
 	diff WANT GOT
-	bk prs -r1.0.. -nd:KEY: BitKeeper/etc/config
+	bk prs -nd:KEY: BitKeeper/etc/config
     	exit 1
 }
 echo OK

@@ -1089,9 +1089,9 @@ $
 takepatch: when creating a package, as you are currently doing, you need a
 patch which includes all of the history.  Please try again, with one of
 
-	bk makepatch -r1.0.. 
+	bk makepatch -r.. 
 or
-	bk send -r1.0.. user@host.com
+	bk send -r.. user@host.com
 
 takepatch has not cleaned up your destination, you need to do that.
 $
