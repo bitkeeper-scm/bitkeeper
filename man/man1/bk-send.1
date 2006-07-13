@@ -60,7 +60,7 @@ If you lose the log file and you want to seed it with the changes you
 know have been sent, the command to do that is:
 .DS
 $ cd BitKeeper/log
-$ bk log \-h \-r\<revs\> \-d:KEY: ChangeSet \> send\-user@host.com
+$ bk changes \-r\<revs\> \-nd:KEY: \> send\-user@host.com
 .DE
 .LP
 An alternative to the log file approach, which may only be used if you

@@ -229,7 +229,6 @@ examined first.
 Here's an example of such a trigger, which would typically be named
 .BR BitKeeper/triggers/pre-apply.paranoid :
 .DS
-.ft CW
 #!/bin/sh
 
 # This is running in the RESYNC tree, we're looking
@@ -270,7 +269,6 @@ test -f BitKeeper/tmp/t_reject && {
 }
 rm -f BitKeeper/tmp/t_reject
 exit 0
-.ft
 .DE
 .SS
 TRIGGER ENVIRONMENT VARIABLES
@@ -517,7 +515,6 @@ then	(
 	) | sed 's/^/    /'
 fi
 ) | mail -s "$BK_EVENT in ${H}:${R}" notify@bitmover.com
-.ft
 .DE
 .SH "EXAMPLE 2"
 .DS
@@ -542,7 +539,6 @@ msg="A 'BUGID:' field is needed in the checkin comments"
 bk prompt -y"Reenter bugid" -n"No bugid is required" "$msg" && exit 1
 
 exit 0
-.ft
 .DE
 .SH SEE ALSO
 .SA clone
@@ -554,5 +550,6 @@ exit 0
 .SA push
 .SA resolve
 .SA tag
+.\" help://trigger
 .SH CATEGORY
 .B Repository

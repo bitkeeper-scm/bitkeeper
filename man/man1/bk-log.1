@@ -169,9 +169,23 @@ loop like so
 .DS
 bk log -d'$each(:C:){(:C:)\en}' foo.c
 .DE
+In this
+.B $each(\|)
+construction, (\c
+.V :C: )
+iteratively takes the value of each line of the multi-line value of
+.V :C: .
+For example, to prefix each comment line with ">> " the dspec would
+be:
+.DS
+bk log -d'$each(:C:){>> (:C:)\en}' foo.c
+.DE
+.LP
 The list of variables with this behavior is:
-.SM C\c
-, \s-1FD\s0.
+.V C ,
+.V FD ,
+and
+.V TAG .
 .br
 .ne 5
 .SS CONDITIONAL OUTPUT
@@ -271,8 +285,13 @@ in front of each of these lines, the idiom is:
 .DS
 bk log -d'$if(:C:){$each(:C:){C\ \ (:C:)\en}}' foo.c
 .DE
+The variables that support this kind of iteration are
+.V C ,
+.V FD ,
+and
+.V TAG .
 The
-.SM GB
+.V GB
 variable may not be used in a 
 .BR $each(\|) .
 .SS KEYWORDS

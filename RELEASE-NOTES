@@ -7,21 +7,23 @@ handle keys.  It works now.
 Bugs: 2006-01-24-001 2006-03-24-001 fixed a problem where bk unpull said
 "Arg list too long".
 
-BK_SHOWPROC=/dev/tty bk <command> logs commands to /dev/tty.  The value can
-be an arbitrary file, "YES" is an alias for /dev/tty, or a host:port pair
-for tcp based logging.  Quite useful for debugging on windows is to create
-an autoexec.bat line that says
+BK_SHOWPROC=/dev/tty bk <command> logs commands to /dev/tty.  The value
+of BK_SHOWPROC can be an arbitrary file, "YES" (an alias for /dev/tty),
+or a host:port pair for TCP-based logging.  Quite useful for debugging
+on Windows is to create an autoexec.bat line that says:
 
 	set BK_SHOWPROC C:/bk.log
 
-bk sfiles has a number of performance fixes, there was a bug that prevented
-the promised performance from being realized in citool.
+bk sfiles has a number of performance fixes; there was a bug that prevented
+the promised performance from being realized in bk citool.
 
 bk ignore gets a new syntax to prune directories:
 
 	path/to/dir -prune
 
-.bk_skip is deprecated, use -prune, it's higher performance and works better.
+If you use .bk_skip files, this release introduces an alternative: -prune,
+which is higher performance and works better.  .bk_skip continues to be
+supported.
 
 bk check uses substantially less memory, increasing performance for repos 
 that just barely fit in memory.
@@ -29,15 +31,16 @@ that just barely fit in memory.
 bk takepatch (finally!) gets the fix that lists the edited files at the end
 in a nice format so you can go decide what you want to do with them.
 
-Fix a Bluearc reported bug where checkout:edit was not respected in some cases.
+Fix a customer-reported bug where checkout:edit was not respected in some cases.
 
 Fix a problem for MySQL where they set BK_HOST=mysql.com, removing entropy from
 the keys.  We now use `bk getuser`/`bk getuser -r`@`bk gethost`/`bk gethost -r`
 when get{user,host} != get{user,host} -r.  Makes for longer keys but they'll
 be unique.
 
-BK/Web is a lot nicer, it auto generates a top level page listing all repos.
-Still needs works to pretty it up but it closes a ton of bugs:
+BK/Web is a lot nicer: it auto generates a top-level page listing all
+repositories.  More visual design work is needed but this release closes
+lots of bugs:
 
     2001-05-30-003   URL-encoding for searching doesn't work
     2002-07-02-001   bkweb search fails for multiple words
@@ -46,14 +49,14 @@ Still needs works to pretty it up but it closes a ton of bugs:
     2004-06-03-001   bk/web search in file contents is broken
     2006-02-07-002   Spaces in a filename break changeset/annotation
 
-Fix a bug where extra files weren't sorted in the citool window.
+Fix a bug where extra files weren't sorted in the bk citool window.
 
 Fix a bug where GUI geometries weren't being saved properly.
 
-In sendbug, don't guess user names - bugid 2006-06-20-002
+In bk sendbug, don't guess user names (bugid 2006-06-20-002)
 
-For Starent, add support to have three different line endings: native,
-unix, or windows (windows is new).
+Add support for three different line endings: native, unix, or windows
+(windows is new).
 
 ===============================================================================
 Release notes for BitKeeper version 4.0-beta2 (released 2006-06-15)
