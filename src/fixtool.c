@@ -89,7 +89,11 @@ fixtool(char *file, int ask, char *diffopts)
 	}
 	sprintf(buf, "%s~", file);
 	rename(file, buf);
-	if (rename(merge, file)) perror(file);
+	if (fileCopy(merge, file)) {
+		perror(merge);
+	} else {
+		unlink(merge);
+	}
 	unlink(prev);
 	free(prev);
 	free(merge);
