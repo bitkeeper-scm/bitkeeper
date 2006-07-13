@@ -1174,31 +1174,41 @@ pager(void)
 {
 	char	*pagers[3] = {"more", "less", 0};
 	char	*cmd = 0;
-	static	char	*pg;
+	char	*path, *oldpath;
+	char	**words;
 	int	i;
+	static	char	*pg;
 
 	if (pg) return (pg); /* already cached */
 
-	unless (pg = getenv("BK_PAGER")) pg = getenv("PAGER");
+	/* restore user's path environment so we pick up their pager */
+	path = strdup(getenv("PATH"));
+	if (oldpath = getenv("BK_OLDPATH")) safe_putenv("PATH=%s", oldpath);
 
-	/* env can be PAGER="less -E" */
-	if (pg) {
-		char	**cmds = shellSplit(pg);
-
-		unless (cmds && cmds[1] && (cmd = which(cmds[1]))) pg = 0;
-		if (cmd) free(cmd);
-		freeLines(cmds, free);
-	}
-	if (pg) return (strdup(pg));	/* don't trust env to not change */
-
-	for (i = 0; pagers[i]; i++) {
-		if (cmd = which(pagers[i])) {
-			free(cmd);
-			pg = pagers[i];
-			return (pg);
+	if ((pg = getenv("BK_PAGER")) || (pg = getenv("PAGER"))) {
+		/* $PAGER might be "less -E", i.e., multiple words */
+		words = shellSplit(pg);
+		pg = 0;
+		if (words && words[1] && (cmd = which(words[1]))) {
+			free(words[1]);
+			words[1] = cmd;
+			/* not perfect, Wayne would prefer shellJoin() */
+			pg = joinLines(" ", words);
 		}
+		freeLines(words, free);
 	}
-	return (pg = "bk more");
+	unless (pg) {
+		for (i = 0; pagers[i]; i++) {
+			if (cmd = which(pagers[i])) {
+				pg = cmd;
+				break;
+			}
+		}
+		unless (pg) pg = "bk more";
+	}
+	if (oldpath) safe_putenv("PATH=%s", path);
+	if (path) free(path);	/* hard to imagine we don't have one but.. */
+	return (pg);
 }
 
 #define	MAXARGS	100
