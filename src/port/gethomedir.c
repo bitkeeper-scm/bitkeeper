@@ -9,24 +9,19 @@ char *
 getHomeDir(void)
 {
         char	*homeDir;
-	char	home_buf[MAXPATH], tmp[MAXPATH];
-	int	len = MAXPATH;
-#define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
+	char	buf[MAXPATH];
+
+#define KEY "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
 
 	if (homeDir = getenv("BK_TEST_HOME")) {
 		homeDir = strdup(homeDir);
 		return homeDir;
 	}
-	if (!getReg(HKEY_CURRENT_USER,
-				KEY, "AppData", home_buf, &len)) {
-		return (NULL);
-	}
-	GetShortPathName(home_buf, tmp, MAXPATH);
-	localName2bkName(tmp, tmp);
-	concat_path(tmp, tmp, "BitKeeper");
-	unless (exists(tmp)) mkdir(tmp, 0640);
-	homeDir = strdup(tmp);
-        return homeDir;
+	unless (homeDir = reg_get(KEY, "AppData", 0)) return (0);
+	concat_path(buf, homeDir, "BitKeeper");
+	free(homeDir);
+	unless (exists(buf)) mkdir(buf, 0640);
+        return strdup(buf);
 }
 #else
 char *

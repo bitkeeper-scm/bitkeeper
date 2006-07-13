@@ -130,7 +130,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	eula.o export.o \
 	find.o findcset.o findkey.o fix.o fixlod.o fixtool.o \
 	g2bk.o gca.o get.o gethelp.o \
-	gethost.o getreg.o gettemp.o getuser.o glob.o \
+	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
 	idcache.o isascii.o inskeys.o key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
@@ -155,7 +155,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	prs.o pull.o purify.o push.o pwd.o \
 	r2c.o randombits.o range.o rcheck.o rclone.o \
 	rcs2bk.o rcsparse.o \
-	receive.o redblack.o regex.o renumber.o repo.o repogca.o resolve.o \
+	receive.o redblack.o regex.o registry.o renumber.o \
+	repo.o repogca.o resolve.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
