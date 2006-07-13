@@ -1613,8 +1613,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			/* NOT REACHED */
 		}
 
-		if (getenv("BK_REGRESSION") &&
-		    !getenv("BK_FORCE_RESOLVE_RERUN")) {
+		if (getenv("_BK_PREVENT_RESOLVE_RERUN")) {
 			fprintf(stderr,
 			    "resolve: %d unresolved conflicts, "
 			    "nothing is applied.\n",

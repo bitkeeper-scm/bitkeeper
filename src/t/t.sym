@@ -70,7 +70,7 @@ bk edit $Q foo.c
 bk delta $Q -ywhatever foo.c
 bk commit -y'copy CONFLICT' $Q -SCONFLICT
 (echo '?'; echo x; echo l; echo q; ) |
-BK_FORCE_RESOLVE_RERUN=Y bk pull $Q 2> OUT
+bk pull $Q 2> OUT
 if [ -d RESYNC ]
 then	echo Failed to finish pull
 	cat OUT
