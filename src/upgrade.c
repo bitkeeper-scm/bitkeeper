@@ -85,11 +85,6 @@ usage:			system("bk help -s upgrade");
 		notice("upgrade-badperms", bin, "-e");
 		goto out;
 	}
-	/* XXX licenseurl users can't run upgrade */
-	unless (getlicense(configDB, 0)) {
-		notice("upgrade-require-license", 0, "-e");
-		goto out;
-	}
 	indexfn = bktmp(0, "upgrade-idx");
 	if (upgrade_fetch("INDEX", indexfn)) {
 		fprintf(stderr, "upgrade: unable to fetch INDEX\n");
@@ -166,7 +161,7 @@ next:				freeLines(data, free);
 	 */
 	if (data && getenv("BK_REGRESSION")) {
 		/* control matches for regressions */
-		data [4] = strdup(getenv("BK_UPGRADE_FORCEMATCH")?bk_utc:"");
+		data[4] = strdup(getenv("BK_UPGRADE_FORCEMATCH") ? bk_utc : "");
 	}
 	if (data && streq(data[4], bk_utc) && !(fetchonly && force)) {
 		freeLines(data, free);
@@ -185,6 +180,19 @@ next:				freeLines(data, free);
 "option to force the upgrade\n", data[3], bk_vers);
 		goto out;
 	}
+	/* obtain new lease here */
+	oldversion = bk_vers;
+	bk_vers = data[3];
+	unless (lic = lease_bkl(0, &errs)) {
+		lease_printerr(errs);
+		free(errs);
+		notice("upgrade-require-license", 0, "-e");
+		rc = 2;
+		goto out;
+	}
+	bk_vers = oldversion;
+	free(lic);
+
 	unless (fetchonly || install) {
 		printf("BitKeeper version %s is available for download.\n",
 		    data[3]);
@@ -193,18 +201,6 @@ next:				freeLines(data, free);
 		rc = 0;
 		goto out;
 	}
-
-	/* obtain new lease here */
-	oldversion = bk_vers;
-	bk_vers = data[3];
-	unless (lic = lease_bkl(0, &errs)) {
-		lease_printerr(errs);
-		free(errs);
-		rc = 2;
-		goto out;
-	}
-	bk_vers = oldversion;
-	free(lic);
 
 	tmpbin = aprintf("%s.tmp", data[1]);
 	if (upgrade_fetch(data[1], tmpbin)) {
@@ -236,10 +232,26 @@ next:				freeLines(data, free);
 	free(tmpbin);
 	tmpbin = 0;
 
-	/* embed bk license */
+	/* embed bk license, we know it is valid because we got a lease above */
 	licf = bktmp(0, 0);
-	sprintf(buf, "bk _preference | bk _eula -v > '%s'", licf);
-	system(buf);
+	f = fopen(licf, "w");
+	if ((p = getenv("BK_LICENSEURL")) ||
+	    (p = mdbm_fetch_str(configDB, "licenseurl"))) {
+		fprintf(f, "licenseurl: %s\n", p);
+	} else if (p = mdbm_fetch_str(configDB, "license")) {
+		fprintf(f, "license: %s\n", p);
+		i = 1;
+		do {
+			sprintf(buf, "licsign%d", i++);
+			if (p = mdbm_fetch_str(configDB, buf)) {
+				fprintf(f, "%s: %s\n", buf, p);
+			}
+		} while (p);
+	} else {
+		fprintf(stderr, "upgrade: can't find license to embed\n");
+		goto out;
+	}
+	fclose(f);
 	rc = inskeys(data[1], licf);
 	unlink(licf);
 	free(licf);

@@ -77,44 +77,6 @@ _get_socks_proxy(char **proxies)
 private char	**_get_http_autoproxy(char **proxies, char *host);
 private char	**_get_http_autoproxyurl(char **, char *host, char *url);
 
-
-int
-getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
-{
-        int	rc;
-        HKEY    hKey;
-        DWORD   valType = REG_SZ;
-	DWORD	len = *lenp;
-
-	valbuf[0] = 0;
-        rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
-        if (rc != ERROR_SUCCESS) return (0);
-
-        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, &len);
-	*lenp = len;
-        if (rc != ERROR_SUCCESS) return (0);
-        RegCloseKey(hKey);
-        return (1);
-}
-
-int
-getRegDWord(HKEY hive, char *key, char *valname, DWORD *val)
-{
-        int	rc;
-        HKEY    hKey;
-        DWORD   valType = REG_DWORD;
-	DWORD	buflen = sizeof (DWORD);
-
-        rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
-        if (rc != ERROR_SUCCESS) return (0);
-
-        rc = RegQueryValueEx(hKey,valname, NULL,
-				&valType, (LPBYTE)val, &buflen);
-        if (rc != ERROR_SUCCESS) return (0);
-        RegCloseKey(hKey);
-        return (1);
-}
-
 private char **
 addProxy(char *type, char *line, char **proxies)
 {
@@ -144,37 +106,32 @@ addProxy(char *type, char *line, char **proxies)
 private char **
 _get_http_proxy_reg(char **proxies, char *host)
 {
-#define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+#define KEY "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
 	char	*p, *q;
-	int	len;
-	DWORD	proxyEnable = 0;
-	char	buf[MAXLINE];
+	DWORD	*proxyEnable = 0;
+	char	*buf = 0;
 
-	len = sizeof(buf);  /* important */
-	unless (getReg(HKEY_CURRENT_USER, KEY "\\Connections",
-		"DefaultConnectionSettings", buf, &len)) {
+	if (buf = reg_get(KEY "\\Connections",
+		    "DefaultConnectionSettings", 0)) {
 		/* Automatically detect settings */
 		if (buf[8] & 0x8) {
 			proxies = _get_http_autoproxy(proxies, host);
 			goto done;
 		}
 	}
-	len = sizeof(buf);  /* important */
-	unless (getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len)) {
+	if (buf = reg_get(KEY, "AutoConfigURL", 0)) {
 		/* Use automatic configuration script */
 		if (buf[0]) {
 			proxies = _get_http_autoproxyurl(proxies, host, buf);
 			goto done;
 		}
 	}
-	unless (getRegDWord(HKEY_CURRENT_USER,
-		KEY, "ProxyEnable", &proxyEnable)) {
+	if (proxyEnable = reg_get(KEY, "ProxyEnable", 0)) {
 		goto done;
 	}
-	unless (proxyEnable) goto done;
+	unless (proxyEnable && *proxyEnable) goto done;
 
-	len = sizeof(buf);  /* important */
-	if (getReg(HKEY_CURRENT_USER, KEY, "ProxyOverride", buf, &len)) {
+	if (buf = reg_get(KEY, "ProxyOverride", 0)) {
 		q = buf;
 		while (q) {
 			if (p = strchr(q, ';')) *p++ = 0;
@@ -182,9 +139,8 @@ _get_http_proxy_reg(char **proxies, char *host)
 			q = p;
 		}
 	}
-	
-	len = sizeof(buf);  /* important */
-	if (getReg(HKEY_CURRENT_USER, KEY, "ProxyServer", buf, &len) == 0) {
+
+	if (buf = reg_get(KEY, "ProxyServer", 0)) {
 		goto done;
 	}
 	/*

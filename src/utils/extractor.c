@@ -9,7 +9,7 @@
 #define	MAXPATH		1024
 #endif
 #ifdef	WIN32
-#define	PFKEY		"\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
+#define	PFKEY		"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
 #define	SFIOCMD		"sfio.exe -im < sfioball"
 #define	WIN_UNSUPPORTED	"Windows 2000 or later required to install BitKeeper"
 #else
@@ -41,11 +41,13 @@ static char UPGRADE_ERROR[] =
 "during business hours (PST) or via email at sales@bitmover.com.\n"
 "Thanks!\n";
 
+#ifdef	WIN32
 static char MSYS_ERROR[] =
 "You seem to be running the installer under MINGW-MSYS. The installer\n"
 "is not supported under this configuration. Please start a cmd.exe console\n"
 "and run the installer from there.\n"
 "Thanks!\n";
+#endif
 
 extern unsigned int sfio_size;
 extern unsigned char sfio_data[];
@@ -61,16 +63,12 @@ char*	getbkpath(void);
 void	symlinks(void);
 int	hasDisplay(void);
 char	*getBinDir(void);
-#ifdef WIN32
-int	getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp);
-#endif
-int	hasLicense(char *file);
 
 int
 main(int ac, char **av)
 {
 	int	i;
-	int	rc = 0, dolinks = 0, upgrade = 0, striplic = 0;
+	int	rc = 0, dolinks = 0, upgrade = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
 	char	*dest = 0, *bkpath = 0, *tmp = findtmp();
@@ -188,7 +186,6 @@ main(int ac, char **av)
 	/* The name "sfio.exe" should work on all platforms */
 	extract("sfio.exe", sfio_data, sfio_size, tmpdir);
 	extract("sfioball", data_data, data_size, tmpdir);
-	extract("config", keys_data, keys_size, tmpdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
 	if (system(SFIOCMD)) {
@@ -206,33 +203,28 @@ main(int ac, char **av)
 	symlinks();
 
 	/*
-	 * Try to find an embedded license.
+	 * extract the embedded config file
 	 */
-	if (hasLicense("config")) {
-		fileCopy("config", "bitkeeper/config");
-		chmod("bitkeeper/config", 0666);
-		striplic = 1;
-	}
-
-	/* preserve as much of `bk bin`/config as possible */
-	if (bkpath) {
-		concat_path(buf, bkpath, "config");
-		if (exists(buf)) {
-			if (striplic) {
-				char	*a;
-				a = aprintf("bitkeeper/bk grep -v ^lic < '%s'"
-				    " >>bitkeeper/config", buf);
-				unless (system(a)) {
-					fprintf(stderr, "system failed\n");
-					rc = 1;
-					goto out;
-				}
-				free (a);
-			} else {
-				fileCopy(buf, "bitkeeper/config");
-				chmod("bitkeeper/config", 0666);
-			}
+	if (bkpath) concat_path(buf, bkpath, "config");
+	if (keys_data[0]) {
+		if (bkpath && exists(buf)) {
+			/* merge embedded file into existing config */
+			sprintf(buf,
+			    "bk config -m '%s'/config - > bitkeeper/config",
+			    bkpath);
+			f = popen(buf, "w");
+			fputs(keys_data, f);
+			pclose(f);
+		} else {
+			/* Just write embedded config */
+			f = fopen("bitkeeper/config", "w");
+			fputs(keys_data, f);
+			fclose(f);
 		}
+	} else if (bkpath && exists(buf)) {
+		/* just copy existing config */
+		fileCopy(buf, "bitkeeper/config");
+		chmod("bitkeeper/config", 0666);
 	}
 
 	mkdir("bitkeeper/gnu/tmp", 0777);
@@ -315,33 +307,16 @@ out:	cd(tmpdir);
 	exit(rc);
 }
 
-int
-hasLicense(char *file)
-{
-	FILE	*fd = 0;
-	int	rc = 0;
-	char	buf[MAXPATH];
-
-	fd = fopen(file, "r");
-	unless (fd) goto out;
-	unless (fgets(buf, sizeof(buf), fd)) goto out;
-	unless (strneq(buf, "license: BKLXXXXXXXX", 20)) rc = 1;
- out:	if (fd) fclose(fd);
-	return (rc);
-}
-
 char *
 getBinDir(void)
 {
 #ifdef WIN32
 	char	*bindir;
-	char	regbuf[1024], buf[MAXPATH];
-	int	len = sizeof(regbuf);
+	char	*buf;
 
-	if (getReg(HKEY_LOCAL_MACHINE,
-	    PFKEY, "ProgramFilesDir", regbuf, &len)) {
-		sprintf(buf, "%s/BitKeeper", regbuf);
-		bindir = strdup(buf);
+	if (buf = reg_get(PFKEY, "ProgramFilesDir", 0)) {
+		bindir = aprintf("%s/BitKeeper", buf);
+		free(buf);
 	} else {
 		bindir = "C:/Program Files/BitKeeper";
 	}
@@ -517,26 +492,3 @@ findtmp(void)
 	return ("/tmp");
 #endif
 }
-
-#ifdef	WIN32
-
-/* stolen from BK source */
-int
-getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
-{
-        int	rc;
-        HKEY    hKey;
-        DWORD   valType = REG_SZ;
-	DWORD	len = *lenp;
-
-	valbuf[0] = 0;
-        rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
-        if (rc != ERROR_SUCCESS) return (0);
-
-        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, &len);
-	*lenp = len;
-        if (rc != ERROR_SUCCESS) return (0);
-        RegCloseKey(hKey);
-        return (1);
-}
-#endif

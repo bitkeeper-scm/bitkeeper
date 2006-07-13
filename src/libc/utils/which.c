@@ -28,7 +28,10 @@ which(char *exe)
 			sprintf(buf, "%s/%s", *s ? s : ".", exe);
 			if (executable(buf)) {
 				free(path);
-				return (strdup(buf));
+				s = strdup(buf);
+				/* We had c:\build\buildenv\bin/cat */
+				localName2bkName(s, s);
+				return (s);
 			}
 			s = &t[1];
 		}

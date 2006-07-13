@@ -1591,3 +1591,80 @@ cd ..
 bk -r sfiles -x > GOT
 checkfiles WANT GOT
 echo OK
+
+echo $N Test directory ignore patterns ..............................$NL
+mkdir skip
+mkdir -p sub/skip
+touch skip/1
+touch sub/skip/2
+bk edit $Q BitKeeper/etc/ignore || exit 1
+cat <<EOF >WANT
+GOT
+WANT
+skip/1
+sub/skip/2
+EOF
+bk sfiles -x > GOT
+cmpfiles WANT GOT
+echo 'skip/*' > BitKeeper/etc/ignore
+cat <<EOF >WANT
+GOT
+WANT
+sub/skip/2
+EOF
+bk sfiles -x > GOT
+cmpfiles WANT GOT
+echo '*/skip/*' > BitKeeper/etc/ignore
+cat <<EOF >WANT
+GOT
+WANT
+EOF
+bk sfiles -x > GOT
+cmpfiles WANT GOT
+echo '*/skip' > BitKeeper/etc/ignore
+cat <<EOF >WANT
+GOT
+WANT
+skip/1
+sub/skip/2
+EOF
+bk sfiles -x > GOT
+cmpfiles WANT GOT
+echo 'skip' > BitKeeper/etc/ignore
+cat <<EOF >WANT
+GOT
+WANT
+skip/1
+sub/skip/2
+EOF
+bk sfiles -x > GOT
+cmpfiles WANT GOT
+echo '*/skip' > BitKeeper/etc/ignore
+cat <<EOF >WANT
+GOT
+WANT
+EOF
+BK_IGNOREDIRS=1 bk sfiles -x > GOT
+cmpfiles WANT GOT
+echo 'skip' > BitKeeper/etc/ignore
+cat <<EOF >WANT
+GOT
+WANT
+EOF
+BK_IGNOREDIRS=1 bk sfiles -x > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that '*/file' ignores files at repo root ................$NL
+echo '*/junk' > BitKeeper/etc/ignore
+touch junk
+bk sfiles -x > GOT
+cat <<EOF >WANT
+GOT
+WANT
+skip/1
+sub/skip/2
+EOF
+bk sfiles -x > GOT
+cmpfiles WANT GOT
+echo OK

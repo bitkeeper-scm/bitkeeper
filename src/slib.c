@@ -3091,6 +3091,8 @@ meta(sccs *s, delta *d, char *buf)
 	    case 'X':
 		assert(d);
 		d->xflags = strtol(&buf[3], 0, 0); /* hex or dec */
+		/* reenable longkeys for old KEY_FORMAT2 trees */
+		if (CSET(s) && (s->xflags & X_LONGKEY)) d->xflags |= X_LONGKEY;
 		d->xflags &= ~X_SINGLE; /* clear old single_user bit */
 		d->flags |= D_XFLAGS;
 		break;
@@ -3561,7 +3563,7 @@ pref_parse(char *buf)
 	remote	*r;
 	char	*p;
 	int 	want_path = 0, want_host = 0;
-	
+
 	new(r);
 	r->rfd = r->wfd = -1;
 	unless (*buf) return (r);
@@ -3642,24 +3644,33 @@ filterMatch(char *buf)
 }
 
 private int
-parseConfigKV(char *buf, char **kp, char **vp)
+parseConfigKV(char *buf, int nofilter, char **kp, char **vp)
 {
-	char	*p;
+	char	*p = 0;
 
 	/* trim leading whitespace */
 	while (*buf && isspace(*buf)) buf++;
-	if ((*buf == '#') || !strchr(buf, ':')) return (0);
 
 	/* handle leading filters */
 	if (*buf == '[') {
-		unless (buf = filterMatch(buf)) return (0);
-		for (buf++; isspace(*buf); buf++);
+		if (nofilter) {
+			/* include filter in key */
+			unless (p = strchr(buf, ']')) return (0);
+			for (p++; isspace(*p); p++);
+		} else {
+			/* match filter */
+			unless (buf = filterMatch(buf)) return (0);
+			for (buf++; isspace(*buf); buf++);
+		}
 	}
+	unless (p) p = buf;
+	p = strchr(p, ':');
+	if ((*buf == '#') || !p) return (0);
 
 	/*
 	 * lose all white space on either side of ":"
 	 */
-	for (p = strchr(buf, ':'); (p >= buf) && isspace(p[-1]); p--);
+	while ((p >= buf) && isspace(p[-1])) --p;
 	if (*p != ':') {
 		*p = 0;
 		for (p++; *p != ':'; p++);
@@ -3689,7 +3700,7 @@ parseConfig(char *buf, MDBM *db)
 	char	*k, *v, *p;
 	int	flags = MDBM_INSERT;
 
-	unless (parseConfigKV(buf, &k, &v)) return;
+	unless (parseConfigKV(buf, 0, &k, &v)) return;
 	if (*v) {
 		for (p = v; p[1]; p++);	/* find end of value */
 		if (*p == '!') {
@@ -3860,7 +3871,9 @@ printconfig(char *file, MDBM *db, MDBM *cfg)
 
 		if (f = fopen(file, "rt")) {
 			while (fnext(buf, f)) {
-				unless (parseConfigKV(buf, &k, &v1)) continue;
+				unless (parseConfigKV(buf, 0, &k, &v1)) {
+					continue;
+				}
 				mdbm_store_str(db, k, v1, MDBM_INSERT);
 			}
 			fclose(f);
@@ -3897,6 +3910,61 @@ printconfig(char *file, MDBM *db, MDBM *cfg)
 	if (freeme) mdbm_close(freeme);
 }
 
+/*
+ * merge some new config keys into an existing config file.
+ * This is used by the installer to add config items embedded in the
+ * installer into the `bk bin` config file.
+ */
+private int
+config_merge(char *file1, char *file2)
+{
+	hash	*config = hash_new(HASH_MEMHASH);
+	FILE	*f;
+	char	*k, *v;
+	char	**keys = 0;
+	int	i;
+	char	buf[MAXLINE];
+
+	/* load second file into hash */
+	if (streq(file2, "-")) {
+		f = stdin;
+	} else {
+		unless (f = fopen(file2, "r")) {
+			perror(file2);
+			return (1);
+		}
+	}
+	while (fnext(buf, f)) {
+		if (parseConfigKV(buf, 1, &k, &v)) {
+			hash_storeStr(config, k, v);
+		}
+	}
+	unless (f == stdin) fclose(f);
+
+	/* copy first file and keep track of keys */
+	unless (f = fopen(file1, "r")) {
+		perror(file1);
+		return (1);
+	}
+	while (fnext(buf, f)) {
+		fputs(buf, stdout);
+		if (parseConfigKV(buf, 1, &k, &v)) {
+			hash_deleteStr(config, k);
+		}
+	}
+	fclose(f);
+
+	/* print any keys remaining from file2 */
+	EACH_HASH(config) keys = addLine(keys, config->kptr);
+	sortLines(keys, 0);
+	EACH(keys) {
+		printf("%s: %s\n", keys[i], hash_fetchStr(config, keys[i]));
+	}
+	freeLines(keys, 0);
+	hash_free(config);
+	return (0);
+}
+
 int
 config_main(int ac, char **av)
 {
@@ -3907,15 +3975,22 @@ config_main(int ac, char **av)
 	char	*k, *v;
 	int	i, c;
 	int	verbose = 0;
+	int	merge = 0;
 	kvpair	kv;
 
-	while ((c = getopt(ac, av, "v")) != -1) {
+	while ((c = getopt(ac, av, "mv")) != -1) {
 		switch (c) {
+		    case 'm': merge = 1; break;
 		    case 'v': verbose = 1; break;
 		    default:
 usage:			sys("bk", "help", "-s", "config", SYS);
 			return (1);
 		}
+	}
+	if (merge) {
+		unless ((ac - optind) == 2) goto usage;
+		if (verbose) goto usage;
+		return (config_merge(av[optind], av[optind+1]));
 	}
 	unless (verbose) {
 		if (av[optind+1]) goto usage;
@@ -3966,7 +4041,7 @@ usage:			sys("bk", "help", "-s", "config", SYS);
 	db = mdbm_mem();
 	if (env = getenv("BK_CONFIG")) values = splitLine(env, ";", 0);
 	EACH (values) {
-		unless (parseConfigKV(values[i], &k, &v)) continue;
+		unless (parseConfigKV(values[i], 0, &k, &v)) continue;
 		mdbm_store_str(db, k, v, MDBM_REPLACE);
 	}
 	freeLines(values, free);
@@ -10102,6 +10177,11 @@ symArg(sccs *s, delta *d, char *name)
 	 */
 	if (CSET(s) && streq(d->rev, "1.0") && streq(sym->symname, KEY_FORMAT2)) {
 	    	s->xflags |= X_LONGKEY;
+		/* get any previous xflags deltas */
+		for (d = s->table; d; d = d->next) {
+			if (d->flags & D_XFLAGS) d->xflags |= X_LONGKEY;
+		}
+		/* then meta() pushes this to all following deltas */
 	}
 }
 

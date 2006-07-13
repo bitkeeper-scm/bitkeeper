@@ -32,7 +32,7 @@ bk edit $Q file
 echo new line with NL >> file
 bk delta $Q -ynl file || exit 1
 bk commit $Q -ynew_local || exit 1
-bk pull $Q 2> OUT && {
+_BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q 2> OUT && {
 	echo should not pass
 	exit 1
 }
@@ -57,7 +57,7 @@ echo OK
 echo $N Test exiting out a resolve early deleting files .............$NL
 bk unpull -f $Q || exit 1
 bk edit $Q file || exit 1
-bk pull $Q 2> OUT && {
+_BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q 2> OUT && {
 	echo should not pass
 	exit 1
 }
@@ -384,7 +384,7 @@ bk new $Q hh
 bk commit $Q -ynewhh || exit 1
 cd $HERE/copy2
 echo hj > hh
-(echo rr; echo y) | BK_FORCE_RESOLVE_RERUN=YES bk pull > OUT 2>&1 || {
+(echo rr; echo y) | bk pull > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -531,7 +531,7 @@ done
 cd $HERE/conflict
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+) | bk pull -s > OUT 2>&1
 grep -q 'starting manual resolve process.' OUT && {
 	echo Should not have restarted resolve
 	cat OUT
@@ -543,7 +543,7 @@ echo $N Make sure resolve reruns when there are conflicts ...........$NL
 bk abort -f
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull > OUT 2>&1
+) | bk pull > OUT 2>&1
 grep -q 'starting manual resolve process.' OUT || {
 	echo Did not restart resolve
 	cat OUT
@@ -563,7 +563,7 @@ done
 cd $HERE/conflict
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+) | bk pull -s > OUT 2>&1
 grep -q 'starting manual resolve process.' OUT && {
 	echo Should not have restarted resolve
 	cat OUT
@@ -635,7 +635,7 @@ bk delta $Q -ywhatever mode
 bk commit $Q -ywhatever mode
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+) | bk pull -s > OUT 2>&1
 grep -q 'mode conflict' OUT && {
 	echo Should not have gone into interactive mode with -s
 	cat OUT
@@ -667,7 +667,7 @@ test `bk prs -hr+ -nd:RWXMODE: mode` = -rwx--x--- || {
 bk commit $Q -ymode
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+) | bk pull -s > OUT 2>&1
 grep -q 'mode conflict' OUT && {
 	echo Should not have gone into interactive mode with -s
 	cat OUT
@@ -684,7 +684,7 @@ echo $N Make sure we can finish the resolve .........................$NL
   echo 'C'
   echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk resolve -a > OUT 2>&1
+) | bk resolve -a > OUT 2>&1
 grep -q 'The file has conflicting changes to the modes.' OUT &&
 grep -q 'changed mode to -rwx--x---' OUT &&
 grep -q 'changed mode to -rwxrwxrwx' OUT &&
@@ -704,7 +704,7 @@ bk lock -L
   echo 'm'
   echo 'C'
   echo q
-) | _BK_NO_LOCK_RETRY=YES BK_FORCE_RESOLVE_RERUN=YES bk resolve -a > OUT 2>&1
+) | _BK_NO_LOCK_RETRY=YES bk resolve -a > OUT 2>&1
 grep -q 'Waiting for write lock...' OUT || {
 	echo failed
 	cat OUT

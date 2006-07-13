@@ -430,7 +430,7 @@ cd $HERE/tagchild
 #   echo t
 #   echo q
 #   ) | bk pull
-echo r | BK_FORCE_RESOLVE_RERUN=Y bk pull $Q 2>/dev/null
+echo r | bk pull $Q 2>/dev/null
 test -d RESYNC && {
 	echo failed to resolve
 	exit 1
@@ -448,7 +448,7 @@ cd $HERE
 rm -rf tagchild
 tar xmf tagchild.TAR
 cd $HERE/tagchild
-echo m | BK_FORCE_RESOLVE_RERUN=Y bk pull $Q 2>/dev/null
+echo m | bk pull $Q 2>/dev/null
 test -d RESYNC && {
 	echo failed to resolve
 	exit 1

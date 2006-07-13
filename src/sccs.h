@@ -21,7 +21,6 @@ struct tm *localtimez(time_t *timep, long *offsetp);
 #ifdef	WIN32
 #define	win32_close(s)	sccs_close(s)
 #define	win32_open(s)	sccs_open(s, 0)
-int	getReg(HKEY hive, char *key, char *valname, char *valbuf, int *buflen);
 #else
 #define	win32_close(s)
 #define	win32_open(s)

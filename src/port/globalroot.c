@@ -9,19 +9,10 @@ char *
 globalroot(void)
 {
         static	char	*globalRoot = NULL;
-	char	buf[MAXPATH], tmp[MAXPATH];
-	int	len = MAXPATH;
-#define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
+#define KEY "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
 
 	if (globalRoot) return (globalRoot);	/* cached */
-	if (!getReg(HKEY_LOCAL_MACHINE,
-				KEY, "Common AppData", buf, &len)) {
-		return (NULL);
-	}
-	GetShortPathName(buf, tmp, MAXPATH);
-	localName2bkName(tmp, tmp);
-        globalRoot = strdup(tmp);
-	return (globalRoot);
+	return (globalRoot = reg_get(KEY, "Common AppData", 0));
 }
 #else
 char *

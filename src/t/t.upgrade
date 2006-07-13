@@ -88,6 +88,26 @@ grep -q "BitKeeper version .* is available for download." OUT || {
 }
 echo OK
 
+echo $N Test upgrade using a license proxy ..........................$NL
+cd $HERE/junk2
+P=`port 5000`
+bk bkd -q -d -p$P -ikill
+
+cd $HERE
+bk lease flush -a
+BK_NOTTY=1 BK_LICENSEURL=bk://localhost:$P/ bk upgrade -f >OUT 2>ERR || {
+	echo should not have failed
+	cat OUT
+	cat ERR
+	exit 1
+}
+grep -q "BitKeeper version .* is available for download." OUT || {
+	echo wrong output
+	cat OUT
+	exit 1
+}
+bk _kill bk://localhost:$P
+echo OK
 
 # create a fake upgrade area and test the whole encryption decryption loop
 
