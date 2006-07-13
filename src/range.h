@@ -22,5 +22,7 @@ int	range_gone(sccs *s, delta *d, u32 dflags);
 int	range_walkrevs(sccs *s, delta *from, delta *to,
     int (*fcn)(sccs *s, delta *d, void *token), void *token);
 int	walkrevs_setFlags(sccs *s, delta *d, void *token);
+int	walkrevs_printkey(sccs *s, delta *d, void *token);
+int	walkrevs_printmd5key(sccs *s, delta *d, void *token);
 
 #endif

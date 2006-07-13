@@ -4,8 +4,6 @@
 
 private int xflagsDefault(sccs *s, int cset, int what);
 private int xflags(sccs *s, delta *d, int what);
-private void pflags(u32 flags);
-private int a2xflag(char *flag);
 
 /*
  * xflags - walk the graph looking for xflag updates and make sure
@@ -110,7 +108,7 @@ checkXflags(sccs *s, delta *d, int what)
 			fprintf(stderr,
 			    "%s: missing required flag[s]: ", s->gfile);
 			want = ~(d->xflags & X_REQUIRED) & X_REQUIRED;
-			pflags(want);
+			fputs(xflags2a(want), stderr);
 			fprintf(stderr, "\n");
 			return (1);
 		}
@@ -162,12 +160,12 @@ checkXflags(sccs *s, delta *d, int what)
 		fprintf(stderr, "%s|%s ", s->gfile, d->rev);
 		if (new & ~want) {
 			fprintf(stderr, "should not have ");
-			pflags(new & ~want);
+			fputs(xflags2a(new & ~want), stderr);
 		}
 		if (want & ~new) {
 			if (new & ~want) fprintf(stderr, ", ");
 			fprintf(stderr, "should have ");
-			pflags(want & ~new);
+			fputs(xflags2a(want & ~new), stderr);
 		}
 		fprintf(stderr, " flag\n");
 		return (1);
@@ -178,62 +176,65 @@ checkXflags(sccs *s, delta *d, int what)
 	return (1);
 }
 
-/* XXX - this should be shared with the prs dspec code */
-private void
-pflags(u32 flags)
+char *
+xflags2a(u32 flags)
 {
-	int	comma = 0;
+	static	char	*ret;
+	char	**list = 0;
 
-#define	fs(s)	fputs(s, stderr)
+	if (ret) free(ret);
+
 	if (flags & X_BITKEEPER) {
-		if (comma) fs(","); fs("BITKEEPER"); comma = 1;
+		list = addLine(list, "BITKEEPER");
 	}
 	if (flags & X_RCS) {
-		if (comma) fs(","); fs("RCS"); comma = 1;
+		list = addLine(list, "RCS");
 	}
 	if (flags & X_YEAR4) {
-		if (comma) fs(","); fs("YEAR4"); comma = 1;
+		list = addLine(list, "YEAR4");
 	}
 #ifdef X_SHELL
 	if (flags & X_SHELL) {
-		if (comma) fs(","); fs("SHELL"); comma = 1;
+		list = addLine(list, "SHELL");
 	}
 #endif
 	if (flags & X_EXPAND1) {
-		if (comma) fs(","); fs("EXPAND1"); comma = 1;
+		list = addLine(list, "EXPAND1");
 	}
 	if (flags & X_CSETMARKED) {
-		if (comma) fs(","); fs("CSETMARKED"); comma = 1;
+		list = addLine(list, "CSETMARKED");
 	}
 	if (flags & X_HASH) {
-		if (comma) fs(","); fs("HASH"); comma = 1;
+		list = addLine(list, "HASH");
 	}
 	if (flags & X_SCCS) {
-		if (comma) fs(","); fs("SCCS"); comma = 1;
+		list = addLine(list, "SCCS");
 	}
 	if (flags & X_EOLN_NATIVE) {
-		if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
+		list = addLine(list, "EOLN_NATIVE");
 	}
 	if (flags & X_EOLN_WINDOWS) {
-		if (comma) fs(","); fs("EOLN_WINDOWS"); comma = 1;
-	}
-	unless (flags & (X_EOLN_NATIVE|X_EOLN_WINDOWS)) {
-		if (comma) fs(","); fs("EOLN_UNIX"); comma = 1;
+		list = addLine(list, "EOLN_WINDOWS");
 	}
 	if (flags & X_LONGKEY) {
-		if (comma) fs(","); fs("LONGKEY"); comma = 1;
+		list = addLine(list, "LONGKEY");
+	}
+	if (flags & X_KV) {
+		list = addLine(list, "KV");
 	}
 	if (flags & X_NOMERGE) {
-		if (comma) fs(","); fs("NOMERGE"); comma = 1;
+		list = addLine(list, "NOMERGE");
 	}
 	if (flags & X_MONOTONIC) {
-		if (comma) fs(","); fs("MONOTONIC"); comma = 1;
+		list = addLine(list, "MONOTONIC");
 	}
-	unless (comma) fs("<NONE>");
+	ret = joinLines(",", list);
+	freeLines(list, 0);
+	return (ret);
 }
 
 
-private int
+u32
 a2xflag(char *flag)
 {
 	if (streq(flag, "BITKEEPER")) return (X_BITKEEPER);
@@ -247,6 +248,7 @@ a2xflag(char *flag)
 	if (streq(flag, "HASH")) return (X_HASH);
 	if (streq(flag, "SCCS")) return (X_SCCS);
 	if (streq(flag, "EOLN_NATIVE")) return (X_EOLN_NATIVE);
+	if (streq(flag, "EOLN_UNIX")) return (X_EOLN_UNIX);
 	if (streq(flag, "EOLN_WINDOWS")) return (X_EOLN_WINDOWS);
 	if (streq(flag, "LONGKEY")) return (X_LONGKEY);
 	if (streq(flag, "NOMERGE")) return (X_NOMERGE);

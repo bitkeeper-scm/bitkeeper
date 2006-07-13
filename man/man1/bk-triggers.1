@@ -71,7 +71,7 @@ TRIGGER CLASSES
 .LP
 There are multiple event classes which may activate triggers: incoming
 events, outgoing events, deltas, commits, tags, and
-.QR "bk fix \-c" .
+.BR "bk collapse" .
 The incoming event is broken into
 multiple events: incoming, resolve, and apply.
 .LP
@@ -111,15 +111,15 @@ exit 2 indicates that the trigger called delta itself, upon which the
 calling delta command treats it as a successful delta.
 .li
 Other than 2, all other non-zero exit values will fail the delta.
-.EV pre-fix
-called before a changeset is fixed (see
-.BR bk fix ).
+.EV pre-collapse
+called before a changeset is collapsed (see
+.BR "bk collapse" ).
 Typically used as part of a process to record the renaming of changesets in
 bug tracking systems.
 .li
-exit 0 allows the fix.
+exit 0 allows the collapse.
 .li
-non-zero exit values will fail the fix.
+non-zero exit values will fail the collapse.
 .EV pre-incoming
 called before an incoming push/pull is started.
 .li
@@ -540,11 +540,24 @@ bk prompt -y"Reenter bugid" -n"No bugid is required" "$msg" && exit 1
 
 exit 0
 .DE
+.SH "EXAMPLE 3"
+.DS
+#!/bin/sh
+#
+# Using a pre-collapse trigger to checks to see if the key is in
+# some repo that is frozen.
+
+bk changes -R bk://work/bk-4.0.x - < $BK_CSETS > /tmp/csets$$
+OK=0
+test -s /tmp/csets$$ && OK=1
+rm -f /tmp/csets$$
+exit $OK
+.DE
 .SH SEE ALSO
 .SA clone
 .SA ci
 .SA commit
-.SA fix
+.SA collapse
 .SA prompt
 .SA pull
 .SA push

@@ -407,6 +407,24 @@ walkrevs_setFlags(sccs *s, delta *d, void *token)
 	return (0);
 }
 
+int
+walkrevs_printkey(sccs *s, delta *d, void *token)
+{
+        sccs_pdelta(s, d, (FILE *)token);
+        fputc('\n', (FILE *)token);
+        return (0);
+}
+
+int
+walkrevs_printmd5key(sccs *s, delta *d, void *token)
+{
+        char    buf[MAXKEY];
+
+        sccs_md5delta(s, d, buf);
+        fprintf((FILE *)token, "%s\n", buf);
+        return (0);
+}
+
 /*
  * Expand the set of deltas already tagged with D_SET to include:
  * The meta data that is in would be here if the deltas newer that D_SET

@@ -10380,37 +10380,6 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	return (n);
 }
 
-private int 
-name2xflg(char *fl)
-{
-	if (streq(fl, "RCS")) {
-		return X_RCS;
-	} else if (streq(fl, "YEAR4")) {
-		return X_YEAR4;
-#ifdef	X_SHELL
-	} else if (streq(fl, "SHELL")) {
-		return X_SHELL;
-#endif
-	} else if (streq(fl, "EXPAND1")) {
-		return X_EXPAND1;
-	} else if (streq(fl, "SCCS")) {
-		return X_SCCS;
-	} else if (streq(fl, "EOLN_NATIVE")) {
-		return X_EOLN_NATIVE;
-	} else if (streq(fl, "EOLN_WINDOWS")) {
-		return X_EOLN_WINDOWS;
-	} else if (streq(fl, "EOLN_UNIX")) {
-		return X_EOLN_UNIX;
-	} else if (streq(fl, "KV")) {
-		return X_KV;
-	} else if (streq(fl, "NOMERGE")) {
-		return X_NOMERGE;
-	} else if (streq(fl, "MONOTONIC")) {
-		return X_MONOTONIC;
-	}
-	return (0);			/* lint */
-}
-
 private void
 addMode(char *me, sccs *sc, delta *n, mode_t m)
 {
@@ -10432,7 +10401,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 
 	assert(flag);
 
-	changing = name2xflg(flag);
+	changing = a2xflag(flag);
 	unless (xflags = sccs_xflags(n)) xflags = sc->xflags;
 
 	if (add) {
@@ -10879,7 +10848,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (v) *v++ = '\0';
 			if (v && *v == '\0') v = 0;
 
-			if ((name2xflg(fl) & X_MONOTONIC) &&
+			if ((a2xflag(fl) & X_MONOTONIC) &&
 			    sccs_top(sc)->dangling) {
 			    	fprintf(stderr, "admin: "
 				    "must remove danglers first (monotonic)\n");
@@ -10887,7 +10856,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				sc->state |= S_WARNED;
 				continue;
 			}
-			if (name2xflg(fl) & X_MAYCHANGE) {
+			if (a2xflag(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
 				ALLOC_D();
 				flagsChanged +=
@@ -14106,56 +14075,12 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 
 	case KW_FLAGS: /* FLAGS */
 	case KW_XFLAGS: /* XFLAGS */ {
-		int	comma = 0;
 		int	flags =
 		    (kwval->kwnum == KW_FLAGS) ? sccs_xflags(d) : s->xflags;
 
-		if (flags & X_BITKEEPER) {
-			if (comma) fs(","); fs("BITKEEPER"); comma = 1;
-		}
-		if (flags & X_RCS) {
-			if (comma) fs(","); fs("RCS"); comma = 1;
-		}
-		if (flags & X_YEAR4) {
-			if (comma) fs(","); fs("YEAR4"); comma = 1;
-		}
-#ifdef X_SHELL
-		if (flags & X_SHELL) {
-			if (comma) fs(","); fs("SHELL"); comma = 1;
-		}
-#endif
-		if (flags & X_EXPAND1) {
-			if (comma) fs(","); fs("EXPAND1"); comma = 1;
-		}
-		if (flags & X_CSETMARKED) {
-			if (comma) fs(","); fs("CSETMARKED"); comma = 1;
-		}
-		if (flags & X_HASH) {
-			if (comma) fs(","); fs("HASH"); comma = 1;
-		}
-		if (flags & X_SCCS) {
-			if (comma) fs(","); fs("SCCS"); comma = 1;
-		}
-		if (flags & X_EOLN_NATIVE) {
-			if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
-		}
-		if (flags & X_EOLN_WINDOWS) {
-			if (comma) fs(","); fs("EOLN_WINDOWS"); comma = 1;
-		}
+		fs(xflags2a(flags));
 		unless (flags & (X_EOLN_NATIVE|X_EOLN_WINDOWS)) {
-			if (comma) fs(","); fs("EOLN_UNIX"); comma = 1;
-		}
-		if (flags & X_LONGKEY) {
-			if (comma) fs(","); fs("LONGKEY"); comma = 1;
-		}
-		if (flags & X_KV) {
-			if (comma) fs(","); fs("KV"); comma = 1;
-		}
-		if (flags & X_NOMERGE) {
-			if (comma) fs(","); fs("NOMERGE"); comma = 1;
-		}
-		if (flags & X_MONOTONIC) {
-			if (comma) fs(","); fs("MONOTONIC"); comma = 1;
+			fs(",EOLN_UNIX");
 		}
 		return (strVal);
 	}
@@ -16488,7 +16413,7 @@ sccs_color(sccs *s, delta *d)
         sccs_color(s, d->parent);
         if (d->merge) sccs_color(s, sfind(s, d->merge));
         d->flags |= D_RED;
-}                 
+}
 
 /*
  * Given an SCCS structure with a list of marked deltas, strip them from
@@ -16558,19 +16483,15 @@ sccs_stripdel(sccs *s, char *who)
 	int	locked;
 	delta	*e;
 
+#define	OUT	\
+	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
+
 	assert(s && HASGRAPH(s) && !HAS_PFILE(s));
 	debug((stderr, "stripdel %s %s\n", s->gfile, who));
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr, "%s: can't get lock on %s\n", who, s->sfile);
-		error = -1; s->state |= S_WARNED;
-out:
-		/* sfile closed by stripDeltas() */
-		if (locked) sccs_unlock(s, 'z');
-		debug((stderr, "stripdel returns %d\n", error));
-		return (error);
+		OUT;
 	}
-#define	OUT	\
-	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
 
 
 	if (stripChecks(s, 0, who)) OUT;
@@ -16606,8 +16527,13 @@ out:
 		sccs_unlock(s, 'x');
 		OUT;
 	}
-	goto out;
 #undef	OUT
+
+out:
+	/* sfile closed by stripDeltas() */
+	if (locked) sccs_unlock(s, 'z');
+	debug((stderr, "stripdel returns %d\n", error));
+	return (error);
 }
 
 /*

@@ -137,6 +137,7 @@ checksum
 clean
 _cleanpath
 clone
+collapse
 comments
 commit
 config

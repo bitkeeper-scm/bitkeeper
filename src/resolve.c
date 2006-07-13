@@ -2490,7 +2490,7 @@ pass4_apply(opts *opts)
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
 			if (rm_sfile(buf, 1)) {
 				fclose(save);
-				restore_backup(BACKUP_SFIO);
+				restore_backup(BACKUP_SFIO, 0);
 				resolve_cleanup(opts, 0);
 			}
 		}
@@ -2501,7 +2501,7 @@ pass4_apply(opts *opts)
 	 * Pass 4c - apply the files.
 	 */
 	unless (save = fopen(APPLIED, "w+")) {
-		restore_backup(BACKUP_SFIO);
+		restore_backup(BACKUP_SFIO, 0);
 		resolve_cleanup(opts, 0);
 	}
 	fflush(f);
@@ -2517,7 +2517,7 @@ pass4_apply(opts *opts)
 			    "resolve: failed to remove conflict %s\n",
 			    &buf[offset]);
 			unapply(save);
-			restore_backup(BACKUP_SFIO);
+			restore_backup(BACKUP_SFIO, 0);
 			resolve_cleanup(opts, 0);
 		}
 		if (opts->log) {
@@ -2528,7 +2528,7 @@ pass4_apply(opts *opts)
 			fprintf(stderr,
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
 err:			unapply(save);
-			restore_backup(BACKUP_SFIO);
+			restore_backup(BACKUP_SFIO, 0);
 			resolve_cleanup(opts, 0);
 		} else {
 			opts->applied++;

@@ -81,7 +81,7 @@ usage:			system("bk help -s undo");
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
 		freeLines(fileList, free);
-		if ((size(BACKUP_SFIO) > 0) && restore_backup(BACKUP_SFIO)) {
+		if ((size(BACKUP_SFIO) > 0) && restore_backup(BACKUP_SFIO,0)) {
 			exit(1);
 		}
 		unlink(BACKUP_SFIO);

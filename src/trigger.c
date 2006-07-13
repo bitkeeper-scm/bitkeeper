@@ -141,6 +141,8 @@ trigger(char *cmd, char *when)
 		what = event = "tag";
 	} else if (strneq(cmd, "fix", 3)) {
 		what = event = "fix";
+	} else if (streq(cmd, "collapse")) {
+		what = event = "collapse ";
 	} else {
 		fprintf(stderr,
 		    "Warning: Unknown trigger event: %s, ignored\n", cmd);

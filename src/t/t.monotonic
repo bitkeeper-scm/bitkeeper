@@ -229,7 +229,7 @@ test `bk prs -r+ -hnd:I: BitKeeper/etc/config` = 1.2 || {
 	bk prs -nd':I: :DANGLING:' BitKeeper/etc/config
 	exit 1
 }
-test `bk prs -r+ -hnd:FLAGS: BitKeeper/etc/config` = "BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX,MONOTONIC" || {
+test `bk prs -r+ -hnd:FLAGS: BitKeeper/etc/config` = "BITKEEPER,CSETMARKED,SCCS,MONOTONIC,EOLN_UNIX" || {
 	echo failed to preserve flags
 	bk prs -r+ -hnd'GOT :FLAGS:' BitKeeper/etc/config
 	echo Wanted BITKEEPER,CSETMARKED,SCCS,MONOTONIC

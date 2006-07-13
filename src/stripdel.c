@@ -15,7 +15,6 @@ private	delta	*checkCset(sccs *s);
 private	int	doit(sccs *, s_opts);
 private	int	do_check(sccs *s, int flags);
 private	int	strip_list(s_opts);
-private	int	strip_fixTable(sccs *s, int *pcnt);
 
 private	int	getFlags = 0;
 
@@ -132,7 +131,7 @@ doit(sccs *s, s_opts opts)
 		return (1);
 	}
 	range_markMeta(s);
-	left = strip_fixTable(s, &n);
+	left = stripdel_fixTable(s, &n);
 	if (opts.checkOnly) return (do_check(s, flags));
 	unless (left) {
 		if (sccs_clean(s, SILENT)) {
@@ -172,8 +171,8 @@ doit(sccs *s, s_opts opts)
  * marked as D_SET and D_GONE coming into this.
  * Count the unmarked and symLeaf becomes newest not goned
  */
-private	int
-strip_fixTable(sccs *s, int *pcnt)
+int
+stripdel_fixTable(sccs *s, int *pcnt)
 {
 	delta	*d;
 	int	leafset = 0;

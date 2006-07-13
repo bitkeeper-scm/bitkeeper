@@ -359,6 +359,19 @@ If you were running takepatch, then generate a new patch file from the
 source repository using the same method as you have.  If the problem
 occurs again, please run "bk support" and fill in the details. 
 $
+#takepatch-collapsed
+This patch contains the following cset this is listed in the
+BitKeeper/etc/collapsed file as being replaced:
+   #BKARG#
+
+That usually indicates that this cset has been collapsed with the 
+'bk collapse' command and replaced with a new cset containing the
+same functionality.  It appears that cset #BKARG#2# in this tree
+is the cset that replaced the cset in the incoming patch.
+
+If you really do want this new patch in the tree, rerun pull or
+takepatch with the -D option.
+$
 #tp1
 When a file is modified in the destination repository and an incoming
 patch also modifies that file, the incoming patch is not applied; the

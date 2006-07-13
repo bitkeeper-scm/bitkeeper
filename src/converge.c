@@ -263,6 +263,7 @@ converge_hash_files(void)
 	int	i;
 	char	*files[] = {
 		int2p(6),
+		"BitKeeper/etc/collapsed",
 		"BitKeeper/etc/gone",
 		"BitKeeper/etc/ignore",
 		"BitKeeper/etc/skipkeys",

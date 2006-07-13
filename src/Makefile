@@ -124,11 +124,11 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o bkver.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o cmd.o \
-	comment.o comments.o commit.o compress.o converge.o \
+	collapse.o comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	delta.o diffs.o diffsplit.o \
 	eula.o export.o \
-	find.o findcset.o findkey.o fix.o fixlod.o fixtool.o \
+	find.o findcset.o findkey.o fixlod.o fixtool.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \

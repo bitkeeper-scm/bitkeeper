@@ -10,12 +10,14 @@ SUM=All Overview Common Repository GUI-tools File Admin Compat Utility
 
 helptxt: summaries
 
+PAGES:=$(shell $(BK) sfiles -g1 ../man1 'bk-*.1')
+
 pages: ../bk-macros ../man.tmac man2help.pl FORCE
 	@$(BK) get -STq ../man1
-	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- `ls ../man1/*.1`
+	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- $(PAGES:%=../man1/%)
 
 helptxt2: pages
-	@cat -- *.fmt | $(BK) undos > helptxt2
+	@cat -- $(PAGES:../man1/%.1=%-1.fmt) | $(BK) undos > helptxt2
 
 summaries: helptxt2 ../bk-macros help2sum.pl FORCE
 	@perl -Ssw ./help2sum.pl helptxt2

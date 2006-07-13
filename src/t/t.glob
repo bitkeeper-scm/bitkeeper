@@ -175,12 +175,8 @@ echo OK
 
 echo $N Check inverse sets of characters in globs ...................$NL
 cd `bk root`
-bk gfiles '[^bf]*' | bk sort > GOT
+bk gfiles -U '[^bf]*' | bk sort > GOT
 cat > WANT <<EOF
-BitKeeper/etc/config
-BitKeeper/etc/gone
-BitKeeper/etc/ignore
-ChangeSet
 src/*.c
 src/=.c
 src/baz/z.c

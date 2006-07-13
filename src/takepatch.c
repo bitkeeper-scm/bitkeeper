@@ -82,6 +82,7 @@ private	int	compat;		/* we are eating a compat patch, fail on tags */
 private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
+private	int	collapsedups;	/* allow csets in BitKeeper/etc/collapsed */
 
 /*
  * Structure for keys we skip when incoming, used for old LOD keys that
@@ -111,7 +112,7 @@ takepatch_main(int ac, char **av)
 
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
-	while ((c = getopt(ac, av, "acFf:iLmqsStTvy;")) != -1) {
+	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;")) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
@@ -119,6 +120,7 @@ takepatch_main(int ac, char **av)
 			break;
 		    case 'a': resolve++; break;			/* doc 2.0 */
 		    case 'c': noConflicts++; break;		/* doc 2.0 */
+		    case 'D': collapsedups++; break;
 		    case 'F': break;				/* obsolete */
 		    case 'f':					/* doc 2.0 */
 			    input = optarg;
@@ -274,6 +276,29 @@ getGone(void)
 			    "> RESYNC/BitKeeper/etc/gone");
 		}
     	}
+}
+
+private hash *
+loadCollapsed(void)
+{
+	FILE	*f;
+	hash	*db = 0;
+	char	*p;
+	char	buf[MAXLINE];
+
+	if (collapsedups) return (0);
+	f = popen("bk annotate -ar " COLLAPSED, "r");
+	while (fnext(buf, f)) {
+		chomp(buf);
+		unless (db) db = hash_new(HASH_MEMHASH);
+		/* ignore dups, we don't care */
+		p = strchr(buf, '\t');
+		assert(p);
+		*p++ = 0;
+		hash_insertStr(db, p, buf);
+	}
+	pclose(f);
+	return (db);
 }
 
 private	delta *
@@ -800,8 +825,10 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 	delta	*remote_tagtip = 0;
 	int	n = 0;
 	int	confThisFile;
-	FILE	*csets = 0;
+	FILE	*csets = 0, *f;
+	hash	*cdb;
 	char	csets_in[MAXPATH];
+	char	buf[MAXKEY];
 
 	reversePatch();
 	unless (p = patchList) return (0);
@@ -938,18 +965,35 @@ apply:
 		assert("takepatch: could not build findKeyDB" == 0);
 	}
 
-	p = patchList;
+	if (cdb = loadCollapsed()) {
+		for (p = patchList; p; p = p->next) {
+			d = sccs_findKey(s, p->me);
+			sccs_md5delta(s, d, buf);
+			if (hash_fetchStr(cdb, buf)) {
+				/* find cset that added that entry */
+				sprintf(buf, "bk -R r2c -r%s " COLLAPSED,
+				    cdb->vptr);
+				f = popen(buf, "r");
+				fnext(buf, f);
+				chomp(buf);
+				pclose(f);
+				errorMsg("takepatch-collapsed", cdb->kptr, buf);
+				hash_free(cdb);
+				goto err;
+			}
+		}
+		hash_free(cdb);
+	}
 	sprintf(csets_in, "%s/%s", ROOT2RESYNC, CSETS_IN);
 	csets = fopen(csets_in, "w");
 	assert(csets);
-	while (p) {
+	for (p = patchList; p; p = p->next) {
 		fprintf(csets, "%s\n", p->me);
 		/*
 		 * XXX: mclose take a null arg?
 		 * meta doesn't have a diff block
 		 */
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
-		p = p->next;
 	}
 	fclose(csets);
 

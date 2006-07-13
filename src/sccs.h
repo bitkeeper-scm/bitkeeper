@@ -352,6 +352,7 @@ int	checking_rmdir(char *dir);
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
+#define	COLLAPSED	"BitKeeper/etc/collapsed"
 #define	CSETS_IN	"BitKeeper/etc/csets-in"
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
@@ -846,13 +847,14 @@ delta	*sccs_ino(sccs *);
 int	sccs_userfile(sccs *);
 int	sccs_rmdel(sccs *s, delta *d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);
+int	stripdel_fixTable(sccs *s, int *pcnt);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
 void	sccs_pdelta(sccs *s, delta *d, FILE *out);
 delta	*sccs_key2delta(sccs *sc, char *key);
 int	sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
-void	sccs_md5delta(sccs *s, delta *d, char *b64);                            
+void	sccs_md5delta(sccs *s, delta *d, char *b64);
 delta	*sccs_csetBoundary(sccs *s, delta *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
@@ -908,6 +910,8 @@ int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
 void	sccs_fixDates(sccs *);
 int	sccs_xflags(delta *d);
+char	*xflags2a(u32 flags);
+u32	a2xflag(char *str);
 void	sccs_mkroot(char *root);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
@@ -1197,7 +1201,7 @@ int	saveStdin(char *tmpfile);
 char	**parent_pullp(void);
 char	**parent_pushp(void);
 char	**parent_allp(void);
-int	restore_backup(char *backup_sfio);
+int	restore_backup(char *backup_sfio, int overwrite);
 char	*parent_normalize(char *);
 u32	crc(char *s);
 int	annotate_args(int flags, char *args);

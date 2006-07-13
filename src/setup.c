@@ -191,6 +191,10 @@ defaultFiles(void)
 		fclose(f);
 		system("bk new -Pq BitKeeper/etc/gone");
 	}
+	f = fopen(COLLAPSED, "w");
+	fprintf(f, "\n");
+	fclose(f);
+	system("bk new -Pq " COLLAPSED);
 }
 
 private void

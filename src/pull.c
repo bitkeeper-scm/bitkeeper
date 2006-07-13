@@ -17,6 +17,7 @@ typedef	struct {
 	u32	debug:1;		/* -d: debug */
 	u32	update_only:1;		/* -u: pull iff no local csets */
 	u32	gotsome:1;		/* we got some csets */
+	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
 	int	gzip;			/* -z[level] compression */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
@@ -47,8 +48,9 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:dE:GFilnqr;RstTuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:DdE:GFilnqr;RstTuw|z|")) != -1) {
 		switch (c) {
+		    case 'D': opts.collapsedups = 1;
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
 		    case 'l': opts.list++; break;		/* doc 2.0 */
@@ -537,6 +539,7 @@ takepatch(opts opts, int gzip, remote *r)
 	} else {
 		cmds[++n] = "-mvvv";
 	}
+	if (opts.collapsedups) cmds[++n] = "-D";
 	cmds[++n] = 0;
 	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
 	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
