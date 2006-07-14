@@ -252,12 +252,13 @@ next:				freeLines(data, free);
 		goto out;
 	}
 	fclose(f);
-	rc = inskeys(data[1], licf);
-	unlink(licf);
-	free(licf);
-	if (rc) goto out;
-	rc = 2;
-
+	unless (getenv("_BK_UPGRADE_NOINSKEYS")) {
+		rc = inskeys(data[1], licf);
+		unlink(licf);
+		free(licf);
+		if (rc) goto out;
+		rc = 2;
+	}
 	chmod(data[1], 0500);
 
 	if (fetchonly) {

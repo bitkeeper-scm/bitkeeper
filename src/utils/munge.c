@@ -32,6 +32,8 @@ setup(FILE *f, char *prog, off_t size)
 	fprintf(f, "unsigned int %s_size = %lu;\n", prog, (unsigned long)size);
 	fprintf(f, "unsigned char %s_data[%lu] = {\n",
 	    prog, (unsigned long)size);
+
+	assert(sizeof(inskeys_marker) < size);
 	/*
 	 * According lm, to keep hpux happy, we need stuff some non-zero
 	 * (random) value here.

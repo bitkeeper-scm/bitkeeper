@@ -4,6 +4,7 @@
  */
 #include "system.h"
 #include "../zlib/zlib.h"
+#include "../inskeys.h"
 
 #ifndef MAXPATH
 #define	MAXPATH		1024
@@ -206,7 +207,7 @@ main(int ac, char **av)
 	 * extract the embedded config file
 	 */
 	if (bkpath) concat_path(buf, bkpath, "config");
-	if (keys_data[0]) {
+	if (!streq(keys_data, inskeys_marker)) {
 		if (bkpath && exists(buf)) {
 			/* merge embedded file into existing config */
 			sprintf(buf,
