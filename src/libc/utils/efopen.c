@@ -11,7 +11,8 @@ efopen(char *env)
 	if ((p = strchr(t, ':')) && ((port = atoi(p+1)) > 0)) {
 		*p = 0;
 		sock = tcp_connect(t, port);
-		return (fdopen(sock, "w"));
+		*p = ':';
+		if (sock >= 0) return (fdopen(sock, "w"));
 	}
 	return (fopen(DEV_TTY, "w"));
 }
