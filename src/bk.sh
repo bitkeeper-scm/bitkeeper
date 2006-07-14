@@ -156,27 +156,26 @@ _superset() {
 	shift `expr $OPTIND - 1`
 	export PAGER=cat
 
-	# No parent means we're dirty by definition
+	# No parent[s] means we're dirty by definition
 	test "X$@" = X && {
-		bk parent -qil1 
-		if [ $? -ne 0 ]
-		then
-			NOPARENT=YES
-		else
-			bk changes -Laq $CHANGES "$@" > $TMP2 || {
+		bk parent -qi || NOPARENT=YES
+	}
+
+	# Don't run changes if we have no parent (specified or implied)
+	test "X$@" != X -o $NOPARENT != YES && {
+		bk changes -Laq $CHANGES "$@" > $TMP2 || {
+			rm -f $TMP1 $TMP2
+			exit 1
+		}
+		test -s $TMP2 && {
+			test $LIST = NO && {
 				rm -f $TMP1 $TMP2
 				exit 1
 			}
-			test -s $TMP2 && {
-				test $LIST = NO && {
-					rm -f $TMP1 $TMP2
-					exit 1
-				}
-				echo === Local changesets === >> $TMP1
-				grep -ve --------------------- $TMP2 |
-				sed 's/^/    /'  >> $TMP1
-			}
-		fi
+			echo === Local changesets === >> $TMP1
+			grep -ve --------------------- $TMP2 |
+			sed 's/^/    /'  >> $TMP1
+		}
 	}
 	bk pending $QUIET > $TMP2 2>&1 && {
 		test $LIST = NO && {

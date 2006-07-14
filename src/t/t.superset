@@ -92,6 +92,11 @@ echo OK
 
 # XXX - should have a test to make sure fix actually leaves it in fix.patch
 echo $N Check superset with a saved fix patch .......................$NL
+bk superset > ../GOT || {
+	echo should start clean
+	cat ../GOT
+	exit 1
+}
 echo bogus > BitKeeper/tmp/fix.patch
 bk superset > ../GOT
 test $? -ne 1 && {
@@ -108,6 +113,11 @@ echo OK
 # XXX - should have a test to make sure undo actually leaves it in undo.patch
 # XXX - note that the user can specify a patch name, maybe we need to rm that?
 echo $N Check superset with a saved undo patch ......................$NL
+bk superset > ../GOT || {
+	echo should start clean
+	cat ../GOT
+	exit 1
+}
 echo bogus > BitKeeper/tmp/undo.patch
 bk superset > ../GOT
 test $? -ne 1 && {
@@ -122,6 +132,11 @@ rm -f BitKeeper/tmp/undo.patch
 echo OK
 
 echo $N Check superset with a pull patch in PENDING .................$NL
+bk superset > ../GOT || {
+	echo should start clean
+	cat ../GOT
+	exit 1
+}
 mkdir PENDING
 echo bogus > PENDING/2006-06-06
 bk superset > ../GOT
@@ -137,6 +152,11 @@ rm -rf PENDING
 echo OK
 
 echo $N Check superset with a pending file ..........................$NL
+bk superset > ../GOT || {
+	echo should start clean
+	cat ../GOT
+	exit 1
+}
 mkdir pending
 cd pending
 echo foo > bar
@@ -159,6 +179,11 @@ rm -rf pending
 echo OK
 
 echo $N Check superset with a clean subrepo .........................$NL
+bk superset > ../GOT || {
+	echo should start clean
+	cat ../GOT
+	exit 1
+}
 bk clone $Q $HERE/project subrepo
 bk superset > ../GOT
 test $? -ne 0 && {
@@ -219,17 +244,35 @@ grep -q '    bar' ../GOT || {
 	cat ../GOT
 	exit 1
 }
-rm -f subrepo/bar
+rm -rf subrepo
 echo OK
 
 # XXX - need to test when we have a subrepo but we don't know what they are
 # comparing against because they named a different parent.
 
 echo $N Check superset with a local cset ............................$NL
+bk superset > ../GOT || {
+	echo should start clean
+	cat ../GOT
+	exit 1
+}
 echo foo > bar
 bk new $Q bar
 bk commit $Q -ywhatever 
 bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with local changeset should exit 1
+	exit 1
+}
+grep -q '=== Local changesets ===' ../GOT || {
+	echo superset should mark local changesets
+	exit 1
+}
+echo OK
+
+echo $N Check superset with a local cset with named parent ..........$NL
+bk clone $Q $HERE/project $HERE/other
+bk superset ../other > ../GOT
 test $? -ne 1 && {
 	echo superset with local changeset should exit 1
 	exit 1
@@ -243,8 +286,25 @@ rm -f bar
 echo OK
 
 echo $N Check superset with a local tag .............................$NL
+bk superset > ../GOT || {
+	echo should start clean
+	cat ../GOT
+	exit 1
+}
 bk tag $Q some_tag
 bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with local tag should exit 1
+	exit 1
+}
+grep -q '=== Local changesets ===' ../GOT || {
+	echo superset should mark local changesets
+	exit 1
+}
+echo OK
+
+echo $N Check superset with a local tag with named parent ...........$NL
+bk superset ../other > ../GOT
 test $? -ne 1 && {
 	echo superset with local tag should exit 1
 	exit 1
