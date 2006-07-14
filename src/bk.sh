@@ -236,22 +236,17 @@ _superset() {
 		echo === Unresolved pull === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
 	}
-	test -f BitKeeper/tmp/fix.patch && {
-		test $LIST = NO && {
-			rm -f $TMP1 $TMP2
-			exit 1
+	for i in fix undo collapse
+	do
+		test -f BitKeeper/tmp/${i}.patch && {
+			test $LIST = NO && {
+				rm -f $TMP1 $TMP2
+				exit 1
+			}
+			echo === ${i} patch === >> $TMP1
+			echo "    `ls -l BitKeeper/tmp/${i}.patch`" >> $TMP1
 		}
-		echo === Fix patch === >> $TMP1
-		echo "    `ls -l BitKeeper/tmp/fix.patch`" >> $TMP1
-	}
-	test -f BitKeeper/tmp/undo.patch && {
-		test $LIST = NO && {
-			rm -f $TMP1 $TMP2
-			exit 1
-		}
-		echo === Undo patch === >> $TMP1
-		echo "    `ls -l BitKeeper/tmp/undo.patch`" >> $TMP1
-	}
+	done
 	bk sfiles -R > $TMP2
 	test -s $TMP2 && {
 		# If they didn't give us a parent then we can use the

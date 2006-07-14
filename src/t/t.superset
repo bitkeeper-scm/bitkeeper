@@ -103,11 +103,30 @@ test $? -ne 1 && {
 	echo superset with fix patch should exit 1
 	exit 1
 }
-grep -q '=== Fix patch ===' ../GOT || {
+grep -q '=== fix patch ===' ../GOT || {
 	echo superset failed to flag it as a fix patch
 	exit 1
 }
 rm -f BitKeeper/tmp/fix.patch
+echo OK
+
+echo $N Check superset with a saved collapse patch ..................$NL
+bk superset > ../GOT || {
+	echo should start clean
+	cat ../GOT
+	exit 1
+}
+echo bogus > BitKeeper/tmp/collapse.patch
+bk superset > ../GOT
+test $? -ne 1 && {
+	echo superset with collapse patch should exit 1
+	exit 1
+}
+grep -q '=== collapse patch ===' ../GOT || {
+	echo superset failed to flag it as a fix patch
+	exit 1
+}
+rm -f BitKeeper/tmp/collapse.patch
 echo OK
 
 # XXX - should have a test to make sure undo actually leaves it in undo.patch
@@ -124,7 +143,7 @@ test $? -ne 1 && {
 	echo superset with undo patch should exit 1
 	exit 1
 }
-grep -q '=== Undo patch ===' ../GOT || {
+grep -q '=== undo patch ===' ../GOT || {
 	echo superset failed to flag it as a undo patch
 	exit 1
 }
