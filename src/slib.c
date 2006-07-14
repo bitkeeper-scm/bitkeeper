@@ -4082,6 +4082,7 @@ err:			free(s->gfile);
 			char link[MAXPATH];
 			int len;
 
+			s->mode |= 0777; /* hp11 is weird */
 			len = readlink(s->gfile, link, sizeof(link));
 			if ((len > 0 )  && (len < sizeof(link))){
 				link[len] = 0;
