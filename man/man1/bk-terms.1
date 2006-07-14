@@ -124,6 +124,66 @@ which always get merged into the trunk.
 .tp
 .B Tip, Top of Trunk (TOT)
 The latest revision on the trunk.
+.tp
+.B graph difference
+The graph difference between revision
+.ARG A
+and revision
+.ARG B
+(represented by the notation
+.ARGc B
+.Bc .\|.\|
+.ARG A )
+is the set of changes in
+.ARG A 's
+history that are not in
+.ARG B 's
+history.
+.\".if n \{\
+.DS
+     /----> 1.1.1.1  ---->  1.1.1.2 -----\\
+    /                                     \\
+   /                                       \\
+1.1 ----> 1.2 ----------------------------> 1.3 ----> 1.4
+   \\                                                 /
+    \\                                               /
+     \\-----------> 1.1.2.1 ------------------------/
+.DE
+.\".\}
+.\".if t \{\
+.\".PS
+.\"A:	box "1.1"
+.\"	move to A + .75i,0i
+.\"B:	box "1.2"
+.\"	move to A + 1i,.75i
+.\"C:	box "1.1.1.1"
+.\"	move to A + 1.75i,-.75i
+.\"D:	box "1.1.2.1"
+.\"	move to C + .75i,0i
+.\"E:	box "1.1.1.2"
+.\"	move to B + 2.25i,0i
+.\"F:	box "1.3"
+.\"	move to F + .75i,0i
+.\"G:	box "1.4"
+.\"	arrow from A.e to B.w
+.\"	arrow from B.e to F.w
+.\"	arrow from F.e to G.w
+.\"	arrow from A.ne to C.w
+.\"	arrow from C.e to E.w
+.\"	arrow from E.e to F.nw
+.\"	arrow from A.se to D.w
+.\"	arrow from D.e to G.sw
+.\".PE
+.\".\}
+.IP
+For example, in the graph above,
+.B 1.2..1.4
+represents the list 1.1.1.1, 1.1.1.2, 1.1.2.1, 1.3, 1.4;
+.B 1.1.2.1..1.1.1.2
+means 1.1.1.1, 1.1.1.2; and
+.B 1.1.1.2..1.1.2.1
+consists only of 1.1.2.1.
+.DS
 .SH NOTES
 We attempt to list all of the \*(BK definitions here, but send us a
 message at
