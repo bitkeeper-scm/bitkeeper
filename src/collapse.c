@@ -70,8 +70,16 @@ usage:			system("bk help -s collapse");
 	}
 
 	/* Modes we don't support yet */
-	if (revlist || merge || !edit) {
-		fprintf(stderr, "%s: options not yet supported\n", me);
+	if (revlist) {
+		fprintf(stderr, "%s: -r option not yet supported\n", me);
+		return (1);
+	}
+	if (merge) {
+		fprintf(stderr, "%s: -m option not yet supported\n", me);
+		return (1);
+	}
+	if (!edit) {
+		fprintf(stderr, "%s: -e option required\n", me);
 		return (1);
 	}
 	return (do_cset(after));

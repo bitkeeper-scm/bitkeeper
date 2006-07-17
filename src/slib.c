@@ -1050,23 +1050,22 @@ a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 
 	/*
 	 * At the request of Matthias Urlichs, we are allowing 4 digit years
-	 * if the format is \d\d\d\d[^\d]\d ....
+	 * if the format is \d\d\d\d[^\d] ....
 	 */
-	if ((strlen(asctime) >= 6) &&
+	if ((strlen(asctime) >= 5) &&
 	    isdigit(asctime[0]) && 	/* 1 */
 	    isdigit(asctime[1]) && 	/* 9 */
 	    isdigit(asctime[2]) && 	/* 9 */
 	    isdigit(asctime[3]) && 	/* 9 */
-	    !isdigit(asctime[4]) && 	/* - */
-	    isdigit(asctime[5])) { 	/* 1 */
+	    !isdigit(asctime[4])) { 	/* - */
 		tp->tm_year = atoi(asctime) - 1900;
 		asctime = &asctime[5];
 	} else {
 		gettime(tm_year); 
 	 	/* Adjust for year 2000 problems */
 		if (tp->tm_year < 69) tp->tm_year += 100;
-		unless (*asctime) goto correct;
 	}
+	unless (*asctime) goto correct;
 
 	/* tm_mon counts 0..11; ASCII is 1..12 */
 	gettime(tm_mon); tp->tm_mon--; unless (*asctime) goto correct;

@@ -48,11 +48,10 @@ for more information.
 .LP
 You may specify a date range this way:
 .DS
-bk log -c98..98
+bk log -c1998/..2002/
 .DE
 .LP
-If there are two dates,
-the date format is [+\-]YYYY/MM/DD-HH:MM:SS with missing fields either
+The date format is [+\-]YYYY/MM/DD-HH:MM:SS with missing fields either
 rounded up or rounded down.
 Optionally, you can append a time zone offset of the form -ZH:ZM for
 negative offsets from GMT or +ZH:ZM for positive offsets.
@@ -60,7 +59,13 @@ Rounding is explicit if there is a \*(lq+\*(rq (rounds up) or a
 \*(lq\-\*(rq (rounds down) prefix on the date.
 If there is no prefix, then the rounding is context sensitive.
 The starting date is rounded down and the ending date is rounded up,
-so 1998..1998 is the same as 1998/01/01-00:00:00..1998/12/31/23:59:59.
+so 2001/..2001/ is the same as 2001/01/01-00:00:00..2001/12/31-23:59:59.
+.LP
+Note: the date parsing code looks for digits followed by a non-digit for
+each field.    
+Older versions of \*[BK] allowed dates in the format YYMMDDHHMMSS and
+we still support that for old scripts but doing so meant we had to require
+a clear delinator between year and month.
 .LP
 Note: the mixing of dates and revisions is deprecated.
 .LP

@@ -16,7 +16,7 @@ bk pull $Q 2>ERR && {
 	cat ERR
 	exit 1
 }
-grep -q "this cset has been collapsed" ERR || {
+grep -q "the cset has been collapsed" ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
