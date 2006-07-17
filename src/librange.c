@@ -187,11 +187,7 @@ range_process(char *me, sccs *s, u32 flags, RANGE *rargs)
 	/* must pick a mode */
 	assert(((flags & RANGE_ENDPOINTS) != 0) ^ ((flags & RANGE_SET) != 0));
 
-	if (rargs->isdate) {
-		assert(!(flags & RANGE_ENDPOINTS));
-
-		return (range_processDates(me, s, flags, rargs));
-	}
+	if (rargs->isdate) return (range_processDates(me, s, flags, rargs));
 
 	if (rev = sfileRev()) {
 		if (rargs->rstop) {
@@ -278,14 +274,14 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	char	*rstop = rargs->rstop;
 	time_t	cutoff;
 
-	s->state |= S_SET;
+	if (flags & RANGE_SET) s->state |= S_SET;
 
 	/* handle -c-9d */
 	if (!rstop && (rstart[0] == '-')) {
 		cutoff = range_cutoff(rstart + 1);
 		for (d = s->table; d; d = d->next) {
-			if (d->date < cutoff) continue;
-			d->flags |= D_SET;
+			if (TAG(d) || (d->date < cutoff)) continue;
+			if (flags & RANGE_SET) d->flags |= D_SET;
 			unless (s->rstop) s->rstop = d;
 			s->rstart = d;
 		}
@@ -312,10 +308,11 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	} else {
 		s->rstop = sccs_top(s);
 	}
-	for (d = s->rstop; d; d = d->next) {
-		d->flags |= D_SET;
-		if (d == s->rstart) break;
-
+	if (flags & RANGE_SET) {
+		for (d = s->rstop;
+		    d && (d->serial >= s->rstart->serial); d = d->next) {
+			unless (TAG(d)) d->flags |= D_SET;
+		}
 	}
 	return (0);
 }

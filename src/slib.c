@@ -1810,6 +1810,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	time_t	date;
 	char	*s = rev ? rev : dateSym;
 	int	dateround = roundup;
+	ser_t	x;
 	char	ru = 0;
 
 	unless (sc && sc->table) return (0);
@@ -1850,6 +1851,11 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	 * If it is a symbol, then just go get that delta and return it.
 	 */
 	unless (isdigit(*s)) return (sym2delta(sc, s));
+
+	/*
+	 * If it is a well formed revision with at least a dot, it's a rev
+	 */
+	if (scanrev(s, &x, &x, &x, &x) > 1) return (sccs_findrev(sc, s));
 
 	/*
 	 * It's a plain date.  Convert it to a number and then go
