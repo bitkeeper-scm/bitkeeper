@@ -15,6 +15,7 @@
 
 test -d $HERE/home || mkdir $HERE/home
 export BK_TEST_HOME=$HERE/home
+export _BK_PREVENT_RESOLVE_RERUN=YES
 OUT=$HERE/out
 RC=`bk dotbk`/fm3.rc
 

@@ -24,8 +24,12 @@ lines_main(int ac, char **av)
 	delta	*e;
 	RANGE	rargs = {0};
 
-	while ((c = getopt(ac, av, "n;ur;R;tT")) != -1) {
+	while ((c = getopt(ac, av, "c;n;ur;R;tT")) != -1) {
 		switch (c) {
+		    case 'R':	/* obsolete */
+		    case 'c':
+		    	if (range_addArg(&rargs, optarg, 1)) goto usage;
+			break;
 		    case 'u':
 			flags |= GET_USER;
 			break;
@@ -39,12 +43,9 @@ lines_main(int ac, char **av)
 		    case 'r':
 			rev = optarg; 
 			break;
-		    case 'R':
-			if (range_addArg(&rargs, optarg, 0)) goto usage;
-			break;
 		    default:
 usage:			fprintf(stderr,
-			    "Usage: _lines [-utT] [-n<n>] [-r<r> | -R<r>] file.\n");
+			    "Usage: _lines [-utT] [-n<n>] [-r<r> | -c<r>] file.\n");
 			return (1);
 		}
 	}
@@ -114,6 +115,7 @@ puser(char *u)
 		return;
 	}
 	do {
+		if (*u == '/') break;
 		unless (*u == '@') putchar(*u);
 	} while (*++u);
 }

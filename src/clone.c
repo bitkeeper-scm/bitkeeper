@@ -65,7 +65,10 @@ clone_main(int ac, char **av)
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	unless (av[optind]) usage();
 	localName2bkName(av[optind], av[optind]);
-	if (av[optind + 1]) localName2bkName(av[optind + 1], av[optind + 1]);
+	if (av[optind + 1]) {
+		if (av[optind + 2]) usage();
+		localName2bkName(av[optind + 1], av[optind + 1]);
+	}
 
 	/*
 	 * Trigger note: it is meaningless to have a pre clone trigger

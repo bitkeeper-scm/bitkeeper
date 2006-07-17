@@ -213,13 +213,17 @@ proc revMap {file} \
 {
 	global rev2date serial2rev dev_null revX rev2serial r2p
 
-	#set dspec "-d:I:-:P: :DS: :Dy:/:Dm:/:Dd:/:TZ: :UTC-FUDGE:\n"
-	set dspec "-d:I:-:P: :DS: :UTC: :UTC-FUDGE:\n"
-	set fid [open "|bk prs -h {$dspec} \"$file\" 2>$dev_null" "r"]
+	#set dspec "-d:I:-:P: :DS: :Dy:/:Dm:/:Dd:/:TZ: :UTC-FUDGE:"
+	set dspec "-d:I:-:P: :DS: :UTC: :UTC-FUDGE:"
+	set fid [open "|bk prs -nh {$dspec} \"$file\" 2>$dev_null" "r"]
+# puts "bk prs -nh {$dspec} \"$file\""
 	while {[gets $fid s] >= 0} {
+# puts "$s"
 		set rev [lindex $s 0]
 		foreach {r p} [split $rev -] {set r2p($r) $p}
+# puts "rev=$rev"
 		if {![info exists revX($rev)]} {continue}
+# puts "revX=revX($rev)"
 		set serial [lindex $s 1]
 		set date [lindex $s 2]
 		scan $date {%4s%2s%2s} yr month day
@@ -227,6 +231,7 @@ proc revMap {file} \
 		set utc [lindex $s 3]
 		#puts "rev: ($rev) utc: $utc ser: ($serial) date: ($date)"
 		set rev2date($rev) $date
+# puts "set rev2date($rev) $date"
 		set serial2rev($serial) $rev
 		set rev2serial($rev) $serial
 	}
@@ -469,7 +474,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		} else {
 			set prev $rev
 		}
-		listRevs "-R${prev}.." "$file"
+		listRevs "-c${prev}.." "$file"
 		revMap "$file"
 		dateSeparate
 		setScrollRegion
@@ -682,6 +687,7 @@ proc addline {y xspace ht l} \
 	set last -1
 	set ly [expr {$y - [expr {$ht / 2}]}]
 
+# puts "$l"
 	foreach word $l {
 		# Figure out if we have another parent.
 		# 1.460.1.3-awc-890|1.459.1.2-awc-889
@@ -749,6 +755,7 @@ proc addline {y xspace ht l} \
 		if { $y > $screen(maxy) } { set screen(maxy) $y }
 		
 		set revX($rev) $x
+# puts "set revX($rev) $x"
 		set revY($rev) $y
 		set lastwid [wid $id]
 		set wid($rev) $lastwid
@@ -1445,7 +1452,12 @@ proc csettool {} \
 
 	if {[info exists rev1] != 1} { return }
 	if {[info exists rev2] != 1} { set rev2 $rev1 }
-	catch {exec bk csettool -r$rev1..$rev2 &} err
+	if {[string equal $rev1 $rev2]} {
+		set revs -r$rev1
+	} else {
+		set revs -r$rev1..$rev2
+	}
+	catch {exec bk csettool $revs &} err
 }
 
 proc diff2 {difftool {id {}} } \
@@ -1625,11 +1637,22 @@ proc csetdiff2 {{rev {}}} \
 	global chgdspec
 
 	busy 1
-	if {$rev != ""} { set rev1 $rev; set rev2 $rev; set anchor $rev1 }
+	if {$rev != ""} {
+		set revs $rev
+		set rev1 $rev
+		set rev2 $rev
+		set anchor $rev1
+	} else {
+		if {[string equal $rev1 $rev2]} {
+			set revs $rev1
+		} else {
+			set revs $rev1..$rev2
+		}
+	}
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
-	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
+	$w(aptext) insert end "ChangeSet history for $revs\n\n"
 
-	set revs [open "|bk changes {$chgdspec} -fv -er$rev1..$rev2"]
+	set revs [open "|bk changes {$chgdspec} -fv -er$revs"]
 	filltext $w(aptext) $revs 0 "sccslog for files"
 	set ttype "cset_prs"
 	catch {close $revs}
@@ -1657,8 +1680,8 @@ proc r2c {} \
 	# XXX: When called from "View Changeset", rev1 has the name appended
 	#      need to track down the reason -- this is a hack
 	set rev1 [lindex [split $rev1 "-"] 0]
-	if {[info exists rev2]} {
-		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
+	if {[info exists rev2] && ![string equal $rev1 $rev2]} {
+		set revs [open "| bk prs -nhfr$rev1..$rev2 -d:I: \"$file\""]
 		while {[gets $revs r] >= 0} {
 			catch {set c [exec bk r2c -r$r "$file"]} err 
 			if {[lindex $errorCode 2] == 1} {
@@ -1937,7 +1960,7 @@ proc widgets {} \
 		set gc(py) 1; set gc(px) 4
 		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
 	}
-	set Opts(line_time)  "-R-$gc(rev.showHistory)"
+	set Opts(line_time)  "-c-$gc(rev.showHistory)"
 
 	frame .menus
 	    button .menus.quit -font $gc(rev.buttonFont) -relief raised \
@@ -1991,7 +2014,7 @@ proc widgets {} \
 		$m add command -label "Last Year" \
 		    -command {revtool $fname -1Y}
 		$m add command -label "All Changes" \
-		    -command {revtool $fname 1.1..}
+		    -command {revtool $fname ..}
 	    button .menus.cset -font $gc(rev.buttonFont) -relief raised \
 		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -2345,7 +2368,7 @@ proc revtool {lfname {R {}}} \
 	global	bad revX revY search dev_null rev2date serial2rev w r2p
 	global  Opts gc file rev2rev_name cdim firstnode fname
 	global  merge diffpair firstrev
-	global rev1 rev2 anchor
+	global	rev1 rev2 anchor
 
 	# Set global so that other procs know what file we should be
 	# working on. Need this when menubutton is selected
@@ -2391,12 +2414,12 @@ select a new file to view"
 	}
 	if {$R == ""} {
 		if {$gca != ""} {
-			set R "-R$gca.."
+			set R "-c$gca.."
 		} else {
 			set R "-n$gc(rev.showRevs)"
 		}
-	} elseif {[regexp -- {^-[rRn]} $R] == 0} {
-		set R "-R$R"
+	} elseif {[regexp -- {^-[crRn]} $R] == 0} {
+		set R "-c$R"
 	}
 	# If valid time range given, do the graph
 	if {[listRevs $R "$file"] == 0} {
@@ -2414,7 +2437,7 @@ select a new file to view"
 		$w(aptext) insert end  "Error: No data within the given time\
 period; please choose a longer amount of time.\n
 The file $lfname was last modified ($ago) ago."
-		revtool $lfname 1.1..
+		revtool $lfname ..
 	}
 	# Now make sure that the last/gca node is visible in the canvas "
 	if {$gca != ""} {

@@ -124,13 +124,14 @@ proc findLicense {} \
 	set pwd [pwd]
 	cd $tmp_dir
 	set ::env(BK_NO_GUI_PROMPT) 1
-	catch {exec bk _logging} result
-	unset ::env(BK_NO_GUI_PROMPT)
-	if {[regexp -- {license is current} $result]} {
+	if {[catch {exec bk lease renew} result]} {
+		set rc 0
+	} else {
 		# we have a current license, let's grab the EULA
 		set licenseInfo(text) [exec bk _eula -u]
 		set rc 1
 	}
+	unset ::env(BK_NO_GUI_PROMPT)
 	cd $pwd
 	return $rc
 }
