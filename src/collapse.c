@@ -289,7 +289,7 @@ do_file(char *file, char *tiprev)
 
 		/* restore mode, path, xflags */
 		tipd = sccs_findrev((s = sccs_reopen(s)), "+");
-		unless (mode == tipd->mode) {
+		unless (S_ISLNK(mode) || (mode == tipd->mode)) {
 			if (sccs_admin(s,
 				0, 0, 0, 0, 0, 0, 0, 0, mode2a(mode), 0)) {
 				sccs_whynot(me, s);
