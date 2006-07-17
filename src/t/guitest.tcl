@@ -5,6 +5,7 @@ if {[catch {winfo screen .} result]} {
 	exit 100
 }
 
+wm geometry . +1+1
 set test_script ""
 while {[string match {-*} [lindex $argv 0]]} {
 	set option [lindex $argv 0]
