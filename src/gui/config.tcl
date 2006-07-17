@@ -32,9 +32,10 @@ proc getConfig {prog} \
 	set _d(searchColor) $YELLOW	;# highlight for search matches
 	set _d(selectColor) $LIGHTBLUE	;# current file/item/topic
 	set _d(statusColor) $LIGHTBLUE	;# various status windows
-
+	set _d(minsize) 300		;# won't remember geometry if smaller
+					 # than this width or height
 	#XXX: Not documented yet
-	set _d(logoBG) $WHITE			;# background for widget with logo
+	set _d(logoBG) $WHITE		;# background for widget with logo
 	set _d(balloonBG) $LIGHTYELLOW	;# balloon help background
 	set _d(selectBG) $NAVY		;# useful for highlighting text
 	set _d(selectFG) $WHITE		;# useful for highlighting text

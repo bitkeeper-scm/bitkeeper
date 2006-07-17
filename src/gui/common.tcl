@@ -187,6 +187,8 @@ proc saveState {appname} \
 
 proc trackGeometry {w1 w2 width height} \
 {	
+	global	gc app
+
 	# The event was caused by a different widget
 	if {$w1 ne $w2} {return}
 
@@ -194,7 +196,12 @@ proc trackGeometry {w1 w2 width height} \
 	# the window, so only save if it's a 'normal' resize operation.
 	# XXX: Only works on MS Windows
 	if {[wm state $w1] eq "normal"} {
+		set min $gc($app.minsize)
 		set res [winfo vrootwidth $w1]x[winfo vrootheight $w1]
+		if {$width < $min || $height < $min} {
+			debugGeom "Geometry ${width}x${height} too small"
+			return
+		}
 		# We can't get width/height from wm geometry because if the 
 		# app is gridded, we'll get grid units instead of pixels.
 		# The parameters (%w %h) however, seem to 
