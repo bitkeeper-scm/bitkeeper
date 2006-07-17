@@ -5,6 +5,7 @@ bk upgrade \- Check for new versions of BitKeeper
 .SH SYNOPSIS
 .B bk upgrade
 .[B] \-infq
+.[OPTopt] \-a arch
 .[ARG] srcurl
 .SH DESCRIPTION
 .LP
@@ -45,10 +46,11 @@ option allow the user to force the new version to be used.
 .B \-q
 This causes the upgrade program to suppress extra output when running.
 .tp
-.B \-a arch
+.OPTopt \-a arch
 Request an installer image for another architecture.  Usually used with
 .B \-n
 to fetch a \*[BK] installer for another platform.
+Omit the architecture to request a list of all supported platforms.
 .SH EXAMPLES
 To check for new upgrades:
 .DS
@@ -64,11 +66,11 @@ To upgrade a given installation of bk on this machine:
 .DE
 To fetch the latest installer:
 .DS
-bk upgrade -nf
+bk upgrade -n
 .DE
 To fetch the latest installer for Windows:
 .DS
-bk upgrade -nf -a x86-win32
+bk upgrade -n -a x86-win32
 .DE
 .SH NOTES
 The default URL that \*[BK] uses to search for new updates can be

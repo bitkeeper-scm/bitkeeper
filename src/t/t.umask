@@ -29,8 +29,8 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 bk commit $S -y"This is \"Change Set\" A"
 echo OK
 
-echo $N Make sure that BitKeeper and subdirs are 0775 mode ..........$NL
-find . -type d -perm 0775 -print | sort -u > LIST
+echo $N Make sure that BitKeeper and subdirs are 0770 mode ..........$NL
+find . -type d -perm 0770 -print | sort -u > LIST
 cat <<EOF > WANT
 .
 ./BitKeeper

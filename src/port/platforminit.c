@@ -33,8 +33,9 @@ platformInit(char **av)
 
 	if (bin) return;
 	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
-	m = umask(0) & 002;
-	umask(m);
+	/* force user/group open and allow user to control other */
+	m = umask(0);
+	umask(m & ~0770);
 
 	unless (win_supported()) {
 		fprintf(stderr,
