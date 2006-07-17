@@ -41,11 +41,12 @@ upgrade_main(int ac, char **av)
 	char	*licf;
 	int	rc = 2;
 	char	*tmpbin = 0;
+	mode_t	myumask;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "a:finq")) != -1) {
+	while ((c = getopt(ac, av, "a|finq")) != -1) {
 		switch (c) {
-		    case 'a': platform = optarg; break;	/* arch */
+		    case 'a': platform = optarg ? optarg : "?"; break;
 		    case 'f': force = 1; break;
 		    case 'i': install = 1; break;
 		    case 'n': fetchonly = 1; break;
@@ -58,6 +59,12 @@ usage:			system("bk help -s upgrade");
 	if (av[optind]) {
 		if (av[optind+1]) goto usage;
 		urlbase = av[optind];
+
+		if (platform && streq(platform, "?") && !strchr(urlbase,'/')) {
+			fprintf(stderr, "upgrade: did you mean to say -a%s\n",
+			    urlbase);
+			exit(1);
+		}
 	} else if ((p = proj_configval(0, "upgrade-url")) && *p) {
 		urlbase = p;
 	} else {
@@ -163,7 +170,7 @@ next:				freeLines(data, free);
 		/* control matches for regressions */
 		data[4] = strdup(getenv("BK_UPGRADE_FORCEMATCH") ? bk_utc : "");
 	}
-	if (data && streq(data[4], bk_utc) && !(fetchonly && force)) {
+	if (data && streq(data[4], bk_utc) && !fetchonly) {
 		freeLines(data, free);
 		data = 0;
 	}
@@ -259,7 +266,9 @@ next:				freeLines(data, free);
 		if (rc) goto out;
 		rc = 2;
 	}
-	chmod(data[1], 0500);
+	myumask = umask(0);
+	umask(myumask);
+	chmod(data[1], 0555 & ~myumask);
 
 	if (fetchonly) {
 		printf("New version of bk fetched: %s\n", data[1]);
