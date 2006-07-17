@@ -693,6 +693,40 @@ A value of "none" will clear the working file from the repository after a
 need to be checked out all the time, or if you use make(1) to build your
 tree, make will check out the files for you as needed.
 $
+#setuptool_step_Clock_Skew
+Because you have chosen to run in checkout:edit mode we suggest that you
+make use of a database of information to speed up operations which look
+for modified files.  There is a performance/safety tradeoff due the fact
+that network based file servers can make file timestamps be incorrect.
+To overcome this, the BitKeeper does not trust recent timestamps on files
+(by default the timestamps have to be more than a week old for BitKeeper
+to trust them; this value may be modified, see bk help config-etc for
+how to do so).
+
+The safety risk is zero if the set of systems you use (both clients and
+servers) have clocks which are correct.  For example, if you run NTP to
+synchronize your clocks there is no risk.  
+
+For large trees, the performance improvements for some commands are
+substantial, as much as 10 times faster.
+$
+#setuptool_step_Partial_Check
+By default, BitKeeper does a full repository integrity check after each
+update.  The integrity check validates both internal BitKeeper metadata
+as well as file checksums.  The intergrity checks have been shown to
+catch hardware problems such as bad memory chips, bad disk drives, as
+well as software problems such as NFS inserting blocks of nulls in the
+middle of files.
+
+If you have a large repository (more than 5,000 files and/or more than
+100MB) then you may want to trade off saftey for performance.  There is
+a partial check mode in which BitKeeper only does full checks once every
+24 hours.  Subsequent checks validate the metadata and file integrities
+only for files which are updated.
+
+We recommend that you start in full check mode and turn on partial check
+later if needed.
+$
 #setuptool_step_Compression
 By default, when you set up a repository the files in the repository are
 compressed. If you do not wish for the s.files in your repository to be 

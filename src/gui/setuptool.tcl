@@ -112,6 +112,13 @@ proc main {} \
 					wizInsertStep EndUserLicense
 				}
 			}
+			CheckoutMode {
+				if {$::wizData(checkout) eq "edit"} {
+					wizInsertStep Clock_Skew
+				} else {
+					wizRemoveStep Clock_Skew
+				}
+			}
 		}
 	}
 }
@@ -172,7 +179,9 @@ proc app_init {} \
 	# All of these will end up in the config file.
 	array set wizData {
 		autofix       "yes"
-		checkout      "none"
+		checkout      "edit"
+		clock_skew    "on"
+		partial_check "off"
 		closeOnCreate 1
 		compression   "gzip"
 		keyword,sccs  0
@@ -184,6 +193,7 @@ proc app_init {} \
 		licsign2      ""
 		licsign3      ""
 		name          ""
+		partial_check "off"
 		repository    ""
 	}
 
@@ -198,7 +208,7 @@ proc app_init {} \
 	# some are allowed is simply that I haven't found the time to
 	# disable the particular widgets or steps for the other
 	# options.
-	set allowedRO {checkout repository autofix compression}
+	set allowedRO {checkout repository compression}
 
 	# process command line args, which may also override some of
 	# the defaults. Note that -F and -S aren't presently
@@ -317,6 +327,31 @@ proc wizInsertStep {step} \
 	. configure -path $newpath
 }
 
+# Remove the next step if it matches Step otherwise it does nothing
+# Side Effect: The global variable paths is modified with the 
+# new path
+proc wizRemoveStep {step} \
+{
+	global paths
+
+	set curPath [. configure -path]
+	set curStep [. configure -step]
+	if {![info exists paths($curPath)]} {
+		return -code error "paths($curPath) doesn't exist"
+	}
+	set i [lsearch -exact $paths($curPath) $curStep]
+	incr i
+
+	# Bail if the step is not what we meant to remove
+	if {[lindex $paths($curPath) $i] ne $step} {return}
+
+	# I don't know how to modify a path, so I just add a new one
+	set newpath "${curPath}_${step}"
+	set paths($newpath) [lreplace $paths($curPath) $i $i]
+	. add path $newpath -steps $paths($newpath)
+	. configure -path $newpath
+}
+
 proc widgets {} \
 {
 	global	bkuser readonly env
@@ -332,8 +367,8 @@ proc widgets {} \
 
 	set common {
 		RepoInfo
-		KeywordExpansion CheckoutMode 
-		Compression Autofix Finish
+		KeywordExpansion CheckoutMode Partial_Check
+		Compression Finish
 	}
 	
 	# remove readonly steps
@@ -345,11 +380,6 @@ proc widgets {} \
 		set i [lsearch -exact $common "Compression"]
 		set common [lreplace $common $i $i]
 	}
-	if {[info exists readonly(autofix)]} {
-		set i [lsearch -exact $common "Autofix"]
-		set common [lreplace $common $i $i]
-	}
-	
 	set ::paths(commercial) [concat Begin $common]
 	. add path commercial  -steps $::paths(commercial)
 
@@ -656,9 +686,76 @@ proc widgets {} \
 		tk_optionMenu $w.checkoutOptionMenu wizData(checkout) \
 		    "none" "get" "edit"
 		$w.checkoutOptionMenu configure -width 4 -borderwidth 1
+		button $w.checkoutMoreInfo \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo checkout]
 
 		grid $w.checkoutLabel      -row 0 -column 0 -sticky e
 		grid $w.checkoutOptionMenu -row 0 -column 1 -sticky w
+		grid $w.checkoutMoreInfo   -row 0 -column 2 -sticky w 
+
+		grid rowconfigure $w 0 -weight 0
+		grid rowconfigure $w 1 -weight 1
+		grid columnconfigure $w 0 -weight 0
+		grid columnconfigure $w 1 -weight 1
+	}
+	#-----------------------------------------------------------------------
+	. add step Clock_Skew \
+	    -title "Timestamp Database" \
+	    -description [wrap [getmsg setuptool_step_Clock_Skew]]
+
+	. stepconfigure Clock_Skew -body {
+		global widgets
+
+		set w [$this info workarea]
+		set widgets(Clock_Skew) $w
+
+		$this configure -defaultbutton next
+
+		label $w.clock_skewLabel -text "Timestamp Database:"
+		tk_optionMenu $w.clock_skewOptionMenu wizData(clock_skew) \
+		    "on" "off"
+		$w.clock_skewOptionMenu configure -width 4 -borderwidth 1
+		button $w.clock_skewMoreInfo \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo clock_skew]
+
+		grid $w.clock_skewLabel      -row 0 -column 0 -sticky e
+		grid $w.clock_skewOptionMenu -row 0 -column 1 -sticky w
+		grid $w.clock_skewMoreInfo   -row 0 -column 2 -sticky w 
+
+		grid rowconfigure $w 0 -weight 0
+		grid rowconfigure $w 1 -weight 1
+		grid columnconfigure $w 0 -weight 0
+		grid columnconfigure $w 1 -weight 1
+	}
+	#-----------------------------------------------------------------------
+	. add step Partial_Check \
+	    -title "Partial Check" \
+	    -description [wrap [getmsg setuptool_step_Partial_Check]]
+
+	. stepconfigure Partial_Check -body {
+		global widgets
+
+		set w [$this info workarea]
+		set widgets(Partial_Check) $w
+
+		$this configure -defaultbutton next
+
+		label $w.partial_checkLabel -text "Partial Check:"
+		tk_optionMenu $w.partial_checkOptionMenu \
+		    wizData(partial_check) "on" "off"
+		$w.partial_checkOptionMenu configure -width 4 -borderwidth 1
+		button $w.partial_checkMoreInfo \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo partial_check]
+
+		grid $w.partial_checkLabel      -row 0 -column 0 -sticky e
+		grid $w.partial_checkOptionMenu -row 0 -column 1 -sticky w
+		grid $w.partial_checkMoreInfo   -row 0 -column 2 -sticky w 
 
 		grid rowconfigure $w 0 -weight 0
 		grid rowconfigure $w 1 -weight 1
@@ -682,47 +779,19 @@ proc widgets {} \
 		tk_optionMenu $w.compressionOptionMenu wizData(compression) \
 		    "none" "gzip"
 		$w.compressionOptionMenu configure -width 4 -borderwidth 1
+		button $w.compressionMoreInfo \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo compression]
 
 		grid $w.compressionLabel      -row 0 -column 0 -sticky e
 		grid $w.compressionOptionMenu -row 0 -column 1 -sticky w
+		grid $w.compressionMoreInfo   -row 0 -column 2 -sticky w 
 
 		grid rowconfigure $w 0 -weight 0
 		grid rowconfigure $w 1 -weight 1
 		grid columnconfigure $w 0 -weight 0
 		grid columnconfigure $w 1 -weight 1
-	}
-
-	#-----------------------------------------------------------------------
-	. add step Autofix \
-	    -title "Autofix Options" \
-	    -description [wrap [getmsg setuptool_step_Autofix]]
-
-	. stepconfigure Autofix -body {
-		global widgets
-
-		set w [$this info workarea]
-		set widgets(Autofix) $w
-
-		$this configure -defaultbutton next
-
-		label $w.autofixLabel -text "Autofix Mode:"
-		tk_optionMenu $w.autofixOptionMenu wizData(autofix) \
-		    "yes" "no"
-		$w.autofixOptionMenu configure -width 4 -borderwidth 1
-		button $w.moreInfoAutofix \
-		    -bd 1 \
-		    -text "More info" \
-		    -command [list moreInfo autofix]
-
-		grid $w.autofixLabel      -row 0 -column 0 -sticky e
-		grid $w.autofixOptionMenu -row 0 -column 1 -sticky w
-		grid $w.moreInfoAutofix   -row 0 -column 2 -sticky w -padx 4
-
-		grid rowconfigure $w 0 -weight 0
-		grid rowconfigure $w 1 -weight 1
-		grid columnconfigure $w 0 -weight 0
-		grid columnconfigure $w 1 -weight 0
-		grid columnconfigure $w 2 -weight 1
 	}
 
 	#-----------------------------------------------------------------------
@@ -876,7 +945,7 @@ proc createConfigData {} \
 	foreach key {
 		description email
 		name
-		keyword compression autofix checkout
+		keyword compression autofix checkout clock_skew partial_check
 	} {
 		append configData "$key: $wizData($key)\n"
 	}
@@ -1021,9 +1090,7 @@ proc moreInfo {which} {
 
 	switch -exact -- $which {
 		commercial	{set topic licensing}
-		repoinfo	{set topic config-etc}
-		keywords	{set topic keywords}
-		autofix		{set topic check}
+		default		{set topic config-etc}
 	}
 
 	exec bk helptool $topic 2> $dev_null &
