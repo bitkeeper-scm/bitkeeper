@@ -60,14 +60,15 @@ homepage: http://www.mysql.com
 .DE
 .SS CHECKOUT MODE
 .br
-Specify checkout mode for a repository.  The default is to not show 
-gfiles unless files are checked out.  To override the default, to 
-have gfiles checked out in read-only or read-write mode, a line
-must be added to the
+Specify checkout mode for a repository. 
+If the variable is unset, the default is to not show gfiles unless
+files are checked out.
+To override the default, to have gfiles checked out in read-only
+or read-write mode, a line must be added to the
 .B BitKeeper/etc/config
 file as follows:
 .DS
-[filter]checkout:option
+checkout:option
 .DE
 Where option is one of:
 .TP \fBnone\fP
@@ -143,7 +144,7 @@ Setting this option affects
 .I only
 files created subsequently.
 See
-.B bk help ci
+.B bk help admin
 for more information about the
 .Q \-Z
 option for compression.
@@ -195,19 +196,6 @@ encountered that contains sccs keywords.
 Setting this option affects
 .I only
 files created subsequently.
-.SS UPGRADE URL
-.LP
-The upgrade command normally looks for new versions of \*[BK] here:
-.B http://upgrades.bitkeeper.com/upgrades/
-but that location may be overridden by setting the
-.I upgrade-url
-field to an different URL.
-.LP
-For example,
-.DS
-upgrade-url:	http://www.example.com/bk-release/
-.DE
-The contents of that directory needs to be mirrored from a BitMover release.
 .SS LICENSE KEY
 .LP
 The use of \*(BK requires a commercial
@@ -265,6 +253,28 @@ In general, the default of native line terminations is the right answer and
 for exceptions the
 .B bk admin 
 command may be used to set this option on a per file basis.
+.SS PARTIAL CHECK
+.LP
+By default, BitKeeper does a full repository integrity check after
+each update.
+The integrity check validates both internal BitKeeper metadata and
+file checksums.
+The intergrity checks have been shown to catch hardware problems
+such as bad memory chips, bad disk drives, and software problems
+such as NFS inserting blocks of nulls in the middle of files.
+If you have a large repository (more than 5,000 files and/or more
+than 100MB) then you might want to trade off safety for
+performance.
+There is a partial check mode in which BitKeeper only does full
+checks once every 24 hours.
+.DS
+partial_check: on
+.DE
+Subsequent checks validate the metadata and file integrities only
+for files that are updated.
+.LP
+We recommend that you start in full check mode and turn on partial
+check later if needed.
 .SS UPGRADE URL
 .LP
 The upgrade command normally looks for new versions of \*[BK] here:
@@ -277,7 +287,7 @@ For example,
 .DS
 upgrade-url:	http://www.example.com/bk-release/
 .DE
-The contents of that directory needs to be mirrored from a BitMover release.
+The contents of that directory will need to be manually mirrored from BitMover.
 .SS USER PREFERENCES
 .LP
 Repository preferences can be defined in the

@@ -1,10 +1,10 @@
 #get_C
-The get -C option has been replaced with the -r@rev syntax.  To get the
-same effect as
+The bk co -C option has been replaced with the -r@rev syntax.
+To get the same effect as
 
-	bk get -p -C foo.c
+	bk co -p -C foo.c
 try
-	bk -r get -r@+ foo.c
+	bk -r co -r@+ foo.c
 $
 #diffs_C
 The diffs -C option has been replaced with the -r@rev syntax.  To get the
@@ -680,16 +680,18 @@ By default, working files will not be visible in a repository until they
 are checked out by you.  You can modify this behavior by defining the
 checkout mode.
 
-A value of "get" will cause a "bk get <file>" command to be executed
+A value of "get" will cause a "bk co <file>" command to be executed
 automatically after each checkin, causing the file to be checked out in
-read-only mode.
+read-only mode.  Use this mode if you depend on expanded keywords.
 
 A value of "edit" will prevent a checkin from removing the editable
 version of the file so that there is always an editable version of
-the file.
+the file.  Note that keywords are not expanded in this mode.
 
 A value of "none" will clear the working file from the repository after a
-"bk delta". This is the default behavior.
+"bk ci".   Use this mode if your repository has some files which do not
+need to be checked out all the time, or if you use make(1) to build your
+tree, make will check out the files for you as needed.
 $
 #setuptool_step_Compression
 By default, when you set up a repository the files in the repository are
@@ -1124,7 +1126,7 @@ as its recorded pathname.  If the file is where you want it to be,
 then update its name with the following command:
 
     bk edit #BKARG#
-    bk delta -yRename #BKARG#
+    bk ci -yRename #BKARG#
 
 If the file should be in the other location then restore it to that
 location by running 
