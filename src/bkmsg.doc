@@ -360,12 +360,12 @@ source repository using the same method as you have.  If the problem
 occurs again, please run "bk support" and fill in the details. 
 $
 #takepatch-collapsed
-This patch contains the following cset this is listed in the
+This patch contains the following cset, which is listed in the
 BitKeeper/etc/collapsed file as being replaced:
    #BKARG#
 
-That usually indicates that this cset has been collapsed with the 
-'bk collapse' command and replaced with a new cset containing the
+This usually indicates that the cset has been collapsed with the 
+'bk collapse' command and replaced by a new cset containing the
 same functionality.  It appears that cset #BKARG#2# in this tree
 is the cset that replaced the cset in the incoming patch.
 
