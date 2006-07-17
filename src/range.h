@@ -3,13 +3,36 @@
 
 typedef struct range RANGE;
 struct	range {
-	char	*rstart, *rstop;
-	u32	isdate:1;
-	u32	isrev:1;
+	char	*rstart, *rstop; /* endpoints from command line */
+	u32	isdate:1;	 /* contains date range */
+	u32	isrev:1;	 /* contains rev range */
 };
 
-#define RANGE_ENDPOINTS	0x10
-#define	RANGE_SET	0x20
+#define RANGE_ENDPOINTS	0x10	/* just return s->rstart s->rstop */
+#define	RANGE_SET	0x20	/* return S_SET */
+
+/*
+ *  1.1 -- 1.2 -- 1.3 -- 1.4 -- 1.5
+ *	\                      /
+ *	 \                    /
+ *	  - 1.1.1.1----------/
+ *
+ * With RANGE_SET:
+ *
+ *	-r1.3..1.5
+ *	     s->state |= S_SET
+ *	     marks 1.1.1.1,1.4,1.5 with D_SET
+ *	     sets s->rstart = 1.1.1.1
+ *	     sets s->rstop  = 1.5
+ *
+ *     (rstart/rstop are just the first/last serials where D_SET might be set)
+ *
+ * With RANGE_ENDPOINTS:
+ *
+ *	-r1.3..1.5
+ *	     sets s->rstart = 1.3
+ *	     sets s->rstop = 1.5
+ */
 
 int	range_process(char *me, sccs *s, u32 flags, RANGE *rargs);
 int	range_addArg(RANGE *rargs, char *arg, int isdate);
