@@ -52,7 +52,7 @@ Examine all files, even if listed in
 List changed files (locked and modified).
 If
 .I clock_skew
-is set in the config file then the file timestamps
+is set in the config file then the file time stamps
 and other attributes are used to speed scanning.
 The acceptable clock skew can be configured, see
 .I clock_skew
@@ -62,7 +62,7 @@ in
 .B \-C
 Identical to 
 .Q \-c
-except the file timestamps are not trusted.
+except the file time stamps are not trusted.
 .tp
 .B \-d
 List directories under \*(BK control (SCCS subdir exists).
@@ -179,7 +179,7 @@ a file that is extra but is normally ignored
 extra file under \*[SCCS]/ dir
 .tp
 \f(CBR------\ (-R)\fP
-the file is a subrepository root (overrides \-d)
+the file is a sub-repository root (overrides \-d)
 .tp
 \f(CBs------\ (-s)\fP
 a file that is under \*(BK control

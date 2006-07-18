@@ -20,7 +20,7 @@ deltas", i.e., deltas which are ahead of the top changeset, then the monotonic
 flag may not be removed unless the dangling deltas are removed first.  You
 may remove those deltas with the following command:
 
-    bk prs -hnd'$if(:DANGLING:){:GFILE:|:I:}' <file> | bk stripdel -dC -
+    bk log -hnd'$if(:DANGLING:){:GFILE:|:I:}' <file> | bk stripdel -dC -
 
 and then you may remove the MONOTONIC flag.
 $
@@ -695,31 +695,30 @@ tree, make will check out the files for you as needed.
 $
 #setuptool_step_Clock_Skew
 Because you have chosen to run in checkout:edit mode we suggest that you
-make use of a database of information to speed up operations which look
-for modified files.  There is a performance/safety tradeoff due the fact
-that network based file servers can make file timestamps be incorrect.
-To overcome this, the BitKeeper does not trust recent timestamps on files
-(by default the timestamps have to be more than a week old for BitKeeper
-to trust them; this value may be modified, see bk help config-etc for
-how to do so).
+use a database of information to speed up operations that look
+for modified files.  There is a performance/safety tradeoff because
+network based file servers can make file timestamps incorrect.
+To overcome this, BitKeeper does not trust recent timestamps on files.
+(By default timestamps have to be more than a week old for BitKeeper
+to trust them.  You can modify this value; see bk help config-etc.)
 
 The safety risk is zero if the set of systems you use (both clients and
-servers) have clocks which are correct.  For example, if you run NTP to
+servers) have clocks that are correct.  For example, if you run NTP to
 synchronize your clocks there is no risk.  
 
 For large trees, the performance improvements for some commands are
-substantial, as much as 10 times faster.
+substantial--as much as 10 times faster.
 $
 #setuptool_step_Partial_Check
 By default, BitKeeper does a full repository integrity check after each
 update.  The integrity check validates both internal BitKeeper metadata
-as well as file checksums.  The intergrity checks have been shown to
+as well as file checksums.  The integrity checks have been shown to
 catch hardware problems such as bad memory chips, bad disk drives, as
 well as software problems such as NFS inserting blocks of nulls in the
 middle of files.
 
 If you have a large repository (more than 5,000 files and/or more than
-100MB) then you may want to trade off saftey for performance.  There is
+100MB) then you may want to trade off safety for performance.  There is
 a partial check mode in which BitKeeper only does full checks once every
 24 hours.  Subsequent checks validate the metadata and file integrities
 only for files which are updated.
@@ -1118,7 +1117,7 @@ for a different repository.  You can find the correct repository by
 running the following command at the top of each repository until you
 get a match with the changeset ID at the top of the patch:
 
-    bk -R prs -hr1.0 -nd':KEY:' ChangeSet
+    bk -R log -hr1.0 -nd':KEY:' ChangeSet
 
 $
 #tp_gone_error
@@ -1257,15 +1256,15 @@ with the following command:
 
 If you have a non-standard connection, you can supply a bk_mail.bat
 file to connect BitKeeper to your mail server; the bk_mail.bat file
-should accept the three auguments, as follows:
+should accept the three arguments, as follows:
 
 	bk_mail.bat file recipient subject
 
-(recipient is a comma seperated list if there is more than one)
+(recipient is a comma separated list if there is more than one)
 
 You should put the bk_mail.bat file in the BitKeeper directory.
 The bk_mail.bat command should exit with status zero when the mail is
-sent sucessfully.
+sent successfully.
 $
 #install-cygwin-upgrade
 Thanks for installing BitKeeper.  We noticed that this was an upgrade

@@ -2,7 +2,7 @@
 .\" help://hardlink
 .TH "bk relink" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk relink \- recreate broken hardlinks
+bk relink \- recreate broken hard links
 .SH SYNOPSIS
 .B bk relink
 .[B] \-q
@@ -19,8 +19,8 @@ work in progress.  It is also typical to use the
 .Q \-l
 option to
 .B bk clone
-to create hard linked repositories.
-A hardlinked repository uses much less space than a copied repository.
+to create hard-linked repositories.
+A hard-linked repository uses much less space than a copied repository.
 As files are modified, the links are broken.
 As the same set of changes come into a set of repositories, the links
 could be restored.
@@ -33,7 +33,7 @@ repository and if it is the same as the same file in the
 repository, it replaces the file in the 
 .ARG from
 repository
-with a hardlink to the file in the
+with a hard link to the file in the
 .ARG to
 repository.
 .LP
@@ -47,10 +47,10 @@ defaults to all parent[s] of the current repository.
 .B \-q
 Run quietly.
 .SH WARNINGS
-While hardlinked repositories are less disk intensive than replicated
+While hard-linked repositories are less disk intensive than replicated
 repositories, they are also more vulnerable to disk or file system
 corruption.  It is advisable to always have at least one recent copy
-of a repository, rather than 100% hardlinked repositories.
+of a repository, rather than 100% hard-linked repositories.
 .LP
 It is possible to break all the links by recomputing the per file
 checksums:
@@ -59,7 +59,7 @@ bk -r check -ac
 bk -r admin -z
 .DE
 .SH AVAILABILITY
-This command works only on filesystems which support hardlinks,
+This command works only on filesystems which support hard links,
 and only if both repositories are in the same file system.
 .SH "SEE ALSO"
 .SA clone
