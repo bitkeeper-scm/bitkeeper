@@ -94,7 +94,7 @@ compression: gzip
 autofix: yes
 checkout: edit
 clock_skew: on
-partial_check: on
+partial_check: off
 license: $BKL_ACADEMIC
 licsign1: $BKL_A1
 licsign2: $BKL_A2
@@ -165,7 +165,7 @@ compression: gzip
 autofix: yes
 checkout: edit
 clock_skew: on
-partial_check: on
+partial_check: off
 license: $BKL_BASIC
 licsign1: $BKL_B1
 licsign2: $BKL_B2
@@ -236,7 +236,7 @@ compression: gzip
 autofix: yes
 checkout: edit
 clock_skew: on
-partial_check: on
+partial_check: off
 license: $BKL_PRO
 licsign1: $BKL_P1
 licsign2: $BKL_P2
@@ -307,7 +307,7 @@ compression: gzip
 autofix: yes
 checkout: edit
 clock_skew: on
-partial_check: on
+partial_check: off
 license: $BKL_ENTERPRISE
 licsign1: $BKL_E1
 licsign2: $BKL_E2

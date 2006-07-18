@@ -88,7 +88,7 @@ proc doPixSelect {x y} \
 #
 # Selects the x'th line, tags it as selected, calls bkhelp for that topic
 #
-proc doSelect {x} \
+proc doSelect {x {search {}}} \
 {
 	global	line stack stackMax stackPos
 
@@ -103,7 +103,7 @@ proc doSelect {x} \
 	.ctrl.topics tag remove "select" 1.0 end
 	.ctrl.topics tag add "select" $line "$line lineend + 1 char"
 	.ctrl.topics tag raise "select"
-	bkhelp $topic
+	bkhelp $topic $search
 	# Don't increment if we are going to where we are
 	if {$stackPos == 0 || $stack($stackPos) != $line} { incr stackPos }
 	set stack($stackPos) $line
@@ -156,7 +156,7 @@ proc downStack {} \
 	}
 }
 
-proc bkhelp {topic} \
+proc bkhelp {topic {search {}}} \
 {
 	global line line2full gc
 
@@ -166,11 +166,16 @@ proc bkhelp {topic} \
 	.text.help configure -state normal
 	.text.help delete 1.0 end
 	set lineno 1
+	set yview ""
 	while {[gets $f help] >= 0} {
 		.text.help insert end "$help\n"
 		if {[regexp {^[A-Z][ \t\nA-Z.!?|()-]+$} $help]} {
 			set i "$lineno.0"
 			.text.help tag add "bold" $i "$i lineend"
+		}
+		if {$search != "" && [regexp $search $help]} {
+			set search ""
+			set yview "$lineno.0"
 		}
 		incr lineno
 	}
@@ -179,6 +184,7 @@ proc bkhelp {topic} \
 	catch {close $f} dummy
 	.text.help configure -state disabled
 	bk_highlight
+	if {$yview != ""} { .text.help yview $yview }
 }
 
 proc highlight {tag index len} \
@@ -574,15 +580,15 @@ proc busy {busy} \
 	update
 }
 
-proc getSelection {argv} \
+proc getSelection {page} \
 {
 	global line lines aliases
 
 	set l ""
-	catch { set l $lines($argv) } dummy
-	if {"$l" == ""} { catch { set l $lines($aliases($argv)) } dummy }
+	catch { set l $lines($page) } dummy
+	if {"$l" == ""} { catch { set l $lines($aliases($page)) } dummy }
 	if {"$l" == ""} {
-		puts "No help for $argv"
+		puts "No help for $page"
 		exit
 	}
 	incr l -1
@@ -600,12 +606,15 @@ proc getHelp {} \
 			set file [lindex $argv 1]
 			set gc(help.helptext) "-f$file"
 			set keyword [lindex $argv 2]
+			set search [lindex $argv 3]
 		} else {
 			set gc(help.helptext) $file
 			set keyword [lindex $argv 1]
+			set search [lindex $argv 2]
 		}
 	} else {
 		set keyword [lindex $argv 0]
+		set search [lindex $argv 1]
 	}
 	set f [open "| bk helptopics $gc(help.helptext)"]
 	.ctrl.topics configure -state normal
@@ -648,9 +657,9 @@ proc getHelp {} \
 	if {$keyword == ""} {
 		getSelection Common
 	} else {
-		getSelection $keyword
+		getSelection $keyword 
 	}
-	doSelect 1
+	doSelect 1 $search
 	if {$keyword == ""} {
 		.ctrl.topics yview moveto 0
 	}

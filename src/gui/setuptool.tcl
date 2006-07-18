@@ -555,7 +555,7 @@ proc widgets {} \
 		    -textvariable wizData(email)
 		button $w.moreInfoRepoInfo -bd 1 \
 		    -text "More info" \
-		    -command [list moreInfo repoinfo]
+		    -command [list moreInfo repoinfo "CONTACT INFORMATION"]
 
 		grid $w.repoPathLabel -row 0 -column 0 -sticky e
 		grid $w.repoPathEntry -row 0 -column 1 -sticky ew -columnspan 2 
@@ -630,19 +630,19 @@ proc widgets {} \
 
 		label $w.keywordLabel -text "Keyword Expansion:"
 		checkbutton $w.sccsCheckbutton \
-		    -text "sccs" \
+		    -text "SCCS" \
 		    -onvalue 1 \
 		    -offvalue 0 \
 		    -variable wizData(keyword,sccs) \
 		    -command updateKeyword
 		checkbutton $w.rcsCheckbutton \
-		    -text "rcs" \
+		    -text "RCS" \
 		    -onvalue 1 \
 		    -offvalue 0 \
 		    -variable wizData(keyword,rcs) \
 		    -command updateKeyword
 		checkbutton $w.expand1Checkbutton \
-		    -text "expand1" \
+		    -text "EXPAND1" \
 		    -onvalue 1 \
 		    -offvalue 0 \
 		    -variable wizData(keyword,expand1) \
@@ -689,7 +689,7 @@ proc widgets {} \
 		button $w.checkoutMoreInfo \
 		    -bd 1 \
 		    -text "More info" \
-		    -command [list moreInfo checkout]
+		    -command [list moreInfo checkout "CHECKOUT MODE"]
 
 		grid $w.checkoutLabel      -row 0 -column 0 -sticky e
 		grid $w.checkoutOptionMenu -row 0 -column 1 -sticky w
@@ -720,7 +720,7 @@ proc widgets {} \
 		button $w.clock_skewMoreInfo \
 		    -bd 1 \
 		    -text "More info" \
-		    -command [list moreInfo clock_skew]
+		    -command [list moreInfo clock_skew CLOCK]
 
 		grid $w.clock_skewLabel      -row 0 -column 0 -sticky e
 		grid $w.clock_skewOptionMenu -row 0 -column 1 -sticky w
@@ -751,7 +751,7 @@ proc widgets {} \
 		button $w.partial_checkMoreInfo \
 		    -bd 1 \
 		    -text "More info" \
-		    -command [list moreInfo partial_check]
+		    -command [list moreInfo partial_check "PARTIAL CHECK"]
 
 		grid $w.partial_checkLabel      -row 0 -column 0 -sticky e
 		grid $w.partial_checkOptionMenu -row 0 -column 1 -sticky w
@@ -782,7 +782,7 @@ proc widgets {} \
 		button $w.compressionMoreInfo \
 		    -bd 1 \
 		    -text "More info" \
-		    -command [list moreInfo compression]
+		    -command [list moreInfo compression COMPRESSION]
 
 		grid $w.compressionLabel      -row 0 -column 0 -sticky e
 		grid $w.compressionOptionMenu -row 0 -column 1 -sticky w
@@ -1085,15 +1085,16 @@ proc checkLicense {} \
 	return 0
 }
 
-proc moreInfo {which} {
+proc moreInfo {which {search {}}} {
 	global dev_null
 
 	switch -exact -- $which {
 		commercial	{set topic licensing}
+		keywords	{set topic keywords}
 		default		{set topic config-etc}
 	}
 
-	exec bk helptool $topic 2> $dev_null &
+	exec bk helptool $topic $search 2> $dev_null &
 }
 
 main
