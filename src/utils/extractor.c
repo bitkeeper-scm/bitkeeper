@@ -4,7 +4,6 @@
  */
 #include "system.h"
 #include "../zlib/zlib.h"
-#include "../inskeys.h"
 
 #ifndef MAXPATH
 #define	MAXPATH		1024
@@ -69,16 +68,15 @@ int
 main(int ac, char **av)
 {
 	int	i;
-	int	rc = 0, dolinks = 0, upgrade = 0;
+	int	rc = 0, dolinks = 0, upgrade = 0, embeddedkey = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
 	char	*dest = 0, *bkpath = 0, *tmp = findtmp();
 	char	*bindir = getBinDir();
 	char	tmpdir[MAXPATH], buf[MAXPATH], pwd[MAXPATH];
-
+	char	*p;
 #ifdef	WIN32
 	HCURSOR h;
-	char	*p;
 
 	/* Refuse to install on unsupported versions of Windows */
 
@@ -207,7 +205,14 @@ main(int ac, char **av)
 	 * extract the embedded config file
 	 */
 	if (bkpath) concat_path(buf, bkpath, "config");
-	if (!streq(keys_data, inskeys_marker)) {
+	/* We can't compare with the inskeys_marker template directly
+	 * because that would put two copies of the template in the binary.
+	 * That 12 is the lenght of 'license: BKL'
+	 */
+	for (p = keys_data + 12; *p != '\n'; p++) {
+		if (*p != 'X') embeddedkey = 1;
+	}
+	if (embeddedkey) {
 		if (bkpath && exists(buf)) {
 			/* merge embedded file into existing config */
 			sprintf(buf,
