@@ -101,6 +101,7 @@ checkXflags(sccs *s, delta *d, int what)
 	char	*t, *f;
 	u32	old, new, want, added = 0, deleted = 0, *p;
 	int	i;
+	char	key[32];
 
 	if (d == s->tree) {
 		unless ((d->xflags & X_REQUIRED) == X_REQUIRED) {
@@ -136,14 +137,17 @@ checkXflags(sccs *s, delta *d, int what)
 	want &= ~deleted;
 	if (new == want) return (0);
 	/*
-	 * We screwed this one up, the fix is to add some comments to the
+	 * We screwed lines.c up, the fix is to add some comments to the
 	 * 1.1 delta like so: 
 	 * Turn off EOLN_NATIVE flag
 	 * Turn on EXPAND1 flag
 	 * Turn on SCCS flag
 	 * but that's too much of a pain.
 	 */
-	if (streq("src/libc/utils/lines.c", s->gfile)) return (0);
+	if (streq(s->tree->sdate, "97/05/18 16:29:28")) {
+		sccs_md5delta(s, s->tree, key);
+		if (streq("337f90d8qZwQGPzUrQ-3E6KGSH4k4g", key)) return (0);
+	}
 
 	/* just in case this blows up in the field */
 	if (getenv("_BK_NO_XFLAGS_CHECK")) return (0);
