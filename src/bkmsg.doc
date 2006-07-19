@@ -1312,8 +1312,8 @@ existing BitKeeper will fail.  Please try again from a command shell.
 $
 #upgrade-install-other-platform
 If the upgrade command is given the -a option to request the binary
-for another architecture, then it cannot also be given the -i option to
-install that binary.
+for another architecture, then installation is not allowed, please
+add -d and try again.
 $
 #license-restricted
 A license request was rejected by the license server.

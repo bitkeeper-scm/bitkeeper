@@ -638,6 +638,13 @@ bk smerge
 bk stripdel
     The "-b" option, which stripped all branch deltas, has been removed.
 
+bk upgrade
+    The default with no arguments is now to download and install (used to
+    require -i which is now obsolete).
+    -a with no args lists all available architectures.
+    -c has been added to provide a dry run (check only)
+    -n has been renamed to -d (for download but don't install)
+
 Default Shell
     All platforms default to using bash to run any shell-based functions.
     We know that bash always works, but you can also try ksh if you

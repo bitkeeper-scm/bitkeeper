@@ -1,10 +1,10 @@
 .so ../bk-macros
 .TH "bk upgrade" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk upgrade \- Check for new versions of BitKeeper
+bk upgrade \- upgrade to, or check for, new versions of BitKeeper
 .SH SYNOPSIS
 .B bk upgrade
-.[B] \-infq
+.[B] \-cdfq
 .[OPTopt] \-a arch
 .[ARG] srcurl
 .SH DESCRIPTION
@@ -13,24 +13,26 @@ The
 .B bk upgrade
 command contacts \*[BM]'s servers using HTTP to see if new versions
 of \*[BK] are available for download.  If a new version is found
-for this platform, then the user is notified.
-.LP
-New versions are fetched from the following location:
-.DS
-http://upgrades.bitkeeper.com/upgrades/
-.DE
-This source URL can be replaced with a different URL or local pathname
-on the command line.  This can be used if \*[BK] cannot make
-external HTTP connections to the upgrades site, for local mirrors, or
-special releases.
+for this platform, then the image is downloaded and installed,
+unless instructed otherwise with the options below.
 .SH OPTIONS
-.TP
-.B \-i
-If a new version of \*[BK] is found for this platform, then
-download it and run the installer.
+.TP "\-a [\*<arch\*>] "
+.OPTopt \-a arch
+Request an installer image for another architecture.
+Usually used with
+.Q \-d
+to download a \*[BK] installer for another platform.
+If 
+.Q \-d is not set then 
+.Q \-c is implied.
+Omit the architecture to request a list of all supported platforms.
 .tp
-.B \-n
-Only fetch the installer for a new version of \*[BK], but don't
+.B \-c
+Just check to see if a new version \*[BK] is available for this platform
+but do not download and install it.
+.tp
+.B \-d
+Download the installer for a new version of \*[BK], but do not
 install it.  Note: installer images that are downloaded will have
 the user's license key embedded in them. 
 .tp
@@ -45,32 +47,26 @@ option allow the user to force the new version to be used.
 .tp
 .B \-q
 This causes the upgrade program to suppress extra output when running.
-.tp
-.OPTopt \-a arch
-Request an installer image for another architecture.  Usually used with
-.B \-n
-to fetch a \*[BK] installer for another platform.
-Omit the architecture to request a list of all supported platforms.
 .SH EXAMPLES
 To check for new upgrades:
 .DS
-bk upgrade
+bk upgrade -c
 .DE
 To install a new version of bk:
 .DS
-bk upgrade -i
+bk upgrade
 .DE
 To upgrade a given installation of bk on this machine:
 .DS
-/home/user/bitkeeper/bk upgrade -i
+/home/user/bitkeeper/bk upgrade
 .DE
-To fetch the latest installer:
+To download the latest installer regardless of what you have installed:
 .DS
-bk upgrade -n
+bk upgrade -df
 .DE
-To fetch the latest installer for Windows:
+To download the latest installer for Windows:
 .DS
-bk upgrade -n -a x86-win32
+bk upgrade -df -ax86-win32
 .DE
 .SH NOTES
 The default URL that \*[BK] uses to search for new updates can be
@@ -78,15 +74,27 @@ overridden with the
 .Q upgrade-url
 config option.  This will usually be
 used in a corporate environment to prevent users from using a new
-version of \*[BK] that hasn't been certified locally. Usually an
+version of \*[BK] that has not been certified locally. Usually an
 internal URL will be put in a config file in the \*[BK] install
 directory.
+.LP
+To populate the local copy of the binaries you will need to 
+.B wget 
+the directory of binaries from BitMover's servers; the images
+are encrypted and 
+.B bk upgrade
+expects that and will not work with un-encrypted images.
+.LP
+To download the images run
+.DS
+wget -r http://upgrades.bitkeeper.com/upgrades
+.DE
 .SH EXIT STATUS
 0 if a new version of \*[BK] is found
 .br
 1 if no updates are available.
 .br
-2 if errors occurred fetching new updates.
+2 if errors occurred downloading new updates.
 .SH "SEE ALSO"
 .SA config-etc
 .SH CATEGORY

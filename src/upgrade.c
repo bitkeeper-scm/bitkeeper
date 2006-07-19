@@ -26,7 +26,7 @@ upgrade_main(int ac, char **av)
 {
 	int	c, i;
 	int	fetchonly = 0;
-	int	install = 0;
+	int	install = 1;
 	int	force = 0;
 	int	obsolete = 0;
 	char	*oldversion, *errs = 0, *lic;
@@ -44,12 +44,21 @@ upgrade_main(int ac, char **av)
 	mode_t	myumask;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "a|finq")) != -1) {
+	while ((c = getopt(ac, av, "a|cdfinq")) != -1) {
 		switch (c) {
-		    case 'a': platform = optarg ? optarg : "?"; break;
-		    case 'f': force = 1; break;
-		    case 'i': install = 1; break;
-		    case 'n': fetchonly = 1; break;
+		    case 'a':
+		    	unless (platform = optarg) {
+				platform = "?";
+				install = 0;
+				flags |= SILENT;
+			}
+			break;
+		    case 'c': install = 0; break;	/* check only */
+		    case 'f': force = 1; break;		/* force */
+		    case 'i': install = 1; break;	/* now default, noop */
+		    case 'd':				/* download only */
+		    case 'n':				// obsolete, for compat
+			install = 0; fetchonly = 1; break;
 		    case 'q': flags |= SILENT; break;
 		    default:
 usage:			system("bk help -s upgrade");
@@ -82,10 +91,6 @@ usage:			system("bk help -s upgrade");
 	    && streq(p, "msys") && (fetchonly || install)
 	    && !getenv("BK_REGRESSION")) {
 		notice("upgrade-nomsys", 0, "-e");
-		goto out;
-	}
-	if (install && fetchonly) {
-		fprintf(stderr, "upgrade: -i or -n but not both.\n");
 		goto out;
 	}
 	if (install && noperms(bin)) {
@@ -153,12 +158,18 @@ next:				freeLines(data, free);
 
 	if (platforms) {	/* didn't find this platform */
 		uniqLines(platforms, free);
-		fprintf(stderr,
-"No upgrade for the for arch %s found. Available architectures:\n",
-		    platform);
-		EACH(platforms) fprintf(stderr, "  %s\n", platforms[i]);
+		unless (streq(platform, "?")) {
+			fprintf(stderr, 
+			    "No upgrade for the for arch %s found. "
+			    "Available architectures:\n", platform);
+			EACH(platforms) fprintf(stderr, "  %s\n", platforms[i]);
+			rc = 2;
+		} else {
+			printf("Available architectures:\n", platform);
+			EACH(platforms) printf("  %s\n", platforms[i]);
+			rc = 0;
+		}
 		freeLines(platforms, free);
-		rc = 2;
 		goto out;
 	}
 	/*
