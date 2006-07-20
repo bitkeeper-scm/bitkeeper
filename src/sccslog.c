@@ -37,7 +37,7 @@ private	struct {
 	int	indent;		/* -i: indent amount */
 	u32	indentOpt:1;	/* 1 if -i was present */
 	u32	newline:1;	/* -n: like prs -n */
-	u32	basenames:1;	/* -p: do basenames */
+	u32	basenames:1;	/* -b: do basenames */
 	u32	sort:1;		/* -s: time sorted pathname|rev output */
 } opts;
 
@@ -51,9 +51,10 @@ sccslog_main(int ac, char **av)
 	RANGE	rargs = {0};
 
 	setmode(1, _O_TEXT);
-	while ((c = getopt(ac, av, "AbCc;d|Dfi;npr|sv")) != -1) {
+	while ((c = getopt(ac, av, "AbCc;d|Dfi;nr|sv")) != -1) {
 		switch (c) {
 		    case 'A': opts.uncommitted = 1; break;	/* doc 2.0 */
+		    case 'b': opts.basenames = 1; break;	/* doc 2.0 */
 		    case 'C': opts.changeset = 1; break;	/* doc 2.0 */
 		    case 'D': opts.rmdups = 1; break;
 		    case 'd': opts.dspec = optarg; break;
@@ -63,7 +64,6 @@ sccslog_main(int ac, char **av)
 			opts.indentOpt = 1;
 			break;
 		    case 'n': opts.newline = 1; break;
-		    case 'p': opts.basenames = 1; break;	/* doc 2.0 */
 		    case 's': opts.sort = 1; break;		/* doc 2.0 */
 		    case 'v': flags &= ~SILENT; break;		/* doc 2.0 */
 		    case 'c':
@@ -81,7 +81,7 @@ usage:			system("bk help -s sccslog");
 	for (name = sfileFirst("sccslog", &av[optind], 0); name; ) {
 		unless ((s = sccs_init(name, INIT_NOCKSUM|flags)) &&
 		    HASGRAPH(s)) {
-			sccs_free(s);
+next:			sccs_free(s);
 			name = sfileNext();
 			continue;
 		}
@@ -97,7 +97,7 @@ usage:			system("bk help -s sccslog");
 				s->state |= S_SET;
 			} else if (rargs.rstart || sfileRev()) {
 				if (range_process("sccslog", s,
-					RANGE_SET, &rargs)) {
+					flags|RANGE_SET, &rargs)) {
 					goto next;
 				}
 			}
@@ -105,7 +105,7 @@ usage:			system("bk help -s sccslog");
 		save = n;
 		sccslog(s);
 		verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));
-next:		sccs_free(s);
+		sccs_free(s);
 	}
 	if (sfileDone()) errors = 1;
 	verbose((stderr, "Total %d deltas\n", n));
@@ -284,14 +284,20 @@ pdelta(delta *d, FILE *f)
 	if (indent) fprintf(f, "%*s", indent, "");
 	if (d->pathname) {
 		unless (opts.basenames) {
-			fprintf(f, "%s\n  ", d->pathname);
+			fprintf(f, "%s %s\n  ", d->pathname, d->rev);
 			if (indent) fprintf(f, "%*s", indent, "");
 		} else {
-			fprintf(f, "%s ", basenm(d->pathname));
+			fprintf(f, "%s %s ", basenm(d->pathname), d->rev);
 		}
 	}
 	y = (atoi(d->sdate) > 69) ? "19" : "20";
-	fprintf(f, "%s %s%s %s", d->rev, y, d->sdate, d->user);
+	fprintf(f, "%s%.2s-%.2s-%.2s %s %s",
+	    y,
+	    d->sdate,		/* YY */
+	    &(d->sdate[3]),	/* MM */
+	    &(d->sdate[6]),	/* DD */
+	    &(d->sdate[9]),	/* HH:MM:SS */
+	    d->user);
 	if (d->hostname) fprintf(f, "@%s", d->hostname);
 	fprintf(f, " +%d -%d\n", d->added, d->deleted);
 	EACH(d->comments) {

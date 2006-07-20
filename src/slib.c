@@ -1026,7 +1026,7 @@ monthDays(int year, int month)
 private void
 a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 {
-	int	mday;
+	int	i, tmp;
 
 #define	gettime(field) \
 	if (isdigit(asctime[1])) { \
@@ -1049,22 +1049,32 @@ a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 	}
 
 	/*
-	 * At the request of Matthias Urlichs, we are allowing 4 digit years
-	 * if the format is \d\d\d\d[^\d] ....
+	 * We're moving towards always having 4 digit years but we still want
+	 * to support, for now, 2 digit years and 4 digit years without 
+	 * requiring a non-digit separator.  So here's how that works:
+	 *
+	 * If the first 2 digits are in the 69..18 range then we are going
+	 * see that as 1969..2018.  And before 2019 we need to have dropped
+	 * support for 2 digit years.  The reason for 1969 is imports which
+	 * might have gone back far (and teamware grafted files w/ 1970 dates).
+	 * Otherwise it's a 4 digit year.  
 	 */
-	if ((strlen(asctime) >= 5) &&
-	    isdigit(asctime[0]) && 	/* 1 */
-	    isdigit(asctime[1]) && 	/* 9 */
-	    isdigit(asctime[2]) && 	/* 9 */
-	    isdigit(asctime[3]) && 	/* 9 */
-	    !isdigit(asctime[4])) { 	/* - */
-		tp->tm_year = atoi(asctime) - 1900;
-		asctime = &asctime[5];
-	} else {
-		gettime(tm_year); 
-	 	/* Adjust for year 2000 problems */
-		if (tp->tm_year < 69) tp->tm_year += 100;
-	}
+	for (i = tmp = 0; (i < 4) && isdigit(*asctime); i++) {
+		/* I want the increment here because of the break below */
+		tmp = tmp * 10 + (*asctime++ - '0');
+
+		/* we want 69..99 or 0..18 and this does that */
+		if ((i == 1) && ((tmp >= 69) || (tmp <= 18))) break;
+    	}
+	tp->tm_year = tmp;
+	for (; *asctime && !isdigit(*asctime); asctime++);
+
+	/*
+	 * We want a value between 69 and 138 which covers the time between
+	 * 1969 and 2038
+	 */
+	if (tp->tm_year < 69) tp->tm_year += 100;	/* we're 2000's */
+	if (tp->tm_year >= 1969) tp->tm_year -= 1900;	/* 4 digit year */
 	unless (*asctime) goto correct;
 
 	/* tm_mon counts 0..11; ASCII is 1..12 */
@@ -1086,8 +1096,8 @@ correct:
 	 * Truncate down oversized fields.
 	 */
 	if (tp->tm_mon > 11) tp->tm_mon = 11;
-	mday = monthDays(1900 + tp->tm_year, tp->tm_mon + 1);
-	if (mday < tp->tm_mday) tp->tm_mday = mday;
+	i = monthDays(1900 + tp->tm_year, tp->tm_mon + 1);
+	if (i < tp->tm_mday) tp->tm_mday = i;
 	if (tp->tm_hour > 23) tp->tm_hour = 23;
 	if (tp->tm_min > 59) tp->tm_min = 59;
 	if (tp->tm_sec > 59) tp->tm_sec = 59;
@@ -13999,7 +14009,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		KW("D_"); fc(' '); KW("T"); KW("TZ");
 		fc(' '); KW("P");
 		if (d->hostname) { fc('@'); fs(d->hostname); } fc(' ');
-		fc('+'); KW("LI"); fs(" -"); KW("LI"); fc('\n');
+		fc('+'); KW("LI"); fs(" -"); KW("LD"); fc('\n');
 		EACH(d->comments) {
 			fs("  ");
 			fs(d->comments[i]);
@@ -15861,7 +15871,7 @@ sccs_findKey(sccs *s, char *key)
 	 * We allow date2time to return 0 because of old Teamware deltas we
 	 * did not fudge in the 3pardata import.
 	 */
-	date = date2time(&parts[3][2], 0, EXACT);
+	date = date2time(parts[3], 0, EXACT);
 	if (!date && !streq(&parts[3][2], "700101000000")) return (0);
 	if (parts[4]) {
 		/* If we went into the findkeyDB with a long key and failed

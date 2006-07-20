@@ -16,7 +16,7 @@ commercial project
 export BK_YEAR2=YES
 echo $N Building up file with dates .................................$NL
 R=1
-for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45' '98/01/30 17:45:17'
+for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45' '98/01/30 17:45:17' '99/01/30 17:45:17' '00/01/30 17:45:17' '18/01/30 17:45:17'
 do	cat > INITX <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
@@ -42,6 +42,11 @@ DATE3a=97/05/3001:34:10
 DATE3=97/05/3001:34:11
 DATE4=97/06/2301:33:45
 DATE5=98/01/3017:45:17
+DATE6=99/01/3017:45:17
+DATE7=00/01/3017:45:17
+DATE8=18/01/3017:45:17
+DATE8B=180130174517
+DATE8C=20180130174517
 REV=1.2
 
 echo -------------- fully specified date range:
@@ -58,6 +63,18 @@ cat <<EOF > WANT
 1.2
 EOF
 cmpfiles WANT GOT
+unset BK_YEAR2
+for i in $DATE8 $DATE8B $DATE8C
+do
+	bk prs -nd':I: :D: :T:' -c${i} FILE > GOT
+	grep -q "1.8 2018/01/30 17:45:17" GOT || {
+		echo using $i failed
+		cat GOT
+		bk log FILE
+		exit 1
+	}
+done
+export BK_YEAR2=YES
 echo OK
 
 echo $N Forward range of dates test 1................................$NL
@@ -67,6 +84,9 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -79,6 +99,9 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -90,6 +113,9 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -194,7 +220,7 @@ echo $N Range test -r+ ..............................................$NL
 bk prs -fnd:I: -r+ FILE > GOT
 cat <<EOF > WANT
 ======== FILE + ========
-1.5
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -207,6 +233,9 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 bk prs -fnd:I: -r1.3.. FILE > GOT
@@ -214,6 +243,9 @@ cat <<EOF > WANT
 ======== FILE 1.3.. ========
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -223,6 +255,9 @@ bk prs -fnd:I: -r1.4.. FILE > GOT
 cat <<EOF > WANT
 ======== FILE 1.4.. ========
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -289,7 +324,7 @@ echo $N Range test -c+ ..............................................$NL
 bk prs -fnd:I: -c+ FILE > GOT
 cat <<EOF > WANT
 ======== FILE + ========
-1.5
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -303,6 +338,9 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 bk prs -fnd:I: -c1.3.. FILE > GOT
@@ -311,6 +349,9 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -321,6 +362,9 @@ cat <<EOF > WANT
 ======== FILE 1.4.. ========
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -393,6 +437,9 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -405,6 +452,9 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -414,6 +464,9 @@ bk prs -fnd:I: -c+97.. FILE > GOT
 cat <<EOF > WANT
 ======== FILE +97.. ========
 1.5
+1.6
+1.7
+1.8
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -448,6 +501,8 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -461,6 +516,8 @@ cat <<EOF > WANT
 1.3
 1.4
 1.5
+1.6
+1.7
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -483,8 +540,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Range test -c99.. on null ...................................$NL
-bk prs -fnd:I: -c99.. FILE > GOT
+echo $N Range test -c2019.. on null .................................$NL
+bk prs -fnd:I: -c2019.. FILE > GOT
 cat <<EOF > WANT
 EOF
 cmpfiles WANT GOT
@@ -564,7 +621,7 @@ if [ -f FILE ]; then echo Failed - found a delta that is not there.; exit 1; fi
 echo OK
 
 echo $N Adding dates after 2000 .....................................$NL
-for D in '00/05/28 23:49:57' '01/05/28 23:49:57' '02/05/30 01:34:11'
+for D in '2019/05/28 23:49:57' '2020/05/28 23:49:57' '2022/05/30 01:34:11'
 do	cat > INITX <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
@@ -584,7 +641,7 @@ echo OK
 
 echo $N Getting the last delta with -c ..............................$NL
 rm -f FILE
-bk get $S -c02 -GFILE FILE
+bk get $S -c2022 -GFILE FILE
 cat > X <<EOF
 1.1
 1.2
@@ -594,11 +651,11 @@ cat > X <<EOF
 1.6
 1.7
 1.8
+1.9
+1.10
+1.11
 EOF
-bk undos X > F
-bk undos FILE > Y
-cmp -s F Y
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+cmpfiles X FILE
 echo OK
 
 echo $N Getting a delta in year 2000 with -c ........................$NL
@@ -611,16 +668,14 @@ cat > X <<EOF
 1.4
 1.5
 1.6
+1.7
 EOF
-bk undos X > F
-bk undos FILE > Y
-cmp -s F Y
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+cmpfiles X FILE
 echo OK
 
-echo $N Getting a delta in year 2001 with -c ........................$NL
+echo $N Getting a delta in year 2018 with -c ........................$NL
 rm -f FILE
-bk get $S -c01 -GFILE FILE
+bk get $S -c18 -GFILE FILE
 cat > X <<EOF
 1.1
 1.2
@@ -629,11 +684,9 @@ cat > X <<EOF
 1.5
 1.6
 1.7
+1.8
 EOF
-bk undos X > F
-bk undos FILE > Y
-cmp -s F Y
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+cmpfiles X FILE
 echo OK
 
 echo $N Getting a range from 98..01 with -c .........................$NL
@@ -641,11 +694,11 @@ bk prs -c98..01 FILE | awk '{print $1, $2, $3}' | sed 's/  *$//' > X
 bk undos X > CMP1
 cat > CMP2 <<EOF
 ======== FILE 98..01
-D 1.7 01/05/28
+D 1.7 00/01/30
 P FILE
 C This is
 ------------------------------------------------
-D 1.6 00/05/28
+D 1.6 99/01/30
 P FILE
 C This is
 ------------------------------------------------
