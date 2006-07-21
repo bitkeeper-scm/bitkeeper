@@ -650,12 +650,9 @@ cmdlog_end(int ret)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	if (write_log(proj_root(0), "cmd_log", 0, "%s", log)) {
-		goto out;
-	}
-	if (cmdlog_repo &&
-	    write_log(proj_root(0), "repo_log", LOG_MAXSIZE, "%s", log)) {
-		goto out;
+	write_log(proj_root(0), "cmd_log", 0, "%s", log);
+	if (cmdlog_repo) {
+		write_log(proj_root(0), "repo_log", LOG_MAXSIZE, "%s", log);
 	}
 	free(log);
 
