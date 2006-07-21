@@ -457,8 +457,7 @@ typedef struct delta {
 					/* open tips, so maintained always */
 	char	type;			/* Delta or removed delta */
 } delta;
-#define	TAG(d)		((d)->type == 'R')
-#define	REG(d)		((d)->type == 'D')
+#define	TAG(d)		((d)->type != 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 /*
@@ -821,7 +820,7 @@ int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 int	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
 char	*sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec);
-delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
+delta	*sccs_findDate(sccs *s, char *date, int roundup);
 int	sccs_patheq(char *file1, char *file2);
 delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags);

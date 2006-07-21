@@ -290,7 +290,7 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 
 	if (*rstart) {
 		unless (s->rstart =
-		    sccs_getrev(s, 0, rstart, ROUNDDOWN)) {
+		    sccs_findDate(s, rstart, ROUNDDOWN)) {
 			verbose((stderr, "%s: Can't find date %s in %s\n",
 				    me, rstart, s->gfile));
 			return (1);
@@ -300,7 +300,7 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	}
 	unless (rstop) rstop = rstart;
 	if (*rstop) {
-		unless (s->rstop = sccs_getrev(s, 0, rstop, ROUNDUP)) {
+		unless (s->rstop = sccs_findDate(s, rstop, ROUNDUP)) {
 			verbose((stderr, "%s: Can't find date %s in %s\n",
 				    me, rstop, s->gfile));
 			return (1);
