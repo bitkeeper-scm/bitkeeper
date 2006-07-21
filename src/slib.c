@@ -1790,27 +1790,28 @@ findDate(delta *d, time_t date)
 }
 
 /*
- * Take either a revision or date/symbol and return the delta.
+ * Take either a date and return the delta closest to that date.
  *
  * Date tokens may have a prefix of "+" or "-" to imply rounding direction.
  * If there is no prefix, then the roundup variable is used.
  */
 delta *
-sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
+sccs_findDate(sccs *sc, char *s, int roundup)
 {
 	delta	*tmp, *d = 0;
 	time_t	date;
-	char	*s = rev ? rev : dateSym;
 	int	dateround = roundup;
 	ser_t	x;
 	char	ru = 0;
 
 	unless (sc && sc->table) return (0);
 
+	assert(s);
+
 	/*
-	 * Strip off prefix.
+	 * Strip off prefix from dates
 	 */
-	if (s && *s) {
+	if (s[0] && isdigit(s[1])) {
 		switch (*s) {
 		    case '+':
 			ru = *s;
@@ -1824,20 +1825,6 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 			break;
 		}
 	}
-
-	/* Allow null revisions to mean TOT or first delta */
-	// XXX still needed?
-	if (!s || !*s) {
-		if (roundup == ROUNDDOWN) {	/* this is first call */
-			unless (ru == '+') return (sc->tree);
-		}
-		return (findrev(sc, 0));
-	}
-
-	/*
-	 * If it's a revision, go find it and use it.
-	 */
-	if (rev) return (sccs_findrev(sc, s));
 
 	/*
 	 * If it is a symbol, revision, or key,
@@ -1945,7 +1932,7 @@ cset2rev(sccs *s, char *rev)
 	 */
 	if (streq(rev, "+")) {
 		for (ret = s->table;
-		    ret && (!REG(ret) || !(ret->flags & D_CSET));
+		    ret && (TAG(ret) || !(ret->flags & D_CSET));
 		    ret = ret->next);
 		return (ret);
 	}
@@ -2932,39 +2919,35 @@ sccs_badTag(char *me, char *tag, int flags)
 		return (1);
 	}
 	switch (*tag) {
+	    case '@':
 	    case '=':
 	    case '-':
+	    case '+':
 	    case '.':
 		verbose((stderr,
 		    "%s: %s: tags can't start with a '%c'.\n", me, tag, *tag));
-		return (1);
-	}
-	if (streq(tag, "+")) {
-		verbose((stderr,
-		    "%s: tag cannot be '+', that means most recent rev.\n",
-		    me));
 		return (1);
 	}
 	if (strstr(tag, "..")) {
 		verbose((stderr,
 		    "%s: tag %s cannot contain '..'\n", me, tag));
 		return (1);
-	}			
+	}
 	if (strstr(tag, ".,")) {
 		verbose((stderr,
 		    "%s: tag %s cannot contain '.,'\n", me, tag));
 		return (1);
-	}			
+	}
 	if (strstr(tag, ",.")) {
 		verbose((stderr,
 		    "%s: tag %s cannot contain ',.'\n", me, tag));
 		return (1);
-	}			
+	}
 	if (strstr(tag, ",,")) {
 		verbose((stderr,
 		    "%s: tag %s cannot contain ',,'\n", me, tag));
 		return (1);
-	}			
+	}
 	p = tag;
 	while (*p) {
 		switch (*p++) {
@@ -4246,7 +4229,7 @@ sccs_init(char *name, u32 flags)
 		 * Don't allow them to check in a gfile of a different type.
 		 */
 		if (HAS_GFILE(s)) {
-			for (d = s->table; !REG(d); d = d->next);
+			for (d = s->table; TAG(d); d = d->next);
 			assert(d);
 			if ((d->flags & D_MODE) &&
 			    (fileType(d->mode) != fileType(s->mode))) {
@@ -10274,7 +10257,7 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 		sym = strdup(s[i].thing);
 		if (rev = strrchr(sym, '|')) *rev++ = 0;
 		/* Note: rev is set or null from above test */
-		unless (d = sccs_getrev(sc, rev ? rev : "+", 0, 0)) {
+		unless (d = sccs_findrev(sc, rev)) {
 			verbose((stderr,
 			    "%s: can't find %s in %s\n",
 			    me, rev, sc->sfile));

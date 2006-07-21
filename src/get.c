@@ -177,7 +177,7 @@ err:			sccs_free(s);
 			continue;
 		}
 		if (cdate) {
-			unless (d = sccs_getrev(s, 0, cdate, ROUNDUP)) {
+			unless (d = sccs_findDate(s, cdate, ROUNDUP)) {
 				fprintf(stderr,
 				    "No delta like %s in %s\n",
 				    cdate, s->sfile);

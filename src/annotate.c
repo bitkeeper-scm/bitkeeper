@@ -78,7 +78,7 @@ err:			errors = 1;
 		if (range) {
 			if (range_process(ME, s, RANGE_SET, &rargs)) goto err;
 		} else if (cdate) {
-			d = sccs_getrev(s, 0, cdate, ROUNDUP);
+			d = sccs_findDate(s, cdate, ROUNDUP);
 			unless (d) {
 				fprintf(stderr,
 				    "No delta like %s in %s\n",
