@@ -17,8 +17,8 @@ log_main(int ac, char **av)
 	int	log = streq(av[0], "log");
 	int	reverse = 0, doheader = !log;
 	int	init_flags = INIT_NOCKSUM;
-	int	flags = 0, sf_flags = 0;
-	int	rc = 0, c;
+	int	flags = 0, sf_flags = 0, rc = 0, one = 0;
+	int	c;
 	char	*name;
 	char	*cset = 0, *tip = 0;
 	int	noisy = 0;
@@ -29,8 +29,9 @@ log_main(int ac, char **av)
 
 	unless (dspec) dspec = log ? ":LOG:" : ":PRS:";
 
-	while ((c = getopt(ac, av, "abc;C;d:DfhMnopr;vY")) != -1) {
+	while ((c = getopt(ac, av, "1abc;C;d:DfhMnopr;vY")) != -1) {
 		switch (c) {
+		    case '1': one = 1; doheader = 0; break;
 		    case 'a':					/* doc 2.0 */
 			flags |= PRS_ALL;
 			break;
@@ -128,6 +129,7 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 			}
 			printf("========\n");
 		}
+		s->prs_one = one;
 		sccs_prs(s, flags, reverse, dspec, stdout);
 		sccs_free(s);
 		continue;

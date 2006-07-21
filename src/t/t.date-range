@@ -51,22 +51,22 @@ REV=1.2
 
 echo -------------- fully specified date range:
 echo $N Test exact date matches .....................................$NL
-bk prs -fnd:I: -c${DATE1} FILE > GOT
+bk prs -fnd:I: -c${DATE1}..${DATE1} FILE > GOT
 cat <<EOF > WANT
-======== FILE $DATE1 ========
+======== FILE $DATE1..$DATE1 ========
 1.1
 EOF
 cmpfiles WANT GOT
-bk prs -fnd:I: -c${DATE2} FILE > GOT
+bk prs -fnd:I: -c${DATE2}..${DATE2} FILE > GOT
 cat <<EOF > WANT
-======== FILE $DATE2 ========
+======== FILE $DATE2..$DATE2 ========
 1.2
 EOF
 cmpfiles WANT GOT
 unset BK_YEAR2
 for i in $DATE8 $DATE8B $DATE8C
 do
-	bk prs -nd':I: :D: :T:' -c${i} FILE > GOT
+	bk prs -nd':I: :D: :T:' -c${i}..${i} FILE > GOT
 	grep -q "1.8 2018/01/30 17:45:17" GOT || {
 		echo using $i failed
 		cat GOT
@@ -306,39 +306,39 @@ eval `bk prs -r.. -hd'MD:L:=:MD5KEY:\nKEY:L:=":KEY:"\n' FILE`
 
 echo -------------- revisions as dates range:
 echo $N Range test -c1.1 ............................................$NL
-bk prs -fnd:I: -c${REV1} FILE > GOT
+bk prs -fnd:I: -c${REV1}..${REV1} FILE > GOT
 cat <<EOF > WANT
-======== FILE ${REV1} ========
+======== FILE ${REV1}..$REV1 ========
 1.1
 EOF
 cmpfiles WANT GOT
-bk prs -fnd:I: -c${MD1} FILE > GOT
+bk prs -fnd:I: -c${MD1}..${MD1} FILE > GOT
 cat <<EOF > WANT
-======== FILE ${MD1} ========
+======== FILE ${MD1}..$MD1 ========
 1.1
 EOF
 cmpfiles WANT GOT
-bk prs -fnd:I: -c"${KEY1}" FILE > GOT
+bk prs -fnd:I: -c"${KEY1}".."${KEY1}" FILE > GOT
 cat <<EOF > WANT
-======== FILE ${KEY1} ========
+======== FILE ${KEY1}..${KEY1} ========
 1.1
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Range test -c1.5 ............................................$NL
-bk prs -fnd:I: -c${REV5} FILE > GOT
+bk prs -fnd:I: -c${REV5}..${REV5} FILE > GOT
 cat <<EOF > WANT
-======== FILE ${REV5} ========
+======== FILE ${REV5}..$REV5 ========
 1.5
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Range test -c+ ..............................................$NL
-bk prs -fnd:I: -c+ FILE > GOT
+bk prs -fnd:I: -c+..+ FILE > GOT
 cat <<EOF > WANT
-======== FILE + ========
+======== FILE +..+ ========
 1.8
 EOF
 cmpfiles WANT GOT
@@ -538,42 +538,6 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Everything after the end of 1987 ............................$NL
-bk prs -fnd:I: -c+87.. FILE > GOT
-cat <<EOF > WANT
-======== FILE +87.. ========
-1.2
-1.3
-1.4
-1.5
-1.6
-1.7
-1.8
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Everything after the end of 1997 ............................$NL
-bk prs -fnd:I: -c+97.. FILE > GOT
-cat <<EOF > WANT
-======== FILE +97.. ========
-1.5
-1.6
-1.7
-1.8
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Everything before the start of 1997 .........................$NL
-bk prs -fnd:I: -c..-97 FILE > GOT
-cat <<EOF > WANT
-======== FILE ..-97 ========
-1.1
-EOF
-cmpfiles WANT GOT
-echo OK
-
 echo $N Range test 87..97 on 1.1..1.4 ...............................$NL
 bk prs -fnd:I: -c87..97 FILE > GOT
 cat <<EOF > WANT
@@ -657,63 +621,6 @@ cmp -s PRS PRS2
 if [ $? -ne 0 ]; then echo Failed.; diff PRS PRS2; exit 1; fi
 echo OK
 
-echo -------------- misc:
-echo $N Getting the first delta with -c .............................$NL
-rm -f FILE
-bk get $S -c90 -GFILE FILE
-echo 1.1 > X
-bk undos X > F
-bk undos FILE > Y
-cmp -s F Y
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-echo OK
-
-echo $N Getting the second delta with -c ............................$NL
-rm -f FILE
-bk get $S -c970529 -GFILE FILE
-echo 1.1 > X
-bk undos X > F
-echo 1.2 >> X
-bk undos X > F
-bk undos FILE > Y
-cmp -s F Y
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-echo OK
-
-echo $N Getting the all but last delta with -c ......................$NL
-rm -f FILE
-bk get $S -c970624 -GFILE FILE
-cat > X <<EOF
-1.1
-1.2
-1.3
-1.4
-EOF
-bk undos X > F
-bk undos FILE > Y
-cmp -s F Y
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-echo OK
-
-echo $N Same thing with round down -c-98 ............................$NL
-bk get $S -c-98 -GFILE FILE
-bk undos FILE > Y
-cmp -s F Y
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-echo OK
-
-echo $N Attempting a bad date with -c80 .............................$NL
-rm -f FILE
-bk get $S -c80 -GFILE FILE 2>${DEV_NULL}
-if [ -f FILE ]; then echo Failed - found a delta that is not there.; exit 1; fi
-echo OK
-
-echo $N Attempting a bad date with -c01 .............................$NL
-rm -f FILE
-bk get $S -c72 -GFILE FILE 2>${DEV_NULL}
-if [ -f FILE ]; then echo Failed - found a delta that is not there.; exit 1; fi
-echo OK
-
 echo $N Adding dates after 2000 .....................................$NL
 for D in '2019/05/28 23:49:57' '2020/05/28 23:49:57' '2022/05/30 01:34:11'
 do	cat > INITX <<EOF
@@ -729,14 +636,14 @@ done
 echo OK
 
 echo $N Trying a date range that covers nothing .....................$NL
-bk prs -c88..88 FILE > OUT
+bk prs -h -c88..88 FILE > OUT
 if [ -s OUT ]; then echo Error - found a delta.; exit 1; fi
 echo OK
 
 echo $N Getting the last delta with -c ..............................$NL
 rm -f FILE
-bk get $S -c2022 -GFILE FILE
-cat > X <<EOF
+bk prs -fhnd:REV: -c..2022 FILE > GOT
+cat > WANT <<EOF
 1.1
 1.2
 1.3
@@ -749,13 +656,13 @@ cat > X <<EOF
 1.10
 1.11
 EOF
-cmpfiles X FILE
+cmpfiles GOT WANT
 echo OK
 
 echo $N Getting a delta in year 2000 with -c ........................$NL
 rm -f FILE
-bk get $S -c00 -GFILE FILE
-cat > X <<EOF
+bk prs -fhnd:REV: -c..00 FILE > GOT
+cat > WANT <<EOF
 1.1
 1.2
 1.3
@@ -764,13 +671,13 @@ cat > X <<EOF
 1.6
 1.7
 EOF
-cmpfiles X FILE
+cmpfiles GOT WANT
 echo OK
 
 echo $N Getting a delta in year 2018 with -c ........................$NL
 rm -f FILE
-bk get $S -c18 -GFILE FILE
-cat > X <<EOF
+bk prs -fhnd:REV: -c..18 FILE > GOT
+cat > WANT <<EOF
 1.1
 1.2
 1.3
@@ -780,7 +687,7 @@ cat > X <<EOF
 1.7
 1.8
 EOF
-cmpfiles X FILE
+cmpfiles GOT WANT
 echo OK
 
 echo $N Getting a range from 98..01 with -c .........................$NL

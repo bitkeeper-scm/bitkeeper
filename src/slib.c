@@ -14,6 +14,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "tomcrypt/mycrypt.h"
+#include "range.h"
 
 #define	VSIZE 4096
 
@@ -1800,48 +1801,31 @@ findDate(delta *d, time_t date)
 }
 
 /*
- * Take either a date and return the delta closest to that date.
+ * Take a date and return the delta closest to that date.
  *
- * Date tokens may have a prefix of "+" or "-" to imply rounding direction.
- * If there is no prefix, then the roundup variable is used.
+ * The roundup parameter determines how to round inexact dates (ie 2001)
+ * and which direction to look for deltas near that date.
  */
 delta *
 sccs_findDate(sccs *sc, char *s, int roundup)
 {
 	delta	*tmp, *d = 0;
 	time_t	date;
-	int	dateround = roundup;
 	ser_t	x;
-	char	ru = 0;
 
 	unless (sc && sc->table) return (0);
-
 	assert(s);
-
-	/*
-	 * Strip off prefix from dates
-	 */
-	if (s[0] && isdigit(s[1])) {
-		switch (*s) {
-		    case '+':
-			ru = *s;
-			dateround = ROUNDUP;
-			s++;
-			break;
-		    case '-':
-			ru = *s;
-			dateround = ROUNDDOWN;
-			s++;
-			break;
-		}
-	}
+	assert((roundup == ROUNDUP) || (roundup == ROUNDDOWN));
 
 	/*
 	 * If it is a symbol, revision, or key,
 	 * then just go get that delta and return it.
 	 */
-	if (!isdigit(*s) || (scanrev(s, &x, &x, &x, &x) > 1) || isKey(s)) {
+	if ((!isdigit(*s) && (*s != '-')) ||	/* not a date */
+	    (scanrev(s, &x, &x, &x, &x) > 1) ||
+	    isKey(s)) {
 		return (sccs_findrev(sc, s));
+		/* XXX what if findrev fails... */
 	}
 
 	/*
@@ -1853,40 +1837,25 @@ sccs_findDate(sccs *sc, char *s, int roundup)
 	 * The order returned is rstart == 1.1 and rstop == 1.5, i.e.,
 	 * oldest delta .. newest.
 	 */
-	date = date2time(s, 0, dateround);
-
-	if (roundup == ROUNDDOWN) {	/* first call */
-		if (date < sc->tree->date) return (sc->tree);
-		if (date > sc->table->date) return (0);
-	} else {			/* second call */
-		if (date > sc->table->date) return (sc->table);
-		if (date < sc->tree->date) {
-			sc->rstart = 0;
-			return (0);
-		}
-		if (sc->rstart && (date < sc->rstart->date)) {
-			sc->rstart = 0;
-			return (0);
-		}
+	if (*s == '-') {
+		date = range_cutoff(s+1);
+	} else {
+		date = date2time(s, 0, roundup);
 	}
+
 	/* Walking the table newest .. oldest order */
 	for (tmp = 0, d = sc->table; d; tmp = d, d = d->next) {
-		unless (d->type == 'D') continue;
+		if (TAG(d)) continue;
 		if (d->date == date) return (d);
 		/*
 		 *                v date
 		 * big date   1.4   1.3   1.2    little date
 		 *             ^tmp  ^d
 		 */
-		if (d->date < date) {
-			if (roundup == ROUNDDOWN) {	/* first call */
-				return (tmp);
-			} else {
-				return (d);
-			}
-		}
+		if (d->date < date) break;
 	}
-	return (tmp);
+	if (roundup == ROUNDDOWN) return (tmp);
+	return (d);
 }
 
 void
@@ -13896,6 +13865,15 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (s->prs_odd ? nullVal : strVal);
 	}
 
+	case KW_JOIN: /* JOIN */ {
+		unless (s->prs_join) {
+			s->prs_join = 1;
+			return (nullVal);
+		}
+		fs(",");
+		return (strVal);
+	}
+
 	case KW_G: /* G */ {
 		/* g file basename */
 		if (s->gfile) {
@@ -15073,7 +15051,7 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) fputc('\n', out);
 	}
-	return (0);
+	return (s->prs_output);
 }
 
 char *
@@ -15300,8 +15278,9 @@ prs_reverse(sccs *s, int flags, char *dspec, FILE *out)
 	int	ser;
 	
 	for (ser = 1; ser < s->nextserial; ser++) {
-		if ((d = sfind(s, ser)) && (d->flags & D_SET)) {
-			sccs_prsdelta(s, d, flags, dspec, out);
+		unless ((d = sfind(s, ser)) && (d->flags & D_SET)) continue;
+		if (sccs_prsdelta(s, d, flags, dspec, out) && s->prs_one) {
+			return;
 		}
 	}
 }
@@ -15312,7 +15291,10 @@ prs_forward(sccs *s, int flags, char *dspec, FILE *out)
 	delta	*d;
 
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
+		unless (d->flags & D_SET) continue;
+		if (sccs_prsdelta(s, d, flags, dspec, out) && s->prs_one) {
+			return;
+		}
 	}
 }
 
@@ -15323,6 +15305,7 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 
 	if (!dspec) dspec = ":DEFAULT:";
 	s->prs_odd = 0;
+	s->prs_join = 0;
 	GOODSCCS(s);
 	if (flags & PRS_PATCH) {
 		assert(s->rstart == s->rstop);

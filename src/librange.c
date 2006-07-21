@@ -29,11 +29,8 @@ private int	range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs);
  *   -cd1..d2	# round d1 down and d2 up and return all deltas between
  *		# the two.
  *
- * In the above d1 can be replaced with +d1 to force it to round up
- * intead of down and d2 can be -d2 to found it to round down.
- *
- * As a special case -c-4w can be used to get all deltas in the last 4
- * weeks.
+ * As a special case -4w will evaluate to a date 4 weeks from today.
+ * So -c-4w.. can be used to get all deltas in the last 4 weeks.
  *
  * Date format: yymmddhhmmss
  *	If d1 is a partially specified date, then the default rounding
@@ -102,11 +99,10 @@ rangeReset(sccs *sc)
 time_t
 range_cutoff(char *spec)
 {
-	double	mult = atof(spec);
+	double	mult = strtod(spec, &spec);
 	int	units = 1;
 
 	if ((mult == 0) && !isdigit(*spec)) mult = 1;
-	while (*spec && (isdigit(*spec) || (*spec == '.'))) spec++;
 	switch (*spec) {
 	    case 0: case 's': break;
 	    case 'm': units = MINUTE; break;
@@ -272,20 +268,19 @@ range_processDates(char *me, sccs *s, u32 flags, RANGE *rargs)
 	delta	*d;
 	char	*rstart = rargs->rstart;
 	char	*rstop = rargs->rstop;
-	time_t	cutoff;
 
 	if (flags & RANGE_SET) s->state |= S_SET;
 
-	/* handle -c-9d */
-	if (!rstop && (rstart[0] == '-')) {
-		cutoff = range_cutoff(rstart + 1);
-		for (d = s->table; d; d = d->next) {
-			if (TAG(d) || (d->date < cutoff)) continue;
-			if (flags & RANGE_SET) d->flags |= D_SET;
-			unless (s->rstop) s->rstop = d;
-			s->rstart = d;
-		}
-		return (0);
+	/*
+	 * make -c-1Y mean -c-1Y..
+	 * XXX we don't want to support this forever...
+	 */
+	if ((rstart[0] == '-') && !rstop) rstop = "";
+
+	unless (rstop) {
+		verbose((stderr, "%s: Date ranges must have 2 endpoints.\n",
+			    me));
+		return (1);
 	}
 
 	if (*rstart) {

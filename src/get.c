@@ -10,7 +10,7 @@ get_main(int ac, char **av)
 {
 	sccs	*s;
 	int	iflags = 0, flags = GET_EXPAND, c, errors = 0;
-	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
+	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *Gname = 0;
 	char	*prog;
 	char	*mRev = 0, *Rev = 0;
 	delta	*d;
@@ -39,7 +39,7 @@ get_main(int ac, char **av)
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
 	if (streq("GET", proj_configval(0, "checkout"))) flags |= GET_NOREGET;
 	while ((c =
-	    getopt(ac, av, "A;a;Bc;CDeFgG:hi;klM|pPqr;RSstTx;")) != -1) {
+	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|pPqr;RSstTx;")) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -49,7 +49,6 @@ get_main(int ac, char **av)
 			if (flags == -1) goto usage;
 			break;
 		    case 'B': skip_bin = 1; break;
-		    case 'c': cdate = optarg; break;		/* doc 2.0 */
 		    case 'C': getMsg("get_C", 0, 0, stdout); return (1);
 		    case 'D': getdiff++; break;			/* doc 2.0 */
 		    case 'l':					/* doc 2.0 co */
@@ -106,9 +105,9 @@ onefile:	fprintf(stderr,
 		fprintf(stderr, "%s: can't use -G and -p together,\n", av[0]);
 		goto usage;
 	}
-	if ((rev || cdate) && closetips) {
+	if (rev && closetips) {
 		fprintf(stderr,
-		    "%s: -M can not be combined with rev/date.\n", av[0]);
+		    "%s: -M can not be combined with rev.\n", av[0]);
 		goto usage;
 	}
 	switch (getdiff) {
@@ -176,15 +175,7 @@ err:			sccs_free(s);
 			sccs_free(s);
 			continue;
 		}
-		if (cdate) {
-			unless (d = sccs_findDate(s, cdate, ROUNDUP)) {
-				fprintf(stderr,
-				    "No delta like %s in %s\n",
-				    cdate, s->sfile);
-				goto err;
-			}
-			rev = d->rev;
-		} else if (Rev) {
+		if (Rev) {
 			rev = Rev;
 		} else {
 			rev = sfileRev();

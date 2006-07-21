@@ -2,6 +2,7 @@
 #include "range.h"
 
 private struct {
+	u32	one:1;		/* -1: stop after printing one entry */
 	u32	all:1;		/* list all, including tags etc */
 	u32	doSearch:1;	/* search the comments list */
 	u32	showdups:1;	/* do not filter duplicates when multi-parent */
@@ -77,7 +78,7 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "ac;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
+	while ((c = getopt(ac, av, "1ac;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
 		unless (c == 'L' || c == 'R') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -90,6 +91,7 @@ changes_main(int ac, char **av)
 		     * Note: do not add option 'K', it is reserved
 		     * for internal use by bkd_changes.c, part1
 		     */
+		    case '1': opts.one = 1; break;
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'c':
 			if (range_addArg(&opts.rargs, optarg, 1)) goto usage;
@@ -370,7 +372,7 @@ pdelta(delta *e)
 			sccs_prsdelta(opts.s, e, flags, opts.spec, opts.f);
 		}
 	}
-	return (fflush(opts.f));
+	return (fflush(opts.f) || opts.one);
 }
 
 private int

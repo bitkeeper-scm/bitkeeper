@@ -605,9 +605,11 @@ typedef	struct sccs {
 	u32	bad_dsum:1;	/* patch checksum mismatch */
 	u32	io_error:1;	/* had an output error, abort */
 	u32	io_warned:1;	/* we told them about the error */
-	u32	prs_output:1;	/* prs printed something */
 	u32	bitkeeper:1;	/* bitkeeper file */
+	u32	prs_output:1;	/* prs printed something */
 	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
+	u32	prs_one:1;	/* stop printing after printing the first one */
+	u32	prs_join:1;	/* for joining together items in dspecs */
 	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
