@@ -1,4 +1,108 @@
-Release notes for BitKeeper version 4.0.0 (released 2006/06/14)
+===============================================================================
+Release notes for BitKeeper version 4.0-beta5 (released 2006-07-21)
+
+
+
+===============================================================================
+Release notes for BitKeeper version 4.0-beta4 (released 2006-07-14)
+
+Range rework
+
+"bk changes -L" and "-R" now imply "-a" -- show all that would go on a
+bk push or bk pull.  "bk changes -a" and "bk log -a" are now undocumented.
+
+Range A..B is now a graph difference, similar to the way "bk log -MrA..B"
+worked, except that A is not included in the final result.  The '.,'
+and ',.' ranges have been removed.
+
+Tag graph inclusion in a range is now based on what would go in a bk push
+or bk pull.  That is, a tag that is not attached to a changeset in the range
+can now appear in the "bk changes -a" output if it is tag parented on
+a tag that is attached to a changeset in the range.
+
+"bk makepatch -r1.0.." and "bk cset -M1.0.." mean "all" instead of
+"all except 1.0."  These are the two cases that work like they used to.
+
+"bk log -o" has been removed.
+"bk log -C<rev>" now prints nothing if the revision is not in a cset;
+it used to list pending deltas.
+"bk log -pr<rev>" is now limited to a single non-merge revision.
+"bk stripdel -b" has been removed.
+
+===============================================================================
+Release notes for BitKeeper version 4.0-beta3 (released 2006-06-30)
+
+bk export -tpatch -r$KEY",+ could fail because an underlying command couldn't
+handle keys.  It works now.
+
+Bugs: 2006-01-24-001 2006-03-24-001 fixed a problem where bk unpull said
+"Arg list too long".
+
+BK_SHOWPROC=/dev/tty bk <command> logs commands to /dev/tty.  The value
+of BK_SHOWPROC can be an arbitrary file, "YES" (an alias for /dev/tty),
+or a host:port pair for TCP-based logging.  Quite useful for debugging
+on Windows is to create an autoexec.bat line that says:
+
+	set BK_SHOWPROC C:/bk.log
+
+bk sfiles has a number of performance fixes; there was a bug that prevented
+the promised performance from being realized in bk citool.
+
+bk ignore gets a new syntax to prune directories:
+
+	path/to/dir -prune
+
+If you use .bk_skip files, this release introduces an alternative: -prune,
+which is higher performance and works better.  .bk_skip continues to be
+supported.
+
+bk check uses substantially less memory, increasing performance for repos 
+that just barely fit in memory.
+
+bk takepatch (finally!) gets the fix that lists the edited files at the end
+in a nice format so you can go decide what you want to do with them.
+
+Fix a customer-reported bug where checkout:edit was not respected in some cases.
+
+Fix a problem for MySQL where they set BK_HOST=mysql.com, removing entropy from
+the keys.  We now use `bk getuser`/`bk getuser -r`@`bk gethost`/`bk gethost -r`
+when get{user,host} != get{user,host} -r.  Makes for longer keys but they'll
+be unique.
+
+BK/Web is a lot nicer: it auto generates a top-level page listing all
+repositories.  More visual design work is needed but this release closes
+lots of bugs:
+
+    2001-05-30-003   URL-encoding for searching doesn't work
+    2002-07-02-001   bkweb search fails for multiple words
+    2004-01-30-002   bk web does not support multiword search
+    2004-04-06-001   bk/web shows multiple tags without seperator
+    2004-06-03-001   bk/web search in file contents is broken
+    2006-02-07-002   Spaces in a filename break changeset/annotation
+
+Fix a bug where extra files weren't sorted in the bk citool window.
+
+Fix a bug where GUI geometries weren't being saved properly.
+
+In bk sendbug, don't guess user names (bugid 2006-06-20-002)
+
+Add support for three different line endings: native, unix, or windows
+(windows is new).
+
+===============================================================================
+Release notes for BitKeeper version 4.0-beta2 (released 2006-06-15)
+
+Mostly bugs reported by Harold @ Starnet (thanks!)
+
+Fix some windows bugs related to the visual studio and shell extension plugins.
+
+Fix a bug in citool where it didn't create SCCS directories "hidden" on
+windows; this interacted badly with Visual Studio 2005.
+
+Windows installer fixes.
+
+===============================================================================
+Release notes for BitKeeper version 4.0-beta1 (released 2006-06-07)
 
 This is a major release that improves performance, introduces
 significant new features, regularizes interfaces, and fixes a number of
@@ -7,7 +111,7 @@ so it is completely compatible with 3.2.x versions of BitKeeper.
 
 For installation instructions please see:
 
-    http://www.bitkeeper.com/Installing4.0.txt
+    http://www.bitkeeper.com/Installing4.0-beta.txt
 
 Performance Improvements
     bk changes is significantly faster (up to 7.5X), especially with remote URLs
@@ -132,17 +236,6 @@ Simplified Patching and Backporting
     You can combine this with "bk comments -C+" to backport the changes to
     another repository.
 
-    bk takepatch lists the edited files at the end in a nice format so
-    you can go decide what you want to do with them.
-
-BK_SHOWPROC
-    "BK_SHOWPROC=/dev/tty bk <command>" logs commands to /dev/tty.
-    The value of BK_SHOWPROC can be an arbitrary file, "YES" (an alias for
-    /dev/tty), or a host:port pair for TCP-based logging.  Quite useful
-    for debugging on Windows is to create an autoexec.bat line that says:
-
-	set BK_SHOWPROC C:\bk.log
-
 Wildcards for File Arguments
     BitKeeper now supports wildcards as file arguments.  To diff all .c
     files in an entire repository, you can do:
@@ -150,10 +243,6 @@ Wildcards for File Arguments
 	bk -r diffs '*.c'
 
     See bk help glob for examples.
-
-Windows Line-Ending Support
-    This release adds support for three different styles of line ending:
-    native, unix, or windows (windows is new).
 
 Lease Server
     This release introduces a simplified method for license/lease
@@ -197,22 +286,6 @@ Interface Changes
 This section describes changes to command syntax and semantics in this
 release.  Wherever practical, the old syntax is contrasted with the new
 syntax to help you update your scripts for 4.0.x.
-
-Range Changes
-    The range notation A..B is now a graph difference, meaning all deltas
-    in B's history that are not in A's history.  This is similar to the
-    way "bk prs -MrA..B" worked in previous releases, except that A is
-    not included in the final result.  The '.,' and ',.' range notations
-    have been removed.  See "graph difference" in "bk help terms."
-
-    Tag graph inclusion in a range is now based on what would go in a
-    push or pull.  That is, a tag that is not attached to a changeset
-    in the range can now appear in the 'bk changes -a' output if it is
-    tag parented on a tag that is attached to a changeset in the range.
-
-    Exceptions to the new graph difference rule are "bk makepatch
-    -r1.0.." and "bk cset -M1.0..", which mean "all" instead of "all
-    except 1.0."  These are the two cases that work like they used to.
 
 All commands
     In past releases, most commands suppressed the retrieval of files
@@ -260,10 +333,6 @@ bk changes
     and "-R" to see all changesets local to this repository in addition
     to seeing remote changesets.
 
-    The "-L" and "-R" options to bk changes imply "-a"--show all
-    that would go on a push or pull.  The "-a" option is removed from
-    bk changes and bk log.
-
     Now 'bk changes -/<pattern>/' can handle regular expressions.
     See bk help regex for more information.
 
@@ -277,10 +346,6 @@ bk changes
 
     New -i (include) and -x (exclude) options allow you to limit output
     to changes that apply to certain files.
-
-bk check
-    bk check uses substantially less memory, increasing performance for
-    repositories that just barely fit in memory.
 
 bk ci
     This command replaces bk delta as the preferred interface for checking
@@ -437,15 +502,6 @@ bk grep
     Backwards compatibility is broken, but the new version is much better
     and more standard.  See help bk grep for details.
 
-bk ignore
-    This release introduces a new syntax to prune directories:
-
-	path/to/dir -prune
-
-    If you use .bk_skip files, this -prune is preferable because it's
-    is higher performance and works better.  .bk_skip continues to
-    be supported.
-
 bk import -tCVS
     The CVS import code has greatly improved from previous versions.
 
@@ -454,10 +510,6 @@ bk log
     work for backward compatibility and maintains its old output format.
     bk log has a greatly improved output format and pages its output,
     but otherwise behaves like bk prs.
-
-    The "-o" option, which displayed all unspecified deltas, has been removed.
-    "bk log -C<rev>" now prints nothing if the revision is not in a
-    changeset; in past releases, it listed pending deltas.
 
 bk log, changes, sccslog ...
     In commands that produce date output, such as bk log, bk changes,
@@ -574,8 +626,7 @@ bk sccscat
 	bk annotate -R<rev> <file>
 
 bk sfiles
-    This release introduces a number of performance improvements.
-    bk sfiles also has many subtle interface changes to support GUI
+    bk sfiles has many subtle interface changes to support GUI
     integration.  The summary below compares old and new syntax. For a
     more concise description of just the new syntax, see bk help sfiles.
 
@@ -635,9 +686,6 @@ bk smerge
     New syntax:
 	bk smerge -l<local> -r<remote> <file>
 
-bk stripdel
-    The "-b" option, which stripped all branch deltas, has been removed.
-
 bk upgrade
     The default with no arguments is now to download and install (used to
     require -i which is now obsolete).
@@ -691,73 +739,43 @@ Misc
 
 Bugs fixed
     2000-04-17-003	su root; bk ci foo.c - checks in as root
-    2001-05-30-003	URL-encoding for searching doesn't work
     2002-02-15-001	bkWeb doesn't understand virtual hosting/CNAMEs
     2002-03-14-008	bk changes -v should show information about merges
     2002-04-06-004	bk changes -d... may hang
     2002-05-10-003	bk tag -r<REV> doesn't accept KEYs
     2002-06-11-001	bk clone can leave an empty RESYNC directory
-    2002-07-02-001	bkweb search fails for multiple words
     2002-07-09-001	bkd http server shouldn't use a <base href> tag
-    2002-07-31-001	Too many SCCS/c..* files: bk sfiles ==>
-    			append_rev:  Assertion `strlen(buf) < 1024' failed
+    2002-07-31-001	Too many SCCS/c..* files: bk sfiles ==> append_rev:  
+			Assertion `strlen(buf) < 1024' failed
     2002-08-05-001	Missing "than"?
-    2002-08-27-001	bk/web doesn't escape address-of (&amp;) which
-    			can  lead to incorrect display
+    2002-08-27-001	bk/web doesn't escape address-of (&amp;) which can  
+			lead to incorrect display
     2002-09-18-001	citool includes explicitly excluded deltas
     2002-10-16-002	changes uses up a lot of memory and takes too long
-    2002-12-10-004	giving an unknown command to bk sends an error
-    			message  to stdout
+    2002-12-10-004	giving an unknown command to bk sends an error message  
+			to stdout
     2002-12-27-001	bk sfiles -U <dir> does not skip BitKeeper file
-    2003-03-04-001	Need list of files req'd for manual merge OR
-    			skip  resolve functionality
-    2003-03-12-002	sfiles -ct doesn't work as expected in a
-    			sub-directory  of the repo
+    2003-03-04-001	Need list of files req'd for manual merge OR skip  
+			resolve functionality
+    2003-03-12-002	sfiles -ct doesn't work as expected in a sub-directory  
+			of the repo
     2003-07-03-001	revtool doesn't show gone-to line [PATCH]
-    2003-09-09-001	'bk diffs -up' behaves differently than 'bk
-    			diffs -pu'	and neither give me what I want.
+    2003-09-09-001	'bk diffs -up' behaves differently than 'bk diffs -pu'  
+			and neither give me what I want.
     2003-09-10-003	bk diffs should work like "gnu diff" (--new-file and -p)
     2003-09-11-001	changes -Rv uses inconsistent date formats
     2003-09-11-002	bk pull -ll output removed useful information
     2003-10-20-003	Changeset browsing concatenates tags
-    2003-12-09-001	if a repo has no parent, bk changes -L gives a
-    			not-so- useful error message
+    2003-12-09-001	if a repo has no parent, bk changes -L gives a not-so- 
+			useful error message
     2004-01-07-001	push to a bkd with -xpush gives obscure message
     2004-01-13-001	changes -L repo1 repo2 is broken
     2004-01-13-002	changes -D -L is broken
-    2004-01-14-002	bk pull gives incorrect error message when run
-    			in a  repo with no parent
-    2004-01-15-003	the import function (at least from CVS) does
-    			not set  the EOLN_NATIVE flags
-    2004-01-30-002	bk web does not support multiword search
-    2004-04-06-001	bk/web shows multiple tags without seperator
-    2004-06-03-001	bk/web search in file contents is broken
+    2004-01-14-002	bk pull gives incorrect error message when run in a  
+			repo with no parent
+    2004-01-15-003	the import function (at least from CVS) does not set  
+			the EOLN_NATIVE flags
     2004-06-09-002	bk send sends error message to STDOUT
     2005-12-05-003	findkey dumps core for email address searching
     2006-01-09-001	bk setup segv's
-    2006-01-24-001	bk unpull fails with a very large number of changesets
-    2006-02-07-002	Spaces in a filename break changeset/annotation
-    2006-03-24-001	unpull doesn't zap BitKeeper/etc/csets-in
     2006-03-31-001	"nonexistant" is not a real word
-    2006-06-20-002	sendbug uses the wrong email address
-
-Other bug fixes
-    Fixed a problem with setting BK_HOST to a domain rather than a host
-    name to remove entropy from the keys.  We now use `bk getuser`/`bk
-    getuser -r`@`bk gethost`/`bk gethost -r` when get{user,host} !=
-    get{user,host} -r.  This makes for longer keys but they'll be unique.
-
-    Fixed a bug where extra files weren't sorted in the bk citool window.
-
-    Fixed a bug where GUI geometries weren't being saved properly.
-
-    Fixed some Windows bugs related to the visual studio and shell
-    extension plugins.
-
-    Fixed a bug in bk citool where it didn't create SCCS directories
-    "hidden" on windows; this interacted badly with Visual Studio 2005.
-
-    Fixed several issues with the Windows installer.
-
-    "bk export -tpatch -r$KEY",+" could fail because an underlying
-    command couldn't handle keys.  It works now.

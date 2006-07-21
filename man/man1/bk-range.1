@@ -16,13 +16,13 @@ Many commands may take as arguments date ranges or graph differences.
 The
 .B graph difference
 between revision
-.ARG A
-and revision
 .ARG B
+and revision
+.ARG A
 is the set of deltas in
-.ARG A 's
-history that are not in
 .ARG B 's
+history that are not in
+.ARG A 's
 history.
 You may specify deltas
 by revision number (1.2), delta key
@@ -30,13 +30,13 @@ by revision number (1.2), delta key
 symbolic name (@tag), changeset revision (@1.33), or changeset key
 (@'lm@disks.bitmover.com|ChangeSet|20020912140445|17593').
 The graph difference between revisions
-.ARG A
-and
 .ARG B
+and
+.ARG A
 is represented by the notation
-.ARGc B
+.ARGc A
 .Bc .\|.\|
-.ARG A ,
+.ARG B ,
 as in:
 .DS
 bk changes -r1.1820.2.1..1.1822
@@ -48,24 +48,29 @@ for more information.
 .LP
 You may specify a date range this way:
 .DS
-bk log -c1998/..2002/
+bk log -c1998..2002
 .DE
 .LP
-The date format is [+\-]YYYY/MM/DD-HH:MM:SS with missing fields either
-rounded up or rounded down.
+The date format is \*(lq[\c
+.BR + |\c
+.BR - ]\c
+.ARGc YYYY /
+.ARGc MM /
+.ARG DD
+.ARGc HH :
+.ARGc M :
+.ARG SS  \*(rq
+with missing fields either rounded up or rounded down.
+If you do not want to quote the date string, you can use a non-digit
+character, such as hyphen (\*(lq\-\*(rq) in its place, for example,
+\*(lq2001/07/19-12:00:00\*(rq.
 Optionally, you can append a time zone offset of the form -ZH:ZM for
 negative offsets from GMT or +ZH:ZM for positive offsets.
 Rounding is explicit if there is a \*(lq+\*(rq (rounds up) or a
 \*(lq\-\*(rq (rounds down) prefix on the date.
 If there is no prefix, then the rounding is context sensitive.
 The starting date is rounded down and the ending date is rounded up,
-so 2001/..2001/ is the same as 2001/01/01-00:00:00..2001/12/31-23:59:59.
-.LP
-Note: the date parsing code looks for digits followed by a non-digit for
-each field.    
-Older versions of \*[BK] allowed dates in the format YYMMDDHHMMSS and
-we still support that for old scripts but doing so meant we had to require
-a clear delinator between year and month.
+so 2001..2001 is the same as 2001/01/01-00:00:00..2001/12/31-23:59:59.
 .LP
 Note: the mixing of dates and revisions is deprecated.
 .LP

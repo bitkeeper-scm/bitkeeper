@@ -88,7 +88,7 @@ Note: This will also
 adjust the modification time of the s.file to be one second before the 
 modification time
 of the gfile, which is needed in order to prevent make(1) from attempting
-to reget the file.
+to re-get the file.
 (Checkout in edit mode.)
 .tp
 .B none
@@ -101,18 +101,18 @@ When using the
 .Q \-c
 option to 
 .BR "bk sfiles" ,
-file timestamps may be compared to a cached list to determine when
+file time stamps may be compared to a cached list to determine when
 files are unmodified and don't need to be diff'ed again.  The
 .Q clock_skew
-parameter controls how old a file must be before file timestamps are to 
+parameter controls how old a file must be before file time stamps are to 
 be trusted.  
 A certain amount of clock skew is strongly advised since the use of network
-file systems can can cause the timestamps to be incorrect.
+file systems can can cause the time stamps to be incorrect.
 The time is in seconds and defaults to 604800 (one week).
 .DS
 clock_skew: on          # use system defaults
 clock_skew: 86400       # one day
-clock_skew: off         # disable trusting of timestamps
+clock_skew: off         # disable trusting of time stamps
 .DE
 .SS COMPRESSION
 .br
@@ -259,7 +259,7 @@ By default, BitKeeper does a full repository integrity check after
 each update.
 The integrity check validates both internal BitKeeper metadata and
 file checksums.
-The intergrity checks have been shown to catch hardware problems
+The integrity checks have been shown to catch hardware problems
 such as bad memory chips, bad disk drives, and software problems
 such as NFS inserting blocks of nulls in the middle of files.
 If you have a large repository (more than 5,000 files and/or more
