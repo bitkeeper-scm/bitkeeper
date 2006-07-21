@@ -424,23 +424,41 @@ lockfile_cleanup(void)
 }
 
 #ifndef WIN32
+/*
+ * MacOS can return bad data for heavily used files like lock files.
+ * So give it some time to get it right.
+ */
+private int
+getstat(char *file, struct stat *sb)
+{
+	int	ret;
+	int	retry = 0;
+
+#ifdef  MACOS_VER
+	retry = 100;
+#endif
+	while (((ret = lstat(file, sb)) || (sb->st_nlink == 0)) && retry--) {
+		usleep(1000);
+	}
+	return (ret);
+}
+
 private int
 linkcount(char *file)
 {
 	struct	stat sb;
 
-	if (stat(file, &sb) != 0) return (-1);
+	if (getstat(file, &sb)) return (0);
 	return (sb.st_nlink);
-
 }
 
 u32
-ino(char *s)
+ino(char *file)
 {
-	struct	stat sbuf;
+	struct	stat sb;
 
-	if (lstat(s, &sbuf)) return (0);
-	return ((u32)sbuf.st_ino);
+	if (getstat(file, &sb)) return (0);
+	return ((u32)sb.st_ino);
 }
 #endif
 
@@ -494,7 +512,7 @@ locktest_main(int ac, char **av)
 		}
 		if (net) {
 			setx(lock);
-			usleep(20000);
+			usleep(500);
 			rmx(lock);
 		} else {
 			fd = open(tmp, O_CREAT|O_RDWR|O_EXCL, 0600);
@@ -509,7 +527,7 @@ locktest_main(int ac, char **av)
 			unlink(tmp);
 		}
 		sccs_unlockfile(lock);
-		usleep(1);
+		usleep(500);
 	}
 	printf("%d failed attempts, %d successes\n", failed, n);
 	return (0);
@@ -535,6 +553,7 @@ setx(char *lock)
 	}
 	unless (strneq(buf, "OK", 2)) {
 		fprintf(stderr, "%d: Failed to set lock\n", getpid());
+		fprintf(stderr, "smap: %s\n", buf);
 		exit(1);
 	}
 	close(sock);
@@ -560,6 +579,7 @@ rmx(char *lock)
 	}
 	unless (strneq(buf, "OK", 2)) {
 		fprintf(stderr, "%d: Failed to remove lock\n", getpid());
+		fprintf(stderr, "smap: %s\n", buf);
 		exit(1);
 	}
 	close(sock);
