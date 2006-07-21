@@ -17,11 +17,11 @@ log_main(int ac, char **av)
 	int	log = streq(av[0], "log");
 	int	reverse = 0, doheader = !log;
 	int	init_flags = INIT_NOCKSUM;
+	int	rflags = SILENT|RANGE_SET;
 	int	flags = 0, sf_flags = 0, rc = 0, one = 0;
 	int	c;
 	char	*name;
 	char	*cset = 0, *tip = 0;
-	int	noisy = 0;
 	int	want_parent = 0;
 	pid_t	pid = 0;	/* pager */
 	char	*dspec = getenv("BK_LOG_DSPEC");
@@ -29,7 +29,7 @@ log_main(int ac, char **av)
 
 	unless (dspec) dspec = log ? ":LOG:" : ":PRS:";
 
-	while ((c = getopt(ac, av, "1abc;C;d:DfhMnopr;vY")) != -1) {
+	while ((c = getopt(ac, av, "1abc;C;d:DfhMnopr;Y")) != -1) {
 		switch (c) {
 		    case '1': one = 1; doheader = 0; break;
 		    case 'a':					/* doc 2.0 */
@@ -52,7 +52,6 @@ log_main(int ac, char **av)
 		    case 'x':
 			fprintf(stderr, "prs: -x support dropped\n");
 			goto usage;
-		    case 'v': noisy = 1; break;			/* doc 2.0 */
 		    case 'Y': 	/* for backward compat, undoc 2.0 */
 			      break;
 		    case 'c':
@@ -85,8 +84,7 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 			unless (e = sccs_findrev(s, cset)) goto next;
 			range_cset(s, e);
 		} else if (want_parent) {
-			if (range_process(av[0], s,
-				SILENT|RANGE_SET, &rargs)) {
+			if (range_process(av[0], s, rflags, &rargs)) {
 				goto next;
 			}
 			unless (s->rstart && (s->rstart == s->rstop)
@@ -106,8 +104,7 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 			s->rstart->flags |= D_SET;
 			s->rstop = s->rstart;
 		} else {
-			if (range_process(av[0], s,
-				SILENT|RANGE_SET, &rargs)) {
+			if (range_process(av[0], s, rflags, &rargs)) {
 				goto next;
 			}
 			if (!rargs.rstart && !sfileRev() &&

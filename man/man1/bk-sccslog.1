@@ -4,10 +4,9 @@
 bk sccslog \- list deltas sorted by date across all files
 .SH SYNOPSIS
 .B bk sccslog
-.[B] \-bDfnv
+.[B] \-bDfn
 .[OPTreq] \-c dates
 .[OPTreq] \-d dspec
-.[OPTreq] \-i d
 .[OPTreq] \-r r
 .BKARGS
 .SH DESCRIPTION
@@ -76,15 +75,7 @@ Add  a newline to each printed record (sometimes useful with
 .tp
 .OPTreq \-r r
 Specify a revision or a range.
-.tp
-.B \-v
-Be verbose about errors and processing.
-.LP
-Note that
-.ARG date
-may be a symbol, which implies the date of the delta which matches the symbol.
-.LP
-Range or date specifications:
+.SS RANGE SPECIFICATIONS
 .\" XXX format for the below list?
 .TP \fB\-c9207..92\fP
 .B \-r+

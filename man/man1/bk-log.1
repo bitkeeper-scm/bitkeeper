@@ -5,7 +5,7 @@ bk log \- print file revision history and/or metadata
 .SH SYNOPSIS
 .if n .ll 7.49i
 .B bk log
-.[B] \-dDfhv
+.[B] \-dDfh
 .if t .ds d date
 .if n .ds d d
 .if t .ds r rev
@@ -70,16 +70,6 @@ Specify a revision, or part of a range.
 (Or key or changeset revision. See 
 .B bk help terms
 under \*(lqrev argument.\*(rq)
-.tp
-.B \-v
-Complain about \*(BK files that do not match the range.
-.LP
-Note that either
-.ARG rev
-or
-.ARG date
-may be a symbolic tag, which implies the revision or date of the delta
-which matches the symbolic tag.
 .SS RANGE SPECIFICATIONS
 .TP \fB\-c9207..92\fP
 .B \-r+

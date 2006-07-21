@@ -51,7 +51,7 @@ sccslog_main(int ac, char **av)
 	RANGE	rargs = {0};
 
 	setmode(1, _O_TEXT);
-	while ((c = getopt(ac, av, "AbCc;d|Dfi;nr|sv")) != -1) {
+	while ((c = getopt(ac, av, "AbCc;d|Dfi;nr|s")) != -1) {
 		switch (c) {
 		    case 'A': opts.uncommitted = 1; break;	/* doc 2.0 */
 		    case 'b': opts.basenames = 1; break;	/* doc 2.0 */
@@ -65,7 +65,6 @@ sccslog_main(int ac, char **av)
 			break;
 		    case 'n': opts.newline = 1; break;
 		    case 's': opts.sort = 1; break;		/* doc 2.0 */
-		    case 'v': flags &= ~SILENT; break;		/* doc 2.0 */
 		    case 'c':
 			if (range_addArg(&rargs, optarg, 1)) goto usage;
 			break;
