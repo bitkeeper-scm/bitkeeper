@@ -266,11 +266,26 @@ cmpfiles WANT GOT
 echo OK
 # ---------------------- end of revision ranges
 
+# set up shell variables for keys and md5keys:
+eval `bk prs -r.. -hd'MD:L:=:MD5KEY:\nKEY:L:=":KEY:"\n' FILE`
+
 echo -------------- revisions as dates range:
 echo $N Range test -c1.1 ............................................$NL
 bk prs -fnd:I: -c${REV1} FILE > GOT
 cat <<EOF > WANT
 ======== FILE ${REV1} ========
+1.1
+EOF
+cmpfiles WANT GOT
+bk prs -fnd:I: -c${MD1} FILE > GOT
+cat <<EOF > WANT
+======== FILE ${MD1} ========
+1.1
+EOF
+cmpfiles WANT GOT
+bk prs -fnd:I: -c"${KEY1}" FILE > GOT
+cat <<EOF > WANT
+======== FILE ${KEY1} ========
 1.1
 EOF
 cmpfiles WANT GOT
@@ -305,9 +320,45 @@ cat <<EOF > WANT
 1.5
 EOF
 cmpfiles WANT GOT
+bk prs -fnd:I: -c${MD1}.. FILE > GOT
+cat <<EOF > WANT
+======== FILE ${MD1}.. ========
+1.1
+1.2
+1.3
+1.4
+1.5
+EOF
+cmpfiles WANT GOT
+bk prs -fnd:I: -c$"${KEY1}".. FILE > GOT
+cat <<EOF > WANT
+======== FILE ${KEY1}.. ========
+1.1
+1.2
+1.3
+1.4
+1.5
+EOF
+cmpfiles WANT GOT
 bk prs -fnd:I: -c1.3.. FILE > GOT
 cat <<EOF > WANT
 ======== FILE 1.3.. ========
+1.3
+1.4
+1.5
+EOF
+cmpfiles WANT GOT
+bk prs -fnd:I: -c${MD3}.. FILE > GOT
+cat <<EOF > WANT
+======== FILE $MD3.. ========
+1.3
+1.4
+1.5
+EOF
+cmpfiles WANT GOT
+bk prs -fnd:I: -c$"${KEY3}".. FILE > GOT
+cat <<EOF > WANT
+======== FILE $KEY3.. ========
 1.3
 1.4
 1.5
@@ -348,6 +399,22 @@ echo $N Range test 1.1..1.3 .........................................$NL
 bk prs -fnd:I: -c${REV1}..${REV3} FILE > GOT
 cat <<EOF > WANT
 ======== FILE $REV1..$REV3 ========
+1.1
+1.2
+1.3
+EOF
+cmpfiles WANT GOT
+bk prs -fnd:I: -c${MD1}..${MD3} FILE > GOT
+cat <<EOF > WANT
+======== FILE $MD1..$MD3 ========
+1.1
+1.2
+1.3
+EOF
+cmpfiles WANT GOT
+bk prs -fnd:I: -c"${KEY1}..${KEY3}" FILE > GOT
+cat <<EOF > WANT
+======== FILE $KEY1..$KEY3 ========
 1.1
 1.2
 1.3
@@ -712,3 +779,17 @@ then	echo 'failed (bug 2002-02-08-008)';
 else	echo 'bug 2002-02-08-008 is passing! update testcase.'
 	exit 1
 fi
+
+echo $N Range using keys and file name has .. in it .................$NL
+touch foo..bar
+bk new $Q foo..bar
+eval `bk prs -r.. -hd'MD:L:=:MD5KEY:\nKEY:L:=":KEY:"\n' foo..bar`
+bk prs -r"$KEY1" foo..bar 2> ERR && {
+	echo fix test
+	exit 1
+}
+bk prs -c"$KEY1" foo..bar 2> ERR && {
+	echo fix test
+	exit 1
+}
+echo 'failed (bug not filed)'

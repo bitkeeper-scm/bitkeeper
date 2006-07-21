@@ -1554,13 +1554,6 @@ again:
 	return (-1);
 }
 
-private delta *
-sym2delta(sccs *s, char *sym)
-{
-	if (name2rev(s, &sym) == -1) return (0);
-	return (rfind(s, sym));
-}
-
 private inline int
 samerev(ser_t a[4], ser_t b[4])
 {
@@ -1847,14 +1840,12 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	if (rev) return (sccs_findrev(sc, s));
 
 	/*
-	 * If it is a symbol, then just go get that delta and return it.
+	 * If it is a symbol, revision, or key,
+	 * then just go get that delta and return it.
 	 */
-	unless (isdigit(*s)) return (sym2delta(sc, s));
-
-	/*
-	 * If it is a well formed revision with at least a dot, it's a rev
-	 */
-	if (scanrev(s, &x, &x, &x, &x) > 1) return (sccs_findrev(sc, s));
+	if (!isdigit(*s) || (scanrev(s, &x, &x, &x, &x) > 1) || isKey(s)) {
+		return (sccs_findrev(sc, s));
+	}
 
 	/*
 	 * It's a plain date.  Convert it to a number and then go
