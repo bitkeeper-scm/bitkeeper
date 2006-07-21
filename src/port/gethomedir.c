@@ -35,6 +35,13 @@ getHomeDir(void)
 }
 #endif
 
+
+#ifdef WIN32
+#define	isMe(uid) 1
+#else
+#define isMe(uid) ((uid) == getuid())
+#endif
+
 char *
 getDotBk(void)
 {
@@ -48,6 +55,8 @@ getDotBk(void)
 		".bk"
 #endif
 		;
+	int	rc;
+	struct	stat	sb;
 
 	if (dir) return (dir);
 
@@ -61,8 +70,20 @@ getDotBk(void)
 	}
 	if (t = getHomeDir()) {
 		dir = aprintf("%s/%s", t, bkdir);
-		free(t);
-		unless (mkdir(dir, 0777)) return (dir);
+		/* try to only stat() once */
+		if (rc = lstat(dir, &sb)) {
+			/* no .bk directory, lstat $HOME */
+			rc = lstat(t, &sb);
+			free(t);
+			/* if -e $HOME and it is mine ... */
+			if (!rc && isMe(sb.st_uid)) {
+				unless (mkdir(dir, 0777)) return (dir);
+			}
+		} else {
+			free(t);
+			/* got .bk, only use if we own the directory */
+			if (isMe(sb.st_uid)) return (dir);
+		}
 		free(dir);
 	}
 	dir = aprintf("%s/%s/%s", TMP_PATH, bkdir, sccs_realuser());
