@@ -17,7 +17,7 @@
 
 #define	COLLAPSE_FIX	0x10000000 /* 'bk fix' -> don't strip committed deltas */
 #define	COLLAPSE_NOSAVE	0x20000000 /* don't save backup patch */
-#define	COLLAPSE_NOLOG	0x40000000 /* Don't update BitKeeper/etc/collapsed */
+#define	COLLAPSE_LOG	0x40000000 /* Update BitKeeper/etc/collapsed */
 
 private	int	do_cset(char *rev);
 private	int	do_file(char *file, char *tiprev);
@@ -41,11 +41,11 @@ collapse_main(int ac, char **av)
 
 	me = "collapse";
 	flags = 0;
-	while ((c = getopt(ac, av, "a:eLmr:qs")) != -1) {
+	while ((c = getopt(ac, av, "a:elmr:qs")) != -1) {
 		switch (c) {
 		    case 'a': after = optarg; break;
 		    case 'e': edit = 1; break;
-		    case 'L': flags |= COLLAPSE_NOLOG; break;
+		    case 'l': flags |= COLLAPSE_LOG; break;
 		    case 'm': merge = 1; break;
 		    case 'r': revlist = optarg; break;
 		    case 'q': flags |= SILENT; break;
@@ -189,7 +189,7 @@ do_cset(char *rev)
 			goto out;
 		}
 	}
-	unless (flags & COLLAPSE_NOLOG) {
+	if (flags & COLLAPSE_LOG) {
 		if (update_collapsed_file(csetfile)) goto out;
 	}
 	unlink(COLLAPSE_BACKUP_SFIO);

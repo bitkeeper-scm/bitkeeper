@@ -52,6 +52,9 @@ The checkin comments are preserved if you use
 .B bk citool
 to make the subsequent checkin.
 .LP
+The
+.B \-l
+option to
 .B bk collapse
 saves a list of the md5keys of all changesets that have been replaced by
 the this command in the
@@ -61,9 +64,6 @@ Later
 .B bk pull
 examines this file to prevent the uncollapsed csets from being pulled
 into the repository with the collapsed versions.
-This behavior can be suppressed with the
-.B \-L
-option.
 .LP
 .B bk collapse
 saves a backup
@@ -83,8 +83,8 @@ or
 .B bk delta/commit
 to create the final changeset.
 .tp
-.B \-L
-Do not record the csetkeys of the changesets being replaced in
+.B \-l
+Record the csetkeys of the changesets being replaced in
 the
 .B BitKeeper/etc/collapsed
 file.

@@ -7,7 +7,7 @@ bk commit -yfirst $Q || exit 1
 cd $HERE
 bk clone $Q project copy
 cd copy
-bk collapse -e || exit 1
+bk collapse -el || exit 1
 echo test2 > file
 bk -cr ci -c $Q || exit 1
 bk commit -yreplacement $Q || exit 1
@@ -130,7 +130,7 @@ then
 	echo edited comment > SCCS/c.edited_symlink
 fi
 
-BK_USER=u1 bk collapse -e $Q || exit 1
+BK_USER=u1 bk collapse -el $Q || exit 1
 BK_USER=u2 bk -xlr delta -a $Q -c || exit 1
 BK_USER=u3 bk commit $Q -ycollapse || exit 1
 
@@ -313,12 +313,11 @@ fi
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test collapse -e -aREV ......................................$NL
+#echo $N Test collapse -e -aREV ......................................$NL
 #  above plus
 #  merges
 #  merged modes
 #  csets before and after merge
-echo skipped
 
 # test merging of BitKeeper/etc/collapsed files
 
