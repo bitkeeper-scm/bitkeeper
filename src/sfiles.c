@@ -741,18 +741,18 @@ load_ignore(project *p)
 {
 	char	*file;
 	char	*pat;
-	int	len, isbase;
+	int	len, isbase, isprune;
 	FILE	*ignoref;
 	char	buf[MAXLINE];
 
 	ignore = ignorebase = prunedirs = 0;
 
 	/* add default pruned dirs */
-	prunedirs = addLine(prunedirs, strdup("BitKeeper/log"));
-	prunedirs = addLine(prunedirs, strdup("BitKeeper/tmp"));
-	prunedirs = addLine(prunedirs, strdup("BitKeeper/writer"));
-	prunedirs = addLine(prunedirs, strdup("BitKeeper/readers"));
-	prunedirs = addLine(prunedirs, strdup("PENDING"));
+	prunedirs = addLine(prunedirs, strdup("/BitKeeper/log"));
+	prunedirs = addLine(prunedirs, strdup("/BitKeeper/tmp"));
+	prunedirs = addLine(prunedirs, strdup("/BitKeeper/writer"));
+	prunedirs = addLine(prunedirs, strdup("/BitKeeper/readers"));
+	prunedirs = addLine(prunedirs, strdup("/PENDING"));
 
 	/* add default ignore patterns */
 	ignore = addLine(ignore, strdup("/BitKeeper/etc/level"));
@@ -778,15 +778,22 @@ load_ignore(project *p)
 		unless (len = strlen(pat)) continue; /* blank lines */
 		if ((len > 7) && streq(pat + len - 7, " -prune")) {
 			pat[len-7] = 0;
-			prunedirs = addLine(prunedirs, strdup(pat));
-			continue;
-		}
-		if (isbase) {
-			ignorebase = addLine(ignorebase, strdup(pat));
+			isprune = 1;
+			isbase = 0;
 		} else {
-			/* pathname glob */
-			ignore = addLine(ignore,
-			    (pat[0] == '*') ? strdup(pat) : aprintf("/%s", pat));
+			isprune = 0;
+		}
+		if (isbase || (pat[0] == '*')) {
+			pat = strdup(pat);
+		} else {
+			pat = aprintf("/%s", pat);
+		}
+		if (isprune) {
+			prunedirs = addLine(prunedirs, pat);
+		} else if (isbase) {
+			ignorebase = addLine(ignorebase, pat);
+		} else {
+			ignore = addLine(ignore, pat);
 		}
 	}
 	fclose(ignoref);
@@ -795,6 +802,7 @@ load_ignore(project *p)
 private void
 walk(char *indir)
 {
+	char	*p;
 	winfo	wi = {0};
 	char	tmp[MAXPATH];
 	char	dir[MAXPATH];
@@ -824,11 +832,13 @@ walk(char *indir)
 
 	wi.rootlen = strlen(dir);
 	if (proj) {
-		wi.proj_prefix = proj_relpath(proj, dir);
-		if (streq(wi.proj_prefix, ".")) {
-			free(wi.proj_prefix);
-			wi.proj_prefix = strdup("");
+		p = proj_relpath(proj, dir);
+		if (streq(p, ".")) {
+			wi.proj_prefix = strdup("/");
+		} else {
+			wi.proj_prefix = aprintf("/%s", p);
 		}
+		free(p);
 	}
 	walkdir(dir, sfiles_walk, &wi);
 	if (wi.sccsdir) sccsdir(&wi);
@@ -1342,6 +1352,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 int
 walksfiles(char *dir, walkfn fn, void *data)
 {
+	char	*p;
 	sinfo	si = {0};
 	int	rc;
 
@@ -1350,11 +1361,13 @@ walksfiles(char *dir, walkfn fn, void *data)
 	si.rootlen = strlen(dir);
 	if (proj = proj_init(dir)) {
 		load_ignore(proj);
-		si.proj_prefix = proj_relpath(proj, dir);
-		if (streq(si.proj_prefix, ".")) {
-			free(si.proj_prefix);
-			si.proj_prefix = strdup("");
+		p = proj_relpath(proj, dir);
+		if (streq(p, ".")) {
+			si.proj_prefix = strdup("/");
+		} else {
+			si.proj_prefix = aprintf("/%s", p);
 		}
+		free(p);
 	}
 	rc = walkdir(dir, findsfiles, &si);
 	if (proj) {
