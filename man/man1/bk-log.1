@@ -35,7 +35,7 @@ revision date and time, user who made that revision, what the relative
 path from root of repository is to that file, the comments that go
 with that revision, and documents if the file has been renamed.
 .SH OPTIONS
-.TP \fB\-c9207..92\fP
+.TP \fB\-c1992/07.\|.1992\fP
 .OPTreq \-c date
 Cut-off dates.  See range specifications (below) or 
 .B bk help range
@@ -71,20 +71,20 @@ Specify a revision, or part of a range.
 .B bk help terms
 under \*(lqrev argument.\*(rq)
 .SS RANGE SPECIFICATIONS
-.TP \fB\-c9207..92\fP
+.TP \fB\-c1992/07.\|.1992\fP
 .B \-r+
 prints the most recent delta
 .tp
-.B \-r1.3..1.6
+.B \-r1.3.\|.1.6
 prints all deltas that are in 1.6's history but are not in 1.3's history.
 .tp
-.B \-c9207..92
-prints all deltas from July 1 '92 to Dec 31 '92
+.B \-c1992/07.\|.1992
+prints all deltas from July 1 1992 to Dec 31 1992
 .tp
-.B \-c92..92
-prints all deltas from Jan 1 '92 to Dec 31 '92
+.B \-c1992.\|.1992
+prints all deltas from Jan 1 1992 to Dec 31 1992
 .tp
-.B \-c\-1d
+.B \-c\-1d.\|.
 prints all deltas made in the last 24 hours; similarly for
 .IR s ,
 .IR m ,
@@ -169,7 +169,7 @@ bk log -d'$if(:P:=lm){:PRS:}' foo.c
 .br
 .ne 5
 .SS CONDITIONAL STATEMENTS
-.TP \fB\-c9207..92\fP
+.TP \fB\-c1992/07.\|.1992\fP
 .if t \fB$if(\fIexpr\fB)\fB{\fIanything\fB}\fR
 .\" XXX needs to be conditional on helpdoc?
 .if n \fB$if(\fI<expr>\fB)\fB{\fI<anything>\fB}\fR
@@ -196,7 +196,7 @@ if
 is false.
 .SS CONDITIONAL OPERATORS
 .ad l
-.TP \fB\-c9207..92\fP
+.TP \fB\-c1992/07.\|.1992\fP
 .B strings
 .ARGc lhs
 .B =\c

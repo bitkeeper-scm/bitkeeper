@@ -46,14 +46,12 @@ See \*(lqgraph difference\*(rq in
 .B bk help terms
 for more information.
 .LP
-You may specify a date range this way:
+Dates are always specified as ranges; you can specify a date range this way:
 .DS
 bk log -c1998..2002
 .DE
 .LP
-The date format is \*(lq[\c
-.BR + |\c
-.BR - ]\c
+The date format is \*(lq\c
 .ARGc YYYY /
 .ARGc MM /
 .ARG DD
@@ -66,10 +64,8 @@ character, such as hyphen (\*(lq\-\*(rq) in its place, for example,
 \*(lq2001/07/19-12:00:00\*(rq.
 Optionally, you can append a time zone offset of the form -ZH:ZM for
 negative offsets from GMT or +ZH:ZM for positive offsets.
-Rounding is explicit if there is a \*(lq+\*(rq (rounds up) or a
-\*(lq\-\*(rq (rounds down) prefix on the date.
-If there is no prefix, then the rounding is context sensitive.
-The starting date is rounded down and the ending date is rounded up,
+Date rounding is context sensitive:
+the starting date is rounded down and the ending date is rounded up,
 so 2001..2001 is the same as 2001/01/01-00:00:00..2001/12/31-23:59:59.
 .LP
 Note: the mixing of dates and revisions is deprecated.
@@ -78,27 +74,27 @@ If there is only one date specified, without a revision, then a
 very useful form of the date is to specify a recent period of time, 
 such as 
 .DS
-bk log \-c\-1d
+bk log \-c\-1d..
 .DE
 .LP
 which will display the last 24 hours worth of changes.  This works
 the same way for Years/Months/days/hours/minutes/seconds, i.e.,
 .DS
 .\" Using spaces for alignment here because the single tab was spazzing out
-In the last year:       log \-c\-1Y (or \-1y)
-In the last month:      log \-c\-1M
-In the last week:       log \-c\-1W (or \-1w)
-In the last day:        log \-c\-1D (or \-1d)
-In the last hour:       log \-c\-1h
-In the last minute:     log \-c\-1m
-In the last second:     log \-c\-1s
+In the last year:       log \-c\-1Y.. (or \-1y..)
+In the last month:      log \-c\-1M..
+In the last week:       log \-c\-1W.. (or \-1w..)
+In the last day:        log \-c\-1D.. (or \-1d..)
+In the last hour:       log \-c\-1h..
+In the last minute:     log \-c\-1m..
+In the last second:     log \-c\-1s..
 .DE
 If you leave off the multiplier, 1 is assumed.
 .LP
 While you may not build up specific dates as \-1Y2m3d, you can specify 
 fractions, i.e., to get the last 6 months worth, try
 .DS
-bk log \-c\-.5Y
+bk log \-c\-.5Y..
 .DE
 .\" .LP
 .\" You can mix and match revisions and date.  If you want everything in

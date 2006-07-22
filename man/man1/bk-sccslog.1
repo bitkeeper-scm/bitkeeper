@@ -25,7 +25,7 @@ sorts the changes and prints each change
 in time order, ignoring file boundaries.
 It is useful to go to a directory and type:
 .DS
-bk sccslog -c-1M
+bk sccslog -c-1M..
 .DE
 to see what has happened in all of the files there in the last month.
 .LP
@@ -34,7 +34,7 @@ By default,
 runs the output through your pager, which can
 be controlled with \s-2$PAGER\s0.
 .SH OPTIONS
-.TP \fB\-c9207..92\fP
+.TP \fB\-c1992/07.\|.1992\fP
 .B \-b
 Show basenames instead of full pathnames.
 .tp
@@ -77,17 +77,17 @@ Add  a newline to each printed record (sometimes useful with
 Specify a revision or a range.
 .SS RANGE SPECIFICATIONS
 .\" XXX format for the below list?
-.TP \fB\-c9207..92\fP
+.TP \fB\-c1992/07.\|.1992\fP
 .B \-r+
 prints the most recent delta
 .tp
-.B \-r1.3..1.6
+.B \-r1.3.\|.1.6
 prints all deltas that are in 1.6's history, but are not in 1.3's history.
 .tp
-.B \-c9207..92
+.B \-c1992/07.\|.1992
 prints all deltas from July 1 '92 to Dec 31 '92
 .tp
-.B \-c92..92
+.B \-c1992.\|.1992
 prints all deltas from Jan 1 '92 to Dec 31 '92
 .SH CATEGORY
 .B File
