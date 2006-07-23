@@ -26,7 +26,10 @@ lines_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "c;n;ur;R;tT")) != -1) {
 		switch (c) {
-		    case 'R':	/* obsolete */
+		    case 'R':	/* old form, allows no .. */
+		    	unless (strstr(optarg, "..")) {
+				optarg = aprintf("%s..", optarg);
+			}
 		    case 'c':
 		    	if (range_addArg(&rargs, optarg, 1)) goto usage;
 			break;

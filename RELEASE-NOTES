@@ -1,12 +1,12 @@
 ===============================================================================
-Release notes for BitKeeper version 4.0-beta5 (released 2006-07-21)
+Release notes for BitKeeper version 4.0-beta5 (released 2006-07-24)
 
 Date handling changes
 
 The canonical format for dates is now YYYY/MM/DD-HH:MM:SS[+|-ZH:ZM].
 
-Explicit date rounding using a "+" or "-" prefix is deprecated.  The start
-date in a range is always rounded down and the end date is rounded up.
+Explicit date rounding using a "+" or "-" prefix is no longer supported.
+The start date in a range is always rounded down and the end date is rounded up.
 
 Dates must always be specified as ranges.  For example, in previous
 releases, it was possible see all changesets committed in 1998 using the
@@ -21,8 +21,16 @@ As of this release, the range specifier is required:
 
 	bk log -c-6M.. foo.c
 
-The -c option to bk co, which specified a date, is deprecated.  Use a
+The -c option to bk co, which specified a date, is removed.  Use a
 revision ("-r") instead.
+
+In 4.0-beta5, bk upgrade has a slightly different interface, see the man page.
+
+Bugs fixed:
+	bk revtool range selection
+	bk revtool -> View changeset
+	Several installer bugs
+	Geometry / placement of GUIs
 
 ===============================================================================
 Release notes for BitKeeper version 4.0-beta4 (released 2006-07-14)

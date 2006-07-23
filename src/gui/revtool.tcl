@@ -1428,7 +1428,8 @@ proc selectNode { type {val {}}} \
 	set base [file tail $file]
 	if {$base != "ChangeSet"} {
 		set Aur $gc(rev.annotate)
-		set get [open "| bk get $Aur -Pr$rev1 \"$file\" 2>$dev_null"]
+		set r [lindex [split $rev1 "-"] 0]
+		set get [open "| bk get $Aur -Pr$r \"$file\" 2>$dev_null"]
 		set ttype "annotated"
 		filltext $w(aptext) $get 1 "No annotation"
 		return
@@ -1486,6 +1487,8 @@ proc displayDiff {rev1 rev2} \
 {
 	global file w tmp_dir dev_null Opts ttype gc
 
+	# We get no rev1 when rev2 is 1.1
+	if {$rev1 == ""} { set rev1 "1.0" }
 	set r1 [file join $tmp_dir $rev1-[pid]]
 	set Aur $gc(rev.annotate)
 	catch { exec bk get $Aur -kPr$rev1 $file >$r1}
@@ -1507,7 +1510,6 @@ proc displayDiff {rev1 rev2} \
 }
 
 # hrev : revision to highlight
-#
 proc gotoRev {f hrev} \
 {
 	global anchor rev1 rev2 gc dev_null
@@ -2419,7 +2421,7 @@ select a new file to view"
 			set R "-n$gc(rev.showRevs)"
 		}
 	} elseif {[regexp -- {^-[crRn]} $R] == 0} {
-		set R "-c$R"
+		set R "-R${R}"
 	}
 	# If valid time range given, do the graph
 	if {[listRevs $R "$file"] == 0} {
@@ -2670,9 +2672,11 @@ proc startup {} \
 		set base [file tail $file]
 		if {![string equal $base "ChangeSet"]} {
 			if {![info exists rev1]} {
-				set rev1 "+"
+				set rev1 [exec bk prs -hr+ -d:I:-:P: $file]
 			}
+			# XXX - this needs some sort of anchor logic
 			selectNode id
+			highlight $rev1 "old"
 		}
 
 		if {[info exists startingLineNumber]} {
@@ -2689,8 +2693,12 @@ proc startup {} \
 			after idle [list searchnew / $searchString $index]
 		}
 
-	} elseif {[info exists diffpair(left)]} {
+	} elseif {[info exists diffpair(left)] &&
+	    [info exists diffpair(right)]} {
+		# We never get here, -lA -rB will always set GCA.  Bummer.
 		doDiff
+	} elseif {[info exists rev1]} {
+		selectNode id
 	}
 	if {[info exists dfile] && ($dfile != "")} {
 		printCanvas
