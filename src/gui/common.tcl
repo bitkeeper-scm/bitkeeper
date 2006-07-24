@@ -271,8 +271,13 @@ proc restoreGeometry {app {w .}} \
 	}
 	
 	# now get the variables
-	foreach {width height ox x oy y} $g {break}
-	debugGeom "config: $width $height $ox $x $oy $y"
+	if {[info exists g]} {
+		foreach {width height ox x oy y} $g {break}
+		debugGeom "config: $width $height $ox $x $oy $y"
+	} else {
+		set width ""
+		set x ""
+	}
 	
 	if {$width eq ""} {
 		# We need to call update to force the recalculation of

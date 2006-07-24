@@ -339,8 +339,11 @@ proc test_isvisible {w {all 0}} \
 	set y1 [winfo y $w]
 	set width [winfo width $w]
 	set height [winfo height $w]
-	set x2 [expr {$x1 + $width}]
-	set y2 [expr {$y1 + $height}]
+	# 50 is a fudge factor to take into account the Window Manager's 
+	# tendency of moving the window around (e.g. because of taskbars,
+	# docks, widget panes, etc).
+	set x2 [expr {$x1 + $width} - 50]
+	set y2 [expr {$y1 + $height} - 50]
 	# now do the test
 	if {$all} {
 		# All must be visible
