@@ -108,7 +108,10 @@ cmd_httpget(int ac, char **av)
 	unless (av[1]) http_error(404, "get what?\n");
 	url = av[1];
 
-	if (streq(url, "/robots.txt")) http_robots();
+	if (streq(url, "/robots.txt")) {
+		http_robots();
+		exit(0);
+	}
 
 	qin = hash_new(HASH_MEMHASH);
 	qout = hash_new(HASH_MEMHASH);
@@ -331,6 +334,7 @@ http_changes(char *page)
 	FILE	*f;
 	char    *dspec;
 	char	*rev = hash_fetchStr(qin, "REV");
+	char	*date = hash_fetchStr(qin, "DATE");
 	char	*av[100];
 	char	buf[2048];
 
@@ -347,6 +351,9 @@ http_changes(char *page)
 	av[++i] = "-h";
 	if (rev) {
 		sprintf(buf, "-r%s", rev);
+		av[++i] = buf;
+	} else if (date) {
+		sprintf(buf, "-c%s", date);
 		av[++i] = buf;
 	}
 	av[++i] = dspec = aprintf("-d%s"
@@ -367,6 +374,11 @@ http_changes(char *page)
 	free(dspec);
 
 	hash_storeStr(qout, "PAGE", "cset");
+	/*
+	 * read the prs output and create links on the | lines.
+	 * Note: It doesn't matter if :HTML_C: exceeds sizeof(buf) because
+	 *       this code still works.
+	 */
 	while (fnext(buf, f)) {
 		if (buf[0] == '|') {
 			chomp(buf);
@@ -548,7 +560,7 @@ http_prs(char *page)
 	int	i;
 	char	*rev = hash_fetchStr(qin, "REV");
 	char	*av[100];
-	char	buf[MAXPATH*2];
+	char	*buf;
 
 	hash_storeStr(qout, "PAGE", "diffs");
 
@@ -578,10 +590,11 @@ http_prs(char *page)
 	av[++i] = 0;
 
 	f = popenvp(av, "r");
-	while (fnext(buf, f)) {
+	while (buf = gets_alloc(0, f)) {
 		chomp(buf);
 
 		items = splitLine(buf, "|", 0);
+		free(buf);
 		if (streq(items[1], "1.1")) items[2][0] = ' ';
 
 		hash_storeStr(qout, "REV", items[1]);
@@ -734,7 +747,7 @@ http_anno(char *page)
 	header(COLOR, "Annotated listing of %s", 0, fpath);
 
 	printf("<pre><font size=3>");
-	sprintf(buf, "bk annotate -Aru -r'%s' %s", rev, fpath);
+	sprintf(buf, "bk annotate -Aru -r'%s' '%s'", rev, fpath);
 
 	/*
 	 * Do not show the license key in config file
@@ -847,9 +860,9 @@ http_diffs(char *page)
 	puts(INNER_END OUTER_END);
 
 	if (strstr(rev, "..")) {
-		sprintf(buf, "bk diffs -ur'%s' %s", rev, fpath);
+		sprintf(buf, "bk diffs -ur'%s' '%s'", rev, fpath);
 	} else {
-		sprintf(buf, "bk diffs -uR'%s' %s", rev, fpath);
+		sprintf(buf, "bk diffs -uR'%s' '%s'", rev, fpath);
 	}
 	f = popen(buf, "r");
 	printf("<pre><font size=3>");
@@ -1091,30 +1104,30 @@ http_index(char *page)
 	hash_storeStr(qout, "PAGE", "changes");
 #define	DOIT(c, l, u, t) \
 	if (c && (c != l)) { \
-		hash_storeStr(qout, "REV", u); \
+		hash_storeStr(qout, "DATE", u); \
 		mk_querystr(); \
 		printf("<tr><td><a href=%s>", querystr); \
 		printf( \
 		    "%d&nbsp;Changesets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>", c, t); \
 		printf("</td></tr>\n"); \
 	}
-	DOIT(c1h, 0, "-1h", "hour");
-	DOIT(c1d, c1h, "-1d", "day");
-	DOIT(c2d, c1d, "-2d", "two&nbsp;days");
-	DOIT(c3d, c2d, "-3d", "three&nbsp;days");
-	DOIT(c4d, c3d, "-4d", "four&nbsp;days");
-	DOIT(c1w, c4d, "-7d", "week");
-	DOIT(c2w, c1w, "-2w", "two&nbsp;weeks");
-	DOIT(c3w, c2w, "-3w", "three&nbsp;weeks");
-	DOIT(c4w, c3w, "-4w", "four&nbsp;weeks");
-	DOIT(c8w, c4w, "-8w", "eight&nbsp;weeks");
-	DOIT(c12w, c8w, "-12w", "twelve&nbsp;weeks");
-	DOIT(c6m, c12w, "-6M", "six&nbsp;months");
-	DOIT(c9m, c6m, "-9M", "nine&nbsp;months");
-	DOIT(c1y, c9m, "-1y", "year");
-	DOIT(c2y, c1y, "-2y", "two&nbsp;years");
-	DOIT(c3y, c2y, "-3y", "three&nbsp;years");
-	hash_deleteStr(qout, "REV");
+	DOIT(c1h, 0, "-1h..", "hour");
+	DOIT(c1d, c1h, "-1d..", "day");
+	DOIT(c2d, c1d, "-2d..", "two&nbsp;days");
+	DOIT(c3d, c2d, "-3d..", "three&nbsp;days");
+	DOIT(c4d, c3d, "-4d..", "four&nbsp;days");
+	DOIT(c1w, c4d, "-7d..", "week");
+	DOIT(c2w, c1w, "-2w..", "two&nbsp;weeks");
+	DOIT(c3w, c2w, "-3w..", "three&nbsp;weeks");
+	DOIT(c4w, c3w, "-4w..", "four&nbsp;weeks");
+	DOIT(c8w, c4w, "-8w..", "eight&nbsp;weeks");
+	DOIT(c12w, c8w, "-12w..", "twelve&nbsp;weeks");
+	DOIT(c6m, c12w, "-6M..", "six&nbsp;months");
+	DOIT(c9m, c6m, "-9M..", "nine&nbsp;months");
+	DOIT(c1y, c9m, "-1y..", "year");
+	DOIT(c2y, c1y, "-2y..", "two&nbsp;years");
+	DOIT(c3y, c2y, "-3y..", "three&nbsp;years");
+	hash_deleteStr(qout, "DATE");
 	mk_querystr();
 	printf("<tr><td><a href=%s>", querystr);
 	if (cm) {
@@ -1425,12 +1438,12 @@ private void
 http_related(char *page)
 {
 	int	i;
-	char	buf[2048];
-	char    dspec[MAXPATH];
 	FILE	*f;
 	int	count = 0;
 	delta	*d;
 	sccs	*s = sccs_csetInit(INIT_NOCKSUM|INIT_NOSTAT);
+	char	buf[2048];
+	char    dspec[MAXPATH];
 
 	unless (s) http_error(500, "cannot initialize " CHANGESET);
 
@@ -1451,13 +1464,14 @@ http_related(char *page)
 	if (i == -1)
 		http_error(500, "buffer overflow in http_related");
 
-	sprintf(buf, "bk f2csets %s", fpath);
+	sprintf(buf, "bk f2csets '%s'", fpath);
 	unless (f = popen(buf, "r"))
 		http_error(500, "%s: %s", buf, strerror(errno));
 
 	while (fnext(buf, f)) {
-		chop(buf);
+		chomp(buf);
 		if (d = sccs_findrev(s, buf)) d->flags |= D_SET;
+		++count;
 	}
 	s->state |= S_SET;
 	pclose(f);
