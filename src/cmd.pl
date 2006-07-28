@@ -191,6 +191,7 @@ _kill
 _lconfig
 lease
 _lease_errtest
+legal
 level
 _lines restricted
 _link
