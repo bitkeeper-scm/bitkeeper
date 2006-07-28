@@ -60,7 +60,7 @@ echo $N Pull -r to create tag graph with merged tips ................$NL
 cd $HERE/project
 bk tag $Q FOO
 bk edit $Q foo
-bk delta $Q -yfoo foo
+bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
 bk tag $Q FOO
 cd ../copy
@@ -89,4 +89,22 @@ bk pull $Q || {
 	exit 1
 }
 checkfiles SCCS/s.ChangeSet ../copy/SCCS/s.ChangeSet
+echo OK
+
+echo $N Pull -r such that the name has been changed .................$NL
+cd $HERE/project
+bk mv foo goo
+touch good
+bk new $Q good
+bk commit $Q -SOLDNAME -ypre-name
+bk mv goo bar
+bk mv good bad
+bk commit $Q -ybar
+cd ../copy
+bk mv foo bar
+bk commit $Q -ybar-conflict
+echo l | bk pull $Q -rOLDNAME 2> ERR || {
+	echo failed
+	exit 1
+}
 echo OK
