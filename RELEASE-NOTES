@@ -192,6 +192,13 @@ Lease Server
 
     See bk help lease for more information.
 
+bk legal
+    A new bk legal command allows you to accept the terms of the
+    BitKeeper end-user license agreement (EULA) without performing any
+    other operations.  This is useful if you intend to run non-interactive
+    scripts using the commands bk clone, bk pull, bk push, or bk setup,
+    which might otherwise prompt for EULA acceptance.  See help bk legal.
+
 Interface Changes
 
 This section describes changes to command syntax and semantics in this
