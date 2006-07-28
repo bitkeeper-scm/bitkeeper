@@ -176,7 +176,8 @@ SCRIPTS	= applypatch bk.script import \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build \
 	www/arrow.gif www/bkpowered.gif www/repo.gif www/back.gif www/dir.gif \
-	www/file.gif www/trailer.gif
+	www/file.gif www/trailer.gif \
+	www/document_plain.png www/folder.png www/repo.png
 PSCR	= t/doit t/guitest
 PROGS	= hidestring libc/mtst$(EXE)
 LIBS	= libc/libc.a zlib/libz.a tomcrypt/libtomcrypt.a
@@ -445,8 +446,8 @@ installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
 	mkdir -p $(IMGDIR)
 	bk get -S www
-	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images www/*.gif | \
-		(cd $(IMGDIR) && tar xf -)
+	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images \
+		www/*.gif www/*.png | (cd $(IMGDIR) && tar xf -)
 	cp -f $(DATA) $(IMGDIR)
 	if [ $(SYS) = unix ]; \
 	then	(cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
