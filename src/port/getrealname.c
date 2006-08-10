@@ -168,31 +168,64 @@ err:	fprintf(stderr, "getRealName failed: mypath=%s\n", mypath);
 #else
 
 /*
- * File the official name for a file on the disk.  The name we pass in
- * might be a short name, or it might have the wrong case.  The quick way
- * to do this on Windows is to convert to the short name and then back
- * to the long name.
+ * Find the official name for a file on the disk.  The name we pass in
+ * might be a short name, or it might have the wrong case.  This used to
+ * try to work by doing a conversion to short and then conversion back
+ * to long but some instances of GetLongPathName() will convert a partial
+ * path into a full path.  So we tried this approach which avoids that
+ * interface and seems to be the workaround others use.
  */
 int
 getRealName(char *path, MDBM *db, char *realname)
 {
-	char	*p;
+	char	**parts;
+	int	i, j, k;
+	WIN32_FIND_DATA found;
+	HANDLE	h;
 	char	buf[MAXPATH];
+	char	buf2[MAXPATH];
+	char	buf3[MAXPATH];
 
-	unless (GetShortPathName(path, buf, MAXPATH)) strcpy(buf, path);
-	unless (GetLongPathName(buf, realname, MAXPATH)) strcpy(realname, buf);
-
-	/* The win98 emulation code returns backslashes */
-	localName2bkName(realname, realname);
-
-	/* GetLongPathName puts a / at the end of directories. */
-	p = realname + strlen(realname);
-	if ((p > realname) && (p[-1] == '/')) p[-1] = 0;
-
-#if	0
-	fprintf(stderr, "GetLong '%s' => '%s' => '%s'\n", path, buf, realname);
-#endif
-
+	parts = splitLine(path, "/\\", 0);
+	/*
+	 * Make sure that \path\to\where and \\machine are preserved and
+	 * forward slashes.
+	 * Also preserve / and //
+	 */
+	buf[0] = buf[1] = buf[2] = 0;
+	if ((path[0] == '/') || (path[0] == '\\')) {
+		buf[0] = '/';
+		if ((path[1] == '/') || (path[1] == '\\')) buf[1] = '/';
+	}
+	EACH(parts) {
+		if ((parts[i][1] == ':') ||
+		    streq(parts[i], "..") || streq(parts[i], ".")) {
+			concat_path(buf, buf, parts[i]);
+			continue;
+		} 
+		concat_path(buf2, buf, parts[i]);
+		/* check for * and ? and escape them. */
+		for (j = k = 0; buf2[j]; ) {
+			if ((buf2[j] == '?') || (buf2[j] == '*')) {
+				buf3[k++] = '\\';
+			}
+			buf3[k++] = buf2[j++];
+		}
+		buf3[k] = 0;
+		if ((h = FindFirstFile(buf3, &found)) == INVALID_HANDLE_VALUE) {
+			/*
+			 * If we get here they gave us a path to a file that
+			 * doesn't exist.  So we just pray that it is a long
+			 * style path.  Sigh.  I hate Winblows.
+			 */
+			concat_path(buf, buf, parts[i]);
+		} else {
+			concat_path(buf, buf, found.cFileName);
+			FindClose(h);
+		}
+	}
+	strcpy(realname, buf);
+	freeLines(parts, free);
 	return (0);
 }
 #endif
