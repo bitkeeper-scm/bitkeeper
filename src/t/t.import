@@ -463,6 +463,7 @@ bk setup -f -cc co_get || { echo "Setup failed!"; exit 1; }
 # These are for later tests
 bk clone $Q co_get nonconform
 bk clone $Q co_get metachar
+bk clone $Q co_get linked
 mkdir -p import_sccs/src
 cd $HERE/import_sccs/src
 echo bar > bar.c
@@ -482,6 +483,38 @@ bk undos bar.c > X
 bk undos $HERE/import_sccs/src/bar.c > Y
 cmp -s X Y
 echo OK
+
+if [ $PLATFORM != "WIN32" ]
+then
+echo $N Test import of an symlinked sccs directory ..................$NL
+cd $HERE
+# Simulate problem had by customer doing SCCS import
+# Need to import directories, one linking the SCCS dir of the other
+# also need the gfiles checked out, that was causes sfiles_first()
+# to cd into the customers SCCS repos.
+# Finally, there can be no sfiles in the bk _find list, just gfiles and 
+# symlinks of SCCS dirs.  This bypasses a non-sccs file stripper in
+# import.sh:validate_SCCS()
+cp -r import_sccs import_sccs_linked
+cd import_sccs_linked/src
+rm -fr SCCS
+ln -s ../../import_sccs/src/SCCS SCCS
+bk get $Q
+test -f bar.c || exit 1
+cd $HERE
+# auto-exit-on-fail is active, so turn off for a command
+set +e
+bk import -ftSCCS import_sccs_linked linked > import.out 2>&1 && {
+	echo Failed
+	exit 1
+}
+set -e
+grep -q "No SCCS files found to import" import.out || {
+	echo failed
+	exit 1
+}
+echo OK
+fi
 
 echo $N Test import of non conforming SCCS files ....................$NL
 cd $HERE/import_sccs/src
