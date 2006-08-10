@@ -168,10 +168,14 @@ main(int ac, char **av, char **env)
 	}
 
 	/* bk _realpath is mainly for win32 */
-	if (av[1] && streq(av[1], "_realpath") && !av[2]) {
+	if (av[1] && streq(av[1], "_realpath") && (!av[2] || !av[3])) {
 		char buf[MAXPATH], real[MAXPATH];
 
-		getcwd(buf, sizeof(buf));
+		if (av[2]) {
+			strcpy(buf, av[2]);
+		} else {
+			getcwd(buf, sizeof(buf));
+		}
 		getRealName(buf, NULL, real);
 		printf("%s => %s\n", buf, real);
 		exit(0);

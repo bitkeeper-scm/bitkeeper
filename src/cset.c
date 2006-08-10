@@ -1086,6 +1086,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
 	int	i, n, newfile, empty;
 	delta	**list;
+	char	*gfile = 0;
 
         if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
 		fprintf(stderr, "Patch aborted, %s has errors\n", s->sfile);
@@ -1103,8 +1104,12 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * a time when sending the cset diffs.
 	 */
 	for (n = 0, d = s->table; d; d = d->next) {
-		if (d->flags & D_SET) n++;
+		if (d->flags & D_SET) {
+			unless (gfile) gfile = d->pathname;
+			n++;
+		}
 	}
+	assert(gfile);
 	list = calloc(n, sizeof(delta*));
 	newfile = s->tree->flags & D_SET;
 	for (i = 0, d = s->table; d; d = d->next) {
@@ -1133,7 +1138,7 @@ sccs_patch(sccs *s, cset_t *cs)
 				    s->gfile, BK_FS, d->rev);
 				cset_exit(1);
 			}
-			printf("== %s ==\n", s->gfile);
+			printf("== %s ==\n", gfile);
 			if (newfile) {
 				printf("New file: %s\n", d->pathname);
 				if (cs->compat) {
