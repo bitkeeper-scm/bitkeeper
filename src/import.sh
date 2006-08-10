@@ -814,18 +814,22 @@ validate_SCCS () {
 	TO="$2"
 	mycd "$FROM"
 	grep 'SCCS/s\.' ${TMP}import$$ > ${TMP}sccs$$
+	if [ ! -s ${TMP}sccs$$ ]
+	then	echo "No SCCS files found to import.  Aborting"
+		Done 1
+	fi
 	grep -v 'SCCS/s\.' ${TMP}import$$ > ${TMP}notsccs$$
-	if [ -s ${TMP}sccs$$ -a -s ${TMP}notsccs$$ ]
-	then	NOT=`wc -l < ${TMP}notsccs$$ | sed 's/ //g'`
-		echo
-		echo Skipping $NOT non-SCCS files
-		echo $N "Do you want to see this list of skipped files? [No] " $NL
+	NOT=`wc -l < ${TMP}notsccs$$ | sed 's/ //g'`
+	echo
+	echo Skipping $NOT non-SCCS files
+	if [ -s ${TMP}notsccs$$ -a $FORCE = NO ]
+	then	echo $N "Do you want to see this list of skipped files? [No] " $NL
 		read x || exit 1
 		case "$x" in
 		y*)	sed 's/^/	/' < ${TMP}notsccs$$ | more ;;
 		esac
-		mv ${TMP}sccs$$ ${TMP}import$$
 	fi
+	mv ${TMP}sccs$$ ${TMP}import$$
 	$RM -f ${TMP}notsccs$$ ${TMP}sccs$$
 	if [ X$QUIET = X ]
 	then	echo Looking for BitKeeper files, please wait...
