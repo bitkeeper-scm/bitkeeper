@@ -246,7 +246,9 @@ usage:			system("bk help -s diffs");
 		 * XXX - I'm not sure this works with -C but we'll fix it in
 		 * the 3.1 tree.
 		 */
-		if (!force && !r1 && !IS_WRITABLE(s)) goto next;
+		if (!r1 && (!HAS_GFILE(s) || (!force && !IS_WRITABLE(s)))) {
+			goto next;
+		}
 
 		/*
 		 * Optimize out the case where we have a locked file with

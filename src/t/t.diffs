@@ -403,3 +403,11 @@ bk diff --ignore-to-str='x ' --ignore-trailing-cr a b > DIFF || {
 }
 echo OK
 
+echo $N Checking diffs -f with a pfile but not gfile ................$NL
+cd $HERE/project
+rm a
+bk edit $Q a || exit 1
+bk diffs -f a || exit 1
+rm a
+bk diffs -f a || exit 1
+echo OK
