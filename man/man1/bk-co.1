@@ -84,6 +84,16 @@ Write to stdout, forcing a check out even if the file is corrupted
 .B \-q
 Run quietly, suppressing diagnostics.
 .tp
+.OPTreq \-r rev
+Get this revision (or key or changeset revision\(emsee 
+.B bk help terms
+under \*(lqrev argument\*(rq).
+If combined with 
+.Q \-l
+(lock), \*(BK checks out the tip revision
+combined with a set of deltas to be included and excluded to produce
+the requested revision.
+.tp
 .B \-S
 Check out the file if and only if it is not already checked out.
 .tp
