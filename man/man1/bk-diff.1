@@ -1,106 +1,97 @@
 .so ../bk-macros
-.TH DIFF "\*[BKVER]" "22sep1993" "GNU Tools" "GNU Tools"
+.TH "bk diff" "\*[BKVER]" "22sep1993" "GNU Tools" "GNU Tools"
 .SH NAME
-diff \- find differences between two files
+bk diff \- find differences between two files
 .SH SYNOPSIS
-.B diff
-[options] from-file to-file
+.B bk diff
+.[ARG] options
+.ARG from-file
+.ARG to-file
 .SH DESCRIPTION
 In the simplest case, 
-.I diff
+.B bk diff
 compares the contents of the two files
-.I from-file
+.ARG from-file
 and
-.IR to-file .
+.ARG to-file .
 A file name of
-.B \-
+.Q \-
 stands for
 text read from the standard input.  As a special case,
-.B "diff \- \-"
+.Q "bk diff \- \-"
 compares a copy of standard input to itself.
-
 If 
-.I from-file
+.ARG from-file
 is a directory and
-.I to-file
+.ARG to-file
 is not,
-.I diff
+.B bk diff
 compares the file in
-.I from-file
+.ARG from-file
 whose file name is that of
-.IR to-file ,
+.ARG to-file ,
 and vice versa.  The non-directory file must not be
-.BR \- .
-
+.QR \- .
 If both
-.I from-file
+.ARG from-file
 and
-.I to-file
+.ARG to-file
 are directories,
-.I diff
+.B bk diff
 compares corresponding files in both directories, in
 alphabetical order; this comparison is not recursive unless the
-.B \-r
+.Q \-r
 or
-.B \-\-recursive
+.Q \-\-recursive
 option is given.
-.I diff
+.B bk diff
 never
 compares the actual contents of a directory as if it were a file.  The
 file that is fully specified may not be standard input, because standard
 input is nameless and the notion of ``file with the same name'' does not
 apply.
-
-.B diff
+.B bk diff
 options begin with
-.BR \- ,
+.QR \- ,
 so normally
-.I from-file
+.ARG from-file
 and
-.I to-file
+.ARG to-file
 may not begin with
-.BR \- .
+.QR \- .
 However,
-.B \-\-
+.Q \-\-
 as an
 argument by itself treats the remaining arguments as file names even if
 they begin with
-.BR \- .
-.SS Options
-Below is a summary of all of the options that GNU
-.I diff
-accepts.
+.QR \- .
+.SH OPTIONS
 Most options have two equivalent names, one of which is a single letter
 preceded by
-.BR \- ,
+.QR \- ,
 and the other of which is a long name preceded by
-.BR \-\- .
+.QR \-\- .
 Multiple single letter options (unless they take an
 argument) can be combined into a single command line word:
-.B \-ac
+.Q \-ac
 is
 equivalent to
-.BR "\-a \-c" .
+.QR "\-a \-c" .
 Long named options can be abbreviated to
-any unique prefix of their name.  Brackets
-.RB ( [
-and
-.BR ] )
-indicate that an
-option takes an optional argument.
+any unique prefix of their name.
 .TP
-.BI \- lines
+.OPTreq \- lines
 Show
-.I lines
+.ARG lines
 (an integer) lines of context.  This option does not
 specify an output format by itself; it has no effect unless it is
 combined with
-.B \-c
+.Q \-c
 or
-.BR \-u .
+.QR \-u .
 This option is obsolete.  For proper
 operation,
-.I patch
+.B bk patch
 typically needs at least two lines of context.
 .TP
 .B \-a
@@ -120,37 +111,37 @@ differences.
 .B \-c
 Use the context output format.
 .TP
-.BI "\-C " lines
+.OPTreq "\-C " lines
 .br
 .ns
 .TP
-.BI \-\-context[= lines ]
+.OPTopt \-\-context "= lines"
 Use the context output format, showing
-.I lines
+.ARG lines
 (an integer) lines of
 context, or three if
-.I lines
+.ARG lines
 is not given.
 For proper operation,
-.I patch
+.B bk patch
 typically needs at least two lines of
 context.
 .TP
-.BI \-\-changed\-group\-format= format
+.OPTreq \-\-changed\-group\-format= format
 Use
-.I format
+.ARG format
 to output a line group containing differing lines from
 both files in if-then-else format.
 .TP
 .B \-d
 Change the algorithm to perhaps find a smaller set of changes.  This makes
-.I diff
+.B bk diff
 slower (sometimes much slower).
 .TP
-.BI "\-D " name
+.OPTreq "\-D " name
 Make merged if-then-else format output, conditional on the preprocessor
 macro
-.IR name .
+.ARG name .
 .TP
 .B \-e
 .br
@@ -158,18 +149,18 @@ macro
 .TP
 .B \-\-ed
 Make output that is a valid
-.I ed
+.BR ed (1)
 script.
 .TP
-.BI \-\-exclude= pattern
+.OPTreq \-\-exclude= pattern
 When comparing directories, ignore files and subdirectories whose basenames
 match
-.IR pattern .
+.ARG pattern .
 .TP
-.BI \-\-exclude\-from= file
+.OPTreq \-\-exclude\-from= file
 When comparing directories, ignore files and subdirectories whose basenames
 match any pattern contained in
-.IR file .
+.ARG file .
 .TP
 .B \-\-expand\-tabs
 Expand tabs to spaces in the output, to preserve the alignment of tabs
@@ -177,49 +168,49 @@ in the input files.
 .TP
 .B \-f
 Make output that looks vaguely like an
-.I ed
+.BR ed (1)
 script but has changes
 in the order they appear in the file.
 .TP
-.BI "\-F " regexp
+.OPTreq "\-F " regexp
 In context and unified format, for each hunk of differences, show some
 of the last preceding line that matches
-.IR regexp .
+.ARG regexp .
 .TP
 .B \-\-forward\-ed
 Make output that looks vaguely like an
-.B ed
+.BR ed (1)
 script but has changes
 in the order they appear in the file.
 .TP
 .B \-h
-This option currently has no effect; it is present for Unix
+This option currently has no effect; it is present for \*(UN
 compatibility.
 .TP
 .B \-H
 Use heuristics to speed handling of large files that have numerous
 scattered small changes.
 .TP
-.BI \-\-horizon\-lines= lines
+.OPTreq \-\-horizon\-lines= lines
 Do not discard the last
-.I lines
+.ARG lines
 lines of the common prefix
 and the first
-.I lines
+.ARG lines
 lines of the common suffix.
 .TP
 .B \-i
 Ignore changes in case; consider upper- and lower-case letters
 equivalent.
 .TP
-.BI "\-I " regexp
+.OPTreq "\-I " regexp
 Ignore changes that just insert or delete lines that match
-.IR regexp .
+.ARG regexp .
 .TP
-.BI \-\-ifdef= name
+.OPTreq \-\-ifdef= name
 Make merged if-then-else format output, conditional on the preprocessor
 macro
-.IR name .
+.ARG name .
 .TP
 .B \-\-ignore\-all\-space
 Ignore white space when comparing lines.
@@ -230,9 +221,9 @@ Ignore changes that just insert or delete blank lines.
 .B \-\-ignore\-case
 Ignore changes in case; consider upper- and lower-case to be the same.
 .TP
-.BI \-\-ignore\-matching\-lines= regexp
+.OPTreq \-\-ignore\-matching\-lines= regexp
 Ignore changes that just insert or delete lines that match
-.IR regexp .
+.ARG regexp .
 .TP
 .B \-\-ignore\-space\-change
 Ignore changes in amount of white space.
@@ -244,16 +235,16 @@ normal.
 .TP
 .B \-l
 Pass the output through
-.I pr
+.BR pr (1)
 to paginate it.
 .TP
-.BI "\-L " label
+.OPTreq "\-L " label
 .br
 .ns
 .TP
-.BI \-\-label= label
+.OPTreq \-\-label= label
 Use
-.I label
+.ARG label
 instead of the file name in the context format
 and unified format
 headers.
@@ -261,15 +252,15 @@ headers.
 .B \-\-left\-column
 Print only the left column of two common lines in side by side format.
 .TP
-.BI \-\-line\-format= format
+.OPTreq \-\-line\-format= format
 Use
-.I format
+.ARG format
 to output all input lines in in-then-else format.
 .TP
 .B \-\-minimal
 Change the algorithm to perhaps find a smaller set of changes.  This
 makes
-.I diff
+.B bk diff
 slower (sometimes much slower).
 .TP
 .B \-n
@@ -286,27 +277,27 @@ specifies the number of lines affected.
 In directory comparison, if a file is found in only one directory,
 treat it as present but empty in the other directory.
 .TP
-.BI \-\-new\-group\-format= format
+.OPTreq \-\-new\-group\-format= format
 Use
-.I format
+.ARG format
 to output a group of lines taken from just the second
 file in if-then-else format.
 .TP
-.BI \-\-new\-line\-format= format
+.OPTreq \-\-new\-line\-format= format
 Use 
-.I format
+.ARG format
 to output a line taken from just the second file in
 if-then-else format.
 .TP
-.BI \-\-old\-group\-format= format
+.OPTreq \-\-old\-group\-format= format
 Use
-.I format
+.ARG format
 to output a group of lines taken from just the first
 file in if-then-else format.
 .TP
-.BI \-\-old\-line\-format= format
+.OPTreq \-\-old\-line\-format= format
 Use
-.I format
+.ARG format
 to output a line taken from just the first file in
 if-then-else format.
 .TP
@@ -319,7 +310,7 @@ directory of the two, treat it as present but empty in the other.
 .TP
 .B \-\-paginate
 Pass the output through
-.I pr
+.BR pr (1)
 to paginate it.
 .TP
 .B \-q
@@ -331,7 +322,7 @@ When comparing directories, recursively compare any subdirectories
 found.
 .TP
 .B \-\-rcs
-Output RCS-format diffs; like
+Output \*(R-format diffs; like
 .B \-f
 except that each command
 specifies the number of lines affected.
@@ -347,41 +338,43 @@ found.
 .B \-s
 Report when two files are the same.
 .TP
-.BI "\-S " file
+.OPTreq "\-S " file
 When comparing directories, start with the file
-.IR file .
+.ARG file .
 This is
 used for resuming an aborted comparison.
 .TP
-.BI \-\-from\-file= file
+.OPTreq \-\-from\-file= file
 Compare
-.I file
+.ARG file
 to all operands.
-.I file
+.ARG file
 can be a directory.
 .TP
-.BI \-\-to\-file= file
+.OPTreq \-\-to\-file= file
 Compare all operands to
-.IR file . " file"
+.ARG file .
+.ARG file
 can be a directory.
 .TP
 .B \-\-sdiff\-merge\-assist
 Print extra information to help
-.IR sdiff .
-.I sdiff
+.BR sdiff (1).
+.\" XXX should we document this option?  sdiff(1) doesn't know about bk diff.
+.B sdiff
 uses this
 option when it runs
-.IR diff .
+.BR diff .
 This option is not intended for users
 to use directly.
 .TP
 .B \-\-show\-c\-function
 Show which C function each change is in.
 .TP
-.BI \-\-show\-function\-line= regexp
+.OPTreq \-\-show\-function\-line= regexp
 In context and unified format, for each hunk of differences, show some
 of the last preceding line that matches
-.IR regexp .
+.ARG regexp .
 .TP
 .B \-\-side\-by\-side
 Use the side by side output format.
@@ -390,9 +383,9 @@ Use the side by side output format.
 Use heuristics to speed handling of large files that have numerous
 scattered small changes.
 .TP
-.BI \-\-starting\-file= file
+.ARG \-\-starting\-file= file
 When comparing directories, start with the file
-.IR file .
+.ARG file .
 This is
 used for resuming an aborted comparison.
 .TP
@@ -415,15 +408,15 @@ do not appear to be text.
 .B \-u
 Use the unified output format.
 .TP
-.BI \-\-unchanged\-group\-format= format
+.OPTreq \-\-unchanged\-group\-format= format
 Use
-.I format
+.ARG format
 to output a group of common lines taken from both files
 in if-then-else format.
 .TP
-.BI \-\-unchanged\-line\-format= format
+.OPTreq \-\-unchanged\-line\-format= format
 Use
-.I format
+.ARG format
 to output a line common to both files in if-then-else
 format.
 .TP
@@ -431,19 +424,19 @@ format.
 When comparing directories, if a file appears only in the second
 directory of the two, treat it as present but empty in the other.
 .TP
-.BI "\-U " lines
+.OPTreq "\-U " lines
 .br
 .ns
 .TP
-.BI \-\-unified[= lines ]
+.OPTreq \-\-unified[= lines ]
 Use the unified output format, showing
-.I lines
+.ARG lines
 (an integer) lines of
 context, or three if
-.I lines
+.ARG lines
 is not given.
 For proper operation,
-.I patch
+.B bk patch
 typically needs at least two lines of
 context.
 .TP
@@ -453,38 +446,60 @@ context.
 .TP
 .B \-\-version
 Output the version number of
-.IR diff .
+.BR "bk diff" .
 .TP
 .B \-w
 Ignore white space when comparing lines.
 .TP
-.BI "\-W " columns
+.OPTreq "\-W " columns
 .br
 .ns
 .TP
-.BI \-\-width= columns
+.OPTreq \-\-width= columns
 Use an output width of
-.I columns
+.ARG columns
 in side by side format.
 .TP
-.BI "\-x " pattern
+.OPTreq "\-x " pattern
 When comparing directories, ignore files and subdirectories whose basenames
 match
-.IR pattern .
+.ARG pattern .
 .TP
-.BI "\-X " file
+.OPTreq "\-X " file
 When comparing directories, ignore files and subdirectories whose basenames
 match any pattern contained in
-.IR file .
+.ARG file .
 .TP
 .B \-y
 Use the side by side output format.
-.SH SOURCE
-The source code for the versions of GNU tools shipped by \*(BM is available at
-\f(CWftp://ftp.bitmover.com/gnu\fP.
+.\" XXX I get connection refused by ftp.bitmover.com
+.\".SH SOURCE
+.\"The source code for the versions of GNU tools shipped by \*(BM is available at
+.\".BR ftp://ftp.bitmover.com/gnu .
+.SH EXIT STATUS
+.B bk diff
+returns exit status:
+.TP
+0
+if no differences were found.
+.TP
+1
+if some differences were found.
+.TP
+2
+if an error occurred.
+.SH NOTES
+.B bk diff
+uses the GNU implementation of
+.BR diff (1).
 .SH SEE ALSO
 .SA gpl
-cmp(1), comm(1), diff3(1), ed(1), patch(1), pr(1), sdiff(1).
-.SH DIAGNOSTICS
-An exit status of 0 means no differences were found, 1 means some
-differences were found, and 2 means trouble.
+.SA patch
+.BR cmp (1),
+.BR comm (1),
+.BR diff3 (1),
+.BR ed (1),
+.BR pr (1),
+.BR sdiff (1).
+.SH CATEGORY
+.B Utility
