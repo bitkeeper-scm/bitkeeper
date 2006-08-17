@@ -12,7 +12,240 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+# Echo "Check $*........" where enough dots are added, and $* is truncated
+# if necessary, to line everything up nicely.
+pr()
+{
+        _PR=$*
+        _PR_LEN=`echo "$_PR" | wc -c`
+        test $_PR_LEN -gt 53 && {
+		_PR=`echo $N "$_PR" | cut -b1-53`
+                _PR_LEN=54
+	}
+        _PR_LEN=`expr 56 - $_PR_LEN`
+	echo $N Check "$_PR"
+        _PR_FILL=`printf "%${_PR_LEN}s\n" "" | sed -e 's/ /./g' 2>/dev/null`
+        echo $N $_PR_FILL$NL
+}
+
 commercial project
+
+########################################################################
+# Check correct syntax and usage of keyword and text printing, and
+# the various conditional statements, on a single rev of a file.  All of
+# these are run as follows and none should fail:
+#     bk -r+ -d<dspec> FILE2
+
+echo "data" >FILE2
+bk new $Q FILE2
+bk edit $Q FILE2
+bk delta $Q -f -yc1 FILE2
+bk edit $Q FILE2
+bk delta $Q -f -yc2 FILE2
+bk edit $Q FILE2
+bk delta $Q -f -yc3 FILE2
+bk commit $Q -ycommit
+bk tag $Q tag
+# The syntax is <dspec> # <expected output>
+cat >cmds <<'EOF'
+:REV:		# 1.4
+:REV|1.1:	# 1.1
+:REV|1.2:	# 1.2
+:REV|1.3:	# 1.3
+:REV|+:		# 1.4
+:REV|tag:	#
+:UNKNOWN:	# :UNKNOWN:
+:UNKNOWN|1.1:	# :UNKNOWN|1.1:
+:UNKNOWN|tag:	#
+a		# a
+xyzzy		# xyzzy
+:		# :
+:nokw		# :nokw
+nokw:x		# nokw:x
+x: y: z:	# x: y: z:
+a\\tb		# a	b
+a\\$b		# a$b
+a\\xb		# axb
+a\\\\b		# a\\b
+{xxx}		# {xxx}
+{}		# {}
+{		# {
+}		# }
+$		# $
+$$$$$$$$:REV:$$$$$$$$$	# $$$$$$$$1.4$$$$$$$$$
+$i			# $i
+$eac			# $eac
+$unles			# $unles
+$else			# $else
+$if(e){$else}		# $else
+$if(e){{{{{{{}		# {{{{{{
+$if(e){}		#
+$if(e){x}		# x
+$if(e){x:REV:y}		# x1.4y
+$if(e){x}$else{}	# x
+$if(e){x}$else{y}	# x
+$if(e){x}$else{y:REV:z}	# x
+$unless(e){x}			#
+$unless(e){}			#
+$unless(e){x:REV:y}		#
+$unless(e){x}$else{y}		# y
+$unless(e){x}$else{}		#
+$unless(e){x}$else{y:REV:z}	# y1.4z
+$each(:C:){x}			# x
+$each(:C:){(:C:)}		# c3
+$each(:C:){:each:}		# c3
+$if(e){x}$if(e){y}$if(e){z}	# xyz
+$if(e){x}$else{q}$if(e){y}$if(e){z}	# xyz
+$if(e){x}$if(e){y}$else{q}$if(e){z}	# xyz
+$if(e){x}$if(e){y}$if(e){z}$else{q}	# xyz
+$if(e){x}$else{q}$if(e){y}$else{q}$if(e){z}$else{q}	# xyz
+$if(e){$if(e){x}}			# x
+$if(e){$if(e){x}}$else{z}		# x
+$if(e){$if(e){x}$else{y}}$else{z}	# x
+$if(:REV:){t}$else{f}			# t
+$unless(:REV:){t}$else{f}		# f
+$if(:REV:=1.4){t}$else{f}		# t
+$unless(:REV:=1.4){t}$else{f}		# f
+$unless(:REV:!=1.4){t}$else{f}		# t
+$if(:REV|tag:){t}$else{f}		# f
+$if(:DPN:=~file*){t}$else{f}		# t
+$if(:DPN:=~f*){t}$else{f}		# t
+$unless(:DPN:!~f*){t}$else{f}		# t
+$if(1.0 -eq 1.0){t}$else{f}		# t
+$if(1.0 -ne 2.0){t}$else{f}		# t
+$if(2.0 -gt 1.0){t}$else{f}		# t
+$if(2.0 -ge 1.0){t}$else{f}		# t
+$if(1.0 -lt 2.0){t}$else{f}		# t
+$if(1.0 -le 2.0){t}$else{f}		# t
+$if(a && b){t}$else{f}			# t
+$if(a || b){t}$else{f}			# t
+$if(:REV:=1.4 && :DPN:=FILE2){t}$else{f}		# t
+$if(:REV:=1.4 && :DPN:!=FILE2){t}$else{f}		# f
+$if(:REV:=1.4 || :DPN:=FILE2){t}$else{f}		# t
+$if(:REV: || (:REV: && :C|1.1:)){t}$else{f}			# t
+$if(:REV: && :C|1.1:){t}$else{f}			# f
+$if(:REV: || :REV: && :C|1.1:){t}$else{f}			# f
+$if((:REV: && :C|1.1:) || (:REV: && :C|1.1:)){t}$else{f}	# f
+$if((:REV: || :C|1.1:) && (:REV: || :C|1.1:)){t}$else{f}	# t
+$if((:REV:=1.4 && :C|1.1:) || (:REV:!=1.1 && :C|1.1:)){t}$else{f}	# f
+$if((:REV:=1.4 && :REV:!=1.1) || (:REV:!=1.1 && :REV=1.4:)){t}$else{f}	# t
+$if(((:REV:=1.4) && (:REV:!=1.1)) || ((:REV:!=1.1) && (:REV=1.4:))){t}$else{f}	# t
+$tcl{testing}		# {testing}
+$tcl{{}			# {\\{}
+$tcl{\\}}		# {\\}}
+$tcl{[]$;" }		# {\\[\\]\\$\\;\\"\\ }
+$tcl{\\\\x}		# {\\\\x}
+$tcl{$tcl{a} $tcl{b} $tcl{c}}	# {{a}\\ {b}\\ {c}}
+EOF
+cat cmds | while read l; do
+	# Extract command and intended result.
+	cmd=`echo $N $l | cut -d# -f1`
+	res=`echo $N $l | cut -d# -f2 | cut -c2-` 
+        pr $cmd
+        bk prs -r+ -hd"$cmd" FILE2 >OUT 2>&1 || {
+		echo; echo Command did not work
+                cat OUT
+                exit 1
+	}
+	# Merge multiple output lines into one by turning newlines into spaces.
+        tr '\n' ' ' <OUT >GOT
+	# Check command output against intended result.
+        echo $N "$res" >WANT
+        echo $N " " >>WANT  # hack for bug? in windows diff -b option
+        echo $N " " >>GOT
+        diff -bB GOT WANT >/dev/null || {
+		echo; echo expected $res got `cat GOT`
+		exit 1
+	}
+        echo OK
+done || exit 1
+
+########################################################################
+# Check $each statement.  Create a multi-line comment and iterate
+# over it.
+
+echo "data" >FILE3
+bk new $Q FILE3
+bk edit $Q FILE3
+cat >cmt <<EOF
+l1
+l2
+l3
+l4
+EOF
+bk delta $Q -f -Ycmt FILE3
+# The syntax is <dspec> # <expected output>
+cat >cmds <<'EOF'
+$each(:C:){(:C:)x}		# l1xl2xl3xl4x
+$each(:C:){:each:x}		# l1xl2xl3xl4x
+$each(:C:){:each::each:x}		# l1l1xl2l2xl3l3xl4l4x
+$each(:C:){(:C:) :each:x}		# l1 l1xl2 l2xl3 l3xl4 l4x
+$each(:C:){:line: :each:x}		# 1 l1x2 l2x3 l3x4 l4x
+$each(:C:){$if(:line:=1){one}$if(:line:=2){two}$if(:line:=3){three}}	# onetwothree
+$each(:REV:){:each:}		# 1.2
+EOF
+cat cmds | while read l; do
+	# Extract command and intended result.
+	cmd=`echo $N $l | cut -d# -f1`
+	res=`echo $N $l | cut -d# -f2 | cut -c2-` 
+        pr $cmd
+        bk prs -r+ -hd"$cmd" FILE3 >OUT 2>&1 || {
+		echo; echo Command did not work
+                cat OUT
+                exit 1
+	}
+	# Merge multiple output lines into one by turning newlines into spaces.
+        tr '\n' ' ' <OUT >GOT
+	# Check command output against intended result.
+        echo $N "$res" >WANT
+        echo $N " " >>WANT  # hack for bug? in windows diff -b option
+        echo $N " " >>GOT
+        diff -bB GOT WANT >/dev/null || {
+		echo; echo expected $res got `cat GOT`
+		exit 1
+	}
+        echo OK
+done || exit 1
+
+########################################################################
+# Check incorrect syntax.  These should all fail with error status.
+
+echo "data" >FILE4
+bk new $Q FILE4
+bk edit $Q FILE4
+bk delta $Q -f -ycmt FILE4
+cat >cmds <<'EOF'
+$if(a
+$if(a)
+$if(a)(
+$if(a){
+$if(a){}$else{
+$unless(a
+$unless(a)
+$unless(a)(
+$unless(a){
+$unless(a){}$else{
+$each(
+$each(:id
+$each(:id:
+$each(:C:)
+$each(:C:){
+$if((:REV:=1.4)
+$each(:C:){$each(:TAG:){x}}
+EOF
+cat cmds | while read cmd; do
+        pr $cmd
+        bk prs -r+ -d"$cmd" FILE4 >GOT 2>&1 && {
+		echo; echo Command should not have worked
+                cat GOT
+                exit 1
+	}
+        echo OK
+done || exit 1
+
+########################################################################
+# Check some of the meta-data keywords.
+
 export USER=bk
 export BK_YEAR2=YES
 R=1

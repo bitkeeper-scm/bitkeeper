@@ -27,7 +27,7 @@ $gperf = 'gperf' unless -x $gperf;
 $_ = `$gperf --version`;
 die "mk-cmd.pl: Requires gperf version >3\n" unless /^GNU gperf 3/;
 
-open(C, "| $gperf > kw2val_lookup.c") or die;
+open(C, "| $gperf -c > kw2val_lookup.c") or die;
 
 my $in = 0;
 my @keywords;
