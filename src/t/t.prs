@@ -34,7 +34,7 @@ commercial project
 # Check correct syntax and usage of keyword and text printing, and
 # the various conditional statements, on a single rev of a file.  All of
 # these are run as follows and none should fail:
-#     bk -r+ -d<dspec> FILE2
+#     bk prs -hr+ -d<dspec> FILE2
 
 echo "data" >FILE2
 bk new $Q FILE2
@@ -122,12 +122,12 @@ $if(a || b){t}$else{f}			# t
 $if(:REV:=1.4 && :DPN:=FILE2){t}$else{f}		# t
 $if(:REV:=1.4 && :DPN:!=FILE2){t}$else{f}		# f
 $if(:REV:=1.4 || :DPN:=FILE2){t}$else{f}		# t
-$if(:REV: || (:REV: && :C|1.1:)){t}$else{f}			# t
-$if(:REV: && :C|1.1:){t}$else{f}			# f
-$if(:REV: || :REV: && :C|1.1:){t}$else{f}			# f
-$if((:REV: && :C|1.1:) || (:REV: && :C|1.1:)){t}$else{f}	# f
-$if((:REV: || :C|1.1:) && (:REV: || :C|1.1:)){t}$else{f}	# t
-$if((:REV:=1.4 && :C|1.1:) || (:REV:!=1.1 && :C|1.1:)){t}$else{f}	# f
+$if(:REV: && :C|1.0:){t}$else{f}			# f
+$if(:REV: || :REV: && :C|1.0:){t}$else{f}			# f
+$if(:REV: || (:REV: && :C|1.0:)){t}$else{f}			# t
+$if((:REV: && :C|1.0:) || (:REV: && :C|1.0:)){t}$else{f}	# f
+$if((:REV: || :C|1.0:) && (:REV: || :C|1.0:)){t}$else{f}	# t
+$if((:REV:=1.4 && :C|1.0:) || (:REV:!=1.1 && :C|1.0:)){t}$else{f}	# f
 $if((:REV:=1.4 && :REV:!=1.1) || (:REV:!=1.1 && :REV=1.4:)){t}$else{f}	# t
 $if(((:REV:=1.4) && (:REV:!=1.1)) || ((:REV:!=1.1) && (:REV=1.4:))){t}$else{f}	# t
 $tcl{testing}		# {testing}
@@ -246,8 +246,8 @@ done || exit 1
 ########################################################################
 # Check some of the meta-data keywords.
 
-export USER=bk
-export BK_YEAR2=YES
+BK_YEAR2=YES
+export BK_YEAR2
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
 do	cat > INITX <<EOF

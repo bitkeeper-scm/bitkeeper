@@ -13798,9 +13798,6 @@ dspec_getnext(datum kw, dspec_getnext_t *state)
  */
 #include "kw2val_lookup.c"
 
-#define	notKeyword -1
-#define	nullVal    0
-#define	strVal	   1
 /*
  * Given a PRS DSPEC keyword, get the associated string value
  * If out is non-null print to out
@@ -13859,6 +13856,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
         if (vbar) *vbar = '|';  /* un-stomp kw (see above) */
 	unless (kwval) return notKeyword;
 
+	unless (out || vbuf) return (nullVal);
 	switch (kwval->kwnum) {
 	case KW_each: /* each */ {
                 fsd(g.each);
@@ -14597,7 +14595,11 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_CHANGESET: /* CHANGESET */ {
-		return (CSET(s) ? strVal : nullVal);
+		if (CSET(s)) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	case KW_CSETFILE: /* CSETFILE */ {
@@ -15333,7 +15335,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 			char	*cmd;
 			FILE	*f;
 			char	buf[BUFSIZ];
-			
+
 			cmd = aprintf("bk diffs -%s%shR%s '%s'",
 			    kind == DF_DIFF ? "" : "u",
 			    kind & DF_GNUp ? "p" : "",
@@ -15355,7 +15357,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 }
 
 int
-sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
+sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
@@ -15369,7 +15371,7 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 }
 
 char *
-sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec)
+sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec)
 {
 	char	**buf = 0;
 
