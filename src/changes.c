@@ -387,21 +387,21 @@ recurse(delta *d)
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
-#define	DSPEC	"$if(:DPN:!=ChangeSet){  }" \
+#define	DSPEC	"$unless(:CHANGESET:){  }" \
 		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"+:LI: -:LD:\n" \
-		"$each(:C:){$if(:DPN:!=ChangeSet){  }  (:C:)\n}" \
+		"$each(:C:){$if(:CHANGESET:){  }  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
-		"$if(:MERGE:){$if(:DPN:!=ChangeSet){  }  MERGE: " \
+		"$if(:MERGE:){$if(:CHANGESET:){  }  MERGE: " \
 		":MPARENT:\n}\n"
-#define	VSPEC	"$if(:DPN:=ChangeSet){\n#### :DPN: ####\n}" \
-		"$if(:DPN:!=ChangeSet){\n==== :DPN: ====\n}" \
+#define	VSPEC	"$if(:CHANGESET:){\n#### :DPN: ####\n}" \
+		"$else{\n==== :DPN: ====\n}" \
 		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
-		"$if(:DPN:!=ChangeSet){+:LI: -:LD:}" \
+		"$if(:CHANGESET:){+:LI: -:LD:}" \
 		"\n" \
 		"$each(:C:){  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
-		"$if(:DPN:!=ChangeSet){:DIFFS_UP:}"
+		"$unless(:CHANGESET:){:DIFFS_UP:}"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
