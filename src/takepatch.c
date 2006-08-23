@@ -422,12 +422,9 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
 		    "takepatch: can't find key '%s' in id cache\n", t);
 error:		if (perfile) sccs_free(perfile);
 		if (gfile) free(gfile);
-		if (s) {
-			errfiles =
-				addLine(errfiles, sccs2name(s->sfile));
-			sccs_free(s);
-		}
-		free(name);
+		if (s) sccs_free(s);
+		/* we don't free name, we pass it to errfiles */
+		errfiles = addLine(errfiles, name);
 		return (-1);
 	}
 
@@ -525,7 +522,7 @@ error:		if (perfile) sccs_free(perfile);
 		}
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, flags, perfile);
-		if (rc < 0) errfiles = addLine(errfiles, sccs2name(s->sfile));
+		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
 	}
 	if (echo == 2) fprintf(stderr, "\n");
 	if (echo == 3) fprintf(stderr, " \n");
