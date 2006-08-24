@@ -1,0 +1,68 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2006 BitMover
+# %K%
+
+echo $N Check that numercical sort is deterministic .................$NL
+cat - <<EOF | bk sort -n > GOT
+2 b
+2 a
+2 c
+1 q
+3 a
+EOF
+cat - <<EOF > WANT
+1 q
+2 a
+2 b
+2 c
+3 a
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that string field sort is deterministic ...............$NL
+cat - <<EOF | bk sort -k2 > GOT
+a d j
+b a j
+c a k
+d a j
+a a j
+EOF
+# sorts as a string, first from the field start, then whole string
+cat - <<EOF > WANT
+a a j
+b a j
+d a j
+c a k
+a d j
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that numerical field sort is deterministic ............$NL
+cat - <<EOF | bk sort -nk2 > GOT
+b 122q
+b 255m
+a 255m
+a 27j
+a 255n
+EOF
+cat - <<EOF > WANT
+a 27j
+b 122q
+a 255m
+b 255m
+a 255n
+EOF
+cmpfiles WANT GOT
+echo OK
