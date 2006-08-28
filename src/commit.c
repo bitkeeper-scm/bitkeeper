@@ -42,7 +42,7 @@ commit_main(int ac, char **av)
 				break;		/* doc 2.0 */
 		    case 'y':					/* doc 2.0 */
 			dflags |= DELTA_DONTASK;
-			comments_save(optarg);
+			if (comments_save(optarg)) return (1);
 			break;
 		    case 'Y':					/* doc 2.0 */
 			if (comments_savefile(optarg)) {
@@ -160,7 +160,7 @@ commit_main(int ac, char **av)
 			return (1);
 		}
 		dflags |= DELTA_DONTASK;
-		comments_savefile(commentFile);
+		if (comments_savefile(commentFile)) return (1);
 		unlink(commentFile);
 	}
 	do_clean(s_cset, SILENT);
@@ -194,7 +194,7 @@ do_commit(char **av,
 
 	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
 	comments_done();
-	comments_savefile(commentFile);
+	if (comments_savefile(commentFile)) return (1);
 	if (opts.quiet) dflags |= SILENT;
 	if (sym) syms = addLine(syms, strdup(sym));
 	if (f = fopen("SCCS/t.ChangeSet", "r")) {

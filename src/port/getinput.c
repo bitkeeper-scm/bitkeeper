@@ -43,6 +43,10 @@ sccs_getComments(char *file, char *rev, delta *n)
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if ((buf2[0] == 0) || streq(buf2, "."))
 			break;
+		if (comments_checkStr(buf2)) {
+			fprintf(stderr, "Skipped.\n");
+			continue;
+		}
 		n->comments = addLine(n->comments, strdup(buf2));
 		if (rev) {
 			fprintf(stderr, "%s@%s>>  ", file, rev);
