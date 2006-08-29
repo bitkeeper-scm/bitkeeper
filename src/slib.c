@@ -10585,23 +10585,55 @@ c_compar(const void *a, const void *b)
 }
 
 private	char *
-obscure(int uu, char *buf)
+obscure(int rmlicense, int uu, char *buf)
 {
 	int	len;
 	char	*new;
+	char	*p, *t;
 
+	/* XXX just write a strnldup */
 	for (len = 0; buf[len] && (buf[len] != '\n'); len++);
-	new = malloc(len+2);
-	strncpy(new, buf, len+1);
-	new[len+1] = 0;
-	if (*new == '\001') return (new);
+	if (buf[len]) len++;
+	assert(len);
+	new = malloc(len+1);
+	strncpy(new, buf, len);
+	new[len] = 0;
+	unless (len > 1) goto done; 	/* need to have something to obscure */
+
+	if (*new == '\001') goto done;
+	/*
+	 * Try to match '.*\Wlicense\w*:.* or .*\Wlicsign\d\w*:
+	 * and obsure them.
+	 */
+	if (rmlicense) {
+		if (uu) goto done;
+		/* only pick on active license and licsign lines */
+		p = new;
+		while (isspace(*p)) ++p;
+		if (*p == '#') goto done;
+		if ((*p == '[') && (p = strchr(p, ']'))) p++;
+		unless (p && *p) goto done;
+		while (isspace(*p)) ++p;
+		unless ((strneq(p, "license", 7)) ||
+		    (strneq(p, "licsign", 7))) {
+			goto done;
+		}
+		t = p + 7;
+		if ((t[-1] == 'n') && isdigit(*t)) ++t;	/* licsign\d */
+		while (isspace(*t)) ++t;
+		unless (*t == ':') goto done;
+		*t = *new;		/* save first character in : */
+		p[2] += ':' - '#';	/* turn a c into z */
+		new[0] = '#';		/* replace : with # */
+		uu = 1;			/* leave the first char in place */
+	}
 	if (uu) {
-		qsort(new+1, len-1, 1, c_compar);
+		qsort(new+1, len-2, 1, c_compar); /* leave first and last */
 	} else {
-		qsort(new, len, 1, c_compar);
+		qsort(new, len-1, 1, c_compar);	/* leave last char */
 	}
 	assert(*new != '\001');
-	return (new);
+done:	return (new);
 }
 
 private	void
@@ -10613,7 +10645,7 @@ obscure_comments(sccs *s)
 
 	for (d = s->table; d; d = d->next) {
 		EACH(d->comments) {
-			buf = obscure(0, d->comments[i]);
+			buf = obscure(0, 0, d->comments[i]);
 			free(d->comments[i]);
 			d->comments[i] = buf;
 		}
@@ -10638,7 +10670,7 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	char	*t;
 	char	*buf;
 	delta	*d = 0;
-	int	obscure_it;
+	int	obscure_it, rmlicense;
 
 	assert(!z); /* XXX used to be LOD item */
 
@@ -10693,7 +10725,8 @@ out:
 #endif
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
-	if ((flags & ADMIN_OBSCURE) && sccs_clean(sc, (flags & SILENT))) {
+	if ((flags & (ADMIN_OBSCURE|ADMIN_RMLICENSE))
+	    && sccs_clean(sc, (flags & SILENT))) {
 		goto out;
 	}
 
@@ -10938,21 +10971,29 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	seekto(sc, sc->data);
 	debug((stderr, "seek to %d\n", (int)sc->data));
 	obscure_it = (flags & ADMIN_OBSCURE);
-	/* ChangeSet can't be obscured, neither can the BitKeeper/etc files */
-	if (CSET(sc) ||
-	    (sc->tree->pathname && strneq(sc->tree->pathname,"BitKeeper/etc/",13))) {
+	rmlicense = (flags & ADMIN_RMLICENSE);
+	/* ChangeSet can't be obscured in any sense */
+	if (CSET(sc)) {
+	    	rmlicense = obscure_it = 0;
+	}
+	/* the BitKeeper/etc files can't be obscured in normal sense */
+	if (sc->tree->pathname
+	    && strneq(sc->tree->pathname,"BitKeeper/etc/",13)) {
 	    	obscure_it = 0;
 	}
-	if ((old_enc & E_GZIP) && obscure_it) {
+	if ((old_enc & E_GZIP) && (obscure_it|rmlicense)) {
 		fprintf(stderr, "admin: cannot obscure gzipped data.\n");
 		OUT;
 	}
+	if (rmlicense) obscure_it = 1;
 	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
 	if (new_enc & E_GZIP) zputs_init();
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
 	while (buf = nextdata(sc)) {
-		if (obscure_it) buf = obscure(old_enc & E_UUENCODE, buf);
+		if (obscure_it) {
+			buf = obscure(rmlicense, old_enc & E_UUENCODE, buf);
+		}
 		sc->encoding = new_enc;
 		if (flags & ADMIN_ADD1_0) {
 			fputbumpserial(sc, buf, 1, sfile);

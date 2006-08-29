@@ -594,7 +594,7 @@ _obscure() {
 		exit 1
 	}
 	bk -r admin -Znone || exit 1
-	BK_FORCE=YES bk -r admin -O
+	BK_FORCE=YES bk -r admin -Oall
 }
 
 __bkfiles() {
