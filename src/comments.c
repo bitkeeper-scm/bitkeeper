@@ -10,7 +10,7 @@ private	int	gotComment;	/* seems redundant but it isn't, this is
 				 * is how we know we have a null comment.
 				 */
 
-void
+int
 comments_save(char *s)
 {
 	char	*p, **split;
@@ -25,6 +25,12 @@ comments_save(char *s)
 	saved = 0;
 	split = splitLineToLines(s, 0);
 	EACH(split) {
+		if (comments_checkStr(split[i])) {
+			freeLines(split, free);
+			freeLines(saved, free);
+			saved = 0;
+			return (-1);
+		}
 		len = strlen(split[i]);
 		if (len <= MAXCMT) {
 			saved = addLine(saved, strdup(split[i]));
@@ -40,6 +46,7 @@ comments_save(char *s)
 	}
 	freeLines(split, free);
 out:	gotComment = 1;
+	return (0);
 }
 
 int
@@ -54,7 +61,7 @@ comments_savefile(char *s)
 	}
 	unless (f = fopen(s, "r")) {
 		perror(s);
-		return(-1);
+		return (-1);
 	}
 	gotComment = 1;
 	comment = "";
@@ -67,6 +74,13 @@ comments_savefile(char *s)
 			    "Splitting comment line \"%.50s\"...\n", buf);
 		}
 		*last = 0;	/* strip any trailing NL */
+		if (comments_checkStr(buf)) {
+			freeLines(saved, free);
+			saved = 0;
+			comment = "";
+			fclose(f);
+			return (-1);
+		}
 		saved = addLine(saved, strdup(buf));
 	}
 	if (saved) comment = 0;
@@ -206,3 +220,21 @@ comments_writefile(char *file)
 		fclose(f);
 	}
 }
+
+int
+comments_checkStr(char *s)
+{
+	assert(s);
+	for (; *s; s++) {
+		/* disallow control characters, but still allow UTF-8 */
+		if ((*s < 0x20) && (*s != '\t')) {
+			fprintf(stderr,
+			    "Non-printable character (0x%x) is illegal in "
+			    "comments string.\n", *s);
+			return (1);
+		}
+	}
+	return (0);
+}
+
+

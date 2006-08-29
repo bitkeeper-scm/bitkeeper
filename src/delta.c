@@ -162,7 +162,7 @@ delta_main(int ac, char **av)
 		    case 'p': dflags |= PRINT; break; 		/* doc 2.0 */
 		    case 'm':					/* ci compat */
 		    case 'y': 					/* doc 2.0 */
-			comments_save(optarg);
+			if (comments_save(optarg)) return (1);
 			dflags |= DELTA_DONTASK;
 			break;
 		    case 's': /* fall through */		/* undoc 2.0 */
