@@ -80,8 +80,9 @@ usage:			system("bk help -s export");
 	    default: goto usage;
 	}
 
-	unless (isdir(src)) {
-		fprintf(stderr, "export: %s does not exist.\n", src);
+	unless (isdir_follow(src)) {
+		fprintf(stderr,
+		    "export: %s does not exist or is not a directory.\n", src);
 		exit(1);
 	}
 
@@ -89,13 +90,13 @@ usage:			system("bk help -s export");
 		fprintf(stderr, "cannot mkdir %s\n", dst);
 		exit(1);
 	}
-	strcpy(dst_path, fullname(dst, 0));
+	strcpy(dst_path, fullname(dst));
 	chdir(src);
 	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);
 	}
-	strcpy(src_path, fullname(".", 0));
+	strcpy(src_path, fullname("."));
 
 	bktmp(file_rev, "file_rev");
 	if (rev) {
@@ -160,12 +161,8 @@ usage:			system("bk help -s export");
 			fprintf(stderr, "cannot export to %s\n", output);
 		}
 		sccs_free(s);
-		if (wflag) {
-			if (stat(output, &sb)) {
-				perror(output);
-			} else {
-				chmod(output, sb.st_mode | S_IWUSR);
-			}
+		if (wflag && !lstat(output, &sb) && S_ISREG(sb.st_mode)) {
+			chmod(output, sb.st_mode | S_IWUSR);
 		}
 next:		;
 	}

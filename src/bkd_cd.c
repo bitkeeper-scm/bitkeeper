@@ -47,7 +47,7 @@ send_cderror(char *path)
 {
 	out("ERROR-cannot cd to ");
 	out(path);
-	out(" (illegal, nonexistant, or not package root)\n");
+	out(" (illegal, nonexistent, or not package root)\n");
 }
 
 

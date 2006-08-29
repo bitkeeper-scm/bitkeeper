@@ -4,9 +4,10 @@
 
 private int	mkconfig(FILE *out, MDBM *flist, int verbose);
 private void    usage(void);
-private void	defaultIgnore(void);
+private void	defaultFiles(void);
 private void	printField(FILE *out, MDBM *flist, char *field);
 private MDBM	*addField(MDBM *flist, char *field);
+private	int	licensebad(MDBM *m);
 
 int
 setup_main(int ac, char **av)
@@ -34,7 +35,7 @@ setup_main(int ac, char **av)
 				exit(1);
 			}
 			localName2bkName(optarg, optarg);
-			config_path = fullname(optarg, 0);
+			config_path = fullname(optarg);
 			break;
 		    case 'e': allowNonEmptyDir = 1; break;
 		    case 'f': force = 1; break;
@@ -124,7 +125,7 @@ again:
 		fclose(f1);
 	}
 
-	unless (m = loadConfig(".")) {
+	unless (m = loadConfig(".", 1)) {
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
@@ -132,11 +133,11 @@ again:
 	/* When eula_name() stopped returning bkl on invalid signatures
 	 * we needed this to force a good error message.
 	 */
-	if (mdbm_fetch_str(m, "license") && !getlicense(m, config_path != 0)) {
+	if (mdbm_fetch_str(m, "license") && licensebad(m)) {
 		if (config_path) {
 err:			unlink("BitKeeper/etc/config");
 			unlink("BitKeeper/log/cmd_log");
-			mdbm_close(m);
+			if (m) mdbm_close(m);
 			sccs_unmkroot("."); /* reverse  sccs_mkroot */
 			unless (allowNonEmptyDir) {
 				chdir(here);
@@ -147,6 +148,7 @@ err:			unlink("BitKeeper/etc/config");
 		goto again;
 	}
 	mdbm_close(m);
+	m = 0;
 
 	if (cset_setup(SILENT)) goto err;
 	unless (eula_accept(accept ? EULA_ACCEPT : EULA_PROMPT, 0)) exit(1);
@@ -157,9 +159,7 @@ err:			unlink("BitKeeper/etc/config");
 	assert(s);
 	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
 	sccs_free(s);
-	defaultIgnore();
-
-	unless (ok_commit()) return (1);
+	defaultFiles();
 
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
@@ -171,23 +171,30 @@ err:			unlink("BitKeeper/etc/config");
                 return (1);
         }
 	enableFastPendingScan();
-	sendConfig();
+	logChangeSet();
 	return (0);
 }
 
 private void
-defaultIgnore(void)
+defaultFiles(void)
 {
-	int	fd = open("BitKeeper/etc/ignore", O_CREAT|O_RDWR, 0664);
+	FILE	*f;
 
-	if (write(fd, "BitKeeper/*/*\n", 14) != 14) {
-err:		perror("write");
-		close(fd);
-		return;
-	}
-	if (write(fd, "PENDING/*\n", 10) != 10) goto err;
-	close(fd);
+	f = fopen("BitKeeper/etc/ignore", "w");
+	fprintf(f, "\n");
+	fclose(f);
 	system("bk new -Pq BitKeeper/etc/ignore");
+
+	unless (getenv("_BK_SETUP_NOGONE")) {
+		f = fopen("BitKeeper/etc/gone", "w");
+		fprintf(f, "\n");
+		fclose(f);
+		system("bk new -Pq BitKeeper/etc/gone");
+	}
+	f = fopen(COLLAPSED, "w");
+	fprintf(f, "\n");
+	fclose(f);
+	system("bk new -Pq " COLLAPSED);
 }
 
 private void
@@ -357,4 +364,17 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		fprintf(out, "%s: %s\n", kv.key.dptr, kv.val.dptr);
 	}
 	return (0);
+}
+
+private int
+licensebad(MDBM *m)
+{
+	hash	*req = hash_new(HASH_MEMHASH);
+	char	*err;
+	int	rc = !getlicense(m, req);
+
+	if (err = hash_fetchStr(req, "ERROR")) lease_printerr(err);
+	hash_free(req);
+
+	return (rc);
 }

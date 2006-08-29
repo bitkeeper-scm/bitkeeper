@@ -9,5 +9,5 @@ while(<>) {
 	next unless /%%Page: 2 2/;
 	$_ = <>; print;
 	$_ = <>; print;
-	print "180 rotate\n-785 -607 translate\n"
+	print "180 rotate\n-785 -611 translate\n"
 }

@@ -1,10 +1,10 @@
-.so bk-macros
-.TH "bk diffs" 1 %E% "\*(BC" "\*(UM"
+.so ../bk-macros
+.TH "bk diffs" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk diffs \- show differences in revision controlled files
 .SH SYNOPSIS
 .B bk diffs 
-.OPT opts
+.[ARG] opts
 .BKARGS
 .SH DESCRIPTION
 The 
@@ -21,18 +21,16 @@ author, date, and/or revision numbers.
 To view changes you have made to all of the files in a directory
 since checking the files out, type:
 .DS
-$ bk diffs | more
+$ bk diffs
 .DE
-To see the changes for all files in your tree, do the following:
+To see the changes for all files in your tree as unified diffs:
 .DS
-$ bk \-r diffs | more
+$ bk \-r diffs -up
 .DE
 See the examples section for more ideas on how to use this useful command.
 .SH OPTIONS
-.if t .TP .7i
-.if n .TP 1.1i
-.if t \fB\-A\fP\fIbdpru\fP
-.if n \fB\-A\fP\fI<bdpru>\fP
+.TP \-A\*<bdpru\*>n
+.OPTreq \-A bdpru
 Align prefix output in a human readable form.
 The set of annotations will be followed by a vertical bar and a space
 before the data from each line of the file starts.
@@ -41,7 +39,7 @@ The option argument[s] turn on one
 or more annotations as a prefix to each line.
 The possible annotations are:
 .RS
-.TP 4
+.TP
 .B b
 Prefix each line with the basename of the file.
 .tp
@@ -58,12 +56,10 @@ Prefix each line with the revision of last modification.
 .B u
 Prefix each line the name of the user who last modified it.
 .RE
-.if t .TP .7i
-.if n .TP 1.1i
-.if t \fB\-a\fP\fIbdpru\fP
-.if n \fB\-a\fP\fI<bdpru>\fP
+.tp
+.OPTreq \-a bdpru
 Similar to
-.B \-A 
+.Q \-A 
 but without the alignment.
 .tp
 .B \-b
@@ -77,7 +73,8 @@ Do context diffs.
 .tp
 .OPTreq \-d date
 Instead of using revision[s] as the versions to diff, use the revision[s]
-specified by the date.
+specified by the date (see
+.BR "help bk range" ).
 .tp
 .B \-f
 Normally, bk diffs does not bother to diff against a checked out, read only
@@ -96,6 +93,12 @@ of the two revisions.
 .OPTreq \-l rev
 Show all changes made by the changeset containing rev 
 .ARG rev .
+This obscure option is useful when there are multiple deltas in the same 
+changeset and you aren't sure of the changeset boundaries.
+Similar to 
+.DS
+bk changes -i\*<file\*> -vvr\*<rev\*>
+.DE
 .tp
 .B \-n
 Do RCS style diffs.
@@ -104,18 +107,18 @@ Do RCS style diffs.
 If a specified file is not under revision control treat it as if it were under
 revision control and the previous checked in version was empty.
 Without this option specified files not under revision control are listed
-as "New file: <filename>".
+as \*(lqNew file: \*<filename\*>\*(rq.
 .tp
 .B \-p
 Procedural diffs, like
-.B diff \-p.
+.QR "diff \-p" .
 .tp
 .OPTreq \-r rev
 Diff revision 
 .ARG rev .
 (Or key or changeset revision. See 
 .B bk help terms
-under 'rev argument')
+under \*(lqrev argument.\*(rq)
 .tp
 .OPTreq \-R rev
 Show diffs between parent of 
@@ -123,7 +126,10 @@ Show diffs between parent of
 and
 .ARG rev .
 If no revision is specified and the files are listed on standard input
-as file|rev then the revision is taken from the standard input.
+as
+.ARGc file
+.OPTreq | rev
+then the revision is taken from the standard input.
 .tp
 .B \-s
 Display side-by-side diffs.
@@ -141,7 +147,9 @@ You may diff specific revisions:
 .DS
 $ bk diffs -r1.2..1.4 foo.c
 .DE
-When only one revision is supplied with -r, then that revision is
+When only one revision is supplied with
+.QR \-r ,
+then that revision is
 compared to the working file or the top of trunk if the file is not
 edited.
 .LP
@@ -149,32 +157,38 @@ A fairly useful thing is to show the differences introduced by a
 specific revision or changeset:
 .DS
 bk diffs -R1.5 foo.c
-bk diffs -R@alpha1 bar.c
 .DE
-.LP
-You can use bk diffs to diff your entire tree, including edits against an
-existing changeset revision or tag in your repository.  The second form
-below, -r@<rev>, means use the revision as of changeset <rev>.
+Normally, the revisions specified mean the revision in the file.
+Changeset revisions do not match file revisions and sometimes you
+want to see the changes for a specific changeset.  Both of these
+accomplish that:
 .DS
-$ bk -r diffs -u
-$ bk -r diffs -u -r@<rev>
+bk diffs -l@\*<alpha1\*> \*<file\*>
+bk changes -i\*<file\*> -vvr\*<alpha1\*>
 .DE
-To create a patch which captures all changes as well as all new files do this:
+To create a patch which captures all content changes as well as all new files:
 .DS
 bk -xcr diffs -Nu
+.DE
+You can use bk diffs to diff your entire tree, including edits against an
+existing changeset revision or tag in your repository.  
+.DS
+$ bk -r diffs -u
+$ bk -r diffs -u -r@\*<rev\*>
 .DE
 .SH BUGS
 This command does not currently handle displaying differences for binary files.
 .SH SEE ALSO
+.SA changes
 .SA diff
-.br
-.SA difftool 1
-.SA export 1
+.SA difftool
+.SA export
 .SA range
 .SA treediff
+.br
 .\" help://differences
 .\" help://sdiffs
 .SH CATEGORY
-.B File
-.br
 .B Common
+.br
+.B File

@@ -8,13 +8,13 @@
 #include "sccs.h"
 #include "range.h"
 
-private	HASH	*buildKeys(sccs *cset, MDBM *idDB);
+private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
-private	int	check(sccs *s, HASH *db);
+private	int	check(sccs *s);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
 private	char	*getFile(char *root, MDBM *idDB);
-private	int	checkAll(HASH *db);
-private	void	listFound(HASH *db);
+private	int	checkAll(hash *keys);
+private	void	listFound(hash *db);
 private	void	listCsetRevs(char *key);
 private void	init_idcache(void);
 private int	checkKeys(sccs *s, char *root);
@@ -28,7 +28,7 @@ private int	no_gfile(sccs *s);
 private int	chk_eoln(sccs *s, int eoln_unix);
 private int	chk_merges(sccs *s);
 private sccs*	fix_merges(sccs *s);
-private	int	update_idcache(MDBM *idDB, HASH *keys);
+private	int	update_idcache(MDBM *idDB, hash *keys);
 
 private	int	nfiles;		/* for progress bar */
 private	int	actual;		/* for progress bar cache */
@@ -45,7 +45,6 @@ private	int	csetpointer;	/* if set, we need to fix cset pointers */
 private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
-private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM;
 private	FILE	*idcache;
 private	u32	id_sum;
@@ -53,42 +52,36 @@ private char	id_tmp[MAXPATH]; /* BitKeeper/tmp/bkXXXXXX */
 private	int	poly;
 private	int	polyList;
 private	MDBM	*goneDB;
-private	char	ctmp[MAXPATH]; 	/* BitKeeper/tmp/bkXXXXXX */
 int		xflags_failed;	/* notification */
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 
 /*
- * This data structure is so we don't have to search through all tuples in
- * the ChangeSet file for every file.  Instead, we sort the ChangeSet hash
- * and read in the sorted list of tuples into "malloc".  Then we walk the
- * data, putting the delta keys (the second part) into deltas[].  The first
- * key from each file is recorded in r2i{rootkey} = index into deltas[].
- * The list in deltas is separated by (char*1) between each file.
+ * The following data structure holds the mappings from rootkeys to
+ * deltakeys from the ChangeSet file so that the ChangeSet file
+ * doesn't need to be opened for every file processed.  Since the
+ * ChangeSet file can get so big this hash is a bit clever to save
+ * memory.
  *
- * Going to this structure was about a 20x speedup for the Linux kernel.
+ * r2deltas is a hash that maps all delta keys in the ChangeSet file to
+ * another hash that contains all the delta keys for that rootkey.
+ * The nested hash doesn't store any day. In this way we can walk all
+ * rootkeys and all deltakeys for a given rootkey.
  */
-private	struct {
-	char	*malloc;	/* the whole cset file read in */
-	char	**deltas;	/* sorted on root key */
-	int	n;		/* deltas[n] == 0 */
-	HASH	*r2i;		/* {rootkey} = start in roots[] list */
-} csetKeys;
+private	hash	*r2deltas;
 
 int
 check_main(int ac, char **av)
 {
 	int	c, n;
-	HASH	*db;
 	MDBM	*idDB;
 	MDBM	*pathDB = mdbm_mem();
-	HASH	*keys = hash_new();
+	hash	*keys = hash_new(HASH_MEMHASH);
 	sccs	*s;
 	int	errors = 0, eoln_native = 1, want_dfile;
 	int	e;
 	char	*name;
 	char	buf[MAXKEY];
-	char 	s_cset[] = CHANGESET;
 	char	*t;
 
 	while ((c = getopt(ac, av, "acdefgpRvw")) != -1) {
@@ -124,38 +117,11 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	if (sane(0, resync)) return (1);
-	unless (exists(s_cset)) {
-		fprintf(stderr, "ERROR: %s is missing, aborting.\n", s_cset);
-		exit(1);
-	}
-retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
-		fprintf(stderr, "Can't init ChangeSet\n");
-		exit(1);
-	}
-	if (cset->encoding & E_GZIP) {
-		sccs_free(cset);
-		if (verbose == 1) {
-			fprintf(stderr, "Uncompressing ChangeSet file...\n");
-		}
-		/* This will fail if we are locked */
-		if (sys("bk", "admin", "-Znone", "ChangeSet", SYS)) exit(1);
-		if (verbose == 1) {
-			fprintf(stderr,
-			    "Restarting check from the beginning...\n");
-		}
-		goto retry;
-	}
-	unless (cset = cset_fixLinuxKernelChecksum(cset)) return (1);
-	mixed = LONGKEY(cset) == 0;
-	if (verbose == 1) {
-		nfiles = repo_nfiles(cset);
-		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
-	}
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
 	}
-	db = buildKeys(cset, idDB);
+	buildKeys(idDB);
 	if (all) {
 		mdbm_close(idDB);
 		idDB = 0;
@@ -167,14 +133,9 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 
 	if (check_eoln) {
-		eoln_native = !streq(user_preference("eoln"), "unix"); 
+		eoln_native = !streq(proj_configval(0, "eoln"), "unix");
 	}
-	unless (fix) {
-		if (t = user_preference("autofix")) {
-			/* Note: this sets it to 1, not 2. */
-			fix = streq(t, "yes") || streq(t, "on");
-		}
-	}
+	unless (fix) fix = proj_configbool(0, "autofix");
 
 	want_dfile = exists(DFILE);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
@@ -233,7 +194,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 		 * also store the short key.  We want all of them to be unique.
 		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
-		if (hash_storeStr(keys, buf, s->gfile)) {
+		unless (hash_insertStr(keys, buf, s->gfile)) {
 			char *gfile, *sfile;
 
 			gfile = hash_fetchStr(keys, buf);
@@ -256,7 +217,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 			t = sccs_iskeylong(buf);
 			assert(t);
 			*t = 0;
-			if (hash_storeStr(keys, buf, s->gfile)) {
+			unless (hash_insertStr(keys, buf, s->gfile)) {
 				char *gfile, *sfile;
 
 				gfile = hash_fetchStr(keys, buf);
@@ -277,7 +238,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 			}
 		}
 
-		if (e = check(s, db)) {
+		if (e = check(s)) {
 			errors |= 0x40;
 		} else {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
@@ -315,9 +276,7 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 		}
 	}
 	if ((all || resync) && checkAll(keys)) errors |= 0x40;
-	unlink(ctmp);
 	mdbm_close(pathDB);
-	hash_free(db);
 	hash_free(keys);
 	if (goneDB) mdbm_close(goneDB);
 	if (errors && fix) {
@@ -350,20 +309,9 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 			goto out;
 		}
 	}
-	if (csetKeys.malloc) {
-		int	i;
+	EACH_HASH(r2deltas) hash_free(*(hash **)r2deltas->vptr);
+	hash_free(r2deltas);
 
-		free(csetKeys.malloc);
-		for (i = csetKeys.n;
-		    (--i > 0) && (csetKeys.deltas[i] != (char*)1); );
-		if ((i >= 0) && (csetKeys.deltas[i] == (char*)1)) {
-			for (i++; csetKeys.deltas[i] != (char*)1; i++) {
-				free(csetKeys.deltas[i]);
-			}
-		}
-	}
-	if (csetKeys.deltas) free(csetKeys.deltas);
-	if (csetKeys.r2i) hash_free(csetKeys.r2i);
 	if (poly) warnPoly();
 	if (resync) {
 		chdir(RESYNC2ROOT);
@@ -486,7 +434,7 @@ keywords(sccs *s)
 private int
 writable_gfile(sccs *s)
 {
-	if (!HAS_PFILE(s) && S_ISREG(s->mode) && IS_WRITABLE(s)) {
+	if (!HAS_PFILE(s) && S_ISREG(s->mode) && WRITABLE(s)) {
 		pfile pf = { "+", "?", "?", NULL, "?", NULL, NULL, NULL };
 
 		if (badWritable) {
@@ -649,14 +597,14 @@ chk_eoln(sccs *s, int eoln_native)
 	 */
 	if (CSET(s) ||
 	    ((strlen(s->gfile) > 10) && strneq(s->gfile, "BitKeeper/", 10)) ||
-	    ((s->encoding != E_ASCII) && (s->encoding != E_GZIP))) {
+	    BINARY(s)) {
 		return (0);
 	}
 
 #ifdef WIN32 /* eoln */
 	vrfy_eoln(s, EOLN_NATIVE(s));
 #else
-	vrfy_eoln(s, 0); /* on unix, we do not want CRLF */
+	vrfy_eoln(s, EOLN_WINDOWS(s));
 #endif
 
 	if (eoln_native) {
@@ -691,11 +639,11 @@ warnPoly(void)
  * already.
  */
 private int
-checkAll(HASH *db)
+checkAll(hash *keys)
 {
-	FILE	*keys;
-	char	*t;
-	HASH	*warned = hash_new();
+	char	*t, *rkey;
+	hash	*warned = hash_new(HASH_MEMHASH);
+	hash	*local = 0;
 	int	found = 0;
 	char	buf[MAXPATH*3];
 
@@ -704,66 +652,42 @@ checkAll(HASH *db)
 	 * are not in the local repo.
 	 */
 	if (resync) {
-		HASH	*local = hash_new();
 		FILE	*f;
-		
+
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
-		unless (exists(buf)) {
-			hash_free(local);
-			goto full;
-		}
-		sprintf(buf,
-		    "bk annotate -R -h %s/ChangeSet | bk _sort", RESYNC2ROOT);
-		f = popen(buf, "r");
-		while (fgets(buf, sizeof(buf), f)) {
-			unless (hash_alloc(local, buf, 0, 0)) {
-				fprintf(stderr,
-				    "ERROR: duplicate line in ChangeSet\n");
+		if (exists(buf)) {
+			local = hash_new(HASH_MEMHASH);
+			sprintf(buf,
+			    "bk annotate -R -h %s/ChangeSet", RESYNC2ROOT);
+			f = popen(buf, "r");
+			while (fgets(buf, sizeof(buf), f)) {
+				t = separator(buf);
+				assert(t);
+				*t = 0;
+				hash_storeStr(local, buf, 0);
 			}
+			pclose(f);
 		}
-		pclose(f);
-		f = fopen(ctmp, "r");
-		sprintf(buf, "%s.p", ctmp);
-		keys = fopen(buf, "w");
-		while (fgets(buf, sizeof(buf), f)) {
-			unless (hash_fetchStr(local, buf)) fputs(buf, keys);
-		}
-		fclose(f);
-		fclose(keys);
-		sprintf(buf, "%s.p", ctmp);
-		keys = fopen(buf, "r");
-		hash_free(local);
-	} else {
-full:		keys = fopen(ctmp, "rt");
 	}
-	unless (keys) {
-		perror("checkAll");
-		exit(1);
-	}
-	while (fnext(buf, keys)) {
-		t = separator(buf);
-		assert(t);
-		*t = 0;
-		if (hash_fetchStr(db, buf)) continue;
-		if (mdbm_fetch_str(goneDB, buf)) continue;
-		hash_alloc(warned, buf, 0, 0);
+	EACH_HASH(r2deltas) {
+		rkey = r2deltas->kptr;
+		if (hash_fetchStr(keys, rkey)) continue;
+		if (local && hash_fetchStr(local, rkey)) continue;
+		if (mdbm_fetch_str(goneDB, rkey)) continue;
+		hash_storeStr(warned, rkey, 0);
 		found++;
 	}
-	fclose(keys);
 	if (found) listFound(warned);
 	hash_free(warned);
-	sprintf(buf, "%s.p", ctmp);
-	unlink(buf);
+	if (local) hash_free(local);
 	return (found != 0);
 }
 
 private void
-listFound(HASH *db)
+listFound(hash *db)
 {
-	kvpair	kv;
-
 	if (goneKey & 1) { /* -g option => key only, no header */
-		EACH_HASH(db) printf("%s\n", kv.key.dptr);
+		EACH_HASH(db) printf("%s\n", (char *)db->kptr);
 		return;
 	}
 
@@ -771,7 +695,8 @@ listFound(HASH *db)
 	if (goneKey) return;
 
 	EACH_HASH(db) {
-		fprintf(stderr, "Missing file (chk3) %s\n", kv.key.dptr);
+		fprintf(stderr,
+		    "Missing file (bk help chk3) %s\n", (char *)db->kptr);
 	}
 }
 
@@ -790,164 +715,114 @@ init_idcache(void)
 }
 
 /*
- * Open up the ChangeSet file and get every key ever added.
- * Build an mdbm which is indexed by key (value is root key).
- * We'll use this later for making sure that all the keys in a file
- * are there.
- *
- * XXX - this code currently insists that the set of all marked deltas
- * in all files have a unique set of keys.  That may not be so and should
- * not have to be so.  The combination of <root key>,<delta key> does need
- * to be unique, however.
- * Should this become a problem, the right way to fix it is this: when the
- * second (or Nth where N>1) store fails, do the store with the key 
- * being <rootkey>\n<deltakey> -> <rootkey>.  Also fix the original but
- * do not remove the first <deltakey> -> <rootkey> pair so that any other
- * duplicates also do the long form.  Instead, replace the <rootkey> with
- * a marker, like "", and handle that in the lookup code.
- * When looking up the key in check(), if the rootkey is the marker, then
- * redo the lookup with the <rootkey>\n<deltakey> pair, you have "s" so you
- * can get the root key.
- * What this means is that we are saying the full name of a key is root\nkey
- * not just key.  We use "key" as a shorthand.
- * We should *NOT* do this for all keys regardless.  The memory footprint of
- * this program is huge already.
+ * Open up the ChangeSet file and get every key ever added.  Build the
+ * r2deltas hash which is described at the top f the file.  We'll use
+ * this later for making sure that all the keys in a file are there.
  */
-private HASH	*
-buildKeys(sccs *cset, MDBM *idDB)
+private void
+buildKeys(MDBM *idDB)
 {
-	HASH	*db = hash_new();
-	HASH	*r2i = hash_new();
-	char	*s, *t, *r;
-	int	fd, sz, n = 0, e = 0;
+	sccs	*cset;
+	char	*p, *s, *t, *r;
+	int	n = 0, e = 0;
 	delta	*d;
-	FILE	*f;
-	char	buf[MAXPATH*3];
-	char	key[MAXPATH*2];
+	hash	*deltas;
+	char	key[MAXKEY];
 
-	unless (db && r2i) {
-		perror("buildkeys");
+	unless (exists(CHANGESET)) {
+		fprintf(stderr, "ERROR: "CHANGESET" is missing, aborting.\n");
 		exit(1);
 	}
+retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
+		fprintf(stderr, "Can't init ChangeSet\n");
+		exit(1);
+	}
+	if (cset->encoding & E_GZIP) {
+		sccs_free(cset);
+		if (verbose == 1) {
+			fprintf(stderr, "Uncompressing ChangeSet file...\n");
+		}
+		/* This will fail if we are locked */
+		if (sys("bk", "admin", "-Znone", "ChangeSet", SYS)) exit(1);
+		if (verbose == 1) {
+			fprintf(stderr,
+			    "Restarting check from the beginning...\n");
+		}
+		goto retry;
+	}
+	mixed = LONGKEY(cset) == 0;
+	if (verbose == 1) {
+		nfiles = repo_nfiles(cset);
+		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
+	}
+
 	unless (cset && HASGRAPH(cset)) {
 		fprintf(stderr, "check: ChangeSet file not inited\n");
 		exit(1);
 	}
-	unless (bktmp(ctmp, "check")) {
-		fprintf(stderr, "bktmp failed to get temp file\n");
+	unless (r2deltas = hash_new(HASH_MEMHASH)) {
+		perror("buildkeys");
 		exit(1);
 	}
-	sprintf(buf, "bk _sort > %s", ctmp);
-	f = popen(buf, "w");
 	s = t = cset->mmap + cset->data;
 	r = cset->mmap + cset->size;
+	assert(r[-1] == '\n');	/* make sure we can't walk off mmap */
 	while (s < r) {
 		if (*s == '\001') {
-			while (*s++ != '\n');
+			s = strchr(s, '\n') + 1;
 			continue;
 		}
-		t = s;
-		while (*s != '\001') s++;
-		fwrite(t, s - t, 1, f);
-	}
-	pclose(f);
-	sz = size(ctmp);
-
-	/*
- 	 * Note: malloc would return 0 if sz == 0
-	 */
-	csetKeys.malloc = malloc(sz);
-	fd = open(ctmp, 0, 0);
-	unless (read(fd, csetKeys.malloc, sz) == sz) {
-		perror(ctmp);
-		exit(1);
-	}
-	close(fd);
-	for (fd = 0, d = cset->table; d; d = d->next) {
-		/* XXX - d->added is always 1 so this logic is fucked */
-		fd += d->added;
-	}
-	/*
-	 * Allocate enough space for 2x the number of deltas (because of
-	 * separaters), plus the deltas in the cset, plus 2.
-	 */
-	fd *= 2;
-	fd += cset->nextserial + 2;	
-	csetKeys.deltas = malloc(fd * sizeof(char*));
-	csetKeys.r2i = r2i;
-
-	buf[0] = 0;
-	csetKeys.n = 0;
-	for (s = csetKeys.malloc; s < csetKeys.malloc + sz; ) {
 		t = separator(s);
-		assert(t);
-		*t++ = 0;
-		r = strchr(t, '\n');
-		*r++ = 0;
-		assert(t);
-		if (hash_storeStr(db, t, s)) {
-			char	*a, *b;
-			char	*root = hash_fetchStr(db, t);
+		/* copy rootkey to add trailing null */
+		p = key;
+		while (s != t) *p++ = *s++;
+		*p++ = 0;
+		if (hash_insert(r2deltas, key, p-key, 0, sizeof(hash *))) {
+			*(hash **)r2deltas->vptr = hash_new(HASH_MEMHASH);
+		}
+		deltas = *(hash **)r2deltas->vptr;
+		assert(deltas);
+
+		/* copy deltakey to add trailing null */
+		p = key;
+		++s;		/* skip separator */
+		while (*s != '\n') *p++ = *s++;
+		*p++ = 0;
+		unless (hash_insert(deltas, key, p-key, 0, 0)) {
+			char	*a;
 
 			fprintf(stderr,
 			    "Duplicate delta found in ChangeSet\n");
-			a = getRev(s, t, idDB);
-			fprintf(stderr, "\tRev: %s  Key: %s\n", a, t);
+			a = getRev(r2deltas->kptr, key, idDB);
+			fprintf(stderr, "\tRev: %s  Key: %s\n", a, key);
 			free(a);
-			if (streq(root, s)) {
-				a = getFile(root, idDB);
-				fprintf(stderr,
-				    "\tBoth keys in file %s\n", a);
-				free(a);
-			} else {
-				a = getFile(root, idDB);
-				b = getFile(s, idDB);
-				fprintf(stderr,
-				    "\tIn different files %s and %s\n",
-				    a, b);
-				free(a);
-				free(b);
-			}
-			listCsetRevs(t);
+			a = getFile(r2deltas->kptr, idDB);
+			fprintf(stderr, "\tBoth keys in file %s\n", a);
+			free(a);
+			listCsetRevs(key);
 			if (polyList) e++;
 		}
-		unless (streq(buf, s)) {
-			/* mark the file boundries */
-			if (buf[0]) csetKeys.deltas[csetKeys.n++] = (char*)1;
-			hash_store(r2i, s, 0, &csetKeys.n, sizeof(int));
-			strcpy(buf, s);
-		}
-		csetKeys.deltas[csetKeys.n++] = t;
-		assert(csetKeys.n < fd);
-		n++;
-		s = r;
+		++s;		/* skip newline */
 	}
 
 	/* Add in ChangeSet keys */
 	sccs_sdelta(cset, sccs_ino(cset), key);
-	if (csetKeys.n > 0) csetKeys.deltas[csetKeys.n++] = (char*)1;
-	hash_store(r2i, key, 0, &csetKeys.n, sizeof(int));
+	deltas = hash_new(HASH_MEMHASH);
+	hash_store(r2deltas, key, strlen(key) + 1, &deltas, sizeof(hash *));
 	for (d = cset->table; d; d = d->next) {
 		unless ((d->type == 'D') && (d->flags & D_CSET)) continue;
-		sccs_sdelta(cset, d, buf);
-		if (hash_storeStr(db, buf, key)) {
-			char	*root = hash_fetch(db, t, 0, 0);
-			unless (streq(root, key)) {
-				fprintf(stderr,
-			    "check: key %s replicated in ChangeSet: %s %s\n",
-				    buf, key, root);
-			}
+		sccs_sdelta(cset, d, key);
+		unless (hash_insert(deltas, key, strlen(key)+1, 0, 0)) {
+			fprintf(stderr,
+			    "check: key %s replicated in ChangeSet.\n", key);
 		}
-		csetKeys.deltas[csetKeys.n++] = strdup(buf);
-		assert(csetKeys.n < fd);
 	}
 	sccs_free(cset);
-	csetKeys.deltas[csetKeys.n] = (char*)1;
+
 	if (verbose > 2) {
 		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
 	}
 	if (e) exit(1);
-	return (db);
 }
 
 /*
@@ -1069,15 +944,29 @@ idsum(u8 *s)
 	5) rebuild the idcache if in -a mode.
 */
 private int
-check(sccs *s, HASH *db)
+check(sccs *s)
 {
 	static	int	haspoly = -1;
 	delta	*d, *ino;
 	int	errors = 0;
 	int	i;
-	char	*t;
+	char	*t, *term;
+	hash	*deltas, *shortdeltas = 0;
 	char	buf[MAXKEY];
 
+
+	sccs_sdelta(s, sccs_ino(s), buf);
+	if (hash_fetchStr(r2deltas, buf)) {
+		deltas = *(hash **)r2deltas->vptr;
+	} else {
+		deltas = 0;	/* new pending file? */
+	}
+	if (mixed && (term = sccs_iskeylong(buf))) {
+		*term = 0;
+		if (hash_fetchStr(r2deltas, buf)) {
+			shortdeltas = *(hash **)r2deltas->vptr;
+		}
+	}
 	/*
 	 * Make sure that all marked deltas are found in the ChangeSet
 	 */
@@ -1091,19 +980,18 @@ check(sccs *s, HASH *db)
 			errors++;
 			unless ((fix & 2) || goneKey) {
 				fprintf(stderr,
-				    "Obsolete LOD data (chk4): %s|%s\n",
+				    "Obsolete LOD data(bk help chk4): %s|%s\n",
 		    		    s->gfile, d->rev);
 			}
 		}
 
 		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, buf);
-		unless (t = hash_fetchStr(db, buf)) {
-			char	*term;
-
-			if (mixed && (term = sccs_iskeylong(buf))) {
+		t = 0;
+		unless (deltas && (t = hash_fetchStr(deltas, buf))) {
+			if (shortdeltas && (term = sccs_iskeylong(buf))) {
 				*term = 0;
-				t = hash_fetch(db, buf, 0, 0);
+				t = hash_fetchStr(shortdeltas, buf);
 			}
 		}
 		unless (t) {
@@ -1126,12 +1014,12 @@ check(sccs *s, HASH *db)
 	unless (d = sccs_top(s)) {
 		fprintf(stderr, "check: can't get TOT in %s\n", s->gfile);
 		errors++;
-	} else unless (sccs_setpathname(s)) {
-		fprintf(stderr, "check: can't get spathname in %s\n", s->gfile);
-		errors++;
-	} else unless (resync || streq(s->sfile, s->spathname)) {
+	} else unless (resync || sccs_patheq(d->pathname, s->gfile)) {
+		char	*x = name2sccs(d->pathname);
+
 		fprintf(stderr,
-		    "check: %s should be %s\n", s->sfile, s->spathname);
+		    "check: %s should be %s\n", s->sfile, x);
+		free(x);
 		errors++;
 		names = 1;
 	}
@@ -1144,7 +1032,8 @@ check(sccs *s, HASH *db)
 	if (all) {
 		do {
 			sccs_sdelta(s, ino, buf);
-			if (s->grafted || !streq(ino->pathname, s->gfile)) {
+			if (s->grafted ||
+			    !sccs_patheq(ino->pathname, s->gfile)) {
 				fprintf(idcache, "%s %s\n", buf, s->gfile);
 				idsum(buf);
 				idsum(s->gfile);
@@ -1181,8 +1070,6 @@ check(sccs *s, HASH *db)
 		sccs_admin(s, 0, FL, 0, 0, 0, 0, 0, 0, 0, 0);
 	    	errors++;
 	}
-
-	if (csetKeys.n == 0) return (errors);
 
 	/*
 	 * Go through all the deltas that were found in the ChangeSet
@@ -1267,41 +1154,47 @@ private int
 checkKeys(sccs *s, char *root)
 {
 	int	errors = 0;
-	int	i;
-	char	*a;
+	char	*a, *dkey;
 	delta	*d;
 	char	*p;
-	HASH	*findkey;
+	hash	*findkey;
+	hash	*deltas;
 	char	key[MAXKEY];
 
-	unless (p = hash_fetch(csetKeys.r2i, root, 0, 0)) return (0);
-	i = *(int *)p;
-	assert(i < csetKeys.n);
-	findkey = hash_new();
+	unless (p = hash_fetchStr(r2deltas, root)) return (0);
+	deltas = *(hash **)p;
+
+	findkey = hash_new(HASH_MEMHASH);
 	for (d = s->table; d; d = d->next) {
 		unless (d->flags & D_CSET) continue;
 		sccs_sdelta(s, d, key);
-		*(delta**)hash_fetchAlloc(findkey, key, 0, sizeof(delta *)) = d;
+		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {
+			fprintf(stderr, "check: insert error for %s\n", key);
+			hash_free(findkey);
+			return (1);
+		}
 		unless (mixed) continue;
 		*strrchr(key, '|') = 0;
-		*(delta**)hash_fetchAlloc(findkey, key, 0, sizeof(delta *)) = d;
+		unless (hash_insert(findkey, key, strlen(key)+1, &d, sizeof(d))) {
+			fprintf(stderr, "check: insert error for %s\n", key);
+			hash_free(findkey);
+			return (1);
+		}
 	}
-	do {
-		assert(csetKeys.deltas[i]);
-		assert(csetKeys.deltas[i] != (char*)1);
-
+	EACH_HASH(deltas) {
+		dkey = (char *)deltas->kptr;
 		/*
 		 * We should find the delta key in the s.file if it is
 		 * in the ChangeSet file.
 		 */
-		unless ((p = hash_fetch(findkey, csetKeys.deltas[i], 0, 0)) &&
+		unless ((p = hash_fetchStr(findkey, dkey)) &&
 		    (d = *(delta **)p)) {
 			/* skip if the delta is marked as being OK to be gone */
-			if (isGone(s, csetKeys.deltas[i])) continue;
+			if (isGone(s, dkey)) continue;
 
 			/* Spit out key to be gone-ed */
 			if (goneKey & 2) {
-				printf("%s\n", csetKeys.deltas[i]);
+				printf("%s\n", dkey);
 				continue;
 			}
 
@@ -1311,7 +1204,8 @@ checkKeys(sccs *s, char *root)
 			/* let them know if they need to delete the file */
 			if (isGone(s, 0)) {
 				fprintf(stderr,
-				    "Marked gone (chk1): %s\n", s->gfile);
+				    "Marked gone (bk help chk1): %s\n",
+				    s->gfile);
 				continue;
 			} else {
 		    		errors++;
@@ -1324,12 +1218,11 @@ checkKeys(sccs *s, char *root)
 			 * so complain about it.
 			 */
 			fprintf(stderr,
-			    "Missing delta (chk2) in %s\n", s->gfile);
+			    "Missing delta (bk help chk2) in %s\n", s->gfile);
 			unless (details) continue;
-			a = csetFind(csetKeys.deltas[i]);
+			a = csetFind(dkey);
 			fprintf(stderr,
-			    "\tkey: %s in ChangeSet|%s\n",
-			    csetKeys.deltas[i], a);
+			    "\tkey: %s in ChangeSet|%s\n", dkey, a);
 			free(a);
 		} else unless (d->flags & D_CSET) {
 			fprintf(stderr,
@@ -1340,50 +1233,11 @@ checkKeys(sccs *s, char *root)
 			fprintf(stderr, "%s: found %s from ChangeSet\n",
 			    s->gfile, d->rev);
 		}
-	} while (csetKeys.deltas[++i] != (char*)1);
+	}
 
 	hash_free(findkey);
 	return (errors);
 }
-
-#if 0
-dumpkeys(sccs *s)
-{
-	char	k[MAXKEY];
-	delta	*d;
-
-	for (d = s->table; d; d = d->next) {
-		sccs_sdelta(s, d, k);
-		fprintf(stderr, "%s %s\n", d->rev, k);
-	}
-}
-
-dump(int key)
-{
-	int	i;
-
-	for (i = 0; i < csetKeys.n; ++i) {
-		if (csetKeys.deltas[i] == (char*)1) {
-			fprintf(stderr, "-\n");
-		} else {
-			fprintf(stderr, "[%d]=%s\n", i, csetKeys.deltas[i]);
-		}
-	}
-}
-
-listMarks(HASH *db)
-{
-	kvpair	kv;
-	int	n = 0;
-
-	EACH_HASH(db) {
-		n++;
-		fprintf(stderr,
-		    "check: %s is missing cset marks,\n", kv.key.dptr);
-	}
-	if (n) fprintf(stderr, "   run ``bk cset -fvM1.0..'' to correct.\n");
-}
-#endif
 
 private char	*
 csetFind(char *key)
@@ -1448,7 +1302,7 @@ chk_csetpointer(sccs *s)
  * XXX Code to manipulate the id_cache should be moved to idcache.c in 4.0
  */
 private int
-update_idcache(MDBM *idDB, HASH *keys)
+update_idcache(MDBM *idDB, hash *keys)
 {
 	kvpair	kv;
 	int	updated = 0;
@@ -1458,25 +1312,31 @@ update_idcache(MDBM *idDB, HASH *keys)
 	int	inkeyloc;	/* is gfile in inode location? */
 
 	EACH_HASH(keys) {
-		p = strchr(kv.key.dptr, '|');
+		p = strchr(keys->kptr, '|');
 		assert(p);
 		p++;
 		e = strchr(p, '|');
 		assert(e);
 		*e = 0;
-		found = kv.val.dptr;
+		found = keys->vptr;
 		inkeyloc = streq(p, found);
 		*e = '|';
-		cached = mdbm_fetch_str(idDB, kv.key.dptr);
+		cached = mdbm_fetch_str(idDB, keys->kptr);
 		/* FIXUP idDB if it is wrong */
 		if (inkeyloc) {
 			if (cached) {
 				updated = !streq(cached, found);
+				kv.key.dptr = keys->kptr;
+				kv.key.dsize = keys->klen;
 				mdbm_delete(idDB, kv.key);
 			}
 		} else {
 			if (!cached || !streq(cached, found)) {
 				updated = 1;
+				kv.key.dptr = keys->kptr;
+				kv.key.dsize = keys->klen;
+				kv.val.dptr = keys->vptr;
+				kv.val.dsize = keys->vlen;
 				mdbm_store(idDB, kv.key, kv.val, MDBM_REPLACE);
 			}
 		}

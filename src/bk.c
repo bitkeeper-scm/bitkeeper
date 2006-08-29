@@ -27,6 +27,8 @@ private	int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
+private	void	showproc_start(char **av);
+private	void	showproc_end(char *cmdlog_buffer, int ret);
 
 private int
 usage(void)
@@ -84,16 +86,7 @@ main(int ac, char **av, char **env)
 	for (i = 3; i < 20; i++) close(i);
 	reserveStdFds();
 	spawn_preHook = bk_preSpawnHook;
-	if (getenv("BK_SHOWPROC")) {
-		FILE	*f;
-
-		if (f = fopen(DEV_TTY, "w")) {
-			fprintf(f, "BK (%u t: %5s)", getpid(), milli());
-			for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
-			fprintf(f, "\n");
-			fclose(f);
-		}
-	}
+	showproc_start(av);
 
 	if (getenv("BK_REGRESSION") && exists("/build/die")) {
 		fprintf(stderr, "Forced shutdown.\n");
@@ -175,10 +168,14 @@ main(int ac, char **av, char **env)
 	}
 
 	/* bk _realpath is mainly for win32 */
-	if (av[1] && streq(av[1], "_realpath") && !av[2]) {
+	if (av[1] && streq(av[1], "_realpath") && (!av[2] || !av[3])) {
 		char buf[MAXPATH], real[MAXPATH];
 
-		getcwd(buf, sizeof(buf));
+		if (av[2]) {
+			strcpy(buf, av[2]);
+		} else {
+			getcwd(buf, sizeof(buf));
+		}
 		getRealName(buf, NULL, real);
 		printf("%s => %s\n", buf, real);
 		exit(0);
@@ -197,13 +194,11 @@ main(int ac, char **av, char **env)
 			return (0);
 		}
 		is_bk = 1;
-		while ((c = getopt(ac, av, "1acCdDeEgGjlnpr|RSuUx")) != -1) {
+		while ((c = getopt(ac, av, "1acCdDgGjlnpr|RuUx")) != -1) {
 			switch (c) {
-			    case '1': case 'C': case 'D': case 'E':
-			    case 'G': case 'S': case 'U': case 'a':
-			    case 'c': case 'd': case 'e': case 'g':
-			    case 'j': case 'l': case 'n': case 'p':
-			    case 'u': case 'x':
+			    case '1': case 'a': case 'c': case 'C': case 'd':
+			    case 'D': case 'g': case 'G': case 'j': case 'l':
+			    case 'n': case 'p': case 'u': case 'U': case 'x':
 				sopts[++si] = c;
 				break;
 			    case 'r':				/* doc 2.0 */
@@ -226,7 +221,6 @@ main(int ac, char **av, char **env)
 					return(1);
 				}
 				break;
-			    case 'h':				/* undoc */
 			    default:
 				usage();
 			}
@@ -436,6 +430,8 @@ void
 cmdlog_start(char **av, int httpMode)
 {
 	int	i, len, do_lock = 1;
+	int	is_remote = strneq("remote ", av[0], 7);
+	char	*repo1, *repo2;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -456,20 +452,11 @@ cmdlog_start(char **av, int httpMode)
 	 * we enter part 2, with the up-to-date pid.
 	 */
 	if (httpMode) {
-		if (strneq(av[0], "remote push part", 16)) {
-			int	meta = 0;
-			for (i = 1; av[i]; i++) {
-				if (streq("-e", av[i])) meta = 1;
-			}
-			if (meta) cmdlog_flags &= ~(CMD_WRLOCK|CMD_WRUNLOCK);
-		}
 		if (cmdlog_flags & CMD_WRLOCK) cmdlog_flags |= CMD_WRUNLOCK;
 		if (cmdlog_flags & CMD_WRUNLOCK) cmdlog_flags |= CMD_WRLOCK;
 		if (cmdlog_flags & CMD_RDLOCK) cmdlog_flags |= CMD_RDUNLOCK;
 		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
 	}
-
-	unless (proj_root(0)) return;
 
 	for (len = 1, i = 0; av[i]; i++) {
 		len += strlen(av[i]) + 1;
@@ -478,6 +465,8 @@ cmdlog_start(char **av, int httpMode)
 		strcat(cmdlog_buffer, av[i]);
 	}
 	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
+
+	unless (proj_root(0)) return;
 
 	/*
 	 * Provide a way to do nested repo operations.  Used by import
@@ -495,9 +484,19 @@ cmdlog_start(char **av, int httpMode)
 		}
 	}
 
+	if (is_remote && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
+	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = repo_id())) {
+		i = streq(repo1, repo2);
+		free(repo2);
+		if (i) {
+			out("ERROR-can't connect to same repo_id\n");
+			drain();
+			exit(1);
+		}
+	}
 	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
 		if (i = repository_wrlock()) {
-			unless (strneq("remote ", av[0], 7) || !proj_root(0)) {
+			unless (is_remote || !proj_root(0)) {
 				repository_lockers(0);
 			}
 			switch (i) {
@@ -520,13 +519,13 @@ cmdlog_start(char **av, int httpMode)
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (strneq("remote ", av[0], 7)) drain();
+			if (is_remote) drain();
 			exit(1);
 		}
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		if (i = repository_rdlock()) {
-			unless (strneq("remote ", av[0], 7) || !proj_root(0)) {
+			unless (is_remote || !proj_root(0)) {
 				repository_lockers(0);
 			}
 			switch (i) {
@@ -546,12 +545,12 @@ cmdlog_start(char **av, int httpMode)
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (strneq("remote ", av[0], 7)) drain();
+			if (is_remote) drain();
 			exit(1);
 		}
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
-	if (strneq("remote ", av[0], 7)) {
+	if (is_remote) {
 		char	*repoid = getenv("BK_REPO_ID");
 		if (repoid) cmdlog_addnote("rmtc", repoid);
 	}
@@ -574,11 +573,13 @@ write_log(char *root, char *file, int rotate, char *format, ...)
 	off_t	logsize;
 	va_list	ap;
 
-	sprintf(path, "%s/BitKeeper/log/%s", root, file);
+	concat_path(path, root, "/BitKeeper/log/");
+	concat_path(path, path, file);
 	unless (f = fopen(path, "a")) {
-		sprintf(path, "%s/%s", root, BKROOT);
+		concat_path(path, root, BKROOT);
 		unless (exists(path)) return (1);
-		sprintf(path, "%s/BitKeeper/log/%s", root, file);
+		concat_path(path, root, "/BitKeeper/log/");
+		concat_path(path, path, file);
 		unless (mkdirf(path)) return (1);
 		unless (f = fopen(path, "a")) {
 			fprintf(stderr, "Cannot open %s\n", path);
@@ -627,15 +628,7 @@ cmdlog_end(int ret)
 		cmdlog_addnote("xfered", buf);
 	}
 
-	if (getenv("BK_SHOWPROC")) {
-		FILE	*f;
-
-		if (f = fopen(DEV_TTY, "w")) {
-			fprintf(f, "END(%u t: %5s)", getpid(), milli());
-			fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
-			fclose(f);
-		}
-	}
+	showproc_end(cmdlog_buffer, ret);
 
 	/* If we have no project root then bail out */
 	unless (proj_root(0)) goto out;
@@ -661,12 +654,9 @@ cmdlog_end(int ret)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	if (write_log(proj_root(0), "cmd_log", 0, "%s", log)) {
-		goto out;
-	}
-	if (cmdlog_repo &&
-	    write_log(proj_root(0), "repo_log", LOG_MAXSIZE, "%s", log)) {
-		goto out;
+	write_log(proj_root(0), "cmd_log", 0, "%s", log);
+	if (cmdlog_repo) {
+		write_log(proj_root(0), "repo_log", LOG_MAXSIZE, "%s", log);
 	}
 	free(log);
 
@@ -687,12 +677,18 @@ cmdlog_end(int ret)
 #ifndef	NOPROC
 	rmdir_findprocs();
 #endif
+#ifdef	MACOS_VER
+	/* XXX - someday maybe they'll fix this and we can enable this check */
+	if (getenv("BK_REGRESSION") && (MACOS_VER < 1030)) {
+#else
 	if (getenv("BK_REGRESSION")) {
+#endif
 		int	i;
 		struct	stat sbuf;
 		char	buf[100];
 
 		for (i = 3; i < 20; i++) {
+		    	buf[0] = i;	// so gcc doesn't warn us it's unused
 			if (fstat(i, &sbuf)) continue;
 #if	defined(F_GETFD) && defined(FD_CLOEXEC)
 			if (fcntl(i, F_GETFD) & FD_CLOEXEC) continue;
@@ -707,10 +703,10 @@ cmdlog_end(int ret)
 #endif
 		}
 	}
+out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
 	cmdlog_flags = 0;
-out:
 	return (flags);
 }
 
@@ -724,21 +720,21 @@ cmdlog_dump(int ac, char **av)
 	char	*user;
 	char	buf[MAXPATH*3];
 	int	yelled = 0, c, all = 0;
-	RANGE_DECL;
 
 	unless (proj_root(0)) return;
 	while ((c = getopt(ac, av, "ac;")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
-		    RANGE_OPTS('c', 0);
+		    case 'c':
+			cutoff = range_cutoff(optarg + 1);
+			break;
 		    default:
-usage:			system("bk help cmdlog");
+			system("bk help cmdlog");
 			return;
 		}
 	}
-	if (things && d[0]) cutoff = rangeCutOff(d[0]);
-	sprintf(buf, "%s/BitKeeper/log/%s", proj_root(0),
-	    (all ? "cmd_log" : "repo_log"));
+	concat_path(buf, proj_root(0), "/BitKeeper/log/");
+	concat_path(buf, buf, (all ? "cmd_log" : "repo_log"));
 	f = fopen(buf, "r");
 	unless (f) return;
 	while (fgets(buf, sizeof(buf), f)) {
@@ -794,8 +790,21 @@ int
 launch_wish(char *script, char **av)
 {
 	char	*path;
-	int	i, ret;
+	int	i, j, ac, ret;
 	pid_t	pid;
+	struct	{
+		char	*name;	/* -colormap */
+		int	hasarg;	/* like -colormap name */
+	}	wishargs[] = {
+			{ "-colormap", 1 },
+			{ "-display", 1 },
+			{ "-geometry", 1 },
+			{ "-name", 1 },
+			{ "-sync", 0 },
+			{ "-use", 1 },
+			{ "-visual", 1 },
+			{ 0, 0 }
+		};
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
 
@@ -828,23 +837,51 @@ launch_wish(char *script, char **av)
 		exit(1);
 	}
 	sig_catch(SIG_IGN);
-	argv[0] = path;
+	argv[ac=0] = path;
 	if (strchr(script, '/')) {
 		strcpy(cmd_path, script);
 	} else {
 		sprintf(cmd_path, "%s/gui/lib/%s", bin, script);
 	}
-	argv[1] = cmd_path;
-	i = 0;
-	while (1) {
-		if (i >= (MAXARGS-10)) {
+	argv[++ac] = cmd_path;
+	/*
+	 * Pass 1, get all the wish args first.
+	 */
+	for (i = 0; av[i]; i++) {
+		if (ac >= (MAXARGS-10)) {
 			fprintf(stderr, "bk: too many args\n");
 			exit(1);
 		}
-		argv[i+2] = av[i];
-		unless (av[i]) break;
-		i++;
+		for (j = 0; wishargs[j].name; j++) {
+			if (streq(wishargs[j].name, av[i])) {
+				argv[++ac] = av[i];
+				if (wishargs[j].hasarg) argv[++ac] = av[++i];
+				break;
+			}
+		}
 	}
+	argv[++ac] = "--";
+	/*
+	 * Pass two, get all the other args.
+	 */
+	for (i = 0; av[i]; i++) {
+		if (ac >= (MAXARGS-10)) {
+			fprintf(stderr, "bk: too many args\n");
+			exit(1);
+		}
+		for (j = 0; wishargs[j].name; j++) {
+			if (streq(wishargs[j].name, av[i])) {
+				break;
+			}
+		}
+		if (wishargs[j].name) {
+			if (wishargs[j].hasarg) i++;
+			continue;
+		}
+		argv[++ac] = av[i];
+	}
+	argv[ac+1] = 0;
+	if (streq(argv[ac], "--")) argv[ac] = 0;
 	if ((pid = spawnvp(_P_NOWAIT, argv[0], argv)) < 0) {
 		fprintf(stderr, "bk: cannot spawn %s\n", argv[0]);
 	}
@@ -864,4 +901,34 @@ launch_wish(char *script, char **av)
 	} else {
 		return (WEXITSTATUS(ret));
 	}
+}
+
+static	char	*prefix;
+
+private void
+showproc_start(char **av)
+{
+	int	i;
+	FILE	*f;
+
+	prefix = getenv("_BK_SP_PREFIX");
+	unless (prefix) prefix = "";
+
+	unless (f = efopen("BK_SHOWPROC")) return;
+	fprintf(f, "BK  (%5u %5s)%s", getpid(), milli(), prefix);
+	for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
+	fprintf(f, "\n");
+	fclose(f);
+	safe_putenv("_BK_SP_PREFIX=%s  ", prefix);
+}
+
+private void
+showproc_end(char *cmdlog_buffer, int ret)
+{
+	FILE	*f;
+
+	unless (f = efopen("BK_SHOWPROC")) return;
+	fprintf(f, "END (%5u %5s)%s", getpid(), milli(), prefix);
+	fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
+	fclose(f);
 }

@@ -760,12 +760,9 @@ proc startup {{buildwidgets {}}} \
 
 proc fmtool {} \
 {
-	global State
-
 	bk_init
+	loadState fm
 	startup 1
-
-	loadState
 	restoreGeometry fm
 
 	after idle [list wm deiconify .]
@@ -774,46 +771,10 @@ proc fmtool {} \
 
 	bind . <Destroy> {
 		if {[string match %W .]} {
-			saveState
+			saveState fm
 		}
 	}
 
-}
-
-# the purpose of this proc is merely to load the persistent state;
-# it does not do anything with the data (such as set the window 
-# geometry). That is best done elsewhere. 
-proc loadState {} \
-{
-	global State
-
-	catch {::appState load fm State}
-
-}
-
-proc saveState {} \
-{
-	global State
-
-	# Copy state to a temporary variable, the re-load in the
-	# state file in case some other process has updated it
-	# (for example, setting the geometry for a different
-	# resolution). Then add in the geometry information unique
-	# to this instance.
-	array set tmp [array get State]
-	catch {::appState load fm tmp}
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	set tmp(geometry@$res) [wm geometry .]
-
-	# Generally speaking, errors at this point are no big
-	# deal. It's annoying we can't save state, but it's no 
-	# reason to stop running. So, a message to stderr is 
-	# probably sufficient. Plus, given we may have been run
-	# from a <Destroy> event on ".", it's too late to pop
-	# up a message dialog.
-	if {[catch {::appState save fm tmp} result]} {
-		puts stderr "error writing config file: $result"
-	}
 }
 
 fmtool

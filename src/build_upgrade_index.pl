@@ -7,53 +7,61 @@ use strict;
 use FindBin;
 use Cwd;
 
-my @releases = ("/home/bk/bk-3.2.x", "/home/bk/bk-3.3.x");
 
-foreach (@releases) {
-    die "Can't find $_" unless -d $_;
+# maintain the list of platform aliases.  If images for any of
+# this platforms are found, then the INDEX will link all the 
+# aliases to the same installer.  This lets us rename platforms.
+my(@aliases) = ([qw(x86-freebsd6 x86-freebsd6.0)],
+	 	[qw(x86-sco x86-sco3 x86-sco3.2v5.0.7)]);
+my(%aliasmap);
+foreach my $list (@aliases) {
+    foreach my $arch (@$list) {
+	$aliasmap{$arch} = [grep {$_ ne $arch} @$list];
+    }
 }
 
-if (-x "$FindBin::Bin/bk") {
-    $ENV{PATH} = $FindBin::Bin . ":" . $ENV{PATH};
-}
+# The bk repository where this script is found
+my $bkdir = "$FindBin::Bin/..";
 
-my($file, $md5sum, $version, $utc, $platform, $codeline);
-my(%versions);
+my($version) = shift(@ARGV);
 
+my($utc);
+$utc = `bk prs -hd:UTC: -r$version $bkdir/ChangeSet`;
+die "Can't find version $version in $bkdir\n" unless $utc;
+
+my($file, $md5sum, $platform);
 my(%seen);
 
-open(I, ">INDEX") or die;
-print I "# file,md5sum,ver,utc,platform,codeline\n";
+open(I, ">INDEX") or die "Can't open INDEX file: $!";
+print I "# file,md5sum,ver,utc,platform,unused\n";
 foreach $file (@ARGV) {
     my($base);
     ($base = $file) =~ s/.*\///;
+
     system("bk crypto -e $FindBin::Bin/bkupgrade.key < $file > $base");
+    die "encryption of $file to $base failed" unless $? == 0;
     chomp($md5sum = `bk crypto -h - < $base`);
+    die "hash of $base failed" unless $md5sum;
     
     # parse bk install binary filename
-    #   CODELINE-VERSION-PLATFORM.{bin,exe}
-    #   CODELINE may contain dashes and always starts with 'bk'
-    #   VERSION starts with digit and . and can't contain dashes
-    #   PLATFORM may contain dashes
-    ($version, $codeline, $platform) = ($base =~ /^((bk.*?)-\d+\..*?)-(.*)\./);
-    die "Can't include $base, all revs must be tagged\n" unless $version;
-
-    $utc = undef;
-    foreach my $release (@releases) {
-	$utc = `bk prs -hd:UTC: -r$version $release/ChangeSet 2>/dev/null`;
-	last if $utc;
-    }
-    die "Can't find UTC of $version\n" unless $utc;
+    #   VERSION-PLATFORM.{bin,exe}
+    ($platform) = ($base =~ /^$version-([^\.]+)/);
+    die "Can't include $base, all images must be from $version\n"
+	unless $platform;
     
-    if ($seen{"$codeline-$platform"}) {
-	die "Only 1 of each codeline per platform: $base\n";
+    if ($seen{$platform}) {
+	die "Only 1 installer for each platform: $base\n";
     }
-    $seen{"$codeline-$platform"} = 1;
-    $versions{$version} = 1;
+    $seen{$platform} = 1;
 
-    print I join(",", $base, $md5sum, $version, $utc, $platform, $codeline);
+    print I join(",", $base, $md5sum, $version, $utc, $platform, "bk");
     print I "\n";
-    
+
+    foreach (@{$aliasmap{$platform}}) {
+    	$seen{$_} = 1;
+        print I join(",", $base, $md5sum, $version, $utc, $_, "bk");
+        print I "\n";
+    }
 }
 
 my $olddir = getcwd;
@@ -62,31 +70,27 @@ my %obsoletes;
 
 # find which releases are obsoleted by the current versions
 
-foreach my $release (@releases) {
-    chdir $release || die;
+chdir $bkdir || die "Can't chdir to $bkdir: $!";
    
-    foreach $version (keys %versions) {
-	$base = `bk r2c -r1.1 src/upgrade.c 2> /dev/null`;
-	next if $? != 0;  # no upgrade command
-	chomp($base);
+$base = `bk r2c -r1.1 src/upgrade.c 2> /dev/null`;
+die if $? != 0;  # no upgrade command
+chomp($base);
 
-	$_ = `bk set -d -r$base -r$version -tt 2> /dev/null`;
-	next if $? != 0;  # version doesn't exist in this release
+$_ = `bk set -d -r$base -r$version -tt 2> /dev/null`;
+die if $? != 0;  # version doesn't exist in this release
 	
-	foreach (split(/\n/, $_)) {
-	    $obsoletes{$_} = 1;
-	}
-    }
+foreach (split(/\n/, $_)) {
+    $obsoletes{$_} = 1;
 }
 chdir $olddir;
 
 foreach (sort keys %obsoletes) {
-    print I "old $_\n" unless $versions{$_};
+    print I "old $_\n";
 }
 print I "\n# checksum\n";
 close(I);
 my $sum = `bk crypto -h - 'WXVTpmDYN1GusoFq5hkAoA' < INDEX`;
-open(I, ">>INDEX") or die;
+open(I, ">>INDEX") or die "Can't append to INDEX: $!";
 print I $sum;
 close(I);
     

@@ -1,25 +1,33 @@
 .so ../bk-macros
-.TH "bk renumber" 1 %E% "\*(BC" "\*(UM"
+.TH "bk renumber" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk renumber \- regenerate the revision history numbers
 .SH SYNOPSIS
-.B bk renumber [\-nq] 
+.B bk renumber
+.[B] \-nq 
 .BKARGS
 .SH DESCRIPTION
 This command exists primarily because Sun's Teamware had some bugs at one 
-point and put nonsensical revision numbers in the s.files.  Lucky for
-Sun, \*(SC does not really care about the revision numbers, it maintains
+point and put nonsensical revision numbers in the s.files.  Fortunately,
+\*(SC does not really care about the revision numbers, it maintains
 the graph structure elsewhere.  This program uses that other information
 to start over and renumber the entire graph.
-.\".LP
-.\"We have started to integrate this command into LODs but
-.\"that integration is not yet complete.
 .SH OPTIONS
 .TP
-.B -n
+.B \-n
 do not do anything, dry run.
 .tp
-.B -q
+.B \-q
 be quiet.
+.SH EXIT STATUS
+.LP
+.B bk renumber
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH CATEGORY
 .B Utility

@@ -1,31 +1,45 @@
 .so ../bk-macros
-.TH "bk cmdlog" 1 %E% "\*(BC" "\*(UM"
-.\"    =================== BitKeeper Command Log ===================
+.TH "bk cmdlog" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk cmdlog \- show the log of commands executed in this repository
 .SH SYNOPSIS
-.B bk cmdlog [\-a]
+.B bk cmdlog
+.[B] \-a
+.[OPTreq] \-c cutoff
 .SH DESCRIPTION
-.LP
-List the history of repository level commands run in
-repository of current directory.  Repository level commands are
-clone, commit, export, pull, and push.
+List the history of repository level commands run in repository of
+current directory.
+Repository level commands are
+.BR "bk clone" ,
+.BR "bk commit" ,
+.BR "bk export" ,
+.BR "bk pull" ,
+and
+.BR "bk push" .
 .LP
 Commands are listed in least recent to most recent order.
 .SH OPTIONS
-.TP
+.TP \-c\*<cutoff\*>
 .B \-a
 List history of all commands run in the repository, not just repository level
 commands.
-.TP
-.OPTopt \-c cutoff
+.tp
+.OPTreq \-c cutoff
 List commands which happened during the date range specified by
 .ARG cutoff .
+.SH EXIT STATUS
+.LP
+.B bk cmdlog
+returns exit status 0.
 .SH NOTES
-The two command logs are maintained by \*(BK in the \*(BK/log directory.
-repo_log contains repository level commands run in a repository.
-cmd_log contains all commands run in a repository.
+The two command logs are maintained by \*(BK in the
+.B BitKeeper/log
+directory.
+.B repo_log
+contains all repository level commands ever run in that repository.
+.B cmd_log
+contains recent commands run in that repository.
 .SH "SEE ALSO"
-.SA range 1
+.SA range
 .SH CATEGORY
 .B Repository

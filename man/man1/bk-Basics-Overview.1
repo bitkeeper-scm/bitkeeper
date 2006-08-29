@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk Basics-Overview" 1 %E% "\*(BC" "\*(UM"
+.TH "Basics-Overview" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk Basics-Overview \- \*(BK basics to help get a new user started
 .SH DESCRIPTION
@@ -11,21 +11,17 @@ section.
 .LP
 Note that \*(BK supports both the traditional SCCS commands
 for checking in/out files
-.RB ( admin
-.BR -i ,
+(\c
+.QR "admin \-i" ,
 .BR delta ,
 .BR get )
 as well as the RCS
 commands 
 .RB ( ci ,
 .BR co ).
-Typically, use
+The
 .B ci/co
-as a shorthand way of doing
-simple operations, but use
-.B delta/get
-in automated scripts and when
-doing more complicated operations.
+are the preferred interfaces (they stand for "check in" and "check out").
 .LP
 As an example, go to the directory where you would like to make changes:
 .DS
@@ -70,7 +66,7 @@ will help you check in both new, modified, and pending files.
 Each command in \*(BK has command-specific help.  You can access
 individual help topics by typing:
 .DS
-$ bk help <command>		# e.g., "bk help co"
+$ bk help \*<command\*>		# e.g., "bk help co"
 .DE
 There are also a number of other topics that describe various areas
 in detail. Try
@@ -78,10 +74,11 @@ in detail. Try
 for a listing of help topics.
 .SH SEE ALSO
 .LP
-.SA ci 1
-.SA edit 1
-.SA get 1
-.SA new 1
-.SA citool 1
+.SA ci
+.SA citool
+.SA co
+.SA edit
+.SA help
+.SA new
 .SH CATEGORY
 .B Overview

@@ -1,39 +1,39 @@
 .so ../bk-macros
 .\" help://hardlink
-.TH "bk relink" 1 %E% "\*(BC" "\*(UM"
-.\"    ====================== BitKeeper relink ======================
+.TH "bk relink" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk relink \- recreate broken hardlinks
+bk relink \- recreate broken hard links
 .SH SYNOPSIS
-.B bk relink [\-q]
+.B bk relink
+.[B] \-q
 .ARG from
-.Bc [
-.ARG from2
-.ARG from3
-\&...\fB]\fP
+.[ARG] from2\ .\|.\|.
 .ARG to
 .br
-.B bk relink [\-q]
+.B bk relink
+.[B] \-q
 .SH DESCRIPTION
-.LP
 The relink command is used to conserve disk space.  It is typical for
 a single user to have many repositories, each one representing a different
 work in progress.  It is also typical to use the
-.B \-l
-option to bk clone to create hard linked repositories.  A hardlinked 
-repository uses much less space than a copied repository.  As files
-are modified, the links are broken.  As the same set of changes come
-into a set of repositories, the links could be restored.  That is what
-the relink command does.
+.Q \-l
+option to
+.B bk clone
+to create hard-linked repositories.
+A hard-linked repository uses much less space than a copied repository.
+As files are modified, the links are broken.
+As the same set of changes come into a set of repositories, the links
+could be restored.
+That is what the relink command does.
 .LP
-The relink command looks at each \*(SC file in the
+The relink command looks at each \*(BK file in the
 .ARG from
 repository and if it is the same as the same file in the
 .ARG to 
 repository, it replaces the file in the 
 .ARG from
 repository
-with a hardlink to the file in the
+with a hard link to the file in the
 .ARG to
 repository.
 .LP
@@ -47,21 +47,21 @@ defaults to all parent[s] of the current repository.
 .B \-q
 Run quietly.
 .SH WARNINGS
-While hardlinked repositories are less disk intensive than replicated
+While hard-linked repositories are less disk intensive than replicated
 repositories, they are also more vulnerable to disk or file system
 corruption.  It is advisable to always have at least one recent copy
-of a repository, rather than 100% hardlinked repositories.
+of a repository, rather than 100% hard-linked repositories.
 .LP
 It is possible to break all the links by recomputing the per file
 checksums:
 .DS
-bk -r check -ac		# stop if this has errors
+bk -r check -ac	
 bk -r admin -z
 .DE
 .SH AVAILABILITY
-This command works only on Unix filesystems and only if both repositories
-are in the same file system.
+This command works only on filesystems which support hard links,
+and only if both repositories are in the same file system.
 .SH "SEE ALSO"
-.SA clone 1
+.SA clone
 .SH CATEGORY
 .B Repository

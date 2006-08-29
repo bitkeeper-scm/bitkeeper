@@ -1,6 +1,3 @@
-#include "system.h"
-#include "sccs.h"
-
 /*
  * Parse just enough of the RCS file to convert them.
  * Did I mention that I really hate RCS?

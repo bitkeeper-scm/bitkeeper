@@ -1,0 +1,135 @@
+.so ../bk-macros
+.TH "bk co" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk co \- check out \*(BK files
+.SH SYNOPSIS
+.B bk co 
+.[B] options
+.BKARGS
+.SH DESCRIPTION
+.LP
+.B bk co
+is used to check out files for viewing or editing.
+By default, files are checked out unlocked and read-only.
+.SH OPTIONS 
+.TP \-A\*<bdnpru\*>
+.OPTreq \-A bdnpru
+Align prefix output in a human readable form.
+The set of annotations will be followed by a vertical bar and a space
+before the data from each line of the file starts.
+Each annotation is aligned in a column.
+The option argument[s] turn on one
+or more annotations as a prefix to each line.
+The possible annotations are:
+.RS
+.TP
+.B b
+Prefix each line with the basename of the file.
+.tp
+.B d
+Prefix each line with the date of last modification.
+.tp
+.B n
+Prefix each line with its line number.
+.tp
+.B p
+Prefix each line with pathname of the file relative to the root
+of the repository.
+.tp
+.B r
+Prefix each line with the revision of last modification.
+.tp
+.B u
+Prefix each line the name of the user who last modified it.
+.RE
+.TP \-A\*<bdnpru\*>
+.OPTreq \-a bdnpru
+Similar to
+.Q \-A 
+but without the alignment.
+.tp
+.B \-g
+Suppress the retrieval of any text; sometimes useful with
+.QR \-l .
+.tp
+.OPTreq \-G name
+Place the checked out file in 
+.ARG name 
+instead of the default gfile location.
+.tp
+.B \-h
+Invert sense of file's hash flag.
+.tp
+.OPTreq \-i list
+Include revs in 
+.ARG list .
+.tp
+.B \-k
+Don't expand RCS or SCCS keywords.
+.Q \-k
+is implied by
+.QR \-l .
+.tp
+.B \-l
+Checkout the file for editing (same as
+.BR "bk edit" ).
+.tp
+.B \-p
+Write file to standard output (useful in scripts).
+.tp
+.B \-P
+Write to stdout, forcing a check out even if the file is corrupted
+(i.e., has a bad checksum).
+.tp
+.B \-q
+Run quietly, suppressing diagnostics.
+.tp
+.OPTreq \-r rev
+Get this revision (or key or changeset revision\(emsee 
+.B bk help terms
+under \*(lqrev argument\*(rq).
+If combined with 
+.Q \-l
+(lock), \*(BK checks out the tip revision
+combined with a set of deltas to be included and excluded to produce
+the requested revision.
+.tp
+.B \-S
+Check out the file if and only if it is not already checked out.
+.tp
+.B \-T
+Set the gfile's modification time to the delta's
+creation time.
+.tp
+.OPTreq \-x list
+Exclude revs in 
+.ARG list .
+.SH NOTE
+You may not need to check out every file in order to compile your
+program since most versions of the Make program will check files out
+as they are needed.  In order for this to work, the 
+.\" Do Not change this to co, it really must be "get".
+.B get
+command needs to be in your path (see bk help links)
+and the dependencies need to be correct in the Makefile.
+If that is true, a simple \*(lqmake\*(rq will check out and build your product.
+.SH EXIT STATUS
+.LP
+.B bk co
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
+.SH "SEE ALSO"
+.BR make (1),
+.SA edit
+.SA keywords
+.SA links
+.SH CATEGORY
+.B Common
+.br
+.B File
+.\" help://get

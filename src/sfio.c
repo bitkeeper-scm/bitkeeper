@@ -16,12 +16,12 @@
  *	char	mode[3];	(VERSMODE only)
  * repeats, except for the version number.
  */
+#include "system.h"
+#include "zlib/zlib.h"
 #ifdef SFIO_STANDALONE
 #include "utils/sfio.h"
 #else
-#include "system.h"
 #include "sccs.h"
-#include "zlib/zlib.h"
 #endif
 
 #undef	unlink		/* I know the files are writable, I created them */
@@ -41,6 +41,7 @@ private	int	mkfile(char *file);
 private	int	quiet;
 private	int	doModes;
 private	int	echo;		/* echo files to stdout as they are written */
+private	int	force;		/* overwrite existing files */
 
 #define M_IN	1
 #define M_OUT	2
@@ -52,9 +53,10 @@ sfio_main(int ac, char **av)
 	int	c, mode = 0;
 
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "eimopq")) != -1) {
+	while ((c = getopt(ac, av, "efimopq")) != -1) {
 		switch (c) {
 		    case 'e': echo = 1; break;			/* doc 2.3 */
+		    case 'f': force = 1; break;			/* doc */
 		    case 'i': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_IN;   break;
 		    case 'o': 					/* doc 2.0 */
@@ -96,13 +98,16 @@ sfio_out(void)
 	byte_count = 10;
 	while (fnext(buf, stdin)) {
 		unless (quiet) fputs(buf, stderr);
-		chop(buf);
+		chomp(buf);
 		n = strlen(buf);
 		sprintf(len, "%04d", n);
 		writen(1, len, 4);
 		writen(1, buf, n);
 		byte_count += (n + 4);
-		if (fast_lstat(buf, &sb)) return (1);
+		if (lstat(buf, &sb)) {
+			fprintf(stderr, "sfio: unable to read %s\n", buf);
+			return (1);
+		}
 		if (S_ISLNK(sb.st_mode)) {
 			unless (doModes) {
 				fprintf(stderr,
@@ -118,7 +123,9 @@ reg:			if (out_file(buf, &sb, &byte_count)) return (1);
 			fprintf(stderr, "unknown file type %s ignored\n",  buf);
 		}
 	}
+#ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
+#endif
 	return (0);
 }
 
@@ -280,6 +287,7 @@ in_link(char *file, int pathlen, int extract)
 	if (extract) {
 		if (symlink(buf, file)) {
 			mkdirf(file);
+			if (force) unlink(file);
 			if (symlink(buf, file)) {
 				perror(file);
 				return (1);
@@ -432,14 +440,18 @@ bad_name:	getMsg("reserved_name", file, '=', stderr);
 #endif
 
 	if (access(file, F_OK) == 0) {
+#ifndef SFIO_STANDALONE
 		char	realname[MAXPATH];
 
-#ifndef SFIO_STANDALONE
 		getRealName(file, NULL, realname);
 		unless (streq(file, realname)) {
 			getMsg2("case_conflict", file, realname, '=', stderr);
 			errno = EINVAL;
-		} else { 
+		} else {
+			if (force) {
+				unlink(file);
+				goto again;
+			}
 			errno = EEXIST;
 		}
 #endif
@@ -458,7 +470,6 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 			fputs("\n", stderr);
 			perror(file);
 			if (errno == EINVAL) goto bad_name;
-		
 		}
 		first = 0;
 		goto again;

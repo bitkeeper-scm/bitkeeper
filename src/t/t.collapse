@@ -1,0 +1,331 @@
+
+echo $N Verify that collapsed csets cannot return ...................$NL
+commercial project
+echo test > file
+bk new $Q file
+bk commit -yfirst $Q || exit 1
+cd $HERE
+bk clone $Q project copy
+cd copy
+bk collapse -el || exit 1
+echo test2 > file
+bk -cr ci -c $Q || exit 1
+bk commit -yreplacement $Q || exit 1
+bk pull $Q 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q "the cset has been collapsed" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Test that \'bk pull -D\' will allow uncollapsed csets .........$NL
+(echo rr; echo y) | BK_FORCE_RESOLVE_RERUN=1 bk pull $Q -D 2> ERR || {
+	echo should have worked
+	exit 1
+}
+grep -q "1 unresolved name conflict" ERR || exit 1
+echo OK
+
+# test 'bk collapse -e'
+echo $N Test collapse -e with many different delta types ............$NL
+cd $HERE/project
+for f in renamed deleted modes xflags file1 file2 file3 exclude edited chg_edit
+do	echo initial > $f
+	bk new $Q $f
+done
+bk edit $Q exclude
+echo newline >> exclude
+bk ci -ynew $Q exclude || exit 1
+echo binary junk > binary
+bk new -b $Q binary || exit 1
+
+if [ "$PLATFORM" != "WIN32" ]
+then
+	ln -s file1 change_symlink
+	bk new $Q change_symlink || exit 1
+fi
+bk commit $Q -yinitial || exit 1
+
+
+#  contents edit
+bk edit $Q file || exit 1
+echo add line >> file
+bk ci -ycontents $Q file || exit 1
+#  renamed file
+bk mv renamed rename_dest || exit 1
+#  deleted file
+bk rm deleted || exit 1
+#  file cereated in this cset
+echo new_file > new_file
+bk new $Q new_file || exit 1
+#  change mode
+bk chmod +x modes || exit 1
+#  add/del xflags
+bk admin -fRCS xflags || exit 1
+bk admin -FSCCS xflags || exit 1
+echo hi > create_delete
+bk new $Q create_delete || exit 1
+bk rm create_delete || exit 1
+
+# excludes
+bk edit $Q -x1.2 exclude || exit 1
+echo replace >> exclude
+bk ci -yreplace $Q exclude || exit 1
+
+# binary file
+bk edit $Q binary || exit 1
+echo more junk >> binary
+bk ci -ymore $Q binary || exit 1
+
+# changes and edited file
+bk edit $Q chg_edit || exit 1
+echo stuff in fixed cset >> chg_edit
+bk ci -ystuff $Q chg_edit || exit 1
+
+# nulls moves disappear
+bk mv file2 junk
+bk mv junk file2
+
+# multiple moves collapse
+bk mv file3 file4
+bk mv file4 file5
+
+if [ "$PLATFORM" != "WIN32" ]
+then
+	#  change symlink
+	bk edit $Q change_symlink
+	rm change_symlink
+	ln -s file2 change_symlink
+	bk ci $Q -ymovelink change_symlink
+
+	#  create symlink
+	ln -s file3 new_symlink
+	bk new $Q new_symlink
+
+	ln -s file3 edited_symlink
+	bk new $Q edited_symlink
+fi
+
+bk commit $Q -ynewcset || exit 1
+
+# already edited file
+bk edit $Q edited || exit 1
+echo new stuff not in cset >> edited
+echo edited comment > SCCS/c.edited
+
+bk edit $Q chg_edit || exit 1
+echo new stuff not in cset >> chg_edit
+echo edited comment > SCCS/c.chg_edit
+
+if [ "$PLATFORM" != "WIN32" ]
+then
+	bk edit $Q edited_symlink
+	rm edited_symlink
+	ln -s file2 edited_symlink
+	echo edited comment > SCCS/c.edited_symlink
+fi
+
+BK_USER=u1 bk collapse -el $Q || exit 1
+BK_USER=u2 bk -xlr delta -a $Q -c || exit 1
+BK_USER=u3 bk commit $Q -ycollapse || exit 1
+
+bk changes -r+ -v -d':GFILE: :REV: $unless(:CHANGESET:){:DL: }:USER:$if(:ENC:=binary){ binary}
+:FLAGS:
+$if(:DI:){inc/exc :DI:
+}$unless(:CHANGESET:){$unless(:REV:=1.0){:RWXMODE:
+}}:COMMENTS:$unless(:CHANGESET:){$if(:GFILE:!=BitKeeper/etc/collapsed){:DIFFS_U:}}---
+' | perl -pe 's/^([-+]{3} \S+).*/$1/; s/([-l][-rwx]{3})[-rwx]{6}/$1/' > GOT
+
+cat <<EOF > WANT
+ChangeSet 1.4 u3
+BITKEEPER,CSETMARKED,HASH,LONGKEY,EOLN_UNIX
+C collapse
+---
+BitKeeper/deleted/.del-create_delete 1.1 1/0/0 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C BitKeeper file $HERE/project/create_delete
+
+--- /dev/null
++++ 1.1/BitKeeper/deleted/.del-create_delete
+@@ -0,0 +1 @@
++hi
+---
+BitKeeper/deleted/.del-create_delete 1.0 0/0/0 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+---
+BitKeeper/deleted/.del-deleted 1.2 0/0/1 u1
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C Rename: deleted -> BitKeeper/deleted/.del-deleted
+---
+BitKeeper/etc/collapsed 1.2 1/1/0 u1
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+---
+binary 1.2 1/1/1 u2 binary
+BITKEEPER,CSETMARKED,EOLN_UNIX
+-rw-
+C more
+
+--- 1.1/binary
++++ 1.2/binary
+@@ -1 +1,2 @@
+ binary junk
++more junk
+---
+change_symlink 1.2 0/0/0 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+lrwx
+C movelink
+
+--- 1.1/change_symlink
++++ 1.2/change_symlink
+@@ -1 +1 @@
+-SYMLINK -> file1
++SYMLINK -> file2
+---
+chg_edit 1.2 2/0/1 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C stuff
+C ---
+C edited comment
+
+--- 1.1/chg_edit
++++ 1.2/chg_edit
+@@ -1 +1,3 @@
+ initial
++stuff in fixed cset
++new stuff not in cset
+---
+edited 1.2 1/0/1 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C edited comment
+
+--- 1.1/edited
++++ 1.2/edited
+@@ -1 +1,2 @@
+ initial
++new stuff not in cset
+---
+edited_symlink 1.1 0/0/0 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+lrwx
+C BitKeeper file $HERE/project/edited_symlink
+C ---
+C edited comment
+
+--- /dev/null
++++ 1.1/edited_symlink
+@@ -0,0 +1 @@
++SYMLINK -> file2
+---
+edited_symlink 1.0 0/0/0 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+---
+exclude 1.3 1/1/1 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C replace
+
+--- 1.2/exclude
++++ 1.3/exclude
+@@ -1,2 +1,2 @@
+ initial
+-newline
++replace
+---
+file 1.2 1/0/1 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C contents
+
+--- 1.1/file
++++ 1.2/file
+@@ -1 +1,2 @@
+ test
++add line
+---
+file5 1.2 0/0/1 u1
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C Rename: file3 -> file5
+---
+modes 1.2 0/0/1 u1
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rwx
+C Change mode to -rwx
+---
+new_file 1.1 1/0/0 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C BitKeeper file $HERE/project/new_file
+
+--- /dev/null
++++ 1.1/new_file
+@@ -0,0 +1 @@
++new_file
+---
+new_file 1.0 0/0/0 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+---
+new_symlink 1.1 0/0/0 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+lrwx
+C BitKeeper file $HERE/project/new_symlink
+
+--- /dev/null
++++ 1.1/new_symlink
+@@ -0,0 +1 @@
++SYMLINK -> file3
+---
+new_symlink 1.0 0/0/0 u2
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+---
+rename_dest 1.2 0/0/1 u1
+BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C Rename: renamed -> rename_dest
+---
+xflags 1.3 0/0/1 u1
+BITKEEPER,RCS,CSETMARKED,EOLN_UNIX
+-rw-
+C Turn off SCCS flag
+---
+xflags 1.2 0/0/1 u1
+BITKEEPER,RCS,CSETMARKED,SCCS,EOLN_UNIX
+-rw-
+C Turn on RCS flag
+---
+EOF
+if [ "$PLATFORM" = "WIN32" ]
+then
+	# filter out symlink results
+	perl -0 -i.bck -pe 's/^\w+symlink.*?\n---\n//msg' WANT
+fi
+cmpfiles WANT GOT
+echo OK
+
+#echo $N Test collapse -e -aREV ......................................$NL
+#  above plus
+#  merges
+#  merged modes
+#  csets before and after merge
+
+# test merging of BitKeeper/etc/collapsed files
+
+# test collapse -e of tags 
+#  keep tag on old tip
+#  strip tags in middle and tip of stripped csets (with warnings)
+
+# test collapse of tags without -e
+#  keep tag on old tip
+#  strip tags in middle of stripped csets (with warnings)
+#  recreate tag on tip of stripped csets

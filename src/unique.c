@@ -112,6 +112,8 @@ keycache_print(char *file, struct stat *sb, void *data)
 {
 	sccs	*s;
 	delta	*d;
+	int	len;
+	char	*p;
 	kcinfo	*kc = (kcinfo *)data;
 
 	unless (s = sccs_init(file, SILENT|INIT_NOCKSUM)) return (0);
@@ -121,7 +123,13 @@ keycache_print(char *file, struct stat *sb, void *data)
 	}
 	for (d = s->table; d; d = d->next) {
 		if (d->date < kc->cutoff) break;
-		if (d->hostname && streq(d->hostname, kc->host)) {
+		unless (d->hostname) continue;
+		if (p = strchr(d->hostname, '/')) {
+			len = p - d->hostname;
+		} else {
+			len = strlen(d->hostname);
+		}
+		if (strneq(d->hostname, kc->host, len)) {
 			u8	buf[MAXPATH+100];
 
 			sccs_shortKey(s, d, buf);

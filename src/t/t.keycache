@@ -40,31 +40,31 @@ test -f $KEYS -a ! -z $KEYS || {
 echo OK
 
 echo $N Make sure we generated the right keys in single user mode ...$NL
-bk _sort < $KEYS | while read k junk
+bk sort < $KEYS | while read k junk
 do echo "$k"
 done > GOT
-bk -r prs -c90.. -hnd:SHORTKEY: | bk _sort > WANT
+bk -r prs -c90.. -hnd:SHORTKEY: | bk sort > WANT
 cmp -s WANT GOT || {
 	echo failed to regenerate the same keycache
 	diff WANT GOT
-	bk prs -r1.0.. -nd:KEY: BitKeeper/etc/config
+	bk prs -nd:KEY: BitKeeper/etc/config
     	exit 1
 }
 echo OK
 
 echo $N Make sure we can regenerate the keycache ....................$NL
-bk _sort < $KEYS > WANT
+bk sort < $KEYS > WANT
 rm -f $KEYS
 bk keycache > $KEYS
 test -z $KEYS && {
 	echo failed to add keys to bk_keys
 	exit 1
 }
-bk _sort < $KEYS > GOT
+bk sort < $KEYS > GOT
 cmp -s WANT GOT || {
 	echo failed to regenerate the same keycache
 	diff WANT GOT
-	bk prs -r1.0.. -nd:KEY: BitKeeper/etc/config
+	bk prs -nd:KEY: BitKeeper/etc/config
     	exit 1
 }
 echo OK

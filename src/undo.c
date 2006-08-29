@@ -27,7 +27,7 @@ undo_main(int ac,  char **av)
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
 	char	*qflag = "";
-	char	*cmd = 0, *rev = 0;
+	char	*cmd = 0, *rev = 0, *t;
 	int	aflg = 0, quiet = 0, verbose = 0;
 	char	**fileList = 0;
 	char	*checkfiles;	/* filename of list of files to check */
@@ -58,8 +58,9 @@ usage:			system("bk help -s undo");
 	unless (rev) goto usage;
 
 	/* do checkouts? */
-	if (strieq(user_preference("checkout"), "get")) checkout = 1;
-	if (strieq(user_preference("checkout"), "edit")) checkout = 2;
+	t = proj_configval(0, "checkout");
+	if (strieq(t, "get")) checkout = 1;
+	if (strieq(t, "edit")) checkout = 2;
 
 	save_log_markers();
 	unlink(BACKUP_SFIO); /* remove old backup file */
@@ -80,7 +81,7 @@ usage:			system("bk help -s undo");
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
 		freeLines(fileList, free);
-		if ((size(BACKUP_SFIO) > 0) && restore_backup(BACKUP_SFIO)) {
+		if ((size(BACKUP_SFIO) > 0) && restore_backup(BACKUP_SFIO,0)) {
 			exit(1);
 		}
 		unlink(BACKUP_SFIO);
@@ -151,7 +152,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	rmEmptyDirs(quiet);
 	if (!quiet && save) printf("Backup patch left in \"%s\".\n", patch);
 	unless (quiet) printf("Running consistency check...\n");
-	if (strieq("yes", user_preference("partial_check"))) {
+	if (proj_configbool(0, "partial_check")) {
 		rc = run_check(checkfiles, 1, quiet);
 	} else {
 		rc = run_check(0, 1, quiet);
@@ -232,11 +233,12 @@ getrev(char *top_rev, int aflg)
 	char	revline[MAXREV+1];
 
 	if (aflg) {
-		cmd = aprintf("bk -R prs -ohnMa -r'1.0..%s' -d:REV: ChangeSet",
+		cmd = aprintf("bk -R prs -hnr'%s..' -d:REV: ChangeSet",
 		    top_rev);
-	} else{
-		cmd = aprintf("bk -R prs -hnr'%s' -d:REV: ChangeSet", 
-		    top_rev);
+	} else if (IsFullPath(top_rev) && isreg(top_rev)) {
+		cmd = aprintf("bk -R key2rev ChangeSet < %s", top_rev);
+	} else {
+		cmd = aprintf("bk -R prs -hnr'%s' -d:REV: ChangeSet", top_rev);
 	}
 	f = popen(cmd, "r");
 	free(cmd);

@@ -1,64 +1,60 @@
 .so ../bk-macros
-.TH "bk changes" 1 %E% "\*(BC" "\*(UM"
+.TH "bk changes" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk changes \- show changeset history
 .SH SYNOPSIS
-.B bk changes [opts]
-.Bc [
-.OPTreq \-r revs
- |\ - \c
-.B ]
+.B bk changes
+.[ARG] options
+.[OPTreq] \-r revs " | \-"
 .br
-.B bk changes [opts]
-.Bc [
-.OPTreq \-r revs
- |\ - \c
-.B ]
-.I repo
+.B bk changes
+.[ARG] options
+.ARG repo
+.[ARG] repo "\ .\|.\|."
 .br
 .B bk changes 
 .B \-L
-.B [opts]
-.OPT repo[s]
+.[ARG] options
+.[ARG] repo "\ .\|.\|."
 .br
 .B bk changes 
 .B \-R
-.B [opts]
-.OPT repo[s]
+.[ARG] options
+.[ARG] repo "\ .\|.\|."
 .br
 .B bk changes 
 .B \-L
 .B \-R
-.B [opts]
-.OPT repo[s]
+.[ARG] options
+.[ARG] repo "\ .\|.\|."
 .SH DESCRIPTION
 The changes command is used to get an overview of the changes made to
 a repository.  There are options to search for particular changesets,
 view only tagged changesets, limit the search to a particular user,
 view only local changes, view only remote changes, view changes relative
 to a set of repositories, etc.
-.LP
-.LI 4
+.LI 
 The first form shown above shows changes in the local repository.
-If the last argument is a "-" then the revisions to be listed are 
+If the last argument is a \*(lq\-\*(rq then the revisions to be listed are 
 specified, as keys, tags, and/or revisions, on stdin.
-.LI
+.li
 The second form shown above shows changes in the named repository.
-If the second to the last argument is a "-" then the revisions to be
-listed are specified, as keys, tags, and/or revisions, on stdin.
-.LI
+.\" XXX: this was in 3.2.x, but was not implemented:
+.\" If the second to the last argument is a "-" then the revisions to be
+.\" listed are specified, as keys, tags, and/or revisions, on stdin.
+.li
 The third form shown above lists changes found in the local repository
 but not in the remote repository.
 If the remote repository is not specified, the outgoing parent[s] of the
 local repository is/are used, i.e.,
 the listing is what would be sent on a push.
-.LI
+.li
 The fourth form shown above lists changes found in the remote repository
 but not in the local repository.
 If the remote repository is not specified, the incoming parent[s] of the
 local repository is/are used, i.e.,
 the listing is what would be received on a pull.
-.LI
+.li
 The fifth form shown above lists changes unique to either the remote or the 
 local repository.
 The local changes are listed first, then the remote changes, and both
@@ -70,34 +66,23 @@ named repository is the remote repository.  All the other selection
 options are applied to the list of local or remote only changesets.
 .LP
 The changesets to be listed may be specified as a revision, a range of
-revisions, or a list of revisions on 
-.IR stdin .
+revisions, or a list of revisions on stdin.
 The default is all revisions.
 Specifying revisions is incompatible with the 
-.B \-R/\-L
+.Q \-R/\-L
 options.
 .SH OPTIONS
-.if t .TP .8i
-.if n .TP 1.4i
+.TP \-/\*<str\*>/[i]
 .OPTreq \-/ str \fB/\fP[\fBi\fP]
 List only those changesets whose comments contain the string
 .ARG str .
 .ARG str
 may be a regular expression.
-If there is a trailing "i" then ignore case in the search.
-.tp
-.B \-a
-List all deltas, including tag deltas.  Implies
-.BR \-e .
-An additional
-.B \-e
-after this option will turn off the listing of the empty merge deltas (the
-.B \-e 
-option is inverted from its previous value each time the option is seen).
+If there is a trailing \*(lqi\*(rq then ignore case in the search.
 .tp
 .OPTreq \-c dates
 Specifies the changesets to be listed as a date range, i.e.,
-.BI -c -6W
+.Q \-c\-6W.\|.
 lists the last 6 weeks worth of changes.
 .tp
 .B \-D
@@ -107,10 +92,14 @@ there may be duplicate changesets which are present in more than one
 repository.
 If this option is specified, then the duplicates are filtered out such
 that the changesets listed are a unique set.
-This option is used to ask the questions: "What is only in this
-repository relative to all of the specified repositories" or "What is
+This option combined with
+.QR \-L
+or
+.QR \-R
+is used to answer the questions: \*(lqWhat is only in this
+repository relative to all of the specified repositories?\*(rq or \*(lqWhat is
 only in one or more of the remote repositories but not in this local
-repository".
+repository?\*(rq respectively.
 .tp
 .OPTreq \-d dspec
 Override the default dspec, allows for arbitrary output formats.
@@ -124,7 +113,7 @@ backwards in time, i.e., most recent to least recent order.
 .tp
 .B \-h
 Produce html as output.  May not be combined with
-.BR \-d .
+.QR \-d .
 .tp
 .OPTreq \-i pat
 Include information only from files matching
@@ -134,11 +123,10 @@ pattern (see below).
 .B \-k
 Produce a list of matching changeset keys, usually for scripts.
 Equivalent to 
-.BI \-and :KEY:
+.QI \-Dand:KEY:
 .tp
 .B \-L
-List only those changesets which are unique to the local repository,
-i.e., those which would be sent back with a bk push.
+List everything that would be sent with a bk push.
 Requires either a BK url or a valid repository parent.
 .tp
 .B \-m
@@ -146,24 +134,30 @@ Do not show any merge changesets, empty or not.
 .tp
 .B \-n
 add a newline to each printed record (sometimes useful with
-.BR -d ).
+.QR \-d ).
 .tp
 .B \-q
 When listing local/remote changes from multiple parents (or remote
 repositories) do not print the location of the remote repositories.
 This option is implied by
-.BR -k .
+.QR \-D .
 .tp
 .OPTreq \-r revs
 Specifies the changesets to be listed, i.e., 1.100..
 .tp
 .B \-R
-List only those changesets which are unique to the remote repository,
-i.e., those which would be brought over with a bk pull.
+List everything which would be brought over with a bk pull.
 Requires either a BK url or a valid repository parent.
 .tp
 .B \-t
 Only list changesets which are tagged.
+.tp
+.B \-T
+Sort the deltas in a changeset in time order.
+The default is to sort by current file name.
+This option only affects verbose (\c
+.QR \-v )
+output.
 .tp
 .OPTreq \-u user
 Only list changesets created by
@@ -182,7 +176,7 @@ Shows individual file change history as well as changeset history.
 .tp
 .B \-vv
 Same as
-.B \-v
+.Q \-v
 except that each file's change history is followed by unified diffs
 for that change (using the :DIFFS_UP: keyword).
 .tp
@@ -194,7 +188,10 @@ pattern (see below).
 INCLUDE/EXCLUDE PROCESSING
 .LP
 Include and/or exclude patterns may be used to control which
-files are included in verbose reporting (-v/-vv, see above);
+files are included in verbose reporting (\c
+.QR \-v /\c
+.QR \-vv ;
+see above).
 There may be multiple include and/or exclude patterns.
 The patterns are a file glob the same as used by 
 .B bk ignore.
@@ -213,8 +210,11 @@ since the changeset in question.
 The include/exclude processing always applies to the file name as it was
 as of the changeset in question.
 For example, suppose you have a file that is currently deleted but
-at the time of the changeset was in \f(CWsrc/foo.c\fP.
-If you told the system to report \f(CWsrc/*\fP then the file will
+at the time of the changeset was in
+.BR src/foo.c .
+If you told the system to report
+.B src/*
+then the file will
 be in the set.
 .SH EXAMPLES
 Sample output:
@@ -231,16 +231,29 @@ ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@host.com
   Fix a diagnostic in pull.
   An aborted attempt at key compression.
 .DE
+.SH EXIT STATUS
+.LP
+.B bk changes
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA commit 1
-.SA glob 1
-.SA pending 1
-.SA prs 1
-.SA pull 1
-.SA push 1
-.SA regex 1
-.SA revtool 1
-.SA sccslog 1
-.SA set 1
+.SA commit
+.SA glob
+.SA pending
+.SA log
+.SA pull
+.SA push
+.SA range
+.SA regex
+.SA revtool
+.SA sccslog
+.SA set
 .SH CATEGORY
+.B Common
+.br
 .B Repository

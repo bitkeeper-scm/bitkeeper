@@ -28,37 +28,38 @@ bk tag $Q copy1
 echo OK
 
 echo $N List keys which are local only, changes -Lk .................$NL
-bk changes -Lk $HERE/project | bk _sort > GOT
-bk -R prs -hand:KEY: ChangeSet | head -2 | bk _sort > WANT
+bk changes -Lk $HERE/project | bk sort > GOT
+bk -R prs -hand:KEY: ChangeSet | head -2 | bk sort > WANT
 cmp -s WANT GOT || { echo failed; diff -u WANT GOT; exit 1; }
 echo OK
 
 echo $N List local changes as rev and type ..........................$NL
-bk changes -afLnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project > WANT
+bk changes -qafLnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project > WANT
 bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 > GOT
 cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
 
 echo $N List keys which are remote only, changes -Rk ................$NL
-bk changes -Rk $HERE/project | bk _sort > GOT
+bk changes -Rk $HERE/project | bk sort > GOT
 ( cd $HERE/project && 
-  bk -R prs -hand:KEY: ChangeSet | head -2 | bk _sort ) > WANT
+  bk -R prs -hand:KEY: ChangeSet | head -2 | bk sort ) > WANT
 cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
 
 echo $N List remote changes as rev and type .........................$NL
-bk changes -afRnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project |
-    bk _sort > GOT
+bk changes -qafRnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project |
+    bk sort > GOT
 ( cd $HERE/project && 
   bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 ) > WANT
 cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
 
 echo $N make sure bk send xfers tags correctly ......................$NL
-bk send $Q -u$HERE/project  - > $HERE/patch
+cd $HERE/copy
+bk send $Q -u../project  - > $HERE/patch || exit 1
 cd $HERE/project
 bk takepatch -qay'Hello daddy, hello mama!
-Here I am in Camp Granada!' < $HERE/patch
+Here I am in Camp Granada!' < $HERE/patch || exit 1
 bk prs -hn -d:TAG: | grep copy1 > OUT2
 test $? -eq 0 || {
 	echo failed
@@ -75,6 +76,28 @@ grep -q '^  Hello daddy, hello mama!$' OUT3 || {
 grep -q '^  Here I am in Camp Granada!$' OUT3 || {
 	echo failed comments
 	cat OUT3
+	exit 1
+}
+echo OK
+
+echo $N Check synckeys error handling ...............................$NL
+cd $HERE/project
+mv SCCS/s.ChangeSet csetfile
+bk synckeys -lk ../copy 2>ERR
+rc=$?
+mv csetfile SCCS/s.ChangeSet
+test $rc = 0 && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+mv ../copy/SCCS/s.ChangeSet csetfile
+bk synckeys -lk ../copy 2>ERR
+rc=$?
+mv csetfile ../copy/SCCS/s.ChangeSet
+test $rc = 0 && {
+	echo should have failed
+	cat ERR
 	exit 1
 }
 echo OK

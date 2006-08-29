@@ -49,7 +49,7 @@ process(char *path0, char *path1, char *rev1,
 	s = sccs_init(t, SILENT);
 	free(t);
 	assert(s);
-	unless ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
+	unless (ASCII(s)) {
 		fprintf(stderr, "Warning: %s is not a text file\n", s->sfile);
 	}
 	mkgfile(s, rev1, path1, tmpdir, "a", fix_mod_time, db);
@@ -109,7 +109,8 @@ print_title(char *r1, char *r2)
 	char	buf[BUFSIZ];
 
 	printf("# This is a BitKeeper generated diff -Nru style patch.\n#\n");
-	p = aprintf("bk set -d -r%s -r%s | bk changes -vd'%s' -", r1, r2, d);
+	p = aprintf("bk set -d -r'%s' -r'%s' | bk changes -vd'%s' -",
+	    r1, r2, d);
 	f = popen(p, "r");
 	free(p);
 	while (fnext(buf, f)) printf("# %s", buf);
@@ -127,7 +128,7 @@ gnupatch_main(int ac, char **av)
 	char diff_opts[50] ;
 	char *diff_av[] = { "diff", diff_opts, "a", "b", 0 };
 	char *clean_av[] = { "rm", "-rf", tmpdir, 0 };
-	int  c, rfd, header = 1, fix_mod_time = 0, got_start_header = 0;
+	int  c, header = 1, fix_mod_time = 0, got_start_header = 0;
 	FILE *pipe;
 	MDBM *db;
 
@@ -207,15 +208,13 @@ gnupatch_main(int ac, char **av)
 	 * and fix up the diff header
 	 */
 	sprintf(diff_opts, "-Nr%s", diff_style);
-	spawnvp_rPipe(diff_av, &rfd, BIG_PIPE);
-	pipe = fdopen(rfd, "r");
+	pipe = popenvp(diff_av, "r");
 	while (fgets(buf, sizeof(buf), pipe)) {
 		if (got_start_header) {
 			got_start_header--;
 			fix_header(buf, db);
 			continue;
 		}
-	
 		if (strneq("diff -Nru", buf, 9) ||
 		    strneq("diff -Nrc", buf, 9)) { 
 			got_start_header = 2;
@@ -224,7 +223,7 @@ gnupatch_main(int ac, char **av)
 		}
 		fputs(buf, stdout);
 	}
-	fclose(pipe);
+	pclose(pipe);
 
 	/*
 	 * all done, clean up

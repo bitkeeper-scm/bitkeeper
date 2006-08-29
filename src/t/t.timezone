@@ -17,13 +17,11 @@ echo $N Checking Delta in Negative Time zone ........................$NL
 echo "some data" > TIME
 TZ=UTC+8 bk delta $S -i  TIME
 cat > X <<EOF
-======== TIME 1.1 ========
 -08:00
 EOF
 bk undos X > CMP1
-bk prs -d':TZ:\n' TIME > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+bk prs -hd':TZ:\n' TIME > CMP2
+cmpfiles CMP1 CMP2
 echo OK
 echo $N Checking Delta in Positive Time zone ........................$NL
 bk get $S -e TIME

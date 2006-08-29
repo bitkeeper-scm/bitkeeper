@@ -1,27 +1,24 @@
 .so ../bk-macros
-.TH "bk filetypes" 1 %E% "\*(BC" "\*(UM"
+.TH "bk filetypes" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
-bk filetypes \- summary of BitKeeper file types
+bk filetypes \- summary of \*(BK file types
 .SH DESCRIPTION
 .LP
 For each file under revision control, there are a number of files
 associated with the main file.  
 The following list describes the purpose of each file:
-.if t .TP 1i
-.if n .TP 1.4i
-.I foo.c
-.I gfile
-(aka "gotten" file), this is your source file
+.TP \fBSCCS/s.\|\fP\*<foo\*>
+.ARG foo
+\*(lqgfile\*(rq \- the \*(lqgotten\*(rq file; this is your source file
 .\"this is your source file (aka "gotten" file)
-.TP
-.I SCCS/s.foo.c
-.IR s.file \ -
+.tp
+.OPTreq SCCS/s.\| foo
+\*(lqsfile\*(rq \-
 the revision history of all versions of the gfile
-.TP
-.I SCCS/p.foo.c
-.IR p.file \ -
-the lock file, created when the file is edited.  The pfile
-contains the following columns:
+.tp
+.OPTreq SCCS/p.\| foo
+\*(lqpfile\*(rq \- the lock file, created when the file is edited.
+The pfile contains the following columns:
 .nf
 .if n .ta .3i +0i +1.1i +1i +.8i
 .if n .sp
@@ -37,31 +34,28 @@ contains the following columns:
 .if t .ft
 This file is an exclusive lock whose existence indicates 
 that the gfile has been checked out for editing.  Unlike 
-ATT SCCS, \*(BK allows only one locker at a time.
-.TP
-.I SCCS/z.foo.c
-.IR z.file \ -
-a lock file created when locking or checking 
+ATT SCCS, \*(BK allows only one locker at a time within a
+single repository.
+.tp
+.OPTreq SCCS/z.\| foo
+\*(lqzfile\*(rq \- a lock file created when locking or checking 
 in a new version. This is an exclusive lock used when
-updating or locking the s.file.  
-.TP
-.I SCCS/x.foo.c
-.IR x.file \ -
-a temporary file which contains the new version
-of the s.file under construction.  When the check-in is
-finished, the s.file is removed and the x.file is moved
+updating or locking the sfile.  
+.tp
+.OPTreq SCCS/x.\| foo
+\*(lqxfile\*(rq \- a temporary file which contains the new version
+of the sfile under construction.  When the check-in is
+finished, the sfile is removed and the xfile is moved
 into its place.
-.TP
-.I SCCS/c.foo.c
-.IR c.file \ -
-a temporary copy of check in comments, currently used only by
-.B bk
-.BR citool .
-.TP
-.I SCCS/d.foo.c
-.IR d.file \ -
-a temporary file that indicates there is at least one pending delta in the
-s.file.
+.tp
+.OPTreq SCCS/c.\| foo
+\*(lqcfile\*(rq \- a temporary copy of check in comments,
+currently used only by
+.BR "bk citool" .
+.tp
+.OPTreq SCCS/d.\| foo
+\*(lqdfile\*(rq \- a temporary file that indicates there is at least one
+pending delta in the sfile.
 .SH FUTURE DIRECTIONS
 Depending on these files, other than the gfile, actually existing should
 not be done.
@@ -77,6 +71,7 @@ write them.
 .\" help://File/sfile
 .\" help://File/pfile
 .\" help://File/cfile
+.\" XXX Are the following references correct?
 .\" help://File/s.file
 .\" help://File/p.file
 .\" help://File/c.file

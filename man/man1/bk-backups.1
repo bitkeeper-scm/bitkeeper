@@ -1,6 +1,7 @@
 .so ../bk-macros
-.TH "bk backups" 1 %E% "\*(BC" "\*(UM"
-.\"    =============== Safeguarding your BitKeeper repositories ===============
+.\" XXX - isn't this better left to the user guide?  Doesn't seem like a
+.\" a manual thing.  Or at least Howto-backup.1
+.TH "bk backups" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk backups \- guide to doing backups of \*(BK repositories
 .SH DESCRIPTION
@@ -25,7 +26,7 @@ problems:
 cd REPO
 bk edit foo.c
 echo "I am a pending delta not yet committed" >> foo.c
-bk delta -yPENDING foo.c
+bk ci -yPENDING foo.c
 cd ..
 cp -r REPO COPY
 cd REPO
@@ -44,9 +45,9 @@ point.
 If what you want is a copy of the repository, use bk clone to copy
 it, not tar, cp, or some other file by file copy.
 .SH "SEE ALSO"
-.SA pending 1
-.SA sfiles 1
-.SA status 1
+.SA pending
+.SA sfiles
+.SA status
 .\" help://backup
 .SH CATEGORY
 .B Overview

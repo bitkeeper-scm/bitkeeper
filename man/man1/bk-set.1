@@ -1,12 +1,13 @@
-.TH "bk set" 1 %E% "\*(BC" "\*(UM"
+.so ../bk-macros
+.TH "bk set" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk set \- set operations
 .SH SYNOPSIS
-.B bk set [\-adeklnosx] [
-.OPTreq \-r rev
-.Bc ] [
-.OPTopt \-t type
-] [file]
+.B bk set
+.[B] \-adeklnosx
+.[OPTreq] \-r rev
+.[OPTopt] \-t type
+.[ARG] file
 .SH DESCRIPTION
 The 
 .B bk set
@@ -29,7 +30,8 @@ list all answers as keys, not as tags or revisions.
 .tp
 .B \-n
 prefix each output line with the filename, i.e., ChangeSet|1.3, so that
-the output may be fed to other programs, such as bk prs.
+the output may be fed to other programs, such as
+.BR "bk log" .
 .tp
 .B \-t
 list all answers as tags where possible, else revisions.
@@ -47,67 +49,81 @@ list only those answers which are tagged but list those as keys.
 If a revision is specified for a set argument, the set is the set of
 deltas which make up that revision.  For example, in a simple history
 without branches, revision 1.5 implies the set {1.1, 1.2, 1.3, 1.4, 1.5}.
-A revision may be specified as a dotted number pair, as a symbolic tag,
-or as a \*(BK key.  It may also be specified as a "-", for the second
+A revision may be specified as a revision, as a symbolic tag,
+or as a \*(BK key.  It may also be specified as a \*(lq\-\*(rq, for the second
 set only, in which case it expects a list of revisions (or keys) on
 stdin, one per line.
 .SH SET OPERATIONS
-.SS UNION (A | B)
-.B bk set [output opts] \-o
-.ARG "set A"
-.ARG "set B"
-[file]
+.SS UNION (\*[<]setA\*[>] | \*[<]setB\*[>])
+.B bk set
+.[ARG] "output opts"
+.B \-o
+.ARG setA
+.ARG setB
+.[ARG] file
 .LP
-The union operation, familiar to programmers as a "bitwise or",
+The union operation, familiar to programmers as a \*(lqbitwise or\*(rq,
 lists all members which occur in either set.
-.SS INTERSECTION (A & B)
-.B bk set [output opts] \-a
-.ARG "set A"
-.ARG "set B"
-[file]
-The intersection operator, familiar to programmers as a "bitwise and",
-lists all members which occur in both sets.
-.SS DIFFERENCE (~A & B)
-.B bk set [output opts] \-d
-.ARG "set A"
-.ARG "set B"
-[file]
+.SS INTERSECTION (\*[<]setA\*[>] & \*[<]setB\*[>])
+.B bk set
+.[ARG] "output opts"
+.B \-a
+.ARG setA
+.ARG setB
+.[ARG] file
 .LP
-The difference operator lists all members in set B which are not in set A.
+The intersection operator, familiar to programmers as a \*(lqbitwise and\*(rq,
+lists all members which occur in both sets.
+.SS DIFFERENCE (~\*[<]setA\*[>] & \*[<]setB\*[>])
+.B bk set
+.[ARG] "output opts"
+.B \-d
+.ARG setA
+.ARG setB
+.[ARG] file
+.LP
+The difference operator lists all members in
+.I setB
+which are not in
+.IR setA .
 This is the most useful of the set operations, see the examples below.
-.SS SYMMETRIC DIFFERENCE (A ^ B)
-.B bk set [output opts] \-x
-.ARG "set A"
-.ARG "set B"
-[file]
+.SS SYMMETRIC DIFFERENCE (\*[<]setA\*[>] ^ \*[<]setB\*[>])
+.B bk set
+.[ARG] "output opts"
+.B \-x
+.ARG setA
+.ARG setB
+.[ARG] file
 .LP
 The symmetric difference operator, familiar to programmers as an
-"exclusive or",
+\*(lqexclusive or\*(rq,
 lists all members which occur in only one of the two sets.
 .SS ELEMENT
-.B bk set [output opts] \-e
+.B bk set
+.[ARG] "output opts"
+.B \-e
 .OPTreq \-r rev
-.ARG "set B"
-[file]
+.ARG setA
+.[ARG] file
 .LP
 The element operator treats the specified revision as a single element,
 not as an implied set, and lists the element if it is in the set.
 .SS LIST
 .B bk set \-l
 .OPTreq \-r rev
-[file]
+.[ARG] file
 .LP
 The list operator treats the specified revision as a single element,
 not as an implied set, and lists all sets (as revisions) which contain
 the element as part of their set.
 It is typically used to see if a bug
 fix is in a particular release.  If the changeset has been excluded from
-a later changeset, the later changeset and its' descendants will not be
+a later changeset, the later changeset and its descendants will not be
 listed.
 .SS SET
 .B bk set \-s
 .OPTreq \-r rev
-[file]
+.[ARG] file
 .LP
 The set operator treats the specified revision as a set,
 and lists all elements of that set.
@@ -143,8 +159,18 @@ bk-2.1.3
 bk-3par_merge
 bk-3par_merge2
 .DE
+.SH EXIT STATUS
+.LP
+.B bk set
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH SEE ALSO
-.SA changes 1
-.SA prs 1
+.SA changes
+.SA log
 .SH CATEGORY
 .B Utility

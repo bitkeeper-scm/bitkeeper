@@ -1,0 +1,49 @@
+if [ "$PLATFORM" != "WIN32" ]
+then
+        echo "For win32 only ..............................................skipped"
+        exit 0
+fi
+
+echo $N Make sure real path checks out for a range of valid cases .....$NL
+# XXX: end. fails this test, pull into a separate test for now
+# LIST1="lower UPPER .start mid.dle end."
+LIST1="lower UPPER .start mid.dle"
+touch $LIST1
+for x in $LIST1; do
+	GOT=`bk _realpath $x`
+	test "$GOT" = "$x => $x" || {
+		echo failed - no match
+		echo "$GOT"
+		exit 1
+	}
+done
+echo OK
+
+echo $N Windows OS does not recognize files that end in a dot .........$NL
+touch end.
+GOT=`bk _realpath end.`
+test "$GOT" = 'end. => end' || {
+	echo fix test
+	exit 1
+}
+echo OK
+
+echo $N Make sure real path fixes case ................................$NL
+GOT=`bk _realpath LOWER`
+test "$GOT" = 'LOWER => lower' || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Make sure real path works for absolute paths, fixing case .....$NL
+# All our machines should have a <current drive>:\build
+GOT=`bk _realpath '\Build'`
+test "$GOT" = '\Build => /build' || {
+	echo failed
+	exit 1
+}
+echo OK
+
+# XXX: how to test \\machine\path\to\repo in a regression?
+

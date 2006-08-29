@@ -1,23 +1,28 @@
 .so ../bk-macros
-.TH "bk send" 1 %E% "\*(BC" "\*(UM"
+.TH "bk send" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    =============== Sending BitKeeper patches ===============
 .SH NAME
 bk send \- send a \*(BK patch
 .SH SYNOPSIS
-.Bc bk send [\-dfq] [\-w[
-.ARGc wr
-.Bc ]] [
-.OPTreq \-r revs
-.Bc ] [
-.OPTreq \-u URL
-.B ]
+.B bk send
+.[B] \-dfq
+.[OPTreq] \-w wr
+.[OPTreq] \-r revs
+.[OPTreq] \-u URL
 .ARG u@h.ca "| \-"
 .SH DESCRIPTION
 .LP
-The send interface may be used to send changes through electronic mail.
-In general, the bk push/bk pull interfaces are the easiest 
-way to keep two repositories synchronized, but bk send requires only 
-an email transport.
+The
+.B bk send
+interface may be used to send changes through electronic mail.
+In general, the
+.B bk push
+and
+.B bk pull
+interfaces are the easiest 
+way to keep two repositories synchronized, but
+.B bk send
+requires only an email transport.
 .LP
 To send the whole repository, do:
 .DS
@@ -26,9 +31,9 @@ $ bk send user@host.com
 .LP
 \*(BK will generate the (huge) patch and mail it to user@host.com.
 .LP
-If you happen to know that you want to send a specific change (and
-you know that the other repository has the changes leading up to the
-change you want to send), you can do this:
+If you happen to know that you want to send changes that occurred
+after a specific changeset (and you know that the other repository
+has that changeset), you can do this:
 .DS
 $ bk send \-rbeta.. user@host.com
 .DE
@@ -39,8 +44,11 @@ or
 $ bk send \-r1.10.. user@host.com
 .DE
 .LP
-Send remembers the changesets it has sent in BitKeeper/log/send\-\<address\>
-where \<address\> is like user@host.com.  When you don't specify a list
+Send remembers the changesets it has sent in
+.BI BitKeeper/log/send\- address
+where 
+.I address
+is like user@host.com.  When you don't specify a list
 of changesets to send, "send" will look in the log file and send only the
 new changesets.  So the easiest thing to do is to always use the same
 email address and just say:
@@ -52,7 +60,7 @@ If you lose the log file and you want to seed it with the changes you
 know have been sent, the command to do that is:
 .DS
 $ cd BitKeeper/log
-$ bk prs \-h \-r\<revs\> \-d:KEY: ChangeSet \> send\-user@host.com
+$ bk changes \-r\<revs\> \-nd:KEY: \> send\-user@host.com
 .DE
 .LP
 An alternative to the log file approach, which may only be used if you
@@ -65,15 +73,16 @@ $ bk send -ubk://thunk.org:5000 tytso@mit.edu
 .LP
 You may wrap patches so that they do not get corrupted by mailers.
 We currently support wrapping with uuencode.  The following (contrived)
-command sends a wrapped patch and applies it in /tmp/foo (which must
+command sends a wrapped patch and applies it in
+.B /tmp/foo
+(which must
 exist):
 .DS
 $ bk send \-wuu \-r..1.5 - | bk receive /tmp/foo
 .DE
 .SH OPTIONS
-.if t .TP .75i
-.if n .TP 1.0i
-.B -d
+.TP \-r\*<revs\*>
+.B \-d
 Prepend the patch with unified diffs.  This is because some
 people like looking at the diffs to decide if
 they want the patch or not.
@@ -81,33 +90,39 @@ they want the patch or not.
 .B \-f
 send the patch even if \*(BK believes the remote repository is up to date.
 .tp
-.B -q
+.B \-q
 Be quiet.
 .tp
-.OPTreq -r revs
+.OPTreq \-r revs
 Specify the list of changesets to send.
 .tp
-.OPTreq -u URL
+.OPTreq \-u URL
 Instead of consulting the send log, connect to the remote repository 
 specified by the URL, figure out what needs to be sent, and send it
 to the specified email address.
 .tp
-.OPTreq -w WR
+.OPTreq \-w wr
 Wrap the patch with 
 .ARG WR
 before sending it.
 The current set of wrappers are:
-.sp .5
-b64 - base 64 encoding
-.br
-gzip_b64 - gzip and base 64 encoding
-.br
-gzip_uu - gzip and uuencode
-.br
-uu - uuencode
+.RS
+.TP \fBgzip_b64\fPn
+.B b64
+base-64 encoding
+.tp
+.B gzip_b64
+gzip and base-64 encoding
+.tp
+.B gzip_uu
+gzip and uuencode
+.tp
+.B uu
+uuencode
+.RE
 .SH "SEE ALSO"
-.SA ranges 1
-.SA receive 1
-.SA wrap 1
+.SA range
+.SA receive
+.SA wrap
 .SH CATEGORY
 .B File

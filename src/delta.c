@@ -18,8 +18,8 @@ fix_gmode(sccs *s, int gflags)
 	 */
 	if (S_ISLNK(s->mode)) return (0);
 
-	if ((gflags&GET_EDIT) && IS_WRITABLE(s))  return (0);
-	if (!(gflags&GET_EDIT) && !IS_WRITABLE(s))  return (0);
+	if ((gflags&GET_EDIT) && WRITABLE(s))  return (0);
+	if (!(gflags&GET_EDIT) && !WRITABLE(s))  return (0);
 
 	if (gflags&GET_EDIT) {
 		 s->mode |= 0200;	/* turn on write mode */
@@ -39,17 +39,17 @@ private int
 hasTriggers(void)
 {
 	char	*t, **lines;
-	char	*dir;
 	int	ret;
+	char	dir[MAXPATH];
 
 	if (getenv("_IN_DELTA")) return (0);
 	unless (t = proj_root(0)) {
 		return (0);
 	}
 	unless (streq(t, ".")) {
-		dir = aprintf("%s/BitKeeper/triggers", t);
+		concat_path(dir, t, "/BitKeeper/triggers");
 	} else {
-		dir = strdup("BitKeeper/triggers");
+		strcpy(dir, "BitKeeper/triggers");
 	}
 	if (isdir(dir)) {
 		sys("bk", "get", "-Sq", dir, SYS);
@@ -59,7 +59,6 @@ hasTriggers(void)
 	} else {
 		ret = 0;
 	}
-	free(dir);
 	return (ret);
 }
 
@@ -110,6 +109,15 @@ strip_danglers(char *name, u32 flags)
 	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
 	sccs_renumber(s, (flags&SILENT)|INIT_WACKGRAPH, 0);
+	/*
+	 * If we are preserving the monotonic flag but our parent didn't
+	 * have it, make a note of that.
+	 */
+	d = sccs_top(s);
+	if ((d->xflags & X_MONOTONIC) && !(d->parent->xflags & X_MONOTONIC)) {
+		p = strdup("Turn on MONOTONIC flag");
+		d->comments = addLine(d->comments, p);
+	}
 	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0, 0);
 	sccs_free(s);
 	return (0);
@@ -122,8 +130,7 @@ delta_main(int ac, char **av)
 	int	iflags = 0;
 	int	dflags = 0;
 	int	gflags = 0;
-	int	sflags = SF_GFILE|SF_WRITE_OK;
-	int	isci = 0;
+	int	sflags = SF_GFILE|SF_WRITE_OK|SF_NOHASREVS;
 	int	checkout = 0, ignorePreference = 0;
 	int	c, rc, enc;
 	char	*initFile = 0;
@@ -140,11 +147,7 @@ delta_main(int ac, char **av)
 	prog = strrchr(av[0], '/');
 	if (prog) prog++;
 	else prog = av[0];
-	if (streq(prog, "ci")) {
-		isci = 1;
-	} else if (streq(prog, "delta")) {
-		dflags = DELTA_FORCE;
-	} else if (streq(prog, "new") ||
+	if (streq(prog, "new") ||
 	    streq(prog, "enter") || streq(prog, "add")) {
 		dflags |= NEWFILE;
 		sflags |= SF_NODIREXPAND;
@@ -152,13 +155,14 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "abcCdD:E|fg;GhI;ilm|M;npPqRrsuy|Y|Z|")) != -1) {
+	    getopt(ac, av, "abcCdD:E|fGhI;ilm|M;npPqRsuy|Y|Z|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
 		    case 'p': dflags |= PRINT; break; 		/* doc 2.0 */
+		    case 'm':					/* ci compat */
 		    case 'y': 					/* doc 2.0 */
-comment:		comments_save(optarg);
+			if (comments_save(optarg)) return (1);
 			dflags |= DELTA_DONTASK;
 			break;
 		    case 's': /* fall through */		/* undoc 2.0 */
@@ -177,17 +181,6 @@ comment:		comments_save(optarg);
 		    case 'u': ckopts = "get";			/* doc 2.0 */
 			      break;
 
-		    /* flags with different meaning in RCS and SCCS */
-		    case 'm':					/* undoc? 2.0 */
-			    if (isci) goto comment;
-			    /* else fall through */
-
-		    /* obsolete SCCS flags */
-		    case 'g':					/* undoc 2.0 */
-		    case 'r':					/* undoc 2.0 */
-			    fprintf(stderr, "-%c not implemented.\n", c);
-			    goto usage;
-
 		    /* LM flags */
 		    case 'a':					/* doc 2.0 */
 		    	dflags |= DELTA_AUTO;
@@ -200,8 +193,8 @@ comment:		comments_save(optarg);
 				goto usage;
 			}
 			break;
-		    case 'c': iflags |= INIT_NOCKSUM; break; 	/* doc 2.0 */
-		    case 'C': dflags |= DELTA_CFILE; break;	/* doc */
+		    case 'C': iflags |= INIT_NOCKSUM; break; 	/* undoc */
+		    case 'c': dflags |= DELTA_CFILE; break;	/* doc */
 		    case 'd': /* internal interface */ 		/* undoc 2.0 */
 			      dflags |= DELTA_NOPENDING; break;
 		    case 'D': diffsFile = optarg;		 /* doc 2.0 */
@@ -209,7 +202,10 @@ comment:		comments_save(optarg);
 			      break;
 		    case 'G': iflags |= INIT_FIXDTIME; break;	/* undoc? 2.0 */
 		    case 'h': dflags |= DELTA_HASH; break;	/* doc 2.0 */
-		    case 'I': initFile = optarg; break;		/* doc 2.0 */
+		    case 'I':
+			initFile = optarg;
+			dflags |= DELTA_FORCE;
+			break;
 		    case 'M': mode = optarg; break;		/* doc 2.0 */
 		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
@@ -232,15 +228,15 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 	}
 
-	unless (ignorePreference || *ckopts) { 
-		ckopts  = user_preference("checkout");
+	unless (ignorePreference || *ckopts) {
+		ckopts  = proj_configval(0, "checkout");
 	}
 
 	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
 		iflags |= INIT_FIXSTIME;
 	}
 
-	def_compp  = user_preference("compression");
+	def_compp  = proj_configval(0, "compression");
 	unless (def_compp && *def_compp) def_compp = NULL;
 
 	if ((encp || compp) && !(dflags & NEWFILE)) {

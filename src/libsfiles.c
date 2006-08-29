@@ -40,15 +40,6 @@ private	pid_t spid;		/* pid of sfiles for -r */
 private	int oksccs(char *s, int flags, int complain);
 private	int sfilesDied(int killit);
 
-private int
-isDelete(char *s)
-{
-	char	*t = strrchr(s, '/');
-
-	t = t ? t+1 : s;
-	return (strneq("s..del-", t, 5));
-}
-
 /*
  * Get the next file and munge it into an s.file name.
  */
@@ -108,12 +99,8 @@ again:
 		debug((stderr, "sfiles::AV got %s\n", buf));
 	}
 
-	/*
-	 * XXX TODO someday we'll handle escaped BK_FS in the filename
-	 * But why would anyone want ^A in their file name ?
-	 */
-	if (flags & SF_HASREVS)  {
-		char	*r = strrchr(buf, BK_FS);
+	unless (flags & SF_NOHASREVS)  {
+		char	*r = strchr(buf, BK_FS);
 
 		rev[0] = 0;	/* paranoia is your friend */
 		if (!r) goto norev;
@@ -136,12 +123,6 @@ norev:
 		unless (name) goto again;
 		strcpy(buf, name);
 		free(name);
-	}
-	/*
-	 * Don't expand deleted file names unless they asked.
-	 */
-	if (isDelete(buf) && !(flags & SF_DELETES)) {
-		goto again;
 	}
 	if (glob) {
 		char	*f = strrchr(buf, '/');
@@ -183,7 +164,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	if (sfilesDied(0)) return (0);
 	rev[0] = 0;
 	prog = cmd;
-	flags = Flags|SF_HASREVS; 
+	flags = Flags;
 	if (Av[0]) {
 		int	i;
 
@@ -209,12 +190,6 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			}
 			flist = stdin;
 			flags |= SF_SILENT;
-			/*
-			 * If they specify a file on stdin then they must
-			 * mean it.  (Doing otherwise breaks pending, commit,
-			 * resolve on deleted files.)
-			 */
-			flags |= SF_DELETES;
 			return (sfileNext());
 		}
 		localName2bkName(Av[0], Av[0]);
@@ -240,10 +215,6 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			}
 			return (sfileNext());
 		}
-		/*
-		 * If they specify a file in argv then they must mean it.
-		 */
-		flags |= SF_DELETES;
 		av = Av;
 		ac = 0;
 		return (sfileNext());
@@ -294,7 +265,9 @@ sfiles(char *opts)
 {
 	int	pfd;
 	char	*sav[4] = {"bk", "sfiles", 0, 0};
+	char	ignore[] = "BitKeeper/etc/ignore";
 
+	unless (exists(ignore)) get(ignore, SILENT, "-");
 	sav[2] = opts;
 	if ((spid = spawnvp_rPipe(sav, &pfd, 0)) == -1) {
 		fprintf(stderr, "cannot spawn bk sfiles\n");
@@ -344,7 +317,7 @@ oksccs(char *sfile, int flags, int complain)
 		return (0);
 	}
 	g = sccs2name(sfile);
-	ok = fast_lstat(g, &sbuf) == 0;
+	ok = lstat(g, &sbuf) == 0;
 	if ((flags&SF_GFILE) && !ok) {
 		if (complain) {
 			unless (exists(sfile)) {
@@ -368,33 +341,6 @@ oksccs(char *sfile, int flags, int complain)
 	}
 	free(g);
 	return (1);
-}
-
-/*
- * concatenate two paths "first" and "second", and put the result in "buf"
- * TODO: This function should be grouped with cleanPath() and put in
- *	 the same file.
- */
-void
-concat_path(char *buf, char *first, char *second)
-{
-	int	len;
-	if (buf != first) strcpy(buf, first);
-	len = strlen(buf);
-	if (len >= 2 &&
-	    (buf[len -2] == '/') && (buf[len -1] == '.') && second[0]) {
-		buf[len - 1] = 0; len--;
-	}
-	/*
-	 * if "first" and "second" already have a seperator between them,
-	 * don't add another one.
-	 * Another special case is also checked here:
-	 * 	first or "second" is a null string.
-	 */
-	if ((buf[0] != '\0') && (second[0] != '\0') &&
-	    (buf[len -1] != '/') && (second[0] != '/'))
-		strcat(buf, "/");
-	strcat(buf, second);
 }
 
 #ifdef        MAIN

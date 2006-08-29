@@ -4,13 +4,14 @@
 int
 help_main(int ac,  char **av)
 {
-	char	buf[MAXLINE];
-	char	out[MAXPATH];
+	FILE	*f, *f1;
+	pid_t	pid = 0;
 	int	c, i = 0, use_pager = 1;
 	char	*opt = 0, *synopsis = "";
-	FILE	*f, *f1;
 	char	*file = 0;
 	char 	*new_av[2] = {"help", 0 };
+	char	buf[MAXLINE];
+	char	out[MAXPATH];
 
 	while ((c = getopt(ac, av, "af:kps")) != -1) {
 		switch (c) {
@@ -30,6 +31,11 @@ help_main(int ac,  char **av)
 	    (streq(av[i], "bkl") ||
 	    streq(av[i], "bkcl") || streq(av[i], "license"))) {
 		sysio(0, out, 0, "bk", "_eula", "-S", SYS);
+		goto print;
+	}
+	if (av[i=optind] && !strcasecmp(av[i], "release-notes")) {
+		sprintf(buf, "%s/RELEASE-NOTES", bin);
+		fileCopy(buf, out);
 		goto print;
 	}
 	unless (av[optind]) {
@@ -71,18 +77,18 @@ help_main(int ac,  char **av)
 		}
 	}
 print:
-	if (use_pager) {
-		sprintf(buf, "%s '%s'", pager(), out);
-		system(buf);
-	} else {
-		f = fopen(out, "rt");
-		f1 = (*synopsis) ? stderr : stdout;
-		while (fgets(buf, sizeof(buf), f)) {
-			fputs(buf, f1);
-		}
-		fclose(f);
-	
+	if (use_pager) pid = mkpager();
+	f = fopen(out, "rt");
+	f1 = (*synopsis) ? stderr : stdout;
+	while (fgets(buf, sizeof(buf), f)) {
+		fputs(buf, f1);
+		if (fflush(f1)) break;	/* so the pager can quit */
 	}
+	fclose(f);
 	unlink(out);
+	if (pid > 0) {
+		fclose(f1);
+		waitpid(pid, 0, 0);
+	}
 	return (0);
 }

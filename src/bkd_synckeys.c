@@ -14,8 +14,10 @@ cmd_synckeys(int ac, char **av)
 	int	ret;
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock(0);
-
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
@@ -60,7 +62,9 @@ cmd_synckeys(int ac, char **av)
 	if (!WIFEXITED(status) || (WEXITSTATUS(status) > 1)) {
 		perror(cmd);
 		out("@END@\n"); /* just in case list key did not send one */
-		out("ERROR-listkey failed\n");
+		sprintf(buf, "ERROR-listkey failed (status==%d)\n",
+		    WEXITSTATUS(status));
+		out(buf);
 		return (1);
 	}
 

@@ -60,6 +60,7 @@ print C <<EOF;
 %struct-type
 %language=ANSI-C
 %define lookup-function-name kw2val_lookup
+%define hash-function-name kw2val_hash
 
 struct kwval { char *name; int kwnum; };
 %%

@@ -6,20 +6,20 @@ BK = ../../src/bk
 	$(BK) get -q $@
 
 # Order is important, this is the order they will show up in helptool.
-SUM=All Overview Common Repository GUI-tools File Admin Licensing Compat Utility 
+SUM=All Overview Common Repository GUI-tools File Admin Compat Utility 
 
-helptxt: FRC
-	@$(MAKE) pages
-	@$(MAKE) summaries
+helptxt: summaries
 
-pages: ../bk-macros man2help.pl
+PAGES:=$(shell $(BK) sfiles -g1 ../man1 'bk-*.1')
+
+pages: ../bk-macros ../man.tmac man2help.pl FORCE
 	@$(BK) get -STq ../man1
-	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- `ls ../man1/*.1`
+	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- $(PAGES:%=../man1/%)
 
-helptxt2:
-	@cat -- *.fmt | $(BK) undos > helptxt2
+helptxt2: pages
+	@cat -- $(PAGES:../man1/%.1=%-1.fmt) | $(BK) undos > helptxt2
 
-summaries: helptxt2 ../bk-macros help2sum.pl
+summaries: helptxt2 ../bk-macros help2sum.pl FORCE
 	@perl -Ssw ./help2sum.pl helptxt2
 	@for i in $(SUM); \
 	do	cat $$i.done; \
@@ -30,16 +30,11 @@ summaries: helptxt2 ../bk-macros help2sum.pl
 	@grep '^help://' helptxt | sort -u > UNIQUE
 	@cmp -s ALL UNIQUE || { echo Not unique; diff ALL UNIQUE; }
 
-install:
-	@$(MAKE) clean
-	@$(MAKE) all
-	@$(MAKE) cp
-
-cp:
-	cp helptxt /usr/libexec/bitkeeper/bkhelp.txt
-
-FRC:
-
-clobber clean:
+clean: FORCE
 	/bin/rm -f -- *.fmt *.sum *.roff *.done helptxt* ALL UNIQUE tmp
+
+clobber: clean
 	-$(BK) clean
+
+.PHONY: FORCE
+FORCE:

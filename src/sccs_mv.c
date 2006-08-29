@@ -62,7 +62,7 @@ err:		if (sname) free(sname);
 		goto err;
 	}
 
-	if (!HAS_PFILE(s) && S_ISREG(s->mode) && IS_WRITABLE(s)) {
+	if (!HAS_PFILE(s) && S_ISREG(s->mode) && WRITABLE(s)) {
 		fprintf(stderr,
 		    "sccsmv: %s is writable but not edited\n",
 		    s->gfile);

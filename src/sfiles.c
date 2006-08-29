@@ -1,70 +1,77 @@
-/*
- * TODO
- *	I want the directory/file stuff to be listed like ls in -v mode.
- *	Right now we do the dirs first and then the files.
- *	What I want is this:
- *	bk -R sfiles -gEv | sort +1
- */
 /* Copyright (c) 2003 BitMover, Inc. */
+// LMXXX - The output should be stuffed into a lines array and sorted on a per
+// directory basis.  We get it in the right order and then we screw it up.
+// After beta.
 #include "system.h"
 #include "sccs.h"
 
-#define	LSTATE	0	/* lock state: l,u */
-#define	CSTATE	1	/* change state: c, ' ' */
-#define	PSTATE	2	/* pending state: p,' ' */
-#define	GSTATE	3	/* checked out state, 'G', ' ' */
-#define	NSTATE	4	/* name state: n,' ' */
-#define	DSTATE	5	/* directory state: d, D, ' ' */
+#define	TSTATE	0	/* type: d/D/i/j/r/s/x */
+#define	LSTATE	1	/* lock state: l,u */
+#define	CSTATE	2	/* change state: c, ' ' */
+#define	PSTATE	3	/* pending state: p,' ' */
+#define	GSTATE	4	/* checked out state, 'G', ' ' */
+#define	NSTATE	5	/* name state: n,' ' */
+#define	YSTATE	6	/* comments status: y, ' ' */
 
 typedef struct winfo winfo;
-typedef	char	STATE[7];
+typedef	char	STATE[8];
 
 private	void	append_rev(MDBM *db, char *name, char *rev);
 private int	chk_diffs(sccs *s);
-private void	do_print(char state[6], char *file, char *rev);
+private void	do_print(char state[6], char *gfile, char *rev);
 private void	file(char *f);
 private void	print_it(STATE state, char *file, char *rev);
 private	void	print_summary(void);
 private void	progress(int force);
 private	void	sccsdir(winfo *wi);
 private void	walk(char *dir);
+private void	load_ignore(project *p);
 
 typedef struct {
-	u32     show_markers:1;		/* -v: show markers */
-	u32     all:1;			/* -a: disable ignore list */
-	u32	locked:1;		/* -l: list locked files */
-	u32	unlocked:1;		/* -u: list unlocked files */
-	u32	junk:1;			/* -j: list junk in SCCS dirs */
-	u32	extras:1;		/* -x: list extra files */
+	u32	Aflg:1;			/* -pA: show all pending deltas */
+	u32	all:1;			/* -a: disable ignore list */
+	u32	cfiles:1;		/* -y: list files with comments */
+	u32	Cflg:1;			/* -pC: want file<BK_FS>rev format */
 	u32	changed:1;		/* -c: list changed files */
-	u32	gotten:1;		/* -G: list checked out files */
-	u32	names:1;		/* -n: list files in wrong path */
-	u32	pending:1;		/* -p: list pending files */
-	u32     gfile:1;     		/* print gfile name	*/
-	u32     Aflg:1;			/* use with -p show	*/
-					/* all pending deltas	*/
-	u32     Cflg:1;     		/* want file<BK_FS>rev format	*/
-	u32     dfile:1;   		/* use d.file to find 	*/
-					/* pending delta	*/
+	u32	dfile:1;		/* trust d.file for pending deltas */
 	u32	dirs:1;			/* -d: list directories with BK files */
-	u32	xdirs:1;		/* -D: list directories w/ no BK */
-	u32	fixdfile:1;		/* fix up the dfile tag */
-	u32	onelevel:1;		/* -1: this dir only */
-	u32	progress:1;		/* if set, send progress to stdout */
-	u32     summarize:1;     	/* summarize output only */
-	u32     useronly:1;     	/* list user file only 	*/
+	u32	extras:1;		/* -x: list extra files */
+	u32	fixdfile:1;		/* -P: fix up the dfile tag */
+	u32	gfile:1;		/* -g: print gfile name */
+	u32	gotten:1;		/* -G: list checked out files */
+	u32	ignored:1;		/* -i: list ignored (extra) files */
+	u32	junk:1;			/* -j: list junk in SCCS dirs */
+	u32	locked:1;		/* -l: list locked files */
+	u32	names:1;		/* -n: list files in wrong path */
+	u32	null:1;			/* -0: put nulls after sfiles */
+	u32	onelevel:1;		/* -1: this dir only, don't recurs */
+	u32	pending:1;		/* -p: list pending files */
+	u32	progress:1;		/* -o: send progress to stdout */
+	u32	sfiles:1;		/* -s: we want sfiles */
+	u32	verbose:1;		/* -v: show markers */
+	u32	subrepos:1;		/* -R: we want subrepo roots */
+	u32	summarize:1;		/* -S: summarize output only */
 	u32	timestamps:1;		/* whether to use the timestamp DB */
-	FILE	*out;			/* send output here */
+	u32	unlocked:1;		/* -u: list unlocked files */
+	u32	useronly:1;		/* -U: list user files only */
+	u32	xdirs:1;		/* -D: list directories w/ no BK */
+
+	FILE	*out;			/* -o<file>: send output here */
 	char	*glob;			/* only files which match this */
 } options;
 
 private	jmp_buf	sfiles_exit;
-private HASH	*timestamps = 0;
+private hash	*timestamps = 0;
 private options	opts;
-private char	**ignore, **dont_ignore;
+private	project	*proj;
+
+private	char	**ignore;	/* list of file pathname globs to ignore */
+private	char	**ignorebase;	/* list of file basename globs to ignore */
+private	char	**prunedirs;	/* set of dirs to prune */
+
 private u32	d_count, s_count, x_count; /* progress counter */
 private u32	s_last, x_last; /* progress counter */
-private u32	D_count, C_count, c_count, n_count, p_count;
+private u32	R_count, D_count, C_count, c_count, n_count, p_count, i_count;
 
 private char *
 hasfile(char *file, char type, MDBM *sDB)
@@ -109,15 +116,18 @@ sfiles_main(int ac, char **av)
         int     c, i;
 	char	*path, *s, buf[MAXPATH];
 
-	if (setjmp(sfiles_exit)) return (1); /* error exit */
+	if (setjmp(sfiles_exit)) {
+		return (1); /* error exit */
+	}
 
 	if (ac == 1) {
 		walksfiles(".", fastprint, 0);
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "1acdDeEgGjlno:p|P|SuUvx")) != -1) {
+	while ((c = getopt(ac, av, "01acCdDeEgGijlno:p|P|RsSuUvxy")) != -1) {
 		switch (c) {
+		    case '0':	opts.null = 1; break;		/* doc */
 		    case '1':	opts.onelevel = 1; break;
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
 		    case 'c':	opts.changed = opts.timestamps = 1;
@@ -127,14 +137,19 @@ sfiles_main(int ac, char **av)
 				break;
 		    case 'd':	opts.dirs = 1; break;
 		    case 'D':	opts.xdirs = 1; break;
-		    case 'E':	opts.changed = opts.names = opts.pending = 1;
-			    /* fall thru */
-		    case 'e':	opts.dirs = opts.xdirs = opts.gotten =
-				opts.junk = opts.locked = opts.unlocked =
-				opts.show_markers = opts.extras = 1;
-				break;
+		    case 'S':	opts.summarize = 1; /* fall through */
+		    case 'e':	/* all of these do the same thing, which is */
+		    case 'E':	/* to show everything in verbose format */
+				opts.cfiles = opts.changed = opts.dirs =
+				opts.extras = opts.gotten = opts.ignored =
+				opts.junk = opts.locked = opts.names = 
+				opts.pending = opts.sfiles = opts.subrepos =
+				opts.unlocked = opts.xdirs = 1;
+				/* fall through */
+		    case 'v':	opts.verbose = 1; break;
 		    case 'g':	opts.gfile = 1; break;		/* doc 2.0 */
 		    case 'G':	opts.gotten = 1; break;		/* doc */
+		    case 'i':	opts.ignored = 1; break;
 		    case 'j':	opts.junk = 1; break;		/* doc 2.0 */
 		    		/* XXX - should list BitKeeper/tmp stuff */
 		    case 'l':   opts.locked = 1; break;		/* doc 2.0 */
@@ -160,12 +175,12 @@ sfiles_main(int ac, char **av)
 					}
 				}
 				break;
-		    case 'S':	opts.summarize = 1; break;
+		    case 'R':	opts.subrepos = 1; break;
+		    case 's':	opts.sfiles = 1; break;
 		    case 'u':	opts.unlocked = 1; break;	/* doc 2.0 */
 		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
-		    case 'v':	opts.show_markers = 1; break;	/* doc 2.0 */
-		    case 'x':					/* doc 2.0 */
-				opts.extras = opts.junk = 1; break;
+		    case 'x':	opts.extras = 1; break;		/* doc */
+		    case 'y':	opts.cfiles = 1; break;		/* doc */
 		    default:
 usage:				system("bk help -s sfiles");
 				return (1);
@@ -181,16 +196,19 @@ usage:				system("bk help -s sfiles");
 	unless (opts.out) opts.out = stdout;
 	fflush(opts.out); /* for win32 */
 	C_count = c_count = p_count = d_count = s_count = x_count = 0;
+	if (opts.summarize) opts.verbose = 0;
 
 	/*
 	 * If user did not select any option,
 	 * setup a default mode for them
 	 */
-	if (!opts.unlocked && !opts.locked && !opts.junk && !opts.extras &&
-	    !opts.changed && !opts.pending && !opts.names &&
-	    !opts.gotten && !opts.dirs && !opts.xdirs) {
-		opts.unlocked = 1;
-		opts.locked = 1;
+#define	attributes	\
+		(opts.cfiles || opts.changed || opts.gotten || opts.ignored || \
+		opts.locked || opts.names || opts.pending || opts.unlocked)
+
+	unless (attributes || opts.dirs ||
+	    opts.extras || opts.junk || opts.subrepos || opts.xdirs) {
+		opts.sfiles = 1;
 	}
 
 	for (i = optind; av[i]; i++);
@@ -205,13 +223,8 @@ usage:				system("bk help -s sfiles");
 			av[i] = 0;
 		}
 	}
-	if (!av[optind]) {
+	unless (av[optind]) {
 		path = ".";
-		if (opts.names && !exists(BKROOT)) {
-			fprintf(stderr,
-			    "sfiles -n must be run at project root.\n");
-			exit(1);
-		}
 		walk(path);
 	} else if (streq("-", av[optind])) {
 		setmode(0, _O_TEXT); /* read file list in text mode */
@@ -222,22 +235,36 @@ usage:				system("bk help -s sfiles");
                         if (isdir(path)) {
 				walk(path);
 			} else {
+				/*
+				 * Kind of hokey but we load the proj based on
+				 * the first filename we see and hope that they
+				 * give us a set of files all in the same proj.
+				 */
+				unless (proj) {
+					s = dirname_alloc(path);
+					if (proj = proj_init(s)) {
+						load_ignore(proj);
+					}
+					free(s);
+				}
                                 file(path);
 			}
 		}
 	} else {
-		if (opts.names && !exists(BKROOT)) {
-			fprintf(stderr,
-			    "sfiles -n must be run at project root.\n");
-			exit(1);
-		}
                 for (i = optind; av[i]; ++i) {
                         localName2bkName(av[i], av[i]);
                         if (isdir(av[i])) {
-                                path =  av[i];
+                                path = av[i];
                                 walk(path);
                         } else {
-                                path =  av[i];
+                                path = av[i];
+				unless (proj) {
+					s = dirname_alloc(path);
+					if (proj = proj_init(s)) {
+						load_ignore(proj);
+					}
+					free(s);
+				}
                                 file(path);
                         }
                 }
@@ -250,29 +277,32 @@ usage:				system("bk help -s sfiles");
 private sccs *
 chk_sfile(char *name, STATE state)
 {
-	char	*s;
+	char	*s, *relp;
+	delta	*d;
 	sccs	*sc = 0;
 
 	s = strrchr(name, '/');
 
+#define	DOIT	(opts.verbose || opts.changed || opts.names)
 	if (s[1] == 's') {
+// LMXXX - we could optimize this further.  If they are not looking for
+// opts.sfiles or opts.changed or opts.locked or opts.names then we won't
+// need to init the sfile.
+		if (DOIT) {
+			sc = init(name, INIT_NOCKSUM, 0, 0);
+			unless (sc && HASGRAPH(sc)) {
+				sccs_free(sc);
+				sc = 0;
+			}
+		}
+		s[1] = 'c';
+		if (exists(name)) state[YSTATE] = 'y';
 		s[1] = 'p';
+		state[TSTATE] = 's';
 		if (exists(name)) {
 			state[LSTATE] = 'l';
-			s[1] = 's';
-			if (opts.changed || opts.names) {
-				sc = init(name, INIT_NOCKSUM, 0, 0);
-			}
-			if (opts.changed && sc && chk_diffs(sc)) {
+			if (DOIT && sc && chk_diffs(sc)) {
 				state[CSTATE] = 'c';
-			}
-			if (opts.names && sc) {
-				delta	*d = sccs_top(sc);
-
-				unless (d->pathname &&
-				    patheq(sc->gfile, d->pathname)) {
-					state[NSTATE] = 'n';
-				}
 			}
 		} else {
 			s[1] = 'z';
@@ -281,18 +311,15 @@ chk_sfile(char *name, STATE state)
 			} else {
 				state[LSTATE] = 'u';
 			}
-			s[1] = 's';
-			if (opts.names &&
-			    (sc = init(name, INIT_NOCKSUM, 0, 0))) {
-				delta	*d = sccs_top(sc);
-
-				unless (d->pathname &&
-					patheq(sc->gfile, d->pathname)) {
-					state[NSTATE] = 'n';
-				}
-				sccs_free(sc);
-				sc = 0;
+		}
+		s[1] = 's';
+		if (DOIT && sc) {
+			d = sccs_top(sc);
+			relp = proj_relpath(proj, name);
+			unless (d->pathname && patheq(relp, d->pathname)) {
+				state[NSTATE] = 'n';
 			}
+			free(relp);
 		}
 	}
 	return (sc);
@@ -406,7 +433,7 @@ file(char *f)
 {
 	char	name[MAXPATH], buf[MAXPATH];
 	char    *s, *sfile;
-	STATE	state = "      ";
+	STATE	state = "       ";
 	sccs	*sc = 0;
 
 	if (strlen(f) >= sizeof(name)) {
@@ -414,23 +441,41 @@ file(char *f)
 		return;
 	}
 	strcpy(name, f);
-	s = rindex(name, '/');
+	if (s = rindex(name, '/')) s -= 4;      /* point it at start of SCCS/ */
+	unless (s >= name) s = 0;
 	/*
 	 * There are three possible condition
 	 * a) f is a sfile
 	 * b) f is a regular or new gfile
 	 * c) f is a junk file in the SCCS directory
 	 */
-	if (s && (name <= &s[-4]) && pathneq("SCCS", &s[-4], 4)) {
-		/* this file is under a SCCS dir */
-		unless (sccs_filetype(f) == 's') {
-			state[CSTATE] = 'j';
-			strcpy(buf, f);
-		} else {
+	if (s && strneq(s, "SCCS/", 5) && ((s == name) || (s[-1] == '/'))) {
+		*s = 0;
+		strcpy(buf, name);	/* not including SCCS/whatever */
+		*s = 'S';
+		s += 4;			/* points at '/' */
+
+		switch (sccs_filetype(f)) {
+		    case 'c':
+			s[1] = 's';
+			if (exists(name)) {
+		    		state[YSTATE] = 'y';
+				state[TSTATE] = 's';
+			} else {
+				state[TSTATE] = 'j';
+			}
+			s[1] = 'c';
+			strcat(buf, s+1);
+			break;
+		    case 's':
+			state[TSTATE] = 's';
 			sc = chk_sfile(f, state);
-			s = sccs2name(f);
-			strcpy(buf, s);
-			free(s);
+			strcat(buf, s+3);
+			break;
+		    default:
+			state[TSTATE] = 'j';
+			strcpy(buf, f);
+			break;
 		}
 	} else {
 		/*
@@ -442,7 +487,10 @@ file(char *f)
 		/* this file is not in SCCS/s. form */
 		sfile = name2sccs(f);
 		unless (exists(sfile)) {
-			state[CSTATE] = 'x';
+			state[TSTATE] = 'x';
+			s = strrchr(sfile, '/');
+			s[1] = 'c';
+			if (exists(sfile)) state[YSTATE] = 'y';
 		} else {
 			sc = chk_sfile(sfile, state);
 		}
@@ -451,23 +499,25 @@ file(char *f)
 	}
 
 	/*
-	 * When we get here. buf contains the gname
-	 * Now we check for pending deltas
+	 * When we get here buf contains the gname (for the sfile case).
 	 */
-	if (opts.pending && state[CSTATE] != 'x' &&  state[CSTATE] != 'j') {
-		if (opts.gotten && exists(buf)) state[GSTATE] = 'G';
-		chk_pending(sc, buf, state, 0, 0);
-	} else  {
-		if (state[CSTATE] == 'x' || state[CSTATE] == 'j') {
-			if (exists(buf)) {
-				state[LSTATE] = state[PSTATE] = ' ';
-				do_print(state, buf, 0);
-			}
+	if (state[TSTATE] == 's') {
+		if (exists(buf)) state[GSTATE] = 'G';
+		if (opts.pending || opts.verbose) {
+			/* chk_pending calls do_print */
+			chk_pending(sc, buf, state, 0, 0);
 		} else {
-			state[PSTATE] = ' ';
-			if (opts.gotten && exists(buf)) state[GSTATE] = 'G';
 			do_print(state, buf, 0);
 		}
+	} else  if (state[TSTATE] == 'x' || state[TSTATE] == 'j') {
+		/* XXX - does not work with SCCS/c.* */
+		if (exists(buf)) {
+			state[LSTATE] = state[PSTATE] = ' ';
+			do_print(state, buf, 0);
+		}
+	} else {
+		state[PSTATE] = ' ';
+		do_print(state, buf, 0);
 	}
 	if (sc) sccs_free(sc);
 }
@@ -476,9 +526,18 @@ private void
 print_summary(void)
 {
 	fprintf(opts.out, "%6d files under revision control.\n", s_count);
+	if (R_count) {
+		fprintf(opts.out,
+		    "%6d subrepositories.\n", R_count);
+	}
 	if (opts.extras) {
 		fprintf(opts.out,
-		    "%6d files not under revision control.\n", x_count);
+		    "%6d files not under revision control (and not ignored).\n",
+		    x_count);
+	}
+	if (i_count) {
+		fprintf(opts.out,
+		    "%6d ignored files not under revision control.\n", i_count);
 	}
 	if (d_count) {
 		fprintf(opts.out,
@@ -508,13 +567,20 @@ print_summary(void)
 	}
 }
 
+/*
+ * This struct contains the information that is passed sfiles_walk() by
+ * walkdir() as it is traversing the respository.  Information from the
+ * walkdir() is collected here and then processed once per directory with
+ * a call to sccsdir().
+ */
 struct winfo {
-	char	**sfiles;
-	MDBM	*sDB, *gDB;
-	char	*sccsdir;
-	int	sccsdirlen;
-	project	*proj;
-	int	seenfirst;
+	char	**sfiles;	/* The sfiles in the current directory */
+	MDBM	*sDB;		/* all files in the SCCS subdirectory */
+	MDBM	*gDB;		/* all files in the current directory */
+	char	*sccsdir;	/* path to dir this data represents */
+	int	seenfirst;	/* flag for -1 (one level) */
+	int	rootlen;	/* length of directory passed to walkdir */
+	char	*proj_prefix;	/* prefex needed to get sfile relpath */
 };
 
 private void
@@ -554,102 +620,200 @@ add_to_winfo(winfo *wi, char *file, int sccs)
 	mdbm_store_str((sccs ? wi->sDB : wi->gDB), file, "", MDBM_INSERT);
 }
 
+private void
+winfo_free(winfo *wi)
+{
+	mdbm_close(wi->gDB);
+	wi->gDB = 0;
+	mdbm_close(wi->sDB);
+	wi->sDB = 0;
+	freeLines(wi->sfiles, free);
+	wi->sfiles = 0;
+	free(wi->sccsdir);
+	wi->sccsdir = 0;
+}
+
+
 private int
 sfiles_walk(char *file, struct stat *sb, void *data)
 {
 	winfo	*wi = (winfo *)data;
 	char	*p;
-	int	n;
-	int	nonsccs;
+	int	sccs;
+	int	n, nonsccs;
+	char	buf[MAXPATH];
 
+	p = strrchr(file, '/');
+	/* make 'buf' match the directory we are in */
 	if (S_ISDIR(sb->st_mode)) {
-		/*
-		 * Special processing for .bk_skip file
-		 */
-		if (sfiles_skipdir(file)) return (-1);
-
-		n = strlen(file);
-
-		/* Skip new repo */
-		if (wi->sccsdir) {
-			strcpy(&file[n], "/" BKROOT);
-			if (exists(file)) return (-1);
-			file[n] = 0;
-		}
-
-		/* if SCCS dir start new processing */
-		p = 0;
-		if ((p = strrchr(file, '/')) && patheq(p+1, "SCCS")) {
-			if (wi->sccsdir) sccsdir(wi);
-			wi->sccsdir = strdup(file);
-			if (p = strrchr(wi->sccsdir, '/')) *++p = 0;
-			wi->sccsdirlen = strlen(wi->sccsdir);
+		if (p) {
+			strncpy(buf, file, p-file);
+			buf[p-file] = 0;
 		} else {
-			if (opts.dirs || opts.xdirs) {
-				strcpy(&file[n], "/SCCS");
-				nonsccs = !exists(file) || emptyDir(file);
-				file[n] = 0;
-				if (opts.xdirs && nonsccs) {
-					D_count++;
-					unless (opts.summarize) {
-						print_it("     D", file, 0);
-					}
-				}
-				if (opts.dirs && !nonsccs && !opts.summarize) {
-					print_it("     d", file, 0);
-				}
-			}
-			if (opts.onelevel) {
-				if (wi->seenfirst) return (-1);
-				wi->seenfirst = 1;
-			}
+			strcpy(buf, file);
 		}
 	} else {
-		/* are we in the same SCCS dir? then save */
-		if (wi->sccsdir &&
-		    pathneq(file, wi->sccsdir, wi->sccsdirlen)) {
-			int	sccs = 0;
+		assert(p);
+		*p++ = 0;
+		if ((p - file) > 6 && streq(p-6, "/SCCS")) {
+			strncpy(buf, file, p-file-6);
+			buf[p-file-6] = 0;
+		} else {
+			strcpy(buf, file);
+		}
+	}
+	/* if directory has changed then process old directory */
+	if (wi->sccsdir) {
+		unless (patheq(buf, wi->sccsdir)) {
+			sccsdir(wi);
+			wi->sccsdir = strdup(buf);
+		}
+	}
+	unless (wi->sccsdir) wi->sccsdir = strdup(buf);
 
-			p = file + wi->sccsdirlen;
-			if (pathneq(p, "SCCS/", 5)) {
-				sccs = 1;
-				p += 5;
-			}
-			if (!strchr(p, '/')) {
-				add_to_winfo(wi, p, sccs);
-				return (0);
+	if (S_ISDIR(sb->st_mode)) {
+		if (p && patheq(p, "/SCCS")) return (0);
+		if (p &&((p-file) > wi->rootlen) && patheq(p+1, "BitKeeper")) {
+			/*
+			 * Do not cross into other package roots
+			 * (e.g. RESYNC).
+			 */
+			concat_path(buf, file, "etc");
+			if (exists(buf)) {
+				*p = 0;
+				do_print("R      ", file, 0);
+				*p = '/';
+				winfo_free(wi);
+				return (-2);
 			}
 		}
-		/* else just printit */
-		do_print("xxxxxx", file, 0);
+		if (proj) {
+			concat_path(buf, wi->proj_prefix,
+			    p ? (file + wi->rootlen + 1) : "");
+			if (match_globs(buf, prunedirs, 0) != 0) {
+				return (-1);
+			}
+		}
+		if (opts.dirs || opts.xdirs) {
+			n = strlen(file);
+			if (n > wi->rootlen) {
+				concat_path(buf, file, BKROOT);
+				if (exists(buf)) {
+					do_print("R      ", file, 0);
+					return (-1);
+				}
+			}
+			strcpy(&file[n], "/SCCS");
+			nonsccs = !exists(file) || emptyDir(file);
+			file[n] = 0;
+			if (opts.xdirs && nonsccs) {
+				do_print("D      ", file, 0);
+			}
+			if (opts.dirs && !nonsccs) {
+				do_print("d      ", file, 0);
+			}
+		}
+		if (opts.onelevel) {
+			if (wi->seenfirst) return (-1);
+			wi->seenfirst = 1;
+		}
+	} else {
+		if (patheq(p, BKSKIP)) {
+			/* abort current dir */
+			winfo_free(wi);
+			return (-2);
+		}
+		if (((p - file) > 6) && patheq(p - 6, "/SCCS")) {
+			sccs = 1;
+			p[-6] = 0;
+		} else {
+			sccs = 0;
+		}
+		add_to_winfo(wi, p, sccs);
+		p[-1] = '/';
+		if (sccs) p[-6] = '/';
 	}
 	return (0);
 }
 
 private void
-walk(char *dir)
+load_ignore(project *p)
 {
-	char	tmp[MAXPATH];
-	winfo	wi = {0};
+	char	*file;
+	char	*pat;
+	int	len, isbase, isprune;
+	FILE	*ignoref;
+	char	buf[MAXLINE];
 
-	if (wi.proj = proj_init(dir)) {
-		if (!opts.all) {
-			FILE	*ignoref;
+	ignore = ignorebase = prunedirs = 0;
 
-			sprintf(tmp, "%s/BitKeeper/etc/ignore",
-			    proj_root(wi.proj));
-			unless (exists(tmp)) get(tmp, SILENT, "-");
-			if (ignoref = fopen(tmp, "rt")) {
-				ignore = read_globs(ignoref, 0);
-				fclose(ignoref);
-			}
-			dont_ignore = addLine(0,
-			    strdup("BitKeeper/etc/gone"));
-			dont_ignore = addLine(dont_ignore,
-			    strdup("./BitKeeper/etc/gone"));
+	/* add default pruned dirs */
+	prunedirs = addLine(prunedirs, strdup("/BitKeeper/log"));
+	prunedirs = addLine(prunedirs, strdup("/BitKeeper/tmp"));
+	prunedirs = addLine(prunedirs, strdup("/BitKeeper/writer"));
+	prunedirs = addLine(prunedirs, strdup("/BitKeeper/readers"));
+	prunedirs = addLine(prunedirs, strdup("/PENDING"));
+
+	/* add default ignore patterns */
+	ignore = addLine(ignore, strdup("/BitKeeper/etc/level"));
+	ignore = addLine(ignore, strdup("/BitKeeper/etc/csets-out"));
+	ignore = addLine(ignore, strdup("/BitKeeper/etc/csets-in"));
+
+	if (opts.all) return;
+
+	file = aprintf("%s/BitKeeper/etc/ignore", proj_root(p));
+	unless (exists(file)) get(file, SILENT, "-");
+	ignoref = fopen(file, "r");
+	free(file);
+	unless (ignoref) return;
+	while (fnext(buf, ignoref)) {
+		chomp(buf);
+
+		isbase = (strchr(buf, '/') == 0);
+
+		pat = buf;
+		if (*pat == '/') ++pat;	/* skip leading slash */
+		if (strneq(pat, "./", 2)) pat += 2; /* skip leading ./ */
+
+		unless (len = strlen(pat)) continue; /* blank lines */
+		if ((len > 7) && streq(pat + len - 7, " -prune")) {
+			pat[len-7] = 0;
+			isprune = 1;
+			isbase = 0;
+		} else {
+			isprune = 0;
 		}
+		if (isbase || (pat[0] == '*')) {
+			pat = strdup(pat);
+		} else {
+			pat = aprintf("/%s", pat);
+		}
+		if (isprune) {
+			prunedirs = addLine(prunedirs, pat);
+		} else if (isbase) {
+			ignorebase = addLine(ignorebase, pat);
+		} else {
+			ignore = addLine(ignore, pat);
+		}
+	}
+	fclose(ignoref);
+}
+
+private void
+walk(char *indir)
+{
+	char	*p;
+	winfo	wi = {0};
+	char	tmp[MAXPATH];
+	char	dir[MAXPATH];
+
+	cleanPath(indir, dir);
+	if (streq(dir, "/")) strcpy(dir, "/.");
+	if (proj) proj_free(proj);
+	if (proj = proj_init(dir)) {
+		load_ignore(proj);
 		unless (opts.fixdfile) {
-			sprintf(tmp, "%s/%s", proj_root(wi.proj), DFILE);
+			sprintf(tmp, "%s/%s", proj_root(proj), DFILE);
 			opts.dfile = exists(tmp);
 		}
 	} else {
@@ -666,18 +830,32 @@ walk(char *dir)
 	s_count = x_count = 0;
 #endif
 
+	wi.rootlen = strlen(dir);
+	if (proj) {
+		p = proj_relpath(proj, dir);
+		if (streq(p, ".")) {
+			wi.proj_prefix = strdup("/");
+		} else {
+			wi.proj_prefix = aprintf("/%s", p);
+		}
+		free(p);
+	}
 	walkdir(dir, sfiles_walk, &wi);
 	if (wi.sccsdir) sccsdir(&wi);
 
-	if (ignore) free_globs(ignore);  ignore = 0;
-	if (dont_ignore) free_globs(dont_ignore);  dont_ignore = 0;
-	if (opts.timestamps && timestamps && wi.proj) {
-		dumpTimestampDB(wi.proj, timestamps);
+	if (proj) {
+		free_globs(ignore);
+		free_globs(ignorebase);
+		free_globs(prunedirs);
+		ignore = ignorebase = prunedirs = 0;
+		free(wi.proj_prefix);
+	}
+	if (opts.timestamps && timestamps && proj) {
+		dumpTimestampDB(proj, timestamps);
 		hash_free(timestamps);
 		timestamps = 0;
 	}
 	if (opts.summarize) print_summary();
-	if (wi.proj) proj_free(wi.proj);
 
 	/*
 	 * We only enable fast scan mode if we started at the root
@@ -708,7 +886,7 @@ chk_diffs(sccs *s)
 {
 	int different;
 
-	if (!s) return (0);
+	unless (s) return (0);
 	different = (sccs_hasDiffs(s, 0, 1) >= 1);
 	if (timestamps) {
 		updateTimestampDB(s, timestamps, different);
@@ -719,72 +897,41 @@ chk_diffs(sccs *s)
 private int
 isIgnored(char *file)
 {
-	char *gfile, *p, *q, save;
-	struct stat sbuf;
-	int len;
+	char	*p;
+	struct	stat sbuf;
+	char	gfile[MAXPATH];
 
-	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	unless (opts.all || match_globs(file, dont_ignore, 0)) {
-		if (match_globs(file, ignore, 0)) {
-			debug((stderr, "SKIP\t%s\n", file));
-			return (1);
-		}
+	/* if not in a repo, don't bother */
+	unless (proj_root(proj)) return (0);
 
-		/*
-		 * For backward compat with "bk sfiles"
-		 * trimed "./" and match against ignore list.
-		 */
-		if ((gfile !=  file) && match_globs(gfile, ignore, 0)) {
-			debug((stderr, "SKIP\t%s\n", gfile));
-			return (1);
-		}
+	/* If this file is not from our repo, then no */
+	unless (p = proj_relpath(proj, file)) return (0);
+	sprintf(gfile, "/%s", p);
+	free(p);
 
-		/*
-		 * For backward compat with "bk sfiles"
-		 * match basename/dirname against ignore list.
-		 */
-		p = gfile;
-		while (p) {
-			for (q = p; *q && (*q != '/'); q++);
-			save = *q;
-			*q = 0;
-			if (match_globs(p, ignore, 0)) {
-				*q = save;
-				debug((stderr, "SKIP\t%s\n", gfile));
+	if (match_globs(gfile, ignore, 0) ||		 /* pathname match */
+	    match_globs(basenm(gfile), ignorebase, 0) || /* basename match */
+	    lstat(file, &sbuf) ||			 /* gone? */
+ 	    !(sbuf.st_mode && S_IFREG|S_IFLNK)) {	 /* not reg file */
+		return (1);
+	}
+	if (getenv("BK_IGNOREDIRS")) {
+		/* check if directory is ignored */
+		while (p = strrchr(gfile, '/')) {
+			*p = 0;
+			if (match_globs(gfile, ignore, 0) ||
+			    match_globs(basenm(gfile), ignorebase, 0)) {
 				return (1);
 			}
-			*q = save;
-			if (save == 0) break;
-			p = ++q;
 		}
-
-		/* ignore special file e.g. char/block/fifo file */
-		if (fast_lstat(gfile, &sbuf)) return (1);
-		unless (sbuf.st_mode && S_IFREG|S_IFLNK) return (1);
 	}
-
-	/*
-	 * HACK to hide stuff in the log and locks directory
-	 * This assumes that sfiles is ran from project root
-	 * If you run "bk sfiles" under <project root>/BitKeeper directory,
-	 * these file will show up. It is probably OK.
-	 */
-	len = strlen(gfile);
-	if ((len >= 14) && pathneq("BitKeeper/log/", gfile, 14)) return (1);
-	if ((len >= 17) && pathneq("BitKeeper/writer/", gfile, 17)) return (1);
-	if ((len >= 18) && pathneq("BitKeeper/readers/", gfile, 18)) return (1);
-	if ((len >= 8) && pathneq("PENDING/", gfile, 8)) return (1);
-
 	return (0);
 }
 
 private int
-isTagFile(char *file)
+hidden(char *file)
 {
-	char *gfile;
-
-	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	return (pathneq("BitKeeper/etc/SCCS/x.", gfile, 21));
+	return (strstr(file, "BitKeeper/etc/SCCS/x.") != 0);
 }
 
 private int
@@ -798,19 +945,19 @@ isBkFile(char *gfile)
 	return (0);
 }
 
-
+/* ONLY call this from do_print */
 private void
-print_it(STATE state, char *file, char *rev)
+print_it(STATE state, char *gfile, char *rev)
 {
-	char	*sfile, *gfile;
+	char	*sfile;
 
-	gfile =  strneq("./",  file, 2) ? &file[2] : file;
+	gfile =  strneq("./",  gfile, 2) ? &gfile[2] : gfile;
 	if ((opts.useronly) && isBkFile(gfile)) return;
 
-	if (opts.show_markers) {
-		if (state[CSTATE] == 'j') {
-			assert(streq(state, " j    "));
-			if (fprintf(opts.out, "jjjjjj ") != 7) {
+	if (opts.verbose) {
+		if (state[TSTATE] == 'j') {
+			assert(streq(state, "j      "));
+			if (fprintf(opts.out, "j------ ") != 8) {
 error:				perror("output error");
 				fflush(stderr);
 				longjmp(sfiles_exit, 1); /* back to sfiles_main */
@@ -821,14 +968,14 @@ error:				perror("output error");
 
 			strcpy(tmp, state);
 			for (p = tmp; *p; p++) if (*p == ' ') *p = '-';
-			if (fprintf(opts.out, "%s ", tmp) != 7) {
+			if (fprintf(opts.out, "%s ", tmp) != 8) {
 				ttyprintf("STATE[%s]\n", tmp);
 				goto error;
 			}
 		}
 	}
-	if (opts.gfile || (state[CSTATE] == 'x') || (state[CSTATE] == 'j') ||
-	    (state[DSTATE] != ' '))  {
+	/* if gfile or !sfile then print gfile style name */
+	if (opts.gfile || (state[TSTATE] != 's')) {
 		if (fputs(gfile, opts.out) < 0) goto error;
 	} else {
 		sfile = name2sccs(gfile);
@@ -839,57 +986,75 @@ error:				perror("output error");
 		int rlen = strlen(rev) + 1;
 		if (fprintf(opts.out, "%c%s", BK_FS, rev) != rlen) goto error;
 	}
-	if (fputs("\n", opts.out) < 0) goto error;
+	if (fputc((opts.null ? '\0' : '\n'), opts.out) < 0) goto error;
 }
 
 private void
-do_print(STATE state, char *file, char *rev)
+do_print(STATE buf, char *gfile, char *rev)
 {
+	STATE	state;
+
+	strcpy(state, buf);	/* So we have writable strings */
 	if (opts.glob) {
 		char	*p;
 
-		if (p = strrchr(file, '/')) {
+		if (p = strrchr(gfile, '/')) {
 			p++;
 		} else {
-			p = file;
+			p = gfile;
 		}
 		/* XXX - make this conditional on !directory */
 		if (streq("s.", p)) p += 2;
 		unless (match_one(p, opts.glob, 0)) return;
 	}
+
 	if (state[PSTATE] == 'p') p_count++;
 	if (state[NSTATE] == 'n') n_count++;
 	if (state[GSTATE] == 'G') C_count++;
-	switch (state[CSTATE]) {
+    	if (state[CSTATE] == 'c') c_count++; 
+
+	switch (state[TSTATE]) {
 	    case 'j': break;
-	    case 'x': unless (isIgnored(file)) x_count++; break;
-	    case 'c': C_count++; s_count++; c_count++; break;
-	    case ' ': s_count++; break;
-	    default: assert("state[CSTATE] unknown" == 0);
+	    case 'x': 
+	    	if (isIgnored(gfile)) {
+			state[TSTATE] = 'i';
+			i_count++;
+		} else {
+			x_count++;
+		}
+		break;
+	    case 's': s_count++; break;
+	    case 'd': d_count++; break;
+	    case 'D': D_count++; break;
+	    case 'R': R_count++; break;
+	    default:
+		fprintf(stderr, "TSTATE='%c'\n", state[TSTATE]);
+		assert("state[TSTATE] unknown" == 0);
 	}
 	if (opts.progress &&
 	    (((s_count - s_last) > 100) || ((x_count - x_last) > 100))) {
 		progress(1);
 	}
 	if (opts.summarize) return; /* skip the detail */
-	if ((state[PSTATE] == 'p') && opts.pending) goto print;
 
-	switch (state[LSTATE]) {
-	    case 'l':	if (opts.locked) goto print; break;
-	    case 'u':	if (opts.unlocked) goto print; break;
+	unless (((state[TSTATE] == 'd') && opts.dirs) ||
+	    ((state[TSTATE] == 'D') && opts.xdirs) ||
+	    ((state[TSTATE] == 'i') && opts.ignored) ||
+	    ((state[TSTATE] == 'j') && opts.junk && !hidden(gfile)) ||
+	    ((state[TSTATE] == 'R') && opts.subrepos) ||
+	    ((state[TSTATE] == 's') && opts.sfiles) ||
+	    ((state[TSTATE] == 'x') && opts.extras) ||
+	    ((state[LSTATE] == 'l') && opts.locked) ||
+	    ((state[LSTATE] == 'u') && opts.unlocked) ||
+	    ((state[CSTATE] == 'c') && opts.changed) ||
+	    ((state[PSTATE] == 'p') && opts.pending) ||
+	    ((state[GSTATE] == 'G') && opts.gotten) ||
+	    ((state[NSTATE] == 'n') && opts.names) ||
+	    ((state[YSTATE] == 'y') && opts.cfiles)) {
+	    	return;
 	}
 
-	switch (state[CSTATE]) {
-	    case 'c':	if (opts.changed || opts.gotten) goto print; break;
-	    case 'j':	if (opts.junk && !isTagFile(file)) goto print; break;
-	    case 'x':	if (opts.extras && !isIgnored(file)) goto print; break;
-	}
-
-	if ((state[NSTATE] == 'n') && opts.names) goto print;
-	if ((state[GSTATE] == 'G') && opts.gotten) goto print;
-	return;
-
-print:	print_it(state, file, rev);
+	print_it(state, gfile, rev);
 }
 
 private void
@@ -909,22 +1074,24 @@ append_rev(MDBM *db, char *name, char *rev)
 }
 
 /*
- * Called for each directory that has an SCCS subdirectory
+ * Called for each directory traversed by sfiles_walk()
  */
 private void
 sccsdir(winfo *wi)
 {
 	char	*dir = wi->sccsdir;
 	char	**slist = wi->sfiles;
+	char	**gfiles = 0;
 	MDBM	*gDB = wi->gDB;
 	MDBM	*sDB = wi->sDB;
-	char	*p, *gfile;
-	datum	k;
+	char	*relp, *p, *gfile;
+	kvpair  kv;
 	sccs	*s = 0;
+	delta	*d;
 	int	i;
 	char	buf[MAXPATH];
+	char	buf1[MAXPATH];
 
-	d_count++;
 	if (opts.progress) progress(1);
 
 	/*
@@ -936,15 +1103,17 @@ sccsdir(winfo *wi)
 	 * entry while we are in the first/next loop, it screw up
 	 * the mdbm internal index.
 	 */
+	sortLines(slist, 0);	/* walkdir() has a funny sort */
 	EACH (slist) {
 		char 	*file;
-		STATE	state = "      ";
+		STATE	state = "       ";
 
 		p = slist[i];
 		s = 0;
 		file = p;
 		gfile = &file[2];
 
+		state[TSTATE] = 's';
 		/*
 		 * look for p.file,
 		 */
@@ -960,19 +1129,39 @@ sccsdir(winfo *wi)
 			sfile = buf;
 			if (strneq(sfile, "./", 2)) sfile += 2;
 			gfile = sccs2name(sfile);
-			if (opts.changed && opts.timestamps && !timestamps) {
-				timestamps = generateTimestampDB(wi->proj);
+// LMXXX - we could optimize this further.  If they are not looking for
+// opts.sfiles or opts.changed or opts.locked then we won't need this info.
+			if ((opts.verbose || opts.changed) && opts.timestamps &&
+			    proj && !timestamps) {
+				timestamps = generateTimestampDB(proj);
 			}
-			if (opts.changed &&
+			if ((opts.verbose || opts.changed) &&
 			    (!timestamps ||
-				!timeMatch(wi->proj, gfile, sfile,
+				!timeMatch(proj, gfile, sfile,
 				    timestamps)) &&
 			    (s = init(buf, INIT_NOCKSUM, sDB, gDB)) &&
 			    chk_diffs(s)) {
 				state[CSTATE] = 'c';
 			}
 			free(gfile);
+			if (opts.names) {
+				unless (s) {
+					s = init(buf, INIT_NOCKSUM, sDB, gDB);
+				}
+				d = sccs_top(s);
+				relp = proj_relpath(s->proj, s->gfile);
+				unless (d->pathname &&
+				    patheq(relp, d->pathname)) {
+					state[NSTATE] = 'n';
+				}
+				free(relp);
+			}
 		} else {
+			/*
+			 * LMXXX - note that if we get here and the gfile
+			 * is writable it may have diffs and we are not
+			 * listing them.
+			 */
 			file[0] = 'z';
 			if (mdbm_fetch_str(sDB, file)) {
 				state[LSTATE] = 'l';
@@ -984,21 +1173,23 @@ sccsdir(winfo *wi)
 			concat_path(buf, buf, file);
 			if (opts.names &&
 			    (s = init(buf, INIT_NOCKSUM, sDB, gDB))) {
-				delta	*d = sccs_top(s);
-
+				d = sccs_top(s);
+				relp = proj_relpath(s->proj, s->gfile);
 				unless (d->pathname &&
-				    patheq(s->gfile, d->pathname)) {
+				    patheq(relp, d->pathname)) {
 					state[NSTATE] = 'n';
 				}
+				free(relp);
 				sccs_free(s);
 				s = 0;
 			}
 		}
-		if (opts.gotten && mdbm_fetch_str(gDB, &file[2])) {
-		    	state[GSTATE] = 'G';
-		}
+		if (mdbm_fetch_str(gDB, gfile)) state[GSTATE] = 'G';
+		file[0] = 'c';
+		if (mdbm_fetch_str(sDB, file)) state[YSTATE] = 'y';
+		file[0] = 's';
 		concat_path(buf, dir, gfile);
-		if (opts.pending) {
+		if (opts.pending || opts.verbose) {
 			/*
 			 * check for pending deltas
 			 */
@@ -1009,37 +1200,47 @@ sccsdir(winfo *wi)
 		}
 		if (s) sccs_free(s);
 	}
-	freeLines(slist, free);
 
 	/*
 	 * Check the sDB for "junk" file
 	 * XXX TODO: Do we consider the r.file and m.file "junk" file?
 	 */
-	if (opts.junk) {
-		kvpair  kv;
+	if (opts.verbose || opts.junk) {
 		concat_path(buf, dir, "SCCS");
 		EACH_KV (sDB) {
-			char buf1[MAXPATH];
-
 			/*
 			 * Ignore x.files is the SCCS dir if the matching
 			 * s.file exists.
+			 * Ignore SCCS/c.JUNK if JUNK exists.
+			 * Ignore SCCS/c.JUNK if s.JUNK exists.
 			 */
 			if (kv.key.dptr[1] == '.') {
 				switch(kv.key.dptr[0]) {
 				    case 's': continue;
-				    case 'c': case 'd': case 'p':
-				    case 'x': case 'z':
+				    case 'd': case 'p': case 'x': case 'z':
 					strcpy(buf1, kv.key.dptr);
 					buf1[0] = 's';
 					if (mdbm_fetch_str(sDB, buf1)) {
 						continue;
 					}
+					break;
+				    case 'c':
+					strcpy(buf1, kv.key.dptr + 2);
+				    	if (mdbm_fetch_str(gDB, buf1)) {
+						/* We'll flag it below */
+						continue;
+					}
+					sprintf(buf1, "s.%s", kv.key.dptr + 2);
+				    	if (mdbm_fetch_str(sDB, buf1)) {
+						/* We caught it above */
+						continue;
+					}
+					break;
 				}
 			}
 			concat_path(buf1, buf, kv.key.dptr);
 			if (kv.val.dsize == 0) {
-				do_print(" j    ", buf1, 0);
+				do_print("j      ", buf1, 0);
 			} else {
 				/*
 				 * We only get here when we get
@@ -1060,7 +1261,7 @@ sccsdir(winfo *wi)
 					} else {
 						t = buf1;
 					}
-					do_print(" j    ", t, 0);
+					do_print("j      ", t, 0);
 					p = q;
 				}
 			}
@@ -1070,23 +1271,25 @@ sccsdir(winfo *wi)
 	/*
 	 * Everything left in the gDB is extra
 	 */
-	if (opts.extras) {
-		for (k = mdbm_firstkey(gDB); k.dsize != 0;
-						k = mdbm_nextkey(gDB)) {
+	if (opts.extras || opts.ignored || opts.verbose) {
+		EACH_KV(gDB) gfiles = addLine(gfiles, kv.key.dptr);
+		sortLines(gfiles, 0);
+		EACH(gfiles) {
 			buf[0] = 's'; buf[1] = '.';
-			strcpy(&buf[2], k.dptr);
+			strcpy(&buf[2], gfiles[i]);
 			if (mdbm_fetch_str(sDB, buf)) continue;
-			concat_path(buf, dir, k.dptr);
-			do_print("xxxxxx", buf, 0);
+			concat_path(buf, dir, gfiles[i]);
+			buf1[0] = 'c'; buf1[1] = '.';
+			strcpy(&buf1[2], gfiles[i]);
+			if (mdbm_fetch_str(sDB, buf1)) {
+				do_print("x-----y", buf, 0);
+			} else {
+				do_print("x------", buf, 0);
+			}
 		}
+		freeLines(gfiles, 0);
 	}
-	mdbm_close(wi->gDB);
-	wi->gDB = 0;
-	mdbm_close(wi->sDB);
-	wi->sDB = 0;
-	free(wi->sccsdir);
-	wi->sccsdir = 0;
-	wi->sfiles = 0;
+	winfo_free(wi);
 }
 
 /*
@@ -1100,41 +1303,15 @@ enableFastPendingScan(void)
 }
 
 /*
- * Return true if we should skip this directory (it contains .bk_skip).
- * If there is an SCCS directory without a SCCS/.bk_skip then complain,
- * and return false, because that is likely to be a mistake.
+ * This struct contains the data that is passed to findsfiles() by walkdir()
+ * when called by walksfiles().
  */
-int
-sfiles_skipdir(char *dir)
-{
-	char	*p;
-	char	buf[MAXPATH];
-
-	/* No .bk_skip? */
-	snprintf(buf, sizeof(buf), "%s/%s", dir, BKSKIP);
-	unless (exists(buf)) return (0);
-
-	/* There is a .bk_skip; if we are in SCCS already then we skip */
-	if ((p = strrchr(dir, '/')) && streq(p, "/SCCS")) return (1);
-
-	/* We are not in SCCS; if there is no SCCS dir then skip */
-	snprintf(buf, sizeof(buf), "%s/SCCS", dir);
-	unless (isdir(buf)) return (1);
-
-	/* We're not in SCCS, there is an SCCS, if SCCS/.bk_skip then skip */
-	snprintf(buf, sizeof(buf), "%s/SCCS/%s", dir, BKSKIP);
-	if (exists(buf)) return (1);
-
-	/* OK, .bk_skip without SCCS/.bk_skip - flag it and keep going */
-	getMsg("bk_skip_and_sccs", dir, 0, stderr);
-	return (0);
-}
-
 typedef struct sinfo sinfo;
 struct sinfo {
-	walkfn	fn;
-	void	*data;
-	int	rootlen;
+	walkfn	fn;		/* call this function on each sfile */
+	void	*data;		/* pass this to the fn() */
+	int	rootlen;	/* the len of the dir passed to walksfiles() */
+	char	*proj_prefix;	/* the prefix needed to make a relpath */
 };
 
 private int
@@ -1142,6 +1319,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 {
 	char	*p = strrchr(file, '/');
 	sinfo	*si = (sinfo *)data;
+	char	buf[MAXPATH];
 
 	unless (p) return (0);
 	if (S_ISDIR(sb->st_mode)) {
@@ -1153,6 +1331,11 @@ findsfiles(char *file, struct stat *sb, void *data)
 			strcat(file, "/etc");
 			if (exists(file)) return (-2);
 		}
+		if (proj) {
+			concat_path(buf, si->proj_prefix,
+			    file + si->rootlen + 1);
+			if (match_globs(buf, prunedirs, 0)) return (-1);
+		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
 			return (si->fn(file, sb, si->data));
@@ -1160,8 +1343,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 			/*
 			 * Skip directory containing a .bk_skip file
 			 */
-			p[1] = 0;
-			if (sfiles_skipdir(file)) return (-2);
+			return (-2);
 		}
 	}
 	return (0);
@@ -1170,10 +1352,27 @@ findsfiles(char *file, struct stat *sb, void *data)
 int
 walksfiles(char *dir, walkfn fn, void *data)
 {
-	sinfo	si;
+	char	*p;
+	sinfo	si = {0};
+	int	rc;
 
 	si.fn = fn;
 	si.data = data;
 	si.rootlen = strlen(dir);
-	return (walkdir(dir, findsfiles, &si));
+	if (proj = proj_init(dir)) {
+		load_ignore(proj);
+		p = proj_relpath(proj, dir);
+		if (streq(p, ".")) {
+			si.proj_prefix = strdup("/");
+		} else {
+			si.proj_prefix = aprintf("/%s", p);
+		}
+		free(p);
+	}
+	rc = walkdir(dir, findsfiles, &si);
+	if (proj) {
+		free(si.proj_prefix);
+		proj_free(proj);
+	}
+	return (rc);
 }

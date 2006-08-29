@@ -3,11 +3,11 @@
  */
 #include "bkd.h"
 #include "logging.h"
+#include "range.h"
 
 /*
- * Send the probe keys for this lod.
- * XXX - all the lods will overlap near the top, if we have a lot of
- * lods, this may become an issue.
+ * Send the probe keys for D deltas.
+ * Design supports multiple LODs.
  */
 private void
 lod_probekey(sccs *s, delta *d, FILE *f)
@@ -63,7 +63,6 @@ probekey_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d = 0;
-	int	count = 0;
 
 	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
 		out("ERROR-Can't init changeset\n@END@\n");
@@ -74,12 +73,7 @@ probekey_main(int ac, char **av)
 			printf("ERROR-Can't find revision %s\n", &av[1][2]);
 			return (1);
 		}
-		/*
-		 * optimize: don't send tags that don't need to be sent
-		 * XXX: is it worth it?
-		 */
-		stripdel_markSet(s, d);
-		stripdel_setMeta(s, 0, &count);
+		range_gone(s, d, D_GONE);
 	} else {
 		d = sccs_top(s);
 	}
@@ -142,7 +136,7 @@ listkey_main(int ac, char **av)
 	int	i, c, debug = 0, quiet = 0, nomatch = 1;
 	int	sndRev = 0;
 	int	matched_tot = 0;
-	int	ForceFullPatch = 0; /* force a "makepatch -r1.0.." */
+	int	ForceFullPatch = 0; /* force a "makepatch -r.." */
 	char	key[MAXKEY], rootkey[MAXKEY];
 	char	s_cset[] = CHANGESET;
 	char	**lines = 0;
@@ -326,7 +320,7 @@ get_key(char *buf, int flags)
 }
 
 private int
-skipit(HASH *skip, char *key)
+skipit(hash *skip, char *key)
 {
 	if (skip == NULL) return (0);
 	if (hash_fetchStr(skip, key)) return (1);
@@ -348,7 +342,7 @@ skipit(HASH *skip, char *key)
  * @END@
  */
 int
-prunekey(sccs *s, remote *r, HASH *skip, int outfd, int flags,
+prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	int quiet, int *local_only, int *remote_csets, int *remote_tags)
 {
 	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
@@ -534,7 +528,6 @@ prunekey_main(int ac, char **av)
 	remote	r;
 	sccs	*s;
 	delta	*d;
-	char	path[] = CHANGESET;
 	char	*dspec =
 		    "$if(:DT:=D){C}$unless(:DT:=D){:DT:} "
 		    ":I: :D: :T::TZ: :P:@:HOST:"
@@ -548,7 +541,11 @@ prunekey_main(int ac, char **av)
 	r.rfd = 0;
 	r.wfd = -1;
 	proj_cd2root();
-	s = sccs_init(path, 0);
+	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
+		fprintf(stderr, "prunekey: Can't open ChangeSet\n");
+		if (s) sccs_free(s);
+		return (-1);
+	}
 	prunekey(s, &r, NULL, -1, 0, 0, 0, 0, 0);
 	s->state &= ~S_SET;
 	for (d = s->table; d; d = d->next) {
@@ -558,7 +555,7 @@ prunekey_main(int ac, char **av)
 		d->flags &= ~D_SET;
 	}
 	sccs_free(s);
-	exit(0);
+	return (0);
 }
 
 
@@ -566,85 +563,98 @@ private int
 send_sync_msg(remote *r)
 {
 	FILE 	*f;
-	int	rc;
-	char	*cmd, buf[MAXPATH];
+	int	rc, i;
+	char	*probef;
+	char	buf[MAXPATH];
 
 	bktmp(buf, "synccmds");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, 0);
 	if (r->path) add_cd_command(f, r);
-	fprintf(f, "synckeys");
-	fputs("\n", f);
+	fprintf(f, "synckeys\n");
 	fclose(f);
 
-	cmd = aprintf("bk _probekey  >> %s", buf);
-	system(cmd);
-	free(cmd);
-
-	rc = send_file(r, buf, 0);
-	unlink(buf);
+	probef = bktmp(0, 0);
+	unless (rc = sysio(0, probef, 0, "bk", "_probekey", SYS)) {
+		rc = send_file(r, buf, size(probef));
+		unlink(buf);
+		f = fopen(probef, "rb");
+		while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
+			writen(r->wfd, buf, i);
+		}
+		fclose(f);
+	}
+	unlink(probef);
+	free(probef);
 	return (rc);
 }
 
 /*
- * Negative returns indicate error, positive returns are from prunekey.
+ * Ret	0 on success
+ *	1 on error.
+ *	2 to force bkd unlock
+ *	3 empty dir
  */
 private int
 synckeys(remote *r, int flags)
 {
-	int	rc;
-	sccs	*s;
-	char	buf[MAXPATH], s_cset[] = CHANGESET;
+	int	rc = 1, i;
+	sccs	*s = 0;
+	char	buf[MAXPATH];
 
-	if (bkd_connect(r, 0, 1)) return (-1);
-	if (send_sync_msg(r)) return (-1);
-	if (r->rfd < 0) return (-1);
+	if (bkd_connect(r, 0, 1)) return (1);
+	if (send_sync_msg(r)) goto out;
+	if (r->rfd < 0) goto out;
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
-	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
-	if ((rc = remote_lock_fail(buf, 1))) {
-		return (rc); /* -2 means locked */
+	if (getline2(r, buf, sizeof(buf)) <= 0) goto out;
+	if ((i = remote_lock_fail(buf, 1))) {
+		rc = -i;		/* 2 means locked */
+		goto out;
 	} else if (streq(buf, "@SERVER INFO@")) {
-		if (getServerInfoBlock(r)) return (-1);
+		if (getServerInfoBlock(r)) goto out;
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
-		return (-1);
+		goto out;
 	}
-	if (get_ok(r, buf, 1)) return (-1);
+	if (get_ok(r, buf, 1)) goto out;
 
 	/*
 	 * What we want is: "remote => bk _prunekey => stdout"
 	 */
-	s = sccs_init(s_cset, 0);
+	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
+		fprintf(stderr, "synckeys: Unable to read SCCS/s.ChangeSet\n");
+		goto out;
+	}
 	flags |= PK_REVPREFIX;
-	rc = prunekey(s, r, NULL, 1, flags, 0, NULL, NULL, NULL);
-	if (rc < 0) {
+	i = prunekey(s, r, NULL, 1, flags, 0, NULL, NULL, NULL);
+	if (i < 0) {
 		switch (rc) {
-		    case -2:
+		    case -2:	/* needed to force bkd unlock */
 			getMsg("unrelated_repos", 0, '=', stderr);
-			sccs_free(s);
-			return (-1); /* needed to force bkd unlock */
-		    case -3:
+			break;
+		    case -3:	/* empty dir */
 			getMsg("no_repo", 0, '=', stderr);
-			sccs_free(s);
-			return (-1); /* empty dir */
 			break;
 		}
-		rc = -1;
+		rc = -i;
+		goto out;
 	}
-	sccs_free(s);
+	rc = 0;
+out:	if (s) sccs_free(s);
 	disconnect(r, 2);
 	return (rc);
 }
 
+/* return same as synckeys */
 
 int
 synckeys_main(int ac, char **av)
 {
-	int	c;
-	remote  *r;
+	int	c, rc = 1;
+	remote  *r = 0;
 	int 	flags = 0;
 
 	while ((c = getopt(ac, av, "l|r|")) != -1) {
@@ -672,9 +682,9 @@ synckeys_main(int ac, char **av)
 
 	if (proj_cd2root()) { 
 		fprintf(stderr, "synckeys: cannot find package root.\n"); 
-		exit(1);
+		goto out;
 	}
-	c = synckeys(r, flags);
-	remote_free(r);
-	return (c >= 0 ? 0 : -c);
+	rc = synckeys(r, flags);
+out:	if (r) remote_free(r);
+	return (rc);
 }

@@ -30,8 +30,10 @@ rclone_common(int ac, char **av, opts *opts)
 	}
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock(1);
-
+	if (sendServerInfoBlock(1)) {
+		drain();
+		return (NULL);
+	}
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		unless (p && streq(p, BKD_VERSION)) {
@@ -77,7 +79,7 @@ cmd_rclone_part1(int ac, char **av)
 	unless (path = rclone_common(ac, av, &opts)) return (1);
 	if (Opts.safe_cd || getenv("BKD_DAEMON")) {
 		char	cwd[MAXPATH];
-		char	*new = fullname(path, 0);
+		char	*new = fullname(path);
 		localName2bkName(new, new);
 		getcwd(cwd, sizeof(cwd));
 		unless ((strlen(new) >= strlen(cwd)) &&
@@ -139,11 +141,7 @@ cmd_rclone_part2(int ac, char **av)
 	}
 	free(path);
 
-	if (opts.rev) {
-		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 
 	getline(0, buf, sizeof(buf));
 	if (!streq(buf, "@SFIO@")) {
@@ -191,7 +189,7 @@ cmd_rclone_part2(int ac, char **av)
 		run_check(0, 1, !opts.verbose);
 	}
 
-	p = user_preference("checkout");
+	p = proj_configval(0, "checkout");
 	if (strieq(p, "edit")) {
 		sys("bk", "-Ur", "edit", "-q", SYS);
 	} else if (strieq(p, "get")) {

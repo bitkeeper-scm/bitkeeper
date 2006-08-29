@@ -1,10 +1,12 @@
 .so ../bk-macros
-.TH "bk what" 1 %E% "\*(BC" "\*(UM"
+.TH "bk what" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk what \- look for \*(SC what strings
 .SH SYNOPSIS
-.B bk what
-.FILES
+.B bk
+.[B] \-r
+.B what
+.BKARGS
 .SH DESCRIPTION
 The
 .B bk what
@@ -17,7 +19,9 @@ If a C program contains
 .DS
 char sccsid[] = "@(#)some ident info";
 .DE
-and the program is compiled to yield a program a.out, then the command
+and the program is compiled to yield a program
+.BR a.out ,
+then the command
 .DS
 what a.out
 .DE
@@ -26,7 +30,17 @@ will produce
 a.out:
     some ident info
 .DE
+.SH EXIT STATUS
+.LP
+.B bk what
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA keywords 1
+.SA keywords
 .SH CATEGORY
 .B File

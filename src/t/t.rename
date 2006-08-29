@@ -34,6 +34,7 @@ bk -r check -a
 
 # Now create two repositories with that file.
 cd $HERE
+rm gca/BitKeeper/log/repo_id
 cp -rp gca a
 cp -rp gca b
 

@@ -3,7 +3,6 @@
 
 #include "system.h"
 #include "sccs.h"
-#include "lib_tcp.h"
 #include "zlib/zlib.h"
 
 /*
@@ -81,7 +80,6 @@ typedef struct {
 	u32	http_hdr_out:1;		/* print http header to output */
 	u32	quiet:1;		/* quiet mode */
 	u32	safe_cd:1;		/* do not allow chdir up */
-	u32	buffer_clone:1;		/* stream clone from copy */
 	u32	kill_ok:1;		/* enable kill socket */
 	int	alarm;			/* exit after this many seconds */
 	char	*pidfile;		/* write the daemon pid here */
@@ -131,16 +129,16 @@ int	bkd_connect(remote *r, int compress, int verbose);
 void	disconnect(remote *r, int how);
 void	drain(void);
 char	**getClientInfoBlock(void);
-void	sendServerInfoBlock(int);
+int	sendServerInfoBlock(int);
 int	bk_hasFeature(char *f);
 int	bkd_hasFeature(char *f);
-int	prunekey(sccs *, remote *, HASH *, int, int, int, int *, int *, int *);
+int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
 int	getServerInfoBlock(remote *r);
 
-#define	SENDENV_NOREPO	   1 /* in clone, don't send info from this repo */
+#define	SENDENV_NOREPO	   1 /* don't assume we are called from a repo */
 #define	SENDENV_NOLICENSE  2 /* don't send BK_LICENSE, in lease code */
 void	sendEnv(FILE *f, char **envVar, remote *r, u32 flags);
 

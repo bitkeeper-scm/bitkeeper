@@ -5,7 +5,6 @@
 
 typedef struct {
 	u32	respectCset:1;
-	u32	stripBranches:1;
 	u32	checkOnly:1;
 	u32	quiet:1;
 	u32	forward:1;
@@ -13,9 +12,9 @@ typedef struct {
 } s_opts;
 
 private	delta	*checkCset(sccs *s);
-private int doit(sccs *, s_opts);
-private	int do_check(sccs *s, int flags);
-private int strip_list(s_opts);
+private	int	doit(sccs *, s_opts);
+private	int	do_check(sccs *s, int flags);
+private	int	strip_list(s_opts);
 
 private	int	getFlags = 0;
 
@@ -28,11 +27,13 @@ stripdel_main(int ac, char **av)
 	MDBM	*config;
 	char	*co;
 	s_opts	opts = {1, 0, 0, 0, 0};
-	RANGE_DECL;
+	RANGE	rargs = {0};
 
 	while ((c = getopt(ac, av, "bcCdqr;")) != -1) {
 		switch (c) {
-		    case 'b': opts.stripBranches = 1; break;	/* doc 2.0 */
+		    case 'b':
+			fprintf(stderr, "ERROR: stripdel -b obsolete\n");
+			goto usage;
 		    case 'c': opts.checkOnly = 1; break;	/* doc 2.0 */
 		    case 'C': opts.respectCset = 0; break;	/* doc 2.0 */
 		    case 'd':
@@ -40,7 +41,9 @@ stripdel_main(int ac, char **av)
 			opts.iflags = INIT_WACKGRAPH;
 			break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
-		    RANGE_OPTS('!', 'r');			/* doc 2.0 */
+		    case 'r':
+			if (range_addArg(&rargs, optarg, 0)) goto usage;
+			break;
 		    default:
 usage:			system("bk help -s stripdel");
 			return (1);
@@ -50,7 +53,7 @@ usage:			system("bk help -s stripdel");
 		rc = strip_list(opts);
 		goto done;
 	}
-	unless (opts.stripBranches || (things && r[0])) {
+	unless (rargs.rstart) {
 		fprintf(stderr, "stripdel: must specify revisions.\n");
 		return (1);
 	}
@@ -80,13 +83,15 @@ usage:			system("bk help -s stripdel");
 		return (1);
 	}
 
-	unless (opts.stripBranches) RANGE("stripdel", s, 2, 1);
+	if (range_process("stripdel", s, RANGE_SET, &rargs)) {
+		sccs_free(s);
+		return (1);
+	}
 	rc = doit(s, opts);
 	sccs_free(s);
 	sfileDone();
-done:   
+done:
 	return (rc);
-next:	return (1);
 }
 
 private int
@@ -97,11 +102,6 @@ doit(sccs *s, s_opts opts)
 	int	flags = 0;
 
 	if (opts.quiet) flags |= SILENT;
-	if (BITKEEPER(s) && opts.stripBranches) {
-		fprintf(stderr,
-		    "stripdel: can't strip branches from a BitKeeper file.\n");
-		return (1);
-	}
 
 	if (HAS_PFILE(s)) {
 		if (!HAS_GFILE(s) || sccs_clean(s, SILENT)) {
@@ -130,8 +130,8 @@ doit(sccs *s, s_opts opts)
 		    s->gfile, e->rev);
 		return (1);
 	}
-
-	left = stripdel_setMeta(s, opts.stripBranches, &n); 
+	range_markMeta(s);
+	left = stripdel_fixTable(s, &n);
 	if (opts.checkOnly) return (do_check(s, flags));
 	unless (left) {
 		if (sccs_clean(s, SILENT)) {
@@ -166,6 +166,35 @@ doit(sccs *s, s_opts opts)
 	return (0);
 }
 
+/*
+ * glue various interfaces together at this point in the call:
+ * marked as D_SET and D_GONE coming into this.
+ * Count the unmarked and symLeaf becomes newest not goned
+ */
+int
+stripdel_fixTable(sccs *s, int *pcnt)
+{
+	delta	*d;
+	int	leafset = 0;
+	int	count = 0, left = 0;
+
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_SET) {
+			MK_GONE(s, d);
+			d->symLeaf = 0;
+			count++;
+			continue;
+		}
+		left++;
+		if (!leafset && d->symGraph) {
+			leafset = 1;
+			d->symLeaf = 1;
+		}
+	}
+	if (pcnt) *pcnt = count;
+	return (left);
+}
+
 int
 do_check(sccs *s, int flags)
 {
@@ -174,138 +203,6 @@ do_check(sccs *s, int flags)
 
 	error = sccs_admin(s, 0, f, 0, 0, 0, 0, 0, 0, 0, 0);
 	return(error ? 1 : 0);
-}
-
-private int
-noparent(delta *e)
-{
-	delta	*f;
-
-	for (f = e->parent; f->type != 'D'; f = f->parent);
-	return (f->flags & D_SET);
-}
-
-/*
- * Start at the bottom, recurs to the top, and if the top tag is marked,
- * return that info so the one below it can be marked.
- */
-private int
-marktags(sccs *s, delta *d)
-{
-	assert(d);
-
-	/* note that the tagwalk path will use D_BLUE */
-	if (d->flags & D_RED) return (d->flags & D_GONE);
-	d->flags |= D_RED;
-
-	if (d->ptag && marktags(s, sfind(s, d->ptag))) {
-		d->flags |= D_SET|D_GONE;
-		s->hasgone = 1;
-	}
-	if (d->mtag && marktags(s, sfind(s, d->mtag))) {
-		d->flags |= D_SET|D_GONE;
-		s->hasgone = 1;
-	}
-	return (d->flags & D_GONE);
-}
-
-/*
- * Find ourselves a new leaf.
- */
-private void
-newleaf(sccs *s)
-{
-	delta	*d;
-
-	for (d = s->table; d; d = d->next) {
-		if (d->symGraph && !(d->flags & D_GONE)) {
-			d->symLeaf = 1;
-			break;
-		}
-	}
-}
-
-int
-stripdel_markSet(sccs *s, delta *d)
-{
-	delta	*e;
-
-	for (e = s->table; e; e = e->next) {
-		unless (e->type == 'D') continue;
-		if ((e == d) || (e->flags & D_RED)) {
-			if (e->parent) e->parent->flags |= D_RED;
-			if (e->merge) sfind(s, e->merge)->flags |= D_RED;
-			e->flags &= ~D_RED;
-		} else {
-			e->flags |= D_SET;
-		}
-	}
-	return (0);
-}
-
-int
-stripdel_setMeta(sccs *s, int stripBranches, int *count)
-{
-	int	i, n, left;
-	int	redo_merge = 0;
-	delta	*e, *leaf = 0;
-	char	**tips = 0;
-
-	/* Use D_RED to figure out tag graph tips.  Leaves D_RED cleared */
-	for (n = left = 0, e = s->table; e; e = e->next) {
-		if (e->symLeaf) leaf = e;
-		if (e->symGraph) {
-			/*
-			 * build up a list of tips
-			 * XXX: while multi tips is not desired,
-			 * they do exist in the wild, so need to handle it
-			 */
-			unless (e->flags & D_RED) tips = addLine(tips, e);
-			if (e->ptag) sfind(s, e->ptag)->flags |= D_RED;
-			if (e->mtag) sfind(s, e->mtag)->flags |= D_RED;
-
-			e->flags &= ~D_RED;	/* done with it, so reset */
-		}
-
-		if (stripBranches && e->r[2]) e->flags |= D_SET;
-
-		/* Mark metas if their true parent is marked. */
-		if (e->type != 'D') {
-			if (noparent(e)) e->flags |= D_SET;
-			unless (e->flags & D_SET) continue;
-		}
-		if (e->flags & D_SET) {
-			n++;
-			MK_GONE(s, e);
-			if (e->merge) {
-				sfind(s, e->merge)->flags &= ~D_MERGED;
-				redo_merge = 1;
-			}
-			continue;
-		}
-		left++;
-	}
-
-	/* strip out tags whose ancestry tags a removed delta */
-	EACH(tips) marktags(s, (delta *)tips[i]);
-	if (leaf && (leaf->flags & D_GONE)) newleaf(s);
-
-	/* Rebuild merge image:
-	 *   The D_MERGE tag means a delta is the parent of a merge
-	 *   relationship.  A delta can be a parent of more than one
-	 *   merge relationship.  Clearing D_MERGED clears it for all
-	 *   while all may not truly be cleared.  The following puts
-	 *   back MERGE pointers that are still present.
-	 */
-	if (redo_merge) {
-		for (e = s->table; e; e = e->next) {
-			if ((e->flags & D_GONE) || !e->merge)  continue;
-			sfind(s, e->merge)->flags |= D_MERGED;
-		}
-	}
-	*count = n;
-	if (tips) freeLines(tips, 0);
-	return left;
 }
 
 private int
@@ -318,12 +215,13 @@ strip_list(s_opts opts)
 	int 	rc = 1;
 	int	iflags = opts.iflags|SILENT;
 
-	for (name = sfileFirst("stripdel", av, SF_HASREVS);
+	for (name = sfileFirst("stripdel", av, 0);
 	    name; name = sfileNext()) {
 		if (!s || !streq(s->sfile, name)) {
 			if (s && doit(s, opts)) goto fail;
 			if (s) sccs_free(s);
 			s = sccs_init(name, iflags);
+			s->rstart = s->rstop = 0;
 			unless (s && HASGRAPH(s)) {
 				fprintf(stderr,
 					    "stripdel: can't init %s\n", name);
@@ -338,6 +236,13 @@ strip_list(s_opts opts)
 			goto fail;
 		}
 		d->flags |= D_SET;
+		s->state |= S_SET;
+		if (!s->rstop || (s->rstop->serial < d->serial)) {
+			s->rstop = d;
+		}
+		if (!s->rstart || (s->rstart->serial > d->serial)) {
+			s->rstart = d;
+		}
 	}
 	if (s && doit(s, opts)) goto fail;
 	rc = 0;

@@ -18,7 +18,7 @@
 cores()
 {
 	# Win32 have no core file
-	if [ "PLATFORM" = "WIN32" ]; then return; fi
+	if [ "$PLATFORM" = "WIN32" ]; then return; fi
 
 	OUT="$BK_REGRESSION/cores"
         find "$BK_REGRESSION" -name core -print > "$OUT"
@@ -158,6 +158,11 @@ checkfiles() {
 
 verbose() {
 	test -z "$Q" && echo ${1+"$@"}
+}
+
+islink() {
+	# test -L is not portable - freebsd[34] and mac102 do not support
+	perl -e "exit ((-l '$1') ? 0 : 1)"
 }
 
 cd "$HERE" || exit 1

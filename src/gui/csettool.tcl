@@ -374,27 +374,6 @@ proc adjustHeight {diff list} \
 	.diffs.right configure -height $gc(cset.diffHeight)
 }
 
-proc fontSize {dir} \
-{
-	global	gc app
-
-	foreach t {.l.filelist.t .l.sccslog.t \
-	    .diffs.right .diffs.left .diffs.status.l .diffs.status.l_lnum \
-	    .diffs.status.r .diffs.status.r_lnum .diffs.status.middle} {
-		set junk [split [$t cget -font]]
-		set font [lindex $junk 0]
-		set size [lindex $junk 1]
-		incr size $dir
-		$t configure -font [list $font $size]
-	}
-	set junk [split $gc($app.fixedBoldFont)]
-	set font [lindex $junk 0]
-	set size [lindex $junk 1]
-	incr size $dir
-	set gc($app.fixedBoldFont) [list $font $size bold]
-	dot
-}
-
 proc widgets {} \
 {
 	global	scroll gc wish d search fmenu app env
@@ -541,23 +520,8 @@ proc widgets {} \
 		-font $gc(cset.buttonFont) -text "Current diff" \
 		-command dot
 
-	    menubutton .menu.shortcuts \
-	        -bg $gc(cset.buttonColor) \
-    		-highlightthickness 1 \
-    		-padx $gc(px) \
-		-pady $gc(py) \
-    		-borderwidth 1 \
-		-relief raised \
-    		-indicatoron 1 \
-		-font $gc(cset.buttonFont) \
-		-text " Shortcuts" \
-    		-menu .menu.shortcuts.menu
-	    menu .menu.shortcuts.menu \
-	        -title "Csettool shortcuts menu" \
-    		-borderwidth 1
 	    pack .menu.quit -side left -fill y
 	    pack .menu.help -side left -fill y
-	    pack .menu.shortcuts -side left -fill y
 	    pack .menu.mb -side left -fill y
 	    pack .menu.prevFile -side left -fill y
 	    pack .menu.fmb -side left -fill y
@@ -602,62 +566,6 @@ proc widgets {} \
 		bindtags $w {all Text .}
 	}
 
-	# populate shortcut menu; this needs to be done after
-	# the bindings are created, as we use the bindings 
-	# themselves to define the menu items
-	populateShortcutMenu .menu.shortcuts.menu cset {
-		all <Control-p> 	{Control-p}
-			{Go to previous file}
-		all <Control-n>	{Control-n}
-			{Go to next file}
-		-- --  -- --
-		all <p>		{p}
-			{Go to previous diff}
-		all <space>		{n or space}
-			{Go to next diff}
-		all <period> 		{.}
-			{Center current diff on screen}
-		-- --  -- --
-		all <Home>		{Home}
-		        {Scroll to top}
-		all <End>		{End}
-			{Scroll to the bottom}
-		all <Prior>		{PageUp or Control-b}
-			{Scroll up 1 screen}
-		all <Next>		{PageDown or Control-f}
-			{Scroll down 1 screen}
-		all <Up>		{Up Arrow or Control-y}
-			{Scroll up 1 line}
-		all <Down>		{Down Arrow or Control-e}
-			{Scroll down 1 line}
-		all <Right>		{Right Arrow}
-			{Scroll to the right}
-		all <Left>		{Left Arrow}
-			{Scroll to the left}
-		-- --  -- --
-		all <Alt-Up>		{Alt-Up Arrow}
-			{Make diffs window one line bigger}
-		all <Alt-Down>	{Alt-Down Arrow}
-			{Make diffs window one line smaller}
-		-- --  -- --
-		.	<question> ? 
-			{Reverse search}
-		. 	<slash> / 
-			{Forward search}
-		all 	<p> p 
-			{Search for previous occurance}
-		all 	<n> n 
-			{Search for next occurance}
-		-- --  -- --
-		all  _quit_ {} {Quit}
-	}
-
-	# Whenever notification is sent that the current diff has
-	# changed, the shortcut menu needs to be updated. 
-	bind . <<DiffChanged>> {
-		updateShortcutMenu
-	}
-
 	computeHeight "diffs"
 
 	.l.filelist.t tag configure select -background $gc(cset.selectColor) \
@@ -672,29 +580,6 @@ proc widgets {} \
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
 	. configure -background $gc(BG)
-	wm deiconify .
-	focus .l.filelist
-}
-
-proc updateShortcutMenu {} \
-{
-	global lastDiff diffCount lastFile fileCount
-
-	if {$lastFile == 1} {
-		.menu.shortcuts.menu entryconfigure "Go to previous file" \
-		    -state disabled
-	} else {
-		.menu.shortcuts.menu entryconfigure "Go to previous file" \
-		    -state normal
-	}
-
-	if {$lastFile == $fileCount} {
-		.menu.shortcuts.menu entryconfigure "Go to next file" \
-		    -state disabled
-	} else {
-		.menu.shortcuts.menu entryconfigure "Go to next file" \
-		    -state normal
-	}
 }
 
 # Set up keyboard accelerators.
@@ -739,9 +624,6 @@ proc keyboard_bindings {} \
 	bind all <Control-n>		nextFile
 	bind all <Control-p>		prevFile
 	bind all <s>			exportCset
-	bind all <Control-plus>		{ fontSize 1 }
-	bind all <Control-equal>	{ fontSize 1 }
-	bind all <Control-minus>	{ fontSize -1 }
 
 	if {$gc(windows) || $gc(aqua)} {
 		bind all <MouseWheel> {
@@ -779,6 +661,12 @@ proc keyboard_bindings {} \
 	bindtags $search(text) { .menu.search Entry . }
 }
 
+proc usage {} \
+{
+	puts stderr "usage: bk csettool \[-f<file>] \[-r<rev>] \[-]"
+}
+
+
 proc main {} \
 {
 	global argv0 argv argc app showAnnotations gc
@@ -802,6 +690,11 @@ proc main {} \
 		    "^-r.*" {
 			set rev [lindex $argv $argindex]
 		   	regexp {^[ \t]*-r(.*)} $rev dummy revs
+			# make sure we don't get an empty revision
+			if {$revs eq ""} {
+				usage
+				exit 1
+			}
 		    }
 		    "^-$" {
 			set stdin 1
@@ -819,7 +712,10 @@ proc main {} \
 	}
 	#displayMessage "csetttool: revs=($revs) file=($file_rev)"
 	bk_init
-	cd2root [file dirname $file_rev]
+	if {[cd2root [file dirname $file_rev]] == -1} {
+		displayMessage "CsetTool must be run in a repository"
+		exit 0
+	}
 	if {$stdin == 0} {
 		set dspec "-d\$if(:Li: -gt 0){(:I:)\n}"
 		set fd [open "| bk prs -hr$revs {$dspec} ChangeSet" r]
@@ -833,10 +729,9 @@ proc main {} \
 		catch {close $fd}
 	}
 
-	loadState
-	restoreGeometry cset
-
+	loadState cset
 	widgets
+	restoreGeometry cset
 
 	if {$gc(cset.annotation) != ""} {
 		set showAnnotations 1
@@ -850,7 +745,7 @@ proc main {} \
 
 	bind . <Destroy> {
 		if {[string match "." %W]} {
-			saveState
+			saveState cset
 		}
 	}
 
@@ -858,37 +753,4 @@ proc main {} \
 	after idle [list focus -force .]
 }
 
-proc loadState {} \
-{
-	global State
-
-	catch {::appState load cset State}
-
-}
-
-proc saveState {} \
-{
-	global State
-
-	# Copy state to a temporary variable, the re-load in the
-	# state file in case some other process has updated it
-	# (for example, setting the geometry for a different
-	# resolution). Then add in the geometry information unique
-	# to this instance.
-	array set tmp [array get State]
-	catch {::appState load cset tmp}
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	set tmp(geometry@$res) [wm geometry .]
-
-	# Generally speaking, errors at this point are no big
-	# deal. It's annoying we can't save state, but it's no 
-	# reason to stop running. So, a message to stderr is 
-	# probably sufficient. Plus, given we may have been run
-	# from a <Destroy> event on ".", it's too late to pop
-	# up a message dialog.
-	if {[catch {::appState save cset tmp} result]} {
-		puts stderr "error writing config file: $result"
-	}
-
-}
 main

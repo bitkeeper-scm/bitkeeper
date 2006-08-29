@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "range.h"
 
 private void
 listIt(sccs *s, int list)
@@ -30,15 +31,17 @@ cmd_pull_part1(int ac, char **av)
 {
 	char	*p, buf[4096];
 	char	*probekey_av[] = {"bk", "_probekey", 0, 0};
-	int	status, rfd;
+	int	status;
 	int	rc = 1;
-	pid_t	pid;
 	FILE	*f;
 
 	if (av[1] && strneq(av[1], "-r", 2)) {
 		probekey_av[2] = av[1];
 	}
-	sendServerInfoBlock(0);
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
@@ -55,8 +58,7 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
-	pid = spawnvp_rPipe(probekey_av, &rfd, 0);
-	f = fdopen(rfd, "r");
+	f = popenvp(probekey_av, "r");
 	/* look to see if probekey returns an error */
 	unless (fnext(buf, f) && streq("@LOD PROBE@\n", buf)) {
 		fputs(buf, stdout);
@@ -69,12 +71,13 @@ cmd_pull_part1(int ac, char **av)
 	}
 	rc = 0;
 done:
-	fclose(f);
-	fflush(stdout);
-	unless ((waitpid(pid, &status, 0) == pid) &&
-	    WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
-		return (1);
+	status = pclose(f);
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+		printf("ERROR-probekey failed (status=%d)\n@END@\n",
+		    WEXITSTATUS(status));
+		rc = 1;
 	}
+	fflush(stdout);
 	return (rc);
 }
 
@@ -82,7 +85,7 @@ int
 cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
-	int	gzip = 0, dont = 0, verbose = 1, list = 0;
+	int	gzip = 0, dont = 0, verbose = 1, list = 0, triggers_failed = 0;
 	int	rtags, update_only = 0, delay = -1;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
@@ -110,12 +113,13 @@ cmd_pull_part2(int ac, char **av)
 		}
 	}
 
-	sendServerInfoBlock(0);
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	s = sccs_csetInit(0);
 	assert(s && HASGRAPH(s));
 	if (rev) {
-		int	count = 0;
-
 		unless (d = sccs_findrev(s, rev)) {
 			p = aprintf(
 			    "ERROR-Can't find revision %s\n", rev);
@@ -123,19 +127,10 @@ cmd_pull_part2(int ac, char **av)
 			free(p);
 			out("@END@\n");
 		}
-		stripdel_markSet(s, d);
-		stripdel_setMeta(s, 0, &count);
 		/*
-		 * The above sets D_GONE, but leaves other flags
-		 * altered.  We need D_RED intead of D_GONE and we
-		 * need D_BLUE to be cleared.  Might as well clean up
-		 * D_SET as well.
+		 * Need the 'gone' region marked RED
 		 */
-		for (d = s->table; d; d = d->next) {
-			d->flags &= ~(D_RED|D_BLUE|D_SET);
-			if (d->flags & D_GONE) d->flags |= D_RED;
-		}
-		s->state &= ~S_SET;
+		range_gone(s, d, D_RED);
 	}
 
 	/*
@@ -188,7 +183,7 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	if (trigger(av[0],  "pre")) {
-		rc = 1;
+		triggers_failed = rc = 1;
 		goto done;
 	}
 
@@ -265,9 +260,9 @@ done:	fflush(stdout);
 		unlink(keys);	/* if we copied because they were in /tmp */
 	}
 	/*
-	 * Fire up the post-trigger
+	 * Fire up the post-trigger but only if we didn't fail pre-triggers.
 	 */
-	trigger(av[0], "post");
+	unless (triggers_failed) trigger(av[0], "post");
 	if (delay > 0) sleep(delay);
 	free(keys);
 	return (rc);

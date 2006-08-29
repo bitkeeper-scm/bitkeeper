@@ -88,7 +88,7 @@ hostme_main(int ac, char **av)
 	rc = http_send(r, m->where, msize(m), 0, "hostme");
 	mclose(m);
 	skip_http_hdr(r);
-	unless (rc) rc = get_ok(r, 0, opts.verbose);
+	unless (rc) rc = get_ok(r, 0, 1);
 	disconnect(r, 2);
 	if (!opts.debug) unlink(hostme_info);
 	if (!rc && opts.verbose) {

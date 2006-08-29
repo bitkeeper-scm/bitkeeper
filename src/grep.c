@@ -13,9 +13,8 @@
  *	- \<something\> is substantially slower than just "something"
  */
 /* Copyright 2003 BitMover, Inc. */
-#include "system.h"
 #include "sccs.h"
-#include "regex/regex.h"	/* has to be second, conflicts w/ system .h's */
+#include "regex.h"	/* has to be second, conflicts w/ system .h's */
 
 private	void	doit(FILE *f);
 private char	*getfile(char *buf);
@@ -53,8 +52,7 @@ grep_main(int ac, char **av)
 	char	*pat;
 	FILE	*f;
 	char	*rev = 0, *range = 0, **cmd;
-	pid_t	pid;
-	int	pfd, aflags = 0, args = 0;
+	int	aflags = 0, args = 0;
 	char	aopts[20];
 
 	opts.firstmatch = opts.name = 1;
@@ -82,7 +80,7 @@ grep_main(int ac, char **av)
 			if (optarg && optarg[0]) {
 				range = aprintf("-R%s", optarg);
 			} else {
-				range = aprintf("-R1.0..");
+				range = aprintf("-R..");
 			}
 			break;
 
@@ -186,9 +184,9 @@ grep_main(int ac, char **av)
 	cmd = addLine(cmd, "");
 	cmd[nLines(cmd)] = 0;
 	putenv("BK_PRINT_EACH_NAME=YES");
-	pid = spawnvp_rPipe(&cmd[1], &pfd, 0);
-	f = fdopen(pfd, "r");
+	f = popenvp(&cmd[1], "r");
 	doit(f);
+	pclose(f);
 	exit(opts.found ? 0 : 1);
 }
 

@@ -1,16 +1,31 @@
-.so bk-macros
-.TH "bk c2r" 1 %E% "\*(BC" "\*(UM"
+.so ../bk-macros
+.TH "bk c2r" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk c2r \- convert changeset revision to file revision
 .SH SYNOPSIS
 .B bk c2r 
-.OPTreq \-r rev 
-\ 
-.ARG file 
+.OPTreq \-r cset_rev
+.ARG file
 .SH DESCRIPTION
 This command takes a changeset revision and a filename and prints the
-latest revision in the file that in included in that changeset.
+latest revision in the file that is part of that changeset.
+.SH EXIT STATUS
+.LP
+.B bk c2r
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
+.SH EXAMPLE
+Suppose that revision 1.5 of \f(CWfoo.c\fP was made in changeset 1.1234.
+.DS
+$ bk c2r -r1.1234 foo.c
+1.5
+.DE
 .SH "SEE ALSO"
-.SA r2c 1
+.SA r2c
 .SH CATEGORY
 .B Utility

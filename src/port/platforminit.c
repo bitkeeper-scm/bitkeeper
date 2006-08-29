@@ -1,4 +1,3 @@
-#include "../system.h"
 #include "../sccs.h"
 
 /*
@@ -34,8 +33,9 @@ platformInit(char **av)
 
 	if (bin) return;
 	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
-	m = umask(0) & 002;
-	umask(m);
+	/* force user/group open and allow user to control other */
+	m = umask(0);
+	umask(m & ~0770);
 
 	unless (win_supported()) {
 		fprintf(stderr,
@@ -57,7 +57,9 @@ platformInit(char **av)
 	putKV("BK_CONFIG_URL2",
 	    "http://config2.bitkeeper.com/cgi-bin/bk_config2");
 	putKV("BK_LEASE_URL",
-	    "http://lease.bitkeeper.com/cgi-bin/bk_lease2");
+	    "http://lease.bitkeeper.com/cgi-bin/bk_lease3");
+	putKV("BK_LEASE_URL2",
+	    "http://lease2.bitkeeper.com/cgi-bin/bk_lease3");
 	putKV("BK_WEBMAIL_URL", "http://webmail.bitkeeper.com:80");
 
 #ifdef WIN32

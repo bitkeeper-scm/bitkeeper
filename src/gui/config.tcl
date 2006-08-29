@@ -32,9 +32,10 @@ proc getConfig {prog} \
 	set _d(searchColor) $YELLOW	;# highlight for search matches
 	set _d(selectColor) $LIGHTBLUE	;# current file/item/topic
 	set _d(statusColor) $LIGHTBLUE	;# various status windows
-
+	set _d(minsize) 300		;# won't remember geometry if smaller
+					 # than this width or height
 	#XXX: Not documented yet
-	set _d(logoBG) $WHITE			;# background for widget with logo
+	set _d(logoBG) $WHITE		;# background for widget with logo
 	set _d(balloonBG) $LIGHTYELLOW	;# balloon help background
 	set _d(selectBG) $NAVY		;# useful for highlighting text
 	set _d(selectFG) $WHITE		;# useful for highlighting text
@@ -152,7 +153,7 @@ proc getConfig {prog} \
 	# XXX: not documented yet
 	set _d(rev.savehistory) 5	  ;# Max # of files to save in file list
 	set _d(rev.hlineColor) $WHITE	;# Color of highlight lines XXX:NOTDOC
-	set _d(rev.sccscat) "-Aur"	  ;# Options given to sccscat
+	set _d(rev.annotate) "-Aur"	  ;# Options given to annotate
 
 	set _d(setup.stripeColor) $BLUE ;# color of horizontal separator
 	set _d(setup.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields
@@ -176,6 +177,15 @@ proc getConfig {prog} \
 		set _d(ci.commentsHeight) 7	;# height of comment window
 		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
 		set _d(BG) $SYSTEMBUTTONFACE		;# default background
+		# usable space
+		set _d(padTop)		0
+		set _d(padBottom)	28		; # someday, we'll 
+							  # need to figure
+							  # out the size
+							  # of the taskbar
+		set _d(padRight)	0
+		set _d(padLeft)		0
+		set _d(titlebarHeight)	20
 		set rcfile [exec bk dotbk _bkgui config-gui]
 	    } 
 	    aqua {
@@ -189,12 +199,20 @@ proc getConfig {prog} \
 		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
 		set _d(BG) $SYSTEMBUTTONFACE		;# default background
 		set _d(listBG) $WHITE
+		#usable space
+		set _d(padTop)		22              ; # someday we'll need
+							  # to compute the
+							  # size of the menubar
+		set _d(padBottom)	0
+		set _d(padRight)	0
+		set _d(padLeft)		0
+		set _d(titlebarHeight)	22
 		set rcfile [exec bk dotbk .bkgui config-gui]
 	    }
 	    x11 {
 		set _d(x11) 1
 
-                option add *Scrollbar.borderWidth 1 100
+		option add *Scrollbar.borderWidth 1 100
 		set _d(cset.leftWidth) 55
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
@@ -203,6 +221,18 @@ proc getConfig {prog} \
 		set _d(fm.editor) "fm2tool"
 		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
 		set _d(BG) $GRAY85		;# default background
+		# usable space (all of it in X11)
+		set _d(padTop)		0
+		set _d(padBottom)	0
+		set _d(padRight)	0
+		set _d(padLeft)		0
+		set _d(titlebarHeight)	0
+		if {$::tcl_platform(os) eq "Darwin"} {
+			# We might be in X11 under Aqua, so leave room
+			# for the menubar
+			set _d(padTop)		22
+			set _d(titlebarHeight)	22
+		}
 		set rcfile [exec bk dotbk .bkgui config-gui]
 	    }
 	    default {

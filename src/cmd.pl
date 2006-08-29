@@ -17,6 +17,7 @@ print C <<EOF;
 %struct-type
 %language=ANSI-C
 %define lookup-function-name cmd_lookup
+%define hash-function-name cmd_hash
 %includes
 
 struct CMD;
@@ -136,6 +137,7 @@ checksum
 clean
 _cleanpath
 clone
+collapse
 comments
 commit
 config
@@ -154,18 +156,17 @@ _eula
 _exists
 export
 f2csets
-files
 _find
 _findcset
 findkey
 fix
 _fixlod
+fixtool
 gca
 get
 gethelp
 gethost
 getmsg
-_getreg
 getuser
 glob
 gnupatch
@@ -173,6 +174,7 @@ gone
 graft
 grep
 _gzip
+_hashstr_test
 help
 helpsearch
 helptopics
@@ -180,6 +182,7 @@ _httpfetch
 hostme
 idcache
 isascii
+inskeys
 key2rev
 _key2path
 keycache
@@ -187,14 +190,17 @@ _keyunlink
 _kill
 _lconfig
 lease
+_lease_errtest
+legal
 level
 _lines restricted
 _link
 _listkey restricted
 lock
 _locktest
-lod
+log
 _logging
+_lstat
 mailsplit
 mail
 makepatch
@@ -214,7 +220,6 @@ parent
 park
 pending
 _popensystem
-preference
 _probekey restricted
 prompt
 prs
@@ -230,6 +235,7 @@ rcs2bk
 rcsparse
 receive
 regex
+_registry
 renumber
 repogca
 relink
@@ -255,7 +261,8 @@ shrink
 sinfo
 smerge
 _shellSplit_test
-_sort
+sort
+_stattest
 status
 stripdel
 _strings
@@ -299,11 +306,13 @@ comment => comments	# alias for Linus, remove...
 _fix_lod1 => _fixlod
 info => sinfo
 _mail => mail
-_preference => preference
+pager => more
+_preference => config
 rechksum => checksum
 rev2cset => r2c
 sccsdiff => diffs
 sfind => sfiles
+_sort => sort
 support => sendbug
 unget => unedit
 user => users
@@ -321,6 +330,7 @@ newdifftool gui
 renametool gui
 revtool gui
 setuptool gui
+showproc gui
 
 # gui aliases
 csetool => csettool

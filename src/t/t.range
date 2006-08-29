@@ -1,0 +1,171 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2006 BitMover Inc.
+# %K%
+
+# This tests both the librange code and the range command
+# First test with prs on a complex file history
+# Then do some tag graph boundary checking
+
+echo $N Check ranges in a complex file history ......................$NL
+commercial project
+# Make a merge of a merge file
+touch foo
+bk new $Q foo
+bk edit $Q foo
+bk delta $Q -fy1.2 foo
+bk _get $Q -e -r1.1 foo
+bk delta $Q -fy1.1.1.1 foo
+bk edit $Q -M foo
+bk delta $Q -fy1.3 foo
+bk _get $Q -e -r1.2 -M1.1.1.1 foo
+bk delta $Q -fy1.2.1.1 foo
+bk edit $Q -M foo
+bk delta $Q -fy1.4 foo
+bk commit $Q -yfoo
+# all versions plus the blank version
+bk prs -r.. -hnd:I: foo > LIST
+echo >> LIST
+# matrix test
+cat LIST | while read from; do
+	cat LIST | while read to; do
+		printf $from..$to
+		bk prs -r$from..$to -hd' :I:' foo
+		echo
+	done
+done > GOT
+# note: prs -r1.0.. is special cased to include 1.0
+cat - <<'EOF' > WANT
+1.4..1.4
+1.4..1.2.1.1
+1.4..1.3
+1.4..1.1.1.1
+1.4..1.2
+1.4..1.1
+1.4..1.0
+1.4..
+1.2.1.1..1.4 1.4 1.3
+1.2.1.1..1.2.1.1
+1.2.1.1..1.3 1.3
+1.2.1.1..1.1.1.1
+1.2.1.1..1.2
+1.2.1.1..1.1
+1.2.1.1..1.0
+1.2.1.1.. 1.4 1.3
+1.3..1.4 1.4 1.2.1.1
+1.3..1.2.1.1 1.2.1.1
+1.3..1.3
+1.3..1.1.1.1
+1.3..1.2
+1.3..1.1
+1.3..1.0
+1.3.. 1.4 1.2.1.1
+1.1.1.1..1.4 1.4 1.2.1.1 1.3 1.2
+1.1.1.1..1.2.1.1 1.2.1.1 1.2
+1.1.1.1..1.3 1.3 1.2
+1.1.1.1..1.1.1.1
+1.1.1.1..1.2 1.2
+1.1.1.1..1.1
+1.1.1.1..1.0
+1.1.1.1.. 1.4 1.2.1.1 1.3 1.2
+1.2..1.4 1.4 1.2.1.1 1.3 1.1.1.1
+1.2..1.2.1.1 1.2.1.1 1.1.1.1
+1.2..1.3 1.3 1.1.1.1
+1.2..1.1.1.1 1.1.1.1
+1.2..1.2
+1.2..1.1
+1.2..1.0
+1.2.. 1.4 1.2.1.1 1.3 1.1.1.1
+1.1..1.4 1.4 1.2.1.1 1.3 1.1.1.1 1.2
+1.1..1.2.1.1 1.2.1.1 1.1.1.1 1.2
+1.1..1.3 1.3 1.1.1.1 1.2
+1.1..1.1.1.1 1.1.1.1
+1.1..1.2 1.2
+1.1..1.1
+1.1..1.0
+1.1.. 1.4 1.2.1.1 1.3 1.1.1.1 1.2
+1.0..1.4 1.4 1.2.1.1 1.3 1.1.1.1 1.2 1.1
+1.0..1.2.1.1 1.2.1.1 1.1.1.1 1.2 1.1
+1.0..1.3 1.3 1.1.1.1 1.2 1.1
+1.0..1.1.1.1 1.1.1.1 1.1
+1.0..1.2 1.2 1.1
+1.0..1.1 1.1
+1.0..1.0
+1.0.. 1.4 1.2.1.1 1.3 1.1.1.1 1.2 1.1
+..1.4 1.4 1.2.1.1 1.3 1.1.1.1 1.2 1.1 1.0
+..1.2.1.1 1.2.1.1 1.1.1.1 1.2 1.1 1.0
+..1.3 1.3 1.1.1.1 1.2 1.1 1.0
+..1.1.1.1 1.1.1.1 1.1 1.0
+..1.2 1.2 1.1 1.0
+..1.1 1.1 1.0
+..1.0 1.0
+.. 1.4 1.2.1.1 1.3 1.1.1.1 1.2 1.1 1.0
+EOF
+cmpfiles WANT GOT
+echo OK
+
+# A white box test for range_markMeta()
+# Tags included in output based on Tagged, ptag, and mtag
+# Tags excluded in output based on Tagged, ptag, and mtag
+#
+#                         (1.3)   (1.1)
+#                   0 .... TAG1 .. TAG2 ..........................x
+#                                                                 |
+# 1.0 -  1.1 -- 1.2 -- 1.3   ----------  1.4 ---------------------+-- 1.5
+#                  \-------------------------- 1.2.1.1 --1.2.1.2 -+--/
+# 		                                                  |
+#                                                                TM
+#					      0 .... TAG3 ......p.x
+#					            (1.1)
+#
+# For TAG1:
+# TAG1 is on 1.3 which means TAG2 can stay because ptag is set
+# TAG3 is not listed but the tag merge (TM) is listed because mtag is set
+# because of TAG2
+#
+# For TAG2:
+# TAG1 is excluded because it tags a GONE node (BLUE in the code)
+# TAG2 is excluced because its ptag is a GONE (TAG1)
+# MT is excluded because of its mtag is excluded (TAG2)
+# TAG3 is included because it is on a SET item: 1.1
+echo $N Check ranges in a history containing tag graph ..............$NL
+cd $HERE
+bk clone $Q project copy
+cd project
+bk edit $Q foo
+bk delta $Q -fyblank foo
+bk commit $Q -yfoo
+bk tag $Q TAG1
+bk tag $Q -r1.1 TAG2
+bk edit $Q foo
+bk delta $Q -fyblank foo
+bk commit $Q -yfoo
+cd ../copy
+bk edit $Q foo
+bk delta $Q -fyblank foo
+bk commit $Q -yfoo
+bk tag $Q -r1.1 TAG3
+bk edit $Q foo
+bk delta $Q -fyblank foo
+bk commit $Q -yfoo
+bk pull $Q
+for rev in TAG1 TAG2; do
+	printf $rev
+	bk changes -qar$rev -d' :I:($if(:DT:=T){T}:DS:)'
+	echo
+done > GOT
+cat - <<'EOF' > WANT
+TAG1 1.1(T11) 1.1(T6) 1.3(T5) 1.3(4)
+TAG2 1.1(T9) 1.1(2)
+EOF
+cmpfiles WANT GOT
+echo OK

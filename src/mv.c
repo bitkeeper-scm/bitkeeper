@@ -195,7 +195,7 @@ err:		unless (skip_lock) repository_wrunlock(0);
 			fprintf(stderr, "mvdir: not an SCCS file: %s\n", buf);
 		}
 
-		if (!HAS_PFILE(s) && S_ISREG(s->mode) && IS_WRITABLE(s)) {
+		if (!HAS_PFILE(s) && S_ISREG(s->mode) && WRITABLE(s)) {
 			 fprintf(stderr, 
 				"mvdir: %s is writable but not edited\n",
 				s->gfile);

@@ -2,7 +2,35 @@
 #ifndef	_SCCS_H_
 #define	_SCCS_H_
 
-#include "mmap.h"
+#include "system.h"
+#include "purify.h"
+
+#define	mdbm_mem()	mdbm_open(NULL, 0, 0, GOOD_PSIZE)
+#define	EACH_KV(d)	for (kv = mdbm_first(d); \
+			    kv.key.dsize; kv = mdbm_next(d))
+#define EACH_KEY(d)     for (k = mdbm_firstkey(d); \
+                            k.dsize; k = mdbm_nextkey(d))
+
+#define	MAXKEY	(MAXPATH + 512)
+#define SPLIT_ROOT	/* enable split_root support */
+#define BK_FS		'|' /* Field seperator used in file|rev names */
+
+void	reserveStdFds(void);
+struct tm *localtimez(time_t *timep, long *offsetp);
+
+#ifdef	WIN32
+#define	win32_close(s)	sccs_close(s)
+#define	win32_open(s)	sccs_open(s, 0)
+#else
+#define	win32_close(s)
+#define	win32_open(s)
+#endif
+
+#ifndef	NOPROC
+void	rmdir_findprocs(void);
+int	checking_rmdir(char *dir);
+#define	rmdir(d)	checking_rmdir(d)
+#endif
 
 /*
  * Flags that modify some operation (passed to sccs_*).
@@ -95,6 +123,7 @@
 #define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
 #define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
 #define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
+#define	ADMIN_RMLICENSE	0x00010000	/* Obscure licenses in repo config */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
@@ -114,10 +143,9 @@
 #define	SF_GFILE	0x00000001	/* gfile should be readable */
 #define	SF_WRITE_OK	0x00000002	/* gfile should be writable */
 #define	SF_NODIREXPAND	0x00000004	/* don't auto expand directories */
-#define	SF_HASREVS	0x00000008	/* sfiles - filename:rev */
+#define	SF_NOHASREVS	0x00000008	/* don't expect |rev on files */
 #define	SF_SILENT	0x00000010	/* sfiles - don't complain */
-#define	SF_DELETES	0x00000020	/* expand files like .del-whatever */
-#define	SF_NOCSET	0x00000040	/* do not autoexpand cset files */
+#define	SF_NOCSET	0x00000020	/* do not autoexpand cset files */
 
 /*
  * Flags (s->state) that indicate the state of a file.  Set up in init.
@@ -136,7 +164,6 @@
 #define	S_CSET		0x00000200	/* this is a changeset file */
 #define S_MAPPRIVATE	0x00000400	/* hack for hpux */
 #define S_READ_ONLY	0x00000800	/* force read only mode */
-#define	S_RANGE2	0x00001000	/* second call for date|rev range */
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
@@ -195,8 +222,12 @@
 #define	X_NOMERGE	0x00004000	/* treat as binary even if ascii */
 					/* flags which can be changed */
 #define	X_MONOTONIC	0x00008000	/* file rolls forward only */
+#define	X_EOLN_WINDOWS	0x00010000	/* produce \r\n line endings */
+/* Note: X_EOLN_UNIX is fake, it does not go on disk */
+#define	X_EOLN_UNIX	0x00020000	/* produce \n style endings */
 #define	X_MAYCHANGE	(X_RCS | X_YEAR4 | X_SHELL | X_EXPAND1 | \
-			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE | X_MONOTONIC)
+			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE | \
+			X_MONOTONIC | X_EOLN_WINDOWS | X_EOLN_UNIX)
 /* default set of flags when we create a file */
 #define	X_DEFAULT	(X_BITKEEPER|X_CSETMARKED|X_EOLN_NATIVE)
 #define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
@@ -224,12 +255,12 @@
 #define	HAS_ZFILE(s)	((s)->state & S_ZFILE)
 #define	HAS_SFILE(s)	((s)->state & S_SFILE)
 #define	BEEN_WARNED(s)	((s)->state & S_WARNED)
-#define	IS_WRITABLE(s)	((s)->mode & 0200)
-#define IS_EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && IS_WRITABLE(s))
-#define IS_LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
-#define IS_TEXT(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
-#define IS_BINARY(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
-#define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile((s)->mode))
+#define	WRITABLE(s)	((s)->mode & 0200)
+#define EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && WRITABLE(s))
+#define LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
+#define ASCII(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
+#define BINARY(s)	(((s)->encoding & E_DATAENC) != E_ASCII)
+#define UUENCODE(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
@@ -253,6 +284,7 @@
 #define	KV(s)		((s)->xflags & X_KV)
 #define	NOMERGE(s)	((s)->xflags & X_NOMERGE)
 #define	MONOTONIC(s)	((s)->xflags & X_MONOTONIC)
+#define	EOLN_WINDOWS(s)	((s)->xflags & X_EOLN_WINDOWS)
 
 /*
  * Flags (d->flags) that indicate some state on the delta.
@@ -298,12 +330,6 @@
 #define CMD_RETRYLOCK	0x00000040	/* if lock failed, retry */
 
 /*
- * Signal handling.
- */
-#define	SIG_IGNORE	0x0001		/* ignore the specified signal */
-#define	SIG_DEFAULT	0x0002		/* restore old handler */
-
-/*
  * Hash behaviour.  Bitmask.
  */
 #define	DB_NODUPS       0x01		/* keys must be unique */
@@ -317,6 +343,7 @@
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
 #define	LEASE_URL	getenv("BK_LEASE_URL")
+#define	LEASE_URL2	getenv("BK_LEASE_URL2")
 #define	BK_WEBMAIL_URL	getenv("BK_WEBMAIL_URL")
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	BK_CONFIG_URL	getenv("BK_CONFIG_URL")
@@ -326,6 +353,7 @@
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
+#define	COLLAPSED	"BitKeeper/etc/collapsed"
 #define	CSETS_IN	"BitKeeper/etc/csets-in"
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
@@ -365,7 +393,6 @@ typedef	u32		ser_t;
 typedef	unsigned short	sum_t;
 typedef	char		**globv;
 
-#include "liblines.h"
 #include "bkver.h"
 #include "cmd.h"
 
@@ -431,8 +458,7 @@ typedef struct delta {
 					/* open tips, so maintained always */
 	char	type;			/* Delta or removed delta */
 } delta;
-#define	TAG(d)		((d)->type == 'R')
-#define	REG(d)		((d)->type == 'D')
+#define	TAG(d)		((d)->type != 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 /*
@@ -545,7 +571,6 @@ typedef	struct sccs {
 	char	*zfile;		/* SCCS/z.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
-	char	*spathname;	/* current spathname in view or not in view */
 	char	**usersgroups;	/* lm, beth, staff, etc */
 	int	encoding;	/* ascii, uuencode, gzip, etc. */
 	char	**flags;	/* flags in the middle that we didn't grok */
@@ -581,9 +606,11 @@ typedef	struct sccs {
 	u32	bad_dsum:1;	/* patch checksum mismatch */
 	u32	io_error:1;	/* had an output error, abort */
 	u32	io_warned:1;	/* we told them about the error */
-	u32	prs_output:1;	/* prs printed something */
 	u32	bitkeeper:1;	/* bitkeeper file */
+	u32	prs_output:1;	/* prs printed something */
 	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
+	u32	prs_one:1;	/* stop printing after printing the first one */
+	u32	prs_join:1;	/* for joining together items in dspecs */
 	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
@@ -750,6 +777,7 @@ typedef struct {
 	char	*seed;		/* seed saved to validate bkd */
 	int	contentlen;	/* len from http header (recieve only) */
 	pid_t	pid;		/* if pipe, pid of the child */
+	hash	*errs;		/* encode error messages */
 } remote;
 
 #define	ADDR_NFS	0x000	/* host:/path */
@@ -777,6 +805,7 @@ typedef struct {
 } search;
 
 
+
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
@@ -794,7 +823,8 @@ int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 int	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
 char	*sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec);
-delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
+delta	*sccs_findDate(sccs *s, char *date, int roundup);
+int	sccs_patheq(char *file1, char *file2);
 delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags);
 sccs	*sccs_restart(sccs *s);
@@ -819,13 +849,15 @@ delta	*sccs_ino(sccs *);
 int	sccs_userfile(sccs *);
 int	sccs_rmdel(sccs *s, delta *d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);
+int	stripdel_fixTable(sccs *s, int *pcnt);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
 void	sccs_pdelta(sccs *s, delta *d, FILE *out);
 delta	*sccs_key2delta(sccs *sc, char *key);
 int	sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
-void	sccs_md5delta(sccs *s, delta *d, char *b64);                            
+void	sccs_md5delta(sccs *s, delta *d, char *b64);
+delta	*sccs_csetBoundary(sccs *s, delta *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners);
@@ -844,7 +876,6 @@ char	*sfileRev(void);
 char	*sfileFirst(char *cmd, char **Av, int Flags);
 int	sfileDone(void);
 int	sfiles(char *opts);
-int	tokens(char *s);
 delta	*sccs_findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
@@ -857,27 +888,16 @@ void	sccs_resetuser(void);
 void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
-int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
-char    *fullname(char *, int);
 int	fileType(mode_t m);
 char	chop(char *s);
-int	chomp(char *s);
 int	atoi_p(char **p);
 char	*p2str(void *p);
 int	sccs_filetype(char *name);
-void	concat_path(char *, char *, char *);
-void	cleanPath(char *path, char cleanPath[]);
-int	isdir(char *s);
-int	isreg(char *s);
 int	isValidHost(char *h);
 int	isValidUser(char *u);
 int	readable(char *f);
-void 	randomBits(char *);
-int	samepath(char *a, char *b);
-int	writable(char *f);
-char	*basenm(char *);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, u32 kind, char *out);
@@ -886,19 +906,15 @@ char	*lock_dir(void);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
-typedef	void (*handler)(int);
-void	sig_catch(handler);
-void	sig_restore(void);
-int	sig_ignore(void);
-void	sig_default(void);
 int	isCsetFile(char *);
 int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
 void	sccs_fixDates(sccs *);
 int	sccs_xflags(delta *d);
+char	*xflags2a(u32 flags);
+u32	a2xflag(char *str);
 void	sccs_mkroot(char *root);
-char	*sccs_nivPath(sccs *s);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
 delta	*sccs_next(sccs *s, delta *d);
@@ -911,30 +927,17 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 
-int	sccs_lockfile(const char *lockfile, int wait, int quiet);
-int	sccs_stalelock(const char *lockfile, int discard);
-int	sccs_unlockfile(const char *file);
-int	sccs_mylock(const char *lockf);
-int	sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp);
+int	sccs_lockfile(char *lockfile, int wait, int quiet);
+int	sccs_stalelock(char *lockfile, int discard);
+int	sccs_unlockfile(char *file);
+int	sccs_mylock(char *lockf);
+int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 
 sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
 void	sccs_renumber(sccs *s, u32 flags, int spinners);
 char 	*sccs_iskeylong(char *key);
-#ifdef	PURIFY_FILES
-MMAP	*purify_mopen(char *file, char *mode, char *, int);
-void	purify_mclose(MMAP *, char *, int);
-#else
-MMAP	*mopen(char *file, char *mode); void	mclose(MMAP *);
-#endif
-char	*mnext(MMAP *);
-int	mcmp(MMAP *, char *);
-int	mpeekc(MMAP *);
-void	mseekto(MMAP *m, off_t off);
-off_t	mtell(MMAP *m);
-size_t	msize(MMAP *m);
-MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
 char	*licenses_accepted(void);
 int	eula_known(char *lic);
@@ -942,28 +945,18 @@ int	eula_accept(int prompt, char *lic);
 char	*eula_name(void);
 char	*eula_type(u32 bits);
 char	*mkline(char *mmap);
-int	mkdirp(char *dir);
-int	test_mkdirp(char *dir);
-int	mkdirf(char *file);
 char    *mode2FileType(mode_t m);
 int	getline(int in, char *buf, int size);
 void	explodeKey(char *key, char *parts[6]);
-int	smartUnlink(char *name);
-int	smartRename(char *old, char *new);
 void	free_pfile(pfile *pf);
 int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
 int	sccs_rewrite_pfile(sccs *s, pfile *pf);
 int	sccs_isleaf(sccs *s, delta *d);
-int	exists(char *file);
 int	emptyDir(char *dir);
-char	*dirname(char *path);
-char	*dirname_alloc(char *path);
-int	fileCopy(char *from, char *to);
-off_t	size(char *s);
 int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
-delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
+delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x);
 char	*_relativeName(char *gName, int isDir,
 	    int mustHaveRmarker, int wantRealName, project *proj);
 char	*findBin(void);
@@ -998,12 +991,9 @@ search	search_parse(char *str);
 int	search_glob(char *s, search search);
 int	search_regex(char *s, search search);
 int	search_either(char *s, search search);
-char	*whichp(char *prog, int internal, int external);
-int	which(char *prog, int internal, int external);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, void *buf, int size);
-int	almostUnique(void);
 int	repository_downgrade(void);
 int	repository_locked(project *p);
 int	repository_mine(char type);
@@ -1016,23 +1006,21 @@ int	repository_wrunlock(int all);
 int	repository_hasLocks(char *root, char *dir);
 void	repository_lockcleanup(void);
 int	repo_nfiles(sccs *cset);
-void	comments_save(char *s);
+int	comments_save(char *s);
 int	comments_savefile(char *s);
 int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
 void	comments_writefile(char *file);
+int	comments_checkStr(char *s);
 void	host_done(void);
 delta	*host_get(delta *);
 void	user_done(void);
 delta	*user_get(delta *);
 char	*shell(void);
-void	names_init(void);
-int	names_rename(char *old_spath, char *new_spath, u32 flags);
-void	names_cleanup(u32 flags);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
-MDBM	*loadConfig(char *root);
+MDBM	*loadConfig(char *root, int forcelocal);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s);
 int	sccs_rm(char *name, int force);
@@ -1042,7 +1030,6 @@ char 	**get_http_proxy(char *host);
 int	confirm(char *msg);
 int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags);
-off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int want_http_hdr);
@@ -1051,7 +1038,6 @@ int	cmdlog_end(int ret);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
-int	cat(char *file);
 char	*getHomeDir(void);
 char	*getDotBk(void);
 char	*age(time_t secs, char *space);
@@ -1067,23 +1053,17 @@ int	sccs_tagleaves(sccs *, delta **, delta **);
 ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc);
 int	stripdel_setMeta(sccs *s, int stripBranches, int *count);
-int	stripdel_markSet(sccs *s, delta *d);
 
 int     http_connect(remote *r);
 int	http_send(remote *, char *msg, size_t len, size_t ex, char *ua);
 int	http_fetch(remote *r, char *file);
-char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
 void	bktmpenv(void);
 char	*bktmpdir(char *buf, const char *template);
 char	*bktmp_local(char *buf, const char *template);
 void	bktmpcleanup(void);
 int	smallTree(int threshold);
-MDBM	*csetDiff(MDBM *, int);
-char	*aprintf(char *fmt, ...);
-char	*vaprintf(const char *fmt, va_list ptr);
 char	*strdup_tochar(const char *s, int c);
-void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
 int	gui_useDisplay(void);
@@ -1107,27 +1087,21 @@ pid_t	mkpager(void);
 int	getRealName(char *path, MDBM *db, char *realname);
 int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 int	delta_table(sccs *s, FILE *out, int willfix);
-char	**getdir(char *);
-typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
-int	walkdir(char *dir, walkfn fn, void *data);
 int	walksfiles(char *dir, walkfn fn, void *data);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
-HASH	*generateTimestampDB(project *p);
-int	timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps);
-void	dumpTimestampDB(project *p, HASH *db);
-void	updateTimestampDB(sccs *s, HASH *timestamps, int diff);
+hash	*generateTimestampDB(project *p);
+int	timeMatch(project *proj, char *gfile, char *sfile, hash *timestamps);
+void	dumpTimestampDB(project *p, hash *db);
+void	updateTimestampDB(sccs *s, hash *timestamps, int diff);
 struct tm *utc2tm(time_t t);
 int	sccs_setStime(sccs *s);
 int	isLocalHost(char *h);
-void	core(void);
 void	ids(void);
 void	http_hdr(void);
 int	check_rsh(char *remsh);
-int	smartMkdir(char *pathname, mode_t mode);
 void	sccs_color(sccs *s, delta *d);
 int	out(char *buf);
 int	getlevel(void);
-int	isSymlnk(char *s);
 delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
 int	cset_map(sccs *s, int extras);
 int	cset_write(sccs *s);
@@ -1137,8 +1111,6 @@ int	cweave_init(sccs *s, int extras);
 int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
-int	onelink(char *s);
-int	isEffectiveDir(char *s);
 int	fileTypeOk(mode_t m);
 void	sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag);
 int	sccs_scompress(sccs *s, int flags);
@@ -1186,15 +1158,12 @@ char	*secure_hashstr(char *str, int len, char *key);
 char	*makestring(int keynum);
 
 void	delete_cset_cache(char *rootpath, int save);
-time_t	mtime(char *path);
 void	notice(char *key, char *arg, char *type);
-pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
 delta	*sccs_getedit(sccs *s, char **revp);
 void	line2av(char *cmd, char **av);
 void	smerge_saveseq(u32 seq);
-char	*loadfile(char *file, int *size);
 char	*repo_id(void);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
@@ -1202,18 +1171,17 @@ char	*findDotFile(char *old, char *new, char *buf);
 char	*platform(void);
 char	*pager(void);
 int	bkmail(char *url, char **to, char *subject, char *file);
-int	sfiles_skipdir(char *dir);
 void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);
 void	progressbar(int n, int max, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
-void	bk_preSpawnHook(int flags, char *const av[]);
+void	bk_preSpawnHook(int flags, char *av[]);
 int	upgrade_decrypt(FILE *fin, FILE *fout);
 int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
 int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
-int	rmtree(char *dir);
+int	inskeys(char *image, char *keys);
 void	lockfile_cleanup(void);
 void	set_timestamps(char *sfile);
 
@@ -1236,7 +1204,7 @@ int	saveStdin(char *tmpfile);
 char	**parent_pullp(void);
 char	**parent_pushp(void);
 char	**parent_allp(void);
-int	restore_backup(char *backup_sfio);
+int	restore_backup(char *backup_sfio, int overwrite);
 char	*parent_normalize(char *);
 u32	crc(char *s);
 int	annotate_args(int flags, char *args);
@@ -1250,6 +1218,9 @@ int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
 int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
 int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
+void	randomBits(char *buf);
+int	almostUnique(void);
+
 extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;

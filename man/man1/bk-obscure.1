@@ -1,20 +1,21 @@
-.so bk-macros
-.TH "bk obscure" 1 %E% "\*(BC" "\*(UM"
+.so ../bk-macros
+.TH "bk obscure" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk obscure \- obscure \*(BK file comments and contents
 .SH SYNOPSIS
-.B bk obscure --I-know-this-destroys-my-tree
-.SH NOTICE
-This command will destroy your repository, do it if and only if the repository
-in question is an unneeded copy.
+.B bk obscure 
+.SH WARNING
+This command will destroy your repository; do it if and only if the
+repository in question is an unneeded copy.
 .SH DESCRIPTION
-.LP
-The obscure command is typically used if you wish to send someone a repository
-for performance analysis and/or debugging.
-All data files have their contents and comments
-obscured.  The intent is that the obscuring of the repository data will
-result in a repository which has the same size, shape, number of deltas,
-number of changesets, etc., but with different data.
+The
+.B bk obscure
+command is typically used if you wish to send a
+repository to \*[BM] for performance analysis and/or debugging.
+All data files have their contents and comments obscured.
+The intent is that the obscuring of the repository data will result in a
+repository which has the same size, shape, number of deltas, number of
+changesets, etc., but with different data.
 .LP
 The current method used to obscure the data is to sort each line of data
 alphabetically, i.e.,
@@ -25,13 +26,23 @@ turns into
 .DS
 ussromleeeecbaP
 .DE
-The obscuring is currently fairly simple and is theoretically
-reversible with enough compute power so this is not a means to encrypt
-a repository.  All commercial customers of BitMover are covered by an 
-non-disclosure clause in their commercial contract; the
-combination of that clause and the obfuscation are
-a reasonable way to provide BitMover access to a repository.
+The obscuring is currently fairly simple and is theoretically reversible
+with enough compute power so this is not a means to encrypt a repository.
+All \*[BM] customers are covered by an non-disclosure
+clause in their commercial contract; the combination of that clause and
+the obfuscation are a reasonable way to provide \*[BM] access to a
+repository.
+.SH EXIT STATUS
+.LP
+.B bk obscure
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH SEE ALSO
-.SA admin 1
+.SA admin
 .SH CATEGORY
-.B Admin
+.B Utility

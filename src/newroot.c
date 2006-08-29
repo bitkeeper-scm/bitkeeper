@@ -19,9 +19,9 @@ usage:			sys("bk", "help", "-s", "newroot", SYS);
 	}
 	if (ranbits) {
 		u8	*p;
-		if (strlen(ranbits) != 16) {
+		if (strlen(ranbits) > 16) {
 k_err:			fprintf(stderr,
-			    "ERROR: -k option must have 16 lower case "
+			    "ERROR: -k option can have at most 16 lower case "
 			    "hex digits\n");
 			goto usage;
 		}

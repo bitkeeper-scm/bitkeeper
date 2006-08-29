@@ -1,36 +1,52 @@
 .so ../bk-macros
-.TH "bk superset" 1 %E% "\*(BC" "\*(UM"
+.TH "bk superset" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk superset \- check to see if the parent is ahead of the current repository
 .SH SYNOPSIS
-.Bc bk superset [\-q] [
-.ARGc parent
-.B ]
+.B bk superset
+.[B] \-q
+.[ARG] parent
 .SH DESCRIPTION
 .LP
 superset does checks to see if removing the current repository is a lossless
-event.  It checks that:
-.TP .3i
-\*(BU
-the parent has all changesets that are in the current repository
-.tp
-\*(BU
-there are no pending deltas
-.tp
-\*(BU
-there are no modified files
-.tp
-\*(BU
-there are no extra files
-.tp
-\*(BU
-there are no parked files
+event. 
 .LP
-Unless the -q option is present superset lists all things which are not
+It checks that:
+.LP
+.li
+there are no local only changesets and/or tags
+.li
+there are no pending deltas
+.li
+there are no modified files
+.li
+there are no extra files
+.\" .li
+.\" there are no parked files
+.li
+there are no pending patches from aborted pulls
+.li
+there are no unresolved pulls
+.li
+there are no saved patches from a
+.B bk collapse
+operation
+.li
+there are no saved patches from an undo/unpull operation
+.li
+if there are sub-repositories and 
+.B no parent was specified 
+in the call to 
+.BR "bk superset" ,
+then the sub-repositories are also similarly checked against their parent
+.LP
+Unless the
+.Q \-q
+option is present superset lists all things which are not
 in the parent.
 .SH OPTIONS
 .TP
-.B -q
+.B \-q
 Be quiet
 .SH "EXIT STATUS"
 .LP

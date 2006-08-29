@@ -100,7 +100,7 @@ smerge_main(int ac, char **av)
 	}
 
 	mode = MODE_3WAY;
-	while ((c = getopt(ac, av, "234A:a:defghI:npr:s")) != -1) {
+	while ((c = getopt(ac, av, "234A;a;defghI;l;npr;R;s")) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
@@ -128,13 +128,19 @@ smerge_main(int ac, char **av)
 		    case 'e': /* show examples */
 			getMsg("smerge_examples", 0, 0, stdout);
 			return(2);
+		    case 'l':
+			revs[LEFT] = strdup(optarg);
+			break;
+		    case 'r':
+			revs[RIGHT] = strdup(optarg);
+			break;
 #ifdef	SHOW_SEQ
 /*
  * This stuff is removed for 3.0.
  * If it gets added back, there is also a regression for this
  * in the t.smerge history that should be recovered.
  */
-		    case 'r': /* show output in the range <r> */
+		    case 'R': /* show output in the range <r> */
 			if (parse_range(optarg, &start, &end)) {
 				usage();
 				return (2);
@@ -150,15 +156,12 @@ smerge_main(int ac, char **av)
 			return (2);
 		}
 	}
-	if (ac - optind != 3) {
+	unless (av[optind] && !av[optind+1] && revs[LEFT] && revs[RIGHT]) {
 		usage();
 		return (2);
 	}
 	if (fdiff && mode == MODE_3WAY) mode = MODE_GCA;
-
 	file = av[optind];
-	revs[LEFT] = strdup(av[optind + 1]);
-	revs[RIGHT] = strdup(av[optind + 2]);
 	revs[GCA] = find_gca(file, revs[LEFT], revs[RIGHT]);
 
 	for (i = 0; i < 3; i++) {
@@ -324,7 +327,7 @@ find_gca(char *file, char *left, char *right)
 	char	*sfile = name2sccs(file);
 	delta	*dl, *dr, *dg;
 	char	*inc = 0, *exc = 0;
-	char	buf[MAXLINE];
+	char	**revlist = 0;
 
 	s = sccs_init(sfile, INIT_NOCKSUM);
 	free(sfile);
@@ -344,20 +347,20 @@ find_gca(char *file, char *left, char *right)
 		sccs_free(s);
 		exit(2);
 	}
-	dg = sccs_gca(s, dl, dr, &inc, &exc, 1);
-	strcpy(buf, dg->rev);
+	dg = sccs_gca(s, dl, dr, &inc, &exc);
+	revlist = str_append(0, dg->rev, 0);
 	if (inc) {
-		strcat(buf, "+");
-		strcat(buf, inc);
+		revlist = str_append(revlist, "+", 0);
+		revlist = str_append(revlist, inc, 0);
 		free(inc);
 	}
 	if (exc) {
-		strcat(buf, "-");
-		strcat(buf, exc);
+		revlist = str_append(revlist, "-", 0);
+		revlist = str_append(revlist, exc, 0);
 		free(exc);
 	}
 	sccs_free(s);
-	return (strdup(buf));
+	return (str_pullup(0, revlist));
 }
 
 private void

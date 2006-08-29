@@ -1,8 +1,8 @@
 #include "bkd.h"
 
-#define	PARENT		"BitKeeper/log/parent"
-#define	PUSH_PARENT	"BitKeeper/log/push-parent"
-#define	PULL_PARENT	"BitKeeper/log/pull-parent"
+#define	PARENT		proj_fullpath(0, "BitKeeper/log/parent")
+#define	PUSH_PARENT	proj_fullpath(0, "BitKeeper/log/push-parent")
+#define	PULL_PARENT	proj_fullpath(0, "BitKeeper/log/pull-parent")
 
 private	void	add(char *which, char *url, int *rc);
 private	void	rm(char *which, char *url, int *rc);
@@ -193,15 +193,16 @@ print(void)
 private void
 add(char *which, char *url, int *rc)
 {
-	char	*p, *m = 0;
+	char	*p, *m;
+	char	*parent = "?";
 	remote	*r = 0;
 
 // ttyprintf("ADD %s %s\n", which, url);
 
 	switch (*which) {
-	    case 'i': m = "pull parent"; break;
-	    case 'o': m = "push parent"; break;
-	    case 'b': m = "parent"; break;
+	    case 'i': parent = "pull parent"; break;
+	    case 'o': parent = "push parent"; break;
+	    case 'b': parent = "parent"; break;
 	}
 	unless (r = remote_parse(url, REMOTE_BKDURL)) {
 		fprintf(stderr, "Invalid parent address: %s\n", url);
@@ -240,7 +241,7 @@ add(char *which, char *url, int *rc)
 
 	unless (p = mdbm_fetch_str(opts.parents, url)) {
 		mdbm_store_str(opts.parents, url, which, MDBM_INSERT);
-		m = aprintf("Add %s %s\n", m, url);
+		m = aprintf("Add %s %s\n", parent, url);
 		opts.mods = addLine(opts.mods, m);
 		free(url);
 		return;
@@ -249,7 +250,7 @@ add(char *which, char *url, int *rc)
 	    case 'i':
 		if (*p == 'o') {
 			mdbm_store_str(opts.parents, url, "b", MDBM_REPLACE);
-			m = aprintf("Add %s %s\n", m, url);
+			m = aprintf("Add %s %s\n", parent, url);
 			opts.mods = addLine(opts.mods, m);
 		}
 		break;
@@ -257,14 +258,14 @@ add(char *which, char *url, int *rc)
 	    case 'o':
 		if (*p == 'i') {
 			mdbm_store_str(opts.parents, url, "b", MDBM_REPLACE);
-			m = aprintf("Add %s %s\n", m, url);
+			m = aprintf("Add %s %s\n", parent, url);
 			opts.mods = addLine(opts.mods, m);
 		}
 		break;
 
 	    case 'b':
 		mdbm_store_str(opts.parents, url, "b", MDBM_REPLACE);
-		m = aprintf("Add %s %s\n", m, url);
+		m = aprintf("Add %s %s\n", parent, url);
 		opts.mods = addLine(opts.mods, m);
 		break;
 	}
@@ -333,9 +334,9 @@ record(void)
 	kvpair	kv;
 
 	unless (opts.parents) {
-		rc |= unlink(PARENT);
-		rc |= unlink(PUSH_PARENT);
-		rc |= unlink(PULL_PARENT);
+		if (exists(p = PARENT)) rc = unlink(p);
+		if (exists(p = PUSH_PARENT)) rc = unlink(p);
+		if (exists(p = PULL_PARENT)) rc = unlink(p);
 		unless (opts.quiet) printf("Remove all parent pointers.\n");
 		return (rc ? 1 : 0);
 	}
@@ -362,21 +363,23 @@ record(void)
 		unlink(PARENT);
 	}
 
-	if (lines2File(pull, PULL_PARENT)) {
-		rc = 1;
-		perror(PULL_PARENT);
-	}
-	if (lines2File(push, PUSH_PARENT)) {
-		rc = 1;
-		perror(PUSH_PARENT);
-	}
 	if (sameLines(pull, push) && (nLines(pull) == 1)) {
 		if (lines2File(pull, PARENT)) {
 			rc = 1;
 			perror(PARENT);
 		}
+		unlink(PULL_PARENT);
+		unlink(PUSH_PARENT);
 	} else {
 		unlink(PARENT);
+		if (lines2File(pull, PULL_PARENT)) {
+			rc = 1;
+			perror(PULL_PARENT);
+		}
+		if (lines2File(push, PUSH_PARENT)) {
+			rc = 1;
+			perror(PUSH_PARENT);
+		}
 	}
 
 	unless (opts.quiet) {
@@ -425,7 +428,7 @@ parent_normalize(char *url)
 
 	if ((r = remote_parse(url, REMOTE_BKDURL))
 	    && (r->type ==  ADDR_FILE) && r->path) {
-		url = fullname(r->path, 0);
+		url = fullname(r->path);
 	}
 	if (r) remote_free(r);
 	return (strdup(url));

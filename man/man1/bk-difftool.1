@@ -1,25 +1,22 @@
 .so ../bk-macros
-.TH "bk difftool" 1 %E% "\*(BC" "\*(UM"
+.TH "bk difftool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk difftool \- \*(BK Graphical Diff Tool
+bk difftool \- \*(BK graphical differences viewer
 .SH SYNOPSIS
 .B bk difftool
 .br
-.B bk difftool -
+.B bk difftool \-
 .br
 .B bk difftool
 .ARG file1
 .br
 .B bk difftool 
 .OPTreq \-r rev
-\ 
 .ARG file1
 .br
 .B bk difftool
 .OPTreq \-r rev1
-\ 
 .OPTreq \-r rev2
-\ 
 .ARG file1
 .br
 .B bk difftool
@@ -27,12 +24,12 @@ bk difftool \- \*(BK Graphical Diff Tool
 .ARG file2
 .br
 .B bk difftool
-.ARG /path/file1
-.ARG ../someother/path/
+.ARG path/file1
+.ARG path/file2
 .SH DESCRIPTION
 .LP
 The
-.B difftool
+.B bk difftool
 command is a side-by-side differences viewer that shows the files
 being compared in separate windows. The differences are color coded,
 but as you move to a new diff, that diff becomes highlighted in a
@@ -41,34 +38,35 @@ keys described below.
 .SH ARGUMENTS
 .LP
 If no arguments are given, 
-.B difftool
+.B bk difftool
 finds all the modified files in the current directory and
 subdirectories and allows the user to select the files they are
 interested in via a pull-down menu. Also, keyboard accelerators can
 be used to navigate between the files.
 .LP
-If a dash (-) is given as an argument, 
-.B
-difftool
+If a dash (\c
+.QR \- )
+is given as an argument, 
+.B bk difftool
 takes a list of files to view from stdin. For example, 
 .DS
 bk sfiles -gc | bk difftool -
 .DE
 .LP
 If only one file is specified and that file is a locked and modified file,
-.B difftool
+.B bk difftool
 will diff the most recent revision against the locked version.
 .LP
 If a revision and a checked out file are specified,
-.B difftool
+.B bk difftool
 diffs that version against the checked out file.
 .LP
 If two revisions and a file are specified,
-.B difftool
+.B bk difftool
 diffs those two versions of the file.
 .LP
 If two files are specified,
-.B difftool
+.B bk difftool
 diffs those two files.
 .LP
 If a file (or a path with a filename) are given as the first argument
@@ -87,16 +85,24 @@ bk difftool src/filename.c ../../repo/src/filename.c
 .DE
 .SH "DISCARDING FILES"
 When a file that is being viewed is in the checked out state, a button
-labelled "discard" will be enabled. You may click this button to
-discard your changes (see bk unedit). To perform the discard you must
-click on the discard button twice. After the first click you will be
+labelled
+.Q discard
+will be enabled. You may click this button to
+discard your changes (see
+.BR "bk unedit" ).
+To perform the discard you must
+click on the
+.Q discard
+button twice. After the first click you will be
 prompted to make a second click. If you click anywhere other than the
-discard button, or wait 10 seconds, the discard will be cancelled.
+.Q discard
+button, or wait 10 seconds, the discard will be cancelled.
 .LP
-Once a file has been discarded, it's corresponding entry in the Files
+Once a file has been discarded, it's corresponding entry in the
+.Q Files
 menu will be disabled. 
 .SH "KEY BINDINGS"
-.TP 1.2i
+.TP 16
 .B Home
 Scroll both files to the top
 .tp
@@ -120,7 +126,7 @@ Scroll both files to the left
 .tp
 .B Right
 Scroll both files to the right
-.TP
+.tp
 .B Control-q
 Quit
 .tp
@@ -143,12 +149,12 @@ Go to then next file
 Go to the previous file
 .SH SEE ALSO
 .LP
-.SA diffs 1
-.SA fmtool 1
+.SA diffs
+.SA fmtool
 .SA config-gui
 .SH CATEGORY
-.B GUI-tools
-.br
 .B Common
 .br
-.B File
+.B GUI-tools
+.br
+.B Repository

@@ -55,9 +55,8 @@ test -f $HERE/project/BitKeeper/readers && {
 exit 0
 EOF
 chmod +x BitKeeper/triggers/post-incoming
-bk pull $Q ../clone >OUT 2>&1 
 (echo ur
-echo C) | bk resolve -t >OUT 2>&1 || {
+echo C) | bk pull $Q ../clone >OUT 2>&1 || {
 	echo failed to finish resolve
 	cat OUT
 	exit 1

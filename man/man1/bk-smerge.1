@@ -1,24 +1,25 @@
 .so ../bk-macros
-.TH "bk smerge" 1 %E% "\*(BC" "\*(UM"
+.TH "bk smerge" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk smerge \- smart text-based 3-way file merge
 .SH SYNOPSIS
 .\"
 .\".Bc bk smerge [\-23efghns] [
-.Bc bk smerge [\-2efghn] [
-.OPTreq \-A n
-.Bc ] [
-.OPTreq \-a n
-.B ]
+.B bk smerge
+.[B] \-2efghn
+.[OPTreq] \-A n
+.[OPTreq] \-a n
 .\".Bc ] [
-.\".OPTreq \-r r
+.\".OPTreq \-R r
 .\".B ] 
+.OPTreq \-l local
+.OPTreq \-r remote
 .ARG file
-.ARG local
-.ARG remote
 .SH DESCRIPTION
 .LP
-The bk smerge command compares the three versions of the file and 
+The
+.B bk smerge
+command compares the three versions of the file and 
 identifies all changes by either the local or the remote version of the 
 file compared to the greatest common ancestor (gca).  These
 groups of changes are known as conflict regions and are bounded by a
@@ -27,23 +28,29 @@ the conflict region and at the end of the conflict region.  For each
 region, one or more of the automerge algorithms (see below) are run
 to see if the changes may be merged automatically.
 .LP
-The bk smerge command does not use the traditional diff3 merge.
+The
+.B bk smerge
+command does not use the traditional
+.BR diff3 (1)
+merge.
 There are a number of heuristics in the default enabled merge
 algorithms which help determine regions which are safe to automerge.
 These can simplify and resolve many conflict regions that can not
-be resolved in the traditional diff3 merge.  Please note, smerge can
+be resolved in the traditional
+.BR diff3 (1)
+merge.  Please note, smerge can
 only be run on SCCS files.
 .LP
 In some scripts users may want to call smerge directly.  If so, an example
 for usage is:
 .DS
-bk smerge -g slib.c 1.661 1.660.1.4 > slib.c.merged
+bk smerge -g -l1.661 -r1.660.1.4 slib.c > slib.c.merged
 .DE
 where 1.661 is the local revision and 1.660.1.4 is the remote
 revision, slib.c is the file name and slib.c.merged is the file to
 which merge output is redirected.
 .LP
-The string for the local remote versions of the file can be
+The string for the local or remote versions of the file can be
 expressed in the form "rev+includes-excludes" where rev is a normal
 revision number like "1.661" and includes and excludes are a comma
 separated list if revisions to include or exclude from the base
@@ -64,7 +71,8 @@ with the new text.
 This code finds conflict regions where only the local or the remote
 version has made any changes.  In this case the conflict is resolved
 and the side that made changes is kept.  This is the traditional
-diff3 type automerge algorithm.
+.BR diff3 (1)
+type automerge algorithm.
 .tp
 .B 3. Merge adjacent, non-overlapping modifications on both sides
 This code attempts to find a conflict consisting of a text
@@ -75,18 +83,19 @@ contains lines substituted in the local file that are unmodified in the
 remote and there are lines substituted in the remote file that are
 unmodified in the local file, then a merge of the two substitutions is
 performed.
-.RS 1i
 .sp
-Here is an example of a conflict region (in the -g output format)
+Here is an example of a conflict region (in the
+.Q \-g
+output format)
 where this algorithm will successfully resolve the conflict.
 .DS
-<<<<<<< local slib.c 1.642.1.6 vs 1.645
+\&<<<<<<< local slib.c 1.642.1.6 vs 1.645
 	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
 -	assert(sc->tree);
 - 	sccs_sdelta(sc, sc->tree, file);
 +	assert(HASGRAPH(sc));
 +	sccs_sdelta(sc, sccs_ino(sc), file);
-<<<<<<< remote slib.c 1.642.1.6 vs 1.642.2.1
+\&<<<<<<< remote slib.c 1.642.1.6 vs 1.642.2.1
 -	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
 +	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
 	assert(sc->tree);
@@ -100,7 +109,6 @@ The block after the resolve will be:
 	sccs_sdelta(sc, sccs_ino(sc), file);
 .DE
 Multiple substitutions are not yet handled.
-.RE
 .tp
 .B 4. Merge identical changes at the start of a conflict
 This code recognizes one or more lines at the beginning the local and
@@ -125,15 +133,15 @@ progress is made.
 .LP
 Default conflict output format is as follows:
 .DS
-<<<<<<< gca slib.c 1.642.1.6
+\&<<<<<<< gca slib.c 1.642.1.6
 	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
 	assert(sc->tree);
 	sccs_sdelta(sc, sc->tree, file);
-<<<<<<< local slib.c 1.645
+\&<<<<<<< local slib.c 1.645
 	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
 	assert(HASGRAPH(sc));
 	sccs_sdelta(sc, sccs_ino(sc), file);
-<<<<<<< remote slib.c 1.642.2.1
+\&<<<<<<< remote slib.c 1.642.2.1
 	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
 	assert(sc->tree);
 	sccs_sdelta(sc, sc->tree, file);
@@ -146,12 +154,14 @@ the form: <<<<<<<
 .ARG revision
 followed by the conflict lines from that file.  The end of the conflict region
 is indicated by ">>>>>>>".
-Examples of conflict output can be viewed by using the -e option.
+Examples of conflict output can be viewed by using the
+.Q \-e
+option.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1i
+.TP \-A\*<n\*>n
 .B \-2
-Enable the 2 way output format (like diff3)
+Enable the 2 way output format (like
+.BR diff3 (1)).
 .tp
 .B \-g
 Enable 'gca' output format that shows the local and
@@ -161,12 +171,12 @@ it confuses people the first time they see it.
 .tp
 .B \-n
 Enable the 'newonly' output format.  (like
-.B \-2
-except it marks added lines)
+.Q \-2
+except it marks added lines).
 .tp
 .B \-e
 Print examples of all 4 output formats from 
-.BR smerge .
+.BR "bk smerge" .
 .tp
 .OPTreq \-a n
 Enable merge functions
@@ -174,10 +184,11 @@ Enable merge functions
 where 
 .ARG n
 is a comma separated list of automerge algorithms specified by number.
-.OPTreq \-a all
-\ will enable all automerge algorithms.   
-Use 'bk smerge -h' to find the algorithms enabled by
-default.
+.Qreq \-a all
+will enable all automerge algorithms.   
+Use 
+.Q bk smerge \-h
+to find the algorithms enabled by default.
 .tp
 .OPTreq \-A n
 Disable merge functions
@@ -185,12 +196,12 @@ Disable merge functions
 where
 .ARG n
 is a comma separated list of automerge algorithms specified by number.
-.OPTreq \-A all
-\ will turn off all automerging.
+.Qreq \-A all
+will turn off all automerging.
 .tp
 .B \-f
 Enable fdiff output.  (Used internally by 
-.Bc fm3tool
+.Bc bk fm3tool
 )
 .\".tp
 .\".B \-s
@@ -198,19 +209,31 @@ Enable fdiff output.  (Used internally by
 .tp
 .B \-h
 Display automerge algorithms by number that are enabled by default.
-If used in conjunction with \-a or \-A, asterisks denote enabled algorithms.
+If used in conjunction with
+.Q \-a
+or
+.QR \-A ,
+asterisks denote enabled algorithms.
 .\".tp
 .\".OPTreq \-r range
 .\"When given a range of the format 'start..end' it limits the output to
 .\"just the sequence numbers after (not including) 'start' and before (not 
 .\"including) 'end'.  start or end can be omitted to go to the end of the file.
 .SH EXIT STATUS
-0 for no conflicts, 1 for conflicts, 2 for errors.
+.B bk smerge
+returns exit status:
+.TP
+0
+if there are no conflicts.
+.TP
+1
+if there are conflicts.
+2
+on failure.
 .SH "SEE ALSO"
-.BR diff3 (1)
-.br
-.SA merging 1
-.SA resolve 1
-.SA merge 1
+.BR diff3 (1),
+.SA merging
+.SA resolve
+.SA merge
 .SH CATEGORY
 .B Utility

@@ -51,24 +51,6 @@ get(char *path, int flags, char *output)
 	return (ret ? -1 : 0);
 }
 
-char *
-package_name(void)
-{
-	MDBM	*m;
-	char	*n;
-	static	char *name = 0;
-
-	if (name) return (name);
-	unless (m = loadConfig(".")) return ("");
-	unless (n = mdbm_fetch_str(m, "description")) {
-		mdbm_close(m);
-		return ("");
-	}
-	name = (strdup)(n);	/* hide it from purify */
-	mdbm_close(m);
-	return (name);
-}
-
 void
 status(int verbose, FILE *f)
 {
@@ -77,7 +59,7 @@ status(int verbose, FILE *f)
 	FILE	*f1;
 
 	fprintf(f, "Status for BitKeeper repository %s:%s\n",
-	    sccs_gethost(), fullname(".", 0));
+	    sccs_gethost(), fullname("."));
 	bkversion(f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
@@ -229,12 +211,13 @@ getMsgv(char *msg_name, char **bkargs, char *prefix, char b, FILE *outf)
 			fputs(bkargs[n], outf);
 			fputs(p, outf);
 		} else if (p = strstr(buf, "#BKEXEC#")) {
-			f1 = popen(&p[8], "r");
-			while (fgets(buf, sizeof (buf), f1)) {
-				fputs("\t", outf);
-				fputs(buf, outf);
+			if (f1 = popen(&p[8], "r")) {
+				while (fgets(buf, sizeof (buf), f1)) {
+					fputs("\t", outf);
+					fputs(buf, outf);
+				}
+				pclose(f1);
 			}
-			pclose(f1);
 			*p = 0;
 		} else {
 			fputs(buf, outf);

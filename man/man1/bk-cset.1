@@ -1,55 +1,75 @@
 .so ../bk-macros
-.TH "bk cset" 1 %E% "\*(BC" "\*(UM"
-.\"    ====================== BitKeeper cset command ======================
+.TH "bk cset" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk cset \- creates and manipulates changesets
+bk cset \- manage changesets
 .SH SYNOPSIS
-.Bc bk cset [\-Cpq] [
-.OPTreq \-i list
-.Bc ] [
-.B \-l
-.Bc ] [
-.OPTreq \-M range
-.Bc ] [
-.OPTreq \-r rev
-.B ]
+.B bk cset
+.[B] \-Cq
+.[OPTreq] \-i list
+.\" .[OPTreq] \-M range
+.[OPTreq] \-x list
+.\" .[B] \-
 .SH DESCRIPTION
 .LP
-The cset command is a low level command used mostly to generate \*(BK patches.
+The cset command may be used to restore changeset marks in files (part 
+of \*(BK's per file metadata),
+to re-include one or more changesets which were previously excluded,
+or to exclude one or more changesets.
 .SH OPTIONS
-.if t .TP .7i
-.if n .TP 1i
+.TP \-x\*<list\*>
 .B \-C
-Clear and remark all ChangeSet boundaries.
+Clear and remark all changeset boundaries in all files under \*(BK control.
 .tp
 .OPTreq \-i list
-Create a new cset on TOT that includes the csets in
+Create a new changeset that includes the changes in
 .ARG list .
-.tp
-.B \-l
-Read changeset revisions or keys from stdin and print the list of deltas in 
-each of the changesets.
-.tp
-.OPTreq \-M range
-Mark the files included in the
-.ARG range
-of csets.
-.tp
-.B \-p
-Print the list of deltas being added to the cset.
+.\" .tp
+.\" .OPTreq \-M range
+.\" Mark the files included in the
+.\" .ARG range
+.\" of csets.
 .tp
 .B \-q
 Run quietly.
 .tp
-.OPTreq \-r rev
-Print the list of deltas in ChangeSet revision,
-.ARG rev .
-.tp
 .OPTreq \-x list
-Create a new cset on TOT that excludes the csets in 
+Create a new changeset that excludes the changesets in 
 .ARG list .
 .SH BUGS
-.LP
-This command does too much and needs to be split apart.
+The 
+.Q \-i
+and
+.Q \-x
+options currently work only on file contents, not renames, creates, 
+mode changes, or xflags.
+.SH REMOVED INTERFACES
+Older versions of
+.B bk cset
+had two forms which are no longer supported since 
+.B bk changes
+can provide the same information.
+.DS
+$ \f(CBbk cset -r1.5\fP
+ChangeSet|1.5
+BitKeeper/deleted/.del-resolve.perl|1.4
+src/takepatch.c|1.16
+$ \f(CBbk changes -r1.5 -vvnd':GFILE:|:REV:'\fP
+ChangeSet|1.5
+BitKeeper/deleted/.del-resolve.perl|1.4
+src/takepatch.c|1.16
+$ \f(CBecho 1.5 | bk cset -l \-\fP
+ChangeSet|1.5
+BitKeeper/deleted/.del-resolve.perl|1.4
+src/takepatch.c|1.16
+$ \f(CBecho 1.5 | bk changes -vvnd':GFILE:|:REV:' \-\fP
+ChangeSet|1.5
+BitKeeper/deleted/.del-resolve.perl|1.4
+src/takepatch.c|1.16
+.DE
+.SH SEE ALSO
+.SA admin
+.SA changes
 .SH CATEGORY
+.B Admin
+.br
 .B Repository

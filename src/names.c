@@ -9,16 +9,15 @@
 #include "system.h"
 #include "sccs.h"
 
-private	 void	pass1(char *spath);
+private	 void	pass1(sccs *s);
 private	 void	pass2(u32 flags);
-private	 int	try_rename(char *old, char *new, int dopass1, u32 flags);
-
-private	int filenum;
+private	 int	try_rename(sccs *s, delta *d, int dopass1, u32 flags);
 
 int
 names_main(int ac, char **av)
 {
 	sccs	*s;
+	delta	*d;
 	char	*n;
 	int	c, todo = 0, error = 0;
 	u32	flags = 0;
@@ -30,18 +29,17 @@ names_main(int ac, char **av)
 				return (1);
 		}
 	}
-	
-	names_init();
+	if (proj_cd2root()) {
+		fprintf(stderr, "names: cannot find project root.\n");
+		return (1);
+	}
 	for (n = sfileFirst("names", &av[optind], 0); n; n = sfileNext()) {
 		unless (s = sccs_init(n, 0)) continue;
-		unless (sccs_setpathname(s)) {
-			fprintf(stderr,
-			    "names: can't initialize pathname in %s\n",
-			    	s->gfile);
+		unless (d = sccs_top(s)) {
 			sccs_free(s);
 			continue;
 		}
-		if (streq(s->spathname, s->sfile)) {
+		if (sccs_patheq(d->pathname, s->gfile)) {
 			sccs_free(s);
 			continue;
 		}
@@ -54,40 +52,18 @@ names_main(int ac, char **av)
 			continue;
 		}
 		sccs_close(s); /* for win32 */
-		todo += names_rename(s->sfile, s->spathname, flags);
+		todo += try_rename(s, d, 1, flags);
 		sccs_free(s);
 	}
 	if (sfileDone()) error |= 4;
-	names_cleanup(flags);
+	if (todo) pass2(flags);
 	return (error);
 }
 
-void
-names_init(void)
-{
-	/* this should be redundant, we should always be at the project root */
-
-	if (proj_cd2root()) {
-		fprintf(stderr, "names: cannot find project root.\n");
-		exit(1);
-	}
-	filenum = 0;
-}
-
-int
-names_rename(char *pathold, char *pathnew, u32 flags)
-{
-	return(try_rename(pathold, pathnew, 1, flags));
-}
-
-void
-names_cleanup(u32 flags)
-{
-	if (filenum) pass2(flags);
-}
+private	int filenum = 0;
 
 private	void
-pass1(char *spath)
+pass1(sccs *s)
 {
 	char	path[MAXPATH];
 
@@ -96,8 +72,8 @@ pass1(char *spath)
 		mkdir("BitKeeper/RENAMES/SCCS", 0777);
 	}
 	sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
-	if (rename(spath, path)) {
-		fprintf(stderr, "Unable to rename(%s, %s)\n", spath, path);
+	if (rename(s->sfile, path)) {
+		fprintf(stderr, "Unable to rename(%s, %s)\n", s->sfile, path);
 	}
 }
 
@@ -106,6 +82,7 @@ pass2(u32 flags)
 {
 	char	path[MAXPATH];
 	sccs	*s;
+	delta	*d;
 	int	worked = 0, failed = 0;
 	int	i;
 	
@@ -117,22 +94,18 @@ pass2(u32 flags)
 			failed++;
 			continue;
 		}
-		unless (sccs_setpathname(s)) {
-			fprintf(stderr,
-			    "names: can't initialize pathname in %s\n",
-			    	s->gfile);
+		unless (d = sccs_top(s)) {
+			/* should NEVER happen */
+			fprintf(stderr, "Can't find TOT in %s\n", path);
+			fprintf(stderr, "ERROR: File left in %s\n", path);
 			sccs_free(s);
 			failed++;
 			continue;
 		}
 		sccs_close(s); /* for Win32 NTFS */
-		if (try_rename(path, s->spathname, 0, flags)) {
+		if (try_rename(s, d, 0, flags)) {
 			fprintf(stderr, "Can't rename %s -> %s\n",
-			    path, s->spathname);
-			if (exists(s->spathname)) {
-				fprintf(stderr,
-				    "REASON: destination exists.\n");
-			}
+			    s->gfile, d->pathname);
 			fprintf(stderr, "ERROR: File left in %s\n", path);
 			sccs_free(s);
 			failed++;
@@ -153,27 +126,30 @@ pass2(u32 flags)
  * If not, just move it there.  We should be clean so just do the s.file.
  */
 private	int
-try_rename(char *spathold, char *spathnew, int dopass1, u32 flags)
+try_rename(sccs *s, delta *d, int dopass1, u32 flags)
 {
-	sccs	*s;
 	int	ret;
 
-	assert(spathold);
-	assert(spathnew);
-	if (exists(spathnew)) {
+	char	*sfile = name2sccs(d->pathname);
+
+	assert(sfile);
+	if (exists(sfile)) {
 		/* circular or deadlock */
-		if (dopass1) pass1(spathold);
+		free(sfile);
+		if (dopass1) pass1(s);
 		return (1);
 	}
-	mkdirf(spathnew);
-	if (rename(spathold, spathnew)) {
-		if (dopass1) pass1(spathold);
+	mkdirf(sfile);
+	if (rename(s->sfile, sfile)) {
+		free(sfile);
+		if (dopass1) pass1(s);
 		return (1);
 	}
 	unless (flags & SILENT) {
-		fprintf(stderr, "names: %s -> %s\n", spathold, spathnew);
+		fprintf(stderr, "names: %s -> %s\n", s->sfile, sfile);
 	}
-	s = sccs_init(spathnew, flags|INIT_NOCKSUM);
+	s = sccs_init(sfile, flags|INIT_NOCKSUM);
+	free(sfile);
 	unless (s) return (1);
 	ret = 0;
 	if (do_checkout(s)) ret = 1;

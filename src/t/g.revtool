@@ -93,7 +93,7 @@ echo OK
 
 # this does a very shallow test for whether the graph is correct;
 # it simply checks that one data structure has been initialized. 
-echo $N Simple graph test ........... ...............................$NL
+echo $N Simple graph test ...........................................$NL
 bk guitest revtool >$OUT 2>&1 <<'EOF'
     global rev2date w
     set revs [lsort [array names rev2date]]
@@ -107,3 +107,85 @@ if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
 if [ -s $OUT ] ; then echo failed; cat $OUT ; exit 1 ; fi
 echo OK
 
+echo $N Annotations test.............................................$NL
+cd $HERE/project/src
+bk annotate -R -Aur file1 > WANT
+bk guitest revtool file1 > GOT 2>&1 <<'EOF'
+	global w
+	test_inputString "c"
+	# the end-2c is because there are two extra new lines in the text
+	# widget...
+	puts [$w(aptext) get 1.0 end-2c]
+	test_buttonPress "Quit"
+	after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Annotations with preferences.................................$NL
+cd $HERE/project/src
+bk annotate -R -Abdnpru file1 > WANT
+echo 'set gc(rev.annotate) "-Abdnpru"' > `bk dotbk`/config-gui
+bk guitest revtool file1 > GOT 2>&1 <<'EOF'
+	global w
+	test_inputString "c"
+	# the end-2c is because there are two extra new lines in the text
+	# widget...
+	puts [$w(aptext) get 1.0 end-2c]
+	test_buttonPress "Quit"
+	after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Annotations for tip..........................................$NL
+cd $HERE/project/src
+rm -f `bk dotbk`/config-gui
+bk get $Q -Aru -Pr+ file1 > WANT
+bk guitest revtool file1 > GOT 2>&1 <<'EOF'
+	global w
+	# get the TIP in a form that revtool likes
+	set TIP [exec bk prs -r+ -hnd:REV:-:P: file1]
+	prs $TIP
+	test_inputString "a"
+	# the end-2c is because there are two extra new lines in the text
+	# widget...
+	puts [$w(aptext) get 1.0 end-2c]
+	test_buttonPress "Quit"
+	after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Annotations for tip with custom format.......................$NL
+cd $HERE/project/src
+echo 'set gc(rev.annotate) "-Abdnpru"' > `bk dotbk`/config-gui
+bk get $Q -Abdnpru -Pr+ file1 > WANT
+bk guitest revtool file1 > GOT 2>&1 <<'EOF'
+	global w
+	# get the TIP in a form that revtool likes
+	set TIP [exec bk prs -r+ -hnd:REV:-:P: file1]
+	prs $TIP
+	test_inputString "a"
+	# the end-2c is because there are two extra new lines in the text
+	# widget...
+	puts [$w(aptext) get 1.0 end-2c]
+	test_buttonPress "Quit"
+	after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test revision given in command line..........................$NL
+bk guitest revtool -r1.1 file1 >$OUT 2>&1 <<'EOF'
+	global anchor
+	if {$anchor ne "1.1-bk"} {
+		puts stderr "Revision 1.1 specified in command line, \
+		    but not selected in GUI"
+		exit 1
+	}
+	exit 0
+EOF
+if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
+if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
+echo OK

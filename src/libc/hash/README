@@ -1,0 +1,25 @@
+'hash' is an class to give a common interface to various implementations
+of hash: memory backed, disk backed, tree structured (hash+order), etc.
+
+If you would like to create a new implementation to sit under the interface
+here's how to do it:
+
+1. edit libc/hash/hash.c
+	+ include "your_interface.h"
+	+ add your entry to op
+	  For the comment in the name, please put the index of your block
+	  in the array
+
+2. edit libc/hash.h - add a #define for your new type
+
+3. If you are making a stand-alone data structure that might be
+   accessed outside of the hash, make a set of wrapper functions
+   (see wrapmdbm.[ch] for example).
+   If this is the case, put your data structure code in a dir
+   under libc/ and put its interface .h in libc/.  This is sort of
+   like mdbm, but mdbm.h is in the mdbm directory.  Maybe better
+   the mdbm way because it is more standalone?
+
+4. put your code or wrapper code in libc/hash/
+
+5. add to libc/hash/Makefile your entry in HASH_OBJS and HASH_HDRS

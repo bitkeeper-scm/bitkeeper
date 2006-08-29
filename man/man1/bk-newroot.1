@@ -1,26 +1,40 @@
 .so ../bk-macros
-.TH "bk newroot" 1 %E% "\*(BC" "\*(UM"
+.TH "bk newroot" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk newroot \- change the identity of a repository
 .SH SYNOPSIS
 .B bk newroot
+.[OPTreq] \-k randombits
 .SH DESCRIPTION
 .LP
-.B newroot
+.B bk newroot
 is an administrative command used to generate a new 
 .I identity
 for a repository.  It is typically used only after having repaired a
 repository.  After running
-.B newroot
+.B bk newroot
 that repository will not be able to push to or pull from it's parent or
 any other related repository.
+.SH OPTIONS
+.TP \-K\*<bits\*>
+.OPTreq \-k bits
+Specify the string of random bits used as part of the repository identity.
+The string must be 16 hex digits.
+.SH EXIT STATUS
+.LP
+.B bk newroot
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA identity 1
-.SA clone 1
-.SA pull 1
-.SA push 1
-.SA terms 1
+.SA identity
+.SA clone
+.SA pull
+.SA push
+.SA terms
 .SH CATEGORY
-.B Repository
-.br
 .B Admin

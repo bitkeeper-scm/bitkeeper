@@ -1,12 +1,12 @@
 .so ../bk-macros
-.TH "bk takepatch" 1 %E% "\*(BC" "\*(UM"
+.TH "bk takepatch" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    ====================== BitKeeper takepatch command ======================
 .SH NAME
 bk takepatch \- apply a \*(BK patch
 .SH SYNOPSIS
-.Bc bk takepatch [\-acimStv] [\-f[ 
-.ARGc file
-.B ]]
+.B bk takepatch
+.[B] \-acimStv
+.[OPTreq] \-f file
 .SH DESCRIPTION
 .LP
 The takepatch command is used to apply a \*(BK patch.  \*(BK patches
@@ -18,8 +18,7 @@ Users do not normally invoke this command, it is called directly by
 or
 .BR bk\ receive .
 .SH OPTIONS
-.if t .TP
-.if n .TP 1i
+.TP \-f\*<file\*>
 .B \-a
 Apply the changes (call 
 .BR bk\ resolve .)
@@ -39,16 +38,32 @@ Initial patch, create a new repository.
 List deltas as they are read in the patch.
 .tp
 .B \-S
-Save RESYNC and or PENDING directories even if errors.
+Save
+.B RESYNC
+and or
+.B PENDING
+directories even if errors.
 .tp
-.B \-t
-Run in text only mode, do not talk to X11.
+.B \-T
+Run in text only mode, do not use GUI tools.
 .tp
 .B \-v
-Verbose level, more is more verbose, \-vv is suggested.
+Verbose level, more is more verbose,
+.Q \-vv
+is suggested.
+.SH EXIT STATUS
+.LP
+.B bk takepatch
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA pull 1
-.SA push 1
-.SA receive 1
+.SA pull
+.SA push
+.SA receive
 .SH CATEGORY
 .B Repository

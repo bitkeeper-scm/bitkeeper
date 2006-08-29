@@ -5,8 +5,8 @@ proc main {} \
 {
 
 	bk_init
+	loadState help
 	widgets
-
 	restoreGeometry "help" 
 	getHelp
 
@@ -17,7 +17,7 @@ proc main {} \
 	# up
 	bind . <Destroy> {
 		if {[string match %W "."]} {
-			saveState
+			saveState help
 		}
 	}
 
@@ -88,7 +88,7 @@ proc doPixSelect {x y} \
 #
 # Selects the x'th line, tags it as selected, calls bkhelp for that topic
 #
-proc doSelect {x} \
+proc doSelect {x {search {}}} \
 {
 	global	line stack stackMax stackPos
 
@@ -103,7 +103,7 @@ proc doSelect {x} \
 	.ctrl.topics tag remove "select" 1.0 end
 	.ctrl.topics tag add "select" $line "$line lineend + 1 char"
 	.ctrl.topics tag raise "select"
-	bkhelp $topic
+	bkhelp $topic $search
 	# Don't increment if we are going to where we are
 	if {$stackPos == 0 || $stack($stackPos) != $line} { incr stackPos }
 	set stack($stackPos) $line
@@ -156,7 +156,7 @@ proc downStack {} \
 	}
 }
 
-proc bkhelp {topic} \
+proc bkhelp {topic {search {}}} \
 {
 	global line line2full gc
 
@@ -166,20 +166,25 @@ proc bkhelp {topic} \
 	.text.help configure -state normal
 	.text.help delete 1.0 end
 	set lineno 1
+	set yview ""
 	while {[gets $f help] >= 0} {
 		.text.help insert end "$help\n"
 		if {[regexp {^[A-Z][ \t\nA-Z.!?|()-]+$} $help]} {
 			set i "$lineno.0"
 			.text.help tag add "bold" $i "$i lineend"
 		}
+		if {$search != "" && [regexp $search $help]} {
+			set search ""
+			set yview "$lineno.0"
+		}
 		incr lineno
 	}
-	.text.help tag add "bold" 2.0 "2.0 lineend + 1 char"
 	set i "$lineno.0"
-	.text.help tag add "bold" "$i - 2 lines" end
+	.text.help delete "$i" end
 	catch {close $f} dummy
 	.text.help configure -state disabled
 	bk_highlight
+	if {$yview != ""} { .text.help yview $yview }
 }
 
 proc highlight {tag index len} \
@@ -356,7 +361,7 @@ proc scroll {what dir} \
 proc widgets {} \
 {
 	global	line gc firstConfig pixelsPerLine
-	global	search_word stackMax stackPos d State
+	global	search_word stackMax stackPos d
 
 	set stackMax 0
 	set stackPos 0
@@ -367,7 +372,6 @@ proc widgets {} \
 	} else {
 		set py 1
 	}
-	loadState
 
 	option add *background $gc(BG)
 
@@ -437,9 +441,15 @@ proc widgets {} \
 		-width $gc(help.scrollWidth) \
 		-command ".ctrl.topics xview"
 
-	    grid .ctrl.topics -row 0 -column 0 -sticky nsew
-	    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
-	    grid .ctrl.xscroll -row 1 -column 0 -sticky ew
+	    if {[info exists gc(help.center_scrollbars)]} {
+		    grid .ctrl.topics -row 0 -column 0 -sticky nsew
+		    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
+		    grid .ctrl.xscroll -row 1 -column 0 -sticky ew
+	    } else {
+		    grid .ctrl.topics -row 0 -column 1 -sticky nsew
+		    grid .ctrl.yscroll -row 0 -column 0 -sticky nse
+		    grid .ctrl.xscroll -row 1 -column 1 -sticky ew
+	    }
 	    grid rowconfigure .ctrl 0 -weight 1
 
 	frame .text -borderwidth 0 -relief flat
@@ -570,15 +580,15 @@ proc busy {busy} \
 	update
 }
 
-proc getSelection {argv} \
+proc getSelection {page} \
 {
 	global line lines aliases
 
 	set l ""
-	catch { set l $lines($argv) } dummy
-	if {"$l" == ""} { catch { set l $lines($aliases($argv)) } dummy }
+	catch { set l $lines($page) } dummy
+	if {"$l" == ""} { catch { set l $lines($aliases($page)) } dummy }
 	if {"$l" == ""} {
-		puts "No help for $argv"
+		puts "No help for $page"
 		exit
 	}
 	incr l -1
@@ -596,12 +606,15 @@ proc getHelp {} \
 			set file [lindex $argv 1]
 			set gc(help.helptext) "-f$file"
 			set keyword [lindex $argv 2]
+			set search [lindex $argv 3]
 		} else {
 			set gc(help.helptext) $file
 			set keyword [lindex $argv 1]
+			set search [lindex $argv 2]
 		}
 	} else {
 		set keyword [lindex $argv 0]
+		set search [lindex $argv 1]
 	}
 	set f [open "| bk helptopics $gc(help.helptext)"]
 	.ctrl.topics configure -state normal
@@ -641,48 +654,14 @@ proc getHelp {} \
 	catch {close $f} dummy
 	.ctrl.topics configure -state disabled
 	.text.help configure -state disabled
-	if {$keyword != ""} {
-		getSelection $keyword
+	if {$keyword == ""} {
+		getSelection Common
 	} else {
-		set line 1.0
+		getSelection $keyword 
 	}
-	doSelect 1
-}
-
-# the purpose of this proc is merely to load the persistent state;
-# it does not do anything with the data (such as set the window 
-# geometry). That is best done elsewhere. This proc does, however,
-# attempt to make sure the data is in a usable form.
-proc loadState {} \
-{
-	global State
-
-	catch {::appState load help State}
-
-}
-
-proc saveState {} \
-{
-	global State
-
-	# Copy state to a temporary variable, the re-load in the
-	# state file in case some other process has updated it
-	# (for example, setting the geometry for a different
-	# resolution). Then add in the geometry information unique
-	# to this instance.
-	array set tmp [array get State]
-	catch {::appState load help tmp}
-	set res [winfo vrootwidth .]x[winfo vrootheight .]
-	set tmp(geometry@$res) [wm geometry .]
-
-	# Generally speaking, errors at this point are no big
-	# deal. It's annoying we can't save state, but it's no 
-	# reason to stop running. So, a message to stderr is 
-	# probably sufficient. Plus, given we may have been run
-	# from a <Destroy> event on ".", it's too late to pop
-	# up a message dialog.
-	if {[catch {::appState save help tmp} result]} {
-		puts stderr "error writing config file: $result"
+	doSelect 1 $search
+	if {$keyword == ""} {
+		.ctrl.topics yview moveto 0
 	}
 }
 

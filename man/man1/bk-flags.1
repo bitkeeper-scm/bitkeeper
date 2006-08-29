@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk flags" 1 %E% "\*(BC" "\*(UM"
+.TH "bk flags" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk flags \- show a listing of files and their \*(BK flags
 .SH SYNOPSIS
@@ -11,8 +11,21 @@ Displays a listing of files and their \*(BK flags in the following format:
 .DS
 foo.c  BITKEEPER,CSETMARKED,EXPAND1,SCCS
 .DE
+The flags are described on the 
+.B bk admin
+man page.
+.SH EXIT STATUS
+.LP
+.B bk flags
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA admin 1
-.SA prs 1
+.SA admin
+.SA log
 .SH CATEGORY
-.B File
+.B Admin

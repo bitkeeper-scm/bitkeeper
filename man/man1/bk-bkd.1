@@ -1,24 +1,24 @@
 .so ../bk-macros
-.TH "bk bkd" 1 %E% "\*(BC" "\*(UM"
+.TH "bk bkd" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk bkd \- the \*(BK daemon
 .SH SYNOPSIS
-.Bc bk bkd [\-BCdDhR] [more opts]
+.B bk bkd
+.[ARG] options
 .SH DESCRIPTION
 .LP
-The \*(BK daemon, bkd, is used to synchronize and query repositories.
+The \*(BK daemon,
+.BR bkd ,
+is used to synchronize and query repositories.
 It is typically run in one of the following ways:
-.TP 4
-a)
-automatically started when accessing a remote repository via rsh, ssh, http,
+.LI
+automatically started when accessing a remote repository via rsh, ssh, HTTP,
 and/or the file system;
-.tp
-b)
+.li
 automatically started via ssh as a login shell;
-.tp
-c)
+.li
 manually started as a long running stand-alone daemon;
-d)
+.li
 automatically started as a long running service at boot time.
 .LP
 The method used usually depends on how the remote repository is named.
@@ -30,7 +30,7 @@ The stand-alone daemon method has no security, other than the
 ability to run in read-only mode and/or the ability to limit chdir.
 If security is a requirement, use 
 .B ssh
-to get to the daemon.  See below for information on
+to access the daemon.  See below for information on
 configuring the daemon as a login shell.
 .SH "ANONYMOUS ACCESS"
 .LP
@@ -41,7 +41,9 @@ bk bkd \-d \-xpush
 .DE
 .LP
 This will allow anyone to read (but not write) all repositories at or below
-the directory in which the bkd was started.
+the directory in which the
+.B bkd
+was started.
 .LP
 If you want to export a single repository, pick a port number, and 
 do this:
@@ -53,7 +55,8 @@ bk bkd \-d \-p5555 \-xcd \-xpush
 This says to run in daemon mode, bind to port 5555, and disallow the
 "cd" and "push" commands.  By disallowing the "cd" command, the daemon
 at port 5555 is tied to the repository in the current working directory
-(bkd needs to be run at the root of the repository).  By disallowing the
+.RB ( bkd
+needs to be run at the root of the repository).  By disallowing the
 "push" command, the repository is protected from updates.
 .LP
 Clients can get to this repository by using the BK URLs of
@@ -66,20 +69,23 @@ i.e.,
 .DS
 $ bk clone bk://host.domain:5555 my_tree
 .DE
-Use the http URLs allows access through most firewalls.  \*(BK supports
-accessing repositories through http proxies, including authenticated
+These HTTP URLs allow access through most firewalls.  \*(BK supports
+accessing repositories through HTTP proxies, including authenticated
 proxies.
 .SH SECURED ACCESS VIA SSH
 Secure access is provided via 
 .BR ssh .
 There two ways to invoke 
 .BR ssh :
-.tp 4
+.TP
 a)
 when the repository is specified in this form: 
 [\c
-.ARGc user @]
-.ARGc host :
+.ARGc user
+.Bc @
+]\c
+.ARGc host
+.Bc :
 .ARG pathname ,
 .B ssh
 will be called to run
@@ -92,12 +98,21 @@ daemon goes away.
 .tp
 b)
 when the repository is specified in this form: 
-.Bc bk://user@host[
-.ARG pathname \fB]\fR,
+.Bc bk://
+.ARGc user
+.Bc @
+.ARGc host
+.[ARGc] pathname
+,
 .B ssh
 will be called to remote login to 
-.B host
+.ARG host
 and will expect that the login shell is the \*(BK daemon.
+.B Note:
+This is the most secure way to run
+.B bk bkd
+because it restricts the user's access to
+.ARG host .
 .LP
 .SS BKD LOGIN SHELL
 On Red Hat Linux, the following steps are necessary to add a \*(BK 
@@ -112,7 +127,7 @@ and add a user with that path as their shell.
 .LP
 An example 
 .B bkd
-shell script which works for us is:
+shell script which works is known to work:
 .DS
 #!/bin/sh
 exec bk bkd -C -xcd
@@ -120,51 +135,55 @@ exec bk bkd -C -xcd
 .LP
 .B Note:
 using the bkd as a login shell when accessing the system using
-.BR rsh 
+.B rsh 
 is unsupported and is known not to work due to a long standing rsh bug.
 .SH BK/WEB
-The bkd is a self contained http server which provides the optional
+The
+.B bkd
+is a self-contained HTTP server which provides the optional
 BK/Web feature of \*(BK.  In order for this feature to work the 
 repository served by the bkd must contain (or reference) a commercial
 license which has the BK/Web option enabled.
+.LP
+To access the BK/Web interface, use a web browser to go to the \s-1URL\s0:
+.DS
+http://\*<host\*>:\*<port\*>/
+.DE
+where
+.ARG port
+is the port on which the
+.B bkd
+is listening (see the
+.Q \-p
+option, below).
 .SH WINDOWS BASED BKD
 .LP
-It is possible to install a single bkd as a Windows service,
-see bk help service.
+It is possible to install a one or more bkd's as Windows services,
+see 
+.B bk help service.
 .SH OPTIONS
-.TP 1i
+.TP \-P\*<pfile\*>
 .B \-C
 This option provides a slightly more secure mode of
 operation in that the bkd will refuse to change directories up out of 
 the directory in which it was started.
 .tp
-.B \-B
-This option make clones from this bkd be buffered in
-.B BitKeeper/tmp
-before being transfered to the remote user rather than being
-transfered directly.  This allows the repository read lock to be
-released early so that users on a slow network connection won't
-deadlock the repository.  The tradeoff is the diskspace requirement
-for the repository will double.  Multiple clones in parallel will only
-generate one copy of the repository and share it.  This option can be
-enabled by default by adding
-.DS
-buffer_clone:yes
-.DE
-to
-.B BitKeeper/etc/config.
-.br
-(This option is not supported on the Windows platform.)
-.tp
 .B \-d
-Run as a daemon in the background.
+Run as a daemon, typically in the background (but see the next option).
 .tp
 .B \-D
 Debug mode, do not fork and run in the background.
 .tp
 .B \-h
-Make bkd print http headers on all outgoing bk push, bk pull,
-and bk clone messages.  Use when bkd is called from a cgi script.
+For all outgoing
+.BR "bk push" ,
+.BR "bk pull" ,
+and
+.B bk clone
+operations, wrap command responses in HTTP protocol.
+Use when
+.B bk bkd
+is called from a CGI script.
 .tp
 .OPTreq \-l log
 Log accesses in 
@@ -209,7 +228,7 @@ version.
 .LP
 We use the following in 
 .B /var/bitkeeper/repositories
-to provide anonymous read only access to some \*(BK repositories.  
+to provide anonymous read only access to some \*(BK repositories:  
 .DS
 #----------------------\ cut\ here\ --------------------------
 nobody /home/bk/bk-3.2.x -C -xpush -p3200
@@ -217,19 +236,15 @@ nobody /home/bk/bk-3.3.x -C -xpush -p3300
 #----------------------\ cut\ here\ --------------------------
 .DE
 .LP
-The init script shown below can be generated with a 
+The following init script is known to work on Red Hat Linux based systems.
+The init script shown can be generated with a 
 .DS
 $ bk getmsg bitkeeper.init
-.DE
-We use the it in
-.BR /etc/rc.d/init.d/bitkeeper
-to start up \*(BK on bkbits.net (a Linux system):
-.DS
 #----------------------\ cut\ here\ --------------------------
 #!/bin/sh
 #
 # chkconfig: 2345 24 84
-# description: BitKeeper server for bkbits.net
+# description: BitKeeper server
 
 # Source networking configuration.
 if [ \-f /etc/sysconfig/network ]
@@ -247,7 +262,7 @@ case "$1" in
     stop_msg)	echo "Stop BitKeeper daemons"
 		;;
     restart)	$0 stop
-		$0 start
+			$0 start
 		;;
     start)	cd $VAR || exit 1
 		test \-f repositories || {
@@ -257,7 +272,7 @@ case "$1" in
 		while read user dir opts
 		do	(
 			cd $dir || exit 1
-			F=`basename $dir`
+			F=\`basename $dir\`
 			CMD="bk bkd \-d $opts \-l$VAR/log.$F \-P$VAR/pid.$F"
 			su -c "$CMD" $user 2>> $VAR/errors
 			echo Started $CMD in $dir
@@ -269,14 +284,14 @@ case "$1" in
 		cd $VAR || exit 1
 		echo Shutting down BitKeeper daemons
 		for i in pid.*
-		do	kill `cat $i`
+		do	kill \`cat $i\`
 			rm $i
 		done
 		;;
 
     status)	cd $VAR || exit 1
 		for i in pid.*
-		do	echo This pid should be running: `cat $i`
+		do	echo This pid should be running: \`cat $i\`
 		done
 		ps \-axf | grep bkd
 		
@@ -299,16 +314,16 @@ One could argue that this is code reuse rather than a bug.
 \*(BM
 does not ship
 .B ssh
-since it is export controlled.
+since it is widely available.
 .LP
 On Windows the bkd service does not work when started from a network drive.
 .LP
 On Windows the bkd service does not work when started from a subst'ed drive.
 .SH "SEE ALSO"
 .SA parent
-.SA service
+.SA "service (Windows only)"
 .SA url
-.SA Howto-bkd 1
+.SA Howto-bkd
 .\" help://anonymous
 .\" help://deamon
 .\" help://daemon

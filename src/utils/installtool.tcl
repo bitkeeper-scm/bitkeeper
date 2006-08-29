@@ -926,13 +926,32 @@ proc widgets {} \
 					# if the license is invalid
 					break
 				}
+				# save a copy of the license in config
+				# so that bk install installs it
+				set cfgpath "[exec bk bin]/config"
+				if {[file exists $cfgpath]} {
+					set fd [open $cfgpath r]
+					set data [read $fd]
+					close $fd
+				}
+				set fd [open $cfgpath w]
+				puts $fd [join [list \
+				    "license: $::wizData(license)" \
+				    "licsign1: $::wizData(licsign1)" \
+				    "licsign2: $::wizData(licsign2)" \
+				    "licsign3: $::wizData(licsign3)"] \n]
+				if {[info exists data]} {puts $fd $data}
+				catch {close $fd}
 				if {![info exists ::licenseInfo(text)] ||
 				    $::licenseInfo(text) eq ""} {
-					set ::licenseInfo(text) [getEulaText \
-					    $::wizData(license) \
-					    $::wizData(licsign1) \
-					    $::wizData(licsign2) \
-					    $::wizData(licsign3)]
+					if {[getEulaText \
+					     $::wizData(license) \
+					     $::wizData(licsign1) \
+					     $::wizData(licsign2) \
+					     $::wizData(licsign3) \
+					     ::licenseInfo(text)]} {
+						break
+					}
 				}
 				if {$::licenseInfo(text) ne ""} {
 					# Insert EULA step into path
@@ -940,7 +959,7 @@ proc widgets {} \
 				}
 			}
 			Welcome {
-				if {[catch {set b [exec bk _eula -u]}]} {
+				if {[eula_u b]} {
 					# No license found, so prompt for it
 					wizInsertStep LicenseKey
 					. configure -step LicenseKey
@@ -957,6 +976,15 @@ proc widgets {} \
 			}
 		}
 	}
+}
+
+proc eula_u {text} \
+{
+	upvar 1 $text t
+	set ::env(BK_NO_GUI_PROMPT) 1	;# make bk _eula shut up
+	set r [catch {exec bk _eula -u} t]
+	unset ::env(BK_NO_GUI_PROMPT)
+	return $r
 }
 
 proc doInstall {} \

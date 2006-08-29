@@ -1,37 +1,42 @@
 .so ../bk-macros
-.TH "bk sccslog" 1 %E% "\*(BC" "\*(UM"
+.TH "bk sccslog" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk sccslog \- list deltas sorted by date across all files
 .SH SYNOPSIS
-.Bc bk sccslog [\-ADfnpsv] [
-.OPTreq \-c dates
-.Bc ] [
-.OPTreq \-i d
-.Bc ] [
-.OPTreq \-r r
-.B ]
+.B bk sccslog
+.[B] \-bDfn
+.[OPTreq] \-c dates
+.[OPTreq] \-d dspec
+.[OPTreq] \-r r
 .BKARGS
 .SH DESCRIPTION
 .LP
-.B sccslog
+.B bk sccslog
 is used to get a time sorted listing of changes over all of the specified
-or implied files.  It is similar to bk prs, with the difference being
-that prs respects file boundaries, i.e., lists all changes in a file 
-before going on, but sccslog sorts the changes and prints each change
-in time order, ignoring file boundaries.  It is useful to go to a 
-directory and type:
+or implied files.  It is similar to
+.BR "bk log" ,
+with the difference being
+that
+.B bk log
+respects file boundaries, i.e., lists all changes in a file 
+before going on, but
+.B bk sccslog
+sorts the changes and prints each change
+in time order, ignoring file boundaries.
+It is useful to go to a directory and type:
 .DS
-bk sccslog -c-1M
+bk sccslog -c-1M..
 .DE
 to see what has happened in all of the files there in the last month.
 .LP
-By default, bk sccslog runs the output through your pager, which can
-be controlled with $PAGER.
+By default,
+.B bk sccslog
+runs the output through your pager, which can
+be controlled with \s-2$PAGER\s0.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1i
-.B \-A
-Select all uncommitted deltas in a file.
+.TP \fB\-c1992/07.\|.1992\fP
+.B \-b
+Show basenames instead of full pathnames.
 .tp
 .OPTreq \-c dates
 Cut off dates.  See Range Specifications (below) or
@@ -43,7 +48,7 @@ for details.
 .\" Produce comments for a changeset.
 .tp
 .B \-D
-factor out duplicate comments and print the results as
+Factor out duplicate comments and print the results as
 .DS
 libdiff.c, gnupatch.c:
   add --minimal to calls to diff(1).
@@ -51,10 +56,11 @@ libdiff.c, gnupatch.c:
 .tp
 .OPTreq \-d dspec
 Format output according to the data specification string.  See
-bk prs documentation for information on data specifications.
+.B bk log
+documentation for information on data specifications.
 .tp
 .B \-f
-print the changes in forwards order (oldest to newest).  The
+Print the changes in forwards order (oldest to newest).  The
 default is backwards order.
 .\" Undocumented, internal interface.
 .\" .tp
@@ -64,41 +70,38 @@ default is backwards order.
 .\" spaces.
 .tp
 .B \-n
-add  a newline to each printed record (sometimes useful with -d).
-.tp
-.B \-p
-Show basenames instead of full pathnames.
+Add  a newline to each printed record (sometimes useful with
+.QR \-d ).
 .tp
 .OPTreq \-r r
 Specify a revision or a range.
-.tp
-.B \-s
-produce sorted output for post processing in ``filename|rev'' format.
-.tp
-.B \-v
-Be verbose about errors and processing.
-.LP
-Note that
-.ARG date
-may be a symbol, which implies the date of the delta which matches the symbol.
-.LP
-Range or date specifications:
-.if t .TP 1.2i
-.if n .TP 1.5i
-.I \-r+
+.SS RANGE SPECIFICATIONS
+.\" XXX format for the below list?
+.TP \fB\-c1992/07.\|.1992\fP
+.B \-r+
 prints the most recent delta
 .tp
-.I \-r1.3..1.6
-prints all deltas 1.3 through 1.6
+.B \-r1.3.\|.1.6
+prints all deltas that are in 1.6's history, but are not in 1.3's history.
 .tp
-.I \-c9207..92
+.B \-c1992/07.\|.1992
 prints all deltas from July 1 '92 to Dec 31 '92
 .tp
-.I \-c92..92
+.B \-c1992.\|.1992
 prints all deltas from Jan 1 '92 to Dec 31 '92
+.SH EXIT STATUS
+.LP
+.B bk sccslog
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
+.SH SEE ALSO
+.SA changes
+.SA log
+.SA range
 .SH CATEGORY
 .B File
-.SH SEE ALSO
-.SA changes 1
-.SA prs 1
-.SA range 1

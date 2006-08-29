@@ -47,7 +47,7 @@ private char	*find_root(char *dir);
 private struct {
 	project	*curr;
 	project	*last;
-	HASH	*cache;
+	hash	*cache;
 	char	cwd[MAXPATH];
 } proj;
 
@@ -57,8 +57,8 @@ projcache_lookup(char *dir)
 	project	*ret = 0;
 	project	**p;
 
-	unless (proj.cache) proj.cache = hash_new();
-	if (p = hash_fetch(proj.cache, dir, 0, 0)) ret = *p;
+	unless (proj.cache) proj.cache = hash_new(HASH_MEMHASH);
+	if (p = hash_fetchStr(proj.cache, dir)) ret = *p;
 	return (ret);
 }
 
@@ -73,7 +73,7 @@ projcache_store(char *dir, project *p)
 		dl->next = p->dirs;
 		p->dirs = dl;
 	}
-	*(project **)hash_alloc(proj.cache, dir, 0, sizeof(p)) = p;
+	hash_store(proj.cache, dir, strlen(dir)+1, &p, sizeof(p));
 }
 
 private void
@@ -81,12 +81,12 @@ projcache_delete(project *p)
 {
 	dirlist	*dl;
 
-	hash_delete(proj.cache, p->root, 0);
+	hash_deleteStr(proj.cache, p->root);
 	dl = p->dirs;
 	while (dl) {
 		dirlist	*tmp = dl;
 
-		hash_delete(proj.cache, dl->dir, 0);
+		hash_deleteStr(proj.cache, dl->dir);
 
 		free(dl->dir);
 		dl = dl->next;
@@ -117,7 +117,7 @@ proj_init(char *dir)
 	if (ret = projcache_lookup(fdir)) goto done;
 
 	/* missed the cache */
-	unless (root = find_root(fullname(dir, 0))) return (0);
+	unless (root = find_root(fullname(dir))) return (0);
 
 	unless (streq(root, fdir)) {
 		/* fdir is not a root, was root in cache? */
@@ -159,6 +159,9 @@ proj_free(project *p)
 	unless (--p->refcnt == 0) return;
 
 	if (p->rparent) {
+		if (p->config && (p->config == p->rparent->config)) {
+			p->config = 0;
+		}
 		proj_free(p->rparent);
 		p->rparent = 0;
 	}
@@ -251,28 +254,97 @@ proj_relpath(project *p, char *path)
 	int	len;
 
 	assert(root);
-	unless (IsFullPath(path)) path = fullname(path, 0);
+	unless (IsFullPath(path)) path = fullname(path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {
-		assert(path[len] == '/');
-		return(strdup(&path[len+1]));
+		if (!path[len]) {
+			return (strdup("."));
+		} else {
+                       assert(path[len] == '/');
+                       return(strdup(&path[len+1]));
+		}
 	} else {
-		fprintf(stderr, "Path mismatch?: %s <=> %s\n",
-			root, path);
 		return (0);
 	}
 }
 
 /*
+ * When given a relative path from the root, turn the path into an absolute
+ * path from the root of the file system.
+ *
+ * Note: returns a malloced pointer that you must not free.  Not safe across
+ * multiple calls.
+ */
+char	*
+proj_fullpath(project *p, char *file)
+{
+	char	*root = proj_root(p);
+	static	char *path;
+
+	unless (root) return (0);
+	if (path) free(path);	// XXX - if this gets called a lot use a static
+	return (path = aprintf("%s/%s", root, file));
+}
+
+/*
  * Return a populated MDBM for the config file in the current project.
- * XXX - remove all other calls to loadConfig ??
  */
 MDBM *
 proj_config(project *p)
 {
 	unless (p || (p = curr_proj())) p = proj_fakenew();
-	unless (p->config) p->config = loadConfig(proj_root(p));
+
+	if (p->config) return (p->config);
+	if (p->rparent) {
+		/* If RESYNC doesn't have a config file, then don't use it. */
+		p->config = loadConfig(p->root, 1);
+		unless (p->config) p->config = proj_config(p->rparent);
+	} else {
+		p->config = loadConfig(p->root, 0);
+	}
 	return (p->config);
+}
+
+char *
+proj_configval(project *p, char *key)
+{
+	char	*ret;
+	MDBM	*db = proj_config(p);
+
+	assert(db);
+	unless (ret = mdbm_fetch_str(db, key)) {
+		if (streq(key, "clock_skew")) {
+			ret = mdbm_fetch_str(db, "trust_window");
+		}
+	}
+	return (ret ? ret : "");
+}
+
+int
+proj_configbool(project *p, char *key)
+{
+	char	*val;
+	MDBM	*db = proj_config(p);
+
+	assert(db);
+	val = mdbm_fetch_str(db, key);
+	unless (val) return (0);
+	switch(tolower(*val)) {
+	    case '0': if (streq(val, "0")) return (0); break;
+	    case '1': if (streq(val, "1")) return (1); break;
+	    case 'f': if (strieq(val, "false")) return (0); break;
+	    case 't': if (strieq(val, "true")) return (1); break;
+	    case 'n': if (strieq(val, "no")) return (0); break;
+	    case 'y': if (strieq(val, "yes")) return (1); break;
+	    case 'o':
+		if (strieq(val, "on")) return (1);
+		if (strieq(val, "off")) return (0);
+		break;
+	}
+	fprintf(stderr,
+	    "WARNING: config key '%s' should be a boolean.\n"
+	    "Meaning of '%s' unknown. Assuming false.\n", key, val);
+	return (0);
 }
 
 /* Return the root key of the ChangeSet file in the current project. */
@@ -293,7 +365,7 @@ proj_rootkey(project *p)
 	if (p->rootkey) return (p->rootkey);
 	if (p->rparent && (ret = proj_rootkey(p->rparent))) return (ret);
 
-	sprintf(rkfile, "%s/BitKeeper/log/ROOTKEY", p->root);
+	concat_path(rkfile, p->root, "/BitKeeper/log/ROOTKEY");
 	if (f = fopen(rkfile, "rt")) {
 		fnext(buf, f);
 		chomp(buf);
@@ -303,7 +375,7 @@ proj_rootkey(project *p)
 		p->md5rootkey = strdup(buf);
 		fclose(f);
 	} else {
-		sprintf(buf, "%s/%s", p->root, CHANGESET);
+		concat_path(buf, p->root, CHANGESET);
 		if (exists(buf)) {
 			sc = sccs_init(buf,
 			    INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
@@ -347,8 +419,6 @@ proj_md5rootkey(project *p)
 void
 proj_reset(project *p)
 {
-	kvpair	kv;
-
 	if (p) {
 		if (p->rootkey) {
 			free(p->rootkey);
@@ -367,11 +437,7 @@ proj_reset(project *p)
 		p->bklbits = 0;
 		p->leaseok = -1;
 	} else {
-		kv = hash_first(proj.cache);
-		while (kv.key.dptr) {
-			proj_reset(*(project **)kv.val.dptr);
-			kv = hash_next(proj.cache);
-		}
+		EACH_HASH(proj.cache) proj_reset(*(project **)proj.cache->vptr);
 		/* free the current project for purify */
 		if (proj.curr) {
 			proj_free(proj.curr);
@@ -431,7 +497,7 @@ proj_fakenew(void)
 
 	if (ret = projcache_lookup("/")) return (ret);
 	new(ret);
-	ret->root = strdup("/");
+	ret->root = strdup("/.");
 	ret->rootkey = strdup("SCCS");
 	ret->md5rootkey = strdup("SCCS");
 	projcache_store("/", ret);
@@ -439,17 +505,27 @@ proj_fakenew(void)
 	return (ret);
 }
 
-/* return the BKL.... key as a string */
+/*
+ * return the BKL.... key as a string
+ * Will exit(1) on failure, so the function always returns a key.
+ */
 char *
 proj_bkl(project *p)
 {
+	char	*errs = 0;
+
 	/*
 	 * If we are outside of any repository then we must get a
 	 * licence from the global config or a license server.
 	 */
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->bkl) p->bkl = lease_bkl(p);
+	if (p->bkl) return (p->bkl);
+	unless (p->bkl = lease_bkl(p, &errs)) {
+		assert(errs);
+		lease_printerr(errs);
+		exit(1);
+	}
 	return (p->bkl);
 }
 
@@ -490,8 +566,9 @@ proj_leaseChecked(project *p, int write)
 int
 proj_isCaseFoldingFS(project *p)
 {
+	char	*t;
 	char	s_cset[] = CHANGESET;
-	char	*t, *q;
+	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (-1);
 	if (p->casefolding != -1) return (p->casefolding);
@@ -501,9 +578,8 @@ proj_isCaseFoldingFS(project *p)
 		t = strrchr(s_cset, '/');
 		assert(t && (t[1] == 's'));
 		t[1] = 'S';  /* change to upper case */
-		q = aprintf("%s/%s", p->root, s_cset);
-		p->casefolding = exists(q);
-		free(q);
+		concat_path(buf, p->root, s_cset);
+		p->casefolding = exists(buf);
 	}
 	return (p->casefolding);
 }
@@ -534,4 +610,12 @@ proj_samerepo(char *source, char *dest)
 	proj_free(pj1);
 	proj_free(pj2);
 	return (rc);
+}
+
+int
+proj_isResync(project *p)
+{
+	unless (p) p = curr_proj();
+
+	return (p && p->rparent);
 }

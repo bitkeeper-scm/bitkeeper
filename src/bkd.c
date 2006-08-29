@@ -1,6 +1,9 @@
 #include "bkd.h"
+#include "logging.h"
 #include "tomcrypt/mycrypt.h"
 #include "tomcrypt/randseed.h"
+
+#define	LOG_STDERR	(char *)1
 
 private	void	exclude(char *cmd, int verbose);
 private void	unexclude(char **list, char *cmd);
@@ -11,7 +14,7 @@ private	void	usage(void);
 private	void	do_cmds(void);
 private int	svc_uninstall(void);
 
-char		*bkd_getopt = "BcCdDeE:hi:l|L:p:P:qRSt:V:x:";
+char		*bkd_getopt = "cCdDeE:hi:l|L:p:P:qRSt:V:x:";
 char 		*logRoot;
 private char	**exCmds;
 
@@ -30,7 +33,6 @@ bkd_main(int ac, char **av)
 	 *	unenabled = addLine(unenabled, "dangerous_command");
 	 * Note the freeLines below does not free the line itself.
 	 */
-	unenabled = addLine(unenabled, "license");
 	unenabled = addLine(unenabled, "kill");
 
 	/*
@@ -44,7 +46,6 @@ bkd_main(int ac, char **av)
 	 */
 	while ((c = getopt(ac, av, bkd_getopt)) != -1) {
 		switch (c) {
-		    case 'B': Opts.buffer_clone = 1; break;
 		    case 'c': check = 1; break;
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': daemon = 1; break;		/* doc 2.0 */
@@ -55,7 +56,7 @@ bkd_main(int ac, char **av)
 			break;
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
-			Opts.logfile = optarg ? optarg : (char*)1;
+			Opts.logfile = optarg ? optarg : LOG_STDERR;
 			break;
 		    case 'V':	/* XXX - should be documented */
 			Opts.vhost_dirpath = strdup(optarg); break;
@@ -77,13 +78,6 @@ bkd_main(int ac, char **av)
 	}
 	EACH(unenabled) exclude(unenabled[i], 0);
 	freeLines(unenabled, 0);
-#ifdef WIN32
-	if (Opts.buffer_clone) {
-		fprintf(stderr,
-"bkd: The option -b to buffer clone data is not available on Windows.\n");
-		return (1);
-	}
-#endif
 	if (av[optind] && !getenv("BKD_SERVICE")) usage();
 
 	if (av[optind] && chdir(av[optind])) {
@@ -100,7 +94,7 @@ bkd_main(int ac, char **av)
 	unless (Opts.vhost_dirpath) Opts.vhost_dirpath = strdup(".");
 
 	if (port) daemon = 1;
-	if (daemon && (Opts.logfile == (char*)1) && !Opts.foreground) {
+	if (daemon && (Opts.logfile == LOG_STDERR) && !Opts.foreground) {
 		fprintf(stderr, "bkd: Can't log to stderr in daemon mode\n");
 		return (1);
 	}
@@ -126,6 +120,9 @@ bkd_main(int ac, char **av)
 		}
 		if (check) return (0);
 		safe_putenv("BKD_PORT=%d", port);
+		if (Opts.logfile && (Opts.logfile != LOG_STDERR)) {
+			safe_putenv("_BKD_LOGFILE=%s", Opts.logfile);
+		}
 		bkd_server(ac, av);
 		exit(1);
 		/* NOTREACHED */
@@ -175,7 +172,7 @@ get_byte_count(void)
 	FILE *f = 0;
 
 	unless (proj_root(0)) return (0);
-	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
+	concat_path(buf, proj_root(0), "/BitKeeper/log/byte_count");
 	f = fopen(buf, "r");
 	if (f && fgets(buf, sizeof(buf), f)) {
 		if (strlen(buf) > 11) {
@@ -197,7 +194,7 @@ save_byte_count(unsigned int byte_count)
 	char	buf[MAXPATH];
 
 	unless (proj_root(0)) return;
-	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
+	concat_path(buf, proj_root(0), "/BitKeeper/log/byte_count");
 	f = fopen(buf, "w");
 	if (f) {
 		fprintf(f, "%u\n", byte_count);
@@ -224,6 +221,11 @@ do_cmds(void)
 		signal(SIGALRM, exit);
 		alarm(Opts.alarm);
 	}
+	/* Don't allow existing env to be used */
+	putenv("BK_AUTH_HMAC=BAD");
+	putenv("BK_LICENSE=");
+	lease_inbkd();		/* enable bkd-mode in lease code */
+
 	httpMode = Opts.http_hdr_out;
 	while (getav(&ac, &av, &httpMode)) {
 		if (debug) {
@@ -294,7 +296,7 @@ log_cmd(char *peer, int ac, char **av)
 		return;
 	}
 
-	log = (Opts.logfile == (char*)1) ? stderr : fopen(Opts.logfile, "a");
+	log = (Opts.logfile == LOG_STDERR) ? stderr : fopen(Opts.logfile, "a");
 	unless (log) return;
 
 	time(&t);
@@ -428,12 +430,16 @@ bad:
 	putenv("BK_AUTH_HMAC=BAD");
 }
 
-private int
-nextbyte(void)
+static	int	content_len = -1;	/* content-length from http header */
+
+private char *
+nextbyte(char *buf, int size, void *unused)
 {
         char    ret;
 	char	*h;
 
+	if (content_len == 0) return (0);
+	--content_len;
 	unless (in(&ret, 1)) return (0);
 	if (hmac.buf) {
 		hmac.buf[hmac.i++] = ret;
@@ -448,7 +454,9 @@ nextbyte(void)
 			memset(&hmac, 0, sizeof(hmac));
 		}
 	}
-	return (ret);
+	buf[0] = ret;
+	buf[1] = 0;
+	return (buf);
 }
 
 private	int
@@ -456,25 +464,25 @@ getav(int *acp, char ***avp, int *httpMode)
 {
 #define	MAX_AV	50
 #define	QUOTE(c)	(((c) == '\'') || ((c) == '"'))
-	static	char buf[MAXKEY * 2];		/* room for two keys */
-	static	char *av[MAX_AV];
-	static	int  len = -1;		/* content-length from http header */
+	static	char	*buf;
+	static	char	*av[MAX_AV];
 	remote	r;
 	int	i, inspace = 1, inQuote = 0;
 	int	ac;
 
 	bzero(&r, sizeof (remote));
 	r.wfd = 1;
+
+nextline:
+	/* read a line into a malloc'ed buffer */
+	if (buf) free(buf);
+	unless ((buf = gets_alloc(nextbyte, 0)) && *buf) return (0);
+
 	/*
 	 * XXX TODO need to handle escaped quote character in args
 	 *     This can be done easily with shellSplit()
 	 */
-	for (ac = i = 0; len != 0 && (buf[i] = nextbyte()); i++) {
-		--len;
-		if (i >= sizeof(buf) - 1) {
-			out("ERROR-command line too long\n");
-			return (0);
-		}
+	for (ac = i = 0; buf[i]; i++) {
 		if (ac >= MAX_AV - 1) {
 			out("ERROR-too many arguments\n");
 			return (0);
@@ -492,42 +500,6 @@ getav(int *acp, char ***avp, int *httpMode)
 			inQuote = 1;
 			continue;
 		}
-		/* skip \r */
-		if (buf[i] == '\r') {
-			buf[i] = nextbyte();
-			--len;
-		}
-		if (buf[i] == '\n') {
-			buf[i] = 0;
-			av[ac] = 0;
-
-			/*
-			 * Process http post command used in
-			 * http based push/pull/clone
-			 * Strip the http header so we can access 
-			 * the real push/pull/clone command
-			 */
-			if ((ac >= 1) && streq("POST", av[0])) {
-				skip_http_hdr(&r);
-				len = r.contentlen;
-				http_hdr();
-				*httpMode = 1;
-				ac = i = 0;
-				inspace = 1;
-				continue;
-			}
-
-			/*
-			 * Process HMAC header
-			 */
-			if ((ac == 2) && streq("putenv", av[0]) &&
-			    strneq("BK_AUTH_HMAC=", av[1], 13)) {
-				parse_hmac(av[1] + 13);
-			}
-			*acp = ac;
-			*avp = av;
-			return (1);
-		}
 		if (isspace(buf[i])) {
 			buf[i] = 0;
 			inspace = 1;
@@ -536,9 +508,36 @@ getav(int *acp, char ***avp, int *httpMode)
 			inspace = 0;
 		}
 	}
-	return (0);
-}
+	/* end of line */
+	av[ac] = 0;
 
+	/*
+	 * Process http post command used in http based
+	 * push/pull/clone Strip the http header so we can access the
+	 * real push/pull/clone command
+	 */
+	if ((ac >= 1) && streq("POST", av[0])) {
+		skip_http_hdr(&r);
+		content_len = r.contentlen;
+		http_hdr();
+		*httpMode = 1;
+		ac = i = 0;
+		inspace = 1;
+		goto nextline;
+	}
+
+	/*
+	 * Process HMAC header
+	 */
+	if ((ac == 2) && streq("putenv", av[0]) &&
+	    strneq("BK_AUTH_HMAC=", av[1], 13)) {
+		parse_hmac(av[1] + 13);
+	}
+
+	*acp = ac;
+	*avp = av;
+	return (1);
+}
 
 /*
  * The following routines are used to setup a handshake between

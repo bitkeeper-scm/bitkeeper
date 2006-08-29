@@ -7,7 +7,7 @@ repogca_main(int ac, char **av)
 	sccs	*s;
 	delta	*d;
 	FILE	*f;
-	int	c, i, pid, rfd, status;
+	int	c, i, status;
 	char	**urls, **nav;
 	char	*dspec = ":REV:\n";
 	char	buf[MAXKEY];
@@ -40,9 +40,8 @@ repogca_main(int ac, char **av)
 	assert(s && HASGRAPH(s));
 	sccs_findKeyDB(s, 0);
 
-	pid = spawnvp_rPipe(nav + 1, &rfd, 0);
+	f = popenvp(nav + 1, "r");
 	freeLines(nav, free);
-	f = fdopen(rfd, "r");
 	while (fnext(buf, f)) {
 		if (strneq(buf, "==== ", 5)) continue;
 		chop(buf);
@@ -50,9 +49,12 @@ repogca_main(int ac, char **av)
 		assert(d);
 		d->flags |= D_RED;
 	}
-	fclose(f);
-	waitpid(pid, &status, 0);
-
+	status = pclose(f);
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+		sccs_free(s);
+		fprintf(stderr, "repogca: connection to parent failed\n");
+		return (2);
+	}
 	for (d = s->table; d; d = d->next) {
 		if ((d->type == 'D') && !(d->flags & D_RED)) {
 			sccs_prsdelta(s, d, 0, dspec, stdout);

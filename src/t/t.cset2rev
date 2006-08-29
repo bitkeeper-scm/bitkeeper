@@ -21,13 +21,13 @@ echo 2 > file2
 bk new $Q file2
 bk commit -y1 $Q || exit 1
 bk edit $Q file1 || exit 1
-bk delta -y12 $Q file1 || exit 1
+bk delta -fy12 $Q file1 || exit 1
 echo 3 > file3
 bk new $Q file3
 bk commit -St2 -y2 $Q || exit 1
 bk tag $Q t2/again || exit 1
 bk edit $Q file2 file3
-bk delta -y233 $Q file2 file3 || exit 1
+bk delta -fy233 $Q file2 file3 || exit 1
 bk commit -y3 $Q
 echo OK
 
@@ -66,11 +66,17 @@ fi
 echo OK
 
 echo $N Check -r@ range .............................................$NL
-x=`bk prs -r@1.2..@t2 -hd:GFILE::REV: file1 file2 file3`
-if [ "$x" != "file11.2file11.1file21.1" ]
-then	echo wrong: $x
-	exit 1
-fi
+bk prs -r@1.1..@t2 -hnd:GFILE:@:REV: file1 file2 file3 > GOT || exit 1
+cat <<EOF > WANT
+file1@1.2
+file1@1.1
+file1@1.0
+file2@1.1
+file2@1.0
+file3@1.1
+file3@1.0
+EOF
+cmpfiles GOT WANT
 echo OK
 
 echo $N Verify that the cset2rev cache is cleaned ...................$NL

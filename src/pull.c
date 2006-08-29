@@ -12,11 +12,12 @@ typedef	struct {
 	u32	nospin:1;		/* -Q: no spin for the GUI */
 	u32	fullPatch:1;		/* -F force fullpatch */
 	u32	noresolve:1;		/* -R: don't run resolve at all */
-	u32	textOnly:1;		/* -t: pass -t to resolve */
+	u32	textOnly:1;		/* -T: pass -T to resolve */
 	u32	autoOnly:1;		/* -s: pass -s to resolve */
 	u32	debug:1;		/* -d: debug */
 	u32	update_only:1;		/* -u: pull iff no local csets */
 	u32	gotsome:1;		/* we got some csets */
+	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
 	int	gzip;			/* -z[level] compression */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
@@ -47,8 +48,9 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:dE:GFilnqr;Rstuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:DdE:GFilnqr;RstTuw|z|")) != -1) {
 		switch (c) {
+		    case 'D': opts.collapsedups = 1;
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
 		    case 'l': opts.list++; break;		/* doc 2.0 */
@@ -58,6 +60,7 @@ pull_main(int ac, char **av)
 		    case 'r': opts.rev = optarg; break;
 		    case 'R': opts.noresolve = 1; break;	/* doc 2.0 */
 		    case 's': opts.autoOnly = 1; break;
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'F': opts.fullPatch = 1; break;	/* undoc 2.0 */
@@ -80,6 +83,7 @@ pull_main(int ac, char **av)
 			return(1);
 		}
 	}
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 
 	/*
 	 * Get pull parent(s)
@@ -242,7 +246,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		disconnect(r, 2);
 		return (1);
 	}
-	if (get_ok(r, buf, !opts.quiet)) {
+	if (get_ok(r, buf, 1)) {
 		disconnect(r, 2);
 		return (1);
 	}
@@ -346,7 +350,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		if (getServerInfoBlock(r)) goto err;
 		getline2(r, buf, sizeof(buf));
 	}
-	if (get_ok(r, buf, !opts.quiet)) {
+	if (get_ok(r, buf, 1)) {
  err:		putenv("BK_STATUS=PROTOCOL ERROR");
 		rc = 1;
 		goto done;
@@ -535,6 +539,7 @@ takepatch(opts opts, int gzip, remote *r)
 	} else {
 		cmds[++n] = "-mvvv";
 	}
+	if (opts.collapsedups) cmds[++n] = "-D";
 	cmds[++n] = 0;
 	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
 	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));

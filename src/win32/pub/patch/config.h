@@ -16,12 +16,12 @@
 #include <sys/types.h>
 #include <sys/utime.h>
 #include <winsock2.h>
-#include "../../uwtlib/misc.h"
-#include "../../uwtlib/stat.h"
-#include "../../uwtlib/times.h"
-#include "../../uwtlib/dirent.h"
-#include "../../uwtlib/re_map_decl.h"
-#include "../../uwtlib/re_map.h"
+#include "misc.h"
+#include "stat.h"
+#include "times.h"
+#include "dirent.h"
+#include "re_map_decl.h"
+#include "re_map.h"
 
 #define	STDC_HEADERS	1
 #define	HAVE_MALLOC_H	1

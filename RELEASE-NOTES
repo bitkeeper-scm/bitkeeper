@@ -1,806 +1,813 @@
-===============================================================================
-Release notes for BitKeeper version 3.2.6.   These release notes cover
-the following topics:
+Release notes for BitKeeper version 4.0 (released 2006/07/28)
 
-. Upgrade Notes
-. Release Summary
+This is a major release that improves performance, introduces
+significant new features, regularizes interfaces, and fixes a number of
+customer-reported issues.  Version 4.0 does not change any file formats,
+so it is completely compatible with 3.2.x versions of BitKeeper.
 
-Upgrade Notes
-----------------------------------------------------------------------------
-Prior to upgrading on a Windows platform please uninstall any BitKeeper
-services with the following command:
+For installation instructions please see:
 
-	bk bkd -R
+    http://www.bitkeeper.com/Installing4.0.txt
 
-and then run "bk help service" to reinstall your services.
+Performance Improvements
+    bk changes is significantly faster (up to 7.5X), especially with remote URLs
+    bk check is about 1.75X faster
+    bk csettool is 3X faster on startup
+    bk revtool is 2X faster on startup
 
-Release Summary
-----------------------------------------------------------------------------
-This release is primarily for the Windows based platforms and has the 
-following changes:
-
-- File handling has been changed to deal with Windows sharing violations.
-  Google desktop search (and virus scanners et al) have increased the 
-  chance of sharing violations.  BitKeeper expected POSIX file system
-  semantics, that's not Windows, this release makes BitKeeper dramatically
-  more robust on Windows in the face of other applications holding files
-  open.  You may see delays with messages like "waiting for file XYZ"
-  when sharing conflicts occur.
-- Improved support for Windows/2000 platforms.  For some inexplicable
-  reason, Microsoft decided to reuse process ID's instantly on this
-  platform.  This wrecked havoc with any Unix shell, such as bash, as
-  well as any application that used the PID as a handle to the process.
-  We've worked around the problems but as a result no longer support
-  running long lived BKD's on Win2K.
-- Win/98, Win/95, Win/ME are all explicitly unsupported (see below)
-- The networking layer has been rewritten to solve some locking bugs
-  associated with long running bkd servers on Windows platforms.  The
-  rewrite forced us to choose between supporting those platforms or 
-  fixing the bugs.
-- Running BitKeeper as a service is improved, you may run multiple instances
-  on different ports and different repositories if needed.  There is a 
-  "bk service" interface, see the documentation for details.
-- Running a bkd works as it did/does on POSIX based systems.  You can run
-  bk bkd -dDl
-  to see the log output if needed for debugging.
-- Attempting to reuse an inuse TCP port for a bkd server will generate an
-  error message and fail on all platforms (Windows allowed this before,
-  leading to non-deterministic results).
-- We've added Windows 2000 Server and Windows 2000 Advanced Server to the
-  list of supported platforms (we don't recommend them but we support them).
-
-===============================================================================
-Release notes for BitKeeper version 3.2.5.   These release notes cover
-the following topics:
-
-. Platform News
-. Upgrade Notes
-. Licensing Changes
-. Installation changes
-. New Features
-. Noteworthy bug fixes
-
-Platform News
-----------------------------------------------------------------------------
-We are dropping support for platforms for which we have no demand.
-
-    Tru64/Alpha, Linux/mipsel (Qube), Linux/390 (zSeries), Linux/Arm,
-    Windows/ME, Windows/98, Windows/95, and Windows/NT.
-
-If your needs include any of those platforms please contact us so we can
-work with you to understand your needs and work out a solution.
-
-We continue to support a wide range of platforms including Linux, 
-Windows, MacOS, Solaris, FreeBSD, and HPUX.  If you need a platform we
-do not currently support please let us know.
-
-Licensing Changes
-----------------------------------------------------------------------------
-This release implements the first of a series of license improvements
-on the BitKeeper roadmap.  One change is that a valid license key is
-required in order to install.  In the future evaluation images will
-be sent out with the license embedded; after an install the license
-will be saved in `bk bin`/config (see below).  If that file is left
-in the config directory it will be used for each new repository
-created.  If you do not want to use this license for each new
-repository you may remove the file from your install directory.
-
-You may be prompted to accept a new license as the license terms have
-been changed to handle our wider range of customers (from Academic to
-the Enterprise).  Please read the license carefully to be sure you 
-are comfortable with the terms.  
-
-If you have nightly jobs which use BitKeeper, please remember to verify
-after upgrading that these jobs are still working.  It's possible that
-a license prompt which goes unanswered could stop a script.
-
-Upgrade notes
-----------------------------------------------------------------------------
-This should be a simple upgrade.  If you are running 3.2.4 you can
-upgrade using the 'bk upgrade' command.  For more information see 'bk
-help upgrade'.
-
-Installation changes
-----------------------------------------------------------------------------
-The download/install process has been streamlined.  Some install images
-will contain an embedded license so that the process of finding and
-the license keys is automated.  For images without embedded licenses,
-the system searches in more places for the keys (see "config file" below).
+    There is a new time stamp database that can be used to safely improve
+    performance of bk commands that are looking for modified files.
+    It uses the time stamps on the files in a way that works even with NFS
+    clients/servers that produce incorrect time stamps.  This speeds up
+    "bk -cr diffs" and bk citool among other commands.  Performance is 10x
+    faster for trees with all edited files (checkout:edit).
 
 New Features
-----------------------------------------------------------------------------
-- bk export -dup (procedural diffs)
-- MacOS X is now fully supported with both Aqua and X11 guis included.
-- config file search order has been expanded and is now:
 
-  	$BK_CONFIG
-  	`bk root`/BitKeeper/etc/config
-  	`bk dotbk`/config			(NEW in bk-3.2.5)
-  	/etc/BitKeeper/etc/config
-  	`bk bin`/config				(NEW in bk-3.2.5)
-  
-  Note that "bk dotbk" prints the path to your personal BK directory, which
-  is usually $HOME/.bk
+In addition to the features described here, a number of more minor features
+are described for individual commands under Interface Changes, below.
 
-Noteworthy bug fixes
-----------------------------------------------------------------------------
-- Fix installation problem that broke emacs vc mode
-- Fix problems with missing commands (renametool, support, unget)
-- Fix problem where 'bk revtool' would sometimes fail.
-- GUIs work on x86_64 again
-- Fix resolver bug related to filenames with spaces.
-- Fix interaction with Visual Studio .net which checked in files like ~sak*
-- Fix a bug in fm3tool where selecting a block also selected the next block
-- Fix a bug on Windows where bk patch misunderstood line endings
+GUIs
+    All GUI tools do a much nicer job of managing their geometry.
 
-===============================================================================
-Release notes for BitKeeper version 3.2.4.   These release notes cover
-the following topics:
+    The rev.sccscat config variable has been renamed to rev.annotate.
+    This variable was used only to control the formatting when 'c'
+    was typed to show all annotations.  Now it affects both the 'c'
+    display and the regular annotations ('a').
 
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
+bk citool Enhancements
+    Trigger names are shown in the diffs window as they are run so you
+    can know what is "hanging" the tool.
 
-Upgrade notes
-----------------------------------------------------------------------------
-None known, this should be a simple upgrade.  After upgrading, use bk upgrade
-to upgrade in the future, it's faster and easier.  There is a man page.
+bk fm3tool Enhancements
+    Annotations and/or GCA lines may be toggled on or off.
+    Autoscrolling has been added for large conflict blocks which improves
+    the likelihood of a correct merge when the conflicts are
+    "taller" than the window.  See bk help fm3tool for details.
 
-New Features
-----------------------------------------------------------------------------
-- bk upgrade command to tell you when there are new releases and install them.
-- New files may be commented in citool.
-- Pre-tag and pre-fix triggers.
-- Improve check performance.
-- Prevent variables, like BASH_ENV, from breaking installer.
-- Add the ability to export a changeset from csettool by hitting "s" (save).
+bk revtool Enhancements
+    When displaying package history, bk revtool now displays a yellow
+    outline around changeset nodes that have been tagged using bk tag.
+    Clicking on the outlined changeset shows the the tag name, prefixed
+    by "TAG:", following the changeset comments.
 
-Noteworthy bug fixes
-----------------------------------------------------------------------------
-- fix a performance problem with background openlogging processes.
-- remove patch fuzz in bk import.
-- fix the "fk cache: insert error" bug.
-- fix some openlogging config message performance problems.
-- Improve the commit template support.
-- bk sane will now refuse to pass if the ChangeSet file is missing.
-- do not normalize urls when setting the parent.
-- cut and paste should work better in citool.
-- Bugs 2000-12-29-001, 2004-10-06-000, 2003-09-25-001, 2001-01-26-001,
-  2001-06-05-001, 2002-11-27-002, 2002-12-31-001.
+    A new "+<line-number>" command-line option is provided, which displays an
+    annotated listing of the specified file and scrolls to <line-number>.
 
-Release notes for BitKeeper version 3.2.4.   These release notes cover
-the following topics:
+    A "-/<search-string>/" option is also available; it scrolls the
+    annotated file listing to the first occurrence of <search-string> in the
+    file (or the first occurrence following <line-number>, if specified).
 
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
+bk sendbug Enhancements
+    The submitter field can be set automatically from the environment 
+    variable REPLYTO.
 
-Upgrade notes
-----------------------------------------------------------------------------
-This should be a simple upgrade.  After upgrading, use bk upgrade to
-upgrade in the future.  For more information see 'bk help upgrade'.
+Trigger Enhancements
+    Remote trigger output format has been changed so that you can see
+    which trigger caused which output.  The new format is
 
-New Features
-----------------------------------------------------------------------------
-- bk upgrade command to check for new releases and install them.
-- New files may be commented in citool.
-- Pre-tag and pre-fix triggers.
-- Add the ability to export a changeset from csettool by hitting "s" (save).
+    >> Trigger "<trigger name>" (exit status was <non-zero>)
+    trigger output line 1
+    trigger output line 2
+    ...
 
-Noteworthy bug fixes
-----------------------------------------------------------------------------
-- Improve check performance.
-- Prevent variables, like BASH_ENV, from breaking installer.
-- Fix bug where BK could not handle a repository with more than 65,000 csets.
-- Make bk handle getting interrupted by ctrl-C more gracefully.
-- Allow checkouts in pre-delta triggers.
-- Improve the commit template support.
-- Improve 'bk check' to better handle copied SCCS files and NFS weirdness.
-- Fix http headers in BK/Web.
-- Option to set patch fuzz in bk import, default is 0.
-- Fix the "fk cache: insert error" bug.
-- bk sane will now refuse to pass if the ChangeSet file is missing.
-- Do not normalize urls when setting the parent.
-- Deleted files in BitKeeper/etc/ignored are now merged correctly.
-- Do not allow a file to be set to binary if previous revisions were ascii.
-- Make bk comments check for bad input.
-- Fix corner case bug in merge when a file has no ending newline.
+    This format repeats for all triggers.
 
-===============================================================================
-Release notes for BitKeeper version 3.2.3.   These release notes cover
-the following topics:
+    The trigger system has been reworked to ensure that all trigger
+    output is sent to stderr (formerly, remote output went to stderr
+    and local output might or might not go to stderr, depending on the
+    trigger writer).  This may cause problems for people who had scripts
+    which prompted for input; the input is likely to be hidden now.
+    The suggested fix is to use "bk prompt" because it reconnects to
+    /dev/tty.  Alternatively, redirect your read from /dev/tty and
+    to /dev/tty like so:
 
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
+    	read -p "This is the question" < /dev/tty 2>/dev/tty
 
-Upgrade notes
-----------------------------------------------------------------------------
-This should be a simple upgrade.
+    Triggers that in previous releases silently exited non-zero now
+    always produce a warning.
 
-New Features
-----------------------------------------------------------------------------
+    Triggers that exit zero but produce output may now be consistently
+    made silent with the -q option (for bk pull, bk push, bk clone,
+    and bk resolve).
 
-- BitKeeper/templates/commit - if this file exists it is used as the default
-  checkin comments for a commit.  Typical usage is for sites which wish to 
-  have a predefined format for commit comments such as those which include
-  a bugid.  This is a new feature and it may change based on customer feedback
-  but the intent is to give customers more control over their processes.
-  See also: bk help templates
+    As triggers are run, the trigger name is displayed in the diffs window
+    of bk citool, which helps you know which triggers are long running.
 
-- tabwidth configuration variable.  If you set gc(tabwidth) to a value other 
-  than 8 (the default) then the GUI tools will use this when displaying text.
+Selective Pulls
+    In this release, bk pull has a "-r" option that allows you to specify
+    a revision.  All changes up to and including that changeset are
+    pulled; subsequent changesets are not.
 
-- bk checksum on the ChangeSet file is much faster than before.  Not a big
-  thing in general, just a note.
+Multiple Parents
+    As of this release, a repository may have multiple parents.  You can
+    designate each parent as an incoming (pull) parent, an outgoing
+    (push) parent, or both.  In general, for simplicity, it is best to
+    avoid using multiple parents.  This feature can be useful, however,
+    as in the case of a repository that needs to pull from both a local
+    master and a mirror of a remote master, but needs to push only to
+    the local master.
 
-- bk fix -c is more careful about fixing corrupt repositories.  It is no 
-  longer possible to do a fix -c on a repository where one or more of the
-  files involved in the fix are missing and are not named in the gone
-  file (BitKeeper/etc/gone).
+    Notes:
+    - Running "bk changes -L" in a repository with multiple parents shows
+    changes relative only to the push parents; pull-only parents are
+    not considered.  This is correct behavior, but might not be obvious.
+    To see changes relative to a pull-only parent, you can specify
+    the parent repository:
+    
+	bk changes -L <pull-parent>
 
-===============================================================================
-Release notes for BitKeeper version 3.2.2.   These release notes cover
-the following topics:
+    - After making changes to parent relationships (using "bk parent -s"
+    and "bk parent -a"), it's a good idea to run bk parent to view the
+    results of those changes.
 
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
+Simplified Patching and Backporting
+    This release adds to bk changes a "-vv" option that shows diffs for all
+    changes, including full diffs for new files.  You can use this in
+    conjunction with bk patch to easily create a patch from the changesets
+    found:
 
-Upgrade notes
-----------------------------------------------------------------------------
+	(cd <some_repo> && bk changes -vvr+) | bk patch -p1 -g1
 
-The linux kernel repository of the 2.5/2.6 branch may contain a bad checksum
-in the ChangeSet file;  special case code has been added to correct this.
-The code runs automatically and will be silent if everything is repaired.
+    You can combine this with "bk comments -C+" to backport the changes to
+    another repository.
 
-New Features
-----------------------------------------------------------------------------
+    bk takepatch lists the edited files at the end in a nice format so
+    you can go decide what you want to do with them.
 
-- bk checksum runs about 40x faster on the ChangeSet file.
-- bk checksum has a new -r option to repair the checksum on a single delta
-- bk version now prints the operating system name and release
-- bk sfiles -U now lists BitKeeper/triggers files
+BK_SHOWPROC
+    "BK_SHOWPROC=/dev/tty bk <command>" logs commands to /dev/tty.
+    The value of BK_SHOWPROC can be an arbitrary file, "YES" (an alias for
+    /dev/tty), or a host:port pair for TCP-based logging.  Quite useful
+    for debugging on Windows is to create an autoexec.bat line that says:
 
-Noteworthy Bug Fixes
-----------------------------------------------------------------------------
+	set BK_SHOWPROC C:\bk.log
 
-2002-02-08-002	pull will now silently fix a locked sfile with missing gfile
-2002-03-06-002 	bk fix -c collapses multiple revisions of a single file for a
-		ChangeSet
-2002-03-22-004 	fixtool does not preserve permissions
-2002-04-17-001 	changing per file flags seems to have turned a symlink into a
-		reg file
-2002-08-20-001 	bk fix -c corrupts symlinks
-2003-12-15-002 	bk fixtool looses execute permissions
-2004-01-16-001 	if .bk_skip exists, check saying missing file could give a
-		hint as to what's wrong
-2004-03-31-001 	After bk fix -c check fails
-2004-05-19-004 	fix -c should save a backup patch, like undo
-2004-05-31-001	in bkweb "all diffs for ChangeSet" works again
+Wildcards for File Arguments
+    BitKeeper now supports wildcards as file arguments.  To diff all .c
+    files in an entire repository, you can do:
 
-bk fixtool now works on Windows.
+	bk -r diffs '*.c'
 
-Takepatch will again refuse to accept incoming csets that have
-checksum problems.
+    See bk help glob for examples.
 
-The installer code has been extensively reworked for the Windows platform.
-Most of the changes are behind the scenes, but the installer should
-preserve the registry properly, should uninstall properly, etc.  The
-path is maintained in the registry or autoexec.bat on Windows 98 & ME.
-We respect the registry entries for the Program Files directory, we
-don't stomp on the registry type for the Path variable, in general
-we're better Windows citizens.
+Windows Line-Ending Support
+    This release adds support for three different styles of line ending:
+    native, unix, or windows (windows is new).
 
-Bug reports on Windows installations are most welcome.
+Lease Server
+    This release introduces a simplified method for license/lease
+    management.  In previous releases, when a license key expired,
+    the BitKeeper administrator had to locate and update all license
+    keys wherever they were stored, which was both inconvenient and
+    error prone.
 
-============================================================================
-Release notes for BitKeeper version 3.2.1.   These release notes cover
-the following topics:
+    In the new model, leases are obtained as needed from a master lease
+    server.  At the time of your annual renewal, your records will be
+    updated on this server, allowing you to receive leases automatically.
+    No manual license update will be required on your part.
 
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
+    For existing BitKeeper installations, you do not need to move or
+    update your license keys; your existing license keys will continue
+    to work after your next renewal.  Starting with this release, the
+    installer will store your license keys in the `bk bin`/config file.
 
-Upgrade notes
-----------------------------------------------------------------------------
+    The new model also supports tracking BitKeeper usage on a
+    per-cost-center basis.  If this is important to you, it is recommended
+    that you install BitKeeper separately in each cost center and store
+    the license for that cost center in the `bk bin`/config file for
+    that installation.
 
-None.  This version is fully compatible with older versions.
+    Note:  This new license/lease model requires that BitKeeper
+    periodically access the Internet so it can fetch leases from
+    the lease server.  For performance, however, leases are cached,
+    so connections to the lease server are infrequent.  If you expect
+    to be disconnected from the Internet for more than a day or so,
+    you should run "bk lease renew" to explicitly get a lease before
+    disconnecting.  There are two kinds of leases (read and write),
+    so if you will be performing write operations, such as bk edit or
+    bk commit, you should include the "-w" option:
 
-New Features
-----------------------------------------------------------------------------
+	bk lease renew -w
 
-none
+    See bk help lease for more information.
 
-Noteworthy Bug Fixes
-----------------------------------------------------------------------------
+bk legal
+    A new bk legal command allows you to accept the terms of the
+    BitKeeper end-user license agreement (EULA) without performing any
+    other operations.  This is useful if you intend to run non-interactive
+    scripts using the commands bk clone, bk pull, bk push, or bk setup,
+    which might otherwise prompt for EULA acceptance.  See help bk legal.
 
-2003-03-27-001: receive shouldn't complain on duplicate patches
-2003-11-26-005: bk help, bk helptool fails silently when /tmp full
+Interface Changes
 
-Fix a minor race condition where a bk command could exit before all repository
-locks have been released.
+This section describes changes to command syntax and semantics in this
+release.  Wherever practical, the old syntax is contrasted with the new
+syntax to help you update your scripts for 4.0.x.
 
-Fix performance problem where files under $HOME/.bk are accessed too often.
+Range Changes
+    The range notation A..B is now a graph difference, meaning all deltas
+    in B's history that are not in A's history.  This is similar to the
+    way "bk prs -MrA..B" worked in previous releases, except that A is
+    not included in the final result.  The '.,' and ',.' range notations
+    have been removed.  See "graph difference" in "bk help terms."
 
-Under Windows: when reading proxy information from Internet Explorer BitKeeper
-now also obeys the list of hosts not to send to the proxy.
+    Tag graph inclusion in a range is now based on what would go in a
+    push or pull.  That is, a tag that is not attached to a changeset
+    in the range can now appear in the 'bk changes -a' output if it is
+    tag parented on a tag that is attached to a changeset in the range.
 
-The bk installer will no longer happily delete whole directories.
+    Exceptions to the new graph difference rule are "bk makepatch
+    -r1.0.." and "bk cset -M1.0..", which mean "all" instead of "all
+    except 1.0."  These are the two cases that work like they used to.
 
-===============================================================================
-Release notes for BitKeeper version 3.2.0.   These release notes cover
-the following topics:
+Date handling changes
 
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
+    The canonical format for dates is now YYYY/MM/DD-HH:MM:SS[+|-ZH:ZM].
 
-Upgrade notes
-----------------------------------------------------------------------------
+    Explicit date rounding using a "+" or "-" prefix is no longer
+    supported.  The start date in a range is always rounded down and
+    the end date is rounded up.
 
-  On Microsoft Windows, BitKeeper no longer requires (or uses) Cygwin.
-  You may use Cygwin if you like but BitKeeper does not need it; BK
-  is completely self contained.
+    Dates must always be specified as ranges.  For example, in previous
+    releases, it was possible see all changesets committed in 1998
+    using the command "bk changes -c1998", which was ambiguous.  As of
+    the 4.0 release, the range specifier ".." is required:
 
-  Registry management, uninstall, and upgrades should work substantially
-  better than they have in the past.
+	bk changes -c1998..1998
 
-New Features
-----------------------------------------------------------------------------
+    Similarly, previous releases allowed you to see all deltas made to the
+    file foo.c in the last 6 months using the command "bk log -c-6M foo.c".
+    As of this release, the range specifier is required:
 
-  A simple pager called 'bk more' is included and will be used if no
-  suitable pager can be found.
+	bk log -c-6M.. foo.c
 
-  Under Windows the SCCS dirs are now created with the "hidden" attribute.
+All commands
+    In past releases, most commands suppressed the retrieval of files
+    named .del-* because BitKeeper had two ways of deleting a file:
+    one renamed it as .del-<filename> and the other renamed it as 
+    `bk root`/BitKeeper/deleted/.del-<filename>.  The second form has 
+    been the default since February 2000.
 
-  HPUX 11.11 is now a supported platform.
+    As of this release, retrieval of these files is no longer
+    suppressed.  This means that if there is an SCCS/s..del-foo file,
+    bk co checks out .del-foo whereas in earlier releases it wouldn't 
+    have.  If you have a file like this and want to get rid of it, run:
 
-  A new command called 'bk lease'.  This is primarily for openlogging users.
-  Please see 'bk helptool lease' for more information.
+    	bk rm .del-<filename>
 
-Noteworthy Bug Fixes
-----------------------------------------------------------------------------
+    This moves the file to BitKeeper/deleted.
 
-  2004-01-19-002: Fix resolve bug where 'vr' (view remote) didn't work
-  2004-01-27-001: Fix include/exclude processing in 'bk export'
-  2004-02-06-002: bk export: fix error case for missing src directory
-  2004-03-12-001: Don't delete a RESYNC directory we didn't create
-  2004-04-19-001: Fix regression in bk send
-  2004-04-23-001: Fix HTTP requests to match standards
+bk annotate/diffs/co/grep
+    All commands that take options to enable annotations have had those 
+    options changed.  The commands are: grep, co, annotate, diffs.
+    The new interface is in general:
+	-A<opts>
+	-a<opts>
+    where the first form requests aligned ("human readable") annotations
+    and the second form requests program-readable output.  <opts>
+    specifies which annotations to include.  See bk help co for a
+    full list.
 
-  Remove an extra unneeded consistency check on the first commit
-  after every clone.
+bk bkd
+    The -u and -g options allowed you to specify the effective user
+    and group IDs for the bkd process.
 
-  Fixed bug in citool that causes comments for pending files to not
-  show up in the bottom window when the ChangeSet file is selected.
+    In this release, these options are removed.  It is recommended that
+    you assign a dedicated user ID to own the bkd process and use su(1).
 
-  Fix problem in BkWeb where the "N weeks" times didn't match
-  reality.
+    Old method:
+	bkd -u <bkd-user>
+    New method:
+	su <bkd-user> && bkd
 
-  Improve documentation for which characters are legal in tags and add more
-  error checks on tag names.
+bk changes
+    bk changes now supports multiple parents and "bk changes -L"
+    can summarize the list of changes relative to a series of remote
+    locations, either separately or as a union.  You can combine "-L"
+    and "-R" to see all changesets local to this repository in addition
+    to seeing remote changesets.
+
+    The "-L" and "-R" options to bk changes imply "-a"--show all
+    that would go on a push or pull.  The "-a" option is removed from
+    bk changes and bk log.
+
+    Now 'bk changes -/<pattern>/' can handle regular expressions.
+    See bk help regex for more information.
+
+    The new "bk changes -vv" option displays diffs after every delta
+    is printed.  This uses the new :UDIFFS: dspec.  (See the notes on
+    bk log, below.)
+
+    The default output format for 'bk changes' has changed slightly.
+    Scripts that need to parse bk changes output are encouraged to use
+    the -d<dspec> option to generate a stable, easy to parse output.
+
+    New -i (include) and -x (exclude) options allow you to limit output
+    to changes that apply to certain files.
+
+bk check
+    bk check uses substantially less memory, increasing performance for
+    repositories that just barely fit in memory.
+
+bk ci
+    This command replaces bk delta as the preferred interface for checking
+    in files from the command line.
+
+    The "-i" option, which put a file under revision control, is
+    deprecated.  Use bk new instead.
+
+    bk ci picks up all the options that used to be unique to bk delta.
+
+bk co
+    This command replaces bk get as the preferred interface for checking
+    out files from the command line.
+
+    Both "-l" and "-e" will continue to work as ways to lock the file
+    but the "-l" option is the preferred interface; "-e" will go away
+    in BitKeeper 5.0.
+
+    The "-C" option specified the revision most recently committed to
+    a changeset. In this release, this option is removed. use "-r@+"
+    instead.
+
+    Old syntax:
+	bk co -C
+    New syntax:
+	bk co -r@+
+
+    The -c option, which specified a date, is removed.  Use a revision
+    ("-r") instead.
+
+bk commit
+    This command formerly had an undocumented -f<file_list> option that
+    allowed you to specify a file containing a list of files to commit.
+
+    That option has been renamed to -l<file_list> and -f is now used to
+    force a non-interactive commit.
+
+    Old syntax:
+	bk commit -f<file_list>
+    New syntax:
+	bk commit -l<file_list>
+
+bk conflicts
+    This is a new command that lists the files in the RESYNC directory
+    that have conflicts.  This is useful for examining changes to see
+    who should resolve the conflicts.
+
+bk cset
+    The "-l" option allowed you to specify a list of changeset revisions or
+    keys on stdin and display a list of deltas in each changeset.
+
+    The "-r<rev>" option allowed you to specify a revision and display
+    a list of deltas for that revision.
+
+    In this release, these options are removed.  Use bk changes instead.
+
+    Old syntax:
+	cat <rev-list-file> | bk cset -l
+    New syntax:
+	cat <rev-list-file> | bk changes -
+
+    Old syntax:
+	bk cset -r<rev>
+    New syntax:
+	bk changes -r<rev>
+
+bk csets
+    A new "-t" option provides a text-mode version of bk csets.
+
+bk delta
+    This command has been merged into the bk ci interface and is
+    deprecated.  You may use either interface; they both do the same
+    thing, but going forward only bk ci will be documented.
+
+    The "-C" option, which directed the command to take comments from
+    SCCS/c.<file>, is changed to lower case ("-c").
+
+    Old syntax:
+	bk ci -C <file>
+    New syntax:
+	bk ci -c <file>
+
+    This command's behavior has been changed to be more like the old ci;
+    if there are no changes to the file, no delta is made automatically.
+    There is a new "-f" option to force the creation of a null delta.
+    This breaks compatibility with ATT SCCS.
+
+bk diffs
+    The "-C" option specified a changeset revision. In this release,
+    this option is removed. Use the "-r" option instead.
+
+    Old syntax:
+	bk diffs -C<cset-rev>
+    New syntax:
+	bk diffs -r@<cset-rev>
+
+    A new "-N" option treats extra files as new and diffs against /dev/null
+    i.e., to get a patch of your changes do "bk -xcr diffs -Nu > /tmp/patch"
+    and that will pick up modified and new files.
+
+    A new "-f" option forces diffing against read-only files.
+
+    A new "-H" option lets you prefix diffs with checkin comments
+
+bk edit
+    There is a new "rollback" feature: "bk edit -r<rev> <file>"
+    that edits the top delta for <file> and excludes deltas such that
+    its contents are identical to <rev>.
+
+bk extras
+    This command formerly required the "-a" option to follow the optional
+    directory argument. In this release, the order is reversed to be more
+    conventional.
+    
+    Old syntax:
+	bk extras [<dir>] [-a]
+    New syntax:
+	bk extras [-a] [<dir>]
+
+bk files
+    This is a demo program to show file-name expansion.
+
+bk filetypes man page
+    This is a rename of the bk files man page.
+
+bk fixtool
+    Documentation is added for this interface.  It is used to walk through
+    files that have changed and modify the changes prior to checkin.
+    This is the command-line equivalent of running bk citool and choosing
+    Fmtool from the Edit menu.
+
+bk get
+    This command is replaced by bk co and is deprecated; both will
+    continue to work but only bk co will be documented.
+
+bk glob
+    BitKeeper now respects wildcards (globs) on the command line.
+    For example:
+
+	bk <command> '*.c'
+
+    means operate on all files that match *.c, not run the command
+    on the single file named '*.c'.  To get the old behavior you can
+    use either
+
+	bk command './*.c'	# This does not do glob expansion
+
+    or 
+
+	export BK_NO_FILE_GLOB=TRUE
+	bk command '*.c'
+
+    See bk help glob for more information.
+
+bk grep
+    bk grep has been rewritten to mimic GNU grep for the most part.
+    Backwards compatibility is broken, but the new version is much better
+    and more standard.  See help bk grep for details.
+
+bk ignore
+    This release introduces a new syntax to prune directories:
+
+	path/to/dir -prune
+
+    If you use .bk_skip files, this -prune is preferable because it's
+    is higher performance and works better.  .bk_skip continues to
+    be supported.
+
+bk import -tCVS
+    The CVS import code has greatly improved from previous versions.
+
+bk log
+    This is a new name for bk prs, which is deprecated but continues to
+    work for backward compatibility and maintains its old output format.
+    bk log has a greatly improved output format and pages its output,
+    but otherwise behaves like bk prs.
+
+    The "-o" option, which displayed all unspecified deltas, has been removed.
+    "bk log -C<rev>" now prints nothing if the revision is not in a
+    changeset; in past releases, it listed pending deltas.
+
+bk log, changes, sccslog ...
+    In commands that produce date output, such as bk log, bk changes,
+    and bk sccslog, the old default was <YY>/<MM>/<DD> or <YY>-<MM>-<DD>
+    but you could force a 4-digit year with BK_YEAR4=1.  The 4-digit
+    year is now the default.
+
+    New data specifications (dspecs) are introduced in this release:
+	:DIFFS:		The diffs of the implied delta (like diff)
+	:DIFFS_U:	Like "diff -u"
+	:DIFFS_UP:	Like "diff -up"
+
+	For a file in the RESYNC directory with conflicts:
+	:GREV:		GCA revision
+	:LREV:		local revision
+	:RREV:		remote revision
+
+bk lease show
+    This now shows license options and when the current license will
+    renew.
+
+bk mv/mvdir
+    bk mvdir is deprecated. bk mv is now the preferred way to move
+    directories.
+
+    Old syntax:
+	bk mvdir <src> <dst>
+    New syntax:
+	bk mv <src> <dst>
+
+bk prs
+    This command, used to display file revision history, is
+    deprecated. Use bk log instead.
+
+    Old syntax:
+	bk prs
+    New syntax:
+ 	bk log
+
+bk prompt
+    Uses -G to force GUI prompts and -T to force text prompts.  -T is now
+    the preferred option for saying "text only" and is used in csets, prompt,
+    pull, push, resolve, remerge, sendbug, support, and takepatch.
+
+bk pull
+    (See Multiple Parents above.)
+
+    The deprecated "-l" and "-n" options, which together were used to
+    display a list of changes in the parent repository that were available
+    to be pulled should not be used.  Instead use "bk changes -R", which
+    lists changes that are available to be pulled from all pull parents.
+
+    Old syntax:
+	bk pull -nl
+    New syntax:
+	bk changes -aR
+
+    A new "-u" option is for an update-only pull.  This makes bk pull
+    fail if any local csets/tags exist in the tree.
+
+    A new "-s" option tells the resolver to fail if an automerge is not
+    possible. This is useful for non-interactive pulls.
+
+    A new "-r" option pulls only up to a specified revision in the
+    remote repository.
+
+bk push
+    (See Multiple Parents above.)
+
+    The deprecated "-l" and "-n" options were used together to display
+    a list of changes in the current repository that could be pushed to
+    the parent.
+
+    In this release, these options are removed. Instead use 
+    "bk changes -L", which lists changes in the current repository that 
+    can be pushed to all push parents.
+
+    Old syntax:
+	bk push -nl
+    New syntax:
+	bk changes -aL
+
+bk relink
+    With no arguments, this command relinks the current repository with its
+    parents if they reside on the same machine.
+
+bk resolve
+    bk resolve now goes straight into merge mode after attempting to
+    automerge all conflicts.  There is an option to disable interactive
+    mode ("-s").
+
+    You can now use bk resolve to resolve part of a set of conflicts. See
+    the man page for details.
+
+    A new "S" command allows you to skip this file and resolve it later.
+
+bk repogca
+    A new "-d<dspec>" option returns a given dspec instead of :KEY:
+    A new "-k" option is a shorthand for "-d:KEY:"
+
+    Multiple remote URLs can now be passed on the repogca command line
+    and the latest cset that exists in all remote URLs is returned.
+
+bk revtool
+    The "-G" option is removed; the GCA is automatically calculated.
+
+bk sccscat
+    This command, used to annotate the lines added by a specified
+    revision, has been removed.  Use "bk annotate -R" instead.
+
+    Old syntax:
+	bk sccscat -r<rev> <file>
+    New syntax:
+	bk annotate -R<rev> <file>
+
+bk sfiles
+    This release introduces a number of performance improvements.
+    bk sfiles also has many subtle interface changes to support GUI
+    integration.  The summary below compares old and new syntax. For a
+    more concise description of just the new syntax, see bk help sfiles.
+
+    To see the new format try "bk sfiles -E"
+
+    Note that "-i" and "-n" no longer require that you run bk sfiles at
+    the repository root.  This means that "bk citool ." does not show
+    files that are normally ignored.
+
+    The unchanged interfaces are:
+    -1 (stop at first directory)
+    -a (consider all files)
+    -c (list changed files)
+    -d (list directories with BK controlled files)
+    -D (list directories without BK controlled files)
+    -g (list gfile name, not sfile name)
+    -j (list junk files)
+    -l (list locked files)
+    -n (list files not in the correct location)
+    -o (output)
+    -p (pending)
+    -P (pending)
+    -S (summary)
+    -u (unlocked)
+    -U (user files only)
+    -x (extras)
  
-  Prevent people from passing bad options to 'bk comments'.
-
-  Always write keys to BitKeeper/etc/csets-in instead of revs or
-  serial numbers.
-
-  Fix a case where 'bk repogca' could return the wrong answer.
-
-  Fix case where BitKeeper didn't work correctly with PGP 8.0 on
-  Windows.
-
-  Set time stamps correctly after running 'bk fix'.
-
-===============================================================================
-Release notes for BitKeeper version 3.0.4.   These release notes cover
-the following topics:
-
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
-
-Upgrade notes
-----------------------------------------------------------------------------
-
-Nothing is required to upgrade from the 3.0.3 release.
-
-New Features
-----------------------------------------------------------------------------
-
-  When running under rxvt on Windows the stderr output gets buffered.  Add
-  a setbuf() to make stderr unbuffered.
-
-  revtool has "a" accelerator to show annotated listes and "C" accelerator
-  to jump to csettool.
-
-  Fix some performance problems that should provide a noticable speedup for
-  users with large ChangeSet files.
-
-  Fix some performance problems which should help the openlogging users.
-
-Noteworthy Bug Fixes
-----------------------------------------------------------------------------
-
-  2002-02-13-006: Fix expanding of already expanded RCS keywords
-  2003-09-10-002: Fix tags in BKWeb
-  2003-02-27-002: Don't rewrite localhost URLs
-  2003-11-21-005: Takepatch filename printing
-
-  Fix a bug in citool that was throwing away comments when you clicked on
-  the icon for a new file.
-
-  Workaround a Windows problem where strerr was being buffered for
-  some reason.
-
-  Fix some license checks so users won't be prompted for some licenses
-  when running bk in scripts or triggers.
-
-  Do not allow people to cset -x merge nodes, that can break some BK 
-  invariants.
-
-===============================================================================
-Release notes for BitKeeper version 3.0.3.   These release notes cover
-the following topics:
-
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
-
-Upgrade notes
-----------------------------------------------------------------------------
-
-IMPORTANT
-    This release corrects a rare problem where complicated merges could
-    be resolved sub-optimally.  Please upgrade to this release as soon
-    as possible.  To find out if any of your existing merges might have
-    been effected by this problem please run 'bk _find_merge_errors' on
-    each repository and follow the instructions given by that program.
-
-
-Nothing is required to upgrade from the 3.0.2 release.
-However when upgraded any running bkd's must be restarted.
-
-New Features
-----------------------------------------------------------------------------
-
-  Execution of triggers is now logged in the BitKeeper/log/cmd_log file.
-
-  In the triggers man page we provide a more complete example of the
-  paranoid trigger to avoid csets that try to introduce rogue triggers.
-
-
-Noteworthy Bug Fixes
-----------------------------------------------------------------------------
-
-  2003-08-26-001: stripdel asserts when edited gfile is missing
-  2003-08-28-002: fix instructions for running 'bk links' in installer
-  2003-08-15-001: 'bk pull -n' and 'bk pull -nl' returned different results
-  2003-08-28-001: 'bk changes -r+ -hnd:KEY: URL' didn't work
-  2003-03-04-002: RESYNC dir left in . if clone failed
-  2003-03-04-003: lclone -rBadRev makes a clone
-  2003-02-25-001: chmod -w . ; bk clone ../repo : bad message
-
-  Fix some problems when running on SCO's NFS client code.
-
-  Fixed 'bk export' so that csetkeys can be passed for the revision
-  argument. 
-
-  BitKeeper was broken in New Zealand because of a timezone problem.
-
-===============================================================================
-Release notes for BitKeeper version 3.0.2.   These release notes cover
-the following topics:
-
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
-
-Upgrade notes
-----------------------------------------------------------------------------
-
-Nothing is required to upgrade from the 3.0.1 release.
-
-New Features
-----------------------------------------------------------------------------
-
-  Add support for SCO (x86), Tru64 (Alpha), and Linux (mips) platforms
-
-  Tcl/Tk is now included is distribution, eliminating dependencies on the
-  installed version.
-
-  Windows support now uses Cygwin 1.3.22
-
-  Consistency checks now display a progress bar unless -q is passed or BK_NOTTY
-  is set.
-
-  All BitKeeper files formerly stored in $HOME/.bk* are now stored in
-  the $HOME/.bk subdirectory.  Old files are migrated automatically.
-
-  The new install image includes a graphical installer that is run by
-  default if $DISPLAY is set. (or on Windows) 
-
-Noteworthy Bug Fixes
-----------------------------------------------------------------------------
-
-  2000-04-17-003 Try to get the real user name if all we have is root
-  2002-11-07-001 revtool fails when run on a certain repository
-  2002-12-09-004 some colors are missing from X configs
-  2002-12-18-001 sfiles -i in corrupted tree dumps core
-  2002-12-28-002 have rclone respect checkout preference
-  2003-01-16-001 fix line length limitation with compressed files
-  2003-01-17-003 import -tRCS -jN fails if N is too large
-  2003-01-24-001 allow tags to contains spaces
-  2003-02-03-002 add remote level to push error messages
-  2003-02-19-001 takepatch could fail if patches contain really long lines
-  2003-05-20-002 Evaluation license quota error message "off-by-one"
-  2003-06-03-002 Sometimes -rREV1,REV2,REV3 would fail
-
-  Fix permissions problems in resolve.  In some cases where a user
-  only has partial write permissions to a repository, resolve could
-  fail after partially applying an incoming patch.  This left the tree
-  in an unusable state.  These problems are now detected.
-
-  'bk changes -L' could rarely report csets that do exist in the
-  remote tree when there are local tags.  This is now fixed.
-
-  win32: Handle windows style pathnames in 'bk mv'
-
-  Fix race condition that can result in the lost of the ChangeSet file
-  when multiple people access the same repository.
-
-  Fix some cases where the 3-way merge could generate really strange
-  results.  Significantly improved merging in some conditions.
-
-  Make 'bk fix -c' work better in checkout:edit mode.
-
-  Fix some obscure csetprune bugs...
-
-  Fix problem with 'bk multiuser' when upgrading single_user repository.
-
-  Fix a problem where 'bk changes' and 'bk sccslog' could assert
-  because of a fixed sized buffer for expanding dspec keywords.
-  BUGIDs: 2003-04-04-001 2002-02-28-002 2002-09-13-001
-  
-  Do a better job of handling file comments with really long lines.  Also
-  add a 'bk delta -Yfile' option like 'bk commit -Yfile'.
-
-  Fix performance problem with 'bk -r diffs -u'.
-
-  Fix problem with GUI tools where sometimes they would start out partially
-  constructed and then get redrawn correctly.
-
-  Add a BK_PATCH variable which contains the full path to the
-  patch file.  This is passed to pre-resolve triggers.
-
-  Fix the log format for a bkd to be less verbose.
-
-  Fix a bug in 'bk import -tpatch' were a failed patch that deletes a file
-  can leave that file locked without a gfile.
-
-  Fix problem with restarting a BKD where existing children are still
-  holding the socket open.
-
-  User authentication to HTTP proxies was broken in 3.0.1, it is fixed
-  again now.
-
-===============================================================================
-Release notes for BitKeeper version 3.0.1.   These release notes cover
-the following topics:
-
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
-
-Upgrade notes
-----------------------------------------------------------------------------
-
-Nothing is required to upgrade from the 3.0 release.
-
-New Features
-----------------------------------------------------------------------------
-
-  - Export a BK_COMMENTFILE variable so that the pre-commit triggers
-    can check the comments for entries such as BUGIDs
-    (see 'bk help trigger' for more information)
-
-  - Several Performance enhancements
-     - recode some sections of takepatch to dramatically speedup
-       applying large numbers of deltas to 1 file
-     - Fixes to make 'bk clone -l' faster
-     - enable partial checks in 'bk clone -l' and 'bk undo'
-
-  - Now each repository generates a unique identifier that can be used
-    for tracking.  The id can be fetched with 'bk id -r' and it is
-    passed to triggers in BK_REPO_ID and BKD_REPO_ID.  The ID of
-    remote repositories are also recorded in the logs.
-  
-  - Added the ability for the following GUIs to save and restore their
-    geometry information: renametool, fmtool, fm3tool, citool, bugform
-
-  - win32: make installation of bkshellx.dll and bkscc.dll optional
-
-  - Added :MD5KEY: dspec that can be used to get a shorter unique id
-    for a delta or changeset.
-
-  - Add 'bk obscure' command to scramble your tree.  That allows
-    sending repositories to BitMover for debug without revealing
-    secret IP.
-
-  Security fixes:
-
-    Put all tmp files in BitKeeper/tmp by default.  Allow user to
-    change the tmp location with TMPDIR
-
-    Never use /bin/sh to run subprocesses
-
-Noteworthy Bug Fixes
-----------------------------------------------------------------------------
-
-  2002-09-13-002: 'bk parent' prints bogus error when there is no parent
-  2002-10-10-002: If takepatch fails because a file is edited print the 
-		  original file name not the name it will be after this 
-		  patch.
-  2002-10-11-001: Exiting resolve early will no longer clean some
-		  files in the users tree.
-  2002-10-11-002: A failed undo will no longer clean some files in the
-		  users tree.
-  2002-10-14-001: Importing huge repositories caused an assert
-  2002-11-15-002: 'bk changes -uUSER -c-1w' didn't work.
-  2002-11-19-002: revtool would sort revisions incorrectly (1.9 vs 1.10)
-  2002-11-06-002: Go to a different uid/gid permanently in bkd.
-  2002-11-23-001: 'dlm' in "bk resolve" now does the right thing
-  2002-11-25-003: Prompts go to stderr instead of stdout.
-
-  2002-11-26-001 2002-11-05-002 2002-09-30-005 2002-08-16-001
-  2002-06-27-002: Fix various bugs with the handling of checkout:edit
-		  in 'bk fix -c' 'bk cset -x' and 'bk unrm'
-
-  Fix bug where changes in an edited config file didn't get used during
-  a pull.
-
-  Fix bug where DOS line termination was not always removed correctly
-  when a file is originally created or imported.
-
-  Fix bug that didn't allow people to enable single_user repositories
-  and openlogging at the same time. Though it's not clear why a user
-  would want to use these together.
-
-  Fix rare condition where a tag conflict doesn't go away after it is
-  resolved originally.
-
-  Fix some problems running on a case-folding file system under UNIX.
-  The default FS for Mac OS X is an example.
-
-  Minor bug in SCCS keyword expansion.  '% %A%' didn't expand
-
-  citool will now always report any errors or unexpect output from 
-  'bk commit' to the user and give them a chance to recover.
-
-  Fixed problem where the license information in the
-  BitKeeper/etc/config file was not always used if the information was
-  not committed.
-
-  Fixed some bugs where the Windows version could get confused by 
-  autoproxy support in IE.
-
-  Fix problems on Windows when the native Tcl (included with
-  BitKeeper) and the Cygwin Tcl are both installed on the users
-  machine.  Bk now finds the correct version of Tcl.
-
-  Fix problems running a bkd when it doesn't have write permission to
-  a repository.
-  
-===============================================================================
-Release notes for BitKeeper version 3.0
-
-bk-3.0 was released on october 10th, here are the release notes against
-bk-2.1.6-pre5; we probably won't do relnotes vs bk-2.0.x unless people
-really need them, as far as we can tell everyone is running 2.1.x.
-
-Bug fixes
-    - catch all error returns from zlib, catches truncated files.
-    - bk cp 
-    - many repo locking problems fixed, locking stress tested
-    - better handling of config logging
-    - more complete handling of checkout:{get,edit}
-    - bk mv now works like Unix mv
-    - csetprune fully supported
-    - various bugs in fm3tool (3 way file merge) fixed
-    - more polished look and feel for the GUIs
-    - the cursor no longer disappears in citool
-    - citool no longer loses comments in the error path
-    - attempt to have the default GUI fonts be reasonable on all resolutions
-    - bk changes can list changes in a remote repository; it has many useful
-      options such as the ability to filter on user, strings, etc.
-    - fixed the search path for programs, the last component wasn't used
-    - cvs import supported on windows
-    - patch imports now work into trees which have modified / new files
-    - patch import does repository locking
-    - make interrupts in delta/commit work consistently on Unix & Windows
-    - the config option partial_check is more widely supported 
-    - Partial list of closed bugs:
-      2001-01-06-003 resolve doesn't respect the checkout policy
-      2001-01-08-003 pull, pull which fails, bk unpull unpulls the first
-      2001-02-07-002 menus in guitools look like buttons.
-	make them look like menus
-      2001-02-21-004 bk clone /nonexistant/dir dir fails strangely
-      2001-06-29-003 citool loses the comments in too many different situations
-      2001-08-29-001 BK installer installs
-	files world-writeable owned by uid 3536
-      2001-09-26-001 Changed comment in citool's ChangeSet is not saved
-      2002-02-26-003 revtool fails with
-      2002-03-01-004 sendbug GUI window too tall on 1024x480 screen
-      2002-03-24-002 changes -R can hang when there are no changes
-      2002-04-02-001 bk changes needs to retry if it can't get a lock
-      2002-04-02-002 chmod - wrong argument causes repository loss
-      2002-04-03-001 bk tag should not allow commas in tags
-      2002-04-06-002 ASCII files can falsely be identified as binary
-      2002-04-09-002 bk chmod needs to respect checkout pref
-      2002-04-10-003 bk resync won't pull from other url than parent
-      2002-04-16-002 changes -R asserted
-      2002-04-17-002 Double file moves leak cfiles
-      2002-04-23-001 bk patch assertion failure.
-      2002-05-02-001 with checkout:get in config file,
-	BitKeeper/deleted files are all checked out
-      2002-05-10-002 bk pull errors don't re-edit the working files
-      2002-05-10-004 bk: port/mnext.c:17: mnext:
-	Assertion 's[-1] == '\n'' failed.
-      2002-05-27-001 bkd outputs wrong base href for
-	"changeset activity for <user>" page
-      2002-07-10-002 bk chmod doesn't obey checkout: get
-      2002-08-28-001 bk get SCCS/*.jpeg SCCS/*.png
-	in linux-2.4 bitkeeper tree crashes
-      2002-08-30-001 bk fix -c leaves the repository inconsistent
-	for files with a space in their path/name
-      2002-09-09-003 Command mis-match on citool
-      2002-09-11-001 "bk changes -a" behavior doesn't
-	imply -e, despite what the documentation says...
-      2002-09-11-002 "bk changes -R" and "bk changes -L" inconsistent
-      2002-09-12-001 "bk push" error message tells user to use obsolete commands
-      2002-09-19-004 "bk comments -"
-	dumps core when input contains header but no comments
-
-Performance enhancements
-    - both sides of a pull/push now do 1 pass over the ChangeSet file, the
-      more changesets you are pulling at one time, the more this helps.
-      In an extreme example it went from 20 minutes to 3 seconds.
-    - removed N^2 and N! loops in check and takepatch
-      
-Interface changes / additions
-    - bk help/helptool ignore case by default in searches
-    - bk import -temail (from Linus)
-    - bk man added and the man page source is shipped so you can print them
-    - bk prompt interface which works in GUI or cli mode
-    - -r<rev> may be replaced with -r@<csetrev>.  Eg bk -r diffs -r@bk-2.0
-    - bk clone -l (aka lclone) runs same triggers as regular clone
-    - bk relink can take multiple directories
-    - bk setuptool, graphical project creator, much nicer than bk setup
-    - bk csettool can toggle annotations on/off
-    - bk csettool has vi-like forward/back/expose bindings
-    - bk helptool has vi-like forward/back bindings
-    - GUI tools "remember" their size and location
-    - bk revtool always does forward diffs
-    - "d" always works in revtool, even with only one node selected
-    - bk bkd -s<dir> is no longer supported, see -C
-    - bkd.1 notes that it does not work when started in subst'ed drive.
-    - bk check has -gg/-ggg options for handling both gone-ed files and/or
-      gone-ed deltas.  Also has -ff to fix fixable errors which where the
-      fixes may be destructive (unlikely to be needed by anyone other than
-      the MySQL maintainers)
-    - bk check prints shorter error messages with a tag, like (chk2).  To
-      see the long message run "bk help <tag>"
-    - bk comments with no args implies -C+
-    - bk ci/delta now respects the SCCS/c.<file> as implied comments
-    - bk getuser -r option added to get real user (not $BK_USER)
-    - bk parent -p
-    - bk prs has new keywords LI/LD/LU/IMPORTER
-    - Added $no_proxy env var, see bk help url
-    - bk grep prints full path names instead of basenames
-    - bk tag does not allow , or .. in tag names
-    - installer takes a -f option to just install it
-
-Commercial user changes
-    - added digital signatures for license keys, you must get a signed key
-      to run bk-3.0.
+    The "-d" and "-D" options now work when combined with other options.
+
+    The changed interfaces are:
+    Old		New	Meaning
+    -e		-E	-e is no longer supported, see -E
+    -E		-E	-cdDGijlnRsuvxyp (shows all interesting information)
+    -i		-i	now means list files that are ignored
+    <none>	-G	list files that are checked out
+    <none>	-y	list files with saved comments
+    <none>	-R	list subrepository roots
+    -S		-S	now lists -d/-D/-G/-i/-R summaries as well
+    -v		-v	now a 7 column listing instead of 4 with slots for
+    			-l/-u,-c,-p,-G,-n,-d/-D,-y && -j/-x (see man page)
+    -C		-pC	remove undocumented alias
+    -A		-pA	remove undocumented alias
+    -C		-C	now means don't trust time stamp db
+    <none>	-0	print null between files instead of \n
+
+    The sfiles options to 'bk' have similar changes.  See 'bk help bk'.
+
+bk sfio
+    A new "-f" option overwrites existing files
+
+bk smerge
+    This command now takes "-l<local> -r<remote> <file>" arguments to
+    be consistent with bk revtool.  The GCA is automatically calculated.
+
+    Old syntax:
+	bk smerge <file> <local> <remote>
+    New syntax:
+	bk smerge -l<local> -r<remote> <file>
+
+bk stripdel
+    The "-b" option, which stripped all branch deltas, has been removed.
+
+bk upgrade
+    The "-i" (install) option is removed.  With no options, bk upgrade
+    now downloads and installs the latest upgrade if a newer version is
+    available.
+
+    Old syntax:
+	bk upgrade -i
+    New syntax:
+	bk upgrade
+
+    The "-n" option, which downloaded the installer but did not run it, is
+    replaced with a "-d" (download only) option.
+
+    Old syntax:
+	bk upgrade -n
+    New syntax:
+	bk upgrade -d
+
+    A new "-c" option means check for available upgrades, but do not
+    download or install anything.  In previous releases, this was the
+    default behavior of bk upgrade with no options.
+
+Default Shell
+    All platforms default to using bash to run any shell-based functions.
+    We know that bash always works, but you can also try ksh if you
+    don't have bash.  We look for bash, ksh, and sh in that order,
+    and use the first thing found anywhere in your path.
+
+    You may override the shell used with 
+	setenv BK_SHELL /usr/local/bin/bash
+	BK_SHELL=/usr/local/bin/bash
+
+Misc
+    A new BK_DATE_TIME_ZONE environment variable is useful for forcing
+    dates in import scripts. Its value has the format:
+
+    <YYYY>/<MM>/<DD> <HH>:<MM>:<SS><+-><ZH>:<ZM>
+
+    The fields have the following meanings:
+	<YYYY>	four-digit year
+	<MM>	two-digit month (01 .. 12)
+	<DD>	two-digit day
+	<HH>	two-digit hour
+	<MM>	two-digit minute
+	<SS>	two-digit second
+	<+->	"+" for positive time-zone offsets from GMT and
+		"-" for negative offsets
+	<ZH>	time-zone offset hour
+	<ZM>	time-zone offset minute
+
+    Example: 2006/05/31 17:34:15-07:00
+
+    To ease quoting problems on the command line, the date may be written
+    as:
+    	YYYY-MM-DD-HH-MM-SS-ZH-ZM
+    or (note the + for the zone offset):
+    	YYYY-MM-DD-HH-MM-SS+ZH-ZM
+
+    When BK_DATE_TIME_ZONE, BK_USER, and BK_HOST are set in the
+    environment, BitKeeper operations that create deltas or changesets
+    use them to specify user, host, and time stamp.  For example:
+
+    export BK_USER=dmr
+    export BK_HOST=research.att.com
+    BK_DATE_TIME_ZONE='2006/05/31 17:34:15-07:00' bk ci foo.c
+
+Bugs fixed
+    2000-04-17-003	su root; bk ci foo.c - checks in as root
+    2001-05-30-003	URL-encoding for searching doesn't work
+    2002-02-15-001	bkWeb doesn't understand virtual hosting/CNAMEs
+    2002-03-14-008	bk changes -v should show information about merges
+    2002-04-06-004	bk changes -d... may hang
+    2002-05-10-003	bk tag -r<REV> doesn't accept KEYs
+    2002-06-11-001	bk clone can leave an empty RESYNC directory
+    2002-07-02-001	bkweb search fails for multiple words
+    2002-07-09-001	bkd http server shouldn't use a <base href> tag
+    2002-07-31-001	Too many SCCS/c..* files: bk sfiles ==>
+    			append_rev:  Assertion `strlen(buf) < 1024' failed
+    2002-08-05-001	Missing "than"?
+    2002-08-27-001	bk/web doesn't escape address-of (&amp;) which
+    			can  lead to incorrect display
+    2002-09-18-001	citool includes explicitly excluded deltas
+    2002-10-16-002	changes uses up a lot of memory and takes too long
+    2002-12-10-004	giving an unknown command to bk sends an error
+    			message  to stdout
+    2002-12-27-001	bk sfiles -U <dir> does not skip BitKeeper file
+    2003-03-04-001	Need list of files req'd for manual merge OR
+    			skip  resolve functionality
+    2003-03-12-002	sfiles -ct doesn't work as expected in a
+    			sub-directory  of the repo
+    2003-07-03-001	revtool doesn't show gone-to line [PATCH]
+    2003-09-09-001	'bk diffs -up' behaves differently than 'bk
+    			diffs -pu'	and neither give me what I want.
+    2003-09-10-003	bk diffs should work like "gnu diff" (--new-file and -p)
+    2003-09-11-001	changes -Rv uses inconsistent date formats
+    2003-09-11-002	bk pull -ll output removed useful information
+    2003-10-20-003	Changeset browsing concatenates tags
+    2003-12-09-001	if a repo has no parent, bk changes -L gives a
+    			not-so- useful error message
+    2004-01-07-001	push to a bkd with -xpush gives obscure message
+    2004-01-13-001	changes -L repo1 repo2 is broken
+    2004-01-13-002	changes -D -L is broken
+    2004-01-14-002	bk pull gives incorrect error message when run
+    			in a  repo with no parent
+    2004-01-15-003	the import function (at least from CVS) does
+    			not set  the EOLN_NATIVE flags
+    2004-01-30-002	bk web does not support multiword search
+    2004-04-06-001	bk/web shows multiple tags without seperator
+    2004-06-03-001	bk/web search in file contents is broken
+    2004-06-09-002	bk send sends error message to STDOUT
+    2005-12-05-003	findkey dumps core for email address searching
+    2006-01-09-001	bk setup segv's
+    2006-01-24-001	bk unpull fails with a very large number of changesets
+    2006-02-07-002	Spaces in a filename break changeset/annotation
+    2006-03-24-001	unpull doesn't zap BitKeeper/etc/csets-in
+    2006-03-31-001	"nonexistant" is not a real word
+    2006-06-20-002	sendbug uses the wrong email address
+
+Other bug fixes
+    Fixed a problem with setting BK_HOST to a domain rather than a host
+    name to remove entropy from the keys.  We now use `bk getuser`/`bk
+    getuser -r`@`bk gethost`/`bk gethost -r` when get{user,host} !=
+    get{user,host} -r.  This makes for longer keys but they'll be unique.
+
+    Fixed a bug where extra files weren't sorted in the bk citool window.
+
+    Fixed a bug where GUI geometries weren't being saved properly.
+
+    Fixed some Windows bugs related to the visual studio and shell
+    extension plugins.
+
+    Fixed a bug in bk citool where it didn't create SCCS directories
+    "hidden" on windows; this interacted badly with Visual Studio 2005.
+
+    Fixed several issues with the Windows installer.
+
+    "bk export -tpatch -r$KEY",+" could fail because an underlying
+    command couldn't handle keys.  It works now.
+
+    Fixed an issue with "View changeset" in bk revtool.
+
+    Improved the geometry and placement of GUI tools.

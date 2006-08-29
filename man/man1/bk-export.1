@@ -1,77 +1,59 @@
 .so ../bk-macros
-.TH "bk export" 1 %E% "\*(BC" "\*(UM"
+.TH "bk export" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
-bk export \- checks out clear-text version of all \*(BK files
+bk export \- export a patch or version of a \*(BK repository
 .SH SYNOPSIS
-.Bc bk export \-tpatch [\-d[u|c|p]] [\-hT] [
-.OPTreq \-i pat
-.Bc ] [
-.OPTreq \-x pat
-.B ]
-.OPTreq \-r rev1,rev2
+.B bk export \-tpatch
+.[OPTopt] \-d u|c|p
+.[B] \-hT
+.[OPTreq] \-i pat
+.[OPTreq] \-x pat
+.OPTreq \-r rev1\fB,\fPrev2
 .br
-.Bc bk export [\-tplain] [\-kTvw] [
-.OPTreq \-i pat
-.Bc ] [
-.OPTreq \-x pat
-.B ]
+.B bk export \-tplain
+.[B] \-kTvw
+.[OPTreq] \-i pat
+.[OPTreq] \-x pat
 .OPTreq \-r rev
-.Bc \ [
-.ARGc from
-.B ]
+.[ARG] from
 .ARG to
 .SH DESCRIPTION
 .LP
 The
-.B export
+.B bk export
 command generates a directory tree alongside the \*(BK
 repository which contains checked-out copies of all the files under
 \*(BK control.  It can also generate traditional
 .RB ( diff
 .BR \-Nur )
 patches between any two revisions of the source tree.
-By default, bk export only exports user files.  Files under
+By default,
+.B bk export
+only exports user files.  Files under
 the BitKeeper directory are not exported.  This behavior can be
 changed with the 
-.B \-i
+.Q \-i
 and 
-.B \-x
+.Q \-x
 options.
-.LP
-If you are trying the export a patch for a sub-directory, and
-some of the files in that directory have been moved out of the
-directory, make the out-of-view file look like a deleted file.
-This is done by replacing the 
-.I |rev 
-part of the out-of-view file with
-.IR |1.0 . 
-You can do this using the following command:
-.DS
-.B bk rset \c
-.RI -hr A,B \c
-.B \ | \c
-.I your_script \c
-.B | bk gnupatch 
-.DE
 .SH OPTIONS
-.if t .TP
-.if n .TP 1.2i
-.OPTopt \-d u|c|p
+.TP \fB\-d[u|c|p]\fPn
+.B \-d\fR[\fPu|c|p\fR]
 Select the style of 
 .BR diff (1)
 output, 
-.B \-d
+.Q \-d
 for regular diffs, 
-.B \-du
+.Q \-du
 for unified diffs, 
-.B \-dc
+.Q \-dc
 for context diffs,
-.B \-dp
+.Q \-dp
 for procedural (use 
-.B \-dup
+.Q \-dup
 to get unified + procedural diffs).
 The default is
-.B \-du
+.Q \-du
 if this option is not used.
 .tp
 .B \-h
@@ -95,13 +77,14 @@ Set gfile modification time to check-in time.
 .OPTreq \-t type
 Select export format via 
 .ARG type :
-.RS .4i
-.tp
+.RS
+.\" Makes the helptool version more clear
+.TP 12
 .B plain 
-export file in plain text to a directory tree. 
+Export file in plain text to a directory tree. 
 .tp
 .B patch 
-export file in gnu patch format.
+Export file in gnu patch format.
 .RE
 .tp
 .B \-v
@@ -118,10 +101,10 @@ pattern (see below).
 INCLUDE/EXCLUDE PROCESSING
 .LP
 Include and/or exclude patterns may be used to control which
-files are  exported.
+files are exported.
 There may be multiple include and/or exclude patterns.
 The patterns are a file glob the same as used by 
-.B bk ignore.
+.BR "bk glob" .
 Patterns are matched against the partial pathname from the root
 of the repository.
 If the partial pathname matches any of the exclude patterns then
@@ -137,13 +120,16 @@ in the changes implied by the exported patch.
 The include/exclude processing always applies to any of file names
 contained in the changes implied by the patch.
 For example, suppose you have a file that is currently deleted but
-at the time of the patch was in \f(CWsrc/foo.c\fP.
-If you told the system to export \f(CWsrc/*\fP then the file will
-be in the set.
+at the time of the patch was in
+.BR src/foo.c .
+If you told the system to export
+.B src/*
+then the file will be in the set.
 .SH SEE ALSO
-.BR diff (1)
-.br
-.SA gnupatch 1
-.SA rset 1
+.BR diff (1),
+.BR patch (1),
+.SA glob
+.SA gnupatch
+.SA rset
 .SH CATEGORY
 .B Compat

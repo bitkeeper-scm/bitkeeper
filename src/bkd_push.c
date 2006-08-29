@@ -14,7 +14,7 @@ cmd_push_part1(int ac, char **av)
 	char	*lktmp;
 	int	ret;
 
-	while ((c = getopt(ac, av, "denz|")) != -1) {
+	while ((c = getopt(ac, av, "dnz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -28,8 +28,10 @@ cmd_push_part1(int ac, char **av)
 
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock(0);
-
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */
 		drain();
@@ -75,9 +77,10 @@ cmd_push_part1(int ac, char **av)
 	status = pclose(l);
 	if (!WIFEXITED(status) || (WEXITSTATUS(status) > 1)) {
 		perror(cmd);
- badlistkey:
-		out("@END@\n"); /* just in case list key did not send one */
-		out("ERROR-listkey failed\n");
+		sprintf(buf, "ERROR-listkey failed (status=%d)\n",
+		    WEXITSTATUS(status));
+		out(buf);
+		unlink(lktmp);
 		return (1);
 	}
 
@@ -85,7 +88,9 @@ cmd_push_part1(int ac, char **av)
 	m = mopen(lktmp, "r");
 	unless (m && msize(m)) {
 		if (m) mclose(m);
-		goto badlistkey;
+		out("@END@\n");
+		out("ERROR-listkey empty\n");
+		return (1);
 	}
 	if (debug) {
 		fprintf(stderr, "cmd_push_part1: sending key list\n");
@@ -115,7 +120,7 @@ cmd_push_part2(int ac, char **av)
 	static	char *takepatch[5] = { "bk", "takepatch"};
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 
-	while ((c = getopt(ac, av, "deGnqz|")) != -1) {
+	while ((c = getopt(ac, av, "dGnqz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -136,7 +141,10 @@ cmd_push_part2(int ac, char **av)
 		goto done;
 	}
 
-	sendServerInfoBlock(0);
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@ABORT@")) {

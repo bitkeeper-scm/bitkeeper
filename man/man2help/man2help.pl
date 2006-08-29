@@ -14,12 +14,15 @@ sub main
 		$prefix = shift(@ARGV);
 	}
 	$ENV{'GROFF_NO_SGR'} = 1;
-	$MAN = "-man";
-	unless (($^O eq "MSWin32") ||
-		system("echo | groff -mgan >/dev/null 2>/dev/null")) {
-		$MAN = "-mgan";
+	if (-x "../../src/bk" || -x "../../src/bk.exe") {
+		chop($BKVER = `../../src/bk version -s`);
+	} else {
+		chop($BKVER = `bk version -s`);
 	}
-
+	if ($BKVER =~ /^(\d\d\d\d)(\d\d)(\d\d)/) {
+		$BKVER="${1}-${2}-${3}";	# YYYY-MM-DD
+	}
+	die "Spaces not allowed in BKVER='$BKVER'\n" if $BKVER =~ /\s/;
 	foreach $page (@ARGV) {
 		&man2help;
 	}
@@ -59,7 +62,7 @@ sub man2help
 	}
 	close(D);
 	close(F);
-	$cmd = "groff -rhelpdoc=1 $MAN -P-u -P-b -Tascii < tmp";
+	$cmd = "groff -I.. -dBKVER=$BKVER -rhelpdoc=1 -P-u -P-b -Tascii < tmp";
 	open(G, "$cmd |");
 	$nl = 0;
 	while (<G>) {

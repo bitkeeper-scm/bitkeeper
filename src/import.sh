@@ -135,8 +135,8 @@ import() {
 
 	# disable checkout:edit mode
 	if [ X"$BK_CONFIG" != X ]
-	then	BK_CONFIG="$BK_CONFIG;checkout:none"
-	else	BK_CONFIG="checkout:none"
+	then	BK_CONFIG="$BK_CONFIG;checkout:none!"
+	else	BK_CONFIG="checkout:none!"
 	fi
 	export BK_CONFIG
 	if [ ! -d "$2" ]
@@ -318,7 +318,7 @@ EOF
 	TRY=yes
 	while [ $TRY = yes ]
 	do	echo $N "Type of files to import? " $NL
-		read type
+		read type || exit 1
 		TRY=no
 		case "$type" in
 		    pa*) type=patch;;
@@ -390,24 +390,35 @@ transfer() {
 	NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 	if [ $FORCE = NO ]
 	then	echo
-		echo $N "Would you like to edit the list of $NFILES files to be imported? " $NL
-		read x
-		echo ""
-		case X"$x" in
-		    Xy*)
-			echo $N "Editor to use [$EDITOR] " $NL
-			read editor
-			echo
-			if [ X$editor != X ]
-			then	eval $editor ${TMP}import$$
-			else	eval $EDITOR ${TMP}import$$
-			fi
-			if [ $? -ne 0 ]; then
-			    echo ERROR: aborting...
-			    Done 1
-			fi
-			NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
-		esac
+		echo $N "Would you like to edit the list of $NFILES files to be imported? [No] " $NL
+		DONE=0
+		while [ $DONE -ne 1 ] ; do
+			read x || exit 1
+			echo ""
+			case X"$x" in
+			    X[Yy]*)
+				echo $N "Editor to use [$EDITOR] " $NL
+				read editor || exit 1
+				echo
+				if [ X$editor != X ]
+				then	eval $editor ${TMP}import$$
+				else	eval $EDITOR ${TMP}import$$
+				fi
+				if [ $? -ne 0 ]; then
+				    echo ERROR: aborting...
+				    Done 1
+				fi
+				NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
+				DONE=1
+				;;
+			    X|X[Nn]*)
+			    	DONE=1
+				;;
+			    *)
+			    	echo $N "Please answer yes or no [No] " $NL
+				;;
+			esac
+		done
 	fi
 	if [ X$QUIET = X ]
 	then	echo Transfering files
@@ -453,7 +464,7 @@ import_patch() {
 	    sed -e 's/Removing file //' \
 		-e 's/Creating file //' \
 		-e 's/Patching file //' | \
-	    			bk _sort -u  > ${TMP}plist$$
+	    			bk sort -u  > ${TMP}plist$$
 	CONFLICT=NO
 	MCNT=`bk sfiles -c - < ${TMP}plist$$ | wc -l`
 	if [ $MCNT -ne 0 ]
@@ -502,7 +513,7 @@ import_patch() {
 	# We need to "sort -u" beacuse patchfile created by "interdiff"
 	# can patch the same target file multiple time!!
 	grep '^Patching file ' ${TMP}plog$$ |
-	    sed 's/Patching file //' | bk _sort -u > ${TMP}patching$$
+	    sed 's/Patching file //' | bk sort -u > ${TMP}patching$$
 
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink -
 	while read x
@@ -606,13 +617,13 @@ import_patch() {
 	msg Creating changeset for $PNAME in `pwd` ...
 	bk _key2path < ${TMP}keys$$ > ${TMP}patching$$
 	cat ${TMP}creates$$ ${TMP}patching$$ |
-	    bk _sort -u | bk sfiles -pC - > ${TMP}commit$$
+	    bk sort -u | bk sfiles -pC - > ${TMP}commit$$
 	BK_NO_REPO_LOCK=YES bk commit \
 	    $QUIET $SYMBOL -y"`basename $PNAME`" - < ${TMP}commit$$
 
 	msg Done.
 	unset BK_CONFIG
-	o=`bk _preference checkout`
+	o=`bk config checkout`
 	test X$o = Xedit && bk -Ur edit -q
 	test X$o = Xget && bk -Ur get -qS
 	Done 0
@@ -662,7 +673,7 @@ import_RCS () {
 			Done 1
 		}
 		mv ${TMP}import$$ ${TMP}Attic$$
-		sed 's|Attic/||' < ${TMP}Attic$$ | bk _sort -u > ${TMP}import$$
+		sed 's|Attic/||' < ${TMP}Attic$$ | bk sort -u > ${TMP}import$$
 		$RM -f ${TMP}Attic$$
 	fi
 	if [ $TYPE = RCS ]
@@ -696,7 +707,7 @@ import_RCS () {
 		rm -f ${TAGFILE}.raw
 		Done 1
 	}
-	bk _sort -k2 -n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
+	bk sort -k2 -n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
 	rm -f ${TAGFILE}.raw
 	
 	if [ "X$BRANCH" != "X" ]
@@ -740,8 +751,8 @@ explain_tag_problem ()
     	bk rcsparse -d -t $BRANCH - < ${TMP}import$$ |
 		grep "^-${B}_BASE " > ${TMP}tagdbg$$
 
-	file1=`bk _sort -k2 -nr < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
-	file2=`bk _sort -k3 -n < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
+	file1=`bk sort -k2 -nr < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
+	file2=`bk sort -k3 -n < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
 	echo "       The files $file1 and $file2 don't agree when"
 	echo "       the branch $B was created!"
 	rm -f ${TMP}tagdbg$$
@@ -792,7 +803,7 @@ import_finish () {
 	fi
 	bk -r check -ac || Done 1
 	unset BK_CONFIG
-	o=`bk _preference checkout`
+	o=`bk config checkout`
 	test X$o = Xedit && bk -Ur edit -q
 	test X$o = Xget && bk -Ur get -qS
 }
@@ -802,18 +813,22 @@ validate_SCCS () {
 	TO="$2"
 	mycd "$FROM"
 	grep 'SCCS/s\.' ${TMP}import$$ > ${TMP}sccs$$
+	if [ ! -s ${TMP}sccs$$ ]
+	then	echo "No SCCS files found to import.  Aborting"
+		Done 1
+	fi
 	grep -v 'SCCS/s\.' ${TMP}import$$ > ${TMP}notsccs$$
-	if [ -s ${TMP}sccs$$ -a -s ${TMP}notsccs$$ ]
-	then	NOT=`wc -l < ${TMP}notsccs$$ | sed 's/ //g'`
-		echo
-		echo Skipping $NOT non-SCCS files
-		echo $N "Do you want to see this list of skipped files? [No] " $NL
-		read x
+	NOT=`wc -l < ${TMP}notsccs$$ | sed 's/ //g'`
+	echo
+	echo Skipping $NOT non-SCCS files
+	if [ -s ${TMP}notsccs$$ -a $FORCE = NO ]
+	then	echo $N "Do you want to see this list of skipped files? [No] " $NL
+		read x || exit 1
 		case "$x" in
 		y*)	sed 's/^/	/' < ${TMP}notsccs$$ | more ;;
 		esac
-		mv ${TMP}sccs$$ ${TMP}import$$
 	fi
+	mv ${TMP}sccs$$ ${TMP}import$$
 	$RM -f ${TMP}notsccs$$ ${TMP}sccs$$
 	if [ X$QUIET = X ]
 	then	echo Looking for BitKeeper files, please wait...
@@ -821,16 +836,16 @@ validate_SCCS () {
 	# need lease from BK repo to do ops in the SCCS repo
 	# only need for one operation, as then we'll have a lease
 	mycd "$TO"
-	val=`bk _preference license`
+	val=`bk config license`
 	test "$val" || {
 		echo "No commercial license found."
 		Done 1
 	}
-	SCFG="license:$val"
+	SCFG="license:$val!"
 	for key in licsign1 licsign2 licsign3
 	do
-		val=`bk _preference $key`
-		test "$val" && SCFG="$SCFG;$key:$val"
+		val=`bk config $key`
+		test "$val" && SCFG="$SCFG;$key:$val!"
 	done
 	mycd "$FROM"
 	grep 'SCCS/s\.' ${TMP}import$$ | \
@@ -850,14 +865,14 @@ EOF
 		sed 's/ BitKeeper$//' < ${TMP}reparent$$ | sed 's/^/	/'
 		echo ""
 		echo $N "Reparent the BitKeeper files? [No] " $NL
-		read x
+		read x || exit 1
 		case "$x" in
 		y*)	;;
 		*)	$RM -f ${TMP}sccs$$ ${TMP}import$$ ${TMP}reparent$$
 			Done 1
 		esac
 		echo $N "Are you sure? [No] " $NL
-		read x
+		read x || exit 1
 		case "$x" in
 		y*)	;;
 		*)	$RM -f ${TMP}sccs$$ ${TMP}import$$
@@ -877,7 +892,7 @@ validate_RCS () {
 		echo
 		echo Skipping $NOT non-RCS files
 		echo $N "Do you want to see this list of files? [No] " $NL
-		read x
+		read x || exit 1
 		case "$x" in
 		y*)	sed 's/^/	/' < ${TMP}notrcs$$ | more ;;
 		esac
@@ -901,7 +916,7 @@ validate_text () {
 		echo
 		echo Skipping $NOT non-text files
 		echo $N "Do you want to see this list of files? [No] " $NL
-		read x
+		read x || exit 1
 		case "$x" in
 		y*)	sed 's/^/	/' < ${TMP}nottext$$ | more ;;
 		esac

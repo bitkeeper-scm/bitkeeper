@@ -1,25 +1,20 @@
-HERE	:= $(shell pwd)
-
-all: uwtlib svcmgr diffutils patch msys bkscc bkshellx t
+all: svcmgr diffutils patch msys bkscc bkshellx t
 	cd pub/winctl && unset MAKEFLAGS && make
 
-clean clean-obj clobber:
-	test -d c:/ && { \
-		cd $(HERE)/uwtlib && make $@; \
-		cd $(HERE)/svcmgr && make $@; \
-		cd $(HERE)/pub/blat && make $@; \
-		cd $(HERE)/pub/winctl && make $@; \
-		cd $(HERE)/pub/diffutils && make $@; \
-		cd $(HERE)/pub/patch && make $@; \
-		cd $(HERE)/t && make $@; \
-		cd $(HERE) && rm -rf dll; \
-	}
-	@true
+.PHONY: clean
+ifeq "$(OSTYPE)" "msys"
+clean:
+	for sub in svcmgr pub/blat pub/winctl pub/diffutils pub/patch t; \
+	do	$(MAKE) -C $$sub clean; \
+	done
+	$(RM) -r dll
+else
+clean:
+endif
 
+clobber: clean
+	-bk -r. clean
 FORCE:
-
-uwtlib: FORCE
-	cd uwtlib && make
 
 svcmgr: FORCE
 	cd svcmgr && make

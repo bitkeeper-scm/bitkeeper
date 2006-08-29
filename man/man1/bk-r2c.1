@@ -1,16 +1,25 @@
-.so bk-macros
-.TH "bk r2c" 1 %E% "\*(BC" "\*(UM"
+.so ../bk-macros
+.TH "bk r2c" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk r2c \- convert file revision to ChangeSet revision
 .SH SYNOPSIS
 .B bk r2c 
 .OPTreq \-r rev 
-\ 
 .ARG file 
 .SH DESCRIPTION
 This command takes a revision and a filename and converts the specified
 revision into the changeset revision which contains the file revision.
+.SH EXIT STATUS
+.LP
+.B bk r2c
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA c2r 1
+.SA c2r
 .SH CATEGORY
 .B Utility

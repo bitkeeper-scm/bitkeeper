@@ -34,6 +34,7 @@ admin_main(int ac, char **av)
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 	char	*csetFile = 0;
+	char	*obscure = 0;
 	delta	*d = 0;
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf;
@@ -42,7 +43,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;Op|r;S;t|y|Z|0DhHnqsTuz"))
+	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;O;p|r;S;t|y|Z|0DhHnqsTuz"))
 	       != -1) {
 		switch (c) {
 		/* user|group */
@@ -58,17 +59,17 @@ admin_main(int ac, char **av)
 		    case 'i':	newfile = optarg ? optarg : "-"; /* doc 2.0 */
 				flags |= NEWFILE; break;
 		    case 'n':	flags |= NEWFILE; break;   	/* undoc? 2.0 */
-		    case 'r':	rev = optarg; break;		/* doc 2.0 */
+		    case 'r':	rev = optarg; break;		/* undoc */
 		    case 'y':	comment = optarg; break;	/* doc 2.0 */
-		    case 'M':					/* doc 2.0 */
+		    case 'M':					/* undoc */
 				merge = optarg; flags |= NEWCKSUM; break;
 		/* mode */
-		    case 'm':	m = optarg;			/* doc 2.0 */
+		    case 'm':	m = optarg;			/* undoc */
 				new_delta = 1;
 		   		/* NEWCKSUM done in sccs_admin */
 				break;
 		/* pathname */
-		    case 'p':	path = optarg;			/* doc 2.0 */
+		    case 'p':	path = optarg;			/* undoc */
 		    		flags |= ADMIN_SHUTUP|NEWCKSUM;
 				dopath++;
 				break;
@@ -77,9 +78,9 @@ admin_main(int ac, char **av)
 				touchGfile++;
 		   		/* NEWCKSUM done in sccs_admin */
 				break;
-		    case 'E':	encp = optarg; break;		/* doc 2.0 */
+		    case 'E':	encp = optarg; break;		/* undoc */
 		/* symbols */
-		    case 'S':	OP(s, optarg, A_ADD); break;	/* doc 2.0 */
+		    case 'S':	OP(s, optarg, A_ADD); break;	/* undoc */
 		/* text */
 		    case 't':					/* doc 2.0 */
 			text = optarg ? optarg : ""; new_delta = 1; break;
@@ -88,7 +89,6 @@ admin_main(int ac, char **av)
 		/* singletons */
 		    case '0':					/* doc 2.0 */
 			flags |= ADMIN_ADD1_0|NEWCKSUM; break;
-		    case 'B':	 break;		/* ignored */	/* doc 2.0 */
 		    case 'C':					/* doc 2.0 */
 			csetFile = optarg; newCset++; flags |= NEWCKSUM; break;
 		    case 'D':					/* doc 2.0 */
@@ -106,19 +106,13 @@ admin_main(int ac, char **av)
 				break;
 		    case 's':					/* undoc? 2.0 */
 		    case 'q':	flags |= SILENT; break;		/* doc 2.0 */
-		    case 'u':					/* doc 2.0 */
+		    case 'u':					/* undoc */
 			doDates = 1; flags |= NEWCKSUM; break;
 		    case 'z':	init_flags |= INIT_NOCKSUM;	/* doc 2.0 */
 		    		flags |= NEWCKSUM;
 				touchGfile++;
 				break;
-		    case 'O':
-			unless (getenv("BK_FORCE")) {
-				fprintf(stderr, "Set BK_FORCE to do this\n");
-				exit(1);
-			}
-			flags |= NEWCKSUM|ADMIN_OBSCURE;
-			break;
+		    case 'O':	obscure = optarg; break;
 		    default:	fprintf(stderr, "admin: bad option %c.\n", c);
 				goto usage;
 		}
@@ -152,7 +146,22 @@ admin_main(int ac, char **av)
 		    "admin: encoding may only be specified with -i\n");
 		goto usage;
 	}
-
+	if (obscure) {
+		unless (getenv("BK_FORCE")) {
+			fprintf(stderr, "Set BK_FORCE to do this\n");
+			exit(1);
+		}
+		if (streq(optarg, "all")) {
+			flags |= NEWCKSUM|ADMIN_OBSCURE;
+		} else if (streq(optarg, "license")) {
+			flags |= NEWCKSUM|ADMIN_RMLICENSE;
+		} else {
+			fprintf(stderr,
+			    "admin: unrecognized obscure option %s\n",
+			    obscure);
+			exit (1);
+		}
+	}
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
 	 */
@@ -178,7 +187,7 @@ admin_main(int ac, char **av)
 		goto usage;
 	}
 
-	ckopts = user_preference("checkout");
+	ckopts = proj_configval(0, "checkout");
 	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
 		init_flags |= INIT_FIXSTIME;
 	}
@@ -238,7 +247,7 @@ admin_main(int ac, char **av)
 			}
 		}
 		if (new_delta) {
-			if (IS_EDITED(sc)) {
+			if (EDITED(sc)) {
 				was_edited = 1;
 				sccs_read_pfile("admin", sc, &pf);
 				if (unlink(sc->pfile)) {
@@ -339,7 +348,7 @@ do_checkin(char *name, char *encp, char *compp,
 		return (-1);
 	}
 
-	if (newfile && (fast_lstat(newfile, &sb) == 0)) {
+	if (newfile && (lstat(newfile, &sb) == 0)) {
 		if (S_ISLNK(sb.st_mode) || S_ISREG(sb.st_mode)) {
 			s->mode = sb.st_mode;
 		} else {

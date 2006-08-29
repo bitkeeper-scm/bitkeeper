@@ -1,10 +1,11 @@
 .so ../bk-macros
-.TH "bk check" 1 %E% "\*(BC" "\*(UM"
+.TH "bk check" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    =================== BitKeeper consistency check ===================
 .SH NAME
 bk check \- check repository for consistency
 .SH SYNOPSIS
-.B bk \-r check [\-acdefgpRvw]
+.B bk \-r check
+.[B] \-acdefgpRvw
 .SH DESCRIPTION
 .LP
 Check is used to make sure that a repository is in a consistent state.
@@ -16,70 +17,70 @@ point at which each cset occurs (there can be multiple deltas in a file
 all of which belong to one cset; the marker records the cset boundary).
 .LP
 Since csets propagate between repositories, it is important that
-the ChangeSet file is correct.  "Check" is used to make sure that
+the ChangeSet file is correct.
+.B bk check
+is used to make sure that
 nothing has gone wrong (and if it has, it gives you a rough idea of
 how to fix it).
 .LP
 Currently, the following are checked:
-.TP 4
-\*(BU 
+.LI
 for each file specified, make sure that deltas marked as recorded in
 the ChangeSet file are recorded in the ChangeSet file.
-.tp
-\*(BU 
+.li
 for each file specified and for each delta of that file which is recorded
 in the ChangeSet file, make sure that the delta exists in the file.
-.tp
-\*(BU 
+.li
 for each file specified, make sure that the file has no unresolved
 branches.
-.tp
-\*(BU 
+.li
 make sure that every delta recorded in ChangeSet file is in the
 repository (only with \-a).
 .LP
 While you can specify a list of files instead of using 
-.B bk \-r
+.Q bk \-r
 to get all of them, this is not recommended.
 .SH OPTIONS
-.TP .5i
+.TP \-ggg
 .B \-a
 Ensures that the ChangeSet file and the repository
-agree on what files are in the repository.
+agree on what files are in the repository;
+also ensures that the ChangeSet and other files agree on where they are
+in the repository history timeline.
 .tp
 .B \-c
 Check file and the per delta checksums.  Note that only the most recent
-delta's checksum is checked, see bk help checksum to check all of the
-checksums.
+delta's checksum is checked, see 
+.B bk checksum
+to check all of the checksums.
 .tp
 .B \-d
 Provide more details about what is wrong.  Mainly for debugging.
 .tp
 .B \-e
 Check for end of line (eoln) inconsistencies in text files.  
-Typically used with the -a option.  This will check to make sure that:
+Typically used with the 
+.Q \-a
+option.  This will check to make sure that:
 .RS .51i
-.tp .3i
-\*(BU
-the state of the EOLN_NATIVE flag in each sfile is consistent with 
-what is set in the BitKeeper/etc/config file.  (see bk help admin).
-.tp
-.br
-\*(BU
-a bk file on a win32 operating system that has
-the EOLN_NATIVE flag set has the correct line termination character, CRLF
-.tp
-.br
-\*(BU
-a file on a unix operating system has the correct line 
-termination character, LF
-.tp
-.br
-\*(BU
-a file that does not have the EOLN_NATIVE flag is not set 
-has the correct line termination character, LF
-.tp
-Warnings will occur if any of the above do not check out cleanly.
+.li
+the state of the
+.B EOLN_NATIVE
+flag in each sfile is consistent with 
+what is set in the
+.B BitKeeper/etc/config
+file (see
+.BR "bk admin" ).
+.li
+a bk file on a win32 operating system that has the
+.B EOLN_NATIVE
+flag set has the expected line termination: \fB\\r\\n\fR
+.li
+a file on a \*(UN operating system has the expected line termination: \fB\\n\fR
+.li
+a file that does not have the
+.B EOLN_NATIVE
+flag is has the expected line termination: \fB\\n\fR
 .RE
 .tp
 .B \-f
@@ -94,18 +95,18 @@ This option is on by default if the auto_fix config option is set.
 .B \-ff
 Fix any fixable errors which have destructive fixes.
 This option will
-remove any old LOD information except the 1.x LOD.
+remove any old line-of-development (LOD) information except the 1.x LOD.
 .tp
 .B \-g
 List each missing file as the file's identifier (root key), but do
-not produce any other output.  Typically used as input to the 
-This option is not on by default if the auto_fix config option is set.
+not produce any other output. 
+Typically used as input to the 
 .B "bk gone"
 command.
 .tp
 .B \-gg
-List each missing delta key, but do
-not produce any other output.  Typically used as input to the 
+List each missing delta key, but do not produce any other output. 
+Typically used as input to the 
 .B "bk gone"
 command.
 .tp
@@ -116,32 +117,37 @@ Typically used as input to the
 command.
 .tp
 .B \-p
-List deltas which are in more than one cset.
+List deltas which are in more than one changeset.
 .tp
 .B \-R
-Only do checks which make sense in the RESYNC dir.
+Only do checks which make sense in the
+.B RESYNC
+dir.
 .tp
 .B \-v
 Be more verbose.  Each
-.B \-v
+.Q \-v
 adds additional verbosity.  With just one, 
-.B check
+.B bk check
 will display a progress bar. 
 With two, 
-.B check 
+.B bk check 
 will list each file which is OK.  More than two is for debugging only.
 Without the
-.B \-v 
+.Q \-v 
 option, there is no output
 if the repository is OK; there is only output if things are broken.
 .tp
 .B \-w
 List files which are writable but not locked.
+.\".SH EXIT STATUS
+.\"XXX - list error codes here.
 .SH SEE ALSO
-.SA admin 1
-.SA gone 1
-.SA prs 1
-.SA checksum 1
-.SA config-etc 1
+.SA admin
+.SA checksum
+.SA config-etc
+.SA gone
+.SA log
+.SA xflags
 .SH CATEGORY
 .B Repository

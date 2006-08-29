@@ -1,15 +1,16 @@
 .so ../bk-macros
-.TH "bk status" 1 %E% "\*(BC" "\*(UM"
+.TH "bk status" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .\"    =============== Getting BitKeeper status ===============
 .SH NAME
 bk status \- show repository status
 .SH SYNOPSIS
-.Bc bk status [\-v] [
-.ARGc repository
-]
+.B bk status
+.[ARG] repository
 .SH DESCRIPTION
 .LP
-The status command gives a quick overview of the tree. 
+The 
+.B bk status
+command gives a quick overview of the tree. 
 The default output looks something like:
 .DS
 Status for \*(BK repository /u01/package/bk
@@ -24,13 +25,17 @@ Pending patches
      0 files modified and not checked in.
      0 files with checked in, but not committed, deltas.
 .DE
-.SH OPTIONS
+.SH EXIT STATUS
+.LP
+.B bk status
+returns exit status:
 .TP
-.B -v
-Verbose listing.  Lists users, files not under
-revision control, files modified and not checked in, and
-files with checked in, but not committed deltas, one per line.
+0
+on success.
+.tp
+1
+on failure.
 .SH SEE ALSO
-.SA sfiles 1
+.SA sfiles
 .SH CATEGORY
 .B Repository

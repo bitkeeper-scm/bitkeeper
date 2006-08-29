@@ -20,13 +20,11 @@ private int	mergeInList(sccs *s, char *revs);
  *		bk delta <file>
  *	done
  *	bk commit
- *
- * Win32 note: kill(pid, SIGKILL) & wait(0) are no-op on win32.
  */
 int
 cset_inex(int flags, char *op, char *revs)
 {
-	int	i, fd, pid;
+	int	i;
 	FILE	*f;
 	char	*av[20];
 	MDBM	*m = mdbm_mem();
@@ -42,15 +40,10 @@ cset_inex(int flags, char *op, char *revs)
 	revarg = aprintf("-r%s", revs);
 	av[++i] = revarg;
 	av[++i] = 0;
-	pid = spawnvp_rPipe(av, &fd, 0);
-	if (pid == -1) {
-		perror("spawnvp_rPipe");
-		free(revarg);
-		return (1);
-	}
-	unless (f = fdopen(fd, "r")) {
-		perror("fdopen");
-		kill(pid, SIGKILL);
+
+	flags &= ~PRINT;	/* can't edit and print */
+	unless (f = popenvp(av, "r")) {
+		perror("popenvp");
 		free(revarg);
 		return (1);
 	}
@@ -63,8 +56,7 @@ cset_inex(int flags, char *op, char *revs)
 #ifdef OLD_LICENSE
 		if (checkLog(0, 1)) {
 			fprintf(stderr, "Cset aborted, no changes applied\n");
-			kill(pid, SIGKILL);
-			wait(0);
+			pclose(f);
 			mdbm_close(m);
 			return (1);
 		}
@@ -81,8 +73,7 @@ cset_inex(int flags, char *op, char *revs)
 				freeLines(rlist, free);
 				rlist = 0;
 				if (doit(flags, file, op, revbuf)) {
-					kill(pid, SIGKILL);
-					wait(0);
+					pclose(f);
 					clean(file);
 					/*
 					 * Nota bene: this "knows" that the
@@ -103,14 +94,12 @@ cset_inex(int flags, char *op, char *revs)
 			rlist = addLine(rlist, strdup(&t[1]));
 		}
 	}
-	fclose(f);
+	pclose(f);
 	if (file[0]) {
 		revbuf = joinLines(",", rlist);
 		freeLines(rlist, free);
 		rlist = 0;
 		if (doit(flags, file, op, revbuf)) {
-			kill(pid, SIGKILL);
-			wait(0);
 			clean(file);
 			unedit();
 			free(revbuf);
@@ -119,7 +108,6 @@ cset_inex(int flags, char *op, char *revs)
 		mdbm_store_str(m, file, "", 0);
 		free(revbuf);
 	}
-	wait(0);
 	mdbm_close(m);
 	return (commit(flags & SILENT, d));
 }
@@ -154,7 +142,7 @@ unedit(void)
 private	delta *
 getComments(char *op, char *revs)
 {
-	int	i, pid;
+	int	i;
 	FILE	*f;
 	char	*av[20];
 	delta	*d;
@@ -172,14 +160,8 @@ getComments(char *op, char *revs)
 	av[++i] = revs;
 	av[++i] = CHANGESET;
 	av[++i] = 0;
-	pid = spawnvp_rPipe(av, &i, 0);
-	if (pid == -1) {
-		perror("spawnvp_rPipe");
-		return (0);
-	}
-	unless (f = fdopen(i, "r")) {
-		perror("fdopen");
-		kill(pid, SIGKILL);
+	unless (f = popenvp(av, "r")) {
+		perror("popenvp");
 		return (0);
 	}
 	d = calloc(1, sizeof(delta));
@@ -193,8 +175,7 @@ getComments(char *op, char *revs)
 		chop(buf);
 		d->comments = addLine(d->comments, strdup(buf));
 	}
-	fclose(f);
-	wait(0);
+	pclose(f);
 	return (d);
 }
 
@@ -235,7 +216,7 @@ commit(int quiet, delta *d)
 private int
 undoit(MDBM *m)
 {
-	int	i, rc, pid, worked = 1;
+	int	i, rc, worked = 1;
 	char	*t;
 	FILE	*f;
 	char	*av[10];
@@ -248,14 +229,8 @@ undoit(MDBM *m)
 	av[++i] = "sfiles";
 	av[++i] = "-gpAC";
 	av[++i] = 0;
-	pid = spawnvp_rPipe(av, &i, 0);
-	if (pid == -1) {
-		perror("spawnvp_rPipe");
-		exit(1);
-	}
-	unless (f = fdopen(i, "r")) {
-		perror("fdopen");
-		kill(pid, SIGKILL);
+	unless (f = popenvp(av, "r")) {
+		perror("popenvp");
 		exit(1);
 	}
 	while (fgets(buf, sizeof(buf), f)) {
@@ -281,8 +256,7 @@ undoit(MDBM *m)
 			/* Keep going */
 		}
 	}
-	fclose(f);
-	wait(0);
+	pclose(f);
 	mdbm_close(m);
 	if (worked) fprintf(stderr, "Successfully cleaned up all files.\n");
 	return (1);

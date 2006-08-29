@@ -13,8 +13,13 @@
 # Copyright (c) 2002 Rick Smith
 # %K%
 
+# Don't create gone in 'bk setup'
+# (use fresh_commercial so this don't effect cache)
+_BK_SETUP_NOGONE=1
+export _BK_SETUP_NOGONE
+
 echo $N Create initial repository ...................................$NL
-commercial project
+fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -42,7 +47,7 @@ echo OK
 
 echo $N Make version 1 LOD structures ...............................$NL
 bk edit $Q d1/a || exit 1
-bk delta $Q -y'new lod' d1/a || exit 1
+bk delta $Q -fy'new lod' d1/a || exit 1
 bk commit $S -yCset || exit 1
 rev=`bk prs -r+ -hnd:I: ChangeSet`
 perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" SCCS/s.ChangeSet > tmp
@@ -64,6 +69,7 @@ echo OK
 
 # use tar because clone will not work since it has illegal structures
 cd $HERE/project
+rm BitKeeper/log/repo_id
 tar cf ../save.tar .
 
 echo $N Fix version 1 LOD structures ................................$NL

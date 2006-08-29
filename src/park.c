@@ -469,7 +469,13 @@ symlnkCopy(char *from, char *to)
 		fprintf(stderr, "Cannot read symlink %s\n", from);
 		return (-1);
 	}
-	assert(len < MAXPATH);
+	unless (len < MAXPATH) {
+		fprintf(stderr, "Symlink value for %s too long\n", from);
+		return (-1);
+	}
+	symTarget[len] = 0;	/* stupid readlink */
+	assert(strlen(symTarget) < MAXPATH);
+	assert(strlen(to) < MAXPATH);
 	if (symlink(symTarget, to)) {
 		perror(to);
 		return (-1);
@@ -1115,9 +1121,9 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 	/*
 	 * Get full path, because we chdir() below
 	 */
-	unless (streq(parkfile, "-")) strcpy(parkfile, fullname(parkfile, 0));
-	strcpy(sfio_list, fullname(sfio_list, 0));
-	strcpy(unpark_list, fullname(unpark_list, 0));
+	unless (streq(parkfile, "-")) strcpy(parkfile, fullname(parkfile));
+	strcpy(sfio_list, fullname(sfio_list));
+	strcpy(unpark_list, fullname(unpark_list));
 
 	mkdirp(PARKDIR);
 	if (chdir(PARKDIR)) {
@@ -1393,7 +1399,7 @@ diffable_text(sccs *s, delta *top)
 {
 	return (HAS_SFILE(s) && HAS_GFILE(s) &&
 		S_ISREG(s->mode) && ((top->mode == 0) || S_ISREG(top->mode)) &&
-	    	IS_TEXT(s) && ascii(s->gfile));
+	    	ASCII(s) && ascii(s->gfile));
 }
 
 private int

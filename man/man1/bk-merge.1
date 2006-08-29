@@ -1,16 +1,18 @@
 .so ../bk-macros
-.TH "bk merge" 1 %E% "\*(BC" "\*(UM"
+.TH "bk merge" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk merge \- three-way text based file merge
 .SH SYNOPSIS
-.B merge [\-s]
+.B bk merge
+.[B] \-s
 .ARG local
 .ARG ancestor
 .ARG remote
 .ARG merge
 .br
-.B merge [\-s]
-.ARG path/to/gfile
+.B bk merge
+.[B] \-s
+.ARG path/gfile
 .SH DESCRIPTION
 The
 .B bk merge
@@ -43,7 +45,7 @@ have made changes to the same section of
 If a conflict is found, the conflicting lines will be marked in the output
 as follows:
 .DS
-<<<<<<<\ \c
+\&<<<<<<<\ \c
 .ARG local
 changes made in the local repository
 =======
@@ -55,28 +57,30 @@ It is up to the caller to edit the
 .ARG merge 
 file and resolve any conflicts.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1i
+.TP
 .B \-s
-Perform a set merge instead on a normal file merge.  In this case the
+Perform a set merge instead of a normal file merge.  In this case the
 files are assumed to be lists of items, one item per line, and the
 merge does an automatic union of the lists and writes the result in
-sorted order.  Conflicts cannot occur in this mode.
-.SH WARNING
-Nobody likes to hear this, but this sort of automatic merge can get you
-in trouble.  The problem is that this is a syntactic merge, not a semantic
-merge.  In other words, just because the files do not have overlapping
-changes does not mean that the merge will work.  It's up to the user to
-look carefully at the results and verify their correctness.
+sorted order.  Conflicts cannot occur in this mode.  This option is
+automatically used to merge these \*[BK] files:
+.RS
+.B BitKeeper/etc/gone
+.br
+.B BitKeeper/etc/ignore
+.br
+.B BitKeeper/etd/skipkeys
+.RE
 .SH EXIT STATUS
 0 for no conflicts, 1 for conflicts, 2 for errors.
 .SH "SEE ALSO"
-.BR diff3 (1)
-.br
-.SA smerge 1
-.SA fmtool 1
-.SA merging 1
-.SA resolve 1
+.BR diff3 (1),
+.SA fmtool
+.SA remerge
+.SA resolve
+.SA resolving
+.SA smerge
+.SA triggers
 .SH CATEGORY
 .B Repository
 .br

@@ -1,0 +1,30 @@
+.so ../bk-macros
+.TH "bk remerge" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk remerge \- redo the last merge
+.SH SYNOPSIS
+.B bk remerge
+.[B] \-T
+.FILESreq
+.SH DESCRIPTION
+The
+.B bk remerge
+looks at the specified file[s] and tries to remerge the last merge.
+Each file may not be edited with modifications and must have a
+merge as the most recent delta; files not meeting these requirements
+are skipped.
+.LP
+The merged file is left as the current working file after the merge is
+completed.
+The merge may be graphical (default) or text based.
+In the latter case, the marked up file is left as the working file
+and you must manually edit it to complete the merge.
+.SH OPTIONS
+.TP
+.B \-T
+Use a text based merge tool.
+.SH "SEE ALSO"
+.SA fm3tool
+.SA smerge
+.SH CATEGORY
+.B File

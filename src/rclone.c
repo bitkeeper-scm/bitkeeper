@@ -32,6 +32,11 @@ rclone_main(int ac, char **av)
 		switch (c) {
 		    case 'd': opts.debug = 1; break;
 		    case 'E':
+			unless (strneq("BKU_", optarg, 4)) {
+				fprintf(stderr,
+				    "clone: vars must start with BKU_\n");
+				return (1);
+			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'q': opts.verbose = 0; break;
 		    case 'r': opts.rev = optarg; break;
@@ -86,11 +91,7 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 {
 	int	rc;
 
-	if (opts.rev) {
-		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	if (rc = trigger(av[0], "pre"))  goto done;
 	if (rc = rclone_part1(opts, r, envVar))  goto done;
 	rc = rclone_part2(av, opts, r, envVar);
@@ -125,7 +126,7 @@ rclone_part1(opts opts, remote *r, char **envVar)
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 	}
-	if (get_ok(r, buf, opts.verbose)) return (-1);
+	if (get_ok(r, buf, 1)) return (-1);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	return (0);
 }
@@ -253,22 +254,23 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	if (opts.verbose) fprintf(f, " -v");
 	if (r->path) fprintf(f, " %s", r->path);
 	fputs("\n", f);
-	fprintf(f, "@SFIO@\n");
 	fclose(f);
 
 	/*
 	 * Httpd wants the message length in the header
 	 * We have to compute the file size before we sent
+	 * 7 is the size of "@SFIO@"
 	 * 6 is the size of "@END@" string
-	 */ 
+	 */
 	if (r->type == ADDR_HTTP) {
 		m = sfio_size(opts, gzip);
 		assert(m > 0);
-		extra = m + 6;
+		extra = m + 7 + 6;
 	}
 	rc = send_file(r, buf, extra);
 	unlink(buf);
 
+	writen(r->wfd, "@SFIO@\n", 7);
 	n = gensfio(opts, opts.verbose, gzip, r->wfd);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(stderr,

@@ -59,8 +59,7 @@ bk undos > W <<EOF
 9a10
 > 1.9
 EOF
-cmp -s D W
-if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+cmpfiles D W
 echo OK
 
 echo $N Checking diff -R - with edited gfile ........................$NL
@@ -112,8 +111,7 @@ bk undos > W <<EOF
 9a10
 > 1.9
 EOF
-cmp -s D W
-if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+cmpfiles D W
 echo OK
 
 echo $N Checking diff -r1.7 -r1.9 with no gfile .....................$NL
@@ -405,3 +403,11 @@ bk diff --ignore-to-str='x ' --ignore-trailing-cr a b > DIFF || {
 }
 echo OK
 
+echo $N Checking diffs -f with a pfile but not gfile ................$NL
+cd $HERE/project
+rm a
+bk edit $Q a || exit 1
+bk diffs -f a || exit 1
+rm a
+bk diffs -f a || exit 1
+echo OK

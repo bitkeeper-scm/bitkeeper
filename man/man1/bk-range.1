@@ -1,89 +1,106 @@
 .so ../bk-macros
-.TH "bk range" 1 %E% "\*(BC" "\*(UM"
-.\"    ================= Specifying Dates and Ranges =================
+.TH "bk range" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk range \- demo program to show ranges & dates
 .SH SYNOPSIS
-.Bc bk range [\-q] [
+.B bk range
+.[B] \-q
+[\c
 .OPTreq \-c range 
-.Bc |
-.OPTreq \-r rev
-.B ]
+|
+.OPTreq \-r rev ]
 .BKARGS
 .SH DESCRIPTION
 .LP
-Many commands can take ranges of deltas as an argument.  A range is a
-continuous sequence of deltas, such as 1.1, 1.2, 1.3, and 1.4.  Deltas
-may be specified by their revision number (1.2), delta key
+Many commands may take as arguments date ranges or graph differences.
+The
+.B graph difference
+between revision
+.ARG B
+and revision
+.ARG A
+is the set of deltas in
+.ARG B 's
+history that are not in
+.ARG A 's
+history.
+You may specify deltas
+by revision number (1.2), delta key
 ('amy@bitmover.com|man/man1/bk-terms.1|20020714011327|59990'), a
-symbolic name (@tag), changeset rev (@1.33), or changeset key
-(@'lm@disks.bitmover.com|ChangeSet|20020912140445|17593').  (see
+symbolic name (@tag), changeset revision (@1.33), or changeset key
+(@'lm@disks.bitmover.com|ChangeSet|20020912140445|17593').
+The graph difference between revisions
+.ARG B
+and
+.ARG A
+is represented by the notation
+.ARGc A
+.Bc .\|.\|
+.ARG B ,
+as in:
+.DS
+bk changes -r1.1820.2.1..1.1822
+.DE
+.LP
+See \*(lqgraph difference\*(rq in
 .B bk help terms
-for more info)
+for more information.
 .LP
-You may specify both end-points at once like so:
-.sp
+Dates are always specified as ranges; you can specify a date range this way:
 .DS
-bk prs \-r1.1..1.5
+bk log -c1998..2002
 .DE
 .LP
-Revision ranges have a way to say "after" or "before".  You may say
-.DS
--r1.3..1.7 to mean 1.3, 1.4, 1.5, 1.6, 1.7
--r1.3,.1.7 to mean 1.4, 1.5, 1.6, 1.7
--r1.3,,1.7 to mean 1.4, 1.5, 1.6
-.DE
-The "," operator means "after" or "before" the specified revision.
-.LP
-You may specify dates instead of revisions like so
-.sp
-.DS
-bk prs \-c98..98
-.DE
-.LP
-If there are two dates, or there is a date and a revision, then the
-date format is [+\-]YYMMDDHHMMSS with missing fields either rounded up
-or rounded down.  Rounding is explicit if there is a "+" (rounds up)
-or a "\-" (rounds down) prefix on the date.  If there is no prefix, then
-the rounding is context sensitive.  If the date is the first date i.e.,
-the starting point, then the date is rounded down.  If it is the second
-date in the range, then it is rounded up.  So 98..98 is the same as
-980101000000 ..  981231235959.
+The date format is \*(lq\c
+.ARGc YYYY /
+.ARGc MM /
+.ARG DD
+.ARGc HH :
+.ARGc M :
+.ARG SS  \*(rq
+with missing fields either rounded up or rounded down.
+If you do not want to quote the date string, you can use a non-digit
+character, such as hyphen (\*(lq\-\*(rq) in its place, for example,
+\*(lq2001/07/19-12:00:00\*(rq.
+Optionally, you can append a time zone offset of the form -ZH:ZM for
+negative offsets from GMT or +ZH:ZM for positive offsets.
+Date rounding is context sensitive:
+the starting date is rounded down and the ending date is rounded up,
+so 2001..2001 is the same as 2001/01/01-00:00:00..2001/12/31-23:59:59.
 .LP
 Note: the mixing of dates and revisions is deprecated.
 .LP
 If there is only one date specified, without a revision, then a 
 very useful form of the date is to specify a recent period of time, 
 such as 
-.sp
 .DS
-bk prs \-c\-1d
+bk log \-c\-1d..
 .DE
 .LP
 which will display the last 24 hours worth of changes.  This works
 the same way for Years/Months/days/hours/minutes/seconds, i.e.,
-.sp
 .DS
-In the last year:	prs \-c\-1Y (or \-1y)
-In the last month:	prs \-c\-1M
-In the last week:	prs \-c\-1W (or \-1w)
-In the last day:	prs \-c\-1D (or \-1d)
-In the last hour:	prs \-c\-1h
-In the last minute:	prs \-c\-1m
-In the last second:	prs \-c\-1s
+.\" Using spaces for alignment here because the single tab was spazzing out
+In the last year:       log \-c\-1Y.. (or \-1y..)
+In the last month:      log \-c\-1M..
+In the last week:       log \-c\-1W.. (or \-1w..)
+In the last day:        log \-c\-1D.. (or \-1d..)
+In the last hour:       log \-c\-1h..
+In the last minute:     log \-c\-1m..
+In the last second:     log \-c\-1s..
 .DE
 If you leave off the multiplier, 1 is assumed.
 .LP
 While you may not build up specific dates as \-1Y2m3d, you can specify 
 fractions, i.e., to get the last 6 months worth, try
 .DS
-bk prs \-c\-.5Y
+bk log \-c\-.5Y..
 .DE
 .\" .LP
 .\" You can mix and match revisions and date.  If you want everything in
 .\" 98, but not past revision 1.5, you would type:
 .\" .DS
-.\" bk prs \-c98 \-r1.5
+.\" bk log \-c98 \-r1.5
 .\" .DE
 .LP
 Dates can also be in the form of symbolic tags (ChangeSet file only).  
@@ -91,7 +108,7 @@ If you tagged a changeset with Alpha and another changeset with Beta,
 you can type:
 .DS
 bk changes \-cAlpha..Beta
-bk prs -r@Alpha..@Beta foo.c
+bk log -r@Alpha..@Beta foo.c
 .DE
 .LP
 Ranges need not include both endpoints.  If you wanted to see everything
@@ -100,10 +117,13 @@ from Beta forward, you could type:
 bk changes \-cBeta..
 .DE
 .LP
-A single \-r, because it is the first revision seen, rounds down and means
-1.1.  To get the most recent delta, type "\-r+".
+A single
+.QR \-r ,
+because it is the first revision seen, rounds down and means
+1.1.  To get the most recent delta, type
+.QR \-r+ .
 .SH OPTIONS
-.TP 1i
+.TP \-c\*<range\*>
 .OPTreq \-c range
 Specify deltas by a date range
 .tp
@@ -112,11 +132,23 @@ Specify deltas by revision number
 .tp
 .B \-q
 run quietly; default is to warn about all files which do not match the range
+.SH EXIT STATUS
+.LP
+.B bk range
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA annotate 1
-.SA diffs 1
-.SA get 1
-.SA prs 1
+.SA annotate
+.SA changes
+.SA co
+.SA diffs
+.SA log
+.SA terms
 .\" help://date
 .\" help://dates
 .\" help://ranges

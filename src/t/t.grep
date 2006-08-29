@@ -12,6 +12,8 @@
 # Copyright (c) 2003 Andrew Isaacson
 # %k%
 
+test "$PLATFORM" = "WIN32" && USER=`bk getuser -r`
+
 BK_YEAR4=1
 export BK_YEAR4
 
@@ -110,8 +112,8 @@ echo OK
 echo $N annotated grep -au ..........................................$NL
 bk grep -au bitkeeper subdir > GOT
 cat <<EOF > WANT
-bk:bitkeeper rocks!
-joe:bitkeeper rocks!
+bk/$USER:bitkeeper rocks!
+joe/$USER:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -119,8 +121,8 @@ echo OK
 echo $N annotated grep -abdru .......................................$NL
 bk grep -abdru bitkeeper subdir > GOT
 cat <<EOF > WANT
-old:1998/01/11:bk:1.1:bitkeeper rocks!
-user:2004/08/23:joe:1.1:bitkeeper rocks!
+old:1998/01/11:bk/$USER:1.1:bitkeeper rocks!
+user:2004/08/23:joe/$USER:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -128,8 +130,8 @@ echo OK
 echo $N annotated grep -abdru -n ....................................$NL
 bk grep -n -abdru bitkeeper subdir > GOT
 cat <<EOF > WANT
-3:old:1998/01/11:bk:1.1:bitkeeper rocks!
-3:user:2004/08/23:joe:1.1:bitkeeper rocks!
+3:old:1998/01/11:bk/$USER:1.1:bitkeeper rocks!
+3:user:2004/08/23:joe/$USER:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -137,8 +139,8 @@ echo OK
 echo $N annotated grep -adru -n -H ..................................$NL
 bk grep -n -H -adru bitkeeper subdir > GOT
 cat <<EOF > WANT
-subdir/old:3:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:3:2004/08/23:joe:1.1:bitkeeper rocks!
+subdir/old:3:1998/01/11:bk/$USER:1.1:bitkeeper rocks!
+subdir/user:3:2004/08/23:joe/$USER:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -146,8 +148,8 @@ echo OK
 echo $N annotated grep -adru -H .....................................$NL
 bk grep -H -adru bitkeeper subdir > GOT
 cat <<EOF > WANT
-subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:2004/08/23:joe:1.1:bitkeeper rocks!
+subdir/old:1998/01/11:bk/$USER:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:joe/$USER:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -155,8 +157,8 @@ echo OK
 echo $N annotated grep -adpru .......................................$NL
 bk grep -apdru bitkeeper subdir > GOT
 cat <<EOF > WANT
-subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:2004/08/23:joe:1.1:bitkeeper rocks!
+subdir/old:1998/01/11:bk/$USER:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:joe/$USER:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -173,8 +175,8 @@ echo OK
 echo $N annotated grep -aub .........................................$NL
 bk grep -aub bitkeeper subdir > GOT
 cat <<EOF > WANT
-old:bk:bitkeeper rocks!
-user:joe:bitkeeper rocks!
+old:bk/$USER:bitkeeper rocks!
+user:joe/$USER:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -182,8 +184,8 @@ echo OK
 echo $N annotated grep -adpru, recursive ............................$NL
 bk -r grep -apdru bitkeeper > GOT
 cat <<EOF > WANT
-subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:2004/08/23:joe:1.1:bitkeeper rocks!
+subdir/old:1998/01/11:bk/$USER:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:joe/$USER:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
@@ -191,22 +193,36 @@ echo OK
 echo $N annotated grep -i -adpru, recursive .........................$NL
 bk -Ur grep -i -apdru BITKEEPER > GOT
 cat <<EOF > WANT
-subdir/old:1998/01/11:bk:1.1:bitkeeper rocks!
-subdir/user:2004/08/23:joe:1.1:bitkeeper rocks!
+subdir/old:1998/01/11:bk/$USER:1.1:bitkeeper rocks!
+subdir/user:2004/08/23:joe/$USER:1.1:bitkeeper rocks!
 EOF
 checkfiles WANT GOT
 echo OK
 
-echo $N annotated grep -R -ab .......................................$NL
+echo $N grep -R .....................................................$NL
 cat > file <<EOF
 line1
 line2
 line3
 EOF
-bk new $Q file
+touch anotherfile
+bk new $Q file anotherfile
 bk edit $Q file
 echo line4 >> file
 bk delta $Q -ywhatever file
+# need to have more than one file to get file name prefixes listed
+bk grep -R line file anotherfile > GOT
+cat > WANT <<EOF
+file:line1
+file:line2
+file:line3
+file:line4
+EOF
+cmpfiles GOT WANT
+echo OK
+# fall through to ...
+
+echo $N annotated grep -R -ab .......................................$NL
 bk grep -R -ab line file > GOT
 cat > WANT <<EOF
 file:line1

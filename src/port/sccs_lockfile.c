@@ -1,26 +1,35 @@
-#include "../system.h"
 #include "../sccs.h"
 
-#ifndef	WIN32
-private	int	linkcount(const char *file);
+#ifdef	WIN32
+#define		ino(file)	0
+#define		linkcount(file)	0
+#else
+private	int	linkcount(char *file);
+private	u32	ino(char *file);
 #endif
-private	char	*uniqfile(const char *file, pid_t p, char *host);
+private	char	*uniqfile(char *file, pid_t p, char *host);
+private	void	setx(char *lock);
+private	void	rmx(char *lock);
 
 private	int	incr = 25000;
 private	int	failed = 0;
-private	void	addLock(const char *, const char *);
+private	void	addLock(char *, char *);
 
 private	char	**lockfiles;
 private	int	lockfiles_pid;
 
 /*
- * Create a file with a unique name,
- * try and link it to the lock file,
+ * This is difficult because we are dealing with all sorts of NFS
+ * implementations.
+ * I know for a fact that it is a waste of time to test on HPUX 10.20,
+ * Linux 2.0.36 and IRIX seems a little better but it is also broken.
+ * All the other onses seem to work with the following code.
+ *
+ * Create a file with a unique name, try and link it to the lock file,
  * if our link count == 2, we won.
- * If we get EPERM, we know we are on a Unix client against a SMB fs,
- * so switch to O_EXCL mode.
  * Write "pid host time_t\n" into the file so we can expire stale locks.
  * If waitsecs is set, wait for the lock that many seconds before giving up.
+ *
  * Note: certain client side NFS implementations take a long time to time
  * out the attributes so calling this with a low value (under 120 or so)
  * for the seconds arg is not suggested.
@@ -28,11 +37,11 @@ private	int	lockfiles_pid;
  * sccs_unlock() and others want the uniq file even if we are windows.
  */
 int
-sccs_lockfile(const char *file, int waitsecs, int quiet)
+sccs_lockfile(char *file, int waitsecs, int quiet)
 {
 	char	*p, *uniq;
 	int	fd;
-	int	uslp = incr;
+	int	uslp = 500;
 	u64	waited = 0;
 
 	p = dirname_alloc((char*)file);
@@ -45,25 +54,32 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 	}
 	free(p);
 	uniq = uniqfile(file, getpid(), sccs_realhost());
-	unlink(uniq);
+
+retry:	unlink(uniq);
 	unless ((fd = open(uniq, O_CREAT|O_RDWR|O_EXCL, 0644)) >= 0) {
 		fprintf(stderr, "Can't create lockfile %s\n", uniq);
 		free(uniq);
 		return (-1);
 	}
 	p = aprintf("%u %s %u\n", getpid(), sccs_realhost(), time(0));
-	write(fd, p, strlen(p));
+	if (write(fd, p, strlen(p)) != strlen(p)) {
+		perror(file);
+		close(fd);
+		return (-1);
+	}
+	close(fd);
+
 	for ( ;; ) {
 #ifdef	WIN32
 		HANDLE	h;
 		DWORD	out;
 
+		/* XXX - unlikely to work on SFU NFS */
 		h = CreateFile(file, GENERIC_WRITE, 0, 0, CREATE_NEW, 0, 0);
 		unless (h == INVALID_HANDLE_VALUE) {
 			WriteFile(h, p, strlen(p), &out, 0);
 			CloseHandle(h);
 			if (out == strlen(p)) {
-				close(fd);
 				addLock(uniq, file);
 				free(p);
 				free(uniq);
@@ -72,29 +88,68 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 			unlink(file);
 		}
 #else
-		if ((link(uniq, file) == 0) && (linkcount(uniq) == 2)) {
-			close(fd);
+		/*
+		 * OpenBSD 3.6 will tell you it fails when it worked.
+		 */
+		(void)link(uniq, file);
+
+		/* Wait for the attribute cache to time out */
+		while ((ino(uniq) == ino(file)) &&
+		    (linkcount(uniq) == 1) && (linkcount(file) == 1)) {
+			if (getenv("BK_DBGLOCKS")) {
+				ttyprintf(
+				    "%s: waiting for attribute cache\n", file);
+			}
+		    	sleep(1);
+		}
+
+		if ((linkcount(uniq) == 2) && (ino(uniq) == ino(file))) {
 			addLock(uniq, file);
 			free(uniq);
 			free(p);
 			return (0);
 		}
+
+		/* Certain NFS deletions are renames to .nfs... and sometimes
+		 * the link count ends up being 3.  Retry, recreating the
+		 * unique file to break the link.
+		 */
+		if (linkcount(uniq) > 2) {
+			if (getenv("BK_DBGLOCKS")) {
+				ttyprintf(
+				    "%s: NFS is confused, nlink > 2\n", file);
+			}
+			sleep(1);
+			if (ino(uniq) == ino(file)) unlink(file);
+			goto retry;
+		}
 #endif
 		failed++;
-		if (sccs_stalelock(file, 1)) continue;
+		unless (exists(uniq)) {
+			fprintf(stderr, "lockfile: uniq file removed?!?\n");
+			goto err;
+		}
+
+		/*
+		 * Check for stale locks the first time through and after
+		 * waiting a while, there is no point in doing it on each
+		 * interation.
+		 */
+		if ((waited == 0) && sccs_stalelock(file, 1)) continue;
+
 		unless (waitsecs) {
-			close(fd);
-			unlink(uniq);
+err:			unlink(uniq);
 			free(uniq);
 			free(p);
 			return (-1);
 		}
 		if ((waitsecs != -1) && ((waited / 1000000) >= waitsecs)) {
+			/* One last try to see if it is stale */
+			if (sccs_stalelock(file, 1)) continue;
 			unless (quiet < 2) {
 				fprintf(stderr,
 				    "Timed out waiting for %s\n", file);
 			}
-			close(fd);
 			unlink(uniq);
 			free(uniq);
 			free(p);
@@ -123,13 +178,13 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 }
 
 int
-sccs_unlockfile(const char *file)
+sccs_unlockfile(char *file)
 {
 	char	*uniq = uniqfile(file, getpid(), sccs_realhost());
 	int	error = 0;
 
 	if (unlink(uniq)) error++;
-	if (unlink((char*)file)) error++;
+	if (unlink(file)) error++;
 	if (lockfiles_pid == getpid()) {
 		removeLine(lockfiles, uniq, free);
 		removeLine(lockfiles, (char *)file, free);
@@ -144,7 +199,7 @@ sccs_unlockfile(const char *file)
  * and we'll have to respect those.
  */
 int
-sccs_stalelock(const char *file, int discard)
+sccs_stalelock(char *file, int discard)
 {
 	char	*host, *uniq;
 	pid_t	pid;
@@ -158,7 +213,7 @@ stale:			if (discard) {
 				uniq = uniqfile(file, pid, host);
 				unlink(uniq);
 				free(uniq);
-				unlink((char*)file);
+				unlink(file);
 			}
 			if (getenv("BK_DBGLOCKS")) {
 				ttyprintf("STALE %s\n", file);
@@ -166,14 +221,31 @@ stale:			if (discard) {
 			free(host);
 			return (1);
 		}
+
+		/*
+		 * This is almost certainly an NFS issue rather than a true
+		 * lock loop.
+		 */
 		if (pid == getpid()) {
-			ttyprintf("%u@%s: LOCK LOOP on %s\n",
-					getpid(), sccs_realhost(), file);
+			if (getenv("BK_DBGLOCKS")) {
+				uniq = uniqfile(file, pid, sccs_realhost());
+				ttyprintf("%u@%s: LOCK LOOP on %s\n",
+				    getpid(), sccs_realhost(), file);
+				ttyprintf("%u:%u %d:%d\n",
+				    ino(uniq), ino(file),
+				    linkcount(uniq), linkcount(file));
+				free(uniq);
+			}
+			usleep(100000);
 		}
 		free(host);
 		return (0);
 	}
 
+	/*
+	 * This can also happen with NFS but it's possible in real life
+	 * so we bitch.
+	 */
 	if (t && ((time(0) - t) > DAY)) {
 		ttyprintf("STALE timestamp %s\n", file);
 		goto stale;
@@ -183,7 +255,7 @@ stale:			if (discard) {
 }
 
 int
-sccs_mylock(const char *file)
+sccs_mylock(char *file)
 {
 	char	*host;
 	pid_t	pid;
@@ -200,33 +272,61 @@ sccs_mylock(const char *file)
 }
 
 int
-sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
+sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp)
 {
-	int	fd, flen;
+	int	i, n, fd, flen;
 	int	try = 0;
-	char	buf[1024];
 	char	*host, *p;
-	int	i, n;
+	struct	stat sb;
+	char	buf[1024];
 
 	unless ((fd = open(file, O_RDONLY, 0)) >= 0) return (-1);
 
-	bzero(buf, sizeof(buf));
-	if ((flen = fsize(fd)) < 0) {
-		perror("fsize");
-		return (-1);
+	/*
+	 * Once again, OpenBSD is weird.  On a local filesystem I've seen it
+	 * get a zero length in the write lock.  It's very weird since it
+	 * happens on the 3rd test in t.import, consistently, which is single
+	 * threaded unless I'm mistaken.
+	 * So we wait for up to a half second for it to sort itself out but
+	 * only if it is a lock that we don't expect to be zero lengthed.
+	 */
+	for (i = 0; i < 10; i++) {
+		if ((flen = fsize(fd)) < 0) {
+			perror("readlockf: read");
+			close(fd);
+			return (-1);
+		}
+		if (flen) break;
+		if (strstr(file, READER_LOCK_DIR)) break;
+		usleep(50000);
 	}
-	
-	if (flen == 0) {	/* old style, the file is pid@host.lock */
-		struct	stat sb;
+	if (flen == 0) {	/* expect BitKeeper/readers/pid@host.lock */
+		unless (strstr(file, READER_LOCK_DIR)) {
+			/*
+			 * We get lots of short file reads under stress tests.
+			 * In all other cases the user needs to know.
+			 */
+			unless (getenv("_BK_NFS_TEST")) {
+				fprintf(stderr,
+				    "readlockf: empty lock: %s\n", file);
+			}
+			close(fd);
+			return (-1);
+		}
 
-		fstat(fd, &sb);
+		i = fstat(fd, &sb);
+		assert(i != -1);
 		*tp = sb.st_mtime;
 		close(fd);
-		p = basenm((char*)file);
+		p = basenm(file);
 		*pidp = atoi(p);
-		unless (p = strchr(p, '@')) return (-1);	/* don't know */
+		unless (p = strchr(p, '@')) {
+err:			fprintf(stderr,
+			     "readlockf: malformed empty lock: %s\n", file);
+			return (-1);
+		}
 		host = ++p;
-		unless ((p = strrchr(p, '.')) && streq(p, ".lock")) return (-1);
+		unless ((p = strrchr(p, '.')) && streq(p, ".lock")) goto err;
 		*p = 0;
 		*hostp = strdup(host);
 		*p = '.';
@@ -250,11 +350,12 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 			return (-1);
 		}
 		buf[n] = 0;
-		for (p = buf, i= 0; *p; p++) if (*p == ' ') i++;
+		for (p = buf, i = 0; *p; p++) if (*p == ' ') i++;
 		if (i == 2) break;	/* should be pid host time_t */
 		if (++try >= 100) {
 			close(fd);
-			fprintf(stderr, "readlockf: read failed\n");
+			fprintf(stderr,
+			     "readlockf: bad format in %s\n", file);
 			return (-1);
 		}
 		usleep(5000);
@@ -276,7 +377,7 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 }
 
 private char *
-uniqfile(const char *file, pid_t pid, char *host)
+uniqfile(char *file, pid_t pid, char *host)
 {
 	char	*p, *dir,  *uniq;
 
@@ -293,15 +394,71 @@ uniqfile(const char *file, pid_t pid, char *host)
 	return (uniq);
 }
 
+private void
+addLock(char *uniq, char *file)
+{
+	unless (lockfiles_pid == getpid()) {
+		freeLines(lockfiles, free);
+		lockfiles = 0;
+		lockfiles_pid = getpid();
+	}
+	lockfiles = addLine(lockfiles, strdup(uniq));
+	lockfiles = addLine(lockfiles, strdup(file));
+}
+
+void
+lockfile_cleanup(void)
+{
+	int	i;
+
+	unless (lockfiles_pid == getpid()) return;
+	EACH(lockfiles) {
+		if (exists(lockfiles[i])) {
+			fprintf(stderr, "WARNING: "
+			    "deleting orphan lock file %s\n", lockfiles[i]);
+			unlink(lockfiles[i]);
+		}
+	}
+	freeLines(lockfiles, free);
+	lockfiles = 0;
+}
+
 #ifndef WIN32
+/*
+ * MacOS can return bad data for heavily used files like lock files.
+ * So give it some time to get it right.
+ */
 private int
-linkcount(const char *file)
+getstat(char *file, struct stat *sb)
+{
+	int	ret;
+	int	retry = 0;
+
+#ifdef  MACOS_VER
+	retry = 100;
+#endif
+	while (((ret = lstat(file, sb)) || (sb->st_nlink == 0)) && retry--) {
+		usleep(1000);
+	}
+	return (ret);
+}
+
+private int
+linkcount(char *file)
 {
 	struct	stat sb;
 
-	if (stat(file, &sb) != 0) return (-1);
+	if (getstat(file, &sb)) return (0);
 	return (sb.st_nlink);
+}
 
+u32
+ino(char *file)
+{
+	struct	stat sb;
+
+	if (getstat(file, &sb)) return (0);
+	return ((u32)sb.st_ino);
 }
 #endif
 
@@ -309,20 +466,28 @@ linkcount(const char *file)
  * usage: bk locktest file [n]
  *
  * This will loop calling sccs_lockfile(file) and while it is locked go
- * make sure that we can do an exclusive open of /tmp/lock
+ * make sure that we really own the lock by talking to a daemon that
+ * currently lives in work:/home/bk/lm/bitcluster/cmd/smapper
  */
 int
 locktest_main(int ac, char **av)
 {
-	char	*lock = av[1];
+	char	*lock;
 	int	i, fd, fd2;
-	int	n = 1000, lie = getenv("BK_FAKE_LOCK") != 0;
+	int	net = 0, n = 1000, lie = getenv("BK_FAKE_LOCK") != 0;
 	char	tmp[200];
 
 	unless (av[1]) exit(1);
+	if (streq(av[1], "-n")) {
+		net++;
+		av++;
+		ac--;
+		putenv("_BK_NFS_TEST=1");
+	}
+	unless (lock = av[1]) exit(1);
 	if (av[2]) n = atoi(av[2]);
 	sprintf(tmp, "/tmp/lock-%s", sccs_getuser());
-	if (streq(av[1], "O_EXCL")) {
+	if (streq(lock, "O_EXCL")) {
 		unlink(tmp);
 		fd = open(tmp, O_CREAT|O_RDWR|O_EXCL, 0600);
 		fd2 = open(tmp, O_CREAT|O_RDWR|O_EXCL, 0600);
@@ -345,48 +510,77 @@ locktest_main(int ac, char **av)
 			perror("lockfile");
 			return (1);
 		}
-		fd = open(tmp, O_CREAT|O_RDWR|O_EXCL, 0600);
-		if (fd == -1) {
-			perror(tmp);
-			fprintf(stderr, "Got lock but not O_EXCL lock\n");
-			return (1);
+		if (net) {
+			setx(lock);
+			usleep(500);
+			rmx(lock);
+		} else {
+			fd = open(tmp, O_CREAT|O_RDWR|O_EXCL, 0600);
+			if (fd == -1) {
+				perror(tmp);
+				fprintf(stderr,
+				    "Got lock but not O_EXCL lock\n");
+				return (1);
+			}
+			usleep(1);
+			close(fd);
+			unlink(tmp);
 		}
-
-		usleep(1);
-		close(fd);
-		unlink(tmp);
 		sccs_unlockfile(lock);
-		usleep(1);
+		usleep(500);
 	}
 	printf("%d failed attempts, %d successes\n", failed, n);
 	return (0);
 }
 
-void
-lockfile_cleanup(void)
+private void
+setx(char *lock)
 {
-	int	i;
+	int	n;
+	int	sock = tcp_connect("work", 3962);
+	char	buf[1024];
 
-	unless (lockfiles_pid == getpid()) return;
-	EACH(lockfiles) {
-		if (exists(lockfiles[i])) {
-			fprintf(stderr, "WARNING: "
-			    "deleting orphan lock file %s\n", lockfiles[i]);
-			unlink(lockfiles[i]);
-		}
+	sprintf(buf, "setx\r\n%s\r\n%s@%s:%d(%u)\r\n",
+	    lock, sccs_getuser(), sccs_gethost(), (int)getpid(), ino(lock));
+	unless (writen(sock, buf, strlen(buf)) == strlen(buf)) {
+		perror("write");
+		exit(1);
 	}
-	freeLines(lockfiles, free);
-	lockfiles = 0;
+	n = read(sock, buf, sizeof(buf));
+	unless (n > 2) {
+		perror("read");
+		exit(1);
+	}
+	unless (strneq(buf, "OK", 2)) {
+		fprintf(stderr, "%d: Failed to set lock\n", getpid());
+		fprintf(stderr, "smap: %s\n", buf);
+		exit(1);
+	}
+	close(sock);
 }
 
 private void
-addLock(const char *uniq, const char *file)
+rmx(char *lock)
 {
-	unless (lockfiles_pid == getpid()) {
-		freeLines(lockfiles, free);
-		lockfiles = 0;
-		lockfiles_pid = getpid();
+	int	n;
+	int	sock = tcp_connect("work", 3962);
+	char	buf[1024];
+
+	sprintf(buf, "rmx\r\n%s\r\n%s@%s:%d(%u)\r\n",
+	    lock, sccs_getuser(), sccs_gethost(), (int)getpid(), ino(lock));
+	unless (writen(sock, buf, strlen(buf)) == strlen(buf)) {
+		perror("write");
+		exit(1);
 	}
-	lockfiles = addLine(lockfiles, strdup(uniq));
-	lockfiles = addLine(lockfiles, strdup(file));
+	n = read(sock, buf, sizeof(buf));
+	unless (n > 2) {
+		perror("read");
+		exit(1);
+	}
+	unless (strneq(buf, "OK", 2)) {
+		fprintf(stderr, "%d: Failed to remove lock\n", getpid());
+		fprintf(stderr, "smap: %s\n", buf);
+		exit(1);
+	}
+	close(sock);
 }

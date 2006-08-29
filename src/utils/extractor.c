@@ -2,29 +2,52 @@
  * %K%
  * Copyright (c) 1999 Larry McVoy
  */
-#include "../system.h"
+#include "system.h"
 #include "../zlib/zlib.h"
-#ifdef WIN32
-#include "../win32/uwtlib/misc.h"
-#endif
-#undef	malloc
-#undef	mkdir
-#undef	putenv
-#undef	strdup
-#undef	unlink
 
 #ifndef MAXPATH
 #define	MAXPATH		1024
 #endif
 #ifdef	WIN32
-#define	mkdir(a, b)	_mkdir(a)
-#define	RMDIR		"rmdir /s /q"
-#define	PFKEY		"\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
+#define	PFKEY		"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
+#define	SFIOCMD		"sfio.exe -im < sfioball"
 #define	WIN_UNSUPPORTED	"Windows 2000 or later required to install BitKeeper"
 #else
-#define	RMDIR		"/bin/rm -rf"
+#define	SFIOCMD		"sfio.exe -iqm < sfioball"
 #endif
 #define	TMP		"bksetup"
+
+static char LICENSE_ERROR[] =
+"You do not have a license for BitKeeper and you need one\n"
+"to install the software\n"
+"You can get a temporary license by sending a mail request\n"
+"to sales@bitmover.com.\n"
+"\n"
+"BitMover can be reached at:\n"
+"   +1-408-370-9911 (international and California)\n"
+"   888-401-8808 (toll free in the US & Canada)\n"
+"during business hours (PST) or via email at sales@bitmover.com.\n"
+"Thanks!\n";
+
+static char UPGRADE_ERROR[] =
+"You requested an automatic upgrade, but you don't seem to have\n"
+"BitKeeper installed on your machine. Make sure that the directory\n"
+"where you installed BitKeeper is in your PATH environment variable\n"
+"and that you can run 'bk version'\n"
+"\n"
+"If you still have trouble, BitMover can be reached at:\n"
+"   +1-408-370-9911 (international and California)\n"
+"   888-401-8808 (toll free in the US & Canada)\n"
+"during business hours (PST) or via email at sales@bitmover.com.\n"
+"Thanks!\n";
+
+#ifdef	WIN32
+static char MSYS_ERROR[] =
+"You seem to be running the installer under MINGW-MSYS. The installer\n"
+"is not supported under this configuration. Please start a cmd.exe console\n"
+"and run the installer from there.\n"
+"Thanks!\n";
+#endif
 
 extern unsigned int sfio_size;
 extern unsigned char sfio_data[];
@@ -34,30 +57,25 @@ extern unsigned int keys_size;
 extern unsigned char keys_data[];
 
 void	cd(char *dir);
-void	chomp(char *buf);
 void	extract(char *, char *, u32, char *);
 char*	findtmp(void);
-char*	getdest(void);
-int	isdir(char*);
-void	rmTree(char *dir);
+char*	getbkpath(void);
 void	symlinks(void);
+int	hasDisplay(void);
+char	*getBinDir(void);
 
 int
 main(int ac, char **av)
 {
 	int	i;
-	int	rc = 0, dolinks = 0, upgrade = 0;
+	int	rc = 0, dolinks = 0, upgrade = 0, embeddedkey = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
-	char	*p;
-	char	*dest = 0, *tmp = findtmp();
+	char	*dest = 0, *bkpath = 0, *tmp = findtmp();
+	char	*bindir = getBinDir();
 	char	tmpdir[MAXPATH], buf[MAXPATH], pwd[MAXPATH];
-#ifndef	WIN32
-	char	*bindir = "/usr/libexec/bitkeeper";
-#else
-	char	*bindir = 0;
-	char	regbuf[1024];
-	int	len = sizeof(regbuf);
+	char	*p;
+#ifdef	WIN32
 	HCURSOR h;
 
 	/* Refuse to install on unsupported versions of Windows */
@@ -84,15 +102,12 @@ main(int ac, char **av)
 	 	MessageBox(0, WIN_UNSUPPORTED, 0, MB_OK | MB_ICONERROR);
 	 	exit(1);
 	 }
-
+	 if ((p = getenv("OSTYPE")) && streq(p, "msys")
+	      && !getenv("BK_REGRESSION")) {
+		 fprintf(stderr, MSYS_ERROR);
+		 exit(1);
+	 }
 	_fmode = _O_BINARY;
-	if (getReg(HKEY_LOCAL_MACHINE,
-	    PFKEY, "ProgramFilesDir", regbuf, &len)) {
-		sprintf(buf, "%s/BitKeeper", regbuf);
-		bindir = strdup(buf);
-	} else {
-		bindir = "C:/Program Files/BitKeeper";
-	}
 #endif
 
 	/* rxvt bugs */
@@ -104,29 +119,19 @@ main(int ac, char **av)
 	/*
 	 * If they want to upgrade, go find that dir before we fix the path.
 	 */
+	bkpath = getbkpath();
 	if (av[1] && (streq(av[1], "-u") || streq(av[1], "--upgrade"))) {
 		upgrade = 1;
-		unless (dest = getdest()) dest = bindir;
-		cd(tmp);
-	} else if (av[1] && (av[1][0] != '-')) {
-#ifdef	WIN32
-		unless ((av[1][1] ==':') || (av[1][0] == '/')) {
-#else
-		unless (av[1][0] == '/') {
-#endif
-			sprintf(buf, "%s/%s", pwd, av[1]);
-			dest = strdup(buf);
-		} else {
-			dest = av[1];
+		unless (dest = bkpath) {
+			fprintf(stderr, UPGRADE_ERROR);
+			exit(1);
 		}
+	} else if (av[1] && (av[1][0] != '-')) {
+		dest = strdup(fullname(av[1]));
 #ifndef	WIN32
 		unless (getenv("BK_NOLINKS")) dolinks = 1;
 #endif
-	} else if (av[1]
-#if !defined(WIN32) && !defined(__APPLE__)
-		   || !getenv("DISPLAY")
-#endif
-		   ) {
+	} else if (av[1] && !hasDisplay()) {
 		fprintf(stderr, "usage: %s [-u || <directory>]\n", av[0]);
 		fprintf(stderr,
 "Installs BitKeeper on the system.\n"
@@ -158,9 +163,6 @@ main(int ac, char **av)
 			, bindir);
 		exit(1);
 	}
-	/* dest =~ s,\,/,g */
-	if (dest) for (p = dest; *p; p++) if (*p == '\\') *p = '/';
-
 	sprintf(tmpdir, "%s/%s%u", tmp, TMP, pid);
 #ifdef	WIN32
 	h = SetCursor(LoadCursor(0, IDC_WAIT));
@@ -176,90 +178,89 @@ main(int ac, char **av)
 	 * Add this directory and BK directory to the path.
 	 * Save the old path first, subprocesses need it.
 	 */
-	tmp = malloc(strlen(getenv("PATH")) + 20);
-	sprintf(tmp, "BK_OLDPATH=%s", getenv("PATH"));
-	putenv(tmp);
-
-	tmp = malloc(strlen(getenv("PATH")) + 3*MAXPATH);
-	sprintf(tmp, "PATH=%s%c%s/bitkeeper%c%s",
+	safe_putenv("BK_OLDPATH=%s", getenv("PATH"));
+	safe_putenv("PATH=%s%c%s/bitkeeper%c%s",
 	    tmpdir, PATH_DELIM, tmpdir, PATH_DELIM, getenv("PATH"));
-	putenv(tmp);
-	
+
 	/* The name "sfio.exe" should work on all platforms */
 	extract("sfio.exe", sfio_data, sfio_size, tmpdir);
 	extract("sfioball", data_data, data_size, tmpdir);
-	extract("config", keys_data, keys_size, tmpdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
-#ifdef	WIN32
-	/* Winblows is so slow they need status */
-	if (system("sfio.exe -im < sfioball")) {
-#else
-	if (system("sfio.exe -iqm < sfioball")) {
-#endif
+	if (system(SFIOCMD)) {
+		if (errno == EPERM) {
+			fprintf(stderr,
+"bk install failed because it was unabled to execute sfio in %s.\n"
+"On some systems this might be /tmp does not have execute permissions.\n"
+"In that case try rerunning with TMPDIR set to a new directory.\n",
+			    tmpdir);
+			exit(1);
+		}
 		perror("sfio");
 		exit(1);
 	}
 	symlinks();
-	
-	/*
-	 * See if we have an embedded license and move it in place
-	 * but don't overwrite an existing config file.
-	 * If we find a license in the old dir, set BK_CONFIG with it.
-	 */
-	sprintf(buf, "%s/config", dest);
-	unless (upgrade && exists(buf)) {
-		system("bk _eula -v < config > bitkeeper/config 2>"
-		    DEVNULL_WR);
-		unlink("config");
-		/*
-		 * If that didn't work, try looking in the original directory.
-		 */
-		unless (size("bitkeeper/config") > 0) {
-			char	buf[MAXPATH*2];
-			char	*config = 0;
 
-			unlink("bitkeeper/config");
-			cd(pwd);
-			sprintf(buf, "bk _preference|bk _eula -v 2>"DEVNULL_WR);
-			f = popen(buf, "r");
-			while (fgets(buf, sizeof(buf), f)) {
-				chomp(buf);
-				if (strneq("license:", buf, 8)) {
-					config = malloc(2000);
-					sprintf(config, "BK_CONFIG=%s;", buf);
-					continue;
-				}
-				unless (strneq("licsign", buf, 7)) continue;
-				strcat(config, buf);
-				strcat(config, ";");
-			}
+	/*
+	 * extract the embedded config file
+	 */
+	if (bkpath) concat_path(buf, bkpath, "config");
+	/* We can't compare with the inskeys_marker template directly
+	 * because that would put two copies of the template in the binary.
+	 * That 12 is the lenght of 'license: BKL'
+	 */
+	for (p = keys_data + 12; *p != '\n'; p++) {
+		if (*p != 'X') embeddedkey = 1;
+	}
+	if (embeddedkey) {
+		if (bkpath && exists(buf)) {
+			/* merge embedded file into existing config */
+			sprintf(buf,
+			    "bk config -m '%s'/config - > bitkeeper/config",
+			    bkpath);
+			f = popen(buf, "w");
+			fputs(keys_data, f);
 			pclose(f);
-			if (config) putenv(config);
-			cd(tmpdir);
+		} else {
+			/* Just write embedded config */
+			f = fopen("bitkeeper/config", "w");
+			fputs(keys_data, f);
+			fclose(f);
 		}
+	} else if (bkpath && exists(buf)) {
+		/* just copy existing config */
+		fileCopy(buf, "bitkeeper/config");
+		chmod("bitkeeper/config", 0666);
 	}
 
-#ifdef	WIN32
 	mkdir("bitkeeper/gnu/tmp", 0777);
-#endif
+
+	/* cd back to the original pwd so we get any config's */
+	cd(pwd);
+
 	if (dest) {
+		putenv("BK_NO_GUI_PROMPT=1");
+		buf[0] = 0;
+		if (f = popen("bk _logging 2>"DEVNULL_WR, "r")) {
+			fnext(buf, f);
+			pclose(f);
+		}
+		unless (strstr(buf, "license is current")) {
+			    fprintf(stderr, LICENSE_ERROR);
+			    rc = 1;
+			    goto out;
+		    }
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
 		sprintf(buf, "bk install %s %s \"%s\"",
 			dolinks ? "-S" : "",
 			upgrade ? "-f" : "",
 			dest);
-		unless (system(buf)) {
-			/* Why not just run <dest>/bk version  ?? -Wayne */
-			p = getenv("BK_OLDPATH");
-			tmp = malloc(strlen(p) + MAXPATH);
-			sprintf(tmp, "PATH=%s%c%s", dest, PATH_DELIM, p);
-			putenv(tmp);
+		unless (rc = system(buf)) {
 			fprintf(stderr, "\nInstalled version information:\n\n");
-			sprintf(buf, "bk version");
+			sprintf(buf, "'%s/bk' version", dest);
 			system(buf);
 			fprintf(stderr, "\nInstallation directory: ");
-			sprintf(buf, "bk bin");
+			sprintf(buf, "'%s/bk' bin", dest);
 			system(buf);
 			fprintf(stderr, "\n");
 		}
@@ -274,18 +275,11 @@ main(int ac, char **av)
 		fprintf(stderr, "Running installer...\n");
 		SetCursor(h);
 #endif
-		/*
-		 * Use our own version of system()
-		 * because the native one on win98 does not return the
-		 * correct exit code
-		 */
-		cd(pwd);		/* so relative paths work */
 		rc = system(buf);
-		cd(tmpdir);
-			
 	}
 
 	/* Clean up your room, kids. */
+out:	cd(tmpdir);
 	unless (getenv("BK_SAVE_INSTALL")) {
 		cd("..");
 		fprintf(stderr,
@@ -298,7 +292,7 @@ main(int ac, char **av)
 		 */
 		for (i = 0; i < 10; ) {
 			/* careful */
-			rmTree(buf);
+			rmtree(buf);
 			unless (isdir(buf)) break;
 			sleep(++i);
 		}
@@ -316,15 +310,36 @@ main(int ac, char **av)
 		    "Do you want to reboot the system now?\n");
 	}
 #endif
-	exit(0);
+	exit(rc);
 }
 
-void
-chomp(char *buf)
+char *
+getBinDir(void)
 {
-	char	*p;
+#ifdef WIN32
+	char	*bindir;
+	char	*buf;
 
-	if ((p = strchr(buf, '\r')) || (p = strchr(buf, '\n'))) *p = 0;
+	if (buf = reg_get(PFKEY, "ProgramFilesDir", 0)) {
+		bindir = aprintf("%s/BitKeeper", buf);
+		free(buf);
+	} else {
+		bindir = "C:/Program Files/BitKeeper";
+	}
+	return (bindir);
+#else
+	return ("/usr/libexec/bitkeeper");
+#endif
+}
+
+int
+hasDisplay(void)
+{
+#if defined(WIN32) || defined (__APPLE__)
+	return (1);
+#else
+	return (getenv("DISPLAY") != 0);
+#endif
 }
 
 /*
@@ -396,40 +411,33 @@ extract(char *name, char *data, u32 size, char *dir)
 }
 
 char *
-getdest(void)
+getbkpath(void)
 {
-	FILE	*f = popen("bk bin", "r");
+	FILE	*f;
 	char	*p;
 	char	buf[MAXPATH], buf2[MAXPATH];
 
-	unless (f) return (0);
+	unless (p = which("bk")) return (0);
+	free(p);
+	unless (f = popen("bk bin", "r")) return (0);
 
 	buf[0] = 0;
-	fgets(buf, sizeof(buf), f);
-	unless (buf[0]) {
-		pclose(f);
-		return (0);
-	}
+	fnext(buf, f);
 	pclose(f);
-	for (p = buf; *p; p++);
-	*--p = 0;
-	if (p[-1] == '\r') p[-1] = 0;
+	unless (buf[0])	return (0);
+	chomp(buf);
 	sprintf(buf2, "bk pwd '%s'", buf);
 	f = popen(buf2, "r");
 	buf[0] = 0;
-	fgets(buf, sizeof(buf), f);
-	unless (buf[0]) {
-		pclose(f);
-		return (0);
-	}
+	fnext(buf, f);
 	pclose(f);
-	for (p = buf; *p; p++);
-	*--p = 0;
-	if (p[-1] == '\r') p[-1] = 0;
+	unless (buf[0]) return (0);
+	chomp(buf);
 	return (strdup(buf));
 }
 
-int
+#ifdef WIN32
+private int
 istmp(char *path)
 {
 	char	*p = &path[strlen(path)];
@@ -450,6 +458,7 @@ err:		*p = 0;
 	*p = 0;
 	return (1);
 }
+#endif
 
 /*
  * I'm not at all convinced we need this.
@@ -457,6 +466,9 @@ err:		*p = 0;
 char*
 findtmp(void)
 {
+	char	*p;
+
+	if (p = getenv("TMPDIR")) return (p);
 #ifdef	WIN32
 	char	*places[] = {
 			"Temp",
@@ -486,84 +498,3 @@ findtmp(void)
 	return ("/tmp");
 #endif
 }
-
-int
-size(char *path)
-{
-	struct	stat sbuf;
-
-	if (stat(path, &sbuf)) return (0);
-	return ((int)sbuf.st_size);
-}
-
-int
-exists(char *path)
-{
-	struct	stat sbuf;
-
-	return (stat(path, &sbuf) == 0);
-}
-
-int
-isdir(char *path)
-{
-	struct	stat sbuf;
-
-	if (stat(path, &sbuf)) return (0);
-	return (S_ISDIR(sbuf.st_mode));
-}
-
-#ifdef	WIN32
-void
-rmTree(char *dir)
-{
-	char buf[MAXPATH], cmd[MAXPATH + 12];
-
-	sprintf(cmd, "rmdir /s /q %s", dir);
-	/* use native system() funtion  so we get cmd.exe/command.com */
-	(system)(cmd);
-}
-
-#else
-void
-rmTree(char *dir)
-{
-	char cmd[MAXPATH + 11];
-
-	sprintf(cmd, "/bin/rm -rf %s", dir);
-	system(cmd);
-}
-#endif
-
-#ifdef	WIN32
-
-/* stolen from BK source */
-int
-getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
-{
-        int	rc;
-        HKEY    hKey;
-        DWORD   valType = REG_SZ;
-	DWORD	len = *lenp;
-
-	valbuf[0] = 0;
-        rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
-        if (rc != ERROR_SUCCESS) return (0);
-
-        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, &len);
-	*lenp = len;
-        if (rc != ERROR_SUCCESS) return (0);
-        RegCloseKey(hKey);
-        return (1);
-}
-#endif
-
-/* ditto */
-#if	defined(linux) && defined(sparc)
-#undef  fclose
-sparc_fclose(FILE *f)
-{
-	return (fclose(f));
-}
-#endif
-

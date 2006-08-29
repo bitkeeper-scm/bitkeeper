@@ -1,20 +1,30 @@
 .so ../bk-macros
-.TH "bk gethost" 1 %E% "\*(BC" "\*(UM"
+.TH "bk gethost" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk gethost \- display machine name
 .SH SYNOPSIS
-.B bk gethost [-r]
+.B bk gethost
+.[B] \-r
 .SH DESCRIPTION
 .LP
-Outputs the fully-qualified name of the machine. Used primarily
-when doing
-.B bk
-scripting.
+Outputs the fully-qualified name of the machine.
+Used primarily when doing \*[BK] scripting.
 .OPTIONS
 .TP
 .B \-r
-print the real host name, ignoring $BK_HOST.
+print the real host name, ignoring
+.V $BK_HOST .
+.SH EXIT STATUS
+.LP
+.B bk gethost
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH SEE ALSO
-.SA getuser 1
+.SA getuser
 .SH CATEGORY
 .B Utility

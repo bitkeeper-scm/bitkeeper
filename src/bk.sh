@@ -31,15 +31,16 @@ __cd2root() {
 	cd "$root"
 }
 
+# faster way to get repository status
+_repocheck() {
+	bk -r check -acv
+}
+
 # shorthand to dig out renames
 _renames() {
 	case "X$1" in
-	    X-r[0-9]*|X-r+)
-		;;
-	    *)
-	    	echo 'usage renames -r<rev> OR renames -r<rev>,<rev>'
-		exit 1
-		;;
+	    X-r*)	;;
+	    *)		bk help -s renames; exit 1;;
 	esac
 	__cd2root
 	bk rset -h "$1" | awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
@@ -62,8 +63,7 @@ _gfiles() {		# /* undoc? 2.0 */
 	exec bk sfiles -g "$@"
 }
 
-_filesNOTYET() {
-	# When we have -1 we can remove files.c
+_files() {
 	exec bk sfiles -1g "$@"
 }
 
@@ -109,6 +109,30 @@ _tags() {
 	exec bk changes -t
 }
 
+_credits() {
+	exec bk help credits
+}
+
+_environment() {
+	exec bk help environment
+}
+
+_history() {
+	exec bk help history
+}
+
+_templates() {
+	exec bk help templates
+}
+
+_resolving() {
+	exec bk help resolving
+}
+
+_merging() {
+	exec bk help merging
+}
+
 # superset - see if the parent is ahead
 _superset() {
 	__cd2root
@@ -116,11 +140,14 @@ _superset() {
 	QUIET=
 	CHANGES=-v
 	EXIT=0
+	NOPARENT=NO
 	TMP1=${TMP}/bksup$$
 	TMP2=${TMP}/bksup2$$
-	while getopts q opt
+	TMP3=${TMP}/bksup3$$
+	while getopts dq opt
 	do
 		case "$opt" in
+		d) set -x;;
 		q) QUIET=-q; CHANGES=; LIST=NO;;
 		*) echo "Usage: superset [-q] [parent]"
 		   exit 1;;
@@ -128,22 +155,27 @@ _superset() {
 	done
 	shift `expr $OPTIND - 1`
 	export PAGER=cat
+
+	# No parent[s] means we're dirty by definition
 	test "X$@" = X && {
-		test "X`bk parent -il1`" = "X" && exit 1
+		bk parent -qi || NOPARENT=YES
 	}
-	bk changes -Laq $CHANGES "$@" > $TMP2 || {
-		rm -f $TMP1 $TMP2
-		exit 1
-	}
-	test -s $TMP2 && {
-		test $LIST = NO && {
+
+	# Don't run changes if we have no parent (specified or implied)
+	test "X$@" != X -o $NOPARENT != YES && {
+		bk changes -Laq $CHANGES "$@" > $TMP2 || {
 			rm -f $TMP1 $TMP2
 			exit 1
 		}
-		echo === Local changesets === >> $TMP1
-		grep -ve --------------------- $TMP2 |
-		sed 's/^/    /'  >> $TMP1
-		EXIT=1
+		test -s $TMP2 && {
+			test $LIST = NO && {
+				rm -f $TMP1 $TMP2
+				exit 1
+			}
+			echo === Local changesets === >> $TMP1
+			grep -ve --------------------- $TMP2 |
+			sed 's/^/    /'  >> $TMP1
+		}
 	}
 	bk pending $QUIET > $TMP2 2>&1 && {
 		test $LIST = NO && {
@@ -152,7 +184,6 @@ _superset() {
 		}
 		echo === Pending files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	bk sfiles -cg > $TMP2
 	test -s $TMP2 && {
@@ -162,13 +193,12 @@ _superset() {
 		}
 		echo === Modified files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	(bk sfiles -x
 	 bk sfiles -xa BitKeeper/triggers
 	 bk sfiles -xa BitKeeper/etc |
 	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in|etc/level'
-	) | bk _sort > $TMP2
+	) | bk sort > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP1 $TMP2
@@ -176,7 +206,6 @@ _superset() {
 		}
 		echo === Extra files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	bk _find BitKeeper/tmp -name 'park*' > $TMP2
 	test -s $TMP2 && {
@@ -186,7 +215,6 @@ _superset() {
 		}
 		echo === Parked files === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	rm -f $TMP2
 	test -d PENDING &&  bk _find PENDING -type f > $TMP2
@@ -197,7 +225,6 @@ _superset() {
 		}
 		echo === Possible pending patches === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
 	rm -f $TMP2
 	test -d RESYNC &&  bk _find RESYNC -type f > $TMP2
@@ -208,23 +235,57 @@ _superset() {
 		}
 		echo === Unresolved pull === >> $TMP1
 		sed 's/^/    /' < $TMP2 >> $TMP1
-		EXIT=1
 	}
-
-	test $EXIT = 0 && {
-		rm -f $TMP1 $TMP2
+	for i in fix undo collapse
+	do
+		test -f BitKeeper/tmp/${i}.patch && {
+			test $LIST = NO && {
+				rm -f $TMP1 $TMP2
+				exit 1
+			}
+			echo === ${i} patch === >> $TMP1
+			echo "    `ls -l BitKeeper/tmp/${i}.patch`" >> $TMP1
+		}
+	done
+	bk sfiles -R > $TMP2
+	test -s $TMP2 && {
+		# If they didn't give us a parent then we can use the
+		# the subrepos parent
+		test "X$@" = X && {
+			EXIT=${TMP}/bkexit$$
+			rm -f $EXIT
+			HERE=`bk pwd`
+			while read repo
+			do	cd "$HERE/$repo"
+				bk superset $QUIET > $TMP3 2>&1 || touch $EXIT
+				test -s $TMP3 -o -f $EXIT || continue
+				test $LIST = NO && break
+				(
+				echo "    === Subrepository $repo ==="
+				sed -e 's/^/    /' < $TMP3
+				) >> $TMP1
+			done < $TMP2
+			cd "$HERE"
+			test $LIST = NO -a -f $EXIT && {
+				rm -f $TMP1 $TMP2 $TMP3 $EXIT
+				exit 1
+			}
+			rm -f $EXIT
+		}
+	}
+	test -s $TMP1 -o $NOPARENT = YES || {
+		rm -f $TMP1 $TMP2 $TMP3
 		exit 0
 	}
+	echo "Repo:   `bk gethost`:`pwd`"
 	if [ $# -eq 0 ]
-	then	PARENT=`bk parent -il1`
-	else	PARENT="$@"
+	then	bk parent -li | while read i
+		do	echo "Parent: $i"
+		done
+	else	echo "Parent: $@"
 	fi
-	echo "Child:  `bk gethost`:`pwd`"
-	for i in $PARENT
-	do	echo "Parent: $i"
-	done
 	cat $TMP1
-	rm -f $TMP1 $TMP2
+	rm -f $TMP1 $TMP2 $TMP3
 	exit 1
 }
 
@@ -294,79 +355,49 @@ __keysync() {
 	/bin/rm -f /tmp/sync[123]$$
 }
 
-# For each file which is modified,
-# call fmtool on the latest vs the checked out file,
-# if they create the merge file,
-# then	save the edited file in file~
-#	put the merge on top of the edited file
-# fi
-_fixtool() {
-	ASK=YES
-	while getopts f opt
-	do
-		case "$opt" in
-		f) ASK=NO;;
-		*) echo "Usage: fixtool [-f] [file...]"
-		   exit 1;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	test $# -eq 0 && __cd2root
-	fix=${TMP}/fix$$	
-	merge=${TMP}/merge$$	
-	previous=${TMP}/previous$$	
-	bk sfiles -cg "$@" > $fix
-	test -s $fix || {
-		echo Nothing to fix
-		rm -f $fix
-		exit 0
-	}
-	test `wc -l < $fix` -eq 1 && ASK=NO
-	# XXX - this does not work if the filenames have spaces, etc.
-	# We can't do while read x because we need stdin.
-	for x in `cat $fix`
-	do	test $ASK = YES && {
-			eval $CLEAR
-			bk diffs "$x" | bk more
-			echo $N "Fix ${x}? y)es q)uit n)o u)nedit: [no] "$NL
-			read ans 
-			DOIT=YES
-			case "X$ans" in
-			    X[Yy]*) ;;
-			    X[q]*)	rm -f $fix $merge $previous 2>/dev/null
-					exit 0
-					;;
-			    X[Uu]*)	bk unedit $x; DOIT=NO;;
-			    *)		DOIT=NO;;
-			esac
-			test $DOIT = YES || continue
-		}
-		bk get -kpr+ "$x" > $previous
-		rm -f $merge
-		bk fmtool $previous "$x" $merge
-		test -s $merge || continue
-		cp -fp "$x" "${x}~"
-		cat $merge > "$x"
-	done
-	rm -f $fix $merge $previous 2>/dev/null
+_clear() {
+	eval $CLEAR
 }
 
 # Run csettool on the list of csets, if any
 _csets() {		# /* doc 2.0 */
-	if [ X$1 = X"--help" ]; then bk help csets; exit 0; fi
+	test X$1 = X"--help" && {
+		bk help -s csets
+		exit 0
+	}
+	COPTS=
+	GUI=YES
+	while getopts Tv opt
+	do	case "$opt" in
+		T) GUI=NO;;
+		v) GUI=NO; COPTS="$COPTS -v";;
+		*) bk help -s csets; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	__cd2root
 	if [ -f RESYNC/BitKeeper/etc/csets-in ]
-	then	echo Viewing RESYNC/BitKeeper/etc/csets-in
-		cd RESYNC
-		bk changes -nd:I: - < BitKeeper/etc/csets-in |
-		    bk csettool "$@" -
-		exit 0
+	then	if [ $GUI = YES ]
+		then	echo Viewing RESYNC/BitKeeper/etc/csets-in
+			cd RESYNC
+			bk changes -nd:I: - < BitKeeper/etc/csets-in |
+			    bk csettool "$@" -
+			exit 0
+		else
+			bk changes $COPTS - < BitKeeper/etc/csets-in
+			exit 0
+		fi
 	fi
 	if [ -f BitKeeper/etc/csets-in ]
-	then	echo Viewing BitKeeper/etc/csets-in
-		bk changes -nd:I: - < BitKeeper/etc/csets-in |
-		    bk csettool "$@" -
-		exit 0
+	then	if [ $GUI = YES ]
+		then	echo Viewing BitKeeper/etc/csets-in
+			bk changes -nd:I: - < BitKeeper/etc/csets-in |
+			    bk csettool "$@" -
+			exit 0
+		else
+			bk changes $COPTS - < BitKeeper/etc/csets-in
+			exit 0
+		fi
 	fi
 	echo "Can not find csets to view."
 	exit 1
@@ -378,11 +409,16 @@ _extra() {		# /* doc 2.0 as extras */
 
 _extras() {		# /* doc 2.0 */
 	if [ X$1 = X"--help" ]; then bk help extras; exit 0; fi
-	if [ "X$1" != X -a -d "$1" ]	# /* -a doc 2.0 */
+	A=
+	test "X$1" = X-a && {
+		A=-a
+		shift
+	}
+	if [ "X$1" != X -a -d "$1" ]
 	then	cd "$1"
 		shift
-		bk sfiles -x "$@"
-	else	bk -R sfiles -x "$@"
+		bk sfiles -x $A "$@"
+	else	bk -R sfiles -x $A "$@"
 	fi
 }
 
@@ -464,7 +500,7 @@ _unrm () {
 
 	# Find all the possible files, sort with most recent delete first.
 	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
-		bk _sort -r -n | awk -F'|' '{print $2}' | \
+		bk sort -r -n | awk -F'|' '{print $2}' | \
 		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
 
@@ -558,7 +594,7 @@ _obscure() {
 		exit 1
 	}
 	bk -r admin -Znone || exit 1
-	BK_FORCE=YES bk -r admin -O
+	BK_FORCE=YES bk -r admin -Oall
 }
 
 __bkfiles() {
@@ -594,7 +630,7 @@ _rmdir() {		# /* doc 2.0 */
 		exit 1
 	fi
 	bk sfiles "$1" | bk clean -q -
-	bk sfiles "$1" | bk _sort | bk rm -
+	bk sfiles "$1" | bk sort | bk rm -
 	SNUM=`bk sfiles "$1" | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
@@ -679,25 +715,6 @@ _chmod() {		# /* doc 2.0 */
 		exit 1
 	}
 	exit 0
-}
-
-_after() {		# /* undoc? 2.0 */
-	AFTER=
-	while getopts r: opt
-	do	case "$opt" in
-		    r)	AFTER=$OPTARG
-		    	;;
-		    *)	echo "Usage: after -r<rev>"
-			;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	if [ "X$AFTER" = X ]
-	then	echo "Usage: after -r<rev>"
-	fi
-	bk -R prs -ohMa -r1.0..$AFTER -d':REV:,\c' ChangeSet 
-	echo ""
-	return $?
 }
 
 _man() {
@@ -878,7 +895,7 @@ _meta_union() {
 	do	test -d BitKeeper/$d/SCCS || continue
 		bk _find BitKeeper/$d/SCCS -name "s.${1}*"
 	done | bk prs -hr1.0 -nd'$if(:DPN:=BitKeeper/etc/'$1'){:GFILE:}' - |
-		bk annotate -R - | bk _sort -u
+		bk annotate -R - | bk sort -u
 }
 
 # Convert a changeset revision, tag, or key to the file rev 
@@ -910,11 +927,11 @@ _clonemod() {
 		exit 1
 	fi
 
-	bk clone -lq $2 $3 || exit 1
-	cd $3 || exit 1
-	bk parent -siq $1 || exit 1
+	bk clone -lq "$2" "$3" || exit 1
+	cd "$3" || exit 1
+	bk parent -sq "$1" || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
-	bk pull `bk parent -il1`
+	bk pull 
 }
 
 # XXX undocumented alias from 3.0.4 
@@ -945,7 +962,7 @@ __find_merge_errors() {
 			continue
 		fi
 
-		bk smerge -g "$g" $p $m > $NEW
+		bk smerge -g -l$p -r$m "$g" > $NEW
 		bk get -qkpr$r "$g" > $O1
 		# if the new smerge automerges and matches user merge, then
 		# no problems.
@@ -956,8 +973,8 @@ __find_merge_errors() {
 			continue
 		fi
 
-		SMERGE_EMULATE_BUGS=301 bk smerge -g "$g" $p $m > $O1
-		SMERGE_EMULATE_BUGS=302 bk smerge -g "$g" $p $m > $O2
+		SMERGE_EMULATE_BUGS=301 bk smerge -g -l$p -r$m "$g" > $O1
+		SMERGE_EMULATE_BUGS=302 bk smerge -g -l$p -r$m "$g" > $O2
 		bad1=0
 		bad2=0
 		cmp -s $O1 $NEW || bad1=1
@@ -1020,7 +1037,7 @@ output and merge results that the user of the tool created last time.
 
 Read each diff and look for problems.  It is quite possible that no
 errors will be found.  Futher information about a merge can be found
-by running 'bk explore_merge FILE REV'
+by running 'bk explore_merge -rREV FILE'
 
 If you have any questions or need help fixing a problem, please send
 email to support@bitmover.com and we will assist you.
@@ -1030,7 +1047,7 @@ EOF
 	while read g r p m ver
 	do
 	        echo $g $r $p $m
-		bk smerge -g "$g" $p $m > $O1
+		bk smerge -g -l$p -r$m "$g" > $O1
 		bk get -qkpr$r "$g" > $NEW
 		bk diff -u $O1 $NEW
 		echo --------------------------------------------------
@@ -1039,15 +1056,51 @@ EOF
 	rm -f $O1 $NEW
 }
 
+# If the top rev is a merge, redo the merge and leave it in an edited gfile
+_remerge()
+{
+	SMERGE=NO
+	while getopts t opt
+	do	case "$opt" in
+		T) SMERGE=YES;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	for i in "$@"
+	do	MPARENT=`bk prs -r+ -hnd:MPARENT: "$i"`
+		test "$MPARENT" != "" || {
+			echo Skipping "$i" because top delta is not a merge
+			continue
+		}
+		PARENT=`bk prs -r+ -hnd:PARENT: "$i"`
+		bk clean -q "$i" || {
+			echo Skipping "$i" because it contains changes
+			continue
+		}
+		bk edit -qg "$i"
+		if [ $SMERGE = YES ]
+		then	bk smerge -g -l$MPARENT -r$PARENT "$i" > $i
+			test $? = 1 &&
+			    echo remerge: conflicts during merge of "$i"
+		else	bk fm3tool -o "$i" -l$MPARENT -r$PARENT "$i"
+		fi
+	done
+}
+
 _explore_merge()
 {
-	test "$#" -eq 2 || {
-		echo "Usage: bk explore_merge FILE REV"
+	while getopts r: opt
+	do	case "$opt" in
+		r) REV="$OPTARG";;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	test "$REV" = "" -o "X$1" = X && {
+		echo "usage: explore_merge -r<rev> <file>"
 		exit 1
 	}
 	FILE="$1"
-	REV=`bk prs -r"$2" -hnd:MERGE: "$FILE"`
-
+	REV=`bk prs -r"$REV" -hnd:MERGE: "$FILE"`
 	test "$REV" != "" || {
 	    echo rev $2 of $FILE is not a merge
 	    exit 1
@@ -1062,7 +1115,7 @@ _explore_merge()
 	p=`bk prs -r$REV -hnd:PARENT: "$FILE"`
 	m=`bk prs -r$REV -hnd:MPARENT: "$FILE"`
 
-	bk smerge -g "$FILE" $p $m > $MERGE
+	bk smerge -g -l$p -r$m "$FILE" > $MERGE
 	bk get -qkpr$REV "$FILE" > $REAL
 
 	help=1
@@ -1076,7 +1129,7 @@ _explore_merge()
 		    echo
 		    cat <<EOF
 d - diff merge file with original merge
-D - use GUI diff
+D - graphically diff merge file with original merge
 e - edit merge file
 f - run fm3tool on merge file
 m - recreate merge with BitKeeper's merge tool
@@ -1092,8 +1145,8 @@ EOF
 		Xd*) bk diff -u $MERGE $REAL;;
 		XD*) bk difftool $MERGE $REAL;;
 		Xe*) bk editor $MERGE;;
-		Xf*) bk fm3tool -o $MERGE -f $p 1.1 $m "$FILE";;
-	        Xm*) bk smerge -g "$FILE" $p $m > $MERGE;;
+		Xf*) bk fm3tool -o $MERGE -f -l$p -r$m "$FILE";;
+	        Xm*) bk smerge -g -l$p -r$m "$FILE" > $MERGE;;
 		Xs*) bk get -kpM$m -r$p "$FILE" > $MERGE;;
 		Xr*) bk revtool -l$m -r$p "$FILE";;
 		Xh*) help=1;;
@@ -1107,7 +1160,7 @@ EOF
 # in case someone calls _keysort after some merge or something.
 __keysort()
 {
-    bk _sort "$@"
+    bk sort "$@"
 }
 
 __quoteSpace()
@@ -1371,7 +1424,7 @@ _install()
 	# symlinks to /usr/bin
 	if [ "$DOSYMLINKS" = "YES" ]
 	then
-		if [ ! -w /usr/bin ]
+		if [ -w /usr/bin ]
 		then
 	        	test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
 			"$DEST"/bk links /usr/bin
@@ -1405,8 +1458,10 @@ _install()
 	cd "$DEST"
 	if [ $CRANKTURN = NO ]
 	then
-		(find . | xargs chown root) 2> /dev/null
-		(find . | xargs chgrp root) 2> /dev/null
+		test "X$OSTYPE" != "Xmsys" && {
+			(find . | xargs chown root) 2> /dev/null
+			(find . | xargs chgrp root) 2> /dev/null
+		}
 		find . | grep -v bkuninstall.exe | xargs chmod ugo-w
 	else
 		find . -type d | xargs chmod 777
@@ -1419,6 +1474,8 @@ _install()
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
 		test $VERBOSE = YES && echo "Updating registry and path ..."
+		# When extractor.c is upgrading, we're called with -f (FORCE)
+		test $FORCE -eq 1 && DLLOPTS="-u"
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
 		# This tells extract.c to reboot if it is needed
@@ -1588,16 +1645,16 @@ _conflicts() {
 	REVTOOL=0
 	DIFF=0
 	DIFFTOOL=0
-	SHORTLIST=1
-	while getopts dDflp opt
+	VERBOSE=0
+	while getopts dDfprv opt
 	do
 		case "$opt" in
 		d) DIFF=1;;
 		D) DIFFTOOL=1;;
 		f) FM3TOOL=1;;
-		l) SHORTLIST=0;;
-		p) REVTOOL=1;;
-		*)	echo "Usage: conflicts [-dDlfp] [glob]"
+		v) test $VERBOSE -eq 1 && VERBOSE=2 || VERBOSE=1;;
+		p|r) REVTOOL=1;;
+		*)	bk help -s conflicts
 			exit 1;;
 		esac
 	done
@@ -1611,7 +1668,7 @@ _conflicts() {
 
 	bk gfiles "$@" | grep -v '^ChangeSet$' | bk prs -hnr+ \
 	-d'$if(:RREV:){:GPN:|:LPN:|:RPN:|:GFILE:|:LREV:|:RREV:|:GREV:}' - | \
-	bk _sort | while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
+	bk sort | while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
 	do	if [ "$GFILE" != "$LPN" ]
 		then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
 		else	test "$GFILE" = "$LPN" || {
@@ -1621,10 +1678,10 @@ _conflicts() {
 			}
 			PATHS="$GFILE"
 		fi
-		if [ $SHORTLIST -eq 1 ]; then
+		if [ $VERBOSE -eq 0 ]; then
 			echo $PATHS
 		else
-			__conflict 
+			__conflict $VERBOSE
 		fi
 		if [ $DIFF -eq 1 ]; then
 			bk diffs -r${LOCAL}..${REMOTE} "$GFILE"
@@ -1638,7 +1695,7 @@ _conflicts() {
 		if [ $FM3TOOL -eq 1 ]; then
 			echo "NOTICE: read-only merge of $GFILE"
 			echo "        No changes will be written."
-			bk fm3tool -N $LOCAL $GCA $REMOTE "$GFILE"
+			bk fm3tool -n -l$LOCAL -r$REMOTE "$GFILE"
 		fi
 	done
 }
@@ -1656,24 +1713,36 @@ __fmt() {
 }
 
 __conflict() {
-	LINES=`bk smerge "$GFILE" $LOCAL $REMOTE | grep '^<<<<<<< gca' | wc -l`
-	CONFLICTS=`expr $LINES + 0`
-	# Return if we can automerge
-	test $CONFLICTS -eq 0 && return
-	bk set -x -r$REMOTE -r$LOCAL "$GFILE" | while read REV
-	do      echo "$GFILE|$REV"
-	done | bk prs -hnd':P:' - | bk _sort -r -u > /tmp/u$$
-	USERS=
-	for i in `cat /tmp/u$$`
-	do	USERS="$i $USERS"
-	done
-	rm -f /tmp/u$$
-	FMT="`__fmt 20 $GFILE`"
-	echo "$FMT $CONFLICTS conflicts by $USERS"
+	bk smerge -Iu -l$LOCAL -r$REMOTE "$GFILE" > /tmp/awk$$ && {
+		rm -f /tmp/awk$$
+		return
+	}
+	awk -v FILE="$GFILE" -v VERBOSE=$VERBOSE '
+		BEGIN { in_conflict = 0 }
+		/^<<<<<<< gca /		{ n++; next; }
+		/^>>>>>>>$/		{ in_conflict = 0; next; }
+		/^<<<<<<< local/	{ in_conflict = "l"; next; }
+		/^<<<<<<< remote/	{ in_conflict = "r"; next; }
+		in_conflict == "l"	{ local[$1]++; }
+		in_conflict == "r"	{ remote[$1]++; }
+		END {
+			printf "%s has %d conflict block", FILE, n;
+			if (n > 1) printf "s";
+			printf "\n";
+			if (VERBOSE == 1) exit 0;
+			for (i in local) {
+				printf "%4d local lines by %s\n", local[i], i;
+			}
+			for (i in remote) {
+				printf "%4d remote lines by %s\n", remote[i], i;
+			}
+		}
+	' /tmp/awk$$
+	rm -f /tmp/awk$$
 	test "$GFILE" = "$LPN" -a "$GFILE" = "$RPN" || {
-		echo "    GCA path:        $GPN"
-		echo "    Local path:      $LPN"
-		echo "    Remote path:     $RPN"
+		echo "    GCA path:     $GPN"
+		echo "    Local path:   $LPN"
+		echo "    Remote path:  $RPN"
 	}
 }
 

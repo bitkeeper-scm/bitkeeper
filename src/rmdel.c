@@ -25,7 +25,7 @@ rmdel_main(int ac, char **av)
 	 * XXX - might want to insist that there is only one file.
 	 */
 	unless (name = sfileFirst("rmdel", &av[optind], SF_NODIREXPAND)) {
-		return (0);
+		return (1);
 	}
 	if (sfileNext()) {
 		fprintf(stderr, "rmdel: only one file at a time\n");

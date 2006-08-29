@@ -18,6 +18,9 @@
 # LODs
 # per file information (flags, etc.)
 
+_BK_PREVENT_RESOLVE_RERUN=1 
+export _BK_PREVENT_RESOLVE_RERUN
+
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi

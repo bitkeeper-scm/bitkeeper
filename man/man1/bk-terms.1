@@ -1,12 +1,11 @@
 .so ../bk-macros
-.TH "bk terms" 1 %E% "\*(BC" "\*(UM"
+.TH "bk terms" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk terms \- definitions of \*(BK terms
 .SH DESCRIPTION
 .LP
 .SS "\*(BK definitions:"
-.if t .TP
-.if n .TP 2
+.TP
 .B package
 This term is used when a distinction needs to be drawn between
 two different repositories which do not contain the same data,
@@ -30,14 +29,16 @@ Unlike other systems, such as CVS, every user gets their own
 repository, complete with revision history.
 .tp
 .B sfile
-A file containing the revision history, e.g., SCCS/s.foo.c
+A file containing the revision history, e.g.,
+.BR SCCS/s.foo.c .
 .tp
 .B gfile
-A file that is checked out, e.g., foo.c
+A file that is checked out, e.g.,
+.BR foo.c .
 .tp
 .B tag, symbol
 A symbolic name (or tag) which is given to a particular
-revision of one or more files.  e.g., "Alpha1".
+revision of one or more files.  e.g., \*(lqAlpha1\*(rq.
 .tp
 .B delta
 A delta (also known as a revision or version)
@@ -51,11 +52,11 @@ talking about the differences contained in that delta.
 .B rev argument
 Many commands take file revision numbers as arguments, usually
 to the
-.B \-r
+.Q \-r
 option.  On the command line anytime a revision number is expected,
 the delta key can be used instead.  Or after an @ sign, a changeset
 revision, tag, or changeset key can be used.  So
-.B \-r@1.4
+.Q \-r@1.4
 finds the version number as of changeset revision 1.4. So the
 following are all legal:
 .DS
@@ -86,8 +87,8 @@ A particular key may be extracted with the following, the first form
 produces a longer key which is human readable, the second form produces
 a shorter key which is not human readable.
 .DS
-bk -R prs -hr<rev> -nd:KEY: ChangeSet
-bk -R prs -hr<rev> -nd:MD5KEY: ChangeSet
+bk -R log -hr<rev> -nd:KEY: ChangeSet
+bk -R log -hr<rev> -nd:MD5KEY: ChangeSet
 .DE
 .tp
 .B package identity
@@ -111,17 +112,83 @@ an entire package) but carries more information: who
 made the changes, when, and why.
 .tp
 .B Trunk
-Main line source base.  In \*(BK revtool, the trunk is the X.Y in the 
-graph, branches are X.Y.Q.Z, which always get merged into the trunk.
+Main line source base.  In \*(BK revtool, the trunk is the
+.IR X .\c
+.I Y
+in the graph, branches are
+.IR X .\c
+.IR Y .\c
+.IR Q .\c
+.IR Z ,
+which always get merged into the trunk.
 .tp
 .B Tip, Top of Trunk (TOT)
 The latest revision on the trunk.
-.\".tp
-.\".B Line of Development (LOD)
-.\"Another trunk in a repository.
+.tp
+.B graph difference
+The graph difference between revision
+.ARG B
+and revision
+.ARG A
+(represented by the notation
+.ARGc A
+.Bc .\|.\|
+.ARG B )
+is the set of changes in
+.ARG B 's
+history that are not in
+.ARG A 's
+history.
+.\".if n \{\
+.DS
+     /----> 1.1.1.1  ---->  1.1.1.2 -----\\
+    /                                     \\
+   /                                       \\
+1.1 ----> 1.2 ----------------------------> 1.3 ----> 1.4
+   \\                                                 /
+    \\                                               /
+     \\-----------> 1.1.2.1 ------------------------/
+.DE
+.\".\}
+.\".if t \{\
+.\".PS
+.\"A:	box "1.1"
+.\"	move to A + .75i,0i
+.\"B:	box "1.2"
+.\"	move to A + 1i,.75i
+.\"C:	box "1.1.1.1"
+.\"	move to A + 1.75i,-.75i
+.\"D:	box "1.1.2.1"
+.\"	move to C + .75i,0i
+.\"E:	box "1.1.1.2"
+.\"	move to B + 2.25i,0i
+.\"F:	box "1.3"
+.\"	move to F + .75i,0i
+.\"G:	box "1.4"
+.\"	arrow from A.e to B.w
+.\"	arrow from B.e to F.w
+.\"	arrow from F.e to G.w
+.\"	arrow from A.ne to C.w
+.\"	arrow from C.e to E.w
+.\"	arrow from E.e to F.nw
+.\"	arrow from A.se to D.w
+.\"	arrow from D.e to G.sw
+.\".PE
+.\".\}
+.IP
+For example, in the graph above,
+.B 1.2.\|.1.4
+represents the list 1.1.1.1, 1.1.1.2, 1.1.2.1, 1.3, 1.4;
+.B 1.1.2.1.\|.1.1.1.2
+means 1.1.1.1, 1.1.1.2; and
+.B 1.1.1.2.\|.1.1.2.1
+consists only of 1.1.2.1.
+.DS
 .SH NOTES
 We attempt to list all of the \*(BK definitions here, but send us a
-message at "docs@bitkeeper.com" if you have suggestions for definitions
+message at
+.B docs@bitkeeper.com
+if you have suggestions for definitions
 we may have missed.
 .SH CATEGORY
 .B Overview

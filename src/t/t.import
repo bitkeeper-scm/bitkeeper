@@ -26,6 +26,10 @@ touch import_dir/src/boo.c
 	cat $HERE/import.out
 	exit 1
 }
+grep -q "Please answer yes or no" import.out && {
+	echo Failed
+	exit 1
+}
 cd $HERE/project/src
 test -f SCCS/s.foo.c || exit 1
 bk get $Q foo.c
@@ -33,6 +37,21 @@ cmp -s foo.c $HERE/import_dir/src/foo.c
 test -f SCCS/s.boo.c || exit 1
 bk get $Q boo.c
 cmp boo.c $HERE/import_dir/src/boo.c || exit 1
+echo OK
+
+echo $N Check prompts to edit files .................................$NL
+cd $HERE/project
+bk undo $Q -sfr+
+cd $HERE
+bk import -tplain import_dir project \
+    > import.out 2>&1 <<EOF 
+vi
+no
+EOF
+grep -q "Please answer yes or no" import.out || {
+	echo Failed
+	exit 1
+}
 echo OK
 
 echo $N Test import of a patch into a tree with edited BK files .....$NL
@@ -444,6 +463,7 @@ bk setup -f -cc co_get || { echo "Setup failed!"; exit 1; }
 # These are for later tests
 bk clone $Q co_get nonconform
 bk clone $Q co_get metachar
+bk clone $Q co_get linked
 mkdir -p import_sccs/src
 cd $HERE/import_sccs/src
 echo bar > bar.c
@@ -463,6 +483,38 @@ bk undos bar.c > X
 bk undos $HERE/import_sccs/src/bar.c > Y
 cmp -s X Y
 echo OK
+
+if [ $PLATFORM != "WIN32" ]
+then
+echo $N Test import of an symlinked sccs directory ..................$NL
+cd $HERE
+# Simulate problem had by customer doing SCCS import
+# Need to import directories, one linking the SCCS dir of the other
+# also need the gfiles checked out, that was causes sfiles_first()
+# to cd into the customers SCCS repos.
+# Finally, there can be no sfiles in the bk _find list, just gfiles and 
+# symlinks of SCCS dirs.  This bypasses a non-sccs file stripper in
+# import.sh:validate_SCCS()
+cp -r import_sccs import_sccs_linked
+cd import_sccs_linked/src
+rm -fr SCCS
+ln -s ../../import_sccs/src/SCCS SCCS
+bk get $Q
+test -f bar.c || exit 1
+cd $HERE
+# auto-exit-on-fail is active, so turn off for a command
+set +e
+bk import -ftSCCS import_sccs_linked linked > import.out 2>&1 && {
+	echo Failed
+	exit 1
+}
+set -e
+grep -q "No SCCS files found to import" import.out || {
+	echo failed
+	exit 1
+}
+echo OK
+fi
 
 echo $N Test import of non conforming SCCS files ....................$NL
 cd $HERE/import_sccs/src
@@ -511,7 +563,7 @@ c Another using 1.5
 EOF
 bk delta $Q -IINIT u
 # Want to have INIT_SHUTUP passed in, but no hooks, so just divert stderr
-bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' u > PRE 2> WARN || {
+bk prs -r.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' u > PRE 2> WARN || {
 	echo Fail
 	echo Error message:
 	cat WARN
@@ -529,7 +581,7 @@ EOF
 cmp WANTPRE PRE || {
 	echo FAIL
 	echo The PRE u test failed with this difference in desired and actual:
-	diff WANTPRE PRE
+	diff -u WANTPRE PRE
 	exit 1
 }
 # Collapse : 1.1 is parent of 1.1.1.1 and 1.2 and 1.1.1.1 is merge of 1.2
@@ -552,7 +604,7 @@ D 1.2 80/01/01 00:00:02 bk@bk
 c trunk
 EOF
 bk delta $Q -IINIT x
-bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' x > PRE
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' x > PRE
 cat - <<EOF > WANTPRE
 D 1.2 80/01/01 00:00:02 0 bk
 D 1.1.1.1 80/01/01 00:00:01 0 bk
@@ -589,7 +641,7 @@ D 1.3 80/01/01 00:00:03 bk@bk
 c merge on trunk
 EOF
 bk delta $Q -IINIT z
-bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' z > PRE
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' z > PRE
 cat - <<EOF > WANTPRE
 D 1.3 80/01/01 00:00:03 0 bk
 D 1.2 80/01/01 00:00:02 0 bk
@@ -613,7 +665,7 @@ bk import -v -tSCCS -lflist -f import_sccs nonconform  > import.out 2>&1 || {
 	exit 1
 }
 cd nonconform/src
-bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' u > POST
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' u > POST
 cat - <<EOF > WANTPOST
 D 1.6 80/01/01 00:00:30 0 realuser
 D 1.5 80/01/01 00:00:20 0 realuser
@@ -629,7 +681,7 @@ cmp WANTPOST POST || {
 	diff WANTPOST POST
 	exit 1
 }
-bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' x > POST
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' x > POST
 cat - <<EOF > WANTPOST
 D 1.3 80/01/01 00:00:02 0 bk
 D 1.2 80/01/01 00:00:01 0 bk
@@ -642,7 +694,7 @@ cmp WANTPOST POST || {
 	diff WANTPOST POST
 	exit 1
 }
-bk prs -r1.0.. -ahnd':DT: :I: :D: :T: :FUDGE: :P:' z > POST
+bk prs -r.. -hnd':DT: :I: :D: :T: :FUDGE: :P:' z > POST
 cat - <<EOF > WANTPOST
 D 1.3 80/01/01 00:00:03 0 bk
 D 1.1.1.1 80/01/01 00:00:02 0 bk
@@ -920,6 +972,8 @@ cd $HERE
 cp -rp $TESTDATA/import_data import_data
 commercial import
 cd ..
+test `bk gethost -r` = freebsd.bitmover.com && ulimit -u 128
+test `bk gethost -r` = openbsd.bitmover.com && ulimit -p 128
 LIST="1 2 3 4 5 6"
 for i in $LIST
 do	cp -rp import import$i

@@ -46,13 +46,18 @@ push_main(int ac, char **av)
 	opts.doit = opts.verbose = 1;
 	opts.out = stderr;
 
-	while ((c = getopt(ac, av, "ac:deE:Gilno;qtz|")) != -1) {
+	while ((c = getopt(ac, av, "ac:deE:Gilno;qtTz|")) != -1) {
 		switch (c) {
 		    case 'a': opts.autopull = 1; break;		/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
-				envVar = addLine(envVar, strdup(optarg)); break;
+			unless (strneq("BKU_", optarg, 4)) {
+				fprintf(stderr,
+				    "push: vars must start with BKU_\n");
+				return (1);
+			}
+			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.forceInit = 1; break;	/* undoc? 2.0 */
 		    case 'l': opts.list++; break;		/* doc 2.0 */
@@ -61,6 +66,7 @@ push_main(int ac, char **av)
 		    case 'o': opts.out = fopen(optarg, "w"); 
 			      unless (opts.out) perror(optarg);
 			      break;
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
@@ -71,6 +77,7 @@ push_main(int ac, char **av)
 			return (1);
 		}
 	}
+	unless (opts.verbose) putenv("BK_QUIET_TRIGGERS=YES");
 
 	/*
 	 * Get push parent(s)
@@ -159,9 +166,10 @@ err:		freeLines(envVar, free);
 private int
 send_part1_msg(remote *r, char **envVar)
 {
-	char	*cmd, buf[MAXPATH];
 	FILE 	*f;
-	int	gzip, rc;
+	int	gzip, rc, i;
+	char	*probef;
+	char	buf[MAXPATH];
 
 	/*
 	 * If we are using ssh/rsh do not do gzip ourself
@@ -181,12 +189,18 @@ send_part1_msg(remote *r, char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	cmd = aprintf("bk _probekey  >> %s", buf);
-	system(cmd);
-	free(cmd);
-
-	rc = send_file(r, buf, 0);
-	unlink(buf);
+	probef = bktmp(0, 0);
+	unless (rc = sysio(0, probef, 0, "bk", "_probekey", SYS)) {
+		rc = send_file(r, buf, size(probef));
+		unlink(buf);
+		f = fopen(probef, "rb");
+		while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
+			writen(r->wfd, buf, i);
+		}
+		fclose(f);
+	}
+	unlink(probef);
+	free(probef);
 	return (rc);
 }
 
@@ -237,7 +251,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	}
-	if (get_ok(r, buf, opts.verbose)) goto err;
+	if (get_ok(r, buf, 1)) goto err;
 
 	/*
 	 * What we want is: "remote => bk _prunekey => keys"
@@ -410,11 +424,10 @@ send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
-
-	fputs(msg, f);
 	fclose(f);
 
-	rc = send_file(r, msgfile, 0);
+	rc = send_file(r, msgfile, strlen(msg));
+	writen(r->wfd, msg, strlen(msg));
 	unlink(msgfile);
 	unlink(rev_list);
 	return (0);
@@ -464,22 +477,23 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 	}
 	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
-	fprintf(f, "@PATCH@\n");
 	fclose(f);
 
 	/*
 	 * Httpd wants the message length in the header
 	 * We have to compute the patch size before we sent
+	 * 8 is the size of "@PATCH@"
 	 * 6 is the size of "@END@" string
 	 */
 	if (r->type == ADDR_HTTP) {
 		m = patch_size(gzip, rev_list);
 		assert(m > 0);
-		extra = m + 6;
+		extra = m + 8 + 6;
 	}
 
 	rc = send_file(r, msgfile, extra);
 
+	writen(r->wfd, "@PATCH@\n", 8);
 	n = genpatch(gzip, r->wfd, rev_list);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(opts.out,
@@ -540,7 +554,6 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		goto done;
 	}
 
-	putenv("BK_CMD=push");
 	if (ret == 0){
 		putenv("BK_STATUS=NOTHING");
 		send_end_msg(r, "@NOTHING TO SEND@\n", rev_list, envVar);
@@ -565,7 +578,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		if (trigger(av[0], "pre")) {
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
-			done = 1;
+			done = 2;
 		} else if (send_patch_msg(r, rev_list, envVar)) {
 			rc = 1;
 			done = 1;
@@ -656,7 +669,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 
 done:
 	if (rc) putenv("BK_STATUS=CONFLICTS");
-	trigger(av[0], "post");
+	unless (done == 2) trigger(av[0], "post");
 	if (rev_list[0]) unlink(rev_list);
 
 	/*

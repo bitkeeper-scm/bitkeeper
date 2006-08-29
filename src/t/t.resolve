@@ -12,6 +12,8 @@
 # Copyright (c) 2002 Wayne Scott
 # %K%
 
+test "$PLATFORM" = "WIN32" && USER=`bk getuser -r`
+
 echo $N Test resolving file missing a newline .......................$NL
 commercial proj
 echo line 1 > file
@@ -30,7 +32,7 @@ bk edit $Q file
 echo new line with NL >> file
 bk delta $Q -ynl file || exit 1
 bk commit $Q -ynew_local || exit 1
-bk pull $Q 2> OUT && {
+_BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q 2> OUT && {
 	echo should not pass
 	exit 1
 }
@@ -55,7 +57,7 @@ echo OK
 echo $N Test exiting out a resolve early deleting files .............$NL
 bk unpull -f $Q || exit 1
 bk edit $Q file || exit 1
-bk pull $Q 2> OUT && {
+_BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q 2> OUT && {
 	echo should not pass
 	exit 1
 }
@@ -150,10 +152,10 @@ for d in proj copy3; do
 	for f in file dir1/ff dir2/gg "dir2/space file" ; do
 		bk edit $Q "$f"
 		echo $d >> "$f"
-		bk delta $Q -y"$d side" "$f" || exit 1
+		BK_USER=$d bk delta $Q -y"$d side" "$f" || exit 1
 	done
 	bk mv file file.$d
-	bk commit -y"$d" $Q || exit 1
+	BK_USER=$d bk commit -y"$d" $Q || exit 1
 done
 cd $HERE/copy3
 bk pull -R $Q
@@ -186,17 +188,39 @@ done
 cd .. > /dev/null
 echo OK
 
-echon Testing output of conflicts command .........................
+echon Test bk conflicts -v ........................................
 cat <<EOF > WANT
-dir1/ff              1 conflicts by bk 
-dir2/gg              1 conflicts by bk 
-dir2/space file      1 conflicts by bk 
-BitKeeper/RENAMES/1  1 conflicts by bk 
-    GCA path:        file
-    Local path:      file.copy3
-    Remote path:     file.proj
+dir1/ff has 1 conflict block
+dir2/gg has 1 conflict block
+dir2/space file has 1 conflict block
+BitKeeper/RENAMES/1 has 1 conflict block
+    GCA path:     file
+    Local path:   file.copy3
+    Remote path:  file.proj
 EOF
-bk conflicts -l > GOT
+bk conflicts -v > GOT
+cmpfiles WANT GOT
+echo OK
+
+echon Test bk conflicts -vv .......................................
+cat <<EOF > WANT
+dir1/ff has 1 conflict block
+   1 local lines by copy3/$USER
+   1 remote lines by proj/$USER
+dir2/gg has 1 conflict block
+   1 local lines by copy3/$USER
+   1 remote lines by proj/$USER
+dir2/space file has 1 conflict block
+   1 local lines by copy3/$USER
+   1 remote lines by proj/$USER
+BitKeeper/RENAMES/1 has 1 conflict block
+   1 local lines by copy3/$USER
+   1 remote lines by proj/$USER
+    GCA path:     file
+    Local path:   file.copy3
+    Remote path:  file.proj
+EOF
+bk conflicts -vv > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -226,11 +250,14 @@ cmpfiles WANT GOT
 echo OK
 
 echon Testing locking of RESYNC dir ...............................
-touch RESYNC/BitKeeper/tmp/resolve_lock
+bk lock -tfRESYNC/BitKeeper/tmp/resolve_lock > L &
+bk lock -LfRESYNC/BitKeeper/tmp/resolve_lock > /dev/null
+LOCKURL=`cat L`
 bk undos << EOF > CMP1
 Could not get lock on RESYNC directory.
 EOF
 bk resolve -q 2>&1 | head -1 > CMP2
+bk _kill $LOCKURL
 cmpfiles CMP1 CMP2
 echo OK
 
@@ -238,15 +265,15 @@ echon Test selective resolve using includes .......................
 rm -rf RESYNC
 bk pull -R $Q
 cat <<EOF > WANT
-dir1/ff              1 conflicts by bk 
-dir2/gg              1 conflicts by bk 
-dir2/space file      1 conflicts by bk 
-file.proj            1 conflicts by bk 
-    GCA path:        file
-    Local path:      file.copy3
-    Remote path:     file.proj
+dir1/ff has 1 conflict block
+dir2/gg has 1 conflict block
+dir2/space file has 1 conflict block
+file.proj has 1 conflict block
+    GCA path:     file
+    Local path:   file.copy3
+    Remote path:  file.proj
 EOF
-bk conflicts -l > GOT
+bk conflicts -v > GOT
 cmpfiles WANT GOT
 # l - resolves file.copy3 rename conflict
 # ul - resolves dir2/gg content conflict
@@ -257,11 +284,11 @@ this is the comment
 .
 EOF
 cat <<EOF > WANT
-dir1/ff              1 conflicts by bk 
-dir2/space file      1 conflicts by bk 
-file.copy3           1 conflicts by bk 
+dir1/ff has 1 conflict block
+dir2/space file has 1 conflict block
+file.copy3 has 1 conflict block
 EOF
-bk conflicts -l > GOT
+bk conflicts -v > GOT
 cmpfiles WANT GOT
 grep -q 'Commands are:' OUT && {
 	echo failed to exit resolver when it should have
@@ -281,11 +308,11 @@ this is the comment
 .
 EOF
 cat <<EOF > WANT
-dir1/ff              1 conflicts by bk 
-dir2/space file      1 conflicts by bk 
-file.copy3           1 conflicts by bk 
+dir1/ff has 1 conflict block
+dir2/space file has 1 conflict block
+file.copy3 has 1 conflict block
 EOF
-bk conflicts -l > GOT
+bk conflicts -v > GOT
 cmpfiles WANT GOT
 grep -q 'Commands are:' OUT && {
 	echo failed to exit resolver when it should have
@@ -297,7 +324,7 @@ echon Test selective resolve specifying a file that needs rename ..
 rm -rf RESYNC
 bk pull -R $Q
 # l - resolves file.copy3 rename conflict
-# ul - resolves dir2/gg content conflict
+# ul - resolves file.copy3 content conflict
 bk resolve -d -l -i'f*' <<EOF > OUT 2>&1
 l
 ul
@@ -305,11 +332,11 @@ this is the comment
 .
 EOF
 cat <<EOF > WANT
-dir1/ff              1 conflicts by bk 
-dir2/gg              1 conflicts by bk 
-dir2/space file      1 conflicts by bk 
+dir1/ff has 1 conflict block
+dir2/gg has 1 conflict block
+dir2/space file has 1 conflict block
 EOF
-bk conflicts -l > GOT
+bk conflicts -v > GOT
 cmpfiles WANT GOT
 grep -q 'Commands are:' OUT && {
 	echo failed to exit resolver when it should have
@@ -331,11 +358,11 @@ this is the comment
 .
 EOF
 cat <<EOF > WANT
-dir1/ff              1 conflicts by bk 
-dir2/gg              1 conflicts by bk 
-dir2/space file      1 conflicts by bk 
+dir1/ff has 1 conflict block
+dir2/gg has 1 conflict block
+dir2/space file has 1 conflict block
 EOF
-bk conflicts -l > GOT
+bk conflicts -v > GOT
 cmpfiles WANT GOT
 grep -q 'Commands are:' OUT && {
 	echo failed to exit resolver when it should have
@@ -357,7 +384,7 @@ bk new $Q hh
 bk commit $Q -ynewhh || exit 1
 cd $HERE/copy2
 echo hj > hh
-(echo rr; echo y) | BK_FORCE_RESOLVE_RERUN=YES bk pull > OUT 2>&1 || {
+(echo rr; echo y) | bk pull > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -469,10 +496,6 @@ touch parent
 bk new $Q parent
 bk commit $Q -ychild
 bk pull $Q -R
-test -f RESYNC/BitKeeper/etc/RESYNC_TREE || {
-	echo failed to create RESYNC/BitKeeper/etc/RESYNC_TREE
-	exit 1
-}
 BK_DEBUG_CMD=YES
 export BK_DEBUG_CMD
 (
@@ -488,10 +511,6 @@ test -d RESYNC && {
 grep -q 'SYSIO {bk} {check} {-c} {-}' OUT || {
 	echo failed to run check
 	cat OUT
-	exit 1
-}
-test -f BitKeeper/etc/RESYNC_TREE && {
-	echo Should not have lifted up BitKeeper/etc/RESYNC_TREE
 	exit 1
 }
 echo OK
@@ -512,7 +531,7 @@ done
 cd $HERE/conflict
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+) | bk pull -s > OUT 2>&1
 grep -q 'starting manual resolve process.' OUT && {
 	echo Should not have restarted resolve
 	cat OUT
@@ -524,7 +543,7 @@ echo $N Make sure resolve reruns when there are conflicts ...........$NL
 bk abort -f
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull > OUT 2>&1
+) | bk pull > OUT 2>&1
 grep -q 'starting manual resolve process.' OUT || {
 	echo Did not restart resolve
 	cat OUT
@@ -544,7 +563,7 @@ done
 cd $HERE/conflict
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+) | bk pull -s > OUT 2>&1
 grep -q 'starting manual resolve process.' OUT && {
 	echo Should not have restarted resolve
 	cat OUT
@@ -616,7 +635,7 @@ bk delta $Q -ywhatever mode
 bk commit $Q -ywhatever mode
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+) | bk pull -s > OUT 2>&1
 grep -q 'mode conflict' OUT && {
 	echo Should not have gone into interactive mode with -s
 	cat OUT
@@ -648,7 +667,7 @@ test `bk prs -hr+ -nd:RWXMODE: mode` = -rwx--x--- || {
 bk commit $Q -ymode
 ( echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk pull -s > OUT 2>&1
+) | bk pull -s > OUT 2>&1
 grep -q 'mode conflict' OUT && {
 	echo Should not have gone into interactive mode with -s
 	cat OUT
@@ -665,7 +684,7 @@ echo $N Make sure we can finish the resolve .........................$NL
   echo 'C'
   echo '?'
   echo q
-) | BK_FORCE_RESOLVE_RERUN=YES bk resolve -a > OUT 2>&1
+) | bk resolve -a > OUT 2>&1
 grep -q 'The file has conflicting changes to the modes.' OUT &&
 grep -q 'changed mode to -rwx--x---' OUT &&
 grep -q 'changed mode to -rwxrwxrwx' OUT &&
@@ -685,7 +704,7 @@ bk lock -L
   echo 'm'
   echo 'C'
   echo q
-) | _BK_NO_LOCK_RETRY=YES BK_FORCE_RESOLVE_RERUN=YES bk resolve -a > OUT 2>&1
+) | _BK_NO_LOCK_RETRY=YES bk resolve -a > OUT 2>&1
 grep -q 'Waiting for write lock...' OUT || {
 	echo failed
 	cat OUT
@@ -765,6 +784,76 @@ grep -q "VERSION 2" VL || {
 	echo Fail
 	echo Expecting to contain the string "'VERSION 2'" and resolve gave
 	cat VL
+	exit 1
+}
+echo OK
+
+echo $N Try autofixing a hosed RESYNC directory......................$NL
+cd $HERE
+bk clone $Q proj copy4
+cd proj/dir2
+bk edit $Q 'space file'
+echo "more stuff" >> 'space file'
+bk delta $Q -ymore 'space file'
+cd ../dir1-proj
+bk edit $Q ff
+echo "more stuff" >> ff
+bk delta $Q -ymore ff
+bk commit $Q -ymore
+cd $HERE/copy4/dir2
+bk edit $Q 'space file'
+echo "conflict" >> 'space file'
+bk delta $Q -yconflict 'space file'
+cd ../dir1-proj
+bk edit $Q ff
+echo "conflict" >> ff
+bk delta $Q -yconflict ff
+bk commit $Q -yconflict
+cd $HERE/copy4
+bk pull $Q -R ../proj
+# Create a repo with the same problem as if the user had used an old
+# version of citool to commit a partial merge. See bug 2004-11-22-000
+cd RESYNC/dir1-proj
+bk get $Q -eM ff
+cat > ff <<EOF
+ff
+proj
+conflict
+EOF
+bk delta $Q -ymerge ff
+rm -f SCCS/r.ff
+cd ../dir2
+bk get $Q -eM 'space file'
+echo "resolved" >> 'space file'
+rm -f 'SCCS/r.space file'
+cd ..
+bk get $Q -eM -g ChangeSet
+bk commit $Q -R -YSCCS/c.ChangeSet
+rm -f SCCS/r.ChangeSet
+# Now we have a repo with the problem, let's see if resolve can fix it
+# Fake some comments
+echo "comments" > 'dir2/SCCS/c.space file'
+cd ..
+echo 'u' | bk resolve -t >OUT 2>ERR || {
+	echo failed
+	echo "Resolver failed"
+	exit 1
+}
+grep -q 'Autofixing partial merge' ERR || {
+	echo failed
+	echo "Did not autofix"
+	exit 1
+}
+# now make sure the top cset in the real tree is the merge
+TIP=`bk changes -r+ -d'$if(:MERGE:){:KEY:}'`
+test "x$TIP" = "x" && {
+	echo failed
+	echo "Tip is not a merge"
+	exit 1
+}
+grep -q "$TIP" BitKeeper/etc/csets-in || {
+	echo failed
+	echo "Did not put TIP in csets-in"
 	exit 1
 }
 echo OK

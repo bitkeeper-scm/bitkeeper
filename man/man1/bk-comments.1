@@ -1,33 +1,39 @@
-.\" help://comment
 .so ../bk-macros
-.TH "bk comments" 1 %E% "\*(BC" "\*(UM"
+.\" help://comment
+.TH "bk comments" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk comments \- change checkin comments
 .SH SYNOPSIS
-.Bc bk comments [\-p] [
-.OPTreq \-C csetrev
-.Bc ] [
-.OPTreq \-r rev
-.Bc ] [
-.OPTreq \-y cmt
-.Bc ] [
-.OPTreq \-Y file
-.B ]
-[file...|\-]
+.\"XXX - needs work
+.\".br
+.\" bk comments [-r<rev>] [-y|-Y] file ....
+.\" bk comments [-y|-Y] -
+.\" bk comments -C<rev> 
+.B bk comments [\-p]
+.[OPTreq] \-C cset
+.[OPTreq] \-r rev
+.BKARGS
+.br
+.B bk comments
+.[OPTreq] \-C cset
+.[OPTreq] \-r rev
+.[OPTreq] \-y cmt
+.[OPTreq] \-Y file
+.BKARGS
 .SH DESCRIPTION
 .LP
 The
-.B comments
+.B bk comments
 command changes the stored comments for a revision controlled file.
 The comments may be specified on the command line, or if they are
 not, you will be placed in your editor to type in the comments.
 .LP
 If given
-.B \-
-for a file argument, then 
-.B comments
-will read a list of files and comments to be edited in batch.
-The format is like:
+.Q \-
+for a file argument,
+.B bk comments
+reads a list of files and comments to be edited from stdin.
+The format looks like this:
 .DS
 ### Comments for file.c|1.23
 this is a sample comment
@@ -35,8 +41,7 @@ this is a sample comment
 these are
 other comments
 .SH OPTIONS
-.if t .TP .8i
-.if n .TP 1.2i
+.TP \-y\*<comment\*>
 .OPTreq \-r rev
 Change the comments for the specified revision.  The default is the
 most recent revision.
@@ -53,27 +58,41 @@ as the new comment for all files.
 .tp
 .OPTreq \-C rev
 Edit all the file comments on the requested changeset at once.
+May not be combined with 
+.QR \-r .
 .tp
 .B \-p
 Generate the list of all comments in the files requested and write them to
 stdout.  This file can be edited and then later fed into 
-.B bk comments -
+.Q bk comments \-
 on stdin to change the comments.
 .LP
 If no files to edit is given on the command line then
-.B \-C+
+.Q \-C+
 is assumed and the comments for the files in the last changeset are
 edited.
+.SH EXIT STATUS
+.LP
+.B bk comments
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH BUGS
 .B Nota bene:
 if the deltas being commented have been committed to a changeset and
 have been pulled out of this repository, the comment changes will not
-propagate on the next bk pull.  It is strongly suggested that you use
+propagate on the next
+.BR "bk pull" .
+It is strongly suggested that you use
 this only on uncommitted deltas which have not  been pulled or cloned.
 In the future, we will add a way of enforcing this.
 .SH SEE ALSO
 .LP
-.SA prs 1
-.SA sccslog 1
+.SA log
+.SA sccslog
 .SH CATEGORY
 .B File

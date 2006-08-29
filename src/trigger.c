@@ -1,11 +1,8 @@
 /*
- * Copyright (c) 2001 Larry McVoy & Andrew Chang
+ * Copyright (c) 2001-2006 BitMover, Inc.
  */
-
 #include "bkd.h"
-private int localTrigger(char *, char *, char **);
-private int remotePreTrigger(char *, char *, char **);
-private int remotePostTrigger(char *, char *, char **);
+private int runTriggers(int rem, char *ev, char *what, char *when, char **trs);
 
 private void
 put_trigger_env(char *prefix, char *v, char *value)
@@ -144,6 +141,8 @@ trigger(char *cmd, char *when)
 		what = event = "tag";
 	} else if (strneq(cmd, "fix", 3)) {
 		what = event = "fix";
+	} else if (streq(cmd, "collapse")) {
+		what = event = "collapse ";
 	} else {
 		fprintf(stderr,
 		    "Warning: Unknown trigger event: %s, ignored\n", cmd);
@@ -178,7 +177,6 @@ trigger(char *cmd, char *when)
 
 	/*
 	 * Find all the trigger scripts associated with this event.
-	 * XXX TODO need to think about the split root case
 	 */
 	sprintf(buf, "%s-%s", when, what);
 	unless (triggers = getTriggers(triggerDir, buf)) {
@@ -193,13 +191,7 @@ trigger(char *cmd, char *when)
 	 * Run the triggers, they are already sorted by getdir().
 	 */
 	unless (getenv("BK_STATUS")) putenv("BK_STATUS=UNKNOWN");
-	unless (strneq(cmd, "remote ", 7))  {
-		rc = localTrigger(event, what, triggers);
-	} else if (streq(when, "pre")) {
-		rc = remotePreTrigger(event, what, triggers);
-	} else 	{
-		rc = remotePostTrigger(event, what, triggers);
-	}
+	rc = runTriggers(strneq(cmd, "remote ",7), event, what, when, triggers);
 	freeLines(triggers, free);
 	if (streq(what, "resolve")) chdir(RESYNC2ROOT);
 	return (rc);
@@ -243,7 +235,9 @@ runit(char *file, char *what, char *output)
 	write_log(root, "cmd_log", 0, "Running trigger %s", file);
 	if (getenv("BK_SHOW_TRIGGERS")) ttyprintf("Running trigger %s\n", file);
 	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
-	status = sysio(0, output, 0, file, SYS);
+
+	status = sysio(0, output, output, file, SYS);
+
 	safe_putenv("PATH=%s", path);
 	free(path);
 	if (WIFEXITED(status)) {
@@ -259,72 +253,20 @@ runit(char *file, char *what, char *output)
 }
 
 /*
- * Both pre and post client triggers are handled here
- */
-private int
-localTrigger(char *event, char *what, char **triggers)
-{
-	int	i, rc = 0;
-
-	trigger_env("BK", event, what);
-
-	EACH(triggers) {
-		unless (executable(triggers[i])) continue;
-		rc = runit(triggers[i], what, 0);
-		if (rc) break;
-	}
-	return (rc);
-}
-
-private int
-remotePreTrigger(char *event, char *what, char **triggers)
-{
-	int	i, rc = 0, lclone = getenv("_BK_LCLONE") != 0;
-	char	output[MAXPATH], buf[MAXLINE];
-	FILE	*f;
-
-	trigger_env("BKD", event, what);
-
-	bktmp(output, "trigger");
-	unless (lclone) fputs("@TRIGGER INFO@\n", stdout);
-	EACH(triggers) {
-		unless (executable(triggers[i])) continue;
-		rc = runit(triggers[i], what, output);
-		f = fopen(output, "rt");
-		assert(f);
-		while (fnext(buf, f)) {
-			unless (lclone) printf("%c", BKD_DATA);
-			printf("%s", buf);
-		}
-		fclose(f);
-		if (rc) break;
-	}
-	unless (lclone) {
-		printf("%c%d\n", BKD_RC, rc);
-		fputs("@END@\n", stdout);
-	}
-	fflush(stdout);
-	unlink(output);
-	return (rc);
-}
-/*
  * This function is called by client side to process the TRIGGER INFO block
- * sent by run_bkd_trigger() above
+ * sent by run_bkd_trigger() above.
+ * If the trigger exited non-zero we always print if there is something to say.
  */
 int
 getTriggerInfoBlock(remote *r, int verbose)
 {
+	int	i = 0, rc = 0;
+	char	**lines = 0;
 	char	buf[4096];
-	int	i =0, rc = 0;
 
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (buf[0] == BKD_DATA) {
-			unless (i++) {
-				if (verbose) fprintf(stderr,
-"------------------------- Remote trigger message --------------------------\n"
-				);
-			}
-			if (verbose) fprintf(stderr, "%s\n", &buf[1]);
+			lines = addLine(lines, strdup(&buf[1]));
 		} else if (buf[0] == BKD_RC) {
 			rc = atoi(&buf[1]);
 			if (rc && r->trace) {
@@ -333,34 +275,112 @@ getTriggerInfoBlock(remote *r, int verbose)
 		}
 		if (streq(buf, "@END@")) break;
 	}
-	if (i && verbose) {
-		fprintf(stderr, 
-"---------------------------------------------------------------------------\n"
-		);
-	}
+	/* Nothing to say */
+	unless (lines) goto out;
+	/* if 0 exit status and not verbose goto out */
+	if (!rc && !verbose) goto out;
+	fprintf(stderr, "------------------------- "
+	    "Remote trigger message --------------------------\n");
+	EACH(lines) fprintf(stderr, "%s\n", lines[i]);
+	fprintf(stderr, "--------------------------"
+	    "-------------------------------------------------\n");
+out:	freeLines(lines, free);
 	return (rc);
 }
 
+/*
+ * This is called for both local triggers and remote triggers.
+ * The remote stuff has to be wrapped so that gets a little complicated.
+ * lclone looks like it is remote but doesn't go through a bkd so it is
+ * actually handled like it is local.
+ * We send all trigger output to a file so we can funnel it where we want.
+ */
 private int
-remotePostTrigger(char *event, char *what, char **triggers)
+runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 {
-	int	fd1, i, rc = 0;
+	int	i, quiet, proto;
+	int	rc = 0;
+	char	*bkd_data, *trigger, *h, *p;
+	FILE	*f, *out;
+	FILE	*gui = 0, *logfile = 0;
+	char	output[MAXPATH], buf[MAXLINE];
 
-	trigger_env("BKD", event, what);
+	trigger_env(remote ? "BKD" : "BK", event, what);
+
 	/*
-	 * Process post trigger for remote client
-	 *
-	 * Post trigger output is not sent to remote client
-	 * So redirect output to stderr
+	 * If we are a remote pre trigger then we wrap the protocol around
+	 * the output unless it is lclone.
 	 */
-	fflush(stdout);
-	fd1 = dup(1); assert(fd1 > 0);
-	if (dup2(2, 1) < 0) perror("trigger: dup2");
-	EACH(triggers) {
-		unless (executable(triggers[i])) continue;
-		rc = runit(triggers[i], what, 0);
-		if (rc) break;
+	proto = remote && streq(when, "pre") && !getenv("_BK_LCLONE");
+	if (proto) {
+	    	bkd_data = "D";
+		out = stdout;
+	} else {
+		bkd_data = "";
+		if (p = getenv("_BKD_LOGFILE")) {
+			logfile = out = fopen(p, "a");
+		} else {
+			out = stderr;
+		}
 	}
-	dup2(fd1, 1); close(fd1);
+
+	/* Send status for citool */
+	if ((h = getenv("_BK_TRIGGER_SOCK")) && (p = strchr(h, ':'))) {
+		*p++ = 0;
+		if ((i = tcp_connect(h, atoi(p))) != -1) {
+			gui = fdopen(i, "w");
+			setlinebuf(gui);
+			out = stdout;
+			setlinebuf(out);
+		}
+	}
+
+	/* pull|commit -q set BK_QUIET_TRIGGERS for us */
+	quiet = getenv("BK_QUIET_TRIGGERS") && !gui;
+
+	if (proto) fputs("@TRIGGER INFO@\n", out);
+
+	bktmp(output, "trigger");
+	EACH(triggers) {
+		// XXX - warn them about permissions?
+		unless (executable(triggers[i])) continue;
+
+		trigger = basenm(triggers[i]);
+
+		if (gui) fprintf(gui, "Running trigger \"%s\"\n", trigger);
+		rc = runit(triggers[i], what, output);
+
+		unless (rc || size(output)) continue;
+
+		/* allow people to surpress noise (like getTriggerInfobLock) */
+		if (quiet && (rc == 0)) continue;
+
+		fprintf(out, "%s>> Trigger \"%s\"", bkd_data, trigger);
+		if (rc) {
+			fprintf(out, " (exit status was %d)", rc);
+			if (gui) {
+				fprintf(gui,
+				    "\t%s failed - exited %d\n", trigger, rc);
+		    	}
+		}
+		fprintf(out, "\n");
+		f = fopen(output, "rt");
+		assert(f);
+		while (fnext(buf, f)) {
+			fprintf(out, "%s%s", bkd_data, buf);
+		}
+		fclose(f);
+
+		/* Stop on first failing pre- trigger */
+		if (rc && streq(when, "pre")) {
+			if (proto) fprintf(out, "%c%d\n", BKD_RC, rc);
+			break;
+		}
+	}
+	if (proto) fputs("@END@\n", out);
+	fflush(out);
+	if (gui) fclose(gui);	/* citool socket */
+	unlink(output);
+	if (logfile) fclose(logfile);
 	return (rc);
 }

@@ -64,7 +64,7 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstvx;1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrstTvx;1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -83,6 +83,7 @@ resolve_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
 		    case 's': opts.autoOnly = 1; break;		/* doc */
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'i':
 			opts.partial = 1;
@@ -101,10 +102,11 @@ resolve_main(int ac, char **av)
 		    case '4': opts.pass4 = 0; break;		/* doc 2.0 */
 		    default:
 		    	fprintf(stderr, "resolve: bad opt %c\n", optopt);
-usage:			system("bk help -s resolve");
+			system("bk help -s resolve");
 			exit(1);
 		}
     	}
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	/*
 	 * It is the responsibility of the calling code to set this env
 	 * var to indicate that we were not run standalone, we are called
@@ -115,7 +117,10 @@ usage:			system("bk help -s resolve");
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind++]);
-	if (av[optind]) goto usage;
+	while (av[optind]) {
+		opts.includes = addLine(opts.includes, strdup(av[optind++]));
+		opts.partial = 1;
+	}
 	if (opts.partial) opts.pass4 = 0;
 
 	unless (opts.textOnly) putenv("BK_GUI=WANT_CITOOL");
@@ -128,7 +133,7 @@ usage:			system("bk help -s resolve");
 		    "Using %s as graphical display\n", gui_displayName());
 	}
 
-	checkout = user_preference("checkout");
+	checkout = proj_configval(0, "checkout");
 	if (strieq(checkout, "edit")) {
 		default_getFlags = GET_EDIT;
 	} else if (strieq(checkout, "get")) {
@@ -449,20 +454,6 @@ nameOK(opts *opts, sccs *s)
 	int	ret;
 
 	/*
-	 * Are we in the right sfile? (through LOD shuffling, might not be)
-	 * XXX: still true with single tip LOD design
-	 */
-	sccs_setpathname(s);
-	unless (streq(s->spathname, s->sfile)) {
-		if (opts->debug) {
-			fprintf(stderr, "nameOK(%s) => sfile %s is not same "
-			    "path as current top %s\n", s->gfile, s->sfile,
-			    s->spathname);
-		}
-		return (0);
-	}
-
-	/*
 	 * Same path slot and key?
 	 */
 	sprintf(path, "%s/%s", RESYNC2ROOT, s->sfile);
@@ -476,7 +467,7 @@ nameOK(opts *opts, sccs *s)
 	    (local = sccs_init(path, INIT_NOCKSUM)) &&
 	    HAS_SFILE(local)) {
 		save_checkout_state(opts->checkoutDB, local);
-		if (IS_EDITED(local) && sccs_clean(local, SILENT)) {
+		if (EDITED(local) && sccs_clean(local, SILENT)) {
 			fprintf(stderr,
 			    "Warning: %s is modified, will not overwrite it.\n",
 			    local->gfile);
@@ -499,7 +490,7 @@ nameOK(opts *opts, sccs *s)
 	local = sccs_keyinit(buf, INIT_NOCKSUM, opts->idDB);
 	if (local) {
 		save_checkout_state(opts->checkoutDB, local);
-		if (IS_EDITED(local) &&
+		if (EDITED(local) &&
 		    sccs_clean(local, SILENT|CLEAN_SHUTUP)) {
 			fprintf(stderr,
 			    "Warning: %s is modified, will not overwrite it.\n",
@@ -913,13 +904,6 @@ again:
 		    rs->gnames->local, rs->gnames->gca, rs->gnames->remote);
 	}
 
-	/* XXX: resolve across LODs can have this assert fail 
-	 * remote: new lod, then rename, then commit
-	 * pull back in, sfile has new name, but in this lod has no rename
-	 * used to have:
-	 * -> assert(!streq(rs->gnames->local, rs->gnames->remote));
-	 */
-
 	/*
 	 * See if we can just slide the file into place.
 	 * If remote moved, and local didn't, ok if !slotTaken.
@@ -1098,9 +1082,9 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	 */
 	win32_close(rs->s);
 	if (rs->opts->log) {
-		sys("bk", "delta", buf, sfile, SYS);
+		sys("bk", "delta", "-f", buf, sfile, SYS);
 	} else {
-		sys("bk", "delta", "-q", buf, sfile, SYS);
+		sys("bk", "delta", "-qf", buf, sfile, SYS);
 	}
 }
 
@@ -1161,7 +1145,7 @@ type_delta(resolve *rs,
 	/* bk delta -qPy'Merge file types: {o->mode} {n->mode} sfile */
 	sprintf(buf, "-qPyMerge file types: %s -> %s", 
 	    mode2FileType(o->mode), mode2FileType(n->mode));
-	if (sys("bk", "delta", buf, sfile, SYS)) {
+	if (sys("bk", "delta", "-f", buf, sfile, SYS)) {
 		syserr("failed\n");
 		resolve_cleanup(rs->opts, 0);
 	}
@@ -1198,7 +1182,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 	/* bk delta -[q]Py'Change mode to {a}' -M{a} sfile */
 	sprintf(buf, "-%sPyChange mode to %s", rs->opts->log ? "" : "q", a);
 	sprintf(opt, "-M%s", a);
-	if (sys("bk", "delta", buf, opt, sfile, SYS)) {
+	if (sys("bk", "delta", "-f", buf, opt, sfile, SYS)) {
 		syserr("failed\n");
 		resolve_cleanup(rs->opts, 0);
 	}
@@ -1254,6 +1238,7 @@ flags_delta(resolve *rs,
 	doit(X_EXPAND1, "EXPAND1");
 	doit(X_SCCS, "SCCS");
 	doit(X_EOLN_NATIVE, "EOLN_NATIVE");
+	doit(X_EOLN_WINDOWS, "EOLN_WINDOWS");
 	doit(X_NOMERGE, "NOMERGE");
 	doit(X_MONOTONIC, "MONOTONIC");
 	for (i = 0; i < f; ++i) av[++n] = fbuf[i];
@@ -1456,6 +1441,85 @@ noDiffs(void)
 }
 
 /*
+ * Sanity check: the ChangeSet file has to have 2 tips if we 
+ * got this far. If it doesn't, it means someone (possibly the
+ * 3.2.x citool) has already committed part of the work.
+ */
+private int
+fix_singletip(opts *opts)
+{
+	sccs	*s = 0, *sf = 0;
+	delta	*a, *b;
+	FILE	*f = 0;
+	char	*rev;
+	char	buf[MAXPATH];
+
+	unless (s = sccs_csetInit(INIT_NOCKSUM)) {
+		fprintf(stderr, 
+		    "Can't init ChangeSet file in RESYNC directory\n");
+err:		if (s) sccs_free(s);
+		if (sf) sccs_free(sf);
+		if (f) pclose(f);
+		return (1);
+	}
+		
+	if (sccs_findtips(s, &a, &b)) {
+		/* everything's fine, graph has two tips */
+		sccs_free(s);
+		return (0);
+	}
+	unless (a->merge) {
+		fprintf(stderr, "Failed assertion: "
+		    "ChangeSet is single tip but not a merge.\n");
+		goto err;
+	}
+	unless (opts->quiet) fprintf(stderr, "Autofixing partial merge\n");
+	unless (f = popen("bk changes "
+	    "-r+ -vnd'$unless(:CHANGESET:){:SFILE:|:REV:}'", "r")) {
+		fprintf(stderr, "Could not popen changes\n");
+		goto err;
+	}
+	while(fgets(buf, sizeof(buf), f)) {
+		chomp(buf);
+		rev = strchr(buf, '|');
+		*rev++ = 0;
+		unless (sf = sccs_init(buf, INIT_NOCKSUM)) {
+			fprintf(stderr, "Could not init %s\n", buf);
+			goto err;
+		}
+		unless (b = sccs_findrev(sf, rev)) {
+			fprintf(stderr,
+			    "Could not find revision %s in %s\n", rev, buf);
+			goto err;
+		}
+		b->flags &= ~D_CSET;
+		sccs_admin(sf, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+		sccs_free(sf);
+		sf = 0;
+	}       
+	pclose(f);
+	f = 0;
+	/* preserve ChangeSet comments */
+	lines2File(a->comments, CCHANGESET);
+	/* now stripdel the top revision of the ChangeSet file */
+	a->flags |= D_SET;
+	MK_GONE(s, a);
+	if (sccs_stripdel(s, "resolve_autofix")) {
+		fprintf(stderr, "Unable to stripdel ChangeSet "
+		    "file in the RESYNC directory\n");
+		goto err;
+	}
+	sccs_free(s);
+	s = 0;
+	if (system("bk get -q -eM -g " CHANGESET)) {
+	        fprintf(stderr, "Get of ChangeSet failed\n");
+	        goto err;
+	}
+	opts->willMerge = 1;
+	return (0);
+}
+
+/*
  * Handle all the non-rename conflicts.
  * Handle committing anything which needs a commit.
  *
@@ -1552,8 +1616,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			/* NOT REACHED */
 		}
 
-		if (getenv("BK_REGRESSION") &&
-		    !getenv("BK_FORCE_RESOLVE_RERUN")) {
+		if (getenv("_BK_PREVENT_RESOLVE_RERUN")) {
 			fprintf(stderr,
 			    "resolve: %d unresolved conflicts, "
 			    "nothing is applied.\n",
@@ -1582,8 +1645,9 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		opts->notmerged = 0;
 		chdir(RESYNC2ROOT);
 		sccs_unlockfile(RESOLVE_LOCK);
-		execvp("bk", nav);
-		exit(1);
+		i = spawnvp(P_WAIT, "bk", nav);
+		restore_checkouts(opts);
+		exit(WIFEXITED(i) ? WEXITSTATUS(i) : 1);
 	}
 
 	/*
@@ -1652,10 +1716,11 @@ nocommit:
 		if (opts->log) {
 			fprintf(opts->log, "==== Pass 3 autocommits ====\n");
 		}
-		unless (opts->noconflicts) ok_commit();
 		commit(opts);
 		return (0);
 	}
+
+	if (fix_singletip(opts)) goto err;
 
 	/*
 	 * Unless we are in textonly mode, let citool do all the work.
@@ -1730,7 +1795,6 @@ nocommit:
 
 	if (!opts->partial && pending(0)) {
 		assert(!opts->noconflicts);
-		ok_commit();
 		commit(opts);
 	}
 
@@ -1784,7 +1848,7 @@ checkins(opts *opts, char *comment)
  * Merge a conflict, manually or automatically.
  * We handle permission conflicts here as well.
  *
- * XXX - we need to handle descriptive text, lods, and symbols.
+ * XXX - we need to handle descriptive text and symbols.
  * The symbol case is weird: a conflict is when the same symbol name
  * is in both branches without one below the trunk.
  */
@@ -1878,7 +1942,7 @@ err:		resolve_free(rs);
 			sccs_whynot("delta", rs->s);
 			goto err;
 		}
-		if (!IS_LOCKED(rs->s) && edit(rs)) goto err;
+		if (!LOCKED(rs->s) && edit(rs)) goto err;
 		comments_save("Auto merged");
 		e = comments_get(0);
 		sccs_restart(rs->s);
@@ -1968,7 +2032,7 @@ automerge(resolve *rs, names *n, int identical)
 		goto same;
 	}
 
-	if (rs->s->encoding & E_BINARY) {
+	if (BINARY(rs->s)) {
 		unless (rs->opts->quiet) {
 			fprintf(stderr,
 			    "Not automerging binary '%s'\n", rs->s->gfile);
@@ -1981,7 +2045,7 @@ nomerge:	rs->opts->hadConflicts++;
 
 	/*
 	 * The interface to the merge program is
-	 * "smerge left_ver gca_ver right_ver"
+	 * "smerge -lleft_ver -rright_ver"
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
@@ -1989,8 +2053,13 @@ nomerge:	rs->opts->hadConflicts++;
 		ret = sys("bk", rs->opts->mergeprog,
 		    n->local, n->gca, n->remote, rs->s->gfile, SYS);
 	} else {
-		ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", rs->s->gfile, 
-		    rs->revs->local, rs->revs->remote, SYS);
+		char	*l = aprintf("-l%s", rs->revs->local);
+		char	*r = aprintf("-r%s", rs->revs->remote);
+
+		ret = sysio(0,
+		    rs->s->gfile, 0, "bk", "smerge", l, r, rs->s->gfile, SYS);
+		free(l);
+		free(r);
 	}
 
 	if (do_free) {
@@ -2006,7 +2075,7 @@ nomerge:	rs->opts->hadConflicts++;
 			fprintf(stderr,
 			    "Content merge of %s OK\n", rs->s->gfile);
 		}
-same:		if (!IS_LOCKED(rs->s) && edit(rs)) return;
+same:		if (!LOCKED(rs->s) && edit(rs)) return;
 		comments_save("Auto merged");
 		d = comments_get(0);
 		rs->s = sccs_restart(rs->s);
@@ -2151,12 +2220,6 @@ commit(opts *opts)
 {
 	int	i;
 	char	*cmds[10], *cmt = 0;
-
-	unless (ok_commit()) {
-		fprintf(stderr,
-		   "Commit aborted because of licensing, no changes applied\n");
-		resolve_cleanup(opts, 0);
-	}
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";
@@ -2427,7 +2490,7 @@ pass4_apply(opts *opts)
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
 			if (rm_sfile(buf, 1)) {
 				fclose(save);
-				restore_backup(BACKUP_SFIO);
+				restore_backup(BACKUP_SFIO, 0);
 				resolve_cleanup(opts, 0);
 			}
 		}
@@ -2438,7 +2501,7 @@ pass4_apply(opts *opts)
 	 * Pass 4c - apply the files.
 	 */
 	unless (save = fopen(APPLIED, "w+")) {
-		restore_backup(BACKUP_SFIO);
+		restore_backup(BACKUP_SFIO, 0);
 		resolve_cleanup(opts, 0);
 	}
 	fflush(f);
@@ -2454,7 +2517,7 @@ pass4_apply(opts *opts)
 			    "resolve: failed to remove conflict %s\n",
 			    &buf[offset]);
 			unapply(save);
-			restore_backup(BACKUP_SFIO);
+			restore_backup(BACKUP_SFIO, 0);
 			resolve_cleanup(opts, 0);
 		}
 		if (opts->log) {
@@ -2465,7 +2528,7 @@ pass4_apply(opts *opts)
 			fprintf(stderr,
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
 err:			unapply(save);
-			restore_backup(BACKUP_SFIO);
+			restore_backup(BACKUP_SFIO, 0);
 			resolve_cleanup(opts, 0);
 		} else {
 			opts->applied++;
@@ -2492,7 +2555,8 @@ err:			unapply(save);
 		    "resolve: running consistency check, please wait...\n");
 	}
 
-	if (strieq("yes", user_preference("partial_check"))) {
+	sync();
+	if (proj_configbool(0, "partial_check")) {
 		fflush(save); /*  important */
 		ret = run_check(APPLIED, 0, opts->quiet);
 	} else {
@@ -2531,7 +2595,7 @@ writeCheck(sccs *s, MDBM *db)
 	while (1) {
 		t = strrchr(path, '/');
 		if (mdbm_store_str(db, path, "", MDBM_INSERT)) return (0);
-		unless (fast_lstat(path, &sb)) {
+		unless (lstat(path, &sb)) {
 			if (S_ISDIR(sb.st_mode)) {
 				if (access(path, W_OK) != 0) {
 					fprintf(stderr,

@@ -1,12 +1,10 @@
 .so ../bk-macros
-.TH "bk root" 1 %E% "\*(BC" "\*(UM"
+.TH "bk root" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk root \- print the path name to the root of the repository
 .SH SYNOPSIS
-.Bc bk root [
-.ARG directory 
-.B |
-.ARG file ]
+.B bk root
+.[ARG] "directory \fB|\fP file"
 .SH DESCRIPTION
 This command prints the full pathname to the root of the repository.
 The following commands are equivalent:
@@ -15,7 +13,19 @@ bk root
 bk -R pwd
 .DE
 .LP
-If a directory or file is specified, bk root will try to find the 
+If a directory or file is specified,
+.B bk root
+will try to find the 
 project root of that file or directory.
+.SH EXIT STATUS
+.LP
+.B bk root
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH CATEGORY
 .B Admin

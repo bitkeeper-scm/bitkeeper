@@ -92,20 +92,55 @@ proc main {} \
 	# which occurs on different steps for different license types
 	bind . <<WizNextStep>> {
 		switch -exact -- [. cget -step] {
+			Begin	{
+				if {![findLicense]} {
+					set ::licInRepo 1
+					wizInsertStep LicenseKey
+				} else {
+					set ::licInRepo 0
+					if {$::licenseInfo(text) ne ""} {
+						wizInsertStep EndUserLicense
+					}
+				}
+			}
 			EndUserLicense	{exec bk _eula -a}
 			LicenseKey      {
 				if {![checkLicense]} {
 					break
 				}
-				getLicenseData
-				set path "commercial"
 				if {$::licenseInfo(text) ne ""} {
-					append path "-lic"
+					wizInsertStep EndUserLicense
 				}
-				. configure -path $path
+			}
+			CheckoutMode {
+				if {$::wizData(checkout) eq "edit"} {
+					wizInsertStep Clock_Skew
+				} else {
+					wizRemoveStep Clock_Skew
+				}
 			}
 		}
 	}
+}
+
+proc findLicense {} \
+{
+	global dev_null licenseInfo tmp_dir wizData
+
+	set rc 0
+	set pwd [pwd]
+	cd $tmp_dir
+	set ::env(BK_NO_GUI_PROMPT) 1
+	if {[catch {exec bk lease renew} result]} {
+		set rc 0
+	} else {
+		# we have a current license, let's grab the EULA
+		set licenseInfo(text) [exec bk _eula -u]
+		set rc 1
+	}
+	unset ::env(BK_NO_GUI_PROMPT)
+	cd $pwd
+	return $rc
 }
 
 proc app_init {} \
@@ -144,7 +179,9 @@ proc app_init {} \
 	# All of these will end up in the config file.
 	array set wizData {
 		autofix       "yes"
-		checkout      "none"
+		checkout      "edit"
+		clock_skew    "on"
+		partial_check "off"
 		closeOnCreate 1
 		compression   "gzip"
 		keyword,sccs  0
@@ -152,11 +189,11 @@ proc app_init {} \
 		keyword,expand1 0
 		keyword       "none"
 		license       ""
-		licenseType   "commercial"
 		licsign1      ""
 		licsign2      ""
 		licsign3      ""
 		name          ""
+		partial_check "off"
 		repository    ""
 	}
 
@@ -171,7 +208,7 @@ proc app_init {} \
 	# some are allowed is simply that I haven't found the time to
 	# disable the particular widgets or steps for the other
 	# options.
-	set allowedRO {checkout repository autofix compression licenseType}
+	set allowedRO {checkout repository compression}
 
 	# process command line args, which may also override some of
 	# the defaults. Note that -F and -S aren't presently
@@ -260,9 +297,59 @@ proc computeSize {wvar hvar} \
 	# under no circumstances do we make a window bigger than the
 	# screen
 	set maxwidth  [winfo screenwidth .]
-	set maxheight [expr {[winfo screenheight .] * .95}]
+	set maxheight [expr {round([winfo screenheight .] * .95)}]
 	set width  [expr {$width > $maxwidth? $maxwidth : $width}]
 	set height [expr {$height > $maxheight? $maxheight: $height}]
+}
+
+# Insert a step right after the current step
+# Side Effect: The global variable paths is modified with the 
+# new path
+proc wizInsertStep {step} \
+{
+	global paths
+
+	set curPath [. configure -path]
+	set curStep [. configure -step]
+	if {![info exists paths($curPath)]} {
+		return -code error "paths($curPath) doesn't exist"
+	}
+	set i [lsearch -exact $paths($curPath) $curStep]
+	incr i
+
+	# Bail if the step was already in the path as the next step
+	if {[lindex $paths($curPath) $i] eq $step} {return}
+
+	# I don't know how to modify a path, so I just add a new one
+	set newpath "${curPath}_${step}"
+	set paths($newpath) [linsert $paths($curPath) $i $step]
+	. add path $newpath -steps $paths($newpath)
+	. configure -path $newpath
+}
+
+# Remove the next step if it matches Step otherwise it does nothing
+# Side Effect: The global variable paths is modified with the 
+# new path
+proc wizRemoveStep {step} \
+{
+	global paths
+
+	set curPath [. configure -path]
+	set curStep [. configure -step]
+	if {![info exists paths($curPath)]} {
+		return -code error "paths($curPath) doesn't exist"
+	}
+	set i [lsearch -exact $paths($curPath) $curStep]
+	incr i
+
+	# Bail if the step is not what we meant to remove
+	if {[lindex $paths($curPath) $i] ne $step} {return}
+
+	# I don't know how to modify a path, so I just add a new one
+	set newpath "${curPath}_${step}"
+	set paths($newpath) [lreplace $paths($curPath) $i $i]
+	. add path $newpath -steps $paths($newpath)
+	. configure -path $newpath
 }
 
 proc widgets {} \
@@ -280,8 +367,8 @@ proc widgets {} \
 
 	set common {
 		RepoInfo
-		KeywordExpansion CheckoutMode 
-		Compression Autofix Finish
+		KeywordExpansion CheckoutMode Partial_Check
+		Compression Finish
 	}
 	
 	# remove readonly steps
@@ -293,20 +380,13 @@ proc widgets {} \
 		set i [lsearch -exact $common "Compression"]
 		set common [lreplace $common $i $i]
 	}
-	if {[info exists readonly(autofix)]} {
-		set i [lsearch -exact $common "Autofix"]
-		set common [lreplace $common $i $i]
-	}
-
-	. add path commercial-lic  \
-	    -steps [concat Begin LicenseKey EndUserLicense $common]
-	. add path commercial \
-	    -steps [concat Begin LicenseKey $common]
+	set ::paths(commercial) [concat Begin $common]
+	. add path commercial  -steps $::paths(commercial)
 
 	. add path BadUser -steps BadUser
 
 	# We'll assume this for the moment; it may change later
-	. configure -path commercial-lic
+	. configure -path commercial
 
 	#-----------------------------------------------------------------------
 	. add step BadUser \
@@ -475,7 +555,7 @@ proc widgets {} \
 		    -textvariable wizData(email)
 		button $w.moreInfoRepoInfo -bd 1 \
 		    -text "More info" \
-		    -command [list moreInfo repoinfo]
+		    -command [list moreInfo repoinfo "CONTACT INFORMATION"]
 
 		grid $w.repoPathLabel -row 0 -column 0 -sticky e
 		grid $w.repoPathEntry -row 0 -column 1 -sticky ew -columnspan 2 
@@ -550,19 +630,19 @@ proc widgets {} \
 
 		label $w.keywordLabel -text "Keyword Expansion:"
 		checkbutton $w.sccsCheckbutton \
-		    -text "sccs" \
+		    -text "SCCS" \
 		    -onvalue 1 \
 		    -offvalue 0 \
 		    -variable wizData(keyword,sccs) \
 		    -command updateKeyword
 		checkbutton $w.rcsCheckbutton \
-		    -text "rcs" \
+		    -text "RCS" \
 		    -onvalue 1 \
 		    -offvalue 0 \
 		    -variable wizData(keyword,rcs) \
 		    -command updateKeyword
 		checkbutton $w.expand1Checkbutton \
-		    -text "expand1" \
+		    -text "EXPAND1" \
 		    -onvalue 1 \
 		    -offvalue 0 \
 		    -variable wizData(keyword,expand1) \
@@ -606,9 +686,76 @@ proc widgets {} \
 		tk_optionMenu $w.checkoutOptionMenu wizData(checkout) \
 		    "none" "get" "edit"
 		$w.checkoutOptionMenu configure -width 4 -borderwidth 1
+		button $w.checkoutMoreInfo \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo checkout "CHECKOUT MODE"]
 
 		grid $w.checkoutLabel      -row 0 -column 0 -sticky e
 		grid $w.checkoutOptionMenu -row 0 -column 1 -sticky w
+		grid $w.checkoutMoreInfo   -row 0 -column 2 -sticky w 
+
+		grid rowconfigure $w 0 -weight 0
+		grid rowconfigure $w 1 -weight 1
+		grid columnconfigure $w 0 -weight 0
+		grid columnconfigure $w 1 -weight 1
+	}
+	#-----------------------------------------------------------------------
+	. add step Clock_Skew \
+	    -title "Timestamp Database" \
+	    -description [wrap [getmsg setuptool_step_Clock_Skew]]
+
+	. stepconfigure Clock_Skew -body {
+		global widgets
+
+		set w [$this info workarea]
+		set widgets(Clock_Skew) $w
+
+		$this configure -defaultbutton next
+
+		label $w.clock_skewLabel -text "Timestamp Database:"
+		tk_optionMenu $w.clock_skewOptionMenu wizData(clock_skew) \
+		    "on" "off"
+		$w.clock_skewOptionMenu configure -width 4 -borderwidth 1
+		button $w.clock_skewMoreInfo \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo clock_skew CLOCK]
+
+		grid $w.clock_skewLabel      -row 0 -column 0 -sticky e
+		grid $w.clock_skewOptionMenu -row 0 -column 1 -sticky w
+		grid $w.clock_skewMoreInfo   -row 0 -column 2 -sticky w 
+
+		grid rowconfigure $w 0 -weight 0
+		grid rowconfigure $w 1 -weight 1
+		grid columnconfigure $w 0 -weight 0
+		grid columnconfigure $w 1 -weight 1
+	}
+	#-----------------------------------------------------------------------
+	. add step Partial_Check \
+	    -title "Partial Check" \
+	    -description [wrap [getmsg setuptool_step_Partial_Check]]
+
+	. stepconfigure Partial_Check -body {
+		global widgets
+
+		set w [$this info workarea]
+		set widgets(Partial_Check) $w
+
+		$this configure -defaultbutton next
+
+		label $w.partial_checkLabel -text "Partial Check:"
+		tk_optionMenu $w.partial_checkOptionMenu \
+		    wizData(partial_check) "on" "off"
+		$w.partial_checkOptionMenu configure -width 4 -borderwidth 1
+		button $w.partial_checkMoreInfo \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo partial_check "PARTIAL CHECK"]
+
+		grid $w.partial_checkLabel      -row 0 -column 0 -sticky e
+		grid $w.partial_checkOptionMenu -row 0 -column 1 -sticky w
+		grid $w.partial_checkMoreInfo   -row 0 -column 2 -sticky w 
 
 		grid rowconfigure $w 0 -weight 0
 		grid rowconfigure $w 1 -weight 1
@@ -632,47 +779,19 @@ proc widgets {} \
 		tk_optionMenu $w.compressionOptionMenu wizData(compression) \
 		    "none" "gzip"
 		$w.compressionOptionMenu configure -width 4 -borderwidth 1
+		button $w.compressionMoreInfo \
+		    -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo compression COMPRESSION]
 
 		grid $w.compressionLabel      -row 0 -column 0 -sticky e
 		grid $w.compressionOptionMenu -row 0 -column 1 -sticky w
+		grid $w.compressionMoreInfo   -row 0 -column 2 -sticky w 
 
 		grid rowconfigure $w 0 -weight 0
 		grid rowconfigure $w 1 -weight 1
 		grid columnconfigure $w 0 -weight 0
 		grid columnconfigure $w 1 -weight 1
-	}
-
-	#-----------------------------------------------------------------------
-	. add step Autofix \
-	    -title "Autofix Options" \
-	    -description [wrap [getmsg setuptool_step_Autofix]]
-
-	. stepconfigure Autofix -body {
-		global widgets
-
-		set w [$this info workarea]
-		set widgets(Autofix) $w
-
-		$this configure -defaultbutton next
-
-		label $w.autofixLabel -text "Autofix Mode:"
-		tk_optionMenu $w.autofixOptionMenu wizData(autofix) \
-		    "yes" "no"
-		$w.autofixOptionMenu configure -width 4 -borderwidth 1
-		button $w.moreInfoAutofix \
-		    -bd 1 \
-		    -text "More info" \
-		    -command [list moreInfo autofix]
-
-		grid $w.autofixLabel      -row 0 -column 0 -sticky e
-		grid $w.autofixOptionMenu -row 0 -column 1 -sticky w
-		grid $w.moreInfoAutofix   -row 0 -column 2 -sticky w -padx 4
-
-		grid rowconfigure $w 0 -weight 0
-		grid rowconfigure $w 1 -weight 1
-		grid columnconfigure $w 0 -weight 0
-		grid columnconfigure $w 1 -weight 0
-		grid columnconfigure $w 2 -weight 1
 	}
 
 	#-----------------------------------------------------------------------
@@ -826,13 +945,15 @@ proc createConfigData {} \
 	foreach key {
 		description email
 		name
-		keyword compression autofix checkout
+		keyword compression autofix checkout clock_skew partial_check
 	} {
 		append configData "$key: $wizData($key)\n"
 	}
 
-	foreach key $licenseOptions {
-		append configData "$key: $wizData($key)\n"
+	if {$::licInRepo} {
+		foreach key $licenseOptions {
+			append configData "$key: $wizData($key)\n"
+		}
 	}
 
 	return $configData
@@ -843,7 +964,6 @@ proc createRepo {errorVar} \
 	global wizData option eflag env
 	upvar $errorVar message
 
-	catch {unset env(BK_CONFIG)}
 	set pid [pid]
 	set filename [file join $::tmp_dir "config.$pid"]
 	set f [open $filename w]
@@ -927,10 +1047,11 @@ proc focusEntry {w} \
 	}
 }
 
+# side effect: licenseInfo(text) might get filled with EULA
 proc checkLicense {} \
 {
 	
-	global wizData dev_null
+	global env licenseInfo wizData dev_null
 
 	set f [open "|bk _eula -v > $dev_null" w]
 	puts $f "
@@ -946,6 +1067,15 @@ proc checkLicense {} \
 	if {($::errorCode == "NONE") || 
 	    ([lindex $::errorCode 0] == "CHILDSTATUS" &&
 	     [lindex $::errorCode 2] == 0)} {
+		# need to override any config currently in effect...
+		set BK_CONFIG "logging:none!;"
+		append BK_CONFIG "license:$wizData(license)!;"
+		append BK_CONFIG "licsign1:$wizData(licsign1)!;"
+		append BK_CONFIG "licsign2:$wizData(licsign2)!;"
+		append BK_CONFIG "licsign3:$wizData(licsign3)!;"
+		append BK_CONFIG "single_user:!;single_host:!;"
+		set env(BK_CONFIG) $BK_CONFIG
+		set licenseInfo(text) [exec bk _eula -u]
 		return 1
 	}
 		      
@@ -955,33 +1085,16 @@ proc checkLicense {} \
 	return 0
 }
 
-# must be called after user has entered license keys
-proc getLicenseData {} \
-{
-	global licenseInfo wizData env
-
-	# need to override any config currently in effect...
-	set BK_CONFIG "logging:none;"
-	append BK_CONFIG "license:$wizData(license);"
-	append BK_CONFIG "licsign1:$wizData(licsign1);"
-	append BK_CONFIG "licsign2:$wizData(licsign2);"
-	append BK_CONFIG "licsign3:$wizData(licsign3);"
-	append BK_CONFIG "single_user:;single_host:;"
-	set env(BK_CONFIG) $BK_CONFIG
-	set licenseInfo(text) [exec bk _eula -u]
-}
-
-proc moreInfo {which} {
+proc moreInfo {which {search {}}} {
 	global dev_null
 
 	switch -exact -- $which {
 		commercial	{set topic licensing}
-		repoinfo	{set topic config-etc}
 		keywords	{set topic keywords}
-		autofix		{set topic check}
+		default		{set topic config-etc}
 	}
 
-	exec bk helptool $topic 2> $dev_null &
+	exec bk helptool $topic $search 2> $dev_null &
 }
 
 main

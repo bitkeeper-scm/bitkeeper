@@ -8,10 +8,12 @@ proc main {} \
 	set options(shellx_network) 0
 	set options(shellx_local) 0
 	set options(bkscc) 0
+	set options(upgrade) 0
 	while {[string match {-*} [lindex $argv 0]]} {
 		set option [lindex $argv 0]
 		set argv [lrange $argv 1 end]
 		switch -exact -- $option {
+			-u	{set options(upgrade) 1}
 			-n	{set options(shellx_network) 1}
 			-l	{set options(shellx_local) 1}
 			-s	{set options(bkscc) 1}
@@ -21,6 +23,25 @@ proc main {} \
 			}
 		}
 	}
+
+	if {$options(upgrade)} {
+		# Preserve the ShellX and BKSCC settings.
+		set shellxKey \
+		    "HKEY_LOCAL_MACHINE\\Software\\bitmover\\bitkeeper\\shellx"
+		if {![catch {registry get $shellxKey LocalDrive} value]} {
+			set options(shellx_local) $value
+		}
+		if {![catch {registry get $shellxKey networkDrive} value]} {
+			set options(shellx_network) $value
+		}
+		set sccKey \
+		    "HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider"
+		if {![catch {registry get $sccKey ProviderRegkey} value]} {
+			# existence of the key means it's enabled
+			set options(bkscc) 1
+		}
+	}
+
 	set destination [file nativename [lindex $argv 0]]
 	set bk [file join $destination bk.exe]
 	if {![file exists $bk]} {
@@ -72,6 +93,8 @@ proc registry_install {destination} \
 		reg set $HKLMS\\bitmover\\bitkeeper SCCserverPath $dll
 		reg set $HKLMS\\SourceCodeControlProvider ProviderRegkey \
 		    "Software\\bitmover\\bitkeeper"
+		reg set $HKLMS\\SourceControlProvider\\InstalledSCCProviders \
+		    BitKeeper "SOFTWARE\\bitmover\bitkeeper"
 	}
         reg set $HKLMS\\bitmover\\bitkeeper\\shellx
 	reg set $HKLMS\\bitmover\\bitkeeper\\shellx networkDrive \

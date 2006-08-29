@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2000, Larry McVoy
- */    
+ * Copyright (c) 2000-2006, Bitmover, Inc.
+ */
 #include "system.h"
 #include "sccs.h"
 
@@ -34,68 +34,92 @@ private int
 unpull(int force, int quiet, char *patch)
 {
 	sccs	*s;
-	delta	*d, *e;
-	char	cset[] = CHANGESET;
-	MMAP	*m;
-	char	*t, *r;
+	delta	*d, *e, *tag, *chg;
+	FILE	*f;
 	char	*av[10];
 	int	i;
 	int	status;
+	char	path[MAXPATH];
+	char	buf[MAXLINE];
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "unpull: can not find package root.\n");
 		return (1);
 	}
 	if (isdir(ROOT2RESYNC)) {
-		fprintf(stderr, 
+		fprintf(stderr,
 		    "unpull: RESYNC exists, did you want 'bk abort'?\n");
 		return (1);
 	}
-	unless (exists(CSETS_IN) && (m = mopen(CSETS_IN, ""))) {
+	unless (exists(CSETS_IN) && (f = fopen(CSETS_IN, "r"))) {
 		fprintf(stderr,
 		    "unpull: no csets-in file, nothing to unpull.\n");
 		return (1);
 	}
-	t = malloc(m->size + 3);
-	*t++ = '-';
-	*t++ = 'r';
-	memcpy(t, m->where, m->size);
-	t[m->size] = 0;
-	mclose(m);
-	for (r = t; *r; r++) if ((*r == '\r') || (*r == '\n')) *r = ',';
-	while ((--r > t) && (*r == ',')) *r = 0;	/* chop */
-	while (--r > t) if (r[-1] == ',') break;
-	t -= 2;
-	assert(r && *r);
-	s = sccs_init(cset, 0);
+	s = sccs_csetInit(0);
 	assert(s && HASGRAPH(s));
-	d = s->table;	/* I want the latest delta entry, tag or delta */
-	unless (e = sccs_findrev(s, r)) {
-		fprintf(stderr, "unpull: stale csets-in file removed.\n");
+	chg = tag = e = 0;
+	while (fnext(buf, f)) {
+		chomp(buf);
+
+		unless (e = sccs_findrev(s, buf)) {
+			fprintf(stderr,
+			    "unpull: stale csets-in file removed.\n");
+			fclose(f);
+			sccs_free(s);
+			unlink(CSETS_IN);
+			return (1);
+		}
+		if (e->type == 'D') {
+			chg = e;
+		} else {
+			tag = e;
+		}
+	}
+	fclose(f);
+	unless (e) {
+		fprintf(stderr, "unpull: nothing to unpull.\n");
 		sccs_free(s);
-		free(t);
 		unlink(CSETS_IN);
 		return (1);
 	}
-	unless (d == e) {
-		fprintf(stderr,
-		    "unpull: will not unpull local changeset %s\n", d->rev);
-		sccs_free(s);
-		free(t);
-		return (1);
+	if (chg) {
+		d = sccs_top(s);
+		unless (d == chg) {
+			fprintf(stderr,
+			    "unpull: will not unpull local changeset %s\n",
+			    d->rev);
+err:			sccs_free(s);
+			return (1);
+		}
+	}
+	if (tag) {
+		for (d = s->table; d; d = d->next) {
+			unless (d->type == 'D') break;
+		}
+		unless (d == tag) {
+			fprintf(stderr,
+			    "unpull: will not unpull local tag %s\n", d->rev);
+			goto err;
+		}
 	}
 	sccs_free(s);
+
 	av[i=0] = "bk";
 	av[++i] = "undo";
 	av[++i] = patch ? patch : "-s";
 	if (force) av[++i] = "-f";
 	if (quiet) av[++i] = "-q";
-	av[++i] = t;
+	sprintf(path, "-r%s", proj_fullpath(0, CSETS_IN));
+	av[++i] = path;
 	av[++i] = 0;
-	status = spawnvp(_P_WAIT, av[0], av);
-	free(t);
 	/* undo deletes csets-in */
-	if (WIFEXITED(status)) exit(WEXITSTATUS(status));
-	fprintf(stderr, "unpull: unable to unpull, undo failed.\n");
-	exit(1);
+	status = spawnvp(P_WAIT, av[0], av);
+
+	if (WIFEXITED(status)) {
+		return (WEXITSTATUS(status));
+	} else {
+		fprintf(stderr, "unpull: unable to unpull, undo failed.\n");
+		return (1);
+	}
 }

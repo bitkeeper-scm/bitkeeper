@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # calculate hash of all build scripts so if those change we rebuild.
-BUILDHASH=`bk cat build.sh Makefile | bk crypto -h -`
+BUILDHASH=`bk cat build.sh Makefile ../../tclkey.h | bk crypto -h -`
 
 if [ -d tcl ]
 then

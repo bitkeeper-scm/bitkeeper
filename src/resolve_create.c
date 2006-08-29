@@ -727,7 +727,7 @@ ok_local(sccs *s, int check_pending)
 		fprintf(stderr, "Can't init the conflicting local file\n");
 		exit(1);
 	}
-	if ((IS_EDITED(s) || IS_LOCKED(s)) && sccs_clean(s, SILENT)) {
+	if ((EDITED(s) || LOCKED(s)) && sccs_clean(s, SILENT)) {
 		fprintf(stderr,
 		    "Cannot [re]move modified local file %s\n", s->gfile);
 		return (0);
@@ -849,7 +849,7 @@ sc_rml(resolve *rs)
 		exit(1);
 	}
 	sprintf(repo, "-PyDelete: %s", ((sccs*)rs->opaque)->gfile);
-	if (sys("bk", "delta", repo, resync, SYS)) {
+	if (sys("bk", "delta", "-f", repo, resync, SYS)) {
 		perror(repo);
 		exit(1);
 	}
@@ -889,7 +889,7 @@ sc_rmr(resolve *rs)
 		exit(1);
 	}
 	sprintf(repo, "-PyDelete: %s", rs->d->pathname);
-	if (sys("bk", "delta", repo, resync, SYS)) {
+	if (sys("bk", "delta", "-f", repo, resync, SYS)) {
 		perror(repo);
 		exit(1);
 	}

@@ -1,62 +1,52 @@
-SRCS =	$(patsubst %,string/%, \
-	bcmp.c \
-	bcopy.c \
-	bzero.c \
-	ffs.c \
-	index.c \
-	memccpy.c \
-	memchr.c \
-	memcmp.c \
-	memcpy.c \
-	memmove.c \
-	memset.c \
-	rindex.c \
-	strcasecmp.c \
-	strcat.c \
-	strchr.c \
-	strcmp.c \
-	strcpy.c \
-	strcspn.c \
-	strdup.c \
-	strlen.c \
-	strncat.c \
-	strncmp.c \
-	strncpy.c \
-	strndup.c \
-	strpbrk.c \
-	strrchr.c \
-	strsep.c \
-	strspn.c \
-	strstr.c \
-	strtok.c) \
-	dirname.c
+ifeq "$(OSTYPE)" "msys"
+	XLIBS=-lws2_32
+	EXE=.exe
+endif
+all: libc.a mtst$(EXE)
 
-OBJS := $(SRCS:.c=.o)
+include hash/Makefile
+include mdbm/Makefile
+include regex/Makefile
+include string/Makefile
+include tcp/Makefile
+include utils/Makefile
+ifeq "$(OSTYPE)" "msys"
+include win32/Makefile
+endif
+
+OBJS = $(HASH_OBJS) $(MDBM_OBJS) $(REGEX_OBJS) $(STRING_OBJS) $(TCP_OBJS) $(UTILS_OBJS) $(WIN32_OBJS)
+SRCS = $(OBJS:%.o=%.c)
+HDRS = $(HASH_HDRS) $(MDBM_HDRS) $(REGEX_HDRS) $(STRING_HDRS) $(TCP_HDRS) $(UTILS_HDRS) $(WIN32_HDRS)
 
 CC = gcc
-WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wredundant-decls
+CFLAGS = -g -O2 -Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wchar-subscripts -Wredundant-decls -Wextra -Wno-sign-compare -Wno-unused-parameter -Wdeclaration-after-statement -Wmissing-prototypes
+CPPFLAGS = -I.
 AR=ar rc
 RANLIB=ranlib
 
-%.o: %.c
-	$(CC) -Iinclude $(WARNINGS) -O2 -D__NO_INLINE__ -o $@ -c $<
+# no make depends
+$(OBJS): $(HDRS)
 
 libc.a: $(OBJS)
 	rm -f $@
 	$(AR) $@ $(OBJS)
 	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
 
-clean distclean:
-	rm -f *.o string/*.o
-	bk clean
+mtst$(EXE): mdbm/mtst.o libc.a
+	$(CC) -o $@ $^ $(XLIBS)
 
-clobber:
-	@make clean
-	rm -f libc.a
+.PHONY: clean
+clean:
+	rm -f $(OBJS) libc.a tags.local mtst$(EXE)
 
-$(OBJS): include/string.h
+.PHONY: clobber
+clobber: clean
+	-bk -r. clean
 
-string/strchr.o: string/index.c
-string/strrchr.o: string/rindex.c
-string/memcpy.o: string/bcopy.c
-string/memmove.o: string/bcopy.c
+.PHONY: srcs
+srcs: $(SRCS) $(HDRS)
+
+tags.local: $(SRCS) $(HDRS)
+	cd ..;\
+	ctags -f libc/$@ --file-tags=yes --c-types=d+f+s+t \
+		$(patsubst %,libc/%,$^)

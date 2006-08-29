@@ -18,8 +18,7 @@ resolve_init(opts *opts, sccs *s)
 	rs->key = strdup(buf);
 	rs->d = sccs_top(s);
 	assert(rs->d);	/* XXX: not all files have a 1.0 .  What to do? */
-	rs->dname = sccs_setpathname(s);
-	s->spathname = 0;  /* storing name in dname, so free this */
+	rs->dname = name2sccs(rs->d->pathname);
 	if (rs->snames = res_getnames(sccs_Xfile(rs->s, 'm'), 'm')) {
 		rs->gnames         = calloc(1, sizeof(names));
 		rs->gnames->local  = sccs2name(rs->snames->local);
@@ -148,5 +147,10 @@ again:		/* 100 tries for the same file means we're hosed.  */
 		if (rs->opts->debug) {
 			fprintf(stderr, "%s returns 0\n", rf[i].name);
 		}
+		/*
+		 * reap any background processes
+		 * so we don't overflow our proc table.
+		 */
+		while (waitpid((pid_t)-1, 0, WNOHANG) > 0);
 	}
 }

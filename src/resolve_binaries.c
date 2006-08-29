@@ -154,7 +154,7 @@ resolve_binary(resolve *rs)
 		freenames(n, 1);
 		return (-1);
 	}
-	unless (IS_LOCKED(rs->s)) {
+	unless (LOCKED(rs->s)) {
 		if (edit(rs)) return (-1);
 	}
 	if (sameFiles(n->local, n->remote)) {

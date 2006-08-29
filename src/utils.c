@@ -24,89 +24,6 @@ saveStdin(char *tmpfile)
 	return (0);
 }
 
-#ifndef WIN32
-int
-cat(char *file)
-{
-	MMAP	*m = mopen(file, "r");
-
-	unless (m) return (-1);
-	unless (write(1, m->mmap, m->size) == m->size) {
-		mclose(m);
-		return (-1);
-	}
-	mclose(m);
-	return (0);
-}
-#else
-/*
- * We need a win32 version beacuse win32 write interface cannot
- * handle large buffer, do _not_ change this code unless you tested it 
- * on win32. I coded ths once before and someone removed it. - awc
- *
- * XXX TODO move this to the port directory.
- */
-int
-cat(char *file)
-{
-	MMAP	*m = mopen(file, "r");
-	char	*p;
-	int	n;
-
-	unless (m) return (-1);
-
-	p = m->mmap;
-	n = m->size;
-	while (n) {
-		if (n >=  MAXLINE) {
-			write(1, p, MAXLINE);
-			n -= MAXLINE;
-			p += MAXLINE;
-		} else {
-			write(1, p, n);
-			n = 0;
-			p = 0;
-		}
-	};
-	mclose(m);
-	return (0);
-}
-#endif
-
-char *
-loadfile(char *file, int *size)
-{
-	FILE	*f;
-	struct	stat	statbuf;
-	char	*ret;
-	int	len;
-
-	f = fopen(file, "r");
-	unless (f) return (0);
-
-	if (fstat(fileno(f), &statbuf)) {
- err:		fclose(f);
-		return (0);
-	}
-	len = statbuf.st_size;
-	ret = malloc(len+1);
-	unless (ret) goto err;
-	fread(ret, 1, len, f);
-	fclose(f);
-	ret[len] = 0;
-
-	if (size) *size = len;
-	return (ret);
-}
-
-int
-touch(char *file, int mode)
-{
-	int	fh = open(file, O_CREAT|O_EXCL|O_WRONLY, mode);
-
-	if (fh < 0) return (fh);
-	return (close(fh));
-}
 
 /*
  * Write the data to either the gzip channel or to 1.
@@ -363,6 +280,7 @@ confirm(char *msg)
 int
 usleep_main(int ac, char **av)
 {
+	unless (av[1]) return (1);
 	usleep(atoi(av[1]));
 	return (0);
 }
@@ -382,11 +300,10 @@ prompt_main(int ac, char **av)
 	char	buf[1024];
 	char	**lines = 0;
 
-	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:y:")) != -1) {
+	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:Ty:")) != -1) {
 		switch (c) {
 		    case 'c': ask = 0; break;
 		    case 'e': type = "-E"; break;
-		    case 'g': nogui = 1; break;
 		    case 'G': gui = 1; break;
 		    case 'i': type = "-I"; break;
 		    case 'w': type = "-W"; break;
@@ -396,6 +313,9 @@ prompt_main(int ac, char **av)
 		    case 'o': no = 0; break;
 		    case 'p': prog = optarg; break;
 		    case 't': title = optarg; break;	/* Only for GUI */
+		    case 'T': /* text, supported option */
+		    case 'g': /* old, do not doc */
+		    	nogui = 1; break;
 		    case 'y': yes = optarg; break;
 		}
 	}
@@ -448,6 +368,15 @@ err:		system("bk help -s prompt");
 		if (prog) unlink(msgtmp);
 		if (WIFEXITED(ret)) exit(WEXITSTATUS(ret));
 		exit(2);
+	}
+
+	if (getenv("BK_EVENT")) {	/* in trigger and in text mode */
+		close(0);
+		close(1);
+		close(2);
+		open(DEV_TTY, O_RDWR, 0);
+		dup(0);
+		dup(1);
 	}
 
 	if (type) {
@@ -512,38 +441,6 @@ err:		system("bk help -s prompt");
 	/* No exit status if no prompt */
 	unless (ask) exit(0);
 	exit(confirm(yes ? yes : "OK") ? 0 : 1);
-}
-
-/*
- * Return an MDBM with all the keys from the ChangeSet file
- * after subtracting the keys from the "not" database.
- * The result are stored as db{key} = rev.
- */
-MDBM	*
-csetDiff(MDBM *not,  int wantTag)
-{
-	char	buf[MAXKEY], s_cset[MAXPATH] = CHANGESET;
-	sccs	*s;
-	delta	*d;
-	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	int	n = 0;
-		
-	unless (s = sccs_init(s_cset, INIT_NOCKSUM)) {
-		mdbm_close(db);
-		return (0);
-	}
-	for (d = s->table; d; d = d->next) {
-		if (!wantTag && (d->type == 'R')) continue;
-		sccs_sdelta(s, d, buf);
-		unless (not && mdbm_fetch_str(not, buf)) {
-			mdbm_store_str(db, buf, d->rev, 0);
-			n++;
-		}
-	}
-	sccs_free(s);
-	if (n) return (db);
-	mdbm_close(db);
-	return (0);
 }
 
 /*
@@ -647,21 +544,42 @@ send_file(remote *r, char *file, int extra)
 			remote_perror(r, "write");
 			rc = -1;
 		}
+		if (r->trace) {
+			fprintf(stderr, "Sending...\n");
+			fwrite(m->mmap, 1, len, stderr);
+		}
 	}
 	mclose(m);
 	return (rc);
 }
 
+/*
+ * Skip to the end of a http header.  This is called in both the bkd
+ * and the client so it processes both request and response headers.
+ */
 int
 skip_http_hdr(remote *r)
 {
+	char	*p;
+	int	line = 0;
 	char	buf[1024];
 
 	r->contentlen = -1;
 
 	while (getline2(r, buf, sizeof(buf)) >= 0) {
+		if ((line == 0) && strneq(buf, "HTTP/", 5)) {
+			/* detect response header and handle errs */
+			unless (p = strchr(buf, ' ')) return (-1);
+			unless (atoi(p+1) == 200) {
+				if (r->errs) {
+					lease_mkerror(r->errs, "http-err", buf);
+				}
+				return (-1);
+			}
+		}
 		sscanf(buf, "Content-Length: %d", &r->contentlen);
 		if (buf[0] == 0) return (0); /*ok */
+		++line;
 	}
 	return (-1); /* failed */
 }
@@ -889,12 +807,18 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		}
 	}
 	unless (flags & SENDENV_NOLICENSE) {
-		/*
-		 * Send information on the current license.
-		 */
-		if (lic = lease_latestbkl()) {
-			fprintf(f, "putenv BK_LICENSE=%s\n", lic);
-			free(lic);
+		if (flags & SENDENV_NOREPO) {
+			/*
+			 * Send information on the current license, but
+			 * don't fail if we can't find a license
+			 */
+			if (lic = lease_bkl(0, 0)) {
+				fprintf(f, "putenv BK_LICENSE=%s\n", lic);
+				free(lic);
+			}
+		} else {
+			/* Require a license or die */
+			fprintf(f, "putenv BK_LICENSE=%s\n", proj_bkl(0));
 		}
 	}
 	/*
@@ -924,6 +848,11 @@ getServerInfoBlock(remote *r)
 			break;
 		}
 		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
+
+		if (strneq(buf, "ERROR-", 6)) {
+			lease_printerr(buf+6);
+			return (1);
+		}
 		if (strneq(buf, "PROTOCOL", 8)) {
 			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
@@ -960,13 +889,24 @@ getServerInfoBlock(remote *r)
  * NOTE: When editing this function be sure to make the same changes in
  *       clone.c:in_trigger()
  */
-void
+int
 sendServerInfoBlock(int is_rclone)
 {
+	char	*repoid, *p, *errs = 0;
 	char	buf[MAXPATH];
-	char	*repoid, *p;
 
 	out("@SERVER INFO@\n");
+	unless (is_rclone) {
+		if (p = lease_bkl(0, &errs)) {
+			free(p);
+		} else {
+			assert(errs);
+			out("ERROR-");
+			out(errs);
+			out("\n");
+			return (1);
+		}
+	}
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
 	out(buf);
 
@@ -1017,6 +957,7 @@ sendServerInfoBlock(int is_rclone)
 		out(p);
 	}
 	out("\n@END@\n");
+	return (0);
 }
 
 private int
@@ -1049,18 +990,19 @@ bkd_hasFeature(char *f)
 	return (has_feature("BKD", f));
 }
 
+/*
+ * Generate a http response header from a bkd back to the client.
+ */
 void
 http_hdr(void)
 {
 	static	int done = 0;
 
 	if (done) return; /* do not send it twice */
-	if (getenv("BKD_DAEMON")) {
-		out("HTTP/1.0 200 OK\r\n");
-		out("Server: BitKeeper daemon ");
-		out(bk_vers);
-		out("\r\n");
-	}
+	out("HTTP/1.0 200 OK\r\n");
+	out("Server: BitKeeper daemon ");
+	out(bk_vers);
+	out("\r\n");
 	out("Cache-Control: no-cache\r\n");	/* for http 1.1 */
 	out("Pragma: no-cache\r\n");		/* for http 1.0 */
 	out("Content-type: text/plain\r\n");
@@ -1138,64 +1080,6 @@ remote_lock_fail(char *buf, int verbose)
 		return (-1);
 	}
 	return (0);
-}
-
-/*
- * This function works like sprintf(), except it return a
- * malloc'ed buffer which caller should free when done
- */
-char *
-aprintf(char *fmt, ...)
-{
-	va_list	ptr;
-	int	rc;
-	char	*buf;
-	int	size = strlen(fmt) + 64;
-
-	while (1) {
-		buf = malloc(size);
-		va_start(ptr, fmt);
-		rc = vsnprintf(buf, size, fmt, ptr);
-		va_end(ptr);
-		if (rc >= 0 && rc < size - 1) break;
-		free(buf);
-		if (rc < 0 || rc == size - 1) {
-			/*
-			 * Older C libraries return -1 to indicate
-			 * the buffer was too small.
-			 *
-			 * On IRIX, it truncates and returns size-1.
-			 * We can't assume that that is OK, even
-			 * though that might be a perfect fit.  We
-			 * always bump up the size and try again.
-			 * This can rarely lead to an extra alloc that
-			 * we didn't need, but that's tough.
-			 */
-			size *= 2;
-		} else {
-			/* In C99 the number of characters needed 
-			 * is always returned. 
-			 */
-			size = rc + 2;	/* extra byte for IRIX */
-		}
-	}
-	return (buf); /* caller should free */
-}
-
-/*
- * Print a message on /dev/tty
- */
-void
-ttyprintf(char *fmt, ...)
-{
-	FILE	*f = fopen(DEV_TTY, "w");
-	va_list	ptr;
-
-	unless (f) f = stderr;
-	va_start(ptr, fmt);
-	vfprintf(f, fmt, ptr);
-	va_end(ptr);
-	if (f != stderr) fclose(f);
 }
 
 char *
@@ -1300,29 +1184,42 @@ char *
 pager(void)
 {
 	char	*pagers[3] = {"more", "less", 0};
-	static	char	*pg;
+	char	*cmd = 0;
+	char	*path, *oldpath;
+	char	**words;
 	int	i;
+	static	char	*pg;
 
 	if (pg) return (pg); /* already cached */
 
-	unless (pg = getenv("BK_PAGER")) pg = getenv("PAGER");
+	/* restore user's path environment so we pick up their pager */
+	path = strdup(getenv("PATH"));
+	if (oldpath = getenv("BK_OLDPATH")) safe_putenv("PATH=%s", oldpath);
 
-	/* env can be PAGER="less -E" */
-	if (pg) {
-		char	**cmds = shellSplit(pg);
-
-		unless (cmds && cmds[1] && which(cmds[1], 0, 1)) pg = 0;
-		freeLines(cmds, free);
-	}
-	if (pg) return (strdup(pg));	/* don't trust env to not change */
-
-	for (i = 0; pagers[i]; i++) {
-		if (which(pagers[i], 0, 1)) {
-			pg = pagers[i];
-			return (pg);
+	if ((pg = getenv("BK_PAGER")) || (pg = getenv("PAGER"))) {
+		/* $PAGER might be "less -E", i.e., multiple words */
+		words = shellSplit(pg);
+		pg = 0;
+		if (words && words[1] && (cmd = which(words[1]))) {
+			free(words[1]);
+			words[1] = cmd;
+			/* not perfect, Wayne would prefer shellJoin() */
+			pg = joinLines(" ", words);
 		}
+		freeLines(words, free);
 	}
-	return (pg = "bk more");
+	unless (pg) {
+		for (i = 0; pagers[i]; i++) {
+			if (cmd = which(pagers[i])) {
+				pg = cmd;
+				break;
+			}
+		}
+		unless (pg) pg = "bk more";
+	}
+	if (oldpath) safe_putenv("PATH=%s", path);
+	if (path) free(path);	/* hard to imagine we don't have one but.. */
+	return (pg);
 }
 
 #define	MAXARGS	100
@@ -1445,7 +1342,7 @@ run_check(char *partial, int fix, int quiet)
  again:
 	fixopt = (fix ? "-f" : "--");
 	if (!partial || 
-	    fast_lstat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
+	    lstat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
 		ret = sys("bk", "-r", "check", opts, fixopt, SYS);
 	} else {
 		ret = sysio(partial, 0, 0, "bk", "check", fixopt, "-", SYS);
@@ -1458,29 +1355,6 @@ run_check(char *partial, int fix, int quiet)
 	return (ret);
 }
 
-#undef	isatty
-
-int
-myisatty(int fd)
-{
-	int	ret;
-	char	*p;
-	char	buf[16];
-
-	if (getenv("_BK_IN_BKD") && !getenv("_BK_BKD_IS_LOCAL")) return (0);
-
-	sprintf(buf, "BK_ISATTY%d", fd);
-	if (p = getenv(buf)) {
-		ret = atoi(p);
-	} else if (getenv("BK_NOTTY")) {
-		ret = 0;
-	} else {
-		ret = isatty(fd);
-	}
-	return (ret);
-}
-
-#define	isatty	myisatty
 
 /*
  * Print progress bar.
@@ -1632,6 +1506,20 @@ rmdir_findprocs(void)
 }
 
 #endif
+
+int
+shellSplit_test_main(int ac, char **av)
+{
+	int	i;
+	char	**lines;
+
+	unless (av[1] && !av[2]) return (1);
+	lines = shellSplit(av[1]);
+	EACH (lines) {
+		printf("%d: (%s)\n", i, lines[i]);
+	}
+	return (0);
+}
 
 /*
  * Portable way to print a pointer.  Results are returned in a static buffer

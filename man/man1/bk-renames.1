@@ -1,20 +1,20 @@
 .so ../bk-macros
-.TH "bk renames" 1 %E% "\*(BC" "\*(UM"
+.TH "bk renames" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk renames \-list file renames contained in a changeset or range of changesets
+bk renames \- list file renames contained in one or more changesets
 .SH SYNOPSIS
-.Bc bk renames -r
-.ARG rev
+.B bk renames
+.OPTreq \-r rev
 .br
-.Bc bk renames -r
-.ARG rev,rev
+.B bk renames
+.Bc \-r
+.ARGc rev
+.OPTreq , rev
 .SH DESCRIPTION
 .LP
-Show a listing of files which have been renamed as
+Show a listing of files that have been renamed as
 .br
 .ARG oldname \ -> 
 .ARG newname
-.SH "SEE ALSO"
-.SA renametool 1
 .SH CATEGORY
-.B File
+.B Utility

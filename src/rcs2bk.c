@@ -1,3 +1,4 @@
+#include "sccs.h"
 #include "rcs.h"
 
 private	char	*sccsname(char *path);
@@ -49,7 +50,7 @@ rcs2bk_main(int ac, char **av)
 		if (executable("/usr/local/bin/co")) {
 			co_prog = "/usr/local/bin/co";
 		} else {
-			co_prog = whichp("co", 0, 1);
+			co_prog = which("co");
 		}
 	}
 	unless (co_prog && executable(co_prog)) {
@@ -77,6 +78,7 @@ doit(char *file, char *cvsbranch)
 	RCS	*r;
 	char	*sfile;
 	sccs	*s;
+	delta	*d;
 
 	sfile = sccsname(file);
 	if (exists(sfile)) {
@@ -121,10 +123,11 @@ doit(char *file, char *cvsbranch)
 		 * to be moved to the BitKeeper/deleted directory.
 		 */
 		s = sccs_init(sfile, 0);
-		unless (sccs_setpathname(s)) assert(0);
-		unless (streq(s->spathname, sfile)) {
-			char	*p;
+		d = sccs_top(s);
+		unless (sccs_patheq(d->pathname, s->gfile)) {
+			char	*p, *q;
 			int	ret;
+
 			if (sccs_clean(s, SILENT)) {
 				sccs_clean(s, 0);
 				fprintf(stderr, "Failed to clean %s\n",
@@ -132,20 +135,21 @@ doit(char *file, char *cvsbranch)
 				exit(1);
 			}
 			sccs_close(s);
-			ret = rename(sfile, s->spathname);
+			q = name2sccs(d->pathname);
+			ret = rename(sfile, q);
 			assert(ret == 0);
 			/*
 			 * move the d.file
 			 */
 			p = sccs_Xfile(s, 'd');
 			if (exists(p)) {
-				char	*q = strdup(s->spathname);
 				char	*t = rindex(q, '/') + 1;
+
 				*t = 'd';
 				ret = rename(p, q);
 				assert(ret == 0);
-				free(q);
 			}
+			free(q);
 		}
 		sccs_free(s);
 	}

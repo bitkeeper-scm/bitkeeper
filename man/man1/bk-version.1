@@ -1,12 +1,13 @@
 .so ../bk-macros
-.TH "bk version" 1 %E% "\*(BC" "\*(UM"
+.TH "bk version" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME 
 bk version \- print \*(BK version
 .SH SYNOPSIS
-.B bk version [-s]
+.B bk version
+.[B] \-s
 .SH DESCRIPTION
 The 
-.B version
+.B bk version
 command shows what version of \*(BK you are running.
 If the version is symbolically named (most are), the version will look
 like:
@@ -23,17 +24,27 @@ Built by: lm@work.bitmover.com in /home/bk/lm/3.0.x/src
 Built on: Wed Feb 11 14:32:08 PST 2004
 .DE
 .LP
-The timestamp value in the snapshot release is the time of the most
+The time-stamp value in the snapshot release is the time of the most
 recent file modification within the \*(BK source code.
 .SH OPTIONS
-.if t .TP .6i
-.if n .TP 1i
+.TP
 .B \-s
-Print just the version number (either "3.0.4" or "20040211171546")
+Print just the version number (either \*(lq3.0.4\*(rq or 
+\*(lq20040211171546\*(rq).
 .SH NOTE
 .LP
-BitMover, Inc provides support for symbolically\-tagged version only.
+\*[BC] provides support for symbolically-tagged version only.
 The snapshot versions are completely unsupported.
+.SH EXIT STATUS
+.LP
+.B bk version
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH CATEGORY
 .B Admin
 .br

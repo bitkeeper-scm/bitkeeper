@@ -53,15 +53,15 @@ cmpfiles WANT2 GOT
 echo OK
 
 echo $N Check that bk service list shows them both ..................$NL
-bk service list | grep "^$BKDNAME" | bk _sort > GOT
+bk service list | grep "^$BKDNAME" | bk sort > GOT
 echo $BKDNAME > WANT
 echo ${BKDNAME}2 >> WANT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Check that bk status -a shows them both .....................$NL
-( cat $HERE/WANT1 WANT2; echo --- ) | bk _sort > WANT
-bk service status -a | bk _sort > GOT
+( cat $HERE/WANT1 WANT2; echo --- ) | bk sort > WANT
+bk service status -a | bk sort > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -278,8 +278,15 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N check http clone with bad -r from bkd .......................$NL
-bk clone $Q -rbad http://localhost:$PORT $HERE/junk2
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+bk clone $Q -rbad http://localhost:$PORT $HERE/junk2 2> err && {
+	echo should have failed
+	exit 1
+}
+grep -q "ERROR-rev bad doesn't exist" err || {
+	echo wrong error
+	cat err
+	exit 1
+}
 bk service uninstall $BKDNAME
 echo OK
 

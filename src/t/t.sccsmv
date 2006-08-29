@@ -180,17 +180,12 @@ test -f BitKeeper/deleted/SCCS/s..del-file3 || {
 }
 echo OK
 
-echo $N Check implied file lists for rm-ed files ....................$NL
+echo $N Explicitly get a removed file ...............................$NL
 mkdir C
 cd C
 echo foo > foo
 bk new $Q foo
 bk mv foo .del-foo
-bk co $Q
-if [ -f .del-foo ]; then echo Failed - file was gotten; exit 1; fi
-echo OK
-
-echo $N Explicitly get a removed file ...............................$NL
 bk co $Q .del-foo
 if [ ! -f .del-foo ]; then echo Failed to get file; exit 1; fi
 echo OK
@@ -271,7 +266,7 @@ echo $N Test check -ag ..............................................$NL
 echo y | bk commit $Q -ycset
 rm -f CCCC/SCCS/s.file6
 bk -r check -a 2>  ck.out
-grep -q 'Missing file (chk3) .*@bk_regression.bk'  ck.out || {
+grep -q 'Missing file (bk help chk3) .*@bk_regression.bk'  ck.out || {
 	echo Bad error message
 	cat ck.out
 	exit 1

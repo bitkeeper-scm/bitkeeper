@@ -1,54 +1,52 @@
 .so ../bk-macros
-.TH "bk revtool" 1 %E% "\*(BC" "\*(UM"
+.TH "bk revtool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 
 
 .\"    =============== BitKeeper Graphical History Browser ===============
 .SH NAME
 bk revtool \- \*(BK graphical history browser
 .SH SYNOPSIS
-.Bc bk revtool [
-.OPTreq -G gca
-\ 
-.OPTreq -l local
-\ 
-.OPTreq -r remote
-.B ] [
-.ARGc file
-.B ]
+.B bk revtool
+.[OPTreq] \-l local
+.[OPTreq] \-r remote
+.[ARG] file
 .br
-.Bc bk revtool [
-.OPTreq -r rev
-.Bc ] [
-.OPTreq \-/ string /
-.Bc ] [
-.OPTreq \-@ number
-.B ] 
-.Bc [
-.ARGc file
-.B ]
+.B bk revtool
+.[OPTreq] \-r rev
+.[OPTreq] \-/ string /
+.[OPTreq] + number
+.[ARG] file
 .SH DESCRIPTION
 .LP
-revtool is one of the primary tools used when doing code reviews,
+.B bk revtool
+is one of the primary tools used when doing code reviews,
 tracking down bugs, and when following the progress of a project.
 .LP
-revtool shows checkin comments and the graph history of a project
-or file.  Revtool may be used to view any revision controlled file,
+.B bk revtool
+shows checkin comments and the graph history of a project
+or file.
+.B bk revtool
+may be used to view any revision controlled file,
 including the ChangeSet file. When no filename is given, the entire
 package history is shown.
 .LP
-Revtool has an upper window which shows the graph of revision history
+.B bk revtool
+has an upper window which shows the graph of revision history
 and a lower window which can show either the checkin comments or
 differences between versions.
-
 .SH "HISTORY AND DIFFERENCES"
 .LP
-Upon startup, the bottom window displays the last month's revision
-history for the file or project. If a line number (-@<number>) 
-or search string (-/<string>/)
+Upon startup, the bottom window displays the recent revision
+history for the file or project. If a line number (\c
+.OPTreq + number \c
+) 
+or search string (\c
+.OPTreq \-/ string /\c
+)
 is specified on the command line along with a file name an annotated 
 listing of the filename will be displayed instead.
 .LP
-If a search string is given, the first occurence of the search string
+If a search string is given, the first occurrence of the search string
 on or after the given line number will be highlighted and the text
 will be scrolled so that it is in view; if no line number is given the
 search begins with the first line. If a line number is given without a
@@ -62,43 +60,45 @@ To see the differences between two revisions, left click the older
 revision and right click on the newer revision.  The differences
 will be displayed in the lower text window.  You can right click on
 another revision and diff again.  The default diff format is
-.B \-u
+.Q \-u
 (unified diffs).
 .LP
 To see the contents of a file, double click the left mouse button
 on the revision node in the graph.  The text shown for the file is
 annotated with the user name and the latest revision that modified
 the line. The file text is generated with the
-.B bk get \-ump
+.Q bk co \-Aur
 command.
 .LP
-Once the annotated file listing is shown, you can then click on a line
-of text to select the node in the graph where that line was
-changed. If you click and hold for half a second, a window will appear
-with the checkin comments associated with the selected line. This
-comment window will only appear when viewing a regular 
-file; it will not show up when viewing the ChangeSet file.
-.LP
-Double clicking on an annotated line brings up csettool and
-shows all of the other files that were modified in the same changeset
+Once the annotated file listing is shown, you can then click on
+the text to view the checkin comments associated with the chosen
+line. Double clicking on an annotated line brings up
+.B bk csettool
+and shows all of the other files that were modified in the same changeset
 as the selected line.
 .LP
-To get a side\-by\-side view of the differences, select the two revisions
-and click on the "Diff tool" button.
+To get a side-by-side view of the differences, select the two revisions
+and click on the
+.Q Diff tool
+button.
 .SH CHANGESETS
 .LP
 When operating on the ChangeSet file, the behavior is slightly
-different.  Double\-clicking a revision displays the revision history
+different.  Double-clicking a revision displays the revision history
 of the changeset and the history of the changes to each file contained
 in that changeset.
 .LP
 If you click left/right on a range of changesets, you will get the
 history of the entire range of changesets.  To see the history and the
-differences in detail, you can click on the "View changeset" button
-to bring up the changeset browser tool, csettool.  Typical usage is
-to browse the ChangeSet file with revtool and drill down using
-.B bk
-.BR csettool .
+differences in detail, you can click on the
+.Q View changeset
+button
+to bring up the changeset browser tool,
+.BR "bk csettool" .
+Typical usage is to browse the ChangeSet file with
+.B bk revtool
+and drill down using
+.BR "bk csettool" .
 .LP
 When viewing the ChangeSet file, nodes that have a tag
 associated with them will have a colored outline around them. 
@@ -107,7 +107,7 @@ See bk config-gui for more information.
 .LP
 The scrollbars can be used to orient the view of either window. 
 In addition, there are the following keyboard bindings:
-.TP 18
+.TP \fBControl-MouseWheel\fP
 .B LeftArrow
 Scroll graph window left 1 line.
 .tp
@@ -137,18 +137,22 @@ Scroll graph window to the first revision.
 .tp
 .B Shift\-End
 Scroll graph window to the last revision.
-.TP
+.tp
 .B UpArrow
-Scroll text window up 1 line (also Control\-y).
+Scroll text window up 1 line (also
+.BR Control-y ).
 .tp
 .B DownArrow
-Scroll text window down 1 line (also Control\-e).
+Scroll text window down 1 line (also
+.BR Control-e ).
 .tp
 .B PageUp
-Scroll text window up 1 screen (also Control\-b).
+Scroll text window up 1 screen (also
+.BR Control-b ).
 .tp
 .B PageDown
-Scroll text window down 1 screen (also Control\-f).
+Scroll text window down 1 screen (also
+.BR Control-f ).
 .tp
 .B Home
 Scroll text window to the top.
@@ -164,7 +168,7 @@ Scroll the graph left or right.
 .tp
 .B Control-MouseWheel
 Scroll the graph up or down.
-.TP
+.tp
 .B s
 Show the raw SCCS file.
 .tp
@@ -172,11 +176,13 @@ Show the raw SCCS file.
 Show an annotated listing of the selected node.
 .tp
 .B C
-Run csettool. If the selected node in the graph is for a changeset,
+Run
+.BR "bk csettool" .
+If the selected node in the graph is for a changeset,
 that changeset will be displayed. If the selected node is a file, the
 changeset that introduces the selected version of the file will be
 displayed. If no node is selected this will do nothing.
-.TP
+.tp
 .B c
 Show an annotated listing of all versions of the file.
 The data shown is the union of all lines ever added to the file
@@ -205,17 +211,16 @@ Reverse search.
 .B n
 Search for the next occurrence of the string.
 .tp
-.B Control\-q
-Quit revtool.
+.B Control-q
+Quit
+.BR "bk revtool" .
 .SH "SEE ALSO"
-.SA Basics-Overview 1
+.SA Basics-Overview
 .SA config-gui
 .SH CATEGORY
-.B GUI-tools
-.br
 .B Common
 .br
-.B File
+.B GUI-tools
 .br
 .B Repository
 .\" help://bk-sccstool.1

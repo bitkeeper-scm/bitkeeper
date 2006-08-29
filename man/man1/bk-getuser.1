@@ -1,17 +1,28 @@
 .so ../bk-macros
-.TH "bk getuser" 1 %E% "\*(BC" "\*(UM"
+.TH "bk getuser" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk getuser \- display user name
 .SH SYNOPSIS
 .B bk getuser
 .B [\-r]
 .SH DESCRIPTION
-This command displays \*(BK's idea of the caller's user name.
-With the 
+This command displays \*[BK]'s idea of the caller's user name.
+.OPTIONS
+.TP
 .B \-r
-option, ignores
-.IR $BK_USER .
+print the real user name, ignoring
+.V $BK_USER .
+.SH EXIT STATUS
+.LP
+.B bk getuser
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA gethost 1
+.SA gethost
 .SH CATEGORY
 .B Utility

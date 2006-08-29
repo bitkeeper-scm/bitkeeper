@@ -1,0 +1,24 @@
+echo $N Parallel lock tests talking to daemon work ..................$NL
+for i in 1 2 3 4 5 6 7 8 9 10 
+do	BK_DBGLOCKS=YES bk _locktest -n LOCK 1000 &
+done > OUT 2>&1
+wait
+grep -q O_EXCL OUT && {
+	cat OUT
+	exit 1
+}
+echo OK
+cat OUT
+exit 0
+
+echo $N Parallel lock tests .........................................$NL
+for i in 1 2 3 4 5 6 7 8 9 0 
+do	bk _locktest LOCK 100 &
+done > OUT 2>&1
+wait
+grep -q O_EXCL OUT && {
+	cat OUT
+	exit 1
+}
+echo OK
+cat OUT

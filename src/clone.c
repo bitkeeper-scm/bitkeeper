@@ -62,9 +62,13 @@ clone_main(int ac, char **av)
 			usage();
 	    	}
 	}
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	unless (av[optind]) usage();
 	localName2bkName(av[optind], av[optind]);
-	if (av[optind + 1]) localName2bkName(av[optind + 1], av[optind + 1]);
+	if (av[optind + 1]) {
+		if (av[optind + 2]) usage();
+		localName2bkName(av[optind + 1], av[optind + 1]);
+	}
 
 	/*
 	 * Trigger note: it is meaningless to have a pre clone trigger
@@ -183,11 +187,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 			(local ? local : "current directory"), strerror(errno));
 		usage();
 	}
-	if (opts.rev) {
-		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	if (bkd_connect(r, opts.gzip, !opts.quiet)) goto done;
 	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
 
@@ -221,7 +221,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
 	}
-	if (get_ok(r, buf, !opts.quiet)) {
+	if (get_ok(r, buf, 1)) {
 		disconnect(r, 2);
 		goto done;
 	}
@@ -338,7 +338,7 @@ clone2(opts opts, remote *r)
 		unless (opts.quiet) {
 			fprintf(stderr, "Running consistency check ...\n");
 		}
-		if (strieq("yes", user_preference("partial_check"))) {
+		if (proj_configbool(0, "partial_check")) {
 			rc = run_check(checkfiles, 1, opts.quiet);
 		} else {
 			rc = run_check(0, 1, opts.quiet);
@@ -352,7 +352,7 @@ clone2(opts opts, remote *r)
 	unlink(checkfiles);
 	free(checkfiles);
 
-	p = user_preference("checkout");
+	p = proj_configval(0, "checkout");
 	if (strieq(p, "edit")) {
 		unless (opts.quiet) fprintf(stderr, "Checking out files...\n");
 		sys("bk", "-Ur", "edit", "-Tq", SYS);
@@ -520,29 +520,35 @@ void
 rmEmptyDirs(int quiet)
 {
 	FILE	*f;
-	int	n;
-	char	buf[MAXPATH], *p;
+	int	i;
+	char	*p, **dirs = 0;
+	char	buf[MAXPATH];
 
 	unless (quiet) {
 		fprintf(stderr, "Removing any directories left empty ...\n");
 	}
-	do {
-		n = 0;
-		f = popen("bk sfiles -D", "r");
-		while (fnext(buf, f)) {
-			chop(buf);
-			p = strchr(buf, '/');
-			if (p) *p = 0;
+	f = popen("bk sfiles -D", "r");
+	while (fnext(buf, f)) {
+		chomp(buf);
+		if (p = strchr(buf, '/')) {
+			*p = 0;
 			/* skip the directories under <root>/BitKeeper */
 			if (streq("BitKeeper", buf)) continue;
-			if (p) *p = '/';
-			strcat(buf, "/SCCS");
-			rmdir(buf);
-			*strrchr(buf, '/') = 0;
-			if (rmdir(buf) == 0) n++;
+			*p = '/';
 		}
-		pclose(f);
-	} while (n);
+		/* remove any SCCS dir */
+		p = buf + strlen(buf);
+		strcpy(p, "/SCCS");
+		rmdir(buf);
+		*p = 0;
+		dirs = addLine(dirs, strdup(buf));
+	}
+	pclose(f);
+	reverseLines(dirs);	/* nested dirs first */
+	EACH(dirs) {
+		if (emptyDir(dirs[i])) rmdir(dirs[i]);
+	}
+	freeLines(dirs, free);
 }
 
 /*
@@ -564,7 +570,6 @@ lclone(opts opts, remote *r, char *to)
 	char	from[MAXPATH];
 	char	dest[MAXPATH];
 	char	buf[MAXPATH];
-	char	skip[MAXPATH];
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -613,7 +618,13 @@ out2:		repository_rdunlock(0);
 	unless (to) to = basenm(r->path);
 	if (exists(to)) {
 		fprintf(stderr, "clone: %s exists\n", to);
-out:		repository_wrunlock(0);
+out:
+		/*
+		 * This could be a wrunlock() because as of the writing of this
+		 * comment there wasn't a way to get here after going through a
+		 * trigger that would have downgraded.  But just in case...
+		 */
+		repository_unlock(0);
 		chdir(from);
 		repository_rdunlock(0);
 		remote_free(r);
@@ -638,12 +649,6 @@ out:		repository_wrunlock(0);
 	setlevel(level);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		unless (streq(buf, ".")) {
-			sprintf(skip, "%s/%s/%s", from, buf, BKROOT);
-			if (exists(skip)) continue;
-		}
-		sprintf(skip, "%s/%s", from, buf);
-		if(sfiles_skipdir(skip)) continue;
 		unless (opts.quiet || streq(".", buf)) {
 			fprintf(stderr, "Linking %s\n", buf);
 		}
@@ -689,7 +694,12 @@ out:		repository_wrunlock(0);
 		goto out;
 	}
 	in_trigger("BK_STATUS=OK", opts.rev, from, fromid);
-	repository_wrunlock(0);
+
+	/*
+	 * The repo may be readlocked (if there were triggers then the
+	 * lock got downgraded to a readlock) or writelocked (no triggers).
+	 */
+	repository_unlock(0);
 	free(fromid);
 	chdir(from);
 
@@ -719,11 +729,7 @@ out_trigger(char *status, char *rev, char *when)
 	}
 	safe_putenv("BK_LICENSE=%s", proj_bkl(0));
 	if (status) putenv(status);
-	if (rev) {
-		safe_putenv("BK_CSETS=1.0..%s", rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	putenv("_BK_LCLONE=YES");
 	return (trigger("remote clone", when));
 }
@@ -741,11 +747,7 @@ in_trigger(char *status, char *rev, char *root, char *repoid)
 	safe_putenv("BKD_REALHOST=%s", sccs_realhost());
 	safe_putenv("BKD_PLATFORM=%s", platform());
 	if (status) putenv(status);
-	if (rev) {
-		safe_putenv("BK_CSETS=1.0..%s", rev);
-	} else {
-		putenv("BK_CSETS=1.0..");
-	}
+	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	if (repoid) safe_putenv("BKD_REPO_ID=%s", repoid);
 	putenv("_BK_LCLONE=YES");
 	return (trigger("clone", "post"));
@@ -931,7 +933,7 @@ relink(char *a, char *b)
 		fprintf(stderr, "relink: can't cross mount points\n");
 		return (-1);
 	}
-	if (sa.st_ino == sb.st_ino) return (2);
+	if (hardlinked(a, b)) return (2);
 	if (access(b, R_OK)) return (0);	/* I can't read it */
 	if (sameFiles(a, b)) {
 		char	buf[MAXPATH];

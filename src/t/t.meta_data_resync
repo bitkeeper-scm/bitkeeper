@@ -175,7 +175,9 @@ echo OK
 
 echo $N Check flags conflict ........................................$NL
 cd $HERE
-tar cf repo.tar project copy
+# Running over NFS gets this whine: 
+# tar: copy/BitKeeper/etc/csets-in: file changed as we read it
+tar cf repo.tar project copy 2> /dev/null
 cd $HERE/project/src
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 foo.c
 bk commit $S -yperm2

@@ -178,7 +178,7 @@ echo $N Create a changeset in compat mode with a tag ................$NL
 cd $HERE/project/src
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
-bk delta $Q -ywhatever 'F!O#O$ B%A^R&RR(R)RR'
+bk delta $Q -fywhatever 'F!O#O$ B%A^R&RR(R)RR'
 _BK_NO_TAG_GRAPH=YES bk commit $Q -yopull_cset -S'NOT IN TAG GRAPH'
 cd ..
 grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
@@ -351,7 +351,7 @@ echo OK
 echo $N Test propogation of a tag added with a commit ...............$NL
 cd $HERE/tagpush
 bk edit $Q file
-bk delta -ywww $Q file
+bk delta -fywww $Q file
 bk commit $Q -ywhatever -STAG_NO_2
 cd $HERE/tagchild
 bk pull $Q || {
@@ -375,7 +375,7 @@ echo OK
 echo $N Make sure we pick up tags from SCCS/t.ChangeSet .............$NL
 cd $HERE/tagpush
 bk edit $Q file
-bk delta -ywww $Q file
+bk delta -fywww $Q file
 echo 't.tag' > SCCS/t.ChangeSet
 echo 't.tag2' >> SCCS/t.ChangeSet
 echo 'I am a tag with spaces' >> SCCS/t.ChangeSet
@@ -403,7 +403,7 @@ echo OK
 echo $N Test propogation of a tag added with a commit, pick remote ..$NL
 cd $HERE/tagpush
 bk edit $Q file
-bk delta -ywww $Q file
+bk delta -fywww $Q file
 bk commit $Q -ywhatever -Ssame_tag
 cd $HERE/tagchild
 bk pull $Q || {
@@ -415,12 +415,14 @@ for  i in 1 2 3
 do	for dir in tagpush tagchild
 	do	cd $HERE/$dir
 		bk edit $Q file
-		bk delta -ywww $Q file
+		bk delta -fywww $Q file
 		bk commit $Q -ywhatever -Ssame_tag
 	done
 done
 cd $HERE
-tar cf tagchild.TAR tagchild
+# Running over NFS gets this whine: 
+# tar: tagchild/BitKeeper/etc/csets-in: file changed as we read it
+tar cf tagchild.TAR tagchild 2>/dev/null
 cd $HERE/tagchild
 #  ( echo ""
 #   echo x
@@ -428,7 +430,7 @@ cd $HERE/tagchild
 #   echo t
 #   echo q
 #   ) | bk pull
-echo r | BK_FORCE_RESOLVE_RERUN=Y bk pull $Q 2>/dev/null
+echo r | bk pull $Q 2>/dev/null
 test -d RESYNC && {
 	echo failed to resolve
 	exit 1
@@ -446,7 +448,7 @@ cd $HERE
 rm -rf tagchild
 tar xmf tagchild.TAR
 cd $HERE/tagchild
-echo m | BK_FORCE_RESOLVE_RERUN=Y bk pull $Q 2>/dev/null
+echo m | bk pull $Q 2>/dev/null
 test -d RESYNC && {
 	echo failed to resolve
 	exit 1
@@ -496,17 +498,17 @@ cd $HERE
 bk clone $Q project mergemain
 cd mergemain
 bk edit $Q foo
-bk delta $Q -yfoo foo
+bk delta $Q -fyfoo foo
 bk commit $Q -Sfoo -yfoo
 cd $HERE
 bk clone $Q mergemain mergebranch
 cd mergemain
 bk edit $Q foo
-bk delta $Q -yfoo foo
+bk delta $Q -fyfoo foo
 bk commit $Q -Sbar -yfoo
 cd $HERE/mergebranch
 bk edit $Q foo
-bk delta $Q -yfoo foo
+bk delta $Q -fyfoo foo
 bk commit $Q -Sfoo -yfoo
 bk pull $Q $HERE/mergemain
 echo OK
@@ -514,7 +516,7 @@ echo OK
 echo $N Merge tag where history contains same name on L1 branch .....$NL
 cd $HERE/mergemain
 bk edit $Q foo
-bk delta $Q -yfoo foo
+bk delta $Q -fyfoo foo
 bk commit $Q -Sbaz -yfoo
 echo q | bk pull $Q $HERE/mergebranch > OUT 2>&1 || {
 	echo Failed
@@ -547,7 +549,7 @@ exit 0 if ENV['BK_EVENT'] != "incoming push"
 exit 0 if ENV['BK_STATUS'] != "OK"
 
 tags = {}
-IO.popen("bk changes -d'$if(:TAG:){$each(:TAG:){(:TAG:)\n}}' - " +
+IO.popen("bk changes -ad'$if(:TAG:){$each(:TAG:){(:TAG:)\n}}' - " +
 	 "< #{ENV['BK_CSETLIST']}") {|f|
 	f.each {|tag| tags[tag.chomp] = 1 }
 }
@@ -604,7 +606,7 @@ bk commit $Q -yfoo
 bk tag $Q FOO
 bk tag $Q -r1.1 FOO
 bk edit $Q foo
-bk delta $Q -yfoo foo
+bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
 bk tag $Q FOO
 cd ../twotip

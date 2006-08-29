@@ -1,42 +1,51 @@
 #ifndef	_RANGE_H
 #define	_RANGE_H
 
-void	rangeReset(sccs *sc);
-int	rangeAdd(sccs *sc, char *rev, char *date, int empty);
-int	rangeConnect(sccs *s);
-void	rangeCset(sccs *s, delta *d);
-void	rangeSetExpand(sccs *s);
-int	rangeList(sccs *sc, char *rev);
-int	rangeProcess(char *me, sccs *s, int expand, int noisy, int empty,
-		     int *things, int rd, char **r, char **d);
-time_t	rangeCutOff(char *spec);
-int	closedRange(char *s);
+typedef struct range RANGE;
+struct	range {
+	char	*rstart, *rstop; /* endpoints from command line */
+	u32	isdate:1;	 /* contains date range */
+	u32	isrev:1;	 /* contains rev range */
+};
 
-#define	RANGE_DECL	int	things = 0, rd = 1; \
-			char	*r[2], *d[2]; \
-			\
-			rd--; /* lint - I want it to be 0 */ \
-			r[0] = r[1] = d[0] = d[1] = 0
+#define RANGE_ENDPOINTS	0x10	/* just return s->rstart s->rstop */
+#define	RANGE_SET	0x20	/* return S_SET */
 
-#define	RANGE_OPTS(date, rev) \
-	case date: \
-	    if (things == 2) goto usage; \
-	    d[rd++] = optarg; \
-	    things += tokens(optarg); \
-	    break; \
-	case rev: \
-	    if (things == 2) goto usage; \
-	    r[rd++] = notnull(optarg); \
-	    things += tokens(notnull(optarg)); \
-	    break
+/*
+ *  1.1 -- 1.2 -- 1.3 -- 1.4 -- 1.5
+ *	\                      /
+ *	 \                    /
+ *	  - 1.1.1.1----------/
+ *
+ * With RANGE_SET:
+ *
+ *	-r1.3..1.5
+ *	     s->state |= S_SET
+ *	     marks 1.1.1.1,1.4,1.5 with D_SET
+ *	     sets s->rstart = 1.1.1.1
+ *	     sets s->rstop  = 1.5
+ *
+ *     (rstart/rstop are just the first/last serials where D_SET might be set)
+ *
+ * With RANGE_ENDPOINTS:
+ *
+ *	-r1.3..1.5
+ *	     sets s->rstart = 1.3
+ *	     sets s->rstop = 1.5
+ */
 
-#define	RANGE(me, s, expand, noisy) \
-	if (rangeProcess(me, s, expand, noisy, 0, &things, rd, r, d)) goto next;
+int	range_process(char *me, sccs *s, u32 flags, RANGE *rargs);
+int	range_addArg(RANGE *rargs, char *arg, int isdate);
+
+void	range_cset(sccs *s, delta *d);
+time_t	range_cutoff(char *spec);
+void	range_markMeta(sccs *s);
+int	range_gone(sccs *s, delta *d, u32 dflags);
+
+int	range_walkrevs(sccs *s, delta *from, delta *to,
+    int (*fcn)(sccs *s, delta *d, void *token), void *token);
+int	walkrevs_setFlags(sccs *s, delta *d, void *token);
+int	walkrevs_printkey(sccs *s, delta *d, void *token);
+int	walkrevs_printmd5key(sccs *s, delta *d, void *token);
 
 #endif
-
-#define	RANGE_ERR(me, s, expand, noisy, err) \
-	if (rangeProcess(me, s, expand, noisy, 0, &things, rd, r, d)) { \
-		err = 1; \
-		goto next; \
-	}

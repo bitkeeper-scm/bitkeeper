@@ -1,19 +1,31 @@
 .so ../bk-macros
-.TH "bk sane" 1 %E% "\*(BC" "\*(UM"
+.TH "bk sane" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk sane \- check for various \*(BK requirements
+bk sane \- check for various \*[BK] requirements
 .SH SYNOPSIS
 .B bk sane
 .SH DESCRIPTION
 Run this command from within a repository to check whether the repository
-is configured correctly.  Sane checks for a valid hostname, username,
-permissions on various metadata directories, and the ability to lock
+is configured correctly.
+.B bk\ sane
+checks for a valid hostname, username,
+and permissions on various metadata directories, and the ability to lock
 the idcache.  If everything is sane, the command exits with a 0 exit
 status and no output.  If there are problems, a detailed error message
 is displayed on stderr and a non-zero exit status is returned.
 .LP
-When submitting bugreports, please include the output of this command.
+When submitting bug reports, please include the output of this command.
+.SH EXIT STATUS
+.LP
+.B bk sane
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
 .SH "SEE ALSO"
-.SA sendbug 1
+.SA sendbug
 .SH CATEGORY
 .B Admin

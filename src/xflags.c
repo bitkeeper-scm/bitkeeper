@@ -4,8 +4,6 @@
 
 private int xflagsDefault(sccs *s, int cset, int what);
 private int xflags(sccs *s, delta *d, int what);
-private void pflags(u32 flags);
-private int a2xflag(char *flag);
 
 /*
  * xflags - walk the graph looking for xflag updates and make sure
@@ -41,7 +39,7 @@ xflags_main(int ac, char **av)
 		s->state |= S_READ_ONLY;
 		ret |= xflagsDefault(s, CSET(s), what);
 		ret |= xflags(s, s->tree, what);
-		if (!(what & XF_DRYRUN) && !(s->state & S_READ_ONLY)) {
+		unless ((what & XF_DRYRUN) || (s->state & S_READ_ONLY)) {
 		    	sccs_newchksum(s);
 		}
 next:		sccs_free(s);
@@ -88,15 +86,10 @@ xflagsDefault(sccs *s, int cset, int what)
 private int
 xflags(sccs *s, delta *d, int what)
 {
-	char	*t;
 	int	ret = 0;
 
 	unless (d) return (0);
-	if (!d->added && !d->deleted && (d->type == 'D') &&
-	    d->comments && (t = d->comments[1]) &&
-	    (strneq(t, "Turn on ", 8) || strneq(t, "Turn off ", 9))) {
-	    	ret = checkXflags(s, d, what);
-	}
+	ret = checkXflags(s, d, what);
 	ret |= xflags(s, d->kid, what);
 	ret |= xflags(s, d->siblings, what);
 	return (ret);
@@ -108,6 +101,7 @@ checkXflags(sccs *s, delta *d, int what)
 	char	*t, *f;
 	u32	old, new, want, added = 0, deleted = 0, *p;
 	int	i;
+	char	key[32];
 
 	if (d == s->tree) {
 		unless ((d->xflags & X_REQUIRED) == X_REQUIRED) {
@@ -115,7 +109,7 @@ checkXflags(sccs *s, delta *d, int what)
 			fprintf(stderr,
 			    "%s: missing required flag[s]: ", s->gfile);
 			want = ~(d->xflags & X_REQUIRED) & X_REQUIRED;
-			pflags(want);
+			fputs(xflags2a(want), stderr);
 			fprintf(stderr, "\n");
 			return (1);
 		}
@@ -125,13 +119,15 @@ checkXflags(sccs *s, delta *d, int what)
 		if (strneq(d->comments[i], "Turn on ", 8)) {
 			t = &(d->comments[i][8]);
 			p = &added;
-		} else {
+		} else if (strneq(d->comments[i], "Turn off ", 9)) {
 			t = &(d->comments[i][9]);
 			p = &deleted;
+		} else {
+			continue;
 		}
 		f = t;
-		unless (t = strchr(f, ' ')) return (0);
-		unless (streq(t, " flag")) return (0);
+		unless (t = strchr(f, ' ')) continue;
+		unless (streq(t, " flag")) continue;
 		*t = 0; *p |= a2xflag(f); *t = ' ';
 	}
 	assert(d->parent);
@@ -140,17 +136,40 @@ checkXflags(sccs *s, delta *d, int what)
 	want = old | added;
 	want &= ~deleted;
 	if (new == want) return (0);
+	/*
+	 * We screwed lines.c up, the fix is to add some comments to the
+	 * 1.1 delta like so: 
+	 * Turn off EOLN_NATIVE flag
+	 * Turn on EXPAND1 flag
+	 * Turn on SCCS flag
+	 * but that's too much of a pain.
+	 */
+	if (streq(s->tree->sdate, "97/05/18 16:29:28")) {
+		sccs_md5delta(s, s->tree, key);
+		if (streq("337f90d8qZwQGPzUrQ-3E6KGSH4k4g", key)) return (0);
+	}
+
+	/* just in case this blows up in the field */
+	if (getenv("_BK_NO_XFLAGS_CHECK")) return (0);
+
+	// fprintf(stderr, "\ndelta = %s, %s\n", d->rev, d->comments[1]);
+	// fprintf(stderr, "old\t"); pflags(old);
+	// fprintf(stderr, "\nnew\t"); pflags(new);
+	// fprintf(stderr, "\nwant\t"); pflags(want);
+	// fprintf(stderr, "\nadd\t"); pflags(added);
+	// fprintf(stderr, "\ndel\t"); pflags(deleted);
+	// fprintf(stderr, "\n");
 	if (what & XF_STATUS) return (1);
 	if (what & XF_DRYRUN) {
 		fprintf(stderr, "%s|%s ", s->gfile, d->rev);
 		if (new & ~want) {
 			fprintf(stderr, "should not have ");
-			pflags(new & ~want);
+			fputs(xflags2a(new & ~want), stderr);
 		}
 		if (want & ~new) {
 			if (new & ~want) fprintf(stderr, ", ");
 			fprintf(stderr, "should have ");
-			pflags(want & ~new);
+			fputs(xflags2a(want & ~new), stderr);
 		}
 		fprintf(stderr, " flag\n");
 		return (1);
@@ -161,56 +180,65 @@ checkXflags(sccs *s, delta *d, int what)
 	return (1);
 }
 
-/* XXX - this should be shared with the prs dspec code */
-private void
-pflags(u32 flags)
+char *
+xflags2a(u32 flags)
 {
-	int	comma = 0;
+	static	char	*ret;
+	char	**list = 0;
 
-#define	fs(s)	fputs(s, stderr)
+	if (ret) free(ret);
+
 	if (flags & X_BITKEEPER) {
-		if (comma) fs(","); fs("BITKEEPER"); comma = 1;
+		list = addLine(list, "BITKEEPER");
 	}
 	if (flags & X_RCS) {
-		if (comma) fs(","); fs("RCS"); comma = 1;
+		list = addLine(list, "RCS");
 	}
 	if (flags & X_YEAR4) {
-		if (comma) fs(","); fs("YEAR4"); comma = 1;
+		list = addLine(list, "YEAR4");
 	}
 #ifdef X_SHELL
 	if (flags & X_SHELL) {
-		if (comma) fs(","); fs("SHELL"); comma = 1;
+		list = addLine(list, "SHELL");
 	}
 #endif
 	if (flags & X_EXPAND1) {
-		if (comma) fs(","); fs("EXPAND1"); comma = 1;
+		list = addLine(list, "EXPAND1");
 	}
 	if (flags & X_CSETMARKED) {
-		if (comma) fs(","); fs("CSETMARKED"); comma = 1;
+		list = addLine(list, "CSETMARKED");
 	}
 	if (flags & X_HASH) {
-		if (comma) fs(","); fs("HASH"); comma = 1;
+		list = addLine(list, "HASH");
 	}
 	if (flags & X_SCCS) {
-		if (comma) fs(","); fs("SCCS"); comma = 1;
+		list = addLine(list, "SCCS");
 	}
 	if (flags & X_EOLN_NATIVE) {
-		if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
+		list = addLine(list, "EOLN_NATIVE");
+	}
+	if (flags & X_EOLN_WINDOWS) {
+		list = addLine(list, "EOLN_WINDOWS");
 	}
 	if (flags & X_LONGKEY) {
-		if (comma) fs(","); fs("LONGKEY"); comma = 1;
+		list = addLine(list, "LONGKEY");
+	}
+	if (flags & X_KV) {
+		list = addLine(list, "KV");
 	}
 	if (flags & X_NOMERGE) {
-		if (comma) fs(","); fs("NOMERGE"); comma = 1;
+		list = addLine(list, "NOMERGE");
 	}
 	if (flags & X_MONOTONIC) {
-		if (comma) fs(","); fs("MONOTONIC"); comma = 1;
+		list = addLine(list, "MONOTONIC");
 	}
-	unless (comma) fs("<NONE>");
+	ret = joinLines(",", list);
+	freeLines(list, 0);
+	return (ret);
 }
 
 
-private int
+u32
 a2xflag(char *flag)
 {
 	if (streq(flag, "BITKEEPER")) return (X_BITKEEPER);
@@ -224,6 +252,8 @@ a2xflag(char *flag)
 	if (streq(flag, "HASH")) return (X_HASH);
 	if (streq(flag, "SCCS")) return (X_SCCS);
 	if (streq(flag, "EOLN_NATIVE")) return (X_EOLN_NATIVE);
+	if (streq(flag, "EOLN_UNIX")) return (X_EOLN_UNIX);
+	if (streq(flag, "EOLN_WINDOWS")) return (X_EOLN_WINDOWS);
 	if (streq(flag, "LONGKEY")) return (X_LONGKEY);
 	if (streq(flag, "NOMERGE")) return (X_NOMERGE);
 	if (streq(flag, "MONOTONIC")) return (X_MONOTONIC);

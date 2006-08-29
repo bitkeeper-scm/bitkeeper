@@ -1,18 +1,23 @@
 .so ../bk-macros
-.TH "bk sendbug" 1 %E% "\*(BC" "\*(UM"
+.TH "bk sendbug" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk sendbug \- file a bug report
 .SH SYNOPSIS
-.Bc bk sendbug [\-t] [
-.ARG email@host ]
+.B bk sendbug
+.[B] \-T
+.[ARG] email@host
 .SH DESCRIPTION
 .LP
 File a bug or request for enhancement (RFE) against a project.
 .LP
 The default behavior is to display the graphical version of sendbug
-when the DISPLAY environment variable is set (UNIX) or if it is
+when the
+.V DISPLAY
+environment variable is set (\*[UN]) or if it is
 run on a Windows operating system.  To
-use a text editor rather than the gui, use the -t option.
+use a text editor rather than the GUI, use the
+.Q \-T
+option.
 .LP
 If email address is specified, the bug will be sent to that email address.
 .LP
@@ -20,15 +25,18 @@ This command should be used to file a bug report rather then sending
 mail to one of the developers.
 .LP
 The \*(BK bug database is online at
-.B http://www.bitkeeper.com/bugs
+.BR http://db.bitkeeper.com .
 .LP
 The bug database is also available via email, consult the web page for
 more information.
 .SH OPTIONS
 .TP
-.B \-t
+.B \-T
 Use a text editor rather than the default graphical tool to fill out a bug
 report.
+.SH ENVIRONMENT
+.V REPLYTO
+submitter's email address
 .SH EXAMPLE
 An example text template looks like this:
 .sp
@@ -43,7 +51,7 @@ Priority:
         [5 - fix whenever, 1 - fix RIGHT NOW]
 
 Program:
-        [cset, co, delta, etc.  If you know which caused the problem]
+        [cset, co, ci, etc.  If you know which caused the problem]
 
 Release:
         beta10-pre1

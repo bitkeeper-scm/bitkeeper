@@ -62,7 +62,11 @@ usage:			system("bk help -s sccs2bk");
 
 	unless (csetkey) goto usage;
 
-	putenv("BK_CONFIG=checkout:none");
+	if (name = getenv("BK_CONFIG")) {
+		safe_putenv("BK_CONFIG=%s; checkout:none!", name);
+	} else {
+		putenv("BK_CONFIG=checkout:none!");
+	}
 	for (name = sfileFirst("sccs2bk", &av[optind], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
@@ -196,9 +200,9 @@ regen(sccs *s, int verbose, char *key)
 	/* Teamware uses same uuencode flag, so read it */
 	if (mkinit(s, s->tree, tmp, key) || (sget->encoding & E_UUENCODE)) {
 		sys("bk", "delta",
-		    "-q", "-Ebinary", "-RiISCCS/.init", gfile, SYS);
+		    "-fq", "-Ebinary", "-RiISCCS/.init", gfile, SYS);
 	} else {
-		sys("bk", "delta", "-q", "-RiISCCS/.init", gfile, SYS);
+		sys("bk", "delta", "-fq", "-RiISCCS/.init", gfile, SYS);
 	}
 	for (i = 0; i < n; ++i) {
 		d = table[i];
@@ -253,7 +257,7 @@ regen(sccs *s, int verbose, char *key)
 			exit (1);
 		}
 		free(a1);
-		sys("bk", "delta", "-q", "-RISCCS/.init", gfile, SYS);
+		sys("bk", "delta", "-fq", "-RISCCS/.init", gfile, SYS);
 	}
 
         s2 = sccs_init(s->sfile, 0);

@@ -19,10 +19,10 @@ echo foo > f
 BK_USER=adam bk delta $Q -i -y'Initial checkin' f
 BK_USER=adam bk commit $Q -y'Initial checkin' || exit 1
 bk edit $Q f
-BK_USER=second bk delta $Q -y'Second checkin' f
+BK_USER=second bk delta $Q -fy'Second checkin' f
 BK_USER=second bk commit $Q -Ssecond -y'Second checkin' || exit 1
 bk edit $Q f
-BK_USER=third bk delta $Q -y'Third checkin' f
+BK_USER=third bk delta $Q -fy'Third checkin' f
 BK_USER=third bk commit $Q -Sthird -y'Third checkin' || exit 1
 echo OK
 
@@ -42,10 +42,7 @@ do
 	}
 done
 bk changes -/second/i > YYY
-cmp -s XXX YYY || {
-	echo Failed to match when ignoring case
-	exit 1
-}
+checkfiles XXX YYY
 echo OK
 
 echo $N Check that -/regex/ works ...................................$NL
@@ -138,11 +135,7 @@ cat > WANT <<EOF
 1.0
 EOF
 bk changes -nd:I: > XXX
-cmp -s XXX WANT || {
-	echo backward dpsec failed
-	cat XXX
-	exit 1
-}
+checkfiles XXX WANT
 
 cat > WANT <<EOF
 1.0
@@ -152,49 +145,29 @@ cat > WANT <<EOF
 1.4
 EOF
 bk changes -fnd:I: > XXX
-cmp -s XXX WANT || {
-	echo forward dpsec failed
-	cat XXX
-	exit 1
-}
+checkfiles XXX WANT
 echo OK
 
 echo $N Check that keys work . ......................................$NL
-bk prs -hr1.0.. -nd:KEY: ChangeSet | bk _sort > WANT
-bk changes -k | bk _sort > GOT
-cmp -s WANT GOT || {
-	echo wrong keys
-	diff WANT GOT
-	exit 1
-}
+bk prs -r.. -hnd:KEY: ChangeSet | bk sort > WANT
+bk changes -k | bk sort > GOT
+checkfiles WANT GOT
 echo OK
 
 echo $N Check that user restrictions work ...........................$NL
 bk changes -usecond > GOT
 bk changes -rsecond > WANT
-cmp -s WANT GOT || {
-	echo wrong answer
-	diff WANT GOT
-	exit 1
-}
+checkfiles WANT GOT
 bk changes -Usecond > GOT
 bk changes -r1.4,1.2,1.1,1.0 > WANT
-cmp -s WANT GOT || {
-	echo wrong answer
-	diff WANT GOT
-	exit 1
-}
+checkfiles WANT GOT
 echo OK
 
 echo $N Check tag listing ...........................................$NL
 bk changes -t > GOT
 bk changes -rthird > WANT
 bk changes -rsecond >> WANT
-cmp -s WANT GOT || {
-	echo wrong answer
-	diff WANT GOT
-	exit 1
-}
+checkfiles WANT GOT
 echo OK
 
 echo $N Check remote/local listings .................................$NL
@@ -208,84 +181,51 @@ cd $HERE/clone
 echo hi mom > mommy
 bk new $Q mommy
 BK_USER=jane bk commit $Q -yclone
-bk changes -L -nd':I: :P: :C:' > GOT
+bk changes -L -qnd':I: :P: :C:' > GOT
 echo 1.5 jane clone > WANT
-cmp -s WANT GOT || {
-	echo local only listing failed, got 
-	cat GOT
-	exit 1
-}
-bk changes -R -nd':I: :P: :C:' > GOT
+checkfiles WANT GOT
+bk changes -R -qnd':I: :P: :C:' > GOT
 echo 1.5 joe project > WANT
-cmp -s WANT GOT || {
-	echo remote only listing failed, got 
-	cat GOT
-	exit 1
-}
+checkfiles WANT GOT
 # cut out the newline
-bk changes -L -d':I: :P: :C:' > GOT
+bk changes -L -qd':I: :P: :C:' > GOT
 echon 1.5 jane clone > WANT
-cmp -s WANT GOT || {
-	echo local only listing failed, got 
-	cat GOT
-	exit 1
-}
-bk changes -R -d':I: :P: :C:' > GOT
+checkfiles WANT GOT
+bk changes -R -qd':I: :P: :C:' > GOT
 echo 1.5 joe project > WANT
-cmp -s WANT GOT || {
-	echo remote only listing failed, got 
-	cat GOT
-	exit 1
-}
+checkfiles WANT GOT
 echo OK
 
 echo $N Check remote dspec listing ..................................$NL
 cd $HERE/clone
-bk changes -nd':I: :P: :C:' > WANT
+bk changes -qnd':I: :P: :C:' > WANT
 cd $HERE
-bk changes -nd':I: :P: :C:' $HERE/clone > GOT
-cmp -s clone/WANT GOT || {
-	echo wrong answer
-	diff WANT GOT
-	exit 1
-}
+bk changes -qnd':I: :P: :C:' $HERE/clone > GOT
+checkfiles clone/WANT GOT
 echo OK
 
 echo $N Check remote search combined with dspec .....................$NL
 # The /dev/null is because we exit so fast that the bkd can't update the
 # logs, at least that is my theory.
 cd $HERE/clone
-bk changes -/Second/ -nd':I: :P: :C:' ../project > GOT 2>/dev/null
+bk changes -/Second/ -qnd':I: :P: :C:' ../project > GOT 2>/dev/null
 echo 1.3 second Second checkin > WANT
-cmp -s WANT GOT || {
-	echo remote only listing failed, got 
-	cat GOT
-	exit 1
-}
+checkfiles WANT GOT
 echo OK
 
 echo $N Check remote key listing ....................................$NL
-bk prs -hr1.0.. -nd:KEY: ChangeSet | bk _sort > WANT
+bk prs -r.. -h -nd:KEY: ChangeSet | bk sort > WANT
 cd $HERE
-bk changes -k $HERE/clone | bk _sort > GOT
-cmp -s clone/WANT GOT || {
-	echo wrong keys
-	diff WANT GOT
-	diff clone/WANT GOT
-	exit 1
-}
+bk changes -k $HERE/clone | bk sort > GOT
+checkfiles clone/WANT GOT
 echo OK
 
 echo $N Check remote verbose listing ................................$NL
 cd $HERE/clone
-bk changes -vr+ | bk undos > WANT
+bk changes -qvr+ | bk undos > WANT
 cd $HERE
-bk changes -vr+ $HERE/clone > GOT
-cmp -s clone/WANT GOT || {
-	echo wrong answer
-	diff clone/WANT GOT
-	exit 1
-}
+bk changes -qvr+ $HERE/clone > GOT
+checkfiles clone/WANT GOT
 echo OK
 
 echo $N Check bk changes -R url1 url2 ...............................$NL
@@ -293,8 +233,8 @@ cd $HERE
 bk clone $Q  clone clone2
 cd $HERE/project
 bk changes -R -k $HERE/clone > keylist1
-bk changes -R -D -k $HERE/clone $HERE/clone2 > keylist2
-cmp -s keylist1 keylist2 || { echo failed; exit 1; }
+bk changes -R -k $HERE/clone $HERE/clone2 > keylist2
+checkfiles keylist1 keylist2
 cd $HERE/clone2
 bk lock -U
 bk edit $Q f
@@ -302,12 +242,12 @@ echo "new" >> f
 bk delta $Q -ynew f
 bk commit $Q -ynew
 cd $HERE/project
-bk changes -R -D -k $HERE/clone $HERE/clone2 > keylist2
-cmp -s keylist1 keylist2 && { echo failed; exit 1; }
+bk changes -R -k $HERE/clone $HERE/clone2 > keylist2
+cmp -s keylist1 keylist2 && { echo new key did not appear; exit 1; }
 bk prs -nhr+ -d':KEY:' $HERE/clone2/ChangeSet >> keylist1
-bk _sort < keylist1 > keylist1_sorted
-bk _sort < keylist2 > keylist2_sorted
-cmp -s keylist1_sorted keylist2_sorted || { echo failed; exit 1; }
+bk sort < keylist1 > keylist1sorted
+bk sort < keylist2 > keylist2sorted
+checkfiles keylist1sorted keylist2sorted
 echo OK
 
 echo $N Check bk changes -R - .......................................$NL
@@ -316,18 +256,19 @@ bk changes -k -r+ > $HERE/K1
 cd $HERE/clone2
 bk changes -k -r+ > $HERE/K2
 cd $HERE/project
-echo $HERE/clone | bk changes -D -R -k - > GOT
+echo $HERE/clone | bk changes -R -k - > GOT
 checkfiles GOT $HERE/K1
 ( echo $HERE/clone
-  echo $HERE/clone2 ) | bk changes -D -R -k - | bk _sort > GOT
-cat $HERE/K1 $HERE/K2 | bk _sort > WANT
+  echo $HERE/clone2 ) | bk changes -R -k - | bk sort > GOT
+cat $HERE/K1 $HERE/K2 | bk sort > WANT
 checkfiles WANT GOT
 echo OK
 
 echo $N Check bk changes -L - .......................................$NL
-( echo $HERE/clone2
-  echo $HERE/project ) | bk changes -k -L - > GOT
-bk changes -r+ -k $HERE/project > WANT
+# PWD=project
+( echo $HERE/clone
+  echo $HERE/clone2 ) | bk changes -k -L - > GOT
+bk changes -r+ -k > WANT
 checkfiles WANT GOT
 echo OK
 
@@ -338,6 +279,27 @@ checkfiles WANT GOT
 bk changes -k | bk changes - > GOT
 bk changes > WANT
 checkfiles WANT GOT
+echo OK
+
+echo $N Check bk changes - url is an error ..........................$NL
+# PWD=project
+echo + | bk changes - ../clone 2> ERR && {
+	echo "failed (it worked)"
+	exit 1
+}
+grep -q "either '-' or URL list" ERR || {
+	echo failed
+	exit 1
+}
+cd $HERE
+echo + | bk changes - project 2> ERR && {
+	echo "failed (it worked)"
+	exit 1
+}
+grep -q "either '-' or URL list" ERR || {
+	echo failed
+	exit 1
+}
 echo OK
 
 echo $N Check that changes -L/-R in a subdirectory works ............$NL
@@ -408,13 +370,13 @@ ChangeSet
 LS
 LS
 EOF
-cmp -s ref changes.out || { echo failed; exit 1; }
+checkfiles ref changes.out
 echo OK
 
 echo $N Verify changes -L works with tags ...........................$NL
 cd $HERE/clone
 bk tag $Q -r1.2 bar
-bk changes -L -nd':REV: :COMMENTS: :SYMBOL:' > chgs
+bk changes -aL -qnd':REV: :COMMENTS: :SYMBOL:' > chgs
 cat <<EOF > expect
 1.2  bar
 1.5 C clone
@@ -429,7 +391,7 @@ echo OK
 echo $N Change changes on a remote repository .......................$NL
 key=`bk prs -r+ -hnd:KEY: ChangeSet`
 cd $HERE
-key2=`bk changes -r+ -nd:KEY: clone`
+key2=`bk changes -r+ -qnd:KEY: clone`
 if [ "$key" != "$key2" ]
 then	echo Remote changes failed
 	echo $key vs $key2
@@ -460,48 +422,11 @@ grep -q "1.6" out || {
 }
 echo OK
 
-echo $N Check superset with no changes...............................$NL
-cd $HERE
-bk clone $Q project superset
-cd superset
-bk superset > ../GOT
-test $? -ne 0 && {
-	echo superset with no changes should exit 0
-	exit 1
-}
-GOT=`cat ../GOT`
-test "X$GOT" != "X" && {
-	echo superset with no changes should be silent
-	exit 1
-}
-echo OK
-
-echo $N Check superset with changes..................................$NL
-cd $HERE/superset
-echo FOO > FOO
-bk new $Q FOO
-BK_USER=joe bk commit $Q -yproject
-echo BAR > BAR
-bk superset > ../GOT
-test $? -ne 1 && {
-	echo superset with changes should exit 1
-	exit 1
-}
-grep FOO ../GOT >/dev/null || {
-	echo superset missed a changeset
-	exit 1
-}
-grep BAR ../GOT >/dev/null || {
-	echo superset missed an extra file
-	exit 1
-}
-echo OK
-
 echo $N Check date formats ..........................................$NL
 Y=`bk prs -Yhnd:Dy: -r+ ChangeSet`
 bk changes -nd:Dy: > OUT
 bk changes -v -nd:Dy: >> OUT
-test `grep -v 1971 OUT | bk _sort -u` = $Y || {
+test `grep -v 1971 OUT | bk sort -u` = $Y || {
 	echo not all YEAR4 dates
 	exit 1
 }
@@ -512,7 +437,7 @@ cd $HERE
 bk clone $Q project clone1
 cd clone1
 bk edit $Q f
-bk delta $Q -y'clone1 delta 1' f
+bk delta $Q -fy'clone1 delta 1' f
 bk commit $Q -y'clone1 checkin 1' || exit 1
 
 cd $HERE
@@ -520,11 +445,29 @@ rm -rf clone2
 bk clone $Q project clone2 || exit 1
 cd clone2 || exit 1
 bk edit $Q f
-bk delta $Q -y'clone2 delta' f
+bk delta $Q -fy'clone2 delta' f
 bk commit $Q -y'clone2 checkin' || exit 1
 
 (bk changes -kL ../clone1; bk changes -kR ../clone1) > WANT
 bk changes -k -L -R ../clone1 | grep -v '^==== ' > GOT
+checkfiles WANT GOT
+echo OK
+
+echo $N Test changes -L repo1 repo2 .................................$NL
+cd $HERE/clone1
+bk changes -k -L ../project > p1
+bk changes -k -L ../clone2  > c1
+cat p1 c1 > WANT
+bk changes -q -L -nd:KEY: ../project ../clone2 > GOT
+checkfiles WANT GOT
+echo OK
+
+echo $N Test changes -D -L repo1 repo2 ..............................$NL
+cd $HERE/clone1
+bk changes -k -L ../project > p1
+bk changes -k -L ../clone2  > c1
+cat p1 c1 | sort -u > WANT
+bk changes -k -L ../project ../clone2 | sort > GOT
 checkfiles WANT GOT
 echo OK
 
@@ -585,3 +528,9 @@ bk changes -vr+ -nd:GFILE: | egrep '.*\.[ch]$' | grep -v src/foo.c > WANT
 checkfiles GOT WANT
 echo OK
 
+echo $N Test a list of urls, staring with a bad and ending good .....$NL
+bk changes -r+ -ndx /sldfjsdf/some/bad/url $HERE/clone > OUT 2> ERR && {
+	echo failed rc=0
+	exit 1
+}
+echo OK

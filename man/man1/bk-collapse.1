@@ -1,0 +1,134 @@
+.so ../bk-macros
+.TH "bk collapse" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk collapse \- combine recent changesets into a single unit of work
+.SH SYNOPSIS
+.B bk collapse
+.[B] \-Lqs
+.B \-e
+.[OPTreq] \-a rev
+.SH DESCRIPTION
+.B bk collapse
+allows you to combine (collapse) the most recent successive changesets made
+in a repository.
+You typically use this when completing a
+develop-review-test-debug-fix cycle to combine a changeset
+and all its bug-fix and review-generated changesets into a single
+logical unit of work.
+In this usage, you specify a revision with
+.QR \-a ,
+specifying that all changesets since that revision be collapsed.
+.LP
+.B Note:
+Currently, the
+.Q \-e
+option is required;
+the modifications introduced by the changesets to be collapsed 
+are applied to the affected files, which are left as locked,
+modified files in the repository.
+You must subsequently use
+.B bk citool
+or
+.B bk delta/commit
+to commit these edits as a single changeset.
+.B bk collapse
+preserves all checkin comments for individual files and for the collapsed
+changesets;
+.B bk citool
+then uses these saved checkin comments to prepopulate the comments fields
+for all affected files and the ChangeSet file.
+.LP
+You can use
+.B bk collapse
+without the
+.Q \-a
+option immediately after a checkin if you realize that
+the change was not done or was incorrect.
+You can do this \*(lquncommit\*(rq on the most recent changeset
+only if you are positive that there are no other copies of this
+changeset in other repositories.
+.LP
+The checkin comments are preserved if you use
+.B bk citool
+to make the subsequent checkin.
+.LP
+The
+.B \-l
+option to
+.B bk collapse
+saves a list of the md5keys of all changesets that have been replaced by
+the this command in the
+.B BitKeeper/etc/collapsed
+file.
+Later
+.B bk pull
+examines this file to prevent the uncollapsed csets from being pulled
+into the repository with the collapsed versions.
+.LP
+.B bk collapse
+saves a backup
+patch in 
+.B BitKeeper/tmp/collapse.patch
+in case it turns out that the collapse was the wrong idea.
+.SH OPTIONS
+.TP \*<revsn\*>
+.OPTreq \-a rev
+Collapse all changesets that occurred after
+.ARG rev .
+.tp
+.B \-e
+Leave the resulting changes as locked, modified files; you must run
+.B bk citool
+or
+.B bk delta/commit
+to create the final changeset.
+.tp
+.B \-l
+Record the csetkeys of the changesets being replaced in
+the
+.B BitKeeper/etc/collapsed
+file.
+.tp
+.B \-s
+when fixing the entire changeset the normal behavior is to save a
+backup patch of all the csets being removed in
+.B BitKeeper/tmp/collapse.patch
+in case something goes wrong.
+This option disables this safety net for a minor performance gain.
+.tp
+.B \-q
+suppress most messages
+.SH EXIT STATUS
+.B bk collapse
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
+.SH EXAMPLES
+Fix a problem is the latest cset.
+.DS
+$ bk collapse -e
+... edit files
+$ bk citool
+.DE
+.LP
+Collapse all csets not in my parent into a single cset.
+.DS
+$ bk collapse -e -a`bk repogca`
+$ bk citool
+.DE
+.SH SEE ALSO
+.SA ci
+.SA citool
+.SA commit
+.SA edit
+.SA makepatch
+.SA stripdel
+.SA undo
+.\" help://uncommit
+.\" help://fix
+.SH CATEGORY
+.B Repository

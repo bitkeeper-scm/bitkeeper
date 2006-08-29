@@ -1079,6 +1079,9 @@ proc smerge {} \
 	# present. Hiding it only hides it from the human eye; dealing
 	# with the text widget at the programming level still sees the data.
 	set annotate 1
+
+	# If we're called with one argument then assume that that is the
+	# output of smerge.  For debugging/testing.  Undocumented.
 	if {$argc == 1} {
 		set filename [lindex $argv 0]
 		exec cp $filename $smerge
@@ -1091,21 +1094,24 @@ proc smerge {} \
 		set force 1
 		incr argc -1
 		set argv [lreplace $argv 0 0]
-	} elseif {[lindex $argv 0] == "-N"} {
+	} elseif {[lindex $argv 0] == "-n"} {
+		set nowrite 1
+		incr argc -1
+		set argv [lreplace $argv 0 0]
+	} elseif {[lindex $argv 0] == "-N"} {	# compat, remove in 2008
 		set nowrite 1
 		incr argc -1
 		set argv [lreplace $argv 0 0]
 	}
-	if {$argc != 4} {
-		puts "Usage: fm3tool \[-o filename\] \[-f | -N\]\
-		      <local> <gca> <remote> <file>"
+	if {$argc != 3} {
+		puts "Usage: fm3tool \[-o filename\] \[-f | -n\]\
+		      -l<local> -r<remote> <file>"
 		exit 1
 	}
 	set l [lindex $argv 0]
-	set g [lindex $argv 1]
-	set r [lindex $argv 2]
-	set f [lindex $argv 3]
-	set ret [catch {exec bk smerge -Im -f $f $l $r > $smerge}]
+	set r [lindex $argv 1]
+	set f [lindex $argv 2]
+	set ret [catch {exec bk smerge -Im -f $l $r $f > $smerge}]
 	set filename $f
 }
 
@@ -1156,10 +1162,9 @@ proc revtool {} \
 	global	argv
 
 	set l [lindex $argv 0]
-	set g [lindex $argv 1]
-	set r [lindex $argv 2]
-	set f [lindex $argv 3]
-	exec bk revtool -l$l -G$g -r$r "$f" &
+	set r [lindex $argv 1]
+	set f [lindex $argv 2]
+	exec bk revtool $l $r "$f" &
 }
 
 proc csettool {what} \
@@ -2499,12 +2504,12 @@ proc fm3tool {} \
 	global State gc
 
 	bk_init
-	getConfig "fm3"
+	getConfig fm3
 
 	smerge
-	widgets
 
-	loadState
+	loadState fm3
+	widgets
 	restoreGeometry fm3
 
 	.prs.left insert 1.0 "Loading..."
@@ -2522,7 +2527,7 @@ proc fm3tool {} \
 	wm protocol . WM_DELETE_WINDOW cleanup
 	bind . <Destroy> {
 		if {[string match %W .]} {
-			saveState
+			saveState fm3
 		}
 	}
 
@@ -2531,42 +2536,6 @@ proc fm3tool {} \
 
 	toggleGCA
 	toggleAnnotations
-}
-
-# the purpose of this proc is merely to load the persistent state;
-# it does not do anything with the data (such as set the window 
-# geometry). That is best done elsewhere. 
-proc loadState {} \
-{
-	global State
-
-	catch {::appState load fm3 State}
-
-}
-
-proc saveState {} \
-{
-	global State
-
-	# Copy state to a temporary variable, the re-load in the
-	# state file in case some other process has updated it
-	# (for example, setting the geometry for a different
-	# resolution). Then add in the geometry information unique
-	# to this instance.
-	array set tmp [array get State]
-	catch {::appState load fm3 tmp}
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	set tmp(geometry@$res) [wm geometry .]
-
-	# Generally speaking, errors at this point are no big
-	# deal. It's annoying we can't save state, but it's no 
-	# reason to stop running. So, a message to stderr is 
-	# probably sufficient. Plus, given we may have been run
-	# from a <Destroy> event on ".", it's too late to pop
-	# up a message dialog.
-	if {[catch {::appState save fm3 tmp} result]} {
-		puts stderr "error writing config file: $result"
-	}
 }
 
 image create photo start16 -data {

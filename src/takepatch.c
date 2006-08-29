@@ -35,7 +35,7 @@ left||right->path == s->gfile.
 #define	SHOUT() fputs("\n=================================== "\
 		    "ERROR ====================================\n", stderr);
 #define	SHOUT2() fputs("======================================="\
-		    "=======================================\n\n", stderr);
+		    "=======================================\n", stderr);
 #define	NOTICE() fputs("------------------------------------"\
 		    "---------------------------------------\n", stderr);
 
@@ -57,7 +57,6 @@ private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private	int	skipPatch(MMAP *p);
-private	void	getConfig(void);
 private	void	getGone(void);
 private	void	loadskips(void);
 
@@ -82,6 +81,8 @@ private	char	*spin = "|/-\\";
 private	int	compat;		/* we are eating a compat patch, fail on tags */
 private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
+private	char	**edited;	/* files that were in modified state */
+private	int	collapsedups;	/* allow csets in BitKeeper/etc/collapsed */
 
 /*
  * Structure for keys we skip when incoming, used for old LOD keys that
@@ -111,7 +112,7 @@ takepatch_main(int ac, char **av)
 
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
-	while ((c = getopt(ac, av, "acFf:iLmqsStvy;")) != -1) {
+	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;")) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
@@ -119,6 +120,7 @@ takepatch_main(int ac, char **av)
 			break;
 		    case 'a': resolve++; break;			/* doc 2.0 */
 		    case 'c': noConflicts++; break;		/* doc 2.0 */
+		    case 'D': collapsedups++; break;
 		    case 'F': break;				/* obsolete */
 		    case 'f':					/* doc 2.0 */
 			    input = optarg;
@@ -126,6 +128,7 @@ takepatch_main(int ac, char **av)
 		    case 'i': newProject++; break;		/* doc 2.0 */
 		    case 'm': mkpatch++; break;			/* doc 2.0 */
 		    case 'S': saveDirs++; break;		/* doc 2.0 */
+		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': textOnly++; break;		/* doc 2.0 */
 		    case 'v': echo++; flags &= ~SILENT; break;	/* doc 2.0 */
 		    case 'y': comments = optarg; break;
@@ -229,8 +232,6 @@ usage:		system("bk help -s takepatch");
 		cleanup(CLEAN_RESYNC | CLEAN_PENDING | CLEAN_OK);
 	}
 
-	getConfig();
-
 	/*
 	 * The ideas here are to (a) automerge any hash-like files which
 	 * we maintain, and (b) converge on the oldest inode for a
@@ -246,7 +247,6 @@ usage:		system("bk help -s takepatch");
 	 */
 	getGone();
 
-	touch(ROOT2RESYNC "/BitKeeper/etc/RESYNC_TREE", 0666);
 	if (resolve) {
 		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0, 0};
 		int 	i;
@@ -267,23 +267,6 @@ usage:		system("bk help -s takepatch");
 	exit(error);
 }
 
-/*
- * It's probably an error to move the config file, but just in case
- * they did, if there is no config file, use the contents of the
- * enclosing repository.
- */
-private void
-getConfig(void)
-{
-	chdir(ROOT2RESYNC);
-	unless (exists("BitKeeper/etc/SCCS/s.config")) {
-		assert(exists(RESYNC2ROOT "/BitKeeper/etc/SCCS/s.config"));
-		system("bk cat " RESYNC2ROOT
-		    "/BitKeeper/etc/config > BitKeeper/etc/config");
-	}
-	chdir(RESYNC2ROOT);
-}
-
 private void
 getGone(void)
 {
@@ -293,6 +276,29 @@ getGone(void)
 			    "> RESYNC/BitKeeper/etc/gone");
 		}
     	}
+}
+
+private hash *
+loadCollapsed(void)
+{
+	FILE	*f;
+	hash	*db = 0;
+	char	*p;
+	char	buf[MAXLINE];
+
+	if (collapsedups) return (0);
+	f = popen("bk annotate -ar " COLLAPSED, "r");
+	while (fnext(buf, f)) {
+		chomp(buf);
+		unless (db) db = hash_new(HASH_MEMHASH);
+		/* ignore dups, we don't care */
+		p = strchr(buf, '\t');
+		assert(p);
+		*p++ = 0;
+		hash_insertStr(db, p, buf);
+	}
+	pclose(f);
+	return (db);
 }
 
 private	delta *
@@ -439,15 +445,13 @@ error:		if (perfile) sccs_free(perfile);
 			fprintf(stderr, "takepatch: file %s found.\n",
 			s->sfile);
 		}
-		if (IS_EDITED(s)) {
+		if (EDITED(s)) {
 			int cleanflags = SILENT|CLEAN_SHUTUP|CLEAN_CHECKONLY;
 
 			if (sccs_clean(s, cleanflags)) {
-				shout();
-				fprintf(stderr,
-				    "takepatch: %s is edited and modified; "
-				    "unsafe to overwrite.\n",
-				    s->sfile);
+				edited = addLine(edited, sccs2name(s->sfile));
+				sccs_free(s);
+				s = 0;
 				goto error;
 			} else {
 				sccs_restart(s);
@@ -461,9 +465,8 @@ error:		if (perfile) sccs_free(perfile);
 			}
 			s->state &= ~S_PFILE; 
 		}
-		sccs_setpathname(s);
-		unless (streq(s->spathname, s->sfile)) {
-			tmp = sccs_top(s);
+		tmp = sccs_top(s);
+		unless (sccs_patheq(tmp->pathname, s->gfile)) {
 			badpath(s, tmp);
 			goto error;
 		}
@@ -822,8 +825,10 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 	delta	*remote_tagtip = 0;
 	int	n = 0;
 	int	confThisFile;
-	FILE	*csets = 0;
+	FILE	*csets = 0, *f;
+	hash	*cdb;
 	char	csets_in[MAXPATH];
+	char	buf[MAXKEY];
 
 	reversePatch();
 	unless (p = patchList) return (0);
@@ -858,7 +863,6 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 		}
 		goto err;
 	}
-	unless (s = cset_fixLinuxKernelChecksum(s)) goto err;
 apply:
 	p = patchList;
 	if (p && p->pid) cweave_init(s, nfound);
@@ -961,18 +965,35 @@ apply:
 		assert("takepatch: could not build findKeyDB" == 0);
 	}
 
-	p = patchList;
+	if (cdb = loadCollapsed()) {
+		for (p = patchList; p; p = p->next) {
+			d = sccs_findKey(s, p->me);
+			sccs_md5delta(s, d, buf);
+			if (hash_fetchStr(cdb, buf)) {
+				/* find cset that added that entry */
+				sprintf(buf, "bk -R r2c -r%s " COLLAPSED,
+				    cdb->vptr);
+				f = popen(buf, "r");
+				fnext(buf, f);
+				chomp(buf);
+				pclose(f);
+				errorMsg("takepatch-collapsed", cdb->kptr, buf);
+				hash_free(cdb);
+				goto err;
+			}
+		}
+		hash_free(cdb);
+	}
 	sprintf(csets_in, "%s/%s", ROOT2RESYNC, CSETS_IN);
 	csets = fopen(csets_in, "w");
 	assert(csets);
-	while (p) {
+	for (p = patchList; p; p = p->next) {
 		fprintf(csets, "%s\n", p->me);
 		/*
 		 * XXX: mclose take a null arg?
 		 * meta doesn't have a diff block
 		 */
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
-		p = p->next;
 	}
 	fclose(csets);
 
@@ -2101,6 +2122,15 @@ done:
 	if (what & CLEAN_OK) {
 		rc = 0;
 	} else {
+		if (edited) {
+			shout();
+			fprintf(stderr,
+			    "The following files are modified locally and "
+			    "in the patch:\n");
+			EACH(edited) fprintf(stderr, "\t%s\n", edited[i]);
+			fprintf(stderr,
+			    "For more information run \"bk help tp1\"\n");
+		}
 		SHOUT2();
 		if (errfiles) {
 			fprintf(stderr,

@@ -1,0 +1,64 @@
+.so ../bk-macros
+.TH "bk compatibility" "\*[BKVER]" %E%  "\*(BC" "\*(UM"
+.SH NAME
+bk compatibility \- commands compatible between other SCM tools and \*(BK
+.SH DESCRIPTION
+.LP
+\*(BK tries to make a transition from other source control management 
+products easier by offering commands commonly used in other products
+as aliases to \*(BK commands.
+.LP
+For example, the following are equivalent in \*(BK:
+.DS
+bk deledit
+bk delta -l
+.DE
+.SH SCCS
+The BSD based \f(CWsccs\fP front end to \*(SC has a number of commands
+emulated by \*(BK:
+.TP \fBsccsdiff\fP
+.B add
+Add a file to the repository.  Same as
+.BR "bk\ new" .
+.tp
+.B create
+Create (initialize) history files.  Same as
+.DS
+bk new && bk co
+.DE
+.tp
+.B deledit
+Follow a check-in with a locked check-out.  Same as
+.QR "bk delta \-l" .
+.tp
+.B delget
+Follow a check-in with an unlocked check-out.  Same as
+.QR "bk delta \-u" .
+.tp
+.B enter
+Add a new file to the repository.  Same as
+.BR "bk new" .
+.tp
+.B sccsdiff
+Show differences in revision control files.  Similar to
+.BR "bk diffs" .
+.tp
+.B val
+Check s.file structure and time stamps.  Similar to
+.QR "bk admin \-hhhh" .
+.SH RCS
+.TP \fBsccsdiff\fP
+.B ci
+Check in a file.  Same as
+.BR "bk delta" .
+.tp
+.B co
+Check out a file.
+.SH "SEE ALSO"
+.SA admin
+.SA delta
+.SA diffs
+.SA get
+.SA new
+.SH CATEGORY
+.B Compat

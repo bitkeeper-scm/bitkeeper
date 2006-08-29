@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "bk isascii" 1 %E% "\*(BC" "\*(UM"
+.TH "bk isascii" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk isascii \- check that a file is ascii
 .SH SYNOPSIS
@@ -9,7 +9,17 @@ bk isascii \- check that a file is ascii
 .B bk isascii
 looks through a file for binary data which \*(BK can not handle without
 encoding the file.  This consists of a NULL (zero byte).
-.SH EXIT CODES
-0 if ascii, 1 otherwise.
+.SH EXIT STATUS
+.LP
+.B bk isascii
+returns exit status:
+.TP
+0
+if
+.ARG filename
+is ASCII.
+.tp
+1
+otherwise.
 .SH CATEGORY
 .B Utility

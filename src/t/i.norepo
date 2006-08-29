@@ -1,0 +1,42 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2006 Oscar Bonilla <ob@bitmover.com>
+# %K%
+
+OUT=$HERE/out
+
+echo $N Calling citool outside of a repo.............................$NL
+bk guitest citool >$OUT 2>&1 <<'EOF'
+	exit 0
+EOF
+echo OK
+
+echo $N Calling csettool outside of a repo...........................$NL
+bk guitest csettool >$OUT 2>&1 <<'EOF'
+	exit 0
+EOF
+echo OK
+
+echo $N Calling difftool outside of a repo...........................$NL
+bk guitest difftool >GOT 2>&1 <<'EOF'
+	exit 0
+EOF
+echo "There were no files available to diff" > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Calling revtool outside of a repo............................$NL
+bk guitest revtool >$OUT 2>&1 <<'EOF'
+	exit 0
+EOF
+echo OK
+

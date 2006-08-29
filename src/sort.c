@@ -29,7 +29,8 @@ number_sort(const void *a, const void *b)
 
 	l = atoi(*(char**)a);
 	r = atoi(*(char**)b);
-	return (l - r);
+	if (l - r) return (l - r);
+	return (string_sort(a, b));
 }
 
 /*
@@ -53,7 +54,8 @@ field_sort(const void *a, const void *b)
 		nb += strcspn(nb, " \t");
 		nb += strspn(nb, " \t");
 	}
-	return (sortfcn(&na, &nb));
+	if (i = sortfcn(&na, &nb)) return (i);
+	return (string_sort(a, b));
 }
 
 /*
@@ -74,12 +76,13 @@ sort_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "k:nru")) != -1) {
 		switch (c) {
+		    case '+': sortfield = atoi(optarg) - 1; break;
 		    case 'k': sortfield = atoi(optarg); break;
 		    case 'n': nflag = 1; break;
 		    case 'r': rflag = 1; break;
 		    case 'u': uflag = 1; break;
 		    default:
-			system("bk help -s _sort");
+			system("bk help -s sort");
 		}
 	}
 

@@ -24,10 +24,12 @@ commit_main(int ac, char **av)
 	int	dflags = 0;
 	c_opts	opts  = {0, 0};
 
-	while ((c = getopt(ac, av, "df:FRqsS:y:Y:")) != -1) {
+	while ((c = getopt(ac, av, "dfFl:RqsS:y:Y:")) != -1) {
 		switch (c) {
-		    case 'd': 	doit = 1; break;		/* doc 2.0 */
-		    case 'f':					/* undoc 2.0 */
+		    case 'd': 
+		    case 'f':
+			doit = 1; break;			/* doc 2.0 */
+		    case 'l':					/* doc */
 			strcpy(pendingFiles, optarg); break;
 		    case 'F':	force = 1; break;		/* undoc */
 		    case 'R':	BitKeeper = "../BitKeeper/";	/* doc 2.0 */
@@ -40,7 +42,7 @@ commit_main(int ac, char **av)
 				break;		/* doc 2.0 */
 		    case 'y':					/* doc 2.0 */
 			dflags |= DELTA_DONTASK;
-			comments_save(optarg);
+			if (comments_save(optarg)) return (1);
 			break;
 		    case 'Y':					/* doc 2.0 */
 			if (comments_savefile(optarg)) {
@@ -56,6 +58,8 @@ commit_main(int ac, char **av)
 		}
 	}
 
+	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+
 	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find root directory\n");
 		return (1);
@@ -70,7 +74,7 @@ commit_main(int ac, char **av)
 	if (pendingFiles[0]) {
 		if (av[optind] && streq("-", av[optind])) {
 			fprintf(stderr,
-			    "commit: can't use -f when using \"-\"\n");
+			    "commit: can't use -l when using \"-\"\n");
 			return (1);
 		}
 	} else {
@@ -133,7 +137,7 @@ commit_main(int ac, char **av)
 			fclose(f1);
 		}
 		pclose(f);
-		cmd = aprintf("bk _sort -u | "
+		cmd = aprintf("bk sort -u | "
 			"bk sccslog -DA - >> %s", commentFile);
 		f = popen(cmd, "w");
 		f1 = fopen(pendingFiles, "rt");
@@ -156,7 +160,7 @@ commit_main(int ac, char **av)
 			return (1);
 		}
 		dflags |= DELTA_DONTASK;
-		comments_savefile(commentFile);
+		if (comments_savefile(commentFile)) return (1);
 		unlink(commentFile);
 	}
 	do_clean(s_cset, SILENT);
@@ -174,12 +178,10 @@ do_commit(char **av,
 	char	commentFile[MAXPATH];
 	char	buf[MAXLINE];
 
-	unless (ok_commit()) {
-out:		if (pendingFiles) unlink(pendingFiles);
+	if (enforceLicense()) {
+		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
-
-	if (!opts.resync && enforceLicense(opts.quiet)) goto out;
 	/*
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?
 	 */
@@ -192,7 +194,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 
 	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
 	comments_done();
-	comments_savefile(commentFile);
+	if (comments_savefile(commentFile)) return (1);
 	if (opts.quiet) dflags |= SILENT;
 	if (sym) syms = addLine(syms, strdup(sym));
 	if (f = fopen("SCCS/t.ChangeSet", "r")) {

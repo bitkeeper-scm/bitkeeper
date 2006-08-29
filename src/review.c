@@ -17,17 +17,16 @@ private	int	mark_annotations(void);
  * it is a hash on MD5s pointing at a hash of review tags
  * pointing at a interval tree listing the line numbers.
  */
-private	HASH	*reviews;
+private	hash	*reviews;
 
 int
 reviewmerge_main(int ac, char **av)
 {
 	FILE	*f;
-	HASH	**taghash;
+	hash	**taghash;
 	RBtree	**range;
 	char	*p;
 	int	line;
-	kvpair	kv1, kv2;
 	intvl	*d;
 	int	c;
 	int	anno = 0;
@@ -35,7 +34,7 @@ reviewmerge_main(int ac, char **av)
 	char	*exist = 0;
 	char	buf[MAXLINE];
 
-	reviews = hash_new();
+	reviews = hash_new(HASH_MEMHASH);
 
 	while ((c = getopt(ac, av, "ae:")) != -1) {
 		switch (c) {
@@ -65,10 +64,18 @@ reviewmerge_main(int ac, char **av)
 		*p++ = 0;
 		line = atoi(p);
 
-		taghash = hash_fetchAlloc(reviews, buf, 0, sizeof(HASH *));
-		unless (*taghash) *taghash = hash_new();
-		range = hash_fetchAlloc(*taghash, tag, 0, sizeof(RBtree *));
-		unless (*range) *range = intvl_new();
+		unless (taghash = hash_fetchStr(reviews, buf)) {
+			hash    *h = hash_new(HASH_MEMHASH);
+
+			taghash = hash_store(reviews,
+			    buf, strlen(buf) + 1, &h, sizeof(h));
+		}
+		unless (range = hash_fetchStr(*taghash, tag)) {
+			RBtree  *rb = intvl_new();
+
+			range = hash_store(*taghash,
+			    tag, strlen(tag) + 1, &rb, sizeof(rb));
+		}
 		intvl_add(*range, line, line);
 	}
 	if (exist) {
@@ -76,16 +83,12 @@ reviewmerge_main(int ac, char **av)
 	} else {
 		f = stdout;
 	}
-	for (kv1 = hash_first(reviews);
-	     kv1.key.dptr;
-	     kv1 = hash_next(reviews)) {
-		fprintf(f, "%s", kv1.key.dptr);
-		taghash = (HASH **)kv1.val.dptr;
-		for (kv2 = hash_first(*taghash);
-		     kv2.key.dptr;
-		     kv2 = hash_next(*taghash)) {
-			fprintf(f, " %s", kv2.key.dptr);
-			range = (RBtree **)kv2.val.dptr;
+	EACH_HASH(reviews) {
+		fprintf(f, "%s", reviews->kptr);
+		taghash = (hash **)reviews->vptr;
+		EACH_HASH(*taghash) {
+			fprintf(f, " %s", (*taghash)->kptr);
+			range = (RBtree **)(*taghash)->vptr;
 			d = RBtree_first(*range);
 			while (d) {
 				fprintf(f, ",%d", d->start);
@@ -116,7 +119,7 @@ reviewmerge_main(int ac, char **av)
 private	void
 load_existing(char *file)
 {
-	HASH	**taghash;
+	hash	**taghash;
 	RBtree	**range;
 	FILE	*f;
 	char	*a, *b, *c, *d;
@@ -128,18 +131,24 @@ load_existing(char *file)
 		a = strchr(buf, ' ');
 		*a++ = 0;
 
-		taghash = hash_fetchAlloc(reviews, buf, 0, sizeof(HASH *));
-		unless (*taghash) *taghash = hash_new();
-
+		unless (taghash = hash_fetchStr(reviews, buf)) {
+			hash    *h = hash_new(HASH_MEMHASH);
+			taghash = hash_store(reviews,
+			    buf, strlen(buf) + 1, &h, sizeof(h));
+		}
 		/* a points at start of first tag */
 		while (a) {
 			b = strchr(a, ' ');
 			if (b) *b++ = 0; /* b == start of next tag */
 			c = strchr(a, ',');
 			*c++ = 0; /* c = start of range */
-			range = hash_fetchAlloc(*taghash, a, 0,
-				sizeof(RBtree *));
-			unless (*range) *range = intvl_new();
+
+			unless (range = hash_fetchStr(*taghash, a)) {
+				RBtree  *rb = intvl_new();
+
+				range = hash_store(*taghash,
+				    a, strlen(a) + 1, &rb, sizeof(rb));
+			}
 			while (c) {
 				a = strchr(c, ',');
 				if (a) *a++ = 0; /* a = start of next range */
@@ -266,12 +275,11 @@ intvl_add(RBtree *range, int start, int end)
 private int
 mark_annotations(void)
 {
-	HASH	**taghash;
+	hash	**taghash;
 	RBtree	*range;
 	char	*p;
 	int	line;
 	int	found;
-	kvpair	kv;
 	char	buf[MAXLINE];
 
 	while (fnext(buf, stdin)) {
@@ -280,11 +288,9 @@ mark_annotations(void)
 		line = atoi(p);
 
 		found = 0;
-		taghash = hash_fetch(reviews, buf, 0, 0);
-		if (taghash) for (kv = hash_first(*taghash);
-				  kv.key.dptr;
-				  kv = hash_next(*taghash)) {
-			range = *(RBtree **)kv.val.dptr;
+		taghash = hash_fetchStr(reviews, buf);
+		if (taghash) EACH_HASH(*taghash) {
+			range = *(RBtree **)(*taghash)->vptr;
 			if (found = intvl_in(range, line)) break;
 		}
 		p = strchr(p, '\t');

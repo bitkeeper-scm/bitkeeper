@@ -1,31 +1,36 @@
 .so ../bk-macros
-.TH "bk conflicts" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk conflicts" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk conflicts \- list unresolved files which contain conflicts
 .SH SYNOPSIS
-.Bc bk conflicts [\-dDflp] [
-.ARGc files |
-.ARGc dirs ]\ 
-.ARG ...
+.B bk conflicts
+.[B] \-dDfvr
+.FILES
 .SH DESCRIPTION
 .LP
 The
 .B conflicts
-command finds files which contain content conflicts and need to be
-resolved.  Both filenames and directory names may be specified and they
-are treated they same way as in bk sfiles.  Only files that contain
-conflicts are actually listed.
+command lists unmerged files which contain content conflicts and need to
+be resolved.
+Both filenames and directory names may be specified and they are treated
+as in
+.BR "bk sfiles" .
+Only files that contain conflicts are actually listed.
 .LP
 Any options specified will operate only on the set of files that would
 normally be listed.
 .SH OPTIONS
-.tp
+.TP \fB\-vv\fPn
 .B \-d
-Invoke bk diffs on the file, showing the differences between the local
+Invoke
+.B bk diffs
+on the file, showing the differences between the local
 and remote files.
 .tp
-.B -D
-Like \-d but using the graphical diff tool instead of text diffs.
+.B \-D
+Like
+.B \-d
+but using the graphical diff tool instead of text diffs.
 .tp
 .B \-f
 Invoke the 3-way filemerge in read-only mode.  This is useful in case
@@ -33,22 +38,63 @@ the developer working on a particular merge wants a second person to see
 the conflict in question without the danger of overwriting the merged
 file.
 .tp
-.B \-l
-Long listing.  The output lists the files that match the filenames or
-directories specified, along with the number of non-automerged conflicts
-in the file and the usernames responsible for the conflicting content.
+.B \-r
+Invoke revtool, highlighting the GCA, LOCAL, and REMOTE versions in the file.
 .tp
-.B \-p
-Invoke revtool, highlighting the GCA, LOCAL, and REMOTE versions in the
-file.
-.sp
-.fi
+.B \-v
+Verbose listing.  The output lists the files that match the filenames or
+directories specified, along with the number of non-automerged conflicts
+in the file.
+.tp
+.B \-vv
+More verbose listing.
+As above but shows the number of lines in conflict with the authors of
+those lines.
+.SH EXIT STATUS
+.LP
+.B bk conflicts
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
+.SH EXAMPLES
+.DS
+$ \f(CBbk conflicts '*.h'\fP
+src/bkd.h
+src/logging.h
+src/mdbm/common.h
+src/mdbm/mdbm.h
+src/sccs.h
+src/win32.h
+.DE
+.DS
+$ \f(CBbk conflicts -v '*.h'\fP
+src/bkd.h has 2 conflict blocks
+src/logging.h has 2 conflict blocks
+src/mdbm/common.h has 1 conflict block
+src/mdbm/mdbm.h has 3 conflict blocks
+src/sccs.h has 3 conflict blocks
+src/win32.h has 1 conflict block
+.DE
+.DS
+$ \f(CBbk conflicts -vv 'src/logging.h'\fP
+src/logging.h has 2 conflict blocks
+  63 local lines by wscott
+   7 local lines by lm
+  33 remote lines by wscott
+   5 remote lines by lm
+.DE
 .SH SEE ALSO
 .LP
-.SA diffs 1
-.SA difftool 1
-.SA fm3tool 1
-.SA resolve 1
-.SA resolving 1
-.SA revtool 1
-.SA sfiles 1
+.SA diffs
+.SA difftool
+.SA fm3tool
+.SA resolve
+.SA resolving
+.SA revtool
+.SA sfiles
+.SH CATEGORY
+.B Repository

@@ -49,7 +49,7 @@ cd src
 mv SCCS/s.bar.c SCCS/s.moved.c
 cd $HERE/project/src
 bk get $Q -e bar.c
-bk delta -ywhatever $Q bar.c
+bk delta -fywhatever $Q bar.c
 bk commit $Q -ywhatever
 cd $HERE/clone
 bk pull $Q 2>ERROR
@@ -79,7 +79,7 @@ echo j > h.h
 bk ci -yj $Q h.h || exit 1
 bk commit $Q -ycset2 || exit 1
 cd $HERE/clone
-bk pull $Q >resync.log 2>&1
+_BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q >resync.log 2>&1
 if [ $? -ne 1 ]; then echo failed; cat resync.log; exit 1; fi
 #cd clone
 if [ ! -d RESYNC ]; then echo failed: resolved already; exit 1; fi

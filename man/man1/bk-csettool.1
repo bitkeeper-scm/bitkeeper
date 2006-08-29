@@ -1,29 +1,39 @@
 .so ../bk-macros
-.TH "bk csettool" 1 %E% "\*(BC" "\*(UM"
-.\"    =============== BitKeeper Graphical ChangeSet Browser ===============
+.TH "bk csettool" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk csettool \- \*(BK graphical changeset browser
 .SH SYNOPSIS
-.Bc bk csettool [
-.OPTreq \-r revs
-.Bc ] [
-.OPTreq \-f file@rev
-.B ] [-]
+.B bk csettool
+.[OPTreq] \-r revs
+[\c
+.Bc \-f
+.ARGc file
+.Bc |
+.ARGc rev
+]
+.[B] \-
 .SH DESCRIPTION
 .LP
-csettool is used to view detailed information about the specified
-changeset[s].  csettool displays the list of changes in each changeset,
-the ChangeSet history, and the differences found in each file contained
-in each changeset.
+.B bk csettool
+is used to view detailed information about the specified
+changeset[s].
+.B bk csettool
+displays the list of changes in each changeset, the file and ChangeSet
+checkin comments, and the differences found in each file contained in
+each changeset.
 .LP
-Csettool is a very useful aide when tracking down bugs. For example,
+Csettool is a useful aide when tracking down bugs. For example,
 when using
 .B revtool
 to view comments for a specific file in order to track when a change
 was made to the file. Once the desired file is found, the user can
-then click on the "View ChangeSet" button in
+then click on the
+.Q View ChangeSet
+button in
 .B revtool
-to bring up csettool to see what other files were modified at the
+to bring up
+.bk csettool
+to see what other files were modified at the
 same time that the file of interest was modified.
 .LP
 To see the changes for a particular file, click on the file name
@@ -44,12 +54,16 @@ the upper-right window
 .LP
 Use the space bar to move between diffs and files.  Each time you
 hit the space bar, the next diff is brought into view.  If you are
-on the last diff, the tool moves to the next file. The Next (>>)
-buttons and Previous (<<) buttons in the top menu bar will also
+on the last diff, the tool moves to the next file. The
+.Q Next
+(>>)
+buttons and
+.Q Previous
+(<<) buttons in the top menu bar will also
 allow you to browse the files and diffs.
 .LP
 The
-.B History
+.Q History
 button in the menu bar can be used to start the graphical history
 browser, revtool, on either the entire project (ChangeSet file)
 or on the file highlighted in the upper-left window.
@@ -57,22 +71,26 @@ or on the file highlighted in the upper-left window.
 .LP
 All options are mutually exclusive, i.e., pick one (or none) of the
 following.
-.TP
+.TP "\fBDouble-Clicking\fP"
 .OPTreq \-r revs
 ChangeSet revision to examine. Can be a single revision or a range of 
-revisions. If no -r option is given, 
+revisions. If no
+.Q \-r
+option is given, 
 .B csettool
-defaults to -r+, i.e. the most recent changeset.
-.TP
-.OPTreq \-f file@rev
+defaults to
+.QR \-r+ ,
+i.e. the most recent changeset.
+.tp
+.B \-f\*<file\*>|\*<rev\*>
 Given a filename and revision,
 .B csettool
 starts up with the specified file and revision selected.
-.TP
+.tp
 .B \-
 expects a list of revisions on stdin.
 .SH BINDINGS
-.TP 16
+.TP "\fBDouble-Clicking\fP"
 .B Home
 Scroll both files to the top
 .tp
@@ -80,24 +98,28 @@ Scroll both files to the top
 Scroll both files to the bottom
 .tp
 .B PageUp
-Scroll both files one screen up (also Control-b)
+Scroll both files one screen up (also
+.BR Control-b )
 .tp
 .B PageDown
-Scroll both files one screen down (also Control-f)
+Scroll both files one screen down (also
+.BR Control-f )
 .tp
 .B
 UpArrow
-Scroll both files one line up (also Control-y)
+Scroll both files one line up (also
+.BR Control-y )
 .tp
 .B DownArrow
-Scroll both files one line down (also Control-e)
+Scroll both files one line down (also
+.BR Control-e )
 .tp
 .B LeftArrow
 Scroll both files to the left
 .tp
 .B RightArrow
 Scroll both files to the right
-.TP
+.tp
 .B Alt-UpArrow
 Make the diffs windows one line bigger and
 the lists windows one line smaller.
@@ -105,7 +127,7 @@ the lists windows one line smaller.
 .B Alt-DownArrow
 Make the diffs windows one line smaller and
 the lists windows one line bigger.
-.TP
+.tp
 .B Control-q
 Quit
 .tp
@@ -142,12 +164,12 @@ diff
 We plan on having a single screen diff window option where the changes
 are all shown color coded in one window.  
 .SH "SEE ALSO"
-.SA changes 1
-.SA cset 1
-.SA difftool 1
-.SA revtool 1
-.SA ranges 1
+.SA changes
 .SA config-gui
+.SA cset
+.SA difftool
+.SA range
+.SA revtool
 .SH CATEGORY
 .B GUI-tools
 .br

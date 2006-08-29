@@ -20,7 +20,7 @@ LD := gcc
 STRIP := strip
 export CC LD
 
-all: build version.sh
+all: build version.sh ../../tclkey.h
 	-rm -rf bin lib
 	TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \

@@ -1,21 +1,36 @@
 
 echo $N Test upgrade without a commercial lease .....................$NL
-bk upgrade -fl bk 2>ERR && {
+bk upgrade -f 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q "commercial customers only" ERR || {
+grep -q "valid commercial license" ERR || {
 	echo wrong error message
 	cat ERR
 	exit 1
 }
 echo OK
-	
-echo $N Test upgrade to get status from bitmover ....................$NL
+
+echo $N Test upgrade with just a commercial lease ...................$NL
 commercial junk2
 bk lease renew
 cd $HERE
-bk upgrade -fl bk >OUT 2>ERR || {
+bk upgrade -f 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q "valid commercial license" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Test upgrade to get status from bitmover ....................$NL
+cd junk2
+bk lease flush -a
+BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
 	cat ERR
@@ -31,6 +46,23 @@ grep -q "BitKeeper version .* is available for download." OUT || {
 	cat OUT
 	exit 1
 }
+echo OK
+
+echo $N Test upgrade where we already have the latest ...............$NL
+BK_NOTTY=1 BK_UPGRADE_FORCEMATCH=1 bk upgrade -cf >OUT 2>ERR && {
+	echo should have failed
+	cat OUT
+	cat ERR
+	exit 1
+}
+cat <<END > WANT
+Fetching http://upgrades.bitkeeper.com/upgrades/INDEX
+END
+checkfiles ERR WANT
+cat <<END > WANT
+upgrade: no new version of bitkeeper found
+END
+checkfiles OUT WANT
 echo OK
 
 echo $N Test upgrade to get status from bitmover using a proxy.......$NL
@@ -38,7 +70,7 @@ echo $N Test upgrade to get status from bitmover using a proxy.......$NL
 # XXX test proxy passwords too?
 http_proxy=http://data.bitmover.com:3128
 export http_proxy
-bk upgrade -fl bk >OUT 2>ERR || {
+BK_NOTTY=1 bk upgrade -cf >OUT 2>ERR || {
 	echo should not have failed
 	cat OUT
 	cat ERR
@@ -55,6 +87,30 @@ grep -q "BitKeeper version .* is available for download." OUT || {
 	exit 1
 }
 echo OK
+
+echo $N Test upgrade using a license proxy ..........................$NL
+cd $HERE/junk2
+P=`port 5000`
+bk bkd -q -d -p$P -ikill
+
+cd $HERE
+bk lease flush -a
+BK_NOTTY=1 BK_LICENSEURL=bk://localhost:$P/ bk upgrade -cf >OUT 2>ERR || {
+	echo should not have failed
+	cat OUT
+	cat ERR
+	exit 1
+}
+grep -q "BitKeeper version .* is available for download." OUT || {
+	echo wrong output
+	cat OUT
+	exit 1
+}
+bk _kill bk://localhost:$P
+echo OK
+
+# create a fake upgrade area and test the whole encryption decryption loop
+
 
 # This should also skip Windows machines...
 test -d /home/bk/bk-3.2.x || exit 0
@@ -65,18 +121,33 @@ test -x /usr/bin/perl || exit 0
 # Not everyone has strict.pm or understands it.
 test `uname` = NetBSD && exit 0
 
-# create a fake upgrade area and test the whole encryption decryption loop
 echo $N Create local upgrade area ...................................$NL
+cd $HERE
+BK_INSTALLER=
+# Lazy way to get full path
+find `bk bin`/utils -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
+test `wc -l < /tmp/bk$$` -gt 1 && {
+	echo skipped
+	$RM -f /tmp/bk$$
+	exit 0
+}
+test `wc -l < /tmp/bk$$` -eq 1 && BK_INSTALLER=`cat /tmp/bk$$`
+$RM /tmp/bk$$
+test X$BK_INSTALLER = X && {
+	echo skipped
+	exit 0
+}
+
 OS=`bk version | sed -n 's/.* for //p'`
 INSTALLER=bk-3.2.6-$OS.bin
-cp "$BIN1" $INSTALLER
+cp $BK_INSTALLER $INSTALLER
 mkdir upgrade
 cd upgrade
 bk get $Q -S `bk bin`/build_upgrade_index.pl `bk bin`/bkupgrade.key
-`bk bin`/build_upgrade_index.pl ../$INSTALLER
+`bk bin`/build_upgrade_index.pl  bk-3.2.6 ../$INSTALLER
 cd ..
-mv $INSTALLER ORIG
-bk upgrade -nfl bk `pwd`/upgrade >OUT || {
+cd junk2
+bk upgrade -df $HERE/upgrade >OUT || {
 	echo should not have failed
 	exit 1
 }
@@ -84,8 +155,29 @@ grep -q "New version of bk fetched: $INSTALLER" OUT || {
 	echo Wrong message
 	exit 1
 }
-cmp -s $INSTALLER ORIG || {
+cp ../$INSTALLER foo
+bk _preference | grep ^lic > foo.keys
+bk inskeys foo foo.keys >/dev/null || exit 1
+cmp -s $INSTALLER foo-licensed || {
 	echo wrong file
 	exit 1
 }
 echo OK 
+
+echo $N Test trying to upgrade to a banned version ..................$NL
+cd $HERE/upgrade
+rm -rf *
+INSTALLER=bk-2.2.x-pre1-$OS.bin
+cp $BK_INSTALLER ../$INSTALLER
+`bk bin`/build_upgrade_index.pl bk-2.2.x-pre1 ../$INSTALLER
+cd ../junk2
+BK_CONFIG="license:$BKL_REMOTE!"
+BK_CONFIG="$BK_CONFIG;licsign1:$BKL_R1!;licsign2:$BKL_R2!;licsign3:$BKL_R3!"
+export BK_CONFIG
+bk upgrade -df $HERE/upgrade 2>ERR && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q "rejected by the license server" ERR || exit 1
+echo OK

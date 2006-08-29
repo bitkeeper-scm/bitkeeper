@@ -45,7 +45,7 @@ bk -r check -a 2> ERR && {
 bk -r check -ag > gonestuff && exit 1
 echo "$KEY" > wanted
 checkfiles gonestuff wanted
-grep -q 'Missing file (chk3)' ERR || {
+grep -q 'Missing file (bk help chk3)' ERR || {
 	echo Bad or no error message from check
 	cat ERR
 	exit 1
@@ -72,7 +72,7 @@ bk pull -t $Q 2>MSGS || {
 	find . -type f -print
 	exit 1
 }
-grep -q 'Marked gone (chk1): foo.c' MSGS || {
+grep -q 'Marked gone (bk help chk1): foo.c' MSGS || {
 	echo Bad or no warning message from pull
 	cat MSGS
 	exit 1

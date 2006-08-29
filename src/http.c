@@ -293,6 +293,7 @@ http_connect(remote *r)
 	char	*proxy_host;
 	char	*cred;
 
+	unless (r && r->host) return (-1);
 	if (streq(r->host, "localhost") || in_no_proxy(r->host)) goto no_proxy;
 
 	/*
@@ -461,6 +462,7 @@ http_fetch(remote *r, char *file)
 	int	got, len, i;
 	int	rc = -1;
 	int	binary = 0;
+	char	*p;
 	FILE	*f;
 	char	buf[MAXLINE];
 
@@ -477,11 +479,16 @@ http_fetch(remote *r, char *file)
 	len = 0;
 	while (getline2(r, buf, sizeof(buf)) >= 0) {
 		if (r->trace) fprintf(stderr, "-> %s\n", buf);
-		sscanf(buf, "Content-Length: %d", &len);
-		if (streq(buf, "Content-Type: application/octet-stream")) {
+		if (buf[0] == 0) break; /*ok */
+		unless (p = strchr(buf, ':')) continue;
+		*p++ = 0;
+		while (isspace(*p)) ++p;
+		if (strieq(buf, "Content-Length")) {
+			len = atoi(p);
+		} else if (strieq(buf, "Content-Type") &&
+		    strieq(p, "application/octet-stream")) {
 			binary = 1;
 		}
-		if (buf[0] == 0) break; /*ok */
 	}
 	if (f = streq(file, "-") ? stdout : fopen(file, "w")) {
 		if (binary && len) {
@@ -521,7 +528,10 @@ httpfetch_main(int ac, char **av)
 		fprintf(stderr, "usage: bk _httpfetch <url>\n");
 		return (1);
 	}
-	r = remote_parse(av[1], 0);
+	unless (r = remote_parse(av[1], 0)) {
+		fprintf(stderr, "httpfetch: can't parse url '%s'\n", av[1]);
+		return (1);
+	}
 	r->httppath = r->path;
 	if (http_connect(r)) return (1);
 	return (http_fetch(r, "-"));

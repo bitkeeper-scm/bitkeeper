@@ -1,4 +1,3 @@
-#include "../system.h"
 #include "../sccs.h"
 
 private void	gethost(char *host, int hlen, int envOK);
@@ -61,7 +60,7 @@ gethost(char *host, int hlen, int envOK)
 	if (envOK && (h = getenv("BK_HOST")) && !getenv("BK_EVENT")) {
 		assert(strlen(h) <= 256);
 		strcpy(host, h);
-		return;
+		goto check;
 	}
 	/*
 	 * Win32 requires loading a library before we call
@@ -191,12 +190,12 @@ out:
 		host[0] = 0;
 		return;
 	}
-
+check:
 	if (host[0]) {
-		if (strchr(host, '\n') || strchr(host, '\r')) {
+		if (strchrs(host, "\n\r|/")) {
 			fprintf(stderr,
-			    "bad host name: host name must not contain LF or "
-			    "CR  character\n");
+			    "bad host name: host name must not contain LF, CR,"
+			    " | or /  character\n");
 			host[0] = 0; /* erase bad host name */
 		}
 	}

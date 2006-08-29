@@ -1,0 +1,109 @@
+.so ../bk-macros
+.TH "bk ci" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk ci \- check in modified files
+.SH SYNOPSIS
+.B bk ci
+.[B] \-acflpqu
+.[OPTreq] \-D file
+.[OPTreq] \-y msg
+.BKARGS
+.br
+.B bk ci
+.[B] \-acflpqu
+.[OPTreq] \-D file
+.[OPTreq] \-Y file
+.BKARGS
+.SH DESCRIPTION
+.LP
+The
+.B bk ci 
+command is used to check in changes made to revision controlled files.
+This command is fairly rich in features and is the preferred interface
+for scripting.  For interactive checkins, 
+.B "bk citool" 
+is the preferred interface.
+.SH OPTIONS
+.TP \-y\*<comment\*>
+.B \-a
+Normally, 
+.B bk ci
+is used to modify existing files.
+This option changes bk ci to act like bk new for new files and bk ci
+for existing files.
+The usefulness of this option is more apparent when you consider having
+a mixed list of files, some under revision control and some not.
+For example,
+.DS
+bk -xcr ci -a -y'mass checkin'
+.DE
+runs
+.B bk new
+on all the new files and
+.B bk ci
+on all the modified
+files.  When called with this option,
+.B bk ci
+does not create a null delta on an edited but unmodified file.
+.tp
+.B \-c
+Take checkin comments from 
+.BI SCCS/c. filename\fR.
+It is an error if the c.file does not exist.
+.tp
+.OPTreq \-D file
+Take diffs from
+.if t .IR file .
+.if n <file>.
+.tp
+.B \-f
+Force the creation of a null delta even if there are no changes to the file.
+.tp
+.B \-l
+Follow check in with a locked check out like
+.QR "bk edit" .
+.tp
+.OPTreq \-M mode
+Set the permissions on the new delta to
+.if t .IR mode .
+.if n <mode>.
+More commonly used with bk new.
+.tp
+.B \-p
+Print differences before prompting for comments.
+.tp
+.B \-q
+Run silently.
+.tp
+.B \-u
+Follow check in with an unlocked check out.
+.tp
+.OPTreq \-Y file
+Use the comment specified in 
+.ARG file
+for comments for all files.
+.tp
+.OPTreq \-y comment
+Sets the revision comment to 
+.if t .IR comment .
+.if n <comment>.
+.SH EXIT STATUS
+.LP
+.B bk ci
+returns exit status:
+.TP
+0
+on success.
+.tp
+1
+on failure.
+.SH BUGS
+The format of the init file is not documented.
+.SH "SEE ALSO"
+.SA citool
+.SA co
+.SA edit
+.SA new
+.SH CATEGORY
+.B File
+.\" help://delta

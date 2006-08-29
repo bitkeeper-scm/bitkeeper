@@ -1,5 +1,3 @@
-#include <time.h>
-#include <stdio.h>
 #include "system.h"
 #include "sccs.h"
 
