@@ -123,6 +123,7 @@ int	checking_rmdir(char *dir);
 #define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
 #define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
 #define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
+#define	ADMIN_RMLICENSE	0x00010000	/* Obscure licenses in repo config */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
