@@ -79,7 +79,7 @@ changes_main(int ac, char **av)
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
 	while ((c = getopt(ac, av, "1ac;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
-		unless (c == 'L' || c == 'R') {
+		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
 			} else {
