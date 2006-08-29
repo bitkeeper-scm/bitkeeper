@@ -1,10 +1,7 @@
 #include "bkd.h"
 #include "logging.h"
 
-private	char	*sfiocmd[] = { "bk", "-r", "sfio", "-o", "-q", 0 };
-private int	uncompressed(void);
 private int	compressed(int, int);
-private	int	spawn_copy(int level);
 
 /*
  * Send the sfio file to stdout
@@ -26,9 +23,6 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-#ifndef	WIN32
-	if (proj_configbool(0, "bufferclone")) Opts.buffer_clone = 1;
-#endif
 	while ((c = getopt(ac, av, "qr|w|z|")) != -1) {
 		switch (c) {
 		    case 'w':
@@ -76,24 +70,12 @@ cmd_clone(int ac, char **av)
 		return (1);
 	}
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
-	if (p && trigger(av[0], "pre")) return (1);
-	if (p) out("@SFIO@\n");
-	if (p) {
-		/*
-		 * Try to use our clone cache, but if it fails fall back
-		 * to the old clone code.
-		 */
-		rc = 1;
-		if (Opts.buffer_clone) rc = spawn_copy(gzip);
-		if (rc) rc = compressed(gzip, 1);
-	} else if (gzip) {
-		rc = compressed(gzip, 0);
-	} else {
-		rc = uncompressed();
-	}
+	if (trigger(av[0], "pre")) return (1);
+	out("@SFIO@\n");
+	rc = compressed(gzip, 1);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
-	if (p && trigger(av[0], "post")) exit (1);
+	if (trigger(av[0], "post")) exit (1);
 
 	/*
 	 * XXX Hack alert: workaround for a ssh bug
@@ -104,15 +86,6 @@ cmd_clone(int ac, char **av)
 
 	putenv("BK_CSETS=");
 	return (rc);
-}
-
-private int
-uncompressed(void)
-{
-	int	status;
-
-	status = spawnvp(_P_WAIT, sfiocmd[0], sfiocmd);
-	return (!(WIFEXITED(status) && WEXITSTATUS(status) == 0));
 }
 
 private int
@@ -156,110 +129,3 @@ compressed(int level, int hflag)
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
 	return (rc);
 }
-
-#ifndef	WIN32
-#define	CLONESFIO	"BitKeeper/tmp/clone.sfio"
-
-private int
-spawn_copy(int level)
-{
-	pid_t	pid;
-	int	newout;
-	int	regen = 0;
-	char	mykey[MAXKEY];
-	sccs	*s;
-	FILE	*f;
-
-	/* get lock, prevent two clones from trying to create the same file */
-	if (sccs_lockfile(CLONESFIO ".lock", 0, 0)) {
-		fprintf(stderr, "Failed to get clone sfio lock\n");
-		return (-1);
-	}
-	/* find my top csetkey */
-	unless (s = sccs_csetInit(0)) {
-		fprintf(stderr, "Can't open ChangeSet\n");
-		return (-1);
-	}
-	sccs_sdelta(s, sccs_top(s), mykey);
-	sccs_free(s);
-
-	/* does it match saved archive? */
-	if (exists(CLONESFIO ".cset") && exists(CLONESFIO)) {
-		char	filekey[MAXKEY];
-
-		f = fopen(CLONESFIO ".cset", "r");
-		fgets(filekey, sizeof(filekey), f);
-		chop(filekey);
-		fclose(f);
-
-		unless (streq(mykey, filekey)) regen = 1;
-	} else {
-		regen = 1;
-	}
-	if (regen) {
-		int	rfd, sfd, status, ret;
-
-		/* MUST unlink, so we don't corrupt other processes */
-		unlink(CLONESFIO);
-		if ((sfd = open(CLONESFIO, O_CREAT|O_WRONLY, 0644)) < 0) {
-			fprintf(stderr, "Unable to open %s for writing\n",
-			    CLONESFIO);
-			return (-1);
-		}
-		signal(SIGCHLD, SIG_DFL);
-		pid = spawnvp_rPipe(sfiocmd, &rfd, BIG_PIPE);
-		if (pid == -1) return (1);
-		ret = gzipAll2fd(rfd, sfd, level, 0, 0, 1, 0);
-		assert(ret == 0);
-		unless ((ret = waitpid(pid, &status, 0)) > 0) {
-			perror("waitpid");
-			fprintf(stderr, "waitpid returned %d\n", ret);
-			return (-1);
-		}
-		assert(WIFEXITED(status) && WEXITSTATUS(status) == 0);
-		close(sfd);
-		close(rfd);
-
-		if (f = fopen(CLONESFIO ".cset", "w")) {
-			fprintf(f, "%s\n", mykey);
-			fclose(f);
-		}
-	}
-	/*
-	 * OK to release lock now, filehandle will save file.
-	 * The repo has a read lock while this process is running so the
-	 * top cset key won't change so my sfio won't get replaced.
-	 */
-	sccs_unlockfile(CLONESFIO ".lock");
-
-	newout = dup(1);
-	dup2(2, 1);
-	unless (pid = fork()) {
-		int	sfd, len;
-		char	buf[4096];
-
-		sfd = open(CLONESFIO, O_RDONLY);
-		assert(sfd > 0);
-		/* blast to client and exit */
-		while ((len = read(sfd, buf, sizeof(buf))) > 0) {
-			write(newout, buf, len);
-		}
-		close(sfd);
-		close(newout);
-		exit(0);
-	}
-	assert(pid > 0);
-	/* in the meanwhile return and unlock repo */
-	return (0);
-}
-
-#else
-
-private int
-spawn_copy(int level)
-{
-	fprintf(stderr, "spawn_copy() should never be called on Windows.\n");
-	exit(1);
-}
-
-#endif

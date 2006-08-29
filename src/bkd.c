@@ -78,13 +78,6 @@ bkd_main(int ac, char **av)
 	}
 	EACH(unenabled) exclude(unenabled[i], 0);
 	freeLines(unenabled, 0);
-#ifdef WIN32
-	if (Opts.buffer_clone) {
-		fprintf(stderr,
-"bkd: The option -b to buffer clone data is not available on Windows.\n");
-		return (1);
-	}
-#endif
 	if (av[optind] && !getenv("BKD_SERVICE")) usage();
 
 	if (av[optind] && chdir(av[optind])) {
