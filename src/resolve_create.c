@@ -727,7 +727,7 @@ ok_local(sccs *s, int check_pending)
 		fprintf(stderr, "Can't init the conflicting local file\n");
 		exit(1);
 	}
-	if ((IS_EDITED(s) || IS_LOCKED(s)) && sccs_clean(s, SILENT)) {
+	if ((EDITED(s) || LOCKED(s)) && sccs_clean(s, SILENT)) {
 		fprintf(stderr,
 		    "Cannot [re]move modified local file %s\n", s->gfile);
 		return (0);

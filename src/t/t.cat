@@ -1,0 +1,74 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2006 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+# %K%
+
+echo $N Create some data ............................................$NL
+commercial project
+echo hi > ascii
+cp ascii ascii_sfile
+cp ascii WANT_ASCII
+printf "abc\001\000\r\t\n\0aa" > binary
+cp binary binary_sfile
+cp binary WANT_BINARY
+bk new $Q -b binary_sfile
+bk new $Q ascii_sfile
+test -f ascii_sfile && exit 1
+test -f binary_sfile && exit 1
+echo OK
+
+echo $N Cat ASCII file not under version control ....................$NL
+bk cat ascii > GOT
+cmpfiles WANT_ASCII GOT
+echo OK
+
+echo $N Cat ASCII file under version control ........................$NL
+bk cat ascii_sfile > GOT
+cmpfiles WANT_ASCII GOT
+echo OK
+
+echo $N Cat bin file not under version control ......................$NL
+bk cat binary > GOT
+cmpfiles WANT_BINARY GOT
+echo OK
+
+echo $N Cat bin file under version control ..........................$NL
+bk cat binary_sfile > GOT
+cmpfiles WANT_BINARY GOT
+echo OK
+
+echo $N Cat ASCII gfile under version control edited ................$NL
+bk edit $Q ascii_sfile
+cat ascii ascii > ascii_sfile
+cp ascii_sfile WANT_ASCII_EDIT
+bk cat ascii_sfile > GOT
+# See that it gets the gfile and not the sfile
+cmpfiles WANT_ASCII_EDIT GOT
+echo OK
+
+echo $N Cat bin gfile under version control edited ..................$NL
+bk edit $Q binary_sfile
+cat binary binary > binary_sfile
+cp binary_sfile WANT_BINARY_EDIT
+bk cat binary_sfile > GOT
+# See that it gets the gfile and not the sfile
+cmpfiles WANT_BINARY_EDIT GOT
+echo OK
+
+echo $N Cat ASCII and binary file with -B: only output ASCII ........$NL
+bk cat -B ascii_sfile binary_sfile > GOT
+cmpfiles WANT_ASCII_EDIT GOT
+echo OK
+
+echo $N Cat ASCII file with binary data with -B: binary data ........$NL
+cp binary ascii_sfile
+bk cat -B ascii_sfile > GOT
+cmpfiles WANT_BINARY GOT
+echo OK

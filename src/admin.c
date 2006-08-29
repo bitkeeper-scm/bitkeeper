@@ -237,7 +237,7 @@ admin_main(int ac, char **av)
 			}
 		}
 		if (new_delta) {
-			if (IS_EDITED(sc)) {
+			if (EDITED(sc)) {
 				was_edited = 1;
 				sccs_read_pfile("admin", sc, &pf);
 				if (unlink(sc->pfile)) {

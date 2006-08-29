@@ -434,7 +434,7 @@ keywords(sccs *s)
 private int
 writable_gfile(sccs *s)
 {
-	if (!HAS_PFILE(s) && S_ISREG(s->mode) && IS_WRITABLE(s)) {
+	if (!HAS_PFILE(s) && S_ISREG(s->mode) && WRITABLE(s)) {
 		pfile pf = { "+", "?", "?", NULL, "?", NULL, NULL, NULL };
 
 		if (badWritable) {
@@ -597,7 +597,7 @@ chk_eoln(sccs *s, int eoln_native)
 	 */
 	if (CSET(s) ||
 	    ((strlen(s->gfile) > 10) && strneq(s->gfile, "BitKeeper/", 10)) ||
-	    ((s->encoding != E_ASCII) && (s->encoding != E_GZIP))) {
+	    BINARY(s)) {
 		return (0);
 	}
 

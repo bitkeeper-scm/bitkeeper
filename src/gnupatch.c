@@ -49,7 +49,7 @@ process(char *path0, char *path1, char *rev1,
 	s = sccs_init(t, SILENT);
 	free(t);
 	assert(s);
-	unless ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
+	unless (ASCII(s)) {
 		fprintf(stderr, "Warning: %s is not a text file\n", s->sfile);
 	}
 	mkgfile(s, rev1, path1, tmpdir, "a", fix_mod_time, db);
