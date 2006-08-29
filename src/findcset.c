@@ -22,7 +22,7 @@ private	void	closeTags(void);
 private	delta	*list, *freeme, **sorted;
 private	char	**flist, **keylist;
 private	MDBM	*csetBoundary;
-private	int	n;
+private	int	deltaCounter;
 
 typedef	struct {
 	u32	timeGap;		/* Time gap (in minutes) */
@@ -76,7 +76,6 @@ findcset_main(int ac, char **av)
 	if (tagFile && openTags(tagFile)) return (1);
 
 	/*
-	 * XXX TODO
 	 * If -i option is set, we need to:
 	 * a) clear D_CSET mark for all delta after 1.1 in the ChangeSet file
 	 * b) strip for all delta after 1.1 in the ChangeSet file
@@ -118,18 +117,19 @@ findcset_main(int ac, char **av)
 		}
 		sccs_close(s);
 		unless (HASGRAPH(s)) goto next;
-		save = n;
+		save = deltaCounter;
 		sccs_sdelta(s, sccs_ino(s), key);
 		keylist = addLine(keylist, strdup(key));
 		flist = addLine(flist, strdup(s->sfile));
 		oldest = findFirstDelta(s, oldest);
 		mkList(s, ++fileIdx);
-		//verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));
+		//verbose((stderr,
+		//    "%s: %d deltas\n", s->sfile, deltaCounter - save));
 next:		sccs_free(s);
 	}
 	sfileDone();
-	verbose((stderr, "Total %d deltas\n", n));
-	if (n) {
+	verbose((stderr, "Total %d deltas\n", deltaCounter));
+	if (deltaCounter) {
 		sortDelta(flags);
 		mkDeterministicKeys();
 		findcset();
@@ -165,11 +165,11 @@ compar(const void *a, const void *b)
 private	void
 sortDelta(int flags)
 {
-	int	i = n;
+	int	i = deltaCounter;
 	delta	*d;
 
 	verbose((stderr, "Sorting...."));
-	sorted = malloc(n * sizeof(sorted));
+	sorted = malloc(deltaCounter * sizeof(sorted));
 	if (!sorted) {
 		perror("malloc");
 		exit(1);
@@ -182,7 +182,7 @@ sortDelta(int flags)
 		sorted[--i] = d;
 	}
 	assert(i == 0);
-	qsort(sorted, n, sizeof(sorted), compar);
+	qsort(sorted, deltaCounter, sizeof(sorted), compar);
 	verbose((stderr, "done.\n"));
 }
 
@@ -422,24 +422,45 @@ line2str(char **comments)
 }
 
 /*
- * Convert cset commnent strore in a mdbm into lines format
+ * sort function for sorting an array of strings shortest first
+ */
+private int
+bylen(const void *a, const void *b)
+{
+	int	alen = strlen((char *)a);
+	int	blen = strlen((char *)b);
+
+	if (alen != blen) return (alen - blen);
+	return (strcmp((char *)a, (char *)b));
+}
+
+/*
+ * Convert cset comment store in a mdbm into lines format
  */
 private char **
 db2line(MDBM *db)
 {
 	kvpair	kv;
-	char	**lines = 0;
-	char	*comment, *gfiles, *lastg, *p, *q;
+	char	**lines = 0, **glist, **comments = 0;
+	char	*comment, *gfiles, *lastg, *p;
 	char	*many = "Many files:";
 	int	i, len = 0;
 	MDBM	*gDB;
 
+	/* sort comments from shortest to longest */
+	EACH_KV(db) comments = addLine(comments, kv.key.dptr);
+	sortLines(comments, bylen);
 	lastg = "";
-	EACH_KV(db) {
+	EACH (comments) {
+		comment = comments[i];
+
+		kv.key.dptr = comment;
+		kv.key.dsize = strlen(comment) + 1;
+		kv.val = mdbm_fetch(db, kv.key);
+
 		/*
 		 * Compute length of file list
 		 */
-		comment = kv.key.dptr;
 		memcpy(&gDB, kv.val.dptr, sizeof (MDBM *));
 		len = 0;
 		EACH_KV(gDB) {
@@ -452,20 +473,16 @@ db2line(MDBM *db)
 		 * Skip gfile list if too long
 		 */
 		if (len <= 80) {
-			p = gfiles = malloc(len);
-			i = 1;
+			glist = 0;
 			EACH_KV(gDB) {
-				q = kv.key.dptr;
-				if (i++ > 1) {
-					*p++ = ',';
-					*p++ = ' ';
-				}
-				while (*q) *p++ = *q++;
+				glist = addLine(glist, strdup(kv.key.dptr));
 			}
-			*p++ = ':';
-			*p = 0;
-			assert(gfiles + len > p);
-
+			sortLines(glist, 0);
+			p = joinLines(", ", glist);
+			freeLines(glist, free);
+			gfiles = malloc(strlen(p) + 2);
+			sprintf(gfiles, "%s:", p);
+			free(p);
 		} else {
 			gfiles = strdup(many);
 		}
@@ -473,9 +490,7 @@ db2line(MDBM *db)
 		/*
 		 * If gfile list is same as previous, skip
 		 */
-		if (!streq(lastg, gfiles)) {
-			lines = addLine(lines, gfiles);
-		}
+		if (!streq(lastg, gfiles)) lines = addLine(lines, gfiles);
 		lastg = gfiles;
 
 		/*
@@ -483,6 +498,7 @@ db2line(MDBM *db)
 		 */
 		lines = str2line(lines, "  ", comment);
 	}
+	freeLines(comments, 0);
 	return (lines);
 }
 
@@ -631,6 +647,16 @@ typedef struct {
 	int	date;
 } mkcs_t;
 
+/*
+ * output a cset to cur->patch to similate a makepatch entry
+ * Build up a delta *e with enough data to get sccs_prs() to do the
+ * heavy lifting.  Manually generate all the other patch info.
+ *
+ * NOTE: e is never woven into the cset graph, no parent or kid set.
+ * it works by setting cur->cset->rstart = cur->cset->rstop = e;
+ * which sccs_prs() uses.
+ */
+
 private void
 mkCset(mkcs_t *cur, delta *d)
 {
@@ -646,24 +672,25 @@ mkCset(mkcs_t *cur, delta *d)
 	int	i;
 	int	added;
 
-
 	/*
-	 * Force check in date/user/host to match delta "d", the last delta.
+	 * Set date/user/host to match delta "d", the last delta.
 	 * The person who make the last delta is likely to be the person
 	 * making the cset.
 	 */
 	fix_delta(d, e, -1);
 
-	/* Need to set parent right somehow */
+	/* More into 'e' from sccs * and by hand. */
 	e = sccs_dInit(e, 'D', cur->cset, 1);
 	e->flags |= D_CSET; /* copied from cset.c, probably redundant */
 	e->comments = db2line(cur->csetComment);
 
 	/*
-	 * Need to do diff into a file before outputting the
-	 * header, because we need lines added in the header
-	 * even though the importer just sets it to be one.
-	 * also need to get the delta checksum.
+	 * Need to do compute patch diff entry (and save into 'lines')
+	 * before outputting the patch header, because we need lines added
+	 * in the header even though the importer just sets it to be
+	 * one.  Also need to get the file checksum corresponding to the
+	 * delta, computed by adding in new and subtracting out old. 
+	 * Assumes straightline graph, so new entry always replaces previous.
 	 */
 	lines = 0;
 	added = 0;
@@ -690,11 +717,11 @@ mkCset(mkcs_t *cur, delta *d)
 			linesum += sumch;
 		}
 		/*
-		 * XXX Do the checksum thing here
-		 * Key is in keylist[k].
-		 * value is checksum of whole line
-		 * dbval = mdbm_fetch(cur->view, dbkey);
-		 * then memcpy
+		 * Compute file checksum by subtracting off old
+		 * then adding in new and saving new in hash to use
+		 * next time as the old entry.
+		 * hash key is delta root key
+		 * hash value is checksum of corresponding line in cset file
 		 */
 		if (ch = mdbm_fetch_str(cur->view, keylist[k])) {
 			memcpy(&sumch, ch, sizeof(sum_t));
@@ -738,11 +765,13 @@ mkCset(mkcs_t *cur, delta *d)
 	}
 	cur->date = e->date;
 
-	/* spit out parent key */
+	/*
+	 * All the data has been faked into place.  Now generate a
+	 * patch header (parent key, prs entry), patch diff, blank line.
+	 */
 	fputs(cur->parent, cur->patch);
 	fputs("\n", cur->patch);
 	sccs_sdelta(cur->cset, e, cur->parent);
-	/* need checksum */
 	if (sccs_prs(cur->cset, prs_flags, 0, NULL, cur->patch)) exit(1);
 	sortLines(lines, 0);
 	fputs("\n0a0\n", cur->patch); /* Fake diff header */
@@ -753,7 +782,6 @@ mkCset(mkcs_t *cur, delta *d)
 	fputs("\n", cur->patch);
 	freeLines(lines, free);
 }
-
 
 /*
  * We dump the comments into a mdbm to factor out repeated comments
@@ -897,7 +925,7 @@ findcset(void)
 
 	f = stderr;
 	now = time(0);
-	for (j = 0; j < n; ++j) {
+	for (j = 0; j < deltaCounter; ++j) {
 		d = sorted[j];
 		unless (d->type == 'D') continue;
 		if (j > 0) {
@@ -950,7 +978,7 @@ findcset(void)
 		    "Skipping %d delta%s older than %d month.\n",
 		    skip, ((skip == 1) ? "" : "s"), opts.blackOutTime);
 	}
-	assert(d == sorted[n - 1]);
+	assert(d == sorted[deltaCounter - 1]);
 	if (isBreakPoint(now, d)) goto done;
 	mkCset(&cur, d);
 	while (nextTag && tagDate >= d->date) {
@@ -960,16 +988,14 @@ findcset(void)
 done:	freeComment(cur.csetComment);
 	fputs("\001 End\n", cur.patch);
 	pclose(cur.patch);
-	/* currently patch is in PPP, and patchfile not used */
 	sccs_free(cur.cset);
 	mdbm_close(cur.db);
 	mdbm_close(cur.view);
-	sys("cp", cur.patchFile, "/tmp/PPP", SYS); // XXX
 	if (sys("bk", "takepatch", "-f", cur.patchFile, SYS)) {
 		sys("cat", cur.patchFile, SYS);
 		exit(1);
 	}
-	sys("mv", "RESYNC/SCCS/s.ChangeSet", "SCCS/s.ChangeSet", SYS);
+	rename("RESYNC/SCCS/s.ChangeSet", "SCCS/s.ChangeSet");
 	system("rm -rf RESYNC");
 	unlink(cur.patchFile);
 	EACH (syms) {
@@ -1073,7 +1099,7 @@ mkList(sccs *s, int fileIdx)
 			d->f_index = fileIdx; /* needed in findcset() */
 			d->next = list;
 			list = d;
-			n++;
+			deltaCounter++;
 		} else {
 			/*
 			 * Unwanted delta;
@@ -1096,7 +1122,7 @@ freeList(void)
 	delta	*d;
 
 	for (d = list; d; d = list) {
-		n--;
+		deltaCounter--;
 		list = list->next;
 		d->siblings = d->kid = 0;
 		sccs_freetree(d);

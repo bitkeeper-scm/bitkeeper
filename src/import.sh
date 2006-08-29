@@ -707,7 +707,7 @@ import_RCS () {
 		rm -f ${TAGFILE}.raw
 		Done 1
 	}
-	bk sort -k2 -n < ${TAGFILE}.raw | grep -v 'X$' > $TAGFILE
+	grep -v 'X$' < ${TAGFILE}.raw | bk sort -n -k2 > $TAGFILE
 	rm -f ${TAGFILE}.raw
 	
 	if [ "X$BRANCH" != "X" ]
