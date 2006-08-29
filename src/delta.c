@@ -18,8 +18,8 @@ fix_gmode(sccs *s, int gflags)
 	 */
 	if (S_ISLNK(s->mode)) return (0);
 
-	if ((gflags&GET_EDIT) && IS_WRITABLE(s))  return (0);
-	if (!(gflags&GET_EDIT) && !IS_WRITABLE(s))  return (0);
+	if ((gflags&GET_EDIT) && WRITABLE(s))  return (0);
+	if (!(gflags&GET_EDIT) && !WRITABLE(s))  return (0);
 
 	if (gflags&GET_EDIT) {
 		 s->mode |= 0200;	/* turn on write mode */

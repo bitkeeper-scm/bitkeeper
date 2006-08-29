@@ -204,7 +204,7 @@ usage:			system("bk help -s diffs");
 			// XXX
 			if (rargs.rstart && streq(rargs.rstart, ".")) {
 				restore = 1;
-				if (HAS_GFILE(s) && IS_WRITABLE(s)) {
+				if (HAS_GFILE(s) && WRITABLE(s)) {
 					rargs.rstart = 0;
 				} else {
 					rargs.rstart = "+";
@@ -232,7 +232,7 @@ usage:			system("bk help -s diffs");
 		 * XXX  The case above is currently broken, so I just
 		 * disabled keywork expansion entirely.
 		 */
-		if (HAS_GFILE(s) && !IS_WRITABLE(s) && (things <= 1)) {
+		if (HAS_GFILE(s) && !WRITABLE(s) && (things <= 1)) {
 			ex = GET_EXPAND;
 		}
 #endif
@@ -240,23 +240,23 @@ usage:			system("bk help -s diffs");
 		/*
 		 * Optimize out the case where we we are readonly and diffing
 		 * TOT.
-		 * IS_EDITED() doesn't work because they could have chmod +w
+		 * EDITED() doesn't work because they could have chmod +w
 		 * the file.
 		 *
 		 * XXX - I'm not sure this works with -C but we'll fix it in
 		 * the 3.1 tree.
 		 */
-		if (!r1 && (!HAS_GFILE(s) || (!force && !IS_WRITABLE(s)))) {
+		if (!r1 && (!HAS_GFILE(s) || (!force && !WRITABLE(s)))) {
 			goto next;
 		}
 
 		/*
 		 * Optimize out the case where we have a locked file with
 		 * no changes at TOT.
-		 * IS_EDITED() doesn't work because they could have chmod +w
+		 * EDITED() doesn't work because they could have chmod +w
 		 * the file.
 		 */
-		if (!r1 && IS_WRITABLE(s) && HAS_PFILE(s) &&
+		if (!r1 && WRITABLE(s) && HAS_PFILE(s) &&
 		    !MONOTONIC(s) && !sccs_hasDiffs(s, flags|ex, 1)) {
 			goto next;
 		}

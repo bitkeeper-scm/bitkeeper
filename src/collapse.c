@@ -255,7 +255,7 @@ do_file(char *file, char *tiprev)
 	 * handle not touching files that are not edited but don't
 	 * need keyword expansion.)
 	 */
-	unless (IS_EDITED(s) || CSET(s)) {
+	unless (EDITED(s) || CSET(s)) {
 		if (sccs_get(s, 0,0,0,0, SILENT|GET_EDIT|GET_NOREGET, "-")) {
 			fprintf(stderr, "%s: unable to edit %s\n", me, gfile);
 			rc = 1;

@@ -27,8 +27,7 @@ cat_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		if (skip_bin &&
-		    ((s->encoding & E_BINARY) ||
+		if (skip_bin && (BINARY(s) ||
 		    (gfile && !HASGRAPH(s) && !ascii(s->gfile)))) {
 			sccs_free(s);
 			continue;

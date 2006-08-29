@@ -180,7 +180,7 @@ sccs_gone(int quiet, FILE *f)
 	s = sccs_init(s_gone, SILENT);
 	assert(s);
 	if (exists(s_gone)) {
-		unless (IS_EDITED(s)) {
+		unless (EDITED(s)) {
 			sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-"); 
 		}
 		g = fopen(g_gone, "r");
