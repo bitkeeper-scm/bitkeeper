@@ -17,6 +17,8 @@
 #include "range.h"
 
 #define	VSIZE 4096
+#define	WRITABLE_REG(s)     (WRITABLE(s) && isRegularFile((s)->mode))
+
 
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, delta *d, int fixDate);
@@ -5929,7 +5931,7 @@ write_pfile(sccs *s, int flags, delta *d,
 	int	fd, len;
 	char	*tmp, *tmp2;
 	
-	if ((WRITABLE(s) || 
+	if ((WRITABLE_REG(s) ||
 		S_ISLNK(s->mode) && HAS_GFILE(s) && HAS_PFILE(s)) && 
 	    !(flags & GET_SKIPGET)) {
 		verbose((stderr,
@@ -6051,7 +6053,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	} else {
 		/* With -G/somewhere/foo.c we need to check the gfile again */
 		if (flags & GET_NOREGET) flags |= SILENT;
-		if (WRITABLE(s) && writable(s->gfile)) {
+		if (WRITABLE_REG(s) && writable(s->gfile)) {
 			verbose((stderr, "Writable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char*)-1);
@@ -6070,7 +6072,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		f = s->gfile;
 		unlinkGfile(s);
 	}
-	return f;
+	return (f);
 }
 
 /*
@@ -6278,7 +6280,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	}
 
 	/* Think carefully before changing this */
-	if (((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) || hash) {
+	if (BINARY(s) || hash) {
 		flags &= ~(GET_EXPAND|GET_PREFIX);
 	}
 	unless (SCCS(s) || RCS(s)) flags &= ~GET_EXPAND;
@@ -6850,7 +6852,7 @@ err:		if (i2) free(i2);
 		 * Do not error if there is a writable gfile, they may have
 		 * wanted that.
 		 */
-		if ((flags & GET_EDIT) && HAS_GFILE(s) && !IS_WRITABLE(s)) {
+		if ((flags & GET_EDIT) && HAS_GFILE(s) && !WRITABLE(s)) {
 			unlink(s->gfile);
 		}
 		goto skip_get;
@@ -7924,9 +7926,7 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
 
-	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
-		return (MCMP_DIFF);
-	}
+	if (BINARY(s)) return (MCMP_DIFF);
 	unless (*flags & GET_EXPAND) return (MCMP_DIFF);
 	if (SCCS(s)) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
@@ -7981,9 +7981,9 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	/*
 	 * Cannot enforce this assert here, gfile may be ready only
 	 * due to  GET_SKIPGET
-	 * assert(IS_WRITABLE(s));
+	 * assert(WRITABLE(s));
 	 */
-	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
+	if (UUENCODE(s)) {
 		tmpfile = 1;
 		unless (bktmp(sbuf, "getU")) RET(-1);
 		name = strdup(sbuf);
@@ -8350,9 +8350,9 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	 * set up the "new" file
 	 */
 	if (isRegularFile(s->mode)) {
-		if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
+		if (UUENCODE(s)) {
 			unless (bktmp(new, "getU")) return (-1);
-			if (IS_WRITABLE(s)) {
+			if (WRITABLE(s)) {
 				if (deflate_gfile(s, new)) {
 					unlink(new);
 					return (-1);
@@ -8520,7 +8520,7 @@ sccs_clean(sccs *s, u32 flags)
 		pfile	dummy = { "+", "?", "?", 0, "?", 0, 0, 0 };
 		int	flags = SILENT|GET_EXPAND;
 
-		if (isRegularFile(s->mode) && !IS_WRITABLE(s)) {
+		if (isRegularFile(s->mode) && !WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
 			return (0);
@@ -8628,10 +8628,8 @@ sccs_clean(sccs *s, u32 flags)
 		return (2);
 	}
 
-	unless (IS_EDITED(s)) { 
-		if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
-			flags |= GET_EXPAND;
-		}
+	unless (EDITED(s)) {
+		if (ASCII(s)) flags |= GET_EXPAND;
 	}
 	unless (bktmp(tmpfile, "diffg")) return (1);
 	/*
@@ -9208,7 +9206,7 @@ out:		sccs_unlock(s, 'z');
 	explode_rev(n);
 	if (nodefault) {
 		if (prefilled) s->xflags |= prefilled->xflags;
-	} else if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
+	} else if (ASCII(s)) {
 		unless (CSET(s)) {
 			/* check eoln preference */
 			s->xflags |= X_DEFAULT;
@@ -9314,8 +9312,7 @@ out:		sccs_unlock(s, 'z');
 		fputdata(s, "\001I 1\n", sfile);
 	}
 	s->dsum = 0;
-	if (!(flags & DELTA_PATCH) &&
-	    ((s->encoding != E_ASCII) && (s->encoding != E_GZIP))) {
+	if (!(flags & DELTA_PATCH) && BINARY(s)) {
 		/* XXX - this is incorrect, it needs to do it depending on
 		 * what the encoding is.
 		 */
@@ -10585,23 +10582,55 @@ c_compar(const void *a, const void *b)
 }
 
 private	char *
-obscure(int uu, char *buf)
+obscure(int rmlicense, int uu, char *buf)
 {
 	int	len;
 	char	*new;
+	char	*p, *t;
 
+	/* XXX just write a strnldup */
 	for (len = 0; buf[len] && (buf[len] != '\n'); len++);
-	new = malloc(len+2);
-	strncpy(new, buf, len+1);
-	new[len+1] = 0;
-	if (*new == '\001') return (new);
+	if (buf[len]) len++;
+	assert(len);
+	new = malloc(len+1);
+	strncpy(new, buf, len);
+	new[len] = 0;
+	unless (len > 1) goto done; 	/* need to have something to obscure */
+
+	if (*new == '\001') goto done;
+	/*
+	 * Try to match '.*\Wlicense\w*:.* or .*\Wlicsign\d\w*:
+	 * and obsure them.
+	 */
+	if (rmlicense) {
+		if (uu) goto done;
+		/* only pick on active license and licsign lines */
+		p = new;
+		while (isspace(*p)) ++p;
+		if (*p == '#') goto done;
+		if ((*p == '[') && (p = strchr(p, ']'))) p++;
+		unless (p && *p) goto done;
+		while (isspace(*p)) ++p;
+		unless ((strneq(p, "license", 7)) ||
+		    (strneq(p, "licsign", 7))) {
+			goto done;
+		}
+		t = p + 7;
+		if ((t[-1] == 'n') && isdigit(*t)) ++t;	/* licsign\d */
+		while (isspace(*t)) ++t;
+		unless (*t == ':') goto done;
+		*t = *new;		/* save first character in : */
+		p[2] += ':' - '#';	/* turn a c into z */
+		new[0] = '#';		/* replace : with # */
+		uu = 1;			/* leave the first char in place */
+	}
 	if (uu) {
-		qsort(new+1, len-1, 1, c_compar);
+		qsort(new+1, len-2, 1, c_compar); /* leave first and last */
 	} else {
-		qsort(new, len, 1, c_compar);
+		qsort(new, len-1, 1, c_compar);	/* leave last char */
 	}
 	assert(*new != '\001');
-	return (new);
+done:	return (new);
 }
 
 private	void
@@ -10613,7 +10642,7 @@ obscure_comments(sccs *s)
 
 	for (d = s->table; d; d = d->next) {
 		EACH(d->comments) {
-			buf = obscure(0, d->comments[i]);
+			buf = obscure(0, 0, d->comments[i]);
 			free(d->comments[i]);
 			d->comments[i] = buf;
 		}
@@ -10638,7 +10667,7 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	char	*t;
 	char	*buf;
 	delta	*d = 0;
-	int	obscure_it;
+	int	obscure_it, rmlicense;
 
 	assert(!z); /* XXX used to be LOD item */
 
@@ -10693,7 +10722,8 @@ out:
 #endif
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
-	if ((flags & ADMIN_OBSCURE) && sccs_clean(sc, (flags & SILENT))) {
+	if ((flags & (ADMIN_OBSCURE|ADMIN_RMLICENSE))
+	    && sccs_clean(sc, (flags & SILENT))) {
 		goto out;
 	}
 
@@ -10938,21 +10968,29 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	seekto(sc, sc->data);
 	debug((stderr, "seek to %d\n", (int)sc->data));
 	obscure_it = (flags & ADMIN_OBSCURE);
-	/* ChangeSet can't be obscured, neither can the BitKeeper/etc files */
-	if (CSET(sc) ||
-	    (sc->tree->pathname && strneq(sc->tree->pathname,"BitKeeper/etc/",13))) {
+	rmlicense = (flags & ADMIN_RMLICENSE);
+	/* ChangeSet can't be obscured in any sense */
+	if (CSET(sc)) {
+	    	rmlicense = obscure_it = 0;
+	}
+	/* the BitKeeper/etc files can't be obscured in normal sense */
+	if (sc->tree->pathname
+	    && strneq(sc->tree->pathname,"BitKeeper/etc/",13)) {
 	    	obscure_it = 0;
 	}
-	if ((old_enc & E_GZIP) && obscure_it) {
+	if ((old_enc & E_GZIP) && (obscure_it|rmlicense)) {
 		fprintf(stderr, "admin: cannot obscure gzipped data.\n");
 		OUT;
 	}
+	if (rmlicense) obscure_it = 1;
 	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
 	if (new_enc & E_GZIP) zputs_init();
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
 	while (buf = nextdata(sc)) {
-		if (obscure_it) buf = obscure(old_enc & E_UUENCODE, buf);
+		if (obscure_it) {
+			buf = obscure(rmlicense, old_enc & E_UUENCODE, buf);
+		}
 		sc->encoding = new_enc;
 		if (flags & ADMIN_ADD1_0) {
 			fputbumpserial(sc, buf, 1, sfile);
@@ -11374,7 +11412,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	no_lf;
 
 	if (binaryCheck(diffs)) {
-		assert(!(s->encoding & E_BINARY));
+		assert(!BINARY(s));
 		fprintf(stderr,
 		    "%s: file format is ascii, delta is binary.", s->sfile);
 		fprintf(stderr, "  Unsupported operation.\n");
@@ -12396,7 +12434,7 @@ out:
 	}
 
 	unless (HAS_PFILE(s)) {
-		if (IS_WRITABLE(s)) {
+		if (WRITABLE(s)) {
 			fprintf(stderr,
 			    "delta: %s writable but not checked out?\n",
 			    s->gfile);
@@ -12409,7 +12447,7 @@ out:
 		}
 	}
 
-	unless (IS_WRITABLE(s) || diffs) {
+	unless (WRITABLE(s) || diffs) {
 		fprintf(stderr,
 		    "delta: %s is locked but not writable.\n", s->gfile));
 		s->state |= S_WARNED;
@@ -12927,7 +12965,7 @@ doDiff(sccs *s, u32 flags, u32 kind, char *leftf, char *rightf,
 		diff(leftf, rightf, kind, diffFile);
 		diffs = fopen(diffFile, "rt");
 	}
-	if (IS_WRITABLE(s) && !IS_EDITED(s)) {
+	if (WRITABLE(s) && !EDITED(s)) {
 		error = " (writable without lock!) ";
 	}
 	while (fnext(buf, diffs)) {

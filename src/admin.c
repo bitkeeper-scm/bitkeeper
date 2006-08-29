@@ -34,6 +34,7 @@ admin_main(int ac, char **av)
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 	char	*csetFile = 0;
+	char	*obscure = 0;
 	delta	*d = 0;
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf;
@@ -42,7 +43,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;Op|r;S;t|y|Z|0DhHnqsTuz"))
+	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;O;p|r;S;t|y|Z|0DhHnqsTuz"))
 	       != -1) {
 		switch (c) {
 		/* user|group */
@@ -111,13 +112,7 @@ admin_main(int ac, char **av)
 		    		flags |= NEWCKSUM;
 				touchGfile++;
 				break;
-		    case 'O':					/* undoc */
-			unless (getenv("BK_FORCE")) {
-				fprintf(stderr, "Set BK_FORCE to do this\n");
-				exit(1);
-			}
-			flags |= NEWCKSUM|ADMIN_OBSCURE;
-			break;
+		    case 'O':	obscure = optarg; break;
 		    default:	fprintf(stderr, "admin: bad option %c.\n", c);
 				goto usage;
 		}
@@ -151,7 +146,22 @@ admin_main(int ac, char **av)
 		    "admin: encoding may only be specified with -i\n");
 		goto usage;
 	}
-
+	if (obscure) {
+		unless (getenv("BK_FORCE")) {
+			fprintf(stderr, "Set BK_FORCE to do this\n");
+			exit(1);
+		}
+		if (streq(optarg, "all")) {
+			flags |= NEWCKSUM|ADMIN_OBSCURE;
+		} else if (streq(optarg, "license")) {
+			flags |= NEWCKSUM|ADMIN_RMLICENSE;
+		} else {
+			fprintf(stderr,
+			    "admin: unrecognized obscure option %s\n",
+			    obscure);
+			exit (1);
+		}
+	}
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
 	 */
@@ -237,7 +247,7 @@ admin_main(int ac, char **av)
 			}
 		}
 		if (new_delta) {
-			if (IS_EDITED(sc)) {
+			if (EDITED(sc)) {
 				was_edited = 1;
 				sccs_read_pfile("admin", sc, &pf);
 				if (unlink(sc->pfile)) {

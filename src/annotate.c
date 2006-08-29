@@ -74,7 +74,7 @@ err:			errors = 1;
 			sccs_free(s);
 			continue;
 		}
-		if (s->encoding & E_BINARY) goto err;
+		if (BINARY(s)) goto err;
 		if (range) {
 			if (range_process(ME, s, RANGE_SET, &rargs)) goto err;
 		} else if (cdate) {

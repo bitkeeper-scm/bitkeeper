@@ -123,6 +123,7 @@ int	checking_rmdir(char *dir);
 #define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
 #define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
 #define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
+#define	ADMIN_RMLICENSE	0x00010000	/* Obscure licenses in repo config */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
@@ -254,12 +255,12 @@ int	checking_rmdir(char *dir);
 #define	HAS_ZFILE(s)	((s)->state & S_ZFILE)
 #define	HAS_SFILE(s)	((s)->state & S_SFILE)
 #define	BEEN_WARNED(s)	((s)->state & S_WARNED)
-#define	IS_WRITABLE(s)	((s)->mode & 0200)
-#define IS_EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && IS_WRITABLE(s))
-#define IS_LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
-#define IS_TEXT(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
-#define IS_BINARY(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
-#define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile((s)->mode))
+#define	WRITABLE(s)	((s)->mode & 0200)
+#define EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && WRITABLE(s))
+#define LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
+#define ASCII(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
+#define BINARY(s)	(((s)->encoding & E_DATAENC) != E_ASCII)
+#define UUENCODE(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
@@ -1005,12 +1006,13 @@ int	repository_wrunlock(int all);
 int	repository_hasLocks(char *root, char *dir);
 void	repository_lockcleanup(void);
 int	repo_nfiles(sccs *cset);
-void	comments_save(char *s);
+int	comments_save(char *s);
 int	comments_savefile(char *s);
 int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
 void	comments_writefile(char *file);
+int	comments_checkStr(char *s);
 void	host_done(void);
 delta	*host_get(delta *);
 void	user_done(void);

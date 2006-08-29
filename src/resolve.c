@@ -467,7 +467,7 @@ nameOK(opts *opts, sccs *s)
 	    (local = sccs_init(path, INIT_NOCKSUM)) &&
 	    HAS_SFILE(local)) {
 		save_checkout_state(opts->checkoutDB, local);
-		if (IS_EDITED(local) && sccs_clean(local, SILENT)) {
+		if (EDITED(local) && sccs_clean(local, SILENT)) {
 			fprintf(stderr,
 			    "Warning: %s is modified, will not overwrite it.\n",
 			    local->gfile);
@@ -490,7 +490,7 @@ nameOK(opts *opts, sccs *s)
 	local = sccs_keyinit(buf, INIT_NOCKSUM, opts->idDB);
 	if (local) {
 		save_checkout_state(opts->checkoutDB, local);
-		if (IS_EDITED(local) &&
+		if (EDITED(local) &&
 		    sccs_clean(local, SILENT|CLEAN_SHUTUP)) {
 			fprintf(stderr,
 			    "Warning: %s is modified, will not overwrite it.\n",
@@ -1942,7 +1942,7 @@ err:		resolve_free(rs);
 			sccs_whynot("delta", rs->s);
 			goto err;
 		}
-		if (!IS_LOCKED(rs->s) && edit(rs)) goto err;
+		if (!LOCKED(rs->s) && edit(rs)) goto err;
 		comments_save("Auto merged");
 		e = comments_get(0);
 		sccs_restart(rs->s);
@@ -2032,7 +2032,7 @@ automerge(resolve *rs, names *n, int identical)
 		goto same;
 	}
 
-	if (rs->s->encoding & E_BINARY) {
+	if (BINARY(rs->s)) {
 		unless (rs->opts->quiet) {
 			fprintf(stderr,
 			    "Not automerging binary '%s'\n", rs->s->gfile);
@@ -2075,7 +2075,7 @@ nomerge:	rs->opts->hadConflicts++;
 			fprintf(stderr,
 			    "Content merge of %s OK\n", rs->s->gfile);
 		}
-same:		if (!IS_LOCKED(rs->s) && edit(rs)) return;
+same:		if (!LOCKED(rs->s) && edit(rs)) return;
 		comments_save("Auto merged");
 		d = comments_get(0);
 		rs->s = sccs_restart(rs->s);

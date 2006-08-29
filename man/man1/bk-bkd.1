@@ -80,8 +80,12 @@ There two ways to invoke
 .TP
 a)
 when the repository is specified in this form: 
-.[ARGc] user\fB@\fP
-.ARGc host\fB:\fP
+[\c
+.ARGc user
+.Bc @
+]\c
+.ARGc host
+.Bc :
 .ARG pathname ,
 .B ssh
 will be called to run
@@ -140,6 +144,18 @@ is a self-contained HTTP server which provides the optional
 BK/Web feature of \*(BK.  In order for this feature to work the 
 repository served by the bkd must contain (or reference) a commercial
 license which has the BK/Web option enabled.
+.LP
+To access the BK/Web interface, use a web browser to go to the \s-1URL\s0:
+.DS
+http://\*<host\*>:\*<port\*>/
+.DE
+where
+.ARG port
+is the port on which the
+.B bkd
+is listening (see the
+.Q \-p
+option, below).
 .SH WINDOWS BASED BKD
 .LP
 It is possible to install a one or more bkd's as Windows services,

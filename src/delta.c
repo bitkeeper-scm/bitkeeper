@@ -18,8 +18,8 @@ fix_gmode(sccs *s, int gflags)
 	 */
 	if (S_ISLNK(s->mode)) return (0);
 
-	if ((gflags&GET_EDIT) && IS_WRITABLE(s))  return (0);
-	if (!(gflags&GET_EDIT) && !IS_WRITABLE(s))  return (0);
+	if ((gflags&GET_EDIT) && WRITABLE(s))  return (0);
+	if (!(gflags&GET_EDIT) && !WRITABLE(s))  return (0);
 
 	if (gflags&GET_EDIT) {
 		 s->mode |= 0200;	/* turn on write mode */
@@ -162,7 +162,7 @@ delta_main(int ac, char **av)
 		    case 'p': dflags |= PRINT; break; 		/* doc 2.0 */
 		    case 'm':					/* ci compat */
 		    case 'y': 					/* doc 2.0 */
-			comments_save(optarg);
+			if (comments_save(optarg)) return (1);
 			dflags |= DELTA_DONTASK;
 			break;
 		    case 's': /* fall through */		/* undoc 2.0 */

@@ -171,7 +171,7 @@ err:			sccs_free(s);
 			errors = 1;
 			continue;
 		}
-		if (skip_bin && IS_BINARY(s)) {
+		if (skip_bin && BINARY(s)) {
 			sccs_free(s);
 			continue;
 		}

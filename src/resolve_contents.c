@@ -107,7 +107,7 @@ c_helptool(resolve *rs)
 int
 c_quit(resolve *rs)
 {
-	if (IS_LOCKED(rs->s)) {
+	if (LOCKED(rs->s)) {
 		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
 		rs->s = sccs_restart(rs->s);
 		sccs_unedit(rs->s, 0);
@@ -263,7 +263,7 @@ needs_merge(resolve *rs)
 	int	ok = 1;
 
 	unless (exists(rs->s->gfile)) return (1);
-	if (rs->s->encoding & E_BINARY) return (0);
+	if (BINARY(rs->s)) return (0);
 
 	unless (m = mopen(rs->s->gfile, "r")) {
 		fprintf(stderr, "%s cannot be opened\n", rs->s->gfile);
@@ -407,7 +407,7 @@ c_ur(resolve *rs)
 private int
 c_skip(resolve *rs)
 {
-	if (IS_LOCKED(rs->s) && !sccs_hasDiffs(rs->s, 0, 1)) {
+	if (LOCKED(rs->s) && !sccs_hasDiffs(rs->s, 0, 1)) {
 		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
 		rs->s = sccs_restart(rs->s);
 		sccs_unedit(rs->s, 0);
@@ -471,7 +471,7 @@ resolve_contents(resolve *rs)
 	int	ret;
 	char	buf[MAXPATH];
 
-	if ((rs->s->encoding & E_BINARY) || NOMERGE(rs->s)) {
+	if (BINARY(rs->s) || NOMERGE(rs->s)) {
 		return (resolve_binary(rs));
 	}
 
@@ -501,7 +501,7 @@ resolve_contents(resolve *rs)
 		freenames(n, 1);
 		return (-1);
 	}
-	unless (IS_LOCKED(rs->s)) {
+	unless (LOCKED(rs->s)) {
 		if (edit(rs)) return (-1);
 	}
 	if (sameFiles(n->local, n->remote)) {

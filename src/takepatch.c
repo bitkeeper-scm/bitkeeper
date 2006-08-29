@@ -445,7 +445,7 @@ error:		if (perfile) sccs_free(perfile);
 			fprintf(stderr, "takepatch: file %s found.\n",
 			s->sfile);
 		}
-		if (IS_EDITED(s)) {
+		if (EDITED(s)) {
 			int cleanflags = SILENT|CLEAN_SHUTUP|CLEAN_CHECKONLY;
 
 			if (sccs_clean(s, cleanflags)) {

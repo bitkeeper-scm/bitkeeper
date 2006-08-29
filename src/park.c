@@ -1399,7 +1399,7 @@ diffable_text(sccs *s, delta *top)
 {
 	return (HAS_SFILE(s) && HAS_GFILE(s) &&
 		S_ISREG(s->mode) && ((top->mode == 0) || S_ISREG(top->mode)) &&
-	    	IS_TEXT(s) && ascii(s->gfile));
+	    	ASCII(s) && ascii(s->gfile));
 }
 
 private int
