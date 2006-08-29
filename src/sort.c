@@ -29,7 +29,8 @@ number_sort(const void *a, const void *b)
 
 	l = atoi(*(char**)a);
 	r = atoi(*(char**)b);
-	return (l - r);
+	if (l - r) return (l - r);
+	return (string_sort(a, b));
 }
 
 /*
@@ -53,7 +54,8 @@ field_sort(const void *a, const void *b)
 		nb += strcspn(nb, " \t");
 		nb += strspn(nb, " \t");
 	}
-	return (sortfcn(&na, &nb));
+	if (i = sortfcn(&na, &nb)) return (i);
+	return (string_sort(a, b));
 }
 
 /*
