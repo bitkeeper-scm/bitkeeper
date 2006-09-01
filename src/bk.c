@@ -490,6 +490,7 @@ cmdlog_start(char **av, int httpMode)
 		free(repo2);
 		if (i) {
 			out("ERROR-can't connect to same repo_id\n");
+			if (getenv("BK_REGRESSION")) usleep(100000);
 			drain();
 			exit(1);
 		}
