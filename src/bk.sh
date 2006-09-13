@@ -1690,7 +1690,7 @@ _conflicts() {
 			bk difftool -r$LOCAL -r$REMOTE "$GFILE"
 		fi
 		if [ $REVTOOL -eq 1 ]; then
-			bk revtool -G$GCA -l$LOCAL -r$REMOTE "$GFILE"
+			bk revtool -l$LOCAL -r$REMOTE "$GFILE"
 		fi
 		if [ $FM3TOOL -eq 1 ]; then
 			echo "NOTICE: read-only merge of $GFILE"
