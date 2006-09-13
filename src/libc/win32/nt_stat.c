@@ -1,4 +1,5 @@
-#include "win32.h"
+#define	_RE_MAP_H_	/* Don't remap API */
+#include "system.h"
 
 private	time_t	filetime2timet(FILETIME *ft);
 private	int	attribute2mode(int attribute);

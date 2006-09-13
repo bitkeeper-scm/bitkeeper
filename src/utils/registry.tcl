@@ -106,12 +106,9 @@ proc registry_install {destination} \
 	reg set $HKLMS\\$MWC\\Uninstall\\$id DisplayName "BitKeeper $version"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id DisplayVersion $version
 	reg set $HKLMS\\$MWC\\Uninstall\\$id Publisher "BitMover, Inc."
-	# store the short name, because the uninstall code has a hack
-	# that assumes the name of the executable doesn't have a space. 
-	# Also need to use / rather than \ because we may execute this
-	# in an msys shell.
+
 	reg set $HKLMS\\$MWC\\Uninstall\\$id UninstallString \
-	    "[shortname $destination]\\bkuninstall -S \"$destination\\install.log\""
+	    "$destination\\bk uninstall"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id URLInfoAbout \
 		 "http://www.bitkeeper.com"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id HelpLink \
@@ -124,7 +121,6 @@ proc startmenu_install {dest {group "BitKeeper"}} \
 	global env shortcutlog tcl_platform
 
 	set bk [file join $dest bk.exe]
-	set uninstall [file join $dest bkuninstall.exe]
 	set installLog [file join $dest install.log]
 
 	lappend shortcutlog "CreateGroup \"$group\""
@@ -135,7 +131,7 @@ proc startmenu_install {dest {group "BitKeeper"}} \
 	progman AddItem "$bk helptool,BitKeeper Documentation,,,,,,,1"
 	progman AddItem "$bk sendbug,Submit bug report,,,,,,,1"
 	progman AddItem "$bk support,Request BitKeeper Support,,,,,,,1"
-	progman AddItem "$uninstall -S \"$installLog\",Uninstall BitKeeper,,,,,C:\\,,1"
+	progman AddItem "$bk uninstall,Uninstall BitKeeper,,,,,C:\\,,1"
 	progman AddItem "$dest\\bk_refcard.pdf,Quick Reference,,,,,,,0"
 	progman AddItem "http://www.bitkeeper.com,BitKeeper on the Web,,,,,,,1"
 	progman AddItem "http://www.bitkeeper.com/Test.html,BitKeeper Test Drive,,,,,,,1"

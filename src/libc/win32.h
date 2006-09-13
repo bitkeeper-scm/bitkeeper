@@ -31,16 +31,6 @@
 #include "win32/re_map.h"
 #include "win32/w32sock.h"
 
-/*
- * We need the GetLongPathName function.  We use the NewAPIs.h header
- * from the Windows SDK to include a emulated version on old win98. 
- */
-
-#define	WANT_GETLONGPATHNAME_WRAPPER
-#define	WANT_GETFILEATTRIBUTESEX_WRAPPER
-
-#include "win32/NewAPIs.h"
-
 /* undefine the symbol that is in conflict */
 /* with bitkeeper main source              */
 #undef isascii
@@ -84,18 +74,33 @@
 
 typedef int uid_t;
 
+#define safeCloseHandle(h) \
+	unless(CloseHandle(h)) \
+		fprintf(stderr, "CloseHandle(%x) failed, error = %ld\n", \
+		    (int)h, GetLastError())
+
+
 /* utils/fileinfo.c */
 void	closeBadFds(void);
 int	Reserved(char *basename);
+
 /* win32/wapi_intf.c */
+
+#define	WIN32_NOISY	0x00000001	/* print messages while retrying */
+#define	WIN32_RETRY	0x00000002	/* when an operation fails, retry */
+
 int	win_supported(void);
+int	win32flags_get(void);
+void	win32flags_set(int flags);
+void	win32flags_clear(int flags);
+
 /* win32/registry.c */
-void 	*reg_get(char *key, char *value, long *len);
+void	*reg_get(char *key, char *value, long *len);
 int	reg_set(char *key, char *value, DWORD type, void *data, long len);
 DWORD	reg_type(char *key, char *value);
 char	*reg_typestr(DWORD type);
 int	reg_delete(char *key, char *value);
-char 	**reg_keys(char *key);
-char 	**reg_values(char *key);
+char	**reg_keys(char *key);
+char	**reg_values(char *key);
 
 #endif

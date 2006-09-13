@@ -39,12 +39,7 @@ bk_spawnvp(int flags, char *cmdname, char *av[])
 			 */
 			for (fd = 3; fd < 100; fd++) close(fd);
 		}
-		/*
-		 * This is lame if they have a lame execvp() implementation
-		 * but the installer needs exevp, not execv.  The installer's
-		 * whichp() does nothing.
-		 */
-		execvp(exec, av);
+		execv(exec, av);
 		perror(exec);
 		_exit(19);
 	}

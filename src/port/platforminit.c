@@ -166,13 +166,6 @@ platformInit(char **av)
 	t = strrchr(buf, '/');
 	*t = 0;
 
-	/*
-	 * For win32: Convert to short path name, because the shell
-	 * cannot handle space in path name.
-	 * WHS: Is this really true?  It is ugly.
-	 */
-	GetShortPathName(buf, buf, sizeof(buf));
-
 	localName2bkName(buf, buf);
 	cleanPath(buf, buf);	/* sanitize pathname */
 	bin = buf; /* buf is static */

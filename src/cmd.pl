@@ -279,6 +279,7 @@ undos
 unedit
 _unlink
 unlock
+uninstall
 unpark
 unpull
 unwrap

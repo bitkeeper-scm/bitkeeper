@@ -50,7 +50,8 @@
  *				Andrew Chang awc@bitmover.com 1998
  */
 
-#include "win32.h"
+#define	_RE_MAP_H_	/* Don't remap API */
+#include "system.h"
 
 /*
  * Scan ofn, replace all ochar to nchar, result is in nfn

@@ -49,7 +49,34 @@
  *				Andrew Chang awc@bitmover.com 1998
  */
 
-#include "win32.h"
+#define	_RE_MAP_H_	/* Don't remap API */
+#include "system.h"
+
+static	int	win32_flags = WIN32_NOISY | WIN32_RETRY;
+
+/* get, set , and clear the flags for the operation of the win32
+ * emulation layer look at the static int above and src/libc/win32.h
+ * for the allowed values
+ */
+int
+win32flags_get()
+{
+	return win32_flags;
+}
+
+/* see comment above */
+void
+win32flags_set(int flags)
+{
+	win32_flags |= flags;
+}
+
+/* see comment above */
+void
+win32flags_clear(int flags)
+{
+	win32_flags &= ~flags;
+}
 
 int
 link(char *from, char *to)
@@ -1081,7 +1108,7 @@ waited(int i)
 private void
 stuck(char *fmt, const char *arg)
 {
-	fprintf(stderr, fmt, arg);
+	if (win32_flags & WIN32_NOISY) fprintf(stderr, fmt, arg);
 }
 
 int
@@ -1105,14 +1132,17 @@ again:
 				dir, err);
 			/* FALLTHROUGH */
 		    case ERROR_SHARING_VIOLATION:
+			unless (win32_flags & WIN32_RETRY) {
+fail:				errno = EBUSY;
+				return (-1);
+			}
 			Sleep(++i * INC);
 			if (i > NOISY) {
 				stuck("rmdir: retrying lock on %s\n", dir);
 			}
 			if (waited(i) > WAITMAX) {
 				stuck("bailing out on %s\n\n", dir);
-				errno = EBUSY;
-				return (-1);
+				goto fail;
 			}
 			goto again;
 		}
@@ -1154,14 +1184,17 @@ nt_unlink(const char *file)
 		h = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE, 0,
 		    OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE, 0);
 		unless (h == INVALID_HANDLE_VALUE) break;
+		unless (win32_flags & WIN32_RETRY) {
+fail:			errno = EBUSY;
+			return (-1);
+		}
 		Sleep(++i * INC);
 		if (i > NOISY) {
 			stuck("unlink: retrying lock on %s\n", file);
 		}
 		if (waited(i) > WAITMAX) {
 			stuck("bailing out on %s\n", file);
-			errno = EBUSY;
-			return (-1);
+			goto fail;
 		}
 	}
 	safeCloseHandle(h); /* real delete happens here */
@@ -1177,20 +1210,24 @@ nt_mvdir(const char *oldf, const char *newf)
 	for (i = 0;; ) {
 		h = CreateFile(oldf, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
 		unless (h == INVALID_HANDLE_VALUE) break;
+		unless (win32_flags & WIN32_RETRY) {
+fail:			errno = EBUSY;
+			return (-1);
+		}
 		Sleep(++i * INC);
 		if (i > NOISY) {
 			stuck("rename: wait for source %s\n", oldf);
 		}
 		if (waited(i) > WAITMAX) {
 			stuck("bailing out on %s\n", oldf);
-			errno = EBUSY;
-			return (-1);
+			goto fail;
 		}
 	}
 	safeCloseHandle(h);
 	for (i = 0; ; ) {
 		if (MoveFileEx(oldf, newf, 0)) return (0);
 		Sleep(++i * INC);
+		unless (win32_flags & WIN32_RETRY) goto fail;
 		if (i > NOISY) {
 			char	buf[2000];
 
@@ -1199,8 +1236,7 @@ nt_mvdir(const char *oldf, const char *newf)
 		}
 		if (waited(i) > WAITMAX) {
 			stuck("bailing out on %s\n", oldf);
-			errno = EBUSY;
-			return (-1);
+			goto fail;
 		}
 	}
 	return (-1);
@@ -1238,14 +1274,17 @@ nt_rename(const char *oldf, const char *newf)
 			break;
 		}
 		// XXX permissions problems?
+		unless (win32_flags & WIN32_RETRY) {
+fail:			errno = EBUSY;
+			return (-1);
+		}
 		Sleep(++i * INC);
 		if (i > NOISY) {
 			stuck("rename: wait for dest %s\n", newf);
 		}
 		if (waited(i) > WAITMAX) {
 			stuck("bailing out on %s\n", newf);
-			errno = EBUSY;
-			return (-1);
+			goto fail;
 		}
 	}
 	/* make sure we can delete the original file when we are done */
@@ -1254,14 +1293,14 @@ nt_rename(const char *oldf, const char *newf)
 		from = CreateFile(oldf, GENERIC_READ, FILE_SHARE_DELETE,
 		       0, OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE, 0);
 		unless (from == INVALID_HANDLE_VALUE) break;
+		unless (win32_flags & WIN32_RETRY) goto fail;
 		Sleep(++i * INC);
 		if (i > NOISY) {
 			stuck("rename: wait for source %s\n", oldf);
 		}
 		if (waited(i) > WAITMAX) {
 			stuck("bailing out on %s\n", oldf);
-			errno = EBUSY;
-			return (-1);
+			goto fail;
 		}
 	}
 	while (ReadFile(from, buf, sizeof(buf), &in, 0) && (in > 0)) {
@@ -1380,13 +1419,3 @@ do_reboot(char *msg)
 	}
 	return (1);
 }
-
-/*
- * Compile the subs used by NewAPIs.h header file.
- */
-
-#define	WANT_GETLONGPATHNAME_WRAPPER
-#define	WANT_GETFILEATTRIBUTESEX_WRAPPER
-#define	COMPILE_NEWAPIS_STUBS
-
-#include "NewAPIs.h"

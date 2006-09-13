@@ -30,10 +30,13 @@ rmtreewalk(char *file, struct stat *sb, void *data)
 	char	***dirs = data;
 
 	if (S_ISDIR(sb->st_mode)) {
+		if ((sb->st_mode & 0700) != 0700) {
+			chmod(file, sb->st_mode | 0700);
+		}
 		*dirs = addLine(*dirs, strdup(file));
 	} else {
 		if (unlink(file)) {
-			fprintf(stderr, "unlink(%s) failed\n", file);
+			perror(file);
 			return (1);
 		}
 	}

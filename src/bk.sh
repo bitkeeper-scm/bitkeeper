@@ -1206,97 +1206,6 @@ __register_dll()
 	"$REGSVR32" -s "$1"
 }
 
-# For win32: extract the UninstallString from the registry
-__uninstall_cmd()
-{
-        if [ -f "$1/bk.exe" ]
-        then
-		VER=`"$1/bk.exe" version | head -1 | awk '{ print $4 }'`
-		case "$VER" in
-		    bk-*)
-			VERSION="$VER";
-			;;
-		    *)
-			VERSION="bk-$VER"
-		esac
-		"$SRC/gui/bin/tclsh" "$SRC/getuninstall.tcl" "$VERSION"
-        else
-		echo ""
-        fi
-}
-
-__do_win32_uninstall()
-{
-	SRC="$1"
-	DEST="$2"
-	OBK="$3"
-	OLOG="$OBK/install.log"
-	ODLL="$OBK/BkShellX.dll"
-	__uninstall_cmd "$2" > "$TEMP/bkuninstall_tmp$$"
-	UNINSTALL_CMD=`cat "$TEMP/bkuninstall_tmp$$"`
-
-	case "$UNINSTALL_CMD" in
-	    *UNWISE.EXE*)	# Uninstall bk3.0.x
-		rm -rf "$DEST" 2>/dev/null || mv "$DEST" "$OBK" || exit 3
-
-		mkdir "$DEST"
-		for i in UNWISE.EXE UNWISE.INI INSTALL.LOG
-		do
-			cp "$OBK"/$i "$DEST"/$i
-		done
-
-		rm -rf "$OBK" 2> /dev/null
-		if [ -f "$ODLL" ]
-		then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
-		    		 "BitKeeper$$" "\"$DEST/bkuninstall.exe\" \
-						  	-R \"$ODLL\" \"$OBK\""
-		fi
-
-		# *NOTE* UNWISE.EXE runs as a background process!
-		eval $UNINSTALL_CMD
-
-		# write cygwin upgrade notice to desktop
-		DESKTOP=`bk _getreg HKEY_CURRENT_USER \
-		    'Software/Microsoft/Windows/CurrentVersion/Explorer/Shell Folders' \
-		    Desktop`
-		bk getmsg install-cygwin-upgrade | bk undos -r \
-		    > $DESKTOP/BitKeeper-Cygwin-notice.txt
-
-		#Busy wait: wait for UNWISE.EXE to exit
-		cnt=0;
-		while [ -d "$DEST" ]
-		do
-			cnt=`expr $cnt + 1` 	
-			if [ "$cnt" -gt 60 ]; then break; fi
-			echo -n "."
-			sleep 2
-		done
-		if [ $cnt -gt 60 ]; then exit 2; fi; # force installtool to exit
-		;;
-	    *bkuninstall*)	# Uninstall bk3.2.x
-		rm -rf "$DEST" 2>/dev/null || mv "$DEST" "$OBK" || exit 3
-
-		# replace $DEST with $OBK
-		X1=`__quoteSpace "$DEST"`
-		Y1=`__quoteSpace "$OBK"`
-		sed "s,$X1,$Y1,Ig" "$TEMP/bkuninstall_tmp$$" > "$TEMP/bk_cmd$$"
-		BK_INSTALL_DIR="$OBK"
-		export BK_INSTALL_DIR TEMP
-		TMP="$TEMP" sh "$TEMP/bk_cmd$$" > /dev/null 2>&1
-		rm -f "$TEMP/bkuninstall_tmp$$" "$TEMP/bk_cmd$$"
-		;;
-	    *)	
-		rm -rf "$DEST" 2>/dev/null || mv "$DEST" "$OBK" || exit 3
-		rm -rf "$OBK" 2> /dev/null
-		if [ -f "$ODLL" ]
-		then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
-		    		 "BitKeeper$$" "\"$DEST/bkuninstall.exe\" \
-						  	-R \"$ODLL\" \"$OBK\""
-		fi
-		;;
-	esac
-}
-
 # usage: install dir
 # installs bitkeeper in directory <dir> such that the new
 # bk will be located at <dir>/bk
@@ -1368,21 +1277,10 @@ _install()
 			cp "$DEST/config" $CONFIG
 	    	}
 		test $VERBOSE = YES && echo Uninstalling $DEST
-		if [ "X$OSTYPE" = "Xmsys" ]
-		then
-			__do_win32_uninstall "$SRC" "$DEST" "$OBK"
-		else
-			(
-				cd "$DEST"
-				find . -type d | while read x
-				do	test -w "$x" || chmod ug+w "$x"
-				done
-			) || exit 3
-			rm -rf "$DEST"/* || {
-			    echo "bk install: failed to remove $DEST"
-			    exit 3
-			}
-		fi
+		bk uninstall -f "$DEST" || {
+		    echo "bk install: failed to remove $DEST"
+		    exit 3
+		}
 	}
 	mkdir -p "$DEST" || {
 		echo "bk install: Unable to mkdir $DEST, failed"
@@ -1462,7 +1360,7 @@ _install()
 			(find . | xargs chown root) 2> /dev/null
 			(find . | xargs chgrp root) 2> /dev/null
 		}
-		find . | grep -v bkuninstall.exe | xargs chmod ugo-w
+		find . | xargs chmod ugo-w
 	else
 		find . -type d | xargs chmod 777
 	fi
