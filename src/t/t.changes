@@ -534,3 +534,91 @@ bk changes -r+ -ndx /sldfjsdf/some/bad/url $HERE/clone > OUT 2> ERR && {
 	exit 1
 }
 echo OK
+
+echo $N Check exit status for changes -L no/such/repo ...............$NL
+bk clone $Q -r1.1 $HERE/project $HERE/superset
+cd $HERE/superset
+bk changes -qL /no/such/repo > OUT 2>&1 && {
+	echo should not have exited 0
+	exit 1
+}
+grep -q "illegal, nonexistent, or not package root" OUT || {
+	echo Wrong message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Check exit status for changes -R no/such/repo ...............$NL
+bk changes -qR /no/such/repo > OUT 2>&1 && {
+	echo should not have exited 0
+	exit 1
+}
+grep -q "illegal, nonexistent, or not package root" OUT || {
+	echo Wrong message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Check exit status for changes -L repo/with/lock .............$NL
+bk lock -wt $HERE/project > PORT &
+(cd $HERE/project; bk lock -L;)
+bk changes -qL $HERE/project > OUT 2>&1 && {
+	echo should not have exited 0
+	cat OUT
+	bk _kill `cat PORT`
+	exit 1
+}
+grep -q "Can't get read lock on the repository" OUT || {
+	echo Wrong message
+	cat OUT
+	bk _kill `cat PORT`
+	exit 1
+}
+# keep lock going for next one
+echo OK
+
+echo $N Check exit status for changes -R repo/with/lock .............$NL
+bk changes -qR $HERE/project > OUT 2>&1 && {
+	echo should not have exited 0
+	cat OUT
+	bk _kill `cat PORT`
+	exit 1
+}
+grep -q "Can't get read lock on the repository" OUT || {
+	echo Wrong message
+	cat OUT
+	bk _kill `cat PORT`
+	exit 1
+}
+bk _kill `cat PORT`
+echo OK
+
+echo $N Check exit status for changes -L different/package ..........$NL
+# give me a new root, work with old root'd parent
+bk newroot
+bk changes -qL > OUT 2>&1 && {
+	echo should not have exited 0
+	cat OUT
+	exit 1
+}
+grep -q "You are trying to synchronize with an unrelated package" OUT || {
+	echo Wrong message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Check exit status for changes -R different/package ..........$NL
+bk changes -qR > OUT 2>&1 && {
+	echo should not have exited 0
+	cat OUT
+	exit 1
+}
+grep -q "You are trying to synchronize with an unrelated package" OUT || {
+	echo Wrong message
+	cat OUT
+	exit 1
+}
+echo OK
