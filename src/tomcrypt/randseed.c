@@ -82,7 +82,7 @@ rand_checkSeed(void)
 	 * was run.
 	 */
 	i = time(0) - now;
-	if ((i < 0) || (i > 30)) return (-5);
+	if ((i < -5) || (i > 30)) return (-5);
 
 	rand_setupPrng(buf + 8, SEEDLEN);
 	return (0);

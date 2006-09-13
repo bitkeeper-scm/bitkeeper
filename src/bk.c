@@ -138,10 +138,15 @@ main(int ac, char **av, char **env)
 		return (i >= 0 ? i : 1);
 	}
 	atexit(cmdlog_exit);
-	platformInit(av); 
+	platformInit(av);
 	bk_environ = env;
 
-	bk_isSubCmd = !rand_checkSeed();
+	i = rand_checkSeed();
+	if (getenv("_BK_DEBUG_CHECKSEED")) {
+		sprintf(sopts, "%d", i);
+		cmdlog_addnote("checkseed", sopts);
+	}
+	bk_isSubCmd = !i;
 
 	unless (bin) {
 		fprintf(stderr,
@@ -927,9 +932,16 @@ private void
 showproc_end(char *cmdlog_buffer, int ret)
 {
 	FILE	*f;
+	kvpair	kv;
 
 	unless (f = efopen("BK_SHOWPROC")) return;
 	fprintf(f, "END (%5u %5s)%s", getpid(), milli(), prefix);
-	fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
+	fprintf(f, " %s = %d", cmdlog_buffer, ret);
+	if (notes) {
+		fprintf(f, " (");
+		EACH_KV(notes) fprintf(f, " %s=%s", kv.key.dptr, kv.val.dptr);
+		fprintf(f, " )");
+	}
+	fprintf(f, "\n");
 	fclose(f);
 }
