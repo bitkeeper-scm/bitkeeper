@@ -1,0 +1,29 @@
+
+echo $N Setup bkd ...................................................$NL
+commercial project
+P=`port 50000`
+bk bkd -q -d -p$P -ikill > $HERE/BKD 2>&1
+echo OK
+
+
+echo $N Push some data and check that BK_NOTTY works ................$NL
+cd $HERE
+bk clone $Q project copy || exit 1
+cd copy
+
+for f in 1 2 3 4 5 6 7 8 9
+do	echo hi$f > file$f
+	bk new $Q file$f
+done
+bk commit -ystuff $Q || exit 1
+
+unset BK_NOTTY	# set in remote.sh
+bk push > OUT1 2>&1 || exit 1
+grep -q '100%.*===' OUT1 || exit 1
+cd ../project
+bk unpull -fq
+cd ../copy
+BK_NOTTY=1 bk push > OUT2 2>&1 || exit 1
+grep -q '100%.*===' OUT2 && exit 1
+bk _kill bk://localhost:$P
+echo OK

@@ -78,6 +78,7 @@ push_main(int ac, char **av)
 		}
 	}
 	unless (opts.verbose) putenv("BK_QUIET_TRIGGERS=YES");
+	if (getenv("BK_NOTTY")) opts.nospin = 1;
 
 	/*
 	 * Get push parent(s)
