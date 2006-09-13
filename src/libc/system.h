@@ -54,7 +54,7 @@
 #define	GOOD_PSIZE	(16<<10)
 
 #define	isDriveColonPath(p)	(isalpha((p)[0]) && ((p)[1] == ':'))
-#define	executable(p)	(access(p, X_OK) == 0)
+#define	executable(p)	((access(p, X_OK) == 0) && !isdir(p))
 
 /* aprintf.c */
 char	*aprintf(char *fmt, ...);

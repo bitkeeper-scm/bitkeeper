@@ -387,17 +387,11 @@ bkd(int compress, remote *r)
 		if (t = getenv("BK_RSH")) {
 			/*
 			 * Parse the command into words.
-			 * XXX - This does not respect quotes.
 			 */
-			cmd[i = 0] = t;
-			do {
-				while (*t && !isspace(*t)) t++;
-				if (isspace(*t)) {
-					*t++ = 0; 
-					while (*t && isspace(*t)) t++;
-					if (*t && !isspace(*t)) cmd[++i] = t;
-				}
-			} while (*t);
+			char	**args = shellSplit(t);
+			EACH(args) cmd[i-1] = args[i];
+			i -= 2;	/* i points at last arg in cmd */
+			freeLines(args, 0);
 		} else {
 			cmd[i = 0] = remsh;
 			if (remopts) cmd[++i] = remopts;

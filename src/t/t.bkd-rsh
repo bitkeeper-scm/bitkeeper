@@ -1,0 +1,17 @@
+
+echo $N test BK_RSH with spaces .....................................$NL
+cat <<EOF > test.pl
+open(F, ">OUT");
+foreach (@ARGV) {
+	print F " '\$_'";
+}
+print F "\n";
+close(F);
+EOF
+chmod +x test.pl
+BK_RSH="perl ./test.pl arg1 'arg 2'" bk abort rsh://host/dir 2>/dev/null
+cat <<EOF > WANT
+ 'arg1' 'arg 2' 'host' 'bk bkd'
+EOF
+cmpfiles WANT OUT
+echo OK

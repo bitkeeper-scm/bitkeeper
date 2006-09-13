@@ -126,7 +126,7 @@ platformInit(char **av)
 				if (s[0] == '~') got_tilda = 1;
 				sprintf(buf, "%s/%s", s, av[0]);
 				if (t) *t = PATH_DELIM;
-				if (executable(buf) && !isdir(buf)) break;
+				if (executable(buf)) break;
 				unless (t) {
 					verbose((stderr,
 						    "Can't find bk on PATH, "
