@@ -299,6 +299,9 @@ proj_config(project *p)
 		/* If RESYNC doesn't have a config file, then don't use it. */
 		p->config = loadConfig(p->root, 1);
 		unless (p->config) p->config = proj_config(p->rparent);
+
+		/* no checkout:get in RESYNC */
+		mdbm_delete_str(p->config, "checkout");
 	} else {
 		p->config = loadConfig(p->root, 0);
 	}
