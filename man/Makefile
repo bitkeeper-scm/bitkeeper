@@ -17,10 +17,9 @@ get:
 
 manball: get
 	rm -rf bk-man; mkdir -p bk-man/man1
-	cd man1; \
-	for i in *.1;\
-	do (cat ../bk-macros; grep -v bk-macros $$i) > ../bk-man/man1/$$i; \
-	done
+	cp -f man.tmac bk-macros man1
+	cd man1; for i in *.1; do soelim $$i > ../bk-man/man1/$$i; done
+	rm -f man1/man.tmac man1/bk-macros
 	cd bk-man/man1; \
 	ls -1 bk-* | sed s/bk-// | while read x; \
 	do	ln bk-$$x $$x 2>/dev/null || cp bk-$$x $$x; \
@@ -28,7 +27,8 @@ manball: get
 
 install: manball
 	/bin/rm -rf $(BINDIR)/man
-	cp -R bk-man $(BINDIR)/man
+	mkdir -p $(BINDIR)/man
+	(cd bk-man && tar cf - .) | (cd $(BINDIR)/man && tar xf -)
 
 dist:
 	@rm -f PS PS2
