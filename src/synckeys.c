@@ -595,6 +595,7 @@ send_sync_msg(remote *r)
  *	1 on error.
  *	2 to force bkd unlock
  *	3 empty dir
+ *	4 package doesn't match
  */
 private int
 synckeys(remote *r, int flags)
@@ -631,9 +632,10 @@ synckeys(remote *r, int flags)
 	flags |= PK_REVPREFIX;
 	i = prunekey(s, r, NULL, 1, flags, 0, NULL, NULL, NULL);
 	if (i < 0) {
-		switch (rc) {
+		switch (i) {
 		    case -2:	/* needed to force bkd unlock */
 			getMsg("unrelated_repos", 0, '=', stderr);
+			i = -4;	/* -2 used for locking already */
 			break;
 		    case -3:	/* empty dir */
 			getMsg("no_repo", 0, '=', stderr);
