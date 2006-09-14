@@ -1,0 +1,24 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2006 BitMover
+# %K%
+
+echo $N Make an installation directory ..............................$NL
+test "$PLATFORM" = "WIN32" && { echo skipped; exit 0; }
+root="`bk bin`/tmp"
+test -n "$root" -a -f $root/bitkeeper/bk || { echo skipped; exit 0; }
+# make a copy of the tmp installed area, then uninstall it
+cp -r $root/bitkeeper $root/bits || exit 1
+test -d $root/bits || exit 1
+BK_GUI=1 $root/bits/bk uninstall || exit 1
+test -d "$root/bits" && exit 1
+echo OK

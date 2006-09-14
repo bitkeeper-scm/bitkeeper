@@ -165,7 +165,7 @@ int	smartMkdir(char *pathname, mode_t mode);
 
 #define	spawnvp bk_spawnvp
 
-void	(*spawn_preHook)(int flags, char *av[]);
+extern void	(*spawn_preHook)(int flags, char *av[]);
 pid_t	bk_spawnvp(int flags, char *cmdname, char *av[]);
 pid_t	spawnvp_ex(int flags, char *cmdname, char *av[]);
 pid_t	spawnvp_wPipe(char *ab[], int *wfd, int pipe_size);
@@ -174,6 +174,13 @@ pid_t	spawnvp_rwPipe(char *ab[], int *rfd, int *wfd, int pipe_size);
 
 /* stdioext.c */
 char	*gets_alloc(char *(*fcn)(char *buf, int size, void *arg), void *arg);
+
+/* sys.c */
+#define	SYS	(char*)0, 0xdeadbeef	/* this must be the last argument to
+					 * all calls to sys/sysio */
+int	sys(char *first, ...);
+int	sysio(char *in, char *out, char *err, char *first, ...);
+void	syserr(const char *postfix);
 
 /* system.c */
 #define	system(cmd)	safe_system(cmd)

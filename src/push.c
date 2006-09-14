@@ -245,6 +245,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		disconnect(r, 2);
 		exit(1);
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {

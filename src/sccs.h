@@ -1041,11 +1041,6 @@ void	save_byte_count(unsigned int byte_count);
 char	*getHomeDir(void);
 char	*getDotBk(void);
 char	*age(time_t secs, char *space);
-	/* this must be the last argument to all calls to sys/sysio */
-#define	SYS	(char*)0, 0xdeadbeef
-int	sys(char *first, ...);
-int	sysio(char *in, char *out, char *err, char *first, ...);
-void	syserr(const char *postfix);
 char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
 void	sccs_tagMerge(sccs *s, delta *d, char *tag);
@@ -1220,6 +1215,7 @@ int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 void	randomBits(char *buf);
 int	almostUnique(void);
+int	uninstall(char *path);
 
 extern	char	*editor;
 extern	char	*bin;

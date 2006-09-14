@@ -46,6 +46,7 @@ int	win_unsupported(void);
 int	isWin2000(void);
 int	alarm(int seconds);
 int	link(char *from, char *to);
+int	sync(void);
 int	fsync (int fd);
 
 #endif /* _MISC_H_ */

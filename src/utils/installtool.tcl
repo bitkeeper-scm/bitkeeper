@@ -105,12 +105,6 @@ proc hasWinAdminPrivs {} \
 {
 	global	tcl_platform
 
-	# Win98 always has these rights.
-	# 95 == 98 in tcl.
-	if {$tcl_platform(os) eq "Windows 95"} {
-		return 1
-	}
-
 	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
 	append key "\\Control\\Session Manager\\Environment"
 

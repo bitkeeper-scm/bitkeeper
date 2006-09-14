@@ -2,7 +2,6 @@
 
 orig_args="$@"
 
-#Set up environment for Microsoft VC++ compiler
 ms_env()
 {
 	test "$MSYSBUILDENV" || {
@@ -21,7 +20,7 @@ ms_env()
 	}
 
 	XLIBS="/mingw/lib/CRT_noglob.o -lws2_32 -lole32"
-	CC="gcc -pipe -DWINVER=0x0500"
+	CC="gcc -pipe -DWINVER=0x0500 -D_WIN32_WINNT=0x0500"
 }
 
 test "X$G" = X && G=-g

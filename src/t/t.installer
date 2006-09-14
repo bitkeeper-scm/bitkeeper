@@ -185,6 +185,163 @@ test -f embedded/config || {
 }
 echo OK
 
+if [ X$PLATFORM = X"WIN32" ]
+then #-------------------- WIN32 tests ---------------------
+echo $N Make sure we preserve registry settings......................$NL
+SHELLXKEY="HKEY_LOCAL_MACHINE\\Software\\BitMover\\BitKeeper\\ShellX"
+bk _registry set $SHELLXKEY networkDrive 100
+BK1=$?
+bk _registry set $SHELLXKEY localDrive 100
+BK2=$?
+if [ $BK1 -ne 0 -o $BK2 -ne 0 ]; then
+	echo failed
+	echo "Could not set registry entries"
+	exit 1
+fi
+./bk-academic-licensed "$HERE/DEADBEEF" > OUT 2>&1
+KEY1=`bk _registry get $SHELLXKEY networkDrive`
+BK1=$?
+KEY2=`bk _registry get $SHELLXKEY localDrive`
+BK2=$?
+if [ $BK1 -ne 0 -o $BK2 -ne 0 ]; then
+	echo failed
+	cat OUT
+	exit 1
+fi
+if [ $KEY1 -ne 100 ]; then
+	echo failed
+	echo Failed to preserve networkDrive
+	exit 1
+fi
+if [ $KEY2 -ne 100 ]; then
+	echo failed
+	echo Failed to preserve localDrive
+	exit 1
+fi
+echo OK
+
+echo $N Make sure uninstaller works as advertised....................$NL
+BIN="$HERE/DEADBEEF"
+BK="$HERE/DEADBEEF/bk"
+VERKEY="HKEY_LOCAL_MACHINE\\Software\\BitMover\\BitKeeper"
+VERSION=`bk _registry get "$VERKEY" rel`
+USRPATHKEY="HKEY_LOCAL_MACHINE\\Environment"
+SYSPATHKEY="HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\Environment"
+# save PATHs
+OLDUSRPATH=`bk _registry get "$USRPATHKEY" Path`
+OLDSYSPATH=`bk _registry get "$SYSPATHKEY" Path`
+"$BK" uninstall -f
+test -d "$BIN" && {
+	echo failed
+	echo "$BIN" still exists
+	exit 1
+}
+# make sure PATH doesn't have BK in it
+if [ "x$OLDUSRPATH" != "xentry not found" ];
+then	bk _registry get "$USRPATHKEY" Path | grep "DEADBEEF" > TEXT && {
+		echo failed
+		echo BitKeeper left in User PATH
+		cat TEXT
+		exit 1
+	}
+fi
+bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" > TEXT && {
+	echo failed
+	echo BitKeeper left in System PATH
+	cat TEXT
+	exit 1
+}
+# Make sure we're not polluting the Uninstall area
+UNINSTALLKEY="HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+bk _registry get "$UNINSTALLKEY" $VERSION | grep "DEADBEEF" > TEXT && {
+	echo failed
+	echo BitKeeper left crud in the Uninstall registry key
+	cat TEXT
+	exit 1
+}
+# Restore PATH so that old BK works again
+if [ "x$OLDUSRPATH" != "xentry not found" ];
+then	bk _registry set "$USRPATHKEY" Path "$OLDUSRPATH" || {
+		echo failed
+		echo could not restore user path
+		exit 1
+	}
+fi
+bk _registry set "$SYSPATHKEY" Path "$OLDSYSPATH" || {
+	echo failed
+	echo could not restore system path
+	exit 1
+}
+echo OK
+else #-------------------- UNIX tests ---------------------
+echo $N Make sure uninstaller removes subdirs........................$NL
+BIN="$HERE/DEADBEEF"
+echo y | ./bk-academic-licensed "$HERE/DEADBEEF" >OUT 2>&1
+test -f "$HERE/DEADBEEF/bk" || {
+	echo failed
+	echo installer failed
+	cat OUT
+	exit 1
+}
+find "$HERE/DEADBEEF" -type d -exec chmod 555 {} \;
+chmod 777 "$HERE/DEADBEEF"
+$BIN/bk uninstall -f || {
+	echo failed
+	echo bk uninstall failed
+	chmod -R +w "$HERE/DEADBEEF"
+	exit 1
+}
+test -d "$HERE/DEADBEEF" && {
+	# some platforms, like hp11, need some time,
+	# because a background process is spawned to clean up
+	# bk after bk exits.
+	times=5
+	while [ "$times" -ne 0 ]; do
+		sleep 1
+		times=`expr $times - 1`
+		test -d "$HERE/DEADBEEF" || break
+	done
+	test -d "$HERE/DEADBEEF" && {
+		echo failed
+		echo did not obliterate "$HERE/DEADBEEF"
+		chmod -R +w "$HERE/DEADBEEF"
+		exit 1
+	}
+}
+echo OK
+
+echo $N Make sure uninstaller removes symlinks.......................$NL
+BIN="$HERE/DEADBEEF"
+echo y | ./bk-academic-licensed "$HERE/DEADBEEF" >OUT 2>&1
+test -f "$HERE/DEADBEEF/bk" || {
+	echo failed
+	echo installer failed
+	cat OUT
+	exit 1
+}
+mkdir "$HERE/bin"
+$BIN/bk links "$HERE/bin" >OUT 2>&1 || {
+	echo failed
+	echo could not create symlinks
+	cat OUT
+	exit 1
+}
+export PATH="$HERE/bin":$PATH
+$BIN/bk uninstall -f || {
+	echo failed
+	echo bk uninstall failed
+	exit 1
+}
+test -h "$HERE/bin/bk" && {
+	echo failed
+	echo left symlinks
+	ls "$HERE/bin" | tr '\n' ' '
+	echo ""
+	exit 1
+}
+echo OK
+fi
+
 #####################################################################
 # Careful!!!!
 #####################################################################

@@ -307,7 +307,9 @@ _doit_local(char **nav, char *url)
 		}
 	}
 	status = pclose(p);
-	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc = 1;
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+		rc = 1;
+	}
 	if (opts.showdups) {
 		status = pclose(f);
 		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc=1;
@@ -1145,13 +1147,9 @@ changes_part1(remote *r, char **av, char *key_list)
 		switch (rc) {
 		    case -2:
 			getMsg("unrelated_repos", 0, '=', stderr);
-			close(fd);
-			sccs_free(s);
-			return (1); /* needed to force bkd unlock */
+			break;
 		    case -3:
 			getMsg("no_repo", 0, '=', stderr);
-			sccs_free(s);
-			return (1); /* empty dir */
 			break;
 		}
 		close(fd);
@@ -1253,12 +1251,14 @@ doit_remote(char **nav, char *url)
 	int	rc;
 	int	i = 0;
 
-	for (;;) {
+	for (i = 1; i <= 5; i++) {
 		rc = _doit_remote(&nav[1], url);
 		if (rc != -2) break; /* -2 means locked */
+		if (getenv("BK_REGRESSION")) break;
 		fprintf(stderr,
 		    "changes: remote locked, trying again...\n");
-		sleep(min((i++ * 2), 10)); /* auto back off */
+		sleep(i * 2);
 	}
+	if (rc == -2) fprintf(stderr, "changes: giving up on remote lock.\n");
 	return (rc ? 1 : 0);
 }

@@ -118,7 +118,12 @@ usage:			system("bk help -s lock");
 
 	    case 'l':	/* list lockers / exit status */
 		unless (silent) repository_lockers(0);
-		if (repository_locked(0)) exit(1);
+		while (repository_locked(0)) {
+			/* if silent, delay at most one second (1/2 + 1/4...) */
+			if (!silent || (uslp > 500000)) exit (1);
+			usleep(uslp);
+			uslp <<= 1;
+		}
 		unless (silent) {
 			fprintf(stderr, "No active lock in repository\n");
 		}

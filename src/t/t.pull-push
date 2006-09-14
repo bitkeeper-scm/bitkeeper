@@ -436,11 +436,21 @@ grep -q "Cannot resolve host 'badhostname'." ERR || {
 }
 echo OK
 
+# Set up next two tests
+cd $HERE
+commercial pull-self
+cd ..
+cp -r pull-self push-self
+
 echo $N Try pulling from myself .....................................$NL
-bk pull $Q . 2>ERR && {
+cd pull-self
+bk pull $Q . 2>../ERR && {
 	echo should have failed
 	exit 1
 }
+# test cleaning up bkd -- will cause core dump if not (if not NOPROC)
+cd ..
+rm -fr pull-self
 grep -q "can't connect to same repo_id" ERR || {
 	echo wrong error message
 	cat ERR
@@ -449,10 +459,14 @@ grep -q "can't connect to same repo_id" ERR || {
 echo OK
 
 echo $N Try pushing to myself .......................................$NL
-bk push $Q . 2>ERR && {
+cd push-self
+bk push $Q . 2>../ERR && {
 	echo should have failed
 	exit 1
 }
+# test cleaning up bkd -- will cause core dump if not (if not NOPROC)
+cd ..
+rm -fr push-self
 grep -q "can't connect to same repo_id" ERR || {
 	echo wrong error message
 	cat ERR
