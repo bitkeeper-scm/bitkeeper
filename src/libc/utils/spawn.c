@@ -1,5 +1,7 @@
 #include "system.h"
 
+void	(*spawn_preHook)(int flags, char *av[]) = 0;
+
 #ifndef WIN32
 pid_t
 bk_spawnvp(int flags, char *cmdname, char *av[])
@@ -29,13 +31,13 @@ bk_spawnvp(int flags, char *cmdname, char *av[])
 		if (flags & _P_DETACH) {
 			unless (getenv("_NO_SETSID")) setsid();
 			/* close everything to match winblows */
-			for (fd = 0; fd < 100; fd++) close(fd);
+			for (fd = 0; fd < 100; fd++) (close)(fd);
 		} else {
 			/*
 			 * Emulate having everything except in/out/err
 			 * as being marked as close on exec to match winblows.
 			 */
-			for (fd = 3; fd < 100; fd++) close(fd);
+			for (fd = 3; fd < 100; fd++) (close)(fd);
 		}
 		/*
 		 * This is lame if they have a lame execvp() implementation
@@ -118,8 +120,10 @@ spawnvp_wPipe(char *av[], int *pfd, int pipe_size)
 	make_fd_uninheritable(p[1]);
 
 	/* Now go do the real work... */
-	pid = spawnvp(_P_NOWAIT, av[0], av);
-	if (pid == -1) return -1;
+	if ((pid = spawnvp(_P_NOWAIT, av[0], av)) < 0) {
+		(close)(p[1]);
+		p[1] = -1;
+	}
 
 	/*
 	 * For Parent
@@ -164,8 +168,10 @@ spawnvp_rPipe(char *av[], int *pfd, int pipe_size)
 	/*
 	 * Now go do the real work...
 	 */
-	pid = spawnvp(_P_NOWAIT, av[0], av);
-	if (pid == -1) return -1;
+	if ((pid = spawnvp(_P_NOWAIT, av[0], av)) < 0) {
+		(close)(p[0]);
+		p[0] = -1;
+	}
 
 	/*
 	 * For Parent
@@ -207,15 +213,18 @@ spawnvp_rwPipe(char *av[], int *rfd, int *wfd, int pipe_size)
 	(close)(0); (close)(1);
 	rc = dup2(r[1], 1); assert(rc != -1);
 	rc = dup2(w[0], 0); assert(rc != -1);
-	close(r[1]); close(w[0]);
+	(close)(r[1]); (close)(w[0]);
 	make_fd_uninheritable(r[0]);
 	make_fd_uninheritable(w[1]);
 
 	/*
 	 * Now go do the real work...
 	 */
-	pid = spawnvp(_P_NOWAIT, av[0], av);
-	if (pid == -1) return (-1);
+	if ((pid = spawnvp(_P_NOWAIT, av[0], av)) < 0) {
+		(close)(r[0]);
+		(close)(w[1]);
+		r[0] = w[1] = -1;
+	}
 
 	/*
 	 * For Parent
@@ -223,7 +232,7 @@ spawnvp_rwPipe(char *av[], int *rfd, int *wfd, int pipe_size)
 	 */
 	rc = dup2(fd0, 0); assert(rc != -1);
 	rc = dup2(fd1, 1); assert(rc != -1);
-	close(fd0); close(fd1);
+	(close)(fd0); (close)(fd1);
 	*rfd = r[0]; *wfd = w[1];
 	return (pid);
 

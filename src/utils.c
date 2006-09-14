@@ -620,7 +620,7 @@ disconnect(remote *r, int how)
 			r->rfd = r->wfd = -1;
 			break;
 	}
-	if (r->pid && (r->rfd == -1) && (r->wfd == -1)) {
+	if ((r->pid > 0) && (r->rfd == -1) && (r->wfd == -1)) {
 		/*
 		 * We spawned a bkd in the background to handle this
 		 * connection. When it get here it SHOULD be finished
@@ -1239,7 +1239,7 @@ mkpager(void)
 	unless (isatty(1)) return (0);
 
 	/* "cat" is a no-op pager used in bkd */
-	if (streq("cat", pg)) return (0);
+	if (streq("cat", basenm(pg))) return (0);
 
 	fflush(stdout);
 	signal(SIGPIPE, SIG_IGN);

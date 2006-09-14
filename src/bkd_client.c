@@ -357,42 +357,55 @@ pid_t
 bkd(int compress, remote *r)
 {
 	char	*t, *freeme = 0;
-	char	*remsh = "ssh";
-	char	*remopts = compress ? "-C" : 0;
+	char	*remsh;
+	char	*remopts;
 	char	*cmd[100];
-	int	i, nossh;
-	pid_t	p;
+	char	**bkrsh = 0;
+	int	i, j;
+	pid_t	p = -1;
 
 	if (r->port) {
 		assert(r->host);
 		return (bkd_tcp_connect(r));
 	}
 	if (r->host) {
-		if (t = which("ssh")) free(t);
-		nossh = !t;
-		if ((r->type == ADDR_RSH) ||
-		    (r->type == ADDR_NFS &&
-			(t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
-		    nossh) {
-			remsh = "rsh";
-#ifdef	hpux
-			remsh = "remsh";
-#endif
-#ifdef	_SCO_XPG_VERS
-			remsh = "rcmd";
-#endif
-			if (check_rsh(remsh)) return (-1);
-			remopts = 0;
-		}
 		if (t = getenv("BK_RSH")) {
 			/*
 			 * Parse the command into words.
 			 */
-			char	**args = shellSplit(t);
-			EACH(args) cmd[i-1] = args[i];
-			i -= 2;	/* i points at last arg in cmd */
-			freeLines(args, 0);
+			bkrsh = shellSplit(t);
+			i = 0;
+			EACH_INDEX(bkrsh, j) cmd[i++] = bkrsh[j];
+			unless (i) {
+				fprintf(stderr, "error: BK_RSH empty\n");
+				goto err;
+			}
+			i--; /* we do cmd[++i] = r->host below */
+			if (streq(cmd[0], "rsh") && check_rsh(cmd[0])) {
+				goto err;
+			}
 		} else {
+			/* use rsh if told, or preferred or no ssh */
+			remsh = "ssh";
+			remopts = compress ? "-C" : 0;
+			if ((r->type == ADDR_RSH) ||
+			    ((r->type == ADDR_NFS) &&
+			    (t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
+			    !(freeme = which("ssh"))) {
+				remsh = "rsh";
+#ifdef	hpux
+				remsh = "remsh";
+#endif
+#ifdef	_SCO_XPG_VERS
+				remsh = "rcmd";
+#endif
+				if (check_rsh(remsh)) return (-1);
+				remopts = 0;
+			}
+			if (freeme) {
+				free(freeme);
+				freeme = 0;
+			}
 			cmd[i = 0] = remsh;
 			if (remopts) cmd[++i] = remopts;
 		}
@@ -434,7 +447,10 @@ bkd(int compress, remote *r)
 			fprintf(stderr, "CMD[%d]=%s\n", i, cmd[i]);
 		}
 	}
-	p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd), BIG_PIPE);
-	if (freeme) free(freeme);
+	if ((p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd), BIG_PIPE)) < 0) {
+		fprintf(stderr, "%s: Command not found\n", cmd[0]);
+	}
+err:	if (freeme) free(freeme);
+	if (bkrsh) freeLines(bkrsh, free);	/* if BK_RSH env var */
 	return (p);
 }

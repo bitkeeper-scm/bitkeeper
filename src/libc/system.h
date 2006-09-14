@@ -165,7 +165,7 @@ int	smartMkdir(char *pathname, mode_t mode);
 
 #define	spawnvp bk_spawnvp
 
-void	(*spawn_preHook)(int flags, char *av[]);
+extern void	(*spawn_preHook)(int flags, char *av[]);
 pid_t	bk_spawnvp(int flags, char *cmdname, char *av[]);
 pid_t	spawnvp_ex(int flags, char *cmdname, char *av[]);
 pid_t	spawnvp_wPipe(char *ab[], int *wfd, int pipe_size);

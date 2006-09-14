@@ -1,17 +1,150 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
 
-echo $N test BK_RSH with spaces .....................................$NL
-cat <<EOF > test.pl
-open(F, ">OUT");
-foreach (@ARGV) {
-	print F " '\$_'";
+# Copyright (c) 2006 BitMover
+# %K%
+
+# NOTE: on windows, HERE is a C: path, and pwd is a /xxx/xxx path
+# We need the latter in this file
+root=`pwd`
+
+echo $N test BK_RSH does not get truncated with multiple use ........$NL
+commercial project
+cd ..
+# General setup for all the tests: 2 bin directories, both in path
+mkdir bin1 bin2 || exit 1
+PATH="$root/bin1:$root/bin2:$PATH"
+export PATH
+# do not define it if it is not being used.
+test -n "$BK_LIMITPATH" && {
+	BK_LIMITPATH="$root/bin1:$root/bin2:$BK_LIMITPATH"
+	export BK_LIMITPATH
 }
-print F "\n";
-close(F);
+# Set up a 'rsh'-like script.
+# The next to last parameter is the host.
+# The last is 'bk bkd'
+cat - <<'EOF' > bin1/mytest.sh
+#!/bin/sh
+test "$#" -gt 0 || exit 1
+last="exit 1"
+OUT=OUT$$
+rm -f $OUT
+touch $OUT
+while test "X$1" != X ; do
+	echo "$1" >> $OUT
+	last="$1"
+	shift
+done
+exec $last
 EOF
-chmod +x test.pl
-BK_RSH="perl ./test.pl arg1 'arg 2'" bk abort rsh://host/dir 2>/dev/null
-cat <<EOF > WANT
- 'arg1' 'arg 2' 'host' 'bk bkd'
+chmod +x bin1/mytest.sh
+# Call BK_RSH twice: once to get a lease, and once to run abort
+# Note: 'host' does not mean anything -- our fake rsh ignores it.
+# However, project does mean the project dir in HERE
+bk lease flush
+BK_LICENSEURL="rsh://host/project"
+export BK_LICENSEURL
+mkdir -p project/RESYNC/BitKeeper/tmp
+touch project/RESYNC/BitKeeper/tmp/patch
+rm -f OUT*
+BK_RSH="mytest.sh arg1" bk abort -f rsh://host/project || exit 1
+test -d project/RESYNC && {
+	echo failed: RESYNC still there
+	exit 1
+}
+# should be at least two OUT files: lease fetch and command
+test `ls OUT* | wc -l` -ge 2 || {
+	echo failed: not enough OUT files
+	ls OUT*
+	exit 1
+}
+cat - <<'EOF' > WANT
+arg1
+host
+bk bkd
 EOF
-cmpfiles WANT OUT
+for f in OUT*; do
+	cmpfiles WANT $f
+done
+echo OK
+
+echo $N test BK_RSH with spaces in arguments works ..................$NL
+rm -f OUT*
+mkdir -p project/RESYNC/BitKeeper/tmp
+touch project/RESYNC/BitKeeper/tmp/patch
+BK_RSH="mytest.sh arg1 'arg 2'" bk abort -f rsh://host/project || exit 1
+test -d project/RESYNC && {
+	echo failed: RESYNC still there
+	exit 1
+}
+echo " 'arg1' 'arg 2' 'host' 'bk bkd'" > WANT
+cat - <<'EOF' > WANT
+arg1
+arg 2
+host
+bk bkd
+EOF
+for f in OUT*; do
+	cmpfiles WANT $f
+done
+echo OK
+
+echo $N test rsh as a directory will be ignored .....................$NL
+mkdir bin1/rsh || exit 1
+touch bin1/rsh/foo
+cp bin1/mytest.sh bin2/rsh
+rm -f OUT*
+mkdir -p project/RESYNC/BitKeeper/tmp
+touch project/RESYNC/BitKeeper/tmp/patch
+# SCO needs the BK_RSH line -- otherwise, it finds the real rsh, sort of
+# Did not fully debug SCO as to why it wanted rsh even though it was not
+# first in path
+BK_RSH=rsh bk abort rsh://host/project
+test -d project/RESYNC && {
+	echo failed: RESYNC still there
+	exit 1
+}
+cat - <<'EOF' > WANT
+host
+bk bkd
+EOF
+for f in OUT*; do
+	cmpfiles WANT $f
+done
+echo OK
+
+echo $N test BK_RSH set to something bogus will not hang ............$NL
+# this used to hang because spawn_rwPipe would close stdout, and not restore
+BK_RSH="$root/bogus-prog-name" bk changes rsh://host/path > OUT 2> ERR && {
+	echo failed
+	exit 1
+}
+grep -q "Command not found" ERR || {
+	echo failed
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N test empty BK_RSH exits gracefully ..........................$NL
+# this used to hang because spawn_rwPipe would close stdout, and not restore
+BK_RSH= bk changes rsh://host/path > OUT 2> ERR && {
+	echo failed
+	exit 1
+}
+grep -q "BK_RSH empty" ERR || {
+	echo failed
+	echo wrong error message
+	cat ERR
+	exit 1
+}
 echo OK
