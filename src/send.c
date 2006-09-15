@@ -208,7 +208,7 @@ send_main(int ac,  char **av)
 	 */
 	cmd = aprintf("bk makepatch %s %s %s %s %s",
 				    dflag, qflag, revArgs, wrapperArgs, out);
-	if ((rc = system(cmd)) != 0)  goto out;
+	if (rc = system(cmd) ? 1 : 0)  goto out;
 
 
 	/*

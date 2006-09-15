@@ -7,7 +7,7 @@ cat_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
-	int	skip_bin = 0, errors = 0;
+	int	skip_bin = 0, rc = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	c, gfile;
 
@@ -21,9 +21,13 @@ cat_main(int ac, char **av)
 	}
 	for (name = sfileFirst("cat", &av[optind], 0);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, INIT_NOCKSUM)) continue;
+		unless (s = sccs_init(name, INIT_NOCKSUM)) {
+			rc |= 1;
+			continue;
+		}
 		gfile = (access(s->gfile, R_OK) == 0);
 		unless (gfile || HASGRAPH(s)) {
+			rc |= 1;
 			sccs_free(s);
 			continue;
 		}
@@ -37,13 +41,13 @@ cat_main(int ac, char **av)
 			fflush(stdout);
 		}
 		if (gfile) {
-			errors |= cat(s->gfile);
+			rc |= cat(s->gfile) ? 1 : 0;
 			sccs_free(s);
 			continue;
 		}
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, "-")) errors |= 1;
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, "-")) rc |= 1;
 		sccs_free(s);
 	}
-	if (sfileDone()) errors |= 2;
-	return (errors);
+	if (sfileDone()) rc = 1;
+	return (rc);
 }

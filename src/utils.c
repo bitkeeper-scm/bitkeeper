@@ -322,10 +322,10 @@ prompt_main(int ac, char **av)
 	if (((file || prog) && av[optind]) ||
 	    (!(file || prog) && !av[optind]) ||
 	    (av[optind] && av[optind+1]) || (file && prog)) {
-err:		system("bk help -s prompt");
-		if (file == msgtmp) unlink(msgtmp);
+		system("bk help -s prompt");
+err:		if (file == msgtmp) unlink(msgtmp);
 		if (lines) freeLines(lines, free);
-		exit(1);
+		exit(2);
 	}
 	if (prog) {
 		assert(!file);

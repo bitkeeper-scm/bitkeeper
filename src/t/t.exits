@@ -1,0 +1,174 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2006 BitMover Inc.
+# %K%
+
+echo $N Create initial repository and some data .....................$NL
+commercial project
+echo foo > foo
+bk new $Q foo
+echo bar > bar
+bk new $Q bar
+perl -e 'print "bin\000ary\nda\000ta\n"' > bin
+bk new $Q bin
+bk get $Q foo bar bin
+echo OK
+
+echo $N Test bk cat without error ...................................$NL
+bk cat foo > /dev/null
+test $? -eq 0 || exit 1
+echo OK
+
+echo $N Test bk cat -B without error ................................$NL
+bk cat -B bin > /dev/null
+test $? -eq 0 || exit 1
+echo OK
+
+echo $N Test bk cat -B with error ...................................$NL
+bk cat -B file_that_does_not_exist 2> ERR
+test $? -eq 1 || exit 1
+echo OK
+
+echo $N Test bk cat with error ......................................$NL
+bk cat file_that_does_not_exist 2> ERR
+test $? -eq 1 || exit 1
+echo OK
+
+echo $N Test bk diff with no changes ................................$NL
+bk diff foo foo > /dev/null
+test $? -eq 0 || exit 1
+echo OK
+
+echo $N Test bk diff with changes ...................................$NL
+bk diff foo bar > /dev/null
+test $? -eq 1 || exit 1
+echo OK
+
+echo $N Test bk diff with error .....................................$NL
+bk diff foo file_that_does_not_exist 2> ERR
+test $? -eq 2 || exit 1
+echo OK
+
+echo $N Test bk grep with match .....................................$NL
+bk grep $Q foo foo
+test $? -eq 0 || exit 1
+echo OK
+
+echo $N Test bk grep with no match ..................................$NL
+bk grep $Q bar foo
+test $? -eq 1 || exit 1
+echo OK
+
+echo $N Test bk grep with error .....................................$NL
+bk grep $Q foo file_that_does_not_exist 2> ERR
+test $? -eq 2 || exit 1
+echo OK
+
+echo $N Test bk isascii with ascii file .............................$NL
+bk isascii foo
+test $? -eq 0 || exit 1
+echo OK
+
+echo $N Test bk isascii with binary file ............................$NL
+bk isascii bin
+test $? -eq 1 || exit 1
+echo OK
+
+echo $N Test bk isascii with error ..................................$NL
+bk isascii file_that_does_not_exist 2> ERR
+test $? -eq 2 || exit 1
+echo OK
+
+echo $N Test bk legal -c without having accepted the license ........$NL
+if test -f `bk dotbk`/accepted; then
+	mv `bk dotbk`/accepted `bk dotbk`/not_accepted
+fi
+bk legal $Q -c
+test $? -eq 1 || exit 1
+if test -f `bk dotbk`/not_accepted; then
+	mv `bk dotbk`/not_accepted `bk dotbk`/accepted
+fi
+echo OK
+
+echo $N Test bk legal -c after accepting the license ................$NL
+bk _eula -a || exit 1
+bk legal $Q -c
+test $? -eq 0 || exit 1
+echo OK
+
+echo $N Test bk legal with invalid option ...........................$NL
+bk legal $Q -z 2> ERR
+test $? -eq 2 || exit 1
+echo OK
+
+echo $N Test bk more without error ..................................$NL
+bk more foo > /dev/null
+test $? -eq 0 || exit 1
+echo OK
+
+# this needs to be interactive to work
+# echo $N Test bk more with early exit ................................$NL
+# bk more doit > /dev/null
+# test $? -eq 1 || exit 1
+# echo OK
+
+echo $N Test bk more with error .....................................$NL
+bk more file_that_does_not_exist 2> ERR
+test $? -eq 2 || exit 1
+echo OK
+
+echo $N Test bk patch with a working patch ..........................$NL
+bk diff foo bar > foo.patch
+bk patch -g1 foo < foo.patch > /dev/null
+test $? -eq 0 || exit 1
+echo OK
+
+echo $N Test bk patch with an invalid patch .........................$NL
+bk patch -g1 bar < foo.patch > /dev/null 2> ERR
+test $? -eq 1 || exit 1
+echo OK
+
+echo $N Test bk prompt when answered yes ............................$NL
+echo y | bk prompt "you wanna?" 2> ERR
+test $? -eq 0 || exit 1
+echo OK
+
+echo $N Test bk prompt when answered no .............................$NL
+echo n | bk prompt "you wanna?" 2> ERR
+test $? -eq 1 || exit 1
+echo OK
+
+echo $N Test bk prompt when passed an invalid program ...............$NL
+echo n | bk prompt -pjunk 2> ERR
+test $? -eq 2 || exit 1
+echo OK
+
+echo $N Test bk regex with matching expression ......................$NL
+bk regex foo foo > /dev/null
+test $? -eq 0 || exit 1
+echo OK
+
+echo $N Test bk regex without matching expression ...................$NL
+bk regex bar foo > /dev/null
+test $? -eq 1 || exit 1
+echo OK
+
+echo $N Test bk regex error .........................................$NL
+bk regex file_that_does_not_exist > /dev/null 2> ERR
+test $? -eq 2 || exit 1
+echo OK
+
+# still need tests for - low priority says rick & oscar
+# merge
+# smerge
+
+# upgrade - need info from wayne

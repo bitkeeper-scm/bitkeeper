@@ -9,7 +9,7 @@ int
 sinfo_main(int ac, char **av)
 {
 	sccs	*s = 0;
-	int	e = 0;
+	int	rc = 0;
 	char	*name;
 	int	c, fast = 0, sf_flags = SF_SILENT|SF_GFILE, flags = 0;
 
@@ -56,9 +56,9 @@ done:			if (gfile) free(gfile);
 		}
 		s = sccs_init(name, INIT_NOCKSUM);
 		unless (s) continue;
-		e |= sccs_info(s, flags);
+		rc |= sccs_info(s, flags) ? 1 : 0;
 		sccs_free(s);
 	}
-	if (sfileDone()) e |= 2;
-	return (e);
+	if (sfileDone()) rc = 1;
+	return (rc);
 }

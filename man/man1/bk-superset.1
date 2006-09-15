@@ -8,7 +8,8 @@ bk superset \- check to see if the parent is ahead of the current repository
 .[ARG] parent
 .SH DESCRIPTION
 .LP
-superset does checks to see if removing the current repository is a lossless
+.B bk superset
+does checks to see if removing the current repository is a lossless
 event. 
 .LP
 It checks that:
@@ -42,14 +43,21 @@ then the sub-repositories are also similarly checked against their parent
 .LP
 Unless the
 .Q \-q
-option is present superset lists all things which are not
-in the parent.
+option is present,
+.B bk superset
+lists all things that are not in the parent.
 .SH OPTIONS
 .TP
 .B \-q
 Be quiet
 .SH "EXIT STATUS"
-.LP
-superset exits 0 if the parent is a superset, 1 if the parent is not.
+.B bk superset
+returns exit status
+.TP
+0
+if the parent is a superset
+.tp
+1
+if the parent is not a superset
 .SH CATEGORY
 .B Repository

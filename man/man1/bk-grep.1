@@ -198,6 +198,18 @@ Invert the sense of matching, to select non-matching lines.
 Select only those matches that exactly match the whole line.
 (Like GNU
 .BR grep .)
+.SH EXIT STATUS
+.B bk grep
+returns exit status:
+.TP
+0
+if any matches were found
+.tp
+1
+if no matches were found
+.tp
+2
+if an error occurred
 .SH EXAMPLES
 To see if 
 .ARG pattern

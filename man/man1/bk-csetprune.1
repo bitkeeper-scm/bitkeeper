@@ -100,16 +100,6 @@ bk -r log -hr+ -nd:ROOTKEY: | grep '|docs/' | bk csetprune
 cd ../docs
 bk -r log -hr+ -nd:ROOTKEY: | grep '|src/' | bk csetprune
 .DE
-.SH EXIT STATUS
-.LP
-.B bk csetprune
-returns exit status:
-.TP
-0
-on success.
-.tp
-1
-on failure.
 .SH "SEE ALSO"
 .SA newroot
 .SA log

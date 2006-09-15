@@ -85,8 +85,18 @@ which is to be used if the user does agree.  Default is \*(lqOK\*(rq.
 .tp
 .B \-w
 Indicates that the prompt is a warning message.
-.SH "EXIT STATUS"
-Exits 0 if the user agreed, 1 if the user did not agree.
+.SH EXIT STATUS
+.B bk prompt
+returns exit status:
+.TP
+0
+if the user said yes
+.tp
+1
+if the user said no
+.tp
+2
+if an error occurred
 .SH "SEE ALSO"
 .SA citool
 .SA triggers

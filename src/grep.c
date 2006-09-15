@@ -186,7 +186,7 @@ grep_main(int ac, char **av)
 	putenv("BK_PRINT_EACH_NAME=YES");
 	f = popenvp(&cmd[1], "r");
 	doit(f);
-	pclose(f);
+	if (pclose(f)) exit(2);
 	exit(opts.found ? 0 : 1);
 }
 

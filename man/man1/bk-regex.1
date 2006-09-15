@@ -1,5 +1,5 @@
 .so ../bk-macros
-.TH "regex" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk regex" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
 bk regex \- demo progam to show regular expressions in \*(BK
 .SH SYNOPSIS
@@ -97,7 +97,17 @@ with a $ character, restricts the pattern matching to the
 beginning of the line, or the end of line.
 Elsewhere in the pattern, ^ and $ are treated as ordinary characters.
 .SH EXIT STATUS
-Exit status is 0 if any matches are found, 1 if none, 2 for other errors.
+.B bk regex
+returns exit status:
+.TP
+0
+if any matches were found
+.tp
+1
+if no matches were found
+.tp
+2
+if an error occurred
 .SH EXAMPLE REGEX EXPRESSIONS
 .ft CW
 .TP "\fB^the line$\fP"

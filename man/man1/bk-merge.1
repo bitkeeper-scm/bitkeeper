@@ -72,7 +72,17 @@ automatically used to merge these \*[BK] files:
 .B BitKeeper/etd/skipkeys
 .RE
 .SH EXIT STATUS
-0 for no conflicts, 1 for conflicts, 2 for errors.
+.B bk merge
+returns exit status:
+.TP
+0
+if there were no conflicts
+.tp
+1
+if there were conflicts
+.tp
+2
+if an error occurred
 .SH "SEE ALSO"
 .BR diff3 (1),
 .SA fmtool
