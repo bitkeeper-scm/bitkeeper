@@ -7,11 +7,14 @@
 int
 isascii_main(int ac, char **av)
 {
+	int	rc = 0;
+
 	if (ac != 2) {
 		system("bk help -s isascii");
-		return (1);
+		return (2);
 	}
-	return (!ascii(av[1]));
+	rc = ascii(av[1]);
+	return ((rc == 2) ? rc : !rc);
 }
 
 

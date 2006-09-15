@@ -10,16 +10,20 @@ bk isascii \- check that a file is ascii
 looks through a file for binary data which \*(BK can not handle without
 encoding the file.  This consists of a NULL (zero byte).
 .SH EXIT STATUS
-.LP
 .B bk isascii
 returns exit status:
 .TP
 0
 if
 .ARG filename
-is ASCII.
+is ASCII
 .tp
 1
-otherwise.
+if
+.ARG filename
+is not ASCII
+.tp
+2
+if an error occurs
 .SH CATEGORY
 .B Utility

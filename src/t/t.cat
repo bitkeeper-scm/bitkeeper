@@ -15,7 +15,7 @@ commercial project
 echo hi > ascii
 cp ascii ascii_sfile
 cp ascii WANT_ASCII
-printf "abc\001\000\r\t\n\0aa" > binary
+perl -e 'print "abc\001\000\r\t\n\0aa"' > binary
 cp binary binary_sfile
 cp binary WANT_BINARY
 bk new $Q -b binary_sfile
@@ -63,6 +63,11 @@ cmpfiles WANT_BINARY_EDIT GOT
 echo OK
 
 echo $N Cat ASCII and binary file with -B: only output ASCII ........$NL
+bk cat -B ascii binary > GOT
+cmpfiles WANT_ASCII GOT
+echo OK
+
+echo $N Cat ASCII and binary sfile with -B: only output ASCII .......$NL
 bk cat -B ascii_sfile binary_sfile > GOT
 cmpfiles WANT_ASCII_EDIT GOT
 echo OK

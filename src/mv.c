@@ -14,7 +14,7 @@ mv_main(int ac, char **av)
 	char	*dest;
 	int	isDir;
 	int	isUnDelete = 0;
-	int	errors = 0, skip_lock = 0;
+	int	rc = 0, skip_lock = 0;
 	int	dofree = 0;
 	int	force = 0;
 	int	i;
@@ -73,15 +73,16 @@ usage:			system("bk help -s mv");
 	for (i = optind; i < (ac - 1); i++) {
 		localName2bkName(av[i], av[i]);
 		if (isdir(av[i])) {
-			errors |= sys("bk", "mvdir", "-l", av[i], dest, SYS);
+			rc |= sys("bk", "mvdir", "-l", av[i], dest,
+			    SYS) ? 1 : 0;
 		} else {
-			errors |=
-			    sccs_mv(av[i], dest, isDir, 0, isUnDelete, force);
+			rc |= sccs_mv(av[i], dest, isDir, 0, isUnDelete,
+			    force) ? 1 : 0;
 		}
 	}
 	if (dofree) free(dest);
 	unless (skip_lock) repository_wrunlock(0);
-	return (errors);
+	return (rc);
 }
 
 int
