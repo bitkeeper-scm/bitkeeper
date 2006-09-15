@@ -60,12 +60,16 @@ echo OK
 echo $N Check undo with edited file .................................$NL
 bk co $Q -l foo.c
 echo new-data > foo.c
-bk undo -fr+ > undo.out 2>&1
-if [ $? -eq 0 ]; then echo "failed"; exit 1; fi
-grep -q "src/foo.c has been modified, needs delta." undo.out
-if [ $? -ne 0 ]; then echo "failed1"; exit 1; fi
-grep -q "Undo aborted" undo.out
-if [ $? -ne 0 ]; then echo "failed2"; exit 1; fi
+bk undo -fr+ > undo.out 2>&1 && {
+	echo failed
+	cat undo.out
+	exit 1
+}
+grep -q "Cannot clean src/foo.c, undo aborted" undo.out || {
+	echo failed2
+	cat undo.out
+	exit 1
+}
 echo OK
 bk unedit foo.c
 

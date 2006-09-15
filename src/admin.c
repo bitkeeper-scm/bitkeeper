@@ -27,7 +27,7 @@ admin_main(int ac, char **av)
 	int	nextf = 0, nextu = 0, nexts = 0, nextp = 0;
 	char	*comment = 0, *text = 0, *newfile = 0;
 	char	*path = 0, *merge = 0;
-	char	*name, *ckopts;
+	char	*name;
 	char	*encp = 0, *compp = 0;
 	int	error = 0;
 	int	dopath = 0, rmCsets = 0, newCset = 0;
@@ -187,10 +187,7 @@ admin_main(int ac, char **av)
 		goto usage;
 	}
 
-	ckopts = proj_configval(0, "checkout");
-	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
-		init_flags |= INIT_FIXSTIME;
-	}
+	if (proj_checkout(0)) init_flags |= INIT_FIXSTIME;
 	while (name) {
 		if (flags & NEWFILE) {
 			if (do_checkin(name, encp, compp,

@@ -27,7 +27,7 @@ undo_main(int ac,  char **av)
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
 	char	*qflag = "";
-	char	*cmd = 0, *rev = 0, *t;
+	char	*cmd = 0, *rev = 0;
 	int	aflg = 0, quiet = 0, verbose = 0;
 	char	**fileList = 0;
 	char	*checkfiles;	/* filename of list of files to check */
@@ -58,9 +58,7 @@ usage:			system("bk help -s undo");
 	unless (rev) goto usage;
 
 	/* do checkouts? */
-	t = proj_configval(0, "checkout");
-	if (strieq(t, "get")) checkout = 1;
-	if (strieq(t, "edit")) checkout = 2;
+	checkout = proj_checkout(0);
 
 	save_log_markers();
 	unlink(BACKUP_SFIO); /* remove old backup file */
@@ -340,13 +338,44 @@ private int
 clean_file(char **fileList)
 {
 	sccs	*s;
+	char	*name;
 	int	i;
 
+	/*
+	 * First loop checks for diffs on any writable file,
+	 * second loop actually cleans.  Done this way so that we don't
+	 * clean partway and then exit, that will leave files not checked out.
+	 */
 	EACH(fileList) {
+		if (streq(fileList[i], CHANGESET)) continue;
+		name = sccs2name(fileList[i]);
+		unless (writable(name)) {
+			free(name);
+			continue;
+		}
+		free(name);
+		s = sccs_init(fileList[i], INIT_NOCKSUM);
+		assert(s && HASGRAPH(s));
+		if (sccs_hasDiffs(s, SILENT, 1)) {
+			fprintf(stderr,
+			    "Cannot clean %s, undo aborted\n", s->gfile);
+			sccs_free(s);
+			return (-1);
+		}
+		sccs_free(s);
+	}
+	EACH(fileList) {
+		name = sccs2name(fileList[i]);
+		if (!writable(name) && (unlink(name) == 0)) {
+			free(name);
+			continue;
+		} /* else let clean try and sort it out */
+		free(name);
 		s = sccs_init(fileList[i], INIT_NOCKSUM);
 		assert(s && HASGRAPH(s));
 		if (sccs_clean(s, SILENT)) {
-			printf("Cannot clean %s, Undo aborted\n", fileList[i]);
+			fprintf(stderr,
+			    "Cannot clean %s, undo aborted\n", s->gfile);
 			sccs_free(s);
 			return (-1);
 		}
@@ -439,7 +468,7 @@ move_file(char *checkfiles)
 			fprintf(stderr, "%s: name conflict\n", to);
 			rc = -1;
 			break;
-		};
+		}
 	}
 	pclose(f);
 	if (rc) return (rc); /* if error, abort */
@@ -452,27 +481,30 @@ move_file(char *checkfiles)
 	while (fnext(from, f)) {
 		fputs(from, chk);
 		chop(from);
-		sprintf(to, "../%s", from);
+		sprintf(to, "%s/%s", RESYNC2ROOT, from);
 		if (mv(from, to)) {
 			fprintf(stderr,
 			    "Cannot move %s to %s\n", from, to);
 			rc = -1;
 			break;
-		};
-		if (checkout) {
-			/* 
-			 * We don't use do_checkout() because the proj
-			 * struct is not realiable.
-			 */
-			if (checkout == 1) {
-				sys("bk", "get", "-q", to, SYS);
-			} else {
-				sys("bk", "edit", "-q", to, SYS);
-			}
-		};
+		}
 	}
 	pclose(f);
 	fclose(chk);
+	if (checkout) {
+		chk = fopen(checkfiles, "r");
+		f = popen((checkout == CO_GET) ?
+		    "bk co -q -" :
+		    "bk edit -q -", "w");
+		while (fnext(from, chk)) {
+			chop(from);
+			if (streq(from, CHANGESET)) continue;
+			sprintf(to, "%s/%s", RESYNC2ROOT, from);
+			fputs(to, f);
+		}
+		pclose(f);
+		fclose(chk);
+	}
 	return (rc);
 }
 

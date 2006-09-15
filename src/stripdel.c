@@ -24,8 +24,6 @@ stripdel_main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	int	c, rc;
-	MDBM	*config;
-	char	*co;
 	s_opts	opts = {1, 0, 0, 0, 0};
 	RANGE	rargs = {0};
 
@@ -58,10 +56,10 @@ usage:			system("bk help -s stripdel");
 		return (1);
 	}
 
-	if ((config = proj_config(0)) &&
-	    (co = mdbm_fetch_str(config, "checkout"))) {
-		if (strieq(co, "get")) getFlags = GET_EXPAND;
-		if (strieq(co, "edit")) getFlags = GET_EDIT;
+	switch(proj_checkout(0)) {
+	    case CO_GET: getFlags = GET_EXPAND; break;
+	    case CO_EDIT: getFlags = GET_EDIT; break;
+	    default: getFlags = 0; break;
 	}
 
 	/*

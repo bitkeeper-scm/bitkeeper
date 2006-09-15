@@ -8678,8 +8678,7 @@ int
 sccs_unedit(sccs *s, u32 flags)
 {
 	int	modified = 0;
-	int	getFlags = 0;
-	char	*co;
+	int	getFlags;
 	int	currState = 0;
 
 	/* don't go removing gfiles without s.files */
@@ -8688,10 +8687,11 @@ sccs_unedit(sccs *s, u32 flags)
 		return (0);
 	}
 
-	co = proj_configval(s->proj, "checkout");
-	if (strieq(co, "get")) getFlags = GET_EXPAND;
-	if (strieq(co, "edit")) getFlags = GET_EDIT;
-
+	switch(proj_checkout(s->proj)) {
+	    case CO_GET: getFlags = GET_EXPAND; break;
+	    case CO_EDIT: getFlags = GET_EDIT; break;
+	    default: getFlags = 0; break;
+	}
 	if (HAS_PFILE(s)) {
 		if (!getFlags || sccs_hasDiffs(s, flags, 1)) modified = 1;
 		currState = GET_EDIT;

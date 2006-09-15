@@ -299,9 +299,6 @@ proj_config(project *p)
 		/* If RESYNC doesn't have a config file, then don't use it. */
 		p->config = loadConfig(p->root, 1);
 		unless (p->config) p->config = proj_config(p->rparent);
-
-		/* no checkout:get in RESYNC */
-		mdbm_delete_str(p->config, "checkout");
 	} else {
 		p->config = loadConfig(p->root, 0);
 	}
@@ -349,6 +346,30 @@ proj_configbool(project *p, char *key)
 	    "Meaning of '%s' unknown. Assuming false.\n", key, val);
 	return (0);
 }
+
+/*
+ * returns the checkout state for the current repository
+ */
+int
+proj_checkout(project *p)
+{
+	MDBM	*db;
+	char	*s;
+
+	unless (p || (p = curr_proj())) p = proj_fakenew();
+	if (p->rparent) return (CO_NONE);
+	db = proj_config(p);
+	assert(db);
+	unless (s = mdbm_fetch_str(db, "checkout")) return (CO_NONE);
+	if (strieq(s, "get")) return (CO_GET);
+	if (strieq(s, "edit")) return (CO_EDIT);
+	if (strieq(s, "none")) return (CO_NONE);
+	fprintf(stderr,
+	    "WARNING: config key 'checkout' should be a get or edit.\n"
+	    "Meaning of '%s' unknown. Assuming none.\n", s);
+	return (CO_NONE);
+}
+
 
 /* Return the root key of the ChangeSet file in the current project. */
 char	*

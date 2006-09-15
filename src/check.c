@@ -20,7 +20,7 @@ private void	init_idcache(void);
 private int	checkKeys(sccs *s, char *root);
 private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
-private int	chk_gfile(sccs *s, MDBM *pathDB);
+private int	chk_gfile(sccs *s, MDBM *pathDB, int checkout);
 private int	chk_dfile(sccs *s);
 private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
@@ -83,6 +83,7 @@ check_main(int ac, char **av)
 	char	*name;
 	char	buf[MAXKEY];
 	char	*t;
+	int	checkout;
 
 	while ((c = getopt(ac, av, "acdefgpRvw")) != -1) {
 		switch (c) {
@@ -117,6 +118,8 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	if (sane(0, resync)) return (1);
+	checkout = CO_NONE;
+	if (!resync && all) checkout = proj_checkout(0);
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
@@ -176,7 +179,7 @@ check_main(int ac, char **av)
 			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
 			if (s->has_nonl && chk_nlbug(s)) errors |= 0x04;
 		}
-		if (chk_gfile(s, pathDB)) errors |= 0x08;
+		if (chk_gfile(s, pathDB, checkout)) errors |= 0x08;
 		if (no_gfile(s)) errors |= 0x08;
 		if (readonly_gfile(s)) errors |= 0x08;
 		if (writable_gfile(s)) errors |= 0x08;
@@ -372,9 +375,9 @@ chk_dfile(sccs *s)
 }
 
 private int
-chk_gfile(sccs *s, MDBM *pathDB)
+chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 {
-	char	*type;
+	char	*type, *p;
 	char	*sfile;
 	char	buf[MAXPATH];
 
@@ -391,7 +394,24 @@ chk_gfile(sccs *s, MDBM *pathDB)
 		}
 		free(sfile);
 	}
+	if (!CSET(s) &&
+	    !(strneq(s->gfile, "BitKeeper/", 10) &&
+		!strneq(s->gfile, "BitKeeper/triggers/", 19)) &&
+	    (((checkout == CO_EDIT) && !EDITED(s)) ||
+	     ((checkout == CO_GET) && !HAS_GFILE(s)))) {
+		if ((p = getenv("_BK_DEVELOPER")) && *p) {
+			fprintf(stderr, "check: %s not checked out(%d)\n",
+			    s->gfile, checkout);
+			return (1);
+		} else {
+			sccs_get(s, 0, 0, 0, 0, SILENT |
+			    ((checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND),
+			    "-");
+			s = sccs_restart(s);
+		}
+	}
 	unless (HAS_GFILE(s)) return (0);
+
 	/*
 	 * XXX when running in checkout:get mode, these checks are still
 	 * too expensive. Need to do ONE stat.

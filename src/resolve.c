@@ -60,7 +60,6 @@ resolve_main(int ac, char **av)
 {
 	int	c;
 	static	opts opts;	/* so it is zero */
-	char	*checkout;
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 	setmode(0, _O_TEXT);
@@ -133,11 +132,9 @@ resolve_main(int ac, char **av)
 		    "Using %s as graphical display\n", gui_displayName());
 	}
 
-	checkout = proj_configval(0, "checkout");
-	if (strieq(checkout, "edit")) {
-		default_getFlags = GET_EDIT;
-	} else if (strieq(checkout, "get")) {
-		default_getFlags = GET_EXPAND;
+	switch(proj_checkout(0)) {
+	    case CO_EDIT: default_getFlags = GET_EDIT; break;
+	    case CO_GET: default_getFlags = GET_EXPAND; break;
 	}
 
 	/* Globbing is a user interface, not one we want in RESYNC. */
@@ -466,8 +463,7 @@ nameOK(opts *opts, sccs *s)
 	if (streq(path, realname) &&
 	    (local = sccs_init(path, INIT_NOCKSUM)) &&
 	    HAS_SFILE(local)) {
-		save_checkout_state(opts->checkoutDB, local);
-		if (EDITED(local) && sccs_clean(local, SILENT)) {
+		if (EDITED(local) && sccs_hasDiffs(local, SILENT, 1)) {
 			fprintf(stderr,
 			    "Warning: %s is modified, will not overwrite it.\n",
 			    local->gfile);
@@ -489,9 +485,7 @@ nameOK(opts *opts, sccs *s)
 	sccs_sdelta(s, sccs_ino(s), buf);
 	local = sccs_keyinit(buf, INIT_NOCKSUM, opts->idDB);
 	if (local) {
-		save_checkout_state(opts->checkoutDB, local);
-		if (EDITED(local) &&
-		    sccs_clean(local, SILENT|CLEAN_SHUTUP)) {
+		if (EDITED(local) && sccs_hasDiffs(local, SILENT, 1)) {
 			fprintf(stderr,
 			    "Warning: %s is modified, will not overwrite it.\n",
 			    local->gfile);
@@ -2445,6 +2439,9 @@ pass4_apply(opts *opts)
 		sccs_sdelta(r, sccs_ino(r), key);
 		sccs_free(r);
 		if (l = sccs_keyinit(key, INIT_NOCKSUM, opts->idDB)) {
+			if (HAS_GFILE(l)) {
+				save_checkout_state(opts->checkoutDB, l);
+			}
 			/*
 			 * This should not happen, the repository is locked.
 			 */
@@ -2678,7 +2675,7 @@ copyAndGet(opts *opts, char *from, char *to)
 		getFlags = default_getFlags;
 		//ttyprintf("checkout %s with defaults(%d)\n", key, getFlags);
 	}
-	if (getFlags) {
+	if (getFlags && !CSET(s)) {
 		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	} else {
 		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);

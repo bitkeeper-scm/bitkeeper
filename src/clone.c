@@ -326,6 +326,7 @@ clone2(opts opts, remote *r)
 
 	parent(opts, r);
 
+	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts.rev) {
 		if (after(opts.quiet, opts.rev)) {
@@ -352,13 +353,23 @@ clone2(opts opts, remote *r)
 	unlink(checkfiles);
 	free(checkfiles);
 
-	p = proj_configval(0, "checkout");
-	if (strieq(p, "edit")) {
-		unless (opts.quiet) fprintf(stderr, "Checking out files...\n");
-		sys("bk", "-Ur", "edit", "-Tq", SYS);
-	} else if (strieq(p, "get")) {
-		unless (opts.quiet) fprintf(stderr, "Checking out files...\n");
-		sys("bk", "-Ur", "get", "-Tq", SYS);
+	/*
+	 * checkout needed files.  Note: normally this will be done as
+	 * a side effect of check.c, but if partial check is enabled
+	 * we still might need this.
+	 */
+	if (proj_configbool(0, "partial_check")) {
+		switch(proj_checkout(0)) {
+		    case CO_GET: p = "get"; break;
+		    case CO_EDIT: p = "edit"; break;
+		    default: p = 0; break;
+		}
+		if (p) {
+			unless (opts.quiet) {
+				fprintf(stderr, "Checking out files...\n");
+			}
+			sys("bk", "-Ur", p, "-Tq", SYS);
+		}
 	}
 	return (0);
 }

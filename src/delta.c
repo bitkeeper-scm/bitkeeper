@@ -136,7 +136,8 @@ delta_main(int ac, char **av)
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*prog, *name;
-	char	*compp = 0, *encp = 0, *ckopts = "";
+	char	*compp = 0, *encp = 0;
+	int	ckopts = 0;
 	char	*def_compp;
 	char	*mode = 0;
 	MMAP	*diffs = 0;
@@ -175,10 +176,10 @@ delta_main(int ac, char **av)
 			      sflags |= SF_NODIREXPAND;
 			      sflags &= ~SF_WRITE_OK;
 			      break;
-		    case 'l': ckopts = "edit";			/* doc 2.0 */ 
+		    case 'l': ckopts = CO_EDIT;			/* doc 2.0 */ 
 			      checkout = 1;
 			      break;
-		    case 'u': ckopts = "get";			/* doc 2.0 */
+		    case 'u': ckopts = CO_GET;			/* doc 2.0 */
 			      break;
 
 		    /* LM flags */
@@ -228,13 +229,8 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 	}
 
-	unless (ignorePreference || *ckopts) {
-		ckopts  = proj_configval(0, "checkout");
-	}
-
-	if (strieq("get", ckopts) || strieq("edit", ckopts)) {
-		iflags |= INIT_FIXSTIME;
-	}
+	unless (ignorePreference || ckopts) ckopts  = proj_checkout(0);
+	if (ckopts) iflags |= INIT_FIXSTIME;
 
 	def_compp  = proj_configval(0, "compression");
 	unless (def_compp && *def_compp) def_compp = NULL;
@@ -324,11 +320,11 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		 * see rev 1.118
 		 */
 		unless (CSET(s)) {
-			if (strieq(ckopts, "edit")) {
+			if (ckopts == CO_EDIT) {
 				gf |= GET_SKIPGET|GET_EDIT;
 				df |= DELTA_SAVEGFILE;
 				co = 1;
-			} else if (strieq(ckopts, "get")) {
+			} else if (ckopts == CO_GET) {
 				if (hasKeyword(s))  {
 					gf |= GET_EXPAND;
 					s->initFlags &= ~INIT_FIXSTIME;

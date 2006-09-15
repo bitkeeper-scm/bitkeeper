@@ -108,9 +108,8 @@ int
 c_quit(resolve *rs)
 {
 	if (LOCKED(rs->s)) {
-		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
 		rs->s = sccs_restart(rs->s);
-		sccs_unedit(rs->s, 0);
+		sccs_unedit(rs->s, SILENT);
 	}
 	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
 	chdir(RESYNC2ROOT);
@@ -408,9 +407,8 @@ private int
 c_skip(resolve *rs)
 {
 	if (LOCKED(rs->s) && !sccs_hasDiffs(rs->s, 0, 1)) {
-		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
 		rs->s = sccs_restart(rs->s);
-		sccs_unedit(rs->s, 0);
+		sccs_unedit(rs->s, SILENT);
 	}
 	++rs->opts->hadConflicts;
 	return (1);

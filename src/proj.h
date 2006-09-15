@@ -10,6 +10,13 @@ int		proj_chdir(char *newdir);
 MDBM*		proj_config(project *p);
 char*		proj_configval(project *p, char *key);
 int		proj_configbool(project *p, char *key);
+
+/* defines for proj_checkout() */
+#define	CO_NONE	0
+#define	CO_GET	1
+#define	CO_EDIT	2
+int		proj_checkout(project *p);
+
 char*		proj_cwd(void);
 void		proj_free(project *p);
 char*		proj_fullpath(project *p, char *path);

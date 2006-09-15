@@ -979,7 +979,8 @@ set | grep $DASHA ^BK | grep -v _BK_ | bk sort -u > $HERE/post-incoming
 EOF
 chmod +x BitKeeper/triggers/*
 clone_repoid=`bk identity -r`
-bk pull $Q || {
+# force checkout mode so pull will be happy.
+BK_CONFIG=checkout:get bk pull $Q >OUT || {
 	echo failed to exit zero
 	exit 1
 }

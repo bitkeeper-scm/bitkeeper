@@ -189,11 +189,13 @@ cmd_rclone_part2(int ac, char **av)
 		run_check(0, 1, !opts.verbose);
 	}
 
-	p = proj_configval(0, "checkout");
-	if (strieq(p, "edit")) {
+	switch (proj_checkout(0)) {
+	    case CO_EDIT:
 		sys("bk", "-Ur", "edit", "-q", SYS);
-	} else if (strieq(p, "get")) {
-		 sys("bk", "-Ur", "get", "-q", SYS);
+		break;
+	    case CO_GET:
+		sys("bk", "-Ur", "get", "-q", SYS);
+		break;
 	}
 
 	/* restore original stderr */

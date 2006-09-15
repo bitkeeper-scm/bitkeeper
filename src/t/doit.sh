@@ -311,6 +311,8 @@ setup_env()
 		export BK_NO_GUI_PROMPT
 	}
 	BK_GLOB_EQUAL=NO
+	_BK_DEVELOPER=YES
+	export _BK_DEVELOPER
 }
 
 clean_up()
