@@ -12,7 +12,9 @@ use Cwd;
 # this platforms are found, then the INDEX will link all the 
 # aliases to the same installer.  This lets us rename platforms.
 my(@aliases) = ([qw(x86-freebsd6 x86-freebsd6.0)],
-	 	[qw(x86-sco x86-sco3 x86-sco3.2v5.0.7)]);
+	 	[qw(x86-sco x86-sco3 x86-sco3.2v5.0.7)],
+		[qw(mips-glibc22-linux mips-glibc23-linux)],
+);
 my(%aliasmap);
 foreach my $list (@aliases) {
     foreach my $arch (@$list) {

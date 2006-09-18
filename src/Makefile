@@ -496,15 +496,15 @@ crankrelease: crank.sh remote.sh
 		echo Cannot crankrelease with a non-tagged tip ; \
 		exit 1 ; \
 	} ; \
-	test -d /home/bk/$$TAG-images || mkdir -p /home/bk/$$TAG-images ; \
+	test -d /home/bk/images/$$TAG || mkdir -p /home/bk/images/$$TAG ; \
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh \
 	    LOG=$(LOG) bash crank.sh release ; \
 	bk -R get -qS RELEASE-NOTES ; \
-	cp ../RELEASE-NOTES /home/bk/$$TAG-images ; \
-	cd /home/bk/$$TAG-images ; \
+	cp ../RELEASE-NOTES /home/bk/images/$$TAG ; \
+	cd /home/bk/images/$$TAG ; \
 	rm -f MD5SUMS ; \
 	md5sum bk-* >> MD5SUMS ; \
-	echo "Your images are in /home/bk/$$TAG-images" ; \
+	echo "Your images are in /home/bk/images/$$TAG" ; \
 	echo "Run './mkupgrades $$TAG' to create upgrade area." )
 
 crankclean: crank.sh remote.sh
