@@ -499,8 +499,7 @@ move_file(char *checkfiles)
 		while (fnext(from, chk)) {
 			chop(from);
 			if (streq(from, CHANGESET)) continue;
-			sprintf(to, "%s/%s", RESYNC2ROOT, from);
-			fputs(to, f);
+			fprintf(f, "%s/%s\n", RESYNC2ROOT, from);
 		}
 		pclose(f);
 		fclose(chk);

@@ -311,7 +311,8 @@ bk new $Q hi || exit 1
 if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
 bk commit $Q -yaddhi || exit 1
 echo bye >> hi
-bk delta $Q -ybye hi || exit 1
+echo new >> src/foo.c
+bk delta $Q -ybye hi src/foo.c || exit 1
 if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
 bk commit $Q -yappendhi || exit 1
 bk undo $Q -fr+ || exit 1
