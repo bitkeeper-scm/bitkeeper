@@ -222,7 +222,7 @@ comments_writefile(char *file)
 }
 
 int
-comments_checkStr(char *s)
+comments_checkStr(u8 *s)
 {
 	assert(s);
 	for (; *s; s++) {

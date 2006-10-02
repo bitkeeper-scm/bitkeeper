@@ -1012,7 +1012,7 @@ int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
 void	comments_writefile(char *file);
-int	comments_checkStr(char *s);
+int	comments_checkStr(u8 *s);
 void	host_done(void);
 delta	*host_get(delta *);
 void	user_done(void);
