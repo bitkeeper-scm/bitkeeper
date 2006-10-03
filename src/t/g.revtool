@@ -177,7 +177,8 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test revision given in command line..........................$NL
-bk guitest revtool -r1.1 file1 >$OUT 2>&1 <<'EOF'
+bk cp file1 "name with  spaces" 2> QUIET
+bk guitest revtool -r1.1 "name with  spaces" >$OUT 2>&1 <<'EOF'
 	global anchor
 	if {$anchor ne "1.1-bk"} {
 		puts stderr "Revision 1.1 specified in command line, \
@@ -188,4 +189,54 @@ bk guitest revtool -r1.1 file1 >$OUT 2>&1 <<'EOF'
 EOF
 if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
 if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
+echo OK
+
+echo $N Test key given in command line...............................$NL
+REV=`bk prs -hnd:KEY: -r1.1 "name with  spaces"`
+bk guitest revtool -r"$REV" "name with  spaces" >$OUT 2>&1 <<'EOF'
+	global anchor
+	if {$anchor ne "1.1-bk"} {
+		puts stderr "Revision 1.1 specified in command line, \
+		    but not selected in GUI"
+		exit 1
+	}
+	exit 0
+EOF
+if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
+if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
+echo OK
+
+echo $N Test invalid revision given in command line..................$NL
+bk revtool -r1.1000 "name with  spaces" 2> ERR && {
+	echo expected failure
+	exit 1
+}
+grep -q "no such delta" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Test two revisions in the command line.......................$NL
+bk guitest revtool -r1.1 -l1.2 "name with  spaces" >$OUT 2>&1 <<'EOF'
+	global anchor
+	if {$anchor ne "1.1-bk"} {
+		puts stderr "Revision 1.1 specified in command line, \
+		    but not selected in GUI"
+		exit 1
+	}
+	exit 0
+EOF
+if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
+if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
+echo OK
+
+echo $N Test two revisions in the command line, one invalid..........$NL
+bk revtool -r1.1000 -l1.1 "name with  spaces" >$OUT 2>&1 && {
+	echo expected failure
+	exit 1
+}
+echo "either 1.1 or 1.1000 is not a valid revision" > EXPECTED
+cmpfiles $OUT EXPECTED
 echo OK
