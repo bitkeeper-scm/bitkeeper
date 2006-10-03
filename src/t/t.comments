@@ -42,9 +42,15 @@ bk delta -Ycmt foo 2>$OUT && exit 1
 grep -q "Non-printable" $OUT || { echo failed; exit 1; }
 echo OK
 
+echo $N check char with high bit set in -Y comment ..................$NL
+echo -e "high bit set :\370:" > cmt
+bk delta $Q -Ycmt foo || exit 1
+echo OK
+
 echo $N check cntl-A in -y comment ..................................$NL
 bk edit $Q bar || exit 1
 echo "xxx" > bar
+echo -e "\001 gggg" > cmt
 bk delta -y"`cat cmt`" bar 2>$OUT && exit 1
 grep -q "Non-printable" $OUT || { echo failed; exit 1; }
 echo OK
