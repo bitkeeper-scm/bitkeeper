@@ -8,33 +8,35 @@ bk ignore \- ignore shell glob patterns
 .[ARG] glob " .\|.\|."
 .SH DESCRIPTION
 .LP
-The 
-.B ignore
-command is used to tell \*(BK about files which should
-be ignored when looking for extras files not under revision control.
-It affects the output of 
+.B bk ignore
+tells \*(BK to ignore specified files when looking for extra files
+that are not under revision control.
+This affects the output of
 .B bk sfiles \-x
-and all commands which use that output, such as 
+and all commands that use its output, such as 
 .B bk citool
 and 
-.B bk
-.BR extras .
+.BR "bk extras" .
 .LP
-Typical things to ignore are object files, core files, a.out, *.exe, etc.
+Typical things to ignore are object files, core files,
+.BR "a.out" ,
+.BR "*.exe" ,
+and the like.
 .LP
-The patterns that do not contain a slash are matched against the
-basename of the file and patterns with a slash are matched against the
-pathname of the file relative to the root of the repository.  A './'
-can be added to the start of a pattern to force it to match in the
-repository root.
+Patterns that do not contain a slash (`\fB/\fP') character are matched
+against the basename of the file; patterns containing a slash
+are matched against the pathname of the file relative to the root
+of the repository.
+Using '\fB.\|/\fP' at the start of a pattern means the pattern applies
+only to the repository root.
 .LP
-If you are trying to never have the file
-.ARG JUNK
-match, regardless of which directory it is in, you can say
+For example, if you always want to ignore files named
+.B JUNK
+regardless of which directory they are in, you can say
 .DS
 bk ignore JUNK
 .DE
-and that will match 
+This matches 
 .B JUNK
 and
 .B sub/dir/JUNK
@@ -45,39 +47,48 @@ If you want to match a file in just one subdirectory, you can do
 .DS
 bk ignore sub/directory/this_one
 .DE
-which will match 
+which matches
 .B sub/directory/this_one
 but not
 .BR other_dir/this_one .
 .LP
-If you want to ignore just the JUNK file at the root of the
-repository, you can do
+If you want to ignore just the
+.B JUNK
+file at the root of the repository, you can do
 .DS
 bk ignore ./JUNK
 .DE
-which will match
+which matches
 .B JUNK
 but not
 .BR sub/dir/JUNK .
 .LP
-If you give ignore no arguments it will print out the current ignore list.
+You can also prune certain subdirectories of your repository by appending
+\*(lq\fB \-prune\fP\*(rq to the directory path; no BitKeeper operations
+will descend into that directory.
+.DS
+bk ignore 'sub/dir/build -prune'
+.DE
+.B Note:
+It's important to use the quotes as shown when using
+.Q \-prune
+because each command argument is treated as a separate pattern.
+You may use
+.Q \-prune
+only with directory paths that are relative to the root of the repository;
+these paths may not contain globs.
 .LP
-The ignore list is saved in the file
+Pruning large non-revision controlled directory trees that appear in
+your repository can significantly improve performance in some cases.
+.LP
+With no arguments,
+.B bk ignore
+shows the current ignore list.
+.LP
+The ignore list is stored in the file
 .BR BitKeeper/etc/ignore .
 You may edit this file if you wish; the format is simply one glob per line.
 Editing the ignore file is the only way to remove entries from the list.
-.LP
-The
-.B BitKeeper/etc/ignore
-file can also be used to prune certain subdirectories of your
-repository.
-By adding a line with the path to a directory from the root of the
-repository followed by " -prune" no BitKeeper operations will descend
-into that directory.
-Pruning large non-revision controlled directory trees that appear in
-your repository can significantly improve performance in some cases.
-The -prune feature only matches the entire directory path from the root
-of the repository and may not contain globs.
 .LP
 The default ignore list is
 .DS
@@ -101,16 +112,6 @@ core
 *.rej
 *.orig
 .DE
-.SH EXIT STATUS
-.LP
-.B bk ignore
-returns exit status:
-.TP
-0
-on success.
-.tp
-1
-on failure.
 .SH SEE ALSO
 .LP
 .SA citool
