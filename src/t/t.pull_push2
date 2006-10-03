@@ -137,3 +137,46 @@ rm -rf copy2
 echo OK
 fi #---------------------------------------------------------------------
 
+echo $N check pull -s with -i .......................................$NL
+cd $HERE
+bk clone $Q project copy3
+cd copy3
+bk pull $Q -si 2> ERR && exit 1
+grep -q "cannot be used together" ERR || exit 1
+echo OK
+
+echo $N check pull -s with automergable change ......................$NL
+cd $HERE/project
+bk edit $Q src/bar
+echo first > src/bar
+bk get $Q -kp src/bar >> src/bar
+bk delta $Q -yfirst src/bar
+bk commit $Q -yfirst
+cd ../copy3
+bk edit $Q src/bar
+echo last >> src/bar
+bk delta $Q -ylast src/bar
+bk commit $Q -ylast
+bk pull $Q -s || exit 1
+test -d RESYNC && exit 1
+echo OK
+
+echo $N check pull -s with non-automergable change ..................$NL
+cd $HERE/project
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ../copy3
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk pull $Q -s 2> ERR && {
+	echo failed
+	exit 1
+}
+grep -q "RESYNC directory left intact" ERR || {
+	echo failed
+	exit 1
+}
+test -d RESYNC || exit 1
+echo OK

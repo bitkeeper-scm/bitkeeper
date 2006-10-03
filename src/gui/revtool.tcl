@@ -1003,13 +1003,8 @@ proc listRevs {r file} \
 	} else {
 		set tagopt "-T"
 	}
-	set d [open "| bk _lines $Opts(line) $tagopt $r \"$file\" 2>$dev_null" "r"]
-
-	# puts "bk _lines $Opts(line) $r \"$file\" 2>$dev_null"
-	if  {[lindex $errorCode 2] == 1} {
-		puts stderr "Error: Invalid revision number. rev=($r)"
-		exit 1;
-	}
+	set d [open "| bk _lines $Opts(line) $tagopt \"$r\" \"$file\"" "r"]
+	# puts "bk _lines $Opts(line) $r $tagopt \"$file\" 2>$dev_null"
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -1045,6 +1040,18 @@ proc listRevs {r file} \
 		}
 	}
 	catch {close $d} err
+
+	# lines: no such delta ``1.6000'' in SCCS/s.ChangeSet
+	if {$err != ""} {
+		if {[string first "lines: no such delta ``$r''" $err]} {
+			set r [regsub -- "-R" $r ""]
+			puts stderr "revtool: no such delta ``$r'' in $file"
+		} else {
+			puts stderr $err
+		}
+		exit 1
+    	}
+
 	set len [font measure $gc(rev.fixedBoldFont) "$big"]
 	set ht [font metrics $gc(rev.fixedBoldFont) -ascent]
 	incr ht [font metrics $gc(rev.fixedBoldFont) -descent]
@@ -2544,44 +2551,6 @@ proc arguments {} \
 		set rev2 ""
 	}
 
-	# By the time we get to here, rev1 will be set if either -l or
-	# -r was specified on the command line, and rev2 will be set
-	# if _both_ -l and -r were specified on the command line.
-	if {($rev2 != "" ) && 
-	    ([info exists startingLineNumber] ||
-	     [info exists searchString])} {
-		if {[info exists startingLineNumber]} {
-			puts stderr "error: you cannot specify a\
-				     line number with both -l and -r"
-		} else {
-			puts stderr "error: you cannot specify a\
-				      search string with both -l and -r"
-		}
-		exit
-	}
-
-	# regexes for valid revision numbers. This probably should be
-	# a function that uses a bk command to check whether the revision
-	# exists.
-	set r2 {^([1-9][0-9]*)\.([0-9][0-9]*)$}
-	set r4 {^([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)$}
-	set d1 ""; set d2 ""
-	if {[info exists rev1] && $rev1 != ""} {
-		if {![regexp -- $r2 $rev1 d1] &&
-		    ![regexp -- $r4 $rev1 d2] &&
-		    $rev1 != "+"} {
-			puts stderr "\"$rev1\" is not a valid revision number."
-			exit 1
-		}
-	}
-	if {[info exists rev2] && $rev2 != ""} {
-		if {![regexp -- $r2 $rev2 d1] &&
-		    ![regexp -- $r4 $rev2 d2] &&
-		    $rev2 != "+"} {
-			puts stderr "\"$rev2\" is not a valid revision number."
-			exit 1
-		}
-	}
 	if {$fnum > 1} {
 		puts stderr "Error: Incorrect argument or too many arguments."
 		exit 1
@@ -2626,8 +2595,13 @@ proc arguments {} \
 	if {($rev2 != "") && ($rev1 != "")} {
 		# XXX - this is where we drop the -i/-x stuff on the floor
 		# if it is a complicated GCA.
-		set gca [lindex [split [exec bk gca -r$rev1 -r$rev2 $fname]] 0]
-    	}
+		if {[catch {exec bk gca -r$rev1 -r$rev2 $fname} tmp]} {
+			puts stderr \
+			    "either $rev1 or $rev2 is not a valid revision"
+			exit 1
+		}
+		set gca [lindex [split $tmp] 0]
+	}
 } ;# proc arguments
 
 # Return the revision and user name (1.147.1.1-akushner) so that
@@ -2636,7 +2610,7 @@ proc lineOpts {rev} \
 {
 	global	Opts file
 
-	set f [open "| bk _lines $Opts(line) -r$rev \"$file\""]
+	set f [open "| bk _lines $Opts(line) \"-r$rev\" \"$file\""]
 	gets $f rev
 	catch {close $f} err
 	return $rev

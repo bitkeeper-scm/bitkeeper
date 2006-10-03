@@ -48,7 +48,6 @@
 #define	TMP_PATH	nt_tmpdir()
 #define	IsFullPath(f)	nt_is_full_path_name(f)
 #define	strieq(a, b)	!strcasecmp(a, b)
-#define	patheq(a, b)	!strcasecmp(a, b)/* WIN98 path is case insensitive */
 #define	pathneq(a, b, n) !strncasecmp(a, b, n)
 #define wishConsoleVisible() (0)
 #define	mixedCasePath()	0
@@ -94,7 +93,8 @@ int	win32flags_get(void);
 void	win32flags_set(int flags);
 void	win32flags_clear(int flags);
 
-/* win32/registry.c */
+/* win32/reg.c */
+int	reg_broadcast(char *key, int timeout);
 void	*reg_get(char *key, char *value, long *len);
 int	reg_set(char *key, char *value, DWORD type, void *data, long len);
 DWORD	reg_type(char *key, char *value);

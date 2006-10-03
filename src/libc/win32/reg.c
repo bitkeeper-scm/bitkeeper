@@ -119,6 +119,15 @@ out:	RegCloseKey(hk);
 	return (err);
 }
 
+int
+reg_broadcast(char *key, int timeout)
+{
+	DWORD	sendResult;
+
+	unless (timeout) timeout = 3000;	/* default to 3s */
+	return (!SendMessageTimeout(HWND_BROADCAST, WM_SETTINGCHANGE,
+	    (WPARAM) 0, (LPARAM) key, SMTO_ABORTIFHUNG, timeout, &sendResult));
+}
 
 /*
  * returns the type of the value in the key

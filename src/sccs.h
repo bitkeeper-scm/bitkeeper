@@ -1215,7 +1215,7 @@ int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 void	randomBits(char *buf);
 int	almostUnique(void);
-int	uninstall(char *path);
+int	uninstall(char *path, int upgrade);
 
 extern	char	*editor;
 extern	char	*bin;

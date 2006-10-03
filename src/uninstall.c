@@ -8,11 +8,12 @@ private	int	uninstall_ok(void);
 int
 uninstall_main(int ac, char **av)
 {
-	int	c, prompt = 1;
+	int	c, prompt = 1, upgrade = 0;
 	char	*buf, *path;
 
-	while ((c = getopt(ac, av, "f")) != -1) {
+	while ((c = getopt(ac, av, "fu")) != -1) {
 		switch (c) {
+		    case 'u':	upgrade = 1;		/* fall trhough */
 		    case 'f':	prompt = 0; break;	/* force */
 		    default:
 			fprintf(stderr, "unknown option: %c\n", c);
@@ -43,7 +44,7 @@ uninstall_main(int ac, char **av)
 		return (1);
 	}
 	free(buf);
-	return (uninstall(path));
+	return (uninstall(path, upgrade));
 }
 
 private	int

@@ -34,7 +34,6 @@
 #define	ROOT_USER	"root"
 #define	TMP_PATH	"/tmp"
 #define	IsFullPath(f)	((f)[0] == '/')
-#define	patheq(a, b)	streq(a, b)
 #define	strieq(a, b)	!strcasecmp(a, b)
 #define pathneq(a, b, n) strneq(a, b, n)
 #define sameuser(a,b)	(!strcmp(a, b))
