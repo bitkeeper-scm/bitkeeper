@@ -667,7 +667,7 @@ _tag() {		# /* doc 2.0 */
 # usage: ignore glob [glob ...]
 #    or: ignore
 _ignore() {		# /* doc 2.0 */
-	if [ X$1 = X"--help" ]; then bk help ignore; exit 1; fi
+	if [ "X$1" = X"--help" ]; then bk help ignore; exit 1; fi
 	__cd2root
 	if [ "x$1" = x ]
 	then	if [ -f BitKeeper/etc/ignore ]
