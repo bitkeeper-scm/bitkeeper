@@ -1,0 +1,27 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Verify setting ignore globs through the command line ........$NL
+commercial project
+bk ignore '*.o' '*out -prune' || exit 1
+cat > WANT <<EOF
+*.o
+*out -prune
+EOF
+bk get $Q BitKeeper/etc/ignore
+tail -2 BitKeeper/etc/ignore > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Verify reading ignore settings ..............................$NL
+bk ignore > GOT || exit 1
+cmpfiles BitKeeper/etc/ignore GOT
+echo OK
