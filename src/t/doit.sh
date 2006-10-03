@@ -48,6 +48,8 @@ win32_common_setup()
 	export BIN1 BIN2 BIN3 BKDIFF
 
 	export WINDOWS
+	. win32_common
+	win32_regSave
 }
 
 unix_common_setup()
@@ -461,7 +463,7 @@ get_options()
 
 
 get_options $@
-setup_env 
+setup_env
 init_main_loop
 test $PLATFORM = WIN32 && bk bkd -R
 
@@ -551,7 +553,10 @@ I hope your testing experience was positive! :-)
 		else	echo ERROR: Test ${i#t.} failed with unexpected output
 			EXIT=2
 		fi
-		test $KEEP_GOING = NO && exit $EXIT
+		test $KEEP_GOING = NO && {
+			test $PLATFORM = WIN32 && win32_regRestore
+			exit $EXIT
+		}
 		FAILED="$i $FAILED"
 	fi
 	clean_up
@@ -560,6 +565,9 @@ rm -rf $BK_REGRESSION
 rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
 test $BK_LIMITPATH && rm -rf $BK_LIMITPATH
 test $PLATFORM = WIN32 && bk bkd -R
+test $PLATFORM = WIN32 && {
+	win32_regDiff || win32_regRestore
+}
 echo
 EXIT=100	# Because I'm paranoid
 echo ------------------------------------------------

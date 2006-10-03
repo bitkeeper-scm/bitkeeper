@@ -23,18 +23,15 @@ private	FILE *dfd;	/* Debug FD */
 #define	USRENVKEY	HKCU "\\Environment"
 
 private void	delete_onReboot(char *path);
-private	void	delete_services(void);
 private	char	*path_sansBK(char *path);
 private void	remove_shortcuts(void);
-private	void	save_services(void);
 private void	unregister_shellx(char *path);
 
 int
-uninstall(char *path)
+uninstall(char *path, int upgrade)
 {
 	char	*data, *envpath, *old_ver, *uninstall_cmd;
 	char	**keys = 0, **values = 0;
-	int	saved_services = 0;
 	int	i;
 	char	buf[MAXPATH];
 
@@ -47,40 +44,51 @@ uninstall(char *path)
 	if (old_ver = reg_get(BKKEY, "rel", 0)) {
 		if (dfd) fprintf(dfd, "Old version = %s\n", old_ver);
 		sprintf(buf, "%s\\%s", UNINSTALLKEY, old_ver);
-		uninstall_cmd = reg_get(buf, "UninstallString", 0);
-		if (dfd) fprintf(dfd, "Uninstall cmd = %s\n", uninstall_cmd);
+		if (uninstall_cmd = reg_get(buf, "UninstallString", 0)) {
+			if (dfd) fprintf(dfd,
+			    "Uninstall cmd = %s\n", uninstall_cmd);
 
-		if (strcmp(old_ver, "bk-3.2.5") > 0) {
+#if 0
 			/*
-			 * The 'bk service' API was introduced in
-			 * bk-3.2.5.  if they're running anything
-			 * later, we can stop, save, and restart the
-			 * services
+			 * This bit of code should be: if bk version > 3.2.5
+			 * and we're upgrading: stop services and the installer
+			 * needs to restart them. If we're just uninstalling,
+			 * then delete services. -ob
 			 */
-			saved_services = 1;
-			save_services();
-			delete_services();
-		}
-		/* If the uninstaller is bkuninstall, don't even
-		 * bother running it.  We can do a much better job at
-		 * uninstalling.
-		 */
-		unless (strstr(uninstall_cmd, "bkuninstall")) {
-			if (strstr(uninstall_cmd, "UNWISE.EXE")) {
-				/* XXX: I don't know how the WISE installer is
-				 * supposed to work. I'll just run it here but
-				 * still don't trust it.
+			if (strcmp(old_ver, "bk-3.2.5") > 0) {
+				/*
+				 * The 'bk service' API was introduced in
+				 * bk-3.2.5.  if they're running anything
+				 * later, we can stop, save, and restart the
+				 * services
 				 */
-				if (system(uninstall_cmd)) {
-					if (dfd) fprintf(dfd,
-					    "Failed to run %s\n",
-					    uninstall_cmd);
+				saved_services = 1;
+				save_services();
+				delete_services();
+			}
+#endif
+			/* If the uninstaller is bkuninstall, don't even
+			 * bother running it.  We can do a much better job at
+			 * uninstalling.
+			 */
+			unless (strstr(uninstall_cmd, "bkuninstall")) {
+				if (strstr(uninstall_cmd, "UNWISE.EXE")) {
+					/* XXX: I don't know how the WISE
+					 * installer is supposed to work.
+					 * I'll just run it here but
+					 * still don't trust it.
+					 */
+					if (system(uninstall_cmd)) {
+						if (dfd) fprintf(dfd,
+						    "Failed to run %s\n",
+						    uninstall_cmd);
+					}
 				}
 			}
+			free(uninstall_cmd);
 		}
 		/* Unregister ShellX DLL */
 		unregister_shellx(path);
-		free(uninstall_cmd);
 		free(old_ver);
 	}
 
@@ -103,27 +111,6 @@ uninstall(char *path)
 		delete_onReboot(buf);
 	}
 
-	/* remove BK from PATH */
-	if (envpath = reg_get(USRENVKEY, "Path", 0)) {
-		reg_set(USRENVKEY, "Path", REG_EXPAND_SZ,
-		    path_sansBK(envpath), 0);
-		if (dfd) fprintf(dfd, "Updated User PATH: %s\n", envpath);
-		free(envpath);
-	}
-
-	if (envpath = reg_get(SYSENVKEY, "Path", 0)) {
-		reg_set(SYSENVKEY, "Path", REG_EXPAND_SZ,
-		    path_sansBK(envpath), 0);
-		if (dfd) fprintf(dfd, "Updated System PATH: %s\n", envpath);
-		free(envpath);
-	}
-
-	/* clean up registry */
-	if (dfd) fprintf(dfd, "Deleting Registry %s\n", BKKEY);
-	/* Blow away BitMover key */
-	if (reg_delete(BMKEY, 0)) {
-		if (dfd) fprintf(dfd, "Could not delete %s\n", BMKEY);
-	}
 	/* Search for all uninstall entries and blow them away */
 	if (keys = reg_keys(UNINSTALLKEY)) {
 		EACH(keys) {
@@ -141,6 +128,40 @@ uninstall(char *path)
 			}
 		}
 		freeLines(keys, free);
+	}
+
+	/* We don't want to blow away the registry on upgrades since the
+	 * user might have customized it
+	 */
+	if (upgrade) {
+		if (dfd) fprintf(dfd, "Upgrading, so my work here is done\n");
+		goto out;
+	}
+
+	if (dfd) fprintf(dfd, "Cleaning PATHs\n");
+	/* remove BK from user and system PATH */
+	if (envpath = reg_get(USRENVKEY, "Path", 0)) {
+		reg_set(USRENVKEY, "Path", REG_EXPAND_SZ,
+		    path_sansBK(envpath), 0);
+		if (dfd) fprintf(dfd,
+		    "Updated User PATH: %s\n", envpath);
+		free(envpath);
+	}
+	if (envpath = reg_get(SYSENVKEY, "Path", 0)) {
+		reg_set(SYSENVKEY, "Path", REG_EXPAND_SZ,
+		    path_sansBK(envpath), 0);
+		if (dfd) fprintf(dfd,
+		    "Updated System PATH: %s\n", envpath);
+		free(envpath);
+	}
+
+	if (dfd) fprintf(dfd, "Broadcasting to environment\n");
+	reg_broadcast("Environment", 0);
+	/* clean up registry */
+	if (dfd) fprintf(dfd, "Deleting Registry %s\n", BKKEY);
+	/* Blow away BitMover key */
+	if (reg_delete(BMKEY, 0)) {
+		if (dfd) fprintf(dfd, "Could not delete %s\n", BMKEY);
 	}
 	/* Search for all Scc plugin entries and delete them */
 	if (data = reg_get(SCCPKEY1, "ProviderRegKey", 0)) {
@@ -218,6 +239,7 @@ uninstall(char *path)
 			if (dfd) fprintf(dfd, "Could not remove %s\n", buf);
 		}
 	}
+out:
 	if (dfd) fclose(dfd);
 	return (0);
 }
@@ -226,23 +248,25 @@ private	char *
 path_sansBK(char *path)
 {
 	char	**components = 0;
-	int	i, len;
+	char	*p;
+	int	i;
 
 	components = splitLine(path, ";", 0);
-	/* assuming path has 1 byte of extra space */
-	path[0] = 0;
 	EACH(components) {
 		/* We use bitkee instead of bitkeeper due to short paths.
 		 * E.g. c:\progra~1\bitkee~1
 		 */
-		unless (match_one(components[i], "*bitkee*", 1)) {
-			strcat(path, components[i]);
-			strcat(path, ";");
+		if (match_one(components[i], "*bitkee*", 1) ||
+		    patheq(components[i], bin)) {
+			removeLineN(components, i, free);
 		}
 	}
-	if (components) free(components);
-	len = strlen(path);
-	if (path[len-1] == ';') path[len-1] = 0;
+	path[0] = 0;
+	if (p = joinLines(";", components)) {
+		strcpy(path, p);
+		free(p);
+	}
+	freeLines(components, free);
 	return (path);
 }
 
@@ -256,16 +280,6 @@ delete_onReboot(char *path)
 	reg_set(RUNONCEKEY, id, 0, cmd, 0);
 	free(id);
 	free(cmd);
-}
-
-private void
-delete_services(void)
-{
-}
-
-private void
-save_services(void)
-{
 }
 
 private void
@@ -315,7 +329,7 @@ private	int rmlink(char *link, char *path);
  * The uninstall for unix is basically rm -rf <DEST>
  */
 int
-uninstall(char *path)
+uninstall(char *path, int upgrade)
 {
 	struct	stat	statbuf;
 	char	**dirs = 0, **links = 0;
@@ -374,7 +388,7 @@ uninstall(char *path)
 			 * after this process dies.
 			 */
 			cmd = aprintf("( while kill -0 %lu; do sleep 1; done; "
-			    "rm -f %s; cd ..; rmdir \"%s\" ) "
+			    "rm -f \"%s\"; cd ..; rmdir \"%s\" ) "
 			    " > /dev/null 2> /dev/null &",
 			    (long)getpid(), me, path);
 			(system)(cmd);
@@ -384,6 +398,13 @@ uninstall(char *path)
 	chdir("..");
 	rmdir(path);	/* okay if it fails */
 
+	if (upgrade) {
+		/* preserve user's symlinks as they might be in a
+		 * different path than /usr/bin
+		 */
+		rc = 0;
+		goto out;
+	}
 	/*
 	 * search for bk as a symlink in PATH and try removing all the
 	 * symlinks that we installed

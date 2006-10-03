@@ -40,8 +40,6 @@ extern void usleep(unsigned long);
 extern int sigcaught(int);
 extern int hasConsole(void);
 
-int	setShutDownPrivilege(void);
-int	do_reboot(char *msg);
 int	win_unsupported(void);
 int	isWin2000(void);
 int	alarm(int seconds);

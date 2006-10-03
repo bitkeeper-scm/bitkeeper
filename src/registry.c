@@ -9,6 +9,7 @@ registry_main(int ac, char **av)
 }
 #else
 
+private	int	registry_broadcast(int ac, char **av);
 private int	registry_delete(int ac, char **av);
 private int	registry_dump(int ac, char **av);
 private int	registry_get(int ac, char **av);
@@ -27,7 +28,9 @@ registry_main(int ac, char **av)
 
 	unless (cmd) usage();
 
-	if (streq(cmd, "delete")) {
+	if (streq(cmd, "broadcast")) {
+		return (registry_broadcast(ac-1, av+1));
+	} else if (streq(cmd, "delete")) {
 		return (registry_delete(ac-1, av+1));
 	} else if (streq(cmd, "dump")) {
 		return (registry_dump(ac-1, av+1));
@@ -48,6 +51,16 @@ registry_main(int ac, char **av)
 	/* NOT REACHED */
 	assert("Unreachable statement reached" == 0);
 	return (0);
+}
+
+private	int
+registry_broadcast(int ac, char **av)
+{
+	int	timeout = 0;
+
+	unless(av[1]) usage();
+	if (av[2]) timeout = atoi(av[2]);
+	return (reg_broadcast(av[1], timeout));
 }
 
 private int
@@ -146,11 +159,19 @@ private int
 registry_set(int ac, char **av)
 {
 	int	err;
+	int	type = REG_SZ;
+	char	*key = av[1];
+	char	*value = 0, *data = 0;
 
-	unless (av[1]) usage();
-	if (err = reg_set(av[1], av[2], 0, av[3], av[3]?strlen(av[3]):0)) {
+	unless (key) usage();
+	if (av[2]) {
+		value = av[2];
+		if (av[3]) data = av[3];
+	}
+	if (value && !strcasecmp(value, "path")) type = REG_EXPAND_SZ;
+	if (err = reg_set(key, value, type, data, 0)) {
 		fprintf(stderr, "Could not set entry: ");
-		if (av[2] && !av[3]) printf("no data");
+		if (value && !data) printf("no data");
 		printf("\n");
 		return (1);
 	}

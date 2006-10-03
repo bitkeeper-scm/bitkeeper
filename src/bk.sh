@@ -732,6 +732,10 @@ _man() {
 
 # Make links in /usr/bin (or wherever they say).
 _links() {		# /* doc 3.0 */
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then	echo "bk links: not supported under Windows"
+		exit 0
+	fi
 	if [ X"$1" = X ]
 	then	echo "usage: bk links public-dir"
 		echo "Typical usage is bk links /usr/bin"
@@ -1217,12 +1221,13 @@ _install()
 		set -x
 	}
 	FORCE=0
+	UPGRADE=""
 	CRANKTURN=NO
 	VERBOSE=NO
 	DLLOPTS=""
 	DOSYMLINKS=NO
 	CONFIG=
-	while getopts dfvlnsS opt
+	while getopts dfvlnsSu opt
 	do
 		case "$opt" in
 		l) DLLOPTS="-l $DLLOPTS";; # enable bkshellx for local drives
@@ -1231,9 +1236,10 @@ _install()
 		d) CRANKTURN=YES;;# do not change permissions, dev install
 		f) FORCE=1;;	# force
 		S) DOSYMLINKS=YES;;
+		u) FORCE=1; UPGRADE="-u";;
 		v) VERBOSE=YES;;
 		*) echo "usage: bk install [-dfvS] <destdir>"
-	 	   exit 1;;
+		   exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
@@ -1251,7 +1257,6 @@ _install()
 		exit 1
 	}
 
-	OBK="$DEST.old$$"
 	NFILE=0
 	test -d "$DEST" && NFILE=`bk _find -type f "$DEST" | wc -l`
 	test $NFILE -gt 0 && {
@@ -1275,9 +1280,9 @@ _install()
 		test -f "$DEST/config" && {
 			CONFIG=/tmp/config$$
 			cp "$DEST/config" $CONFIG
-	    	}
+		}
 		test $VERBOSE = YES && echo Uninstalling $DEST
-		bk uninstall -f "$DEST" || {
+		bk uninstall $UPGRADE -f "$DEST" || {
 		    echo "bk install: failed to remove $DEST"
 		    exit 3
 		}
@@ -1324,11 +1329,11 @@ _install()
 	then
 		if [ -w /usr/bin ]
 		then
-	        	test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
+			test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
 			"$DEST"/bk links /usr/bin
 		else
-	        	test $VERBOSE = YES && {
-		    		A='Skipping requested symlinks because'
+			test $VERBOSE = YES && {
+				A='Skipping requested symlinks because'
 				B='/usr/bin is not writable.'
 				echo $A $B
 			}
@@ -1348,8 +1353,9 @@ _install()
 
 		# fix home directory
 		#  dotbk returns $HOMEDIR/$USER/Application Data/Bitkeeper/_bk
-		bk dotbk | sed 's,/[^/]*/[^/]*/[^/]*/_bk, /home,' >> \
-			"$DEST"/gnu/etc/fstab
+		bk pwd -s "`bk dotbk`" \
+		    | sed -n 's,/[^/]*/[^/]*/[^/]*/_bk, /home,p' \
+		    >> "$DEST"/gnu/etc/fstab
 	fi
 
 	# permissions
@@ -1365,22 +1371,15 @@ _install()
 		find . -type d | xargs chmod 777
 	fi
 
-	# Don't update registry et al if cranking.
-	test $CRANKTURN = YES && exit 0
-
 	# registry
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
 		test $VERBOSE = YES && echo "Updating registry and path ..."
-		# When extractor.c is upgrading, we're called with -f (FORCE)
-		test $FORCE -eq 1 && DLLOPTS="-u"
-		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
+		gui/bin/tclsh gui/lib/registry.tcl $UPGRADE "$DEST"
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
-		# This tells extract.c to reboot if it is needed
-		test $CRANKTURN = NO -a -f "$OBK/BkShellX.dll" && exit 2
 	fi
 
-
+	test $CRANKTURN = YES && exit 0
 	# Log the fact that the installation occurred
 	PATH="${DEST}:$PATH"
 	(

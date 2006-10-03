@@ -44,6 +44,7 @@ proc initGlobals {} \
 
 	set runtime(tmpdir) [pwd]
 	set runtime(destination) ""
+	set runtime(upgradeCheckbutton) 0
 	if {$tcl_platform(platform) == "windows"} {
 		set runtime(enableSccDLL) 1
 		set runtime(enableShellxLocal) 1
@@ -133,6 +134,7 @@ proc install {} \
 	set installfrom [pwd]
 
 	set command [list doCommand bk install -vf]
+	if {$runtime(upgradeCheckbutton)} {lappend command -u}
 	if {$runtime(hasWinAdminPrivs)} {
 		if {$runtime(enableSccDLL)}	   {lappend command -s}
 		if {$runtime(enableShellxLocal)}   {lappend command -l}
@@ -671,18 +673,18 @@ proc widgets {} \
 		    label $w.versionInfo -text $versionInfo
 		    pack $w.versionInfo -side top -fill x -padx 32
 
-		    set ::runtime(overwriteCheckbutton) 0
+		    set ::runtime(upgradeCheckbutton) 0
 		    $this configure -state pending
 
 		    checkbutton $w.overwrite \
 			-anchor w \
 			-text "Yes, remove the existing installation" \
 			-borderwidth 1 \
-			-variable ::runtime(overwriteCheckbutton) \
+			-variable ::runtime(upgradeCheckbutton) \
 			-onvalue 1 \
 			-offvalue 0 \
 			-command {
-				if {$::runtime(overwriteCheckbutton)} {
+				if {$::runtime(upgradeCheckbutton)} {
 					. configure -state normal
 				} else {
 					. configure -state pending
