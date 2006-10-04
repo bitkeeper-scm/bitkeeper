@@ -101,7 +101,7 @@ checkXflags(sccs *s, delta *d, int what)
 	char	*t, *f;
 	u32	old, new, want, added = 0, deleted = 0, *p;
 	int	i;
-	char	key[32];
+	char	key[MD5LEN];
 
 	if (d == s->tree) {
 		unless ((d->xflags & X_REQUIRED) == X_REQUIRED) {

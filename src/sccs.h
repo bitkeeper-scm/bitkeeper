@@ -341,6 +341,7 @@ int	checking_rmdir(char *dir);
 #define	DB_CONFIG	0x40		/* config file format */
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
+#define	MD5LEN	32	/* really 30: 8 hex time + 22 base-64 MD5 of key */
 
 #define	LEASE_URL	getenv("BK_LEASE_URL")
 #define	LEASE_URL2	getenv("BK_LEASE_URL2")

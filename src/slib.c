@@ -6212,7 +6212,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	char	*eol = "\n";
 	ser_t	serial;
 	char	align[16];
-	char	lnamebuf[64]; /* md5sum + '.' + linenumber */
+	char	lnamebuf[MD5LEN+32]; /* md5sum + '.' + linenumber */
 	MDBM	*namedb = 0;
 	u32	*lnum = 0;
 
@@ -14121,7 +14121,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	case KW_MD5KEY: /* MD5KEY */ {
-		char	b64[32];
+		char	b64[MD5LEN];
 
 		sccs_md5delta(s, d, b64);
 		fs(b64);
@@ -15791,7 +15791,7 @@ sccs_findKeyDB(sccs *s, u32 flags)
 delta	*
 sccs_findMD5(sccs *s, char *md5)
 {
-	char	buf[32];
+	char	buf[MD5LEN];
 	u32	date;
 	delta	*d;
 
