@@ -469,6 +469,7 @@ range_markMeta(sccs *s)
 	    ? lower->serial : s->rstart->serial;
 	for (; i < s->nextserial; i++) {
 		unless ((d = sfind(s, i)) && (d->type != 'D')) continue;
+		if (d->flags & D_SET) continue;
 		/* e = tagged real delta */
 		for (e = d->parent; e && (e->type != 'D'); e = e->parent);
 		/* filter out meta attached to nodes outside the region */

@@ -129,7 +129,7 @@ do_cset(char *rev)
 	int	rc = 1;
 	char	*csetfile = "";
 	FILE	*f;
-	char	buf[64];
+	char	buf[MD5LEN];
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "%s: can't find repository root\n", me);

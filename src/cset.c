@@ -20,6 +20,7 @@ typedef	struct cset {
 	int	exclude;	/* create new cset with excludes */
 	int	compat;		/* Do PATCH_COMPAT patches */
 	int	serial;		/* the revs passed in are serial numbers */
+	int	md5out;		/* the revs printed are as md5keys */
 
 	/* numbers */
 	int	verbose;
@@ -115,7 +116,7 @@ cset_main(int ac, char **av)
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "Cd|DfHhi;lm|M|qr|svx;")) != -1) {
+	while ((c = getopt(ac, av, "5Cd|DfHhi;lm|M|qr|svx;")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
@@ -167,6 +168,7 @@ cset_main(int ac, char **av)
 			break;
 		    case 'q':					/* doc 2.0 */
 		    case 's': flags |= SILENT; break;		/* undoc? 2.0 */
+		    case '5': copts.md5out = 1; break;		/* undoc 4.0 */
 		    case 'v': copts.verbose++; break;		/* undoc? 2.0 */
 		    case 'x':					/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
@@ -366,6 +368,10 @@ header(sccs *cset, int diffs)
 private void
 markThisCset(cset_t *cs, sccs *s, delta *d)
 {
+	if (TAG(d)) {
+		d->flags |= D_SET;
+		return;
+	}
 	if (cs->mark) {
 		d->flags |= D_SET;
 		return;
@@ -829,15 +835,18 @@ private void
 doSet(sccs *sc)
 {
 	delta	*d;
+	char	key[MD5LEN];
 
 	if (copts.hide_cset  && streq(CHANGESET, sc->sfile))  return;
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
-		    	if (copts.historic) {
-				printf("%s%c%s%c%s\n", sc->gfile, BK_FS,
-						d->pathname, BK_FS, d->rev);
+			printf("%s", sc->gfile);
+		    	if (copts.historic) printf("%c%s", BK_FS, d->pathname);
+			if (copts.md5out) {
+				sccs_md5delta(sc, d, key);
+				printf("%c%s\n", BK_FS, key);
 			} else {
-				printf("%s%c%s\n", sc->gfile, BK_FS, d->rev);
+				printf("%c%s\n", BK_FS, d->rev);
 			}
 		}
 	}
