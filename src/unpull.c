@@ -41,6 +41,7 @@ unpull(int force, int quiet, char *patch)
 	int	status;
 	char	path[MAXPATH];
 	char	buf[MAXLINE];
+	char	key[MAXKEY];
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "unpull: can not find package root.\n");
@@ -98,8 +99,10 @@ err:			sccs_free(s);
 			unless (d->type == 'D') break;
 		}
 		unless (d == tag) {
+			sccs_sdelta(s, d, key);
 			fprintf(stderr,
-			    "unpull: will not unpull local tag %s\n", d->rev);
+			    "unpull: will not unpull because of a local tag "
+			    "with key:\n  %s\n", key);
 			goto err;
 		}
 	}

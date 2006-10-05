@@ -100,7 +100,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	unless (force) {
 		for (i = 0; i<79; ++i) putchar('-'); putchar('\n');
 		fflush(stdout);
-		f = popen(verbose? "bk changes -ev -" : "bk changes -e -", "w");
+		f = popen(verbose? "bk changes -av -" : "bk changes -a -", "w");
 		EACH (csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
 		pclose(f);
 		printf("Remove these [y/n]? ");
@@ -230,13 +230,13 @@ getrev(char *top_rev, int aflg)
 	int	status;
 	char	**list = 0;
 	FILE	*f;
-	char	revline[MAXREV+1];
+	char	revline[MD5LEN];	/* max(MD5LEN, MAXREV) */
 
 	if (aflg) {
 		cmd = aprintf("bk -R prs -hnr'%s..' -d:REV: ChangeSet",
 		    top_rev);
 	} else if (IsFullPath(top_rev) && isreg(top_rev)) {
-		cmd = aprintf("bk -R key2rev ChangeSet < %s", top_rev);
+		cmd = aprintf("bk changes -and:MD5KEY: - < '%s'", top_rev);
 	} else {
 		cmd = aprintf("bk -R prs -hnr'%s' -d:REV: ChangeSet", top_rev);
 	}
@@ -266,7 +266,7 @@ mk_list(char *rev_list, char **csetrev_list)
 	kvpair	kv;
 
 	assert(csetrev_list);
-	cmd = aprintf("bk cset -ffl - > %s", rev_list);
+	cmd = aprintf("bk cset -ffl5 - > %s", rev_list);
 	f = popen(cmd, "w");
 	if (f) {
 		EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);

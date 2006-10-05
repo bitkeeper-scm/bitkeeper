@@ -1,3 +1,4 @@
+# Copyright (c) 2006 BitMover
 
 echo $N Unpull after a pull which has a tag as the newest thing .....$NL
 commercial project
@@ -9,12 +10,15 @@ bk new $Q foo
 bk commit $Q -yfoo
 cd ../tag
 bk tag $Q TAGIT
+bk changes -qk > WANT
 bk pull $Q || exit 1
-bk unpull -f $Q 2> ERR || {
-	echo failed
-	cat ERR
-	exit 1
-}
+bk changes -qk > WANT2
+bk unpull $Q -f || exit 1
+bk changes -qk > GOT
+checkfiles WANT GOT
+bk takepatch -af BitKeeper/tmp/unpull.patch
+bk changes -qk > GOT2
+checkfiles WANT2 GOT2
 echo OK
 
 echo $N Unpull after a pull which has a delta as the newest thing ...$NL
@@ -26,11 +30,99 @@ cd ../chg
 touch bar
 bk new $Q bar
 bk commit $Q -ybar
+bk changes -qk > WANT
 bk pull $Q || exit 1
-bk unpull -f $Q 2> ERR > OUT
-if [ $? -ne 0 ]; then
-	echo 'failed (bug 2002-11-30-001)'
-else
-	echo 'bug 2002-11-30-001 fixed! update test.'
+bk changes -qk > WANT2
+bk unpull $Q -f || exit 1
+bk changes -qk > GOT
+checkfiles WANT GOT
+bk takepatch -af BitKeeper/tmp/unpull.patch
+bk changes -qk > GOT2
+checkfiles WANT2 GOT2
+echo OK
+
+echo $N Unpull after a pull which was a tag only exchange ...........$NL
+cd $HERE
+bk clone $Q project tagonly
+cd project
+bk tag $Q PROJ
+cd ../tagonly
+bk tag $Q TAGONLY
+bk changes -qk > WANT
+bk pull $Q
+bk changes -qk > WANT2
+bk unpull $Q -f || exit 1
+bk changes -qk > GOT
+checkfiles WANT GOT
+bk takepatch -af BitKeeper/tmp/unpull.patch
+bk changes -qk > GOT2
+checkfiles WANT2 GOT2
+echo OK
+
+# If I used :KEY: inside {..} I get the key of the tagged real delta :(
+# Hack this function to get the real key associated with tag
+_tagkeys() {
+	bk changes -ad':MD5KEY:\n$each(:TAG:){x\t(:TAG:)\n}' | while read line
+	do
+		TAG=`echo "$line" | sed -n 's/x	//p'`
+		test -z "$TAG" && {
+			KEY="$line"
+			continue
+		}
+		test "$TAG" = "$1" && echo "$KEY"
+	done
+}
+
+echo $N Create a non-merge resolve tag and unpull it ................$NL
+cd $HERE
+bk clone $Q project resolve-tag
+cd resolve-tag
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo -SFIRST
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo -SSECOND
+cd ../project
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo -SFIRST
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo -SSECOND
+cd ../resolve-tag
+ORIG=`_tagkeys SECOND | head -1`
+bk pull $Q -R
+{ echo l; echo l; } | bk resolve $Q -t 2> ERR || exit 1
+cp BitKeeper/etc/csets-in save-csets-in
+cp SCCS/s.ChangeSet cs
+chmod +w cs
+bk unpull $Q -f
+FINAL=`_tagkeys SECOND | head -1`
+test "$ORIG" = "$FINAL" || {
+	echo failed
+	echo "ORIG " $ORIG
+	echo "FINAL" $FINAL
 	exit 1
-fi
+}
+# Roll forward, both to test and to set up the next test
+bk takepatch -af BitKeeper/tmp/unpull.patch || exit 1
+checkfiles cs SCCS/s.ChangeSet
+cp BitKeeper/etc/csets-in save-csets-in
+echo OK
+
+echo $N Make a local tag and see that unpull fails ..................$NL
+bk tag $Q NEWLOCALTIP
+cp SCCS/s.ChangeSet cs
+chmod +w cs
+bk unpull 2> ERR && {
+	echo Should have failed
+	exit 1
+}
+grep -q "unpull: will not unpull because of a local tag" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1 
+}
+checkfiles cs SCCS/s.ChangeSet
+echo OK

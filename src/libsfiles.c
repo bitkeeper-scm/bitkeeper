@@ -34,7 +34,7 @@ private	char buf[MAXPATH];	/* pathname we actually pass back */
 private	int unget;		/* if set, return path again */
 private	char *prog;		/* av[0], sort of */
 private	char *glob;		/* if set, filter through this */
-private	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
+private	char rev[MAXKEY];	/* 1.1.1.1, keys, tags, etc - see HASREVS */
 private	pid_t spid;		/* pid of sfiles for -r */
 
 private	int oksccs(char *s, int flags, int complain);

@@ -58,14 +58,17 @@ t_local(resolve *rs)
 	tags	*t = (tags *)rs->opaque;
 
 	if (n == 1) {
-		sccs_tagMerge(rs->s, t->local, t->name);
+		if (sccs_tagMerge(rs->s, t->local, t->name)) {
+			rs->opts->errors = 1;
+		}
 	} else {
 		/*
 		 * If the "right" one is later, that's what will be hit in
 		 * the symbol table anyway, don't add another node.
 		 */
-		if (t->mlocal->serial < t->mremote->serial) {
-			sccs_tagLeaf(rs->s, t->local, t->mlocal, t->name);
+		if ((t->mlocal->serial < t->mremote->serial)
+		    && (sccs_tagLeaf(rs->s, t->local, t->mlocal, t->name))) {
+			rs->opts->errors = 1;
 		}
 	}
 	return (1);
@@ -77,11 +80,14 @@ t_remote(resolve *rs)
 	tags	*t = (tags *)rs->opaque;
 
 	if (n == 1) {
-		sccs_tagMerge(rs->s, t->remote, t->name);
+		if (sccs_tagMerge(rs->s, t->remote, t->name)) {
+			rs->opts->errors = 1;
+		}
 	} else {
 		/* see t_local */
-		if (t->mlocal->serial > t->mremote->serial) {
-			sccs_tagLeaf(rs->s, t->remote, t->mremote, t->name);
+		if ((t->mlocal->serial > t->mremote->serial)
+		    && (sccs_tagLeaf(rs->s, t->remote, t->mremote, t->name))) {
+			rs->opts->errors = 1;
 		}
 	}
 	return (1);
@@ -127,7 +133,10 @@ t_merge(resolve *rs)
 		return (0);
 	}
 	/* close the graph, doesn't matter which side, we're adding a new tag */
-	sccs_tagMerge(rs->s, t->local, 0);
+	if (sccs_tagMerge(rs->s, t->local, 0)) {
+		rs->opts->errors = 1;
+		return (1);
+	}
 	f = fopen("SCCS/t.ChangeSet", "a");
 	fprintf(f, "%s\n", t->name);
 	fclose(f);
@@ -176,7 +185,7 @@ resolve_tags(opts *opts)
 		i++;
 	}
 	unless (i) {
-		sccs_tagMerge(s, 0, 0);
+		if (sccs_tagMerge(s, 0, 0)) opts->errors = 1;
 out:		sccs_free(s);
 		mdbm_close(m);
 		return;
@@ -250,6 +259,7 @@ out:		sccs_free(s);
 		rs->s = s;
 		free(rs->prompt);
 		n--;
+		if (opts->errors) break;
 	}
 	sccs_free(local);
 	mdbm_close(m);
