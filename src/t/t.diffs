@@ -411,3 +411,26 @@ bk diffs -f a || exit 1
 rm a
 bk diffs -f a || exit 1
 echo OK
+
+echo $N Checking date in diffs header is delta date .................$NL
+mkdir date || exit 1
+cd date || exit 1
+ZONE="+00:00"
+DATE="97/05/20 18:48:02"
+echo foo > foo
+TZ=GMT BK_DATE_TIME_ZONE=$DATE bk new $Q foo
+DATE="98/05/20 16:23:17"
+bk edit $Q foo
+echo bar > foo
+TZ=GMT BK_DATE_TIME_ZONE=$DATE bk delta -fydate $Q foo
+TZ=GMT bk diffs -uR1.2 foo > GOT
+cat - <<'EOF' > WANT
+===== foo 1.1 vs 1.2 =====
+--- 1.1/date/foo	1997-05-20 18:48:02 +00:00
++++ 1.2/date/foo	1998-05-20 16:23:17 +00:00
+@@ -1 +1 @@
+-foo
++bar
+EOF
+cmpfiles WANT GOT
+echo OK

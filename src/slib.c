@@ -6627,7 +6627,7 @@ write:
 	if (d && (flags&GET_DTIME)){
 		struct	utimbuf ut;
 		char	*fname = (flags&PRINT) ? printOut : s->gfile;
-		int	doit = !(flags & PRINT);
+		int	doit = 1;
 
 		/*
 		 * If we are doing a regular SCCS/s.foo -> foo get then
