@@ -537,8 +537,8 @@ secure_hashstr(char *str, int len, char *key)
 	unsigned long md5len, b64len;
 	char	*p;
 	int	n;
-	char	md5[MD5LEN];
-	char	b64[MD5LEN];
+	char	md5[32];
+	char	b64[32];
 
 	if (key && (len == 1) && streq(str, "-")) {
 		if (hmac_filehandle(hash, stdin, key, strlen(key), md5)) {
@@ -585,8 +585,8 @@ hashstream(FILE *f)
 	int	hash = register_hash(&md5_desc);
 	unsigned long md5len, b64len;
 	char	*p;
-	char	md5[MD5LEN];
-	char	b64[MD5LEN];
+	char	md5[32];
+	char	b64[32];
 
 	if (hash_filehandle(hash, f, md5)) return (0);
 	b64len = sizeof(b64);
@@ -655,7 +655,7 @@ encrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 	int	i;
 	symmetric_CTR	ctr;
 	u8	sym_IV[MAXBLOCKSIZE];
-	u8	skey[32];		/* not MD5LEN */
+	u8	skey[32];
 	u8	in[4096], out[4096];
 
 	/* generate random session key */
@@ -695,7 +695,7 @@ decrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 	int	i;
 	symmetric_CTR	ctr;
 	u8	sym_IV[MAXBLOCKSIZE];
-	u8	skey[32];		/* not MD5LEN */
+	u8	skey[32];
 	u8	in[4096], out[4096];
 
 	i = fread(in, 1, sizeof(in), fin);
