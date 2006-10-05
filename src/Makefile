@@ -311,12 +311,13 @@ nonet nonet_test localtest:
 	BK_NONET=YES PREFER_RSH=YES $(MAKE) realtest
 
 realtest: $(ALL) t/doit
-	-./bk get -qS t/setup t/x.chk_env
+	-./bk get -qS t/setup win32/t/win32_common t/x.chk_env
 	-./bk -rt get -qS 't.*'
 	cd t && ./doit -i -f
 
 guitest: $(ALL) t/doit
-	-./bk get -q t/SCCS/s.g.* t/setup t/x.chk_env t/guitest.tcl
+	-./bk get -q t/SCCS/s.g.* t/setup win32/t/win32_common \
+	    t/x.chk_env t/guitest.tcl
 	cd t && ./doit -g -i -f
 
 t/doit: t/doit.sh substvars

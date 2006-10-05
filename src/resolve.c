@@ -81,7 +81,9 @@ resolve_main(int ac, char **av)
 		    case 'm': opts.mergeprog = optarg; break;	/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
-		    case 's': opts.autoOnly = 1; break;		/* doc */
+		    case 's':					/* doc */
+			opts.automerge = opts.autoOnly = 1;
+			break;
 		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'i':

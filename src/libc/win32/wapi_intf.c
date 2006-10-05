@@ -1105,10 +1105,31 @@ waited(int i)
 	return (total);
 }
 
+private char *
+error2msg(int error)
+{
+	LPTSTR  errormsg;
+
+	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+	    FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+	    NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+	    (LPTSTR) &errormsg, 0, NULL);
+	return (errormsg);
+}
+
 private void
 stuck(char *fmt, const char *arg)
 {
-	if (win32_flags & WIN32_NOISY) fprintf(stderr, fmt, arg);
+	DWORD	e;
+	char	*m = 0;
+
+	if (win32_flags & WIN32_NOISY) {
+		fprintf(stderr, fmt, arg);
+		e = GetLastError();
+		m = error2msg(e);
+		fprintf(stderr, "error (%d): %s\n", e, m?m:"Unknown");
+		if (m) free(m);
+	}
 }
 
 int
@@ -1365,57 +1386,4 @@ alarm(int seconds)
 	timerThread = CreateThread(NULL, 0, nt_timer, (LPVOID) seconds,
 								0, &threadId);
 	return (0);	
-}
-
-int
-setShutDownPrivilege(void) 
-{
-	TOKEN_PRIVILEGES tp;
-	LUID luid;
-	HANDLE hProc = NULL, hToken = NULL; 
-
-	hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, getpid());
-	OpenProcessToken(hProc, TOKEN_ADJUST_PRIVILEGES, &hToken);
-	if (hProc) safeCloseHandle(hProc);
-
-	if ( !LookupPrivilegeValue(NULL, SE_SHUTDOWN_NAME, &luid ) ) {
-    		fprintf(stderr,
-		    "LookupPrivilegeValue error: %lu\n", GetLastError() ); 
-err:		if (hToken) safeCloseHandle(hToken);
-    		return (FALSE); 
-	}
-
-	tp.PrivilegeCount = 1;
-	tp.Privileges[0].Luid = luid;
-	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-	AdjustTokenPrivileges(
-		hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), 
-       		(PTOKEN_PRIVILEGES) NULL, (PDWORD) NULL); 
-	if (GetLastError() != ERROR_SUCCESS) { 
-      		fprintf(stderr,
-		    "AdjustTokenPrivileges failed: %lu\n", GetLastError() ); 
-		goto err;
-	} 
-
-	if (hToken) safeCloseHandle(hToken);
-	return (TRUE);
-}
-
-
-int
-do_reboot(char *msg)
-{
-	UINT	flags;
-
-	flags = MB_YESNO|MB_ICONQUESTION|MB_TOPMOST;
-	if (MessageBox(NULL, msg, "BitKeeper Extractor", flags) == IDYES) {
-		setShutDownPrivilege();
-		FreeConsole();
-		if (ExitWindowsEx(EWX_REBOOT, 0) == 0) {
-			fprintf(stderr,
-			    "ExitWindowsEx return error %lu\n",
-			    GetLastError());
-		}
-	}
-	return (1);
 }

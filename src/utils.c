@@ -370,13 +370,12 @@ err:		if (file == msgtmp) unlink(msgtmp);
 		exit(2);
 	}
 
-	if (getenv("BK_EVENT")) {	/* in trigger and in text mode */
-		close(0);
-		close(1);
-		close(2);
-		open(DEV_TTY, O_RDWR, 0);
-		dup(0);
-		dup(1);
+	/* in trigger and in text mode */
+	if (getenv("BK_EVENT") && ((i = open(DEV_TTY, O_RDWR, 0)) >= 0)) {
+		dup2(i, 0);
+		dup2(i, 1);
+		dup2(i, 2);
+		if (i > 2) close(i);
 	}
 
 	if (type) {

@@ -2640,18 +2640,57 @@ sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 	return (!first);	/* first == 1 means no errors */
 }
 
+/* make a meta delta in the RESYNC directory, storing in csets-in */
+private	int
+resyncMeta(sccs *s, delta *d, char *buf)
+{
+	sccs	*s2;
+	MMAP	*m;
+	FILE	*f;
+	char	key[MAXKEY];
+
+	m = mrange(buf, buf + strlen(buf), "");
+	/* note: this rewrites the s.file, and does a sccs_close() */
+	if (sccs_meta("resolve", s, d, m, 1)) {
+		fprintf(stderr, "resolve: failed to make tag merge\n");
+		return (1);
+	}
+
+	/* If called out of RESYNC, save in csets-in */
+	/* XXX: could assert it is in RESYNC */
+	unless (proj_isResync(s->proj)) return (0);
+	unless (s2 = sccs_init(s->sfile, s->initFlags)) {
+err:		if (s2) sccs_free(s2);
+		return (1);
+	}
+	unless (s2->table->symGraph) {
+		fprintf(stderr, "resolve: new tip is not a tag merge\n");
+		goto err;
+	}
+	sccs_sdelta(s2, s->table, key);
+	sccs_free(s2);
+	unless (f = fopen(CSETS_IN, "a")) {
+		fprintf(stderr,
+		    "resolve: adding tag merge, csets-in did not open\n");
+		perror("resolve");
+		goto err;
+	}
+	fprintf(f, "%s\n", key);
+	fclose(f);
+	return (0);
+}
+
 /*
  * Add a merge delta which closes the tag graph.
  */
-void
+int
 sccs_tagMerge(sccs *s, delta *d, char *tag)
 {
 	delta	*l1 = 0, *l2 = 0;
 	char	*buf;
 	char	k1[MAXKEY], k2[MAXKEY];
 	time_t	tt = time(0);
-	MMAP	*m;
-	int	len;
+	int	len, rc;
 
 	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
 	assert(l1 && l2);
@@ -2677,12 +2716,10 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	    tag ? "\n" : "",
 	    k1, k2,
 	    "------------------------------------------------");
-
 	assert(strlen(buf) < len);
-	m = mrange(buf, buf + strlen(buf), "");
-	/* note: this rewrites the s.file, no pointers make sense after it */
-	sccs_meta("resolve", s, d, m, 1);
+	rc = resyncMeta(s, d, buf);
 	free(buf);
+	return (rc);
 }
 
 /*
@@ -2690,13 +2727,13 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
  * is what we call when we have multiple tags, the last tag calls the
  * tagMerge.
  */
-void
+int
 sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
 {
 	char	*buf;
 	char	k1[MAXKEY];
 	time_t	tt = time(0);
-	MMAP	*m;
+	int	rc;
 	delta	*e, *l1 = 0, *l2 = 0;
 
 	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
@@ -2715,10 +2752,9 @@ sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
 	    tag,
 	    k1,
 	    "------------------------------------------------");
-	m = mrange(buf, buf + strlen(buf), "");
-	/* note: this rewrites the s.file, no pointers make sense after it */
-	sccs_meta("resolve", s, d, m, 1);
+	rc = resyncMeta(s, d, buf);
 	free(buf);
+	return (rc);
 }
 
 /*
@@ -6212,7 +6248,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	char	*eol = "\n";
 	ser_t	serial;
 	char	align[16];
-	char	lnamebuf[64]; /* md5sum + '.' + linenumber */
+	char	lnamebuf[MD5LEN+32]; /* md5sum + '.' + linenumber */
 	MDBM	*namedb = 0;
 	u32	*lnum = 0;
 
@@ -9594,7 +9630,7 @@ checkInvariants(sccs *s, int flags)
 private int
 checkGone(sccs *s, int bit, char *who)
 {
-	ser_t	*slist = setmap(s, bit, 0);
+	ser_t	*slist = setmap(s, bit, 1);
 	delta	*d;
 	int	i, error = 0;
 
@@ -9612,6 +9648,20 @@ checkGone(sccs *s, int bit, char *who)
 			fprintf(stderr,
 			"%s: revision %s not at tip of branch in %s.\n",
 			    who, sfind(s, d->merge)->rev, s->sfile);
+			s->state |= S_WARNED;
+		}
+		if (d->symGraph && (d->ptag && slist[d->ptag])) {
+			error++;
+			fprintf(stderr,
+			"%s: revision %s not at tip of tag graph in %s.\n",
+			    who, sfind(s, d->ptag)->rev, s->sfile);
+			s->state |= S_WARNED;
+		}
+		if (d->symGraph && (d->mtag && slist[d->mtag])) {
+			error++;
+			fprintf(stderr,
+			"%s: revision %s not at tip of tag graph in %s.\n",
+			    who, sfind(s, d->mtag)->rev, s->sfile);
 			s->state |= S_WARNED;
 		}
 		EACH(d->include) {
@@ -14121,7 +14171,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	case KW_MD5KEY: /* MD5KEY */ {
-		char	b64[32];
+		char	b64[MD5LEN];
 
 		sccs_md5delta(s, d, b64);
 		fs(b64);
@@ -15791,7 +15841,7 @@ sccs_findKeyDB(sccs *s, u32 flags)
 delta	*
 sccs_findMD5(sccs *s, char *md5)
 {
-	char	buf[32];
+	char	buf[MD5LEN];
 	u32	date;
 	delta	*d;
 

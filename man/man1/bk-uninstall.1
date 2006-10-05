@@ -1,0 +1,29 @@
+.so ../bk-macros
+.TH "bk uninstall" "\*[BKVER]" %I% "\*(BC" "\*(UM"
+.SH NAME
+bk uninstall \- uninstall BitKeeper
+.SH SYNOPSIS
+.B bk uninstall
+.[B] \-f
+.SH DESCRIPTION
+.B bk uninstall
+removes the current \*[BK] installation from the host computer.
+On non-Windows platforms,
+.B bk uninstall
+attempts to remove any symbolic links that refer to the removed
+installation (see
+.B bk help links
+for information about installing symlinks pointing to installation
+images).
+On Windows platforms,
+.B bk uninstall
+removes \*[BK] entries from the registry.
+.SH OPTIONS
+.TP
+.B \-f
+Force uninstallation; do not prompt.
+.SH "SEE ALSO"
+.SA links
+.SA upgrade
+.SH CATEGORY
+.B Utility

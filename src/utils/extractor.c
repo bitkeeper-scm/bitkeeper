@@ -99,8 +99,8 @@ main(int ac, char **av)
 	 *}
 	 */
 	 unless (win_supported()) {
-	 	MessageBox(0, WIN_UNSUPPORTED, 0, MB_OK | MB_ICONERROR);
-	 	exit(1);
+		MessageBox(0, WIN_UNSUPPORTED, 0, MB_OK | MB_ICONERROR);
+		exit(1);
 	 }
 	 if ((p = getenv("OSTYPE")) && streq(p, "msys")
 	      && !getenv("BK_REGRESSION")) {
@@ -253,7 +253,7 @@ main(int ac, char **av)
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
 		sprintf(buf, "bk install %s %s \"%s\"",
 			dolinks ? "-S" : "",
-			upgrade ? "-f" : "",
+			upgrade ? "-u" : "",
 			dest);
 		unless (rc = system(buf)) {
 			fprintf(stderr, "\nInstalled version information:\n\n");
@@ -301,15 +301,6 @@ out:	cd(tmpdir);
 	/*
 	 * Bitchin'
 	 */
-#ifdef WIN32
-	if (rc == 2) {
-		do_reboot(
-		    "Some BitKeeper files from the previous install\n"
-		    "are in active use and cannot be deleted immediately.\n"
-	       	    "They will be deleted after the next reboot.\n"
-		    "Do you want to reboot the system now?\n");
-	}
-#endif
 	exit(rc);
 }
 

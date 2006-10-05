@@ -341,6 +341,7 @@ int	checking_rmdir(char *dir);
 #define	DB_CONFIG	0x40		/* config file format */
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
+#define	MD5LEN	32	/* really 30: 8 hex time + 22 base-64 MD5 of key */
 
 #define	LEASE_URL	getenv("BK_LEASE_URL")
 #define	LEASE_URL2	getenv("BK_LEASE_URL2")
@@ -1012,7 +1013,7 @@ int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
 void	comments_writefile(char *file);
-int	comments_checkStr(char *s);
+int	comments_checkStr(u8 *s);
 void	host_done(void);
 delta	*host_get(delta *);
 void	user_done(void);
@@ -1043,7 +1044,7 @@ char	*getDotBk(void);
 char	*age(time_t secs, char *space);
 char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
-void	sccs_tagMerge(sccs *s, delta *d, char *tag);
+int	sccs_tagMerge(sccs *s, delta *d, char *tag);
 int	sccs_tagleaves(sccs *, delta **, delta **);
 ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 int	sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc);
@@ -1107,7 +1108,7 @@ int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
 int	fileTypeOk(mode_t m);
-void	sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag);
+int	sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag);
 int	sccs_scompress(sccs *s, int flags);
 int	mkBkRootIcon(char *path);
 int	unmkBkRootIcon(char *path);
@@ -1215,7 +1216,7 @@ int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 void	randomBits(char *buf);
 int	almostUnique(void);
-int	uninstall(char *path);
+int	uninstall(char *path, int upgrade);
 
 extern	char	*editor;
 extern	char	*bin;

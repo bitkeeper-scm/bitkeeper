@@ -213,6 +213,13 @@ BitMover can be reached at:
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
+#lease-loop-blocked
+A lease-proxy trigger requested a lease, probably because it used a bk
+operation, such as 'bk get'.  A lease-proxy trigger may not fetch a lease.
+
+Tell your site's BitKeeper administrator that you encountered this error
+or send mail to support@bitmover.com.
+$
 #license-none
 You do not have a license for BitKeeper and you need one to create
 any changesets.
@@ -256,6 +263,10 @@ BitKeeper was unable to make a connection to the license server at:
 	#BKARG#
 
 Please correct the problem or contact BitMover for help. support@bitmover.com
+$
+#rejected-proxy-trigger
+The lease proxy server rejected your request to use BitKeeper.
+Contact your site's BitKeeper administrator for more information.
 $
 #http-err
 An unexpected http error response was returned when trying to make a

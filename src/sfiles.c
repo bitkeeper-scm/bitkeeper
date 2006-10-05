@@ -644,6 +644,8 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 	char	buf[MAXPATH];
 
 	p = strrchr(file, '/');
+	if ((p - file) < wi->rootlen) p = 0;
+
 	/* make 'buf' match the directory we are in */
 	if (S_ISDIR(sb->st_mode)) {
 		if (p) {

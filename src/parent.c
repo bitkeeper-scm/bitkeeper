@@ -9,6 +9,7 @@ private	void	rm(char *which, char *url, int *rc);
 private	char	**readf(char *file);
 private	int	record(void);
 private	int	print(void);
+private	char	*normalize(char *url, int check);
 
 private	struct {
 	u32	add:1;			/* add parent[s] */
@@ -135,7 +136,7 @@ usage:			system("bk help -s parent"); return (1);
 		add(which, av[optind], &rc);
 		optind++;
 	}
-	rc = record();
+	unless (rc) rc = record();
 
 out:	
 	freeLines(opts.mods, free);
@@ -195,7 +196,6 @@ add(char *which, char *url, int *rc)
 {
 	char	*p, *m;
 	char	*parent = "?";
-	remote	*r = 0;
 
 // ttyprintf("ADD %s %s\n", which, url);
 
@@ -204,41 +204,10 @@ add(char *which, char *url, int *rc)
 	    case 'o': parent = "push parent"; break;
 	    case 'b': parent = "parent"; break;
 	}
-	unless (r = remote_parse(url, REMOTE_BKDURL)) {
-		fprintf(stderr, "Invalid parent address: %s\n", url);
+	unless (url = normalize(url, 1)) {
 		*rc = 1;
 		return;
 	}
-	if (opts.normalize && 
-	    (isLocalHost(r->host) || (r->type == ADDR_FILE))) {
-		/*
-		 * Skip the path check if the url has a port address because
-		 * a) Virtual host support means we can't tell if it is valid
-		 * b) Some sites may be port forwarding which means the path
-		 *    is not really local.  XXX - only if ssh?
-		 */
-		if (r->path && IsFullPath(r->path) && !r->port) {
-			p = aprintf("%s/BitKeeper/etc", r->path);
-			unless (isdir(p)) {
-				fprintf(stderr, "Not a repository: %s\n", url);
-				free(p);
-				*rc = 1;
-				return;
-			}
-			free(p);
-		}
-		if (r->host) {
-			free(r->host);
-			r->host = strdup(sccs_realhost());
-		}
-	}
-	if (opts.normalize) {
-		url = remote_unparse(r);
-	} else {
-		url = strdup(url);
-	}
-	remote_free(r);
-
 	unless (p = mdbm_fetch_str(opts.parents, url)) {
 		mdbm_store_str(opts.parents, url, which, MDBM_INSERT);
 		m = aprintf("Add %s %s\n", parent, url);
@@ -281,9 +250,14 @@ rm(char *which, char *url, int *rc)
 {
 	char	*m = 0, *p;
 
-	unless (p = mdbm_fetch_str(opts.parents, url)) {
+	unless (url = normalize(url, 0)) {
 		*rc = 1;
 		return;
+	}
+	unless (p = mdbm_fetch_str(opts.parents, url)) {
+		*rc = 1;
+		fprintf(stderr, "parent: Can't remove '%s'.\n", url);
+		goto done;
 	}
 // ttyprintf("RM which=%s p=%s %s\n", which, p, url);
 	switch (*which) {
@@ -324,6 +298,7 @@ rm(char *which, char *url, int *rc)
 		opts.mods = addLine(opts.mods, m);
 		break;
 	}
+done:	free(url);
 }
 
 private int
@@ -432,6 +407,53 @@ parent_normalize(char *url)
 	}
 	if (r) remote_free(r);
 	return (strdup(url));
+}
+
+/*
+ * A private version of the above -- used for formatting parents
+ * Includes a checker to block new entries from being added.
+ * Disable checker to remove parent even though repo doesn't exist.
+ */
+private	char *
+normalize(char *url, int check)
+{
+	remote	*r = 0;
+	char	*p, *newurl = 0;
+
+	unless (r = remote_parse(url, REMOTE_BKDURL)) {
+		fprintf(stderr, "Invalid parent address: %s\n", url);
+		goto done;
+	}
+	if (opts.normalize && 
+	    (isLocalHost(r->host) || (r->type == ADDR_FILE))) {
+		/*
+		 * Skip the path check if the url has a port address because
+		 * a) Virtual host support means we can't tell if it is valid
+		 * b) Some sites may be port forwarding which means the path
+		 *    is not really local.  XXX - only if ssh?
+		 */
+		if (check && r->path && IsFullPath(r->path) && !r->port) {
+			p = aprintf("%s/BitKeeper/etc", r->path);
+			unless (isdir(p)) {
+				fprintf(stderr,
+				    "Not a repository: '%s'\n", url);
+				free(p);
+				goto done;
+			}
+			free(p);
+		}
+		if (r->host) {
+			free(r->host);
+			r->host = strdup(sccs_realhost());
+		}
+	}
+	if (opts.normalize) {
+		newurl = remote_unparse(r);
+	} else {
+		newurl = strdup(url);
+	}
+done:	if (r) remote_free(r);
+	return (newurl);
 }
 
 private	char **

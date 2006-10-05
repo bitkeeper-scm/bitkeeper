@@ -26,7 +26,7 @@
 
 BK_INSTALLER=
 # Lazy way to get full path
-find `bk bin`/utils -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
+find "`bk bin`"/utils -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
 test `wc -l < /tmp/bk$$` -gt 1 && {
 	echo You have too many bk images, skipping this test
 	cat /tmp/bk$$
@@ -43,6 +43,19 @@ echo "licsign2: $BKL_P2" >> c
 echo "licsign3: $BKL_P3" >> c
 DOTBK=`bk dotbk`
 mv c "$DOTBK"/config || exit 1
+
+if [ X$PLATFORM = X"WIN32" ]
+then #-------------------- WIN32 tests ---------------------
+echo $N Check registry is good and has been saved....................$NL
+# make sure we haven't hosed the registry up to this point
+. win32_common
+win32_regDiff || {
+	echo failed
+	echo corrupt registry, aborting
+	exit 1
+}
+echo OK
+fi
 
 echo $N Relative path installation, no config file...................$NL
 rm -f "$DOTBK"/accepted
@@ -117,17 +130,6 @@ test -d use_repo || {
 }
 echo OK
 
-# Wayne needs to fix in 3.3.x
-#
-# echo $N Test bk upgrade .............................................$NL
-# cd $HERE
-# mkdir upgradedir
-# cd upgradedir
-# `bk bin`/build_upgrade_index.pl $BK_INSTALLER
-# cd $HERE/repo
-# bk upgrade -i -lbk -f $HERE/upgradedir
-# echo OK
-
 echo $N Upgrade with installed config, leave it and it should work ..$NL
 rm -f "$DOTBK"/accepted
 # XXX - it would be nice if we looked in the destination for the config
@@ -136,7 +138,12 @@ cp $HERE/config "$DOTBK"/config
 chmod +w absolute >/dev/null 2>&1	# SCO's chmod barfs
 cp $HERE/config absolute
 echo "foo: bar" >> absolute/config
+OLDPATH="$PATH"
+PATH="$HERE/absolute:$PATH"
+export PATH
 echo y | $BK_INSTALLER -u > OUT 2>&1
+PATH="$OLDPATH"
+export PATH
 cd $HERE
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
@@ -188,34 +195,43 @@ echo OK
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
 echo $N Make sure we preserve registry settings......................$NL
-SHELLXKEY="HKEY_LOCAL_MACHINE\\Software\\BitMover\\BitKeeper\\ShellX"
-bk _registry set $SHELLXKEY networkDrive 100
-BK1=$?
-bk _registry set $SHELLXKEY localDrive 100
-BK2=$?
-if [ $BK1 -ne 0 -o $BK2 -ne 0 ]; then
+echo y | ./bk-academic-licensed "$HERE/DEADBEEF" > OUT 2>&1 || {
 	echo failed
-	echo "Could not set registry entries"
-	exit 1
-fi
-./bk-academic-licensed "$HERE/DEADBEEF" > OUT 2>&1
-KEY1=`bk _registry get $SHELLXKEY networkDrive`
-BK1=$?
-KEY2=`bk _registry get $SHELLXKEY localDrive`
-BK2=$?
-if [ $BK1 -ne 0 -o $BK2 -ne 0 ]; then
-	echo failed
+	echo Installer failed to install: exited $rc
 	cat OUT
 	exit 1
-fi
+}
+bk _registry set $SHELLXKEY networkDrive 100 || exit 1
+bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
+
+# We need the new BK to come first in the path, so we mangle it by hand
+P=`bk _registry get "$SYSPATHKEY" Path`
+P="$HERE/DEADBEEF;$P"
+bk _registry set "$SYSPATHKEY" Path "$P"
+PATH="$P" ./bk-academic-licensed -u > OUT 2>&1 || {
+	echo failed
+	echo Installer failed to upgrade: $rc
+	cat OUT
+	exit 1
+}
+bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" >TEXT || {
+	echo failed
+	echo Installer did not modify PATH
+	cat TEXT
+	tail -16 OUT
+	exit 1
+}
+KEY1=`bk _registry get "$SHELLXKEY" networkDrive` || exit 1
+KEY2=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+
 if [ $KEY1 -ne 100 ]; then
 	echo failed
-	echo Failed to preserve networkDrive
+	echo Failed to preserve networkDrive: $KEY1
 	exit 1
 fi
 if [ $KEY2 -ne 100 ]; then
 	echo failed
-	echo Failed to preserve localDrive
+	echo Failed to preserve LocalDrive: $KEY2
 	exit 1
 fi
 echo OK
@@ -223,17 +239,12 @@ echo OK
 echo $N Make sure uninstaller works as advertised....................$NL
 BIN="$HERE/DEADBEEF"
 BK="$HERE/DEADBEEF/bk"
-VERKEY="HKEY_LOCAL_MACHINE\\Software\\BitMover\\BitKeeper"
-VERSION=`bk _registry get "$VERKEY" rel`
-USRPATHKEY="HKEY_LOCAL_MACHINE\\Environment"
-SYSPATHKEY="HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\Environment"
-# save PATHs
-OLDUSRPATH=`bk _registry get "$USRPATHKEY" Path`
-OLDSYSPATH=`bk _registry get "$SYSPATHKEY" Path`
-"$BK" uninstall -f
+VERSION=`bk _registry get "$BMKEY" rel`
+"$BK" uninstall -f >OUT 2>&1
 test -d "$BIN" && {
 	echo failed
 	echo "$BIN" still exists
+	cat OUT
 	exit 1
 }
 # make sure PATH doesn't have BK in it
@@ -241,38 +252,69 @@ if [ "x$OLDUSRPATH" != "xentry not found" ];
 then	bk _registry get "$USRPATHKEY" Path | grep "DEADBEEF" > TEXT && {
 		echo failed
 		echo BitKeeper left in User PATH
-		cat TEXT
+		cat TEXT OUT
 		exit 1
 	}
 fi
 bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" > TEXT && {
 	echo failed
 	echo BitKeeper left in System PATH
-	cat TEXT
+	cat TEXT OUT
 	exit 1
 }
 # Make sure we're not polluting the Uninstall area
-UNINSTALLKEY="HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
 bk _registry get "$UNINSTALLKEY" $VERSION | grep "DEADBEEF" > TEXT && {
 	echo failed
 	echo BitKeeper left crud in the Uninstall registry key
-	cat TEXT
-	exit 1
-}
-# Restore PATH so that old BK works again
-if [ "x$OLDUSRPATH" != "xentry not found" ];
-then	bk _registry set "$USRPATHKEY" Path "$OLDUSRPATH" || {
-		echo failed
-		echo could not restore user path
-		exit 1
-	}
-fi
-bk _registry set "$SYSPATHKEY" Path "$OLDSYSPATH" || {
-	echo failed
-	echo could not restore system path
+	cat TEXT OUT
 	exit 1
 }
 echo OK
+
+echo $N Uninstaller in upgrade mode should not remove everything.....$NL
+./bk-academic-licensed "$HERE/DEADBEEF" >OUT 2>&1
+bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" > TEXT || {
+	echo failed
+	echo Installer did not install PATH
+	cat TEXT OUT
+	exit 1
+}
+test -f "$HERE/DEADBEEF/bk" || {
+	echo failed
+	echo Installer failed to install
+	cat OUT
+	exit 1
+}
+BK="$HERE/DEADBEEF/bk"
+"$BK" uninstall -u >OUT 2>&1 || {
+	echo failed
+	echo Uninstaller in upgrade mode returned $?
+	cat OUT
+	exit 1
+}
+# make sure PATH STILL has BK in it
+if [ "x$OLDUSRPATH" != "xentry not found" ];
+then	bk _registry get "$USRPATHKEY" Path | grep "DEADBEEF" > TEXT || {
+		echo failed
+		echo Uninstaller in upgrade mode removed BK from USRPATH
+		cat TEXT OUT
+		exit 1
+	}
+fi
+bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" > TEXT || {
+	echo failed
+	echo Uninstaller in upgrade mode removed BK from SYSPATH $?
+	bk _registry get "$SYSPATHKEY" Path
+	cat TEXT OUT
+	exit 1
+}
+echo OK
+
+echo $N Restoring registry...........................................$NL
+# we know we corrupt the registry, so put it back
+win32_regRestore || exit 1
+echo OK
+
 else #-------------------- UNIX tests ---------------------
 echo $N Make sure uninstaller removes subdirs........................$NL
 BIN="$HERE/DEADBEEF"
@@ -337,6 +379,44 @@ test -h "$HERE/bin/bk" && {
 	echo left symlinks
 	ls "$HERE/bin" | tr '\n' ' '
 	echo ""
+	exit 1
+}
+echo OK
+
+echo $N Uninstaller in upgrade mode should not remove symlinks.......$NL
+echo y | ./bk-academic-licensed "$HERE/DEADBEEF" >OUT 2>&1
+test -f "$HERE/DEADBEEF/bk" || {
+	echo failed
+	echo installer failed
+	cat OUT
+	exit 1
+}
+# Make sure there are symlinks
+$BIN/bk links "$HERE/bin" >OUT 2>&1 || {
+	echo failed
+	echo could not create symlinks
+	cat OUT
+	exit 1
+}
+export PATH="$HERE/bin":$PATH
+"$HERE/DEADBEEF/bk" uninstall -u >OUT 2>&1 || {
+	echo failed
+	echo Uninstaller in upgrade mode failed
+	cat OUT
+	exit 1
+}
+times=2
+while [ -d "$HERE/DEADBEEF" ]; do
+	test $times -eq 0 && {
+		echo failed to uninstall
+		exit 1
+	}
+	times=`expr $times - 1`
+	sleep 1
+done
+test -h "$HERE/bin/admin" || {
+	echo failed
+	echo Uninstaller in upgrade mode removed symlinks
 	exit 1
 }
 echo OK

@@ -143,6 +143,8 @@ trigger(char *cmd, char *when)
 		what = event = "fix";
 	} else if (streq(cmd, "collapse")) {
 		what = event = "collapse ";
+	} else if (streq(cmd, "lease-proxy")) {
+		what = event = cmd;
 	} else {
 		fprintf(stderr,
 		    "Warning: Unknown trigger event: %s, ignored\n", cmd);

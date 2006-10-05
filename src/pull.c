@@ -54,7 +54,6 @@ pull_main(int ac, char **av)
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
 		    case 'l': opts.list++; break;		/* doc 2.0 */
-			break;
 		    case 'n': opts.dont = 1; break;		/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.rev = optarg; break;
@@ -84,6 +83,11 @@ pull_main(int ac, char **av)
 		}
 	}
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	if (opts.autoOnly && !opts.automerge) {
+		fprintf(stderr, "pull: -s and -i cannot be used together\n");
+		usage();
+		return (1);
+	}
 
 	/*
 	 * Get pull parent(s)

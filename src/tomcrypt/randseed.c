@@ -111,6 +111,7 @@ rand_getBytes(u8 *buf, int len)
 {
 	rand_setupPrng(0, 0);
 
+	memset(buf, 0, len);	/* avoid valgrind warnings */
 	if (prng_descriptor[wprng].read(buf, len, &prng) != len) {
 		fprintf(stderr, "randBytes: failed to read %d bytes\n", len);
 		exit(1);
