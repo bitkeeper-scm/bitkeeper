@@ -184,7 +184,7 @@ idcache
 isascii
 inskeys
 key2rev
-_key2path
+key2path
 keycache
 _keyunlink
 _kill
@@ -306,6 +306,7 @@ edit => get
 comment => comments	# alias for Linus, remove...
 _fix_lod1 => _fixlod
 info => sinfo
+_key2path => key2path
 _mail => mail
 pager => more
 _preference => config

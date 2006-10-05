@@ -917,8 +917,10 @@ showproc_start(char **av)
 	int	i;
 	FILE	*f;
 
+	if (prefix) free(prefix);
 	prefix = getenv("_BK_SP_PREFIX");
 	unless (prefix) prefix = "";
+	prefix = strdup(prefix);
 
 	unless (f = efopen("BK_SHOWPROC")) return;
 	fprintf(f, "BK  (%5u %5s)%s", getpid(), milli(), prefix);
