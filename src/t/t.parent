@@ -524,9 +524,19 @@ test -f BitKeeper/log/parent || exit 1
 echo OK
 
 echo $N Try remove non-existent parent, check status ................$NL
-bk parent -rq bogus && exit 1
-bk parent -riq bogus && exit 1
-bk parent -roq bogus && exit 1
+bk parent -nrq bogus 2> ERR && exit 1
+grep -q "parent: Can't remove 'bogus'" ERR || exit 1
+bk parent -nriq bogus 2> ERR && exit 1
+grep -q "parent: Can't remove 'bogus'" ERR || exit 1
+bk parent -nroq bogus 2> ERR && exit 1
+grep -q "parent: Can't remove 'bogus'" ERR || exit 1
+echo OK
+
+echo $N Try adding non-existent parent, check status ................$NL
+bk parent -q || { echo "missing a parent"; exit 1; }
+bk parent bogus 2> ERR && { echo failed; cat ERR; exit 1; }
+grep -q "Not a repository: 'bogus'" ERR || exit 1
+bk parent -q || { echo "erased parent"; exit 1; }
 echo OK
 
 echo $N Remove all parents, check files and listing .................$NL
@@ -599,4 +609,76 @@ cmp -s WANT GOT || {
 	exit 1
 }
 test -f BitKeeper/log/parent && exit 1
+echo OK
+
+echo $N Remove a normalized pointer with a non-normalized one .......$NL
+bk parent -rq ../project || exit 1
+cat > WANT <<EOF
+../project
+EOF
+bk parent -l > GOT
+test "$PLATFORM" = "WIN32" && {
+	tr '[a-z]' '[A-Z]' < WANT > WANT$$
+	mv -f WANT$$ WANT
+	tr '[a-z]' '[A-Z]' < GOT > GOT$$
+	mv -f GOT$$ GOT
+}
+cmp -s WANT GOT || {
+	echo failed short listing
+	cat GOT
+	exit 1
+}
+cat > WANT <<EOF
+Push/pull parent: ../project
+EOF
+bk parent > GOT
+test "$PLATFORM" = "WIN32" && {
+	tr '[a-z]' '[A-Z]' < WANT > WANT$$
+	mv -f WANT$$ WANT
+	tr '[a-z]' '[A-Z]' < GOT > GOT$$
+	mv -f GOT$$ GOT
+}
+cmp -s WANT GOT || {
+	echo failed annotated listing
+	cat GOT
+	exit 1
+}
+test -f BitKeeper/log/parent || exit 1
+bk parent -aq ../project || exit 1
+echo OK
+
+echo $N Remove a non-normalized pointer with a non-normalized one ...$NL
+bk parent -nrq ../project || exit 1
+cat > WANT <<EOF
+$PREFIX/project
+EOF
+bk parent -l > GOT
+test "$PLATFORM" = "WIN32" && {
+	tr '[a-z]' '[A-Z]' < WANT > WANT$$
+	mv -f WANT$$ WANT
+	tr '[a-z]' '[A-Z]' < GOT > GOT$$
+	mv -f GOT$$ GOT
+}
+cmp -s WANT GOT || {
+	echo failed short listing
+	cat GOT
+	exit 1
+}
+cat > WANT <<EOF
+Push/pull parent: $PREFIX/project
+EOF
+bk parent > GOT
+test "$PLATFORM" = "WIN32" && {
+	tr '[a-z]' '[A-Z]' < WANT > WANT$$
+	mv -f WANT$$ WANT
+	tr '[a-z]' '[A-Z]' < GOT > GOT$$
+	mv -f GOT$$ GOT
+}
+cmp -s WANT GOT || {
+	echo failed annotated listing
+	cat GOT
+	exit 1
+}
+test -f BitKeeper/log/parent || exit 1
+bk parent -naq ../project || exit 1
 echo OK
