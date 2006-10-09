@@ -667,8 +667,7 @@ bkd_restoreSeed(char *repoid)
 	char	*d, *ret;
 
 	d = seedFile(repoid);
-	ret = loadfile(d, 0);
-	unless (ret) perror("bkd_restoreSeed");
+	ret = loadfile(d, 0);	/* may be missing */
 	unlink(d);
 	free(d);
 	return (ret);
