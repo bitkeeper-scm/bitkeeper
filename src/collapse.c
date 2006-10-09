@@ -262,7 +262,6 @@ do_file(char *file, char *tiprev)
 			goto done;
 		}
 	}
-
 	if (fix_setupcomments(s, rmdeltas)) goto done;
 
 	if (tipd) {
@@ -271,7 +270,9 @@ do_file(char *file, char *tiprev)
 		pathname = strdup(d->pathname);
 		xflags = sccs_xflags(d);
 
-		unless (CSET(s)) {
+		if (CSET(s)) {
+			unlink(gfile);
+		} else {
 			savefile = aprintf("%s.fix.%u", gfile, getpid());
 			rename(gfile, savefile);
 		}

@@ -313,6 +313,18 @@ fi
 cmpfiles WANT GOT
 echo OK
 
+echo $N Verify that collapse works starting with edited ChangeSet ...$NL
+bk edit $Q file
+bk delta $Q -fyempty file || exit 1
+bk commit $Q -yempty || exit 1
+bk edit $Q ChangeSet || exit 1
+bk collapse $Q -e || exit 1
+test -f ChangeSet && {
+	echo failed
+	exit 1
+}
+echo OK
+
 #echo $N Test collapse -e -aREV ......................................$NL
 #  above plus
 #  merges
