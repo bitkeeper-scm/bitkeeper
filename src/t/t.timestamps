@@ -1,0 +1,105 @@
+# Copyright (c) 2006 BitMover
+# %K%
+
+_timediff() {
+	perl -e '@x=stat "'"$1"'";@y=stat "'"$2"'";print $x[9]-$y[9],"\n"'
+}
+
+_touchtime() {
+	touch "$2"
+	# you would think utime is not dependent on zone
+	# however, it is not the case on windows
+	(unset TZ; perl -e '$t = "'"$1"'"; utime $t, $t, "'"$2"'";')
+}
+
+echo $N Create a repo for timestamp investigation ...................$NL
+TZ="GMT"
+export TZ
+commercial project
+cd BitKeeper/etc
+bk edit $Q config
+echo checkout: edit >> config
+bk delta $Q -y'edit mode' config || exit 1
+bk commit $Q -y'edit mode'
+cd $HERE
+echo OK
+
+echo $N Control gfile and sfile, and delta timestamps ...............$NL
+cd project
+mkdir date || exit 1
+cd date || exit 1
+# make a file with delta time 5 seconds after gfile time
+DATE="97/05/20 18:48:17+00:00"
+echo control > control
+# (gnuism %s) TZ=GMT date -d "05/20/97 18:48:12" +%s
+_touchtime 864154092 control
+touch -r control control.base
+BK_DATE_TIME_ZONE=$DATE bk new $Q control
+touch -r SCCS/s.control scontrol.base
+# measure differences
+test 2 -eq `_timediff control SCCS/s.control` || {
+	echo lock time is off
+	exit 1
+}
+test 0 -eq `_timediff control control.base` || {
+	echo unlock time is off
+	exit 1
+}
+# now recheck out the file with delta time
+bk clean control
+bk edit $Q -T control
+# measure differences
+test 2 -eq `_timediff control SCCS/s.control` || {
+	echo lock time is off
+	exit 1
+}
+test 5 -eq `_timediff control control.base` || {
+	echo unlock time is off
+	exit 1
+}
+echo OK
+
+echo $N Make some csets and make sure that clone time matches .......$NL
+# side note: cset is earlier than delta time of "97/05/20 18:48:17"
+DATE="97/05/20 18:46:07+00:00"
+BK_DATE_TIME_ZONE=$DATE bk commit $Q -ydate
+# Make another
+DATE="98/05/20 16:23:17+00:00"
+bk edit $Q control
+echo bar > control
+# set delta time and gfile time the same for testing sake
+# (gnuism %s) TZ=GMT date -d "05/20/98 16:23:17" +%s
+_touchtime 895681397 control
+BK_DATE_TIME_ZONE=$DATE bk delta $Q -fydate control
+DATE="98/05/20 16:23:19+00:00"
+BK_DATE_TIME_ZONE=$DATE bk commit $Q -ydate
+cd $HERE
+bk clone $Q project copy
+test 0 -eq `_timediff copy/date/control project/date/control` || {
+	echo clone gfile time different 
+	exit 1
+}
+test 0 -eq `_timediff project/date/SCCS/s.control copy/date/SCCS/s.control` || {
+	echo clone sfile time different 
+	exit 1
+}
+test 2 -eq `_timediff copy/date/control copy/date/SCCS/s.control` || {
+	echo clone gfile/sfile time different 
+	exit 1
+}
+echo OK
+
+echo $N Also see that clone -r timestamps roll back correctly .......$NL
+bk clone $Q -r1.3 project again
+cd again/date
+# (gnuism %s) TZ=GMT date -d "05/20/97 18:48:17" +%s
+_touchtime 864154097 control.base
+test 0 -eq `_timediff control control.base` || {
+	echo clone -r gfile time different 
+	exit 1
+}
+test 2 -eq `_timediff control SCCS/s.control` || {
+	echo clone -r sfile time different 
+	exit 1
+}
+echo OK

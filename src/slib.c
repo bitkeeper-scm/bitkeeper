@@ -4062,9 +4062,7 @@ check_gfile(sccs *s, int flags)
 			verbose((stderr,
 			    "unsupported file type: %s (%s) 0%06o\n",
 			    s->sfile, s->gfile, sbuf.st_mode & 0177777));
-err:			free(s->gfile);
-			free(s->sfile);
-			free(s);
+err:			sccs_free(s);
 			return (-1);
 		}
 		s->state |= S_GFILE;
@@ -4164,7 +4162,7 @@ sccs_init(char *name, u32 flags)
  err:			free(s->gfile);
 			free(s->sfile);
 			proj_free(s->proj);
-			free(s);
+			free(s);	/* We really mean free, not sccs_free */
 			return (0);
 		}
 		if (sbuf.st_size == 0) {
@@ -4216,7 +4214,7 @@ sccs_init(char *name, u32 flags)
 			free(s->gfile);
 			free(s->pfile);
 			proj_free(s->proj);
-			free(s);
+			free(s);	/* We really mean free, not sccs_free */
 			return (0);
 		}
 	}
@@ -4282,13 +4280,13 @@ sccs_restart(sccs *s)
 	char	*buf;
 
 	assert(s);
-	if (check_gfile(s, 0)) {
-bad:		sccs_free(s);
-		return (0);
-	}
+	if (check_gfile(s, 0)) return (0);
 	bzero(&sbuf, sizeof(sbuf));	/* file may not be there */
 	if (lstat(s->sfile, &sbuf) == 0) {
-		if (!S_ISREG(sbuf.st_mode)) goto bad;
+		if (!S_ISREG(sbuf.st_mode)) {
+bad:			sccs_free(s);
+			return (0);
+	}
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= S_SFILE;
 	}

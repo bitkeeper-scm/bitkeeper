@@ -507,7 +507,7 @@ R %.8s\n",
 
 	/* bk delta $Q $enc -ciI.onezero $gfile */
 	s->encoding = enc;
-	check_gfile(s, 0);
+	if (check_gfile(s, 0)) return (1);
 	if (sccs_delta(s,
 	    flags|NEWFILE|INIT_NOCKSUM|DELTA_PATCH, 0, init, 0, 0)) {
 		fprintf(stderr, "Create of %s failed\n", g);

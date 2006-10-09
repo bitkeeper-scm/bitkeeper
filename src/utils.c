@@ -1330,25 +1330,29 @@ unsafe_path(char *s)
  * Otherwise do a full check.
  */
 int
-run_check(char *partial, int fix, int quiet)
+run_check(char *flist, char *opts)
 {
-	int	ret;
+	int	i, j, ret;
 	struct	stat sb;
 	time_t	now = time(0);
-	char	*fixopt;
-	char	*opts = quiet ? "-ac" : "-acv";
+	char	buf[20];
 
- again:
-	fixopt = (fix ? "-f" : "--");
-	if (!partial || 
+again:
+	assert(!opts || (strlen(opts) < sizeof(buf)));
+	unless (opts && *opts) opts = "--";
+	if (!flist || 
 	    lstat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
-		ret = sys("bk", "-r", "check", opts, fixopt, SYS);
+		ret = sys("bk", "-r", "check", "-ac", opts, SYS);
 	} else {
-		ret = sysio(partial, 0, 0, "bk", "check", fixopt, "-", SYS);
+		ret = sysio(flist, 0, 0, "bk", "check", "-c", opts, "-", SYS);
 	}
 	ret = WIFEXITED(ret) ? WEXITSTATUS(ret) : 1;
-	if (fix && ret == 2) {
-		fix = 0;
+	if (strchr(opts, 'f') && (ret == 2)) {
+		for (i = j = 0; opts[i]; i++) {
+			unless (opts[i] == 'f') buf[j++] = opts[i];
+		}
+		buf[j] = 0;
+		opts = buf;
 		goto again;
 	}
 	return (ret);

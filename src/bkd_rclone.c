@@ -186,15 +186,15 @@ cmd_rclone_part2(int ac, char **av)
 		if (opts.verbose) {
 			fprintf(stderr, "Running consistency check ...\n");
 		}
-		run_check(0, 1, !opts.verbose);
+		run_check(0, opts.verbose ? "-fvT" : "-fT");
 	}
 
 	switch (proj_checkout(0)) {
 	    case CO_EDIT:
-		sys("bk", "-Ur", "edit", "-q", SYS);
+		sys("bk", "-Ur", "edit", "-STq", SYS);
 		break;
 	    case CO_GET:
-		sys("bk", "-Ur", "get", "-q", SYS);
+		sys("bk", "-Ur", "get", "-STq", SYS);
 		break;
 	}
 

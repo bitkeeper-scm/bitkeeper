@@ -339,10 +339,11 @@ clone2(opts opts, remote *r)
 		unless (opts.quiet) {
 			fprintf(stderr, "Running consistency check ...\n");
 		}
+		p = opts.quiet ? "-fT" : "-fvT";
 		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(checkfiles, 1, opts.quiet);
+			rc = run_check(checkfiles, p);
 		} else {
-			rc = run_check(0, 1, opts.quiet);
+			rc = run_check(0, p);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
@@ -368,7 +369,7 @@ clone2(opts opts, remote *r)
 			unless (opts.quiet) {
 				fprintf(stderr, "Checking out files...\n");
 			}
-			sys("bk", "-Ur", p, "-Tq", SYS);
+			sys("bk", "-Ur", p, "-TSq", SYS);
 		}
 	}
 	return (0);
@@ -498,7 +499,7 @@ after(int quiet, char *rev)
 	}
 	cmds[i = 0] = "bk";
 	cmds[++i] = "undo";
-	cmds[++i] = "-fs";
+	cmds[++i] = "-fsT";
 	if (quiet) cmds[++i] = "-q";
 	cmds[++i] = p = malloc(strlen(rev) + 3);
 	sprintf(cmds[i], "-a%s", rev);

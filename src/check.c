@@ -53,6 +53,7 @@ private	int	poly;
 private	int	polyList;
 private	MDBM	*goneDB;
 int		xflags_failed;	/* notification */
+private	u32	timestamps;
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 
@@ -85,7 +86,8 @@ check_main(int ac, char **av)
 	char	*t;
 	int	checkout;
 
-	while ((c = getopt(ac, av, "acdefgpRvw")) != -1) {
+	timestamps = 0;
+	while ((c = getopt(ac, av, "acdefgpRTvw")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;			/* doc 2.0 */
 		    case 'c': flags &= ~INIT_NOCKSUM; break;	/* doc 2.0 */
@@ -95,6 +97,7 @@ check_main(int ac, char **av)
 		    case 'g': goneKey++; break;			/* doc 2.0 */
 		    case 'p': polyList++; break;		/* doc 2.0 */
 		    case 'R': resync++; break;			/* doc 2.0 */
+		    case 'T': timestamps = GET_DTIME; break;
 		    case 'v': verbose++; break;			/* doc 2.0 */
 		    case 'w': badWritable++; break;		/* doc 2.0 */
 		    default:
@@ -379,6 +382,7 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 {
 	char	*type, *p;
 	char	*sfile;
+	u32	flags;
 	char	buf[MAXPATH];
 
 	/* check for conflicts in the gfile pathname */
@@ -399,14 +403,15 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 		!strneq(s->gfile, "BitKeeper/triggers/", 19)) &&
 	    (((checkout == CO_EDIT) && !EDITED(s)) ||
 	     ((checkout == CO_GET) && !HAS_GFILE(s)))) {
-		if ((p = getenv("_BK_DEVELOPER")) && *p) {
+		if (win32() && S_ISLNK(sccs_top(s)->mode)) {
+			/* do nothing, no symlinks on windows */
+		} else if ((p = getenv("_BK_DEVELOPER")) && *p) {
 			fprintf(stderr, "check: %s not checked out(%d)\n",
 			    s->gfile, checkout);
 			return (1);
 		} else {
-			sccs_get(s, 0, 0, 0, 0, SILENT |
-			    ((checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND),
-			    "-");
+			flags = (checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND;
+			sccs_get(s, 0, 0, 0, 0, flags|timestamps|SILENT, "-");
 			s = sccs_restart(s);
 		}
 	}

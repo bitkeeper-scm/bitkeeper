@@ -2557,9 +2557,9 @@ err:			unapply(save);
 	sync();
 	if (proj_configbool(0, "partial_check")) {
 		fflush(save); /*  important */
-		ret = run_check(APPLIED, 0, opts->quiet);
+		ret = run_check(APPLIED, opts->quiet ? 0 : "-v");
 	} else {
-		ret = run_check(0, 0, opts->quiet);
+		ret = run_check(0, opts->quiet ? 0 : "-v");
 	}
 	if (ret) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");

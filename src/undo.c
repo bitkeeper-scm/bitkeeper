@@ -14,6 +14,7 @@ private int	check_patch(char *patch);
 private int	doit(char **fileList, char *rev_list, char *qflag, char *);
 
 private	int	checkout;
+private	int	timestamps;
 
 int
 undo_main(int ac,  char **av)
@@ -32,13 +33,15 @@ undo_main(int ac,  char **av)
 	char	**fileList = 0;
 	char	*checkfiles;	/* filename of list of files to check */
 	char	*patch = "BitKeeper/tmp/undo.patch";
+	char	*p;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "undo: cannot find package root.\n");
 		exit(1);
 	}
 
-	while ((c = getopt(ac, av, "a:fqp;sr:v")) != -1) {
+	timestamps = 0;
+	while ((c = getopt(ac, av, "a:fqp;r:sTv")) != -1) {
 		switch (c) {
 		    case 'a': aflg = 1;				/* doc 2.0 */
 			/* fall though */
@@ -48,6 +51,7 @@ undo_main(int ac,  char **av)
 		    	quiet = 1; qflag = "-q"; break;
 		    case 'p': save = 1; patch = optarg; break;
 		    case 's': save = 0; break;			/* doc 2.0 */
+		    case 'T': timestamps = 1; break;
 		    case 'v': verbose = 1; break;
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
@@ -150,10 +154,15 @@ err:		if (undo_list[0]) unlink(undo_list);
 	rmEmptyDirs(quiet);
 	if (!quiet && save) printf("Backup patch left in \"%s\".\n", patch);
 	unless (quiet) printf("Running consistency check...\n");
-	if (proj_configbool(0, "partial_check")) {
-		rc = run_check(checkfiles, 1, quiet);
+	if (timestamps) {
+		p = quiet ? "-fT" : "-fvT";
 	} else {
-		rc = run_check(0, 1, quiet);
+		p = quiet ? "-f" : "-fv";
+	}
+	if (proj_configbool(0, "partial_check")) {
+		rc = run_check(checkfiles, p);
+	} else {
+		rc = run_check(0, p);
 	}
 	unlink(checkfiles);
 	free(checkfiles);
@@ -493,9 +502,12 @@ move_file(char *checkfiles)
 	fclose(chk);
 	if (checkout) {
 		chk = fopen(checkfiles, "r");
-		f = popen((checkout == CO_GET) ?
-		    "bk co -q -" :
-		    "bk edit -q -", "w");
+		if (checkout == CO_GET) {
+			sprintf(to, "bk co -q%s -", timestamps ? "T" : "");
+		} else {
+			sprintf(to, "bk edit -q%s -", timestamps ? "T" : "");
+		}
+		f = popen(to, "w");
 		while (fnext(from, chk)) {
 			chop(from);
 			if (streq(from, CHANGESET)) continue;

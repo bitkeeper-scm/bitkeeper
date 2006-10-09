@@ -11,8 +11,8 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 					int fix_mod_time, MDBM *db)
 {
 	char	tmp_path[MAXPATH];
-	delta *d;
-	int flags = SILENT;
+	delta	*d;
+	int	flags = SILENT;
 
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
 	if (isNullFile(rev, path))  return;
@@ -25,7 +25,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	}
 	free(s->gfile);
 	s->gfile = strdup(tmp_path);
-	check_gfile(s, 0);
+	if (check_gfile(s, 0)) exit(1);
 	mkdirf(tmp_path);
 	if (fix_mod_time) flags |= GET_DTIME;
 	if (expandkeywords) flags |= GET_EXPAND;
