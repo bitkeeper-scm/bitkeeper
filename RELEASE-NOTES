@@ -1,3 +1,79 @@
+===============================================================================
+Release notes for BitKeeper version 4.0.1 (released 2006/10/06)
+
+Additions
+
+bk uninstall
+    This command improves deinstallation, cleaning up the registry on
+    Windows platforms and removing symlinks on non-Windows platforms.
+
+Bug fixes
+    2002-11-30-001	bk unpull now works with tags
+    2004-01-08-001	reject comments with control chars at checkin time
+    2006-08-07-001	bk revtool -r<tag> works again
+    2006-08-10-001	if /etc in $PATH, and /etc/ssh/ exists, pull now works
+    2006-08-17-002	bk changes -DR now ignores -D if bkd not bk-4.0.x
+    2006-09-14-001	bk ignore now handles quoting correctly
+    2006-10-04-001	bk collapse now works if ChangeSet in edited state
+
+Summary of changes
+
+config settings "checkout: get" and "checkout: edit"
+    Fixed some situations in which files were cleaned (removed) as
+    part of an operation and then not restored.  The fix is to avoid
+    cleaning the file if possible (saves timestamps).
+
+Lease refreshing
+    In some disconnected cases, the lease-refresh operation would
+    try too hard to get a lease and spam the user with messages.
+    Now it tries less often and doesn't spam.
+
+BK_RSH
+    Fixed a problem with using 'BK_RSH=ssh -T' to avoid a warning
+    that came up when using a bkd as a login shell.  In some
+    cases, the -T was not appearing.
+
+bk bkd
+    Fixed a race bug for a bkd running on an SMP machine.
+    A push or pull could fail with an error message saying
+    "internal command not found."
+
+bk changes
+    Fixed a problem with running 'bk changes -RD' with a pre-bk-4.0 bkd.
+
+bk ignore
+    Removed an incorrect error message when giving a quoted entry on
+    the command line, such as: bk ignore "mydir -prune".
+
+bk import -tCVS and -tSCCS
+    Performance improvement for the CVS and SCCS importers.
+
+bk man
+    On some platforms, bk man didn't work.  Fixed.
+
+bk push
+    Disable spinners if BK_NOTTY=1 is set.
+
+bk resolve
+    Fixed bug: when quitting the resolver without doing anything and
+    running in "checkout:edit" mode, bk gave an error in trying to fix 
+    the permissions of a non-existent file.
+
+    Windows longpath problem: Dell DLL had old code that could return
+    an absolute path when given a relative path.
+
+bk revtool
+    Works with a tag: 'bk revtool -rTAG'
+
+Many commands
+    Exit status improvements: normal bk commands exit 0 on success
+    and greater than zero on failure.  A few commands return other values;
+    clean up documentation focusing on these commands.
+
+    Improve the starting of GUIs from the resolver in some environments on
+    Windows platforms.
+
+=============================================================================== 
 Release notes for BitKeeper version 4.0 (released 2006/07/28)
 
 This is a major release that improves performance, introduces
