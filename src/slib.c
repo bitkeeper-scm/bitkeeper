@@ -1167,14 +1167,18 @@ date2time(char *asctime, char *z, int roundup)
 }
 
 /*
- * Force sfile's mod time to be 2 seconds before gfile's mod time
+ * Set the sfile so that it is older than any checked out associated gfile.
+ * The -2 adjustments are because FAT file systems have a 2 second granularity.
  */
 int
-sccs_setStime(sccs *s)
+sccs_setStime(sccs *s, time_t newest)
 {
 	struct	utimbuf	ut;
+	delta	*d;
 
-	unless (s->gtime) return (-1);
+	/* If we have no deltas we don't know what time it is */
+	unless (s && s->table) return (0);
+
 	/*
 	 * To prevent the "make" command from doing a "get" due to 
 	 * sfile's newer modification time, and then fail due to the
@@ -1184,11 +1188,38 @@ sccs_setStime(sccs *s)
 	 * the time of the delta in the delta table.
 	 * A potential pitfall would be that it may confuse the backup
 	 * program to skip the sfile when doing a incremental backup.
-	 * This is why we we only do this when the user set the
-	 * INIT_FIXSTIME flag.
 	 */
 	ut.actime = time(0);
-	ut.modtime = s->gtime - 2;
+
+	/*
+	 * Use the most recent "real" delta for the timestamp.
+	 * We're skipping over TAGs or xflag changes because those don't
+	 * modify the gfile.
+	 */
+	for (d = s->table; d; d = d->next) {
+		if (d->merge) break;
+		unless (TAG(d) || (d->flags & D_XFLAGS)) break;
+	}
+	unless (d) d = s->tree;		/* 1.0 has XFLAGS, so its skipped */
+	ut.modtime = d->date - d->dateFudge - 2;
+
+	/*
+	 * In checkout:edit mode bk delta is like bk delta -l; so it will
+	 * not touch the gfile.  So now s->table->date > gtime.
+	 * We look for that and adjust: this will only roll back
+	 */
+	if (s->gtime && (s->gtime < (ut.modtime + 2))) {
+		ut.modtime = s->gtime - 2;
+	}
+	/*
+	 * if hard linked clone, and doing a get -T, don't pull the
+	 * sfile modification time forward as that may mess things up
+	 * in some other hardlinked clone which may have an older gfile.
+	 */
+	if (newest && (ut.modtime >= newest)) return (0);
+	if (ut.modtime > (ut.actime - 2)) {
+		ut.modtime = ut.actime - 2;	/* clamp to now */
+	}
 	return (utime(s->sfile, &ut));
 }
 
@@ -4067,11 +4098,7 @@ err:			sccs_free(s);
 		}
 		s->state |= S_GFILE;
 		s->mode = sbuf.st_mode;
-		if (flags & (INIT_FIXDTIME|INIT_FIXSTIME)) {
-			s->gtime = sbuf.st_mtime;
-		} else {
-			s->gtime = 0;
-		}
+		s->gtime = sbuf.st_mtime;
 		if (S_ISLNK(sbuf.st_mode)) {
 			char link[MAXPATH];
 			int len;
@@ -4109,6 +4136,7 @@ sccs_init(char *name, u32 flags)
 	char	*t;
 	int	rc;
 	delta	*d;
+	int	fixstime = 0;
 	static	int _YEAR4;
 	static	char *glob = 0;
 	static	int show = -1;
@@ -4171,6 +4199,24 @@ sccs_init(char *name, u32 flags)
 		}
 		s->state |= S_SFILE;
 		s->size = sbuf.st_size;
+		s->stime = sbuf.st_mtime;	/* for GET_DTIME */
+
+		/*
+		 * Catch any case where we would cause make to barf to
+		 * fail if we are BK folks, otherwise fix it.
+		 */
+		if ((flags & INIT_CHK_STIME) &&
+		    s->gtime && (sbuf.st_mtime > s->gtime)) {
+			if ((t = getenv("_BK_DEVELOPER")) && *t) {
+				fprintf(stderr,
+				    "timestamp %s\n\ts\t%u\n\tgtime\t%u\n\t",
+				    s->gfile, sbuf.st_mtime, s->gtime);
+				if (lstat(s->gfile, &sbuf)) sbuf.st_mtime = 0;
+				fprintf(stderr, "g\t%u\n", sbuf.st_mtime);
+				exit(1);
+			}
+			fixstime = 1;
+		}
 	} else if (CSET(s)) {
 		int	bad;
 		/* t still points at last slash in s->sfile */
@@ -4265,6 +4311,7 @@ sccs_init(char *name, u32 flags)
 	if (sig_ignore() == 0) s->unblock = 1;
 	lease_check(s->proj, O_RDONLY, s);
  out:
+	if (fixstime) sccs_setStime(s, s->stime); /* only make older */
 	return (s);
 }
 
@@ -4800,12 +4847,12 @@ date(delta *d, time_t tt)
 	zoneArg(d, sccs_zone(tt));
 
 	DATE(d);
-	if (d->date != tt) {
+	if ((d->date - d->dateFudge) != tt) {
 		fprintf(stderr, "Date=[%s%s] d->date=%lu tt=%lu\n",
 		    d->sdate, d->zone, d->date, tt);
 		fprintf(stderr, "Fudge = %d\n", (int)d->dateFudge);
 		fprintf(stderr, "Internal error on dates, aborting.\n");
-		assert(d->date == tt);
+		assert((d->date - d->dateFudge) == tt);
 	}
 }
 
@@ -6623,20 +6670,24 @@ write:
 
 	/* Win32 restriction, must do this before we chmod to read only */
 	if (d && (flags&GET_DTIME)){
-		struct	utimbuf ut;
 		char	*fname = (flags&PRINT) ? printOut : s->gfile;
 		int	doit = 1;
+		time_t	now;
+		struct	utimbuf ut;
 
 		/*
 		 * If we are doing a regular SCCS/s.foo -> foo get then
 		 * we set the gfile time iff we can set the sfile time.
 		 * This keeps make happy.
 		 */
-		ut.actime = ut.modtime = d->date - d->dateFudge;
+		ut.modtime = d->date - d->dateFudge;
 		unless (flags & PRINT) {
+			now = time(0);
+			if (ut.modtime > now) ut.modtime = now;
 			s->gtime = ut.modtime;
-			if (sccs_setStime(s)) doit = 0;
+			if (sccs_setStime(s, s->stime)) doit = 0;
 		}
+		ut.actime = ut.modtime;
 		if (doit && !streq(fname, "-") && (utime(fname, &ut) != 0)) {
 			char	*msg;
 
@@ -8929,7 +8980,6 @@ openInput(sccs *s, int flags, FILE **inp)
 delta *
 sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 {
-	int	i;
 	char	*t;
 
 	unless (d) d = calloc(1, sizeof(*d));
@@ -8940,8 +8990,17 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 		if (t = getenv("BK_DATE_TIME_ZONE")) {
 			dateArg(d, t, 1);
 			assert(!(d->flags & D_ERROR));
-		} else if (s->initFlags & INIT_FIXDTIME) {
-			date(d, s->gtime);
+		} else if (s->gtime && (s->initFlags & INIT_FIXDTIME)) {
+			time_t	now = time(0), use = s->gtime, i;
+
+			if (use > now) {
+				fprintf(stderr, "BK limiting the delta time "
+				    "to the present time.\n"
+				    "Timestamp on \"%s\" is in the future\n",
+				    s->gfile);
+				use = now;
+			}
+			date(d, use);
 
 			/*
 			 * If gtime is from the past, fudge the date
@@ -8949,7 +9008,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * too early. This is important for getting unique
 			 * root key.
 			 */
-			if ((i = (time(0) - s->gtime)) > 0) {
+			if ((i = (now - use)) > 0) {
 				d->dateFudge = i;
 				d->date += d->dateFudge;
 			}
@@ -9426,11 +9485,8 @@ out:		sccs_unlock(s, 'z');
 	}
 	assert(size(s->sfile) > 0);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
-	if ((flags & DELTA_SAVEGFILE) &&
-	    (s->initFlags & INIT_FIXSTIME) &&
-	    HAS_GFILE(s)) {
-		sccs_setStime(s);
-	}
+	/* Always set the time on the s.file behind the g.file or now */
+	sccs_setStime(s, 0);
 	chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
 	sccs_unlock(s, 'z');
@@ -11088,7 +11144,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 
-	if (HAS_GFILE(sc) && (sc->initFlags&INIT_FIXSTIME)) sccs_setStime(sc);
+	sccs_setStime(sc, 0);
 	chmod(sc->sfile, 0444);
 	goto out;
 #undef	OUT
@@ -11205,6 +11261,7 @@ out:
 		    t, s->sfile, t);
 		OUT;
 	}
+	sccs_setStime(s, 0);
 	chmod(s->sfile, 0444);
 	goto out;
 #undef	OUT
@@ -12344,6 +12401,7 @@ abort:		fclose(sfile);
 		sccs_unlock(s, 'z');
 		exit(1);
 	}
+	sccs_setStime(s, 0);
 	chmod(s->sfile, 0444);
 	sccs_unlock(s, 'z');
 	return (0);
@@ -12739,11 +12797,7 @@ out:
 	}
 	unlink(s->pfile);
 	comments_cleancfile(s->gfile);
-	if ((flags & DELTA_SAVEGFILE) &&
-	    (s->initFlags & INIT_FIXSTIME) &&
-	    HAS_GFILE(s)) {
-		sccs_setStime(s);
-	}
+	sccs_setStime(s, 0);
 	chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
@@ -16524,6 +16578,7 @@ stripDeltas(sccs *s, FILE *out)
 		    buf, s->sfile, buf);
 		return (1);
 	}
+	sccs_setStime(s, 0);
 	chmod(s->sfile, 0444);
 	return (0);
 }

@@ -28,7 +28,9 @@ manball: get
 install: manball
 	/bin/rm -rf $(BINDIR)/man
 	mkdir -p $(BINDIR)/man
-	(cd bk-man && tar cf - .) | (cd $(BINDIR)/man && tar xf -)
+	cd bk-man && tar cf $(BINDIR)/man/TAR .
+	cd $(BINDIR)/man && tar xf TAR
+	rm -f $(BINDIR)/man/TAR
 
 dist:
 	@rm -f PS PS2

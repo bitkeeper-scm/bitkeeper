@@ -44,13 +44,13 @@ sccs_mv(char	*name,
 	sccs	*s = 0;
 	int	error = 0, was_edited = 0, has_diffs = 0;
 	int	i, flags;
-	time_t	gtime;
 	pfile   pf;
+	struct	utimbuf	ut;
 	char	buf[1024];
 
 //ttyprintf("sccs_mv(%s, %s, %d, %d, %d)\n", name, dest, isDir, isDelete,force);
 	sname = name2sccs(name);
-	unless (s = sccs_init(sname, INIT_NOCKSUM|INIT_FIXSTIME)) {
+	unless (s = sccs_init(sname, INIT_NOCKSUM)) {
 err:		if (sname) free(sname);
 		if (sfile) free(sfile);
 		if (gfile) free(gfile);
@@ -126,7 +126,6 @@ err:		if (sname) free(sname);
 		goto out;
 	}
 	if (error) goto out;
-	gtime = s->gtime; /* save this, we need it later */
 	sccs_free(s);
 	/* For split root config; We recompute sfile here */
 	/* we don't want the sPath() adjustment		  */
@@ -134,7 +133,10 @@ err:		if (sname) free(sname);
 	sfile = name2sccs(destfile);
 	unless (s = sccs_init(sfile, 0)) { error++; goto out; }
 
-	if (exists(ogfile)) error = mv(ogfile, gfile);
+	if (exists(ogfile) && !(error = mv(ogfile, gfile))) {
+		ut.actime = ut.modtime = time(0);
+		utime(gfile, &ut);
+	}
 	
 	/*
 	 * Clean up or move the helper file
@@ -199,7 +201,6 @@ err:		if (sname) free(sname);
 		return (1);
 	}
 	if (was_edited) {
-
 		/*
 		 * Update the p.file, make sure we preserve -i -x
 		 */
@@ -210,8 +211,7 @@ err:		if (sname) free(sname);
 		sccs_rewrite_pfile(s, &pf);
 		free_pfile(&pf);
 	}
-	s->gtime = gtime;
-	sccs_setStime(s);
+	sccs_setStime(s, 0);
 	unless (isUnDelete) sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);

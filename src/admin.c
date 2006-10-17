@@ -187,7 +187,6 @@ admin_main(int ac, char **av)
 		goto usage;
 	}
 
-	if (proj_checkout(0)) init_flags |= INIT_FIXSTIME;
 	while (name) {
 		if (flags & NEWFILE) {
 			if (do_checkin(name, encp, compp,

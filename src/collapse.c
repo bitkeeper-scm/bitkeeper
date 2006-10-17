@@ -222,7 +222,6 @@ do_file(char *file, char *tiprev)
 	int	rc = 1;
 	char	**rmdeltas = 0;
 	int	i;
-	struct	stat	sb;
 	char	*sfile = 0, *gfile = 0, *pfile = 0;
 
 	sfile = name2sccs(file);
@@ -347,9 +346,7 @@ do_file(char *file, char *tiprev)
 				    me, gfile);
 			}
 		}
-		lstat(gfile, &sb);
-		s->gtime = sb.st_mtime;
-		sccs_setStime(s);
+		sccs_setStime(s, 0);
 	} else {
 		/* delete the entire sfile */
 		unlink(pfile);

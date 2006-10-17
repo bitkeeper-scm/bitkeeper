@@ -12,94 +12,308 @@ _touchtime() {
 	(unset TZ; perl -e '$t = "'"$1"'"; utime $t, $t, "'"$2"'";')
 }
 
-echo $N Create a repo for timestamp investigation ...................$NL
 TZ="GMT"
 export TZ
+
+# (generated with gnuism %s) TZ=GMT date -d "05/20/97 18:48:11" +%s
+T11=864154091
+T12=864154096
+DTZ11="97/05/20 18:48:11+00:00"
+DTZ12="97/05/20 18:48:16+00:00"
+
+# (generated with gnuism %s) TZ=GMT date -d "09/22/98 16:23:31" +%s
+T21=906481411
+T22=906481414
+DTZ21="98/09/22 16:23:31+00:00"
+DTZ22="98/09/22 16:23:34+00:00"
+
+# Future (generated with gnuism %s) TZ=GMT date -d "02/08/22 09:42:21" +%s
+T31=1644313341
+T32=1644313347
+DTZ31="22/02/08 09:42:21+00:00"
+DTZ32="22/02/08 09:42:27+00:00"
+
+# Situations to test - hard linked clone don't roll forward
+
+# use D_TIME limited to now
+
+echo $N Create a repo for timestamp investigation ...................$NL
 commercial project
-cd BitKeeper/etc
-bk edit $Q config
-echo checkout: edit >> config
-bk delta $Q -y'edit mode' config || exit 1
-bk commit $Q -y'edit mode'
+touch now
+_touchtime $T11 T11
+_touchtime $T12 T12
+_touchtime $T21 T21
+_touchtime $T22 T22
+_touchtime $T31 T31
+_touchtime $T32 T32
+# Make 3 files: keyword, nokeyword, deltatime
+echo %'K'% > keyword
+echo foo > nokeyword
+echo foo > deltatime
+touch -r T11 keyword nokeyword deltatime
+BK_DATE_TIME_ZONE="$DTZ12" bk new $Q keyword nokeyword
+bk delta $Q -i -G deltatime
+test -f keyword -o -f nokeyword -o -f deltatime && {
+	echo failed
+	ls
+	exit 1
+}
+# setStime puts things 2 seconds behind tip delta
+test "`_timediff T12 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+test "`_timediff T12 SCCS/s.nokeyword`" -ge 0 || { echo failed; exit 1; }
+test "`_timediff T11 SCCS/s.deltatime`" -ge 0 || { echo failed; exit 1; }
+echo OK
+
+echo $N Test admin ..................................................$NL
+bk clean
+cp -f SCCS/s.keyword backup
+# see that sfile age is known after admin -z
+bk admin -z keyword
+test "`_timediff T12 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+# make it older, test that it will bring it forward
+touch -r T11 SCCS/s.keyword
+bk admin -z keyword
+test "`_timediff T12 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+# see that a new flag doesn't alter sfile
+BK_DATE_TIME_ZONE="$DTZ22" bk admin $Q -fRCS keyword
+test "`_timediff T12 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+# however, flag will affect -T time
+bk get $Q -T keyword
+test "`_timediff T22 keyword`" -eq 0 || { echo failed; exit 1; }
+# Test that having the gfile older will push the sfile back
+touch -r T11 keyword
+bk admin $Q -FRCS keyword
+test "`_timediff T11 keyword`" -eq 0 || { echo failed; exit 1; }
+test "`_timediff T11 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+# and admin -z will leave everything alone
+test "`_timediff T11 keyword`" -eq 0 || { echo failed; exit 1; }
+test "`_timediff T11 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+bk admin -z keyword
+# restore
+rm -f SCCS/s.keyword keyword
+mv -f backup SCCS/s.keyword
+echo OK
+
+echo $N Test check will fix things that are off .....................$NL
+# check - should fix things when amiss, and gack if _BK_DEVELOPER
+bk get $Q -T keyword
+touch -r T22 SCCS/s.keyword
+test -n "$_BK_DEVELOPER" && OLDEV="$_BK_DEVELOPER"
+_BK_DEVELOPER=1
+export _BK_DEVELOPER
+bk check keyword 2> ERR && { echo expected check to fail; exit 1; }
+grep -q "timestamp keyword" ERR || { echo bad error message; cat ERR; exit 1; }
+unset _BK_DEVELOPER
+bk check keyword || exit 1
+test -n "$OLDEV" && {
+	_BK_DEVELOPER="$OLDEV"
+	export _BK_DEVELOPER
+}
+test "`_timediff T12 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+bk clean keyword
+echo OK
+
+# checksum - calls admin - no new deltas, but breaks hardlinks
+# XXX not tested
+
+echo $N Test chmod will move things forward .........................$NL
+# chmod - touchs gfile to now.  this adds delta, which ups sfile time.
+cp -f SCCS/s.keyword backup
+bk edit $Q keyword
+touch -r T11 keyword
+BK_CONFIG='checkout:edit!' BK_DATE_TIME_ZONE="$DTZ22" bk chmod +x keyword
+test "`_timediff T22 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+test "`_timediff keyword now`" -ge 0 || { echo failed; exit 1; }
+bk unedit keyword
+rm -f SCCS/s.keyword
+mv -f backup SCCS/s.keyword
+echo OK
+
+echo $N Test ci / delta with -u, -l, nothing, -G, etc. ..............$NL
+# ci/delta - with -u/-l, other wise, no gfile
+cp -f SCCS/s.keyword backup
+cp -f SCCS/s.nokeyword nobackup
+# nothing
+bk edit $Q keyword
+echo foo >> keyword
+touch -r T21 keyword
+BK_DATE_TIME_ZONE="$DTZ22" bk delta $Q -yfoo keyword
+test -f keyword && exit 1
+test "`_timediff T22 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+# -u - with keyword expansion
+bk edit $Q keyword
+echo foo >> keyword
+touch -r T21 keyword
+BK_DATE_TIME_ZONE="$DTZ22" bk delta $Q -u -yfoo keyword
+test -f keyword || exit 1
+test "`_timediff T22 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+test "`_timediff keyword now`" -ge 0 || { echo failed; exit 1; }
+# -u - w/o keyword expansion -- like above, but could be just -l w/ a chmod
+bk edit $Q nokeyword
+echo foo >> nokeyword
+touch -r T21 nokeyword
+BK_DATE_TIME_ZONE="$DTZ22" bk delta $Q -u -yfoo nokeyword
+test -f nokeyword || exit 1
+test "`_timediff T22 SCCS/s.nokeyword`" -ge 0 || { echo failed; exit 1; }
+test "`_timediff nokeyword now`" -ge 0 || { echo failed; exit 1; }
+# checkout:get - w/o keyword expansion -- like above
+bk edit $Q nokeyword
+echo foo >> nokeyword
+touch -r T21 nokeyword
+BK_CONFIG='checkout:get!' BK_DATE_TIME_ZONE="$DTZ22" \
+    bk delta $Q -yfoo nokeyword
+test -f nokeyword || exit 1
+test "`_timediff T22 SCCS/s.nokeyword`" -ge 0 || { echo failed; exit 1; }
+test "`_timediff nokeyword now`" -ge 0 || { echo failed; exit 1; }
+# -l - leaves gfile timestamp alone, so will move sfile back
+bk edit $Q keyword
+echo foo >> keyword
+touch -r T21 keyword
+BK_DATE_TIME_ZONE="$DTZ22" bk delta $Q -l -yfoo keyword
+test -f keyword || exit 1
+test "`_timediff T21 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+test "`_timediff T21 keyword`" -eq 0 || { echo failed; exit 1; }
+# -G 
+echo foo >> keyword
+touch -r T12 keyword
+bk delta $Q -G -yfoo keyword
+test "`_timediff T12 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+bk get $Q -T keyword
+test "`_timediff T12 keyword`" -eq 0 || { echo failed; exit 1; }
+# -G on a future delta clamps to now
+bk edit $Q keyword
+echo foo >> keyword
+touch -r T31 keyword
+bk delta $Q -l -G -yfoobar keyword 2> ERR
+touch newnow
+grep -q "BK limiting the delta time" ERR || {
+	echo wrong output; cat ERR; exit 1;
+}
+test "`_timediff T31 keyword`" -eq 0 || { echo failed; exit 1; }
+test "`_timediff newnow SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+bk unedit keyword
+bk get $Q -T keyword
+test "`_timediff newnow keyword`" -ge 0 || { echo failed; exit 1; }
+rm -f newnow
+mv -f backup SCCS/s.keyword
+mv -f nobackup SCCS/s.nokeyword
+echo OK
+
+echo $N Test clean - should never move sfiles forward ...............$NL
+# clean - no file, leave sfile alone (could be hard linked)
+bk edit $Q keyword
+touch -r T21 keyword
+touch -r T11 SCCS/s.keyword
+bk clean
+test "`_timediff T11 SCCS/s.keyword`" -eq 0 || { echo failed; exit 1; }
+echo OK
+
+echo $N Test clone checking out files according to delta time .......$NL
+echo OK
+
+#==================================================
+if [ "$PLATFORM" != "WIN32" ]; then
+echo $N Test clone -l should not move sfile times backward ..........$NL
+bk get $Q keyword
+touch -r T11 keyword
+bk admin -z keyword
+test "`_timediff T11 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
 cd $HERE
+BK_CONFIG='checkout:edit!' bk clone $Q -l project hardclone
+cd hardclone
+test "`_timediff T11 SCCS/s.keyword`" -eq 0 || { echo failed; exit 1; }
+test "`_timediff T12 keyword`" -eq 0 || { echo failed; exit 1; }
+cd ../project
+echo OK
+fi
+#==================================================
+
+# clone (-l) (rlclone) - with and without -r -- should work
+
+echo $N Test co /get -T .............................................$NL
+# co/get - -T or not.
+bk clean
+bk get $Q -T
+# The gfiles should be predicable
+test "`_timediff T12 keyword`" -eq 0 || { echo failed 1; exit 1; }
+test "`_timediff T12 nokeyword`" -eq 0 || { echo failed 2; exit 1; }
+test "`_timediff T11 deltatime`" -eq 0 || { echo failed 3; exit 1; }
+# The sfiles should be older (get does not change time forward)
+test "`_timediff keyword SCCS/s.keyword`" -ge 0 || { echo failed 4; exit 1; }
+test "`_timediff nokeyword SCCS/s.nokeyword`" -ge 0 \
+    || { echo failed 5; exit 1; }
+test "`_timediff deltatime SCCS/s.deltatime`" -ge 0 \
+    || { echo failed 6; exit 1; }
+# XXX: note that -TG (as well as export / gnupatch) move the s time back
+bk clean keyword
+touch -r now SCCS/s.keyword
+bk get $Q -TG keyword.copy keyword
+test "`_timediff T12 keyword.copy`" -eq 0 || { echo failed 7; exit 1; }
+test "`_timediff T12 SCCS/s.keyword`" -ge 0 || { echo failed 8; exit 1; }
+rm -f keyword.copy
+# make a future delta and see that we get the clamping we expect
+# this is different than the -G test in co, because this uses env
+# variable to actually make future delta.
+# This simulates a clone from a machine/repo that is the future,
+# and running 'checkout: get or edit' and getting current time files.
+cp -f SCCS/s.keyword backup
+bk edit $Q keyword
+echo foo >> keyword
+BK_DATE_TIME_ZONE="$DTZ32" bk delta $Q -ylater keyword
+bk get $Q -T keyword
+touch newnow
+test "`_timediff keyword now`" -ge 0 || { echo failed 9; exit 1; }
+test "`_timediff newnow keyword`" -ge 0 || { echo failed 10; exit 1; }
+bk get $Q -TG keyword.copy keyword
+touch newnow
+test "`_timediff keyword.copy now`" -ge 0 || { echo failed 11; exit 1; }
+test "`_timediff newnow keyword.copy`" -ge 0 || { echo failed 12; exit 1; }
+rm -f newnow keyword.copy keyword SCCS/s.keyword
+mv -f backup SCCS/s.keyword
 echo OK
 
-echo $N Control gfile and sfile, and delta timestamps ...............$NL
-cd project
-mkdir date || exit 1
-cd date || exit 1
-# make a file with delta time 5 seconds after gfile time
-DATE="97/05/20 18:48:17+00:00"
-echo control > control
-# (gnuism %s) TZ=GMT date -d "05/20/97 18:48:12" +%s
-_touchtime 864154092 control
-touch -r control control.base
-BK_DATE_TIME_ZONE=$DATE bk new $Q control
-touch -r SCCS/s.control scontrol.base
-# measure differences
-test 2 -eq `_timediff control SCCS/s.control` || {
-	echo lock time is off
-	exit 1
-}
-test 0 -eq `_timediff control control.base` || {
-	echo unlock time is off
-	exit 1
-}
-# now recheck out the file with delta time
-bk clean control
-bk edit $Q -T control
-# measure differences
-test 2 -eq `_timediff control SCCS/s.control` || {
-	echo lock time is off
-	exit 1
-}
-test 5 -eq `_timediff control control.base` || {
-	echo unlock time is off
-	exit 1
-}
-echo OK
+# collapse - leaves thing in an edited state - what about time?
+# comments - uses admin to re-write?
+# commit - uses admin?
+# cp - take a look
+# cset - what might go wrong here?
+# csetprune - uses admin to re-write?
+# diffs (does a get of sorts) - leaves things alone (tests GET_DTIME)
+# edit (get -e) - done
+# export (should set times?  Not sfiles, but if -T, it does)
+# grep (shouldn't touch things)
+# import (patch does -G, others do straight up)
+# makepatch (should leave things alone)
+# pull/push - look here - mainly resolve
 
-echo $N Make some csets and make sure that clone time matches .......$NL
-# side note: cset is earlier than delta time of "97/05/20 18:48:17"
-DATE="97/05/20 18:46:07+00:00"
-BK_DATE_TIME_ZONE=$DATE bk commit $Q -ydate
-# Make another
-DATE="98/05/20 16:23:17+00:00"
-bk edit $Q control
-echo bar > control
-# set delta time and gfile time the same for testing sake
-# (gnuism %s) TZ=GMT date -d "05/20/98 16:23:17" +%s
-_touchtime 895681397 control
-BK_DATE_TIME_ZONE=$DATE bk delta $Q -fydate control
-DATE="98/05/20 16:23:19+00:00"
-BK_DATE_TIME_ZONE=$DATE bk commit $Q -ydate
+#==================================================
+if [ "$PLATFORM" != "WIN32" ]; then
+echo $N Test relink keeps the older time ............................$NL
 cd $HERE
-bk clone $Q project copy
-test 0 -eq `_timediff copy/date/control project/date/control` || {
-	echo clone gfile time different 
-	exit 1
-}
-test 0 -eq `_timediff project/date/SCCS/s.control copy/date/SCCS/s.control` || {
-	echo clone sfile time different 
-	exit 1
-}
-test 2 -eq `_timediff copy/date/control copy/date/SCCS/s.control` || {
-	echo clone gfile/sfile time different 
-	exit 1
-}
+cp -rp project link1
+cp -rp project link2
+cd link1
+touch -r T11 SCCS/s.keyword
+cd ../link2
+touch -r T21 SCCS/s.keyword
+cd ..
+bk relink $Q link1 link2
+cd link1
+test "`_timediff T11 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
+echo OK
+fi
+#==================================================
+
+# resolve -- what does pass 4 do?
+
+echo $N Test scompress modifies sfile only ..........................$NL
+# scompress
+touch -r now SCCS/s.keyword
+bk _scompress keyword
+test "`_timediff T12 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
 echo OK
 
-echo $N Also see that clone -r timestamps roll back correctly .......$NL
-bk clone $Q -r1.3 project again
-cd again/date
-# (gnuism %s) TZ=GMT date -d "05/20/97 18:48:17" +%s
-_touchtime 864154097 control.base
-test 0 -eq `_timediff control control.base` || {
-	echo clone -r gfile time different 
-	exit 1
-}
-test 2 -eq `_timediff control SCCS/s.control` || {
-	echo clone -r sfile time different 
-	exit 1
-}
-echo OK
+# stripdel - rewrite sfiles, should clean or policy on gfile
+# takepatch
+# undo
+# unedit

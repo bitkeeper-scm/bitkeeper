@@ -272,7 +272,6 @@ tagmerge
 takepatch
 _tclsh
 testdates
-timestamp
 _unbk
 undo
 undos

@@ -938,6 +938,7 @@ private int
 relink(char *a, char *b)
 {
 	struct	stat sa, sb;
+	struct	utimbuf	ut;
 
 	if (stat(a, &sa) || stat(b, &sb)) return (0);	/* one is missing? */
 	if (sa.st_size != sb.st_size) return (0);
@@ -973,6 +974,14 @@ relink(char *a, char *b)
 				fprintf(stderr, "File left in %s\n", buf);
 			}
 			return (-1);
+		}
+		if (sa.st_mtime < sb.st_mtime) {
+			/*
+			 * Sfile timestamps can only go backwards. So
+			 * move b if a was older.
+			 */
+			ut.actime = ut.modtime = sa.st_mtime;
+			utime(b, &ut);
 		}
 		unlink(buf);
 		return (1);

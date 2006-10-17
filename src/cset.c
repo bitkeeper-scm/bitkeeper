@@ -477,7 +477,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 		perror("idcache");
 	}
 	lastkey = strdup(key);
-retry:	sc = sccs_keyinit(lastkey, INIT_FIXSTIME, idDB);
+retry:	sc = sccs_keyinit(lastkey, 0, idDB);
 	unless (sc) {
 		if (gone(lastkey, goneDB)) {
 			free(lastkey);

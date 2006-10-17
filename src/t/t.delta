@@ -147,19 +147,18 @@ echo OK
 
 
 echo $N Make sure delta -G works ....................................$NL
-# Figure out which kind of touch we have
 echo "G change data" > init3
-touch -t 0102030489 init3 > ${DEV_NULL} 2>&1
-test "`bk mtime init3`" != "1989/01/02 03:04:00" && {
-	touch -t 8901020304.00 init3 > ${DEV_NULL} 2>&1
-}
+perl -e '
+$tt = time;
+$tt -= 500;
+utime $tt, $tt, "init";
+'
 bk mtime init3 > CMP1
 bk delta $Q -i -G init3
 bk prs -Y -h -d':D: :T:\n' init3 > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
-
 
 echo $N Make sure delta -a new file work ............................$NL
 mkdir A

@@ -45,7 +45,7 @@ private	int	csetpointer;	/* if set, we need to fix cset pointers */
 private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
-private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM;
+private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM|INIT_CHK_STIME;
 private	FILE	*idcache;
 private	u32	id_sum;
 private char	id_tmp[MAXPATH]; /* BitKeeper/tmp/bkXXXXXX */

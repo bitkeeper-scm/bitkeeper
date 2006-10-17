@@ -230,7 +230,6 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	}
 
 	unless (ignorePreference || ckopts) ckopts  = proj_checkout(0);
-	if (ckopts) iflags |= INIT_FIXSTIME;
 
 	def_compp  = proj_configval(0, "compression");
 	unless (def_compp && *def_compp) def_compp = NULL;
@@ -327,7 +326,6 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			} else if (ckopts == CO_GET) {
 				if (hasKeyword(s))  {
 					gf |= GET_EXPAND;
-					s->initFlags &= ~INIT_FIXSTIME;
 					co = 1;
 				} else {
 					co = 2;

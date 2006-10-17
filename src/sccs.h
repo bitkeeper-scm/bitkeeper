@@ -58,7 +58,7 @@ int	checking_rmdir(char *dir);
 #define	INIT_HASxFILE	0x00100000	/* has x.file */
 #define	INIT_HASzFILE	0x00200000	/* has z.file */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
-#define	INIT_FIXSTIME	0x00010000	/* force sfile mtime < gfile mtime */
+#define	INIT_CHK_STIME	0x00010000	/* check that s.file <= gfile */
 #define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
 
 /* shared across get/diffs/getdiffs */
@@ -589,6 +589,7 @@ typedef	struct sccs {
 	u32	same;		/* and unchanged */
 	off_t	sumOff;		/* offset of the new delta cksum */
 	time_t	gtime;		/* gfile modidification time */
+	time_t	stime;		/* sfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
 	MDBM	*findkeydb;	/* Cache a map of delta key to delta* */
 	project	*proj;		/* If in BK mode, pointer to project */
@@ -1090,7 +1091,7 @@ int	timeMatch(project *proj, char *gfile, char *sfile, hash *timestamps);
 void	dumpTimestampDB(project *p, hash *db);
 void	updateTimestampDB(sccs *s, hash *timestamps, int diff);
 struct tm *utc2tm(time_t t);
-int	sccs_setStime(sccs *s);
+int	sccs_setStime(sccs *s, time_t newest);
 int	isLocalHost(char *h);
 void	ids(void);
 void	http_hdr(void);
@@ -1179,7 +1180,6 @@ int	crypto_symEncrypt(char *key, FILE *fin, FILE *fout);
 int	crypto_symDecrypt(char *key, FILE *fin, FILE *fout);
 int	inskeys(char *image, char *keys);
 void	lockfile_cleanup(void);
-void	set_timestamps(char *sfile);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
 int	(*is_whitespace)(int i));
