@@ -21,6 +21,9 @@ then	L=-l
 else	L=
 fi
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 # Create a repository with 5 files in it.  The files contain
 # 1, 2, 3, 4, 5 and start out as A, B, C, D, E
 echo $N Create initial repository ...................................$NL

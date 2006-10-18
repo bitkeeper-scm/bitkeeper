@@ -12,6 +12,9 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 commercial project
 echo $N Test sccsmv w/ p locked file ................................$NL
 mkdir A B D E

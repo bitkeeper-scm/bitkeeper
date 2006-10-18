@@ -46,6 +46,9 @@
 # key is in the gone file, and a new file in place, and resync that.  I think
 # it will do the right thing...
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 
 L=-l
 

@@ -12,6 +12,9 @@
 # Copyright (c) 2000 Larry McVoy
 # %K%
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 BK_YEAR2=1
 BK_USER=user
 BK_HOST=bk_regression.host.bk

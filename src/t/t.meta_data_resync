@@ -11,6 +11,9 @@
 
 # Copyright (c) 1999 Andrew Chang
 # %K%
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 
 echo $N Create initial repository ...................................$NL
 echo "license: $BKL_PRO" > $HERE/c

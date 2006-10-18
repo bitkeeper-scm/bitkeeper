@@ -12,6 +12,9 @@
 # Copyright (c) 2000 Larry McVoy
 # %K%
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 # Don't create gone in 'bk setup'
 # (use fresh_commercial so this don't effect cache)
 _BK_SETUP_NOGONE=1

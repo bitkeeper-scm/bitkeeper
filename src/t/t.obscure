@@ -12,6 +12,9 @@
 # Copyright (c) 2003 BitMover, Inc.
 # %K%
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 commercial project
 
 echo $N Create some data ............................................$NL

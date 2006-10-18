@@ -9,6 +9,9 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 echo $N Test our popen/system commands ..............................$NL
 cat > trigger <<EOF
 #!/bin/sh

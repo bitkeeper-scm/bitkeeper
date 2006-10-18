@@ -9,6 +9,9 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 # Tests for tag propogation in new/old protocols.
 echo $N Create initial repository ...................................$NL
 commercial project

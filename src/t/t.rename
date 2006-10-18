@@ -12,6 +12,9 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 # The purpose of this test is to demonstrate a rename bug.
 # Suppose we have a file which starts out being named A.
 # In one repository,

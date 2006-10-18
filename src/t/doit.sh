@@ -314,8 +314,8 @@ setup_env()
 	}
 	BK_GLOB_EQUAL=NO
 	# Use this to test timestamps and checkouts
-	# _BK_DEVELOPER=YES
-	# export _BK_DEVELOPER
+	_BK_DEVELOPER=YES
+	export _BK_DEVELOPER
 }
 
 clean_up()

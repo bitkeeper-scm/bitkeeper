@@ -11,6 +11,9 @@
 
 # See also src/Notes/MONOTONIC
 
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 echo $N Mark a file as MONOTONIC, add a delta, check for danglers ...$NL
 commercial project
 bk admin -fMONOTONIC BitKeeper/etc/config

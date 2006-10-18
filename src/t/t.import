@@ -11,6 +11,9 @@
 
 # Copyright (c) 1999 Andrew Chang
 # %K%
+# Because we use tar xmf we don't check for timestamp errors here.
+unset _BK_DEVELOPER
+
 export BK_YEAR2=YES
 
 echo $N Test import of a plain file .................................$NL
