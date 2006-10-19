@@ -417,13 +417,13 @@ getbkpath(void)
 	pclose(f);
 	unless (buf[0])	return (0);
 	chomp(buf);
-	sprintf(buf2, "bk pwd '%s'", buf);
-	f = popen(buf2, "r");
-	buf[0] = 0;
-	fnext(buf, f);
-	pclose(f);
-	unless (buf[0]) return (0);
-	chomp(buf);
+#ifdef WIN32
+	/* Don't trust what the installed BK said, make sure we're
+	 *  using a long path
+	 */
+	GetLongPathName(buf, buf2, sizeof(buf2));
+	return (strdup(buf2));
+#endif
 	return (strdup(buf));
 }
 

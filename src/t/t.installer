@@ -194,10 +194,10 @@ echo OK
 
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
-echo $N Make sure we preserve registry settings......................$NL
-echo y | ./bk-academic-licensed "$HERE/DEADBEEF" > OUT 2>&1 || {
+echo $N Make sure we preserve registry settings and use long paths...$NL
+echo y | ./bk-academic-licensed "$HERE/DEAD BEEF" > OUT 2>&1 || {
 	echo failed
-	echo Installer failed to install: exited $rc
+	echo Installer failed to install: exited $?
 	cat OUT
 	exit 1
 }
@@ -206,15 +206,27 @@ bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
 
 # We need the new BK to come first in the path, so we mangle it by hand
 P=`bk _registry get "$SYSPATHKEY" Path`
-P="$HERE/DEADBEEF;$P"
+P="$HERE/DEAD BEEF;$P"
 bk _registry set "$SYSPATHKEY" Path "$P"
 PATH="$P" ./bk-academic-licensed -u > OUT 2>&1 || {
 	echo failed
-	echo Installer failed to upgrade: $rc
+	echo Installer failed to upgrade: $?
 	cat OUT
 	exit 1
 }
-bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" >TEXT || {
+grep -qi "DEAD BEEF" OUT || {
+	echo failed
+	echo Installer used short path names e.g. dead~1
+	cat OUT
+	exit 1
+}
+grep -qi "docume~1" OUT && {
+	echo failed
+	echo Installer short path names e.g. docume~1
+	cat OUT
+	exit 1
+}
+bk _registry get "$SYSPATHKEY" Path | grep "DEAD BEEF" >TEXT || {
 	echo failed
 	echo Installer did not modify PATH
 	cat TEXT
