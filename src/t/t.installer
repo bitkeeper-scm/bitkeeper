@@ -196,8 +196,8 @@ if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
 echo $N Make sure we preserve registry settings and use long paths...$NL
 echo y | ./bk-academic-licensed "$HERE/DEAD BEEF" > OUT 2>&1 || {
-	echo failed
-	echo Installer failed to install: exited $?
+	echo failed $?
+	echo Installer failed to install
 	cat OUT
 	exit 1
 }
@@ -209,8 +209,8 @@ P=`bk _registry get "$SYSPATHKEY" Path`
 P="$HERE/DEAD BEEF;$P"
 bk _registry set "$SYSPATHKEY" Path "$P"
 PATH="$P" ./bk-academic-licensed -u > OUT 2>&1 || {
-	echo failed
-	echo Installer failed to upgrade: $?
+	echo failed $?
+	echo Installer failed to upgrade
 	cat OUT
 	exit 1
 }
@@ -299,8 +299,8 @@ test -f "$HERE/DEADBEEF/bk" || {
 }
 BK="$HERE/DEADBEEF/bk"
 "$BK" uninstall -u >OUT 2>&1 || {
-	echo failed
-	echo Uninstaller in upgrade mode returned $?
+	echo failed $?
+	echo Uninstaller in upgrade mode
 	cat OUT
 	exit 1
 }
@@ -314,8 +314,8 @@ then	bk _registry get "$USRPATHKEY" Path | grep "DEADBEEF" > TEXT || {
 	}
 fi
 bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" > TEXT || {
-	echo failed
-	echo Uninstaller in upgrade mode removed BK from SYSPATH $?
+	echo failed $?
+	echo Uninstaller in upgrade mode removed BK from SYSPATH
 	bk _registry get "$SYSPATHKEY" Path
 	cat TEXT OUT
 	exit 1
