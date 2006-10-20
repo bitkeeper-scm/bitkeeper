@@ -1402,13 +1402,13 @@ __sortmerge()
 
 _tclsh() {
 	TCLSH=`bk bin`/gui/bin/tclsh
-	test "X$OSTYPE" = "Xmsys" && TCLSH=`win2msys $TCLSH`
+	test "X$OSTYPE" = "Xmsys" && TCLSH=`win2msys "$TCLSH"`
 	exec "$TCLSH" "$@"
 }
 
 _wish() {
 	WISH=`bk bin`/gui/bin/bkgui
-	test "X$OSTYPE" = "Xmsys" && WISH=`win2msys $WISH`
+	test "X$OSTYPE" = "Xmsys" && WISH=`win2msys "$WISH"`
 	exec "$WISH" "$@"
 }
 
