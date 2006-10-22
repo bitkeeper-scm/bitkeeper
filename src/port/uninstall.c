@@ -108,6 +108,10 @@ uninstall(char *path, int upgrade)
 	win32flags_clear(WIN32_RETRY | WIN32_NOISY);
 	if ((path == bin) || rmtree(buf)) {
 		/* schedule it to be removed on reboot */
+		fprintf(stderr, "Could not delete %s: will be deleted on the "
+		    "next reboot.\n", buf);
+		if (dfd) fprintf(dfd, "Could not delete %s: "
+		    "will be deleted on the next reboot.\n", buf);
 		delete_onReboot(buf);
 	}
 
