@@ -214,8 +214,9 @@ next:				freeLines(data, free);
 	unless (fetchonly || install) {
 		printf("BitKeeper version %s is available for download.\n",
 		    data[3]);
-		printf(
-		     "rerun 'bk upgrade' with -n to fetch or -i to install\n");
+		printf("Run\n"
+		    "\tbk upgrade\t# to download and install the new bk\n"
+		    "\tbk upgrade -d\t# to download bk without installing\n");
 		rc = 0;
 		goto out;
 	}

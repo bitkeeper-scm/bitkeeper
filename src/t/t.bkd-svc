@@ -22,7 +22,7 @@ echo $N Test basic service install and status .......................$NL
 PORT=`port 6000`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT
 bk service status $BKDNAME > GOT
-DIR=`bk pwd`
+DIR="`bk pwd -s`"
 cat <<EOF >WANT1
 Service:   $BKDNAME
 Status:    RUNNING
@@ -39,7 +39,7 @@ mkdir $HERE/bkd2
 cd $HERE/bkd2
 PORT=`port 6100`
 bk service install ${BKDNAME}2 -EBK_REGRESSION=1 -p$PORT -xchg
-DIR=`bk pwd`
+DIR="`bk pwd -s`"
 cat <<EOF >WANT2
 Service:   ${BKDNAME}2
 Status:    RUNNING

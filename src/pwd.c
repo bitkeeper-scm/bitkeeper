@@ -46,8 +46,10 @@ pwd_main(int ac, char **av)
 	}
 	if (shortname) {
 		GetShortPathName(p, p, sizeof buf - (p - buf));
-		nt2bmfname(p, p); /* needed for win98 */
+	} else {
+		getRealName(p, 0, p);
 	}
+	nt2bmfname(p, p); /* needed for win98 */
 	if (windows) bm2ntfname(p, p);
 #endif
 	printf("%s\n", bk_rpath ? _relativeName(p, 1, 1, 1, 0): p);
