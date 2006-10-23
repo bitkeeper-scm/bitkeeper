@@ -1187,6 +1187,7 @@ pager(void)
 	char	*path, *oldpath;
 	char	**words;
 	int	i;
+	char	buf[MAXPATH];
 	static	char	*pg;
 
 	if (pg) return (pg); /* already cached */
@@ -1210,7 +1211,9 @@ pager(void)
 	unless (pg) {
 		for (i = 0; pagers[i]; i++) {
 			if (cmd = which(pagers[i])) {
-				pg = cmd;
+				sprintf(buf, "\"%s\"", cmd);
+				free(cmd);
+				pg = strdup(buf);
 				break;
 			}
 		}
