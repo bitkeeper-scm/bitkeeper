@@ -60,7 +60,7 @@ unix_common_setup()
 	export WINDOWS
 	DEV_NULL="/dev/null"
 	if [ -z "$TST_DIR" ]; then TST_DIR="/build"; fi
-	TST_DIR=`bk pwd $TST_DIR`       # if symlink, force to real path
+	TST_DIR=`bk pwd "$TST_DIR"`       # if symlink, force to real path
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
@@ -195,7 +195,7 @@ check_w()
 check_enclosing_repo()
 {
 	for i in . .. ../.. ../../.. ../../..
-	do	if [ -d ${TST_DIR}/${i}/BitKeeper/etc ]
+	do	if [ -d "$TST_DIR/$i/BitKeeper/etc" ]
 		then	cat <<EOF
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -246,9 +246,9 @@ setup_env()
 	export _BK_GEOM
 
 	unset _BK_GMODE_DEBUG
-	BK_REGRESSION=`cd $TST_DIR; bk pwd -s`/.regression-$USER
+	BK_REGRESSION=`cd "$TST_DIR"; bk pwd -s`/.regression-$USER
 	BK_CACHE="$BK_REGRESSION/cache"
-	HERE=`cd $TST_DIR; bk pwd -s`/.regression-$USER/sandbox
+	HERE=`cd "$TST_DIR"; bk pwd -s`/.regression-$USER/sandbox
 	BK_TMP=$HERE/.tmp
 	BK_DOTBK=$HERE/.bk
 	export BK_DOTBK
