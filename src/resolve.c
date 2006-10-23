@@ -2045,6 +2045,7 @@ nomerge:	rs->opts->hadConflicts++;
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
+	unless (unlink(rs->s->gfile)) rs->s = sccs_restart(rs->s);
 	if (rs->opts->mergeprog) {
 		ret = sys("bk", rs->opts->mergeprog,
 		    n->local, n->gca, n->remote, rs->s->gfile, SYS);

@@ -1499,7 +1499,7 @@ _service()
 		}
 		rm -f /tmp/err$$
 		DIRW=`bk pwd -w`
-		DIR=`bk pwd`
+		DIR=`bk pwd -s`
 		test "X$DIR" = X && {
 			echo Failed to get current working directory, abort.
 			exit 1

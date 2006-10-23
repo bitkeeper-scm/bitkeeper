@@ -857,3 +857,55 @@ grep -q "$TIP" BitKeeper/etc/csets-in || {
 	exit 1
 }
 echo OK
+
+echo $N Automerge a trigger after automerging gone ..................$NL
+cd $HERE
+commercial trigger-master
+T=BitKeeper/triggers/pre-commit.test
+mkdir -p BitKeeper/triggers
+cat - <<'EOF' > "$T"
+#!/bin/sh
+
+echo I am in the trigger
+
+echo add merge line after this
+EOF
+bk new $Q "$T"
+touch foo
+bk new $Q foo
+bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
+rm -f foo SCCS/?.foo
+bk commit $Q -ytrig
+cd ..
+bk clone $Q trigger-master trigger-copy
+cd trigger-master
+bk edit $Q "$T"
+cat - <<'EOF' > "$T"
+#!/bin/sh
+
+echo I am in the trigger
+echo Really, that is the case
+
+echo add merge line after this
+EOF
+bk delta $Q -yedit "$T"
+touch foo
+bk new $Q foo
+bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
+rm -f foo SCCS/?.foo
+bk commit $Q -ytrig
+cd ../trigger-copy
+bk edit $Q "$T"
+echo "echo new last line" >> "$T"
+bk delta $Q -yedit "$T"
+touch foo
+bk new $Q foo
+bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
+rm -f foo SCCS/?.foo
+bk commit $Q -ytrig
+bk pull $Q 2>ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
