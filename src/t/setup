@@ -86,7 +86,45 @@ _make_repo() {
 		exit 1
         }
 	# Make a cached copy
-        (cd "$REPO" && find . -type f | bk sfio -qm -o > "$SFIO")
+        (cd "$REPO" && find . -type f | perl -e '
+		# Input is a file name per line
+		# Output is a sorted file list so that sfiles are always
+		# before gfiles And files in same directory are "near"
+		# each other. 
+		#
+		# Good for small lists - does the split each time mysort runs
+		# For large data sets, cache the split
+
+		sub mysort {
+			my	@a = split(/\//, $a);
+			my	@b = split(/\//, $b);
+			my	($a0, $b0);
+
+			while (@a || @b) {
+				# sort shorter string first
+				return (-1) unless @a;
+				return (1) unless @b;
+				# nab first item
+				$a0 = shift @a;
+				$b0 = shift @b;
+				# look for a difference
+				next if $a0 eq $b0;
+				# like extsort() - sort SCCS first
+				return (-1) if $a0 eq "SCCS";
+				return (1) if $b0 eq "SCCS";
+				# if this is the last item in one string,
+				# sort it first
+				return (-1) if !@a and @b;
+				return (1) if @a and !@b;
+				# else sort alphabetically
+				return ($a0 cmp $b0);
+			}
+			# paranoid - only happens if strings are a dup
+			return (0);
+		}
+		chomp(@list = <>);
+		print join("\n", sort mysort @list);
+	' | bk sfio -qm -o > "$SFIO")
 }
 
 # Usage get_cached_repo dir sfio
