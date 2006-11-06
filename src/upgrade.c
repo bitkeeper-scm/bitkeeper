@@ -230,6 +230,7 @@ next:				freeLines(data, free);
 	/* find checksum of the file we just fetched */
 	f = fopen(tmpbin, "r");
 	p = hashstream(f);
+	assert(p);
 	rewind(f);
 	unless (streq(p, data[2])) {
 		fprintf(stderr, "upgrade: file %s fails to match checksum\n",

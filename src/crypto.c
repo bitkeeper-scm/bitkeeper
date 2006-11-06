@@ -1,7 +1,9 @@
 #include "system.h"
 #include "sccs.h"
-#include "tomcrypt/mycrypt.h"
+#define	LTC_SOURCE
+#include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
+#include "tomcrypt/oldrsa.h"
 #include "cmd.h"
 
 private	int	make_keypair(int bits, char *secret, char *public);
@@ -15,6 +17,8 @@ private	int		wprng = -1;
 private	prng_state	*prng;
 private	int	use_sha1_hash = 0;
 private	int	hex_output = 0;
+private	int	rsakey_old = 0;
+
 private const u8	pubkey5[151] = {
 ~~~~~~~~~~~~~~~~~~~~~0h
 ~~~~~~~~~~~~~~~~~~~~~~~C
@@ -156,6 +160,8 @@ private const u8	upgrade_secretkey[828] = {
  *    # use sha1 instead of md5 for -h
  * -X
  *    # print hash results in hex instead of base64 for -h
+ * -O
+ *    # load RSA key in old format
  */
 
 private void
@@ -175,7 +181,7 @@ crypto_main(int ac, char **av)
 	char	*hash;
 	rsa_key	key;
 
-	while ((c = getopt(ac, av, "dDeEhisSvX")) != -1) {
+	while ((c = getopt(ac, av, "dDeEhiOsSvX")) != -1) {
 		switch (c) {
 		    case 'h': case 'i': case 's': case 'v':
 		    case 'e': case 'd': case 'E': case 'D':
@@ -184,6 +190,7 @@ crypto_main(int ac, char **av)
 			break;
 		    case 'S': use_sha1_hash = 1; break;
 		    case 'X': hex_output = 1; break;
+		    case 'O': rsakey_old = 1; break;
 		    default:
 			usage();
 		}
@@ -247,6 +254,7 @@ crypto_main(int ac, char **av)
 		}
 		puts(hash);
 		free(hash);
+		ret = 0;
 		break;
 	    default:
 		usage();
@@ -261,13 +269,18 @@ make_keypair(int bits, char *secret, char *public)
 	unsigned long	size;
 	FILE	*f;
 	char	out[4096];
+	int	err;
 
-	if (rsa_make_key(prng, wprng, bits/8, 655337, &key)) {
-err:		fprintf(stderr, "crypto: %s\n", crypt_error);
+	if (err = rsa_make_key(prng, wprng, bits/8, 655337, &key)) {
+		fprintf(stderr, "crypto: %s\n", error_to_string(err));
 		return (1);
 	}
 	size = sizeof(out);
-	if (rsa_export(out, &size, PK_PRIVATE_OPTIMIZED, &key)) goto err;
+	if (err = rsa_export(out, &size, PK_PRIVATE, &key)) {
+		fprintf(stderr, "crypto export private key: %s\n",
+		    error_to_string(err));
+		return (1);
+	}
 	f = fopen(secret, "w");
 	unless (f) {
 		fprintf(stderr, "crypto: can open %s for writing\n", secret);
@@ -276,7 +289,11 @@ err:		fprintf(stderr, "crypto: %s\n", crypt_error);
 	fwrite(out, 1, size, f);
 	fclose(f);
 	size = sizeof(out);
-	if (rsa_export(out, &size, PK_PUBLIC, &key)) goto err;
+	if (err = rsa_export(out, &size, PK_PUBLIC, &key)) {
+		fprintf(stderr, "crypto exporting public key: %s\n",
+		    error_to_string(err));
+		return (1);
+	}
 	f = fopen(public, "w");
 	unless (f) {
 		fprintf(stderr, "crypto: can open %s for writing\n", public);
@@ -291,108 +308,48 @@ err:		fprintf(stderr, "crypto: %s\n", crypt_error);
 private void
 loadkey(char *file, rsa_key *key)
 {
-	char	*data;
+	u8	*data;
+	int	err, fsize;
 
-	data = loadfile(file, 0);
+	data = loadfile(file, &fsize);
 	unless (data) {
 		fprintf(stderr, "crypto: cannot load key from %s\n", file);
 		exit(1);
 	}
-	if (rsa_import(data, key) == CRYPT_ERROR) {
-		fprintf(stderr, "crypto loadkey: %s\n", crypt_error);
+	if (rsakey_old) {
+		err = oldrsa_import(data, key);
+	} else {
+		err = rsa_import(data, fsize, key);
+	}
+	if (err) {
+		fprintf(stderr, "crypto loadkey: %s\n", error_to_string(err));
 		exit(1);
 	}
-}
-
-private int
-hash_filehandle(int hash, FILE *in, unsigned char *dst)
-{
-	hash_state	md;
-	unsigned char	buf[512];
-	int		x;
-
-	if(hash_is_valid(hash) == CRYPT_ERROR) {
-		return (CRYPT_ERROR);
-	}
-
-	unless (in) {
-		crypt_error = "Error reading file in hash_filehandle().";
-		return CRYPT_ERROR;
-	}
-	hash_descriptor[hash].init(&md);
-	do {
-		x = fread(buf, 1, sizeof(buf), in);
-		hash_descriptor[hash].process(&md, buf, x);
-	} while (x == sizeof(buf));
-	hash_descriptor[hash].done(&md, dst);
-#ifdef CLEAN_STACK
-	zeromem(buf, sizeof(buf));
-#endif
-	return CRYPT_OK;
+	free(data);
 }
 
 private	int
 signdata(rsa_key *key)
 {
 	int	hash = find_hash("md5");
-	unsigned long	hashlen, rsa_size, x, y;
-	unsigned char	rsa_in[4096], rsa_out[4096];
-	unsigned char	out[4096];
-
-	/* type of key? */
-	if (key->type != PK_PRIVATE && key->type != PK_PRIVATE_OPTIMIZED) {
-		fprintf(stderr, "crypto: Cannot sign with public key\n");
-		return (1);
-	}
+	unsigned long	hashlen, x;
+	int	err;
+	u8	hbuf[32], out[4096];
 
 	/* are the parameters valid? */
-	assert (!prng_is_valid(wprng) && !hash_is_valid(hash));
+	assert (hash_is_valid(hash) == CRYPT_OK);
 
 	/* hash it */
-	hashlen = hash_descriptor[hash].hashsize;
-	if (hash_filehandle(hash, stdin, rsa_in)) {
- err:		fprintf(stderr, "crypto: %s\n", crypt_error);
+	hashlen = sizeof(hbuf);
+	if (err = hash_filehandle(hash, stdin, hbuf, &hashlen)) {
+err:		fprintf(stderr, "crypto: %s\n", error_to_string(err));
 		return (1);
 	}
 
-	/* pad it */
-	x = sizeof(rsa_in);
-	if (rsa_signpad(rsa_in, hashlen, rsa_out, &x, wprng, prng)) goto err;
-
-	/* sign it */
-	rsa_size = sizeof(rsa_in);
-	if (rsa_exptmod(rsa_out, x, rsa_in, &rsa_size, PK_PRIVATE, key)) {
-		goto err;
-	}
-
-	/* check size */
-	if (sizeof(out) < (8+rsa_size)) {
-		crypt_error = "Buffer Overrun in rsa_sign().";
-		goto err;
-	}
-
-	/* now lets output the message */
-	y = PACKET_SIZE;
-	out[y++] = hash_descriptor[hash].ID;
-
-	/* output the len */
-	STORE32L(rsa_size, (out+y));
-	y += 4;
-
-	/* store the signature */
-	for (x = 0; x < rsa_size; x++, y++) {
-		out[y] = rsa_in[x];
-	}
-
-	/* store header */
-	packet_store_header(out, PACKET_SECT_RSA, PACKET_SUB_SIGNED, y);
-
-	fwrite(out, 1, y, stdout);
-
-	/* clean up */
-	zeromem(rsa_in, sizeof(rsa_in));
-	zeromem(rsa_out, sizeof(rsa_out));
-	zeromem(out, sizeof(out));
+	x = sizeof(out);
+	if (err = oldrsa_sign_hash(hbuf, hashlen, out, &x,
+		hash_descriptor[hash].ID, key)) goto err;
+	fwrite(out, 1, x, stdout);
 
 	return (0);
 }
@@ -400,92 +357,62 @@ signdata(rsa_key *key)
 private	int
 validatedata(rsa_key *key, char *signfile)
 {
-	unsigned char	*sig;
-	unsigned long	hashlen, rsa_size, x, y, z;
-	int		hash;
-	int		ret;
-	unsigned char	rsa_in[4096], rsa_out[4096];
+	int		hash = register_hash(&md5_desc);
+	u8		*sig;
+	int		siglen;
+	unsigned long	hashlen;
+	int		stat, err;
+	u8		hbuf[32];
 
-	sig = loadfile(signfile, 0);
-	unless (sig) {
-		crypt_error = "Cannot load signature";
- err:	        fprintf(stderr, "crypto: %s\n", crypt_error);
-		exit(1);
+	sig = loadfile(signfile, &siglen);
+	unless (sig && (siglen > 16)) {
+		fprintf(stderr, "crypto: unable to load signature\n");
+		return (1);
 	}
-
-	/* verify header */
-	if (packet_valid_header(sig, PACKET_SECT_RSA, PACKET_SUB_SIGNED)) {
-		crypt_error = "Invalid header for input in rsa_verify().";
-		goto err;
+	hashlen = sizeof(hbuf);
+	if (err = hash_filehandle(hash, stdin, hbuf, &hashlen)) {
+error:		fprintf(stderr, "crypto: %s\n", error_to_string(err));
+		return (1);
 	}
-
-	/* grab cipher name */
-	y = PACKET_SIZE;
-	hash = find_hash_id(sig[y++]);
-	if (hash == -1) {
-		crypt_error = "Invalid hash ID for rsa_verify().";
-		goto err;
-	}
-	hashlen = hash_descriptor[hash].hashsize;
-
-	/* get the len */
-	LOAD32L(rsa_size, (sig+y));
-	y += 4;
-
-	/* load the signature */
-	for (x = 0; x < rsa_size; x++, y++) {
-		rsa_in[x] = sig[y];
-	}
-
-	/* exptmod it */
-	x = sizeof(rsa_in);
-	if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PUBLIC, key)) {
-		crypt_error = "rsa_exptmod() failed";
-		goto err;
-	}
-
-	/* depad it */
-	z = sizeof(rsa_in);
-	if (rsa_signdepad(rsa_out, x, rsa_in, &z)) {
-		crypt_error = "rsa_signdepad() failed";
-		goto err;
-	}
-
-	/* check? */
-	hash_filehandle(hash, stdin, rsa_out);
-	if ((z == hashlen) && (!memcmp(rsa_in, rsa_out, hashlen))) {
-		ret = 0;
-	} else {
-		ret = 1;
-	}
-
-	zeromem(rsa_in, sizeof(rsa_in));
-	zeromem(rsa_out, sizeof(rsa_out));
-
-	return (ret);
+	if (err = oldrsa_verify_hash(sig, &siglen, hbuf, hashlen,
+		&stat, hash_descriptor[hash].ID, key)) goto error;
+	return (stat ? 0 : 1);
 }
 
 int
 check_licensesig(char *key, char *sign, int version)
 {
-	char	signbin[256];
-	unsigned long	outlen;
-	rsa_key	rsakey;
-	const char	*pubkey = (version <= 5) ? pubkey5 : pubkey6;
-	int	ret;
-	int	stat;
+	int		hash = register_hash(&md5_desc);
+	unsigned long	hashlen, signbinlen;
+	rsa_key		rsakey;
+	u8		*pubkey;
+	int		pubkeylen;
+	int		err, i;
+	int		stat;
+	u8		hbuf[32];
+	char		signbin[256];
 
-	register_hash(&md5_desc);
-
-	ret = rsa_import(pubkey, &rsakey);
-	if (ret == CRYPT_ERROR) {
-		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
+	if (version <= 5) {
+		pubkey = pubkey5;
+		pubkeylen = sizeof(pubkey5);
+	} else {
+		pubkey = pubkey6;
+		pubkeylen = sizeof(pubkey6);
+	}
+	if (err = oldrsa_import(pubkey, &rsakey)) {
+err:		fprintf(stderr, "check_licensesig: %s\n",
+		    error_to_string(err));
 		exit(1);
 	}
-
-	outlen = sizeof(signbin);
-	if (base64_decode(sign, strlen(sign), signbin, &outlen)) return (-1);
-	if (rsa_verify(signbin, key, strlen(key), &stat, &rsakey)) return (-1);
+	signbinlen = sizeof(signbin);
+	if (err = base64_decode(sign, strlen(sign), signbin, &signbinlen)) {
+		goto err;
+	}
+	hashlen = sizeof(hbuf);
+	if (err = hash_memory(hash, key, strlen(key), hbuf, &hashlen)) goto err;
+	i = signbinlen;
+	if (oldrsa_verify_hash(signbin, &i, hbuf, hashlen,
+		&stat, hash_descriptor[hash].ID, &rsakey)) return (-1);
 	rsa_free(&rsakey);
 	return (stat ? 0 : 1);
 }
@@ -493,7 +420,7 @@ check_licensesig(char *key, char *sign, int version)
 int
 base64_main(int ac, char **av)
 {
-	int	c;
+	int	c, err;
 	int	unpack = 0;
 	long	len, outlen;
 	char	buf[4096], out[4096];
@@ -512,8 +439,9 @@ base64_main(int ac, char **av)
 		while (fgets(buf, sizeof(buf), stdin)) {
 			len = strlen(buf);
 			outlen = sizeof(out);
-			if (base64_decode(buf, len, out, &outlen)) {
- err:				fprintf(stderr, "base64: %s\n", crypt_error);
+			if (err = base64_decode(buf, len, out, &outlen)) {
+err:				fprintf(stderr, "base64: %s\n",
+				    error_to_string(err));
 				return (1);
 			}
 			fwrite(out, 1, outlen, stdout);
@@ -522,12 +450,48 @@ base64_main(int ac, char **av)
 		setmode(fileno(stdin), _O_BINARY);
 		while (len = fread(buf, 1, 48, stdin)) {
 			outlen = sizeof(out);
-			if (base64_encode(buf, len, out, &outlen)) goto err;
+			if (err = base64_encode(buf, len, out, &outlen)) {
+				goto err;
+			}
 			fwrite(out, 1, outlen, stdout);
 			putchar('\n');
 		}
 	}
 	return (0);
+}
+
+/* this seems to have been removed from libtomcrypt,
+ * it seems to me it should really be a tomcrypt API
+ */
+private int
+hmac_filehandle(int hash, FILE *in,
+    const unsigned char *key, unsigned long keylen,
+    unsigned char *out, unsigned long *outlen)
+{
+	hmac_state	hmac;
+	unsigned char	buf[512];
+	size_t		x;
+	int		err;
+
+	if (err = hash_is_valid(hash)) {
+		return (err);
+	}
+
+	if (err = hmac_init(&hmac, hash, key, keylen)) {
+		return (err);
+	}
+
+	while ((x = fread(buf, 1, sizeof(buf), in)) > 0) {
+		if (err = hmac_process(&hmac, buf, (unsigned long)x)) {
+			return (err);
+		}
+	}
+
+	if (err = hmac_done(&hmac, out, outlen)) {
+		return (err);
+	}
+	zeromem(buf, sizeof(buf));
+	return (CRYPT_OK);
 }
 
 char *
@@ -538,23 +502,25 @@ secure_hashstr(char *str, int len, char *key)
 	char	*p;
 	int	n;
 	char	md5[32];
-	char	b64[32];
+	char	b64[64];
 
+	md5len = sizeof(md5);
 	if (key && (len == 1) && streq(str, "-")) {
-		if (hmac_filehandle(hash, stdin, key, strlen(key), md5)) {
+		if (hmac_filehandle(hash, stdin,
+		    key, strlen(key), md5, &md5len)) {
 			return (0);
 		}
 	} else if (key) {
 		if (hmac_memory(hash, key, strlen(key),
-			str, len, md5)) return (0);
+			str, len, md5, &md5len)) return (0);
 	} else if ((len == 1) && streq(str, "-")) {
-		if (hash_filehandle(hash, stdin, md5)) return (0);
+		if (hash_filehandle(hash, stdin, md5, &md5len)) return (0);
 	} else {
-		if (hash_memory(hash, str, len, md5)) return (0);
+		if (hash_memory(hash, str, len, md5, &md5len)) return (0);
 	}
 	b64len = sizeof(b64);
-	md5len = hash_descriptor[hash].hashsize;
 	if (hex_output) {
+		assert(sizeof(b64) > md5len*2+1);
 		for (n = 0; n < md5len; n++) {
 			sprintf(b64 + 2*n,
 			    "%1x%x", (md5[n] >> 4) & 0xf, md5[n] & 0xf);
@@ -588,9 +554,9 @@ hashstream(FILE *f)
 	char	md5[32];
 	char	b64[32];
 
-	if (hash_filehandle(hash, f, md5)) return (0);
+	md5len = sizeof(md5);
+	if (hash_filehandle(hash, f, md5, &md5len)) return (0);
 	b64len = sizeof(b64);
-	md5len = hash_descriptor[hash].hashsize;
 	if (base64_encode(md5, md5len, b64, &b64len)) return (0);
 	for (p = b64; *p; p++) {
 		if (*p == '/') *p = '-';	/* dash */
@@ -652,7 +618,7 @@ encrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 {
 	int	cipher = register_cipher(&rijndael_desc);
 	long	inlen, outlen, blklen;
-	int	i;
+	int	i, err;
 	symmetric_CTR	ctr;
 	u8	sym_IV[MAXBLOCKSIZE];
 	u8	skey[32];
@@ -668,15 +634,17 @@ encrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 	rand_getBytes(sym_IV, blklen);
 
 	outlen = sizeof(out);
-	if (rsa_encrypt_key(skey, inlen, out, &outlen, prng, wprng, key)) {
-err:		fprintf(stderr, "crypto encrypt: %s\n", crypt_error);
+	if (err = oldrsa_encrypt_key(skey, inlen, out, &outlen,
+	    prng, wprng, key)) {
+err:		fprintf(stderr, "crypto encrypt: %s\n", error_to_string(err));
 		return (1);
 	}
 	fwrite(out, 1, outlen, fout);
 	fwrite(sym_IV, 1, blklen, fout);
 
 	/* bulk encrypt */
-	if (ctr_start(cipher, sym_IV, skey, inlen, 0, &ctr)) {
+	if (err = ctr_start(cipher, sym_IV, skey, inlen, 0,
+	    CTR_COUNTER_LITTLE_ENDIAN, &ctr)) {
 		goto err;
 	}
 
@@ -691,19 +659,17 @@ private int
 decrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 {
 	int	cipher = register_cipher(&rijndael_desc);
-	long	inlen, outlen, blklen;
-	int	i;
+	unsigned long	inlen, outlen, blklen;
+	int	i, err;
 	symmetric_CTR	ctr;
 	u8	sym_IV[MAXBLOCKSIZE];
 	u8	skey[32];
 	u8	in[4096], out[4096];
 
-	i = fread(in, 1, sizeof(in), fin);
-
-	inlen = i;
+	i = inlen = fread(in, 1, sizeof(in), fin);
 	outlen = sizeof(out);
-	if (rsa_decrypt_key(in, &inlen, out, &outlen, key)) {
-err:		fprintf(stderr, "crypto decrypt: %s\n", crypt_error);
+	if (err = oldrsa_decrypt_key(in, &inlen, out, &outlen, key)) {
+err:		fprintf(stderr, "crypto decrypt: %s\n", error_to_string(err));
 		return (1);
 	}
 	memcpy(skey, out, outlen);
@@ -713,7 +679,8 @@ err:		fprintf(stderr, "crypto decrypt: %s\n", crypt_error);
 	memcpy(sym_IV, in + inlen, blklen);
 
 	/* bulk encrypt */
-	if (ctr_start(cipher, sym_IV, skey, outlen, 0, &ctr)) {
+	if (err = ctr_start(cipher, sym_IV, skey, outlen, 0,
+		    CTR_COUNTER_LITTLE_ENDIAN, &ctr)) {
 		goto err;
 	}
 	i -= inlen + blklen;
@@ -731,11 +698,11 @@ int
 upgrade_decrypt(FILE *fin, FILE *fout)
 {
 	rsa_key	rsakey;
-	int	ret;
+	int	err;
 
-	ret = rsa_import(upgrade_secretkey, &rsakey);
-	if (ret) {
-		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
+	if (err = oldrsa_import(upgrade_secretkey, &rsakey)) {
+		fprintf(stderr, "crypto rsa_import: %s\n",
+		    error_to_string(err));
 		exit(1);
 	}
 	decrypt_stream(&rsakey, fin, fout);
@@ -884,4 +851,3 @@ makestring(int keynum)
 	out[i] = 0;
 	return (out);
 }
-

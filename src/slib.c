@@ -13,7 +13,7 @@
 #include "zgets.h"
 #include "bkd.h"
 #include "logging.h"
-#include "tomcrypt/mycrypt.h"
+#include "tomcrypt.h"
 #include "range.h"
 
 #define	VSIZE 4096

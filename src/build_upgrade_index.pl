@@ -40,7 +40,7 @@ foreach $file (@ARGV) {
     my($base);
     ($base = $file) =~ s/.*\///;
 
-    system("bk crypto -e $FindBin::Bin/bkupgrade.key < $file > $base");
+    system("bk crypto -eO $FindBin::Bin/bkupgrade.key < $file > $base");
     die "encryption of $file to $base failed" unless $? == 0;
     chomp($md5sum = `bk crypto -h - < $base`);
     die "hash of $base failed" unless $md5sum;

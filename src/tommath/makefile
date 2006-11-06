@@ -5,10 +5,15 @@
 #version of library 
 VERSION=0.39
 
-CFLAGS  +=  -I./ -Wall -W -Wshadow -Wsign-compare
+CPPFLAGS = -I.
+CFLAGS  +=  -Wall -W -Wshadow -Wsign-compare
 
 ifndef MAKE
    MAKE=make
+endif
+
+ifndef RANLIB
+   RANLIB=ranlib
 endif
 
 ifndef IGNORE_SPEED
@@ -85,8 +90,11 @@ bn_mp_init_set_int.o bn_mp_invmod_slow.o bn_mp_prime_rabin_miller_trials.o \
 bn_mp_to_signed_bin_n.o bn_mp_to_unsigned_bin_n.o
 
 $(LIBNAME):  $(OBJECTS)
+	$(RM) $@
 	$(AR) $(ARFLAGS) $@ $(OBJECTS)
-	ranlib $@
+	$(RANLIB) $@
+
+$(OBJECTS): $(HEADERS)
 
 #make a profiled library (takes a while!!!)
 #
@@ -119,7 +127,7 @@ install: $(LIBNAME)
 
 test: $(LIBNAME) demo/demo.o
 	$(CC) $(CFLAGS) demo/demo.o $(LIBNAME) -o test
-	
+
 mtest: test	
 	cd mtest ; $(CC) $(CFLAGS) mtest.c -o mtest
         
@@ -146,7 +154,7 @@ docs:   docdvi
 	dvipdf tommath
 	rm -f tommath.log tommath.aux tommath.dvi tommath.idx tommath.toc tommath.lof tommath.ind tommath.ilg
 	cd pics ; MAKE=${MAKE} ${MAKE} clean
-	
+
 #LTM user manual
 mandvi: bn.tex
 	echo "hello" > bn.ind
@@ -165,6 +173,7 @@ pretty:
 
 clean:
 	rm -f *.bat *.pdf *.o *.a *.obj *.lib *.exe *.dll etclib/*.o demo/demo.o test ltmtest mpitest mtest/mtest mtest/mtest.exe \
+	tags.local \
         *.idx *.toc *.log *.aux *.dvi *.lof *.ind *.ilg *.ps *.log *.s mpi.c *.da *.dyn *.dpi tommath.tex `find . -type f | grep [~] | xargs` *.lo *.la
 	rm -rf .libs
 	cd etc ; MAKE=${MAKE} ${MAKE} clean
@@ -183,3 +192,9 @@ zipup: clean manual poster docs
 	tar -c libtommath-$(VERSION)/* | bzip2 -9vvc > ltm-$(VERSION).tar.bz2 ; \
 	zip -9 -r ltm-$(VERSION).zip libtommath-$(VERSION)/* ; \
 	mv -f ltm* ~ ; rm -rf libtommath-$(VERSION)
+
+tags.local: $(OBJECTS:%.o=%.c) $(HEADERS)
+	cd ..;\
+	ctags -f tommath/$@ --file-tags=yes --c-types=d+f+s+t \
+		$(patsubst %,tommath/%,$^)
+

@@ -1,13 +1,14 @@
 #include <unistd.h>
-#include "mycrypt.h"
-#include "randseed.h"
+#include "tomcrypt.h"
 
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 
+#include "randseed.h"
+
 static	void	rand_setupPrng(u8 *seed, int len);
-static	void	mangle(u8 *rand, int rlen, u8 *buf, int len);
+static	void	mangle(u8 *rand, unsigned int rlen, u8 *buf, int len);
 
 static	int		wprng = -1;
 static	prng_state	prng;
@@ -31,6 +32,7 @@ rand_setSeed(int setpid)
 	long	outlen;
 	u8	buf[8 + SEEDLEN];
 	static u8 out[64]; /* static required for std putenv */
+	int	err;
 
 	assert((sizeof(now) + sizeof(pid)) == 8);
 	memcpy(buf, &now, 4);
@@ -41,8 +43,9 @@ rand_setSeed(int setpid)
 
 	strcpy(out, "RANDSEED=");
 	outlen = sizeof(out) - strlen(out);
-	if (base64_encode(buf, sizeof(buf), out + strlen(out), &outlen)) {
-		fprintf(stderr, "rand_setSeed: %s\n", crypt_error);
+	if ((err = base64_encode(buf, sizeof(buf), out + strlen(out), &outlen))
+	    != CRYPT_OK) {
+		fprintf(stderr, "rand_setSeed: %s\n", error_to_string(err));
 		exit(1);
 	}
 	putenv(out);
@@ -67,7 +70,7 @@ rand_checkSeed(void)
 	assert((sizeof(now) + sizeof(pid)) == 8);
 	if (!(p = getenv("RANDSEED"))) return (-1);
 	outlen = sizeof(buf);
-	if (base64_decode(p, strlen(p), buf, &outlen)) return (-2);
+	if (base64_decode(p, strlen(p), buf, &outlen) != CRYPT_OK) return (-2);
 	if (outlen != 8 + SEEDLEN) return (-3);
 	mangle(buf + 8, SEEDLEN, buf, 8);
 	memcpy(&now, buf, 4);
@@ -107,7 +110,7 @@ rand_getPrng(prng_state **p)
  * This random number generator is fast and strong.
  */
 void
-rand_getBytes(u8 *buf, int len)
+rand_getBytes(u8 *buf, unsigned int len)
 {
 	rand_setupPrng(0, 0);
 
@@ -126,6 +129,10 @@ rand_getBytes(u8 *buf, int len)
  *
  * This generator uses yarrow which is a CTR encryption of a random
  * seed using AES.
+ *
+ * We should switch to Fortuna at some point because Yarrow has been shown
+ * to have some vulnerabilities and is no longer recomended for long term
+ * use --ob
  */
 static void
 rand_setupPrng(u8 *seed, int len)
@@ -143,7 +150,7 @@ rand_setupPrng(u8 *seed, int len)
 
 	if (!seed) {
 		seed = buf;
-		len = rng_get_seedbytes(seed, sizeof(buf), 0);
+		len = rng_get_bytes(seed, sizeof(buf), 0);
 		assert(len == sizeof(buf));
 	}
 	ret = prng_descriptor[wprng].add_entropy(seed, len, &prng);
@@ -156,11 +163,12 @@ rand_setupPrng(u8 *seed, int len)
 }
 
 static void
-mangle(u8 *rand, int rlen, u8 *buf, int len)
+mangle(u8 *rand, unsigned int rlen, u8 *buf, int len)
 {
 	int	cipher = register_cipher(&rijndael_desc);
 	long	blklen;
-	int	i;
+	unsigned int	i;
+	int	err;
 	symmetric_CTR	ctr;
 	u8	sym_IV[MAXBLOCKSIZE];
 	u8	skey[32];
@@ -175,8 +183,9 @@ mangle(u8 *rand, int rlen, u8 *buf, int len)
 	for (i = 0; i < rlen; i++) skey[i] = rand[i];
 	for (; i < sizeof(skey); i++) skey[i] = key[i - rlen];
 
-	if (ctr_start(cipher, sym_IV, skey, sizeof(skey), 0, &ctr)) {
-		fprintf(stderr, "crypto mangle: %s\n", crypt_error);
+	if ((err = ctr_start(cipher, sym_IV, skey, sizeof(skey),
+	    0, CTR_COUNTER_LITTLE_ENDIAN, &ctr)) != CRYPT_OK) {
+		fprintf(stderr, "crypto mangle: %s\n", error_to_string(err));
 		exit(1);
 	}
 	ctr_encrypt(buf, buf, len, &ctr);

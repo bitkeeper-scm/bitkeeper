@@ -19,6 +19,7 @@
 #define LTC_EXPORT
 #endif
 
+#if 0
 /* you can change how memory allocation works ... */
 LTC_EXPORT void * LTC_CALL XMALLOC(size_t n);
 LTC_EXPORT void * LTC_CALL XREALLOC(void *p, size_t n);
@@ -35,6 +36,8 @@ LTC_EXPORT clock_t LTC_CALL XCLOCK(void);
 LTC_EXPORT void * LTC_CALL XMEMCPY(void *dest, const void *src, size_t n);
 LTC_EXPORT int   LTC_CALL XMEMCMP(const void *s1, const void *s2, size_t n);
 LTC_EXPORT void * LTC_CALL XMEMSET(void *s, int c, size_t n);
+
+#endif
 
 /* type of argument checking, 0=default, 1=fatal and 2=error+continue, 3=nothing */
 #ifndef ARGTYPE

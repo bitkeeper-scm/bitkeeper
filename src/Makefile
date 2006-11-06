@@ -181,7 +181,7 @@ LOCALSCR= build \
 	www/document_plain.png www/folder.png www/repo.png
 PSCR	= t/doit t/guitest
 PROGS	= hidestring libc/mtst$(EXE)
-LIBS	= libc/libc.a zlib/libz.a tomcrypt/libtomcrypt.a
+LIBS	= libc/libc.a zlib/libz.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic
@@ -189,7 +189,7 @@ ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc -Izlib
+CPPFLAGS= -Ilibc -Izlib -Itommath -Itomcrypt/src/headers
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -214,7 +214,7 @@ export	GET
 default:
 	bk cat BUILD.txt
 
-SUBDIRS = libc tomcrypt zlib
+SUBDIRS = libc tommath tomcrypt zlib
 
 
 all: $(ALL)
@@ -311,6 +311,7 @@ nonet nonet_test localtest:
 	BK_NONET=YES PREFER_RSH=YES $(MAKE) realtest
 
 realtest: $(ALL) t/doit
+	-cd gui/tcltk && $(MAKE) clobber
 	-./bk get -qS t/setup win32/t/win32_common t/x.chk_env
 	-./bk -rt get -qS 't.*'
 	cd t && ./doit -i -f

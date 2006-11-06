@@ -84,8 +84,14 @@ case "X`uname -s`" in
 		;;
 	XIRIX*)
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
+		RANLIB="touch"
+		export RANLIB
 		;;
 	XLinux) CCXTRA=-DHAVE_GMTOFF
+		test "x`uname -m`" = xx86_64 && {
+			PATH=/usr/gnu/bin:$PATH
+			export PATH
+		}
 		;;
 	XNetBSD)
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC"
@@ -97,10 +103,15 @@ case "X`uname -s`" in
 		XLIBS="-lsocket"
 		export XLIBS
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
+		RANLIB="touch"
+		export RANLIB
 		;;
 	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
 		export XLIBS
 		CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
+		test X`uname -p` = Xi386 && {
+			CCXTRA="$CCXTRA -DLTC_NO_ASM"
+		}
 		;;
 	XOSF1)
 		CC=gcc

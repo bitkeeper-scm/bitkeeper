@@ -4,6 +4,11 @@ bk upgrade -f 2>ERR && {
 	echo should have failed
 	exit 1
 }
+grep -q "No upgrade for the arch.*found" ERR || {
+	echo skipped
+	exit 0
+}
+
 grep -q "valid commercial license" ERR || {
 	echo wrong error message
 	cat ERR

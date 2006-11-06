@@ -1,6 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
-#include "tomcrypt/mycrypt.h"
+#include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 
 #define	LOG_STDERR	(char *)1

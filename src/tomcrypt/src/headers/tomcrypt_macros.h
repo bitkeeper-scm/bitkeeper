@@ -78,9 +78,9 @@ asm __volatile__ (               \
 
 #define LOAD32H(x, y)          \
 asm __volatile__ (             \
-   "movl (%2),%0\n\t"          \
+   "movl (%1),%0\n\t"          \
    "bswapl %0\n\t"             \
-   :"=r"(x): "0"(x), "r"(y));
+   :"=r"(x): "r"(y));
 
 #else
 

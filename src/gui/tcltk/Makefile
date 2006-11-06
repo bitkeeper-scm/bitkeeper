@@ -1,5 +1,6 @@
 HERE	:= $(shell pwd)
 OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
+BKROOT	:= $(shell bk root)
 ifeq "$(OSTYPE)" "msys"
 	S := win
 	EXE := .exe
@@ -114,20 +115,22 @@ bin/tclsh$(EXE): tcl/$S/Makefile
 	rm -rf bin/tclsh$(EXE) lib/tcl*
 	cd tcl/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
-	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
+	    XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tcl8.4/tcltest1.0
 	mv bin/tclsh* bin/tclsh$(EXE)
 	$(STRIP) bin/tclsh$(EXE)
 	if [ "X$(BUILDAQUA)" != X ] ; then \
-		$(MAKE) -C tcl/macosx embedded ; \
+		$(MAKE) \
+		    XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
+		    -C tcl/macosx embedded ; \
 	fi
 
 bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	rm -rf bin/bkgui$(EXE) lib/tk*
 	cd tk/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
-	    XLIBS=../../../../tomcrypt/libtomcrypt.a \
+	    XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tk8.4/images
 	cd lib/tcl8.4/encoding/; \

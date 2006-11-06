@@ -1,5 +1,5 @@
 #include "system.h"
-#include "tomcrypt/mycrypt.h"
+#include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 
 void

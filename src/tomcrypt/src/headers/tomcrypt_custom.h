@@ -101,16 +101,17 @@
 /* ---> Symmetric Block Ciphers <--- */
 #ifndef LTC_NO_CIPHERS
 
-#define BLOWFISH
-#define RC2
-#define RC5
-#define RC6
-#define SAFERP
+// #define BLOWFISH
+// #define RC2
+// #define RC5
+// #define RC6
+// #define SAFERP
 #define RIJNDAEL
-#define XTEA
+// #define XTEA
+
 /* _TABLES tells it to use tables during setup, _SMALL means to use the smaller scheduled key format
  * (saves 4KB of ram), _ALL_TABLES enables all tables during setup */
-#define TWOFISH
+// #define TWOFISH
 #ifndef LTC_NO_TABLES
    #define TWOFISH_TABLES
    /* #define TWOFISH_ALL_TABLES */
@@ -119,14 +120,14 @@
 #endif
 /* #define TWOFISH_SMALL */
 /* DES includes EDE triple-DES */
-#define DES
-#define CAST5
-#define NOEKEON
-#define SKIPJACK
-#define SAFER
-#define KHAZAD
-#define ANUBIS
-#define ANUBIS_TWEAK
+// #define DES
+// #define CAST5
+// #define NOEKEON
+// #define SKIPJACK
+// #define SAFER
+// #define KHAZAD
+// #define ANUBIS
+// #define ANUBIS_TWEAK
 
 #endif /* LTC_NO_CIPHERS */
 
@@ -135,16 +136,16 @@
 #ifndef LTC_NO_MODES
 
 #define CFB
-#define OFB
-#define ECB
-#define CBC
+// #define OFB
+// #define ECB
+// #define CBC
 #define CTR
 
 /* F8 chaining mode */
-#define LTC_F8_MODE
+// #define LTC_F8_MODE
 
 /* LRW mode */
-#define LRW_MODE
+// #define LRW_MODE
 #ifndef LTC_NO_TABLES
    /* like GCM mode this will enable 16 8x128 tables [64KB] that make
     * seeking very fast.  
@@ -157,19 +158,19 @@
 /* ---> One-Way Hash Functions <--- */
 #ifndef LTC_NO_HASHES 
 
-#define CHC_HASH
-#define WHIRLPOOL
-#define SHA512
-#define SHA384
-#define SHA256
-#define SHA224
-#define TIGER
+// #define CHC_HASH
+// #define WHIRLPOOL
+// #define SHA512
+// #define SHA384
+// #define SHA256
+// #define SHA224
+// #define TIGER
 #define SHA1
 #define MD5
-#define MD4
-#define MD2
-#define RIPEMD128
-#define RIPEMD160
+// #define MD4
+// #define MD2
+// #define RIPEMD128
+// #define RIPEMD160
 
 #endif /* LTC_NO_HASHES */
 
@@ -177,9 +178,9 @@
 #ifndef LTC_NO_MACS
 
 #define HMAC
-#define OMAC
-#define PMAC
-#define PELICAN
+// #define OMAC
+// #define PMAC
+// #define PELICAN
 
 #if defined(PELICAN) && !defined(RIJNDAEL)
    #error Pelican-MAC requires RIJNDAEL
@@ -187,14 +188,14 @@
 
 /* ---> Encrypt + Authenticate Modes <--- */
 
-#define EAX_MODE
+// #define EAX_MODE
 #if defined(EAX_MODE) && !(defined(CTR) && defined(OMAC))
    #error EAX_MODE requires CTR and OMAC mode
 #endif
 
-#define OCB_MODE
-#define CCM_MODE
-#define GCM_MODE
+// #define OCB_MODE
+// #define CCM_MODE
+// #define GCM_MODE
 
 /* Use 64KiB tables */
 #ifndef LTC_NO_TABLES
@@ -223,17 +224,17 @@
 #define SPRNG
 
 /* The RC4 stream cipher */
-#define RC4
+// #define RC4
 
 /* Fortuna PRNG */
-#define FORTUNA
+// #define FORTUNA
 /* reseed every N calls to the read function */
 #define FORTUNA_WD    10
 /* number of pools (4..32) can save a bit of ram by lowering the count */
 #define FORTUNA_POOLS 32
 
 /* Greg's SOBER128 PRNG ;-0 */
-#define SOBER128
+// #define SOBER128
 
 /* the *nix style /dev/random device */
 #define DEVRANDOM
@@ -246,7 +247,7 @@
 #ifndef LTC_NO_MATH
 
 /* LibTomMath */
-/* #define LTM_DESC */
+#define LTM_DESC
 
 /* TomsFastMath */
 /* #define TFM_DESC */
@@ -263,10 +264,10 @@
 /* #define MKAT */ 
 
 /* Digital Signature Algorithm */
-#define MDSA
+// #define MDSA
 
 /* ECC */
-#define MECC
+// #define MECC
 
 #if defined(TFM_DESC) && defined(MECC)
    #define MECC_ACCEL
@@ -284,7 +285,7 @@
 #ifndef LTC_NO_PKCS
 
 #define PKCS_1
-#define PKCS_5
+// #define PKCS_5
 
 /* Include ASN.1 DER (required by DSA/RSA) */
 #define LTC_DER

@@ -8,7 +8,7 @@
 
 #include "system.h"
 #include "sccs.h"
-#include "tomcrypt/mycrypt.h"
+#include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 
 private	int	chk_permissions(void);
@@ -260,6 +260,7 @@ chk_id(void)
 	unsigned long	outlen;
 	time_t	t = time(0);
 	FILE	*f;
+	int	err;
 
 	if (exists(REPO_ID)) return;	/* validate existing ID?? */
 	unless (f = fopen(REPO_ID, "w")) return;	/* no write perms? */
@@ -283,8 +284,8 @@ chk_id(void)
 	rand_getBytes(buf, 3);
 
 	outlen = sizeof(rand);
-	if (base64_encode(buf, 3, rand, &outlen)) {
-		fprintf(stderr, "chk_id: %s\n", crypt_error);
+	if ((err =base64_encode(buf, 3, rand, &outlen)) != CRYPT_OK) {
+		fprintf(stderr, "chk_id: %s\n", error_to_string(err));
 		exit(1);
 	}
 	assert(outlen < sizeof(rand));

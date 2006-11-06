@@ -170,7 +170,7 @@ static unsigned long rng_fake(unsigned char *buf, unsigned long len)
   @param callback  Pointer to void function to act as "callback" when RNG is slow.  This can be NULL
   @return Number of octets read
 */
-unsigned long rng_get_seedbytes(unsigned char *buf, unsigned long len,
+unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
                             void (*callback)(void))
 {
    int x = 0;

@@ -4,7 +4,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "bkd.h"
-#include "tomcrypt/mycrypt.h"
+#include "tomcrypt.h"
 
 #define	SEND_SUCCESS	0
 #define	SEND_FAILURE	1
@@ -47,12 +47,13 @@ str2base64(const char *s)
 	long	len, len2;
 	char	*buf;
 	unsigned char *p;
+	int	err;
 
 	len = strlen(s);
 	len2 = (4 * ((len + 2) / 3)) + 1;
 	buf = p = malloc(len2);
-	if (base64_encode(s, len, buf, &len2)) {
-		fprintf(stderr, "%s", crypt_error);
+	if ((err = base64_encode(s, len, buf, &len2)) != CRYPT_OK) {
+		fprintf(stderr, "%s", error_to_string(err));
 		exit(1);
 	}
   	return (buf);

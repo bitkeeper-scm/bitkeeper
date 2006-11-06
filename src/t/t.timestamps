@@ -1,6 +1,11 @@
 # Copyright (c) 2006 BitMover
 # %K%
 
+test "$PLATFORM" = WIN32 && {
+    echo $N XXX waiting for Oscar to write bk touch .....................OK
+    exit 0
+}
+
 _timediff() {
 	perl -e '@x=stat "'"$1"'";@y=stat "'"$2"'";print $x[9]-$y[9],"\n"'
 }

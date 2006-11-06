@@ -3,7 +3,7 @@
 #include "range.h"
 #include "bkd.h"
 #include "cmd.h"
-#include "tomcrypt/mycrypt.h"
+#include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 
 #define	BK "bk"
@@ -18,6 +18,7 @@ jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
 int	cmdlog_flags;
 int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
+ltc_math_descriptor	ltc_mp;
 
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
@@ -83,6 +84,7 @@ main(int ac, char **av, char **env)
 	char	*p, *prog;
 	char	sopts[30];
 
+	ltc_mp = ltm_desc;
 	for (i = 3; i < 20; i++) close(i);
 	reserveStdFds();
 	spawn_preHook = bk_preSpawnHook;
