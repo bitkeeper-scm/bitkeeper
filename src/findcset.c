@@ -18,6 +18,8 @@ private void	mkDeterministicKeys(void);
 private	int	openTags(char *tagfile);
 private	char *	readTag(time_t *tagDate);
 private	void	closeTags(void);
+private int	do_patch(sccs *s, delta *d, char *tag,
+		    char *tagparent, FILE *out);
 
 private	delta	*list, *freeme, **sorted;
 private	char	**flist, **keylist;
@@ -639,9 +641,11 @@ typedef struct {
 	MDBM	*db;
 	MDBM	*csetComment;
 	FILE	*patch;
+	delta	*tip;
 	sum_t	sum;
 	int	rev;
 	char	parent[MAXKEY];
+	char	tagparent[MAXKEY];
 	char	patchFile[MAXPATH];
 	sccs	*cset;
 	int	date;
@@ -668,7 +672,6 @@ mkCset(mkcs_t *cur, delta *d)
 	char	dkey[MAXKEY];
 	char	dline[2 * MAXKEY + 4];
 	char	**lines;
-	int	prs_flags = (PRS_PATCH|SILENT);
 	int	i;
 	int	added;
 
@@ -742,7 +745,6 @@ mkCset(mkcs_t *cur, delta *d)
 	e->added = added;
 	e->sum = cur->sum;
 //  fprintf(stderr, "SUM=%u\n", e->sum);
-
 	/* Some hacks to get sccs_prs to do some work for us */
 	cur->cset->rstart = cur->cset->rstop = e;
 	if (cur->cset->tree->pathname && !e->pathname) {
@@ -753,7 +755,7 @@ mkCset(mkcs_t *cur, delta *d)
 		e->zone = cur->cset->tree->zone;
 		e->flags |= D_DUPZONE;
 	}
-	sprintf(dkey, "1.%u", cur->rev++);
+	sprintf(dkey, "1.%u", ++cur->rev);
 	assert(!e->rev);
 	e->rev = strdup(dkey);
 
@@ -772,7 +774,7 @@ mkCset(mkcs_t *cur, delta *d)
 	fputs(cur->parent, cur->patch);
 	fputs("\n", cur->patch);
 	sccs_sdelta(cur->cset, e, cur->parent);
-	if (sccs_prs(cur->cset, prs_flags, 0, NULL, cur->patch)) exit(1);
+	if (do_patch(cur->cset, e, 0, 0, cur->patch)) exit(1);
 	sortLines(lines, 0);
 	fputs("\n0a0\n", cur->patch); /* Fake diff header */
 	EACH(lines) {
@@ -781,6 +783,63 @@ mkCset(mkcs_t *cur, delta *d)
 	}
 	fputs("\n", cur->patch);
 	freeLines(lines, free);
+	if (cur->tip) sccs_freetree(cur->tip);
+	cur->tip = e;
+}
+
+private void
+mkTag(mkcs_t *cur, char *tag)
+{
+	delta	*e = calloc(sizeof(delta), 1);
+	char	dkey[MAXKEY];
+	char	*tagparent = cur->tagparent[0] ? cur->tagparent : 0;
+
+	/*
+	 * Set date/user/host to match delta "d", the last delta.
+	 * The person who make the last delta is likely to be the person
+	 * making the cset.
+	 */
+	assert(cur->tip);	/* tagging something */
+	fix_delta(cur->tip, e, -1);
+
+	/* More into 'e' from sccs * and by hand. */
+	e = sccs_dInit(e, 'R', cur->cset, 1);
+	e->comments = 0;
+
+	/* Some hacks to get sccs_prs to do some work for us */
+	cur->cset->rstart = cur->cset->rstop = e;
+	if (cur->cset->tree->pathname && !e->pathname) {
+		e->pathname = cur->cset->tree->pathname;
+		e->flags |= D_DUPPATH;
+	}
+	if (cur->cset->tree->zone && !e->zone) {
+		e->zone = cur->cset->tree->zone;
+		e->flags |= D_DUPZONE;
+	}
+	sprintf(dkey, "1.%u", cur->rev);
+	assert(!e->rev);
+	e->rev = strdup(dkey);
+
+	unless (cur->date < e->date) {
+		int	fudge = (cur->date - e->date) + 1;
+
+		e->date += fudge;
+		e->dateFudge += fudge;
+	}
+	cur->date = e->date;
+	e->symGraph = 1;
+	e->symLeaf = 1;
+
+	/*
+	 * All the data has been faked into place.  Now generate a
+	 * patch header (parent key, prs entry), patch diff, blank line.
+	 */
+	fputs(cur->parent, cur->patch);
+	fputs("\n", cur->patch);
+	if (do_patch(cur->cset, e, tag, tagparent, cur->patch)) exit(1);
+	fputs("\n\n", cur->patch);
+	sccs_sdelta(cur->cset, e, cur->tagparent);
+	sccs_freetree(e);
 }
 
 /*
@@ -865,7 +924,7 @@ isBreakPoint(time_t now, delta *d)
 private	void
 findcset(void)
 {
-	int	i, j;
+	int	j;
 	delta	*d = 0, *previous;
 	datum	key, val;
 	char	*p;
@@ -874,7 +933,6 @@ findcset(void)
 	time_t	now, tagDate = 0;
 	char	*nextTag;
 	int	ret;
-	char	**syms = 0;
 	int	skip = 0;
 	mkcs_t  cur;
 	int     flags = 0;
@@ -885,8 +943,10 @@ findcset(void)
 	cur.csetComment = mdbm_mem();
 	cur.sum = 0;
 	cur.parent[0] = 0;
-	cur.rev = 2;
+	cur.tagparent[0] = 0;
+	cur.rev = 1;
 	cur.date = 0;
+	cur.tip = 0;
 	bktmp(cur.patchFile, "cpatch");
 	sprintf(buf, "bk _adler32 > %s", cur.patchFile);
 	unless (cur.patch = popen(buf, "w")) {
@@ -939,9 +999,7 @@ findcset(void)
 				mkCset(&cur, previous);
 				while (nextTag && tagDate >= previous->date &&
 				    tagDate < d->date) {
-					syms = addLine(syms,
-					   aprintf("%d %s",
-					       cur.rev-1, nextTag));
+					mkTag(&cur, nextTag);
 					nextTag = readTag(&tagDate);
 				}
 				if (isBreakPoint(now, d)) goto done;
@@ -982,10 +1040,11 @@ findcset(void)
 	if (isBreakPoint(now, d)) goto done;
 	mkCset(&cur, d);
 	while (nextTag && tagDate >= d->date) {
-		syms = addLine(syms, aprintf("%d %s", cur.rev-1, nextTag));
+		mkTag(&cur, nextTag);
 		nextTag = readTag(&tagDate);
 	}
 done:	freeComment(cur.csetComment);
+	if (cur.tip) sccs_freetree(cur.tip);
 	fputs("\001 End\n", cur.patch);
 	pclose(cur.patch);
 	sccs_free(cur.cset);
@@ -998,13 +1057,6 @@ done:	freeComment(cur.csetComment);
 	rename("RESYNC/SCCS/s.ChangeSet", "SCCS/s.ChangeSet");
 	system("rm -rf RESYNC");
 	unlink(cur.patchFile);
-	EACH (syms) {
-		p = strchr(syms[i], ' ');
-		*p++ = 0;
-		sprintf(buf, "-r1.%s", syms[i]); /* rev */
-		sys("bk", "tag", "-q", buf, p, SYS);
-	}
-	freeLines(syms, free);
 }
 
 /*
@@ -1170,4 +1222,73 @@ closeTags(void)
 {
 	if (tf) fclose(tf);
 	tf = 0;
+}
+
+/*
+ * Lifted from slib.c and modified as we are synthesizing a patch
+ * and don't have a real sfile.  Old method was to fake the parts
+ * needed for sccs_prs and do_patch to work; new way is to just
+ * output the patch here.
+ */
+
+private int
+do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
+{
+	int	i;	/* used by EACH */
+	char	type;
+
+	if (!d) return (0);
+	type = d->type;
+	if ((d->type == 'R') && d->parent && streq(d->rev, d->parent->rev)) {
+	    	type = 'M';
+	}
+
+	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
+	    type, d->rev, d->sdate,
+	    d->zone ? d->zone : "",
+	    d->user,
+	    d->hostname ? "@" : "",
+	    d->hostname ? d->hostname : "",
+	    d->added, d->deleted);
+
+	/*
+	 * Order from here down is alphabetical.
+	 */
+	if (d->csetFile) fprintf(out, "B %s\n", d->csetFile);
+	if (d->flags & D_CSET) fprintf(out, "C\n");
+	if (d->dangling) fprintf(out, "D\n");
+	EACH(d->comments) fprintf(out, "c %s\n", d->comments[i]);
+	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
+	assert(!d->include);
+	if (d->flags & D_CKSUM) {
+		fprintf(out, "K %u\n", d->sum);
+	}
+	assert(!d->merge);
+	if (d->pathname) fprintf(out, "P %s\n", d->pathname);
+	if (d->random) fprintf(out, "R %s\n", d->random);
+	if (tag) {
+		fprintf(out, "S %s\n", tag);
+		if (d->symGraph) fprintf(out, "s g\n");
+		if (d->symLeaf) fprintf(out, "s l\n");
+		if (tagparent) {
+			fprintf(out, "s %s\n", tagparent);
+		}
+		assert (!d->mtag);
+	}
+	if (d->flags & D_TEXT) {
+		if (d->text) {
+			EACH(d->text) {
+				fprintf(out, "T %s\n", d->text[i]);
+			}
+		} else {
+			fprintf(out, "T\n");
+		}
+	}
+	assert (!d->exclude);
+	if (d->flags & D_XFLAGS) {
+		assert((d->xflags & X_EOLN_UNIX) == 0);
+		fprintf(out, "X 0x%x\n", d->xflags);
+	}
+	fprintf(out, "------------------------------------------------\n");
+	return (0);
 }
