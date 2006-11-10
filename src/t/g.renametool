@@ -12,10 +12,10 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
-OUT=$HERE/out
-RC=`bk dotbk`/rename.rc
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/rename.rc"
 
 echo $N Create initial repository ...................................$NL
 commercial project
@@ -26,9 +26,9 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
 echo $N Create some data ............................................$NL
-cd $HERE/project/BitKeeper/etc
-mkdir $HERE/project/src
-cd $HERE/project/src
+cd "$HERE/project/BitKeeper/etc"
+mkdir "$HERE/project/src"
+cd "$HERE/project/src"
 cat > foo1 <<EOF
 Test File %W%
 stuff
@@ -42,28 +42,28 @@ cp foo1 foo3
 bk ci $Q -i foo1 foo2 foo3 
 if [ ! -f SCCS/s.foo1 ]; then echo failed to create history; exit 1; fi
 bk commit $Q -y"test of renametool"
-DIFF=$HERE/export.diff.$$
-P1=$HERE/project
-P2=$HERE/project2
-cd $HERE
-bk clone $Q $P1 $P2
-cd $P2/src
+DIFF="$HERE/export".diff.$$
+P1="$HERE/project"
+P2="$HERE/project2"
+cd "$HERE"
+bk clone $Q "$P1" "$P2"
+cd "$P2/src"
 bk mv foo1 bar1
 bk commit $Q -y"test of renametool2"
-cd $P1
+cd "$P1"
 bk -r edit > /dev/null 2>&1
-cd $P2
+cd "$P2"
 bk -r edit > /dev/null 2>&1
-cd $HERE
-bk treediff project project2 > $DIFF
-cd $P1
+cd "$HERE"
+bk treediff project project2 > "$DIFF"
+cd "$P1"
 bk -r clean > /dev/null 2>&1
-cd $P2
+cd "$P2"
 bk -r clean > /dev/null 2>&1
 echo OK
 
 echo $N Simple start up and exit.....................................$NL
-cd $P1
+cd "$P1"
 bk get $Q src/foo1
 bk get $Q src/foo2
 # renametool reads its list of files from stdin, so we need to specify
@@ -74,13 +74,13 @@ after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 echo "src/foo1
 
-src/foo2" | bk guitest --script test_script renametool >$OUT 2>&1
+src/foo2" | bk guitest --script test_script renametool >"$OUT" 2>&1
 err=$?
 if [ $err -ne 0 ] ; then echo "failed" ; exit 1 ; fi
 echo OK
 
 echo $N Create dotbk/rename.rc ......................................$NL
-test -f $RC && rm -f $RC
+test -f "$RC" && rm -f "$RC"
 # renametool reads its list of files from stdin, so we need to specify
 # our test script as a file
 cat > test_script <<'EOF'
@@ -89,16 +89,16 @@ after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 echo "src/foo1
 
-src/foo2" | bk guitest --script test_script renametool >$OUT 2>&1
+src/foo2" | bk guitest --script test_script renametool >"$OUT" 2>&1
 err=$?
 if [ $err -ne 0 ] ; then echo "failed" ; exit 1 ; fi
-test -f $RC || { echo "failed"; exit 1; }
+test -f "$RC" || { echo "failed"; exit 1; }
 echo OK
 
 echo $N fix for incr --1 \(More conflicts than will fit in listbox\)...$NL
 # this test assumes that gc(rename.listHeight) is 8; it creates 9
 # name conflicts which used to cause an error 
-cd $P1
+cd "$P1"
 bk get $Q src/foo1
 bk get $Q src/foo2
 bk get $Q src/foo3
@@ -134,7 +134,7 @@ src2/foo5
 src2/foo6
 src2/foo7
 src2/foo8
-src2/foo9" | bk guitest --script test_script renametool >$OUT 2>&1
+src2/foo9" | bk guitest --script test_script renametool >"$OUT" 2>&1
 err=$?
-if [ $err -ne 0 ] ; then echo "failed" ; cat $OUT ; exit 1 ; fi
+if [ $err -ne 0 ] ; then echo "failed" ; cat "$OUT" ; exit 1 ; fi
 echo OK

@@ -7,7 +7,7 @@ test "$PLATFORM" != "WIN32" -a `bk gethost -r` != "freebsd.bitmover.com" && {
 }
 
 echo $N Test base64 encoder/decoder .................................$NL
-bin=`bk bin`
+bin="`bk bin`"
 for f in $bin/t/t.[a-f]*
 do	test -f $f || continue
 	b=`basename $f`

@@ -78,14 +78,14 @@ echo OK
 cores
 bk -r check -a
 echo $N Save a tarball of the repository ............................$NL
-cd $HERE
+cd "$HERE"
 rm -f project/BitKeeper/log/repo_id
 tar cf SAVE project 2> /dev/null
 echo OK
 
 
 echo $N Create a file w/ no conflict for completeness ...............$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -93,7 +93,7 @@ cd project
 echo "No conflicts" > no_conflicts
 bk new $Q no_conflicts
 bk commit $Q -ywhatever
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -t $Q ../project
 if [ ! -f SCCS/s.no_conflicts ]
 then	echo failed to propogate no_conflicts; exit 1
@@ -101,7 +101,7 @@ fi
 echo OK
 
 echo $N Rename a file to a no conflict case for completeness ........$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -109,15 +109,15 @@ cd project
 echo foo > no_conflicts
 bk new $Q no_conflicts
 bk commit $Q -ywhatever2
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -t $Q ../project
 # Rename the case orientation only, this test correctness on win32
-cd $HERE/project
+cd "$HERE/project"
 bk clean $Q no_conflicts
 mv SCCS/s.no_conflicts SCCS/s.tmp
 bk mv tmp no_Conflicts
 bk commit $Q -ywhatever2
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -t $Q ../project
 bk sfiles -g | grep -q "no_Conflicts"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -128,7 +128,7 @@ echo OK
 # -------------------- create with gfile conflict -------------------
 
 echo $N Create with local gfile, no sfile ...........................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -136,10 +136,10 @@ cd project
 echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-cd $HERE/copy
+cd "$HERE/copy"
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 bk pull -R -t $Q ../project 
-cd $HERE
+cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
@@ -396,7 +396,7 @@ echo OK
 # -------------------- rename with gfile conflict -------------------
 
 echo $N Rename with local gfile, no sfile ...........................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -405,10 +405,10 @@ echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
 bk mv OLDNAME 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-cd $HERE/copy
+cd "$HERE/copy"
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
-bk pull -R -t $Q $HERE/project
-cd $HERE
+bk pull -R -t $Q "$HERE/project"
+cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
@@ -599,7 +599,7 @@ echo OK
 # ------------ create with sfile w/ no pending deltas conflict -------------
 
 echo $N Remote create, local sfile w/ no pending deltas .............$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -607,19 +607,19 @@ cd project
 echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-cd $HERE/copy
+cd "$HERE/copy"
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 # Remote this to make it the pending deltas case
 bk commit $Q -ywhatever
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -R -t $Q ../project
-cd $HERE
+cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
-cd $HERE
+cd "$HERE"
 bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
 rl
 y
@@ -652,7 +652,7 @@ fi
 echo OK
 
 echo $N '  resolve by removing remote file ...........................'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
@@ -687,7 +687,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 cd copy
@@ -719,7 +719,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
@@ -737,7 +737,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
@@ -756,7 +756,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
@@ -774,7 +774,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming remote file ...........................'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
@@ -864,7 +864,7 @@ echo OK
 # ------------ create with sfile w/ pending deltas conflict -------------
 
 echo $N Remote create, local sfile w/ pending deltas .. .............$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -872,16 +872,16 @@ cd project
 echo "I am the project file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-cd $HERE/copy
+cd "$HERE/copy"
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
-bk pull -R -t $Q $HERE/project
-cd $HERE
+bk pull -R -t $Q "$HERE/project"
+cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
-cd $HERE
+cd "$HERE"
 bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 rl
 y
@@ -912,7 +912,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming local file (should error) .............'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 cd copy
@@ -935,7 +935,7 @@ echo OK
 # ------------ rename with sfile w/ no pending deltas conflict -------------
 
 echo $N Remote rename, local sfile w/ no pending deltas .............$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -944,17 +944,17 @@ echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
 bk mv OLDNAME 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-cd $HERE/copy
+cd "$HERE/copy"
 echo "I am the copy file" > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-bk pull -R -t $Q $HERE/project
-cd $HERE
+bk pull -R -t $Q "$HERE/project"
+cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
-cd $HERE
+cd "$HERE"
 bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 rl
 y
@@ -984,7 +984,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 cd copy
@@ -1013,7 +1013,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
@@ -1031,7 +1031,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
@@ -1050,7 +1050,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
@@ -1068,7 +1068,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming remote file ...........................'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
@@ -1153,7 +1153,7 @@ echo OK
 # ------- Remote create with local conflict which gets renamed --------------
 
 echo $N Create a file w/ tmp conflict which gets renamed away .......$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -1162,8 +1162,8 @@ bk mv "A A" MOVED
 touch "A A"
 bk new $Q "A A"
 bk commit $Q -ywhatever
-cd $HERE/copy
-bk pull -R -t $Q $HERE/project
+cd "$HERE/copy"
+bk pull -R -t $Q "$HERE/project"
 # Rework the patch to be in the order we want.  We want A first and MOVED 2nd.
 cd PENDING
 FILE=`echo *`
@@ -1194,7 +1194,7 @@ then	echo takepatch failed;
 	cat -n PENDING/PATCH
 	exit 1
 fi
-cd $HERE
+cd "$HERE"
 bk resolve -t $Q copy
 if [ $? != 0 ]
 then	echo resolved did not exit 0; exit 1
@@ -1211,7 +1211,7 @@ echo OK
 # --------- Remote and local create in same location ------------------------
 
 echo $N Create a file in same pathname slot in both .................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -1224,12 +1224,12 @@ cd project
 echo Hi there, I am a conflict file > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-cd $HERE/copy
+cd "$HERE/copy"
 echo Hi there, I am a conflict file > 'B%A!#$%^&)(-_+=];,'
 bk new $Q 'B%A!#$%^&)(-_+=];,'
 bk commit $Q -ywhatever
-bk pull -R -t $Q $HERE/project
-cd $HERE
+bk pull -R -t $Q "$HERE/project"
+cd "$HERE"
 tar cf SAVE.copy copy 2> /dev/null
 if [ ! -d copy/RESYNC ]
 then	echo Failed to create resync dir in COPY
@@ -1238,7 +1238,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 cd copy
@@ -1261,7 +1261,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
@@ -1279,7 +1279,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 touch copy/GFILE
@@ -1298,7 +1298,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk resolve -t $L copy >ERRORS 2>&1 <<EOF
@@ -1316,7 +1316,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming remote file ...........................'$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf SAVE.copy
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
@@ -1395,7 +1395,7 @@ echo OK
 # -----------------------------------------------------------------------------
 
 echo $N Resolve with an edited file created after RESYNC is created..$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cp -rp project copy
@@ -1403,8 +1403,8 @@ cd project
 bk mv "A A" Z
 bk commit $S -y'A A->Z'
 cd ..
-cd $HERE/copy
-bk pull -R -t $Q $HERE/project
+cd "$HERE/copy"
+bk pull -R -t $Q "$HERE/project"
 BK_IGNORE_WRLOCK=YES bk get -e $Q "A A"
 echo modified >> "A A"
 bk resolve -t -q >../ERR 2>&1  
@@ -1468,17 +1468,17 @@ then	echo "failed to delete Z"; exit 1
 fi
 echo OK
 echo $N Do some work in Z/A A and resync ............................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk get $Q -e Z
 echo same data >> Z
 bk ci $Q -y'change as Z'
 bk commit $S -y'change as Z'
-cd $HERE/copy
+cd "$HERE/copy"
 bk get $Q -e "A A"
 echo same data >> "A A"
 bk ci $Q -y'change as A'
 bk commit $S -y'change as A'
-bk pull -R -t $Q $HERE/project
+bk pull -R -t $Q "$HERE/project"
 if [ ! -f RESYNC/SCCS/r.Z ]
 then	echo failed to create conflict for Z; exit 1
 fi

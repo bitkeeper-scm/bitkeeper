@@ -15,7 +15,7 @@
 
 echo $N Create initial repository ...................................$NL
 commercial project
-bk clone $Q $HERE/project $HERE/copy
+bk clone $Q "$HERE/project" "$HERE/copy"
 echo OK
 echo $N test rename conflict w unchecked file .......................$NL
 mkdir src
@@ -28,19 +28,19 @@ bk commit $S -yCset -S"new"
 bk clean foo.c
 bk mv foo.c zoo.c
 bk commit $S -yCset -S"rename"
-cd $HERE/copy
+cd "$HERE/copy"
 mkdir src
 cd src
 echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
-cd $HERE/project
-bk push $HERE/copy > push.out 2>&1
+cd "$HERE/project"
+bk push "$HERE/copy" > push.out 2>&1
 grep -q "pathname is used" push.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N test rename of file into directory of same name..............$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 bk clone $Q project copy
 cd project/src
@@ -48,7 +48,7 @@ bk mv bar.c tmp.c || exit 1
 mkdir bar.c
 bk mv tmp.c bar.c/bar.c || exit 1
 bk commit $S -yCset2 || exit 1
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk get $Q bar.c
 bk pull $Q || exit 1
 echo OK

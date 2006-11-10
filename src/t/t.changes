@@ -34,7 +34,7 @@ grep -q ChangeSet@1.3 XXX || {
 	exit 1
 }
 for r in 1.1 1.2 1.4
-do	
+do
 	grep -q ChangeSet@$r XXX && {
 		echo matched the $r changeset
 		cat XXX
@@ -171,13 +171,13 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check remote/local listings .................................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone
 cd project
 ls > LS
 bk new $Q LS
 BK_USER=joe bk commit $Q -yproject
-cd $HERE/clone
+cd "$HERE/clone"
 echo hi mom > mommy
 bk new $Q mommy
 BK_USER=jane bk commit $Q -yclone
@@ -197,17 +197,17 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check remote dspec listing ..................................$NL
-cd $HERE/clone
+cd "$HERE/clone"
 bk changes -qnd':I: :P: :C:' > WANT
-cd $HERE
-bk changes -qnd':I: :P: :C:' $HERE/clone > GOT
+cd "$HERE"
+bk changes -qnd':I: :P: :C:' "$HERE/clone" > GOT
 checkfiles clone/WANT GOT
 echo OK
 
 echo $N Check remote search combined with dspec .....................$NL
 # The /dev/null is because we exit so fast that the bkd can't update the
 # logs, at least that is my theory.
-cd $HERE/clone
+cd "$HERE/clone"
 bk changes -/Second/ -qnd':I: :P: :C:' ../project > GOT 2>/dev/null
 echo 1.3 second Second checkin > WANT
 checkfiles WANT GOT
@@ -215,59 +215,59 @@ echo OK
 
 echo $N Check remote key listing ....................................$NL
 bk prs -r.. -h -nd:KEY: ChangeSet | bk sort > WANT
-cd $HERE
-bk changes -k $HERE/clone | bk sort > GOT
+cd "$HERE"
+bk changes -k "$HERE/clone" | bk sort > GOT
 checkfiles clone/WANT GOT
 echo OK
 
 echo $N Check remote verbose listing ................................$NL
-cd $HERE/clone
+cd "$HERE/clone"
 bk changes -qvr+ | bk undos > WANT
-cd $HERE
-bk changes -qvr+ $HERE/clone > GOT
+cd "$HERE"
+bk changes -qvr+ "$HERE/clone" > GOT
 checkfiles clone/WANT GOT
 echo OK
 
 echo $N Check bk changes -R url1 url2 ...............................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q  clone clone2
-cd $HERE/project
-bk changes -R -k $HERE/clone > keylist1
-bk changes -R -k $HERE/clone $HERE/clone2 > keylist2
+cd "$HERE/project"
+bk changes -R -k "$HERE/clone" > keylist1
+bk changes -R -k "$HERE/clone" "$HERE/clone2" > keylist2
 checkfiles keylist1 keylist2
-cd $HERE/clone2
+cd "$HERE/clone2"
 bk lock -U
 bk edit $Q f
 echo "new" >> f
 bk delta $Q -ynew f
 bk commit $Q -ynew
-cd $HERE/project
-bk changes -R -k $HERE/clone $HERE/clone2 > keylist2
+cd "$HERE/project"
+bk changes -R -k "$HERE/clone" "$HERE/clone2" > keylist2
 cmp -s keylist1 keylist2 && { echo new key did not appear; exit 1; }
-bk prs -nhr+ -d':KEY:' $HERE/clone2/ChangeSet >> keylist1
+bk prs -nhr+ -d':KEY:' "$HERE/clone2/ChangeSet" >> keylist1
 bk sort < keylist1 > keylist1sorted
 bk sort < keylist2 > keylist2sorted
 checkfiles keylist1sorted keylist2sorted
 echo OK
 
 echo $N Check bk changes -R - .......................................$NL
-cd $HERE/clone
-bk changes -k -r+ > $HERE/K1
-cd $HERE/clone2
-bk changes -k -r+ > $HERE/K2
-cd $HERE/project
-echo $HERE/clone | bk changes -R -k - > GOT
-checkfiles GOT $HERE/K1
-( echo $HERE/clone
-  echo $HERE/clone2 ) | bk changes -R -k - | bk sort > GOT
-cat $HERE/K1 $HERE/K2 | bk sort > WANT
+cd "$HERE/clone"
+bk changes -k -r+ > "$HERE/K1"
+cd "$HERE/clone2"
+bk changes -k -r+ > "$HERE/K2"
+cd "$HERE/project"
+echo "$HERE/clone" | bk changes -R -k - > GOT
+checkfiles GOT "$HERE/K1"
+( echo "$HERE/clone"
+  echo "$HERE/clone2" ) | bk changes -R -k - | bk sort > GOT
+cat "$HERE/K1" "$HERE/K2" | bk sort > WANT
 checkfiles WANT GOT
 echo OK
 
 echo $N Check bk changes -L - .......................................$NL
 # PWD=project
-( echo $HERE/clone
-  echo $HERE/clone2 ) | bk changes -k -L - > GOT
+( echo "$HERE/clone"
+  echo "$HERE/clone2" ) | bk changes -k -L - > GOT
 bk changes -r+ -k > WANT
 checkfiles WANT GOT
 echo OK
@@ -291,7 +291,7 @@ grep -q "either '-' or URL list" ERR || {
 	echo failed
 	exit 1
 }
-cd $HERE
+cd "$HERE"
 echo + | bk changes - project 2> ERR && {
 	echo "failed (it worked)"
 	exit 1
@@ -303,12 +303,12 @@ grep -q "either '-' or URL list" ERR || {
 echo OK
 
 echo $N Check that changes -L/-R in a subdirectory works ............$NL
-cd $HERE/project
+cd "$HERE/project"
 mkdir subdir
 cd subdir
-bk changes -R -k $HERE/clone > GOT
-checkfiles $HERE/K1 GOT
-bk changes -L -k $HERE/clone > GOT
+bk changes -R -k "$HERE/clone" > GOT
+checkfiles "$HERE/K1" GOT
+bk changes -L -k "$HERE/clone" > GOT
 bk changes -r+ -k > WANT
 checkfiles WANT GOT
 echo OK
@@ -329,29 +329,29 @@ if [ "$files" != "ChangeSetfeefoobbarfoofoo" ]
 then	echo failed; exit 1;
 else	echo OK
 fi
-cd $HERE
+cd "$HERE"
 rm -rf p
 
 echo $N Demonstrate the other way they can be out of order ..........$NL
 commercial p
 touch foo
 bk new $Q foo
-cd $HERE
+cd "$HERE"
 bk clone $Q p c2
 cd c2
 touch bar
 bk new $Q bar
 bk commit $Q -yq
-cd $HERE/p
+cd "$HERE/p"
 bk commit $Q -ya
-cd $HERE/c2
+cd "$HERE/c2"
 bk pull $Q || exit 1
 files=`bk changes -r1.1.1.1,1.2 -v -d:DPN:`
 if [ "$files" != "ChangeSetfoofooChangeSetbarbar" ]
 then	echo failed; exit 1;
 else	echo OK
 fi
-cd $HERE
+cd "$HERE"
 rm -rf p
 
 echo $N Does combining restrictions work ............................$NL
@@ -374,7 +374,7 @@ checkfiles ref changes.out
 echo OK
 
 echo $N Verify changes -L works with tags ...........................$NL
-cd $HERE/clone
+cd "$HERE/clone"
 bk tag $Q -r1.2 bar
 bk changes -aL -qnd':REV: :COMMENTS: :SYMBOL:' > chgs
 cat <<EOF > expect
@@ -390,7 +390,7 @@ echo OK
 
 echo $N Change changes on a remote repository .......................$NL
 key=`bk prs -r+ -hnd:KEY: ChangeSet`
-cd $HERE
+cd "$HERE"
 key2=`bk changes -r+ -qnd:KEY: clone`
 if [ "$key" != "$key2" ]
 then	echo Remote changes failed
@@ -400,7 +400,7 @@ fi
 echo OK
 
 echo $N Demonstrate how pull -nl works ..............................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project merge
 cd merge
 bk pull $Q ../clone
@@ -433,14 +433,14 @@ test `grep -v 1971 OUT | bk sort -u` = $Y || {
 echo OK
 
 echo $N Check that changes -L -R works ..............................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone1
 cd clone1
 bk edit $Q f
 bk delta $Q -fy'clone1 delta 1' f
 bk commit $Q -y'clone1 checkin 1' || exit 1
 
-cd $HERE
+cd "$HERE"
 rm -rf clone2
 bk clone $Q project clone2 || exit 1
 cd clone2 || exit 1
@@ -454,7 +454,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Test changes -L repo1 repo2 .................................$NL
-cd $HERE/clone1
+cd "$HERE/clone1"
 bk changes -k -L ../project > p1
 bk changes -k -L ../clone2  > c1
 cat p1 c1 > WANT
@@ -463,7 +463,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Test changes -D -L repo1 repo2 ..............................$NL
-cd $HERE/clone1
+cd "$HERE/clone1"
 bk changes -k -L ../project > p1
 bk changes -k -L ../clone2  > c1
 cat p1 c1 | sort -u > WANT
@@ -472,7 +472,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Set up for include/exclude tests ............................$NL
-cd $HERE/project
+cd "$HERE/project"
 for i in man src html
 do	mkdir $i
 done
@@ -529,15 +529,15 @@ checkfiles GOT WANT
 echo OK
 
 echo $N Test a list of urls, staring with a bad and ending good .....$NL
-bk changes -r+ -ndx /sldfjsdf/some/bad/url $HERE/clone > OUT 2> ERR && {
+bk changes -r+ -ndx /sldfjsdf/some/bad/url "$HERE/clone" > OUT 2> ERR && {
 	echo failed rc=0
 	exit 1
 }
 echo OK
 
 echo $N Check exit status for changes -L no/such/repo ...............$NL
-bk clone $Q -r1.1 $HERE/project $HERE/superset
-cd $HERE/superset
+bk clone $Q -r1.1 "$HERE/project" "$HERE/superset"
+cd "$HERE/superset"
 bk changes -qL /no/such/repo > OUT 2>&1 && {
 	echo should not have exited 0
 	exit 1
@@ -562,9 +562,9 @@ grep -q "illegal, nonexistent, or not package root" OUT || {
 echo OK
 
 echo $N Check exit status for changes -L repo/with/lock .............$NL
-bk lock -wt $HERE/project > PORT &
-(cd $HERE/project; bk lock -L;)
-bk changes -qL $HERE/project > OUT 2>&1 && {
+bk lock -wt "$HERE/project" > PORT &
+(cd "$HERE/project"; bk lock -L;)
+bk changes -qL "$HERE/project" > OUT 2>&1 && {
 	echo should not have exited 0
 	cat OUT
 	bk _kill `cat PORT`
@@ -580,7 +580,7 @@ grep -q "Can't get read lock on the repository" OUT || {
 echo OK
 
 echo $N Check exit status for changes -R repo/with/lock .............$NL
-bk changes -qR $HERE/project > OUT 2>&1 && {
+bk changes -qR "$HERE/project" > OUT 2>&1 && {
 	echo should not have exited 0
 	cat OUT
 	bk _kill `cat PORT`

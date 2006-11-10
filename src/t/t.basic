@@ -34,7 +34,7 @@ do	case "$D" in
 	*) DOTS=
 	   ;;
 	esac
-	cd $HERE
+	cd "$HERE"
 	rm -rf root 
 	echo $N Create initial changeset ....................................$NL
 	commercial root
@@ -93,7 +93,7 @@ do	case "$D" in
 	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
 done
-cd $HERE
+cd "$HERE"
 rm -rf root
 
 # need license to work outside of a repository

@@ -16,11 +16,11 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 echo foo > foo
 bk new $Q foo
 bk commit $Q -yfoo
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone
 bk clone $Q project tag
 bk clone $Q project cset
-cd $HERE/project
+cd "$HERE/project"
 echo bar > bar
 bk new $Q bar
 bk commit $Q -ybar
@@ -30,7 +30,7 @@ bk commit $Q -ybar
 echo OK
 
 echo $N Try to update with a local cset .............................$NL
-cd $HERE/cset
+cd "$HERE/cset"
 echo whatever > whatever
 bk new $Q whatever
 bk commit $Q -ywhatever
@@ -43,7 +43,7 @@ grep -q 'not updating due to local' OUT || {
 echo OK
 
 echo $N Try to update with a local tag ..............................$NL
-cd $HERE/tag
+cd "$HERE/tag"
 bk tag $Q local_tag
 bk pull -u > OUT 2>&1
 grep -q 'not updating due to local' OUT || {
@@ -54,7 +54,7 @@ grep -q 'not updating due to local' OUT || {
 echo OK
 
 echo $N Try to update with a local cset and local tag ...............$NL
-cd $HERE/cset
+cd "$HERE/cset"
 bk tag $Q tag2
 bk pull -u > OUT 2>&1
 grep -q 'not updating due to local' OUT || {
@@ -65,7 +65,7 @@ grep -q 'not updating due to local' OUT || {
 echo OK
 
 echo $N Try to update successfully ..................................$NL
-cd $HERE/clone
+cd "$HERE/clone"
 bk pull -u > OUT 2>&1
 grep -q 'not updating due to local' OUT && {
 	echo Wrong error message

@@ -42,7 +42,7 @@ test $rev = '1.2' || {
 	echo failed
 	exit 1
 }
-cd $HERE
+cd "$HERE"
 bk clone $Q -r'a b' project copy || exit 1
 cd copy
 rev=`bk prs -r+ -hnd:REV: ChangeSet`
@@ -54,14 +54,14 @@ echo OK
 
 echon Try pulling files will really long lines and edited gfile ...
 bk pull $Q || exit 1
-cd $HERE/project
-LONGER=$HERE/longer
-awk 'BEGIN {for (i = 0; i < 7000; i++) printf "."; printf "\n"}' > $LONGER
+cd "$HERE/project"
+LONGER="$HERE/longer"
+awk 'BEGIN {for (i = 0; i < 7000; i++) printf "."; printf "\n"}' > "$LONGER"
 bk edit $Q foo || exit 1
-cat $LONGER > foo
+cat "$LONGER" > foo
 bk delta $Q -ylonger foo || exit 1
 bk commit $Q -ylonger || exit 1
-cd $HERE/copy
+cd "$HERE/copy"
 bk edit $Q foo || exit 1
 echo 1 > foo
 bk pull $Q 2>ERR && {

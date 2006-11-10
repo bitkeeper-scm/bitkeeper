@@ -30,7 +30,7 @@ echo Comment one file, press commit, and you should see a message about
 echo not being able to commit because all files need to be commented.
 echo Press control-L and comment the other file, then press commit twice.
 echo $N Make sure cannot commit before all files are commented ......$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy || exit 1
 cd project/src
 bk edit $Q 'foo bar' baz
@@ -38,7 +38,7 @@ echo project > 'foo bar'
 echo project > baz
 bk delta $Q -yproject 'foo bar' baz
 bk commit $Q -yproject
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk edit $Q 'foo bar' baz
 echo copy > 'foo bar'
 echo copy > baz

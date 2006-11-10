@@ -1,7 +1,7 @@
 echo $N Test Tcl encrpytion/decryption ..............................$NL
-cd $HERE
-TCLWRAP=`bk bin`/tclwrap
-test -x $TCLWRAP || {
+cd "$HERE"
+TCLWRAP="`bk bin`"/tclwrap
+test -x "$TCLWRAP" || {
 	echo failed
 	echo "$TCLWRAP not found or not an executable"
 	exit 1
@@ -27,7 +27,7 @@ echo OK
 # GCC 2.7.2. If this regression fails, you need to switch compilers
 # to GCC-2.95.3 or later.
 echo $N Test Tcl/GCC compiler interaction \(AKA format bug\) ..........$NL
-cd $HERE
+cd "$HERE"
 echo '1 1 1 1' > expected
 bk _tclsh 2>ERR >result <<'EOF'
     fconfigure stdout -translation lf

@@ -888,7 +888,7 @@ findcset(void)
 	cur.rev = 2;
 	cur.date = 0;
 	bktmp(cur.patchFile, "cpatch");
-	sprintf(buf, "bk _adler32 > %s", cur.patchFile);
+	sprintf(buf, "bk _adler32 > '%s'", cur.patchFile);
 	unless (cur.patch = popen(buf, "w")) {
 		perror("findcset");
 		exit (1);

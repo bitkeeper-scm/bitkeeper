@@ -14,16 +14,16 @@ test "X$BK_TMP" = X && {
 	exit 0
 }
 
-KEYS=`bk dotbk`/bk_keys
+KEYS="`bk dotbk`/bk_keys"
 
 echo $N Create initial repository ...................................$NL
-rm -f $KEYS
+rm -f "$KEYS"
 fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-test -f $KEYS -a ! -z $KEYS || {
+test -f "$KEYS" -a ! -z "$KEYS" || {
 	echo failed to add keys to bk_keys
 	exit 1
 }
@@ -33,14 +33,14 @@ echo $N Add a delta to be sure there are keys .......................$NL
 bk edit $Q BitKeeper/etc/config
 bk delta $Q -ywhatever BitKeeper/etc/config
 bk commit $Q -ywhatever
-test -f $KEYS -a ! -z $KEYS || {
+test -f "$KEYS" -a ! -z "$KEYS" || {
 	echo failed to add keys to bk_keys
 	exit 1
 }
 echo OK
 
 echo $N Make sure we generated the right keys in single user mode ...$NL
-bk sort < $KEYS | while read k junk
+bk sort < "$KEYS" | while read k junk
 do echo "$k"
 done > GOT
 bk -r prs -c90.. -hnd:SHORTKEY: | bk sort > WANT
@@ -53,14 +53,14 @@ cmp -s WANT GOT || {
 echo OK
 
 echo $N Make sure we can regenerate the keycache ....................$NL
-bk sort < $KEYS > WANT
-rm -f $KEYS
-bk keycache > $KEYS
-test -z $KEYS && {
+bk sort < "$KEYS" > WANT
+rm -f "$KEYS"
+bk keycache > "$KEYS"
+test -z "$KEYS" && {
 	echo failed to add keys to bk_keys
 	exit 1
 }
-bk sort < $KEYS > GOT
+bk sort < "$KEYS" > GOT
 cmp -s WANT GOT || {
 	echo failed to regenerate the same keycache
 	diff WANT GOT

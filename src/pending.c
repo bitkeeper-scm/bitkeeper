@@ -32,7 +32,7 @@ $each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\n";
 	}
 	unless (quiet) {
 		sprintf(buf,
-		    "bk prs -Yh '-d%s' - < %s | %s", dspec, tmp, pager());
+		    "bk prs -Yh '-d%s' - < '%s' | '%s'", dspec, tmp, pager());
 		system(buf);
 	}
 	unlink(tmp);

@@ -28,7 +28,7 @@ getNewRevs(char *to, char *rev, char *url)
 	touch(x_sendlog, 0660);
 
 	if (url) {
-		sprintf(buf, "bk synckeys -lk %s > '%s'", url, keysFile);
+		sprintf(buf, "bk synckeys -lk '%s' > '%s'", url, keysFile);
 		status = system(buf);
 		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
 			fprintf(stderr, "send: synckeys failed\n");
@@ -172,7 +172,7 @@ send_main(int ac,  char **av)
 			    "Nothing to send to %s, use -f to force.\n", to);
 			exit(1);
 		}
-		revArgs = aprintf("-r - < %s", keysFile);
+		revArgs = aprintf("-r - < '%s'", keysFile);
 	} else {
 		revArgs = aprintf("-r%s", rev);
 	}
@@ -189,13 +189,13 @@ send_main(int ac,  char **av)
 		patch = bktmp(0, "patch");
 		f = fopen(patch, "w");
 		assert(f);
-		out = aprintf(" >> %s", patch);
+		out = aprintf(" >> '%s'", patch);
 	}
 
 	/*
 	 * Set up wrapper
 	 */
-	if (wrapper) wrapperArgs = aprintf(" | %s/%swrap", bin, wrapper);
+	if (wrapper) wrapperArgs = aprintf(" | '%s'/%swrap", bin, wrapper);
 
 	/*
 	 * Print patch header

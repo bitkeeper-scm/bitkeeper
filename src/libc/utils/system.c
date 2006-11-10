@@ -328,10 +328,10 @@ popensystem_main(int ac, char **av)
 	int	status;
 	char	cmd[200];
 
-	sprintf(cmd, "%s -c 'exit 5' | %s -c 'exit 6'", shell(), shell());
+	sprintf(cmd, "'%s' -c 'exit 5' | '%s' -c 'exit 6'", shell(), shell());
 	f = safe_popen(cmd, "r");
 	assert(f);
-	sprintf(cmd, "%s -c 'exit 2' | %s -c 'exit 3'", shell(), shell());
+	sprintf(cmd, "'%s' -c 'exit 2' | '%s' -c 'exit 3'", shell(), shell());
 	status = safe_system(cmd);
 	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 3)) {
 		fprintf(stderr, "Failed to get correct status from system()\n");

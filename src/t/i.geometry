@@ -82,7 +82,7 @@ echo OK
 
 echo $N Revtool default size, location not specified ................$NL
 unset _BK_GEOM
-rm -f `bk dotbk`/*.rc
+rm -f "`bk dotbk`/"*.rc
 bk revtool foo
 echo OK
 

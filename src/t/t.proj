@@ -15,13 +15,13 @@
 echo $N 'bk new' of two projects from outside any project..............$NL
 commercial project1
 echo file1 > file1
-cd $HERE
+cd "$HERE"
 commercial project2
 echo file2 > file1
-cd $HERE
+cd "$HERE"
 bk new $Q project1/file1 project2/file1 
 if [ $? != 0 ]; then echo Failed - new returned an error; exit 1; fi
-cd $HERE/project1
+cd "$HERE/project1"
 if [ -f file1 -o \! -f SCCS/s.file1 ]; then
 	echo file1 should be checked in
 	exit 1
@@ -30,7 +30,7 @@ if [ `bk cat file1` != "file1" ]; then
 	echo file1 contains wrong stuff
 	exit 1
 fi
-cd $HERE/project2
+cd "$HERE/project2"
 if [ -f file1 -o \! -f SCCS/s.file1 ]; then
 	echo file1 should be checked in
 	exit 1
@@ -42,14 +42,14 @@ fi
 echo OK
 
 echo $N 'bk new' of two projects from a third project..................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project1 project2
 commercial project1
 echo file1 > file1
-cd $HERE
+cd "$HERE"
 commercial project2
 echo file2 > file1
-cd $HERE
+cd "$HERE"
 commercial project3
 echo file3 > file1
 bk new $Q ../project1/file1 ../project2/file1 
@@ -58,7 +58,7 @@ if [ ! -f file1 -o -f SCCS/s.file1 ]; then
 	echo file1 shouldn\'t be checked in
 	exit 1
 fi
-cd $HERE/project1
+cd "$HERE/project1"
 if [ -f file1 -o \! -f SCCS/s.file1 ]; then
 	echo file1 should be checked in
 	exit 1
@@ -67,7 +67,7 @@ if [ `bk cat file1` != "file1" ]; then
 	echo file1 contains wrong stuff
 	exit 1
 fi
-cd $HERE/project2
+cd "$HERE/project2"
 if [ -f file1 -o \! -f SCCS/s.file1 ]; then
 	echo file1 should be checked in
 	exit 1
@@ -79,7 +79,7 @@ fi
 echo OK
 
 echo $N 'bk prs' of two projects from outside any project..............$NL
-cd $HERE
+cd "$HERE"
 bk prs -r+ -nd ':DPN:' project1/file1 project2/file1 > out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cat > expected <<EOF
@@ -91,7 +91,7 @@ EOF
 checkfiles out expected
 echo OK
 echo $N 'bk prs' of two projects from third project....................$NL
-cd $HERE/project3
+cd "$HERE/project3"
 bk new $Q file1
 bk prs -r+ -nd ':DPN:' ../project1/file1 ../project2/file1 > out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -104,7 +104,7 @@ EOF
 checkfiles out expected
 echo OK
 echo $N 'bk delta' of two projects from outside any project ...........$NL
-cd $HERE
+cd "$HERE"
 bk edit $Q project1/file1 project2/file1
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo new1 >> project1/file1
@@ -121,7 +121,7 @@ new1" ]; then
 	echo project1/file1 contains wrong stuff
 	exit 1
 fi
-cd $HERE/project2
+cd "$HERE/project2"
 if [ -f file1 -o \! -f SCCS/s.file1 ]; then
 	echo file1 should be checked in
 	exit 1
@@ -133,7 +133,7 @@ new2" ]; then
 fi
 echo OK
 echo $N 'bk delta' of two projects from a third project ...............$NL
-cd $HERE
+cd "$HERE"
 bk edit $Q project1/file1 project2/file1
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo morenew1 >> project1/file1
@@ -141,7 +141,7 @@ echo morenew2 >> project2/file1
 cd project3
 bk delta $Q -ystuff2 ../project1/file1 ../project2/file1
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/project1
+cd "$HERE/project1"
 if [ -f file1 -o \! -f SCCS/s.file1 ]; then
 	echo file1 should be checked in
 	exit 1
@@ -152,7 +152,7 @@ morenew1" ]; then
 	echo project1/file1 contains wrong stuff
 	exit 1
 fi
-cd $HERE/project2
+cd "$HERE/project2"
 if [ -f file1 -o \! -f SCCS/s.file1 ]; then
 	echo file1 should be checked in
 	exit 1

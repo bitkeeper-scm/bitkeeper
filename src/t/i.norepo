@@ -12,7 +12,7 @@
 # Copyright (c) 2006 Oscar Bonilla <ob@bitmover.com>
 # %K%
 
-OUT=$HERE/out
+OUT="$HERE/out"
 
 echo $N Calling citool outside of a repo.............................$NL
 bk guitest citool >$OUT 2>&1 <<'EOF'

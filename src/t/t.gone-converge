@@ -22,10 +22,10 @@ export _BK_SETUP_NOGONE
 
 echo $N Create two copies of a repository ...........................$NL
 fresh_commercial project
-bk clone $Q $HERE/project $HERE/copy
+bk clone $Q "$HERE/project" "$HERE/copy"
 echo OK
 echo $N Create two different gone files .............................$NL
-cd $HERE/project/BitKeeper/etc
+cd "$HERE/project/BitKeeper/etc"
 cat > gone <<EOF
 lm@bitmover.com
 lm@work.bitmover.com
@@ -33,7 +33,7 @@ awc@etp3.bitmover.com
 EOF
 bk new $Q gone
 bk commit $Q -ywhatever
-cd $HERE/copy/BitKeeper/etc
+cd "$HERE/copy/BitKeeper/etc"
 cat > gone <<EOF
 lm@lm.bitmover.com
 beth@work.bitmover.com
@@ -43,11 +43,11 @@ bk commit $Q -ywhatever
 echo OK
 
 # Save it so we can try the other direction to run through both code paths
-cd $HERE
+cd "$HERE"
 tar cf TAR project copy
 
 echo $N Pull, should union the data and leave one file ..............$NL
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -t $Q
 bk get $Q BitKeeper/etc/gone
 if [ ! -f BitKeeper/etc/gone ]
@@ -71,10 +71,10 @@ fi
 echo OK
 
 echo $N Same thing, in opposite direction ...........................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf TAR
-cd $HERE/project
+cd "$HERE/project"
 bk pull -t $Q ../copy
 bk get $Q BitKeeper/etc/gone
 if [ ! -f BitKeeper/etc/gone ]
@@ -97,9 +97,9 @@ fi
 echo OK
 
 echo $N Paranoid - make sure the push works .........................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk push -t $Q ../copy
-cd $HERE/copy
+cd "$HERE/copy"
 bk get $Q BitKeeper/etc/gone
 if [ ! -f BitKeeper/etc/gone ]
 then	echo 'Where oh where did my little file go?'
@@ -121,17 +121,17 @@ fi
 echo OK
 
 echo $N Update both copies of the same file, should automerge .......$NL
-cd $HERE/project/BitKeeper/etc
+cd "$HERE/project/BitKeeper/etc"
 bk edit $Q gone
 echo "project@foo.com" >> gone
 bk delta $Q -yproject
 bk commit -ywhatever $Q
-cd $HERE/copy/BitKeeper/etc
+cd "$HERE/copy/BitKeeper/etc"
 bk edit $Q gone
 echo "copy@foo.com" >> gone
 bk delta $Q -ycopy
 bk commit -ywhatever $Q
-cd $HERE/copy
+cd "$HERE/copy"
 echo q | bk pull -t $Q
 if [ -f RESYNC ]
 then	echo failed to complete resync

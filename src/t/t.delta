@@ -237,12 +237,12 @@ fi #---------------------------------------------------------------
 cd ..
 rm -rf A garbage
 echo $N Make sure delta works with checkout:edit preference .........$NL
-cd $HERE
+cd "$HERE"
 rm -rf project
 commercial project
 BK_USER=one; BK_HOST=one.com.bk_regression.bk
 export BK_USER BK_HOST
-cd $HERE/project
+cd "$HERE/project"
 echo hi > hi.c
 bk ci $Q -i hi.c
 if [ -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
@@ -433,7 +433,7 @@ echo OK
 fi #--------------------------------------------------------------------
 
 echo $N Make sure we don\'t allow usernames with \|\'s .................$NL
-cd $HERE/project
+cd "$HERE/project"
 touch testfile
 BK_USER='test|user' bk new $Q testfile 2>new.out && {
 	echo should have failed
@@ -460,10 +460,10 @@ grep -q "bad host name" new.out || {
 echo OK
 
 echo $N Check compresssion: gzip preference .........................$NL
-cd $HERE/project/BitKeeper/etc
+cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config
 echo "compression: gzip" >> config
-cd $HERE/project
+cd "$HERE/project"
 echo hi > init2
 bk new $Q init2
 bk compression init2 | grep -q "gzip"
@@ -471,11 +471,11 @@ if  [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Check compresssion: none preference .........................$NL
-cd $HERE/project/BitKeeper/etc
+cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config
 sed -e's/^compression: gzip/compression: none/' < config > config.tmp
 mv config.tmp config
-cd $HERE/project
+cd "$HERE/project"
 echo hi > init3
 bk new $Q init3
 bk compression init3 | grep -q "none"
@@ -483,7 +483,7 @@ if  [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Check that bad p.file revisions are caught and fixed ........$NL
-cd $HERE/project
+cd "$HERE/project"
 bk edit $Q init3
 mv SCCS/p.init3 P
 sed s/1.2/1.1/ < P > SCCS/p.init3
@@ -501,7 +501,7 @@ test 1.2 = `bk prs -hr+ -nd:I: init3` || {
 echo OK
 
 echo $N Check that delta picks up comments from c.files, -c case ....$NL
-cd $HERE/project
+cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
@@ -531,7 +531,7 @@ test -s OUT && {
 echo OK
 
 echo $N Make sure delta prompts and allows aborts from c.files ......$NL
-cd $HERE/project
+cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
@@ -550,7 +550,7 @@ grep -q 'And a second line' SCCS/c.init3 || {
 echo OK
 
 echo $N Make sure delta prompts and works 2nd time around ...........$NL
-cd $HERE/project
+cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
@@ -575,7 +575,7 @@ test -f SCCS/c.init3 && {
 echo OK
 
 echo $N Make sure we split long comment lines with -YFILENAME .......$NL
-cd $HERE/project
+cd "$HERE/project"
 ls > LS
 bk new $Q LS
 for i in 0 1 2 3 4 5 6 7 8 9

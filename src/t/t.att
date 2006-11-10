@@ -21,7 +21,7 @@ bk lease flush -a
 echo OK
 
 echo $N Setup some files ............................................$NL
-cd $HERE
+cd "$HERE"
 date > date
 bk ci $Q -i -l date || exit 1
 echo new > date

@@ -18,7 +18,7 @@ export BK_YEAR2=YES
 
 echo $N Test import of a plain file .................................$NL
 commercial project
-cd $HERE
+cd "$HERE"
 mkdir -p import_dir/src
 echo foo > X
 bk undos X > import_dir/src/foo.c
@@ -26,26 +26,26 @@ rm -f X
 touch import_dir/src/boo.c
 ( echo plain; echo no ) | bk import import_dir project > import.out 2>&1 || {
 	echo Failed
-	cat $HERE/import.out
+	cat "$HERE/import.out"
 	exit 1
 }
 grep -q "Please answer yes or no" import.out && {
 	echo Failed
 	exit 1
 }
-cd $HERE/project/src
+cd "$HERE/project/src"
 test -f SCCS/s.foo.c || exit 1
 bk get $Q foo.c
-cmp -s foo.c $HERE/import_dir/src/foo.c
+cmp -s foo.c "$HERE/import_dir/src/foo.c"
 test -f SCCS/s.boo.c || exit 1
 bk get $Q boo.c
-cmp boo.c $HERE/import_dir/src/boo.c || exit 1
+cmp boo.c "$HERE/import_dir/src/boo.c" || exit 1
 echo OK
 
 echo $N Check prompts to edit files .................................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk undo $Q -sfr+
-cd $HERE
+cd "$HERE"
 bk import -tplain import_dir project \
     > import.out 2>&1 <<EOF 
 vi
@@ -58,7 +58,7 @@ grep -q "Please answer yes or no" import.out || {
 echo OK
 
 echo $N Test import of a patch into a tree with edited BK files .....$NL
-cd $HERE
+cd "$HERE"
 commercial EDIT
 cat > foo <<EOF
 A
@@ -74,7 +74,7 @@ D
 EOF
 bk new $Q foo bar
 bk commit $Q -ywhatever foo
-cd $HERE
+cd "$HERE"
 tar cf TAR EDIT
 cd EDIT
 bk edit $Q foo bar
@@ -90,7 +90,7 @@ bk import $Q -tpatch BitKeeper/tmp/P . || exit 1
 echo OK
 
 echo $N Test import of a patch with p0 ..............................$NL
-cd $HERE
+cd "$HERE"
 rm -rf EDIT
 tar xmf TAR
 cd EDIT
@@ -106,7 +106,7 @@ bk import $Q -tpatch -p0 BitKeeper/tmp/P . || exit 1
 echo OK
 
 echo $N Make sure an import does not commit unrelated deltas ........$NL
-cd $HERE
+cd "$HERE"
 rm -rf EDIT
 tar xmf TAR
 cd EDIT
@@ -135,7 +135,7 @@ cmp -s BitKeeper/tmp/pending BitKeeper/tmp/pending2 || {
 echo OK
 
 echo $N Test import of a patch into a tree with modified BK files ...$NL
-cd $HERE
+cd "$HERE"
 rm -rf EDIT
 tar xmf TAR
 cd EDIT
@@ -174,7 +174,7 @@ cmp -s foo BitKeeper/tmp/foo || {
 echo OK
 
 echo $N Make sure a patch creating a file does not overwrite ........$NL
-cd $HERE/EDIT
+cd "$HERE/EDIT"
 mkdir a b
 echo 'I am the patch file being imported.' > a/extra
 bk diff -Nur a b > BitKeeper/tmp/P
@@ -208,27 +208,27 @@ bk unedit $Q foo
 
 echo $N Make sure a patch undoes a patch delete when patch fails ....$NL
 # make a patch
-cd $HERE
-bk export -tplain -r+ $HERE/EDIT $HERE/A
-bk export -tplain -r+ $HERE/EDIT $HERE/B
-chmod +w $HERE/A/bar
-cat > $HERE/A/bar <<EOF
+cd "$HERE"
+bk export -tplain -r+ "$HERE/EDIT" "$HERE/A"
+bk export -tplain -r+ "$HERE/EDIT" "$HERE/B"
+chmod +w "$HERE/A/bar"
+cat > "$HERE/A/bar" <<EOF
 1
 2
 3
 4
 EOF
-chmod +w $HERE/B/bar
-cat > $HERE/B/bar <<EOF
+chmod +w "$HERE/B/bar"
+cat > "$HERE/B/bar" <<EOF
 1
 4
 EOF
 # force a delete event for "foo"
-rm -f $HERE/B/foo
-bk diff -Nur A B > $HERE/patch
-cd $HERE/EDIT
+rm -f "$HERE/B/foo"
+bk diff -Nur A B > "$HERE/patch"
+cd "$HERE/EDIT"
 bk get $Q -r+ -p foo > foo.ref
-bk import $Q -tpatch -R $HERE/patch $HERE/EDIT \
+bk import $Q -tpatch -R "$HERE/patch" "$HERE/EDIT" \
     > BitKeeper/tmp/PLOG 2>&1 < /dev/null
 test $? -eq 0 && {
 	echo failed to reject bad patch
@@ -247,25 +247,25 @@ if [ -f bar ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.foo ]; then echo failed to unlock foo; exit 1; fi
 echo OK
 
-rm -rf $HERE/A $HERE/B $HERE/EDIT/*.rej
+rm -rf "$HERE/A" "$HERE/B" "$HERE/EDIT"/*.rej
 echo $N Make sure we allow a file to be patched multiple times ......$NL
 # make a patch
-cd $HERE
-bk export -tplain -r+ $HERE/EDIT $HERE/A
-bk export -tplain -r+ $HERE/EDIT $HERE/B
-chmod +w $HERE/A/bar $HERE/B/bar $HERE/B/foo
-echo E >> $HERE/B/bar
-bk diff -Nur A B > $HERE/patch
-echo E >> $HERE/A/bar
-cat >$HERE/B/bar <<EOF
+cd "$HERE"
+bk export -tplain -r+ "$HERE/EDIT" "$HERE/A"
+bk export -tplain -r+ "$HERE/EDIT" "$HERE/B"
+chmod +w "$HERE/A/bar" "$HERE/B/bar" "$HERE/B/foo"
+echo E >> "$HERE/B/bar"
+bk diff -Nur A B > "$HERE/patch"
+echo E >> "$HERE/A/bar"
+cat >"$HERE/B/bar" <<EOF
 B
 C
 D
 E
 EOF
-bk diff -Nur A B >> $HERE/patch
-cd $HERE/EDIT
-bk import $Q -tpatch  $HERE/patch  $HERE/EDIT || exit 1
+bk diff -Nur A B >> "$HERE/patch"
+cd "$HERE/EDIT"
+bk import $Q -tpatch  "$HERE/patch"  "$HERE/EDIT" || exit 1
 cat > bar.ref <<EOF
 B
 C
@@ -277,7 +277,7 @@ cmp -s bar bar.ref || { echo failed; exit 1; }
 echo OK
 
 echo $N Test import of an email patch ...............................$NL
-cd $HERE
+cd "$HERE"
 rm -rf EDIT
 tar xmf TAR
 cd EDIT
@@ -355,42 +355,42 @@ if [ $PLATFORM != "WIN32" ]
 then
 #----------------------------------------------------
 echo $N Test import of a symbolic link ..............................$NL
-cd $HERE
+cd "$HERE"
 commercial symlink
-cd $HERE
+cd "$HERE"
 mkdir -p symlink/src
 echo foo > import_dir/src/foo.c
 touch import_dir/src/boo.c
 cd import_dir/src
 ln -s foo.c link
-cd $HERE
-trap 'echo some command failed to exit 0; cat $HERE/import.out' 0
+cd "$HERE"
+trap 'echo some command failed to exit 0; cat "$HERE/import.out"' 0
 set -e
 ( echo plain; echo no ) | bk import import_dir symlink > import.out 2>&1
-cd $HERE/symlink/src
+cd "$HERE/symlink/src"
 test -f SCCS/s.foo.c
 bk get $Q foo.c
-cmp -s foo.c $HERE/import_dir/src/foo.c
+cmp -s foo.c "$HERE/import_dir/src/foo.c"
 test -f SCCS/s.boo.c
 bk get $Q boo.c
-cmp -s boo.c $HERE/import_dir/src/boo.c
+cmp -s boo.c "$HERE/import_dir/src/boo.c"
 test -f SCCS/s.link
 bk get $Q link
-cmp -s link $HERE/import_dir/src/foo.c
+cmp -s link "$HERE/import_dir/src/foo.c"
 echo OK
 
 echo $N Test import of a patch which modifies a file ................$NL
-cd $HERE
+cd "$HERE"
 mkdir -p import_new/src
 echo "foo-new" > X
-bk undos X >  $HERE/import_new/src/foo.c
+bk undos X >  "$HERE/import_new/src/foo.c"
 rm import_dir/src/link
 bk diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk get $Q foo.c
-bk diff -u foo.c $HERE/import_new/src/foo.c
-cmp -s foo.c $HERE/import_new/src/foo.c
+bk diff -u foo.c "$HERE/import_new/src/foo.c"
+cmp -s foo.c "$HERE/import_new/src/foo.c"
 U=`bk prs -r+ -h -d:P: foo.c`
 if [ X$U != Xpatch -a X$U != Xbk ] 
 then
@@ -400,7 +400,7 @@ fi
 echo OK
 
 echo $N Test import of a patch file which deletes a file ............$NL
-cd $HERE/project
+cd "$HERE/project"
 bk export ../export
 cd ..
 cp -rp export export2
@@ -423,11 +423,11 @@ echo OK
 fi	# Win32
 
 echo $N Verify checkout:get with plain import .......................$NL
-cd $HERE
+cd "$HERE"
 commercial projc
 bk edit $Q BitKeeper/etc/config
 echo checkout:get >> BitKeeper/etc/config
-cd $HERE
+cd "$HERE"
 mkdir -p import1/src
 echo foo > import1/src/foo.c
 bk import -tplain $Q -f import1 projc || exit 1
@@ -435,7 +435,7 @@ test -f projc/src/foo.c || exit 1
 echo OK
 
 echo $N Verify checkout:get with patch import .......................$NL
-cd $HERE
+cd "$HERE"
 cp -rp import1 import2
 echo bar >> import2/src/foo.c
 echo baz > import2/src/baz.c
@@ -452,7 +452,7 @@ BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1;licsign2:$BKL_P2;licsign3:$BKL_P3"
 export BK_CONFIG
 
 echo $N Test import of an sccs file .................................$NL
-cd $HERE
+cd "$HERE"
 echo "license: $BKL_PRO" > c
 echo "licsign1: $BKL_P1" >> c
 echo "licsign2: $BKL_P2" >> c
@@ -468,29 +468,29 @@ bk clone $Q co_get nonconform
 bk clone $Q co_get metachar
 bk clone $Q co_get linked
 mkdir -p import_sccs/src
-cd $HERE/import_sccs/src
+cd "$HERE/import_sccs/src"
 echo bar > bar.c
 bk ci $Q -i -l bar.c
 echo "bar-new" > bar.c
 bk ci $Q -y bar.c
-cd $HERE
+cd "$HERE"
 ( echo SCCS; echo no ) | bk import -v import_sccs co_get > import.out 2>&1 || {
 	echo Failed
 	cat import.out
 	exit 1
 }
-cd $HERE/co_get/src
+cd "$HERE/co_get/src"
 test -f bar.c || exit 1
-bk get $Q bar.c $HERE/import_sccs/src/bar.c
+bk get $Q bar.c "$HERE/import_sccs/src/bar.c"
 bk undos bar.c > X
-bk undos $HERE/import_sccs/src/bar.c > Y
+bk undos "$HERE/import_sccs/src/bar.c" > Y
 cmp -s X Y
 echo OK
 
 if [ $PLATFORM != "WIN32" ]
 then
 echo $N Test import of an symlinked sccs directory ..................$NL
-cd $HERE
+cd "$HERE"
 # Simulate problem had by customer doing SCCS import
 # Need to import directories, one linking the SCCS dir of the other
 # also need the gfiles checked out, that was causes sfiles_first()
@@ -504,7 +504,7 @@ rm -fr SCCS
 ln -s ../../import_sccs/src/SCCS SCCS
 bk get $Q
 test -f bar.c || exit 1
-cd $HERE
+cd "$HERE"
 # auto-exit-on-fail is active, so turn off for a command
 set +e
 bk import -ftSCCS import_sccs_linked linked > import.out 2>&1 && {
@@ -520,7 +520,7 @@ echo OK
 fi
 
 echo $N Test import of non conforming SCCS files ....................$NL
-cd $HERE/import_sccs/src
+cd "$HERE/import_sccs/src"
 # test fakes, removed delta, backward time, and duplicate revisions
 touch u
 cat - <<EOF > INIT
@@ -658,7 +658,7 @@ cmp WANTPRE PRE || {
 	exit 1
 }
 # import
-cd $HERE
+cd "$HERE"
 echo src/SCCS/s.u > flist
 echo src/SCCS/s.x >> flist
 echo src/SCCS/s.z >> flist
@@ -715,7 +715,7 @@ cmp WANTPOST POST || {
 echo OK
 
 echo $N Import SCCS file under checkout:edit ........................$NL
-cd $HERE
+cd "$HERE"
 echo hi > co_edit_foo
 bk new $Q co_edit_foo
 bk edit $Q co_edit_foo
@@ -746,7 +746,7 @@ bk sccs2bk -cx co_edit_foo >OUT 2>ERR || {
 echo OK
 
 echo $N Import SCCS binary file with null in 1.2 ....................$NL
-cd $HERE
+cd "$HERE"
 echo hi > co_edit_bar
 bk new $Q -b co_edit_bar
 bk edit $Q co_edit_bar
@@ -769,22 +769,22 @@ if [ $PLATFORM != "WIN32" ]
 then #----------------------------------------------------------------
 
 echo $N Test import of an sccs file with meta char in file name .....$NL
-cd $HERE
+cd "$HERE"
 mkdir -p import_sccs2/src
-cd $HERE/import_sccs2/src
+cd "$HERE/import_sccs2/src"
 echo star > '*.c'
 bk ci $Q -i -l './*.c'
 echo "bar-new" > './*.c'
 bk ci $Q -y '*.c'
-cd $HERE
+cd "$HERE"
 ( echo SCCS; echo no ) | bk import import_sccs2 metachar > import.out 2>&1 || {
 	echo Failed
 	cat import.out
 	exit 1
 }
-cd $HERE/metachar/src
-bk get $Q './*.c' $HERE/import_sccs2/src/'*.c'
-cmp -s '*.c' $HERE/import_sccs2/src/'*.c'
+cd "$HERE/metachar/src"
+bk get $Q './*.c' "$HERE/import_sccs2/src/"'*.c'
+cmp -s '*.c' "$HERE/import_sccs2/src/"'*.c'
 echo OK
 fi   #----------------------------------------------------------------
 
@@ -793,7 +793,7 @@ unset BK_CONFIG
 set +e
 trap '' 0
 
-cd $HERE
+cd "$HERE"
 rm -rf project A B
 echo $N Create initial repository ...................................$NL
 commercial project
@@ -803,7 +803,7 @@ bk commit $Q -ywhatever
 echo OK
 
 echo $N Import a patch into a tree with versioned .rej files ........$NL
-cd $HERE
+cd "$HERE"
 commercial rej
 ls > foo.rej
 cat > data <<EOF
@@ -814,7 +814,7 @@ D
 EOF
 bk new $Q foo.rej data
 bk commit $Q -ywah
-cat > $HERE/patch <<EOF
+cat > "$HERE/patch" <<EOF
 bk diff -Nru a/data b/data
 --- a/data   Sun Mar  3 21:37:06 2002
 +++ b/data   Sun Mar  3 21:37:17 2002
@@ -825,16 +825,16 @@ bk diff -Nru a/data b/data
 +XYZ
  D
 EOF
-bk import -tpatch $HERE/patch . < /dev/null > $HERE/OUT 2>&1
+bk import -tpatch "$HERE/patch" . < /dev/null > "$HERE/OUT" 2>&1
 bk cat data | grep -q XYZ || {
 	echo failed to apply patch
-	cat $HERE/OUT
+	cat "$HERE/OUT"
 	exit 1
 }
 echo OK
 
 echo $N Make sure that patch rejects are still caught ...............$NL
-cat > $HERE/patch <<EOF
+cat > "$HERE/patch" <<EOF
 bk diff -Nru a/data b/data
 --- a/data   Sun Mar  3 21:37:06 2002
 +++ b/data   Sun Mar  3 21:37:17 2002
@@ -845,28 +845,28 @@ bk diff -Nru a/data b/data
 +This should fail!
  D
 EOF
-bk import -R -tpatch $HERE/patch . < /dev/null > $HERE/OUT 2>&1 && {
+bk import -R -tpatch "$HERE/patch" . < /dev/null > "$HERE/OUT" 2>&1 && {
 	echo failed to exit with an error
-	cat $HERE/OUT
+	cat "$HERE/OUT"
 	exit 1
 }
 bk cat data | grep -q 'This should fail!' && {
 	echo failed to reject patch
-	cat $HERE/OUT
+	cat "$HERE/OUT"
 	exit 1
 }
 echo OK
 
 echo $N Catch read only destinations ................................$NL
-cd $HERE
+cd "$HERE"
 commercial dest
-chmod 555 $HERE/dest
-mkdir $HERE/data
-cd $HERE/data
+chmod 555 "$HERE/dest"
+mkdir "$HERE/data"
+cd "$HERE/data"
 for i in 1 2 3 4 5 6
 do	echo hi mom > data$i
 done
-bk import -tplain $HERE/data $HERE/dest >OUT 2>&1 && {
+bk import -tplain "$HERE/data" "$HERE/dest" >OUT 2>&1 && {
 	echo failed to exit with an error
 	cat OUT
 	exit 1
@@ -876,14 +876,14 @@ grep -q 'not writable' OUT || {
 	cat OUT
 	exit 1
 }
-chmod 777 $HERE/dest
+chmod 777 "$HERE/dest"
 echo OK
 
 TESTDATA=/home/bk/test_data
 
 test -d $TESTDATA/lmbench && {
 echo $N Make sure that traditional RCS imports works ................$NL
-cd $HERE
+cd "$HERE"
 commercial import-lmbench
 bk import $Q -ftRCS $TESTDATA/lmbench . || exit 1
 test -f results/SCCS/s.Makefile || exit 1
@@ -895,8 +895,7 @@ if [ $PLATFORM != "WIN32" ]
 then #-----------------------------------------------------------------
 test -d $TESTDATA/import-RCS+x && {
 echo $N Make import w/ undos does not lose execute bits .............$NL
-
-cd $HERE
+cd "$HERE"
 commercial import-RCS+x
 bk import -quftRCS $TESTDATA/import-RCS+x . || exit 1
 bk get -q 
@@ -924,7 +923,7 @@ fi #-------------------------------------------------------------------
 test -d $TESTDATA/import-CVS.1 && {
 
 echo $N Make sure that import handles Attic files ...................$NL
-cd $HERE
+cd "$HERE"
 commercial import-CVS.1
 bk import -quftCVS $TESTDATA/import-CVS.1 . || exit 1
 bk get -q
@@ -956,7 +955,7 @@ grep -q 'GNU General Public License' COPYING && {
 echo OK
 
 echo $N Make sure that import -tCVS works with checkout:get .........$NL
-cd $HERE
+cd "$HERE"
 commercial import-CVS.2
 bk edit $Q BitKeeper/etc/config
 echo checkout:get >> BitKeeper/etc/config
@@ -971,7 +970,7 @@ echo OK
 
 test -d $TESTDATA/import_data && {
 echo $N Multiple parallel imports ...................................$NL
-cd $HERE
+cd "$HERE"
 cp -rp $TESTDATA/import_data import_data
 commercial import
 cd ..
@@ -983,7 +982,7 @@ do	cp -rp import import$i
 done
 mv import import0
 for i in 0 $LIST
-do	( cd import$i && bk import -tplain -f $Q $HERE/import_data . ) &
+do	( cd import$i && bk import -tplain -f $Q "$HERE/import_data" . ) &
 done; wait
 cd import0
 bk sfiles | sort > ../LIST

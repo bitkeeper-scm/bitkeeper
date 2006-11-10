@@ -223,7 +223,7 @@ bk get $Q keyword
 touch -r T11 keyword
 bk admin -z keyword
 test "`_timediff T11 SCCS/s.keyword`" -ge 0 || { echo failed; exit 1; }
-cd $HERE
+cd "$HERE"
 BK_CONFIG='checkout:edit!' bk clone $Q -l project hardclone
 cd hardclone
 test "`_timediff T11 SCCS/s.keyword`" -eq 0 || { echo failed; exit 1; }
@@ -294,7 +294,7 @@ echo OK
 #==================================================
 if [ "$PLATFORM" != "WIN32" ]; then
 echo $N Test relink keeps the older time ............................$NL
-cd $HERE
+cd "$HERE"
 cp -rp project link1
 cp -rp project link2
 cd link1

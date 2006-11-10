@@ -104,10 +104,10 @@ cmp -s WANT REVS || {
 echo OK
 
 # We'll need this later
-bk clone $Q $HERE/project $HERE/save
+bk clone $Q "$HERE/project" "$HERE/save"
 
 echo $N Make sure we do not attempt a fix with repository locked ....$NL
-cd $HERE/save
+cd "$HERE/save"
 bk -r prs -hnd:MD5KEY: -r+ | sort > WANT
 mkdir RESYNC
 bk fix -c > OUT 2>&1 && {
@@ -131,7 +131,7 @@ test -z "`bk -cr`" || {
 	exit 1
 }
 rmdir RESYNC
-cd $HERE/project
+cd "$HERE/project"
 echo OK
 
 echo $N Make sure ChangeSet is not left edited by fix -c ............$NL
@@ -199,7 +199,7 @@ echo OK
 fi #------------------------------------------------------------------
 
 echo $N Make sure we may not fix a merge changeset ..................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q save clone
 cd save
 bk edit $Q FILE
@@ -223,7 +223,7 @@ grep -q ' Unable to fix just ChangeSet\|1.5, it is a merge' OUT || {
 echo OK
 
 echo $N Make sure renames are not stripped but are left pending .....$NL
-cd $HERE
+cd "$HERE"
 cp -rp clone pending
 cd pending
 bk mv FILE RENAME
@@ -251,7 +251,7 @@ test -s SCCS/c.RENAME && {
 echo OK
 
 echo $N Make sure bk new-ed files are left but s.file is removed ....$NL
-cd $HERE
+cd "$HERE"
 cp -rp clone new
 cd new
 ls > NEW
@@ -292,7 +292,7 @@ test -z "$BK_TESTGUI" || {
 echo OK
 
 echo $N Make sure bk new-ed files are left without keywords expanded.$NL
-cd $HERE
+cd "$HERE"
 cp -rp clone keywords
 cd keywords
 bk edit $Q BitKeeper/etc/config
@@ -329,7 +329,7 @@ echo OK
 # bk fix -c it
 # bk pull the cset and make sure we get a reasonable error message
 
-cd $HERE
+cd "$HERE"
 rm -rf project clone
 echo $N Create initial repository and file with exclude .............$NL
 commercial project
@@ -346,11 +346,11 @@ echo OK
 cores
 
 echo $N Clone repository ............................................$NL
-bk clone $Q $HERE/project $HERE/clone
+bk clone $Q "$HERE/project" "$HERE/clone"
 echo OK
 
 echo $N Fix the cset, pull, should fill in and allow update .........$NL
-cd $HERE/clone
+cd "$HERE/clone"
 bk stripdel $Q -C -r+ ChangeSet
 bk admin -D foo
 bk cset -M1.1..
@@ -380,7 +380,7 @@ echo OK
 # bk fix -c it and add another genuinely local change
 # bk pull the cset and make sure we get a reasonable error message
 
-cd $HERE
+cd "$HERE"
 rm -rf project clone
 echo $N Create initial repository and file with exclude .............$NL
 commercial project
@@ -397,11 +397,11 @@ echo OK
 cores
 
 echo $N Clone repository ............................................$NL
-bk clone $Q $HERE/project $HERE/clone
+bk clone $Q "$HERE/project" "$HERE/clone"
 echo OK
 
 echo $N Fix the cset, pull, should fail update due to pending .......$NL
-cd $HERE/clone
+cd "$HERE/clone"
 bk stripdel $Q -C -r+ ChangeSet
 bk admin -D foo
 bk cset -M1.1..
@@ -424,7 +424,7 @@ echo OK
 
 # Facetime fix bug when trying to fix a cset with a missing file.
 echo $N Create a cset containing multiple files .....................$NL
-cd $HERE
+cd "$HERE"
 bk clone -q project facetime
 cd facetime
 # The names are important, we have to have a file sorted after kasplooey

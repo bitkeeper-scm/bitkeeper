@@ -23,12 +23,12 @@ echo $N Clone the repo, create data, merge ..........................$NL
 echo foo > foo
 bk new $Q foo
 bk commit $Q -yproject
-bk clone $Q $HERE/project $HERE/clone
+bk clone $Q "$HERE/project" "$HERE/clone"
 bk edit $Q foo
 echo foo foo >> foo
 bk ci $Q -yfoo foo
 bk commit $Q -yproject
-cd $HERE/clone
+cd "$HERE/clone"
 bk edit $Q foo
 echo fu fu >> foo
 bk ci $Q -yfoo foo

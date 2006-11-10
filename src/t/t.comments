@@ -20,15 +20,16 @@ echo "hi bob" | bk comments - 2>ERR && {
 }
 grep -q "Illegal format" ERR || {
 	echo wrong error message
+	cat ERR
 	exit 1
 }
 echo OK
 
-cd $HERE
+cd "$HERE"
 rm -rf proj
 #BUGID 2004-01-08-001
-OUT=$HERE/out
-REF=$HERE/ref
+OUT="$HERE/out"
+REF="$HERE/ref"
 
 echo $N check cntl-A in -Y comment ..................................$NL
 commercial proj
@@ -38,8 +39,8 @@ bk commit $Q -yfoo || exit 1
 bk edit $Q foo || exit 1
 echo "222" > foo
 echo -e "\001 gggg" > cmt
-bk delta -Ycmt foo 2>$OUT && exit 1
-grep -q "Non-printable" $OUT || { echo failed; exit 1; }
+bk delta -Ycmt foo 2>"$OUT" && exit 1
+grep -q "Non-printable" "$OUT" || { echo failed; exit 1; }
 echo OK
 
 echo $N check char with high bit set in -Y comment ..................$NL
@@ -51,20 +52,20 @@ echo $N check cntl-A in -y comment ..................................$NL
 bk edit $Q bar || exit 1
 echo "xxx" > bar
 echo -e "\001 gggg" > cmt
-bk delta -y"`cat cmt`" bar 2>$OUT && exit 1
-grep -q "Non-printable" $OUT || { echo failed; exit 1; }
+bk delta -y"`cat cmt`" bar 2>"$OUT" && exit 1
+grep -q "Non-printable" "$OUT" || { echo failed; exit 1; }
 echo OK
 
 echo $N check cntl-A in stdio comment ...............................$NL
 bk edit $Q woo || exit 1
 echo "yyy" > woo
 echo -e "\001 gggg\nThis is a comment\n.\n" > cmt
-cat cmt | bk delta woo 2>$OUT
-grep -q "Non-printable" $OUT || { echo failed; exit 1; }
-grep -q "Skipped." $OUT || { echo failed; exit 1; }
-bk prs -hnr+ -d:C: woo >$OUT || exit 1
-cat >$REF <<EOF
+cat cmt | bk delta woo 2>"$OUT"
+grep -q "Non-printable" "$OUT" || { echo failed; exit 1; }
+grep -q "Skipped." "$OUT" || { echo failed; exit 1; }
+bk prs -hnr+ -d:C: woo >"$OUT" || exit 1
+cat >"$REF" <<EOF
 This is a comment
 EOF
-checkfiles $REF $OUT
+checkfiles "$REF" "$OUT"
 echo OK

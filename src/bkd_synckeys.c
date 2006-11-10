@@ -51,7 +51,7 @@ cmd_synckeys(int ac, char **av)
 	}
 
 	lktmp = bktmp(0, "synckey");
-	sprintf(cmd, "bk _listkey -r > %s", lktmp);
+	sprintf(cmd, "bk _listkey -r > '%s'", lktmp);
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {
 		fprintf(l, "%s\n", buf);

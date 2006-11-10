@@ -66,7 +66,7 @@ cmd_push_part1(int ac, char **av)
 
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
 	lktmp = bktmp(0, "bkdpush");
-	sprintf(cmd, "bk _listkey > %s", lktmp);
+	sprintf(cmd, "bk _listkey > '%s'", lktmp);
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {
 		if (debug) fprintf(stderr, "cmd_push_part1: %s\n", buf);

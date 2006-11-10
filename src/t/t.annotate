@@ -175,7 +175,7 @@ bk annotate -r1.1..+ file > GOT 2>&1 && {
 echo OK
 
 echo $N Make sure that we can use annotate -R -h like sccscat -h ....$NL
-cd $HERE/project
+cd "$HERE/project"
 bk annotate -R+ -h ChangeSet > GOT
 bk prs -hr+ -nd':ROOTKEY: :KEY:' subdir/file > WANT
 cmpfiles WANT GOT

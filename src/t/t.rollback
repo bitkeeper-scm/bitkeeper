@@ -46,14 +46,14 @@ echo OK
 cores
 bk -r check -a
 echo $N Clone and save a tarball of the two repositories ............$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 tar cf SAVE project copy 2> /dev/null
 echo OK
 
 # Add keys to the cset file by creating a file and change one key.
 echo $N Check corrupted key in the ChangeSet file w/ new file .......$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cd project
@@ -68,13 +68,13 @@ sed "s,$KEY,$BADKEY," < SCCS/s-ChangeSet > X
 bk undos X > SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk checksum -f ChangeSet 2>/dev/null
-cd $HERE/copy
-bk pull -t $Q $HERE/project 2>/dev/null
+cd "$HERE/copy"
+bk pull -t $Q "$HERE/project" 2>/dev/null
 if [ -d RESYNC ]; then echo failed to abort the takepatch; exit 1; fi
 echo OK
 
 echo $N Check for removed file in RESYNC dir ........................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE
 cd project
@@ -82,8 +82,8 @@ ls > LS
 bk new $Q LS
 bk commit $Q -ywhatever
 cd ../copy
-bk pull -R $Q $HERE/project
-cd $HERE
+bk pull -R $Q "$HERE/project"
+cd "$HERE"
 tar cf copy.tar copy 2> /dev/null
 cd copy
 rm -f RESYNC/SCCS/s.LS
@@ -98,7 +98,7 @@ grep -q 'Missing file (bk help chk3) bk/.*@bk_regression.bk' ERRORS || {
 echo OK
 
 echo $N Check for corrupted file in RESYNC dir ......................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf copy.tar
 cd copy

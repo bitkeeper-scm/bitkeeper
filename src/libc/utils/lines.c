@@ -352,12 +352,12 @@ splitLineToLines(char *line, char **tokens)
 }
 
 /*
- * Takes a string a parses it like /bin/sh and splits it into
- * tokens.  They are returned in a lines array.
+ * Takes a string, parses it like /bin/sh, and splits it into
+ * tokens.  The result is is returned in a lines array.
  *
  * Rules:
  *
- *	The string is split on whitespace boundries unless the space
+ *	The string is split on white space boundaries unless the white space
  *	is made literal by one of the following rules.
  *
  *	A backslash (\) is the escape character.  It preservers the

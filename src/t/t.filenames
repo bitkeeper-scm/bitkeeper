@@ -36,7 +36,7 @@ echo $N Check the repository ........................................$NL
 bk -r check -a || { echo failed; exit 1; }
 echo OK
 echo $N Clone it and make sure the file came along ..................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone || { echo failed; exit 1; }
 cd clone/src
 bk co $Q
@@ -121,7 +121,7 @@ then	exit 0
 fi
 
 echo $N "Aaron's file with 2 spaces in the name bug .................."$NL
-cd $HERE
+cd "$HERE"
 rm -rf project
 commercial project
 mkdir src
@@ -137,7 +137,7 @@ bk -R checksum ChangeSet || { echo checksum failed; exit 1; }
 echo OK
 
 echo $N Pull changes with spaces to another repo ....................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 cd copy
 bk undo $Q -fr+ || exit 1
@@ -159,28 +159,28 @@ grep -q 'revisions to src/a a a' OUT || {
 echo OK
 
 echo $N Test import of a file with spaces in the name ...............$NL
-cd $HERE
+cd "$HERE"
 rm -rf project
 commercial project
-cd $HERE
+cd "$HERE"
 mkdir -p import_dir/src
 echo foo > import_dir/src/'s p a c e s'
 touch import_dir/src/boo.c
 ( echo plain; echo no ) | bk import import_dir project > import.out 2>&1
-cd $HERE/project/src
-test -f SCCS/s.'s p a c e s' || { echo failed; cat $HERE/import.out; exit 1; }
+cd "$HERE/project/src"
+test -f SCCS/s.'s p a c e s' || { echo failed; cat "$HERE/import.out"; exit 1; }
 bk get $Q 's p a c e s'
-cmp -s 's p a c e s' $HERE/import_dir/src/'s p a c e s' &&
+cmp -s 's p a c e s' "$HERE/import_dir/src/"'s p a c e s' &&
     test -f SCCS/s.boo.c || { echo failed; exit 1; }
 bk get $Q boo.c
-cmp -s boo.c $HERE/import_dir/src/boo.c || { echo failed; exit 1; }
+cmp -s boo.c "$HERE/import_dir/src/boo.c" || { echo failed; exit 1; }
 echo OK
 
 echo $N Test RCS import of a file with spaces in the name ...........$NL
-cd $HERE
+cd "$HERE"
 rm -rf project import_dir
 commercial project
-cd $HERE
+cd "$HERE"
 mkdir -p import_dir/src
 cat > import_dir/src/'S P A C E S,v' <<EOF
 head	1.1;
@@ -209,12 +209,12 @@ text
 @
 EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
-cd $HERE/project/src
+cd "$HERE/project/src"
 test -f SCCS/s.'S P A C E S' || { echo failed; exit 1; }
 test -f 'S P A C E S,v' && {
 	echo failed to remove ,v file
 	ls
-	cat $HERE/import.out
+	cat "$HERE/import.out"
 	exit 1
 }
 echo OK
@@ -222,10 +222,10 @@ echo OK
 if [ $PLATFORM != "WIN32" ]
 then #-----------------------------------------------------------------
 echo $N Test RCS import of a file with a backslash in the name ......$NL
-cd $HERE
+cd "$HERE"
 rm -rf project import_dir
 commercial project
-cd $HERE
+cd "$HERE"
 mkdir -p import_dir/src
 cat > import_dir/src/'I\ m,v' <<EOF
 head	1.1;
@@ -254,22 +254,22 @@ text
 @
 EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
-cd $HERE/project/src
+cd "$HERE/project/src"
 test -f SCCS/s.'I\ m' || { echo failed; exit 1; }
 test -f 'I\ m,v' && {
 	echo failed to remove ,v file
 	ls
-	cat $HERE/import.out
+	cat "$HERE/import.out"
 	exit 1
 }
 echo OK
 fi #-------------------------------------------------------------------
 
 echo $N Test RCS import of a file starting with - ...................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project import_dir
 commercial project
-cd $HERE
+cd "$HERE"
 mkdir -p import_dir/src
 cat > import_dir/src/-dash,v <<EOF
 head	1.1;
@@ -298,7 +298,7 @@ text
 @
 EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
-cd $HERE/project/src
+cd "$HERE/project/src"
 test -f SCCS/s.-dash || { echo failed; exit 1; }
 test -f "-dash,v" && { echo failed to remove ,v file; ls; exit 1; }
 echo OK
@@ -306,10 +306,10 @@ echo OK
 if [ $PLATFORM != "WIN32" ]
 then #-----------------------------------------------------------------
 echo $N Test RCS import of a file with double quotes in the name ....$NL
-cd $HERE
+cd "$HERE"
 rm -rf project import_dir
 commercial project
-cd $HERE
+cd "$HERE"
 mkdir -p import_dir/src
 cat > import_dir/src/'I"m a little teacup,v' <<EOF
 head	1.1;
@@ -338,7 +338,7 @@ text
 @
 EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
-cd $HERE/project/src
+cd "$HERE/project/src"
 test -f SCCS/s.'I"m a little teacup' || { echo failed; exit 1; }
 test -f 'I"m a little teacup,v' && { echo failed to remove ,v file; ls; exit 1; }
 echo OK

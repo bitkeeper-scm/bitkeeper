@@ -149,16 +149,16 @@ test -w A || {
 echo OK
 
 echo $N Make sure clone fails with existing write lock in source ....$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone 2>/dev/null
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
 
 echo $N Make sure clone fails with existing write lock in source \#2 .$NL
-cd $HERE/project
+cd "$HERE/project"
 P=`port 50000`
 bk bkd -d -p$P -ikill 2>/dev/null
-cd $HERE
+cd "$HERE"
 bk clone bk://localhost:$P clone 2> clone.out
 echo "ERROR-Can't get read lock on the repository." > ref
 cmp -s clone.out ref || {
@@ -171,14 +171,14 @@ bk _kill bk://localhost:$P || exit 1
 echo OK
 
 echo $N Make sure clone works with existing read lock in source .....$NL
-cd $HERE/project
+cd "$HERE/project"
 bk unlock -w
 bk lock -U
 bk lock -tr >L &
 bk lock -L
 LOCKURL=`cat L`
 mv BitKeeper/readers/* BitKeeper/readers/1234@DO_NOT_USE_THIS_NAME.lock
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone 2>/dev/null
 EXIT=$?
 if [ $EXIT != 0 ]; then echo failed with exit $EXIT; exit 1; fi
@@ -187,7 +187,7 @@ if [ ! -f clone/BitKeeper/log/parent ]; then echo clone failed to set parent; ex
 echo OK
 
 echo $N Make sure clone works with existing read lock in source \#2 ..$NL
-cd $HERE
+cd "$HERE"
 #bk clone $Q bk://localhost:$P clone2 2>/dev/null
 bk clone $Q project clone2
 EXIT=$?
@@ -197,55 +197,55 @@ if [ ! -f clone2/BitKeeper/log/parent ]; then echo clone2 failed to set parent; 
 echo OK
 
 echo $N Make sure pull fails with global write lock .................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk _kill $LOCKURL
 bk unlock -r
 bk lock -U
 ls > C
 bk new $Q C
 bk commit $Q -ywhatever
-touch $HERE/write_lock
-cd $HERE/clone
-BK_WRITE_LOCK=$HERE/write_lock bk pull -t -c0 $Q >/dev/null 2>&1
+touch "$HERE/write_lock"
+cd "$HERE/clone"
+BK_WRITE_LOCK="$HERE/write_lock" bk pull -t -c0 $Q >/dev/null 2>&1
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
 echo OK
 
 echo $N Make sure pull fails with existing write lock in source .....$NL
-cd $HERE/project
+cd "$HERE/project"
 ls > CC
 bk new $Q CC
 bk commit $Q -ywhatever
 bk lock -tw >L &
 bk lock -L
 LOCKURL=`cat L`
-cd $HERE/clone
+cd "$HERE/clone"
 bk pull -t -c0 $Q 2>/dev/null
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
 echo OK
 
 echo $N Make sure pull works with existing read lock in source ......$NL
-cd $HERE/project
+cd "$HERE/project"
 bk _kill $LOCKURL
 bk lock -U
 bk lock -tr >L &
 bk lock -L
 LOCKURL=`cat L`
 mv BitKeeper/readers/* BitKeeper/readers/1234@DO_NOT_USE_THIS_NAME.lock
-cd $HERE/clone
+cd "$HERE/clone"
 bk pull -t $Q -R 2>/dev/null
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
 bk resolve -t $Q || exit 1
 echo OK
 
 echo $N Make sure pull works with existing read lock in source \#2 ...$NL
-cd $HERE/clone2
+cd "$HERE/clone2"
 bk pull -t -R  > XXX 2>&1
 if [ ! -d RESYNC ]; then echo pull failed; cat XXX; exit 1; fi
 bk resolve -t $Q
 echo OK
 
 echo $N Make sure push fails with existing read lock in dest ........$NL
-cd $HERE/clone
+cd "$HERE/clone"
 ls > D
 bk new $Q D
 bk commit $Q -ywhatever
@@ -254,13 +254,13 @@ if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi
 echo OK
 
 echo $N Make sure push fails with global read lock ..................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk _kill $LOCKURL
 bk unlock -r
 bk lock -U
-cd $HERE/clone
-touch $HERE/read_lock
-BK_READ_LOCK=$HERE/read_lock bk push -c0 > OUT 2>&1 && {
+cd "$HERE/clone"
+touch "$HERE/read_lock"
+BK_READ_LOCK="$HERE/read_lock" bk push -c0 > OUT 2>&1 && {
 	echo push failed to exit with an error
 	cat OUT
 	kill $LOCKPID
@@ -274,8 +274,8 @@ grep -q 'ERROR-Unable to lock repository for update.' OUT || {
 echo OK
 
 echo $N Make sure push fails with global write lock .................$NL
-cd $HERE/clone
-BK_WRITE_LOCK=$HERE/write_lock bk push -c0 > OUT 2>&1 && {
+cd "$HERE/clone"
+BK_WRITE_LOCK="$HERE/write_lock" bk push -c0 > OUT 2>&1 && {
 	echo push failed to exit with an error
 	cat OUT
 	kill $LOCKPID
@@ -289,11 +289,11 @@ grep -q 'Global write lock .*/write_lock' OUT || {
 echo OK
 
 echo $N Make sure push fails with existing write lock in dest .......$NL
-cd $HERE/project
+cd "$HERE/project"
 bk lock -tw >L &
 bk lock -L
 LOCKURL=`cat L`
-cd $HERE/clone
+cd "$HERE/clone"
 bk push -c0 > OUT 2>&1 && {
 	echo push failed to exit with an error
 	cat OUT
@@ -305,17 +305,17 @@ grep -q 'ERROR-Unable to lock repository for update.' OUT || {
 	cat OUT
 	exit 1
 }
-cd $HERE/project
+cd "$HERE/project"
 bk _kill $LOCKURL
 bk lock -U
 echo OK
 
 echo $N Make sure push succeeds with no locks in destination ........$NL
-cd $HERE/clone
+cd "$HERE/clone"
 bk push $Q
 if [ $? != 0 ]; then echo push exited with an error; exit 1; fi
-cd $HERE/project
-bk pull -t $HERE/clone > OUT 2>&1
+cd "$HERE/project"
+bk pull -t "$HERE/clone" > OUT 2>&1
 grep -q 'Nothing to pull' OUT || {
 	echo failed - bad status message
 	cat OUT
@@ -327,14 +327,14 @@ echo $N Make sure commit respects global read lock ..................$NL
 bk co $Q -l D
 date > D
 bk ci $Q -ynew_styff D
-BK_READ_LOCK=$HERE/read_lock bk commit $Q -y"should-failed" > commit.out 2>&1
+BK_READ_LOCK="$HERE/read_lock" bk commit $Q -y"should-failed" > commit.out 2>&1
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
 	echo unexpected error message
 	cat commit.out
 	exit 1
 }
-BK_READ_LOCK=$HERE/read_lock bk lock -l > OUT 2>&1
+BK_READ_LOCK="$HERE/read_lock" bk lock -l > OUT 2>&1
 grep -q 'Global read lock .*/read_lock' OUT || {
 	echo bad error message
 	cat OUT
@@ -346,14 +346,14 @@ echo $N Make sure commit respects global write lock .................$NL
 bk co $Q -l D
 date > D
 bk ci $Q -ynew_styff D
-BK_WRITE_LOCK=$HERE/write_lock bk commit $Q -y"should-failed" > commit.out 2>&1
+BK_WRITE_LOCK="$HERE/write_lock" bk commit $Q -y"should-failed" > commit.out 2>&1
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
 	echo unexpected error message
 	cat commit.out
 	exit 1
 }
-BK_WRITE_LOCK=$HERE/write_lock bk lock -l > OUT 2>&1
+BK_WRITE_LOCK="$HERE/write_lock" bk lock -l > OUT 2>&1
 grep -q 'Global write lock .*/write_lock' OUT || {
 	echo bad error message
 	cat OUT
@@ -365,7 +365,7 @@ echo $N Make sure commit respects repository lock ...................$NL
 bk co $Q -l D
 date > D
 bk ci $Q -ynew_styff D
-mkdir -p $HERE/project/RESYNC/stuff
+mkdir -p "$HERE/project/RESYNC/stuff"
 bk commit $Q -y"should-failed" > commit.out 2>&1 && {
 	echo failed
 	cat commit.out
@@ -376,13 +376,13 @@ grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
 	cat commit.out
 	exit 1
 }
-rm -rf $HERE/project/RESYNC
+rm -rf "$HERE/project/RESYNC"
 bk lock -U
 echo OK
 
 echo $N Make sure repo write lock will fix dir permissions if it can.$NL
-cd $HERE/project/BitKeeper
-test -d $HERE/project/BitKeeper/writer && {
+cd "$HERE/project/BitKeeper"
+test -d "$HERE/project/BitKeeper/writer" && {
 	echo failed to clean up writer directory
 	ps -xf
 	ls -l writer
@@ -408,8 +408,8 @@ test -d writer && {
 echo OK
 
 echo $N Make sure repo read lock will fix dir permissions if it can..$NL
-cd $HERE/project/BitKeeper
-test -d $HERE/project/BitKeeper/readers && {
+cd "$HERE/project/BitKeeper"
+test -d "$HERE/project/BitKeeper/readers" && {
 	echo failed to clean up readers directory
 	ps -xf
 	ls -l readers
@@ -435,8 +435,8 @@ test -d readers && {
 echo OK
 
 echo $N Make sure stale locks clean lock and uniq file ..............$NL
-cd $HERE/project/BitKeeper
-test -d $HERE/project/BitKeeper/writer && {
+cd "$HERE/project/BitKeeper"
+test -d "$HERE/project/BitKeeper/writer" && {
 	echo failed to clean up writer directory
 	ps -xf
 	ls -l writer
@@ -486,7 +486,7 @@ test -d writer && {
 echo OK
 
 echo $N Make sure sccs lock will fix directory permissions if it can.$NL
-cd $HERE
+cd "$HERE"
 mkdir nowrite
 cd nowrite
 chmod 0555 .
@@ -494,7 +494,7 @@ test -w . && {
 	echo chmod failed
 	exit 1
 }
-bk lock -tflockfile > $HERE/port &
+bk lock -tflockfile > "$HERE/port" &
 while [ ! -f lockfile ]
 do	sleep 1
 done
@@ -502,7 +502,7 @@ test -w . || {
 	echo failed to fix permissions
 	exit 1
 }
-bk _kill `cat $HERE/port`
+bk _kill `cat "$HERE/port"`
 test -f lockfile && {
 	echo failed to clean up lock
 	exit 1

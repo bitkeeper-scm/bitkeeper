@@ -27,19 +27,19 @@ BK_USER=third bk commit $Q -Sthird -y'Third checkin' || exit 1
 echo OK
 
 echo $N Test basic takepatch ........................................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q -r1.2 project clone1
 cd project
-bk makepatch $Q -r1.2..+ > $HERE/patch
-cd $HERE/clone1
+bk makepatch $Q -r1.2..+ > "$HERE/patch"
+cd "$HERE/clone1"
 bk lease flush -a
-bk takepatch $Q -a < $HERE/patch || exit 1
-bk changes -L $HERE/project > c1 || [ -s c1 ] || {
+bk takepatch $Q -a < "$HERE/patch" || exit 1
+bk changes -L "$HERE/project" > c1 || [ -s c1 ] || {
        echo "unexpected output from changes -L:"
        cat c1
        exit 1
 } >&2
-bk changes -R $HERE/project > c2 || [ -s c2 ] || {
+bk changes -R "$HERE/project" > c2 || [ -s c2 ] || {
        echo "unexpected output from changes -R:"
        cat c2
        exit 1
@@ -47,8 +47,8 @@ bk changes -R $HERE/project > c2 || [ -s c2 ] || {
 echo OK
 
 echo $N Do another takepatch, verify no output ......................$NL
-cd $HERE/clone1
-bk takepatch -a < $HERE/patch > e1 2>&1 || {
+cd "$HERE/clone1"
+bk takepatch -a < "$HERE/patch" > e1 2>&1 || {
 	echo "takepatch exited with $?" >&2
 	exit 1;
 }

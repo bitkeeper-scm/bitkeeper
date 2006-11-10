@@ -42,7 +42,7 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 rm admin.out
 echo OK
 echo $N check disabling of adding null delta to ChangeSet file ......$NL
-cd $HERE/project
+cd "$HERE/project"
 if [ ! -f "SCCS/s.ChangeSet" ]; then echo ChangeSet file not found; exit 1; fi
 bk admin -T ChangeSet 2> admin.out
 if [ $? -eq 0 ]; then echo failed; exit 1; fi

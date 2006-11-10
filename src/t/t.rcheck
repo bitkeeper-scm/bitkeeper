@@ -36,42 +36,42 @@ cores
 
 # In this test we call the rclone code via the bk clone interface
 echo $N rcheck via bk:// ............................................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy copy2
 P=`port 50000`
 bk bkd -q -p$P -ikill
-bk clone $Q $HERE/project bk://localhost:$P/$HERE/copy
+bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
-cd $HERE/project
-bk rcheck bk://localhost:$P/$HERE/copy || { echo failed; exit 1; }
+cd "$HERE/project"
+bk rcheck bk://localhost:$P/"$HERE/copy" || { echo failed; exit 1; }
 # force a error
-rm -f $HERE/copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR'
-cd $HERE/project
-bk rcheck bk://localhost:$P/$HERE/copy |
+rm -f "$HERE/copy/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR'
+cd "$HERE/project"
+bk rcheck bk://localhost:$P/"$HERE/copy" |
     grep -q 'Missing file (bk help chk3) bk/.*@bk_regression.bk' || {
 	echo failed with bad output
-	bk rcheck bk://localhost:$P/$HERE/copy 
+	bk rcheck bk://localhost:$P/"$HERE/copy" 
 	exit 1
 }
-bk rcheck bk://localhost:$P/$HERE/copy > /dev/null
+bk rcheck bk://localhost:$P/"$HERE/copy" > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N rcheck via http:// ..........................................$NL
-cd $HERE
-bk clone $Q $HERE/project http://localhost:$P/$HERE/copy2
+cd "$HERE"
+bk clone $Q "$HERE/project" http://localhost:$P/"$HERE/copy2"
 [ -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
-cd $HERE/project
-bk rcheck http://localhost:$P/$HERE/copy2 || { echo failed; exit 1; }
+cd "$HERE/project"
+bk rcheck http://localhost:$P/"$HERE/copy2" || { echo failed; exit 1; }
 # force a error
-rm -f $HERE/copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR'
-bk rcheck http://localhost:$P/$HERE/copy2 |
+rm -f "$HERE/copy2/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR'
+bk rcheck http://localhost:$P/"$HERE/copy2" |
     grep -q 'Missing file (bk help chk3) bk/.*@bk_regression.bk' || {
 	echo failed with bad output
-	bk rcheck http://localhost:$P/$HERE/copy 
+	bk rcheck http://localhost:$P/"$HERE/copy" 
 	exit 1
 }
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-bk rcheck http://localhost:$P/$HERE/copy2 > /dev/null
+bk rcheck http://localhost:$P/"$HERE/copy2" > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 bk _kill bk://localhost:$P || exit 1
 echo OK

@@ -37,38 +37,38 @@ bk edit $Q foo.c bar.c
 echo foo-new > foo.c
 echo bar-new >> bar.c
 echo "This a comment for bar.c" > SCCS/c.bar.c
-echo "This a cset comment" > $HERE/project/SCCS/c.ChangeSet
-cp SCCS/c.bar.c $HERE/c.ref
-cp $HERE/project/SCCS/c.ChangeSet $HERE/cc.ref
-cp foo.c $HERE/foo.sav
-cp bar.c $HERE/bar.sav
+echo "This a cset comment" > "$HERE/project/SCCS/c.ChangeSet"
+cp SCCS/c.bar.c "$HERE/c.ref"
+cp "$HERE/project/SCCS/c.ChangeSet" "$HERE/cc.ref"
+cp foo.c "$HERE/foo.sav"
+cp bar.c "$HERE/bar.sav"
 bk park -y 2> /dev/null || exit 1
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
 if [ -f SCCS/c.bar.c ]; then echo failed; exit 1; fi
-if [ -f $HERE/project/SCCS/c.ChangeSet ]; then echo failed; exit 1; fi
+if [ -f "$HERE/project/SCCS/c.ChangeSet" ]; then echo failed; exit 1; fi
 bk edit $Q bar.c
 bk unpark 2> /dev/null 1>&2 || exit 1
-cmp -s foo.c $HERE/foo.sav
+cmp -s foo.c "$HERE/foo.sav"
 if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
-cmp -s bar.c $HERE/bar.sav 
+cmp -s bar.c "$HERE/bar.sav" 
 if [ $? -ne 0 ]; then echo failed 2; od -c bar.c; od -c bar.sav; exit 1; fi
 if [ ! -f SCCS/c.bar.c ]; then echo failed; exit 1; fi
-cmp -s SCCS/c.bar.c $HERE/c.ref
+cmp -s SCCS/c.bar.c "$HERE/c.ref"
 if [ $? -ne 0 ]; then echo failed 3; exit 1; fi
-if [ ! -f $HERE/project/SCCS/c.ChangeSet ]; then echo failed; exit 1; fi
-cmp -s $HERE/project/SCCS/c.ChangeSet $HERE/cc.ref
+if [ ! -f "$HERE/project/SCCS/c.ChangeSet" ]; then echo failed; exit 1; fi
+cmp -s "$HERE/project/SCCS/c.ChangeSet" "$HERE/cc.ref"
 if [ $? -ne 0 ]; then echo failed 3; exit 1; fi
 echo OK
 
 echo $N Check basic park/unpark via stdin ...........................$NL
 bk park -y"hi mom" 2> /dev/null || exit 1
-mv $HERE/project/BitKeeper/tmp/parkfile_1.sfio $HERE/parkfile$$
-bk unpark - < $HERE/parkfile$$ 2>/dev/null 1>&2 || exit 1
-cmp -s foo.c $HERE/foo.sav
+mv "$HERE/project/BitKeeper/tmp/parkfile_1.sfio" "$HERE/parkfile"$$
+bk unpark - < "$HERE/parkfile"$$ 2>/dev/null 1>&2 || exit 1
+cmp -s foo.c "$HERE/foo.sav"
 if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
 echo OK
-rm -f $HERE/parkfile$$ 
+rm -f "$HERE/parkfile"$$ 
 
 echo $N Check basic park/unpark with reject file ....................$NL
 bk unedit bar.c
@@ -79,7 +79,7 @@ hi mom
 hi dad
 .
 EOF
-cp $HERE/project/BitKeeper/tmp/parkfile_1.sfio $HERE/parkfile$$
+cp "$HERE/project/BitKeeper/tmp/parkfile_1.sfio" "$HERE/parkfile"$$
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
 bk edit $Q foo.c
@@ -87,7 +87,7 @@ echo foo-new3 > foo.c
 bk ci $Q -y foo.c
 bk unpark 2> /dev/null 1>&2
 # make sure unpark does not delete the parkfile
-if [ ! -f $HERE/project/BitKeeper/tmp/parkfile_1.sfio ]; then echo failed; exit 1; fi
+if [ ! -f "$HERE/project/BitKeeper/tmp/parkfile_1.sfio" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Check unpark -f with reject file ............................$NL
@@ -97,7 +97,7 @@ if [ ! -f foo.c.rej ]; then echo failed; exit 1; fi
 if [ -f SCCS/t.foo.c.rej ]; then echo failedXXX; exit 1; fi
 echo OK
 bk unedit foo.c
-cp $HERE/parkfile$$ $HERE/project/BitKeeper/tmp/parkfile_1.sfio
+cp "$HERE/parkfile"$$ "$HERE/project/BitKeeper/tmp/parkfile_1.sfio"
 
 echo $N Check park/unpark with offset diff ..........................$NL
 bk clean foo.c
@@ -123,9 +123,9 @@ bk new $Q -l move_me
 echo "444" >> move_me
 bk park -y 2> /dev/null
 bk edit $Q move_me
-cp $HERE/project/BitKeeper/etc/SCCS/x.id_cache x.id_cache
+cp "$HERE/project/BitKeeper/etc/SCCS/x.id_cache" x.id_cache
 bk mv move_me new_me
-mv x.id_cache $HERE/project/BitKeeper/etc/SCCS/x.id_cache
+mv x.id_cache "$HERE/project/BitKeeper/etc/SCCS/x.id_cache"
 sed -e "s/111/000/" new_me > new_me.tmp
 mv new_me.tmp new_me
 bk unpark 2>/dev/null 1>&2
@@ -143,7 +143,7 @@ cp $BIN1 binary
 bk new $Q -lb binary
 cp $BIN2 binary
 echo "I am a extra file" > extra
-cp extra $HERE/extra.ref
+cp extra "$HERE/extra.ref"
 bk park -y -a 2> /dev/null
 if [ -f extra ]; then echo failed 0; exit 1; fi
 bk edit $Q binary
@@ -160,7 +160,7 @@ bk unpark  2>/dev/null 1>&2
 if [ -f binary ]; then echo failed; exit 1; fi
 cmp -s $BIN2 binary_moved || { echo failed; exit 1; }
 if [ ! -f extra ]; then echo failed; exit 1; fi
-cmp -s extra $HERE/extra.ref || { echo failed 3; exit 1; }
+cmp -s extra "$HERE/extra.ref" || { echo failed 3; exit 1; }
 echo OK
 
 echo $N Should failed unpark binary changed delta ...................$NL

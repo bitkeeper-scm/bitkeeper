@@ -9,7 +9,7 @@ else
 	ICONS=
 endif
 
-REPO   := $(shell basename `bk root`)
+REPO   := $(shell basename "`bk root`")
 LIBDIR	= lib
 GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
 	  msgtool renametool setuptool bugform supportform newdifftool \

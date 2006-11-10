@@ -425,8 +425,7 @@ bkd(int compress, remote *r)
 		unless (r->loginshell) {
 			if (streq(r->host, "localhost")
 			    && (t = getenv("PATH"))) {
-				freeme = malloc(strlen(t) + 20);
-				sprintf(freeme, "PATH=%s", t);
+				freeme = aprintf("'PATH=%s'", t);
 				cmd[++i] = "env";
 				cmd[++i] = freeme;
 			}

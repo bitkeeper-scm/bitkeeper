@@ -4,7 +4,7 @@ commercial project
 echo test > file
 bk new $Q file
 bk commit -yfirst $Q || exit 1
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 cd copy
 bk collapse -el || exit 1
@@ -33,7 +33,7 @@ echo OK
 
 # test 'bk collapse -e'
 echo $N Test collapse -e with many different delta types ............$NL
-cd $HERE/project
+cd "$HERE/project"
 for f in renamed deleted modes xflags file1 file2 file3 exclude edited chg_edit
 do	echo initial > $f
 	bk new $Q $f

@@ -749,7 +749,7 @@ listIt(sccs *s, int list)
 	char	buf[BUFSIZ];
 	FILE	*f;
 	
-	cmd = aprintf("bk changes %s - > %s", list > 1 ? "-v" : "", tmp);
+	cmd = aprintf("bk changes %s - > '%s'", list > 1 ? "-v" : "", tmp);
 	f = popen(cmd, "w");
 	assert(f);
 	for (d = s->table; d; d = d->next) {

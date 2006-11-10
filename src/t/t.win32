@@ -4,7 +4,7 @@ then
 	exit 0;
 fi
 
-cd $HERE
+cd "$HERE"
 
 echo $N Test win32 waitpid when child has exited.....................$NL
 # See src/win32/t/waitpid-test-01.c

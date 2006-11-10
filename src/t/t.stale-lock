@@ -36,20 +36,20 @@ BK_USER=jane bk commit $S -y"This is a \"Change Set\""
 echo OK
 
 echo $N Create a merge conflict, resolve it, look for stale locks ...$NL
-bk clone $Q $HERE/project $HERE/clone
+bk clone $Q "$HERE/project" "$HERE/clone"
 bk edit $Q A
 echo conflict >> A
 bk delta $Q -ywhatever A
 BK_USER=billy bk commit $Q -ywhatever
-cd $HERE/clone
+cd "$HERE/clone"
 bk edit $Q A
 echo CONFLICT >> A
 bk delta $Q -ywhatever A
 BK_USER=bob bk commit $Q -ywhatever
-cd $HERE/project
+cd "$HERE/project"
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/post-incoming <<EOF
-test -f $HERE/project/BitKeeper/readers && {
+test -f "$HERE/project/BitKeeper/readers" && {
 	echo Failed to remove reader lock > /dev/tty
 }
 exit 0

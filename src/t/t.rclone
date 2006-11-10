@@ -35,36 +35,36 @@ echo OK
 cores
 
 echo $N rClone via pipe .............................................$NL
-cd $HERE
+cd "$HERE"
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
-bk _rclone $Q $HERE/project file:$SLASH$HERE/copy || { echo failed; exit 1; }
+bk _rclone $Q "$HERE/project" file:$SLASH"$HERE/copy" || { echo failed; exit 1; }
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
-bk _rclone $Q -r1.1 $HERE/project $HERE/copy2 || { echo failed; exit 1; }
+bk _rclone $Q -r1.1 "$HERE/project" "$HERE/copy2" || { echo failed; exit 1; }
 [ -d copy2 ] || { echo failed; exit 1; }
 [ ! -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
-cd $HERE/copy2
+cd "$HERE/copy2"
 if [ "`bk level`" != "Repository level is 3" ]; then echo failed; exit 1; fi
 echo OK
 
 # In this test we call the rclone code via the bk clone interface
 echo $N rClone via bk:// ............................................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy copy2
 P=`port 50000`
 bk bkd -q -p$P -ikill
-bk clone $Q $HERE/project bk://localhost:$P/$HERE/copy
+bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
-cd $HERE/copy
+cd "$HERE/copy"
 if [ "`bk level`" != "Repository level is 3" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N rClone via http:// ..........................................$NL
-cd $HERE
-bk clone $Q $HERE/project http://localhost:$P/$HERE/copy2
+cd "$HERE"
+bk clone $Q "$HERE/project" http://localhost:$P/"$HERE/copy2"
 [ -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
-cd $HERE/copy2
+cd "$HERE/copy2"
 if [ "`bk level`" != "Repository level is 3" ]; then echo failed; exit 1; fi
-cd $HERE
+cd "$HERE"
 bk clone -r1.1 $Q project http://localhost:$P/copy3
 [ -d copy3 ] || { echo failed; exit 1; }
 [ ! -f copy3/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
@@ -75,7 +75,7 @@ echo OK
 # TODO test virtual host/root support
 
 echo $N rClone to illegal path ......................................$NL
-bk clone $HERE/project http://localhost:$P//tmp/foozz.$$ 2> OUT && {
+bk clone "$HERE/project" http://localhost:$P//tmp/foozz.$$ 2> OUT && {
        echo should have failed
        exit 1
 }
@@ -87,19 +87,19 @@ grep -q 'illegal cd' OUT || {
 bk _kill http://localhost:$P || exit 1
 echo OK
 echo $N Make sure rclone respect checkout preference ................$NL
-cd $HERE/project/BitKeeper/etc
+cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config
 echo "checkout:get" >> config
 bk delta $Q -ynew_preference config
 bk commit $Q -ynew_preference
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
-bk _rclone $Q $HERE/project file:$SLASH$HERE/copy5 || { echo failed; exit 1; }
-cd $HERE/copy5
+bk _rclone $Q "$HERE/project" file:$SLASH"$HERE/copy5" || { echo failed; exit 1; }
+cd "$HERE/copy5"
 if [ ! -f src/bar.c ]; then echo failed; exit 1; fi
 echo OK
 #BUG: 2003-03-04-002
 echo $N Clone with bad rev means no litter ..........................$NL
-cd $HERE
+cd "$HERE"
 bk clone -rfoo project clone > OUT 2> ERR && {
 	echo Fail
 	echo No foo -- clone should fail
@@ -117,7 +117,7 @@ test -d RESYNC && {
 }
 echo OK
 
-cd $HERE/project
+cd "$HERE/project"
 bk lock -U 2>/dev/null
 
 # This is not portable, as it depends on OS output for making a directory
@@ -127,12 +127,12 @@ bk lock -U 2>/dev/null
 # mkdir readonly
 # chmod -w readonly
 # cd readonly
-# bk clone $HERE/project newrepo > ../OUT 2> ../ERR && {
+# bk clone "$HERE/project" newrepo > ../OUT 2> ../ERR && {
 #	echo Fail
 #	echo Created repo in read-only directory
 # 	exit 1
 # }
-# cd $HERE
+# cd "$HERE"
 # grep -q 'ermission denied' ERR || {
 # 	echo Fail
 # 	echo Unexpected message. Wanted 'Permission denied'. Got:

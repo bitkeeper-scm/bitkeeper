@@ -50,7 +50,7 @@ fi
 echo OK
 
 echo $N Try to commit an empty cset .................................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk edit $Q ChangeSet
 bk commit $Q
 # make sure "bk commit" did not change the mode of the ChangeSet file
@@ -58,7 +58,7 @@ writable ChangeSet || { echo failed; exit 1; }
 echo OK
 
 echo $N Try to commit via stdin .....................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk co $Q -l h.h
 date > h.h
 bk ci $Q -ytest_cmt1 h.h
@@ -79,14 +79,14 @@ if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
 echo OK
 
 echo $N Try to commit via -l ........................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk co $Q -l h.h
 echo new-stuff > h.h
 bk ci $Q -ytest_cmt1 h.h
 date > q.c
 bk ci $Q -ytest_cmt2 -i q.c
-bk -R sfiles -pC > $HERE/flist
-bk commit $Q -ycmt4 -l$HERE/flist 
+bk -R sfiles -pC > "$HERE/flist"
+bk commit $Q -ycmt4 -l"$HERE/flist" 
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 cat > X <<EOF
@@ -102,49 +102,49 @@ if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
 echo OK
 
 echo $N Check that missing edited gfile does not abort takepatch ....$NL
-cd $HERE/project
+cd "$HERE/project"
 echo "foo" > aaa
 bk new $Q aaa
 bk commit $Q -y'add aaa' aaa
-bk clone $Q $HERE/project $HERE/proj_takepatch
+bk clone $Q "$HERE/project" "$HERE/proj_takepatch"
 bk edit $Q aaa
 echo "bar" >> aaa
 bk ci $Q -y'add bar' aaa
 bk commit $Q -y'add bar to aaa' aaa
-bk makepatch $Q -r+ > $HERE/patch
-cd $HERE/proj_takepatch
+bk makepatch $Q -r+ > "$HERE/patch"
+cd "$HERE/proj_takepatch"
 bk edit $Q aaa
 rm aaa
-bk takepatch -a < $HERE/patch || { echo takepatch failed >&2; exit 1; }
+bk takepatch -a < "$HERE/patch" || { echo takepatch failed >&2; exit 1; }
 echo OK
 
 #echo $N Test for path conflict ......................................$NL
-#cd $HERE/proj_log
+#cd "$HERE/proj_log"
 #bk undo $Q -f -r1.2.1.1,1.3
-#cd $HERE/copy1/src
+#cd "$HERE/copy1/src"
 #date >  new.c
 #bk new $Q -ycopy1-new new.c
 #bk commit $Q -ycopy1-new
-#bk push $Q -e $HERE/proj_log
-#cd $HERE/copy2/src
+#bk push $Q -e "$HERE/proj_log"
+#cd "$HERE/copy2/src"
 #date >  new.c
 #bk new $Q -ycopy2-new new.c
 #bk commit $Q -ycopy2-new
-#bk makepatch $Q -e.. > $HERE/patch
-#cd $HERE/proj_log
-#bk takepatch $Q < $HERE/patch
+#bk makepatch $Q -e.. > "$HERE/patch"
+#cd "$HERE/proj_log"
+#bk takepatch $Q < "$HERE/patch"
 #bk resolve -d -t -c
 #echo SKIPPED
 
 echo $N Try to resolve into a tree with no write permission .........$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 bk clone $Q project copy
 cd project/src
 touch NEWFILE
 bk new $Q NEWFILE
 bk commit $Q -yNEWFILE 
-cd $HERE/copy
+cd "$HERE/copy"
 chmod 555 src
 bk pull $Q > OUT 2>&1
 grep -q 'No write permission: src' OUT || {
@@ -157,7 +157,7 @@ chmod +w src
 echo OK
 
 echo $N Try a commit -Yfile .........................................$NL
-cd $HERE/project
+cd "$HERE/project"
 echo arg > foo
 bk new $Q foo || exit 1
 echo line1 > comment
@@ -174,7 +174,7 @@ if [ $? -ne 0 ]; then echo Failed to set correct comments.; exit 1; fi
 echo OK
 
 echo $N Try a commit -Ymissingfile ..................................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk edit $Q foo || exit
 echo arg2 >> foo
 bk delta $Q -yjunk foo || exit 1

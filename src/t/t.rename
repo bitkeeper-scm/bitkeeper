@@ -36,7 +36,7 @@ bk commit $S -yBaseline > $DEV_NULL
 bk -r check -a
 
 # Now create two repositories with that file.
-cd $HERE
+cd "$HERE"
 rm gca/BitKeeper/log/repo_id
 cp -rp gca a
 cp -rp gca b
@@ -69,7 +69,7 @@ bk commit $S -yObsolete > $DEV_NULL
 bk -r check -a
 
 # Now add some deltas in the other tree, not moving it.
-cd $HERE
+cd "$HERE"
 cd b/src
 bk get $S -e regression.sh
 cat > INIT <<EOF
@@ -96,11 +96,11 @@ set +e
 echo OK
 
 # Now resync them in both directions.
-cd $HERE
+cd "$HERE"
 tar cf chkpt.tar a b
 echo $N resync a to b ...............................................$NL
 cd b
-bk pull -R $Q $HERE/a
+bk pull -R $Q "$HERE/a"
 bk resolve $Q -t >resolve.out 2>&1 <<EOF
 m
 C
@@ -120,9 +120,9 @@ cd ..
 rm -rf a b
 tar xmf chkpt.tar
 echo $N resync b to a ...............................................$NL
-cd $HERE/a
+cd "$HERE/a"
 bk pull -R $Q ../b
-cd $HERE/a
+cd "$HERE/a"
 cat > R <<EOF
 m
 C

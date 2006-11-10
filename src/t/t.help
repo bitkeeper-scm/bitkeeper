@@ -28,7 +28,7 @@ CMD_LIST=/home/amy/repos/regression/src/t/list_o_commands
 echo $N Make sure bk command --help yields right answer .............$NL
 for i in `cat ${CMD_LIST}` 
 do 	bk ${i} --help > ${HERE}/help
-	grep -q DESCRIPTION $HERE/help || {
+	grep -q DESCRIPTION "$HERE/help" || {
 		echo no help for $i
 		exit 1
 	}

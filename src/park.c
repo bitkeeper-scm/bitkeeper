@@ -266,7 +266,7 @@ err:		if (s) sccs_free(s);
 		perror(ROOT2PARK);
 		goto err;
 	}
-	sprintf(buf, "bk _find >> %s/%s", PARK2ROOT, sfio_list);
+	sprintf(buf, "bk _find >> '%s/%s'", PARK2ROOT, sfio_list);
 	system(buf);
 
 	/*
@@ -313,7 +313,7 @@ err:		if (s) sccs_free(s);
 	/*
 	 * OK, now we make the final parkfile.sfio from the sfio list.
 	 */
-	sprintf(buf, "bk  sfio -qo < %s/%s > %s/%s",
+	sprintf(buf, "bk  sfio -qo < '%s/%s' > '%s/%s'",
 		PARK2ROOT, sfio_list, PARK2ROOT, parkfile);
 	if (system(buf)) {
 		fprintf(stderr, "failed to create %s, i/o error?\n", parkfile);

@@ -33,7 +33,7 @@ echo 1 > A
 bk new $Q A
 if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
 bk commit $S -y"This is a \"Change Set\""
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone
 cd project
 echo 2 > B
@@ -42,7 +42,7 @@ echo 4 > D
 echo 5 > E
 bk new $Q B C D E
 bk commit $S -y"This is a \"Change Set\""
-cd $HERE/clone
+cd "$HERE/clone"
 mv SCCS/s.A SCCS/s.WRONG_PLACE
 bk pull $Q > OUT 2>&1
 if [ $? -eq 0 ]
@@ -64,13 +64,13 @@ echo OK
 cores
 
 echo $N Create data in subdir, pull, make sure it removes dir .......$NL
-cd $HERE/project
+cd "$HERE/project"
 mkdir subdir
 cd subdir
 echo Nasty boy > personality
 bk new $Q personality
 bk commit $Q -ynasty
-cd $HERE/clone
+cd "$HERE/clone"
 bk abort -f
 bk pull > OUT 2>&1
 if [ $? -eq 0 ]
@@ -97,20 +97,20 @@ echo OK
 cores
 
 echo $N Create a new subdir, pull it, dir inode should not change ...$NL
-cd $HERE/project
+cd "$HERE/project"
 mkdir directory
 cd directory
 echo Cindy > TheBest
 bk new $Q TheBest
 bk commit $Q -ywhoohooo
-cd $HERE
+cd "$HERE"
 bk clone $Q project test2
 cd project/directory
 bk edit $Q TheBest
 echo Beth > TheBest
 bk delta $Q -y"Larry gets a clue" TheBest
 bk commit $Q -ywhatever
-cd $HERE/test2
+cd "$HERE/test2"
 ls -lid directory | awk '{print $1}' > START
 bk pull $Q || {
 	echo pull failed

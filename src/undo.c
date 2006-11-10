@@ -76,7 +76,7 @@ usage:			system("bk help -s undo");
 	unless (fileList) goto err;
 
 	bktmp(undo_list, "undo_list");
-	cmd = aprintf("bk stripdel -Cc - 2> %s", undo_list);
+	cmd = aprintf("bk stripdel -Cc - 2> '%s'", undo_list);
 	f = popen(cmd, "w");
 	free(cmd);
 	unless (f) {
@@ -117,7 +117,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
-		cmd = aprintf("bk cset -ffm - > %s", patch);
+		cmd = aprintf("bk cset -ffm - > '%s'", patch);
 		f = popen(cmd, "w");
 		free(cmd);
 		if (f) {
@@ -185,7 +185,7 @@ doit(char **fileList, char *rev_list, char *qflag, char *checkfiles)
 {
 	char	buf[MAXLINE];
 
-	sprintf(buf, "bk stripdel %s -C - < %s", qflag, rev_list);
+	sprintf(buf, "bk stripdel %s -C - < '%s'", qflag, rev_list);
 	if (system(buf) != 0) {
 		fprintf(stderr, "Undo failed\n");
 		return (-1);
@@ -273,7 +273,7 @@ mk_list(char *rev_list, char **csetrev_list)
 	kvpair	kv;
 
 	assert(csetrev_list);
-	cmd = aprintf("bk cset -ffl5 - > %s", rev_list);
+	cmd = aprintf("bk cset -ffl5 - > '%s'", rev_list);
 	f = popen(cmd, "w");
 	if (f) {
 		EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);

@@ -22,7 +22,7 @@ checkfiles WANT2 GOT2
 echo OK
 
 echo $N Unpull after a pull which has a delta as the newest thing ...$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project chg
 cd project
 bk tag $Q TAGIT
@@ -42,7 +42,7 @@ checkfiles WANT2 GOT2
 echo OK
 
 echo $N Unpull after a pull which was a tag only exchange ...........$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project tagonly
 cd project
 bk tag $Q PROJ
@@ -74,7 +74,7 @@ _tagkeys() {
 }
 
 echo $N Create a non-merge resolve tag and unpull it ................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project resolve-tag
 cd resolve-tag
 bk edit $Q foo

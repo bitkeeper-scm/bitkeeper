@@ -71,12 +71,12 @@ test `bk prs -r2 -hd:I: ChangeSet` = 2.1 || {
 echo OK
 
 # use tar because clone will not work since it has illegal structures
-cd $HERE/project
+cd "$HERE/project"
 rm BitKeeper/log/repo_id
 tar cf ../save.tar .
 
 echo $N Fix version 1 LOD structures ................................$NL
-#cd $HERE/project
+#cd "$HERE/project"
 bk _fix_lod1 > out1 2> err1 || {
 	echo Failed fix
 	echo STDOUT:
@@ -96,8 +96,8 @@ test `wc -l < results` -eq 0 || {
 echo OK
 
 echo $N Converge to repos which each fixed lod ......................$NL
-mkdir $HERE/clone
-cd $HERE/clone
+mkdir "$HERE/clone"
+cd "$HERE/clone"
 tar xmf ../save.tar
 bk _fix_lod1 > out1 2> err1 || {
 	echo Failed fix

@@ -517,7 +517,7 @@ grep -q '@@ other_function' GOT || {
 echo OK
 
 echo $N checking prs -C on branch side of merge .....................$NL
-cd $HERE
+cd "$HERE"
 rm -fr project copy
 commercial project
 echo XXX > bar

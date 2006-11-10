@@ -386,7 +386,7 @@ cmdlog_exit(void)
 	 * exit. (via the atexit() interface), there is one exception:
 	 * on win32, the top level bkd service thread cannot process atexit()
 	 * when the serice shutdown. (XP consider this an error)
- 	 * Fortuately, the bkd spawn a child process to process each
+	 * Fortunately, the bkd spawns a child process to process each
 	 * new connection. The child process do follow the the normal
 	 * exit path and process atexit().
 	 *  

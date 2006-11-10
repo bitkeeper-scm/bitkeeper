@@ -10,7 +10,7 @@ listIt(sccs *s, int list)
 	delta	*d;
 
 	bktmp(buf, "cs");
-	sprintf(cmd, "bk changes -e %s - > %s", list > 1 ? "-v" : "", buf);
+	sprintf(cmd, "bk changes -e %s - > '%s'", list > 1 ? "-v" : "", buf);
 	f = popen(cmd, "w");
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;

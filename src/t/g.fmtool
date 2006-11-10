@@ -12,10 +12,10 @@
 # Copyright (c) 2001 Aaron Kushner
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
-OUT=$HERE/out
-RC=`bk dotbk`/fm.rc
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/fm.rc"
 
 echo $N Create initial repository ...................................$NL
 commercial project
@@ -26,9 +26,9 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
 echo $N Create some data ............................................$NL
-cd $HERE/project/BitKeeper/etc
-mkdir $HERE/project/src
-cd $HERE/project/src
+cd "$HERE/project/BitKeeper/etc"
+mkdir "$HERE/project/src"
+cd "$HERE/project/src"
 echo "Common to both" > left
 echo "Common to both" > right
 echo "This is the right file" >> right
@@ -39,58 +39,58 @@ echo OK
 
 echo $N Simple startup and exit......................................$NL
 bk get $Q left right 
-bk guitest fmtool left right merge >$OUT 2>&1 <<'EOF'
+bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 err=$?
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1 ; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 echo OK
 
 echo $N Create dotbk/fm.rc ..........................................$NL
-test -f $RC && rm -f $RC
-bk guitest fmtool left right merge >$OUT 2>&1 <<'EOF'
+test -f "$RC" && rm -f "$RC"
+bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-test -f $RC || { echo "failed"; exit 1; }
+test -f "$RC" || { echo "failed"; exit 1; }
 echo "OK"
 
 echo $N Use Left.....................................................$NL
-bk guitest fmtool left right merge >$OUT 2>&1 <<'EOF'
+bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress "Use Left"
     test_buttonPress Done
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 err=$?
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1 ; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 # should we ignore whitespace? At present, fmtool on windows creates
 # lines terminated by \r\n even if the original files were terminated
 # with \n.
-bk diff $Q -w merge left >$OUT 2>&1
-if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
+bk diff $Q -w merge left >"$OUT" 2>&1
+if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
 echo $N Use Right....................................................$NL
-bk guitest fmtool left right merge >$OUT 2>&1 <<'EOF'
+bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress "Use Right"
     test_buttonPress Done
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 err=$?
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1 ; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 # should we ignore whitespace? At present, fmtool on windows creates
 # lines terminated by \r\n even if the original files were terminated
 # with \n.
-bk diff $Q -w merge right >$OUT 2>&1
-if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
+bk diff $Q -w merge right >"$OUT" 2>&1
+if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
 echo $N Simple undo..................................................$NL
-bk guitest fmtool left right merge >$OUT 2>&1 <<'EOF'
+bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress "Use Left"
     test_buttonPress "Undo"
     test_buttonPress "Use Right"
@@ -98,13 +98,13 @@ bk guitest fmtool left right merge >$OUT 2>&1 <<'EOF'
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 err=$?
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1 ; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 # should we ignore whitespace? At present, fmtool on windows creates
 # lines terminated by \r\n even if the original files were terminated
 # with \n.
-bk diff $Q -w merge right >$OUT 2>&1
-if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
+bk diff $Q -w merge right >"$OUT" 2>&1
+if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
 

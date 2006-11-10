@@ -23,7 +23,7 @@ Hi mom!
 EOF
 bk new $Q file
 bk commit $Q -ybaseline
-cd $HERE
+cd "$HERE"
 bk clone $Q proj child
 cat > PATCH << EOF
 ===== file 1.1 vs edited =====
@@ -67,7 +67,7 @@ test `bk prs -hr+ -nd:FUDGE: file` -gt 1243730 || {
 echo OK
 
 echo $N Test import of a patch file, look for user name .............$NL
-cd $HERE
+cd "$HERE"
 export BK_USER=trini BK_HOST=headbutt.com
 bk import $Q -Cftpatch PATCH child
 cd child
@@ -113,7 +113,7 @@ echo $N Test a patch that failed on windows .........................$NL
 undoit() {
 	perl -pe 'BEGIN {binmode(STDIN); binmode(STDOUT)} chomp;s/;/\r\n/g'
 }
-cd $HERE
+cd "$HERE"
 mkdir norepo
 cd norepo
 # The problem was giving a binary (\n) file to a text (\r\n) reading

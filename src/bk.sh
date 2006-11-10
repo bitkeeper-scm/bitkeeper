@@ -1247,7 +1247,7 @@ _install()
 		echo "usage: bk install [-dfSv] <destdir>"
 		exit 1
 	}
-	test X$BK_REGRESSION != X && CRANKTURN=YES
+	test X"$BK_REGRESSION" != X && CRANKTURN=YES
 
 	DEST="$1"
 	SRC=`bk bin`

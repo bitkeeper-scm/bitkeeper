@@ -12,15 +12,15 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
 
 echo $N Creating test data ..........................................$NL
 commercial project1
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-mkdir $HERE/project1/src
-cd $HERE/project1/src
+mkdir "$HERE/project1/src"
+cd "$HERE/project1/src"
 cat > file1.1 <<EOF
 .TH "bk crud" 1 2003/02/21 "\*(BC" "\*(UM"
 .SH NAME
@@ -43,32 +43,32 @@ EOF
 bk ci $Q -i file1.c file1.1 message.tcl
 if [ ! -f SCCS/s.file1.c ]; then echo failed to create history; exit 1; fi
 bk commit $Q -y"test of renametool 1"
-DIFF=$HERE/export.diff.$$
-P1=$HERE/project1
-P2=$HERE/project2
-cd $HERE
-bk clone $Q $P1 $P2
-mkdir $P2/doc
-mkdir $P2/lib
-cd $P2
+DIFF="$HERE/export.diff."$$
+P1="$HERE/project1"
+P2="$HERE/project2"
+cd "$HERE"
+bk clone $Q "$P1" "$P2"
+mkdir "$P2/doc"
+mkdir "$P2/lib"
+cd "$P2"
 bk mv src/file1.c lib/file1.c
 bk mv src/file1.1 doc/file1.1
 bk rm src/message.tcl
 echo "BitKeeper ROCKS!" > README
 bk ci $Q -i README
 bk commit $Q -y"test of renametool 2"
-cd $P1
+cd "$P1"
 bk -r edit > /dev/null 2>&1
-cd $P2
+cd "$P2"
 bk -r edit > /dev/null 2>&1
-cd $HERE
-bk treediff project1 project2 > $DIFF
-cd $P1
+cd "$HERE"
+bk treediff project1 project2 > "$DIFF"
+cd "$P1"
 bk -r clean > /dev/null 2>&1
-cd $P2
+cd "$P2"
 bk -r clean > /dev/null 2>&1
 echo OK
 
 echo $N "Running import, which should run renametool .................$NL"
-bk import -tpatch $Q $DIFF $P1
+bk import -tpatch $Q "$DIFF" "$P1"
 echo OK

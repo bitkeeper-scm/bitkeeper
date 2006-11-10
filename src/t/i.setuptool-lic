@@ -12,18 +12,18 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
-OUT=$HERE/out
-RC=`bk dotbk`/setup.rc
-ACCEPTED=`bk dotbk`/accepted
-REPO=$HERE/repo
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/setup.rc"
+ACCEPTED="`bk dotbk`/accepted"
+REPO="$HERE/repo"
 
 echo $N Open Logging, unaccepted license ............................$NL
-cd $HERE
-rm -rf $ACCEPTED $REPO
+cd "$HERE"
+rm -rf "$ACCEPTED" "$REPO"
 unset BK_CONFIG
-bk guitest setuptool >$OUT 2>&1 <<EOF
+bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_buttonPress "Open Logging"
@@ -46,10 +46,10 @@ bk guitest setuptool >$OUT 2>&1 <<EOF
          the confirmation dialog that pops up"
 EOF
 err=$?
-if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; cat $OUT; exit 1; fi
-grep -q 'The repository was successfully created.' $OUT
-if [ $? -ne 0 ] ; then echo failed ; cat $OUT ; exit 1 ; fi
-cat > $OUT <<EOF
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; cat "$OUT"; exit 1; fi
+grep -q 'The repository was successfully created.' "$OUT"
+if [ $? -ne 0 ] ; then echo failed ; cat "$OUT" ; exit 1 ; fi
+cat > "$OUT" <<EOF
 description: this is the description
 category: misc
 email: nobody@example.com
@@ -69,24 +69,24 @@ compression: gzip
 autofix: yes
 checkout: none
 EOF
-CONFIG=$REPO/BitKeeper/etc/config
-if [ ! -f $CONFIG ] ; then echo "failed to make config file" ; exit 1 ; fi
-bk diff $Q -w $OUT $CONFIG
-if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w $OUT $CONFIG; exit 1 ; fi
-cd $REPO
-test -z `bk license -l` || (echo "failed; license not accepted"; exit 1)
+CONFIG="$REPO/BitKeeper/etc/config"
+if [ ! -f "$CONFIG" ] ; then echo "failed to make config file" ; exit 1 ; fi
+bk diff $Q -w "$OUT" "$CONFIG"
+if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w "$OUT" "$CONFIG"; exit 1 ; fi
+cd "$REPO"
+test -z "`bk license -l`" || (echo "failed; license not accepted"; exit 1)
 echo OK
 
 echo $N Open Logging, accepted license ..............................$NL
-cd $HERE
-rm -rf $ACCEPTED $REPO
+cd "$HERE"
+rm -rf "$ACCEPTED" "$REPO"
 BK_CONFIG="logging:logging@openlogging.org"
 BK_CONFIG="$BK_CONFIG;license:;licsign1:;licsign2:;licsign3:"
 BK_CONFIG="$BK_CONFIG;single_user:;single_host:"
 export BK_CONFIG
-rm -rf $ACCEPTED
-bk license -a `bk license -l` 2>/dev/null
-bk guitest setuptool >$OUT 2>&1 <<EOF
+rm -rf "$ACCEPTED"
+bk license -a "`bk license -l`" 2>/dev/null
+bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_buttonPress "Open Logging"
@@ -104,10 +104,10 @@ bk guitest setuptool >$OUT 2>&1 <<EOF
          the confirmation dialog that pops up"
 EOF
 err=$?
-if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; cat $OUT; exit 1; fi
-grep -q 'The repository was successfully created.' $OUT
-if [ $? -ne 0 ] ; then echo failed ; cat $OUT ; exit 1 ; fi
-cat > $OUT <<EOF
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; cat "$OUT"; exit 1; fi
+grep -q 'The repository was successfully created.' "$OUT"
+if [ $? -ne 0 ] ; then echo failed ; cat "$OUT" ; exit 1 ; fi
+cat > "$OUT" <<EOF
 description: this is the description
 category: misc
 email: nobody@example.com
@@ -127,11 +127,11 @@ compression: gzip
 autofix: yes
 checkout: none
 EOF
-CONFIG=$REPO/BitKeeper/etc/config
-if [ ! -f $CONFIG ] ; then echo "failed to make config file" ; exit 1 ; fi
-bk diff $Q -w $OUT $CONFIG
-if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w $OUT $CONFIG; exit 1 ; fi
-cd $REPO
-test -z `bk license -l` || (echo "failed; license not accepted"; exit 1)
+CONFIG="$REPO/BitKeeper/etc/config"
+if [ ! -f "$CONFIG" ] ; then echo "failed to make config file" ; exit 1 ; fi
+bk diff $Q -w "$OUT" "$CONFIG"
+if [ $? -ne 0 ] ; then echo "failed" ; bk diff -w "$OUT" "$CONFIG"; exit 1 ; fi
+cd "$REPO"
+test -z "`bk license -l`" || (echo "failed; license not accepted"; exit 1)
 echo OK
 

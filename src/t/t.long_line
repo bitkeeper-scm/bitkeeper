@@ -96,7 +96,7 @@ if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 cores
 echo $N Create a copy of the project ................................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
@@ -104,7 +104,7 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 echo $N Check propagation of delta w/ long line .....................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk co $Q -l long1
 sed -e's/1/X/g' < long1 > tmp
 bk undos tmp > long1
@@ -116,33 +116,33 @@ bk undos X > long1.ref
 cmp -s long1 long1.ref
 if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
 bk commit $S -yCset
-bk send $Q -r1.3 - | (cd $HERE/copy; bk takepatch) 
-cd $HERE/copy/src
+bk send $Q -r1.3 - | (cd "$HERE/copy"; bk takepatch) 
+cd "$HERE/copy/src"
 bk resolve -t $Q
 bk co $Q long1
-cmp -s long1 $HERE/project/src/long1.ref
+cmp -s long1 "$HERE/project/src/long1.ref"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check clone of workspace w/ long line .......................$NL
-cd $HERE/project
-bk clone $Q $HERE/project $HERE/copy2
-cd $HERE/copy2
+cd "$HERE/project"
+bk clone $Q "$HERE/project" "$HERE/copy2"
+cd "$HERE/copy2"
 bk cset $Q -m.. > ../PATCH
-mkdir $HERE/copy3
-cd $HERE/copy3
+mkdir "$HERE/copy3"
+cd "$HERE/copy3"
 bk takepatch -atif ../PATCH
-cd $HERE/copy2/src || exit 1
+cd "$HERE/copy2/src" || exit 1
 bk co $Q long1
-cmp -s long1 $HERE/project/src/long1.ref
+cmp -s long1 "$HERE/project/src/long1.ref"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/copy3/src || exit 1
+cd "$HERE/copy3/src" || exit 1
 bk co $Q long1
-cmp -s long1 $HERE/project/src/long1.ref
+cmp -s long1 "$HERE/project/src/long1.ref"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/copy3/src
+cd "$HERE/copy3/src"
 echo OK
 echo $N Check diffs with long line ..................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk diffs -h -r1.1 -r1.2 long1 > diff
 echo > diff.ref
 diff long1_1.1.sav long1_1.2.sav >> diff.ref

@@ -485,7 +485,7 @@ fix_genlist(char *rev)
 	FILE	*f = 0;
 	char	buf[2*MAXKEY];
 
-	cmd = aprintf("bk annotate -R%s..+ ChangeSet", rev);
+	cmd = aprintf("bk annotate -R'%s'..+ ChangeSet", rev);
 	f = popen(cmd, "r");
 	free(cmd);
 	unless (f) goto out;
@@ -525,7 +525,7 @@ fix_savesfio(char **flist, char *file)
 	int	status, i;
 	FILE	*sfio;
 
-	cmd = aprintf("bk sfio -omq > %s", file);
+	cmd = aprintf("bk sfio -omq > '%s'", file);
 	sfio = popen(cmd, "w");
 	free(cmd);
 	unless (sfio) return (-1);

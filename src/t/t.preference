@@ -32,8 +32,8 @@ bk co -q # checkout:get is added later
 echo OK
 
 echo $N checkout:GET w admin ........................................$NL
-bk edit $Q $HERE/project/BitKeeper/etc/config
-echo "checkout:GET" >> $HERE/project/BitKeeper/etc/config
+bk edit $Q "$HERE/project/BitKeeper/etc/config"
+echo "checkout:GET" >> "$HERE/project/BitKeeper/etc/config"
 bk get $Q foo.c
 bk admin -fRCS foo.c
 bk commit $Q -ynew_stuff
@@ -45,9 +45,9 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w admin .......................................$NL
-bk unedit $HERE/project/BitKeeper/etc/config
-bk edit $Q $HERE/project/BitKeeper/etc/config
-echo "checkout:EDIT" >> $HERE/project/BitKeeper/etc/config
+bk unedit "$HERE/project/BitKeeper/etc/config"
+bk edit $Q "$HERE/project/BitKeeper/etc/config"
+echo "checkout:EDIT" >> "$HERE/project/BitKeeper/etc/config"
 bk edit $Q foo.c
 bk admin -FRCS foo.c
 bk commit $Q -ynew_stuff
@@ -70,9 +70,9 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:GET w delta ........................................$NL
-bk unedit $HERE/project/BitKeeper/etc/config
-if [ ! -w $HERE/project/BitKeeper/etc/config ]; then echo failed; exit 1; fi
-echo "checkout:GET" >> $HERE/project/BitKeeper/etc/config
+bk unedit "$HERE/project/BitKeeper/etc/config"
+if [ ! -w "$HERE/project/BitKeeper/etc/config" ]; then echo failed; exit 1; fi
+echo "checkout:GET" >> "$HERE/project/BitKeeper/etc/config"
 bk admin -FSCCS foo.c
 echo new2 >> foo.c
 bk delta $Q -ynew foo.c
@@ -85,12 +85,12 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:GET w clone ........................................$NL
-bk delta $Q -ycheckout_GET $HERE/project/BitKeeper/etc/config
+bk delta $Q -ycheckout_GET "$HERE/project/BitKeeper/etc/config"
 bk commit $Q -ycheckout_GET
-bk clone $Q $HERE/project $HERE/copy
-if [ ! -f $HERE/copy/src/foo.c ]; then echo failed; exit 1; fi
-if [ -w $HERE/copy/src/foo.c ]; then echo failed; exit 1; fi
-if [ -f $HERE/copy/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
+bk clone $Q "$HERE/project" "$HERE/copy"
+if [ ! -f "$HERE/copy/src/foo.c" ]; then echo failed; exit 1; fi
+if [ -w "$HERE/copy/src/foo.c" ]; then echo failed; exit 1; fi
+if [ -f "$HERE/copy/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:GET w chmod ........................................$NL
@@ -126,16 +126,16 @@ fi
 
 echo $N checkout:EDIT w clone .......................................$NL
 bk undo -sqfr+ || exit 1
-bk unedit $HERE/project/BitKeeper/etc/config
-bk edit $Q $HERE/project/BitKeeper/etc/config
-echo "checkout:EDIT" >> $HERE/project/BitKeeper/etc/config
+bk unedit "$HERE/project/BitKeeper/etc/config"
+bk edit $Q "$HERE/project/BitKeeper/etc/config"
+echo "checkout:EDIT" >> "$HERE/project/BitKeeper/etc/config"
 bk -Ur edit $Q
-bk delta $Q -ycheckout_EDIT $HERE/project/BitKeeper/etc/config
+bk delta $Q -ycheckout_EDIT "$HERE/project/BitKeeper/etc/config"
 bk commit $Q -ycheckout_EDIT
-bk clone $Q $HERE/project $HERE/copy2
-if [ ! -f $HERE/copy2/src/foo.c ]; then echo failed 1; exit 1; fi
-if [ ! -w $HERE/copy2/src/foo.c ]; then echo failed 2; exit 1; fi
-if [ ! -f $HERE/copy2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
+bk clone $Q "$HERE/project" "$HERE/copy2"
+if [ ! -f "$HERE/copy2/src/foo.c" ]; then echo failed 1; exit 1; fi
+if [ ! -w "$HERE/copy2/src/foo.c" ]; then echo failed 2; exit 1; fi
+if [ ! -f "$HERE/copy2/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w chmod .......................................$NL
@@ -172,34 +172,34 @@ echo OK
 
 
 echo $N checkout:EDIT w resolve simple content change ...............$NL
-cd $HERE/project
+cd "$HERE/project"
 bk unedit BitKeeper/etc/config
 bk edit $Q BitKeeper/etc/config
 echo "checkout:EDIT" >> BitKeeper/etc/config
 bk delta $Q -yEDIT BitKeeper/etc/config
 bk commit $Q -yEDIT 
-cd $HERE
+cd "$HERE"
 bk clone $Q project edit_1
 bk clone $Q project edit_2
-cd $HERE/edit_1/src
+cd "$HERE/edit_1/src"
 echo new2 >> foo.c
 bk delta $Q -ynew2 foo.c
 bk commit $Q -ynew2
-cd $HERE/edit_2/src
-if [ ! -f $HERE/edit_2/src/foo.c ]; then echo failed 1; exit 1; fi
-bk pull $Q $HERE/edit_1 || exit 1
-if [ ! -f $HERE/edit_2/src/foo.c ]; then echo failed 1; exit 1; fi
-if [ ! -w $HERE/edit_2/src/foo.c ]; then echo failed 2; exit 1; fi
-if [ ! -f $HERE/edit_2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
+cd "$HERE/edit_2/src"
+if [ ! -f "$HERE/edit_2/src/foo.c" ]; then echo failed 1; exit 1; fi
+bk pull $Q "$HERE/edit_1" || exit 1
+if [ ! -f "$HERE/edit_2/src/foo.c" ]; then echo failed 1; exit 1; fi
+if [ ! -w "$HERE/edit_2/src/foo.c" ]; then echo failed 2; exit 1; fi
+if [ ! -f "$HERE/edit_2/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w simple file create ..........................$NL
-cd $HERE/edit_1/src
+cd "$HERE/edit_1/src"
 date > file_create
 bk new $Q file_create
 bk commit $Q -ycreate
-cd $HERE/edit_2
-bk pull $Q $HERE/edit_1
+cd "$HERE/edit_2"
+bk pull $Q "$HERE/edit_1"
 test -f src/file_create || {
 	echo failed to check out file
 	exit 1
@@ -207,105 +207,105 @@ test -f src/file_create || {
 echo OK
 
 echo $N checkout:EDIT w resolve simple flag change ..................$NL
-cd $HERE/edit_1/src
+cd "$HERE/edit_1/src"
 bk admin $Q -fEXPAND1 foo.c
 bk commit $Q -yflags_chg
-cd $HERE/edit_2/src
-bk pull $Q $HERE/edit_1
-if [ ! -f $HERE/edit_2/src/foo.c ]; then echo failed 1; exit 1; fi
-if [ ! -w $HERE/edit_2/src/foo.c ]; then echo failed 2; exit 1; fi
-if [ ! -f $HERE/edit_2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
+cd "$HERE/edit_2/src"
+bk pull $Q "$HERE/edit_1"
+if [ ! -f "$HERE/edit_2/src/foo.c" ]; then echo failed 1; exit 1; fi
+if [ ! -w "$HERE/edit_2/src/foo.c" ]; then echo failed 2; exit 1; fi
+if [ ! -f "$HERE/edit_2/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w resolve simple rename change ................$NL
-cd $HERE/edit_1/src
+cd "$HERE/edit_1/src"
 bk mv foo.c foo1.c
 bk commit $Q -yrename
-cd $HERE/edit_2/src
-bk pull $Q $HERE/edit_1
-if [ ! -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
-if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
-if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
+cd "$HERE/edit_2/src"
+bk pull $Q "$HERE/edit_1"
+if [ ! -f "$HERE/edit_2/src/foo1.c" ]; then echo failed 1; exit 1; fi
+if [ ! -w "$HERE/edit_2/src/foo1.c" ]; then echo failed 2; exit 1; fi
+if [ ! -f "$HERE/edit_2/src/SCCS/p.foo1.c" ]; then echo failed; exit 1; fi
 echo OK
 
-cd $HERE
+cd "$HERE"
 tar cf TAR edit_1 edit_2
 echo $N checkout:EDIT w resolve automerge and autorename change .....$NL
-cd $HERE/edit_1/src
+cd "$HERE/edit_1/src"
 echo new3 >> foo1.c
 bk delta $Q -ynew2 foo1.c
 bk mv foo1.c renamed.c
 bk commit $Q -ynew2
-cd $HERE/edit_2/src
+cd "$HERE/edit_2/src"
 grep -v "^new$" foo1.c > foo.tmp
 cp foo.tmp foo1.c
 bk delta $Q -ydelete_line_1 foo1.c
 bk commit $Q -ydelete_line_1
-bk pull $Q $HERE/edit_1
-if [ -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
-if [ ! -f $HERE/edit_2/src/renamed.c ]; then echo failed 1; exit 1; fi
-if [ ! -w $HERE/edit_2/src/renamed.c ]; then echo failed 2; exit 1; fi
-if [ ! -f $HERE/edit_2/src/SCCS/p.renamed.c ]; then echo failed; exit 1; fi
+bk pull $Q "$HERE/edit_1"
+if [ -f "$HERE/edit_2/src/foo1.c" ]; then echo failed 1; exit 1; fi
+if [ ! -f "$HERE/edit_2/src/renamed.c" ]; then echo failed 1; exit 1; fi
+if [ ! -w "$HERE/edit_2/src/renamed.c" ]; then echo failed 2; exit 1; fi
+if [ ! -f "$HERE/edit_2/src/SCCS/p.renamed.c" ]; then echo failed; exit 1; fi
 echo OK
 
-cd $HERE
+cd "$HERE"
 rm -rf edit_1 edit_2
 tar xf TAR
 echo $N checkout:EDIT w resolve automerge content change ............$NL
-cd $HERE/edit_1/src
+cd "$HERE/edit_1/src"
 echo new3 >> foo1.c
 bk delta $Q -ynew2 foo1.c
 bk commit $Q -ynew2
-cd $HERE/edit_2/src
+cd "$HERE/edit_2/src"
 grep -v "^new$" foo1.c > foo.tmp
 cp foo.tmp foo1.c
 bk delta $Q -ydelete_line_1 foo1.c
 bk commit $Q -ydelete_line_1
-bk pull $Q $HERE/edit_1
-if [ ! -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
-if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
-if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
+bk pull $Q "$HERE/edit_1"
+if [ ! -f "$HERE/edit_2/src/foo1.c" ]; then echo failed 1; exit 1; fi
+if [ ! -w "$HERE/edit_2/src/foo1.c" ]; then echo failed 2; exit 1; fi
+if [ ! -f "$HERE/edit_2/src/SCCS/p.foo1.c" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w resolve automerge flag change ...............$NL
-cd $HERE/edit_1/src
+cd "$HERE/edit_1/src"
 bk admin $Q -FEXPAND1 foo1.c
 bk commit $Q -yflags_chg
-cd $HERE/edit_2/src
+cd "$HERE/edit_2/src"
 bk admin -fEOLN_NATIVE foo1.c
 bk commit $Q -yflags_chg
-bk pull $Q $HERE/edit_1
-if [ ! -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
-if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
-if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
+bk pull $Q "$HERE/edit_1"
+if [ ! -f "$HERE/edit_2/src/foo1.c" ]; then echo failed 1; exit 1; fi
+if [ ! -w "$HERE/edit_2/src/foo1.c" ]; then echo failed 2; exit 1; fi
+if [ ! -f "$HERE/edit_2/src/SCCS/p.foo1.c" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w resolve rename conflict .....................$NL
 # remove some csets to bring it below limit in the regression env
-cd $HERE/edit_1
+cd "$HERE/edit_1"
 bk undo $Q -sfa1.2 || exit 1
-cd $HERE/edit_2
+cd "$HERE/edit_2"
 bk undo $Q -sfa1.2 || exit 1
-cd $HERE/edit_1/src
+cd "$HERE/edit_1/src"
 bk mv foo.c foo2.c
 bk commit $Q -yrename
-cd $HERE/edit_2
+cd "$HERE/edit_2"
 bk unedit BitKeeper/etc/config
 bk edit $Q BitKeeper/etc/config
 echo "checkout:EDIT" >> BitKeeper/etc/config
 cd src
 bk mv foo.c foo3.c
 bk commit $Q -yrename
-bk pull -t $Q $HERE/edit_1 2> /dev/null <<EOF
+bk pull -t $Q "$HERE/edit_1" 2> /dev/null <<EOF
 r
 EOF
-if [ ! -f $HERE/edit_2/src/foo2.c ]; then echo failed 1; exit 1; fi
-if [ ! -w $HERE/edit_2/src/foo2.c ]; then echo failed 2; exit 1; fi
-if [ ! -f $HERE/edit_2/src/SCCS/p.foo2.c ]; then echo failed; exit 1; fi
+if [ ! -f "$HERE/edit_2/src/foo2.c" ]; then echo failed 1; exit 1; fi
+if [ ! -w "$HERE/edit_2/src/foo2.c" ]; then echo failed 2; exit 1; fi
+if [ ! -f "$HERE/edit_2/src/SCCS/p.foo2.c" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w undo ........................................$NL
-cd $HERE/project
+cd "$HERE/project"
 echo hi > hi
 bk new $Q hi || exit 1
 if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
@@ -335,7 +335,7 @@ if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w pull ........................................$NL
-cd $HERE/copy2
+cd "$HERE/copy2"
 bk pull $Q || exit 1
 if [ ! -w hi ]
 then	echo 'failed (bug 2002-05-10-002)'
@@ -344,13 +344,13 @@ fi
 echo OK
 
 echo $N checkout:EDIT w pull failure ................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk -Uur edit $Q
 echo ss >> bar.c
 echo dd >> foo.c
 bk ci $Q -yy bar.c foo.c || exit 1
 bk commit $Q -ydf || exit 1
-cd $HERE/copy2/src
+cd "$HERE/copy2/src"
 echo fff >> bar.c
 bk pull $Q 2>OUT
 if [ ! -w foo.c ]
@@ -410,27 +410,27 @@ test -w foo.c -a -f SCCS/p.foo.c || {
 echo OK
 
 echo $N checkout:none w pull ........................................$NL
-cd $HERE
+cd "$HERE"
 commercial pp
-cd $HERE
+cd "$HERE"
 bk clone $Q pp cc || exit 1
-cd $HERE/pp
+cd "$HERE/pp"
 echo hi > file1
 echo bye > file2
 bk new $Q file1 file2
 bk commit $Q -yy || exit 1
-cd $HERE/cc
+cd "$HERE/cc"
 bk pull $Q || exit
 if [ -f file1 -o -f file2 ]
 then	echo files should not be fetched
 	exit 1
 fi
-cd $HERE/pp
+cd "$HERE/pp"
 bk edit $Q file1
 echo junk >> file1
 bk ci $Q -yy file1
 bk commit $Q -yy || exit 1
-cd $HERE/cc
+cd "$HERE/cc"
 bk pull $Q || exit
 if [ -f file1 -o -f file2 ]
 then	echo files should not be fetched
@@ -460,7 +460,7 @@ echo $N check that config overriding and bk config -v work ..........$NL
 
 bk edit $Q BitKeeper/etc/config || exit 1
 perl -e '@a=("", "!", "foo", "foo!"); for $i (0..3) { for $j (0..3) { print "t$i$j:$a[$i]\n" } }' >> BitKeeper/etc/config
-perl -e '@a=("", "!", "bar", "bar!"); for $i (0..3) { for $j (0..3) { print "t$i$j:$a[$j]\n" } }' > `bk dotbk`/config
+perl -e '@a=("", "!", "bar", "bar!"); for $i (0..3) { for $j (0..3) { print "t$i$j:$a[$j]\n" } }' > "`bk dotbk`/config"
 bk config -v | perl -ne 'print if /^#?\tt/' > GOT
 
 cat <<EOF > WANT
@@ -523,7 +523,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N check again with BK_CONFIG ..................................$NL
-rm `bk dotbk`/config
+rm "`bk dotbk`/config"
 BK_CONFIG=`perl -e '@a=("", "!", "bar", "bar!"); for $i (0..3) { for $j (0..3) { push(@b, "t$i$j:$a[$j]") } } print join(";", @b)'`
 export BK_CONFIG
 bk config -v | perl -ne 'print if /^#?\tt/ || /\$/' > GOT

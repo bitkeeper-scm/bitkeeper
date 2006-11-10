@@ -11,7 +11,7 @@
 
 echo $N Create initial repository ...................................$NL
 commercial project
-bk clone $Q $HERE/project $HERE/copy
+bk clone $Q "$HERE/project" "$HERE/copy"
 mkdir src
 cd src
 echo bar > bar.c
@@ -19,8 +19,8 @@ echo h > h.h
 bk ci $Q -i bar.c h.h
 bk commit $S -yCset
 bk tag $Q proj1
-mkdir $HERE/copy/src
-cd $HERE/copy/src
+mkdir "$HERE/copy/src"
+cd "$HERE/copy/src"
 echo foo > foo.c
 bk new $Q foo.c
 bk commit $Q -yfoo
@@ -28,38 +28,38 @@ bk tag $Q copy1
 echo OK
 
 echo $N List keys which are local only, changes -Lk .................$NL
-bk changes -Lk $HERE/project | bk sort > GOT
+bk changes -Lk "$HERE/project" | bk sort > GOT
 bk -R prs -hand:KEY: ChangeSet | head -2 | bk sort > WANT
 cmp -s WANT GOT || { echo failed; diff -u WANT GOT; exit 1; }
 echo OK
 
 echo $N List local changes as rev and type ..........................$NL
-bk changes -qafLnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project > WANT
+bk changes -qafLnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' "$HERE/project" > WANT
 bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 > GOT
 cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
 
 echo $N List keys which are remote only, changes -Rk ................$NL
-bk changes -Rk $HERE/project | bk sort > GOT
-( cd $HERE/project && 
+bk changes -Rk "$HERE/project" | bk sort > GOT
+( cd "$HERE/project" && 
   bk -R prs -hand:KEY: ChangeSet | head -2 | bk sort ) > WANT
 cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
 
 echo $N List remote changes as rev and type .........................$NL
-bk changes -qafRnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project |
+bk changes -qafRnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' "$HERE/project" |
     bk sort > GOT
-( cd $HERE/project && 
+( cd "$HERE/project" && 
   bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 ) > WANT
 cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
 
 echo $N make sure bk send xfers tags correctly ......................$NL
-cd $HERE/copy
-bk send $Q -u../project  - > $HERE/patch || exit 1
-cd $HERE/project
+cd "$HERE/copy"
+bk send $Q -u../project  - > "$HERE/patch" || exit 1
+cd "$HERE/project"
 bk takepatch -qay'Hello daddy, hello mama!
-Here I am in Camp Granada!' < $HERE/patch || exit 1
+Here I am in Camp Granada!' < "$HERE/patch" || exit 1
 bk prs -hn -d:TAG: | grep copy1 > OUT2
 test $? -eq 0 || {
 	echo failed
@@ -81,7 +81,7 @@ grep -q '^  Here I am in Camp Granada!$' OUT3 || {
 echo OK
 
 echo $N Check synckeys error handling ...............................$NL
-cd $HERE/project
+cd "$HERE/project"
 mv SCCS/s.ChangeSet csetfile
 bk synckeys -lk ../copy 2>ERR
 rc=$?

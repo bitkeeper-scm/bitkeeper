@@ -12,10 +12,10 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
-OUT=$HERE/out
-RC=`bk dotbk`/rev.rc
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/rev.rc"
 
 echo $N Create initial repository ...................................$NL
 commercial project
@@ -26,9 +26,9 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
 echo $N Create some data ............................................$NL
-cd $HERE/project/BitKeeper/etc
-mkdir $HERE/project/src
-cd $HERE/project/src
+cd "$HERE/project/BitKeeper/etc"
+mkdir "$HERE/project/src"
+cd "$HERE/project/src"
 for f in file1 file2 file3 file4 file5 ; do
     echo "this is $f" > $f 
     bk ci $Q -i -y'new file' $f
@@ -45,26 +45,26 @@ bk commit $Q -y'added a second line to file1, file2 and file3'
 echo OK
 
 echo $N Create dotbk/rev.rc .........................................$NL
-test -f $RC && rm -f $RC
-bk guitest revtool >$OUT 2>&1 <<'EOF'
+test -f "$RC" && rm -f "$RC"
+bk guitest revtool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-test -f $RC || (echo "failed" ; exit 1; )
+test -f "$RC" || (echo "failed" ; exit 1; )
 echo "OK"
 
 echo $N Bogus command line option ...................................$NL
-bk guitest revtool --bogus >$OUT 2>&1 <<'EOF'
+bk guitest revtool --bogus >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 if [ $? -ne 1 ]; then echo "failed"; echo "exited $err; expected 1"; exit 1; fi
-egrep 'usage:.*bk ' $OUT > $DEV_NULL
-if [ "$?" -ne 0 ] ; then echo failed; cat $OUT; exit 1; fi
+egrep 'usage:.*bk ' "$OUT" > $DEV_NULL
+if [ "$?" -ne 0 ] ; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
 echo $N Normal startup w/no args. ...................................$NL
-bk guitest revtool >$OUT 2>&1 <<'EOF'
+bk guitest revtool >"$OUT" 2>&1 <<'EOF'
     global fname
     if {"[pwd]" != "[exec bk root]"} {
         puts "pwd is not bk root"
@@ -77,24 +77,24 @@ bk guitest revtool >$OUT 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-if [ $? -ne 0 ]; then echo "failed"; cat $OUT; exit 1; fi
+if [ $? -ne 0 ]; then echo "failed"; cat "$OUT"; exit 1; fi
 echo OK
 
 echo $N Window title ................................................$NL
-bk guitest revtool >$OUT 2>&1 <<'EOF'
+bk guitest revtool >"$OUT" 2>&1 <<'EOF'
     set title [string trim [wm title .]]
     if {"$title" != "revtool: [exec bk root]: ChangeSet"} {
 	puts "unexpected title: '$title'"
     }
     exit 0
 EOF
-if [ -s $OUT ] ; then echo failed; cat $OUT ; exit 1 ; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT" ; exit 1 ; fi
 echo OK
 
 # this does a very shallow test for whether the graph is correct;
 # it simply checks that one data structure has been initialized. 
 echo $N Simple graph test ...........................................$NL
-bk guitest revtool >$OUT 2>&1 <<'EOF'
+bk guitest revtool >"$OUT" 2>&1 <<'EOF'
     global rev2date w
     set revs [lsort [array names rev2date]]
     if {$revs != {1.1-bk 1.2-bk 1.3-bk}} {
@@ -103,12 +103,12 @@ bk guitest revtool >$OUT 2>&1 <<'EOF'
     }
     exit 0
 EOF
-if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
-if [ -s $OUT ] ; then echo failed; cat $OUT ; exit 1 ; fi
+if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT" ; exit 1 ; fi
 echo OK
 
 echo $N Annotations test.............................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk annotate -R -Aur file1 > WANT
 bk guitest revtool file1 > GOT 2>&1 <<'EOF'
 	global w
@@ -123,9 +123,9 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Annotations with preferences.................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk annotate -R -Abdnpru file1 > WANT
-echo 'set gc(rev.annotate) "-Abdnpru"' > `bk dotbk`/config-gui
+echo 'set gc(rev.annotate) "-Abdnpru"' > "`bk dotbk`/config-gui"
 bk guitest revtool file1 > GOT 2>&1 <<'EOF'
 	global w
 	test_inputString "c"
@@ -139,8 +139,8 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Annotations for tip..........................................$NL
-cd $HERE/project/src
-rm -f `bk dotbk`/config-gui
+cd "$HERE/project/src"
+rm -f "`bk dotbk`/config-gui"
 bk get $Q -Aru -Pr+ file1 > WANT
 bk guitest revtool file1 > GOT 2>&1 <<'EOF'
 	global w
@@ -158,8 +158,8 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Annotations for tip with custom format.......................$NL
-cd $HERE/project/src
-echo 'set gc(rev.annotate) "-Abdnpru"' > `bk dotbk`/config-gui
+cd "$HERE/project/src"
+echo 'set gc(rev.annotate) "-Abdnpru"' > "`bk dotbk`/config-gui"
 bk get $Q -Abdnpru -Pr+ file1 > WANT
 bk guitest revtool file1 > GOT 2>&1 <<'EOF'
 	global w
@@ -178,7 +178,7 @@ echo OK
 
 echo $N Test revision given in command line..........................$NL
 bk cp file1 "name with  spaces" 2> QUIET
-bk guitest revtool -r1.1 "name with  spaces" >$OUT 2>&1 <<'EOF'
+bk guitest revtool -r1.1 "name with  spaces" >"$OUT" 2>&1 <<'EOF'
 	global anchor
 	if {$anchor ne "1.1-bk"} {
 		puts stderr "Revision 1.1 specified in command line, \
@@ -187,13 +187,11 @@ bk guitest revtool -r1.1 "name with  spaces" >$OUT 2>&1 <<'EOF'
 	}
 	exit 0
 EOF
-if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
 echo OK
 
 echo $N Test key given in command line...............................$NL
 REV=`bk prs -hnd:KEY: -r1.1 "name with  spaces"`
-bk guitest revtool -r"$REV" "name with  spaces" >$OUT 2>&1 <<'EOF'
+bk guitest revtool -r"$REV" "name with  spaces" >"$OUT" 2>&1 <<'EOF'
 	global anchor
 	if {$anchor ne "1.1-bk"} {
 		puts stderr "Revision 1.1 specified in command line, \
@@ -202,8 +200,8 @@ bk guitest revtool -r"$REV" "name with  spaces" >$OUT 2>&1 <<'EOF'
 	}
 	exit 0
 EOF
-if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
 echo $N Test invalid revision given in command line..................$NL
@@ -219,7 +217,7 @@ grep -q "no such delta" ERR || {
 echo OK
 
 echo $N Test two revisions in the command line.......................$NL
-bk guitest revtool -r1.1 -l1.2 "name with  spaces" >$OUT 2>&1 <<'EOF'
+bk guitest revtool -r1.1 -l1.2 "name with  spaces" >"$OUT" 2>&1 <<'EOF'
 	global anchor
 	if {$anchor ne "1.1-bk"} {
 		puts stderr "Revision 1.1 specified in command line, \
@@ -228,15 +226,15 @@ bk guitest revtool -r1.1 -l1.2 "name with  spaces" >$OUT 2>&1 <<'EOF'
 	}
 	exit 0
 EOF
-if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
 echo $N Test two revisions in the command line, one invalid..........$NL
-bk revtool -r1.1000 -l1.1 "name with  spaces" >$OUT 2>&1 && {
+bk revtool -r1.1000 -l1.1 "name with  spaces" >"$OUT" 2>&1 && {
 	echo expected failure
 	exit 1
 }
 echo "either 1.1 or 1.1000 is not a valid revision" > EXPECTED
-cmpfiles $OUT EXPECTED
+cmpfiles "$OUT" EXPECTED
 echo OK

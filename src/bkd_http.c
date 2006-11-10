@@ -688,7 +688,7 @@ http_dir(char *page)
 	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
 	    " <td align=center>:USER:</td>"
 	    " <td>:HTML_C:&nbsp;</td>"
-	    "</tr>\n%s' %s",
+	    "</tr>\n%s' '%s'",
 	    prefix, suffix, fpath);
 	f = popen(cmd, "r");
 	free(cmd);

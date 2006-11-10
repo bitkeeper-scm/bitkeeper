@@ -6733,10 +6733,10 @@ write:
 		t = strrchr(s->gfile, '/');
 		if (t) {
 			*t = 0;
-			sprintf(cmd, "cd %s; sh %s -o", s->gfile, &t[1]);
+			sprintf(cmd, "cd '%s'; sh '%s' -o", s->gfile, &t[1]);
 			*t = '/';
 		} else {
-			sprintf(cmd, "sh %s -o", s->gfile);
+			sprintf(cmd, "sh '%s' -o", s->gfile);
 		}
 		system(cmd);
 		safe_putenv("PATH=%s", path);

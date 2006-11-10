@@ -155,7 +155,7 @@ BK_GLOB_EQUAL=NO
 export BK_GLOB_EQUAL
 
 echo $N Make sure we can disable = as an alias for \* ................$NL
-cd `bk root`/src
+cd "`bk root`"/src
 BK_GLOB_EQUAL=NO bk gfiles =.c > GOT
 cat > WANT <<EOF
 =.c
@@ -164,7 +164,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check sets of characters in globs ...........................$NL
-cd `bk root`
+cd "`bk root`"
 bk gfiles '[bf]*' | bk sort > GOT
 cat > WANT <<EOF
 src/bar.c
@@ -174,7 +174,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check inverse sets of characters in globs ...................$NL
-cd `bk root`
+cd "`bk root`"
 bk gfiles -U '[^bf]*' | bk sort > GOT
 cat > WANT <<EOF
 src/*.c
@@ -190,7 +190,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check single character matches in globs .....................$NL
-cd `bk root`
+cd "`bk root`"
 bk gfiles '???.c' | bk sort > GOT
 cat > WANT <<EOF
 src/bar.c
@@ -200,7 +200,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Check single character combined with a set match ............$NL
-cd `bk root`
+cd "`bk root`"
 bk gfiles '[bf]??.c' | bk sort > GOT
 cat > WANT <<EOF
 src/bar.c
@@ -210,7 +210,7 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Make sure we can disable glob expansion .....................$NL
-cd `bk root`/src
+cd "`bk root`"/src
 BK_NO_FILE_GLOB=YES bk gfiles '=.c' > GOT
 echo '=.c' > WANT
 checkfiles WANT GOT
@@ -222,7 +222,7 @@ test "$PLATFORM" = "WIN32" || {
 echo OK
 
 echo $N Make sure we can enable = as an alias for \* .................$NL
-cd `bk root`/src
+cd "`bk root`"/src
 BK_GLOB_EQUAL=YES bk gfiles =.c | bk sort > GOT
 cat > WANT <<EOF
 *.c

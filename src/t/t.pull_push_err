@@ -9,8 +9,8 @@ do
 	bk new $Q foo$i
 done
 bk commit $Q -yfoo
-bk clone $Q $HERE/proj $HERE/copy
-cd $HERE/copy
+bk clone $Q "$HERE/proj" "$HERE/copy"
+cd "$HERE/copy"
 for i in 1 2 3 4 5 6 7 8 9 10 
 do
 	bk edit $Q foo$i
@@ -18,19 +18,19 @@ do
 	bk delta $Q -y foo$i
 done
 bk commit $Q -yHello
-cd $HERE/proj
+cd "$HERE/proj"
 bk edit $Q foo5
 echo "Bye" > foo5
-bk pull $HERE/copy >$HERE/out 2>&1
-grep -q "takepatch exited 1" $HERE/out || {
+bk pull "$HERE/copy" >"$HERE/out" 2>&1
+grep -q "takepatch exited 1" "$HERE/out" || {
 	echo failed; exit 1; }
 echo OK
 
 echo $N Make sure push print error if takepatch failed ..............$NL
-cd $HERE/copy
-rm -f $HERE/out
-bk push $HERE/proj > $HERE/out 2>&1
-grep -q "takepatch exited 1" $HERE/out || {
+cd "$HERE/copy"
+rm -f "$HERE/out"
+bk push "$HERE/proj" > "$HERE/out" 2>&1
+grep -q "takepatch exited 1" "$HERE/out" || {
 	echo failed; exit 1; }
 echo OK
 

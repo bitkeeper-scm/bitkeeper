@@ -846,8 +846,8 @@ _spawnvp_ex(int flag, const char *cmdname, char *const av[], int fix_quote)
 	char	*p, *q;
 	DWORD	status = 0;
 	int	cflags, i, j;
-	int 	len, cmd_len;
-	int	do_quote = 1, needEndQuote = 0;
+	int	len, cmd_len;
+	int	do_quote = 1;
 
 	/*
 	 * Compute the size of the av[] vector
@@ -859,9 +859,6 @@ _spawnvp_ex(int flag, const char *cmdname, char *const av[], int fix_quote)
 	assert(cmdLine);
 	i = 0; /* important */
 
-#define	dupHandle(hProc, fd, hStd) \
-	DuplicateHandle(hProc, (HANDLE) _get_osfhandle(fd), \
-			hProc, &(hStd), 0, TRUE, DUPLICATE_SAME_ACCESS)
 
 	expnPath((char *) cmdname, fullCmdPath);
 	if (fullCmdPath[0] == 0) {
@@ -877,8 +874,7 @@ _spawnvp_ex(int flag, const char *cmdname, char *const av[], int fix_quote)
 	 */
 	len = strlen(fullCmdPath);
 	if ((len > 4) && (strcmp(&fullCmdPath[len - 4], ".bat") == 0)) {
-		sprintf(cmdLine, "%s /c %s",
-		    (_osver & 0x8000) ? "command.com" : "cmd.exe", fullCmdPath);
+		sprintf(cmdLine, "cmd.exe /c \"%s\"", fullCmdPath);
 		i = 1;
 		len = strlen(cmdLine);
 		p = &cmdLine[len];
@@ -910,7 +906,9 @@ _spawnvp_ex(int flag, const char *cmdname, char *const av[], int fix_quote)
 		 */
 		if (getShell(header, cmdLine) == NULL) return (-1);
 		nt2bmfname(fullCmdPath, script);
+		if (do_quote = strchr(script, ' ')) strcat(cmdLine, "\"");
 		strcat(cmdLine, script);
+		if (do_quote) strcat(cmdLine, "\"");
 		len = strlen(cmdLine);
 		p = &cmdLine[len];
 		i = 1;
@@ -948,7 +946,6 @@ _spawnvp_ex(int flag, const char *cmdname, char *const av[], int fix_quote)
 		if (do_quote) *p++ = '\"'; /* end quote " */
 		i++;
 	}
-	if (needEndQuote) *p++ = '\''; /* for unix shell script */
 	*p = 0;
 
 
@@ -995,12 +992,11 @@ duph:
 	 * Pass fd 0,1,2 down to child via startInfo block.
 	 * It is very important that this is done correctly,
 	 * otherwise pipe() will fail to send EOF when it should.
-	 *
-	 * XXX We have to transfer the handles with different method because
-	 * Win98 does not seems to hornor the "no inherit" flag if it is set
-	 * after the handle is created. It works if you create the handle with
-	 * with the "no inherit" flag set, however.
 	 */
+#define	dupHandle(hProc, fd, hStd) \
+	DuplicateHandle(hProc, (HANDLE) _get_osfhandle(fd),		\
+			hProc, &(hStd), 0, TRUE, DUPLICATE_SAME_ACCESS)
+
 	si.dwFlags = STARTF_USESTDHANDLES;
 	dupHandle(hProc, 0, si.hStdInput);
 	dupHandle(hProc, 1, si.hStdOutput);

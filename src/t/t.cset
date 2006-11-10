@@ -106,7 +106,7 @@ echo $N Cset -x of a merge node .....................................$NL
 touch foo bar
 bk new $Q foo bar
 bk commit $Q -yfoobar
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 cd project
 bk edit $Q foo

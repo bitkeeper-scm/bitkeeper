@@ -304,7 +304,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	sprintf(buf, "bk _listkey %s -q < %s >> %s",
+	sprintf(buf, "bk _listkey %s -q < '%s' >> '%s'",
 	    opts.fullPatch ? "-F" : "", probe_list, msg_file);
 	status = system(buf); 
 	rc = WEXITSTATUS(status);

@@ -46,7 +46,7 @@ echo OK
 cores
 
 echo $N Create a copy of the project ................................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
@@ -96,9 +96,9 @@ echo OK
 
 bk commit $S -ywhatever
 echo $N Check for no newline changes back to project ................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk pull -t $Q ../copy
-cd $HERE
+cd "$HERE"
 cp copy/X project/SAVEfoo.c
 cp copy/Y project/SAVEbar.c
 cd project
@@ -111,7 +111,7 @@ echo OK
 # and redirected to a file as 'text' altering '\r\n' to '\n' leading
 # the output of normal diff to get translated.  Fix to io.c in same cset.
 echo $N Last line carraige return with no linefeed ..................$NL
-cd $HERE
+cd "$HERE"
 commercial commercial
 echo a > x
 bk new $Q x
@@ -128,7 +128,7 @@ grep -q '^.E [0-9][0-9]*N$' SCCS/s.x && {
 echo OK
 
 echo $N No newline corner case with closing E after delete ..........$NL
-cd $HERE/project
+cd "$HERE/project"
 printf "a\nb" > afterdel
 bk new $Q afterdel
 bk edit $Q afterdel

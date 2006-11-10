@@ -25,20 +25,20 @@ bk commit $Q -ywhatever
 echo OK
 
 echo $N Identical gfile conflict should autoresolve .................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone
 cd project
 date > date
 bk new $Q date
 bk commit $Q -ywhatever
-bk cat date > $HERE/clone/date
+bk cat date > "$HERE/clone/date"
 bk get $Q date
-cmp -s date $HERE/clone/date || {
+cmp -s date "$HERE/clone/date" || {
 	echo data files should be the same
-	diff date $HERE/clone/date 
+	diff date "$HERE/clone/date" 
 	exit 1
 }
-cd $HERE/clone
+cd "$HERE/clone"
 test -f SCCS/s.date && {
 	echo should not have data file
 	exit 1
@@ -56,12 +56,12 @@ test -f SCCS/s.date || {
 echo OK
 
 echo $N Different gfile conflict should not autoresolve .............$NL
-cd $HERE/project
+cd "$HERE/project"
 echo A > A
 bk new $Q A
 bk commit $Q -ywhatever
-echo B > $HERE/clone/A
-cd $HERE/clone
+echo B > "$HERE/clone/A"
+cd "$HERE/clone"
 test -f SCCS/s.A && {
 	echo should not have data file
 	exit 1

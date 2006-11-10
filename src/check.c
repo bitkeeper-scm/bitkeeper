@@ -683,7 +683,7 @@ checkAll(hash *keys)
 		if (exists(buf)) {
 			local = hash_new(HASH_MEMHASH);
 			sprintf(buf,
-			    "bk annotate -R -h %s/ChangeSet", RESYNC2ROOT);
+			    "bk annotate -R -h '%s/ChangeSet'", RESYNC2ROOT);
 			f = popen(buf, "r");
 			while (fgets(buf, sizeof(buf), f)) {
 				t = separator(buf);

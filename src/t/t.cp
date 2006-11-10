@@ -59,9 +59,9 @@ if [ ${REV}X != "1.4"X ]; then echo Failed; exit 1; fi
 echo OK
 
 echo $N Test copy between repos .....................................$NL
-cd $HERE
+cd "$HERE"
 commercial copy
-cd $HERE/project
+cd "$HERE/project"
 bk cp file1 ../copy/file2 2>ERR && {
 	echo should have failed
 	exit 1

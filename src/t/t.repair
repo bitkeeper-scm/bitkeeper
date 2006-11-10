@@ -30,24 +30,24 @@ echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 bk commit $Q -ycset1
-bk clone $Q $HERE/project $HERE/copy
+bk clone $Q "$HERE/project" "$HERE/copy"
 rm -f foo.c SCCS/s.foo.c
 rm -f bar.c SCCS/s.bar.c
 bk -r check -ag | bk gone -q -
 bk commit $Q -yfoo_gone
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk mv foo.c foo2.c
 bk edit $Q foo2.c
 echo "new stuff" > foo2.c
 bk delta $Q -ynew_stuff foo2.c
 bk commit $Q -y"rename+new_stuff" foo2.c
-cd $HERE/project/src
-bk pull $HERE/copy  > out 2>&1
+cd "$HERE/project/src"
+bk pull "$HERE/copy"  > out 2>&1
 grep -q "cannot accept updates" out || { echo failed; exit 1; }
 echo OK
 echo $N "Check bk repair" .............................................$NL
-cd $HERE/project/src
-bk repair $HERE/copy > /dev/null 2> /dev/null
+cd "$HERE/project/src"
+bk repair "$HERE/copy" > /dev/null 2> /dev/null
 if [ ! -f SCCS/s.foo2.c ]; then echo failed; exit 1; fi
 if [ ! -f SCCS/s.bar.c ]; then echo warnning bar.c not restaored; fi
 #bk rmgone -n

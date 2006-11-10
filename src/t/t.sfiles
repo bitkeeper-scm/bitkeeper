@@ -544,7 +544,7 @@ echo $N Test sfile -cGjlnvxyp with s.file w no pathname .............$NL
 perl -ne 'print unless /^.cP/' SCCS/s.foo  | bk undos > SCCS/s.bad
 bk admin -z  SCCS/s.bad
 rm -f SCCS/?.impostor
-bk sort +1 - > $HERE/WANT <<EOF
+bk sort +1 - > "$HERE/WANT" <<EOF
 j------ SCCS/OLD-s.foo
 j------ SCCS/JUNK
 j------ SCCS/c.gone
@@ -556,17 +556,17 @@ slc-G-- BitKeeper/etc/SCCS/s.ignore
 su---n- SCCS/s.bad
 su--G-- BitKeeper/etc/SCCS/s.config
 EOF
-bk sfiles -cGjlnvxyp | bk sort +1 > $HERE/GOT || { echo failed 1; exit 1; }
-cmp -s $HERE/WANT $HERE/GOT || {
+bk sfiles -cGjlnvxyp | bk sort +1 > "$HERE/GOT" || { echo failed 1; exit 1; }
+cmp -s "$HERE/WANT" "$HERE/GOT" || {
 	echo failed 2
-	sdiff -w80 $HERE/WANT $HERE/GOT
+	sdiff -w80 "$HERE/WANT" "$HERE/GOT"
 	ls SCCS
 	exit 1
 }
 echo OK
 
 echo $N Test sfile -cdDGjlnvxyp with s.file w no pathname ...........$NL
-bk sort +1 > $HERE/WANT <<EOF
+bk sort +1 > "$HERE/WANT" <<EOF
 j------ SCCS/OLD-s.foo
 j------ SCCS/JUNK
 j------ SCCS/c.gone
@@ -586,16 +586,16 @@ d------ BitKeeper/etc
 d------ bar
 d------ bar/blech
 EOF
-bk sfiles -cdDGjlnvxyp | bk sort +1 > $HERE/GOT || { echo failed 1; exit 1; }
-cmp -s $HERE/WANT $HERE/GOT || {
+bk sfiles -cdDGjlnvxyp | bk sort +1 > "$HERE/GOT" || { echo failed 1; exit 1; }
+cmp -s "$HERE/WANT" "$HERE/GOT" || {
 	echo failed 2
-	sdiff -w80 $HERE/WANT $HERE/GOT
+	sdiff -w80 "$HERE/WANT" "$HERE/GOT"
 	exit 1
 }
 echo OK
 
 echo $N Test limiting sfiles to one level ...........................$NL
-bk sort +1 > $HERE/WANT <<EOF
+bk sort +1 > "$HERE/WANT" <<EOF
 j------ SCCS/OLD-s.foo
 j------ SCCS/JUNK
 j------ SCCS/c.gone
@@ -607,10 +607,10 @@ D------ BitKeeper
 d------ .
 d------ bar
 EOF
-bk sfiles -1cdDjlnvxyp | bk sort +1 > $HERE/GOT || { echo failed 1; exit 1; }
-cmp -s $HERE/WANT $HERE/GOT || {
+bk sfiles -1cdDjlnvxyp | bk sort +1 > "$HERE/GOT" || { echo failed 1; exit 1; }
+cmp -s "$HERE/WANT" "$HERE/GOT" || {
 	echo failed 2
-	sdiff -w80 $HERE/WANT $HERE/GOT
+	sdiff -w80 "$HERE/WANT" "$HERE/GOT"
 	exit 1
 }
 echo OK
@@ -633,7 +633,7 @@ cmp -s GOT WANT || { echo failed; exit 1; }
 echo OK
 
 echo $N Test sfile -U with triggers, they should be listed ..........$NL
-cd `bk root`
+cd "`bk root`"
 test -d BitKeeper/triggers || mkdir BitKeeper/triggers
 echo exit 0 > BitKeeper/triggers/pre-commit
 chmod +x BitKeeper/triggers/pre-commit
@@ -646,7 +646,7 @@ bk sfiles -gU | grep -q BitKeeper/triggers/pre-commit || {
 echo OK
 
 echo $N Test sfiles -c outside of repo ..............................$NL
-cd $HERE
+cd "$HERE"
 mkdir -p foo/SCCS
 cd foo
 date > file
@@ -682,10 +682,10 @@ cores
 # All of the above as recursive thing and with naming the file in argv
 
 echo $N Set up for unit testing .....................................$NL
-cd $HERE
+cd "$HERE"
 commercial lmtest
 commercial subrepo
-cd $HERE/lmtest
+cd "$HERE/lmtest"
 mkdir DIR_WITH_SCCS
 mkdir DIR_WITH_NO_SCCS
 touch EXTRA1 EXTRA_WITH_COMMENTS DIR_WITH_NO_SCCS/EXTRA2 DIR_WITH_SCCS/EXTRA3
@@ -708,7 +708,7 @@ echo comments > SCCS/c.MODIFIED_W_COMMENTS
 echo OK
 
 echo $N Test summary output .........................................$NL
-cat <<EOF > $HERE/WANT
+cat <<EOF > "$HERE/WANT"
     13 files under revision control.
      1 subrepositories.
      4 files not under revision control (and not ignored).
@@ -720,20 +720,20 @@ cat <<EOF > $HERE/WANT
      1 files with checked in, but not committed, deltas.
      1 files in incorrect locations.
 EOF
-cd $HERE/lmtest
-bk sfiles -icdDGjnRuSp > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+cd "$HERE/lmtest"
+bk sfiles -icdDGjnRuSp > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Test summary output from outside the repo ...................$NL
-cd $HERE
-bk sfiles -icdDGjnRuSp lmtest > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+cd "$HERE"
+bk sfiles -icdDGjnRuSp lmtest > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Test verbose output for all files ...........................$NL
-cd $HERE/lmtest
-cat <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+cat <<EOF > "$HERE/WANT"
 D------ BitKeeper
 D------ BitKeeper/deleted
 D------ DIR_WITH_NO_SCCS
@@ -762,13 +762,13 @@ x------ DIR_WITH_SCCS/EXTRA3
 x------ EXTRA1
 x-----y EXTRA_WITH_COMMENTS
 EOF
-bk sfiles -vixcdDGjnRup | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vixcdDGjnRup | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Test verbose output for all files from outside the repo .....$NL
-cd $HERE
-cat <<EOF > $HERE/WANT
+cd "$HERE"
+cat <<EOF > "$HERE/WANT"
 D------ lmtest/BitKeeper
 D------ lmtest/BitKeeper/deleted
 D------ lmtest/DIR_WITH_NO_SCCS
@@ -797,14 +797,14 @@ x------ lmtest/DIR_WITH_SCCS/EXTRA3
 x------ lmtest/EXTRA1
 x-----y lmtest/EXTRA_WITH_COMMENTS
 EOF
-cd $HERE
-bk sfiles -vixcdDGjnRup lmtest | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+cd "$HERE"
+bk sfiles -vixcdDGjnRup lmtest | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Test citool output from inside a repo .......................$NL
-cd $HERE/lmtest
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+bk sort +1 <<EOF > "$HERE/WANT"
 x------ DIR_WITH_NO_SCCS/EXTRA2
 x------ DIR_WITH_SCCS/EXTRA3
 slc-G-- DIR_WITH_SCCS/MODIFIED
@@ -813,13 +813,13 @@ su-p--- DIR_WITH_SCCS/PENDING
 x------ EXTRA1
 x-----y EXTRA_WITH_COMMENTS
 EOF
-bk sfiles -vgxcyp | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vgxcyp | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Test citool output from outside a repo ......................$NL
-cd $HERE
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE"
+bk sort +1 <<EOF > "$HERE/WANT"
 x------ lmtest/DIR_WITH_NO_SCCS/EXTRA2
 x------ lmtest/DIR_WITH_SCCS/EXTRA3
 slc-G-- lmtest/DIR_WITH_SCCS/MODIFIED
@@ -828,30 +828,30 @@ su-p--- lmtest/DIR_WITH_SCCS/PENDING
 x------ lmtest/EXTRA1
 x-----y lmtest/EXTRA_WITH_COMMENTS
 EOF
-cd $HERE
-bk sfiles -vgxcyp lmtest | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+cd "$HERE"
+bk sfiles -vgxcyp lmtest | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for BK directories from root ...........................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 .
 BitKeeper/etc
 DIR_WITH_SCCS
 EOF
-bk sfiles -d | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -d | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for BK directories from root in verbose mode ...........$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 d------ .
 d------ BitKeeper/etc
 d------ DIR_WITH_SCCS
 EOF
-bk sfiles -vd | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vd | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for BK directories in argv .............................$NL
@@ -863,26 +863,26 @@ test X`echo DIR_WITH_SCCS | bk sfiles -d -` = XDIR_WITH_SCCS || exit 1
 echo OK
 
 echo $N Look for non-BK directories from the root ...................$NL
-cd $HERE/lmtest
+cd "$HERE/lmtest"
 # XXX - should this include the subrepo?
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 BitKeeper
 BitKeeper/deleted
 DIR_WITH_NO_SCCS
 EOF
-bk sfiles -D | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -D | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for non-BK directories from the root in verbose mode ...$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 D------ BitKeeper
 D------ BitKeeper/deleted
 D------ DIR_WITH_NO_SCCS
 EOF
-bk sfiles -vD | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vD | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for non-BK directories in argv .........................$NL
@@ -894,21 +894,21 @@ test X`echo DIR_WITH_NO_SCCS | bk sfiles -D -` = XDIR_WITH_NO_SCCS || exit 1
 echo OK
 
 echo $N Look for ignored files from the root ........................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 ignored.o
 EOF
-bk sfiles -i | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -i | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for ignored files from the root in verbose mode ........$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 i------ ignored.o
 EOF
-bk sfiles -vi | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vi | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for ignored files in argv ..............................$NL
@@ -920,23 +920,23 @@ test X`echo ignored.o | bk sfiles -i -` = Xignored.o || exit 1
 echo OK
 
 echo $N Look for junk files from the root ...........................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 SCCS/JUNK
 SCCS/c.NO_SFILE_NO_GFILE
 EOF
-bk sfiles -j | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -j | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for junk files from the root in verbose mode ...........$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 j------ SCCS/JUNK
 j------ SCCS/c.NO_SFILE_NO_GFILE
 EOF
-bk sfiles -vj | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vj | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for junk files in argv .................................$NL
@@ -954,21 +954,21 @@ test X`echo SCCS/JUNK | bk sfiles -j -` = XSCCS/JUNK || exit 1
 echo OK
 
 echo $N Look for subrepos from the root .............................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 subrepo
 EOF
-bk sfiles -R | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -R | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for subrepos from the root in verbose mode .............$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 R------ subrepo
 EOF
-bk sfiles -vR | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vR | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 test works = not_yet && {
@@ -982,8 +982,8 @@ echo OK
 }
 
 echo $N Look for sfiles from the root ...............................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -998,13 +998,13 @@ DIR_WITH_SCCS/SCCS/s.UNLOCKED
 DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 SCCS/s.ChangeSet
 EOF
-bk sfiles -s | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -s | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for sfiles from the root in verbose mode ...............$NL
-cd $HERE/lmtest
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+bk sort +1 <<EOF > "$HERE/WANT"
 su----- BitKeeper/etc/SCCS/s.collapsed
 su--G-- BitKeeper/etc/SCCS/s.config
 su--G-- BitKeeper/etc/SCCS/s.gone
@@ -1019,8 +1019,8 @@ su----- SCCS/s.ChangeSet
 slc-G-- DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -vs | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vs | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for sfiles in argv .....................................$NL
@@ -1036,27 +1036,27 @@ test X`echo ChangeSet | bk sfiles -` = XSCCS/s.ChangeSet || exit 1
 echo OK
 
 echo $N Look for extras from the root ...............................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 EXTRA1
 EXTRA_WITH_COMMENTS
 DIR_WITH_NO_SCCS/EXTRA2
 DIR_WITH_SCCS/EXTRA3
 EOF
-bk sfiles -x | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -x | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for extras from the root in verbose mode ...............$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 x------ DIR_WITH_NO_SCCS/EXTRA2
 x------ DIR_WITH_SCCS/EXTRA3
 x------ EXTRA1
 x-----y EXTRA_WITH_COMMENTS
 EOF
-bk sfiles -vx | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vx | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for extras in argv .....................................$NL
@@ -1068,31 +1068,31 @@ test X`echo EXTRA1 | bk sfiles -x -` = XEXTRA1 || exit 1
 echo OK
 
 echo $N Look for all extras from the root ...........................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 DIR_WITH_NO_SCCS/EXTRA2
 DIR_WITH_SCCS/EXTRA3
 EXTRA1
 EXTRA_WITH_COMMENTS
 ignored.o
 EOF
-bk sfiles -ax | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -ax | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 # LMXXX - we could argue that the ignored.o should be tagged "i" but we have
 # not loaded the ignore db because we are in all mode.  XXX
 echo $N Look for all extras from the root in verbose mode ...........$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 x------ DIR_WITH_NO_SCCS/EXTRA2
 x------ DIR_WITH_SCCS/EXTRA3
 x------ EXTRA1
 x------ ignored.o
 x-----y EXTRA_WITH_COMMENTS
 EOF
-bk sfiles -vax | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vax | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for all extras in argv .................................$NL
@@ -1106,25 +1106,25 @@ test X`echo ignored.o | bk sfiles -ax -` = Xignored.o || exit 1
 echo OK
 
 echo $N Look for locked sfiles from the root ........................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 DIR_WITH_SCCS/SCCS/s.LOCKED
 DIR_WITH_SCCS/SCCS/s.MODIFIED
 DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -l | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -l | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for locked sfiles from the root in verbose mode ........$NL
-cd $HERE/lmtest
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+bk sort +1 <<EOF > "$HERE/WANT"
 sl--G-- DIR_WITH_SCCS/SCCS/s.LOCKED
 slc-G-- DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -vl | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vl | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for locked sfiles in argv ..............................$NL
@@ -1138,8 +1138,8 @@ test X`echo DIR_WITH_SCCS/LOCKED | bk sfiles -l -` = XDIR_WITH_SCCS/SCCS/s.LOCKE
 echo OK
 
 echo $N Look for unlocked sfiles from the root ......................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
@@ -1151,13 +1151,13 @@ DIR_WITH_SCCS/SCCS/s.UNLOCKED
 DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 SCCS/s.ChangeSet
 EOF
-bk sfiles -u | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -u | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for unlocked sfiles from the root in verbose mode ......$NL
-cd $HERE/lmtest
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+bk sort +1 <<EOF > "$HERE/WANT"
 su----- BitKeeper/etc/SCCS/s.collapsed
 su--G-- BitKeeper/etc/SCCS/s.config
 su--G-- BitKeeper/etc/SCCS/s.gone
@@ -1169,8 +1169,8 @@ su----- DIR_WITH_SCCS/SCCS/s.UNLOCKED
 su----- DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 su----- SCCS/s.ChangeSet
 EOF
-bk sfiles -vu | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vu | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for unlocked sfiles in argv ............................$NL
@@ -1184,23 +1184,23 @@ test X`echo ChangeSet | bk sfiles -u -` = XSCCS/s.ChangeSet || exit 1
 echo OK
 
 echo $N Look for changed sfiles from the root .......................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 DIR_WITH_SCCS/SCCS/s.MODIFIED
 DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -c | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -c | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for changed sfiles from the root in verbose mode .......$NL
-cd $HERE/lmtest
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+bk sort +1 <<EOF > "$HERE/WANT"
 slc-G-- DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -vc | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vc | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for changed sfiles in argv .............................$NL
@@ -1214,21 +1214,21 @@ test X`echo DIR_WITH_SCCS/MODIFIED | bk sfiles -c -` = XDIR_WITH_SCCS/SCCS/s.MOD
 echo OK
 
 echo $N Look for pending sfiles from the root .......................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 DIR_WITH_SCCS/SCCS/s.PENDING
 EOF
-bk sfiles -p | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -p | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for pending sfiles from the root in verbose mode .......$NL
-cd $HERE/lmtest
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+bk sort +1 <<EOF > "$HERE/WANT"
 su-p--- DIR_WITH_SCCS/SCCS/s.PENDING
 EOF
-bk sfiles -vp | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vp | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for pending sfiles in argv .............................$NL
@@ -1242,8 +1242,8 @@ test X`echo DIR_WITH_SCCS/PENDING | bk sfiles -p -` = XDIR_WITH_SCCS/SCCS/s.PEND
 echo OK
 
 echo $N Look for gotten sfiles from the root ........................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
@@ -1252,13 +1252,13 @@ DIR_WITH_SCCS/SCCS/s.LOCKED
 DIR_WITH_SCCS/SCCS/s.MODIFIED
 DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -G | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -G | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for gotten sfiles from the root in verbose mode ........$NL
-cd $HERE/lmtest
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+bk sort +1 <<EOF > "$HERE/WANT"
 su--G-- BitKeeper/etc/SCCS/s.config
 su--G-- BitKeeper/etc/SCCS/s.gone
 su--G-- BitKeeper/etc/SCCS/s.ignore
@@ -1267,8 +1267,8 @@ sl--G-- DIR_WITH_SCCS/SCCS/s.LOCKED
 slc-G-- DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -vG | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vG | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for gotten sfiles in argv ..............................$NL
@@ -1282,21 +1282,21 @@ test X`echo DIR_WITH_SCCS/GOTTEN | bk sfiles -G -` = XDIR_WITH_SCCS/SCCS/s.GOTTE
 echo OK
 
 echo $N Look for mislocated files from the root .....................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 EOF
-bk sfiles -n | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -n | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for mislocated files from the root in verbose mode .....$NL
-cd $HERE/lmtest
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+bk sort +1 <<EOF > "$HERE/WANT"
 su---n- DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 EOF
-bk sfiles -vn | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vn | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for mislocated files in argv ...........................$NL
@@ -1310,22 +1310,22 @@ test X`echo DIR_WITH_SCCS/WRONG_NAME | bk sfiles -n -` = XDIR_WITH_SCCS/SCCS/s.W
 echo OK
 
 echo $N Look for files with comments from the root ..................$NL
-cd $HERE/lmtest
-sort <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+sort <<EOF > "$HERE/WANT"
 DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -y | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -y | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for files with comments from the root in verbose mode ..$NL
-cd $HERE/lmtest
-bk sort +1 <<EOF > $HERE/WANT
+cd "$HERE/lmtest"
+bk sort +1 <<EOF > "$HERE/WANT"
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 x-----y EXTRA_WITH_COMMENTS
 EOF
-bk sfiles -vy | bk sort +1 > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -vy | bk sort +1 > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for files with comments in argv ........................$NL
@@ -1343,14 +1343,14 @@ echo OK
 # LMXXX - should test summary output
 
 echo $N Look for BK directories from outside repo ...................$NL
-cd $HERE
-sort <<EOF > $HERE/WANT
+cd "$HERE"
+sort <<EOF > "$HERE/WANT"
 lmtest
 lmtest/BitKeeper/etc
 lmtest/DIR_WITH_SCCS
 EOF
-bk sfiles -d lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -d lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for BK directories in argv from outside repo ...........$NL
@@ -1358,13 +1358,13 @@ test X`bk sfiles -d lmtest/DIR_WITH_SCCS` = Xlmtest/DIR_WITH_SCCS || exit 1
 echo OK
 
 echo $N Look for non-BK directories from the outside repo ...........$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/BitKeeper
 lmtest/BitKeeper/deleted
 lmtest/DIR_WITH_NO_SCCS
 EOF
-bk sfiles -D lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -D lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for non-BK directories in argv from outside repo .......$NL
@@ -1372,11 +1372,11 @@ test X`bk sfiles -D lmtest/DIR_WITH_NO_SCCS` = Xlmtest/DIR_WITH_NO_SCCS || exit 
 echo OK
 
 echo $N Look for ignored files from the outside repo ................$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/ignored.o
 EOF
-bk sfiles -i lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -i lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for ignored files in argv from outside repo ............$NL
@@ -1384,12 +1384,12 @@ test X`bk sfiles -i lmtest/ignored.o` = Xlmtest/ignored.o || exit 1
 echo OK
 
 echo $N Look for junk files from the outside repo ...................$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/SCCS/JUNK
 lmtest/SCCS/c.NO_SFILE_NO_GFILE
 EOF
-bk sfiles -j lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -j lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for junk files in argv from outside repo ...............$NL
@@ -1403,11 +1403,11 @@ test X`bk sfiles -j lmtest/SCCS/c.NO_SFILE_NO_GFILE` = Xlmtest/SCCS/c.NO_SFILE_N
 echo OK
 
 echo $N Look for subrepos from the outside repo .....................$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/subrepo
 EOF
-bk sfiles -R lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -R lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 test works = not_yet && {
@@ -1417,7 +1417,7 @@ echo OK
 }
 
 echo $N Look for sfiles from the outside repo .......................$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/BitKeeper/etc/SCCS/s.collapsed
 lmtest/BitKeeper/etc/SCCS/s.config
 lmtest/BitKeeper/etc/SCCS/s.gone
@@ -1432,8 +1432,8 @@ lmtest/DIR_WITH_SCCS/SCCS/s.UNLOCKED
 lmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 lmtest/SCCS/s.ChangeSet
 EOF
-bk sfiles -s lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -s lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for sfiles in argv from outside repo ...................$NL
@@ -1442,14 +1442,14 @@ test X`bk sfiles lmtest/SCCS/s.ChangeSet` = Xlmtest/SCCS/s.ChangeSet || exit 1
 echo OK
 
 echo $N Look for extra files from the outside repo ..................$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/EXTRA1
 lmtest/EXTRA_WITH_COMMENTS
 lmtest/DIR_WITH_NO_SCCS/EXTRA2
 lmtest/DIR_WITH_SCCS/EXTRA3
 EOF
-bk sfiles -x lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -x lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for extra files in argv from outside repo ..............$NL
@@ -1457,15 +1457,15 @@ test X`bk sfiles -x lmtest/EXTRA1` = Xlmtest/EXTRA1 || exit 1
 echo OK
 
 echo $N Look for all extras from the outside repo ...................$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/DIR_WITH_NO_SCCS/EXTRA2
 lmtest/DIR_WITH_SCCS/EXTRA3
 lmtest/EXTRA1
 lmtest/EXTRA_WITH_COMMENTS
 lmtest/ignored.o
 EOF
-bk sfiles -ax lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -ax lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for all extras in argv from outside repo ...............$NL
@@ -1474,13 +1474,13 @@ test X`bk sfiles -ax lmtest/ignored.o` = Xlmtest/ignored.o || exit 1
 echo OK
 
 echo $N Look for locked sfiles from the outside repo ................$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/DIR_WITH_SCCS/SCCS/s.LOCKED
 lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED
 lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -l lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -l lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for locked sfiles in argv from outside repo ............$NL
@@ -1489,7 +1489,7 @@ test X`bk sfiles -l lmtest/DIR_WITH_SCCS/LOCKED` = Xlmtest/DIR_WITH_SCCS/SCCS/s.
 echo OK
 
 echo $N Look for unlocked sfiles from the outside repo ..............$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/BitKeeper/etc/SCCS/s.collapsed
 lmtest/BitKeeper/etc/SCCS/s.config
 lmtest/BitKeeper/etc/SCCS/s.gone
@@ -1501,8 +1501,8 @@ lmtest/DIR_WITH_SCCS/SCCS/s.UNLOCKED
 lmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 lmtest/SCCS/s.ChangeSet
 EOF
-bk sfiles -u lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -u lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for unlocked sfiles in argv from outside repo ..........$NL
@@ -1511,12 +1511,12 @@ test X`bk sfiles -u lmtest/ChangeSet` = Xlmtest/SCCS/s.ChangeSet || exit 1
 echo OK
 
 echo $N Look for changed sfiles from the outside repo ...............$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED
 lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -c lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -c lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for changed sfiles in argv from outside repo ...........$NL
@@ -1525,11 +1525,11 @@ test X`bk sfiles -c lmtest/DIR_WITH_SCCS/MODIFIED` = Xlmtest/DIR_WITH_SCCS/SCCS/
 echo OK
 
 echo $N Look for pending sfiles from the outside repo ...............$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/DIR_WITH_SCCS/SCCS/s.PENDING
 EOF
-bk sfiles -p lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -p lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for pending sfiles in argv from outside repo ...........$NL
@@ -1538,7 +1538,7 @@ test X`bk sfiles -p lmtest/DIR_WITH_SCCS/PENDING` = Xlmtest/DIR_WITH_SCCS/SCCS/s
 echo OK
 
 echo $N Look for gotten sfiles from the outside repo ................$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/BitKeeper/etc/SCCS/s.config
 lmtest/BitKeeper/etc/SCCS/s.gone
 lmtest/BitKeeper/etc/SCCS/s.ignore
@@ -1547,8 +1547,8 @@ lmtest/DIR_WITH_SCCS/SCCS/s.LOCKED
 lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED
 lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -G lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -G lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for gotten sfiles in argv from outside repo ............$NL
@@ -1557,11 +1557,11 @@ test X`bk sfiles -G lmtest/DIR_WITH_SCCS/GOTTEN` = Xlmtest/DIR_WITH_SCCS/SCCS/s.
 echo OK
 
 echo $N Look for mislocated files from the outside repo .............$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 EOF
-bk sfiles -n lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -n lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for mislocated files in argv from outside repo .........$NL
@@ -1570,11 +1570,11 @@ test X`bk sfiles -n lmtest/DIR_WITH_SCCS/WRONG_NAME` = Xlmtest/DIR_WITH_SCCS/SCC
 echo OK
 
 echo $N Look for files with comments from the outside repo ..........$NL
-sort <<EOF > $HERE/WANT
+sort <<EOF > "$HERE/WANT"
 lmtest/DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -y lmtest | sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+bk sfiles -y lmtest | sort > "$HERE/GOT"
+cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Look for files with comments in argv from outside repo ......$NL
@@ -1587,7 +1587,7 @@ echo OK
 # LMXXX - should test summary output
 
 echo $N Sfiles white box test of .bk_skip in non-sccs directory .....$NL
-cd $HERE
+cd "$HERE"
 rm -rf project
 commercial project
 mkdir test

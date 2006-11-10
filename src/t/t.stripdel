@@ -76,7 +76,7 @@ if [ $? -eq 0 ]; then echo Failed to remove delta body entry.; exit 1; fi
 echo OK
 # Make a graph with a cset merged twice, and those merged
 echo $N Create a repository with two files ..........................$NL
-cd $HERE
+cd "$HERE"
 rm -fr stripdel proj copy1 copy2 left right
 commercial proj
 touch foo bar
@@ -85,46 +85,46 @@ bk commit $Q -Sfirst -ynewfoo
 if [ $? -ne 0 ]; then echo failed commit; exit 1; fi
 echo OK
 echo $N Clone and make deltas in each proj and copy1 ................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q proj copy1
 cd proj
 bk edit $Q foo
 echo left > foo
 bk delta $Q -ytrunk foo
 bk commit $Q -ytrunk
-cd $HERE/copy1
+cd "$HERE/copy1"
 bk edit $Q foo
 bk delta $Q -ycopy1 foo
 bk commit $Q -ycopy1
 if [ $? -ne 0 ]; then echo failed commit; exit 1; fi
 echo OK
 echo $N Clone and make deltas in each copy1 and copy2 ...............$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q copy1 copy2
 cd copy1
 bk edit $Q bar
 echo right > bar
 bk delta $Q -ytrunkcopy1 bar
 bk commit $Q -ytrunkcopy1
-cd $HERE/copy2
+cd "$HERE/copy2"
 bk edit $Q foo
 bk delta $Q -ytrunkcopy2 foo
 bk commit $Q -ytrunkcopy2
 if [ $? -ne 0 ]; then echo failed commit; exit 1; fi
 echo OK
 echo $N "Merge copy2 -> copy1, copy2 -> proj, copy1 -> proj ..........$NL"
-cd $HERE/copy1
-bk pull -t $Q $HERE/copy2
+cd "$HERE/copy1"
+bk pull -t $Q "$HERE/copy2"
 bk admin $Q -Sright ChangeSet
-cd $HERE/proj
-bk pull -t $Q $HERE/copy2
+cd "$HERE/proj"
+bk pull -t $Q "$HERE/copy2"
 bk admin $Q -Sleft ChangeSet
-bk pull -t $Q $HERE/copy1 || exit 1
+bk pull -t $Q "$HERE/copy1" || exit 1
 if [ $? -ne 0 ]; then echo failed pull; exit 1; fi
 echo OK
 
 echo $N Check stripdel managing tree with twice merged cset -1- .....$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q -rright proj right
 cd right
 bk get $Q foo bar
@@ -138,7 +138,7 @@ if [ $? -ne 0 ]; then echo failed bar diff; exit 1; fi
 echo OK
 
 echo $N Check stripdel managing tree with twice merged cset -2- .....$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q -rleft proj left
 cd left
 bk get $Q foo bar

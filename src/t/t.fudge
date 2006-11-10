@@ -24,7 +24,7 @@ EOF
 echo hi >file
 bk new $Q -IINIT file
 bk commit $Q -ywhat
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 cd project
 bk edit $Q file
@@ -37,7 +37,7 @@ echo main >> file
 bk delta $Q -IINIT file
 
 bk commit $Q -ywhatmain
-cd $HERE/copy
+cd "$HERE/copy"
 bk edit $Q file
 cat <<EOF >INIT
 D 1.2 99/5/11 01:30:04-0:00 foo 0 0 0/0/0
@@ -48,16 +48,16 @@ echo copy > file
 echo hi >> file
 bk delta $Q -IINIT file
 bk commit $Q -ywhatcopy
-cd $HERE
+cd "$HERE"
 echo OK
 
 echo $N Merge two files together ....................................$NL
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull $Q
 echo OK
 
 echo $N Verify each side can be recreated ...........................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q -r1.3 copy orig.main
 bk clone $Q -r1.2.1.1 copy orig.copy
 if [ "`bk prs -r+ -hnd':REV: :C:' orig.main/file`" != '1.2 main' ]
@@ -76,7 +76,7 @@ bk pull $Q ../orig.copy
 echo OK
 
 echo $N Verify that everything is still OK ..........................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q -r1.3 orig.main orig2.main
 bk clone $Q -r1.2.1.1 orig.main orig2.copy
 if [ "`bk prs -r+ -hnd':REV: :C:' orig2.main/file`" != '1.2 main' ]

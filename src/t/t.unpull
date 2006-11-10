@@ -25,19 +25,19 @@ bk ci $Q -i bar.c
 bk commit $S -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
-cd $HERE
-bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
+cd "$HERE"
+bk clone $Q "$HERE/project" "$HERE/copy" || { echo failed; exit 1; }
 test -f copy/BitKeeper/log/parent || { echo no parent; exit 1; }
 echo OK
 
 echo $N Pull new file, unpull, make sure it is gone .................$NL
-cd $HERE/project
+cd "$HERE/project"
 echo foo > foo.c
 bk ci $Q -i foo.c 
 bk edit $Q bar.c
 bk delta $Q -fynull bar.c
 bk commit $S -yCset
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull $Q || exit 1
 test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
 bk unpull -f $Q || exit 1
@@ -62,7 +62,7 @@ grep -q 'D 1.2' SCCS/s.bar.c && {
 echo OK
 
 echo $N Pull with automerge, unpull, make sure both are gone ........$NL
-cd $HERE/copy
+cd "$HERE/copy"
 echo snafu > snafu.c
 bk ci $Q -i snafu.c 
 bk commit $S -yCset
@@ -80,7 +80,7 @@ echo OK
 
 # 3) pull, add a cset, make sure unpull fails
 echo $N Pull, add local cset, unpull should fail ....................$NL
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull $Q || exit 1
 test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
 bk edit $Q snafu.c

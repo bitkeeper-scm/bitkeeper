@@ -31,7 +31,7 @@ print_id(char *file)
 	int	printed;
 	char	buf[MAXLINE];
 
-	cmd = aprintf("bk cat %s", file);
+	cmd = aprintf("bk cat '%s'", file);
 	unless (f = popen(cmd, "r")) {
 		free(cmd);
 		return (1);
