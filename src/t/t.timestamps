@@ -262,7 +262,6 @@ rm -f newnow keyword.copy keyword SCCS/s.keyword
 mv -f backup SCCS/s.keyword
 echo OK
 
-# collapse - leaves thing in an edited state - what about time?
 # comments - uses admin to re-write?
 # commit - uses admin?
 # cp - take a look
@@ -307,3 +306,16 @@ echo OK
 # takepatch
 # undo
 # unedit
+
+echo $N Test collapse with renames ..................................$NL
+# collapse - leaves thing in an edited state - what about time?
+echo hi > foo
+bk new $Q -u foo || exit 1
+bk commit $Q -y1 || exit 1
+bk mv foo bar || exit 1
+bk commit $Q -y2 || exit 1
+bk edit $Q bar || exit 1
+bk _touch -t $T11 bar || exit 1
+bk collapse $Q -e || exit 1
+test $T11 -ge `_mtime SCCS/s.bar` || exit 1
+echo OK

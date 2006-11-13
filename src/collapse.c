@@ -223,6 +223,7 @@ do_file(char *file, char *tiprev)
 	char	**rmdeltas = 0;
 	int	i;
 	char	*sfile = 0, *gfile = 0, *pfile = 0;
+	time_t	gtime = 0;
 
 	sfile = name2sccs(file);
 	s = sccs_init(sfile, 0);
@@ -272,6 +273,7 @@ do_file(char *file, char *tiprev)
 		if (CSET(s)) {
 			unlink(gfile);
 		} else {
+			gtime = s->gtime;
 			savefile = aprintf("%s.fix.%u", gfile, getpid());
 			rename(gfile, savefile);
 		}
@@ -345,6 +347,7 @@ do_file(char *file, char *tiprev)
 				fprintf(stderr, "%s: get -g %s failed\n",
 				    me, gfile);
 			}
+			s->gtime = gtime;
 		}
 		sccs_setStime(s, 0);
 	} else {

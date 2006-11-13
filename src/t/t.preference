@@ -69,6 +69,17 @@ find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 
+echo $N checkout:EDIT w collapse ....................................$NL
+echo junk >> foo.c
+bk admin -fRCS foo.c || exit 1
+bk collapse -e || exit 1
+if [ ! -f foo.c ]; then echo failed; exit 1; fi
+if [ ! -w foo.c ]; then echo failed; exit 1; fi
+if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+test -f ChangeSet && exit 1
+test -f SCCS/p.ChangeSet && exit 1
+echo OK
+
 echo $N checkout:GET w delta ........................................$NL
 bk unedit "$HERE/project/BitKeeper/etc/config"
 if [ ! -w "$HERE/project/BitKeeper/etc/config" ]; then echo failed; exit 1; fi
