@@ -60,7 +60,7 @@ case $CMD in
 		test -d /build/tcl-$USER && rm -rf /build/tcl-$USER
 		test -d /build/tk-$USER && rm -rf /build/tk-$USER
 	}
-	bk get Makefile build.sh
+	bk get -S Makefile build.sh
 	make build || failed
 	./build p image install test || failed
 

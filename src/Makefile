@@ -52,7 +52,7 @@ else
 endif
 
 
-GET=	bk get -s
+GET=	bk get -sS
 BK=	bk$(EXE) 
 LD	=cc
 G	=-g
@@ -167,7 +167,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o stat.o stattest.o status.o stripdel.o synckeys.o \
-	tagmerge.o tclsh.o takepatch.o testdates.o trigger.o \
+	tagmerge.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
@@ -317,7 +317,7 @@ realtest: $(ALL) t/doit
 	cd t && ./doit -i -f
 
 guitest: $(ALL) t/doit
-	-./bk get -q t/SCCS/s.g.* t/setup win32/t/win32_common \
+	-./bk get -qS t/SCCS/s.g.* t/setup win32/t/win32_common \
 	    t/x.chk_env t/guitest.tcl
 	cd t && ./doit -g -i -f
 
@@ -396,7 +396,7 @@ bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 # This must be rebuilt every time because it includes the build time
 bkver.c: FORCE
 	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
-	@if [ ! -x utils/os ]; then bk get utils/os; fi
+	@if [ ! -x utils/os ]; then bk get -S utils/os; fi
 	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
 	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
 	echo "int test_release = "$(TRIAL)";" >> bk.v
@@ -415,8 +415,8 @@ bkver.o: bkver.c
 
 # Because we need the execute bit on
 utils/os utils/gnu-os: $(BK)
-	@if [ ! -x utils/os ]; then ./bk get utils/os; fi
-	@if [ ! -x utils/gnu-os ]; then ./bk get utils/gnu-os; fi
+	@if [ ! -x utils/os ]; then ./bk get -S utils/os; fi
+	@if [ ! -x utils/gnu-os ]; then ./bk get -S utils/gnu-os; fi
 
 %: %.sh
 	$(RM) $@

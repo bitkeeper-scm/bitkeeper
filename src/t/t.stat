@@ -1,3 +1,79 @@
+echo $N Test touch command...........................................$NL
+#use some arbitraty number
+T=109676502
+bk _touch foobar
+test -f foobar || {
+	echo failed
+	echo did not create file
+	exit 1
+}
+bk _touch -t $T foobar
+A=`bk _stat foobar | awk -F\| '{print $9}'`
+M=`bk _stat foobar | awk -F\| '{print $10}'`
+test $A = $T || {
+	echo failed
+	echo did not set atime correctly A=$A T=$T
+	exit 1
+}
+test $M = $T || {
+	echo failed
+	echo did not set mtime correctly M=$M T=$T
+	exit 1
+}
+bk _touch -c barfoo
+test -f barfoo && {
+	echo failed
+	echo created file with -c
+	exit 1
+}
+bk _touch foobar
+OA=`bk _stat foobar | awk -F\| '{print $9}'`
+OM=`bk _stat foobar | awk -F\| '{print $10}'`
+bk _touch -a -t $T foobar
+A=`bk _stat foobar | awk -F\| '{print $9}'`
+M=`bk _stat foobar | awk -F\| '{print $10}'`
+test $OM = $M || {
+	echo failed
+	echo changed mtime with only -a OM=$OM M=$M
+	exit 1
+}
+test $OA = $A && {
+	echo failed
+	echo did not change atime with -a OA=$OA A=$A
+	exit 1
+}
+bk _touch foobar
+OA=`bk _stat foobar | awk -F\| '{print $9}'`
+OM=`bk _stat foobar | awk -F\| '{print $10}'`
+bk _touch -m -t $T foobar
+A=`bk _stat foobar | awk -F\| '{print $9}'`
+M=`bk _stat foobar | awk -F\| '{print $10}'`
+test $OA = $A || {
+	echo failed
+	echo did not change mtime with -m OA=$OA A=$A
+	exit 1
+}
+test $OM = $M && {
+	echo failed
+	echo changed atime with only -m OM=$OM M=$M
+	exit 1
+}
+bk _touch -r foobar barfoo
+FA=`bk _stat foobar | awk -F\| '{print $9}'`
+FM=`bk _stat foobar | awk -F\| '{print $10}'`
+BA=`bk _stat barfoo | awk -F\| '{print $9}'`
+BM=`bk _stat barfoo | awk -F\| '{print $10}'`
+test $FA = $BA || {
+	echo failed
+	echo _touch -r did not set atime correctly FA=$FA BA=$BA
+	exit 1
+}
+test $FM = $BM || {
+	echo failed
+	echo _touch -r did not set mtime correctly FM=$FM BM=$BM
+	exit 1
+}
+echo OK
 
 echo $N Test stat command across daylight savings time ..............$NL
 

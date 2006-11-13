@@ -262,6 +262,7 @@ sinfo
 smerge
 _shellSplit_test
 sort
+_stat
 _stattest
 status
 stripdel
@@ -272,6 +273,7 @@ tagmerge
 takepatch
 _tclsh
 testdates
+_touch
 _unbk
 undo
 undos
