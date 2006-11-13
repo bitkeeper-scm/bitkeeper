@@ -27,6 +27,12 @@ failed() {
 	exit 1
 }
 
+guifailed() {
+	echo '*********************'
+	echo '!!!! GUI Failed! !!!!'
+	echo '*********************'
+}
+
 case $CMD in
     build|save|release)
 	exec > /build/$LOG 2>&1
@@ -54,16 +60,23 @@ case $CMD in
 		# On Windows the obj cache might be somewhere else
 		test -d /cygdrive/c/build/obj && rm -rf /cygdrive/c/build/obj/*
 		test -d /cygdrive/r/build/obj && rm -rf /cygdrive/r/build/obj/*
-		# On Mac OS, we want to blow the temporary trees too
-		# XXX: this should be removed when we move to a newer Tcl/Tk
-		# that doesn't need to build outside the BK tree
-		test -d /build/tcl-$USER && rm -rf /build/tcl-$USER
-		test -d /build/tk-$USER && rm -rf /build/tk-$USER
 	}
 	bk get Makefile build.sh
 	make build || failed
 	./build p image install test || failed
 
+	case $OSTYPE in
+		msys|cygwin)
+			# No GUI tests on Windows, they hang
+			;;
+		darwin*)
+			./build guitest || guifailed
+			DISPLAY=amd64:1 ./build guitest || guifailed
+			;;
+		*)
+			DISPLAY=amd64:1 ./build guitest || guifailed
+			;;
+	esac
 	MSG="Not your lucky day, the following tests failed:"
 	test "X`grep "$MSG" /build/$LOG`" = "X$MSG" && exit 1
 
@@ -131,10 +144,25 @@ case $CMD in
 		exit 1
 	}
 	MSG="All requested tests passed, must be my lucky day"
-	test "X`grep "$MSG" $LOG`" = "X$MSG" && {
-		echo succeeded.
-		exit 1
-	}
+	if [ "X`grep "$MSG" $LOG`" = "X$MSG" ]
+	then
+		test $OSTYPE = "msys" -o $OSTYPE = "cygwin" && {
+			echo succeeded. \(GUI tests not run\)
+			exit 1
+		}
+		MSG="The following GUI tests failed:"
+		grep "$MSG" $LOG >/dev/null 2>&1
+		test $? = 0 && {
+			echo succeeded. \(GUI tests failed\)
+			exit 1
+		}
+		MSG="All GUI tests passed, tell ob@perforce.com"
+		grep "$MSG" $LOG >/dev/null 2>&1
+		test $? = 0 && {
+			echo succeeded. \(GUI tests succeeded too\)
+			exit 1
+		}
+	fi
 	echo is not done yet.
 	;;
 
