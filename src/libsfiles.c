@@ -269,7 +269,7 @@ sfiles(char *opts)
 
 	unless (exists(ignore)) get(ignore, SILENT, "-");
 	sav[2] = opts;
-	if ((spid = spawnvp_rPipe(sav, &pfd, 0)) == -1) {
+	if ((spid = spawnvpio(0, &pfd, 0, sav)) == -1) {
 		fprintf(stderr, "cannot spawn bk sfiles\n");
 		return (1);
 	}

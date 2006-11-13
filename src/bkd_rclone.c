@@ -223,7 +223,7 @@ getsfio(int gzip)
 	char	*cmds[10] = {"bk", "sfio", "-i", "-q", 0};
 	pid_t	pid;
 
-	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
+	pid = spawnvpio(&pfd, 0, 0, cmds);
 	if (pid == -1) {
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return (1);

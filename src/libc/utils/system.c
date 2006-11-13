@@ -240,7 +240,7 @@ safe_popen(char *cmd, char *type)
 FILE *
 popenvp(char *av[], char *type)
 {
-	int	i, fd;
+	int	i, fd, *rfd, *wfd;
 	pid_t	pid;
 	FILE	*ret;
 
@@ -254,10 +254,13 @@ popenvp(char *av[], char *type)
 		return (0);
 	}
 	if (*type == 'r') {
-		pid = spawnvp_rPipe(av, &fd, 0);
+		rfd = 0;
+		wfd = &fd;
 	} else {
-		pid = spawnvp_wPipe(av, &fd, 0);
+		rfd = &fd;
+		wfd = 0;
 	}
+	pid = spawnvpio(rfd, wfd, 0, av);
 	unless (pid) {
 		fprintf(stderr, "popenvp: spawn failed\n");
 		return (0);

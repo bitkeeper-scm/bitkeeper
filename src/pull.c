@@ -546,7 +546,7 @@ takepatch(opts opts, int gzip, remote *r)
 	}
 	if (opts.collapsedups) cmds[++n] = "-D";
 	cmds[++n] = 0;
-	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
+	pid = spawnvpio(&pfd, 0, 0, cmds);
 	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
 	close(pfd);
 

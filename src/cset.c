@@ -266,7 +266,7 @@ spawn_checksum_child(void)
 	/*
 	 * spawn a child with a write pipe
 	 */
-	pid = spawnvp_wPipe(av, &pfd, BIG_PIPE);
+	pid = spawnvpio(&pfd, 0, 0, av);
 
 	/*
 	 * Connect our stdout to the write pipe

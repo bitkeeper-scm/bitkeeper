@@ -212,7 +212,7 @@ cmd_pull_part2(int ac, char **av)
 	fd0 = dup(0); close(0);
 	if ((fd = open(keys, O_RDONLY, 0)) < 0) perror(keys);
 	assert(fd == 0);
-	pid = spawnvp_rPipe(makepatch, &rfd, 0);
+	pid = spawnvpio(0, &rfd, 0, makepatch);
 	dup2(fd0, 0); close(fd0);
 	gzipAll2fd(rfd, 1, gzip, 0, 0, 1, 0);
 	close(rfd);

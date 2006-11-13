@@ -67,168 +67,81 @@ bk_spawnvp(int flags, char *cmdname, char *av[])
 }
 #endif /* WIN32 */
 
-/*
- * Spawn a child with a write pipe
- * The pipe fd is returned in pfd.
- * The caller can then do write(pfd, message, length) 
- * to send message to the child's stdin.
- *
- * These two functions are carefully coded to make sure the
- * EOF semantics works on both UNIX and NT.
- * The key is to make sure there is exactly one copy of the pipe
- * fd active when this function return.
- */
 pid_t
-spawnvp_wPipe(char *av[], int *pfd, int pipe_size)
-{
-	int	p[2], fd0, rc;
-	pid_t	pid;
-
-	if (mkpipe(p, pipe_size)) {
-		perror("pipe");
-		return (-1);
-	}
-	assert(p[0] > 1); /* should not use stdin and stdout */
-
-	/* Save fd 0*/
-	fd0 = dup(0);
-	assert(fd0 > 0);
-
-
-	/* For Child.
-	 * Replace stdin with the read end of the pipe.
-	 */
-	rc = (close)(0);
-	if (rc == -1) perror("close");
-	assert(rc != -1);
-	rc = dup2(p[0], 0);
-	if (rc == -1) perror("dup2");
-	assert(rc != -1);
-	(close)(p[0]);
-	/*
-	 * It is *very* important to make the write pipe
-	 * not inheritable by the child. If we have
-	 * more then one of copy of the write pipe
-	 * active, the child will not get EOF when
-	 * the parent closes the write pipe.
-	 */
-	make_fd_uninheritable(p[1]);
-
-	/* Now go do the real work... */
-	if ((pid = spawnvp(_P_NOWAIT, av[0], av)) < 0) {
-		(close)(p[1]);
-		p[1] = -1;
-	}
-
-	/*
-	 * For Parent
-	 * restore fd0
-	 * set stdout to write end of the pipe
-	 */
-	rc = dup2(fd0, 0); /* restore stdin */
-	(close)(fd0);
-	assert(rc != -1);
-	(close)(p[0]);
-	*pfd = p[1];
-	return (pid);
-}
-
-pid_t
-spawnvp_rPipe(char *av[], int *pfd, int pipe_size)
+spawnvpio(int *fd0, int *fd1, int *fd2, char *av[])
 {
 	pid_t	pid;
-	int	p[2];
-	int	rc, fd1;
+	int	p0[2], p1[2], p2[2];
+	int	rc, old0, old1, old2;
 
-	if (mkpipe(p, pipe_size) == -1) {
-		perror("pipe");
-		return (-1);
+	old0 = old1 = old2 = -1;	/* avoid warnings */
+	if (fd0) {
+		if (mkpipe(p0, BIG_PIPE) == -1) {
+			perror("pipe");
+			return (-1);
+		}
+		assert(p0[0] > 1); /* should not use stdin and stdout */
+		old0 = dup(0); assert(old0 > 0);
+		rc = dup2(p0[0], 0); assert(rc != -1);
+		(close)(p0[0]);
+		make_fd_uninheritable(p0[1]);
 	}
-	assert(p[0] > 1); /* should not use stdin and stdout */
-
-	/* Save fd 1*/
-	fd1 = dup(1);
-	assert(fd1 > 0);
-
-	/*
-	 * For Child.
-	 * Replace stdout with the write end of the pipe.
-	 */
-	rc = (close)(1); assert(rc != -1);
-	rc = dup2(p[1], 1); assert(rc != -1);
-	(close)(p[1]);
-
-	make_fd_uninheritable(p[0]);
+	if (fd1) {
+		if (mkpipe(p1, BIG_PIPE) == -1) {
+			perror("pipe");
+			return (-1);
+		}
+		assert(p1[0] > 1); /* should not use stdin and stdout */
+		old1 = dup(1); assert(old1 > 0);
+		rc = dup2(p1[1], 1); assert(rc != -1);
+		(close)(p1[1]);
+		make_fd_uninheritable(p1[0]);
+	}
+	if (fd2) {
+		if (mkpipe(p2, BIG_PIPE) == -1) {
+			perror("pipe");
+			return (-1);
+		}
+		assert(p2[0] > 1); /* should not use stdin and stdout */
+		old2 = dup(2); assert(old2 > 0);
+		rc = dup2(p2[1], 2); assert(rc != -1);
+		(close)(p2[1]);
+		make_fd_uninheritable(p2[0]);
+	}
 
 	/*
 	 * Now go do the real work...
 	 */
-	if ((pid = spawnvp(_P_NOWAIT, av[0], av)) < 0) {
-		(close)(p[0]);
-		p[0] = -1;
+	pid = spawnvp(_P_NOWAIT, av[0], av);
+
+	/* For Parent, restore handles */
+	if (fd0) {
+		rc = dup2(old0, 0); assert(rc != -1);
+		(close)(old0);
+		*fd0 = p0[1];
+		if (pid < 0) {
+			(close)(*fd0);
+			*fd0 = -1;
+		}
 	}
-
-	/*
-	 * For Parent
-	 * restore fd1
-	 */
-	rc = dup2(fd1, 1); /* restore stdout */
-	(close)(fd1);
-	assert(rc != -1);
-	*pfd = p[0];
-	return (pid);
-}
-
-pid_t
-spawnvp_rwPipe(char *av[], int *rfd, int *wfd, int pipe_size)
-{
-	pid_t	pid;
-	int	w[2], r[2];
-	int	rc, fd0, fd1;
-
-	if (mkpipe(r, pipe_size) == -1) {
-		perror("pipe");
-		return (-1);
+	if (fd1) {
+		rc = dup2(old1, 1); assert(rc != -1);
+		(close)(old1);
+		*fd1 = p1[0];
+		if (pid < 0) {
+			(close)(*fd1);
+			*fd1 = -1;
+		}
 	}
-	assert(r[0] > 1); /* should not use stdin and stdout */
-
-	if (mkpipe(w, pipe_size) == -1) {
-		perror("pipe");
-		return (-1);
+	if (fd2) {
+		rc = dup2(old2, 0); assert(rc != -1);
+		(close)(old2);
+		*fd2 = p2[0];
+		if (pid < 0) {
+			(close)(*fd2);
+			*fd2 = -1;
+		}
 	}
-
-	/* Save fd 0 and 1 */
-	fd0 = dup(0); assert(fd0 > 0);
-	fd1 = dup(1); assert(fd1 > 0);
-
-	/*
-	 * For Child.
-	 * Replace stdin/stdout with the w/r pipe.
-	 */
-	(close)(0); (close)(1);
-	rc = dup2(r[1], 1); assert(rc != -1);
-	rc = dup2(w[0], 0); assert(rc != -1);
-	(close)(r[1]); (close)(w[0]);
-	make_fd_uninheritable(r[0]);
-	make_fd_uninheritable(w[1]);
-
-	/*
-	 * Now go do the real work...
-	 */
-	if ((pid = spawnvp(_P_NOWAIT, av[0], av)) < 0) {
-		(close)(r[0]);
-		(close)(w[1]);
-		r[0] = w[1] = -1;
-	}
-
-	/*
-	 * For Parent
-	 * restore fd0 & fd1
-	 */
-	rc = dup2(fd0, 0); assert(rc != -1);
-	rc = dup2(fd1, 1); assert(rc != -1);
-	(close)(fd0); (close)(fd1);
-	*rfd = r[0]; *wfd = w[1];
 	return (pid);
 
 }
