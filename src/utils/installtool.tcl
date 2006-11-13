@@ -50,7 +50,10 @@ proc initGlobals {} \
 		set runtime(enableShellxLocal) 1
 		set runtime(enableShellxNetwork) 0
 		set key {HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft}
-		append key {\Windows\CurrentVersion} 
+		append key {\Windows\CurrentVersion}
+		if {[catch {package require registry}]} {
+			puts "ERROR: Could not find registry package"
+		}
 		if {[catch {set pf [registry get $key ProgramFilesDir]}]} {
 			puts "Can't read $key"
 			set pf {C:\Program Files}
@@ -531,13 +534,6 @@ proc widgets {} \
 			    -padx 0 \
 			    -command [list setDestination $dir]
 
-			if {$tcl_platform(platform) == "unix"} {
-				# this gives the radiobuttons a nice
-				# "bk blue" color. Unfortunately, this
-				# option behaves differently on windows...
-				$w.rb-$row configure -selectcolor #00008b
-			}
-
 			grid $w.rb-$row -row $row -column 0 \
 			    -sticky ew -padx 0 -ipadx 0 -columnspan 2
 
@@ -692,13 +688,6 @@ proc widgets {} \
 			}
                     after idle  [list focus $w.overwrite]
 
-		    if {$tcl_platform(platform) == "unix"} {
-			    # this gives the radiobuttons a nice
-			    # "bk blue" color. Unfortunately, this
-			    # option behaves differently on windows...
-			    $w.overwrite configure -selectcolor #00008b
-		    }
-	
 		    pack $w.overwrite -side top -fill x -anchor w -pady 16
 	    }
 

@@ -19,27 +19,24 @@ CONFIG=`bk dotbk`/config-gui
 
 echo $N Create initial repository ...................................$NL
 commercial project
+echo "1234567890" > file1
+bk new $Q file1 || exit 1
+bk commit $Q -yfirst file1 || exit 1
+bk edit $Q file1 || exit 1
+echo "	XXXXXX" >> file1
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
-
-# unfortunately we can't test that setting -tabwidth actually affects
-# the display, but we can at least test that the gc value is getting
-# passed on to the widgets
 echo $N 'Sanity check that gc(tabwidth) affects text widgets..........'$NL
-mkdir $HERE/project/src
-cd $HERE/project/src
 echo 'set gc(tabwidth) 4' > $CONFIG
-bk guitest helptool >$OUT 2>&1 <<'EOF'
-    # get text widget and test that its tabwidth is set appropriately
-    text .testwidget
-    if {[catch {set tabwidth [.testwidget cget -tabwidth]} error]} {
-	puts "tk doesn't support -tabwidth option ($error)"
-	exit 1
-    }
+bk guitest difftool >$OUT 2>&1 <<'EOF'
+    set tabs [.diffs.right cget -tabs]
+    set font [.diffs.right cget -font]
+    set fontsize [font measure $font 0]
+    set tabwidth [expr {$tabs / $fontsize}]
     puts "tab width: $tabwidth"
     exit 0
 EOF
@@ -55,13 +52,12 @@ echo "OK"
 
 echo $N Tool-specific setting overrides global setting...............$NL
 echo 'set gc(tabwidth) 4' > $CONFIG
-echo 'set gc(help.tabwidth) 6' > $CONFIG
-bk guitest helptool >$OUT 2>&1 <<'EOF'
-    # get text widget and test that its tabwidth is set appropriately
-    if {[catch {set tabwidth [.text.help  cget -tabwidth]} error]} {
-	puts "tk doesn't support -tabwidth option"
-	exit 1
-    }
+echo 'set gc(diff.tabwidth) 6' > $CONFIG
+bk guitest difftool >$OUT 2>&1 <<'EOF'
+    set tabs [.diffs.right cget -tabs]
+    set font [.diffs.right cget -font]
+    set fontsize [font measure $font 0]
+    set tabwidth [expr {$tabs / $fontsize}]
     puts "tab width: $tabwidth"
     exit 0
 EOF
@@ -74,4 +70,3 @@ if [ $? -ne 0 ]; then
     exit 1 
 fi
 echo "OK"
-

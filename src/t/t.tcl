@@ -52,3 +52,14 @@ bk _tclsh 2>ERR >result <<'EOF'
 EOF
 checkfiles expected result
 echo OK
+
+if [ X$PLATFORM = XWIN32 ]; then
+
+echo $N Checking for registry package ...............................$NL
+bk _tclsh 2>ERR >result <<'EOF'
+    package require registry 1.1
+EOF
+if [ $? -ne 0 ]; then echo failed ; exit 1; fi
+echo OK
+
+fi

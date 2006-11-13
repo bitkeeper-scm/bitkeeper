@@ -1,6 +1,8 @@
 # usage: tclsh registry.tcl destination
 # e.g. tclsh registry.tcl "c:/bitkeeper"
 
+package require registry
+
 proc main {} \
 {
 	global argv options reglog shortcutlog tcl_platform
