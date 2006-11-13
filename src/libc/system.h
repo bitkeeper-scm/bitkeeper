@@ -169,9 +169,7 @@ int	smartMkdir(char *pathname, mode_t mode);
 extern void	(*spawn_preHook)(int flags, char *av[]);
 pid_t	bk_spawnvp(int flags, char *cmdname, char *av[]);
 pid_t	spawnvp_ex(int flags, char *cmdname, char *av[]);
-pid_t	spawnvp_wPipe(char *ab[], int *wfd, int pipe_size);
-pid_t	spawnvp_rPipe(char *ab[], int *rfd, int pipe_size);
-pid_t	spawnvp_rwPipe(char *ab[], int *rfd, int *wfd, int pipe_size);
+pid_t	spawnvpio(int *fd0, int *fd1, int *fd2, char *av[]);
 
 /* stdioext.c */
 char	*gets_alloc(char *(*fcn)(char *buf, int size, void *arg), void *arg);

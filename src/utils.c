@@ -1256,7 +1256,7 @@ mkpager(void)
 	signal(SIGPIPE, SIG_IGN);
 	cmd = strdup(pg); /* line2av stomp */
 	line2av(cmd, pager_av); /* some user uses "less -X -E" */
-	pid = spawnvp_wPipe(pager_av, &pfd, 0);
+	pid = spawnvpio(&pfd, 0, 0, pager_av);
 	dup2(pfd, 1);
 	close(pfd);
 	free(cmd);

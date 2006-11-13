@@ -446,7 +446,7 @@ bkd(int compress, remote *r)
 			fprintf(stderr, "CMD[%d]=%s\n", i, cmd[i]);
 		}
 	}
-	if ((p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd), BIG_PIPE)) < 0) {
+	if ((p = spawnvpio(&(r->wfd), &(r->rfd), 0, cmd)) < 0) {
 		fprintf(stderr, "%s: Command not found\n", cmd[0]);
 	}
 err:	if (freeme) free(freeme);

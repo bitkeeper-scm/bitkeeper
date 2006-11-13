@@ -405,7 +405,7 @@ sfio(opts opts, int gzip, remote *r)
 	cmds[++n] = "-i";
 	if (opts.quiet) cmds[++n] = "-q";
 	cmds[++n] = 0;
-	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
+	pid = spawnvpio(&pfd, 0, 0, cmds);
 	if (pid == -1) {
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);

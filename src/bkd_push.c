@@ -180,7 +180,7 @@ cmd_push_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	putenv("BK_REMOTE=YES");
-	pid = spawnvp_wPipe(takepatch, &pfd, BIG_PIPE);
+	pid = spawnvpio(&pfd, 0, 0, takepatch);
 	dup2(fd2, 2); close(fd2);
 	gunzipAll2fd(0, pfd, gzip, 0, 0);
 	close(pfd);
@@ -241,7 +241,7 @@ cmd_push_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	putenv("FROM_PULLPUSH=YES");
-	pid = spawnvp_wPipe(resolve, &pfd, 0);
+	pid = spawnvpio(&pfd, 0, 0, resolve);
 	dup2(fd2, 2); close(fd2);
 	waitpid(pid, &status, 0);
 	close(pfd);

@@ -231,7 +231,7 @@ static int parse_mail(void)
 
 	if (!parse_headers())
 		syntax("mail header error");
-	pid = spawnvp_wPipe(argv, &outfd, 0);
+	pid = spawnvpio(&outfd, 0, 0, argv);
 	retval = skip_space();
 	close(outfd);
 	outfd = 2;
