@@ -67,7 +67,7 @@ int	checking_rmdir(char *dir);
 #define	GET_REVNUMS	0x40000000	/* get -m: prefix each line with rev */
 #define GET_USER	0x80000000	/* get -u: prefix with user name */
 #define GET_SKIPGET	0x01000000	/* get -g: don't get the file */
-/* available		0x02000000	   used to be GET_RCSEXPAND */
+#define	GET_NOREMOTE	0x02000000	/* do not go remote for binpool */
 #define	GET_ASCII	0x04000000	/* Do not gunzip/uudecode */
 #define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
 #define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
@@ -238,7 +238,7 @@ int	checking_rmdir(char *dir);
 
 /*
  * Encoding flags.
- * Bit 0 and 1 are data encoding (bit 1 is reserved for future use)
+ * Bit 0 and 1 are data encoding
  * Bit 2 is compression mode (gzip or none)
  */
 #define E_DATAENC	0x3
@@ -246,9 +246,8 @@ int	checking_rmdir(char *dir);
 
 #define	E_ASCII		0		/* no encoding */
 #define	E_UUENCODE	1		/* uuenecode it (traditional) */
+#define	E_BINPOOL	2		/* store data in binpool */
 #define	E_GZIP		4		/* gzip the data */
-
-#define	E_BINARY	E_UUENCODE	/* default binary encoding */
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -260,6 +259,7 @@ int	checking_rmdir(char *dir);
 #define LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
 #define ASCII(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
 #define BINARY(s)	(((s)->encoding & E_DATAENC) != E_ASCII)
+#define BINPOOL(s)	(((s)->encoding & E_DATAENC) == E_BINPOOL)
 #define UUENCODE(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
@@ -436,6 +436,7 @@ typedef struct delta {
 	char	*pathname;		/* pathname to the file */
 	char	*zone;			/* 08:00 is time relative to GMT */
 	char	*csetFile;		/* id for ChangeSet file */
+	char	*hash;			/* hash of gfile for binpool */
 	char	*random;		/* random bits for file ID */
 	ser_t	merge;			/* serial number merged into here */
 	sum_t	sum;			/* checksum of gfile */
@@ -614,6 +615,7 @@ typedef	struct sccs {
 	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
+	u32	cachemiss:1;	/* binpool file not found locally */
 } sccs;
 
 typedef struct {
@@ -1221,6 +1223,17 @@ int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 void	randomBits(char *buf);
 int	almostUnique(void);
+int	bp_fetchkeys(char **keys);
+int	bp_insert(project *p, char *file, char *hash, char **keys, int canmv);
+char	*bp_key2path(char *root, char *delta, MDBM *idDB);
+char	*bp_lookup(sccs *s, delta *d);
+int	bp_isMaster(void);
+int	bp_fetch(sccs *s, delta *din);
+int	bp_islocal(sccs *s, delta *d);
+int	bp_get(sccs *s, delta *d, u32 flags, char *out);
+int	bp_delta(sccs *s, delta *d);
+int	bp_diff(sccs *s, delta *d, char *gfile);
+int	bp_moveup(project *p, char *data);
 
 extern	char	*editor;
 extern	char	*bin;

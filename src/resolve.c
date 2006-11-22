@@ -2352,6 +2352,7 @@ pass4_apply(opts *opts)
 	char	key[MAXKEY];
 	MDBM	*permDB = mdbm_mem();
 	char	*cmd = "apply";
+	project	*p;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2507,6 +2508,29 @@ pass4_apply(opts *opts)
 	fflush(f);
 	rewind(f);
 
+	/*
+	 * Go insert any binpool files.  We need to do this before applying
+	 * the s.files because checkout:get may need these.
+	 * LMXXX - no error recovery.
+	 */
+	if (isdir(ROOT2RESYNC "/BitKeeper/binpool")) {
+		FILE	*b;
+
+		p = proj_init(".");
+		chdir(ROOT2RESYNC);
+		// wayne: This loop should probably move to binpool.c so
+		// the internals BitKeeper/binpool are in one place.
+		b = popen("bk _find BitKeeper/binpool -name '*.d*'", "r");
+		while (fnext(buf, b)) {
+			chop(buf);
+			// WXXX - no error checking?
+			bp_moveup(p, buf);
+		}
+		pclose(b);
+		chdir(RESYNC2ROOT);
+		proj_free(p);
+	}
+
 	while (fnext(buf, f)) {
 		chop(buf);
 		/*
@@ -2657,6 +2681,10 @@ copyAndGet(opts *opts, char *from, char *to)
 		if (link(from, to) && fileCopy(from, to)) return (-1);
 	}
 
+	/*
+	 * LMXXX - I really don't like this much, we're initting the ChangeSet
+	 * file here and probably don't need to do so.
+	 */
 	s = sccs_init(to, 0);
 	assert(s && HASGRAPH(s));
 	sccs_sdelta(s, sccs_ino(s), key);
@@ -2678,10 +2706,16 @@ copyAndGet(opts *opts, char *from, char *to)
 		getFlags = default_getFlags;
 		//ttyprintf("checkout %s with defaults(%d)\n", key, getFlags);
 	}
-	if (getFlags) {
+	if (getFlags && !CSET(s) && !strneq(s->gfile, "BitKeeper/", 10)) {
+		//ttyprintf("checkout %s with %s\n", key, co);
+		sccs_clean(s, SILENT);
 		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	} else {
-		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
+		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) {
+			sccs_free(s);
+			return (-1);
+		}
+		assert(!exists(s->gfile));
 	}
 	sccs_free(s);
 	return (0);

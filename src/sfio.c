@@ -42,6 +42,7 @@ private	int	quiet;
 private	int	doModes;
 private	int	echo;		/* echo files to stdout as they are written */
 private	int	force;		/* overwrite existing files */
+private	char	**more;		/* addition list of files to send */
 
 #define M_IN	1
 #define M_OUT	2
@@ -53,8 +54,10 @@ sfio_main(int ac, char **av)
 	int	c, mode = 0;
 
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "efimopq")) != -1) {
+	while ((c = getopt(ac, av, "a;A;efimopq")) != -1) {
 		switch (c) {
+		    case 'a': more = addLine(more, strdup(optarg)); break;
+		    case 'A': more = file2Lines(more, optarg); break;
 		    case 'e': echo = 1; break;			/* doc 2.3 */
 		    case 'f': force = 1; break;			/* doc */
 		    case 'i': 					/* doc 2.0 */
@@ -72,6 +75,7 @@ sfio_main(int ac, char **av)
 	/* ignore "-" it makes bk -r sfio -o work */
 	if (av[optind] && streq(av[optind], "-")) optind++;
 	if (optind != ac) goto usage;
+	if (more && (mode != M_OUT)) goto usage;
 
 	if      (mode == M_OUT)  return (sfio_out());
 	else if (mode == M_IN)   return (sfio_in(1));
@@ -79,6 +83,21 @@ sfio_main(int ac, char **av)
 
 usage:	system("bk help -s sfio");
 	return (1);
+}
+
+private char *
+nextfile(char *buf)
+{
+	static	int eof = 0;
+	static	int i = 1;
+
+	unless (eof) {
+		if (fgets(buf, MAXPATH, stdin)) return (buf);
+		eof = 1;
+	}
+	unless (more && (i <= nLines(more))) return (0);
+	sprintf(buf, "%s\n", more[i++]);
+	return (buf);
 }
 
 /*
@@ -96,7 +115,7 @@ sfio_out(void)
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	writen(1, SFIO_VERS, 10);
 	byte_count = 10;
-	while (fnext(buf, stdin)) {
+	while (nextfile(buf)) {
 		unless (quiet) fputs(buf, stderr);
 		chomp(buf);
 		n = strlen(buf);
@@ -126,6 +145,7 @@ reg:			if (out_file(buf, &sb, &byte_count)) return (1);
 #ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
 #endif
+	if (more) freeLines(more, free);
 	return (0);
 }
 

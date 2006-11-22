@@ -11,75 +11,100 @@
 
 # Copyright (c) 1999 Larry McVoy
 # %K%
-data="data"
 
 commercial proj
+bk edit $Q BitKeeper/etc/config
+cp BitKeeper/etc/config c
+grep -v binpool c > BitKeeper/etc/config
 
 echo $N Trying to check in some binary data .........................$NL
-cp ${BIN1} ${data}
-chmod u+w ${data}
+cp ${BIN1} data
+chmod u+w data
 # This makes sure we aren't expanding keywords.
-echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g >> $data
-cp $data saved_bin
+echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g >> data
+cp data saved_bin
 BIN1=saved_bin
-bk admin $Q -i${data} -Ebinary uuencode
-bk co $Q -l uuencode
-cmp -s ${BIN1} uuencode
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+cp $BIN1 uuencode1
+# test old auto-binary
+bk new $Q uuencode1 || exit 1
+echo binpool:all >> BitKeeper/etc/config
+bk admin $Q -idata -Euuencode uuencode2 || exit 1
+cp $BIN1 binpool1
+cp $BIN1 binpool2
+# test auto-binary
+bk new $Q binpool1 || exit 1
+bk new $Q -Ebinpool binpool2 || exit 1
+for f in uuencode1 uuencode2 binpool1 binpool2
+do	bk co $Q -l $f
+	cmp -s ${BIN1} $f || {
+		echo failed $f
+		exit 1
+	}
+done
+bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1 uuencode2 binpool1 binpool2 > OUT
+cat <<EOF >WANT
+none,uuencode
+none,uuencode
+none,binpool
+none,binpool
+EOF
+cmpfiles OUT WANT
 echo OK
 
 echo $N Trying to diffs unchanged binary data .......................$NL
-bk diffs uuencode > d.out 2>&1
+bk diffs uuencode1 > d.out 2>&1
 touch d.ref
-cmp -s d.out d.ref
-if [ $? -ne 0 ]; then echo Failed; diff d.out d.ref; exit 1; fi
+checkfiles d.out d.ref
+bk diffs binpool1 > d.out 2>&1
+checkfiles d.out d.ref
 echo OK
 
 echo $N Trying to check in unchanged binary data ....................$NL
-echo uuencode | bk ci $Q -y -
-if [ $? -ne 0 ]; then echo Failed; exit 1; fi
-bk co $Q -l uuencode
+bk ci $Q -y uuencode1 || exit 1
+bk co $Q -l uuencode1 || exit 1
 echo OK
 
 echo $N Trying to change some binary data ...........................$NL
-cp ${BIN2} uuencode
-bk diffs uuencode > d.out 2>&1
-#grep -q "uuencode differ" d.out
-#if [ $? -ne 1 ]; then echo Failed; exit 1; fi
-bk ci $Q -y uuencode || exit 1
-bk co $Q uuencode
-cmp -s ${BIN2} uuencode
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+for f in uuencode1 binpool1
+do	cp ${BIN2} $f
+	bk ci $Q -y $f || exit 1
+	bk co $Q $f || exit 1
+	checkfiles ${BIN2} $f
+done
 echo OK
 
 echo $N Checking that revision 1.1 is still OK ......................$NL
-bk co -r1.1 $Q -Guuencode uuencode
-cmp -s ${BIN1} uuencode
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+for f in uuencode1 binpool1
+do	bk co -r1.1 $Q -G$f $f || exit 1
+	checkfiles ${BIN1} $f
+done
 echo OK
 
 echo $N Trying to clean an encoded file .............................$NL
-bk co $Q -l uuencode
-bk clean uuencode
-if [ $? -ne 0 ]; then echo Clean failed ; exit 1; fi
-if [ -f uuencode ]; then echo Clean failed ; exit 1; fi
+for f in uuencode1 binpool1
+do	bk co $Q -l $f || exit 1
+	bk clean $f || exit 1
+	test -f uuencode && { echo Clean failed ; exit 1; }
+done
 echo OK
 
 echo $N Trying to compress uuencoded data ...........................$NL
-bk admin -Z uuencode
-bk co -r1.1 $Q -Guuencode uuencode
-cmp -s ${BIN1} uuencode
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+bk admin -Z uuencode1
+bk co -r1.1 $Q -Guuencode1 uuencode1 || exit 1
+checkfiles ${BIN1} uuencode1
 echo OK
 
 echo $N Check in gzipped data with delta -Z .........................$NL
-bk delta $Q -i -Z data
+bk delta $Q -Euuencode -i -Z data || exit 1
 ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: data`
-if [ X$ENC != X"gzip,binary" ]; then echo Wrong encoding.; exit 1; fi
+if [ X$ENC != X"gzip,uuencode" ]
+then	echo Wrong encoding. $ENC
+	exit 1
+fi
 echo OK
 
 echo $N Make sure -Z allowed only with -i ...........................$NL
-bk get $Q -e data
+bk get $Q -e data || exit 1
 echo '! @ # $ % ^ & * ( )' >>data
 bk delta $Q -Znone -y data 2>  d.out
 grep -q 'Z is allowed with -i option only' d.out

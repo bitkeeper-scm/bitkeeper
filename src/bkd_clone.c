@@ -118,20 +118,23 @@ transfer(char *me, int level, int hflag, int sfio)
 	}
 	status = system(cmd);
 	free(cmd);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
+	if (isdir("BitKeeper/binpool") && !sfio) {
+		cmd = aprintf("bk _find BitKeeper/binpool -type f >> %s", inf);
+		status = system(cmd);
+		free(cmd);
+		unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
+	}
 	if (trigger(me, "pre")) {
 		unlink(inf);
 		return (1);
 	}
-
-	rc = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
-	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
-		out("ERROR-unable to generate file list.\n");
-		goto out;
-	}
-
 	outf = aprintf("BitKeeper/tmp/files%u", getpid());
-	sfiocmd = 
-	    aprintf("bk _sort <%s|bk sfio -o%s 2>%s", inf, sfio?"f" : "", outf);
+	/* key2path may give us duplicates for binpool items pointed to by
+	 * multiple deltas.
+	 */
+	sfiocmd = aprintf("bk _sort -u < %s |"
+	    "bk sfio -o%s 2>%s", inf, sfio ? "f" : "", outf);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);

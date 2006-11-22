@@ -452,7 +452,7 @@ do	test "${i}@1.2" = `bk prs -hr+ -nd:GFILE:@:REV: $i` || {
 		exit 1
 	}
 done
-grep -q 'fix: unable to save patch' OUT || {
+grep -q 'fix: unable to find file named by key:' OUT || {
 	echo bad message
 	cat OUT
 	exit 1
@@ -474,7 +474,12 @@ bk fix -sc > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q "fix: unable to save sfio, abort" OUT || {
+grep -q 'fix: unable to find file named by key:' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+grep -q 'whoops' OUT || {
 	echo bad message
 	cat OUT
 	exit 1

@@ -411,6 +411,7 @@ set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
 	grep -v _FEATURES |
 	grep -v BK_LICENSE= |
+	grep -v BK_BINPOOL= |
  	grep -v BK_AUTH_HMAC=GOOD | bk sort > $HERE/pre-outgoing
 exit 1
 EOF
@@ -419,6 +420,7 @@ cat > BitKeeper/triggers/post-outgoing <<EOF
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
 	grep -v BK_LICENSE= |
+	grep -v BK_BINPOOL= |
 	grep -v _FEATURES |
 	grep -v BK_AUTH_HMAC=GOOD | bk sort > $HERE/post-outgoing
 EOF
@@ -478,6 +480,7 @@ cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v BK_LICENSE= |
+	grep -v BK_BINPOOL= |
 	bk sort > $HERE/pre-outgoing-l
 exit 1
 EOF
@@ -485,6 +488,7 @@ cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v BK_LICENSE= |
+	grep -v BK_BINPOOL= |
 	grep -v BK_NO_REPO_LOCK= |
 	grep -v BK_IGNORE_WRLOCK= |
 	bk sort > $HERE/post-outgoing-l
@@ -530,7 +534,7 @@ test -z "$DUMP_VARS" || {
 echo $N Make sure clone and clone -l have same pre-outgoing .........$NL
 cmp -s $HERE/pre-outgoing $HERE/pre-outgoing-l || {
 	echo failed
-	diff $HERE/pre-outgoing $HERE/pre-outgoing-l
+	diff -u $HERE/pre-outgoing $HERE/pre-outgoing-l
 	exit 1
 }
 echo OK
@@ -596,6 +600,7 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 set | grep $DASHA ^BK |
     grep -v _BK_ |
     grep -v BK_LICENSE= |  # leftover from pre-triggers (remove in 3.3.x)
+    grep -v BK_BINPOOL= |
     grep -v BK_REPO_ID |
     grep -v BK_IGNORE_WRLOCK |
     grep -v BK_NO_REPO_LOCK |
@@ -621,7 +626,7 @@ test -z "$DUMP_VARS" || {
 echo $N Make sure clone and clone -l have same post-incoming ........$NL
 cmp -s $HERE/post-incoming-clone $HERE/post-incoming-clone-l || {
 	echo failed
-	diff $HERE/post-incoming-clone $HERE/post-incoming-clone-l
+	diff -u $HERE/post-incoming-clone $HERE/post-incoming-clone-l
 	exit 1
 }
 echo OK
@@ -1306,9 +1311,11 @@ echo "OK"
 echo $N Make sure that outgoing sees the file list when using rsfio..$NL
 cd $HERE/project/BitKeeper/triggers
 cat > pre-outgoing-sfio <<EOF
+#!/bin/sh
 echo "EVENT=\$BK_EVENT"
 test "\$BK_EVENT" = "outgoing sfio" || exit 0
 cat "\$BK_FILES" > $HERE/sfio.list
+exit 0
 EOF
 chmod +x pre-outgoing-sfio
 bk rsfio -v@$HERE/project BitKeeper/etc/config 2> OUT | bk sfio -iq
@@ -1327,6 +1334,7 @@ echo OK
 
 echo $N Same thing with post-outgoing ...............................$NL
 cat > post-outgoing-sfio <<EOF
+#!/bin/sh
 test "\$BK_EVENT" = "outgoing sfio" || exit 0
 cat "\$BK_FILES" > $HERE/sfio.list
 EOF
@@ -1347,6 +1355,7 @@ echo OK
 
 echo $N Make sure that we can fail the copying of a file ............$NL
 cat > pre-outgoing-sfio <<EOF
+#!/bin/sh
 test "\$BK_EVENT" = "outgoing sfio" || exit 0
 grep -q etc "\$BK_FILES" && {
 	echo No etc files for you

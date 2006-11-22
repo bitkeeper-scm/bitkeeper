@@ -70,7 +70,7 @@ clone_main(int ac, char **av)
 	unless (av[optind]) usage("clone");
 	localName2bkName(av[optind], av[optind]);
 	if (av[optind + 1]) {
-		if (av[optind + 2]) usage();
+		if (av[optind + 2]) usage("clone");
 		localName2bkName(av[optind + 1], av[optind + 1]);
 	}
 
@@ -149,7 +149,6 @@ rsfio_main(int ac, char **av)
 	char	**envVar = 0;
 	remote 	*r = 0;
 	char	*p;
-	FILE	*f;
 	char	buf[MAXKEY];
 
 	bzero(&opts, sizeof(opts));
@@ -178,16 +177,7 @@ rsfio_main(int ac, char **av)
 			usage("rsfio");
 	    	}
 	}
-
-	/* Done this way so we don't have to be at the root */
-	unless (opts.parents) {
-		f = popen("bk parent -li", "r");
-		while (fnext(buf, f)) {
-			chomp(buf);
-			opts.parents = addLine(opts.parents, strdup(buf));
-		}
-		pclose(f);
-	}
+	unless (opts.parents) opts.parents = parent_pullp();
 	unless (opts.parents) usage("rsfio");
 
 	/*
@@ -243,6 +233,7 @@ rsfio(opts opts, remote *r, char **envVar)
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		disconnect(r, 2);
 		exit(1);
 	}
 	if (get_ok(r, buf, 1)) {
@@ -505,7 +496,17 @@ clone2(opts opts, remote *r)
 			    "Undo failed, repository left locked.\n");
 			return (-1);
 		}
+		if (bp_fetchMissing("+")) {
+			fprintf(stderr,
+			    "Binpool fetch failed, repository left locked.\n");
+			return (-1);
+		}
 	} else {
+		if (bp_fetchMissing("+")) {
+			fprintf(stderr,
+			    "Binpool fetch failed, repository left locked.\n");
+			return (-1);
+		}
 		/* undo already runs check so we only need this case */
 		unless (opts.quiet) {
 			fprintf(stderr, "Running consistency check ...\n");

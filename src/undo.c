@@ -115,6 +115,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
+		/* like bk makepatch but skips over missing files/keys */
 		cmd = aprintf("bk cset -ffm - > %s", patch);
 		f = popen(cmd, "w");
 		free(cmd);
@@ -210,15 +211,12 @@ private int
 check_patch(char *patch)
 {
 	MMAP	*m = mopen(patch, "");
-	char	*p;
 
-	if (!m) return (1);
-	for (p = m->mmap + msize(m) - 2; (p > m->mmap) && (*p != '\n'); p--);
-	if (p <= m->mmap) {
-bad:		mclose(m);
+	unless (m) return (1);
+	unless (strstr(m->mmap, "\n\n# Patch checksum=")) {
+		mclose(m);
 		return (1);
 	}
-	unless (strneq(p, "\n# Patch checksum=", 18)) goto bad;
 	mclose(m);
 	return (0);
 }
@@ -460,6 +458,11 @@ move_file(char *checkfiles)
 			break;
 		};
 		if (checkout) {
+			/*
+			 * XXX How do we fix this for binpool?
+			 *  option in get.c?
+			 *  option in sfiles?
+			 */
 			/* 
 			 * We don't use do_checkout() because the proj
 			 * struct is not realiable.

@@ -42,7 +42,9 @@ bk edit $Q exclude
 echo newline >> exclude
 bk ci -ynew $Q exclude || exit 1
 echo binary junk > binary
-bk new -b $Q binary || exit 1
+bk new -Euuencode $Q binary || exit 1
+echo binary junk > binpool
+bk new -Ebinpool $Q binpool || exit 1
 
 if [ "$PLATFORM" != "WIN32" ]
 then
@@ -77,10 +79,13 @@ bk edit $Q -x1.2 exclude || exit 1
 echo replace >> exclude
 bk ci -yreplace $Q exclude || exit 1
 
-# binary file
+# binary files
 bk edit $Q binary || exit 1
 echo more junk >> binary
 bk ci -ymore $Q binary || exit 1
+bk edit $Q binpool || exit 1
+echo more junk >> binpool
+bk ci -ymore $Q binpool || exit 1
 
 # changes and edited file
 bk edit $Q chg_edit || exit 1
@@ -134,7 +139,7 @@ BK_USER=u1 bk collapse -el $Q || exit 1
 BK_USER=u2 bk -xlr delta -a $Q -c || exit 1
 BK_USER=u3 bk commit $Q -ycollapse || exit 1
 
-bk changes -r+ -v -d':GFILE: :REV: $unless(:CHANGESET:){:DL: }:USER:$if(:ENC:=binary){ binary}
+bk changes -r+ -v -d':GFILE: :REV: $unless(:CHANGESET:){:DL: }:USER:$if(:ENC:!=ascii){ :ENC:}
 :FLAGS:
 $if(:DI:){inc/exc :DI:
 }$unless(:CHANGESET:){$unless(:REV:=1.0){:RWXMODE:
@@ -168,13 +173,24 @@ BitKeeper/etc/collapsed 1.2 1/1/0 u1
 BITKEEPER,CSETMARKED,SCCS,EOLN_UNIX
 -rw-
 ---
-binary 1.2 1/1/1 u2 binary
+binary 1.2 1/1/1 u2 uuencode
 BITKEEPER,CSETMARKED,EOLN_UNIX
 -rw-
 C more
 
 --- 1.1/binary
 +++ 1.2/binary
+@@ -1 +1,2 @@
+ binary junk
++more junk
+---
+binpool 1.2 22/0/0 u2 binpool
+BITKEEPER,CSETMARKED,EOLN_UNIX
+-rw-
+C more
+
+--- 1.1/binpool
++++ 1.2/binpool
 @@ -1 +1,2 @@
  binary junk
 +more junk

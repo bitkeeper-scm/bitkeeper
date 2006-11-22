@@ -761,7 +761,7 @@ void
 sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 {
 	int	i;
-	char	*user, *host, *repo;
+	char	*user, *host, *repo, *binpool;
 	char	*lic;
 	project	*p = proj_init(".");
 
@@ -790,6 +790,10 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	fprintf(f, "putenv BK_REALUSER=%s\n", sccs_realuser());
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
 	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
+	if (binpool = proj_configval(p, "binpool")) {
+		// XXX only if remote URL is master, otherwise binpool:full */
+		fprintf(f, "putenv BK_BINPOOL=%s\n", binpool);
+	}
 
 	unless (flags & SENDENV_NOREPO) {
 		/*
@@ -825,8 +829,9 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 * Send comma separated list of client features so the bkd
 	 * knows which outputs are supported.
 	 *   lkey:1	use leasekey #1 to sign lease requests
+	 *   binpool
 	 */
-	fprintf(f, "putenv BK_FEATURES=lkey:1\n");
+	fprintf(f, "putenv BK_FEATURES=lkey:1,binpool\n");
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 
@@ -948,8 +953,9 @@ sendServerInfoBlock(int is_rclone)
 	/*
 	 * Return a comma seperated list of features supported by the bkd.
 	 *   pull-r    pull -r is parsed corrently
+	 *   binpool   support binpool operations
 	 */
-	out("\nFEATURES=pull-r");
+	out("\nFEATURES=pull-r,binpool");
 
 	/* only send back a seed if we received one */
 	if (p = getenv("BKD_SEED")) {

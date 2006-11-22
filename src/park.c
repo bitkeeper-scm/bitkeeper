@@ -501,21 +501,6 @@ copyFileOrLink(char *from, char *to)
 	return (rc);
 }
 
-private int
-badSpath(char *root, char *sfile)
-{
-	char	tmp[MAXPATH];
-
-	unless (sfile) return (1);
-	sprintf(tmp, "%s/%s", root, sfile); 
-	/*
-	 * XXX TODO, To be sure we need to extract the root key and compare them
-	 * For now we trust the idcache, which is probaly good enough
-	 */
-	if (exists(tmp)) return (0);
-	return (1);
-}
-
 private char *
 name2cname(char *name)
 {
@@ -607,10 +592,10 @@ key2Gpath(char *key, MDBM **idDB)
 	char	*sfile, *gfile;
 	int	try = 0;
 
+	chdir(PARK2ROOT);
 retry:	sfile = key2path(key, *idDB);
-	if (badSpath(PARK2ROOT, sfile)) {
+	unless (sfile && exists(sfile)) {
 		if (try == 0) {
-			chdir(PARK2ROOT);
 			sys("bk", "idcache", SYS);
 			mdbm_close(*idDB);
 			unless (*idDB =
@@ -618,13 +603,14 @@ retry:	sfile = key2path(key, *idDB);
 				perror("idcache");
 				exit(1);
 			}
-			chdir(ROOT2PARK);
 			try++;
 			goto retry;
 		} else {
+			chdir(ROOT2PARK);
 			return (0);
 		}
 	}
+	chdir(ROOT2PARK);
 	gfile = sccs2name(sfile);
 	free(sfile);
 	return (gfile);
@@ -637,8 +623,7 @@ retry:	sfile = key2path(key, *idDB);
  * Note 2: This function assume we are in the PARKDIR
  */
 private int
-copyGSPfile(char *oldpath, char *key,
-				MDBM **idDB, FILE *unpark_list)
+copyGSPfile(char *oldpath, char *key, MDBM **idDB, FILE *unpark_list)
 {
 	char	*newGpath;
 	char	*p, *q, *r, *oldGpath, *oldSpath, *newSpath;

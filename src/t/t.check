@@ -196,7 +196,7 @@ test -w d1/sub1/a || {
 	cat OUT
 	exit 1
 }
-grep -q 'writable but not checked out.' OUT || {
+grep -q 'writable but not locked.' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1

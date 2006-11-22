@@ -140,6 +140,7 @@ doit(sccs *s, s_opts opts)
 			return (1);
 		}
 		/* see ya! */
+		bp_stripdel(s, "stripdel", 0);
 		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
 		sccs_close(s); /* for win32 */
 		unlink(s->sfile);
@@ -160,7 +161,10 @@ doit(sccs *s, s_opts opts)
 	 */
 	if (getFlags && !CSET(s)) {
 		sccs	*s2 = sccs_init(s->sfile, 0);
-		sccs_get(s2, 0, 0, 0, 0, SILENT|getFlags, "-");
+		/* don't checkout remote binpool files */
+		if (bp_islocal(s2, 0)) {
+			sccs_get(s2, 0, 0, 0, 0, SILENT|getFlags, "-");
+		}
 		sccs_free(s2);
 	}
 	return (0);
