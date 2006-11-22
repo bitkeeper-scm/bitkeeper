@@ -34,7 +34,6 @@ gzip_done(void)
 	deflateEnd(&gzip_out);
 }
 
-
 private u32
 gzip_hdr(int rfd)
 {
@@ -42,7 +41,10 @@ gzip_hdr(int rfd)
 
 	hlen = 0;
 	if (readn(rfd, (char *) &hlen, sizeof(hlen)) != sizeof(hlen)) {
-		fprintf(stderr, "BAD gzip hdr\n");
+		if (getenv("BK_DEBUG")) {
+			fprintf(stderr,
+			    "gzip: unexpected EOF when reading header.\n");
+		}
 		return (0); /* force EOF */
 	}
 	return (ntohs(hlen));

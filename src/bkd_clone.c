@@ -1,7 +1,7 @@
 #include "bkd.h"
 #include "logging.h"
 
-private int	compressed(int, int);
+private int	transfer(char *, int, int, int);
 
 /*
  * Send the sfio file to stdout
@@ -10,7 +10,7 @@ int
 cmd_clone(int ac, char **av)
 {
 	int	c, rc;
-	int	gzip = 0, delay = -1;
+	int	gzip = 0, delay = -1, sfio = 0;
 	char 	*p, *rev = 0;
 
 	if (sendServerInfoBlock(0)) {
@@ -43,6 +43,13 @@ cmd_clone(int ac, char **av)
 			exit(1);
 	    	}
 	}
+	sfio = av[optind] && streq(av[optind], "-");
+	if (sfio) av[0] = "remote sfio";
+	if (rev && sfio) {
+	    	out("ERROR-Clone -r may not take a file list.\n");
+		drain();
+		exit(1);
+	}
 	if (rev) {
 		sccs	*s = sccs_csetInit(SILENT);
 		if (s) {
@@ -69,13 +76,11 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
-	if (trigger(av[0], "pre")) return (1);
-	out("@SFIO@\n");
-	rc = compressed(gzip, 1);
+
+	unless (sfio) safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
+	rc = transfer(av[0], gzip, 1, sfio);
+
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
-	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
-	if (trigger(av[0], "post")) exit (1);
 
 	/*
 	 * XXX Hack alert: workaround for a ssh bug
@@ -84,18 +89,15 @@ cmd_clone(int ac, char **av)
 	 */
 	if (delay > 0) sleep(delay);
 
-	putenv("BK_CSETS=");
 	return (rc);
 }
 
 private int
-compressed(int level, int hflag)
+transfer(char *me, int level, int hflag, int sfio)
 {
 	int	status, fd;
-	char	*tmpf1, *tmpf2;
 	FILE	*fh;
-	char	*sfiocmd;
-	char	*cmd;
+	char	*sfiocmd, *cmd, *inf, *outf = 0;
 	int	rc = 1;
 
 	/*
@@ -104,28 +106,46 @@ compressed(int level, int hflag)
 	 * sorted order so that the other end knows when the entire
 	 * BitKeeper directory is finished unpacking.
 	 */
-	tmpf1 = bktmp(0, "clone1");
-	tmpf2 = bktmp(0, "clone2");
-	fh = fopen(tmpf1, "w");
-	if (exists(CMARK)) fprintf(fh, CMARK "\n");
-	fclose(fh);
-	cmd = aprintf("bk sfiles > %s", tmpf2);
+	inf = bktmp(0, "clone1");
+	if (sfio) {
+		cmd = aprintf("bk _key2path > %s", inf);
+		safe_putenv("BK_FILES=%s", inf);
+	} else {
+		fh = fopen(inf, "w");
+		if (exists(CMARK)) fprintf(fh, CMARK "\n");
+		fclose(fh);
+		cmd = aprintf("bk sfiles >> %s", inf);
+	}
 	status = system(cmd);
 	free(cmd);
-	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
+	if (trigger(me, "pre")) {
+		unlink(inf);
+		return (1);
+	}
 
-	sfiocmd = aprintf("cat %s %s | bk sort | bk sfio -oq", tmpf1, tmpf2);
+	rc = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
+		out("ERROR-unable to generate file list.\n");
+		goto out;
+	}
+
+	outf = aprintf("BitKeeper/tmp/files%u", getpid());
+	sfiocmd = 
+	    aprintf("bk _sort <%s|bk sfio -o%s 2>%s", inf, sfio?"f" : "", outf);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);
+	out("@SFIO@\n");
 	gzipAll2fd(fd, 1, level, 0, 0, hflag, 0);
 	status = pclose(fh);
 	rc = 0;
- out:
-	unlink(tmpf1);
-	unlink(tmpf2);
-	free(tmpf1);
-	free(tmpf2);
-	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
+out:
+	unlink(inf);
+	free(inf);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) rc = 1;
+	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
+	if (sfio) safe_putenv("BK_FILES=%s", outf ? outf : "");
+	trigger(me, "post");
+	if (outf) unlink(outf);
 	return (rc);
 }

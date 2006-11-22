@@ -231,6 +231,7 @@ r2c
 range
 rcheck
 _rclone
+rsfio
 rcs2bk
 rcsparse
 receive
