@@ -84,7 +84,7 @@ char	**file2Lines(char **space, char *file);
 int	lines2File(char **space, char *file);
 void	uniqLines(char **space, void(*freep)(void *ptr));
 int	sameLines(char **p, char **p2);
-
+char	*shellquote(char *in);
 char	**str_append(char **space, void *str, int gift);
 char	**data_append(char **space, void *str, int len, int gift);
 int	data_length(char **space);

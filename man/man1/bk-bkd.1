@@ -204,6 +204,27 @@ Include
 .ARG cmd
 from the by default excluded command list.
 .tp
+.B \-U
+Run in "unsafe" mode.
+Any non-interactive \*[BK] command may be run remotely.
+The
+.B bkd
+runs the command at the request of a remote \*[BK] client.
+If the client does not have access to the machine on which the
+.B bkd
+is running then this option allows far more access than is usually
+prudent.
+On the other hand, if the client has remote login privileges to the
+machine (or if the client is on the same machine) then there is no
+security issue with allowing this feature.
+Accordingly, this option is turned on automatically for any
+.B bkd
+started by the client via the file://, rsh://, or ssh:// access
+methods.
+If your environment is secured then running a long lived
+.B bkd 
+with this option provides more \*[BK] functionality to your users.
+.tp
 .OPTreq \-x cmd
 Exclude 
 .ARG cmd

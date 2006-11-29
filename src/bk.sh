@@ -1658,6 +1658,10 @@ then	cmd=_$1
 	$cmd "$@"
 	exit $?
 fi
+test -z "$BK_NO_CMD_FALL_THROUGH" || {
+	echo "bk: $1 is not a BitKeeper command" 1>&2
+	exit 1
+}
 cmd=$1
 shift
 

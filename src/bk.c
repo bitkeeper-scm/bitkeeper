@@ -79,9 +79,9 @@ save_gmon(void)
 int
 main(int ac, char **av, char **env)
 {
-	int	i, c, si, is_bk = 0, dashr = 0;
+	int	i, c, si, is_bk = 0, dashr = 0, remote = 0, quiet = 0;
 	int	ret;
-	char	*p, *prog;
+	char	*p, *prog, *dir = 0;
 	char	sopts[30];
 
 	ltc_mp = ltm_desc;
@@ -201,24 +201,17 @@ main(int ac, char **av, char **env)
 			return (0);
 		}
 		is_bk = 1;
-		while ((c = getopt(ac, av, "1acCdDgGjlnpr|RuUx")) != -1) {
+		while ((c = getopt(ac, av, "@|1acCdDgGjlnpqr|RuUx")) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'C': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
 			    case 'n': case 'p': case 'u': case 'U': case 'x':
 				sopts[++si] = c;
 				break;
+			    case '@': remote = 1; break;
+			    case 'q': quiet = 1; break;
 			    case 'r':				/* doc 2.0 */
-				if (optarg) {
-					unless (chdir(optarg) == 0) {
-						perror(optarg);
-						return (1);
-					}
-				} else if (proj_cd2root()) {
-					fprintf(stderr, 
-					    "bk: Cannot find package root.\n");
-					return(1);
-				}
+				dir = optarg;
 				dashr++;
 				break;
 			    case 'R':				/* doc 2.0 */
@@ -230,6 +223,21 @@ main(int ac, char **av, char **env)
 				break;
 			    default:
 				usage();
+			}
+		}
+
+		if (remote) return (remote_bk(quiet, ac, av));
+
+		if (dashr) {
+			if (dir) {
+				unless (chdir(dir) == 0) {
+					perror(dir);
+					return (1);
+				}
+			} else if (proj_cd2root()) {
+				fprintf(stderr,
+				    "bk: Cannot find package root.\n");
+				return(1);
 			}
 		}
 

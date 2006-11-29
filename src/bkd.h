@@ -39,6 +39,7 @@
  */
 typedef	int (*func)(int, char **);
 int	cmd_abort(int ac, char **av);
+int	cmd_bk(int ac, char **av);
 int	cmd_cd(int ac, char **av);
 int	cmd_clone(int ac, char **av);
 int	cmd_check(int ac, char **av);
@@ -81,6 +82,7 @@ typedef struct {
 	u32	quiet:1;		/* quiet mode */
 	u32	safe_cd:1;		/* do not allow chdir up */
 	u32	kill_ok:1;		/* enable kill socket */
+	u32	unsafe:1;		/* allow unsafe (aka remote) commands */
 	int	alarm;			/* exit after this many seconds */
 	char	*pidfile;		/* write the daemon pid here */
 	char	*logfile;		/* if set, log commands to here */

@@ -352,6 +352,40 @@ splitLineToLines(char *line, char **tokens)
 }
 
 /*
+ * Return a malloc'ed string with quotes such that it will be parsed
+ * as one argument by the shell.  If a list of strings quoted by this
+ * function are joined by spaces and passed to shellSplit() above, the
+ * original strings will be returned.
+ *
+ * All characters in the input string are considered literals.
+ */
+char *
+shellquote(char *in)
+{
+        int     len = strlen(in);
+        int     nlen;
+        char    *s, *t;
+        char    *out;
+
+        /* handle simple case */
+        if (strcspn(in, " \t\n\r'\"<>|$&;[]*()\\")==len) return (strdup(in));
+
+        nlen = len + 2 + 1;     /* quotes + null */
+        for (s = in; *s; s++) {
+                if ((*s == '"') || (*s == '\\')) ++nlen;
+        }
+        t = out = malloc(nlen);
+        *t++ = '"';
+        for (s = in; *s; ) {
+                if ((*s == '"') || (*s == '\\')) *t++ = '\\';
+                *t++ = *s++;
+        }
+        *t++ = '"';
+        *t = 0;
+        return (out);
+}
+
+/*
  * Takes a string, parses it like /bin/sh, and splits it into
  * tokens.  The result is is returned in a lines array.
  *

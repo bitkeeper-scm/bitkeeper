@@ -47,6 +47,7 @@ typedef struct CMD {
 	char	*alias;		/* name is alias for 'alias' */
 	u8	restricted:1;	/* cannot be called from the command line */
 	u8	pro:1;		/* only in pro version of bk */
+	u8	remote:1;	/* always allowed as a remote command */
 } CMD;
 
 CMD	*cmd_lookup(const char *str, unsigned int len);
@@ -69,9 +70,10 @@ while (<DATA>) {
     $type = "CMD_SHELL" if s/\s+shell//;
     $type = "CMD_CPROG" if s/\s+cprog//;
 
-    $r = $pro = 0;
+    $r = $pro = $remote = 0;
     $r = 1 if s/\s+restricted//;
     $pro = 1 if s/\s+pro//;
+    $remote = 1 if s/\s+remote//;
 
     if (/\s/) {
 	die "Unable to parse mk-cmd.pl line $.: $_\n";
@@ -84,7 +86,7 @@ while (<DATA>) {
     } else {
 	$m = 0;
     }
-    print C "$_, $type, $m, 0, $r, $pro\n";
+    print C "$_, $type, $m, 0, $r, $pro, $remote\n";
 }
 print H "\n#endif\n";
 close(H) or die;
@@ -146,6 +148,7 @@ create
 crypto
 cset
 csetprune
+_debugargs remote
 deledit
 delget
 delta

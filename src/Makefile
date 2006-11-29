@@ -158,7 +158,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o registry.o renumber.o \
 	repo.o repogca.o resolve.o \
-	resolve_binaries.o resolve_contents.o \
+	remote.o resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
 	resolve_renames.o resolve_tags.o restore.o review.o \
@@ -528,6 +528,8 @@ depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
 
 $(OBJ) bk.o: $(HDRS)
+
+sccs.h: libc/system.h
 
 tclkey.h: genkeys.pl
 	perl genkeys.pl > tclkey.h

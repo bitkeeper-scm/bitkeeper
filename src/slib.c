@@ -4022,8 +4022,8 @@ usage:			sys("bk", "help", "-s", "config", SYS);
 		return (config_merge(av[optind], av[optind+1]));
 	}
 	unless (verbose) {
-		if (av[optind+1]) goto usage;
 		if (av[optind]) {
+			if (av[optind+1]) goto usage;
 			if (v = mdbm_fetch_str(cfg, av[optind])) {
 				puts(v);
 				return (0);

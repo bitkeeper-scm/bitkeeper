@@ -1,0 +1,166 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2004 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create initial repositories .................................$NL
+commercial project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+cd "$HERE"
+bk clone $Q project clone
+bk clone $Q project clone2
+echo OK
+
+echo $N Test bk -@ with one parent ..................................$NL
+cd project
+bk pwd > "$HERE"/WANT
+cd "$HERE"/clone
+bk -q -@ pwd > "$HERE"/GOT || exit 1
+checkfiles "$HERE"/WANT "$HERE"/GOT
+echo OK
+
+echo $N Test bk -@ with specified parent ............................$NL
+cd "$HERE"/clone2
+bk -q -@"$HERE"/project pwd > "$HERE"/GOT || exit 1
+checkfiles "$HERE"/WANT "$HERE"/GOT
+echo OK
+
+echo $N Test bk -@ with specified parent outside of any repository ..$NL
+cd "$HERE"
+bk -q -@"$HERE"/project pwd > "$HERE"/GOT || exit 1
+checkfiles "$HERE"/WANT "$HERE"/GOT
+echo OK
+
+echo $N Test bk -@ with multiple parents ............................$NL
+cd "$HERE"/clone2
+bk parent $Q -ai "$HERE"/clone
+cd "$HERE"/clone
+bk pwd > "$HERE"/WANT
+cd "$HERE"/project
+bk pwd >> "$HERE"/WANT
+cd "$HERE"/clone2
+bk -q -@ pwd > "$HERE"/GOT || exit 1
+checkfiles "$HERE"/WANT "$HERE"/GOT
+echo OK
+
+echo $N Test bk -@ with multiple parents listed in a file ...........$NL
+cd "$HERE"
+for i in clone project clone2
+do	echo "$HERE/$i" >> LIST
+done
+rm WANT
+for i in clone project clone2
+do	cd "$HERE"/$i
+	bk pwd >> "$HERE"/WANT
+done
+cd "$HERE"
+bk -q -@@LIST pwd > GOT
+checkfiles "$HERE"/WANT "$HERE"/GOT
+echo OK
+
+echo $N Test bk -@ -r ...............................................$NL
+cd "$HERE"/project
+mkdir src
+cd src
+for i in foo bar blech
+do	echo $i > $i
+	bk new $Q $i
+done
+bk commit $Q -ywhatever
+cd ..
+bk -gr > "$HERE"/ALL
+bk -grsrc > "$HERE"/SRC
+cd "$HERE"/clone
+bk -q -@"$HERE"/project -gr > "$HERE"/GOT
+checkfiles "$HERE"/ALL "$HERE"/GOT
+echo OK
+
+echo $N Test bk -@ -r with a subdirectory ...........................$NL
+bk -q -@"$HERE"/project -grsrc > "$HERE"/GOT
+checkfiles "$HERE"/SRC "$HERE"/GOT
+echo OK
+
+echo $N Test input fed on stdin .....................................$NL
+cd "$HERE"
+rm LIST
+for i in clone project clone2
+do	cd "$HERE"/$i
+	bk pwd >> "$HERE"/LIST
+	bk changes -r+ >> "$HERE"/CHANGES
+done
+cd "$HERE"
+echo + | bk -q -@@"$HERE"/LIST changes - > GOT
+checkfiles "$HERE"/CHANGES "$HERE"/GOT
+echo OK
+
+echo $N Test that a long running bkd will not allow remote calls ....$NL
+cd "$HERE"/project
+P=`port 50000`
+bk bkd -q -d -p$P -ikill > "$HERE"/BKD 2>&1
+cd "$HERE"/clone
+bk -@bk://localhost:$P pwd > OUT 2>&1
+grep -q "$HERE"/project OUT && {
+	echo should not have "$HERE"/project in output
+	cat OUT
+	exit 1
+}
+grep -q 'remote commands are not enabled.' OUT || {
+	echo should have told us there are no remote commands 
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test that individual commands can be enabled ................$NL
+bk -@bk://localhost:$P -q _debugargs 1 2 > GOT || exit 1
+cat <<EOF > WANT
+0: _debugargs
+1: 1
+2: 2
+EOF
+cmpfiles WANT GOT
+echo OK
+
+bk _kill bk://localhost:$P || exit 1
+
+echo $N Test that we can enable remote calls with -U ................$NL
+cd "$HERE"/project
+bk pwd > "$HERE"/PWD
+P=`port 50000`
+bk bkd -U -q -d -p$P -ikill > "$HERE"/BKD 2>&1
+cd "$HERE"/clone
+bk -q -@bk://localhost:$P pwd > OUT 2>&1
+cmpfiles "$HERE"/PWD OUT
+bk _kill bk://localhost:$P || exit 1
+echo OK
+
+test X$PREFER_RSH = XYES -a "$PLATFORM" != "WIN32" && {
+echo $N Test that rsh:// enables them automatically .................$NL
+cd "$HERE"/clone
+bk -q -@rsh://localhost//"$HERE"/project pwd > OUT 2>&1
+cmpfiles "$HERE"/PWD OUT
+echo OK
+}
+
+echo $N Test expected argument parsing ..............................$NL
+mkdir me@foo
+bk -q@. -rme@foo/.. _debugargs 1 2 '2 2' -q 'jj e' -@jj > GOT
+cat <<EOF > WANT
+0: _debugargs
+1: 1
+2: 2
+3: "2 2"
+4: -q
+5: "jj e"
+6: -@jj
+7: -
+EOF
+cmpfiles WANT GOT
+echo OK
