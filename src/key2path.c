@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2002, Andrew Chang
+ */
 #include "system.h"
 #include "sccs.h"
 
@@ -8,7 +11,6 @@ key2path_main(int ac, char **av)
 	char	*path;
 	char	key[MAXKEY];
 	MDBM	*idDB;
-	int	ret = 0;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "pull: cannot find package root.\n");
@@ -23,50 +25,18 @@ key2path_main(int ac, char **av)
 	while (fnext(key, stdin)) {
 		chomp(key);
 
-		if (streq("@END OF KEYS@", key)) break;
-		unless (path = key2path(key, idDB)) {
-			/* Maybe it's already a path? */
-			path = name2sccs(key);
-			if (sccs_path(path)) {
-				printf("%s\n", path);
-				free(path);
-				continue;
-			}
-			free(path);
-			path = 0;
-		}
+		path = key2path(key, idDB);
 		unless (path) {
-			fprintf(stderr, "Can't find path for key %s\n", key);
-			ret = 1;
-			continue;
+			fprintf(stderr, "Can't find path for key %s\n",key);
+			mdbm_close(idDB);
+			return (1);
 		}
 		printf("%s\n", path);
 		free(path);
 	}
+
 	mdbm_close(idDB);
-	return (ret);
-}
-
-/*
- * Return true if the path named is a revision controlled file.
- * We expect to be called from the root of the tree so the delta path
- * should match.  That should prevent ../bk-3.secret/src/slib.c holes.
- */
-int
-sccs_path(char *path)
-{
-	char	*sfile = 0;
-	sccs	*s;
-	int	ok;
-
-	sfile = name2sccs(path);
-	s = sccs_init(sfile, 0);
-	ok = (s && HASGRAPH(s) &&
-	    streq(proj_root(s->proj), proj_cwd()) &&
-	    streq(s->gfile, sccs_top(s)->pathname));
-	sccs_free(s);
-	free(sfile);
-	return (ok);
+	return (0);
 }
 
 /*
@@ -77,6 +47,7 @@ sccs_path(char *path)
 char *
 key2path(char *key, MDBM *idDB)
 {
+	char	*path;
 	char	*path, *p, *t, *r;
 
 	/* We need to be called at the root */
@@ -99,17 +70,14 @@ key2path(char *key, MDBM *idDB)
 		}
 	}
 
-	/* handle the case that they are sending us a changeset file */
 	if (p = separator(key)) {
-		*p = 0;
-		path = mdbm_fetch_str(idDB, key);
-		*p = ' ';
 		if (path) {
 			path = name2sccs(path);
 			goto out;
 		}
-	}
 
+		for (t = key; *t++ != '|'; );
+		for (r = t; *r != '|'; r++);
 	/* Try exploding the key and looking for the original path */
 	unless (t = strchr(key, '|')) return (0);
 	for (r = ++t; *r != '|'; r++);
@@ -121,5 +89,8 @@ out:	unless (isreg(path)) {
 		free(path);
 		return (0);
 	}
+
+	if (path) return (strdup(path));
+	return (NULL);
 	return (path);
 }

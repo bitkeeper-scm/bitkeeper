@@ -1,5 +1,7 @@
 #include "system.h"
 
+void	(*spawn_preHook)(int flags, char *av[]) = 0;
+
 #ifndef WIN32
 pid_t
 bk_spawnvp(int flags, char *cmdname, char *av[])

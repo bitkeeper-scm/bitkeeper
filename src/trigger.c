@@ -106,9 +106,6 @@ trigger(char *cmd, char *when)
 	} else if (strneq(cmd, "push", 4)) {
 		what = "outgoing";
 		event = "outgoing push";
-	} else if (strneq(cmd, "remote sfio", 12)) {
-		what = "outgoing";
-		event = "outgoing sfio";
 	} else if (strneq(cmd, "remote clone", 12)) {
 		what = "outgoing";
 		event = "outgoing clone";

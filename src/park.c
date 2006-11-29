@@ -589,17 +589,18 @@ tname2cname(char *tname)
 private char *
 key2Gpath(char *key, MDBM **idDB)
 {
-	char	*sfile, *gfile;
+	char	*gpath;
 	int	try = 0;
 
 	chdir(PARK2ROOT);
-retry:	sfile = key2path(key, *idDB);
+retry:	gpath = key2path(key, *idDB);
+	if (badSpath(PARK2ROOT, gpath)) {
 	unless (sfile && exists(sfile)) {
 		if (try == 0) {
 			sys("bk", "idcache", SYS);
 			mdbm_close(*idDB);
-			unless (*idDB =
-			    loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+			unless (*idDB = loadDB(IDCACHE, 0,
+						DB_KEYFORMAT|DB_NODUPS)) {
 				perror("idcache");
 				exit(1);
 			}
@@ -607,14 +608,14 @@ retry:	sfile = key2path(key, *idDB);
 			goto retry;
 		} else {
 			chdir(ROOT2PARK);
-			return (0);
+			return(NULL);
 		}
 	}
 	chdir(ROOT2PARK);
-	gfile = sccs2name(sfile);
-	free(sfile);
-	return (gfile);
+	return (gpath);
 }
+
+
 
 /*
  * Copy gfile, sfile and pfile from user tree to PARKDIR, "bk edit" if necessary
