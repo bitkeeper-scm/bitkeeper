@@ -326,7 +326,7 @@ echo $N Make sure "bk new -b" forces binary encoding for text file ....$NL
 echo "this is text" > text
 bk new $Q -b text
 ENC=`bk prs -hr+ -d:ENC: text`
-if [ "$ENC" != "binary" ]; then echo failed; exit 1; fi
+if [ "$ENC" != "binpool" ]; then echo failed; exit 1; fi
 echo OK;
 
 

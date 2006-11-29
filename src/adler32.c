@@ -54,8 +54,8 @@ adler32_file(char *file)
 private int
 do_checksum(int dataOnly)
 {
-	char	buf[MAXLINE];
-	int	doDiffs = 0;
+	char	buf[8<<10];
+	int	n, doDiffs = 0;
 	uLong	sum;
 	unsigned int byte_count = 0;
 
@@ -129,7 +129,12 @@ end:			sprintf(buf, "# Patch checksum=%.8lx\n", sum);
 			fputs(buf, stdout);
 			byte_count += strlen(buf);
 			fflush(stdout);
-			while (fnext(buf, stdin));
+			/*
+			 * Pass through any other trailing data, (sfio)
+			 */
+			while (n = fread(buf, 1, sizeof(buf), stdin)) {
+				fwrite(buf, 1, n, stdout);
+			}
 			save_byte_count(byte_count);
 			return (0);
 		}

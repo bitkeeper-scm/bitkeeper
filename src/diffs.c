@@ -256,9 +256,16 @@ usage:			system("bk help -s diffs");
 		 * EDITED() doesn't work because they could have chmod +w
 		 * the file.
 		 */
-		if (!r1 && WRITABLE(s) && HAS_PFILE(s) &&
-		    !MONOTONIC(s) && !sccs_hasDiffs(s, flags|ex, 1)) {
-			goto next;
+		if (!r1 && WRITABLE(s) && HAS_PFILE(s) && !MONOTONIC(s)) {
+			unless (sccs_hasDiffs(s, flags|ex, 1)) goto next;
+			if (BINPOOL(s)) {
+				if (flags & DIFF_HEADER) {
+					printf("===== %s %s vs edited =====\n",
+					    s->gfile, sccs_top(s)->rev);
+				}
+				printf("Binary file %s differs\n", s->gfile);
+				goto next;
+			}
 		}
 
 		/*

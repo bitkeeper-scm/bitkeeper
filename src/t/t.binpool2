@@ -1,0 +1,85 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create initial repository ...................................$NL
+commercial project
+echo OK
+
+echo $N Create some binary data and check binpool ...................$NL
+printf 'a\0b\n' > ../bin.data
+cp ../bin.data .
+bk new $Q bin.data
+bk commit $Q -ybindata
+test -d BitKeeper/binpool || exit 1
+echo OK
+
+echo $N Set up a remote fetch of a file .............................$NL
+cd ..
+bk clone $Q project copy
+cd project
+mkdir -p BitKeeper/triggers
+cat - <<'EOF' > BitKeeper/triggers/post-outgoing.rsfio
+#!/bin/sh
+test "$BK_EVENT" = "outgoing sfio" || exit 0
+touch MYLOG
+echo "outgoing sfio" >> MYLOG
+EOF
+chmod +x BitKeeper/triggers/post-outgoing.rsfio
+cd ../copy
+rm -fr BitKeeper/binpool
+BK_CONFIG="binpool_master:file://$HERE/project" bk get $Q bin.data || exit 1
+test -d BitKeeper/binpool || {
+	echo Binpool not restored
+	exit 1
+}
+test -f bin.data || {
+	echo File not gotten
+	exit 1
+}
+test -f ../project/MYLOG || {
+	echo No LOG
+	exit 1
+}
+echo OK
+
+echo $N Set up a remote fetch of a file to a -G file ................$NL
+rm -fr BitKeeper/binpool ../project/MYLOG
+BK_CONFIG="binpool_master:file://$HERE/project" bk get $Q -G "copy data" bin.data || exit 1
+test -d BitKeeper/binpool || {
+	echo Binpool not restored
+	exit 1
+}
+test -f "copy data" || {
+	echo File not gotten
+	exit 1
+}
+test -f ../project/MYLOG || {
+	echo No LOG
+	exit 1
+}
+echo OK
+
+echo $N Set up a remote fetch of a file to a -G file through - ......$NL
+rm -fr BitKeeper/binpool ../project/MYLOG "copy data"
+echo bin.data | BK_CONFIG="binpool_master:file://$HERE/project" bk get $Q -G "copy data" - || exit 1
+test -d BitKeeper/binpool || {
+	echo Binpool not restored
+	exit 1
+}
+test -f "copy data" || {
+	echo File not gotten
+	exit 1
+}
+test -f ../project/MYLOG || {
+	echo No LOG
+	exit 1
+}
+echo OK

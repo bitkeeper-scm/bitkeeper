@@ -4,16 +4,18 @@
 
 private int	get_rollback(sccs *s, char *rev,
 		    char **iLst, char **xLst, char *prog);
+private int	binpool(char **files, char **keys, int ac, char **av);
 
 int
 get_main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = 0, flags = GET_EXPAND, c, errors = 0;
+	int	iflags = 0, flags = GET_EXPAND|GET_NOREMOTE, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *Gname = 0;
 	char	*prog;
 	char	*mRev = 0, *Rev = 0;
 	delta	*d;
+	int	recursed = 0;
 	int	gdir = 0;
 	int	getdiff = 0;
 	int	sf_flags = 0;
@@ -23,8 +25,11 @@ get_main(int ac, char **av)
 	int	closetips = 0;
 	int	skip_bin = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
+	int	ac_optend;
 	MDBM	*realNameCache = 0;
 	char	*out = "-";
+	char	**bp_files = 0;
+	char	**bp_keys = 0;
 	char	realname[MAXPATH];
 
 	prog = strrchr(av[0], '/');
@@ -53,7 +58,10 @@ get_main(int ac, char **av)
 		    case 'D': getdiff++; break;			/* doc 2.0 */
 		    case 'l':					/* doc 2.0 co */
 		    case 'e': flags |= GET_EDIT; break;		/* doc 2.0 */
-		    case 'F': iflags |= INIT_NOCKSUM; break;	/* doc 2.0 */
+		    case 'F':
+			iflags |= INIT_NOCKSUM;
+			putenv("_BK_FASTGET=YES");
+			break;
 		    case 'g': flags |= GET_SKIPGET; break;	/* doc 2.0 */
 		    case 'G': Gname = optarg; break;		/* doc 2.0 */
 		    case 'h': dohash = 1; break;		/* doc 2.0 */
@@ -64,7 +72,7 @@ get_main(int ac, char **av)
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */
 		    case 'q': flags |= SILENT; break;		/* doc 2.0 */
 		    case 'r': Rev = optarg; break;		/* doc 2.0 */
-		    case 'R': break;        /* sfileFirst does this always */
+		    case 'R': recursed = 1; break;
 		    case 's': flags |= SILENT; break;		/* undoc */
 		    case 'S': flags |= GET_NOREGET; break;	/* doc 2.0 */
 		    case 't': break;		/* compat, noop, undoc 2.0 */
@@ -76,6 +84,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			return (1);
 		}
 	}
+	ac_optend = optind;
 	if (flags & GET_PREFIX) {
 		if (flags & GET_EDIT) {
 			fprintf(stderr, "%s: can't use -e with -dNum\n",
@@ -240,6 +249,13 @@ err:			sccs_free(s);
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
+			if (s->cachemiss) {
+				bp_files = addLine(bp_files, strdup(name));
+				bp_keys = addLine(bp_keys,
+				    sccs_prsbuf(s, sccs_findrev(s, rev), 0,
+					":ROOTKEY: :KEY:"));
+				goto next;
+			}
 			if (s->io_error) return (1);
 			unless (BEEN_WARNED(s)) {
 				verbose((stderr,
@@ -259,7 +275,61 @@ next:		sccs_free(s);
 	}
 	if (sfileDone()) errors = 1;
 	if (realNameCache) mdbm_close(realNameCache);
+	unless (errors || recursed) {
+		errors = binpool(bp_files, bp_keys, ac_optend, av);
+	}
+	freeLines(bp_files, free);
+	freeLines(bp_keys, free);
 	return (errors);
+}
+
+private int
+binpool(char **files, char **keys, int ac, char **av)
+{
+	char	*nav[100];
+	FILE	*f;
+	int	i;
+
+	unless (files) return (0);
+	if (bp_fetchkeys(keys)) return (1);
+	assert(ac < 90);
+	nav[0] = "bk";
+	for (i = 0; i < ac; i++) {
+		nav[i+1] = av[i];
+	}
+	nav[++i] = "-R";
+	nav[++i] = "-";
+	nav[++i] = 0;
+	f = popenvp(nav, "w");
+	EACH(files) fprintf(f, "%s\n", files[i]);
+	if (pclose(f)) return (1);
+	return (0);
+}
+
+int
+bp_fetchkeys(char **keys)
+{
+	int	i;
+	FILE	*f;
+	char	*master = proj_configval(0, "binpool_master");
+	char	buf[MAXPATH];
+	char	pwd[MAXPATH];
+
+	unless (strlen(master)) {
+		fprintf(stderr, "co: no master for binpool data.\n");
+		return (1);
+	}
+	pwd[0] = 0;
+	unless (exists(BKROOT)) {
+		getcwd(pwd, MAXPATH);
+		proj_cd2root();
+	}
+	sprintf(buf, "bk rsfio -@%s - | bk sfio -qfi", master);
+	f = popen(buf, "w");
+	EACH(keys) fprintf(f, "%s\n", keys[i]);
+	i = pclose(f);
+	if (pwd[0]) chdir(pwd);
+	return (i != 0);
 }
 
 private int

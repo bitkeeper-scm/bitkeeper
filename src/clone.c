@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000-2002, Andrew Chang & Larry McVoy
+ * Copyright (c) 2000-2006 BitMover, Inc.
  */    
 #include "bkd.h"
 #include "logging.h"
@@ -13,14 +13,16 @@ typedef struct {
 	int	delay;			/* wait for (ssh) to drain */
 	int	gzip;			/* -z[level] compression */
 	char	*rev;			/* remove everything after this */
+	char	**files;		/* rsfio: list of files|keys to get */
+	char	**parents;		/* rsfio: list of parents */
 	u32	in, out;		/* stats */
 } opts;
 
-private int	clone(char **, opts, remote *, char *, char **);
+private int	clone(opts, remote *, char *, char **);
 private	int	clone2(opts opts, remote *r);
 private void	parent(opts opts, remote *r);
 private int	sfio(opts opts, int gz, remote *r);
-private void	usage(void);
+private void	usage(char *cmd);
 private int	initProject(char *root);
 private	int	lclone(opts, remote *, char *to);
 private int	linkdir(char *from, char *dir);
@@ -28,6 +30,8 @@ private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
 private int	in_trigger(char *status, char *rev, char *root, char *repoid);
+private int	send_clone_msg(opts opts, int gzip, remote *r, char **envVar);
+private int	rsfio(opts opts, remote *r, char **envVar);
 
 int
 clone_main(int ac, char **av)
@@ -59,14 +63,14 @@ clone_main(int ac, char **av)
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
 			break;
 		    default:
-			usage();
+			usage("clone");
 	    	}
 	}
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
-	unless (av[optind]) usage();
+	unless (av[optind]) usage("clone");
 	localName2bkName(av[optind], av[optind]);
 	if (av[optind + 1]) {
-		if (av[optind + 2]) usage();
+		if (av[optind + 2]) usage("clone");
 		localName2bkName(av[optind + 1], av[optind + 1]);
 	}
 
@@ -74,7 +78,7 @@ clone_main(int ac, char **av)
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	unless (r = remote_parse(av[optind], REMOTE_BKDURL)) usage();
+	unless (r = remote_parse(av[optind], REMOTE_BKDURL)) usage("clone");
 
 	/*
 	 * Go prompt with the remotes license, it makes cleanup nicer.
@@ -109,7 +113,7 @@ clone_main(int ac, char **av)
 		unless (l) {
 err:			if (r) remote_free(r);
 			if (l) remote_free(l);
-			usage();
+			usage("clone");
 		}
 		/*
 		 * Source and destination cannot both be remote 
@@ -131,28 +135,180 @@ err:			if (r) remote_free(r);
 	}
 
 	if (opts.debug) r->trace = 1;
-	rc = clone(av, opts, r, av[optind+1], envVar);
+	rc = clone(opts, r, av[optind+1], envVar);
 	freeLines(envVar, free);
 	remote_free(r);
 	return (rc);
 }
 
-private void
-usage(void)
+int
+rsfio_main(int ac, char **av)
 {
-	system("bk help -s clone");
+	int	i, c, rc = 1;
+	opts	opts;
+	char	**envVar = 0;
+	remote 	*r = 0;
+	char	*p;
+	char	buf[MAXKEY];
+
+	bzero(&opts, sizeof(opts));
+	opts.gzip = 6;
+	opts.quiet = 1;
+	while ((c = getopt(ac, av, "@;dovz|")) != -1) {
+		switch (c) {
+		    case '@':
+			opts.parents = addLine(opts.parents, strdup(optarg));
+			break;
+		    case 'd': opts.debug = 1; break;
+		    case 'E': 					/* doc 2.0 */
+			unless (strneq("BKU_", optarg, 4)) {
+				fprintf(stderr,
+				    "clone: vars must start with BKU_\n");
+				return (1);
+			}
+			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'o': break;	// It's implied anyway
+		    case 'v': opts.quiet = 0; break;
+		    case 'z':					/* doc 2.0 */
+			opts.gzip = optarg ? atoi(optarg) : 6;
+			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
+			break;
+		    default:
+			usage("rsfio");
+	    	}
+	}
+	unless (opts.parents) opts.parents = parent_pullp();
+	unless (opts.parents) usage("rsfio");
+
+	/*
+	 * We either get "file file file ... " or "-" or it's
+	 * an error.
+	 */
+	unless (av[optind]) exit(1);
+	if (streq(av[optind], "-") && !av[optind+1]) {
+		while (fnext(buf, stdin)) {
+			chomp(buf);
+			opts.files = addLine(opts.files, strdup(buf));
+		}
+	} else {
+		while (av[optind]) {
+			opts.files = addLine(opts.files, strdup(av[optind]));
+			optind++;
+		}
+	}
+
+	/* We use the first parent pointer that works and ignore the rest. */
+	EACH(opts.parents) {
+		p = opts.parents[i];
+		unless (r = remote_parse(p, REMOTE_BKDURL)) continue;
+		if (opts.debug) r->trace = 1;
+		rc = rsfio(opts, r, envVar);
+		remote_free(r);
+		break;
+	}
+	freeLines(envVar, free);
+	return (rc);
+}
+
+private int
+rsfio(opts opts, remote *r, char **envVar)
+{
+	char	buf[MAXPATH];
+	char	*lic;
+	int	gzip, rc = 2;
+
+	gzip = r->port ? opts.gzip : 0;
+	if (bkd_connect(r, opts.gzip, !opts.quiet)) goto done;
+	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
+	if (remote_lock_fail(buf, !opts.quiet)) {
+		return (-1);
+	} else if (streq(buf, "@SERVER INFO@")) {
+		if (getServerInfoBlock(r)) {
+			fprintf(stderr, "rsfio: premature disconnect?\n");
+			disconnect(r, 2);
+			goto done;
+		}
+		getline2(r, buf, sizeof(buf));
+	} else {
+		drainErrorMsg(r, buf, sizeof(buf));
+		disconnect(r, 2);
+		exit(1);
+	}
+	if (get_ok(r, buf, 1)) {
+		disconnect(r, 2);
+		goto done;
+	}
+
+	if (lic = getenv("BKD_LICTYPE")) {
+		/*
+		 * Make sure we know about the remote's license.
+		 * XXX - even this isn't perfect, the remote side may have
+		 * a different version of "Pro".
+		 */
+		unless (eula_known(lic)) {
+			fprintf(stderr,
+			    "rsfio: remote BK has a different license: %s\n"
+			    "You will need to upgrade in order to proceed.\n",
+			    lic);
+			disconnect(r, 2);
+			goto done;
+		}
+		unless (eula_accept(EULA_PROMPT, lic)) {
+			fprintf(stderr,
+			    "rsfio: failed to accept license '%s'\n", lic);
+			disconnect(r, 2);
+			goto done;
+		}
+	}
+
+	getline2(r, buf, sizeof (buf));
+	if (streq(buf, "@TRIGGER INFO@")) { 
+		if (getTriggerInfoBlock(r, !opts.quiet)) goto done;
+		getline2(r, buf, sizeof (buf));
+	}
+
+	unless (streq(buf, "@SFIO@")) {
+		fprintf(stderr, "%s\n", buf);
+		goto done;
+	}
+
+	rc = 0;
+
+	/* spew the data */
+	gunzipAll2fd(r->rfd, 1, gzip, &(opts.in), &(opts.out));
+
+done:	
+
+	/*
+	 * XXX This is a workaround for a csh fd leak:
+	 * Force a client side EOF before we wait for server side EOF.
+	 * Needed only if remote is running csh; csh has a fd leak
+	 * which causes it fail to send us EOF when we close stdout
+	 * and stderr.  Csh only sends us EOF and the bkd exit, yuck !!
+	 */
+	disconnect(r, 1);
+	wait_eof(r, opts.debug); /* wait for remote to disconnect */
+	return (rc);
+}
+
+private void
+usage(char *cmd)
+{
+    	sys("bk", "help", "-s", cmd, SYS);
     	exit(1);
 }
 
 private int
 send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 {
-	char	buf[MAXPATH];
 	FILE    *f;
-	int	rc;
+	int	i, rc;
+	char	tmpf[MAXPATH];
 
-	bktmp(buf, "clone");
-	f = fopen(buf, "w");
+	bktmp(tmpf, "clone");
+	f = fopen(tmpf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, SENDENV_NOREPO);
 	if (r->path) add_cd_command(f, r);
@@ -162,16 +318,20 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	if (opts.quiet) fprintf(f, " -q");
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");
+	if (opts.files) fprintf(f, " -");
 	fputs("\n", f);
+	if (opts.files) {
+		EACH(opts.files) fprintf(f, "%s\n", opts.files[i]);
+		fprintf(f, "@END OF KEYS@\n");
+	}
 	fclose(f);
-
-	rc = send_file(r, buf, 0);
-	unlink(buf);
+	rc = send_file(r, tmpf, 0);
+	unlink(tmpf);
 	return (rc);
 }
 
 private int
-clone(char **av, opts opts, remote *r, char *local, char **envVar)
+clone(opts opts, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
 	char	*lic;
@@ -180,12 +340,12 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	gzip = r->port ? opts.gzip : 0;
 	if (local && exists(local) && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
-		usage();
+		usage("clone");
 	}
 	if (local ? test_mkdirp(local) : access(".", W_OK)) {
 		fprintf(stderr, "clone: %s: %s\n",
 			(local ? local : "current directory"), strerror(errno));
-		usage();
+		usage("clone");
 	}
 	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	if (bkd_connect(r, opts.gzip, !opts.quiet)) goto done;
@@ -261,7 +421,10 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		getline2(r, buf, sizeof (buf));
 	}
 
-	if (!streq(buf, "@SFIO@"))  goto done;
+	unless (streq(buf, "@SFIO@")) {
+		fprintf(stderr, "%s\n", buf);
+		goto done;
+	}
 
 	/* create the new package */
 	if (initProject(local) != 0) goto done;
@@ -269,7 +432,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	/* eat the data */
 	if (sfio(opts, gzip, r) != 0) {
-		fprintf(stderr, "sfio errored\n");
+		fprintf(stderr, "sfio failed.\n");
 		goto done;
 	}
 
@@ -285,7 +448,7 @@ done:	if (rc) {
 	/*
 	 * Don't bother to fire trigger if we have no tree.
 	 */
-	if (proj_root(0) && (rc != 2)) trigger(av[0], "post");
+	if (proj_root(0) && (rc != 2)) trigger("clone", "post");
 
 	/*
 	 * XXX This is a workaround for a csh fd leak:
@@ -334,7 +497,17 @@ clone2(opts opts, remote *r)
 			    "Undo failed, repository left locked.\n");
 			return (-1);
 		}
+		if (bp_fetchMissing("+")) {
+			fprintf(stderr,
+			    "Binpool fetch failed, repository left locked.\n");
+			return (-1);
+		}
 	} else {
+		if (bp_fetchMissing("+")) {
+			fprintf(stderr,
+			    "Binpool fetch failed, repository left locked.\n");
+			return (-1);
+		}
 		/* undo already runs check so we only need this case */
 		unless (opts.quiet) {
 			fprintf(stderr, "Running consistency check ...\n");

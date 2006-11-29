@@ -17,8 +17,7 @@
 #include "range.h"
 
 #define	VSIZE 4096
-#define	WRITABLE_REG(s)     (WRITABLE(s) && isRegularFile((s)->mode))
-
+#define	WRITABLE_REG(s)	(WRITABLE(s) && isRegularFile((s)->mode))
 
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, delta *d, int fixDate);
@@ -43,6 +42,7 @@ private int	hasComments(delta *d);
 private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, delta *d, char *who);
+private delta*	hashArg(delta *d, char *name);
 private delta*	csetFileArg(delta *d, char *name);
 private delta*	dateArg(delta *d, char *arg, int defaults);
 private delta*	hostArg(delta *d, char *arg);
@@ -487,6 +487,7 @@ freedelta(delta *d)
 	if (d->csetFile && !(d->flags & D_DUPCSETFILE)) {
 		free(d->csetFile);
 	}
+	if (d->hash) free(d->hash);
 	free(d);
 }
 
@@ -2172,7 +2173,7 @@ nextdata(sccs *s)
  *
  * This function gets run from check.c if checksums are being verified
  * right after we have walked the weave to check checksums.  If a
- * 'no-newline' marker is seen in the file then getRegBody() sets
+ * 'no-newline' marker is seen in the file then get_reg() sets
  * s->has_nonl.  And we skip this call if s->has_nonl is not set, that
  * way the weave is only extracted twice on a subset of the files.
  *
@@ -2519,7 +2520,7 @@ rcsexpand(sccs *s, delta *d, char *line, int *expanded)
  * and whatever exits first.
  * XXX - on linux, at least, this doesn't work, so we catch the EPIPE case
  * where we call this function.  There should be only one place in the
- * getRegBody() function.
+ * get_reg() function.
  */
 int
 flushFILE(FILE *out)
@@ -3042,6 +3043,7 @@ checkTags(sccs *s, int flags)
 /*
  * Dig meta data out of a delta.
  * The buffer looks like ^Ac<T>data where <T> is one character type.
+ * A - hash for binpool
  * B - cset file root key
  * C - cset boundry
  * D - dangling delta
@@ -3064,6 +3066,8 @@ meta(sccs *s, delta *d, char *buf)
 {
 	if (d->type != 'D') d->flags |= D_META;
 	switch (buf[2]) {
+	    case 'A':
+		hashArg(d, &buf[3]);
 	    case 'B':
 		csetFileArg(d, &buf[3]);
 		break;
@@ -3129,7 +3133,7 @@ meta(sccs *s, delta *d, char *buf)
 		zoneArg(d, &buf[3]);
 		break;
 	    default:
-		fprintf(stderr, "Ignoring %.5s", buf);
+		fprintf(stderr, "%s: Ignoring %.5s\n", s->gfile, buf);
 		/* got unknown field, force read only mode */
 		s->state |= S_READ_ONLY;
 		return;
@@ -3422,9 +3426,10 @@ misc(sccs *s)
 		} else if (strneq(buf, "\001f e ", 5)) {
 			switch (atoi(&buf[5])) {
 			    case E_ASCII:
+			    case E_ASCII|E_GZIP:
 			    case E_UUENCODE:
-			    case E_GZIP:
-			    case E_GZIP|E_UUENCODE:
+			    case E_UUENCODE|E_GZIP:
+			    case E_BINPOOL:
 				s->encoding = atoi(&buf[5]);
 				break;
 			    default:
@@ -5815,36 +5820,25 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 
 	assert(op);
 	debug((stderr, "openOutput(%x, %s, %p)\n", encode, file, op));
-	switch (encode) {
-	    case E_ASCII:
-	    case E_UUENCODE:
-	    case E_GZIP:
-	    case (E_GZIP|E_UUENCODE):
-		/*
-		 * Note: This has no effect when we print to stdout
-		 * We want this because we want diff_gfile() to
-		 * diffs file with normlized to LF.
-		 *
-		 * Win32 note: t.bkd regression failed if ChangeSet have
-		 * have CRLF terminattion.
-		 */
-		if (((encode == E_ASCII) || (encode == E_GZIP)) &&
-		    !CSET(s) && (s->xflags&X_EOLN_NATIVE)) {
-			mode = "wt";
+	/*
+	 * Note: This has no effect when we print to stdout We want
+	 * this becuase we want diff_gfile() to diffs file with
+	 * normlized to LF.
+	 *
+	 * Win32 note: t.bkd regression failed if ChangeSet have have
+	 * CRLF termination.
+	 */
+	if (((encode & E_DATAENC) == E_ASCII) &&
+	    !CSET(s) && (s->xflags & X_EOLN_NATIVE)) {
+		mode = "wt";
+	}
+	if (toStdout) {
+		*op = stdout;
+	} else {
+		unless (*op = fopen(file, mode)) {
+			mkdirf(file);
+			*op = fopen(file, mode);
 		}
-		if (toStdout) {
-			*op = stdout;
-		} else {
-			unless (*op = fopen(file, mode)) {
-				mkdirf(file);
-				*op = fopen(file, mode);
-			}
-		}
-		break;
-	    default:
-		*op = NULL;
-		debug((stderr, "openOutput = %p\n", *op));
-		return (-1);
 	}
 	debug((stderr, "openOutput = %p\n", *op));
 	return (0);
@@ -6129,7 +6123,11 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 {
 	char *f;
 
-	if (flags & PRINT) {
+	/*
+	 * GET_SUM should always have PRINT as well because otherwise we
+	 * may create a gfile when all we wanted was the SUM.  Yucky API.
+	 */
+	if (flags & (PRINT|GET_SUM)) {
 		f = printOut;
 	} else {
 		/* With -G/somewhere/foo.c we need to check the gfile again */
@@ -6138,9 +6136,8 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 			verbose((stderr, "Writable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char*)-1);
-		} else if ((flags & GET_NOREGET) &&
-			    exists(s->gfile) &&
-			    (!(flags&GET_EDIT) || !(s->xflags&(X_RCS|X_SCCS)))){
+		} else if ((flags & GET_NOREGET) && exists(s->gfile) &&
+		    (!(flags&GET_EDIT) || !(s->xflags & (X_RCS|X_SCCS)))) {
 			if ((flags & GET_EDIT) && !WRITABLE(s)) {
 				s->mode |= 0200;
 				if (chmod(s->gfile, s->mode)) {
@@ -6269,22 +6266,18 @@ get_lineName(sccs *s, ser_t ser, MDBM *db, u32 lnum, char *buf)
 }
 
 private int
-getRegBody(sccs *s, char *printOut, int flags, delta *d,
+get_reg(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
 {
 	serlist *state = 0;
 	ser_t	*slist = 0;
-	int	lines = 0, print = 0, popened = 0, error = 0;
+	int	lines = 0, print = 0, error = 0;
 	int	seq;
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
 	unsigned int sum;
-	u32	same;
-	u32	added;
-	u32	deleted;
-	u32	other;
-	u32	*counter;
-	FILE 	*out;
-	char	*buf, *name = 0, *f = 0;
+	u32	same, added, deleted, other, *counter;
+	FILE 	*out = 0;
+	char	*buf, *name = 0, *gfile = 0;
 	MDBM	*DB = 0;
 	int	hash = 0;
 	int	hashFlags = 0;
@@ -6297,6 +6290,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	MDBM	*namedb = 0;
 	u32	*lnum = 0;
 
+	assert(!BINPOOL(s));
 	if (EOLN_WINDOWS(s)) eol = "\r\n";
 	slist = d ? serialmap(s, d, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
@@ -6347,7 +6341,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		} else if (CONFIG(s)) {
 			hashFlags = DB_CONFIG;
 		}
-		unless ((encoding == E_ASCII) || (encoding == E_GZIP)) {
+		unless ((encoding & E_DATAENC) == E_ASCII) {
 			fprintf(stderr, "get: has files must be ascii.\n");
 			s->state |= S_WARNED;
 			goto out;
@@ -6396,9 +6390,9 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	state = allocstate(0, s->nextserial);
 
-	unless (flags & GET_HASHONLY) {
-		f = d ? setupOutput(s, printOut, flags, d) : printOut;
-		if ((f == (char *) 0) || (f == (char *)-1)) {
+	unless (flags & (GET_HASHONLY|GET_SUM)) {
+		gfile = d ? setupOutput(s, printOut, flags, d) : printOut;
+		if ((gfile == (char *) 0) || (gfile == (char *)-1)) {
 out:			if (slist) free(slist);
 			if (state) free(state);
 			if (DB) mdbm_close(DB);
@@ -6407,20 +6401,18 @@ out:			if (slist) free(slist);
 			 * 1 == error
 			 * 2 == No reget
 			 */
-			unless (f) return (2);
+			unless (gfile) return (2);
 			return (1);
 		}
-		popened = openOutput(s, encoding, f, &out);
+		openOutput(s, encoding, gfile, &out);
 		unless (out) {
 			fprintf(stderr,
-			    "getRegBody: Can't open %s for writing\n", f);
-			perror(f);
+			    "get_reg: Can't open %s for writing\n", gfile);
+			perror(gfile);
 			fflush(stderr);
 			goto out;
 		}
 	}
-	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	seq = 0;
 	sum = 0;
 	added = 0;
@@ -6428,7 +6420,8 @@ out:			if (slist) free(slist);
 	same = 0;
 	other = 0;
 	counter = &other;
-
+	seekto(s, s->data);
+	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	while (buf = nextdata(s)) {
 		register u8 *e, *e1, *e2;
 
@@ -6441,8 +6434,7 @@ out:			if (slist) free(slist);
 				    : whatstate((const serlist*)state)]++;
 			}
 			if (buf[0] == CNTLA_ESCAPE) {
-				assert((encoding == E_ASCII) ||
-							(encoding == E_GZIP));
+				assert((encoding & E_DATAENC) == E_ASCII);
 				buf++; /* skip the escape character */
 			}
 			if (!print) {
@@ -6547,12 +6539,15 @@ write:
 				break;
 			    }
 			    case E_ASCII:
-			    case E_GZIP:
+			    case E_ASCII|E_GZIP:
 				unless (flags & GET_SUM) fnnlputs(e, out);
 				if (flags & NEWCKSUM) sum -= '\n';
 				lf_pend = print;
 				if (sccs_expanded) free(e1);
 				if (rcs_expanded) free(e2);
+				break;
+			    default:
+				assert(0);
 				break;
 			}
 			continue;
@@ -6631,7 +6626,7 @@ write:
 	s->deleted = deleted;
 	s->same = same;
 
-	if (flags & GET_HASHONLY) {
+	if (flags & (GET_HASHONLY|GET_SUM)) {
 		error = 0;
 	} else {
 		if (error = flushFILE(out)) {
@@ -6647,9 +6642,7 @@ write:
 				error = 0;
 			}
 		}
-		if (popened) {
-			pclose(out);
-		} else if (flags & PRINT) {
+		if (flags & PRINT) {
 			unless (streq("-", printOut)) fclose(out);
 		} else {
 			fclose(out);
@@ -6717,7 +6710,7 @@ write:
 		}
 		if (rc) {
 			fprintf(stderr,
-				"getRegBody: cannot chmod %s\n", s->gfile);
+				"get_reg: cannot chmod %s\n", s->gfile);
 			perror(s->gfile);
 		}
 	}
@@ -6756,8 +6749,94 @@ write:
 }
 
 private int
-getLinkBody(sccs *s,
-	char *printOut, int flags, delta *d, int *ln)
+get_bp(sccs *s, char *printOut, int flags, delta *d,
+		int *ln, char *iLst, char *xLst)
+{
+	char	*gfile = 0;
+	int	error = 0;
+
+	assert(BINPOOL(s) && BITKEEPER(s));
+	assert(d);
+
+	/*
+	 * Supported flags are: GET_EDIT (handled elsewhere),
+	 * GET_SKIPGET (handled elsewhere)
+	 * GET_SHUTUP (dunno)
+	 * GET_FORCE (dunno)
+	 * GET_DTIME
+	 * GET_SUM
+	 */ 
+#define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|GET_HEADER|\
+		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS|\
+		GET_HASH|GET_SEQ|GET_COMMENTS)
+	if (flags & BAD) {
+		fprintf(stderr,
+		    "get: bad flags on get for %s: %x\n", s->gfile, flags);
+		return (1);
+	}
+
+	unless (flags & GET_SUM) {
+		gfile = setupOutput(s, printOut, flags, d);
+		if ((gfile == (char *) 0) || (gfile == (char *)-1)) {
+			return (1);
+		}
+	}
+	if (error = bp_get(s, d, flags, gfile)) {
+		unless (error == EAGAIN) return (1);
+		if (flags & GET_NOREMOTE) {
+			s->cachemiss = 1;
+			return (1);
+		} else if (bp_fetch(s, d)) {
+			fprintf(stderr,
+			    "binpool: fetch failed for %s\n", s->gfile);
+			return (1);
+		} else if (bp_get(s, d, flags, gfile)) {
+			fprintf(stderr,
+			    "binpool: get after fetch failed for %s\n",
+			    s->gfile);
+			return (1);
+		}
+	}
+	/* Track get_reg from here on down (mostly) */
+	if (BITKEEPER(s) &&
+	    (flags & NEWCKSUM) && !(flags & GET_SHUTUP) && s->added) {
+		delta	*z = getCksumDelta(s, d);
+
+		if (!z || (s->dsum != z->sum)) {
+		    fprintf(stderr,
+			"get: bad delta cksum %u:%d for %s in %s, %s\n",
+			s->dsum, z ? z->sum : -1, d->rev, s->sfile,
+			"gotten anyway.");
+		}
+	}
+
+	/* Win32 restriction, must do this before we chmod to read only */
+	if ((flags & GET_DTIME) && !(flags & PRINT)) {
+		struct	utimbuf ut;
+		char	*msg;
+
+		/*
+		 * If we are doing a regular SCCS/s.foo -> foo get then
+		 * we set the gfile time iff we can set the sfile time.
+		 * This keeps make happy.
+		 */
+		ut.actime = ut.modtime = d->date - d->dateFudge;
+		s->gtime = ut.modtime;
+		assert(gfile);
+		if ((sccs_setStime(s) == 0) && (utime(gfile, &ut) != 0)) {
+			msg = aprintf("Cannot set mod time on %s:", gfile);
+			perror(msg);
+			free(msg);
+			s->state |= S_WARNED;
+			error = 1;
+		}
+	}
+	if (ln) *ln = s->added;
+	return (error);
+}
+
+private int
+get_link(sccs *s, char *printOut, int flags, delta *d, int *ln)
 {
 	char *f = setupOutput(s, printOut, flags, d);
 	u8 *t;
@@ -6785,14 +6864,14 @@ getLinkBody(sccs *s,
 		}
 	}
 	if (flags & PRINT) {
-		int	popened;
+		int	ret;
 		FILE 	*out;
 
-		popened = openOutput(s, E_ASCII, f, &out);
-		assert(popened == 0);
+		ret = openOutput(s, E_ASCII, f, &out);
+		assert(ret == 0);
 		unless (out) {
 			fprintf(stderr,
-				"getLinkBody: Can't open %s for writing\n", f);
+			    "get_link: Can't open %s for writing\n", f);
 			fflush(stderr);
 			return 1;
 		}
@@ -6950,11 +7029,15 @@ err:		if (i2) free(i2);
 	switch (fileType(d->mode)) {
 	    case 0:		/* uninitialized mode, assume regular file */
 	    case S_IFREG:	/* regular file */
+		if (BINPOOL(s)) {
+			error = get_bp(s, printOut, flags, d, &lines, 0, 0);
+			break;
+		} 
 		error =
-		    getRegBody(s, printOut, flags, d, &lines, i2?i2:iLst, xLst);
+		    get_reg(s, printOut, flags, d, &lines, i2? i2 : iLst, xLst);
 		break;
 	    case S_IFLNK:	/* symlink */
-		error = getLinkBody(s, printOut, flags, d, &lines);
+		error = get_link(s, printOut, flags, d, &lines);
 		break;
 	    default:
 		fprintf(stderr, "get unsupported file type %d\n",
@@ -6989,7 +7072,8 @@ skip_get:
 			fprintf(stderr, " -> %s", rev);
 		}
 		unless (flags & GET_SKIPGET) {
-			if (lines >= 0) fprintf(stderr, ": %d lines", lines);
+			if (lines >= 0) fprintf(stderr, ": %d %s",
+			    lines, (BINPOOL(s) ? "bytes" : "lines"));
 		}
 		fprintf(stderr, "\n");
 	}
@@ -7084,8 +7168,14 @@ err:		return (-1);
 		s->state |= S_WARNED;
 		goto err;
 	}
+	if (BINARY(s)) {
+		fprintf(stderr,
+		    "annotate: can't annotate binary %s\n", s->gfile);
+		s->state |= S_WARNED;
+		goto err;
+	}
 
-	error = getRegBody(s, printOut, flags, 0, &lines, 0, 0);
+	error = get_reg(s, printOut, flags, 0, &lines, 0, 0);
 	if (error) return (-1);
 
 	debug((stderr, "SCCSCAT done\n"));
@@ -7201,7 +7291,6 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	int	with = 0, without = 0;
 	int	count = 0, left = 0, right = 0;
 	FILE	*out = 0;
-	int	popened = 0;
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
 	int	error = 0;
 	int	side, nextside;
@@ -7243,7 +7332,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	tmppat = aprintf("%s-%d", basenm(s->gfile), d->serial);
 	tmpfile = bktmp(0, tmppat);
 	free(tmppat);
-	popened = openOutput(s, encoding, printOut, &out);
+	openOutput(s, encoding, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 	if (type == GET_HASHDIFFS) {
 		int	lines = 0;
@@ -7254,7 +7343,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 
 		s->xflags |= X_HASH;
 		d->flags |= D_SET;
-		ret = getRegBody(s, tmpfile, f|flags, 0, &lines, 0, 0);
+		ret = get_reg(s, tmpfile, f|flags, 0, &lines, 0, 0);
 		unless (hash) s->xflags &= ~X_HASH;
 		unless (set) d->flags &= ~D_SET;
 		unless ((ret == 0) && (lines != 0)) {
@@ -7330,8 +7419,8 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 			count++;
 			if ((type == GET_DIFFS) || (side == RIGHT)) {
 				if (buf[0] == CNTLA_ESCAPE) {
-					assert((encoding == E_ASCII)
-						|| (encoding == E_GZIP));
+					assert((encoding & E_DATAENC)
+					    == E_ASCII);
 					buf++; /* skip the escape character */
 				}
 				fnlputs(buf, lbuf);
@@ -7358,7 +7447,7 @@ done:
 			ret = -1; /* compression failure */
 		}
 	}		
-done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
+done2:	/* for GET_HASHDIFFS, the encoding has been handled in get_reg() */
 	if (lbuf) {
 		if (flushFILE(lbuf)) {
 			s->io_error = 1;
@@ -7371,11 +7460,7 @@ done3:
 		s->io_error = 1;
 		ret = -1; /* i/o error: no disk space ? */
 	}
-	if (popened) {
-		pclose(out);
-	} else {
-		unless (streq("-", printOut)) fclose(out);
-	}
+	unless (streq("-", printOut)) fclose(out);
 	if (slist) free(slist);
 	if (state) free(state);
 	if (tmpfile) {
@@ -7802,6 +7887,13 @@ delta_table(sccs *s, FILE *out, int willfix)
 
 		unless (BITKEEPER(s)) goto SCCS;
 
+		if (d->hash) {
+			p = fmts(buf, "\001cA");
+			p = fmts(p, d->hash);
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
+		}
 		if (d->csetFile && !(d->flags & D_DUPCSETFILE)) {
 			p = fmts(buf, "\001cB");
 			p = fmts(p, d->csetFile);
@@ -8081,7 +8173,9 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		mode = "rt";
 		name = strdup(s->gfile);
 	}
-	if (HASH(s)) {
+	if (BINPOOL(s)) {
+		RET(bp_diff(s, d, name));
+	} else if (HASH(s)) {
 		int	flags = CSET(s) ? DB_KEYFORMAT : 0;
 
 		ghash = loadDB(name, 0, flags|DB_USEFIRST);
@@ -8437,18 +8531,9 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	if (isRegularFile(s->mode)) {
 		if (UUENCODE(s)) {
 			unless (bktmp(new, "getU")) return (-1);
-			if (WRITABLE(s)) {
-				if (deflate_gfile(s, new)) {
-					unlink(new);
-					return (-1);
-				}
-			} else {
-			/* XXX - I'm not sure when this would ever be used. */
-				if (sccs_get(s,
-				    0, 0, 0, 0, GET_ASCII|SILENT|PRINT, new)) {
-					unlink(new);
-					return (-1);
-				}
+			if (deflate_gfile(s, new)) {
+				unlink(new);
+				return (-1);
 			}
 		} else {
 			strcpy(new, s->gfile);
@@ -8469,7 +8554,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	}
 	flags =  GET_ASCII|SILENT|PRINT;
 	if (expandKeyWord) flags |= GET_EXPAND;
-	if (isRegularFile(d->mode)) {
+	if (isRegularFile(d->mode) && !BINPOOL(s)) {
 		unless (bktmp(old, "get")) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 		    flags, old)) {
@@ -8485,6 +8570,8 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	 */
 	if (HASH(s)) {
 		ret = diffMDBM(s, old, new, tmpfile);
+	} else if (BINPOOL(s)) {
+		ret = bp_diff(s, d, new);
 	} else {
 		ret = diff(old, new, DF_DIFF, tmpfile);
 	}
@@ -8936,6 +9023,21 @@ ascii(char *file)
 }
 
 /*
+ * Return the encoding for a binary file.
+ */
+int
+sccs_binaryenc(sccs *s)
+{
+	MDBM	*db = proj_config(s ? s->proj : 0);
+
+	if (db && mdbm_fetch_str(db, "binpool")) {
+		return (E_BINPOOL);
+	} else {
+		return (E_UUENCODE);
+	}
+}
+
+/*
  * Open the input for a checkin/delta.
  * The set of options we have are:
  *	{empty, stdin, file} | {cat, gzip|uuencode}
@@ -8945,7 +9047,7 @@ openInput(sccs *s, int flags, FILE **inp)
 {
 	char	*file = (flags&DELTA_EMPTY) ? DEVNULL_WR : s->gfile;
 	char	*mode = "rb";	/* default mode is binary mode */
-	int 	compress;
+	int 	compress, enc;
 
 	unless (flags & DELTA_EMPTY) {
 		unless (HAS_GFILE(s)) {
@@ -8954,24 +9056,33 @@ openInput(sccs *s, int flags, FILE **inp)
 		}
 	}
 	compress = s->encoding & E_GZIP;
-	switch (s->encoding & E_DATAENC) {
-	    default:
+	enc = s->encoding & E_DATAENC;
+	/* handle auto promoting ascii to binary if needed */
+	if ((enc == E_ASCII) && !streq("-", file) && !ascii(file)) {
+		enc = sccs_binaryenc(s);
+		s->encoding = enc | compress;
+		/* binpool doesn't support gzip */
+		if (BINPOOL(s)) s->encoding &= ~E_GZIP;
+	}
+	switch (enc) {
 	    case E_ASCII:
+		mode = "rt";
 		/* fall through, check if we are really ascii */
 	    case E_UUENCODE:
 		if (streq("-", file)) {
 			*inp = stdin;
-			return (0);
+		} else {
+			*inp = fopen(file, mode);
 		}
-		*inp = fopen(file, mode);
-		if (((s->encoding & E_DATAENC)== E_ASCII) && ascii(file)) {
-			/* read text file in text mode */
-			setmode(fileno(*inp), _O_TEXT);
-			return (0);
-		}
-		s->encoding = compress | E_UUENCODE;
-		return (0);
+		break;
+	    case E_BINPOOL:
+		*inp = 0;
+		break;
+	    default:
+		assert(0);
+		break;
 	}
+	return (0);
 }
 
 /*
@@ -9159,7 +9270,7 @@ checkin(sccs *s,
 	FILE	*sfile = 0, *gfile = 0;
 	delta	*n0 = 0, *n, *first;
 	int	added = 0;
-	int	popened = 0, len;
+	int	len;
 	int	i;
 	char	*t;
 	char	buf[MAXLINE];
@@ -9178,9 +9289,7 @@ out:		sccs_unlock(s, 'z');
 		sccs_unlock(s, 'x');
 		if (prefilled) sccs_freetree(prefilled);
 		if (sfile) fclose(sfile);
-		if (gfile && (gfile != stdin)) {
-			if (popened) pclose(gfile); else fclose(gfile);
-		}
+		if (gfile && (gfile != stdin)) fclose(gfile);
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -9192,18 +9301,15 @@ out:		sccs_unlock(s, 'z');
 			goto out;
 		}
 	} else if (isRegularFile(s->mode)) {
-		popened = openInput(s, flags, &gfile);
-		unless (gfile) {
+		openInput(s, flags, &gfile);
+		unless (gfile || BINPOOL(s)) {
 			perror(s->gfile);
 			goto out;
 		}
-	} else if (S_ISLNK(s->mode)) {
-		if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
-			fprintf(stderr, 
-			    "%s: symlinks should not use BINARY mode!\n",
-			    s->gfile);
-			goto out;
-		}
+	} else if (S_ISLNK(s->mode) && BINARY(s)) {
+		fprintf(stderr, "%s: symlinks should not use BINARY mode!\n",
+		    s->gfile);
+		goto out;
 	}
 
 	if (HASGRAPH(s)) {
@@ -9352,7 +9458,13 @@ out:		sccs_unlock(s, 'z');
 
 		if (!d->random && !short_key) {
 			randomBits(buf);
-			if (buf[0]) d->random = strdup(buf);
+			assert(buf[0]);
+			if (BINPOOL(s)) {
+				d->random = malloc(strlen(buf) + 3);
+				sprintf(d->random, "B:%s", buf);
+			} else {
+				d->random = strdup(buf);
+			}
 		}
 		unless (hasComments(n)) {
 			if (comments_readcfile(s, 0, n)) {
@@ -9392,11 +9504,20 @@ out:		sccs_unlock(s, 'z');
 			}
 		}
 	}
-
+	if (BINPOOL(s)) {
+		assert(n == s->table);
+		if (!(flags & DELTA_PATCH) && bp_delta(s, n)) {
+			fprintf(stderr,
+			    "binpool delta of %s failed\n", s->gfile);
+			goto out;
+		}
+		added = s->added = n->added;
+	}
 	if (delta_table(s, sfile, 1)) {
 		error++;
 		goto out;
 	}
+	if (BINPOOL(s)) goto skip_weave;
 	buf[0] = 0;
 	if (s->encoding & E_GZIP) zputs_init();
 	if (n0) {
@@ -9459,9 +9580,10 @@ out:		sccs_unlock(s, 'z');
 		if (no_lf) fputdata(s, "N", sfile);
 		fputdata(s, "\n", sfile);
 	}
+skip_weave:
 	error = end(s, n, sfile, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
-		if (popened) pclose(gfile); else fclose(gfile);
+		fclose(gfile);
 		gfile = 0;
 	}
 	if (error) {
@@ -10101,6 +10223,9 @@ private delta *
 csetFileArg(delta *d, char *arg) { ARG(csetFile, 0, D_DUPCSETFILE); }
 
 private delta *
+hashArg(delta *d, char *arg) { ARG(hash, 0, 0); }
+
+private delta *
 hostArg(delta *d, char *arg) { ARG(hostname, D_NOHOST, D_DUPHOST); }
 
 private delta *
@@ -10274,6 +10399,8 @@ delta *
 sccs_parseArg(delta *d, char what, char *arg, int defaults)
 {
 	switch (what) {
+	    case 'A':	/* hash */
+		return (hashArg(d, arg));
 	    case 'B':	/* csetFile */
 		return (csetFileArg(d, arg));
 	    case 'D':	/* any part of 1998/03/09 18:23:45.123-08:00 */
@@ -10558,7 +10685,9 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 	if (encp) {
 		if (streq(encp, "text")) enc = E_ASCII;
 		else if (streq(encp, "ascii")) enc = E_ASCII;
-		else if (streq(encp, "binary")) enc = E_UUENCODE;
+		else if (streq(encp, "binary")) enc = sccs_binaryenc(sc);
+		else if (streq(encp, "uuencode")) enc = E_UUENCODE;
+		else if (streq(encp, "binpool")) enc = E_BINPOOL;
 		else {
 			fprintf(stderr,	"admin: unknown encoding format %s\n",
 				encp);
@@ -10583,6 +10712,8 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 			    "admin: unknown compression format %s\n", compp);
 			return (-1);
 		}
+		/* No gzip for binpool currently */
+		if (enc == E_BINPOOL) comp = 0;
 	} else if (sc) {
 		comp = (sc->encoding & ~E_DATAENC);
 	} else {
@@ -11398,7 +11529,7 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
 
 /*
  * Get the hash checksum.
- * A side effect of getRegBody() is to set dsum.
+ * A side effect of get_reg() is to set dsum.
  * We're getting what looks like the new delta but it is really
  * the basis for the new delta -
  * we are still operating on the old file, without the diffs applied.
@@ -11417,6 +11548,7 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 	int	offset;
 
 	assert(HASH(sc));
+	assert(!BINPOOL(sc));
 	assert(diffs);
 	/*
 	 * If we have a hash already and it is a simple delta, then just
@@ -11428,7 +11560,7 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 	} else {
 		if (sc->mdbm) mdbm_close(sc->mdbm), sc->mdbm = 0;
 		sccs_restart(sc);
-		if (getRegBody(sc, 0, flags, n, &lines, 0, 0)) {
+		if (get_reg(sc, 0, flags, n, &lines, 0, 0)) {
 			sccs_whynot("delta", sc);
 			return (-1);
 		}
@@ -11934,7 +12066,14 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
 		d = sccs_parseArg(d, 'U', t, 0);
 		if (!d->hostname) d->flags |= D_NOHOST;
 	}
-	if (patch) goto skip;	/* skip the rest of this line */
+	if (patch) {
+		if ((*s == '+') && !d->added) {
+			d->added = atoi(s+1);
+			while (*s && (*s++ != ' '));
+			if (*s == '-') d->deleted = atoi(s+1);
+		}
+		goto skip;	/* skip the rest of this line */
+	}
 	t = s;
 	while (*s && (*s++ != ' '));	/* serial */
 	unless (d->serial) {
@@ -11966,6 +12105,12 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
 
 skip:
 	buf = mkline(mnext(f)); lines++;
+
+	/* hash hash */
+	if (WANT('A')) {
+		d = sccs_parseArg(d, 'A', &buf[2], 0);
+		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
 
 	/* Cset file ID */
 	if (WANT('B')) {
@@ -12444,7 +12589,7 @@ sccs_delta(sccs *s,
 	char	*t;
 	delta	*d = 0, *p, *n = 0;
 	char	*rev, *tmpfile = 0;
-	int	added, deleted, unchanged;
+	int	added = 0, deleted = 0, unchanged = 0;
 	int	locked;
 	pfile	pf;
 
@@ -12637,13 +12782,14 @@ out:
 		    default: OUT;
 		}
 		/* We prefer binary mode, but win32 GNU diff used text mode */ 
-		unless (diffs = mopen(tmpfile, "t")) {
+		unless (tmpfile && (diffs = mopen(tmpfile, "t"))) {
 			fprintf(stderr,
 			    "delta: can't open diff file %s\n", tmpfile);
 			OUT;
 		}
 	}
-	if (flags & PRINT) {
+	if ((flags & PRINT) && !BINPOOL(s)) {
+		// XXX prevent -p for binpool in delta.c ?? 
 		fprintf(stdout, "==== Changes to %s ====\n", s->gfile);
 		fwrite(diffs->mmap, diffs->size, 1, stdout);
 		fputs("====\n\n", stdout);
@@ -12741,6 +12887,15 @@ out:
 		addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
 	}
 
+	if (BINPOOL(s)) {
+		if (!(flags & DELTA_PATCH) && bp_delta(s, n)) {
+			fprintf(stderr, "binpool: delta of %s failed\n",
+			    s->gfile);
+			return (-1);
+		}
+		added = s->added = n->added;
+	}
+
 	/*
 	 * Do the delta table & misc.
 	 */
@@ -12767,8 +12922,12 @@ out:
 	}
 
 	assert(d);
-	if (delta_body(s, n, diffs, sfile, &added, &deleted, &unchanged)) OUT;
-	if (S_ISLNK(n->mode)) {
+	unless (BINPOOL(s)) {
+		if (delta_body(s, n, diffs,
+			sfile, &added, &deleted, &unchanged)) {
+			OUT;
+		}
+	} else if (S_ISLNK(n->mode)) {
 		u8 *t;
 		/*
 		 * if symlink, check sum the symlink path
@@ -14145,7 +14304,9 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		    case E_ASCII:
 			fs("ascii"); return (strVal);
 		    case E_UUENCODE:
-			fs("binary"); return (strVal);
+			fs("uuencode"); return (strVal);
+		    case E_BINPOOL:
+			fs("binpool"); return (strVal);
 		}
 		return nullVal;
 	}
@@ -15314,6 +15475,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	/*
 	 * Order from here down is alphabetical.
 	 */
+	if (d->hash) fprintf(out, "A %s\n", d->hash);
 	if (d->csetFile) fprintf(out, "B %s\n", d->csetFile);
 	if (d->flags & D_CSET) fprintf(out, "C\n");
 	if (d->dangling) fprintf(out, "D\n");
@@ -16609,6 +16771,8 @@ sccs_stripdel(sccs *s, char *who)
 
 
 	if (stripChecks(s, 0, who)) OUT;
+
+	if (BINPOOL(s) && bp_stripdel(s, who)) OUT;
 
 	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
 		fprintf(stderr,
