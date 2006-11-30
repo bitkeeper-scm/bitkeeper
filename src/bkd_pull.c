@@ -33,10 +33,11 @@ cmd_pull_part1(int ac, char **av)
 	char	*probekey_av[] = {"bk", "_probekey", 0, 0};
 	int	status;
 	int	rc = 1;
+	char	*tiprev = "+";
 	FILE	*f;
 
 	if (av[1] && strneq(av[1], "-r", 2)) {
-		probekey_av[2] = av[1];
+		probekey_av[2] = tiprev = av[1];
 	}
 	if (sendServerInfoBlock(0)) {
 		drain();
@@ -64,6 +65,7 @@ cmd_pull_part1(int ac, char **av)
 		fputs(buf, stdout);
 		goto done;
 	}
+	bp_updateMaster(tiprev);
 	fputs("@OK@\n", stdout);
 	fputs(buf, stdout);	/* @LOD_PROBE@ */
 	while (fnext(buf, f)) {

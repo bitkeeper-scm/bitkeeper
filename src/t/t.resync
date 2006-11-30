@@ -482,7 +482,7 @@ cd "$HERE/copy2/src"
 bk get $Q bdata
 cmp -s bdata $BIN1
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-(cd "$HERE/copy" && bk cset -mbinary2) | (cd "$HERE/copy2" && bk takepatch)
+(cd "$HERE/copy" && bk cset -B -mbinary2) | (cd "$HERE/copy2" && bk takepatch)
 bk resolve -t $L $Q "$HERE/copy2"
 bk get $Q bdata
 cmp -s bdata $BIN2

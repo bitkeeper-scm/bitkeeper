@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000-2001, Andrew Chang & Larry McVoy
- */    
+ */
 #include "bkd.h"
 #include "logging.h"
 
@@ -119,7 +119,7 @@ err:		freeLines(envVar, free);
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
-
+	bp_updateMaster(0);	/* push binpool data to master */
 	EACH (urls) {
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
@@ -698,12 +698,13 @@ push(char **av, remote *r, char **envVar)
 {
 	int	ret;
 	int	gzip;
+	char	*url;
 	char	rev_list[MAXPATH] = "";
-	char 	buf[MAXKEY];
 
 	gzip = opts.gzip && r->port;
-	if (opts.debug) fprintf(opts.out, "Root Key = \"%s\"\n", rootkey(buf));
-
+	if (opts.debug) {
+		fprintf(opts.out, "Root Key = \"%s\"\n", proj_rootkey(0));
+	}
 	ret = push_part1(r, rev_list, envVar);
 	if (opts.debug) {
 		fprintf(opts.out, "part1 returns %d\n", ret);
@@ -714,6 +715,9 @@ push(char **av, remote *r, char **envVar)
 		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
 	}
+	url = remote_unparse(r);
+	bp_sendMissing(url, 0, rev_list);
+	free(url);
 	return (push_part2(av, r, rev_list, ret, envVar));
 }
 

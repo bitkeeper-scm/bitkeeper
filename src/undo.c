@@ -118,7 +118,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		/* like bk makepatch but skips over missing files/keys */
-		cmd = aprintf("bk cset -ffm - > '%s'", patch);
+		cmd = aprintf("bk cset -Bffm - > '%s'", patch);
 		f = popen(cmd, "w");
 		free(cmd);
 		if (f) {

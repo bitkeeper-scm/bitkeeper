@@ -163,12 +163,11 @@ do_cset(char *rev)
 	save_log_markers();
 	unlink(COLLAPSE_BACKUP_SFIO);	/* remote old backup file */
 	unlink(COLLAPSE_BACKUP_PATCH);
-	unless (flist = fix_genlist(rev)) goto out;
+	flist = fix_genlist(rev);
 	unless (flags & COLLAPSE_NOSAVE) {
 		if (sysio(csetfile, COLLAPSE_BACKUP_PATCH, 0,
 			"bk", "makepatch", "-", SYS)) {
-			fprintf(stderr,
-			    "%s: unable to save patch, abort.\n", me);
+			fprintf(stderr, "%s: unable to save patch, abort.\n", me);
 			goto out;
 		}
 	}
@@ -484,7 +483,7 @@ fix_genlist(char *rev)
 	char	**flist = 0;
 	char	*cmd, *p;
 	int	status;
-	MDBM	*idDB, *goneDB;
+	MDBM	*idDB;
 	hash	*h;
 	FILE	*f = 0;
 	char	buf[2*MAXKEY];
@@ -497,23 +496,15 @@ fix_genlist(char *rev)
 		perror("idcache");
 		goto out;
 	}
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	flist = addLine(0, strdup(CHANGESET));
 	h = hash_new(HASH_MEMHASH);
 	while (fnext(buf, f)) {
 		unless (p = separator(buf)) continue;
 		unless (hash_insert(h, buf, p-buf, 0, 0)) continue;
 		*p = 0;
-		if (p = key2path(buf, idDB)) {
-			flist = addLine(flist, p);
-		} else unless (mdbm_fetch_str(goneDB, buf)) {
-			fprintf(stderr,
-			    "%s: unable to find file named by key: %s\n",
-			    me, buf);
-			freeLines(flist, free);
-			flist = 0;
-			break;
-		}
+		p = key2path(buf, idDB);
+		flist = addLine(flist, name2sccs(p));
+		free(p);
 	}
 	status = pclose(f);
 	unless (WIFEXITED(status) && !WEXITSTATUS(status)) {
@@ -522,7 +513,6 @@ fix_genlist(char *rev)
 	}
 	hash_free(h);
 	mdbm_close(idDB);
-	if (goneDB) mdbm_close(goneDB);
 out:
 	return (flist);
 }

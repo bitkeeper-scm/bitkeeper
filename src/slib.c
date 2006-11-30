@@ -3068,6 +3068,7 @@ meta(sccs *s, delta *d, char *buf)
 	switch (buf[2]) {
 	    case 'A':
 		hashArg(d, &buf[3]);
+		break;
 	    case 'B':
 		csetFileArg(d, &buf[3]);
 		break;
@@ -6765,7 +6766,7 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 	 * GET_FORCE (dunno)
 	 * GET_DTIME
 	 * GET_SUM
-	 */ 
+	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|GET_HEADER|\
 		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS|\
 		GET_HASH|GET_SEQ|GET_COMMENTS)
@@ -6812,6 +6813,7 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 
 	/* Win32 restriction, must do this before we chmod to read only */
 	if ((flags & GET_DTIME) && !(flags & PRINT)) {
+		time_t	now;
 		struct	utimbuf ut;
 		char	*msg;
 
@@ -6820,10 +6822,13 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 		 * we set the gfile time iff we can set the sfile time.
 		 * This keeps make happy.
 		 */
-		ut.actime = ut.modtime = d->date - d->dateFudge;
-		s->gtime = ut.modtime;
+		ut.modtime = d->date - d->dateFudge;
+		now = time(0);
+		if (ut.modtime > now) ut.modtime = now;
+		s->gtime = ut.actime = ut.modtime;
 		assert(gfile);
-		if ((sccs_setStime(s) == 0) && (utime(gfile, &ut) != 0)) {
+		if ((sccs_setStime(s, s->stime) == 0) &&
+		    (utime(gfile, &ut) != 0)) {
 			msg = aprintf("Cannot set mod time on %s:", gfile);
 			perror(msg);
 			free(msg);
@@ -6844,7 +6849,7 @@ get_link(sccs *s, char *printOut, int flags, delta *d, int *ln)
 	delta	*e;
 
 	unless (f) return 2;
-	
+
 	/*
 	 * What we want is to just checksum the symlink.
 	 * However due two bugs in old binary, we do not have valid check if:
@@ -9028,9 +9033,7 @@ ascii(char *file)
 int
 sccs_binaryenc(sccs *s)
 {
-	MDBM	*db = proj_config(s ? s->proj : 0);
-
-	if (db && mdbm_fetch_str(db, "binpool")) {
+	if (proj_configbool(s ? s->proj : 0, "binpool")) {
 		return (E_BINPOOL);
 	} else {
 		return (E_UUENCODE);
@@ -13542,8 +13545,18 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		fs(p);
 		return (strVal);
 	}
+	/*
+	 * Allow keywords of the form "word|rev"
+	 * to mean "word" for revision "rev".
+	 */
+	if (p = strchr(kw, '|')) {
+		delta	*e = sccs_findrev(s, p+1);
 
+		if (e) d = e;
+		*p = 0;
+	}
 	kwval = kw2val_lookup(kw, strlen(kw));
+	if (p) *p = '|';
 	unless (kwval) return notKeyword;
 
 	switch (kwval->kwnum) {
@@ -15020,7 +15033,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 			char	*cmd;
 			FILE	*f;
 			char	buf[BUFSIZ];
-			
+
 			cmd = aprintf("bk diffs -%s%shR%s '%s'",
 			    kind == DF_DIFF ? "" : "u",
 			    kind & DF_GNUp ? "p" : "",
@@ -15035,7 +15048,17 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		}
 		return (strVal);
 	}
-
+	case KW_REPO_ID: /* REPO_ID */ {
+		fs(proj_repo_id(0));
+		return (strVal);
+	}
+	case KW_BPHASH: /* BPHASH */ {
+		if (d->hash) {
+			fs(d->hash);
+			return (strVal);
+		}
+		return (nullVal);
+	}
 	default:
                 return notKeyword;
 	}
@@ -16771,8 +16794,6 @@ sccs_stripdel(sccs *s, char *who)
 
 
 	if (stripChecks(s, 0, who)) OUT;
-
-	if (BINPOOL(s) && bp_stripdel(s, who)) OUT;
 
 	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
 		fprintf(stderr,

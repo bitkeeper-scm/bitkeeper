@@ -500,9 +500,8 @@ cmdlog_start(char **av, int httpMode)
 	}
 
 	if (is_remote && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
-	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = repo_id())) {
+	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repo_id(0))) {
 		i = streq(repo1, repo2);
-		free(repo2);
 		if (i) {
 			out("ERROR-can't connect to same repo_id\n");
 			if (getenv("BK_REGRESSION")) usleep(100000);

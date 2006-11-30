@@ -37,10 +37,10 @@ cd ..
 mkdir output
 
 echo $N Test that sfio -o works with stdin ..........................$NL
-cd $HERE/input
-find . -type f -print | bk sfio -oq > $HERE/SFIO
+cd "$HERE/input"
+find . -type f -print | bk sfio -oq > "$HERE/SFIO"
 cd ../output
-bk sfio -iq < $HERE/SFIO
+bk sfio -iq < "$HERE/SFIO"
 cd ../input
 for i in *
 do	cmpfiles $i ../output/$i
@@ -48,11 +48,11 @@ done
 echo OK
 
 echo $N Test that sfio -o works with named files ....................$NL
-cd $HERE/input
-bk sfio -oq -aa -ab -ac -ad -ae > $HERE/SFIO < /dev/null
+cd "$HERE/input"
+bk sfio -oq -aa -ab -ac -ad -ae > "$HERE/SFIO" < /dev/null
 cd ../output
 rm -f *
-bk sfio -iq < $HERE/SFIO
+bk sfio -iq < "$HERE/SFIO"
 cd ../input
 for i in *
 do	cmpfiles $i ../output/$i
@@ -60,12 +60,12 @@ done
 echo OK
 
 echo $N Test that sfio -o works with a file containing a list .......$NL
-cd $HERE/input
+cd "$HERE/input"
 find . -type f -print > ../L
-bk sfio -oq -A../L > $HERE/SFIO < /dev/null
+bk sfio -oq -A../L > "$HERE/SFIO" < /dev/null
 cd ../output
 rm -f *
-bk sfio -iq < $HERE/SFIO
+bk sfio -iq < "$HERE/SFIO"
 cd ../input
 for i in *
 do	cmpfiles $i ../output/$i
@@ -73,13 +73,13 @@ done
 echo OK
 
 echo $N Test that sfio -o works with all of the above ...............$NL
-cd $HERE/input
+cd "$HERE/input"
 echo a > ../L
 echo b >> ../L
-echo c | bk sfio -oq -A../L -ad -ae > $HERE/SFIO 
+echo c | bk sfio -oq -A../L -ad -ae > "$HERE/SFIO"
 cd ../output
 rm -f *
-bk sfio -iq < $HERE/SFIO
+bk sfio -iq < "$HERE/SFIO"
 cd ../input
 for i in *
 do	cmpfiles $i ../output/$i

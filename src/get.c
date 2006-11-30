@@ -252,8 +252,9 @@ err:			sccs_free(s);
 			if (s->cachemiss) {
 				bp_files = addLine(bp_files, strdup(name));
 				bp_keys = addLine(bp_keys,
-				    sccs_prsbuf(s, sccs_findrev(s, rev), 0,
-					":ROOTKEY: :KEY:"));
+				    sccs_prsbuf(s,
+					bp_fdelta(s, sccs_findrev(s, rev)), 0,
+					":BPHASH: :MD5KEY|1.0: :MD5KEY:"));
 				goto next;
 			}
 			if (s->io_error) return (1);
@@ -311,24 +312,19 @@ bp_fetchkeys(char **keys)
 {
 	int	i;
 	FILE	*f;
-	char	*master = proj_configval(0, "binpool_master");
+	char	*master = proj_configval(0, "binpool_server");
 	char	buf[MAXPATH];
-	char	pwd[MAXPATH];
 
-	unless (strlen(master)) {
+	unless (*master) {
 		fprintf(stderr, "co: no master for binpool data.\n");
 		return (1);
 	}
-	pwd[0] = 0;
-	unless (exists(BKROOT)) {
-		getcwd(pwd, MAXPATH);
-		proj_cd2root();
-	}
-	sprintf(buf, "bk rsfio -@%s - | bk sfio -qfi", master);
+	// XXX doesn't fail when _binpool_send can't find a key
+	sprintf(buf, "bk -q@'%s' _binpool_send - | bk -R _binpool_receive -",
+	    master);
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);
 	i = pclose(f);
-	if (pwd[0]) chdir(pwd);
 	return (i != 0);
 }
 

@@ -72,19 +72,6 @@ _inode() {		# /* undoc? 2.0 */
 }
 
 # shorthand
-_id() {
-	test "X$1" = X-r && {
-		bk sane 2>/dev/null
-		bk -R cat BitKeeper/log/repo_id
-		exit 0
-	}
-	bk -R prs -hr+ -nd':ROOTKEY:' ChangeSet
-}
-_identity() {	# alias for backwards compat
-	_id $*
-}
-
-# shorthand
 _flags() {		# /* undoc? 2.0 */
 	bk prs -hr+ -nd':GFILE: :FLAGS:' "$@"
 }

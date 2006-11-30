@@ -28,6 +28,7 @@ struct project {
 	char	*root;		/* fullpath root of the project */
 	char	*rootkey;	/* Root key of ChangeSet file */
 	char	*md5rootkey;	/* MD5 root key of ChangeSet file */
+	char	*repo_id;	/* RepoID */
 	MDBM	*config;	/* config DB */
 	project	*rparent;	/* if RESYNC, point at enclosing repo */
 
@@ -435,6 +436,29 @@ proj_md5rootkey(project *p)
 }
 
 /*
+ * Return the repo_id if there is one.
+ */
+char *
+proj_repo_id(project *p)
+{
+	char	*repoid, *file;
+
+	unless (p) p = curr_proj();
+	unless (p) return (0);
+	if (p->rparent) p = p->rparent;
+	if (p->repo_id) return (p->repo_id);
+
+	file = proj_fullpath(p, REPO_ID);
+	unless (repoid = loadfile(file, 0)) {
+		mk_repo_id(p);
+		repoid = loadfile(file, 0);
+	}
+	if (repoid) chomp(repoid);
+	p->repo_id = repoid;
+	return (p->repo_id);
+}
+
+/*
  * Clear any data cached for the current project root.
  * Call this function whenever the current data is made invalid.
  * When passed an explicit project then only that project is cleared.
@@ -449,6 +473,10 @@ proj_reset(project *p)
 			p->rootkey = 0;
 			free(p->md5rootkey);
 			p->md5rootkey = 0;
+		}
+		if (p->repo_id) {
+			free(p->repo_id);
+			p->repo_id = 0;
 		}
 		if (p->config) {
 			mdbm_close(p->config);

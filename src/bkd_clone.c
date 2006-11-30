@@ -57,6 +57,7 @@ cmd_clone(int ac, char **av)
 			}
 		}
 	}
+	bp_updateMaster(rev);
 	p = getenv("BK_REMOTE_PROTOCOL");
 	if (p && streq(p, BKD_VERSION)) {
 		out("@OK@\n");
@@ -69,10 +70,13 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-
-	unless (sfio) safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
+	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
+	if (trigger(av[0], "pre")) return (1);
+	out("@SFIO@\n");
+	rc = compressed(gzip, 1);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
+	if (trigger(av[0], "post")) exit (1);
 
 	/*
 	 * XXX Hack alert: workaround for a ssh bug
@@ -106,23 +110,13 @@ compressed(int level, int hflag)
 	fh = fopen(tmpf1, "w");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");
 	fclose(fh);
-		cmd = aprintf("bk _key2path > '%s'", inf);
-		cmd = aprintf("bk sfiles >> '%s'", inf);
+	cmd = aprintf("bk sfiles > '%s'", tmpf2);
 	status = system(cmd);
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
-	if (isdir("BitKeeper/binpool") && !sfio) {
-		cmd = aprintf("bk _find BitKeeper/binpool -type f >> %s", inf);
-		status = system(cmd);
-		free(cmd);
-		unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
-	}
-	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
-	/* key2path may give us duplicates for binpool items pointed to by
-	 * multiple deltas.
-	 */
-	sfiocmd = aprintf("bk _sort -u < '%s' |"
-	    "bk sfio -o%s 2>'%s'", inf, sfio ? "f" : "", outf);
+
+	sfiocmd = aprintf("cat '%s' '%s' | bk sort | bk sfio -oq",
+	    tmpf1, tmpf2);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);

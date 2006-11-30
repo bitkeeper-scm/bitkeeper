@@ -21,6 +21,7 @@ typedef	struct cset {
 	int	compat;		/* Do PATCH_COMPAT patches */
 	int	serial;		/* the revs passed in are serial numbers */
 	int	md5out;		/* the revs printed are as md5keys */
+	int	doBinpool;	/* send binpool data */
 
 	/* numbers */
 	int	verbose;
@@ -55,9 +56,10 @@ makepatch_main(int ac, char **av)
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "dr|sCqv")) != -1) {
+	while ((c = getopt(ac, av, "Bdr|sCqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
+		    case 'B': copts.doBinpool = 1; break;
 		    case 'd':					/* doc 2.0 */
 			nav[++i] = "-d";
 			break;
@@ -118,8 +120,9 @@ cset_main(int ac, char **av)
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5Cd|DfHhi;lm|M|qr|svx;")) != -1) {
+	while ((c = getopt(ac, av, "5BCd|DfHhi;lm|M|qr|svx;")) != -1) {
 		switch (c) {
+		    case 'B': copts.doBinpool = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
 		    case 'h': copts.historic++; break;		/* undoc? 2.0 */
@@ -1202,7 +1205,7 @@ sccs_patch(sccs *s, cset_t *cs)
 					}
 				}
 
-			} else if (BINPOOL(s)) {
+			} else if (BINPOOL(s) && copts.doBinpool) {
 				assert(d->hash || (!d->added && !d->deleted));
 				if (d->hash) {
 					char	*p, *t;

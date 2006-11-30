@@ -631,14 +631,14 @@ echo OK
 echo $N Create tag graph with multiple tips .........................$NL
 commercial tipbase
 cd ..
-bk clone $Q tipbase tips
-bk clone $Q tipbase tipsave
+bk clone $Q tipbase tips || exit 1
+bk clone $Q tipbase tipsave || exit 1
 cd tipbase
 touch foo
 bk new $Q foo
-bk commit $Q -yfoo
+bk commit $Q -yfoo || exit 1
 cd ..
-for d in 1 2; do bk clone $Q tipbase tip$d; done
+for d in 1 2; do bk clone $Q tipbase tip$d || exit 1; done
 cd tipbase
 bk tag $Q FOO
 bk tag $Q -r1.1 FOO
@@ -648,11 +648,11 @@ for d in 1 2; do
 	bk tag $Q FOO$d
 done
 cd ../tipbase
-for d in 1 2; do bk pull $Q ../tip$d; done
+for d in 1 2; do bk pull $Q ../tip$d || exit 1; done
 cd ../tips
 bk tag $Q -r1.1 BAR
-bk pull $Q
-bk undo $Q -fr+
+bk pull $Q || exit 1
+bk undo $Q -fr+ || exit 1
 grep -q '^.cS0 l' SCCS/s.ChangeSet || {
 	echo 'Failed'
 	echo In problem setup, expected tag leaf to have parent 0

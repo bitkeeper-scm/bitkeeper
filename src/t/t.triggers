@@ -411,7 +411,6 @@ set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
 	grep -v _FEATURES |
 	grep -v BK_LICENSE= |
-	grep -v BK_BINPOOL= |
  	grep -v BK_AUTH_HMAC=GOOD | bk sort > "$HERE/pre-outgoing"
 exit 1
 EOF
@@ -420,7 +419,6 @@ cat > BitKeeper/triggers/post-outgoing <<EOF
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v _SEED= |
 	grep -v BK_LICENSE= |
-	grep -v BK_BINPOOL= |
 	grep -v _FEATURES |
 	grep -v BK_AUTH_HMAC=GOOD | bk sort > "$HERE/post-outgoing"
 EOF
@@ -480,7 +478,6 @@ cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v BK_LICENSE= |
-	grep -v BK_BINPOOL= |
 	bk sort > "$HERE/pre-outgoing-l"
 exit 1
 EOF
@@ -488,9 +485,9 @@ cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v BK_LICENSE= |
-	grep -v BK_BINPOOL= |
 	grep -v BK_NO_REPO_LOCK= |
 	grep -v BK_IGNORE_WRLOCK= |
+	egrep -v '^[^=]+=$' |		# no empty values
 	bk sort > "$HERE/post-outgoing-l"
 EOF
 chmod +x BitKeeper/triggers/*
@@ -600,7 +597,6 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 set | grep $DASHA ^BK |
     grep -v _BK_ |
     grep -v BK_LICENSE= |  # leftover from pre-triggers (remove in 3.3.x)
-    grep -v BK_BINPOOL= |
     grep -v BK_REPO_ID |
     grep -v BK_IGNORE_WRLOCK |
     grep -v BK_NO_REPO_LOCK |

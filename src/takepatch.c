@@ -1657,13 +1657,10 @@ sfio(MMAP *m)
 	unless ((t = mnext(m)) && strneq(t-1, "\n\n# Patch checksum=", 19)) {
 		return (-1);
 	}
-	chdir(ROOT2RESYNC);
 	if (echo >= 2) {
 		fprintf(stderr, "Unpacking additional files...\n");
-		f = popen("bk sfio -im", "w");
-	} else {
-		f = popen("bk sfio -imq", "w");
 	}
+	f = popen("bk _binpool_receive -m -", "w");
 	t = mnext(m);
 	t = mnext(m);
 	assert(strneq(t, "SFIO ", 5));
@@ -1674,7 +1671,6 @@ sfio(MMAP *m)
 		t += n;
 	} while (left);
 	fflush(f);
-	chdir(RESYNC2ROOT);
 	if (pclose(f)) return (-1);
 	return (0);
 }

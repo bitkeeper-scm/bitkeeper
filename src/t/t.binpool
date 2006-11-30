@@ -16,11 +16,11 @@ echo OK
 echo $N Create some binary data and check binpool ...................$NL
 BK="`bk bin`/bk"
 test $PLATFORM = WIN32 && BK=${BK}.exe
-DATA=$HERE/data
+DATA="$HERE"/data
 perl -e 'sysread(STDIN, $buf, 81920);
-syswrite(STDOUT, $buf, 81920);' < $BK > $DATA
-cp $DATA data
-bk new $Q data
+syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
+cp "$DATA" data
+bk new $Q data || exit 1
 SAVE=`echo BitKeeper/binpool/*/*.a1`
 test -d BitKeeper/binpool || exit 1
 echo OK
@@ -28,7 +28,7 @@ echo OK
 # find BitKeeper/binpool -type f -name '*.a1' | xargs cat
 
 echo $N Create some different binary data and delta it ..............$NL
-bk edit $Q data
+bk edit $Q data || exit 1
 echo foo >> data
 bk clean -q data && {
 	echo should not have cleaned data
@@ -47,12 +47,13 @@ echo OK
 
 echo $N Same data should just get added to the same binpool file ....$NL
 mkdir subdir
-cp $DATA subdir/data3
+cp "$DATA" subdir/data3
 bk new $Q subdir/data3
-KEY=`bk prs -hd:ROOTKEY: subdir/data3`
+KEY=`bk prs -hd':MD5KEY|1.0: :MD5KEY:' -r+ subdir/data3`
 grep -q "$KEY" $SAVE || {
 	echo did not find key in attributes file
 	cat $SAVE
+	echo WANT: $KEY
 	exit 1
 }
 echo OK
@@ -60,7 +61,7 @@ echo OK
 
 
 echo $N Force a fake hash and see if that worked ....................$NL
-cp $DATA fake_hash
+cp "$DATA" fake_hash
 _BK_FAKE_HASH=deadbeef bk new $Q fake_hash
 test -d BitKeeper/binpool || exit 1
 test -f BitKeeper/binpool/de/deadbeef.d1 || exit 2
@@ -107,21 +108,11 @@ test -f junk && {
 mv BitKeeper/binpool/de/deadbeef.SAVE BitKeeper/binpool/de/deadbeef.d1
 echo OK
 
-echo $N See if key2path returns the binpool path ....................$NL
-bk prs -hr+ -nd':ROOTKEY: :KEY:' fake_hash | bk _key2path > GOT || {
-	echo failed
-	exit 1
-}
-echo "./BitKeeper/binpool/de/deadbeef.d1" > WANT
-echo "./BitKeeper/binpool/de/deadbeef.a1" >> WANT
-cmpfiles WANT GOT
-echo OK
-
 echo $N Same data should just get added to the same binpool file ....$NL
-cp $DATA data4
+cp "$DATA" data4
 _BK_FAKE_HASH=deadbeef bk new $Q data4
 test -f BitKeeper/binpool/de/deadbeef.d2 && exit 2
-KEY=`bk prs -hd:ROOTKEY: data4`
+KEY=`bk prs -hd:MD5KEY: -r1.0 data4`
 grep -q "$KEY" BitKeeper/binpool/de/deadbeef.a1 || {
 	echo did not find key in attributes file
 	cat BitKeeper/binpool/de/deadbeef.a1
@@ -134,7 +125,7 @@ echo $N Clean the file, check it out, make sure that worked .........$NL
 bk clean fake_hash || { echo clean failed; exit 1; }
 test -f fake_hash && { echo clean failed to remove; exit 1; }
 _BK_FAKE_HASH=deadbeef bk co $Q fake_hash || { echo co failed; exit 1; }
-cmp -s $DATA fake_hash || { echo cmp failed; exit 1; }
+cmp -s "$DATA" fake_hash || { echo cmp failed; exit 1; }
 echo OK
 
 echo $N Commit, check that the keys are binpool .....................$NL
@@ -145,9 +136,9 @@ test -s OUT || exit 1
 echo OK
 
 echo $N Make a patch, check for binpool data ........................$NL
-find BitKeeper/binpool -type f | bk sort > $HERE/WANT
-bk makepatch -r1.0.. > $HERE/ALL
-grep -q '== @SFIO@ ==' $HERE/ALL || {
+find BitKeeper/binpool -type f | bk sort > "$HERE"/WANT
+bk makepatch -B -r1.0.. > "$HERE"/ALL
+grep -q '== @SFIO@ ==' "$HERE"/ALL || {
 	echo no sfio marker
 	exit 1
 }
@@ -155,8 +146,8 @@ echo OK
 
 echo $N Check that missing data files are allowed ...................$NL
 mv BitKeeper/binpool/de/deadbeef.* BitKeeper/tmp
-bk makepatch -r1.0.. > $HERE/P || exit 1
-grep -q '== @SFIO@ ==' $HERE/P || {
+bk makepatch -B -r1.0.. > "$HERE"/P || exit 1
+grep -q '== @SFIO@ ==' "$HERE"/P || {
 	echo no sfio market
 	exit 1
 }
@@ -165,48 +156,47 @@ mv BitKeeper/tmp/dead* BitKeeper/binpool/de
 echo OK
 
 echo $N Take the patch with missing data and make sure that is OK ...$NL
-mkdir $HERE/missing
-cd $HERE/missing
-bk takepatch -ivv < $HERE/P > $HERE/OUT 2>&1 || {
-	cat $HERE/OUT
+mkdir "$HERE"/missing
+cd "$HERE"/missing
+bk takepatch -ivv < "$HERE"/P > "$HERE"/OUT 2>&1 || {
+	cat "$HERE"/OUT
 	exit 1
 }
-test -d BitKeeper/binpool && {
-	echo Should have made binpool dir in RESYNC, not here
+test -d BitKeeper/binpool || {
+	echo Should have made binpool dir
 	exit 1
 }
-cd RESYNC
-find BitKeeper/binpool -type f | grep -v .bk_skip | bk sort > $HERE/GOT
-grep -v deadbeef $HERE/WANT > $HERE/PARTIAL
-cmpfiles $HERE/PARTIAL $HERE/GOT
+find BitKeeper/binpool -type f | grep -v .bk_skip | bk sort > "$HERE"/GOT
+grep -v deadbeef "$HERE"/WANT > "$HERE"/PARTIAL
+cmpfiles "$HERE"/PARTIAL "$HERE"/GOT
 echo OK
 
 echo $N Take the patch and check for binpool data ...................$NL
-mkdir $HERE/new
-cd $HERE/new
-bk takepatch -ivv < $HERE/ALL > $HERE/OUT 2>&1 || {
-	cat $HERE/OUT
+mkdir "$HERE"/new
+cd "$HERE"/new
+bk takepatch -ivv < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
+	cat "$HERE"/OUT
 	exit 1
 }
-test -d BitKeeper/binpool && {
-	echo Should have made binpool dir in RESYNC, not here
+test -d BitKeeper/binpool || {
+	echo Should have made binpool dir
 	exit 1
 }
-cd RESYNC
-find BitKeeper/binpool -type f | bk sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+find BitKeeper/binpool -type f | bk sort > "$HERE"/GOT
+cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Make sure that gets in RESYNC get from RESYNC ...............$NL
+cd RESYNC
 bk _get $Q -r1.1 data
 test -f data || {
 	echo did not get data
 	exit 1
 }
-cmp -s $DATA data || {
+cmp -s "$DATA" data || {
 	echo wrong data
-	cmp  $DATA data
-	ls -l $DATA data
+	cmp  "$DATA" data
+	ls -l "$DATA" data
 	exit 1
 }
 _BK_FAKE_HASH=deadbeef bk get $Q fake_hash
@@ -214,41 +204,41 @@ test -f fake_hash || {
 	echo did not get data
 	exit 1
 }
-cmp -s $DATA fake_hash || {
+cmp -s "$DATA" fake_hash || {
 	echo wrong data
-	cmp  $DATA data
-	ls -l $DATA data BitKeeper/binpool/de/deadbeef.d1
+	cmp  "$DATA" data
+	ls -l "$DATA" data BitKeeper/binpool/de/deadbeef.d1
 	exit 1
 }
 echo OK
 # cat BitKeeper/binpool/de/deadbeef.a1
 
 echo $N Take the patch and try to resolve it ........................$NL
-mkdir $HERE/new2
-cd $HERE/new2
-echo q | bk takepatch -ivva < $HERE/ALL > $HERE/OUT 2>&1 || {
-	cat $HERE/OUT
+mkdir "$HERE"/new2
+cd "$HERE"/new2
+echo q | bk takepatch -ivva < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
+	cat "$HERE"/OUT
 	exit 1
 }
-# cat $HERE/OUT
-find BitKeeper/binpool -type f | bk sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+# cat "$HERE"/OUT
+find BitKeeper/binpool -type f | bk sort > "$HERE"/GOT
+cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Run resolve and make sure it applies the data ...............$NL
-cd $HERE/new
+cd "$HERE"/new
 echo q | BK_NEWPROJECT=YES bk resolve > OUT 2>&1
 test -d RESYNC && {
 	echo failed
 	cat OUT
 	exit 1
 }
-find BitKeeper/binpool -type f | bk sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+find BitKeeper/binpool -type f | bk sort > "$HERE"/GOT
+cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Test pull to see that it sends binpool data .................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q -r1.1 project pull || exit 1
 cd pull
 # XXX - remove this line when I fix clone to not always be in all mode
@@ -258,31 +248,31 @@ test -d BitKeeper/binpool && {
 	exit 1
 }
 bk pull $Q || exit 1
-find BitKeeper/binpool -type f | bk sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+find BitKeeper/binpool -type f | bk sort > "$HERE"/GOT
+cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Make sure clone sends binpool data ..........................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone || exit 1
 cd clone
 test -d BitKeeper/binpool || {
 	echo no binpool dir
 	exit 1
 }
-find BitKeeper/binpool -type f | bk sort > $HERE/GOT
-cmpfiles $HERE/WANT $HERE/GOT
+find BitKeeper/binpool -type f | bk sort > "$HERE"/GOT
+cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Test a ul merge .............................................$NL
 for i in project clone
-do	cd $HERE/$i
+do	cd "$HERE"/$i
 	bk edit $Q data
 	echo $i >> data
 	bk delta $Q -y$i data
 	bk commit $Q -y$i
 done
-cd $HERE/clone
+cd "$HERE"/clone
 BEFORE=`find BitKeeper/binpool -type f -print | wc -l`
 ( echo ul; echo Use local version; echo .; echo q) | bk pull $Q >OUT 2>&1 || {
 	echo failed
@@ -300,7 +290,6 @@ test $BEFORE -eq `expr $AFTER - 2` || {
 echo OK
 
 echo $N Test unpull .................................................$NL
-find BitKeeper/binpool -type f -print > $HERE/BEFORE
 bk unpull -f $Q || exit 1
 bk co $Q data
 test `wc -c < BitKeeper/tmp/unpull.patch` -gt `wc -c < data` || {
@@ -308,14 +297,6 @@ test `wc -c < BitKeeper/tmp/unpull.patch` -gt `wc -c < data` || {
 	exit 1
 }
 test -d RESYNC && exit 1
-AFTER=`find BitKeeper/binpool -type f -print | wc -l`
-test $BEFORE -eq $AFTER || {
-	find BitKeeper/binpool -type f -print > $HERE/AFTER
-	echo $BEFORE $AFTER
-	echo ==========
-	diff $HERE/BEFORE $HERE/AFTER
-	exit 1
-}
 echo OK
 
 echo $N Test a manual merge .........................................$NL
@@ -339,37 +320,14 @@ test $BEFORE -eq `expr $AFTER - 4` || {
 }
 echo OK
 
-echo $N See if we can fetch a binpool file with rsfio ...............$NL
-cd $HERE/project
-bk prs -hr+ -nd':ROOTKEY: :KEY:' data fake_hash > $HERE/KEYS
-bk _key2path < $HERE/KEYS > $HERE/FILES
-mkdir $HERE/rsfio
-cd $HERE/rsfio
-bk rsfio -@../project - < $HERE/KEYS | bk sfio -iq
-test -d BitKeeper/binpool || {
-	echo failed to get anything
-	exit 1
-}
-for i in `cat $HERE/FILES`
-do	test -f $i || {
-		echo failed to transfer one or more files
-		echo GOT
-		bk _find BitKeeper/binpool
-		echo WANT
-		cat $HERE/FILES
-		exit 1
-	}
-done
-echo OK
-
 echo $N See if we can fetch remote binpool data with get ............$NL
-cd $HERE/project
+cd "$HERE"/project
 bk commit -ywhatever $Q
-cd $HERE
+cd "$HERE"
 bk clone $Q project remote
 cd remote
 rm -rf BitKeeper/binpool
-BK_CONFIG="binpool_master:file://$HERE/project" bk get $Q data || {
+BK_CONFIG="binpool_server:file://"$HERE"/project" bk get $Q data || {
 	echo failed
 	exit 1
 }
@@ -384,10 +342,10 @@ test -f data || {
 echo OK
 
 echo $N See if we can fetch remote binpool data with get in subdir ..$NL
-cd $HERE/remote
+cd "$HERE"/remote
 rm -rf BitKeeper/binpool
 cd subdir
-BK_CONFIG="binpool_master:file://$HERE/project" bk get $Q data3 || {
+BK_CONFIG="binpool_server:file://"$HERE"/project" bk get $Q data3 || {
 	echo failed
 	exit 1
 }
@@ -402,9 +360,9 @@ test -f data3 || {
 echo OK
 
 echo $N See if we can fetch remote binpool data with bk -r get ......$NL
-cd $HERE/remote
+cd "$HERE"/remote
 rm -rf BitKeeper/binpool
-BK_CONFIG="binpool_master:file://$HERE/project" bk -r get -F $Q || {
+BK_CONFIG="binpool_server:file://"$HERE"/project" bk -r get -F $Q || {
 	echo failed
 	exit 1
 }
@@ -457,21 +415,21 @@ echo OK
 # This test skipped on windows because I can't figure out how to make a file
 # unreadable.  Oy.
 echo $N Test that we do not go remote for errors in the cache .......$NL
-cd $HERE/remote
+cd "$HERE"/remote
 bk _find BitKeeper/binpool -type f -name '*.d1' | while read x
 do	 chmod 0 $x
 done
 rm -f data
-BK_SHOWPROC=$HERE/log bk get $Q data > OUT 2>&1 && {
+BK_SHOWPROC="$HERE"/log bk get $Q data > OUT 2>&1 && {
 	echo should have failed
-	cat $HERE/log
+	cat "$HERE"/log
 	cat OUT
 	ls -lR BitKeeper/binpool
 	exit 1
 }
-grep -q rsfio $HERE/log && {
+grep -q rsfio "$HERE"/log && {
 	echo should not have run rsfio
-	cat $HERE/log 
+	cat "$HERE"/log 
 	cat OUT
 	exit 1
 }
@@ -483,7 +441,7 @@ test -f data && {
 echo OK
 
 echo $N Test that get does not hardlink without binpool_hardlinks ...$NL
-cd $HERE/project
+cd "$HERE"/project
 bk -r clean
 test -f data && { echo failed to clean; exit 1; }
 bk get $Q data || exit 1
@@ -496,7 +454,7 @@ test $? = 0 || {
 echo OK
 
 echo $N Test that get hardlinks if binpool_hardlinks is set .........$NL
-cd $HERE/project
+cd "$HERE"/project
 bk -r clean
 test -f data && { echo failed to clean; exit 1; }
 BK_CONFIG='binpool_hardlinks:yes' bk get $Q data || exit 1
@@ -509,7 +467,7 @@ test $? = 0 || {
 echo OK
 
 echo $N Test that edit does not hardlink ............................$NL
-cd $HERE/project
+cd "$HERE"/project
 bk clean data
 test -f data && { echo failed to clean; exit 1; }
 bk edit $Q data || exit 1
@@ -522,7 +480,7 @@ test $? = 0 || {
 echo OK
 
 echo $N Test that edit does not hardlink with binpool_hardlinks set .$NL
-cd $HERE/project
+cd "$HERE"/project
 bk clean data
 test -f data && { echo failed to clean; exit 1; }
 BK_CONFIG='binpool_hardlinks:yes' bk edit $Q data || exit 1
@@ -535,43 +493,3 @@ test $? = 0 || {
 echo OK
 
 }
-
-echo $N Make sure stripdel removes binpool data .....................$NL
-_BK_FAKE_HASH=deadbeef bk edit $Q fake_hash
-echo hi >> fake_hash
-_BK_FAKE_HASH=beefdead bk delta $Q -ywhatever fake_hash
-test -f BitKeeper/binpool/be/beefdead.d1 || exit 2
-REV=`bk prs -hr+ -nd:REV: fake_hash`
-bk stripdel $Q -r+ fake_hash || {
-	echo stripdel failed
-	exit 1
-}
-test $REV = `bk prs -hr+ -nd:REV: fake_hash` && {
-	echo stripdel did not remove $REV
-	exit 1
-}
-test -f BitKeeper/binpool/be/beefdead.d1 && {
-	echo Failed to remove BitKeeper/binpool/be/beefdead.d1
-	exit 1
-}
-test -f BitKeeper/binpool/be/beefdead.a1 && {
-	echo Failed to remove BitKeeper/binpool/be/beefdead.a1
-	exit 1
-}
-echo OK
-
-echo $N Test that we go to the master to get missing data on clone ..$NL
-cd $HERE
-rm -rf clone/BitKeeper/binpool
-cd clone 
-bk -r check -acd || exit 1
-cd ..
-BK_CONFIG="binpool_master:file://$HERE/project" bk clone $Q clone clone2
-cd clone2
-bk -r check -acd || exit 1
-test -d RESYNC && exit 1
-test -f BitKeeper/binpool/de/deadbeef.d1 || {
-	echo failed to get data
-	exit 1
-}
-echo OK

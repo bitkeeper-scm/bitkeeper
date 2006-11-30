@@ -132,7 +132,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	idcache.o isascii.o inskeys.o key2rev.o key2path.o kill.o kvfile.o \
+	id.o idcache.o isascii.o inskeys.o \
+	key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
 	libcommit.o libdiff.o librange.o \
 	libsfiles.o libusers.o lines.o \
@@ -167,7 +168,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o stat.o stattest.o status.o stripdel.o synckeys.o \
-	tagmerge.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
+	tagmerge.o testcode.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \

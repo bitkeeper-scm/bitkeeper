@@ -19,6 +19,7 @@ private struct {
 	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
 	u32	diffs:1;	/* show diffs with verbose mode */
+	u32	binpool:1;	/* only include binpool files */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -78,7 +79,7 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1ac;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
+	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -93,6 +94,7 @@ changes_main(int ac, char **av)
 		     */
 		    case '1': opts.one = 1; break;
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
+		    case 'B': opts.binpool = 1; break;
 		    case 'c':
 			if (range_addArg(&opts.rargs, optarg, 1)) goto usage;
 			break;
@@ -769,7 +771,7 @@ loadcset(sccs *cset)
 	char	*rev = NULL;
 	char	**keylist = 0;
 	char	*keypath, *pipe;
-	char	*p;
+	char	*p, *t;
 	FILE	*f;
 	MDBM	*db;
 	char	tmp[MAXPATH], buf[2 * MAXKEY + 100], path[MAXPATH];
@@ -785,6 +787,10 @@ loadcset(sccs *cset)
 		p = strchr(buf, '\t');
 		assert(p);
 		*p++ = 0;
+		if (opts.binpool &&
+		    (t = strrchr(buf, '|')) && strneq(t, "|B:", 3)) {
+			continue;
+		}
 		if (opts.inc || opts.exc) {
 			keypath = separator(p);
 			keypath = strchr(keypath, '|');

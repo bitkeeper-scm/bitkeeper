@@ -2349,7 +2349,6 @@ pass4_apply(opts *opts)
 	char	key[MAXKEY];
 	MDBM	*permDB = mdbm_mem();
 	char	*cmd = "apply";
-	project	*p;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2507,29 +2506,6 @@ pass4_apply(opts *opts)
 	}
 	fflush(f);
 	rewind(f);
-
-	/*
-	 * Go insert any binpool files.  We need to do this before applying
-	 * the s.files because checkout:get may need these.
-	 * LMXXX - no error recovery.
-	 */
-	if (isdir(ROOT2RESYNC "/BitKeeper/binpool")) {
-		FILE	*b;
-
-		p = proj_init(".");
-		chdir(ROOT2RESYNC);
-		// wayne: This loop should probably move to binpool.c so
-		// the internals BitKeeper/binpool are in one place.
-		b = popen("bk _find BitKeeper/binpool -name '*.d*'", "r");
-		while (fnext(buf, b)) {
-			chop(buf);
-			// WXXX - no error checking?
-			bp_moveup(p, buf);
-		}
-		pclose(b);
-		chdir(RESYNC2ROOT);
-		proj_free(p);
-	}
 
 	while (fnext(buf, f)) {
 		chop(buf);

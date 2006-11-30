@@ -27,7 +27,7 @@ BIN1=saved_bin
 cp $BIN1 uuencode1
 # test old auto-binary
 bk new $Q uuencode1 || exit 1
-echo binpool:all >> BitKeeper/etc/config
+echo binpool:yes >> BitKeeper/etc/config
 bk admin $Q -idata -Euuencode uuencode2 || exit 1
 cp $BIN1 binpool1
 cp $BIN1 binpool2

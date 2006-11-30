@@ -1,0 +1,204 @@
+# testing of internal interfaces
+
+
+echo $N Test spawn_filterPipeline w 1 filter and no errors ..........$NL
+cat <<EOF > IN
+1
+2
+3
+4
+EOF
+cat <<EOF > TESTS
+bk _filtertest1 a
+EOF
+bk _filtertest2 IN TESTS > GOT 2>ERR || {
+	echo bad exit
+	cat GOT
+	cat ERR
+	exit 1
+}
+cat <<EOF > WANT
+start a
+end a rc=0
+spawn_filterPipeline returned 0
+EOF
+cmpfiles ERR WANT
+cat <<EOF > WANT
+a 1
+a 2
+a 3
+a 4
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test spawn_filterPipeline w 4 filters and no error ..........$NL
+cat <<EOF > TESTS
+bk _filtertest1 a
+bk _filtertest1 b
+bk _filtertest1 c
+bk _filtertest1 d
+EOF
+bk _filtertest2 IN TESTS > GOT 2>ERR || {
+	echo bad exit
+	cat GOT
+	cat ERR
+	exit 1
+}
+cat <<EOF > WANT
+start a
+end a rc=0
+start b
+end b rc=0
+start c
+end c rc=0
+start d
+end d rc=0
+spawn_filterPipeline returned 0
+EOF
+cmpfiles ERR WANT
+cat <<EOF > WANT
+d c b a 1
+d c b a 2
+d c b a 3
+d c b a 4
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test spawn_filterPipeline ending early ......................$NL
+cat <<EOF > TESTS
+bk _filtertest1 a
+bk _filtertest1 -e 2 b
+bk _filtertest1 -e 0 c
+bk _filtertest1 d
+EOF
+bk _filtertest2 IN TESTS > GOT 2>ERR || {
+	echo bad exit
+	cat GOT
+	cat ERR
+	exit 1
+}
+cat <<EOF > WANT
+start a
+end a rc=0
+start b
+end b rc=0
+start c
+end c rc=0
+spawn_filterPipeline returned 0
+EOF
+cmpfiles ERR WANT
+cat <<EOF > WANT
+EOF
+cmpfiles GOT WANT
+cat <<EOF > TESTS
+bk _filtertest1 -e 0 a
+bk _filtertest1 b
+bk _filtertest1 c
+bk _filtertest1 d
+EOF
+bk _filtertest2 IN TESTS > GOT 2>ERR || {
+	echo bad exit
+	cat GOT
+	cat ERR
+	exit 1
+}
+cat <<EOF > WANT
+start a
+end a rc=0
+spawn_filterPipeline returned 0
+EOF
+cmpfiles ERR WANT
+cat <<EOF > WANT
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test spawn_filterPipeline error cases .......................$NL
+cat <<EOF > TESTS
+bk _filtertest1 -r 1 a
+bk _filtertest1 -r 2 b
+bk _filtertest1 -r 3 c
+bk _filtertest1 -r 4 d
+EOF
+bk _filtertest2 IN TESTS > GOT 2>ERR || {
+	echo bad exit
+	cat GOT
+	cat ERR
+	exit 1
+}
+cat <<EOF > WANT
+start a
+end a rc=1
+start b
+end b rc=2
+start c
+end c rc=3
+start d
+end d rc=4
+spawn_filterPipeline returned 256
+EOF
+cmpfiles ERR WANT
+cat <<EOF > WANT
+d c b a 1
+d c b a 2
+d c b a 3
+d c b a 4
+EOF
+cmpfiles GOT WANT
+
+cat <<EOF > TESTS
+bk _filtertest1 a
+bk _filtertest1 -r 2 b
+bk _filtertest1 -r 3 c
+bk _filtertest1 -r 4 d
+EOF
+bk _filtertest2 IN TESTS > GOT 2>ERR || {
+	echo bad exit
+	cat GOT
+	cat ERR
+	exit 1
+}
+cat <<EOF > WANT
+start a
+end a rc=0
+start b
+end b rc=2
+start c
+end c rc=3
+start d
+end d rc=4
+spawn_filterPipeline returned 512
+EOF
+cmpfiles ERR WANT
+cat <<EOF > WANT
+d c b a 1
+d c b a 2
+d c b a 3
+d c b a 4
+EOF
+cmpfiles GOT WANT
+
+cat <<EOF > TESTS
+bk _filtertest1 -r 1 -e 0 a
+bk _filtertest1 -r 2 b
+bk _filtertest1 -r 3 c
+bk _filtertest1 -r 4 d
+EOF
+bk _filtertest2 IN TESTS > GOT 2>ERR || {
+	echo bad exit
+	cat GOT
+	cat ERR
+	exit 1
+}
+cat <<EOF > WANT
+start a
+end a rc=1
+spawn_filterPipeline returned 256
+EOF
+cmpfiles ERR WANT
+cat <<EOF > WANT
+EOF
+cmpfiles GOT WANT
+echo OK
