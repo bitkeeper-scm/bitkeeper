@@ -134,7 +134,6 @@ proc install {} \
 	set installfrom [pwd]
 
 	set command [list doCommand bk install -vf]
-	if {$runtime(upgradeCheckbutton)} {lappend command -u}
 	if {$runtime(hasWinAdminPrivs)} {
 		if {$runtime(enableSccDLL)}	   {lappend command -s}
 		if {$runtime(enableShellxLocal)}   {lappend command -l}

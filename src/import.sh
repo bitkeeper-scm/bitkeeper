@@ -441,7 +441,7 @@ patch_undo() {
 
 import_patch() {
 	PATCH=$1
-	PNAME=`basename $PATCH`
+	PNAME=`basename "$PATCH"`
 	Q=$QUIET
 	mycd "$TO"
 
@@ -626,7 +626,7 @@ import_patch() {
 	cat "${TMP}creates$$" "${TMP}patching$$" |
 	    bk sort -u | bk sfiles -pC - > "${TMP}commit$$"
 	BK_NO_REPO_LOCK=YES bk commit \
-	    $QUIET $SYMBOL -y"`basename $PNAME`" - < "${TMP}commit$$"
+	    $QUIET $SYMBOL -y"$PNAME" - < "${TMP}commit$$"
 
 	msg Done.
 	unset BK_CONFIG
