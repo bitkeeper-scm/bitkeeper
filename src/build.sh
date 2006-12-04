@@ -53,6 +53,7 @@ case "X`uname -s`" in
 		LD=cc
 		export CC LD 
 		CCXTRA="-DHAVE_GMTOFF -DNOPROC -no-cpp-precomp"
+		PATH="${PATH}:/usr/X11R6/bin"
 		case "X`uname -r`" in
 			X6.*)	CCXTRA="$CCXTRA -DMACOS_VER=1020"
 				;;

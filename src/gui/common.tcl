@@ -1,3 +1,17 @@
+if {[info exists ::env(BK_DEBUG_GUI)]} {
+	proc InCommand {} {
+		uplevel {puts "[string repeat { } [expr {[info level] - 1}]][info level 0]"}
+	}
+
+	proc newproc {name args body} {
+		set body "InCommand\n$body"
+		realproc $name $args $body
+	}
+
+	rename proc realproc
+	rename newproc proc
+}
+
 # Try to find the project root, limiting ourselves to 40 directories
 proc cd2root { {startpath {}} } \
 {

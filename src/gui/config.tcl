@@ -275,7 +275,9 @@ proc getConfig {prog} \
                 }
         }
 
-	option add *Text.tabwidth $gc($app.tabwidth) userDefault
+	option add *Text.tabStyle wordprocessor
+	option add *Text.tabs [expr \
+	       {$gc($app.tabwidth) * [font measure $gc($app.fixedFont) 0]}]
 }
 
 proc initFonts {app var} \
@@ -284,7 +286,22 @@ proc initFonts {app var} \
 	switch -- [tk windowingsystem] {
 		win32	{initFonts-windows $app $var}
 		aqua	{initFonts-macosx $app $var}
-		x11	{initFonts-unix $app $var}
+		x11	{
+			if {$::tcl_platform(os) eq "Darwin"} {
+				# Runnin X11 on Mac OX X... need special
+				# fonts.
+				upvar 1 $var _d
+				set _d(boldFont) {Arial 12 bold}
+				set _d(buttonFont) {Arial 12 normal}
+				set _d(noticeFont) {Arial 12 normal bold}
+				set _d(fixedFont) \
+				    {{Courier New} 12 normal}
+				set _d(fixedBoldFont) \
+				    {{Courier New} 12 normal bold}
+			} else {
+				initFonts-unix $app $var
+			}
+		}
 		default	{puts "Unknown windowing system"; exit}
 	}
 }
@@ -314,9 +331,6 @@ proc initFonts-macosx {app var} \
 {
 	upvar 2 $var _d
 
-	set width [winfo screenwidth .]
-
-	# tested with 1024x768 only
 	set _d(buttonFont)	system
 	set _d(noticeFont)	system
 	set _d(fixedFont)	{Monaco 10 normal}
