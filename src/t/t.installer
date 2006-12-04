@@ -248,10 +248,68 @@ if [ $KEY2 -ne 100 ]; then
 fi
 echo OK
 
+echo $N Installer should honor command line options..................$NL
+BK="$HERE/DEAD BEEF/bk"
+echo y | "$BK" install -vf -s -l -n "$HERE/DEAD2" > OUT 2>&1 || {
+	echo failed $?
+	echo Installer failed to install
+	cat OUT
+	exit 1
+}
+KEY1=`bk _registry get "$SHELLXKEY" networkDrive` || exit 1
+KEY2=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+
+if [ $KEY1 -ne 1 ]; then
+	echo failed
+	echo Failed to set networkDrive: $KEY1
+	exit 1
+fi
+if [ $KEY2 -ne 1 ]; then
+	echo failed
+	echo Failed to set LocalDrive: $KEY2
+	exit 1
+fi
+CTRLPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider"
+INSTPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider\\InstalledSCCProviders"
+SCCKEY1=`bk _registry get "$BMKEY" SCCServerName` || exit 1
+SCCKEY2=`bk _registry get "$BMKEY" SCCserverPath` || exit 1
+PROVKEY1=`bk _registry get "$CTRLPROV" ProviderRegkey` || exit 1
+PROVKEY2=`bk _registry get "$INSTPROV" BitKeeper` || exit 1
+SCCPATH=`bk pwd -w "$HERE/DEAD2"`\\bkscc.dll
+
+test "$SCCKEY1" = "BitKeeper" || {
+	echo failed
+	echo SCCServerName was "$SCCKEY1" instead of "BitKeeper"
+	exit 1
+}
+test "$SCCKEY2" = "$SCCPATH" || {
+	echo failed
+	echo SCCServerPath was "$SCCKEY2" instead of "$SCCPATH"
+	exit 1
+}
+PK1="SOFTWARE\\bitmover\\bitkeeper"
+test "$PROVKEY1" = "$PK1" || {
+	echo failed
+	echo ProviderRegkey was "$PROVKEY1" instead of "$PK1"
+	exit 1
+}
+test "$PROVKEY2" = "$PK1" || {
+	echo failed
+	echo InstalledSCCProviders was "$PROVKEY2" instead of "$PK1"
+	exit 1
+}
+echo OK
+
 echo $N Make sure uninstaller works as advertised....................$NL
-BIN="$HERE/DEADBEEF"
-BK="$HERE/DEADBEEF/bk"
+BIN="$HERE/DEAD BEEF"
+BK="$HERE/DEAD BEEF/bk"
 VERSION=`bk _registry get "$BMKEY" rel`
+# Make sure there is a BK installed in BIN
+test -f "$BK" || {
+	echo failed
+	echo There is no BK in $BIN
+	exit 1
+}
 "$BK" uninstall -f >OUT 2>&1
 test -d "$BIN" && {
 	echo failed
@@ -261,21 +319,21 @@ test -d "$BIN" && {
 }
 # make sure PATH doesn't have BK in it
 if [ "x$OLDUSRPATH" != "xentry not found" ];
-then	bk _registry get "$USRPATHKEY" Path | grep "DEADBEEF" > TEXT && {
+then	bk _registry get "$USRPATHKEY" Path | grep "DEAD BEEF" > TEXT && {
 		echo failed
 		echo BitKeeper left in User PATH
 		cat TEXT OUT
 		exit 1
 	}
 fi
-bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" > TEXT && {
+bk _registry get "$SYSPATHKEY" Path | grep "DEAD BEEF" > TEXT && {
 	echo failed
 	echo BitKeeper left in System PATH
 	cat TEXT OUT
 	exit 1
 }
 # Make sure we're not polluting the Uninstall area
-bk _registry get "$UNINSTALLKEY" $VERSION | grep "DEADBEEF" > TEXT && {
+bk _registry get "$UNINSTALLKEY" $VERSION | grep "DEAD BEEF" > TEXT && {
 	echo failed
 	echo BitKeeper left crud in the Uninstall registry key
 	cat TEXT OUT
