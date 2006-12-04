@@ -138,7 +138,6 @@ cd ..
 bk clone $Q pmaster cmaster || exit 1
 cd cmaster
 bk -Ur get $Q || exit 1
-C=`find BitKeeper/binpool -type f | wc -l`
 echo OK
 
 echo $N Clone within czone and pull from p ..........................$NL
@@ -174,3 +173,14 @@ bk push $Q ../pclone2 || exit 1
 cd ../pclone2
 bk -r get $Q || exit 1
 echo OK
+
+echo $N Try remote clone across zones ...............................$NL
+cd "$HERE"
+P=`port 50000`
+bk bkd -d -p$P -ikill
+bk clone $Q cclone1 bk://localhost:$P/zclone2 || exit 1
+cd zclone2 || exit 1
+bk -Ur get $Q || exit 1
+echo OK
+
+bk _kill bk://localhost:$P

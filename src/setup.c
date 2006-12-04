@@ -334,6 +334,13 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 		flist = addField(flist, fld);
 	}
 
+	val = flist ? mdbm_fetch_str(flist, "binpool") : 0;
+	/* force binpool to default on */
+	unless (val && *val) {
+		char fld[] =  "binpool=yes";
+		flist = addField(flist, fld);
+	}
+
 	/*
 	 * Now print the help message for each config entry
 	 */

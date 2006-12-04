@@ -52,7 +52,7 @@ filtertest2_main(int ac, char **av)
 	}
 	fclose(f);
 	close(0);
-	open(av[1], O_RDONLY);
+	open(av[1], O_RDONLY, 0);
 
 	rc = spawn_filterPipeline(cmds);
 	fprintf(stderr, "spawn_filterPipeline returned %d\n", rc);

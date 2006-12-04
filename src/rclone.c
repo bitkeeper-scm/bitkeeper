@@ -91,22 +91,16 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	char	*p;
 	char	revs[MAXKEY];
 
+	if (bp_updateMaster(opts.rev)) goto done;
 	sprintf(revs, "..%s", opts.rev ? opts.rev : "+");
 	safe_putenv("BK_CSETS=%s", revs);
 	if (rc = trigger(av[0], "pre"))  goto done;
 	if (rc = rclone_part1(opts, r, envVar))  goto done;
-	p = remote_unparse(r);
-	/*
-	 * XXX bp_sendMissing(p, revs, 0);
-	 *
-	 * This doesn't work because the first bkd connection didn't
-	 * find a remote repository so it won't have a binpool_server
-	 * in the bkd info block.  Also we have no place to send data.
-	 * We can't send it after part2 because the check will fail if we
-	 * don't send the data.  Just sent entire binpool in SFIO???
-	 */
-	free(p);
 	rc = rclone_part2(av, opts, r, envVar);
+
+	p = remote_unparse(r);
+	bp_sendMissing(p, revs, 0);
+	free(p);
 
 	if (rc) {
 		putenv("BK_STATUS=FAILED");

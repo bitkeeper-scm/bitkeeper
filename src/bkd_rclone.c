@@ -30,21 +30,15 @@ rclone_common(int ac, char **av, opts *opts)
 	}
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	if (sendServerInfoBlock(1)) {
+	unless (p = getenv("BK_REMOTE_PROTOCOL")) p = "";
+	unless (streq(p, BKD_VERSION)) {
+		out("ERROR-protocol version mismatch, want: ");
+		out(BKD_VERSION);
+		out(", got ");
+		out(p);
+		out("\n");
 		drain();
 		return (NULL);
-	}
-	p = getenv("BK_REMOTE_PROTOCOL");
-	unless (p && streq(p, BKD_VERSION)) {
-		unless (p && streq(p, BKD_VERSION)) {
-			out("ERROR-protocol version mismatch, want: ");
-			out(BKD_VERSION);
-			out(", got ");
-			out(p ? p : "");
-			out("\n");
-			drain();
-			return (NULL);
-		}
 	}
 
 	unless (av[optind])  return (strdup("."));
@@ -77,6 +71,10 @@ cmd_rclone_part1(int ac, char **av)
 	char	*path, *p;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
+	if (sendServerInfoBlock(1)) {
+		drain();
+		return (1);
+	}
 	if (Opts.safe_cd || getenv("BKD_DAEMON")) {
 		char	cwd[MAXPATH];
 		char	*new = fullname(path);
@@ -156,6 +154,11 @@ cmd_rclone_part2(int ac, char **av)
 		setlevel(atoi(getenv("BK_LEVEL")));
 	}
 
+	if (sendServerInfoBlock(1)) {
+		drain();
+		rc = 1;
+		goto done;
+	}
 	printf("@SFIO INFO@\n");
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */

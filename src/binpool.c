@@ -774,7 +774,7 @@ bp_requestMissing(char *url, char *rev, char *rev_list)
 	} else {
 		fd0 = dup(0);
 		close(0);
-		open(rev_list, O_RDONLY);
+		open(rev_list, O_RDONLY, 0);
 		cmds = addLine(cmds,
 		    strdup("bk changes -Bv "
 			"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' -"));
@@ -820,7 +820,7 @@ bp_sendMissing(char *url, char *rev, char *rev_list)
 	} else {
 		fd0 = dup(0);
 		close(0);
-		open(rev_list, O_RDONLY);
+		open(rev_list, O_RDONLY, 0);
 		cmds = addLine(cmds,
 		    strdup("bk changes -Bv "
 			"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' -"));

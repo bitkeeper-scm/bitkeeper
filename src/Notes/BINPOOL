@@ -9,20 +9,6 @@ Master vs clone
 	Clients do not know ahead of time if a remote bkd is a master
 	on not.
 
-	HACK: Currently the presence of BitKeeper/log/BINPOOL_SERVER
-	tells a bkd that it is operating as a master.
-
-	The only effect of being a master is that the binpool config
-	setting on the client is respected.
-
-	The file BitKeeper/etc/remotes contains a list of URLs that
-	should be tried when fetching binpool data.  Each is URLs is
-	tried until all needed data is found.  This is usually a
-	revision controlled file and set in master repo to point back
-	at itself.
-
-
-
 Semantics
 
   - pull always operates in binpool:all mode when talking to a
