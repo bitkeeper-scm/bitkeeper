@@ -181,6 +181,7 @@ cmd_rclone_part2(int ac, char **av)
 	 * XXX TODO: set up parent pointer
 	 */
 
+	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts.rev) {
 		after(!opts.verbose, opts.rev);
