@@ -84,13 +84,13 @@ case $CMD in
 		if [ $OSTYPE = "msys" -o $OSTYPE = "cygwin" ] ; 
 		then	# we're on Windows
 			IMG=$TAG-$ARCH.exe
-			DEST="work:/home/bk/$TAG-images"
+			DEST="work:/home/bk/images/$TAG"
 			CP="rcp"
 			# We only want images done on WinXP
 			test $HOSTNAME = "winxp2" || exit 0
 		else
 			IMG=$TAG-$ARCH.bin
-			DEST="/home/bk/$TAG-images"
+			DEST="/home/bk/images/$TAG"
 			test -d $DEST || mkdir $DEST
 			CP="cp"
 		fi

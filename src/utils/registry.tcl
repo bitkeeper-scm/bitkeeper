@@ -77,7 +77,7 @@ proc registry_install {destination} \
 	set bk [file join $destination bk.exe]
 	catch {exec $bk version -s} version
 	set id "bk-$version"
-	set dll [shortname $destination/bkscc.dll]
+	set dll $destination\\bkscc.dll
 	
         # N.B. the command 'reg' has a side effect of adding each key
         # to a global array we can later write to a log...
@@ -92,9 +92,10 @@ proc registry_install {destination} \
 		reg set $HKLMS\\bitmover\\bitkeeper SCCServerName BitKeeper
 		reg set $HKLMS\\bitmover\\bitkeeper SCCserverPath $dll
 		reg set $HKLMS\\SourceCodeControlProvider ProviderRegkey \
-		    "Software\\bitmover\\bitkeeper"
-		reg set $HKLMS\\SourceControlProvider\\InstalledSCCProviders \
-		    BitKeeper "SOFTWARE\\bitmover\bitkeeper"
+		    "SOFTWARE\\bitmover\\bitkeeper"
+		reg set \
+		    $HKLMS\\SourceCodeControlProvider\\InstalledSCCProviders \
+		    BitKeeper "SOFTWARE\\bitmover\\bitkeeper"
 	}
         reg set $HKLMS\\bitmover\\bitkeeper\\shellx
 	reg set $HKLMS\\bitmover\\bitkeeper\\shellx networkDrive \

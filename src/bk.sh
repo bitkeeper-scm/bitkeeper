@@ -1227,11 +1227,16 @@ _install()
 	DLLOPTS=""
 	DOSYMLINKS=NO
 	CONFIG=
+	REGSHELLX=NO
 	while getopts dfvlnsSu opt
 	do
 		case "$opt" in
-		l) DLLOPTS="-l $DLLOPTS";; # enable bkshellx for local drives
-		n) DLLOPTS="-n $DLLOPTS";; # enable bkshellx for network drives
+		l) DLLOPTS="-l $DLLOPTS" # enable bkshellx for local drives
+		   REGSHELLX=YES
+		   ;;
+		n) DLLOPTS="-n $DLLOPTS" # enable bkshellx for network drives
+		   REGSHELLX=YES
+		   ;;
 		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
 		d) CRANKTURN=YES;;# do not change permissions, dev install
 		f) FORCE=1;;	# force
@@ -1375,8 +1380,8 @@ _install()
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
 		test $VERBOSE = YES && echo "Updating registry and path ..."
-		gui/bin/tclsh gui/lib/registry.tcl $UPGRADE "$DEST"
-		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
+		gui/bin/tclsh gui/lib/registry.tcl $UPGRADE $DLLOPTS "$DEST"
+		test $REGSHELLX = YES && __register_dll "$DEST"/BkShellX.dll
 	fi
 
 	test $CRANKTURN = YES && exit 0

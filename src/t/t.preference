@@ -149,6 +149,14 @@ if [ ! -w "$HERE/copy2/src/foo.c" ]; then echo failed 2; exit 1; fi
 if [ ! -f "$HERE/copy2/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
 echo OK
 
+echo $N checkout:EDIT w clone -r+....................................$NL
+bk clone $Q -r+ "$HERE/project" "$HERE/copy3" || exit 1
+if [ ! -f "$HERE/copy3/src/foo.c" ]; then echo failed 1; exit 1; fi
+if [ ! -w "$HERE/copy3/src/foo.c" ]; then echo failed 2; exit 1; fi
+if [ ! -f "$HERE/copy3/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
+rm -rf "$HERE/copy3"
+echo OK
+
 echo $N checkout:EDIT w chmod .......................................$NL
 # 'unedit' will actually get the file to be check out edit (plocked)
 bk unedit foo.c
