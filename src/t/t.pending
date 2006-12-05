@@ -1,0 +1,23 @@
+echo $N Try a pager with spaces......................................$NL
+commercial project
+echo test > file
+bk new $Q file
+mkdir -p "$HERE/bin"
+cat > "$HERE/bin/more" <<EOF
+#!/bin/sh
+cat
+EOF
+chmod +x "$HERE/bin/more"
+unset BK_PAGER
+bk pending > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q "file@1.1" OUT || {
+	echo failed
+	echo pending did not find pending file
+	cat OUT
+	exit 1
+}
+echo OK
