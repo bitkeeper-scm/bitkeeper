@@ -393,10 +393,10 @@ check_licensesig(char *key, char *sign, int version)
 	char		signbin[256];
 
 	if (version <= 5) {
-		pubkey = pubkey5;
+		pubkey = (u8 *)pubkey5;
 		pubkeylen = sizeof(pubkey5);
 	} else {
-		pubkey = pubkey6;
+		pubkey = (u8 *)pubkey6;
 		pubkeylen = sizeof(pubkey6);
 	}
 	if (err = oldrsa_import(pubkey, &rsakey)) {
@@ -700,7 +700,7 @@ upgrade_decrypt(FILE *fin, FILE *fout)
 	rsa_key	rsakey;
 	int	err;
 
-	if (err = oldrsa_import(upgrade_secretkey, &rsakey)) {
+	if (err = oldrsa_import((u8 *)upgrade_secretkey, &rsakey)) {
 		fprintf(stderr, "crypto rsa_import: %s\n",
 		    error_to_string(err));
 		exit(1);

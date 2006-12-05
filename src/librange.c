@@ -395,7 +395,7 @@ range_walkrevs(sccs *s, delta *from, delta *to,
 int
 walkrevs_setFlags(sccs *s, delta *d, void *token)
 {
-	d->flags |= (u32)token;
+	d->flags |= p2int(token);
 	return (0);
 }
 

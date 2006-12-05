@@ -269,7 +269,7 @@ popenvp(char *av[], char *type)
 	ret = fdopen(fd, type);
 	assert(ret);
 	child[i].pf = ret;
-	child[i].pids = addLine(0, (char *)pid);
+	child[i].pids = addLine(0, int2p(pid));
 	return (ret);
 
 }
