@@ -12843,6 +12843,8 @@ sccs_fitCounters(char *buf, int a, int d, int s)
 	buf[21] = 0;
 }
 
+int	do_fsync = -1;
+
 /*
  * Print the summary and go and fix up the top.
  */
@@ -12933,6 +12935,8 @@ Breaks up citool
 		s->io_warned = 1;
 		return (-1);
 	}
+	if (do_fsync == -1) do_fsync = bk_fsync();
+	if (do_fsync) fsync(fileno(out));
 	return (0);
 }
 

@@ -463,6 +463,8 @@ move_file(char *checkfiles)
 	FILE	*f;
 	FILE	*chk;
 	int	rc = 0;
+	int	sync = bk_fsync();
+	int	fd;
 
 	/*
 	 * Cannot trust fileList, because file may be renamed
@@ -499,6 +501,11 @@ move_file(char *checkfiles)
 			    "Cannot move %s to %s\n", from, to);
 			rc = -1;
 			break;
+		}
+		if (sync) {
+		    	fd = open(to, O_RDONLY, 0);
+			fsync(fd);
+			close(fd);
 		}
 	}
 	pclose(f);

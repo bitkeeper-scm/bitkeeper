@@ -48,6 +48,7 @@ typedef struct {
 	u32	from_pullpush:1;/* set if we are being called from pull/push */
 	u32	partial:1;	/* partial resolve - don't commit changeset */
 	u32	autoOnly:1;	/* do as much as possible automatically &exit */
+	u32	fsync:1;	/* do fsyncs as we copy the data */
 	int	hadConflicts;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */

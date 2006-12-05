@@ -117,6 +117,7 @@ resolve_main(int ac, char **av)
 		opts.from_pullpush = 1;
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
+	opts.fsync = bk_fsync();
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind++]);
 	while (av[optind]) {
 		opts.includes = addLine(opts.includes, strdup(av[optind++]));
@@ -2683,6 +2684,7 @@ copyAndGet(opts *opts, char *from, char *to)
 	} else {
 		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
 	}
+	if (opts->fsync) fsync(s->fd);
 	sccs_free(s);
 	return (0);
 }
