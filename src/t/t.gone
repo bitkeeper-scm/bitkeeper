@@ -78,3 +78,19 @@ grep -q 'Marked gone (bk help chk1): foo.c' MSGS || {
 	exit 1
 }
 echo OK
+
+echo $N Test goned deltas ...........................................$NL
+cd "$HERE/project"
+bk edit $Q bar.c || exit 1
+echo foo >> bar.c
+bk ci $Q -yjj bar.c || exit 1
+bk commit $Q -yjj || exit 1
+bk stripdel $Q -Cr+ bar.c || exit 1
+bk -r check -agg | bk gone $Q -
+bk -r check -af || exit 1
+bk changes -v -r+ -nd:GFILE:@:REV: > OUT || exit 1
+cat <<EOF > WANT
+ChangeSet@1.5
+EOF
+cmpfiles OUT WANT
+echo OK
