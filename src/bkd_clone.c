@@ -57,6 +57,12 @@ cmd_clone(int ac, char **av)
 			}
 		}
 	}
+	if (proj_configbool(0, "binpool") && !bk_hasFeature("binpool")) {
+		out("ERROR-old clients cannot clone ");
+		out("from a bkd with binpool enabled\n");
+		drain();
+		return (1);
+	}
 	bp_updateMaster(rev);
 	p = getenv("BK_REMOTE_PROTOCOL");
 	if (p && streq(p, BKD_VERSION)) {
