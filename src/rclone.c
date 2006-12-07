@@ -91,7 +91,7 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	char	*p;
 	char	revs[MAXKEY];
 
-	if (bp_updateMaster(opts.rev)) goto done;
+	if (rc = bp_updateMaster(opts.rev)) goto done;
 	sprintf(revs, "..%s", opts.rev ? opts.rev : "+");
 	safe_putenv("BK_CSETS=%s", revs);
 	if (rc = trigger(av[0], "pre"))  goto done;
@@ -99,7 +99,7 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	rc = rclone_part2(av, opts, r, envVar);
 
 	p = remote_unparse(r);
-	bp_sendMissing(p, revs, 0);
+	bp_transferMissing(1, p, revs, 0);
 	free(p);
 
 	if (rc) {

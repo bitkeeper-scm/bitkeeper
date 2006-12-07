@@ -451,7 +451,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		}
 		chdir(ROOT2RESYNC);
 		url = remote_unparse(r);
-		bp_requestMissing(url, 0, CSETS_IN);
+		bp_transferMissing(0, url, 0, CSETS_IN);
 		free(url);
 		chdir(RESYNC2ROOT);
 		/*

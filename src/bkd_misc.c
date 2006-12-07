@@ -207,6 +207,7 @@ cmd_bk(int ac, char **av)
 	}
 	putenv("BK_NO_CMD_FALL_THROUGH=1");
 
+	setmode(0, _O_BINARY);
 	tmp = bktmp(0, "stdin");
 	fd = open(tmp, O_CREAT|O_RDWR, 0600);
 	assert(fd != -1);

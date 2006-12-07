@@ -1231,8 +1231,7 @@ int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);
 int	bp_updateMaster(char *tiprev);
 char	*bp_master_id(void);
-int	bp_sendMissing(char *url, char *rev, char *rev_list);
-int	bp_requestMissing(char *url, char *rev, char *rev_list);
+int	bp_transferMissing(int send, char *url, char *rev, char *rev_list);
 
 
 extern	char	*editor;

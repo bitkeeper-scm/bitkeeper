@@ -749,59 +749,12 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 	return (0);
 }
 
-/* called from clone and pull */
 int
-bp_requestMissing(char *url, char *rev, char *rev_list)
+bp_transferMissing(int send, char *url, char *rev, char *rev_list)
 {
-	char	*bp_repoid, *local;
-	int	rc, fd0 = 0;
-	char	**cmds = 0;
-
-	if (bp_repoid = bp_master_id()) {
-		/* The local bp master is not _this_ repo */
-		local = aprintf("@'%s'", proj_configval(0, "binpool_server"));
-	} else {
-		bp_repoid = strdup(proj_repo_id(0));
-		local = strdup("");
-	}
-	if (streq(bp_repoid, getenv("BKD_BINPOOL_SERVER"))) goto out;
-
-	if (rev) {
-		cmds = addLine(cmds,
-		    aprintf("bk changes -Bv -r'%s' "
-			"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'",
-			rev));
-	} else {
-		fd0 = dup(0);
-		close(0);
-		open(rev_list, O_RDONLY, 0);
-		cmds = addLine(cmds,
-		    strdup("bk changes -Bv "
-			"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' -"));
-	}
-	cmds = addLine(cmds,
-	    aprintf("bk -q%s _binpool_query -", local));
-	cmds = addLine(cmds,
-	    aprintf("bk -q@'%s' _binpool_send -m -", url));
-	cmds = addLine(cmds,
-	    aprintf("bk -q%s _binpool_receive -", local));
-	rc = spawn_filterPipeline(cmds);
-	if (fd0) {
-		dup2(fd0, 0);
-		close(fd0);
-	}
-out:	free(bp_repoid);
-	free(local);
-	return (0);
-}
-
-/* called from rclone and push */
-int
-bp_sendMissing(char *url, char *rev, char *rev_list)
-{
-	char	**cmds = 0;
-	char	*bp_repoid, *local;
+	char	*bp_repoid, *local, *bkd_server;
 	int	rc = 0, fd0 = 0;
+	char	**cmds = 0;
 
 	if (bp_repoid = bp_master_id()) {
 		/* The local bp master is not _this_ repo */
@@ -810,7 +763,13 @@ bp_sendMissing(char *url, char *rev, char *rev_list)
 		bp_repoid = strdup(proj_repo_id(0));
 		local = strdup("");
 	}
-	if (streq(bp_repoid, getenv("BKD_BINPOOL_SERVER"))) goto out;
+	unless (bkd_server = getenv("BKD_BINPOOL_SERVER")) {
+		unless (bkd_hasFeature("binpool")) goto out;
+		fprintf(stderr, "error: BKD_BINPOOL_SERVER missing\n");
+		rc = -1;
+		goto out;
+	}
+	if (streq(bp_repoid, bkd_server)) goto out;
 
 	if (rev) {
 		cmds = addLine(cmds,
@@ -825,12 +784,21 @@ bp_sendMissing(char *url, char *rev, char *rev_list)
 		    strdup("bk changes -Bv "
 			"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' -"));
 	}
-	cmds = addLine(cmds,
-	    aprintf("bk -q@'%s' _binpool_query -", url));
-	cmds = addLine(cmds,
-	    aprintf("bk -q%s _binpool_send -m -", local));
-	cmds = addLine(cmds,
-	    aprintf("bk -q@'%s' _binpool_receive -", url));
+	if (send) {
+		cmds = addLine(cmds,
+		    aprintf("bk -q@'%s' _binpool_query -m -", url));
+		cmds = addLine(cmds,
+		    aprintf("bk -q%s _binpool_send -", local));
+		cmds = addLine(cmds,
+		    aprintf("bk -q@'%s' _binpool_receive -m -", url));
+	} else {
+		cmds = addLine(cmds,
+		    aprintf("bk -q%s _binpool_query -", local));
+		cmds = addLine(cmds,
+		    aprintf("bk -q@'%s' _binpool_send -m -", url));
+		cmds = addLine(cmds,
+		    aprintf("bk -q%s _binpool_receive -", local));
+	}
 	rc = spawn_filterPipeline(cmds);
 	if (fd0) {
 		dup2(fd0, 0);
@@ -840,3 +808,4 @@ out:	free(bp_repoid);
 	free(local);
 	return (rc);
 }
+

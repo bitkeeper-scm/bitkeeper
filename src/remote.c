@@ -28,6 +28,7 @@ remote_bk(int quiet, int ac, char **av)
 	if (streq(av[ac-1], "-")) {
 		char	buf[MAXLINE];
 
+		setmode(0, _O_BINARY);
 		while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 			data = data_append(data, buf, i, 0);
 		}

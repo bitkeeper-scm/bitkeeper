@@ -716,7 +716,7 @@ push(char **av, remote *r, char **envVar)
 		return (ret); /* failed */
 	}
 	url = remote_unparse(r);
-	bp_sendMissing(url, 0, rev_list);
+	bp_transferMissing(1, url, 0, rev_list);
 	free(url);
 	return (push_part2(av, r, rev_list, ret, envVar));
 }

@@ -9,7 +9,6 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-
 echo $N Create initial repository ...................................$NL
 for f in 1 2 3 4 5 6 7 8 9
 do	echo $f > F$f
@@ -26,10 +25,6 @@ bk delta $Q -yc config || exit 1
 bk commit $Q -yc || exit 1
 cd "$HERE"/pmaster
 echo OK
-
-# setup master repo
-#BK_CONFIG="binpool_server:file://"$HERE"/pmaster"
-#export BK_CONFIG
 
 echo $N Create some binary data and check binpool ...................$NL
 cp "$HERE"/F1 bin.data

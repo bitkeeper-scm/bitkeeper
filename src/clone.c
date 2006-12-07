@@ -331,7 +331,7 @@ clone2(opts opts, remote *r)
 	p = remote_unparse(r);
 	sane(0, 0);		/* generate repoid */
 	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
-	bp_requestMissing(p, buf, 0);
+	bp_transferMissing(0, p, buf, 0);
 	free(p);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
