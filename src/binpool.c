@@ -694,6 +694,7 @@ binpool_receive_main(int ac, char **av)
 	int	c, i, n;
 	char	buf[MAXLINE];
 
+	setmode(0, _O_BINARY);
 	while ((c = getopt(ac, av, "m")) != -1) {
 		switch (c) {
 		    case 'm': tomaster = 1; break;
@@ -720,7 +721,6 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 	mkdirp(buf);
 	chdir(buf);
 
-	putenv("BK_REMOTE_CAREFUL=");
 	i = system("bk sfio -imq"); /* reads stdin */
 	if (i) {
 		fprintf(stderr, "_binpool_receive: sfio failed %x\n", i);
