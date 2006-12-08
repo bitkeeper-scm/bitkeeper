@@ -6765,6 +6765,8 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 	 * GET_SHUTUP (dunno)
 	 * GET_FORCE (dunno)
 	 * GET_DTIME
+	 * GET_NOREGET (handled in setupOutput)
+	 * GET_SUM
 	 * GET_SUM
 	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|GET_HEADER|\
@@ -6779,6 +6781,11 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 	unless (flags & GET_SUM) {
 		gfile = setupOutput(s, printOut, flags, d);
 		if ((gfile == (char *) 0) || (gfile == (char *)-1)) {
+			/*
+			 * 1 == error
+			 * 2 == No reget
+			 */
+			unless (gfile) return (2);
 			return (1);
 		}
 	}

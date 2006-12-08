@@ -128,6 +128,10 @@ _BK_FAKE_HASH=deadbeef bk co $Q fake_hash || { echo co failed; exit 1; }
 cmp -s "$DATA" fake_hash || { echo cmp failed; exit 1; }
 echo OK
 
+echo $N Test for already gotting that get -S works ..................$NL
+_BK_FAKE_HASH=deadbeef bk co $Q -S fake_hash || { echo co failed; exit 1; }
+echo OK
+
 echo $N Commit, check that the keys are binpool .....................$NL
 bk commit $Q -ywhatever
 bk co $Q ChangeSet
