@@ -170,7 +170,12 @@ spawn_filterPipeline(char **cmds)
 		tokens = shellSplit(cmd);
 		tokens = addLine(tokens, 0); /* force trailing null */
 		if (cmd = NEXT(cmds)) {
+#ifdef	WIN32
+			mkpipe(p, BIG_PIPE);
+#else
 			tcp_pair(p);
+#endif
+			assert(p[0] > 1);
 			/* replace stdout with write pipe */
 			dup2(p[1], 1);
 			close(p[1]);
@@ -181,16 +186,32 @@ spawn_filterPipeline(char **cmds)
 		pid = spawnvp(_P_NOWAIT, tokens[1], tokens+1);
 		freeLines(tokens, free);
 		pids = addLine(pids, int2p(pid));
-		dup2(fd1, 1);
 		if (cmd) {
+			dup2(fd1, 1);
 			/* replace stdin with read pipe */
 			dup2(p[0], 0);
 			close(p[0]);
+
 			/* wait for data */
+#ifdef	WIN32
+			while (1) {
+				DWORD	bytes, b, c;
+
+				rc = PeekNamedPipe(_get_osfhandle(0),
+				    &lookahead, 1, &bytes, &b, &c);
+
+				if (rc && (bytes == 1)) break;
+				if (GetLastError() == ERROR_BROKEN_PIPE) {
+					goto done;
+				}
+				usleep(10000);
+			}
+#else
 			if (recv(0, &lookahead, 1, MSG_PEEK) != 1) {
 				/* no output */
 				goto done;
 			}
+#endif
 		} else {
 			close(0);
 			close(1);

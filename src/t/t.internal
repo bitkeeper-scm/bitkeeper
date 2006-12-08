@@ -19,7 +19,7 @@ bk _filtertest2 IN TESTS > GOT 2>ERR || {
 }
 cat <<EOF > WANT
 start a
-end a rc=0
+end a rc=0 (i8 o16)
 spawn_filterPipeline returned 0
 EOF
 cmpfiles ERR WANT
@@ -47,13 +47,13 @@ bk _filtertest2 IN TESTS > GOT 2>ERR || {
 }
 cat <<EOF > WANT
 start a
-end a rc=0
+end a rc=0 (i8 o16)
 start b
-end b rc=0
+end b rc=0 (i16 o24)
 start c
-end c rc=0
+end c rc=0 (i24 o32)
 start d
-end d rc=0
+end d rc=0 (i32 o40)
 spawn_filterPipeline returned 0
 EOF
 cmpfiles ERR WANT
@@ -81,11 +81,11 @@ bk _filtertest2 IN TESTS > GOT 2>ERR || {
 }
 cat <<EOF > WANT
 start a
-end a rc=0
+end a rc=0 (i8 o16)
 start b
-end b rc=0
+end b rc=0 (i12 o12)
 start c
-end c rc=0
+end c rc=0 (i6 o0)
 spawn_filterPipeline returned 0
 EOF
 cmpfiles ERR WANT
@@ -106,7 +106,7 @@ bk _filtertest2 IN TESTS > GOT 2>ERR || {
 }
 cat <<EOF > WANT
 start a
-end a rc=0
+end a rc=0 (i2 o0)
 spawn_filterPipeline returned 0
 EOF
 cmpfiles ERR WANT
@@ -130,14 +130,14 @@ bk _filtertest2 IN TESTS > GOT 2>ERR || {
 }
 cat <<EOF > WANT
 start a
-end a rc=1
+end a rc=1 (i8 o16)
 start b
-end b rc=2
+end b rc=2 (i16 o24)
 start c
-end c rc=3
+end c rc=3 (i24 o32)
 start d
-end d rc=4
-spawn_filterPipeline returned 256
+end d rc=4 (i32 o40)
+spawn_filterPipeline returned 1
 EOF
 cmpfiles ERR WANT
 cat <<EOF > WANT
@@ -162,14 +162,14 @@ bk _filtertest2 IN TESTS > GOT 2>ERR || {
 }
 cat <<EOF > WANT
 start a
-end a rc=0
+end a rc=0 (i8 o16)
 start b
-end b rc=2
+end b rc=2 (i16 o24)
 start c
-end c rc=3
+end c rc=3 (i24 o32)
 start d
-end d rc=4
-spawn_filterPipeline returned 512
+end d rc=4 (i32 o40)
+spawn_filterPipeline returned 2
 EOF
 cmpfiles ERR WANT
 cat <<EOF > WANT
@@ -194,8 +194,8 @@ bk _filtertest2 IN TESTS > GOT 2>ERR || {
 }
 cat <<EOF > WANT
 start a
-end a rc=1
-spawn_filterPipeline returned 256
+end a rc=1 (i2 o0)
+spawn_filterPipeline returned 1
 EOF
 cmpfiles ERR WANT
 cat <<EOF > WANT
