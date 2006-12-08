@@ -12,6 +12,7 @@ filtertest1_main(int ac, char **av)
 	int	c, i;
 	int	e = -1;
 	int	cdump = -1;
+	int	in = 0, out = 0;
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "c:e:r:")) != -1) {
@@ -27,12 +28,13 @@ filtertest1_main(int ac, char **av)
 	fprintf(stderr, "start %s\n", av[optind]);
 	i = 0;
 	while (fnext(buf, stdin)) {
+		in += strlen(buf);
 		if (i == e) break;
 		if (i == cdump) abort();
-		printf("%s %s", av[optind], buf);
+		out += printf("%s %s", av[optind], buf);
 		++i;
 	}
-	fprintf(stderr, "end %s rc=%d\n", av[optind], rc);
+	fprintf(stderr, "end %s rc=%d (i%d o%d)\n", av[optind], rc, in, out);
 	return (rc);
 }
 
@@ -55,6 +57,6 @@ filtertest2_main(int ac, char **av)
 	open(av[1], O_RDONLY, 0);
 
 	rc = spawn_filterPipeline(cmds);
-	fprintf(stderr, "spawn_filterPipeline returned %d\n", rc);
+	fprintf(stderr, "spawn_filterPipeline returned %d\n", WEXITSTATUS(rc));
 	return (0);
 }
