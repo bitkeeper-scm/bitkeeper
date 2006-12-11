@@ -78,7 +78,7 @@ sane(int readonly, int resync)
 
 	//chk_ssh();
 	//chk_http();
-	mk_repo_id(0);
+	proj_repo_id(0);	/* make repo_id if needed */
 	return (errors);
 }
 
@@ -251,18 +251,15 @@ chk_idcache(void)
  * The repo name is host|/path/to/repo|user|date|randbits.
  */
 void
-mk_repo_id(project *proj)
+mk_repo_id(project *proj, char *repoid)
 {
 	char	buf[100];
 	char	rand[6];
-	char	*repoid;
 	unsigned long	outlen;
 	time_t	t = time(0);
 	FILE	*f;
 	int	err;
 
-	repoid = proj_fullpath(proj, REPO_ID);
-	if (exists(repoid)) return;	/* validate existing ID?? */
 	unless (f = fopen(repoid, "w")) return;	/* no write perms? */
 
 	/*date*/

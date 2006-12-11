@@ -450,7 +450,7 @@ proj_repo_id(project *p)
 
 	file = proj_fullpath(p, REPO_ID);
 	unless (repoid = loadfile(file, 0)) {
-		mk_repo_id(p);
+		mk_repo_id(p, file);
 		repoid = loadfile(file, 0);
 	}
 	if (repoid) chomp(repoid);
