@@ -541,7 +541,7 @@ saveAttr(attr *a, char *file)
 	char	*p;
 	int	i;
 
-	str = addLine(0, aprintf("1\n%u\n%s", a->size, a->hash));
+	str = addLine(0, aprintf("1\n%u\n%s", (int)a->size, a->hash));
 	EACH(a->keys) str = addLine(str, strdup(a->keys[i]));
 	p = joinLines("\n", str);
 	signed_saveFile(file, p);
