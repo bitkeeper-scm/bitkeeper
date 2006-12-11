@@ -188,11 +188,6 @@ hashgfile(char *gfile, char **hashp, sum_t *sump)
 	u32	sum;
 
 	unless (m = mopen(gfile, "rb")) return (-1);
-	if (m->size == 0) {
-		perror(gfile);
-		mclose(m);
-		return (-1);
-	}
 	sum = adler32(0, m->mmap, m->size);
 	mclose(m);
 	*sump = (sum_t)(sum & 0xffff); /* XXX rand? */
@@ -225,7 +220,7 @@ bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 	attr	a;
 	char	*base, *p;
 	int	i, j, rc = -1;
-	size_t	binsize;
+	off_t	binsize;
 	char	buf[MAXPATH];
 
 	binsize = size(file);

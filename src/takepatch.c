@@ -2000,7 +2000,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);
 		}
-		note = aprintf("%u", size(incoming));
+		note = aprintf("%u", (u32)size(incoming));
 		cmdlog_addnote("psize", note);
 		free(note);
 		rename(incoming, pendingFile);

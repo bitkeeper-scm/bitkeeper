@@ -1958,7 +1958,7 @@ cset2rev(sccs *s, char *rev)
 		if (lstat(s_cset, &csetstat)) goto ret;
 	}
 	mpath = aprintf("%s/BitKeeper/tmp/csetcache.%x", rootpath,
-	    adler32(0, rev, strlen(rev)));
+	    (u32)adler32(0, rev, strlen(rev)));
 	if (exists(mpath) &&
 	    (m = mdbm_open(mpath, O_RDONLY, 0600, 0))) {
 		/* validate it still matches cset file */

@@ -365,7 +365,7 @@ wrlock(void)
 		sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
-		ldebug(("WRLOCK by %d failed, RESYNC won\n"));
+		ldebug(("WRLOCK by %d failed, RESYNC won\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
 

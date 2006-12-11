@@ -57,8 +57,16 @@
 #define	executable(p)	((access(p, X_OK) == 0) && !isdir(p))
 
 /* aprintf.c */
-char	*aprintf(char *fmt, ...);
-void	ttyprintf(char *fmt, ...);
+char	*aprintf(char *fmt, ...)
+#ifdef __GNUC__
+     __attribute__((format (printf, 1, 2)))
+#endif
+     ;
+void	ttyprintf(char *fmt, ...)
+#ifdef __GNUC__
+     __attribute__((format (printf, 1, 2)))
+#endif
+;
 
 /* cleanpath.c */
 char	*basenm(char *s);
@@ -127,7 +135,11 @@ int	mkdirf(char *file);
 
 /* putenv.c */
 #define	putenv(s)	safe_putenv("%s", s)
-void	safe_putenv(char *fmt, ...);
+void	safe_putenv(char *fmt, ...)
+#ifdef __GNUC__
+     __attribute__((format (printf, 1, 2)))
+#endif
+     ;
 
 /* rlimit.c */
 void	core(void);

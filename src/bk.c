@@ -50,8 +50,8 @@ milli(void)
 
 	gettimeofday(&tv, 0);
 	unless (getenv("BK_SEC")) {
-		safe_putenv("BK_SEC=%u", tv.tv_sec);
-		safe_putenv("BK_MSEC=%u", tv.tv_usec / 1000);
+		safe_putenv("BK_SEC=%u", (u32)tv.tv_sec);
+		safe_putenv("BK_MSEC=%u", (u32)tv.tv_usec / 1000);
 		d = 0;
 	} else {
 		start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
