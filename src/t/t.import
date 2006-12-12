@@ -750,7 +750,7 @@ cd "$HERE"
 echo hi > co_edit_bar
 bk new $Q -b co_edit_bar
 bk edit $Q co_edit_bar
-printf "a line with a \000 in it\n" >> co_edit_bar
+perl -e 'printf "a line with a \000 in it\n"' >> co_edit_bar
 bk delta $Q -ywithnull co_edit_bar
 cp SCCS/s.co_edit_bar co_edit/SCCS
 cd co_edit

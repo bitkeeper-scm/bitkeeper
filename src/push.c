@@ -715,9 +715,11 @@ push(char **av, remote *r, char **envVar)
 		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
 	}
-	url = remote_unparse(r);
-	bp_transferMissing(1, url, 0, rev_list);
-	free(url);
+	if (rev_list[0]) {
+		url = remote_unparse(r);
+		bp_transferMissing(1, url, 0, rev_list);
+		free(url);
+	}
 	return (push_part2(av, r, rev_list, ret, envVar));
 }
 

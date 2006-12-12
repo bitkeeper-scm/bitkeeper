@@ -751,6 +751,8 @@ bp_transferMissing(int send, char *url, char *rev, char *rev_list)
 	int	rc = 0, fd0 = 0;
 	char	**cmds = 0;
 
+	assert((rev && !rev_list) || (!rev && rev_list));
+
 	if (bp_repoid = bp_master_id()) {
 		/* The local bp master is not _this_ repo */
 		local = aprintf("@'%s'", proj_configval(0, "binpool_server"));
@@ -774,7 +776,8 @@ bp_transferMissing(int send, char *url, char *rev, char *rev_list)
 	} else {
 		fd0 = dup(0);
 		close(0);
-		open(rev_list, O_RDONLY, 0);
+		rc = open(rev_list, O_RDONLY, 0);
+		assert(rc == 0);
 		cmds = addLine(cmds,
 		    strdup("bk changes -Bv "
 			"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' -"));

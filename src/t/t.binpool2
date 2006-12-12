@@ -12,7 +12,7 @@
 echo $N Create initial repository ...................................$NL
 for f in 1 2 3 4 5 6 7 8 9
 do	echo $f > F$f
-	printf 'a\0b' >> F$f
+	perl -e 'printf "a\000b\n"' >> F$f
 done
 commercial pmaster
 cd BitKeeper/etc
@@ -167,6 +167,10 @@ bk commit -y6 $Q || exit 1
 bk push $Q ../pclone2 || exit 1
 cd ../pclone2
 bk -r get $Q || exit 1
+checkfiles "$HERE"/F5 F5
+checkfiles "$HERE"/F6 F6
+checkfiles "$HERE"/F3 F3
+checkfiles "$HERE"/F4 F4
 echo OK
 
 echo $N Try remote clone across zones ...............................$NL
