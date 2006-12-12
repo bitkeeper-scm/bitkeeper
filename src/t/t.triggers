@@ -487,7 +487,7 @@ set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v BK_LICENSE= |
 	grep -v BK_NO_REPO_LOCK= |
 	grep -v BK_IGNORE_WRLOCK= |
-	egrep -v '^[^=]+=$' |		# no empty values
+	grep -v BKD_BINPOOL_SERVER= |
 	bk sort > "$HERE/post-outgoing-l"
 EOF
 chmod +x BitKeeper/triggers/*

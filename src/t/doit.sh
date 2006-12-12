@@ -394,7 +394,7 @@ init_main_loop()
 	export BK_CACHE
 	export RM
 	export NXL NX
-	export BKL_BKCL BKL_C1 BKL_C2 BKL_C3
+	#export BKL_BKCL BKL_C1 BKL_C2 BKL_C3
 	export BKL_ACADEMIC BKL_A1 BKL_A2 BKL_A3
 	export BKL_BASIC BKL_B1 BKL_B2 BKL_B3
 	export BKL_PRO BKL_P1 BKL_P2 BKL_P3
