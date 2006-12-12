@@ -63,7 +63,11 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	bp_updateMaster(rev);
+	if (bp_updateMaster(rev)) {
+		out("ERROR-unable to update binpool server\n");
+		drain();
+		return (1);
+	}
 	p = getenv("BK_REMOTE_PROTOCOL");
 	if (p && streq(p, BKD_VERSION)) {
 		out("@OK@\n");

@@ -36,8 +36,7 @@ echo OK
 echo $N Set up a remote fetch of a file .............................$NL
 cd ..
 bk clone $Q pmaster pcopy || exit 1
-cd pmaster
-cd ../pcopy
+cd pcopy
 rm -fr BitKeeper/binpool
 bk get $Q bin.data || exit 1
 test -d BitKeeper/binpool || {
@@ -49,6 +48,21 @@ test -f bin.data || {
 	exit 1
 }
 checkfiles "$HERE"/F1 bin.data
+echo OK
+
+echo $N Verify that bk fails if it cannot find binpool data .........$NL
+cd ..
+bk clone $Q pmaster pjunk || exit 1
+cd pjunk
+# use myself as the binpool server	
+BK_CONFIG='binpool_server:.!' bk -Ur get $Q 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "failed to fetch binpool data" ERR || exit 1
+cd ..
+rm -rf pjunk
+cd pcopy
 echo OK
 
 echo $N Set up a remote fetch of a file to a -G file ................$NL

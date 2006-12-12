@@ -88,7 +88,6 @@ private int
 rclone(char **av, opts opts, remote *r, char **envVar)
 {
 	int	rc;
-	char	*p;
 	char	revs[MAXKEY];
 
 	if (rc = bp_updateMaster(opts.rev)) goto done;
@@ -98,9 +97,9 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	if (rc = rclone_part1(opts, r, envVar))  goto done;
 	rc = rclone_part2(av, opts, r, envVar);
 
-	p = remote_unparse(r);
-	bp_transferMissing(1, p, revs, 0);
-	free(p);
+	if (bp_transferMissing(r, 1, revs, 0)) {
+		fprintf(stderr, "rclone: failed to transfer binpool data\n");
+	}
 
 	if (rc) {
 		putenv("BK_STATUS=FAILED");

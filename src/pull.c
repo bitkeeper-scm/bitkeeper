@@ -336,7 +336,6 @@ private int
 pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 {
 	int	rc = 0, n, i;
-	char	*url;
 	char	buf[MAXPATH * 2];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, !opts.quiet)) {
@@ -450,10 +449,13 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			goto done;
 		}
 		chdir(ROOT2RESYNC);
-		url = remote_unparse(r);
-		bp_transferMissing(0, url, 0, CSETS_IN);
-		free(url);
+		i = bp_transferMissing(r, 0, 0, CSETS_IN);
 		chdir(RESYNC2ROOT);
+		if (i) {
+			fprintf(stderr, "pull: failed to fetch binpool data\n");
+			rc = 1;
+			goto done;
+		}
 		/*
 		 * We are about to run resolve, fire pre trigger
 		 */

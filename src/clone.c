@@ -328,11 +328,12 @@ clone2(opts opts, remote *r)
 	parent(opts, r);
 
 	/* get bp data */
-	p = remote_unparse(r);
-	sane(0, 0);		/* generate repoid */
+	(void)proj_repo_id(0);		/* generate repoid */
 	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
-	bp_transferMissing(0, p, buf, 0);
-	free(p);
+	if (bp_transferMissing(r, 0, buf, 0)) {
+		fprintf(stderr, "clone: failed to fetch binpool data\n");
+		return (-1);
+	}
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */

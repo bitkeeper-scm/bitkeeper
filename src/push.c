@@ -97,10 +97,16 @@ push_main(int ac, char **av)
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
-		exit(1);
+		return (1);
 	}
 
 	if (sane(0, 0) != 0) return (1);
+
+	/* push binpool data to master */
+	if (bp_updateMaster(0)) {
+		fprintf(stderr, "push: unable to update binpool server\n");
+		exit(1);
+	}
 
 	unless (urls) {
 		urls = parent_pushp();
@@ -119,7 +125,6 @@ err:		freeLines(envVar, free);
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
-	bp_updateMaster(0);	/* push binpool data to master */
 	EACH (urls) {
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
@@ -698,7 +703,6 @@ push(char **av, remote *r, char **envVar)
 {
 	int	ret;
 	int	gzip;
-	char	*url;
 	char	rev_list[MAXPATH] = "";
 
 	gzip = opts.gzip && r->port;
@@ -716,9 +720,9 @@ push(char **av, remote *r, char **envVar)
 		return (ret); /* failed */
 	}
 	if (rev_list[0]) {
-		url = remote_unparse(r);
-		bp_transferMissing(1, url, 0, rev_list);
-		free(url);
+		if (bp_transferMissing(r, 1, 0, rev_list)) {
+			fprintf(stderr, "push: failed to send binpool data\n");
+		}
 	}
 	return (push_part2(av, r, rev_list, ret, envVar));
 }

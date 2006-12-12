@@ -745,14 +745,16 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 }
 
 int
-bp_transferMissing(int send, char *url, char *rev, char *rev_list)
+bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 {
+	char	*url;
 	char	*bp_repoid, *local, *bkd_server;
 	int	rc = 0, fd0 = 0;
 	char	**cmds = 0;
 
 	assert((rev && !rev_list) || (!rev && rev_list));
 
+	url = remote_unparse(r);
 	if (bp_repoid = bp_master_id()) {
 		/* The local bp master is not _this_ repo */
 		local = aprintf("@'%s'", proj_configval(0, "binpool_server"));
@@ -804,6 +806,7 @@ bp_transferMissing(int send, char *url, char *rev, char *rev_list)
 	}
 out:	free(bp_repoid);
 	free(local);
+	free(url);
 	return (rc);
 }
 
