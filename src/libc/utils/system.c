@@ -127,7 +127,8 @@ done:
 }
 
 /*
- * system(3).  exit status is of the last proc in any pipeline.
+ * system(3). Exit status is the last non-zero exit status of the
+ * pipeline.
  */
 int
 safe_system(char *cmd)
@@ -135,14 +136,16 @@ safe_system(char *cmd)
 	char	**pids;
 	pid_t	pid;
 	int	rc, i;
+	int	status = 0;
 
 	unless (pids = spawn_pipeline(cmd)) return (-1);
 	EACH (pids) {
 		pid = p2int(pids[i]);
 		if (waitpid(pid, &rc, 0) != pid) rc = -1;
+		if (rc) status = rc;
 	}
 	freeLines(pids, 0);
-	return (rc);
+	return (status);
 }
 
 #define	MAX_POPEN	20
@@ -276,12 +279,12 @@ popenvp(char *av[], char *type)
 
 /*
  * pclose(3).
- * If it's a pipeline then we return status from the last process like shell.
+ * If it's a pipeline then we return the last non-zero status.
  */
 int
 safe_pclose(FILE *f)
 {
-	int	pid, i, j, status = 0;
+	int	pid, i, j, rc, status = 0;
 
 	unless (f) {
 		errno = EBADF;
@@ -297,7 +300,8 @@ safe_pclose(FILE *f)
 	fclose(f);
 	EACH (child[j].pids) {
 		pid = p2int(child[j].pids[i]);
-		unless (waitpid(pid, &status, 0) == pid) status = -1;
+		unless (waitpid(pid, &rc, 0) == pid) rc = -1;
+		if (rc) status = rc;
 	}
 	freeLines(child[j].pids, 0);
 	child[j].pids = 0;
