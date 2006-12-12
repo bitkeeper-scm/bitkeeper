@@ -250,7 +250,7 @@ err:			sccs_free(s);
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
-			if (s->cachemiss) {
+			if (s->cachemiss && !recursed) {
 				bp_files = addLine(bp_files, strdup(name));
 				bp_keys = addLine(bp_keys,
 				    sccs_prsbuf(s,

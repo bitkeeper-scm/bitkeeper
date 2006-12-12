@@ -25,6 +25,7 @@ filtertest1_main(int ac, char **av)
 			return (-1);
 		}
 	}
+	unless (av[optind]) return (-1);
 	fprintf(stderr, "start %s\n", av[optind]);
 	i = 0;
 	while (fnext(buf, stdin)) {
