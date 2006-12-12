@@ -1,7 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-#include "bkd.h"
 
 private int	get_rollback(sccs *s, char *rev,
 		    char **iLst, char **xLst, char *prog);
@@ -315,60 +314,20 @@ int
 bp_fetchkeys(char **keys)
 {
 	int	i;
+	FILE	*f;
 	char	*master = proj_configval(0, "binpool_server");
-	int	fd0, fd1, rc1, rc2;
-	int	p1[2], p2[2];
-	pid_t	pid1, pid2;
-	char	*av[10];
 	char	buf[MAXPATH];
 
 	unless (*master) {
 		fprintf(stderr, "co: no master for binpool data.\n");
 		return (1);
 	}
-	/* attach pipe to stdin */
-	mkpipe(p1, BIG_PIPE);
-	fd0 = dup(0);
-	dup2(p1[0], 0);
-	close(p1[0]);
-	make_fd_uninheritable(p1[1]);
-
-	/* attach stdout to another pipe */
-	mkpipe(p2, BIG_PIPE);
-	fd1 = dup(1);
-	dup2(p2[1], 1);
-	close(p2[1]);
-	make_fd_uninheritable(p2[0]);
-
-	av[0] = "bk";
-	av[1] = aprintf("-q@%s", master);
-	av[2] = "_binpool_send";
-	av[3] = "-";
-	av[4] = 0;
-	pid1 = spawnvp(_P_NOWAIT, av[0], av);
-	free(av[1]);
-
-	/* attach other end of second pipe to stdin and restore stdout */
-	dup2(p2[0], 0);
-	close(p2[0]);
-	dup2(fd1, 1);
-
-	av[1] = "-R";
-	av[2] = "_binpool_receive";
-	pid2 = spawnvp(_P_NOWAIT, av[0], av);
-
-	/* restore stdin */
-	dup2(fd0, 0);
-
-	EACH(keys) {
-		sprintf(buf, "%s\n", keys[i]);
-		outfd(p1[1], buf);
-	}
-	close(p1[1]);
-	if (waitpid(pid1, &rc1, 0) != pid1) rc1 = -1;
-	if (waitpid(pid2, &rc2, 0) != pid2) rc2 = -1;
-
-	return ((rc1==0) ? rc2 : rc1);
+	sprintf(buf, "bk -q@'%s' _binpool_send - | bk -R _binpool_receive -",
+	    master);
+	f = popen(buf, "w");
+	EACH(keys) fprintf(f, "%s\n", keys[i]);
+	i = pclose(f);
+	return (i != 0);
 }
 
 private int
