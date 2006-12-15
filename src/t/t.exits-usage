@@ -1,0 +1,1367 @@
+echo $N Create initial repository ...................................$NL
+commercial project
+echo OK
+
+echo $N bk abort with bogus option ..................................$NL
+bk abort -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk admin with bogus option ..................................$NL
+bk admin -x > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk annotate with bogus option ...............................$NL
+bk annotate -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk base64 with bogus option .................................$NL
+bk base64 -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk bin with bogus option ....................................$NL
+bk bin -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else	echo OK, fix test
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk bkd with bogus option ....................................$NL
+bk bkd -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk c2r without required args ................................$NL
+bk c2r > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk cat with bogus option ....................................$NL
+bk cat -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk changes with bogus option ................................$NL
+bk changes -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk check with bogus option ..................................$NL
+bk -r check -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk checksum with bogus option ...............................$NL
+bk checksum -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk chmod with bogus option ..................................$NL
+bk chmod -z  > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug shows help page)"
+else
+	echo OK, fix test
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk ci with bogus option .....................................$NL
+bk ci -z  > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk clean with bogus option ..................................$NL
+bk clean -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk clone with bogus option ..................................$NL
+bk clone -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk cmdlog with bogus option .................................$NL
+bk cmdlog -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else
+	echo "OK, fix test"
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk co with bogus option .....................................$NL
+bk co -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk collapse with bogus option ...............................$NL
+bk collapse -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk comments with bogus option ...............................$NL
+bk comments -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk commit with bogus option .................................$NL
+bk commit -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk config with bogus option .................................$NL
+bk config -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk conflicts with bogus option ..............................$NL
+bk conflicts -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk cp with bogus option and invalid arg .....................$NL
+bk cp -z bogus-file copy > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk crypto with bogus option and missing args ................$NL
+bk crypto -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk cset with bugs option ....................................$NL
+bk cset -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk csetprune with bogus option and missing args .............$NL
+bk csetprune -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk csets with bogus option ..................................$NL
+bk csets -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk diff with bogus option and missing args ..................$NL
+bk diff -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else
+	echo "OK, fix test"
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk diffs with bogus option ..................................$NL
+bk diffs -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk edit with bogus option ...................................$NL
+bk edit -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk export with bogus option and missing arg .................$NL
+bk export -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk extras with bogus option .................................$NL
+bk extras -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk files with bogus option ..................................$NL
+bk files -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk findkey with bogus option ................................$NL
+bk findkey -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk flags with bogus option ..................................$NL
+bk flags -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk gca with bogus option and missing args ...................$NL
+bk gca -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk gethost with bogus option ................................$NL
+bk gethost -z > /dev/null 2> ERR
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo 'failed (bug usage not implemented)'
+else	echo 'OK, fix test'
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk getuser with bogus option ................................$NL
+bk getuser -z > /dev/null 2> ERR
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo 'failed (bug usage not implemented)'
+else	echo 'OK, fix test'
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk glob with bogus option and missing args ..................$NL
+bk glob -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk gnupatch with bogus option ...............................$NL
+bk gnupatch -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk gone with bogus option ...................................$NL
+bk gone -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk help with bogus option and missing arg ...................$NL
+bk help -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk id with bogus option .....................................$NL
+bk id -z > /dev/null 2> ERR
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo 'failed (bug usage not implemented)'
+else	echo 'OK, fix test'
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk ignore with bogus option and missing arg .................$NL
+bk ignore -z > /dev/null 2> ERR
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo 'failed (bug usage not implemented)'
+else	echo 'OK, fix test'
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk import with bogus option and missing args ................$NL
+bk import -tplain -x > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk info with bogus option ...................................$NL
+bk info -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk key2path with no input and missing arg ...................$NL
+cat /dev/null | bk key2path > /dev/null 2> ERR
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo 'failed (bug usage not implemented)'
+else	echo 'OK, fix test'
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk key2rev with no input and missing arg ....................$NL
+cat /dev/null | bk key2rev > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk lease with bogus option ..................................$NL
+bk lease -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk legal with bogus option ..................................$NL
+bk legal -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk level with bogus option ..................................$NL
+bk level -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk links with bogus option ..................................$NL
+bk links -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else
+	echo "OK, fix test"
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk lock with bogus option ...................................$NL
+bk lock -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk log with bogus option ....................................$NL
+bk log -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk makepatch with bogus option ..............................$NL
+bk makepatch -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk merge with bogus option and missing args .................$NL
+bk merge -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo 'failed (bug shows help page)'
+else	echo "OK, fix test"
+fi
+rm -f ERR
+
+echo $N bk mv with bogus option and missing args ....................$NL
+bk mv -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk names with bogus option ..................................$NL
+bk names -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk new with bogus option ....................................$NL
+bk new -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk newroot with bogus option ................................$NL
+bk newroot -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+}
+rm -f ERR
+echo OK
+
+echo $N bk obscure with bogus option ................................$NL
+bk obscure -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk parent with bogus option .................................$NL
+bk parent -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk patch with bogus option ..................................$NL
+bk patch -a > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else
+	echo "OK, fix test"
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk path with bogus option ...................................$NL
+bk path -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else
+	echo "OK, fix test"
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk pending with bogus option ................................$NL
+bk pending -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk prompts with bogus option ................................$NL
+bk prompt -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk pull with bogus option ...................................$NL
+cd "$HERE"
+bk clone $Q project clone
+cd project
+echo junk > foo
+bk new $Q foo
+bk commit $Q -y'foo to you too'
+cd "$HERE"/clone
+bk pull -x > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk push with bogus option ...................................$NL
+echo "more junk" > bar
+bk new $Q bar
+bk commit $Q -y'guy walks into a bar'
+bk push -x > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+cd "$HERE"/project
+echo OK
+
+echo $N bk r2c with bogus option and missing args ...................$NL
+bk r2c -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk range with bogus option ..................................$NL
+bk range -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk receive with bogus option ................................$NL
+bk receive -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk regex with bogus option and missing args .................$NL
+bk regex -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk relink with bogus option .................................$NL
+bk relink -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk remerge with bogus option ................................$NL
+bk remerge -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk renames with bogus option ................................$NL
+bk renames -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk renumber with bogus option ...............................$NL
+bk renumber -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk repogca with bogus option ................................$NL
+bk repogca -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk resolve with bogus option ................................$NL
+bk resolve -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk rm with bogus option .....................................$NL
+bk rm -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk rmdir with bogus option ..................................$NL
+bk rmdir -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else
+	echo "OK, fix test"
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk rmgone with bogus option .................................$NL
+bk rmgone -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk root with bogus option ...................................$NL
+bk root -z > /dev/null 2> ERR
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo 'failed (bug usage not implemented)'
+else	echo 'OK, fix test'
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk rset with bogus option and missing arg ...................$NL
+bk rset -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk sane with bogus option ...................................$NL
+bk sane -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk sccslog with bogus option ................................$NL
+bk sccslog -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk send with bogus option ...................................$NL
+bk send -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk sendbug with bogus option ................................$NL
+bk sendbug -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+#XXX
+#echo $N bk service with bogus option ................................$NL
+#bk service
+
+echo $N bk set with bogus option ....................................$NL
+bk set -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk setup with bogus option and missing arg ..................$NL
+bk setup -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk sfiles with bogus option .................................$NL
+bk sfiles -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk sfio with bogus option ...................................$NL
+bk sfio -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk smerge with bogus option and missing args ................$NL
+bk smerge -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk status with bogus option .................................$NL
+bk status -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk stripdel with bogus option and missing arg ...............$NL
+bk stripdel -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk superset with bogus option ...............................$NL
+bk superset -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk tag with bogus option ....................................$NL
+bk tag -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk takepatch with bogus option ..............................$NL
+bk takepatch -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk treediff with bogus option ...............................$NL
+bk treediff -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk undo with bogus option ...................................$NL
+bk undo -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk undos with bogus option ..................................$NL
+bk undos -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk unedit with bogus option .................................$NL
+bk unedit -z > /dev/null 2> ERR
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo 'failed (bug usage not implemented)'
+else	echo 'OK, fix test'
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk uninstall with bogus option ..............................$NL
+bk uninstall -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else
+	echo "OK, fix test"
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk unlock with bogus option .................................$NL
+bk unlock -a > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk unpull with bogus option .................................$NL
+bk unpull -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk unrm with bogus option and missing arg ...................$NL
+bk unrm -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else
+	echo "OK, fix test"
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk unwrap with bogus option and missing args ................$NL
+cat /dev/null | bk unwrap -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo "failed (bug no usage)"
+else
+	echo "OK, fix test"
+	exit 1
+fi
+rm -f ERR
+
+echo $N bk upgrade with bogus option ................................$NL
+bk upgrade -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk users with bogus option ..................................$NL
+bk users -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk version with bogus option ................................$NL
+bk version -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk what with bogus option ...................................$NL
+bk what -z > /dev/null 2> ERR
+if [ $? -eq 0 ]
+then	echo "failed (bug bad status)"
+else	echo "OK, fix test"
+	exit 1
+fi
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+
+echo $N bk xflags with bogus option .................................$NL
+bk xflags -z > /dev/null 2> ERR && {
+	echo "Should fail"
+	exit 1
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N bk zone with bogus option ...................................$NL
+bk zone -z > /dev/null 2> ERR
+bk grep -iq usage ERR
+if [ $? -ne 0 ]
+then	echo 'failed (bug usage not implemented)'
+else	echo 'OK, fix test'
+	exit 1
+fi
+rm -f ERR

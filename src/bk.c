@@ -25,7 +25,7 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 
 private	void	cmdlog_exit(void);
 private	int	cmdlog_repo;
-private	void	cmdlog_dump(int, char **);
+private	int	cmdlog_dump(int, char **);
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
 private	void	showproc_start(char **av);
@@ -276,8 +276,7 @@ run:	getoptReset();
 	if (exists("gmon.out")) save_gmon();
 
 	if (streq(prog, "cmdlog")) {
-		cmdlog_dump(ac, av);
-		return (0);
+		return (cmdlog_dump(ac, av) ? 1 : 0);
 	}
 
 #ifdef	WIN32
@@ -726,7 +725,7 @@ out:
 	return (flags);
 }
 
-private	void
+private	int
 cmdlog_dump(int ac, char **av)
 {
 	FILE	*f;
@@ -737,7 +736,7 @@ cmdlog_dump(int ac, char **av)
 	char	buf[MAXPATH*3];
 	int	yelled = 0, c, all = 0;
 
-	unless (proj_root(0)) return;
+	unless (proj_root(0)) return (1);
 	while ((c = getopt(ac, av, "ac;")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
@@ -746,13 +745,13 @@ cmdlog_dump(int ac, char **av)
 			break;
 		    default:
 			system("bk help cmdlog");
-			return;
+			return (1);
 		}
 	}
 	concat_path(buf, proj_root(0), "/BitKeeper/log/");
 	concat_path(buf, buf, (all ? "cmd_log" : "repo_log"));
 	f = fopen(buf, "r");
-	unless (f) return;
+	unless (f) return (1);
 	while (fgets(buf, sizeof(buf), f)) {
 		user = buf;
 		for (p = log_versions; *p; ++p) {
@@ -800,6 +799,7 @@ cmdlog_dump(int ac, char **av)
 nextline:	;
 	}
 	fclose(f);
+	return (0);
 }
 
 int

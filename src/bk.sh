@@ -25,7 +25,7 @@ qecho() {
 __cd2root() {
 	root="`bk root 2> /dev/null`"
 	test $? -ne 0 && {
-		echo "bk: cannot find package root."
+		echo "bk: cannot find package root." 1>&2
 		exit 1
 	}
 	cd "$root"
@@ -51,7 +51,7 @@ _repatch() {
 	PATCH=BitKeeper/tmp/undo.patch
 	test "X$1" = X || PATCH="$1"
 	test -f $PATCH || {
-		echo $PATCH not found, nothing to repatch
+		echo $PATCH not found; nothing to repatch 1>&2
 		exit 0
 	}
 	# Note: this removed the patch if it works.
@@ -149,7 +149,7 @@ _superset() {
 		case "$opt" in
 		d) set -x;;
 		q) QUIET=-q; CHANGES=; LIST=NO;;
-		*) echo "Usage: superset [-q] [parent]"
+		*) bk help -s superset
 		   exit 1;;
 		esac
 	done
@@ -319,11 +319,11 @@ _lclone() {
 # Show what would be sent
 _keysync() {
 	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
-	then	echo usage root1 root2
+	then	echo "usage root1 root2" 1>&2
 		exit 1
 	fi
 	test -d "$1" -a -d "$2" || {
-		echo usage root1 root2
+		echo "usage root1 root2" 1>&2
 		exit 1
 	}
 	HERE=`pwd`
@@ -399,7 +399,7 @@ _csets() {		# /* doc 2.0 */
 			exit 0
 		fi
 	fi
-	echo "Can not find csets to view."
+	echo "Cannot find csets to view." 1>&2
 	exit 1
 }
 
@@ -429,7 +429,7 @@ _reedit() {
 
 _editor() {
 	if [ "X$EDITOR" = X ]
-	then	echo You need to set your EDITOR env variable
+	then	echo "You need to set your EDITOR env variable" 1>&2
 		exit 1
 	fi
 	bk get -Sqe "$@" 2> /dev/null
@@ -478,9 +478,9 @@ _unrm () {
 	FORCE=no
 	if [ "$1" = "-f" ]; then FORCE=yes; shift; fi
 
-	if [ "$1" = "" ]; then echo "Usage: bk unrm file"; exit 1; fi
+	if [ "$1" = "" ]; then bk help -s unrm; exit 1; fi
 	if [ "$2" != "" ]
-	then	echo "You can only unrm one file at a time"
+	then	echo "You can only unrm one file at a time" 1>&2
 		return 1
 	fi
 
@@ -495,7 +495,7 @@ _unrm () {
 	LIST=/tmp/LIST$$
 	TMPFILE=/tmp/BKUNRM$$
 	DELDIR=BitKeeper/deleted
-	cd $DELDIR || { echo "Cannot cd to $DELDIR"; return 1; }
+	cd $DELDIR || { echo "Cannot cd to $DELDIR" 1>&2; return 1; }
 	trap 'rm -f $LIST $TMPFILE' 0
 
 	# Find all the possible files, sort with most recent delete first.
@@ -507,9 +507,9 @@ _unrm () {
 	NUM=`wc -l $LIST | sed -e's/ *//' | awk -F' ' '{print $1}'`
 	if [ "$NUM" -eq 0 ]
 	then
-		echo "------------------------"
-		echo "No matching files found."
-		echo "------------------------"
+		echo "------------------------" 1>&2
+		echo "No matching files found." 1>&2
+		echo "------------------------" 1>&2
 		return 2
 	fi
 	if [ "$NUM" -gt 1 ]
@@ -586,11 +586,11 @@ _repair()
 _obscure() {
 	ARG=--I-know-this-destroys-my-tree
 	test "$1" = "$ARG" || {
-		echo "usage: bk obscure $ARG"
+		echo "usage: bk obscure $ARG" 1>&2
 		exit 1
 	}
 	test `bk -r sfiles -c | wc -c` -gt 0 && {
-		echo "obscure: will not obscure modified tree"
+		echo "obscure: will not obscure modified tree" 1>&2
 		exit 1
 	}
 	bk -r admin -Znone || exit 1
@@ -601,7 +601,7 @@ __bkfiles() {
 	bk sfiles "$1" |
 	    bk prs -hr1.0 -nd:DPN: - | grep BitKeeper/ > ${TMP}/bk$$
 	test -s ${TMP}/bk$$ && {
-		echo $2 directories with BitKeeper files not allowed 1>&2
+		echo "$2 directories with BitKeeper files not allowed" 1>&2
 		rm ${TMP}/bk$$
 		exit 1
 	}
@@ -612,21 +612,21 @@ _rmdir() {		# /* doc 2.0 */
 	if [ X"$1" = X"--help" ]; then bk help rmdir; exit 0; fi
 	if [ X"$1" = X ]; then bk help -s rmdir; exit 1; fi
 	if [ X"$2" != X ]; then bk help -s rmdir; exit 1; fi
-	if [ ! -d "$1" ]; then echo "$1 is not a directory"; exit 1; fi
+	if [ ! -d "$1" ]; then echo "$1 is not a directory" 1>&2; exit 1; fi
 	bk -r check -a || exit 1;
 	__bkfiles "$1" "Removing"
 	XNUM=`bk sfiles -x "$1" | wc -l`
 	if [ "$XNUM" -ne 0 ]
 	then
-		echo "There are extra files under $1";
-		bk sfiles -x $1
+		echo "There are extra files under $1" 1>&2;
+		bk sfiles -x $1 1>&2
 		exit 1
 	fi
 	CNUM=`bk sfiles -c "$1" | wc -l`
 	if [ "$CNUM" -ne 0 ]
 	then
-		echo "There are edited files under $1";
-		bk sfiles -cg "$1"
+		echo "There are edited files under $1" 1>&2;
+		bk sfiles -cg "$1" 1>&2
 		exit 1
 	fi
 	bk sfiles "$1" | bk clean -q -
@@ -634,8 +634,8 @@ _rmdir() {		# /* doc 2.0 */
 	SNUM=`bk sfiles "$1" | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
-		echo "Failed to remove the following files:"
-		bk sfiles -g "$1"
+		echo "Failed to remove the following files: 1>&2"
+		bk sfiles -g "$1" 1>&2
 		exit 1
 	fi
 	if [ -d "$1" ]
@@ -654,6 +654,7 @@ _tag() {		# /* doc 2.0 */
 	do	case "$opt" in
 		q) OPTS="-q";;		# /* undoc? 2.0 */
 		r) REV="|$OPTARG";;	# /* undoc? 2.0 */
+		*) bk help -s tag; exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
@@ -701,7 +702,7 @@ _chmod() {		# /* doc 2.0 */
 	rm -f "$ROOT/BitKeeper/tmp/err$$"
 	bk sfiles -g ${1+"$@"} | while read i
 	do	bk clean "$i" || {
-			echo Can not clean "$i," skipping it
+			echo "Cannot clean $i; skipping it" 1>&2
 			continue
 		}
 		bk admin -m$MODE "$i" || {
@@ -733,12 +734,12 @@ _man() {
 # Make links in /usr/bin (or wherever they say).
 _links() {		# /* doc 3.0 */
 	if [ "X$OSTYPE" = "Xmsys" ]
-	then	echo "bk links: not supported under Windows"
-		exit 0
+	then	echo "bk links: not supported under Windows" 1>&2
+		exit 1
 	fi
 	if [ X"$1" = X ]
-	then	echo "usage: bk links public-dir"
-		echo "Typical usage is bk links /usr/bin"
+	then	bk help -s links
+		echo "Typical usage is bk links /usr/bin" 1>&2
 		exit 1
 	fi
 	# The old usage had two arguments so we adjust for that here
@@ -749,15 +750,15 @@ _links() {		# /* doc 3.0 */
 		BIN="$1"
 	fi
 	test -f "$BK/bkhelp.txt" || {
-		echo "bk links: bitkeeper not installed at $BK"
+		echo "bk links: bitkeeper not installed at $BK" 1>&2
 		exit 2
 	}
 	test -f "$BIN/bkhelp.txt" && {
-		echo "bk links: destination can't be a bk tree ($BIN)"
+		echo "bk links: destination can't be a bk tree ($BIN)" 1>&2
 		exit 2
 	}
 	test -w "$BIN" || {
-		echo "bk links: cannot write to ${BIN}; links not created"
+		echo "bk links: cannot write to ${BIN}; links not created" 1>&2
 		exit 2
 	}
 	for i in admin get delta unget rmdel prs bk
@@ -797,7 +798,7 @@ _regression() {		# /* doc 2.0 */
 	tdir=`bk bin`/t
 
 	test -x "$tdir"/doit || {
-	    echo The regression suite is not included with this release of BitKeeper
+	    echo "The regression suite is not included with this release of BitKeeper" 1>&2
 	    exit 1
 	}
 	# Do not use "exec" to invoke "./doit", it causes problem on cygwin
@@ -815,26 +816,26 @@ __init() {
 	fi
 }
 
-# Usage: treediff tree1 tree2
+# usage: treediff tree1 tree2
 _treediff() {
 	if [ $# -ne 2 ]
 	then
-		echo "treediff: need two arguments"
+		echo "treediff: need two arguments" 1>&2
 		errflg=1
 	fi
 	if [ ! -d "$1" ]
 	then
-		echo "$1 is not a directory"
+		echo "$1 is not a directory" 1>&2
 		errflg=1
 	fi
 	if [ ! -d "$2" ]
 	then
-		echo "$2 is not a directory"
+		echo "$2 is not a directory" 1>&2
 		errflg=1
 	fi
 	if [ "$errflg" = "1" ]
 	then
-		echo "Usage: bk treediff <dir> <dir>"
+		bk help -s treediff
 		exit 1
 	fi
 	bk diff -Nur \
@@ -853,7 +854,7 @@ _rmgone() {
 		n) N=1;;	# dry run
 		p) P=1;;	# prompt for each file
 		q) Q="-q";;	# quiet
-		*)	echo "Usage: rmgone [-n][-p][-q]"
+		*)	bk help -s rmgone
 			exit 1;;
 		esac
 	done
@@ -873,7 +874,7 @@ _rmgone() {
 	__cd2root
 	if [ ! -f BitKeeper/etc/SCCS/s.gone ]
 	then
-		echo "rmgone: there is no gone file"
+		echo "rmgone: there is no gone file" 1>&2
 		exit 0
 	fi
 	bk -r prs -hr+ -nd':ROOTKEY: :SFILE: :GFILE:' | $AWK '
@@ -910,10 +911,11 @@ _c2r() {	# undoc
 	while getopts r: OPT
 	do	case $OPT in
 		r)	REV=@"$OPTARG";;
+		*)	bk help -s c2r; exit 1;;
 		esac
 	done
 	if [ $REV = X ]
-	then	echo usage: c2r -rREV file
+	then	bk help -s c2r
 		exit 1
 	fi
 	shift `expr $OPTIND - 1`
@@ -927,7 +929,7 @@ _c2r() {	# undoc
 _clonemod() {
 	if [ $# -ne 3 ]
 	then
-		echo "usage: bk clonemod URL LOCAL NEW"
+		echo "usage: bk clonemod URL LOCAL NEW" 1>&2
 		exit 1
 	fi
 
@@ -940,7 +942,7 @@ _clonemod() {
 
 # XXX undocumented alias from 3.0.4 
 _leaseflush() {
-        echo Please use 'bk lease flush' now. 1>&2
+        echo "Please use 'bk lease flush' now." 1>&2
 	bk lease flush -a
 }
 
@@ -1064,9 +1066,10 @@ EOF
 _remerge()
 {
 	SMERGE=NO
-	while getopts t opt
+	while getopts T opt
 	do	case "$opt" in
 		T) SMERGE=YES;;
+		*) bk help -s remerge; exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
@@ -1100,17 +1103,17 @@ _explore_merge()
 	done
 	shift `expr $OPTIND - 1`
 	test "$REV" = "" -o "X$1" = X && {
-		echo "usage: explore_merge -r<rev> <file>"
+		echo "usage: explore_merge -r<rev> <file>" 1>&2
 		exit 1
 	}
 	FILE="$1"
 	REV=`bk prs -r"$REV" -hnd:MERGE: "$FILE"`
 	test "$REV" != "" || {
-	    echo rev $2 of $FILE is not a merge
+	    echo "rev $2 of $FILE is not a merge" 1>&2
 	    exit 1
 	}
 	bk clean -q $FILE || {
-	    echo $FILE can not be modified
+	    echo "$FILE cannot be modified" 1>&2
 	    exit 1
 	}
 	MERGE=$TMP/bk.merge.$$
@@ -1243,13 +1246,13 @@ _install()
 		S) DOSYMLINKS=YES;;
 		u) FORCE=1; UPGRADE="-u";;
 		v) VERBOSE=YES;;
-		*) echo "usage: bk install [-dfvS] <destdir>"
+		*) echo "usage: bk install [-dfvS] <destdir>" 1>&2
 		   exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	test X"$1" = X -o X"$2" != X && {
-		echo "usage: bk install [-dfSv] <destdir>"
+		echo "usage: bk install [-dfSv] <destdir>" 1>&2
 		exit 1
 	}
 	test X"$BK_REGRESSION" != X && CRANKTURN=YES
@@ -1258,7 +1261,7 @@ _install()
 	SRC=`bk bin`
 
 	bk _eula -p || {
-		echo Installation aborted.
+		echo "Installation aborted." 1>&2
 		exit 1
 	}
 
@@ -1267,19 +1270,19 @@ _install()
 	test $NFILE -gt 0 && {
 		DEST=`bk pwd "$DEST"`
 		test "$DEST" = "$SRC" && {
-			echo "bk install: destination == source"
+			echo "bk install: destination == source" 1>&2
 			exit 1
 		}
 		test $FORCE -eq 0 && {
-			echo "bk install: destination exists, failed"
+			echo "bk install: destination exists, failed" 1>&2
 			exit 1
 		}
 		test -d "$DEST"/SCCS && {
-			echo "bk install: destination is a bk source tree!!"
+			echo "bk install: destination is a bk source tree!!" 1>&2
 			exit 1
 		}
 		test -f "$DEST"/bkhelp.txt || {
-			echo "bk install: destination is not an existing bk tree, failed"
+			echo "bk install: destination is not an existing bk tree, failed" 1>&2
 			exit 1
 		}
 		test -f "$DEST/config" && {
@@ -1288,16 +1291,16 @@ _install()
 		}
 		test $VERBOSE = YES && echo Uninstalling $DEST
 		bk uninstall $UPGRADE -f "$DEST" || {
-		    echo "bk install: failed to remove $DEST"
+		    echo "bk install: failed to remove $DEST" 1>&2
 		    exit 3
 		}
 	}
 	mkdir -p "$DEST" || {
-		echo "bk install: Unable to mkdir $DEST, failed"
+		echo "bk install: Unable to mkdir $DEST, failed" 1>&2
 		exit 1
 	}
 	test -d "$DEST" -a -w "$DEST" || {
-		echo "bk install: Unable to write to $DEST, failed"
+		echo "bk install: Unable to write to $DEST, failed" 1>&2
 		exit 1
 	}
 	# make DEST canonical full path w long names.
@@ -1507,7 +1510,7 @@ _service()
 		DIRW=`bk pwd -w`
 		DIR=`bk pwd -s`
 		test "X$DIR" = X && {
-			echo Failed to get current working directory, abort.
+			echo "Failed to get current working directory; abort." 1>&2
 			exit 1
 		}
 		"$SVC" install "$SNAME" \
@@ -1564,7 +1567,7 @@ _conflicts() {
 	shift `expr $OPTIND - 1`
 
 	ROOTDIR=`bk root 2>/dev/null`
-	test $? -ne 0 && { echo "You must be in a BK repository"; exit 1; }
+	test $? -ne 0 && { echo "You must be in a BK repository" 1>&2; exit 1; }
 	cd "$ROOTDIR" > /dev/null
 	test -d RESYNC || { echo "No files are in conflict"; exit 0; }
 	cd RESYNC > /dev/null
@@ -1575,8 +1578,8 @@ _conflicts() {
 	do	if [ "$GFILE" != "$LPN" ]
 		then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
 		else	test "$GFILE" = "$LPN" || {
-				echo GFILE=$GFILE LOCALPATH=$LPN
-				echo This is unexpected, paths are unknown
+				echo GFILE=$GFILE LOCALPATH=$LPN 1>&2
+				echo "This is unexpected; paths are unknown" 1>&2
 				exit 1
 			}
 			PATHS="$GFILE"

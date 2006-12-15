@@ -244,11 +244,11 @@ echo OK
 
 echo $N Test bk rmdir ...............................................$NL
 date > B/B1/fileB2
-bk rmdir B | grep "extra" > /dev/null
+bk rmdir B 2>&1 | grep "extra" > /dev/null
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk delta $Q -i -l B/B1/fileB2
 echo new > B/B1/fileB2
-bk rmdir B | grep "edited" > /dev/null
+bk rmdir B 2>&1 | grep "edited" > /dev/null
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk delta $Q -y B/B1/fileB2
 bk rmdir B
