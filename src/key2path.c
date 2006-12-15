@@ -13,7 +13,7 @@ key2path_main(int ac, char **av)
 	MDBM	*idDB;
 
 	if (proj_cd2root()) {
-		fprintf(stderr, "pull: cannot find package root.\n");
+		fprintf(stderr, "key2path: cannot find package root.\n");
 		exit(1);
 	}
 
