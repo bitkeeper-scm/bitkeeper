@@ -16,8 +16,8 @@ private	FILE *dfd;	/* Debug FD */
 			"\\CurrentVersion\\Uninstall"
 #define	RUNONCEKEY	HKLM "\\Software\\Microsoft\\Windows" \
 			"\\CurrentVersion\\RunOnce"
-#define	SCCPKEY1	HKLM "\\Software\\SourceCodeControlProvider"
-#define	SCCPKEY2	HKLM "\\Software\\SourceControlProvider"
+#define	SCCPKEY		HKLM "\\Software\\SourceCodeControlProvider"
+#define	SCCBUSTEDKEY	HKLM "\\Software\\SourceControlProvider"
 #define	SYSENVKEY	HKLM "\\System\\CurrentControlSet" \
 			"\\Control\\Session Manager\\Environment"
 #define	USRENVKEY	HKCU "\\Environment"
@@ -168,28 +168,28 @@ uninstall(char *path, int upgrade)
 		if (dfd) fprintf(dfd, "Could not delete %s\n", BMKEY);
 	}
 	/* Search for all Scc plugin entries and delete them */
-	if (data = reg_get(SCCPKEY1, "ProviderRegKey", 0)) {
+	if (data = reg_get(SCCPKEY, "ProviderRegKey", 0)) {
 		if (match_one(data, "*bitkee*", 1)) {
-			if (reg_delete(SCCPKEY1, "ProviderRegKey")) {
+			if (reg_delete(SCCPKEY, "ProviderRegKey")) {
 				if (dfd) {
 					fprintf(dfd,
 					    "Could not delete key %s\n",
-					    SCCPKEY1 " ProviderRegKey");
+					    SCCPKEY " ProviderRegKey");
 				}
 			}
 		}
 		free(data);
 	}
-	if (values = reg_values(SCCPKEY1 "\\InstalledSCCProviders")) {
+	if (values = reg_values(SCCPKEY "\\InstalledSCCProviders")) {
 		EACH(values) {
 			if (match_one(values[i], "*bitkee*", 1)) {
-				if (reg_delete(SCCPKEY1
+				if (reg_delete(SCCPKEY
 				    "\\InstalledSCCProviders", values[i])) {
 					if (dfd) {
 						fprintf(dfd,
 						    "Could not delete "
 						    "value %s %s\n",
-						    SCCPKEY1
+						    SCCPKEY
 						    "\\InstalledSCCProviders",
 						    values[i]);
 					}
@@ -198,16 +198,16 @@ uninstall(char *path, int upgrade)
 		}
 		freeLines(values, free);
 	}
-	if (values = reg_values(SCCPKEY2 "\\InstalledSCCProviders")) {
+	if (values = reg_values(SCCPKEY "\\InstalledSCCProviders")) {
 		EACH(values) {
 			if (match_one(values[i], "*bitkee*", 1)) {
-				if (reg_delete(SCCPKEY2
+				if (reg_delete(SCCPKEY
 				    "\\InstalledSCCProviders", values[i])) {
 					if (dfd) {
 						fprintf(dfd,
 						    "Could not delete "
 						    "value %s %s\n",
-						    SCCPKEY2
+						    SCCPKEY
 						    "\\InstalledSCCProviders",
 						    values[i]);
 					}
@@ -215,6 +215,14 @@ uninstall(char *path, int upgrade)
 			}
 		}
 		freeLines(values, free);
+	}
+	/* blow away a busted key that we introduced in bk-4.0.1 */
+	if (keys = reg_keys(SCCBUSTEDKEY)) {
+		if (reg_delete(SCCBUSTEDKEY, 0)) {
+			if (dfd) fprintf(dfd,
+			    "Could not delete key %s\n", SCCBUSTEDKEY);
+		}
+		freeLines(keys, free);
 	}
 	/* Other registry entries?? */
 	if (keys = reg_keys(ARPCACHEKEY)) {

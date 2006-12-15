@@ -12,10 +12,10 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
-OUT=$HERE/out
-RC=`bk dotbk`/diff.rc
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/diff.rc"
 
 echo $N Create initial repository ...................................$NL
 commercial project
@@ -26,17 +26,17 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
 echo $N Simple startup with no args and nothing to diff..............$NL
-    bk guitest difftool >$OUT 2>&1 <<'EOF'
+    bk guitest difftool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 err=$?
 expected='There were no files available to diff' 
-grep -q "$expected" $OUT
+grep -q "$expected" "$OUT"
 if [ $? -ne 0 ]; then 
     echo failed
     echo "expected: '$expected'"
-    echo "  actual: '`cat $OUT`'" 
+    echo "  actual: '`cat "$OUT"`'" 
     exit 1 
 fi
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
@@ -46,20 +46,20 @@ echo OK
 # this requires that there's something to diff since the tool doesn't
 # save the prefs unless the GUI fully starts up.
 echo $N Create dotbk/diff.rc ........................................$NL
-test -f $RC && rm -f $RC
+test -f "$RC" && rm -f "$RC"
 echo "this is file 1" > file1
 echo "this is file 2" > file2
-bk guitest difftool file1 file2 >$OUT 2>&1 <<'EOF'
+bk guitest difftool file1 file2 >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 err=$?
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
-test -f $RC || (echo ".rc wasn't created" ; exit 1; )
+test -f "$RC" || (echo ".rc wasn't created" ; exit 1; )
 echo "OK"
 
 echo $N Proper count of diffs and files when there is only 1.........$NL
-bk guitest difftool file1 file2 >$OUT 2>&1 <<'EOF'
+bk guitest difftool file1 file2 >"$OUT" 2>&1 <<'EOF'
     global diffCount
     set files [.menu.fmb cget -text]
     puts "$files diffCount=$diffCount"
@@ -69,11 +69,11 @@ EOF
 err=$?
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 expected='Files (1) diffCount=1'
-grep -q "$expected" $OUT
+grep -q "$expected" "$OUT"
 if [ $? -ne 0 ]; then 
     echo failed
     echo "expected: '$expected'"
-    echo "  actual: '`cat $OUT`'" 
+    echo "  actual: '`cat "$OUT"`'" 
     exit 1 
 fi
 echo "OK"

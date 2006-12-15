@@ -26,16 +26,16 @@
 
 BK_INSTALLER=
 # Lazy way to get full path
-find "`bk bin`"/utils -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
+find "`bk bin`/utils" -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
 test `wc -l < /tmp/bk$$` -gt 1 && {
 	echo You have too many bk images, skipping this test
 	cat /tmp/bk$$
 	$RM -f /tmp/bk$$
 	exit 0
 }
-test `wc -l < /tmp/bk$$` -eq 1 && BK_INSTALLER=`cat /tmp/bk$$`
+test `wc -l < /tmp/bk$$` -eq 1 && BK_INSTALLER="`cat /tmp/bk$$`"
 $RM /tmp/bk$$
-test X$BK_INSTALLER = X && exit 0
+test "X$BK_INSTALLER" = X && exit 0
 
 echo "license: $BKL_PRO" > c
 echo "licsign1: $BKL_P1" >> c
@@ -59,7 +59,7 @@ fi
 
 echo $N Relative path installation, no config file...................$NL
 rm -f "$DOTBK"/accepted
-echo y | $BK_INSTALLER relative > OUT 2>&1
+echo y | "$BK_INSTALLER" relative > OUT 2>&1
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
 	cat OUT
@@ -79,7 +79,7 @@ echo OK
 
 echo $N Absolute path installation, no config file...................$NL
 rm -f "$DOTBK"/accepted
-echo y | $BK_INSTALLER $HERE/absolute > OUT 2>&1
+echo y | "$BK_INSTALLER" "$HERE/absolute" > OUT 2>&1
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
 	cat OUT
@@ -99,7 +99,7 @@ echo OK
 
 echo $N Refuse license, should fail and leave no installation .......$NL
 rm -f "$DOTBK"/accepted
-echo n | $BK_INSTALLER refuse > OUT 2>&1
+echo n | "$BK_INSTALLER" refuse > OUT 2>&1
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
 	cat OUT
@@ -115,9 +115,9 @@ echo OK
 echo $N Use repo license rather than .bk/config, should work ........$NL
 commercial repo
 rm -f "$DOTBK"/accepted
-mv "$DOTBK"/config $HERE
-echo y | $BK_INSTALLER $HERE/use_repo > $HERE/OUT 2>&1
-cd $HERE
+mv "$DOTBK"/config "$HERE"
+echo y | "$BK_INSTALLER" "$HERE/use_repo" > "$HERE/OUT" 2>&1
+cd "$HERE"
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
 	cat OUT
@@ -134,17 +134,17 @@ echo $N Upgrade with installed config, leave it and it should work ..$NL
 rm -f "$DOTBK"/accepted
 # XXX - it would be nice if we looked in the destination for the config
 # on upgrades.
-cp $HERE/config "$DOTBK"/config
+cp "$HERE/config" "$DOTBK"/config
 chmod +w absolute >/dev/null 2>&1	# SCO's chmod barfs
-cp $HERE/config absolute
+cp "$HERE/config" absolute
 echo "foo: bar" >> absolute/config
 OLDPATH="$PATH"
 PATH="$HERE/absolute:$PATH"
 export PATH
-echo y | $BK_INSTALLER -u > OUT 2>&1
+echo y | "$BK_INSTALLER" -u > OUT 2>&1
 PATH="$OLDPATH"
 export PATH
-cd $HERE
+cd "$HERE"
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
 	cat OUT
@@ -166,7 +166,7 @@ echo "license: $BKL_ACADEMIC" > c
 echo "licsign1: $BKL_A1" >> c
 echo "licsign2: $BKL_A2" >> c
 echo "licsign3: $BKL_A3" >> c
-cp $BK_INSTALLER bk-academic
+cp "$BK_INSTALLER" bk-academic
 bk inskeys bk-academic c > OUT 2>&1
 grep -q 'Inserted keys into binary' OUT || {
 	echo failed to run inskeys
@@ -248,10 +248,68 @@ if [ $KEY2 -ne 100 ]; then
 fi
 echo OK
 
+echo $N Installer should honor command line options..................$NL
+BK="$HERE/DEAD BEEF/bk"
+echo y | "$BK" install -vf -s -l -n "$HERE/DEAD2" > OUT 2>&1 || {
+	echo failed $?
+	echo Installer failed to install
+	cat OUT
+	exit 1
+}
+KEY1=`bk _registry get "$SHELLXKEY" networkDrive` || exit 1
+KEY2=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+
+if [ $KEY1 -ne 1 ]; then
+	echo failed
+	echo Failed to set networkDrive: $KEY1
+	exit 1
+fi
+if [ $KEY2 -ne 1 ]; then
+	echo failed
+	echo Failed to set LocalDrive: $KEY2
+	exit 1
+fi
+CTRLPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider"
+INSTPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider\\InstalledSCCProviders"
+SCCKEY1=`bk _registry get "$BMKEY" SCCServerName` || exit 1
+SCCKEY2=`bk _registry get "$BMKEY" SCCserverPath` || exit 1
+PROVKEY1=`bk _registry get "$CTRLPROV" ProviderRegkey` || exit 1
+PROVKEY2=`bk _registry get "$INSTPROV" BitKeeper` || exit 1
+SCCPATH=`bk pwd -w "$HERE/DEAD2"`\\bkscc.dll
+
+test "$SCCKEY1" = "BitKeeper" || {
+	echo failed
+	echo SCCServerName was "$SCCKEY1" instead of "BitKeeper"
+	exit 1
+}
+test "$SCCKEY2" = "$SCCPATH" || {
+	echo failed
+	echo SCCServerPath was "$SCCKEY2" instead of "$SCCPATH"
+	exit 1
+}
+PK1="SOFTWARE\\bitmover\\bitkeeper"
+test "$PROVKEY1" = "$PK1" || {
+	echo failed
+	echo ProviderRegkey was "$PROVKEY1" instead of "$PK1"
+	exit 1
+}
+test "$PROVKEY2" = "$PK1" || {
+	echo failed
+	echo InstalledSCCProviders was "$PROVKEY2" instead of "$PK1"
+	exit 1
+}
+echo OK
+
 echo $N Make sure uninstaller works as advertised....................$NL
-BIN="$HERE/DEADBEEF"
-BK="$HERE/DEADBEEF/bk"
+BIN="$HERE/DEAD BEEF"
+BK="$HERE/DEAD BEEF/bk"
 VERSION=`bk _registry get "$BMKEY" rel`
+# Make sure there is a BK installed in BIN
+test -f "$BK" || {
+	echo failed
+	echo There is no BK in $BIN
+	exit 1
+}
 "$BK" uninstall -f >OUT 2>&1
 test -d "$BIN" && {
 	echo failed
@@ -261,21 +319,21 @@ test -d "$BIN" && {
 }
 # make sure PATH doesn't have BK in it
 if [ "x$OLDUSRPATH" != "xentry not found" ];
-then	bk _registry get "$USRPATHKEY" Path | grep "DEADBEEF" > TEXT && {
+then	bk _registry get "$USRPATHKEY" Path | grep "DEAD BEEF" > TEXT && {
 		echo failed
 		echo BitKeeper left in User PATH
 		cat TEXT OUT
 		exit 1
 	}
 fi
-bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" > TEXT && {
+bk _registry get "$SYSPATHKEY" Path | grep "DEAD BEEF" > TEXT && {
 	echo failed
 	echo BitKeeper left in System PATH
 	cat TEXT OUT
 	exit 1
 }
 # Make sure we're not polluting the Uninstall area
-bk _registry get "$UNINSTALLKEY" $VERSION | grep "DEADBEEF" > TEXT && {
+bk _registry get "$UNINSTALLKEY" $VERSION | grep "DEAD BEEF" > TEXT && {
 	echo failed
 	echo BitKeeper left crud in the Uninstall registry key
 	cat TEXT OUT
@@ -339,7 +397,7 @@ test -f "$HERE/DEADBEEF/bk" || {
 }
 find "$HERE/DEADBEEF" -type d -exec chmod 555 {} \;
 chmod 777 "$HERE/DEADBEEF"
-$BIN/bk uninstall -f || {
+"$BIN/bk" uninstall -f || {
 	echo failed
 	echo bk uninstall failed
 	chmod -R +w "$HERE/DEADBEEF"
@@ -374,14 +432,14 @@ test -f "$HERE/DEADBEEF/bk" || {
 	exit 1
 }
 mkdir "$HERE/bin"
-$BIN/bk links "$HERE/bin" >OUT 2>&1 || {
+"$BIN/bk" links "$HERE/bin" >OUT 2>&1 || {
 	echo failed
 	echo could not create symlinks
 	cat OUT
 	exit 1
 }
-export PATH="$HERE/bin":$PATH
-$BIN/bk uninstall -f || {
+export PATH="$HERE/bin:$PATH"
+"$BIN/bk" uninstall -f || {
 	echo failed
 	echo bk uninstall failed
 	exit 1
@@ -404,13 +462,13 @@ test -f "$HERE/DEADBEEF/bk" || {
 	exit 1
 }
 # Make sure there are symlinks
-$BIN/bk links "$HERE/bin" >OUT 2>&1 || {
+"$BIN/bk" links "$HERE/bin" >OUT 2>&1 || {
 	echo failed
 	echo could not create symlinks
 	cat OUT
 	exit 1
 }
-export PATH="$HERE/bin":$PATH
+export PATH="$HERE/bin:$PATH"
 "$HERE/DEADBEEF/bk" uninstall -u >OUT 2>&1 || {
 	echo failed
 	echo Uninstaller in upgrade mode failed
@@ -437,6 +495,6 @@ fi
 #####################################################################
 # Careful!!!!
 #####################################################################
-cd $HERE
+cd "$HERE"
 chmod -R +w * >/dev/null 2>&1	# SCO's chmod barfs
 rm -rf *

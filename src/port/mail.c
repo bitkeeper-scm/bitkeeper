@@ -35,7 +35,7 @@ smtpmail(char **to, char *subject, char *file)
 			EACH (to) av = addLine(av, strdup(to[i]));
 			av = addLine(av, 0);
 
-			pid = spawnvp_wPipe(av + 1, &wfd, 0);
+			pid = spawnvpio(&wfd, 0, 0, av + 1);
 			freeLines(av, free);
 			if (pid == -1) return (pid);
 			pipe = fdopen(wfd, "w");
@@ -71,7 +71,7 @@ smtpmail(char **to, char *subject, char *file)
 	}
 	EACH (to) av = addLine(av, strdup(to[i]));
 	av = addLine(av, 0);
-	pid = spawnvp_wPipe(av + 1, &wfd, 0);
+	pid = spawnvpio(&wfd, 0, 0, av + 1);
 	freeLines(av, free);
 	dup2(fd0, 0);
 	return (pid);

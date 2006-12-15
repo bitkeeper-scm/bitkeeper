@@ -227,7 +227,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Check renaming a dir and replacing with symlink .............$NL
-cd $HERE
+cd "$HERE"
 rm -rf project
 commercial project
 mkdir dir
@@ -235,7 +235,7 @@ cd dir
 echo hi > file
 bk new $Q file
 bk commit $Q -ywhat || exit 1
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy2 || exit 1
 cd copy2
 bk mvdir dir dir2 || exit 1

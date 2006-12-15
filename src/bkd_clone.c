@@ -109,12 +109,13 @@ compressed(int level, int hflag)
 	fh = fopen(tmpf1, "w");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");
 	fclose(fh);
-	cmd = aprintf("bk sfiles > %s", tmpf2);
+	cmd = aprintf("bk sfiles > '%s'", tmpf2);
 	status = system(cmd);
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
 
-	sfiocmd = aprintf("cat %s %s | bk sort | bk sfio -oq", tmpf1, tmpf2);
+	sfiocmd = aprintf("cat '%s' '%s' | bk sort | bk sfio -oq",
+	    tmpf1, tmpf2);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);

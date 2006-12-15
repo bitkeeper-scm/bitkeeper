@@ -89,13 +89,13 @@ test $? -eq 2 || exit 1
 echo OK
 
 echo $N Test bk legal -c without having accepted the license ........$NL
-if test -f `bk dotbk`/accepted; then
-	mv `bk dotbk`/accepted `bk dotbk`/not_accepted
+if test -f "`bk dotbk`/accepted"; then
+	mv "`bk dotbk`/accepted" "`bk dotbk`/not_accepted"
 fi
 bk legal $Q -c
 test $? -eq 1 || exit 1
-if test -f `bk dotbk`/not_accepted; then
-	mv `bk dotbk`/not_accepted `bk dotbk`/accepted
+if test -f "`bk dotbk`/not_accepted"; then
+	mv "`bk dotbk`/not_accepted" "`bk dotbk`/accepted"
 fi
 echo OK
 

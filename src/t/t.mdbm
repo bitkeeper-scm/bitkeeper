@@ -1,4 +1,4 @@
 
 # run mdbm self test
 
-`bk bin`/libc/mtst  2>&1
+"`bk bin`/libc/mtst"  2>&1

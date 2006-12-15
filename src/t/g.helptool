@@ -12,26 +12,26 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
-OUT=$HERE/out
-RC=`bk dotbk`/help.rc
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/help.rc"
 
 echo $N Simple startup and exit......................................$NL
-bk guitest helptool >$OUT 2>&1 <<'EOF'
+bk guitest helptool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 err=$?
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1 ; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 echo OK
 
 echo $N Create dotbk/help.rc ........................................$NL
-test -f $RC && rm -f $RC
-bk guitest helptool >$OUT 2>&1 <<'EOF'
+test -f "$RC" && rm -f "$RC"
+bk guitest helptool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-test -f $RC || { echo "failed"; exit 1; }
+test -f "$RC" || { echo "failed"; exit 1; }
 echo "OK"

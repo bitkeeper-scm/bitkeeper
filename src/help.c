@@ -46,11 +46,11 @@ help_main(int ac,  char **av)
 		for (i = optind; av[i]; i++) {
 			if (file) {
 				sprintf(buf,
-				    "bk helpsearch -f%s -%s %s >> '%s'",
+				    "bk helpsearch -f'%s' -%s '%s' >> '%s'",
 				    file, opt, av[i], out);
 			} else {
 				sprintf(buf,
-				    "bk helpsearch -%s %s >> '%s'",
+				    "bk helpsearch -%s '%s' >> '%s'",
 				    opt, av[i], out);
 			}
 			system(buf);
@@ -60,14 +60,14 @@ help_main(int ac,  char **av)
 	for (i = optind; av[i]; i++) {
 		if (file) {
 			sprintf(buf,
-			    "bk gethelp %s -f%s %s %s >> '%s'",
+			    "bk gethelp %s -f'%s' '%s' '%s' >> '%s'",
 			     		synopsis, file, av[i], bin, out);
 		} else {
-			sprintf(buf, "bk gethelp %s %s %s >> '%s'",
+			sprintf(buf, "bk gethelp %s '%s' '%s' >> '%s'",
 					synopsis, av[i], bin, out);
 		}
 		if (system(buf) != 0) {
-			sprintf(buf, "bk getmsg -= %s >> '%s'", av[i], out);
+			sprintf(buf, "bk getmsg -= '%s' >> '%s'", av[i], out);
 			if (system(buf) != 0) {
 				f = fopen(out, "a");
 				fprintf(f,

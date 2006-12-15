@@ -14,7 +14,7 @@
 data="data"
 
 commercial proj
-cp -rp $HERE/proj $HERE/ascii
+cp -rp "$HERE/proj" "$HERE/ascii"
 echo $N Trying to check in some binary data .........................$NL
 cp ${BIN1} ${data}
 chmod u+w ${data}
@@ -30,14 +30,14 @@ echo OK
 
 echo $N Trying to merge some binary data ............................$NL
 bk commit $Q -ywhatever
-cd $HERE
+cd "$HERE"
 bk clone $Q proj child
-cd $HERE/proj
+cd "$HERE/proj"
 bk edit $Q uuencode
 cat $BIN2 >> uuencode
 bk delta $Q -yappend uuencode
 bk commit $Q -yappend
-cd $HERE/child
+cd "$HERE/child"
 bk edit $Q uuencode
 cat $BIN2 > uuencode
 bk delta $Q -yreplace uuencode
@@ -61,7 +61,7 @@ grep -q "binary conflict" OUT || {
 echo OK
 
 echo $N Add an ascii file but mark it no-merge ......................$NL
-cd $HERE/ascii
+cd "$HERE/ascii"
 cat > ascii <<EOF
 Hi mom,
 this is 
@@ -74,7 +74,7 @@ EOF
 bk new $Q ascii
 bk admin $Q -fNOMERGE ascii
 bk commit $Q -ybaseline
-bk clone $Q $HERE/ascii $HERE/nomerge
+bk clone $Q "$HERE/ascii" "$HERE/nomerge"
 bk flags ascii | grep -q NOMERGE || {
 	echo failed to add flag
 	bk flags ascii
@@ -109,25 +109,25 @@ test -d RESYNC && {
 	exit 1
 }
 bk get -q ascii
-bk cat $HERE/ascii/ascii | cmp - ascii || {
+bk cat "$HERE/ascii/ascii" | cmp - ascii || {
 	echo failed to use remote
-	bk cat $HERE/ascii/ascii | diff - ascii
+	bk cat "$HERE/ascii/ascii" | diff - ascii
 	exit 1
 }
 echo OK
 
 echo $N Make sure identical binaries automerge ......................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q proj automerge
-cd $HERE/proj
+cd "$HERE/proj"
 bk edit $Q uuencode
 ( cat $BIN2; cat $BIN2; cat $BIN2) > uuencode
 bk delta $Q -yreplace uuencode
 bk commit $Q -yreplace
-cd $HERE/automerge
+cd "$HERE/automerge"
 bk edit $Q uuencode
 ( cat $BIN2; cat $BIN2; cat $BIN2) > uuencode
-cp uuencode $HERE/cmp
+cp uuencode "$HERE/cmp"
 bk delta $Q -yreplace uuencode
 bk commit $Q -yreplace
 bk pull $Q -R
@@ -144,7 +144,7 @@ test "X$REV" = X1.4 || {
 	exit 1
 }
 bk get $Q uuencode
-cmp -s uuencode $HERE/cmp || {
+cmp -s uuencode "$HERE/cmp" || {
 	echo did not end up with the same file
 	cat OUT
 	exit 1

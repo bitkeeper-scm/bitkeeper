@@ -78,7 +78,7 @@ BK_USER=$TAGGER bk tag $Q MYTAG
 echo OK
 
 echo $N Run changes when not in a repo ..............................$NL
-cd $HERE
+cd "$HERE"
 bk changes 2> ERR && fail
 grep -q "Cannot find package root" ERR || fail
 echo OK
@@ -86,7 +86,7 @@ echo OK
 ### ways to specify a revision (see t.range for revision testing)
 
 echo $N Specify revision - rev, tag, list, range, date, stdin .......$NL
-cd $HERE/simple
+cd "$HERE/simple"
 test 1.3 = `bk changes -r+ -d:I:` || fail
 test 1.2 = `bk changes -r1.2 -d:I:` || fail
 test 1.3 = `bk changes -rsecond -d:I:` || fail
@@ -132,7 +132,7 @@ echo OK
 # restrict options: -a, -e, -m, -i/-x, -t, -u/-U, -/
 
 echo $N Check that -a lists tags and empty merges ...................$NL
-cd $HERE/diamond
+cd "$HERE/diamond"
 bk changes -a -nd:KEY: | bk sort > WITH
 bk changes -nd:KEY: > WITHOUT
 bk changes -ar1.3 -nd:KEY: > EMPTY
@@ -201,7 +201,7 @@ echo OK
 # -t 
 
 echo $N Check tag listing with -t ...................................$NL
-cd $HERE/simple
+cd "$HERE/simple"
 LIST=`bk changes -t -d:I:` 
 test 1.3 = "$LIST" || fail
 echo OK
@@ -209,7 +209,7 @@ echo OK
 # -u/U  user
 
 echo $N Check that filtering on included users with -u ..............$NL
-cd $HERE/simple
+cd "$HERE/simple"
 LIST=`bk changes -u$NAME2 -d:I:`
 test 1.3 = "$LIST" || fail
 LIST=`bk changes -u$NAME1 -u$NAME2 -d":I: "`
@@ -248,7 +248,7 @@ echo OK
 # pure date sorting using sccslog
 
 echo $N Demonstrate out of order changesets .........................$NL
-cd $HERE
+cd "$HERE"
 commercial out
 touch foo
 bk new $Q foo
@@ -264,19 +264,19 @@ test "$files" = "ChangeSetfeefoobbarfoofoo" || fail
 echo OK
 
 echo $N Demonstrate the other way they can be out of order ..........$NL
-cd $HERE
+cd "$HERE"
 commercial out2
 touch foo
 bk new $Q foo
-cd $HERE
+cd "$HERE"
 bk clone $Q out2 c2
 cd c2
 touch bar
 bk new $Q bar
 bk commit $Q -yq
-cd $HERE/out2
+cd "$HERE/out2"
 bk commit $Q -ya
-cd $HERE/c2
+cd "$HERE/c2"
 bk pull $Q || fail
 files=`bk changes -r1.1.1.1,1.2 -v -d:DPN:`
 test "$files" = "ChangeSetfoofooChangeSetbarbar" || fail
@@ -318,7 +318,7 @@ echo OK
 
 echo $N Changes on remote repo prints a header line .................$NL
 # verify no header locally
-cd $HERE/simple
+cd "$HERE/simple"
 bk changes -r+ -izoo > LOCAL
 test `wc -c < LOCAL` -eq 0 || fail
 # now test remote
@@ -397,7 +397,7 @@ fi
 # -L -R - working between repositories
 
 echo $N Make some repositories to check out -L and -R ...............$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q simple clone || exit 1
 cd clone
 bk undo $Q -sfr+ || exit 1
@@ -405,7 +405,7 @@ bk tag $Q REM || exit 1
 echo OK
 
 echo $N Check out a delta difference using -L and -R ................$NL
-cd $HERE/simple
+cd "$HERE/simple"
 bk changes -L -qnd:I: ../clone > ../LOCAL
 cd ../clone
 bk changes -R -qnd:I: ../simple > ../REMOTE
@@ -415,7 +415,7 @@ test "`wc -l < LOCAL`" -eq 1 || fail
 echo OK
 
 echo $N Check out a tag difference using -L and -R = -a activated ...$NL
-cd $HERE/clone
+cd "$HERE/clone"
 bk changes -L -qnd:I: ../simple > ../REMOTE
 cd ../simple
 bk changes -R -qnd:I: ../clone > ../LOCAL
@@ -425,7 +425,7 @@ test "`wc -l < LOCAL`" -eq 1 || fail
 echo OK
 
 echo $N Check out a tag difference using -aL and -aR ................$NL
-cd $HERE/clone
+cd "$HERE/clone"
 bk changes -aL -qnd:I: ../simple > ../REMOTE
 cd ../simple
 bk changes -aR -qnd:I: ../clone > ../LOCAL
@@ -435,7 +435,7 @@ test "`wc -l < LOCAL`" -eq 1 || fail
 echo OK
 
 echo $N Check out an empty merge difference using -L, -R ............$NL
-cd $HERE/clone
+cd "$HERE/clone"
 touch h
 bk new $Q h
 bk commit $Q -yh

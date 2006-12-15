@@ -135,15 +135,15 @@ if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK
 
 echo $N Binary data problem: false match ............................$NL
-cd $HERE
+cd "$HERE"
 commercial project2
 echo 'Binary files foo.c differ' > test
-cd $HERE
+cd "$HERE"
 bk clone $Q project2 copy || exit 1
 cd project2
 bk new $Q test || exit 1
 bk commit $Q -yjunk || exit 1
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull $Q || exit 1
 echo OK
 

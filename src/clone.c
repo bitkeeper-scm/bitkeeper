@@ -329,13 +329,17 @@ clone2(opts opts, remote *r)
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts.rev) {
-		if (after(opts.quiet, opts.rev)) {
+		rc = after(opts.quiet, opts.rev);
+		if (rc == 2) {
+			/* undo exits 2 if it has no work to do */
+			goto docheck;
+		} else if (rc != 0) {
 			fprintf(stderr,
 			    "Undo failed, repository left locked.\n");
 			return (-1);
 		}
 	} else {
-		/* undo already runs check so we only need this case */
+docheck:	/* undo already runs check so we only need this case */
 		unless (opts.quiet) {
 			fprintf(stderr, "Running consistency check ...\n");
 		}
@@ -405,7 +409,7 @@ sfio(opts opts, int gzip, remote *r)
 	cmds[++n] = "-i";
 	if (opts.quiet) cmds[++n] = "-q";
 	cmds[++n] = 0;
-	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
+	pid = spawnvpio(&pfd, 0, 0, cmds);
 	if (pid == -1) {
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
@@ -499,7 +503,7 @@ after(int quiet, char *rev)
 	}
 	cmds[i = 0] = "bk";
 	cmds[++i] = "undo";
-	cmds[++i] = "-fsT";
+	cmds[++i] = "-fsC";
 	if (quiet) cmds[++i] = "-q";
 	cmds[++i] = p = malloc(strlen(rev) + 3);
 	sprintf(cmds[i], "-a%s", rev);

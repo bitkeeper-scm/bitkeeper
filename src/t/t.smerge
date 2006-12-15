@@ -648,7 +648,7 @@ echo OK
 
 # Test a fmtool fdiff output with :-Im -f
 echo $N verify an fdiff output format with no newline at the end.....$NL
-cd $HERE/project
+cd "$HERE/project"
 cat <<EOF > nonl.txt
 gca start
 1

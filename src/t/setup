@@ -21,12 +21,12 @@ cores()
 	if [ "$PLATFORM" = "WIN32" ]; then return; fi
 
 	OUT="$BK_REGRESSION/cores"
-        find "$BK_REGRESSION" -name core -print > "$OUT"
-        if [ -s "$OUT" ]
-        then    ls -l `cat "$OUT"`
-                file `cat "$OUT"`
-                exit 10
-        fi
+	find "$BK_REGRESSION" -name core -print > "$OUT"
+	if [ -s "$OUT" ]
+	then    ls -l `cat "$OUT"`
+		file `cat "$OUT"`
+		exit 10
+	fi
 }
 
 
@@ -75,16 +75,16 @@ EOF
 
 # Usage: make_repo type instance
 _make_repo() {
-	TYPE=$1
-	CF=$2
-	SFIO=$3
-	REPO=$BK_CACHE/${TYPE}
+	TYPE="$1"
+	CF="$2"
+	SFIO="$3"
+	REPO="$BK_CACHE/${TYPE}"
 
 	test -d "$REPO" && rm -rf "$REPO"		# should not happen
 	bk setup -a -f -c"$CF" "$REPO" || {
 		echo "Setup failed!"
 		exit 1
-        }
+	}
 	# Make a cached copy
         (cd "$REPO" && find . -type f | perl -e '
 		# Input is a file name per line
@@ -129,19 +129,19 @@ _make_repo() {
 
 # Usage get_cached_repo dir sfio
 _get_cached_repo() {
-	mkdir $1
-	cd $1
+	mkdir "$1" || exit 1
+	cd "$1" || exit 1
 	bk sfio -qm -i < "$2"
-	mkdir -p BitKeeper/tmp 		# because sfio does not copy dir
-	mkdir -p BitKeeper/deleted/SCCS 	
+	mkdir -p BitKeeper/tmp		# because sfio does not copy dir
+	mkdir -p BitKeeper/deleted/SCCS
 	bk _eula -a
 }
 
 # Get a commercial repo, use cache copy if available
 # Usage: commercial dir
 commercial() {
-	CF="$BK_CACHE"/commercial.config
-	SFIO=$BK_CACHE/commercial.sfio
+	CF="$BK_CACHE/commercial.config"
+	SFIO="$BK_CACHE/commercial.sfio"
 	test -f "$SFIO" || {
 		_commercial_config > "$CF"
 		_make_repo commercial "$CF" "$SFIO"
@@ -151,8 +151,8 @@ commercial() {
 
 fresh_commercial() {
 	_commercial_config > c
-	bk setup -a -f -cc $1 || { echo "Setup failed!"; exit 1; }
-	cd $1
+	bk setup -a -f -cc "$1" || { echo "Setup failed!"; exit 1; }
+	cd "$1"
 }
 
 echon() {
@@ -179,19 +179,19 @@ port() {
 
 # args: GOT WANT
 cmpfiles() {
-        $BKDIFF -q --ignore-trailing-cr "$1" "$2" || {
-                diff -u "$1" "$2"
-                exit 1
-        }
+	"$BKDIFF" -q --ignore-trailing-cr "$1" "$2" || {
+		diff -u "$1" "$2"
+		exit 1
+	}
 }
 
 # args: GOT WANT, does a byte for byte comparison
 checkfiles() {
 	cmp -s "$1" "$2" || {
 		echo "$1" and "$2" don\'t match
-                bk diff -u "$1" "$2"
-                exit 1
-        }
+		bk diff -u "$1" "$2"
+		exit 1
+	}
 }
 
 verbose() {
@@ -206,4 +206,4 @@ islink() {
 cd "$HERE" || exit 1
 
 # We need this because ksh on Solaris override $PATH from .profile
-PATH=$BK_PATH
+PATH="$BK_PATH"

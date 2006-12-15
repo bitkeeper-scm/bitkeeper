@@ -27,11 +27,11 @@ if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 
 echo $N  "checkout:edit with unedit" ...................................$NL
-cd $HERE/project/BitKeeper/etc
+cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config
 echo "checkout:edit" >> config
 bk delta $Q -yedit config
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk edit $Q foo.c
 echo new1 >> foo.c
 bk unedit foo.c

@@ -138,7 +138,7 @@ static int parse_file(char *explanation)
 
 	parse_explanation(buffer, sizeof(buffer),
 		diffline, sizeof(diffline), explanation);
-	pid = spawnvp_wPipe(argv, &outfd, 0);
+	pid = spawnvpio(&outfd, 0, 0, argv);
 	cat_diff(buffer, sizeof(buffer), diffline);
 	close(outfd);
 	outfd = 2;

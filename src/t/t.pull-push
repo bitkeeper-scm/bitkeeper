@@ -10,8 +10,8 @@
 #    modifications under any license.
 
 case "$HERE" in
-	[A-Z]:/*)	PREFIX=file://$HERE;;
-	*)		PREFIX=file:/$HERE;;
+	[A-Z]:/*)	PREFIX=file://"$HERE";;
+	*)		PREFIX=file:/"$HERE";;
 esac
 
 # Tests for pull, push, and clone.
@@ -38,72 +38,72 @@ cores
 
 echo $N Clone repository ............................................$NL
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
-mkdir -p $HERE/tst
-cd $HERE/tst
-bk clone $Q $HERE/project || { echo failed; exit 1; }
-[ -f $HERE/tst/project/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || \
+mkdir -p "$HERE/tst"
+cd "$HERE/tst"
+bk clone $Q "$HERE/project" || { echo failed; exit 1; }
+[ -f "$HERE/tst/project/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR' ] || \
 							{ echo failed; exit 1; }
-cd $HERE
-bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
+cd "$HERE"
+bk clone $Q "$HERE/project" "$HERE/copy" || { echo failed; exit 1; }
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
-[ x$parent = xfile:$SLASH$HERE/project ] || \
+[ "x$parent" = xfile:$SLASH"$HERE/project" ] || \
 					{ echo wrong parent $parent; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 echo OK
 
 echo $N Clone a nested repository ...................................$NL
-cd $HERE/project/src
-bk clone $Q $HERE/project sub_proj || exit 1
-if [ ! -d $HERE/project/src/sub_proj ]; then echo failed; exit 1; fi
-rm -rf $HERE/project/src/sub_proj
+cd "$HERE/project/src"
+bk clone $Q "$HERE/project" sub_proj || exit 1
+if [ ! -d "$HERE/project/src/sub_proj" ]; then echo failed; exit 1; fi
+rm -rf "$HERE/project/src/sub_proj"
 echo OK
 
 echo $N Pull with no changes in child ...............................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR' || exit 1
 echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -y2 'F!O#O$ B%A^R&RR(R)RR' || exit 1
 bk commit $Q -y2 || exit 1
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -t $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 echo OK
 if [ $DO_REMOTE = YES ]; then
- cd $HERE/copy
+ cd "$HERE/copy"
 
  echo $N Pull with explicit remote parent ............................$NL
- bk pull -t $Q localhost:$HERE/project > /dev/null 2>&1 ||
+ bk pull -t $Q localhost:"$HERE/project" > /dev/null 2>&1 ||
 							{ echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
- cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+ cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
  echo OK
 
  echo $N Pull with explicit remote parent and username ...............$NL
- cd $HERE/copy
- bk pull -t $Q $USER@localhost:$HERE/project > /dev/null 2>& 1 ||
+ cd "$HERE/copy"
+ bk pull -t $Q $USER@localhost:"$HERE/project" > /dev/null 2>& 1 ||
 							{ echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
- cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+ cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
  echo OK
 
  echo $N Pull with explicit local parent .............................$NL
- cd $HERE/copy
+ cd "$HERE/copy"
  HOSTNAME=`bk gethost -r`
- bk pull -t $Q $HOSTNAME:$HERE/project > /dev/null 2>&1 || 
+ bk pull -t $Q $HOSTNAME:"$HERE/project" > /dev/null 2>&1 || 
 							{ echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
- cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+ cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
  echo OK
  echo $N Pull with explicit local parent and username ................$NL
- bk pull -t $Q $USER@$HOSTNAME:$HERE/project > /dev/null 2>&1 ||
+ bk pull -t $Q $USER@$HOSTNAME:"$HERE/project" > /dev/null 2>&1 ||
 							{ echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
@@ -127,7 +127,7 @@ bk get $Q -e bar.c
 echo line three >>bar.c
 bk delta $Q -ythree bar.c
 bk commit $Q -ythree
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk get $Q -e bar.c
 mv bar.c bar.x
 echo line zero >bar.c
@@ -135,7 +135,7 @@ cat bar.x >>bar.c
 rm -f bar.x
 bk delta $Q -yzero
 bk commit $Q -y0
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -t $Q || { echo failed; exit 1; }
 cd src
 cat > X <<EOF
@@ -152,39 +152,39 @@ bk clean
 
 echo $N Push with no upstream deltas ................................$NL
 bk push $Q || { echo failed; exit 1; }
-mv ref-bar.c $HERE/project/src
-cd $HERE/project/src
+mv ref-bar.c "$HERE/project/src"
+cd "$HERE/project/src"
 bk get $Q bar.c
 cmp -s ref-bar.c bar.c
 [ $? -eq 0 ] || { echo failed; diff ref-bar.c bar.c; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 echo OK
 bk clean 
 rm -f ref-bar.c
 
 echo $N Push with an unrelated upstream delta .......................$NL
-cd $HERE/project
+cd "$HERE/project"
 date > stamp
 bk delta $Q -i stamp
 bk commit $Q -ytime
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk get $Q -e h.h
 sed 's/h/qwerty/' <h.h >h.x
 mv h.x h.h
 bk delta $Q -ydvorak h.h
 cd ..
 bk commit $Q -yzxcvbnm
-bk parent $Q $HERE/copy || exit 1
-bk push $Q -t -a $HERE/project || { echo push w/ autopull failed; exit 1; }
-bk parent $Q $HERE/project || exit 1
+bk parent $Q "$HERE/copy" || exit 1
+bk push $Q -t -a "$HERE/project" || { echo push w/ autopull failed; exit 1; }
+bk parent $Q "$HERE/project" || exit 1
 bk findkey $KEY > foo
 if [ ! -s foo ]; then echo bad push; exit 1; fi
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 echo OK
 
 echo $N Push with a conflicting upstream delta ......................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk get $Q -e h.h
 sed 's/h/yuhjklbn/' <h.h >h.x
 mv h.x h.h
@@ -192,9 +192,9 @@ bk delta $Q -yrogue h.h
 cd ..
 bk commit $Q -yrogue
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
-cd $HERE
+cd "$HERE"
 tar cf PUSH.tar project copy
-cd $HERE/copy
+cd "$HERE/copy"
 _BK_PREVENT_RESOLVE_RERUN=1 bk push -t -a $Q 2> resolve.out
 test $? -ne 0 || { echo failed; cat resolve.out; exit 1; }
 grep -q 'unresolved conflicts, nothing is applied' resolve.out || {
@@ -202,7 +202,7 @@ grep -q 'unresolved conflicts, nothing is applied' resolve.out || {
 	cat resolve.out
 	exit 1
 }
-KEY2="`bk prs -hd:KEY: -r+ $HERE/project/ChangeSet`"
+KEY2="`bk prs -hd:KEY: -r+ "$HERE/project/ChangeSet"`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 
@@ -225,16 +225,16 @@ if [ "X$BK_RESOLVE_MERGEPROG" = "Xmerge" ]; then
 	target=5
 fi
 [ $L -eq $target ] || { echo merge failed; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
-cd $HERE
+cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
+cd "$HERE"
 cp -rp project project2
 cp -rp project project3
 cd copy
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 bk push $Q || { echo failed; exit 1; }
-KEY2="`cd $HERE/project && bk prs -hd:KEY: -r+ ChangeSet`"
+KEY2="`cd "$HERE/project" && bk prs -hd:KEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 echo OK
 
 echo $N Check merge commit comment ..................................$NL
@@ -253,103 +253,103 @@ echo OK
 
 if [ $DO_REMOTE = YES -a X$NO_TTY = X ]; then
  echo $N Push with explicit remote parent ............................$NL
- cd $HERE/copy
- bk push $Q localhost:$HERE/project2 > /dev/null 2>&1 ||
+ cd "$HERE/copy"
+ bk push $Q localhost:"$HERE/project2" > /dev/null 2>&1 ||
 							{ echo failed; exit 1; }
- KEY2="`cd $HERE/project2 && bk prs -hd:KEY: -r+ ChangeSet`"
+ KEY2="`cd "$HERE/project2" && bk prs -hd:KEY: -r+ ChangeSet`"
  [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
- cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+ cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
  echo OK
 else
  echo Push with explicit remote parent ............................skipped
 fi
 
 echo $N Push with conflict in uncomitted remote delta ...............$NL
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 sed 's/delta two/delta two-local/' 'F!O#O$ B%A^R&RR(R)RR'  > x
 mv x 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -y 'F!O#O$ B%A^R&RR(R)RR'
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 sed 's/delta two/delta two-remote/' 'F!O#O$ B%A^R&RR(R)RR'  > x
 mv x 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -y 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -ytest
-bk push $HERE/copy > push.out 2>&1
+bk push "$HERE/copy" > push.out 2>&1
 grep -q "has uncommitted changes" push.out
 if [ $? -ne 0 ]; then echo failed; cat push.out; exit 1; fi
 echo OK
 
 echo $N pull with a delete event ....................................$NL
-bk clone $Q $HERE/project $HERE/copy2
-cd $HERE/project/src
+bk clone $Q "$HERE/project" "$HERE/copy2"
+cd "$HERE/project/src"
 bk rm 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -ydelete
-cd $HERE/copy2/src
+cd "$HERE/copy2/src"
 bk rm 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -ydelete2
-bk pull $Q -t $HERE/project || { echo failed; exit 1; }
+bk pull $Q -t "$HERE/project" || { echo failed; exit 1; }
 echo OK
 
 echo $N pull with a mvdir event .....................................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk mvdir src src2/src3
 bk commit $Q -ymvdir
-cd $HERE/copy2
-bk pull $Q -t $HERE/project
+cd "$HERE/copy2"
+bk pull $Q -t "$HERE/project"
 if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
 if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N push to a read locked repository should fail ................$NL
-bk lock -tr $HERE/project >L &
-bk lock -L $HERE/project
+bk lock -tr "$HERE/project" >L &
+bk lock -L "$HERE/project"
 LOCKURL=`cat L`
-bk push -c0 $HERE/project > OUT 2>&1
+bk push -c0 "$HERE/project" > OUT 2>&1
 grep -q 'Unable to lock repository for update' OUT || {
 	echo failed
 	cat OUT
 	exit 1
 }
 bk _kill $LOCKURL
-cd $HERE/project
+cd "$HERE/project"
 bk lock -U
 echo OK
 
 echo $N push to unrelated project should error ......................$NL
-cd $HERE
+cd "$HERE"
 fresh_commercial unrelated
-cd $HERE/project
-bk push $HERE/unrelated > push.out 2>&1
+cd "$HERE/project"
+bk push "$HERE/unrelated" > push.out 2>&1
 grep -q "trying to synchronize with an unrelated" push.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N pull from unrelated project should error ....................$NL
-cd $HERE/project
-bk pull $HERE/unrelated > pull.out 2>&1
+cd "$HERE/project"
+bk pull "$HERE/unrelated" > pull.out 2>&1
 grep -q "trying to pull from an unrelated" pull.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N pull from read-only server should work fine .................$NL
-cd $HERE/project
+cd "$HERE/project"
 echo hi > test
 bk new $Q test
 bk commit $Q -ytt || exit 1
 chmod -w SCCS
-cd $HERE/copy2
+cd "$HERE/copy2"
 bk pull $Q || {
 	echo pull failed
-	chmod +w $HERE/project/SCCS
+	chmod +w "$HERE/project/SCCS"
 	exit 1
 }
-chmod +w $HERE/project/SCCS
+chmod +w "$HERE/project/SCCS"
 echo OK
 
 echo $N Create bad change and pull should fail ......................$NL
-cd $HERE
+cd "$HERE"
 commercial badsrc
 cd ..
 bk clone $Q badsrc badclone
@@ -401,12 +401,12 @@ grep -q "checksum in the patch for the ChangeSet" ERR || {
 echo OK
 
 echo $N make sure pull normalize file url ...........................$NL
-bk pull ../././project > $HERE/pull.out 2> /dev/null
-grep -q "$PREFIX/project" $HERE/pull.out 
+bk pull ../././project > "$HERE/pull.out" 2> /dev/null
+grep -q "$PREFIX/project" "$HERE/pull.out" 
 STATUS=$?
 test $STATUS = 0 || {
 	test "$PLATFORM" = "WIN32" && {
-		grep -q -i "$PREFIX/project" $HERE/pull.out
+		grep -q -i "$PREFIX/project" "$HERE/pull.out"
 		STATUS=$?
 	}
 }
@@ -437,7 +437,7 @@ grep -q "Cannot resolve host 'badhostname'." ERR || {
 echo OK
 
 # Set up next two tests
-cd $HERE
+cd "$HERE"
 commercial pull-self
 cd ..
 cp -r pull-self push-self

@@ -42,20 +42,20 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 echo $N Clone and create gfile conflict .............................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 cd copy
 echo I am the CONFLICT > CONFLICT
-cd $HERE/project
+cd "$HERE/project"
 bk mv src/foo.c CONFLICT
 bk commit $Q -ywhatever 
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -t -R $Q
-cd $HERE
+cd "$HERE"
 tar cf TAR copy 2> /dev/null
 echo OK
 echo $N Resolve by removing local conflict ..........................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf TAR
 cd copy
@@ -87,7 +87,7 @@ then	echo bad contents in CONFLICT
 fi
 echo OK
 echo $N Resolve by moving local conflict ............................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf TAR
 cd copy
@@ -125,18 +125,18 @@ fi
 echo OK
 
 echo $N Create directory conflict ...................................$NL
-cd $HERE/copy
+cd "$HERE/copy"
 mkdir DIRECTORY
-cd $HERE/project
+cd "$HERE/project"
 bk mv src/bar.c DIRECTORY
 bk commit $Q -ywhatever 
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -t -R $Q
-cd $HERE
+cd "$HERE"
 tar cf TAR copy 2> /dev/null
 echo OK
 echo $N Resolve by removing local conflict ..........................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf TAR
 cd copy
@@ -168,7 +168,7 @@ then	echo bad contents in DIRECTORY
 fi
 echo OK
 echo $N Resolve by moving local conflict ............................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf TAR
 cd copy

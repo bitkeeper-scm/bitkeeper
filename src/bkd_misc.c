@@ -2,6 +2,7 @@
  * Simple TCP server.
  */
 #include "bkd.h"
+#include "cmd.h"
 
 int
 cmd_eof(int ac, char **av)
@@ -165,4 +166,137 @@ cmd_check(int ac, char **av)
 	fflush(stdout);
 	out("@END@\n");
 	return (rc);
+}
+
+int
+cmd_bk(int ac, char **av)
+{
+	int	status, fd, i, bytes = 0;
+	char	*tmp = 0;
+	int	oldfd0, oldfd1, oldfd2;
+	int	fd1, fd2;
+	int	p[2];
+	pid_t	pid;
+	fd_set	rfds;
+	CMD	*cmd;
+	char	buf[8192];	/* must match remote.c:doit()/buf */
+
+	/*
+	 * We only allow remote commands if the bkd told us that was OK.
+	 */
+	unless (Opts.unsafe) {
+		for (i = 1; av[i] && (av[i][0] == '-'); i++);
+		unless (av[i] &&
+		    (cmd = cmd_lookup(av[i], strlen(av[i]))) &&
+		    cmd->remote) {
+			out("ERROR-remote commands are not enabled.\n");
+			return (1);
+		}
+	}
+
+	/*
+	 * Don't give them a huge hole through which to walk
+	 * By the time we get here we need to be at a repo root and we
+	 * need to insure that we don't open files not in this repo.
+	 * XXX - probably don't need this and probably should remove
+	 * after review.
+	 */
+	unless (isdir(BKROOT)) {
+		out("ERROR-not at repository root\n");
+		return (1);
+	}
+	putenv("BK_NO_CMD_FALL_THROUGH=1");
+	putenv("_BK_REMOTE_CAREFUL=1");
+
+	tmp = bktmp(0, "stdin");
+	fd = open(tmp, O_CREAT|O_RDWR, 0600);
+	assert(fd != -1);
+	while (1) {
+		unless (getline(0, buf, sizeof(buf)) > 0) {
+			out("ERROR-no stdin information\n");
+err:			close(fd);
+			unlink(tmp);
+			free(tmp);
+			return (1);
+		}
+		unless (sscanf(buf, "@STDIN=%u@", &bytes) == 1) {
+			out("ERROR-bad input specification: ");
+			out(buf);
+			out("\n");
+			goto err;
+		}
+		unless (bytes) break;
+		while ((i = read(0, buf, min(sizeof(buf), bytes))) > 0) {
+			writen(fd, buf, i);
+			bytes -= i;
+		}
+		if (bytes) {
+			out("ERROR-input truncated\n");
+			goto err;
+		}
+	}
+	lseek(fd, 0, SEEK_SET);
+	/* setup stdin */
+	oldfd0 = dup(0);
+	dup2(fd, 0);
+	close(fd);
+
+	/* read stdout from a pipe */
+	tcp_pair(p);
+	oldfd1 = dup(1);
+	dup2(p[1], 1);
+	close(p[1]);
+	make_fd_uninheritable(p[0]);
+	fd1 = p[0];
+
+	/* read stderr from a pipe */
+	tcp_pair(p);
+	oldfd2 = dup(2);
+	dup2(p[1], 2);
+	close(p[1]);
+	make_fd_uninheritable(p[0]);
+	fd2 = p[0];
+
+	pid = spawnvp(P_NOWAIT, av[0], av);
+	dup2(oldfd0, 0);
+	close(oldfd0);
+	dup2(oldfd1, 1);
+	close(oldfd1);
+	dup2(oldfd2, 2);
+	close(oldfd2);
+
+	while (fd1 || fd2) {
+		FD_ZERO(&rfds);
+		if (fd1) FD_SET(fd1, &rfds);
+		if (fd2) FD_SET(fd2, &rfds);
+		if (select(max(fd1, fd2)+1, &rfds, 0, 0, 0) < 0) break;
+		if (FD_ISSET(fd1, &rfds)) {
+			if ((i = read(fd1, buf, sizeof(buf))) > 0) {
+				printf("@STDOUT=%u@\n", i);
+				fwrite(buf, 1, i, stdout);
+			} else {
+				close(fd1);
+				fd1 = 0;
+			}
+		}
+		if (FD_ISSET(fd2, &rfds)) {
+			if ((i = read(fd2, buf, sizeof(buf))) > 0) {
+				printf("@STDERR=%u@\n", i);
+				fwrite(buf, 1, i, stdout);
+			} else {
+				close(fd2);
+				fd2 = 0;
+			}
+		}
+	}
+	if ((waitpid(pid, &status, 0) > 0) && WIFEXITED(status)) {
+		i = WEXITSTATUS(status);
+	} else {
+		i = 3;
+	}
+	printf("@EXIT=%d@\n", i);
+	fflush(stdout);
+	unlink(tmp);
+	free(tmp);
+	return (i);
 }

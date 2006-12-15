@@ -40,23 +40,9 @@ remote_parse(const char *url, u32 flags)
 		r->httppath =
 		    (flags & REMOTE_BKDURL) ? "/cgi-bin/web_bkd" : r->path;
 	} else if (strneq("rsh://", p, 6)) {
-		r = url_parse(p + 6, 0);
-		if (r) {
-			r->type = ADDR_RSH;;
-			r->port = 0; /*
-				      * Non-standard rsh port
-				      * not supported yet
-				      */
-		}
+		if (r = url_parse(p + 6, 0)) r->type = ADDR_RSH;
 	} else if (strneq("ssh://", p, 6)) {
-		r = url_parse(p + 6, 0);
-		if (r) {
-			r->type = ADDR_SSH;;
-			r->port = 0; /*
-				      * Non-standard ssh port
-				      * not supported yet
-				      */
-		}
+		if (r = url_parse(p + 6, 0)) r->type = ADDR_SSH;;
 	} else {
 		if (strneq("file://", p, 7)) {
 			r = file_parse(p);
@@ -70,7 +56,13 @@ remote_parse(const char *url, u32 flags)
 			r = nfs_parse(p);
 		}
 	}
-	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
+	if (echo && r) {
+	    	fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
+		if (r->port) fprintf(stderr, "port=%u\n", r->port);
+		if (r->user) fprintf(stderr, "user=%s\n", r->user);
+		if (r->host) fprintf(stderr, "host=%s\n", r->host);
+		if (r->path) fprintf(stderr, "path=%s\n", r->path);
+	}
 	if (freeme) free(freeme);
 	if (getenv("BK_TRACE_REMOTE")) r->trace = 1;
 	return (r);
@@ -134,7 +126,8 @@ nfs_parse(char *p)
  * host[:port]:dospath	(e.g. bitmover.com:80:C:/full_path/to/repo)
  * user@host[//path]
  * user@host[/path]
- * user@host[:path]
+ * user@host[:path]	(if path[0] is not a digit)
+ * user@host[:port][:path]
  * host:port
  * host
  *
@@ -145,71 +138,67 @@ private	remote *
 url_parse(char *p, int default_port)
 {
 	remote	*r;
-	char	*s, *e;
-	char	sav;
+	char	*t = p;
+	char	save;
 
 	unless (*p) return (0);
 	new(r);
 	r->rfd = r->wfd = -1;
+	r->port = default_port;
 
-	/* find end of hostname, start of pathname */
-	unless (e = strchr(p, '/')) e = p + strlen(p);
-	if ((s = strchr(p, '@')) && (s < e)) {
+	/* If there is a user, grab that */
+	if (strchr(p, '@')) {
 		/*
-		 * user@host[:path] or
-		 * user@host[/path]
+		 * Don't allow bogus crud in the user name.
+		 * What I'm trying to catch here is a path that looks
+		 * like a user name.
 		 */
-		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
-		s = p;
-		while (*s) {
-			if ((*s == ':') || (*s == '/')) break;
-			s++;
+		for (t = p; *t != '@'; t++) {
+			if (*t == '/') {
+				goto not_a_user;
+			}
 		}
-		if (*s) {
-			sav = *s;
-			*s = 0; r->host = strdup(p); p = s + 1;
-			*s = sav;
-			r->path = strdup(p);
-		} else {
-			r->host = strdup(p);
+		*t = 0;
+		r->user = strdup(p);
+		*t = '@';
+		p = t + 1;
+	}
+not_a_user:
+
+	/*
+	 * Windows supposedly uses _ in hostnames.
+	 * (cf http://en.wikipedia.org/wiki/Hostname)
+	 */
+#define	ishost(c)	(isalnum(c) || (c == '-') || (c == '_') || (c == '.'))
+
+	/* There has to be a host name */
+	unless (ishost(*p)) {
+error:		if (r->user) free(r->user);
+		if (r->host) free(r->host);
+		if (r->path) free(r->path);
+		free(r);
+		return (0);
+	}
+
+	for (t = p; ishost(*t); t++);
+	save = *t;
+	*t = 0;
+	r->host = strdup(p);
+	*t = save;
+	p = t;
+
+	/* There may be a port which must be all digits followed by [:/] */
+	if ((*p == ':') && isdigit(p[1])) {
+		for (t = p+1; isdigit(*t); t++);
+		if ((*t == ':') || (*t == '/') || (*t == 0)) {
+			r->port = atoi(++p);
+			p = t;
 		}
-	} else if ((s = strchr(p, ':')) && isdigit(s[1]) && (s < e)) {
-		/*
-		 * host:port[/path]
-		 */
-		*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
-		r->port = atoi(p);
-		/*
-		 * Skip over port number to get to the path part.
-		 * Note that the path may be in drive:path format if the URL
-		 * destinaltion is a Win32 box
-		 */
-		while (isdigit(*p)) p++;
-		if ((*p == ':') || (*p == '/')) p++; /* skip field separator */
-		if (*p) r->path = strdup(p);
-	} else {
-		/*
-		 * host/path or
-		 * host:path or
-		 * path
-		 */
-		s = p;
-		while (*s) {
-			if ((*s == ':') || (*s == '/')) break;
-			s++;
-		}
-		if (*s) {
-			sav = *s;
-			*s++ = 0;
-			r->port = default_port;
-			r->host = strdup(p);
-			r->path = strdup(s);
-			s[-1] = sav;
-		} else {
-			r->port = default_port;
-			r->host = strdup(p);
-			r->path = 0;
-		}
+	}
+
+	if (*p) {
+		unless ((*p == ':') || (*p == '/')) goto error;
+		if (p[1]) r->path = strdup(++p);
 	}
 	return (r);
 }
@@ -245,6 +234,7 @@ remote_unparse(remote *r)
 			 * If default port, skip
 			 */
 			if (((r->type == ADDR_BK) && (r->port != BK_PORT))  ||
+			    ((r->type == ADDR_SSH) && (r->port != SSH_PORT)) ||
 			    ((r->type == ADDR_HTTP) && (r->port != WEB_PORT))) {
 				strcat(buf, ":");
 				sprintf(port, "%u", r->port);
@@ -359,12 +349,13 @@ bkd(int compress, remote *r)
 	char	*t, *freeme = 0;
 	char	*remsh;
 	char	*remopts;
-	char	*cmd[100];
 	char	**bkrsh = 0;
 	int	i, j;
 	pid_t	p = -1;
+	char	*cmd[100];
+	char	port[6];
 
-	if (r->port) {
+	if (r->port && (r->type != ADDR_SSH)) {
 		assert(r->host);
 		return (bkd_tcp_connect(r));
 	}
@@ -414,6 +405,12 @@ bkd(int compress, remote *r)
 			cmd[++i] = "-l";
 			cmd[++i] = r->user;
 		}
+		if ((r->type == ADDR_SSH) && r->port) {
+			assert(sizeof(r->port) == 2);
+			sprintf(port, "%u", r->port);
+			cmd[++i] = "-p";
+			cmd[++i] = port;
+		}
 
 		/*
 		 * This cute hack should work if you have a sh or a csh.
@@ -425,12 +422,12 @@ bkd(int compress, remote *r)
 		unless (r->loginshell) {
 			if (streq(r->host, "localhost")
 			    && (t = getenv("PATH"))) {
-				freeme = malloc(strlen(t) + 20);
-				sprintf(freeme, "PATH=%s", t);
+				freeme = aprintf("'PATH=%s'", t);
 				cmd[++i] = "env";
 				cmd[++i] = freeme;
 			}
 			cmd[++i] = "bk bkd";
+			if (r->remote_cmd) cmd[++i] = "-U";
 		} else if (streq(cmd[0], "rsh") || streq(cmd[0], "remsh")) {
 			fprintf(stderr,
 			    "Warning: rsh doesn't work with bkd loginshell\n");
@@ -438,16 +435,17 @@ bkd(int compress, remote *r)
 		cmd[++i] = 0;
 	} else {
 		putenv("_BK_BKD_IS_LOCAL=1");
-		cmd[0] = "bk";
-		cmd[1] = "bkd";
-		cmd[2] = 0;
+		cmd[i=0] = "bk";
+		cmd[++i] = "bkd";
+		if (r->remote_cmd) cmd[++i] = "-U";
+		cmd[++i] = 0;
     	}
 	if (getenv("BK_DEBUG")) {
 		for (i = 0; cmd[i]; i++) {
 			fprintf(stderr, "CMD[%d]=%s\n", i, cmd[i]);
 		}
 	}
-	if ((p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd), BIG_PIPE)) < 0) {
+	if ((p = spawnvpio(&(r->wfd), &(r->rfd), 0, cmd)) < 0) {
 		fprintf(stderr, "%s: Command not found\n", cmd[0]);
 	}
 err:	if (freeme) free(freeme);

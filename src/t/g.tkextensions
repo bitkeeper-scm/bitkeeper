@@ -11,24 +11,25 @@
 
 # Copyright (c) 2004 Oscar Bonilla
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
-OUT=$HERE/out
-CONFIG=`bk dotbk`/config-gui
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+CONFIG="`bk dotbk`/config-gui"
 
 echo $N 'Checking for Tktable.........................................' $NL
-bk guitest >$OUT 2>&1 <<'EOF'
+bk guitest >"$OUT" 2>&1 <<'EOF'
 	package require Tktable
 	exit 0
 EOF
 if [ $? -ne 0 ]; then 
     echo failed
+    cat "$OUT"
     exit 1 
 fi
 echo "OK"
 
 echo $N 'Checking for BWidget.........................................' $NL
-bk guitest >$OUT 2>&1 <<'EOF'
+bk guitest >"$OUT" 2>&1 <<'EOF'
     package require BWidget
     exit 0
 EOF

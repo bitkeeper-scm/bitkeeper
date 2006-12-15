@@ -30,7 +30,7 @@ d
 END
 bk new $Q foo
 bk commit $Q -ystart
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy || exit 1
 cd project
 bk edit $Q foo
@@ -42,7 +42,7 @@ c
 END
 bk ci $Q -ymod1 foo
 bk commit $Q -ymaster
-cd $HERE/copy
+cd "$HERE/copy"
 bk edit $Q foo
 cat <<END > foo
 b

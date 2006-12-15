@@ -1227,11 +1227,16 @@ _install()
 	DLLOPTS=""
 	DOSYMLINKS=NO
 	CONFIG=
+	REGSHELLX=NO
 	while getopts dfvlnsSu opt
 	do
 		case "$opt" in
-		l) DLLOPTS="-l $DLLOPTS";; # enable bkshellx for local drives
-		n) DLLOPTS="-n $DLLOPTS";; # enable bkshellx for network drives
+		l) DLLOPTS="-l $DLLOPTS" # enable bkshellx for local drives
+		   REGSHELLX=YES
+		   ;;
+		n) DLLOPTS="-n $DLLOPTS" # enable bkshellx for network drives
+		   REGSHELLX=YES
+		   ;;
 		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
 		d) CRANKTURN=YES;;# do not change permissions, dev install
 		f) FORCE=1;;	# force
@@ -1247,7 +1252,7 @@ _install()
 		echo "usage: bk install [-dfSv] <destdir>"
 		exit 1
 	}
-	test X$BK_REGRESSION != X && CRANKTURN=YES
+	test X"$BK_REGRESSION" != X && CRANKTURN=YES
 
 	DEST="$1"
 	SRC=`bk bin`
@@ -1375,8 +1380,8 @@ _install()
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
 		test $VERBOSE = YES && echo "Updating registry and path ..."
-		gui/bin/tclsh gui/lib/registry.tcl $UPGRADE "$DEST"
-		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
+		gui/bin/tclsh gui/lib/registry.tcl $UPGRADE $DLLOPTS "$DEST"
+		test $REGSHELLX = YES && __register_dll "$DEST"/BkShellX.dll
 	fi
 
 	test $CRANKTURN = YES && exit 0
@@ -1658,6 +1663,10 @@ then	cmd=_$1
 	$cmd "$@"
 	exit $?
 fi
+test -z "$BK_NO_CMD_FALL_THROUGH" || {
+	echo "bk: $1 is not a BitKeeper command" 1>&2
+	exit 1
+}
 cmd=$1
 shift
 

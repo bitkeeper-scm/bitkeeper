@@ -6,7 +6,7 @@ bk commit $Q -ywhatever file
 echo OK
 
 echo $N Check superset with no changes...............................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project superset
 cd superset
 bk superset > ../GOT
@@ -59,7 +59,7 @@ bk parent -q ../project
 # - any subrepos with any of the above
 # but allows subrepos with no changes
 echo $N Check superset with an extra file ...........................$NL
-cd $HERE/superset
+cd "$HERE/superset"
 echo FOO > FOO
 bk superset > ../GOT
 test $? -ne 1 && {
@@ -203,7 +203,7 @@ bk superset > ../GOT || {
 	cat ../GOT
 	exit 1
 }
-bk clone $Q $HERE/project subrepo
+bk clone $Q "$HERE/project" subrepo
 bk superset > ../GOT
 test $? -ne 0 && {
 	echo superset with no changes should exit 0
@@ -241,7 +241,7 @@ echo $N Check superset with a dirty subrepo with no parent ..........$NL
 cd subrepo
 bk parent -qr
 cd ..
-BK_SHOWPROC=$HERE/LOG bk superset > ../GOT 2>&1
+BK_SHOWPROC="$HERE/LOG" bk superset > ../GOT 2>&1
 test $? -ne 1 && {
 	echo superset with dirty subrepo should exit 1
 	exit 1
@@ -253,7 +253,7 @@ grep -q '=== Subrepository subrepo ===' ../GOT || {
 grep -q '    === Extra files ===' ../GOT || {
 	echo superset with dirty subrepo should have extra files title
 	cat ../GOT
-	cat $HERE/LOG
+	cat "$HERE/LOG"
 	cd subrepo
 	bk sfiles -ax
 	exit 1
@@ -290,7 +290,7 @@ grep -q '=== Local changesets ===' ../GOT || {
 echo OK
 
 echo $N Check superset with a local cset with named parent ..........$NL
-bk clone $Q $HERE/project $HERE/other
+bk clone $Q "$HERE/project" "$HERE/other"
 bk superset ../other > ../GOT
 test $? -ne 1 && {
 	echo superset with local changeset should exit 1

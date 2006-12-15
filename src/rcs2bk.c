@@ -302,7 +302,7 @@ verifyFiles(RCS *rcs, rdelta *d, char *g)
 	if (exists(g)) unlink(g);	// DANGER
 	/* our version of diff cannot handlle "-" */
 	bktmp(tmpfile, "rcs2bk");
-	cmd = aprintf("%s -q '%s' '-p%s' '%s,v' > %s",
+	cmd = aprintf("'%s' -q '%s' '-p%s' '%s,v' > '%s'",
 	    co_prog, rcs->kk, d->rev, g, tmpfile);
 	system(cmd);
 	free(cmd);

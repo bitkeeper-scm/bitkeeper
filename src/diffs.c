@@ -140,7 +140,7 @@ usage:			system("bk help -s diffs");
 		}
 		if (flags & GET_LINENAME) mav[++i] = "-r";
 		mav[++i] = 0;
-		if ((pid = spawnvp_wPipe(mav, &fd, BIG_PIPE)) == -1) {
+		if ((pid = spawnvpio(&fd, 0, 0, mav)) == -1) {
 			perror("mdiff");
 			exit(1);
 		}

@@ -28,7 +28,7 @@ echo OK
 echo $N test idcache update in chaining rename ......................$NL
 # commit the config file
 mkdir src
-cd $HERE/project/src
+cd "$HERE/project/src"
 echo foo1 > foo.c
 bk ci $Q -i foo.c
 bk mv foo.c bar.c
@@ -50,11 +50,11 @@ bk -r check -a || exit 1
 echo OK
 
 echo $N corrupt the idcache, should rebuild .........................$NL
-cd $HERE/project
+cd "$HERE/project"
 echo "hi mom" > X
 cat X BitKeeper/etc/SCCS/x.id_cache > Y
 mv Y BitKeeper/etc/SCCS/x.id_cache
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk -r check -a 2>OUT || exit 1
 grep -q 'Rebuilding idcache' OUT || {
 	echo Bad error message
@@ -65,39 +65,39 @@ echo OK
 
 bk sane
 echo $N No write permission on idcache ..............................$NL
-cd $HERE/project
+cd "$HERE/project"
 echo "hi mom" > X
 cat X BitKeeper/etc/SCCS/x.id_cache > Y
 cp Y BitKeeper/etc/SCCS/x.id_cache
-chmod -w $HERE/project/BitKeeper/etc/SCCS/x.id_cache
-cd $HERE/project/src
+chmod -w "$HERE/project/BitKeeper/etc/SCCS/x.id_cache"
+cd "$HERE/project/src"
 bk -r check -a 2>OUT || exit 1
 grep -q 'Rebuilding idcache' OUT || {
 	echo Bad error message
 	cat OUT
 	exit 1
 }
-grep 'hi mom' $HERE/project/BitKeeper/etc/SCCS/x.id_cache && {
+grep 'hi mom' "$HERE/project/BitKeeper/etc/SCCS/x.id_cache" && {
 	echo failed to rewrite cache
-	cat `bk root`/BitKeeper/etc/SCCS/x.id_cache
+	cat "`bk root`"/BitKeeper/etc/SCCS/x.id_cache
 	exit 1
 }
 echo OK
 
 echo $N No write permission on BitKeeper/etc/SCCS ...................$NL
-cd $HERE/project
+cd "$HERE/project"
 echo "hi mom" > X
 cat X BitKeeper/etc/SCCS/x.id_cache > Y
 cp Y BitKeeper/etc/SCCS/x.id_cache
-chmod -w $HERE/project/BitKeeper/etc/SCCS
-cd $HERE/project/src
+chmod -w "$HERE/project/BitKeeper/etc/SCCS"
+cd "$HERE/project/src"
 bk -r check -a 2>OUT && {
-	chmod +w `bk root`/BitKeeper/etc/SCCS
+	chmod +w "`bk root`"/BitKeeper/etc/SCCS
 	echo failed to error about write permission
 	cat OUT
 	exit 1
 }
-chmod +w $HERE/project/BitKeeper/etc/SCCS
+chmod +w "$HERE/project/BitKeeper/etc/SCCS"
 grep -q 'no write permission' OUT || {
 	echo Bad error message
 	cat OUT
@@ -107,7 +107,7 @@ echo OK
 
 echo $N Check for extra idcache rebuild for new files ...............$NL
 bk idcache 2>/dev/null
-cd $HERE
+cd "$HERE"
 bk clone $Q project clone
 cd project
 echo I hope not > rebuild
@@ -123,11 +123,11 @@ grep -q 'Rebuilding idcache' OUT && {
 echo OK
 
 echo $N Make sure we catch duplicate files ..........................$NL
-cd $HERE/project
+cd "$HERE/project"
 echo catch me > duplicate
 bk new $Q duplicate
 bk commit $Q -ywhatever
-cp SCCS/s.duplicate $HERE/clone/SCCS/s.catch_me
+cp SCCS/s.duplicate "$HERE/clone/SCCS/s.catch_me"
 cd ../clone
 bk pull >OUT 2>&1 && {
 	echo failed to exit non zero

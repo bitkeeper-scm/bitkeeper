@@ -117,6 +117,7 @@ resolve_main(int ac, char **av)
 		opts.from_pullpush = 1;
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
+	opts.fsync = bk_fsync();
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind++]);
 	while (av[optind]) {
 		opts.includes = addLine(opts.includes, strdup(av[optind++]));
@@ -2406,7 +2407,7 @@ pass4_apply(opts *opts)
 	save = fopen(BACKUP_LIST, "w+");
 	assert(save);
 	unlink(PASS4_TODO);
-	sprintf(key, "bk sfiles %s > " PASS4_TODO, ROOT2RESYNC);
+	sprintf(key, "bk sfiles '%s' > " PASS4_TODO, ROOT2RESYNC);
 	if (system(key) || !(f = fopen(PASS4_TODO, "r+")) || !save) {
 		fprintf(stderr, "Unable to create|open " PASS4_TODO);
 		fclose(save);
@@ -2683,6 +2684,7 @@ copyAndGet(opts *opts, char *from, char *to)
 	} else {
 		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
 	}
+	if (opts->fsync) fsync(s->fd);
 	sccs_free(s);
 	return (0);
 }

@@ -57,7 +57,7 @@ echo foo-new3 > foo.c
 bk ci $Q -y foo.c
 bk ounpark 2> /dev/null 1>&2
 # make sure unpark does not delete the parkfile
-if [ ! -f $HERE/project/BitKeeper/tmp/parkfile-1 ]; then echo failed; exit 1; fi
+if [ ! -f "$HERE/project/BitKeeper/tmp/parkfile-1" ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check park/unpark with offset diff ..........................$NL
 bk clean foo.c

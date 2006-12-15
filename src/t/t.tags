@@ -100,7 +100,7 @@ echo OK
 }
 
 echo $N Add old style tags ..........................................$NL
-cd $HERE
+cd "$HERE"
 cp -rp project tags
 cd tags
 _BK_NO_TAG_GRAPH=YES bk tag $Q OLD
@@ -163,22 +163,22 @@ bk admin -hhhq || exit 1
 echo OK
 
 echo $N Clone repository ............................................$NL
-cd $HERE
+cd "$HERE"
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
-bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
-bk clone $Q $HERE/project $HERE/copy2 || { echo failed; exit 1; }
-bk clone $Q $HERE/project $HERE/copy3 || { echo failed; exit 1; }
+bk clone $Q "$HERE/project" "$HERE/copy" || { echo failed; exit 1; }
+bk clone $Q "$HERE/project" "$HERE/copy2" || { echo failed; exit 1; }
+bk clone $Q "$HERE/project" "$HERE/copy3" || { echo failed; exit 1; }
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
-[ x$parent = xfile:$SLASH$HERE/project ] || \
+[ "x$parent" = xfile:$SLASH"$HERE/project" ] || \
 					{ echo wrong parent $parent; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 echo OK
 
 echo $N Create a changeset in compat mode with a tag ................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -fywhatever 'F!O#O$ B%A^R&RR(R)RR'
@@ -199,7 +199,7 @@ grep -q '^.cS[0-9]' SCCS/s.ChangeSet && {
 echo OK
 
 echo $N Pull a new changeset with an old tag using pull .............$NL
-cd $HERE/copy2
+cd "$HERE/copy2"
 bk pull -t $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
@@ -208,20 +208,20 @@ bk admin -hhhq || exit 1
 echo OK
 
 echo $N Resolve a tag conflict, pick remote, see if it sticks .......$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 commercial project
 echo hi > foo
 bk new $Q foo
 bk commit -yDsub1 $Q
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
-cd $HERE/project
+cd "$HERE/project"
 echo hi > bar
 bk new $Q bar
 bk commit -yDsub2 -STAG $Q
 REMOTE=`bk prs -hrTAG -d:KEY: ChangeSet`
-cd $HERE/copy
+cd "$HERE/copy"
 echo hi > snafu
 bk new $Q snafu
 bk commit -yDsub3 -STAG $Q
@@ -297,7 +297,7 @@ echo OK
 # XXX - what if the cset is legitmately == 0?  I suppose we get the count
 # wrong at that point.
 echo $N Make sure that tag chksum == 0 ..............................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk tag $Q project
 CHKSUM=`bk prs -nhad'$if(:DT:=T){:DSUM:}' ChangeSet`
 if [ "$CHKSUM" -ne 0 ]
@@ -308,7 +308,7 @@ fi
 echo OK
 
 echo $N Create a tag only conflict, push, check error message .......$NL
-cd $HERE/copy
+cd "$HERE/copy"
 bk tag $Q copy
 bk push >OUT 2>&1
 if [ $? -eq 0 ]
@@ -324,15 +324,15 @@ grep -q '1 tags only in' OUT || {
 echo OK
 
 echo $N Test propogation of the first tag ...........................$NL
-cd $HERE
+cd "$HERE"
 rm -rf tagpush tagchild
 commercial tagpush
 ls > file
 bk new $Q file
 bk commit $Q -ywhatever
-bk clone $Q $HERE/tagpush $HERE/tagchild
+bk clone $Q "$HERE/tagpush" "$HERE/tagchild"
 bk tag $Q TAG
-cd $HERE/tagchild
+cd "$HERE/tagchild"
 bk pull $Q || {
 	echo pull failed
 	exit 1
@@ -352,11 +352,11 @@ grep -q 'S0 l' SCCS/s.ChangeSet || {
 echo OK
 
 echo $N Test propogation of a tag added with a commit ...............$NL
-cd $HERE/tagpush
+cd "$HERE/tagpush"
 bk edit $Q file
 bk delta -fywww $Q file
 bk commit $Q -ywhatever -STAG_NO_2
-cd $HERE/tagchild
+cd "$HERE/tagchild"
 bk pull $Q || {
 	echo pull failed
 	exit 1
@@ -376,7 +376,7 @@ grep -q 'S0$' SCCS/s.ChangeSet || {
 echo OK
 
 echo $N Make sure we pick up tags from SCCS/t.ChangeSet .............$NL
-cd $HERE/tagpush
+cd "$HERE/tagpush"
 bk edit $Q file
 bk delta -fywww $Q file
 echo 't.tag' > SCCS/t.ChangeSet
@@ -404,11 +404,11 @@ echo OK
 # Test the case where the same tag is on multiple entries on each side.
 # It should find the last one on each side.
 echo $N Test propogation of a tag added with a commit, pick remote ..$NL
-cd $HERE/tagpush
+cd "$HERE/tagpush"
 bk edit $Q file
 bk delta -fywww $Q file
 bk commit $Q -ywhatever -Ssame_tag
-cd $HERE/tagchild
+cd "$HERE/tagchild"
 bk pull $Q || {
 	echo pull failed
 	exit 1
@@ -416,17 +416,17 @@ bk pull $Q || {
 # Now alternate between sides
 for  i in 1 2 3
 do	for dir in tagpush tagchild
-	do	cd $HERE/$dir
+	do	cd "$HERE"/$dir
 		bk edit $Q file
 		bk delta -fywww $Q file
 		bk commit $Q -ywhatever -Ssame_tag
 	done
 done
-cd $HERE
+cd "$HERE"
 # Running over NFS gets this whine: 
 # tar: tagchild/BitKeeper/etc/csets-in: file changed as we read it
 tar cf tagchild.TAR tagchild 2>/dev/null
-cd $HERE/tagchild
+cd "$HERE/tagchild"
 #  ( echo ""
 #   echo x
 #   echo p
@@ -447,10 +447,10 @@ echo OK
 #bk revtool
 
 echo $N Test propogation of a tag added with a commit, pick merge ...$NL
-cd $HERE
+cd "$HERE"
 rm -rf tagchild
 tar xmf tagchild.TAR
-cd $HERE/tagchild
+cd "$HERE/tagchild"
 echo m | bk pull $Q 2>/dev/null
 test -d RESYNC && {
 	echo failed to resolve
@@ -465,10 +465,10 @@ echo OK
 #bk revtool
 
 echo $N Tag conflict only, try to choose merge, should fail .........$NL
-cd $HERE
-cd $HERE/tagpush
+cd "$HERE"
+cd "$HERE/tagpush"
 bk tag $Q -r1.3 old_tag
-cd $HERE/tagchild
+cd "$HERE/tagchild"
 bk tag $Q -r1.4 old_tag
 ( echo ""
   echo x
@@ -497,31 +497,31 @@ echo OK
 
 # These are white box tests, designed to tickle an ex-bug (L1 failed)
 echo $N Merge tag where history contains same name on L2 branch .....$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project mergemain
 cd mergemain
 bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -Sfoo -yfoo
-cd $HERE
+cd "$HERE"
 bk clone $Q mergemain mergebranch
 cd mergemain
 bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -Sbar -yfoo
-cd $HERE/mergebranch
+cd "$HERE/mergebranch"
 bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -Sfoo -yfoo
-bk pull $Q $HERE/mergemain
+bk pull $Q "$HERE/mergemain"
 echo OK
 
 echo $N Merge tag where history contains same name on L1 branch .....$NL
-cd $HERE/mergemain
+cd "$HERE/mergemain"
 bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -Sbaz -yfoo
-echo q | bk pull $Q $HERE/mergebranch > OUT 2>&1 || {
+echo q | bk pull $Q "$HERE/mergebranch" > OUT 2>&1 || {
 	echo Failed
 	exit 1
 }
@@ -533,7 +533,7 @@ echo OK
 # opush the tag
 
 #echo $N Create the same tag in a new place ..........................$NL
-#cd $HERE/copy/src
+#cd "$HERE/copy/src"
 #bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
 #echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 #bk delta $Q -yopush_cset 'F!O#O$ B%A^R&RR(R)RR'
@@ -542,7 +542,7 @@ echo OK
 
 test -x /usr/bin/ruby && {
 echo $N Test ruby script to archive tagged csets ....................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q -r1.2 project tagexport || exit 1
 mkdir tagexport/BitKeeper/triggers
 cat > tagexport/BitKeeper/triggers/post-incoming.release <<'EOF'
@@ -553,7 +553,7 @@ exit 0 if ENV['BK_STATUS'] != "OK"
 
 tags = {}
 IO.popen("bk changes -ad'$if(:TAG:){$each(:TAG:){(:TAG:)\n}}' - " +
-	 "< #{ENV['BK_CSETLIST']}") {|f|
+	 "< \"#{ENV['BK_CSETLIST']}\"") {|f|
 	f.each {|tag| tags[tag.chomp] = 1 }
 }
 exit 0 if tags.empty?
@@ -566,9 +566,9 @@ tags.each_key {|tag|
 	file = base + ".tar.gz"
 	File.unlink(file) if File.exists? file
 
-	system("bk export -r#{tag} -tplain . #{base}") or raise
-	system("tar -C#{base} -czf #{file} .") or raise
-	system("rm -rf #{base}") or raise
+	system("bk export -r#{tag} -tplain . \"#{base}\"") or raise
+	system("tar -C\"#{base}\" -czf \"#{file}\" .") or raise
+	system("rm -rf \"#{base}\"") or raise
 }
 exit 0
 EOF
@@ -588,7 +588,7 @@ echo OK
 }
 
 echo $N Make sure we check for illegal char in tag ..................$NL
-cd $HERE
+cd "$HERE"
 commercial proj
 touch foo
 bk new $Q foo

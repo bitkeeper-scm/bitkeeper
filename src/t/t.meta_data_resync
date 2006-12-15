@@ -16,14 +16,14 @@ unset _BK_DEVELOPER
 
 
 echo $N Create initial repository ...................................$NL
-echo "license: $BKL_PRO" > $HERE/c
-echo "licsign1: $BKL_P1" >> $HERE/c
-echo "licsign2: $BKL_P2" >> $HERE/c
-echo "licsign3: $BKL_P3" >> $HERE/c
-echo "description: BitKeeper Test repository" >> $HERE/c
-echo "email:		nobody@nowhere.bk" >> $HERE/c
-echo "keyword:sccs,expand1" >> $HERE/c
-bk setup -a -f -c$HERE/c project
+echo "license: $BKL_PRO" > "$HERE/c"
+echo "licsign1: $BKL_P1" >> "$HERE/c"
+echo "licsign2: $BKL_P2" >> "$HERE/c"
+echo "licsign3: $BKL_P3" >> "$HERE/c"
+echo "description: BitKeeper Test repository" >> "$HERE/c"
+echo "email:		nobody@nowhere.bk" >> "$HERE/c"
+echo "keyword:sccs,expand1" >> "$HERE/c"
+bk setup -a -f -c"$HERE/c" project
 cd project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
@@ -54,7 +54,7 @@ echo OK
 cores
 
 echo $N Create a copy of the project ................................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
@@ -63,24 +63,24 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 
 echo $N Check propagation of permission .............................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk admin -m-rwx------ foo.c
 bk commit $S -yperm1
-cd $HERE/copy
-bk pull -t $Q $HERE/project
-cd $HERE/copy/src
-diff $HERE/project/src/SCCS/s.foo.c  $HERE/copy/src/SCCS/s.foo.c
+cd "$HERE/copy"
+bk pull -t $Q "$HERE/project"
+cd "$HERE/copy/src"
+diff "$HERE/project/src/SCCS/s.foo.c"  "$HERE/copy/src/SCCS/s.foo.c"
 if [ $? -ne 0 ]; then echo failed to propagate permissions; exit 1; fi
 echo OK
 
 echo $N Check permission conflict ...................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk admin -m-rwxr----- foo.c
 bk commit $S -yperm2
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk admin -m-rwx-w---- foo.c
 bk commit $S -yperm3
-bk pull -R -t $Q $HERE/project 
+bk pull -R -t $Q "$HERE/project" 
 bk resolve 2>/dev/null 1>&2 <<EOF
 r
 q
@@ -94,70 +94,70 @@ fi
 echo OK
 
 echo $N Check propagation of flags ..................................$NL
-cd $HERE
-rm -rf $HERE/copy
-bk clone $Q $HERE/project $HERE/copy
-cd $HERE/project/src
+cd "$HERE"
+rm -rf "$HERE/copy"
+bk clone $Q "$HERE/project" "$HERE/copy"
+cd "$HERE/project/src"
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
 bk commit $Q -yabc
 # save a copy of SCCS/s.bar.c for the rollback test
-cp SCCS/s.bar.c $HERE/ref
-cd $HERE/copy/src
-bk pull -t $Q $HERE/project
-diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
+cp SCCS/s.bar.c "$HERE/ref"
+cd "$HERE/copy/src"
+bk pull -t $Q "$HERE/project"
+diff "$HERE/project/src/SCCS/s.bar.c"  "$HERE/copy/src/SCCS/s.bar.c"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk admin $Q -FRCS -FYEAR4 bar.c
 bk commit $Q -yabc
-cd $HERE/copy/src
-bk pull -t $Q $HERE/project
-diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
+cd "$HERE/copy/src"
+bk pull -t $Q "$HERE/project"
+diff "$HERE/project/src/SCCS/s.bar.c"  "$HERE/copy/src/SCCS/s.bar.c"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Check rollback of flags .....................................$NL
-bk clone $Q -r1.5 $HERE/copy $HERE/copy2
-cd $HERE/copy2/src
-diff $HERE/copy2/src/SCCS/s.bar.c  $HERE/ref
+bk clone $Q -r1.5 "$HERE/copy" "$HERE/copy2"
+cd "$HERE/copy2/src"
+diff "$HERE/copy2/src/SCCS/s.bar.c"  "$HERE/ref"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Check propagation of flags \& permission .....................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk admin $Q -fRCS -m-rwxr--r-- bar.c
 bk commit $Q -yabc
-cd $HERE/copy/src
-bk pull -t $Q $HERE/project
-diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
+cd "$HERE/copy/src"
+bk pull -t $Q "$HERE/project"
+diff "$HERE/project/src/SCCS/s.bar.c"  "$HERE/copy/src/SCCS/s.bar.c"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Check propagation of text field .............................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 echo "this is a text entry line 1" > text
 echo "this is a text entry line 2" >> text
 bk admin -ttext h.h
 bk commit $Q -yabc
-cd $HERE/copy/src
-bk pull -t $Q $HERE/project
-diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
+cd "$HERE/copy/src"
+bk pull -t $Q "$HERE/project"
+diff "$HERE/project/src/SCCS/s.h.h"  "$HERE/copy/src/SCCS/s.h.h"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk admin -T h.h
 bk commit $Q -yabc
-cd $HERE/copy/src
-bk pull -t $Q $HERE/project
-diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
+cd "$HERE/copy/src"
+bk pull -t $Q "$HERE/project"
+diff "$HERE/project/src/SCCS/s.h.h"  "$HERE/copy/src/SCCS/s.h.h"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Check propagation of text, flags \& permission ...............$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk admin -ttext -fYEAR4 -m-rwx-w--w- h.h
 bk commit $Q -yabc
-cd $HERE/copy/src
-bk pull -t $Q $HERE/project
-diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
+cd "$HERE/copy/src"
+bk pull -t $Q "$HERE/project"
+diff "$HERE/project/src/SCCS/s.h.h"  "$HERE/copy/src/SCCS/s.h.h"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk prs -r+ -h -d':MODE:\n$each(:FD:){(:FD:)\n}' h.h > CMP1
 cat > X <<EOF
@@ -177,25 +177,25 @@ fi
 echo OK
 
 echo $N Check flags conflict ........................................$NL
-cd $HERE
+cd "$HERE"
 # Running over NFS gets this whine: 
 # tar: copy/BitKeeper/etc/csets-in: file changed as we read it
 tar cf repo.tar project copy 2> /dev/null
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 foo.c
 bk commit $S -yperm2
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk admin $Q -fEXPAND1 foo.c
 bk commit $S -yperm3
-cd $HERE/copy
-bk pull -R $Q $HERE/project
-cd $HERE
+cd "$HERE/copy"
+bk pull -R $Q "$HERE/project"
+cd "$HERE"
 tar cf TAR copy project
-bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
+bk resolve -t $Q "$HERE/copy" 2>/dev/null 1>&2 <<EOF
 r
 u
 EOF
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
 if [ "$FLAGS" != "BITKEEPER,RCS,YEAR4,EXPAND1,CSETMARKED,SCCS,EOLN_NATIVE" ]
 then	echo failed with mode $FLAGS
@@ -205,26 +205,26 @@ fi
 echo OK
 
 echo $N Check flags conflict2 .......................................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf repo.tar
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk admin $Q -FSCCS foo.c
 bk commit $S -yxflags2
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk edit $Q foo.c
 echo "new-content" >> foo.c
 bk ci $Q -y"new-content" foo.c
 bk commit $S -y"new-content"
-cd $HERE/copy
-bk pull -R -t $Q $HERE/project
-cd $HERE
-bk resolve -t $Q $HERE/copy 2>$HERE/OUT 1>&2 <<EOF
+cd "$HERE/copy"
+bk pull -R -t $Q "$HERE/project"
+cd "$HERE"
+bk resolve -t $Q "$HERE/copy" 2>"$HERE/OUT" 1>&2 <<EOF
 r
 m
 C
 EOF
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
 if [ "$FLAGS" != "BITKEEPER,EXPAND1,CSETMARKED,EOLN_NATIVE" ]
 then	echo
@@ -232,35 +232,35 @@ then	echo
 	echo "WANT BITKEEPER,EXPAND1,CSETMARKED,EOLN_NATIVE"
 	echo "GOT  $FLAGS"
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
-	cat $HERE/OUT
+	cat "$HERE/OUT"
 	exit 1
 fi
 echo OK
 
 echo $N Check flags conflict3 .......................................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf repo.tar
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk edit $Q foo.c
 echo new-data > foo.c
-bk get $Q -p $HERE/copy/src/foo.c >> foo.c 
+bk get $Q -p "$HERE/copy/src/foo.c" >> foo.c 
 bk ci $Q -y"new-content" foo.c
 bk commit $S -y"new-content2"
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk admin $Q -FSCCS foo.c
 bk commit $S -yxflags3
-cd $HERE/copy
-bk pull -R -t $Q $HERE/project
-cd $HERE
-bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
+cd "$HERE/copy"
+bk pull -R -t $Q "$HERE/project"
+cd "$HERE"
+bk resolve -t $Q "$HERE/copy" 2>/dev/null 1>&2 <<EOF
 l
 m
 C
 This is a checkin comment
 .
 EOF
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
 if [ "$FLAGS" != "BITKEEPER,EXPAND1,CSETMARKED,EOLN_NATIVE" ]
 then	echo failed with mode $FLAGS
@@ -270,16 +270,16 @@ fi
 echo OK
 
 echo $N Check flags conflict automerge...............................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf repo.tar
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 foo.c
 bk commit $S -yperm2
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk admin $Q -fEXPAND1 -FSCCS foo.c
 bk commit $S -yperm3
-bk pull $Q $HERE/project || exit 1
+bk pull $Q "$HERE/project" || exit 1
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
 if [ "$FLAGS" != "BITKEEPER,RCS,YEAR4,EXPAND1,CSETMARKED,EOLN_NATIVE" ]
 then	echo failed with mode $FLAGS

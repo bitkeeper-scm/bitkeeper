@@ -4,6 +4,9 @@
 
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
 
+#define	UNDO_ERR	1	/* exitcode for errors */
+#define	UNDO_SKIP	2	/* exitcode for early exit with no work */
+
 private char	**getrev(char *rev, int aflg);
 private char	**mk_list(char *, char **);
 private int	clean_file(char **);
@@ -14,7 +17,7 @@ private int	check_patch(char *patch);
 private int	doit(char **fileList, char *rev_list, char *qflag, char *);
 
 private	int	checkout;
-private	int	timestamps;
+private	int	fromclone;
 
 int
 undo_main(int ac,  char **av)
@@ -37,26 +40,26 @@ undo_main(int ac,  char **av)
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "undo: cannot find package root.\n");
-		exit(1);
+		return (UNDO_ERR);
 	}
 
-	timestamps = 0;
-	while ((c = getopt(ac, av, "a:fqp;r:sTv")) != -1) {
+	fromclone = 0;
+	while ((c = getopt(ac, av, "a:Cfqp;r:sv")) != -1) {
 		switch (c) {
 		    case 'a': aflg = 1;				/* doc 2.0 */
 			/* fall though */
 		    case 'r': rev = optarg; break;		/* doc 2.0 */
+		    case 'C': fromclone = 1; break;
 		    case 'f': force  =  1; break;		/* doc 2.0 */
 		    case 'q':					/* doc 2.0 */
 		    	quiet = 1; qflag = "-q"; break;
 		    case 'p': save = 1; patch = optarg; break;
 		    case 's': save = 0; break;			/* doc 2.0 */
-		    case 'T': timestamps = 1; break;
 		    case 'v': verbose = 1; break;
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
 usage:			system("bk help -s undo");
-			exit(1);
+			return (UNDO_ERR);
 		}
 	}
 	unless (rev) goto usage;
@@ -68,7 +71,7 @@ usage:			system("bk help -s undo");
 	unlink(BACKUP_SFIO); /* remove old backup file */
 	unless (csetrev_list = getrev(rev, aflg)) {
 		/* No revs we are done. */
-		return (0);
+		return (fromclone ? UNDO_SKIP : 0);
 	}
 	rev = 0;  /* don't use wrong value */
 	bktmp(rev_list, "rev_list");
@@ -76,7 +79,7 @@ usage:			system("bk help -s undo");
 	unless (fileList) goto err;
 
 	bktmp(undo_list, "undo_list");
-	cmd = aprintf("bk stripdel -Cc - 2> %s", undo_list);
+	cmd = aprintf("bk stripdel -Cc - 2> '%s'", undo_list);
 	f = popen(cmd, "w");
 	free(cmd);
 	unless (f) {
@@ -84,11 +87,11 @@ err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
 		freeLines(fileList, free);
 		if ((size(BACKUP_SFIO) > 0) && restore_backup(BACKUP_SFIO,0)) {
-			exit(1);
+			return (UNDO_ERR);
 		}
 		unlink(BACKUP_SFIO);
 		if (rmresync && exists("RESYNC")) rmtree("RESYNC");
-		exit(1);
+		return (UNDO_ERR);
 	}
 	EACH (csetrev_list) {
 		fprintf(f, "ChangeSet%c%s\n", BK_FS, csetrev_list[i]);
@@ -111,13 +114,13 @@ err:		if (undo_list[0]) unlink(undo_list);
 			unlink(rev_list);
 			unlink(undo_list);
 			freeLines(fileList, free);
-			exit(1);
+			return (UNDO_ERR);
 		}
 	}
 
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
-		cmd = aprintf("bk cset -ffm - > %s", patch);
+		cmd = aprintf("bk cset -ffm - > '%s'", patch);
 		f = popen(cmd, "w");
 		free(cmd);
 		if (f) {
@@ -154,7 +157,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	rmEmptyDirs(quiet);
 	if (!quiet && save) printf("Backup patch left in \"%s\".\n", patch);
 	unless (quiet) printf("Running consistency check...\n");
-	if (timestamps) {
+	if (fromclone) {
 		p = quiet ? "-fT" : "-fvT";
 	} else {
 		p = quiet ? "-f" : "-fv";
@@ -185,7 +188,7 @@ doit(char **fileList, char *rev_list, char *qflag, char *checkfiles)
 {
 	char	buf[MAXLINE];
 
-	sprintf(buf, "bk stripdel %s -C - < %s", qflag, rev_list);
+	sprintf(buf, "bk stripdel %s -C - < '%s'", qflag, rev_list);
 	if (system(buf) != 0) {
 		fprintf(stderr, "Undo failed\n");
 		return (-1);
@@ -256,7 +259,7 @@ getrev(char *top_rev, int aflg)
 	status = pclose(f);
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		fprintf(stderr, "No such rev '%s' in ChangeSet\n", top_rev);
-		exit(1);
+		exit(UNDO_ERR);
 	}
 	return (list);
 }
@@ -273,7 +276,7 @@ mk_list(char *rev_list, char **csetrev_list)
 	kvpair	kv;
 
 	assert(csetrev_list);
-	cmd = aprintf("bk cset -ffl5 - > %s", rev_list);
+	cmd = aprintf("bk cset -ffl5 - > '%s'", rev_list);
 	f = popen(cmd, "w");
 	if (f) {
 		EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
@@ -289,7 +292,7 @@ mk_list(char *rev_list, char **csetrev_list)
 		printf("undo: nothing to undo in \"");
 		EACH(csetrev_list) printf("%s,", csetrev_list[i]);
 		printf("\"\n");
-		exit(0);
+		exit(fromclone ? UNDO_SKIP : 0);
 	}
 	f = fopen(rev_list, "rt");
 	db = mdbm_open(NULL, 0, 0, MAXPATH);
@@ -460,6 +463,8 @@ move_file(char *checkfiles)
 	FILE	*f;
 	FILE	*chk;
 	int	rc = 0;
+	int	sync = bk_fsync();
+	int	fd;
 
 	/*
 	 * Cannot trust fileList, because file may be renamed
@@ -497,15 +502,20 @@ move_file(char *checkfiles)
 			rc = -1;
 			break;
 		}
+		if (sync) {
+		    	fd = open(to, O_RDONLY, 0);
+			fsync(fd);
+			close(fd);
+		}
 	}
 	pclose(f);
 	fclose(chk);
 	if (checkout) {
 		chk = fopen(checkfiles, "r");
 		if (checkout == CO_GET) {
-			sprintf(to, "bk co -q%s -", timestamps ? "T" : "");
+			sprintf(to, "bk co -q%s -", fromclone ? "T" : "");
 		} else {
-			sprintf(to, "bk edit -q%s -", timestamps ? "T" : "");
+			sprintf(to, "bk edit -q%s -", fromclone ? "T" : "");
 		}
 		f = popen(to, "w");
 		while (fnext(from, chk)) {

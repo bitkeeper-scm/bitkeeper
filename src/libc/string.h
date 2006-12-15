@@ -41,7 +41,7 @@ char *strcasestr(const char *s, const char *find);
 char *strtok(char *s, const char *delim);
 
 /*
- * Returns pointer to first charector in 's' that contains on of the
+ * Returns pointer to first charector in 's' that contains one of the
  * characters in 'chrs', or NULL if none found.
  */
 static inline char *

@@ -152,7 +152,7 @@ send_part1_msg(opts opts, remote *r, char **envVar)
 	if (gzip) fprintf(f, " -z%d", gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
-	if (r->path) fprintf(f, " %s", r->path);
+	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
 	fclose(f);
 
@@ -252,7 +252,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	if (gzip) fprintf(f, " -z%d", gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
-	if (r->path) fprintf(f, " %s", r->path);
+	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
 	fclose(f);
 
@@ -297,12 +297,12 @@ gensfio(opts opts, int verbose, int level, int wfd)
 	fh = fopen(tmpf, "w");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");
 	fclose(fh);
-	cmd = aprintf("bk sfiles >> %s", tmpf);
+	cmd = aprintf("bk sfiles >> '%s'", tmpf);
 	status = system(cmd);
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
-	
-	sfiocmd = aprintf("bk sfio -o%s < %s", 
+
+	sfiocmd = aprintf("bk sfio -o%s < '%s'", 
 	    (verbose ? "" : "q"), tmpf);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);

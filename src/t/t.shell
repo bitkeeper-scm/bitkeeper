@@ -69,16 +69,16 @@ bk prs -hr+ binary | grep -q binary || {
 bk commit $Q -ywhatever 
 echo OK
 echo $N Clone it, modify it in both, and resync it ..................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 for i in copy project
-do	cd $HERE/$i
+do	cd "$HERE"/$i
 	bk get -e -g $Q file
 	bk get -kp $Q file | sed -e s/2/2-$i/ -e s/3/3-$i/ > file
 	bk delta $Q -y$i
 	bk commit -y$i $Q
 done
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -R -t $Q
 cd ..
 tar cf TAR copy
@@ -124,18 +124,18 @@ cmp -s DIFFS OUT || {
 echo OK
 
 echo $N Modify the binary in both, resync it, check merge ...........$NL
-cd $HERE
+cd "$HERE"
 rm -rf */RESYNC */PENDING
 bk edit $Q copy/binary project/binary
 cp -f $BIN2 copy/binary
 cp -f $BIN3 project/binary
 for i in copy project
-do	cd $HERE/$i
+do	cd "$HERE"/$i
 	chmod +w binary
 	bk delta $Q -y$i
 	bk commit -y$i $Q
 done
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -t -R $Q
 cd ..
 tar cf TAR copy
@@ -143,7 +143,7 @@ cd copy
 echo OK
 
 echo $N Make sure ul works ..........................................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf TAR
 cd copy
@@ -175,7 +175,7 @@ test "`bk prs -r+ -hnd:C: file`" != "Use local file" && exit 1
 echo OK
 
 echo $N Make sure ur works ..........................................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf TAR
 cd copy
@@ -207,7 +207,7 @@ test "`bk prs -r+ -hnd:C: file`" != "Use remote file" && exit 1
 echo OK
 
 echo $N Make sure shell escapes to use local works ..................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf TAR
 cd copy
@@ -238,7 +238,7 @@ test "`bk prs -r+ -hnd:C: file`" != "Use local file" && exit 1
 echo OK
 
 echo $N Make sure shell escapes to use remote works .................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf TAR
 cd copy
@@ -269,7 +269,7 @@ test "`bk prs -r+ -hnd:C: file`" != "Use remote file" && exit 1
 echo OK
 
 echo $N Make sure we can force text resolution ......................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy
 tar xmf TAR
 cd copy

@@ -290,7 +290,7 @@ _doit_local(char **nav, char *url)
 		assert(f);
 	}
 
-	sprintf(buf, "bk synckeys -lk %s", url);
+	sprintf(buf, "bk synckeys -lk '%s'", url);
 	p = popen(buf, "r");
 	assert(p);
 	while (fnext(buf, p)) {

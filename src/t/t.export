@@ -21,7 +21,7 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
 echo $N Create first changeset with foo.c and bar.c .................$NL
-cd $HERE/project
+cd "$HERE/project"
 echo foo.c > foo.c
 echo bar.c > bar.c
 bk new $Q foo.c bar.c
@@ -70,7 +70,7 @@ fi
 echo OK
 
 echo $N Set up for include/exclude tests ............................$NL
-cd $HERE/project
+cd "$HERE/project"
 for i in man src html
 do	mkdir $i
 done
@@ -100,7 +100,7 @@ checkfiles GOT WANT
 echo OK
 
 echo $N Exclude man and html subdirectories .........................$NL
-cd $HERE/project
+cd "$HERE/project"
 rm -rf ../EXPORT
 bk export -tplain -x'man/*' -x'html/*' ../EXPORT
 cd ../EXPORT
@@ -111,7 +111,7 @@ checkfiles GOT WANT
 echo OK
 
 echo $N Exclude all .c and .h files .................................$NL
-cd $HERE/project
+cd "$HERE/project"
 rm -rf ../EXPORT
 bk export -tplain -x'*.c' -x'*.h' ../EXPORT
 cd ../EXPORT
@@ -122,7 +122,7 @@ checkfiles GOT WANT
 echo OK
 
 echo $N Include html pages only .....................................$NL
-cd $HERE/project
+cd "$HERE/project"
 rm -rf ../EXPORT
 bk export -tplain -i'*.html' ../EXPORT
 cd ../EXPORT
@@ -133,7 +133,7 @@ checkfiles GOT WANT
 echo OK
 
 echo $N Exclude all .c and .h files and include man pages ...........$NL
-cd $HERE/project
+cd "$HERE/project"
 rm -rf ../EXPORT
 bk export -tplain -x'*.c' -x'*.h' -i'*.1' ../EXPORT
 cd ../EXPORT
@@ -144,7 +144,7 @@ checkfiles GOT WANT
 echo OK
 
 echo $N Include all .c and .h files .................................$NL
-cd $HERE/project
+cd "$HERE/project"
 rm -rf ../EXPORT
 bk export -tplain -i'*.c' -i'*.h' ../EXPORT
 cd ../EXPORT
@@ -155,7 +155,7 @@ checkfiles GOT WANT
 echo OK
 
 echo $N Include all .c and .h files but exclude src/foo.c ...........$NL
-cd $HERE/project
+cd "$HERE/project"
 rm -rf ../EXPORT
 bk export -tplain -i'*.c' -i'*.h' -xsrc/foo.c ../EXPORT
 cd ../EXPORT
@@ -168,7 +168,7 @@ echo OK
 # =================== Patch tests ===========================================
 
 echo $N Exclude src subdirectory in a patch .........................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk export -tpatch -x'src/*' > ../PATCH
 grep -q b/src/ ../PATCH && {
 	echo failed to exclude src directory
@@ -318,9 +318,9 @@ echo OK
 
 # 2004-02-06-001 - error out if source does not exist
 echo $N Export should fail if source+dest specified but no source ...$NL
-cd $HERE/project
-bk export ../bar $HERE/whoops-plain 2>ERR
-test -d $HERE/whoops-plain && {
+cd "$HERE/project"
+bk export ../bar "$HERE/whoops-plain" 2>ERR
+test -d "$HERE/whoops-plain" && {
 	echo failed when exporting -tplain
 	exit 1
 }
@@ -329,7 +329,7 @@ echo OK
 if [ "$PLATFORM" = UNIX ]
 then #-------------------------------------------------------------------
 echo $N Export should work if source is a symlink to a directory ....$NL
-cd $HERE
+cd "$HERE"
 ln -s project projlink
 bk export projlink fromlink || exit 1
 cd fromlink || exit 1
@@ -341,11 +341,11 @@ grep -q "not a directory" ERR || exit 1
 echo OK
 
 echo $N Check export \-w with symlink ................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 ln -s no/such/file symlnk
 bk new $Q symlnk
 bk commit $Q -ysym
-bk export -w $HERE/project $HERE/exp-sym
-islink $HERE/exp-sym/src/symlnk || { echo failed; exit 1; }
+bk export -w "$HERE/project" "$HERE/exp-sym"
+islink "$HERE/exp-sym/src/symlnk" || { echo failed; exit 1; }
 echo OK
 fi #---------------------------------------------------------------------

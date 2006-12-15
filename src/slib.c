@@ -4022,8 +4022,8 @@ usage:			sys("bk", "help", "-s", "config", SYS);
 		return (config_merge(av[optind], av[optind+1]));
 	}
 	unless (verbose) {
-		if (av[optind+1]) goto usage;
 		if (av[optind]) {
+			if (av[optind+1]) goto usage;
 			if (v = mdbm_fetch_str(cfg, av[optind])) {
 				puts(v);
 				return (0);
@@ -6733,10 +6733,10 @@ write:
 		t = strrchr(s->gfile, '/');
 		if (t) {
 			*t = 0;
-			sprintf(cmd, "cd %s; sh %s -o", s->gfile, &t[1]);
+			sprintf(cmd, "cd '%s'; sh '%s' -o", s->gfile, &t[1]);
 			*t = '/';
 		} else {
-			sprintf(cmd, "sh %s -o", s->gfile);
+			sprintf(cmd, "sh '%s' -o", s->gfile);
 		}
 		system(cmd);
 		safe_putenv("PATH=%s", path);
@@ -12843,6 +12843,8 @@ sccs_fitCounters(char *buf, int a, int d, int s)
 	buf[21] = 0;
 }
 
+int	do_fsync = -1;
+
 /*
  * Print the summary and go and fix up the top.
  */
@@ -12933,6 +12935,8 @@ Breaks up citool
 		s->io_warned = 1;
 		return (-1);
 	}
+	if (do_fsync == -1) do_fsync = bk_fsync();
+	if (do_fsync) fsync(fileno(out));
 	return (0);
 }
 

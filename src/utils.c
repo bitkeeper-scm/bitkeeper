@@ -331,7 +331,7 @@ err:		if (file == msgtmp) unlink(msgtmp);
 		assert(!file);
 		bktmp(msgtmp, "prompt");
 		file = msgtmp;
-		cmd = aprintf("%s > %s", prog, file);
+		cmd = aprintf("%s > '%s'", prog, file);
 
 		/* For caching of the real pager */
 		(void)pager();
@@ -760,7 +760,7 @@ void
 sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 {
 	int	i;
-	char	*user, *host, *repo;
+	char	*user, *host, *repo, *proj;
 	char	*lic;
 	project	*p = proj_init(".");
 
@@ -799,9 +799,18 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		 */
 		assert(p);	/* We must be in a repo here */
 		fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
-		fprintf(f, "putenv BK_ROOT=%s\n", proj_root(p));
+		proj = proj_root(p);
+		if (strchr(proj, ' ')) {
+			fprintf(f, "putenv 'BK_ROOT=%s'\n", proj);
+		} else {
+			fprintf(f, "putenv BK_ROOT=%s\n", proj);
+		}
 		if (repo = repo_id()) {
-			fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
+			if (strchr(repo, ' ')) {
+				fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
+			} else {
+				fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
+			}
 			free(repo);
 		}
 	}
@@ -1247,7 +1256,7 @@ mkpager(void)
 	signal(SIGPIPE, SIG_IGN);
 	cmd = strdup(pg); /* line2av stomp */
 	line2av(cmd, pager_av); /* some user uses "less -X -E" */
-	pid = spawnvp_wPipe(pager_av, &pfd, 0);
+	pid = spawnvpio(&pfd, 0, 0, pager_av);
 	dup2(pfd, 1);
 	close(pfd);
 	free(cmd);

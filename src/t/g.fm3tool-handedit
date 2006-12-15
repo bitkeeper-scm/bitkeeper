@@ -13,11 +13,11 @@
 # %K%
 
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
 export _BK_PREVENT_RESOLVE_RERUN=YES
-OUT=$HERE/out
-RC=`bk dotbk`/fm3.rc
+OUT="$HERE/out"
+RC="`bk dotbk`/fm3.rc"
 
 echo $N Create initial repository ...................................$NL
 commercial project
@@ -28,9 +28,9 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
 echo $N Create some data ............................................$NL
-cd $HERE/project/BitKeeper/etc
-mkdir $HERE/project/src
-cd $HERE/project/src
+cd "$HERE/project/BitKeeper/etc"
+mkdir "$HERE/project/src"
+cd "$HERE/project/src"
 cat >file1 <<EOF
 1: this is file1
 2: this is part of the original file
@@ -55,11 +55,11 @@ bk ci $Q -i file1 file2
 bk commit $Q -y"initial checkin"
 if [ ! -f SCCS/s.file1 ]; then echo failed to create history; exit 1; fi
 # create clones
-cd $HERE
-bk clone $Q $HERE/project $HERE/remote
-bk clone $Q $HERE/project $HERE/local
+cd "$HERE"
+bk clone $Q "$HERE/project" "$HERE/remote"
+bk clone $Q "$HERE/project" "$HERE/local"
 # introduce conflicts
-cd $HERE/remote/src
+cd "$HERE/remote/src"
 bk get $Q -e file1
 cat >file1 <<EOF
 1: this is file1
@@ -75,7 +75,7 @@ cat >file1 <<EOF
 EOF
 bk ci $Q -y"introduced conflicts" file1
 bk commit $Q -y"introduced conflicts in file1"
-cd $HERE/local/src
+cd "$HERE/local/src"
 bk get $Q -e file1
 cat >file1 <<EOF
 1: this is file1
@@ -90,16 +90,16 @@ EOF
 bk ci $Q -y"introduced conflicts" file1
 bk commit $Q -y"introduced conflicts in file1"
 # pushing remote changes to parent
-cd $HERE/remote
+cd "$HERE/remote"
 bk push $Q
 # pulling changes to local
-cd $HERE/local
+cd "$HERE/local"
 bk pull $Q 2>pull.err
 if [ ! -d RESYNC ]; then echo failed to create RESYNC directory; exit 1; fi
 echo OK
 echo $N Hand-edit that joins block with previous line................$NL
-cd $HERE/local/RESYNC
-bk guitest fm3tool -o merge.raw -f -l1.1.1.1 -r1.2 src/file1 >$OUT 2>&1 <<'EOF'
+cd "$HERE/local/RESYNC"
+bk guitest fm3tool -o merge.raw -f -l1.1.1.1 -r1.2 src/file1 >"$OUT" 2>&1 <<'EOF'
     # find beginning of unmerged section, then simulate a button
     # click there
     set index [.merge.t index d1]

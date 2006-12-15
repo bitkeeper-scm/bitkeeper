@@ -13,11 +13,11 @@
 # %K%
 
 BK_GUI=1
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
 
 echo $N Revtool will be run in \`bk bin\' .............................$NL
-cd `bk bin`
+cd "`bk bin`"
 bk revtool
 echo OK
 
@@ -26,7 +26,7 @@ bk revtool get.c
 echo OK
 
 echo $N Look at \`c\' page and tip version page for many annotations...$NL
-echo 'set gc(rev.annotate) "-Abdnpru"' > `bk dotbk`/config-gui
+echo 'set gc(rev.annotate) "-Abdnpru"' > "`bk dotbk`/config-gui"
 bk revtool get.c
-rm `bk dotbk`/config-gui
+rm "`bk dotbk`/config-gui"
 echo OK

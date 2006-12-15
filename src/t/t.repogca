@@ -23,12 +23,12 @@ MD5KEY=`bk changes -r+ -nd:MD5KEY:`
 echo OK
 
 echo $N Create clones and unique changes in each clone ..............$NL
-cd $HERE
+cd "$HERE"
 for i in a b
 do	bk clone $Q project $i
 done
 for i in a b project
-do	cd $HERE/$i
+do	cd "$HERE"/$i
 	date > date
 	bk new $Q date
 	bk commit $Q -y$i
@@ -36,7 +36,7 @@ done
 echo OK
 
 echo $N Check repogca ...............................................$NL
-cd $HERE/a
+cd "$HERE/a"
 REPOGCA=`bk repogca -k ../project ../b`
 test "X$REPOGCA" = "X$KEY" || {
 	echo Failed
@@ -47,7 +47,7 @@ test "X$REPOGCA" = "X$KEY" || {
 echo OK
 
 echo $N Check repogca with MD5KEY ...................................$NL
-cd $HERE/a
+cd "$HERE/a"
 REPOGCA=`bk repogca -d:MD5KEY: ../project ../b`
 test "X$REPOGCA" = "X$MD5KEY" || {
 	echo Failed
@@ -58,7 +58,7 @@ test "X$REPOGCA" = "X$MD5KEY" || {
 echo OK
 
 echo $N Check repogca from subdir ...................................$NL
-cd $HERE/a/src
+cd "$HERE/a/src"
 REPOGCA=`bk repogca -k ../../project ../../b`
 test "X$REPOGCA" = "X$KEY" || {
 	echo Failed

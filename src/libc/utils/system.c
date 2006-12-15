@@ -127,7 +127,8 @@ done:
 }
 
 /*
- * system(3).  exit status is of the last proc in any pipeline.
+ * system(3). Exit status is the last non-zero exit status of the
+ * pipeline.
  */
 int
 safe_system(char *cmd)
@@ -135,14 +136,16 @@ safe_system(char *cmd)
 	char	**pids;
 	pid_t	pid;
 	int	rc, i;
+	int	status = 0;
 
 	unless (pids = spawn_pipeline(cmd)) return (-1);
 	EACH (pids) {
 		pid = p2int(pids[i]);
 		if (waitpid(pid, &rc, 0) != pid) rc = -1;
+		if (rc) status = rc;
 	}
 	freeLines(pids, 0);
-	return (rc);
+	return (status);
 }
 
 #define	MAX_POPEN	20
@@ -240,7 +243,7 @@ safe_popen(char *cmd, char *type)
 FILE *
 popenvp(char *av[], char *type)
 {
-	int	i, fd;
+	int	i, fd, *rfd, *wfd;
 	pid_t	pid;
 	FILE	*ret;
 
@@ -254,10 +257,13 @@ popenvp(char *av[], char *type)
 		return (0);
 	}
 	if (*type == 'r') {
-		pid = spawnvp_rPipe(av, &fd, 0);
+		rfd = 0;
+		wfd = &fd;
 	} else {
-		pid = spawnvp_wPipe(av, &fd, 0);
+		rfd = &fd;
+		wfd = 0;
 	}
+	pid = spawnvpio(rfd, wfd, 0, av);
 	unless (pid) {
 		fprintf(stderr, "popenvp: spawn failed\n");
 		return (0);
@@ -273,12 +279,12 @@ popenvp(char *av[], char *type)
 
 /*
  * pclose(3).
- * If it's a pipeline then we return status from the last process like shell.
+ * If it's a pipeline then we return the last non-zero status.
  */
 int
 safe_pclose(FILE *f)
 {
-	int	pid, i, j, status = 0;
+	int	pid, i, j, rc, status = 0;
 
 	unless (f) {
 		errno = EBADF;
@@ -294,7 +300,8 @@ safe_pclose(FILE *f)
 	fclose(f);
 	EACH (child[j].pids) {
 		pid = p2int(child[j].pids[i]);
-		unless (waitpid(pid, &status, 0) == pid) status = -1;
+		unless (waitpid(pid, &rc, 0) == pid) rc = -1;
+		if (rc) status = rc;
 	}
 	freeLines(child[j].pids, 0);
 	child[j].pids = 0;
@@ -328,10 +335,10 @@ popensystem_main(int ac, char **av)
 	int	status;
 	char	cmd[200];
 
-	sprintf(cmd, "%s -c 'exit 5' | %s -c 'exit 6'", shell(), shell());
+	sprintf(cmd, "'%s' -c 'exit 5' | '%s' -c 'exit 6'", shell(), shell());
 	f = safe_popen(cmd, "r");
 	assert(f);
-	sprintf(cmd, "%s -c 'exit 2' | %s -c 'exit 3'", shell(), shell());
+	sprintf(cmd, "'%s' -c 'exit 2' | '%s' -c 'exit 3'", shell(), shell());
 	status = safe_system(cmd);
 	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 3)) {
 		fprintf(stderr, "Failed to get correct status from system()\n");

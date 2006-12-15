@@ -12,10 +12,10 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
 
 echo $N Csettool will be run in \`bk bin\' ............................$NL
-cd `bk bin`
+cd "`bk bin`"
 bk csettool -r@bk-3.0.2
 echo OK

@@ -377,7 +377,7 @@ genpatch(int level, int wfd, char *rev_list)
 	fd = open(rev_list, O_RDONLY, 0);
 	if (fd < 0) perror(rev_list);
 	assert(fd == 0);
-	pid = spawnvp_rPipe(makepatch, &rfd, 0);
+	pid = spawnvpio(0, &rfd, 0, makepatch);
 	dup2(fd0, 0); close(fd0);
 	gzipAll2fd(rfd, wfd, level, &(opts.inBytes), &(opts.outBytes), 1, 0);
 	close(rfd);
@@ -749,7 +749,7 @@ listIt(sccs *s, int list)
 	char	buf[BUFSIZ];
 	FILE	*f;
 	
-	cmd = aprintf("bk changes %s - > %s", list > 1 ? "-v" : "", tmp);
+	cmd = aprintf("bk changes %s - > '%s'", list > 1 ? "-v" : "", tmp);
 	f = popen(cmd, "w");
 	assert(f);
 	for (d = s->table; d; d = d->next) {

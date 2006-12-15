@@ -22,10 +22,10 @@ mkdir dir2
 echo gg > dir2/gg
 bk new $Q dir1/ff dir2/gg || exit 1
 bk commit $Q -ystart || exit 1
-cd $HERE
+cd "$HERE"
 bk clone $Q proj copy3 || exit 1
 for d in proj copy3; do
-	cd $HERE/$d
+	cd "$HERE/"$d
 	for f in file dir1/ff dir2/gg; do
 		bk edit $Q $f
 		echo $d >> $f
@@ -33,7 +33,7 @@ for d in proj copy3; do
 	done
 	bk commit -y"$d" $Q || exit 1
 done
-cd $HERE/copy3
+cd "$HERE/copy3"
 bk pull -s $Q 2> OUT && {
 	echo pull should have had conflict
 	exit 1

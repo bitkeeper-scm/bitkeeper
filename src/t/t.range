@@ -138,7 +138,7 @@ echo OK
 # MT is excluded because of its mtag is excluded (TAG2)
 # TAG3 is included because it is on a SET item: 1.1
 echo $N Check ranges in a history containing tag graph ..............$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 cd project
 bk edit $Q foo

@@ -15,6 +15,8 @@
 #define SPLIT_ROOT	/* enable split_root support */
 #define BK_FS		'|' /* Field seperator used in file|rev names */
 
+#define	bk_fsync()	(getenv("BK_NO_FSYNC") == 0)
+
 void	reserveStdFds(void);
 struct tm *localtimez(time_t *timep, long *offsetp);
 
@@ -768,6 +770,7 @@ typedef struct {
 	u16	badhost:1;	/* if set, hostname lookup failed */
 	u16	badconnect:1;	/* if set, connect failed */
 	u16	withproxy:1;	/* connected via a proxy */
+	u16	remote_cmd:1;	/* client wants to run command via bkd */
 	int	rfd;		/* read fd for the remote channel */
 	FILE	*rf;		/* optional stream handle for remote channel */
 	int	wfd;		/* write fd for the remote channel */
@@ -1217,6 +1220,7 @@ int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 void	randomBits(char *buf);
 int	almostUnique(void);
 int	uninstall(char *path, int upgrade);
+int	remote_bk(int quiet, int ac, char **av);
 
 extern	char	*editor;
 extern	char	*bin;

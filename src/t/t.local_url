@@ -4,7 +4,7 @@ then
  commercial proj
  # We put "copy" under $HERE/proj becuase the old/buggy code would
  # have picked it up because it failed to do a chdir to $HOME.
- bk clone $Q $HERE/proj $HERE/proj/copy
+ bk clone $Q "$HERE/proj" "$HERE/proj/copy"
  touch foo
  bk new $Q foo
  bk commit $Q -yfoo

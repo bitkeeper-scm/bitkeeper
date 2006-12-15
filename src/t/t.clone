@@ -28,15 +28,15 @@ if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 
 echo $N Clone with all pending deltas................................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy || exit 1
 # the entire src directory should be gone
 [ -d copy/src ] && exit 1
 echo OK
 
 echo $N Test clone to illegal directory .............................$NL
-touch $HERE/file
-bk clone $Q project $HERE/file/XXX.cannotwrite/foo 2> OUT && {
+touch "$HERE/file"
+bk clone $Q project "$HERE/file/XXX.cannotwrite/foo" 2> OUT && {
 	echo clone should have failed
 	cat OUT
 	exit 1
@@ -46,5 +46,25 @@ test -d RESYNC && {
 	cat OUT
 	exit 1
 }
-rm -f $HERE/file
+rm -f "$HERE/file"
+echo OK
+
+echo $N Test clone to directory with spaces in its name..............$NL
+unset TMPDIR
+mkdir "Silly directory with spaces"
+bk clone $Q project "Silly directory with spaces/project" 2> OUT || {
+	echo clone should have worked
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test clone from directory with spaces........................$NL
+cd "Silly directory with spaces"
+bk clone $Q project project2 2> OUT || {
+	echo clone should have worked
+	cat OUT
+	exit 1
+}
+cat OUT
 echo OK

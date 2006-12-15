@@ -14,7 +14,7 @@
 
 # Things that need to be added
 # 
-MYHOST=`bk gethost`
+MYHOST="`bk gethost`"
 
 echo $N Test setuptool ..............................................$NL
 bk setuptool > /dev/null 2>&1
@@ -27,9 +27,9 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 echo $N Create some data ............................................$NL
-cd $HERE/project/BitKeeper/etc
-mkdir $HERE/project/src
-cd $HERE/project/src
+cd "$HERE/project/BitKeeper/etc"
+mkdir "$HERE/project/src"
+cd "$HERE/project/src"
 ed <<EOF >/dev/null 2>&1
 a
 Test File %W%
@@ -75,7 +75,7 @@ echo $N Test renametool .............................................$NL
 echo -e "foo\nbar" | bk renametool
 echo OK
 echo $N Test fmtool  ................................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk edit $Q
 echo foo >> foo
 echo foo > foobar
@@ -89,7 +89,7 @@ bk co $Q
 bk fmtool foo foobar out > /dev/null 2>&1
 echo OK
 echo $N Test fm3tool  ...............................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk edit $Q foobaz
 echo local >> foobaz
 bk delta -ywhatever $Q foobaz
@@ -99,6 +99,6 @@ bk delta -ywhatever $Q foobaz
 bk fm3tool -l1.2 -r1.1.1.1 foobaz
 echo OK
 echo $N Test csettool ...............................................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 bk csettool -r1.2 > /dev/null 2>&1
 echo OK

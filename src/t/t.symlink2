@@ -25,7 +25,7 @@ echo whatever > testfile
 ln -s testfile ./link.to.testfile
 bk new $Q link.to.testfile
 bk commit $S -yxxx
-bk clone $Q $HERE/project $HERE/copy
+bk clone $Q "$HERE/project" "$HERE/copy"
 bk -r check || exit 1
 bk admin -fEXPAND1 link.to.testfile
 bk -r check || exit 1
@@ -37,7 +37,7 @@ bk commit $S -ytarget1 ...........$NL
 echo OK
 
 echo $N processing of symlink target conflict .......................$NL
-cd $HERE/copy
+cd "$HERE/copy"
 bk edit $Q link.to.testfile
 rm -f ./link.to.testfile
 ln -s target2 ./link.to.testfile
@@ -45,7 +45,7 @@ bk delta $Q -yxxx link.to.testfile
 bk -r check || exit 1
 bk commit $S -ytarget2
 # We should get a merge conflict here
-bk pull $Q $HERE/project 
+bk pull $Q "$HERE/project" 
 status=$?
 # Make sure we do not get a checksum bug on the merged node
 bk get $Q link.to.testfile || { echo exit failed; exit 1; }

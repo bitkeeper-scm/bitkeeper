@@ -199,13 +199,13 @@ if [ -f .del-foo ]; then echo Failed to clean file; exit 1; fi
 echo OK
 
 echo $N Test sccsrm and empty directory .............................$NL
-cd $HERE/project/D
+cd "$HERE/project/D"
 bk rm file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
 echo OK
 
 echo $N Test bk unrm ................................................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk rm A/file4
 bk unrm A/file4 > /dev/null
 if [ ! -f A/SCCS/s.file4 ]; then echo failed; exit 1; fi
@@ -280,7 +280,7 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Test clones of an editted moved file ........................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project
 commercial project
 date > d
@@ -289,7 +289,7 @@ bk commit -q -ywhatever
 bk edit $Q d
 date >> d
 bk mv d newd
-cd $HERE
+cd "$HERE"
 # is there a better way to make clone silent when the
 # check pass finds errors?
 if [ "X$Q" = "X-q" ]; then
@@ -302,13 +302,13 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Test pulls into a project with an editted moved file ........$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 commercial project
 date > d
 bk delta -i $Q d
 bk commit $Q -ywhatever
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 cd project
 bk edit $Q d
@@ -317,7 +317,7 @@ bk delta $Q -yd d
 echo ff > qqq
 bk new $Q qqq
 bk commit $Q -ywhat2 
-cd $HERE/copy
+cd "$HERE/copy"
 echo ff > f
 bk new $Q f
 bk edit $Q f
@@ -328,7 +328,7 @@ if [ ! -f SCCS/s.qqq ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Test mv of directory ........................................$NL
-cd $HERE
+cd "$HERE"
 commercial src
 mkdir foo
 cd foo
@@ -344,9 +344,9 @@ if [ -f foo/sub1/SCCS/s.sub ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Make sure we can not remove BitKeeper files .................$NL
-cd $HERE
+cd "$HERE"
 tar cf TAR src 2> /dev/null
-cd $HERE/src/BitKeeper/etc
+cd "$HERE/src/BitKeeper/etc"
 bk rm config 2> OUT && {
 	echo failed to exit with an error
 	exit 1
@@ -360,7 +360,7 @@ test -f SCCS/s.config || {
 	echo Gave us an error message but removed it anyway
 	exit 1
 }
-cd $HERE/src
+cd "$HERE/src"
 bk rm ChangeSet 2> OUT && {
 	echo failed to exit with an error
 	exit 1
@@ -377,7 +377,7 @@ test -f SCCS/s.ChangeSet || {
 echo OK
 
 echo $N Make sure we can force the removal of BitKeeper files .......$NL
-cd $HERE/src/BitKeeper/etc
+cd "$HERE/src/BitKeeper/etc"
 bk rm -f config 2> OUT || {
 	echo failed to let us remove the file
 	cat OUT
@@ -390,7 +390,7 @@ test -f SCCS/s.config && {
 echo OK
 
 echo $N Except for the ChangeSet file ...............................$NL
-cd $HERE/src
+cd "$HERE/src"
 bk rm -f ChangeSet 2> OUT && {
 	echo let us remove the file
 	exit 1
@@ -402,10 +402,10 @@ test -f SCCS/s.ChangeSet || {
 echo OK
 
 echo $N Make sure we can not move BitKeeper files ...................$NL
-cd $HERE
+cd "$HERE"
 rm -rf src
 tar xmf TAR
-cd $HERE/src/BitKeeper/etc
+cd "$HERE/src/BitKeeper/etc"
 bk mv config JUNK 2> OUT && {
 	echo failed to exit with an error
 	exit 1
@@ -419,7 +419,7 @@ test -f SCCS/s.config || {
 	echo Gave us an error message but moved it anyway
 	exit 1
 }
-cd $HERE/src
+cd "$HERE/src"
 bk mv ChangeSet JUNK 2> OUT && {
 	echo failed to exit with an error
 	exit 1
@@ -436,7 +436,7 @@ test -f SCCS/s.ChangeSet || {
 echo OK
 
 echo $N Make sure we can force the moving of BitKeeper files ........$NL
-cd $HERE/src/BitKeeper/etc
+cd "$HERE/src/BitKeeper/etc"
 bk mv -f config JUNK 2> OUT || {
 	echo failed to let us move the file
 	exit 1
@@ -448,7 +448,7 @@ test -f SCCS/s.config && {
 echo OK
 
 echo $N Except for the ChangeSet file ...............................$NL
-cd $HERE/src
+cd "$HERE/src"
 bk mv -f ChangeSet JUNK 2> OUT && {
 	echo let us move the file
 	exit 1
@@ -460,10 +460,10 @@ test -f SCCS/s.ChangeSet || {
 echo OK
 
 echo $N Make sure we can not move BitKeeper directories .............$NL
-cd $HERE
+cd "$HERE"
 rm -rf src
 tar xmf TAR
-cd $HERE/src/BitKeeper
+cd "$HERE/src/BitKeeper"
 bk mvdir etc no-no-no 2> OUT && {
 	echo failed to exit with an error
 	exit 1
@@ -478,7 +478,7 @@ test -d no-no-no && {
 	cat OUT
 	exit 1
 }
-cd $HERE/src
+cd "$HERE/src"
 bk mvdir BitKeeper no-no-no 2> OUT && {
 	echo failed to exit with an error
 	exit 1
@@ -495,10 +495,10 @@ test -d no-no-no && {
 echo OK
 
 echo $N Make sure we can not remove BitKeeper directories ...........$NL
-cd $HERE
+cd "$HERE"
 rm -rf src
 tar xmf TAR
-cd $HERE/src/BitKeeper
+cd "$HERE/src/BitKeeper"
 bk rmdir etc 2> OUT && {
 	echo failed to exit with an error
 	exit 1
@@ -513,7 +513,7 @@ test -d etc || {
 	cat OUT
 	exit 1
 }
-cd $HERE/src
+cd "$HERE/src"
 bk rmdir BitKeeper 2> OUT && {
 	echo failed to exit with an error
 	exit 1
@@ -532,7 +532,7 @@ echo OK
 if [ "$PLATFORM" = "WIN32" ]
 then    #----------------------------------------------------------------
 echo $N Make sure bk mv work with back slash style dos path..........$NL
-        cd $HERE
+        cd "$HERE"
         commercial project2
         mkdir src
         cd src
@@ -547,12 +547,12 @@ echo $N Make sure bk mv work with back slash style dos path..........$NL
 fi      #----------------------------------------------------------------
 
 echo $N Make sure we can not move outside bitkeeper directories .....$NL
-cd $HERE/project
+cd "$HERE/project"
 echo "stuff" > foo.c
 bk new $Q foo.c
-bk mv foo.c $HERE 2> mv.out
+bk mv foo.c "$HERE" 2> mv.out
 grep -q "not in a BitKeeper repository" mv.out || { echo failed; exit 1; }
-bk mv foo.c $HERE/copy 2> mv.out
+bk mv foo.c "$HERE/copy" 2> mv.out
 grep -q "not in the same BitKeeper repository" mv.out || { echo failed; exit 1; }
 echo OK
 exit 0

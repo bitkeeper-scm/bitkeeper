@@ -43,13 +43,13 @@ grep -q '^.d R ' SCCS/s.ChangeSet || {
 }
 echo OK
 echo $N Clone and create tags in each of the repositories ...........$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 cd project
 bk edit $Q foo.c
 bk delta $Q -ywhatever foo.c
 bk commit -y'PROJECT tag' $Q -SPROJECT 
-cd $HERE/copy
+cd "$HERE/copy"
 bk edit $Q foo.c
 bk delta $Q -ywhatever foo.c
 bk commit -y'COPY tag' $Q -SCOPY
@@ -61,11 +61,11 @@ fi
 bk admin -qhhh ChangeSet || exit 1
 echo OK
 echo $N Add the same tag in each repository, creating conflict ......$NL
-cd $HERE/project
+cd "$HERE/project"
 bk edit $Q foo.c
 bk delta $Q -ywhatever foo.c
 bk commit -y'project CONFLICT' $Q -SCONFLICT
-cd $HERE/copy
+cd "$HERE/copy"
 bk edit $Q foo.c
 bk delta $Q -ywhatever foo.c
 bk commit -y'copy CONFLICT' $Q -SCONFLICT

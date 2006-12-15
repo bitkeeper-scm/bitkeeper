@@ -12,37 +12,37 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
-OUT=$HERE/out
-RC=`bk dotbk`/setup.rc
-ACCEPTED=`bk dotbk`/accepted
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/setup.rc"
+ACCEPTED="`bk dotbk`/accepted"
 
 echo $N Simple startup and exit......................................$NL
-bk guitest setuptool >$OUT 2>&1 <<'EOF'
+bk guitest setuptool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Cancel
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 err=$?
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1 ; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
 if [ $err -ne 1 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 echo OK
 
 # at present setuptool doesn't create an rc file.
 #echo $N Create dotbk/setup.rc .......................................$NL
-#test -f $RC && rm -f $RC
-#bk guitest setuptool >$OUT 2>&1 <<'EOF'
+#test -f "$RC" && rm -f "$RC"
+#bk guitest setuptool >"$OUT" 2>&1 <<'EOF'
 #    test_buttonPress Cancel
 #    after 5000 [list exit 99] ;# in case the buttonpress didn't work
 #EOF
-#test -f $RC || { echo "failed"; ls -l `bk dotbk`; exit 1; }
+#test -f "$RC" || { echo "failed"; ls -l `bk dotbk`; exit 1; }
 #echo "OK"
 
 echo $N Creating an Academic repository .............................$NL
-rm -rf `bk dotbk`/accepted $HERE/repo
+rm -rf "`bk dotbk`/accepted" "$HERE/repo"
 # note the lack of single quotes around EOF, which is a bit unusual.
 # we want HERE to be expanded in the script
-bk guitest setuptool >$OUT 2>&1 <<EOF
+bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_focus
@@ -80,12 +80,12 @@ test $? -eq 0 || {
 	echo guitest returned with non-zero exit status
 	exit 1
 }
-grep -q 'The repository was successfully created.' $OUT || {
+grep -q 'The repository was successfully created.' "$OUT" || {
 	echo failed 
-	cat $OUT 
+	cat "$OUT" 
 	exit 1 
 }
-cat > $OUT <<EOF
+cat > "$OUT" <<EOF
 description: this is the description
 email: nobody@nowhere.bk
 name: No Body
@@ -100,20 +100,20 @@ licsign1: $BKL_A1
 licsign2: $BKL_A2
 licsign3: $BKL_A3
 EOF
-CONFIG=$HERE/repo/BitKeeper/etc/config
-test -f $CONFIG || {
+CONFIG="$HERE/repo/BitKeeper/etc/config"
+test -f "$CONFIG" || {
 	echo "failed to make config file" 
 	exit 1 
 }
-bk undos < $CONFIG > $HERE/config
-checkfiles $OUT $HERE/config
+bk undos < "$CONFIG" > "$HERE/config"
+checkfiles "$OUT" "$HERE/config"
 echo OK
 
 echo $N Creating a Basic repository .................................$NL
-rm -rf `bk dotbk`/accepted $HERE/repo
+rm -rf "`bk dotbk`/accepted" "$HERE/repo"
 # note the lack of single quotes around EOF, which is a bit unusual.
 # we want HERE to be expanded in the script
-bk guitest setuptool >$OUT 2>&1 <<EOF
+bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_focus
@@ -151,12 +151,12 @@ test $? -eq 0 || {
 	echo guitest returned with non-zero exit status
 	exit 1
 }
-grep -q 'The repository was successfully created.' $OUT || {
+grep -q 'The repository was successfully created.' "$OUT" || {
 	echo failed 
-	cat $OUT 
+	cat "$OUT" 
 	exit 1 
 }
-cat > $OUT <<EOF
+cat > "$OUT" <<EOF
 description: this is the description
 email: nobody@nowhere.bk
 name: No Body
@@ -171,20 +171,20 @@ licsign1: $BKL_B1
 licsign2: $BKL_B2
 licsign3: $BKL_B3
 EOF
-CONFIG=$HERE/repo/BitKeeper/etc/config
-test -f $CONFIG || {
+CONFIG="$HERE/repo/BitKeeper/etc/config"
+test -f "$CONFIG" || {
 	echo "failed to make config file" 
 	exit 1 
 }
-bk undos < $CONFIG > $HERE/config
-checkfiles $OUT $HERE/config
+bk undos < "$CONFIG" > "$HERE/config"
+checkfiles "$OUT" "$HERE/config"
 echo OK
 
 echo $N Creating a Pro repository ...................................$NL
-rm -rf `bk dotbk`/accepted $HERE/repo
+rm -rf "`bk dotbk`/accepted" "$HERE/repo"
 # note the lack of single quotes around EOF, which is a bit unusual.
 # we want HERE to be expanded in the script
-bk guitest setuptool >$OUT 2>&1 <<EOF
+bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_focus
@@ -222,12 +222,12 @@ test $? -eq 0 || {
 	echo guitest returned with non-zero exit status
 	exit 1
 }
-grep -q 'The repository was successfully created.' $OUT || {
+grep -q 'The repository was successfully created.' "$OUT" || {
 	echo failed 
-	cat $OUT 
+	cat "$OUT" 
 	exit 1 
 }
-cat > $OUT <<EOF
+cat > "$OUT" <<EOF
 description: this is the description
 email: nobody@nowhere.bk
 name: No Body
@@ -242,20 +242,20 @@ licsign1: $BKL_P1
 licsign2: $BKL_P2
 licsign3: $BKL_P3
 EOF
-CONFIG=$HERE/repo/BitKeeper/etc/config
-test -f $CONFIG || {
+CONFIG="$HERE/repo/BitKeeper/etc/config"
+test -f "$CONFIG" || {
 	echo "failed to make config file" 
 	exit 1 
 }
-bk undos < $CONFIG > $HERE/config
-checkfiles $OUT $HERE/config
+bk undos < "$CONFIG" > "$HERE/config"
+checkfiles "$OUT" "$HERE/config"
 echo OK
 
 echo $N Creating an Enterprise repository ...........................$NL
-rm -rf `bk dotbk`/accepted $HERE/repo
+rm -rf "`bk dotbk`/accepted" "$HERE/repo"
 # note the lack of single quotes around EOF, which is a bit unusual.
 # we want HERE to be expanded in the script
-bk guitest setuptool >$OUT 2>&1 <<EOF
+bk guitest setuptool >"$OUT" 2>&1 <<EOF
     focus -force .
     test_buttonPress "Next >"
     test_focus
@@ -293,12 +293,12 @@ test $? -eq 0 || {
 	echo guitest returned with non-zero exit status
 	exit 1
 }
-grep -q 'The repository was successfully created.' $OUT || {
+grep -q 'The repository was successfully created.' "$OUT" || {
 	echo failed 
-	cat $OUT 
+	cat "$OUT" 
 	exit 1 
 }
-cat > $OUT <<EOF
+cat > "$OUT" <<EOF
 description: this is the description
 email: nobody@nowhere.bk
 name: No Body
@@ -313,11 +313,11 @@ licsign1: $BKL_E1
 licsign2: $BKL_E2
 licsign3: $BKL_E3
 EOF
-CONFIG=$HERE/repo/BitKeeper/etc/config
-test -f $CONFIG || {
+CONFIG="$HERE/repo/BitKeeper/etc/config"
+test -f "$CONFIG" || {
 	echo "failed to make config file" 
 	exit 1 
 }
-bk undos < $CONFIG > $HERE/config
-checkfiles $OUT $HERE/config
+bk undos < "$CONFIG" > "$HERE/config"
+checkfiles "$OUT" "$HERE/config"
 echo OK

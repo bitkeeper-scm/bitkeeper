@@ -51,10 +51,10 @@ cvs --version | grep -q '^Concurrent.*(CVS) 1\.1' || {
 
 echo $N Create test CVS repository ..................................$NL
 mkdir cvsroot
-export CVSROOT=$HERE/cvsroot
+export CVSROOT="$HERE/cvsroot"
 test $WINDOWS = YES && CVSROOT=`pwd`/cvsroot
 cvs init || exit 1
-mkdir $CVSROOT/test
+mkdir "$CVSROOT/test"
 cvs $Q co test || exit 1
 cd test
 # include yucky filename
@@ -95,7 +95,7 @@ cvsbuild next1 start
 cvs -Q tag -b branch2 || exit 1
 sleep 1
 cvsbuild end next1 start backport
-cd $HERE
+cd "$HERE"
 cvs -Q co -dtest.branch1 -rbranch1 test >/dev/null 2>&1 || exit 1
 cd test.branch1
 cvsbuild branch1 start
@@ -104,11 +104,11 @@ cvsbuild next2 branch1 start
 cvs -Q tag -b branch1_1 || exit 1
 sleep 1
 cvsbuild next3 next2 branch1 start
-cd $HERE
+cd "$HERE"
 cvs -Q co -dtest.branch1_1 -rbranch1_1 test >/dev/null 2>&1 || exit 1
 cd test.branch1_1
 cvsbuild branch1_1 next2 branch1 start
-cd $HERE
+cd "$HERE"
 cvs -Q co -dtest.branch2 -rbranch2 test >/dev/null 2>&1 || exit 1
 cd test.branch2
 cvsbuild branch2 next1 start
@@ -135,14 +135,14 @@ cvsbuild branch2 next1 start
 echo OK
 
 echo $N Import CVS trunk ............................................$NL
-cd $HERE
+cd "$HERE"
 commercial import_trunk
 # verify that checkout:edit doesn't break anything
 bk edit $Q BitKeeper/etc/config || exit 1
 echo "checkout:edit" >> BitKeeper/etc/config
-bk import $Q -f -tCVS -g1 -k -Hfree.bk $CVSROOT/test . || exit 1
+bk import $Q -f -tCVS -g1 -k -Hfree.bk "$CVSROOT/test" . || exit 1
 bk -Ur get -S $Q
-bk treediff . $HERE/test || exit 1
+bk treediff . "$HERE/test" || exit 1
 bk pending $Q && {
 	echo shouldn\'t have files pending...
 	exit 1
@@ -158,12 +158,12 @@ bk diff -u TAGS WANT_TAGS
 echo OK
 
 echo $N Import CVS branch1...........................................$NL
-cd $HERE
-bk clone $Q -r1.1 $HERE/import_trunk $HERE/import_branch1
-cd $HERE/import_branch1
-bk import -bbranch1 $Q -f -tCVS -g1 -k  -Hfree.bk $CVSROOT/test . || exit 1
+cd "$HERE"
+bk clone $Q -r1.1 "$HERE/import_trunk" "$HERE/import_branch1"
+cd "$HERE/import_branch1"
+bk import -bbranch1 $Q -f -tCVS -g1 -k  -Hfree.bk "$CVSROOT/test" . || exit 1
 bk -Ur get $Q
-bk treediff . $HERE/test.branch1 || exit 1
+bk treediff . "$HERE/test.branch1" || exit 1
 bk pending $Q && {
 	echo shouldn\'t have files pending...
 	exit 1
@@ -180,12 +180,12 @@ bk diff -u TAGS WANT_TAGS
 echo OK
 
 echo $N Import CVS branch2...........................................$NL
-cd $HERE
-bk clone $Q -r1.1 $HERE/import_trunk $HERE/import_branch2
-cd $HERE/import_branch2
-bk import -bbranch2 $Q -f -tCVS -g1 -k  -Hfree.bk $CVSROOT/test . || exit 1
+cd "$HERE"
+bk clone $Q -r1.1 "$HERE/import_trunk" "$HERE/import_branch2"
+cd "$HERE/import_branch2"
+bk import -bbranch2 $Q -f -tCVS -g1 -k  -Hfree.bk "$CVSROOT/test" . || exit 1
 bk -Ur get $Q
-bk treediff . $HERE/test.branch2 || exit 1
+bk treediff . "$HERE/test.branch2" || exit 1
 bk pending $Q && {
 	echo shouldn\'t have files pending...
 	exit 1
@@ -201,12 +201,12 @@ bk diff -u TAGS WANT_TAGS
 echo OK
 
 echo $N Import CVS branch1_1.........................................$NL
-cd $HERE
-bk clone $Q -r1.1 $HERE/import_trunk $HERE/import_branch1_1
-cd $HERE/import_branch1_1
-bk import -bbranch1_1 $Q -f -tCVS -g1 -k -Hfree.bk $CVSROOT/test . || exit 1
+cd "$HERE"
+bk clone $Q -r1.1 "$HERE/import_trunk" "$HERE/import_branch1_1"
+cd "$HERE/import_branch1_1"
+bk import -bbranch1_1 $Q -f -tCVS -g1 -k -Hfree.bk "$CVSROOT/test" . || exit 1
 bk -Ur get $Q
-bk treediff . $HERE/test.branch1_1 || exit 1
+bk treediff . "$HERE/test.branch1_1" || exit 1
 bk pending $Q && {
 	echo shouldn\'t have files pending...
 	exit 1
@@ -223,7 +223,7 @@ checkfiles TAGS WANT_TAGS
 echo OK
 
 echo $N Try pulling branch2 into trunk...............................$NL
-cd $HERE/import_trunk
+cd "$HERE/import_trunk"
 bk edit $Q sub_next1 sub_start
 # fix up the content so we can get a auto merge
 echo 1 > sub_next1
@@ -234,16 +234,16 @@ bk pull $Q ../import_branch2 || exit 1
 echo OK
 
 echo $N Try setting up the file1 and file2 do not agree error .......$NL
-cd $HERE/test
+cd "$HERE/test"
 echo new >> sub_start
 echo other >> new_start
 cvs -Q commit -mjunk > /dev/null || exit 1
 cvs -Q tag -b fakebranch || exit 1
 cvs -Q admin -Nfakebranch:1.2.0.2 sub_start >/dev/null 2>&1 || exit 1
-cd $HERE
-bk clone $Q -r1.1 $HERE/import_trunk $HERE/import_fake
-cd $HERE/import_fake
-bk import -bfakebranch $Q -f -tCVS -g1 -k  -Hfree.bk $CVSROOT/test . > OUT && {
+cd "$HERE"
+bk clone $Q -r1.1 "$HERE/import_trunk" "$HERE/import_fake"
+cd "$HERE/import_fake"
+bk import -bfakebranch $Q -f -tCVS -g1 -k  -Hfree.bk "$CVSROOT/test" . > OUT && {
 	echo should have errored
 	exit 1
 }

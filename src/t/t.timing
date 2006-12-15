@@ -25,7 +25,7 @@ bk new $Q foo
 bk commit $S -ywhatever
 echo OK
 echo $N Create a copy of the project ................................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q P1 P2
 if [ ! -d P2 ]; then echo failed to make top level directory; exit 1; fi
 cd P2
@@ -34,7 +34,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
 echo OK
 echo $N Create series of deltas to the same file quickly ............$NL
-cd $HERE
+cd "$HERE"
 for i in 1 2 3 4 5 6 7 8 9 0
 do	bk get $Q -e P1/foo P2/foo
 	echo $i >> P1/foo
@@ -68,29 +68,29 @@ fi
 echo OK
 echo $N Create files quickly ........................................$NL
 for f in a b c d e f g h i j k
-do	echo blech > $HERE/P1/$f
-	echo blech > $HERE/P2/$f
+do	echo blech > "$HERE/P1/"$f
+	echo blech > "$HERE/P2/"$f
 	# XXX _ this is a bug, the proj is not init-ed
-	#bk new $Q $HERE/P1/$f
-	#bk new $Q $HERE/P2/$f
-	cd $HERE/P1
+	#bk new $Q "$HERE/P1/"$f
+	#bk new $Q "$HERE/P2/"$f
+	cd "$HERE/P1"
 	bk new $Q $f
-	cd $HERE/P2
+	cd "$HERE/P2"
 	bk new $Q $f
 done
 for f in a b c d e f g h i j k
-do	A=`bk prs -hr1.1 -d:UTC: $HERE/P1/$f`
-	B=`bk prs -hr1.1 -d:UTC: $HERE/P2/$f`
+do	A=`bk prs -hr1.1 -d:UTC: "$HERE/P1/"$f`
+	B=`bk prs -hr1.1 -d:UTC: "$HERE/P2/"$f`
 	if [ $A = $B ]
 	then	echo Same timestamp $A for $f@1.1
-		sdiff -w80 $HERE/P1/SCCS/s.$f $HERE/P2/SCCS/s.$f
+		sdiff -w80 "$HERE/P1/SCCS/s."$f "$HERE/P2/SCCS/s."$f
 		exit 1
 	fi
-	A=`bk prs -hr1.0 -d:UTC: $HERE/P1/$f`
-	B=`bk prs -hr1.0 -d:UTC: $HERE/P2/$f`
+	A=`bk prs -hr1.0 -d:UTC: "$HERE/P1/"$f`
+	B=`bk prs -hr1.0 -d:UTC: "$HERE/P2/"$f`
 	if [ $A = $B ]
 	then	echo Same timestamp $A for $f@1.0
-		sdiff -w80 $HERE/P1/SCCS/s.$f $HERE/P2/SCCS/s.$f
+		sdiff -w80 "$HERE/P1/SCCS/s."$f "$HERE/P2/SCCS/s."$f
 		exit 1
 	fi
 done

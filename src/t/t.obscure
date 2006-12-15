@@ -69,8 +69,8 @@ test 'Please obscure me' = "`bk cat foo`" && {
 	exit 1
 }
 bk -r get -qS
-mkdir $HERE/data
-cd $HERE/data
+mkdir "$HERE/data"
+cd "$HERE/data"
 tar xmf ../TAR
 find . -type f | while read x
 do	cmp -s $x ../project/$x && echo $x
@@ -97,7 +97,7 @@ test "`cat ../DIFFERENT`" = ./foo || {
 echo OK
 
 echo $N Make sure modified files fail the entire obscure ............$NL
-cd $HERE/project
+cd "$HERE/project"
 bk edit $Q foo
 echo blah >> foo
 echo foo > bar
@@ -113,7 +113,7 @@ test `bk cat bar` = foo || {
 echo OK
 
 echo $N Check that we can obscure just the licenses in the history ..$NL
-cd $HERE/project
+cd "$HERE/project"
 bk cp BitKeeper/etc/config baz > OUT 2> ERR
 bk grep -qR lic baz || {
 	echo expected pattern in original file
@@ -141,7 +141,7 @@ test `grep "^> #" DIFF | wc -l` -eq 4 || exit 1
 echo OK
 
 echo $N Obscure a license for a user that is buried in history ......$NL
-cd $HERE/project
+cd "$HERE/project"
 rm -f baz SCCS/?.baz ORIG
 bk cp BitKeeper/etc/config baz > OUT 2> ERR || exit 1
 bk edit $Q baz

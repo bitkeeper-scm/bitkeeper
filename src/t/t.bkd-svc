@@ -35,8 +35,8 @@ cmpfiles WANT1 GOT
 echo OK
 
 echo $N Make sure that we can install a second service ..............$NL
-mkdir $HERE/bkd2
-cd $HERE/bkd2
+mkdir "$HERE/bkd2"
+cd "$HERE/bkd2"
 PORT=`port 6100`
 bk service install ${BKDNAME}2 -EBK_REGRESSION=1 -p$PORT -xchg
 DIR="`bk pwd -s`"
@@ -60,7 +60,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Check that bk status -a shows them both .....................$NL
-( cat $HERE/WANT1 WANT2; echo --- ) | bk sort > WANT
+( cat "$HERE/WANT1" WANT2; echo --- ) | bk sort > WANT
 bk service status -a | bk sort > GOT
 cmpfiles WANT GOT
 echo OK
@@ -83,7 +83,7 @@ bk service list | grep -q "^$BKDNAME" && {
 echo OK
 
 echo $N Create initial repository ...................................$NL
-cd $HERE
+cd "$HERE"
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
@@ -110,18 +110,18 @@ if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 
 echo $N clone the workspace .........................................$NL
-bk clone $Q $HERE/project $HERE/copy
-cd $HERE/copy
+bk clone $Q "$HERE/project" "$HERE/copy"
+cd "$HERE/copy"
 if [ ! -f "BitKeeper/etc/SCCS/x.dfile" ]; then echo failed; exit 1; fi
 PORT=`port 5000`
-bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT > $HERE/BKD 2>&1
+bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT > "$HERE/BKD" 2>&1
 echo OK
 
 echo $N die part way through a clone and make sure we clean locks ...$NL
-cd $HERE
+cd "$HERE"
 BK_DIE_OFFSET=10 bk clone bk://localhost:$PORT junk > OUT 2>&1
 # cat OUT
-cd $HERE/copy
+cd "$HERE/copy"
 for i in 1 2 3
 do	bk lock -q && break
 	sleep $i
@@ -131,7 +131,7 @@ bk lock -q || {
 	bk lock -l
 	exit 1
 }
-cd $HERE
+cd "$HERE"
 rm -rf junk
 echo OK
 
@@ -140,25 +140,25 @@ echo OK
 # Please make sure the bk binary is on a local disk
 # before you run this test.
 echo $N "push a new changeset via bkd (no compression)" ...............$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 echo woo > woo.c
 bk ci $Q -i woo.c
 bk commit $Q -ycset1
 bk push $Q -z0 bk://localhost:$PORT
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 if [ ! -f SCCS/s.woo.c ]; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 
 echo $N "pull a new changeset via bkd (no compression)" ...............$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 echo zoo > zoo.c
 bk ci $Q -i zoo.c
 bk commit $Q -ycset1
-cd $HERE/project
+cd "$HERE/project"
 PORT=`port 5100`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT 
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk pull -z0 bk://localhost:$PORT >OUT 2>&1
 test -f SCCS/s.zoo.c || {
 	echo failed
@@ -169,24 +169,24 @@ bk service uninstall $BKDNAME
 echo OK
 
 echo $N "pull a new changeset via bkd (with compression)" .............$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 echo boo > boo.c
 bk ci $Q -i boo.c
 bk commit $Q -ycset1
-cd $HERE/project
+cd "$HERE/project"
 PORT=`port 5200`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT 
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$PORT
 if [ ! -f SCCS/s.boo.c ]; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 
 echo $N "pull via bkd -xpull" .........................................$NL
-cd $HERE/project
+cd "$HERE/project"
 PORT=`port 5300`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT -xpull
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk pull -t bk://localhost:$PORT > pull.out 2>&1
 grep -q "bkd has disabled" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
@@ -194,91 +194,91 @@ bk service uninstall $BKDNAME
 echo OK
 
 echo $N "push a new changeset via bkd (with compression)" .............$NL
-cd $HERE/copy
+cd "$HERE/copy"
 PORT=`port 5400`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT
-cd $HERE/project/src
+cd "$HERE/project/src"
 echo aoo > aoo.c
 bk ci $Q -i aoo.c
 bk commit $Q -ycset1
 bk push $Q -z6 bk://localhost:$PORT
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 
 echo $N clone a tree via bkd ........................................$NL
-cd $HERE/project
+cd "$HERE/project"
 PORT=`port 5500`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT
-bk clone $Q bk://localhost:$PORT $HERE/copy2
-cd $HERE/copy2/src
+bk clone $Q bk://localhost:$PORT "$HERE/copy2"
+cd "$HERE/copy2/src"
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 
 echo $N "pull a new changeset via bkd -xcd -xpush " ...................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 echo coo > coo.c
 bk ci $Q -i coo.c
 bk commit $Q -ycset1
-cd $HERE/project
+cd "$HERE/project"
 PORT=`port 5600`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT -xcd -xpush
-cd $HERE/copy/src
+cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$PORT
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 
 echo $N check a push to bkd with a gfile conflict ...................$NL
-cd $HERE/project
+cd "$HERE/project"
 PORT=`port 5700`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT 
-cd $HERE/project
+cd "$HERE/project"
 echo data1 > conflict.c
-cd $HERE/copy
+cd "$HERE/copy"
 echo data2 > old.c
 bk new $Q old.c
 bk commit $Q -yold.c || exit 1
 bk push -c1 $Q bk://localhost:$PORT || exit 1
-bk lock -U $HERE/project
-cd $HERE/copy
+bk lock -U "$HERE/project"
+cd "$HERE/copy"
 bk mv old.c conflict.c
 bk commit $Q -ygconflict
 echo "" | bk push -c1 bk://localhost:$PORT > bk.out 2>&1
 grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
-rm -f  $HERE/project/conflict.c
+rm -f  "$HERE/project/conflict.c"
 echo OK
 
 echo $N check http pull from bkd ....................................$NL
-bk lock -U $HERE/project
-cd $HERE/project/src
+bk lock -U "$HERE/project"
+cd "$HERE/project/src"
 bk edit $Q bar.c
 echo data3 > bar.c
 bk delta $Q -ydata3 bar.c
 bk commit $Q -ydata3
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull $Q http://localhost:$PORT/.
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N "check when server can't write to BitKeeper/tmp"...............$NL
 bk unpull $Q -f|| exit 1
-chmod -w $HERE/project/BitKeeper/tmp
+chmod -w "$HERE/project/BitKeeper/tmp"
 bk pull $Q bk://localhost:$PORT/ || exit 1
-chmod +w $HERE/project/BitKeeper/tmp
+chmod +w "$HERE/project/BitKeeper/tmp"
 echo OK
 
 echo $N check http clone from bkd ...................................$NL
-cd $HERE
-bk clone $Q http://localhost:$PORT $HERE/project2
+cd "$HERE"
+bk clone $Q http://localhost:$PORT "$HERE/project2"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N check http clone with bad -r from bkd .......................$NL
-bk clone $Q -rbad http://localhost:$PORT $HERE/junk2 2> err && {
+bk clone $Q -rbad http://localhost:$PORT "$HERE/junk2" 2> err && {
 	echo should have failed
 	exit 1
 }
@@ -291,11 +291,11 @@ bk service uninstall $BKDNAME
 echo OK
 
 echo $N Make sure bkd -C disallows cd to parent dir .................$NL
-cd $HERE/project/src
+cd "$HERE/project/src"
 PORT=`port 5800`
 bk service install $BKDNAME -EBK_REGRESSION=1 -C -p$PORT
-cd $HERE/copy
-bk pull bk://localhost:$PORT/$HERE/project > pull.out 2>&1
+cd "$HERE/copy"
+bk pull bk://localhost:$PORT/"$HERE/project" > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
 bk pull bk://localhost:$PORT/.. > pull.out 2>&1
@@ -308,42 +308,42 @@ bk service uninstall $BKDNAME
 echo OK
 
 echo $N Make sure bkd logs requests under the remote user name ......$NL
-cd $HERE/project
+cd "$HERE/project"
 cp /dev/null BitKeeper/log/repo_log
 PORT=`port 5900`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT -EBK_USER=garbage
-cd $HERE/copy
+cd "$HERE/copy"
 for NAME in pull_USER USER_PULL CLONE PUSH
 do	BK_USER=$NAME bk pull bk://localhost:$PORT > out 2>&1
 	bk _usleep 250000
-	grep -q $NAME $HERE/project/BitKeeper/log/repo_log || {
+	grep -q $NAME "$HERE/project/BitKeeper/log/repo_log" || {
 		echo failed to get name right in pull
 		echo == repo log ==
-		cat $HERE/project/BitKeeper/log/repo_log
+		cat "$HERE/project/BitKeeper/log/repo_log"
 		echo == OUT ==
 		cat out
 		exit 1
 	}
-	rm -rf $HERE/clone
-	BK_USER=CLONE bk clone $Q bk://localhost:$PORT $HERE/clone
+	rm -rf "$HERE/clone"
+	BK_USER=CLONE bk clone $Q bk://localhost:$PORT "$HERE/clone"
 	bk _usleep 250000
-	grep -q CLONE $HERE/project/BitKeeper/log/repo_log || {
+	grep -q CLONE "$HERE/project/BitKeeper/log/repo_log" || {
 		echo failed to get name right in clone
 		echo == repo log ==
-		cat $HERE/project/BitKeeper/log/repo_log
+		cat "$HERE/project/BitKeeper/log/repo_log"
 		exit 1
 	}
 	BK_USER=PUSH bk push $Q bk://localhost:$PORT
 	bk _usleep 250000
-	grep -q PUSH $HERE/project/BitKeeper/log/repo_log || {
+	grep -q PUSH "$HERE/project/BitKeeper/log/repo_log" || {
 		echo failed to get name right in push
 		echo == repo log ==
-		cat $HERE/project/BitKeeper/log/repo_log
+		cat "$HERE/project/BitKeeper/log/repo_log"
 		exit 1
 	}
 done
 bk lock -U
-cd $HERE/project
+cd "$HERE/project"
 bk lock -U
 bk service uninstall $BKDNAME
 echo OK

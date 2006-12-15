@@ -304,7 +304,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	sprintf(buf, "bk _listkey %s -q < %s >> %s",
+	sprintf(buf, "bk _listkey %s -q < '%s' >> '%s'",
 	    opts.fullPatch ? "-F" : "", probe_list, msg_file);
 	status = system(buf); 
 	rc = WEXITSTATUS(status);
@@ -546,7 +546,7 @@ takepatch(opts opts, int gzip, remote *r)
 	}
 	if (opts.collapsedups) cmds[++n] = "-D";
 	cmds[++n] = 0;
-	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
+	pid = spawnvpio(&pfd, 0, 0, cmds);
 	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
 	close(pfd);
 

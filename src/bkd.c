@@ -14,7 +14,7 @@ private	void	usage(void);
 private	void	do_cmds(void);
 private int	svc_uninstall(void);
 
-char		*bkd_getopt = "cCdDeE:hi:l|L:p:P:qRSt:V:x:";
+char		*bkd_getopt = "cCdDeE:hi:l|L:p:P:qRSt:UV:x:";
 char 		*logRoot;
 private char	**exCmds;
 
@@ -36,11 +36,6 @@ bkd_main(int ac, char **av)
 	unenabled = addLine(unenabled, "kill");
 
 	/*
-	 * Win32 note: -u/-t options have no effect on win32; win32 cannot
-	 *	 support alarm and setuid.
-	 * Unix note: -S/-R options have no effect on Unix;
-	 * 	 These option are used by the win32 bkd service as internal
-	 *	 interface.
 	 * -c now means check arguments and if they are OK echo the starting
 	 * dir and exit.  Used for service.
 	 */
@@ -73,6 +68,7 @@ bkd_main(int ac, char **av)
 		    case 'L': logRoot = strdup(optarg); break;	/* undoc */
 		    case 'q': Opts.quiet = 1; break; 		/* undoc */
 		    case 't': Opts.alarm = atoi(optarg); break;	/* undoc */
+		    case 'U': Opts.unsafe = 1; break;
 		    default: usage();
 	    	}
 	}

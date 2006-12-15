@@ -32,7 +32,7 @@ checkfiles ../BASELINE KEY
 echo OK
 
 echo $N Simple tag graph pull -r test ....,..........................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk tag $Q -rT1 T1_PULL_THIS_TO_TEST_LEAF_MARKED
 bk changes -krT1 > ../KEY
 bk tag $Q T2
@@ -57,7 +57,7 @@ grep -q "no such delta.*NOT_THIS" ERR || {
 echo OK
 
 echo $N Pull -r to create tag graph with merged tips ................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk tag $Q FOO
 bk edit $Q foo
 bk delta $Q -fyfoo foo
@@ -73,9 +73,9 @@ bk pull $Q -rT2 || {
 echo OK
 
 echo $N Pull -r to see that it propagates with no problems ..........$NL
-cd $HERE
+cd "$HERE"
 commercial copykid
-bk parent $Q $HERE/copy
+bk parent $Q "$HERE/copy"
 bk pull $Q -rBAR || {
 	echo failed
 	exit 1
@@ -92,7 +92,7 @@ checkfiles SCCS/s.ChangeSet ../copy/SCCS/s.ChangeSet
 echo OK
 
 echo $N Pull -r such that the name has been changed .................$NL
-cd $HERE/project
+cd "$HERE/project"
 bk mv foo goo
 touch good
 bk new $Q good

@@ -152,7 +152,7 @@ usage:			system("bk help -s mvdir");
 	 */
 	bktmp(tempfile, "bk_mvdir");
 	cmd = aprintf("bk sfiles \"%s\" | "
-			"bk prs -hr1.1 -nd:DPN: - | grep BitKeeper/ > %s",
+			"bk prs -hr1.1 -nd:DPN: - | grep BitKeeper/ > '%s'",
 			from, tempfile);
 	system(cmd);
 	free(cmd);

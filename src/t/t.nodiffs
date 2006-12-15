@@ -35,29 +35,29 @@ cat > file <<EOF
 EOF
 bk ci $Q -i file
 if [ ! -f SCCS/s.file ]; then echo failed to create history; exit 1; fi
-bk commit $Q -ywhatever 
+bk commit $Q -ywhatever
 echo OK
 echo $N Clone, modify both, resync, resolve should autocomment ......$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 for i in copy project
-do	cd $HERE/$i
+do	cd "$HERE/$i"
 	bk get -e -g $Q file
 	bk get -kp $Q file | sed -e s/2/2-$i/ -e s/3/3-$i/ > file
 	bk delta $Q -y$i
 	bk commit -y$i $Q
 done
-cd $HERE/copy
+cd "$HERE/copy"
 bk pull -R $Q
 cd ..
-tar cf TAR copy 
+tar cf TAR copy
 cd copy
 ( echo s
   echo C ) | env DISPLAY=none:0 bk resolve $Q 2>/dev/null
 grep -q 'SCCS merge' SCCS/s.file || {
 	echo failed to detect a no diffs and autocheckin
 	head SCCS/s.file
-   	exit 1
+	exit 1
 }
 echo OK
 echo $N Resolve -t should also autocomment ..........................$NL
@@ -71,6 +71,6 @@ grep -q 'SCCS merge' SCCS/s.file || {
 	echo failed to detect a no diffs and autocheckin
 	cat resolve.out
 	head SCCS/s.file
-   	exit 1
+	exit 1
 }
 echo OK

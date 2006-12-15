@@ -19,7 +19,7 @@ echo OK
 echo $N Test upgrade with just a commercial lease ...................$NL
 commercial junk2
 bk lease renew
-cd $HERE
+cd "$HERE"
 bk upgrade -f 2>ERR && {
 	echo should have failed
 	cat ERR
@@ -94,11 +94,11 @@ grep -q "BitKeeper version .* is available for download." OUT || {
 echo OK
 
 echo $N Test upgrade using a license proxy ..........................$NL
-cd $HERE/junk2
+cd "$HERE/junk2"
 P=`port 5000`
 bk bkd -q -d -p$P -ikill
 
-cd $HERE
+cd "$HERE"
 bk lease flush -a
 BK_NOTTY=1 BK_LICENSEURL=bk://localhost:$P/ bk upgrade -cf >OUT 2>ERR || {
 	echo should not have failed
@@ -127,10 +127,10 @@ test -x /usr/bin/perl || exit 0
 test `uname` = NetBSD && exit 0
 
 echo $N Create local upgrade area ...................................$NL
-cd $HERE
+cd "$HERE"
 BK_INSTALLER=
 # Lazy way to get full path
-find `bk bin`/utils -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
+find "`bk bin`"/utils -name 'bk*.exe' -o -name 'bk*.bin' > /tmp/bk$$
 test `wc -l < /tmp/bk$$` -gt 1 && {
 	echo skipped
 	$RM -f /tmp/bk$$
@@ -148,11 +148,11 @@ INSTALLER=bk-3.2.6-$OS.bin
 cp $BK_INSTALLER $INSTALLER
 mkdir upgrade
 cd upgrade
-bk get $Q -S `bk bin`/build_upgrade_index.pl `bk bin`/bkupgrade.key
-`bk bin`/build_upgrade_index.pl  bk-3.2.6 ../$INSTALLER
+bk get $Q -S "`bk bin`"/build_upgrade_index.pl "`bk bin`"/bkupgrade.key
+"`bk bin`"/build_upgrade_index.pl  bk-3.2.6 ../$INSTALLER
 cd ..
 cd junk2
-bk upgrade -df $HERE/upgrade >OUT || {
+bk upgrade -df "$HERE/upgrade" >OUT || {
 	echo should not have failed
 	exit 1
 }
@@ -170,16 +170,16 @@ cmp -s $INSTALLER foo-licensed || {
 echo OK 
 
 echo $N Test trying to upgrade to a banned version ..................$NL
-cd $HERE/upgrade
+cd "$HERE/upgrade"
 rm -rf *
 INSTALLER=bk-2.2.x-pre1-$OS.bin
 cp $BK_INSTALLER ../$INSTALLER
-`bk bin`/build_upgrade_index.pl bk-2.2.x-pre1 ../$INSTALLER
+"`bk bin`"/build_upgrade_index.pl bk-2.2.x-pre1 ../$INSTALLER
 cd ../junk2
 BK_CONFIG="license:$BKL_REMOTE!"
 BK_CONFIG="$BK_CONFIG;licsign1:$BKL_R1!;licsign2:$BKL_R2!;licsign3:$BKL_R3!"
 export BK_CONFIG
-bk upgrade -df $HERE/upgrade 2>ERR && {
+bk upgrade -df "$HERE/upgrade" 2>ERR && {
 	echo should have failed
 	cat OUT
 	exit 1

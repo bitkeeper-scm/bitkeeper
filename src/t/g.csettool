@@ -12,10 +12,10 @@
 # Copyright (c) 2004 Larry McVoy
 # %K%
 
-test -d $HERE/home || mkdir $HERE/home
-export BK_TEST_HOME=$HERE/home
-OUT=$HERE/out
-RC=`bk dotbk`/cset.rc
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/cset.rc"
 
 echo $N Create initial repository ...................................$NL
 commercial project
@@ -25,9 +25,9 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 echo $N Create some data ............................................$NL
-cd $HERE/project/BitKeeper/etc
-mkdir $HERE/project/src
-cd $HERE/project/src
+cd "$HERE/project/BitKeeper/etc"
+mkdir "$HERE/project/src"
+cd "$HERE/project/src"
 for f in file1 file2 file3 file4 file5 ; do
     echo "this is $f" > $f 
     bk ci $Q -i -y'new file' $f
@@ -38,16 +38,16 @@ bk tag $Q "BabySteps"
 echo OK
 
 echo $N Simple startup and exit......................................$NL
-bk guitest csettool >$OUT 2>&1 <<'EOF'
+bk guitest csettool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
 err=$?
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
-if [ -s $OUT ] ; then
+if [ -s "$OUT" ] ; then
     echo failed $err
     echo "unexpected output:"
-    cat $OUT
+    cat "$OUT"
     exit 1 
 fi
 echo OK
@@ -55,16 +55,16 @@ echo OK
 # this tests that the gui properly creates the rc file. We can rely
 # on the fact it should have been created by the previous test
 echo $N Create dotbk/cset.rc ........................................$NL
-test -f $RC && rm -f $RC
-bk guitest csettool >$OUT 2>&1 <<'EOF'
+test -f "$RC" && rm -f "$RC"
+bk guitest csettool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
     after 5000 [list exit 99] ;# in case the buttonpress didn't work
 EOF
-test -f $RC || (echo "failed" ; exit 1; )
+test -f "$RC" || (echo "failed" ; exit 1; )
 echo "OK"
 
 echo $N Check prs-formatted list of files............................$NL
-bk guitest csettool >$OUT 2>&1 <<'EOF'
+bk guitest csettool >"$OUT" 2>&1 <<'EOF'
     set actual [.l.filelist.t get 1.0 end-1c]
     set expected {
 ChangeSet 1.2
@@ -85,15 +85,15 @@ ChangeSet 1.2
     }
     exit 0
 EOF
-if [ -s $OUT ] ; then
+if [ -s "$OUT" ] ; then
     echo failed $err
-    cat $OUT
+    cat "$OUT"
     exit 1 
 fi
 echo OK
 
 echo $N Test revision given in command line..........................$NL
-bk guitest csettool -r1.1 >$OUT 2>&1 <<'EOF'
+bk guitest csettool -r1.1 >"$OUT" 2>&1 <<'EOF'
 	global currentCset
 	if {$currentCset ne "1.1"} {
 		puts "Gave -r1.1 in command line, \
@@ -102,18 +102,18 @@ bk guitest csettool -r1.1 >$OUT 2>&1 <<'EOF'
 	}
 	exit 0
 EOF
-if [ $? -ne 0 ]; then echo failed; cat $OUT; exit 1; fi
-if [ -s $OUT ] ; then echo failed; cat $OUT; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; cat "$OUT"; exit 1; fi
+if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 
 echo $N Test no revision given in command line.......................$NL
 # since csettool expects -r<rev> and NOT "-r <rev>"
 # we pass it "-r 1.1" which it should take as no revision given
-bk guitest csettool -r 1.1 >$OUT 2>&1 <<'EOF'
+bk guitest csettool -r 1.1 >"$OUT" 2>&1 <<'EOF'
 	puts stderr "CsetTool should have exited 1 with an error message \
 	    but it didn't"
 	exit 0
 EOF
-if [ $? -eq 0 ]; then echo failed; cat $OUT; exit 1; fi
+if [ $? -eq 0 ]; then echo failed; cat "$OUT"; exit 1; fi
 echo OK
 

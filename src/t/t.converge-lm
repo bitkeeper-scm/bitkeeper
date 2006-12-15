@@ -45,7 +45,7 @@ test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
 echo OK
 
 echo $N Clone, add user content, resync, check copies ...............$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 cd copy
 ls > LS
@@ -82,7 +82,7 @@ do
 	gone)		FILE="   $file   ";;
     esac
     echo $N "Change $FILE file, resync, make sure no gfile ..........$NL"
-    cd $HERE
+    cd "$HERE"
     rm -rf copy
     bk clone $Q project copy
     cd copy
@@ -90,7 +90,7 @@ do
     echo "# XYXYXYXYXYXYXYXYXYXYXYXYXYXY" >> BitKeeper/etc/$file
     bk delta $Q -y'fake update' BitKeeper/etc/$file
     bk commit $Q -y'config test'
-    cd $HERE/project
+    cd "$HERE/project"
     bk pull -R $Q ../copy
     test -f RESYNC/BitKeeper/etc/$file && {
 	    # Could be OK, maybe BK checked it out
@@ -109,7 +109,7 @@ do
 done
 
 echo $N Create repository, clone, make csets as same users ..........$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 fresh_commercial project
 cd ..
@@ -150,7 +150,7 @@ echo OK
 # timestamp.
 
 echo $N Create repository, clone, csets as diff users, same time_t ..$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 fresh_commercial project
 cd ..
@@ -186,7 +186,7 @@ fi
 echo OK
 
 echo $N Pull them, should not ask, should union, oldest in slot .....$NL
-cd $HERE
+cd "$HERE"
 tar cf SAVE project copy
 cd copy
 bk pull $Q -t ../project || exit 1
@@ -207,7 +207,7 @@ fi
 echo OK
 
 echo $N Pull opposite direction, want same result ...................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf SAVE 
 cd project
@@ -234,7 +234,7 @@ fi
 echo OK
 
 echo $N Create repository ...........................................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 fresh_commercial project
 echo OK
@@ -251,7 +251,7 @@ bk stripdel $Q -r1.0.. gone
 bk gone $Q project44
 echo y | bk commit $Q -ywhatever >/dev/null 2>&1
 KEY=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
-cd $HERE
+cd "$HERE"
 bk clone $Q project copy
 echo OK
 
@@ -268,7 +268,7 @@ then	echo failed to leave original gone file
 	exit 1
 fi
 
-cd $HERE/copy
+cd "$HERE/copy"
 BK_USER=jane
 BK_HOST=kick.dork.bk_regression.bk
 export BK_USER BK_HOST
@@ -308,7 +308,7 @@ echo OK
 # but do not commit it, and pull into parent.
 # The try it with a push.
 echo $N Create repo, clone, commit in both and save .................$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 fresh_commercial project
 cd ..
@@ -324,7 +324,7 @@ test `bk sfiles -p | wc -l` -eq 0 || {
 	bk sfiles -p
 	exit 1
 }
-cd $HERE/copy
+cd "$HERE/copy"
 BK_USER=joe
 BK_HOST=blow.dork.bk_regression.bk
 bk gone $Q copy34
@@ -335,23 +335,23 @@ test `bk sfiles -p | wc -l` -eq 0 || {
 	bk sfiles -p
 	exit 1
 }
-cd $HERE
+cd "$HERE"
 tar cf TAR project copy
 echo OK
 
 # Should not create two copies of the old logging OK, it should move the
 # old one back and delete the new one.
 echo $N In clone, rm logging_ok, commit a new one, pull .............$NL
-cd $HERE
+cd "$HERE"
 rm -rf project copy
 tar xmf TAR
-cd $HERE/project
+cd "$HERE/project"
 CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){F\n}' | wc -l`
 if [ $CNT != 1 ]
 then	echo wrong number of gone files in PROJECT
 	exit 1
 fi
-cd $HERE/copy
+cd "$HERE/copy"
 OLD=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 CNT=`bk -r prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){F\n}' | wc -l`
 if [ $CNT != 1 ]

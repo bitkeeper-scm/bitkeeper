@@ -3,16 +3,13 @@
 # gzip_b64wrap - the sending side of a gzip | base64 stream
 # %W% %K%
 
-PATH=$PATH:/usr/local/bin:/usr/freeware/bin
-
-GZIP=NO
-for i in `echo $PATH | sed 's/:/ /g'`
-do	if [ -f $i/gzip -a -x $i/gzip ]
-	then	GZIP=YES
-	fi
-done
-if [ $GZIP = NO ]
-then	exec bk b64wrap
+PATH="$PATH:/usr/local/bin:/usr/freeware/bin"
+GZIP="`bk which gzip`"
+test -n "$GZIP" -a "$OSTYPE" = msys && {
+	GZIP=`win2msys "$GZIP"`
+}
+test -z "$GZIP" && {
+	exec bk b64wrap
 	exit 1
-fi
-exec gzip | bk base64
+}
+exec "$GZIP" | bk b64wrap

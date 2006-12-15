@@ -10,8 +10,8 @@
 #    modifications under any license.
 
 case "$HERE" in
-    [A-Z]:/*)	PREFIX=file://$HERE;;
-    *)		PREFIX=file:/$HERE;;
+    [A-Z]:/*)	PREFIX=file://"$HERE";;
+    *)		PREFIX=file:/"$HERE";;
 esac
 
 # Tests for parent manipulation
@@ -23,7 +23,7 @@ cores
 
 echo $N Make sure that we have incoming, outgoing parent set ........$NL
 # Make sure we don't have to be at the root.
-cd $HERE/clone
+cd "$HERE/clone"
 mkdir src
 cd src
 bk parent -iq || exit 1
@@ -45,7 +45,7 @@ test "$PARENT" = "$L_PARENT" || exit 1
 echo OK
 
 echo $N Make sure we have the compat single parent pointer ..........$NL
-cd $HERE/clone
+cd "$HERE/clone"
 test -f BitKeeper/log/parent || exit 1
 FILE="`cat BitKeeper/log/parent`"
 test "$PLATFORM" = "WIN32" && FILE="`echo $FILE | tr '[a-z]' '[A-Z]'`"
@@ -93,8 +93,8 @@ test `bk parent -l` = bk://somewhere.org || exit 1
 echo OK
 
 echo $N Set several parents, make sure they are all recorded ........$NL
-PARENT=$PREFIX/project
-bk parent -sq $PARENT bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
+PARENT="$PREFIX/project"
+bk parent -sq "$PARENT" bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF
 bk://ibm.com/a/b/c
@@ -141,7 +141,7 @@ echo OK
 
 echo $N Add several parents, make sure they are all recorded ........$NL
 bk parent -qr
-bk parent -q $HERE/project || exit 1
+bk parent -q "$HERE/project" || exit 1
 bk parent -aq bozo@somewhere.com://tmp bk://ibm.com/a/b/c || exit 1
 bk parent -l > GOT
 cat > WANT <<EOF

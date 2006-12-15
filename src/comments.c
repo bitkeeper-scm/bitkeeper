@@ -164,7 +164,7 @@ comments_prompt(char *file)
 		    case 'u':
 			return (0);
 		    case 'e':
-			cmd = aprintf("%s %s", editor, file);
+			cmd = aprintf("%s '%s'", editor, file);
 			system(cmd);
 			free(cmd);
 			break;

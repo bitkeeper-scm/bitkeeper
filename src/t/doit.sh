@@ -3,7 +3,7 @@
 # All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
 # and are not licensed under the terms of the BKL (BitKeeper License).
 # Standard copyright law applies.
-# 
+#
 # Redistribution in modified form is prohibited with one exception:
 #    proposed modifications may be sent back to dev@bitmover.com for
 #    possible inclusion in future releases.  Sending such modifications
@@ -26,7 +26,7 @@ win32_common_setup()
 	BK_FS="|"
 	PATH=${PATH}:${BK_BIN}/win32/t
 	export PATH
-	BK_BIN=`cd .. && ./bk pwd -s`
+	BK_BIN="`cd .. && ./bk pwd -s`"
 	CWD="$BK_BIN/bk pwd"
 	touch `msys2win $TEMP`/BitKeeper_nul
 	BK_USER=`bk getuser`
@@ -70,10 +70,10 @@ unix_common_setup()
 	if [ X$USER = Xroot ]; then USER=root-test; fi
 
 	# only a symlink to 'bk' appears on PATH
-	BK_BIN=/build/.bkbin-$USER
-	rm -rf $BK_BIN
-	mkdir $BK_BIN
-	ln -s `cd .. && pwd`/bk $BK_BIN/bk
+	BK_BIN="/build/.bkbin $USER"
+	rm -rf "$BK_BIN"
+	mkdir "$BK_BIN"
+	ln -s "`cd .. && pwd`/bk" "$BK_BIN/bk"
 	PATH=$BK_BIN:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
 
 	# clear any stale uniq locks
@@ -99,16 +99,16 @@ unix_common_setup()
 
 	test `uname` = SCO_SV && return
 
-	BK_LIMITPATH=/build/.bktools-$USER
-	rm -rf $BK_LIMITPATH
-	mkdir $BK_LIMITPATH
+	BK_LIMITPATH="/build/.bktools $USER"
+	rm -rf "$BK_LIMITPATH"
+	mkdir "$BK_LIMITPATH"
 	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip remsh rcmd uname xterm vi tar \
 	    chmod perl ls
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
-		then	ln -s $p $BK_LIMITPATH/$f
+		then	ln -s "$p" "$BK_LIMITPATH/$f"
 		else	:
 			# Too noisy
 			# echo WARNING: could not find a $f binary.
@@ -118,7 +118,7 @@ unix_common_setup()
 
 	# Use bash on MacOS, their ksh is broken.
 	test "X`uname`" = XDarwin &&
-	    test -x /bin/bash && ln -s /bin/bash $BK_LIMITPATH/bash
+	    test -x /bin/bash && ln -s /bin/bash "$BK_LIMITPATH/bash"
 }
 
 bad_mount()
@@ -246,13 +246,13 @@ setup_env()
 	export _BK_GEOM
 
 	unset _BK_GMODE_DEBUG
-	BK_REGRESSION=`cd "$TST_DIR"; bk pwd -s`/.regression-$USER
+	BK_REGRESSION="`cd "$TST_DIR"; bk pwd -s`/.regression $USER"
 	BK_CACHE="$BK_REGRESSION/cache"
-	HERE=`cd "$TST_DIR"; bk pwd -s`/.regression-$USER/sandbox
-	BK_TMP=$HERE/.tmp
-	BK_DOTBK=$HERE/.bk
+	HERE="`cd "$TST_DIR"; bk pwd -s`/.regression $USER/sandbox"
+	BK_TMP="$HERE/.tmp"
+	BK_DOTBK="$HERE/.bk"
 	export BK_DOTBK
-	TMPDIR=/build/.tmp-$USER
+	TMPDIR="/build/.tmp $USER"
 
 	# Valid bkcl (old style, pre eula bits) license
 	#BKL_BKCL=BKL643168ad03d719ed00001200ffffe000000000
@@ -273,10 +273,10 @@ setup_env()
 	BKL_B3=50t+ydKFF9LnJsPM00gOV/yy6eP9C5htR9JimOhKdvjKWqrxHDe6GULm6eNGJQ==
 
 	# Valid pro license (bkweb,bugdb,import,airgap)
-	BKL_PRO=BKL64598bf80368c8080000121dfffff42e572b43
-	BKL_P1=YgAAAo0AAAADgAAAAG9uEb3kObZCQZ8dj5rRFjuuRFpYsew/v2515essgBQzEzb7
-	BKL_P2=PtNuAcXkBuHrnVriJlsVNstSNSu9YqabERRpvrJkVAzTa6zLop8XVVtxwOZA2LWe
-	BKL_P3=638fH1v76tmgleGws+2+ZfQ/fKywECk1g0tthSMbz5ivL1hRLzlORoDYSJfO
+	BKL_PRO=BKL64779f300368c8080000121dfffff42e572b43
+	BKL_P1=YgAAAo4AAAADgQAAAALL1QuE9csRitQ/cjkYLudgt6g6H6UH2iqAyqulYNQyCCX7
+	BKL_P2=5cRIxhsE6MxFGSLrnpRM/Tpygj1rOW9fEof1rRsySwZfxdIJVuSFz6N+xhzn8XJn
+	BKL_P3=1dav4Z8piUyzmPkSfY5/cuCOmutOc/2H+pStiSRYj0+iJzfbsRvQwY/0F3N8ag==
 
 	# Valid Enterprise license (airgap)
 	BKL_ENTERPRISE=BKL64598bf80368c80800001210fffff42e572b44
@@ -323,50 +323,58 @@ clean_up()
 	# Win32 have no core file
 	if [ "$PLATFORM" = "UNIX" ]
 	then
-		bk _find $BK_REGRESSION -name core > $BK_REGRESSION/cores
-		if [ -s $BK_REGRESSION/cores ]
-		then    ls -l `cat $BK_REGRESSION/cores`
-			file `cat $BK_REGRESSION/cores`
+		bk _find "$BK_REGRESSION" -name core > "$BK_REGRESSION/cores"
+		if [ -s "$BK_REGRESSION/cores" ]
+		then	 # ls -l `cat "$BK_REGRESSION/cores"`
+			cat "$BK_REGRESSION/cores" | 
+			    while read core; do ls -l "$core"; done
+			# file `cat "$BK_REGRESSION/cores"`
+			cat "$BK_REGRESSION/cores" | 
+			    while read core; do file "$core"; done
 			exit 10
 		fi
 	fi
 
 	for i in 1 2 3 4 5
-	do	bk _find $BK_REGRESSION -name 'bk*' |
-		    grep BitKeeper/tmp > $BK_REGRESSION/junk
-		if [ ! -s $BK_REGRESSION/junk ]
+	do	bk _find "$BK_REGRESSION" -name 'bk*' |
+		    grep BitKeeper/tmp > "$BK_REGRESSION/junk"
+		if [ ! -s "$BK_REGRESSION/junk" ]
 		then	break
 		fi
 		sleep 1
 	done
-        if [ -s $BK_REGRESSION/junk ]
-        then    ls -l `cat $BK_REGRESSION/junk`
-                file `cat $BK_REGRESSION/junk`
-                exit 11
+	if [ -s "$BK_REGRESSION/junk" ]
+	then    # ls -l `cat "$BK_REGRESSION/junk"`
+		cat "$BK_REGRESSION/junk" | 
+		    while read junk; do ls -l "$junk"; done
+		# file `cat "$BK_REGRESSION/junk"`
+		cat "$BK_REGRESSION/junk" | 
+		    while read junk; do file "$junk"; done
+		exit 11
 	fi
 
 	# Make sure there are no lockfiles left
-	bk _find $BK_REGRESSION |
-	    egrep 'BitKeeper/readers/|BitKeeper/writer/' > $BK_REGRESSION/junk
-	test -s $BK_REGRESSION/junk && {
+	bk _find "$BK_REGRESSION" |
+	    egrep 'BitKeeper/readers/|BitKeeper/writer/' > "$BK_REGRESSION/junk"
+	test -s "$BK_REGRESSION/junk" && {
 		echo Stale lock files
-		cat $BK_REGRESSION/junk
+		cat "$BK_REGRESSION/junk"
 		exit 12
 	}
 
 	# Make sure there are no stale files in $TMPDIR
-	ls -a $TMPDIR > $TMPDIR/T.${USER}-new
-	( cd $TMPDIR && bk diff T.${USER}-new T.${USER} )
+	ls -a "$TMPDIR" > "$TMPDIR/T.${USER} new"
+	( cd "$TMPDIR" && bk diff "T.${USER} new" "T.${USER}" )
 
 	for i in 1 2 3 4 5 6 7 8 9 0
-	do	
-		rm -rf $HERE 2>/dev/null
-		test -d $HERE || break
+	do
+		rm -rf "$HERE" 2>/dev/null
+		test -d "$HERE" || break
 		sleep 1
 	done
-	rm -rf $HERE
+	rm -rf "$HERE"
 
-	test -d $HERE && {
+	test -d "$HERE" && {
 		echo "cleanup: failed to rm $HERE"
 		exit 1
 	}
@@ -374,13 +382,13 @@ clean_up()
 
 init_main_loop()
 {
-	if [ -d $BK_REGRESSION ]; then rm -rf $BK_REGRESSION; fi
+	if [ -d "$BK_REGRESSION" ]; then rm -rf "$BK_REGRESSION"; fi
 
-	if [ -d $BK_REGRESSION ];
+	if [ -d "$BK_REGRESSION" ];
 	then echo "failed to rm $BK_REGRESSION"; exit 1;
 	fi
 
-	BK_PATH=$PATH
+	BK_PATH="$PATH"
 	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD
 	export USER BK_FS BK_REGRESSION HERE BK_TMP TMPDIR NL N Q S CORES
 	export BK_CACHE
@@ -397,7 +405,7 @@ init_main_loop()
 	export BKL_REMOTEEX BKL_RE1 BKL_RE2 BKL_RE3
 	export BK_GLOB_EQUAL
 	export BK_BIN
-	mkdir -p $BK_CACHE
+	mkdir -p "$BK_CACHE"
 }
 
 #
@@ -485,12 +493,12 @@ echo ''
 	printf " %s test " ${i#t.}
 	printf "%.${LEN}s\n" "================================================"
 
-	mkdir -p $HERE || exit 1
-	mkdir -p $BK_TMP || exit 1
-	mkdir -p $BK_DOTBK || exit 1
+	mkdir -p "$HERE" || exit 1
+	mkdir -p "$BK_TMP" || exit 1
+	mkdir -p "$BK_DOTBK" || exit 1
 
 	# Let's be safe out there boys and girls
-	case $TMPDIR in
+	case "$TMPDIR" in
 	    /tmp)	echo Bad tmpdir, I quit
 			exit 1
 			;;
@@ -500,29 +508,29 @@ echo ''
 			exit 1
 			;;
 	esac
-	rm -rf $TMPDIR || exit 1
-	mkdir -p $TMPDIR || exit 1
+	rm -rf "$TMPDIR" || exit 1
+	mkdir -p "$TMPDIR" || exit 1
 
 	# Save the list of file currently in $TMPDIR
 	# check it again for tmp file leak when we are in clean_up()
-	touch $TMPDIR/T.${USER}-new
-	ls -a $TMPDIR > $TMPDIR/T.${USER}
+	touch "$TMPDIR/T.${USER} new"
+	ls -a "$TMPDIR" > "$TMPDIR/T.${USER}"
 
-	touch $TMPDIR/OUT.$$
+	touch "$TMPDIR/OUT.$$"
 	if [ X$Q = X -o X$dashx = X-x ]
 	then	OUTPIPE=""
-	else	OUTPIPE=" 2>&1 | tee $TMPDIR/OUT.$$"
+	else	OUTPIPE=" 2>&1 | tee '$TMPDIR/OUT.$$'"
 	fi
-	EXF=$TMPDIR/T.${USER}-next
-	cat setup $i | eval "{ @TEST_SH@ $dashx; echo \$?>$EXF; } $OUTPIPE"
-	EXIT=`cat $EXF`
-	rm -f $EXF
+	EXF="$TMPDIR/T.${USER} next"
+	cat setup "$i" | eval "{ @TEST_SH@ $dashx; echo \$?>\"$EXF\"; } $OUTPIPE"
+	EXIT="`cat \"$EXF\"`"
+	rm -f "$EXF"
 	BAD=0
 	# If the test passes, then check to see if it contains any unexpected
 	# output.
 	test $EXIT -eq 0 && {
 		egrep -v '^.*\.OK$|^---.*$|\.\.failed \(bug|^.*\.skipped$' \
-		    $TMPDIR/OUT.$$ > $DEV_NULL && {
+		    "$TMPDIR/OUT.$$" > $DEV_NULL && {
 			if [ "X$FAIL_WARNING" = "XYES" ]
 			then	BAD=1
 			else	echo
@@ -546,7 +554,7 @@ I hope your testing experience was positive! :-)
 "
 	fi
 
-	$RM -f $TMPDIR/OUT.$$
+	$RM -f "$TMPDIR/OUT.$$"
 	if [ $EXIT -ne 0 -o $BAD -ne 0 ]
 	then
 		if [ $EXIT -ne 0 ]
@@ -562,9 +570,9 @@ I hope your testing experience was positive! :-)
 	fi
 	clean_up
 done
-rm -rf $BK_REGRESSION
-rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
-test $BK_LIMITPATH && rm -rf $BK_LIMITPATH
+rm -rf "$BK_REGRESSION"
+rm -f "$TMPDIR/T.${USER}" "$TMPDIR/T.${USER} new"
+test "$BK_LIMITPATH" && rm -rf "$BK_LIMITPATH"
 test $PLATFORM = WIN32 && bk bkd -R
 test $PLATFORM = WIN32 && {
 	win32_regDiff || win32_regRestore
@@ -585,7 +593,7 @@ else
 fi
 echo ------------------------------------------------
 test "X$BADOUTPUT" != X && {
-        echo
+	echo
 	echo ------------------------------------------------
 	echo The follow tests had unexpected output:
 	for i in $BADOUTPUT

@@ -19,7 +19,7 @@ commercial proj
 echo line 1 > file
 bk new $Q file || exit 1
 bk commit $Q -ystart || exit 1
-cd $HERE
+cd "$HERE"
 bk clone $Q proj copy
 cd proj
 bk edit $Q file
@@ -27,7 +27,7 @@ echo $NX new line without NL $NXL >> file
 cp file ../file.bak
 bk delta $Q -ynonl file || exit 1
 bk commit $Q -ynew_remote || exit 1
-cd $HERE/copy
+cd "$HERE/copy"
 bk edit $Q file
 echo new line with NL >> file
 bk delta $Q -ynl file || exit 1
@@ -80,7 +80,7 @@ test -f SCCS/p.file || {
 echo OK
 
 echo $N Test permission problems in resolve .........................$NL
-cd $HERE/proj
+cd "$HERE/proj"
 mkdir dir1
 echo ff > dir1/ff
 mkdir dir2
@@ -105,7 +105,7 @@ bk new $Q dir3/dir33/hh || exit 1
 bk commit $Q -yappend
 bk push > OUT 2>&1
 status=$?
-chmod -R +w $HERE
+chmod -R +w "$HERE"
 test $status != 0 || {
 	echo push shouldn\'t have worked
 	cat OUT
@@ -116,19 +116,19 @@ grep 'No write permission: dir3' OUT > /dev/null || {
 	cat OUT
 	exit 1
 }
-cd $HERE/proj
+cd "$HERE/proj"
 bk abort -f
 bk -r check -acf || exit 1
 echo OK
 
 echo $N What if you don\'t have permisisons to delete a file..........$NL
 chmod -w dir2/SCCS
-cd $HERE/copy2
+cd "$HERE/copy2"
 bk mv dir2/gg dir3/gg || exit 1
 bk commit -ymv $Q || exit 1
 bk push > OUT 2>&1
 status=$?
-chmod -R +w $HERE
+chmod -R +w "$HERE"
 test $status != 0 || {
 	echo push shouldn\'t have worked
 	cat OUT
@@ -139,16 +139,16 @@ grep 'No write permission: dir2' OUT > /dev/null || {
 	cat OUT
 	exit 1
 }
-cd $HERE/proj
+cd "$HERE/proj"
 bk abort -f
 bk -r check -acf || exit 1
 echo OK
 
 echon Test listing of files in conflict ...........................
-cd $HERE
+cd "$HERE"
 bk clone $Q proj copy3 || exit 1
 for d in proj copy3; do
-	cd $HERE/$d
+	cd "$HERE"/$d
 	for f in file dir1/ff dir2/gg "dir2/space file" ; do
 		bk edit $Q "$f"
 		echo $d >> "$f"
@@ -157,7 +157,7 @@ for d in proj copy3; do
 	bk mv file file.$d
 	BK_USER=$d bk commit -y"$d" $Q || exit 1
 done
-cd $HERE/copy3
+cd "$HERE/copy3"
 bk pull -R $Q
 tar cf TAR RESYNC
 echo q | bk resolve -a -d -l 2> OUT && {
@@ -375,14 +375,14 @@ test -f RESYNC/SCCS/s.xyz || {
 echo OK
 
 echo $N Do a \'rr\' when given a create/gfile conflict ................$NL
-cd $HERE
+cd "$HERE"
 rm -rf copy2
 bk clone $Q proj copy2 || exit 1
 cd proj
 echo hh > hh
 bk new $Q hh
 bk commit $Q -ynewhh || exit 1
-cd $HERE/copy2
+cd "$HERE/copy2"
 echo hj > hh
 (echo rr; echo y) | bk pull > OUT 2>&1 || {
 	echo failed
@@ -397,7 +397,7 @@ grep -q '| 1 unresolved name conflict' OUT || {
 echo OK
 
 echo $N Check vr when remote is on a branch .........................$NL
-cd $HERE/proj
+cd "$HERE/proj"
 echo VERSION 1 > foo
 bk new $Q foo
 bk commit $Q -yfoo
@@ -435,7 +435,7 @@ grep -q "VERSION 3" VR || {
 echo OK
 
 echo $N Check pass1 to see if dups when no dup.......................$NL
-cd $HERE
+cd "$HERE"
 export CLOCK_DRIFT=1
 commercial p1d
 mkdir src
@@ -483,7 +483,7 @@ bk resolve $Q -234 2> ERR || {
 echo OK
 
 echo $N Make sure that a rename only conflict does partial check ....$NL
-cd $HERE
+cd "$HERE"
 commercial parent
 touch start
 bk new $Q start
@@ -516,19 +516,19 @@ grep -q 'SYSIO {bk} {check} {-c} {-}' OUT || {
 echo OK
 
 echo $N Make sure resolve does not rerun with conflicts and -s ......$NL
-cd $HERE/proj
+cd "$HERE/proj"
 bk abort -f
-cd $HERE
+cd "$HERE"
 bk clone $Q proj conflict
 for i in proj conflict
 do
-	cd $HERE/$i
+	cd "$HERE"/$i
 	bk edit $Q foo
 	echo $i >> foo
 	bk delta $Q -y$i foo
 	bk commit $Q -y$i 
 done
-cd $HERE/conflict
+cd "$HERE/conflict"
 ( echo '?'
   echo q
 ) | bk pull -s > OUT 2>&1
@@ -555,12 +555,12 @@ echo $N Make sure resolve is not interactive with rename conflicts ..$NL
 bk abort -f
 for i in proj conflict
 do
-	cd $HERE/$i
+	cd "$HERE"/$i
 	test $i = proj && bk mv dir1 dir1-proj
 	bk mv foo foo-$i
 	bk commit $Q -y$i 
 done
-cd $HERE/conflict
+cd "$HERE/conflict"
 ( echo '?'
   echo q
 ) | bk pull -s > OUT 2>&1
@@ -588,12 +588,12 @@ grep -q 'added locally and remotely and must be merged.' OUT || {
 echo OK
 
 echo $N Make sure xflags always automerge ...........................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q proj xflags
-cd $HERE/proj
+cd "$HERE/proj"
 bk admin -fEXPAND1 foo-proj
 bk commit $Q -yproj
-cd $HERE/xflags
+cd "$HERE/xflags"
 bk admin -fEOLN_NATIVE foo-proj
 bk commit $Q -yxflags
 bk pull -R $Q
@@ -608,7 +608,7 @@ grep -q 'Added merged flags to both local and remote versions.' OUT || {
 echo OK
 
 echo $N Make sure resolve automerges modes when it can ..............$NL
-cd $HERE/proj
+cd "$HERE/proj"
 date > mode
 bk new $Q mode
 bk chmod 0600 mode
@@ -618,7 +618,7 @@ test `bk prs -hr+ -nd:RWXMODE: mode` = -rw------- || {
 	exit 1
 }
 bk commit $Q -yproj
-cd $HERE
+cd "$HERE"
 bk clone $Q proj mode
 cd proj
 bk chmod g+rw mode
@@ -649,7 +649,7 @@ test -d RESYNC && {
 echo OK
 
 echo $N Make sure resolve is not interactive with mode conflicts ....$NL
-cd $HERE/proj
+cd "$HERE/proj"
 bk chmod 0777 mode
 test `bk prs -hr+ -nd:RWXMODE: mode` = -rwxrwxrwx || {
 	echo failed
@@ -657,7 +657,7 @@ test `bk prs -hr+ -nd:RWXMODE: mode` = -rwxrwxrwx || {
 	exit 1
 }
 bk commit $Q -yproj
-cd $HERE/mode
+cd "$HERE/mode"
 bk chmod 0710 mode
 test `bk prs -hr+ -nd:RWXMODE: mode` = -rwx--x--- || {
 	echo failed
@@ -675,7 +675,7 @@ grep -q 'mode conflict' OUT && {
 }
 echo OK
 
-cp -rp $HERE/mode $HERE/locktest
+cp -rp "$HERE/mode" "$HERE/locktest"
 echo $N Make sure we can finish the resolve .........................$NL
 ( 
   echo '?'
@@ -696,7 +696,7 @@ grep -q 'resolve complete.' OUT || {
 echo OK
 
 echo $N Make sure that we get a lock in pass4 .......................$NL
-cd $HERE/locktest
+cd "$HERE/locktest"
 bk lock -tr > PORT &
 bk lock -L
 ( 
@@ -747,7 +747,7 @@ grep -q '^%K%$' foo || {
 echo OK
 
 echo $N Check vr and vl when filename has spaces ....................$NL
-cd $HERE
+cd "$HERE"
 commercial proj1
 echo VERSION 1 > 'foo bar'
 bk new $Q 'foo bar'
@@ -789,7 +789,7 @@ grep -q "VERSION 2" VL || {
 echo OK
 
 echo $N Try autofixing a hosed RESYNC directory......................$NL
-cd $HERE
+cd "$HERE"
 bk clone $Q proj copy4
 cd proj/dir2
 bk edit $Q 'space file'
@@ -800,7 +800,7 @@ bk edit $Q ff
 echo "more stuff" >> ff
 bk delta $Q -ymore ff
 bk commit $Q -ymore
-cd $HERE/copy4/dir2
+cd "$HERE/copy4/dir2"
 bk edit $Q 'space file'
 echo "conflict" >> 'space file'
 bk delta $Q -yconflict 'space file'
@@ -809,7 +809,7 @@ bk edit $Q ff
 echo "conflict" >> ff
 bk delta $Q -yconflict ff
 bk commit $Q -yconflict
-cd $HERE/copy4
+cd "$HERE/copy4"
 bk pull $Q -R ../proj
 # Create a repo with the same problem as if the user had used an old
 # version of citool to commit a partial merge. See bug 2004-11-22-000
@@ -859,7 +859,7 @@ grep -q "$TIP" BitKeeper/etc/csets-in || {
 echo OK
 
 echo $N Automerge a trigger after automerging gone ..................$NL
-cd $HERE
+cd "$HERE"
 commercial trigger-master
 T=BitKeeper/triggers/pre-commit.test
 mkdir -p BitKeeper/triggers

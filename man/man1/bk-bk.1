@@ -16,7 +16,16 @@ bk \- \*(BK configuration management system front end
 .[OPTopt] \-r dir
 .ARG command
 .[ARG] options
-.OPTopt \-r dir
+.ARG \-
+.br
+.B bk
+.OPT \-q
+.OPTopt \-@ url
+.[ARG] sfiles_opts
+.[OPTopt] \-r dir
+.ARG command
+.[ARG] options
+.ARG \-
 .SH DESCRIPTION
 .B bk
 is the front end to all \*(BK commands.
@@ -24,15 +33,49 @@ All \*(BK commands are prefixed with
 .B bk
 in order to avoid ambiguity with
 non-\*(BK commands that might be already installed on the system such as 
-.B get
+.B bk co
 and
-.BR ci .
+.BR "bk ci" .
 .LP
 If you are looking for instructions on how to get started, try running the
 test drive at
 .BR http://www.bitkeeper.com/Test.html .
 .SH OPTIONS
 .TP \*<sfiles_opts\*>
+.OPTopt \-@ url
+Run the command in the specified repository rather than locally.
+If
+.ARG url
+is not specified, then use the parent[s] of the current repository.
+If there are multiple parents, incoming and/or outgoing, use all of those
+parents.
+You can use the construct
+.OPTreq \-@@ file
+to specify a
+.ARG file
+containing a list of repository URLs, one per line; the command is
+run in each of the remote repositories.
+.IP
+Except when using
+.QR \-q ,
+output from each command is prefixed with a header:
+.DS
+#### \*<url\*> ####
+.DE
+.IP
+The
+.OPTopt \-r dir
+option works as expected, running the command recursively over all
+of the implied files.
+If specified,
+.ARG dir
+must be relative to the root of the remote repository.
+.IP
+If 
+.Q \-
+is the last argument, then the standard input is read and buffered.
+Each remote command receives the same input.
+.tp
 .B \-R
 Change directories to the root of the repository before running
 .ARG command .
