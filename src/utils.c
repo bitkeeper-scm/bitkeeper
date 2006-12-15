@@ -1555,7 +1555,7 @@ p2str(void *p)
 	if (sizeof(void *) == sizeof(int)) {
 		int	n = sizeof(int) * 2;
 
-		sprintf(b, "0x%.*x", n, (unsigned)p);
+		sprintf(b, "0x%.*x", n, p2int(p));
 	} else if (sizeof(void *) == sizeof(u64)) {
 		u64	a = (u64)p;
 		u32	top, bot;

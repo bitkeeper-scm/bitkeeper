@@ -471,7 +471,7 @@ makeroom(MDBM *db, ubig hash, int need)
 		INO(npage, 0) = 0;
 
 		/* split the current page */
-		split_page(db, page, npage, _split, (void *) hbit);
+		split_page(db, page, npage, _split, int2p(hbit));
 		/* ASSERT(dbit < (PLUS_ONE<<DSHIFT(db->npgshift)) */
 		SETDBIT(db->m_dir, dbit);
 		dest = ((hash>>hbit) & PLUS_ONE) ? npage : page;
@@ -491,7 +491,7 @@ makeroom(MDBM *db, ubig hash, int need)
 do_shake:
 	page = PAG_ADDR(db, (hash & MASK(hbit)));
 	for (urgency = 0; urgency < 3; urgency++)	 {
-		split_page(db, page, (char *) 0, db->m_shake, (void *) urgency);
+		split_page(db, page, 0, db->m_shake, int2p(urgency));
 		if (FREE_AREA(db, page) >= (unsigned int) need)
 			return page;
 	}
@@ -858,7 +858,7 @@ seepair(MDBM *db, char *pag, datum key)
 static int
 _split(struct mdbm  *db, datum key, datum val, void *param)
 {
-	return ((_Exhash(db, key) >> (ubig)param) & PLUS_ONE);
+	return ((_Exhash(db, key) >> p2int(param)) & PLUS_ONE);
 }
 
 /* ARGSUSED */
