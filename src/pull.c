@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, Andrew Chang & Larry McVoy
- */    
+ */
 #include "bkd.h"
 #include "logging.h"
 
@@ -335,8 +335,8 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 private int
 pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 {
-	char	buf[MAXPATH * 2];
 	int	rc = 0, n, i;
+	char	buf[MAXPATH * 2];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, !opts.quiet)) {
 		return (-1);
@@ -445,6 +445,14 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			fprintf(stderr,
 			    "Pull failed: takepatch exited %d.\n", i);
 			putenv("BK_STATUS=TAKEPATCH FAILED");
+			rc = 1;
+			goto done;
+		}
+		chdir(ROOT2RESYNC);
+		i = bp_transferMissing(r, 0, 0, CSETS_IN);
+		chdir(RESYNC2ROOT);
+		if (i) {
+			fprintf(stderr, "pull: failed to fetch binpool data\n");
 			rc = 1;
 			goto done;
 		}

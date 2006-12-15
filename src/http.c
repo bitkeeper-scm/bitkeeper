@@ -404,7 +404,7 @@ http_sendheader(remote *r, char *user_agent, char *cmd, size_t len)
 		APPEND((
 		    "Content-type: application/octet-stream\r\n"
 		    "Content-length: %u\r\n",
-		    len));
+		    (unsigned)len));
 	}
 	APPEND(("\r\n"));	/* blank line at end of header */
 	header = joinLines("", hh);

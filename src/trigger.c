@@ -40,7 +40,8 @@ trigger_env(char *prefix, char *event, char *what)
 	put_trigger_env(prefix, "VERSION", bk_vers);
 	sprintf(buf, "%d", getlevel());
 	put_trigger_env(prefix, "LEVEL", buf);
-	if (repoid = repo_id()) put_trigger_env(prefix, "REPO_ID", repoid);
+	repoid = proj_repo_id(0);
+	if (repoid) put_trigger_env(prefix, "REPO_ID", repoid);
 	put_trigger_env(prefix, "REALUSER", sccs_realuser());
 	put_trigger_env(prefix, "REALHOST", sccs_realhost());
 	put_trigger_env(prefix, "PLATFORM", platform());

@@ -59,6 +59,7 @@ private	void	badpath(sccs *s, delta *tot);
 private	int	skipPatch(MMAP *p);
 private	void	getGone(void);
 private	void	loadskips(void);
+private int	sfio(MMAP *m);
 
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
 private	int	mkpatch = 0;	/* act like makepatch verbose */
@@ -182,6 +183,15 @@ usage:		system("bk help -s takepatch");
 				    (int)(strchr(buf, '\n') - buf), buf);
 			}
 			continue;
+		}
+
+		/*
+		 * If we see the SFIO header then consider the patch ended.
+		 * We'll fall through to sfio to unpack.
+		 */
+		if (strneq(buf, "== @SFIO@ ==\n", 13)) {
+			if (rc = sfio(p)) error = -1;
+			break;
 		}
 		/* we need our own storage , extractPatch calls mkline */
 		b = strdup(mkline(buf));
@@ -1637,6 +1647,39 @@ resync_lock(void)
 }
 
 /*
+ * Next line is patch checksum, then SFIO data follows.
+ */
+private int
+sfio(MMAP *m)
+{
+	char	*t;
+	FILE	*f;
+	size_t	left, n;
+
+	unless ((t = mnext(m)) && strneq(t-1, "\n\n# Patch checksum=", 19)) {
+		return (-1);
+	}
+	if (echo >= 2) {
+		fprintf(stderr, "Unpacking additional files...\n");
+	}
+	f = popen("bk _binpool_receive -m -", "w");
+	t = mnext(m);
+	t = mnext(m);
+	assert(strneq(t, "SFIO ", 5));
+	left = m->end - t;
+	do {
+		n = fwrite(t, 1, left, f);
+		left -= n;
+		t += n;
+	} while (left);
+	fflush(f);
+	if (pclose(f)) return (-1);
+	return (0);
+}
+
+
+
+/*
  * Go find the change set file and do this relative to that.
  * Create the RESYNC dir or bail out if it exists.
  * Put our pid in that dir so that we can figure out if
@@ -1654,6 +1697,7 @@ init(char *inputFile, int flags)
 	FILE	*f, *g;
 	MMAP	*m = 0;
 	uLong	sumC = 0, sumR = 0;
+	int	sfiopatch = 0;
 	struct	{
 		u32	newline:1;	/* current line is a newline */
 		u32	preamble_nl:1;	/* previous line was a newline */
@@ -1670,6 +1714,7 @@ init(char *inputFile, int flags)
 		u32	metablank:1;	/* previous line was \n after meta */
 		u32	diffs:1;	/* previous line was diffs */
 		u32	diffsblank:1;	/* previous line was \n after diffs */
+		u32	sfiopatch:1;	/* previous line was SFIO marker */
 	}	st;
 	int	line = 0, j = 0;
 	char	*note;
@@ -1749,6 +1794,7 @@ init(char *inputFile, int flags)
 				if (st.metablank) fprintf(stderr, "mb ");
 				if (st.diffs) fprintf(stderr, "d ");
 				if (st.diffsblank) fprintf(stderr, "db ");
+				if (st.sfiopatch) fprintf(stderr, "sfio ");
 			}
 			if (echo > 7) fprintf(stderr, "P: %s", buf);
 	
@@ -1846,13 +1892,20 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				} else {
 					st.diffs = 1;
 				}
-			} else if (st.diffs) {
+			} else if (st.diffs || st.sfiopatch) {
 				if (st.newline) {
-					st.diffs = 0;
+					st.sfiopatch = st.diffs = 0;
 					st.diffsblank = 1;
+				} else if (st.sfiopatch) {
+					fprintf(stderr,
+					    "Expected newline after @SFIO@\n");
+					goto error;
 				}
 			} else if (st.diffsblank) {
-				if (strneq("== ", buf, 3)) {
+				if (strneq("== @SFIO@ ==", buf, 12)) {
+					sfiopatch = st.sfiopatch = 1;
+					st.diffsblank = 0;
+				} else if (strneq("== ", buf, 3)) {
 					st.diffsblank = 0;
 					st.filename = 1;
 					st.first = 0;
@@ -1934,6 +1987,11 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			if (echo == 3) fprintf(stderr, "\b");
 			verbose((stderr, ": %d deltas\n", j));
 		}
+		if (sfiopatch) {
+			while (len = fread(buf, 1, sizeof(buf), stdin)) {
+				fwrite(buf, 1, len, f);
+			}
+		}
 		if (fclose(f)) {
 			perror("fclose on patch");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
@@ -1944,7 +2002,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);
 		}
-		note = aprintf("%u", size(incoming));
+		note = aprintf("%u", (u32)size(incoming));
 		cmdlog_addnote("psize", note);
 		free(note);
 		rename(incoming, pendingFile);

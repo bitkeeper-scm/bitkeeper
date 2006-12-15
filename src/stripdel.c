@@ -158,7 +158,10 @@ doit(sccs *s, s_opts opts)
 	 */
 	if (getFlags && !CSET(s)) {
 		sccs	*s2 = sccs_init(s->sfile, 0);
-		sccs_get(s2, 0, 0, 0, 0, SILENT|getFlags, "-");
+		/* don't checkout remote binpool files XXX why? */
+		if (bp_islocal(s2, 0)) {
+			sccs_get(s2, 0, 0, 0, 0, SILENT|getFlags, "-");
+		}
 		sccs_free(s2);
 	}
 	return (0);

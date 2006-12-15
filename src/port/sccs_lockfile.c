@@ -61,7 +61,7 @@ retry:	unlink(uniq);
 		free(uniq);
 		return (-1);
 	}
-	p = aprintf("%u %s %u\n", getpid(), sccs_realhost(), time(0));
+	p = aprintf("%u %s %u\n", getpid(), sccs_realhost(), (int)time(0));
 	if (write(fd, p, strlen(p)) != strlen(p)) {
 		perror(file);
 		close(fd);

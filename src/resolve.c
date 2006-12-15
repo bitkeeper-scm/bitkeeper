@@ -2658,6 +2658,10 @@ copyAndGet(opts *opts, char *from, char *to)
 		if (link(from, to) && fileCopy(from, to)) return (-1);
 	}
 
+	/*
+	 * LMXXX - I really don't like this much, we're initting the ChangeSet
+	 * file here and probably don't need to do so.
+	 */
 	s = sccs_init(to, 0);
 	assert(s && HASGRAPH(s));
 	sccs_sdelta(s, sccs_ino(s), key);
@@ -2679,10 +2683,16 @@ copyAndGet(opts *opts, char *from, char *to)
 		getFlags = default_getFlags;
 		//ttyprintf("checkout %s with defaults(%d)\n", key, getFlags);
 	}
-	if (getFlags && !CSET(s)) {
+	if (getFlags && !CSET(s) && !strneq(s->gfile, "BitKeeper/", 10)) {
+		//ttyprintf("checkout %s with %s\n", key, co);
+		sccs_clean(s, SILENT);
 		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	} else {
-		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
+		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) {
+			sccs_free(s);
+			return (-1);
+		}
+		assert(!exists(s->gfile));
 	}
 	if (opts->fsync) fsync(s->fd);
 	sccs_free(s);

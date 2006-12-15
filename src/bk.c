@@ -50,8 +50,8 @@ milli(void)
 
 	gettimeofday(&tv, 0);
 	unless (getenv("BK_SEC")) {
-		safe_putenv("BK_SEC=%u", tv.tv_sec);
-		safe_putenv("BK_MSEC=%u", tv.tv_usec / 1000);
+		safe_putenv("BK_SEC=%u", (u32)tv.tv_sec);
+		safe_putenv("BK_MSEC=%u", (u32)tv.tv_usec / 1000);
 		d = 0;
 	} else {
 		start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
@@ -499,9 +499,8 @@ cmdlog_start(char **av, int httpMode)
 	}
 
 	if (is_remote && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
-	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = repo_id())) {
+	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repo_id(0))) {
 		i = streq(repo1, repo2);
-		free(repo2);
 		if (i) {
 			out("ERROR-can't connect to same repo_id\n");
 			if (getenv("BK_REGRESSION")) usleep(100000);

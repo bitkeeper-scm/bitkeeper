@@ -21,6 +21,7 @@ typedef	struct cset {
 	int	compat;		/* Do PATCH_COMPAT patches */
 	int	serial;		/* the revs passed in are serial numbers */
 	int	md5out;		/* the revs printed are as md5keys */
+	int	doBinpool;	/* send binpool data */
 
 	/* numbers */
 	int	verbose;
@@ -29,6 +30,8 @@ typedef	struct cset {
 	int	ndeltas;
 	int	nfiles;
 	pid_t	pid;		/* adler32 process id */
+
+	char	**binpool;	/* list of keys we need to send */
 } cset_t;
 
 private	void	csetlist(cset_t *cs, sccs *cset);
@@ -53,9 +56,10 @@ makepatch_main(int ac, char **av)
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "dr|sCqv")) != -1) {
+	while ((c = getopt(ac, av, "Bdr|sCqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
+		    case 'B': copts.doBinpool = 1; break;
 		    case 'd':					/* doc 2.0 */
 			nav[++i] = "-d";
 			break;
@@ -116,8 +120,9 @@ cset_main(int ac, char **av)
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5Cd|DfHhi;lm|M|qr|svx;")) != -1) {
+	while ((c = getopt(ac, av, "5BCd|DfHhi;lm|M|qr|svx;")) != -1) {
 		switch (c) {
+		    case 'B': copts.doBinpool = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
 		    case 'h': copts.historic++; break;		/* undoc? 2.0 */
@@ -702,8 +707,19 @@ again:	/* doDiffs can make it two pass */
 		    cs->ndeltas, cs->nfiles);
 	}
 	if (cs->makepatch) {
+		if (cs->binpool) fputs("== @SFIO@ ==\n\n", stdout);
 		fputs(PATCH_END, stdout);
 		fflush(stdout);
+		if (cs->binpool) {
+			int	i;
+			FILE	*f;
+
+			uniqLines(cs->binpool, free);
+			f = popen("bk sfio -omq -", "w");
+			EACH(cs->binpool) fprintf(f, "%s\n", cs->binpool[i]);
+			fflush(f);	// Paranoia only
+			pclose(f);
+		}
 		fclose(stdout);
 		if (waitpid(cs->pid, &status, 0) != cs->pid) {
 			perror("waitpid");
@@ -1093,7 +1109,7 @@ sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;
 	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
-	int	i, n, newfile, empty;
+	int	i, n, newfile;
 	delta	**list;
 	char	*gfile = 0;
 
@@ -1174,7 +1190,6 @@ sccs_patch(sccs *s, cset_t *cs)
 		 * TODO  move the test out side this loop. This would
 		 * be a little faster.
 		 */
-		empty = 0;
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");
 		if (d->type == 'D') {
@@ -1190,7 +1205,31 @@ sccs_patch(sccs *s, cset_t *cs)
 					}
 				}
 
-			} else unless (empty) {
+			} else if (BINPOOL(s) && copts.doBinpool) {
+				assert(d->hash || (!d->added && !d->deleted));
+				if (d->hash) {
+					char	*p, *t;
+
+// LMXXX - this should really fail unless we were told to succeed.  For
+// now I'm just hoping they can find the data elsewhere.
+// Alternatively, skip pass the miss IFF we are not a master.
+					unless (p = bp_lookup(s, d)) {
+						printf("\n");
+						deltas++;
+						continue;
+					}
+					t = strstr(p, "/BitKeeper/binpool/");
+					assert(t);
+					t = strdup(t+1);
+					free(p);
+					cs->binpool = addLine(cs->binpool, t);
+					p = strdup(t);
+					t = strrchr(p, '.');
+					assert(t);
+					t[1] = 'a';
+					cs->binpool = addLine(cs->binpool, p);
+				}
+			} else {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
 			}
 			if (rc) { /* sccs_getdiffs errored */

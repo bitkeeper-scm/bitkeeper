@@ -7,7 +7,11 @@ private char	*http_time(void);
 private char	*http_expires(int secs);
 private	char	*type(char *name);
 private void	httphdr(char *file);
-private void	http_error(int status, char *fmt, ...);
+private void	http_error(int status, char *fmt, ...)
+#ifdef __GNUC__
+     __attribute__((format (printf, 2, 3)))
+#endif
+     ;
 private void	http_index(char *page);
 private void	http_changes(char *page);
 private void	http_cset(char *page);

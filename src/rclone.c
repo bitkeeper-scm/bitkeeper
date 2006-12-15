@@ -50,8 +50,6 @@ rclone_main(int ac, char **av)
 		}
 	}
 
-	//license();
-
 	/*
 	 * Validate argument
 	 */
@@ -61,7 +59,7 @@ rclone_main(int ac, char **av)
 	isLocal = (l->host == NULL);
 	remote_free(l);
 	unless (isLocal) usage();
-	
+
 	if (chdir(av[optind])) {
 		perror(av[optind]);
 		exit(1);
@@ -90,11 +88,18 @@ private int
 rclone(char **av, opts opts, remote *r, char **envVar)
 {
 	int	rc;
+	char	revs[MAXKEY];
 
-	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
+	if (rc = bp_updateMaster(opts.rev)) goto done;
+	sprintf(revs, "..%s", opts.rev ? opts.rev : "+");
+	safe_putenv("BK_CSETS=%s", revs);
 	if (rc = trigger(av[0], "pre"))  goto done;
 	if (rc = rclone_part1(opts, r, envVar))  goto done;
 	rc = rclone_part2(av, opts, r, envVar);
+
+	if (bp_transferMissing(r, 1, revs, 0)) {
+		fprintf(stderr, "rclone: failed to transfer binpool data\n");
+	}
 
 	if (rc) {
 		putenv("BK_STATUS=FAILED");

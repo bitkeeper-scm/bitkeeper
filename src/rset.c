@@ -9,6 +9,8 @@ typedef struct {
 	u32	hide_cset:1;	/* hide ChangeSet file from file list */
 	u32	rflg:1;		/* diff two rset */
 	u32	lflg:1;		/* list a rset */
+	u32	md5keys:1;	/* use md5keys instead of revs */
+	u32	binpool:1;	/* only list binpool files */
 } options;
 
 private int mixed; /* if set, handle long and short keys */
@@ -106,6 +108,21 @@ isNullFile(char *rev, char *file)
 	return (0);
 }
 
+private void
+sccs_key2md5key(char *delta, char *random, char *b64)
+{
+	char	*hash, *p;
+	char	key[MAXKEY+64];
+
+	strcpy(key, delta);
+	if (random) strcat(key, random);
+	hash = hashstr(key, strlen(key));
+
+	p = strchr(delta, '|');
+	p = strchr(p+1, '|');
+	sprintf(b64, "%08x%s", 	sccs_date2time(p+1, 0), hash);
+}
+
 /*
  * Convert root/start/end keys to sfile^Apath1^Arev1^Apath2^Arev2 format
  */
@@ -116,9 +133,36 @@ process(char	*root,
 	sccs	*s;
 	delta 	*d1, *d2;
 	char	*rev1, *rev2, *path1, *path2;
+	char	*p;
+	int	i;
 	char	c = BK_FS; /* field seperator */
+	char	smd5[64], emd5[64];
 
 	if (is_same(start, end)) return;
+	if (opts.md5keys) {
+		unless (p = key2path(root, idDB)) {
+			fprintf(stderr, "rset: Can't find %s\n", root);
+			return;
+		}
+		path1 = sccs2name(p);
+		free(p);
+		p = root;
+		for (i = 0; i < 4; i++) {
+			unless (p = strchr(p, '|')) break;
+			p++;
+		}
+		if (opts.binpool && !(p && strneq(p, "B:", 2))) {
+			free(path1);
+			return;
+		}
+		unless (start) start = root;
+		sccs_key2md5key(start, p, smd5);
+		sccs_key2md5key(end, p, emd5);
+		printf("%s%c%s..%s\n", path1, c, smd5, emd5);
+		free(path1);
+		return;
+	}
+
 	unless (s = sccs_keyinit(root, INIT_NOGCHK|INIT_NOCKSUM, idDB)) {
 		unless (*goneDB) {
 			*goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
@@ -371,8 +415,10 @@ rset_main(int ac, char **av)
 	s = sccs_init(s_cset, SILENT);
 	assert(s);
 
-	while ((c = getopt(ac, av, "ahHl;r;")) != -1) {
+	while ((c = getopt(ac, av, "5aBhHl;r;")) != -1) {
 		switch (c) {
+		case '5':	opts.md5keys = 1; break;	/* undoc */
+		case 'B':	opts.binpool = 1; break;	/* undoc */
 		case 'a':					/* doc 2.0 */	
 				opts.show_all = 1;  /* show deleted files */
 				break;

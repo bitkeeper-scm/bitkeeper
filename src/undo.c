@@ -120,7 +120,8 @@ err:		if (undo_list[0]) unlink(undo_list);
 
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
-		cmd = aprintf("bk cset -ffm - > '%s'", patch);
+		/* like bk makepatch but skips over missing files/keys */
+		cmd = aprintf("bk cset -Bffm - > '%s'", patch);
 		f = popen(cmd, "w");
 		free(cmd);
 		if (f) {
@@ -220,15 +221,12 @@ private int
 check_patch(char *patch)
 {
 	MMAP	*m = mopen(patch, "");
-	char	*p;
 
-	if (!m) return (1);
-	for (p = m->mmap + msize(m) - 2; (p > m->mmap) && (*p != '\n'); p--);
-	if (p <= m->mmap) {
-bad:		mclose(m);
+	unless (m) return (1);
+	unless (strstr(m->mmap, "\n\n# Patch checksum=")) {
+		mclose(m);
 		return (1);
 	}
-	unless (strneq(p, "\n# Patch checksum=", 18)) goto bad;
 	mclose(m);
 	return (0);
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000-2001, Andrew Chang & Larry McVoy
- */    
+ */
 #include "bkd.h"
 #include "logging.h"
 
@@ -97,10 +97,16 @@ push_main(int ac, char **av)
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
-		exit(1);
+		return (1);
 	}
 
 	if (sane(0, 0) != 0) return (1);
+
+	/* push binpool data to master */
+	if (bp_updateMaster(0)) {
+		fprintf(stderr, "push: unable to update binpool server\n");
+		exit(1);
+	}
 
 	unless (urls) {
 		urls = parent_pushp();
@@ -119,7 +125,6 @@ err:		freeLines(envVar, free);
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
-
 	EACH (urls) {
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
@@ -699,11 +704,11 @@ push(char **av, remote *r, char **envVar)
 	int	ret;
 	int	gzip;
 	char	rev_list[MAXPATH] = "";
-	char 	buf[MAXKEY];
 
 	gzip = opts.gzip && r->port;
-	if (opts.debug) fprintf(opts.out, "Root Key = \"%s\"\n", rootkey(buf));
-
+	if (opts.debug) {
+		fprintf(opts.out, "Root Key = \"%s\"\n", proj_rootkey(0));
+	}
 	ret = push_part1(r, rev_list, envVar);
 	if (opts.debug) {
 		fprintf(opts.out, "part1 returns %d\n", ret);
@@ -713,6 +718,11 @@ push(char **av, remote *r, char **envVar)
 	if (ret <= -2) { /* -1 => send abort message */
 		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
+	}
+	if (ret > 1) {		/* >1 means data to transfer */
+		if (bp_transferMissing(r, 1, 0, rev_list)) {
+			fprintf(stderr, "push: failed to send binpool data\n");
+		}
 	}
 	return (push_part2(av, r, rev_list, ret, envVar));
 }

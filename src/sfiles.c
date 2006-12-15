@@ -750,6 +750,7 @@ load_ignore(project *p)
 	ignore = ignorebase = prunedirs = 0;
 
 	/* add default pruned dirs */
+	prunedirs = addLine(prunedirs, strdup("/BitKeeper/binpool"));
 	prunedirs = addLine(prunedirs, strdup("/BitKeeper/log"));
 	prunedirs = addLine(prunedirs, strdup("/BitKeeper/tmp"));
 	prunedirs = addLine(prunedirs, strdup("/BitKeeper/writer"));

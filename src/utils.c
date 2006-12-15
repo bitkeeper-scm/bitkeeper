@@ -672,65 +672,13 @@ get_ok(remote *r, char *read_ahead, int verbose)
 	return (1); /* failed */
 }
 
-/*
- * Return the repo_id if there is one.
- * Assumes we are at the root of the repository.
- * Caller frees.
- */
-char *
-repo_id(void)
-{
-	char	*root = proj_root(0);
-	char	*file;
-	char	*repoid;
-
-	unless (root) return (0);
-	file = aprintf("%s/" REPO_ID, root);
-	repoid = loadfile(file, 0);
-	free(file);
-	unless (repoid) return (0);
-	chomp(repoid);
-	return (repoid);
-}
-
-char *
-rootkey(char *buf)
-{
-	char	s_cset[] = CHANGESET;
-	sccs	*s;
-
-	s = sccs_init(s_cset, INIT_NOCKSUM);
-	assert(s);
-	sccs_sdelta(s, sccs_ino(s), buf);
-	sccs_free(s);
-	return (buf);
-}
-
 void
 add_cd_command(FILE *f, remote *r)
 {
-	int	needQuote = 0;
-	char	key[MAXKEY];
+	char	*path = shellquote(r->path);
 
-	/*
-	 * XXX TODO need to handle embeded quote in pathname
-	 */
-	if (strchr(r->path, ' ')) needQuote = 1;
-	if (streq(r->path, "///LOG_ROOT///")) {
-		rootkey(key);
-		if (strchr(key, ' ')) needQuote = 1;
-		if (needQuote) {
-			fprintf(f, "cd \"%s%s\"\n", r->path, key);
-		} else {
-			fprintf(f, "cd %s%s\n", r->path, key);
-		}
-	} else {
-		if (needQuote) {
-			fprintf(f, "cd \"%s\"\n", r->path);
-		} else {
-			fprintf(f, "cd %s\n", r->path);
-		}
-	}
+	fprintf(f, "cd %s\n", path);
+	free(path);
 }
 
 void
@@ -805,13 +753,12 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		} else {
 			fprintf(f, "putenv BK_ROOT=%s\n", proj);
 		}
-		if (repo = repo_id()) {
+		if (repo = proj_repo_id(0)) {
 			if (strchr(repo, ' ')) {
 				fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
 			} else {
 				fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 			}
-			free(repo);
 		}
 	}
 	unless (flags & SENDENV_NOLICENSE) {
@@ -833,11 +780,11 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 * Send comma separated list of client features so the bkd
 	 * knows which outputs are supported.
 	 *   lkey:1	use leasekey #1 to sign lease requests
+	 *   binpool
 	 */
-	fprintf(f, "putenv BK_FEATURES=lkey:1\n");
+	fprintf(f, "putenv BK_FEATURES=lkey:1,binpool\n");
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
-
 	if (p) proj_free(p);
 }
 
@@ -949,15 +896,22 @@ sendServerInfoBlock(int is_rclone)
 	out(sccs_realhost());
 	out("\nPLATFORM=");
 	out(platform());
-	if (repoid = repo_id()) {
-		sprintf(buf, "\nREPO_ID=%s", repoid);
-		out(buf);
-	}
 	/*
 	 * Return a comma seperated list of features supported by the bkd.
-	 *   pull-r    pull -r is parsed corrently
+	 *   pull-r    pull -r is parsed correctly
+	 *   binpool   support binpool operations
 	 */
-	out("\nFEATURES=pull-r");
+	out("\nFEATURES=pull-r,binpool");
+
+	if (repoid = proj_repo_id(0)) {
+		sprintf(buf, "\nREPO_ID=%s", repoid);
+		out(buf);
+		p = bp_master_id();
+		unless (p) p = strdup(repoid);
+		sprintf(buf, "\nBINPOOL_SERVER=%s", p);
+		out(buf);
+		free(p);
+	}
 
 	/* only send back a seed if we received one */
 	if (p = getenv("BKD_SEED")) {

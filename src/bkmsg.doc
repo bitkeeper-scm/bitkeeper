@@ -594,6 +594,13 @@ Default is to autofix problems found by check.
 If you want to manually fix them, set this to "no".
 
 $
+#config_binpool
+
+Default is to enable binpool storage of binary deltas.
+When interacting with old versions of BitKeeper it may
+be better to set the field to "no".
+
+$
 #config_template
 description
 license
@@ -602,6 +609,7 @@ licsign2
 licsign3
 compression
 autofix
+binpool
 contact
 email
 $

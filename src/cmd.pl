@@ -132,6 +132,9 @@ admin
 annotate
 base64
 bkd
+_binpool_query remote
+_binpool_receive remote
+_binpool_send remote
 cat
 changes
 check
@@ -159,6 +162,8 @@ _eula
 _exists
 export
 f2csets
+_filtertest1
+_filtertest2
 _find
 _findcset
 findkey
@@ -183,6 +188,7 @@ helpsearch
 helptopics
 _httpfetch
 hostme
+id remote
 idcache
 isascii
 inskeys
@@ -309,6 +315,7 @@ co => get
 edit => get
 comment => comments	# alias for Linus, remove...
 _fix_lod1 => _fixlod
+identity => id
 info => sinfo
 _key2path => key2path
 _mail => mail

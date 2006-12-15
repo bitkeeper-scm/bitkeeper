@@ -117,7 +117,7 @@ BINS	= $(BK) inskeys$(EXE)
 
 # List of all objects in bk other than bk.o. Keep it sorted.
 OBJ =	abort.o adler32.o admin.o annotate.o \
-	bkd.o bkd_cd.o \
+	binpool.o bkd.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
 	bkd_kill.o bkd_license.o bkd_misc.o \
 	bkd_pull.o bkd_push.o bkd_pwd.o \
@@ -132,7 +132,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	idcache.o isascii.o inskeys.o key2rev.o key2path.o kill.o kvfile.o \
+	id.o idcache.o isascii.o inskeys.o \
+	key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
 	libcommit.o libdiff.o librange.o \
 	libsfiles.o libusers.o lines.o \
@@ -167,7 +168,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o stat.o stattest.o status.o stripdel.o synckeys.o \
-	tagmerge.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
+	tagmerge.o testcode.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \

@@ -24,6 +24,7 @@ int		proj_isCaseFoldingFS(project *p);
 int		proj_isResync(project *p);
 int		proj_leaseChecked(project *p, int write);
 char*		proj_md5rootkey(project *p);
+char*		proj_repo_id(project *p);
 char*		proj_relpath(project *p, char *path);
 void		proj_reset(project *p);
 char*		proj_root(project *p);

@@ -311,6 +311,7 @@ clone2(opts opts, remote *r)
 	char	*checkfiles;
 	FILE	*f;
 	int	rc;
+	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "clone failed license accept check\n");
@@ -325,6 +326,14 @@ clone2(opts opts, remote *r)
 	fclose(f);
 
 	parent(opts, r);
+
+	/* get bp data */
+	(void)proj_repo_id(0);		/* generate repoid */
+	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
+	if (bp_transferMissing(r, 0, buf, 0)) {
+		fprintf(stderr, "clone: failed to fetch binpool data\n");
+		return (-1);
+	}
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
@@ -630,6 +639,13 @@ out2:		repository_rdunlock(0);
 		goto out1;
 	}
 
+	if (p = bp_master_id()) {
+		safe_putenv("BKD_BINPOOL_SERVER=%s", p);
+		free(p);
+	} else {
+		safe_putenv("BKD_BINPOOL_SERVER=%s", proj_repo_id(0));
+	}
+
 	chdir(here);
 	unless (to) to = basenm(r->path);
 	if (exists(to)) {
@@ -701,11 +717,10 @@ out:
 	freeLines(files, free);
 	chdir(from);
 	repository_rdunlock(0);
-	fromid = repo_id();
+	fromid = proj_repo_id(0);
 	if (chdir(dest)) goto out;
 	if (clone2(opts, r)) {
 		in_trigger("BK_STATUS=FAILED", opts.rev, from, fromid);
-		free(fromid);
 		mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
 		goto out;
 	}
@@ -716,10 +731,10 @@ out:
 	 * lock got downgraded to a readlock) or writelocked (no triggers).
 	 */
 	repository_unlock(0);
-	free(fromid);
 	chdir(from);
 
 	putenv("BKD_REPO_ID=");
+	putenv("BKD_BINPOOL_SERVER=");
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
 	remote_free(r);
 	return (0);

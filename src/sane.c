@@ -13,7 +13,6 @@
 
 private	int	chk_permissions(void);
 private	int	chk_idcache(void);
-private void	chk_id(void);
 
 int
 sane_main(int ac, char **av)
@@ -79,7 +78,7 @@ sane(int readonly, int resync)
 
 	//chk_ssh();
 	//chk_http();
-	chk_id();
+	proj_repo_id(0);	/* make repo_id if needed */
 	return (errors);
 }
 
@@ -251,10 +250,9 @@ chk_idcache(void)
  * Note that the full name of the repository is the root key plus this.
  * The repo name is host|/path/to/repo|user|date|randbits.
  */
-private void
-chk_id(void)
+void
+mk_repo_id(project *proj, char *repoid)
 {
-	char	path[MAXPATH];
 	char	buf[100];
 	char	rand[6];
 	unsigned long	outlen;
@@ -262,8 +260,7 @@ chk_id(void)
 	FILE	*f;
 	int	err;
 
-	if (exists(REPO_ID)) return;	/* validate existing ID?? */
-	unless (f = fopen(REPO_ID, "w")) return;	/* no write perms? */
+	unless (f = fopen(repoid, "w")) return;	/* no write perms? */
 
 	/*date*/
 	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", localtimez(&t, 0));
@@ -273,9 +270,7 @@ chk_id(void)
 	fprintf(f, "%s|", sccs_realhost());
 
 	/*path*/
-	path[0] = 0;
-	getcwd(path, MAXPATH);
-	fprintf(f, "%s|", path);
+	fprintf(f, "%s|", proj_root(proj));
 
 	/*user*/
 	fprintf(f, "%s|", sccs_realuser());
@@ -285,7 +280,7 @@ chk_id(void)
 
 	outlen = sizeof(rand);
 	if ((err =base64_encode(buf, 3, rand, &outlen)) != CRYPT_OK) {
-		fprintf(stderr, "chk_id: %s\n", error_to_string(err));
+		fprintf(stderr, "mk_repo_id: %s\n", error_to_string(err));
 		exit(1);
 	}
 	assert(outlen < sizeof(rand));

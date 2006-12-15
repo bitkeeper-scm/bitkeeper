@@ -70,6 +70,7 @@ description: BitKeeper Test repository
 email: nobody@nowhere.bk
 eoln: unix
 keyword: sccs
+binpool: yes
 EOF
 }
 

@@ -206,7 +206,7 @@ send_main(int ac,  char **av)
 	/*
 	 * Now make the patch
 	 */
-	cmd = aprintf("bk makepatch %s %s %s %s %s",
+	cmd = aprintf("bk makepatch -B %s %s %s %s %s",
 				    dflag, qflag, revArgs, wrapperArgs, out);
 	if (rc = system(cmd) ? 1 : 0)  goto out;
 

@@ -178,7 +178,12 @@ check_main(int ac, char **av)
 		 * exit code 2 means try again, all other errors should be
 		 * distinct.
 		 */
-		unless (flags & INIT_NOCKSUM) {
+		unless ((flags & INIT_NOCKSUM) || BINPOOL(s)) {
+			/*
+			 * Don't verify checksum's for binpool files.
+			 * They might be big and not present.  Instead
+			 * we have a separate command for that.
+			 */
 			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
 			if (s->has_nonl && chk_nlbug(s)) errors |= 0x04;
 		}
@@ -470,7 +475,7 @@ writable_gfile(sccs *s)
 			fprintf(stderr,
 			    "===================================="
 			    "=====================================\n"
-			    "check: ``%s'' writable but not checked out.\n"
+			    "check: ``%s'' writable but not locked.\n"
 			    "This means that a file has been modified "
 			    "without first doing a \"bk edit\".\n"
 			    "\tbk -R edit -g %s\n"

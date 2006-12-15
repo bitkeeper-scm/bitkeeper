@@ -33,10 +33,11 @@ cmd_pull_part1(int ac, char **av)
 	char	*probekey_av[] = {"bk", "_probekey", 0, 0};
 	int	status;
 	int	rc = 1;
+	char	*tiprev = "+";
 	FILE	*f;
 
 	if (av[1] && strneq(av[1], "-r", 2)) {
-		probekey_av[2] = av[1];
+		probekey_av[2] = tiprev = av[1];
 	}
 	if (sendServerInfoBlock(0)) {
 		drain();
@@ -58,10 +59,20 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
+	if (proj_configbool(0, "binpool") && !bk_hasFeature("binpool")) {
+		out("ERROR-old clients cannot pull ");
+		out("from a bkd with binpool enabled\n");
+		drain();
+		return (1);
+	}
 	f = popenvp(probekey_av, "r");
 	/* look to see if probekey returns an error */
 	unless (fnext(buf, f) && streq("@LOD PROBE@\n", buf)) {
 		fputs(buf, stdout);
+		goto done;
+	}
+	if (bp_updateMaster(tiprev)) {
+		fputs("ERROR-unable to update binpool server\n", stdout);
 		goto done;
 	}
 	fputs("@OK@\n", stdout);
