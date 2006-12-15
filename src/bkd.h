@@ -95,6 +95,7 @@ typedef struct {
  */
 #define	BK_PORT		0x3962
 #define	WEB_PORT	80
+#define	SSH_PORT	22
 
 extern	struct cmd cmds[];
 extern	bkdopts Opts;

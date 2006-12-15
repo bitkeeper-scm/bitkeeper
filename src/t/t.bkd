@@ -366,7 +366,7 @@ cd "$HERE/copy"
 bk pull bk://localhost:$P/"$HERE/project" > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
 if [ $? -ne 0 ]; then echo failed 1; cat pull.out; exit 1 ; fi
-bk pull bk://localhost:$P.. > pull.out 2>&1
+bk pull bk://localhost:$P/.. > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
 if [ $? -ne 0 ]; then echo failed 2; cat pull.out; exit 1 ; fi
 bk pull bk://localhost:$P/sub/../../project > pull.out 2>&1
