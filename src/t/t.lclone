@@ -9,12 +9,6 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-if [ "$PLATFORM" = "WIN32" ]
-then
-	echo "For non win32 only ..........................................skipped"
-	exit 0
-fi
-
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
 commercial project
@@ -63,8 +57,13 @@ test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 test -f copy/BitKeeper/log/parent || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
-test "x$parent" = xfile:/"$HERE/project" || {
+if [ "$PLATFORM" = "WIN32" ]
+then	root="file://$HERE/project"
+else	root="file:/$HERE/project"
+fi
+test x"$parent" = x"$root" || {
 	echo wrong parent $parent
+	echo should be $root
 	exit 1
 }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
@@ -182,3 +181,29 @@ test -d empty && {
 	# exit 1
 }
 echo OK
+
+if [ $PLATFORM = WIN32 ]
+then #-------------------- WIN32 tests ---------------------
+echo $N Test clone -l with a FAT32 filesystem........................$NL
+if [ -d f:/tmp ]
+then
+	test -d f:/tmp/project && rm -rf f:/tmp/project
+	bk clone $Q -l project f:/tmp/project > OUT 2> ERR && {
+		echo failed
+		echo lclone should have failed on FAT32
+		cat OUT ERR
+		exit 1
+	}
+	grep -q "Improper link" ERR || {
+		echo failed
+		echo Wrong error message
+		cat ERR
+		exit 1
+	}
+	rm -rf f:/tmp/project
+	echo OK
+else
+	echo skipped
+	exit 0
+fi
+fi  #-------------------- WIN32 tests ---------------------

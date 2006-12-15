@@ -78,16 +78,6 @@ win32flags_clear(int flags)
 	win32_flags &= ~flags;
 }
 
-int
-link(char *from, char *to)
-{
-	char	nt_from[NBUF_SIZE], nt_to[NBUF_SIZE];
-
-	bm2ntfname(from, nt_from);
-	bm2ntfname(to, nt_to);
-	return (!CopyFile(from, to, 1));
-}
-
 /*
  * This function returns the path name of the tmp directory.
  * It also sets the TMP environment variable to the tmp directory found.

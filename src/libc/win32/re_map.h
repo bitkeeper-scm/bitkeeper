@@ -14,6 +14,7 @@
 #define access(f, m)		nt_access(f, m)
 #define chmod(f, m)		nt_chmod(f, m)
 #define stat(f, b)              nt_stat(f, b)
+#define	link(f1, f2)		nt_link(f1, f2)
 #define lstat(f, b)		nt_stat(f, b)
 #define	utime(a, b)		nt_utime(a, b)
 #define symlink(a, b)		(-1) /* always return fail */

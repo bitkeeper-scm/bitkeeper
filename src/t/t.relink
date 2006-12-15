@@ -13,11 +13,6 @@
 # Copyright (c) 2002 Larry McVoy
 # %K%
 
-test "$PLATFORM" = "UNIX" || {
-	echo "For non win32 only ..........................................skipped"
-	exit 0
-}
-
 echo $N Create initial repositories .................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
