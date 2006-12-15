@@ -27,3 +27,6 @@ t tty:
 
 h help:
 	GROFF_NO_SGR=1 groff -I.. -rhelpdoc=1 -P-u -P-b -Tascii -d BKVER=$(VER) *.1 | less -s
+
+deroff.out: *.1
+	../../src/deroff.pl *.1  > $@
