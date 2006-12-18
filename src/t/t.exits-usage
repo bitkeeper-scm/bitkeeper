@@ -510,14 +510,16 @@ rm -f ERR
 echo OK
 
 echo $N bk id with bogus option .....................................$NL
-bk id -z > /dev/null 2> ERR
-bk grep -iq usage ERR
-if [ $? -ne 0 ]
-then	echo 'failed (bug usage not implemented)'
-else	echo 'OK, fix test'
+bk id -z > /dev/null 2> ERR && {
+	echo "Should fail"
 	exit 1
-fi
+}
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
 rm -f ERR
+echo OK
 
 echo $N bk ignore with bogus option and missing arg .................$NL
 bk ignore -z > /dev/null 2> ERR

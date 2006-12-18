@@ -1231,7 +1231,6 @@ int	bp_insert(project *p, char *file, char *hash, char *keys, int canmv);
 char	*bp_lookup(sccs *s, delta *d);
 delta	*bp_fdelta(sccs *s, delta *d);
 int	bp_fetch(sccs *s, delta *din);
-int	bp_islocal(sccs *s, delta *d);
 int	bp_get(sccs *s, delta *d, u32 flags, char *out);
 int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);

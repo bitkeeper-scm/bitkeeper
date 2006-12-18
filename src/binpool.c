@@ -373,6 +373,10 @@ bp_lookup(sccs *s, delta *d)
 	return (ret);
 }
 
+/*
+ * Given the adler32 hash of a gfile return the pathname to that file in
+ * a repo's binpool.
+ */
 private char *
 hash2path(project *proj, char *hash)
 {
@@ -389,26 +393,13 @@ hash2path(project *proj, char *hash)
 	return (strdup(binpool));
 }
 
+/*
+ * called from slib.c:get_bp() when a binpool file can't be found.
+ */
 int
 bp_fetch(sccs *s, delta *din)
 {
 	return (-1);
-}
-
-/*
- * Return true is data for this delta is available locally.
- * Non-binpool files always return true.
- */
-int
-bp_islocal(sccs *s, delta *d)
-{
-	char	*dfile;
-
-	unless (BINPOOL(s)) return (1);
-	unless (d) d = sccs_top(s); /* defaults to tip */
-	unless (dfile = bp_lookup(s, d)) return (0);
-	free(dfile);
-	return (1);
 }
 
 /*
@@ -427,6 +418,7 @@ bp_updateMaster(char *tiprev)
 	int	rc;
 	char	buf[MAXKEY];
 
+	/* find the repo_id of my master */
 	unless (repoid = bp_master_id()) {
 		/* no need to update myself */
 		free(repoid);
@@ -435,6 +427,7 @@ bp_updateMaster(char *tiprev)
 	url = proj_configval(0, "binpool_server");
 	assert(url);
 
+	/* compare with local cache of last sync */
 	syncf = proj_fullpath(0, "BitKeeper/log/BP_SYNC");
 	if (sync = loadfile(syncf, 0)) {
 		p = strchr(sync, '\n');
@@ -444,28 +437,40 @@ bp_updateMaster(char *tiprev)
 		if (streq(repoid, sync)) baserev = strdup(p);
 		free(sync);
 	}
+
+	/* from last sync to newtip */
 	unless (baserev) baserev = strdup("1.0");
 	unless (tiprev) tiprev = "+";
+
+	/* find local bp deltas */
 	cmds = addLine(cmds,
 	    aprintf("bk changes -Bv -r'%s..%s' "
 		"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'",
 		baserev, tiprev));
+
+	/* filter out deltas already in master */
 	cmds = addLine(cmds, aprintf("bk -q@'%s' _binpool_query -", url));
+
+	/* create SFIO on binpool data */
 	cmds = addLine(cmds, strdup("bk _binpool_send -"));
+
+	/* store in master */
 	cmds = addLine(cmds, aprintf("bk -q@'%s' _binpool_receive -", url));
 	rc = spawn_filterPipeline(cmds);
-	assert(rc == 0);
+	unless (rc) {
+		/* update cache of last sync */
 
-	/* find MD5KEY for tiprev */
-	s = sccs_csetInit(SILENT);
-	d = sccs_findrev(s, tiprev);
-	sccs_md5delta(s, d, buf);
-	sccs_free(s);
-	f = fopen(syncf, "w");
-	fprintf(f, "%s\n%s\n", repoid, buf);
-	fclose(f);
+		/* find MD5KEY for tiprev */
+		s = sccs_csetInit(SILENT);
+		d = sccs_findrev(s, tiprev);
+		sccs_md5delta(s, d, buf);
+		sccs_free(s);
+		f = fopen(syncf, "w");
+		fprintf(f, "%s\n%s\n", repoid, buf);
+		fclose(f);
+	}
 	free(repoid);
-	return (0);
+	return (rc);
 }
 
 /*
@@ -584,7 +589,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		free(p);
 		url = proj_configval(0, "binpool_server");
 		assert(url);
-		/* proxy to master */
+		/* proxy to my binpool master */
 		sprintf(buf, "bk -q@'%s' _binpool_query -", url);
 		return (system(buf));
 	}
@@ -641,7 +646,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		free(p);
 		url = proj_configval(0, "binpool_server");
 		assert(url);
-		/* proxy to master */
+		/* proxy to my binpool master */
 		sprintf(buf, "bk -q@'%s' _binpool_send -", url);
 		return (system(buf));
 	}
@@ -708,7 +713,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		free(p);
 		url = proj_configval(0, "binpool_server");
 		assert(url);
-		/* proxy to master */
+		/* proxy to my binpool master */
 		sprintf(buf, "bk -q@'%s' _binpool_receive -", url);
 		return (system(buf));
 	}
@@ -744,37 +749,60 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 	return (0);
 }
 
+/*
+ * Called to transfer bp data between different binpool master servers
+ * during a push, pull, clone or rclone.
+ *
+ * send == 1    We are sending binpool data from this repository to
+ *		another repo. (push or rclone)  This is called after the
+ *		keysync, but before the bk data is transferred.
+ * send == 0	We are requesting binpool data from a remote binpool server
+ *		to be installed in our local server. (pull or clone)
+ *		Called after the bitkeeper files are received.
+ *
+ * rev		The range of csets to be transfered. (ie '..+' for push)
+ * rev_list	A tmpfile containing the list of csets to be transferred.
+ *		(ie BitKeeper/etc/csets-in for pull)
+ *
+ * Note: Either rev or rev_list is set, but never both.
+ */
 int
 bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 {
-	char	*url;
-	char	*bp_repoid, *local, *bkd_server;
+	char	*url;		/* URL to connect to remote bkd */
+	char	*local_repoid;	/* repoid of local bp_master (may be me) */
+	char	*local_url;	/* URL to local bp_master */
+	char	*remote_repoid;	/* repoid of remote bp_master */
 	int	rc = 0, fd0 = 0;
 	char	**cmds = 0;
 
+	/* must have rev or rev_list, but not both */
 	assert((rev && !rev_list) || (!rev && rev_list));
 
 	url = remote_unparse(r);
-	if (bp_repoid = bp_master_id()) {
+	if (local_repoid = bp_master_id()) {
 		/* The local bp master is not _this_ repo */
-		local = aprintf("@'%s'", proj_configval(0, "binpool_server"));
+		local_url = aprintf("@'%s'",
+		    proj_configval(0, "binpool_server"));
 	} else {
-		bp_repoid = strdup(proj_repo_id(0));
-		local = strdup("");
+		local_repoid = strdup(proj_repo_id(0));
+		local_url = strdup("");
 	}
-	unless (bkd_server = getenv("BKD_BINPOOL_SERVER")) {
+	unless (remote_repoid = getenv("BKD_BINPOOL_SERVER")) {
 		unless (bkd_hasFeature("binpool")) goto out;
 		fprintf(stderr, "error: BKD_BINPOOL_SERVER missing\n");
 		rc = -1;
 		goto out;
 	}
-	if (streq(bp_repoid, bkd_server)) goto out;
+	/* Do we both use the same master? If so then we are done. */
+	if (streq(local_repoid, remote_repoid)) goto out;
 
+	/* Generate list of binpool delta keys */
 	if (rev) {
 		cmds = addLine(cmds,
 		    aprintf("bk changes -Bv -r'%s' "
-			"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'",
-			rev));
+		    "-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'",
+		    rev));
 	} else {
 		fd0 = dup(0);
 		close(0);
@@ -785,28 +813,45 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 			"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' -"));
 	}
 	if (send) {
+		/* send list of keys to remote and get back needed keys */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' _binpool_query -m -", url));
+		/* build local SFIO of needed bp data */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s _binpool_send -", local));
+		    aprintf("bk -q%s _binpool_send -", local_url));
+		/* unpack SFIO in remote bp master */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' _binpool_receive -m -", url));
 	} else {
+		/* Remove bp keys that our local bp master already has */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s _binpool_query -", local));
+		    aprintf("bk -q%s _binpool_query -", local_url));
+		/* send keys we need to remote bp master and get back SFIO */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' _binpool_send -m -", url));
+		/* unpack SFIO in local bp master */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s _binpool_receive -", local));
+		    aprintf("bk -q%s _binpool_receive -", local_url));
 	}
 	rc = spawn_filterPipeline(cmds);
 	if (fd0) {
 		dup2(fd0, 0);
 		close(fd0);
 	}
-out:	free(bp_repoid);
-	free(local);
+out:	free(local_repoid);
+	free(local_url);
 	free(url);
 	return (rc);
 }
 
+#if 0
+/*
+ * -M url  populate bp-server at url with data needed for local csets
+ * -p	   prune local bp data that exists in bp-server
+ * -u	   update bp-server with data from all local csets
+ */
+int
+binpool_main(int ac, char **av)
+{
+}
+#endif

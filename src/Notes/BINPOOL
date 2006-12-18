@@ -1,119 +1,81 @@
-Master vs clone
+TODO
+   - check should have mode to verify all binpool deltas are present
+     in local or server's binpool.
+   - binpool utility function
+     - prune local binpool (in server or extra deltas)
+     - move data between binpools (by csets, or all)
+     - fully populate binpool
+     - fsck
+     - convert old binary files to binpool
+   - fetch binpool data directly from server if it is on local
+     filesystem
+
+----------------------------------------------------------
+Binpool servers
 
 	The whole point of binpool is to allow some bk operations to
 	continue without transfering all data in the repository, but
 	we need to assure that the data can always be found.  To do
-	this we have Master repositories where the binpool is always
-	assumed to have a full copy of all csets in the repository.
+	this we have binpool server repositories.
 
-	Clients do not know ahead of time if a remote bkd is a master
-	on not.
+	Each repository has one (or none) binpool server and the data
+	for all binpool deltas in that repository should exist either
+	locally or at the server.  Anytime csets travel between
+	repositories (pull/push/clone etc...) the binpool data will be
+	transfered to the binpools servers at both ends of the
+	transfer.
 
 Semantics
 
-  - pull always operates in binpool:all mode when talking to a
-    non-master
+  - New data always gets created in the local binpool.  Binpool
+    servers don't get populated with "tmp" csets.
 
-  - clone with always transfers the entire binpool when talking to a
-    non-master. (That is not really binpool:all)
+  - Any csets that move between repository are pushed to the binpool
+    server on both sides of the transfer.
 
-  - push always transfers all binpool data in the patch
+  - Pulls between two repos with the same binpool server do no extra
+    work.
 
-  - For pull, push and clone between non-masters it is legal for some
-    binpool data to be missing.  If the target of the transfer is a
-    running in checkout:get mode it may have to fetch the missing data
-    from the master.  The data is expected to exist in the master.
+  - Binpool servers are identified by there repoid's so that two
+    clients that use different URLs for the same server will do the
+    right thing.
 
-  - When contacting a bkd running on a binpool master is the only time
-    the binpool mode is used.  It is transfered from the client-side
-    to the bkd and then the uses it in clone and pull.
-
-  
-
-Invariants:
-	A repo nevers has binpool data without the matching csets.
-
-	A repo in binpool:all mode always has all binpool data.
-
-	A repo in binpool:tip mode always has binpool data for the
-	current gfiles.
-
-	Any binpool data that is not in one of the global binpool
-	masters must exist in every repo that has those deltas.
-
-	A local binpool may contain more data than required by the
-	binpool mode.
-
-Note: We want utility scripts to populate and prune the local binpool
-      to make it easy to switch binpool modes.
-
-First I want to eliminate checkout:get mode from consideration:
-     If a repo has a checkout mode enabled, get or edit, and
-     binpool:none mode, it will behave as if it was in binpool:tip mode.
-
+  - BK patches created with bk-send will contain all binpool data so
+    that they are standalone  
 
 Here are the steps for each side of the major commands that transfer
 csets.
 
 
 clone:
-	- send binpool mode to bkd
-	- receive and unpack sfio
-	- compare binpool to required binpool-mode and request any
-	  missing data from remote-list.
+	- bkd sends SFIO with sfiles
+	- client unpacks SFIO and strips the unneeded deltas
+	- client then requests any binpool deltas missing from local server
 
 bkd_clone:
-	- if !master, force client to binpool:all
-	- send binpool data required by clients binpool mode
-	  (after accounting for clone-r)
+	- push binpool deltas to be transfered to the binpool server
+	- send SFIO
 
 push:
-	- send bk patch will all binpool data I have
+	- do key exchange
+	- update local master with bp data
+	- send bp data to remote master
+	- send normal bk patch
 
 bkd_push:
-	- unpack patch
-	- compare binpool to required binpool-mode and request any
-	  missing data from remote-list.
+	- unchanged
 
 pull:
-	- send binpool mode to bkd
-	- receive and unpack bk patch		
-	- compare binpool to required binpool-mode and request any
-	  missing data from remote-list.
-
+	- do key exchange
+	- receive bk patch
+	- request missing bp data from remote master (if not same as
+          local)
+	- run resolve
 
 bkd_pull:
-	- create bk patch
-	- if !master, add all present bp data
-	- if master, add data according to binpool-mode
-
-
-
-Examples:
-  clone from master in binpool:none mode
-	no binpool data transfered
-
-  clone -r from master in binpool:tip mode
-	the clone doesn't have binpool data, but
-	after we call undo we request the missing binpool
-	tips from the master
-
-  push from a binpool:none repo to a binpool:all peer
-        The patch is sent with no bp data and then
-	the client requests the missing data from the masters.
-
-
-
-NOTE: 
-  The request for missing binpool data occurs in the RESYNC directory
-  in resolve.c for pull and push and so will fail the transfer if the
-  data can't be found.
-
-  Only the bkd-side needs to answer the question "Am I a binpool
-  master?"
-
-  Some rare clone cases from a master require an extra round trip, but
-  you get the code for free.
+	- do key exchange
+	- update local master with bp data
+	- send bk patch
 
 
 ----
