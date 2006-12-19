@@ -54,10 +54,11 @@ list(char *gfile)
 	} else {
 		if (s) sccs_free(s);
 	}
-	f = popen(
-	    "bk sfiles BitKeeper/deleted | "
-	    "bk prs -r+ -hd':ROOTKEY:\n:GFILE:\n' -",
-	    "r");
+	sprintf(buf,
+	    "bk prs -r+ "
+	    "-hd':ROOTKEY:\n:GFILE:\n' BitKeeper/deleted '.del-%s*'", 
+	    basenm(gfile));
+	f = popen(buf, "r");
 	assert(f);
 	while (fnext(key, f))  {
 		p = strchr(key, '|') + 1;
@@ -272,6 +273,9 @@ converge_hash_files(void)
 	char key[MAXKEY], gfile[MAXPATH];
 
 	chdir(ROOT2RESYNC);
+	/*
+	 * This list is likely to be small so we just look through them all.
+	 */
 	f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "
 	    "bk prs -r+ -hd':ROOTKEY:\n:GFILE:\n' -", "r");
 	assert(f);
@@ -288,7 +292,6 @@ converge_hash_files(void)
 		merge(gfile);
 	}
 	pclose(f);
-
 	/*
 	 * Do the per file work
 	 */
