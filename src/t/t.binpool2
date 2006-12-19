@@ -196,4 +196,26 @@ cd zclone2 || exit 1
 bk -Ur get $Q || exit 1
 echo OK
 
+echo $N Try remote push across zones with file based bp master url ..$NL
+# Assume (from above) that cclone1 and pclone2 are equal and have different
+# masters.  Access the cclone1 through the bkd.  The failure depends on
+# the 'c' binpool_master being a file url and not a bk:// url.
+cd "$HERE/pclone2"
+cp "$HERE/F7" .
+bk new $Q F7
+bk commit $Q -yF7
+bk push $Q bk://localhost:$P/cclone1 || {
+	echo push failed
+	bk _kill bk://localhost:$P
+	exit 1
+}
+cd ../cclone1
+bk get $Q -S || {
+	echo get failed
+	bk _kill bk://localhost:$P
+	exit 1
+}
+checkfiles "$HERE"/F7 F7
+echo OK
+
 bk _kill bk://localhost:$P
