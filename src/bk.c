@@ -499,7 +499,7 @@ cmdlog_start(char **av, int httpMode)
 	}
 
 	if (is_remote && (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) &&
-	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repo_id(0))) {
+	    (repo1 = getenv("BK_REPO_ID")) && (repo2 = proj_repoID(0))) {
 		i = streq(repo1, repo2);
 		if (i) {
 			out("ERROR-can't connect to same repo_id\n");
@@ -565,8 +565,8 @@ cmdlog_start(char **av, int httpMode)
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 	if (is_remote) {
-		char	*repoid = getenv("BK_REPO_ID");
-		if (repoid) cmdlog_addnote("rmtc", repoid);
+		char	*repoID = getenv("BK_REPO_ID");
+		if (repoID) cmdlog_addnote("rmtc", repoID);
 	}
 }
 

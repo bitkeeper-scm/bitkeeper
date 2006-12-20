@@ -15060,7 +15060,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 	case KW_REPO_ID: /* REPO_ID */ {
-		fs(proj_repo_id(0));
+		fs(proj_repoID(0));
 		return (strVal);
 	}
 	case KW_BPHASH: /* BPHASH */ {

@@ -410,7 +410,7 @@ bp_updateMaster(char *tiprev)
 {
 	char	*p, *sync, *syncf, *url;
 	char	**cmds = 0;
-	char	*repoid;
+	char	*repoID;
 	char	*baserev = 0;
 	FILE	*f;
 	sccs	*s;
@@ -419,9 +419,9 @@ bp_updateMaster(char *tiprev)
 	char	buf[MAXKEY];
 
 	/* find the repo_id of my master */
-	unless (repoid = bp_master_id()) {
+	unless (repoID = bp_masterID()) {
 		/* no need to update myself */
-		free(repoid);
+		free(repoID);
 		return (0);
 	}
 	url = proj_configval(0, "binpool_server");
@@ -434,7 +434,7 @@ bp_updateMaster(char *tiprev)
 		assert(p);
 		*p++ = 0;
 		chomp(p);
-		if (streq(repoid, sync)) baserev = strdup(p);
+		if (streq(repoID, sync)) baserev = strdup(p);
 		free(sync);
 	}
 
@@ -466,10 +466,10 @@ bp_updateMaster(char *tiprev)
 		sccs_md5delta(s, d, buf);
 		sccs_free(s);
 		f = fopen(syncf, "w");
-		fprintf(f, "%s\n%s\n", repoid, buf);
+		fprintf(f, "%s\n%s\n", repoID, buf);
 		fclose(f);
 	}
-	free(repoid);
+	free(repoID);
 	return (rc);
 }
 
@@ -478,7 +478,7 @@ bp_updateMaster(char *tiprev)
  * Returns null if no master or the master link points at myself.
  */
 char *
-bp_master_id(void)
+bp_masterID(void)
 {
 	char	*cfile, *cache, *p, *url;
 	char	*ret = 0;
@@ -507,7 +507,7 @@ bp_master_id(void)
 	f = fopen(cfile, "w");
 	fprintf(f, "%s\n%s\n", url, ret);
 	fclose(f);
-out:	if (streq(proj_repo_id(0), ret)) {
+out:	if (streq(proj_repoID(0), ret)) {
 		free(ret);
 		ret = 0;
 	}
@@ -585,7 +585,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 	}
 
 
-	if (tomaster && (p = bp_master_id())) {
+	if (tomaster && (p = bp_masterID())) {
 		free(p);
 		url = proj_configval(0, "binpool_server");
 		assert(url);
@@ -642,7 +642,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		return (1);
 	}
 
-	if (tomaster && (p = bp_master_id())) {
+	if (tomaster && (p = bp_masterID())) {
 		free(p);
 		url = proj_configval(0, "binpool_server");
 		assert(url);
@@ -709,7 +709,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		return (1);
 	}
 
-	if (tomaster && (p = bp_master_id())) {
+	if (tomaster && (p = bp_masterID())) {
 		free(p);
 		url = proj_configval(0, "binpool_server");
 		assert(url);
@@ -721,8 +721,8 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 	mkdirp(buf);
 	chdir(buf);
 
-	i = system("bk sfio -imq"); /* reads stdin */
-	if (i) {
+	/* reads stdin */
+	if (i = system("bk sfio -imq")) {
 		fprintf(stderr, "_binpool_receive: sfio failed %x\n", i);
 		return (-1);
 	}
@@ -770,9 +770,9 @@ int
 bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 {
 	char	*url;		/* URL to connect to remote bkd */
-	char	*local_repoid;	/* repoid of local bp_master (may be me) */
+	char	*local_repoID;	/* repoID of local bp_master (may be me) */
 	char	*local_url;	/* URL to local bp_master */
-	char	*remote_repoid;	/* repoid of remote bp_master */
+	char	*remote_repoID;	/* repoID of remote bp_master */
 	int	rc = 0, fd0 = 0;
 	char	**cmds = 0;
 
@@ -780,22 +780,22 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 	assert((rev && !rev_list) || (!rev && rev_list));
 
 	url = remote_unparse(r);
-	if (local_repoid = bp_master_id()) {
+	if (local_repoID = bp_masterID()) {
 		/* The local bp master is not _this_ repo */
 		local_url = aprintf("@'%s'",
 		    proj_configval(0, "binpool_server"));
 	} else {
-		local_repoid = strdup(proj_repo_id(0));
+		local_repoID = strdup(proj_repoID(0));
 		local_url = strdup("");
 	}
-	unless (remote_repoid = getenv("BKD_BINPOOL_SERVER")) {
+	unless (remote_repoID = getenv("BKD_BINPOOL_SERVER")) {
 		unless (bkd_hasFeature("binpool")) goto out;
 		fprintf(stderr, "error: BKD_BINPOOL_SERVER missing\n");
 		rc = -1;
 		goto out;
 	}
 	/* Do we both use the same master? If so then we are done. */
-	if (streq(local_repoid, remote_repoid)) goto out;
+	if (streq(local_repoID, remote_repoID)) goto out;
 
 	/* Generate list of binpool delta keys */
 	if (rev) {
@@ -810,7 +810,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 		assert(rc == 0);
 		cmds = addLine(cmds,
 		    strdup("bk changes -Bv "
-			"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' -"));
+		    "-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' -"));
 	}
 	if (send) {
 		/* send list of keys to remote and get back needed keys */
@@ -838,7 +838,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 		dup2(fd0, 0);
 		close(fd0);
 	}
-out:	free(local_repoid);
+out:	free(local_repoID);
 	free(local_url);
 	free(url);
 	return (rc);

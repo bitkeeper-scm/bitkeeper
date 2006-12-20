@@ -1169,7 +1169,7 @@ void	update_log_markers(int verbose);
 delta	*sccs_getedit(sccs *s, char **revp);
 void	line2av(char *cmd, char **av);
 void	smerge_saveseq(u32 seq);
-void	mk_repo_id(project *proj, char *repoid);
+void	mk_repoID(project *proj, char *repoid);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
 char	*findDotFile(char *old, char *new, char *buf);
@@ -1235,7 +1235,7 @@ int	bp_get(sccs *s, delta *d, u32 flags, char *out);
 int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);
 int	bp_updateMaster(char *tiprev);
-char	*bp_master_id(void);
+char	*bp_masterID(void);
 int	bp_transferMissing(remote *r, int send, char *rev, char *rev_list);
 
 
