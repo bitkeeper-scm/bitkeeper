@@ -27,7 +27,7 @@ private int	linkdir(char *from, char *dir);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
-private int	in_trigger(char *status, char *rev, char *root, char *repoid);
+private int	in_trigger(char *status, char *rev, char *root, char *repoID);
 
 int
 clone_main(int ac, char **av)
@@ -328,7 +328,7 @@ clone2(opts opts, remote *r)
 	parent(opts, r);
 
 	/* get bp data */
-	(void)proj_repo_id(0);		/* generate repoid */
+	(void)proj_repoID(0);		/* generate repoID */
 	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
 	if (bp_transferMissing(r, 0, buf, 0)) {
 		fprintf(stderr, "clone: failed to fetch binpool data\n");
@@ -639,11 +639,11 @@ out2:		repository_rdunlock(0);
 		goto out1;
 	}
 
-	if (p = bp_master_id()) {
+	if (p = bp_masterID()) {
 		safe_putenv("BKD_BINPOOL_SERVER=%s", p);
 		free(p);
 	} else {
-		safe_putenv("BKD_BINPOOL_SERVER=%s", proj_repo_id(0));
+		safe_putenv("BKD_BINPOOL_SERVER=%s", proj_repoID(0));
 	}
 
 	chdir(here);
@@ -717,7 +717,7 @@ out:
 	freeLines(files, free);
 	chdir(from);
 	repository_rdunlock(0);
-	fromid = proj_repo_id(0);
+	fromid = proj_repoID(0);
 	if (chdir(dest)) goto out;
 	if (clone2(opts, r)) {
 		in_trigger("BK_STATUS=FAILED", opts.rev, from, fromid);
@@ -766,7 +766,7 @@ out_trigger(char *status, char *rev, char *when)
 }
 
 private int
-in_trigger(char *status, char *rev, char *root, char *repoid)
+in_trigger(char *status, char *rev, char *root, char *repoID)
 {
 	safe_putenv("BKD_HOST=%s", sccs_gethost());
 	safe_putenv("BKD_ROOT=%s", root);
@@ -779,7 +779,7 @@ in_trigger(char *status, char *rev, char *root, char *repoid)
 	safe_putenv("BKD_PLATFORM=%s", platform());
 	if (status) putenv(status);
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
-	if (repoid) safe_putenv("BKD_REPO_ID=%s", repoid);
+	if (repoID) safe_putenv("BKD_REPO_ID=%s", repoID);
 	putenv("_BK_LCLONE=YES");
 	return (trigger("clone", "post"));
 }

@@ -17,7 +17,7 @@ usage:			sys("bk", "help", "-s", "id", SYS);
 	if (av[optind]) goto usage;
 
 	if (repo) {
-		printf("%s\n", proj_repo_id(0));
+		printf("%s\n", proj_repoID(0));
 	} else {
 		printf("%s\n", proj_rootkey(0));
 	}

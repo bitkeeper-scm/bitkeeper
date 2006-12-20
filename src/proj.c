@@ -28,7 +28,7 @@ struct project {
 	char	*root;		/* fullpath root of the project */
 	char	*rootkey;	/* Root key of ChangeSet file */
 	char	*md5rootkey;	/* MD5 root key of ChangeSet file */
-	char	*repo_id;	/* RepoID */
+	char	*repoID;	/* RepoID */
 	MDBM	*config;	/* config DB */
 	project	*rparent;	/* if RESYNC, point at enclosing repo */
 
@@ -436,26 +436,26 @@ proj_md5rootkey(project *p)
 }
 
 /*
- * Return the repo_id if there is one.
+ * Return the repoID if there is one.
  */
 char *
-proj_repo_id(project *p)
+proj_repoID(project *p)
 {
-	char	*repoid, *file;
+	char	*repoID, *file;
 
 	unless (p) p = curr_proj();
 	unless (p) return (0);
 	if (p->rparent) p = p->rparent;
-	if (p->repo_id) return (p->repo_id);
+	if (p->repoID) return (p->repoID);
 
 	file = proj_fullpath(p, REPO_ID);
-	unless (repoid = loadfile(file, 0)) {
-		mk_repo_id(p, file);
-		repoid = loadfile(file, 0);
+	unless (repoID = loadfile(file, 0)) {
+		mk_repoID(p, file);
+		repoID = loadfile(file, 0);
 	}
-	if (repoid) chomp(repoid);
-	p->repo_id = repoid;
-	return (p->repo_id);
+	if (repoID) chomp(repoID);
+	p->repoID = repoID;
+	return (p->repoID);
 }
 
 /*
@@ -474,9 +474,9 @@ proj_reset(project *p)
 			free(p->md5rootkey);
 			p->md5rootkey = 0;
 		}
-		if (p->repo_id) {
-			free(p->repo_id);
-			p->repo_id = 0;
+		if (p->repoID) {
+			free(p->repoID);
+			p->repoID = 0;
 		}
 		if (p->config) {
 			mdbm_close(p->config);

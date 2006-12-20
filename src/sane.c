@@ -78,7 +78,7 @@ sane(int readonly, int resync)
 
 	//chk_ssh();
 	//chk_http();
-	proj_repo_id(0);	/* make repo_id if needed */
+	proj_repoID(0);		/* make repoID if needed */
 	return (errors);
 }
 
@@ -251,7 +251,7 @@ chk_idcache(void)
  * The repo name is host|/path/to/repo|user|date|randbits.
  */
 void
-mk_repo_id(project *proj, char *repoid)
+mk_repoID(project *proj, char *repoid)
 {
 	char	buf[100];
 	char	rand[6];
@@ -280,7 +280,7 @@ mk_repo_id(project *proj, char *repoid)
 
 	outlen = sizeof(rand);
 	if ((err =base64_encode(buf, 3, rand, &outlen)) != CRYPT_OK) {
-		fprintf(stderr, "mk_repo_id: %s\n", error_to_string(err));
+		fprintf(stderr, "mk_repoID: %s\n", error_to_string(err));
 		exit(1);
 	}
 	assert(outlen < sizeof(rand));
