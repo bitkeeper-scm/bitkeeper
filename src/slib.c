@@ -6767,7 +6767,6 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 	 * GET_DTIME
 	 * GET_NOREGET (handled in setupOutput)
 	 * GET_SUM
-	 * GET_SUM
 	 */
 #define	BAD	(GET_PREFIX|GET_ASCII|GET_ALIGN|GET_HEADER|\
 		GET_NOHASH|GET_HASHONLY|GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS|\
@@ -12798,10 +12797,13 @@ out:
 			OUT;
 		}
 	}
-	if ((flags & PRINT) && !BINPOOL(s)) {
-		// XXX prevent -p for binpool in delta.c ?? 
+	if (flags & PRINT) {
 		fprintf(stdout, "==== Changes to %s ====\n", s->gfile);
-		fwrite(diffs->mmap, diffs->size, 1, stdout);
+		if (BINPOOL(s)) {
+			fprintf(stdout, "Binary files differ.\n");
+		} else {
+			fwrite(diffs->mmap, diffs->size, 1, stdout);
+		}
 		fputs("====\n\n", stdout);
 	}
 	/*

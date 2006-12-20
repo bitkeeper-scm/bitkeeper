@@ -60,8 +60,8 @@ cmd_pull_part1(int ac, char **av)
 		return (1);
 	}
 	if (proj_configbool(0, "binpool") && !bk_hasFeature("binpool")) {
-		out("ERROR-old clients cannot pull ");
-		out("from a bkd with binpool enabled\n");
+		out("ERROR-old clients cannot pull "
+		    "from a bkd with binpool enabled\n");
 		drain();
 		return (1);
 	}

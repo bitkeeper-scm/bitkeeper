@@ -782,14 +782,16 @@ loadcset(sccs *cset)
 
 	db = mdbm_mem();
 	while (fnext(buf, f)) {
-		
 		chomp(buf);
 		p = strchr(buf, '\t');
 		assert(p);
 		*p++ = 0;
-		if (opts.binpool &&
-		    (t = strrchr(buf, '|')) && strneq(t, "|B:", 3)) {
-			continue;
+		if (opts.binpool) {
+			/* skip unless rootkey =~ /^B:/ */
+			t = separator(p);
+			assert(t);
+			while (*t != '|') --t;
+			unless (strneq(t, "|B:", 3)) continue;
 		}
 		if (opts.inc || opts.exc) {
 			keypath = separator(p);

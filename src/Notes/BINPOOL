@@ -10,6 +10,14 @@ TODO
    - fetch binpool data directly from server if it is on local
      filesystem
 
+   - convert existing binary files
+     - d->sum is not validated so we can preserve the existing sum
+       for uuencoded files
+     - binpool wants the files rootkeys to start with B:, but we can
+       mangle the random bits to preserve the changeset checksums.
+     - How to handle transformed vs non-transformed trees.
+
+   - remote cset busted because of BKD_DAEMON
 ----------------------------------------------------------
 Binpool servers
 

@@ -1218,6 +1218,7 @@ sccs_patch(sccs *s, cset_t *cs)
 						deltas++;
 						continue;
 					}
+					/* p == fullpath to binpool .d file */
 					t = strstr(p, "/BitKeeper/binpool/");
 					assert(t);
 					t = strdup(t+1);

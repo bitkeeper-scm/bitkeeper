@@ -58,12 +58,13 @@ send_cderror(char *path)
 int
 unsafe_cd(char *path)
 {
+	char	*p;
 	char	a[MAXPATH];
 	char	b[MAXPATH];
 
 	getcwd(a, MAXPATH);
 	if (chdir(path)) return (1);
-	unless (Opts.safe_cd || getenv("BKD_DAEMON")) return (0);
+	unless (Opts.safe_cd || ((p = getenv("BKD_DAEMON")) && *p)) return (0);
 	getcwd(b, MAXPATH);
 	unless ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) {
 		send_cderror(path);
