@@ -451,12 +451,13 @@ bp_updateMaster(char *tiprev)
 	/* filter out deltas already in master */
 	cmds = addLine(cmds, aprintf("bk -q@'%s' _binpool_query -", url));
 
-	/* create SFIO on binpool data */
+	/* create SFIO of binpool data */
 	cmds = addLine(cmds, strdup("bk _binpool_send -"));
 
 	/* store in master */
 	cmds = addLine(cmds, aprintf("bk -q@'%s' _binpool_receive -", url));
 	rc = spawn_filterPipeline(cmds);
+	freeLines(cmds, free);
 	unless (rc) {
 		/* update cache of last sync */
 
@@ -834,6 +835,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 		    aprintf("bk -q%s _binpool_receive -", local_url));
 	}
 	rc = spawn_filterPipeline(cmds);
+	freeLines(cmds, free);
 	if (fd0) {
 		dup2(fd0, 0);
 		close(fd0);
@@ -844,14 +846,132 @@ out:	free(local_repoID);
 	return (rc);
 }
 
-#if 0
+/* make local repository contain binpool data for all deltas */
+private int
+binpool_populate_main(int ac, char **av)
+{
+	int	rc, c;
+	char	*p;
+	char	**cmds = 0;
+
+	while ((c = getopt(ac, av, "a")) != -1) {
+		switch (c) {
+		    case 'a':
+			fprintf(stderr,
+			    "binpool populate: -a not implemeneted.\n");
+			return (1);
+		    default:
+			system("bk help -s binpool");
+			return (1);
+		}
+	}
+
+	unless (p = bp_masterID()) return (0);
+	free(p);
+
+	/* list of all binpool deltas */
+	cmds = addLine(cmds,
+	    aprintf("bk changes -Bv "
+	    "-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'"));
+
+	/* reduce to list of deltas missing locally */
+	cmds = addLine(cmds, strdup("bk _binpool_query -"));
+
+	/* request deltas from server */
+	cmds = addLine(cmds, aprintf("bk -@'%s' _binpool_send -",
+	    proj_configval(0, "binpool_server")));
+
+	/* unpack locally */
+	cmds = addLine(cmds, strdup("bk _binpool_receive -"));
+
+	rc = spawn_filterPipeline(cmds);
+	freeLines(cmds, free);
+	return (rc);
+}
+
+/* update binpool master with any binpool data committed locally */
+private int
+binpool_update_main(int ac, char **av)
+{
+	int	c;
+	char	*tiprev = "+";
+
+	while ((c = getopt(ac, av, "r;")) != -1) {
+		switch (c) {
+		    case 'r': tiprev = optarg; break;
+		    default:
+			system("bk help -s binpool");
+			return (1);
+		}
+	}
+	if (proj_cd2root()) {
+		fprintf(stderr, "Not in a repository.\n");
+		return (1);
+	}
+	unlink("BitKeeper/log/BP_SYNC"); /* don't trust cache */
+	return (bp_updateMaster(tiprev));
+}
+
 /*
- * -M url  populate bp-server at url with data needed for local csets
- * -p	   prune local bp data that exists in bp-server
- * -u	   update bp-server with data from all local csets
+ * Remove any binpool data from the current repository that is not
+ * used by any local deltas.
  */
+private int
+binpool_flush_main(int ac, char **av)
+{
+	return (0);
+}
+
+/*
+ * Return any binpool data that already exists in the binpool_server.
+ */
+private int
+binpool_prune_main(int ac, char **av)
+{
+	return (0);
+}
+
+/*
+ * Validate the checksums and metadata for all binpool data
+ *  checksum match
+ *  sizes match
+ *  deltakeys from this repo have same hash
+ *  permissions
+ */
+private int
+binpool_check_main(int ac, char **av)
+{
+	return (0);
+}
+
 int
 binpool_main(int ac, char **av)
 {
+	int	c, i;
+	struct {
+		char	*name;
+		int	(*fcn)(int ac, char **av);
+	} cmds[] = {
+		{"populate", binpool_populate_main },
+		{"update", binpool_update_main },
+		{"flush", binpool_flush_main },
+		{"prune", binpool_prune_main },
+		{"check", binpool_check_main },
+		{0, 0}
+	};
+
+	while ((c = getopt(ac, av, "")) != -1) {
+		switch (c) {
+		    default:
+usage:			system("bk help -s binpool");
+			return (1);
+		}
+	}
+	unless (av[optind]) goto usage;
+	for (i = 0; cmds[i].name; i++) {
+		if (streq(av[optind], cmds[i].name)) {
+			return (cmds[i].fcn(ac-optind, av+optind));
+		}
+	}
+	goto usage;
 }
-#endif

@@ -206,6 +206,7 @@ cmd_bk(int ac, char **av)
 		return (1);
 	}
 	putenv("BK_NO_CMD_FALL_THROUGH=1");
+	putenv("BKD_DAEMON=");	/* allow new bkd connections */
 
 	setmode(0, _O_BINARY);
 	tmp = bktmp(0, "stdin");

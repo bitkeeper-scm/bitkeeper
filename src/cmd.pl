@@ -132,6 +132,7 @@ admin
 annotate
 base64
 bkd
+binpool
 _binpool_query remote
 _binpool_receive remote
 _binpool_send remote
