@@ -21,6 +21,7 @@ int	nt_chdir(char *dirname);
 int	nt_utime(char *file, struct utimbuf *ut);
 pid_t	nt_execvp (char *cmd, char **av);
 int	nt_rmdir(char *dirname);
+int	nt_link(const char *file1, const char *file2);
 
 /* functions that return file name as output */
 char*	nt_tmpnam(void);

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000-2002, Andrew Chang & Larry McVoy
- */    
+ */
 #include "bkd.h"
 #include "logging.h"
 
@@ -94,13 +94,7 @@ clone_main(int ac, char **av)
 	}
 
 	if (link) {
-#ifdef WIN32
-		fprintf(stderr,
-		    "clone: sorry, -l option is not supported on Windows.\n");
-		return (1);
-#else
 		return (lclone(opts, r, av[optind+1]));
-#endif
 		/* NOT REACHED */
 	}
 	if (av[optind + 1]) {
