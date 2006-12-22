@@ -919,6 +919,84 @@ binpool_update_main(int ac, char **av)
 private int
 binpool_flush_main(int ac, char **av)
 {
+	FILE	*f;
+	int	i, j, pruned;
+	u32	deleted;
+	hash	*bpdeltas;
+	attr	a;
+	char	*p1, *p2;
+	char	buf1[MAXLINE], buf2[MAXLINE];
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "Not in a repository.\n");
+		return (1);
+	}
+	/* save bp deltas in repo */
+	bpdeltas = hash_new(HASH_MEMHASH);
+	f = popen("bk -r prs "
+	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'", "r");
+	assert(f);
+	while (fnext(buf1, f)) {
+		chomp(buf1);
+		hash_storeStr(bpdeltas, buf1, 0);
+	}
+	fclose(f);
+	/* if (prune) remove deltas upto BP_SYNC */
+
+	/* walk all bp files */
+	f = popen("bk _find BitKeeper/binpool -type f -name '*.a1'", "r");
+	assert(f);
+	while (fnext(buf1, f)) {
+		p1 = strrchr(buf1, '1');
+		assert(p1);
+		*p1 = 0;		/* chop 1 and newline */
+
+		deleted = 0;
+		for (j = 1; ; j++) {
+			sprintf(p1, "%d", j);
+			if (loadAttr(buf1, &a)) break;
+			pruned = 0;
+			EACH(a.keys) {
+				unless (hash_fetchStr(bpdeltas, a.keys[i])) {
+					removeLineN(a.keys, i, free);
+					--i;
+					pruned = 1;
+				}
+			}
+			unless (pruned) continue; /* unchanged */
+			if (a.keys[1]) {
+				/* rewrite with some keys deleted */
+				saveAttr(&a, buf1);
+				continue;
+			}
+			/* remove files */
+			deleted |= (1<<(j-1));
+			p1[-1] = 'd';
+			unlink(buf1);
+			p1[-1] = 'a';
+			unlink(buf1);
+		}
+		/* rename .a2, .a3, etc */
+		if (deleted) {
+			strcpy(buf2, buf1);
+			p2 = buf2 + (p1 - buf1);
+		}
+		for (i = j = 1; deleted; deleted >>= 1, ++j) {
+			/* j == oldindex, i == newindex */
+			if (deleted & 1) continue;
+			if (i != j) {
+				p1[-1] = p2[-1] = 'd';
+				sprintf(buf1, "%d", j);
+				sprintf(buf2, "%d", i);
+				rename(buf1, buf2);
+				p1[-1] = p2[-1] = 'a';
+				rename(buf1, buf2);
+			}
+			++i;
+		}
+	}
+	pclose(f);
+	hash_free(bpdeltas);
 	return (0);
 }
 
@@ -928,12 +1006,19 @@ binpool_flush_main(int ac, char **av)
 private int
 binpool_prune_main(int ac, char **av)
 {
+	/*
+	 * XXX
+	 * just like flush only we use changes instead of prs so we
+	 * get committed deltas and we using the rev in BP_SYNC to find
+	 * the range of deltas to keep
+	 */
 	return (0);
 }
 
 /*
  * Validate the checksums and metadata for all binpool data
  *  checksum match
+ *  filenames match checksums
  *  sizes match
  *  deltakeys from this repo have same hash
  *  permissions
