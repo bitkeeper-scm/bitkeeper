@@ -8,6 +8,7 @@ bk send \- send a \*(BK patch
 .[B] \-dfq
 .[OPTreq] \-w wr
 .[OPTreq] \-r revs
+.[OPTreq] \-s subject
 .[OPTreq] \-u URL
 .ARG u@h.ca "| \-"
 .SH DESCRIPTION
@@ -35,13 +36,13 @@ If you happen to know that you want to send changes that occurred
 after a specific changeset (and you know that the other repository
 has that changeset), you can do this:
 .DS
-$ bk send \-rbeta.. user@host.com
+$ bk send -rbeta.. -s'Changes since beta' user@host.com
 .DE
 .LP
 or
 .sp
 .DS
-$ bk send \-r1.10.. user@host.com
+$ bk send -r1.10.. user@host.com
 .DE
 .LP
 Send remembers the changesets it has sent in
@@ -81,7 +82,7 @@ exist):
 $ bk send \-wuu \-r..1.5 - | bk receive /tmp/foo
 .DE
 .SH OPTIONS
-.TP \-r\*<revs\*>
+.TP \-s\*<subject\*>
 .B \-d
 Prepend the patch with unified diffs.  This is because some
 people like looking at the diffs to decide if
@@ -95,6 +96,13 @@ Be quiet.
 .tp
 .OPTreq \-r revs
 Specify the list of changesets to send.
+.tp
+.OPTreq \-s subject
+Specify a subject line for the patch email.
+Without
+.QR \-s ,
+the default subject line
+\*(lqBitKeeper patch\*(rq is used.
 .tp
 .OPTreq \-u URL
 Instead of consulting the send log, connect to the remote repository 

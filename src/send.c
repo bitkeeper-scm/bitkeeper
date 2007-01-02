@@ -127,16 +127,17 @@ send_main(int ac,  char **av)
 	int	c, rc = 0, force = 0;
 	char	*to, *out, *cmd, *dflag = "", *qflag = "-vv";
 	char	*wrapper = 0,*patch = 0, *keysFile = 0, *revArgs = 0;
-	char	*wrapperArgs = "", *rev = "..";
+	char	*wrapperArgs = "", *rev = "..", *subject = "BitKeeper patch";
 	char	*url = NULL;
 	FILE	*f;
 
-	while ((c = getopt(ac, av, "dfqr:u:w:")) != -1) {
+	while ((c = getopt(ac, av, "dfqr:s;u:w:")) != -1) {
 		switch (c) {
 		    case 'd':	dflag = "-d"; break;		/* doc 2.0 */
 		    case 'f':	force++; break;			/* doc 2.0 */
 		    case 'q':	qflag = ""; break;		/* doc 2.0 */
 		    case 'r': 	rev = optarg; break;		/* doc 2.0 */
+		    case 's': 	subject = optarg; break;
 		    case 'w': 	wrapper = optarg; break;	/* doc 2.0 */
 		    case 'u': 	url = optarg; break;
 		    default :
@@ -148,8 +149,7 @@ send_main(int ac,  char **av)
 	to = av[optind];
 
 	if ((to == NULL) || av[optind + 1]) {
-		fprintf(stderr,
-		"usage: bk send [-dq] [-wWrapper] [-rCsetRevs] user@host|-\n");
+		system("bk help -s send");
 		exit(1);
 	}
 
@@ -216,7 +216,7 @@ send_main(int ac,  char **av)
 	 */
 	if (patch) {
 		char	**tolist = addLine(0, to);
-		bkmail("SMTP", tolist, "BitKeeper patch", patch);
+		bkmail("SMTP", tolist, subject, patch);
 		freeLines(tolist, 0);
 	}
 
