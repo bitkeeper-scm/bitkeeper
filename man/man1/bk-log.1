@@ -279,7 +279,7 @@ two letter fields;  \*[BK] fields tend to be longer.
 .if t .sp .5
 .if n .sp
 .nf
-.ta +12 +4 +20
+.ta +14 +4 +20
 .nr XX 0
 .de xx
 .br
@@ -294,218 +294,210 @@ Name	T	What is printed
 .\}
 ..
 .\" TODO? A B BD BF CB FB HT=HOST J KF KV LK M MF MR ND Q UN Y
+.\" NOTE:  If you change this list, make sure you make the corresponding
+.\" changes to the list of help:// links at the end of this file.
 .xx
-AGE	D	D's age, i.e., seven hours, two weeks, etc.
+:AGE:	D	D's age, i.e., seven hours, two weeks, etc.
 .xx
-C	D	D's comments
+:C:	D	D's comments
 .xx
-CHANGESET	F	true if ChangeSet file, false for user files
+:CHANGESET:	F	true if ChangeSet file, false for user files
 .xx
-COMMENTS	D	comments portion of :PRS:
+:COMMENTS:	D	comments portion of :PRS:
 .xx
-COMPRESSION	D	D's compression (gzip|none)
+:COMPRESSION:	D	D's compression (gzip|none)
 .xx
-CSETKEY	D	delta key if D is at a changeset boundary
+:CSETKEY:	D	delta key if D is at a changeset boundary
 .xx
-CSETREV	D	revision of first cset boundary after D
+:CSETREV:	D	revision of first cset boundary after D
 .xx
-CSETFILE	F	key of the ChangeSet file for this file
+:CSETFILE:	F	key of the ChangeSet file for this file
 .xx
-D	D	D's date as YYYY/MM/DD
+:D:	D	D's date as YYYY/MM/DD
 .xx
-D_	D	D's date as YYYY-MM-DD
+:D_:	D	D's date as YYYY-MM-DD
 .xx
-DANGLING	D	D's rev if & only if D is a dangling delta
+:DANGLING:	D	D's rev if & only if D is a dangling delta
 .xx
-DFB	F	default branch if set (similar to Ds)
+:DI:	D	D's includes/excludes as +I,I/-X,X (serials)
 .xx
-DI	D	D's includes/excludes as +I,I/-X,X (serials)
+:DIFFS:	D	D's changes in the form of traditional diffs
 .xx
-DIFFS	D	D's changes in the form of traditional diffs
+:DIFFS_U:	D	D's changes in the form of unified diffs
 .xx
-DIFFS_U	D	D's changes in the form of unified diffs
+:DIFFS_UP:	D	D's changes in the form of unified/procedural diffs
 .xx
-DIFFS_UP	D	D's changes in the form of unified/procedural diffs
+:DL:	D	lines inserted/deleted/unchanged in D
 .xx
-DL	D	lines inserted/deleted/unchanged in D
+:DOMAIN:	D	the domain part of the hostname of D
 .xx
-DOMAIN	D	the domain part of the hostname of D
+:DP:	D	the serial number of the parent of D
 .xx
-DP	D	the serial number of the parent of D
+:DPN:	D	the pathname of g.file as of D
 .xx
-DPN	D	the pathname of g.file as of D
+:DS:	D	the serial number of D
 .xx
-DS	D	the serial number of D
+:DSUM:	D	D's 16 bit unsigned checksum
 .xx
-DSUM	D	D's 16 bit unsigned checksum
+:DSUMMARY:	D	first line of :PRS:
 .xx
-DSUMMARY	D	first line of :PRS:
+:DT:	D	D's type: (D|R|T) meaning (Data|Removed|Tag)
 .xx
-DT	D	D's type: (D|R|T) meaning (Data|Removed|Tag)
+:Dd:	D	day part of D's date as DD
 .xx
-Dd	D	day part of D's date as DD
+:Dm:	D	month part of D's date as MM
 .xx
-Dm	D	month part of D's date as MM
+:DM:	D	month part of D's date (Jan..Dec)
 .xx
-DM	D	month part of D's date (Jan..Dec)
+:Dn:	D	serial numbers of D's includes, if any
 .xx
-Dn	D	serial numbers of D's includes, if any
+:Dt:	D	D's data as :DT::REV::D::T::USER::DS::DP:
 .xx
-Ds	F	default branch or "none"
+:Dx:	D	serial numbers of D's excludes, if any
 .xx
-Dt	D	D's data as :DT::I::D::T::P::DS::DP:
+:Dy:	D	year part of D's date as YY or YYYY
 .xx
-Dx	D	serial numbers of D's excludes, if any
+:ENC:	F	current encoding scheme (ascii|binary)
 .xx
-Dy	D	year part of D's date as YY or YYYY
+:F:	F	basename of the \*(BK file
 .xx
-ENC	F	current encoding scheme (ascii|binary)
+:FLAGS:	D	file flags as of D in words (HASH, YEAR4...)
 .xx
-F	F	basename of the \*(BK file
+:FSUM:	F	16 bit unsigned checksum of the s.file
 .xx
-FD	F	file descriptive text
+:FUDGE:	D	time stamp fudge used make time monotonic
 .xx
-FLAGS	D	file flags as of D in words (HASH, YEAR4...)
+:FULLHOST:	D	same as :HOST: or :HOST:/:REALHOST:
 .xx
-FSUM	F	16 bit unsigned checksum of the s.file
+:FULLUSER:	D	same as :USER: or :USER:/:REALUSER:
 .xx
-FUDGE	D	time stamp fudge used make time monotonic
+:G:	F	basename of the gfile
 .xx
-G	F	basename of the gfile
+:GB:	D	file as of version D
 .xx
-GB	D	file as of version D
+:GCA:	D	find the graph GCA for D's parents
 .xx
-GCA	D	find the graph GCA for D's parents
+:GCA2:	D	find the set GCA for D's parents
 .xx
-GCA2	D	find the set GCA for D's parents
+:GFILE:	F	pathname of the gfile
 .xx
-GFILE	F	pathname of the gfile
+:GREV:	F	for a file with conflicts, the GCA of the unmerged tips
 .xx
-GREV	F	for a file with conflicts, the GCA of the unmerged tips
+:HASHCOUNT:	D	count of key/value pairs in D if & only if hash file
 .xx
-HASHCOUNT	D	count of key/value pairs in D if & only if hash file
+:HOST:	D	hostname where D was made; could be BK_HOST
 .xx
-HOST	D	hostname of D
+:IMPORTER:	D	name of the importer of D, if D was an emailed patch
 .xx
-IMPORTER	D	name of the importer of D, if D was an emailed patch
+:HTML_C:	D	comments in a form suitable for web pages
 .xx
-HTML_C	D	Comments in a form suitable for web pages.
+:HTML_AGE:	D	age in a form suitable for web pages
 .xx
-HTML_AGE	D	Age in a form suitable for web pages.
+:KEY:	D	\*[BK] key of D
 .xx
-I	D	D's revision number
+:KID:	D	D's direct kid in D's branch
 .xx
-KEY	D	\*[BK] key of D
+:KIDS:	D	all of D's direct kids in the graph
 .xx
-KID	D	D's kid in the graph data structure
+:L:	D	the second field in D's rev (R.L.B.S)
 .xx
-L	D	the second field in D's rev (R.L.B.S)
+:LD:	D	lines deleted in D (%u)
 .xx
-LD	D	lines deleted in D (%u)
+:LI:	D	lines inserted in D (%u)
 .xx
-LI	D	lines inserted in D (%u)
+:LU:	D	lines unchanged in D (%u)
 .xx
-LU	D	lines unchanged in D (%u)
+:Ld:	D	lines deleted in D (%05u)
 .xx
-Ld	D	lines deleted in D (%05u)
+:Li:	D	lines inserted in D (%05u)
 .xx
-Li	D	lines inserted in D (%05u)
+:Lu:	D	lines unchanged in D (%05u)
 .xx
-Lu	D	lines unchanged in D (%05u)
+:LREV:	F	for a file with conflicts, the LOCAL unmerged tip
 .xx
-LREV	F	for a file with conflicts, the LOCAL unmerged tip
+:MD5KEY:	D	crypto based \*[BK] key of D
 .xx
-MD5KEY	D	Crypto based \*[BK] key of D
+:MERGE:	D	D's rev if & only if D has a merge parent
 .xx
-MERGE	D	D's rev if & only if D has a merge parent
+:MGP:	D	D's merge parent's serial number
 .xx
-MGP	D	D's merge parent's serial number
+:MODE:	D	D's file modes as an octal (777)
 .xx
-MODE	D	D's file modes as an octal (777)
+:MPARENT:	D	D's merge parent's revision
 .xx
-MPARENT	D	D's merge parent's revision
+:N:	D	Number of deltas, use instead of DS, DS may have gaps.
 .xx
-N	D	Number of deltas, use instead of DS, DS may have gaps.
+:NEXT:	D	next entry after D in delta table 
 .xx
-NEXT	D	next entry after D in delta table 
+:PARENT:	D	D's parent's revision
 .xx
-P	D	programmer who made D; same as USER
+:PREV:	D	previous entry before D in delta table
 .xx
-PARENT	D	D's parent's revision
+:PRS:	D	old-style bk prs default output
 .xx
-PATH	D	path portion of :PRS:
+:R:	D	the first field in D's rev (R.L.B.S)
 .xx
-PN	D	pathname of s.file, same as SFILE
+:RANDOM:	F	random bits part of ROOTKEY
 .xx
-PREV	D	previous entry before D in delta table
+:REALHOST:	D	real host where D was made, regardless of BK_HOST
 .xx
-PRS	D	old-style bk prs default output
+:REALUSER:	D	real programmer who made D, not assumed identity
 .xx
-R	D	the first field in D's rev (R.L.B.S)
+:RENAME:	D	D's path if different from parent's path
 .xx
-RANDOM	F	Random bits part of ROOTKEY
+:REV:	D	D's revision number
 .xx
-RENAME	D	D's path if different from parent's path
+:RI:	D	revision numbers of D's includes/excludes 
 .xx
-REV	D	same as I, D's revision
+:ROOTKEY:	F	key of the 1.0 delta, file's internal name
 .xx
-RI	D	revision numbers of D's includes/excludes 
+:RREV:	F	for a file with conflicts, the REMOTE unmerged tip
 .xx
-ROOTKEY	F	key of the 1.0 delta, file's internal name
+:RWXMODE:	D	D's file modes as ascii (-rwxrwxrwx)
 .xx
-RREV	F	for a file with conflicts, the REMOTE unmerged tip
+:Rn:	D	revision numbers of D's includes 
 .xx
-RWXMODE	D	D's file modes as ascii (-rwxrwxrwx)
+:Rx:	D	revision numbers of D's excludes 
 .xx
-Rn	D	revision numbers of D's includes 
+:S:	D	last field in D's rev (R.L.B.S)
 .xx
-Rx	D	revision numbers of D's excludes 
+:SFILE:	F	pathname of s.file
 .xx
-S	D	last field in D's rev (R.L.B.S)
+:SIBLINGS:	D	rev sibling's pointer in D
 .xx
-SFILE	F	pathname of s.file
+:SPN:	D	pathname of s.file as of D
 .xx
-SHORTKEY	D	D's key as user@host.domain|path|date
+:SYMLINK:	D	value of D's symlink target
 .xx
-SIBLINGS	D	rev sibling's pointer in D
+:T:	D	time of D as HH:MM:SS
 .xx
-SPN	D	pathname of s.file as of D
+:TAG:	D	any symbolic tag[s] associated with D
 .xx
-SYMLINK	D	value of D's symlink target
+:TAGS:	D	the symbolic tag portion of PRS
 .xx
-T	D	time of D as HH:MM:SS
+:TIME_T:	D	D's date as GMT time_t, TZ and Fudge adjusted
 .xx
-TAG	D	any symbolic tag[s] associated with D
+:TIP:	D	D's rev if D is at the tip (TOT)
 .xx
-TAGS	D	the symbolic tag portion of PRS
+:TZ:	D	offset from GMT as +/-HH:MM
 .xx
-TIME_T	D	D's date as GMT time_t, TZ and Fudge adjusted
+:Th:	D	hour part of D's date as HH
 .xx
-TIP	D	D's rev if D is at the tip (TOT)
+:Tm:	D	minute part of D's date as MM
 .xx
-TYPE	F	file type (SCCS | BitKeeper)
+:Ts:	D	seconds part of D's date as SS
 .xx
-TZ	D	offset from GMT as +/-HH:MM
+:USER:	D	programmer who made D; could be assumed identity
 .xx
-Th	D	hour part of D's date as HH
+:UTC:	D	D's time stamp as YYYYMMDDHHMMSS in GMT
 .xx
-Tm	D	minute part of D's date as MM
+:UTC_FUDGE:	D	like UTC but without the date fudge
 .xx
-Ts	D	seconds part of D's date as SS
+:VERSION:	F	file format version
 .xx
-USER	D	programmer who made D; same as P
+:W:	D	what string
 .xx
-UTC	D	D's time stamp as YYYYMMDDHHMMSS in GMT
-.xx
-UTC-FUDGE	D	like UTC but without the date fudge
-.xx
-VERSION	F	file format version
-.xx
-W	D	what string
-.xx
-X_FLAGS	D	D's per file flags as 0xFFFF
-.xx
-Z	D	@(#)
+:Z:	D	@(#)
 .SH NOTES
 There used to be a
 .Q \-m
@@ -513,11 +505,130 @@ option which did what this does:
 .DS
 bk changes -d'$if(:TAG:){$each(:TAGS:){S (:TAGS:)\\n}}'
 .DE
+.LP
+The
+.B :I:
+and
+.B :P:
+keywords are backwards compatible with AT&T SCCS and are synonyms for
+.B :REV:
+and
+.BR :USER: ,
+respectively.
+The old forms will continue to work but the new forms are used
+in the documentation.
 .SH "SEE ALSO"
 .SA range
 .SH CATEGORY
 .B File
 .\" help://dspec
 .\" help://prs
+.\" help://:I:
+.\" help://:P:
+.\" NOTE:  If you change the KEYWORDS list above, be sure to make the
+.\" corresponding changes to the following list.
+.\" BEGIN dspecs help links ## IMPORTANT: Do not edit or delete this line! ##
+.\" help://:AGE:
+.\" help://:C:
+.\" help://:CHANGESET:
+.\" help://:COMMENTS:
+.\" help://:COMPRESSION:
+.\" help://:CSETKEY:
+.\" help://:CSETREV:
+.\" help://:CSETFILE:
+.\" help://:D:
+.\" help://:D_:
+.\" help://:DANGLING:
+.\" help://:DI:
+.\" help://:DIFFS:
+.\" help://:DIFFS_U:
+.\" help://:DIFFS_UP:
+.\" help://:DL:
+.\" help://:DOMAIN:
+.\" help://:DP:
+.\" help://:DPN:
+.\" help://:DS:
+.\" help://:DSUM:
+.\" help://:DSUMMARY:
+.\" help://:DT:
+.\" help://:Dd:
+.\" help://:Dm:
+.\" help://:DM:
+.\" help://:Dn:
+.\" help://:Dt:
+.\" help://:Dx:
+.\" help://:Dy:
+.\" help://:ENC:
+.\" help://:F:
+.\" help://:FLAGS:
+.\" help://:FSUM:
+.\" help://:FUDGE:
+.\" help://:FULLHOST:
+.\" help://:FULLUSER:
+.\" help://:G:
+.\" help://:GB:
+.\" help://:GCA:
+.\" help://:GCA2:
+.\" help://:GFILE:
+.\" help://:GREV:
+.\" help://:HASHCOUNT:
+.\" help://:HOST:
+.\" help://:IMPORTER:
+.\" help://:HTML_C:
+.\" help://:HTML_AGE:
+.\" help://:KEY:
+.\" help://:KID:
+.\" help://:KIDS:
+.\" help://:L:
+.\" help://:LD:
+.\" help://:LI:
+.\" help://:LU:
+.\" help://:Ld:
+.\" help://:Li:
+.\" help://:Lu:
+.\" help://:LREV:
+.\" help://:MD5KEY:
+.\" help://:MERGE:
+.\" help://:MGP:
+.\" help://:MODE:
+.\" help://:MPARENT:
+.\" help://:N:
+.\" help://:NEXT:
+.\" help://:PARENT:
+.\" help://:PREV:
+.\" help://:PRS:
+.\" help://:R:
+.\" help://:RANDOM:
+.\" help://:REALHOST:
+.\" help://:REALUSER:
+.\" help://:RENAME:
+.\" help://:REV:
+.\" help://:RI:
+.\" help://:ROOTKEY:
+.\" help://:RREV:
+.\" help://:RWXMODE:
+.\" help://:Rn:
+.\" help://:Rx:
+.\" help://:S:
+.\" help://:SFILE:
+.\" help://:SIBLINGS:
+.\" help://:SPN:
+.\" help://:SYMLINK:
+.\" help://:T:
+.\" help://:TAG:
+.\" help://:TAGS:
+.\" help://:TIME_T:
+.\" help://:TIP:
+.\" help://:TZ:
+.\" help://:Th:
+.\" help://:Tm:
+.\" help://:Ts:
+.\" help://:USER:
+.\" help://:UTC:
+.\" help://:UTC_FUDGE:
+.\" help://:VERSION:
+.\" help://:W:
+.\" help://:Z:
+.\" END dspecs help links ## IMPORTANT: Do not edit or delete this line! ##
 .\" XXX - break the dspec stuff into it's own man page and reference it
 .\" XXX - verify that the examples are all correct, I think $each may be wrong

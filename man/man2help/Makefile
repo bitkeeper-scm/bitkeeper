@@ -12,7 +12,7 @@ helptxt: summaries
 
 PAGES:=$(shell $(BK) sfiles -g1 ../man1 'bk-*.1')
 
-pages: ../bk-macros ../man.tmac man2help.pl FORCE
+pages: ../bk-macros ../man.tmac man2help.pl verify-dspecs FORCE
 	@$(BK) get -STq ../man1
 	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- $(PAGES:%=../man1/%)
 
@@ -29,6 +29,9 @@ summaries: helptxt2 ../bk-macros help2sum.pl FORCE
 	@grep '^help://' helptxt | sort > ALL
 	@grep '^help://' helptxt | sort -u > UNIQUE
 	@cmp -s ALL UNIQUE || { echo Not unique; diff ALL UNIQUE; }
+
+verify-dspecs: ../man1/bk-log.1 verify-dspecs.pl
+	perl ./verify-dspecs.pl $<
 
 clean: FORCE
 	/bin/rm -f -- *.fmt *.sum *.roff *.done helptxt* ALL UNIQUE tmp
