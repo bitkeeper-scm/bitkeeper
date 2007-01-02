@@ -195,31 +195,45 @@ bk clean
 test $T11 -eq `_mtime SCCS/s.keyword`	|| { echo failed; exit 1; }
 echo OK
 
-echo $N Test clone checking out files according to delta time .......$NL
-echo skipped
+# clone (-l) (rlclone) - with and without -r -- should work
+# here is a start..
 
-#==================================================
-### XXX: this "if" needs to be removed when the clone -l cset is
-### integrated...
-if [ "$PLATFORM" != "WIN32" ]; then
-echo $N Test clone -l should not move sfile times backward ..........$NL
-bk get $Q keyword
-bk _touch -t $T11 keyword
-bk admin -z keyword
-test $T11 -ge `_mtime SCCS/s.keyword` || { echo failed; exit 1; }
-bk commit $Q -y"foobar"
+echo $N Test clone checking out files according to delta time .......$NL
+bk clean
+bk commit $Q -y'get some files to clone'
 cd "$HERE"
-BK_CONFIG='checkout:edit!' bk clone $Q -l project hardclone
-cd hardclone
-test -f keyword || { echo failed; exit 1; }
-test $T11 -ge `_mtime SCCS/s.keyword`	|| { echo failed \(bug lclone\); }
+BK_CONFIG='checkout:get!' bk clone $Q -l project clone
+# See that gfile has right delta time and sfile has not moved
+cd clone
+test -f keyword || { echo failed 5; exit 1; }
+test $T12 -ge `_mtime SCCS/s.keyword`	|| { echo failed; exit 1; }
 test $T12 -eq `_mtime keyword`		|| { echo failed; exit 1; }
 cd ../project
-#echo OK
-fi
-#==================================================
+echo OK
 
-# clone (-l) (rlclone) - with and without -r -- should work
+echo $N Test clone -l should not move sfile times forward ...........$NL
+# if sfile moved forward, it could be newer than gfile in other repo
+touch SCCS/s.keyword
+bk get $Q -T keyword
+# verify setup - gfile and sfile are newer than $T11
+test $T11 -lt `_mtime SCCS/s.keyword`	|| { echo failed 1; exit 1; }
+test $T11 -lt `_mtime keyword`		|| { echo failed 2; exit 1; }
+bk _touch -t $T11 keyword SCCS/s.keyword
+test $T11 -eq `_mtime SCCS/s.keyword`	|| { echo failed 3; exit 1; }
+test $T11 -eq `_mtime keyword`		|| { echo failed 4; exit 1; }
+cd "$HERE"
+BK_CONFIG='checkout:get!' bk clone $Q -l project hardclone
+# See that gfile has right delta time and sfile has not moved
+cd hardclone
+test -f keyword || { echo failed 5; exit 1; }
+test $T11 -eq `_mtime SCCS/s.keyword`	|| { echo failed 6; exit 1; }
+test $T12 -eq `_mtime keyword`		|| { echo failed 7; exit 1; }
+cd ../project
+# See that the time was not altered
+test $T11 -eq `_mtime SCCS/s.keyword`	|| { echo failed 8; exit 1; }
+test $T11 -eq `_mtime keyword`		|| { echo failed 9; exit 1; }
+echo OK
+
 echo $N Test co /get -T .............................................$NL
 # co/get - -T or not.
 bk clean
@@ -275,8 +289,6 @@ echo OK
 # makepatch (should leave things alone)
 # pull/push - look here - mainly resolve
 
-#==================================================
-if [ "$PLATFORM" != "WIN32" ]; then
 echo $N Test relink keeps the older time ............................$NL
 cd "$HERE"
 cp -rp project link1
@@ -290,8 +302,6 @@ bk relink $Q link1 link2
 cd link1
 test $T11 -ge `_mtime SCCS/s.keyword` || { echo failed; exit 1; }
 echo OK
-fi
-#==================================================
 
 # resolve -- what does pass 4 do?
 
