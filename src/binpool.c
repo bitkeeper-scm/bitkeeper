@@ -920,28 +920,56 @@ private int
 binpool_flush_main(int ac, char **av)
 {
 	FILE	*f;
-	int	i, j, pruned;
+	int	c, i, j, pruned;
 	u32	deleted;
 	hash	*bpdeltas;
 	attr	a;
 	char	*p1, *p2;
+	char	*cmd;
+	int	check_server = 0;
 	char	buf1[MAXLINE], buf2[MAXLINE];
 
+	while ((c = getopt(ac, av, "a")) != -1) {
+		switch (c) {
+		    case 'a': check_server = 1; break;
+		    default:
+			system("bk help -s binpool");
+			return (1);
+		}
+	}
 	if (proj_cd2root()) {
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
 	/* save bp deltas in repo */
 	bpdeltas = hash_new(HASH_MEMHASH);
-	f = popen("bk -r prs "
-	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'", "r");
+	cmd = strdup("bk -r prs "
+	    "-hnd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'");
+	if (check_server) {
+		/* remove deltas already in binpool server */
+		p1 = cmd;
+		unless (p2 = bp_masterID()) {
+			fprintf(stderr,
+			    "bk binpool flush: No binpool_server set\n");
+			free(p1);
+			hash_free(bpdeltas);
+			return (1);
+		}
+		free(p2);
+		p2 = proj_configval(0, "binpool_server");
+		cmd = aprintf("%s | bk -@'%s' _binpool_query -", p1, p2);
+		free(p1);
+	}
+	f = popen(cmd, "r");
 	assert(f);
 	while (fnext(buf1, f)) {
 		chomp(buf1);
-		hash_storeStr(bpdeltas, buf1, 0);
+		p1 = strchr(buf1, ' ');	/* skip hash */
+		assert(p1);
+		++p1;
+		hash_storeStr(bpdeltas, p1, 0);
 	}
 	fclose(f);
-	/* if (prune) remove deltas upto BP_SYNC */
 
 	/* walk all bp files */
 	f = popen("bk _find BitKeeper/binpool -type f -name '*.a1'", "r");
@@ -986,8 +1014,8 @@ binpool_flush_main(int ac, char **av)
 			if (deleted & 1) continue;
 			if (i != j) {
 				p1[-1] = p2[-1] = 'd';
-				sprintf(buf1, "%d", j);
-				sprintf(buf2, "%d", i);
+				sprintf(p1, "%d", j);
+				sprintf(p2, "%d", i);
 				rename(buf1, buf2);
 				p1[-1] = p2[-1] = 'a';
 				rename(buf1, buf2);
@@ -997,21 +1025,6 @@ binpool_flush_main(int ac, char **av)
 	}
 	pclose(f);
 	hash_free(bpdeltas);
-	return (0);
-}
-
-/*
- * Return any binpool data that already exists in the binpool_server.
- */
-private int
-binpool_prune_main(int ac, char **av)
-{
-	/*
-	 * XXX
-	 * just like flush only we use changes instead of prs so we
-	 * get committed deltas and we using the rev in BP_SYNC to find
-	 * the range of deltas to keep
-	 */
 	return (0);
 }
 
@@ -1040,7 +1053,6 @@ binpool_main(int ac, char **av)
 		{"populate", binpool_populate_main },
 		{"update", binpool_update_main },
 		{"flush", binpool_flush_main },
-		{"prune", binpool_prune_main },
 		{"check", binpool_check_main },
 		{0, 0}
 	};
