@@ -209,14 +209,7 @@ again:
 		memcpy(sb1, &sb2, sizeof(sb2));
 		goto again;
 	}
-	sortLines(lines, 0);
-
-	/* Remove duplicate files that can result on some filesystems.  */
-	EACH(lines) {
-		while ((i > 1) && streq(lines[i-1], lines[i])) {
-			removeLineN(lines, i, free);
-		}
-	}
+	uniqLines(lines, free);
 	unless (lines) lines = allocLines(2);
 	return (lines);
 }

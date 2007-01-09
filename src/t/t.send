@@ -164,3 +164,8 @@ bk send $Q hoser@nevdull.com > XXX
 cmp -s XXX YYY
 if [ $? = 0 ]; then echo failed to create patch 1.5..; exit 1; fi
 echo OK
+echo $N Make sure it accepts -sSubject ..............................$NL
+bk send $Q -r1.4 -s'My verbose subject line' hoser@nevdull.com > XXX 2>&1
+grep 'usage:' XXX > /dev/null 2>&1
+if [ $? = 0 ]; then echo complains about -s; exit 1; fi
+echo OK

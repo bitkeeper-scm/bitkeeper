@@ -905,6 +905,7 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 			s = sccs_keyinitAndCache(
 				keys[i], iflags, &idDB, graphDB, goneDB);
 			unless (s && !CSET(s)) continue;
+			if (mdbm_fetch_str(goneDB, dkey)) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);
 
