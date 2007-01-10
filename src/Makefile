@@ -117,7 +117,7 @@ BINS	= $(BK) inskeys$(EXE)
 
 # List of all objects in bk other than bk.o. Keep it sorted.
 OBJ =	abort.o adler32.o admin.o annotate.o \
-	binpool.o bkd.o bkd_cd.o \
+	binpool.o bkd.o bkd_binpool.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
 	bkd_kill.o bkd_license.o bkd_misc.o \
 	bkd_pull.o bkd_push.o bkd_pwd.o \
@@ -197,7 +197,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bkd.h logging.h \
+HDRS	= binpool.h bkd.h logging.h \
 	  purify.h range.h rcs.h resolve.h sccs.h zgets.h \
 	  cmd.h bkver.h proj.h redblack.h inskeys.h
 

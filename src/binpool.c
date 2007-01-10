@@ -3,6 +3,7 @@
 #include "bkd.h"
 #include "tomcrypt.h"
 #include "range.h"
+#include "binpool.h"
 
 /*
  * Theory of operation
@@ -24,17 +25,7 @@
  *	hash
  */
 
-typedef struct {
-	int	version;
-	off_t	size;
-	char	*hash;
-	char	**keys;
-} attr;
-
 private	int	hashgfile(char *gfile, char **hashp, sum_t *sump);
-private	int	loadAttr(char *file, attr *a);
-private	int	saveAttr(attr *a, char *file);
-private	void	freeAttr(attr *a);
 private	char*	mkkeys(sccs *s, delta *d);
 private	char*	hash2path(project *p, char *hash);
 
@@ -217,7 +208,7 @@ mkkeys(sccs *s, delta *d)
 int
 bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 {
-	attr	a;
+	bpattr	a;
 	char	*base, *p;
 	int	i, j, rc = -1;
 	off_t	binsize;
@@ -236,7 +227,7 @@ bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 		 * TESTXXX
 		 */
 		unless (exists(buf)) break;
-		if (loadAttr(buf, &a)) {
+		if (bp_loadAttr(buf, &a)) {
 			fprintf(stderr, "binpool: failed to load %s\n", buf);
 			goto out;
 		}
@@ -249,7 +240,7 @@ bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 
 		/* wrong size, move to next */
 		unless (a.size == binsize) {
-			freeAttr(&a);
+			bp_freeAttr(&a);
 			continue;
 		}
 
@@ -272,7 +263,7 @@ bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 		if (sameFiles(file, buf)) {
 			*p = 'a';
 			a.keys = addLine(a.keys, keys);
-			if (saveAttr(&a, buf)) {
+			if (bp_saveAttr(&a, buf)) {
 				fprintf(stderr,
 				    "binpool: failed to update %s\n", buf);
 			} else {
@@ -281,7 +272,7 @@ bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 			goto out;
 		}
 		/* wrong data try next */
-		freeAttr(&a);
+		bp_freeAttr(&a);
 	}
 	/* need to insert new entry */
 	*p = 'd';
@@ -297,11 +288,11 @@ bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 	a.size = binsize;
 	a.hash = strdup(hash);
 	a.keys = addLine(0, strdup(keys));
-	if (saveAttr(&a, buf)) {
+	if (bp_saveAttr(&a, buf)) {
 		fprintf(stderr, "binpool: failed to create %s\n", buf);
 		goto out;
 	}
-	freeAttr(&a);
+	bp_freeAttr(&a);
 	rc = 0;
 out:	free(base);
 	return (rc);
@@ -315,7 +306,7 @@ out:	free(base);
  * The attributes for the data returned in found in 'a'.
  */
 char *
-bp_lookupkeys(project *p, char *hash, char *keys, attr *a)
+bp_lookupkeys(project *p, char *hash, char *keys, bpattr *a)
 {
 	char	*base;
 	int	i, j;
@@ -325,17 +316,17 @@ bp_lookupkeys(project *p, char *hash, char *keys, attr *a)
 	base = hash2path(p, hash);
 	for (j = 1; ; j++) {
 		sprintf(buf, "%s.a%d", base, j);
-		if (loadAttr(buf, a)) goto out;
+		if (bp_loadAttr(buf, a)) goto out;
 		unless (a->version == 1) {
 			fprintf(stderr,
 			    "binpool: unexpected version in %s\n", buf);
-			freeAttr(a);
+			bp_freeAttr(a);
 			goto out;
 		}
 		unless (streq(a->hash, hash)) {
 			fprintf(stderr, "binpool: hash mismatch in %s\n", buf);
 			assert(0);	// LMXXX - ???
-			freeAttr(a);
+			bp_freeAttr(a);
 			goto out;
 		}
 		EACH(a->keys) {
@@ -344,7 +335,7 @@ bp_lookupkeys(project *p, char *hash, char *keys, attr *a)
 				goto out;
 			}
 		}
-		freeAttr(a);
+		bp_freeAttr(a);
 	}
 out:
 	free(base);
@@ -359,7 +350,7 @@ char *
 bp_lookup(sccs *s, delta *d)
 {
 	char	*keys;
-	attr	a;
+	bpattr	a;
 	char	*ret = 0;
 
 	d = bp_fdelta(s, d);
@@ -368,7 +359,7 @@ bp_lookup(sccs *s, delta *d)
 	free(keys);
 	if (ret) {
 		// XXX compare size(d->gfile) and a->size
-		freeAttr(&a);
+		bp_freeAttr(&a);
 	}
 	return (ret);
 }
@@ -515,8 +506,8 @@ out:	if (streq(proj_repoID(0), ret)) {
 	return (ret);
 }
 
-private int
-loadAttr(char *file, attr *a)
+int
+bp_loadAttr(char *file, bpattr *a)
 {
 	char	*f = signed_loadFile(file);
 	char	*p;
@@ -535,8 +526,8 @@ loadAttr(char *file, attr *a)
 	return (0);
 }
 
-private int
-saveAttr(attr *a, char *file)
+int
+bp_saveAttr(bpattr *a, char *file)
 {
 	char	**str;
 	char	*p;
@@ -550,210 +541,13 @@ saveAttr(attr *a, char *file)
 	return (0);
 }
 
-private void
-freeAttr(attr *a)
+void
+bp_freeAttr(bpattr *a)
 {
 	free(a->hash);
 	a->hash = 0;
 	freeLines(a->keys, free);
 	a->keys = 0;
-}
-
-/*
- * Receive a list of binpool deltakeys on stdin and return a list of
- * deltaskeys that we are missing.
- */
-int
-binpool_query_main(int ac, char **av)
-{
-	char	*dfile, *p, *url;
-	int	c, tomaster = 0;
-	attr	a;
-	char	buf[MAXLINE];
-
-	while ((c = getopt(ac, av, "m")) != -1) {
-		switch (c) {
-		    case 'm': tomaster = 1; break;
-		    default:
-usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
-			return (1);
-		}
-	}
-	unless (av[optind] && streq(av[optind], "-")) goto usage;
-	if (proj_cd2root()) {
-		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
-		return (1);
-	}
-
-
-	if (tomaster && (p = bp_masterID())) {
-		free(p);
-		url = proj_configval(0, "binpool_server");
-		assert(url);
-		/* proxy to my binpool master */
-		sprintf(buf, "bk -q@'%s' _binpool_query -", url);
-		return (system(buf));
-	}
-	while (fnext(buf, stdin)) {
-		chomp(buf);
-		p = strchr(buf, ' ');
-		*p++ = 0;	/* get just keys */
-
-		if (dfile = bp_lookupkeys(0, buf, p, &a)) {
-			freeAttr(&a);
-			free(dfile);
-		} else {
-			p[-1] = ' ';
-			puts(buf); /* we don't have this one */
-		}
-	}
-	return (0);
-}
-
-/*
- * Receive a list of binpool deltakeys on stdin and return a SFIO
- * of binpool data on stdout.
- *
- * input:
- *    hash md5rootkey md5deltakey
- *    ... repeat ...
- */
-int
-binpool_send_main(int ac, char **av)
-{
-	char	*p, *dfile, *url;
-	FILE	*fsfio;
-	attr	a;
-	int	len, c;
-	int	tomaster = 0;
-	int	rc = 0;
-	char	buf[MAXLINE];
-
-	while ((c = getopt(ac, av, "m")) != -1) {
-		switch (c) {
-		    case 'm': tomaster = 1; break;
-		    default:
-usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
-			return (1);
-		}
-	}
-	unless (av[optind] && streq(av[optind], "-")) goto usage;
-	if (proj_cd2root()) {
-		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
-		return (1);
-	}
-
-	if (tomaster && (p = bp_masterID())) {
-		free(p);
-		url = proj_configval(0, "binpool_server");
-		assert(url);
-		/* proxy to my binpool master */
-		sprintf(buf, "bk -q@'%s' _binpool_send -", url);
-		return (system(buf));
-	}
-	fsfio = popen("bk sfio -Bomq", "w");
-	assert(fsfio);
-
-	len = strlen(proj_root(0)) + 1;
-	while (fnext(buf, stdin)) {
-		chomp(buf);
-		p = strchr(buf, ' ');
-		*p++ = 0;	/* get just keys */
-
-		dfile = bp_lookupkeys(0, buf, p, &a);
-		if (dfile) {
-			fprintf(fsfio, "%s\n", dfile+len);
-			p = strrchr(dfile, '.');
-			p[1] = 'a';
-			fprintf(fsfio, "%s\n", dfile+len);
-			free(dfile);
-			freeAttr(&a);
-		} else {
-			fprintf(stderr, "%s: Unable to find '%s'\n",
-			    av[0], buf);
-			rc = 1;
-		}
-	}
-	if (pclose(fsfio)) {
-		fprintf(stderr, "%s: sfio failed.\n", av[0]);
-		rc = 1;
-	}
-	return (rc);
-}
-
-/*
- * Receive a SFIO of binpool data on stdin and store it the current
- * binpool.
- */
-int
-binpool_receive_main(int ac, char **av)
-{
-	FILE	*f;
-	attr	a;
-	char	*p, *url;
-	int	tomaster = 0;
-	int	quiet = 0;
-	int	c, i, n;
-	char	buf[MAXLINE];
-
-	setmode(0, _O_BINARY);
-	while ((c = getopt(ac, av, "mq")) != -1) {
-		switch (c) {
-		    case 'm': tomaster = 1; break;
-		    case 'q': quiet = 1; break;
-		    default:
-usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
-			return (1);
-		}
-	}
-	unless (av[optind] && streq(av[optind], "-")) goto usage;
-	if (proj_cd2root()) {
-		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
-		return (1);
-	}
-
-	if (tomaster && (p = bp_masterID())) {
-		free(p);
-		url = proj_configval(0, "binpool_server");
-		assert(url);
-		/* proxy to my binpool master */
-		sprintf(buf, "bk -q@'%s' _binpool_receive %s -",
-		    url, (quiet ? "-q" : ""));
-		return (system(buf));
-	}
-	strcpy(buf, "BitKeeper/binpool/tmp");
-	mkdirp(buf);
-	chdir(buf);
-
-	/* reads stdin */
-	sprintf(buf, "bk sfio -imr%s", quiet ? "q" : "");
-	unless (quiet) fprintf(stderr, "Unpacking binpool data...\n");
-	if (i = system(buf)) {
-		fprintf(stderr, "_binpool_receive: sfio failed %x\n", i);
-		return (-1);
-	}
-	unless (quiet) fprintf(stderr, "\n");
-	proj_cd2root();
-
-	f = popen("bk _find BitKeeper/binpool/tmp -type f -name '*.a*'", "r");
-	assert(f);
-	while (fnext(buf, f)) {
-		chomp(buf);
-		if (loadAttr(buf, &a)) {
-			fprintf(stderr, "unable to load %s\n");
-			continue;
-		}
-		p = strrchr(buf, '.');
-		p[1] = 'd';
-		n = nLines(a.keys);
-		EACH(a.keys) {
-			bp_insert(0, buf, a.hash, a.keys[i], (i==n));
-		}
-		freeAttr(&a);
-	}
-	pclose(f);
-	rmtree("BitKeeper/binpool/tmp");
-	return (0);
 }
 
 /*
@@ -930,7 +724,7 @@ binpool_flush_main(int ac, char **av)
 	int	c, i, j, pruned;
 	u32	deleted;
 	hash	*bpdeltas;
-	attr	a;
+	bpattr	a;
 	char	*p1, *p2;
 	char	*cmd;
 	int	check_server = 0;
@@ -989,7 +783,7 @@ binpool_flush_main(int ac, char **av)
 		deleted = 0;
 		for (j = 1; ; j++) {
 			sprintf(p1, "%d", j);
-			if (loadAttr(buf1, &a)) break;
+			if (bp_loadAttr(buf1, &a)) break;
 			pruned = 0;
 			EACH(a.keys) {
 				unless (hash_fetchStr(bpdeltas, a.keys[i])) {
@@ -1001,7 +795,7 @@ binpool_flush_main(int ac, char **av)
 			unless (pruned) continue; /* unchanged */
 			if (a.keys[1]) {
 				/* rewrite with some keys deleted */
-				saveAttr(&a, buf1);
+				bp_saveAttr(&a, buf1);
 				continue;
 			}
 			/* remove files */
