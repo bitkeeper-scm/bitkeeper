@@ -28,7 +28,7 @@
 #define	SFIO_BSIZ	4096
 #define	SFIO_NOMODE	"SFIO v 1.4"	/* must be 10 bytes exactly */
 #define	SFIO_MODE	"SFIO vm1.4"	/* must be 10 bytes exactly */
-#define	SFIO_VERS	(doModes ? SFIO_MODE : SFIO_NOMODE)
+#define	SFIO_VERS	(opts->doModes ? SFIO_MODE : SFIO_NOMODE)
 
 private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count);
@@ -38,11 +38,15 @@ private int	in_link(char *file, int todo, int extract);
 private int	in_file(char *file, int todo, int extract);
 private	int	mkfile(char *file);
 
-private	int	quiet;
-private	int	doModes;
-private	int	echo;		/* echo files to stdout as they are written */
-private	int	force;		/* overwrite existing files */
-private	char	**more;		/* addition list of files to send */
+struct {
+	int	quiet;
+	int	doModes;
+	int	echo;		/* echo files to stdout as they are written */
+	int	force;		/* overwrite existing files */
+	char	**more;		/* additional list of files to send */
+	int	binpool;	/* verify binpool checksums */
+	char	newline;	/* -r makes it \r instead of \n */
+} *opts;
 
 #define M_IN	1
 #define M_OUT	2
@@ -53,21 +57,29 @@ sfio_main(int ac, char **av)
 {
 	int	c, mode = 0;
 
+	opts = (void*)calloc(1, sizeof(*opts));
+	opts->newline = '\n';
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;efimopq")) != -1) {
+	while ((c = getopt(ac, av, "a;A;Befimopqr")) != -1) {
 		switch (c) {
-		    case 'a': more = addLine(more, strdup(optarg)); break;
-		    case 'A': more = file2Lines(more, optarg); break;
-		    case 'e': echo = 1; break;			/* doc 2.3 */
-		    case 'f': force = 1; break;			/* doc */
+		    case 'a':
+			opts->more = addLine(opts->more, strdup(optarg));
+			break;
+		    case 'A':
+			opts->more = file2Lines(opts->more, optarg);
+			break;
+		    case 'B': opts->binpool = 1; break;
+		    case 'e': opts->echo = 1; break;		/* doc 2.3 */
+		    case 'f': opts->force = 1; break;		/* doc */
 		    case 'i': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_IN;   break;
 		    case 'o': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_OUT;  break;
 		    case 'p': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_LIST; break; 
-		    case 'm': doModes = 1; break; 		/* doc 2.0 */
-		    case 'q': quiet = 1; break; 		/* doc 2.0 */
+		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
+		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
+		    case 'r': opts->newline = '\r'; break;
 		    default:
 			goto usage;
 		}
@@ -75,7 +87,7 @@ sfio_main(int ac, char **av)
 	/* ignore "-" it makes bk -r sfio -o work */
 	if (av[optind] && streq(av[optind], "-")) optind++;
 	if (optind != ac) goto usage;
-	if (more && (mode != M_OUT)) goto usage;
+	if (opts->more && (mode != M_OUT)) goto usage;
 
 	if      (mode == M_OUT)  return (sfio_out());
 	else if (mode == M_IN)   return (sfio_in(1));
@@ -95,8 +107,8 @@ nextfile(char *buf)
 		if (fgets(buf, MAXPATH, stdin)) return (buf);
 		eof = 1;
 	}
-	unless (more && (i <= nLines(more))) return (0);
-	sprintf(buf, "%s\n", more[i++]);
+	unless (opts->more && (i <= nLines(opts->more))) return (0);
+	sprintf(buf, "%s\n", opts->more[i++]);
 	return (buf);
 }
 
@@ -116,7 +128,7 @@ sfio_out(void)
 	writen(1, SFIO_VERS, 10);
 	byte_count = 10;
 	while (nextfile(buf)) {
-		unless (quiet) fputs(buf, stderr);
+		unless (opts->quiet) fputs(buf, stderr);
 		chomp(buf);
 		n = strlen(buf);
 		sprintf(len, "%04d", n);
@@ -128,7 +140,7 @@ sfio_out(void)
 			return (1);
 		}
 		if (S_ISLNK(sb.st_mode)) {
-			unless (doModes) {
+			unless (opts->doModes) {
 				fprintf(stderr,
 				"Warning: symlink %s sent as regular file.\n",
 				buf);
@@ -145,7 +157,8 @@ reg:			if (out_file(buf, &sb, &byte_count)) return (1);
 #ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
 #endif
-	if (more) freeLines(more, free);
+	if (opts->more) freeLines(opts->more, free);
+	free(opts);
 	return (0);
 }
 
@@ -174,7 +187,7 @@ out_link(char *file, struct stat *sp, off_t *byte_count)
 	sum += adler32(sum, buf, n);
 	sprintf(buf, "%010u", sum);
 	*byte_count = writen(1, buf, 10);
-	assert(doModes);
+	assert(opts->doModes);
 	sprintf(buf, "%03o", sp->st_mode & 0777);
 	*byte_count = writen(1, buf, 3);
 	return (0);
@@ -186,8 +199,9 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	char	buf[SFIO_BSIZ];
 	char	len[11];
 	int	fd = open(file, 0, 0);
-	int	n, nread = 0;
-	u32	sum = 0;
+	int	j, n, nread = 0;
+	u32	want, sum = 0;
+	char	*p;
 
 	if (fd == -1) {
 		perror(file);
@@ -213,10 +227,20 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		close(fd);
 		return (1);
 	}
+	if (opts->binpool && strneq(file, "BitKeeper/binpool/", 18) &&
+	    (p = strrchr(file, '.')) && (p[1] == 'd')) {
+		p = strrchr(file, '/');
+		want = strtoul(p+1, 0, 16);
+	    	unless (want == sum) {
+			fprintf(stderr, "Corrupt data in %s\n", file);
+			close(fd);
+			return (1);
+		}
+	}
 	sprintf(buf, "%010u", sum);
 	n = writen(1, buf, 10);
 	*byte_count += n;
-	if (doModes) {
+	if (opts->doModes) {
 		sprintf(buf, "%03o", sp->st_mode & 0777);
 		n = writen(1, buf, 3);
 		*byte_count += n;
@@ -307,7 +331,7 @@ in_link(char *file, int pathlen, int extract)
 	if (extract) {
 		if (symlink(buf, file)) {
 			mkdirf(file);
-			if (force) unlink(file);
+			if (opts->force) unlink(file);
 			if (symlink(buf, file)) {
 				perror(file);
 				return (1);
@@ -337,8 +361,8 @@ in_link(char *file, int pathlen, int extract)
 		chmod(file, mode & 0777);
 		 */
 	}
-	unless (quiet) fprintf(stderr, "%s\n", file);
-	if (echo) printf("%s\n", file);
+	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
+	if (opts->echo) printf("%s\n", file);
 	return (0);
 
 err:	
@@ -398,7 +422,7 @@ done:	if (readn(0, buf, 10) != 10) {
 		    "Checksum mismatch %u:%u for %s\n", sum, sum2, file);
 		goto err;
 	}
-	if (doModes) {
+	if (opts->doModes) {
 		unsigned int imode;  /* mode_t might be a short */
 		if (readn(0, buf, 3) != 3) {
 			perror("mode read");
@@ -409,7 +433,7 @@ done:	if (readn(0, buf, 10) != 10) {
 	}
 	if (exists) {
 		if (adler32_file(file) == sum) {
-			unless (quiet) {
+			unless (opts->quiet) {
 				fprintf(stderr,
 				    "%s existed but contents match, skipped.\n",
 				    file);
@@ -420,13 +444,13 @@ done:	if (readn(0, buf, 10) != 10) {
 		}
 	} else if (extract) {
 		close(fd);
-		if (doModes) {
+		if (opts->doModes) {
 			chmod(file, mode & 0777);
 		} else {
 			chmod(file, 0444);
 		}
 	}
-	unless (quiet) fprintf(stderr, "%s\n", file);
+	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
 	return (0);
 
 err:	
@@ -468,7 +492,7 @@ bad_name:	getMsg("reserved_name", file, '=', stderr);
 			getMsg2("case_conflict", file, realname, '=', stderr);
 			errno = EINVAL;
 		} else {
-			if (force) {
+			if (opts->force) {
 				unlink(file);
 				goto again;
 			}

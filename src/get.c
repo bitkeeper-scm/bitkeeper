@@ -4,7 +4,7 @@
 
 private int	get_rollback(sccs *s, char *rev,
 		    char **iLst, char **xLst, char *prog);
-private int	binpool(char **files, char **keys, int ac, char **av);
+private int	binpool(char *me, char **files, char **keys, int ac, char **av);
 
 int
 get_main(int ac, char **av)
@@ -32,9 +32,11 @@ get_main(int ac, char **av)
 	char	**bp_keys = 0;
 	char	realname[MAXPATH];
 
-	prog = strrchr(av[0], '/');
-	if (prog) prog++;
-	else prog = av[0];
+	if (prog = strrchr(av[0], '/')) {
+		prog++;
+	} else {
+		prog = av[0];
+	}
 	if (streq(prog, "edit")) {
 		flags |= GET_EDIT;
 	} else if (streq(prog, "_get")) {
@@ -277,7 +279,7 @@ next:		sccs_free(s);
 	if (sfileDone()) errors = 1;
 	if (realNameCache) mdbm_close(realNameCache);
 	unless (errors || recursed) {
-		errors = binpool(bp_files, bp_keys, ac_optend, av);
+		errors = binpool(prog, bp_files, bp_keys, ac_optend, av);
 	}
 	freeLines(bp_files, free);
 	freeLines(bp_keys, free);
@@ -285,15 +287,15 @@ next:		sccs_free(s);
 }
 
 private int
-binpool(char **files, char **keys, int ac, char **av)
+binpool(char *me, char **files, char **keys, int ac, char **av)
 {
 	char	*nav[100];
 	FILE	*f;
 	int	i;
 
 	unless (files) return (0);
-	if (bp_fetchkeys(keys)) {
-		fprintf(stderr, "get: failed to fetch binpool data\n");
+	if (bp_fetchkeys(me, keys)) {
+		fprintf(stderr, "%s: failed to fetch binpool data\n", me);
 		return (1);
 	}
 	assert(ac < 90);
@@ -311,7 +313,7 @@ binpool(char **files, char **keys, int ac, char **av)
 }
 
 int
-bp_fetchkeys(char **keys)
+bp_fetchkeys(char *me, char **keys)
 {
 	int	i;
 	FILE	*f;
@@ -319,11 +321,11 @@ bp_fetchkeys(char **keys)
 	char	buf[MAXPATH];
 
 	unless (*master) {
-		fprintf(stderr, "co: no master for binpool data.\n");
+		fprintf(stderr, "%s: no master for binpool data.\n", me);
 		return (1);
 	}
-	sprintf(buf, "bk -q@'%s' _binpool_send - | bk -R _binpool_receive -",
-	    master);
+	sprintf(buf,
+	    "bk -q@'%s' _binpool_send - | bk -R _binpool_receive -", master);
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);
 	i = pclose(f);
@@ -331,21 +333,20 @@ bp_fetchkeys(char **keys)
 }
 
 private int
-get_rollback(sccs *s, char *rev, char **iLst, char **xLst, char *prog)
+get_rollback(sccs *s, char *rev, char **iLst, char **xLst, char *me)
 {
 	char	*inc = *iLst, *exc = *xLst;
 	ser_t   *map;
 	delta	*d;
 
 	unless (d = sccs_findrev(s, rev)) {
-		fprintf(stderr,
-		    "%s: cannot find %s in %s\n", prog, rev, s->gfile);
+		fprintf(stderr, "%s: cannot find %s in %s\n", me,rev, s->gfile);
 		return (1);
 	}
 	unless (map = sccs_set(s, d, inc, exc)) return (1);
 	d = sccs_top(s);
 	if (sccs_graph(s, d, map, iLst, xLst)) {
-		fprintf(stderr, "%s: cannot compute graph from set\n", prog);
+		fprintf(stderr, "%s: cannot compute graph from set\n", me);
 		return (1);
 	}
 	return (0);

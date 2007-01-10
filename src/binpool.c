@@ -651,7 +651,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		sprintf(buf, "bk -q@'%s' _binpool_send -", url);
 		return (system(buf));
 	}
-	fsfio = popen("bk sfio -omq", "w");
+	fsfio = popen("bk sfio -Bomq", "w");
 	assert(fsfio);
 
 	len = strlen(proj_root(0)) + 1;
@@ -692,15 +692,17 @@ binpool_receive_main(int ac, char **av)
 	attr	a;
 	char	*p, *url;
 	int	tomaster = 0;
+	int	quiet = 0;
 	int	c, i, n;
 	char	buf[MAXLINE];
 
 	setmode(0, _O_BINARY);
-	while ((c = getopt(ac, av, "m")) != -1) {
+	while ((c = getopt(ac, av, "mq")) != -1) {
 		switch (c) {
 		    case 'm': tomaster = 1; break;
+		    case 'q': quiet = 1; break;
 		    default:
-usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
+usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 			return (1);
 		}
 	}
@@ -723,10 +725,13 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 	chdir(buf);
 
 	/* reads stdin */
-	if (i = system("bk sfio -imq")) {
+	sprintf(buf, "bk sfio -imr%s", quiet ? "q" : "");
+	unless (quiet) fprintf(stderr, "Unpacking binpool data...\n");
+	if (i = system(buf)) {
 		fprintf(stderr, "_binpool_receive: sfio failed %x\n", i);
 		return (-1);
 	}
+	unless (quiet) fprintf(stderr, "\n");
 	proj_cd2root();
 
 	f = popen("bk _find BitKeeper/binpool/tmp -type f -name '*.a*'", "r");
@@ -768,7 +773,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
  * Note: Either rev or rev_list is set, but never both.
  */
 int
-bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
+bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 {
 	char	*url;		/* URL to connect to remote bkd */
 	char	*local_repoID;	/* repoID of local bp_master (may be me) */
@@ -776,6 +781,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 	char	*remote_repoID;	/* repoID of remote bp_master */
 	int	rc = 0, fd0 = 0;
 	char	**cmds = 0;
+	char	*q = quiet ? "-q" : "";
 
 	/* must have rev or rev_list, but not both */
 	assert((rev && !rev_list) || (!rev && rev_list));
@@ -822,7 +828,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 		    aprintf("bk -q%s _binpool_send -", local_url));
 		/* unpack SFIO in remote bp master */
 		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' _binpool_receive -m -", url));
+		    aprintf("bk -q@'%s' _binpool_receive -m %s -", url, q));
 	} else {
 		/* Remove bp keys that our local bp master already has */
 		cmds = addLine(cmds,
@@ -832,7 +838,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list)
 		    aprintf("bk -q@'%s' _binpool_send -m -", url));
 		/* unpack SFIO in local bp master */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s _binpool_receive -", local_url));
+		    aprintf("bk -q%s _binpool_receive %s -", local_url, q));
 	}
 	rc = spawn_filterPipeline(cmds);
 	freeLines(cmds, free);

@@ -449,7 +449,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			goto done;
 		}
 		chdir(ROOT2RESYNC);
-		i = bp_transferMissing(r, 0, 0, CSETS_IN);
+		i = bp_transferMissing(r, 0, 0, CSETS_IN, opts.quiet);
 		chdir(RESYNC2ROOT);
 		if (i) {
 			fprintf(stderr, "pull: failed to fetch binpool data\n");

@@ -720,7 +720,7 @@ push(char **av, remote *r, char **envVar)
 		return (ret); /* failed */
 	}
 	if (ret > 1) {		/* >1 means data to transfer */
-		if (bp_transferMissing(r, 1, 0, rev_list)) {
+		if (bp_transferMissing(r, 1, 0, rev_list, !opts.verbose)) {
 			fprintf(stderr, "push: failed to send binpool data\n");
 		}
 	}

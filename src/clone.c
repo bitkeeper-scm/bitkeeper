@@ -313,6 +313,19 @@ clone2(opts opts, remote *r)
 		return (-1);
 	}
 
+	/* get bp data */
+	(void)proj_repoID(0);		/* generate repoID */
+	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
+	if (bp_transferMissing(r, 0, buf, 0, opts.quiet)) {
+		fprintf(stderr,
+		    "clone: failed to fetch binpool data, "
+		    "repository left locked.\n");
+		/* quietly set the parent for debugging */
+		opts.quiet = 1; 
+		parent(opts, r);
+		return (-1);
+	}
+
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
@@ -320,14 +333,6 @@ clone2(opts opts, remote *r)
 	fclose(f);
 
 	parent(opts, r);
-
-	/* get bp data */
-	(void)proj_repoID(0);		/* generate repoID */
-	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
-	if (bp_transferMissing(r, 0, buf, 0)) {
-		fprintf(stderr, "clone: failed to fetch binpool data\n");
-		return (-1);
-	}
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
