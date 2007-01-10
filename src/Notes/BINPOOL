@@ -18,6 +18,22 @@ TODO
      - How to handle transformed vs non-transformed trees.
 
    - remote cset busted because of BKD_DAEMON
+
+LM TODO's
+   - shouldn't all the modes in BitKeeper/binpool/ be 444? (w 555 if needed?)
+   - hardlinked binpool/ dirs
+   - _binpool_send should verify the crc - it's reading the data anyway
+   - I really dislike the bp_insert() step in clone.  It delays long clones
+     needlessly.
+   - undo does not toss binpool data
+   - interrupting a bp_transfer does not kill the sfio on the remote side
+   - if the data is corrupt and I have a local gfile, don't unlink until
+     it comes over.  
+   - I finally remember why I didn't like the binpool_send/receive.  They
+     are binpool specific and they don't need to be and if they were not
+     then we could use the interfaces for bk repair.  They should be 
+     bk keysend / bk keyreceive or something like that, with a -B option
+     that gets you the binpool behaviour.
 ----------------------------------------------------------
 Binpool servers
 

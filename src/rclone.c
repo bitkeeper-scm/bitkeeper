@@ -97,7 +97,7 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	if (rc = rclone_part1(opts, r, envVar))  goto done;
 	rc = rclone_part2(av, opts, r, envVar);
 
-	if (bp_transferMissing(r, 1, revs, 0)) {
+	if (bp_transferMissing(r, 1, revs, 0, !opts.verbose)) {
 		fprintf(stderr, "rclone: failed to transfer binpool data\n");
 	}
 

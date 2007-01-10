@@ -706,7 +706,9 @@ dinsert(sccs *s, delta *d, int fixDate)
 		    p->rev, d->siblings->rev));
 	}
 	sccs_inherit(s, d);
-	if (fixDate) uniqDelta(s);
+	if (fixDate) {
+		uniqDelta(s);
+	}
 }
 
 /*
@@ -9288,6 +9290,9 @@ checkin(sccs *s,
 	int	error = 0;
 	int	short_key = 0;
 	MDBM	*db;
+	static	int fixDate = -1;
+
+	if (fixDate == -1) fixDate = (getenv("_BK_NO_UNIQUE") == 0);
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -9396,7 +9401,7 @@ out:		sccs_unlock(s, 'z');
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		n0->flags |= D_CKSUM;
 		n0->sum = almostUnique();
-		dinsert(s, n0, !(flags & DELTA_PATCH));
+		dinsert(s, n0, fixDate && !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
@@ -9405,6 +9410,19 @@ out:		sccs_unlock(s, 'z');
 	assert(n);
 	if (!nodefault && buf[0]) pathArg(n, buf); /* pathname */
 	n = sccs_dInit(n, 'D', s, nodefault);
+
+	/*
+	 * We want the 1.0 and 1.1 keys to naturally not collide so we
+	 * we need different dates.
+	 * It would probably be more correct to not fudge the 1.1 delta
+	 * forward but instead fudge the 1.0 1 second backwards but that
+	 * is a royal pain the butt to do in all cases.  So here we are.
+	 */
+	if (n0) {
+		n->date++;
+		n->dateFudge++;
+	}
+
 	if (s->mode & 0111) s->mode |= 0110;	/* force user/group execute */
 	s->mode |= 0220;			/* force user/group write */
 	s->mode |= 0440;			/* force user/group read */
@@ -9455,7 +9473,7 @@ out:		sccs_unlock(s, 'z');
 	} else {
 		l[0].flags = 0;
 	}
-	dinsert(s, n, !(flags & DELTA_PATCH));
+	dinsert(s, n, fixDate && !(flags & DELTA_PATCH));
 	s->numdeltas++;
 	EACH (syms) {
 		addsym(s, n, n, !(flags & DELTA_PATCH), n->rev, syms[i]);
