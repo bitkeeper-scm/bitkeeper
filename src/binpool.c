@@ -455,7 +455,7 @@ bp_updateMaster(char *tiprev)
 	cmds = addLine(cmds, strdup("bk _binpool_send -"));
 
 	/* store in master */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' _binpool_receive -", url));
+	cmds = addLine(cmds, aprintf("bk -q@'%s' _binpool_receive -q -", url));
 	rc = spawn_filterPipeline(cmds);
 	freeLines(cmds, free);
 	unless (rc) {
@@ -717,7 +717,8 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 		url = proj_configval(0, "binpool_server");
 		assert(url);
 		/* proxy to my binpool master */
-		sprintf(buf, "bk -q@'%s' _binpool_receive -", url);
+		sprintf(buf, "bk -q@'%s' _binpool_receive %s -",
+		    url, (quiet ? "-q" : ""));
 		return (system(buf));
 	}
 	strcpy(buf, "BitKeeper/binpool/tmp");
