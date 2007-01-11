@@ -1655,6 +1655,7 @@ sfio(MMAP *m)
 	char	*t;
 	FILE	*f;
 	size_t	left, n;
+	char	buf[MAXLINE];
 
 	unless ((t = mnext(m)) && strneq(t-1, "\n\n# Patch checksum=", 19)) {
 		return (-1);
@@ -1662,7 +1663,8 @@ sfio(MMAP *m)
 	if (echo >= 2) {
 		fprintf(stderr, "Unpacking additional files...\n");
 	}
-	f = popen("bk _binpool_receive -m -", "w");
+	sprintf(buf, "bk _binpool_receive -m%s -", ((echo>1) ? "" : "q"));
+	f = popen(buf, "w");
 	t = mnext(m);
 	t = mnext(m);
 	assert(strneq(t, "SFIO ", 5));

@@ -135,7 +135,7 @@ binpool_receive_main(int ac, char **av)
 	char	*p, *url;
 	int	tomaster = 0;
 	int	quiet = 0;
-	int	c, i, n;
+	int	c, i, n, rc;
 	char	buf[MAXLINE];
 
 	setmode(0, _O_BINARY);
@@ -170,12 +170,15 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 	/* reads stdin */
 	sprintf(buf, "bk sfio -imr%s", quiet ? "q" : "");
 	unless (quiet) fprintf(stderr, "Unpacking binpool data...\n");
-	if (i = system(buf)) {
-		fprintf(stderr, "_binpool_receive: sfio failed %x\n", i);
-		return (-1);
+	rc = system(buf);
+	proj_cd2root();
+	if (rc) {
+		fprintf(stderr, "_binpool_receive: sfio failed %d\n",
+		    WEXITSTATUS(rc));
+		rc = 1;
+		goto out;
 	}
 	unless (quiet) fprintf(stderr, "\n");
-	proj_cd2root();
 
 	f = popen("bk _find BitKeeper/binpool/tmp -type f -name '*.a*'", "r");
 	assert(f);
@@ -194,7 +197,8 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 		bp_freeAttr(&a);
 	}
 	pclose(f);
+out:
 	rmtree("BitKeeper/binpool/tmp");
-	return (0);
+	return (rc);
 }
 

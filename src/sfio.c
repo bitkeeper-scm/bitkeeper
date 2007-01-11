@@ -199,21 +199,34 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	char	buf[SFIO_BSIZ];
 	char	len[11];
 	int	fd = open(file, 0, 0);
-	int	j, n, nread = 0;
-	u32	want, sum = 0;
+	int	n, nread = 0, dosum = 1;
+	u32	sum = 0;
 	char	*p;
 
 	if (fd == -1) {
 		perror(file);
 		return (1);
 	}
+
+	/*
+	 * For binpool files we already know the expected checksum so
+	 * we don't calculate it again.  If the file is corrupted it
+	 * will be detected when being unpacked.
+	 */
+	if (opts->binpool && strneq(file, "BitKeeper/binpool/", 18) &&
+	    (p = strrchr(file, '.')) && (p[1] == 'd')) {
+		p = strrchr(file, '/');
+		sum = strtoul(p+1, 0, 16);
+		dosum = 0;
+	}
+
 	setmode(fd, _O_BINARY);
 	sprintf(len, "%010u", (unsigned int)sp->st_size);
 	n = writen(1, len, 10);
 	*byte_count += n;
 	while ((n = readn(fd, buf, sizeof(buf))) > 0) {
 		nread += n;
-		sum = adler32(sum, buf, n);
+		if (dosum) sum = adler32(sum, buf, n);
 		if (writen(1, buf, n) != n) {
 			perror(file);
 			close(fd);
@@ -226,16 +239,6 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		    file, nread, (unsigned int)sp->st_size);
 		close(fd);
 		return (1);
-	}
-	if (opts->binpool && strneq(file, "BitKeeper/binpool/", 18) &&
-	    (p = strrchr(file, '.')) && (p[1] == 'd')) {
-		p = strrchr(file, '/');
-		want = strtoul(p+1, 0, 16);
-	    	unless (want == sum) {
-			fprintf(stderr, "Corrupt data in %s\n", file);
-			close(fd);
-			return (1);
-		}
 	}
 	sprintf(buf, "%010u", sum);
 	n = writen(1, buf, 10);

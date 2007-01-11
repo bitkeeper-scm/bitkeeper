@@ -245,7 +245,7 @@ bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 		}
 
 		/* if the filenames match the hashes better match, right? */
-		assert (streq(a.hash, hash));
+		assert(streq(a.hash, hash));
 
 		EACH(a.keys) {
 			if (streq(a.keys[i], keys)) {
@@ -357,10 +357,7 @@ bp_lookup(sccs *s, delta *d)
 	keys = mkkeys(s, d);
 	ret = bp_lookupkeys(s->proj, d->hash, keys, &a);
 	free(keys);
-	if (ret) {
-		// XXX compare size(d->gfile) and a->size
-		bp_freeAttr(&a);
-	}
+	if (ret) bp_freeAttr(&a);
 	return (ret);
 }
 
