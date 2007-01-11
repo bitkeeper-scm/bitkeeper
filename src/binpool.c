@@ -227,11 +227,7 @@ bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 		 * TESTXXX
 		 */
 		unless (exists(buf)) break;
-		if (bp_loadAttr(buf, &a)) {
-			fprintf(stderr, "binpool: failed to load %s\n", buf);
-			goto out;
-		}
-
+		if (bp_loadAttr(buf, &a)) goto out;
 		unless (a.version == 1) {
 			fprintf(stderr,
 			    "binpool: unexpected version in %s\n", buf);
@@ -509,7 +505,14 @@ bp_loadAttr(char *file, bpattr *a)
 	char	*f = signed_loadFile(file);
 	char	*p;
 
-	unless (f) return (-1);
+	unless (f) {
+		if (exists(file)) {
+			fprintf(stderr,
+			    "binpool: file %s failed integrity check.\n",
+			    file);
+		}
+		return (-1);
+	}
 	a->version = atoi(f);
 	p = strchr(f, '\n');
 	assert(p);

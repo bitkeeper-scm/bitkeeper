@@ -104,9 +104,14 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 
 		dfile = bp_lookupkeys(0, buf, p, &a);
 		if (dfile) {
-			fprintf(fsfio, "%s\n", dfile+len);
+			/*
+			 * We intentionally send the afile first so it
+			 * can be examined before unpacking data.
+			 */
 			p = strrchr(dfile, '.');
 			p[1] = 'a';
+			fprintf(fsfio, "%s\n", dfile+len);
+			p[1] = 'd';
 			fprintf(fsfio, "%s\n", dfile+len);
 			free(dfile);
 			bp_freeAttr(&a);
