@@ -17,16 +17,19 @@ TODO
        mangle the random bits to preserve the changeset checksums.
      - How to handle transformed vs non-transformed trees.
 
-   - remote cset busted because of BKD_DAEMON
-
 LM TODO's
    - shouldn't all the modes in BitKeeper/binpool/ be 444? (w 555 if needed?)
    - hardlinked binpool/ dirs
    - _binpool_send should verify the crc - it's reading the data anyway
    - I really dislike the bp_insert() step in clone.  It delays long clones
      needlessly.
+     (WAYNE: what do you want to do instead? Just transfering the whole binpool
+   	     doesn't match the current semantics. )
    - undo does not toss binpool data
+     (WAYNE: no, intentional.  See 'bk binpool prune')
    - interrupting a bp_transfer does not kill the sfio on the remote side
+     (WAYNE: I think it will get EOF and clean up after itself now.  Unless
+	     it happens to be broken on a file boundry.)
    - if the data is corrupt and I have a local gfile, don't unlink until
      it comes over.  
    - I finally remember why I didn't like the binpool_send/receive.  They

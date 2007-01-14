@@ -38,10 +38,10 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 	}
 	while (fnext(buf, stdin)) {
 		chomp(buf);
-		p = strchr(buf, ' ');
+		p = strrchr(buf, ' ');
 		*p++ = 0;	/* get just keys */
 
-		if (dfile = bp_lookupkeys(0, buf, p, &a)) {
+		if (dfile = bp_lookupkeys(0, p, buf, &a)) {
 			bp_freeAttr(&a);
 			free(dfile);
 		} else {
@@ -99,10 +99,10 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 	len = strlen(proj_root(0)) + 1;
 	while (fnext(buf, stdin)) {
 		chomp(buf);
-		p = strchr(buf, ' ');
+		p = strrchr(buf, ' ');
 		*p++ = 0;	/* get just keys */
 
-		dfile = bp_lookupkeys(0, buf, p, &a);
+		dfile = bp_lookupkeys(0, p, buf, &a);
 		if (dfile) {
 			/*
 			 * We intentionally send the afile first so it

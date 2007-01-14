@@ -429,7 +429,7 @@ bp_updateMaster(char *tiprev)
 	/* find local bp deltas */
 	cmds = addLine(cmds,
 	    aprintf("bk changes -Bv -r'%s..%s' "
-		"-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'",
+		"-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'",
 		baserev, tiprev));
 
 	/* filter out deltas already in master */
@@ -603,7 +603,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 	if (rev) {
 		cmds = addLine(cmds,
 		    aprintf("bk changes -Bv -r'%s' "
-		    "-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'",
+		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'",
 		    rev));
 	} else {
 		fd0 = dup(0);
@@ -612,7 +612,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		assert(rc == 0);
 		cmds = addLine(cmds,
 		    strdup("bk changes -Bv "
-		    "-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' -"));
+		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}' -"));
 	}
 	if (send) {
 		/* send list of keys to remote and get back needed keys */
@@ -673,7 +673,7 @@ binpool_populate_main(int ac, char **av)
 	/* list of all binpool deltas */
 	cmds = addLine(cmds,
 	    aprintf("bk changes -Bv "
-	    "-nd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'"));
+	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'"));
 
 	/* reduce to list of deltas missing locally */
 	cmds = addLine(cmds, strdup("bk _binpool_query -"));
@@ -745,7 +745,7 @@ binpool_flush_main(int ac, char **av)
 	/* save bp deltas in repo */
 	bpdeltas = hash_new(HASH_MEMHASH);
 	cmd = strdup("bk -r prs "
-	    "-hnd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}'");
+	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'");
 	if (check_server) {
 		/* remove deltas already in binpool server */
 		p1 = cmd;
@@ -765,10 +765,10 @@ binpool_flush_main(int ac, char **av)
 	assert(f);
 	while (fnext(buf1, f)) {
 		chomp(buf1);
-		p1 = strchr(buf1, ' ');	/* skip hash */
+		p1 = strrchr(buf1, ' ');	/* chop hash */
 		assert(p1);
-		++p1;
-		hash_storeStr(bpdeltas, p1, 0);
+		*p1 = 0;
+		hash_storeStr(bpdeltas, buf1, 0);
 	}
 	fclose(f);
 
@@ -840,7 +840,41 @@ binpool_flush_main(int ac, char **av)
 private int
 binpool_check_main(int ac, char **av)
 {
-	return (0);
+	int	rc = 1;
+	char	*p;
+	bpattr	a;
+	FILE	*f;
+	char	buf[MAXPATH];
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "Not in a repository.\n");
+		return (1);
+	}
+	/* load binpool deltas and hashs */
+	/* bk -r prs -hnd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' */
+
+	/* walk all bp files */
+	f = popen("bk _find BitKeeper/binpool -type f -name '*.a*'", "r");
+	assert(f);
+	while (fnext(buf, f)) {
+		chomp(buf);
+		p = strrchr(buf, '.');
+		assert(p);
+		++p;
+
+		if (bp_loadAttr(buf, &a)) {
+			fprintf(stderr, "binpool: unable to load %s\n", buf);
+			goto out;
+		}
+		/* lookup keys in prs data and compare BPHASH with
+		   sfile data */
+		/* check data files's size */
+		/* checksum data file */
+	}
+	pclose(f);
+	rc = 0;
+out:
+	return (rc);
 }
 
 int
