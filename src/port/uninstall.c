@@ -271,6 +271,8 @@ path_sansBK(char *path)
 		if (match_one(components[i], "*bitkee*", 1) ||
 		    patheq(components[i], bin)) {
 			removeLineN(components, i, free);
+			/* we left shifted one, go around again */
+			i--;
 		}
 	}
 	path[0] = 0;
