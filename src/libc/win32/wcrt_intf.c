@@ -168,33 +168,58 @@ nt_dup2(int fd1, int fd2)
 	return (fd2);
 }
 
-
 int
 nt_access(const char *file, int mode)
 {
-	char	ntfname[1024];
-	int	rc;
+	DWORD	attrs = GetFileAttributes(file);
+	char	*buf;
 
-	/*
-	 * Emulate the posix semantics for access(2).
-	 *
-	 * XXX This doesn't really handle X_OK correctly.  As far as I
-	 * can tell, X_OK is the same as F_OK, so it just checks if
-	 * the file is there.  We really need to know if our spawnvp()
-	 * function would work.  To do that the file would either
-	 * need to end in .exe or contain a '#!' at the start and the
-	 * path to an executable file.
-	 *
-	 * A previous hint said to look at GetBinaryType(), but that
-	 * is really not enough.
-	 */
-	bm2ntfname(file, ntfname);
-	rc = _access(ntfname, mode);
-	if (rc && ((mode & X_OK) == X_OK)) {
-		strcat(ntfname, ".exe");
-		rc = _access(ntfname, mode);
+	if (attrs == INVALID_FILE_ATTRIBUTES) {
+		switch (GetLastError()) {
+			case ERROR_ACCESS_DENIED:
+			case ERROR_CANNOT_MAKE:
+			case ERROR_CURRENT_DIRECTORY:
+			case ERROR_DRIVE_LOCKED:
+			case ERROR_FAIL_I24:
+			case ERROR_LOCK_FAILED:
+			case ERROR_LOCK_VIOLATION:
+			case ERROR_NETWORK_ACCESS_DENIED:
+			case ERROR_NOT_LOCKED:
+			case ERROR_SEEK_ON_DEVICE:
+				errno = EACCES;
+				break;
+			case ERROR_BAD_NETPATH:
+			case ERROR_BAD_NET_NAME:
+			case ERROR_BAD_PATHNAME:
+			case ERROR_FILENAME_EXCED_RANGE:
+			case ERROR_FILE_NOT_FOUND:
+			case ERROR_INVALID_DRIVE:
+			case ERROR_NO_MORE_FILES:
+			case ERROR_PATH_NOT_FOUND:
+				errno = ENOENT;
+				break;
+			default:
+				errno = EINVAL;
+				break;
+		}
+		if ((mode & X_OK) == X_OK) {
+			buf = aprintf("%s.exe", file);
+			attrs = GetFileAttributes(buf);
+			free(buf);
+			if (attrs != INVALID_FILE_ATTRIBUTES) {
+				/* No need to test for W_OK. 
+				 * X_OK is never used with W_OK (I hope)
+				 */
+				return (0);
+			}
+		}
+		return (-1);
 	}
-	return (rc);
+	if ((attrs & FILE_ATTRIBUTE_READONLY) && (mode & W_OK)) {
+		errno = EACCES;
+		return (-1);
+	}
+	return (0);
 }
 
 int
