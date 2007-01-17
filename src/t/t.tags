@@ -683,3 +683,17 @@ test "$PREFIX" -eq 0 -a "$POSTFIX" -eq 2 || {
 	exit 1
 }
 echo OK
+
+echo $N Test bk tags is shorthand for bk changes -t .................$NL
+bk changes -t > WANT
+bk tags > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test bk tags works remotely .................................$NL
+REPO=`bk pwd`
+cd ..
+bk tags $Q "$REPO" > GOT
+cd "$REPO"
+cmpfiles WANT ../GOT
+echo OK

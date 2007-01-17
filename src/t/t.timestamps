@@ -39,7 +39,7 @@ echo foo > nokeyword
 echo foo > deltatime
 bk _touch -t $T11 keyword nokeyword deltatime
 BK_DATE_TIME_ZONE="$DTZ12" bk new $Q keyword nokeyword
-bk delta $Q -i -G deltatime
+bk delta $Q -i -T deltatime
 test -f keyword -o -f nokeyword -o -f deltatime && {
 	echo failed
 	ls
@@ -116,7 +116,7 @@ rm -f SCCS/s.keyword
 mv -f backup SCCS/s.keyword
 echo OK
 
-echo $N Test ci / delta with -u, -l, nothing, -G, etc. ..............$NL
+echo $N Test ci / delta with -u, -l, nothing, -T, etc. ..............$NL
 # ci/delta - with -u/-l, other wise, no gfile
 cp -f SCCS/s.keyword backup
 cp -f SCCS/s.nokeyword nobackup
@@ -163,7 +163,7 @@ test $T21 -eq `_mtime keyword`		|| { echo failed; exit 1; }
 # -G
 echo foo >> keyword
 bk _touch -t $T12 keyword
-bk delta $Q -G -yfoo keyword
+bk delta $Q -T -yfoo keyword
 test $T12 -ge `_mtime SCCS/s.keyword`	|| { echo failed; exit 1; }
 bk get $Q -T keyword
 test $T12 -eq `_mtime keyword`		|| { echo failed; exit 1; }
@@ -171,7 +171,7 @@ test $T12 -eq `_mtime keyword`		|| { echo failed; exit 1; }
 bk edit $Q keyword
 echo foo >> keyword
 bk _touch -t $T31 keyword
-bk delta $Q -l -G -yfoobar keyword 2> ERR
+bk delta $Q -l -T -yfoobar keyword 2> ERR
 bk _touch newnow
 grep -q "BK limiting the delta time" ERR || {
 	echo wrong output; cat ERR; exit 1;

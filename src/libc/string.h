@@ -1,7 +1,10 @@
 /* generated automatically with cproto */
 #ifndef	_STRING_H
 #define	_STRING_H	1
+
+#ifndef	_STRING_H_
 #define	_STRING_H_	1
+#endif
 
 #include <stdio.h>
 

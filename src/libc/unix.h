@@ -48,7 +48,7 @@
 #define	fullname	full_name	/* Darwin libc collision */
 
 /* These functions are a "no-op" on unix */
-#define localName2bkName(x, y)		(void)access(x, 0)
+#define localName2bkName(x, y)		
 #define	make_fd_uninheritable(fd)  fcntl(fd, F_SETFD, 1)
 #define	mkpipe(p, size)	pipe(p)
 #define	setmode(a, b)

@@ -165,6 +165,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	rev[0] = 0;
 	prog = cmd;
 	flags = Flags;
+	if (getenv("BK_NODIREXPAND")) flags |= SF_NODIREXPAND;
 	if (Av[0]) {
 		int	i;
 

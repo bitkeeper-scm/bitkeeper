@@ -20,7 +20,9 @@ lock_main(int ac, char **av)
 		switch (c) {
 		    case 'q': /* fall thru */			/* doc 2.0 */
 		    case 's': silent = 1; break;		/* undoc 2.0 */
-		    case 'f': file = optarg;
+		    case 't': tcp = 1; break;
+		    case 'f': file = optarg; break;
+		    /* One of .. or fall through to error */
 		    case 'l':					/* doc 2.0 */
 		    case 'r':					/* doc 2.0 */
 		    case 'w':					/* doc 2.0 */
@@ -31,15 +33,17 @@ lock_main(int ac, char **av)
 				break;
 			}
 			/* fall through */
-		    case 't': tcp = 1; break;
 		    default:
 usage:			system("bk help -s lock");
 			return (1);
 		}
 	}
-	unless (what) what = 'l';
+	unless (!file || !what || (what == 'U') || (what == 'L')) {
+		goto usage;
+	}
+	unless (what) what = (file) ? 'f' : 'l';
 	if (av[optind]) chdir(av[optind]);
-	proj_cd2root();
+	unless (file) proj_cd2root();
 	pid = getpid();
 	sig_catch(abort_lock);
 	if (tcp) {
