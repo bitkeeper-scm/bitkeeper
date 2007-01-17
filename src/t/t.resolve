@@ -999,3 +999,26 @@ bk pull $Q 2>ERR || {
 	exit 1
 }
 echo OK
+
+cd "$HERE"
+rm -rf project copy
+
+echo $N Pull with edited cset file and rootkeys with spaces .........$NL
+commercial project
+touch "foo-bar"
+bk new $Q "foo-bar"
+bk commit $Q -yfile-with-space || exit 1
+bk clone $Q ../project ../copy || exit 1
+bk edit $Q "foo-bar"
+bk delta $Q -fynull-delta "foo-bar" || exit 1
+bk commit $Q -ynull-delta || exit 1
+cd ../copy
+touch "foo bar"
+bk new $Q "foo bar"  || exit 1
+bk commit $Q -yfile-with-space || exit 1
+bk edit $Q ChangeSet || exit 1
+bk pull $Q || {
+	echo failed
+	exit 1
+}
+echo OK
