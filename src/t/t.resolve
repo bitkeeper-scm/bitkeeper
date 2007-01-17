@@ -910,6 +910,49 @@ bk pull $Q 2>ERR || {
 }
 echo OK
 
+echo $N Check multiword editor when resolve content conflict ........$NL
+cd "$HERE"
+rm -fr project copy
+commercial project
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo foo
+cd ..
+bk clone $Q project copy
+cd project
+bk edit $Q foo
+echo a > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo foo
+cd ../copy
+bk edit $Q foo
+echo b > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo foo
+cat <<'EOF' > myedit
+#!/bin/sh
+test $# -eq 2 || { echo wrong number; exit 1; }
+test "$1" = '-x' || { echo wrong number; exit 1; }
+echo memememem
+echo resolve > "$2"
+exit 0
+EOF
+chmod +x myedit
+bk pull $Q -R
+EDITOR="myedit -x" BK_LIMITPATH="$PWD:${LIMITPATH-$PATH}" \
+    bk resolve -t > OUT 2>&1 <<'EOF'
+m
+e
+C
+null comment
+.
+EOF
+test $? = 0 || {
+	echo failed
+	exit 1
+}
+echo OK
+
 cd ..
 rm -rf trigger-copy trigger-master
 echo $N Automerge a identical trigger change after automerging gone .$NL

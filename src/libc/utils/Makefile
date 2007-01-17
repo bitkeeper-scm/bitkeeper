@@ -15,7 +15,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	putenv.o \
 	rlimit.o rmtree.o \
 	samepath.o sig.o smartrename.o spawn.o stdioext.o sys.o system.o \
-	tty.o \
+	tty.o ttyprintf.o \
 	utils.o \
 	webencode.o \
 	which.o)

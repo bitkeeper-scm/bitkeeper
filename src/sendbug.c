@@ -51,7 +51,7 @@ sendbug_main(int ac,  char **av)
 	sprintf(buf, "%stemplate", key);
 	getMsg(buf, 0, 0, f);
 	fclose(f);
-	sprintf(buf, "%s %s", editor, bug);
+	sprintf(buf, "%s '%s'", editor, bug);
 	system(buf);
 	while (1) {
 		printf("(s)end, (e)dit, (q)uit? ");

@@ -699,3 +699,23 @@ cmp -s 2040 GOT || {
 	exit 1
 }
 echo OK
+
+echo $N Check disabling directory expansion if no files listed ......$NL
+mkdir expand
+cd expand
+touch a
+bk new $Q a
+bk edit $Q a
+echo junk > a
+echo a > WANT
+bk sfiles -gc > GOT
+checkfiles WANT GOT
+# does nothing
+BK_NODIREXPAND=1 bk delta $Q -ycomment || exit 1
+bk sfiles -gc > GOT
+checkfiles WANT GOT
+# actually checks in files
+bk delta $Q -ycomment || exit 1
+bk sfiles -gc > GOT
+test -s GOT && exit 1
+echo OK

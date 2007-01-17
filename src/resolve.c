@@ -256,6 +256,7 @@ passes(opts *opts)
 		perror("sfiles list");
 err:		if (p) fclose(p);
 		if (flist[0]) unlink(flist);
+		return (1);
 	}
 	unless (p = fopen(flist, "r")) {
 		perror(flist);
