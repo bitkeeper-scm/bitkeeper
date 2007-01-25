@@ -37,20 +37,24 @@ rebuild(void)
 {
 	sccs	*cset;
 	FILE	*id_cache;
-	char	s_cset[] = CHANGESET;
 	char	*id_tmp;
 
-	unless (cset = init(s_cset, 0)) {
-		perror("sfiles: can't init ChangeSet");
-		exit(1);
-	}
-	unless (HAS_SFILE(cset) && cset->cksumok) {
-		perror("sfiles: can't init ChangeSet");
+	/* only the bitmover tree might have short keys */
+	if (streq(proj_rootkey(0),
+		"lm@lm.bitmover.com|ChangeSet|19990319224848|02682")) {
+
+		unless (cset = sccs_csetInit(0)) {
+			perror("sfiles: can't init ChangeSet");
+			exit(1);
+		}
+		unless (HAS_SFILE(cset) && cset->cksumok) {
+			perror("sfiles: can't init ChangeSet");
+			sccs_free(cset);
+			exit(1);
+		}
+		mixed = !LONGKEY(cset);
 		sccs_free(cset);
-		exit(1);
 	}
-	mixed = !LONGKEY(cset);
-	sccs_free(cset);
 	unless (id_tmp = bktmp_local(0, "id_tmp")) {
 		perror("bktmp_local");
 		exit(1);
@@ -128,6 +132,7 @@ caches(char *file, struct stat *sb, void *data)
 	char	buf[MAXPATH*2];
 
 	file += 2;
+	if (streq(file, CHANGESET)) return (0);
 	unless (sc = init(file, INIT_NOCKSUM)) return (0);
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);
