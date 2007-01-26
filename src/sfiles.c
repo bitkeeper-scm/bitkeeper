@@ -332,7 +332,11 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	int	local_s = 0, printed = 0;
 	char	buf[MAXPATH], *dfile = 0, *p;
 
-
+	if (streq(gfile, "./ChangeSet")) {
+		state[PSTATE] = ' ';
+		do_print(state, gfile, 0);
+		return;
+	}
 	if (opts.dfile) {
 		if (sDB) {
 			strcpy(buf, "d.");
