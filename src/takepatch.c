@@ -936,28 +936,13 @@ apply:
 		    "takepatch: adding leaf to tag delta %s (serial %d)\n",
 		    remote_tagtip->rev, remote_tagtip->serial));
 	}
-	if (cset_write(s)) {
+	if (echo == 3) fprintf(stderr, "\b, ");
+	if (cset_write(s, (echo == 3))) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't write %s\n", p->resyncFile);
 		goto err;
 	}
-
-	sccs_free(s);
-	s = 0;
-	/*
-	 * Fix up d->rev, there is probaply a better way to do this.
-	 * XXX: not only renumbers, but collapses inheritance on
-	 * items brought in from patch.  Could call inherit.
-	 * For now, leave at this and watch performance.
-	 */
-	if (echo == 3) {
-		fprintf(stderr, "\b, ");
-		sys("bk", "renumber", "-q", "-/", patchList->resyncFile, SYS);
-	} else {
-		sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
-	}
-
-	s = sccs_init(patchList->resyncFile, SILENT);
+	s = sccs_reopen(s);	/* I wish this could be sccs_restart() */
 	assert(s && s->tree);
 
 	unless (sccs_findKeyDB(s, 0)) {

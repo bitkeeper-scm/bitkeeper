@@ -643,6 +643,42 @@ sccs_reDup(sccs *s)
 #undef	REDUP
 }
 
+void
+sccs_kidlink(delta *d)
+{
+	delta	*p = d->parent;
+
+	unless (p) return;
+	assert(!d->kid && !d->siblings);
+	if (!p->kid) {
+		p->kid = d;
+		debug((stderr, " -> %s (kid)\n", p->rev));
+
+	} else if ((p->kid->type == 'D') &&
+	    samebranch(p, p->kid)) { /* in right place */
+		/*
+		 * If there are siblings, add d at the end.
+		 */
+		if (p->kid->siblings) {
+			delta	*l = p->kid->siblings;
+
+			while (l->siblings) l = l->siblings;
+			l->siblings = d;
+		} else {
+			p->kid->siblings = d;
+		}
+		debug((stderr, " -> %s (sib)\n", p->rev));
+	} else {  /* else not in right place, put the new delta there. */
+		debug((stderr, "kid type %c, %d.%d.%d.%d vs %d.%d.%d.%d\n",
+		    p->kid->type, p->r[0], p->r[1], p->r[2], p->r[3],
+		    p->kid->r[0], p->kid->r[1], p->kid->r[2], p->kid->r[3]));
+		d->siblings = p->kid;
+		p->kid = d;
+		debug((stderr, " -> %s (kid, moved sib %s)\n",
+		    p->rev, d->siblings->rev));
+	}
+}
+
 /*
  * Insert the delta in the (ordered) tree.
  * A little weirdness when it comes to removed deltas,
@@ -676,34 +712,7 @@ dinsert(sccs *s, delta *d, int fixDate)
 	assert(p);
 	s->lastinsert = d;
 	d->parent = p;
-	assert(!d->kid && !d->siblings);
-	if (!p->kid) {
-		p->kid = d;
-		debug((stderr, " -> %s (kid)\n", p->rev));
-
-	} else if ((p->kid->type == 'D') &&
-	    samebranch(p, p->kid)) { /* in right place */
-		/*
-		 * If there are siblings, add d at the end.
-		 */
-		if (p->kid->siblings) {
-			delta	*l = p->kid->siblings;
-
-			while (l->siblings) l = l->siblings;
-			l->siblings = d;
-		} else {
-			p->kid->siblings = d;
-		}
-		debug((stderr, " -> %s (sib)\n", p->rev));
-	} else {  /* else not in right place, put the new delta there. */
-		debug((stderr, "kid type %c, %d.%d.%d.%d vs %d.%d.%d.%d\n",
-		    p->kid->type, p->r[0], p->r[1], p->r[2], p->r[3],
-		    p->kid->r[0], p->kid->r[1], p->kid->r[2], p->kid->r[3]));
-		d->siblings = p->kid;
-		p->kid = d;
-		debug((stderr, " -> %s (kid, moved sib %s)\n",
-		    p->rev, d->siblings->rev));
-	}
+	sccs_kidlink(d);
 	sccs_inherit(s, d);
 	if (fixDate) uniqDelta(s);
 }

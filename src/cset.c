@@ -100,13 +100,14 @@ usage:			system("bk help -s makepatch");
 	return (i);
 }
 
+private	sccs	*cset;
+
 /*
  * cset.c - changeset command
  */
 int
 cset_main(int ac, char **av)
 {
-	sccs	*cset;
 	int	flags = 0;
 	int	c, list = 0;
 	int	ignoreDeleted = 0;
@@ -435,7 +436,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 		}
 		if (sc) {
 			doit(cs, sc);
-			sccs_free(sc);
+			unless (sc == cset) sccs_free(sc);
 			sc = 0;
 		}
 		doneFullRebuild = 0;
@@ -464,7 +465,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	 */
 	if (sc) {
 		doit(cs, sc);
-		sccs_free(sc);
+		unless (sc == cset) sccs_free(sc);
 		free(lastkey);
 		sc = 0;
 		lastkey = 0;
@@ -477,7 +478,11 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 		perror("idcache");
 	}
 	lastkey = strdup(key);
-retry:	sc = sccs_keyinit(lastkey, 0, idDB);
+retry:	if (cset && strstr(lastkey, "|ChangeSet|")) {
+		sc = cset;
+	} else {
+		sc = sccs_keyinit(lastkey, 0, idDB);
+	}
 	unless (sc) {
 		if (gone(lastkey, goneDB)) {
 			free(lastkey);
@@ -617,7 +622,7 @@ csetlist(cset_t *cs, sccs *cset)
 	chmod(csort, TMP_MODE);		/* in case we don't unlink */
 	unlink(cat);
 	if (cs->verbose > 5) {;
-	sys("cat", csort, SYS);
+		sys("cat", csort, SYS);
 	}
 	if (exists(SGONE)) {
 		char tmp_gone[MAXPATH];
@@ -656,7 +661,6 @@ again:	/* doDiffs can make it two pass */
 		fputs("\n", stdout);
 	}
 
-	sccs_close(cset); /* for win32 */
 	/*
 	 * Do the ChangeSet deltas first, takepatch needs it to be so.
 	 */
