@@ -102,7 +102,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	u8	*buf;
 	u32	sum;
 	MMAP	*m;
-	int	i, fd;
+	int	n, fd, ok;
 	int	rc = -1;
 	mode_t	mode;
 
@@ -112,7 +112,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		free(dfile);
 		return (-1);
 	}
-	i = m->size;
+	n = m->size;
 	buf = m->mmap;
 	if (getenv("_BK_FASTGET")) {
 		sum = strtoul(d->hash, 0, 16);
@@ -123,7 +123,12 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 			sum = adler32(0, m->mmap, m->size);
 		}
 	}
-	if (sum == strtoul(d->hash, 0, 16)) {
+	ok = (sum == strtoul(d->hash, 0, 16));
+	unless (ok) {
+		fprintf(stderr,
+		    "crc mismatch in %s: %08x vs %s\n", s->gfile, sum, d->hash);
+	}
+	if (ok || (flags & GET_FORCE)) {
 		if ((flags & (GET_EDIT|PRINT)) ||
 		    !proj_configbool(s->proj, "binpool_hardlinks") ||
 		    (link(dfile, gfile) != 0)) {
@@ -140,7 +145,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 				perror(gfile);
 				goto out;
 			}
-			if (writen(fd, buf, i) != i) {
+			if (writen(fd, buf, n) != n) {
 				unless (flags & PRINT) {
 					perror(gfile);
 					unlink(gfile);
@@ -162,10 +167,9 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		}
 		rc = 0;
 	}
-else ttyprintf("crc mismatch in %s: %08x vs %s\n", s->gfile, sum, d->hash);
-	unless (i) i = 1;	/* zero is bad */
+	unless (n) n = 1;	/* zero is bad */
 	s->dsum = sum;
-	s->added = (d == din) ? i : 0;
+	s->added = (d == din) ? n : 0;
 	s->same = s->deleted = 0;
 out:	mclose(m);
 	free(dfile);
