@@ -32,7 +32,7 @@ upgrade_main(int ac, char **av)
 	char	*oldversion, *errs = 0, *lic;
 	char	*indexfn, *index;
 	char	*p, *e;
-	char	*platform = 0;
+	char	*platform = 0, *version = 0;
 	char	**platforms;
 	char	**data = 0;
 	int	len;
@@ -142,6 +142,7 @@ usage:			system("bk help -s upgrade");
 				platforms =
 				    addLine(platforms, strdup(data[5]));
 			}
+			unless (version) version = strdup(data[3]);
 			if (streq(data[5], platform)) {
 				/* found this platform */
 				freeLines(platforms, free);
@@ -161,11 +162,12 @@ next:				freeLines(data, free);
 		unless (streq(platform, "?")) {
 			fprintf(stderr, 
 			    "No upgrade for the for arch %s found. "
-			    "Available architectures:\n", platform);
+			    "Available architectures for %s:\n",
+			    platform, version);
 			EACH(platforms) fprintf(stderr, "  %s\n", platforms[i]);
 			rc = 2;
 		} else {
-			printf("Available architectures:\n", platform);
+			printf("Available architectures for %s:\n", version);
 			EACH(platforms) printf("  %s\n", platforms[i]);
 			rc = 0;
 		}
@@ -297,6 +299,7 @@ next:				freeLines(data, free);
 	unlink(data[1]);
 	rc = 0;
  out:
+	if (version) free(version);
 	if (data) freeLines(data, free);
 	if (tmpbin) {
 		unlink(tmpbin);

@@ -35,6 +35,7 @@ private int	parseurl(char *);
 private	void	mk_querystr(void);
 private void	trailer(void);
 private	void	detect_oldurls(char *url);
+private void	flushExit(int status);
 
 
 #define	COLOR		"white"
@@ -115,7 +116,7 @@ cmd_httpget(int ac, char **av)
 
 	if (streq(url, "/robots.txt")) {
 		http_robots();
-		exit(0);
+		flushExit(0);
 	}
 
 	qin = hash_new(HASH_MEMHASH);
@@ -128,8 +129,7 @@ cmd_httpget(int ac, char **av)
 
 	if (strneq(fpath, "BitKeeper/www/", 14)) {
 		http_reserved(fpath + 14);
-		fflush(stdout);
-		exit(0);
+		flushExit(0);
 	}
 
 	/* check for a proper license */
@@ -147,13 +147,12 @@ cmd_httpget(int ac, char **av)
 	for (i = 0; pages[i].content; i++) {
 		if (streq(pages[i].page, page)) {
 			pages[i].content(page);
-			fflush(stdout);
-			exit(0); /* NOT return */
+			flushExit(0); /* NOT return */
 		}
 	}
 	http_error(403, "illegal page request");
-	fflush(stdout);
-	exit(0);		/* NOT return */
+	flushExit(0);		/* NOT return */
+	return (0);		/* keep the compiler happy */
 }
 
 private void
@@ -1351,8 +1350,7 @@ http_error(int status, char *fmt, ...)
 	    "</tr>\n"
 	    "</table>\n");
 	puts("</body>\n");
-	fflush(stdout);
-	exit(1);
+	flushExit(1);
 }
 
 private int
@@ -1398,8 +1396,7 @@ parseurl(char *url)
 		    "\r\n",
 		    http_time(), BKWEB_SERVER_VERSION,
 		    url);
-		fflush(stdout);
-		exit(0);
+		flushExit(0);
 	}
 
 	if (p = proj_init(url)) {
@@ -1821,8 +1818,7 @@ detect_oldurls(char *url)
 	    url,
 	    (file ? file : ""),
 	    querystr);
-	fflush(stdout);
-	exit(0);
+	flushExit(0);
 }
 
 private void
@@ -1842,4 +1838,16 @@ http_reserved(char *file)
 		fwrite(buf, 1, i, stdout);
 	}
 	fclose(f);
+}
+
+private void
+flushExit(int status)
+{
+	fflush(stdout);
+	/*
+	 * Without an explicit shutdown, bkd on windows sometimes
+	 * doesn't flush pending data and do a graceful shutdown.
+	 */
+	shutdown(fileno(stdout), 1);
+	exit(status);
 }

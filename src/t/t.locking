@@ -486,7 +486,7 @@ test -d writer && {
 echo OK
 
 echo $N Make sure sccs lock will fix directory permissions if it can.$NL
-cd "$HERE"
+cd "$HERE/project"
 mkdir nowrite
 cd nowrite
 chmod 0555 .
@@ -494,11 +494,14 @@ test -w . && {
 	echo chmod failed
 	exit 1
 }
-bk lock -tflockfile > "$HERE/port" &
-while [ ! -f lockfile ]
-do	sleep 1
-done
+bk lock -t -flockfile > "$HERE/port" &
+bk lock -L -flockfile
 test -w . || {
+	echo failed to fix permissions
+	exit 1
+}
+# make sure file is in this directory and not repo root
+test -f lockfile || {
 	echo failed to fix permissions
 	exit 1
 }

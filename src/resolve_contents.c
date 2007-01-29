@@ -82,8 +82,12 @@ c_drm(resolve *rs)
 int
 c_em(resolve *rs)
 {
+	char	*cmd;
+
 	unless (exists(rs->s->gfile)) c_merge(rs);
-	sys(rs->editor, rs->s->gfile, SYS);
+	cmd = aprintf("%s '%s'", rs->editor, rs->s->gfile);
+	system(cmd);
+	free(cmd);
 	return (0);
 }
 

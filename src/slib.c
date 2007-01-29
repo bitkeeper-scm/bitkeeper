@@ -8222,10 +8222,12 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 			if (HASH(s)) {
 				char	*from, *to, *val;
 				/* XXX: hack to use sbuf, but it exists */
+				val = CSET(s) ?
+				    separator(fbuf) : strchr(fbuf, ' ');
+				assert(val && (*val == ' '));
 				for (from = fbuf, to = sbuf;
-				    *from && *from != ' ';
+				    from != val;
 				    *to++ = *from++) /* null body */;
-				assert(*from == ' ');
 				*to++ = '\0';
 				from++;
 				val = to;

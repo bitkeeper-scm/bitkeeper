@@ -156,7 +156,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "abcCdD:E|fGhI;ilm|M;npPqRsuy|Y|Z|")) != -1) {
+	    getopt(ac, av, "abcCdD:E|fGhI;ilm|M;npPqRsTuy|Y|Z|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -201,7 +201,6 @@ delta_main(int ac, char **av)
 		    case 'D': diffsFile = optarg;		 /* doc 2.0 */
 			      sflags = ~(SF_GFILE | SF_WRITE_OK);
 			      break;
-		    case 'G': iflags |= INIT_FIXDTIME; break;	/* undoc? 2.0 */
 		    case 'h': dflags |= DELTA_HASH; break;	/* doc 2.0 */
 		    case 'I':
 			initFile = optarg;
@@ -210,6 +209,8 @@ delta_main(int ac, char **av)
 		    case 'M': mode = optarg; break;		/* doc 2.0 */
 		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
+		    case 'G': 	/* remove -G in 2009 .  Replaced by -T */
+		    case 'T': iflags |= INIT_FIXDTIME; break;	/* undoc? 2.0 */
 		    case 'Y':
 			if (optarg && comments_savefile(optarg)) {
 				fprintf(stderr,
