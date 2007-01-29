@@ -1,0 +1,86 @@
+# count the number of times we init the ChangeSet file for normal operations
+
+
+BK_SHOWINIT="*/s.ChangeSet"
+BK_TTYPRINTF="$HERE/INITs"
+FILE="$BK_TTYPRINTF"
+export BK_SHOWINIT BK_TTYPRINTF
+
+CNT=7
+echo $N "Count the inits for a 'bk setup' ($CNT)........................."$NL
+commercial project
+SEEN=`wc -l < "$FILE"`
+test $SEEN -ne $CNT && {
+	echo was $CNT now $SEEN
+	exit 1
+}
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+2
+3
+EOF
+bk ci -yignore1 -u $Q BitKeeper/etc/ignore
+bk commit $Q -yignore1 || exit 1
+echo OK
+
+CNT=3
+echo $N "Count the inits for a 'bk clone' ($CNT)........................."$NL
+rm "$FILE"
+bk clone $Q ../project ../copy || exit 1
+SEEN=`wc -l < "$FILE"`
+test $SEEN -ne $CNT && {
+	echo was $CNT now $SEEN
+	exit 1
+}
+echo OK
+
+CNT=5
+echo $N "Count the inits for a 'bk commit' ($CNT)........................"$NL
+echo hi > file
+bk new $Q file
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+2
+3
+4
+EOF
+bk ci -yignore2 -u $Q BitKeeper/etc/ignore
+rm "$FILE"
+bk commit $Q -ycommit || exit 1
+SEEN=`wc -l < "$FILE"`
+test $SEEN -ne $CNT && {
+	echo was $CNT now $SEEN
+	exit 1
+}
+echo OK
+
+CNT=21
+echo $N "Count the inits for a 'bk pull' ($CNT)........................."$NL
+cd ../copy
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+1
+2
+3
+EOF
+bk ci -yignore3 -u $Q BitKeeper/etc/ignore
+bk commit $Q -yignore1 || exit 1
+rm "$FILE"
+bk pull $Q || exit 1
+SEEN=`wc -l < "$FILE"`
+test $SEEN -ne $CNT && {
+	echo was $CNT now $SEEN
+	exit 1
+}
+echo OK
+
+CNT=16
+echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
+rm "$FILE"
+bk push $Q || exit 1
+SEEN=`wc -l < "$FILE"`
+test $SEEN -ne $CNT && {
+	echo was $CNT now $SEEN
+	exit 1
+}
+echo OK
