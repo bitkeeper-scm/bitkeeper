@@ -454,6 +454,8 @@ nameOK(opts *opts, sccs *s)
 	sccs	*local = 0;
 	int	ret;
 
+	if (CSET(s)) return (1); /* ChangeSet won't have conflicts */
+
 	/*
 	 * Same path slot and key?
 	 */
@@ -2657,6 +2659,8 @@ copyAndGet(opts *opts, char *from, char *to)
 		 */
 		if (link(from, to) && fileCopy(from, to)) return (-1);
 	}
+	/* no need to checkout ChangeSet file */
+	if (streq(to, CHANGESET)) return (0);
 
 	s = sccs_init(to, 0);
 	assert(s && HASGRAPH(s));
