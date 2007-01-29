@@ -8,7 +8,7 @@ export BK_SHOWINIT BK_TTYPRINTF
 
 CNT=7
 echo $N "Count the inits for a 'bk setup' ($CNT)........................."$NL
-commercial project
+fresh_commercial project
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
