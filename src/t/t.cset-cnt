@@ -54,9 +54,31 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
+CNT=4
+echo $N "Count the inits for a 'bk changes -L' ($CNT)...................."$NL
+cd ../copy
+rm "$FILE"
+bk changes -L > OUT || exit 1
+SEEN=`wc -l < "$FILE"`
+test $SEEN -ne $CNT && {
+	echo was $CNT now $SEEN
+	exit 1
+}
+echo OK
+
+CNT=3
+echo $N "Count the inits for a 'bk changes -R' ($CNT)...................."$NL
+rm "$FILE"
+bk changes -R > OUT || exit 1
+SEEN=`wc -l < "$FILE"`
+test $SEEN -ne $CNT && {
+	echo was $CNT now $SEEN
+	exit 1
+}
+echo OK
+
 CNT=19
 echo $N "Count the inits for a 'bk pull' ($CNT)........................."$NL
-cd ../copy
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
 1
@@ -74,7 +96,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=14
+CNT=13
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || exit 1

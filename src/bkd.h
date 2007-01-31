@@ -135,6 +135,8 @@ char	**getClientInfoBlock(void);
 int	sendServerInfoBlock(int);
 int	bk_hasFeature(char *f);
 int	bkd_hasFeature(char *f);
+int	probekey(sccs *s, char *rev, FILE *f);
+int	synckeys(remote *r, sccs *s, int flags, FILE *fout);
 int	prunekey(sccs *, remote *, hash *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);

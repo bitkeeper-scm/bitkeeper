@@ -25,6 +25,8 @@ private	int	push(char **av, remote *r, char **envVar);
 private	void	pull(remote *r);
 private	void	listIt(sccs *s, int list);
 
+private	sccs	*s_cset;
+
 private void
 usage(void)
 {
@@ -119,7 +121,7 @@ err:		freeLines(envVar, free);
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
-
+	s_cset = sccs_csetInit(0);
 	EACH (urls) {
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
@@ -157,7 +159,7 @@ err:		freeLines(envVar, free);
 		if (rc == -2) rc = 1; /* if retry failed, set exit code to 1 */
 		if (rc) break;
 	}
-
+	sccs_free(s_cset);
 	freeLines(urls, free);
 	freeLines(envVar, free);
 	if (opts.out && (opts.out != stderr)) fclose(opts.out);
@@ -191,7 +193,13 @@ send_part1_msg(remote *r, char **envVar)
 	fclose(f);
 
 	probef = bktmp(0, 0);
-	unless (rc = sysio(0, probef, 0, "bk", "_probekey", SYS)) {
+	if (f = fopen(probef, "w")) {
+		rc = probekey(s_cset, 0, f);
+		fclose(f);
+	} else {
+		rc = 1;
+	}
+	unless (rc) {
 		rc = send_file(r, buf, size(probef));
 		unlink(buf);
 		f = fopen(probef, "rb");
@@ -218,10 +226,9 @@ send_part1_msg(remote *r, char **envVar)
 private int
 push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 {
-	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	int	fd, rc, n;
-	sccs	*s;
 	delta	*d;
+	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-3);
 	if (send_part1_msg(r, envVar)) return (-3);
@@ -261,20 +268,17 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	bktmp_local(rev_list, "pushrev");
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
-	s = sccs_init(s_cset, 0);
-	rc = prunekey(s, r, NULL, fd, PK_LKEY,
+	rc = prunekey(s_cset, r, NULL, fd, PK_LKEY,
 		!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:	getMsg("unrelated_repos", 0, 0, opts.out);
 				close(fd);
 				unlink(rev_list);
-				sccs_free(s);
 				if (r->type == ADDR_HTTP) disconnect(r, 2);
 				return (1); /* needed to force bkd unlock */
 		    case -3:	unless (opts.forceInit) {
 		    			getMsg("no_repo", 0, 0, opts.out);
-					sccs_free(s);
 					if (r->type == ADDR_HTTP) {
 						disconnect(r, 2);
 					}
@@ -285,7 +289,6 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		close(fd);
 		unlink(rev_list);
 		if (r->type == ADDR_HTTP) disconnect(r, 2);
-		sccs_free(s);
 		return (-1);
 	}
 	close(fd);
@@ -315,10 +318,10 @@ tags:			fprintf(opts.out,
 			    "Would send the following csets "
 			    "------------------------\n");
 			if (opts.list) {
-				listIt(s, opts.list);
+				listIt(s_cset, opts.list);
 			} else {
 				n = 0;
-				for (d = s->table; d; d = d->next) {
+				for (d = s_cset->table; d; d = d->next) {
 					if (d->flags & D_RED) continue;
 					unless (d->type == 'D') continue;
 					n += strlen(d->rev) + 1;
@@ -350,7 +353,6 @@ tags:			fprintf(opts.out,
 		}
 		free(url);
 	}
-	sccs_free(s);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if ((opts.lcsets == 0) || !opts.doit) return (0);
 	if ((opts.rcsets || opts.rtags)) {
