@@ -925,8 +925,17 @@ _c2r() {	# undoc
 # XXX undocumented hack that wayne uses.
 #
 # clone a remote repo using a local tree as a baseline
-# assumes UNIX (clone -l)
+# assumes UNIX/NTFS (clone -l)
 _clonemod() {
+	CSETS=BitKeeper/etc/csets-in
+	Q=
+	while getopts q OPT
+	do	case $OPT in
+		q)	Q=-q;;
+		*)	bk clonemod; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	if [ $# -ne 3 ]
 	then
 		echo "usage: bk clonemod URL LOCAL NEW" 1>&2
@@ -937,7 +946,13 @@ _clonemod() {
 	cd "$3" || exit 1
 	bk parent -sq "$1" || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
-	bk pull 
+	# remove any local tags that the above undo missed
+	bk changes -qkL > $CSETS || exit 1
+	if [ -s "$CSETS" ]
+	then	bk unpull -sfq || exit 1
+	else	rm $CSETS || exit 1
+	fi
+	bk pull $Q -u || exit 1
 }
 
 # XXX undocumented alias from 3.0.4 
