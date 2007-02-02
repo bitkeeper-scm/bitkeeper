@@ -68,3 +68,90 @@ bk clone $Q project project2 2> OUT || {
 }
 cat OUT
 echo OK
+
+echo $N Test null clonemod ..........................................$NL
+cd "$HERE"/project
+bk commit $Q -ystuff
+cd ..
+bk lclone $Q project cmbase
+bk clonemod $Q "$HERE/project" cmbase nullclonemod || exit 1
+cd nullclonemod
+bk parent -l > GOT
+bk parent $Q ../project
+bk parent -l > WANT
+cmpfiles WANT GOT
+bk changes -qLR > CHANGES
+test -s CHANGES && exit 1
+cd ..
+echo OK
+
+echo $N Test clonemod with remote cset ..............................$NL
+cd project
+bk edit $Q src/bar.c
+bk delta $Q -fybar src/bar.c
+bk commit $Q -ybar
+cd ..
+bk clonemod $Q "$HERE/project" cmbase remotecset || exit 1
+cd remotecset
+bk parent -l > GOT
+bk parent $Q ../project
+bk parent -l > WANT
+cmpfiles WANT GOT
+bk changes -qLR > CHANGES
+test -s CHANGES && exit 1
+cd ..
+echo OK
+
+echo $N Test clonemod with remote and local cset ....................$NL
+cd cmbase
+bk edit $Q src/bar.c
+bk delta $Q -fybar src/bar.c
+bk commit $Q -ybar
+cd ..
+bk clonemod $Q "$HERE/project" cmbase localcset || exit 1
+cd localcset
+bk parent -l > GOT
+bk parent $Q ../project
+bk parent -l > WANT
+cmpfiles WANT GOT
+bk changes -qLR > CHANGES
+test -s CHANGES && exit 1
+cd ..
+echo OK
+
+echo $N Test clonemod with multinode gca ............................$NL
+cd nullclonemod
+bk edit $Q src/bar.c
+bk delta $Q -fybar src/bar.c
+bk commit $Q -ybar
+cd ../project
+bk pull $Q ../cmbase
+bk pull $Q ../nullclonemod
+cd ../cmbase
+bk pull $Q ../nullclonemod
+cd ..
+bk clonemod $Q "$HERE/project" cmbase multinode || exit 1
+cd multinode
+bk parent -l > GOT
+bk parent $Q ../project
+bk parent -l > WANT
+cmpfiles WANT GOT
+bk changes -qLR > CHANGES
+test -s CHANGES && exit 1
+cd ..
+echo OK
+
+echo $N Test clonemod with adding a local tag .......................$NL
+cd cmbase
+bk tag $Q TAGLOCAL
+cd ..
+bk clonemod $Q "$HERE/project" cmbase localtag || exit 1
+cd localtag
+bk parent -l > GOT
+bk parent $Q ../project
+bk parent -l > WANT
+cmpfiles WANT GOT
+bk changes -qLR > CHANGES
+test -s CHANGES && exit 1
+cd ..
+echo OK
