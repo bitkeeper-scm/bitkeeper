@@ -111,6 +111,7 @@ cset_main(int ac, char **av)
 	int	c, list = 0;
 	int	ignoreDeleted = 0;
 	char	*cFile = 0;
+	int	rc = 1;
 	RANGE	rargs = {0};
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
@@ -231,14 +232,19 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 	}
 
 	if (list) {
-		if (copts.dash ||
-		    !range_process("cset", cset, RANGE_SET, &rargs)) {
-			sig_default();
-			csetlist(&copts, cset);
+		unless (copts.dash) {
+		    if (range_process("cset", cset, RANGE_SET, &rargs)) {
+			    goto err;
+		    }
+		    range_markMeta(cset);	/* all ranges include tags */
 		}
+		sig_default();
+		csetlist(&copts, cset);
+		rc = 0;
+err:
 		sccs_free(cset);
 		if (cFile) free(cFile);
-		return (0);
+		return (rc);
 	}
 	fprintf(stderr, "cset: bad options\n");
 	return (1);
