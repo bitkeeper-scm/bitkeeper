@@ -114,7 +114,7 @@ int	checking_rmdir(char *dir);
 #define	DELTA_MONOTONIC	0x00200000	/* preserve MONOTONIC flag */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
-#define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
+/* AVAILABLE		0x20000000	*/
 #define	ADMIN_TIME	0x40000000	/* warn about time going backwards */
 #define	ADMIN_SHUTUP	0x80000000	/* don't be noisy about bad revs */
 #define	ADMIN_BK	0x01000000	/* check BitKeeper invariants */
@@ -127,7 +127,7 @@ int	checking_rmdir(char *dir);
 #define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
 #define	ADMIN_RMLICENSE	0x00010000	/* Obscure licenses in repo config */
 
-#define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
+#define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK)
 
 #define	PRS_META	0x10000000	/* show metadata */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
