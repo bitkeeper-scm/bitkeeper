@@ -72,7 +72,7 @@ Specifying revisions is incompatible with the
 .Q \-R/\-L
 options.
 .SH OPTIONS
-.TP \-/\*<str\*>/[i]
+.TP \-t/\*<str\*>/[i]
 .OPTreq \-/ str \fB/\fP[\fBi\fP]
 List only those changesets whose comments contain the string
 .ARG str .
@@ -151,6 +151,13 @@ Requires either a BK url or a valid repository parent.
 .tp
 .B \-t
 Only list changesets which are tagged.
+.tp
+.OPTreq \-t/ str \fB/\fP[\fBi\fP]
+List only those changesets whose tags contain the string
+.ARG str .
+.ARG str
+may be a regular expression.
+If there is a trailing \*(lqi\*(rq then ignore case in the search.
 .tp
 .B \-T
 Sort the deltas in a changeset in time order.

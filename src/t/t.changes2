@@ -206,6 +206,36 @@ LIST=`bk changes -t -d:I:`
 test 1.3 = "$LIST" || fail
 echo OK
 
+echo $N Check regex on tags -t/pattern/ .............................$NL
+# XXX remove limitation to win32 when msys doesn't
+# mangle -t/xxx to be -tC:/build/buildenv/xxx
+if [ "$PLATFORM" = "WIN32" ]
+then	echo skipped
+else
+cd "$HERE/diamond"
+bk changes -t/incomplete -nd:I: > OUT 2> ERR && {
+	echo incomplete reg ex passed and should have failed
+	exit 1
+}
+grep -q "unterminated search pattern" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+# Tags present are MYTAG, second and branch.
+# use common 'a' in MYTAG and branch
+bk changes -t/a/ -nd:I: > GOT
+printf "1.4\n" > WANT
+cmpfiles WANT GOT
+bk changes -t/a/i -nd:I: > GOT
+printf "1.5\n1.4\n" > WANT
+cmpfiles WANT GOT
+bk changes -t'/s.*d/' -nd:I: > GOT
+printf "1.1.1.2\n" > WANT
+cmpfiles WANT GOT
+echo OK
+fi
+
 # -u/U  user
 
 echo $N Check that filtering on included users with -u ..............$NL

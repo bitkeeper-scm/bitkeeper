@@ -21,6 +21,7 @@ private struct {
 	u32	diffs:1;	/* show diffs with verbose mode */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
+	search	tsearch;	/* -t/pattern/[i] matches tags w/ pattern */
 	char	*dspec;		/* override dspec */
 	char	**users;	/* lines list of users to include */
 	char	**notusers;	/* lines list of users to exclude */
@@ -78,7 +79,7 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1ac;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
+	while ((c = getopt(ac, av, "1ac;Dd;efhi;kLmnqRr;t|Tu;U;v/;x;")) != -1) {
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -112,7 +113,16 @@ changes_main(int ac, char **av)
 		    case 'm': opts.nomerge = 1; break;
 		    case 'n': opts.newline = 1; break;
 		    case 'q': opts.urls = 0; break;
-		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
+		    case 't':
+		    	opts.tagOnly = 1;
+			if (optarg) {
+				unless (*optarg == '/') {
+					fprintf(stderr, "-t arg needs /pat/\n");
+					goto usage;
+				}
+		    		opts.tsearch = search_parse(optarg+1);
+			}
+			break;		/* doc 2.0 */
 		    case 'T': opts.timesort = 1; break;
 		    case 'u':
 			opts.users = addLine(opts.users, strdup(optarg));
@@ -941,9 +951,23 @@ want(sccs *s, delta *e)
 {
 	char	*p;
 	int	i, match;
+	symbol	*sym;
 
 	unless (opts.all || (e->type == 'D')) return (0);
-	if (opts.tagOnly && !(e->flags & D_SYMBOLS)) return (0);
+	if (opts.tagOnly) {
+		unless (e->flags & D_SYMBOLS) return (0);
+		if (opts.tsearch.pattern) {
+			match = 0;
+			for (sym = s->symbols; sym; sym = sym->next) {
+				unless (sym->d == e) continue;
+				if (search_either(sym->symname, opts.tsearch)) {
+					match = 1;
+					break;
+				}
+			}
+			unless (match) return (0);
+		}
+	}
 	if (opts.notusers) {
 		if (p = strchr(e->user, '/')) *p = 0;
 		match = 0;
