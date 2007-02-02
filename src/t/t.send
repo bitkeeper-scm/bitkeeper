@@ -20,6 +20,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data and some changesets ........................$NL
 mkdir src
 cd src
@@ -42,6 +43,7 @@ done
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
+
 echo $N Create a copy of the project using send / receive ...........$NL
 cd "$HERE/project"
 bk send $Q -  | bk receive -iat ../copy
@@ -60,6 +62,7 @@ rm -f copy/BitKeeper/log/*
 bk diff -r project copy > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
+
 echo $N Make sure we can wrap and unwrap patches with uuwrap ........$NL
 cd "$HERE/project"
 bk send $Q -wuu -  | bk unwrap | ( while read x
@@ -76,6 +79,7 @@ bk diff p1 p2
 if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
 rm -f p1 p2
 echo OK
+
 echo $N Make sure we can wrap and unwrap patches with b64wrap .......$NL
 cd "$HERE/project"
 bk send $Q -wb64 -  | bk unwrap | ( while read x
@@ -92,6 +96,7 @@ bk diff p1 p2
 if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
 rm -f p1 p2
 echo OK
+
 echo $N Make sure we can wrap and unwrap gzipped patches ............$NL
 cd "$HERE/project"
 bk send $Q -wgzip_b64 - | bk unwrap | ( while read x
@@ -108,6 +113,7 @@ bk diff p1 p2
 if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
 rm -f p1 p2
 echo OK
+
 echo $N Create copy using send / receive and wrappers ...............$NL
 cd "$HERE/project"
 bk send $Q -wuu -  | bk receive -iat ../uu
@@ -124,6 +130,7 @@ rm -f uu/BitKeeper/log/*
 bk diff -r project uu > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
+
 echo $N Create copy using send / receive 1 cset at a time ...........$NL
 cd "$HERE/project"
 bk send $Q -r..1.1 -  | bk receive -iat ../csets
@@ -143,6 +150,7 @@ rm -f csets/BitKeeper/log/*
 bk diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
+
 echo $N Make sure that it records sends .............................$NL
 cd "$HERE/project"
 echo "Nothing to send to hoser@nevdull.com, use -f to force." > YYY
@@ -155,6 +163,7 @@ do	bk send $Q -r$i hoser@nevdull.com > XXX 2>&1
 	if [ $? != 0 ]; then echo created patch ..$i twice; cat XXX; exit 1; fi
 done
 echo OK
+
 echo $N Make sure that it does not overrecord sends .................$NL
 cd "$HERE/project"
 bk send $Q -r1.4 hoser@nevdull.com > XXX
@@ -164,8 +173,26 @@ bk send $Q hoser@nevdull.com > XXX
 cmp -s XXX YYY
 if [ $? = 0 ]; then echo failed to create patch 1.5..; exit 1; fi
 echo OK
+
 echo $N Make sure it accepts -sSubject ..............................$NL
 bk send $Q -r1.4 -s'My verbose subject line' hoser@nevdull.com > XXX 2>&1
 grep 'usage:' XXX > /dev/null 2>&1
 if [ $? = 0 ]; then echo complains about -s; exit 1; fi
+echo OK
+
+echo $N Send and receive a patch with a tag .........................$NL
+cd "$HERE/project"
+bk tag $Q TIP
+bk send $Q -r+ - | bk receive -at ../csets
+cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip; rm -f XXX YYY
+cd "$HERE/csets"; bk -r clean; bk -r admin -Zgzip
+cd "$HERE"
+rm -f project/BitKeeper/etc/SCCS/x.id_cache
+rm -f csets/BitKeeper/etc/SCCS/x.id_cache
+rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
+rm -f csets/BitKeeper/etc/csets-in
+rm -f project/BitKeeper/log/*
+rm -f csets/BitKeeper/log/*
+bk diff -r project csets > diff$$
+if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
