@@ -822,7 +822,6 @@ int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
 int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
-void	do_clean(char *file, int flags);
 int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);

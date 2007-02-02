@@ -6,7 +6,7 @@ BK_TTYPRINTF="$HERE/INITs"
 FILE="$BK_TTYPRINTF"
 export BK_SHOWINIT BK_TTYPRINTF
 
-CNT=7
+CNT=6
 echo $N "Count the inits for a 'bk setup' ($CNT)........................."$NL
 fresh_commercial project
 SEEN=`wc -l < "$FILE"`
@@ -34,7 +34,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=5
+CNT=4
 echo $N "Count the inits for a 'bk commit' ($CNT)........................"$NL
 echo hi > file
 bk new $Q file
@@ -77,7 +77,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=18
+CNT=17
 echo $N "Count the inits for a 'bk pull' ($CNT)........................."$NL
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore

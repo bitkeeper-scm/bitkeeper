@@ -18,11 +18,11 @@ int
 commit_main(int ac, char **av)
 {
 	int	c, doit = 0, force = 0;
-	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
-	char	pendingFiles[MAXPATH] = "";
 	char	*sym = 0;
 	int	dflags = 0;
 	c_opts	opts  = {0, 0};
+	char	pendingFiles[MAXPATH] = "";
+	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "dfFl:RqsS:y:Y:")) != -1) {
 		switch (c) {
@@ -163,7 +163,7 @@ commit_main(int ac, char **av)
 		if (comments_savefile(commentFile)) return (1);
 		unlink(commentFile);
 	}
-	do_clean(s_cset, SILENT);
+	unlink("ChangeSet");
 	return (do_commit(av, opts, sym, pendingFiles, dflags));
 }
 
