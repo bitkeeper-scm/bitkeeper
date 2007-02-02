@@ -1082,8 +1082,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 		goto out;
 	}
 
-out:	sccs_free(cset);
-	unlink(filename);
+out:	unlink(filename);
 	comments_done();
 	return (error);
 }
