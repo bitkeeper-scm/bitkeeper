@@ -77,7 +77,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=19
+CNT=18
 echo $N "Count the inits for a 'bk pull' ($CNT)........................."$NL
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
