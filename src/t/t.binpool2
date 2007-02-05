@@ -96,6 +96,8 @@ echo $N Create local data and clone repo ............................$NL
 cp "$HERE"/F2 F2
 bk new $Q F2 || exit 1
 bk mv bin.data F1 || exit 1
+cp "$HERE"/F1 dupfile
+bk new $Q dupfile || exit 1
 bk commit $Q -ylocal || exit 1
 cd "$HERE"
 bk clone $Q pcopy pclone1 || exit 1
