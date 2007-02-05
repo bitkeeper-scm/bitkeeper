@@ -69,6 +69,7 @@ binpool_send_main(int ac, char **av)
 	int	len, c;
 	int	tomaster = 0;
 	int	rc = 0;
+	hash	*sent;
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "m")) != -1) {
@@ -93,6 +94,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		sprintf(buf, "bk -q@'%s' _binpool_send -", url);
 		return (system(buf));
 	}
+	sent = hash_new(HASH_MEMHASH);
 	fsfio = popen("bk sfio -Bomq", "w");
 	assert(fsfio);
 
@@ -104,6 +106,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 
 		dfile = bp_lookupkeys(0, p, buf, &a);
 		if (dfile) {
+			unless (hash_insertStr(sent, dfile, 0)) continue;
 			/*
 			 * We intentionally send the afile first so it
 			 * can be examined before unpacking data.
@@ -125,6 +128,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		fprintf(stderr, "%s: sfio failed.\n", av[0]);
 		rc = 1;
 	}
+	hash_free(sent);
 	return (rc);
 }
 
