@@ -184,7 +184,6 @@ _getdir(char *dir, struct stat *sb1)
 	DIR	*d;
 	struct	dirent   *e;
 	struct  stat	sb2;
-	int	i;
 
 again:
 	unless (d = opendir(dir)) {

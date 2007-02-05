@@ -101,8 +101,8 @@ admin_main(int ac, char **av)
 					flags |= ADMIN_TIME;
 				}
 				break;
-		    case 'H':					/* doc 2.0 */	
-				flags |= ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME;
+		    case 'H':	/* obsolete, remove in 2009 */
+				flags |= ADMIN_FORMAT|ADMIN_BK|ADMIN_TIME;
 				break;
 		    case 's':					/* undoc? 2.0 */
 		    case 'q':	flags |= SILENT; break;		/* doc 2.0 */

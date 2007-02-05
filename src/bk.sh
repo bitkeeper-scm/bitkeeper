@@ -93,7 +93,7 @@ _compression() {		# /* undoc? 2.0 */
 
 # shorthand
 _tags() {
-	exec bk changes -t
+	exec bk changes -t ${1+"$@"}
 }
 
 _credits() {

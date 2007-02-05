@@ -256,6 +256,7 @@ passes(opts *opts)
 		perror("sfiles list");
 err:		if (p) fclose(p);
 		if (flist[0]) unlink(flist);
+		return (1);
 	}
 	unless (p = fopen(flist, "r")) {
 		perror(flist);
@@ -2023,6 +2024,7 @@ automerge(resolve *rs, names *n, int identical)
 		do_free = 1;
 	}
 
+	unless (unlink(rs->s->gfile)) rs->s = sccs_restart(rs->s);
 	if (identical || sameFiles(n->local, n->remote)) {
 		assert(n);
 		sys("cp", n->local, rs->s->gfile, SYS);
@@ -2035,7 +2037,6 @@ automerge(resolve *rs, names *n, int identical)
 			    "Not automerging binary '%s'\n", rs->s->gfile);
 		}
 nomerge:	rs->opts->hadConflicts++;
-		unlink(rs->s->gfile);
 		return;
 	}
 	if (NOMERGE(rs->s)) goto nomerge;
@@ -2046,7 +2047,6 @@ nomerge:	rs->opts->hadConflicts++;
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	unless (unlink(rs->s->gfile)) rs->s = sccs_restart(rs->s);
 	if (rs->opts->mergeprog) {
 		ret = sys("bk", rs->opts->mergeprog,
 		    n->local, n->gca, n->remote, rs->s->gfile, SYS);

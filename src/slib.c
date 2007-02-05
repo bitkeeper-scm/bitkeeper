@@ -7568,44 +7568,6 @@ badcksum(sccs *s, int flags)
 	return ((sum_t)sum != filesum);
 }
 
-private inline int
-isAscii(int c)
-{
-	if (c & 0x60) return (1);
-	return (c == '\f') ||
-	    (c == '\n') || (c == '\b') || (c == '\r') || (c == '\t');
-}
-
-/*
- * Check for bad characters in the file.
- */
-private int
-badchars(sccs *s)
-{
-	register char *t = s->mmap;
-	register char *end = s->mmap + s->size;
-
-	assert(s);
-	assert(s->mmap);
-	if ((t[0] != '\001') || (t[1] != 'h') || (t[7] != '\n')) {
-		fprintf(stderr, "admin: bad checksum format in %s\n",
-		    s->sfile);
-		return (1);
-	}
-	for (t = s->mmap + 8; t < end; t++) {
-		unless (isAscii(*t) || ((*t == '\001') && (t[-1] == '\n'))) {
-			char	*r = t;
-
-			while ((r > s->mmap) && (r[-1] != '\n')) r--;
-			fprintf(stderr,
-			    "admin: bad line in %s follows:\n%.*s",
-			    s->sfile, linelen(r), r);
-			return (1);
-		}
-	}
-	return (0);
-}
-
 /*
  * If we are regular files, then return sameness in the modes.
  * Otherwise return sameness in the links.
@@ -8222,10 +8184,12 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 			if (HASH(s)) {
 				char	*from, *to, *val;
 				/* XXX: hack to use sbuf, but it exists */
+				val = CSET(s) ?
+				    separator(fbuf) : strchr(fbuf, ' ');
+				assert(val && (*val == ' '));
 				for (from = fbuf, to = sbuf;
-				    *from && *from != ' ';
+				    from != val;
 				    *to++ = *from++) /* null body */;
-				assert(*from == ' ');
 				*to++ = '\0';
 				from++;
 				val = to;
@@ -10966,9 +10930,8 @@ out:
 	if ((flags & ADMIN_BK) && checkInvariants(sc, flags)) OUT;
 	if ((flags & ADMIN_GONE) && checkGone(sc, D_GONE, "admin")) OUT;
 	if (flags & ADMIN_FORMAT) {
-		if (checkrevs(sc, flags) || checkdups(sc) ||
-		    ((flags & ADMIN_ASCII) && badchars(sc)) ||
-		    checkMisc(sc, flags)) {
+		if (checkrevs(sc, flags) ||
+		    checkdups(sc) || checkMisc(sc, flags)) {
 			OUT;
 		}
 #if 0
