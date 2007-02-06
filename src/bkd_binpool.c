@@ -173,7 +173,11 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 		return (system(buf));
 	}
 	strcpy(buf, "BitKeeper/binpool/tmp");
-	mkdirp(buf);
+	if (mkdirp(buf)) {
+		fprintf(stderr, "_binpool_receive: failed to create %s\n",
+		    buf);
+		return (1);
+	}
 	chdir(buf);
 
 	/* reads stdin */

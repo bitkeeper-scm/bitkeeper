@@ -19,20 +19,36 @@ private int	doit(char **av, char *url, int quiet, u32 bytes, char *input);
 int
 remote_bk(int quiet, int ac, char **av)
 {
-	int	i, j, ret = 0;
+	int	i, j, k, ret = 0;
 	u32	bytes = 0;
 	char	*p;
 	char	**l, **urls = 0, *input = 0;
 	char	**data = 0;
 
 	if (streq(av[ac-1], "-")) {
-		char	buf[MAXLINE];
-
 		setmode(0, _O_BINARY);
-		while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
-			data = data_append(data, buf, i, 0);
+		/* collect stdin in larger and larger buckets */
+		j = 1024;
+		while (1) {
+			p = malloc(j);
+			if ((i = fread(p, 1, j, stdin)) <= 0) {
+				free(p);
+				break;
+			}
+			data = addLine(data, p);
+			bytes += i;
+			j *= 2;
 		}
-		input = data_pullup(&bytes, data);
+		/* collapse them together into one buffer again */
+		input = p = malloc(bytes);
+		j = 1024;
+		EACH(data) {
+			k = min(j, bytes - (p - input));
+			memcpy(p, data[i], k);
+			p += k;
+			j *= 2;
+		}
+		freeLines(data, free);
 	}
 
 	/* parse the options between 'bk' and the command to remove -@ */
