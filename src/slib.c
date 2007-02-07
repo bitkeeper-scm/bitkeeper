@@ -6799,7 +6799,7 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 			fprintf(stderr,
 			    "binpool: fetch failed for %s\n", s->gfile);
 			return (1);
-		} else if (bp_get(s, d, flags, gfile)) {
+		} else if (error = bp_get(s, d, flags, gfile)) {
 			fprintf(stderr,
 			    "binpool: get after fetch failed for %s\n",
 			    s->gfile);

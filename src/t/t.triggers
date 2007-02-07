@@ -1299,10 +1299,6 @@ chmod +x pre-incoming
 cd "$HERE"
 echo "OK"
 
-#!/bin/sh
-exit 0
-#!/bin/sh
-#!/bin/sh
 echo $N Clone w/trivial triggers ....................................$NL
 cd "$HERE"
 bk clone $Q "$HERE/project" "$HERE/copy" 2> /dev/null || { echo failed; exit 1; }

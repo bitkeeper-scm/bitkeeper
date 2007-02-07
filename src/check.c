@@ -416,7 +416,10 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 			return (1);
 		} else {
 			flags = (checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND;
-			sccs_get(s, 0, 0, 0, 0, flags|timestamps|SILENT, "-");
+			if (sccs_get(s, 0, 0, 0, 0,
+			    flags|timestamps|SILENT, "-")) {
+				return (1);
+			}
 			s = sccs_restart(s);
 		}
 	}

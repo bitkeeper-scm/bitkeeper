@@ -387,7 +387,37 @@ hash2path(project *proj, char *hash)
 int
 bp_fetch(sccs *s, delta *din)
 {
-	return (-1);
+	FILE	*f;
+	char	*repoID, *url, *cmd;
+	char	rootkey[64], deltakey[64];
+
+	/* find the repo_id of my master */
+	unless (repoID = bp_masterID()) {
+		/* no need to update myself */
+		return (0);
+	}
+	free(repoID);
+	url = proj_configval(0, "binpool_server");
+	assert(url);
+
+	unless (din = bp_fdelta(s, din)) return (-1);
+
+	sccs_md5delta(s, sccs_ino(s), rootkey);
+	sccs_md5delta(s, din, deltakey);
+
+	cmd = aprintf("bk -q@'%s' _binpool_send - | bk -R _binpool_receive -q -",
+	    url);
+
+	f = popen(cmd, "w");
+	free(cmd);
+	assert(f);
+	fprintf(f, "%s %s %s\n", rootkey, deltakey, din->hash);
+	if (pclose(f)) {
+		fprintf(stderr, "bp_fetch: failed to fetch delta for %s\n",
+		    s->gfile);
+		return (-1);
+	}
+	return (0);
 }
 
 /*
@@ -409,7 +439,6 @@ bp_updateMaster(char *tiprev)
 	/* find the repo_id of my master */
 	unless (repoID = bp_masterID()) {
 		/* no need to update myself */
-		free(repoID);
 		return (0);
 	}
 	url = proj_configval(0, "binpool_server");
@@ -774,7 +803,7 @@ binpool_flush_main(int ac, char **av)
 		*p1 = 0;
 		hash_storeStr(bpdeltas, buf1, 0);
 	}
-	fclose(f);
+	pclose(f);
 
 	/* walk all bp files */
 	f = popen("bk _find BitKeeper/binpool -type f -name '*.a1'", "r");
