@@ -3,6 +3,7 @@
 #include "bkd.h"
 
 private int	doit(char **av, char *url, int quiet, u32 bytes, char *input);
+private	void	stream_stdin(remote *r);
 
 /*
  * Turn
@@ -24,32 +25,6 @@ remote_bk(int quiet, int ac, char **av)
 	char	*p;
 	char	**l, **urls = 0, *input = 0;
 	char	**data = 0;
-
-	if (streq(av[ac-1], "-")) {
-		setmode(0, _O_BINARY);
-		/* collect stdin in larger and larger buckets */
-		j = 1024;
-		while (1) {
-			p = malloc(j);
-			if ((i = fread(p, 1, j, stdin)) <= 0) {
-				free(p);
-				break;
-			}
-			data = addLine(data, p);
-			bytes += i;
-			j *= 2;
-		}
-		/* collapse them together into one buffer again */
-		input = p = malloc(bytes);
-		j = 1024;
-		EACH(data) {
-			k = min(j, bytes - (p - input));
-			memcpy(p, data[i], k);
-			p += k;
-			j *= 2;
-		}
-		freeLines(data, free);
-	}
 
 	/* parse the options between 'bk' and the command to remove -@ */
 	for (i = 1; av[i]; i++) {
@@ -81,6 +56,37 @@ remote_bk(int quiet, int ac, char **av)
 	}
 	assert(urls);
 
+	/*
+	 * If we have multiple URLs or are talking to a http server
+	 * then we need to buffer up stdin.
+	 */
+	if (streq(av[ac-1], "-") &&
+	    ((nLines(urls) > 1) || strneq(urls[1], "http", 4))) {
+		setmode(0, _O_BINARY);
+		/* collect stdin in larger and larger buckets */
+		j = 1024;
+		while (1) {
+			p = malloc(j);
+			if ((i = fread(p, 1, j, stdin)) <= 0) {
+				free(p);
+				break;
+			}
+			data = addLine(data, p);
+			bytes += i;
+			j *= 2;
+		}
+		/* collapse them together into one buffer again */
+		input = p = malloc(bytes);
+		j = 1024;
+		EACH(data) {
+			k = min(j, bytes - (p - input));
+			memcpy(p, data[i], k);
+			p += k;
+			j *= 2;
+		}
+		freeLines(data, free);
+	}
+
 	EACH(urls) {
 		ret |= doit(av, urls[i], quiet, bytes, input);
 
@@ -100,7 +106,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input)
 {
 	remote	*r = remote_parse(url, REMOTE_BKDURL);
 	FILE	*f;
-	int	i, fd, did_header = 0;
+	int	i, rc, fd, did_header = 0;
 	char	*u = 0;
 	char	buf[8192];	/* must match bkd_misc.c:cmd_bk()/buf */
 
@@ -121,14 +127,20 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input)
 		assert(bytes > 0);
 		fprintf(f, "@STDIN=%u@\n", bytes);
 		fwrite(input, 1, bytes, f);
+		fprintf(f, "@STDIN=0@\n");
+	} else if (!streq(av[i-1], "-")) {
+		fprintf(f, "@STDIN=0@\n");
 	}
-	fprintf(f, "@STDIN=0@\n");
 	fclose(f);
-	i = send_file(r, buf, 0);
+	rc = send_file(r, buf, 0);
 	unlink(buf);
-	if (i) {
+	if (rc) {
+		disconnect(r, 1);
 		goto out;
 	}
+	if (!input && streq(av[i-1], "-")) stream_stdin(r);
+	disconnect(r, 1);
+
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	unless (getline2(r, buf, sizeof (buf)) > 0) {
 		i = 1<<5;
@@ -169,8 +181,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input)
 	    	}
 	}
 	unless (sscanf(buf, "@EXIT=%d@", &i)) i = 100;
-out:	disconnect(r, 1);
-	wait_eof(r, 0);
+out:	wait_eof(r, 0);
 	return (i);
 }
 
@@ -183,4 +194,21 @@ debugargs_main(int ac, char **av)
 		printf("%d: %s\n", i, shellquote(av[i]));
 	}
 	return (0);
+}
+
+private void
+stream_stdin(remote *r)
+{
+	char	*buf = malloc(64<<10);
+	int	i;
+	char	line[64];
+
+	while ((i = fread(buf, 1, 64<<10, stdin)) > 0) {
+		sprintf(line, "@STDIN=%u@\n", i);
+		writen(r->wfd, line, strlen(line));
+		writen(r->wfd, buf, i);
+	}
+	sprintf(line, "@STDIN=0@\n");
+	writen(r->wfd, line, strlen(line));
+	free(buf);
 }
