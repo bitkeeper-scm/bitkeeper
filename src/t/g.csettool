@@ -40,7 +40,7 @@ echo OK
 echo $N Simple startup and exit......................................$NL
 bk guitest csettool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
@@ -58,7 +58,7 @@ echo $N Create dotbk/cset.rc ........................................$NL
 test -f "$RC" && rm -f "$RC"
 bk guitest csettool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 test -f "$RC" || (echo "failed" ; exit 1; )
 echo "OK"

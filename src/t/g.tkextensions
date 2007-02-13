@@ -35,7 +35,7 @@ bk guitest >"$OUT" 2>&1 <<'EOF'
 	package require Tktable
 	table .t
 	pack .t
-	after 100 {exit 0}
+	after 1000 {exit 0}
 EOF
 if [ $? -ne 0 ]; then 
 	echo failed
@@ -50,7 +50,7 @@ bk guitest >"$OUT" 2>&1 <<'EOF'
 	treectrl .t
 	pack .t
 	update
-	after 100 {exit 0}
+	after 1000 {exit 0}
 EOF
 if [ $? -ne 0 ]; then 
 	echo failed
@@ -63,7 +63,7 @@ echo $N 'Checking for BWidget.........................................' $NL
 bk guitest >"$OUT" 2>&1 <<'EOF'
     package require BWidget
     update
-    after 100 {exit 0}
+    after 1000 {exit 0}
 EOF
 if [ $? -ne 0 ]; then 
 	echo failed

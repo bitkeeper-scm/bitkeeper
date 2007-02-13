@@ -28,7 +28,7 @@ echo OK
 echo $N Simple startup with no args and nothing to diff..............$NL
     bk guitest difftool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 expected='There were no files available to diff' 
@@ -51,7 +51,7 @@ echo "this is file 1" > file1
 echo "this is file 2" > file2
 bk guitest difftool file1 file2 >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
@@ -64,7 +64,7 @@ bk guitest difftool file1 file2 >"$OUT" 2>&1 <<'EOF'
     set files [.menu.fmb cget -text]
     puts "$files diffCount=$diffCount"
     test_buttonPress Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi

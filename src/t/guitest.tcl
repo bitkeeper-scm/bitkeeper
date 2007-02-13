@@ -372,6 +372,13 @@ proc test_geometry {w} \
 	return "[winfo width $w]x[winfo height $w]+[winfo x $w]+[winfo y $w]"
 }
 
+proc test_die {code} \
+{
+	after 15000 {
+		puts stderr "Aborted due to timeout"
+		exit $code
+	}
+}
 
 # Citool has a rather annoying design in that it calls
 # vwait for its main loop. By overriding that command we can catch
