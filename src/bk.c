@@ -833,13 +833,15 @@ launch_wish(char *script, char **av)
 			    bin);
 		} else {
 			path = aprintf("%s/gui/bin/bkgui", bin);
-		}
-		if (executable(path)) {
-			safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.5", bin);
-			safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.5", bin);
-		} else {
-			free(path);
-			path = 0;
+			if (executable(path)) {
+				safe_putenv("TCL_LIBRARY=%s/gui/lib/tcl8.5",
+				    bin);
+				safe_putenv("TK_LIBRARY=%s/gui/lib/tk8.5",
+				    bin);
+			} else {
+				free(path);
+				path = 0;
+			}
 		}
 	}
 	unless (path) {

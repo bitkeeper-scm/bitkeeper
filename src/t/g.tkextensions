@@ -16,6 +16,20 @@ export BK_TEST_HOME="$HERE/home"
 OUT="$HERE/out"
 CONFIG="`bk dotbk`/config-gui"
 
+echo $N 'Checking for right version of Tk.............................' $NL
+bk guitest >"$OUT" 2>&1 <<'EOF'
+    if {$::tk_version eq "8.5"} {
+        exit 0
+    } else {
+        exit 1
+    }
+EOF
+if [ $? -ne 0 ]; then
+	echo skipped
+	exit 0
+fi
+echo OK
+
 echo $N 'Checking for Tktable.........................................' $NL
 bk guitest >"$OUT" 2>&1 <<'EOF'
 	package require Tktable

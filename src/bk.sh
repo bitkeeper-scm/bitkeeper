@@ -1435,6 +1435,10 @@ _wish() {
 	if [ -z "$DISPLAY" -a -x "$AQUAWISH" ] ; then
 		WISH="$AQUAWISH"
 	else
+		TCL_LIBRARY=`bk bin`/gui/lib/tcl8.5
+		export TCL_LIBRARY
+		TK_LIBRARY=`bk bin`/gui/lib/tk8.5
+		export TK_LIBRARY
 		WISH="`bk bin`/gui/bin/bkgui"
 	fi
 	test "X$OSTYPE" = "Xmsys" && WISH=`win2msys "$WISH"`

@@ -31,12 +31,16 @@ if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
 echo $N 'Sanity check that gc(tabwidth) affects text widgets..........'$NL
-echo 'set gc(tabwidth) 4' > $CONFIG
+echo 'set gc(tabwidth) 4' > "$CONFIG"
 bk guitest difftool >"$OUT" 2>&1 <<'EOF'
-    set tabs [.diffs.right cget -tabs]
-    set font [.diffs.right cget -font]
-    set fontsize [font measure $font 0]
-    set tabwidth [expr {$tabs / $fontsize}]
+    if {$::tk_version eq "8.5"} {
+        set tabs [.diffs.right cget -tabs]
+        set font [.diffs.right cget -font]
+        set fontsize [font measure $font 0]
+        set tabwidth [expr {$tabs / $fontsize}]
+    } else {
+        set tabwidth [.diffs.right cget -tabwidth]
+    }
     puts "tab width: $tabwidth"
     exit 0
 EOF
@@ -51,13 +55,17 @@ fi
 echo "OK"
 
 echo $N Tool-specific setting overrides global setting...............$NL
-echo 'set gc(tabwidth) 4' > $CONFIG
-echo 'set gc(diff.tabwidth) 6' > $CONFIG
+echo 'set gc(tabwidth) 4' > "$CONFIG"
+echo 'set gc(diff.tabwidth) 6' > "$CONFIG"
 bk guitest difftool >"$OUT" 2>&1 <<'EOF'
-    set tabs [.diffs.right cget -tabs]
-    set font [.diffs.right cget -font]
-    set fontsize [font measure $font 0]
-    set tabwidth [expr {$tabs / $fontsize}]
+    if {$::tk_version eq "8.5"} {
+        set tabs [.diffs.right cget -tabs]
+        set font [.diffs.right cget -font]
+        set fontsize [font measure $font 0]
+        set tabwidth [expr {$tabs / $fontsize}]
+    } else {
+        set tabwidth [.diffs.right cget -tabwidth]
+    }
     puts "tab width: $tabwidth"
     exit 0
 EOF

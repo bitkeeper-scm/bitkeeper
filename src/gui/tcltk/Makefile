@@ -2,6 +2,10 @@ HERE	:= $(shell pwd)
 OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
 BKROOT	:= $(shell bk root)
 
+# The Tk version is tied to the Tcl version so you only need to change TCL
+# If you change version don't forget to change TCLURL/TKURL/TCLKEY/TKKEY
+TCLVERSION := 8.5
+
 ifeq "$(OSTYPE)" "msys"
 	S := win
 	EXE := .exe
@@ -15,7 +19,9 @@ else
 	EXE := 
 	TKTABLELIB := libTktable2.9.so
 	TKTREECTRLLIB := libtreectrl2.1.so
-	XFTSUPPORT := --enable-xft
+	XFTSUPPORT := --disable-xft
+#	Once we solve the font issues, we can turn on True Type Font support
+#	XFTSUPPORT := --enable-xft
 	SHARED := --disable-shared
 	ifeq "$(shell uname)" "Darwin"
 		AQUA := 1
@@ -30,6 +36,7 @@ else
 	else
 	    ifeq "$(shell uname -m)" "x86_64"
 	        ENABLE_64BIT=--enable-64bit
+		WITHOUT_X := --with-x
         endif
 	endif
 endif
@@ -38,57 +45,80 @@ ifdef	DEBUG_TCL
 	SYMBOLS	:= --enable-symbols
 endif
 
+ifeq "$(TCLVERSION)" "8.4"
+DDEVERSION := 1.2
+REGVERSION := 1.1
+WITHOUT_X :=
+TCLBUILD := /build/tcl-$(USER)/Tcl.Framework
+TKBUILD  := /build/tk-$(USER)/Tk.Framework
+WISHPATH := /build/tk-$(USER)/BitKeeper.app
+EXTENSIONS :=
+AQUAEXTENSIONS :=
+else
+# For Tcl/Tk 8.5
+DDEVERSION := 1.3
+REGVERSION := 1.2
+ifndef WITHOUT_X
+WITHOUT_X := --without-x
+endif
+TCLBUILD := ../build/tcl/Tcl.Framework
+TKBUILD  := ../build/tk/Tk.Framework
+WISHPATH := build/tk/Wish.app
+EXTENSIONS := lib/Tktable2.9/$(TKTABLELIB) \
+	      lib/treectrl2.1/$(TKTREECTRLLIB) \
+	      lib/BWidget1.7/pkgIndex.tcl \
+	      lib/Tkcon/pkgIndex.tcl
+AQUAEXTENSIONS := $(BKAPP)/Contents/lib/Tktable2.9/$(TKTABLELIB) \
+		  $(BKAPP)/Contents/lib/treectrl2.1/$(TKTREECTRLLIB) \
+		  $(BKAPP)/Contents/lib/BWidget1.7/pkgIndex.tcl \
+		  $(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl
+endif
+
 CC := gcc
 LD := gcc
 STRIP := strip
 export CC LD
 
 all: version.sh ../../tclkey.h
-	-rm -rf bin lib
+	-rm -rf bin lib share
 	TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \
 	then	gunzip < "$$TCLVER" | tar -xf -; true; \
 	else	unset CC LD CCXTRA CFLAGS MAKEFLAGS; \
 		$(MAKE) bin/tclsh$(EXE) bin/bkgui$(EXE) \
-		    lib/Tktable2.9/$(TKTABLELIB) \
-		    lib/treectrl2.1/$(TKTREECTRLLIB) \
-		    lib/BWidget1.7/pkgIndex.tcl \
-		    lib/Tkcon/pkgIndex.tcl \
+		    $(EXTENSIONS) \
 		    || exit 1 ; \
 		if [ "X$(AQUA)" != X ]; \
 		then    $(MAKE) $(BKAPP)/Contents/MacOS/BitKeeper \
-			    $(BKAPP)/Contents/lib/Tktable2.9/$(TKTABLELIB) \
-			    $(BKAPP)/Contents/lib/treectrl2.1/$(TKTREECTRLLIB) \
-			    $(BKAPP)/Contents/lib/BWidget1.7/pkgIndex.tcl  \
-			    $(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl ; \
+			$(AQUAEXTENSIONS) \
+			|| exit 1 ; \
 		fi \
 	fi
 	$(MAKE) rm_doc
 	$(MAKE) install
 
-tcl/$S/Makefile: tcl/$S/configure
+tcl/$S/Makefile: tcl/$S/configure Makefile
 	cd tcl/$S; \
 	./configure --disable-info-body $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
 
-# --without-x means go straight to X11R6 check
-tk/$S/Makefile: tk/$S/configure
+tk/$S/Makefile: tk/$S/configure Makefile
 	cd tk/$S; \
-	./configure --without-x \
+	./configure $(WITHOUT_X) \
 	    $(ENABLE_64BIT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY TCLURL
-	test -d tcl || bk clone -r`tail -1 TCLKEY` `cat TCLURL` tcl
+	test -d tcl || bk clone -qr`tail -1 TCLKEY` `cat TCLURL` tcl
 	cd tcl; bk -Ur get -qS
 
 # fetch tk subdirectory if needed
 tk/$S/configure: TKKEY TKURL
-	test -d tk || bk clone -r`tail -1 TKKEY` `cat TKURL` tk
+	test -d tk || bk clone -qr`tail -1 TKKEY` `cat TKURL` tk
 	cd tk; bk -Ur get -qS
 
 # fetch tktable subdirectory if needed
 tktable/configure: TKTABLEKEY
-	test -d tktable || bk clone -r`tail -1 TKTABLEKEY` \
+	test -d tktable || bk clone -qr`tail -1 TKTABLEKEY` \
 				bk://data.bitmover.com/tcl/tktable.bk tktable
 	cd tktable; bk -Ur get -qS
 
@@ -115,17 +145,17 @@ $(BKAPP)/Contents/lib/Tktable2.9/$(TKTABLELIB): tktable/configure
 	}; \
 	test -f Makefile || { \
 		./configure \
-		    --with-tcl=../build/tcl/Deployment \
-		    --with-tk=../build/tk/Deployment \
-		    --with-tclinclude=../build/tcl/Tcl.framework/Headers \
-		    --with-tkinclude=../build/tk/Tk.framework/Headers ; \
+		    --with-tcl=$(TCLBUILD) \
+		    --with-tk=$(TKBUILD) \
+		    --with-tclinclude=$(TCLBUILD)/Headers \
+		    --with-tkinclude=$(TKBUILD)/Headers ; \
 	}; \
 	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
 	    libdir=lib bindir=Resources install
 
 # fetch tktreectrl subdirectory if needed
 tktreectrl/configure: TKTREECTRLKEY
-	test -d tktreectrl || bk clone -r`tail -1 TKTREECTRLKEY` \
+	test -d tktreectrl || bk clone -qr`tail -1 TKTREECTRLKEY` \
 			bk://data.bitmover.com/tcl/tktreectrl.bk tktreectrl
 	cd tktreectrl; bk -Ur get -qS
 
@@ -151,16 +181,16 @@ $(BKAPP)/Contents/lib/treectrl2.1/$(TKTREECTRLLIB): tktreectrl/configure
 	}; \
 	test -f Makefile || { \
 		./configure \
-		    --with-tcl=../build/tcl/Deployment \
-		    --with-tk=../build/tk/Deployment \
-		    --with-tclinclude=../build/tcl/Tcl.framework/Headers \
-		    --with-tkinclude=../build/tk/Tk.framework/Headers ; \
+		    --with-tcl=$(TCLBUILD) \
+		    --with-tk=$(TKBUILD) \
+		    --with-tclinclude=$(TCLBUILD)/Headers \
+		    --with-tkinclude=$(TKBUILD)/Headers ; \
 	}; \
 	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
 	    libdir=lib bindir=Resources install
 
 lib/BWidget1.7/pkgIndex.tcl: BWIDGETKEY
-	test -d bwidget || bk clone -r`tail -1 BWIDGETKEY` \
+	test -d bwidget || bk clone -qr`tail -1 BWIDGETKEY` \
 			bk://data.bitmover.com/tcl/bwidget.bk bwidget
 	cd bwidget; bk -Ur get -qS
 	mkdir -p lib/BWidget1.7/lang
@@ -175,7 +205,7 @@ $(BKAPP)/Contents/lib/BWidget1.7/pkgIndex.tcl: lib/BWidget1.7/pkgIndex.tcl
 	cp -fRPH lib/BWidget1.7 $(BKAPP)/Contents/lib
 
 lib/Tkcon/pkgIndex.tcl: TKCONKEY
-	test -d tkcon || bk clone -r`tail -1 TKCONKEY` \
+	test -d tkcon || bk clone -qr`tail -1 TKCONKEY` \
 			bk://data.bitmover.com/tcl/tkcon.bk tkcon
 	cd tkcon; bk -Ur get -qS
 	mkdir -p lib/Tkcon
@@ -218,13 +248,13 @@ bin/tclsh$(EXE): tcl/$S/Makefile
 	    XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
 	    install-binaries install-libraries
 	mv bin/tclsh* bin/tclsh$(EXE)
-	if [ -d usr/local/lib/dde1.3 ] ; then \
-		mv usr/local/lib/dde1.3 lib/tcl8.5 ; \
+	if [ -d usr/local/lib/dde$(DDEVERSION) ] ; then \
+		mv usr/local/lib/dde$(DDEVERSION) lib/tcl$(TCLVERSION) ; \
 	fi
-	if [ -d usr/local/lib/reg1.2 ] ; then \
-		mv usr/local/lib/reg1.2 lib/tcl8.5; \
+	if [ -d usr/local/lib/reg$(REGVERSION) ] ; then \
+		mv usr/local/lib/reg$(REGVERSION) lib/tcl$(TCLVERSION); \
 	fi
-	rm -rf include usr lib/tcl8.5/tcltest*
+	rm -rf include usr lib/tcl$(TCLVERSION)/tcltest*
 	$(STRIP) bin/tclsh$(EXE)
 
 bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
@@ -234,7 +264,7 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	    XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tk*/images
-	cd lib/tcl8.5/encoding/; \
+	cd lib/tcl$(TCLVERSION)/encoding/; \
 	    mkdir tmp; \
 	    mv ascii.* cp1252.* iso8859-1.* iso8859-2.* macRoman.* tmp; \
 	    rm -f *.enc; \
@@ -247,11 +277,11 @@ mkapp: FORCE
 	-bk get mkapp
 
 bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) bin/bkgui$(EXE) mkapp
-	$(MAKE) -C tcl/macosx \
+	$(MAKE) -C tcl/macosx XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root` --disable-info-body" embedded
-	$(MAKE) -C tk/macosx \
+	$(MAKE) -C tk/macosx XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root`" embedded
-	./mkapp BitKeeper 1.0 BkAp "BitMover, Inc"
+	./mkapp BitKeeper 1.0 BkAp "BitMover, Inc" com.bitmover.bk "$(WISHPATH)"
 
 clean-obj: FORCE
 	-test -d tcl && cd tcl/$S && test -f Makefile && $(MAKE) distclean
@@ -276,7 +306,7 @@ clean: clean-obj FORCE
 
 clobber:
 	@$(MAKE) clean
-	rm -rf bin lib man build include usr
+	rm -rf bin lib man build include usr share
 	@for i in tcl tk tktable tktreectrl bwidget tkcon ; do \
 		if [ -d $$i ] ; \
 		then	cd $$i ; \
