@@ -754,8 +754,8 @@ private int
 binpool_flush_main(int ac, char **av)
 {
 	FILE	*f;
-	int	c, i, j, pruned;
-	u32	deleted;
+	int	c, i, j, k, pruned, rc = 1;
+	char	**deleted;
 	hash	*bpdeltas;
 	bpattr	a;
 	char	*p1, *p2;
@@ -786,8 +786,7 @@ binpool_flush_main(int ac, char **av)
 			fprintf(stderr,
 			    "bk binpool flush: No binpool_server set\n");
 			free(p1);
-			hash_free(bpdeltas);
-			return (1);
+			goto out;
 		}
 		free(p2);
 		p2 = proj_configval(0, "binpool_server");
@@ -795,6 +794,7 @@ binpool_flush_main(int ac, char **av)
 		free(p1);
 	}
 	f = popen(cmd, "r");
+	free(cmd);
 	assert(f);
 	while (fnext(buf1, f)) {
 		chomp(buf1);
@@ -803,7 +803,10 @@ binpool_flush_main(int ac, char **av)
 		*p1 = 0;
 		hash_storeStr(bpdeltas, buf1, 0);
 	}
-	pclose(f);
+	if (pclose(f)) {
+		fprintf(stderr, "bk binpool flush: failed to contact server\n");
+		return (1);
+	}
 
 	/* walk all bp files */
 	f = popen("bk _find BitKeeper/binpool -type f -name '*.a1'", "r");
@@ -832,7 +835,7 @@ binpool_flush_main(int ac, char **av)
 				continue;
 			}
 			/* remove files */
-			deleted |= (1<<(j-1));
+			deleted = addLine(deleted, int2p(j));
 			p1[-1] = 'd';
 			unlink(buf1);
 			p1[-1] = 'a';
@@ -842,24 +845,39 @@ binpool_flush_main(int ac, char **av)
 		if (deleted) {
 			strcpy(buf2, buf1);
 			p2 = buf2 + (p1 - buf1);
-		}
-		for (i = j = 1; deleted; deleted >>= 1, ++j) {
-			/* j == oldindex, i == newindex */
-			if (deleted & 1) continue;
-			if (i != j) {
-				p1[-1] = p2[-1] = 'd';
-				sprintf(p1, "%d", j);
-				sprintf(p2, "%d", i);
-				rename(buf1, buf2);
-				p1[-1] = p2[-1] = 'a';
-				rename(buf1, buf2);
+			k = p2int(deleted[1]);
+			removeLineN(deleted, 1, 0);
+			for (i = c = 1; i < j; i++) {
+				/* i == oldindex, c == newindex */
+				if (i == k) { /* k == deleted index */
+					if (emptyLines(deleted)) {
+						k = 0;
+					} else {
+						k = p2int(deleted[1]);
+						removeLineN(deleted, 1, 0);
+					}
+					continue;
+				}
+				if (i != c) {
+					p1[-1] = p2[-1] = 'd';
+					sprintf(p1, "%d", i);
+					sprintf(p2, "%d", c);
+					rename(buf1, buf2);
+					p1[-1] = p2[-1] = 'a';
+					rename(buf1, buf2);
+				}
+				++c;
 			}
-			++i;
+			freeLines(deleted, 0);
 		}
 	}
-	pclose(f);
-	hash_free(bpdeltas);
-	return (0);
+	if (pclose(f)) {
+		perror("pclose");
+		goto out;
+	}
+	rc = 0;
+out:	hash_free(bpdeltas);
+	return (rc);
 }
 
 /*
@@ -904,7 +922,10 @@ binpool_check_main(int ac, char **av)
 		/* check data files's size */
 		/* checksum data file */
 	}
-	pclose(f);
+	if (pclose(f)) {
+		perror("pclose");
+		goto out;
+	}
 	rc = 0;
 out:
 	return (rc);
