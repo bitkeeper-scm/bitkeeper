@@ -192,7 +192,7 @@ export_patch(char *diff_style,
 	f = fopen(file_rev, "rt");
 	assert(f);
 	while (fgets(buf, sizeof(buf), f)) {
-		char	*fstart, *fend;
+		char	*fstart, *fend, *rev1;
 
 		chop(buf);
 		/*
@@ -231,8 +231,15 @@ export_patch(char *diff_style,
 		 * need the patch to have the delete.
 		 */
 		fstart = strchr(buf, BK_FS) + 1;
-		fend = strchr(fstart, BK_FS) + 1;
-		fend = strchr(fend, BK_FS) + 1;
+		rev1 = strchr(fstart, BK_FS) + 1;
+		fend = strchr(rev1, BK_FS) + 1;
+		fend[-1] = 0;
+		if (strchr(rev1, '+')) {
+			fprintf(stderr,
+			    "export: Can't make patch of merge node\n");
+			return (1);
+		}
+		fend[-1] = BK_FS;
 		if (strneq(fstart, "BitKeeper/", 10) &&
 		    strneq(fend, "BitKeeper/", 10)) continue;
 		fprintf(f1, "%s\n", buf);
