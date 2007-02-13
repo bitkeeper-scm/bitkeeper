@@ -1,0 +1,56 @@
+#!/bin/sh
+
+if [ $# != 4 ]; then
+	echo "Usage: $0 APPNAME VERSION ABBR COMPANY"
+	exit 1
+fi
+
+appname="BitKeeper"
+version=$1
+abbrev="BkAp"
+company="BitMover, Inc"
+url="com.bitmover.bk"
+
+lowabbrev=`echo "$abbrev" | tr "A-Z" "a-z"`
+year=`date +%y`
+copyright="Copyright © $year by $company"
+newline="\
+"
+
+origdir=`pwd`
+destapp=$origdir/bin/$appname.app
+rm -rf $destapp
+
+cp -fRPH build/tk/Wish.app $destapp
+
+cd $destapp/Contents
+
+sed "s/>Wish Shell</>$appname</" Info.plist | \
+	sed "s/\(Wish Shell 8.[0-9]\), /$appname $version, $copyright${newline}Based on \1/;
+	s/Wish.icns/$abbrev.icns/ ; 
+	s/com.tcltk.wish/$url/ ;
+	s/>Wish</>$appname</ ;
+	s/>WiSH</>$abbrev</ ;
+	s/>8\.[0-9][0-9abp]*</>"$version"</" > NewInfo.plist
+mv NewInfo.plist Info.plist
+rm -f development.plist PkgInfo
+echo -n "APPL$abbrev" > PkgInfo
+
+cd Resources
+rm -f Wish.icns
+bk get `bk root`/src/macosx/data/BK.icns
+cp `bk root`/src/macosx/data/BK.icns $abbrev.icns
+
+cd ../Frameworks
+
+# remove extra crud
+#find . -name "*.a" -exec rm -f {} \;
+#find . -name "tclConfig.sh" -exec rm -f {} \;
+#find . -name "Headers" -type d -exec rm -rf {} \; -prune
+#find . -name "PrivateHeaders" -type d -exec rm -rf {} \; -prune
+#find . -name "tcltest*" -type d -exec rm -rf {} \; -prune
+#find . -name "*.enc" -size +20 -exec rm -f {} \;
+#find . -name "demos" -type d -exec rm -rf {} \; -prune
+
+cd ../MacOS
+mv Wish $appname

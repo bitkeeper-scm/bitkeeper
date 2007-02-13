@@ -66,8 +66,10 @@ echo OK
 echo $N Normal startup w/no args. ...................................$NL
 bk guitest revtool >"$OUT" 2>&1 <<'EOF'
     global fname
-    if {"[pwd]" != "[exec bk root]"} {
-        puts "pwd is not bk root"
+    set pwd [file normalize [pwd]]
+    set bk_root [file normalize [exec bk root]]
+    if {$pwd != $bk_root} {
+        puts "pwd ($pwd) is not bk root ($bk_root)"
         exit 1
     }
     if {$::fname != "ChangeSet"} {

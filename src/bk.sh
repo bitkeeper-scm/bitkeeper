@@ -1431,7 +1431,12 @@ _tclsh() {
 }
 
 _wish() {
-	WISH=`bk bin`/gui/bin/bkgui
+	AQUAWISH="`bk bin`/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
+	if [ -z "$DISPLAY" -a -x "$AQUAWISH" ] ; then
+		WISH="$AQUAWISH"
+	else
+		WISH="`bk bin`/gui/bin/bkgui"
+	fi
 	test "X$OSTYPE" = "Xmsys" && WISH=`win2msys "$WISH"`
 	exec "$WISH" "$@"
 }

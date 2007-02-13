@@ -405,12 +405,10 @@ set test_err [catch {
 		source $test_program
 	} else {
 		if {$test_tool ne ""} {source $test_program}
+		update
 		if {![winfo viewable $test_toplevel]} {
 			tkwait visibility $test_toplevel
 		}
-		# a full update is required; update idletasks doesn't 
-		# quite cut it
-		update
 		test_evalScript
 	}
 } result]
