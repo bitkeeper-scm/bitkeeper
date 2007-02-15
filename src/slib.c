@@ -13135,9 +13135,9 @@ getHistoricPath(sccs *s, char *rev)
 
 	d = sccs_findrev(s, rev);
 	if (d && d->pathname) {
-		return (d->pathname);
+		return (strdup(d->pathname));
 	} else {
-		return (s->gfile); 
+		return (proj_relpath(s->proj, s->gfile));
 	}
 }
 
@@ -13184,13 +13184,10 @@ private int
 normal_diff(sccs *s, char *lrev, char *lrevM,
 	char *rrev, u32 flags, u32 kind, FILE *out, pfile *pf)
 {
-	char	lfile[MAXPATH], rfile[MAXPATH];
-	char	ltag[MAXPATH],	rtag[MAXPATH], 	tmp[MAXPATH];
-	char 	*lpath, *rpath;
+	char	*lpath = 0, *rpath = 0;
 	int	rc = -1;
-
-	strcpy(tmp, s->gfile);		/* because dirname stomps */
-	sprintf(tmp, "%s", dirname(tmp));
+	char	lfile[MAXPATH], rfile[MAXPATH];
+	char	ltag[MAXPATH],	rtag[MAXPATH];
 
 	/*
 	 * Create the lfile & rfile for diff
@@ -13207,7 +13204,7 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 
 	/*
 	 * make the tag string to label the diff output, e.g.
-	 * 
+	 *
 	 * +++ bk.sh 1.34  Thu Jun 10 21:22:08 1999
 	 */
 	mkTag(lrev, lrevM, pf, lpath, ltag);
@@ -13219,6 +13216,8 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	rc = doDiff(s, flags, kind, lfile, rfile, out, lrev, rrev, ltag, rtag);
 done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
 	unless (streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)) unlink(rfile);
+	if (lpath) free(lpath);
+	if (rpath) free(rpath);
 	return (rc);
 }
 
