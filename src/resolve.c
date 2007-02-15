@@ -2324,7 +2324,8 @@ chkCaseChg(FILE *f)
 		getRealName(buf, localDB, realname);
 		unless (streq(buf, realname)) {
 			if (strcasecmp(buf, realname) == 0) {
-				getMsg("case_folding", 0, '=', stderr);
+				getMsg2("case_folding",
+				    buf, realname, '=', stderr);
 			} else {
 				assert("Unknown error" == 0);
 			}
