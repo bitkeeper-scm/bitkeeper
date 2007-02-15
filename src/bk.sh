@@ -772,39 +772,6 @@ _links() {		# /* doc 3.0 */
 	done
 }
 
-# usage: regression [-s]
-# -s says use ssh
-# -l says local only (don't do remote).
-# -r says do remote.
-# If neither -r or -l is specified,
-# the defaule is -l
-_regression() {		# /* doc 2.0 */
-	PREFER_RSH=YES
-	DO_REMOTE=NO	# don't run remote by default
-	V=
-	X=
-	while getopts lrsvx OPT
-	do	case $OPT in
-		l)	DO_REMOTE=NO;;
-		r)	DO_REMOTE=YES;;
-		s)	PREFER_RSH=;;
-		v)	V=-v;;
-		x)	X=-x;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	export DO_REMOTE PREFER_RSH
-
-	tdir=`bk bin`/t
-
-	test -x "$tdir"/doit || {
-	    echo "The regression suite is not included with this release of BitKeeper" 1>&2
-	    exit 1
-	}
-	# Do not use "exec" to invoke "./doit", it causes problem on cygwin
-	cd "$tdir" && time ./doit $V $X "$@"
-}
-
 __init() {
 	BK_ETC="BitKeeper/etc/"
 
