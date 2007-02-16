@@ -9,16 +9,14 @@ TCLVERSION := 8.5
 ifeq "$(OSTYPE)" "msys"
 	S := win
 	EXE := .exe
+	SO := .dll
 	STRIP := true
-	TKTABLELIB := Tktable29.dll
-	TKTREECTRLLIB := treectrl21.dll
 	XFTSUPPORT :=
 	SHARED := --enable-shared
 else
 	S := unix
-	EXE := 
-	TKTABLELIB := libTktable2.9.so
-	TKTREECTRLLIB := libtreectrl2.1.so
+	EXE :=
+	SO  := .so
 	XFTSUPPORT := --disable-xft
 #	Once we solve the font issues, we can turn on True Type Font support
 #	XFTSUPPORT := --enable-xft
@@ -26,9 +24,8 @@ else
 	ifeq "$(shell uname)" "Darwin"
 		AQUA := 1
 		BKAPP=bin/BitKeeper.app
-		TKTABLELIB := libTktable2.9.dylib
-		TKTREECTRLLIB := libtreectrl2.1.dylib
-		LDFLAGS_TKTABLE := "LDFLAGS=-single_module"
+		SO := .dylib
+		SINGLE_MODULE := "LDFLAGS=-single_module"
 		ENABLE_64BIT=
 		ifeq "$(shell uname -p)" "G5"
 		    ENABLE_64BIT=--enable-64bit
@@ -58,19 +55,24 @@ else
 # For Tcl/Tk 8.5
 DDEVERSION := 1.3
 REGVERSION := 1.2
+TKTABLE := Tktable2.9
+LIBTKTABLE := lib$(TKTABLE)$(SO)
+TREECTRL := treectrl2.2.2
+LIBTREECTRL := libtreectrl2.2$(SO)
+BWIDGET := BWidget1.7
 ifndef WITHOUT_X
 WITHOUT_X := --without-x
 endif
 TCLBUILD := ../build/tcl/Tcl.Framework
 TKBUILD  := ../build/tk/Tk.Framework
 WISHPATH := build/tk/Wish.app
-EXTENSIONS := lib/Tktable2.9/$(TKTABLELIB) \
-	      lib/treectrl2.1/$(TKTREECTRLLIB) \
-	      lib/BWidget1.7/pkgIndex.tcl \
+EXTENSIONS := lib/$(TKTABLE)/$(LIBTKTABLE) \
+	      lib/$(TREECTRL)/$(LIBTREECTRL) \
+	      lib/$(BWIDGET)/pkgIndex.tcl \
 	      lib/Tkcon/pkgIndex.tcl
-AQUAEXTENSIONS := $(BKAPP)/Contents/lib/Tktable2.9/$(TKTABLELIB) \
-		  $(BKAPP)/Contents/lib/treectrl2.1/$(TKTREECTRLLIB) \
-		  $(BKAPP)/Contents/lib/BWidget1.7/pkgIndex.tcl \
+AQUAEXTENSIONS := $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE) \
+		  $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL) \
+		  $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \
 		  $(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl
 endif
 
@@ -94,6 +96,7 @@ all: version.sh ../../tclkey.h
 			|| exit 1 ; \
 		fi \
 	fi
+	$(MAKE) verify
 	$(MAKE) rm_doc
 	$(MAKE) install
 
@@ -123,7 +126,7 @@ tktable/configure: TKTABLEKEY
 	cd tktable; bk -Ur get -qS
 
 # Tktable libs
-lib/Tktable2.9/$(TKTABLELIB): tktable/configure bin/bkgui$(EXE)
+lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure bin/bkgui$(EXE)
 	cd tktable ; \
 	test -f Makefile -a "X$(AQUA)" != X && { \
 		$(MAKE) distclean ; \
@@ -134,11 +137,11 @@ lib/Tktable2.9/$(TKTABLELIB): tktable/configure bin/bkgui$(EXE)
 			--with-tkinclude=../tk/generic \
 			--disable-threads $(ENABLE_64BIT) $(SYMBOLS) ; \
 	}; \
-	$(MAKE) $(LDFLAGS_TKTABLE) \
+	$(MAKE) $(SINGLE_MODULE) \
 		prefix= exec_prefix= DESTDIR=../ \
 		libdir=lib bindir=bin install
 
-$(BKAPP)/Contents/lib/Tktable2.9/$(TKTABLELIB): tktable/configure
+$(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 	cd tktable; \
 	test -f Makefile -a "X$(AQUA)" != X && { \
 		$(MAKE) distclean ; \
@@ -160,7 +163,7 @@ tktreectrl/configure: TKTREECTRLKEY
 	cd tktreectrl; bk -Ur get -qS
 
 # TkTreeCtrl libs
-lib/treectrl2.1/$(TKTREECTRLLIB): tktreectrl/configure bin/bkgui$(EXE)
+lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure bin/bkgui$(EXE)
 	cd tktreectrl ; \
 	test -f Makefile -a "X$(AQUA)" != X && { \
 		$(MAKE) distclean ; \
@@ -174,7 +177,7 @@ lib/treectrl2.1/$(TKTREECTRLLIB): tktreectrl/configure bin/bkgui$(EXE)
 	$(MAKE) prefix= exec_prefix= DESTDIR=../ \
 		libdir=lib bindir=bin install
 
-$(BKAPP)/Contents/lib/treectrl2.1/$(TKTREECTRLLIB): tktreectrl/configure
+$(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
 	cd tktreectrl; \
 	test -f Makefile -a "X$(AQUA)" != X && { \
 		$(MAKE) distclean ; \
@@ -189,20 +192,20 @@ $(BKAPP)/Contents/lib/treectrl2.1/$(TKTREECTRLLIB): tktreectrl/configure
 	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
 	    libdir=lib bindir=Resources install
 
-lib/BWidget1.7/pkgIndex.tcl: BWIDGETKEY
+lib/$(BWIDGET)/pkgIndex.tcl: BWIDGETKEY
 	test -d bwidget || bk clone -qr`tail -1 BWIDGETKEY` \
 			bk://data.bitmover.com/tcl/bwidget.bk bwidget
 	cd bwidget; bk -Ur get -qS
-	mkdir -p lib/BWidget1.7/lang
-	mkdir -p lib/BWidget1.7/images
-	cp bwidget/*.tcl lib/BWidget1.7
-	cp bwidget/lang/*.rc lib/BWidget1.7/lang
-	cp bwidget/images/*.gif lib/BWidget1.7/images
-	cp bwidget/images/*.xbm lib/BWidget1.7/images
+	mkdir -p lib/$(BWIDGET)/lang
+	mkdir -p lib/$(BWIDGET)/images
+	cp bwidget/*.tcl lib/$(BWIDGET)
+	cp bwidget/lang/*.rc lib/$(BWIDGET)/lang
+	cp bwidget/images/*.gif lib/$(BWIDGET)/images
+	cp bwidget/images/*.xbm lib/$(BWIDGET)/images
 
-$(BKAPP)/Contents/lib/BWidget1.7/pkgIndex.tcl: lib/BWidget1.7/pkgIndex.tcl
+$(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl
 	test -d $(BKAPP)/Contents/lib || mkdir $(BKAPP)/Contents/lib
-	cp -fRPH lib/BWidget1.7 $(BKAPP)/Contents/lib
+	cp -fRPH lib/$(BWIDGET) $(BKAPP)/Contents/lib
 
 lib/Tkcon/pkgIndex.tcl: TKCONKEY
 	test -d tkcon || bk clone -qr`tail -1 TKCONKEY` \
@@ -221,11 +224,15 @@ $(BKAPP)/Contents/lib/GetOpts/pkgIndex.tcl: lib/GetOpts/pkgIndex.tcl
 	cp -fRPH lib/GetOpts $(BKAPP)/Contents/lib
 
 rm_doc: FORCE
-	rm -rf $(BKAPP)/Contents/lib/Tktable2.9/html \
-	    $(BKAPP)/Contents/lib/treectrl2.1/htmldoc \
-	    $(BKAPP)/Contents/man \
-	    lib/Tktable2.9/html \
-	    lib/treectrl2.1/htmldoc
+	rm -rf lib/$(TKTABLE)/html \
+	    lib/$(TREECTRL)/htmldoc
+	if [ "X$(AQUA)" != X ]; \
+	then \
+	    rm -rf \
+		$(BKAPP)/Contents/lib/$(TKTABLE)/html \
+		$(BKAPP)/Contents/lib/$(TREECTRL)/htmldoc \
+		$(BKAPP)/Contents/man ; \
+	fi
 
 install: ./version.sh
 	find bin lib -type d -print | xargs chmod ug+w
@@ -327,6 +334,18 @@ rmcache: version.sh
 
 test:
 	test -d tk && cd tk/$S && $(MAKE) test
+
+verify: FORCE
+	test -d lib/$(TKTABLE) || exit 1
+	test -d lib/$(TREECTRL) || exit 1
+	test -f lib/$(BWIDGET)/pkgIndex.tcl || exit 1
+	if [ "X$(AQUA)" != X ]; \
+	then \
+	    test -d $(BKAPP)/Contents/lib/$(TKTABLE) || exit 1 ; \
+	    test -d $(BKAPP)/Contents/lib/$(TREECTRL) || exit 1 ; \
+	    test -f $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \
+		|| exit 1 ; \
+	fi
 
 FORCE:
 
