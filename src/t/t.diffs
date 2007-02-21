@@ -449,7 +449,7 @@ bk edit $Q file
 echo Some new stuff >> file
 # Should be something like
 #     +++ edited/sub/dir/file
-bk diffs -u -N | fgrep $Q '+++ edited/file' && {
+bk diffs -u -N | fgrep '+++ edited/file' > /dev/null && {
 	echo failed
 	bk diffs -u -N
 	exit 1
