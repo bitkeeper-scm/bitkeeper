@@ -727,6 +727,10 @@ pull(remote *r)
 	int	i;
 
 	/* We have a read lock which we need to drop before we can pull. */
+	if (s_cset) {
+		sccs_free(s_cset);	/* let go of changeset file */
+		s_cset = 0;
+	}
 	repository_rdunlock(0);
 	cmd[i = 0] = "bk";
 	cmd[++i] = "pull";
