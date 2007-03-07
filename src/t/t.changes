@@ -442,32 +442,41 @@ bk commit $Q -y'clone1 checkin 1' || exit 1
 
 cd "$HERE"
 rm -rf clone2
-bk clone $Q project clone2 || exit 1
+bk clone $Q clone1 clone2 || exit 1
 cd clone2 || exit 1
 bk edit $Q f
 bk delta $Q -fy'clone2 delta' f
 bk commit $Q -y'clone2 checkin' || exit 1
 
 (bk changes -kL ../clone1; bk changes -kR ../clone1) > WANT
-bk changes -k -L -R ../clone1 | grep -v '^==== ' > GOT
+bk changes -qand:KEY: -L -R ../clone1 > GOT
 checkfiles WANT GOT
 echo OK
 
 echo $N Test changes -L repo1 repo2 .................................$NL
 cd "$HERE/clone1"
-bk changes -k -L ../project > p1
-bk changes -k -L ../clone2  > c1
+echo jj > baz
+bk new $Q baz || exit 1
+bk commit $Q -ybaz || exit 1
+bk changes -qand:C: -L ../project > p1
+bk changes -qand:C: -L ../clone2  > c1
 cat p1 c1 > WANT
-bk changes -q -L -nd:KEY: ../project ../clone2 > GOT
+bk changes -L -qand:C: ../project ../clone2 > GOT
+checkfiles WANT GOT
+echo OK
+
+echo $N Test changes -L repo2 repo1 .................................$NL
+cat c1 p1 > WANT
+bk changes -L -qand:C: ../clone2 ../project > GOT
 checkfiles WANT GOT
 echo OK
 
 echo $N Test changes -D -L repo1 repo2 ..............................$NL
 cd "$HERE/clone1"
-bk changes -k -L ../project > p1
-bk changes -k -L ../clone2  > c1
-cat p1 c1 | sort -u > WANT
-bk changes -k -L ../project ../clone2 | sort > GOT
+bk changes -qand:C: -L ../project > p1
+bk changes -qand:C: -L ../clone2  > c1
+comm -12 p1 c1 > WANT
+bk changes -qand:C: -D -L ../project ../clone2 | sort > GOT
 checkfiles WANT GOT
 echo OK
 

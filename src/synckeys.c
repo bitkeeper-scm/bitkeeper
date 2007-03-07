@@ -491,7 +491,10 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	}
 
 empty:	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_RED) continue;
+		if (d->flags & D_RED) {
+			unless (flags & PK_LREV) d->flags &= ~D_RED;
+			continue;
+		}
 		if (flags & PK_LSER) {
 			sprintf(key, "%u\n", d->serial);
 			writen(outfd, key, strlen(key));
@@ -513,7 +516,10 @@ empty:	for (d = s->table; d; d = d->next) {
 		for (d = s->table; d; d = d->next) {
 			char	*tag;
 
-			if (d->flags & D_RED) continue;
+			if (d->flags & D_RED) {
+				d->flags &= ~D_RED;
+				continue;
+			}
 			unless (d->flags & D_SYMBOLS) continue;
 			tag = sccs_d2tag(s, d);
 			if (tag) {
