@@ -499,7 +499,7 @@ _unrm () {
 	trap 'rm -f $LIST $TMPFILE' 0
 
 	# Find all the possible files, sort with most recent delete first.
-	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
+	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE:' | \
 		bk sort -r -n | awk -F'|' '{print $2}' | \
 		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST

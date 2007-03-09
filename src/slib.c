@@ -16,9 +16,31 @@
 #include "tomcrypt.h"
 #include "range.h"
 
-#define	VSIZE 4096
 #define	WRITABLE_REG(s)     (WRITABLE(s) && isRegularFile((s)->mode))
 
+typedef enum {
+        T_RPAREN = 1,
+        T_NEQTWID,
+        T_EQTWID,
+        T_EQUALS,
+        T_NOTEQ,
+        T_EQ,
+        T_NE,
+        T_GT,
+        T_LT,
+        T_GE,
+        T_LE,
+        T_AND,
+        T_OR,
+        T_EOF,
+} dspec_op_t;
+
+typedef	struct
+{
+	int	i;
+	char	*ret;
+	symbol	*sym;
+} dspec_getnext_t;
 
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, delta *d, int fixDate);
@@ -66,8 +88,6 @@ private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
 private	delta*	getCksumDelta(sccs *s, delta *d);
-private int	fprintDelta(FILE *,
-			char ***, const char *, const char *, sccs *, delta *);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
@@ -82,6 +102,19 @@ private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
 		    delta *d, u32 flags, int lines, char *name, FILE *out);
+private int	kw2val(FILE *out, char ***vbuf, char *kw, int len,
+                       sccs *s, delta *d);
+private void	dspec_err(char *msg);
+private void	dspec_eval(FILE * out, char ***buf, sccs *s, delta *d,
+                           char *start);
+private void	dspec_evalId(FILE *out, char *** buf);
+private void	dspec_evalParenid(FILE *out, char ***buf, datum id);
+private int	dspec_expr(void);
+private int	dspec_expr2(dspec_op_t *next_tok);
+private dspec_getnext_t *dspec_getnext(datum kw, dspec_getnext_t *state);
+private int	dspec_getParenid(datum *id);
+private void	dspec_stmtList(int output);
+private char	**dspec_str(dspec_op_t *next_tok);
 
 int
 emptyDir(char *dir)
@@ -13248,6 +13281,49 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *out)
 done:	free_pfile(&pf);
 	return (rc);
 }
+#define	notKeyword -1
+#define	nullVal    0
+#define	strVal	   1
+
+/* Globals for dspec code below. */
+private struct {
+        char	*c;		/* current location in dspec */
+        char	*start;		/* start of dspec buffer */
+        MDBM	*eachvals;	/* hash of $each variables' current vals */
+        FILE	*out;		/* FILE* to receive output */
+        char	***buf;		/* lines array to receive output */
+        datum	each;		/* current value of $each variable */
+        int	line;		/* current line in $each iteration */
+        int	tcl;		/* whether we are inside a $tcl construct */
+        sccs	*s;
+        delta	*d;
+} g;
+
+private void
+tclouts(char *s, int len, FILE *f)
+{
+	unless (s && s[0] && len) return;
+        for (; len; --len, ++s) {
+		switch (*s) {
+		    case '\f':	fputs("\\f", f); continue;
+		    case '\n':	fputs("\\n", f); continue;
+		    case '\r':  fputs("\\r", f); continue;
+		    case '\t':  fputs("\\t", f); continue;
+		    case '\v':  fputs("\\v", f); continue;
+
+		    case ']':
+		    case '[':
+		    case '$':
+		    case ';':
+		    case '\\':
+		    case '"':
+		    case ' ':
+		    case '{':
+		    case '}':	fputc('\\', f); /* Fallthrough */
+		    default:	fputc(*s, f);
+		}
+	}
+}
 
 private void
 show_d(sccs *s, delta *d, FILE *out, char ***vbuf, char *format, int num)
@@ -13260,13 +13336,17 @@ show_d(sccs *s, delta *d, FILE *out, char ***vbuf, char *format, int num)
 }
 
 private void
-show_s(sccs *s, delta *d, FILE *out, char ***vbuf, char *str)
+show_s(sccs *s, FILE *out, char ***vbuf, char *data, int len, int tcl)
 {
 	if (out) {
-		fputs(str, out);
+                if (tcl) {
+                        tclouts(data, len, out);
+                } else {
+                        fwrite(data, 1, len, out);
+                }
 		s->prs_output = 1;
 	}
-	if (vbuf) *vbuf = str_append(*vbuf, str, 0);
+	if (vbuf) *vbuf = data_append(*vbuf, data, len, 0);
 }
 
 /*
@@ -13284,19 +13364,538 @@ sccs_loadkv(sccs *s)
 	unlink(x_kv);
 }
 
-/*
- * Given key return the value.
- * The mdbm is loaded on demand
- * XXX TODO need a state to remember the previous load failed, so we do
- *     not try to re-load.
- */
-private char *
-key2val(sccs *s, const char *key)
+private void
+dspec_eval(FILE * out, char ***buf, sccs *s, delta *d, char *start)
 {
-	unless (KV(s))  return (NULL);
-	unless (s->mdbm) sccs_loadkv(s);
-	unless (s->mdbm) return (NULL);
-	return (mdbm_fetch_str(s->mdbm, key));
+        bzero(&g, sizeof(g));
+	g.out   = out;
+	g.buf   = buf;
+	g.s     = s;
+	g.d     = d;
+	g.c     = start;
+        g.start = start;
+
+        dspec_stmtList(1);
+}
+
+/*
+ * This is a recursive-descent parser that implements the following
+ * grammar for dspecs (where [[...]] indicates an optional clause
+ * and {{...}} indicates 0 or more repetitions of):
+ *
+ * <stmt_list> -> {{ <stmt> }}
+ * <stmt>      -> $if(<expr>){<stmt_list>}[[$else{<stmt_list>}]]
+ *             -> $unless(<expr>){<stmt_list>}[[$else{<stmt_list>}]]
+ *             -> $each(:ID:){<stmt_list>}
+ *             -> char
+ *             -> escaped_char
+ *             -> :ID:
+ *             -> (:ID:)
+ * <expr>      -> <expr2> {{ <logop> <expr2> }}
+ * <expr2>     -> <str> <relop> <str>
+ *             -> <str>
+ *             -> (<expr>)
+ * <str>       -> {{ <atom> }}
+ * <atom>      -> char
+ *             -> escaped_char
+ *             -> :ID:
+ *             -> (:ID:)
+ * <logop>     -> " && " | " || "
+ * <relop>     -> "=" | "!=" | "=~" | "!~"
+ *             -> " -eq " | " -ne " | " -gt " | " -ge " | " -lt " | " -le "
+ *
+ * This grammar is ambiguous due to (:ID:) loooking like a
+ * parenthesized sub-expression.  The code tries to parse (:ID:) first
+ * as an $each variable, then as a regular :ID:, then as regular text.
+ *
+ * The following procedures can be thought of as implementing an
+ * attribute grammar where the output parameters are synthesized
+ * attributes which hold the expression values and the next token
+ * of lookahead in some cases.  It has been written for speed.
+ */
+
+private void
+dspec_stmtList(int output)
+{
+        int		c;
+        FILE		*out;
+        char		***buf;
+        datum		id;
+        static int	depth = 0;
+        static int	in_each = 0;
+
+        /*
+         * output==1 means evaluate and output.  output==0 means
+         * evaluate but throw away.
+         */
+        if (output) {
+                out = g.out;
+                buf = g.buf;
+        } else {
+                out = 0;
+                buf = 0;
+        }
+
+        ++depth;
+        while (*g.c) {
+                if (g.c[0] == '$') {
+                        ++g.c;
+                        if ((g.c[0] == 'i') && (g.c[1] == 'f') &&
+                            (g.c[2] == '(')) {
+                                g.c += 3;
+                                c = dspec_expr() && output;
+                                if (*g.c++ != ')') dspec_err("missing )");
+                                if (*g.c++ != '{') dspec_err("missing {");
+                                dspec_stmtList(c && output);
+                                if (*g.c++ != '}') dspec_err("missing }");
+                                if ((g.c[0] == '$') && (g.c[1] == 'e') &&
+                                    (g.c[2] == 'l') && (g.c[3] == 's') &&
+                                    (g.c[4] == 'e') && (g.c[5] == '{')) {
+                                        g.c += 6;
+                                        dspec_stmtList(!c && output);
+                                        if (*g.c++ != '}') dspec_err("missing }");
+                                }
+                        } else if ((g.c[0] == 'e') && (g.c[1] == 'a') &&
+                                   (g.c[2] == 'c') && (g.c[3] == 'h') &&
+                                   (g.c[4] == '(')) {
+                                dspec_getnext_t	state;
+                                char		*bufptr;
+                                datum		k;
+
+                                if (in_each++) dspec_err("nested each illegal");
+
+                                g.c += 5;
+                                if (*g.c++ != ':') dspec_err("missing id");
+
+                                /* Extract the id in $each(:id:) */
+                                k.dptr = g.c;
+                                while (*g.c && (*g.c != ':')) ++g.c;
+                                unless (*g.c) dspec_err("premature eof");
+                                k.dsize = g.c - k.dptr;
+                                ++g.c;
+
+                                if (*g.c++ != ')') dspec_err("missing )");
+                                if (*g.c++ != '{') dspec_err("missing {");
+
+                                unless (g.eachvals) {
+                                        g.eachvals = mdbm_open(0, 0, 0,
+                                                               GOOD_PSIZE);
+                                        unless (g.eachvals) return;
+                                }
+                                /*
+                                 * Re-evaluate the $each body for each
+                                 * line of the $each variable.
+                                 */
+                                state.i   = 1;
+                                state.ret = 0;
+                                state.sym = 0;
+                                bufptr    = g.c;
+                                g.line    = 1;
+                                while (dspec_getnext(k, &state)) {
+                                        unless (state.ret) continue;
+                                        g.each.dptr  = state.ret;
+                                        g.each.dsize = strlen(g.each.dptr);
+                                        mdbm_store(g.eachvals, k, g.each,
+                                                   MDBM_REPLACE);
+                                        g.c = bufptr;
+                                        dspec_stmtList(output);
+                                        ++g.line;
+                                }
+                                mdbm_delete(g.eachvals, k);
+                                --in_each;
+                                /* Eat the body if we never parsed it above. */
+                                if (g.line == 1) dspec_stmtList(0);
+                                if (*g.c++ != '}') dspec_err("missing }");
+                        } else if ((g.c[0] == 'u') && (g.c[1] == 'n') &&
+                                   (g.c[2] == 'l') && (g.c[3] == 'e') &&
+                                   (g.c[4] == 's') && (g.c[5] == 's') &&
+                                   (g.c[6] == '(')) {
+                                g.c += 7;
+                                c = !dspec_expr() && output;
+                                if (*g.c++ != ')') dspec_err("missing )");
+                                if (*g.c++ != '{') dspec_err("missing {");
+                                dspec_stmtList(c && output);
+                                if (*g.c++ != '}') dspec_err("missing }");
+                                if ((g.c[0] == '$') && (g.c[1] == 'e') &&
+                                    (g.c[2] == 'l') && (g.c[3] == 's') &&
+                                    (g.c[4] == 'e') && (g.c[5] == '{')) {
+                                        g.c += 6;
+                                        dspec_stmtList(!c && output);
+                                        if (*g.c++ != '}') dspec_err("missing }");
+                                }
+                        } else if ((g.c[0] == 't') && (g.c[1] == 'c') &&
+                                   (g.c[2] == 'l') && (g.c[3] == '{')) {
+                                g.c += 4;
+                                show_s(g.s, out, buf, "{", 1, 0);
+                                ++g.tcl;
+                                dspec_stmtList(output);
+                                --g.tcl;
+                                show_s(g.s, out, buf, "}", 1, 0);
+                                if (*g.c++ != '}') dspec_err("missing }");
+                        } else {
+                                show_s(g.s, out, buf, "$", 1, g.tcl);
+                        }
+                } else if (g.c[0] == ':') {
+                        dspec_evalId(out, buf);
+                } else if (dspec_getParenid(&id)) {
+                        dspec_evalParenid(out, buf, id);
+                } else if (g.c[0] == '}') {
+                        if (depth == 1) {
+                                show_s(g.s, g.out, g.buf, "}", 1, g.tcl);
+                                ++g.c;
+                        }
+                        else {
+                                --depth;
+                                return;
+                        }
+                } else if (g.c[0] == '\\') {
+                        char c;
+                        switch (*++g.c) {
+                            case 'n': c = '\n'; break;
+                            case 't': c = 9; break;
+                            default:  c = *g.c; break;
+                        }
+                        show_s(g.s, out, buf, &c, 1, g.tcl);
+                        ++g.c;
+                } else {
+                        show_s(g.s, out, buf, g.c, 1, g.tcl);
+                        ++g.c;
+                }
+        }
+        --depth;
+}
+
+private int
+dspec_expr(void)
+{
+        dspec_op_t	op;
+        int		ret;
+
+        ret = dspec_expr2(&op);
+        while (*g.c) {
+                switch (op) {
+                case T_AND:
+                        ret = dspec_expr2(&op) && ret;
+                        break;
+                case T_OR:
+                        ret = dspec_expr2(&op) || ret;
+                        break;
+                case T_RPAREN:
+                        return (ret);
+                default:
+                        dspec_err("expected &&,||, or )");
+                }
+        }
+        return (ret);
+}
+
+private int
+dspec_expr2(dspec_op_t *next_tok)
+{
+        dspec_op_t	op;
+        datum		id;
+        int		ret;
+        char		*lhs, *rhs;
+
+        if ((g.c[0] == '(') && !dspec_getParenid(&id)) {
+                /* Parenthesized sub-expression. */
+                ++g.c;  /* eat ( */
+                ret = dspec_expr();
+                ++g.c;  /* eat ) */
+                if (g.c[0] == ')') {
+                        *next_tok = T_RPAREN;
+                } else if ((g.c[0] == ' ') && (g.c[1] == '&') &&
+                         (g.c[2] == '&') && (g.c[3] == ' ')) {
+                        *next_tok = T_AND;
+                        g.c += 4;
+                } else if ((g.c[0] == ' ') && (g.c[1] == '|') &&
+                           (g.c[2] == '|') && (g.c[3] == ' ')) {
+                        *next_tok = T_OR;
+                        g.c += 4;
+                } else {
+                        dspec_err("expected &&, ||, or )");
+                }
+                return (ret);
+        }
+        else {
+                lhs = str_pullup(0, dspec_str(&op));
+                switch (op) {
+                    case T_RPAREN:
+                    case T_AND:
+                    case T_OR:
+                        ret = *lhs;
+                        free(lhs);
+                        *next_tok = op;
+                        return (ret);
+                    case T_EOF:
+                        dspec_err("expected operator or )");
+                    default:
+                        break;
+                }
+                rhs = str_pullup(0, dspec_str(next_tok));
+                switch (op) {
+                    case T_EQUALS:	ret =  streq(lhs, rhs); break;
+                    case T_NOTEQ:	ret = !streq(lhs, rhs); break;
+                    case T_EQ:		ret = atof(lhs) == atof(rhs); break;
+                    case T_NE:		ret = atof(lhs) != atof(rhs); break;
+                    case T_GT:		ret = atof(lhs) >  atof(rhs); break;
+                    case T_GE:		ret = atof(lhs) >= atof(rhs); break;
+                    case T_LT:		ret = atof(lhs) <  atof(rhs); break;
+                    case T_LE:		ret = atof(lhs) <= atof(rhs); break;
+                    case T_EQTWID:	ret =  match_one(lhs, rhs, 1); break;
+                    case T_NEQTWID:	ret = !match_one(lhs, rhs, 1); break;
+                    default: assert(0); ret = 0; break;
+                }
+                free(lhs);
+                free(rhs);
+                return (ret);
+        }
+}
+
+private char **
+dspec_str(dspec_op_t *next_tok)
+{
+        char	**s = 0;
+        datum	id;
+
+        while (*g.c) {
+                if (g.c[0] == ':') {
+                        dspec_evalId(0, &s);
+                        continue;
+                } else if (dspec_getParenid(&id)) {
+                        dspec_evalParenid(0, &s, id);
+                        continue;
+                } else if (g.c[0] == ')') {
+                        *next_tok = T_RPAREN;
+                        return (s);
+                } else if ((g.c[0] == '=') && (g.c[1] == '~')) {
+                        *next_tok = T_EQTWID;
+                        g.c += 2;
+                        return (s);
+                } else if (g.c[0] == '=') {
+                        *next_tok = T_EQUALS;
+                        ++g.c;
+                        return (s);
+                } else if ((g.c[0] == '!') && (g.c[1] == '=')) {
+                        *next_tok = T_NOTEQ;
+                        g.c += 2;
+                        return (s);
+                } else if ((g.c[0] == '!') && (g.c[1] == '~')) {
+                        *next_tok = T_NEQTWID;
+                        g.c += 2;
+                        return (s);
+                } else if ((g.c[0] == ' ') && (g.c[1] == '-') &&
+                           (g.c[4] == ' ')) {
+                        if ((g.c[2] == 'e') && (g.c[3] == 'q')) {
+                                *next_tok = T_EQ;
+                                g.c += 5;
+                                return (s);
+                        } else if ((g.c[2] == 'n') && (g.c[3] == 'e')) {
+                                *next_tok = T_NE;
+                                g.c += 5;
+                                return (s);
+                        } else if ((g.c[2] == 'g') && (g.c[3] == 't')) {
+                                *next_tok = T_GT;
+                                g.c += 5;
+                                return (s);
+                        } else if ((g.c[2] == 'g') && (g.c[3] == 'e')) {
+                                *next_tok = T_GE;
+                                g.c += 5;
+                                return (s);
+                        } else if ((g.c[2] == 'l') && (g.c[3] == 't')) {
+                                *next_tok = T_LT;
+                                g.c += 5;
+                                return (s);
+                        } else if ((g.c[2] == 'l') && (g.c[3] == 'e')) {
+                                *next_tok = T_LE;
+                                g.c += 5;
+                                return (s);
+                        }
+                } else if ((g.c[0] == ' ') && (g.c[1] == '&') &&
+                           (g.c[2] == '&') && (g.c[3] == ' ')) {
+                        *next_tok = T_AND;
+                        g.c += 4;
+                        return (s);
+                } else if ((g.c[0] == ' ') && (g.c[1] == '|') &&
+                           (g.c[2] == '|') && (g.c[3] == ' ')) {
+                        *next_tok = T_OR;
+                        g.c += 4;
+                        return (s);
+                }
+                s = data_append(s, g.c++, 1, 0);
+        }
+        *next_tok = T_EOF;
+        return (s);
+}
+
+private int
+dspec_getParenid(datum *id)
+{
+        /*
+         * Find out whether g.c points to a (:ID:) construct.  If so,
+         * return 1 and set *id.
+         */
+        char *c;
+
+        unless ((g.c[0] == '(') && (g.c[1] == ':')) return 0;
+        id->dptr = c = g.c + 2;
+        while (*c && ((c[0] != ':') || (c[1] != ')'))) {
+               if ((*c != '%') && (*c != '_') &&
+                   (*c != '-') && (*c != '#') &&
+                   !isalpha(*c)) {
+                       return 0;
+               }
+               ++c;
+        }
+        if (*c) {
+                id->dsize = c - id->dptr;
+                return 1;
+        } else {
+                return 0;
+        }
+}
+
+private void
+dspec_evalParenid(FILE *out, char ***buf, datum id)
+{
+        /*
+         * Expand a (:ID:).  If the eachvals hash has a value for ID,
+         * use that.  Otherwise output the parentheses and try
+         * expanding ID as a regular keyword.  If it's not a keyword,
+         * treat it as a regular string.
+         */
+        datum	v;
+        v = mdbm_fetch(g.eachvals, id);
+        if (v.dptr) {
+                show_s(g.s, out, buf, v.dptr, v.dsize, g.tcl);
+        } else {
+                show_s(g.s, out, buf, "(", 1, g.tcl);
+                if (kw2val(out, buf, id.dptr, id.dsize,
+                           g.s, g.d) == notKeyword) {
+                        show_s(g.s, out, buf, ":", 1, g.tcl);
+                        show_s(g.s, out, buf, id.dptr, id.dsize, g.tcl);
+                        show_s(g.s, out, buf, ":", 1, g.tcl);
+                }
+                show_s(g.s, out, buf, ")", 1, g.tcl);
+        }
+        g.c += id.dsize + 4;  /* move past ending ':)' */
+}
+
+private void
+dspec_evalId(FILE *out, char *** buf)
+{
+        /*
+         * Call with g.c pointing to a ':'.  If what comes after is
+         * ":ID:" and a keyword, expand it into out/buf.  If it's not
+         * a keyword or no ending colon is there, output just the ':'.
+         */
+        char	*c, *id;
+
+        id = c = g.c + 1;
+        while (*c && (*c != ':')) ++c;
+
+        if (*c) {
+                if (kw2val(out, buf, id, c - id,
+                           g.s, g.d) != notKeyword) {
+                        g.c = c + 1;  /* move past ending ':' */
+                        return;
+                }
+        }
+        show_s(g.s, out, buf, ":", 1, g.tcl);
+        ++g.c;
+}
+
+private void
+dspec_err(char *msg)
+{
+        int	i, n;
+
+        fprintf(stderr, "syntax error: %s\n", msg);
+        fprintf(stderr, "%s\n", g.start);
+        n = g.c - g.start - 1;
+        for (i = 0; i < n; ++i) fputc(' ', stderr);
+        fprintf(stderr, "^\n");
+        exit(1);
+}
+
+/*
+ * Given a keyword with a multi-line value, return each line successively.
+ * A dspec_getnext_t * is passed in, and returned, to store the state
+ * of where we are in the list of lines to return.
+ * Call this function with state->i=1 to get the first line, then pass the
+ * return value back in to get subsquent lines.  state->buf must be a pointer
+ * to an appropriately-sized buffer to receive the values of single-line
+ * keywords.  NULL is returned when there are no more lines,
+ * and state->ret=NULL is returned for a "line" that the caller should skip.
+ */
+
+private dspec_getnext_t *
+dspec_getnext(datum kw, dspec_getnext_t *state)
+{
+	if (strneq(kw.dptr, "C", kw.dsize)) {
+		if (g.d && g.d->comments &&
+		    (state->i < (long)g.d->comments[0]) &&
+		    g.d->comments[state->i]) {
+			if (g.d->comments[state->i][0] == '\001') {
+				state->ret = NULL;
+			} else {
+				state->ret = g.d->comments[state->i];
+			}
+			++state->i;
+			return state;
+		} else
+			return NULL;
+	}
+
+	if (strneq(kw.dptr, "FD", kw.dsize)) {
+		if (g.s && g.s->text && (state->i < (long)g.s->text[0]) &&
+		    g.s->text[state->i]) {
+			if (g.s->text[state->i][0] == '\001') {
+				state->ret = NULL;
+			} else {
+				state->ret = g.s->text[state->i];
+			}
+			++state->i;
+			return state;
+		} else
+			return NULL;
+	}
+
+	if (strneq(kw.dptr, "SYMBOL", kw.dsize) ||
+            strneq(kw.dptr, "TAG", kw.dsize)) {
+		if (state->i++ == 1) {
+			unless (g.d && (g.d->flags & D_SYMBOLS)) { return NULL; }
+			while (g.d->type == 'R') g.d = g.d->parent;
+			state->sym = g.s->symbols;
+		}
+		if (state->sym) {
+			unless (state->sym->d == g.d) {
+				state->ret = NULL;
+				state->sym = state->sym->next;
+				return state;
+			}
+			state->ret = state->sym->symname;
+			state->sym = state->sym->next;
+			return state;
+		}
+		else {
+			return NULL;
+		}
+	}
+
+	/* Handle all single-line keywords. */
+	if (state->i == 1) {
+		char	**ret = 0;
+		/* First time in, get the keyword value. */
+                kw2val(0, &ret, kw.dptr, kw.dsize, g.s, g.d);
+		state->ret = str_pullup(0, ret);
+		state->i = 2;
+		return state;
+	}
+	else {
+		/* Second time in, bail out. */
+		return NULL;
+	}
 }
 
 /*
@@ -13306,9 +13905,6 @@ key2val(sccs *s, const char *key)
  */
 #include "kw2val_lookup.c"
 
-#define	notKeyword -1
-#define	nullVal    0
-#define	strVal	   1
 /*
  * Given a PRS DSPEC keyword, get the associated string value
  * If out is non-null print to out
@@ -13331,30 +13927,52 @@ key2val(sccs *s, const char *key)
  * the comment MUST appear before the {.
  */
 private int
-kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
-	const char *suffix, int slen, sccs *s, delta *d)
+kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 {
 	struct kwval *kwval;
-	char	*p, *q;
-#define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
+	char	*p, *q, *vbar = 0;
+#define	KW(x)	kw2val(out, vbuf, x, strlen(x), s, d)
 #define	fc(c)	show_d(s, d, out, vbuf, "%c", c)
 #define	fd(n)	show_d(s, d, out, vbuf, "%d", n)
 #define	fx(n)	show_d(s, d, out, vbuf, "0x%x", n)
 #define	f5d(n)	show_d(s, d, out, vbuf, "%05d", n)
-#define	fs(str)	show_s(s, d, out, vbuf, str)
+#define	fs(str)	show_s(s, out, vbuf, str, strlen(str), g.tcl)
+#define	fsd(d)	show_s(s, out, vbuf, d.dptr, d.dsize, g.tcl)
 
-	if (kw[0] == '%') {
-		p = key2val(s, &kw[1]);
-		//unless (p) return (nullVal);
-		unless (p) return (notKeyword);
-		fs(p);
-		return (strVal);
+	/*
+   	 * Allow keywords of the form "word|rev"
+   	 * to mean "word" for revision "rev".
+   	 */
+        for (p = kw, q = p+len; (*p != '|') && (p < q); ++p) ;
+	if (p < q) {
+		delta	*e;
+                char	last = kw[len];
+
+		p++;
+                kw[len] = '\0';
+		e = findrev(s, p);
+                kw[len] = last;
+                unless (e) return (nullVal);
+                vbar = p - 1;
+                *vbar = 0;
+                len = vbar - kw;
+                d = e;
 	}
 
-	kwval = kw2val_lookup(kw, strlen(kw));
+	kwval = kw2val_lookup(kw, len);
+        if (vbar) *vbar = '|';  /* un-stomp kw (see above) */
 	unless (kwval) return notKeyword;
 
+	unless (out || vbuf) return (nullVal);
 	switch (kwval->kwnum) {
+	case KW_each: /* each */ {
+                fsd(g.each);
+                return (strVal);
+        }
+	case KW_eachline: /* line */ {
+		fd(g.line);
+		return (strVal);
+	}
 	case KW_Dt: /* Dt */ {
 		/* :Dt: = :DT::I::D::T::P::DS::DP: */
 		KW("DT"); fc(' '); KW("I"); fc(' ');
@@ -13746,9 +14364,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		/* to get the latest comment				*/
 		EACH(d->comments) {
 			j++;
-			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(d->comments[i]);
-			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -13910,9 +14526,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		EACH(s->text) {
 			if (s->text[i][0] == '\001') continue;
 			j++;
-			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(s->text[i]);
-			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -14088,7 +14702,11 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	case KW_CHANGESET: /* CHANGESET */ {
-		return (CSET(s) ? strVal : nullVal);
+		if (CSET(s)) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	case KW_CSETFILE: /* CSETFILE */ {
@@ -14233,9 +14851,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
 			j++;
-			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(sym->symname);
-			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -14826,7 +15442,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 			char	*cmd;
 			FILE	*f;
 			char	buf[BUFSIZ];
-			
+
 			cmd = aprintf("bk diffs -%s%shR%s '%s'",
 			    kind == DF_DIFF ? "" : "u",
 			    kind & DF_GNUp ? "p" : "",
@@ -14847,313 +15463,13 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 }
 
-/*
- * A temporary function that provides an interface like kw2val() but
- * that writes to a fixed buffer.  This function will be deleted when
- * the new prs parser is used.
- */
-private int
-kw2buf(char *buf, const char *kw, sccs *s, delta *d)
-{
-	int	rc;
-	char	**vbuf = 0;
-
-	rc = kw2val(0, buf ? &vbuf : 0, "", 0, kw, "", 0, s, d);
-	if (buf) {
-		char	*p = str_pullup(0, vbuf);
-		strcpy(buf, p);
-		free(p);
-	}
-	return (rc);
-}
-
-/*
- * given a string "<token><endMarker>..."
- * extrtact token and put it in a buffer
- * return the length of the token
- */
-private int
-extractToken(const char *q, const char *end, char *endMarker, char *buf,
-	    int maxLen)
-{
-	const char *t;
-	int	len;
-
-	if (buf) buf[0] = '\0';
-	/* look for endMarker */
-	for (t = q; (t <= end) && !strchr(endMarker, *t); t++);
-	unless (strchr(endMarker, *t)) return (-1);
-	len = t - q;
-	if ((buf) && (len < maxLen)) {
-		strncpy(buf, q, len);
-		buf[len] = '\0';
-	}
-	return (len);
-}
-
-/*
- * extract the prefix inside a $each{...} statement
- */
-private int
-extractPrefix(const char *b, const char *end, char *kwbuf)
-{
-	const char *t;
-	int	len, klen;
-
-	/*
-	 * XXX TODO, this does not support
-	 * compound statement inside $each{...} yet
-	 * We may need to support this later
-	 */
-	for (t = b; t <= end; t++) {
-		while ((t <= end) && (*t != '(')) t++;
-		klen = strlen(kwbuf);
-		if ((t <= end) && (t[1] == ':') &&
-		     !strncmp(&t[2], kwbuf, klen) &&
-		     !strncmp(&t[klen + 2], ":)", 2)) {
-			len = t - b;
-			return (len);
-		}
-	}
-	return (0);
-}
-
-/*
- * extract the statement portion of a $if(<kw>){....} statement
- * support nested statement
- */
-private int
-extractStatement(const char *b, const char *end)
-{
-	const char *t = b;
-	int bCnt = 0, len;
-
-	while (t <= end) {
-		if (*t == '{') {
-			bCnt++;
-		} else if (*t == '}') {
-			if (bCnt) {
-				bCnt--;
-			} else {
-				len = t -b;
-				return (len);
-			}
-		}
-		t++;
-	}
-	return (-1);
-}
-
-#define STR_EQ	1
-#define STR_NE	2
-#define NUM_EQ	3
-#define NUM_GT	4
-#define NUM_LT	5
-#define NUM_GE	6
-#define NUM_LE	7
-#define	NUM_NE	8
-
-private char *
-extractOp(const char *q, const char *end,
-				char *rightVal, char *op)
-{
-	int vlen, oplen;
-	char *t;
-
-	while (isspace(*q) && q < end) q++; /* skip leading space */
-	if (q[0] == '=') {
-		*op = STR_EQ;
-		oplen = 1;
-	} else if (strneq(q, "!=", 2)) {
-		*op = STR_NE;
-		oplen = 2;
-	} else if (strneq(q, "-eq", 3)) {
-		*op = NUM_EQ;
-		oplen = 3;
-	} else if (strneq(q, "-gt", 3)) {
-		*op = NUM_GT;
-		oplen = 3;
-	} else if (strneq(q, "-lt", 3)) {
-		*op = NUM_LT;
-		oplen = 3;
-	} else if (strneq(q, "-ge", 3)) {
-		*op = NUM_GE;
-		oplen = 3;
-	} else if (strneq(q, "-le", 3)) {
-		*op = NUM_LE;
-		oplen = 3;
-	} else {
-		*op =  0;
-		return ((char *) q); /* no operator */
-	}
-
-
-	/*
-	 * We got the operator, now extract the right value
-	 */
-	t = (char *) q + oplen;
-	rightVal[0] = '\0';
-	vlen = extractToken(t, end, ")", rightVal, VSIZE);
-	if (vlen < 0) { return (NULL); }  /* error */
-	return (&t[vlen]);
-}
-
-/*
- * Evaluate expression, return boolean
- */
-private int
-eval(char *leftVal, char op, char *rightVal)
-{
-	switch (op) {
-	    case STR_EQ: return (streq(leftVal, rightVal));
-	    case STR_NE: return (!streq(leftVal, rightVal));
-	    case NUM_EQ: return(atof(leftVal) == atof(rightVal));
-	    case NUM_GT: return(atof(leftVal) > atof(rightVal));
-	    case NUM_LT: return(atof(leftVal) < atof(rightVal));
-	    case NUM_GE: return(atof(leftVal) >= atof(rightVal));
-	    case NUM_LE: return(atof(leftVal) <= atof(rightVal));
-	    case NUM_NE: return(atof(leftVal) != atof(rightVal));
-	    default:  /* we should never get here */
-		fprintf(stderr, "eval: unknown operator %d\n", op);
-		return (0);
-	}
-}
-
-/*
- * Expand the dspec string and print result to "out"
- * This function may call itself recursively
- * kw2val() and fprintDelta() are mutually recursive
- */
-private int
-fprintDelta(FILE *out, char ***vbuf,
-	    const char *dspec, const char *end, sccs *s, delta *d)
-{
-#define	KWSIZE 64
-#define	extractSuffix(a, b) extractToken(a, b, "}", NULL, 0)
-#define	extractKeyword(a, b, c, d) extractToken(a, b, c, d, KWSIZE)
-	const char *b, *t, *q = dspec;
-	char	kwbuf[KWSIZE], rightVal[VSIZE], leftVal[VSIZE];
-	char	op;
-	int	len;
-
-	while (q <= end) {
-		if (*q == '\\') {
-			switch (q[1]) {
-			    case 'n': fc('\n'); q += 2; break;
-			    case 't': fc('\t'); q += 2; break;
-			    case '$': fc('$'); q += 2; break;
-			    default:  fc('\\'); q++; break;
-			}
-		} else if (*q == ':') {		/* keyword expansion */
-			len = extractKeyword(&q[1], end, ":", kwbuf);
-			if ((len > 0) && (len < KWSIZE) &&
-			    (kw2val(out, vbuf, "", 0, kwbuf,
-				    "", 0, s, d) != notKeyword)) {
-				/* got a keyword */
-				q = &q[len + 2];
-			} else {
-				/* not a keyword */
-				fc(*q++);
-			}
-		} else if ((*q == '$') && strneq(q, "$unless(:", 9)) {
-			len = extractKeyword(&q[9], end, ":", kwbuf);
-			if (len < 0) { return (0); } /* error */
-			leftVal[0] = 0;
-			t = extractOp(&q[10 + len], end, rightVal, &op); 
-			unless (t) return(0); /* error */
-			if (t[1] != '{') {
-				/* syntax error */
-				fprintf(stderr,
-				    "must have '{' in conditional string\n");
-				return (0);
-			}
-			if (len && (len < KWSIZE) &&
-			    (kw2buf(op ? leftVal :0, kwbuf, s, d) == strVal) &&
-			    (!op || eval(leftVal, op, rightVal))) {
-			    	goto dont;
-			} else {
-				goto doit;
-			}
-		} else if ((*q == '$') && strneq(q, "$if(:", 5)) {
-			len = extractKeyword(&q[5], end, ":", kwbuf);
-			if (len < 0) { return (0); } /* error */
-			leftVal[0] = 0;
-			t = extractOp(&q[6 + len], end, rightVal, &op); 
-			unless (t) return(0); /* error */
-			if (t[1] != '{') {
-				/* syntax error */
-				fprintf(stderr,
-				    "must have '{' in conditional string\n");
-				return (0);
-			}
-			if (len && (len < KWSIZE) &&
-			    (kw2buf(op ? leftVal: 0, kwbuf, s, d) == strVal) &&
-			    (!op || eval(leftVal, op, rightVal))) {
-				const char *cb;	/* conditional spec */
-				int clen;
-
-doit:				cb = b = &t[2];
-				clen = extractStatement(b, end);
-				if (clen < 0) { return (0); } /* error */
-				fprintDelta(out, vbuf, cb, &cb[clen -1], s, d);
-				q = &b[clen + 1];
-			} else {
-				int	bcount; /* brace count */
-dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
-					if (*t == '{') {
-						bcount++;
-					} else if (*t == '}') {
-						if (--bcount == 0) break;
-					} else if (*t == '\0') {
-						break;
-					}
-				}
-				if (t[0] != '}') {
-					/* syntax error */
-					fprintf(stderr,
-					    "unbalanced '{' in dspec string\n");
-					return (0);
-				}
-				q = &t[1];
-			}
-		} else if ((*q == '$') &&	/* conditional prefix/suffix */
-		    (q[1] == 'e') && (q[2] == 'a') && (q[3] == 'c') &&
-		    (q[4] == 'h') && (q[5] == '(') && (q[6] == ':')) {
-			const char *prefix, *suffix;
-			int	plen, klen, slen;
-			b = &q[7];
-			klen = extractKeyword(b, end, ":", kwbuf);
-			if (klen < 0) { return (0); } /* error */
-			if ((b[klen + 1] != ')') && (b[klen + 2] != '{')) {
-				/* syntax error */
-				fprintf(stderr,
-	    "must have '((:keyword:){..}{' in conditional prefix/suffix\n");
-				return (0);
-			}
-			prefix = &b[klen + 3];
-			plen = extractPrefix(prefix, end, kwbuf);
-			suffix = &prefix[plen + klen + 4];
-			slen = extractSuffix(suffix, end);
-			kw2val(
-			    out, vbuf, prefix, plen, kwbuf, suffix, slen, s, d);
-			q = &suffix[slen + 1];
-		} else {
-			fc(*q++);
-		}
-	}
-	return (0);
-}
-
 int
-sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
+sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	const	char *end;
-
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
-	end = &dspec[strlen(dspec) - 1];
 	s->prs_output = 0;
-	fprintDelta(out, NULL, dspec, end, s, d);
+	dspec_eval(out, 0, s, d, dspec);
 	if (s->prs_output) {
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) fputc('\n', out);
@@ -15162,15 +15478,13 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 }
 
 char *
-sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec)
+sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec)
 {
-	const	char *end;
 	char	**buf = 0;
 
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
-	end = &dspec[strlen(dspec) - 1];
-	fprintDelta(0, &buf, dspec, end, s, d);
+	dspec_eval(0, &buf, s, d, dspec);
 	if (data_length(buf)) {
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) buf = str_append(buf, "\n", 0);
