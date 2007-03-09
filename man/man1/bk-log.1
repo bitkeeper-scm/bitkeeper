@@ -151,7 +151,8 @@ bk log -d'$each(:C:){>> (:C:)\en}' foo.c
 .DE
 .LP
 The list of variables with this behavior is:
-.V C
+.V C ,
+.V FD ,
 and
 .V TAG .
 .br
@@ -254,7 +255,8 @@ in front of each of these lines, the idiom is:
 bk log -d'$if(:C:){$each(:C:){C\ \ (:C:)\en}}' foo.c
 .DE
 The variables that support this kind of iteration are
-.V C
+.V C ,
+.V FD ,
 and
 .V TAG .
 The
