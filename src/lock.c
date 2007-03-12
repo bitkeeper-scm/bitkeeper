@@ -43,7 +43,12 @@ usage:			system("bk help -s lock");
 	}
 	unless (what) what = (file) ? 'f' : 'l';
 	if (av[optind]) chdir(av[optind]);
-	unless (file) proj_cd2root();
+	unless (file) {
+		if (proj_cd2root() < 0) {
+			fprintf(stderr, "lock: Not in a repository\n");
+			exit(2);
+		}
+	}
 	pid = getpid();
 	sig_catch(abort_lock);
 	if (tcp) {
@@ -135,7 +140,7 @@ usage:			system("bk help -s lock");
 	    
 	    case 'L':	/* wait for the file|repository to become locked */
 		while ((file && !exists(file)) ||
-		    (!file && !repository_locked(0))) {
+		    (!file && !repository_locked(0)) && !caught) {
 			usleep(uslp);
 			if (uslp < 1000000) uslp <<= 1;
 		}
@@ -143,7 +148,7 @@ usage:			system("bk help -s lock");
 
 	    case 'U':	/* wait for the file|repository to become unlocked */
 		while ((file && exists(file)) ||
-		    (!file && repository_locked(0))) {
+		    (!file && repository_locked(0)) && !caught) {
 			usleep(uslp);
 			if (uslp < 1000000) uslp <<= 1;
 		}
