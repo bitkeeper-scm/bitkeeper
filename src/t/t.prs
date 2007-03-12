@@ -32,6 +32,10 @@ bk commit $Q -ycommit
 bk tag $Q tag
 # The syntax is <dspec> # <expected output>
 cat >cmds <<'EOF'
+\1		# 1
+\12		# 12
+\141		# a
+\061		# 1
 :REV:		# 1.4
 :REV|1.1:	# 1.1
 :REV|1.2:	# 1.2
@@ -69,6 +73,15 @@ $if(e){x:REV:y}		# x1.4y
 $if(e){x}$else{}	# x
 $if(e){x}$else{y}	# x
 $if(e){x}$else{y:REV:z}	# x
+$if(:FALSE:){false}	#
+$if(:TRUE:){true}	# true
+$if(!:FALSE:){true}	# true
+$if(!:FALSE: || :FALSE:){true}	# true
+$if(!(:FALSE: || :FALSE:)){true}	# true
+$if(!:FALSE: && :FALSE:){true}	#
+$if(!(:FALSE: && :FALSE:)){true}	# true
+$if(!:TRUE: && :FALSE:){true}	#
+$if(!(:TRUE: && :FALSE:)){true}	# true
 $unless(e){x}			#
 $unless(e){}			#
 $unless(e){x:REV:y}		#

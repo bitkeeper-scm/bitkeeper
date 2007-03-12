@@ -13447,6 +13447,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		return (strVal);
 	}
 
+	/* Lose this in 2008 */
 	case KW_W: /* W */ {
 		/* a form of "what" string */
 		/* :W: = :Z::M:\t:I: */
@@ -13894,6 +13895,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		return (strVal);
 	}
 
+	/* Lose this in 2008 */
 	case KW_Z: /* Z */ {
 		fs("@(#)");
 		return (strVal);
@@ -14805,6 +14807,14 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		}
 		return (strVal);
 	}
+
+	/* don't document, TRUE/FALSE are for t.prs */
+	case KW_FALSE: /* FALSE */
+		return (nullVal);
+
+	case KW_TRUE: /* TRUE */
+		fs("1");
+		return (strVal);
 
 	default:
                 return notKeyword;
