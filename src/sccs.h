@@ -1221,6 +1221,12 @@ void	randomBits(char *buf);
 int	almostUnique(void);
 int	uninstall(char *path, int upgrade);
 int	remote_bk(int quiet, int ac, char **av);
+void	dspec_eval(FILE * out, char ***buf, sccs *s, delta *d, char *start);
+void	dspec_printline(sccs *s, FILE *out, char ***vbuf);
+void	dspec_printeach(sccs *s, FILE *out, char ***vbuf);
+int	kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d);
+void	show_s(sccs *s, FILE *out, char ***vbuf, char *data, int len);
+void	show_d(sccs *s, FILE *out, char ***vbuf, char *format, int num);
 
 extern	char	*editor;
 extern	char	*bin;

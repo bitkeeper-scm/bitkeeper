@@ -402,14 +402,14 @@ recurse(delta *d)
 #define	DSPEC	"$unless(:CHANGESET:){  }" \
 		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"+:LI: -:LD:\n" \
-		"$each(:C:){$if(:CHANGESET:){  }  (:C:)\n}" \
+		"$each(:C:){$unless(:CHANGESET:){  }  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
-		"$if(:MERGE:){$if(:CHANGESET:){  }  MERGE: " \
+		"$if(:MERGE:){$unless(:CHANGESET:){  }  MERGE: " \
 		":MPARENT:\n}\n"
 #define	VSPEC	"$if(:CHANGESET:){\n#### :DPN: ####\n}" \
 		"$else{\n==== :DPN: ====\n}" \
 		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
-		"$if(:CHANGESET:){+:LI: -:LD:}" \
+		"$unless(:CHANGESET:){+:LI: -:LD:}" \
 		"\n" \
 		"$each(:C:){  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \

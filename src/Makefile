@@ -126,7 +126,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	check.o checksum.o clean.o cleanpath.o clone.o cmd.o \
 	collapse.o comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	delta.o diffs.o diffsplit.o \
+	delta.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
 	find.o findcset.o findkey.o fixlod.o fixtool.o \
 	g2bk.o gca.o get.o gethelp.o \

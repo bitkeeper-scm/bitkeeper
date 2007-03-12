@@ -12,22 +12,6 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-# Echo "Check $*........" where enough dots are added, and $* is truncated
-# if necessary, to line everything up nicely.
-pr()
-{
-        _PR=$*
-        _PR_LEN=`echo "$_PR" | wc -c`
-        test $_PR_LEN -gt 53 && {
-		_PR=`echo $N "$_PR" | cut -b1-53`
-                _PR_LEN=54
-	}
-        _PR_LEN=`expr 56 - $_PR_LEN`
-	echo $N Check "$_PR"
-        _PR_FILL=`printf "%${_PR_LEN}s\n" "" | sed -e 's/ /./g' 2>/dev/null`
-        echo $N $_PR_FILL$NL
-}
-
 commercial project
 
 ########################################################################
@@ -63,9 +47,9 @@ xyzzy		# xyzzy
 :nokw		# :nokw
 nokw:x		# nokw:x
 x: y: z:	# x: y: z:
-a\\tb		# a	b
-a\\$b		# a$b
-a\\xb		# axb
+a\tb		# a	b
+a\$b		# a$b
+a\xb		# axb
 a\\\\b		# a\\b
 {xxx}		# {xxx}
 {}		# {}
@@ -94,6 +78,8 @@ $unless(e){x}$else{y:REV:z}	# y1.4z
 $each(:C:){x}			# x
 $each(:C:){(:C:)}		# c3
 $each(:C:){:each:}		# c3
+$if(:REV: = 1.4 ){t}		# t
+$if(:REV:\ = 1.4\ ){t}		# t
 $if(e){x}$if(e){y}$if(e){z}	# xyz
 $if(e){x}$else{q}$if(e){y}$if(e){z}	# xyz
 $if(e){x}$if(e){y}$else{q}$if(e){z}	# xyz
@@ -110,7 +96,6 @@ $unless(:REV:!=1.4){t}$else{f}		# t
 $if(:REV|tag:){t}$else{f}		# f
 $if(:DPN:=~file*){t}$else{f}		# t
 $if(:DPN:=~f*){t}$else{f}		# t
-$unless(:DPN:!~f*){t}$else{f}		# t
 $if(1.0 -eq 1.0){t}$else{f}		# t
 $if(1.0 -ne 2.0){t}$else{f}		# t
 $if(2.0 -gt 1.0){t}$else{f}		# t
@@ -130,35 +115,46 @@ $if((:REV: || :C|1.0:) && (:REV: || :C|1.0:)){t}$else{f}	# t
 $if((:REV:=1.4 && :C|1.0:) || (:REV:!=1.1 && :C|1.0:)){t}$else{f}	# f
 $if((:REV:=1.4 && :REV:!=1.1) || (:REV:!=1.1 && :REV=1.4:)){t}$else{f}	# t
 $if(((:REV:=1.4) && (:REV:!=1.1)) || ((:REV:!=1.1) && (:REV=1.4:))){t}$else{f}	# t
+$if(:REV:||:REV:&&:C|1.0:){t}$else{f}			# f
+$if(:REV:||(:REV:&&:C|1.0:)){t}$else{f}			# t
+$if((:REV:&&:C|1.0:)||  (:REV: && :C|1.0:)){t}$else{f}	# f
+$if((:REV: ||:C|1.0:)&& (:REV: ||:C|1.0:)){t}$else{f}	# t
+$if((:REV: = 1.4&&:C|1.0:) || (:REV: != 1.1 &&:C|1.0:)){t}$else{f}	# f
+$if((:REV:= 1.4&&:REV: != 1.1)||(:REV: != 1.1 &&:REV=1.4:)){t}$else{f}	# t
 $tcl{testing}		# {testing}
-$tcl{{}			# {\\{}
-$tcl{\\}}		# {\\}}
-$tcl{[]$;" }		# {\\[\\]\\$\\;\\"\\ }
-$tcl{\\\\x}		# {\\\\x}
-$tcl{$tcl{a} $tcl{b} $tcl{c}}	# {{a}\\ {b}\\ {c}}
+$tcl{{}			# {\{}
+$tcl{\}}		# {\}}
+$tcl{[]$;' }		# {\[\]\$\;'\ }
+$tcl{\\x}		# {\\x}
+$tcl{$tcl{a} $tcl{b} $tcl{c}}	# {{a}\ {b}\ {c}}
 EOF
-cat cmds | while read l; do
-	# Extract command and intended result.
-	cmd=`echo $N $l | cut -d# -f1`
-	res=`echo $N $l | cut -d# -f2 | cut -c2-` 
-        pr $cmd
-        bk prs -r+ -hd"$cmd" FILE2 >OUT 2>&1 || {
-		echo; echo Command did not work
-                cat OUT
-                exit 1
+cat cmds | perl -ne '
+	chomp;
+	($dspec, $out) = /([^\t]*)\t+# ?(.*)/;
+	die "\nunmatched <$_>\n" unless $dspec;
+	print "Check $dspec " . ("." x (53 - length($dspec))) . ".";
+
+	# run prs without shell quoting issues
+	open(OLDOUT, ">&STDOUT") or die "Cant dup STDOUT: $!";
+	open(OLDERR, ">&STDERR") or die "Cant dup STDERR: $!";
+	open(STDOUT, ">prs.out") or die "Cant redirect STDOUT: $!";
+	open(STDERR, ">&STDOUT") or die "Cant dup STDOUT=>ERR: $!";
+	system("bk", "prs", "-r+", "-hd$dspec", "FILE2") == 0 or
+	    die "\nprs failed: $got\n";
+	open(STDOUT, ">&OLDOUT") or die "Cant restore STDOUT: $!";
+	open(STDERR, ">&OLDERR") or die "Cant restore STDERR: $!";
+	open(PRS, "prs.out") or die "Cant open prs.out: $!";
+	$got = "";
+	$got .= $_ while <PRS>;
+	close(PRS);
+	chomp($got);		# trim trailing newline
+	$got =~ s/\n/ /g;	# merge multiple lines together
+	if ($got ne $out) {
+		print "\nexpected <$out> got <$got>\n";
+		exit(1);
 	}
-	# Merge multiple output lines into one by turning newlines into spaces.
-        tr '\n' ' ' <OUT >GOT
-	# Check command output against intended result.
-        echo $N "$res" >WANT
-        echo $N " " >>WANT  # hack for bug? in windows diff -b option
-        echo $N " " >>GOT
-        diff -bB GOT WANT >/dev/null || {
-		echo; echo expected $res got `cat GOT`
-		exit 1
-	}
-        echo OK
-done || exit 1
+	print "OK\n";
+' || exit 1
 
 ########################################################################
 # Check $each statement.  Create a multi-line comment and iterate
@@ -184,28 +180,34 @@ $each(:C:){:line: :each:x}		# 1 l1x2 l2x3 l3x4 l4x
 $each(:C:){$if(:line:=1){one}$if(:line:=2){two}$if(:line:=3){three}}	# onetwothree
 $each(:REV:){:each:}		# 1.2
 EOF
-cat cmds | while read l; do
-	# Extract command and intended result.
-	cmd=`echo $N $l | cut -d# -f1`
-	res=`echo $N $l | cut -d# -f2 | cut -c2-` 
-        pr $cmd
-        bk prs -r+ -hd"$cmd" FILE3 >OUT 2>&1 || {
-		echo; echo Command did not work
-                cat OUT
-                exit 1
+cat cmds | perl -ne '
+	chomp;
+	($dspec, $out) = /([^\t]*)\t+# ?(.*)/;
+	die "\nunmatched <$_>\n" unless $dspec;
+	print "Check $dspec " . ("." x (53 - length($dspec))) . ".";
+
+	# run prs without shell quoting issues
+	open(OLDOUT, ">&STDOUT") or die "Cant dup STDOUT: $!";
+	open(OLDERR, ">&STDERR") or die "Cant dup STDERR: $!";
+	open(STDOUT, ">prs.out") or die "Cant redirect STDOUT: $!";
+	open(STDERR, ">&STDOUT") or die "Cant dup STDOUT=>ERR: $!";
+	system("bk", "prs", "-r+", "-hd$dspec", "FILE3") == 0 or
+	    die "\nprs failed: $got\n";
+	open(STDOUT, ">&OLDOUT") or die "Cant restore STDOUT: $!";
+	open(STDERR, ">&OLDERR") or die "Cant restore STDERR: $!";
+	open(PRS, "prs.out") or die "Cant open prs.out: $!";
+
+	$got = "";
+	$got .= $_ while <PRS>;
+	close(PRS);
+	chomp($got);		# trim trailing newline
+	$got =~ s/\n/ /g;	# merge multiple lines together
+	if ($got ne $out) {
+		print "\nexpected <$out> got <$got>\n";
+		exit(1);
 	}
-	# Merge multiple output lines into one by turning newlines into spaces.
-        tr '\n' ' ' <OUT >GOT
-	# Check command output against intended result.
-        echo $N "$res" >WANT
-        echo $N " " >>WANT  # hack for bug? in windows diff -b option
-        echo $N " " >>GOT
-        diff -bB GOT WANT >/dev/null || {
-		echo; echo expected $res got `cat GOT`
-		exit 1
-	}
-        echo OK
-done || exit 1
+	print "OK\n";
+' || exit 1
 
 ########################################################################
 # Check incorrect syntax.  These should all fail with error status.
@@ -233,15 +235,16 @@ $each(:C:){
 $if((:REV:=1.4)
 $each(:C:){$each(:TAG:){x}}
 EOF
-cat cmds | while read cmd; do
-        pr $cmd
-        bk prs -r+ -d"$cmd" FILE4 >GOT 2>&1 && {
-		echo; echo Command should not have worked
-                cat GOT
-                exit 1
-	}
-        echo OK
-done || exit 1
+cat cmds | perl -ne '
+	chomp;
+	print "Check $_ " . ("." x (53 - length($_))) . ".";
+	# \047 == single quote
+	open(PRS, "bk prs -r+ -hd\047$_\047 FILE4 2>&1 |");
+	$got = "";
+	$got .= $_ while <PRS>;
+	die "\ncommand should not have worked got <$got>\n" if close(PRS);
+	print "OK\n";
+' || exit 1
 
 ########################################################################
 # Check some of the meta-data keywords.

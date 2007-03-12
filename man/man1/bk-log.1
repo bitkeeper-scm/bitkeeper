@@ -170,9 +170,7 @@ bk log -d'$if(:P:=lm){:PRS:}' foo.c
 .ne 5
 .SS CONDITIONAL STATEMENTS
 .TP \fB\-c1992/07.\|.1992\fP
-.if t \fB$if(\fIexpr\fB)\fB{\fIanything\fB}\fR
-.\" XXX needs to be conditional on helpdoc?
-.if n \fB$if(\fI<expr>\fB)\fB{\fI<anything>\fB}\fR
+\fB$if(\fI\*<expr\*>\fB)\fB{\fI\*<anything\*>\fB}\fR
 prints 
 .ARG anything
 if
@@ -186,12 +184,21 @@ then the field is examined and returns true if it has a value.
 can contain fields as normal, i.e.,
 .V :REV: .
 .tp
-.if t \fB$unless(\fIexpr\fB)\fB{\fIanything\fB}\fR
-.\" XXX needs to be conditional on helpdoc?
-.if n \fB$unless(\fI<expr>\fB)\fB{\fI<anything>\fB}\fR
+\fB$unless(\fI\*<expr\*>\fB)\fB{\fI\*<anything\*>\fB}\fR
 prints 
 .ARG anything
 if
+.ARG expr
+is false.
+.tp
+.if n \fB$if(\fI\*<expr\*>\fB)\fB{\fI\*<stuff if true\*>\fB}$else{\fI\*<stuff if false\*>}\fR
+both
+.B $if
+and
+.B $unless
+can have an optional
+.B $else
+clause that prints if
 .ARG expr
 is false.
 .SS CONDITIONAL OPERATORS
@@ -214,8 +221,13 @@ true if
 is different than
 .ARG rhs .
 .br
-.BR Note :
-no spaces on either side of the operator.
+.ARGc str
+.B =~\c
+.ARG glob
+true if
+.ARG str
+matches
+.ARG glob .
 .tp
 .B numbers
 .ARGc lhs
@@ -517,6 +529,16 @@ and
 respectively.
 The old forms will continue to work but the new forms are used
 in the documentation.
+.LP
+Keywords marked with type D above can optionally be resticted to a
+given revision as follows:
+.DS
+.B :KW|REV:
+.DE
+For example:
+.DS
+bk -r prs -r+ -hnd'$if(:DPN|1.0: != :DPN:){rename :DPN|1.0: => :DPN:}'
+.DE
 .SH "SEE ALSO"
 .SA range
 .SH CATEGORY
