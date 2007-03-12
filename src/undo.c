@@ -3,6 +3,7 @@
 #include "logging.h"
 
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
+#define	UNDO_CSETS  "BitKeeper/tmp/undo_csets"
 
 #define	UNDO_ERR	1	/* exitcode for errors */
 #define	UNDO_SKIP	2	/* exitcode for early exit with no work */
@@ -85,6 +86,7 @@ usage:			system("bk help -s undo");
 	unless (f) {
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
+		unlink(UNDO_CSETS);
 		freeLines(fileList, free);
 		if ((size(BACKUP_SFIO) > 0) && restore_backup(BACKUP_SFIO,0)) {
 			return (UNDO_ERR);
@@ -116,6 +118,14 @@ err:		if (undo_list[0]) unlink(undo_list);
 			freeLines(fileList, free);
 			return (UNDO_ERR);
 		}
+	}
+
+	unless (fromclone) {
+		f = fopen(UNDO_CSETS, "w");
+		EACH (csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
+		fclose(f);
+		putenv("BK_CSETLIST=" UNDO_CSETS);
+		if (trigger("undo", "pre")) goto err;
 	}
 
 	if (save) {
@@ -175,11 +185,17 @@ err:		if (undo_list[0]) unlink(undo_list);
 	freeLines(fileList, free);
 	unlink(rev_list);
 	unlink(undo_list);
+	unless (fromclone) unlink(UNDO_CSETS);
 	update_log_markers(!quiet);
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
 	rmtree("RESYNC");
 	unlink(CSETS_IN);	/* no longer valid */
+	unless (fromclone) {
+		putenv("BK_CSETLIST=");
+		putenv("BK_STATUS=OK");
+		trigger("undo", "post");
+	}
 	return (rc);
 }
 
@@ -240,15 +256,14 @@ getrev(char *top_rev, int aflg)
 	int	status;
 	char	**list = 0;
 	FILE	*f;
-	char	revline[MD5LEN];	/* max(MD5LEN, MAXREV) */
+	char	revline[MAXKEY];
 
 	if (aflg) {
-		cmd = aprintf("bk -R prs -hnr'%s..' -d:REV: ChangeSet",
-		    top_rev);
+		cmd = aprintf("bk changes -and:KEY: -r'%s..'", top_rev);
 	} else if (IsFullPath(top_rev) && isreg(top_rev)) {
-		cmd = aprintf("bk changes -and:MD5KEY: - < '%s'", top_rev);
+		cmd = aprintf("bk changes -and:KEY: - < '%s'", top_rev);
 	} else {
-		cmd = aprintf("bk -R prs -hnr'%s' -d:REV: ChangeSet", top_rev);
+		cmd = aprintf("bk changes -nd:KEY: -r'%s'", top_rev);
 	}
 	f = popen(cmd, "r");
 	free(cmd);

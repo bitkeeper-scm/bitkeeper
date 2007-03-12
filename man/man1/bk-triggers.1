@@ -25,12 +25,6 @@ be malicious or ill advised and a prudent repository manager may have
 developed triggers to look for problems.  If the incoming data contained
 a new or modified trigger, and that trigger was run, triggers could not
 be used to implement security or other policies at the repository boundary.
-.LP
-Triggers only occur when events happen which (may) add changes.
-The removal of changes via
-.BR "bk undo" ,
-.BR "bk unpull" ,
-etc, does not result in any triggers being run.
 .SS
 TRIGGER NAMES
 .LP
@@ -70,8 +64,7 @@ Files ending in ~ are ignored to avoid editor backup files.
 TRIGGER CLASSES
 .LP
 There are multiple event classes which may activate triggers: incoming
-events, outgoing events, deltas, commits, tags, and
-.BR "bk collapse" .
+events, outgoing events, deltas, commits, tags, undo, and collapses.
 The incoming event is broken into
 multiple events: incoming, resolve, and apply.
 .LP
@@ -88,6 +81,40 @@ supported triggers are as follows:
 .	B \\$1
 .	li
 ..
+.EV pre-apply
+called after the data has been merged in the
+.B RESYNC
+directory but
+before it is applied to the tree.  Last chance to say no, allows examination
+of the merged changes.
+.li
+called in the
+.B RESYNC
+directory, not the enclosing repository.
+.li
+exit 0 allows the pull/push.
+.li
+exit 1 fails the entire pull/push.
+.li
+exit 2 fails the pull/push but leaves the patch in
+.BR PENDING .
+.li
+exit 3 fails the pull/push but leaves the patch in
+.B PENDING
+and the
+.B RESYNC
+tree in
+.BR PENDING/RESYNC-\fIdate\fP .
+.hy
+.EV pre-collapse
+called before a changeset is collapsed (see
+.BR "bk collapse" ).
+Typically used as part of a process to record the renaming of changesets in
+bug tracking systems.
+.li
+exit 0 allows the collapse.
+.li
+non-zero exit values will fail the collapse.
 .EV pre-commit
 called before a changeset is committed.
 .li
@@ -111,15 +138,6 @@ exit 2 indicates that the trigger called delta itself, upon which the
 calling delta command treats it as a successful delta.
 .li
 Other than 2, all other non-zero exit values will fail the delta.
-.EV pre-collapse
-called before a changeset is collapsed (see
-.BR "bk collapse" ).
-Typically used as part of a process to record the renaming of changesets in
-bug tracking systems.
-.li
-exit 0 allows the collapse.
-.li
-non-zero exit values will fail the collapse.
 .EV pre-incoming
 called before an incoming push/pull is started.
 .li
@@ -143,19 +161,6 @@ typically used for locking down a repository.
 called after the outgoing event.
 .li
 typically used for notification.
-.EV pre-tag
-called before a tag event, such as a
-.B bk commit
-with a specified tag or a
-.BR "bk tag" .
-.li
-exit 0 allows the tag.
-.li
-exit 1 causes the tag operation to fail as well as the commit operation if
-the tag was part of a commit.
-.li
-exit 2 causes the tag operation to fail but allows the commit operation to
-proceed if the tag was part of a commit.
 .EV pre-resolve
 called after the data has been union-ed in the
 .B RESYNC
@@ -173,34 +178,27 @@ exit 2 fails the entire pull/push but leaves the patch in
 .BR PENDING .
 .li
 typically used to examine changes before taking them.
-.EV pre-apply
-called after the data has been merged in the
-.B RESYNC
-directory but
-before it is applied to the tree.  Last chance to say no, allows examination
-of the merge changes.
+.EV pre-tag
+called before a tag event, such as a
+.B bk commit
+with a specified tag or a
+.BR "bk tag" .
 .li
-called in the
-.B RESYNC
-directory, not the enclosing repository.
+exit 0 allows the tag.
 .li
-exit 0 allows the pull/push.
+exit 1 causes the tag operation to fail as well as the commit operation if
+the tag was part of a commit.
 .li
-exit 1 fails the entire pull/push.
+exit 2 causes the tag operation to fail but allows the commit operation to
+proceed if the tag was part of a commit.
+.EV pre-undo
+called before a undo is run by user or by unpull and clone -r. 
 .li
-exit 2 fails the pull/push but leaves the patch in
-.BR PENDING .
+exit 0 allows the undo.
 .li
-exit 3 fails the pull/push but leaves the patch in
-.B PENDING
-and the
-.B RESYNC
-tree in
-.nf
-.BR PENDING/RESYNC-\fIdate\fP .
-.hy
-.li
-typically used to examine changes before taking them.
+exit 1 causes the undo operation to fail.
+.EV post-undo
+called after an undo is run successfully.
 .SS
 TRIGGER LOCKING
 .LP
@@ -302,8 +300,15 @@ unless otherwise stated.
 .TP \fBBK_COMMENTFILE\fP
 .V BK_CSETLIST 
 If set, contains the name of a file which contains the list of changesets
-being received.  Valid in pre-outgoing, post-outgoing,
-pre-resolve, pre-apply, and post-incoming triggers.
+being received.  Valid in
+pre-apply,
+post-incoming
+pre-outgoing,
+post-outgoing,
+pre-resolve,
+and
+pre-undo
+triggers.
 .tp
 .V BK_CSETS
 If set, contains the list of changesets being sent.
