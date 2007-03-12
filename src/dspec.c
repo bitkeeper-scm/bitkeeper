@@ -28,10 +28,10 @@ typedef	struct
 private struct {
 	char	*p;		/* current location in dspec */
 	char	*start;		/* start of dspec buffer */
-	MDBM	*eachvals;	/* hash of $each variables' current vals */
+	datum	eachkey;	/* key of current $each */
+	char	*eachval;	/* val of eachkey in current iteration */
 	FILE	*out;		/* FILE* to receive output */
 	char	***buf;		/* lines array to receive output */
-	datum	each;		/* current value of $each variable */
 	int	line;		/* current line in $each iteration */
 	int	tcl;		/* whether we are inside a $tcl construct */
 	sccs	*s;
@@ -127,7 +127,7 @@ stmtList(int output)
 	while (*g.p) {
 		switch (*g.p) {
 		    case '$':
-		    	dollar(output, out, buf);
+			dollar(output, out, buf);
 			continue;
 		    case ':':
 			evalId(out, buf);
@@ -210,13 +210,6 @@ dollar(int output, FILE *out, char ***buf)
 		if (*g.p++ != ')') err("missing )");
 		if (*g.p++ != '{') err("missing {");
 
-		unless (g.eachvals) {
-			unless (g.eachvals = mdbm_mem()) {
-				perror("no mem");
-				return;
-			}
-		}
-
 		/*
 		 * Re-evaluate the $each body for each
 		 * line of the $each variable.
@@ -228,14 +221,14 @@ dollar(int output, FILE *out, char ***buf)
 		g.line	  = 1;
 		while (getnext(k, &state)) {
 			unless (state.ret) continue;
-			g.each.dptr  = state.ret;
-			g.each.dsize = strlen(g.each.dptr);
-			mdbm_store(g.eachvals, k, g.each, MDBM_REPLACE);
+			g.eachkey = k;
+			g.eachval = state.ret;
 			g.p = bufptr;
 			stmtList(output);
 			++g.line;
 		}
-		mdbm_delete(g.eachvals, k);
+		g.eachkey.dptr = 0;
+		g.eachval = 0;
 		--in_each;
 		/* Eat the body if we never parsed it above. */
 		if (g.line == 1) stmtList(0);
@@ -282,7 +275,7 @@ expr(void)
 		switch (op) {
 		    case T_AND:
 			/*
-			 * You might be tempted to write this as 
+			 * You might be tempted to write this as
 			 *	(ret && expr2(&op))
 			 * since that reads more like what the user
 			 * wrote.  But C will short circuit that and
@@ -474,15 +467,14 @@ private void
 evalParenid(FILE *out, char ***buf, datum id)
 {
 	/*
-	 * Expand a (:ID:).  If the eachvals hash has a value for ID,
+	 * Expand a (:ID:).  If the eachkey has a value for if id,
 	 * use that.  Otherwise output the parentheses and try
 	 * expanding ID as a regular keyword.  If it's not a keyword,
 	 * treat it as a regular string.
 	 */
-	datum	v;
-	v = mdbm_fetch(g.eachvals, id);
-	if (v.dptr) {
-		show_s(g.s, out, buf, v.dptr, v.dsize);
+	if ((id.dsize == g.eachkey.dsize) &&
+	    strneq(g.eachkey.dptr, id.dptr, id.dsize)) {
+		show_s(g.s, out, buf, g.eachval, strlen(g.eachval));
 	} else {
 		show_s(g.s, out, buf, "(", 1);
 		if (kw2val(out, buf, id.dptr, id.dsize, g.s, g.d) < 0) {
@@ -614,7 +606,7 @@ getnext(datum kw, nextln *state)
 void
 dspec_printeach(sccs *s, FILE *out, char ***vbuf)
 {
-	show_s(s, out, vbuf, g.each.dptr, g.each.dsize);
+	show_s(s, out, vbuf, g.eachval, strlen(g.eachval));
 }
 
 void
