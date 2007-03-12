@@ -540,7 +540,7 @@ tclwrap: blowfish.o tclwrap.o
 
 tclwrap.o blowfish.o: blowfish.h tclkey.h
 
-cmd.c cmd.h: cmd.pl bk.sh
+cmd.c cmd.h: cmd.pl bk.sh $(filter bkd_%,$(SRCS))
 	perl cmd.pl || (rm -f cmd.c cmd.h; exit 1)
 
 # This parses slib.c and extracts the meta-data keywords expanded
