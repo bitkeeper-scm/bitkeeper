@@ -29,6 +29,12 @@
 #define	SFIO_NOMODE	"SFIO v 1.4"	/* must be 10 bytes exactly */
 #define	SFIO_MODE	"SFIO vm1.4"	/* must be 10 bytes exactly */
 #define	SFIO_VERS	(opts->doModes ? SFIO_MODE : SFIO_NOMODE)
+/* error returns, don't use 1, that's generic */
+#define	SFIO_LSTAT	2
+#define	SFIO_READLINK	3
+#define	SFIO_OPEN	4
+#define	SFIO_SIZE	5
+#define	SFIO_LOOKUP	6
 
 private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count);
@@ -37,14 +43,16 @@ private	int	sfio_in(int extract);
 private int	in_link(char *file, int todo, int extract);
 private int	in_file(char *file, int todo, int extract);
 private	int	mkfile(char *file);
+private	void	send_eof(int status);
 
 struct {
-	int	quiet;
-	int	doModes;
-	int	echo;		/* echo files to stdout as they are written */
-	int	force;		/* overwrite existing files */
+	u32	quiet:1;	/* suppress normal verbose output */
+	u32	doModes:1;	/* vm1.4 - sends permissions */
+	u32	echo:1;		/* echo files to stdout as they are written */
+	u32	force:1;	/* overwrite existing files */
+	u32	adler32:1;	/* -B: use adler32 from filename */
+	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	**more;		/* additional list of files to send */
-	int	binpool;	/* verify binpool checksums */
 	char	newline;	/* -r makes it \r instead of \n */
 } *opts;
 
@@ -55,7 +63,7 @@ struct {
 int
 sfio_main(int ac, char **av)
 {
-	int	c, mode = 0;
+	int	c;
 
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
@@ -68,15 +76,23 @@ sfio_main(int ac, char **av)
 		    case 'A':
 			opts->more = file2Lines(opts->more, optarg);
 			break;
-		    case 'B': opts->binpool = 1; break;
+		    case 'B':
+			opts->adler32 = 1;
+			break;
 		    case 'e': opts->echo = 1; break;		/* doc 2.3 */
 		    case 'f': opts->force = 1; break;		/* doc */
 		    case 'i': 					/* doc 2.0 */
-			if (mode) goto usage; mode = M_IN;   break;
+			if (opts->mode) goto usage;
+			opts->mode = M_IN;
+			break;
 		    case 'o': 					/* doc 2.0 */
-			if (mode) goto usage; mode = M_OUT;  break;
+			if (opts->mode) goto usage;
+			opts->mode = M_OUT;
+			break;
 		    case 'p': 					/* doc 2.0 */
-			if (mode) goto usage; mode = M_LIST; break; 
+			if (opts->mode) goto usage;
+			opts->mode = M_LIST;
+			break; 
 		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
 		    case 'r': opts->newline = '\r'; break;
@@ -87,13 +103,14 @@ sfio_main(int ac, char **av)
 	/* ignore "-" it makes bk -r sfio -o work */
 	if (av[optind] && streq(av[optind], "-")) optind++;
 	if (optind != ac) goto usage;
-	if (opts->more && (mode != M_OUT)) goto usage;
+	if (opts->more && (opts->mode != M_OUT)) goto usage;
 
-	if      (mode == M_OUT)  return (sfio_out());
-	else if (mode == M_IN)   return (sfio_in(1));
-	else if (mode == M_LIST) return (sfio_in(0));
+	if (opts->mode == M_OUT)       return (sfio_out());
+	else if (opts->mode == M_IN)   return (sfio_in(1));
+	else if (opts->mode == M_LIST) return (sfio_in(0));
 
 usage:	system("bk help -s sfio");
+	free(opts);
 	return (1);
 }
 
@@ -128,17 +145,18 @@ sfio_out(void)
 	writen(1, SFIO_VERS, 10);
 	byte_count = 10;
 	while (nextfile(buf)) {
-		unless (opts->quiet) fputs(buf, stderr);
 		chomp(buf);
+		unless (opts->quiet) fprintf(stderr, "%s\n", buf);
+		if (lstat(buf, &sb)) {
+			perror(buf);
+			send_eof(SFIO_LSTAT);
+			return (SFIO_LSTAT);
+		}
 		n = strlen(buf);
 		sprintf(len, "%04d", n);
 		writen(1, len, 4);
 		writen(1, buf, n);
 		byte_count += (n + 4);
-		if (lstat(buf, &sb)) {
-			fprintf(stderr, "sfio: unable to read %s\n", buf);
-			return (1);
-		}
 		if (S_ISLNK(sb.st_mode)) {
 			unless (opts->doModes) {
 				fprintf(stderr,
@@ -147,11 +165,18 @@ sfio_out(void)
 				stat(buf, &sb);
 				goto reg;
 			}
-			if (out_link(buf, &sb, &byte_count)) return (1);
+			if (n = out_link(buf, &sb, &byte_count)) {
+				send_eof(n);
+				return (n);
+			}
 		} else if (S_ISREG(sb.st_mode)) {
-reg:			if (out_file(buf, &sb, &byte_count)) return (1);
+reg:			if (n = out_file(buf, &sb, &byte_count)) {
+				send_eof(n);
+				return (n);
+			}
 		} else {
-			fprintf(stderr, "unknown file type %s ignored\n",  buf);
+			fprintf(stderr, "unknown file %s ignored\n", buf);
+			// No error?
 		}
 	}
 #ifndef SFIO_STANDALONE
@@ -159,6 +184,7 @@ reg:			if (out_file(buf, &sb, &byte_count)) return (1);
 #endif
 	if (opts->more) freeLines(opts->more, free);
 	free(opts);
+	send_eof(0);
 	return (0);
 }
 
@@ -172,8 +198,8 @@ out_link(char *file, struct stat *sp, off_t *byte_count)
 
 	n = readlink(file, buf, sizeof(buf));
 	if (n == -1) {
-		perror(file);
-		return (1);
+		perror("readlink");
+		return (SFIO_READLINK);
 	}
 	buf[n] = 0;	/* paranoid */
 	/*
@@ -205,7 +231,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 
 	if (fd == -1) {
 		perror(file);
-		return (1);
+		return (SFIO_OPEN);
 	}
 
 	/*
@@ -213,7 +239,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	 * we don't calculate it again.  If the file is corrupted it
 	 * will be detected when being unpacked.
 	 */
-	if (opts->binpool && strneq(file, "BitKeeper/binpool/", 18) &&
+	if (opts->adler32 && strneq(file, "BitKeeper/binpool/", 18) &&
 	    (p = strrchr(file, '.')) && (p[1] == 'd')) {
 		p = strrchr(file, '/');
 		sum = strtoul(p+1, 0, 16);
@@ -235,10 +261,10 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		*byte_count += n;
 	}
 	if (nread != sp->st_size) {
-		fprintf(stderr, "Size mismatch on %s %u:%u\n",
+		fprintf(stderr, "Size mismatch on %s %u:%u\n\n", 
 		    file, nread, (unsigned int)sp->st_size);
 		close(fd);
-		return (1);
+		return (SFIO_SIZE);
 	}
 	sprintf(buf, "%010u", sum);
 	n = writen(1, buf, 10);
@@ -253,6 +279,22 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 }
 
 /*
+ * Send an eof by sending a 0 or less than 0 for the pathlen of the "next"
+ * file.  Safe to do with old versions of sfio, they'll handle it properly.
+ */
+private void
+send_eof(int error)
+{
+	char	buf[10];
+
+	/* negative lengths are exit codes */
+	if (error > 0) error = -error;
+	sprintf(buf, "%4d", error);
+	assert(strlen(buf) == 4);
+	writen(1, buf, 4);
+}
+
+/*
  * sfio -i - produce a tree from an sfio on stdin
  * sfio -p - produce a listing of the files in the sfio and verify checksums
  */
@@ -263,6 +305,7 @@ sfio_in(int extract)
 	char	datalen[11];
 	int	len;
 	int	n;
+	char	c;
 	off_t	byte_count = 0;
 
 	bzero(buf, sizeof(buf));
@@ -286,8 +329,35 @@ sfio_in(int extract)
 		buf[5] = 0;
 		len = 0;
 		sscanf(buf, "%04d", &len);
-		if(len == 0) return (0); /* we got a EOF */
-		if (len <= 0 || len >= MAXPATH) {
+		if (len <= 0) {
+			if (len < 0) {
+				fprintf(stderr, "Incomplete archive: ");
+				switch (-len) {
+				    case SFIO_LSTAT:
+					fprintf(stderr, "lstat failed\n");
+					break;
+				    case SFIO_READLINK:
+					fprintf(stderr, "readlink failed\n");
+					break;
+				    case SFIO_OPEN:
+					fprintf(stderr, "open failed\n");
+					break;
+				    case SFIO_SIZE:
+					fprintf(stderr, "file changed size\n");
+					break;
+				    case SFIO_LOOKUP:
+					fprintf(stderr,
+					    "binpool lookup failed\n");
+					break;
+				    default:
+					fprintf(stderr,
+					    "unknown error %d\n", -len);
+				    	break;
+				}
+			}
+			return (-len); /* we got a EOF */
+		}
+		if (len >= MAXPATH) {
 			fprintf(stderr, "Bad length in sfio\n");
 			return (1);
 		}
