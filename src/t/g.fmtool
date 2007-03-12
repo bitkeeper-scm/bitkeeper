@@ -41,7 +41,7 @@ echo $N Simple startup and exit......................................$NL
 bk get $Q left right 
 bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
@@ -52,7 +52,7 @@ echo $N Create dotbk/fm.rc ..........................................$NL
 test -f "$RC" && rm -f "$RC"
 bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 test -f "$RC" || { echo "failed"; exit 1; }
 echo "OK"
@@ -61,7 +61,7 @@ echo $N Use Left.....................................................$NL
 bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress "Use Left"
     test_buttonPress Done
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
@@ -77,7 +77,7 @@ echo $N Use Right....................................................$NL
 bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress "Use Right"
     test_buttonPress Done
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
@@ -95,7 +95,7 @@ bk guitest fmtool left right merge >"$OUT" 2>&1 <<'EOF'
     test_buttonPress "Undo"
     test_buttonPress "Use Right"
     test_buttonPress Done
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi

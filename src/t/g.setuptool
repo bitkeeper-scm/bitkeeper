@@ -21,7 +21,7 @@ ACCEPTED="`bk dotbk`/accepted"
 echo $N Simple startup and exit......................................$NL
 bk guitest setuptool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Cancel
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
@@ -33,7 +33,7 @@ echo OK
 #test -f "$RC" && rm -f "$RC"
 #bk guitest setuptool >"$OUT" 2>&1 <<'EOF'
 #    test_buttonPress Cancel
-#    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+#    test_die 99
 #EOF
 #test -f "$RC" || { echo "failed"; ls -l `bk dotbk`; exit 1; }
 #echo "OK"
@@ -73,7 +73,7 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
     after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
-    after 10000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 test $? -eq 0 || {
 	echo failed
@@ -144,7 +144,7 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
     after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
-    after 10000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 test $? -eq 0 || {
 	echo failed
@@ -215,7 +215,7 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
     after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
-    after 10000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 test $? -eq 0 || {
 	echo failed
@@ -286,7 +286,7 @@ bk guitest setuptool >"$OUT" 2>&1 <<EOF
     test_buttonPress "Next >"  ;# takes us to last step
     test_buttonPress "Finish"  ;# do it!
     after 5000 [list test_buttonPress OK] ;# darn confirmation popup :-(
-    after 10000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 test $? -eq 0 || {
 	echo failed

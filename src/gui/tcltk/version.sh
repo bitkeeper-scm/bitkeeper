@@ -42,6 +42,19 @@ else
 	TKTABLEKEY=`tail -1 TKTABLEKEY`
 fi
 
+if [ -d tktreectrl ]
+then
+	test `(bk sfiles -cp tktreectrl | wc -l)` -gt 0 && exit 1
+	TKTREECTRLKEY=`bk prs -hnd:KEY: -r+ tktreectrl/ChangeSet`
+	bk edit -q TKTREECTRLKEY 2>/dev/null
+	echo '# Always delta this if there are diffs' > TKTREECTRLKEY
+	echo $TKTREECTRLKEY >> TKTREECTRLKEY
+else
+	bk get -q TKTREECTRLKEY
+	test -f TKTREECTRLKEY || exit 1
+	TKTREECTRLKEY=`tail -1 TKTREECTRLKEY`
+fi
+
 if [ -d bwidget ]
 then
        test `(bk sfiles -cp bwidget | wc -l)` -gt 0 && exit 1
@@ -55,4 +68,17 @@ else
        BWIDGETKEY=`tail -1 BWIDGETKEY`
 fi
 
-echo /build/obj/tcltk-`bk crypto -h "$TCLKEY-$TKKEY-$TKTABLEKEY-$BWIDGETKEY-$BUILDHASH"`.tgz
+if [ -d tkcon ]
+then
+       test `(bk sfiles -cp tkcon | wc -l)` -gt 0 && exit 1
+       TKCONKEY=`bk prs -hnd:KEY: -r+ tkcon/ChangeSet`
+       bk edit -q TKCONKEY 2>/dev/null
+       echo '# Always delta this if there are diffs' > TKCONKEY
+       echo $TKCONKEY >> TKCONKEY
+else
+       bk get -q TKCONKEY
+       test -f TKCONKEY || exit 1
+       TKCONKEY=`tail -1 TKCONKEY`
+fi
+
+echo /build/obj/tcltk-`bk crypto -h "$TCLKEY-$TKKEY-$TKTABLEKEY-$TKTREECTRLKEY-$BWIDGETKEY-$TKCONKEY-$BUILDHASH"`.tgz

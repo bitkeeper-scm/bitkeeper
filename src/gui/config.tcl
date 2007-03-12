@@ -275,7 +275,14 @@ proc getConfig {prog} \
                 }
         }
 
-	option add *Text.tabwidth $gc($app.tabwidth) userDefault
+	if {$::tk_version eq "8.5"} {
+		option add *Text.tabStyle wordprocessor
+		option add *Text.tabs [expr \
+		    {$gc($app.tabwidth) * [font measure $gc($app.fixedFont) 0]}]
+	} else {
+		# using our hacked version of Tk that implements -tabwidth
+		option add *Text.tabwidth $gc($app.tabwidth) userDefault
+	}
 }
 
 proc initFonts {app var} \
@@ -314,9 +321,6 @@ proc initFonts-macosx {app var} \
 {
 	upvar 2 $var _d
 
-	set width [winfo screenwidth .]
-
-	# tested with 1024x768 only
 	set _d(buttonFont)	system
 	set _d(noticeFont)	system
 	set _d(fixedFont)	{Monaco 10 normal}

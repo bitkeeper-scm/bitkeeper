@@ -499,7 +499,7 @@ _unrm () {
 	trap 'rm -f $LIST $TMPFILE' 0
 
 	# Find all the possible files, sort with most recent delete first.
-	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
+	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE:' | \
 		bk sort -r -n | awk -F'|' '{print $2}' | \
 		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
@@ -1398,7 +1398,16 @@ _tclsh() {
 }
 
 _wish() {
-	WISH=`bk bin`/gui/bin/bkgui
+	AQUAWISH="`bk bin`/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
+	if [ -z "$DISPLAY" -a -x "$AQUAWISH" ] ; then
+		WISH="$AQUAWISH"
+	else
+		TCL_LIBRARY=`bk bin`/gui/lib/tcl8.5
+		export TCL_LIBRARY
+		TK_LIBRARY=`bk bin`/gui/lib/tk8.5
+		export TK_LIBRARY
+		WISH="`bk bin`/gui/bin/bkgui"
+	fi
 	test "X$OSTYPE" = "Xmsys" && WISH=`win2msys "$WISH"`
 	exec "$WISH" "$@"
 }

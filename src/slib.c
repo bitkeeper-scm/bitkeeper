@@ -16,9 +16,7 @@
 #include "tomcrypt.h"
 #include "range.h"
 
-#define	VSIZE 4096
 #define	WRITABLE_REG(s)     (WRITABLE(s) && isRegularFile((s)->mode))
-
 
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, delta *d, int fixDate);
@@ -66,8 +64,6 @@ private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
 private	delta*	getCksumDelta(sccs *s, delta *d);
-private int	fprintDelta(FILE *,
-			char ***, const char *, const char *, sccs *, delta *);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
@@ -13248,56 +13244,6 @@ done:	free_pfile(&pf);
 	return (rc);
 }
 
-private void
-show_d(sccs *s, delta *d, FILE *out, char ***vbuf, char *format, int num)
-{
-	if (out) {
-		fprintf(out, format, num);
-		s->prs_output = 1;
-	}
-	if (vbuf) *vbuf = str_append(*vbuf, aprintf(format, num), 1);
-}
-
-private void
-show_s(sccs *s, delta *d, FILE *out, char ***vbuf, char *str)
-{
-	if (out) {
-		fputs(str, out);
-		s->prs_output = 1;
-	}
-	if (vbuf) *vbuf = str_append(*vbuf, str, 0);
-}
-
-/*
- * XXX TODO We should load it directly from the weave
- *     without generating the gfile.
- */
-void
-sccs_loadkv(sccs *s)
-{
-	char x_kv[MAXPATH];
-
-	bktmp(x_kv, "kv");
-	sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, x_kv);
-	s->mdbm = loadkv(x_kv);
-	unlink(x_kv);
-}
-
-/*
- * Given key return the value.
- * The mdbm is loaded on demand
- * XXX TODO need a state to remember the previous load failed, so we do
- *     not try to re-load.
- */
-private char *
-key2val(sccs *s, const char *key)
-{
-	unless (KV(s))  return (NULL);
-	unless (s->mdbm) sccs_loadkv(s);
-	unless (s->mdbm) return (NULL);
-	return (mdbm_fetch_str(s->mdbm, key));
-}
-
 /*
  * Include the kw2val() hash lookup function.  This is dynamically
  * generated during the build by kwextract.pl and gperf (see the
@@ -13308,6 +13254,7 @@ key2val(sccs *s, const char *key)
 #define	notKeyword -1
 #define	nullVal    0
 #define	strVal	   1
+
 /*
  * Given a PRS DSPEC keyword, get the associated string value
  * If out is non-null print to out
@@ -13329,31 +13276,50 @@ key2val(sccs *s, const char *key)
  * followed by a comment containing the keyword name.  If a block follows,
  * the comment MUST appear before the {.
  */
-private int
-kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
-	const char *suffix, int slen, sccs *s, delta *d)
+int
+kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 {
 	struct kwval *kwval;
 	char	*p, *q;
-#define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
-#define	fc(c)	show_d(s, d, out, vbuf, "%c", c)
-#define	fd(n)	show_d(s, d, out, vbuf, "%d", n)
-#define	fx(n)	show_d(s, d, out, vbuf, "0x%x", n)
-#define	f5d(n)	show_d(s, d, out, vbuf, "%05d", n)
-#define	fs(str)	show_s(s, d, out, vbuf, str)
+#define	KW(x)	kw2val(out, vbuf, x, strlen(x), s, d)
+#define	fc(c)	show_d(s, out, vbuf, "%c", c)
+#define	fd(n)	show_d(s, out, vbuf, "%d", n)
+#define	fx(n)	show_d(s, out, vbuf, "0x%x", n)
+#define	f5d(n)	show_d(s, out, vbuf, "%05d", n)
+#define	fs(str)	show_s(s, out, vbuf, str, -1)
+#define	fsd(d)	show_s(s, out, vbuf, d.dptr, d.dsize)
 
-	if (kw[0] == '%') {
-		p = key2val(s, &kw[1]);
-		//unless (p) return (nullVal);
-		unless (p) return (notKeyword);
-		fs(p);
-		return (strVal);
+	/*
+	 * Allow keywords of the form "word|rev"
+	 * to mean "word" for revision "rev".
+	 */
+	for (p = kw, q = p+len; (*p != '|') && (p < q); ++p) ;
+	if (p < q) {
+		delta	*e;
+		char	last = kw[len];
+
+		p++;
+		kw[len] = '\0';
+		e = sccs_findrev(s, p);
+		kw[len] = last;
+		unless (e) return (nullVal);
+		len = p - 1 - kw;
+		d = e;
 	}
 
-	kwval = kw2val_lookup(kw, strlen(kw));
+	kwval = kw2val_lookup(kw, len);
 	unless (kwval) return notKeyword;
 
+	unless (out || vbuf) return (nullVal);
 	switch (kwval->kwnum) {
+	case KW_each: /* each */ {
+		dspec_printeach(s, out, vbuf);
+		return (strVal);
+	}
+	case KW_eachline: /* line */ {
+		dspec_printline(s, out, vbuf);
+		return (strVal);
+	}
 	case KW_Dt: /* Dt */ {
 		/* :Dt: = :DT::I::D::T::P::DS::DP: */
 		KW("DT"); fc(' '); KW("I"); fc(' ');
@@ -13480,6 +13446,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	/* Lose this in 2008 */
 	case KW_W: /* W */ {
 		/* a form of "what" string */
 		/* :W: = :Z::M:\t:I: */
@@ -13745,9 +13712,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		/* to get the latest comment				*/
 		EACH(d->comments) {
 			j++;
-			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(d->comments[i]);
-			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -13909,9 +13874,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		EACH(s->text) {
 			if (s->text[i][0] == '\001') continue;
 			j++;
-			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(s->text[i]);
-			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -13931,6 +13894,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	/* Lose this in 2008 */
 	case KW_Z: /* Z */ {
 		fs("@(#)");
 		return (strVal);
@@ -14087,7 +14051,11 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	case KW_CHANGESET: /* CHANGESET */ {
-		return (CSET(s) ? strVal : nullVal);
+		if (CSET(s)) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	case KW_CSETFILE: /* CSETFILE */ {
@@ -14232,9 +14200,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
 			j++;
-			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(sym->symname);
-			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -14825,7 +14791,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 			char	*cmd;
 			FILE	*f;
 			char	buf[BUFSIZ];
-			
+
 			cmd = aprintf("bk diffs -%s%shR%s '%s'",
 			    kind == DF_DIFF ? "" : "u",
 			    kind & DF_GNUp ? "p" : "",
@@ -14841,318 +14807,26 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	/* don't document, TRUE/FALSE are for t.prs */
+	case KW_FALSE: /* FALSE */
+		return (nullVal);
+
+	case KW_TRUE: /* TRUE */
+		fs("1");
+		return (strVal);
+
 	default:
                 return notKeyword;
 	}
 }
 
-/*
- * A temporary function that provides an interface like kw2val() but
- * that writes to a fixed buffer.  This function will be deleted when
- * the new prs parser is used.
- */
-private int
-kw2buf(char *buf, const char *kw, sccs *s, delta *d)
-{
-	int	rc;
-	char	**vbuf = 0;
-
-	rc = kw2val(0, buf ? &vbuf : 0, "", 0, kw, "", 0, s, d);
-	if (buf) {
-		char	*p = str_pullup(0, vbuf);
-		strcpy(buf, p);
-		free(p);
-	}
-	return (rc);
-}
-
-/*
- * given a string "<token><endMarker>..."
- * extrtact token and put it in a buffer
- * return the length of the token
- */
-private int
-extractToken(const char *q, const char *end, char *endMarker, char *buf,
-	    int maxLen)
-{
-	const char *t;
-	int	len;
-
-	if (buf) buf[0] = '\0';
-	/* look for endMarker */
-	for (t = q; (t <= end) && !strchr(endMarker, *t); t++);
-	unless (strchr(endMarker, *t)) return (-1);
-	len = t - q;
-	if ((buf) && (len < maxLen)) {
-		strncpy(buf, q, len);
-		buf[len] = '\0';
-	}
-	return (len);
-}
-
-/*
- * extract the prefix inside a $each{...} statement
- */
-private int
-extractPrefix(const char *b, const char *end, char *kwbuf)
-{
-	const char *t;
-	int	len, klen;
-
-	/*
-	 * XXX TODO, this does not support
-	 * compound statement inside $each{...} yet
-	 * We may need to support this later
-	 */
-	for (t = b; t <= end; t++) {
-		while ((t <= end) && (*t != '(')) t++;
-		klen = strlen(kwbuf);
-		if ((t <= end) && (t[1] == ':') &&
-		     !strncmp(&t[2], kwbuf, klen) &&
-		     !strncmp(&t[klen + 2], ":)", 2)) {
-			len = t - b;
-			return (len);
-		}
-	}
-	return (0);
-}
-
-/*
- * extract the statement portion of a $if(<kw>){....} statement
- * support nested statement
- */
-private int
-extractStatement(const char *b, const char *end)
-{
-	const char *t = b;
-	int bCnt = 0, len;
-
-	while (t <= end) {
-		if (*t == '{') {
-			bCnt++;
-		} else if (*t == '}') {
-			if (bCnt) {
-				bCnt--;
-			} else {
-				len = t -b;
-				return (len);
-			}
-		}
-		t++;
-	}
-	return (-1);
-}
-
-#define STR_EQ	1
-#define STR_NE	2
-#define NUM_EQ	3
-#define NUM_GT	4
-#define NUM_LT	5
-#define NUM_GE	6
-#define NUM_LE	7
-#define	NUM_NE	8
-
-private char *
-extractOp(const char *q, const char *end,
-				char *rightVal, char *op)
-{
-	int vlen, oplen;
-	char *t;
-
-	while (isspace(*q) && q < end) q++; /* skip leading space */
-	if (q[0] == '=') {
-		*op = STR_EQ;
-		oplen = 1;
-	} else if (strneq(q, "!=", 2)) {
-		*op = STR_NE;
-		oplen = 2;
-	} else if (strneq(q, "-eq", 3)) {
-		*op = NUM_EQ;
-		oplen = 3;
-	} else if (strneq(q, "-gt", 3)) {
-		*op = NUM_GT;
-		oplen = 3;
-	} else if (strneq(q, "-lt", 3)) {
-		*op = NUM_LT;
-		oplen = 3;
-	} else if (strneq(q, "-ge", 3)) {
-		*op = NUM_GE;
-		oplen = 3;
-	} else if (strneq(q, "-le", 3)) {
-		*op = NUM_LE;
-		oplen = 3;
-	} else {
-		*op =  0;
-		return ((char *) q); /* no operator */
-	}
-
-
-	/*
-	 * We got the operator, now extract the right value
-	 */
-	t = (char *) q + oplen;
-	rightVal[0] = '\0';
-	vlen = extractToken(t, end, ")", rightVal, VSIZE);
-	if (vlen < 0) { return (NULL); }  /* error */
-	return (&t[vlen]);
-}
-
-/*
- * Evaluate expression, return boolean
- */
-private int
-eval(char *leftVal, char op, char *rightVal)
-{
-	switch (op) {
-	    case STR_EQ: return (streq(leftVal, rightVal));
-	    case STR_NE: return (!streq(leftVal, rightVal));
-	    case NUM_EQ: return(atof(leftVal) == atof(rightVal));
-	    case NUM_GT: return(atof(leftVal) > atof(rightVal));
-	    case NUM_LT: return(atof(leftVal) < atof(rightVal));
-	    case NUM_GE: return(atof(leftVal) >= atof(rightVal));
-	    case NUM_LE: return(atof(leftVal) <= atof(rightVal));
-	    case NUM_NE: return(atof(leftVal) != atof(rightVal));
-	    default:  /* we should never get here */
-		fprintf(stderr, "eval: unknown operator %d\n", op);
-		return (0);
-	}
-}
-
-/*
- * Expand the dspec string and print result to "out"
- * This function may call itself recursively
- * kw2val() and fprintDelta() are mutually recursive
- */
-private int
-fprintDelta(FILE *out, char ***vbuf,
-	    const char *dspec, const char *end, sccs *s, delta *d)
-{
-#define	KWSIZE 64
-#define	extractSuffix(a, b) extractToken(a, b, "}", NULL, 0)
-#define	extractKeyword(a, b, c, d) extractToken(a, b, c, d, KWSIZE)
-	const char *b, *t, *q = dspec;
-	char	kwbuf[KWSIZE], rightVal[VSIZE], leftVal[VSIZE];
-	char	op;
-	int	len;
-
-	while (q <= end) {
-		if (*q == '\\') {
-			switch (q[1]) {
-			    case 'n': fc('\n'); q += 2; break;
-			    case 't': fc('\t'); q += 2; break;
-			    case '$': fc('$'); q += 2; break;
-			    default:  fc('\\'); q++; break;
-			}
-		} else if (*q == ':') {		/* keyword expansion */
-			len = extractKeyword(&q[1], end, ":", kwbuf);
-			if ((len > 0) && (len < KWSIZE) &&
-			    (kw2val(out, vbuf, "", 0, kwbuf,
-				    "", 0, s, d) != notKeyword)) {
-				/* got a keyword */
-				q = &q[len + 2];
-			} else {
-				/* not a keyword */
-				fc(*q++);
-			}
-		} else if ((*q == '$') && strneq(q, "$unless(:", 9)) {
-			len = extractKeyword(&q[9], end, ":", kwbuf);
-			if (len < 0) { return (0); } /* error */
-			leftVal[0] = 0;
-			t = extractOp(&q[10 + len], end, rightVal, &op); 
-			unless (t) return(0); /* error */
-			if (t[1] != '{') {
-				/* syntax error */
-				fprintf(stderr,
-				    "must have '{' in conditional string\n");
-				return (0);
-			}
-			if (len && (len < KWSIZE) &&
-			    (kw2buf(op ? leftVal :0, kwbuf, s, d) == strVal) &&
-			    (!op || eval(leftVal, op, rightVal))) {
-			    	goto dont;
-			} else {
-				goto doit;
-			}
-		} else if ((*q == '$') && strneq(q, "$if(:", 5)) {
-			len = extractKeyword(&q[5], end, ":", kwbuf);
-			if (len < 0) { return (0); } /* error */
-			leftVal[0] = 0;
-			t = extractOp(&q[6 + len], end, rightVal, &op); 
-			unless (t) return(0); /* error */
-			if (t[1] != '{') {
-				/* syntax error */
-				fprintf(stderr,
-				    "must have '{' in conditional string\n");
-				return (0);
-			}
-			if (len && (len < KWSIZE) &&
-			    (kw2buf(op ? leftVal: 0, kwbuf, s, d) == strVal) &&
-			    (!op || eval(leftVal, op, rightVal))) {
-				const char *cb;	/* conditional spec */
-				int clen;
-
-doit:				cb = b = &t[2];
-				clen = extractStatement(b, end);
-				if (clen < 0) { return (0); } /* error */
-				fprintDelta(out, vbuf, cb, &cb[clen -1], s, d);
-				q = &b[clen + 1];
-			} else {
-				int	bcount; /* brace count */
-dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
-					if (*t == '{') {
-						bcount++;
-					} else if (*t == '}') {
-						if (--bcount == 0) break;
-					} else if (*t == '\0') {
-						break;
-					}
-				}
-				if (t[0] != '}') {
-					/* syntax error */
-					fprintf(stderr,
-					    "unbalanced '{' in dspec string\n");
-					return (0);
-				}
-				q = &t[1];
-			}
-		} else if ((*q == '$') &&	/* conditional prefix/suffix */
-		    (q[1] == 'e') && (q[2] == 'a') && (q[3] == 'c') &&
-		    (q[4] == 'h') && (q[5] == '(') && (q[6] == ':')) {
-			const char *prefix, *suffix;
-			int	plen, klen, slen;
-			b = &q[7];
-			klen = extractKeyword(b, end, ":", kwbuf);
-			if (klen < 0) { return (0); } /* error */
-			if ((b[klen + 1] != ')') && (b[klen + 2] != '{')) {
-				/* syntax error */
-				fprintf(stderr,
-	    "must have '((:keyword:){..}{' in conditional prefix/suffix\n");
-				return (0);
-			}
-			prefix = &b[klen + 3];
-			plen = extractPrefix(prefix, end, kwbuf);
-			suffix = &prefix[plen + klen + 4];
-			slen = extractSuffix(suffix, end);
-			kw2val(
-			    out, vbuf, prefix, plen, kwbuf, suffix, slen, s, d);
-			q = &suffix[slen + 1];
-		} else {
-			fc(*q++);
-		}
-	}
-	return (0);
-}
-
 int
-sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
+sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	const	char *end;
-
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
-	end = &dspec[strlen(dspec) - 1];
 	s->prs_output = 0;
-	fprintDelta(out, NULL, dspec, end, s, d);
+	dspec_eval(out, 0, s, d, dspec);
 	if (s->prs_output) {
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) fputc('\n', out);
@@ -15161,15 +14835,13 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 }
 
 char *
-sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec)
+sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec)
 {
-	const	char *end;
 	char	**buf = 0;
 
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
-	end = &dspec[strlen(dspec) - 1];
-	fprintDelta(0, &buf, dspec, end, s, d);
+	dspec_eval(0, &buf, s, d, dspec);
 	if (data_length(buf)) {
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) buf = str_append(buf, "\n", 0);

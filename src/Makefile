@@ -126,7 +126,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	check.o checksum.o clean.o cleanpath.o clone.o cmd.o \
 	collapse.o comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	delta.o diffs.o diffsplit.o \
+	delta.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
 	find.o findcset.o findkey.o fixlod.o fixtool.o \
 	g2bk.o gca.o get.o gethelp.o \
@@ -267,7 +267,8 @@ clean: FORCE
 	for sub in $(SUBDIRS) ../doc ../man gnu gui utils win32; \
 	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" $@; \
 	done
-	$(RM) $(OBJ) bk.o $(BINS) $(SCRIPTS) $(LOCALSRC) $(PSRC) $(PROGS)
+	$(RM) $(OBJ) bk.o inskeys.o inskeys_main.o $(BINS) $(SCRIPTS) \
+	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		bkver.h tclkey.h core *.bb *.bbg *.da *.gcov \
 		bk.ico bk16.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \

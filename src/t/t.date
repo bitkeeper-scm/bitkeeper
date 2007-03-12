@@ -18,9 +18,9 @@ ZONE=`bk zone`
 DATE="97/05/20 18:48:02"
 echo foo > foo
 BK_DATE_TIME_ZONE=$DATE bk new $Q foo
-test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ' foo`" || {
+test "${DATE}$ZONE" = "`bk prs -hr+ -nd':D: :T::TZ:' foo`" || {
 	echo bad date
-	bk prs -hr1.1 -nd':D: :T::TZ' foo
+	bk prs -hr1.1 -nd':D: :T::TZ:' foo
 	exit 1
 }
 echo OK
