@@ -10,7 +10,6 @@ binpool_query_main(int ac, char **av)
 {
 	char	*dfile, *p, *url;
 	int	c, tomaster = 0;
-	bpattr	a;
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "m")) != -1) {
@@ -41,8 +40,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		p = strrchr(buf, ' ');
 		*p++ = 0;	/* get just keys */
 
-		if (dfile = bp_lookupkeys(0, p, buf, &a)) {
-			bp_freeAttr(&a);
+		if (dfile = bp_lookupkeys(0, p, buf)) {
 			free(dfile);
 		} else {
 			p[-1] = ' ';
@@ -65,7 +63,6 @@ binpool_send_main(int ac, char **av)
 {
 	char	*p, *dfile, *url;
 	FILE	*fsfio;
-	bpattr	a;
 	int	len, c;
 	int	tomaster = 0;
 	int	rc = 0;
@@ -104,7 +101,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		p = strrchr(buf, ' ');
 		*p++ = 0;	/* get just keys */
 
-		dfile = bp_lookupkeys(0, p, buf, &a);
+		dfile = bp_lookupkeys(0, p, buf);
 		if (dfile) {
 			unless (hash_insertStr(sent, dfile, 0)) continue;
 			/*
@@ -117,7 +114,6 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 			p[1] = 'd';
 			fprintf(fsfio, "%s\n", dfile+len);
 			free(dfile);
-			bp_freeAttr(&a);
 		} else {
 			fprintf(stderr, "%s: Unable to find '%s'\n",
 			    av[0], buf);

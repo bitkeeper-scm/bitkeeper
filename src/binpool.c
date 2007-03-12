@@ -306,38 +306,38 @@ out:	free(base);
  * The attributes for the data returned in found in 'a'.
  */
 char *
-bp_lookupkeys(project *p, char *hash, char *keys, bpattr *a)
+bp_lookupkeys(project *p, char *hash, char *keys)
 {
 	char	*base;
 	int	i, j;
 	char	*ret = 0;
+	bpattr	a;
 	char	buf[MAXLINE];
 
+	bzero(&a, sizeof(a));
 	base = hash2path(p, hash);
 	for (j = 1; ; j++) {
 		sprintf(buf, "%s.a%d", base, j);
-		if (bp_loadAttr(buf, a)) goto out;
-		unless (a->version == 1) {
+		if (bp_loadAttr(buf, &a)) goto out;
+		unless (a.version == 1) {
 			fprintf(stderr,
 			    "binpool: unexpected version in %s\n", buf);
-			bp_freeAttr(a);
 			goto out;
 		}
-		unless (streq(a->hash, hash)) {
+		unless (streq(a.hash, hash)) {
 			fprintf(stderr, "binpool: hash mismatch in %s\n", buf);
 			assert(0);	// LMXXX - ???
-			bp_freeAttr(a);
 			goto out;
 		}
-		EACH(a->keys) {
-			if (streq(keys, a->keys[i])) {
+		EACH(a.keys) {
+			if (streq(keys, a.keys[i])) {
 				ret = aprintf("%s.d%d", base, j);
 				goto out;
 			}
 		}
-		bp_freeAttr(a);
 	}
 out:
+	bp_freeAttr(&a);
 	free(base);
 	return (ret);
 }
@@ -350,14 +350,12 @@ char *
 bp_lookup(sccs *s, delta *d)
 {
 	char	*keys;
-	bpattr	a;
 	char	*ret = 0;
 
 	d = bp_fdelta(s, d);
 	keys = mkkeys(s, d);
-	ret = bp_lookupkeys(s->proj, d->hash, keys, &a);
+	ret = bp_lookupkeys(s->proj, d->hash, keys);
 	free(keys);
-	if (ret) bp_freeAttr(&a);
 	return (ret);
 }
 
