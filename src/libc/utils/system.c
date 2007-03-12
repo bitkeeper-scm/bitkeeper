@@ -293,11 +293,8 @@ safe_pclose(FILE *f)
 	for (j = 0; j < MAX_POPEN; ++j) {
 		if (child[j].pf == f) break;
 	}
-	if (j == MAX_POPEN) {
-		errno = EBADF;
-		return (-1);
-	}
-	fclose(f);
+	assert(j != MAX_POPEN);
+	(fclose)(f);
 	EACH (child[j].pids) {
 		pid = p2int(child[j].pids[i]);
 		unless (waitpid(pid, &rc, 0) == pid) rc = -1;
@@ -307,6 +304,20 @@ safe_pclose(FILE *f)
 	child[j].pids = 0;
 	child[j].pf = 0;
 	return (status);
+}
+
+int
+safe_fclose(FILE *f)
+{
+	int	j;
+
+	if (f) {
+		for (j = 0; j < MAX_POPEN; ++j) {
+			if (child[j].pf == f) break;
+		}
+		assert(j == MAX_POPEN);
+	}
+	return ((fclose)(f));
 }
 
 char *
