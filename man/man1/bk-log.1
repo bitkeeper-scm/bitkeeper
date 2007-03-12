@@ -5,7 +5,7 @@ bk log \- print file revision history and/or metadata
 .SH SYNOPSIS
 .if n .ll 7.49i
 .B bk log
-.[B] \-dDfh
+.[B] \-dDf
 .if t .ds d date
 .if n .ds d d
 .if t .ds r rev
@@ -34,6 +34,13 @@ is followed by a detailed account of each revision.  Revision number,
 revision date and time, user who made that revision, what the relative
 path from root of repository is to that file, the comments that go
 with that revision, and documents if the file has been renamed.
+.LP
+.B Note:
+In pre-4.0 releases of \*[BK],
+.B bk log
+was known as
+.BR "bk prs" ,
+which is now deprecated.
 .SH OPTIONS
 .TP \fB\-c2006/07.\|.2006\fP
 .OPTreq \-c date
@@ -55,9 +62,6 @@ directory.
 .tp
 .B \-f
 Print the changes in forward (oldest to newest) order.  The default is backward.
-.tp
-.B \-h
-Suppress the range header.
 .\" .tp
 .\" .B \-M
 .\" Do not include branch deltas which are not merged.
@@ -171,11 +175,13 @@ and
 .SS CONDITIONAL OUTPUT
 The 
 .I dspec
-can produce output conditionally.  The following will print the default
-output format for each revision made by 
+can produce output conditionally.
+The following prints the revisions of
+.B foo.c
+that were made by
 .IR joe :
 .DS
-bk log -d'$if(:USER:=joe){:PRS:}' foo.c
+bk log -nd'$if(:USER:=joe){:REV:}' foo.c
 .DE
 .br
 .ne 5
@@ -269,9 +275,9 @@ spaces
 .B required
 on both sides of the operator.
 .SS COMPOUND EXPRESSIONS
-The 
+As of \*[BK] release 4.2,
 .I dspecs
-have been extended to support logical AND (A && B), logical OR (A || B),
+support logical AND (A && B), logical OR (A || B),
 and parenthesized subexpressions ((A && B) || (C && D)).
 .SS ITERATIVE OUTPUT
 .ad b
@@ -281,8 +287,7 @@ in front of each of these lines, the idiom is:
 bk log -d'$if(:C:){$each(:C:){C\ \ (:C:)\en}}' foo.c
 .DE
 The variables that support this kind of iteration are
-.V C ,
-.V FD ,
+.V C 
 and
 .V TAG .
 The

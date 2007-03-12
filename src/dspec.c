@@ -20,8 +20,8 @@ typedef enum {
 typedef	struct
 {
 	int	i;		/* index into a lines array typically */
-	char	*ret;
-	symbol	*sym;
+	char	*freeme;	/* last value if it needs to be freed */
+	symbol	*sym;		/* symbol link list current state */
 } nextln;
 
 /* Globals for dspec code below. */
@@ -44,7 +44,7 @@ private void	evalId(FILE *out, char *** buf);
 private void	evalParenid(FILE *out, char ***buf, datum id);
 private int	expr(void);
 private int	expr2(op *next_tok);
-private nextln	*getnext(datum kw, nextln *state);
+private char	*getnext(datum kw, nextln *state);
 private int	getParenid(datum *id);
 private void	stmtList(int output);
 private char	**string(op *next_tok);
@@ -128,10 +128,10 @@ stmtList(int output)
 		switch (*g.p) {
 		    case '$':
 			dollar(output, out, buf);
-			continue;
+			break;
 		    case ':':
 			evalId(out, buf);
-			continue;
+			break;
 		    case '}':
 			if (depth == 1) {
 				show_s(g.s, out, buf, "}", 1);
@@ -140,7 +140,7 @@ stmtList(int output)
 				--depth;
 				return;
 			}
-			continue;
+			break;
 		    case '\\':
 			if (octal(g.p[1]) && octal(g.p[2]) && octal(g.p[3])) {
 				sscanf(g.p, "\\%03o", &i);
@@ -158,7 +158,7 @@ stmtList(int output)
 				g.p += 2;
 			}
 			show_s(g.s, out, buf, &c, 1);
-			continue;
+			break;
 		    default:
 			if (getParenid(&id)) {
 				evalParenid(out, buf, id);
@@ -166,7 +166,7 @@ stmtList(int output)
 				show_s(g.s, out, buf, g.p, 1);
 				++g.p;
 			}
-			continue;
+			break;
 		}
 	}
 	--depth;
@@ -193,7 +193,6 @@ dollar(int output, FILE *out, char ***buf)
 	} else if (strneq("$each(", g.p, 6)) {
 		nextln	state;
 		char	*bufptr;
-		datum	k;
 
 		if (in_each++) err("nested each illegal");
 
@@ -201,10 +200,10 @@ dollar(int output, FILE *out, char ***buf)
 		if (*g.p++ != ':') err("missing id");
 
 		/* Extract the id in $each(:id:) */
-		k.dptr = g.p;
+		g.eachkey.dptr = g.p;
 		while (*g.p && (*g.p != ':')) ++g.p;
 		unless (*g.p) err("premature eof");
-		k.dsize = g.p - k.dptr;
+		g.eachkey.dsize = g.p - g.eachkey.dptr;
 		++g.p;
 
 		if (*g.p++ != ')') err("missing )");
@@ -214,28 +213,23 @@ dollar(int output, FILE *out, char ***buf)
 		 * Re-evaluate the $each body for each
 		 * line of the $each variable.
 		 */
-		state.i	  = 1;
-		state.ret = 0;
-		state.sym = 0;
+		bzero(&state, sizeof(state));
 		bufptr	  = g.p;
 		g.line	  = 1;
-		while (getnext(k, &state)) {
-			unless (state.ret) continue;
-			g.eachkey = k;
-			g.eachval = state.ret;
+		while (g.eachval = getnext(g.eachkey, &state)) {
 			g.p = bufptr;
 			stmtList(output);
 			++g.line;
 		}
 		g.eachkey.dptr = 0;
-		g.eachval = 0;
+		g.eachkey.dsize = 0;
 		--in_each;
 		/* Eat the body if we never parsed it above. */
 		if (g.line == 1) stmtList(0);
 		if (*g.p++ != '}') err("missing }");
 	} else if (strneq("$unless(", g.p, 8)) {
 		g.p += 8;
-		rc = !expr() && output;
+		rc = !expr();
 		if (*g.p++ != ')') err("missing )");
 		if (*g.p++ != '{') err("missing {");
 		stmtList(rc && output);
@@ -250,10 +244,8 @@ dollar(int output, FILE *out, char ***buf)
 		rc = g.tcl;
 		g.tcl = 0;
 		show_s(g.s, out, buf, "{", 1);
-		g.tcl = rc;
-		++g.tcl;
+		g.tcl = rc + 1;
 		stmtList(output);
-		--g.tcl;
 		g.tcl = 0;
 		show_s(g.s, out, buf, "}", 1);
 		g.tcl = rc;
@@ -455,12 +447,9 @@ getParenid(datum *id)
 	       }
 	       ++c;
 	}
-	if (*c) {
-		id->dsize = c - id->dptr;
-		return (1);
-	} else {
-		return (0);
-	}
+	unless (*c) return (0);
+	id->dsize = c - id->dptr;
+	return (1);
 }
 
 private void
@@ -525,81 +514,73 @@ err(char *msg)
 
 /*
  * Given a keyword with a multi-line value, return each line successively.
- * A nextln * is passed in, and returned, to store the state
+ * A nextln * is passed in to store the state
  * of where we are in the list of lines to return.
- * Call this function with state->i=1 to get the first line, then pass the
- * return value back in to get subsquent lines.	 state->buf must be a pointer
- * to an appropriately-sized buffer to receive the values of single-line
- * keywords.  NULL is returned when there are no more lines,
- * and state->ret=NULL is returned for a "line" that the caller should skip.
+ * Call this function with all of state cleared the first time.
+ * In particular, state->i=0 to get the first line, then pass the
+ * return value back in to get subsquent lines.
+ * Return a pointer to the data or 0 meaning EOF.
+ * If data is malloced, save the pointer in freeme, which will get freed
+ * on next call.  Nothing outside this routine knows internals of state.
  */
-private nextln *
+private char *
 getnext(datum kw, nextln *state)
 {
+	if (state->freeme) {
+		free(state->freeme);
+		state->freeme = 0;
+	}
+again:
+	++state->i;	/* first call has it set to 0, so now 1 */
 	if (strneq(kw.dptr, "C", kw.dsize)) {
-		if (g.d && g.d->comments &&
-		    (state->i < (long)g.d->comments[0]) &&
+		unless (g.d && g.d->comments &&
+		    (state->i < LSIZ(g.d->comments)) &&
 		    g.d->comments[state->i]) {
-			if (g.d->comments[state->i][0] == '\001') {
-				state->ret = NULL;
-			} else {
-				state->ret = g.d->comments[state->i];
-			}
-			++state->i;
-			return (state);
-		} else {
 			return (0);
 		}
+		if (g.d->comments[state->i][0] == '\001') goto again;
+		return(g.d->comments[state->i]);
 	}
 
+	/* XXX FD depracated */
 	if (strneq(kw.dptr, "FD", kw.dsize)) {
-		if (g.s && g.s->text && (state->i < (long)g.s->text[0]) &&
-		    g.s->text[state->i]) {
-			if (g.s->text[state->i][0] == '\001') {
-				state->ret = NULL;
-			} else {
-				state->ret = g.s->text[state->i];
-			}
-			++state->i;
-			return (state);
-		} else {
+		unless (g.s && g.s->text &&
+		    (state->i < LSIZ(g.s->text)) && g.s->text[state->i]) {
 			return (0);
 		}
+		/* XXX Is this needed for title, or only comments? */
+		if (g.s->text[state->i][0] == '\001') goto again;
+		return (g.s->text[state->i]);
 	}
 
 	if (strneq(kw.dptr, "SYMBOL", kw.dsize) ||
 	    strneq(kw.dptr, "TAG", kw.dsize)) {
-		if (state->i++ == 1) {
+		if (state->i == 1) {
 			unless (g.d && (g.d->flags & D_SYMBOLS)) return (0);
 			while (g.d->type == 'R') g.d = g.d->parent;
 			state->sym = g.s->symbols;
-		}
-		if (state->sym) {
-			unless (state->sym->d == g.d) {
-				state->ret = NULL;
-				state->sym = state->sym->next;
-				return (state);
-			}
-			state->ret = state->sym->symname;
-			state->sym = state->sym->next;
-			return (state);
 		} else {
-			return (0);
+			state->sym = state->sym->next;
 		}
+		while (state->sym && (state->sym->d != g.d)) {
+			state->sym = state->sym->next;
+		}
+		unless (state->sym) return (0);
+		return (state->sym->symname);
 	}
 
 	/* Handle all single-line keywords. */
 	if (state->i == 1) {
 		char	**ret = 0;
+
 		/* First time in, get the keyword value. */
 		kw2val(0, &ret, kw.dptr, kw.dsize, g.s, g.d);
-		state->ret = str_pullup(0, ret);
-		state->i = 2;
-		return (state);
+		return (state->freeme = str_pullup(0, ret));
 	} else {
 		/* Second time in, bail out. */
 		return (0);
 	}
+	/* not reached */
 }
 
 
