@@ -71,6 +71,9 @@ tcp_connect(char *host, int port)
 	int	sock;
 	char	*freeme;
 
+	if (getenv("_BK_TCP_CONNECT_FAIL") && !streq(host, "127.0.0.1")) {
+		return (-3);
+	}
 	if ((sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 		perror("socket connect");
 		return (-1);
@@ -175,12 +178,14 @@ tcp_pair(int fds[2])
 
 	if ((fd = tcp_server(0, 0)) == -1) {
 		perror("tcp_server");
+		fds[0] = fds[1] = -1;
 		return (-1);
 	}
 	fds[0] = fd;
 	if ((fd = tcp_connect("127.0.0.1", sockport(fds[0]))) == -1) {
 		perror("tcp_connect");
 		closesocket(fd);
+		fds[0] = fds[1] = -1;
 		return (-1);
 	}
 	fds[1] = fd;
@@ -188,6 +193,7 @@ tcp_pair(int fds[2])
 		perror("tcp_accept");
 		closesocket(fds[0]);
 		closesocket(fds[1]);
+		fds[0] = fds[1] = -1;
 		return (-1);
 	}
 	closesocket(fds[0]);

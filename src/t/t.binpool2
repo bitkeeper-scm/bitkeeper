@@ -9,6 +9,8 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+#export _BK_TCP_CONNECT_FAIL=1
+
 echo $N Create initial repository ...................................$NL
 for f in 1 2 3 4 5 6 7 8 9
 do	echo $f > F$f
@@ -50,8 +52,14 @@ test -f bin.data || {
 checkfiles "$HERE"/F1 bin.data
 echo OK
 
+echo $N Verify that bk clone fails if it can\'t find the bp server ...$NL
+cd "$HERE"
+BK_CONFIG="binpool_server:file://$HERE/gone!" \
+	bk clone pmaster pcopy2 2> ERR && exit 1
+grep -q 'ERROR-unable to update binpool server' ERR || exit 1
+echo OK
+
 echo $N Verify that bk fails if it cannot find binpool data .........$NL
-cd ..
 bk clone $Q pmaster pjunk || exit 1
 cd pjunk
 # use myself as the binpool server	

@@ -28,13 +28,16 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 	}
 
 
-	if (tomaster && (p = bp_masterID())) {
-		free(p);
-		url = proj_configval(0, "binpool_server");
-		assert(url);
-		/* proxy to my binpool master */
-		sprintf(buf, "bk -q@'%s' _binpool_query -", url);
-		return (system(buf));
+	if (tomaster) {
+		if (bp_masterID(&p)) return (1);
+		if (p) {
+			free(p);
+			url = proj_configval(0, "binpool_server");
+			assert(url);
+			/* proxy to my binpool master */
+			sprintf(buf, "bk -q@'%s' _binpool_query -", url);
+			return (system(buf));
+		}
 	}
 	while (fnext(buf, stdin)) {
 		chomp(buf);
@@ -86,13 +89,16 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		return (1);
 	}
 
-	if (tomaster && (p = bp_masterID())) {
-		free(p);
-		url = proj_configval(0, "binpool_server");
-		assert(url);
-		/* proxy to my binpool master */
-		sprintf(buf, "bk -q@'%s' _binpool_send -", url);
-		return (system(buf));
+	if (tomaster) {
+		if (bp_masterID(&p)) return (1);
+		if (p) {
+			free(p);
+			url = proj_configval(0, "binpool_server");
+			assert(url);
+			/* proxy to my binpool master */
+			sprintf(buf, "bk -q@'%s' _binpool_send -", url);
+			return (system(buf));
+		}
 	}
 	sent = hash_new(HASH_MEMHASH);
 	fsfio = popen("bk sfio -Bomq", "w");
@@ -163,14 +169,17 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 		return (1);
 	}
 
-	if (tomaster && (p = bp_masterID())) {
-		free(p);
-		url = proj_configval(0, "binpool_server");
-		assert(url);
-		/* proxy to my binpool master */
-		sprintf(buf, "bk -q@'%s' _binpool_receive %s -",
-		    url, (quiet ? "-q" : ""));
-		return (system(buf));
+	if (tomaster) {
+		if (bp_masterID(&p)) return (1);
+		if (p) {
+			free(p);
+			url = proj_configval(0, "binpool_server");
+			assert(url);
+			/* proxy to my binpool master */
+			sprintf(buf, "bk -q@'%s' _binpool_receive %s -",
+			    url, (quiet ? "-q" : ""));
+			return (system(buf));
+		}
 	}
 	strcpy(buf, "BitKeeper/binpool/tmp");
 	if (mkdirp(buf)) {

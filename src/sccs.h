@@ -1234,7 +1234,7 @@ int	bp_get(sccs *s, delta *d, u32 flags, char *out);
 int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);
 int	bp_updateMaster(char *tiprev);
-char	*bp_masterID(void);
+int	bp_masterID(char **id);
 int	bp_transferMissing(remote *r, int send, char *rev, char *revs, int q);
 
 extern	char	*editor;
