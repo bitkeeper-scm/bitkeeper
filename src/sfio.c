@@ -300,7 +300,7 @@ private int
 out_bptuple(char *tuple, off_t *byte_count)
 {
 #ifndef SFIO_STANDALONE
-	char	*keys, *hash, *path, *dfile, *p;
+	char	*keys, *hash, *path, *dfile, *p, *freeme;
 	int	n;
 	struct	stat sb;
 	char	buf[MAXPATH];
@@ -314,16 +314,17 @@ out_bptuple(char *tuple, off_t *byte_count)
 	*hash++ = 0;
 	if (path = strchr(hash, ' ')) *path++ = 0;
 
-	unless (dfile = bp_lookupkeys(0, hash, keys)) {
+	unless (freeme = bp_lookupkeys(0, hash, keys)) {
 // ttyprintf("MISS %s\n", tuple);
 		fprintf(stderr, "lookupkeys(%s, %s) = %s\n",
 		    hash, keys, sys_errlist[errno]);
 		return (SFIO_LOOKUP);
 	}
+	dfile = freeme + strlen(proj_root(0)) + 1;
 	if (mdbm_store_str(opts->sent, dfile, "", MDBM_INSERT) &&
 	    (errno == EEXIST)) {
 // ttyprintf("DUP  %s\n", dfile);
-	    	free(dfile);
+		free(freeme);
 		return (0);
 	}
 	if (opts->bp_both) {
@@ -331,7 +332,7 @@ out_bptuple(char *tuple, off_t *byte_count)
 		p = strrchr(dfile, '.');
 		p[1] = 'a';
 		if (lstat(dfile, &sb)) {
-			free(dfile);
+			free(freeme);
 			perror(dfile);
 			return (SFIO_LSTAT);
 		}
@@ -359,7 +360,7 @@ out_bptuple(char *tuple, off_t *byte_count)
 // ttyprintf("DATA %s\n", path);
 	n = out_file(path, &sb, byte_count);
 
-out:	free(dfile);
+out:	free(freeme);
 	return (n);
 #else
 	fprintf(stderr, "Unsupported.\n");

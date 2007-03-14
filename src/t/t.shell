@@ -126,7 +126,7 @@ echo OK
 echo $N Modify the binary in both, resync it, check merge ...........$NL
 cd "$HERE"
 rm -rf */RESYNC */PENDING
-bk edit $Q copy/binary project/binary
+bk edit $Q copy/binary project/binary || exit 1
 cp -f $BIN2 copy/binary
 cp -f $BIN3 project/binary
 for i in copy project

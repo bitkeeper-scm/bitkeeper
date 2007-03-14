@@ -1208,24 +1208,27 @@ sccs_patch(sccs *s, cset_t *cs)
 			} else if (BINPOOL(s) && copts.doBinpool) {
 				assert(d->hash || (!d->added && !d->deleted));
 				if (d->hash) {
-					char	*p, *t;
+					char	*p, *t, *freeme;
+					int	rlen;
 
 // LMXXX - this should really fail unless we were told to succeed.  For
 // now I'm just hoping they can find the data elsewhere.
 // Alternatively, skip pass the miss IFF we are not a master.
-					unless (p = bp_lookup(s, d)) {
+					unless (freeme = bp_lookup(s, d)) {
 						printf("\n");
 						deltas++;
 						continue;
 					}
-					/* p is malloced already */
+					rlen = strlen(proj_root(s->proj)) + 1;
+					p = strdup(freeme + rlen);
 					t = strrchr(p, '.');
 					t[1] = 'a';
 					cs->binpool = addLine(cs->binpool, p);
-					p = strdup(p);
+					p = strdup(freeme + rlen);
 					t = strrchr(p, '.');
 					t[1] = 'd';
 					cs->binpool = addLine(cs->binpool, p);
+					free(freeme);
 				}
 			} else {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");

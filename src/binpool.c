@@ -359,34 +359,23 @@ bp_lookup(sccs *s, delta *d)
 }
 
 /*
- * Given the adler32 hash of a gfile return the pathname to that file in
- * a repo's binpool.
+ * Given the adler32 hash of a gfile returns the full pathname to that
+ * file in a repo's binpool.
  */
 private char *
 hash2path(project *proj, char *hash)
 {
-	int	i;
-	char	dir[MAXPATH];
-	char	*p = dir;
+	char    *p;
+	int     i;
+	char    binpool[MAXPATH];
 
-	for (i = 0; i < 100; ++i) {
-		strcpy(p, "BitKeeper/etc/SCCS");
-		if (exists(dir)) {
-			if (proj_isResync(proj)) {
-				strcpy(p, RESYNC2ROOT "/BitKeeper/binpool");
-			} else {
-				strcpy(p, "BitKeeper/binpool");
-			}
-			break;
-	    	}
-		strcpy(p, "../");
-		p += 3;
-	}
-	if (i == 100) return (0);
-	i = strlen(dir);
-	sprintf(dir+i, "/%c%c/%s", hash[0], hash[1], hash);
-// ttyprintf("HASH %s\n", dir);
-	return (strdup(dir));
+	unless (p = proj_root(proj)) return (0);
+	strcpy(binpool, p);
+	if ((p = strrchr(binpool, '/')) && patheq(p, "/RESYNC")) *p = 0;
+	strcat(binpool, "/BitKeeper/binpool");
+	i = strlen(binpool);
+	sprintf(binpool+i, "/%c%c/%s", hash[0], hash[1], hash);
+	return (strdup(binpool));
 }
 
 /*

@@ -86,8 +86,6 @@ binpool_send_main(int ac, char **av)
 	int	c;
 	int	tomaster = 0;
 	char	*sfio[] = { "sfio", "-oqmBbk", 0 };
-	char	*msfio[] = { "bk", 0, "_binpool_send", "-", 0 };
-	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "m")) != -1) {
 		switch (c) {
@@ -109,6 +107,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 			free(p);
 			url = proj_configval(0, "binpool_server");
 			assert(url);
+			/* proxy to my binpool master */
 			return (do_remote(url, "_binpool_send", 0));
 		}
 	}
