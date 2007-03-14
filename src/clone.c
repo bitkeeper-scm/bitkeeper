@@ -630,7 +630,7 @@ out1:		remote_free(r);
 			}
 		}
 	}
-
+	if (bp_masterID(&p)) goto out2;
 
 	/* give them a change to disallow it */
 	if (out_trigger(0, opts.rev, "pre")) {
@@ -638,7 +638,7 @@ out2:		repository_rdunlock(0);
 		goto out1;
 	}
 
-	if (p = bp_masterID()) {
+	if (p) {
 		safe_putenv("BKD_BINPOOL_SERVER=%s", p);
 		free(p);
 	} else {

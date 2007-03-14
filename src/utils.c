@@ -908,11 +908,12 @@ sendServerInfoBlock(int is_rclone)
 	if (repoid = proj_repoID(0)) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
-		p = bp_masterID();
-		unless (p) p = strdup(repoid);
-		sprintf(buf, "\nBINPOOL_SERVER=%s", p);
-		out(buf);
-		free(p);
+		unless (bp_masterID(&p)) {
+			unless (p) p = strdup(repoid);
+			sprintf(buf, "\nBINPOOL_SERVER=%s", p);
+			out(buf);
+			free(p);
+		}
 	}
 
 	/* only send back a seed if we received one */

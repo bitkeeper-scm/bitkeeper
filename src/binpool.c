@@ -400,10 +400,8 @@ bp_fetch(sccs *s, delta *din)
 	char	rootkey[64], deltakey[64];
 
 	/* find the repo_id of my master */
-	unless (repoID = bp_masterID()) {
-		/* no need to update myself */
-		return (0);
-	}
+	if (bp_masterID(&repoID)) return (-1);
+	unless (repoID) return (0);	/* no need to update myself */
 	free(repoID);
 	url = proj_configval(0, "binpool_server");
 	assert(url);
@@ -445,10 +443,9 @@ bp_updateMaster(char *tiprev)
 	char	buf[MAXKEY];
 
 	/* find the repo_id of my master */
-	unless (repoID = bp_masterID()) {
-		/* no need to update myself */
-		return (0);
-	}
+	if (bp_masterID(&repoID)) return (-1);
+	unless (repoID) return (0);	/* no need to update myself */
+
 	url = proj_configval(0, "binpool_server");
 	assert(url);
 
@@ -500,17 +497,20 @@ bp_updateMaster(char *tiprev)
 }
 
 /*
- * Return the repo_id of the binpool master
- * Returns null if no master or the master link points at myself.
+ * Find the repo_id of the binpool master and returns it as a malloc'ed
+ * string in *id.
+ * Returns non-zero if we failed to determine the repo_id of the master.
  */
-char *
-bp_masterID(void)
+int
+bp_masterID(char **id)
 {
 	char	*cfile, *cache, *p, *url;
 	char	*ret = 0;
 	FILE	*f;
 	char	buf[MAXLINE];
 
+	assert(id);
+	*id = 0;
 	unless ((url = proj_configval(0,"binpool_server")) && *url) return (0);
 
 	cfile = proj_fullpath(0, "BitKeeper/log/BP_MASTER");
@@ -527,17 +527,22 @@ bp_masterID(void)
 	f = popen(buf, "r");
 	fnext(buf, f);
 	chomp(buf);
-	pclose(f);
-	/* XXX error check. */
+	if (pclose(f)) {
+		fprintf(stderr, "Failed to contact binpool server at '%s'\n",
+		    url);
+		return (-1);
+	}
 	ret = strdup(buf);
-	f = fopen(cfile, "w");
-	fprintf(f, "%s\n%s\n", url, ret);
-	fclose(f);
+	if (f = fopen(cfile, "w")) {
+		fprintf(f, "%s\n%s\n", url, ret);
+		fclose(f);
+	}
 out:	if (streq(proj_repoID(0), ret)) {
 		free(ret);
 		ret = 0;
 	}
-	return (ret);
+	*id = ret;
+	return (0);
 }
 
 int
@@ -622,8 +627,9 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 	/* must have rev or rev_list, but not both */
 	assert((rev && !rev_list) || (!rev && rev_list));
 
+	if (bp_masterID(&local_repoID)) return (-1);
 	url = remote_unparse(r);
-	if (local_repoID = bp_masterID()) {
+	if (local_repoID) {
 		/* The local bp master is not _this_ repo */
 		local_url = aprintf("@'%s'",
 		    proj_configval(0, "binpool_server"));
@@ -708,7 +714,8 @@ binpool_populate_main(int ac, char **av)
 		}
 	}
 
-	unless (p = bp_masterID()) return (0);
+	if (bp_masterID(&p)) return (1);
+	unless (p) return (0);
 	free(p);
 
 	/* list of all binpool deltas */
@@ -790,7 +797,8 @@ binpool_flush_main(int ac, char **av)
 	if (check_server) {
 		/* remove deltas already in binpool server */
 		p1 = cmd;
-		unless (p2 = bp_masterID()) {
+		if (bp_masterID(&p2)) return (1);
+		unless (p2) {
 			fprintf(stderr,
 			    "bk binpool flush: No binpool_server set\n");
 			free(p1);
