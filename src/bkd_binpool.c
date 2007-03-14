@@ -1,6 +1,25 @@
 #include "sccs.h"
 #include "binpool.h"
 
+private int
+do_remote(char *url, char *cmd, char *extra)
+{
+	int	c, i;
+	char	*nav[10];
+
+	/* proxy to my binpool master */
+	nav[i=0] = "bk";
+	nav[++i] = aprintf("-q@%s", url);
+	nav[++i] = cmd;
+	if (extra) nav[++i] = extra;
+	nav[++i] = "-";
+	nav[++i] = 0;
+
+	c = remote_bk(1, i, nav);
+	free(nav[1]);
+	return (c);
+}
+
 /*
  * Receive a list of binpool deltakeys on stdin and return a list of
  * deltaskeys that we are missing.
@@ -35,8 +54,7 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 			url = proj_configval(0, "binpool_server");
 			assert(url);
 			/* proxy to my binpool master */
-			sprintf(buf, "bk -q@'%s' _binpool_query -", url);
-			return (system(buf));
+			return (do_remote(url, "_binpool_query", 0));
 		}
 	}
 	while (fnext(buf, stdin)) {
@@ -95,9 +113,9 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 			free(p);
 			url = proj_configval(0, "binpool_server");
 			assert(url);
+
 			/* proxy to my binpool master */
-			sprintf(buf, "bk -q@'%s' _binpool_send -", url);
-			return (system(buf));
+			return (do_remote(url, "_binpool_send", 0));
 		}
 	}
 	sent = hash_new(HASH_MEMHASH);
@@ -175,10 +193,10 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 			free(p);
 			url = proj_configval(0, "binpool_server");
 			assert(url);
+
 			/* proxy to my binpool master */
-			sprintf(buf, "bk -q@'%s' _binpool_receive %s -",
-			    url, (quiet ? "-q" : ""));
-			return (system(buf));
+			return (do_remote(url, "_binpool_receive",
+				    quiet ? "-q" : 0));
 		}
 	}
 	strcpy(buf, "BitKeeper/binpool/tmp");
