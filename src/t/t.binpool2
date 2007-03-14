@@ -67,7 +67,12 @@ echo OK
 
 echo $N Set up a remote fetch of a file to a -G file ................$NL
 rm -fr BitKeeper/binpool
-bk get $Q -G "pcopy data" bin.data || exit 1
+bk get $Q -G "pcopy data" bin.data || {
+	echo get failed
+	find BitKeeper/binpool -type f
+	bk binpool data bin.data
+	exit 1
+}
 test -d BitKeeper/binpool || {
 	echo Binpool not restored
 	exit 1

@@ -119,7 +119,6 @@ grep -q "$KEY" BitKeeper/binpool/de/deadbeef.a1 || {
 	exit 1
 }
 echo OK
-# cat BitKeeper/binpool/de/deadbeef.a1
 
 echo $N Clean the file, check it out, make sure that worked .........$NL
 bk clean fake_hash || { echo clean failed; exit 1; }
@@ -152,7 +151,7 @@ echo $N Check that missing data files are allowed ...................$NL
 mv BitKeeper/binpool/de/deadbeef.* BitKeeper/tmp
 bk makepatch -B -r1.0.. > "$HERE"/P || exit 1
 grep -q '== @SFIO@ ==' "$HERE"/P || {
-	echo no sfio market
+	echo no sfio marker
 	exit 1
 }
 cores
@@ -243,7 +242,7 @@ echo OK
 
 echo $N Test pull to see that it sends binpool data .................$NL
 cd "$HERE"
-bk clone $Q -r1.1 project pull || exit 1
+_BK_ALLOW_BAD_CRC=YES bk clone $Q -r1.1 project pull || exit 1
 cd pull
 # XXX - remove this line when I fix clone to not always be in all mode
 rm -rf BitKeeper/binpool
@@ -251,14 +250,14 @@ test -d BitKeeper/binpool && {
 	echo should have no binpool dir
 	exit 1
 }
-bk pull $Q || exit 1
+_BK_ALLOW_BAD_CRC=YES bk pull $Q || exit 1
 find BitKeeper/binpool -type f | bk sort > "$HERE"/GOT
 cmpfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
 echo $N Make sure clone sends binpool data ..........................$NL
 cd "$HERE"
-bk clone $Q project clone || exit 1
+_BK_ALLOW_BAD_CRC=YES bk clone $Q project clone || exit 1
 cd clone
 test -d BitKeeper/binpool || {
 	echo no binpool dir
@@ -328,11 +327,11 @@ echo $N See if we can fetch remote binpool data with get ............$NL
 cd "$HERE"/project
 bk commit -ywhatever $Q
 cd "$HERE"
-bk clone $Q project remote
+_BK_ALLOW_BAD_CRC=YES bk clone $Q project remote
 cd remote
 rm -rf BitKeeper/binpool
 BK_CONFIG="binpool_server:file://"$HERE"/project" bk get $Q data || {
-	echo failed
+	echo get failed
 	exit 1
 }
 test -d BitKeeper/binpool || {
@@ -350,7 +349,7 @@ cd "$HERE"/remote
 rm -rf BitKeeper/binpool
 cd subdir
 BK_CONFIG="binpool_server:file://"$HERE"/project" bk get $Q data3 || {
-	echo failed
+	echo get failed
 	exit 1
 }
 test -d ../BitKeeper/binpool || {
@@ -366,6 +365,7 @@ echo OK
 echo $N See if we can fetch remote binpool data with bk -r get ......$NL
 cd "$HERE"/remote
 rm -rf BitKeeper/binpool
+_BK_ALLOW_BAD_CRC=YES \
 BK_CONFIG="binpool_server:file://"$HERE"/project" bk -r get -F $Q || {
 	echo failed
 	exit 1

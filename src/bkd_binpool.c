@@ -61,12 +61,11 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 int
 binpool_send_main(int ac, char **av)
 {
-	char	*p, *dfile, *url;
-	FILE	*fsfio;
-	int	len, c;
+	char	*p, *url;
+	int	c;
 	int	tomaster = 0;
-	int	rc = 0;
-	hash	*sent;
+	char	*sfio[] = { "sfio", "-oqmBbk", 0 };
+	char	*msfio[] = { "bk", 0, "_binpool_send", "-", 0 };
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "m")) != -1) {
@@ -88,44 +87,13 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		url = proj_configval(0, "binpool_server");
 		assert(url);
 		/* proxy to my binpool master */
-		sprintf(buf, "bk -q@'%s' _binpool_send -", url);
-		return (system(buf));
+		sprintf(buf, "-q@%s", url);
+		msfio[1] = buf;
+		getoptReset();
+		return (remote_bk(1, 4, msfio));
 	}
-	sent = hash_new(HASH_MEMHASH);
-	fsfio = popen("bk sfio -Bomq", "w");
-	assert(fsfio);
-
-	len = strlen(proj_root(0)) + 1;
-	while (fnext(buf, stdin)) {
-		chomp(buf);
-		p = strrchr(buf, ' ');
-		*p++ = 0;	/* get just keys */
-
-		dfile = bp_lookupkeys(0, p, buf);
-		if (dfile) {
-			unless (hash_insertStr(sent, dfile, 0)) continue;
-			/*
-			 * We intentionally send the afile first so it
-			 * can be examined before unpacking data.
-			 */
-			p = strrchr(dfile, '.');
-			p[1] = 'a';
-			fprintf(fsfio, "%s\n", dfile+len);
-			p[1] = 'd';
-			fprintf(fsfio, "%s\n", dfile+len);
-			free(dfile);
-		} else {
-			fprintf(stderr, "%s: Unable to find '%s'\n",
-			    av[0], buf);
-			rc = 1;
-		}
-	}
-	if (pclose(fsfio)) {
-		fprintf(stderr, "%s: sfio failed.\n", av[0]);
-		rc = 1;
-	}
-	hash_free(sent);
-	return (rc);
+	getoptReset();
+	return (sfio_main(2, sfio));
 }
 
 /*
@@ -143,6 +111,7 @@ binpool_receive_main(int ac, char **av)
 	int	c, i, n, rc;
 	char	buf[MAXLINE];
 
+// ttyprintf("BP RECV in %s\n", proj_cwd());
 	setmode(0, _O_BINARY);
 	while ((c = getopt(ac, av, "mq")) != -1) {
 		switch (c) {
@@ -170,8 +139,7 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 	}
 	strcpy(buf, "BitKeeper/binpool/tmp");
 	if (mkdirp(buf)) {
-		fprintf(stderr, "_binpool_receive: failed to create %s\n",
-		    buf);
+		fprintf(stderr, "_binpool_receive: failed to create %s\n", buf);
 		return (1);
 	}
 	chdir(buf);
@@ -201,6 +169,7 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 		p[1] = 'd';
 		n = nLines(a.keys);
 		EACH(a.keys) {
+// ttyprintf("RECV %s\n", buf);
 			bp_insert(0, buf, a.hash, a.keys[i], (i==n));
 		}
 		bp_freeAttr(&a);
@@ -208,6 +177,9 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 	pclose(f);
 out:
 	rmtree("BitKeeper/binpool/tmp");
+//ttyprintf("RECV returns %d\n", rc);
+//system("/bin/pwd > /dev/tty");
+//system("/usr/bin/find BitKeeper/binpool -type f > /dev/tty");
 	return (rc);
 }
 

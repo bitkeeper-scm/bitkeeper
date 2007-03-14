@@ -22,6 +22,7 @@
 #include "utils/sfio.h"
 #else
 #include "sccs.h"
+#include "binpool.h"
 #endif
 
 #undef	unlink		/* I know the files are writable, I created them */
@@ -38,6 +39,7 @@
 
 private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count);
+private int	out_bptuple(char *tuple, off_t *byte_count);
 private int	out_link(char *file, struct stat *, off_t *byte_count);
 private	int	sfio_in(int extract);
 private int	in_link(char *file, int todo, int extract);
@@ -50,10 +52,12 @@ struct {
 	u32	doModes:1;	/* vm1.4 - sends permissions */
 	u32	echo:1;		/* echo files to stdout as they are written */
 	u32	force:1;	/* overwrite existing files */
-	u32	adler32:1;	/* -B: use adler32 from filename */
+	u32	bp_tuple:1;	/* -Bk rkey dkey bphash path */
+	u32	bp_both:1;	/* -Bb - send a.dot file as well */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
-	char	**more;		/* additional list of files to send */
 	char	newline;	/* -r makes it \r instead of \n */
+	char	**more;		/* additional list of files to send */
+	MDBM	*sent;		/* list of d.files we have set, for dups */
 } *opts;
 
 #define M_IN	1
@@ -68,7 +72,7 @@ sfio_main(int ac, char **av)
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;Befimopqr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;B;efimopqr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -77,7 +81,11 @@ sfio_main(int ac, char **av)
 			opts->more = file2Lines(opts->more, optarg);
 			break;
 		    case 'B':
-			opts->adler32 = 1;
+			while (*optarg) {
+				if (*optarg== 'b') opts->bp_both = 1;
+				if (*optarg== 'k') opts->bp_tuple = 1;
+				optarg++;
+			}
 			break;
 		    case 'e': opts->echo = 1; break;		/* doc 2.3 */
 		    case 'f': opts->force = 1; break;		/* doc */
@@ -143,10 +151,18 @@ sfio_out(void)
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	writen(1, SFIO_VERS, 10);
+	if (opts->bp_tuple) opts->sent = mdbm_mem();
 	byte_count = 10;
 	while (nextfile(buf)) {
 		chomp(buf);
 		unless (opts->quiet) fprintf(stderr, "%s\n", buf);
+		if (opts->bp_tuple) {
+			if (n = out_bptuple(buf, &byte_count)) {
+				send_eof(n);
+				return (n);
+			}
+			continue;
+		}
 		if (lstat(buf, &sb)) {
 			perror(buf);
 			send_eof(SFIO_LSTAT);
@@ -183,6 +199,7 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	save_byte_count(byte_count);
 #endif
 	if (opts->more) freeLines(opts->more, free);
+	if (opts->sent) mdbm_close(opts->sent);
 	free(opts);
 	send_eof(0);
 	return (0);
@@ -239,7 +256,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	 * we don't calculate it again.  If the file is corrupted it
 	 * will be detected when being unpacked.
 	 */
-	if (opts->adler32 && strneq(file, "BitKeeper/binpool/", 18) &&
+	if (opts->bp_tuple && strneq(file, "BitKeeper/binpool/", 18) &&
 	    (p = strrchr(file, '.')) && (p[1] == 'd')) {
 		p = strrchr(file, '/');
 		sum = strtoul(p+1, 0, 16);
@@ -278,6 +295,78 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	return (0);
 }
 
+/* rkey dkey adler32 path */
+private int
+out_bptuple(char *tuple, off_t *byte_count)
+{
+#ifndef SFIO_STANDALONE
+	char	*keys, *hash, *path, *dfile, *p;
+	int	n;
+	struct	stat sb;
+	char	buf[MAXPATH];
+
+// ttyprintf("TUPL %s\n", tuple);
+	keys = tuple;
+	hash = strchr(tuple, ' ');
+	assert(hash);
+	hash = strchr(++hash, ' ');
+	assert(hash);
+	*hash++ = 0;
+	if (path = strchr(hash, ' ')) *path++ = 0;
+
+	unless (dfile = bp_lookupkeys(0, hash, keys)) {
+// ttyprintf("MISS %s\n", tuple);
+		fprintf(stderr, "lookupkeys(%s, %s) = %s\n",
+		    hash, keys, sys_errlist[errno]);
+		return (SFIO_LOOKUP);
+	}
+	if (mdbm_store_str(opts->sent, dfile, "", MDBM_INSERT) &&
+	    (errno == EEXIST)) {
+// ttyprintf("DUP  %s\n", dfile);
+	    	free(dfile);
+		return (0);
+	}
+	if (opts->bp_both) {
+		/* a.file - sent first for bp receive */
+		p = strrchr(dfile, '.');
+		p[1] = 'a';
+		if (lstat(dfile, &sb)) {
+			free(dfile);
+			perror(dfile);
+			return (SFIO_LSTAT);
+		}
+		n = strlen(dfile);
+		sprintf(buf, "%04d", n);
+		writen(1, buf, 4);
+		writen(1, dfile, n);
+		*byte_count += (n + 4);
+// ttyprintf("ATTR %s\n", dfile);
+		if (n = out_file(dfile, &sb, byte_count)) goto out;
+		p[1] = 'd';
+	}
+	/* d.file */
+	if (lstat(dfile, &sb)) {
+		perror(dfile);
+		return (SFIO_LSTAT);
+	}
+	/* allow them to override path if they want (for stuff repair|get) */
+	unless (path) path = dfile;
+	n = strlen(path);
+	sprintf(buf, "%04d", n);
+	writen(1, buf, 4);
+	writen(1, path, n);
+	*byte_count += (n + 4);
+// ttyprintf("DATA %s\n", path);
+	n = out_file(path, &sb, byte_count);
+
+out:	free(dfile);
+	return (n);
+#else
+	fprintf(stderr, "Unsupported.\n");
+	return (1);
+#endif
+}
+
 /*
  * Send an eof by sending a 0 or less than 0 for the pathlen of the "next"
  * file.  Safe to do with old versions of sfio, they'll handle it properly.
@@ -287,6 +376,7 @@ send_eof(int error)
 {
 	char	buf[10];
 
+// ttyprintf("DONE %d\n", error);
 	/* negative lengths are exit codes */
 	if (error > 0) error = -error;
 	sprintf(buf, "%4d", error);
@@ -305,7 +395,6 @@ sfio_in(int extract)
 	char	datalen[11];
 	int	len;
 	int	n;
-	char	c;
 	off_t	byte_count = 0;
 
 	bzero(buf, sizeof(buf));
@@ -490,7 +579,7 @@ done:	if (readn(0, buf, 10) != 10) {
 		goto err;
 	}
 	sscanf(buf, "%010u", &sum2);
-	if (sum != sum2) {
+	if ((sum != sum2) && !getenv("_BK_ALLOW_BAD_CRC")) {
 		fprintf(stderr,
 		    "Checksum mismatch %u:%u for %s\n", sum, sum2, file);
 		goto err;

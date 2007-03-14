@@ -626,10 +626,12 @@ disconnect(remote *r, int how)
 		 * already, but just in case we close the connections
 		 * and wait for that process to exit.
 		 */
-		if (getenv("BK_SHOWPROC")) {
-			fprintf(stderr,
-			    "disconnect(): pid %u waiting for %u...\n",
+		FILE	*f;
+
+		if (f = efopen("BK_SHOWPROC")) {
+			fprintf(f, "disconnect(): pid %u waiting for %u...\n",
 			    getpid(), r->pid);
+			fclose(f);
 		}
 		waitpid(r->pid, 0, 0);
 		r->pid = 0;

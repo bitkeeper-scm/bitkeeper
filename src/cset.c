@@ -1218,16 +1218,13 @@ sccs_patch(sccs *s, cset_t *cs)
 						deltas++;
 						continue;
 					}
-					/* p == fullpath to binpool .d file */
-					t = strstr(p, "/BitKeeper/binpool/");
-					assert(t);
-					t = strdup(t+1);
-					free(p);
-					cs->binpool = addLine(cs->binpool, t);
-					p = strdup(t);
+					/* p is malloced already */
 					t = strrchr(p, '.');
-					assert(t);
 					t[1] = 'a';
+					cs->binpool = addLine(cs->binpool, p);
+					p = strdup(p);
+					t = strrchr(p, '.');
+					t[1] = 'd';
 					cs->binpool = addLine(cs->binpool, p);
 				}
 			} else {

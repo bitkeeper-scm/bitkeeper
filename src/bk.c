@@ -932,8 +932,11 @@ showproc_start(char **av)
 	prefix = strdup(prefix);
 
 	unless (f = efopen("BK_SHOWPROC")) return;
-	fprintf(f, "BK  (%5u %5s)%s", getpid(), milli(), prefix);
+	unless (getenv("BK_SHOWTERSE")) {
+		fprintf(f, "BK  (%5u %5s)%s", getpid(), milli(), prefix);
+	}
 	for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
+	fprintf(f, " [%s]", proj_cwd());
 	fprintf(f, "\n");
 	fclose(f);
 	safe_putenv("_BK_SP_PREFIX=%s  ", prefix);
@@ -946,7 +949,9 @@ showproc_end(char *cmdlog_buffer, int ret)
 	kvpair	kv;
 
 	unless (f = efopen("BK_SHOWPROC")) return;
-	fprintf(f, "END (%5u %5s)%s", getpid(), milli(), prefix);
+	unless (getenv("BK_SHOWTERSE")) {
+		fprintf(f, "END (%5u %5s)%s", getpid(), milli(), prefix);
+	}
 	fprintf(f, " %s = %d", cmdlog_buffer, ret);
 	if (notes) {
 		fprintf(f, " (");

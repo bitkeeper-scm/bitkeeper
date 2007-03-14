@@ -66,7 +66,6 @@ bp_diff(sccs *s, delta *d, char *gfile)
 	int	same;
 
 	unless (dfile = bp_lookup(s, d)) return (1);
-	unless (dfile) return (1);
 	if (size(dfile) != size(gfile)) {
 		free(dfile);
 		return (1);
@@ -107,6 +106,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	mode_t	mode;
 
 	d = bp_fdelta(s, din);
+// ttyprintf("bp_get %s:%s\n", s->gfile, d->rev);
 	unless (dfile = bp_lookup(s, d)) return (EAGAIN);
 	unless (m = mopen(dfile, "rb")) {
 		free(dfile);
@@ -303,7 +303,6 @@ out:	free(base);
  * file in the binpool that contains that data or null if the
  * data doesn't exist.
  * The pathname returned is malloced and needs to be freed.
- * The attributes for the data returned in found in 'a'.
  */
 char *
 bp_lookupkeys(project *p, char *hash, char *keys)
@@ -366,17 +365,28 @@ bp_lookup(sccs *s, delta *d)
 private char *
 hash2path(project *proj, char *hash)
 {
-	char	*p;
 	int	i;
-	char	binpool[MAXPATH];
+	char	dir[MAXPATH];
+	char	*p = dir;
 
-        unless (p = proj_root(proj)) return (0);
-        strcpy(binpool, p);
-        if ((p = strrchr(binpool, '/')) && patheq(p, "/RESYNC")) *p = 0;
-        strcat(binpool, "/BitKeeper/binpool");
-	i = strlen(binpool);
-	sprintf(binpool+i, "/%c%c/%s", hash[0], hash[1], hash);
-	return (strdup(binpool));
+	for (i = 0; i < 100; ++i) {
+		strcpy(p, "BitKeeper/etc/SCCS");
+		if (exists(dir)) {
+			if (proj_isResync(proj)) {
+				strcpy(p, RESYNC2ROOT "/BitKeeper/binpool");
+			} else {
+				strcpy(p, "BitKeeper/binpool");
+			}
+			break;
+	    	}
+		strcpy(p, "../");
+		p += 3;
+	}
+	if (i == 100) return (0);
+	i = strlen(dir);
+	sprintf(dir+i, "/%c%c/%s", hash[0], hash[1], hash);
+// ttyprintf("HASH %s\n", dir);
+	return (strdup(dir));
 }
 
 /*
@@ -954,7 +964,10 @@ usage:			system("bk help -s binpool");
 	unless (av[optind]) goto usage;
 	for (i = 0; cmds[i].name; i++) {
 		if (streq(av[optind], cmds[i].name)) {
-			return (cmds[i].fcn(ac-optind, av+optind));
+			ac -= optind;
+			av += optind;
+			getoptReset();
+			return (cmds[i].fcn(ac, av));
 		}
 	}
 	goto usage;
