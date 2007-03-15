@@ -21,57 +21,6 @@ do_remote(char *url, char *cmd, char *extra)
 }
 
 /*
- * Receive a list of binpool deltakeys on stdin and return a list of
- * deltaskeys that we are missing.
- */
-int
-binpool_query_main(int ac, char **av)
-{
-	char	*dfile, *p, *url;
-	int	c, tomaster = 0;
-	char	buf[MAXLINE];
-
-	while ((c = getopt(ac, av, "m")) != -1) {
-		switch (c) {
-		    case 'm': tomaster = 1; break;
-		    default:
-usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
-			return (1);
-		}
-	}
-	unless (av[optind] && streq(av[optind], "-")) goto usage;
-	if (proj_cd2root()) {
-		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
-		return (1);
-	}
-
-
-	if (tomaster) {
-		if (bp_masterID(&p)) return (1);
-		if (p) {
-			free(p);
-			url = proj_configval(0, "binpool_server");
-			assert(url);
-			/* proxy to my binpool master */
-			return (do_remote(url, "_binpool_query", 0));
-		}
-	}
-	while (fnext(buf, stdin)) {
-		chomp(buf);
-		p = strrchr(buf, ' ');
-		*p++ = 0;	/* get just keys */
-
-		if (dfile = bp_lookupkeys(0, p, buf)) {
-			free(dfile);
-		} else {
-			p[-1] = ' ';
-			puts(buf); /* we don't have this one */
-		}
-	}
-	return (0);
-}
-
-/*
  * Receive a list of binpool deltakeys on stdin and return a SFIO
  * of binpool data on stdout.
  *
@@ -80,18 +29,31 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
  *    ... repeat ...
  */
 int
-binpool_send_main(int ac, char **av)
+fsend_main(int ac, char **av)
 {
-	char	*p, *url;
+	char	*p, *url, *dfile;
 	int	c;
-	int	tomaster = 0;
+	int	tomaster = 0, query = 0, binpool = 0;
 	char	*sfio[] = { "sfio", "-oqmBbk", 0 };
+	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "m")) != -1) {
+	while ((c = getopt(ac, av, "B;")) != -1) {
 		switch (c) {
-		    case 'm': tomaster = 1; break;
+		    case 'B':
+			if (streq(optarg, "proxy")) {
+				tomaster = 1;
+			} else if (streq(optarg, "query")) {
+				query = 1;
+			} else if (streq(optarg, "send")) {
+				binpool = 1;
+			} else {
+				goto usage;
+			}
+			break;
 		    default:
-usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
+usage:			fprintf(stderr,
+			    "usage: bk %s [-Bproxy] [-Bquery] [-Bsend] -\n",
+			    av[0]);
 			return (1);
 		}
 	}
@@ -100,7 +62,6 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
 		return (1);
 	}
-
 	if (tomaster) {
 		if (bp_masterID(&p)) return (1);
 		if (p) {
@@ -108,8 +69,29 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
 			url = proj_configval(0, "binpool_server");
 			assert(url);
 			/* proxy to my binpool master */
-			return (do_remote(url, "_binpool_send", 0));
+			return (do_remote(url, "fsend",
+				    (query ? "-Bquery" : "-Bsend")));
 		}
+	}
+	if (query) {
+		while (fnext(buf, stdin)) {
+			chomp(buf);
+			p = strrchr(buf, ' ');
+			*p++ = 0;	/* get just keys */
+
+			if (dfile = bp_lookupkeys(0, p, buf)) {
+				free(dfile);
+			} else {
+				p[-1] = ' ';
+				puts(buf); /* we don't have this one */
+			}
+		}
+		return (0);
+	}
+	unless (binpool) {
+		fprintf(stderr,
+		    "%s: only binpool-mode supported currently.\n", av[0]);
+		return (1);
 	}
 	getoptReset();
 	return (sfio_main(2, sfio));
@@ -120,24 +102,31 @@ usage:			fprintf(stderr, "usage: bk %s [-m] -\n", av[0]);
  * binpool.
  */
 int
-binpool_receive_main(int ac, char **av)
+frecv_main(int ac, char **av)
 {
 	FILE	*f;
 	bpattr	a;
 	char	*p, *url;
-	int	tomaster = 0;
+	int	tomaster = 0, binpool = 0;
 	int	quiet = 0;
 	int	c, i, n, rc;
 	char	buf[MAXLINE];
 
-// ttyprintf("BP RECV in %s\n", proj_cwd());
 	setmode(0, _O_BINARY);
-	while ((c = getopt(ac, av, "mq")) != -1) {
+	while ((c = getopt(ac, av, "B;q")) != -1) {
 		switch (c) {
-		    case 'm': tomaster = 1; break;
+		    case 'B':
+			if (streq(optarg, "proxy")) {
+				tomaster = 1;
+			} else if (streq(optarg, "recv")) {
+				binpool = 1;
+			} else {
+				goto usage;
+			}
 		    case 'q': quiet = 1; break;
 		    default:
-usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
+usage:			fprintf(stderr,
+			    "usage: bk %s [-q] [-Bproxy] -Brecv -\n", av[0]);
 			return (1);
 		}
 	}
@@ -155,13 +144,18 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 			assert(url);
 
 			/* proxy to my binpool master */
-			return (do_remote(url, "_binpool_receive",
-				    quiet ? "-q" : 0));
+			return (do_remote(url, "frecv",
+				    quiet ? "-qBrecv" : "-Brecv"));
 		}
+	}
+	unless (binpool) {
+		fprintf(stderr,
+		    "%s: only binpool-mode supported currently.\n", av[0]);
+		return (1);
 	}
 	strcpy(buf, "BitKeeper/binpool/tmp");
 	if (mkdirp(buf)) {
-		fprintf(stderr, "_binpool_receive: failed to create %s\n", buf);
+		fprintf(stderr, "_freceive: failed to create %s\n", buf);
 		return (1);
 	}
 	chdir(buf);
@@ -172,7 +166,7 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 	rc = system(buf);
 	proj_cd2root();
 	if (rc) {
-		fprintf(stderr, "_binpool_receive: sfio failed %d\n",
+		fprintf(stderr, "_freceive: sfio failed %d\n",
 		    WEXITSTATUS(rc));
 		rc = 1;
 		goto out;
@@ -191,7 +185,6 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 		p[1] = 'd';
 		n = nLines(a.keys);
 		EACH(a.keys) {
-// ttyprintf("RECV %s\n", buf);
 			bp_insert(0, buf, a.hash, a.keys[i], (i==n));
 		}
 		bp_freeAttr(&a);
@@ -199,9 +192,6 @@ usage:			fprintf(stderr, "usage: bk %s [-mq] -\n", av[0]);
 	pclose(f);
 out:
 	rmtree("BitKeeper/binpool/tmp");
-//ttyprintf("RECV returns %d\n", rc);
-//system("/bin/pwd > /dev/tty");
-//system("/usr/bin/find BitKeeper/binpool -type f > /dev/tty");
 	return (rc);
 }
 

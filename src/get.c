@@ -325,7 +325,7 @@ bp_fetchkeys(char *me, char **keys)
 		return (1);
 	}
 	sprintf(buf,
-	    "bk -q@'%s' _binpool_send - | bk -R _binpool_receive -q -",
+	    "bk -q@'%s' fsend -Bsend - | bk -R frecv -qBrecv -",
 	    master);
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);

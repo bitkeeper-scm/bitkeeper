@@ -133,9 +133,6 @@ annotate
 base64
 bkd
 binpool
-_binpool_query remote
-_binpool_receive remote
-_binpool_send remote
 cat
 changes
 check
@@ -171,6 +168,8 @@ findkey
 fix
 _fixlod
 fixtool
+frecv remote
+fsend remote
 gca
 get
 gethelp

@@ -400,7 +400,7 @@ bp_fetch(sccs *s, delta *din)
 	sccs_md5delta(s, sccs_ino(s), rootkey);
 	sccs_md5delta(s, din, deltakey);
 
-	cmd = aprintf("bk -q@'%s' _binpool_send - | bk -R _binpool_receive -q -",
+	cmd = aprintf("bk -q@'%s' fsend -Bsend - | bk -R frecv -qBrecv -",
 	    url);
 
 	f = popen(cmd, "w");
@@ -460,13 +460,13 @@ bp_updateMaster(char *tiprev)
 		baserev, tiprev));
 
 	/* filter out deltas already in master */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' _binpool_query -", url));
+	cmds = addLine(cmds, aprintf("bk -q@'%s' fsend -Bquery -", url));
 
 	/* create SFIO of binpool data */
-	cmds = addLine(cmds, strdup("bk _binpool_send -"));
+	cmds = addLine(cmds, strdup("bk fsend -Bsend -"));
 
 	/* store in master */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' _binpool_receive -q -", url));
+	cmds = addLine(cmds, aprintf("bk -q@'%s' frecv -qBrecv -", url));
 	rc = spawn_filterPipeline(cmds);
 	freeLines(cmds, free);
 	unless (rc) {
@@ -653,23 +653,23 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 	if (send) {
 		/* send list of keys to remote and get back needed keys */
 		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' _binpool_query -m -", url));
+		    aprintf("bk -q@'%s' fsend -Bproxy -Bquery -", url));
 		/* build local SFIO of needed bp data */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s _binpool_send -", local_url));
+		    aprintf("bk -q%s fsend -Bsend -", local_url));
 		/* unpack SFIO in remote bp master */
 		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' _binpool_receive -m %s -", url, q));
+		    aprintf("bk -q@'%s' frecv -Bproxy -Brecv %s -", url, q));
 	} else {
 		/* Remove bp keys that our local bp master already has */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s _binpool_query -", local_url));
+		    aprintf("bk -q%s fsend -Bquery -", local_url));
 		/* send keys we need to remote bp master and get back SFIO */
 		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' _binpool_send -m -", url));
+		    aprintf("bk -q@'%s' fsend -Bproxy -Bsend -", url));
 		/* unpack SFIO in local bp master */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s _binpool_receive %s -", local_url, q));
+		    aprintf("bk -q%s frecv -Brecv %s -", local_url, q));
 	}
 	rc = spawn_filterPipeline(cmds);
 	freeLines(cmds, free);
@@ -713,14 +713,14 @@ binpool_populate_main(int ac, char **av)
 	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'"));
 
 	/* reduce to list of deltas missing locally */
-	cmds = addLine(cmds, strdup("bk _binpool_query -"));
+	cmds = addLine(cmds, strdup("bk fsend -Bquery -"));
 
 	/* request deltas from server */
-	cmds = addLine(cmds, aprintf("bk -@'%s' _binpool_send -",
+	cmds = addLine(cmds, aprintf("bk -@'%s' fsend -Bsend -",
 	    proj_configval(0, "binpool_server")));
 
 	/* unpack locally */
-	cmds = addLine(cmds, strdup("bk _binpool_receive -"));
+	cmds = addLine(cmds, strdup("bk frecv -Brecv -"));
 
 	rc = spawn_filterPipeline(cmds);
 	freeLines(cmds, free);
@@ -795,7 +795,7 @@ binpool_flush_main(int ac, char **av)
 		}
 		free(p2);
 		p2 = proj_configval(0, "binpool_server");
-		cmd = aprintf("%s | bk -@'%s' _binpool_query -", p1, p2);
+		cmd = aprintf("%s | bk -@'%s' fsend -Bquery -", p1, p2);
 		free(p1);
 	}
 	f = popen(cmd, "r");
