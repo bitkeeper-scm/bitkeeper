@@ -13486,11 +13486,11 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 	if (p < q) {
 		delta	*e;
 		char	*rev;
-		char	last = kw[len];
 
 		p++;
 		rev = strndup(p, len - (p-kw));
 		e = sccs_findrev(s, rev);
+		free(rev);
 		unless (e) return (nullVal);
 		len = p - 1 - kw;
 		d = e;
@@ -15010,14 +15010,14 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		return (strVal);
 	}
 	case KW_BPHASH: /* BPHASH */ {
-		if (d->hash) {
-			fs(d->hash);
+		if (d->hash) {	/* adler32 only */
+			show_s(s, out, vbuf, d->hash, strcspn(d->hash, "."));
 			return (strVal);
 		}
 		return (nullVal);
 	}
 	default:
-                return notKeyword;
+		return (notKeyword);
 	}
 }
 

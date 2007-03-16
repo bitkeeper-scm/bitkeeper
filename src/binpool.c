@@ -97,13 +97,14 @@ int
 bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 {
 	delta	*d;
-	char	*dfile;
+	char	*dfile, *p;
 	u8	*buf;
 	u32	sum;
 	MMAP	*m;
 	int	n, fd, ok;
 	int	rc = -1;
 	mode_t	mode;
+	char	hash[10];
 
 	d = bp_fdelta(s, din);
 // ttyprintf("bp_get %s:%s\n", s->gfile, d->rev);
@@ -121,6 +122,11 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 			sum = strtoul(getenv("_BK_FAKE_HASH"), 0, 16);
 		} else {
 			sum = adler32(0, m->mmap, m->size);
+			if (p = getenv("_BP_HASHCHARS")) {
+				sprintf(hash, "%08x", sum);
+				hash[atoi(p)] = 0;
+				sum = strtoul(hash, 0, 16);
+			}
 		}
 	}
 	ok = (sum == strtoul(d->hash, 0, 16));
@@ -168,7 +174,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		rc = 0;
 	}
 	unless (n) n = 1;	/* zero is bad */
-	s->dsum = sum;
+	s->dsum = sum & 0xffff;
 	s->added = (d == din) ? n : 0;
 	s->same = s->deleted = 0;
 out:	mclose(m);
@@ -179,18 +185,44 @@ out:	mclose(m);
 private int
 hashgfile(char *gfile, char **hashp, sum_t *sump)
 {
-	MMAP	*m;
-	u32	sum;
+	int	fd, i;
+	u32	sum = 0;
+	char	*p;
+	int	hdesc = register_hash(&md5_desc);
+	unsigned long	b64len;
+	hash_state	md;
+	char	buf[8<<10];
 
-	unless (m = mopen(gfile, "rb")) return (-1);
-	sum = adler32(0, m->mmap, m->size);
-	mclose(m);
-	*sump = (sum_t)(sum & 0xffff); /* XXX rand? */
-	if (getenv("_BK_FAKE_HASH")) {
-		*hashp = strdup(getenv("_BK_FAKE_HASH"));
-	} else {
-		*hashp = aprintf("%08x", sum);
+	if ((fd = open(gfile, O_RDONLY)) < 0) return (-1);
+	hash_descriptor[hdesc].init(&md);
+	while ((i = read(fd, buf, sizeof(buf))) > 0) {
+		sum = adler32(sum, buf, i);
+
+		hash_descriptor[hdesc].process(&md, buf, i);
 	}
+	hash_descriptor[hdesc].done(&md, buf);
+	close(fd);
+
+	*hashp = malloc(36);
+	if (p = getenv("_BK_FAKE_HASH")) {
+		strcpy(*hashp, p);
+	} else {
+		sprintf(*hashp, "%08x", sum);
+		if (p = getenv("_BP_HASHCHARS")) (*hashp)[atoi(p)] = 0;
+	}
+	p = *hashp + strlen(*hashp);
+	*p++ = '.';
+	b64len = 64;
+	base64_encode(buf, hash_descriptor[hdesc].hashsize, p, &b64len);
+	for (; *p; p++) {
+		if (*p == '/') *p = '-';	/* dash */
+		if (*p == '+') *p = '_';	/* underscore */
+		if (*p == '=') {
+			*p = 0;
+			break;
+		}
+	}
+	*sump = (sum_t)(strtoul(*hashp, 0, 16) & 0xffff);
 	return (0);
 }
 
@@ -245,7 +277,7 @@ bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
 		}
 
 		/* if the filenames match the hashes better match, right? */
-		assert(streq(a.hash, hash));
+		assert(strtoul(a.hash, 0, 16) == strtoul(hash, 0, 16));
 
 		EACH(a.keys) {
 			if (streq(a.keys[i], keys)) {
@@ -323,7 +355,7 @@ bp_lookupkeys(project *p, char *hash, char *keys)
 			    "binpool: unexpected version in %s\n", buf);
 			goto out;
 		}
-		unless (streq(a.hash, hash)) {
+		unless ((strtoul(a.hash, 0, 16) == strtoul(hash, 0, 16))) {
 			fprintf(stderr, "binpool: hash mismatch in %s\n", buf);
 			assert(0);	// LMXXX - ???
 			goto out;
@@ -365,7 +397,7 @@ bp_lookup(sccs *s, delta *d)
 private char *
 hash2path(project *proj, char *hash)
 {
-	char    *p;
+	char    *p, *t;
 	int     i;
 	char    binpool[MAXPATH];
 
@@ -374,7 +406,9 @@ hash2path(project *proj, char *hash)
 	if ((p = strrchr(binpool, '/')) && patheq(p, "/RESYNC")) *p = 0;
 	strcat(binpool, "/BitKeeper/binpool");
 	i = strlen(binpool);
+	if (t = strchr(hash, '.')) *t = 0;
 	sprintf(binpool+i, "/%c%c/%s", hash[0], hash[1], hash);
+	if (t) *t = '.';
 	return (strdup(binpool));
 }
 
@@ -406,7 +440,8 @@ bp_fetch(sccs *s, delta *din)
 	f = popen(cmd, "w");
 	free(cmd);
 	assert(f);
-	fprintf(f, "%s %s %s\n", rootkey, deltakey, din->hash);
+	fprintf(f, "%s %s %*s\n",
+	    rootkey, deltakey, strcspn(din->hash, "."), din->hash);
 	if (pclose(f)) {
 		fprintf(stderr, "bp_fetch: failed to fetch delta for %s\n",
 		    s->gfile);

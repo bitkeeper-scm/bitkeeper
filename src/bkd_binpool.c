@@ -155,7 +155,7 @@ usage:			fprintf(stderr,
 	}
 	strcpy(buf, "BitKeeper/binpool/tmp");
 	if (mkdirp(buf)) {
-		fprintf(stderr, "_freceive: failed to create %s\n", buf);
+		fprintf(stderr, "_frecv: failed to create %s\n", buf);
 		return (1);
 	}
 	chdir(buf);
@@ -166,7 +166,7 @@ usage:			fprintf(stderr,
 	rc = system(buf);
 	proj_cd2root();
 	if (rc) {
-		fprintf(stderr, "_freceive: sfio failed %d\n",
+		fprintf(stderr, "_frecv: sfio failed %d\n",
 		    WEXITSTATUS(rc));
 		rc = 1;
 		goto out;

@@ -257,7 +257,8 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	 * will be detected when being unpacked.
 	 */
 	if (opts->bp_tuple && strneq(file, "BitKeeper/binpool/", 18) &&
-	    (p = strrchr(file, '.')) && (p[1] == 'd')) {
+	    (p = strrchr(file, '.')) && (p[1] == 'd') &&
+	    !getenv("_BP_HASHCHARS")) {
 		p = strrchr(file, '/');
 		sum = strtoul(p+1, 0, 16);
 		dosum = 0;
