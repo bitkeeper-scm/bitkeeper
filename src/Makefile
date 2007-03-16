@@ -119,7 +119,7 @@ BINS	= $(BK) inskeys$(EXE)
 OBJ =	abort.o adler32.o admin.o annotate.o \
 	binpool.o bkd.o bkd_binpool.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
-	bkd_kill.o bkd_license.o bkd_misc.o \
+	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o \
 	bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o bkver.o cat.o changes.o \
@@ -132,7 +132,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	id.o idcache.o isascii.o inskeys.o \
+	idcache.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
 	libcommit.o libdiff.o librange.o \

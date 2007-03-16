@@ -13485,17 +13485,16 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 	for (p = kw, q = p+len; (*p != '|') && (p < q); ++p) ;
 	if (p < q) {
 		delta	*e;
+		char	*rev;
 		char	last = kw[len];
 
 		p++;
-		kw[len] = '\0';
-		e = sccs_findrev(s, p);
-		kw[len] = last;
+		rev = strndup(p, len - (p-kw));
+		e = sccs_findrev(s, rev);
 		unless (e) return (nullVal);
 		len = p - 1 - kw;
 		d = e;
 	}
-
 	kwval = kw2val_lookup(kw, len);
 	unless (kwval) return notKeyword;
 

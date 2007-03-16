@@ -15,7 +15,10 @@ usage:			sys("bk", "help", "-s", "id", SYS);
 		}
 	}
 	if (av[optind]) goto usage;
-
+	if (proj_cd2root()) {
+		fprintf(stderr, "id: not in a repository.\n");
+		return (1);
+	}
 	if (repo) {
 		printf("%s\n", proj_repoID(0));
 	} else {
