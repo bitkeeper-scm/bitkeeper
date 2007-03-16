@@ -301,3 +301,18 @@ err:			close(fd);
 	free(tmp);
 	return (i);
 }
+
+/*
+ * A useful debugging function.  It can be called remotely so it
+ * must be secure.
+ */
+int
+debugargs_main(int ac, char **av)
+{
+	int	i;
+
+	for (i = 0; av[i]; i++) {
+		printf("%d: %s\n", i, shellquote(av[i]));
+	}
+	return (0);
+}

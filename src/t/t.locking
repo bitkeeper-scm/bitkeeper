@@ -522,3 +522,24 @@ grep -q O_EXCL OUT && {
 	exit 1
 }
 echo OK
+
+echo $N Check that lock command fails outside a repository ..........$NL
+cd "$HERE"
+bk lock -l 2>ERR
+test $? -eq 2 || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Check that unlock command warns if outside a repository .....$NL
+cd "$HERE"
+bk unlock -r 2> ERR || {
+	echo failed
+	exit 1
+}
+grep -q "Not in a repository" ERR || {
+	echo failed
+	exit 1
+}
+echo OK

@@ -87,6 +87,7 @@ while (<DATA>) {
 	$m = 0;
     }
     print C "$_, $type, $m, 0, $r, $pro, $remote\n";
+    $rmts{$m} = 1 if $remote;
 }
 print H "\n#endif\n";
 close(H) or die;
@@ -102,6 +103,27 @@ while (<SH>) {
 close(SH) or die;
 close(C) or die;
 
+# all commands tagged with 'remote' must live in files named bkd_*.c
+# (can't use perl's glob() because win32 perl is missing library)
+open(LS, "ls bkd_*.c |") or die;
+@ARGV = ();
+while (<LS>) {
+    chomp;
+    push(@ARGV, $_);
+}
+close(LS) or die;
+while (<>) {
+    if (/^(\w+_main)\(/) {
+	delete $rmts{$1};
+    }
+}
+if (%rmts) {
+    print STDERR "Commands marked with 'remote' need to move to bkd_*.c:\n";
+    foreach (sort keys %rmts) {
+	print STDERR "\t$_\n";
+    }
+    die;
+}
 
 # All the command line functions names in bk should be listed below
 # followed by any optional modifiers.  A line with just a single name

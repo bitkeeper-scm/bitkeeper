@@ -1,16 +1,13 @@
 #include "../sccs.h"
 #include "../bkd.h"
 
-/*
- * Copyright (c) 2001 Andrew Chang       All rights reserved.
- */
-
 private char **
 _get_http_proxy_env(char **proxies)
 {
 	char	*p, *q, *r, *h, *cr, buf[MAXLINE];
 
-	p = getenv("http_proxy");  /* http://[use:password@]proxy.host:8080 */
+	/* http://[use:password@]proxy.host:8080 */
+	p = getenv("http_proxy"); 
 	if (p && *p && strneq("http://", p, 7) && (q = strrchr(&p[7], ':'))) {
 		*q++ = 0;
 		p = &p[7];
@@ -38,6 +35,8 @@ _get_http_proxy_env(char **proxies)
 		q[-1] = ':'; 
 		if (r) r[-1] = '@';
 		proxies = addLine(proxies, strdup(buf));
+	} else if (p && *p) {
+		fprintf(stderr, "bk: ignoring malformed proxy '%s'\n", p);
 	}
 
 	p = getenv("HTTP_PROXY_HOST"); 
@@ -69,6 +68,8 @@ _get_socks_proxy(char **proxies)
 		sprintf(buf, "SOCKS %s:%s", p, q);
 		q[-1] = ':';
 		proxies = addLine(proxies, strdup(buf));
+	} else if (p && *p) {
+		fprintf(stderr, "bk: ignoring malformed socks proxy %s\n", p);
 	}
 	return (proxies);
 }
@@ -83,19 +84,15 @@ addProxy(char *type, char *line, char **proxies)
 	char	*q, buf[MAXLINE], proxy_host[MAXPATH];
 	int	proxy_port;
 
-	unless (line) return proxies;
-	q = strchr(line, ':');
-	unless (q) {
-		getMsg("unknown_proxy", line, '=', stderr);
+	unless (line) return (proxies);
+	unless (q = strchr(line, ':')) {
+		fprintf(stderr, "bk: ignoring malformed proxy %s\n", line);
 		return (proxies);
 	}
 	*q = 0;
 	strcpy(proxy_host, line);
 	proxy_port = atoi(++q);
 	sprintf(buf, "%s %s:%d", type, proxy_host, proxy_port);
-	if (getenv("BK_HTTP_PROXY_DEBUG")) {
-		fprintf(stderr, "Adding proxy: \"%s\"\n", buf);
-	}
 	return (addLine(proxies, strdup(buf)));
 }
 

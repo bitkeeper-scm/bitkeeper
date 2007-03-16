@@ -48,7 +48,7 @@ bkversion(FILE *f)
 			chomp(buf);
 			fprintf(f, "Running on: %s\n", buf);
 		}
-		fclose(f1);
+		pclose(f1);
 	}
 	if (test_release) {
 		exp = ((time_t)build_timet - time(0)) / (24*3600.0) + 14;

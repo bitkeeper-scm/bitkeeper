@@ -185,17 +185,6 @@ out:	wait_eof(r, 0);
 	return (i);
 }
 
-int
-debugargs_main(int ac, char **av)
-{
-	int	i;
-
-	for (i = 0; av[i]; i++) {
-		printf("%d: %s\n", i, shellquote(av[i]));
-	}
-	return (0);
-}
-
 private void
 stream_stdin(remote *r)
 {

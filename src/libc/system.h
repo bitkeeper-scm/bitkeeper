@@ -198,11 +198,13 @@ void	syserr(const char *postfix);
 #define	system(cmd)	safe_system(cmd)
 #define	popen(f, m)	safe_popen(f, m)
 #define	pclose(f)	safe_pclose(f)
+#define	fclose(f)	safe_fclose(f)
 
 int	safe_system(char *cmd);
 FILE *	safe_popen(char *cmd, char *type);
 FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);
+int	safe_fclose(FILE *f);
 
 /* tcp/tcp.c */
 int	tcp_server(int port, int quiet);

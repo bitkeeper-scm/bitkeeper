@@ -13,8 +13,9 @@ ifeq "$(OSTYPE)" "msys"
 	CFLAGS=-O
 	LD=$(CC)
 	LIBS = -lws2_32
-	STRIP=strip
 	RESOURCES=resources.o
+	SO=so
+	STRIPOPTS=
 else
         SYS=unix
 	EXE=
@@ -22,8 +23,13 @@ else
 	H=../unix.h
 	CFLAGS=-O
 	LD=$(CC)
-	STRIP=strip
 	RESOURCES=
+	SO=dll
+	STRIPOPTS=
+	ifeq "$(shell uname)" "Darwin"
+		SO=dylib
+		STRIPOPTS=-x
+	endif
 endif
 SFIO_OBJS=sfio.o sfio_utils.o
 SYSTEM_OBJS=../libc/libc.a
@@ -33,11 +39,13 @@ VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
 IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 
 all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE)
-	$(STRIP) $(IMAGE)
+	strip $(IMAGE)
 
 sfioball: installtool $(BINDIR) $(BINDIR)/gui/bin/bkgui$(EXE)
 	@echo Creating sfioball from BK in $(BINDIR) ...
-	cp installtool $(BINDIR)/gui/lib/installtool
+	@cp installtool $(BINDIR)/gui/lib/installtool
+	@find $(BINDIR) -type f -name \*.$(SO) | while read x; \
+	    do strip $(STRIPOPTS) $$x ; done
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
 	    bk sfio -mqo) > sfioball
 

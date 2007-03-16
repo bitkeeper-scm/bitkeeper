@@ -37,7 +37,7 @@ mtst$(EXE): mdbm/mtst.o libc.a
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) libc.a tags.local mtst$(EXE)
+	rm -f $(OBJS) libc.a tags.local mtst$(EXE) mdbm/mtst.o
 
 .PHONY: clobber
 clobber: clean

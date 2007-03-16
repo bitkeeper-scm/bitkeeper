@@ -66,7 +66,7 @@ echo OK
 echo $N Exit status of Yes...........................................$NL
 bk guitest msgtool -Y "Yes" -N "No" "Foo" >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Yes
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
@@ -75,7 +75,7 @@ echo OK
 echo $N Exit status of No............................................$NL
 bk guitest msgtool -Y "Yes" -N "No" "Foo" >"$OUT" 2>&1 <<'EOF'
     test_buttonPress No
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ $err -ne 1 ]; then echo failed; echo "exited $err expected 1"; exit 1; fi

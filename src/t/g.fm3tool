@@ -97,7 +97,7 @@ echo $N Simple startup and exit......................................$NL
 cd "$HERE/local/RESYNC"
 bk guitest fm3tool -f -l1.1.1.1 -r1.2 src/file1 >"$OUT" 2>&1 <<'EOF'
     test_invokeMenu File->Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 test -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
@@ -109,7 +109,7 @@ test -f "$RC" && rm -f "$RC"
 cd "$HERE/local/RESYNC"
 bk guitest fm3tool -f -l1.1.1.1 -r1.2 src/file1 >"$OUT" 2>&1 <<'EOF'
     test_invokeMenu File->Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 test -f "$RC" || (echo failed; exit 1; )
 echo "OK"

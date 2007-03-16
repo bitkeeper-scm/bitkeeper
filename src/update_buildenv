@@ -57,9 +57,18 @@ echo extracting MinGW
 mkdir $D/mingw
 tar -C$D/mingw -xzf $W32TOOLS/binutils-2.13.90-20030111-1.tar.gz
 tar -C$D/mingw -xzf $W32TOOLS/mingw-runtime-3.2.tar.gz
+
+echo extracting GCC
 tar -C$D/mingw -xzf $W32TOOLS/gcc-core-3.4.1-20040711-1.tar.gz
 tar -C$D/mingw -xzf $W32TOOLS/gcc-g++-3.4.1-20040711-1.tar.gz
 tar -C$D/mingw -xzf $W32TOOLS/w32api-2.5.tar.gz
+
+echo extracting bison and flex
+tar -C$D/mingw -xzf $W32TOOLS/bison-1.875.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/flex-2.5.4.tar.gz
+
+echo extracting gdb
+tar -C$D/mingw -xzf $W32TOOLS/gdb-5.1.1-1-mingw.tar.gz
 
 echo extract perl
 tar -C$D -xzf $W32TOOLS/perl.tar.gz
@@ -70,6 +79,9 @@ tar -C$D -xzf $W32TOOLS/gperf-3.0.1.tar.gz
 echo extract groff
 mkdir $D/groff
 tar -C$D/groff -xzf $W32TOOLS/groff-1.19.1-alpha-bin.tar.gz
+
+echo copying additional DLLs
+cp $W32TOOLS/*.dll $D/mingw/bin
 
 # create custom startup scripts with fixed PATH
 rm -f $D/etc/profile

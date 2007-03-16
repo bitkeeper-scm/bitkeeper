@@ -22,6 +22,7 @@ private struct {
 	u32	binpool:1;	/* only include binpool files */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
+	search	tsearch;	/* -t/pattern/[i] matches tags w/ pattern */
 	char	*dspec;		/* override dspec */
 	char	**users;	/* lines list of users to include */
 	char	**notusers;	/* lines list of users to exclude */
@@ -79,7 +80,7 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
+	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnqRr;t|Tu;U;v/;x;")) != -1) {
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -114,7 +115,16 @@ changes_main(int ac, char **av)
 		    case 'm': opts.nomerge = 1; break;
 		    case 'n': opts.newline = 1; break;
 		    case 'q': opts.urls = 0; break;
-		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
+		    case 't':
+		    	opts.tagOnly = 1;
+			if (optarg) {
+				unless (*optarg == '/') {
+					fprintf(stderr, "-t arg needs /pat/\n");
+					goto usage;
+				}
+		    		opts.tsearch = search_parse(optarg+1);
+			}
+			break;		/* doc 2.0 */
 		    case 'T': opts.timesort = 1; break;
 		    case 'u':
 			opts.users = addLine(opts.users, strdup(optarg));
@@ -391,21 +401,21 @@ recurse(delta *d)
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
-#define	DSPEC	"$if(:DPN:!=ChangeSet){  }" \
+#define	DSPEC	"$unless(:CHANGESET:){  }" \
 		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"+:LI: -:LD:\n" \
-		"$each(:C:){$if(:DPN:!=ChangeSet){  }  (:C:)\n}" \
+		"$each(:C:){$unless(:CHANGESET:){  }  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
-		"$if(:MERGE:){$if(:DPN:!=ChangeSet){  }  MERGE: " \
+		"$if(:MERGE:){$unless(:CHANGESET:){  }  MERGE: " \
 		":MPARENT:\n}\n"
-#define	VSPEC	"$if(:DPN:=ChangeSet){\n#### :DPN: ####\n}" \
-		"$if(:DPN:!=ChangeSet){\n==== :DPN: ====\n}" \
+#define	VSPEC	"$if(:CHANGESET:){\n#### :DPN: ####\n}" \
+		"$else{\n==== :DPN: ====\n}" \
 		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
-		"$if(:DPN:!=ChangeSet){+:LI: -:LD:}" \
+		"$unless(:CHANGESET:){+:LI: -:LD:}" \
 		"\n" \
 		"$each(:C:){  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
-		"$if(:DPN:!=ChangeSet){:DIFFS_UP:}"
+		"$unless(:CHANGESET:){:DIFFS_UP:}"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -949,9 +959,23 @@ want(sccs *s, delta *e)
 {
 	char	*p;
 	int	i, match;
+	symbol	*sym;
 
 	unless (opts.all || (e->type == 'D')) return (0);
-	if (opts.tagOnly && !(e->flags & D_SYMBOLS)) return (0);
+	if (opts.tagOnly) {
+		unless (e->flags & D_SYMBOLS) return (0);
+		if (opts.tsearch.pattern) {
+			match = 0;
+			for (sym = s->symbols; sym; sym = sym->next) {
+				unless (sym->d == e) continue;
+				if (search_either(sym->symname, opts.tsearch)) {
+					match = 1;
+					break;
+				}
+			}
+			unless (match) return (0);
+		}
+	}
 	if (opts.notusers) {
 		if (p = strchr(e->user, '/')) *p = 0;
 		match = 0;

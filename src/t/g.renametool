@@ -70,7 +70,7 @@ bk get $Q src/foo2
 # our test script as a file
 cat > test_script <<'EOF'
 test_buttonPress Quit
-after 5000 [list exit 99] ;# in case the buttonpress didn't work
+test_die 99
 EOF
 echo "src/foo1
 
@@ -85,7 +85,7 @@ test -f "$RC" && rm -f "$RC"
 # our test script as a file
 cat > test_script <<'EOF'
 test_buttonPress Quit
-after 5000 [list exit 99] ;# in case the buttonpress didn't work
+test_die 99
 EOF
 echo "src/foo1
 
@@ -114,7 +114,7 @@ cp src/foo* src2
 # our test script as a file
 cat > test_script <<'EOF'
 test_buttonPress Quit
-after 5000 [list exit 99] ;# in case the buttonpress didn't work
+test_die 99
 EOF
 echo "src/foo1
 src/foo2
