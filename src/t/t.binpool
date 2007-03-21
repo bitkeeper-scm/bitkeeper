@@ -21,7 +21,6 @@ perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
 bk new $Q data || exit 1
-SAVE=`echo BitKeeper/binpool/*/*.a1`
 test -d BitKeeper/binpool || exit 1
 echo OK
 # find BitKeeper/binpool -type f 
@@ -49,15 +48,13 @@ echo $N Same data should just get added to the same binpool file ....$NL
 mkdir subdir
 cp "$DATA" subdir/data3
 bk new $Q subdir/data3
-KEY=`bk prs -hd':MD5KEY|1.0: :MD5KEY:' -r+ subdir/data3`
-grep -q "$KEY" $SAVE || {
-	echo did not find key in attributes file
-	cat $SAVE
-	echo WANT: $KEY
+NUM=`find BitKeeper/binpool -type f -name '*.d1' -print | wc -l`
+test $NUM = 2 || {
+	echo wrong number of files
+	find BitKeeper/binpool -type f -name '*.d1' -print
 	exit 1
 }
 echo OK
-# cat $SAVE
 
 
 echo $N Force a fake hash and see if that worked ....................$NL
@@ -112,12 +109,6 @@ echo $N Same data should just get added to the same binpool file ....$NL
 cp "$DATA" data4
 _BK_FAKE_HASH=deadbeef bk new $Q data4
 test -f BitKeeper/binpool/de/deadbeef.d2 && exit 2
-KEY=`bk prs -hd:MD5KEY: -r1.0 data4`
-grep -q "$KEY" BitKeeper/binpool/de/deadbeef.a1 || {
-	echo did not find key in attributes file
-	cat BitKeeper/binpool/de/deadbeef.a1
-	exit 1
-}
 echo OK
 
 echo $N Clean the file, check it out, make sure that worked .........$NL
@@ -177,7 +168,7 @@ echo OK
 echo $N Take the patch and check for binpool data ...................$NL
 mkdir "$HERE"/new
 cd "$HERE"/new
-bk takepatch -ivv < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
+_BK_ALLOW_BAD_CRC=YES bk takepatch -ivv < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
 	cat "$HERE"/OUT
 	exit 1
 }
@@ -219,7 +210,7 @@ echo OK
 echo $N Take the patch and try to resolve it ........................$NL
 mkdir "$HERE"/new2
 cd "$HERE"/new2
-echo q | bk takepatch -ivva < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
+echo q | _BK_ALLOW_BAD_CRC=YES bk takepatch -ivva < "$HERE"/ALL > "$HERE"/OUT 2>&1 || {
 	cat "$HERE"/OUT
 	exit 1
 }
@@ -284,8 +275,8 @@ BEFORE=`find BitKeeper/binpool -type f -print | wc -l`
 }
 test -d RESYNC && exit 2
 AFTER=`find BitKeeper/binpool -type f -print | wc -l`
-# We should have one extra d+a
-test $BEFORE -eq `expr $AFTER - 2` || {
+# We should have one extra d
+test $BEFORE -eq `expr $AFTER - 1` || {
 	echo failed
 	echo $BEFORE $AFTER
 	exit 1
@@ -315,8 +306,8 @@ echo $N Test a manual merge .........................................$NL
 }
 test -d RESYNC && exit 2
 AFTER=`find BitKeeper/binpool -type f -print | wc -l`
-# We should have two extra d+a
-test $BEFORE -eq `expr $AFTER - 4` || {
+# We should have two extra d
+test $BEFORE -eq `expr $AFTER - 2` || {
 	echo failed
 	echo $BEFORE $AFTER
 	exit 1

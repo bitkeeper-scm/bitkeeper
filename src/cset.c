@@ -720,8 +720,7 @@ again:	/* doDiffs can make it two pass */
 			int	i;
 			FILE	*f;
 
-			uniqLines(cs->binpool, free);
-			f = popen("bk sfio -omq -", "w");
+			f = popen("bk fsend -Bsend -", "w");
 			EACH(cs->binpool) fprintf(f, "%s\n", cs->binpool[i]);
 			fflush(f);	// Paranoia only
 			pclose(f);
@@ -1214,27 +1213,20 @@ sccs_patch(sccs *s, cset_t *cs)
 			} else if (BINPOOL(s) && copts.doBinpool) {
 				assert(d->hash || (!d->added && !d->deleted));
 				if (d->hash) {
-					char	*p, *t, *freeme;
-					int	rlen;
+					char	*p;
 
 // LMXXX - this should really fail unless we were told to succeed.  For
 // now I'm just hoping they can find the data elsewhere.
 // Alternatively, skip pass the miss IFF we are not a master.
-					unless (freeme = bp_lookup(s, d)) {
+					unless (p = bp_lookup(s, d)) {
 						printf("\n");
 						deltas++;
 						continue;
 					}
-					rlen = strlen(proj_root(s->proj)) + 1;
-					p = strdup(freeme + rlen);
-					t = strrchr(p, '.');
-					t[1] = 'a';
-					cs->binpool = addLine(cs->binpool, p);
-					p = strdup(freeme + rlen);
-					t = strrchr(p, '.');
-					t[1] = 'd';
-					cs->binpool = addLine(cs->binpool, p);
-					free(freeme);
+					free(p);
+					cs->binpool = addLine(cs->binpool,
+					    sccs_prsbuf(s, d, 0,
+					    ":MD5KEY|1.0: :MD5KEY: :BPHASH:"));
 				}
 			} else {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");

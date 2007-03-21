@@ -15,15 +15,11 @@
  *
  * The files are stored in
  *	BitKeeper/binpool/xy/xyzabc...d1	// data
- *	BitKeeper/binpool/xy/xyzabc...a1	// attributes
- * The attributes file format is (all ascii, one item per line):
- *	int	version				// currently "1"
- *	size_t	size				// size of data
- *	char	*hash				// hash in hex
- *	char	*rootkey, *deltakey		// m5 keys
- *	<may repeat>
- *	hash
+ *	BitKeeper/binpool/index.db
+ *		// mdbm mapping "md5rootkey md5key" => "xy/xyzabc...d1"
  */
+
+#define	INDEX_PSIZE	4096	/* mdbm psize for index */
 
 private	int	hashgfile(char *gfile, char **hashp, sum_t *sump);
 private	char*	mkkeys(sccs *s, delta *d);
@@ -107,7 +103,6 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	char	hash[10];
 
 	d = bp_fdelta(s, din);
-// ttyprintf("bp_get %s:%s\n", s->gfile, d->rev);
 	unless (dfile = bp_lookup(s, d)) return (EAGAIN);
 	unless (m = mopen(dfile, "rb")) {
 		free(dfile);
@@ -121,7 +116,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		if (getenv("_BK_FAKE_HASH")) {
 			sum = strtoul(getenv("_BK_FAKE_HASH"), 0, 16);
 		} else {
-			sum = adler32(0, m->mmap, m->size);
+			sum = adler32(0, m->mmap, m->size); // XXX hash dfile?
 			if (p = getenv("_BP_HASHCHARS")) {
 				sprintf(hash, "%08x", sum);
 				hash[atoi(p)] = 0;
@@ -191,7 +186,7 @@ hashgfile(char *gfile, char **hashp, sum_t *sump)
 	int	hdesc = register_hash(&md5_desc);
 	unsigned long	b64len;
 	hash_state	md;
-	char	buf[8<<10];
+	char	buf[8<<10];	/* what is the optimal length? */
 
 	if ((fd = open(gfile, O_RDONLY)) < 0) return (-1);
 	hash_descriptor[hdesc].init(&md);
@@ -242,92 +237,52 @@ mkkeys(sccs *s, delta *d)
  * If canmv is set then move instead of copy.
  */
 int
-bp_insert(project *proj, char *file, char *hash, char *keys, int canmv)
+bp_insert(project *proj, char *file, char *adler32, char *keys, int canmv)
 {
-	bpattr	a;
 	char	*base, *p;
-	int	i, j, rc = -1;
-	off_t	binsize;
+	MDBM	*db;
+	int	j;
 	char	buf[MAXPATH];
+	char	idx[MAXPATH];
 
-	binsize = size(file);
-	base = hash2path(proj, hash);
+	base = hash2path(proj, adler32);
+	p = buf + sprintf(buf, "%s", base);
+	free(base);
 	for (j = 1; ; j++) {
-		sprintf(buf, "%s.a%d", base, j);
-		p = buf + strlen(base) + 1;
+		sprintf(p, ".d%d", j);
 // ttyprintf("TRY %s\n", buf);
-		/*
-		 * If we can't load this file then we create a new one.
-		 * It means we either had nothing (j == 1) or we had more
-		 * than one which hashed to the same hash.
-		 * TESTXXX
-		 */
+
 		unless (exists(buf)) break;
-		if (bp_loadAttr(buf, &a)) goto out;
-		unless (a.version == 1) {
-			fprintf(stderr,
-			    "binpool: unexpected version in %s\n", buf);
-			goto out;
-		}
-
-		/* wrong size, move to next */
-		unless (a.size == binsize) {
-			bp_freeAttr(&a);
-			continue;
-		}
-
-		/* if the filenames match the hashes better match, right? */
-		assert(strtoul(a.hash, 0, 16) == strtoul(hash, 0, 16));
-
-		EACH(a.keys) {
-			if (streq(a.keys[i], keys)) {
-				/* already inserted */
-				rc = 0;
-				goto out;
-			}
-		}
 
 		/*
 		 * If the data matches then we have two deltas which point at
-		 * the same data.  Add them to the list.  TESTXXX
+		 * the same data.
 		 */
-		*p = 'd';
-		if (sameFiles(file, buf)) {
-			*p = 'a';
-			a.keys = addLine(a.keys, keys);
-			if (bp_saveAttr(&a, buf)) {
-				fprintf(stderr,
-				    "binpool: failed to update %s\n", buf);
-			} else {
-				rc = 0;
-			}
-			goto out;
-		}
-		/* wrong data try next */
-		bp_freeAttr(&a);
+		if (sameFiles(file, buf)) goto domap;
 	}
 	/* need to insert new entry */
-	*p = 'd';
 	mkdirf(buf);
 // ttyprintf("fileCopy(%s, %s)\n", file, buf);
 	unless ((canmv && !rename(file, buf)) || !fileCopy(file, buf)) {
 		fprintf(stderr, "binpool: insert to %s failed\n", buf);
 		unless (canmv) unlink(buf);
-		goto out;
+		return (1);
 	}
-	*p = 'a';
-	a.version = 1;
-	a.size = binsize;
-	a.hash = strdup(hash);
-	a.keys = addLine(0, strdup(keys));
-	if (bp_saveAttr(&a, buf)) {
-		fprintf(stderr, "binpool: failed to create %s\n", buf);
-		goto out;
-	}
-	bp_freeAttr(&a);
-	rc = 0;
-out:	free(base);
-	return (rc);
+domap:
+	/* move p to path relative to binpool dir */
+	while (*p != '/') --p;
+	--p;
+	while (*p != '/') --p;
+	*p++ = 0;
+
+	/* use the binpool as hash2path() returned */
+	concat_path(idx, buf, "index.db");
+	db = mdbm_open(idx, O_RDWR|O_CREAT, 0666, INDEX_PSIZE);
+	assert(db);
+	j = mdbm_store_str(db, keys, p, MDBM_REPLACE);
+	assert(!j);
+	mdbm_close(db);
+	return (0);
 }
 
 /*
@@ -337,40 +292,29 @@ out:	free(base);
  * The pathname returned is malloced and needs to be freed.
  */
 char *
-bp_lookupkeys(project *p, char *hash, char *keys)
+bp_lookupkeys(project *proj, char *keys)
 {
-	char	*base;
-	int	i, j;
-	char	*ret = 0;
-	bpattr	a;
-	char	buf[MAXLINE];
+	MDBM	*db;
+	char	*p, *t;
+	char    idx[MAXPATH];
 
-	bzero(&a, sizeof(a));
-	base = hash2path(p, hash);
-	for (j = 1; ; j++) {
-		sprintf(buf, "%s.a%d", base, j);
-		if (bp_loadAttr(buf, &a)) goto out;
-		unless (a.version == 1) {
-			fprintf(stderr,
-			    "binpool: unexpected version in %s\n", buf);
-			goto out;
-		}
-		unless ((strtoul(a.hash, 0, 16) == strtoul(hash, 0, 16))) {
-			fprintf(stderr, "binpool: hash mismatch in %s\n", buf);
-			assert(0);	// LMXXX - ???
-			goto out;
-		}
-		EACH(a.keys) {
-			if (streq(keys, a.keys[i])) {
-				ret = aprintf("%s.d%d", base, j);
-				goto out;
-			}
+	p = hash2path(proj, 0);
+	concat_path(idx, p, "index.db");
+	free(p);
+	unless (exists(idx)) return (0);
+	db = mdbm_open(idx, O_RDONLY, 0666, INDEX_PSIZE);
+	assert(db);
+	if (t = mdbm_fetch_str(db, keys)) {
+		p = strrchr(idx, '/');
+		*p = 0;
+		t = aprintf("%s/%s", idx, t);
+		unless (exists(t)) {
+			free(t);
+			t = 0;
 		}
 	}
-out:
-	bp_freeAttr(&a);
-	free(base);
-	return (ret);
+	mdbm_close(db);
+	return (t);
 }
 
 
@@ -385,7 +329,7 @@ bp_lookup(sccs *s, delta *d)
 
 	d = bp_fdelta(s, d);
 	keys = mkkeys(s, d);
-	ret = bp_lookupkeys(s->proj, d->hash, keys);
+	ret = bp_lookupkeys(s->proj, keys);
 	free(keys);
 	return (ret);
 }
@@ -393,6 +337,7 @@ bp_lookup(sccs *s, delta *d)
 /*
  * Given the adler32 hash of a gfile returns the full pathname to that
  * file in a repo's binpool.
+ * if hash==0 just return the path to the binpool
  */
 private char *
 hash2path(project *proj, char *hash)
@@ -405,10 +350,12 @@ hash2path(project *proj, char *hash)
 	strcpy(binpool, p);
 	if ((p = strrchr(binpool, '/')) && patheq(p, "/RESYNC")) *p = 0;
 	strcat(binpool, "/BitKeeper/binpool");
-	i = strlen(binpool);
-	if (t = strchr(hash, '.')) *t = 0;
-	sprintf(binpool+i, "/%c%c/%s", hash[0], hash[1], hash);
-	if (t) *t = '.';
+	if (hash) {
+		i = strlen(binpool);
+		if (t = strchr(hash, '.')) *t = 0;
+		sprintf(binpool+i, "/%c%c/%s", hash[0], hash[1], hash);
+		if (t) *t = '.';
+	}
 	return (strdup(binpool));
 }
 
@@ -567,57 +514,6 @@ out:	if (streq(proj_repoID(0), ret)) {
 	}
 	*id = ret;
 	return (0);
-}
-
-int
-bp_loadAttr(char *file, bpattr *a)
-{
-	char	*f = signed_loadFile(file);
-	char	*p;
-
-	unless (f) {
-		if (exists(file)) {
-			fprintf(stderr,
-			    "binpool: file %s failed integrity check.\n",
-			    file);
-		}
-		return (-1);
-	}
-	a->version = atoi(f);
-	p = strchr(f, '\n');
-	assert(p);
-	a->size = strtoul(p+1, &p, 10);
-	assert(p && (*p == '\n'));
-	a->hash = strdup_tochar(p+1, '\n');
-	p = strchr(p+1, '\n');
-	assert(p);
-	a->keys = splitLine(p+1, "\n", 0);
-	free(f);
-	return (0);
-}
-
-int
-bp_saveAttr(bpattr *a, char *file)
-{
-	char	**str;
-	char	*p;
-	int	i;
-
-	str = addLine(0, aprintf("1\n%u\n%s", (int)a->size, a->hash));
-	EACH(a->keys) str = addLine(str, strdup(a->keys[i]));
-	p = joinLines("\n", str);
-	signed_saveFile(file, p);
-	free(p);
-	return (0);
-}
-
-void
-bp_freeAttr(bpattr *a)
-{
-	free(a->hash);
-	a->hash = 0;
-	freeLines(a->keys, free);
-	a->keys = 0;
 }
 
 /*
@@ -788,19 +684,22 @@ binpool_update_main(int ac, char **av)
 /*
  * Remove any binpool data from the current repository that is not
  * used by any local deltas.
+ *
+ * XXX needs to renumber data files so they always start with .d1
  */
 private int
 binpool_flush_main(int ac, char **av)
 {
 	FILE	*f;
-	int	c, i, j, k, pruned, rc = 1;
-	char	**deleted;
-	hash	*bpdeltas;
-	bpattr	a;
+	int	c;
+	hash	*bpdeltas;	/* list of deltakeys to keep */
+	hash	*dfiles;	/* list of data files to delete */
+	MDBM	*db;		/* binpool index file */
 	char	*p1, *p2;
 	char	*cmd;
 	int	check_server = 0;
-	char	buf1[MAXLINE], buf2[MAXLINE];
+	kvpair	kv;
+	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "a")) != -1) {
 		switch (c) {
@@ -815,7 +714,6 @@ binpool_flush_main(int ac, char **av)
 		return (1);
 	}
 	/* save bp deltas in repo */
-	bpdeltas = hash_new(HASH_MEMHASH);
 	cmd = strdup("bk -r prs "
 	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'");
 	if (check_server) {
@@ -826,98 +724,77 @@ binpool_flush_main(int ac, char **av)
 			fprintf(stderr,
 			    "bk binpool flush: No binpool_server set\n");
 			free(p1);
-			goto out;
+			return (1);
 		}
 		free(p2);
 		p2 = proj_configval(0, "binpool_server");
 		cmd = aprintf("%s | bk -@'%s' fsend -Bquery -", p1, p2);
 		free(p1);
 	}
+	bpdeltas = hash_new(HASH_MEMHASH);
 	f = popen(cmd, "r");
 	free(cmd);
 	assert(f);
-	while (fnext(buf1, f)) {
-		chomp(buf1);
-		p1 = strrchr(buf1, ' ');	/* chop hash */
+	while (fnext(buf, f)) {
+		chomp(buf);
+		p1 = strrchr(buf, ' ');	/* chop hash */
 		assert(p1);
 		*p1 = 0;
-		hash_storeStr(bpdeltas, buf1, 0);
+		hash_storeStr(bpdeltas, buf, 0);
 	}
 	if (pclose(f)) {
 		fprintf(stderr, "bk binpool flush: failed to contact server\n");
 		return (1);
 	}
 
-	/* walk all bp files */
-	f = popen("bk _find BitKeeper/binpool -type f -name '*.a1'", "r");
+	/* get list of data files */
+	dfiles = hash_new(HASH_MEMHASH);
+	f = popen("bk _find BitKeeper/binpool -type f -name '*.d*'", "r");
 	assert(f);
-	while (fnext(buf1, f)) {
-		p1 = strrchr(buf1, '1');
-		assert(p1);
-		*p1 = 0;		/* chop 1 and newline */
+	while (fnext(buf, f)) {
+		chomp(buf);
 
-		deleted = 0;
-		for (j = 1; ; j++) {
-			sprintf(p1, "%d", j);
-			if (bp_loadAttr(buf1, &a)) break;
-			pruned = 0;
-			EACH(a.keys) {
-				unless (hash_fetchStr(bpdeltas, a.keys[i])) {
-					removeLineN(a.keys, i, free);
-					--i;
-					pruned = 1;
-				}
-			}
-			unless (pruned) continue; /* unchanged */
-			if (a.keys[1]) {
-				/* rewrite with some keys deleted */
-				bp_saveAttr(&a, buf1);
-				continue;
-			}
-			/* remove files */
-			deleted = addLine(deleted, int2p(j));
-			p1[-1] = 'd';
-			unlink(buf1);
-			p1[-1] = 'a';
-			unlink(buf1);
-		}
-		/* rename .a2, .a3, etc */
-		if (deleted) {
-			strcpy(buf2, buf1);
-			p2 = buf2 + (p1 - buf1);
-			k = p2int(deleted[1]);
-			removeLineN(deleted, 1, 0);
-			for (i = c = 1; i < j; i++) {
-				/* i == oldindex, c == newindex */
-				if (i == k) { /* k == deleted index */
-					if (emptyLines(deleted)) {
-						k = 0;
-					} else {
-						k = p2int(deleted[1]);
-						removeLineN(deleted, 1, 0);
-					}
-					continue;
-				}
-				if (i != c) {
-					p1[-1] = p2[-1] = 'd';
-					sprintf(p1, "%d", i);
-					sprintf(p2, "%d", c);
-					rename(buf1, buf2);
-					p1[-1] = p2[-1] = 'a';
-					rename(buf1, buf2);
-				}
-				++c;
-			}
-			freeLines(deleted, 0);
-		}
+		hash_insertStr(dfiles,
+		    buf + strlen("BitKeeper/binpool/"), "");
 	}
-	if (pclose(f)) {
-		perror("pclose");
-		goto out;
+	pclose(f);
+
+	/* walk all bp deltas */
+	db = mdbm_open("BitKeeper/binpool/index.db", O_RDWR, 0666,INDEX_PSIZE);
+	EACH_KV(db) {
+		/* keep keys we still need */
+		if (hash_fetchStr(bpdeltas, kv.key.dptr)) {
+			p1 = hash_fetchStr(dfiles, kv.val.dptr);
+			if (p1) {
+				*p1 = '1';	/* keep the file */
+				continue;	/* keep the key */
+			} else {
+				fprintf(stderr,
+				"binpool flush: data for key '%s' missing,\n"
+				"\tdeleting key.\n");
+			}
+		}
+
+		/*
+		 * This is a key we don't need, but we don't know if we can
+		 * delete the datafile yet because it might be pointed at
+		 * by other delta keys.
+		 */
+		mdbm_delete_str(db, kv.key.dptr);
 	}
-	rc = 0;
-out:	hash_free(bpdeltas);
-	return (rc);
+	mdbm_close(db);
+	hash_free(bpdeltas);
+
+	/*
+	 * now we can walk the datafiles and delete any this are not
+	 * referenced by a key in the index.
+	 */
+	EACH_HASH(dfiles) {
+		if (((char *)dfiles->vptr)[0]) continue;	/* used */
+		unlink((char *)dfiles->kptr);
+	}
+	hash_free(dfiles);
+	return (0);
 }
 
 /*
@@ -932,10 +809,6 @@ private int
 binpool_check_main(int ac, char **av)
 {
 	int	rc = 1;
-	char	*p;
-	bpattr	a;
-	FILE	*f;
-	char	buf[MAXPATH];
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "Not in a repository.\n");
@@ -944,31 +817,100 @@ binpool_check_main(int ac, char **av)
 	/* load binpool deltas and hashs */
 	/* bk -r prs -hnd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' */
 
-	/* walk all bp files */
-	f = popen("bk _find BitKeeper/binpool -type f -name '*.a*'", "r");
+	rc = 0;
+	return (rc);
+}
+
+/*
+ * Examine the files is a directory and add any files that have the
+ * right hash to be data missing from my binpool back to the binpool.
+ */
+private int
+binpool_repair_main(int ac, char **av)
+{
+	char	*dir, *cmd, *hval, *p;
+	int	i, c, quiet = 0;
+	MDBM	*db = 0;
+	hash	*needed;
+	char	***lines;
+	FILE	*f;
+	sum_t	sum;
+	char	buf[MAXLINE];
+
+	while ((c = getopt(ac, av, "q")) != -1) {
+		switch (c) {
+		    case 'q': quiet = 1; break;
+		    default:
+			system("bk help -s binpool");
+			return (1);
+		}
+	}
+	unless (av[optind] && !av[optind+1]) {
+		fprintf(stderr, "usage: bk binpool repair DIR\n");
+		return (1);
+	}
+	dir = fullname(av[optind]);
+	if (proj_cd2root()) {
+		fprintf(stderr, "Not in a repository.\n");
+		return (1);
+	}
+	if (exists("BitKeeper/binpool/index.db")) {
+		db = mdbm_open("BitKeeper/binpool/index.db",
+		    O_RDONLY, 0666,INDEX_PSIZE);
+	}
+	/* ok if db is null */
+
+	/* save the hash for all the bp deltas we are missing */
+	needed = hash_new(HASH_MEMHASH);
+	f = popen("bk changes -Bv "
+	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPFULLHASH:}'",
+	    "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		p = strrchr(buf, '.');
-		assert(p);
-		++p;
+		p = strchr(buf, ' ');
+		p = strchr(p+1, ' ');
+		*p++ = 0;
+		if (db && mdbm_fetch_str(db, buf)) continue;
 
-		if (bp_loadAttr(buf, &a)) {
-			fprintf(stderr, "binpool: unable to load %s\n", buf);
-			goto out;
+		/* alloc lines array of keys that use this hash */
+		unless (lines = hash_insert(needed,
+			    p, strlen(p)+1, 0, sizeof(char **))) {
+			lines = needed->vptr;
 		}
-		/* lookup keys in prs data and compare BPHASH with
-		   sfile data */
-		/* check data files's size */
-		/* checksum data file */
+		*lines = addLine(*lines, strdup(buf));
 	}
-	if (pclose(f)) {
-		perror("pclose");
-		goto out;
+	pclose(f);
+	if (db) mdbm_close(db);
+
+	/* hash all files in directory ... */
+	cmd = aprintf("bk _find '%s' -type f", dir);
+	f = popen(cmd, "r");
+	assert(f);
+	while (fnext(buf, f)) {
+		chomp(buf);
+
+		if (hashgfile(buf, &hval, &sum)) continue;
+		unless (lines = hash_fetchStr(needed, hval)) {
+			free(hval);
+			continue;
+		}
+
+		/* found a file we are missing */
+		EACH(*lines) {
+			p = (*lines)[i];
+			unless (quiet) printf("Inserting %s for %s\n", buf, p);
+			if (bp_insert(0, buf, hval, p, 0)) {
+				fprintf(stderr,
+				"binpool repair: failed to insert %s for %s\n",
+				buf, p);
+			}
+		}
+		/* only need 1 file with each hash */
+		hash_deleteStr(needed, hval);
+		free(hval);
 	}
-	rc = 0;
-out:
-	return (rc);
+	return (0);
 }
 
 int
@@ -983,6 +925,7 @@ binpool_main(int ac, char **av)
 		{"update", binpool_update_main },
 		{"flush", binpool_flush_main },
 		{"check", binpool_check_main },
+		{"repair", binpool_repair_main },
 		{0, 0}
 	};
 

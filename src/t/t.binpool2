@@ -250,3 +250,15 @@ checkfiles "$HERE"/F7 F7
 echo OK
 
 bk _kill bk://localhost:$P
+
+echo $N Test binpool repair .........................................$NL
+cd "$HERE"/zclone2
+bk -r clean || exit 1
+mv BitKeeper/binpool junk
+bk -r get $Q 2>ERR && {
+	echo should have failed
+	exit 1
+}
+bk binpool repair $Q junk || exit 1
+bk -r get $Q || exit 1
+echo OK

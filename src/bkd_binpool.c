@@ -34,7 +34,7 @@ fsend_main(int ac, char **av)
 	char	*p, *url, *dfile;
 	int	c;
 	int	tomaster = 0, query = 0, binpool = 0;
-	char	*sfio[] = { "sfio", "-oqmBbk", 0 };
+	char	*sfio[] = { "sfio", "-oqmBk", 0 };
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "B;")) != -1) {
@@ -79,7 +79,8 @@ usage:			fprintf(stderr,
 			p = strrchr(buf, ' ');
 			*p++ = 0;	/* get just keys */
 
-			if (dfile = bp_lookupkeys(0, p, buf)) {
+			/* XXX avoid mdbm_opens ? */
+			if (dfile = bp_lookupkeys(0, buf)) {
 				free(dfile);
 			} else {
 				p[-1] = ' ';
@@ -105,11 +106,11 @@ int
 frecv_main(int ac, char **av)
 {
 	FILE	*f;
-	bpattr	a;
-	char	*p, *url;
+	char	*p, *t, *url;
 	int	tomaster = 0, binpool = 0;
 	int	quiet = 0;
-	int	c, i, n, rc;
+	int	c, rc;
+	char	hash[16];
 	char	buf[MAXLINE];
 
 	setmode(0, _O_BINARY);
@@ -173,24 +174,25 @@ usage:			fprintf(stderr,
 	}
 	unless (quiet) fprintf(stderr, "\n");
 
-	f = popen("bk _find BitKeeper/binpool/tmp -type f -name '*.a*'", "r");
-	assert(f);
-	while (fnext(buf, f)) {
-		chomp(buf);
-		if (bp_loadAttr(buf, &a)) {
-			fprintf(stderr, "unable to load %s\n");
-			continue;
+	chdir("BitKeeper/binpool/tmp");
+	if (f = fopen("|ATTR|", "r")) {
+		while (fnext(buf, f)) {
+			chomp(buf);
+			p = strchr(buf, ' ');
+			assert(p);
+			p = strchr(p+1, ' ');
+			assert(p);
+			*p++ = 0;
+			strcpy(hash, basenm(p));
+			t = strchr(hash, '.');
+			*t = 0;
+			rc = bp_insert(0, p, hash, buf, 0);
+			if (rc) goto out;
 		}
-		p = strrchr(buf, '.');
-		p[1] = 'd';
-		n = nLines(a.keys);
-		EACH(a.keys) {
-			bp_insert(0, buf, a.hash, a.keys[i], (i==n));
-		}
-		bp_freeAttr(&a);
+		fclose(f);
 	}
-	pclose(f);
 out:
+	proj_cd2root();
 	rmtree("BitKeeper/binpool/tmp");
 	return (rc);
 }

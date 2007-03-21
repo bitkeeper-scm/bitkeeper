@@ -53,11 +53,11 @@ struct {
 	u32	echo:1;		/* echo files to stdout as they are written */
 	u32	force:1;	/* overwrite existing files */
 	u32	bp_tuple:1;	/* -Bk rkey dkey bphash path */
-	u32	bp_both:1;	/* -Bb - send a.dot file as well */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
 	MDBM	*sent;		/* list of d.files we have set, for dups */
+	MDBM	*attribs;	/* attributes for binpool */
 } *opts;
 
 #define M_IN	1
@@ -82,7 +82,6 @@ sfio_main(int ac, char **av)
 			break;
 		    case 'B':
 			while (*optarg) {
-				if (*optarg== 'b') opts->bp_both = 1;
 				if (*optarg== 'k') opts->bp_tuple = 1;
 				optarg++;
 			}
@@ -151,7 +150,10 @@ sfio_out(void)
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	writen(1, SFIO_VERS, 10);
-	if (opts->bp_tuple) opts->sent = mdbm_mem();
+	if (opts->bp_tuple) {
+		opts->sent = mdbm_mem();
+		opts->attribs = mdbm_mem();
+	}
 	byte_count = 10;
 	while (nextfile(buf)) {
 		chomp(buf);
@@ -197,9 +199,31 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	}
 #ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
+	if (opts->bp_tuple) {
+		FILE	*f;
+		kvpair	kv;
+
+		sprintf(len, "%04d", 6);
+		writen(1, len, 4);
+		writen(1, "|ATTR|", 6);
+		byte_count += (6 + 4);
+		bktmp(buf, 0);
+		f = fopen(buf, "w");
+		EACH_KV(opts->attribs) {
+			fprintf(f, "%s %s\n", kv.key.dptr, kv.val.dptr);
+		}
+		fclose(f);
+		if (lstat(buf, &sb)) {
+			perror(buf);
+			send_eof(SFIO_LSTAT);
+			return (SFIO_LSTAT);
+		}
+		out_file(buf, &sb, &byte_count);
+	}
 #endif
 	if (opts->more) freeLines(opts->more, free);
 	if (opts->sent) mdbm_close(opts->sent);
+	if (opts->attribs) mdbm_close(opts->attribs);
 	free(opts);
 	send_eof(0);
 	return (0);
@@ -301,7 +325,7 @@ private int
 out_bptuple(char *tuple, off_t *byte_count)
 {
 #ifndef SFIO_STANDALONE
-	char	*keys, *hash, *path, *dfile, *p, *freeme;
+	char	*keys, *hash, *path, *dfile, *freeme;
 	int	n;
 	struct	stat sb;
 	char	buf[MAXPATH];
@@ -315,36 +339,19 @@ out_bptuple(char *tuple, off_t *byte_count)
 	*hash++ = 0;
 	if (path = strchr(hash, ' ')) *path++ = 0;
 
-	unless (freeme = bp_lookupkeys(0, hash, keys)) {
+	unless (freeme = bp_lookupkeys(0, keys)) {
 // ttyprintf("MISS %s\n", tuple);
 		fprintf(stderr, "lookupkeys(%s, %s) = %s\n",
 		    hash, keys, sys_errlist[errno]);
 		return (SFIO_LOOKUP);
 	}
 	dfile = freeme + strlen(proj_root(0)) + 1;
-	if (mdbm_store_str(opts->sent, dfile, "", MDBM_INSERT) &&
+	mdbm_store_str(opts->attribs, keys, dfile, MDBM_INSERT);
+	if (mdbm_store_str(opts->sent, dfile, keys, MDBM_INSERT) &&
 	    (errno == EEXIST)) {
 // ttyprintf("DUP  %s\n", dfile);
 		free(freeme);
 		return (0);
-	}
-	if (opts->bp_both) {
-		/* a.file - sent first for bp receive */
-		p = strrchr(dfile, '.');
-		p[1] = 'a';
-		if (lstat(dfile, &sb)) {
-			free(freeme);
-			perror(dfile);
-			return (SFIO_LSTAT);
-		}
-		n = strlen(dfile);
-		sprintf(buf, "%04d", n);
-		writen(1, buf, 4);
-		writen(1, dfile, n);
-		*byte_count += (n + 4);
-// ttyprintf("ATTR %s\n", dfile);
-		if (n = out_file(dfile, &sb, byte_count)) goto out;
-		p[1] = 'd';
 	}
 	/* d.file */
 	if (lstat(dfile, &sb)) {
@@ -361,7 +368,7 @@ out_bptuple(char *tuple, off_t *byte_count)
 // ttyprintf("DATA %s\n", path);
 	n = out_file(path, &sb, byte_count);
 
-out:	free(freeme);
+	free(freeme);
 	return (n);
 #else
 	fprintf(stderr, "Unsupported.\n");

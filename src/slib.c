@@ -15016,6 +15016,13 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		}
 		return (nullVal);
 	}
+	case KW_BPFULLHASH: /* BPFULLHASH */ {
+		if (d->hash) {
+			fs(d->hash);
+			return (strVal);
+		}
+		return (nullVal);
+	}
 	default:
 		return (notKeyword);
 	}
