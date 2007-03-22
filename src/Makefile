@@ -508,7 +508,8 @@ crankrelease: crank.sh remote.sh
 	rm -f MD5SUMS ; \
 	md5sum bk-* >> MD5SUMS ; \
 	echo "Your images are in /home/bk/images/$$TAG" ; \
-	echo "Run './mkupgrades $$TAG' to create upgrade area." )
+	echo "Run './mkupgrades $$TAG' to create upgrade area."; \
+	echo "Run './mkrelease $$TAG' to release this version of bk.")
 
 crankclean: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh clean
