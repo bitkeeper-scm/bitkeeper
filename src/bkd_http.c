@@ -80,7 +80,7 @@ int
 cmd_httpget(int ac, char **av)
 {
 	char	*url, *key;
-	char	*page;
+	char	*p, *page;
 	int 	i;
 	char	buf[MAXPATH];
 
@@ -97,11 +97,18 @@ cmd_httpget(int ac, char **av)
 					free(header_host);
 					header_host = 0;
 				}
-				/*
-				 * Unused currently, but will be needed for
-				 * virtual host support.
-				 */
 				header_host = strnonldup(s);
+				if ((p = strrchr(s, ':')) && isdigit(p[1])) {
+					*p = 0;
+				}
+				safe_putenv("BK_VHOST=%s", s);
+				p = vpath_translate(Opts.vhost_dirpath);
+				if (chdir(p)) {
+					sprintf(buf,
+					    "Unable to chdir to '%s'", p);
+					http_error(404, buf);
+				}
+				free(p);
 			} else if (buf[0] == '\r' || buf[0] == '\n') {
 				break;
 			}
