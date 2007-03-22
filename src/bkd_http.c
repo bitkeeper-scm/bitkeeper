@@ -3,6 +3,7 @@
 #include "range.h"
 typedef void (*vfn)(char *page);
 
+private	char	*any2rev(char *any, char *file);
 private char	*http_time(void);
 private char	*http_expires(int secs);
 private	char	*type(char *name);
@@ -173,9 +174,7 @@ navarrow(void) {
 private void
 printnavbar(void)
 {
-	char	*p, *dir, *file, *linkstr;
-	char	*rev;
-	FILE	*f;
+	char	*p, *dir, *file;
 	int	i;
 	char	**items;
 	char	buf[MAXLINE];
@@ -224,36 +223,7 @@ printnavbar(void)
 			free(file);
 		}
 	}
-	fputs("</td>", stdout);
-	linkstr = hash_toStr(qin);
-	if (root && (rev = hash_fetchStr(qin, "REV"))) {
-		sprintf(buf, "bk -R prs -hnd:MD5KEY: -r'%s' -- '%s'",
-		    rev, (fpath && !streq(fpath, ".")) ? fpath : "ChangeSet");
-		f = popen(buf, "r");
-		if (fnext(buf, f)) {
-			chomp(buf);
-		} else {
-			buf[0] = 0;
-		}
-		if (pclose(f)) buf[0] = 0;
-		if (buf[0]) {
-			hash	*tmphash = hash_new(HASH_MEMHASH);
-
-			hash_fromStr(tmphash, linkstr);
-			hash_storeStr(tmphash, "REV", buf);
-			free(linkstr);
-			linkstr = hash_toStr(tmphash);
-			hash_free(tmphash);
-		}
-	}
-	printf(
-	       "<td align=right><a style=\"text-decoration: none\" "
-	       "href=\"?%s\">"
-	       "<font size=2 color=white>[ link to this page ]</font>"
-	       "</a></td>",
-	       linkstr);
-	free(linkstr);
-	puts("</tr></table>");
+	puts("</td></tr></table>");
 	puts("<!-- END NAVBAR -->\n");
 }
 
@@ -371,7 +341,7 @@ http_changes(char *page)
 	    " <td align=right>:HTML_AGE:</td>\n"
 	    " <td align=center>:USER:</td>\n"
 	    " <td align=center$if(:TAG:){ bgcolor=yellow}>\n"
-	    "|:REV:\n"
+	    "|:REV:|:MD5KEY:\n"
 	    "$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:) }}"
 	    "</td>\n"
 	    " <td>:HTML_C:</td>\n"
@@ -390,10 +360,14 @@ http_changes(char *page)
 	 *       this code still works.
 	 */
 	while (fnext(buf, f)) {
+		char	*p;
 		if (buf[0] == '|') {
 			chomp(buf);
-			hash_storeStr(qout, "REV", buf+1);
+			p = strrchr(buf+1, '|');
+			assert(p);
+			hash_storeStr(qout, "REV", p+1);
 			mk_querystr();
+			*p = 0;
 			printf("<a href=\"%s\">%s</a>\n", querystr, buf+1);
 		} else {
 			fputs(buf, stdout);
@@ -410,21 +384,15 @@ http_cset(char *page)
 	char	*av[100];
 	FILE	*f;
 	int	i;
-	char	*s, *t, *dspec;
+	char	*p, *s, *t, *dspec, *md5key;
 	char	*rev = hash_fetchStr(qin, "REV");
-	char	buf[2048];
-
-	httphdr("cset.html");
-	header(COLOR, "Changeset details for %s", 0, rev);
-
-	puts("<table width=100% bgcolor=black cellspacing=0 border=0 "
-	    "cellpadding=0><tr><td>\n"
-	    "<table width=100% bgcolor=darkgray cellspacing=1 "
-	    "border=0 cellpadding=4>");
+	int	didhead = 0;
+	char	*buf = malloc(2048);
 
 	dspec = aprintf("-d%s"
+	    "##:REV:\n"
 	    "<tr bgcolor=#e0e0e0><td><font size=2>\n"
-	    "#:GFILE:@:REV:&nbsp;&nbsp;:Dy:-:Dm:-:Dd: :T::TZ:&nbsp;&nbsp;:P:"
+	    "#:MD5KEY:@:GFILE:@:REV:&nbsp;&nbsp;:Dy:-:Dm:-:Dd: :T::TZ:&nbsp;&nbsp;:P:"
 	    "$if(:DOMAIN:){@:DOMAIN:}</font><br>\n"
 	    "</td></tr>\n"
 	    "$if(:TAG:){"
@@ -446,20 +414,37 @@ http_cset(char *page)
 
 	f = popenvp(av, "r");
 	free(dspec);
-	while (fnext(buf, f)) {
+	free(buf);
+	while (buf = gets_alloc(0, f)) {
 		if (buf[0] != '#') {
 			fputs(buf, stdout);
+next:
+			free(buf);
 			continue;
 		}
-		fputs(buf+1, stdout);
+		if (buf[1] == '#') {
+			if (didhead) goto next;
+			httphdr("cset.html");
+			header(COLOR, "Changeset details for %s", 0, buf+2);
+			puts("<table width=100% bgcolor=black cellspacing=0 "
+			    "border=0 cellpadding=0><tr><td>\n"
+	    		    "<table width=100% bgcolor=darkgray cellspacing=1 "
+	    		    "border=0 cellpadding=4>");
+			didhead = 1;
+			goto next;
+		}
+		md5key = buf+1;
+		p = strchr(md5key, '@');
+		*p++ = 0;
+		fputs(p, stdout);
 
-		t = strchr(buf, '@');
+		t = strchr(p, '@');
 		*t++ = 0;
 		s = strchr(t, '&');
 		*s = 0;
-		if (streq(buf+1, "ChangeSet")) {
+		if (streq(p, "ChangeSet")) {
 			hash_storeStr(qout, "PAGE", "patch");
-			hash_storeStr(qout, "REV", t);
+			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
 			printf("<a href=%s>\n"
 			    "<font size=2 color=darkblue>all diffs</font></a>",
@@ -470,22 +455,23 @@ http_cset(char *page)
 			mk_querystr();
 			printf("<a href=\"%s%s\">\n"
 			    "<font size=2 color=darkblue>history</font></a>\n",
-			    buf+1, querystr);
+			    p, querystr);
 			hash_storeStr(qout, "PAGE", "anno");
-			hash_storeStr(qout, "REV", t);
+			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
 			printf("&nbsp;&nbsp;"
 			    "<a href=\"%s%s\">"
 			    "<font size=2 color=darkblue>annotate</font>"
 			    "</a>\n",
-			    buf+1, querystr);
+			    p, querystr);
 			hash_storeStr(qout, "PAGE", "diffs");
 			mk_querystr();
 			printf("&nbsp;&nbsp;"
 			    "<a href=\"%s%s\">"
 			    "<font size=2 color=darkblue>diffs</font></a>\n",
-			    buf+1, querystr);
+			    p, querystr);
 		}
+		free(buf);
 	}
 	pclose(f);
 
@@ -588,12 +574,13 @@ http_prs(char *page)
 	av[++i] = "prs";
 	av[++i] = "-hn";
 	av[++i] = "-d"
-	    ":I:|"					   /* 1 rev */
-	    "$if(:RENAME:){1}0|"			   /* 2 isrename */
-	    ":HTML_AGE:|"				   /* 3 age */
-	    ":USER:|"					   /* 4 user */
-	    "$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:)}} |" /* 5 tags */
-	    ":HTML_C:";					   /* 6 comments */
+		":MD5KEY:|"				   /* 1 md5key */
+	    ":I:|"					   /* 2 rev */
+	    "$if(:RENAME:){1}0|"			   /* 3 isrename */
+	    ":HTML_AGE:|"				   /* 4 age */
+	    ":USER:|"					   /* 5 user */
+	    "$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:)}} |" /* 6 tags */
+	    ":HTML_C:";					   /* 7 comments */
 	if (rev) av[++i] = revision = aprintf("-r%s", rev);
 	av[++i] = fpath;
 	av[++i] = 0;
@@ -604,7 +591,7 @@ http_prs(char *page)
 
 		items = splitLine(buf, "|", 0);
 		free(buf);
-		if (streq(items[1], "1.1")) items[2][0] = ' ';
+		if (streq(items[2], "1.1")) items[3][0] = ' ';
 
 		hash_storeStr(qout, "REV", items[1]);
 		mk_querystr();
@@ -616,14 +603,14 @@ http_prs(char *page)
 		    "%s"
 		    "</td>\n <td>%s</td>\n"
 		    "</tr>\n%s",
-		    prefix, items[3], items[4],
-		    ((items[5][0] != ' ') ? " bgcolor=yellow" : ""),
-		    ((items[2][0] == '1') ? " bgcolor=orange" : ""),
-		    querystr, items[1], items[5], items[6],
+		    prefix, items[4], items[5],
+		    ((items[6][0] != ' ') ? " bgcolor=yellow" : ""),
+		    ((items[3][0] == '1') ? " bgcolor=orange" : ""),
+		    querystr, items[2], items[6], items[7],
 		    suffix);
 		freeLines(items, free);
 	}
-	fclose(f);
+	pclose(f);
 
 	puts(INNER_END OUTER_END);
 	trailer();
@@ -634,7 +621,7 @@ http_prs(char *page)
 private void
 http_dir(char *page)
 {
-	char	*cmd, *file, *gfile, *rev, *enc;
+	char	*cmd, *file, *gfile, *rev, *enc, *md5key;
 	int	i;
 	char	**d;
 	FILE	*f;
@@ -683,7 +670,7 @@ http_dir(char *page)
 
 	cmd = aprintf("bk prs -h -r+ -d'"
 	    "%s<tr bgcolor=white>\n"
-	    "|:GFILE:|:REV:\n"
+	    "|:GFILE:|:REV:|:MD5KEY:\n"
 	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
 	    " <td align=center>:USER:</td>"
 	    " <td>:HTML_C:&nbsp;</td>"
@@ -701,9 +688,11 @@ http_dir(char *page)
 		gfile = basenm(file);
 		rev = strchr(file, '|');
 		*rev++ = 0;
+		md5key = strchr(rev, '|');
+		*md5key++ = 0;
 		if (streq(file, "./ChangeSet")) {
 			hash_storeStr(qout, "PAGE", "changes");
-			hash_storeStr(qout, "REV", "+");
+			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
 			printf("<td><a href=\"%s\"><img border=0 src="
 			    BKWWW "document_plain.png></a></td>"
@@ -726,7 +715,7 @@ http_dir(char *page)
 			    BKWWW "document_plain.png></a></td>",
 			    enc, querystr);
 			hash_storeStr(qout, "PAGE", "anno");
-			hash_storeStr(qout, "REV", "+");
+			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
 			printf("<td>&nbsp;<a href=\"%s%s\">%s</a></td>",
 			    enc, querystr, gfile);
@@ -836,14 +825,13 @@ http_diffs(char *page)
 	header(COLOR, "Changes for %s", 0, fpath);
 
 	hash_storeStr(qout, "PAGE", "anno");
-	hash_storeStr(qout, "REV", rev);
 	mk_querystr();
 
 	i = snprintf(dspec, sizeof dspec,
 		"-d%s<tr bgcolor=white>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
-		" <td align=center><a href=\"%s\">:I:</a></td>\n"
+		" <td align=center><a href=\"%s&REV=:MD5KEY:\">:I:</a></td>\n"
 		" <td>:HTML_C:</td>\n"
 		"</tr>\n%s", prefix, querystr, suffix);
 
@@ -877,9 +865,11 @@ http_diffs(char *page)
 	puts(INNER_END OUTER_END);
 
 	if (strstr(rev, "..")) {
-		sprintf(buf, "bk diffs -ur'%s' '%s'", rev, fpath);
+		sprintf(buf, "bk diffs -ur'%s' '%s'",
+		    any2rev(rev, fpath), fpath);
 	} else {
-		sprintf(buf, "bk diffs -uR'%s' '%s'", rev, fpath);
+		sprintf(buf, "bk diffs -uR'%s' '%s'",
+		    any2rev(rev, fpath), fpath);
 	}
 	f = popen(buf, "r");
 	printf("<pre><font size=3>");
@@ -900,9 +890,12 @@ http_patch(char *page)
 	FILE	*f;
 	char	*rev = hash_fetchStr(qin, "REV");
 	char	buf[4096];
+	char	*s;
 
 	httphdr(".html");
-	header("#f0f0f0", "All diffs for ChangeSet %s", 0, rev, querystr, rev);
+	s = any2rev(rev, "ChangeSet");
+	header("#f0f0f0", "All diffs for ChangeSet %s", 0, s, querystr, rev);
+	free(s);
 
 	printf("<pre><font size=3>");
 	sprintf(buf, "bk changes -vvr'%s'", rev);
@@ -1479,7 +1472,7 @@ http_related(char *page)
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
 			"$if(:TAG:){ bgcolor=yellow}>"
-			"<a href=/%s/%s&REV=:I:>:I:</a>"
+			"<a href=/%s/%s&REV=:MD5KEY:>:I:</a>"
 			"$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:)}}"
 			"</td>\n"
 			" <td>:HTML_C:</td>\n"
@@ -1514,7 +1507,6 @@ http_related(char *page)
 	}
 
 	trailer();
-	if (f) fclose(f);
 }
 
 private void
@@ -1586,7 +1578,7 @@ http_tags(char *page)
 private void
 http_search(char *page)
 {
-	char	*s, *base, *file, *rev, *text;
+	char	*s, *base, *file, *rev, *text, *md5key;
 	int	which, i, first = 1;
 	char	*expr;
 	FILE	*f;
@@ -1621,14 +1613,14 @@ http_search(char *page)
 	switch (which) {
 	    case SEARCH_CSET:
 		sprintf(buf, "bk prs -h "
-		    "-d'$each(:C:){:GFILE:::I:|(:C:)\n}' ChangeSet");
+		    "-d'$each(:C:){:GFILE:::I:::MD5KEY:|(:C:)\n}' ChangeSet");
 		break;
 	    case SEARCH_CONTENTS:
 		sprintf(buf, "bk -Ur grep -i -H -Ar '%s'", expr);
 		break;
 	    case SEARCH_COMMENTS:
 		sprintf(buf, "bk -Ur prs -h "
-		    "-d'$each(:C:){:GFILE:::I:|(:C:)\n}'");
+		    "-d'$each(:C:){:GFILE:::I:::MD5KEY:|(:C:)\n}'");
 		break;
 	}
 	unless (f = popen(buf, "r")) http_error(404, "grep failed?\n");
@@ -1638,6 +1630,8 @@ http_search(char *page)
 		s = text;
 		*text++ = 0;
 		while (isspace(s[-1])) *--s = 0; /* trail spaces from rev */
+		unless (md5key = strrchr(buf, ':')) continue;
+		*md5key++ = 0;
 		unless (rev = strrchr(buf, ':')) continue;
 		*rev++ = 0;
 		file = buf;
@@ -1656,7 +1650,7 @@ http_search(char *page)
 		} else {
 			hash_storeStr(qout, "PAGE", "anno");
 		}
-		hash_storeStr(qout, "REV", rev);
+		hash_storeStr(qout, "REV", md5key);
 		mk_querystr();
 		printf("<a href=\"%s%s\">%s</a>",
 		    (which == SEARCH_CSET) ? "" : file,
@@ -1703,6 +1697,8 @@ http_repos(char *page)
 	char	buf[MAXPATH];
 	char	buf2[MAXPATH];
 
+	if (chdir(fpath)) http_error(404, "unknown directory");
+
 	httphdr(".html");
 	header(COLOR, "Repos", 0);
 
@@ -1713,9 +1709,9 @@ http_repos(char *page)
 	    "  <th>Age</th>\n"
 	    "</tr></thead><tbody>");
 
-	d = getdir(fpath);
+	d = getdir(".");
 	EACH(d) {
-		concat_path(buf, fpath, d[i]);
+		strcpy(buf, d[i]);
 		if (lstat(buf, &sb) == -1) continue;
 		unless (S_ISDIR(sb.st_mode)) continue;
 		concat_path(buf2, buf, "BitKeeper/etc");
@@ -1846,4 +1842,28 @@ flushExit(int status)
 	 */
 	shutdown(fileno(stdout), 1);
 	exit(status);
+}
+
+private char *
+any2rev(char *any, char *file)
+{
+	sccs	*s;
+	delta	*d;
+	char	*buf;
+	char	*sfile;
+
+	if (strchr(any, '.')) return (strdup(any));
+	sfile = name2sccs(file);
+	unless (s = sccs_init(sfile, INIT_NOCKSUM)) return (strdup(any));
+	unless (d = sccs_findMD5(s, any)) {
+		unless (d = sccs_findrev(s, any)) {
+			sccs_free(s);
+			free(sfile);
+			return (strdup(any));
+		}
+	}
+	buf = strdup(d->rev);
+	sccs_free(s);
+	free(sfile);
+	return (buf);
 }
