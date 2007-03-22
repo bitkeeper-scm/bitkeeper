@@ -25,7 +25,7 @@ do_remote(char *url, char *cmd, char *extra)
  * of binpool data on stdout.
  *
  * input:
- *    hash md5rootkey md5deltakey
+ *    md5rootkey md5deltakey adler32
  *    ... repeat ...
  */
 int
@@ -69,7 +69,7 @@ usage:			fprintf(stderr,
 			url = proj_configval(0, "binpool_server");
 			assert(url);
 			/* proxy to my binpool master */
-			return (do_remote(url, "fsend",
+			return (do_remote(url, av[0],
 				    (query ? "-Bquery" : "-Bsend")));
 		}
 	}
@@ -145,7 +145,7 @@ usage:			fprintf(stderr,
 			assert(url);
 
 			/* proxy to my binpool master */
-			return (do_remote(url, "frecv",
+			return (do_remote(url, av[0],
 				    quiet ? "-qBrecv" : "-Brecv"));
 		}
 	}
@@ -156,7 +156,7 @@ usage:			fprintf(stderr,
 	}
 	strcpy(buf, "BitKeeper/binpool/tmp");
 	if (mkdirp(buf)) {
-		fprintf(stderr, "_frecv: failed to create %s\n", buf);
+		fprintf(stderr, "%s: failed to create %s\n", av[0], buf);
 		return (1);
 	}
 	chdir(buf);
@@ -167,8 +167,8 @@ usage:			fprintf(stderr,
 	rc = system(buf);
 	proj_cd2root();
 	if (rc) {
-		fprintf(stderr, "_frecv: sfio failed %d\n",
-		    WEXITSTATUS(rc));
+		fprintf(stderr, "%s: sfio failed %d\n",
+		    av[0], WEXITSTATUS(rc));
 		rc = 1;
 		goto out;
 	}

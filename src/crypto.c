@@ -851,3 +851,33 @@ makestring(int keynum)
 	out[i] = 0;
 	return (out);
 }
+
+/*
+ * A little helper funtion to find hash conflicts for binpool tests
+ * Ex: These 3 files are conflicts: 155 236 317
+ */
+int
+findhashdup_main(int ac, char **av)
+{
+	hash	*h;
+	int	cnt = 0, max;
+	u32	i, len, a32;
+	char	buf[64];
+
+	if (!av[1] || av[2]) return (1);
+	max = atoi(av[1]);
+	h = hash_new(HASH_MEMHASH);
+
+	for (i = 0; ; i++) {
+		len = sprintf(buf, "%d\n", i);
+		a32 = adler32(0, buf, len);
+
+		unless (hash_insert(h, &a32, 4, buf, len)) {
+			printf("dup %.*s && %.*s == %08x\n",
+			    len-1, buf, h->vlen-1, h->vptr,
+			    *(u32 *)h->kptr);
+			if (++cnt >= max) return (0);
+		}
+	}
+	return (0);
+}

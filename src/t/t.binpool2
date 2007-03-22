@@ -262,3 +262,36 @@ bk -r get $Q 2>ERR && {
 bk binpool repair $Q junk || exit 1
 bk -r get $Q || exit 1
 echo OK
+
+echo $N Test binpool flush ..........................................$NL
+for i in 155 236 317
+do
+	echo $i > t.$i
+	echo $i > $i
+	bk new -b $Q $i || exit 1
+done
+
+bk get $Q || exit 1
+cmpfiles t.155 155
+cmpfiles 155 BitKeeper/binpool/01/01d700a5.d1
+cmpfiles t.317 317
+cmpfiles 317 BitKeeper/binpool/01/01d700a5.d3
+
+bk clean || exit 1
+bk stripdel $Q -r.. 155 || exit 1
+bk binpool flush || exit 1
+bk get $Q || exit 1
+cmpfiles t.236 236
+cmpfiles 236 BitKeeper/binpool/01/01d700a5.d1
+cmpfiles t.317 317
+cmpfiles 317 BitKeeper/binpool/01/01d700a5.d2
+echo 155 > 155
+bk new -b $Q 155 || exit 1
+bk clean || exit 1
+bk stripdel $Q -r.. 236 || exit 1
+bk stripdel $Q -r.. 317 || exit 1
+bk binpool flush || exit 1
+bk get $Q || exit 1
+cmpfiles t.155 155
+cmpfiles 155 BitKeeper/binpool/01/01d700a5.d1
+echo OK

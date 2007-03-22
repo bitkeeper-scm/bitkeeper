@@ -186,6 +186,7 @@ _filtertest1
 _filtertest2
 _find
 _findcset
+_findhashdup
 findkey
 fix
 _fixlod

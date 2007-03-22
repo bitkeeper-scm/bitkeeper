@@ -177,6 +177,16 @@ out:	mclose(m);
 	return (rc);
 }
 
+/*
+ * Calculate the hash for a gfile and return it has a malloced string in
+ * hashp.  Also return the deltas checksum in sump.
+ *
+ * Both an alder32 and md5sum are calculated and the resulting string is
+ * of the form "adler32.md5sum".  For example:
+ *	03aa0108.Yhv0mKV2EroqcariHTKnog
+ *
+ * Function returns non-zero if gfile can't be read.
+ */
 private int
 hashgfile(char *gfile, char **hashp, sum_t *sump)
 {
@@ -685,16 +695,19 @@ binpool_update_main(int ac, char **av)
  * Remove any binpool data from the current repository that is not
  * used by any local deltas.
  *
- * XXX needs to renumber data files so they always start with .d1
+ * XXX really shouldn't delete anything unless we can show that all
+ *     deltas are covered.
  */
 private int
 binpool_flush_main(int ac, char **av)
 {
 	FILE	*f;
-	int	c;
+	int	i, j, c, dels;
 	hash	*bpdeltas;	/* list of deltakeys to keep */
 	hash	*dfiles;	/* list of data files to delete */
 	MDBM	*db;		/* binpool index file */
+	char	**fnames;	/* sorted list of dfiles */
+	hash	*renames = 0;	/* list renamed data files */
 	char	*p1, *p2;
 	char	*cmd;
 	int	check_server = 0;
@@ -747,20 +760,23 @@ binpool_flush_main(int ac, char **av)
 		return (1);
 	}
 
+	chdir("BitKeeper/binpool");
+
 	/* get list of data files */
 	dfiles = hash_new(HASH_MEMHASH);
-	f = popen("bk _find BitKeeper/binpool -type f -name '*.d*'", "r");
+	f = popen("bk _find . -type f -name '*.d*'", "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);
-
-		hash_insertStr(dfiles,
-		    buf + strlen("BitKeeper/binpool/"), "");
+		unless (buf[2] == '/') continue;	/* not index.db */
+		hash_insertStr(dfiles, buf, "");
 	}
-	pclose(f);
+	if (pclose(f)) assert(0); /* shouldn't happen */
 
 	/* walk all bp deltas */
-	db = mdbm_open("BitKeeper/binpool/index.db", O_RDWR, 0666,INDEX_PSIZE);
+	db = mdbm_open("index.db", O_RDWR, 0666, INDEX_PSIZE);
+	assert(db);
+	fnames = 0;
 	EACH_KV(db) {
 		/* keep keys we still need */
 		if (hash_fetchStr(bpdeltas, kv.key.dptr)) {
@@ -771,7 +787,7 @@ binpool_flush_main(int ac, char **av)
 			} else {
 				fprintf(stderr,
 				"binpool flush: data for key '%s' missing,\n"
-				"\tdeleting key.\n");
+				"\tdeleting key.\n", kv.key.dptr);
 			}
 		}
 
@@ -780,20 +796,77 @@ binpool_flush_main(int ac, char **av)
 		 * delete the datafile yet because it might be pointed at
 		 * by other delta keys.
 		 */
-		mdbm_delete_str(db, kv.key.dptr);
+		fnames = addLine(fnames, strdup(kv.key.dptr));
 	}
+	EACH(fnames) mdbm_delete_str(db, fnames[i]);
+	freeLines(fnames, free);
 	mdbm_close(db);
 	hash_free(bpdeltas);
 
 	/*
-	 * now we can walk the datafiles and delete any this are not
+	 * now we can walk the datafiles and delete any that are not
 	 * referenced by a key in the index.
 	 */
-	EACH_HASH(dfiles) {
-		if (((char *)dfiles->vptr)[0]) continue;	/* used */
-		unlink((char *)dfiles->kptr);
+	fnames = 0;
+	EACH_HASH(dfiles) fnames = addLine(fnames, dfiles->kptr);
+	sortLines(fnames, 0);
+	EACH(fnames) {
+		if ((p1 = hash_fetchStr(dfiles, fnames[i])) && *p1) continue;
+
+		unlink(fnames[i]); /* delete data file */
+		dels = 1;
+
+		/* see if the next data files need to be renamed */
+		strcpy(buf, fnames[i]);
+		p1 = strrchr(buf, '.');
+		assert(p1);
+		p1 += 2;
+		c = atoi(p1);
+		for (j = 1; ; j++) {
+			sprintf(p1, "%d", c + j);
+
+			unless (i+1 < LSIZ(fnames) && fnames[i+1]) break;
+			unless (streq(buf, fnames[i+1])) break;
+
+			unless ((p2 = hash_fetchStr(dfiles, buf)) && *p2) {
+				unlink(buf);
+				++dels;
+			} else {
+				/* going to rename */
+				sprintf(p1, "%d", c + j - dels);
+				unless (renames) {
+					renames = hash_new(HASH_MEMHASH);
+				}
+				hash_storeStr(renames, fnames[i+1], buf);
+			}
+			++i;
+		}
 	}
+	freeLines(fnames, 0);
 	hash_free(dfiles);
+
+	if (renames) {
+		/* update index file */
+		db = mdbm_open("index.db", O_RDWR, 0666, INDEX_PSIZE);
+		EACH_KV(db) {
+			if (p1 = hash_fetchStr(renames, kv.val.dptr)) {
+				/* data will always fit */
+				strcpy(kv.val.dptr, p1);
+			}
+		}
+		mdbm_close(db);
+
+		/* do renames */
+		fnames = 0;
+		EACH_HASH(renames) fnames = addLine(fnames, renames->kptr);
+		sortLines(fnames, 0);
+		EACH(fnames) {
+			p1 = hash_fetchStr(renames, fnames[i]);
+			rename(fnames[i], p1);
+		}
+		freeLines(fnames, 0);
+		hash_free(renames);
+	}
 	return (0);
 }
 
