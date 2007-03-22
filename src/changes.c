@@ -19,9 +19,9 @@ private struct {
 	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
 	u32	diffs:1;	/* show diffs with verbose mode */
+	u32	tsearch:1;	/* pattern applies to tags instead of cmts */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
-	search	tsearch;	/* -t/pattern/[i] matches tags w/ pattern */
 	char	*dspec;		/* override dspec */
 	char	**users;	/* lines list of users to include */
 	char	**notusers;	/* lines list of users to exclude */
@@ -57,6 +57,7 @@ private int	doit_local(int nac, char **nav, char **urls);
 private	void	cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec);
 private	MDBM	*loadcset(sccs *cset);
 private	void	fileFilt(sccs *s, MDBM *csetDB);
+private	int	prepSearch(char *str);
 
 private	hash	*seen; /* list of keys seen already */
 
@@ -68,6 +69,7 @@ changes_main(int ac, char **av)
 	char	*nav[30];
 	char	**urls = 0, **rurls = 0, **lurls = 0;
 	char	*normal;
+	char	*searchStr = 0;
 	char	buf[MAXPATH];
 	pid_t	pid = 0; /* pager */
 
@@ -79,7 +81,7 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1ac;Dd;efhi;kLmnqRr;t|Tu;U;v/;x;")) != -1) {
+	while ((c = getopt(ac, av, "1ac;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -113,16 +115,7 @@ changes_main(int ac, char **av)
 		    case 'm': opts.nomerge = 1; break;
 		    case 'n': opts.newline = 1; break;
 		    case 'q': opts.urls = 0; break;
-		    case 't':
-		    	opts.tagOnly = 1;
-			if (optarg) {
-				unless (*optarg == '/') {
-					fprintf(stderr, "-t arg needs /pat/\n");
-					goto usage;
-				}
-		    		opts.tsearch = search_parse(optarg+1);
-			}
-			break;		/* doc 2.0 */
+		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
 		    case 'T': opts.timesort = 1; break;
 		    case 'u':
 			opts.users = addLine(opts.users, strdup(optarg));
@@ -140,9 +133,7 @@ changes_main(int ac, char **av)
 		    case 'x':
 			opts.exc = addLine(opts.exc, strdup(optarg));
 			break;
-		    case '/': opts.search = search_parse(optarg);
-			      opts.doSearch = 1;
-			      break;
+		    case '/': searchStr = optarg; break;
 		    case 'L': opts.local = 1; break;
 		    case 'R': opts.remote = 1; break;
 		    default:
@@ -169,6 +160,7 @@ usage:			system("bk help -s changes");
 		    "changes: either '-' or URL list, but not both\n");
 		return (1);
 	}
+	if (searchStr && prepSearch(searchStr)) goto usage;
 	/* force a -a if -L or -R and no -a */
 	if ((opts.local || opts.remote) && !opts.all) {
 		nav[nac++] = strdup("-a");
@@ -281,6 +273,27 @@ out:	if (pid > 0)  {
 	if (rurls != lurls) freeLines(rurls, free);
 	freeLines(lurls, free);
 	return (rc);
+}
+
+private	int
+prepSearch(char *str)
+{
+	char	*p;
+
+	/*
+	 * XXX: note this does not support \/ in search pattern
+	 * and neither does search_parse which starts with strchr(.., '/')
+	 */
+	if ((p = strchr(str, '/')) && (p = strchr(p, 't'))) {
+		opts.tsearch = 1;
+		opts.tagOnly = 1;
+		/* eat it */
+		while (*p = *(p+1)) p++;
+	} else {
+		opts.doSearch = 1;
+	}
+	opts.search = search_parse(str);
+	return (opts.search.pattern == 0);
 }
 
 private int
@@ -956,11 +969,11 @@ want(sccs *s, delta *e)
 	unless (opts.all || (e->type == 'D')) return (0);
 	if (opts.tagOnly) {
 		unless (e->flags & D_SYMBOLS) return (0);
-		if (opts.tsearch.pattern) {
+		if (opts.tsearch) {
 			match = 0;
 			for (sym = s->symbols; sym; sym = sym->next) {
 				unless (sym->d == e) continue;
-				if (search_either(sym->symname, opts.tsearch)) {
+				if (search_either(sym->symname, opts.search)) {
 					match = 1;
 					break;
 				}
