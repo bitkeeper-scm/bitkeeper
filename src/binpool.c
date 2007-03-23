@@ -28,11 +28,10 @@
  *		// mdbm mapping "md5rootkey md5key" => "xy/xyzabc...d1"
  */
 
-#define	INDEX_PSIZE	4096	/* mdbm psize for index */
-
 private	int	hashgfile(char *gfile, char **hashp, sum_t *sump);
 private	char*	mkkeys(sccs *s, delta *d);
 private	char*	hash2path(project *p, char *hash);
+private int	bp_log_update(char *bpdir, char *key, char *val);
 
 /*
  * Allocate s->gfile into the binpool and update the delta stuct with
@@ -262,7 +261,6 @@ bp_insert(project *proj, char *file, char *adler32, char *keys, int canmv)
 	MDBM	*db;
 	int	j;
 	char	buf[MAXPATH];
-	char	idx[MAXPATH];
 
 	base = hash2path(proj, adler32);
 	p = buf + sprintf(buf, "%s", base);
@@ -295,12 +293,11 @@ domap:
 	*p++ = 0;
 
 	/* use the binpool as hash2path() returned */
-	concat_path(idx, buf, "index.db");
-	db = mdbm_open(idx, O_RDWR|O_CREAT, 0666, INDEX_PSIZE);
+	db = proj_binpoolIDX(proj, 1);
 	assert(db);
 	j = mdbm_store_str(db, keys, p, MDBM_REPLACE);
+	bp_log_update(buf, keys, p);
 	assert(!j);
-	mdbm_close(db);
 	return (0);
 }
 
@@ -315,24 +312,17 @@ bp_lookupkeys(project *proj, char *keys)
 {
 	MDBM	*db;
 	char	*p, *t;
-	char    idx[MAXPATH];
 
-	p = hash2path(proj, 0);
-	concat_path(idx, p, "index.db");
-	free(p);
-	unless (exists(idx)) return (0);
-	db = mdbm_open(idx, O_RDONLY, 0666, INDEX_PSIZE);
-	assert(db);
+	unless (db = proj_binpoolIDX(proj, 0)) return (0);
 	if (t = mdbm_fetch_str(db, keys)) {
-		p = strrchr(idx, '/');
-		*p = 0;
-		t = aprintf("%s/%s", idx, t);
+		p = hash2path(proj, 0);
+		t = aprintf("%s/%s", p, t);
+		free(p);
 		unless (exists(t)) {
 			free(t);
 			t = 0;
 		}
 	}
-	mdbm_close(db);
 	return (t);
 }
 
@@ -415,6 +405,30 @@ bp_fetch(sccs *s, delta *din)
 	return (0);
 }
 
+/*
+ * Log an update to the binpool index.db to the file
+ * BitKeeper/log/binpool.log
+ * Each entry in that file looks like:
+ *  MD5ROOTKEY MD5KEY PATH hash
+ *
+ * bpdir is the path to the binpool directory.
+ * val == 0 is a delete.
+ */
+private int
+bp_log_update(char *bpdir, char *key, char *val)
+{
+	FILE	*f;
+	char	buf[MAXPATH];
+
+	unless (val) val = "delete        ";
+	concat_path(buf, bpdir, "../log/binpool.log");
+
+	unless (f = fopen(buf, "a")) return (-1);
+	sprintf(buf, "%s %s", key, val);
+	fprintf(f, "%s %08x\n", buf, adler32(0, buf, strlen(buf)));
+	fclose(f);
+	return (0);
+}
 /*
  * Copy all data local to the binpool to my master.
  */
@@ -779,7 +793,7 @@ binpool_flush_main(int ac, char **av)
 	if (pclose(f)) assert(0); /* shouldn't happen */
 
 	/* walk all bp deltas */
-	db = mdbm_open("index.db", O_RDWR, 0666, INDEX_PSIZE);
+	db = proj_binpoolIDX(0, 1);
 	assert(db);
 	fnames = 0;
 	EACH_KV(db) {
@@ -803,9 +817,11 @@ binpool_flush_main(int ac, char **av)
 		 */
 		fnames = addLine(fnames, strdup(kv.key.dptr));
 	}
-	EACH(fnames) mdbm_delete_str(db, fnames[i]);
+	EACH(fnames) {
+		mdbm_delete_str(db, fnames[i]);
+		bp_log_update(".", fnames[i], 0);
+	}
 	freeLines(fnames, free);
-	mdbm_close(db);
 	hash_free(bpdeltas);
 
 	/*
@@ -852,14 +868,13 @@ binpool_flush_main(int ac, char **av)
 
 	if (renames) {
 		/* update index file */
-		db = mdbm_open("index.db", O_RDWR, 0666, INDEX_PSIZE);
 		EACH_KV(db) {
 			if (p1 = hash_fetchStr(renames, kv.val.dptr)) {
 				/* data will always fit */
 				strcpy(kv.val.dptr, p1);
+				bp_log_update(".", kv.key.dptr, p1);
 			}
 		}
-		mdbm_close(db);
 
 		/* do renames */
 		fnames = 0;
@@ -932,11 +947,7 @@ binpool_repair_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
-	if (exists("BitKeeper/binpool/index.db")) {
-		db = mdbm_open("BitKeeper/binpool/index.db",
-		    O_RDONLY, 0666,INDEX_PSIZE);
-	}
-	/* ok if db is null */
+	db = proj_binpoolIDX(0, 0);	/* ok if db is null */
 
 	/* save the hash for all the bp deltas we are missing */
 	needed = hash_new(HASH_MEMHASH);
@@ -959,7 +970,6 @@ binpool_repair_main(int ac, char **av)
 		*lines = addLine(*lines, strdup(buf));
 	}
 	pclose(f);
-	if (db) mdbm_close(db);
 
 	/* hash all files in directory ... */
 	cmd = aprintf("bk _find '%s' -type f", dir);

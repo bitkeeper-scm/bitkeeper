@@ -37,9 +37,11 @@ struct project {
 	u32	bklbits;	/* LIC_* from license_bklbits() */
 	int	casefolding;	/* mixed case file system: FOO == foo */
 	int	leaseok;	/* if set, we've checked and have a lease */
+	MDBM	*binpool_idx;	/* binpool index file */
+	int	binpool_write;	/* binpool index file opened for write? */
 
 	/* internal state */
-    	int	refcnt;
+	int	refcnt;
 	dirlist	*dirs;
 };
 
@@ -488,6 +490,10 @@ proj_reset(project *p)
 		}
 		p->bklbits = 0;
 		p->leaseok = -1;
+		if (p->binpool_idx) {
+			mdbm_close(p->binpool_idx);
+			p->binpool_idx = 0;
+		}
 	} else {
 		EACH_HASH(proj.cache) proj_reset(*(project **)proj.cache->vptr);
 		/* free the current project for purify */
@@ -670,4 +676,31 @@ proj_isResync(project *p)
 	unless (p) p = curr_proj();
 
 	return (p && p->rparent);
+}
+
+MDBM *
+proj_binpoolIDX(project *p, int write)
+{
+	char	idx[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (0);
+
+	if (p->rparent) p = p->rparent;
+
+	if (p->binpool_idx) {
+		if (write && !p->binpool_write) {
+			mdbm_close(p->binpool_idx);
+			p->binpool_idx = 0;
+		} else {
+			return (p->binpool_idx);
+		}
+	}
+	/* open a new binpool */
+	concat_path(idx, p->root, "BitKeeper/binpool/index.db");
+	if (write || exists(idx)) {
+		p->binpool_idx = mdbm_open(idx,
+		    write ? O_RDWR|O_CREAT : O_RDONLY, 0666, 4096);
+		p->binpool_write = write;
+	}
+	return (p->binpool_idx);
 }

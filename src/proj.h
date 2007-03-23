@@ -31,7 +31,8 @@ char*		proj_root(project *p);
 char*		proj_rootkey(project *p);
 int		proj_samerepo(char *source, char *dest);
 project*	proj_init(char *dir);
-project* 	proj_fakenew(void);
+project*	proj_fakenew(void);
+MDBM*		proj_binpoolIDX(project *p, int write);
 
 #define		chdir	proj_chdir
 
