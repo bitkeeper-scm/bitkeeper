@@ -25,7 +25,7 @@ do_remote(char *url, char *cmd, char *extra)
  * of binpool data on stdout.
  *
  * input:
- *    md5rootkey md5deltakey adler32
+ *    md5rootkey md5deltakey
  *    ... repeat ...
  */
 int
@@ -76,14 +76,11 @@ usage:			fprintf(stderr,
 	if (query) {
 		while (fnext(buf, stdin)) {
 			chomp(buf);
-			p = strrchr(buf, ' ');
-			*p++ = 0;	/* get just keys */
 
 			/* XXX avoid mdbm_opens ? */
 			if (dfile = bp_lookupkeys(0, buf)) {
 				free(dfile);
 			} else {
-				p[-1] = ' ';
 				puts(buf); /* we don't have this one */
 			}
 		}

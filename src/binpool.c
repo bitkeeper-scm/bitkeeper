@@ -6,6 +6,15 @@
 #include "binpool.h"
 
 /*
+ * TODO:
+ *  - change on-disk MDBM to support adler32 per page
+ *  - add index.db update log in BitKeeper/log
+ *    (one checksum per line)
+ *  - finish 'bk binpool check'
+ *  - check error messages (bk get => 'get: no binpool_server for update.')
+ */
+
+/*
  * Theory of operation
  *
  * Binpool store binary deltas by hash under BitKeeper/binpool in
@@ -397,8 +406,7 @@ bp_fetch(sccs *s, delta *din)
 	f = popen(cmd, "w");
 	free(cmd);
 	assert(f);
-	fprintf(f, "%s %s %*s\n",
-	    rootkey, deltakey, strcspn(din->hash, "."), din->hash);
+	fprintf(f, "%s %s\n", rootkey, deltakey);
 	if (pclose(f)) {
 		fprintf(stderr, "bp_fetch: failed to fetch delta for %s\n",
 		    s->gfile);
@@ -448,7 +456,7 @@ bp_updateMaster(char *tiprev)
 	/* find local bp deltas */
 	cmds = addLine(cmds,
 	    aprintf("bk changes -Bv -r'%s..%s' "
-		"-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'",
+		"-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'",
 		baserev, tiprev));
 
 	/* filter out deltas already in master */
@@ -580,7 +588,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 	if (rev) {
 		cmds = addLine(cmds,
 		    aprintf("bk changes -Bv -r'%s' "
-		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'",
+		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'",
 		    rev));
 	} else {
 		fd0 = dup(0);
@@ -589,7 +597,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		assert(rc == 0);
 		cmds = addLine(cmds,
 		    strdup("bk changes -Bv "
-		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}' -"));
+		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}' -"));
 	}
 	if (send) {
 		/* send list of keys to remote and get back needed keys */
@@ -651,7 +659,7 @@ binpool_populate_main(int ac, char **av)
 	/* list of all binpool deltas */
 	cmds = addLine(cmds,
 	    aprintf("bk changes -Bv "
-	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'"));
+	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'"));
 
 	/* reduce to list of deltas missing locally */
 	cmds = addLine(cmds, strdup("bk fsend -Bquery -"));
@@ -728,7 +736,7 @@ binpool_flush_main(int ac, char **av)
 	}
 	/* save bp deltas in repo */
 	cmd = strdup("bk -r prs "
-	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'");
+	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'");
 	if (check_server) {
 		/* remove deltas already in binpool server */
 		p1 = cmd;
@@ -750,9 +758,6 @@ binpool_flush_main(int ac, char **av)
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		p1 = strrchr(buf, ' ');	/* chop hash */
-		assert(p1);
-		*p1 = 0;
 		hash_storeStr(bpdeltas, buf, 0);
 	}
 	if (pclose(f)) {
@@ -872,11 +877,11 @@ binpool_flush_main(int ac, char **av)
 
 /*
  * Validate the checksums and metadata for all binpool data
- *  checksum match
- *  filenames match checksums
- *  sizes match
- *  deltakeys from this repo have same hash
+ *  checksum matches filename
+ *  deltakeys from this repo have same hash (including md5)
  *  permissions
+ *  index.db matches logfile
+ *  all binpool deltas have data here or in binpool_server (optional)
  */
 private int
 binpool_check_main(int ac, char **av)
@@ -888,7 +893,7 @@ binpool_check_main(int ac, char **av)
 		return (1);
 	}
 	/* load binpool deltas and hashs */
-	/* bk -r prs -hnd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :MD5KEY:}' */
+	/* bk -r prs -hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}' */
 
 	rc = 0;
 	return (rc);

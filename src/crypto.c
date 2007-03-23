@@ -5,6 +5,7 @@
 #include "tomcrypt/randseed.h"
 #include "tomcrypt/oldrsa.h"
 #include "cmd.h"
+#include "zlib/zlib.h"
 
 private	int	make_keypair(int bits, char *secret, char *public);
 private	int	signdata(rsa_key *secret);

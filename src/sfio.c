@@ -219,6 +219,7 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 			return (SFIO_LSTAT);
 		}
 		out_file(buf, &sb, &byte_count);
+		unlink(buf);
 	}
 #endif
 	if (opts->more) freeLines(opts->more, free);
@@ -325,24 +326,21 @@ private int
 out_bptuple(char *tuple, off_t *byte_count)
 {
 #ifndef SFIO_STANDALONE
-	char	*keys, *hash, *path, *dfile, *freeme;
+	char	*keys, *path, *dfile, *freeme;
 	int	n;
 	struct	stat sb;
 	char	buf[MAXPATH];
 
 // ttyprintf("TUPL %s\n", tuple);
 	keys = tuple;
-	hash = strchr(tuple, ' ');
-	assert(hash);
-	hash = strchr(++hash, ' ');
-	assert(hash);
-	*hash++ = 0;
-	if (path = strchr(hash, ' ')) *path++ = 0;
+	path = strchr(tuple, ' ');
+	assert(path);
+	if (path = strchr(path+1, ' ')) *path++ = 0;
 
 	unless (freeme = bp_lookupkeys(0, keys)) {
 // ttyprintf("MISS %s\n", tuple);
-		fprintf(stderr, "lookupkeys(%s, %s) = %s\n",
-		    hash, keys, sys_errlist[errno]);
+		fprintf(stderr, "lookupkeys(%s) = %s\n",
+		    keys, sys_errlist[errno]);
 		return (SFIO_LOOKUP);
 	}
 	dfile = freeme + strlen(proj_root(0)) + 1;

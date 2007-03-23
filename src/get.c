@@ -256,7 +256,7 @@ err:			sccs_free(s);
 				bp_keys = addLine(bp_keys,
 				    sccs_prsbuf(s,
 					bp_fdelta(s, sccs_findrev(s, rev)), 0,
-					":MD5KEY|1.0: :MD5KEY: :BPHASH:"));
+					":MD5KEY|1.0: :MD5KEY:"));
 				goto next;
 			}
 			if (s->io_error) return (1);
