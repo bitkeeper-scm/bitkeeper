@@ -280,6 +280,7 @@ cmpfiles 317 BitKeeper/binpool/01/01d700a5.d3
 bk clean || exit 1
 bk stripdel $Q -r.. 155 || exit 1
 bk binpool flush || exit 1
+bk binpool check || exit 1
 bk get $Q || exit 1
 cmpfiles t.236 236
 cmpfiles 236 BitKeeper/binpool/01/01d700a5.d1
@@ -291,7 +292,27 @@ bk clean || exit 1
 bk stripdel $Q -r.. 236 || exit 1
 bk stripdel $Q -r.. 317 || exit 1
 bk binpool flush || exit 1
+bk binpool check || exit 1
 bk get $Q || exit 1
 cmpfiles t.155 155
 cmpfiles 155 BitKeeper/binpool/01/01d700a5.d1
+echo OK
+
+echo $N Test binpool check ..........................................$NL
+echo 1 > BitKeeper/binpool/01/01d700a5.d1
+bk binpool check 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q 'has the incorrect hash' ERR || exit 1
+test `wc -l < ERR` -eq 2 || exit 1
+rm BitKeeper/binpool/01/01d700a5.d1
+bk binpool check 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q 'Failed to locate' ERR || exit 1
+test `wc -l < ERR` -eq 2 || exit 1
+echo 155 > BitKeeper/binpool/01/01d700a5.d1
+bk binpool check || exit 1
 echo OK

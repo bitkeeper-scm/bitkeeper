@@ -31,7 +31,7 @@ do_remote(char *url, char *cmd, char *extra)
 int
 fsend_main(int ac, char **av)
 {
-	char	*p, *url, *dfile;
+	char	*p, *url;
 	int	c;
 	int	tomaster = 0, query = 0, binpool = 0;
 	char	*sfio[] = { "sfio", "-oqmBk", 0 };
@@ -74,13 +74,12 @@ usage:			fprintf(stderr,
 		}
 	}
 	if (query) {
+		MDBM	*db = proj_binpoolIDX(0, 0);
+
 		while (fnext(buf, stdin)) {
 			chomp(buf);
 
-			/* XXX avoid mdbm_opens ? */
-			if (dfile = bp_lookupkeys(0, buf)) {
-				free(dfile);
-			} else {
+			unless (db && mdbm_fetch_str(db, buf)) {
 				puts(buf); /* we don't have this one */
 			}
 		}

@@ -8,9 +8,6 @@
 /*
  * TODO:
  *  - change on-disk MDBM to support adler32 per page
- *  - add index.db update log in BitKeeper/log
- *    (one checksum per line)
- *  - finish 'bk binpool check'
  *  - check error messages (bk get => 'get: no binpool_server for update.')
  */
 
@@ -102,7 +99,6 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 {
 	delta	*d;
 	char	*dfile, *p;
-	u8	*buf;
 	u32	sum;
 	MMAP	*m;
 	int	n, fd, ok;
@@ -116,10 +112,8 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		free(dfile);
 		return (-1);
 	}
-	n = m->size;
-	buf = m->mmap;
 	if (getenv("_BK_FASTGET")) {
-		sum = strtoul(d->hash, 0, 16);
+		sum = strtoul(basenm(dfile), 0, 16);
 	} else {
 		if (getenv("_BK_FAKE_HASH")) {
 			sum = strtoul(getenv("_BK_FAKE_HASH"), 0, 16);
@@ -146,7 +140,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 			if ((flags & PRINT) && streq(gfile, "-")) {
 				fd = 1;
 			} else {
-				assert(din->mode && (din->mode & 0200));
+				assert(din->mode & 0200);
 				(void)mkdirf(gfile);
 				fd = open(gfile, O_WRONLY|O_CREAT, din->mode);
 			}
@@ -154,7 +148,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 				perror(gfile);
 				goto out;
 			}
-			if (writen(fd, buf, n) != n) {
+			if (writen(fd, m->mmap, m->size) != m->size) {
 				unless (flags & PRINT) {
 					perror(gfile);
 					unlink(gfile);
@@ -176,7 +170,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		}
 		rc = 0;
 	}
-	unless (n) n = 1;	/* zero is bad */
+	unless (n = m->size) n = 1;	/* zero is bad */
 	s->dsum = sum & 0xffff;
 	s->added = (d == din) ? n : 0;
 	s->same = s->deleted = 0;
@@ -892,25 +886,101 @@ binpool_flush_main(int ac, char **av)
 
 /*
  * Validate the checksums and metadata for all binpool data
- *  checksum matches filename
- *  deltakeys from this repo have same hash (including md5)
- *  permissions
- *  index.db matches logfile
- *  all binpool deltas have data here or in binpool_server (optional)
+ *  delta checksum matches filename and file contents
+ *  all binpool deltas have data here or in binpool_server
+ *
+ * TODO:
+ *  - check permissions
+ *  - index.db matches logfile
  */
 private int
 binpool_check_main(int ac, char **av)
 {
-	int	rc = 1;
+	int	rc = 0, i;
+	FILE	*f;
+	char	**missing = 0;
+	char	*hval, *p, *tmp, *dfile;
+	sum_t	sum;
+	char	buf[MAXLINE];
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
-	/* load binpool deltas and hashs */
-	/* bk -r prs -hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}' */
+	chdir("BitKeeper/binpool");
 
-	rc = 0;
+	/* load binpool deltas and hashs */
+	f = popen("bk -r prs "
+	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'", "r");
+	assert(f);
+	while (fnext(buf, f)) {
+		chomp(buf);
+
+		p = strchr(buf, ' ');
+		p = strchr(p+1, ' ');
+		*p++ = 0;
+		unless (dfile = bp_lookupkeys(0, buf)) {
+			missing = addLine(missing, strdup(buf));
+			continue;
+		}
+		if (hashgfile(dfile, &hval, &sum)) {
+			assert(0);	/* shouldn't happen */
+		}
+		free(dfile);
+		unless (streq(p, hval)) {
+			fprintf(stderr,
+			    "binpool data for delta %s has the "
+			    "incorrect hash\n\t%s vs %s\n",
+			    buf, p, hval);
+			rc = 1;
+		}
+		free(hval);
+		if (strtoul(p, 0, 16) != strtoul(basenm(dfile), 0, 16)) {
+			fprintf(stderr,
+			"binpool datafile store under wrong filename: %s\n",
+			    dfile);
+			rc = 1;
+		}
+	}
+	pclose(f);
+	/*
+	 * if we are missing some data make sure it is not covered by the
+	 * binpool server before we complain.
+	 */
+	if (missing && !bp_masterID(&p) && p) {
+		free(p);
+
+		tmp = bktmp(0, 0);
+		p = aprintf("bk -q@'%s' fsend -Bquery - > '%s'",
+		    proj_configval(0, "binpool_server"), tmp);
+		f = popen(p, "w");
+		free(p);
+		assert(f);
+		EACH(missing) fprintf(f, "%s\n", missing[i]);
+		if (pclose(f)) {
+			fprintf(stderr,
+			    "Failed to contact binpool_server at %s\n",
+			    proj_configval(0, "binpool_server"));
+			rc = 1;
+		} else {
+			freeLines(missing, free);
+			missing = 0;
+			f = fopen(tmp, "r");
+			while (fnext(buf, f)) {
+				chomp(buf);
+				missing = addLine(missing, strdup(buf));
+			}
+			fclose(f);
+		}
+		unlink(tmp);
+		free(tmp);
+	}
+	if (missing) {
+		fprintf(stderr,
+		"Failed to locate binpool data for the following detlas:\n");
+		EACH(missing) fprintf(stderr, "\t%s\n", missing[i]);
+		rc = 1;
+	}
 	return (rc);
 }
 
@@ -952,7 +1022,7 @@ binpool_repair_main(int ac, char **av)
 	/* save the hash for all the bp deltas we are missing */
 	needed = hash_new(HASH_MEMHASH);
 	f = popen("bk changes -Bv "
-	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPFULLHASH:}'",
+	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'",
 	    "r");
 	assert(f);
 	while (fnext(buf, f)) {

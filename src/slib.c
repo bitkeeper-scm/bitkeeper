@@ -15010,13 +15010,6 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		return (strVal);
 	}
 	case KW_BPHASH: /* BPHASH */ {
-		if (d->hash) {	/* adler32 only */
-			show_s(s, out, vbuf, d->hash, strcspn(d->hash, "."));
-			return (strVal);
-		}
-		return (nullVal);
-	}
-	case KW_BPFULLHASH: /* BPFULLHASH */ {
 		if (d->hash) {
 			fs(d->hash);
 			return (strVal);
