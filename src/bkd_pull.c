@@ -37,7 +37,8 @@ cmd_pull_part1(int ac, char **av)
 	FILE	*f;
 
 	if (av[1] && strneq(av[1], "-r", 2)) {
-		probekey_av[2] = tiprev = av[1];
+		probekey_av[2] =  av[1];
+		tiprev = av[1] + 2; /* just rev */
 	}
 	if (sendServerInfoBlock(0)) {
 		drain();

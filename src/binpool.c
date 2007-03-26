@@ -11,6 +11,13 @@
  *  - check error messages (bk get => 'get: no binpool_server for update.')
  *  - checkout:get shouldn't make multiple binpool_server connections
  *    resolve.c:copyAndGet(), check.c, others?
+ *  - flush shouldn't be allowed to run on a binpool server
+ *  - flush shouldn't delete any data if I am missing data.
+ *    (Run binpool-check first? maybe a lightweight version)
+ *  - check needs a progress bar and options to disable hashing
+ *  - binpool gone-file support
+ *  - rename populate/update to pull/push
+ *  - add adler32.md5sum to fsend/frecv format (and use it)
  */
 
 /*
@@ -431,7 +438,7 @@ bp_log_update(char *bpdir, char *key, char *val)
 int
 bp_updateMaster(char *tiprev)
 {
-	char	*p, *sync, *syncf, *url;
+	char	*p, *sync, *syncf, *url, *tmperr, *tmpkeys;
 	char	**cmds = 0;
 	char	*repoID;
 	char	*baserev = 0;
@@ -464,18 +471,41 @@ bp_updateMaster(char *tiprev)
 		if (streq(repoID, sync)) baserev = strdup(p);
 		free(sync);
 	}
+	tmperr = bktmp(0, 0);
+	tmpkeys = bktmp(0, 0);
 
+again:
 	/* from last sync to newtip */
 	unless (baserev) baserev = strdup("1.0");
 	unless (tiprev) tiprev = "+";
 
 	/* find local bp deltas */
-	cmds = addLine(cmds,
-	    aprintf("bk changes -Bv -r'%s..%s' "
-		"-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'",
-		baserev, tiprev));
+	p = aprintf("-r%s..%s", baserev, tiprev);
+	rc = sysio(0, tmpkeys, tmperr, "bk", "changes", "-Bv", p,
+	    "-nd$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}", SYS);
+	free(p);
+	if (rc) {
+		p = loadfile(tmperr, 0);
+		if (!streq(baserev, "1.0") && strstr(p, baserev)) {
+			/* changed dies because it can't find baserev */
+			baserev = 0;
+			free(p);
+			goto again;
+		}
+		free(repoID);
+		return (-1);
+	}
+	unlink(tmperr);
+	free(tmperr);
+	if (size(tmpkeys) == 0) { /* no keys to sync? just quit */
+		unlink(tmpkeys);
+		free(tmpkeys);
+		free(repoID);
+		return (0);
+	}
 
 	if (url) {
+		cmds = addLine(cmds, aprintf("cat '%s'", tmpkeys));
 
 		/* filter out deltas already in master */
 		cmds = addLine(cmds,
@@ -491,7 +521,7 @@ bp_updateMaster(char *tiprev)
 		rc = spawn_filterPipeline(cmds);
 		freeLines(cmds, free);
 	} else {
-		f = popen(cmds[1], "r");
+		f = fopen(tmpkeys, "r");
 		assert(f);
 		rc = 0;
 		while (fnext(buf, f)) {
@@ -506,8 +536,10 @@ bp_updateMaster(char *tiprev)
 				rc = 1;
 			}
 		}
-		rc |= pclose(f);
+		fclose(f);
 	}
+	unlink(tmpkeys);
+	free(tmpkeys);
 	unless (rc) {
 		/* update cache of last sync */
 
@@ -963,21 +995,19 @@ binpool_check_main(int ac, char **av)
 			missing = addLine(missing, strdup(buf));
 			continue;
 		}
-		if (fast) {
-			free(dfile);
-			continue;
+		unless (fast) {
+			if (hashgfile(dfile, &hval, &sum)) {
+				assert(0);	/* shouldn't happen */
+			}
+			unless (streq(p, hval)) {
+				fprintf(stderr,
+				    "binpool data for delta %s has the "
+				    "incorrect hash\n\t%s vs %s\n",
+				    buf, p, hval);
+				rc = 1;
+			}
+			free(hval);
 		}
-		if (hashgfile(dfile, &hval, &sum)) {
-			assert(0);	/* shouldn't happen */
-		}
-		unless (streq(p, hval)) {
-			fprintf(stderr,
-			    "binpool data for delta %s has the "
-			    "incorrect hash\n\t%s vs %s\n",
-			    buf, p, hval);
-			rc = 1;
-		}
-		free(hval);
 		if (strtoul(p, 0, 16) != strtoul(basenm(dfile), 0, 16)) {
 			fprintf(stderr,
 			"binpool datafile store under wrong filename: %s\n",
@@ -1036,7 +1066,7 @@ binpool_check_main(int ac, char **av)
 }
 
 /*
- * Examine the files is a directory and add any files that have the
+ * Examine the files in a directory and add any files that have the
  * right hash to be data missing from my binpool back to the binpool.
  */
 private int
