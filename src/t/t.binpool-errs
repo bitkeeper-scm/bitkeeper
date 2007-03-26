@@ -1,0 +1,30 @@
+
+
+echo $N Test binpool errors in resolve.c ............................$NL
+commercial project
+echo 155 > file
+bk new -b $Q file || exit 1
+bk commit -y155 $Q || exit 1
+
+cd ..
+bk clone $Q project copy
+cd project
+bk edit $Q file
+echo 236 > file
+bk ci -y236 $Q file || exit 1
+bk commit $Q -y236 || exit 1
+rm BitKeeper/binpool/01/01d700a5.d2
+
+cd ../copy
+bk edit $Q file
+echo 317 > file
+bk ci -y317 $Q file || exit 1
+bk commit $Q -y317 || exit 1
+
+bk pull $Q 2> ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "ERROR-unable to update binpool server" ERR || exit 1
+grep -q "missing binpool data for delta" ERR || exit 1
+echo OK

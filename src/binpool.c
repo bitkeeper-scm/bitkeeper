@@ -9,6 +9,8 @@
  * TODO:
  *  - change on-disk MDBM to support adler32 per page
  *  - check error messages (bk get => 'get: no binpool_server for update.')
+ *  - checkout:get shouldn't make multiple binpool_server connections
+ *    resolve.c:copyAndGet(), check.c, others?
  */
 
 /*
@@ -441,10 +443,16 @@ bp_updateMaster(char *tiprev)
 
 	/* find the repo_id of my master */
 	if (bp_masterID(&repoID)) return (-1);
-	unless (repoID) return (0);	/* no need to update myself */
-
-	url = proj_configval(0, "binpool_server");
-	assert(url);
+	if (repoID) {
+		url = proj_configval(0, "binpool_server");
+		assert(url);
+	} else {
+		/* No need to update myself, but I should verify that
+		 * I have all the data.
+		 */
+		repoID = strdup("local");
+		url = 0;
+	}
 
 	/* compare with local cache of last sync */
 	syncf = proj_fullpath(0, "BitKeeper/log/BP_SYNC");
@@ -467,16 +475,39 @@ bp_updateMaster(char *tiprev)
 		"-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'",
 		baserev, tiprev));
 
-	/* filter out deltas already in master */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' fsend -Bquery -", url));
+	if (url) {
 
-	/* create SFIO of binpool data */
-	cmds = addLine(cmds, strdup("bk fsend -Bsend -"));
+		/* filter out deltas already in master */
+		cmds = addLine(cmds,
+		    aprintf("bk -q@'%s' fsend -Bquery -", url));
 
-	/* store in master */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' frecv -qBrecv -", url));
-	rc = spawn_filterPipeline(cmds);
-	freeLines(cmds, free);
+		/* create SFIO of binpool data */
+		cmds = addLine(cmds,
+		    strdup("bk fsend -Bsend -"));
+
+		/* store in master */
+		cmds = addLine(cmds,
+		    aprintf("bk -q@'%s' frecv -qBrecv -", url));
+		rc = spawn_filterPipeline(cmds);
+		freeLines(cmds, free);
+	} else {
+		f = popen(cmds[1], "r");
+		assert(f);
+		rc = 0;
+		while (fnext(buf, f)) {
+			chomp(buf);
+
+			if (p = bp_lookupkeys(0, buf)) {
+				free(p);
+			} else {
+				fprintf(stderr,
+				    "missing binpool data for delta %s\n",
+				    buf);
+				rc = 1;
+			}
+		}
+		rc |= pclose(f);
+	}
 	unless (rc) {
 		/* update cache of last sync */
 
@@ -907,7 +938,6 @@ binpool_check_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
-	chdir("BitKeeper/binpool");
 
 	/* load binpool deltas and hashs */
 	f = popen("bk -r prs "
@@ -926,7 +956,6 @@ binpool_check_main(int ac, char **av)
 		if (hashgfile(dfile, &hval, &sum)) {
 			assert(0);	/* shouldn't happen */
 		}
-		free(dfile);
 		unless (streq(p, hval)) {
 			fprintf(stderr,
 			    "binpool data for delta %s has the "
@@ -941,6 +970,7 @@ binpool_check_main(int ac, char **av)
 			    dfile);
 			rc = 1;
 		}
+		free(dfile);
 	}
 	pclose(f);
 	/*
@@ -977,7 +1007,7 @@ binpool_check_main(int ac, char **av)
 	}
 	if (missing) {
 		fprintf(stderr,
-		"Failed to locate binpool data for the following detlas:\n");
+		"Failed to locate binpool data for the following deltas:\n");
 		EACH(missing) fprintf(stderr, "\t%s\n", missing[i]);
 		rc = 1;
 	}
