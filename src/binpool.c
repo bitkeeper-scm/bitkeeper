@@ -927,7 +927,7 @@ binpool_flush_main(int ac, char **av)
 private int
 binpool_check_main(int ac, char **av)
 {
-	int	rc = 0, i;
+	int	rc = 0, quiet = 0, fast = 0, n = 0, i;
 	FILE	*f;
 	char	**missing = 0;
 	char	*hval, *p, *tmp, *dfile;
@@ -938,12 +938,22 @@ binpool_check_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
+	while ((i = getopt(ac, av, "Fq")) != -1) {
+		switch (i) {
+		    case 'F': fast = 1; break;
+		    case 'q': quiet = 1; break;
+		    default:
+			system("bk help -s binpool");
+			return (1);
+		}
+	}
 
 	/* load binpool deltas and hashs */
 	f = popen("bk -r prs "
 	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'", "r");
 	assert(f);
 	while (fnext(buf, f)) {
+		unless (quiet) fprintf(stderr, "%d\r", ++n);
 		chomp(buf);
 
 		p = strchr(buf, ' ');
@@ -951,6 +961,10 @@ binpool_check_main(int ac, char **av)
 		*p++ = 0;
 		unless (dfile = bp_lookupkeys(0, buf)) {
 			missing = addLine(missing, strdup(buf));
+			continue;
+		}
+		if (fast) {
+			free(dfile);
 			continue;
 		}
 		if (hashgfile(dfile, &hval, &sum)) {
@@ -973,11 +987,18 @@ binpool_check_main(int ac, char **av)
 		free(dfile);
 	}
 	pclose(f);
+	unless (quiet) fprintf(stderr, "\n");
+
 	/*
 	 * if we are missing some data make sure it is not covered by the
 	 * binpool server before we complain.
 	 */
 	if (missing && !bp_masterID(&p) && p) {
+		unless (quiet) {
+			fprintf(stderr,
+			    "Looking for %d missing files in %s\n",
+			    nLines(missing), p);
+		}
 		free(p);
 
 		tmp = bktmp(0, 0);
@@ -1007,7 +1028,7 @@ binpool_check_main(int ac, char **av)
 	}
 	if (missing) {
 		fprintf(stderr,
-		"Failed to locate binpool data for the following deltas:\n");
+		   "Failed to locate binpool data for the following deltas:\n");
 		EACH(missing) fprintf(stderr, "\t%s\n", missing[i]);
 		rc = 1;
 	}
