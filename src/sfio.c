@@ -40,9 +40,12 @@
 private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count);
 private int	out_bptuple(char *tuple, off_t *byte_count);
-private int	out_link(char *file, struct stat *, off_t *byte_count);
+private int	out_slink(char *file, struct stat *, off_t *byte_count);
+private int	out_hlink(char *file, struct stat *, off_t *byte_count,
+    char *prev);
 private	int	sfio_in(int extract);
-private int	in_link(char *file, int todo, int extract);
+private int	in_slink(char *file, int todo, int extract);
+private int	in_hlink(char *file, int todo, int extract);
 private int	in_file(char *file, int todo, int extract);
 private	int	mkfile(char *file);
 private	void	send_eof(int status);
@@ -53,6 +56,7 @@ struct {
 	u32	echo:1;		/* echo files to stdout as they are written */
 	u32	force:1;	/* overwrite existing files */
 	u32	bp_tuple:1;	/* -Bk rkey dkey bphash path */
+	u32	hardlinks:1;	/* save hardlinks */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
@@ -72,7 +76,7 @@ sfio_main(int ac, char **av)
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;B;efimopqr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;B;efHimopqr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -88,6 +92,7 @@ sfio_main(int ac, char **av)
 			break;
 		    case 'e': opts->echo = 1; break;		/* doc 2.3 */
 		    case 'f': opts->force = 1; break;		/* doc */
+		    case 'H': opts->hardlinks = 1; break;
 		    case 'i': 					/* doc 2.0 */
 			if (opts->mode) goto usage;
 			opts->mode = M_IN;
@@ -147,6 +152,8 @@ sfio_out(void)
 	struct	stat sb;
 	off_t	byte_count = 0;
 	int	n;
+	hash	*links = 0;
+	char	ln[32];
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	writen(1, SFIO_VERS, 10);
@@ -154,6 +161,7 @@ sfio_out(void)
 		opts->sent = mdbm_mem();
 		opts->attribs = mdbm_mem();
 	}
+	if (opts->hardlinks) links = hash_new(HASH_MEMHASH);
 	byte_count = 10;
 	while (nextfile(buf)) {
 		chomp(buf);
@@ -175,6 +183,19 @@ sfio_out(void)
 		writen(1, len, 4);
 		writen(1, buf, n);
 		byte_count += (n + 4);
+		if (opts->hardlinks) {
+			sprintf(ln, "%x %x", (u32)sb.st_dev, (u32)sb.st_ino);
+			unless (hash_insertStr(links, ln, buf)) {
+				n = out_hlink(buf, &sb, &byte_count,
+				    links->vptr);
+				if (n) {
+					hash_free(links);
+					send_eof(n);
+					return (n);
+				}
+				continue;
+			}
+		}
 		if (S_ISLNK(sb.st_mode)) {
 			unless (opts->doModes) {
 				fprintf(stderr,
@@ -183,7 +204,7 @@ sfio_out(void)
 				stat(buf, &sb);
 				goto reg;
 			}
-			if (n = out_link(buf, &sb, &byte_count)) {
+			if (n = out_slink(buf, &sb, &byte_count)) {
 				send_eof(n);
 				return (n);
 			}
@@ -225,13 +246,14 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	if (opts->more) freeLines(opts->more, free);
 	if (opts->sent) mdbm_close(opts->sent);
 	if (opts->attribs) mdbm_close(opts->attribs);
+	if (opts->hardlinks) hash_free(links);
 	free(opts);
 	send_eof(0);
 	return (0);
 }
 
 private int
-out_link(char *file, struct stat *sp, off_t *byte_count)
+out_slink(char *file, struct stat *sp, off_t *byte_count)
 {
 	char	buf[MAXPATH];
 	char	len[11];
@@ -254,10 +276,38 @@ out_link(char *file, struct stat *sp, off_t *byte_count)
 	*byte_count += writen(1, buf, n);
 	sum += adler32(sum, buf, n);
 	sprintf(buf, "%010u", sum);
-	*byte_count = writen(1, buf, 10);
+	*byte_count += writen(1, buf, 10);
 	assert(opts->doModes);
 	sprintf(buf, "%03o", sp->st_mode & 0777);
-	*byte_count = writen(1, buf, 3);
+	*byte_count += writen(1, buf, 3);
+	return (0);
+}
+
+private int
+out_hlink(char *file, struct stat *sp, off_t *byte_count, char *prev)
+{
+	char	buf[MAXPATH];
+	char	len[11];
+	int	n;
+	u32	sum = 0;
+
+
+	n = strlen(prev);
+	/*
+	 * We have 10 chars into which we can encode a type.
+	 * We know the pathname is <= 4 chars, so we encode the
+	 * hardlink as "HLNK001024".
+	 */
+	sprintf(len, "HLNK%06u", (unsigned int)n);
+	*byte_count += writen(1, len, 10);
+	*byte_count += writen(1, prev, n);
+	sum += adler32(sum, prev, n);
+	sprintf(buf, "%010u", sum);
+	*byte_count += writen(1, buf, 10);
+	if (opts->doModes) {
+		sprintf(buf, "%03o", sp->st_mode & 0777);
+		*byte_count += writen(1, buf, 3);
+	}
 	return (0);
 }
 
@@ -473,7 +523,10 @@ sfio_in(int extract)
 		len = 0;
 		if (strneq("SLNK00", datalen, 6)) {
 			sscanf(&datalen[6], "%04d", &len);
-			if (in_link(buf, len, extract)) return (1);
+			if (in_slink(buf, len, extract)) return (1);
+		} else if (strneq("HLNK00", datalen, 6)) {
+			sscanf(&datalen[6], "%04d", &len);
+			if (in_hlink(buf, len, extract)) return (1);
 		} else {
 			sscanf(datalen, "%010d", &len);
 			if (in_file(buf, len, extract)) return (1);
@@ -485,7 +538,7 @@ sfio_in(int extract)
 }
 
 private int
-in_link(char *file, int pathlen, int extract)
+in_slink(char *file, int pathlen, int extract)
 {
 	char	buf[MAXPATH];
 	mode_t	mode = 0;
@@ -537,6 +590,51 @@ in_link(char *file, int pathlen, int extract)
 	return (0);
 
 err:	
+	if (extract) unlink(file);
+	return (1);
+}
+
+private int
+in_hlink(char *file, int pathlen, int extract)
+{
+	char	buf[MAXPATH];
+	u32	sum = 0, sum2 = 0;
+
+	assert(pathlen > 0);
+	if (readn(0, buf, pathlen) != pathlen) return (1);
+	buf[pathlen] = 0;
+	sum = adler32(0, buf, pathlen);
+	if (extract) {
+		if (link(buf, file)) {
+			mkdirf(file);
+			if (opts->force) unlink(file);
+			if (link(buf, file)) {
+				perror(file);
+				return (1);
+			}
+		}
+	}
+	if (readn(0, buf, 10) != 10) {
+		perror("chksum read");
+		goto err;
+	}
+	sscanf(buf, "%010u", &sum2);
+	if (sum != sum2) {
+		fprintf(stderr,
+		    "Checksum mismatch %u:%u for %s\n", sum, sum2, file);
+		goto err;
+	}
+	if (opts->doModes) {
+		if (readn(0, buf, 3) != 3) {
+			perror("mode read");
+			goto err;
+		}
+	}
+	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
+	if (opts->echo) printf("%s\n", file);
+	return (0);
+
+err:
 	if (extract) unlink(file);
 	return (1);
 }
