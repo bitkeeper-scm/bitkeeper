@@ -335,6 +335,8 @@ out_bptuple(char *tuple, off_t *byte_count)
 	keys = tuple;
 	path = strchr(tuple, ' ');
 	assert(path);
+	path = strchr(path+1, ' ');
+	assert(path);
 	if (path = strchr(path+1, ' ')) *path++ = 0;
 
 	unless (freeme = bp_lookupkeys(0, keys)) {

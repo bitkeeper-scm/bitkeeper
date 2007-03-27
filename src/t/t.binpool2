@@ -1,5 +1,5 @@
 # This file is part of the BitKeeper Regression test suite.
-# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# All of the files in this directory are Copyright (c) 2007 BitMover, Inc.
 # and are not licensed under the terms of the BKL (BitKeeper License).
 # Standard copyright law applies.
 # 
@@ -317,14 +317,14 @@ echo 155 > BitKeeper/binpool/01/01d700a5.d1
 bk binpool check $Q || exit 1
 echo OK
 
-echo $N Test binpool update .........................................$NL
+echo $N Test binpool push ...........................................$NL
 cd ../pclone1
 echo 201 > 201
 bk new -b $Q 201 || exit 1
 bk commit $Q -y201 || exit 1
 bk get $Q 201
 test -e ../pmaster/BitKeeper/binpool/01/01c4009d.d1 && exit 1
-bk binpool update || exit 1
+bk binpool push || exit 1
 cmpfiles 201 ../pmaster/BitKeeper/binpool/01/01c4009d.d1
 
 bk undo $Q -fsa1.4 || exit 1

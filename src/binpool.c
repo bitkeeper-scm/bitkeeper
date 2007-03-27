@@ -16,8 +16,6 @@
  *    (Run binpool-check first? maybe a lightweight version)
  *  - check needs a progress bar and options to disable hashing
  *  - binpool gone-file support
- *  - rename populate/update to pull/push
- *  - add adler32.md5sum to fsend/frecv format (and use it)
  */
 
 /*
@@ -31,7 +29,7 @@
  * The files are stored in
  *	BitKeeper/binpool/xy/xyzabc...d1	// data
  *	BitKeeper/binpool/index.db
- *		// mdbm mapping "md5rootkey md5key" => "xy/xyzabc...d1"
+ *		// mdbm mapping "md5rootkey md5key d->hash" => "xy/xyzabc...d1"
  */
 
 private	int	hashgfile(char *gfile, char **hashp, sum_t *sump);
@@ -249,7 +247,7 @@ mkkeys(sccs *s, delta *d)
 
 	sccs_md5delta(s, sccs_ino(s), rkey);
 	sccs_md5delta(s, d, dkey);
-	return (aprintf("%s %s", rkey, dkey));
+	return (aprintf("%s %s %s", rkey, dkey, d->hash));
 }
 
 /*
@@ -264,6 +262,7 @@ bp_insert(project *proj, char *file, char *adler32, char *keys, int canmv)
 	MDBM	*db;
 	int	j;
 	char	buf[MAXPATH];
+	char	tmp[MAXPATH];
 
 	base = hash2path(proj, adler32);
 	p = buf + sprintf(buf, "%s", base);
@@ -278,13 +277,18 @@ bp_insert(project *proj, char *file, char *adler32, char *keys, int canmv)
 		 * If the data matches then we have two deltas which point at
 		 * the same data.
 		 */
-		if (sameFiles(file, buf)) goto domap;
+		if (sameFiles(file, buf)) goto domap;//XXX bug
 	}
 	/* need to insert new entry */
 	mkdirf(buf);
-// ttyprintf("fileCopy(%s, %s)\n", file, buf);
-	unless ((canmv && !rename(file, buf)) || !fileCopy(file, buf)) {
-		fprintf(stderr, "binpool: insert to %s failed\n", buf);
+
+	unless (canmv) {
+		sprintf(tmp, "%s.tmp", buf);
+		if (fileCopy(file, tmp)) goto nofile;
+		file = tmp;
+	}
+	if (rename(file, buf) && fileCopy(file, buf)) {
+nofile:		fprintf(stderr, "binpool: insert to %s failed\n", buf);
 		unless (canmv) unlink(buf);
 		return (1);
 	}
@@ -292,10 +296,10 @@ domap:
 	/* move p to path relative to binpool dir */
 	while (*p != '/') --p;
 	--p;
+
 	while (*p != '/') --p;
 	*p++ = 0;
 
-	/* use the binpool as hash2path() returned */
 	db = proj_binpoolIDX(proj, 1);
 	assert(db);
 	j = mdbm_store_str(db, keys, p, MDBM_REPLACE);
@@ -305,7 +309,7 @@ domap:
 }
 
 /*
- * Give a hash and keys (":MD5ROOTKEY: :MD5KEY:") return the .d
+ * Given keys (":MD5ROOTKEY: :MD5KEY: :BPHASH:") return the .d
  * file in the binpool that contains that data or null if the
  * data doesn't exist.
  * The pathname returned is malloced and needs to be freed.
@@ -399,7 +403,7 @@ bp_fetch(sccs *s, delta *din)
 	f = popen(cmd, "w");
 	free(cmd);
 	assert(f);
-	fprintf(f, "%s %s\n", rootkey, deltakey);
+	fprintf(f, "%s %s %s\n", rootkey, deltakey, din->hash);
 	if (pclose(f)) {
 		fprintf(stderr, "bp_fetch: failed to fetch delta for %s\n",
 		    s->gfile);
@@ -482,19 +486,23 @@ again:
 	/* find local bp deltas */
 	p = aprintf("-r%s..%s", baserev, tiprev);
 	rc = sysio(0, tmpkeys, tmperr, "bk", "changes", "-Bv", p,
-	    "-nd$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}", SYS);
+	    "-nd$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}", SYS);
 	free(p);
 	if (rc) {
 		p = loadfile(tmperr, 0);
-		if (!streq(baserev, "1.0") && strstr(p, baserev)) {
-			/* changed dies because it can't find baserev */
+		/* did changes die because it can't find baserev? */
+		rc = (!streq(baserev, "1.0") && strstr(p, baserev));
+		free(p);
+		free(baserev);
+		if (rc) {
 			baserev = 0;
-			free(p);
 			goto again;
 		}
 		free(repoID);
 		return (-1);
 	}
+	free(baserev);
+	baserev = 0;
 	unlink(tmperr);
 	free(tmperr);
 	if (size(tmpkeys) == 0) { /* no keys to sync? just quit */
@@ -659,7 +667,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 	if (rev) {
 		cmds = addLine(cmds,
 		    aprintf("bk changes -Bv -r'%s' "
-		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'",
+		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'",
 		    rev));
 	} else {
 		fd0 = dup(0);
@@ -668,7 +676,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		assert(rc == 0);
 		cmds = addLine(cmds,
 		    strdup("bk changes -Bv "
-		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}' -"));
+		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}' -"));
 	}
 	if (send) {
 		/* send list of keys to remote and get back needed keys */
@@ -705,7 +713,7 @@ out:	free(local_repoID);
 
 /* make local repository contain binpool data for all deltas */
 private int
-binpool_populate_main(int ac, char **av)
+binpool_pull_main(int ac, char **av)
 {
 	int	rc, c;
 	char	*p;
@@ -715,7 +723,7 @@ binpool_populate_main(int ac, char **av)
 		switch (c) {
 		    case 'a':
 			fprintf(stderr,
-			    "binpool populate: -a not implemeneted.\n");
+			    "binpool pull: -a not implemeneted.\n");
 			return (1);
 		    default:
 			system("bk help -s binpool");
@@ -730,7 +738,7 @@ binpool_populate_main(int ac, char **av)
 	/* list of all binpool deltas */
 	cmds = addLine(cmds,
 	    aprintf("bk changes -Bv "
-	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'"));
+	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'"));
 
 	/* reduce to list of deltas missing locally */
 	cmds = addLine(cmds, strdup("bk fsend -Bquery -"));
@@ -749,7 +757,7 @@ binpool_populate_main(int ac, char **av)
 
 /* update binpool master with any binpool data committed locally */
 private int
-binpool_update_main(int ac, char **av)
+binpool_push_main(int ac, char **av)
 {
 	int	c;
 	char	*tiprev = "+";
@@ -807,7 +815,7 @@ binpool_flush_main(int ac, char **av)
 	}
 	/* save bp deltas in repo */
 	cmd = strdup("bk -r prs "
-	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY:}'");
+	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'");
 	if (check_server) {
 		/* remove deltas already in binpool server */
 		p1 = cmd;
@@ -990,7 +998,7 @@ binpool_check_main(int ac, char **av)
 
 		p = strchr(buf, ' ');
 		p = strchr(p+1, ' ');
-		*p++ = 0;
+		++p;
 		unless (dfile = bp_lookupkeys(0, buf)) {
 			missing = addLine(missing, strdup(buf));
 			continue;
@@ -1027,7 +1035,8 @@ binpool_check_main(int ac, char **av)
 		unless (quiet) {
 			fprintf(stderr,
 			    "Looking for %d missing files in %s\n",
-			    nLines(missing), p);
+			    nLines(missing),
+			    proj_configval(0, "binpool_server"));
 		}
 		free(p);
 
@@ -1061,6 +1070,8 @@ binpool_check_main(int ac, char **av)
 		   "Failed to locate binpool data for the following deltas:\n");
 		EACH(missing) fprintf(stderr, "\t%s\n", missing[i]);
 		rc = 1;
+	} else unless (quiet) {
+		fprintf(stderr, "All binpool data was found, check passed.\n");
 	}
 	return (rc);
 }
@@ -1108,9 +1119,9 @@ binpool_repair_main(int ac, char **av)
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		p = strchr(buf, ' ');
-		p = strchr(p+1, ' ');
-		*p++ = 0;
+		p = strchr(buf, ' '); /* delta */
+		p = strchr(p+1, ' '); /* hash */
+		++p;
 		if (db && mdbm_fetch_str(db, buf)) continue;
 
 		/* alloc lines array of keys that use this hash */
@@ -1160,8 +1171,8 @@ binpool_main(int ac, char **av)
 		char	*name;
 		int	(*fcn)(int ac, char **av);
 	} cmds[] = {
-		{"populate", binpool_populate_main },
-		{"update", binpool_update_main },
+		{"pull", binpool_pull_main },
+		{"push", binpool_push_main },
 		{"flush", binpool_flush_main },
 		{"check", binpool_check_main },
 		{"repair", binpool_repair_main },

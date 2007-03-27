@@ -25,7 +25,7 @@ do_remote(char *url, char *cmd, char *extra)
  * of binpool data on stdout.
  *
  * input:
- *    md5rootkey md5deltakey
+ *    md5rootkey md5deltakey d->hash(adler32.md5sum)
  *    ... repeat ...
  */
 int
@@ -120,6 +120,7 @@ frecv_main(int ac, char **av)
 			} else {
 				goto usage;
 			}
+			break;
 		    case 'q': quiet = 1; break;
 		    default:
 usage:			fprintf(stderr,
@@ -151,6 +152,7 @@ usage:			fprintf(stderr,
 		return (1);
 	}
 	strcpy(buf, "BitKeeper/binpool/tmp");
+	if (exists(buf)) rmtree(buf);
 	if (mkdirp(buf)) {
 		fprintf(stderr, "%s: failed to create %s\n", av[0], buf);
 		return (1);
@@ -161,7 +163,6 @@ usage:			fprintf(stderr,
 	sprintf(buf, "bk sfio -imr%s", quiet ? "q" : "");
 	unless (quiet) fprintf(stderr, "Unpacking binpool data...\n");
 	rc = system(buf);
-	proj_cd2root();
 	if (rc) {
 		fprintf(stderr, "%s: sfio failed %d\n",
 		    av[0], WEXITSTATUS(rc));
@@ -170,14 +171,14 @@ usage:			fprintf(stderr,
 	}
 	unless (quiet) fprintf(stderr, "\n");
 
-	chdir("BitKeeper/binpool/tmp");
 	if (f = fopen("|ATTR|", "r")) {
 		while (fnext(buf, f)) {
 			chomp(buf);
-			p = strchr(buf, ' ');
+			p = strchr(buf, ' '); /* deltakey */
 			assert(p);
-			p = strchr(p+1, ' ');
+			p = strchr(p+1, ' '); /* hash */
 			assert(p);
+			p = strchr(p+1, ' '); /* filename */
 			*p++ = 0;
 			strcpy(hash, basenm(p));
 			t = strchr(hash, '.');

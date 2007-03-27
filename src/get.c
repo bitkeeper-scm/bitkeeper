@@ -256,7 +256,7 @@ err:			sccs_free(s);
 				bp_keys = addLine(bp_keys,
 				    sccs_prsbuf(s,
 					bp_fdelta(s, sccs_findrev(s, rev)), 0,
-					":MD5KEY|1.0: :MD5KEY:"));
+					":MD5KEY|1.0: :MD5KEY: :BPHASH:"));
 				goto next;
 			}
 			if (s->io_error) return (1);
@@ -325,8 +325,7 @@ bp_fetchkeys(char *me, char **keys)
 		return (1);
 	}
 	sprintf(buf,
-	    "bk -q@'%s' fsend -Bsend - | bk -R frecv -qBrecv -",
-	    master);
+	    "bk -q@'%s' fsend -Bsend - | bk -R frecv -qBrecv -", master);
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);
 	i = pclose(f);

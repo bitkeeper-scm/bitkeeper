@@ -1226,7 +1226,7 @@ sccs_patch(sccs *s, cset_t *cs)
 					free(p);
 					cs->binpool = addLine(cs->binpool,
 					    sccs_prsbuf(s, d, 0,
-					    ":MD5KEY|1.0: :MD5KEY:"));
+					    ":MD5KEY|1.0: :MD5KEY: :BPHASH:"));
 				}
 			} else {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
