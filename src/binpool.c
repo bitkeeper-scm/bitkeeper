@@ -34,10 +34,8 @@
  */
 
 private	int	hashgfile(char *gfile, char **hashp, sum_t *sump);
-private	char*	mkkeys(sccs *s, delta *d);
 private	char*	hash2path(project *p, char *hash);
-private int	bp_insert(project *proj, char *file,
-    char *adler32, char *keys, int canmv);
+private int	bp_insert(project *proj, char *file, char *keys, int canmv);
 
 /*
  * Allocate s->gfile into the binpool and update the delta stuct with
@@ -51,8 +49,8 @@ bp_delta(sccs *s, delta *d)
 
 	if (hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
 	s->dsum = d->sum;
-	keys = mkkeys(s, d);
-	rc = bp_insert(s->proj, s->gfile, d->hash, keys, 0);
+	keys = sccs_prsbuf(s, d, 0, BINPOOL_DSPEC);
+	rc = bp_insert(s->proj, s->gfile, keys, 0);
 	free(keys);
 	if (rc) return (-1);
 	d->added = size(s->gfile);
@@ -242,23 +240,13 @@ hashgfile(char *gfile, char **hashp, sum_t *sump)
 	return (0);
 }
 
-private char *
-mkkeys(sccs *s, delta *d)
-{
-	char	rkey[MAXKEY], dkey[MAXKEY];
-
-	sccs_md5delta(s, sccs_ino(s), rkey);
-	sccs_md5delta(s, d, dkey);
-	return (aprintf("%s %s %s", rkey, dkey, d->hash));
-}
-
 /*
  * Insert the named file into the binpool, checking to be sure that we do
  * not have another file with the same hash but different data.
  * If canmv is set then move instead of copy.
  */
 private int
-bp_insert(project *proj, char *file, char *adler32, char *keys, int canmv)
+bp_insert(project *proj, char *file, char *keys, int canmv)
 {
 	char	*base, *p;
 	MDBM	*db;
@@ -266,7 +254,7 @@ bp_insert(project *proj, char *file, char *adler32, char *keys, int canmv)
 	char	buf[MAXPATH];
 	char	tmp[MAXPATH];
 
-	base = hash2path(proj, adler32);
+	base = hash2path(proj, keys);
 	p = buf + sprintf(buf, "%s", base);
 	free(base);
 	for (j = 1; ; j++) {
@@ -311,7 +299,7 @@ domap:
 }
 
 /*
- * Given keys (":MD5ROOTKEY: :MD5KEY: :BPHASH:") return the .d
+ * Given keys (":BPHASH: :MD5ROOTKEY: :KEY:") return the .d
  * file in the binpool that contains that data or null if the
  * data doesn't exist.
  * The pathname returned is malloced and needs to be freed.
@@ -346,7 +334,7 @@ bp_lookup(sccs *s, delta *d)
 	char	*ret = 0;
 
 	d = bp_fdelta(s, d);
-	keys = mkkeys(s, d);
+	keys = sccs_prsbuf(s, d, 0, BINPOOL_DSPEC);
 	ret = bp_lookupkeys(s->proj, keys);
 	free(keys);
 	return (ret);
@@ -384,8 +372,7 @@ int
 bp_fetch(sccs *s, delta *din)
 {
 	FILE	*f;
-	char	*repoID, *url, *cmd;
-	char	rootkey[64], deltakey[64];
+	char	*repoID, *url, *cmd, *keys;
 
 	/* find the repo_id of my master */
 	if (bp_masterID(&repoID)) return (-1);
@@ -396,16 +383,15 @@ bp_fetch(sccs *s, delta *din)
 
 	unless (din = bp_fdelta(s, din)) return (-1);
 
-	sccs_md5delta(s, sccs_ino(s), rootkey);
-	sccs_md5delta(s, din, deltakey);
-
 	cmd = aprintf("bk -q@'%s' fsend -Bsend - | bk -R frecv -qBrecv -",
 	    url);
 
 	f = popen(cmd, "w");
 	free(cmd);
 	assert(f);
-	fprintf(f, "%s %s %s\n", rootkey, deltakey, din->hash);
+	keys = sccs_prsbuf(s, din, 0, BINPOOL_DSPEC);
+	fprintf(f, "%s\n", keys);
+	free(keys);
 	if (pclose(f)) {
 		fprintf(stderr, "bp_fetch: failed to fetch delta for %s\n",
 		    s->gfile);
@@ -418,7 +404,7 @@ bp_fetch(sccs *s, delta *din)
  * Log an update to the binpool index.db to the file
  * BitKeeper/log/binpool.log
  * Each entry in that file looks like:
- *  MD5ROOTKEY MD5KEY PATH hash
+ *  <index key> PATH hash
  *
  * bpdir is the path to the binpool directory.
  * val == 0 is a delete.
@@ -488,7 +474,7 @@ again:
 	/* find local bp deltas */
 	p = aprintf("-r%s..%s", baserev, tiprev);
 	rc = sysio(0, tmpkeys, tmperr, "bk", "changes", "-Bv", p,
-	    "-nd$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}", SYS);
+	    "-nd" BINPOOL_DSPEC, SYS);
 	free(p);
 	if (rc) {
 		p = loadfile(tmperr, 0);
@@ -668,8 +654,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 	/* Generate list of binpool delta keys */
 	if (rev) {
 		cmds = addLine(cmds,
-		    aprintf("bk changes -Bv -r'%s' "
-		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'",
+		    aprintf("bk changes -Bv -r'%s' -nd'" BINPOOL_DSPEC "'",
 		    rev));
 	} else {
 		fd0 = dup(0);
@@ -677,8 +662,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		rc = open(rev_list, O_RDONLY, 0);
 		assert(rc == 0);
 		cmds = addLine(cmds,
-		    strdup("bk changes -Bv "
-		    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}' -"));
+		    strdup("bk changes -Bv -nd'" BINPOOL_DSPEC "' -"));
 	}
 	if (send) {
 		/* send list of keys to remote and get back needed keys */
@@ -738,9 +722,7 @@ binpool_pull_main(int ac, char **av)
 	free(p);
 
 	/* list of all binpool deltas */
-	cmds = addLine(cmds,
-	    aprintf("bk changes -Bv "
-	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'"));
+	cmds = addLine(cmds, aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "'"));
 
 	/* reduce to list of deltas missing locally */
 	cmds = addLine(cmds, strdup("bk fsend -Bquery -"));
@@ -816,8 +798,7 @@ binpool_flush_main(int ac, char **av)
 		return (1);
 	}
 	/* save bp deltas in repo */
-	cmd = strdup("bk -r prs "
-	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'");
+	cmd = strdup("bk -r prs -hnd'" BINPOOL_DSPEC "'");
 	if (check_server) {
 		/* remove deltas already in binpool server */
 		p1 = cmd;
@@ -991,16 +972,12 @@ binpool_check_main(int ac, char **av)
 	}
 
 	/* load binpool deltas and hashs */
-	f = popen("bk -r prs "
-	    "-hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'", "r");
+	f = popen("bk -r prs -hnd'" BINPOOL_DSPEC "'", "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		unless (quiet) fprintf(stderr, "%d\r", ++n);
 		chomp(buf);
 
-		p = strchr(buf, ' ');
-		p = strchr(p+1, ' ');
-		++p;
 		unless (dfile = bp_lookupkeys(0, buf)) {
 			missing = addLine(missing, strdup(buf));
 			continue;
@@ -1009,16 +986,18 @@ binpool_check_main(int ac, char **av)
 			if (hashgfile(dfile, &hval, &sum)) {
 				assert(0);	/* shouldn't happen */
 			}
-			unless (streq(p, hval)) {
+			p = strchr(buf, ' ');	/* end of d->hash */
+			*p++ = 0;
+			unless (streq(hval, buf)) {
 				fprintf(stderr,
 				    "binpool data for delta %s has the "
 				    "incorrect hash\n\t%s vs %s\n",
-				    buf, p, hval);
+				    p, buf, hval);
 				rc = 1;
 			}
 			free(hval);
 		}
-		if (strtoul(p, 0, 16) != strtoul(basenm(dfile), 0, 16)) {
+		if (strtoul(buf, 0, 16) != strtoul(basenm(dfile), 0, 16)) {
 			fprintf(stderr,
 			"binpool datafile store under wrong filename: %s\n",
 			    dfile);
@@ -1115,22 +1094,20 @@ binpool_repair_main(int ac, char **av)
 
 	/* save the hash for all the bp deltas we are missing */
 	needed = hash_new(HASH_MEMHASH);
-	f = popen("bk changes -Bv "
-	    "-nd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}'",
-	    "r");
+	f = popen("bk changes -Bv -nd'" BINPOOL_DSPEC "'", "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		p = strchr(buf, ' '); /* delta */
-		p = strchr(p+1, ' '); /* hash */
-		++p;
 		if (db && mdbm_fetch_str(db, buf)) continue;
 
 		/* alloc lines array of keys that use this hash */
+		p = strchr(buf, ' '); /* end of hash */
+		*p = 0;
 		unless (lines = hash_insert(needed,
-			    p, strlen(p)+1, 0, sizeof(char **))) {
+			    buf, p-buf+1, 0, sizeof(char **))) {
 			lines = needed->vptr;
 		}
+		*p = ' ';
 		*lines = addLine(*lines, strdup(buf));
 	}
 	pclose(f);
@@ -1152,7 +1129,7 @@ binpool_repair_main(int ac, char **av)
 		EACH(*lines) {
 			p = (*lines)[i];
 			unless (quiet) printf("Inserting %s for %s\n", buf, p);
-			if (bp_insert(0, buf, hval, p, 0)) {
+			if (bp_insert(0, buf, p, 0)) {
 				fprintf(stderr,
 				"binpool repair: failed to insert %s for %s\n",
 				buf, p);

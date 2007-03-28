@@ -41,7 +41,7 @@ echo $N Transfer file with fsend/frecv ..............................$NL
 cd ..
 bk clone $Q pmaster ptest || exit 1
 cd pmaster
-bk -r prs -hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}' > keys
+bk -r prs -hnd'$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :KEY:}' > keys
 bk fsend -Bsend - < keys > out || exit 1
 cd ../ptest
 bk frecv -Brecv - < ../pmaster/out || exit 1

@@ -359,7 +359,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	return (0);
 }
 
-/* rkey dkey adler32.md5sum */
+/* adler32.md5sum rkey dkey */
 private int
 out_bptuple(char *keys, off_t *byte_count)
 {
@@ -553,12 +553,9 @@ in_bptuple(char *keys, char *datalen, int extract)
 	} else {
 		sscanf(datalen, "%010d", &todo);
 
-		/* extract to new file in binpool */
-		p = strrchr(keys, ' ');	/* adler32 */
-		assert(p);
-		++p;
+		/* extract to new file in binpool (adler32 is first in keys) */
 		p = file + sprintf(file, "BitKeeper/binpool/%c%c/%.*s",
-		    p[0], p[1], 8, p);
+		    keys[0], keys[1], 8, keys);
 		/* find unused entry */
 		for (i = 1; ; i++) {
 			sprintf(p, ".d%d", i);
@@ -581,7 +578,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 		p = strchr(p+1, '/') + 1;
 	}
 	mdbm_store_str(proj_binpoolIDX(0, 1), keys, p, MDBM_REPLACE);
-	//bp_log_update("Bitkeeper/binpool", keys, p);
+	bp_log_update("Bitkeeper/binpool", keys, p);
 	return (0);
 #else
 	fprintf(stderr, "Unsupported.\n");
