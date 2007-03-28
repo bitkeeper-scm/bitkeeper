@@ -31,8 +31,21 @@ echo OK
 echo $N Create some binary data and check binpool ...................$NL
 cp "$HERE"/F1 bin.data
 bk new $Q bin.data
+cp ../F1 copy
+bk new $Q copy
 bk commit $Q -ybindata
 test -d BitKeeper/binpool || exit 1
+echo OK
+
+echo $N Transfer file with fsend/frecv ..............................$NL
+cd ..
+bk clone $Q pmaster ptest || exit 1
+cd pmaster
+bk -r prs -hnd'$if(:BPHASH:){:MD5KEY|1.0: :MD5KEY: :BPHASH:}' > keys
+bk fsend -Bsend - < keys > out || exit 1
+cd ../ptest
+bk frecv -Brecv - < ../pmaster/out || exit 1
+bk get $Q bin.data || exit 1
 echo OK
 
 echo $N Set up a remote fetch of a file .............................$NL

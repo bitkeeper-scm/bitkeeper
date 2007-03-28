@@ -34,7 +34,7 @@ fsend_main(int ac, char **av)
 	char	*p, *url;
 	int	c;
 	int	tomaster = 0, query = 0, binpool = 0;
-	char	*sfio[] = { "sfio", "-oqmBk", 0 };
+	char	*sfio[] = { "sfio", "-oqBk", 0 };
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "B;")) != -1) {
@@ -101,13 +101,11 @@ usage:			fprintf(stderr,
 int
 frecv_main(int ac, char **av)
 {
-	FILE	*f;
-	char	*p, *t, *url;
+	char	*p, *url;
 	int	tomaster = 0, binpool = 0;
 	int	quiet = 0;
-	int	c, rc;
-	char	hash[16];
-	char	buf[MAXLINE];
+	int	c;
+	char	*sfio[] = { "sfio", "-iqBk", 0 };
 
 	setmode(0, _O_BINARY);
 	while ((c = getopt(ac, av, "B;q")) != -1) {
@@ -151,46 +149,7 @@ usage:			fprintf(stderr,
 		    "%s: only binpool-mode supported currently.\n", av[0]);
 		return (1);
 	}
-	strcpy(buf, "BitKeeper/binpool/tmp");
-	if (exists(buf)) rmtree(buf);
-	if (mkdirp(buf)) {
-		fprintf(stderr, "%s: failed to create %s\n", av[0], buf);
-		return (1);
-	}
-	chdir(buf);
-
-	/* reads stdin */
-	sprintf(buf, "bk sfio -imr%s", quiet ? "q" : "");
-	unless (quiet) fprintf(stderr, "Unpacking binpool data...\n");
-	rc = system(buf);
-	if (rc) {
-		fprintf(stderr, "%s: sfio failed %d\n",
-		    av[0], WEXITSTATUS(rc));
-		rc = 1;
-		goto out;
-	}
-	unless (quiet) fprintf(stderr, "\n");
-
-	if (f = fopen("|ATTR|", "r")) {
-		while (fnext(buf, f)) {
-			chomp(buf);
-			p = strchr(buf, ' '); /* deltakey */
-			assert(p);
-			p = strchr(p+1, ' '); /* hash */
-			assert(p);
-			p = strchr(p+1, ' '); /* filename */
-			*p++ = 0;
-			strcpy(hash, basenm(p));
-			t = strchr(hash, '.');
-			*t = 0;
-			rc = bp_insert(0, p, hash, buf, 0);
-			if (rc) goto out;
-		}
-		fclose(f);
-	}
-out:
-	proj_cd2root();
-	rmtree("BitKeeper/binpool/tmp");
-	return (rc);
+	getoptReset();
+	return (sfio_main(2, sfio));
 }
 

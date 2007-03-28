@@ -16,6 +16,7 @@
  *    (Run binpool-check first? maybe a lightweight version)
  *  - check needs a progress bar and options to disable hashing
  *  - binpool gone-file support
+ *  - work on errors when binpool repos are used by old clients
  */
 
 /*
@@ -35,7 +36,8 @@
 private	int	hashgfile(char *gfile, char **hashp, sum_t *sump);
 private	char*	mkkeys(sccs *s, delta *d);
 private	char*	hash2path(project *p, char *hash);
-private int	bp_log_update(char *bpdir, char *key, char *val);
+private int	bp_insert(project *proj, char *file,
+    char *adler32, char *keys, int canmv);
 
 /*
  * Allocate s->gfile into the binpool and update the delta stuct with
@@ -207,7 +209,7 @@ hashgfile(char *gfile, char **hashp, sum_t *sump)
 	hash_state	md;
 	char	buf[8<<10];	/* what is the optimal length? */
 
-	if ((fd = open(gfile, O_RDONLY)) < 0) return (-1);
+	if ((fd = open(gfile, O_RDONLY, 0)) < 0) return (-1);
 	hash_descriptor[hdesc].init(&md);
 	while ((i = read(fd, buf, sizeof(buf))) > 0) {
 		sum = adler32(sum, buf, i);
@@ -255,7 +257,7 @@ mkkeys(sccs *s, delta *d)
  * not have another file with the same hash but different data.
  * If canmv is set then move instead of copy.
  */
-int
+private int
 bp_insert(project *proj, char *file, char *adler32, char *keys, int canmv)
 {
 	char	*base, *p;
@@ -421,7 +423,7 @@ bp_fetch(sccs *s, delta *din)
  * bpdir is the path to the binpool directory.
  * val == 0 is a delete.
  */
-private int
+int
 bp_log_update(char *bpdir, char *key, char *val)
 {
 	FILE	*f;

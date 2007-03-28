@@ -40,12 +40,13 @@
 private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count);
 private int	out_bptuple(char *tuple, off_t *byte_count);
-private int	out_slink(char *file, struct stat *, off_t *byte_count);
-private int	out_hlink(char *file, struct stat *, off_t *byte_count,
-    char *prev);
+private int	out_symlink(char *file, struct stat *, off_t *byte_count);
+private int	out_hardlink(char *file,
+		    struct stat *, off_t *byte_count, char *linkMe);
 private	int	sfio_in(int extract);
-private int	in_slink(char *file, int todo, int extract);
-private int	in_hlink(char *file, int todo, int extract);
+private int	in_bptuple(char *file, char *datalen, int extract);
+private int	in_symlink(char *file, int todo, int extract);
+private int	in_hardlink(char *file, int todo, int extract);
 private int	in_file(char *file, int todo, int extract);
 private	int	mkfile(char *file);
 private	void	send_eof(int status);
@@ -60,8 +61,7 @@ struct {
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
-	MDBM	*sent;		/* list of d.files we have set, for dups */
-	MDBM	*attribs;	/* attributes for binpool */
+	hash	*sent;		/* list of d.files we have set, for dups */
 } *opts;
 
 #define M_IN	1
@@ -116,7 +116,22 @@ sfio_main(int ac, char **av)
 	if (av[optind] && streq(av[optind], "-")) optind++;
 	if (optind != ac) goto usage;
 	if (opts->more && (opts->mode != M_OUT)) goto usage;
-
+#ifdef	WIN32
+	if (opts->hardlinks) {
+		fprintf(stderr, "%s: hardlink-mode not supported on Windows\n",
+		    av[0]);
+		return (1);
+	}
+#endif
+#ifndef	SFIO_STANDALONE
+	if (opts->bp_tuple) {
+		if (proj_cd2root()) {
+			fprintf(stderr, "%s: not in repository\n", av[0]);
+			return (1);
+		}
+		if (proj_isResync(0)) chdir(RESYNC2ROOT);
+	}
+#endif
 	if (opts->mode == M_OUT)       return (sfio_out());
 	else if (opts->mode == M_IN)   return (sfio_in(1));
 	else if (opts->mode == M_LIST) return (sfio_in(0));
@@ -157,10 +172,7 @@ sfio_out(void)
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	writen(1, SFIO_VERS, 10);
-	if (opts->bp_tuple) {
-		opts->sent = mdbm_mem();
-		opts->attribs = mdbm_mem();
-	}
+	if (opts->bp_tuple) opts->sent = hash_new(HASH_MEMHASH);
 	if (opts->hardlinks) links = hash_new(HASH_MEMHASH);
 	byte_count = 10;
 	while (nextfile(buf)) {
@@ -186,7 +198,7 @@ sfio_out(void)
 		if (opts->hardlinks) {
 			sprintf(ln, "%x %x", (u32)sb.st_dev, (u32)sb.st_ino);
 			unless (hash_insertStr(links, ln, buf)) {
-				n = out_hlink(buf, &sb, &byte_count,
+				n = out_hardlink(buf, &sb, &byte_count,
 				    links->vptr);
 				if (n) {
 					hash_free(links);
@@ -204,7 +216,7 @@ sfio_out(void)
 				stat(buf, &sb);
 				goto reg;
 			}
-			if (n = out_slink(buf, &sb, &byte_count)) {
+			if (n = out_symlink(buf, &sb, &byte_count)) {
 				send_eof(n);
 				return (n);
 			}
@@ -220,32 +232,9 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	}
 #ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
-	if (opts->bp_tuple) {
-		FILE	*f;
-		kvpair	kv;
-
-		sprintf(len, "%04d", 6);
-		writen(1, len, 4);
-		writen(1, "|ATTR|", 6);
-		byte_count += (6 + 4);
-		bktmp(buf, 0);
-		f = fopen(buf, "w");
-		EACH_KV(opts->attribs) {
-			fprintf(f, "%s %s\n", kv.key.dptr, kv.val.dptr);
-		}
-		fclose(f);
-		if (lstat(buf, &sb)) {
-			perror(buf);
-			send_eof(SFIO_LSTAT);
-			return (SFIO_LSTAT);
-		}
-		out_file(buf, &sb, &byte_count);
-		unlink(buf);
-	}
 #endif
 	if (opts->more) freeLines(opts->more, free);
-	if (opts->sent) mdbm_close(opts->sent);
-	if (opts->attribs) mdbm_close(opts->attribs);
+	if (opts->sent) hash_free(opts->sent);
 	if (opts->hardlinks) hash_free(links);
 	free(opts);
 	send_eof(0);
@@ -253,7 +242,7 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 }
 
 private int
-out_slink(char *file, struct stat *sp, off_t *byte_count)
+out_symlink(char *file, struct stat *sp, off_t *byte_count)
 {
 	char	buf[MAXPATH];
 	char	len[11];
@@ -284,7 +273,7 @@ out_slink(char *file, struct stat *sp, off_t *byte_count)
 }
 
 private int
-out_hlink(char *file, struct stat *sp, off_t *byte_count, char *prev)
+out_hardlink(char *file, struct stat *sp, off_t *byte_count, char *linkMe)
 {
 	char	buf[MAXPATH];
 	char	len[11];
@@ -292,7 +281,7 @@ out_hlink(char *file, struct stat *sp, off_t *byte_count, char *prev)
 	u32	sum = 0;
 
 
-	n = strlen(prev);
+	n = strlen(linkMe);
 	/*
 	 * We have 10 chars into which we can encode a type.
 	 * We know the pathname is <= 4 chars, so we encode the
@@ -300,8 +289,8 @@ out_hlink(char *file, struct stat *sp, off_t *byte_count, char *prev)
 	 */
 	sprintf(len, "HLNK%06u", (unsigned int)n);
 	*byte_count += writen(1, len, 10);
-	*byte_count += writen(1, prev, n);
-	sum += adler32(sum, prev, n);
+	*byte_count += writen(1, linkMe, n);
+	sum += adler32(sum, linkMe, n);
 	sprintf(buf, "%010u", sum);
 	*byte_count += writen(1, buf, 10);
 	if (opts->doModes) {
@@ -331,10 +320,9 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	 * we don't calculate it again.  If the file is corrupted it
 	 * will be detected when being unpacked.
 	 */
-	if (opts->bp_tuple && strneq(file, "BitKeeper/binpool/", 18) &&
-	    (p = strrchr(file, '.')) && (p[1] == 'd') &&
+	if (opts->bp_tuple && (p = strrchr(file, '.')) && (p[1] == 'd') &&
 	    !getenv("_BP_HASHCHARS")) {
-		p = strrchr(file, '/');
+		while (*p != '/') --p;
 		sum = strtoul(p+1, 0, 16);
 		dosum = 0;
 	}
@@ -371,53 +359,38 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	return (0);
 }
 
-/* rkey dkey adler32 path */
+/* rkey dkey adler32.md5sum */
 private int
-out_bptuple(char *tuple, off_t *byte_count)
+out_bptuple(char *keys, off_t *byte_count)
 {
 #ifndef SFIO_STANDALONE
-	char	*keys, *path, *dfile, *freeme;
+	char	*path, *freeme;
 	int	n;
 	struct	stat sb;
 	char	buf[MAXPATH];
 
-// ttyprintf("TUPL %s\n", tuple);
-	keys = tuple;
-	path = strchr(tuple, ' ');
-	assert(path);
-	path = strchr(path+1, ' ');
-	assert(path);
-	if (path = strchr(path+1, ' ')) *path++ = 0;
-
 	unless (freeme = bp_lookupkeys(0, keys)) {
-// ttyprintf("MISS %s\n", tuple);
-		fprintf(stderr, "lookupkeys(%s) = %s\n",
-		    keys, sys_errlist[errno]);
+		fprintf(stderr, "lookupkeys(%s) failed\n",
+		    keys);
 		return (SFIO_LOOKUP);
 	}
-	dfile = freeme + strlen(proj_root(0)) + 1;
-	mdbm_store_str(opts->attribs, keys, dfile, MDBM_INSERT);
-	if (mdbm_store_str(opts->sent, dfile, keys, MDBM_INSERT) &&
-	    (errno == EEXIST)) {
-// ttyprintf("DUP  %s\n", dfile);
-		free(freeme);
-		return (0);
-	}
+	path = freeme + strlen(proj_root(0)) + 1;
+
 	/* d.file */
-	if (lstat(dfile, &sb)) {
-		perror(dfile);
+	if (lstat(path, &sb)) {
+		perror(path);
 		return (SFIO_LSTAT);
 	}
-	/* allow them to override path if they want (for stuff repair|get) */
-	unless (path) path = dfile;
-	n = strlen(path);
+	n = strlen(keys);
 	sprintf(buf, "%04d", n);
 	writen(1, buf, 4);
-	writen(1, path, n);
+	writen(1, keys, n);
 	*byte_count += (n + 4);
-// ttyprintf("DATA %s\n", path);
-	n = out_file(path, &sb, byte_count);
-
+	unless (hash_insertStr(opts->sent, path, keys)) {
+		n = out_hardlink(path, &sb, byte_count, opts->sent->vptr);
+	} else {
+		n = out_file(path, &sb, byte_count);
+	}
 	free(freeme);
 	return (n);
 #else
@@ -474,7 +447,7 @@ sfio_in(int extract)
 			return (1);
 		}
 		byte_count += n;
-		buf[5] = 0;
+		buf[4] = 0;
 		len = 0;
 		sscanf(buf, "%04d", &len);
 		if (len <= 0) {
@@ -521,12 +494,14 @@ sfio_in(int extract)
 		}
 		datalen[10] = 0;
 		len = 0;
-		if (strneq("SLNK00", datalen, 6)) {
+		if (opts->bp_tuple) {
+			if (in_bptuple(buf, datalen, extract)) return (1);
+		} else if (strneq("SLNK00", datalen, 6)) {
 			sscanf(&datalen[6], "%04d", &len);
-			if (in_slink(buf, len, extract)) return (1);
+			if (in_symlink(buf, len, extract)) return (1);
 		} else if (strneq("HLNK00", datalen, 6)) {
 			sscanf(&datalen[6], "%04d", &len);
-			if (in_hlink(buf, len, extract)) return (1);
+			if (in_hardlink(buf, len, extract)) return (1);
 		} else {
 			sscanf(datalen, "%010d", &len);
 			if (in_file(buf, len, extract)) return (1);
@@ -538,7 +513,84 @@ sfio_in(int extract)
 }
 
 private int
-in_slink(char *file, int pathlen, int extract)
+in_bptuple(char *keys, char *datalen, int extract)
+{
+#ifndef	SFIO_STANDALONE
+	int	todo, i, j;
+	char	*p;
+	u32	sum = 0, sum2 = 0;
+	char	file[MAXPATH];
+	char	tmp[MAXPATH];
+
+	if (strneq("HLNK00", datalen, 6)) {
+		sscanf(&datalen[6], "%04d", &todo);
+		/* keys linked to older keys we load into file */
+		if (readn(0, file, todo) != todo) return (1);
+		file[todo] = 0;
+		sum = adler32(0, file, todo);
+		if (readn(0, tmp, 10) != 10) {
+			perror("chksum read");
+			return (1);
+		}
+		sscanf(tmp, "%010u", &sum2);
+		if (sum != sum2) {
+			fprintf(stderr, "Checksum mismatch %u:%u for %s\n",
+			    sum, sum2, keys);
+			return (1);
+		}
+		if (opts->doModes) {
+			if (readn(0, tmp, 3) != 3) {
+				perror("mode read");
+				return (1);
+			}
+		}
+		/* find bp file used by the linked keys and use that */
+		unless (p = mdbm_fetch_str(proj_binpoolIDX(0, 0), file)) {
+			fprintf(stderr, "sfio: hardlink to %s failed.\n",
+			    file);
+			return (1);
+		}
+	} else {
+		sscanf(datalen, "%010d", &todo);
+
+		/* extract to new file in binpool */
+		p = strrchr(keys, ' ');	/* adler32 */
+		assert(p);
+		++p;
+		p = file + sprintf(file, "BitKeeper/binpool/%c%c/%.*s",
+		    p[0], p[1], 8, p);
+		/* find unused entry */
+		for (i = 1; ; i++) {
+			sprintf(p, ".d%d", i);
+			unless (exists(file)) break;
+		}
+		if (in_file(file, todo, extract)) return (1);
+		/* see if we should collapse with other files */
+		strcpy(tmp, file);
+		for (j = 1; j <= i; j++) {
+			sprintf(p, ".d%d", j);
+			if (j == i) break;
+			if ((size(file) == todo) && sameFiles(file, tmp)) {
+				/* we already have a copy of this file */
+				unlink(tmp);
+				break;
+			}
+		}
+		/* file is now the right name for this data */
+		p = strchr(file, '/'); /* skip BitKeeper/binpool/ */
+		p = strchr(p+1, '/') + 1;
+	}
+	mdbm_store_str(proj_binpoolIDX(0, 1), keys, p, MDBM_REPLACE);
+	//bp_log_update("Bitkeeper/binpool", keys, p);
+	return (0);
+#else
+	fprintf(stderr, "Unsupported.\n");
+	return (1);
+#endif
+}
+
+private int
+in_symlink(char *file, int pathlen, int extract)
 {
 	char	buf[MAXPATH];
 	mode_t	mode = 0;
@@ -595,7 +647,7 @@ err:
 }
 
 private int
-in_hlink(char *file, int pathlen, int extract)
+in_hardlink(char *file, int pathlen, int extract)
 {
 	char	buf[MAXPATH];
 	u32	sum = 0, sum2 = 0;
