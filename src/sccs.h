@@ -135,7 +135,6 @@ int	checking_rmdir(char *dir);
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
-#define	PRS_COMPAT	0x08000000	/* for makepatch -C, send old tags */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -538,7 +537,6 @@ extern	char *upgrade_msg;
  * 3 - because random bits can now be on a per delta basis.
  * 4 - added tag graph, X_LOGS_ONLY, DT_PLACEHOLDER & DT_NO_TRANSMIT
  */
-#define	SCCS_VERSION_COMPAT	3	/* for opull/opush */
 #define	SCCS_VERSION		4
 
 /*
@@ -720,7 +718,6 @@ typedef struct patch {
  *	 Add grafted file support.
  * 1.3 = add logging patch type and tag graph.
  */
-#define	PATCH_COMPAT	"# Patch vers:\t1.2\n"
 #define PATCH_CURRENT	"# Patch vers:\t1.3\n"
 
 #define PATCH_REGULAR	"# Patch type:\tREGULAR\n"

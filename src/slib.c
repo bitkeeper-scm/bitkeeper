@@ -7711,9 +7711,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 		switch (version) {
 		    case SCCS_VERSION:
 			break;
-		    case SCCS_VERSION_COMPAT:
-			strip_tags = 1;
-			break;
 		    default:
 			fprintf(stderr,
 			    "Bad version %d, defaulting to current\n", version);
@@ -15189,17 +15186,6 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	if (d->pathname) fprintf(out, "P %s\n", d->pathname);
 	if (d->random) fprintf(out, "R %s\n", d->random);
 	if ((d->flags & D_SYMBOLS) || d->symGraph) {
-		if ((flags & PRS_COMPAT) && d->symGraph) {
-			if (d->type == 'D') {
-				fprintf(stderr,
-				    "This tree may not be sent in " 
-				    "compatibility mode due to tags.\n");
-				return (1);
-			}
-			fprintf(stderr,
-			    "Warning: not sending new tags in compat mode\n");
-			goto text;
-		}
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->metad == d) continue;
 			fprintf(out, "S %s\n", sym->symname);
@@ -15223,7 +15209,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 			fprintf(out, "s %s\n", buf);
 		}
 	}
-text:	if (d->flags & D_TEXT) {
+	if (d->flags & D_TEXT) {
 		if (d->text) {
 			EACH(d->text) {
 				fprintf(out, "T %s\n", d->text[i]);

@@ -18,7 +18,6 @@ typedef	struct cset {
 	int	hide_cset;	/* exclude cset from file@rev list */
 	int	include;	/* create new cset with includes */
 	int	exclude;	/* create new cset with excludes */
-	int	compat;		/* Do PATCH_COMPAT patches */
 	int	serial;		/* the revs passed in are serial numbers */
 	int	md5out;		/* the revs printed are as md5keys */
 	int	doBinpool;	/* send binpool data */
@@ -76,9 +75,6 @@ makepatch_main(int ac, char **av)
 		    	break;
 		    case 's':					/* undoc? 2.0 */
 			copts.serial = 1;
-			break;
-		    case 'C':					/* undoc? 2.0 */
-			copts.compat = 1;
 			break;
 		    case 'q':					/* undoc? 2.0 */
 			nav[++i] = "-q";
@@ -658,12 +654,8 @@ again:	/* doDiffs can make it two pass */
 	if (!cs->doDiffs && cs->makepatch) {
 		fputs("\n", stdout);
 		fputs(PATCH_PATCH, stdout);
-		if (cs->compat) {
-			fputs(PATCH_COMPAT, stdout);
-		} else {
-			fputs(PATCH_CURRENT, stdout);
-			fputs(PATCH_REGULAR, stdout);
-		}
+		fputs(PATCH_CURRENT, stdout);
+		fputs(PATCH_REGULAR, stdout);
 		fputs("\n", stdout);
 	}
 
@@ -1124,7 +1116,6 @@ sccs_patch(sccs *s, cset_t *cs)
 		    "Run ``bk -r check -a'' for more information.\n");
 		cset_exit(1);
 	}
-	if (cs->compat) prs_flags |= PRS_COMPAT;
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
 
@@ -1171,10 +1162,6 @@ sccs_patch(sccs *s, cset_t *cs)
 			printf("== %s ==\n", gfile);
 			if (newfile) {
 				printf("New file: %s\n", d->pathname);
-				if (cs->compat) {
-					s->state |= S_READ_ONLY;
-					s->version = SCCS_VERSION_COMPAT;
-				}
 				sccs_perfile(s, stdout);
 			}
 			s->rstop = s->rstart = s->tree;
