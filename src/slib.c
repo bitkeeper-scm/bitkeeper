@@ -8013,8 +8013,10 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 
 	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
 
-	if (S_ISLNK(s->mode)) RET(!streq(s->symlink, d->symlink));
-
+	if (S_ISLNK(s->mode)) {
+		unless (S_ISLNK(d->mode) && d->symlink) RET(1);
+		RET(!streq(s->symlink, d->symlink));
+	}
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
 		char *r = _relativeName(s->gfile, 0, 1, 1, s->proj);

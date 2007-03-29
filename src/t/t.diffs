@@ -455,3 +455,20 @@ bk diffs -u -N | fgrep '+++ edited/file' > /dev/null && {
 	exit 1
 }
 echo OK
+
+if [ X$PLATFORM != XWIN32 ]
+then
+echo $N Replacing an edited file with a symlink should work .........$NL
+rm file
+ln -s /nonexistant file
+bk diffs file > DIFFS || exit 1
+cat <<EOF > WANT
+===== file 1.1 vs edited =====
+1c1
+< This is a file
+---
+> SYMLINK -> /nonexistant
+EOF
+cmpfiles DIFFS WANT
+echo OK
+fi
