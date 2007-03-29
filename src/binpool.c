@@ -415,7 +415,9 @@ bp_logUpdate(char *key, char *val)
 	char	buf[MAXPATH];
 
 	unless (val) val = "delete        ";
-	sprintf(buf, "%s/BitKeeper/log/binpool.index", proj_root(0));
+	strcpy(buf, proj_root(0));
+	if (proj_isResync(0)) strcat(buf, RESYNC2ROOT);
+	strcat(buf, "/BitKeeper/log/binpool.index");
 	unless (f = fopen(buf, "a")) return (-1);
 	sprintf(buf, "%s %s", key, val);
 	fprintf(f, "%s %08x\n", buf, adler32(0, buf, strlen(buf)));

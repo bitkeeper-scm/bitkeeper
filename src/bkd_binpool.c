@@ -105,7 +105,7 @@ frecv_main(int ac, char **av)
 	int	toserver = 0, binpool = 0;
 	int	quiet = 0;
 	int	c;
-	char	*sfio[] = { "sfio", "-iqBk", 0 };
+	char	*sfio[] = { "sfio", "-riBk", 0, 0 };
 
 	setmode(0, _O_BINARY);
 	while ((c = getopt(ac, av, "B;q")) != -1) {
@@ -119,7 +119,7 @@ frecv_main(int ac, char **av)
 				goto usage;
 			}
 			break;
-		    case 'q': quiet = 1; break;
+		    case 'q': quiet = 1;  sfio[2] = "-q"; break;
 		    default:
 usage:			fprintf(stderr,
 			    "usage: bk %s [-q] [-Bproxy] -Brecv -\n", av[0]);
