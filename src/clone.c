@@ -630,7 +630,7 @@ out1:		remote_free(r);
 			}
 		}
 	}
-	if (bp_masterID(&p)) goto out2;
+	if (bp_serverID(&p)) goto out2;
 
 	/* give them a change to disallow it */
 	if (out_trigger(0, opts.rev, "pre")) {

@@ -317,15 +317,15 @@ bp_fetchkeys(char *me, char **keys)
 {
 	int	i;
 	FILE	*f;
-	char	*master = proj_configval(0, "binpool_server");
+	char	*server = proj_configval(0, "binpool_server");
 	char	buf[MAXPATH];
 
-	unless (*master) {
-		fprintf(stderr, "%s: no master for binpool data.\n", me);
+	unless (*server) {
+		fprintf(stderr, "%s: no server for binpool data.\n", me);
 		return (1);
 	}
 	sprintf(buf,
-	    "bk -q@'%s' fsend -Bsend - | bk -R frecv -qBrecv -", master);
+	    "bk -q@'%s' fsend -Bsend - | bk -R frecv -qBrecv -", server);
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);
 	i = pclose(f);

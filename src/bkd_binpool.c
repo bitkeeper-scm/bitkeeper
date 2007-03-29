@@ -7,7 +7,7 @@ do_remote(char *url, char *cmd, char *extra)
 	int	c, i;
 	char	*nav[10];
 
-	/* proxy to my binpool master */
+	/* proxy to my binpool server */
 	nav[i=0] = "bk";
 	nav[++i] = aprintf("-q@%s", url);
 	nav[++i] = cmd;
@@ -33,7 +33,7 @@ fsend_main(int ac, char **av)
 {
 	char	*p, *url;
 	int	c;
-	int	tomaster = 0, query = 0, binpool = 0;
+	int	toserver = 0, query = 0, binpool = 0;
 	char	*sfio[] = { "sfio", "-oqBk", 0 };
 	char	buf[MAXLINE];
 
@@ -41,7 +41,7 @@ fsend_main(int ac, char **av)
 		switch (c) {
 		    case 'B':
 			if (streq(optarg, "proxy")) {
-				tomaster = 1;
+				toserver = 1;
 			} else if (streq(optarg, "query")) {
 				query = 1;
 			} else if (streq(optarg, "send")) {
@@ -62,13 +62,13 @@ usage:			fprintf(stderr,
 		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
 		return (1);
 	}
-	if (tomaster) {
-		if (bp_masterID(&p)) return (1);
+	if (toserver) {
+		if (bp_serverID(&p)) return (1);
 		if (p) {
 			free(p);
 			url = proj_configval(0, "binpool_server");
 			assert(url);
-			/* proxy to my binpool master */
+			/* proxy to my binpool server */
 			return (do_remote(url, av[0],
 				    (query ? "-Bquery" : "-Bsend")));
 		}
@@ -102,7 +102,7 @@ int
 frecv_main(int ac, char **av)
 {
 	char	*p, *url;
-	int	tomaster = 0, binpool = 0;
+	int	toserver = 0, binpool = 0;
 	int	quiet = 0;
 	int	c;
 	char	*sfio[] = { "sfio", "-iqBk", 0 };
@@ -112,7 +112,7 @@ frecv_main(int ac, char **av)
 		switch (c) {
 		    case 'B':
 			if (streq(optarg, "proxy")) {
-				tomaster = 1;
+				toserver = 1;
 			} else if (streq(optarg, "recv")) {
 				binpool = 1;
 			} else {
@@ -132,14 +132,14 @@ usage:			fprintf(stderr,
 		return (1);
 	}
 
-	if (tomaster) {
-		if (bp_masterID(&p)) return (1);
+	if (toserver) {
+		if (bp_serverID(&p)) return (1);
 		if (p) {
 			free(p);
 			url = proj_configval(0, "binpool_server");
 			assert(url);
 
-			/* proxy to my binpool master */
+			/* proxy to my binpool server */
 			return (do_remote(url, av[0],
 				    quiet ? "-qBrecv" : "-Brecv"));
 		}

@@ -908,7 +908,7 @@ sendServerInfoBlock(int is_rclone)
 	if (repoid = proj_repoID(0)) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
-		unless (bp_masterID(&p)) {
+		unless (bp_serverID(&p)) {
 			unless (p) p = strdup(repoid);
 			sprintf(buf, "\nBINPOOL_SERVER=%s", p);
 			out(buf);

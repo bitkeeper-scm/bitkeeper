@@ -577,7 +577,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 		p = strchr(p+1, '/') + 1;
 	}
 	mdbm_store_str(proj_binpoolIDX(0, 1), keys, p, MDBM_REPLACE);
-	bp_log_update("Bitkeeper/binpool", keys, p);
+	bp_logUpdate(keys, p);
 	return (0);
 #else
 	fprintf(stderr, "Unsupported.\n");

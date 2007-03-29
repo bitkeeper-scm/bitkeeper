@@ -108,6 +108,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input)
 	FILE	*f;
 	int	i, rc, fd, did_header = 0;
 	char	*u = 0;
+	char	*p;
 	char	buf[8192];	/* must match bkd_misc.c:cmd_bk()/buf */
 
 	unless (r) return (1<<2);
@@ -121,7 +122,10 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input)
 	if (r->path) add_cd_command(f, r);
 	/* Force the command name to "bk" because full paths aren't allowed */
 	fprintf(f, "bk ");
-	for (i = 1; av[i]; i++) fprintf(f, "%s ", shellquote(av[i]));
+	for (i = 1; av[i]; i++) {
+		fprintf(f, "%s ", p = shellquote(av[i]));
+		free(p);
+	}
 	fprintf(f, "\n");
 	if (input) {
 		assert(bytes > 0);
