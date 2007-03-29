@@ -170,7 +170,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	tagmerge.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
-	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
+	user.o utils.o uu.o version.o what.o which.o xflags.o \
 	zone.o
 SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
@@ -181,7 +181,7 @@ LOCALSCR= build \
 	www/document_plain.png www/folder.png www/repo.png
 PSCR	= t/doit t/guitest
 PROGS	= hidestring libc/mtst$(EXE)
-LIBS	= libc/libc.a zlib/libz.a tomcrypt/libtomcrypt.a tommath/libtommath.a
+LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic
@@ -189,7 +189,7 @@ ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc -Izlib -Itommath -Itomcrypt/src/headers
+CPPFLAGS= -Ilibc -Itommath -Itomcrypt/src/headers
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -197,7 +197,7 @@ RANLIB	= ranlib
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bkd.h logging.h \
-	  purify.h range.h rcs.h resolve.h sccs.h zgets.h \
+	  purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h bkver.h proj.h redblack.h inskeys.h
 
 # list of non-C sources in bk
@@ -214,7 +214,7 @@ export	GET
 default:
 	bk cat BUILD.txt
 
-SUBDIRS = libc tommath tomcrypt zlib
+SUBDIRS = libc tommath tomcrypt
 
 
 all: $(ALL)

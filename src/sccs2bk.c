@@ -1,7 +1,6 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-#include "zlib/zlib.h"
 #include "logging.h"
 
 /*

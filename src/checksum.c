@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "zlib/zlib.h"
 #include "logging.h"
 
 private	int	do_chksum(int fd, int off, int *sump);

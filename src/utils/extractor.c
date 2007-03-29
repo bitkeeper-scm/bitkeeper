@@ -3,7 +3,6 @@
  * Copyright (c) 1999 Larry McVoy
  */
 #include "system.h"
-#include "../zlib/zlib.h"
 
 #ifndef MAXPATH
 #define	MAXPATH		1024

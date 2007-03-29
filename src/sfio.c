@@ -17,7 +17,6 @@
  * repeats, except for the version number.
  */
 #include "system.h"
-#include "zlib/zlib.h"
 #ifdef SFIO_STANDALONE
 #include "utils/sfio.h"
 #else
