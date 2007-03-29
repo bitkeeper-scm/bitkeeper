@@ -37,7 +37,7 @@ fsend_main(int ac, char **av)
 	char	*sfio[] = { "sfio", "-oqBk", 0 };
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "B;")) != -1) {
+	while ((c = getopt(ac, av, "B;q")) != -1) {
 		switch (c) {
 		    case 'B':
 			if (streq(optarg, "proxy")) {
@@ -50,9 +50,10 @@ fsend_main(int ac, char **av)
 				goto usage;
 			}
 			break;
+		    case 'q': break;	/* ignored for now */
 		    default:
 usage:			fprintf(stderr,
-			    "usage: bk %s [-Bproxy] [-Bquery] [-Bsend] -\n",
+			   "usage: bk %s [-q] [-Bproxy] [-Bquery] [-Bsend] -\n",
 			    av[0]);
 			return (1);
 		}

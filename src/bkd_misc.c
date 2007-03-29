@@ -189,6 +189,13 @@ cmd_bk(int ac, char **av)
 	char	hdr[64];
 	char	buf[8192];	/* must match remote.c:doit()/buf */
 
+	for (i = 1; av[i]; i++) {
+		if (av[i][0] != '-') break;
+		if (streq(av[i], "-z0")) gzip = 0;
+		if (streq(av[i], "-zi0")) gzip &= ~GZ_FROMREMOTE;
+		if (streq(av[i], "-zo0")) gzip &= ~GZ_TOREMOTE;
+	}
+
 	if (gzip & GZ_FROMREMOTE) zin = zgets_initCustom(0, stdin);
 	if (gzip & GZ_TOREMOTE) zout = zputs_init(0, stdout);
 

@@ -38,7 +38,6 @@ remote_bk(int quiet, int ac, char **av)
 
 		/* find '@<opt>' argument, but don't look in -r<dir> */
 		if ((p = strchrs(av[i], "r@")) && (*p != 'r')) {
-
 			if (streq(p, "@")) {
 				l = parent_allp();
 				EACH_INDEX(l, j) urls = addLine(urls, l[j]);
@@ -59,6 +58,11 @@ remote_bk(int quiet, int ac, char **av)
 			/* turn -@ into -q since that is harmless */
 			strcpy(p, "q");
 		}
+
+		/* look for -z for compression, but pass it on */
+		if (streq(av[i], "-z0")) gzip = 0;
+		if (streq(av[i], "-zi0")) gzip &= ~GZ_TOBKD;
+		if (streq(av[i], "-zo0")) gzip &= ~GZ_FROMBKD;
 	}
 	assert(urls);
 

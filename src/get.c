@@ -330,7 +330,7 @@ bp_fetchkeys(char *me, int quiet, char **keys)
 		    nLines(keys), server);
 	}
 	sprintf(buf,
-	    "bk -q@'%s' fsend -Bsend - |"
+	    "bk -q@'%s' -zo0 fsend -Bsend - |"
 	    "bk -R frecv -%sBrecv -", server, quiet ? "q" : "");
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);

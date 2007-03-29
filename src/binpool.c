@@ -383,7 +383,7 @@ bp_fetch(sccs *s, delta *din)
 
 	unless (din = bp_fdelta(s, din)) return (-1);
 
-	cmd = aprintf("bk -q@'%s' fsend -Bsend - | bk -R frecv -qBrecv -",
+	cmd = aprintf("bk -q@'%s' -zo0 fsend -Bsend - | bk -R frecv -qBrecv -",
 	    url);
 
 	f = popen(cmd, "w");
@@ -506,7 +506,7 @@ again:
 
 		/* filter out deltas already in server */
 		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' fsend -Bquery -", url));
+		    aprintf("bk -q@'%s' -zo0 fsend -Bquery -", url));
 
 		/* create SFIO of binpool data */
 		cmds = addLine(cmds,
@@ -514,7 +514,7 @@ again:
 
 		/* store in server */
 		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' frecv -qBrecv -", url));
+		    aprintf("bk -q@'%s' -z0 frecv -qBrecv -", url));
 		rc = spawn_filterPipeline(cmds);
 		freeLines(cmds, free);
 	} else {
@@ -665,6 +665,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		cmds = addLine(cmds,
 		    strdup("bk changes -Bv -nd'" BINPOOL_DSPEC "' -"));
 	}
+/* LMXXX - compression?  Wayne? */
 	if (send) {
 		/* send list of keys to remote and get back needed keys */
 		cmds = addLine(cmds,
@@ -674,7 +675,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		    aprintf("bk -q%s fsend -Bsend -", local_url));
 		/* unpack SFIO in remote bp server */
 		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' frecv -Bproxy -Brecv %s -", url, q));
+		    aprintf("bk -q@'%s' -z0 frecv -Bproxy -Brecv %s -",url, q));
 	} else {
 		/* Remove bp keys that our local bp server already has */
 		cmds = addLine(cmds,
@@ -729,7 +730,7 @@ binpool_pull_main(int ac, char **av)
 	cmds = addLine(cmds, strdup("bk fsend -Bquery -"));
 
 	/* request deltas from server */
-	cmds = addLine(cmds, aprintf("bk -@'%s' fsend -Bsend -",
+	cmds = addLine(cmds, aprintf("bk -@'%s' -zo0 fsend -Bsend -",
 	    proj_configval(0, "binpool_server")));
 
 	/* unpack locally */

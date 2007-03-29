@@ -42,9 +42,9 @@ cd ..
 bk clone $Q pmaster ptest || exit 1
 cd pmaster
 bk -r prs -hnd'$if(:BPHASH:){:BPHASH: :KEY: :MD5KEY|1.0: :CSET_MD5ROOTKEY:}' > keys
-bk fsend -Bsend - < keys > out || exit 1
+bk fsend -qBsend - < keys > out || exit 1
 cd ../ptest
-bk frecv -Brecv - < ../pmaster/out || exit 1
+bk frecv -qBrecv - < ../pmaster/out || exit 1
 bk get $Q bin.data || exit 1
 echo OK
 
