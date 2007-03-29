@@ -371,7 +371,8 @@ int	checking_rmdir(char *dir);
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
-#define	BINPOOL_DSPEC	"$if(:BPHASH:){:BPHASH: :MD5KEY|1.0: :KEY:}"
+#define	BINPOOL_DSPEC	"$if(:BPHASH:)" \
+			"{:BPHASH: :KEY: :MD5KEY|1.0: :CSET_MD5ROOTKEY:}"
 
 #define	MINUTE	(60)
 #define	HOUR	(60*MINUTE)

@@ -30,7 +30,7 @@
  * The files are stored in
  *	BitKeeper/binpool/xy/xyzabc...d1	// data
  *	BitKeeper/binpool/index.db
- *		// mdbm mapping "md5rootkey md5key d->hash" => "xy/xyzabc...d1"
+ *	// "hash key md5rootkey cset_md5rootkey" => "xy/xyzabc...d1"
  */
 
 private	int	hashgfile(char *gfile, char **hashp, sum_t *sump);
@@ -299,7 +299,7 @@ domap:
 }
 
 /*
- * Given keys (":BPHASH: :MD5ROOTKEY: :KEY:") return the .d
+ * Given keys (":BPHASH: :KEY: :MD5ROOTKEY: :CSET_MD5ROOTKEY:") return the .d
  * file in the binpool that contains that data or null if the
  * data doesn't exist.
  * The pathname returned is malloced and needs to be freed.
@@ -986,6 +986,7 @@ binpool_check_main(int ac, char **av)
 			if (hashgfile(dfile, &hval, &sum)) {
 				assert(0);	/* shouldn't happen */
 			}
+/* LMXXX - I dislike this, this should be a subroutine */
 			p = strchr(buf, ' ');	/* end of d->hash */
 			*p++ = 0;
 			unless (streq(hval, buf)) {
@@ -1101,6 +1102,7 @@ binpool_repair_main(int ac, char **av)
 		if (db && mdbm_fetch_str(db, buf)) continue;
 
 		/* alloc lines array of keys that use this hash */
+/* LMXXX - I dislike this, this should be a subroutine */
 		p = strchr(buf, ' '); /* end of hash */
 		*p = 0;
 		unless (lines = hash_insert(needed,

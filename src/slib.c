@@ -15018,13 +15018,20 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		fs(proj_repoID(0));
 		return (strVal);
 	}
-	case KW_BPHASH: /* BPHASH */ {
+	case KW_BPHASH: /* BPHASH */
 		if (d->hash) {
 			fs(d->hash);
 			return (strVal);
 		}
 		return (nullVal);
-	}
+
+	case KW_CSET_MD5ROOTKEY: /* CSET_MD5ROOTKEY */ 
+		if (p = proj_md5rootkey(s ? s->proj : 0)) {
+			fs(p);
+			return (strVal);
+		}
+		return (nullVal);
+
 	default:
 		return (notKeyword);
 	}

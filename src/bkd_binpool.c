@@ -25,7 +25,7 @@ do_remote(char *url, char *cmd, char *extra)
  * of binpool data on stdout.
  *
  * input:
- *    md5rootkey md5deltakey d->hash(adler32.md5sum)
+ *    d->hash(adler32.md5sum) deltaKey md5rootkey cset_md5rootkey
  *    ... repeat ...
  */
 int
