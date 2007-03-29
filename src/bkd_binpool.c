@@ -150,6 +150,6 @@ usage:			fprintf(stderr,
 		return (1);
 	}
 	getoptReset();
-	return (sfio_main(2, sfio));
+	return (sfio_main(quiet ? 3 : 2, sfio));
 }
 
