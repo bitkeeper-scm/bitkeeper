@@ -1,0 +1,63 @@
+#!/bin/sh
+
+test $# -eq 1 || {
+	echo "Usage: mkrelease <version-like-'bk-4.0.2'>"
+	exit 1
+}
+
+ver=$1
+vernum=`echo $ver | sed 's/bk-//g'`
+S=/home/bk/images/${ver}
+
+test -d $S || {
+	echo "Source directory $S does not exist. Aborting"
+	exit 1
+}
+
+echo "Making download direcotry for $ver on bitmover.com"
+ssh root@bitmover.com mkdir /var/www/bitmover/download/$vernum || {
+	echo failed making bitmover.com:/var/www/bitmover/download/$vernum
+	echo Go take a look and see if you need to clean up something
+	exit 1
+}
+echo "Mirroring $ver to bitmover.com"
+rsync -av $S root@bitmover.com:/var/www/bitmover/download/$vernum/. || {
+	echo failed installing bitmover.com:/var/www/bitmover/download/$vernum
+	echo Go take a look and possibly remove that directory.
+	exit 1
+}
+echo "Updating /home/bk/current_version used by eval system on bitmover"
+ssh root@bitmover.com "echo $vernum > /home/bk/current_version" || {
+	echo failed to update bitmover.com:/home/bk/current_version
+	echo Please clean up bitmover.com:/var/www/bitmover/download/$vernum
+	echo and take a look at /home/bk/current_version to see it is right.
+	exit 1
+}
+
+echo "Queuing mail to be sent next week to announce release"
+cat <<EOF > announce
+at -f announce next week
+echo "Could someone verify that BitKeeper $ver really shipped and send
+an announcement to customers? There's also a script that Amy runs that
+closes bugs fixed in this release.
+
+Thanks,
+
+$USER
+" | mail -s "BitKeeper $ver released... maybe." dev
+EOF
+at -f announce next week
+rm -f announce
+
+echo "Sending mail that all this has happened"
+cat <<EOF | mail -s "BitKeeper $ver published" dev
+Published bits for $ver in the download area, and
+queued an atjob to send mail in a week that if all is well,
+annouce the release.
+
+If this is not right, delete bitmover.com:/var/www/bitmover/download/$vernum
+and fix bitmover.com:/home/bk/current_version to have correct version.
+And cancel my atjob queued on work.
+EOF
+
+echo Done

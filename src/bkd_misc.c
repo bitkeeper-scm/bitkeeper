@@ -26,12 +26,12 @@ cmd_help(int ac, char **av)
 	return (0);
 }
 
-private char *
-vpath_translate(const char *path)
+char *
+vpath_translate(char *path)
 {
 	char	*vhost;
 	char	buf[MAXPATH];
-	const char	*s;
+	char	*s;
 	char	*t;
 
 	unless (path && (vhost = getenv("BK_VHOST"))) return (strdup("."));
@@ -56,8 +56,7 @@ vpath_translate(const char *path)
 				break;
 			    default:
 				fprintf(stderr,
-					"Unknown escape %%%c in -V path\n",
-					*s);
+				    "Unknown escape %%%c in -V path\n", *s);
 				exit(1);
 			}
 			s++;

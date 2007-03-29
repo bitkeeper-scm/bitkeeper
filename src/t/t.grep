@@ -418,3 +418,8 @@ bk grep -C3 match f1 f2 > OUT
 $GREP -C3 match f1 f2 > WANT
 checkfiles OUT WANT
 echo OK
+
+echo $N grep file without a trailing newline ........................$NL
+echo $NX line without newline$NXL > f3
+bk grep line f3 > /dev/null || exit 1
+echo OK
