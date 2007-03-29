@@ -60,6 +60,8 @@ typedef struct {
 	char	*glob;			/* only files which match this */
 } options;
 
+/* don't use -z, bk.c needs it. */
+
 private	jmp_buf	sfiles_exit;
 private hash	*timestamps = 0;
 private options	opts;

@@ -167,18 +167,30 @@ cmd_check(int ac, char **av)
 	return (rc);
 }
 
+#define GZ_FROMREMOTE	1	/* ungzip the stdin we get */
+#define GZ_TOREMOTE	2	/* gzip the stdout we send back */
+
 int
 cmd_bk(int ac, char **av)
 {
 	int	status, fd, i, bytes = 0;
+	int	gzip = GZ_FROMREMOTE|GZ_TOREMOTE;
 	char	*tmp = 0;
+	int	rc = 1;
 	int	oldfd0, oldfd1, oldfd2;
 	int	fd1, fd2;
 	int	p[2];
 	pid_t	pid;
 	fd_set	rfds;
 	CMD	*cmd;
+	zgetbuf	*zin = 0;
+	zputbuf *zout = 0;
+	char	*line;
+	char	hdr[64];
 	char	buf[8192];	/* must match remote.c:doit()/buf */
+
+	if (gzip & GZ_FROMREMOTE) zin = zgets_initCustom(0, stdin);
+	if (gzip & GZ_TOREMOTE) zout = zputs_init(0, stdout);
 
 	/*
 	 * We only allow remote commands if the bkd told us that was OK.
@@ -188,8 +200,14 @@ cmd_bk(int ac, char **av)
 		unless (av[i] &&
 		    (cmd = cmd_lookup(av[i], strlen(av[i]))) &&
 		    cmd->remote) {
-			out("ERROR-remote commands are not enabled.\n");
-			return (1);
+			strcpy(buf,
+			    "ERROR-remote commands are not enabled.\n");
+err:			if (zout) {
+				zputs(zout, buf, strlen(buf));
+			} else {
+				fputs(buf, stdout);
+			}
+			goto out;
 		}
 	}
 
@@ -201,8 +219,8 @@ cmd_bk(int ac, char **av)
 	 * after review.
 	 */
 	unless (isdir(BKROOT)) {
-		out("ERROR-not at repository root\n");
-		return (1);
+		strcpy(buf, "ERROR-not at repository root\n");
+		goto err;
 	}
 	putenv("BK_NO_CMD_FALL_THROUGH=1");
 	putenv("BKD_DAEMON=");	/* allow new bkd connections */
@@ -212,26 +230,36 @@ cmd_bk(int ac, char **av)
 	fd = open(tmp, O_CREAT|O_RDWR, 0600);
 	assert(fd != -1);
 	while (1) {
-		unless (getline(0, buf, sizeof(buf)) > 0) {
-			out("ERROR-no stdin information\n");
-err:			close(fd);
-			unlink(tmp);
-			free(tmp);
-			return (1);
+		if (zin) {
+			line = zgets(zin);
+		} else {
+			line = fnext(buf, stdin) ? buf : 0;
 		}
-		unless (sscanf(buf, "@STDIN=%u@", &bytes) == 1) {
-			out("ERROR-bad input specification: ");
-			out(buf);
-			out("\n");
+		unless (line) {
+			strcpy(buf, "ERROR-no stdin information\n");
+			close(fd);
+			goto err;
+		}
+		unless (sscanf(line, "@STDIN=%u@", &bytes) == 1) {
+			strcpy(buf, "ERROR-bad input\n");
+			close(fd);
 			goto err;
 		}
 		unless (bytes) break;
-		while ((i = read(0, buf, min(sizeof(buf), bytes))) > 0) {
+		while (1) {
+			i = min(sizeof(buf), bytes);
+			if (zin) {
+				i = zread(zin, buf, i);
+			} else {
+				i = fread(buf, 1, i, stdin);
+			}
+			if (i <= 0) break;
 			writen(fd, buf, i);
 			bytes -= i;
 		}
 		if (bytes) {
-			out("ERROR-input truncated\n");
+			strcpy(buf, "ERROR-input truncated\n");
+			close(fd);
 			goto err;
 		}
 	}
@@ -272,8 +300,14 @@ err:			close(fd);
 		if (select(max(fd1, fd2)+1, &rfds, 0, 0, 0) < 0) break;
 		if (FD_ISSET(fd1, &rfds)) {
 			if ((i = read(fd1, buf, sizeof(buf))) > 0) {
-				printf("@STDOUT=%u@\n", i);
-				fwrite(buf, 1, i, stdout);
+				sprintf(hdr, "@STDOUT=%u@\n", i);
+				if (zout) {
+					zputs(zout, hdr, strlen(hdr));
+					zputs(zout, buf, i);
+				} else {
+					fputs(hdr, stdout);
+					fwrite(buf, 1, i, stdout);
+				}
 			} else {
 				close(fd1);
 				fd1 = 0;
@@ -281,8 +315,14 @@ err:			close(fd);
 		}
 		if (FD_ISSET(fd2, &rfds)) {
 			if ((i = read(fd2, buf, sizeof(buf))) > 0) {
-				printf("@STDERR=%u@\n", i);
-				fwrite(buf, 1, i, stdout);
+				sprintf(hdr, "@STDERR=%u@\n", i);
+				if (zout) {
+					zputs(zout, hdr, strlen(hdr));
+					zputs(zout, buf, i);
+				} else {
+					fputs(hdr, stdout);
+					fwrite(buf, 1, i, stdout);
+				}
 			} else {
 				close(fd2);
 				fd2 = 0;
@@ -290,15 +330,24 @@ err:			close(fd);
 		}
 	}
 	if ((waitpid(pid, &status, 0) > 0) && WIFEXITED(status)) {
-		i = WEXITSTATUS(status);
+		rc = WEXITSTATUS(status);
 	} else {
-		i = 3;
+		rc = 3;
 	}
-	printf("@EXIT=%d@\n", i);
+	sprintf(hdr, "@EXIT=%d@\n", rc);
+	if (zout) {
+		zputs(zout, hdr, strlen(hdr));
+	} else {
+		fputs(hdr, stdout);
+	}
+out:	if (zin) zgets_done(zin);
+	if (zout) zputs_done(zout);
 	fflush(stdout);
-	unlink(tmp);
-	free(tmp);
-	return (i);
+	if (tmp) {
+		unlink(tmp);
+		free(tmp);
+	}
+	return (rc);
 }
 
 /*

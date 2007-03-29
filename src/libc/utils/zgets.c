@@ -22,6 +22,8 @@ struct zgetbuf	{
 	char		*line;		/* used by zgets to hold line */
 };
 
+private int	zgets_fileread(void *token, u8 **buf);
+
 /*
  * Setup to read a stream of compressed data.  The data to be
  * decompressed is returned from the callback function a block at a
@@ -37,6 +39,8 @@ struct zgetbuf	{
  *         }
  *         return (0);
  *    }
+ *
+ * If callback is null, then assume token is a FILE *.
  */
 zgetbuf	*
 zgets_initCustom(zgets_func callback, void *token)
@@ -45,7 +49,7 @@ zgets_initCustom(zgets_func callback, void *token)
 
 	in = calloc(1, sizeof(*in));
 	in->buf = malloc(ZBUFSIZ);
-	in->callback = callback;
+	in->callback = callback ? callback : zgets_fileread;
 	in->token = token;
 	if (inflateInit(&in->z) != Z_OK) {
 		free(in->buf);
@@ -53,6 +57,29 @@ zgets_initCustom(zgets_func callback, void *token)
 		return (0);
 	}
 	return (in);
+}
+
+/*
+ * callback used by zgets to read data from a file handle.
+ */
+private int
+zgets_fileread(void *token, u8 **buf)
+{
+	FILE	*f = (FILE *)token;
+	static	char *data = 0;
+
+	if (buf) {
+		unless (data) data = malloc(8<<10);
+		*buf = data;
+		return (fread(data, 1, 8<<10, f));
+	} else {
+		/* called from zgets_done */
+		if (data) {
+			free(data);
+			data = 0;
+		}
+		return (0);
+	}
 }
 
 /*
@@ -254,7 +281,7 @@ zread(zgetbuf *in, u8 *buf, int len)
 		in->next += cnt;
 		in->left -= cnt;
 	}
-	assert(in->left == 0);
+	assert((len == 0) || (in->left == 0));
 	if (len > 1024) {
 		/* decompress big blocks directly in place */
 		cnt = zfillbuf(in, p, len);

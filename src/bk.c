@@ -201,7 +201,7 @@ main(int ac, char **av, char **env)
 			return (0);
 		}
 		is_bk = 1;
-		while ((c = getopt(ac, av, "@|1acCdDgGjlnpqr|RuUx")) != -1) {
+		while ((c = getopt(ac, av, "@|1acCdDgGjlnpqr|RuUxz;")) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'C': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -221,6 +221,7 @@ main(int ac, char **av, char **env)
 					return(1);
 				}
 				break;
+			    case 'z': break;	/* remote will eat it */
 			    default:
 				usage();
 			}
