@@ -3,7 +3,6 @@
 
 #include "system.h"
 #include "sccs.h"
-#include "zlib/zlib.h"
 
 /*
  * Version 1.2 - removes the @DONE@ in the push path.

@@ -389,7 +389,8 @@ int	checking_rmdir(char *dir);
 			    ((buf[0] == CNTLA_ESCAPE) && (buf[1] == '\001')))
 #define	seekto(s,o)	(s)->where = ((s)->mmap + o)
 #define	eof(s)		(((s)->encoding & E_GZIP) ? \
-			    zeof() : ((s)->where >= (s)->mmap + (s)->size))
+			    zeof(s->zin) : \
+			    ((s)->where >= (s)->mmap + (s)->size))
 #define	new(p)		p = calloc(1, sizeof(*p))
 
 typedef	u32		ser_t;
@@ -597,6 +598,7 @@ typedef	struct sccs {
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
 				/* Actually is of type "name *" in resolve.h */
+	zgetbuf	*zin;		/* Buffer expanding sccsfile while reading */
 	u16	version;	/* file format version */
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */

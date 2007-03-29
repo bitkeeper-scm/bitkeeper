@@ -1,7 +1,6 @@
 /* Copyright (c) 2000 Larry McVoy */
 #include "system.h"
 #include "sccs.h"
-#include "zlib/zlib.h"
 
 private int	undoit(MDBM *m);
 private int	doit(int flags, char *file, char *op, char *revs);
