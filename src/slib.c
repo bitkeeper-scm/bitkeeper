@@ -6414,7 +6414,9 @@ out:			if (slist) free(slist);
 	other = 0;
 	counter = &other;
 	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+	}
 	while (buf = nextdata(s)) {
 		register u8 *e, *e1, *e2;
 
