@@ -4,7 +4,7 @@
 
 private int	get_rollback(sccs *s, char *rev,
 		    char **iLst, char **xLst, char *prog);
-private int	binpool(char *me, char **files, char **keys, int ac, char **av);
+private int	binpool(char *me, int, char **files, char **keys, int ac, char **av);
 
 int
 get_main(int ac, char **av)
@@ -279,7 +279,7 @@ next:		sccs_free(s);
 	if (sfileDone()) errors = 1;
 	if (realNameCache) mdbm_close(realNameCache);
 	unless (errors || recursed) {
-		errors = binpool(prog, bp_files, bp_keys, ac_optend, av);
+		errors = binpool(prog, flags & SILENT, bp_files, bp_keys, ac_optend, av);
 	}
 	freeLines(bp_files, free);
 	freeLines(bp_keys, free);
@@ -287,14 +287,14 @@ next:		sccs_free(s);
 }
 
 private int
-binpool(char *me, char **files, char **keys, int ac, char **av)
+binpool(char *me, int quiet, char **files, char **keys, int ac, char **av)
 {
 	char	*nav[100];
 	FILE	*f;
 	int	i;
 
 	unless (files) return (0);
-	if (bp_fetchkeys(me, keys)) {
+	if (bp_fetchkeys(me, quiet, keys)) {
 		fprintf(stderr, "%s: failed to fetch binpool data\n", me);
 		return (1);
 	}
@@ -313,19 +313,25 @@ binpool(char *me, char **files, char **keys, int ac, char **av)
 }
 
 int
-bp_fetchkeys(char *me, char **keys)
+bp_fetchkeys(char *me, int quiet, char **keys)
 {
 	int	i;
 	FILE	*f;
-	char	*master = proj_configval(0, "binpool_server");
+	char	*server = proj_configval(0, "binpool_server");
 	char	buf[MAXPATH];
 
-	unless (*master) {
-		fprintf(stderr, "%s: no master for binpool data.\n", me);
+	unless (*server) {
+		fprintf(stderr, "%s: no server for binpool data.\n", me);
 		return (1);
 	}
+	unless (quiet) {
+		fprintf(stderr,
+		    "Fetching %u binpool files from %s...\n",
+		    nLines(keys), server);
+	}
 	sprintf(buf,
-	    "bk -q@'%s' fsend -Bsend - | bk -R frecv -qBrecv -", master);
+	    "bk -q@'%s' fsend -Bsend - |"
+	    "bk -R frecv -%sBrecv -", server, quiet ? "q" : "");
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);
 	i = pclose(f);

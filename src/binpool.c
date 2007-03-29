@@ -293,7 +293,7 @@ domap:
 	db = proj_binpoolIDX(proj, 1);
 	assert(db);
 	j = mdbm_store_str(db, keys, p, MDBM_REPLACE);
-	bp_log_update(buf, keys, p);
+	bp_logUpdate(keys, p);
 	assert(!j);
 	return (0);
 }
@@ -374,8 +374,8 @@ bp_fetch(sccs *s, delta *din)
 	FILE	*f;
 	char	*repoID, *url, *cmd, *keys;
 
-	/* find the repo_id of my master */
-	if (bp_masterID(&repoID)) return (-1);
+	/* find the repo_id of my server */
+	if (bp_serverID(&repoID)) return (-1);
 	unless (repoID) return (0);	/* no need to update myself */
 	free(repoID);
 	url = proj_configval(0, "binpool_server");
@@ -406,29 +406,30 @@ bp_fetch(sccs *s, delta *din)
  * Each entry in that file looks like:
  *  <index key> PATH hash
  *
- * bpdir is the path to the binpool directory.
  * val == 0 is a delete.
  */
 int
-bp_log_update(char *bpdir, char *key, char *val)
+bp_logUpdate(char *key, char *val)
 {
 	FILE	*f;
 	char	buf[MAXPATH];
 
 	unless (val) val = "delete        ";
-	concat_path(buf, bpdir, "../log/binpool.log");
-
+	strcpy(buf, proj_root(0));
+	if (proj_isResync(0)) strcat(buf, RESYNC2ROOT);
+	strcat(buf, "/BitKeeper/log/binpool.index");
 	unless (f = fopen(buf, "a")) return (-1);
 	sprintf(buf, "%s %s", key, val);
 	fprintf(f, "%s %08x\n", buf, adler32(0, buf, strlen(buf)));
 	fclose(f);
 	return (0);
 }
+
 /*
- * Copy all data local to the binpool to my master.
+ * Copy all data local to the binpool to my server.
  */
 int
-bp_updateMaster(char *tiprev)
+bp_updateServer(char *tiprev)
 {
 	char	*p, *sync, *syncf, *url, *tmperr, *tmpkeys;
 	char	**cmds = 0;
@@ -440,8 +441,8 @@ bp_updateMaster(char *tiprev)
 	int	rc;
 	char	buf[MAXKEY];
 
-	/* find the repo_id of my master */
-	if (bp_masterID(&repoID)) return (-1);
+	/* find the repo_id of my server */
+	if (bp_serverID(&repoID)) return (-1);
 	if (repoID) {
 		url = proj_configval(0, "binpool_server");
 		assert(url);
@@ -503,7 +504,7 @@ again:
 	if (url) {
 		cmds = addLine(cmds, aprintf("cat '%s'", tmpkeys));
 
-		/* filter out deltas already in master */
+		/* filter out deltas already in server */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' fsend -Bquery -", url));
 
@@ -511,7 +512,7 @@ again:
 		cmds = addLine(cmds,
 		    strdup("bk fsend -Bsend -"));
 
-		/* store in master */
+		/* store in server */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' frecv -qBrecv -", url));
 		rc = spawn_filterPipeline(cmds);
@@ -553,12 +554,12 @@ again:
 }
 
 /*
- * Find the repo_id of the binpool master and returns it as a malloc'ed
+ * Find the repo_id of the binpool server and returns it as a malloc'ed
  * string in *id.
- * Returns non-zero if we failed to determine the repo_id of the master.
+ * Returns non-zero if we failed to determine the repo_id of the server.
  */
 int
-bp_masterID(char **id)
+bp_serverID(char **id)
 {
 	char	*cfile, *cache, *p, *url;
 	char	*ret = 0;
@@ -569,7 +570,7 @@ bp_masterID(char **id)
 	*id = 0;
 	unless ((url = proj_configval(0,"binpool_server")) && *url) return (0);
 
-	cfile = proj_fullpath(0, "BitKeeper/log/BP_MASTER");
+	cfile = proj_fullpath(0, "BitKeeper/log/BP_SERVER");
 	if (cache = loadfile(cfile, 0)) {
 		if (p = strchr(cache, '\n')) {
 			*p++ = 0;
@@ -602,7 +603,7 @@ out:	if (streq(proj_repoID(0), ret)) {
 }
 
 /*
- * Called to transfer bp data between different binpool master servers
+ * Called to transfer bp data between different binpool servers
  * during a push, pull, clone or rclone.
  *
  * send == 1    We are sending binpool data from this repository to
@@ -622,9 +623,9 @@ int
 bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 {
 	char	*url;		/* URL to connect to remote bkd */
-	char	*local_repoID;	/* repoID of local bp_master (may be me) */
-	char	*local_url;	/* URL to local bp_master */
-	char	*remote_repoID;	/* repoID of remote bp_master */
+	char	*local_repoID;	/* repoID of local bp_server (may be me) */
+	char	*local_url;	/* URL to local bp_server */
+	char	*remote_repoID;	/* repoID of remote bp_server */
 	int	rc = 0, fd0 = 0;
 	char	**cmds = 0;
 	char	*q = quiet ? "-q" : "";
@@ -632,10 +633,10 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 	/* must have rev or rev_list, but not both */
 	assert((rev && !rev_list) || (!rev && rev_list));
 
-	if (bp_masterID(&local_repoID)) return (-1);
+	if (bp_serverID(&local_repoID)) return (-1);
 	url = remote_unparse(r);
 	if (local_repoID) {
-		/* The local bp master is not _this_ repo */
+		/* The local bp server is not _this_ repo */
 		local_url = aprintf("@'%s'",
 		    proj_configval(0, "binpool_server"));
 	} else {
@@ -648,7 +649,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		rc = -1;
 		goto out;
 	}
-	/* Do we both use the same master? If so then we are done. */
+	/* Do we both use the same server? If so then we are done. */
 	if (streq(local_repoID, remote_repoID)) goto out;
 
 	/* Generate list of binpool delta keys */
@@ -671,17 +672,17 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		/* build local SFIO of needed bp data */
 		cmds = addLine(cmds,
 		    aprintf("bk -q%s fsend -Bsend -", local_url));
-		/* unpack SFIO in remote bp master */
+		/* unpack SFIO in remote bp server */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' frecv -Bproxy -Brecv %s -", url, q));
 	} else {
-		/* Remove bp keys that our local bp master already has */
+		/* Remove bp keys that our local bp server already has */
 		cmds = addLine(cmds,
 		    aprintf("bk -q%s fsend -Bquery -", local_url));
-		/* send keys we need to remote bp master and get back SFIO */
+		/* send keys we need to remote bp server and get back SFIO */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' fsend -Bproxy -Bsend -", url));
-		/* unpack SFIO in local bp master */
+		/* unpack SFIO in local bp server */
 		cmds = addLine(cmds,
 		    aprintf("bk -q%s frecv -Brecv %s -", local_url, q));
 	}
@@ -717,7 +718,7 @@ binpool_pull_main(int ac, char **av)
 		}
 	}
 
-	if (bp_masterID(&p)) return (1);
+	if (bp_serverID(&p)) return (1);
 	unless (p) return (0);
 	free(p);
 
@@ -739,7 +740,7 @@ binpool_pull_main(int ac, char **av)
 	return (rc);
 }
 
-/* update binpool master with any binpool data committed locally */
+/* update binpool server with any binpool data committed locally */
 private int
 binpool_push_main(int ac, char **av)
 {
@@ -759,7 +760,7 @@ binpool_push_main(int ac, char **av)
 		return (1);
 	}
 	unlink("BitKeeper/log/BP_SYNC"); /* don't trust cache */
-	return (bp_updateMaster(tiprev));
+	return (bp_updateServer(tiprev));
 }
 
 /*
@@ -802,7 +803,7 @@ binpool_flush_main(int ac, char **av)
 	if (check_server) {
 		/* remove deltas already in binpool server */
 		p1 = cmd;
-		if (bp_masterID(&p2)) return (1);
+		if (bp_serverID(&p2)) return (1);
 		unless (p2) {
 			fprintf(stderr,
 			    "bk binpool flush: No binpool_server set\n");
@@ -867,7 +868,7 @@ binpool_flush_main(int ac, char **av)
 	}
 	EACH(fnames) {
 		mdbm_delete_str(db, fnames[i]);
-		bp_log_update(".", fnames[i], 0);
+		bp_logUpdate(fnames[i], 0);
 	}
 	freeLines(fnames, free);
 	hash_free(bpdeltas);
@@ -920,7 +921,7 @@ binpool_flush_main(int ac, char **av)
 			if (p1 = hash_fetchStr(renames, kv.val.dptr)) {
 				/* data will always fit */
 				strcpy(kv.val.dptr, p1);
-				bp_log_update(".", kv.key.dptr, p1);
+				bp_logUpdate(kv.key.dptr, p1);
 			}
 		}
 
@@ -1013,7 +1014,7 @@ binpool_check_main(int ac, char **av)
 	 * if we are missing some data make sure it is not covered by the
 	 * binpool server before we complain.
 	 */
-	if (missing && !bp_masterID(&p) && p) {
+	if (missing && !bp_serverID(&p) && p) {
 		unless (quiet) {
 			fprintf(stderr,
 			    "Looking for %d missing files in %s\n",

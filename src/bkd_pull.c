@@ -72,7 +72,7 @@ cmd_pull_part1(int ac, char **av)
 		fputs(buf, stdout);
 		goto done;
 	}
-	if (bp_updateMaster(tiprev)) {
+	if (bp_updateServer(tiprev)) {
 		fputs("ERROR-unable to update binpool server\n", stdout);
 		goto done;
 	}

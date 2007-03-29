@@ -114,7 +114,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	FILE	*f;
 	int	i, rc, fd, did_header = 0;
 	char	*u = 0;
-	char	*tmpf;
+	char	*p, *tmpf;
 	u8	*line;
 	int	dostream;
 	zgetbuf	*zin = 0;
@@ -132,7 +132,10 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	if (r->path) add_cd_command(f, r);
 	/* Force the command name to "bk" because full paths aren't allowed */
 	fprintf(f, "bk ");
-	for (i = 1; av[i]; i++) fprintf(f, "%s ", shellquote(av[i]));
+	for (i = 1; av[i]; i++) {
+		fprintf(f, "%s ", p = shellquote(av[i]));
+		free(p);
+	}
 	fprintf(f, "\n");
 	dostream = (!input && streq(av[i-1], "-"));
 	if ((gzip & GZ_TOBKD) && !dostream) zout = zputs_init(0, f);

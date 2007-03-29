@@ -63,7 +63,7 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	if (bp_updateMaster(rev)) {
+	if (bp_updateServer(rev)) {
 		out("ERROR-unable to update binpool server\n");
 		drain();
 		return (1);

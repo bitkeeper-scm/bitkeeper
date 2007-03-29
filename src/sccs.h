@@ -1236,12 +1236,12 @@ void	show_d(sccs *s, FILE *out, char ***vbuf, char *format, int num);
 char	*bp_lookup(sccs *s, delta *d);
 delta	*bp_fdelta(sccs *s, delta *d);
 int	bp_fetch(sccs *s, delta *din);
-int	bp_fetchkeys(char *me, char **keys);
+int	bp_fetchkeys(char *me, int quiet, char **keys);
 int	bp_get(sccs *s, delta *d, u32 flags, char *out);
 int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);
-int	bp_updateMaster(char *tiprev);
-int	bp_masterID(char **id);
+int	bp_updateServer(char *tiprev);
+int	bp_serverID(char **id);
 int	bp_transferMissing(remote *r, int send, char *rev, char *revs, int q);
 
 extern	char	*editor;

@@ -1203,7 +1203,7 @@ sccs_patch(sccs *s, cset_t *cs)
 
 // LMXXX - this should really fail unless we were told to succeed.  For
 // now I'm just hoping they can find the data elsewhere.
-// Alternatively, skip pass the miss IFF we are not a master.
+// Alternatively, skip pass the miss IFF we are not a server.
 					unless (p = bp_lookup(s, d)) {
 						printf("\n");
 						deltas++;
