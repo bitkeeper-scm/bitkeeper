@@ -2,7 +2,7 @@
 #include "binpool.h"
 
 private int
-do_remote(char *url, char *cmd, char *extra)
+do_remote(char *url, char *cmd, char *gzip, char *extra)
 {
 	int	c, i;
 	char	*nav[10];
@@ -10,6 +10,7 @@ do_remote(char *url, char *cmd, char *extra)
 	/* proxy to my binpool server */
 	nav[i=0] = "bk";
 	nav[++i] = aprintf("-q@%s", url);
+	if (gzip) nav[++i] = gzip;
 	nav[++i] = cmd;
 	if (extra) nav[++i] = extra;
 	nav[++i] = "-";
@@ -71,18 +72,20 @@ usage:			fprintf(stderr,
 			assert(url);
 			/* proxy to my binpool server */
 			return (do_remote(url, av[0],
+				    (query ? 0 : "-zo0"),
 				    (query ? "-Bquery" : "-Bsend")));
 		}
 	}
 	if (query) {
-		MDBM	*db = proj_binpoolIDX(0, 0);
+		char	*dfile;
 
 		while (fnext(buf, stdin)) {
 			chomp(buf);
 
-			unless (db && mdbm_fetch_str(db, buf)) {
+			unless (dfile = bp_lookupkeys(0, buf)) {
 				puts(buf); /* we don't have this one */
 			}
+			free(dfile);
 		}
 		return (0);
 	}
@@ -142,6 +145,7 @@ usage:			fprintf(stderr,
 
 			/* proxy to my binpool server */
 			return (do_remote(url, av[0],
+				    "-z0",
 				    quiet ? "-qBrecv" : "-Brecv"));
 		}
 	}

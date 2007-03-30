@@ -30,6 +30,8 @@ remote_bk(int quiet, int ac, char **av)
 	char	**l, **urls = 0, *input = 0;
 	char	**data = 0;
 
+	setmode(0, _O_BINARY);	/* need to be able to read binary data */
+
 	/*
 	 * parse the options between 'bk' and the command to remove -@
 	 */
@@ -72,7 +74,6 @@ remote_bk(int quiet, int ac, char **av)
 	 */
 	if (streq(av[ac-1], "-") &&
 	    ((nLines(urls) > 1) || strneq(urls[1], "http", 4))) {
-		setmode(0, _O_BINARY);
 		/* collect stdin in larger and larger buckets */
 		j = 1024;
 		while (1) {

@@ -159,12 +159,10 @@ proj_free(project *p)
 {
 	assert(p);
 
+	assert(p->refcnt > 0);
 	unless (--p->refcnt == 0) return;
 
 	if (p->rparent) {
-		if (p->config && (p->config == p->rparent->config)) {
-			p->config = 0;
-		}
 		proj_free(p->rparent);
 		p->rparent = 0;
 	}
@@ -301,7 +299,7 @@ proj_config(project *p)
 	if (p->rparent) {
 		/* If RESYNC doesn't have a config file, then don't use it. */
 		p->config = loadConfig(p->root, 1);
-		unless (p->config) p->config = proj_config(p->rparent);
+		unless (p->config) return (proj_config(p->rparent));
 	} else {
 		p->config = loadConfig(p->root, 0);
 	}
@@ -495,6 +493,10 @@ proj_reset(project *p)
 			p->binpool_idx = 0;
 		}
 	} else {
+		/*
+		 * Warning: This loop will call proj_reset() on the
+		 * some projects multiple times.  Currently harmless.
+		 */
 		EACH_HASH(proj.cache) proj_reset(*(project **)proj.cache->vptr);
 		/* free the current project for purify */
 		if (proj.curr) {
@@ -558,7 +560,7 @@ proj_fakenew(void)
 	ret->root = strdup("/.");
 	ret->rootkey = strdup("SCCS");
 	ret->md5rootkey = strdup("SCCS");
-	projcache_store("/", ret);
+	projcache_store("/.", ret);
 
 	return (ret);
 }

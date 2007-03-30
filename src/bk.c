@@ -397,7 +397,6 @@ cmdlog_exit(void)
 	 * Fortunately, the bkd spawns a child process to process each
 	 * new connection. The child process do follow the the normal
 	 * exit path and process atexit().
-	 *  
 	 */
 	purify_list();
 	bktmpcleanup();
@@ -410,6 +409,7 @@ cmdlog_exit(void)
 	 * cannot send messages to tty/desktop without special configuration).
 	 */
 	repository_lockcleanup();
+	proj_reset(0);		/* flush data cached in proj struct */
 }
 
 private	struct {

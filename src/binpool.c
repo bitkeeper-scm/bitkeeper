@@ -11,8 +11,8 @@
  *  - check error messages (bk get => 'get: no binpool_server for update.')
  *  - checkout:get shouldn't make multiple binpool_server connections
  *    resolve.c:copyAndGet(), check.c, others?
- *  - flush shouldn't be allowed to run on a binpool server
- *  - flush shouldn't delete any data if I am missing data.
+ *  * flush shouldn't be allowed to run on a binpool server
+ *  * flush shouldn't delete any data if I am missing data.
  *    (Run binpool-check first? maybe a lightweight version)
  *  - check needs a progress bar and options to disable hashing
  *  - binpool gone-file support
@@ -506,7 +506,7 @@ again:
 
 		/* filter out deltas already in server */
 		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' -zo0 fsend -Bquery -", url));
+		    aprintf("bk -q@'%s' fsend -Bquery -", url));
 
 		/* create SFIO of binpool data */
 		cmds = addLine(cmds,
@@ -665,17 +665,21 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		cmds = addLine(cmds,
 		    strdup("bk changes -Bv -nd'" BINPOOL_DSPEC "' -"));
 	}
-/* LMXXX - compression?  Wayne? */
+	/*
+	 * connections to 'url' are to another binpool domain and are
+	 * considered "far" away.  They should all be compress.  The
+	 * local_url connections are close and only keys should be compressed.
+	 */
 	if (send) {
 		/* send list of keys to remote and get back needed keys */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' fsend -Bproxy -Bquery -", url));
 		/* build local SFIO of needed bp data */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s fsend -Bsend -", local_url));
+		    aprintf("bk -q%s -zo0 fsend -Bsend -", local_url));
 		/* unpack SFIO in remote bp server */
 		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' -z0 frecv -Bproxy -Brecv %s -",url, q));
+		    aprintf("bk -q@'%s' frecv -Bproxy -Brecv %s -",url, q));
 	} else {
 		/* Remove bp keys that our local bp server already has */
 		cmds = addLine(cmds,
@@ -685,7 +689,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		    aprintf("bk -q@'%s' fsend -Bproxy -Bsend -", url));
 		/* unpack SFIO in local bp server */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s frecv -Brecv %s -", local_url, q));
+		    aprintf("bk -q%s -z0 frecv -Brecv %s -", local_url, q));
 	}
 	rc = spawn_filterPipeline(cmds);
 	freeLines(cmds, free);
