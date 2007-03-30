@@ -24,14 +24,14 @@ private	void	stream_stdin(remote *r, int gzip);
 int
 remote_bk(int quiet, int ac, char **av)
 {
-	int	i, j, k, ret = 0, gzip = GZ_TOBKD|GZ_FROMBKD;
+	int	i, j, ret = 0, gzip = GZ_TOBKD|GZ_FROMBKD;
 	u32	bytes = 0;
 	char	*p;
 	char	**l, **urls = 0, *input = 0;
 	char	**data = 0;
+	char	buf[64<<10];
 
 	setmode(0, _O_BINARY);	/* need to be able to read binary data */
-
 	/*
 	 * parse the options between 'bk' and the command to remove -@
 	 */
@@ -68,34 +68,18 @@ remote_bk(int quiet, int ac, char **av)
 	}
 	assert(urls);
 
+	if (getenv("BK_REMOTE_NOGZIP")) gzip = 0;
+
 	/*
 	 * If we have multiple URLs or are talking to a http server
 	 * then we need to buffer up stdin.
 	 */
 	if (streq(av[ac-1], "-") &&
 	    ((nLines(urls) > 1) || strneq(urls[1], "http", 4))) {
-		/* collect stdin in larger and larger buckets */
-		j = 1024;
-		while (1) {
-			p = malloc(j);
-			if ((i = fread(p, 1, j, stdin)) <= 0) {
-				free(p);
-				break;
-			}
-			data = addLine(data, p);
-			bytes += i;
-			j *= 2;
+                while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
+			data = data_append(data, buf, i, 0);
 		}
-		/* collapse them together into one buffer again */
-		input = p = malloc(bytes);
-		j = 1024;
-		EACH(data) {
-			k = min(j, bytes - (p - input));
-			memcpy(p, data[i], k);
-			p += k;
-			j *= 2;
-		}
-		freeLines(data, free);
+		input = data_pullup(&bytes, data);
 	}
 
 	EACH(urls) {
@@ -181,7 +165,8 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	if (zin) {
 		line = zgets(zin);
 	} else {
-		line = fnext(buf, f) ? buf : 0;
+		line = buf;
+		if (getline2(r, buf, sizeof(buf)) <= 0) line = 0;
 	}
 	unless (line) {
 		i = 1<<5;
@@ -225,7 +210,8 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 		if (zin) {
 			line = zgets(zin);
 		} else {
-			line = fnext(buf, f) ? buf : 0;
+			line = buf;
+			if (getline2(r, buf, sizeof(buf)) <= 0) line= 0;
 		}
 		unless (line) {
 			i = 1<<6;
@@ -249,13 +235,13 @@ zputs_write(void *token, u8 *data, int len)
 private void
 stream_stdin(remote *r, int gzip)
 {
-	char	*buf = malloc(64<<10);
 	int	i;
 	zputbuf	*zout = 0;
 	char	line[64];
+	char	buf[8192];
 
 	if (gzip & GZ_TOBKD) zout = zputs_init(zputs_write, int2p(r->wfd));
-	while ((i = fread(buf, 1, 64<<10, stdin)) > 0) {
+	while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 		sprintf(line, "@STDIN=%u@\n", i);
 		if (zout) {
 			zputs(zout, line, strlen(line));
@@ -271,6 +257,5 @@ stream_stdin(remote *r, int gzip)
 	} else {
 		writen(r->wfd, line, strlen(line));
 	}
-	free(buf);
 	if (zout) zputs_done(zout);
 }

@@ -87,6 +87,7 @@ usage:			fprintf(stderr,
 			}
 			free(dfile);
 		}
+		fflush(stdout);
 		return (0);
 	}
 	unless (binpool) {

@@ -1,6 +1,3 @@
-/*
- * Simple TCP server.
- */
 #include "bkd.h"
 #include "cmd.h"
 
@@ -167,27 +164,49 @@ cmd_check(int ac, char **av)
 	return (rc);
 }
 
+/*
+ * callback used by zgets to read data from a file handle.
+ */
+private int
+zgets_fileread(void *token, u8 **buf)
+{
+	int	fd = p2int(token);
+	static	char *data = 0;
+
+	if (buf) {
+		unless (data) data = malloc(8<<10);
+		*buf = data;
+		return (read(fd, data, 8<<10));
+	} else {
+		/* called from zgets_done */
+		if (data) {
+			free(data);
+			data = 0;
+		}
+		return (0);
+	}
+}
+
 #define GZ_FROMREMOTE	1	/* ungzip the stdin we get */
 #define GZ_TOREMOTE	2	/* gzip the stdout we send back */
 
 int
 cmd_bk(int ac, char **av)
 {
-	int	status, fd, i, bytes = 0;
+	int	zero, bits, status, i, bytes = 0, rc = 1;
 	int	gzip = GZ_FROMREMOTE|GZ_TOREMOTE;
-	char	*tmp = 0;
-	int	rc = 1;
-	int	oldfd0, oldfd1, oldfd2;
-	int	fd1, fd2;
+	int	fd0, fd1, fd2, oldfd0, oldfd1, oldfd2;
 	int	p[2];
 	pid_t	pid;
-	fd_set	rfds;
-	CMD	*cmd;
-	zgetbuf	*zin = 0;
+	fd_set	rfds, wfds;
+	CMD     *cmd;
+	zgetbuf *zin = 0;
 	zputbuf *zout = 0;
-	char	*line;
-	char	hdr[64];
+	char    *line, *wnext;
+	char    hdr[64];
 	char	buf[8192];	/* must match remote.c:doit()/buf */
+	char	wbuf[8192];
+	int     wtodo = 0;
 
 	for (i = 1; av[i]; i++) {
 		if (av[i][0] != '-') break;
@@ -196,7 +215,8 @@ cmd_bk(int ac, char **av)
 		if (streq(av[i], "-zo0")) gzip &= ~GZ_TOREMOTE;
 	}
 
-	if (gzip & GZ_FROMREMOTE) zin = zgets_initCustom(0, stdin);
+	if (getenv("_BK_REMOTE_NOGZIP")) gzip = 0;
+	if (gzip & GZ_FROMREMOTE) zin = zgets_initCustom(&zgets_fileread, 0);
 	if (gzip & GZ_TOREMOTE) zout = zputs_init(0, stdout);
 
 	/*
@@ -233,48 +253,14 @@ err:			if (zout) {
 	putenv("BKD_DAEMON=");	/* allow new bkd connections */
 
 	setmode(0, _O_BINARY);
-	tmp = bktmp(0, "stdin");
-	fd = open(tmp, O_CREAT|O_RDWR, 0600);
-	assert(fd != -1);
-	while (1) {
-		if (zin) {
-			line = zgets(zin);
-		} else {
-			line = fnext(buf, stdin) ? buf : 0;
-		}
-		unless (line) {
-			strcpy(buf, "ERROR-no stdin information\n");
-			close(fd);
-			goto err;
-		}
-		unless (sscanf(line, "@STDIN=%u@", &bytes) == 1) {
-			strcpy(buf, "ERROR-bad input\n");
-			close(fd);
-			goto err;
-		}
-		unless (bytes) break;
-		while (1) {
-			i = min(sizeof(buf), bytes);
-			if (zin) {
-				i = zread(zin, buf, i);
-			} else {
-				i = fread(buf, 1, i, stdin);
-			}
-			if (i <= 0) break;
-			writen(fd, buf, i);
-			bytes -= i;
-		}
-		if (bytes) {
-			strcpy(buf, "ERROR-input truncated\n");
-			close(fd);
-			goto err;
-		}
-	}
-	lseek(fd, 0, SEEK_SET);
-	/* setup stdin */
+
+	/* set up a pipe to their stdin */
+	tcp_pair(p);
 	oldfd0 = dup(0);
-	dup2(fd, 0);
-	close(fd);
+	dup2(p[0], 0);
+	close(p[0]);
+	make_fd_uninheritable(p[1]);
+	fd0 = p[1];
 
 	/* read stdout from a pipe */
 	tcp_pair(p);
@@ -300,11 +286,63 @@ err:			if (zout) {
 	dup2(oldfd2, 2);
 	close(oldfd2);
 
-	while (fd1 || fd2) {
+	bits = max(fd1, fd2) + 1;
+	zero = 1;
+	wtodo = 0;
+	wnext = 0;
+	while (zero || fd1 || fd2) {
 		FD_ZERO(&rfds);
+		FD_ZERO(&wfds);
+		if (wtodo) FD_SET(fd0, &wfds);
+		if (zero && !wtodo) FD_SET(0, &rfds);
 		if (fd1) FD_SET(fd1, &rfds);
 		if (fd2) FD_SET(fd2, &rfds);
-		if (select(max(fd1, fd2)+1, &rfds, 0, 0, 0) < 0) break;
+		if (select(bits, &rfds, &wfds, 0, 0) < 0) {
+			perror("select");
+			break;
+		}
+		if (wtodo && FD_ISSET(fd0, &wfds)) {
+			if ((i = write(fd0, wnext, wtodo)) > 0) {
+				wtodo -= i;
+				wnext += i;
+			}
+			// XXX - if error?
+		}
+		if (FD_ISSET(0, &rfds)) {
+			assert(wtodo == 0);
+			if (zin) {
+				line = zgets(zin);
+			} else {
+				line = buf;
+				if (getline(0, buf, sizeof(buf)) <= 0) line = 0;
+			}
+			unless (line) {
+				strcpy(buf, "ERROR-no stdin information\n");
+				goto err;
+			}
+			unless (sscanf(line, "@STDIN=%u@", &bytes) == 1) {
+				strcpy(buf, "ERROR-bad input\n");
+				goto err;
+			}
+			unless (bytes) {
+				zero = 0;
+				close(fd0);
+				continue;
+			}
+			assert(bytes <= sizeof(wbuf));
+			if (zin) {
+				i = zread(zin, wbuf, bytes);
+			} else {
+				i = readn(0, wbuf, bytes);
+			}
+			if (i < bytes) {
+				strcpy(buf, "ERROR-input truncated\n");
+				goto err;
+			}
+			wnext = wbuf;
+			wtodo = bytes;
+		}
+
 		if (FD_ISSET(fd1, &rfds)) {
 			if ((i = read(fd1, buf, sizeof(buf))) > 0) {
 				sprintf(hdr, "@STDOUT=%u@\n", i);
@@ -350,10 +388,6 @@ err:			if (zout) {
 out:	if (zin) zgets_done(zin);
 	if (zout) zputs_done(zout);
 	fflush(stdout);
-	if (tmp) {
-		unlink(tmp);
-		free(tmp);
-	}
 	return (rc);
 }
 
