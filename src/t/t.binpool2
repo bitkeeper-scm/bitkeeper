@@ -276,7 +276,7 @@ bk binpool repair $Q junk || exit 1
 bk -r get $Q || exit 1
 echo OK
 
-echo $N Test binpool flush ..........................................$NL
+echo $N Test binpool clean ..........................................$NL
 for i in 155 236 317
 do
 	echo $i > t.$i
@@ -292,7 +292,7 @@ cmpfiles 317 BitKeeper/binpool/01/01d700a5.d3
 
 bk clean || exit 1
 bk stripdel $Q -r.. 155 || exit 1
-bk binpool flush || exit 1
+bk binpool clean || exit 1
 bk binpool check $Q || exit 1
 bk get $Q || exit 1
 cmpfiles t.236 236
@@ -304,7 +304,7 @@ bk new -b $Q 155 || exit 1
 bk clean || exit 1
 bk stripdel $Q -r.. 236 || exit 1
 bk stripdel $Q -r.. 317 || exit 1
-bk binpool flush || exit 1
+bk binpool clean || exit 1
 bk binpool check $Q || exit 1
 bk get $Q || exit 1
 cmpfiles t.155 155

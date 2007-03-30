@@ -11,12 +11,12 @@
  *  - check error messages (bk get => 'get: no binpool_server for update.')
  *  - checkout:get shouldn't make multiple binpool_server connections
  *    resolve.c:copyAndGet(), check.c, others?
- *  * flush shouldn't be allowed to run on a binpool server
- *  * flush shouldn't delete any data if I am missing data.
- *    (Run binpool-check first? maybe a lightweight version)
- *  - check needs a progress bar and options to disable hashing
+ *  * clean shouldn't be allowed to run on a binpool server
+ *  - check needs a progress bar
+ *  - check show list data files not linked in the index
  *  - binpool gone-file support
  *  - work on errors when binpool repos are used by old clients
+ *  - cmd_bk() needs to stream stdin instead of saving to tmp file
  */
 
 /*
@@ -771,12 +771,9 @@ binpool_push_main(int ac, char **av)
 /*
  * Remove any binpool data from the current repository that is not
  * used by any local deltas.
- *
- * XXX really shouldn't delete anything unless we can show that all
- *     deltas are covered.
  */
 private int
-binpool_flush_main(int ac, char **av)
+binpool_clean_main(int ac, char **av)
 {
 	FILE	*f;
 	int	i, j, c, dels;
@@ -803,6 +800,12 @@ binpool_flush_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
+	if (sys("bk", "binpool", "check", "-Fq", SYS)) {
+		fprintf(stderr,
+		    "bk binpool clean: check failed, clean cancelled.\n");
+		return (1);
+	}
+
 	/* save bp deltas in repo */
 	cmd = strdup("bk -r prs -hnd'" BINPOOL_DSPEC "'");
 	if (check_server) {
@@ -811,7 +814,7 @@ binpool_flush_main(int ac, char **av)
 		if (bp_serverID(&p2)) return (1);
 		unless (p2) {
 			fprintf(stderr,
-			    "bk binpool flush: No binpool_server set\n");
+			    "bk binpool clean: No binpool_server set\n");
 			free(p1);
 			return (1);
 		}
@@ -829,7 +832,7 @@ binpool_flush_main(int ac, char **av)
 		hash_storeStr(bpdeltas, buf, 0);
 	}
 	if (pclose(f)) {
-		fprintf(stderr, "bk binpool flush: failed to contact server\n");
+		fprintf(stderr, "bk binpool clean: failed to contact server\n");
 		return (1);
 	}
 
@@ -859,7 +862,7 @@ binpool_flush_main(int ac, char **av)
 				continue;	/* keep the key */
 			} else {
 				fprintf(stderr,
-				"binpool flush: data for key '%s' missing,\n"
+				"binpool clean: data for key '%s' missing,\n"
 				"\tdeleting key.\n", kv.key.dptr);
 			}
 		}
@@ -1160,7 +1163,7 @@ binpool_main(int ac, char **av)
 	} cmds[] = {
 		{"pull", binpool_pull_main },
 		{"push", binpool_push_main },
-		{"flush", binpool_flush_main },
+		{"clean", binpool_clean_main },
 		{"check", binpool_check_main },
 		{"repair", binpool_repair_main },
 		{0, 0}
