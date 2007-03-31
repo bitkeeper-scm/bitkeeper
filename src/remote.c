@@ -68,7 +68,7 @@ remote_bk(int quiet, int ac, char **av)
 	}
 	assert(urls);
 
-	if (getenv("BK_REMOTE_NOGZIP")) gzip = 0;
+	if (getenv("_BK_REMOTE_NOGZIP")) gzip = 0;
 
 	/*
 	 * If we have multiple URLs or are talking to a http server

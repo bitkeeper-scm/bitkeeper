@@ -291,25 +291,7 @@ err:			if (zout) {
 	wtodo = 0;
 	wnext = 0;
 	while (zero || fd1 || fd2) {
-		FD_ZERO(&rfds);
-		FD_ZERO(&wfds);
-		if (wtodo) FD_SET(fd0, &wfds);
-		if (zero && !wtodo) FD_SET(0, &rfds);
-		if (fd1) FD_SET(fd1, &rfds);
-		if (fd2) FD_SET(fd2, &rfds);
-		if (select(bits, &rfds, &wfds, 0, 0) < 0) {
-			perror("select");
-			break;
-		}
-		if (wtodo && FD_ISSET(fd0, &wfds)) {
-			if ((i = write(fd0, wnext, wtodo)) > 0) {
-				wtodo -= i;
-				wnext += i;
-			}
-			// XXX - if error?
-		}
-		if (FD_ISSET(0, &rfds)) {
-			assert(wtodo == 0);
+		if (zero && !wtodo) {
 			if (zin) {
 				line = zgets(zin);
 			} else {
@@ -342,7 +324,22 @@ err:			if (zout) {
 			wnext = wbuf;
 			wtodo = bytes;
 		}
-
+		FD_ZERO(&rfds);
+		FD_ZERO(&wfds);
+		if (wtodo) FD_SET(fd0, &wfds);
+		if (fd1) FD_SET(fd1, &rfds);
+		if (fd2) FD_SET(fd2, &rfds);
+		if (select(bits, &rfds, &wfds, 0, 0) < 0) {
+			perror("select");
+			break;
+		}
+		if (wtodo && FD_ISSET(fd0, &wfds)) {
+			if ((i = write(fd0, wnext, wtodo)) > 0) {
+				wtodo -= i;
+				wnext += i;
+			}
+			// XXX - if error?
+		}
 		if (FD_ISSET(fd1, &rfds)) {
 			if ((i = read(fd1, buf, sizeof(buf))) > 0) {
 				sprintf(hdr, "@STDOUT=%u@\n", i);
