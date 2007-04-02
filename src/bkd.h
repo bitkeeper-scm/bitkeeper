@@ -21,6 +21,13 @@
 #define	BKD_NUL		'\0'
 
 /*
+ * Transfer size for bk remote commands.  Both sides agree to never send
+ * a chunk (before compression, after uncompression) bigger than the below.
+ * DO NOT change this after shipping.
+ */
+#define	BSIZE		(32<<10)
+
+/*
  * Options for prunekey()
  */
 #define	PK_REVPREFIX	0x00001 /* input key has rev + tag prefix */

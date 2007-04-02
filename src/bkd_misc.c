@@ -174,9 +174,9 @@ zgets_fileread(void *token, u8 **buf)
 	static	char *data = 0;
 
 	if (buf) {
-		unless (data) data = malloc(8<<10);
+		unless (data) data = malloc(BSIZE);
 		*buf = data;
-		return (read(fd, data, 8<<10));
+		return (read(fd, data, BSIZE));
 	} else {
 		/* called from zgets_done */
 		if (data) {
@@ -204,8 +204,8 @@ cmd_bk(int ac, char **av)
 	zputbuf *zout = 0;
 	char    *line, *wnext;
 	char    hdr[64];
-	char	buf[8192];	/* must match remote.c:doit()/buf */
-	char	wbuf[8192];
+	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
+	char	wbuf[BSIZE];
 	int     wtodo = 0;
 
 	for (i = 1; av[i]; i++) {
@@ -215,7 +215,6 @@ cmd_bk(int ac, char **av)
 		if (streq(av[i], "-zo0")) gzip &= ~GZ_TOREMOTE;
 	}
 
-	if (getenv("_BK_REMOTE_NOGZIP")) gzip = 0;
 	if (gzip & GZ_FROMREMOTE) zin = zgets_initCustom(&zgets_fileread, 0);
 	if (gzip & GZ_TOREMOTE) zout = zputs_init(0, stdout);
 
@@ -232,7 +231,7 @@ cmd_bk(int ac, char **av)
 err:			if (zout) {
 				zputs(zout, buf, strlen(buf));
 			} else {
-				fputs(buf, stdout);
+				out(buf);
 			}
 			goto out;
 		}
@@ -337,8 +336,10 @@ err:			if (zout) {
 			if ((i = write(fd0, wnext, wtodo)) > 0) {
 				wtodo -= i;
 				wnext += i;
+			} else {
+				perror("write");
+				goto err;
 			}
-			// XXX - if error?
 		}
 		if (FD_ISSET(fd1, &rfds)) {
 			if ((i = read(fd1, buf, sizeof(buf))) > 0) {
@@ -347,8 +348,11 @@ err:			if (zout) {
 					zputs(zout, hdr, strlen(hdr));
 					zputs(zout, buf, i);
 				} else {
-					fputs(hdr, stdout);
-					fwrite(buf, 1, i, stdout);
+					out(hdr);
+					if (writen(1, buf, i) != i) {
+						perror("writen");
+						goto err;
+					}
 				}
 			} else {
 				close(fd1);
@@ -362,8 +366,11 @@ err:			if (zout) {
 					zputs(zout, hdr, strlen(hdr));
 					zputs(zout, buf, i);
 				} else {
-					fputs(hdr, stdout);
-					fwrite(buf, 1, i, stdout);
+					out(hdr);
+					if (writen(1, buf, i) != i) {
+						perror("writen");
+						goto err;
+					}
 				}
 			} else {
 				close(fd2);
@@ -380,11 +387,10 @@ err:			if (zout) {
 	if (zout) {
 		zputs(zout, hdr, strlen(hdr));
 	} else {
-		fputs(hdr, stdout);
+		out(hdr);
 	}
 out:	if (zin) zgets_done(zin);
 	if (zout) zputs_done(zout);
-	fflush(stdout);
 	return (rc);
 }
 

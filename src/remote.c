@@ -108,7 +108,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	int	dostream;
 	zgetbuf	*zin = 0;
 	zputbuf	*zout = 0;
-	char	buf[8192];	/* must match bkd_misc.c:cmd_bk()/buf */
+	char	buf[BSIZE];	/* must match bkd_misc.c:cmd_bk()/buf */
 
 	unless (r) return (1<<2);
 	r->remote_cmd = 1;
@@ -182,31 +182,28 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	}
 	while (strneq(line, "@STDOUT=", 8) || strneq(line, "@STDERR=", 8)) {
 		bytes = atoi(&line[8]);
+		assert(bytes <= sizeof(buf));
 		fd = strneq(line, "@STDOUT=", 8) ? 1 : 2;
-		do {
-			i = min(bytes, sizeof(buf));
-			if (zin) {
-				i = zread(zin, buf, i);
-			} else {
-				i = read_blk(r, buf, i);
-			}
-			switch (i) {
-			    case 0: sleep(1); break;	// ???
-			    case -1: perror("read/recv in bk -@"); break;
-			    default:
-				unless (quiet || did_header) {
-					printf("##### %s #####\n", u);
-					if (fflush(stdout)) {
-						i = 1<<6;
-						goto out;
-					}
-					did_header = 1;
+		if (zin) {
+			i = zread(zin, buf, bytes);
+		} else {
+			i = read_blk(r, buf, bytes);
+		}
+		if (i == bytes) {
+			unless (quiet || did_header) {
+				printf("##### %s #####\n", u);
+				if (fflush(stdout)) {
+					i = 1<<6;
+					goto out;
 				}
-				writen(fd, buf, i);
-				bytes -= i;
-				break;
+				did_header = 1;
 			}
-		} while (bytes > 0);
+			writen(fd, buf, i);
+			bytes -= i;
+		} else {
+			perror("read/recv in bk -@");
+			break;
+		}
 		if (zin) {
 			line = zgets(zin);
 		} else {
@@ -221,6 +218,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	unless (sscanf(line, "@EXIT=%d@", &i)) i = 100;
 	if (zin) zgets_done(zin);
 out:	wait_eof(r, 0);
+	disconnect(r, 2);
 	return (i);
 }
 
@@ -238,7 +236,7 @@ stream_stdin(remote *r, int gzip)
 	int	i;
 	zputbuf	*zout = 0;
 	char	line[64];
-	char	buf[8192];
+	char	buf[BSIZE];
 
 	if (gzip & GZ_TOBKD) zout = zputs_init(zputs_write, int2p(r->wfd));
 	while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
