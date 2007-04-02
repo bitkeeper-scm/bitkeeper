@@ -214,7 +214,7 @@ cmd_bk(int ac, char **av)
 		if (streq(av[i], "-zi0")) gzip &= ~GZ_FROMREMOTE;
 		if (streq(av[i], "-zo0")) gzip &= ~GZ_TOREMOTE;
 	}
-
+	if (line = getenv("_BK_REMOTEGZIP")) gzip = atoi(line);
 	if (gzip & GZ_FROMREMOTE) zin = zgets_initCustom(&zgets_fileread, 0);
 	if (gzip & GZ_TOREMOTE) zout = zputs_init(0, stdout);
 
@@ -391,6 +391,13 @@ err:			if (zout) {
 	}
 out:	if (zin) zgets_done(zin);
 	if (zout) zputs_done(zout);
+	/* 
+	 * For some reason when bk is run from a service on Windows we
+ 	 * these shutdowns to flush all data that is written to the 
+	 * sockets.  This is not fully understood.
+	 */
+	shutdown(1, 1);
+	shutdown(2, 1);
 	return (rc);
 }
 
