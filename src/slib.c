@@ -10654,13 +10654,14 @@ obscure(int rmlicense, int uu, char *buf)
 	char	*new;
 	char	*p, *t;
 
-	/* XXX just write a strnldup */
+	/*
+	 * line either terminates with a '\n' (mmap of sfile)
+	 * or '\0' if a d->comments[i] (which are chomped)
+	 * Len could wind up 0.
+	 */
 	for (len = 0; buf[len] && (buf[len] != '\n'); len++);
-	if (buf[len]) len++;
-	assert(len);
-	new = malloc(len+1);
-	strncpy(new, buf, len);
-	new[len] = 0;
+	if (buf[len]) len++;	/* if newline, include it */
+	new = strndup(buf, len);
 	unless (len > 1) goto done; 	/* need to have something to obscure */
 
 	if (*new == '\001') goto done;

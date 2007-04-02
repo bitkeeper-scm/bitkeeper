@@ -26,6 +26,14 @@ P this/is/the/pathname
 EOF
 echo Please obscure me > foo
 bk delta $Q -i -IINITX foo
+# multi-line comment
+cat <<'EOF' > comment
+This is a multiline comment, with the next line blank
+
+And then a final line after the blank line.
+EOF
+bk edit $Q foo
+bk delta $Q -f -Ycomment foo
 test 'This is revision 1.1' = "`bk prs -hr1.1 -nd:C: foo`" || {
 	echo bad comment message
 	exit 1
