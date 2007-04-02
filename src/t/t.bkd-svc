@@ -211,7 +211,11 @@ echo $N clone a tree via bkd ........................................$NL
 cd "$HERE/project"
 PORT=`port 5500`
 bk service install $BKDNAME -EBK_REGRESSION=1 -p$PORT
-bk clone $Q bk://localhost:$PORT "$HERE/copy2"
+bk clone $Q bk://localhost:$PORT "$HERE/copy2" || {
+	echo clone failed
+	bk service uninstall $BKDNAME
+	exit 1
+}
 cd "$HERE/copy2/src"
 if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
@@ -273,8 +277,11 @@ echo OK
 
 echo $N check http clone from bkd ...................................$NL
 cd "$HERE"
-bk clone $Q http://localhost:$PORT "$HERE/project2"
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk clone $Q http://localhost:$PORT "$HERE/project2" || {
+	echo clone failed
+	bk service uninstall $BKDNAME
+	exit 1
+}
 echo OK
 
 echo $N check http clone with bad -r from bkd .......................$NL

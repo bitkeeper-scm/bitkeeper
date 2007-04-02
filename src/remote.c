@@ -67,6 +67,7 @@ remote_bk(int quiet, int ac, char **av)
 		if (streq(av[i], "-zo0")) gzip &= ~GZ_FROMBKD;
 	}
 	assert(urls);
+	if (p = getenv("_BK_REMOTEGZIP")) gzip = atoi(p);
 
 	/*
 	 * If we have multiple URLs or are talking to a http server
@@ -164,14 +165,12 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 		}
 	}
 	if (zout) zputs_done(zout);
+	fflush(f);
 	fclose(f);
 	rc = send_file(r, tmpf, 0);
 	unlink(tmpf);
 	free(tmpf);
-	if (rc) {
-		disconnect(r, 1);
-		goto out;
-	}
+	if (rc) goto out;
 	if (dostream) stream_stdin(r, gzip);
 	disconnect(r, 1);
 
@@ -181,7 +180,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	if (zin) {
 		line = zgets(zin);
 	} else {
-		line = fnext(buf, f) ? buf : 0;
+		line = fnext(buf, r->rf) ? buf : 0;
 	}
 	unless (line) {
 		i = 1<<5;
@@ -207,7 +206,9 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 			}
 			switch (i) {
 			    case 0: sleep(1); break;	// ???
-			    case -1: perror("read/recv in bk -@"); break;
+			    case -1: 
+				perror("read/recv in bk -@");
+				goto out;
 			    default:
 				unless (quiet || did_header) {
 					printf("##### %s #####\n", u);
@@ -225,7 +226,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 		if (zin) {
 			line = zgets(zin);
 		} else {
-			line = fnext(buf, f) ? buf : 0;
+			line = fnext(buf, r->rf) ? buf : 0;
 		}
 		unless (line) {
 			i = 1<<6;
@@ -235,6 +236,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	unless (sscanf(line, "@EXIT=%d@", &i)) i = 100;
 	if (zin) zgets_done(zin);
 out:	wait_eof(r, 0);
+	disconnect(r, 2);
 	return (i);
 }
 

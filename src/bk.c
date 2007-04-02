@@ -286,6 +286,11 @@ run:	getoptReset();
 #endif
 	cmdlog_start(av, 0);
 	ret = cmd_run(prog, is_bk, ac, av);
+	/* flush stdout/stderr, needed for bk-remote on windows */
+	fflush(stdout);
+	close(1);
+	fflush(stderr);
+	close(2);
 	cmdlog_end(ret);
 	exit(ret);
 }
