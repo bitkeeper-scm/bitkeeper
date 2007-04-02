@@ -72,10 +72,12 @@ remote_bk(int quiet, int ac, char **av)
 	/*
 	 * If we have multiple URLs or are talking to a http server
 	 * then we need to buffer up stdin.
+	 * sizeof(buf) is 64k above, it can't be smaller or data_append()
+	 * will crash on a 16-bit limitation.
 	 */
 	if (streq(av[ac-1], "-") &&
 	    ((nLines(urls) > 1) || strneq(urls[1], "http", 4))) {
-                while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
+		while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 			data = data_append(data, buf, i, 0);
 		}
 		input = data_pullup(&bytes, data);

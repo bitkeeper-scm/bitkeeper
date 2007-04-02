@@ -187,6 +187,14 @@ zgets_fileread(void *token, u8 **buf)
 	}
 }
 
+private void
+zputs_filewrite(void *token, u8 *data, int len)
+{
+	int	fd = p2int(token);
+
+	if (len) write(fd, data, len);
+}
+
 #define GZ_FROMREMOTE	1	/* ungzip the stdin we get */
 #define GZ_TOREMOTE	2	/* gzip the stdout we send back */
 
@@ -203,10 +211,10 @@ cmd_bk(int ac, char **av)
 	zgetbuf *zin = 0;
 	zputbuf *zout = 0;
 	char    *line, *wnext;
+	int     wtodo = 0;
 	char    hdr[64];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
 	char	wbuf[BSIZE];
-	int     wtodo = 0;
 
 	for (i = 1; av[i]; i++) {
 		if (av[i][0] != '-') break;
@@ -216,7 +224,7 @@ cmd_bk(int ac, char **av)
 	}
 	if (line = getenv("_BK_REMOTEGZIP")) gzip = atoi(line);
 	if (gzip & GZ_FROMREMOTE) zin = zgets_initCustom(&zgets_fileread, 0);
-	if (gzip & GZ_TOREMOTE) zout = zputs_init(0, stdout);
+	if (gzip & GZ_TOREMOTE) zout = zputs_init(&zputs_filewrite, int2p(1));
 
 	/*
 	 * We only allow remote commands if the bkd told us that was OK.
@@ -391,14 +399,7 @@ err:			if (zout) {
 	}
 out:	if (zin) zgets_done(zin);
 	if (zout) zputs_done(zout);
-	/* 
-	 * For some reason when bk is run from a service on Windows we
- 	 * these shutdowns to flush all data that is written to the 
-	 * sockets.  This is not fully understood.
-	 */
-	shutdown(1, 1);
-	shutdown(2, 1);
-	return (rc);
+	return (0);
 }
 
 /*

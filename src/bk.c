@@ -422,6 +422,7 @@ private	struct {
 	int	flags;
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
+	{"bk", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"fix", CMD_WRLOCK|CMD_WRUNLOCK},
