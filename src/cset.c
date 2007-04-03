@@ -711,7 +711,7 @@ again:	/* doDiffs can make it two pass */
 			int	i;
 			FILE	*f;
 
-			f = popen("bk fsend -Bsend -", "w");
+			f = popen("bk fsend -L -Bsend -", "w");
 			EACH(cs->binpool) fprintf(f, "%s\n", cs->binpool[i]);
 			fflush(f);	// Paranoia only
 			pclose(f);

@@ -373,6 +373,7 @@ genpatch(int level, int wfd, char *rev_list)
 
 	opts.inBytes = opts.outBytes = 0;
 	n = opts.verbose ? 3 : 2;
+	if (bp_sharedServer(0)) makepatch[n++] = "-B";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
@@ -719,11 +720,13 @@ push(char **av, remote *r, char **envVar)
 		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
 	}
+#if 0
 	if (ret > 1) {		/* >1 means data to transfer */
 		if (bp_transferMissing(r, 1, 0, rev_list, !opts.verbose)) {
 			fprintf(stderr, "push: failed to send binpool data\n");
 		}
 	}
+#endif
 	return (push_part2(av, r, rev_list, ret, envVar));
 }
 

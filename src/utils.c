@@ -710,7 +710,7 @@ void
 sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 {
 	int	i;
-	char	*user, *host, *repo, *proj;
+	char	*user, *host, *repo, *proj, *bp;
 	char	*lic;
 	project	*p = proj_init(".");
 
@@ -760,6 +760,15 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 				fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
 			} else {
 				fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
+			}
+			unless (bp_serverID(&bp)) {
+				unless (bp) bp = strdup(repo);
+				if (strchr(bp, ' ')) {
+					fprintf(f, "putenv 'BK_BINPOOL_SERVER=%s'\n", bp);
+				} else {
+					fprintf(f, "putenv BK_BINPOOL_SERVER=%s\n", bp);
+				}
+				free(bp);
 			}
 		}
 	}

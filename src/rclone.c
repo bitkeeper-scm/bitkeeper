@@ -96,11 +96,12 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	if (rc = trigger(av[0], "pre"))  goto done;
 	if (rc = rclone_part1(opts, r, envVar))  goto done;
 	rc = rclone_part2(av, opts, r, envVar);
-
+#if 0
 	if (bp_transferMissing(r, 1, revs, 0, !opts.verbose)) {
 		fprintf(stderr, "rclone: failed to transfer binpool data\n");
 		rc = 1;
 	}
+#endif
 	if (rc) {
 		putenv("BK_STATUS=FAILED");
 	} else {

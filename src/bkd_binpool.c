@@ -34,11 +34,11 @@ fsend_main(int ac, char **av)
 {
 	char	*p, *url;
 	int	c;
-	int	toserver = 0, query = 0, binpool = 0;
+	int	toserver = 0, query = 0, binpool = 0, nolock = 0;
 	char	*sfio[] = { "sfio", "-oqBk", 0 };
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "B;q")) != -1) {
+	while ((c = getopt(ac, av, "B;Lq")) != -1) {
 		switch (c) {
 		    case 'B':
 			if (streq(optarg, "proxy")) {
@@ -51,6 +51,7 @@ fsend_main(int ac, char **av)
 				goto usage;
 			}
 			break;
+		    case 'L': nolock = 1; break;
 		    case 'q': break;	/* ignored for now */
 		    default:
 usage:			fprintf(stderr,
@@ -76,6 +77,11 @@ usage:			fprintf(stderr,
 				    (query ? "-Bquery" : "-Bsend")));
 		}
 	}
+	if (!nolock && repository_rdlock()) {
+		fprintf(stderr,
+		    "%s: failed to get repository read lock\n", av[0]);
+		return (1);
+	}
 	if (query) {
 		char	*dfile;
 
@@ -96,7 +102,9 @@ usage:			fprintf(stderr,
 		return (1);
 	}
 	getoptReset();
-	return (sfio_main(2, sfio));
+	c = sfio_main(2, sfio);
+	unless (nolock) repository_rdunlock(0);
+	return (c);
 }
 
 /*
@@ -107,13 +115,13 @@ int
 frecv_main(int ac, char **av)
 {
 	char	*p, *url;
-	int	toserver = 0, binpool = 0;
+	int	toserver = 0, binpool = 0, nolock = 0;
 	int	quiet = 0;
 	int	c;
 	char	*sfio[] = { "sfio", "-riBk", 0, 0 };
 
 	setmode(0, _O_BINARY);
-	while ((c = getopt(ac, av, "B;q")) != -1) {
+	while ((c = getopt(ac, av, "B;Lq")) != -1) {
 		switch (c) {
 		    case 'B':
 			if (streq(optarg, "proxy")) {
@@ -124,6 +132,7 @@ frecv_main(int ac, char **av)
 				goto usage;
 			}
 			break;
+		    case 'L': nolock = 1; break;
 		    case 'q': quiet = 1;  sfio[2] = "-q"; break;
 		    default:
 usage:			fprintf(stderr,
@@ -155,7 +164,14 @@ usage:			fprintf(stderr,
 		    "%s: only binpool-mode supported currently.\n", av[0]);
 		return (1);
 	}
+	if (!nolock && repository_wrlock()) {
+		fprintf(stderr,
+		    "%s: failed to get repository read lock\n", av[0]);
+		return (1);
+	}
 	getoptReset();
-	return (sfio_main(quiet ? 3 : 2, sfio));
+	c = sfio_main(quiet ? 3 : 2, sfio);
+	unless (nolock) repository_wrunlock(0);
+	return (c);
 }
 

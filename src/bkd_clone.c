@@ -2,6 +2,7 @@
 #include "logging.h"
 
 private int	compressed(int, int);
+private	int	binpool_sfio(char *rev);
 
 /*
  * Send the sfio file to stdout
@@ -82,8 +83,13 @@ cmd_clone(int ac, char **av)
 	}
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	if (trigger(av[0], "pre")) return (1);
-	out("@SFIO@\n");
-	rc = compressed(gzip, 1);
+	if (0 && bp_sharedServer(1)) { /* XXX! */
+		out("@SFIO@\n");
+		rc = compressed(gzip, 1);
+	} else {
+		out("@SFIOx2@\n");
+		rc = compressed(gzip, 1) || binpool_sfio(rev);
+	}
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (trigger(av[0], "post")) exit (1);
@@ -140,4 +146,21 @@ compressed(int level, int hflag)
 	free(tmpf2);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
 	return (rc);
+}
+
+private int
+binpool_sfio(char *rev)
+{
+	char	*cmd;
+	FILE	*f;
+	int	status;
+
+	unless (rev) rev = "+";
+	cmd = aprintf("bk changes -r..'%s' -Bvvnd'" BINPOOL_DSPEC "' |"
+	    "bk fsend -Bproxy -Bsend -", rev);
+	f = popen(cmd, "r");
+	free(cmd);
+	gzipAll2fd(fileno(f), 1, 6, 0, 0, 1, 0);
+	status = pclose(f);
+	return (!(WIFEXITED(status) && (WEXITSTATUS(status) == 0)));
 }

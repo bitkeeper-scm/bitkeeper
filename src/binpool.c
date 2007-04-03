@@ -16,7 +16,7 @@
  *  - check show list data files not linked in the index
  *  - binpool gone-file support
  *  - work on errors when binpool repos are used by old clients
- *  - cmd_bk() needs to stream stdin instead of saving to tmp file
+ *  - binpool index locking.
  */
 
 /*
@@ -431,8 +431,8 @@ bp_logUpdate(char *key, char *val)
 int
 bp_updateServer(char *tiprev)
 {
-	char	*p, *sync, *syncf, *url, *tmperr, *tmpkeys;
-	char	**cmds = 0;
+	char	*p, *sync, *syncf, *url, *tmperr, *tmpkeys, *tmpkeys2;
+	char	*cmd;
 	char	*repoID;
 	char	*baserev = 0;
 	FILE	*f;
@@ -502,21 +502,19 @@ again:
 	}
 
 	if (url) {
-		cmds = addLine(cmds, aprintf("cat '%s'", tmpkeys));
-
-		/* filter out deltas already in server */
-		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' fsend -Bquery -", url));
-
-		/* create SFIO of binpool data */
-		cmds = addLine(cmds,
-		    strdup("bk fsend -Bsend -"));
-
-		/* store in server */
-		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' -z0 frecv -qBrecv -", url));
-		rc = spawn_filterPipeline(cmds);
-		freeLines(cmds, free);
+		tmpkeys2 = bktmp(0, 0);
+		p = aprintf("-q@%s", url);
+		rc = sysio(tmpkeys, tmpkeys2, 0,
+		    "bk", p, "fsend", "-Bquery", "-", SYS);
+		free(p);
+		unless (rc) {
+			cmd = aprintf("bk fsend -Bsend - < '%s' |"
+			    "bk -q@'%s' -z0 frecv -qBrecv -", tmpkeys2, url);
+			rc = system(cmd);
+			free(cmd);
+		}
+		unlink(tmpkeys2);
+		free(tmpkeys2);
 	} else {
 		f = fopen(tmpkeys, "r");
 		assert(f);
@@ -602,6 +600,24 @@ out:	if (streq(proj_repoID(0), ret)) {
 	return (0);
 }
 
+int
+bp_sharedServer(int inbkd)
+{
+	char	*local_repoID;	/* repoID of local bp_server (may be me) */
+	char	*remote_repoID;	/* repoID of remote bp_server */
+	int	rc;
+
+	if (bp_serverID(&local_repoID)) return (0);
+	unless (local_repoID) local_repoID = strdup(proj_repoID(0));
+	remote_repoID =
+	    getenv(inbkd ? "BK_BINPOOL_SERVER" : "BKD_BINPOOL_SERVER");
+	assert(remote_repoID);
+
+	/* Do we both use the same server? If so then we are done. */
+	rc = streq(local_repoID, remote_repoID);
+	free(local_repoID);
+	return (rc);
+}
 /*
  * Called to transfer bp data between different binpool servers
  * during a push, pull, clone or rclone.
@@ -624,7 +640,6 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 {
 	char	*url;		/* URL to connect to remote bkd */
 	char	*local_repoID;	/* repoID of local bp_server (may be me) */
-	char	*local_url;	/* URL to local bp_server */
 	char	*remote_repoID;	/* repoID of remote bp_server */
 	int	rc = 0, fd0 = 0;
 	char	**cmds = 0;
@@ -635,14 +650,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 
 	if (bp_serverID(&local_repoID)) return (-1);
 	url = remote_unparse(r);
-	if (local_repoID) {
-		/* The local bp server is not _this_ repo */
-		local_url = aprintf("@'%s'",
-		    proj_configval(0, "binpool_server"));
-	} else {
-		local_repoID = strdup(proj_repoID(0));
-		local_url = strdup("");
-	}
+	unless (local_repoID) local_repoID = strdup(proj_repoID(0));
 	unless (remote_repoID = getenv("BKD_BINPOOL_SERVER")) {
 		unless (bkd_hasFeature("binpool")) goto out;
 		fprintf(stderr, "error: BKD_BINPOOL_SERVER missing\n");
@@ -667,8 +675,7 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 	}
 	/*
 	 * connections to 'url' are to another binpool domain and are
-	 * considered "far" away.  They should all be compress.  The
-	 * local_url connections are close and only keys should be compressed.
+	 * considered "far" away.  They should all be compressed.
 	 */
 	if (send) {
 		/* send list of keys to remote and get back needed keys */
@@ -676,20 +683,20 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		    aprintf("bk -q@'%s' fsend -Bproxy -Bquery -", url));
 		/* build local SFIO of needed bp data */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s -zo0 fsend -Bsend -", local_url));
+		    aprintf("bk         fsend -Bproxy -Bsend -"));
 		/* unpack SFIO in remote bp server */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' frecv -Bproxy -Brecv %s -",url, q));
 	} else {
 		/* Remove bp keys that our local bp server already has */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s fsend -Bquery -", local_url));
+		    aprintf("bk         fsend -Bproxy -Bquery -"));
 		/* send keys we need to remote bp server and get back SFIO */
 		cmds = addLine(cmds,
 		    aprintf("bk -q@'%s' fsend -Bproxy -Bsend -", url));
 		/* unpack SFIO in local bp server */
 		cmds = addLine(cmds,
-		    aprintf("bk -q%s -z0 frecv -Brecv %s -", local_url, q));
+		    aprintf("bk         frecv -Bproxy -Brecv %s -", q));
 	}
 	rc = spawn_filterPipeline(cmds);
 	freeLines(cmds, free);
@@ -698,7 +705,6 @@ bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
 		close(fd0);
 	}
 out:	free(local_repoID);
-	free(local_url);
 	free(url);
 	return (rc);
 }
@@ -734,7 +740,7 @@ binpool_pull_main(int ac, char **av)
 	cmds = addLine(cmds, strdup("bk fsend -Bquery -"));
 
 	/* request deltas from server */
-	cmds = addLine(cmds, aprintf("bk -@'%s' -zo0 fsend -Bsend -",
+	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 fsend -Bsend -",
 	    proj_configval(0, "binpool_server")));
 
 	/* unpack locally */

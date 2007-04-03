@@ -19,7 +19,7 @@ typedef struct {
 private int	clone(char **, opts, remote *, char *, char **);
 private	int	clone2(opts opts, remote *r);
 private void	parent(opts opts, remote *r);
-private int	sfio(opts opts, int gz, remote *r);
+private int	sfio(opts opts, int gz, remote *r, int binpool);
 private void	usage(void);
 private int	initProject(char *root);
 private	int	lclone(opts, remote *, char *to);
@@ -170,6 +170,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	char	*p, buf[MAXPATH];
 	char	*lic;
 	int	gzip, rc = 2;
+	int	binpool = 0;
 
 	gzip = r->port ? opts.gzip : 0;
 	if (local && exists(local) && !emptyDir(local)) {
@@ -254,19 +255,25 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		if (getTriggerInfoBlock(r, !opts.quiet)) goto done;
 		getline2(r, buf, sizeof (buf));
 	}
-
-	if (!streq(buf, "@SFIO@"))  goto done;
+	if (streq(buf, "@SFIOx2@")) {
+		binpool = 1;
+	} else if (!streq(buf, "@SFIO@")) {
+		goto done;
+	}
 
 	/* create the new package */
 	if (initProject(local) != 0) goto done;
 	rc = 1;
 
 	/* eat the data */
-	if (sfio(opts, gzip, r) != 0) {
+	if (sfio(opts, gzip, r, 0) != 0) {
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
-
+	if (binpool && sfio(opts, gzip, r, 1)) {
+		fprintf(stderr, "binpool sfio errored\n");
+		goto done;
+	}
 	if (clone2(opts, r)) goto done;
 
 	rc  = 0;
@@ -316,6 +323,7 @@ clone2(opts opts, remote *r)
 	/* get bp data */
 	(void)proj_repoID(0);		/* generate repoID */
 	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
+#if 0
 	if (bp_transferMissing(r, 0, buf, 0, opts.quiet)) {
 		fprintf(stderr,
 		    "clone: failed to fetch binpool data, "
@@ -325,7 +333,7 @@ clone2(opts opts, remote *r)
 		parent(opts, r);
 		return (-1);
 	}
-
+#endif
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
@@ -405,7 +413,7 @@ initProject(char *root)
 
 
 private int
-sfio(opts opts, int gzip, remote *r)
+sfio(opts opts, int gzip, remote *r, int binpool)
 {
 	int	n, status;
 	pid_t	pid;
@@ -415,6 +423,7 @@ sfio(opts opts, int gzip, remote *r)
 	cmds[n = 0] = "bk";
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
+	if (binpool) cmds[++n] = "-Bk";
 	if (opts.quiet) cmds[++n] = "-q";
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);

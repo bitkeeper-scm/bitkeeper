@@ -1661,7 +1661,7 @@ sfio(MMAP *m)
 	if (echo >= 2) {
 		fprintf(stderr, "Unpacking additional files...\n");
 	}
-	sprintf(buf, "bk frecv -Bproxy -%sBrecv -", ((echo>1) ? "" : "q"));
+	sprintf(buf, "bk frecv -L -Bproxy -%sBrecv -", ((echo>1) ? "" : "q"));
 	f = popen(buf, "w");
 	t = mnext(m);
 	t = mnext(m);
