@@ -138,32 +138,6 @@ grep -q '== @SFIO@ ==' "$HERE"/ALL || {
 }
 echo OK
 
-echo $N Check that missing data files are allowed ...................$NL
-mv BitKeeper/binpool/de/deadbeef.* BitKeeper/tmp
-bk makepatch -B -r1.0.. > "$HERE"/P || exit 1
-grep -q '== @SFIO@ ==' "$HERE"/P || {
-	echo no sfio marker
-	exit 1
-}
-cores
-mv BitKeeper/tmp/dead* BitKeeper/binpool/de
-echo OK
-
-echo $N Take the patch with missing data and make sure that is OK ...$NL
-mkdir "$HERE"/missing
-cd "$HERE"/missing
-bk takepatch -ivv < "$HERE"/P > "$HERE"/OUT 2>&1 || {
-	cat "$HERE"/OUT
-	exit 1
-}
-test -d BitKeeper/binpool || {
-	echo Should have made binpool dir
-	exit 1
-}
-find BitKeeper/binpool -type f | grep -v .bk_skip | bk sort > "$HERE"/GOT
-grep -v deadbeef "$HERE"/WANT > "$HERE"/PARTIAL
-cmpfiles "$HERE"/PARTIAL "$HERE"/GOT
-echo OK
 
 echo $N Take the patch and check for binpool data ...................$NL
 mkdir "$HERE"/new

@@ -156,7 +156,7 @@ binpool_sfio(char *rev)
 	int	status;
 
 	unless (rev) rev = "+";
-	cmd = aprintf("bk changes -r..'%s' -Bvvnd'" BINPOOL_DSPEC "' |"
+	cmd = aprintf("bk changes -r..'%s' -Bvnd'" BINPOOL_DSPEC "' |"
 	    "bk fsend -Bproxy -Bsend -", rev);
 	f = popen(cmd, "r");
 	free(cmd);

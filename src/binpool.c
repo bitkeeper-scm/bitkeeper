@@ -16,7 +16,6 @@
  *  - check show list data files not linked in the index
  *  - binpool gone-file support
  *  - work on errors when binpool repos are used by old clients
- *  - binpool index locking.
  */
 
 /*
@@ -427,6 +426,7 @@ bp_logUpdate(char *key, char *val)
 
 /*
  * Copy all data local to the binpool to my server.
+ * XXX we ignore tiprev for now.
  */
 int
 bp_updateServer(char *tiprev)
@@ -446,7 +446,7 @@ bp_updateServer(char *tiprev)
 	tmpkeys = bktmp(0, 0);
 
 	/* find local bp deltas */
-	if (sysio(0, tmpkeys, DEVNULL_WR, "bk", "changes", "-Bv",
+	if (sysio(0, tmpkeys, DEVNULL_WR, "bk", "changes", "-qBv",
 		"-nd" BINPOOL_DSPEC, "-L", url, SYS)) {
 		unlink(tmpkeys);
 		free(tmpkeys);
@@ -603,7 +603,6 @@ binpool_push_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
-	unlink("BitKeeper/log/BP_SYNC"); /* don't trust cache */
 	return (bp_updateServer(tiprev));
 }
 

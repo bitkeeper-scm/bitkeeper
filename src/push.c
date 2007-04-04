@@ -367,13 +367,14 @@ tags:			fprintf(opts.out,
 private u32
 genpatch(int level, int wfd, char *rev_list)
 {
-	char	*makepatch[10] = {"bk", "makepatch", "-vv", 0};
+	char	*makepatch[10] = {"bk", "makepatch", 0};
 	int	fd0, fd, rfd, n, status;
 	pid_t	pid;
 
 	opts.inBytes = opts.outBytes = 0;
-	n = opts.verbose ? 3 : 2;
-	if (bp_sharedServer(0)) makepatch[n++] = "-B";
+	n = 2;
+	if (opts.verbose) makepatch[n++] = "-vv";
+	unless (bp_sharedServer(0)) makepatch[n++] = "-B";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
