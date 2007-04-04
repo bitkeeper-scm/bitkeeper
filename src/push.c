@@ -720,13 +720,6 @@ push(char **av, remote *r, char **envVar)
 		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
 	}
-#if 0
-	if (ret > 1) {		/* >1 means data to transfer */
-		if (bp_transferMissing(r, 1, 0, rev_list, !opts.verbose)) {
-			fprintf(stderr, "push: failed to send binpool data\n");
-		}
-	}
-#endif
 	return (push_part2(av, r, rev_list, ret, envVar));
 }
 

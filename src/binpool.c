@@ -431,123 +431,46 @@ bp_logUpdate(char *key, char *val)
 int
 bp_updateServer(char *tiprev)
 {
-	char	*p, *sync, *syncf, *url, *tmperr, *tmpkeys, *tmpkeys2;
+	char	*p, *url, *tmpkeys, *tmpkeys2;
 	char	*cmd;
 	char	*repoID;
-	char	*baserev = 0;
-	FILE	*f;
-	sccs	*s;
-	delta	*d;
 	int	rc;
-	char	buf[MAXKEY];
 
 	/* find the repo_id of my server */
 	if (bp_serverID(&repoID)) return (-1);
-	if (repoID) {
-		url = proj_configval(0, "binpool_server");
-		assert(url);
-	} else {
-		/* No need to update myself, but I should verify that
-		 * I have all the data.
-		 */
-		repoID = strdup("local");
-		url = 0;
-	}
+	unless (repoID) return (0); /* no need to update myself */
+	free(repoID);
+	url = proj_configval(0, "binpool_server");
+	assert(url);
 
-	/* compare with local cache of last sync */
-	syncf = proj_fullpath(0, "BitKeeper/log/BP_SYNC");
-	if (sync = loadfile(syncf, 0)) {
-		p = strchr(sync, '\n');
-		assert(p);
-		*p++ = 0;
-		chomp(p);
-		if (streq(repoID, sync)) baserev = strdup(p);
-		free(sync);
-	}
-	tmperr = bktmp(0, 0);
 	tmpkeys = bktmp(0, 0);
 
-again:
-	/* from last sync to newtip */
-	unless (baserev) baserev = strdup("1.0");
-	unless (tiprev) tiprev = "+";
-
 	/* find local bp deltas */
-	p = aprintf("-r%s..%s", baserev, tiprev);
-	rc = sysio(0, tmpkeys, tmperr, "bk", "changes", "-Bv", p,
-	    "-nd" BINPOOL_DSPEC, SYS);
-	free(p);
-	if (rc) {
-		p = loadfile(tmperr, 0);
-		/* did changes die because it can't find baserev? */
-		rc = (!streq(baserev, "1.0") && strstr(p, baserev));
-		free(p);
-		free(baserev);
-		if (rc) {
-			baserev = 0;
-			goto again;
-		}
-		free(repoID);
+	if (sysio(0, tmpkeys, DEVNULL_WR, "bk", "changes", "-Bv",
+		"-nd" BINPOOL_DSPEC, "-L", url, SYS)) {
+		unlink(tmpkeys);
+		free(tmpkeys);
 		return (-1);
 	}
-	free(baserev);
-	baserev = 0;
-	unlink(tmperr);
-	free(tmperr);
 	if (size(tmpkeys) == 0) { /* no keys to sync? just quit */
 		unlink(tmpkeys);
 		free(tmpkeys);
-		free(repoID);
 		return (0);
 	}
-
-	if (url) {
-		tmpkeys2 = bktmp(0, 0);
-		p = aprintf("-q@%s", url);
-		rc = sysio(tmpkeys, tmpkeys2, 0,
-		    "bk", p, "fsend", "-Bquery", "-", SYS);
-		free(p);
-		unless (rc) {
-			cmd = aprintf("bk fsend -Bsend - < '%s' |"
-			    "bk -q@'%s' -z0 frecv -qBrecv -", tmpkeys2, url);
-			rc = system(cmd);
-			free(cmd);
-		}
-		unlink(tmpkeys2);
-		free(tmpkeys2);
-	} else {
-		f = fopen(tmpkeys, "r");
-		assert(f);
-		rc = 0;
-		while (fnext(buf, f)) {
-			chomp(buf);
-
-			if (p = bp_lookupkeys(0, buf)) {
-				free(p);
-			} else {
-				fprintf(stderr,
-				    "missing binpool data for delta %s\n",
-				    buf);
-				rc = 1;
-			}
-		}
-		fclose(f);
-	}
+	tmpkeys2 = bktmp(0, 0);
+	p = aprintf("-q@%s", url);
+	rc = sysio(tmpkeys, tmpkeys2,0, "bk", p, "fsend", "-Bquery", "-", SYS);
+	free(p);
 	unlink(tmpkeys);
 	free(tmpkeys);
-	unless (rc) {
-		/* update cache of last sync */
-
-		/* find MD5KEY for tiprev */
-		s = sccs_csetInit(SILENT);
-		d = sccs_findrev(s, tiprev);
-		sccs_md5delta(s, d, buf);
-		sccs_free(s);
-		f = fopen(syncf, "w");
-		fprintf(f, "%s\n%s\n", repoID, buf);
-		fclose(f);
+	unless (rc || (sizeof(tmpkeys2) == 0)) {
+		cmd = aprintf("bk fsend -Bsend - < '%s' |"
+		    "bk -q@'%s' -z0 frecv -qBrecv -", tmpkeys2, url);
+		rc = system(cmd);
+		free(cmd);
 	}
-	free(repoID);
+	unlink(tmpkeys2);
+	free(tmpkeys2);
 	return (rc);
 }
 
@@ -616,96 +539,6 @@ bp_sharedServer(int inbkd)
 	/* Do we both use the same server? If so then we are done. */
 	rc = streq(local_repoID, remote_repoID);
 	free(local_repoID);
-	return (rc);
-}
-/*
- * Called to transfer bp data between different binpool servers
- * during a push, pull, clone or rclone.
- *
- * send == 1    We are sending binpool data from this repository to
- *		another repo. (push or rclone)  This is called after the
- *		keysync, but before the bk data is transferred.
- * send == 0	We are requesting binpool data from a remote binpool server
- *		to be installed in our local server. (pull or clone)
- *		Called after the bitkeeper files are received.
- *
- * rev		The range of csets to be transfered. (ie '..+' for push)
- * rev_list	A tmpfile containing the list of csets to be transferred.
- *		(ie BitKeeper/etc/csets-in for pull)
- *
- * Note: Either rev or rev_list is set, but never both.
- */
-int
-bp_transferMissing(remote *r, int send, char *rev, char *rev_list, int quiet)
-{
-	char	*url;		/* URL to connect to remote bkd */
-	char	*local_repoID;	/* repoID of local bp_server (may be me) */
-	char	*remote_repoID;	/* repoID of remote bp_server */
-	int	rc = 0, fd0 = 0;
-	char	**cmds = 0;
-	char	*q = quiet ? "-q" : "";
-
-	/* must have rev or rev_list, but not both */
-	assert((rev && !rev_list) || (!rev && rev_list));
-
-	if (bp_serverID(&local_repoID)) return (-1);
-	url = remote_unparse(r);
-	unless (local_repoID) local_repoID = strdup(proj_repoID(0));
-	unless (remote_repoID = getenv("BKD_BINPOOL_SERVER")) {
-		unless (bkd_hasFeature("binpool")) goto out;
-		fprintf(stderr, "error: BKD_BINPOOL_SERVER missing\n");
-		rc = -1;
-		goto out;
-	}
-	/* Do we both use the same server? If so then we are done. */
-	if (streq(local_repoID, remote_repoID)) goto out;
-
-	/* Generate list of binpool delta keys */
-	if (rev) {
-		cmds = addLine(cmds,
-		    aprintf("bk changes -Bv -r'%s' -nd'" BINPOOL_DSPEC "'",
-		    rev));
-	} else {
-		fd0 = dup(0);
-		close(0);
-		rc = open(rev_list, O_RDONLY, 0);
-		assert(rc == 0);
-		cmds = addLine(cmds,
-		    strdup("bk changes -Bv -nd'" BINPOOL_DSPEC "' -"));
-	}
-	/*
-	 * connections to 'url' are to another binpool domain and are
-	 * considered "far" away.  They should all be compressed.
-	 */
-	if (send) {
-		/* send list of keys to remote and get back needed keys */
-		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' fsend -Bproxy -Bquery -", url));
-		/* build local SFIO of needed bp data */
-		cmds = addLine(cmds,
-		    aprintf("bk         fsend -Bproxy -Bsend -"));
-		/* unpack SFIO in remote bp server */
-		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' frecv -Bproxy -Brecv %s -",url, q));
-	} else {
-		/* Remove bp keys that our local bp server already has */
-		cmds = addLine(cmds,
-		    aprintf("bk         fsend -Bproxy -Bquery -"));
-		/* send keys we need to remote bp server and get back SFIO */
-		cmds = addLine(cmds,
-		    aprintf("bk -q@'%s' fsend -Bproxy -Bsend -", url));
-		/* unpack SFIO in local bp server */
-		cmds = addLine(cmds,
-		    aprintf("bk         frecv -Bproxy -Brecv %s -", q));
-	}
-	rc = spawn_filterPipeline(cmds);
-	freeLines(cmds, free);
-	if (fd0) {
-		dup2(fd0, 0);
-		close(fd0);
-	}
-out:	free(local_repoID);
-	free(url);
 	return (rc);
 }
 

@@ -1242,7 +1242,6 @@ int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);
 int	bp_updateServer(char *tiprev);
 int	bp_serverID(char **id);
-int	bp_transferMissing(remote *r, int send, char *rev, char *revs, int q);
 int	bp_sharedServer(int inbkd);
 
 extern	char	*editor;

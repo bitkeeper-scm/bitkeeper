@@ -323,17 +323,6 @@ clone2(opts opts, remote *r)
 	/* get bp data */
 	(void)proj_repoID(0);		/* generate repoID */
 	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
-#if 0
-	if (bp_transferMissing(r, 0, buf, 0, opts.quiet)) {
-		fprintf(stderr,
-		    "clone: failed to fetch binpool data, "
-		    "repository left locked.\n");
-		/* quietly set the parent for debugging */
-		opts.quiet = 1; 
-		parent(opts, r);
-		return (-1);
-	}
-#endif
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
