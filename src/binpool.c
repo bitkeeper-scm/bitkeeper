@@ -16,8 +16,10 @@
  *  - check show list data files not linked in the index
  *  - binpool gone-file support
  *  - work on errors when binpool repos are used by old clients
- *  - binpool index locking (LMXXX - still an issue, I changed this)
  *  - clause BP stuff on BitKeeper/log/BP
+ *  - clone shouldn't send full SFIO in shared server case!!
+ *  - keysync should sync BP data for non-shared server case
+ *   ( no need to send all data)
  */
 
 /*
@@ -384,7 +386,8 @@ bp_fetch(sccs *s, delta *din)
 
 	unless (din = bp_fdelta(s, din)) return (-1);
 
-	cmd = aprintf("bk -q@'%s' -zo0 sfio -oqB - | bk -R sfio -iqB -", url);
+	cmd = aprintf("bk -q@'%s' -zo0 -Lr sfio -oqB - | bk -R sfio -iqB -",
+	    url);
 	f = popen(cmd, "w");
 	free(cmd);
 	assert(f);
@@ -459,13 +462,14 @@ bp_updateServer(char *tiprev)
 	}
 	tmpkeys2 = bktmp(0, 0);
 	p = aprintf("-q@%s", url);
-	rc = sysio(tmpkeys, tmpkeys2,0, "bk", p, "havekeys", "-B", "-", SYS);
+	rc = sysio(tmpkeys, tmpkeys2,0,
+	    "bk", p, "-Lr", "havekeys", "-B", "-", SYS);
 	free(p);
 	unlink(tmpkeys);
 	free(tmpkeys);
 	unless (rc || (sizeof(tmpkeys2) == 0)) {
 		cmd = aprintf("bk sfio -oqB - < '%s' |"
-		    "bk -q@'%s' -z0 bk sfio -iqB -", tmpkeys2, url);
+		    "bk -q@'%s' -z0 -Lw bk sfio -iqB -", tmpkeys2, url);
 		rc = system(cmd);
 		free(cmd);
 	}
@@ -573,7 +577,7 @@ binpool_pull_main(int ac, char **av)
 	cmds = addLine(cmds, strdup("bk havekeys -B -"));
 
 	/* request deltas from server */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 sfio -oqB -",
+	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr sfio -oqB -",
 	    proj_configval(0, "binpool_server")));
 
 	/* unpack locally */
@@ -658,7 +662,7 @@ binpool_clean_main(int ac, char **av)
 		}
 		free(p2);
 		p2 = proj_configval(0, "binpool_server");
-		cmd = aprintf("%s | bk -@'%s' havekeys -B -", p1, p2);
+		cmd = aprintf("%s | bk -q@'%s' -Lr havekeys -B -", p1, p2);
 		free(p1);
 	}
 	bpdeltas = hash_new(HASH_MEMHASH);
@@ -870,7 +874,7 @@ binpool_check_main(int ac, char **av)
 		free(p);
 
 		tmp = bktmp(0, 0);
-		p = aprintf("bk -q@'%s' havekeys -B - > '%s'",
+		p = aprintf("bk -q@'%s' -Lr havekeys -B - > '%s'",
 		    proj_configval(0, "binpool_server"), tmp);
 		f = popen(p, "w");
 		free(p);

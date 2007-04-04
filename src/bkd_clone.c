@@ -160,7 +160,7 @@ binpool_sfio(char *rev)
 	if (bp_serverID(&repoid)) return (-1);
 	if (repoid) {
 		free(repoid);
-		url = aprintf("-q@'%s' -zo0",
+		url = aprintf("-q@'%s' -zo0 -Lr",
 		    proj_configval(0, "binpool_server"));
 	}
 	unless (rev) rev = "+";

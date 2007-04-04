@@ -714,7 +714,7 @@ again:	/* doDiffs can make it two pass */
 			if (bp_serverID(&t)) goto fail;
 			if (t) {
 				free(t);
-				t = aprintf("-q@'%s' -zo0",
+				t = aprintf("-q@'%s' -zo0 -Lr",
 				    proj_configval(0, "binpool_server"));
 			}
 			sprintf(buf, "bk %s sfio -oqB -", t ? t : "");

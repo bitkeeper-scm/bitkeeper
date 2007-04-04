@@ -330,7 +330,7 @@ bp_fetchkeys(char *me, int quiet, char **keys)
 		    nLines(keys), server);
 	}
 	sprintf(buf,
-	    "bk -q@'%s' -zo0 sfio -qoB - |"
+	    "bk -q@'%s' -zo0 -Lr sfio -qoB - |"
 	    "bk -R sfio -%sriB -", server, quiet ? "q" : "");
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);

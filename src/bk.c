@@ -81,7 +81,7 @@ main(int ac, char **av, char **env)
 {
 	int	i, c, si, is_bk = 0, dashr = 0, remote = 0, quiet = 0;
 	int	ret;
-	char	*p, *prog, *dir = 0;
+	char	*p, *prog, *dir = 0, *locking = 0;
 	char	sopts[30];
 
 	ltc_mp = ltm_desc;
@@ -201,7 +201,7 @@ main(int ac, char **av, char **env)
 			return (0);
 		}
 		is_bk = 1;
-		while ((c = getopt(ac, av, "@|1acCdDgGjlnpqr|RuUxz;")) != -1) {
+		while ((c = getopt(ac, av, "@|1acCdDgGjL|lnpqr|RuUxz;")) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'C': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -210,6 +210,7 @@ main(int ac, char **av, char **env)
 				break;
 			    case '@': remote = 1; break;
 			    case 'q': quiet = 1; break;
+			    case 'L': locking = optarg; break;
 			    case 'r':				/* doc 2.0 */
 				dir = optarg;
 				dashr++;
@@ -239,6 +240,25 @@ main(int ac, char **av, char **env)
 				fprintf(stderr,
 				    "bk: Cannot find package root.\n");
 				return(1);
+			}
+		}
+		if (locking) {
+			if (streq(locking, "r")) {
+				if (repository_rdlock()) {
+					fprintf(stderr,
+"%s: failed to get repository read lock.\n", av[0]);
+					return (1);
+				}
+			} else if (streq(locking, "w")) {
+				if (repository_wrlock()) {
+					fprintf(stderr,
+"%s: failed to get repository write lock.\n", av[0]);
+					return (1);
+				}
+			} else {
+				fprintf(stderr,
+				    "bk: unknown option -L%s\n", locking);
+				return (1);
 			}
 		}
 
@@ -286,6 +306,8 @@ run:	getoptReset();
 #endif
 	cmdlog_start(av, 0);
 	ret = cmd_run(prog, is_bk, ac, av);
+	if (locking && streq(locking, "r")) repository_rdunlock(0);
+	if (locking && streq(locking, "w")) repository_wrunlock(0);
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
 	close(1);

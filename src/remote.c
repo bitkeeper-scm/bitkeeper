@@ -39,7 +39,7 @@ remote_bk(int quiet, int ac, char **av)
 		if (av[i][0] != '-') break;
 
 		/* find '@<opt>' argument, but don't look in -r<dir> */
-		if ((p = strchrs(av[i], "r@")) && (*p != 'r')) {
+		if ((p = strchrs(av[i], "Lr@")) && (*p == '@')) {
 			if (streq(p, "@")) {
 				l = parent_allp();
 				EACH_INDEX(l, j) urls = addLine(urls, l[j]);
