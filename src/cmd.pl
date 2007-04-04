@@ -91,6 +91,7 @@ while (<DATA>) {
 }
 print H "\n#endif\n";
 close(H) or die;
+delete $rmts{"sfio"};	# Exception to the rules.
 
 # Open bk/src/bk.sh and automatically extract out all shell functions
 # and add to the hash table.
@@ -191,8 +192,6 @@ findkey
 fix
 _fixlod
 fixtool
-frecv remote
-fsend remote
 gca
 get
 gethelp

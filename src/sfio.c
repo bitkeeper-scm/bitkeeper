@@ -55,7 +55,7 @@ struct {
 	u32	doModes:1;	/* vm1.4 - sends permissions */
 	u32	echo:1;		/* echo files to stdout as they are written */
 	u32	force:1;	/* overwrite existing files */
-	u32	bp_tuple:1;	/* -Bk rkey dkey bphash path */
+	u32	bp_tuple:1;	/* -B rkey dkey bphash path */
 	u32	hardlinks:1;	/* save hardlinks */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
@@ -75,7 +75,7 @@ sfio_main(int ac, char **av)
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;B;efHimopqr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;BefHimopqr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -83,12 +83,7 @@ sfio_main(int ac, char **av)
 		    case 'A':
 			opts->more = file2Lines(opts->more, optarg);
 			break;
-		    case 'B':
-			while (*optarg) {
-				if (*optarg== 'k') opts->bp_tuple = 1;
-				optarg++;
-			}
-			break;
+		    case 'B': opts->bp_tuple = 1; break;
 		    case 'e': opts->echo = 1; break;		/* doc 2.3 */
 		    case 'f': opts->force = 1; break;		/* doc */
 		    case 'H': opts->hardlinks = 1; break;
@@ -110,6 +105,14 @@ sfio_main(int ac, char **av)
 		    default:
 			goto usage;
 		}
+	}
+
+	/*
+	 * If we're being executed remotely don't let them grab everything.
+	 */
+	if (getenv("_BK_VIA_REMOTE") && !opts->bp_tuple) {
+		fprintf(stderr, "Remote is limited to keys.\n");
+		exit(1);
 	}
 	/* ignore "-" it makes bk -r sfio -o work */
 	if (av[optind] && streq(av[optind], "-")) optind++;

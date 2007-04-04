@@ -256,7 +256,7 @@ err:			if (zout) {
 		strcpy(buf, "ERROR-not at repository root\n");
 		goto err;
 	}
-	putenv("BK_NO_CMD_FALL_THROUGH=1");
+	putenv("_BK_VIA_REMOTE=1");
 	putenv("BKD_DAEMON=");	/* allow new bkd connections */
 
 	setmode(0, _O_BINARY);

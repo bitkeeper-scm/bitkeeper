@@ -1,62 +1,26 @@
 #include "sccs.h"
 #include "binpool.h"
 
-private int
-do_remote(char *url, char *cmd, char *gzip, char *extra)
-{
-	int	c, i;
-	char	*nav[10];
-
-	/* proxy to my binpool server */
-	nav[i=0] = "bk";
-	nav[++i] = aprintf("-q@%s", url);
-	if (gzip) nav[++i] = gzip;
-	nav[++i] = cmd;
-	if (extra) nav[++i] = extra;
-	nav[++i] = "-";
-	nav[++i] = 0;
-
-	c = remote_bk(1, i, nav);
-	free(nav[1]);
-	return (c);
-}
-
 /*
- * Receive a list of binpool deltakeys on stdin and return a SFIO
- * of binpool data on stdout.
- *
- * input:
- *    d->hash(adler32.md5sum) deltaKey md5rootkey cset_md5rootkey
- *    ... repeat ...
+ * Simple key sync.
+ * Receive a list of keys on stdin and return a list of
+ * keys not found locally.
+ * Currently only -B (for binpool) is implemented.
  */
 int
-fsend_main(int ac, char **av)
+havekeys_main(int ac, char **av)
 {
-	char	*p, *url;
+	char	*dfile;
 	int	c;
-	int	toserver = 0, query = 0, binpool = 0, nolock = 0;
-	char	*sfio[] = { "sfio", "-oqBk", 0 };
+	int	binpool = 0;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "B;Lq")) != -1) {
+	while ((c = getopt(ac, av, "BLq")) != -1) {
 		switch (c) {
-		    case 'B':
-			if (streq(optarg, "proxy")) {
-				toserver = 1;
-			} else if (streq(optarg, "query")) {
-				query = 1;
-			} else if (streq(optarg, "send")) {
-				binpool = 1;
-			} else {
-				goto usage;
-			}
-			break;
-		    case 'L': nolock = 1; break;
+		    case 'B': binpool = 1; break;
 		    case 'q': break;	/* ignored for now */
 		    default:
-usage:			fprintf(stderr,
-			   "usage: bk %s [-q] [-Bproxy] [-Bquery] [-Bsend] -\n",
-			    av[0]);
+usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 			return (1);
 		}
 	}
@@ -65,113 +29,14 @@ usage:			fprintf(stderr,
 		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
 		return (1);
 	}
-	if (toserver) {
-		if (bp_serverID(&p)) return (1);
-		if (p) {
-			free(p);
-			url = proj_configval(0, "binpool_server");
-			assert(url);
-			/* proxy to my binpool server */
-			return (do_remote(url, av[0],
-				    (query ? 0 : "-zo0"),
-				    (query ? "-Bquery" : "-Bsend")));
+	while (fnext(buf, stdin)) {
+		chomp(buf);
+		unless (dfile = bp_lookupkeys(0, buf)) {
+			puts(buf); /* we don't have this one */
 		}
+		free(dfile);
 	}
-	if (!nolock && repository_rdlock()) {
-		fprintf(stderr,
-		    "%s: failed to get repository read lock\n", av[0]);
-		return (1);
-	}
-	if (query) {
-		char	*dfile;
-
-		while (fnext(buf, stdin)) {
-			chomp(buf);
-
-			unless (dfile = bp_lookupkeys(0, buf)) {
-				puts(buf); /* we don't have this one */
-			}
-			free(dfile);
-		}
-		fflush(stdout);
-		return (0);
-	}
-	unless (binpool) {
-		fprintf(stderr,
-		    "%s: only binpool-mode supported currently.\n", av[0]);
-		return (1);
-	}
-	getoptReset();
-	c = sfio_main(2, sfio);
-	unless (nolock) repository_rdunlock(0);
-	return (c);
-}
-
-/*
- * Receive a SFIO of binpool data on stdin and store it the current
- * binpool.
- */
-int
-frecv_main(int ac, char **av)
-{
-	char	*p, *url;
-	int	toserver = 0, binpool = 0, nolock = 0;
-	int	quiet = 0;
-	int	c;
-	char	*sfio[] = { "sfio", "-riBk", 0, 0 };
-
-	setmode(0, _O_BINARY);
-	while ((c = getopt(ac, av, "B;Lq")) != -1) {
-		switch (c) {
-		    case 'B':
-			if (streq(optarg, "proxy")) {
-				toserver = 1;
-			} else if (streq(optarg, "recv")) {
-				binpool = 1;
-			} else {
-				goto usage;
-			}
-			break;
-		    case 'L': nolock = 1; break;
-		    case 'q': quiet = 1;  sfio[2] = "-q"; break;
-		    default:
-usage:			fprintf(stderr,
-			    "usage: bk %s [-q] [-Bproxy] -Brecv -\n", av[0]);
-			return (1);
-		}
-	}
-	unless (av[optind] && streq(av[optind], "-")) goto usage;
-	if (proj_cd2root()) {
-		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
-		return (1);
-	}
-
-	if (toserver) {
-		if (bp_serverID(&p)) return (1);
-		if (p) {
-			free(p);
-			url = proj_configval(0, "binpool_server");
-			assert(url);
-
-			/* proxy to my binpool server */
-			return (do_remote(url, av[0],
-				    "-z0",
-				    quiet ? "-qBrecv" : "-Brecv"));
-		}
-	}
-	unless (binpool) {
-		fprintf(stderr,
-		    "%s: only binpool-mode supported currently.\n", av[0]);
-		return (1);
-	}
-	if (!nolock && repository_wrlock()) {
-		fprintf(stderr,
-		    "%s: failed to get repository read lock\n", av[0]);
-		return (1);
-	}
-	getoptReset();
-	c = sfio_main(quiet ? 3 : 2, sfio);
-	unless (nolock) repository_wrunlock(0);
-	return (c);
+	fflush(stdout);
+	return (0);
 }
 

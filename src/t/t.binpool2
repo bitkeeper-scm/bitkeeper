@@ -37,14 +37,14 @@ bk commit $Q -ybindata
 test -d BitKeeper/binpool || exit 1
 echo OK
 
-echo $N Transfer file with fsend/frecv ..............................$NL
+echo $N Transfer file with sfio -B ..................................$NL
 cd ..
 bk clone $Q pmaster ptest || exit 1
 cd pmaster
-bk -r prs -hnd'$if(:BPHASH:){:BPHASH: :KEY: :MD5KEY|1.0: :CSET_MD5ROOTKEY:}' > keys
-bk fsend -qBsend - < keys > out || exit 1
+bk -r prs -hnd'$if(:BPHASH:){:BPHASH: :KEY: :MD5KEY|1.0:}' > keys
+bk sfio -qBo - < keys > out || exit 1
 cd ../ptest
-bk frecv -qBrecv - < ../pmaster/out || exit 1
+bk sfio -qBi - < ../pmaster/out || exit 1
 bk get $Q bin.data || exit 1
 echo OK
 

@@ -711,7 +711,16 @@ again:	/* doDiffs can make it two pass */
 			int	i;
 			FILE	*f;
 
-			f = popen("bk fsend -L -Bsend -", "w");
+			// LMXXX - what if we get errors?
+			if ((bp_serverID(&t) == 0) && t) {
+				t = proj_configval(0, "binpool_server");
+			}
+			if (t) {
+				sprintf(buf, "bk -q@'%s' sfio -oqB -", t);
+			} else {
+				sprintf(buf, "bk sfio -oqB -", t);
+			}
+			f = popen(buf, "w");
 			EACH(cs->binpool) fprintf(f, "%s\n", cs->binpool[i]);
 			fflush(f);	// Paranoia only
 			pclose(f);

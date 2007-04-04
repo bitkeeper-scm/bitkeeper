@@ -156,8 +156,8 @@ binpool_sfio(char *rev)
 	int	status;
 
 	unless (rev) rev = "+";
-	cmd = aprintf("bk changes -r..'%s' -Bvvnd'" BINPOOL_DSPEC "' |"
-	    "bk fsend -Bproxy -Bsend -", rev);
+	cmd = aprintf("bk changes -r..'%s' -Bvnd'" BINPOOL_DSPEC "' |"
+	    "bk sfio -oqB -", rev);
 	f = popen(cmd, "r");
 	free(cmd);
 	gzipAll2fd(fileno(f), 1, 6, 0, 0, 1, 0);

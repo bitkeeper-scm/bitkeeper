@@ -412,7 +412,7 @@ sfio(opts opts, int gzip, remote *r, int binpool)
 	cmds[n = 0] = "bk";
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
-	if (binpool) cmds[++n] = "-Bk";
+	if (binpool) cmds[++n] = "-B";
 	if (opts.quiet) cmds[++n] = "-q";
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
