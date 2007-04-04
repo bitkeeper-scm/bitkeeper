@@ -15,7 +15,7 @@ havekeys_main(int ac, char **av)
 	int	binpool = 0;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "BLq")) != -1) {
+	while ((c = getopt(ac, av, "Bq")) != -1) {
 		switch (c) {
 		    case 'B': binpool = 1; break;
 		    case 'q': break;	/* ignored for now */

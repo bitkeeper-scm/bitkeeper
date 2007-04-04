@@ -170,7 +170,6 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	char	*p, buf[MAXPATH];
 	char	*lic;
 	int	gzip, rc = 2;
-	int	binpool = 0;
 
 	gzip = r->port ? opts.gzip : 0;
 	if (local && exists(local) && !emptyDir(local)) {
@@ -255,11 +254,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		if (getTriggerInfoBlock(r, !opts.quiet)) goto done;
 		getline2(r, buf, sizeof (buf));
 	}
-	if (streq(buf, "@SFIOx2@")) {
-		binpool = 1;
-	} else if (!streq(buf, "@SFIO@")) {
-		goto done;
-	}
+	unless (streq(buf, "@SFIO@")) goto done;
 
 	/* create the new package */
 	if (initProject(local) != 0) goto done;
@@ -268,10 +263,6 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	/* eat the data */
 	if (sfio(opts, gzip, r, 0) != 0) {
 		fprintf(stderr, "sfio errored\n");
-		goto done;
-	}
-	if (binpool && sfio(opts, gzip, r, 1)) {
-		fprintf(stderr, "binpool sfio errored\n");
 		goto done;
 	}
 	if (clone2(opts, r)) goto done;
@@ -308,7 +299,7 @@ done:	if (rc) {
 private	int
 clone2(opts opts, remote *r)
 {
-	char	*p;
+	char	*p, *freeme = 0;
 	char	*checkfiles;
 	FILE	*f;
 	int	rc;
@@ -320,8 +311,10 @@ clone2(opts opts, remote *r)
 		return (-1);
 	}
 
-	/* get bp data */
+	parent(opts, r);
+
 	(void)proj_repoID(0);		/* generate repoID */
+
 	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
@@ -329,7 +322,29 @@ clone2(opts opts, remote *r)
 	sccs_rmUncommitted(opts.quiet, f);
 	fclose(f);
 
-	parent(opts, r);
+	/*
+	 * Get bp data if we don't share a server
+	 * If there is no server set, p will be null and we want the data.
+	 * If there is a server set, p is it, and we want to fetch the data.
+	 * XXX - we're going to want to proxy this to the uber server.
+	 */
+	if ((bp_serverID(&p) == 0) &&
+	    ((p == 0) || !streq(p, getenv("BKD_BINPOOL_SERVER")))) {
+		p = getenv("BKD_BINPOOL_SERVER_URL");
+		/* I'm going with no server means the remote is the server */
+		unless (p && *p) p = freeme = remote_unparse(r);
+		sprintf(buf, "bk changes -r..'%s' -Bvnd'" BINPOOL_DSPEC "' |"
+		    "bk -q@'%s' -Lr sfio -oqB - | "
+		    "bk sfio -ir%sB -",
+		    opts.rev ? opts.rev : "",
+		    p, opts.quiet ? "q" : "");
+		if (freeme) free(freeme);
+	    	if (system(buf)) {
+			fprintf(stderr, "clone: binpool fetch failed\n");
+			return (-1);
+		}
+
+	}
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */

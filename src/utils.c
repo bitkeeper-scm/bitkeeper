@@ -923,6 +923,10 @@ sendServerInfoBlock(int is_rclone)
 			out(buf);
 			free(p);
 		}
+		if ((p = proj_configval(0, "binpool_server")) && *p) {
+			sprintf(buf, "\nBINPOOL_SERVER_URL=%s", p);
+			out(buf);
+		}
 	}
 
 	/* only send back a seed if we received one */

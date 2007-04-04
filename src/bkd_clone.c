@@ -2,7 +2,6 @@
 #include "logging.h"
 
 private int	compressed(int, int);
-private	int	binpool_sfio(char *rev);
 
 /*
  * Send the sfio file to stdout
@@ -83,13 +82,8 @@ cmd_clone(int ac, char **av)
 	}
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	if (trigger(av[0], "pre")) return (1);
-	if (0 && bp_sharedServer(1)) { /* XXX! */
-		out("@SFIO@\n");
-		rc = compressed(gzip, 1);
-	} else {
-		out("@SFIOx2@\n");
-		rc = compressed(gzip, 1) || binpool_sfio(rev);
-	}
+	out("@SFIO@\n");
+	rc = compressed(gzip, 1);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (trigger(av[0], "post")) exit (1);
@@ -146,30 +140,4 @@ compressed(int level, int hflag)
 	free(tmpf2);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
 	return (rc);
-}
-
-private int
-binpool_sfio(char *rev)
-{
-	char	*cmd;
-	FILE	*f;
-	int	status;
-	char	*repoid, *url = 0;
-
-	/* data comes from my binpool_server (if one exists) */
-	if (bp_serverID(&repoid)) return (-1);
-	if (repoid) {
-		free(repoid);
-		url = aprintf("-q@'%s' -zo0 -Lr",
-		    proj_configval(0, "binpool_server"));
-	}
-	unless (rev) rev = "+";
-	cmd = aprintf("bk changes -r..'%s' -Bvnd'" BINPOOL_DSPEC "' |"
-	    "bk %s sfio -oqB -", rev, url ? url : "");
-	if (url) free(url);
-	f = popen(cmd, "r");
-	free(cmd);
-	gzipAll2fd(fileno(f), 1, 6, 0, 0, 1, 0);
-	status = pclose(f);
-	return (!(WIFEXITED(status) && (WEXITSTATUS(status) == 0)));
 }

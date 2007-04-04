@@ -209,8 +209,6 @@ echo $N Test pull to see that it sends binpool data .................$NL
 cd "$HERE"
 _BK_ALLOW_BAD_CRC=YES bk clone $Q -r1.1 project pull || exit 1
 cd pull
-# XXX - remove this line when I fix clone to not always be in all mode
-rm -rf BitKeeper/binpool
 test -d BitKeeper/binpool && {
 	echo should have no binpool dir
 	exit 1
