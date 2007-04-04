@@ -1673,7 +1673,10 @@ sfio(MMAP *m)
 		t += n;
 	} while (left);
 	fflush(f);
-	if (pclose(f)) return (-1);
+	if (pclose(f)) {
+		fprintf(stderr, "takepatch: frecv failed.\n");
+		return (-1);
+	}
 	return (0);
 }
 

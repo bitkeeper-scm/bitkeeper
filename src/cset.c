@@ -722,8 +722,10 @@ again:	/* doDiffs can make it two pass */
 			}
 			f = popen(buf, "w");
 			EACH(cs->binpool) fprintf(f, "%s\n", cs->binpool[i]);
-			fflush(f);	// Paranoia only
-			pclose(f);
+			if (pclose(f)) {
+				fprintf(stderr, "fsend failed.\n");
+				goto fail;
+			}
 		}
 		fclose(stdout);
 		if (waitpid(cs->pid, &status, 0) != cs->pid) {
@@ -1208,17 +1210,6 @@ sccs_patch(sccs *s, cset_t *cs)
 			} else if (BINPOOL(s) && copts.doBinpool) {
 				assert(d->hash || (!d->added && !d->deleted));
 				if (d->hash) {
-					char	*p;
-
-// LMXXX - this should really fail unless we were told to succeed.  For
-// now I'm just hoping they can find the data elsewhere.
-// Alternatively, skip pass the miss IFF we are not a server.
-					unless (p = bp_lookup(s, d)) {
-						printf("\n");
-						deltas++;
-						continue;
-					}
-					free(p);
 					cs->binpool = addLine(cs->binpool,
 					    sccs_prsbuf(s, d, 0,
 					    BINPOOL_DSPEC));
