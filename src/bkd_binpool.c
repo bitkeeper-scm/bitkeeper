@@ -29,6 +29,10 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
 		return (1);
 	}
+	unless (binpool) {
+		fprintf(stderr, "%s: only -B(binpool) supported.\n", av[0]);
+		return (1);
+	}
 	while (fnext(buf, stdin)) {
 		chomp(buf);
 		unless (dfile = bp_lookupkeys(0, buf)) {

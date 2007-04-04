@@ -1674,7 +1674,7 @@ sfio(MMAP *m)
 	} while (left);
 	fflush(f);
 	if (pclose(f)) {
-		fprintf(stderr, "takepatch: frecv failed.\n");
+		fprintf(stderr, "takepatch: binpool sfio -i failed.\n");
 		return (-1);
 	}
 	return (0);

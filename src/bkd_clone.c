@@ -154,10 +154,19 @@ binpool_sfio(char *rev)
 	char	*cmd;
 	FILE	*f;
 	int	status;
+	char	*repoid, *url = 0;
 
+	/* data comes from my binpool_server (if one exists) */
+	if (bp_serverID(&repoid)) return (-1);
+	if (repoid) {
+		free(repoid);
+		url = aprintf("-q@'%s' -zo0",
+		    proj_configval(0, "binpool_server"));
+	}
 	unless (rev) rev = "+";
 	cmd = aprintf("bk changes -r..'%s' -Bvnd'" BINPOOL_DSPEC "' |"
-	    "bk sfio -oqB -", rev);
+	    "bk %s sfio -oqB -", rev, url ? url : "");
+	if (url) free(url);
 	f = popen(cmd, "r");
 	free(cmd);
 	gzipAll2fd(fileno(f), 1, 6, 0, 0, 1, 0);

@@ -205,6 +205,7 @@ graft
 grep
 _gzip
 _hashstr_test
+havekeys remote
 help
 helpsearch
 helptopics

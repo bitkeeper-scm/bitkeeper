@@ -711,19 +711,18 @@ again:	/* doDiffs can make it two pass */
 			int	i;
 			FILE	*f;
 
-			// LMXXX - what if we get errors?
-			if ((bp_serverID(&t) == 0) && t) {
-				t = proj_configval(0, "binpool_server");
-			}
+			if (bp_serverID(&t)) goto fail;
 			if (t) {
-				sprintf(buf, "bk -q@'%s' sfio -oqB -", t);
-			} else {
-				sprintf(buf, "bk sfio -oqB -", t);
+				free(t);
+				t = aprintf("-q@'%s' -zo0",
+				    proj_configval(0, "binpool_server"));
 			}
+			sprintf(buf, "bk %s sfio -oqB -", t ? t : "");
+			if (t) free(t);
 			f = popen(buf, "w");
 			EACH(cs->binpool) fprintf(f, "%s\n", cs->binpool[i]);
 			if (pclose(f)) {
-				fprintf(stderr, "fsend failed.\n");
+				fprintf(stderr, "binpool sfio -o failed.\n");
 				goto fail;
 			}
 		}
