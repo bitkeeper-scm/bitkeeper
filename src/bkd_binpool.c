@@ -89,6 +89,5 @@ server(void)
 	sprintf(buf,
 	    "bk -q@'%s' -Lr havekeys -B -", proj_configval(0,"binpool_server"));
 	f = popen(buf, "w");
-ttyprintf("f=%x buf=%s\n", f, buf);
 	return (f ? f : stdout);
 }

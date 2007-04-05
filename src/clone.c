@@ -18,6 +18,7 @@ typedef struct {
 
 private int	clone(char **, opts, remote *, char *, char **);
 private	int	clone2(opts opts, remote *r);
+private int	clone_part2(opts opts, remote *r, char **envVar);
 private void	parent(opts opts, remote *r);
 private int	sfio(opts opts, int gz, remote *r, int binpool);
 private void	usage(void);
@@ -169,7 +170,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
 	char	*lic;
-	int	gzip, rc = 2;
+	int	gzip, rc = 2, do_part2;
 
 	gzip = r->port ? opts.gzip : 0;
 	if (local && exists(local) && !emptyDir(local)) {
@@ -265,6 +266,10 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
+	do_part2 = ((p = getenv("BKD_BINPOOL")) && streq(p, "YES"));
+	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
+	if (do_part2 && clone_part2(opts, r, envVar)) goto done;
+
 	if (clone2(opts, r)) goto done;
 
 	rc  = 0;
@@ -279,16 +284,6 @@ done:	if (rc) {
 	 */
 	if (proj_root(0) && (rc != 2)) trigger(av[0], "post");
 
-	/*
-	 * XXX This is a workaround for a csh fd leak:
-	 * Force a client side EOF before we wait for server side EOF.
-	 * Needed only if remote is running csh; csh has a fd leak
-	 * which causes it fail to send us EOF when we close stdout
-	 * and stderr.  Csh only sends us EOF and the bkd exit, yuck !!
-	 */
-	disconnect(r, 1);
-
-	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	repository_unlock(0);
 	unless (rc || opts.quiet) {
 		fprintf(stderr, "Clone completed successfully.\n");
@@ -299,7 +294,7 @@ done:	if (rc) {
 private	int
 clone2(opts opts, remote *r)
 {
-	char	*p, *freeme = 0;
+	char	*p;
 	char	*checkfiles;
 	FILE	*f;
 	int	rc;
@@ -321,30 +316,6 @@ clone2(opts opts, remote *r)
 	assert(f);
 	sccs_rmUncommitted(opts.quiet, f);
 	fclose(f);
-
-	/*
-	 * Get bp data if we don't share a server
-	 * If there is no server set, p will be null and we want the data.
-	 * If there is a server set, p is it, and we want to fetch the data.
-	 * XXX - we're going to want to proxy this to the uber server.
-	 */
-	if (bp_binpool() && (bp_serverID(&p) == 0) &&
-	    ((p == 0) || !streq(p, getenv("BKD_BINPOOL_SERVER")))) {
-		p = getenv("BKD_BINPOOL_SERVER_URL");
-		/* I'm going with no server means the remote is the server */
-		unless (p && *p) p = freeme = remote_unparse(r);
-		sprintf(buf, "bk changes -r..'%s' -Bvnd'" BINPOOL_DSPEC "' |"
-		    "bk -q@'%s' -Lr sfio -oqB - | "
-		    "bk sfio -ir%sB -",
-		    opts.rev ? opts.rev : "",
-		    p, opts.quiet ? "q" : "");
-		if (freeme) free(freeme);
-	    	if (system(buf)) {
-			fprintf(stderr, "clone: binpool fetch failed\n");
-			return (-1);
-		}
-
-	}
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
@@ -450,6 +421,68 @@ sfio(opts opts, int gzip, remote *r, int binpool)
 	return (100);
 }
 
+private int
+clone_part2(opts opts, remote *r, char **envVar)
+{
+	FILE	*f, *f2;
+	int	rc = 1;
+	char	*cmd;
+	char	cmd_file[MAXPATH];
+	char	buf[MAXLINE];
+
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, !opts.quiet)) {
+		return (-1);
+	}
+	bktmp(cmd_file, "clone2msg");
+	f = fopen(cmd_file, "w");
+	assert(f);
+	sendEnv(f, envVar, r, 0);
+	/*
+	 * No need to do "cd" again if we have a non-http connection
+	 * becuase we already did a "cd" in pull part 1
+	 */
+	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	fprintf(f, "clone_part2");
+	if (opts.rev) fprintf(f, " -r%s", opts.rev);
+	fputs("\n", f);
+	unless (bp_sharedServer(0)) {
+		cmd = aprintf("bk changes -r..%s -Bv -nd'" BINPOOL_DSPEC "' |"
+		    "bk havekeys -B -", opts.rev ? opts.rev : "");
+		f2 = popen(cmd, "r");
+		free(cmd);
+		assert(f2);
+		while (fnext(buf, f2)) fputs(buf, f);
+		if (pclose(f2)) goto done;
+	}
+	fprintf(f, "@END@\n");
+	fclose(f);
+	rc = send_file(r, cmd_file, 0);
+	unlink(cmd_file);
+	if (rc) goto done;
+
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
+	if (streq(buf, "@SERVER INFO@")) {
+		if (getServerInfoBlock(r)) {
+			fprintf(stderr, "clone2: premature disconnect?\n");
+			disconnect(r, 2);
+			goto done;
+		}
+	} else {
+		drainErrorMsg(r, buf, sizeof(buf));
+		exit(1);
+	}
+	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
+	unless (streq(buf, "@BINPOOL@")) {
+		fprintf(stderr, "clone2: wrong data: %s\n", buf);
+		goto done;
+	}
+	sfio(opts, 6, r, 1);
+	rc = 0;
+done:	disconnect(r, 2);
+	unlink(cmd_file);
+	return (0);
+}
 void
 sccs_rmUncommitted(int quiet, FILE *f)
 {

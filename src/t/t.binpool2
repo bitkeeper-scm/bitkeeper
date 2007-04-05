@@ -44,6 +44,10 @@ cd pmaster
 bk -r prs -hnd'$if(:BPHASH:){:BPHASH: :KEY: :MD5KEY|1.0:}' > keys
 bk sfio -qBo - < keys > out || exit 1
 cd ../ptest
+test -d BitKeeper/binpool && {
+	echo no binpool yet
+	exit 1
+}
 bk sfio -qBi - < ../pmaster/out || exit 1
 bk get $Q bin.data || exit 1
 echo OK

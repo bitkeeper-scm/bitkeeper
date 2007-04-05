@@ -366,6 +366,9 @@ findcmd(int ac, char **av)
 			if (streq(av[0], "pull")) av[0] = "remote pull";
 			if (streq(av[0], "push")) av[0] = "remote push";
 			if (streq(av[0], "clone")) av[0] = "remote clone";
+			if (streq(av[0], "clone_part2")) {
+				av[0] = "remote clone part2";
+			}
 			if (streq(av[0], "pull_part1")) {
 				av[0] = "remote pull part1";
 			}
