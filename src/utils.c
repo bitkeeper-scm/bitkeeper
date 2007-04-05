@@ -884,7 +884,7 @@ sendServerInfoBlock(int is_rclone)
 	out(buf);
 
 	/*
-	 * When we are doing a rclone, there is no tree in the bkd sode yet
+	 * When we are doing a rclone, there is no tree on the bkd side yet
 	 * Do not try to get the level of the server tree.
 	 */
 	unless (is_rclone) {
@@ -893,6 +893,7 @@ sendServerInfoBlock(int is_rclone)
 		out("LICTYPE=");
 		out(eula_name());
 		out("\n");
+		if (bp_binpool()) out("BINPOOL=YES\n");
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));

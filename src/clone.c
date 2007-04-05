@@ -328,7 +328,7 @@ clone2(opts opts, remote *r)
 	 * If there is a server set, p is it, and we want to fetch the data.
 	 * XXX - we're going to want to proxy this to the uber server.
 	 */
-	if ((bp_serverID(&p) == 0) &&
+	if (bp_binpool() && (bp_serverID(&p) == 0) &&
 	    ((p == 0) || !streq(p, getenv("BKD_BINPOOL_SERVER")))) {
 		p = getenv("BKD_BINPOOL_SERVER_URL");
 		/* I'm going with no server means the remote is the server */

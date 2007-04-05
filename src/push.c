@@ -374,7 +374,7 @@ genpatch(int level, int wfd, char *rev_list)
 	opts.inBytes = opts.outBytes = 0;
 	n = 2;
 	if (opts.verbose) makepatch[n++] = "-vv";
-	unless (bp_sharedServer(0)) makepatch[n++] = "-B";
+	if (bp_binpool() && !bp_sharedServer(0)) makepatch[n++] = "-B";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*

@@ -49,7 +49,10 @@ bp_delta(sccs *s, delta *d)
 {
 	char	*keys;
 	int	rc;
+	char	*p = aprintf("%s/BitKeeper/log/binpool", proj_root(s->proj));
 
+	unless (exists(p)) touch(p, 0664);
+	free(p);
 	if (hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
 	s->dsum = d->sum;
 	keys = sccs_prsbuf(s, d, 0, BINPOOL_DSPEC);
@@ -439,6 +442,8 @@ bp_updateServer(char *tiprev)
 	char	*repoID;
 	int	rc;
 
+	unless (bp_binpool()) return (0);
+
 	/* find the repo_id of my server */
 	if (bp_serverID(&repoID)) return (-1);
 	unless (repoID) return (0); /* no need to update myself */
@@ -544,6 +549,13 @@ bp_sharedServer(int inbkd)
 	rc = streq(local_repoID, remote_repoID);
 	free(local_repoID);
 	return (rc);
+}
+
+int
+bp_binpool(void)
+{
+	assert(exists(BKROOT));
+	return (exists("BitKeeper/log/binpool"));
 }
 
 /* make local repository contain binpool data for all deltas */

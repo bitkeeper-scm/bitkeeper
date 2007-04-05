@@ -1416,6 +1416,7 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
+	if (getenv("BKD_BINPOOL")) touch("BitKeeper/log/binpool", 0664);
 }
 
 /*

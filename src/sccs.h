@@ -1242,6 +1242,7 @@ int	bp_diff(sccs *s, delta *d, char *gfile);
 int	bp_updateServer(char *tiprev);
 int	bp_serverID(char **id);
 int	bp_sharedServer(int inbkd);
+int	bp_binpool(void);
 
 extern	char	*editor;
 extern	char	*bin;

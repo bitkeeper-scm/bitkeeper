@@ -85,6 +85,7 @@ check_main(int ac, char **av)
 	char	buf[MAXKEY];
 	char	*t;
 	int	checkout;
+	int	binpool = 0;
 
 	timestamps = 0;
 	while ((c = getopt(ac, av, "acdefgpRTvw")) != -1) {
@@ -187,6 +188,7 @@ check_main(int ac, char **av)
 			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
 			if (s->has_nonl && chk_nlbug(s)) errors |= 0x04;
 		}
+		if (BINPOOL(s)) binpool = 1;
 		if (chk_gfile(s, pathDB, checkout)) errors |= 0x08;
 		if (no_gfile(s)) errors |= 0x08;
 		if (readonly_gfile(s)) errors |= 0x08;
@@ -257,6 +259,7 @@ check_main(int ac, char **av)
 		sccs_free(s);
 	}
 	if (e = sfileDone()) return (e);
+	if (binpool && !bp_binpool()) touch("BitKeeper/log/binpool", 0664);
 	if (all || update_idcache(idDB, keys)) {
 		fprintf(idcache, "#$sum$ %u\n", id_sum);
 		fclose(idcache);
