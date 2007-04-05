@@ -274,7 +274,7 @@ echo OK
 echo $N clone a tree via bkd ........................................$NL
 cd "$HERE/project"
 P=`port 50000`
-bk bkd -U -q -d -p$P -ikill
+bk bkd -q -d -p$P -ikill
 bk clone $Q bk://localhost:$P "$HERE/copy2"
 if [ -f BitKeeper/tmp/clone.sfio ]; then echo failed; exit 1; fi
 cd "$HERE/copy2/src"
@@ -301,7 +301,7 @@ echo OK
 echo $N check a push to bkd with a gfile conflict ...................$NL
 P=`port 50000`
 cd "$HERE/project"
-bk bkd -U -q -d -p$P -ikill
+bk bkd -q -d -p$P -ikill
 cd "$HERE/project"
 echo data1 > conflict.c
 cd "$HERE/copy"
@@ -380,7 +380,7 @@ echo $N Make sure bkd logs requests under the remote user name ......$NL
 cd "$HERE/project"
 cp /dev/null BitKeeper/log/repo_log
 P=`port 50000`
-BK_USER=garbage bk bkd -Uqdp$P -ikill
+BK_USER=garbage bk bkd -qdp$P -ikill
 cd "$HERE/copy"
 BK_USER=pull_USER bk pull bk://localhost:$P/"$HERE/project" > pull.out 2>&1
 bk _usleep 250000

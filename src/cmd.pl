@@ -91,7 +91,6 @@ while (<DATA>) {
 }
 print H "\n#endif\n";
 close(H) or die;
-delete $rmts{"sfio"};	# Exception to the rules.
 
 # Open bk/src/bk.sh and automatically extract out all shell functions
 # and add to the hash table.
@@ -106,6 +105,7 @@ close(C) or die;
 
 # all commands tagged with 'remote' must live in files named bkd_*.c
 # (can't use perl's glob() because win32 perl is missing library)
+delete $rmts{"sfio_main"};	# Exception to the rules.
 open(LS, "ls bkd_*.c |") or die;
 @ARGV = ();
 while (<LS>) {
@@ -288,7 +288,7 @@ sendbug
 set
 setup
 sfiles
-sfio
+sfio remote
 shrink
 sinfo
 smerge
