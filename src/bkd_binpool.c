@@ -1,4 +1,5 @@
 #include "sccs.h"
+#include "bkd.h"
 #include "binpool.h"
 
 private FILE	*server(void);
@@ -90,4 +91,89 @@ server(void)
 	    "bk -q@'%s' -Lr havekeys -B -", proj_configval(0,"binpool_server"));
 	f = popen(buf, "w");
 	return (f ? f : stdout);
+}
+
+/*
+ * An options last part of the bkd connection for clone and pull that
+ * examines the incoming data and requests binpool keys that are missing.
+ * from the local server.
+ * This extra pass is only called if BKD_BINPOOL=YES indicating that the
+ * remote bkd has binpool data, and if we share the same binpool server then
+ * we won't request data.
+ */
+int
+bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
+{
+	FILE	*f;
+	int	fd, i, bytes, rc = 1;
+	char	*cmd, *keys;
+	zputbuf	*zout;
+	char	cmd_file[MAXPATH];
+	char	buf[MAXLINE];
+
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, 1, !quiet)) {
+		return (-1);
+	}
+	bktmp(cmd_file, "binpoolmsg");
+	f = fopen(cmd_file, "w");
+	assert(f);
+	sendEnv(f, envVar, r, 0);
+	/*
+	 * No need to do "cd" again if we have a non-http connection
+	 * becuase we already did a "cd" in part 1
+	 */
+	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+
+	fprintf(f, "bk -zo0 sfio -oqB -\n");
+	zout = zputs_init(0, f);
+	unless (bp_sharedServer(0)) {
+		keys = bktmp(0, 0);
+		cmd = aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "' %s |"
+		    "bk havekeys -B - > '%s'", range, keys);
+		if (system(cmd)) goto done;
+		sprintf(buf, "@STDIN=%u@\n", size(keys));
+		zputs(zout, buf, strlen(buf));
+		fd = open(keys, O_RDONLY);
+		assert(fd >= 0);
+		while ((i = read(fd, buf, sizeof(buf))) > 0) {
+			zputs(zout, buf, i);
+		}
+		close(fd);
+		unlink(keys);
+		free(keys);
+	}
+	sprintf(buf, "@STDIN=0@\n");
+	zputs(zout, buf, strlen(buf));
+	zputs_done(zout);
+	fclose(f);
+	rc = send_file(r, cmd_file, 0);
+	if (rc) goto done;
+
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+	unless (r->rf) r->rf = fdopen(r->rfd, "r");
+
+	/* XXX currently writes local, binpool_server might be needed. */
+	f = 0;
+	while (fnext(buf, r->rf) && strneq(buf, "@STDOUT=", 8)) {
+		bytes = atoi(&buf[8]);
+		if (bytes == 0) break;
+		while (bytes > 0) {
+			i = min(sizeof(buf), bytes);
+			if  ((i = fread(buf, 1, i, r->rf)) <= 0) break;
+			unless (f) {
+				f = popen("bk sfio -iqB -", "w");
+				assert(f);
+			}
+			fwrite(buf, 1, i, f);
+			bytes -= i;
+		}
+	}
+	if (f) pclose(f);
+	// XXX error handling
+
+	rc = 0;
+done:	wait_eof(r, 0);
+	disconnect(r, 2);
+	unlink(cmd_file);
+	return (rc);
 }

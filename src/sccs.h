@@ -1244,6 +1244,7 @@ int	bp_updateServer(char *tiprev);
 int	bp_serverID(char **id);
 int	bp_sharedServer(int inbkd);
 int	bp_binpool(void);
+int	bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range);
 
 extern	char	*editor;
 extern	char	*bin;
