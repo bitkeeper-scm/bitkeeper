@@ -474,7 +474,7 @@ bp_updateServer(char *tiprev)
 	free(tmpkeys);
 	unless (rc || (sizeof(tmpkeys2) == 0)) {
 		cmd = aprintf("bk sfio -oqB - < '%s' |"
-		    "bk -q@'%s' -z0 -Lw bk sfio -iqB -", tmpkeys2, url);
+		    "bk -q@'%s' -z0 -Lw sfio -iqB -", tmpkeys2, url);
 		rc = system(cmd);
 		free(cmd);
 	}

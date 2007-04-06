@@ -234,8 +234,13 @@ cmd_bk(int ac, char **av)
 		unless (av[i] &&
 		    (cmd = cmd_lookup(av[i], strlen(av[i]))) &&
 		    cmd->remote) {
-			strcpy(buf,
-			    "ERROR-remote commands are not enabled.\n");
+			int	j;
+			j = sprintf(buf, "ERROR-remote commands are "
+			    "not enabled (cmd[%d] = %s; cmd =", i, av[i]);
+	 		for (i = 0; av[i]; i++) {
+				j += sprintf(&buf[j], " %s", av[i]);
+			}
+			sprintf(&buf[j], ").\n");
 err:			if (zout) {
 				zputs(zout, buf, strlen(buf));
 			} else {

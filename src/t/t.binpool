@@ -362,9 +362,38 @@ do	bk clean data
 done
 echo OK
 
+echo $N Test remote push to remote server ...........................$NL
+cd "$HERE"
+P=`port 50000`
+bk bkd -q -d -p$P -ikill > BKD 2>&1
+commercial servmaster
+bk edit $Q BitKeeper/etc/config
+echo "binpool_server: bk://localhost:$P/project" >> BitKeeper/etc/config
+bk delta $Q -y"set up binpool server" BitKeeper/etc/config
+bk commit $Q -ysetup
+cd ..
+bk clone $Q bk://$HOSTNAME:$P/servmaster someclient
+cd someclient || {
+	echo failed no copy
+	bk _kill bk://localhost:$P
+	exit 1
+}
+echo foo > binfile
+bk new $Q -b binfile
+bk commit $Q -ybinfile
+bk push $Q 2> ERR || {
+	echo failed
+	bk _kill bk://localhost:$P
+	cat ERR
+	exit 1
+}
+bk _kill bk://localhost:$P
+echo OK
+
 test "$PLATFORM" != "WIN32" && {
 
 echo $N Test get/clean cycle with hardlinks .........................$NL
+cd "$HERE"/remote
 for i in 1 2 3
 do	BK_CONFIG='binpool_hardlinks:yes' bk clean data 
 	test -f data && { echo failed to clean $i; exit 1; }
