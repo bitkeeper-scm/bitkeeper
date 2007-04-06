@@ -48,7 +48,6 @@ int	cmd_abort(int ac, char **av);
 int	cmd_bk(int ac, char **av);
 int	cmd_cd(int ac, char **av);
 int	cmd_clone(int ac, char **av);
-int	cmd_clone_part2(int ac, char **av);
 int	cmd_check(int ac, char **av);
 int	cmd_eof(int ac, char **av);
 int	cmd_help(int ac, char **av);

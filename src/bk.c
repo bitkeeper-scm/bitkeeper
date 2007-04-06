@@ -444,7 +444,7 @@ private	struct {
 	int	flags;
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
-	{"bk", CMD_FAST_EXIT},
+	{"bk", CMD_FAST_EXIT|CMD_RDUNLOCK},
 	{"check", CMD_FAST_EXIT},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"fix", CMD_WRLOCK|CMD_WRUNLOCK},
@@ -456,7 +456,6 @@ private	struct {
 	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_BINPOOL},
-	{"remote clone part2", CMD_BYTES|CMD_FAST_EXIT|CMD_RDUNLOCK},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
 	{"remote pull part2", CMD_BYTES|CMD_FAST_EXIT|CMD_RDUNLOCK},
 	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},

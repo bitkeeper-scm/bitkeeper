@@ -448,11 +448,50 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			rc = 1;
 			goto done;
 		}
-		if (i) {
-			fprintf(stderr, "pull: failed to fetch binpool data\n");
-			rc = 1;
-			goto done;
+		putenv("BK_STATUS=OK");
+		rc = 0;
+	}  else if (streq(buf, "@NOTHING TO SEND@")) {
+		unless (opts.quiet) {
+			fprintf(stderr, "Nothing to pull.\n");
 		}
+		putenv("BK_STATUS=NOTHING");
+		rc = 0;
+	} else {
+		fprintf(stderr, "protocol error: <%s>\n", buf);
+		while (getline2(r, buf, sizeof(buf)) > 0) {
+			fprintf(stderr, "protocol error: <%s>\n", buf);
+		}
+		rc = 1;
+		putenv("BK_STATUS=PROTOCOL ERROR");
+	}
+
+done:	unlink(probe_list);
+	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	return (rc);
+}
+
+private int
+pull(char **av, opts opts, remote *r, char **envVar)
+{
+	int	gzip, rc, i;
+	char	*p;
+	int	got_patch;
+	char	key_list[MAXPATH];
+
+	unless (r) {
+		usage();
+		exit(1);
+	}
+	gzip = opts.gzip && r->port;
+	if (rc = pull_part1(av, opts, r, key_list, envVar)) return (rc);
+	rc = pull_part2(av, opts, r, key_list, envVar);
+	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
+	if (!rc && got_patch &&
+	    (p = getenv("BKD_BINPOOL")) && streq(p, "YES")) {
+		//rc = bkd_binpool_fetch(r, envVar, opts.quiet,
+		//     "- < " CSETS_IN);
+	}
+	if (got_patch) {
 		/*
 		 * We are about to run resolve, fire pre trigger
 		 */
@@ -476,27 +515,9 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 				goto done;
 			}
 		}
-		rc = 0;
-		putenv("BK_STATUS=OK");
-	}  else if (streq(buf, "@NOTHING TO SEND@")) {
-		unless (opts.quiet) {
-			fprintf(stderr, "Nothing to pull.\n");
-		}
-		putenv("BK_STATUS=NOTHING");
-		rc = 0;
-	} else {
-		fprintf(stderr, "protocol error: <%s>\n", buf);
-		while (getline2(r, buf, sizeof(buf)) > 0) {
-			fprintf(stderr, "protocol error: <%s>\n", buf);
-		}
-		rc = 1;
-		putenv("BK_STATUS=PROTOCOL ERROR");
 	}
-
 done:	putenv("BK_RESYNC=FALSE");
 	unless (opts.noresolve) trigger(av[0], "post");
-	unlink(probe_list);
-
 	/*
 	 * XXX This is a workaround for a csh fd leak:
 	 * Force a client side EOF before we wait for server side EOF.
@@ -514,23 +535,6 @@ done:	putenv("BK_RESYNC=FALSE");
 	wait_eof(r, opts.debug);
 	disconnect(r, 2);
 	return (rc);
-}
-
-private int
-pull(char **av, opts opts, remote *r, char **envVar)
-{
-	char	key_list[MAXPATH];
-	int	gzip, rc;
-
-	unless (r) {
-		usage();
-		exit(1);
-	}
-	gzip = opts.gzip && r->port;
-	rc = pull_part1(av, opts, r, key_list, envVar);
-	if (rc) return (rc); /* fail */
-	if (pull_part2(av, opts, r, key_list, envVar)) return (1); /* fail */
-	return (0);
 }
 
 private	int
