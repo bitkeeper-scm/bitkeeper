@@ -1664,7 +1664,7 @@ sfio(MMAP *m)
 	sprintf(buf, "bk sfio -%sirB -", ((echo >= 2) ? "" : "q"));
 	f = popen(buf, "w");
 	t = mnext(m);
-	t = mnext(m);
+	t = strchr(t, '\n') + 1;	/* will not have \n if SFIO errored */
 	assert(strneq(t, "SFIO ", 5));
 	left = m->end - t;
 	do {

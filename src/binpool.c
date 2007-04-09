@@ -533,12 +533,15 @@ out:	if (streq(proj_repoID(0), ret)) {
 }
 
 int
-bp_sharedServer(int inbkd)
+bp_sharedServer(void)
 {
 	char	*local_repoID;	/* repoID of local bp_server (may be me) */
 	char	*remote_repoID;	/* repoID of remote bp_server */
 	int	rc;
+	char	*p = getenv("_BK_IN_BKD");
+	int	inbkd = p && *p;
 
+	unless (bp_binpool()) return (1);
 	if (bp_serverID(&local_repoID)) return (0);
 	unless (local_repoID) local_repoID = strdup(proj_repoID(0));
 	remote_repoID =

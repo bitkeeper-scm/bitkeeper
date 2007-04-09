@@ -80,16 +80,16 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 private FILE *
 server(void)
 {
-	char	*repo;
+	char	*p;
 	FILE	*f;
-	char	buf[MAXPATH];
 
-	if (bp_serverID(&repo)) return (stdout);	// OK?
-	if (repo == 0) return (stdout);
-	free(repo);
-	sprintf(buf,
+	if (bp_serverID(&p)) return (stdout);	// OK?
+	if (p == 0) return (stdout);
+	free(p);
+	p = aprintf(
 	    "bk -q@'%s' -Lr havekeys -B -", proj_configval(0,"binpool_server"));
-	f = popen(buf, "w");
+	f = popen(p, "w");
+	free(p);
 	return (f ? f : stdout);
 }
 
@@ -126,7 +126,7 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 
 	fprintf(f, "bk -zo0 sfio -oqB -\n");
 	zout = zputs_init(0, f);
-	unless (bp_sharedServer(0)) {
+	unless (bp_sharedServer()) {
 		keys = bktmp(0, 0);
 		cmd = aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "' %s |"
 		    "bk havekeys -B - > '%s'", range, keys);

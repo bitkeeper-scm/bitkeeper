@@ -35,6 +35,7 @@
 #define	SFIO_OPEN	4
 #define	SFIO_SIZE	5
 #define	SFIO_LOOKUP	6
+#define	SFIO_MORE	7	/* another sfio follows */
 
 private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count);
@@ -49,6 +50,7 @@ private int	in_hardlink(char *file, int todo, int extract);
 private int	in_file(char *file, int todo, int extract);
 private	int	mkfile(char *file);
 private	void	send_eof(int status);
+private void	missing(off_t *byte_count);
 
 struct {
 	u32	quiet:1;	/* suppress normal verbose output */
@@ -61,6 +63,8 @@ struct {
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
 	hash	*sent;		/* list of d.files we have set, for dups */
+	int	recurse;	/* if set, try and find a server on cachemiss */
+	char	**missing;	/* tuples we couldn't find here */
 } *opts;
 
 #define M_IN	1
@@ -74,6 +78,7 @@ sfio_main(int ac, char **av)
 
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
+	opts->recurse = 1;
 	setmode(0, O_BINARY);
 	while ((c = getopt(ac, av, "a;A;BefHimopqr")) != -1) {
 		switch (c) {
@@ -232,6 +237,12 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 			// No error?
 		}
 	}
+	if (opts->missing) {
+		missing(&byte_count);
+		freeLines(opts->missing, free);
+	} else {
+		send_eof(0);
+	}
 #ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
 #endif
@@ -239,7 +250,6 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	if (opts->sent) hash_free(opts->sent);
 	if (opts->hardlinks) hash_free(links);
 	free(opts);
-	send_eof(0);
 	return (0);
 }
 
@@ -372,8 +382,11 @@ out_bptuple(char *keys, off_t *byte_count)
 	char	buf[MAXPATH];
 
 	unless (freeme = bp_lookupkeys(0, keys)) {
-		fprintf(stderr, "lookupkeys(%s) failed\n",
-		    keys);
+		if (opts->recurse) {
+			opts->missing = addLine(opts->missing, strdup(keys));
+			return (0);
+		}
+		fprintf(stderr, "lookupkeys(%s) failed\n", keys);
 		return (SFIO_LOOKUP);
 	}
 	path = freeme + strlen(proj_root(0)) + 1;
@@ -402,6 +415,48 @@ out_bptuple(char *keys, off_t *byte_count)
 }
 
 /*
+ * Go fetch the missing chunks.
+ * Note this completely messes up the byte counts which may break http.
+ * An alternative is to fetch the missing chunks to here but that sucks.
+ */
+private void
+missing(off_t *byte_count)
+{
+	char	*p, *tmpf;
+	FILE	*f;
+	int	i;
+	char	buf[BUFSIZ];
+
+	if (bp_serverID(&p) || (p == 0)) {
+err:		send_eof(SFIO_LOOKUP);
+		return;
+	}
+	free(p);
+	tmpf = bktmp(0, "bp_missing");
+	unless (f = fopen(tmpf, "w")) {
+		perror(tmpf);
+		free(tmpf);
+		goto err;
+	}
+	EACH(opts->missing) fprintf(f, "%s\n", opts->missing[i]);
+	fclose(f);
+	p = aprintf("bk -q@'%s' -Lr sfio -qoB - < '%s'",
+	    proj_configval(0, "binpool_server"), tmpf);
+	f = popen(p, "r");
+	free(p);
+	unless (f) goto err;
+	send_eof(SFIO_MORE);
+	while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
+		writen(1, buf, i);
+		*byte_count += i;
+	}
+	pclose(f);	// If we error here we're just hosed.
+	unlink(tmpf);
+	free(tmpf);
+	/* they should have sent EOF */
+}
+
+/*
  * Send an eof by sending a 0 or less than 0 for the pathlen of the "next"
  * file.  Safe to do with old versions of sfio, they'll handle it properly.
  */
@@ -410,7 +465,6 @@ send_eof(int error)
 {
 	char	buf[10];
 
-// ttyprintf("DONE %d\n", error);
 	/* negative lengths are exit codes */
 	if (error > 0) error = -error;
 	sprintf(buf, "%4d", error);
@@ -454,6 +508,9 @@ sfio_in(int extract)
 		sscanf(buf, "%04d", &len);
 		if (len <= 0) {
 			if (len < 0) {
+				if (-len == SFIO_MORE) {
+					return (sfio_in(extract));
+				}
 				fprintf(stderr, "Incomplete archive: ");
 				switch (-len) {
 				    case SFIO_LSTAT:

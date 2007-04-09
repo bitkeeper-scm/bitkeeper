@@ -1242,7 +1242,7 @@ int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);
 int	bp_updateServer(char *tiprev);
 int	bp_serverID(char **id);
-int	bp_sharedServer(int inbkd);
+int	bp_sharedServer(void);
 int	bp_binpool(void);
 int	bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range);
 
