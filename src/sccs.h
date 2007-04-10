@@ -1245,6 +1245,8 @@ int	bp_serverID(char **id);
 int	bp_sharedServer(void);
 int	bp_binpool(void);
 int	bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range);
+int	zgets_hread(void *token, u8 **buf);
+void	zputs_hwrite(void *token, u8 *data, int len);
 
 extern	char	*editor;
 extern	char	*bin;

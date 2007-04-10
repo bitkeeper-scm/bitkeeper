@@ -443,8 +443,12 @@ private	struct {
 	char	*name;
 	int	flags;
 } repolog[] = {
+	{"rdlock", CMD_RDLOCK},
+	{"rdunlock", CMD_WRUNLOCK},
+	{"wrlock", CMD_WRLOCK},
+	{"wrunlock", CMD_WRUNLOCK},
+	{"exit", CMD_FAST_EXIT},
 	{"abort", CMD_FAST_EXIT},
-	{"bk", CMD_FAST_EXIT|CMD_RDUNLOCK},
 	{"check", CMD_FAST_EXIT},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"fix", CMD_WRLOCK|CMD_WRUNLOCK},
