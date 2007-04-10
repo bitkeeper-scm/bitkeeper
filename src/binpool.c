@@ -79,7 +79,7 @@ bp_diff(sccs *s, delta *d, char *gfile)
 	char	*dfile;
 	int	same;
 
-	unless (dfile = bp_lookup(s, d)) return (1);
+	unless (dfile = bp_lookup(s, d)) return (2);
 	if (size(dfile) != size(gfile)) {
 		free(dfile);
 		return (1);

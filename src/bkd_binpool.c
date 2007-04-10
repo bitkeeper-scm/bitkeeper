@@ -104,12 +104,13 @@ server(void)
 int
 bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 {
-	FILE	*f;
+	FILE	*f, *f2;
 	int	fd, i, bytes, rc = 1;
-	char	*cmd, *keys;
+	char	*cmd;
 	zputbuf	*zout;
 	char	cmd_file[MAXPATH];
-	char	buf[MAXLINE];
+	char	hdr[64];
+	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 1, !quiet)) {
 		return (-1);
@@ -125,26 +126,26 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 
 	fprintf(f, "bk -zo0 sfio -oqB -\n");
-	zout = zputs_init(0, f);
+	fflush(f);
+	zout = zputs_init(zputs_hwrite, int2p(fileno(f)));
 	unless (bp_sharedServer(0)) {
-		keys = bktmp(0, 0);
 		cmd = aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "' %s |"
-		    "bk havekeys -B - > '%s'", range, keys);
-		if (system(cmd)) goto done;
-		sprintf(buf, "@STDIN=%u@\n", size(keys));
-		zputs(zout, buf, strlen(buf));
-		fd = open(keys, O_RDONLY);
-		assert(fd >= 0);
+		    "bk havekeys -B -", range);
+		f2 = popen(cmd, "r");
+		assert(f2);
+		fd = fileno(f2);
 		while ((i = read(fd, buf, sizeof(buf))) > 0) {
+			sprintf(hdr, "@STDIN=%u@\n", i);
+			zputs(zout, hdr, strlen(hdr));
 			zputs(zout, buf, i);
 		}
-		close(fd);
-		unlink(keys);
-		free(keys);
+		if (pclose(f2)) goto done;
 	}
-	sprintf(buf, "@STDIN=0@\n");
-	zputs(zout, buf, strlen(buf));
+	sprintf(hdr, "@STDIN=0@\n");
+	zputs(zout, hdr, strlen(hdr));
 	zputs_done(zout);
+	fprintf(f, "rdunlock\n");
+	fprintf(f, "exit\n");
 	fclose(f);
 	rc = send_file(r, cmd_file, 0);
 	if (rc) goto done;
@@ -152,7 +153,6 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 
-	/* XXX currently writes local, binpool_server might be needed. */
 	f = 0;
 	while (fnext(buf, r->rf) && strneq(buf, "@STDOUT=", 8)) {
 		bytes = atoi(&buf[8]);

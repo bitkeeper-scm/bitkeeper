@@ -74,6 +74,12 @@ int	cmd_rclone_part1(int ac, char **av);
 int	cmd_rclone_part2(int ac, char **av);
 int	cmd_kill(int ac, char **av);
 
+int	cmd_rdlock(int ac, char **av);
+int	cmd_rdunlock(int ac, char **av);
+int	cmd_wrlock(int ac, char **av);
+int	cmd_wrunlock(int ac, char **av);
+int	cmd_exit(int ac, char **av);
+
 struct cmd {
 	char	*name;		/* command name */
 	char	*realname;	/* real command name */

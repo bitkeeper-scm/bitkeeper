@@ -44,5 +44,10 @@ struct cmd cmds[] = {
     cmd_chg_part2 },
   { "kill", "kill_1.3", "kill remote bkd", cmd_kill },
   { "license", "license_1.3", "fetch license keys", cmd_license },
+  { "rdlock", "rdlock", "read lock the repository", cmd_rdlock },
+  { "rdunlock", "rdunlock", "remove read lock from repository", cmd_rdunlock },
+  { "wrlock", "wrlock", "write lock the repository", cmd_wrlock },
+  { "wrunlock", "wrunlock", "remove write lock from repository", cmd_wrunlock},
+  { "exit", "exit", "drop connection to bkd", cmd_exit },
   { 0, 0, 0 }
 };

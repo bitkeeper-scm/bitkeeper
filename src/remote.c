@@ -127,8 +127,11 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 		free(p);
 	}
 	fprintf(f, "\n");
+	fflush(f);
 	dostream = (!input && streq(av[i-1], "-"));
-	if ((gzip & GZ_TOBKD) && !dostream) zout = zputs_init(0, f);
+	if ((gzip & GZ_TOBKD) && !dostream) {
+		zout = zputs_init(zputs_hwrite, int2p(fileno(f)));
+	}
 	if (input) {
 		assert(bytes > 0);
 		sprintf(buf, "@STDIN=%u@\n", bytes);
@@ -150,21 +153,18 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	}
 	if (zout) zputs_done(zout);
 	fclose(f);
-	rc = send_file(r, tmpf, 0);
+	rc = send_file(r, tmpf, 5);
 	unlink(tmpf);
 	free(tmpf);
 	if (rc) goto out;
 	if (dostream) stream_stdin(r, gzip);
+	writen(r->wfd, "exit\n", 5);
 	disconnect(r, 1);
-
-	unless (r->rf) r->rf = fdopen(r->rfd, "r");
-	if (r->type == ADDR_HTTP) skip_http_hdr(r);
-	if (gzip & GZ_FROMBKD) zin = zgets_initCustom(0, r->rf);
-	if (zin) {
-		line = zgets(zin);
-	} else {
-		line = fnext(buf, r->rf) ? buf : 0;
+	unless (gzip & GZ_FROMBKD) {
+		unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	}
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+	line = (getline2(r, buf, sizeof(buf)) > 0) ? buf : 0;
 	unless (line) {
 		i = 1<<5;
 		fprintf(stderr, "##### %s #####\n", u);
@@ -172,10 +172,14 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 		goto out;
 	}
 	if (strneq("ERROR-", line, 6)) {
-		fprintf(stderr, "##### %s #####\n", u);
+err:		fprintf(stderr, "##### %s #####\n", u);
 		fprintf(stderr, "%s\n", &line[6]);
 		i = 1<<5;
 		goto out;
+	}
+	if (streq("@GZIP@", line)) {
+		zin = zgets_initCustom(zgets_hread, int2p(r->rfd));
+		line = zgets(zin);
 	}
 	while (strneq(line, "@STDOUT=", 8) || strneq(line, "@STDERR=", 8)) {
 		bytes = atoi(&line[8]);
@@ -211,21 +215,13 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 			goto out;
 		}
 	}
+	if (strneq("ERROR-", line, 6)) goto err;
 	unless (sscanf(line, "@EXIT=%d@", &i)) i = 100;
-	if (zin) zgets_done(zin);
-out:	wait_eof(r, 0);
+out:	if (zin) zgets_done(zin);
+	wait_eof(r, 0);
 	disconnect(r, 2);
 	return (i);
 }
-
-private void
-zputs_write(void *token, u8 *data, int len)
-{
-	int	fd = p2int(token);
-
-	if (len) writen(fd, data, len);
-}
-
 private void
 stream_stdin(remote *r, int gzip)
 {
@@ -234,7 +230,7 @@ stream_stdin(remote *r, int gzip)
 	char	line[64];
 	char	buf[BSIZE];
 
-	if (gzip & GZ_TOBKD) zout = zputs_init(zputs_write, int2p(r->wfd));
+	if (gzip & GZ_TOBKD) zout = zputs_init(zputs_hwrite, int2p(r->wfd));
 	while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 		sprintf(line, "@STDIN=%u@\n", i);
 		if (zout) {

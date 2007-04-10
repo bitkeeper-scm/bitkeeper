@@ -164,37 +164,6 @@ cmd_check(int ac, char **av)
 	return (rc);
 }
 
-/*
- * callback used by zgets to read data from a file handle.
- */
-private int
-zgets_fileread(void *token, u8 **buf)
-{
-	int	fd = p2int(token);
-	static	char *data = 0;
-
-	if (buf) {
-		unless (data) data = malloc(BSIZE);
-		*buf = data;
-		return (read(fd, data, BSIZE));
-	} else {
-		/* called from zgets_done */
-		if (data) {
-			free(data);
-			data = 0;
-		}
-		return (0);
-	}
-}
-
-private void
-zputs_filewrite(void *token, u8 *data, int len)
-{
-	int	fd = p2int(token);
-
-	if (len) write(fd, data, len);
-}
-
 #define GZ_FROMREMOTE	1	/* ungzip the stdin we get */
 #define GZ_TOREMOTE	2	/* gzip the stdout we send back */
 
@@ -223,8 +192,11 @@ cmd_bk(int ac, char **av)
 		if (streq(av[i], "-zo0")) gzip &= ~GZ_TOREMOTE;
 	}
 	if (line = getenv("_BK_REMOTEGZIP")) gzip = atoi(line);
-	if (gzip & GZ_FROMREMOTE) zin = zgets_initCustom(&zgets_fileread, 0);
-	if (gzip & GZ_TOREMOTE) zout = zputs_init(&zputs_filewrite, int2p(1));
+	if (gzip & GZ_FROMREMOTE) zin=zgets_initCustom(&zgets_hread, int2p(0));
+	if (gzip & GZ_TOREMOTE) {
+		out("@GZIP@\n");
+		zout = zputs_init(&zputs_hwrite, int2p(1));
+	}
 
 	/*
 	 * We only allow remote commands if the bkd told us that was OK.
@@ -237,7 +209,7 @@ cmd_bk(int ac, char **av)
 			int	j;
 			j = sprintf(buf, "ERROR-remote commands are "
 			    "not enabled (cmd[%d] = %s; cmd =", i, av[i]);
-	 		for (i = 0; av[i]; i++) {
+			for (i = 0; av[i]; i++) {
 				j += sprintf(&buf[j], " %s", av[i]);
 			}
 			sprintf(&buf[j], ").\n");
@@ -404,6 +376,36 @@ err:			if (zout) {
 	}
 out:	if (zin) zgets_done(zin);
 	if (zout) zputs_done(zout);
+	return (0);
+}
+
+int
+cmd_rdlock(int ac, char **av)
+{
+	return (0);
+}
+
+int
+cmd_rdunlock(int ac, char **av)
+{
+	return (0);
+}
+
+int
+cmd_wrlock(int ac, char **av)
+{
+	return (0);
+}
+
+int
+cmd_wrunlock(int ac, char **av)
+{
+	return (0);
+}
+
+int
+cmd_exit(int ac, char **av)
+{
 	return (0);
 }
 

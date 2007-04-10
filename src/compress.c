@@ -231,3 +231,47 @@ gunzipAll2fd(int rfd, int wfd, int level, int *in, int *out)
 	gzip_done();
 	return (0);
 }
+
+
+/*
+ * callback used by zgets to read data from a file.  Adds the gzip headers
+ * used by the read of this file.
+ */
+int
+zgets_hread(void *token, u8 **buf)
+{
+	int	fd = p2int(token);
+	int	len;
+	static	char *data = 0;
+
+	len = gzip_hdr(fd);
+	assert(len < BSIZE);
+	if (buf) {
+		unless (data) data = malloc(BSIZE);
+		*buf = data;
+		return (read(fd, data, len));
+	} else {
+		/* called from zgets_done */
+		if (len != 0) {
+			ttyprintf("failed to find trailer\n");
+		}
+		if (data) {
+			free(data);
+			data = 0;
+		}
+		return (0);
+	}
+}
+
+/*
+ * A callback to be used with zputs that encodes these gzip headers
+ */
+void
+zputs_hwrite(void *token, u8 *data, int len)
+{
+	int	fd = p2int(token);
+
+	send_gzip_hdr(fd, len);
+	if (len) writen(fd, data, len);
+}
+
