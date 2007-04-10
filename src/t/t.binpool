@@ -372,7 +372,7 @@ echo "binpool_server: bk://localhost:$P/project" >> BitKeeper/etc/config
 bk delta $Q -y"set up binpool server" BitKeeper/etc/config
 bk commit $Q -ysetup
 cd ..
-bk clone $Q bk://$HOSTNAME:$P/servmaster someclient
+bk clone $Q bk://localhost:$P/servmaster someclient || exit 1
 cd someclient || {
 	echo failed no copy
 	bk _kill bk://localhost:$P
