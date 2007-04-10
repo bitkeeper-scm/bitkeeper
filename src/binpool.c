@@ -389,8 +389,9 @@ bp_fetch(sccs *s, delta *din)
 
 	unless (din = bp_fdelta(s, din)) return (-1);
 
-	cmd = aprintf("bk -q@'%s' -zo0 -Lr sfio -oqB - | bk -R sfio -iqB -",
-	    url);
+	/* no recursion, we're already remoted */ 
+	cmd =
+	    aprintf("bk -q@'%s' -zo0 -Lr sfio -oqB - | bk -R sfio -iqB -", url);
 	f = popen(cmd, "w");
 	free(cmd);
 	assert(f);
@@ -467,12 +468,14 @@ bp_updateServer(char *tiprev)
 	}
 	tmpkeys2 = bktmp(0, 0);
 	p = aprintf("-q@%s", url);
-	rc = sysio(tmpkeys, tmpkeys2,0,
+	/* For now, we are not recursing to a chained server */
+	rc = sysio(tmpkeys, tmpkeys2, 0,
 	    "bk", p, "-Lr", "havekeys", "-B", "-", SYS);
 	free(p);
 	unlink(tmpkeys);
 	free(tmpkeys);
 	unless (rc || (sizeof(tmpkeys2) == 0)) {
+		/* No recursion, we're looking for our files */
 		cmd = aprintf("bk sfio -oqB - < '%s' |"
 		    "bk -q@'%s' -z0 -Lw sfio -iqB -", tmpkeys2, url);
 		rc = system(cmd);
@@ -588,10 +591,10 @@ binpool_pull_main(int ac, char **av)
 	/* list of all binpool deltas */
 	cmds = addLine(cmds, aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "'"));
 
-	/* reduce to list of deltas missing locally */
+	/* reduce to list of deltas missing locally, no recursion. */
 	cmds = addLine(cmds, strdup("bk havekeys -B -"));
 
-	/* request deltas from server */
+	/* request deltas from server, no recursion (yet) */
 	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr sfio -oqB -",
 	    proj_configval(0, "binpool_server")));
 
@@ -677,6 +680,7 @@ binpool_clean_main(int ac, char **av)
 		}
 		free(p2);
 		p2 = proj_configval(0, "binpool_server");
+		/* No recursion, we just want that server's list */
 		cmd = aprintf("%s | bk -q@'%s' -Lr havekeys -B -", p1, p2);
 		free(p1);
 	}
@@ -889,6 +893,7 @@ binpool_check_main(int ac, char **av)
 		free(p);
 
 		tmp = bktmp(0, 0);
+		/* no recursion, we are remoted to the server already */
 		p = aprintf("bk -q@'%s' -Lr havekeys -B - > '%s'",
 		    proj_configval(0, "binpool_server"), tmp);
 		f = popen(p, "w");

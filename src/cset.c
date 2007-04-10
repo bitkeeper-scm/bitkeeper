@@ -711,15 +711,10 @@ again:	/* doDiffs can make it two pass */
 			int	i;
 			FILE	*f;
 
-			if (bp_serverID(&t)) goto fail;
-			if (t) {
-				free(t);
-				t = aprintf("-q@'%s' -zo0 -Lr",
-				    proj_configval(0, "binpool_server"));
-			}
-			sprintf(buf, "bk %s sfio -oqB -", t ? t : "");
-			if (t) free(t);
-			f = popen(buf, "w");
+			/* try and fetch from my local binpool but recurse
+			 * through to the server.
+			 */
+			f = popen("bk sfio -oqBR1 -", "w");
 			EACH(cs->binpool) fprintf(f, "%s\n", cs->binpool[i]);
 			if (pclose(f)) {
 				fprintf(stderr, "binpool sfio -o failed.\n");

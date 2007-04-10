@@ -78,9 +78,8 @@ sfio_main(int ac, char **av)
 
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
-	opts->recurse = 1;
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;BefHimopqr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;BefHimopqrR;")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -107,6 +106,7 @@ sfio_main(int ac, char **av)
 		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
 		    case 'r': opts->newline = '\r'; break;
+		    case 'R': opts->recurse = atoi(optarg); break;
 		    default:
 			goto usage;
 		}
@@ -415,9 +415,7 @@ out_bptuple(char *keys, off_t *byte_count)
 }
 
 /*
- * Go fetch the missing chunks.
- * Note this completely messes up the byte counts which may break http.
- * An alternative is to fetch the missing chunks to here but that sucks.
+ * Go fetch the missing binpool chunks.
  */
 private void
 missing(off_t *byte_count)
@@ -440,8 +438,8 @@ err:		send_eof(SFIO_LOOKUP);
 	}
 	EACH(opts->missing) fprintf(f, "%s\n", opts->missing[i]);
 	fclose(f);
-	p = aprintf("bk -q@'%s' -Lr sfio -qoB - < '%s'",
-	    proj_configval(0, "binpool_server"), tmpf);
+	p = aprintf("bk -q@'%s' -Lr sfio -qoBR%d - < '%s'",
+	    proj_configval(0, "binpool_server"), opts->recurse - 1, tmpf);
 	f = popen(p, "r");
 	free(p);
 	unless (f) goto err;

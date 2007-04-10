@@ -2,7 +2,7 @@
 #include "bkd.h"
 #include "binpool.h"
 
-private FILE	*server(void);
+private FILE	*server(int recurse);
 
 /*
  * Simple key sync.
@@ -15,13 +15,14 @@ havekeys_main(int ac, char **av)
 {
 	char	*dfile;
 	int	c;
-	int	rc = 0, binpool = 0;
+	int	rc = 0, binpool = 0, recurse = 0;
 	FILE	*f = 0;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "Bq")) != -1) {
+	while ((c = getopt(ac, av, "BR;q")) != -1) {
 		switch (c) {
 		    case 'B': binpool = 1; break;
+		    case 'R': recurse = atoi(optarg); break;
 		    case 'q': break;	/* ignored for now */
 		    default:
 usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
@@ -59,7 +60,7 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 	while (fnext(buf, stdin)) {
 		chomp(buf);
 		unless (dfile = bp_lookupkeys(0, buf)) {
-			unless (f) f = server();
+			unless (f ) f = server(recurse);
 			// XXX - need to check error status.
 			fprintf(f, "%s\n", buf);	/* not here */
 		}
@@ -78,16 +79,17 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
  * Figure out if we have a server and if we do go run a havekeys there.
  */
 private FILE *
-server(void)
+server(int recurse)
 {
 	char	*p;
 	FILE	*f;
 
+	unless (recurse > 0) return (stdout);
 	if (bp_serverID(&p)) return (stdout);	// OK?
 	if (p == 0) return (stdout);
 	free(p);
-	p = aprintf(
-	    "bk -q@'%s' -Lr havekeys -B -", proj_configval(0,"binpool_server"));
+	p = aprintf("bk -q@'%s' -Lr havekeys -BR%d -",
+	    proj_configval(0,"binpool_server"), recurse - 1);
 	f = popen(p, "w");
 	free(p);
 	return (f ? f : stdout);
@@ -124,12 +126,16 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	 */
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 
-	fprintf(f, "bk -zo0 sfio -oqB -\n");
+	/* we do want to recurse one level here, this is the proxy case */
+	fprintf(f, "bk -zo0 sfio -oqBR1 -\n");
 	zout = zputs_init(0, f);
 	unless (bp_sharedServer()) {
 		keys = bktmp(0, 0);
 		cmd = aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "' %s |"
-		    "bk havekeys -B - > '%s'", range, keys);
+		    /* The Wayne meister says one level of recursion.
+		     * It's obvious.  Obvious to Leonardo...
+		     */
+		    "bk havekeys -BR1 - > '%s'", range, keys);
 		if (system(cmd)) goto done;
 		sprintf(buf, "@STDIN=%u@\n", size(keys));
 		zputs(zout, buf, strlen(buf));

@@ -279,7 +279,8 @@ next:		sccs_free(s);
 	if (sfileDone()) errors = 1;
 	if (realNameCache) mdbm_close(realNameCache);
 	unless (errors || recursed) {
-		errors = binpool(prog, flags & SILENT, bp_files, bp_keys, ac_optend, av);
+		errors = binpool(prog,
+			    flags & SILENT, bp_files, bp_keys, ac_optend, av);
 	}
 	freeLines(bp_files, free);
 	freeLines(bp_keys, free);
@@ -329,6 +330,7 @@ bp_fetchkeys(char *me, int quiet, char **keys)
 		    "Fetching %u binpool files from %s...\n",
 		    nLines(keys), server);
 	}
+	/* no recursion, I'm remoted to the server already */
 	sprintf(buf,
 	    "bk -q@'%s' -zo0 -Lr sfio -qoB - |"
 	    "bk -R sfio -%sriB -", server, quiet ? "q" : "");
