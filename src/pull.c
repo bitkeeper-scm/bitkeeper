@@ -488,8 +488,9 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
 	if (!rc && got_patch &&
 	    (p = getenv("BKD_BINPOOL")) && streq(p, "YES")) {
-		//rc = bkd_binpool_fetch(r, envVar, opts.quiet,
-		//     "- < " CSETS_IN);
+		chdir(ROOT2RESYNC);
+		rc = bkd_binpool_part3(r, envVar, opts.quiet, "- < " CSETS_IN);
+		chdir(RESYNC2ROOT);
 	}
 	if (got_patch) {
 		/*

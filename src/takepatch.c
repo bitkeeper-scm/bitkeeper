@@ -1395,6 +1395,7 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
+	if (BINPOOL(s)) touch("../BitKeeper/log/binpool", 0664);
 	sccs_free(s);
 	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();

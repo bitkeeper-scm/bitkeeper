@@ -561,7 +561,11 @@ int
 bp_binpool(void)
 {
 	assert(exists(BKROOT));
-	return (exists("BitKeeper/log/binpool"));
+	if (proj_isResync(0)) {
+		return (exists("../BitKeeper/log/binpool"));
+	} else {
+		return (exists("BitKeeper/log/binpool"));
+	}
 }
 
 /* make local repository contain binpool data for all deltas */

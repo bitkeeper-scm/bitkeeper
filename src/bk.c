@@ -461,7 +461,7 @@ private	struct {
 	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_BINPOOL},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
-	{"remote pull part2", CMD_BYTES|CMD_FAST_EXIT|CMD_RDUNLOCK},
+	{"remote pull part2", CMD_BYTES|CMD_BINPOOL},
 	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
 	{"remote push part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
@@ -494,9 +494,7 @@ cmdlog_start(char **av, int httpMode)
 
 	if ((cmdlog_flags&CMD_BINPOOL) && !(exists(BKROOT) && bp_binpool())) {
 		/* not in binpool-mode, just cancel the next part */
-		cmdlog_flags |= CMD_FAST_EXIT;
-		if (cmdlog_flags & CMD_WRLOCK) cmdlog_flags |= CMD_WRUNLOCK;
-		if (cmdlog_flags & CMD_RDLOCK) cmdlog_flags |= CMD_RDUNLOCK;
+		cmdlog_flags |= CMD_FAST_EXIT|CMD_RDUNLOCK;
 	}
 
 	/*

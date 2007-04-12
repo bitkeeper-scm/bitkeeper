@@ -216,7 +216,6 @@ cmd_pull_part2(int ac, char **av)
 	fflush(stdout); 
 
 	n = 2;
-	unless (bp_sharedServer()) makepatch[n++] = "-B";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
