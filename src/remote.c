@@ -134,13 +134,18 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	}
 	if (input) {
 		assert(bytes > 0);
-		sprintf(buf, "@STDIN=%u@\n", bytes);
-		if (zout) {
-			zputs(zout, buf, strlen(buf));
-			zputs(zout, input, bytes);
-		} else {
-			fputs(buf, f);
-			fwrite(input, 1, bytes, f);
+		while (bytes > 0) {
+			i = min(bytes, sizeof(buf));
+			sprintf(buf, "@STDIN=%u@\n", i);
+			if (zout) {
+				zputs(zout, buf, strlen(buf));
+				zputs(zout, input, i);
+			} else {
+				fputs(buf, f);
+				fwrite(input, 1, i, f);
+			}
+			input += i;
+			bytes -= i;
 		}
 	}
 	unless (dostream) {
