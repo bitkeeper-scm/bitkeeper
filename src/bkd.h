@@ -56,7 +56,6 @@ int	cmd_license(int ac, char **av);
 int	cmd_pwd(int ac, char **av);
 int	cmd_rootkey(int ac, char **av);
 int	cmd_status(int ac, char **av);
-int	cmd_verbose(int ac, char **av);
 int	cmd_version(int ac, char **av);
 
 int	cmd_putenv(int ac, char **av);
@@ -67,8 +66,6 @@ int	cmd_pull_part2(int ac, char **av);
 int	cmd_synckeys(int ac, char **av);
 int	cmd_chg_part1(int ac, char **av);
 int	cmd_chg_part2(int ac, char **av);
-int	cmd_pending_part1(int ac, char **av);
-int	cmd_pending_part2(int ac, char **av);
 
 int	cmd_rclone_part1(int ac, char **av);
 int	cmd_rclone_part2(int ac, char **av);
@@ -78,7 +75,6 @@ int	cmd_rdlock(int ac, char **av);
 int	cmd_rdunlock(int ac, char **av);
 int	cmd_wrlock(int ac, char **av);
 int	cmd_wrunlock(int ac, char **av);
-int	cmd_exit(int ac, char **av);
 
 struct cmd {
 	char	*name;		/* command name */

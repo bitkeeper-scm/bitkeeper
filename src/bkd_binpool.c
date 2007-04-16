@@ -106,12 +106,9 @@ server(int recurse)
 int
 bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 {
-	FILE	*f, *f2;
-	int	fd, i, bytes, rc = 1;
-	char	*cmd;
-	zputbuf	*zout;
+	FILE	*f;
+	int	i, bytes, rc = 1;
 	char	cmd_file[MAXPATH];
-	char	hdr[64];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 1, !quiet)) {
@@ -130,28 +127,9 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	/* we do want to recurse one level here, this is the proxy case */
 	fprintf(f, "bk -zo0 sfio -oqBR1 -\n");
 	fflush(f);
-	zout = zputs_init(zputs_hwrite, int2p(fileno(f)));
-	unless (bp_sharedServer()) {
-		cmd = aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "' %s |"
-		    /* The Wayne meister says one level of recursion.
-		     * It's obvious.  Obvious to Leonardo...
-		     */
-		    "bk havekeys -BR1 -", range);
-		f2 = popen(cmd, "r");
-		assert(f2);
-		fd = fileno(f2);
-		while ((i = read(fd, buf, sizeof(buf))) > 0) {
-			sprintf(hdr, "@STDIN=%u@\n", i);
-			zputs(zout, hdr, strlen(hdr));
-			zputs(zout, buf, i);
-		}
-		if (pclose(f2)) goto done;
-	}
-	sprintf(hdr, "@STDIN=0@\n");
-	zputs(zout, hdr, strlen(hdr));
-	zputs_done(zout);
+	if (rc = bp_sendkeys(fileno(f), range)) goto done;
 	fprintf(f, "rdunlock\n");
-	fprintf(f, "exit\n");
+	fprintf(f, "quit\n");
 	fclose(f);
 	rc = send_file(r, cmd_file, 0);
 	if (rc) goto done;
@@ -160,6 +138,7 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 
 	f = 0;
+	buf[0] = 0;
 	while (fnext(buf, r->rf) && strneq(buf, "@STDOUT=", 8)) {
 		bytes = atoi(&buf[8]);
 		if (bytes == 0) break;
@@ -175,11 +154,49 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 		}
 	}
 	if (f) pclose(f);
+	unless (streq(buf, "@EXIT=0@\n")) {
+		fprintf(stderr, "bad exit in part3: %s\n", buf);
+		rc = 1;
+		goto done;
+	}
 	// XXX error handling
 
 	rc = 0;
 done:	wait_eof(r, 0);
 	disconnect(r, 2);
 	unlink(cmd_file);
+	return (rc);
+}
+
+int
+bp_sendkeys(int fdout, char *range)
+{
+	FILE	*f;
+	int	fd, i, rc = 0;
+	char	*cmd;
+	zputbuf	*zout;
+	char	hdr[64];
+	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
+
+	zout = zputs_init(zputs_hwrite, int2p(fdout));
+	unless (bp_sharedServer()) {
+		cmd = aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "' %s |"
+		    /* The Wayne meister says one level of recursion.
+		     * It's obvious.  Obvious to Leonardo...
+		     */
+		    "bk havekeys -BR1 -", range);
+		f = popen(cmd, "r");
+		assert(f);
+		fd = fileno(f);
+		while ((i = read(fd, buf, sizeof(buf))) > 0) {
+			sprintf(hdr, "@STDIN=%u@\n", i);
+			zputs(zout, hdr, strlen(hdr));
+			zputs(zout, buf, i);
+		}
+		if (pclose(f)) rc = 1;
+	}
+	sprintf(hdr, "@STDIN=0@\n");
+	zputs(zout, hdr, strlen(hdr));
+	if (zputs_done(zout)) rc = 1;
 	return (rc);
 }

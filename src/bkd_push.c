@@ -1,5 +1,7 @@
 #include "bkd.h"
 
+private	int	do_resolve(char **av);
+
 /*
  * Important, if we have error, we must close fd1 or exit
  */
@@ -114,9 +116,9 @@ cmd_push_part2(int ac, char **av)
 	int	fd2, pfd, c, rc = 0, gzip = 0;
 	int	status, debug = 0, nothing = 0, conflict = 0;
 	pid_t	pid;
+	char	*p;
 	char	bkd_nul = BKD_NUL;
 	char	*takepatch[] = { "bk", "takepatch", "-c", "-vvv", 0};
-	char	*resolve[] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 	char	buf[4096];
 
 	while ((c = getopt(ac, av, "dGnqz|")) != -1) {
@@ -217,6 +219,29 @@ cmd_push_part2(int ac, char **av)
 	}
 	proj_reset(0);
 
+	//if (bp_binpool() || ((p = getenv("BK_BINPOOL")) && streq(p, "YES"))) {
+	if (0) {
+		// send bp keys
+		printf("@BINPOOL@\n");
+		fflush(stdout);
+		chdir(ROOT2RESYNC);
+		rc = bp_sendkeys(1, "- < " CSETS_IN);
+		chdir(RESYNC2ROOT);
+	} else {
+		rc = do_resolve(av);
+	}
+done:	return (rc);
+}
+
+private int
+do_resolve(char **av)
+{
+	int	fd2, pfd, c, rc = 0;
+	int	status, debug = 0;
+	pid_t	pid;
+	char	bkd_nul = BKD_NUL;
+	char	*resolve[] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
+
 	/*
 	 * Fire up the pre-trigger
 	 */
@@ -270,4 +295,10 @@ done:	/*
 	putenv("BK_RESYNC=FALSE");
 	trigger(av[0],  "post");
 	return (rc);
+}
+
+int
+cmd_push_part3(int ac, char **av)
+{
+	return (0);
 }

@@ -390,6 +390,11 @@ findcmd(int ac, char **av)
 			if (streq(av[0], "chg_part2")) {
 				av[0] = "remote changes part2";
 			}
+			if (streq(av[0], "quit")) av[0]= "remote quit";
+			if (streq(av[0], "rdlock")) av[0]= "remote rdlock";
+			if (streq(av[0], "rdunlock")) av[0]= "remote rdunlock";
+			if (streq(av[0], "wrlock")) av[0]= "remote wrlock";
+			if (streq(av[0], "wrunlock")) av[0]= "remote wrunlock";
 			return (i);
 		}
 	}

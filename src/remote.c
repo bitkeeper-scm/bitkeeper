@@ -158,7 +158,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	free(tmpf);
 	if (rc) goto out;
 	if (dostream) stream_stdin(r, gzip);
-	writen(r->wfd, "exit\n", 5);
+	writen(r->wfd, "quit\n", 5);
 	disconnect(r, 1);
 	unless (gzip & GZ_FROMBKD) {
 		unless (r->rf) r->rf = fdopen(r->rfd, "r");

@@ -16,8 +16,6 @@
  *  - check show list data files not linked in the index
  *  - binpool gone-file support
  *  - work on errors when binpool repos are used by old clients
- *  - clause BP stuff on BitKeeper/log/BP
- *  - clone shouldn't send full SFIO in shared server case!!
  *  - keysync should sync BP data for non-shared server case
  *   ( no need to send all data)
  */
@@ -544,16 +542,28 @@ bp_sharedServer(void)
 	char	*p = getenv("_BK_IN_BKD");
 	int	inbkd = p && *p;
 
-	unless (bp_binpool()) return (1);
-	if (bp_serverID(&local_repoID)) return (0);
+	unless (bp_binpool()) {
+		//ttyprintf("no bp data, shared\n");
+		return (1);
+	}
+	if (bp_serverID(&local_repoID)) return (1);
 	unless (local_repoID) local_repoID = strdup(proj_repoID(0));
 	remote_repoID =
 	    getenv(inbkd ? "BK_BINPOOL_SERVER" : "BKD_BINPOOL_SERVER");
-	assert(remote_repoID);
+	unless (remote_repoID) {
+		/*
+		 * remote side doesn't support binpool, other error checks
+		 * will catch this.
+		 */
+		//ttyprintf("no remote_id, shared\n");
+		free(local_repoID);
+		return (1);
+	}
 
 	/* Do we both use the same server? If so then we are done. */
 	rc = streq(local_repoID, remote_repoID);
 	free(local_repoID);
+	//ttyprintf("id's match=%d\n", rc);
 	return (rc);
 }
 

@@ -265,7 +265,8 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
-	do_part2 = ((p = getenv("BKD_BINPOOL")) && streq(p, "YES"));
+	do_part2 = ((p = getenv("BKD_BINPOOL")) && streq(p, "YES")) ||
+	    bp_binpool();
 	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
 	if (do_part2) {
 		p = aprintf("-r..%s", opts.rev ? opts.rev : "");

@@ -553,7 +553,8 @@ maybe_trigger(remote *r)
 }
 
 private int
-push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
+push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
+    char *bp_keys)
 {
 	char	buf[4096];
 	int	n, rc = 0, done = 0, do_pull = 0;
@@ -631,6 +632,32 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		}
 		getline2(r, buf, sizeof(buf));
 	}
+#if 0
+	if (streq(buf, "@BINPOOL@")) {
+		unless (bp_keys) {
+			fprintf(stderr,
+	    "push failed: recieved binpool keys when not expected\n");
+			rc = 1;
+			goto done;
+		}
+		zin = zgets_initCustom(zgets_hread, int2p(r->rfd));
+		f = fopen(bp_keys, "w");
+		while ((line = zgets(zin)) && strneq(line, "@STDIN=", 7)) {
+			bytes = atoi(line+7);
+			unless (bytes) break;
+			while (bytes > 0) {
+				i = min(bytes, sizeof(buf));
+				i = zread(zin, buf, i);
+				fwrite(buf, 1, i, f);
+				bytes -= i;
+			}
+		}
+		if (zgets_done(zin)) {
+			rc = 1;
+			goto done;
+		}
+	}
+#endif
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
 			rc = 1;
@@ -696,6 +723,12 @@ done:
 	return (rc);
 }
 
+private int
+push_part3(char **av, remote *r, char **envVar, char *bp_keys)
+{
+	return (0);
+}
+
 
 /*
  * The client side of push.  Server side is in bkd_push.c
@@ -705,6 +738,8 @@ push(char **av, remote *r, char **envVar)
 {
 	int	ret;
 	int	gzip;
+	char	*p;
+	char	*bp_keys = 0;
 	char	rev_list[MAXPATH] = "";
 
 	gzip = opts.gzip && r->port;
@@ -721,7 +756,19 @@ push(char **av, remote *r, char **envVar)
 		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
 	}
-	return (push_part2(av, r, rev_list, ret, envVar));
+	if (bp_binpool() ||
+	    ((p = getenv("BKD_BINPOOL")) && streq(p, "YES"))) {
+		bp_keys = bktmp(0, 0);
+	}
+	ret = push_part2(av, r, rev_list, ret, envVar, bp_keys);
+	if (!ret && bp_keys) ret = push_part3(av, r, envVar, bp_keys);
+	//unless (ret) ret = push_part2end();
+
+	if (bp_keys) {
+		unlink(bp_keys);
+		free(bp_keys);
+	}
+	return (ret);
 }
 
 private	void

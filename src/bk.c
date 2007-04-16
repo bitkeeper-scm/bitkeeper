@@ -443,31 +443,30 @@ private	struct {
 	char	*name;
 	int	flags;
 } repolog[] = {
-	{"rdlock", CMD_RDLOCK},
-	{"rdunlock", CMD_WRUNLOCK},
-	{"wrlock", CMD_WRLOCK},
-	{"wrunlock", CMD_WRUNLOCK},
-	{"exit", CMD_FAST_EXIT},
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"fix", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"license", CMD_FAST_EXIT},
-	{"pending_part1", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"pending_part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_WRUNLOCK},
 	{"push", CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote clone", CMD_BYTES|CMD_RDLOCK|CMD_BINPOOL},
+	{"remote clone",
+	    CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BINPOOL},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
-	{"remote pull part2", CMD_BYTES|CMD_BINPOOL},
-	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote pull part2",
+	    CMD_BYTES|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BINPOOL},
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
-	{"remote push part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
-	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK|CMD_WRUNLOCK},
+	{"remote push part2",
+	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},
+	{"remote quit", CMD_FAST_EXIT},
+	{"remote rdlock", CMD_RDLOCK},
+	{"remote rdunlock", CMD_WRUNLOCK},
+	{"remote wrlock", CMD_WRLOCK},
+	{"remote wrunlock", CMD_WRUNLOCK},
 	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"undo", CMD_WRLOCK|CMD_WRUNLOCK},
 	{ 0, 0 },
@@ -479,6 +478,7 @@ cmdlog_start(char **av, int httpMode)
 	int	i, len, do_lock = 1;
 	int	is_remote = strneq("remote ", av[0], 7);
 	char	*repo1, *repo2;
+	char	*p;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -492,9 +492,14 @@ cmdlog_start(char **av, int httpMode)
 		}
 	}
 
-	if ((cmdlog_flags&CMD_BINPOOL) && !(exists(BKROOT) && bp_binpool())) {
-		/* not in binpool-mode, just cancel the next part */
-		cmdlog_flags |= CMD_FAST_EXIT|CMD_RDUNLOCK;
+	/*
+	 * If either side of the connection thinks it has binpool data then
+	 * we will add in the extra data passes to the protocol.
+	 */
+	if ((cmdlog_flags & CMD_BINPOOL) &&
+	    (((p = getenv("BK_BINPOOL")) && streq(p, "YES")) || bp_binpool())){
+		/* in binpool-mode, allow another part */
+		cmdlog_flags &= ~(CMD_FAST_EXIT|CMD_RDUNLOCK|CMD_WRUNLOCK);
 	}
 
 	/*
