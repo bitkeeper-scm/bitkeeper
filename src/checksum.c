@@ -161,8 +161,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 		return (4);
 	}
 
-	sccs_fitCounters(before, d->added, d->deleted, d->same);
-	sccs_fitCounters(after, s->added, s->deleted, s->same);
+	sprintf(before, "\001s %d/%d/%d\n", d->added, d->deleted, d->same);
+	sprintf(after, "\001s %d/%d/%d\n", s->added, s->deleted, s->same);
 	unless (streq(before, after)) {
 		size_t	n;
 
