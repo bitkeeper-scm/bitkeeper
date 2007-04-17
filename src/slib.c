@@ -7599,6 +7599,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	delta	*d;
 	int	i;	/* used by EACH */
 	int	first = willfix;
+	int	firstadded = 1;
 	char	buf[MAXLINE];
 	char	*p;
 	int	bits = 0;
@@ -7703,28 +7704,23 @@ delta_table(sccs *s, FILE *out, int willfix)
 			    "%s@%s: dates do not increase\n", s->sfile, d->rev);
 			return (-1);
 		}
-
-		/*
-		 * Have to leave this for now.  I changed the code to
-		 * handle 1/2/3 instead of 00001/00002/00003 but until
-		 * everyone upgrades, we have to leave it.
-		 * Fix in 3.0.
-		 */
-		sprintf(buf,
-		    "\001s %05d/%05d/%05d\n", d->added, d->deleted, d->same);
-		if (strlen(buf) > 21) {
-			unless (BITKEEPER(s)) {
-				fprintf(stderr,
-				    "%s: file too large\n", s->gfile);
-				return (-1);
-			}
-			sccs_fitCounters(buf, d->added, d->deleted, d->same);
+		sprintf(buf, "\001s %d/%d/%d\n",
+		    d->added, d->deleted, d->same);
+		if (firstadded) {
+			/*
+			 * Space pad first occurance in case we need
+			 * to fix it.  We do this always so sfiles are
+			 * consistant.
+			 */
+			for(i = strlen(buf)-1; i < 43; i++) buf[i] = ' ';
+			strcpy(buf+i, "\n");
+			firstadded = 0;
 		}
-		if (first)
+		if (first) {
 			fputs(buf, out);
-		else
+		} else {
 			fputmeta(s, buf, out);
-
+		}
 		p = fmts(buf, "\001d ");
 		*p++ = d->type;
 		*p++ = ' ';
@@ -12765,43 +12761,6 @@ out:
 #undef	OUT
 }
 
-/*
- * works for 32 bit unsigned only
- */
-private void
-fit(char *buf, unsigned int i)
-{
-	int	j;
-	u32	f;
-	static	char *s[] = { "K", "M", "G", 0 };
-	if (i < 100000) {
-		sprintf(buf, "%05d\n", i);
-		return;
-	}
-	for (j = 0, f = 1000; s[j]; j++, f *= 1000) {
-		sprintf(buf, "%04u%s", (i+(f-1))/f, s[j]);
-		if (strlen(buf) == 5) return;
-	}
-	sprintf(buf, "E2BIG");
-	return;
-}
-
-void
-sccs_fitCounters(char *buf, int a, int d, int s)
-{
-	/* ^As 12345/12345/12345\n
-	 *  012345678901234567890
-	 */
-	strcpy(buf, "\001s ");
-	fit(&buf[3], a);
-	buf[8] = '/';
-	fit(&buf[9], d);
-	buf[14] = '/';
-	fit(&buf[15], s);
-	buf[20] = '\n';
-	buf[21] = 0;
-}
-
 int	do_fsync = -1;
 
 /*
@@ -12810,6 +12769,7 @@ int	do_fsync = -1;
 private int
 end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 {
+	int	i;
 	char	buf[100];
 
 	/*
@@ -12830,14 +12790,9 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	 * Now fix up the checksum and summary.
 	 */
 	fseek(out, 8L, SEEK_SET);
-	sprintf(buf, "\001s %05d/%05d/%05d\n", add, del, same);
-	if (strlen(buf) > 21) {
-		unless (BITKEEPER(s)) {
-			fprintf(stderr, "%s: file too large\n", s->gfile);
-			exit(1);
-		}
-		sccs_fitCounters(buf, add, del, same);
-	}
+	sprintf(buf, "\001s %d/%d/%d", add, del, same);
+	for (i = strlen(buf); i < 43; i++) buf[i] = ' ';
+	strcpy(buf+i, "\n");
 	fputmeta(s, buf, out);
 	if (BITKEEPER(s)) {
 		if ((add || del || same) && (n->flags & D_ICKSUM)) {
