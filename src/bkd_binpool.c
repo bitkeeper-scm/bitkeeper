@@ -108,8 +108,15 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 {
 	FILE	*f;
 	int	i, bytes, rc = 1;
+	char	*p;
 	char	cmd_file[MAXPATH];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
+
+	unless (quiet) {
+		p = remote_unparse(r);
+		fprintf(stderr, "Fetching binpool files from %s...\n", p);
+		free(p);
+	}
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 1, !quiet)) {
 		return (-1);
@@ -146,7 +153,9 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 			i = min(sizeof(buf), bytes);
 			if  ((i = fread(buf, 1, i, r->rf)) <= 0) break;
 			unless (f) {
-				f = popen("bk sfio -iqB -", "w");
+				p = aprintf("bk sfio -ir%sB -", quiet ? "q":"");
+				f = popen(p, "w");
+				free(p);
 				assert(f);
 			}
 			fwrite(buf, 1, i, f);
