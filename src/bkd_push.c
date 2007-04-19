@@ -116,8 +116,8 @@ cmd_push_part2(int ac, char **av)
 	int	fd2, pfd, c, rc = 0, gzip = 0;
 	int	status, debug = 0, nothing = 0, conflict = 0;
 	pid_t	pid;
-	char	*p;
 	char	bkd_nul = BKD_NUL;
+	u64	sfio;
 	char	*takepatch[] = { "bk", "takepatch", "-c", "-vvv", 0};
 	char	buf[4096];
 
@@ -225,7 +225,7 @@ cmd_push_part2(int ac, char **av)
 		printf("@BINPOOL@\n");
 		fflush(stdout);
 		chdir(ROOT2RESYNC);
-		rc = bp_sendkeys(1, "- < " CSETS_IN);
+		rc = bp_sendkeys(1, "- < " CSETS_IN, &sfio);
 		chdir(RESYNC2ROOT);
 	} else {
 		rc = do_resolve(av);

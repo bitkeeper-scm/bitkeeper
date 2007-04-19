@@ -108,6 +108,7 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 {
 	FILE	*f;
 	int	i, bytes, rc = 1;
+	u64	sfio;
 	char	*p;
 	char	cmd_file[MAXPATH];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
@@ -134,7 +135,7 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	/* we do want to recurse one level here, this is the proxy case */
 	fprintf(f, "bk -zo0 sfio -oqBR1 -\n");
 	fflush(f);
-	if (rc = bp_sendkeys(fileno(f), range)) goto done;
+	if (rc = bp_sendkeys(fileno(f), range, &sfio)) goto done;
 	fprintf(f, "rdunlock\n");
 	fprintf(f, "quit\n");
 	fclose(f);
@@ -153,7 +154,7 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 			i = min(sizeof(buf), bytes);
 			if  ((i = fread(buf, 1, i, r->rf)) <= 0) break;
 			unless (f) {
-				p = aprintf("bk sfio -ir%sB -", quiet ? "q":"");
+				p = aprintf("bk sfio -ir%sBb%llu -", quiet ? "q":"", sfio);
 				f = popen(p, "w");
 				free(p);
 				assert(f);
@@ -178,31 +179,51 @@ done:	wait_eof(r, 0);
 }
 
 int
-bp_sendkeys(int fdout, char *range)
+bp_sendkeys(int fdout, char *range, u64 *bytep)
 {
 	FILE	*f;
-	int	fd, i, rc = 0;
-	char	*cmd;
+	int	len, space, where, rc = 0;
+	char	*cmd, *p;
 	zputbuf	*zout;
 	char	hdr[64];
-	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
+	char	line[MAXLINE];
+	char	buf[BSIZE];	/* must match remote.c:doit() buf */
 
+	*bytep = 0;
 	zout = zputs_init(zputs_hwrite, int2p(fdout));
 	unless (bp_sharedServer()) {
-		cmd = aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "' %s |"
+		cmd = aprintf("bk changes -Bv -nd'"
+		    "$if(:BPHASH:){:SIZE: :BPHASH: :KEY: :MD5KEY|1.0:}' %s |"
 		    /* The Wayne meister says one level of recursion.
 		     * It's obvious.  Obvious to Leonardo...
 		     */
 		    "bk havekeys -BR1 -", range);
 		f = popen(cmd, "r");
 		assert(f);
-		fd = fileno(f);
-		while ((i = read(fd, buf, sizeof(buf))) > 0) {
-			sprintf(hdr, "@STDIN=%u@\n", i);
-			zputs(zout, hdr, strlen(hdr));
-			zputs(zout, buf, i);
+		space = sizeof(buf);
+		where = 0;
+		while (fnext(line, f)) {
+			p = strchr(line, ' ');
+			*p++ = 0;
+			*bytep += atoi(line);
+			len = strlen(p);
+			if (len > space) {
+				sprintf(hdr, "@STDIN=%u@\n", where);
+				zputs(zout, hdr, strlen(hdr));
+				zputs(zout, buf, where);
+				space = sizeof(buf);
+				where = 0;
+			}
+			strcpy(&buf[where], p);
+			where += len;
+			space -= len;
 		}
 		if (pclose(f)) rc = 1;
+		if (where) {
+			sprintf(hdr, "@STDIN=%u@\n", where);
+			zputs(zout, hdr, strlen(hdr));
+			zputs(zout, buf, where);
+		}
 	}
 	sprintf(hdr, "@STDIN=0@\n");
 	zputs(zout, hdr, strlen(hdr));

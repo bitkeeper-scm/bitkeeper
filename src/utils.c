@@ -1546,3 +1546,27 @@ crc(char *str)
 {
 	return (adler32(0, str, strlen(str)));
 }
+
+char	*
+psize(u64 size)
+{
+	static	char	p64buf[10][20];
+	static	int	n;
+	double	d = size;
+	char	*tags = "BKMGTPE";
+	int	t = 0;
+	char	*s = p64buf[n++];
+
+	if (n == 10) n = 0;
+	while (d >= 999.0) t++, d /= 1024.0;
+	if (t == 0) {
+		sprintf(s, "%.0f", d); /* bytes, not character */
+	} else if (d < 9.95) {
+		sprintf(s, "%.2f%c", d, tags[t]); /* x.yyK */
+	} else if (d < 99.5) {
+		sprintf(s, "%.1f%c", d, tags[t]); /* xx.yK */
+	} else {
+		sprintf(s, "%.0f%c", d, tags[t]); /* xxxK */
+	}
+	return (s);
+}

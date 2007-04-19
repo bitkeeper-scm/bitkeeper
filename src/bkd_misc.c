@@ -376,7 +376,7 @@ err:			if (zout) {
 	}
 out:	if (zin) zgets_done(zin);
 	if (zout) zputs_done(zout);
-	return (0);
+	return (rc);
 }
 
 int

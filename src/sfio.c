@@ -37,6 +37,9 @@
 #define	SFIO_LOOKUP	6
 #define	SFIO_MORE	7	/* another sfio follows */
 
+#define	NEWLINE()	if ((opts->newline == '\r') && !opts->quiet) \
+				fputc('\n', stderr)
+
 private	int	sfio_out(void);
 private int	out_file(char *file, struct stat *, off_t *byte_count);
 private int	out_bptuple(char *tuple, off_t *byte_count);
@@ -47,7 +50,7 @@ private	int	sfio_in(int extract);
 private int	in_bptuple(char *file, char *datalen, int extract);
 private int	in_symlink(char *file, int todo, int extract);
 private int	in_hardlink(char *file, int todo, int extract);
-private int	in_file(char *file, int todo, int extract);
+private int	in_file(char *file, u32 todo, int extract);
 private	int	mkfile(char *file);
 private	void	send_eof(int status);
 private void	missing(off_t *byte_count);
@@ -65,6 +68,8 @@ struct {
 	hash	*sent;		/* list of d.files we have set, for dups */
 	int	recurse;	/* if set, try and find a server on cachemiss */
 	char	**missing;	/* tuples we couldn't find here */
+	u64	todo;		/* -b%llu - bytes we think we are moving */
+	u64	done;		/* file bytes we've moved so far */
 } *opts;
 
 #define M_IN	1
@@ -79,13 +84,16 @@ sfio_main(int ac, char **av)
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;BefHimopqrR;")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefHimopqrR;")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
 			break;
 		    case 'A':
 			opts->more = file2Lines(opts->more, optarg);
+			break;
+		    case 'b':
+		    	opts->todo = strtoull(optarg, 0, 10);
 			break;
 		    case 'B': opts->bp_tuple = 1; break;
 		    case 'e': opts->echo = 1; break;		/* doc 2.3 */
@@ -479,8 +487,8 @@ sfio_in(int extract)
 {
 	char	buf[MAXPATH];
 	char	datalen[11];
-	int	len;
-	int	n;
+	int	len, n;
+	u32	ulen;
 	off_t	byte_count = 0;
 
 	bzero(buf, sizeof(buf));
@@ -509,6 +517,7 @@ sfio_in(int extract)
 				if (-len == SFIO_MORE) {
 					return (sfio_in(extract));
 				}
+				NEWLINE();
 				fprintf(stderr, "Incomplete archive: ");
 				switch (-len) {
 				    case SFIO_LSTAT:
@@ -533,6 +542,7 @@ sfio_in(int extract)
 				    	break;
 				}
 			}
+			NEWLINE();
 			return (-len); /* we got a EOF */
 		}
 		if (len >= MAXPATH) {
@@ -560,8 +570,8 @@ sfio_in(int extract)
 			sscanf(&datalen[6], "%04d", &len);
 			if (in_hardlink(buf, len, extract)) return (1);
 		} else {
-			sscanf(datalen, "%010d", &len);
-			if (in_file(buf, len, extract)) return (1);
+			sscanf(datalen, "%010u", &ulen);
+			if (in_file(buf, ulen, extract)) return (1);
 		}
 	}
 #ifndef SFIO_STANDALONE
@@ -746,14 +756,14 @@ err:
 }
 
 private int
-in_file(char *file, int todo, int extract)
+in_file(char *file, u32 todo, int extract)
 {
 	char	buf[SFIO_BSIZ];
 	int	n;
 	int	fd = -1;
 	int	exists = 0;
 	mode_t	mode = 0;
-	u32	sum = 0, sum2 = 0;
+	u32	sum = 0, sum2 = 0, sz = todo;
 
 	if (extract) {
 		fd = mkfile(file);
@@ -770,6 +780,7 @@ in_file(char *file, int todo, int extract)
 	unless (todo) goto done;
 	while ((n = readn(0, buf, min(todo, sizeof(buf)))) > 0) {
 		todo -= n;
+		opts->done += n;
 		sum = adler32(sum, buf, n);
 		if (exists || !extract) continue;
 		/*
@@ -825,7 +836,20 @@ done:	if (readn(0, buf, 10) != 10) {
 			chmod(file, 0444);
 		}
 	}
-	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
+	unless (opts->quiet) {
+		if (opts->newline == '\r') {
+			if (opts->todo) {
+				sprintf(buf, "%s (%s of %s)",
+				    file, psize(opts->done), psize(opts->todo));
+			} else {
+				sprintf(buf, "%s (+%s = %s)", 
+				    file, psize(sz), psize(opts->done));
+			}
+			fprintf(stderr, "%-72s\r", buf);
+		} else {
+			fprintf(stderr, "%s\n", file);
+		}
+	}
 	return (0);
 
 err:	

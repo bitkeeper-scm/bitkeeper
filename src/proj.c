@@ -701,7 +701,7 @@ proj_binpoolIDX(project *p, int write)
 	concat_path(idx, p->root, "BitKeeper/binpool/index.db");
 	if (write || exists(idx)) {
 		p->binpool_idx = mdbm_open(idx,
-		    write ? O_RDWR|O_CREAT : O_RDONLY, 0666, 4096);
+		    write ? O_RDWR|O_CREAT : O_RDONLY, 0666, 8192);
 		p->binpool_write = write;
 	}
 	return (p->binpool_idx);

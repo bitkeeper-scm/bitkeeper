@@ -7079,8 +7079,13 @@ skip_get:
 			fprintf(stderr, " -> %s", rev);
 		}
 		unless (flags & GET_SKIPGET) {
-			if (lines >= 0) fprintf(stderr, ": %d %s",
-			    lines, (BINPOOL(s) ? "bytes" : "lines"));
+			if (lines >= 0) {
+				if (BINARY(s)) {
+					fprintf(stderr, ": %s", psize(lines));
+				} else {
+					fprintf(stderr, ": %u lines", lines);
+				}
+			}
 		}
 		fprintf(stderr, "\n");
 	}
@@ -14977,6 +14982,13 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 	case KW_BPHASH: /* BPHASH */
 		if (d->hash) {
 			fs(d->hash);
+			return (strVal);
+		}
+		return (nullVal);
+
+	case KW_SIZE: /* SIZE */
+		if (d->hash) {
+			fd(d->added);
 			return (strVal);
 		}
 		return (nullVal);

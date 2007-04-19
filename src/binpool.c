@@ -952,12 +952,11 @@ binpool_repair_main(int ac, char **av)
 {
 	char	*dir, *cmd, *hval, *p;
 	int	i, c, quiet = 0;
-	MDBM	*db = 0;
-	hash	*needed;
-	char	***lines;
+	MDBM	*db = 0, *missing;
 	FILE	*f;
 	sum_t	sum;
 	char	buf[MAXLINE];
+	char	key[100];
 
 	while ((c = getopt(ac, av, "q")) != -1) {
 		switch (c) {
@@ -977,25 +976,36 @@ binpool_repair_main(int ac, char **av)
 		return (1);
 	}
 	db = proj_binpoolIDX(0, 0);	/* ok if db is null */
+	missing = mdbm_mem();
 
 	/* save the hash for all the bp deltas we are missing */
-	needed = hash_new(HASH_MEMHASH);
 	f = popen("bk changes -Bv -nd'" BINPOOL_DSPEC "'", "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);
 		if (db && mdbm_fetch_str(db, buf)) continue;
 
-		/* alloc lines array of keys that use this hash */
-/* LMXXX - I dislike this, this should be a subroutine */
-		p = strchr(buf, ' '); /* end of hash */
+		/*
+		 * buf contains: adler.md5 key md5rootkey
+		 * and what we want is 
+		 *	missing{adler.md5} = "adler.md5 key md5rootkey"
+		 * But we have to handle the case that more than one delta
+		 * wants this hash, doesn't happen often but it happens.
+		 * So if we try the store and the slot is taken, then
+		 * try again with "adler.md5.%d" until it goes in.
+		 */
+		p = strchr(buf, ' ');
 		*p = 0;
-		unless (lines = hash_insert(needed,
-			    buf, p-buf+1, 0, sizeof(char **))) {
-			lines = needed->vptr;
-		}
+		strcpy(key, buf);
 		*p = ' ';
-		*lines = addLine(*lines, strdup(buf));
+		if (mdbm_store_str(missing, key, buf, MDBM_INSERT)) {
+			for (i = 0; ; i++) {
+				p = aprintf("%s.%d", key, i);
+				c = mdbm_store_str(missing, p, buf,MDBM_INSERT);
+				free(p);
+				unless (c) break;
+			}
+		}
 	}
 	pclose(f);
 
@@ -1007,26 +1017,167 @@ binpool_repair_main(int ac, char **av)
 		chomp(buf);
 
 		if (hashgfile(buf, &hval, &sum)) continue;
-		unless (lines = hash_fetchStr(needed, hval)) {
+		unless (p = mdbm_fetch_str(missing, hval)) {
 			free(hval);
 			continue;
 		}
 
 		/* found a file we are missing */
-		EACH(*lines) {
-			p = (*lines)[i];
+		for (i = -1; ; i++) {
+			unless (i == -1) {
+				sprintf(key, "%s.%d", hval, i);
+				unless (p = mdbm_fetch_str(missing, key)) {
+					break;
+				}
+			}
 			unless (quiet) printf("Inserting %s for %s\n", buf, p);
 			if (bp_insert(0, buf, p, 0)) {
 				fprintf(stderr,
 				"binpool repair: failed to insert %s for %s\n",
 				buf, p);
 			}
+			/* don't reinsert this key again */
+			mdbm_delete_str(missing, key);
 		}
-		/* only need 1 file with each hash */
-		hash_deleteStr(needed, hval);
-		free(hval);
 	}
+	mdbm_close(missing);
 	return (0);
+}
+
+/* check that the log matches the index and vice versa */
+int
+binpool_index_main(int ac, char **av)
+{
+	MDBM	*m, *i;
+	FILE	*f;
+	char	*key, *file, *crc, *p;
+	int	log = 0, index = 0, missing = 0, mismatch = 0;
+	u32	aGot, aWant;
+	kvpair	kv;
+	char	buf[MAXLINE];
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "No repo root?\n");
+		return (1);
+	}
+	unless (f = fopen("BitKeeper/log/binpool.index", "r")) {
+		fprintf(stderr, "No binpool.index?\n");
+		return (1);
+	}
+	unless (i = proj_binpoolIDX(0, 0)) {
+		fprintf(stderr, "No binpool index?\n");
+		return (1);
+	}
+	m = mdbm_mem();
+	while (fnext(buf, f)) {
+		crc = strrchr(buf, ' ');
+		assert(crc);
+		*crc++ = 0;
+		aWant = strtoul(crc, 0, 16);
+		aGot = adler32(0, buf, strlen(buf));
+		unless (aGot == aWant) {
+			fprintf(stderr, "Skipping %s\n", buf);
+			continue;
+		}
+		file = strrchr(buf, ' ');
+		assert(file);
+		*file++ = 0;
+		key = buf;
+		mdbm_store_str(m, key, file, MDBM_REPLACE);
+	}
+	fclose(f);
+	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
+		log++;
+		unless (p = mdbm_fetch_str(i, kv.key.dptr)) {
+			fprintf(stderr, "Not found: %s\n", kv.key.dptr);
+			missing++;
+		} else unless (streq(p, kv.val.dptr)) {
+			fprintf(stderr, "Mismatch: %s: %s != %s\n",
+			    kv.key.dptr, kv.val.dptr, p);
+			mismatch++;
+		}
+	}
+	for (kv = mdbm_first(i); kv.key.dsize; kv = mdbm_next(i)) {
+		index++;
+		unless (p = mdbm_fetch_str(m, kv.key.dptr)) {
+			fprintf(stderr,
+			    "Extra: %s => %s\n", kv.key.dptr, kv.val.dptr);
+		} else unless (streq(p, kv.val.dptr)) {
+			fprintf(stderr, "Mismatch2: %s: %s != %s\n",
+			    kv.key.dptr, kv.val.dptr, p);
+		}
+	}
+	mdbm_close(m);
+	unless (log == index) {
+		fprintf(stderr,
+		    "Count mismatch: %u in log, %u in index\n", log, index);
+	}
+	if (missing) {
+		fprintf(stderr, "%d items missing in index.\n", missing);
+	}
+	if (mismatch) {
+		fprintf(stderr, "%d items mismatched in index.\n", mismatch);
+	}
+	return (missing || mismatch || (log != index));
+}
+
+/* replay < logfile */
+int
+binpool_replay_main(int ac, char **av)
+{
+	MDBM	*m;
+	char	*key, *file, *crc;
+	char	buf[MAXLINE];
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "No repo root?\n");
+		exit(1);
+	}
+	m = mdbm_open("BitKeeper/binpool/index.db", O_RDWR|O_CREAT, 0666, 4096);
+	while (fnext(buf, stdin)) {
+		crc = strrchr(buf, ' ');
+		assert(crc);
+		*crc++ = 0;
+		file = strrchr(buf, ' ');
+		assert(file);
+		*file++ = 0;
+		key = buf;
+		mdbm_store_str(m, key, file, MDBM_REPLACE);
+	}
+	mdbm_close(m);
+	return (0);
+}
+
+int
+binpool_sizes_main(int ac, char **av)
+{
+	sccs	*s;
+	delta	*d;
+	char	*name;
+	int	errors = 0;
+	u32	bytes;
+
+	for (name = sfileFirst("binpool_sizes", &av[1], 0);
+	    name; name = sfileNext()) {
+		unless (s = sccs_init(name, 0)) continue;
+		unless (HASGRAPH(s)) {
+err:			sccs_free(s);
+			errors |= 1;
+			continue;
+		}
+		unless (HAS_GFILE(s)) {
+			fprintf(stderr, "%s: not checked out.\n", s->gfile);
+			goto err;
+		}
+		unless (d = bp_fdelta(s, sccs_top(s))) goto err;
+		if (bytes = size(s->gfile)) {
+			d->added = bytes;
+			sccs_newchksum(s);
+		}
+		sccs_free(s);
+	}
+	if (sfileDone()) errors |= 2;
+	return (errors);
 }
 
 int
@@ -1042,6 +1193,9 @@ binpool_main(int ac, char **av)
 		{"clean", binpool_clean_main },
 		{"check", binpool_check_main },
 		{"repair", binpool_repair_main },
+		{"index", binpool_index_main },
+		{"replay", binpool_replay_main },
+		{"sizes", binpool_sizes_main },
 		{0, 0}
 	};
 

@@ -115,8 +115,8 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 {
 	int	i;
 	int	err = 0;
-	char	before[25];	/* ^As 00000/00000/00000\n == 21 chars */
-	char	after[25];	/* ^As 00000/00000/00000\n == 21 chars */
+	char	before[43];	/* 4000G/4000G/4000G will fit */
+	char	after[43];
 
 	unless (d) d = sccs_top(s);
 

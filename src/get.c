@@ -2,9 +2,11 @@
 #include "system.h"
 #include "sccs.h"
 
+#define	bp_fetchkeys	fetchkeys	
+
 private int	get_rollback(sccs *s, char *rev,
 		    char **iLst, char **xLst, char *prog);
-private int	binpool(char *me, int, char **files, char **keys, int ac, char **av);
+private int	binpool(char *me, int, char **files, char **keys, u64 n, int ac, char **av);
 
 int
 get_main(int ac, char **av)
@@ -30,6 +32,7 @@ get_main(int ac, char **av)
 	char	*out = "-";
 	char	**bp_files = 0;
 	char	**bp_keys = 0;
+	u64	bp_todo = 0;
 	char	realname[MAXPATH];
 
 	if (prog = strrchr(av[0], '/')) {
@@ -252,11 +255,11 @@ err:			sccs_free(s);
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
 			if (s->cachemiss && !recursed) {
+				d = bp_fdelta(s, sccs_findrev(s, rev));
 				bp_files = addLine(bp_files, strdup(name));
 				bp_keys = addLine(bp_keys,
-				    sccs_prsbuf(s,
-					bp_fdelta(s, sccs_findrev(s, rev)), 0,
-					BINPOOL_DSPEC));
+				    sccs_prsbuf(s, d, 0, BINPOOL_DSPEC));
+				bp_todo += d->added;	// XXX - not all of it
 				goto next;
 			}
 			if (s->io_error) return (1);
@@ -278,24 +281,31 @@ next:		sccs_free(s);
 	}
 	if (sfileDone()) errors = 1;
 	if (realNameCache) mdbm_close(realNameCache);
-	unless (errors || recursed) {
-		errors = binpool(prog,
-			    flags & SILENT, bp_files, bp_keys, ac_optend, av);
+	if (bp_files && !recursed) {
+		/* If we already had an error don't let this turn that
+		 * into a non-error.
+		 */
+		if (c = binpool(prog, flags & SILENT,
+		    bp_files, bp_keys, bp_todo, ac_optend, av)) {
+		    	errors = c;
+	    	}
 	}
 	freeLines(bp_files, free);
 	freeLines(bp_keys, free);
 	return (errors);
 }
 
+extern int bp_fetchkeys(char *me, int quiet, char **keys, u64 todo);
+
 private int
-binpool(char *me, int quiet, char **files, char **keys, int ac, char **av)
+binpool(char *me, int q, char **files, char **keys, u64 todo, int ac, char **av)
 {
 	char	*nav[100];
 	FILE	*f;
 	int	i;
 
 	unless (files) return (0);
-	if (bp_fetchkeys(me, quiet, keys)) {
+	if (bp_fetchkeys(me, q, keys, todo)) {
 		fprintf(stderr, "%s: failed to fetch binpool data\n", me);
 		return (1);
 	}
@@ -314,7 +324,7 @@ binpool(char *me, int quiet, char **files, char **keys, int ac, char **av)
 }
 
 int
-bp_fetchkeys(char *me, int quiet, char **keys)
+bp_fetchkeys(char *me, int quiet, char **keys, u64 todo)
 {
 	int	i;
 	FILE	*f;
@@ -333,7 +343,7 @@ bp_fetchkeys(char *me, int quiet, char **keys)
 	/* no recursion, I'm remoted to the server already */
 	sprintf(buf,
 	    "bk -q@'%s' -zo0 -Lr sfio -qoB - |"
-	    "bk -R sfio -%sriB -", server, quiet ? "q" : "");
+	    "bk -R sfio -%sriBb%llu -", server, quiet ? "q" : "", todo);
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);
 	i = pclose(f);

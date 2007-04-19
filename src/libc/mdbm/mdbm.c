@@ -235,15 +235,7 @@ mdbm_close(MDBM *db)
 		if (_Mdbm_memdb(db)) memdb_clean_up(db);
 		if (db->m_db) {
 			if (!_Mdbm_memdb(db)) {
-				if (!_Mdbm_rdonly(db)) {
-#ifdef	linux
-					fsync(db->m_fd);
-#else
-					msync(db->m_db,
-					(size_t)DB_SIZE(db->m_npgshift, db->m_pshift),
-					MS_ASYNC);
-#endif
-				}
+				mdbm_sync(db);
 				(void) munmap(db->m_db,
 				    DB_SIZE(db->m_npgshift, db->m_pshift));
 			}
@@ -1135,6 +1127,7 @@ mdbm_compress_tree(MDBM *db)
 		DB_HDR(db)->mh_dbflags |= _MDBM_PERFECT;
 }
 
+// XXX - shouldn't we take a flag to say sync/async?
 void
 mdbm_sync(MDBM *db)
 {
@@ -1144,12 +1137,8 @@ mdbm_sync(MDBM *db)
 	} else {
 		if (db->m_db) {
 			if (!_Mdbm_rdonly(db) && !_Mdbm_memdb(db)) {
-#ifdef	linux
-				fsync(db->m_fd);
-#else
 				msync(db->m_db, (size_t) DB_SIZE(db->m_npgshift,
 				    db->m_pshift), MS_ASYNC);
-#endif
 			}
 		}
 	}
