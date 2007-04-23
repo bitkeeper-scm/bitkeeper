@@ -387,7 +387,10 @@ bp_fetch(sccs *s, delta *din)
 
 	unless (din = bp_fdelta(s, din)) return (-1);
 
-	/* no recursion, we're already remoted */ 
+	/*
+	 * No recursion, we're already remoted.
+	 * No stdin buffering, it's just one key.
+	 */ 
 	cmd =
 	    aprintf("bk -q@'%s' -zo0 -Lr sfio -oqB - | bk -R sfio -iqB -", url);
 	f = popen(cmd, "w");
@@ -468,7 +471,7 @@ bp_updateServer(char *tiprev)
 	p = aprintf("-q@%s", url);
 	/* For now, we are not recursing to a chained server */
 	rc = sysio(tmpkeys, tmpkeys2, 0,
-	    "bk", p, "-Lr", "havekeys", "-B", "-", SYS);
+	    "bk", p, "-Lr", "-Bstdin", "havekeys", "-B", "-", SYS);
 	free(p);
 	unlink(tmpkeys);
 	free(tmpkeys);
@@ -609,7 +612,7 @@ binpool_pull_main(int ac, char **av)
 	cmds = addLine(cmds, strdup("bk havekeys -B -"));
 
 	/* request deltas from server, no recursion (yet) */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr sfio -oqB -",
+	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -",
 	    proj_configval(0, "binpool_server")));
 
 	/* unpack locally */
@@ -695,7 +698,8 @@ binpool_clean_main(int ac, char **av)
 		free(p2);
 		p2 = proj_configval(0, "binpool_server");
 		/* No recursion, we just want that server's list */
-		cmd = aprintf("%s | bk -q@'%s' -Lr havekeys -B -", p1, p2);
+		cmd = aprintf("%s | "
+			"bk -q@'%s' -Lr -Bstdin havekeys -B -", p1, p2);
 		free(p1);
 	}
 	bpdeltas = hash_new(HASH_MEMHASH);
@@ -908,7 +912,7 @@ binpool_check_main(int ac, char **av)
 
 		tmp = bktmp(0, 0);
 		/* no recursion, we are remoted to the server already */
-		p = aprintf("bk -q@'%s' -Lr havekeys -B - > '%s'",
+		p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B - > '%s'",
 		    proj_configval(0, "binpool_server"), tmp);
 		f = popen(p, "w");
 		free(p);

@@ -1001,6 +1001,7 @@ int	search_either(char *s, search search);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, void *buf, int size);
+int	fd2file(int fd, char *file);
 int	repository_downgrade(void);
 int	repository_locked(project *p);
 int	repository_mine(char type);

@@ -20,6 +20,7 @@ int	cmdlog_flags;
 int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
 ltc_math_descriptor	ltc_mp;
 
+private	char	*buffer = 0;	/* copy of stdin */
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
 
@@ -201,7 +202,8 @@ main(int ac, char **av, char **env)
 			return (0);
 		}
 		is_bk = 1;
-		while ((c = getopt(ac, av, "@|1acCdDgGjL|lnpqr|RuUxz;")) != -1) {
+		while ((c =
+		    getopt(ac, av, "@|1aB;cCdDgGjL|lnpqr|RuUxz;")) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'C': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -209,6 +211,7 @@ main(int ac, char **av, char **env)
 				sopts[++si] = c;
 				break;
 			    case '@': remote = 1; break;
+			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
 			    case 'r':				/* doc 2.0 */
@@ -226,6 +229,17 @@ main(int ac, char **av, char **env)
 			    default:
 				usage();
 			}
+		}
+
+		if (buffer) {
+			unless (streq(buffer, "stdin")) {
+				fprintf(stderr, "bk: only -Bstdin\n");
+				exit(1);
+			}
+			buffer = bktmp(0, "stdin");
+			fd2file(0, buffer);
+			close(0);
+			open(buffer, O_RDONLY);
 		}
 
 		if (remote) return (remote_bk(quiet, ac, av));
@@ -686,6 +700,11 @@ cmdlog_end(int ret)
 	}
 
 	showproc_end(cmdlog_buffer, ret);
+
+	if (buffer) {
+		close(0);
+		unlink(buffer);	// pray like crazy we didn't chdir
+	}
 
 	/* If we have no project root then bail out */
 	unless (proj_root(0)) goto out;

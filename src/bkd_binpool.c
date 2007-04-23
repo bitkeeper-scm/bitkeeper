@@ -88,7 +88,7 @@ server(int recurse)
 	if (bp_serverID(&p)) return (stdout);	// OK?
 	if (p == 0) return (stdout);
 	free(p);
-	p = aprintf("bk -q@'%s' -Lr havekeys -BR%d -",
+	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -BR%d -",
 	    proj_configval(0,"binpool_server"), recurse - 1);
 	f = popen(p, "w");
 	free(p);
@@ -133,7 +133,7 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 
 	/* we do want to recurse one level here, this is the proxy case */
-	fprintf(f, "bk -zo0 sfio -oqBR1 -\n");
+	fprintf(f, "bk -zo0 -Bstdin sfio -oqBR1 -\n");
 	fflush(f);
 	if (rc = bp_sendkeys(fileno(f), range, &sfio)) goto done;
 	fprintf(f, "rdunlock\n");

@@ -86,6 +86,21 @@ readn(int from, char *buf, int size)
 	return (done);
 }
 
+int
+fd2file(int from, char *to)
+{
+	int	fd = creat(to, 0664);
+	int	n;
+	char	buf[BUFSIZ];
+
+	if (fd == -1) {
+		perror(to);
+		return (-1);
+	}
+	while ((n = read(from, buf, sizeof(buf))) > 0) writen(fd, buf, n);
+	return (close(fd));
+}
+
 /*
  * Currently very lame because it does 1 byte at a time I/O
  */
