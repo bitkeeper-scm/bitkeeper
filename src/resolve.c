@@ -54,6 +54,8 @@ private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
 
 private	int	default_getFlags;
+private	char	**bp_getFiles;	/* files we want to get */
+private	char	**bp_editFiles;	/* files we want to edit */
 
 int
 resolve_main(int ac, char **av)
@@ -2344,7 +2346,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, flags, ret;
+	int	eperm = 0, flags, ret, i;
 	FILE	*f = 0;
 	FILE	*save = 0;
 	char	buf[MAXPATH];
@@ -2539,6 +2541,22 @@ err:			unapply(save);
 	}
 	fclose(f);
 
+	/* Best effort get/edit */
+	if (bp_getFiles) {
+		// XXX - what about hardlinks for binpool?
+		f = popen("bk get -q -", "w");
+		EACH(bp_getFiles) fprintf(f, "%s\n", bp_getFiles[i]);
+	    	(void)pclose(f);
+		freeLines(bp_getFiles, free);
+	}
+	if (bp_editFiles) {
+		// XXX - what about hardlinks for binpool?
+		f = popen("bk edit -q -", "w");
+		EACH(bp_editFiles) fprintf(f, "%s\n", bp_editFiles[i]);
+	    	(void)pclose(f);
+		freeLines(bp_editFiles, free);
+	}
+
 	/* Remove cache of cset revisions */
 	delete_cset_cache(".", 0);
 
@@ -2635,9 +2653,9 @@ private int
 copyAndGet(opts *opts, char *from, char *to)
 {
 	sccs	*s;
-	char	key[MAXKEY];
 	char	*co;
 	int	getFlags;
+	char	key[MAXKEY];
 
 	if (link(from, to)) {
 		if (mkdirf(to)) {
@@ -2660,9 +2678,18 @@ copyAndGet(opts *opts, char *from, char *to)
 	}
 
 	/*
-	 * LMXXX - I really don't like this much, we're initting the ChangeSet
-	 * file here and probably don't need to do so.
+	 * Don't bother with the ChangeSet file or BK metadata unless they
+	 * are checked out.
 	 */
+	if (streq(to, "SCCS/s.ChangeSet") || strneq(to, "BitKeeper/", 10)) {
+		co = sccs2name(to);
+		unless (exists(co)) {
+			free(co);
+			return (0);
+		}
+		free(co);
+	}
+
 	s = sccs_init(to, 0);
 	assert(s && HASGRAPH(s));
 	sccs_sdelta(s, sccs_ino(s), key);
@@ -2687,7 +2714,11 @@ copyAndGet(opts *opts, char *from, char *to)
 	if (getFlags && !CSET(s) && !strneq(s->gfile, "BitKeeper/", 10)) {
 		//ttyprintf("checkout %s with %s\n", key, co);
 		sccs_clean(s, SILENT);
-		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
+		if (getFlags & GET_EDIT) {
+			bp_editFiles = addLine(bp_editFiles, strdup(s->gfile));
+		} else if (getFlags & GET_EXPAND) {
+			bp_getFiles = addLine(bp_getFiles, strdup(s->gfile));
+		}
 	} else {
 		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) {
 			sccs_free(s);
