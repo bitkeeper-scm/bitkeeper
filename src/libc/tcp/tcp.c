@@ -10,7 +10,7 @@
  * and advertise the port as program "prog".
  */
 int
-tcp_server(int port, int quiet)
+tcp_server(char *addr, int port, int quiet)
 {
 	int	sock;
 	struct	sockaddr_in s;
@@ -22,6 +22,16 @@ tcp_server(int port, int quiet)
 	memset((void*)&s, 0, sizeof(s));
 	s.sin_family = AF_INET;
 	s.sin_port = htons(SOCK_PORT_CAST port);
+
+	/* inet_aton would be a better choice because -1 is indeed
+	 * a valid IP address (255.255.255.255), but inet_addr exists
+	 * on windows and inet_aton does not.
+	 */
+	if (addr) s.sin_addr.s_addr = inet_addr(addr);
+	if (s.sin_addr.s_addr == -1) {
+		if (!quiet) fprintf(stderr, "%s: invalid IP address\n", addr);
+		return (-1);
+	}
 	if (port) tcp_reuse(sock);
 	tcp_keepalive(sock);
 	if (bind(sock, (struct sockaddr*)&s, sizeof(s)) < 0) {
@@ -173,7 +183,7 @@ tcp_pair(int fds[2])
 {
 	int	fd;
 
-	if ((fd = tcp_server(0, 0)) == -1) {
+	if ((fd = tcp_server(0, 0, 0)) == -1) {
 		perror("tcp_server");
 		return (-1);
 	}

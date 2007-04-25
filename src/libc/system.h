@@ -194,7 +194,7 @@ int	safe_pclose(FILE *f);
 int	safe_fclose(FILE *f);
 
 /* tcp/tcp.c */
-int	tcp_server(int port, int quiet);
+int	tcp_server(char *addr, int port, int quiet);
 int	tcp_connect(char *host, int port);
 int	tcp_accept(int sock);
 void	tcp_ndelay(int sock, int val);

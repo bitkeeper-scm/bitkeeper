@@ -22,6 +22,7 @@ int
 bkd_main(int ac, char **av)
 {
 	int	port = 0, daemon = 0, check = 0;
+	char	*addr = 0, *p;
 	int	i, c;
 	char	**unenabled = 0;
 
@@ -55,7 +56,17 @@ bkd_main(int ac, char **av)
 			break;
 		    case 'V':	/* XXX - should be documented */
 			Opts.vhost_dirpath = strdup(optarg); break;
-		    case 'p': port = atoi(optarg); break;	/* doc 2.0 */
+		    case 'p':
+			if (p = strchr(optarg, ':')) {
+				*p = 0;
+				addr = strdup(optarg);
+				*p = ':';
+				port = atoi(++p);
+			} else {
+				port = atoi(optarg);
+				addr = 0;
+			}
+			break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
 		    	usage();
@@ -89,7 +100,7 @@ bkd_main(int ac, char **av)
 
 	unless (Opts.vhost_dirpath) Opts.vhost_dirpath = strdup(".");
 
-	if (port) daemon = 1;
+	if (port || addr) daemon = 1;
 	if (daemon && (Opts.logfile == LOG_STDERR) && !Opts.foreground) {
 		fprintf(stderr, "bkd: Can't log to stderr in daemon mode\n");
 		return (1);
@@ -115,7 +126,9 @@ bkd_main(int ac, char **av)
 			return (2);	/* regressions count on 2 */
 		}
 		if (check) return (0);
-		safe_putenv("BKD_PORT=%d", port);
+		safe_putenv("_BKD_PORT=%d", port);
+		safe_putenv("_BKD_ADDR=%s", addr ? addr : "0.0.0.0");
+		if (addr) free(addr);
 		if (Opts.logfile && (Opts.logfile != LOG_STDERR)) {
 			safe_putenv("_BKD_LOGFILE=%s", Opts.logfile);
 		}

@@ -52,7 +52,7 @@ usage:			system("bk help -s lock");
 	pid = getpid();
 	sig_catch(abort_lock);
 	if (tcp) {
-		tcp = tcp_server(0, 1);
+		tcp = tcp_server(0, 0, 1);
 		printf("127.0.0.1:%d\n", sockport(tcp));
 		fflush(stdout);
 	}
