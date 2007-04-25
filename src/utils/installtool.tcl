@@ -631,7 +631,7 @@ proc widgets {} \
 				-offvalue 0 
 			    checkbutton $w.bkscc \
 				-anchor w \
-				-text "Enable VC++ integration" \
+				-text "Enable Visual Studio integration" \
 				-borderwidth 1 \
 				-variable ::runtime(enableSccDLL) \
 				-onvalue 1 \
@@ -1303,33 +1303,21 @@ set strings(Overwrite) {
 
 set strings(InstallDLLsNoAdmin) {
 	BitKeeper includes optional integration with Windows Explorer
-	and Visual Studio (but not Visual Studio.net, that's coming soon).
+	and Visual Studio.
 
 	You do not have sufficient privileges on this machine to install 
 	these features. These features must be must be installed from a user 
 	account that has Administrator privileges. 
-
-	These features are only available to commercial users of BitKeeper.
-	If you are evaluating BitKeeper for commercial use please make
-	sure you have received an evaluation key to enable these
-	features. See http://www.bitkeeper.com for information on
-	getting an evaluation key or a commercial license key.
 }
 
 set strings(InstallDLLs) {
 	BitKeeper includes optional integration with Windows Explorer
-	and Visual Studio (but not Visual Studio.net, that's coming soon).
+	and Visual Studio.
 
 	The Explorer integration can be enabled separately for local
 	and remote hard drives.  Enabling this option on remote drives
 	can lead to performance problems if you have a slow or
 	unreliable network. 
-
-	These features are only available to commercial users of BitKeeper.
-	If you are evaluating BitKeeper for commercial use please make
-	sure you have received an evaluation key to enable these
-	features. See http://www.bitkeeper.com for information on
-	getting an evaluation key or a commercial license key.
 }
 
 set strings(Install) {
