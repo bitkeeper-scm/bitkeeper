@@ -428,6 +428,7 @@ out_bptuple(char *keys, off_t *byte_count)
 private void
 missing(off_t *byte_count)
 {
+#ifndef	SFIO_STANDALONE
 	char	*p, *tmpf;
 	FILE	*f;
 	int	i;
@@ -460,6 +461,7 @@ err:		send_eof(SFIO_LOOKUP);
 	unlink(tmpf);
 	free(tmpf);
 	/* they should have sent EOF */
+#endif
 }
 
 /*
@@ -836,6 +838,7 @@ done:	if (readn(0, buf, 10) != 10) {
 			chmod(file, 0444);
 		}
 	}
+#ifndef	SFIO_STANDALONE
 	unless (opts->quiet) {
 		if (opts->newline == '\r') {
 			if (opts->todo) {
@@ -850,6 +853,7 @@ done:	if (readn(0, buf, 10) != 10) {
 			fprintf(stderr, "%s\n", file);
 		}
 	}
+#endif
 	return (0);
 
 err:	
