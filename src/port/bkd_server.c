@@ -13,6 +13,7 @@ void
 bkd_server(int ac, char **av)
 {
 	int	i, j, port, killsock, startsock, sock, nsock, maxfd;
+	char	*addr;
 	char	*p;
 	FILE	*f;
 	fd_set	fds;
@@ -27,8 +28,7 @@ bkd_server(int ac, char **av)
 	 * we are done.
 	 */
 	unless (Opts.foreground) {
-		/* XXX bind 127.0.0.1 in 3.3.x */
-		if ((startsock = tcp_server(0, 0)) < 0) {
+		if ((startsock = tcp_server("127.0.0.1", 0, 0)) < 0) {
 			fprintf(stderr, "bkd: failed to start startsock.\n");
 			exit(1);
 		}
@@ -54,8 +54,9 @@ bkd_server(int ac, char **av)
 	 */
 	reserveStdFds();
 
-	port = atoi(getenv("BKD_PORT"));
-	sock = tcp_server(port, 0);
+	addr = getenv("_BKD_ADDR");
+	port = atoi(getenv("_BKD_PORT"));
+	sock = tcp_server(addr, port, 0);
 	if (sock < 0) exit(2);	/* regressions count on 2 */
 	assert(sock > 2);
 	make_fd_uninheritable(sock);
@@ -81,8 +82,7 @@ bkd_server(int ac, char **av)
 		alarm(Opts.alarm);
 	}
 	if (Opts.kill_ok) {
-		/* XXX bind 127.0.0.1 in 3.3.x */
-		if ((killsock = tcp_server(0, 0)) < 0) {
+		if ((killsock = tcp_server("127.0.0.1", 0, 0)) < 0) {
 			fprintf(stderr, "bkd: failed to start killsock.\n");
 			exit(1);
 		}

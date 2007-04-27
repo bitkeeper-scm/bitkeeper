@@ -162,7 +162,7 @@ It is possible to install a one or more bkd's as Windows services,
 see 
 .B bk help service.
 .SH OPTIONS
-.TP \-P\*<pfile\*>
+.TP \fB\-p\fP\*<addr\*>\fB:\fP[\*<port\*>]
 .B \-C
 This option provides a slightly more secure mode of
 operation in that the bkd will refuse to change directories up out of 
@@ -195,9 +195,27 @@ is not specified, then log to stderr.
 .OPTreq \-P pfile
 Write the pid of daemon process into this file at startup.
 .tp
+\fB\-p\fP\*<addr\*>\fB:\fP[\*<port\*>]
+.tp
 .OPTreq \-p port
-Specify an alternative port.  The default port is 0x3962 (aka 14690).
-This option implies \-d.
+Specify an alternative address and/or port.
+By default, the 
+.B bkd
+allows connection requests from any host on port 0x3962 (aka 14690).
+If
+.ARG addr
+is specified, the
+.B bkd
+will bind to that address, limiting the hosts which are allowed to connect.
+The most common usage is to bind to localhost (127.0.0.1) which means that
+any local process may connect but no remote processes may connect.
+.B Note:
+When specifying an address, the trailing colon
+is required even when
+.ARG port
+is omitted.
+This option implies
+.QR \-d .
 .tp
 .OPTreq \-i cmd
 Include

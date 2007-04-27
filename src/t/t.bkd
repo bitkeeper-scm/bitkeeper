@@ -414,3 +414,31 @@ bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
 bk lock -U
 echo OK
+echo $N make sure bkd with -phost:port option works..................$NL
+cd "$HERE/project"
+P=`port 50000`
+bk bkd -q -p127.0.0.1:$P -d -ikill
+PATH="/bin:/usr/sbin:/usr/etc:$PATH"
+export PATH
+netstat -an | grep -i LISTEN | grep 127.0.0.1.$P > "$DEV_NULL" 2>&1 || {
+	echo failed
+	echo could not find bkd listening on 127.0.0.1:$P
+	netstat -an | grep -i LISTEN
+	exit 1
+}
+# Make sure we can't clone from $HOSTNAME
+HOST=`hostname`
+bk clone $Q "bk://$HOST:$P" "$HERE/copy3" && {
+	echo failed
+	echo "bk clone bk://$HOST:$P should have failed, but succeeded"
+	exit 1
+}
+# Make sure we can clone from localhost
+bk clone $Q "bk://localhost:$P" "$HERE/copy3" || {
+	echo failed
+	echo "bk clone bk://localhost:$P should have succeeded, but failed"
+	exit 1
+}
+bk _kill bk://localhost:$P
+echo OK
+

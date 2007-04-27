@@ -46,8 +46,8 @@ ifeq "$(TCLVERSION)" "8.4"
 DDEVERSION := 1.2
 REGVERSION := 1.1
 WITHOUT_X :=
-TCLBUILD := /build/tcl-$(USER)/Tcl.Framework
-TKBUILD  := /build/tk-$(USER)/Tk.Framework
+TCLBUILD := /build/tcl-$(USER)/Tcl.framework
+TKBUILD  := /build/tk-$(USER)/Tk.framework
 WISHPATH := /build/tk-$(USER)/BitKeeper.app
 EXTENSIONS :=
 AQUAEXTENSIONS :=
@@ -63,8 +63,8 @@ BWIDGET := BWidget1.7
 ifndef WITHOUT_X
 WITHOUT_X := --without-x
 endif
-TCLBUILD := ../build/tcl/Tcl.Framework
-TKBUILD  := ../build/tk/Tk.Framework
+TCLBUILD := ../build/tcl/Tcl.framework
+TKBUILD  := ../build/tk/Tk.framework
 WISHPATH := build/tk/Wish.app
 EXTENSIONS := lib/$(TKTABLE)/$(LIBTKTABLE) \
 	      lib/$(TREECTRL)/$(LIBTREECTRL) \
