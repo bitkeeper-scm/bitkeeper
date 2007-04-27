@@ -378,6 +378,9 @@ findcmd(int ac, char **av)
 			if (streq(av[0], "push_part2")) {
 				av[0] = "remote push part2";
 			}
+			if (streq(av[0], "push_part3")) {
+				av[0] = "remote push part3";
+			}
 			if (streq(av[0], "rclone_part1")) {
 				av[0] = "remote rclone part1";
 			}

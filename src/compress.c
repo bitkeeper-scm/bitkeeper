@@ -264,6 +264,42 @@ zgets_hread(void *token, u8 **buf)
 }
 
 /*
+ * callback used by zgets to read data from a file.  Adds the gzip headers
+ * used by the read of this file.
+ */
+int
+zgets_hfread(void *token, u8 **buf)
+{
+	FILE	*f = token;
+	u16	hlen;
+	int	len;
+	static	char *data = 0;
+
+	if (fread((char *) &hlen, 1, sizeof(hlen), f) != sizeof(hlen)) {
+		fprintf(stderr, "BAD gzip hdr\n");
+		len = 0;
+	} else {
+		len = ntohs(hlen);
+	}
+	assert(len < BSIZE);
+	if (buf) {
+		unless (data) data = malloc(BSIZE);
+		*buf = data;
+		return (fread(data, 1, len, f));
+	} else {
+		/* called from zgets_done */
+		if (len != 0) {
+			ttyprintf("failed to find trailer\n");
+		}
+		if (data) {
+			free(data);
+			data = 0;
+		}
+		return (0);
+	}
+}
+
+/*
  * A callback to be used with zputs that encodes these gzip headers
  */
 void

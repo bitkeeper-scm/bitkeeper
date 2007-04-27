@@ -374,7 +374,6 @@ genpatch(int level, int wfd, char *rev_list)
 	opts.inBytes = opts.outBytes = 0;
 	n = 2;
 	if (opts.verbose) makepatch[n++] = "-vv";
-	unless (bp_sharedServer()) makepatch[n++] = "-B";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
@@ -511,6 +510,105 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 		return (-1);
 	}
 	writen(r->wfd, "@END@\n", 6);
+
+	if (unlink(msgfile)) perror(msgfile);
+	if (rc == -1) {
+		disconnect(r, 2);
+		return (-1);
+	}
+
+	if (opts.debug) {
+		fprintf(opts.out, "Send done, waiting for remote\n");
+		if (r->type == ADDR_HTTP) {
+			getMsg("http_delay", 0, 0, opts.out);
+		}
+	}
+	return (0);
+}
+
+
+
+private int
+send_binpool_msg(remote *r, char *bp_keys, char **envVar)
+{
+	FILE	*f;
+	int	rc;
+	u32	extra = 1, m = 0, n, inbytes;
+	int	gzip;
+	char	*sfio[10] = {"bk", "sfio", "-oqBR1", "-", 0};
+	int	fd0, fd, rfd, status;
+	pid_t	pid;
+	char	msgfile[MAXPATH];
+
+	/*
+	 * If we are using ssh/rsh do not do gzip ourself
+	 * Let ssh do it
+	 */
+	gzip = r->port ? opts.gzip : 0;
+
+	bktmp(msgfile, "pullbpmsg3");
+	f = fopen(msgfile, "w");
+	assert(f);
+	sendEnv(f, envVar, r, 0);
+
+	/*
+	 * No need to do "cd" again if we have a non-http connection
+	 * becuase we already did a "cd" in pull part 1
+	 */
+	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	fprintf(f, "push_part3");
+	if (gzip) fprintf(f, " -z%d", opts.gzip);
+	if (opts.debug) fprintf(f, " -d");
+	if (!opts.verbose) fprintf(f, " -q");
+	fputs("\n", f);
+
+	if (size(bp_keys) == 0) {
+		fprintf(f, "@NOBINPOOL@\n");
+		extra = 0;
+	} else {
+		/*
+		 * Httpd wants the message length in the header
+		 * We have to compute the patch size before we sent
+		 * 10 is the size of "@BINPOOL@"
+		 * 6 is the size of "@END@" string
+		 */
+		if (r->type == ADDR_HTTP) {
+			m = 3; // XXX
+			assert(m > 0);
+			extra = m + 8 + 6;
+		} else {
+			extra = 1;
+		}
+	}
+	fclose(f);
+
+	rc = send_file(r, msgfile, extra);
+
+	if (extra > 0) {
+		writen(r->wfd, "@BINPOOL@\n", 10);
+		/*
+		 * What we want is: bp_keys => bk sfio => gzip => remote
+		 */
+		fd0 = dup(0); close(0);
+		fd = open(bp_keys, O_RDONLY, 0);
+		if (fd < 0) perror(bp_keys);
+		assert(fd == 0);
+		pid = spawnvpio(0, &rfd, 0, sfio);
+		dup2(fd0, 0); close(fd0);
+		inbytes = n = 0;
+		gzipAll2fd(rfd, r->wfd, gzip, &inbytes, &n, 1, 0);
+		close(rfd);
+		waitpid(pid, &status, 0);
+
+		if ((r->type == ADDR_HTTP) && (m != n)) {
+			fprintf(opts.out,
+			    "Error: patch has changed size from %d to %d\n",
+			    m, n);
+			disconnect(r, 2);
+			return (-1);
+		}
+		writen(r->wfd, "@END@\n", 6);
+	}
 	disconnect(r, 1);
 
 	if (unlink(msgfile)) perror(msgfile);
@@ -556,8 +654,13 @@ private int
 push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
     char *bp_keys)
 {
-	char	buf[4096];
+	zgetbuf	*zin;
+	FILE	*f;
+	char	*line;
+	u32	bytes;
+	int	i;
 	int	n, rc = 0, done = 0, do_pull = 0;
+	char	buf[4096];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, opts.verbose)) {
 		rc = 1;
@@ -594,6 +697,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 			done = 1;
 		}
 	}
+	unless (bp_keys) disconnect(r, 1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
@@ -632,7 +736,6 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 		}
 		getline2(r, buf, sizeof(buf));
 	}
-#if 0
 	if (streq(buf, "@BINPOOL@")) {
 		unless (bp_keys) {
 			fprintf(stderr,
@@ -640,7 +743,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 			rc = 1;
 			goto done;
 		}
-		zin = zgets_initCustom(zgets_hread, int2p(r->rfd));
+		zin = zgets_initCustom(zgets_hfread, r->rf);
 		f = fopen(bp_keys, "w");
 		while ((line = zgets(zin)) && strneq(line, "@STDIN=", 7)) {
 			bytes = atoi(line+7);
@@ -653,11 +756,16 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 			}
 		}
 		if (zgets_done(zin)) {
-			rc = 1;
-			goto done;
+			return (1);
 		}
+		fclose(f);
+		return (0);
+	} else if (bp_keys) {
+		fprintf(stderr,
+		    "push failed: @BINPOOL@ section expect got %s\n", buf);
+		rc = 1;
+		goto done;
 	}
-#endif
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
 			rc = 1;
@@ -703,7 +811,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 	rev_list[0] = 0;
 	putenv("BK_STATUS=OK");
 
-done:
+ done:	if (bp_keys) return (rc);
 	if (rc) putenv("BK_STATUS=CONFLICTS");
 	unless (done == 2) trigger(av[0], "post");
 	if (rev_list[0]) unlink(rev_list);
@@ -724,9 +832,109 @@ done:
 }
 
 private int
-push_part3(char **av, remote *r, char **envVar, char *bp_keys)
+push_part3(char **av, remote *r, char *rev_list, char **envVar,
+    char *bp_keys)
 {
-	return (0);
+	int	n, rc = 0, done = 0, do_pull = 0;
+	char	*p;
+	char	buf[4096];
+
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, opts.verbose)) {
+		rc = 1;
+		goto done;
+	}
+
+	if (rc = send_binpool_msg(r, bp_keys, envVar)) goto done;
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+	getline2(r, buf, sizeof(buf));
+	if (remote_lock_fail(buf, opts.verbose)) {
+		rc = 1;
+		goto done;
+	} else if (streq(buf, "@SERVER INFO@")) {
+		if (getServerInfoBlock(r)) {
+			rc = 1;
+			goto done;
+		}
+	}
+
+	if ((p = getenv("BK_STATUS")) && !streq(p, "OK")) goto done;
+
+	/*
+	 * get remote progress status
+	 */
+	getline2(r, buf, sizeof(buf));
+	if (buf[0] == BKD_RC) {
+		rc = atoi(&buf[1]);
+		goto done;
+	}
+	unless (streq(buf, "@END@")) {
+		rc = 1;
+		goto done;
+	}
+	getline2(r, buf, sizeof(buf));
+	if (streq(buf, "@TRIGGER INFO@")) {
+		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
+			rc = 1;
+			goto done;
+		}
+		getline2(r, buf, sizeof(buf));
+	}
+	if (streq(buf, "@RESOLVE INFO@")) {
+		while ((n = read_blk(r, buf, 1)) > 0) {
+			if (buf[0] == BKD_NUL) break;
+			if (buf[0] == '@') {
+				if (maybe_trigger(r)) {
+					rc = 1;
+					goto done;
+				}
+			} else if (opts.verbose) {
+				writen(2, buf, n);
+			}
+		}
+		getline2(r, buf, sizeof(buf));
+		if (buf[0] == BKD_RC) {
+			rc = atoi(&buf[1]);
+			getline2(r, buf, sizeof(buf));
+		}
+		unless (streq(buf, "@END@") && (rc == 0)) {
+			rc = 1;
+			goto done;
+		}
+	}
+
+	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
+
+	unlink(CSETS_OUT);
+	if (rename(rev_list, CSETS_OUT)) {
+		unlink(rev_list);
+		unless (errno == EROFS) {
+			fprintf(stderr, "Failed to move %s to "
+			    CSETS_OUT, rev_list);
+			return (-1);
+		}
+	}
+	putenv("BK_CSETLIST=" CSETS_OUT);
+	rev_list[0] = 0;
+	putenv("BK_STATUS=OK");
+
+done:
+	if (rc) putenv("BK_STATUS=CONFLICTS");
+	unless (done == 2) trigger(av[0], "post");
+	if (rev_list[0]) unlink(rev_list);
+
+	/*
+	 * XXX This is a workaround for a csh fd leak:
+	 * Force a client side EOF before we wait for server side EOF.
+	 * Needed only if remote is running csh; csh has a fd leak
+	 * which causes it fail to send us EOF when we close stdout
+	 * and stderr.  Csh only sends us EOF and the bkd exit, yuck !!
+	 */
+	disconnect(r, 1);
+
+	wait_eof(r, opts.debug); /* wait for remote to disconnect */
+	disconnect(r, 2);
+	if (do_pull) pull(r); /* pull does not return */
+	return (rc);
 }
 
 
@@ -761,8 +969,7 @@ push(char **av, remote *r, char **envVar)
 		bp_keys = bktmp(0, 0);
 	}
 	ret = push_part2(av, r, rev_list, ret, envVar, bp_keys);
-	if (!ret && bp_keys) ret = push_part3(av, r, envVar, bp_keys);
-	//unless (ret) ret = push_part2end();
+	if (bp_keys) ret = push_part3(av, r, rev_list, envVar, bp_keys);
 
 	if (bp_keys) {
 		unlink(bp_keys);

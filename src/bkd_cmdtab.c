@@ -21,6 +21,8 @@ struct cmd cmds[] = {
 	"push and apply local changes into remote repository", cmd_push_part1 },
   { "push_part2", "push_1.3_part2", 
 	"push and apply local changes into remote repository", cmd_push_part2 },
+  { "push_part3", "push_1.3_part3", 
+	"push and apply local changes into remote repository", cmd_push_part3 },
   { "pull_part1", "pull_1.3_part1",
     "pull remote changes from current repository into client repository",
     cmd_pull_part1 },

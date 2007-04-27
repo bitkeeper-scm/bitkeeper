@@ -116,6 +116,7 @@ cmd_push_part2(int ac, char **av)
 	int	fd2, pfd, c, rc = 0, gzip = 0;
 	int	status, debug = 0, nothing = 0, conflict = 0;
 	pid_t	pid;
+	char	*p;
 	char	bkd_nul = BKD_NUL;
 	u64	sfio;
 	char	*takepatch[] = { "bk", "takepatch", "-c", "-vvv", 0};
@@ -219,9 +220,9 @@ cmd_push_part2(int ac, char **av)
 	}
 	proj_reset(0);
 
-	//if (bp_binpool() || ((p = getenv("BK_BINPOOL")) && streq(p, "YES"))) {
-	if (0) {
+	if (bp_binpool() || ((p = getenv("BK_BINPOOL")) && streq(p, "YES"))) {
 		// send bp keys
+		putenv("BKD_DAEMON="); /* allow new bkd connections */
 		printf("@BINPOOL@\n");
 		fflush(stdout);
 		chdir(ROOT2RESYNC);
@@ -297,8 +298,86 @@ done:	/*
 	return (rc);
 }
 
+/*
+ * complete a push of binpool data
+ */
 int
 cmd_push_part3(int ac, char **av)
 {
-	return (0);
+	int	fd2, pfd, c, rc = 0, gzip = 0;
+	int	status, debug = 0;
+	int	inbytes, outbytes;
+	pid_t	pid;
+	char	bkd_nul = BKD_NUL;
+	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
+	char	buf[4096];
+
+	while ((c = getopt(ac, av, "dGqz|")) != -1) {
+		switch (c) {
+		    case 'z':
+			gzip = optarg ? atoi(optarg) : 6;
+			if (gzip < 0 || gzip > 9) gzip = 6;
+			break;
+		    case 'd': debug = 1; break;
+		    case 'G': putenv("BK_NOTTY=1"); break;
+		    case 'q': break;
+		    default: break;
+		}
+	}
+
+	if (debug) fprintf(stderr, "cmd_push_part3: checking package root\n");
+	unless (isdir("BitKeeper")) {
+		out("ERROR-Not at package root\n");
+		rc = 1;
+		goto done;
+	}
+
+	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
+	buf[0] = 0;
+	getline(0, buf, sizeof(buf));
+	if (streq(buf, "@BINPOOL@")) {
+		/*
+		 * Do sfio
+		 */
+		if (debug) fprintf(stderr, "cmd_push_part3: calling sfio\n");
+		fflush(stdout);
+		/* Arrange to have stderr go to stdout */
+		fd2 = dup(2); dup2(1, 2);
+		pid = spawnvpio(&pfd, 0, 0, sfio);
+		dup2(fd2, 2); close(fd2);
+		inbytes = outbytes = 0;
+		gunzipAll2fd(0, pfd, gzip, &inbytes, &outbytes);
+		close(pfd);
+		getline(0, buf, sizeof(buf));
+		if (!streq("@END@", buf)) {
+			fprintf(stderr,
+			    "cmd_push: warning: lost end marker\n");
+		}
+
+		if ((rc = waitpid(pid, &status, 0)) != pid) {
+			perror("sfio subprocess");
+			rc = 254;
+		}
+		if (WIFEXITED(status)) {
+			rc =  WEXITSTATUS(status);
+		} else {
+			rc = 253;
+		}
+		if (rc) {
+			printf("%c%d\n", BKD_RC, rc);
+			fflush(stdout);
+		}
+	} else if (!streq(buf, "@NOBINPOOL@")) {
+		fprintf(stderr, "expect @BINPOOL@, got <%s>\n", buf);
+		rc = 1;
+		goto done;
+	}
+	fputs("@END@\n", stdout);
+	fflush(stdout);
+
+	rc = do_resolve(av);
+done:	return (rc);
 }

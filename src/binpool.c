@@ -423,7 +423,7 @@ bp_logUpdate(char *key, char *val)
 
 	unless (val) val = "delete        ";
 	strcpy(buf, proj_root(0));
-	if (proj_isResync(0)) strcat(buf, RESYNC2ROOT);
+	if (proj_isResync(0)) concat_path(buf, buf, RESYNC2ROOT);
 	strcat(buf, "/BitKeeper/log/binpool.index");
 	unless (f = fopen(buf, "a")) return (-1);
 	sprintf(buf, "%s %s", key, val);
@@ -495,16 +495,19 @@ bp_updateServer(char *tiprev)
 int
 bp_serverID(char **id)
 {
-	char	*cfile, *cache, *p, *url;
+	char	*cache, *p, *url;
 	char	*ret = 0;
 	FILE	*f;
+	char	cfile[MAXPATH];
 	char	buf[MAXLINE];
 
 	assert(id);
 	*id = 0;
 	unless ((url = proj_configval(0,"binpool_server")) && *url) return (0);
 
-	cfile = proj_fullpath(0, "BitKeeper/log/BP_SERVER");
+	strcpy(cfile, proj_root(0));
+	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
+	concat_path(cfile, cfile, "BitKeeper/log/BP_SERVER");
 	if (cache = loadfile(cfile, 0)) {
 		if (p = strchr(cache, '\n')) {
 			*p++ = 0;
@@ -549,7 +552,10 @@ bp_sharedServer(void)
 		//ttyprintf("no bp data, shared\n");
 		return (1);
 	}
-	if (bp_serverID(&local_repoID)) return (1);
+	if (bp_serverID(&local_repoID)) {
+		//ttyprintf("unable to fetch serverID, shared\n");
+		return (1);
+	}
 	unless (local_repoID) local_repoID = strdup(proj_repoID(0));
 	remote_repoID =
 	    getenv(inbkd ? "BK_BINPOOL_SERVER" : "BKD_BINPOOL_SERVER");

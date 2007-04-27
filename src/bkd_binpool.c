@@ -154,7 +154,8 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 			i = min(sizeof(buf), bytes);
 			if  ((i = fread(buf, 1, i, r->rf)) <= 0) break;
 			unless (f) {
-				p = aprintf("bk sfio -ir%sBb%llu -", quiet ? "q":"", sfio);
+				p = aprintf("bk sfio -ir%sBb%llu -",
+				    quiet ? "q":"", sfio);
 				f = popen(p, "w");
 				free(p);
 				assert(f);

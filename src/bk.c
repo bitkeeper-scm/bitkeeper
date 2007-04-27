@@ -473,6 +473,8 @@ private	struct {
 	    CMD_BYTES|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BINPOOL},
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
 	{"remote push part2",
+	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK|CMD_BINPOOL},
+	{"remote push part3",
 	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},

@@ -776,6 +776,9 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			} else {
 				fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 			}
+			if (bp_binpool()) {
+				fprintf(f, "putenv BK_BINPOOL=YES\n");
+			}
 			unless (bp_serverID(&bp)) {
 				unless (bp) bp = strdup(repo);
 				if (strchr(bp, ' ')) {
@@ -938,10 +941,6 @@ sendServerInfoBlock(int is_rclone)
 			sprintf(buf, "\nBINPOOL_SERVER=%s", p);
 			out(buf);
 			free(p);
-		}
-		if ((p = proj_configval(0, "binpool_server")) && *p) {
-			sprintf(buf, "\nBINPOOL_SERVER_URL=%s", p);
-			out(buf);
 		}
 	}
 
