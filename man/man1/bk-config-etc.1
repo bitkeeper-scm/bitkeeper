@@ -85,11 +85,22 @@ Automatically do a bk edit
 after doing a bk ci
 .ARG file .
 Note: This will also
-adjust the modification time of the s.file to be one second before the 
+adjust the modification time of the s.file to be two seconds before the 
 modification time
 of the gfile, which is needed in order to prevent make(1) from attempting
 to re-get the file.
 (Checkout in edit mode.)
+.tp
+.B last
+Preserve the previous state of
+.ARG file .
+This is like
+.B checkout:none
+for a clone.
+If the file was later locked and then checked in, it will be checked out
+again with a lock.
+(This is likely to become the default in all cases, it is already the default
+for push/pull operations.)
 .tp
 .B none
 Clear the gfile after doing a bk ci

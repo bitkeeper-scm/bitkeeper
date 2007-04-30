@@ -364,6 +364,7 @@ proj_checkout(project *p)
 	if (strieq(s, "get")) return (CO_GET);
 	if (strieq(s, "edit")) return (CO_EDIT);
 	if (strieq(s, "none")) return (CO_NONE);
+	if (strieq(s, "last")) return (CO_LAST);
 	fprintf(stderr,
 	    "WARNING: config key 'checkout' should be a get or edit.\n"
 	    "Meaning of '%s' unknown. Assuming none.\n", s);

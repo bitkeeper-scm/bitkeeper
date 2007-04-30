@@ -22,9 +22,9 @@ fix_gmode(sccs *s, int gflags)
 	if (!(gflags&GET_EDIT) && !WRITABLE(s))  return (0);
 
 	if (gflags&GET_EDIT) {
-		 s->mode |= 0200;	/* turn on write mode */
+		 s->mode |= 0222;	/* turn on write mode */
 	} else {
-		 s->mode |= 0400;	/* turn on read mode */ 
+		 s->mode |= 0444;	/* turn on read mode */ 
 		 s->mode &= ~0222;	/* turn off write mode */
 	}
 
@@ -137,7 +137,6 @@ delta_main(int ac, char **av)
 	char	*diffsFile = 0;
 	char	*prog, *name;
 	char	*compp = 0, *encp = 0;
-	int	ckopts = 0;
 	char	*def_compp;
 	char	*mode = 0;
 	MMAP	*diffs = 0;
@@ -176,10 +175,9 @@ delta_main(int ac, char **av)
 			      sflags |= SF_NODIREXPAND;
 			      sflags &= ~SF_WRITE_OK;
 			      break;
-		    case 'l': ckopts = CO_EDIT;			/* doc 2.0 */ 
-			      checkout = 1;
+		    case 'l': checkout = CO_EDIT;		/* doc 2.0 */ 
 			      break;
-		    case 'u': ckopts = CO_GET;			/* doc 2.0 */
+		    case 'u': checkout = CO_GET;		/* doc 2.0 */
 			      break;
 
 		    /* LM flags */
@@ -230,7 +228,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 	}
 
-	unless (ignorePreference || ckopts) ckopts  = proj_checkout(0);
+	unless (ignorePreference || checkout) checkout = proj_checkout(0);
 
 	def_compp  = proj_configval(0, "compression");
 	unless (def_compp && *def_compp) def_compp = NULL;
@@ -291,7 +289,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		char	*nrev;
 		int	df = dflags;
 		int	gf = gflags;
-		int	co = checkout;
+		int	reget = 0;
 
 		if (df & DELTA_DONTASK) {
 			unless (d = comments_get(0)) goto usage;
@@ -318,18 +316,19 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		/*
 		 * Checkout option does not applies to ChangeSet file
 		 * see rev 1.118
+		 * XXX - delta -l|u will be ignored.  oh well.
 		 */
 		unless (CSET(s)) {
-			if (ckopts == CO_EDIT) {
+			if (checkout & (CO_EDIT|CO_LAST)) {
 				gf |= GET_SKIPGET|GET_EDIT;
 				df |= DELTA_SAVEGFILE;
-				co = 1;
-			} else if (ckopts == CO_GET) {
+				reget = 1;	/* to write pfile */
+			} else if (checkout == CO_GET) {
 				if (hasKeyword(s))  {
 					gf |= GET_EXPAND;
-					co = 1;
+					reget = 1;
 				} else {
-					co = 2;
+					gf |= GET_SKIPGET;
 					df |= DELTA_SAVEGFILE;
 				}
 			}
@@ -392,22 +391,22 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			goto next;
 		}
 
-		if ((co == 2) || ((co == 1) && (df&NEWFILE))) {
-			if (fix_gmode(s, gf)) {
-				errors |= 16;
-			}
+		if (reget || (df & NEWFILE)) {
+			if (fix_gmode(s, gf)) errors |= 16;
+
 			/*
 			 * The 'keyword' preference for a new file might
 			 * have set keywords in sccs_delta() so we need to
 			 * check again.
 			 */
-			if (co == 2 && hasKeyword(s)) {
+			if (hasKeyword(s) && !(gf & GET_EDIT)) {
 				gf |= GET_EXPAND;
-				co = 1;
+				gf &= ~GET_SKIPGET;
+				reget = checkout;
 			}
 		}
 
-		if (co == 1) {
+		if (reget) {
 			// XXX - what if we are dangling?
 			// The pf.oldrev is definitely wrong.
 			if (rc == -3) nrev = pf.oldrev;

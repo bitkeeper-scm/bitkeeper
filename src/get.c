@@ -37,7 +37,6 @@ get_main(int ac, char **av)
 	}
 
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
-	if (streq("GET", proj_configval(0, "checkout"))) flags |= GET_NOREGET;
 	while ((c =
 	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|pPqr;RSstTx;")) != -1) {
 		switch (c) {

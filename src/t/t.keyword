@@ -28,6 +28,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Check creat flags with RCS default ..........................$NL
 echo data > data
 bk  ci $Q -i data
@@ -36,6 +37,7 @@ if [ X"$FLAGS" != "XBITKEEPER,RCS,EXPAND1,CSETMARKED,EOLN_NATIVE" ]
 then echo faied; exit 1;
 fi
 echo OK
+
 echo $N Check creat flags wiith SCCS default ........................$NL
 bk edit $Q BitKeeper/etc/config
 grep -v keyword BitKeeper/etc/config > X
@@ -55,6 +57,7 @@ echo %F% > fff
 bk new $Q fff || exit 1
 if [ `cat fff` != "SCCS/s.fff" ]; then
 	echo keyword expansion failed
+	cat fff
 	exit 1
 fi
 echo OK
