@@ -591,7 +591,13 @@ skip_http_hdr(remote *r)
 				return (-1);
 			}
 		}
-		sscanf(buf, "Content-Length: %d", &r->contentlen);
+		if (p = strchr(buf, ':')) {
+			*p++ = 0;
+			while (isspace(*p)) ++p;
+			if (strieq(buf, "Content-length")) {
+				r->contentlen = atoi(p);
+			}
+		}
 		if (buf[0] == 0) return (0); /*ok */
 		++line;
 	}
@@ -1575,9 +1581,9 @@ psize(u64 size)
 	while (d >= 999.0) t++, d /= 1024.0;
 	if (t == 0) {
 		sprintf(s, "%.0f", d); /* bytes, not character */
-	} else if (d < 9.95) {
+	} else if (d < 9.995) {
 		sprintf(s, "%.2f%c", d, tags[t]); /* x.yyK */
-	} else if (d < 99.5) {
+	} else if (d < 99.95) {
 		sprintf(s, "%.1f%c", d, tags[t]); /* xx.yK */
 	} else {
 		sprintf(s, "%.0f%c", d, tags[t]); /* xxxK */

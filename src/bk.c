@@ -515,7 +515,8 @@ cmdlog_start(char **av, int httpMode)
 	if ((cmdlog_flags & CMD_BINPOOL) &&
 	    (((p = getenv("BK_BINPOOL")) && streq(p, "YES")) || bp_binpool())){
 		/* in binpool-mode, allow another part */
-		cmdlog_flags &= ~(CMD_FAST_EXIT|CMD_RDUNLOCK|CMD_WRUNLOCK);
+		cmdlog_flags &= ~CMD_FAST_EXIT;
+		unless (httpMode) cmdlog_flags &= ~(CMD_RDUNLOCK|CMD_WRUNLOCK);
 	}
 
 	/*

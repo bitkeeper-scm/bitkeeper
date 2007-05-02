@@ -274,6 +274,24 @@ bk get $Q -S || {
 checkfiles "$HERE"/F7 F7
 echo OK
 
+#echo $N Repeat push using http ......................................$NL
+#bk unpull -f $Q || exit 1
+#cd ../pclone2
+#rm /tmp/f
+#bk push -d $Q http://localhost:$P/cclone1 || {
+#	echo push failed
+#	bk _kill bk://localhost:$P
+#	exit 1
+#}
+#cd ../cclone1
+#bk get $Q -S || {
+#	echo get failed
+#	bk _kill bk://localhost:$P
+#	exit 1
+#}
+#checkfiles "$HERE"/F7 F7
+#echo OK
+
 bk _kill bk://localhost:$P
 
 echo $N Test binpool repair .........................................$NL

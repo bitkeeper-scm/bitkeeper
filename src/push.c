@@ -526,6 +526,31 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 	return (0);
 }
 
+private u32
+gen_bpdata(int level, int wfd, char *bp_keys)
+{
+	u32	n;
+	int	fd0, fd, rfd, status;
+	pid_t	pid;
+	char	*sfio[10] = {"bk", "sfio", "-oqBR1", "-", 0};
+
+	/*
+	 * What we want is: bp_keys => bk sfio => gzip => remote
+	 */
+	fd0 = dup(0); close(0);
+	fd = open(bp_keys, O_RDONLY, 0);
+	if (fd < 0) perror(bp_keys);
+	assert(fd == 0);
+	pid = spawnvpio(0, &rfd, 0, sfio);
+	dup2(fd0, 0); close(fd0);
+	n = 0;
+	gzipAll2fd(rfd, wfd, level, 0, &n, 1, 0);
+	close(rfd);
+	waitpid(pid, &status, 0);
+	assert(status == 0);
+	return (n);
+}
+
 
 
 private int
@@ -533,11 +558,9 @@ send_binpool_msg(remote *r, char *bp_keys, char **envVar)
 {
 	FILE	*f;
 	int	rc;
-	u32	extra = 1, m = 0, n, inbytes;
+	u32	extra = 1, m = 0, n;
 	int	gzip;
-	char	*sfio[10] = {"bk", "sfio", "-oqBR1", "-", 0};
-	int	fd0, fd, rfd, status;
-	pid_t	pid;
+	int	fd;
 	char	msgfile[MAXPATH];
 
 	/*
@@ -573,7 +596,9 @@ send_binpool_msg(remote *r, char *bp_keys, char **envVar)
 		 * 6 is the size of "@END@" string
 		 */
 		if (r->type == ADDR_HTTP) {
-			m = 3; // XXX
+			fd = open(DEVNULL_WR, O_WRONLY);
+			m = gen_bpdata(gzip, fd, bp_keys);
+			close(fd);
 			assert(m > 0);
 			extra = m + 8 + 6;
 		} else {
@@ -586,20 +611,7 @@ send_binpool_msg(remote *r, char *bp_keys, char **envVar)
 
 	if (extra > 0) {
 		writen(r->wfd, "@BINPOOL@\n", 10);
-		/*
-		 * What we want is: bp_keys => bk sfio => gzip => remote
-		 */
-		fd0 = dup(0); close(0);
-		fd = open(bp_keys, O_RDONLY, 0);
-		if (fd < 0) perror(bp_keys);
-		assert(fd == 0);
-		pid = spawnvpio(0, &rfd, 0, sfio);
-		dup2(fd0, 0); close(fd0);
-		inbytes = n = 0;
-		gzipAll2fd(rfd, r->wfd, gzip, &inbytes, &n, 1, 0);
-		close(rfd);
-		waitpid(pid, &status, 0);
-
+		n = gen_bpdata(gzip, r->wfd, bp_keys);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(opts.out,
 			    "Error: patch has changed size from %d to %d\n",
@@ -697,8 +709,9 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 			done = 1;
 		}
 	}
-	unless (bp_keys) disconnect(r, 1);
+	if (!bp_keys || (r->type == ADDR_HTTP)) disconnect(r, 1);
 
+	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (remote_lock_fail(buf, opts.verbose)) {
@@ -756,8 +769,10 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 			}
 		}
 		if (zgets_done(zin)) {
+			if (r->type == ADDR_HTTP) disconnect(r, 2);
 			return (1);
 		}
+		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		fclose(f);
 		return (0);
 	} else if (bp_keys) {
