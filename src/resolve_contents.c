@@ -117,7 +117,7 @@ c_quit(resolve *rs)
 	}
 	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
 	chdir(RESYNC2ROOT);
-	proj_restoreAllCO(0);
+	proj_restoreAllCO(0, 0);
 	sccs_unlockfile(RESOLVE_LOCK);
 	exit(1);
 }

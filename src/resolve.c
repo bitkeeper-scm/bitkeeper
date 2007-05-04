@@ -1639,7 +1639,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		chdir(RESYNC2ROOT);
 		sccs_unlockfile(RESOLVE_LOCK);
 		i = spawnvp(P_WAIT, "bk", nav);
-		proj_restoreAllCO(0);
+		proj_restoreAllCO(0, opts->idDB);
 		exit(WIFEXITED(i) ? WEXITSTATUS(i) : 1);
 	}
 
@@ -2439,7 +2439,7 @@ pass4_apply(opts *opts)
 		sccs_sdelta(r, sccs_ino(r), key);
 		sccs_free(r);
 		if (l = sccs_keyinit(key, INIT_NOCKSUM, opts->idDB)) {
-			if (HAS_GFILE(l) && !CSET(l)) proj_saveCO(l);
+			proj_saveCO(l);
 			/*
 			 * This should not happen, the repository is locked.
 			 */
@@ -2455,6 +2455,11 @@ pass4_apply(opts *opts)
 
 			fprintf(save, "%s\n", l->sfile);
 			sccs_free(l);
+			/* buf+7 == skip RESYNC/ */
+			mdbm_store_str(opts->idDB, key, buf + 7, MDBM_REPLACE);
+		} else {
+			/* handle new files */
+			proj_saveCOkey(0, key, proj_checkout(0));
 		}
 	}
 	fclose(save);
@@ -2550,6 +2555,7 @@ err:			unapply(save);
 		    "resolve: running consistency check, please wait...\n");
 	}
 
+	proj_restoreAllCO(0, opts->idDB);
 	sync();
 	if (proj_configbool(0, "partial_check")) {
 		fflush(save); /*  important */
@@ -2648,13 +2654,6 @@ copyAndGet(opts *opts, char *from, char *to)
 		 */
 		if (link(from, to) && fileCopy(from, to)) return (-1);
 	}
-
-	s = sccs_init(to, 0);
-	assert(s && HASGRAPH(s));
-	sccs_clean(s, SILENT);
-	proj_restoreCO(s);
-	if (opts->fsync) fsync(s->fd);
-	sccs_free(s);
 	return (0);
 }
 
@@ -2791,7 +2790,7 @@ resolve_cleanup(opts *opts, int what)
 	/* XXX - shouldn't this be below the CLEAN_OK?
 	 * And maybe claused on opts->pass4?
 	 */
-	proj_restoreAllCO(0);
+	proj_restoreAllCO(0, opts->idDB);
 
 	freeStuff(opts);
 	unless (what & CLEAN_OK) {

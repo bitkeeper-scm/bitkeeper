@@ -164,7 +164,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	if (!quiet && save) printf("Backup patch left in \"%s\".\n", patch);
 
 	idcache_update(checkfiles);
-	proj_restoreAllCO(0);
+	proj_restoreAllCO(0, 0);
 
 	unless (quiet) printf("Running consistency check...\n");
 	if (fromclone) {
@@ -398,7 +398,7 @@ clean_file(char **fileList)
 			fprintf(stderr,
 			    "Cannot clean %s, undo aborted\n", s->gfile);
 			sccs_free(s);
-			proj_restoreAllCO(0);
+			proj_restoreAllCO(0, 0);
 			return (-1);
 		}
 		sccs_free(s);

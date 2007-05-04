@@ -657,29 +657,40 @@ proj_isResync(project *p)
 void
 proj_saveCO(sccs *s)
 {
-	char	*state;
+	int	state;
 	char	key[MAXKEY];
 
 	assert(s->proj);
-	if (proj_isResync(s->proj)) return;
 	if (CSET(s) || strneq("BitKeeper/", s->gfile, 10)) return;
-	unless (s->proj->coDB) s->proj->coDB = mdbm_mem();
 	sccs_sdelta(s, sccs_ino(s), key);
 	if (HAS_PFILE(s)) {
-		state = "e";
+		state = CO_EDIT;
 	} else if (HAS_GFILE(s)) {
-		state = "g";
+		state = CO_GET;
 	} else {
-		state = "n";
+		state = CO_NONE;
 	}
-// ttyprintf("SAVE %s => %s\n", s->gfile, state);
-	mdbm_store_str(s->proj->coDB, key, state, MDBM_REPLACE);
+	proj_saveCOkey(s->proj, key, state);
+}
+
+void
+proj_saveCOkey(project *p, char *key, int co)
+{
+	char	state[2];
+
+	unless (p) p = curr_proj();
+	if (proj_isResync(p)) return;
+	unless (p->coDB) p->coDB = mdbm_mem();
+	state[0] = co + '0';
+	state[1] = 0;
+	mdbm_store_str(p->coDB, key, state, MDBM_REPLACE);
 }
 
 int
 proj_restoreCO(sccs *s)
 {
 	char	*state;
+	int	co;
 	int	getFlags = 0;
 	char	key[MAXKEY];
 
@@ -691,24 +702,19 @@ proj_restoreCO(sccs *s)
 	if (check_gfile(s, 0)) return (-1);
 
 	sccs_sdelta(s, sccs_ino(s), key);
-	unless (state = mdbm_fetch_str(s->proj->coDB, key)) {
-// ttyprintf("Not found: %s co=%d\n", s->gfile, proj_checkout(s->proj));
+	if (state = mdbm_fetch_str(s->proj->coDB, key)) {
+		co = (*state - '0');
+	} else {
 		/* Use the repo defaults for new files */
-		switch (proj_checkout(s->proj)) {
-		    case CO_GET: state = "g"; break;
-		    case CO_EDIT: state = "e"; break;
-		    case CO_LAST:
-		    case CO_NONE: state = "n"; break;
-		    default: assert(0);
-		}
+		co = proj_checkout(s->proj);
 	}
-	switch (*state) {
-	    case 'e': unless (HAS_PFILE(s)) getFlags = GET_EDIT; break;
-	    case 'g': unless (HAS_GFILE(s)) getFlags = GET_EXPAND; break;
-	    case 'n': break;
+	switch (co) {
+	    case CO_EDIT: unless (HAS_PFILE(s)) getFlags = GET_EDIT; break;
+	    case CO_GET: unless (HAS_GFILE(s)) getFlags = GET_EXPAND; break;
+	    case CO_NONE: break;
+	    case CO_LAST: break;
 	    default: assert(0);
 	}
-// ttyprintf("CO %s => %s\n", s->gfile, state);
 	unless (getFlags) return (0);
 	if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) return (-1);
 	// fix_gmode(s, getFlags);
@@ -720,15 +726,15 @@ proj_restoreCO(sccs *s)
  * we might have touched and restore the gfile if needed.
  */
 int
-proj_restoreAllCO(MDBM *idDB)
+proj_restoreAllCO(project *p, MDBM *idDB)
 {
-	project	*p = curr_proj();
 	sccs	*s;
 	kvpair	kv;
 	int	errs = 0, freeid = 0;
 	char	*t;
 
-	assert(p);	// XXX?
+	unless (p) p = curr_proj();
+
 	if (proj_isResync(p)) return (0);
 	unless (idDB) {
 		t = aprintf("%s/%s", proj_root(p), IDCACHE);
@@ -748,6 +754,8 @@ proj_restoreAllCO(MDBM *idDB)
 		if (proj_restoreCO(s)) errs++;
 		sccs_free(s);
 	}
+	mdbm_close(p->coDB);
+	p->coDB = 0;
 	if (freeid) mdbm_close(idDB);
 	return (errs);
 }
