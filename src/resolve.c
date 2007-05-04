@@ -2339,7 +2339,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, flags, ret, i;
+	int	eperm = 0, flags, ret;
 	FILE	*f = 0;
 	FILE	*save = 0;
 	char	buf[MAXPATH];
@@ -2537,22 +2537,6 @@ err:			unapply(save);
 	}
 	fclose(f);
 
-	/* Best effort get/edit */
-	if (bp_getFiles) {
-		// XXX - what about hardlinks for binpool?
-		f = popen("bk get -q -", "w");
-		EACH(bp_getFiles) fprintf(f, "%s\n", bp_getFiles[i]);
-	    	(void)pclose(f);
-		freeLines(bp_getFiles, free);
-	}
-	if (bp_editFiles) {
-		// XXX - what about hardlinks for binpool?
-		f = popen("bk edit -q -", "w");
-		EACH(bp_editFiles) fprintf(f, "%s\n", bp_editFiles[i]);
-	    	(void)pclose(f);
-		freeLines(bp_editFiles, free);
-	}
-
 	/* Remove cache of cset revisions */
 	delete_cset_cache(".", 0);
 
@@ -2649,8 +2633,6 @@ writeCheck(sccs *s, MDBM *db)
 private int
 copyAndGet(opts *opts, char *from, char *to)
 {
-	sccs	*s;
-
 	if (link(from, to)) {
 		if (mkdirf(to)) {
 			fprintf(stderr,
