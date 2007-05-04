@@ -492,7 +492,7 @@ fix_genlist(char *rev)
 	f = popen(cmd, "r");
 	free(cmd);
 	unless (f) goto out;
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		goto out;
 	}

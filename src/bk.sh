@@ -688,7 +688,7 @@ _chmod() {		# /* doc 2.0 */
 	ROOT=`bk root`
 	rm -f "$ROOT/BitKeeper/tmp/err$$"
 	bk sfiles -g ${1+"$@"} | while read i
-	do	bk clean "$i" || {
+	do	test "X`bk sfiles -c $i`" = X || {
 			echo "Cannot clean $i; skipping it" 1>&2
 			continue
 		}
@@ -696,7 +696,8 @@ _chmod() {		# /* doc 2.0 */
 			echo "$i" > "$ROOT/BitKeeper/tmp/err$$"
 			break
 		}
-		bk unedit "$i"
+		# Move the timestamp to now if the file is present
+		test -r "$i" && touch "$i"
 	done
 	test -f "$ROOT/BitKeeper/tmp/err$$" && {
 		rm -f "$ROOT/BitKeeper/tmp/err$$"

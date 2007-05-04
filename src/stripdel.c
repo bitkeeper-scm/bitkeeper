@@ -16,8 +16,6 @@ private	int	doit(sccs *, s_opts);
 private	int	do_check(sccs *s, int flags);
 private	int	strip_list(s_opts);
 
-private	int	getFlags = 0;
-
 int
 stripdel_main(int ac, char **av)
 {
@@ -54,12 +52,6 @@ usage:			system("bk help -s stripdel");
 	unless (rargs.rstart) {
 		fprintf(stderr, "stripdel: must specify revisions.\n");
 		return (1);
-	}
-
-	switch(proj_checkout(0)) {
-	    case CO_GET: getFlags = GET_EXPAND; break;
-	    case CO_EDIT: getFlags = GET_EDIT; break;
-	    default: getFlags = 0; break;
 	}
 
 	/*
@@ -102,12 +94,11 @@ doit(sccs *s, s_opts opts)
 	if (opts.quiet) flags |= SILENT;
 
 	if (HAS_PFILE(s)) {
-		if (!HAS_GFILE(s) || sccs_clean(s, SILENT)) {
+		if (!HAS_GFILE(s) || sccs_hasDiffs(s, SILENT, 1)) {
 			fprintf(stderr, 
 			    "stripdel: can't strip an edited file.\n");
 			return (1);
 		}
-		s = sccs_restart(s);
 	}
 
 	if (MONOTONIC(s) && !opts.forward) {
@@ -148,19 +139,12 @@ doit(sccs *s, s_opts opts)
 	if (sccs_stripdel(s, "stripdel")) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr,
-		    "stripdel of %s failed.\n", s->sfile);
+			    "stripdel of %s failed.\n", s->sfile);
 		}
 		return (1); /* failed */
 	}
 	verbose((stderr, "stripdel: removed %d deltas from %s\n", n, s->gfile));
-	/*
-	 * Handle checkout modes
-	 */
-	if (getFlags && !CSET(s)) {
-		sccs	*s2 = sccs_init(s->sfile, 0);
-		sccs_get(s2, 0, 0, 0, 0, SILENT|getFlags, "-");
-		sccs_free(s2);
-	}
+
 	return (0);
 }
 

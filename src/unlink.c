@@ -55,7 +55,7 @@ keyunlink_main(int ac, char **av)
 	char	buf[MAXKEY];
 	MDBM	*idDB;
 
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		exit(1);
 	}

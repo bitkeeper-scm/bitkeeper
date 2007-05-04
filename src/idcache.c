@@ -93,6 +93,42 @@ out:
 	mdbm_close(idDB);
 }
 
+/*
+ * I dislike this because it is yet another round of inits but I'm not
+ * sure how to avoid it.
+ */
+void
+idcache_update(char *filelist)
+{
+	MDBM	*idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	FILE	*in = fopen(filelist, "r");
+	FILE	*out = fopen(IDCACHE, "a");
+	sccs	*s;
+	u32	sum = 0;
+	u8	*u;
+	int	n = 0;
+	char	buf[MAXKEY + MAXPATH];
+	char	key[MAXPATH];
+
+	while (fnext(buf, in)) {
+		chomp(buf);
+		unless (s = sccs_init(buf, INIT_NOCKSUM)) continue;
+		assert(HASGRAPH(s));
+		sccs_sdelta(s, sccs_ino(s), key);
+		u = mdbm_fetch_str(idDB, key);
+		unless (u && streq(u, s->gfile)) {
+			sprintf(buf, "%s %s\n", key, s->gfile);
+			for (u = buf; *u; sum += *u++);
+			fprintf(out, buf);
+			n++;
+		}
+	}
+	if (n) fprintf(out, "#$sum$ %u\n", sum);
+	fclose(in);
+	fclose(out);
+	mdbm_close(idDB);
+}
+
 private	void
 save(sccs *sc, MDBM *idDB, char *buf)
 {

@@ -1,0 +1,154 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+echo $N Create initial repository ...................................$NL
+commercial project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+
+echo $N Create some data, setup checkout:last .......................$NL
+bk edit $Q "$HERE/project/BitKeeper/etc/config"
+echo "checkout:last" >> "$HERE/project/BitKeeper/etc/config"
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk new $Q foo.c bar.c h.h
+test -f foo.c -a -f bar.c -a -f h.h || {
+	echo failed to save files
+	exit 1
+}
+test -w foo.c -a -w bar.c -a -w h.h || {
+	echo failed to save files RW
+	exit 1
+}
+echo OK
+
+echo $N Test admin with a RW file ...................................$NL
+bk admin -fRCS foo.c
+test -f foo.c -a -w foo.c || {
+	echo failed
+	ls -l foo.c
+	exit 1
+}
+echo OK
+
+echo $N Test admin with a RO file ...................................$NL
+bk clean foo.c
+bk co $Q foo.c
+bk admin -FRCS foo.c
+test -f foo.c -a ! -w foo.c || {
+	echo failed
+	ls -l foo.c
+	exit 1
+}
+echo OK
+
+echo $N Test chmod with a RW file ...................................$NL
+bk edit $Q foo.c
+bk chmod 700 foo.c
+test -f foo.c -a -w foo.c || {
+	echo failed
+	ls -l foo.c
+	exit 1
+}
+echo OK
+
+echo $N Test chmod with a RO file ...................................$NL
+bk clean foo.c
+bk co $Q foo.c
+bk chmod 666 foo.c
+test -f foo.c -a ! -w foo.c || {
+	echo failed
+	ls -l foo.c
+	exit 1
+}
+echo OK
+
+echo $N Test delta with a RW file ...................................$NL
+bk edit $Q foo.c
+bk delta $Q -f -ywhatever foo.c
+test -f foo.c -a -w foo.c || {
+	echo failed
+	ls -l foo.c
+	exit 1
+}
+bk commit $Q -ywhatever
+echo OK
+
+test 1 -eq 0 && {
+
+echo $N Test stripdel ...............................................$NL
+for i in bar.c foo.c h.h
+do	bk edit $Q $i
+	echo $i >> $i
+	bk delta $Q -y$i $i
+done
+bk clean foo.c bar.c h.h
+bk co $Q bar.c
+bk edit $Q foo.c
+for i in foo.c bar.c h.h
+do	BK_SHOWPROC=Y bk stripdel $Q -Gr+ $i
+done
+test -f h.h && {
+	echo failed because it checked out h.h
+	exit 1
+}
+test -f bar.c -a -f foo.c || {
+	echo failed because it cleaned bar.c or foo.c
+	exit 1
+}
+test -w foo.c || {
+	echo failed because foo.c is not writable 
+	exit 1
+}
+test -w bar.c && {
+	echo failed because bar.c is writable and should be RO
+	exit 1
+}
+bk commit $Q -ywhatever
+echo OK
+
+}
+
+echo $N Test undo ...................................................$NL
+for i in bar.c foo.c h.h
+do	bk edit $Q $i
+	echo $i >> $i
+	bk delta $Q -y$i $i
+done
+bk commit $Q -ywhatever2
+bk clean foo.c bar.c h.h
+bk co $Q bar.c
+bk edit $Q foo.c
+bk undo $Q -fsr+
+test -f h.h && {
+	echo failed because it checked out h.h
+	exit 1
+}
+test -f bar.c -a -f foo.c || {
+	echo failed because it cleaned bar.c or foo.c
+	exit 1
+}
+test -w foo.c || {
+	echo failed because foo.c is not writable 
+	exit 1
+}
+test -w bar.c && {
+	echo failed because bar.c is writable and should be RO
+	exit 1
+}
+echo OK

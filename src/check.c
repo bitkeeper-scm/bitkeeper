@@ -124,7 +124,7 @@ check_main(int ac, char **av)
 	if (sane(0, resync)) return (1);
 	checkout = CO_NONE;
 	if (!resync && all) checkout = proj_checkout(0);
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		exit(1);
 	}

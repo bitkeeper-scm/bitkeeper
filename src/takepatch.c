@@ -161,7 +161,7 @@ usage:		system("bk help -s takepatch");
 
 		loadskips();
 
-		unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+		unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 			perror("SCCS/x.id_cache");
 			exit(1);
 		}
@@ -2120,7 +2120,7 @@ rebuild_id(char *id)
 	}
 	if (sccs_reCache(1)) return (1);
 	if (idDB) mdbm_close(idDB);
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("SCCS/x.id_cache");
 		return (1);
 	}

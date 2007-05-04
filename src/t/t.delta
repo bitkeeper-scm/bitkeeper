@@ -17,6 +17,10 @@ echo $N Make sure delta -i works ....................................$NL
 echo hi there > init
 bk delta $S -i init
 if [ ! -f SCCS/s.init ]; then echo Failed to create s.file; exit 1; fi
+test -f init && {
+	echo failed to remove file
+	exit 1
+}
 echo OK
 
 echo $N Make sure delta -i works with a c.file ......................$NL
@@ -303,23 +307,34 @@ if [ -f SCCS/p.low.c ]; then echo failed; exit 1; fi
 if writable low.c; then echo failed; exit 1; fi
 echo OK
 
-echo $N Make sure checkout:GET preserve modtime if no keyword .......$NL
+echo $N Make sure checkout:last preserves modtime if no keyword .....$NL
 cp config.sav BitKeeper/etc/config
-echo "checkout:GET" >> BitKeeper/etc/config
+echo "checkout:last" >> BitKeeper/etc/config
 bk admin -FSCCS mid.c 
 bk edit $Q mid.c low.c
 sleep 1
 echo mid3 > mid.c
 echo low3 > low.c
 bk sfiles -c mid.c low.c | bk ci $Q -G -ynew3 -
-if [ ! -f mid.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
-if writable mid.c; then echo failed; exit 1; fi
-if [ ! -f low.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.low.c ]; then echo failed; exit 1; fi
-if writable low.c; then echo failed; exit 1; fi
-find . -newer mid.c | grep -q ./SCCS/s.mid.c
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+test -f mid.c -a -f low.c || {
+	echo failed to leave the files
+	exit 1
+}
+test -f SCCS/p.mid.c -a -f SCCS/p.low.c || {
+	echo failed to leave the p.files
+	exit 1
+}
+test -w mid.c -a -w low.c || {
+	echo failed to leave the files rw
+	exit 1
+}
+# We should have set the mtime back on the s.file
+test "X`find . -newer mid.c | grep ./SCCS/s.mid.c`" = X || {
+	echo failed
+	ls -l mid.c SCCS/s.mid.c
+	exit 1
+}
+cp config.sav BitKeeper/etc/config
 echo OK
 
 echo $N Make sure "bk new -b" forces binary encoding for text file ....$NL

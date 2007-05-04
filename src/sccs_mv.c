@@ -258,7 +258,7 @@ update_idcache(sccs *s, char *old, char *new)
 	 */
 again:	
 	sprintf(path, "%s/%s", root, IDCACHE);
-	unless (idDB = loadDB(path, 0, DB_KEYFORMAT|DB_NODUPS)) {
+	unless (idDB = loadDB(path, 0, DB_IDCACHE)) {
 		fprintf(stderr, "Creating new idcache.\n");
 		idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	}

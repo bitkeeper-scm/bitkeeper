@@ -53,3 +53,24 @@ cmp -s s1 s2 || {
 	exit 1
 }
 echo OK
+
+echo $N  checkout:last with unedit on a RW file ......................$NL
+bk clean foo.c
+bk edit $Q foo.c
+echo new1 >> foo.c
+BK_CONFIG='checkout:last!' bk unedit foo.c
+test -f foo.c -a -w foo.c || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N  checkout:last with unedit on a RO file ......................$NL
+bk clean foo.c
+bk co $Q foo.c
+BK_CONFIG='checkout:last!' bk unedit foo.c
+test -f foo.c -a ! -w foo.c || {
+	echo failed
+	exit 1
+}
+echo OK

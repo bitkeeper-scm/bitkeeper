@@ -17,7 +17,7 @@ key2path_main(int ac, char **av)
 		exit(1);
 	}
 
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		exit(1);
 	}

@@ -479,7 +479,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	/*
 	 * Set up the new file.
 	 */
-	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS))) {
+	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
 		perror("idcache");
 	}
 	lastkey = strdup(key);
@@ -500,8 +500,7 @@ retry:	sc = sccs_keyinit(lastkey, 0, idDB);
 				// XXX - exit or not?
 			}
 			doneFullRebuild = 1;
-			unless (idDB =
-			    loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+			unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 				perror("idcache");
 			}
 			goto retry;
