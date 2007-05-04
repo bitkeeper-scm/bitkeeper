@@ -37,6 +37,7 @@
 private	int	hashgfile(char *gfile, char **hashp, sum_t *sump);
 private	char*	hash2path(project *p, char *hash);
 private int	bp_insert(project *proj, char *file, char *keys, int canmv);
+private	int	uu2bp(sccs *s);
 
 /*
  * Allocate s->gfile into the binpool and update the delta stuct with
@@ -59,6 +60,7 @@ bp_delta(sccs *s, delta *d)
 	if (rc) return (-1);
 	d->added = size(s->gfile);
 	unless (d->added) d->added = 1; /* added = 0 is bad */
+	d->same = d->deleted = 0;
 	return (0);
 }
 
@@ -139,8 +141,11 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	}
 	ok = (sum == strtoul(d->hash, 0, 16));
 	unless (ok) {
+		p = strchr(d->hash, '.');
+		*p = 0;
 		fprintf(stderr,
 		    "crc mismatch in %s: %08x vs %s\n", s->gfile, sum, d->hash);
+		*p = '.';
 	}
 	if (ok || (flags & GET_FORCE)) {
 		if ((flags & (GET_EDIT|PRINT)) ||
@@ -1184,6 +1189,167 @@ err:			sccs_free(s);
 	return (errors);
 }
 
+char	**keys;
+
+int
+binpool_convert_main(int ac, char **av)
+{
+	sccs	*s;
+	char	*name;
+	int	i, j, n, matched = 0, errors = 0;
+	FILE	*in, *out;
+	char	buf[MAXKEY * 2];
+
+	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
+		fprintf(stderr, "Must be run at repo root\n");
+		exit(1);
+	}
+	for (name = sfileFirst("binpool_convert", &av[1], 0);
+	    name; name = sfileNext()) {
+		unless (s = sccs_init(name, 0)) continue;
+		unless (HASGRAPH(s)) {
+			sccs_free(s);
+			errors |= 1;
+			continue;
+		}
+		unless ((s->encoding & E_DATAENC) == E_UUENCODE) {
+			sccs_free(s);
+			continue;
+		}
+		errors |= uu2bp(s);
+		sccs_free(s);
+	}
+	if (sfileDone()) errors |= 2;
+	unless (out = fopen("SCCS/x.ChangeSet", "w")) {
+		exit(1);
+	}
+	fprintf(stderr, "Redoing ChangeSet...\n");
+	while (fnext(buf, in)) {
+		fputs(buf, out);
+		if (streq("\001T\n", buf)) break;
+	}
+	n = nLines(keys) / 2;
+	while (fnext(buf, in)) {
+		if (buf[0] == '\001') {
+			fputs(buf, out);
+			continue;
+		}
+		j = 0;
+		EACH(keys) {
+			if (streq(keys[i], buf)) {
+				fputs(keys[i+1], out);
+				j = i;
+				matched++;
+				break;
+			}
+			i++;
+		}
+		if (j) {
+			fprintf(stderr, "Found %d of %d\r", matched, n);
+			removeLineN(keys, j, free);
+			removeLineN(keys, j, free);
+		} else {
+			fputs(buf, out);
+		}
+	}
+	fprintf(stderr, "\n");
+	fclose(in);
+	fclose(out);
+	EACH(keys) {
+		fprintf(stderr, "%s", keys[i]);
+	}
+	rename("SCCS/s.ChangeSet", "s.ChangeSet");
+	rename("SCCS/x.ChangeSet", "SCCS/s.ChangeSet");
+	fprintf(stderr, "Redoing ChangeSet checksum...\n");
+	system("bk admin -z ChangeSet");
+	fprintf(stderr, "Redoing ChangeSet ids (may take a while) ...\n");
+	system("bk newroot -kB:");
+	return (errors);
+}
+
+/*
+ * Do surgery on this file to make it be a binpool file instead of
+ * a uuencoded file.
+ * - extract each version, bp_enter it, fix up the delta struct.
+ * - switch the flags
+ * - write the delta table
+ * - kill the weave.
+ */
+private	int
+uu2bp(sccs *s)
+{
+	delta	*d;
+	FILE	*out;
+	int	locked;
+	char	*t;
+	char	oldroot[MAXKEY], newroot[MAXKEY];
+	char	key[MAXKEY];
+
+	if (sccs_clean(s, 0)) return (4);
+	d = sccs_ino(s);
+	sccs_sdelta(s, d, oldroot);
+	assert(d->random);
+	t = aprintf("B:%s", d->random);
+	free(d->random);
+	d->random = t;
+	sccs_sdelta(s, d, newroot);
+	unless (locked = sccs_lock(s, 'z')) {
+		fprintf(stderr, "BP can't get lock on %s\n", s->gfile);
+		return (4);
+	}
+	for (d = s->table; d; d = d->next) {
+		assert(d->type == 'D');
+		if (sccs_get(s, d->rev, 0, 0, 0, 0, "-")) return (8);
+		/*
+		 * XXX - if this logic is wrong then we lose data.
+		 * It may be worth it to go ahead and do the insert
+		 * anyway, it's an extra tuple but the data will collapse.
+		 * Review carefully.
+		 */
+		unless (d->added || d->deleted) {
+			d->deleted = d->same = 0;
+			d->added = size(s->gfile);
+			unlink(s->gfile);
+			unless (d->flags & D_CSET) continue;
+			sccs_sdelta(s, d, key);
+			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
+			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
+			continue;
+		}
+		if (d->flags & D_CSET) {
+			sccs_sdelta(s, d, key);
+			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
+		}
+		if (bp_delta(s, d)) return (16);
+		if (d->flags & D_CSET) {
+			sccs_sdelta(s, d, key);
+			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
+		}
+		unlink(s->gfile);
+	}
+	unless (out = fopen(sccs_Xfile(s, 'x'), "w")) {
+		fprintf(stderr, "BP: can't create %s: ", sccs_Xfile(s, 'x'));
+err:		sccs_unlock(s, 'z');
+		return (32);
+	}
+	s->encoding = E_BINPOOL;
+	if (delta_table(s, out, 0)) goto err;
+	fseek(out, 0L, SEEK_SET);
+	fprintf(out, "\001%c%05u\n", 'H', s->cksum);
+	fclose(out);
+	sccs_close(s);
+	t = sccs_Xfile(s, 'x');
+	if (rename(t, s->sfile)) {
+		fprintf(stderr,
+		    "BP: can't rename(%s, %s) left in %s\n", t, s->sfile, t);
+		goto err;
+	}
+	sccs_setStime(s, 0);
+	chmod(s->sfile, 0444);
+	sccs_unlock(s, 'z');
+	return (0);
+}
+
 int
 binpool_main(int ac, char **av)
 {
@@ -1200,6 +1366,7 @@ binpool_main(int ac, char **av)
 		{"index", binpool_index_main },
 		{"replay", binpool_replay_main },
 		{"sizes", binpool_sizes_main },
+		{"convert", binpool_convert_main },
 		{0, 0}
 	};
 

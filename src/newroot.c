@@ -8,6 +8,7 @@ newroot_main(int ac, char **av)
 {
 	int	c;
 	char	*ranbits = 0;
+	u8	*p;
 
 	while ((c = getopt(ac, av, "k:")) != -1) {
 		switch (c) {
@@ -17,8 +18,7 @@ usage:			sys("bk", "help", "-s", "newroot", SYS);
 			return (1);
 		}
 	}
-	if (ranbits) {
-		u8	*p;
+	if (ranbits && !streq("B:", ranbits)) {
 		if (strlen(ranbits) > 16) {
 k_err:			fprintf(stderr,
 			    "ERROR: -k option can have at most 16 lower case "
@@ -57,13 +57,17 @@ newroot(char *ranbits)
 		exit(1);
 	}
 	if (ranbits) {
-		if (strlen(ranbits) > MAXPATH - 1) {
-			fprintf(stderr, "Rootkey too long\n");
-			exit(1);
+		if (streq(ranbits, "B:")) {
+			if (strneq("B:", s->tree->random, 2)) return (0);
+			sprintf(buf, "B:%s", s->tree->random);
+		} else {
+			if (strlen(ranbits) > MAXPATH - 1) {
+				fprintf(stderr, "Rootkey too long\n");
+				exit(1);
+			}
+			strcpy(buf, ranbits);
 		}
-		strcpy(buf, ranbits);
-	}
-	else {
+	} else {
 		randomBits(buf);
 	}
 	if (s->tree->random) {
@@ -80,6 +84,7 @@ newroot(char *ranbits)
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
 	f = popen("bk sfiles", "r");
+	fprintf(stderr, "Pointing files at new changeset id...\n");
 	while (fnext(buf, f)) {
 		chop(buf);
 		s = sccs_init(buf, 0);
@@ -88,11 +93,13 @@ newroot(char *ranbits)
 			if (s) sccs_free(s);
 			continue;
 		}
+		fprintf(stderr, "%-78s\r", s->gfile);
 		free(s->tree->csetFile);
 		s->tree->csetFile = strdup(key);
 		if (sccs_newchksum(s)) rc = 1;
 		sccs_free(s);
 	}
 	pclose(f);
+	fprintf(stderr, "\n");
 	return (rc);
 }
