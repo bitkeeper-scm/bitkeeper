@@ -158,7 +158,7 @@ rmKeys(MDBM *s)
 	/*
 	 * Remove each file.
 	 */
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		exit(1);
 	}

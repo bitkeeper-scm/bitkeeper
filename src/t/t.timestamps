@@ -109,8 +109,16 @@ cp -f SCCS/s.keyword backup
 bk edit $Q keyword
 bk _touch -t $T11 keyword
 BK_CONFIG='checkout:edit!' BK_DATE_TIME_ZONE="$DTZ22" bk chmod +x keyword
-test $T22 -ge `_mtime SCCS/s.keyword`	|| { echo failed; exit 1; }
-test `_mtime keyword` -ge `_mtime now`	|| { echo failed; exit 1; }
+test $T22 -ge `_mtime SCCS/s.keyword`	|| { echo failed 1; exit 1; }
+test `_mtime keyword` -ge `_mtime now`	|| {
+	echo failed 2
+	echo $T11
+	_mtime keyword
+	_mtime now
+	ls -l keyword now
+	bk log keyword
+	exit 1
+}
 bk unedit keyword
 rm -f SCCS/s.keyword
 mv -f backup SCCS/s.keyword

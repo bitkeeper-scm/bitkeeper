@@ -35,6 +35,9 @@ char*		proj_rootkey(project *p);
 int		proj_samerepo(char *source, char *dest);
 project*	proj_init(char *dir);
 project* 	proj_fakenew(void);
+void		proj_saveCO(sccs *s);
+int		proj_restoreCO(sccs *s);
+int		proj_restoreAllCO(MDBM *idDB);
 
 #define		chdir	proj_chdir
 

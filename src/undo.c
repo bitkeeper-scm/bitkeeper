@@ -17,7 +17,6 @@ private int	do_rename(char **, char *);
 private int	check_patch(char *patch);
 private int	doit(char **fileList, char *rev_list, char *qflag, char *);
 
-private	int	checkout;
 private	int	fromclone;
 
 int
@@ -64,9 +63,6 @@ usage:			system("bk help -s undo");
 		}
 	}
 	unless (rev) goto usage;
-
-	/* do checkouts? */
-	checkout = proj_checkout(0);
 
 	save_log_markers();
 	unlink(BACKUP_SFIO); /* remove old backup file */
@@ -166,6 +162,10 @@ err:		if (undo_list[0]) unlink(undo_list);
 
 	rmEmptyDirs(quiet);
 	if (!quiet && save) printf("Backup patch left in \"%s\".\n", patch);
+
+	idcache_update(checkfiles);
+	proj_restoreAllCO(0);
+
 	unless (quiet) printf("Running consistency check...\n");
 	if (fromclone) {
 		p = quiet ? "-fT" : "-fvT";
@@ -179,7 +179,6 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 	unlink(checkfiles);
 	free(checkfiles);
-
 	sig_default();
 
 	freeLines(fileList, free);
@@ -375,12 +374,6 @@ clean_file(char **fileList)
 	 */
 	EACH(fileList) {
 		if (streq(fileList[i], CHANGESET)) continue;
-		name = sccs2name(fileList[i]);
-		unless (writable(name)) {
-			free(name);
-			continue;
-		}
-		free(name);
 		s = sccs_init(fileList[i], INIT_NOCKSUM);
 		assert(s && HASGRAPH(s));
 		if (sccs_hasDiffs(s, SILENT, 1)) {
@@ -389,6 +382,7 @@ clean_file(char **fileList)
 			sccs_free(s);
 			return (-1);
 		}
+		proj_saveCO(s);
 		sccs_free(s);
 	}
 	EACH(fileList) {
@@ -404,6 +398,7 @@ clean_file(char **fileList)
 			fprintf(stderr,
 			    "Cannot clean %s, undo aborted\n", s->gfile);
 			sccs_free(s);
+			proj_restoreAllCO(0);
 			return (-1);
 		}
 		sccs_free(s);
@@ -525,22 +520,6 @@ move_file(char *checkfiles)
 	}
 	pclose(f);
 	fclose(chk);
-	if (checkout) {
-		chk = fopen(checkfiles, "r");
-		if (checkout == CO_GET) {
-			sprintf(to, "bk co -q%s -", fromclone ? "T" : "");
-		} else {
-			sprintf(to, "bk edit -q%s -", fromclone ? "T" : "");
-		}
-		f = popen(to, "w");
-		while (fnext(from, chk)) {
-			chop(from);
-			if (streq(from, CHANGESET)) continue;
-			fprintf(f, "%s/%s\n", RESYNC2ROOT, from);
-		}
-		pclose(f);
-		fclose(chk);
-	}
 	return (rc);
 }
 

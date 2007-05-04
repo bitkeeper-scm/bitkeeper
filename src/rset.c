@@ -428,7 +428,7 @@ usage:				system("bk help -s rset");
 	mixed = !LONGKEY(s);
 	sccs_free(s);
 
-	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	assert(idDB);
 	if (rev2) {
 		rel_diffs(db1, db2, idDB, rev1, revM, rev2, opts);

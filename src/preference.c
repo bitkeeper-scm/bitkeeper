@@ -24,8 +24,6 @@ do_checkout(sccs *s)
 	}
 	s = sccs_restart(s);
 	unless (s) return (-1);
-	if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
-		return (-1);
-	}
+	if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) return (-1);
 	return (0);
 }

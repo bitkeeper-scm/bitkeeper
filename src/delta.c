@@ -12,6 +12,8 @@ hasKeyword(sccs *s)
 int
 fix_gmode(sccs *s, int gflags)
 {
+	delta	*d;
+
 	/*
 	 * Do not fix mode of symlink target, the file may not be 
 	 * under BK control.
@@ -21,11 +23,10 @@ fix_gmode(sccs *s, int gflags)
 	if ((gflags&GET_EDIT) && WRITABLE(s))  return (0);
 	if (!(gflags&GET_EDIT) && !WRITABLE(s))  return (0);
 
-	if (gflags&GET_EDIT) {
-		 s->mode |= 0222;	/* turn on write mode */
-	} else {
-		 s->mode |= 0444;	/* turn on read mode */ 
-		 s->mode &= ~0222;	/* turn off write mode */
+	d = sccs_top(s);
+	if (d->mode) s->mode = d->mode;
+	unless (gflags&GET_EDIT) {
+		s->mode &= ~0222;	/* turn off write mode */
 	}
 
 	if (chmod(s->gfile, s->mode)) {

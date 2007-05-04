@@ -616,8 +616,7 @@ retry:	gpath = key2path(key, *idDB);
 			chdir(PARK2ROOT);
 			sys("bk", "idcache", SYS);
 			mdbm_close(*idDB);
-			unless (*idDB = loadDB(IDCACHE, 0,
-						DB_KEYFORMAT|DB_NODUPS)) {
+			unless (*idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 				perror("idcache");
 				exit(1);
 			}
@@ -1100,7 +1099,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 		return (-1);
 	}
 
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		goto err;
 	}

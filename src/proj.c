@@ -37,6 +37,9 @@ struct project {
 	int	casefolding;	/* mixed case file system: FOO == foo */
 	int	leaseok;	/* if set, we've checked and have a lease */
 
+	/* checkout state */
+	MDBM	*coDB;		/* $coDB{rootkey} = e|g|n */
+
 	/* internal state */
     	int	refcnt;
 	dirlist	*dirs;
@@ -357,7 +360,7 @@ proj_checkout(project *p)
 	char	*s;
 
 	unless (p || (p = curr_proj())) p = proj_fakenew();
-	if (p->rparent) return (CO_NONE);
+	if (proj_isResync(p)) return (CO_NONE);
 	db = proj_config(p);
 	assert(db);
 	unless (s = mdbm_fetch_str(db, "checkout")) return (CO_NONE);
@@ -461,6 +464,8 @@ proj_reset(project *p)
 		}
 		p->bklbits = 0;
 		p->leaseok = -1;
+		if (p->coDB) mdbm_close(p->coDB);
+		p->coDB = 0;
 	} else {
 		EACH_HASH(proj.cache) proj_reset(*(project **)proj.cache->vptr);
 		/* free the current project for purify */
@@ -643,4 +648,106 @@ proj_isResync(project *p)
 	unless (p) p = curr_proj();
 
 	return (p && p->rparent);
+}
+
+/*
+ * Record the checkout state of the file so we can restore it
+ * after whatever operation we are doing is finished.
+ */
+void
+proj_saveCO(sccs *s)
+{
+	char	*state;
+	char	key[MAXKEY];
+
+	assert(s->proj);
+	if (proj_isResync(s->proj)) return;
+	if (CSET(s) || strneq("BitKeeper/", s->gfile, 10)) return;
+	unless (s->proj->coDB) s->proj->coDB = mdbm_mem();
+	sccs_sdelta(s, sccs_ino(s), key);
+	if (HAS_PFILE(s)) {
+		state = "e";
+	} else if (HAS_GFILE(s)) {
+		state = "g";
+	} else {
+		state = "n";
+	}
+// ttyprintf("SAVE %s => %s\n", s->gfile, state);
+	mdbm_store_str(s->proj->coDB, key, state, MDBM_REPLACE);
+}
+
+int
+proj_restoreCO(sccs *s)
+{
+	char	*state;
+	int	getFlags = 0;
+	char	key[MAXKEY];
+
+	unless (s && s->proj) return (0);
+	if (proj_isResync(s->proj)) return (0);
+	if (CSET(s) || strneq("BitKeeper/", s->gfile, 10)) return (0);
+
+	/* Let's just be sure we're up to date */
+	if (check_gfile(s, 0)) return (-1);
+
+	sccs_sdelta(s, sccs_ino(s), key);
+	unless (state = mdbm_fetch_str(s->proj->coDB, key)) {
+// ttyprintf("Not found: %s co=%d\n", s->gfile, proj_checkout(s->proj));
+		/* Use the repo defaults for new files */
+		switch (proj_checkout(s->proj)) {
+		    case CO_GET: state = "g"; break;
+		    case CO_EDIT: state = "e"; break;
+		    case CO_LAST:
+		    case CO_NONE: state = "n"; break;
+		    default: assert(0);
+		}
+	}
+	switch (*state) {
+	    case 'e': unless (HAS_PFILE(s)) getFlags = GET_EDIT; break;
+	    case 'g': unless (HAS_GFILE(s)) getFlags = GET_EXPAND; break;
+	    case 'n': break;
+	    default: assert(0);
+	}
+// ttyprintf("CO %s => %s\n", s->gfile, state);
+	unless (getFlags) return (0);
+	if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) return (-1);
+	// fix_gmode(s, getFlags);
+	return (0);
+}
+
+/*
+ * After the operations is finished we look at every file that
+ * we might have touched and restore the gfile if needed.
+ */
+int
+proj_restoreAllCO(MDBM *idDB)
+{
+	project	*p = curr_proj();
+	sccs	*s;
+	kvpair	kv;
+	int	errs = 0, freeid = 0;
+	char	*t;
+
+	assert(p);	// XXX?
+	if (proj_isResync(p)) return (0);
+	unless (idDB) {
+		t = aprintf("%s/%s", proj_root(p), IDCACHE);
+		idDB = loadDB(t, 0, DB_IDCACHE);
+		free(t);
+		unless (idDB) {
+			perror("idcache");
+			exit(1);
+		}
+		freeid = 1;
+
+	}
+	EACH_KV(p->coDB) {
+		s = sccs_keyinit(kv.key.dptr, INIT_NOCKSUM|SILENT, idDB);
+		unless (s) continue;
+		assert(p == s->proj);
+		if (proj_restoreCO(s)) errs++;
+		sccs_free(s);
+	}
+	if (freeid) mdbm_close(idDB);
+	return (errs);
 }

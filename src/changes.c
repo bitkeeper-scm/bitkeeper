@@ -713,9 +713,7 @@ sccs_keyinitAndCache(char *key,
 				    "changes: cannot build %s\n",
 				    IDCACHE);
 			}
-			unless (*idDB =
-			    loadDB(IDCACHE,
-				0, DB_KEYFORMAT|DB_NODUPS)) {
+			unless (*idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 				perror("idcache");
 			}
 			rebuilt = 1;

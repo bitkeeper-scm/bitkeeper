@@ -8737,6 +8737,13 @@ sccs_unedit(sccs *s, u32 flags)
 	switch(proj_checkout(s->proj)) {
 	    case CO_GET: getFlags = GET_EXPAND; break;
 	    case CO_EDIT: getFlags = GET_EDIT; break;
+	    case CO_LAST:
+	    	if (HAS_PFILE(s)) {
+			getFlags = GET_EDIT;
+		} else if (HAS_GFILE(s)) {
+			getFlags = GET_EXPAND;
+		}
+		break;
 	    default: getFlags = 0; break;
 	}
 	if (HAS_PFILE(s)) {
@@ -8759,6 +8766,8 @@ sccs_unedit(sccs *s, u32 flags)
 		getFlags |= GET_SKIPGET;
 	} else {
 		unlinkGfile(s);
+		/* For make, foo.o may be more recent than s.foo.c */
+		utime(s->sfile, 0);
 	}
 	if (getFlags) {
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
@@ -15904,7 +15913,6 @@ loadDB(char *file, int (*want)(char *), int style)
 	int	idcache = 0, first = 1, quiet = 1;
 	int	flags;
 	char	buf[MAXLINE];
-	char	*av[5];
 	u32	sum = 0;
 
 
@@ -15922,10 +15930,7 @@ recache:		first = 0;
 		}
 		if (first && streq(file, GONE) && exists(SGONE)) {
 			first = 0;
-			/* get -s */
-			av[0] = "bk"; av[1] = "get"; av[2] = "-q";
-			av[3] = GONE; av[4] = 0;
-			spawnvp(_P_WAIT, av[0], av);
+			get(SGONE, SILENT, "-");
 			goto again;
 		}
 out:		if (f) fclose(f);
@@ -15947,7 +15952,8 @@ out:		if (f) fclose(f);
 			if (strneq(buf, "#$sum$ ", 7)) {
 				if (atoi(&buf[7]) == sum) {
 					idcache = 2;	/* OK */
-					break;		/* done */
+					sum = 0;
+					continue;
 				}
 				if (first) {
 					fprintf(stderr,
@@ -15964,6 +15970,7 @@ out:		if (f) fclose(f);
 			u8	*u;
 
 			for (u = buf; *u; sum += *u++);
+			idcache = 1;	// In case we saw a sum already
 		}
 		if (chop(buf) != '\n') {
 			if (first && idcache) {
@@ -16241,7 +16248,8 @@ sccs_stripdel(sccs *s, char *who)
 #define	OUT	\
 	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
 
-	assert(s && HASGRAPH(s) && !HAS_PFILE(s));
+	assert(s && HASGRAPH(s));
+	if (HAS_PFILE(s) && sccs_clean(s, SILENT)) return (-1);
 	debug((stderr, "stripdel %s %s\n", s->gfile, who));
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr, "%s: can't get lock on %s\n", who, s->sfile);
@@ -16259,10 +16267,14 @@ sccs_stripdel(sccs *s, char *who)
 	}
 
 	/*
-	 * find the new top-of-trunk
-	 * XXX Is this good enough ??
+	 * Find the new top-of-trunk.
+	 * We're assuming that we are going to strip stufff such that we
+	 * leave a lattice so we can find the first non-gone regular delta
+	 * and that's our top.
 	 */
-	e = sccs_top(s);
+	for (e = s->table; e; e = e->next) {
+		if ((e->type == 'D') && !(e->flags & D_SET)) break;
+	}
 	assert(e);
 	s->xflags = sccs_xflags(e);
 

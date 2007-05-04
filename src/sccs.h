@@ -341,6 +341,7 @@ int	checking_rmdir(char *dir);
 #define	DB_NOBLANKS	0x10		/* keys must have values or skip */
 #define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
 #define	DB_CONFIG	0x40		/* config file format */
+#define	DB_IDCACHE	DB_KEYFORMAT|DB_USELAST
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 #define	MD5LEN	32	/* really 30: 8 hex time + 22 base-64 MD5 of key */
@@ -511,6 +512,8 @@ typedef struct serial {
 #define	S_EXCL	2
 #define	S_PAR	4
 
+typedef	struct sccs sccs;
+
 #include "proj.h"
 
 extern	jmp_buf	exit_buf;
@@ -552,7 +555,7 @@ typedef struct loc {
 /*
  * struct sccs - the delta tree, the data, and associated junk.
  */
-typedef	struct sccs {
+struct sccs {
 	delta	*tree;		/* the delta tree after mkgraph() */
 	delta	*table;		/* the delta table list, 1.99 .. 1.0 */
 	delta	*lastinsert;	/* pointer to the last delta inserted */
@@ -618,7 +621,7 @@ typedef	struct sccs {
 	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
-} sccs;
+};
 
 typedef struct {
 	int	flags;		/* ADD|DEL|FORCE */

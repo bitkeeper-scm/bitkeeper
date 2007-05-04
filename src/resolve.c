@@ -47,13 +47,10 @@ private int	copyAndGet(opts *opts, char *from, char *to);
 private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
-private void	save_checkout_state(MDBM *DB, sccs *s);
 private char	**find_files(opts *opts, int pfiles);
 
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
-
-private	int	default_getFlags;
 
 int
 resolve_main(int ac, char **av)
@@ -135,10 +132,13 @@ resolve_main(int ac, char **av)
 		    "Using %s as graphical display\n", gui_displayName());
 	}
 
-	switch(proj_checkout(0)) {
-	    case CO_EDIT: default_getFlags = GET_EDIT; break;
-	    case CO_GET: default_getFlags = GET_EXPAND; break;
-	}
+	/*
+	 * Load the config file before we may delete it in the apply pass
+	 * and then go looking for it (and not find it).
+	 * XXX - If Wayne ever starts looking for the backing file before
+	 * returning stuff from the DB, this hack will fail.
+	 */
+	proj_checkout(0);
 
 	/* Globbing is a user interface, not one we want in RESYNC. */
 	putenv("BK_NO_FILE_GLOB=TRUE");
@@ -226,8 +226,7 @@ passes(opts *opts)
 	}
 
 	if (exists("SCCS/s.ChangeSet")) {
-		unless (opts->idDB =
-		    loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+		unless (opts->idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 			fprintf(stderr, "resolve: can't open %s\n", IDCACHE);
 			resolve_cleanup(opts, 0);
 		}
@@ -263,10 +262,6 @@ err:		if (p) fclose(p);
 		goto err;
 	}
 	unless (opts->rootDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
-		perror("mdbm_open");
-		goto err;
-	}
-	unless (opts->checkoutDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 		perror("mdbm_open");
 		goto err;
 	}
@@ -1644,7 +1639,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		chdir(RESYNC2ROOT);
 		sccs_unlockfile(RESOLVE_LOCK);
 		i = spawnvp(P_WAIT, "bk", nav);
-		restore_checkouts(opts);
+		proj_restoreAllCO(0);
 		exit(WIFEXITED(i) ? WEXITSTATUS(i) : 1);
 	}
 
@@ -2444,9 +2439,7 @@ pass4_apply(opts *opts)
 		sccs_sdelta(r, sccs_ino(r), key);
 		sccs_free(r);
 		if (l = sccs_keyinit(key, INIT_NOCKSUM, opts->idDB)) {
-			if (HAS_GFILE(l)) {
-				save_checkout_state(opts->checkoutDB, l);
-			}
+			if (HAS_GFILE(l) && !CSET(l)) proj_saveCO(l);
 			/*
 			 * This should not happen, the repository is locked.
 			 */
@@ -2635,9 +2628,6 @@ private int
 copyAndGet(opts *opts, char *from, char *to)
 {
 	sccs	*s;
-	char	key[MAXKEY];
-	char	*co;
-	int	getFlags;
 
 	if (link(from, to)) {
 		if (mkdirf(to)) {
@@ -2661,30 +2651,8 @@ copyAndGet(opts *opts, char *from, char *to)
 
 	s = sccs_init(to, 0);
 	assert(s && HASGRAPH(s));
-	sccs_sdelta(s, sccs_ino(s), key);
-	co = mdbm_fetch_str(opts->checkoutDB, key);
-	if (co) {
-		//ttyprintf("checkout %s with %s\n", key, co);
-		if (co[0] == 'e') {
-			getFlags = GET_EDIT;
-		} else if (co[0] == 'g') {
-			getFlags = GET_EXPAND;
-		} else if (co[0] == 'n') {
-			getFlags = 0;
-		} else {
-			fprintf(stderr, "Illegal value of co (== %s)\n", co);
-			return (-1);
-		}
-		mdbm_delete_str(opts->checkoutDB, key);
-	} else {
-		getFlags = default_getFlags;
-		//ttyprintf("checkout %s with defaults(%d)\n", key, getFlags);
-	}
-	if (getFlags && !CSET(s)) {
-		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
-	} else {
-		if (HAS_GFILE(s) && sccs_clean(s, SILENT)) return (-1);
-	}
+	sccs_clean(s, SILENT);
+	proj_restoreCO(s);
 	if (opts->fsync) fsync(s->fd);
 	sccs_free(s);
 	return (0);
@@ -2823,7 +2791,7 @@ resolve_cleanup(opts *opts, int what)
 	/* XXX - shouldn't this be below the CLEAN_OK?
 	 * And maybe claused on opts->pass4?
 	 */
-	restore_checkouts(opts);
+	proj_restoreAllCO(0);
 
 	freeStuff(opts);
 	unless (what & CLEAN_OK) {
@@ -2853,67 +2821,6 @@ resolve_cleanup(opts *opts, int what)
 exit:
 	sccs_unlockfile(RESOLVE_LOCK);
 	exit(rc);
-}
-
-/*
- * This gets called for every local file that might get overwritten.
- * We need to record the checkout state of the file so we can restore it
- * after resolve is finished.
- */
-private void
-save_checkout_state(MDBM *DB, sccs *s)
-{
-	char	key[MAXKEY];
-	char	*state;
-
-	sccs_sdelta(s, sccs_ino(s), key);
-
-	if (HAS_PFILE(s)) {
-		state = "e";
-	} else if (HAS_GFILE(s)) {
-		state = "g";
-	} else {
-		state = "n";
-	}
-	mdbm_store_str(DB, key, state, MDBM_INSERT);
-}
-
-/*
- * After resolve is finished we look at every file that
- * we might have touched and restore the gfile if needed.
- */
-void
-restore_checkouts(opts *opts)
-{
-	kvpair	kv;
-	int	getFlags = 0;
-
-	EACH_KV(opts->checkoutDB) {
-		sccs	*s;
-		s = sccs_keyinit(kv.key.dptr, INIT_NOCKSUM, opts->idDB);
-
-		unless (s) continue;
-
-		switch (kv.val.dptr[0]) {
-		    case 'e':
-			unless (HAS_PFILE(s)) getFlags = GET_EDIT;
-			break;
-		    case 'g':
-			unless (HAS_GFILE(s)) getFlags = GET_EXPAND;
-			break;
-		    case 'n':
-			break;
-		    default:
-			assert(0);
-			break;
-		}
-		if (getFlags) {
-			sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
-		}
-		sccs_free(s);
-	}
-	mdbm_close(opts->checkoutDB);
-	opts->checkoutDB = 0;
 }
 
 typedef	struct {

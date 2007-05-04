@@ -338,14 +338,6 @@ bk undo $Q -fr+ || exit 1
 if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
 echo OK
 
-echo $N checkout:EDIT w stripdel ....................................$NL
-echo bye >> hi
-bk delta $Q -ybye hi || exit 1
-if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
-bk stripdel $Q -r+ hi || exit 1
-if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
-echo OK
-
 echo $N checkout:EDIT w names .......................................$NL
 bk clean $Q hi
 mv SCCS/s.hi SCCS/s.junk
