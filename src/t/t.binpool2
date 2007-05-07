@@ -277,7 +277,6 @@ echo OK
 #echo $N Repeat push using http ......................................$NL
 #bk unpull -f $Q || exit 1
 #cd ../pclone2
-#rm /tmp/f
 #bk push -d $Q http://localhost:$P/cclone1 || {
 #	echo push failed
 #	bk _kill bk://localhost:$P
@@ -291,6 +290,16 @@ echo OK
 #}
 #checkfiles "$HERE"/F7 F7
 #echo OK
+
+echo $N Now do an http pull .........................................$NL
+bk unpull -f $Q || exit 1
+bk binpool clean || exit 1
+bk pull $Q http://localhost:$P/pclone2 || {
+	bk _kill bk://localhost:$P
+	exit 1
+}
+bk binpool check $Q || exit 1
+echo OK
 
 bk _kill bk://localhost:$P
 

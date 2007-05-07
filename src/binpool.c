@@ -451,6 +451,8 @@ bp_updateServer(char *tiprev)
 
 	unless (bp_binpool()) return (0);
 
+	putenv("BKD_DAEMON="); /* allow new bkd connections */
+
 	/* find the repo_id of my server */
 	if (bp_serverID(&repoID)) return (-1);
 	unless (repoID) return (0); /* no need to update myself */
