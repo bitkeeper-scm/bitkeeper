@@ -383,7 +383,10 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 	mdbm_set_alignment(root2map,
 	    (sizeof(void *) == 8) ? _MDBM_ALGN64 : _MDBM_ALGN32);
 
-	if (spinners) fprintf(stderr, "checking checksums ");
+	if (spinners) {
+		fprintf(stderr, "%s", fix ? "Fixing" : "Checking");
+		fprintf(stderr, " ChangeSet checksums ");
+	}
 
 	/* build up weave data structure */
 	p = s->mmap + s->data;

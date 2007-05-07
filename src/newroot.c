@@ -1,18 +1,19 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-private int	newroot(char *ranbits);
+private int	newroot(char *ranbits, int quiet);
 
 int
 newroot_main(int ac, char **av)
 {
-	int	c;
+	int	c, quiet = 0;
 	char	*ranbits = 0;
 	u8	*p;
 
-	while ((c = getopt(ac, av, "k:")) != -1) {
+	while ((c = getopt(ac, av, "k:q")) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
+		    case 'q': quiet = 1; break;
 		    default:
 usage:			sys("bk", "help", "-s", "newroot", SYS);
 			return (1);
@@ -31,7 +32,7 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	return (newroot(ranbits));
+	return (newroot(ranbits, quiet));
 }
 
 /*
@@ -39,7 +40,7 @@ k_err:			fprintf(stderr,
  * Update the csetfile pointer in all files.
  */
 private int
-newroot(char *ranbits)
+newroot(char *ranbits, int quiet)
 {
 	sccs	*s;
 	int	rc = 0;
@@ -84,7 +85,9 @@ newroot(char *ranbits)
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
 	f = popen("bk sfiles", "r");
-	fprintf(stderr, "Pointing files at new changeset id...\n");
+	unless (quiet) {
+		fprintf(stderr, "Pointing files at new changeset id...\n");
+	}
 	while (fnext(buf, f)) {
 		chop(buf);
 		s = sccs_init(buf, 0);
@@ -93,13 +96,13 @@ newroot(char *ranbits)
 			if (s) sccs_free(s);
 			continue;
 		}
-		fprintf(stderr, "%-78s\r", s->gfile);
+		unless (quiet) fprintf(stderr, "%-78s\r", s->gfile);
 		free(s->tree->csetFile);
 		s->tree->csetFile = strdup(key);
 		if (sccs_newchksum(s)) rc = 1;
 		sccs_free(s);
 	}
 	pclose(f);
-	fprintf(stderr, "\n");
+	unless (quiet) fprintf(stderr, "\n");
 	return (rc);
 }

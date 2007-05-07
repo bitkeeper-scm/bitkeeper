@@ -42,6 +42,8 @@ struct project {
 
 	/* checkout state */
 	MDBM	*coDB;		/* $coDB{rootkey} = e|g|n */
+	char	**bp_getFiles;	/* files we need to fetch and get */
+	char	**bp_editFiles;	/* files we need to fetch and edit */
 
 	/* internal state */
 	int	refcnt;
@@ -722,8 +724,8 @@ proj_saveCOkey(project *p, char *key, int co)
 	mdbm_store_str(p->coDB, key, state, MDBM_REPLACE);
 }
 
-int
-proj_restoreCO(sccs *s)
+private int
+restoreCO(sccs *s)
 {
 	char	*state;
 	int	co;
@@ -752,9 +754,17 @@ proj_restoreCO(sccs *s)
 	    default: assert(0);
 	}
 	unless (getFlags) return (0);
-	if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) return (-1);
-	// fix_gmode(s, getFlags);
-	return (0);
+	unless (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) return (0);
+	if (s->cachemiss) {
+		if (getFlags & GET_EDIT) {
+			s->proj->bp_getFiles =
+			    addLine(s->proj->bp_getFiles, strdup(s->gfile));
+		} else {
+			s->proj->bp_editFiles =
+			    addLine(s->proj->bp_editFiles, strdup(s->gfile));
+		}
+	}
+	return (-1);
 }
 
 /*
@@ -766,8 +776,9 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 {
 	sccs	*s;
 	kvpair	kv;
-	int	errs = 0, freeid = 0;
+	int	i, errs = 0, freeid = 0;
 	char	*t;
+	FILE	*f;
 
 	unless (p) p = curr_proj();
 
@@ -787,12 +798,30 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 		s = sccs_keyinit(kv.key.dptr, INIT_NOCKSUM|SILENT, idDB);
 		unless (s) continue;
 		assert(p == s->proj);
-		if (proj_restoreCO(s)) errs++;
+		if (restoreCO(s)) errs++;
 		sccs_free(s);
 	}
 	mdbm_close(p->coDB);
 	p->coDB = 0;
 	if (freeid) mdbm_close(idDB);
+
+	/* Best effort binpool get/edit */
+	if (p->bp_getFiles) {
+		// XXX - what about hardlinks for binpool?
+		f = popen("bk get -q -", "w");
+		EACH(p->bp_getFiles) fprintf(f, "%s\n", p->bp_getFiles[i]);
+	    	(void)pclose(f);
+		freeLines(p->bp_getFiles, free);
+		p->bp_getFiles = 0;
+	}
+	if (p->bp_editFiles) {
+		// XXX - what about hardlinks for binpool?
+		f = popen("bk edit -q -", "w");
+		EACH(p->bp_editFiles) fprintf(f, "%s\n", p->bp_editFiles[i]);
+	    	(void)pclose(f);
+		freeLines(p->bp_editFiles, free);
+		p->bp_editFiles = 0;
+	}
 	return (errs);
 }
 

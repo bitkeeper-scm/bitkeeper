@@ -1229,7 +1229,7 @@ binpool_convert_main(int ac, char **av)
 	unless (out = fopen("SCCS/x.ChangeSet", "w")) {
 		exit(1);
 	}
-	fprintf(stderr, "Redoing ChangeSet...\n");
+	fprintf(stderr, "Redoing ChangeSet entires ...\n");
 	while (fnext(buf, in)) {
 		fputs(buf, out);
 		if (streq("\001T\n", buf)) break;
@@ -1266,9 +1266,10 @@ binpool_convert_main(int ac, char **av)
 	}
 	rename("SCCS/s.ChangeSet", "s.ChangeSet");
 	rename("SCCS/x.ChangeSet", "SCCS/s.ChangeSet");
-	fprintf(stderr, "Redoing ChangeSet checksum...\n");
+	fprintf(stderr, "Redoing ChangeSet checksums ...\n");
 	system("bk admin -z ChangeSet");
-	fprintf(stderr, "Redoing ChangeSet ids (may take a while) ...\n");
+	system("bk checksum -f/ ChangeSet");
+	fprintf(stderr, "Redoing ChangeSet ids ...\n");
 	system("bk newroot -kB:");
 	return (errors);
 }

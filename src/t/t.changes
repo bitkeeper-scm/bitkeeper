@@ -606,7 +606,7 @@ echo OK
 
 echo $N Check exit status for changes -L different/package ..........$NL
 # give me a new root, work with old root'd parent
-bk newroot
+bk newroot -q
 bk changes -qL > OUT 2>&1 && {
 	echo should not have exited 0
 	cat OUT

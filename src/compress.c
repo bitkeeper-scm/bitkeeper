@@ -245,7 +245,7 @@ zgets_hread(void *token, u8 **buf)
 	static	char *data = 0;
 
 	len = gzip_hdr(fd);
-	assert(len < BSIZE);
+	assert(len <= BSIZE);
 	if (buf) {
 		unless (data) data = malloc(BSIZE);
 		*buf = data;
@@ -281,7 +281,7 @@ zgets_hfread(void *token, u8 **buf)
 	} else {
 		len = ntohs(hlen);
 	}
-	assert(len < BSIZE);
+	assert(len <= BSIZE);
 	if (buf) {
 		unless (data) data = malloc(BSIZE);
 		*buf = data;
