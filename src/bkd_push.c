@@ -308,7 +308,6 @@ cmd_push_part3(int ac, char **av)
 	int	status, debug = 0;
 	int	inbytes, outbytes;
 	pid_t	pid;
-	char	bkd_nul = BKD_NUL;
 	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
 	char	buf[4096];
 

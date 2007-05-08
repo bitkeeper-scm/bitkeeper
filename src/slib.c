@@ -8825,7 +8825,7 @@ int
 sccs_unedit(sccs *s, u32 flags)
 {
 	int	modified = 0;
-	int	getFlags;
+	int	getFlags = 0;
 	int	currState = 0;
 
 	/* don't go removing gfiles without s.files */
@@ -8844,7 +8844,6 @@ sccs_unedit(sccs *s, u32 flags)
 			getFlags = GET_EXPAND;
 		}
 		break;
-	    default: getFlags = 0; break;
 	}
 	if (HAS_PFILE(s)) {
 		if (!getFlags || sccs_hasDiffs(s, flags, 1)) modified = 1;

@@ -442,12 +442,17 @@ bp_logUpdate(char *key, char *val)
  * XXX we ignore tiprev for now.
  */
 int
-bp_updateServer(char *tiprev)
+bp_updateServer(char *tiprev, int all, int quiet)
 {
 	char	*p, *url, *tmpkeys, *tmpkeys2;
 	char	*cmd;
 	char	*repoID;
 	int	rc;
+	u64	todo = 0;
+	FILE	*in, *out;
+	MDBM	*bp;
+	kvpair	kv;
+	char	buf[MAXLINE];
 
 	unless (bp_binpool()) return (0);
 
@@ -460,33 +465,68 @@ bp_updateServer(char *tiprev)
 
 	tmpkeys = bktmp(0, 0);
 
-	/* find local bp deltas */
-	if (sysio(0, tmpkeys, DEVNULL_WR, "bk", "changes", "-qBv",
-		"-nd" BINPOOL_DSPEC, "-L", url, SYS)) {
-		unlink(tmpkeys);
-		free(tmpkeys);
-		return (-1);
+	if (all) {
+		unless (bp = proj_binpoolIDX(0, 0)) {
+			unlink(tmpkeys);
+			free(tmpkeys);
+			return (1);
+		}
+		out = fopen(tmpkeys, "w");
+		for (kv = mdbm_first(bp); kv.key.dsize; kv = mdbm_next(bp)) {
+			sprintf(buf, "BitKeeper/binpool/%s", kv.val.dptr);
+			fprintf(out, "%u %s\n", size(buf), kv.key.dptr);
+		}
+		fclose(out);
+	} else {
+		/* find local only bp deltas */
+		cmd = aprintf("bk changes -qBv -L -nd'"
+		    "$if(:BPHASH:){:SIZE: :BPHASH: :KEY: :MD5KEY|1.0:}' "
+		    "'%s' > '%s'",
+		    url, tmpkeys);
+		if (system(cmd)) {
+			unlink(tmpkeys);
+			free(tmpkeys);
+			free(cmd);
+			return (-1);
+		}
+		free(cmd);
 	}
 	if (size(tmpkeys) == 0) { /* no keys to sync? just quit */
 		unlink(tmpkeys);
 		free(tmpkeys);
 		return (0);
 	}
+// ttyprintf("sending %u bytes\n", (u32)size(tmpkeys));
 	tmpkeys2 = bktmp(0, 0);
-	p = aprintf("-q@%s", url);
 	/* For now, we are not recursing to a chained server */
+	p = aprintf("-q@%s", url);
 	rc = sysio(tmpkeys, tmpkeys2, 0,
 	    "bk", p, "-Lr", "-Bstdin", "havekeys", "-B", "-", SYS);
 	free(p);
-	unlink(tmpkeys);
-	free(tmpkeys);
 	unless (rc || (sizeof(tmpkeys2) == 0)) {
+		unless (quiet) fprintf(stderr, "Updating binpool at %s\n", url);
+		in = fopen(tmpkeys2, "r");
+		out = fopen(tmpkeys, "w");
+		while (fnext(buf, in)) {
+			p = strchr(buf, ' ');
+			assert(p);
+			*p++ = 0;
+			todo += strtoull(buf, 0, 10);
+			fputs(p, out);
+		}
+		fclose(in);
+		fclose(out);
+			
 		/* No recursion, we're looking for our files */
-		cmd = aprintf("bk sfio -oqB - < '%s' |"
-		    "bk -q@'%s' -z0 -Lw sfio -iqB -", tmpkeys2, url);
+		cmd = aprintf("bk sfio -o%srBb%llu - < '%s' |"
+		    "bk -q@'%s' -z0 -Lw sfio -iqB -", 
+		    quiet ? "q" : "", todo, tmpkeys, url);
+// ttyprintf("CMD=%s\n", cmd);
 		rc = system(cmd);
 		free(cmd);
 	}
+	unlink(tmpkeys);
+	free(tmpkeys);
 	unlink(tmpkeys2);
 	free(tmpkeys2);
 	return (rc);
@@ -639,10 +679,13 @@ private int
 binpool_push_main(int ac, char **av)
 {
 	int	c;
+	int	all = 0, quiet = 0;
 	char	*tiprev = "+";
 
-	while ((c = getopt(ac, av, "r;")) != -1) {
+	while ((c = getopt(ac, av, "aqr;")) != -1) {
 		switch (c) {
+		    case 'a': all = 1; break;
+		    case 'q': quiet = 1; break;
 		    case 'r': tiprev = optarg; break;
 		    default:
 			system("bk help -s binpool");
@@ -653,7 +696,7 @@ binpool_push_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
-	return (bp_updateServer(tiprev));
+	return (bp_updateServer(tiprev, all, quiet));
 }
 
 /*
