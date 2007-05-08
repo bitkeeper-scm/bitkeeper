@@ -257,6 +257,7 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	if (opts->sent) hash_free(opts->sent);
 	if (opts->hardlinks) hash_free(links);
 	free(opts);
+	NEWLINE();
 	return (0);
 }
 

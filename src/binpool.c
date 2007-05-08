@@ -188,7 +188,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	}
 	unless (n = m->size) n = 1;	/* zero is bad */
 	s->dsum = sum & 0xffff;
-	s->added = (d == din) ? n : 0;
+	s->added = n;
 	s->same = s->deleted = 0;
 out:	mclose(m);
 	free(dfile);
