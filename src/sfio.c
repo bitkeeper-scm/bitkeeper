@@ -378,6 +378,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		*byte_count += n;
 	}
 	close(fd);
+#ifndef	SFIO_STANDALONE
 	unless (opts->quiet) {
 		if (opts->newline == '\r') {
 			if (opts->todo) {
@@ -392,6 +393,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 			fprintf(stderr, "%s\n", file);
 		}
 	}
+#endif
 	return (0);
 }
 
