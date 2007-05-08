@@ -103,7 +103,7 @@ push_main(int ac, char **av)
 	if (sane(0, 0) != 0) return (1);
 
 	/* push binpool data to server */
-	if (bp_updateServer(0)) {
+	if (bp_updateServer(0, 0, !opts.verbose)) {
 		fprintf(stderr, "push: unable to update binpool server\n");
 		exit(1);
 	}

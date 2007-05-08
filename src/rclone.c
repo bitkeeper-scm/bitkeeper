@@ -90,7 +90,7 @@ rclone(char **av, opts opts, remote *r, char **envVar)
 	int	rc;
 	char	revs[MAXKEY];
 
-	if (rc = bp_updateServer(opts.rev)) goto done;
+	if (rc = bp_updateServer(opts.rev, 0, !opts.verbose)) goto done;
 	sprintf(revs, "..%s", opts.rev ? opts.rev : "+");
 	safe_putenv("BK_CSETS=%s", revs);
 	if (rc = trigger(av[0], "pre"))  goto done;

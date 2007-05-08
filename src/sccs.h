@@ -1243,7 +1243,7 @@ int	bp_fetchkeys(char *me, int quiet, char **keys);
 int	bp_get(sccs *s, delta *d, u32 flags, char *out);
 int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);
-int	bp_updateServer(char *tiprev);
+int	bp_updateServer(char *tiprev, int all, int quiet);
 int	bp_serverID(char **id);
 int	bp_sharedServer(void);
 int	bp_binpool(void);
@@ -1253,6 +1253,7 @@ int	zgets_hread(void *token, u8 **buf);
 int	zgets_hfread(void *token, u8 **buf);
 void	zputs_hwrite(void *token, u8 *data, int len);
 char	*psize(u64 bytes);
+void	idcache_update(char *filelist);
 
 extern	char	*editor;
 extern	char	*bin;

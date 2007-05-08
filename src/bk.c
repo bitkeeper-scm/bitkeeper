@@ -231,7 +231,7 @@ main(int ac, char **av, char **env)
 			}
 		}
 
-		if (buffer) {
+		if (buffer && !remote) {
 			unless (streq(buffer, "stdin")) {
 				fprintf(stderr, "bk: only -Bstdin\n");
 				exit(1);
@@ -240,6 +240,7 @@ main(int ac, char **av, char **env)
 			fd2file(0, buffer);
 			close(0);
 			open(buffer, O_RDONLY);
+			free(buffer);
 		}
 
 		if (remote) return (remote_bk(quiet, ac, av));

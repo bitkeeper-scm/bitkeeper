@@ -249,7 +249,7 @@ zgets_hread(void *token, u8 **buf)
 	if (buf) {
 		unless (data) data = malloc(BSIZE);
 		*buf = data;
-		return (read(fd, data, len));
+		return (readn(fd, data, len));
 	} else {
 		/* called from zgets_done */
 		if (len != 0) {

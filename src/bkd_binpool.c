@@ -9,11 +9,13 @@ private FILE	*server(int recurse);
  * Receive a list of keys on stdin and return a list of
  * keys not found locally.
  * Currently only -B (for binpool) is implemented.
+ * With -B, if the key is a 4 tuple, ignore the first one, that's the size,
+ * but send it back so we can calculate the total amount to be sent.
  */
 int
 havekeys_main(int ac, char **av)
 {
-	char	*dfile;
+	char	*dfile, *key;
 	int	c;
 	int	rc = 0, binpool = 0, recurse = 0;
 	FILE	*f = 0;
@@ -59,7 +61,14 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 	 */
 	while (fnext(buf, stdin)) {
 		chomp(buf);
-		unless (dfile = bp_lookupkeys(0, buf)) {
+		// LMXXX - this doesn't work when we have files with spaces
+		// in their name.  I have to make all calls send the size.
+		if (strcnt(buf, ' ') == 3) {
+			key = strchr(buf, ' ') + 1;
+		} else {
+			key = buf;
+		}
+		unless (dfile = bp_lookupkeys(0, key)) {
 			unless (f ) f = server(recurse);
 			// XXX - need to check error status.
 			fprintf(f, "%s\n", buf);	/* not here */

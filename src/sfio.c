@@ -192,7 +192,6 @@ sfio_out(void)
 	byte_count = 10;
 	while (nextfile(buf)) {
 		chomp(buf);
-		unless (opts->quiet) fprintf(stderr, "%s\n", buf);
 		if (opts->bp_tuple) {
 			if (n = out_bptuple(buf, &byte_count)) {
 				send_eof(n);
@@ -289,6 +288,7 @@ out_symlink(char *file, struct stat *sp, off_t *byte_count)
 	assert(opts->doModes);
 	sprintf(buf, "%03o", sp->st_mode & 0777);
 	*byte_count += writen(1, buf, 3);
+	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
 	return (0);
 }
 
@@ -317,6 +317,7 @@ out_hardlink(char *file, struct stat *sp, off_t *byte_count, char *linkMe)
 		sprintf(buf, "%03o", sp->st_mode & 0777);
 		*byte_count += writen(1, buf, 3);
 	}
+	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
 	return (0);
 }
 
@@ -327,7 +328,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	char	len[11];
 	int	fd = open(file, 0, 0);
 	int	n, nread = 0, dosum = 1;
-	u32	sum = 0;
+	u32	sum = 0, sz = (u32)sp->st_size;
 	char	*p;
 
 	if (fd == -1) {
@@ -353,6 +354,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	*byte_count += n;
 	while ((n = readn(fd, buf, sizeof(buf))) > 0) {
 		nread += n;
+		opts->done += n;
 		if (dosum) sum = adler32(sum, buf, n);
 		if (writen(1, buf, n) != n) {
 			perror(file);
@@ -376,6 +378,22 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		*byte_count += n;
 	}
 	close(fd);
+#ifndef	SFIO_STANDALONE
+	unless (opts->quiet) {
+		if (opts->newline == '\r') {
+			if (opts->todo) {
+				sprintf(buf, "%s (%s of %s)",
+				    file, psize(opts->done), psize(opts->todo));
+			} else {
+				sprintf(buf, "%s (+%s = %s)", 
+				    file, psize(sz), psize(opts->done));
+			}
+			fprintf(stderr, "%-72s\r", buf);
+		} else {
+			fprintf(stderr, "%s\n", file);
+		}
+	}
+#endif
 	return (0);
 }
 
