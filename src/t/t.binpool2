@@ -376,7 +376,7 @@ bk new -b $Q 201 || exit 1
 bk commit $Q -y201 || exit 1
 bk get $Q 201
 test -e ../pmaster/BitKeeper/binpool/01/01c4009d.d1 && exit 1
-bk binpool push || exit 1
+bk binpool push $Q || exit 1
 cmpfiles 201 ../pmaster/BitKeeper/binpool/01/01c4009d.d1
 
 bk undo $Q -fsa1.4 || exit 1

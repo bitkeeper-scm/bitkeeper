@@ -21,6 +21,8 @@ private	struct {
 	FILE	*out;
 } opts;
 
+u64	bpsz = 0;
+
 private	int	push(char **av, remote *r, char **envVar);
 private	void	pull(remote *r);
 private	void	listIt(sccs *s, int list);
@@ -532,7 +534,15 @@ gen_bpdata(int level, int wfd, char *bp_keys)
 	u32	n;
 	int	fd0, fd, rfd, status;
 	pid_t	pid;
-	char	*sfio[10] = {"bk", "sfio", "-oqBR1", "-", 0};
+	char	*sfio[10] = {"bk", "sfio", "-oBR1", 0, "-", 0};
+	char	buf[64];
+
+	if (opts.verbose) {
+		sprintf(buf, "-rb%llu", bpsz);
+	} else {
+		sprintf(buf, "-q");
+	}
+	sfio[3] = buf;
 
 	/*
 	 * What we want is: bp_keys => bk sfio => gzip => remote
@@ -600,7 +610,7 @@ send_binpool_msg(remote *r, char *bp_keys, char **envVar)
 			m = gen_bpdata(gzip, fd, bp_keys);
 			close(fd);
 			assert(m > 0);
-			extra = m + 8 + 6;
+			extra = m + 10 + 6;
 		} else {
 			extra = 1;
 		}
@@ -668,7 +678,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 {
 	zgetbuf	*zin;
 	FILE	*f;
-	char	*line;
+	char	*line, *p;
 	u32	bytes;
 	int	i;
 	int	n, rc = 0, done = 0, do_pull = 0;
@@ -772,6 +782,14 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 			if (r->type == ADDR_HTTP) disconnect(r, 2);
 			return (1);
 		}
+		getline2(r, buf, sizeof(buf));
+		unless (strneq(buf, "@DATASIZE=", 10)) {
+			fprintf(stderr, "push: bad input '%s'\n", buf);
+			rc = 1;
+			goto done;
+		}
+		p = strchr(buf, '=');
+		bpsz = strtoull(p+1, 0, 10);
 		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		fclose(f);
 		return (0);

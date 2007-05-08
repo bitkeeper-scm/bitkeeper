@@ -227,6 +227,8 @@ cmd_push_part2(int ac, char **av)
 		fflush(stdout);
 		chdir(ROOT2RESYNC);
 		rc = bp_sendkeys(1, "- < " CSETS_IN, &sfio);
+		printf("@DATASIZE=%llu@\n", sfio);
+		fflush(stdout);
 		chdir(RESYNC2ROOT);
 	} else {
 		rc = do_resolve(av);

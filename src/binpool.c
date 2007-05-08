@@ -476,13 +476,13 @@ bp_updateServer(char *tiprev, int all, int quiet)
 		out = fopen(tmpkeys, "w");
 		for (kv = mdbm_first(bp); kv.key.dsize; kv = mdbm_next(bp)) {
 			sprintf(buf, "BitKeeper/binpool/%s", kv.val.dptr);
-			fprintf(out, "%u %s\n", size(buf), kv.key.dptr);
+			fprintf(out, "|%u|%s\n", size(buf), kv.key.dptr);
 		}
 		fclose(out);
 	} else {
 		/* find local only bp deltas */
 		cmd = aprintf("bk changes -qBv -L -nd'"
-		    "$if(:BPHASH:){:SIZE: :BPHASH: :KEY: :MD5KEY|1.0:}' "
+		    "$if(:BPHASH:){|:SIZE:|:BPHASH: :KEY: :MD5KEY|1.0:}' "
 		    "'%s' > '%s'",
 		    url, tmpkeys);
 		if (system(cmd)) {
@@ -510,15 +510,15 @@ bp_updateServer(char *tiprev, int all, int quiet)
 		in = fopen(tmpkeys2, "r");
 		out = fopen(tmpkeys, "w");
 		while (fnext(buf, in)) {
-			p = strchr(buf, ' ');
+			p = strchr(buf+1, '|');
 			assert(p);
 			*p++ = 0;
-			todo += strtoull(buf, 0, 10);
+			todo += strtoull(buf+1, 0, 10);
 			fputs(p, out);
 		}
 		fclose(in);
 		fclose(out);
-			
+
 		/* No recursion, we're looking for our files */
 		cmd = aprintf("bk sfio -o%srBb%llu - < '%s' |"
 		    "bk -q@'%s' -z0 -Lw sfio -iqB -", 
