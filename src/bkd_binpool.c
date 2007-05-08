@@ -61,10 +61,9 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 	 */
 	while (fnext(buf, stdin)) {
 		chomp(buf);
-		// LMXXX - this doesn't work when we have files with spaces
-		// in their name.  I have to make all calls send the size.
-		if (strcnt(buf, ' ') == 3) {
-			key = strchr(buf, ' ') + 1;
+
+		if (buf[0] == '|') {
+			key = strchr(buf+1, '|') + 1;
 		} else {
 			key = buf;
 		}
@@ -203,7 +202,7 @@ bp_sendkeys(int fdout, char *range, u64 *bytep)
 	zout = zputs_init(zputs_hwrite, int2p(fdout));
 	unless (bp_sharedServer()) {
 		cmd = aprintf("bk changes -Bv -nd'"
-		    "$if(:BPHASH:){:SIZE: :BPHASH: :KEY: :MD5KEY|1.0:}' %s |"
+		    "$if(:BPHASH:){|:SIZE:|:BPHASH: :KEY: :MD5KEY|1.0:}' %s |"
 		    /* The Wayne meister says one level of recursion.
 		     * It's obvious.  Obvious to Leonardo...
 		     */
@@ -213,9 +212,9 @@ bp_sendkeys(int fdout, char *range, u64 *bytep)
 		space = sizeof(buf);
 		where = 0;
 		while (fnext(line, f)) {
-			p = strchr(line, ' ');
+			p = strchr(line+1, '|'); /* skip size */
 			*p++ = 0;
-			*bytep += atoi(line);
+			*bytep += atoi(line+1);
 			len = strlen(p);
 			if (len > space) {
 				sprintf(hdr, "@STDIN=%u@\n", where);
