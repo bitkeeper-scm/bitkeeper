@@ -121,12 +121,6 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	char	cmd_file[MAXPATH];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
 
-	unless (quiet) {
-		p = remote_unparse(r);
-		fprintf(stderr, "Fetching binpool files from %s...\n", p);
-		free(p);
-	}
-
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 1, !quiet)) {
 		return (-1);
 	}
@@ -147,6 +141,11 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	fprintf(f, "rdunlock\n");
 	fprintf(f, "quit\n");
 	fclose(f);
+	if ((sfio > 0) && !quiet) {
+		p = remote_unparse(r);
+		fprintf(stderr, "Fetching binpool files from %s...\n", p);
+		free(p);
+	}
 	rc = send_file(r, cmd_file, 0);
 	if (rc) goto done;
 

@@ -54,6 +54,7 @@ private	int	polyList;
 private	MDBM	*goneDB;
 int		xflags_failed;	/* notification */
 private	u32	timestamps;
+private	char	**bp_getFiles;
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 
@@ -75,12 +76,13 @@ int
 check_main(int ac, char **av)
 {
 	int	c, n;
+	FILE	*f;
 	MDBM	*idDB;
 	MDBM	*pathDB = mdbm_mem();
 	hash	*keys = hash_new(HASH_MEMHASH);
 	sccs	*s;
 	int	errors = 0, eoln_native = 1, want_dfile;
-	int	e;
+	int	i, e;
 	char	*name;
 	char	buf[MAXKEY];
 	char	*t;
@@ -336,6 +338,18 @@ check_main(int ac, char **av)
 	}
 out:
 	if (verbose == 1) progressbar(nfiles, nfiles, errors ? "FAILED":"OK");
+	if (!errors && bp_getFiles &&
+	    ((checkout == CO_EDIT) || (checkout == CO_GET))) {
+		sprintf(buf, "bk %s -q%s -",
+		    (checkout == CO_EDIT) ? "edit" : "get",
+		    (timestamps ? "T" : ""));
+		if (verbose) fprintf(stderr,
+		    "check: fetching binpool data...\n");
+		f = popen(buf, "w");
+		EACH(bp_getFiles) fprintf(f, "%s\n", bp_getFiles[i]);
+		if (pclose(f)) errors = 1;
+		freeLines(bp_getFiles, free);
+	}
 	if (all && !errors && !(flags & INIT_NOCKSUM)) {
 		unlink(CHECKED);
 		touch(CHECKED, 0666);
@@ -420,8 +434,14 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 		} else {
 			flags = (checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND;
 			if (sccs_get(s, 0, 0, 0, 0,
-			    flags|timestamps|SILENT, "-")) {
-				return (1);
+			    flags|timestamps|GET_NOREMOTE|SILENT, "-")) {
+				if (s->cachemiss) {
+					bp_getFiles =
+					    addLine(bp_getFiles,
+					    strdup(s->gfile));
+				} else {
+					return (1);
+				}
 			}
 			s = sccs_restart(s);
 		}

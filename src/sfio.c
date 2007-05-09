@@ -256,8 +256,8 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	if (opts->more) freeLines(opts->more, free);
 	if (opts->sent) hash_free(opts->sent);
 	if (opts->hardlinks) hash_free(links);
-	free(opts);
 	NEWLINE();
+	free(opts);
 	return (0);
 }
 

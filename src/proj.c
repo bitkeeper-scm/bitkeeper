@@ -754,7 +754,9 @@ restoreCO(sccs *s)
 	    default: assert(0);
 	}
 	unless (getFlags) return (0);
-	unless (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) return (0);
+	unless (sccs_get(s, 0, 0, 0, 0, SILENT|GET_NOREMOTE|getFlags, "-")) {
+		return (0);
+	}
 	if (s->cachemiss) {
 		if (getFlags & GET_EDIT) {
 			s->proj->bp_getFiles =
@@ -763,6 +765,7 @@ restoreCO(sccs *s)
 			s->proj->bp_editFiles =
 			    addLine(s->proj->bp_editFiles, strdup(s->gfile));
 		}
+		return (0);
 	}
 	return (-1);
 }
@@ -810,7 +813,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 		// XXX - what about hardlinks for binpool?
 		f = popen("bk get -q -", "w");
 		EACH(p->bp_getFiles) fprintf(f, "%s\n", p->bp_getFiles[i]);
-	    	(void)pclose(f);
+		(void)pclose(f);
 		freeLines(p->bp_getFiles, free);
 		p->bp_getFiles = 0;
 	}
@@ -818,7 +821,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 		// XXX - what about hardlinks for binpool?
 		f = popen("bk edit -q -", "w");
 		EACH(p->bp_editFiles) fprintf(f, "%s\n", p->bp_editFiles[i]);
-	    	(void)pclose(f);
+		(void)pclose(f);
 		freeLines(p->bp_editFiles, free);
 		p->bp_editFiles = 0;
 	}
