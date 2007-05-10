@@ -722,24 +722,29 @@ int
 ok_local(sccs *s, int check_pending)
 {
 	delta	*d;
+	int	rc = 0;
 
 	unless (s) {
 		fprintf(stderr, "Can't init the conflicting local file\n");
 		exit(1);
 	}
+	chdir(RESYNC2ROOT);
 	if ((EDITED(s) || LOCKED(s)) && sccs_clean(s, SILENT)) {
 		fprintf(stderr,
 		    "Cannot [re]move modified local file %s\n", s->gfile);
-		return (0);
+		goto done;
 	}
-	unless (check_pending) return (1);
+	unless (check_pending) goto good;
 	d = sccs_top(s);
 	unless (d->flags & D_CSET) {
 		fprintf(stderr,
 		    "Cannot [re]move uncommitted local file %s\n", s->gfile);
-		return (0);
+		goto done;
 	}
-	return (1);
+good:	rc = 1;
+done:
+	chdir(ROOT2RESYNC);
+	return (rc);
 }
 
 int

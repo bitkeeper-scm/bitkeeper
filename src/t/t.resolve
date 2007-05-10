@@ -909,3 +909,29 @@ bk pull $Q 2>ERR || {
 	exit 1
 }
 echo OK
+
+echo $N "Test rl on an locally edited file in create/sfile conflict ..$NL"
+# BUGID 2007-05-10-001
+cd "$HERE"
+commercial remote
+cd ..
+bk clone $Q remote local
+cd remote
+touch foo
+bk new $Q foo
+bk commit $Q -f
+cd ../local
+touch foo
+bk new $Q foo
+bk commit $Q -f
+bk edit $Q foo
+(echo rl; echo y; echo q) | bk pull $Q 2> ERR || {
+	echo failed
+	grep -q 'Empty p.file' ERR || {
+		echo unexpected failure. Not Empty p.file
+	}
+	cat ERR
+	echo
+	exit 1
+}
+echo OK
