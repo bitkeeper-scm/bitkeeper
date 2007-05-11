@@ -32,13 +32,13 @@ t:	FORCE
 	cd t && make
 
 MSYSBIN = ../gnu
-msys: ./msysver.sh MSYSKEY FORCE
+msys: ./msysver.sh MSYSKEY MSYSURL FORCE
 	mkdir -p $(MSYSBIN)/tmp
 	-MSYSVER=`./msysver.sh`; \
 	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
 	then	tar -C$(MSYSBIN) -xpzf $$MSYSVER; \
 	else	test -d msys || bk clone -r`tail -1 MSYSKEY` \
-			bk://data.bitmover.com/msys msys; \
+			`cat MSYSURL` msys; \
 		bk sfiles -Ug msys | bk get -S -; \
 		(cd msys; bk sfiles -Ug) | \
 			tar -Cmsys -cf- -T- | \
@@ -52,14 +52,14 @@ msys: ./msysver.sh MSYSKEY FORCE
 	fi
 	rm -f $(MSYSBIN)/bin/rxvt.exe
 
-bkshellx: getdatarepo BKSHELLXKEY FORCE
+bkshellx: getdatarepo BKSHELLXKEY BKSHELLXURL FORCE
 	[ -d dll ] || mkdir dll
-	./getdatarepo dll/shellx bk://data.bitmover.com/bkshellx_dll.bk BKSHELLXKEY
+	./getdatarepo dll/shellx `cat BKSHELLXURL` BKSHELLXKEY
 	cd dll/shellx; bk -Ur get -Sq
 
-bkscc: getdatarepo BKSCCKEY FORCE
+bkscc: getdatarepo BKSCCKEY BKSCCURL FORCE
 	[ -d dll ] || mkdir dll
-	./getdatarepo dll/scc bk://data.bitmover.com/bkscc_dll.bk BKSCCKEY
+	./getdatarepo dll/scc `cat BKSCCURL` BKSCCKEY
 	cd dll/scc; bk -Ur get -Sq
 
 install: all blat data/bk.ico
