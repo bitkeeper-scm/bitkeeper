@@ -513,16 +513,17 @@ bp_updateServer(char *tiprev, int all, int quiet)
 			p = strchr(buf+1, '|');
 			assert(p);
 			*p++ = 0;
-			todo += strtoull(buf+1, 0, 10);
+			/* limits us to 4GB/file, strtoull isn't portable */
+			todo += strtoul(buf+1, 0, 10);
 			fputs(p, out);
 		}
 		fclose(in);
 		fclose(out);
 
 		/* No recursion, we're looking for our files */
-		cmd = aprintf("bk sfio -o%srBb%llu - < '%s' |"
+		cmd = aprintf("bk sfio -o%srBb%s - < '%s' |"
 		    "bk -q@'%s' -z0 -Lw sfio -iqB -", 
-		    quiet ? "q" : "", todo, tmpkeys, url);
+		    quiet ? "q" : "", psize(todo), tmpkeys, url);
 // ttyprintf("CMD=%s\n", cmd);
 		rc = system(cmd);
 		free(cmd);

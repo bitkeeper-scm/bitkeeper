@@ -875,15 +875,7 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 		perror("idcache");
 		exit(1);
 	}
-	goneDB = NULL;
-	if (exists(SGONE)) {
-		char tmp_gone[MAXPATH];
-
-		bktmp(tmp_gone, "change_gone");
-		sysio(0, tmp_gone, 0, "bk", "get", "-qkp", GONE, SYS);
-		goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
-		unlink(tmp_gone);
-	}
+	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	graphDB = mdbm_mem();
 
 	/*

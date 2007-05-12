@@ -1253,6 +1253,7 @@ int	zgets_hread(void *token, u8 **buf);
 int	zgets_hfread(void *token, u8 **buf);
 void	zputs_hwrite(void *token, u8 *data, int len);
 char	*psize(u64 bytes);
+u64	scansize(char *bytes);
 void	idcache_update(char *filelist);
 
 extern	char	*editor;

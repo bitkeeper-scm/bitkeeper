@@ -231,18 +231,6 @@ main(int ac, char **av, char **env)
 			}
 		}
 
-		if (buffer && !remote) {
-			unless (streq(buffer, "stdin")) {
-				fprintf(stderr, "bk: only -Bstdin\n");
-				exit(1);
-			}
-			buffer = bktmp(0, "stdin");
-			fd2file(0, buffer);
-			close(0);
-			open(buffer, O_RDONLY);
-			free(buffer);
-		}
-
 		if (remote) return (remote_bk(quiet, ac, av));
 
 		if (dashr) {
@@ -320,9 +308,20 @@ run:	getoptReset();
 	nt_loadWinSock();
 #endif
 	cmdlog_start(av, 0);
+	if (buffer) {
+		unless (streq(buffer, "stdin")) {
+			fprintf(stderr, "bk: only -Bstdin\n");
+			exit(1);
+		}
+		buffer = bktmp(0, "stdin");
+		fd2file(0, buffer);
+		close(0);
+		open(buffer, O_RDONLY, 0);
+	}
 	ret = cmd_run(prog, is_bk, ac, av);
 	if (locking && streq(locking, "r")) repository_rdunlock(0);
 	if (locking && streq(locking, "w")) repository_wrunlock(0);
+
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
 	close(1);
@@ -441,6 +440,16 @@ cmdlog_exit(void)
 	 * exit path and process atexit().
 	 */
 	purify_list();
+
+	/* this is attached to stdin and we have to clean it up or
+	 * bktmpcleanup() will deadlock on windows.
+	 */
+	if (buffer && exists(buffer)) {
+		close(0);
+		unlink(buffer);
+		free(buffer);
+		buffer = 0;
+	}
 	bktmpcleanup();
 	lockfile_cleanup();
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
@@ -692,6 +701,16 @@ cmdlog_end(int ret)
 	kvpair	kv;
 
 	purify_list();
+
+	/* this is attached to stdin and we have to clean it up or
+	 * bktmpcleanup() will deadlock on windows.
+	 */
+	if (buffer && exists(buffer)) {
+		close(0);
+		unlink(buffer);
+		free(buffer);
+		buffer = 0;
+	}
 	bktmpcleanup();
 	unless (cmdlog_buffer[0]) return (flags);
 
@@ -704,11 +723,6 @@ cmdlog_end(int ret)
 	}
 
 	showproc_end(cmdlog_buffer, ret);
-
-	if (buffer) {
-		close(0);
-		unlink(buffer);	// pray like crazy we didn't chdir
-	}
 
 	/* If we have no project root then bail out */
 	unless (proj_root(0)) goto out;

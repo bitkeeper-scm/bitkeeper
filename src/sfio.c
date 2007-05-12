@@ -19,6 +19,7 @@
 #include "system.h"
 #ifdef SFIO_STANDALONE
 #include "utils/sfio.h"
+#define	scansize(x)	0
 #else
 #include "sccs.h"
 #include "binpool.h"
@@ -68,7 +69,7 @@ struct {
 	hash	*sent;		/* list of d.files we have set, for dups */
 	int	recurse;	/* if set, try and find a server on cachemiss */
 	char	**missing;	/* tuples we couldn't find here */
-	u64	todo;		/* -b%llu - bytes we think we are moving */
+	u64	todo;		/* -b`psize` - bytes we think we are moving */
 	u64	done;		/* file bytes we've moved so far */
 } *opts;
 
@@ -93,7 +94,7 @@ sfio_main(int ac, char **av)
 			opts->more = file2Lines(opts->more, optarg);
 			break;
 		    case 'b':
-		    	opts->todo = strtoull(optarg, 0, 10);
+		    	opts->todo = scansize(optarg);
 			break;
 		    case 'B': opts->bp_tuple = 1; break;
 		    case 'e': opts->echo = 1; break;		/* doc 2.3 */
@@ -256,8 +257,8 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	if (opts->more) freeLines(opts->more, free);
 	if (opts->sent) hash_free(opts->sent);
 	if (opts->hardlinks) hash_free(links);
-	free(opts);
 	NEWLINE();
+	free(opts);
 	return (0);
 }
 

@@ -538,7 +538,7 @@ gen_bpdata(int level, int wfd, char *bp_keys)
 	char	buf[64];
 
 	if (opts.verbose) {
-		sprintf(buf, "-rb%llu", bpsz);
+		sprintf(buf, "-rb%s", psize(bpsz));
 	} else {
 		sprintf(buf, "-q");
 	}
@@ -606,7 +606,7 @@ send_binpool_msg(remote *r, char *bp_keys, char **envVar)
 		 * 6 is the size of "@END@" string
 		 */
 		if (r->type == ADDR_HTTP) {
-			fd = open(DEVNULL_WR, O_WRONLY);
+			fd = open(DEVNULL_WR, O_WRONLY, 0);
 			m = gen_bpdata(gzip, fd, bp_keys);
 			close(fd);
 			assert(m > 0);
@@ -789,7 +789,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 			goto done;
 		}
 		p = strchr(buf, '=');
-		bpsz = strtoull(p+1, 0, 10);
+		bpsz = scansize(p+1);
 		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		fclose(f);
 		return (0);
