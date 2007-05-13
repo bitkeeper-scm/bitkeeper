@@ -1590,3 +1590,47 @@ psize(u64 size)
 	}
 	return (s);
 }
+
+u64
+scansize(char *size)
+{
+        float	f;
+	u64	sz = 0;
+	char    *p;
+
+	unless (size && isdigit(*size)) return (sz);
+	sscanf(size, "%f", &f);
+	for (p = size; isdigit(*p) || (*p == '.'); p++);
+	unless (*p) return ((u64)f);
+	f *= 1024;	/* turn 12.2 into roughly 12200 */
+	sz = (u64)f;
+	switch (*p) {
+	    case 'M': sz <<= 10; break;
+	    case 'G': sz <<= 20; break;
+	    case 'T': sz <<= 30; break;
+	    case 'P': sz <<= 40; break;
+	    case 'E': sz <<= 50; break;
+	}
+	return (sz);
+}
+
+#if 0
+main()
+{
+	u64	a, b;
+	int	i;
+	char	*p;
+
+	unless (sizeof(a) == 8) {
+		fprintf(stderr, "Wrong size for u64 %d\n", sizeof(a));
+		exit(1);
+	}
+	for (i = 1; i < 60; i++) {
+		a = 1;
+		a <<= i;
+		p = psize(a);
+		b = scansize(p);
+		printf("%llu = '%s' = %llu\n", a, p, b);
+	}
+}
+#endif
