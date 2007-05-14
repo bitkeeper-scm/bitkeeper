@@ -2,11 +2,10 @@
 #include "cmd.h"
 
 int
-cmd_eof(int ac, char **av)
+cmd_quit(int ac, char **av)
 {
 	out("OK-Goodbye\n");
-	exit(0);
-	return (0);	/* lint */
+	return (0);
 }
 
 int

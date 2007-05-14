@@ -12,7 +12,7 @@ struct cmd cmds[] = {
   { "httpget", "httpget_1.3", "http get command", cmd_httpget },
   { "get", "get_1.3", "http get command", cmd_httpget },
   { "pwd", "pwd_1.3", "show current working directory", cmd_pwd },
-  { "quit", "quit_1.3", "disconnect and end conversation", cmd_eof },
+  { "quit", "quit_1.3", "disconnect and end conversation", cmd_quit },
   { "rootkey", "rootkey_1.3", "show the ChangeSet root key", cmd_rootkey },
   { "status", "status_1.3", "Show status for repository", cmd_status },
   { "version", "version_1.3", "Show bkd version", cmd_version },
