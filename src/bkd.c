@@ -289,6 +289,7 @@ do_cmds(void)
 		}
 	}
 	repository_unlock(0);
+	drain();
 }
 
 private	void
