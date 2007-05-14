@@ -71,7 +71,7 @@ checksum_main(int ac, char **av)
 			if (c & 2) bad++;
 		} else {
 			if (CSET(s)) {
-				doit = bad = cset_resum(s, diags, fix, spin);
+				doit = bad = cset_resum(s, diags, fix, spin, 0);
 			} else {
 				for (d = s->table; d; d = d->next) {
 					unless (d->type == 'D') continue;
@@ -363,7 +363,7 @@ add_ins(MDBM *h, char *root, int len, ser_t ser, u16 sum)
 
 /* same semantics as sccs_resum() except one call for all deltas */
 int
-cset_resum(sccs *s, int diags, int fix, int spinners)
+cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 {
 	MDBM	*root2map = mdbm_mem();
 	ser_t	ins_ser = 0;
@@ -384,8 +384,12 @@ cset_resum(sccs *s, int diags, int fix, int spinners)
 	    (sizeof(void *) == 8) ? _MDBM_ALGN64 : _MDBM_ALGN32);
 
 	if (spinners) {
-		fprintf(stderr, "%s", fix ? "Fixing" : "Checking");
-		fprintf(stderr, " ChangeSet checksums ");
+		if (takepatch) {
+			fprintf(stderr, "checking checksums ");
+		} else {
+			fprintf(stderr, "%s", fix ? "Fixing" : "Checking");
+			fprintf(stderr, " ChangeSet checksums ");
+		}
 	}
 
 	/* build up weave data structure */

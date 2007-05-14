@@ -870,7 +870,7 @@ void	sccs_md5delta(sccs *s, delta *d, char *b64);
 delta	*sccs_csetBoundary(sccs *s, delta *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
-int	cset_resum(sccs *s, int diags, int fix, int spinners);
+int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
 int	sccs_newchksum(sccs *s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);

@@ -130,7 +130,7 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	sendEnv(f, envVar, r, 0);
 	/*
 	 * No need to do "cd" again if we have a non-http connection
-	 * becuase we already did a "cd" in part 1
+	 * because we already did a "cd" in part 1
 	 */
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 

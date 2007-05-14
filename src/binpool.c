@@ -1275,7 +1275,7 @@ binpool_convert_main(int ac, char **av)
 	unless (out = fopen("SCCS/x.ChangeSet", "w")) {
 		exit(1);
 	}
-	fprintf(stderr, "Redoing ChangeSet entires ...\n");
+	fprintf(stderr, "Redoing ChangeSet entries ...\n");
 	while (fnext(buf, in)) {
 		fputs(buf, out);
 		if (streq("\001T\n", buf)) break;

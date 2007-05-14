@@ -1027,7 +1027,7 @@ apply:
 	}
 	s->state |= S_SET;
 	if (echo == 3) fprintf(stderr, "\b, ");
-	if (cset_resum(s, 0, 0, echo == 3)) {
+	if (cset_resum(s, 0, 0, echo == 3, 1)) {
 		getMsg("takepatch-chksum", 0, '=', stderr);
 		goto err;
 	}
