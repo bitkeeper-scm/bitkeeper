@@ -353,23 +353,19 @@ closedir(DIR *d)
 
 
 /*
- * Maximum number of open mmap supported
- * If you change this, you must also ajust
- * the mi table below.(add initializer)
+ * Maximum number of open mmap supported at the same time.
  */
-#define	MAX_NUM_OF_MMAP 12
+#define	MAX_NUM_OF_MMAP 64
 
 #define	BAD_ADDR ((caddr_t) -1)
-static struct mmap_info 	/* mmap information table */
-	{
-		caddr_t addr;
-		int fd;
-		unsigned long size;
-	} mi[MAX_NUM_OF_MMAP] = {
-		{BAD_ADDR, -1}, {BAD_ADDR, -1}, {BAD_ADDR, -1}, {BAD_ADDR, -1},
-		{BAD_ADDR, -1}, {BAD_ADDR, -1}, {BAD_ADDR, -1}, {BAD_ADDR, -1},
-		{BAD_ADDR, -1}, {BAD_ADDR, -1}, {BAD_ADDR, -1}, {BAD_ADDR, -1}
-	};
+
+private struct mmap_info {
+	caddr_t	addr;
+	int	fd;
+	size_t	 size;
+} mi[MAX_NUM_OF_MMAP];
+private	int mi_init = 1;
+
 caddr_t
 mmap(caddr_t addr, size_t len, int prot, int flags, int fd, off_t off)
 {
@@ -380,11 +376,15 @@ mmap(caddr_t addr, size_t len, int prot, int flags, int fd, off_t off)
 	char	mmap_name[100];
 
 	debug((stderr, "mmap: fd = %d\n", fd));
+	if (mi_init) {
+		for (i = 0; i < MAX_NUM_OF_MMAP; i++) mi[i].fd = -1;
+		mi_init = 0;
+	}
 
 	/*
 	 * Bitkeeper sometime call mmap() with fd == -1
 	 */
-	if (fd < 0) return BAD_ADDR;
+	if (fd < 0) return (BAD_ADDR);
 
 	/*
 	 * Check if we are re-mapping a existing mmap area
@@ -401,15 +401,15 @@ mmap(caddr_t addr, size_t len, int prot, int flags, int fd, off_t off)
 	 * If this is a new mmap operation, look for a empty slot
 	 */
 	if (i >= MAX_NUM_OF_MMAP) {
-		for (i = 0; i < MAX_NUM_OF_MMAP; i++)
-			if (mi[i].addr == BAD_ADDR) break;
+		for (i = 0; i < MAX_NUM_OF_MMAP; i++) {
+			if (mi[i].fd == -1) break;
+		}
 		if (i >= MAX_NUM_OF_MMAP) {
-			debug((stderr, "mmap table is full !!\n"));
+			fprintf(stderr,
+			    "%s:%d: mmap table is full\n", __FILE__, __LINE__);
 			exit(1);
 		}
 	}
-
-	if (fd < 0) return BAD_ADDR;
 
 	if (prot & PROT_WRITE) {
 		flProtect = PAGE_READWRITE;

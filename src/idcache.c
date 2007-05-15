@@ -113,7 +113,11 @@ idcache_update(char *filelist)
 	while (fnext(buf, in)) {
 		chomp(buf);
 		unless (s = sccs_init(buf, INIT_NOCKSUM)) continue;
-		assert(HASGRAPH(s));
+		unless (HASGRAPH(s)) {
+			fprintf(stderr, "No graph in %s?\n", buf);
+			sccs_free(s);
+			continue;
+		}
 		sccs_sdelta(s, sccs_ino(s), key);
 		u = mdbm_fetch_str(idDB, key);
 		unless (u && streq(u, s->gfile)) {
@@ -122,6 +126,7 @@ idcache_update(char *filelist)
 			fprintf(out, buf);
 			n++;
 		}
+		sccs_free(s);
 	}
 	if (n) fprintf(out, "#$sum$ %u\n", sum);
 	fclose(in);
