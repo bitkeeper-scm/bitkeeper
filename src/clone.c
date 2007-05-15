@@ -416,7 +416,7 @@ sfio(opts opts, int gzip, remote *r, int binpool)
 	waitpid(pid, &status, 0);
 	if (gzip && !opts.quiet) {
 		fprintf(stderr,
-		    "%u bytes uncompressed to %u, ", opts.in, opts.out);
+		    "%s uncompressed to %s, ", psize(opts.in), psize(opts.out));
 		fprintf(stderr,
 		    "%.2fX expansion\n", (double)opts.out/opts.in);
 	}

@@ -706,7 +706,7 @@ sccs_keyinitAndCache(char *key,
 		return (s);
 	}
  retry:
-	s = sccs_keyinit(key, flags, *idDB);
+	s = sccs_keyinit(key, flags|INIT_NOWARN, *idDB);
 	unless (s || gone(key, goneDB)) {
 		unless (rebuilt) {
 			mdbm_close(*idDB);

@@ -50,7 +50,7 @@ int	checking_rmdir(char *dir);
 #define	NEWFILE		0x00000004	/* delta -i: create initial file */
 #define	NEWCKSUM	0x00000008	/* Redo checksum */
 
-#define	INIT_avail	0x10000000	/* OLD: map the file read/write */
+#define	INIT_NOWARN	0x10000000	/* don't bitch about failed inits */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
 #define	INIT_FIXDTIME	0x40000000	/* use g file mod time as delat time */
 #define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */

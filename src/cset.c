@@ -483,7 +483,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 		perror("idcache");
 	}
 	lastkey = strdup(key);
-retry:	sc = sccs_keyinit(lastkey, 0, idDB);
+retry:	sc = sccs_keyinit(lastkey, INIT_NOWARN, idDB);
 	unless (sc) {
 		if (gone(lastkey, goneDB)) {
 			free(lastkey);
@@ -505,6 +505,7 @@ retry:	sc = sccs_keyinit(lastkey, 0, idDB);
 			}
 			goto retry;
 		}
+		fprintf(stderr, "cset: unable to keyinit %s\n", lastkey);
 		free(lastkey);
 		lastkey = 0;
 		return (cs->force ? 0 : -1);
@@ -622,7 +623,7 @@ csetlist(cset_t *cs, sccs *cset)
 	chmod(csort, TMP_MODE);		/* in case we don't unlink */
 	unlink(cat);
 	if (cs->verbose > 5) {;
-	sys("cat", csort, SYS);
+		sys("cat", csort, SYS);
 	}
 	if (exists(SGONE)) {
 		char tmp_gone[MAXPATH];

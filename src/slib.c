@@ -4260,8 +4260,10 @@ sccs_init(char *name, u32 flags)
 			s->cksumok = 1;		/* but not done */
 			goto out;
 		} else {
-			fputs("sccs_init: ", stderr);
-			perror(s->sfile);
+			unless (flags & INIT_NOWARN) {
+				fputs("sccs_init: ", stderr);
+				perror(s->sfile);
+			}
 			free(s->sfile);
 			free(s->gfile);
 			free(s->pfile);
