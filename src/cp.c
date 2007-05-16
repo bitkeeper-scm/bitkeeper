@@ -1,7 +1,7 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-private int	cp(char *from, char *to);
+private int	cp(char *from, char *to, int force);
 
 /*
  * cp - copy a file to another file,
@@ -12,18 +12,26 @@ private int	cp(char *from, char *to);
 int
 cp_main(int ac, char **av)
 {
-	unless (ac == 3) {
-		close(0);
-		system("bk help -s cp");
-		return (1);
+	int	force = 0;
+	int	c;
+
+	while ((c = getopt(ac, av, "f")) != -1) {
+		switch (c) {
+		    case 'f': force = 1; break;
+		    default:
+usage:			system("bk help -s cp");
+			return (1);
+		}
 	}
-	exit(cp(av[1], av[2]));
+	unless ((ac - optind) == 2) {
+		close(0);	/* XXX - what is this for? */
+		goto usage;
+	}
+	return (cp(av[optind], av[optind+1], force));
 }
 
-/*
- */
 private int
-cp(char *from, char *to)
+cp(char *from, char *to, int force)
 {
 	sccs	*s;
 	delta	*d;
@@ -32,7 +40,10 @@ cp(char *from, char *to)
 	int	err;
 
 	assert(from && to);
-	unless (proj_samerepo(from, to)) return (1);
+	unless (proj_samerepo(from, to) || force) {
+		fprintf(stderr, "bk cp: must be in same repo or use cp -f.\n");
+		return (1);
+	}
 	sfile = name2sccs(from);
 	unless (s = sccs_init(sfile, 0)) return (1);
 	unless (HASGRAPH(s) && s->cksumok) return (1);
