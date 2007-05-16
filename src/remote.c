@@ -29,7 +29,7 @@ remote_bk(int quiet, int ac, char **av)
 	char	*p;
 	char	**l, **urls = 0, *input = 0;
 	char	**data = 0;
-	char	buf[64<<10];
+	char	buf[63<<10];
 
 	setmode(0, _O_BINARY);	/* need to be able to read binary data */
 	/*
@@ -72,7 +72,7 @@ remote_bk(int quiet, int ac, char **av)
 	/*
 	 * If we have multiple URLs or are talking to a http server
 	 * then we need to buffer up stdin.
-	 * sizeof(buf) is 64k above, it can't be smaller or data_append()
+	 * sizeof(buf) is 63k above, it can't be 64K or data_append()
 	 * will crash on a 16-bit limitation.
 	 */
 	if (streq(av[ac-1], "-") &&
