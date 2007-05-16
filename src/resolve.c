@@ -2554,8 +2554,7 @@ err:			unapply(save);
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
-
-	sync();
+	unless (proj_configbool(0, "nosync")) sync();
 	if (proj_configbool(0, "partial_check")) {
 		fflush(save); /*  important */
 		ret = run_check(APPLIED, opts->quiet ? 0 : "-v");
