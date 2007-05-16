@@ -491,3 +491,32 @@ echo OK
 }
 
 exit 0
+
+echo $N Test undo with many renames .................................$NL
+cd "$HERE"/project 
+for i in 0 1 2 3 4 5 6 7 8 9
+do
+    for j in 0 1 2 3 4 5 6 7 8 9
+    do
+	file=$i$j
+	touch $file
+	bk new $Q $file
+    done
+done
+bk commit $Q -f -y"Added a hundred files"
+for i in 0 1 2 3 4 5 6 7 8 9
+do
+    for j in 0 1 2 3 4 5 6 7 8 9
+    do
+	file=$i$j
+	bk mv $file new-$file
+    done
+done
+bk commit $Q -f -y"Moved a hundred files"
+bk undo $Q -f -r+ 2>ERR || {
+	echo failed
+	echo
+	cat ERR
+	exit 1
+}
+echo OK
