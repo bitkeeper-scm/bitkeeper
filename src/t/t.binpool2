@@ -489,3 +489,97 @@ bk push $Q
 mychecklog $BLOG 7
 mychecklog ../cmaster/$BLOG 11
 echo OK
+echo $N Check binary create conflict.................................$NL
+cd "$HERE"
+rm -rf pclone[67]
+bk clone $Q pmaster pclone6
+bk clone $Q pmaster pclone7
+cd pclone6
+echo foo > foo
+perl -e 'printf "q\000\001\002b\n"' >> foo
+bk new $Q foo
+bk commit $Q -f -y"Added foo"
+cd ../pclone7
+echo foo > foo
+perl -e 'printf "q\000\001\002b\n"' >> foo
+bk new $Q foo
+bk commit $Q -f -y"Added foo"
+bk pull $Q ../pclone6 2>ERR <<EOF
+rl
+y
+EOF
+test $? -eq 0 || {
+	echo failed
+	exit 1
+}
+echo OK
+echo $N Check binary file automerge..................................$NL
+cd "$HERE"
+rm -rf pclone[67]
+bk clone $Q pmaster pclone6
+bk clone $Q pmaster pclone7
+cd pclone6
+bk edit $Q F5
+perl -e 'printf "b\000b\n"' >> F5
+bk ci $Q -y"Added stuff" F5
+bk commit $Q -f -y"Added stuff to F5"
+cd ../pclone7
+bk edit $Q F5
+perl -e 'printf "b\000b\n"' >> F5
+bk ci $Q -y"Added other stuff" F5
+bk commit $Q -f -y"Added other stuff to F5"
+bk pull $Q ../pclone6 2>ERR
+test $? -eq 0 || {
+	echo failed
+	exit 1
+}
+echo OK
+echo $N Check basic binary file conflicts............................$NL
+cd "$HERE"
+rm -rf pclone[67]
+bk clone $Q pmaster pclone6
+bk clone $Q pmaster pclone7
+cd pclone6
+bk edit $Q F5
+perl -e 'printf "b\000b\n"' >> F5
+bk ci $Q -y"Added stuff" F5
+bk commit $Q -f -y"Added stuff to F5"
+cd ../pclone7
+bk edit $Q F5
+perl -e 'printf "c\000b\n"' >> F5
+bk ci $Q -y"Added other stuff" F5
+bk commit $Q -f -y"Added other stuff to F5"
+bk pull $Q ../pclone6 2>ERR <<EOF
+ul
+Merge comment
+.
+EOF
+test $? -eq 0 || {
+	echo failed
+	exit 1
+}
+echo OK
+echo $N Check binary file automerge with attribute conflict..........$NL
+cd "$HERE"
+rm -rf pclone[67]
+bk clone $Q pmaster pclone6
+bk clone $Q pmaster pclone7
+cd pclone6
+bk chmod +x F5
+bk commit $Q -f -y"Added execute to F5"
+cd ../pclone7
+bk edit $Q F5
+perl -e 'printf "b\000b\n"' >> F5
+bk ci $Q -y"Added other stuff" F5
+bk commit $Q -f -y"Added other stuff to F5"
+bk pull $Q ../pclone6 2>ERR <<EOF
+ul
+Merge comment
+.
+EOF
+test $? -eq 0 || {
+	echo failed
+	exit 1
+}
+echo "failed (bug - feature not implemented)"
+#exit 1
