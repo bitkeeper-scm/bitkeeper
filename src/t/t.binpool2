@@ -69,7 +69,7 @@ test -f bin.data || {
 checkfiles "$HERE"/F1 bin.data
 echo OK
 
-echo $N Verify that bk clone fails if it can\'t find the bp server ...$NL
+echo $N "Verify that bk clone fails if it can't find the bp server ...$NL"
 cd "$HERE"
 BK_CONFIG="binpool_server:file://$HERE/gone!" \
 	bk clone pmaster pcopy2 2> ERR && exit 1
@@ -383,4 +383,109 @@ bk undo $Q -fsa1.4 || exit 1
 
 # tweak old update bug
 bk push $Q || exit 1
+echo OK
+
+# Use binpool log to make sure that data isn't moved more
+# than necessary
+BLOG=BitKeeper/log/binpool.index
+# mychecklog <file> <# expected items>
+mychecklog() {
+	test -e $1 || {
+		echo failed
+		echo
+		echo Cannot find $1
+		exit 1
+	}
+	_count=`wc -l < $1`
+	test $_count -eq $2 || {
+		echo failed
+		echo
+		echo Expected $2 items in $1
+		exit 1
+	}
+}
+
+echo ---- Check that binpool data moves once ...
+echo $N .... after pull, unpull, pull sequence.......................$NL
+cd "$HERE"
+bk clone $Q pmaster pclone5
+cd pclone5
+bk get $Q
+count1=` wc -l < $BLOG`
+test $count1 -eq 2 || {
+	echo failed
+	echo
+	echo Expected 2 lines in $BLOG
+	exit 1
+}
+bk pull $Q ../pclone3
+bk get $Q
+count2=` wc -l < $BLOG`
+test $count2 -gt $count1 || {
+	echo failed
+	echo
+	echo Expected more lines in $BLOG after get
+	exit 1
+}
+bk unpull -f $Q
+count3=` wc -l < $BLOG`
+test $count2 -eq $count3 || {
+	echo failed
+	echo
+	echo Expected number of lines in $BLOG to not change after unpull
+	exit 1
+}
+bk pull $Q ../pclone3
+bk get $Q
+count4=` wc -l < $BLOG`
+test $count2 -eq $count4 || {
+	echo failed
+	echo
+	echo Expected number of lines in $BLOG to not change after re-pull
+	exit 1
+}
+echo OK
+echo $N .... after adding a new file.................................$NL
+cp "$HERE"/F5 .
+bk new $Q F5
+bk commit $Q -f -y"Added F5"
+count5=`wc -l < $BLOG`
+test $count5 -gt $count4 || {
+	echo failed
+	echo Expected number of lines in $BLOG to differ from parent.
+	exit 1
+}
+count6=`wc -l < ../pmaster/$BLOG`
+bk push $Q
+count7=`wc -l < ../pmaster/$BLOG`
+test $count7 -gt $count6 || {
+	echo failed
+	echo Expected number of lines in ../pmaster/$BLOG
+	echo to increase in push
+	exit 1
+}
+echo OK
+echo $N .... after copy clone pulls from project clone...............$NL
+# Invite copy master and copy clone
+cd "$HERE"
+bk clone $Q cmaster cclone5
+cd cclone5
+# Use get because 
+# bk binpool pull $Q
+# doesn't work because pull is missing -q
+bk get $Q
+mychecklog $BLOG 2
+mychecklog ../cmaster/$BLOG 10
+bk pull $Q ../pclone5
+mychecklog $BLOG 3
+mychecklog ../cmaster/$BLOG 10
+bk -Ur get $Q
+mychecklog $BLOG 7
+mychecklog ../cmaster/$BLOG 10
+bk binpool push $Q
+mychecklog $BLOG 7
+mychecklog ../cmaster/$BLOG 11
+bk push $Q
+mychecklog $BLOG 7
+mychecklog ../cmaster/$BLOG 11
 echo OK
