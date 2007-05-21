@@ -540,6 +540,9 @@ cmdlog_start(char **av, int httpMode)
 		if (cmdlog_flags & CMD_WRUNLOCK) cmdlog_flags |= CMD_WRLOCK;
 		if (cmdlog_flags & CMD_RDLOCK) cmdlog_flags |= CMD_RDUNLOCK;
 		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
+		if (streq(av[0], "remote push part3")) {
+			putenv("_BK_IGNORE_RESYNC_LOCK=YES");
+		}
 	}
 
 	for (len = 1, i = 0; av[i]; i++) {
