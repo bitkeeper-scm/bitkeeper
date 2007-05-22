@@ -357,7 +357,7 @@ bk binpool check -q 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q 'has the incorrect hash' ERR || exit 1
+grep -q 'has a hash mismatch' ERR || exit 1
 test `wc -l < ERR` -eq 2 || exit 1
 rm BitKeeper/binpool/01/01d700a5.d1
 bk binpool check -q 2>ERR && {

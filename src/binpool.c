@@ -34,10 +34,11 @@
  *	// "hash key md5rootkey cset_md5rootkey" => "xy/xyzabc...d1"
  */
 
-private	int	hashgfile(char *gfile, char **hashp, sum_t *sump);
 private	char*	hash2path(project *p, char *hash);
 private int	bp_insert(project *proj, char *file, char *keys, int canmv);
 private	int	uu2bp(sccs *s);
+
+#define	INDEX_DELETE	"----delete----"
 
 /*
  * Allocate s->gfile into the binpool and update the delta stuct with
@@ -52,7 +53,7 @@ bp_delta(sccs *s, delta *d)
 
 	unless (exists(p)) touch(p, 0664);
 	free(p);
-	if (hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
+	if (bp_hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
 	s->dsum = d->sum;
 	keys = sccs_prsbuf(s, d, 0, BINPOOL_DSPEC);
 	rc = bp_insert(s->proj, s->gfile, keys, 0);
@@ -205,8 +206,8 @@ out:	mclose(m);
  *
  * Function returns non-zero if gfile can't be read.
  */
-private int
-hashgfile(char *gfile, char **hashp, sum_t *sump)
+int
+bp_hashgfile(char *gfile, char **hashp, sum_t *sump)
 {
 	int	fd, i;
 	u32	sum = 0;
@@ -426,7 +427,7 @@ bp_logUpdate(char *key, char *val)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	unless (val) val = "delete        ";
+	unless (val) val = INDEX_DELETE;
 	strcpy(buf, proj_root(0));
 	if (proj_isResync(0)) concat_path(buf, buf, RESYNC2ROOT);
 	strcat(buf, "/BitKeeper/log/binpool.index");
@@ -883,6 +884,45 @@ binpool_clean_main(int ac, char **av)
 	return (0);
 }
 
+int
+bp_check_hash(char *want, char ***missing, int fast)
+{
+	char	*dfile;
+	char	*hval;
+	char	*p;
+	sum_t	sum;
+	int	rc = 0;
+
+	unless (dfile = bp_lookupkeys(0, want)) {
+		if (missing) *missing = addLine(*missing, strdup(want));
+		return (0);
+	}
+	p = strchr(want, ' ');	/* just the hash */
+	assert(p);
+	*p = 0;
+	unless (fast) {
+		if (bp_hashgfile(dfile, &hval, &sum)) {
+			assert(0);	/* shouldn't happen */
+		}
+		unless (streq(want, hval)) {
+			fprintf(stderr,
+			    "binpool file %s has a hash mismatch.\n"
+			    "want: %s got: %s\n", dfile, want, hval);
+			rc = 1;
+		}
+		free(hval);
+	}
+	if (strtoul(want, 0, 16) != strtoul(basenm(dfile), 0, 16)) {
+		fprintf(stderr,
+		    "binpool datafile stored under wrong filename: %s\n",
+		    dfile);
+		rc = 1;
+	}
+	*p = ' ';
+	free(dfile);
+	return (rc);
+}
+
 /*
  * Validate the checksums and metadata for all binpool data
  *  delta checksum matches filename and file contents
@@ -898,8 +938,7 @@ binpool_check_main(int ac, char **av)
 	int	rc = 0, quiet = 0, fast = 0, n = 0, i;
 	FILE	*f;
 	char	**missing = 0;
-	char	*hval, *p, *tmp, *dfile;
-	sum_t	sum;
+	char	*p, *tmp;
 	char	buf[MAXLINE];
 
 	if (proj_cd2root()) {
@@ -923,33 +962,7 @@ binpool_check_main(int ac, char **av)
 		unless (quiet) fprintf(stderr, "%d\r", ++n);
 		chomp(buf);
 
-		unless (dfile = bp_lookupkeys(0, buf)) {
-			missing = addLine(missing, strdup(buf));
-			continue;
-		}
-		unless (fast) {
-			if (hashgfile(dfile, &hval, &sum)) {
-				assert(0);	/* shouldn't happen */
-			}
-/* LMXXX - I dislike this, this should be a subroutine */
-			p = strchr(buf, ' ');	/* end of d->hash */
-			*p++ = 0;
-			unless (streq(hval, buf)) {
-				fprintf(stderr,
-				    "binpool data for delta %s has the "
-				    "incorrect hash\n\t%s vs %s\n",
-				    p, buf, hval);
-				rc = 1;
-			}
-			free(hval);
-		}
-		if (strtoul(buf, 0, 16) != strtoul(basenm(dfile), 0, 16)) {
-			fprintf(stderr,
-			"binpool datafile store under wrong filename: %s\n",
-			    dfile);
-			rc = 1;
-		}
-		free(dfile);
+		if (bp_check_hash(buf, &missing, fast)) rc = 1;
 	}
 	pclose(f);
 	unless (quiet) fprintf(stderr, "\n");
@@ -1077,7 +1090,7 @@ binpool_repair_main(int ac, char **av)
 	while (fnext(buf, f)) {
 		chomp(buf);
 
-		if (hashgfile(buf, &hval, &sum)) continue;
+		if (bp_hashgfile(buf, &hval, &sum)) continue;
 		unless (p = mdbm_fetch_str(missing, hval)) {
 			free(hval);
 			continue;
@@ -1109,27 +1122,20 @@ binpool_repair_main(int ac, char **av)
 int
 binpool_index_main(int ac, char **av)
 {
-	MDBM	*m, *i;
-	FILE	*f;
-	char	*key, *file, *crc, *p;
-	int	log = 0, index = 0, missing = 0, mismatch = 0;
-	u32	aGot, aWant;
-	kvpair	kv;
-	char	buf[MAXLINE];
-
 	if (proj_cd2root()) {
 		fprintf(stderr, "No repo root?\n");
 		return (1);
 	}
-	unless (f = fopen("BitKeeper/log/binpool.index", "r")) {
-		fprintf(stderr, "No binpool.index?\n");
-		return (1);
-	}
-	unless (i = proj_binpoolIDX(0, 0)) {
-		fprintf(stderr, "No binpool index?\n");
-		return (1);
-	}
-	m = mdbm_mem();
+	return (bp_index_check(0));
+}
+
+private int
+load_logfile(MDBM *m, FILE *f)
+{
+	char	*crc, *file;
+	u32	aWant, aGot;
+	char	buf[MAXLINE];
+
 	while (fnext(buf, f)) {
 		crc = strrchr(buf, ' ');
 		assert(crc);
@@ -1143,9 +1149,35 @@ binpool_index_main(int ac, char **av)
 		file = strrchr(buf, ' ');
 		assert(file);
 		*file++ = 0;
-		key = buf;
-		mdbm_store_str(m, key, file, MDBM_REPLACE);
+		if (streq(file, INDEX_DELETE)) {
+			mdbm_delete_str(m, buf);
+		} else {
+			mdbm_store_str(m, buf, file, MDBM_REPLACE);
+		}
 	}
+	return (0);
+}
+
+
+int
+bp_index_check(int quiet)
+{
+	MDBM	*m, *i;
+	FILE	*f;
+	char	*p;
+	int	log = 0, index = 0, missing = 0, mismatch = 0;
+	kvpair	kv;
+
+	i = proj_binpoolIDX(0, 0);
+	f = fopen("BitKeeper/log/binpool.index", "r");
+
+	if (!i && !f) return (0);
+	unless (i && f) {
+		fprintf(stderr, "No binpool.index?\n");
+		return (1);
+	}
+	m = mdbm_mem();
+	load_logfile(m, f);
 	fclose(f);
 	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
 		log++;
@@ -1187,24 +1219,13 @@ int
 binpool_replay_main(int ac, char **av)
 {
 	MDBM	*m;
-	char	*key, *file, *crc;
-	char	buf[MAXLINE];
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "No repo root?\n");
 		exit(1);
 	}
 	m = mdbm_open("BitKeeper/binpool/index.db", O_RDWR|O_CREAT, 0666, 4096);
-	while (fnext(buf, stdin)) {
-		crc = strrchr(buf, ' ');
-		assert(crc);
-		*crc++ = 0;
-		file = strrchr(buf, ' ');
-		assert(file);
-		*file++ = 0;
-		key = buf;
-		mdbm_store_str(m, key, file, MDBM_REPLACE);
-	}
+	load_logfile(m, stdin);
 	mdbm_close(m);
 	return (0);
 }

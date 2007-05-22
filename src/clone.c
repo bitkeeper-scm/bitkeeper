@@ -275,7 +275,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		if (rc) goto done;
 	}
 
-	if (clone2(opts, r)) goto done;
+	if (rc = clone2(opts, r)) goto done;
 
 	rc  = 0;
 done:	if (rc) {

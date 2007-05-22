@@ -7,6 +7,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "binpool.h"
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
@@ -22,6 +23,7 @@ private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
 private int	chk_gfile(sccs *s, MDBM *pathDB, int checkout);
 private int	chk_dfile(sccs *s);
+private int	chk_binpool(sccs *, char ***missing);
 private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
@@ -87,6 +89,7 @@ check_main(int ac, char **av)
 	char	buf[MAXKEY];
 	char	*t;
 	int	checkout;
+	char	**bp_missing = 0;
 	int	binpool = 0;
 
 	timestamps = 0;
@@ -124,6 +127,8 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	if (sane(0, resync)) return (1);
+	if (all && bp_index_check(0)) return (1);
+
 	checkout = CO_NONE;
 	if (!resync && all) checkout = proj_checkout(0);
 	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
@@ -190,7 +195,10 @@ check_main(int ac, char **av)
 			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
 			if (s->has_nonl && chk_nlbug(s)) errors |= 0x04;
 		}
-		if (BINPOOL(s)) binpool = 1;
+		if (BINPOOL(s)) {
+			binpool = 1;
+			if (chk_binpool(s, &bp_missing)) errors |= 0x04;
+		}
 		if (chk_gfile(s, pathDB, checkout)) errors |= 0x08;
 		if (no_gfile(s)) errors |= 0x08;
 		if (readonly_gfile(s)) errors |= 0x08;
@@ -294,6 +302,10 @@ check_main(int ac, char **av)
 	if ((all || resync) && checkAll(keys)) errors |= 0x40;
 	mdbm_close(pathDB);
 	hash_free(keys);
+	if (bp_missing) {
+		// XXX -B (compare missing binpool keys with binpool_server)
+		freeLines(bp_missing, free);
+	}
 	if (goneDB) mdbm_close(goneDB);
 	if (errors && fix) {
 		if (names && !gotDupKey) {
@@ -465,6 +477,24 @@ err:		getMsg2("file_dir_conflict", buf, type, '=', stderr);
 	}
 	/* NOTREACHED */
 }
+
+private int
+chk_binpool(sccs *s, char ***missing)
+{
+	delta	*d;
+	char	*key;
+	int	rc = 0;
+
+	for (d = s->table; d; d = d->next) {
+		unless (d->hash) continue;
+		key = sccs_prsbuf(s, d, 0, BINPOOL_DSPEC);
+		// XXX -cc mean verify d->hash
+		if (bp_check_hash(key, missing, 1)) rc = 1;
+		free(key);
+	}
+	return (rc);
+}
+
 
 /*
  * Doesn't need to be fast, should be a rare event

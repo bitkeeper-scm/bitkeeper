@@ -123,8 +123,8 @@ _BK_FAKE_HASH=deadbeef bk co $Q -S fake_hash || { echo co failed; exit 1; }
 echo OK
 
 echo $N Commit, check that the keys are binpool .....................$NL
-bk commit $Q -ywhatever
-bk co $Q ChangeSet
+bk commit $Q -ywhatever || exit 1
+bk co $Q ChangeSet || exit 1
 awk -F'|' '$2 == "data" && $5 ~ /^B:/ { print; }' < ChangeSet > OUT
 test -s OUT || exit 1
 echo OK
