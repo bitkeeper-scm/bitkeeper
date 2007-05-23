@@ -196,7 +196,7 @@ echo $N Clone within czone and pull from p ..........................$NL
 cd ..
 bk clone $Q cmaster cclone1 || exit 1
 cd cclone1
-bk binpool check -Fq || exit 1
+bk binpool check -F $Q || exit 1
 bk pull $Q ../pclone3 || exit 1
 
 bk get $Q F1 F2 F3 F4 || exit 1
@@ -359,8 +359,22 @@ bk binpool check -q 2>ERR && {
 }
 grep -q 'has a hash mismatch' ERR || exit 1
 test `wc -l < ERR` -eq 2 || exit 1
+bk -r check -acc 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q 'has a hash mismatch' ERR || exit 1
+test `wc -l < ERR` -eq 2 || exit 1
 rm BitKeeper/binpool/01/01d700a5.d1
 bk binpool check -q 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q 'Failed to locate' ERR || exit 1
+test `wc -l < ERR` -eq 2 || exit 1
+bk -r check -a || exit 1
+bk -r check -aB 2>ERR && {
 	echo should have failed
 	exit 1
 }

@@ -923,6 +923,63 @@ bp_check_hash(char *want, char ***missing, int fast)
 	return (rc);
 }
 
+int
+bp_check_findMissing(int quiet, char **missing)
+{
+	FILE	*f;
+	int	i, rc = 0;
+	char	*p;
+	char	*tmp;
+	char	buf[MAXLINE];
+
+	if (emptyLines(missing)) return (0);
+	if (!bp_serverID(&p) && p) {
+		unless (quiet) {
+			fprintf(stderr,
+			    "Looking for %d missing files in %s\n",
+			    nLines(missing),
+			    proj_configval(0, "binpool_server"));
+		}
+		free(p);
+
+		tmp = bktmp(0, 0);
+		/* no recursion, we are remoted to the server already */
+		p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B - > '%s'",
+		    proj_configval(0, "binpool_server"), tmp);
+		f = popen(p, "w");
+		free(p);
+		assert(f);
+		EACH(missing) fprintf(f, "%s\n", missing[i]);
+		if (pclose(f)) {
+			fprintf(stderr,
+			    "Failed to contact binpool_server at %s\n",
+			    proj_configval(0, "binpool_server"));
+			rc = 1;
+		} else {
+			EACH(missing) {	/* clear array in place */
+				free(missing[i]);
+				missing[i] = 0;
+			}
+			f = fopen(tmp, "r");
+			while (fnext(buf, f)) {
+				chomp(buf);
+				missing = addLine(missing, strdup(buf));
+			}
+			fclose(f);
+		}
+		unlink(tmp);
+		free(tmp);
+	}
+	unless (emptyLines(missing)) {
+		fprintf(stderr,
+		   "Failed to locate binpool data for the following deltas:\n");
+		EACH(missing) fprintf(stderr, "\t%s\n", missing[i]);
+		rc = 1;
+	}
+	return (rc);
+}
+
+
 /*
  * Validate the checksums and metadata for all binpool data
  *  delta checksum matches filename and file contents
@@ -938,7 +995,6 @@ binpool_check_main(int ac, char **av)
 	int	rc = 0, quiet = 0, fast = 0, n = 0, i;
 	FILE	*f;
 	char	**missing = 0;
-	char	*p, *tmp;
 	char	buf[MAXLINE];
 
 	if (proj_cd2root()) {
@@ -971,47 +1027,7 @@ binpool_check_main(int ac, char **av)
 	 * if we are missing some data make sure it is not covered by the
 	 * binpool server before we complain.
 	 */
-	if (missing && !bp_serverID(&p) && p) {
-		unless (quiet) {
-			fprintf(stderr,
-			    "Looking for %d missing files in %s\n",
-			    nLines(missing),
-			    proj_configval(0, "binpool_server"));
-		}
-		free(p);
-
-		tmp = bktmp(0, 0);
-		/* no recursion, we are remoted to the server already */
-		p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B - > '%s'",
-		    proj_configval(0, "binpool_server"), tmp);
-		f = popen(p, "w");
-		free(p);
-		assert(f);
-		EACH(missing) fprintf(f, "%s\n", missing[i]);
-		if (pclose(f)) {
-			fprintf(stderr,
-			    "Failed to contact binpool_server at %s\n",
-			    proj_configval(0, "binpool_server"));
-			rc = 1;
-		} else {
-			freeLines(missing, free);
-			missing = 0;
-			f = fopen(tmp, "r");
-			while (fnext(buf, f)) {
-				chomp(buf);
-				missing = addLine(missing, strdup(buf));
-			}
-			fclose(f);
-		}
-		unlink(tmp);
-		free(tmp);
-	}
-	if (missing) {
-		fprintf(stderr,
-		   "Failed to locate binpool data for the following deltas:\n");
-		EACH(missing) fprintf(stderr, "\t%s\n", missing[i]);
-		rc = 1;
-	} else unless (quiet) {
+	unless ((rc |= bp_check_findMissing(quiet, missing)) || quiet) {
 		fprintf(stderr, "All binpool data was found, check passed.\n");
 	}
 	return (rc);

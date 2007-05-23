@@ -57,6 +57,7 @@ private	MDBM	*goneDB;
 int		xflags_failed;	/* notification */
 private	u32	timestamps;
 private	char	**bp_getFiles;
+private	int	bp_fullcheck;
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 
@@ -93,10 +94,14 @@ check_main(int ac, char **av)
 	int	binpool = 0;
 
 	timestamps = 0;
-	while ((c = getopt(ac, av, "acdefgpRTvw")) != -1) {
+	while ((c = getopt(ac, av, "aBcdefgpRTvw")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;			/* doc 2.0 */
-		    case 'c': flags &= ~INIT_NOCKSUM; break;	/* doc 2.0 */
+		    case 'B': bp_missing = allocLines(64); break;
+		    case 'c':					/* doc 2.0 */
+			unless (flags & INIT_NOCKSUM) bp_fullcheck = 1;
+			flags &= ~INIT_NOCKSUM;
+			break;
 		    case 'd': details++; break;
 		    case 'e': check_eoln++; break;
 		    case 'f': fix++; break;			/* doc 2.0 */
@@ -127,7 +132,7 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	if (sane(0, resync)) return (1);
-	if (all && bp_index_check(0)) return (1);
+	if (all && bp_index_check(!verbose)) return (1);
 
 	checkout = CO_NONE;
 	if (!resync && all) checkout = proj_checkout(0);
@@ -303,7 +308,7 @@ check_main(int ac, char **av)
 	mdbm_close(pathDB);
 	hash_free(keys);
 	if (bp_missing) {
-		// XXX -B (compare missing binpool keys with binpool_server)
+		if (bp_check_findMissing(!verbose, bp_missing)) errors |= 0x40;
 		freeLines(bp_missing, free);
 	}
 	if (goneDB) mdbm_close(goneDB);
@@ -485,11 +490,11 @@ chk_binpool(sccs *s, char ***missing)
 	char	*key;
 	int	rc = 0;
 
+	unless (*missing) missing = 0;
 	for (d = s->table; d; d = d->next) {
 		unless (d->hash) continue;
 		key = sccs_prsbuf(s, d, 0, BINPOOL_DSPEC);
-		// XXX -cc mean verify d->hash
-		if (bp_check_hash(key, missing, 1)) rc = 1;
+		if (bp_check_hash(key, missing, !bp_fullcheck)) rc = 1;
 		free(key);
 	}
 	return (rc);
