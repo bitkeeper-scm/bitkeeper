@@ -72,3 +72,42 @@ grep -q "are not in the same BitKeeper repository" ERR || {
 	exit 1
 }
 echo OK
+
+echo $N Test copy between clones ....................................$NL
+cd "$HERE"
+bk clone $Q project clone
+cd "$HERE/project"
+bk cp file1 ../clone/file2 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "are not in the same BitKeeper repository" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Test copy between repos with -f .............................$NL
+bk cp -f file1 ../copy/file2 2>ERR || {
+	echo should have worked
+	exit 1
+}
+test -f ../copy/SCCS/s.file2 || {
+	echo said it worked but did not do the work
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Test copy between clones with -f ............................$NL
+bk cp -f file1 ../clone/file2 2>ERR || {
+	echo should have worked
+	exit 1
+}
+test -f ../copy/SCCS/s.file2 || {
+	echo said it worked but did not do the work
+	cat ERR
+	exit 1
+}
+echo OK
