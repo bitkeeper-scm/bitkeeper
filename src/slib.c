@@ -6970,7 +6970,11 @@ err:		if (i2) free(i2);
 		s->state |= S_WARNED;
 		goto err;
 	}
-	/* XXX: if 'not in view' file, then ignore: NOT IMPLEMENTED YET */
+
+	if (BINARY(s) && license_binCheck(s)) {
+		s->state |= S_WARNED;
+		goto err;
+	}
 
 	/* this has to be above the sccs_getedit() - that changes the rev */
 	if (mRev) {
@@ -9288,6 +9292,7 @@ out:		sccs_unlock(s, 'z');
 		}
 	} else if (isRegularFile(s->mode)) {
 		openInput(s, flags, &gfile);
+		if (BINARY(s) && license_binCheck(s)) goto out;
 		unless (gfile || BINPOOL(s)) {
 			perror(s->gfile);
 			goto out;
@@ -12688,9 +12693,10 @@ out:
 		return rc;
 	}
 
+	if (BINARY(s) && license_binCheck(s)) OUT;
+
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
 		fprintf(stderr, "delta: %s is not an SCCS file\n", s->sfile);
-		s->state |= S_WARNED;
 		OUT;
 	}
 
@@ -12699,7 +12705,6 @@ out:
 			fprintf(stderr,
 			    "delta: %s writable but not checked out?\n",
 			    s->gfile);
-			s->state |= S_WARNED;
 			OUT;
 		} else {
 			verbose((stderr,
@@ -12711,7 +12716,6 @@ out:
 	unless (WRITABLE(s) || diffs) {
 		fprintf(stderr,
 		    "delta: %s is locked but not writable.\n", s->gfile));
-		s->state |= S_WARNED;
 		OUT;
 	}
 
@@ -12719,7 +12723,6 @@ out:
 		fprintf(stderr,
 		    "delta: diffs or gfile for %s, but not both.\n",
 		    s->gfile);
-		s->state |= S_WARNED;
 		OUT;
 	}
 
