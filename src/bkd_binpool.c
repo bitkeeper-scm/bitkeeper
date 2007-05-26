@@ -97,7 +97,7 @@ server(int recurse)
 	if (p == 0) return (stdout);
 	free(p);
 	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -BR%d -",
-	    proj_configval(0,"binpool_server"), recurse - 1);
+	    proj_configval(0,"bam_server"), recurse - 1);
 	f = popen(p, "w");
 	free(p);
 	return (f ? f : stdout);

@@ -468,7 +468,7 @@ err:		send_eof(SFIO_LOOKUP);
 	EACH(opts->missing) fprintf(f, "%s\n", opts->missing[i]);
 	fclose(f);
 	p = aprintf("bk -q@'%s' -Lr -Bstdin sfio -qoBR%d - < '%s'",
-	    proj_configval(0, "binpool_server"), opts->recurse - 1, tmpf);
+	    proj_configval(0, "bam_server"), opts->recurse - 1, tmpf);
 	f = popen(p, "r");
 	free(p);
 	unless (f) goto err;

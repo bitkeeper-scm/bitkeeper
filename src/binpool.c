@@ -8,8 +8,8 @@
 /*
  * TODO:
  *  - change on-disk MDBM to support adler32 per page
- *  - check error messages (bk get => 'get: no binpool_server for update.')
- *  - checkout:get shouldn't make multiple binpool_server connections
+ *  - check error messages (bk get => 'get: no bam_server for update.')
+ *  - checkout:get shouldn't make multiple bam_server connections
  *    resolve.c:copyAndGet(), check.c, others?
  *  * clean shouldn't be allowed to run on a binpool server
  *  - check needs a progress bar
@@ -150,7 +150,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	}
 	if (ok || (flags & GET_FORCE)) {
 		if ((flags & (GET_EDIT|PRINT)) ||
-		    !proj_configbool(s->proj, "binpool_hardlinks") ||
+		    !proj_configbool(s->proj, "bam_hardlinks") ||
 		    (link(dfile, gfile) != 0)) {
 			unless (flags & PRINT) unlink(gfile);
 			assert(din->mode);
@@ -388,7 +388,7 @@ bp_fetch(sccs *s, delta *din)
 	if (bp_serverID(&repoID)) return (-1);
 	unless (repoID) return (0);	/* no need to update myself */
 	free(repoID);
-	url = proj_configval(0, "binpool_server");
+	url = proj_configval(0, "bam_server");
 	assert(url);
 
 	unless (din = bp_fdelta(s, din)) return (-1);
@@ -463,7 +463,7 @@ bp_updateServer(char *tiprev, int all, int quiet)
 	if (bp_serverID(&repoID)) return (-1);
 	unless (repoID) return (0); /* no need to update myself */
 	free(repoID);
-	url = proj_configval(0, "binpool_server");
+	url = proj_configval(0, "bam_server");
 	assert(url);
 
 	tmpkeys = bktmp(0, 0);
@@ -552,7 +552,7 @@ bp_serverID(char **id)
 
 	assert(id);
 	*id = 0;
-	unless ((url = proj_configval(0,"binpool_server")) && *url) return (0);
+	unless ((url = proj_configval(0,"bam_server")) && *url) return (0);
 
 	strcpy(cfile, proj_root(0));
 	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
@@ -638,7 +638,7 @@ bp_binpool(void)
 
 /* make local repository contain binpool data for all deltas */
 private int
-binpool_pull_main(int ac, char **av)
+bam_pull_main(int ac, char **av)
 {
 	int	rc, c;
 	char	*p;
@@ -668,7 +668,7 @@ binpool_pull_main(int ac, char **av)
 
 	/* request deltas from server, no recursion (yet) */
 	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -",
-	    proj_configval(0, "binpool_server")));
+	    proj_configval(0, "bam_server")));
 
 	/* unpack locally */
 	cmds = addLine(cmds, strdup("bk sfio -irB -"));
@@ -680,7 +680,7 @@ binpool_pull_main(int ac, char **av)
 
 /* update binpool server with any binpool data committed locally */
 private int
-binpool_push_main(int ac, char **av)
+bam_push_main(int ac, char **av)
 {
 	int	c;
 	int	all = 0, quiet = 0;
@@ -708,7 +708,7 @@ binpool_push_main(int ac, char **av)
  * used by any local deltas.
  */
 private int
-binpool_clean_main(int ac, char **av)
+bam_clean_main(int ac, char **av)
 {
 	FILE	*f;
 	int	i, j, c, dels;
@@ -749,12 +749,12 @@ binpool_clean_main(int ac, char **av)
 		if (bp_serverID(&p2)) return (1);
 		unless (p2) {
 			fprintf(stderr,
-			    "bk binpool clean: No binpool_server set\n");
+			    "bk binpool clean: No bam_server set\n");
 			free(p1);
 			return (1);
 		}
 		free(p2);
-		p2 = proj_configval(0, "binpool_server");
+		p2 = proj_configval(0, "bam_server");
 		/* No recursion, we just want that server's list */
 		cmd = aprintf("%s | "
 			"bk -q@'%s' -Lr -Bstdin havekeys -B -", p1, p2);
@@ -938,22 +938,22 @@ bp_check_findMissing(int quiet, char **missing)
 			fprintf(stderr,
 			    "Looking for %d missing files in %s\n",
 			    nLines(missing),
-			    proj_configval(0, "binpool_server"));
+			    proj_configval(0, "bam_server"));
 		}
 		free(p);
 
 		tmp = bktmp(0, 0);
 		/* no recursion, we are remoted to the server already */
 		p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B - > '%s'",
-		    proj_configval(0, "binpool_server"), tmp);
+		    proj_configval(0, "bam_server"), tmp);
 		f = popen(p, "w");
 		free(p);
 		assert(f);
 		EACH(missing) fprintf(f, "%s\n", missing[i]);
 		if (pclose(f)) {
 			fprintf(stderr,
-			    "Failed to contact binpool_server at %s\n",
-			    proj_configval(0, "binpool_server"));
+			    "Failed to contact bam_server at %s\n",
+			    proj_configval(0, "bam_server"));
 			rc = 1;
 		} else {
 			EACH(missing) {	/* clear array in place */
@@ -983,14 +983,14 @@ bp_check_findMissing(int quiet, char **missing)
 /*
  * Validate the checksums and metadata for all binpool data
  *  delta checksum matches filename and file contents
- *  all binpool deltas have data here or in binpool_server
+ *  all binpool deltas have data here or in bam_server
  *
  * TODO:
  *  - check permissions
  *  - index.db matches logfile
  */
 private int
-binpool_check_main(int ac, char **av)
+bam_check_main(int ac, char **av)
 {
 	int	rc = 0, quiet = 0, fast = 0, n = 0, i;
 	FILE	*f;
@@ -1038,7 +1038,7 @@ binpool_check_main(int ac, char **av)
  * right hash to be data missing from my binpool back to the binpool.
  */
 private int
-binpool_repair_main(int ac, char **av)
+bam_repair_main(int ac, char **av)
 {
 	char	*dir, *cmd, *hval, *p;
 	int	i, c, quiet = 0;
@@ -1136,7 +1136,7 @@ binpool_repair_main(int ac, char **av)
 
 /* check that the log matches the index and vice versa */
 int
-binpool_index_main(int ac, char **av)
+bam_index_main(int ac, char **av)
 {
 	if (proj_cd2root()) {
 		fprintf(stderr, "No repo root?\n");
@@ -1232,7 +1232,7 @@ bp_index_check(int quiet)
 
 /* replay < logfile */
 int
-binpool_replay_main(int ac, char **av)
+bam_replay_main(int ac, char **av)
 {
 	MDBM	*m;
 
@@ -1247,7 +1247,7 @@ binpool_replay_main(int ac, char **av)
 }
 
 int
-binpool_sizes_main(int ac, char **av)
+bam_sizes_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d;
@@ -1255,7 +1255,7 @@ binpool_sizes_main(int ac, char **av)
 	int	errors = 0;
 	u32	bytes;
 
-	for (name = sfileFirst("binpool_sizes", &av[1], 0);
+	for (name = sfileFirst("bam_sizes", &av[1], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
@@ -1281,7 +1281,7 @@ err:			sccs_free(s);
 char	**keys;
 
 int
-binpool_convert_main(int ac, char **av)
+bam_convert_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
@@ -1293,7 +1293,7 @@ binpool_convert_main(int ac, char **av)
 		fprintf(stderr, "Must be run at repo root\n");
 		exit(1);
 	}
-	for (name = sfileFirst("binpool_convert", &av[1], 0);
+	for (name = sfileFirst("bam_convert", &av[1], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
@@ -1441,22 +1441,22 @@ err:		sccs_unlock(s, 'z');
 }
 
 int
-binpool_main(int ac, char **av)
+bam_main(int ac, char **av)
 {
 	int	c, i;
 	struct {
 		char	*name;
 		int	(*fcn)(int ac, char **av);
 	} cmds[] = {
-		{"pull", binpool_pull_main },
-		{"push", binpool_push_main },
-		{"clean", binpool_clean_main },
-		{"check", binpool_check_main },
-		{"repair", binpool_repair_main },
-		{"index", binpool_index_main },
-		{"replay", binpool_replay_main },
-		{"sizes", binpool_sizes_main },
-		{"convert", binpool_convert_main },
+		{"pull", bam_pull_main },
+		{"push", bam_push_main },
+		{"clean", bam_clean_main },
+		{"check", bam_check_main },
+		{"repair", bam_repair_main },
+		{"index", bam_index_main },
+		{"replay", bam_replay_main },
+		{"sizes", bam_sizes_main },
+		{"convert", bam_convert_main },
 		{0, 0}
 	};
 

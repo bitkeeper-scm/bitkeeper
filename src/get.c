@@ -327,7 +327,7 @@ bp_fetchkeys(char *me, int quiet, char **keys, u64 todo)
 {
 	int	i;
 	FILE	*f;
-	char	*server = proj_configval(0, "binpool_server");
+	char	*server = proj_configval(0, "bam_server");
 	char	buf[MAXPATH];
 
 	unless (*server) {

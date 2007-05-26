@@ -322,6 +322,9 @@ proj_configval(project *p, char *key)
 		if (streq(key, "clock_skew")) {
 			ret = mdbm_fetch_str(db, "trust_window");
 		}
+		if (streq(key, "bam_server")) {
+			ret = mdbm_fetch_str(db, "binpool_server");
+		}
 	}
 	return (ret ? ret : "");
 }
@@ -333,7 +336,11 @@ proj_configbool(project *p, char *key)
 	MDBM	*db = proj_config(p);
 
 	assert(db);
-	val = mdbm_fetch_str(db, key);
+	unless (val = mdbm_fetch_str(db, key)) {
+		if (streq(key, "bam_hardlinks")) {
+			val = mdbm_fetch_str(db, "binpool_hardlinks");
+		}
+	}
 	unless (val) return (0);
 	switch(tolower(*val)) {
 	    case '0': if (streq(val, "0")) return (0); break;

@@ -153,9 +153,10 @@ abort
 _adler32
 admin
 annotate
+bam
 base64
 bkd
-binpool
+binpool => bam
 cat
 changes
 check
