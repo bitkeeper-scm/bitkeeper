@@ -854,7 +854,7 @@ makestring(int keynum)
 }
 
 /*
- * A little helper funtion to find hash conflicts for binpool tests
+ * A little helper funtion to find hash conflicts for BAM tests
  * Ex: These 3 files are conflicts: 155 236 317
  */
 int

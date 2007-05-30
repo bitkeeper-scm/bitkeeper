@@ -1416,7 +1416,7 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
-	if (getenv("BKD_BINPOOL")) touch("BitKeeper/log/binpool", 0664);
+	if (getenv("BKD_BAM")) touch("BitKeeper/log/BAM", 0664);
 }
 
 /*
@@ -3043,7 +3043,7 @@ checkTags(sccs *s, int flags)
 /*
  * Dig meta data out of a delta.
  * The buffer looks like ^Ac<T>data where <T> is one character type.
- * A - hash for binpool
+ * A - hash for BAM
  * B - cset file root key
  * C - cset boundry
  * D - dangling delta
@@ -3430,7 +3430,7 @@ misc(sccs *s)
 			    case E_ASCII|E_GZIP:
 			    case E_UUENCODE:
 			    case E_UUENCODE|E_GZIP:
-			    case E_BINPOOL:
+			    case E_BAM:
 				s->encoding = atoi(&buf[5]);
 				break;
 			    default:
@@ -6286,7 +6286,7 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 	MDBM	*namedb = 0;
 	u32	*lnum = 0;
 
-	assert(!BINPOOL(s));
+	assert(!BAM(s));
 	if (EOLN_WINDOWS(s)) eol = "\r\n";
 	slist = d ? serialmap(s, d, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
@@ -6754,7 +6754,7 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 	char	*gfile = 0;
 	int	error = 0;
 
-	assert(BINPOOL(s) && BITKEEPER(s));
+	assert(BAM(s) && BITKEEPER(s));
 	assert(d);
 
 	/*
@@ -6792,13 +6792,11 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 			s->cachemiss = 1;
 			return (1);
 		} else if (bp_fetch(s, d)) {
-			fprintf(stderr,
-			    "binpool: fetch failed for %s\n", s->gfile);
+			fprintf(stderr, "BAM: fetch failed for %s\n", s->gfile);
 			return (1);
 		} else if (error = bp_get(s, d, flags, gfile)) {
 			fprintf(stderr,
-			    "binpool: get after fetch failed for %s\n",
-			    s->gfile);
+			    "BAM: get after fetch failed for %s\n", s->gfile);
 			return (1);
 		}
 	}
@@ -7042,7 +7040,7 @@ err:		if (i2) free(i2);
 	switch (fileType(d->mode)) {
 	    case 0:		/* uninitialized mode, assume regular file */
 	    case S_IFREG:	/* regular file */
-		if (BINPOOL(s)) {
+		if (BAM(s)) {
 			error = get_bp(s, printOut, flags, d, &lines, 0, 0);
 			break;
 		} 
@@ -8150,7 +8148,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		mode = "rt";
 		name = strdup(s->gfile);
 	}
-	if (BINPOOL(s)) {
+	if (BAM(s)) {
 		RET(bp_diff(s, d, name));
 	} else if (HASH(s)) {
 		int	flags = CSET(s) ? DB_KEYFORMAT : 0;
@@ -8535,7 +8533,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	}
 	flags =  GET_ASCII|SILENT|PRINT;
 	if (expandKeyWord) flags |= GET_EXPAND;
-	if (isRegularFile(d->mode) && !BINPOOL(s)) {
+	if (isRegularFile(d->mode) && !BAM(s)) {
 		unless (bktmp(old, "get")) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 		    flags, old)) {
@@ -8551,7 +8549,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	 */
 	if (HASH(s)) {
 		ret = diffMDBM(s, old, new, tmpfile);
-	} else if (BINPOOL(s)) {
+	} else if (BAM(s)) {
 		ret = bp_diff(s, d, new);
 	} else {
 		ret = diff(old, new, DF_DIFF, tmpfile);
@@ -9017,8 +9015,8 @@ ascii(char *file)
 int
 sccs_binaryenc(sccs *s)
 {
-	if (proj_configbool(s ? s->proj : 0, "binpool")) {
-		return (E_BINPOOL);
+	if (proj_configbool(s ? s->proj : 0, "BAM")) {
+		return (E_BAM);
 	} else {
 		return (E_UUENCODE);
 	}
@@ -9048,8 +9046,8 @@ openInput(sccs *s, int flags, FILE **inp)
 	if ((enc == E_ASCII) && !streq("-", file) && !ascii(file)) {
 		enc = sccs_binaryenc(s);
 		s->encoding = enc | compress;
-		/* binpool doesn't support gzip */
-		if (BINPOOL(s)) s->encoding &= ~E_GZIP;
+		/* BAM doesn't support gzip */
+		if (BAM(s)) s->encoding &= ~E_GZIP;
 	}
 	switch (enc) {
 	    case E_ASCII:
@@ -9062,7 +9060,7 @@ openInput(sccs *s, int flags, FILE **inp)
 			*inp = fopen(file, mode);
 		}
 		break;
-	    case E_BINPOOL:
+	    case E_BAM:
 		*inp = 0;
 		break;
 	    default:
@@ -9293,7 +9291,7 @@ out:		sccs_unlock(s, 'z');
 	} else if (isRegularFile(s->mode)) {
 		openInput(s, flags, &gfile);
 		if (BINARY(s) && license_binCheck(s)) goto out;
-		unless (gfile || BINPOOL(s)) {
+		unless (gfile || BAM(s)) {
 			perror(s->gfile);
 			goto out;
 		}
@@ -9463,7 +9461,7 @@ out:		sccs_unlock(s, 'z');
 		if (!d->random && !short_key) {
 			randomBits(buf);
 			assert(buf[0]);
-			if (BINPOOL(s)) {
+			if (BAM(s)) {
 				d->random = malloc(strlen(buf) + 3);
 				sprintf(d->random, "B:%s", buf);
 			} else {
@@ -9508,11 +9506,10 @@ out:		sccs_unlock(s, 'z');
 			}
 		}
 	}
-	if (BINPOOL(s)) {
+	if (BAM(s)) {
 		assert(n == s->table);
 		if (!(flags & DELTA_PATCH) && bp_delta(s, n)) {
-			fprintf(stderr,
-			    "binpool delta of %s failed\n", s->gfile);
+			fprintf(stderr, "BAM delta of %s failed\n", s->gfile);
 			goto out;
 		}
 		added = s->added = n->added;
@@ -9521,7 +9518,7 @@ out:		sccs_unlock(s, 'z');
 		error++;
 		goto out;
 	}
-	if (BINPOOL(s)) goto skip_weave;
+	if (BAM(s)) goto skip_weave;
 	buf[0] = 0;
 	if (s->encoding & E_GZIP) sccs_zputs_init(s, sfile);
 	if (n0) {
@@ -10691,7 +10688,7 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		else if (streq(encp, "ascii")) enc = E_ASCII;
 		else if (streq(encp, "binary")) enc = sccs_binaryenc(sc);
 		else if (streq(encp, "uuencode")) enc = E_UUENCODE;
-		else if (streq(encp, "binpool")) enc = E_BINPOOL;
+		else if (streq(encp, "BAM")) enc = E_BAM;
 		else {
 			fprintf(stderr,	"admin: unknown encoding format %s\n",
 				encp);
@@ -10716,8 +10713,8 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 			    "admin: unknown compression format %s\n", compp);
 			return (-1);
 		}
-		/* No gzip for binpool currently */
-		if (enc == E_BINPOOL) comp = 0;
+		/* No gzip for BAM currently */
+		if (enc == E_BAM) comp = 0;
 	} else if (sc) {
 		comp = (sc->encoding & ~E_DATAENC);
 	} else {
@@ -11558,7 +11555,7 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 	int	offset;
 
 	assert(HASH(sc));
-	assert(!BINPOOL(sc));
+	assert(!BAM(sc));
 	assert(diffs);
 	/*
 	 * If we have a hash already and it is a simple delta, then just
@@ -12803,7 +12800,7 @@ out:
 	}
 	if (flags & PRINT) {
 		fprintf(stdout, "==== Changes to %s ====\n", s->gfile);
-		if (BINPOOL(s)) {
+		if (BAM(s)) {
 			fprintf(stdout, "Binary files differ.\n");
 		} else {
 			fwrite(diffs->mmap, diffs->size, 1, stdout);
@@ -12903,9 +12900,9 @@ out:
 		addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
 	}
 
-	if (BINPOOL(s)) {
+	if (BAM(s)) {
 		if (!(flags & DELTA_PATCH) && bp_delta(s, n)) {
-			fprintf(stderr, "binpool: delta of %s failed\n",
+			fprintf(stderr, "BAM: delta of %s failed\n",
 			    s->gfile);
 			return (-1);
 		}
@@ -12938,7 +12935,7 @@ out:
 	}
 
 	assert(d);
-	unless (BINPOOL(s)) {
+	unless (BAM(s)) {
 		if (delta_body(s, n, diffs,
 			sfile, &added, &deleted, &unchanged)) {
 			OUT;
@@ -14254,8 +14251,8 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 			fs("ascii"); return (strVal);
 		    case E_UUENCODE:
 			fs("uuencode"); return (strVal);
-		    case E_BINPOOL:
-			fs("binpool"); return (strVal);
+		    case E_BAM:
+			fs("BAM"); return (strVal);
 		}
 		return nullVal;
 	}
@@ -14995,7 +14992,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		fs(proj_repoID(0));
 		return (strVal);
 	}
-	case KW_BPHASH: /* BPHASH */
+	case KW_BAMHASH: /* BAMHASH */
 		if (d->hash) {
 			fs(d->hash);
 			return (strVal);

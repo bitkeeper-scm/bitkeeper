@@ -20,7 +20,7 @@ private struct {
 	u32	verbose:1;	/* list the file checkin comments */
 	u32	diffs:1;	/* show diffs with verbose mode */
 	u32	tsearch:1;	/* pattern applies to tags instead of cmts */
-	u32	binpool:1;	/* only include binpool files */
+	u32	BAM:1;		/* only include BAM files */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -97,7 +97,7 @@ changes_main(int ac, char **av)
 		     */
 		    case '1': opts.one = 1; break;
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
-		    case 'B': opts.binpool = 1; break;
+		    case 'B': opts.BAM = 1; break;
 		    case 'c':
 			if (range_addArg(&opts.rargs, optarg, 1)) goto usage;
 			break;
@@ -807,7 +807,7 @@ loadcset(sccs *cset)
 		p = strchr(buf, '\t');
 		assert(p);
 		*p++ = 0;
-		if (opts.binpool) {
+		if (opts.BAM) {
 			/* skip unless rootkey =~ /^B:/ */
 			t = separator(p);
 			assert(t);

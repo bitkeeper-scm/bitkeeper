@@ -6,7 +6,7 @@
 
 private int	get_rollback(sccs *s, char *rev,
 		    char **iLst, char **xLst, char *prog);
-private int	binpool(char *me, int, char **files, char **keys, u64 n, int ac, char **av);
+private int	bam(char *me, int, char **files, char **keys, u64 n, int ac, char **av);
 
 int
 get_main(int ac, char **av)
@@ -257,7 +257,7 @@ err:			sccs_free(s);
 				d = bp_fdelta(s, sccs_findrev(s, rev));
 				bp_files = addLine(bp_files, strdup(name));
 				bp_keys = addLine(bp_keys,
-				    sccs_prsbuf(s, d, 0, BINPOOL_DSPEC));
+				    sccs_prsbuf(s, d, 0, BAM_DSPEC));
 				bp_todo += d->added;	// XXX - not all of it
 				goto next;
 			}
@@ -284,7 +284,7 @@ next:		sccs_free(s);
 		/* If we already had an error don't let this turn that
 		 * into a non-error.
 		 */
-		if (c = binpool(prog, flags & SILENT,
+		if (c = bam(prog, flags & SILENT,
 		    bp_files, bp_keys, bp_todo, ac_optend, av)) {
 		    	errors = c;
 	    	}
@@ -297,7 +297,7 @@ next:		sccs_free(s);
 extern int bp_fetchkeys(char *me, int quiet, char **keys, u64 todo);
 
 private int
-binpool(char *me, int q, char **files, char **keys, u64 todo, int ac, char **av)
+bam(char *me, int q, char **files, char **keys, u64 todo, int ac, char **av)
 {
 	char	*nav[100];
 	FILE	*f;
@@ -305,7 +305,7 @@ binpool(char *me, int q, char **files, char **keys, u64 todo, int ac, char **av)
 
 	unless (files) return (0);
 	if (bp_fetchkeys(me, q, keys, todo)) {
-		fprintf(stderr, "%s: failed to fetch binpool data\n", me);
+		fprintf(stderr, "%s: failed to fetch BAM data\n", me);
 		return (1);
 	}
 	assert(ac < 90);
@@ -327,16 +327,16 @@ bp_fetchkeys(char *me, int quiet, char **keys, u64 todo)
 {
 	int	i;
 	FILE	*f;
-	char	*server = proj_configval(0, "bam_server");
+	char	*server = proj_configval(0, "BAM_server");
 	char	buf[MAXPATH];
 
 	unless (*server) {
-		fprintf(stderr, "%s: no server for binpool data.\n", me);
+		fprintf(stderr, "%s: no server for BAM data.\n", me);
 		return (1);
 	}
 	unless (quiet) {
 		fprintf(stderr,
-		    "Fetching %u binpool files from %s...\n",
+		    "Fetching %u BAM files from %s...\n",
 		    nLines(keys), server);
 	}
 	/* no recursion, I'm remoted to the server already */

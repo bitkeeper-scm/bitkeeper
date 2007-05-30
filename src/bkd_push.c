@@ -220,10 +220,10 @@ cmd_push_part2(int ac, char **av)
 	}
 	proj_reset(0);
 
-	if (bp_binpool() || ((p = getenv("BK_BINPOOL")) && streq(p, "YES"))) {
+	if (bp_hasBAM() || ((p = getenv("BK_BAM")) && streq(p, "YES"))) {
 		// send bp keys
 		putenv("BKD_DAEMON="); /* allow new bkd connections */
-		printf("@BINPOOL@\n");
+		printf("@BAM@\n");
 		fflush(stdout);
 		chdir(ROOT2RESYNC);
 		rc = bp_sendkeys(1, "- < " CSETS_IN, &sfio);
@@ -301,7 +301,7 @@ done:	/*
 }
 
 /*
- * complete a push of binpool data
+ * complete a push of BAM data
  */
 int
 cmd_push_part3(int ac, char **av)
@@ -339,7 +339,7 @@ cmd_push_part3(int ac, char **av)
 	}
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
-	if (streq(buf, "@BINPOOL@")) {
+	if (streq(buf, "@BAM@")) {
 		/*
 		 * Do sfio
 		 */
@@ -371,8 +371,8 @@ cmd_push_part3(int ac, char **av)
 			printf("%c%d\n", BKD_RC, rc);
 			fflush(stdout);
 		}
-	} else if (!streq(buf, "@NOBINPOOL@")) {
-		fprintf(stderr, "expect @BINPOOL@, got <%s>\n", buf);
+	} else if (!streq(buf, "@NOBAM@")) {
+		fprintf(stderr, "expect @BAM@, got <%s>\n", buf);
 		rc = 1;
 		goto done;
 	}

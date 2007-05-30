@@ -19,7 +19,7 @@ typedef struct {
 private int	clone(char **, opts, remote *, char *, char **);
 private	int	clone2(opts opts, remote *r);
 private void	parent(opts opts, remote *r);
-private int	sfio(opts opts, int gz, remote *r, int binpool);
+private int	sfio(opts opts, int gz, remote *r, int BAM);
 private void	usage(void);
 private int	initProject(char *root);
 private	int	lclone(opts, remote *, char *to);
@@ -265,12 +265,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
-	do_part2 = ((p = getenv("BKD_BINPOOL")) && streq(p, "YES")) ||
-	    bp_binpool();
+	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
 	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
 	if (do_part2) {
 		p = aprintf("-r..%s", opts.rev ? opts.rev : "");
-		rc = bkd_binpool_part3(r, envVar, opts.quiet, p);
+		rc = bkd_BAM_part3(r, envVar, opts.quiet, p);
 		free(p);
 		if (rc) goto done;
 	}
@@ -393,7 +392,7 @@ initProject(char *root)
 
 
 private int
-sfio(opts opts, int gzip, remote *r, int binpool)
+sfio(opts opts, int gzip, remote *r, int BAM)
 {
 	int	n, status;
 	pid_t	pid;
@@ -403,7 +402,7 @@ sfio(opts opts, int gzip, remote *r, int binpool)
 	cmds[n = 0] = "bk";
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
-	if (binpool) cmds[++n] = "-B";
+	if (BAM) cmds[++n] = "-B";
 	if (opts.quiet) cmds[++n] = "-q";
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
@@ -628,10 +627,10 @@ out2:		repository_rdunlock(0);
 	}
 
 	if (p) {
-		safe_putenv("BKD_BINPOOL_SERVER=%s", p);
+		safe_putenv("BKD_BAM_SERVER=%s", p);
 		free(p);
 	} else {
-		safe_putenv("BKD_BINPOOL_SERVER=%s", proj_repoID(0));
+		safe_putenv("BKD_BAM_SERVER=%s", proj_repoID(0));
 	}
 
 	chdir(here);
@@ -722,7 +721,7 @@ out:
 	chdir(from);
 
 	putenv("BKD_REPO_ID=");
-	putenv("BKD_BINPOOL_SERVER=");
+	putenv("BKD_BAM_SERVER=");
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
 	remote_free(r);
 	return (0);

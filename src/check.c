@@ -7,7 +7,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-#include "binpool.h"
+#include "bam.h"
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
@@ -23,7 +23,7 @@ private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
 private int	chk_gfile(sccs *s, MDBM *pathDB, int checkout);
 private int	chk_dfile(sccs *s);
-private int	chk_binpool(sccs *, char ***missing);
+private int	chk_BAM(sccs *, char ***missing);
 private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
@@ -91,7 +91,7 @@ check_main(int ac, char **av)
 	char	*t;
 	int	checkout;
 	char	**bp_missing = 0;
-	int	binpool = 0;
+	int	BAM = 0;
 
 	timestamps = 0;
 	while ((c = getopt(ac, av, "aBcdefgpRTvw")) != -1) {
@@ -191,18 +191,18 @@ check_main(int ac, char **av)
 		 * exit code 2 means try again, all other errors should be
 		 * distinct.
 		 */
-		unless ((flags & INIT_NOCKSUM) || BINPOOL(s)) {
+		unless ((flags & INIT_NOCKSUM) || BAM(s)) {
 			/*
-			 * Don't verify checksum's for binpool files.
+			 * Don't verify checksum's for BAM files.
 			 * They might be big and not present.  Instead
 			 * we have a separate command for that.
 			 */
 			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
 			if (s->has_nonl && chk_nlbug(s)) errors |= 0x04;
 		}
-		if (BINPOOL(s)) {
-			binpool = 1;
-			if (chk_binpool(s, &bp_missing)) errors |= 0x04;
+		if (BAM(s)) {
+			BAM = 1;
+			if (chk_BAM(s, &bp_missing)) errors |= 0x04;
 		}
 		if (chk_gfile(s, pathDB, checkout)) errors |= 0x08;
 		if (no_gfile(s)) errors |= 0x08;
@@ -274,7 +274,7 @@ check_main(int ac, char **av)
 		sccs_free(s);
 	}
 	if (e = sfileDone()) return (e);
-	if (binpool && !bp_binpool()) touch("BitKeeper/log/binpool", 0664);
+	if (BAM && !bp_hasBAM()) touch("BitKeeper/log/BAM", 0664);
 	if (all || update_idcache(idDB, keys)) {
 		fprintf(idcache, "#$sum$ %u\n", id_sum);
 		fclose(idcache);
@@ -361,7 +361,7 @@ out:
 		    (checkout == CO_EDIT) ? "edit" : "get",
 		    (timestamps ? "T" : ""));
 		if (verbose) fprintf(stderr,
-		    "check: fetching binpool data...\n");
+		    "check: fetching BAM data...\n");
 		f = popen(buf, "w");
 		EACH(bp_getFiles) fprintf(f, "%s\n", bp_getFiles[i]);
 		if (pclose(f)) errors = 1;
@@ -484,7 +484,7 @@ err:		getMsg2("file_dir_conflict", buf, type, '=', stderr);
 }
 
 private int
-chk_binpool(sccs *s, char ***missing)
+chk_BAM(sccs *s, char ***missing)
 {
 	delta	*d;
 	char	*key;
@@ -493,7 +493,7 @@ chk_binpool(sccs *s, char ***missing)
 	unless (*missing) missing = 0;
 	for (d = s->table; d; d = d->next) {
 		unless (d->hash) continue;
-		key = sccs_prsbuf(s, d, 0, BINPOOL_DSPEC);
+		key = sccs_prsbuf(s, d, 0, BAM_DSPEC);
 		if (bp_check_hash(key, missing, !bp_fullcheck)) rc = 1;
 		free(key);
 	}

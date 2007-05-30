@@ -1,6 +1,6 @@
 #include "sccs.h"
 #include "bkd.h"
-#include "binpool.h"
+#include "bam.h"
 
 private FILE	*server(int recurse);
 
@@ -8,7 +8,7 @@ private FILE	*server(int recurse);
  * Simple key sync.
  * Receive a list of keys on stdin and return a list of
  * keys not found locally.
- * Currently only -B (for binpool) is implemented.
+ * Currently only -B (for BAM) is implemented.
  * With -B, if the key is a 4 tuple, ignore the first one, that's the size,
  * but send it back so we can calculate the total amount to be sent.
  */
@@ -17,13 +17,13 @@ havekeys_main(int ac, char **av)
 {
 	char	*dfile, *key;
 	int	c;
-	int	rc = 0, binpool = 0, recurse = 0;
+	int	rc = 0, BAM = 0, recurse = 0;
 	FILE	*f = 0;
 	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "BR;q")) != -1) {
 		switch (c) {
-		    case 'B': binpool = 1; break;
+		    case 'B': BAM = 1; break;
 		    case 'R': recurse = atoi(optarg); break;
 		    case 'q': break;	/* ignored for now */
 		    default:
@@ -36,15 +36,15 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
 		return (1);
 	}
-	unless (binpool) {
-		fprintf(stderr, "%s: only -B(binpool) supported.\n", av[0]);
+	unless (BAM) {
+		fprintf(stderr, "%s: only -B(BAM) supported.\n", av[0]);
 		return (1);
 	}
 	/*
 	 * What this should do is on the first missing key, popen another
 	 * havekeys to our server (if we have one, else FILE * is just stdout)
 	 * and then fputs the missing keys to that one which will filter through
-	 * both our local binpool and our servers and send back the list of 
+	 * both our local BAM pool and our servers and send back the list of 
 	 * keys that neither of us have.
 	 *
 	 * XXX - the optimization we want is to know if the server is local
@@ -97,7 +97,7 @@ server(int recurse)
 	if (p == 0) return (stdout);
 	free(p);
 	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -BR%d -",
-	    proj_configval(0,"bam_server"), recurse - 1);
+	    proj_configval(0,"BAM_server"), recurse - 1);
 	f = popen(p, "w");
 	free(p);
 	return (f ? f : stdout);
@@ -105,14 +105,14 @@ server(int recurse)
 
 /*
  * An options last part of the bkd connection for clone and pull that
- * examines the incoming data and requests binpool keys that are missing.
+ * examines the incoming data and requests BAM keys that are missing.
  * from the local server.
- * This extra pass is only called if BKD_BINPOOL=YES indicating that the
- * remote bkd has binpool data, and if we share the same binpool server then
+ * This extra pass is only called if BKD_BAM=YES indicating that the
+ * remote bkd has BAM data, and if we share the same BAM server then
  * we won't request data.
  */
 int
-bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
+bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 {
 	FILE	*f;
 	int	i, bytes, rc = 1;
@@ -124,7 +124,7 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 1, !quiet)) {
 		return (-1);
 	}
-	bktmp(cmd_file, "binpoolmsg");
+	bktmp(cmd_file, "BAMmsg");
 	f = fopen(cmd_file, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -143,7 +143,7 @@ bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range)
 	fclose(f);
 	if ((sfio > 0) && !quiet) {
 		p = remote_unparse(r);
-		fprintf(stderr, "Fetching binpool files from %s...\n", p);
+		fprintf(stderr, "Fetching BAM files from %s...\n", p);
 		free(p);
 	}
 	rc = send_file(r, cmd_file, 0);
@@ -201,7 +201,7 @@ bp_sendkeys(int fdout, char *range, u64 *bytep)
 	zout = zputs_init(zputs_hwrite, int2p(fdout));
 	unless (bp_sharedServer()) {
 		cmd = aprintf("bk changes -Bv -nd'"
-		    "$if(:BPHASH:){|:SIZE:|:BPHASH: :KEY: :MD5KEY|1.0:}' %s |"
+		    "$if(:BAMHASH:){|:SIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' %s |"
 		    /* The Wayne meister says one level of recursion.
 		     * It's obvious.  Obvious to Leonardo...
 		     */

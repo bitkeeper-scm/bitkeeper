@@ -477,13 +477,13 @@ private	struct {
 	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote clone",
-	    CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BINPOOL},
+	    CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BAM},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
 	{"remote pull part2",
-	    CMD_BYTES|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BINPOOL},
+	    CMD_BYTES|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BAM},
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
 	{"remote push part2",
-	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK|CMD_BINPOOL},
+	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK|CMD_BAM},
 	{"remote push part3",
 	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
 	{"remote rclone part1", CMD_BYTES},
@@ -519,12 +519,12 @@ cmdlog_start(char **av, int httpMode)
 	}
 
 	/*
-	 * If either side of the connection thinks it has binpool data then
+	 * If either side of the connection thinks it has BAM data then
 	 * we will add in the extra data passes to the protocol.
 	 */
-	if ((cmdlog_flags & CMD_BINPOOL) &&
-	    (((p = getenv("BK_BINPOOL")) && streq(p, "YES")) || bp_binpool())){
-		/* in binpool-mode, allow another part */
+	if ((cmdlog_flags & CMD_BAM) &&
+	    (((p = getenv("BK_BAM")) && streq(p, "YES")) || bp_hasBAM())){
+		/* in BAM-mode, allow another part */
 		cmdlog_flags &= ~CMD_FAST_EXIT;
 		unless (httpMode) cmdlog_flags &= ~(CMD_RDUNLOCK|CMD_WRUNLOCK);
 	}

@@ -414,6 +414,9 @@ bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
 bk lock -U
 echo OK
+
+exit 0
+
 echo $N make sure bkd with -phost:port option works..................$NL
 cd "$HERE/project"
 P=`port 50000`

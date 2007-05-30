@@ -1395,7 +1395,7 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
-	if (BINPOOL(s)) touch("../BitKeeper/log/binpool", 0664);
+	if (BAM(s)) touch("../BitKeeper/log/BAM", 0664);
 	sccs_free(s);
 	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();
@@ -1675,7 +1675,7 @@ sfio(MMAP *m)
 	} while (left);
 	fflush(f);
 	if (pclose(f)) {
-		fprintf(stderr, "takepatch: binpool sfio -i failed.\n");
+		fprintf(stderr, "takepatch: BAM sfio -i failed.\n");
 		return (-1);
 	}
 	return (0);

@@ -782,15 +782,17 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			} else {
 				fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 			}
-			if (bp_binpool()) {
-				fprintf(f, "putenv BK_BINPOOL=YES\n");
+			if (bp_hasBAM()) {
+				fprintf(f, "putenv BK_BAM=YES\n");
 			}
 			unless (bp_serverID(&bp)) {
 				unless (bp) bp = strdup(repo);
 				if (strchr(bp, ' ')) {
-					fprintf(f, "putenv 'BK_BINPOOL_SERVER=%s'\n", bp);
+					fprintf(f,
+					    "putenv 'BK_BAM_SERVER=%s'\n", bp);
 				} else {
-					fprintf(f, "putenv BK_BINPOOL_SERVER=%s\n", bp);
+					fprintf(f,
+					    "putenv BK_BAM_SERVER=%s\n", bp);
 				}
 				free(bp);
 			}
@@ -815,9 +817,9 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 * Send comma separated list of client features so the bkd
 	 * knows which outputs are supported.
 	 *   lkey:1	use leasekey #1 to sign lease requests
-	 *   binpool
+	 *   BAM
 	 */
-	fprintf(f, "putenv BK_FEATURES=lkey:1,binpool\n");
+	fprintf(f, "putenv BK_FEATURES=lkey:1,BAM\n");
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 	if (p) proj_free(p);
@@ -917,7 +919,7 @@ sendServerInfoBlock(int is_rclone)
 		out("LICTYPE=");
 		out(eula_name());
 		out("\n");
-		if (bp_binpool()) out("BINPOOL=YES\n");
+		if (bp_hasBAM()) out("BAM=YES\n");
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));
@@ -934,17 +936,17 @@ sendServerInfoBlock(int is_rclone)
 	out(platform());
 	/*
 	 * Return a comma seperated list of features supported by the bkd.
-	 *   pull-r    pull -r is parsed correctly
-	 *   binpool   support binpool operations
+	 *   pull-r	pull -r is parsed correctly
+	 *   BAM	support BAM operations
 	 */
-	out("\nFEATURES=pull-r,binpool");
+	out("\nFEATURES=pull-r,BAM");
 
 	if (repoid = proj_repoID(0)) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
 		unless (bp_serverID(&p)) {
 			unless (p) p = strdup(repoid);
-			sprintf(buf, "\nBINPOOL_SERVER=%s", p);
+			sprintf(buf, "\nBAM_SERVER=%s", p);
 			out(buf);
 			free(p);
 		}

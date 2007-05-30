@@ -154,6 +154,7 @@ _adler32
 admin
 annotate
 bam
+BAM => bam
 base64
 bkd
 binpool => bam

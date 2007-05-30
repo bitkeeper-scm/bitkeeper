@@ -19,7 +19,7 @@ typedef	struct cset {
 	int	exclude;	/* create new cset with excludes */
 	int	serial;		/* the revs passed in are serial numbers */
 	int	md5out;		/* the revs printed are as md5keys */
-	int	doBinpool;	/* send binpool data */
+	int	doBAM;		/* send BAM data */
 
 	/* numbers */
 	int	verbose;
@@ -29,7 +29,7 @@ typedef	struct cset {
 	int	nfiles;
 	pid_t	pid;		/* adler32 process id */
 
-	char	**binpool;	/* list of keys we need to send */
+	char	**BAM;		/* list of keys we need to send */
 } cset_t;
 
 private	void	csetlist(cset_t *cs, sccs *cset);
@@ -57,7 +57,7 @@ makepatch_main(int ac, char **av)
 	while ((c = getopt(ac, av, "Bdr|sCqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
-		    case 'B': copts.doBinpool = 1; break;
+		    case 'B': copts.doBAM = 1; break;
 		    case 'd':					/* doc 2.0 */
 			nav[++i] = "-d";
 			break;
@@ -118,7 +118,7 @@ cset_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "5BCd|DfHhi;lm|M|qr|svx;")) != -1) {
 		switch (c) {
-		    case 'B': copts.doBinpool = 1; break;
+		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
 		    case 'h': copts.historic++; break;		/* undoc? 2.0 */
@@ -704,20 +704,20 @@ again:	/* doDiffs can make it two pass */
 		    cs->ndeltas, cs->nfiles);
 	}
 	if (cs->makepatch) {
-		if (cs->binpool) fputs("== @SFIO@ ==\n\n", stdout);
+		if (cs->BAM) fputs("== @SFIO@ ==\n\n", stdout);
 		fputs(PATCH_END, stdout);
 		fflush(stdout);
-		if (cs->binpool) {
+		if (cs->BAM) {
 			int	i;
 			FILE	*f;
 
-			/* try and fetch from my local binpool but recurse
+			/* try and fetch from my local BAM pool but recurse
 			 * through to the server.
 			 */
 			f = popen("bk sfio -oqBR1 -", "w");
-			EACH(cs->binpool) fprintf(f, "%s\n", cs->binpool[i]);
+			EACH(cs->BAM) fprintf(f, "%s\n", cs->BAM[i]);
 			if (pclose(f)) {
-				fprintf(stderr, "binpool sfio -o failed.\n");
+				fprintf(stderr, "BAM sfio -o failed.\n");
 				goto fail;
 			}
 		}
@@ -1201,12 +1201,11 @@ sccs_patch(sccs *s, cset_t *cs)
 					}
 				}
 
-			} else if (BINPOOL(s) && copts.doBinpool) {
+			} else if (BAM(s) && copts.doBAM) {
 				assert(d->hash || (!d->added && !d->deleted));
 				if (d->hash) {
-					cs->binpool = addLine(cs->binpool,
-					    sccs_prsbuf(s, d, 0,
-					    BINPOOL_DSPEC));
+					cs->BAM = addLine(cs->BAM,
+					    sccs_prsbuf(s, d, 0, BAM_DSPEC));
 				}
 			} else {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");

@@ -15,7 +15,7 @@
 commercial proj
 bk edit $Q BitKeeper/etc/config
 cp BitKeeper/etc/config c
-grep -v binpool c > BitKeeper/etc/config
+grep -v BAM c > BitKeeper/etc/config
 
 echo $N Trying to check in some binary data .........................$NL
 cp ${BIN1} data
@@ -27,26 +27,26 @@ BIN1=saved_bin
 cp $BIN1 uuencode1
 # test old auto-binary
 bk new $Q uuencode1 || exit 1
-echo binpool:yes >> BitKeeper/etc/config
+echo BAM:yes >> BitKeeper/etc/config
 bk admin $Q -idata -Euuencode uuencode2 || exit 1
-cp $BIN1 binpool1
-cp $BIN1 binpool2
+cp $BIN1 bam1
+cp $BIN1 bam2
 # test auto-binary
-bk new $Q binpool1 || exit 1
-bk new $Q -Ebinpool binpool2 || exit 1
-for f in uuencode1 uuencode2 binpool1 binpool2
+bk new $Q bam1 || exit 1
+bk new $Q -EBAM bam2 || exit 1
+for f in uuencode1 uuencode2 bam1 bam2
 do	bk co $Q -l $f
 	cmp -s ${BIN1} $f || {
 		echo failed $f
 		exit 1
 	}
 done
-bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1 uuencode2 binpool1 binpool2 > OUT
+bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1 uuencode2 bam1 bam2 > OUT
 cat <<EOF >WANT
 none,uuencode
 none,uuencode
-none,binpool
-none,binpool
+none,BAM
+none,BAM
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -55,7 +55,7 @@ echo $N Trying to diffs unchanged binary data .......................$NL
 bk diffs uuencode1 > d.out 2>&1
 touch d.ref
 checkfiles d.out d.ref
-bk diffs binpool1 > d.out 2>&1
+bk diffs bam1 > d.out 2>&1
 checkfiles d.out d.ref
 echo OK
 
@@ -65,7 +65,7 @@ bk co $Q -l uuencode1 || exit 1
 echo OK
 
 echo $N Trying to change some binary data ...........................$NL
-for f in uuencode1 binpool1
+for f in uuencode1 bam1
 do	cp ${BIN2} $f
 	bk ci $Q -y $f || exit 1
 	bk co $Q $f || exit 1
@@ -74,14 +74,14 @@ done
 echo OK
 
 echo $N Checking that revision 1.1 is still OK ......................$NL
-for f in uuencode1 binpool1
+for f in uuencode1 bam1
 do	bk co -r1.1 $Q -G$f $f || exit 1
 	checkfiles ${BIN1} $f
 done
 echo OK
 
 echo $N Trying to clean an encoded file .............................$NL
-for f in uuencode1 binpool1
+for f in uuencode1 bam1
 do	bk co $Q -l $f || exit 1
 	bk clean $f || exit 1
 	test -f uuencode && { echo Clean failed ; exit 1; }

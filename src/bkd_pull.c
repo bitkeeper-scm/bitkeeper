@@ -60,9 +60,9 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
-	if (proj_configbool(0, "binpool") && !bk_hasFeature("binpool")) {
+	if (proj_configbool(0, "BAM") && !bk_hasFeature("BAM")) {
 		out("ERROR-old clients cannot pull "
-		    "from a bkd with binpool enabled\n");
+		    "from a bkd with BAM enabled\n");
 		drain();
 		return (1);
 	}
@@ -73,7 +73,7 @@ cmd_pull_part1(int ac, char **av)
 		goto done;
 	}
 	if (bp_updateServer(tiprev, 0, SILENT)) {
-		fputs("ERROR-unable to update binpool server\n", stdout);
+		fputs("ERROR-unable to update BAM server\n", stdout);
 		goto done;
 	}
 	fputs("@OK@\n", stdout);

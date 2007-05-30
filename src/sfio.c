@@ -22,7 +22,7 @@
 #define	scansize(x)	0
 #else
 #include "sccs.h"
-#include "binpool.h"
+#include "bam.h"
 #endif
 
 #undef	unlink		/* I know the files are writable, I created them */
@@ -339,7 +339,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	}
 
 	/*
-	 * For binpool files we already know the expected checksum so
+	 * For BAM files we already know the expected checksum so
 	 * we don't calculate it again.  If the file is corrupted it
 	 * will be detected when being unpacked.
 	 */
@@ -443,7 +443,7 @@ out_bptuple(char *keys, off_t *byte_count)
 }
 
 /*
- * Go fetch the missing binpool chunks.
+ * Go fetch the missing BAM chunks.
  */
 private void
 missing(off_t *byte_count)
@@ -468,7 +468,7 @@ err:		send_eof(SFIO_LOOKUP);
 	EACH(opts->missing) fprintf(f, "%s\n", opts->missing[i]);
 	fclose(f);
 	p = aprintf("bk -q@'%s' -Lr -Bstdin sfio -qoBR%d - < '%s'",
-	    proj_configval(0, "bam_server"), opts->recurse - 1, tmpf);
+	    proj_configval(0, "BAM_server"), opts->recurse - 1, tmpf);
 	f = popen(p, "r");
 	free(p);
 	unless (f) goto err;
@@ -555,8 +555,7 @@ sfio_in(int extract)
 					fprintf(stderr, "file changed size\n");
 					break;
 				    case SFIO_LOOKUP:
-					fprintf(stderr,
-					    "binpool lookup failed\n");
+					fprintf(stderr, "BAM lookup failed\n");
 					break;
 				    default:
 					fprintf(stderr,
@@ -634,7 +633,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 			}
 		}
 		/* find bp file used by the linked keys and use that */
-		unless (p = mdbm_fetch_str(proj_binpoolIDX(0, 0), file)) {
+		unless (p = mdbm_fetch_str(prof_BAMindex(0, 0), file)) {
 			fprintf(stderr, "sfio: hardlink to %s failed.\n",
 			    file);
 			return (1);
@@ -642,8 +641,8 @@ in_bptuple(char *keys, char *datalen, int extract)
 	} else {
 		sscanf(datalen, "%010d", &todo);
 
-		/* extract to new file in binpool (adler32 is first in keys) */
-		p = file + sprintf(file, "BitKeeper/binpool/%c%c/%.*s",
+		/* extract to new file in BAM pool (adler32 is first in keys) */
+		p = file + sprintf(file, "BitKeeper/BAM/%c%c/%.*s",
 		    keys[0], keys[1], 8, keys);
 		/* find unused entry */
 		for (i = 1; ; i++) {
@@ -663,10 +662,10 @@ in_bptuple(char *keys, char *datalen, int extract)
 			}
 		}
 		/* file is now the right name for this data */
-		p = strchr(file, '/'); /* skip BitKeeper/binpool/ */
+		p = strchr(file, '/'); /* skip BitKeeper/BAM/ */
 		p = strchr(p+1, '/') + 1;
 	}
-	mdbm_store_str(proj_binpoolIDX(0, 1), keys, p, MDBM_REPLACE);
+	mdbm_store_str(prof_BAMindex(0, 1), keys, p, MDBM_REPLACE);
 	bp_logUpdate(keys, p);
 	return (0);
 #else

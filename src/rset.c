@@ -10,7 +10,7 @@ typedef struct {
 	u32	rflg:1;		/* diff two rset */
 	u32	lflg:1;		/* list a rset */
 	u32	md5keys:1;	/* use md5keys instead of revs */
-	u32	binpool:1;	/* only list binpool files */
+	u32	BAM:1;		/* only list BAM files */
 } options;
 
 private int mixed; /* if set, handle long and short keys */
@@ -151,7 +151,7 @@ process(char	*root,
 			unless (p = strchr(p, '|')) break;
 			p++;
 		}
-		if (opts.binpool && !(p && strneq(p, "B:", 2))) {
+		if (opts.BAM && !(p && strneq(p, "B:", 2))) {
 			free(path1);
 			return;
 		}
@@ -419,7 +419,7 @@ rset_main(int ac, char **av)
 	while ((c = getopt(ac, av, "5aBhHl;r;")) != -1) {
 		switch (c) {
 		case '5':	opts.md5keys = 1; break;	/* undoc */
-		case 'B':	opts.binpool = 1; break;	/* undoc */
+		case 'B':	opts.BAM = 1; break;		/* undoc */
 		case 'a':					/* doc 2.0 */	
 				opts.show_all = 1;  /* show deleted files */
 				break;

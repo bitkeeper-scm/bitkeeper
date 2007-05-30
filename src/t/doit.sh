@@ -272,7 +272,7 @@ setup_env()
 	BKL_B2=78FKNY4Z8PgBRkwYgXmLZoTO8jUuj+/8+c3iYFzc/qbhvwWNILnlEZ6ANC+egzex
 	BKL_B3=saqg/e+Lh9Ezo/Tx1cu+n+gZvIwd6q2ArUlnZTzxPLrecK9li3VJT9YkVVKLXA==
 
-	# Valid pro license (bkweb,bugdb,import,airgap,bam)
+	# Valid pro license (bkweb,bugdb,import,airgap,BAM)
 	BKL_PRO=BKL6483734a6368c8080000123dfffff42e572b43
 	BKL_P1=YgAAAo4AAAADgQAAAAFzpAp3dO0ipU5HIRMzAMZSDCR3nuMlicgWyrZw6O4yf9vq
 	BKL_P2=f0augVmI/euY2E68Bqe7EJh5Ey+CrCd6/Rn7FC92DtPwpP1FyVk39FRTuEHVQjqo

@@ -104,9 +104,9 @@ push_main(int ac, char **av)
 
 	if (sane(0, 0) != 0) return (1);
 
-	/* push binpool data to server */
+	/* push BAM data to server */
 	if (bp_updateServer(0, 0, !opts.verbose)) {
-		fprintf(stderr, "push: unable to update binpool server\n");
+		fprintf(stderr, "push: unable to update BAM server\n");
 		exit(1);
 	}
 
@@ -564,7 +564,7 @@ gen_bpdata(int level, int wfd, char *bp_keys)
 
 
 private int
-send_binpool_msg(remote *r, char *bp_keys, char **envVar)
+send_BAM_msg(remote *r, char *bp_keys, char **envVar)
 {
 	FILE	*f;
 	int	rc;
@@ -596,21 +596,21 @@ send_binpool_msg(remote *r, char *bp_keys, char **envVar)
 	fputs("\n", f);
 
 	if (size(bp_keys) == 0) {
-		fprintf(f, "@NOBINPOOL@\n");
+		fprintf(f, "@NOBAM@\n");
 		extra = 0;
 	} else {
 		/*
 		 * Httpd wants the message length in the header
 		 * We have to compute the patch size before we sent
-		 * 10 is the size of "@BINPOOL@"
-		 * 6 is the size of "@END@" string
+		 * 6 is the size of "@BAM@\n"
+		 * 6 is the size of "@END@\n" string
 		 */
 		if (r->type == ADDR_HTTP) {
 			fd = open(DEVNULL_WR, O_WRONLY, 0);
 			m = gen_bpdata(gzip, fd, bp_keys);
 			close(fd);
 			assert(m > 0);
-			extra = m + 10 + 6;
+			extra = m + 6 + 6;
 		} else {
 			extra = 1;
 		}
@@ -620,7 +620,7 @@ send_binpool_msg(remote *r, char *bp_keys, char **envVar)
 	rc = send_file(r, msgfile, extra);
 
 	if (extra > 0) {
-		writen(r->wfd, "@BINPOOL@\n", 10);
+		writen(r->wfd, "@BAM@\n", 6);
 		n = gen_bpdata(gzip, r->wfd, bp_keys);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(opts.out,
@@ -759,10 +759,10 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 		}
 		getline2(r, buf, sizeof(buf));
 	}
-	if (streq(buf, "@BINPOOL@")) {
+	if (streq(buf, "@BAM@")) {
 		unless (bp_keys) {
 			fprintf(stderr,
-	    "push failed: recieved binpool keys when not expected\n");
+	    "push failed: recieved BAM keys when not expected\n");
 			rc = 1;
 			goto done;
 		}
@@ -795,7 +795,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 		return (0);
 	} else if (bp_keys) {
 		fprintf(stderr,
-		    "push failed: @BINPOOL@ section expect got %s\n", buf);
+		    "push failed: @BAM@ section expect got %s\n", buf);
 		rc = 1;
 		goto done;
 	}
@@ -877,7 +877,7 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar,
 		goto done;
 	}
 
-	if (rc = send_binpool_msg(r, bp_keys, envVar)) goto done;
+	if (rc = send_BAM_msg(r, bp_keys, envVar)) goto done;
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (remote_lock_fail(buf, opts.verbose)) {
@@ -997,8 +997,7 @@ push(char **av, remote *r, char **envVar)
 		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
 	}
-	if (bp_binpool() ||
-	    ((p = getenv("BKD_BINPOOL")) && streq(p, "YES"))) {
+	if (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES"))) {
 		bp_keys = bktmp(0, 0);
 	}
 	ret = push_part2(av, r, rev_list, ret, envVar, bp_keys);

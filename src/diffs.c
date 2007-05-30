@@ -258,7 +258,7 @@ usage:			system("bk help -s diffs");
 		 */
 		if (!r1 && WRITABLE(s) && HAS_PFILE(s) && !MONOTONIC(s)) {
 			unless (sccs_hasDiffs(s, flags|ex, 1)) goto next;
-			if (BINPOOL(s)) {
+			if (BAM(s)) {
 				if (flags & DIFF_HEADER) {
 					printf("===== %s %s vs edited =====\n",
 					    s->gfile, sccs_top(s)->rev);

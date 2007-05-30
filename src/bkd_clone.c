@@ -57,14 +57,14 @@ cmd_clone(int ac, char **av)
 			}
 		}
 	}
-	if (bp_binpool() && !bk_hasFeature("binpool")) {
+	if (bp_hasBAM() && !bk_hasFeature("BAM")) {
 		out("ERROR-old clients cannot clone "
-		    "from a bkd with binpool enabled\n");
+		    "from a bkd with BAM enabled\n");
 		drain();
 		return (1);
 	}
 	if (bp_updateServer(rev, 0, SILENT)) {
-		out("ERROR-unable to update binpool server\n");
+		out("ERROR-unable to update BAM server\n");
 		drain();
 		return (1);
 	}

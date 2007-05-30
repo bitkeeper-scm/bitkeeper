@@ -37,8 +37,8 @@ struct project {
 	u32	bklbits;	/* LIC_* from license_bklbits() */
 	int	casefolding;	/* mixed case file system: FOO == foo */
 	int	leaseok;	/* if set, we've checked and have a lease */
-	MDBM	*binpool_idx;	/* binpool index file */
-	int	binpool_write;	/* binpool index file opened for write? */
+	MDBM	*BAM_idx;	/* BAM index file */
+	int	BAM_write;	/* BAM index file opened for write? */
 
 	/* checkout state */
 	MDBM	*coDB;		/* $coDB{rootkey} = e|g|n */
@@ -322,7 +322,7 @@ proj_configval(project *p, char *key)
 		if (streq(key, "clock_skew")) {
 			ret = mdbm_fetch_str(db, "trust_window");
 		}
-		if (streq(key, "bam_server")) {
+		if (streq(key, "BAM_server")) {
 			ret = mdbm_fetch_str(db, "binpool_server");
 		}
 	}
@@ -337,7 +337,7 @@ proj_configbool(project *p, char *key)
 
 	assert(db);
 	unless (val = mdbm_fetch_str(db, key)) {
-		if (streq(key, "bam_hardlinks")) {
+		if (streq(key, "BAM_hardlinks")) {
 			val = mdbm_fetch_str(db, "binpool_hardlinks");
 		}
 	}
@@ -503,9 +503,9 @@ proj_reset(project *p)
 		p->leaseok = -1;
 		if (p->coDB) mdbm_close(p->coDB);
 		p->coDB = 0;
-		if (p->binpool_idx) {
-			mdbm_close(p->binpool_idx);
-			p->binpool_idx = 0;
+		if (p->BAM_idx) {
+			mdbm_close(p->BAM_idx);
+			p->BAM_idx = 0;
 		}
 	} else {
 		/*
@@ -815,9 +815,9 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 	p->coDB = 0;
 	if (freeid) mdbm_close(idDB);
 
-	/* Best effort binpool get/edit */
+	/* Best effort BAM get/edit */
 	if (p->bp_getFiles) {
-		// XXX - what about hardlinks for binpool?
+		// XXX - what about hardlinks for BAM?
 		f = popen("bk get -q -", "w");
 		EACH(p->bp_getFiles) fprintf(f, "%s\n", p->bp_getFiles[i]);
 		(void)pclose(f);
@@ -825,7 +825,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 		p->bp_getFiles = 0;
 	}
 	if (p->bp_editFiles) {
-		// XXX - what about hardlinks for binpool?
+		// XXX - what about hardlinks for BAM?
 		f = popen("bk edit -q -", "w");
 		EACH(p->bp_editFiles) fprintf(f, "%s\n", p->bp_editFiles[i]);
 		(void)pclose(f);
@@ -836,7 +836,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 }
 
 MDBM *
-proj_binpoolIDX(project *p, int write)
+prof_BAMindex(project *p, int write)
 {
 	char	idx[MAXPATH];
 
@@ -844,20 +844,20 @@ proj_binpoolIDX(project *p, int write)
 
 	if (p->rparent) p = p->rparent;
 
-	if (p->binpool_idx) {
-		if (write && !p->binpool_write) {
-			mdbm_close(p->binpool_idx);
-			p->binpool_idx = 0;
+	if (p->BAM_idx) {
+		if (write && !p->BAM_write) {
+			mdbm_close(p->BAM_idx);
+			p->BAM_idx = 0;
 		} else {
-			return (p->binpool_idx);
+			return (p->BAM_idx);
 		}
 	}
-	/* open a new binpool */
-	concat_path(idx, p->root, "BitKeeper/binpool/index.db");
+	/* open a new BAM pool */
+	concat_path(idx, p->root, "BitKeeper/BAM/index.db");
 	if (write || exists(idx)) {
-		p->binpool_idx = mdbm_open(idx,
+		p->BAM_idx = mdbm_open(idx,
 		    write ? O_RDWR|O_CREAT : O_RDONLY, 0666, 8192);
-		p->binpool_write = write;
+		p->BAM_write = write;
 	}
-	return (p->binpool_idx);
+	return (p->BAM_idx);
 }

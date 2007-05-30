@@ -44,7 +44,7 @@ bk ci -ynew $Q exclude || exit 1
 echo binary junk > binary
 bk new -Euuencode $Q binary || exit 1
 echo binary junk > binpool
-bk new -Ebinpool $Q binpool || exit 1
+bk new -EBAM $Q binpool || exit 1
 
 if [ "$PLATFORM" != "WIN32" ]
 then
@@ -184,7 +184,7 @@ C more
  binary junk
 +more junk
 ---
-binpool 1.2 22/0/0 u2 binpool
+binpool 1.2 22/0/0 u2 BAM
 BITKEEPER,CSETMARKED,EOLN_UNIX
 -rw-
 C more

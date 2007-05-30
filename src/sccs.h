@@ -69,7 +69,7 @@ int	checking_rmdir(char *dir);
 #define	GET_REVNUMS	0x40000000	/* get -m: prefix each line with rev */
 #define GET_USER	0x80000000	/* get -u: prefix with user name */
 #define GET_SKIPGET	0x01000000	/* get -g: don't get the file */
-#define	GET_NOREMOTE	0x02000000	/* do not go remote for binpool */
+#define	GET_NOREMOTE	0x02000000	/* do not go remote for BAM */
 #define	GET_ASCII	0x04000000	/* Do not gunzip/uudecode */
 #define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
 #define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
@@ -247,7 +247,7 @@ int	checking_rmdir(char *dir);
 
 #define	E_ASCII		0		/* no encoding */
 #define	E_UUENCODE	1		/* uuenecode it (traditional) */
-#define	E_BINPOOL	2		/* store data in binpool */
+#define	E_BAM		2		/* store data in BAM pool */
 #define	E_GZIP		4		/* gzip the data */
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
@@ -260,7 +260,7 @@ int	checking_rmdir(char *dir);
 #define LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
 #define ASCII(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
 #define BINARY(s)	(((s)->encoding & E_DATAENC) != E_ASCII)
-#define BINPOOL(s)	(((s)->encoding & E_DATAENC) == E_BINPOOL)
+#define BAM(s)		(((s)->encoding & E_DATAENC) == E_BAM)
 #define UUENCODE(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
@@ -329,7 +329,7 @@ int	checking_rmdir(char *dir);
 #define CMD_WRUNLOCK	0x00000010	/* write unlock */
 #define CMD_RDUNLOCK	0x00000020	/* read unlock */
 #define CMD_RETRYLOCK	0x00000040	/* if lock failed, retry */
-#define CMD_BINPOOL	0x00000080	/* optional next pass if binpool */
+#define CMD_BAM		0x00000080	/* optional next pass if BAM */
 
 /*
  * Hash behaviour.  Bitmask.
@@ -373,7 +373,7 @@ int	checking_rmdir(char *dir);
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
-#define	BINPOOL_DSPEC	"$if(:BPHASH:){:BPHASH: :KEY: :MD5KEY|1.0:}"
+#define	BAM_DSPEC	"$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}"
 
 #define	MINUTE	(60)
 #define	HOUR	(60*MINUTE)
@@ -442,7 +442,7 @@ typedef struct delta {
 	char	*pathname;		/* pathname to the file */
 	char	*zone;			/* 08:00 is time relative to GMT */
 	char	*csetFile;		/* id for ChangeSet file */
-	char	*hash;			/* hash of gfile for binpool */
+	char	*hash;			/* hash of gfile for BAM */
 	char	*random;		/* random bits for file ID */
 	ser_t	merge;			/* serial number merged into here */
 	sum_t	sum;			/* checksum of gfile */
@@ -624,7 +624,7 @@ struct sccs {
 	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
-	u32	cachemiss:1;	/* binpool file not found locally */
+	u32	cachemiss:1;	/* BAM file not found locally */
 };
 
 typedef struct {
@@ -1246,8 +1246,8 @@ int	bp_diff(sccs *s, delta *d, char *gfile);
 int	bp_updateServer(char *tiprev, int all, int quiet);
 int	bp_serverID(char **id);
 int	bp_sharedServer(void);
-int	bp_binpool(void);
-int	bkd_binpool_part3(remote *r, char **envVar, int quiet, char *range);
+int	bp_hasBAM(void);
+int	bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range);
 int	bp_sendkeys(int fdout, char *range, u64 *bytes);
 int	zgets_hread(void *token, u8 **buf);
 int	zgets_hfread(void *token, u8 **buf);

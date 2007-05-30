@@ -66,8 +66,7 @@ echo OK
 if [ $DO_REMOTE = YES ]; then
  cd "$HERE/copy"
  echo $N Pull with explicit remote parent ............................$NL
- bk pull -t $Q localhost:"$HERE/project" > /dev/null 2>& 1 ||
-							{ echo failed; exit 1; }
+ bk pull -t $Q localhost:"$HERE/project" || { echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks

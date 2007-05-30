@@ -3,19 +3,19 @@
 #include "bkd.h"
 #include "tomcrypt.h"
 #include "range.h"
-#include "binpool.h"
+#include "bam.h"
 
 /*
  * TODO:
  *  - change on-disk MDBM to support adler32 per page
- *  - check error messages (bk get => 'get: no bam_server for update.')
- *  - checkout:get shouldn't make multiple bam_server connections
+ *  - check error messages (bk get => 'get: no BAM_server for update.')
+ *  - checkout:get shouldn't make multiple BAM_server connections
  *    resolve.c:copyAndGet(), check.c, others?
- *  * clean shouldn't be allowed to run on a binpool server
+ *  * clean shouldn't be allowed to run on a BAM server
  *  - check needs a progress bar
  *  - check show list data files not linked in the index
- *  - binpool gone-file support
- *  - work on errors when binpool repos are used by old clients
+ *  - BAM gone-file support
+ *  - work on errors when BAM repos are used by old clients
  *  - keysync should sync BP data for non-shared server case
  *   ( no need to send all data)
  */
@@ -23,14 +23,14 @@
 /*
  * Theory of operation
  *
- * Binpool store binary deltas by hash under BitKeeper/binpool in
+ * BAM stores binary deltas by hash under BitKeeper/BAM in
  * uncompressed files.  The binary data is detached from the revision
  * history so that clones and pulls can avoid transfering all the
  * data.
  *
  * The files are stored in
- *	BitKeeper/binpool/xy/xyzabc...d1	// data
- *	BitKeeper/binpool/index.db
+ *	BitKeeper/BAM/xy/xyzabc...d1	// data
+ *	BitKeeper/BAM/index.db
  *	// "hash key md5rootkey cset_md5rootkey" => "xy/xyzabc...d1"
  */
 
@@ -41,7 +41,7 @@ private	int	uu2bp(sccs *s);
 #define	INDEX_DELETE	"----delete----"
 
 /*
- * Allocate s->gfile into the binpool and update the delta stuct with
+ * Allocate s->gfile into the BAM pool and update the delta stuct with
  * the correct information.
  */
 int
@@ -49,13 +49,13 @@ bp_delta(sccs *s, delta *d)
 {
 	char	*keys;
 	int	rc;
-	char	*p = aprintf("%s/BitKeeper/log/binpool", proj_root(s->proj));
+	char	*p = aprintf("%s/BitKeeper/log/BAM", proj_root(s->proj));
 
 	unless (exists(p)) touch(p, 0664);
 	free(p);
 	if (bp_hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
 	s->dsum = d->sum;
-	keys = sccs_prsbuf(s, d, 0, BINPOOL_DSPEC);
+	keys = sccs_prsbuf(s, d, 0, BAM_DSPEC);
 	rc = bp_insert(s->proj, s->gfile, keys, 0);
 	free(keys);
 	if (rc) return (-1);
@@ -66,7 +66,7 @@ bp_delta(sccs *s, delta *d)
 }
 
 /*
- * Diff a gfile with the contents of a binpool delta.
+ * Diff a gfile with the contents of a BAM delta.
  * Try to avoid reading any big files if possible.
  *
  * Return:
@@ -91,7 +91,7 @@ bp_diff(sccs *s, delta *d, char *gfile)
 }
 
 /*
- * Find the binpool delta where the data actually changed.
+ * Find the BAM delta where the data actually changed.
  */
 delta *
 bp_fdelta(sccs *s, delta *d)
@@ -99,14 +99,14 @@ bp_fdelta(sccs *s, delta *d)
 	while (d && !d->hash) d = d->parent;
 	unless (d && d->parent) {
 		fprintf(stderr,
-		    "binpool: unable to find binpool delta in %s\n", s->gfile);
+		    "BAM: unable to find BAM delta in %s\n", s->gfile);
 		return (0);
 	}
 	return (d);
 }
 
 /*
- * sccs_get() code path for binpool
+ * sccs_get() code path for BAM
  */
 int
 bp_get(sccs *s, delta *din, u32 flags, char *gfile)
@@ -150,7 +150,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	}
 	if (ok || (flags & GET_FORCE)) {
 		if ((flags & (GET_EDIT|PRINT)) ||
-		    !proj_configbool(s->proj, "bam_hardlinks") ||
+		    !proj_configbool(s->proj, "BAM_hardlinks") ||
 		    (link(dfile, gfile) != 0)) {
 			unless (flags & PRINT) unlink(gfile);
 			assert(din->mode);
@@ -251,7 +251,7 @@ bp_hashgfile(char *gfile, char **hashp, sum_t *sump)
 }
 
 /*
- * Insert the named file into the binpool, checking to be sure that we do
+ * Insert the named file into the BAM pool, checking to be sure that we do
  * not have another file with the same hash but different data.
  * If canmv is set then move instead of copy.
  */
@@ -288,19 +288,19 @@ bp_insert(project *proj, char *file, char *keys, int canmv)
 		file = tmp;
 	}
 	if (rename(file, buf) && fileCopy(file, buf)) {
-nofile:		fprintf(stderr, "binpool: insert to %s failed\n", buf);
+nofile:		fprintf(stderr, "BAM: insert to %s failed\n", buf);
 		unless (canmv) unlink(buf);
 		return (1);
 	}
 domap:
-	/* move p to path relative to binpool dir */
+	/* move p to path relative to BAM dir */
 	while (*p != '/') --p;
 	--p;
 
 	while (*p != '/') --p;
 	*p++ = 0;
 
-	db = proj_binpoolIDX(proj, 1);
+	db = prof_BAMindex(proj, 1);
 	assert(db);
 	j = mdbm_store_str(db, keys, p, MDBM_REPLACE);
 	bp_logUpdate(keys, p);
@@ -309,8 +309,8 @@ domap:
 }
 
 /*
- * Given keys (":BPHASH: :KEY: :MD5ROOTKEY: :CSET_MD5ROOTKEY:") return the .d
- * file in the binpool that contains that data or null if the
+ * Given keys (":BAMHASH: :KEY: :MD5ROOTKEY: :CSET_MD5ROOTKEY:") return the .d
+ * file in the BAM pool that contains that data or null if the
  * data doesn't exist.
  * The pathname returned is malloced and needs to be freed.
  */
@@ -320,7 +320,7 @@ bp_lookupkeys(project *proj, char *keys)
 	MDBM	*db;
 	char	*p, *t;
 
-	unless (db = proj_binpoolIDX(proj, 0)) return (0);
+	unless (db = prof_BAMindex(proj, 0)) return (0);
 	if (t = mdbm_fetch_str(db, keys)) {
 		p = hash2path(proj, 0);
 		t = aprintf("%s/%s", p, t);
@@ -335,7 +335,7 @@ bp_lookupkeys(project *proj, char *keys)
 
 
 /*
- * Find the pathname to the binpool file for the gfile.
+ * Find the pathname to the BAM file for the gfile.
  */
 char *
 bp_lookup(sccs *s, delta *d)
@@ -344,7 +344,7 @@ bp_lookup(sccs *s, delta *d)
 	char	*ret = 0;
 
 	d = bp_fdelta(s, d);
-	keys = sccs_prsbuf(s, d, 0, BINPOOL_DSPEC);
+	keys = sccs_prsbuf(s, d, 0, BAM_DSPEC);
 	ret = bp_lookupkeys(s->proj, keys);
 	free(keys);
 	return (ret);
@@ -352,31 +352,31 @@ bp_lookup(sccs *s, delta *d)
 
 /*
  * Given the adler32 hash of a gfile returns the full pathname to that
- * file in a repo's binpool.
- * if hash==0 just return the path to the binpool
+ * file in a repo's BAM pool.
+ * if hash==0 just return the path to the BAM pool
  */
 private char *
 hash2path(project *proj, char *hash)
 {
 	char    *p, *t;
 	int     i;
-	char    binpool[MAXPATH];
+	char    bam[MAXPATH];
 
 	unless (p = proj_root(proj)) return (0);
-	strcpy(binpool, p);
-	if ((p = strrchr(binpool, '/')) && patheq(p, "/RESYNC")) *p = 0;
-	strcat(binpool, "/BitKeeper/binpool");
+	strcpy(bam, p);
+	if ((p = strrchr(bam, '/')) && patheq(p, "/RESYNC")) *p = 0;
+	strcat(bam, "/BitKeeper/BAM");
 	if (hash) {
-		i = strlen(binpool);
+		i = strlen(bam);
 		if (t = strchr(hash, '.')) *t = 0;
-		sprintf(binpool+i, "/%c%c/%s", hash[0], hash[1], hash);
+		sprintf(bam+i, "/%c%c/%s", hash[0], hash[1], hash);
 		if (t) *t = '.';
 	}
-	return (strdup(binpool));
+	return (strdup(bam));
 }
 
 /*
- * called from slib.c:get_bp() when a binpool file can't be found.
+ * called from slib.c:get_bp() when a BAM file can't be found.
  */
 int
 bp_fetch(sccs *s, delta *din)
@@ -388,7 +388,7 @@ bp_fetch(sccs *s, delta *din)
 	if (bp_serverID(&repoID)) return (-1);
 	unless (repoID) return (0);	/* no need to update myself */
 	free(repoID);
-	url = proj_configval(0, "bam_server");
+	url = proj_configval(0, "BAM_server");
 	assert(url);
 
 	unless (din = bp_fdelta(s, din)) return (-1);
@@ -402,7 +402,7 @@ bp_fetch(sccs *s, delta *din)
 	f = popen(cmd, "w");
 	free(cmd);
 	assert(f);
-	keys = sccs_prsbuf(s, din, 0, BINPOOL_DSPEC);
+	keys = sccs_prsbuf(s, din, 0, BAM_DSPEC);
 	fprintf(f, "%s\n", keys);
 	free(keys);
 	if (pclose(f)) {
@@ -414,8 +414,8 @@ bp_fetch(sccs *s, delta *din)
 }
 
 /*
- * Log an update to the binpool index.db to the file
- * BitKeeper/log/binpool.log
+ * Log an update to the BAM index.db to the file
+ * BitKeeper/log/BAM.log
  * Each entry in that file looks like:
  *  <index key> PATH hash
  *
@@ -430,7 +430,7 @@ bp_logUpdate(char *key, char *val)
 	unless (val) val = INDEX_DELETE;
 	strcpy(buf, proj_root(0));
 	if (proj_isResync(0)) concat_path(buf, buf, RESYNC2ROOT);
-	strcat(buf, "/BitKeeper/log/binpool.index");
+	strcat(buf, "/BitKeeper/log/BAM.index");
 	unless (f = fopen(buf, "a")) return (-1);
 	sprintf(buf, "%s %s", key, val);
 	fprintf(f, "%s %08x\n", buf, adler32(0, buf, strlen(buf)));
@@ -439,7 +439,7 @@ bp_logUpdate(char *key, char *val)
 }
 
 /*
- * Copy all data local to the binpool to my server.
+ * Copy all data local to the BAM pool to my server.
  * XXX we ignore tiprev for now.
  */
 int
@@ -455,7 +455,7 @@ bp_updateServer(char *tiprev, int all, int quiet)
 	kvpair	kv;
 	char	buf[MAXLINE];
 
-	unless (bp_binpool()) return (0);
+	unless (bp_hasBAM()) return (0);
 
 	putenv("BKD_DAEMON="); /* allow new bkd connections */
 
@@ -463,27 +463,27 @@ bp_updateServer(char *tiprev, int all, int quiet)
 	if (bp_serverID(&repoID)) return (-1);
 	unless (repoID) return (0); /* no need to update myself */
 	free(repoID);
-	url = proj_configval(0, "bam_server");
+	url = proj_configval(0, "BAM_server");
 	assert(url);
 
 	tmpkeys = bktmp(0, 0);
 
 	if (all) {
-		unless (bp = proj_binpoolIDX(0, 0)) {
+		unless (bp = prof_BAMindex(0, 0)) {
 			unlink(tmpkeys);
 			free(tmpkeys);
 			return (1);
 		}
 		out = fopen(tmpkeys, "w");
 		for (kv = mdbm_first(bp); kv.key.dsize; kv = mdbm_next(bp)) {
-			sprintf(buf, "BitKeeper/binpool/%s", kv.val.dptr);
+			sprintf(buf, "BitKeeper/BAM/%s", kv.val.dptr);
 			fprintf(out, "|%u|%s\n", size(buf), kv.key.dptr);
 		}
 		fclose(out);
 	} else {
 		/* find local only bp deltas */
 		cmd = aprintf("bk changes -qBv -L -nd'"
-		    "$if(:BPHASH:){|:SIZE:|:BPHASH: :KEY: :MD5KEY|1.0:}' "
+		    "$if(:BAMHASH:){|:SIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' "
 		    "'%s' > '%s'",
 		    url, tmpkeys);
 		if (system(cmd)) {
@@ -507,7 +507,9 @@ bp_updateServer(char *tiprev, int all, int quiet)
 	    "bk", p, "-Lr", "-Bstdin", "havekeys", "-B", "-", SYS);
 	free(p);
 	unless (rc || (sizeof(tmpkeys2) == 0)) {
-		unless (quiet) fprintf(stderr, "Updating binpool at %s\n", url);
+		unless (quiet) {
+			fprintf(stderr, "Updating BAM files at %s\n", url);
+		}
 		in = fopen(tmpkeys2, "r");
 		out = fopen(tmpkeys, "w");
 		while (fnext(buf, in)) {
@@ -537,7 +539,7 @@ bp_updateServer(char *tiprev, int all, int quiet)
 }
 
 /*
- * Find the repo_id of the binpool server and returns it as a malloc'ed
+ * Find the repo_id of the BAM server and returns it as a malloc'ed
  * string in *id.
  * Returns non-zero if we failed to determine the repo_id of the server.
  */
@@ -552,7 +554,7 @@ bp_serverID(char **id)
 
 	assert(id);
 	*id = 0;
-	unless ((url = proj_configval(0,"bam_server")) && *url) return (0);
+	unless ((url = proj_configval(0,"BAM_server")) && *url) return (0);
 
 	strcpy(cfile, proj_root(0));
 	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
@@ -571,7 +573,7 @@ bp_serverID(char **id)
 	fnext(buf, f);
 	chomp(buf);
 	if (pclose(f)) {
-		fprintf(stderr, "Failed to contact binpool server at '%s'\n",
+		fprintf(stderr, "Failed to contact BAM server at '%s'\n",
 		    url);
 		return (-1);
 	}
@@ -597,7 +599,7 @@ bp_sharedServer(void)
 	char	*p = getenv("_BK_IN_BKD");
 	int	inbkd = p && *p;
 
-	unless (bp_binpool()) {
+	unless (bp_hasBAM()) {
 		//ttyprintf("no bp data, shared\n");
 		return (1);
 	}
@@ -607,10 +609,10 @@ bp_sharedServer(void)
 	}
 	unless (local_repoID) local_repoID = strdup(proj_repoID(0));
 	remote_repoID =
-	    getenv(inbkd ? "BK_BINPOOL_SERVER" : "BKD_BINPOOL_SERVER");
+	    getenv(inbkd ? "BK_BAM_SERVER" : "BKD_BAM_SERVER");
 	unless (remote_repoID) {
 		/*
-		 * remote side doesn't support binpool, other error checks
+		 * remote side doesn't support BAM, other error checks
 		 * will catch this.
 		 */
 		//ttyprintf("no remote_id, shared\n");
@@ -626,17 +628,17 @@ bp_sharedServer(void)
 }
 
 int
-bp_binpool(void)
+bp_hasBAM(void)
 {
 	assert(exists(BKROOT));
 	if (proj_isResync(0)) {
-		return (exists("../BitKeeper/log/binpool"));
+		return (exists("../BitKeeper/log/BAM"));
 	} else {
-		return (exists("BitKeeper/log/binpool"));
+		return (exists("BitKeeper/log/BAM"));
 	}
 }
 
-/* make local repository contain binpool data for all deltas */
+/* make local repository contain BAM data for all deltas */
 private int
 bam_pull_main(int ac, char **av)
 {
@@ -648,10 +650,10 @@ bam_pull_main(int ac, char **av)
 		switch (c) {
 		    case 'a':
 			fprintf(stderr,
-			    "binpool pull: -a not implemeneted.\n");
+			    "BAM pull: -a not implemeneted.\n");
 			return (1);
 		    default:
-			system("bk help -s binpool");
+			system("bk help -s BAM");
 			return (1);
 		}
 	}
@@ -660,15 +662,15 @@ bam_pull_main(int ac, char **av)
 	unless (p) return (0);
 	free(p);
 
-	/* list of all binpool deltas */
-	cmds = addLine(cmds, aprintf("bk changes -Bv -nd'" BINPOOL_DSPEC "'"));
+	/* list of all BAM deltas */
+	cmds = addLine(cmds, aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
 
 	/* reduce to list of deltas missing locally, no recursion. */
 	cmds = addLine(cmds, strdup("bk havekeys -B -"));
 
 	/* request deltas from server, no recursion (yet) */
 	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -",
-	    proj_configval(0, "bam_server")));
+	    proj_configval(0, "BAM_server")));
 
 	/* unpack locally */
 	cmds = addLine(cmds, strdup("bk sfio -irB -"));
@@ -678,7 +680,7 @@ bam_pull_main(int ac, char **av)
 	return (rc);
 }
 
-/* update binpool server with any binpool data committed locally */
+/* update BAM server with any BAM data committed locally */
 private int
 bam_push_main(int ac, char **av)
 {
@@ -692,7 +694,7 @@ bam_push_main(int ac, char **av)
 		    case 'q': quiet = 1; break;
 		    case 'r': tiprev = optarg; break;
 		    default:
-			system("bk help -s binpool");
+			system("bk help -s BAM");
 			return (1);
 		}
 	}
@@ -704,7 +706,7 @@ bam_push_main(int ac, char **av)
 }
 
 /*
- * Remove any binpool data from the current repository that is not
+ * Remove any BAM data from the current repository that is not
  * used by any local deltas.
  */
 private int
@@ -714,7 +716,7 @@ bam_clean_main(int ac, char **av)
 	int	i, j, c, dels;
 	hash	*bpdeltas;	/* list of deltakeys to keep */
 	hash	*dfiles;	/* list of data files to delete */
-	MDBM	*db;		/* binpool index file */
+	MDBM	*db;		/* BAM index file */
 	char	**fnames;	/* sorted list of dfiles */
 	hash	*renames = 0;	/* list renamed data files */
 	char	*p1, *p2;
@@ -727,7 +729,7 @@ bam_clean_main(int ac, char **av)
 		switch (c) {
 		    case 'a': check_server = 1; break;
 		    default:
-			system("bk help -s binpool");
+			system("bk help -s BAM");
 			return (1);
 		}
 	}
@@ -735,26 +737,26 @@ bam_clean_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
-	if (sys("bk", "binpool", "check", "-Fq", SYS)) {
+	if (sys("bk", "BAM", "check", "-Fq", SYS)) {
 		fprintf(stderr,
-		    "bk binpool clean: check failed, clean cancelled.\n");
+		    "bk BAM clean: check failed, clean cancelled.\n");
 		return (1);
 	}
 
 	/* save bp deltas in repo */
-	cmd = strdup("bk -r prs -hnd'" BINPOOL_DSPEC "'");
+	cmd = strdup("bk -r prs -hnd'" BAM_DSPEC "'");
 	if (check_server) {
-		/* remove deltas already in binpool server */
+		/* remove deltas already in BAM server */
 		p1 = cmd;
 		if (bp_serverID(&p2)) return (1);
 		unless (p2) {
 			fprintf(stderr,
-			    "bk binpool clean: No bam_server set\n");
+			    "bk BAM clean: No BAM_server set\n");
 			free(p1);
 			return (1);
 		}
 		free(p2);
-		p2 = proj_configval(0, "bam_server");
+		p2 = proj_configval(0, "BAM_server");
 		/* No recursion, we just want that server's list */
 		cmd = aprintf("%s | "
 			"bk -q@'%s' -Lr -Bstdin havekeys -B -", p1, p2);
@@ -769,11 +771,11 @@ bam_clean_main(int ac, char **av)
 		hash_storeStr(bpdeltas, buf, 0);
 	}
 	if (pclose(f)) {
-		fprintf(stderr, "bk binpool clean: failed to contact server\n");
+		fprintf(stderr, "bk BAM clean: failed to contact server\n");
 		return (1);
 	}
 
-	chdir("BitKeeper/binpool");
+	chdir("BitKeeper/BAM");
 
 	/* get list of data files */
 	dfiles = hash_new(HASH_MEMHASH);
@@ -787,7 +789,7 @@ bam_clean_main(int ac, char **av)
 	if (pclose(f)) assert(0); /* shouldn't happen */
 
 	/* walk all bp deltas */
-	db = proj_binpoolIDX(0, 1);
+	db = prof_BAMindex(0, 1);
 	assert(db);
 	fnames = 0;
 	EACH_KV(db) {
@@ -799,7 +801,7 @@ bam_clean_main(int ac, char **av)
 				continue;	/* keep the key */
 			} else {
 				fprintf(stderr,
-				"binpool clean: data for key '%s' missing,\n"
+				"BAM clean: data for key '%s' missing,\n"
 				"\tdeleting key.\n", kv.key.dptr);
 			}
 		}
@@ -906,7 +908,7 @@ bp_check_hash(char *want, char ***missing, int fast)
 		}
 		unless (streq(want, hval)) {
 			fprintf(stderr,
-			    "binpool file %s has a hash mismatch.\n"
+			    "BAM file %s has a hash mismatch.\n"
 			    "want: %s got: %s\n", dfile, want, hval);
 			rc = 1;
 		}
@@ -914,7 +916,7 @@ bp_check_hash(char *want, char ***missing, int fast)
 	}
 	if (strtoul(want, 0, 16) != strtoul(basenm(dfile), 0, 16)) {
 		fprintf(stderr,
-		    "binpool datafile stored under wrong filename: %s\n",
+		    "BAM datafile stored under wrong filename: %s\n",
 		    dfile);
 		rc = 1;
 	}
@@ -938,22 +940,22 @@ bp_check_findMissing(int quiet, char **missing)
 			fprintf(stderr,
 			    "Looking for %d missing files in %s\n",
 			    nLines(missing),
-			    proj_configval(0, "bam_server"));
+			    proj_configval(0, "BAM_server"));
 		}
 		free(p);
 
 		tmp = bktmp(0, 0);
 		/* no recursion, we are remoted to the server already */
 		p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B - > '%s'",
-		    proj_configval(0, "bam_server"), tmp);
+		    proj_configval(0, "BAM_server"), tmp);
 		f = popen(p, "w");
 		free(p);
 		assert(f);
 		EACH(missing) fprintf(f, "%s\n", missing[i]);
 		if (pclose(f)) {
 			fprintf(stderr,
-			    "Failed to contact bam_server at %s\n",
-			    proj_configval(0, "bam_server"));
+			    "Failed to contact BAM_server at %s\n",
+			    proj_configval(0, "BAM_server"));
 			rc = 1;
 		} else {
 			EACH(missing) {	/* clear array in place */
@@ -972,7 +974,7 @@ bp_check_findMissing(int quiet, char **missing)
 	}
 	unless (emptyLines(missing)) {
 		fprintf(stderr,
-		   "Failed to locate binpool data for the following deltas:\n");
+		   "Failed to locate BAM data for the following deltas:\n");
 		EACH(missing) fprintf(stderr, "\t%s\n", missing[i]);
 		rc = 1;
 	}
@@ -981,9 +983,9 @@ bp_check_findMissing(int quiet, char **missing)
 
 
 /*
- * Validate the checksums and metadata for all binpool data
+ * Validate the checksums and metadata for all BAM data
  *  delta checksum matches filename and file contents
- *  all binpool deltas have data here or in bam_server
+ *  all BAM deltas have data here or in BAM_server
  *
  * TODO:
  *  - check permissions
@@ -1006,13 +1008,13 @@ bam_check_main(int ac, char **av)
 		    case 'F': fast = 1; break;
 		    case 'q': quiet = 1; break;
 		    default:
-			system("bk help -s binpool");
+			system("bk help -s BAM");
 			return (1);
 		}
 	}
 
-	/* load binpool deltas and hashs */
-	f = popen("bk -r prs -hnd'" BINPOOL_DSPEC "'", "r");
+	/* load BAM deltas and hashs */
+	f = popen("bk -r prs -hnd'" BAM_DSPEC "'", "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		unless (quiet) fprintf(stderr, "%d\r", ++n);
@@ -1025,17 +1027,17 @@ bam_check_main(int ac, char **av)
 
 	/*
 	 * if we are missing some data make sure it is not covered by the
-	 * binpool server before we complain.
+	 * BAM server before we complain.
 	 */
 	unless ((rc |= bp_check_findMissing(quiet, missing)) || quiet) {
-		fprintf(stderr, "All binpool data was found, check passed.\n");
+		fprintf(stderr, "All BAM data was found, check passed.\n");
 	}
 	return (rc);
 }
 
 /*
  * Examine the files in a directory and add any files that have the
- * right hash to be data missing from my binpool back to the binpool.
+ * right hash to be data missing from my BAM pool back to the BAM pool.
  */
 private int
 bam_repair_main(int ac, char **av)
@@ -1052,12 +1054,12 @@ bam_repair_main(int ac, char **av)
 		switch (c) {
 		    case 'q': quiet = 1; break;
 		    default:
-			system("bk help -s binpool");
+			system("bk help -s BAM");
 			return (1);
 		}
 	}
 	unless (av[optind] && !av[optind+1]) {
-		fprintf(stderr, "usage: bk binpool repair DIR\n");
+		fprintf(stderr, "usage: bk BAM repair DIR\n");
 		return (1);
 	}
 	dir = fullname(av[optind]);
@@ -1065,11 +1067,11 @@ bam_repair_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
-	db = proj_binpoolIDX(0, 0);	/* ok if db is null */
+	db = prof_BAMindex(0, 0);	/* ok if db is null */
 	missing = mdbm_mem();
 
 	/* save the hash for all the bp deltas we are missing */
-	f = popen("bk changes -Bv -nd'" BINPOOL_DSPEC "'", "r");
+	f = popen("bk changes -Bv -nd'" BAM_DSPEC "'", "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);
@@ -1123,7 +1125,7 @@ bam_repair_main(int ac, char **av)
 			unless (quiet) printf("Inserting %s for %s\n", buf, p);
 			if (bp_insert(0, buf, p, 0)) {
 				fprintf(stderr,
-				"binpool repair: failed to insert %s for %s\n",
+				"BAM repair: failed to insert %s for %s\n",
 				buf, p);
 			}
 			/* don't reinsert this key again */
@@ -1184,12 +1186,12 @@ bp_index_check(int quiet)
 	int	log = 0, index = 0, missing = 0, mismatch = 0;
 	kvpair	kv;
 
-	i = proj_binpoolIDX(0, 0);
-	f = fopen("BitKeeper/log/binpool.index", "r");
+	i = prof_BAMindex(0, 0);
+	f = fopen("BitKeeper/log/BAM.index", "r");
 
 	if (!i && !f) return (0);
 	unless (i && f) {
-		fprintf(stderr, "No binpool.index?\n");
+		fprintf(stderr, "No BAM.index?\n");
 		return (1);
 	}
 	m = mdbm_mem();
@@ -1240,7 +1242,7 @@ bam_replay_main(int ac, char **av)
 		fprintf(stderr, "No repo root?\n");
 		exit(1);
 	}
-	m = mdbm_open("BitKeeper/binpool/index.db", O_RDWR|O_CREAT, 0666, 4096);
+	m = mdbm_open("BitKeeper/BAM/index.db", O_RDWR|O_CREAT, 0666, 4096);
 	load_logfile(m, stdin);
 	mdbm_close(m);
 	return (0);
@@ -1255,7 +1257,7 @@ bam_sizes_main(int ac, char **av)
 	int	errors = 0;
 	u32	bytes;
 
-	for (name = sfileFirst("bam_sizes", &av[1], 0);
+	for (name = sfileFirst("BAM_sizes", &av[1], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
@@ -1293,7 +1295,7 @@ bam_convert_main(int ac, char **av)
 		fprintf(stderr, "Must be run at repo root\n");
 		exit(1);
 	}
-	for (name = sfileFirst("bam_convert", &av[1], 0);
+	for (name = sfileFirst("BAM_convert", &av[1], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
@@ -1358,7 +1360,7 @@ bam_convert_main(int ac, char **av)
 }
 
 /*
- * Do surgery on this file to make it be a binpool file instead of
+ * Do surgery on this file to make it be a BAM file instead of
  * a uuencoded file.
  * - extract each version, bp_enter it, fix up the delta struct.
  * - switch the flags
@@ -1422,7 +1424,7 @@ uu2bp(sccs *s)
 err:		sccs_unlock(s, 'z');
 		return (32);
 	}
-	s->encoding = E_BINPOOL;
+	s->encoding = E_BAM;
 	if (delta_table(s, out, 0)) goto err;
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", 'H', s->cksum);
@@ -1463,7 +1465,7 @@ bam_main(int ac, char **av)
 	while ((c = getopt(ac, av, "")) != -1) {
 		switch (c) {
 		    default:
-usage:			system("bk help -s binpool");
+usage:			system("bk help -s BAM");
 			return (1);
 		}
 	}
