@@ -443,12 +443,10 @@ echo OK
 
 echo $N bk gethost with bogus option ................................$NL
 bk gethost -z > /dev/null 2> ERR
-bk grep -iq usage ERR
-if [ $? -ne 0 ]
-then	echo 'failed (bug usage not implemented)'
-else	echo 'OK, fix test'
+bk grep -iq usage ERR || {
+	echo failed
 	exit 1
-fi
+}
 rm -f ERR
 
 echo $N bk getuser with bogus option ................................$NL

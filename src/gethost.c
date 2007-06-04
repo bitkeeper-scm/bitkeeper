@@ -4,15 +4,37 @@
 int
 gethost_main(int ac, char **av)
 {
-	char 	*host;
+	char	*host, *address;
+	int	real = 0, ip = 0, c;
 
-	if (ac == 2 && streq("-r", av[1])) {
+	while ((c = getopt(ac, av, "nr")) != -1) {
+		switch (c) {
+			case 'n': ip = 1; break;
+			case 'r': real = 1; break;
+			default:
+error:				system("bk help -s gethost");
+				return (1);
+		}
+	}
+	if (av[optind]) goto error;
+
+	if (real) {
 		host = sccs_realhost();
 	} else {
 		host = sccs_gethost();
 	}
 	unless (host && *host) return (1);
-	printf("%s\n", host);
+	if (ip) {
+		if (address = hostaddr(host)) {
+			printf("%s\n", address);
+		} else {
+			perror(host);
+			return (1);
+		}
+		return (0);
+	} else {
+		printf("%s\n", host);
+	}
 	/* make sure we have a good domain name */
 	unless (strchr(host, '.')) return (1);
 	return (0);

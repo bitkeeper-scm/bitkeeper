@@ -4,12 +4,15 @@
 bk gethost \- display machine name
 .SH SYNOPSIS
 .B bk gethost
-.[B] \-r
+.[B] \-nr
 .SH DESCRIPTION
 .LP
 Outputs the fully-qualified name of the machine.
 Used primarily when doing \*[BK] scripting.
 .OPTIONS
+.TP
+.B \-n
+print the internet address instead of the host
 .TP
 .B \-r
 print the real host name, ignoring
