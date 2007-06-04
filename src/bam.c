@@ -300,7 +300,7 @@ domap:
 	while (*p != '/') --p;
 	*p++ = 0;
 
-	db = prof_BAMindex(proj, 1);
+	db = proj_BAMindex(proj, 1);
 	assert(db);
 	j = mdbm_store_str(db, keys, p, MDBM_REPLACE);
 	bp_logUpdate(keys, p);
@@ -320,7 +320,7 @@ bp_lookupkeys(project *proj, char *keys)
 	MDBM	*db;
 	char	*p, *t;
 
-	unless (db = prof_BAMindex(proj, 0)) return (0);
+	unless (db = proj_BAMindex(proj, 0)) return (0);
 	if (t = mdbm_fetch_str(db, keys)) {
 		p = hash2path(proj, 0);
 		t = aprintf("%s/%s", p, t);
@@ -469,7 +469,7 @@ bp_updateServer(char *tiprev, int all, int quiet)
 	tmpkeys = bktmp(0, 0);
 
 	if (all) {
-		unless (bp = prof_BAMindex(0, 0)) {
+		unless (bp = proj_BAMindex(0, 0)) {
 			unlink(tmpkeys);
 			free(tmpkeys);
 			return (1);
@@ -721,13 +721,14 @@ bam_clean_main(int ac, char **av)
 	hash	*renames = 0;	/* list renamed data files */
 	char	*p1, *p2;
 	char	*cmd;
-	int	check_server = 0;
+	int	check_server = 0, dryrun = 0;
 	kvpair	kv;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "a")) != -1) {
+	while ((c = getopt(ac, av, "an")) != -1) {
 		switch (c) {
 		    case 'a': check_server = 1; break;
+		    case 'n': dryrun = 1; break;
 		    default:
 			system("bk help -s BAM");
 			return (1);
@@ -789,7 +790,7 @@ bam_clean_main(int ac, char **av)
 	if (pclose(f)) assert(0); /* shouldn't happen */
 
 	/* walk all bp deltas */
-	db = prof_BAMindex(0, 1);
+	db = proj_BAMindex(0, 1);
 	assert(db);
 	fnames = 0;
 	EACH_KV(db) {
@@ -811,7 +812,12 @@ bam_clean_main(int ac, char **av)
 		 * delete the datafile yet because it might be pointed at
 		 * by other delta keys.
 		 */
-		fnames = addLine(fnames, strdup(kv.key.dptr));
+		if (dryrun) {
+			fprintf(stderr,
+			    "BAM clean: would remove %s\n", kv.key.dptr);
+		} else {
+			fnames = addLine(fnames, strdup(kv.key.dptr));
+		}
 	}
 	EACH(fnames) {
 		mdbm_delete_str(db, fnames[i]);
@@ -1067,7 +1073,7 @@ bam_repair_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
-	db = prof_BAMindex(0, 0);	/* ok if db is null */
+	db = proj_BAMindex(0, 0);	/* ok if db is null */
 	missing = mdbm_mem();
 
 	/* save the hash for all the bp deltas we are missing */
@@ -1186,7 +1192,7 @@ bp_index_check(int quiet)
 	int	log = 0, index = 0, missing = 0, mismatch = 0;
 	kvpair	kv;
 
-	i = prof_BAMindex(0, 0);
+	i = proj_BAMindex(0, 0);
 	f = fopen("BitKeeper/log/BAM.index", "r");
 
 	if (!i && !f) return (0);

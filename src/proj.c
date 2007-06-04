@@ -836,7 +836,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 }
 
 MDBM *
-prof_BAMindex(project *p, int write)
+proj_BAMindex(project *p, int write)
 {
 	char	idx[MAXPATH];
 

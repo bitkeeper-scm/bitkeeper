@@ -633,7 +633,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 			}
 		}
 		/* find bp file used by the linked keys and use that */
-		unless (p = mdbm_fetch_str(prof_BAMindex(0, 0), file)) {
+		unless (p = mdbm_fetch_str(proj_BAMindex(0, 0), file)) {
 			fprintf(stderr, "sfio: hardlink to %s failed.\n",
 			    file);
 			return (1);
@@ -665,7 +665,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 		p = strchr(file, '/'); /* skip BitKeeper/BAM/ */
 		p = strchr(p+1, '/') + 1;
 	}
-	mdbm_store_str(prof_BAMindex(0, 1), keys, p, MDBM_REPLACE);
+	mdbm_store_str(proj_BAMindex(0, 1), keys, p, MDBM_REPLACE);
 	bp_logUpdate(keys, p);
 	return (0);
 #else
