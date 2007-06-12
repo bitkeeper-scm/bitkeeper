@@ -7,22 +7,22 @@
 /*
  * Do not change this sturct until we phase out bkd 1.2 support
  */
-typedef struct {
+struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
 	int	delay;			/* wait for (ssh) to drain */
 	int	gzip;			/* -z[level] compression */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
-} opts;
+} *opts;
 
-private int	clone(char **, opts, remote *, char *, char **);
-private	int	clone2(opts opts, remote *r);
-private void	parent(opts opts, remote *r);
-private int	sfio(opts opts, int gz, remote *r, int BAM);
+private int	clone(char **, remote *, char *, char **);
+private	int	clone2(remote *r);
+private void	parent(remote *r);
+private int	sfio(int gz, remote *r, int BAM);
 private void	usage(void);
 private int	initProject(char *root);
-private	int	lclone(opts, remote *, char *to);
+private	int	lclone(remote *, char *to);
 private int	linkdir(char *from, char *dir);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
@@ -33,16 +33,15 @@ int
 clone_main(int ac, char **av)
 {
 	int	c, rc;
-	opts	opts;
 	char	**envVar = 0;
 	remote 	*r = 0;
 	int	link = 0;
 
-	bzero(&opts, sizeof(opts));
-	opts.gzip = 6;
+	opts = calloc(1, sizeof(*opts));
+	opts->gzip = 6;
 	while ((c = getopt(ac, av, "dE:lqr;w|z|")) != -1) {
 		switch (c) {
-		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
+		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
 			unless (strneq("BKU_", optarg, 4)) {
 				fprintf(stderr,
@@ -51,18 +50,18 @@ clone_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'l': link = 1; break;			/* doc 2.0 */
-		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
-		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
-		    case 'w': opts.delay = atoi(optarg); break; /* undoc 2.0 */
+		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
+		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
+		    case 'w': opts->delay = atoi(optarg); break; /* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
-			opts.gzip = optarg ? atoi(optarg) : 6;
-			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
+			opts->gzip = optarg ? atoi(optarg) : 6;
+			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = 6;
 			break;
 		    default:
 			usage();
 	    	}
 	}
-	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	unless (av[optind]) usage();
 	localName2bkName(av[optind], av[optind]);
 	if (av[optind + 1]) {
@@ -94,7 +93,7 @@ clone_main(int ac, char **av)
 	}
 
 	if (link) {
-		return (lclone(opts, r, av[optind+1]));
+		return (lclone(r, av[optind+1]));
 		/* NOT REACHED */
 	}
 	if (av[optind + 1]) {
@@ -124,8 +123,8 @@ err:			if (r) remote_free(r);
 		remote_free(l);
 	}
 
-	if (opts.debug) r->trace = 1;
-	rc = clone(av, opts, r, av[optind+1], envVar);
+	if (opts->debug) r->trace = 1;
+	rc = clone(av, r, av[optind+1], envVar);
 	freeLines(envVar, free);
 	remote_free(r);
 	return (rc);
@@ -139,7 +138,7 @@ usage(void)
 }
 
 private int
-send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
+send_clone_msg(int gzip, remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE    *f;
@@ -152,9 +151,9 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
 	if (gzip) fprintf(f, " -z%d", gzip);
-	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
-	if (opts.quiet) fprintf(f, " -q");
-	if (opts.delay) fprintf(f, " -w%d", opts.delay);
+	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
+	if (opts->quiet) fprintf(f, " -q");
+	if (opts->delay) fprintf(f, " -w%d", opts->delay);
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");
 	fputs("\n", f);
 	fclose(f);
@@ -165,13 +164,13 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 }
 
 private int
-clone(char **av, opts opts, remote *r, char *local, char **envVar)
+clone(char **av, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
 	char	*lic;
 	int	gzip, rc = 2, do_part2;
 
-	gzip = r->port ? opts.gzip : 0;
+	gzip = r->port ? opts->gzip : 0;
 	if (local && exists(local) && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
 		usage();
@@ -181,13 +180,13 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 			(local ? local : "current directory"), strerror(errno));
 		usage();
 	}
-	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
-	if (bkd_connect(r, opts.gzip, !opts.quiet)) goto done;
-	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
+	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
+	if (bkd_connect(r, opts->gzip, !opts->quiet)) goto done;
+	if (send_clone_msg(gzip, r, envVar)) goto done;
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
-	if (remote_lock_fail(buf, !opts.quiet)) {
+	if (remote_lock_fail(buf, !opts->quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
 		if (getServerInfoBlock(r)) {
@@ -242,7 +241,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		}
 	}
 
-	unless (opts.quiet) {
+	unless (opts->quiet) {
 		remote	*l = remote_parse(local, REMOTE_BKDURL);
 
 		fromTo("Clone", r, l);
@@ -251,7 +250,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	getline2(r, buf, sizeof (buf));
 	if (streq(buf, "@TRIGGER INFO@")) { 
-		if (getTriggerInfoBlock(r, !opts.quiet)) goto done;
+		if (getTriggerInfoBlock(r, !opts->quiet)) goto done;
 		getline2(r, buf, sizeof (buf));
 	}
 	unless (streq(buf, "@SFIO@")) goto done;
@@ -261,7 +260,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	rc = 1;
 
 	/* eat the data */
-	if (sfio(opts, gzip, r, 0) != 0) {
+	if (sfio(gzip, r, 0) != 0) {
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
@@ -274,7 +273,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		if (rc) goto done;
 	}
 
-	if (rc = clone2(opts, r)) goto done;
+	if (rc = clone2(r)) goto done;
 
 	rc  = 0;
 done:	if (rc) {
@@ -289,14 +288,14 @@ done:	if (rc) {
 	if (proj_root(0) && (rc != 2)) trigger(av[0], "post");
 
 	repository_unlock(0);
-	unless (rc || opts.quiet) {
+	unless (rc || opts->quiet) {
 		fprintf(stderr, "Clone completed successfully.\n");
 	}
 	return (rc);
 }
 
 private	int
-clone2(opts opts, remote *r)
+clone2(remote *r)
 {
 	char	*p;
 	char	*checkfiles;
@@ -318,13 +317,14 @@ clone2(opts opts, remote *r)
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
-	sccs_rmUncommitted(opts.quiet, f);
+	sccs_rmUncommitted(opts->quiet, f);
 	fclose(f);
 
+	parent(r);
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
-	if (opts.rev) {
-		rc = after(opts.quiet, opts.rev);
+	if (opts->rev) {
+		rc = after(opts->quiet, opts->rev);
 		if (rc == 2) {
 			/* undo exits 2 if it has no work to do */
 			goto docheck;
@@ -335,10 +335,10 @@ clone2(opts opts, remote *r)
 		}
 	} else {
 docheck:	/* undo already runs check so we only need this case */
-		unless (opts.quiet) {
+		unless (opts->quiet) {
 			fprintf(stderr, "Running consistency check ...\n");
 		}
-		p = opts.quiet ? "-fT" : "-fvT";
+		p = opts->quiet ? "-fT" : "-fvT";
 		if (proj_configbool(0, "partial_check")) {
 			rc = run_check(checkfiles, p);
 		} else {
@@ -365,7 +365,7 @@ docheck:	/* undo already runs check so we only need this case */
 		    default: p = 0; break;
 		}
 		if (p) {
-			unless (opts.quiet) {
+			unless (opts->quiet) {
 				fprintf(stderr, "Checking out files...\n");
 			}
 			sys("bk", "-Ur", p, "-TSq", SYS);
@@ -392,7 +392,7 @@ initProject(char *root)
 
 
 private int
-sfio(opts opts, int gzip, remote *r, int BAM)
+sfio(int gzip, remote *r, int BAM)
 {
 	int	n, status;
 	pid_t	pid;
@@ -403,21 +403,21 @@ sfio(opts opts, int gzip, remote *r, int BAM)
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
 	if (BAM) cmds[++n] = "-B";
-	if (opts.quiet) cmds[++n] = "-q";
+	if (opts->quiet) cmds[++n] = "-q";
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
 	if (pid == -1) {
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	}
-	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
+	gunzipAll2fd(r->rfd, pfd, gzip, &(opts->in), &(opts->out));
 	close(pfd);
 	waitpid(pid, &status, 0);
-	if (gzip && !opts.quiet) {
+	if (gzip && !opts->quiet) {
+		fprintf(stderr, "%s uncompressed to %s, ",
+		    psize(opts->in), psize(opts->out));
 		fprintf(stderr,
-		    "%s uncompressed to %s, ", psize(opts.in), psize(opts.out));
-		fprintf(stderr,
-		    "%.2fX expansion\n", (double)opts.out/opts.in);
+		    "%.2fX expansion\n", (double)opts->out/opts->in);
 	}
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));
@@ -512,7 +512,7 @@ after(int quiet, char *rev)
 }
 
 private void
-parent(opts opts, remote *r)
+parent(remote *r)
 {
 	char	*cmds[20];
 	char	*p;
@@ -521,7 +521,7 @@ parent(opts opts, remote *r)
 	assert(r);
 	cmds[i = 0] = "bk";
 	cmds[++i] = "parent";
-	if (opts.quiet) cmds[++i] = "-q";
+	if (opts->quiet) cmds[++i] = "-q";
 	cmds[++i] = p = remote_unparse(r);
 	cmds[++i] = 0;
 	spawnvp(_P_WAIT, "bk", cmds);
@@ -567,7 +567,7 @@ rmEmptyDirs(int quiet)
  * Hard link from the source to the destination.
  */
 private int
-lclone(opts opts, remote *r, char *to)
+lclone(remote *r, char *to)
 {
 	sccs	*s;
 	FILE	*f;
@@ -607,13 +607,13 @@ out1:		remote_free(r);
 	}
 
 	/* Make sure the rev exists before we get started */
-	if (opts.rev) {
+	if (opts->rev) {
 		if (s = sccs_csetInit(SILENT)) {
-			hasrev = (sccs_findrev(s, opts.rev) != 0);
+			hasrev = (sccs_findrev(s, opts->rev) != 0);
 			sccs_free(s);
 			unless (hasrev) {
 				fprintf(stderr, "ERROR: rev %s doesn't exist\n",
-				    opts.rev);
+				    opts->rev);
 				goto out2;
 			}
 		}
@@ -621,7 +621,7 @@ out1:		remote_free(r);
 	if (bp_serverID(&p)) goto out2;
 
 	/* give them a change to disallow it */
-	if (out_trigger(0, opts.rev, "pre")) {
+	if (out_trigger(0, opts->rev, "pre")) {
 out2:		repository_rdunlock(0);
 		goto out1;
 	}
@@ -647,7 +647,7 @@ out:
 		chdir(from);
 		repository_rdunlock(0);
 		remote_free(r);
-		out_trigger("BK_STATUS=FAILED", opts.rev, "post");
+		out_trigger("BK_STATUS=FAILED", opts->rev, "post");
 		return (1);
 	}
 	if (mkdirp(to)) {
@@ -668,7 +668,7 @@ out:
 	setlevel(level);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		unless (opts.quiet || streq(".", buf)) {
+		unless (opts->quiet || streq(".", buf)) {
 			fprintf(stderr, "Linking %s\n", buf);
 		}
 		if (linkdir(from, buf)) {
@@ -706,12 +706,12 @@ out:
 	repository_rdunlock(0);
 	fromid = proj_repoID(0);
 	if (chdir(dest)) goto out;
-	if (clone2(opts, r)) {
-		in_trigger("BK_STATUS=FAILED", opts.rev, from, fromid);
+	if (clone2(r)) {
+		in_trigger("BK_STATUS=FAILED", opts->rev, from, fromid);
 		mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
 		goto out;
 	}
-	in_trigger("BK_STATUS=OK", opts.rev, from, fromid);
+	in_trigger("BK_STATUS=OK", opts->rev, from, fromid);
 
 	/*
 	 * The repo may be readlocked (if there were triggers then the
@@ -722,7 +722,7 @@ out:
 
 	putenv("BKD_REPO_ID=");
 	putenv("BKD_BAM_SERVER=");
-	out_trigger("BK_STATUS=OK", opts.rev, "post");
+	out_trigger("BK_STATUS=OK", opts->rev, "post");
 	remote_free(r);
 	return (0);
 }
