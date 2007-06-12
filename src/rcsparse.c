@@ -2,7 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "rcs.h"
-#include "zlib/zlib.h"
 
 private	int	eatlog(RCS *rcs, MMAP *m);
 private	int	eatdelta(RCS *rcs, MMAP *m);

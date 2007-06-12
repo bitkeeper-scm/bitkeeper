@@ -18,7 +18,8 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	tty.o ttyprintf.o \
 	utils.o \
 	webencode.o \
-	which.o)
+	which.o \
+	zgets.o)
 
 UTILS_HDRS = lines.h mmap.h style.h system.h unix.h win32.h
 

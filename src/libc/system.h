@@ -36,6 +36,7 @@
 #include "mmap.h"
 #include "hash.h"
 #include "mdbm/mdbm.h"
+#include "zlib/zlib.h"
 
 #ifndef	isascii
 #define	isascii(x)	(((x) & ~0x7f) == 0)
@@ -229,5 +230,25 @@ char	*webdecode(char *data, char **buf, int *sizep);
 
 /* which.c */
 char	*which(char *prog);
+
+/* zgets.c */
+typedef	struct zgetbuf zgetbuf;
+typedef	int (*zgets_func)(void *token, u8 **buf);
+
+zgetbuf	*zgets_init(void *start, int len);
+zgetbuf	*zgets_initCustom(zgets_func callback, void *token);
+char	*zgets(zgetbuf *);
+int	zseek(zgetbuf *, int len);
+int	zread(zgetbuf *, u8 *buf, int len);
+int	zeof(zgetbuf *);
+char	*zpeek(zgetbuf *, int len);
+int	zgets_done(zgetbuf *);
+
+typedef	struct zputbuf zputbuf;
+typedef void (*zputs_func)(void *, u8 *, int);
+
+zputbuf	*zputs_init(zputs_func callback, void *token);
+int	zputs(zputbuf *, u8 *data, int len);
+int	zputs_done(zputbuf *);
 
 #endif /* _SYSTEM_H */

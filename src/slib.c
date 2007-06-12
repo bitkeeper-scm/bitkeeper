@@ -10,7 +10,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "resolve.h"
-#include "zgets.h"
 #include "bkd.h"
 #include "logging.h"
 #include "tomcrypt.h"
@@ -2112,15 +2111,14 @@ ok:
 	return (e);
 }
 
-
 private inline char *
 peek(sccs *s)
 {
-	if (s->encoding & E_GZIP) return (zpeek()); 
+	if (s->encoding & E_GZIP) return (zpeek(s->zin, 2));
 	return (s->where);
 }
 
-off_t
+private off_t
 sccstell(sccs *s)
 {
 	return (s->where - s->mmap);
@@ -2158,7 +2156,7 @@ private inline char *
 nextdata(sccs *s)
 {
 	unless (s->encoding & E_GZIP) return (fastnext(s));
-	return (zgets());
+	return (zgets(s->zin));
 }
 
 /*
@@ -2186,7 +2184,9 @@ chk_nlbug(sccs *s)
 	int	ret = 0;
 
 	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+	}
 	while (buf = nextdata(s)) {
 		if (buf[0] == '\001' && buf[1] == 'E') {
 			p = buf + 3;
@@ -2198,7 +2198,8 @@ chk_nlbug(sccs *s)
 		}
 		sawblank = (buf[0] == '\n');
 	}
-	if ((s->encoding & E_GZIP) && zgets_done()) ret = 1;
+	if ((s->encoding & E_GZIP) && zgets_done(s->zin)) ret = 1;
+	s->zin = 0;
 	return (ret);
 }
 
@@ -5564,15 +5565,38 @@ fputmeta(sccs *s, u8 *buf, FILE *out)
 	return (sum);
 }
 
-private void
-gzip_sum(void *p, u8 *buf, int len, FILE *out)
-{
-	register unsigned int sum = 0;
-	register int i;
+/*
+ * Data for zputs() to writes it's data.  We currently can only write
+ * one sfile at a time.
+ */
+private	zputbuf	*zput;
 
-	for (i = 0; i < len; sum += buf[i++]);
-	((sccs *)p)->cksum += (sum_t)sum;
-	fwrite(buf, 1, len, out);
+private void
+gzip_sum(void *data, u8 *buf, int len)
+{
+	sccs	*s = ((void **)data)[0];
+	FILE	*f = ((void **)data)[1];
+	u32	sum = 0;
+	int	i;
+
+	if (len) {
+		for (i = 0; i < len; sum += buf[i++]);
+		s->cksum += (sum_t)sum;
+		fwrite(buf, 1, len, f);
+	} else {
+		free(data);
+	}
+}
+
+private void
+sccs_zputs_init(sccs *s, FILE *fout)
+{
+	void	**data = malloc(2 * sizeof(void *));
+
+	data[0] = s;
+	data[1] = fout;
+	zput = zputs_init(gzip_sum, data);
+	assert(zput);
 }
 
 /*
@@ -5607,42 +5631,23 @@ fputbumpserial(sccs *s, u8 *buf, int inc, FILE *out)
 /*
  * Like fputmeta, but optionally compresses the data stream.
  * This is used for the data section exclusively.
- * Note that only the first line of the buffer is considered valid.
  */
-
-/* These will be hung off the sccs structure in the near future.  */
-static u8 data_block[8192];
-static u8 *data_next = data_block;
-
 private sum_t
 fputdata(sccs *s, u8 *buf, FILE *out)
 {
-	unsigned int sum = 0, c;
-	u8	*p, *q;
+	u32	sum = 0;
+	u8	*p = buf;
 
-	/* Checksum up to and including the first newline
-	 * or the end of the string.
-	 */
-	p = buf;
-	q = data_next;
-	for (;;) {
-		c = *p++;
-		if (c == '\0') break;
-		sum += c;
-		*q++ = c;
-		if (q == &data_block[sizeof(data_block)]) {
-			if (s->encoding & E_GZIP) {
-				zputs((void *)s, out, data_block,
-				      sizeof(data_block), gzip_sum);
-			} else {
-				fwrite(data_block, sizeof(data_block), 1, out);
-			}
-			q = data_block;
-		}
-		if (c == '\n') break;
+	while (*p) {
+		sum += *p;
+		if (*p++ == '\n') break;
 	}
-	data_next = q;
-	unless (s->encoding & E_GZIP) s->cksum += sum;
+	if (s->encoding & E_GZIP) {
+		zputs(zput, buf, p - buf);
+	} else {
+		fwrite(buf, 1, p - buf, out);
+		s->cksum += sum;
+	}
 	return (sum);
 }
 
@@ -5651,20 +5656,9 @@ private int
 fflushdata(sccs *s, FILE *out)
 {
 	if (s->encoding & E_GZIP) {
-		if (data_next != data_block) {
-			zputs((void *)s, out, data_block,
-			      data_next - data_block,
-			      gzip_sum);
-		}
-		zputs_done((void *)s, out, gzip_sum);
-	} else {
-		if (data_next != data_block) {
-			fwrite(data_block,
-			       data_next - data_block, 1, out);
-		}
+		zputs_done(zput);
+		zput = 0;
 	}
-	data_next = data_block;
-	debug((stderr, "SUM2 %u\n", s->cksum));
 	if (flushFILE(out) && (errno != EPIPE)) {
 		perror(s->sfile);
 		s->io_error = s->io_warned = 1;
@@ -6416,7 +6410,9 @@ out:			if (slist) free(slist);
 		}
 	}
 	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+	}
 	seq = 0;
 	sum = 0;
 	added = 0;
@@ -6652,10 +6648,11 @@ write:
 		}
 	}
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) {
+		if (zgets_done(s->zin)) {
 			error = 1;
 			s->io_error = s->io_warned = 1;
 		}
+		s->zin = 0;
 	}
 
 	if (error) {
@@ -7281,7 +7278,9 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	slist = serialmap(s, d, 0, 0, &error);
 	state = allocstate(0, s->nextserial);
 	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+	}
 	side = NEITHER;
 	nextside = NEITHER;
 
@@ -7349,11 +7348,12 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	ret = 0;
 done:   
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) {
+		if (zgets_done(s->zin)) {
 			s->io_error = 1;
 			ret = -1; /* compression failure */
 		}
-	}		
+		s->zin = 0;
+	}
 done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
 	if (lbuf) {
 		if (flushFILE(lbuf)) {
@@ -8007,7 +8007,6 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	int	lf_pend = 0;
 	u32	eflags = flags; /* copy because expandnleq destroys bits */
 	int	error = 0, serial;
-	int	in_zgets = 0;
 
 #define	RET(x)	{ different = x; goto out; }
 
@@ -8057,8 +8056,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	state = allocstate(0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		in_zgets = 1;
+		s->zin = zgets_init(s->where, s->size - s->data);
 	}
 	while (fbuf = nextdata(s)) {
 		if (isData(fbuf)) {
@@ -8195,7 +8193,10 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	debug((stderr, "diff because EOF on sfile\n"));
 	RET(1);
 out:
-	if (in_zgets) zgets_done();
+	if (s->zin) {
+		zgets_done(s->zin);
+		s->zin = 0;
+	}
 	if (gfile) mclose(gfile); /* must close before we unlink */
 	if (ghash) mdbm_close(ghash);
 	if (shash) mdbm_close(shash);
@@ -9360,7 +9361,7 @@ out:		sccs_unlock(s, 'z');
 		goto out;
 	}
 	buf[0] = 0;
-	if (s->encoding & E_GZIP) zputs_init();
+	if (s->encoding & E_GZIP) sccs_zputs_init(s, sfile);
 	if (n0) {
 		fputdata(s, "\001I 2\n", sfile);
 	} else {
@@ -11049,8 +11050,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 	if (rmlicense) obscure_it = 1;
-	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
-	if (new_enc & E_GZIP) zputs_init();
+	if (old_enc & E_GZIP) {
+		sc->zin = zgets_init(sc->where, sc->size - sc->data);
+	}
+	if (new_enc & E_GZIP) sccs_zputs_init(sc, sfile);
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
 	while (buf = nextdata(sc)) {
@@ -11096,7 +11099,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
 	if (old_enc & E_GZIP) {
-		if (zgets_done()) OUT;
+		if (zgets_done(sc->zin)) OUT;
+		sc->zin = 0;
 	}
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
@@ -11194,8 +11198,10 @@ out:
 	assert(s->state & S_SOPEN);
 	seekto(s, s->data);
 	debug((stderr, "seek to %d\n", (int)s->data));
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
-	if (s->encoding & E_GZIP) zputs_init();
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, sfile);
+	}
 	while (buf = nextdata(s)) {
 		unless (buf[0] == '\001') {
 			fputdata(s, buf, sfile);
@@ -11214,7 +11220,8 @@ out:
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s), fclose(sfile), sfile = NULL;
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) OUT;
+		if (zgets_done(s->zin)) OUT;
+		s->zin = 0;
 	}
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
@@ -11508,8 +11515,8 @@ again:
 	 */
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		zputs_init();
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, out);
 	}
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
@@ -11650,7 +11657,8 @@ newcmd:
 	if (state) free(state);
 	if (slist) free(slist);
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) return (-1);
+		if (zgets_done(s->zin)) return (-1);
+		s->zin = 0;
 	}
 	if (last) {
 		off_t	end = offset;
@@ -11747,8 +11755,8 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		zputs_init();
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, f);
 	}
 	while (line = nextdata(s)) {
 		assert(strneq(line, "\001I ", 3));
@@ -11788,7 +11796,10 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	for ( ; line; line = nextdata(s)) {
 		fputdata(s, line, f);
 	}
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		zgets_done(s->zin);
+		s->zin = 0;
+	}
 	if (fflushdata(s, f)) return (-1);
 	return (0);
 }
@@ -12341,8 +12352,8 @@ abort:		fclose(sfile);
 	}
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		zputs_init();
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, sfile);
 	}
 	assert(s->state & S_SOPEN);
 	while (buf = nextdata(s)) {
@@ -12350,7 +12361,8 @@ abort:		fclose(sfile);
 	}
 	if (fflushdata(s, sfile)) goto abort;
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) goto abort;
+		if (zgets_done(s->zin)) goto abort;
+		s->zin = 0;
 	}
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
@@ -16187,8 +16199,8 @@ stripDeltas(sccs *s, FILE *out)
 	state = allocstate(0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		zputs_init();
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, out);
 	}
 	while (buf = nextdata(s)) {
 		if (isData(buf)) {
@@ -16206,7 +16218,8 @@ stripDeltas(sccs *s, FILE *out)
 	free(slist);
 	if (fflushdata(s, out)) return (1);
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) return (1);
+		if (zgets_done(s->zin)) return (1);
+		s->zin = 0;
 	}
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);

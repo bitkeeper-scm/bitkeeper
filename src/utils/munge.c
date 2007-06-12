@@ -8,7 +8,6 @@
  * Copyright (c) 1999 Larry McVoy
  */
 #include "system.h"
-#include "../zlib/zlib.h"
 #include "../inskeys.h"
 
 #define	OUTPUT	"_data.c"

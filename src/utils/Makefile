@@ -57,7 +57,7 @@ _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball
 
 $(IMAGE): extractor.o $(SYSTEM_OBJS) _data.o $(RESOURCES)
 	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
-	    ../zlib/libz.a $(RESOURCES) -o $@
+	    $(RESOURCES) -o $@
 
 resources.o: resources.rc ../win32/data/box_software.ico
 	windres -o $@ resources.rc
@@ -69,7 +69,7 @@ sfio_utils.o: sfio_utils.c
 	$(CC) -c $(CFLAGS) $(CPPFLAGS) -DSFIO_STANDALONE sfio_utils.c -o $@
 
 sfio$(EXE): $(SFIO_OBJS)
-	$(LD) $(LFLAGS) $(SFIO_OBJS) $(SYSTEM_OBJS) $(LIBS) ../zlib/libz.a -o $@
+	$(LD) $(LFLAGS) $(SFIO_OBJS) $(SYSTEM_OBJS) $(LIBS) -o $@
 
 installtool: ../port/$(SYS)_platform.tcl installtool.tcl font.tcl \
 	../gui/tkwizard.tcl ../gui/common.tcl \
@@ -92,10 +92,10 @@ html: ../bk$(EXE) A P
 	../bk inskeys /home/lm/public_html/bk-pro.bin P
 
 munge$(EXE): munge.o
-	$(LD) $(LFLAGS) munge.o $(SYSTEM_OBJS) $(LIBS) ../zlib/libz.a -o $@
+	$(LD) $(LFLAGS) munge.o $(SYSTEM_OBJS) $(LIBS) -o $@
 
 zz$(EXE): zz.o
-	$(LD) $(LFLAGS) zz.o $(SYSTEM_OBJS) $(LIBS) ../zlib/libz.a -o $@
+	$(LD) $(LFLAGS) zz.o $(SYSTEM_OBJS) $(LIBS) -o $@
 
 .PHONY: clean
 clean:

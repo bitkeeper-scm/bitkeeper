@@ -2,7 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-#include "zlib/zlib.h"
 
 typedef	struct cset {
 	/* bits */

@@ -1,0 +1,44 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+#
+# Copyright 2002 Rick Smith
+
+# Tests for storing sfile compressed.
+echo $N Tickle an internal corner case in peek ......................$NL
+commercial project
+
+# stores in uncompressed sfile as 4 byte lines: ^A^Ax\n
+# string of 4 lines
+printf "\001a\n\001b\n\001c\n\001d\n" > foo	# stored as 16 chars, 2^^2 lin
+cat foo foo foo foo foo foo foo foo > bar	# 2^^5
+cat bar bar bar bar bar bar bar bar > foo	# 2^^8
+cat foo foo foo foo foo foo foo foo > bar	# 2^^11
+echo x | cat - bar > foo		# slide two bytes in under the wire
+expect=`tail -1 foo`
+bk new $Q foo
+bk admin $Q -Zgzip foo
+bk edit $Q foo
+rm foo
+# File is 2049 lines long.  Delete a byte to tickle a bug.
+# Intend to delete next to last line. (contains a 'c')
+# Instead it will delete last line.
+cat - <<EOF > diff
+d2048 1
+EOF
+#					echo undone; exit 1
+bk delta $Q -Ddiff -y'none' foo
+bk get $Q foo
+last=`tail -1 foo`
+test "$last" = "$expect" || {
+	echo Fail
+	exit 1
+}
+echo OK
