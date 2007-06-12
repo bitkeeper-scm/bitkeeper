@@ -1,5 +1,4 @@
 #include "system.h"
-#include "../zlib/zlib.h"
 
 int
 main(int ac, char **av)

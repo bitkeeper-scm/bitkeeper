@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "zlib/zlib.h"
 #define	NTAGS	50
 
 private void	m(sccs *s, delta *l, delta *r);

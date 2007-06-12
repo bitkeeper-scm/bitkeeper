@@ -49,7 +49,6 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-#include "zlib/zlib.h"
 
 /*
  * Initialize the structure used by cset_insert according to how
