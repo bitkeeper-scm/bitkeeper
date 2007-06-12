@@ -1,0 +1,63 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2007 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+#export _BK_TCP_CONNECT_FAIL=1
+
+echo $N Create initial repository ...................................$NL
+for f in 1 2 3 4 5 6 7 8 9
+do	echo $f > F$f
+	perl -e 'printf "a\000b\n"' >> F$f
+done
+commercial pmaster
+echo OK
+
+echo $N Create some binary data and check BAM .......................$NL
+cp "$HERE"/F1 bin.data
+bk new $Q bin.data
+cp ../F1 copy
+bk new $Q copy
+bk commit $Q -ybindata
+test -d BitKeeper/BAM || exit 1
+echo OK
+
+echo $N Make sure that clone copies the BAM pool ....................$NL
+cd "$HERE"
+bk clone $Q pmaster clone
+cd clone
+(cd ../pmaster && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x || echo $x is missing
+done > OUT 2>&1
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure that clone -l copies the BAM pool .................$NL
+cd "$HERE"
+rm -rf clone
+bk clone $Q -l pmaster clone
+cd clone
+(cd ../pmaster && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x || echo $x is missing
+done > OUT 2>&1
+test -s OUT && {
+	echo failed
+	cat OUT
+	find BitKeeper -print
+	exit 1
+}
+echo OK
+
+# XXX rclone

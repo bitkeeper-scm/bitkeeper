@@ -23,7 +23,7 @@ private int	sfio(int gz, remote *r, int BAM);
 private void	usage(void);
 private int	initProject(char *root);
 private	int	lclone(remote *, char *to);
-private int	linkdir(char *from, char *dir);
+private int	linkdir(char *from, char *dir, int doSCCS);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
@@ -267,8 +267,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
 	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
 	if (do_part2) {
-		p = aprintf("-r..%s", opts.rev ? opts.rev : "");
-		rc = bkd_BAM_part3(r, envVar, opts.quiet, p);
+		p = aprintf("-r..%s", opts->rev ? opts->rev : "");
+		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
 		free(p);
 		if (rc) goto done;
 	}
@@ -309,18 +309,16 @@ clone2(remote *r)
 		return (-1);
 	}
 
-	parent(opts, r);
-
+	parent(r);
 	(void)proj_repoID(0);		/* generate repoID */
 
-	sprintf(buf, "..%s", opts.rev ? opts.rev : "");
+	sprintf(buf, "..%s", opts->rev ? opts->rev : "");
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
 	sccs_rmUncommitted(opts->quiet, f);
 	fclose(f);
 
-	parent(r);
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts->rev) {
@@ -571,17 +569,11 @@ lclone(remote *r, char *to)
 {
 	sccs	*s;
 	FILE	*f;
-	char	*p;
-	char	*fromid;
-	int	level;
-	struct	stat sb;
+	char	*p, *fromid;
 	char	**files;
-	int	i;
-	int	hasrev;
-	char	here[MAXPATH];
-	char	from[MAXPATH];
-	char	dest[MAXPATH];
-	char	buf[MAXPATH];
+	int	i, level, hasrev;
+	struct	stat sb;
+	char	here[MAXPATH], from[MAXPATH], dest[MAXPATH], buf[MAXPATH];
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -668,10 +660,7 @@ out:
 	setlevel(level);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		unless (opts->quiet || streq(".", buf)) {
-			fprintf(stderr, "Linking %s\n", buf);
-		}
-		if (linkdir(from, buf)) {
+		if (linkdir(from, buf, 1)) {
 			pclose(f);
 			mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
 			goto out;
@@ -679,6 +668,31 @@ out:
 	}
 	pclose(f);
 	chdir(from);
+
+	/*
+	 * Hard link the BAM pool files
+	 */
+	if (bp_hasBAM()) {
+		f = popen("bk _find -type d BitKeeper/BAM", "r");
+		chdir(dest);
+		mkdirp("BitKeeper/BAM");
+		while (fnext(buf, f)) {
+			chomp(buf);
+			if (streq("BitKeeper/BAM", buf)) continue;
+			if (linkdir(from, buf, 0)) {
+				/* leave it locked */
+				mkdir(ROOT2RESYNC, 0775);
+				goto out;
+			}
+		}
+		pclose(f);
+		touch("BitKeeper/log/BAM", 0444);
+		sprintf(buf, "%s/BitKeeper/log/BAM.index", from);
+		fileCopy(buf, "BitKeeper/log/BAM.index");
+		system("bk bam replay < BitKeeper/log/BAM.index");
+		chdir(from);
+	}
+
 	/* copy timestamp on CHECKED file */
 	unless (stat(CHECKED, &sb)) {
 		struct	utimbuf tb;
@@ -772,32 +786,42 @@ in_trigger(char *status, char *rev, char *root, char *repoID)
 }
 
 private int
-linkdir(char *from, char *dir)
+linkdir(char *from, char *dir, int doSCCS)
 {
 	char	buf[MAXPATH];
 	char	dest[MAXPATH];
 	int	i;
 	char	**d;
 
-	sprintf(buf, "%s/SCCS", dir);
+	strcpy(buf, dir);
+	if (doSCCS) strcat(buf, "/SCCS");
 	if (mkdirp(buf)) {
 		perror(buf);
 		return (-1);
 	}
-	sprintf(buf, "%s/%s/SCCS", from, dir);
-	unless (d = getdir(buf)) {
-		perror(buf);
-		return (-1);
+	sprintf(buf, "%s/%s", from, dir);
+	if (doSCCS) strcat(buf, "/SCCS");
+	unless (d = getdir(buf)) return (-1);
+	unless (opts->quiet) {
+		fprintf(stderr, "Linking %s\n", dir);
 	}
 	EACH (d) {
-		unless (d[i][0] == 's' || d[i][0] == 'd') continue;
-		sprintf(buf, "%s/%s/SCCS/%s", from, dir, d[i]);
+		if (doSCCS) {
+			unless (d[i][0] == 's' || d[i][0] == 'd') continue;
+			sprintf(buf, "%s/%s/SCCS/%s", from, dir, d[i]);
+		} else {
+			sprintf(buf, "%s/%s/%s", from, dir, d[i]);
+		}
 		if (access(buf, R_OK)) {
 			perror(buf);
 			freeLines(d, free);
 			return (-1);
 		}
-		sprintf(dest, "%s/SCCS/%s", dir, d[i]);
+		if (doSCCS) {
+			sprintf(dest, "%s/SCCS/%s", dir, d[i]);
+		} else {
+			sprintf(dest, "%s/%s", dir, d[i]);
+		}
 		if (link(buf, dest)) {
 			perror(dest);
 			freeLines(d, free);

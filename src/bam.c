@@ -415,7 +415,7 @@ bp_fetch(sccs *s, delta *din)
 
 /*
  * Log an update to the BAM index.db to the file
- * BitKeeper/log/BAM.log
+ * BitKeeper/log/BAM.index
  * Each entry in that file looks like:
  *  <index key> PATH hash
  *
