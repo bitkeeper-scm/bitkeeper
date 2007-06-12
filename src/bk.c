@@ -211,6 +211,11 @@ main(int ac, char **av, char **env)
 			    case '@': remote = 1; break;
 			    case 'q': quiet = 1; break;
 			    case 'r':				/* doc 2.0 */
+				if (dashr) {
+					fprintf(stderr,
+					    "bk: Only one -r allowed\n");
+					return (1);
+				}
 				dir = optarg;
 				dashr++;
 				break;
