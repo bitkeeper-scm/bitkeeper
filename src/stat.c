@@ -10,13 +10,13 @@ private int	do_stat(int which, int ac, char **av);
 int
 lstat_main(int ac, char **av)
 {
-	return (do_stat(USE_STAT, ac, av));
+	return (do_stat(USE_LSTAT, ac, av));
 }
 
 int
 stat_main(int ac, char **av)
 {
-	return (do_stat(USE_LSTAT, ac, av));
+	return (do_stat(USE_STAT, ac, av));
 }
 
 private int
