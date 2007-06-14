@@ -13943,11 +13943,21 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 	}
 
 	case KW_ODD: /* ODD */ {
-		return (s->prs_odd ? strVal : nullVal);
+		if (s->prs_odd) {
+			fs("1");
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
 	}
 
 	case KW_EVEN: /* EVEN */ {
-		return (s->prs_odd ? nullVal : strVal);
+		unless (s->prs_odd) {
+			fs("1");
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
 	}
 
 	case KW_JOIN: /* JOIN */ {
