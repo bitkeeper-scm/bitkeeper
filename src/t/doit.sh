@@ -316,6 +316,7 @@ setup_env()
 	# Use this to test timestamps and checkouts
 	_BK_DEVELOPER=YES
 	export _BK_DEVELOPER
+	unset BK_NO_TRIGGERS
 }
 
 clean_up()
