@@ -113,11 +113,11 @@ bk _lstat afile > LSTATREG
 checkfiles STATREG LSTATREG
 # symlink not on windows
 test "$PLATFORM" = "WIN32" || {
-	mv afile otherfile
-	ln -s otherfile afile
-	bk _stat afile > STATLINK
-	bk _lstat afile > LSTATLINK
-	checkfiles STATREG STATLINK
+	ln -s afile otherfile
+	bk _stat otherfile > STATLINK
+	bk _lstat otherfile > LSTATLINK
+	sed s/afile/otherfile/ STATREG > STATREG2
+	checkfiles STATREG2 STATLINK
 	cmp -s STATLINK LSTATLINK && {
 		echo failed
 		echo lstat of symlink and file matched
