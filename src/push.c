@@ -23,7 +23,7 @@ private	struct {
 
 private	int	push(char **av, remote *r, char **envVar);
 private	void	pull(remote *r);
-private	void	listIt(sccs *s, int list);
+private	void	listIt(char *keys, int list);
 
 private	sccs	*s_cset;
 
@@ -228,6 +228,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 {
 	int	fd, rc, n;
 	delta	*d;
+	FILE	*f;
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-3);
@@ -318,11 +319,14 @@ tags:			fprintf(opts.out,
 			    "Would send the following csets "
 			    "------------------------\n");
 			if (opts.list) {
-				listIt(s_cset, opts.list);
+				listIt(rev_list, opts.list);
 			} else {
+				f = fopen(rev_list, "r");
+				assert(f);
 				n = 0;
-				for (d = s_cset->table; d; d = d->next) {
-					if (d->flags & D_RED) continue;
+				while (fnext(buf, f)) {
+					chomp(buf);
+					d = sccs_findKey(s_cset, buf);
 					unless (d->type == 'D') continue;
 					n += strlen(d->rev) + 1;
 					fprintf(opts.out, "%s", d->rev);
@@ -333,6 +337,7 @@ tags:			fprintf(opts.out,
 						fputs(" ", opts.out);
 					}
 				}
+				fclose(f);
 				if (n) fputs("\n", opts.out);
 			}
 			fprintf(opts.out,
@@ -747,29 +752,18 @@ pull(remote *r)
 }
 
 private	void
-listIt(sccs *s, int list)
+listIt(char *keys, int list)
 {
-	delta	*d;
-	char	*tmp = bktmp(0, "push_list");
+	FILE	*f;
 	char	*cmd;
 	char	buf[BUFSIZ];
-	FILE	*f;
-	
-	cmd = aprintf("bk changes %s - > '%s'", list > 1 ? "-v" : "", tmp);
-	f = popen(cmd, "w");
+
+	cmd = aprintf("bk changes %s - < '%s'", list > 1 ? "-v" : "", keys);
+	f = popen(cmd, "r");
 	assert(f);
-	for (d = s->table; d; d = d->next) {
-		unless (d->type == 'D') continue;
-		if (d->flags & D_RED) continue;
-		fprintf(f, "%s\n", d->rev);
-	}
-	pclose(f);
-	f = fopen(tmp, "r");
 	while (fnext(buf, f)) {
 		fputs(buf, opts.out);
 	}
-	fclose(f);
+	pclose(f);
 	free(cmd);
-	unlink(tmp);
-	free(tmp);
 }

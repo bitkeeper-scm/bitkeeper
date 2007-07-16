@@ -2,28 +2,18 @@
 #include "range.h"
 
 private void
-listIt(sccs *s, int list)
+listIt(char *keys, int list)
 {
-	char	buf[MAXPATH];
-	char	cmd[MAXPATH + 20];
 	FILE	*f;
-	delta	*d;
+	char	buf[MAXPATH + 20];
 
-	bktmp(buf, "cs");
-	sprintf(cmd, "bk changes -e %s - > '%s'", list > 1 ? "-v" : "", buf);
-	f = popen(cmd, "w");
-	for (d = s->table; d; d = d->next) {
-		unless (d->type == 'D') continue;
-		if (d->flags & D_RED) continue;
-		fprintf(f, "%s\n", d->rev);
+	sprintf(buf, "bk changes -e %s - < '%s'",
+	    list > 1 ? "-v" : "", keys);
+	f = popen(buf, "r");
+	while (fnext(buf, f)) {
+		printf("%c%s", BKD_DATA, buf);
 	}
 	pclose(f);
-	f = fopen(buf, "r");
-	while (fnext(cmd, f)) {
-		printf("%c%s", BKD_DATA, cmd);
-	}
-	fclose(f);
-	unlink(buf);
 }
 
 int
@@ -91,10 +81,12 @@ cmd_pull_part2(int ac, char **av)
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	char	*rev = 0;
 	char	*p;
+	FILE	*f;
 	sccs	*s;
 	delta	*d;
 	remote	r;
 	pid_t	pid;
+	char	buf[MAXKEY];
 
 	while ((c = getopt(ac, av, "dlnqr|uw|z|")) != -1) {
 		switch (c) {
@@ -153,13 +145,18 @@ cmd_pull_part2(int ac, char **av)
 	if (local && (verbose || list)) {
 		printf("@REV LIST@\n");
 		if (list) {
-			listIt(s, list);
+			listIt(keys, list);
 		} else {
-			for (d = s->table; d; d = d->next) {
-				if (d->flags & D_RED) continue;
-				unless (d->type == 'D') continue;
-				printf("%c%s\n", BKD_DATA, d->rev);
+			f = fopen(keys, "r");
+			assert(f);
+			while (fnext(buf, f)) {
+				chomp(buf);
+				d = sccs_findKey(s, buf);
+				if (d->type == 'D') {
+					printf("%c%s\n", BKD_DATA, d->rev);
+				}
 			}
+			fclose(f);
 		}
 		printf("@END@\n");
 	}

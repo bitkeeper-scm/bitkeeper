@@ -68,8 +68,14 @@ echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
 bk delta $Q -y2 'F!O#O$ B%A^R&RR(R)RR' || exit 1
 bk commit $Q -y2 || exit 1
 cd "$HERE/copy"
-bk pull -t $Q || { echo failed; exit 1; }
+bk pull -t >OUT 2>ERR || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
+SEND=`perl -ne 'next unless /^---.*Receiving/.../---/; print if /^\d/' ERR`
+test "$SEND" = "1.3 " || {
+	echo transfered the wrong csets
+	cat ERR
+	exit 1
+}
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 echo OK
@@ -231,7 +237,13 @@ cp -rp project project2
 cp -rp project project3
 cd copy
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
-bk push $Q || { echo failed; exit 1; }
+bk push >OUT 2>ERR || { echo failed; exit 1; }
+SEND=`perl -ne 'next unless /^---.*Sending/.../---/; print if /^\d/' ERR`
+test "$SEND" = "1.8 1.7 1.5.1.1 " || {
+	echo transfered the wrong csets
+	cat ERR
+	exit 1
+}
 KEY2="`cd "$HERE/project" && bk prs -hd:KEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
