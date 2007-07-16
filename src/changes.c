@@ -19,6 +19,7 @@ private struct {
 	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
 	u32	diffs:1;	/* show diffs with verbose mode */
+	u32	tsearch:1;	/* pattern applies to tags instead of cmts */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -56,6 +57,7 @@ private int	doit_local(int nac, char **nav, char **urls);
 private	void	cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec);
 private	MDBM	*loadcset(sccs *cset);
 private	void	fileFilt(sccs *s, MDBM *csetDB);
+private	int	prepSearch(char *str);
 
 private	hash	*seen; /* list of keys seen already */
 private	sccs	*s_cset;
@@ -68,6 +70,7 @@ changes_main(int ac, char **av)
 	char	*nav[30];
 	char	**urls = 0, **rurls = 0, **lurls = 0;
 	char	*normal;
+	char	*searchStr = 0;
 	char	buf[MAXPATH];
 	pid_t	pid = 0; /* pager */
 
@@ -131,9 +134,7 @@ changes_main(int ac, char **av)
 		    case 'x':
 			opts.exc = addLine(opts.exc, strdup(optarg));
 			break;
-		    case '/': opts.search = search_parse(optarg);
-			      opts.doSearch = 1;
-			      break;
+		    case '/': searchStr = optarg; break;
 		    case 'L': opts.local = 1; break;
 		    case 'R': opts.remote = 1; break;
 		    default:
@@ -160,6 +161,7 @@ usage:			system("bk help -s changes");
 		    "changes: either '-' or URL list, but not both\n");
 		return (1);
 	}
+	if (searchStr && prepSearch(searchStr)) goto usage;
 	/* force a -a if -L or -R and no -a */
 	if ((opts.local || opts.remote) && !opts.all) {
 		nav[nac++] = strdup("-a");
@@ -274,6 +276,27 @@ out:	if (s_cset) sccs_free(s_cset);
 	if (rurls != lurls) freeLines(rurls, free);
 	freeLines(lurls, free);
 	return (rc);
+}
+
+private	int
+prepSearch(char *str)
+{
+	char	*p;
+
+	/*
+	 * XXX: note this does not support \/ in search pattern
+	 * and neither does search_parse which starts with strchr(.., '/')
+	 */
+	if ((p = strchr(str, '/')) && (p = strchr(p, 't'))) {
+		opts.tsearch = 1;
+		opts.tagOnly = 1;
+		/* eat it */
+		while (*p = *(p+1)) p++;
+	} else {
+		opts.doSearch = 1;
+	}
+	opts.search = search_parse(str);
+	return (opts.search.pattern == 0);
 }
 
 private int
@@ -399,21 +422,21 @@ recurse(delta *d)
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
-#define	DSPEC	"$if(:DPN:!=ChangeSet){  }" \
+#define	DSPEC	"$unless(:CHANGESET:){  }" \
 		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"+:LI: -:LD:\n" \
-		"$each(:C:){$if(:DPN:!=ChangeSet){  }  (:C:)\n}" \
+		"$each(:C:){$unless(:CHANGESET:){  }  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
-		"$if(:MERGE:){$if(:DPN:!=ChangeSet){  }  MERGE: " \
+		"$if(:MERGE:){$unless(:CHANGESET:){  }  MERGE: " \
 		":MPARENT:\n}\n"
-#define	VSPEC	"$if(:DPN:=ChangeSet){\n#### :DPN: ####\n}" \
-		"$if(:DPN:!=ChangeSet){\n==== :DPN: ====\n}" \
+#define	VSPEC	"$if(:CHANGESET:){\n#### :DPN: ####\n}" \
+		"$else{\n==== :DPN: ====\n}" \
 		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
-		"$if(:DPN:!=ChangeSet){+:LI: -:LD:}" \
+		"$unless(:CHANGESET:){+:LI: -:LD:}" \
 		"\n" \
 		"$each(:C:){  (:C:)\n}" \
 		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
-		"$if(:DPN:!=ChangeSet){:DIFFS_UP:}"
+		"$unless(:CHANGESET:){:DIFFS_UP:}"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -949,9 +972,23 @@ want(sccs *s, delta *e)
 {
 	char	*p;
 	int	i, match;
+	symbol	*sym;
 
 	unless (opts.all || (e->type == 'D')) return (0);
-	if (opts.tagOnly && !(e->flags & D_SYMBOLS)) return (0);
+	if (opts.tagOnly) {
+		unless (e->flags & D_SYMBOLS) return (0);
+		if (opts.tsearch) {
+			match = 0;
+			for (sym = s->symbols; sym; sym = sym->next) {
+				unless (sym->d == e) continue;
+				if (search_either(sym->symname, opts.search)) {
+					match = 1;
+					break;
+				}
+			}
+			unless (match) return (0);
+		}
+	}
 	if (opts.notusers) {
 		if (p = strchr(e->user, '/')) *p = 0;
 		match = 0;

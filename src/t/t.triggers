@@ -1630,6 +1630,102 @@ bk push -c0 $Q 2>ERR && {
 bk lock -s || { echo failed 2; exit 1; }
 echo OK
 
+echo $N Make sure undo triggers can fail an undo ....................$NL
+cd "$HERE"
+bk clone $Q copy undo
+cd undo
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-undo << EOF
+#!/bin/sh
+
+exit 1
+EOF
+chmod +x BitKeeper/triggers/pre-undo
+TIP=`bk changes -r+ -nd:I:`
+bk undo -fsr+ > OUT 2>&1 && {
+	echo should have failed
+	exit 1
+}
+test $TIP = `bk changes -r+ -nd:I:` || {
+	echo should not have removed top cset $TIP
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure pre-undo triggers can see the changeset list ......$NL
+cat > BitKeeper/triggers/pre-undo << EOF
+#!/bin/sh
+
+cat \$BK_CSETLIST > LIST
+exit 1
+EOF
+chmod +x BitKeeper/triggers/pre-undo
+bk tag $Q TIP
+TIP=`bk changes -r+ -nd:I:`
+bk undo -fsa1.1 > OUT 2>&1 && {
+	echo should have failed
+	exit 1
+}
+test $TIP = `bk changes -r+ -nd:I:` || {
+	echo should not have removed top cset
+	exit 1
+}
+bk changes -and:KEY: -r1.1.. > WANT
+cmpfiles WANT LIST
+echo OK
+
+echo $N Make sure post-undo triggers are run ........................$NL
+rm BitKeeper/triggers/pre-undo
+cat > BitKeeper/triggers/post-undo << EOF
+#!/bin/sh
+
+bk changes -nd:I: -r+ > POST-UNDO
+EOF
+chmod +x BitKeeper/triggers/post-undo
+bk undo -fsa1.1 > OUT 2>&1 || {
+	echo should not have failed
+	exit 1
+}
+test -f POST-UNDO || {
+	echo failed to run trigger
+	exit 1
+}
+test 1.1 = `bk changes -r+ -nd:I:` || {
+	echo undo failed
+	exit 1
+}
+echo OK
+
+echo $N Make sure clone does not run undo triggers ..................$NL
+cat > BitKeeper/triggers/pre-undo << EOF
+#!/bin/sh
+
+echo PRE-UNDO >> UNDO
+exit 1
+EOF
+chmod +x BitKeeper/triggers/pre-undo
+cat > BitKeeper/triggers/post-undo << EOF
+#!/bin/sh
+
+echo POST-UNDO >> UNDO
+bk changes -nd:I: -r+ > POST-UNDO
+EOF
+chmod +x BitKeeper/triggers/post-undo
+bk new $Q BitKeeper/triggers/pre-undo BitKeeper/triggers/post-undo
+bk commit $Q -y"undo triggers"
+TIP=`bk changes -r+ -nd:I:`
+touch somefile
+bk new $Q somefile
+bk commit $Q -ysomefile
+cd ..
+bk clone $Q -r$TIP undo undo-clone || exit 1
+test -f undo_clone/UNDO && {
+	echo failed
+	exit 1
+}
+echo OK
+
 echo $N auto-mirroring ..............................................$NL
 cd "$HERE/project/BitKeeper/triggers"
 rm -f *

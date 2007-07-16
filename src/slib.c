@@ -10,15 +10,12 @@
 #include "system.h"
 #include "sccs.h"
 #include "resolve.h"
-#include "zgets.h"
 #include "bkd.h"
 #include "logging.h"
 #include "tomcrypt.h"
 #include "range.h"
 
-#define	VSIZE 4096
 #define	WRITABLE_REG(s)     (WRITABLE(s) && isRegularFile((s)->mode))
-
 
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, delta *d, int fixDate);
@@ -66,8 +63,6 @@ private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
 private	delta*	getCksumDelta(sccs *s, delta *d);
-private int	fprintDelta(FILE *,
-			char ***, const char *, const char *, sccs *, delta *);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
@@ -2125,15 +2120,14 @@ ok:
 	return (e);
 }
 
-
 private inline char *
 peek(sccs *s)
 {
-	if (s->encoding & E_GZIP) return (zpeek()); 
+	if (s->encoding & E_GZIP) return (zpeek(s->zin, 2));
 	return (s->where);
 }
 
-off_t
+private off_t
 sccstell(sccs *s)
 {
 	return (s->where - s->mmap);
@@ -2171,7 +2165,7 @@ private inline char *
 nextdata(sccs *s)
 {
 	unless (s->encoding & E_GZIP) return (fastnext(s));
-	return (zgets());
+	return (zgets(s->zin));
 }
 
 /*
@@ -2199,7 +2193,9 @@ chk_nlbug(sccs *s)
 	int	ret = 0;
 
 	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+	}
 	while (buf = nextdata(s)) {
 		if (buf[0] == '\001' && buf[1] == 'E') {
 			p = buf + 3;
@@ -2211,7 +2207,8 @@ chk_nlbug(sccs *s)
 		}
 		sawblank = (buf[0] == '\n');
 	}
-	if ((s->encoding & E_GZIP) && zgets_done()) ret = 1;
+	if ((s->encoding & E_GZIP) && zgets_done(s->zin)) ret = 1;
+	s->zin = 0;
 	return (ret);
 }
 
@@ -5577,15 +5574,38 @@ fputmeta(sccs *s, u8 *buf, FILE *out)
 	return (sum);
 }
 
-private void
-gzip_sum(void *p, u8 *buf, int len, FILE *out)
-{
-	register unsigned int sum = 0;
-	register int i;
+/*
+ * Data for zputs() to writes it's data.  We currently can only write
+ * one sfile at a time.
+ */
+private	zputbuf	*zput;
 
-	for (i = 0; i < len; sum += buf[i++]);
-	((sccs *)p)->cksum += (sum_t)sum;
-	fwrite(buf, 1, len, out);
+private void
+gzip_sum(void *data, u8 *buf, int len)
+{
+	sccs	*s = ((void **)data)[0];
+	FILE	*f = ((void **)data)[1];
+	u32	sum = 0;
+	int	i;
+
+	if (len) {
+		for (i = 0; i < len; sum += buf[i++]);
+		s->cksum += (sum_t)sum;
+		fwrite(buf, 1, len, f);
+	} else {
+		free(data);
+	}
+}
+
+private void
+sccs_zputs_init(sccs *s, FILE *fout)
+{
+	void	**data = malloc(2 * sizeof(void *));
+
+	data[0] = s;
+	data[1] = fout;
+	zput = zputs_init(gzip_sum, data);
+	assert(zput);
 }
 
 /*
@@ -5620,42 +5640,23 @@ fputbumpserial(sccs *s, u8 *buf, int inc, FILE *out)
 /*
  * Like fputmeta, but optionally compresses the data stream.
  * This is used for the data section exclusively.
- * Note that only the first line of the buffer is considered valid.
  */
-
-/* These will be hung off the sccs structure in the near future.  */
-static u8 data_block[8192];
-static u8 *data_next = data_block;
-
 private sum_t
 fputdata(sccs *s, u8 *buf, FILE *out)
 {
-	unsigned int sum = 0, c;
-	u8	*p, *q;
+	u32	sum = 0;
+	u8	*p = buf;
 
-	/* Checksum up to and including the first newline
-	 * or the end of the string.
-	 */
-	p = buf;
-	q = data_next;
-	for (;;) {
-		c = *p++;
-		if (c == '\0') break;
-		sum += c;
-		*q++ = c;
-		if (q == &data_block[sizeof(data_block)]) {
-			if (s->encoding & E_GZIP) {
-				zputs((void *)s, out, data_block,
-				      sizeof(data_block), gzip_sum);
-			} else {
-				fwrite(data_block, sizeof(data_block), 1, out);
-			}
-			q = data_block;
-		}
-		if (c == '\n') break;
+	while (*p) {
+		sum += *p;
+		if (*p++ == '\n') break;
 	}
-	data_next = q;
-	unless (s->encoding & E_GZIP) s->cksum += sum;
+	if (s->encoding & E_GZIP) {
+		zputs(zput, buf, p - buf);
+	} else {
+		fwrite(buf, 1, p - buf, out);
+		s->cksum += sum;
+	}
 	return (sum);
 }
 
@@ -5664,20 +5665,9 @@ private int
 fflushdata(sccs *s, FILE *out)
 {
 	if (s->encoding & E_GZIP) {
-		if (data_next != data_block) {
-			zputs((void *)s, out, data_block,
-			      data_next - data_block,
-			      gzip_sum);
-		}
-		zputs_done((void *)s, out, gzip_sum);
-	} else {
-		if (data_next != data_block) {
-			fwrite(data_block,
-			       data_next - data_block, 1, out);
-		}
+		zputs_done(zput);
+		zput = 0;
 	}
-	data_next = data_block;
-	debug((stderr, "SUM2 %u\n", s->cksum));
 	if (flushFILE(out) && (errno != EPIPE)) {
 		perror(s->sfile);
 		s->io_error = s->io_warned = 1;
@@ -6429,7 +6419,9 @@ out:			if (slist) free(slist);
 		}
 	}
 	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+	}
 	seq = 0;
 	sum = 0;
 	added = 0;
@@ -6665,10 +6657,11 @@ write:
 		}
 	}
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) {
+		if (zgets_done(s->zin)) {
 			error = 1;
 			s->io_error = s->io_warned = 1;
 		}
+		s->zin = 0;
 	}
 
 	if (error) {
@@ -7294,7 +7287,9 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	slist = serialmap(s, d, 0, 0, &error);
 	state = allocstate(0, s->nextserial);
 	seekto(s, s->data);
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+	}
 	side = NEITHER;
 	nextside = NEITHER;
 
@@ -7362,11 +7357,12 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	ret = 0;
 done:   
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) {
+		if (zgets_done(s->zin)) {
 			s->io_error = 1;
 			ret = -1; /* compression failure */
 		}
-	}		
+		s->zin = 0;
+	}
 done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
 	if (lbuf) {
 		if (flushFILE(lbuf)) {
@@ -8020,14 +8016,15 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	int	lf_pend = 0;
 	u32	eflags = flags; /* copy because expandnleq destroys bits */
 	int	error = 0, serial;
-	int	in_zgets = 0;
 
 #define	RET(x)	{ different = x; goto out; }
 
 	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
 
-	if (S_ISLNK(s->mode)) RET(!streq(s->symlink, d->symlink));
-
+	if (S_ISLNK(s->mode)) {
+		unless (S_ISLNK(d->mode) && d->symlink) RET(1);
+		RET(!streq(s->symlink, d->symlink));
+	}
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
 		char *r = _relativeName(s->gfile, 0, 1, 1, s->proj);
@@ -8068,8 +8065,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	state = allocstate(0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		in_zgets = 1;
+		s->zin = zgets_init(s->where, s->size - s->data);
 	}
 	while (fbuf = nextdata(s)) {
 		if (isData(fbuf)) {
@@ -8206,7 +8202,10 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	debug((stderr, "diff because EOF on sfile\n"));
 	RET(1);
 out:
-	if (in_zgets) zgets_done();
+	if (s->zin) {
+		zgets_done(s->zin);
+		s->zin = 0;
+	}
 	if (gfile) mclose(gfile); /* must close before we unlink */
 	if (ghash) mdbm_close(ghash);
 	if (shash) mdbm_close(shash);
@@ -9371,7 +9370,7 @@ out:		sccs_unlock(s, 'z');
 		goto out;
 	}
 	buf[0] = 0;
-	if (s->encoding & E_GZIP) zputs_init();
+	if (s->encoding & E_GZIP) sccs_zputs_init(s, sfile);
 	if (n0) {
 		fputdata(s, "\001I 2\n", sfile);
 	} else {
@@ -10665,13 +10664,14 @@ obscure(int rmlicense, int uu, char *buf)
 	char	*new;
 	char	*p, *t;
 
-	/* XXX just write a strnldup */
+	/*
+	 * line either terminates with a '\n' (mmap of sfile)
+	 * or '\0' if a d->comments[i] (which are chomped)
+	 * Len could wind up 0.
+	 */
 	for (len = 0; buf[len] && (buf[len] != '\n'); len++);
-	if (buf[len]) len++;
-	assert(len);
-	new = malloc(len+1);
-	strncpy(new, buf, len);
-	new[len] = 0;
+	if (buf[len]) len++;	/* if newline, include it */
+	new = strndup(buf, len);
 	unless (len > 1) goto done; 	/* need to have something to obscure */
 
 	if (*new == '\001') goto done;
@@ -11059,8 +11059,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 	if (rmlicense) obscure_it = 1;
-	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
-	if (new_enc & E_GZIP) zputs_init();
+	if (old_enc & E_GZIP) {
+		sc->zin = zgets_init(sc->where, sc->size - sc->data);
+	}
+	if (new_enc & E_GZIP) sccs_zputs_init(sc, sfile);
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
 	while (buf = nextdata(sc)) {
@@ -11106,7 +11108,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
 	if (old_enc & E_GZIP) {
-		if (zgets_done()) OUT;
+		if (zgets_done(sc->zin)) OUT;
+		sc->zin = 0;
 	}
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
@@ -11204,8 +11207,10 @@ out:
 	assert(s->state & S_SOPEN);
 	seekto(s, s->data);
 	debug((stderr, "seek to %d\n", (int)s->data));
-	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
-	if (s->encoding & E_GZIP) zputs_init();
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, sfile);
+	}
 	while (buf = nextdata(s)) {
 		unless (buf[0] == '\001') {
 			fputdata(s, buf, sfile);
@@ -11224,7 +11229,8 @@ out:
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s), fclose(sfile), sfile = NULL;
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) OUT;
+		if (zgets_done(s->zin)) OUT;
+		s->zin = 0;
 	}
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
@@ -11518,8 +11524,8 @@ again:
 	 */
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		zputs_init();
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, out);
 	}
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
@@ -11660,7 +11666,8 @@ newcmd:
 	if (state) free(state);
 	if (slist) free(slist);
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) return (-1);
+		if (zgets_done(s->zin)) return (-1);
+		s->zin = 0;
 	}
 	if (last) {
 		off_t	end = offset;
@@ -11757,8 +11764,8 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		zputs_init();
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, f);
 	}
 	while (line = nextdata(s)) {
 		assert(strneq(line, "\001I ", 3));
@@ -11798,7 +11805,10 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	for ( ; line; line = nextdata(s)) {
 		fputdata(s, line, f);
 	}
-	if (s->encoding & E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) {
+		zgets_done(s->zin);
+		s->zin = 0;
+	}
 	if (fflushdata(s, f)) return (-1);
 	return (0);
 }
@@ -12351,8 +12361,8 @@ abort:		fclose(sfile);
 	}
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		zputs_init();
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, sfile);
 	}
 	assert(s->state & S_SOPEN);
 	while (buf = nextdata(s)) {
@@ -12360,7 +12370,8 @@ abort:		fclose(sfile);
 	}
 	if (fflushdata(s, sfile)) goto abort;
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) goto abort;
+		if (zgets_done(s->zin)) goto abort;
+		s->zin = 0;
 	}
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
@@ -13144,9 +13155,9 @@ getHistoricPath(sccs *s, char *rev)
 
 	d = sccs_findrev(s, rev);
 	if (d && d->pathname) {
-		return (d->pathname);
+		return (strdup(d->pathname));
 	} else {
-		return (s->gfile); 
+		return (proj_relpath(s->proj, s->gfile));
 	}
 }
 
@@ -13193,13 +13204,10 @@ private int
 normal_diff(sccs *s, char *lrev, char *lrevM,
 	char *rrev, u32 flags, u32 kind, FILE *out, pfile *pf)
 {
-	char	lfile[MAXPATH], rfile[MAXPATH];
-	char	ltag[MAXPATH],	rtag[MAXPATH], 	tmp[MAXPATH];
-	char 	*lpath, *rpath;
+	char	*lpath = 0, *rpath = 0;
 	int	rc = -1;
-
-	strcpy(tmp, s->gfile);		/* because dirname stomps */
-	sprintf(tmp, "%s", dirname(tmp));
+	char	lfile[MAXPATH], rfile[MAXPATH];
+	char	ltag[MAXPATH],	rtag[MAXPATH];
 
 	/*
 	 * Create the lfile & rfile for diff
@@ -13216,7 +13224,7 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 
 	/*
 	 * make the tag string to label the diff output, e.g.
-	 * 
+	 *
 	 * +++ bk.sh 1.34  Thu Jun 10 21:22:08 1999
 	 */
 	mkTag(lrev, lrevM, pf, lpath, ltag);
@@ -13228,6 +13236,8 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	rc = doDiff(s, flags, kind, lfile, rfile, out, lrev, rrev, ltag, rtag);
 done:	unless (streq(lfile, DEVNULL_RD)) unlink(lfile);
 	unless (streq(rfile, s->gfile) || streq(rfile, DEVNULL_RD)) unlink(rfile);
+	if (lpath) free(lpath);
+	if (rpath) free(rpath);
 	return (rc);
 }
 
@@ -13258,56 +13268,6 @@ done:	free_pfile(&pf);
 	return (rc);
 }
 
-private void
-show_d(sccs *s, delta *d, FILE *out, char ***vbuf, char *format, int num)
-{
-	if (out) {
-		fprintf(out, format, num);
-		s->prs_output = 1;
-	}
-	if (vbuf) *vbuf = str_append(*vbuf, aprintf(format, num), 1);
-}
-
-private void
-show_s(sccs *s, delta *d, FILE *out, char ***vbuf, char *str)
-{
-	if (out) {
-		fputs(str, out);
-		s->prs_output = 1;
-	}
-	if (vbuf) *vbuf = str_append(*vbuf, str, 0);
-}
-
-/*
- * XXX TODO We should load it directly from the weave
- *     without generating the gfile.
- */
-void
-sccs_loadkv(sccs *s)
-{
-	char x_kv[MAXPATH];
-
-	bktmp(x_kv, "kv");
-	sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, x_kv);
-	s->mdbm = loadkv(x_kv);
-	unlink(x_kv);
-}
-
-/*
- * Given key return the value.
- * The mdbm is loaded on demand
- * XXX TODO need a state to remember the previous load failed, so we do
- *     not try to re-load.
- */
-private char *
-key2val(sccs *s, const char *key)
-{
-	unless (KV(s))  return (NULL);
-	unless (s->mdbm) sccs_loadkv(s);
-	unless (s->mdbm) return (NULL);
-	return (mdbm_fetch_str(s->mdbm, key));
-}
-
 /*
  * Include the kw2val() hash lookup function.  This is dynamically
  * generated during the build by kwextract.pl and gperf (see the
@@ -13318,6 +13278,7 @@ key2val(sccs *s, const char *key)
 #define	notKeyword -1
 #define	nullVal    0
 #define	strVal	   1
+
 /*
  * Given a PRS DSPEC keyword, get the associated string value
  * If out is non-null print to out
@@ -13339,31 +13300,50 @@ key2val(sccs *s, const char *key)
  * followed by a comment containing the keyword name.  If a block follows,
  * the comment MUST appear before the {.
  */
-private int
-kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
-	const char *suffix, int slen, sccs *s, delta *d)
+int
+kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 {
 	struct kwval *kwval;
 	char	*p, *q;
-#define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
-#define	fc(c)	show_d(s, d, out, vbuf, "%c", c)
-#define	fd(n)	show_d(s, d, out, vbuf, "%d", n)
-#define	fx(n)	show_d(s, d, out, vbuf, "0x%x", n)
-#define	f5d(n)	show_d(s, d, out, vbuf, "%05d", n)
-#define	fs(str)	show_s(s, d, out, vbuf, str)
+#define	KW(x)	kw2val(out, vbuf, x, strlen(x), s, d)
+#define	fc(c)	show_d(s, out, vbuf, "%c", c)
+#define	fd(n)	show_d(s, out, vbuf, "%d", n)
+#define	fx(n)	show_d(s, out, vbuf, "0x%x", n)
+#define	f5d(n)	show_d(s, out, vbuf, "%05d", n)
+#define	fs(str)	show_s(s, out, vbuf, str, -1)
+#define	fsd(d)	show_s(s, out, vbuf, d.dptr, d.dsize)
 
-	if (kw[0] == '%') {
-		p = key2val(s, &kw[1]);
-		//unless (p) return (nullVal);
-		unless (p) return (notKeyword);
-		fs(p);
-		return (strVal);
+	/*
+	 * Allow keywords of the form "word|rev"
+	 * to mean "word" for revision "rev".
+	 */
+	for (p = kw, q = p+len; (*p != '|') && (p < q); ++p) ;
+	if (p < q) {
+		delta	*e;
+		char	last = kw[len];
+
+		p++;
+		kw[len] = '\0';
+		e = sccs_findrev(s, p);
+		kw[len] = last;
+		unless (e) return (nullVal);
+		len = p - 1 - kw;
+		d = e;
 	}
 
-	kwval = kw2val_lookup(kw, strlen(kw));
+	kwval = kw2val_lookup(kw, len);
 	unless (kwval) return notKeyword;
 
+	unless (out || vbuf) return (nullVal);
 	switch (kwval->kwnum) {
+	case KW_each: /* each */ {
+		dspec_printeach(s, out, vbuf);
+		return (strVal);
+	}
+	case KW_eachline: /* line */ {
+		dspec_printline(s, out, vbuf);
+		return (strVal);
+	}
 	case KW_Dt: /* Dt */ {
 		/* :Dt: = :DT::I::D::T::P::DS::DP: */
 		KW("DT"); fc(' '); KW("I"); fc(' ');
@@ -13490,6 +13470,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	/* Lose this in 2008 */
 	case KW_W: /* W */ {
 		/* a form of "what" string */
 		/* :W: = :Z::M:\t:I: */
@@ -13755,9 +13736,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		/* to get the latest comment				*/
 		EACH(d->comments) {
 			j++;
-			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(d->comments[i]);
-			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -13919,9 +13898,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		EACH(s->text) {
 			if (s->text[i][0] == '\001') continue;
 			j++;
-			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(s->text[i]);
-			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -13941,6 +13918,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	/* Lose this in 2008 */
 	case KW_Z: /* Z */ {
 		fs("@(#)");
 		return (strVal);
@@ -13974,11 +13952,21 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	case KW_ODD: /* ODD */ {
-		return (s->prs_odd ? strVal : nullVal);
+		if (s->prs_odd) {
+			fs("1");
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
 	}
 
 	case KW_EVEN: /* EVEN */ {
-		return (s->prs_odd ? nullVal : strVal);
+		unless (s->prs_odd) {
+			fs("1");
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
 	}
 
 	case KW_JOIN: /* JOIN */ {
@@ -14097,7 +14085,11 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	case KW_CHANGESET: /* CHANGESET */ {
-		return (CSET(s) ? strVal : nullVal);
+		if (CSET(s)) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	case KW_CSETFILE: /* CSETFILE */ {
@@ -14242,9 +14234,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
 			j++;
-			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(sym->symname);
-			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -14835,7 +14825,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 			char	*cmd;
 			FILE	*f;
 			char	buf[BUFSIZ];
-			
+
 			cmd = aprintf("bk diffs -%s%shR%s '%s'",
 			    kind == DF_DIFF ? "" : "u",
 			    kind & DF_GNUp ? "p" : "",
@@ -14851,318 +14841,26 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	/* don't document, TRUE/FALSE are for t.prs */
+	case KW_FALSE: /* FALSE */
+		return (nullVal);
+
+	case KW_TRUE: /* TRUE */
+		fs("1");
+		return (strVal);
+
 	default:
                 return notKeyword;
 	}
 }
 
-/*
- * A temporary function that provides an interface like kw2val() but
- * that writes to a fixed buffer.  This function will be deleted when
- * the new prs parser is used.
- */
-private int
-kw2buf(char *buf, const char *kw, sccs *s, delta *d)
-{
-	int	rc;
-	char	**vbuf = 0;
-
-	rc = kw2val(0, buf ? &vbuf : 0, "", 0, kw, "", 0, s, d);
-	if (buf) {
-		char	*p = str_pullup(0, vbuf);
-		strcpy(buf, p);
-		free(p);
-	}
-	return (rc);
-}
-
-/*
- * given a string "<token><endMarker>..."
- * extrtact token and put it in a buffer
- * return the length of the token
- */
-private int
-extractToken(const char *q, const char *end, char *endMarker, char *buf,
-	    int maxLen)
-{
-	const char *t;
-	int	len;
-
-	if (buf) buf[0] = '\0';
-	/* look for endMarker */
-	for (t = q; (t <= end) && !strchr(endMarker, *t); t++);
-	unless (strchr(endMarker, *t)) return (-1);
-	len = t - q;
-	if ((buf) && (len < maxLen)) {
-		strncpy(buf, q, len);
-		buf[len] = '\0';
-	}
-	return (len);
-}
-
-/*
- * extract the prefix inside a $each{...} statement
- */
-private int
-extractPrefix(const char *b, const char *end, char *kwbuf)
-{
-	const char *t;
-	int	len, klen;
-
-	/*
-	 * XXX TODO, this does not support
-	 * compound statement inside $each{...} yet
-	 * We may need to support this later
-	 */
-	for (t = b; t <= end; t++) {
-		while ((t <= end) && (*t != '(')) t++;
-		klen = strlen(kwbuf);
-		if ((t <= end) && (t[1] == ':') &&
-		     !strncmp(&t[2], kwbuf, klen) &&
-		     !strncmp(&t[klen + 2], ":)", 2)) {
-			len = t - b;
-			return (len);
-		}
-	}
-	return (0);
-}
-
-/*
- * extract the statement portion of a $if(<kw>){....} statement
- * support nested statement
- */
-private int
-extractStatement(const char *b, const char *end)
-{
-	const char *t = b;
-	int bCnt = 0, len;
-
-	while (t <= end) {
-		if (*t == '{') {
-			bCnt++;
-		} else if (*t == '}') {
-			if (bCnt) {
-				bCnt--;
-			} else {
-				len = t -b;
-				return (len);
-			}
-		}
-		t++;
-	}
-	return (-1);
-}
-
-#define STR_EQ	1
-#define STR_NE	2
-#define NUM_EQ	3
-#define NUM_GT	4
-#define NUM_LT	5
-#define NUM_GE	6
-#define NUM_LE	7
-#define	NUM_NE	8
-
-private char *
-extractOp(const char *q, const char *end,
-				char *rightVal, char *op)
-{
-	int vlen, oplen;
-	char *t;
-
-	while (isspace(*q) && q < end) q++; /* skip leading space */
-	if (q[0] == '=') {
-		*op = STR_EQ;
-		oplen = 1;
-	} else if (strneq(q, "!=", 2)) {
-		*op = STR_NE;
-		oplen = 2;
-	} else if (strneq(q, "-eq", 3)) {
-		*op = NUM_EQ;
-		oplen = 3;
-	} else if (strneq(q, "-gt", 3)) {
-		*op = NUM_GT;
-		oplen = 3;
-	} else if (strneq(q, "-lt", 3)) {
-		*op = NUM_LT;
-		oplen = 3;
-	} else if (strneq(q, "-ge", 3)) {
-		*op = NUM_GE;
-		oplen = 3;
-	} else if (strneq(q, "-le", 3)) {
-		*op = NUM_LE;
-		oplen = 3;
-	} else {
-		*op =  0;
-		return ((char *) q); /* no operator */
-	}
-
-
-	/*
-	 * We got the operator, now extract the right value
-	 */
-	t = (char *) q + oplen;
-	rightVal[0] = '\0';
-	vlen = extractToken(t, end, ")", rightVal, VSIZE);
-	if (vlen < 0) { return (NULL); }  /* error */
-	return (&t[vlen]);
-}
-
-/*
- * Evaluate expression, return boolean
- */
-private int
-eval(char *leftVal, char op, char *rightVal)
-{
-	switch (op) {
-	    case STR_EQ: return (streq(leftVal, rightVal));
-	    case STR_NE: return (!streq(leftVal, rightVal));
-	    case NUM_EQ: return(atof(leftVal) == atof(rightVal));
-	    case NUM_GT: return(atof(leftVal) > atof(rightVal));
-	    case NUM_LT: return(atof(leftVal) < atof(rightVal));
-	    case NUM_GE: return(atof(leftVal) >= atof(rightVal));
-	    case NUM_LE: return(atof(leftVal) <= atof(rightVal));
-	    case NUM_NE: return(atof(leftVal) != atof(rightVal));
-	    default:  /* we should never get here */
-		fprintf(stderr, "eval: unknown operator %d\n", op);
-		return (0);
-	}
-}
-
-/*
- * Expand the dspec string and print result to "out"
- * This function may call itself recursively
- * kw2val() and fprintDelta() are mutually recursive
- */
-private int
-fprintDelta(FILE *out, char ***vbuf,
-	    const char *dspec, const char *end, sccs *s, delta *d)
-{
-#define	KWSIZE 64
-#define	extractSuffix(a, b) extractToken(a, b, "}", NULL, 0)
-#define	extractKeyword(a, b, c, d) extractToken(a, b, c, d, KWSIZE)
-	const char *b, *t, *q = dspec;
-	char	kwbuf[KWSIZE], rightVal[VSIZE], leftVal[VSIZE];
-	char	op;
-	int	len;
-
-	while (q <= end) {
-		if (*q == '\\') {
-			switch (q[1]) {
-			    case 'n': fc('\n'); q += 2; break;
-			    case 't': fc('\t'); q += 2; break;
-			    case '$': fc('$'); q += 2; break;
-			    default:  fc('\\'); q++; break;
-			}
-		} else if (*q == ':') {		/* keyword expansion */
-			len = extractKeyword(&q[1], end, ":", kwbuf);
-			if ((len > 0) && (len < KWSIZE) &&
-			    (kw2val(out, vbuf, "", 0, kwbuf,
-				    "", 0, s, d) != notKeyword)) {
-				/* got a keyword */
-				q = &q[len + 2];
-			} else {
-				/* not a keyword */
-				fc(*q++);
-			}
-		} else if ((*q == '$') && strneq(q, "$unless(:", 9)) {
-			len = extractKeyword(&q[9], end, ":", kwbuf);
-			if (len < 0) { return (0); } /* error */
-			leftVal[0] = 0;
-			t = extractOp(&q[10 + len], end, rightVal, &op); 
-			unless (t) return(0); /* error */
-			if (t[1] != '{') {
-				/* syntax error */
-				fprintf(stderr,
-				    "must have '{' in conditional string\n");
-				return (0);
-			}
-			if (len && (len < KWSIZE) &&
-			    (kw2buf(op ? leftVal :0, kwbuf, s, d) == strVal) &&
-			    (!op || eval(leftVal, op, rightVal))) {
-			    	goto dont;
-			} else {
-				goto doit;
-			}
-		} else if ((*q == '$') && strneq(q, "$if(:", 5)) {
-			len = extractKeyword(&q[5], end, ":", kwbuf);
-			if (len < 0) { return (0); } /* error */
-			leftVal[0] = 0;
-			t = extractOp(&q[6 + len], end, rightVal, &op); 
-			unless (t) return(0); /* error */
-			if (t[1] != '{') {
-				/* syntax error */
-				fprintf(stderr,
-				    "must have '{' in conditional string\n");
-				return (0);
-			}
-			if (len && (len < KWSIZE) &&
-			    (kw2buf(op ? leftVal: 0, kwbuf, s, d) == strVal) &&
-			    (!op || eval(leftVal, op, rightVal))) {
-				const char *cb;	/* conditional spec */
-				int clen;
-
-doit:				cb = b = &t[2];
-				clen = extractStatement(b, end);
-				if (clen < 0) { return (0); } /* error */
-				fprintDelta(out, vbuf, cb, &cb[clen -1], s, d);
-				q = &b[clen + 1];
-			} else {
-				int	bcount; /* brace count */
-dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
-					if (*t == '{') {
-						bcount++;
-					} else if (*t == '}') {
-						if (--bcount == 0) break;
-					} else if (*t == '\0') {
-						break;
-					}
-				}
-				if (t[0] != '}') {
-					/* syntax error */
-					fprintf(stderr,
-					    "unbalanced '{' in dspec string\n");
-					return (0);
-				}
-				q = &t[1];
-			}
-		} else if ((*q == '$') &&	/* conditional prefix/suffix */
-		    (q[1] == 'e') && (q[2] == 'a') && (q[3] == 'c') &&
-		    (q[4] == 'h') && (q[5] == '(') && (q[6] == ':')) {
-			const char *prefix, *suffix;
-			int	plen, klen, slen;
-			b = &q[7];
-			klen = extractKeyword(b, end, ":", kwbuf);
-			if (klen < 0) { return (0); } /* error */
-			if ((b[klen + 1] != ')') && (b[klen + 2] != '{')) {
-				/* syntax error */
-				fprintf(stderr,
-	    "must have '((:keyword:){..}{' in conditional prefix/suffix\n");
-				return (0);
-			}
-			prefix = &b[klen + 3];
-			plen = extractPrefix(prefix, end, kwbuf);
-			suffix = &prefix[plen + klen + 4];
-			slen = extractSuffix(suffix, end);
-			kw2val(
-			    out, vbuf, prefix, plen, kwbuf, suffix, slen, s, d);
-			q = &suffix[slen + 1];
-		} else {
-			fc(*q++);
-		}
-	}
-	return (0);
-}
-
 int
-sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
+sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	const	char *end;
-
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
-	end = &dspec[strlen(dspec) - 1];
 	s->prs_output = 0;
-	fprintDelta(out, NULL, dspec, end, s, d);
+	dspec_eval(out, 0, s, d, dspec);
 	if (s->prs_output) {
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) fputc('\n', out);
@@ -15171,15 +14869,13 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 }
 
 char *
-sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec)
+sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec)
 {
-	const	char *end;
 	char	**buf = 0;
 
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
-	end = &dspec[strlen(dspec) - 1];
-	fprintDelta(0, &buf, dspec, end, s, d);
+	dspec_eval(0, &buf, s, d, dspec);
 	if (data_length(buf)) {
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) buf = str_append(buf, "\n", 0);
@@ -16522,8 +16218,8 @@ stripDeltas(sccs *s, FILE *out)
 	state = allocstate(0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
-		zgets_init(s->where, s->size - s->data);
-		zputs_init();
+		s->zin = zgets_init(s->where, s->size - s->data);
+		sccs_zputs_init(s, out);
 	}
 	while (buf = nextdata(s)) {
 		if (isData(buf)) {
@@ -16541,7 +16237,8 @@ stripDeltas(sccs *s, FILE *out)
 	free(slist);
 	if (fflushdata(s, out)) return (1);
 	if (s->encoding & E_GZIP) {
-		if (zgets_done()) return (1);
+		if (zgets_done(s->zin)) return (1);
+		s->zin = 0;
 	}
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);

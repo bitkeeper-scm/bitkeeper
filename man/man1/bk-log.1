@@ -5,7 +5,7 @@ bk log \- print file revision history and/or metadata
 .SH SYNOPSIS
 .if n .ll 7.49i
 .B bk log
-.[B] \-dDfh
+.[B] \-dDf
 .if t .ds d date
 .if n .ds d d
 .if t .ds r rev
@@ -34,8 +34,15 @@ is followed by a detailed account of each revision.  Revision number,
 revision date and time, user who made that revision, what the relative
 path from root of repository is to that file, the comments that go
 with that revision, and documents if the file has been renamed.
+.LP
+.B Note:
+In pre-4.0 releases of \*[BK],
+.B bk log
+was known as
+.BR "bk prs" ,
+which is now deprecated.
 .SH OPTIONS
-.TP \fB\-c1992/07.\|.1992\fP
+.TP \fB\-c2006/07.\|.2006\fP
 .OPTreq \-c date
 Cut-off dates.  See range specifications (below) or 
 .B bk help range
@@ -55,9 +62,6 @@ directory.
 .tp
 .B \-f
 Print the changes in forward (oldest to newest) order.  The default is backward.
-.tp
-.B \-h
-Suppress the range header.
 .\" .tp
 .\" .B \-M
 .\" Do not include branch deltas which are not merged.
@@ -71,18 +75,18 @@ Specify a revision, or part of a range.
 .B bk help terms
 under \*(lqrev argument.\*(rq)
 .SS RANGE SPECIFICATIONS
-.TP \fB\-c1992/07.\|.1992\fP
+.TP \fB\-c2006/07.\|.2006\fP
 .B \-r+
 prints the most recent delta
 .tp
 .B \-r1.3.\|.1.6
 prints all deltas that are in 1.6's history but are not in 1.3's history.
 .tp
-.B \-c1992/07.\|.1992
-prints all deltas from July 1 1992 to Dec 31 1992
+.B \-c2006/07.\|.2006
+prints all deltas from July 1 2006 to Dec 31 2006
 .tp
-.B \-c1992.\|.1992
-prints all deltas from Jan 1 1992 to Dec 31 1992
+.B \-c2006.\|.2006
+prints all deltas from Jan 1 2006 to Dec 31 2006
 .tp
 .B \-c\-1d.\|.
 prints all deltas made in the last 24 hours; similarly for
@@ -97,25 +101,34 @@ for seconds,minutes, hours, days, months, and years.
 .SH OUTPUT FORMAT
 .LP
 The 
-.B bk log
-command has a default output format which can be overridden.  There are
-many different pieces of information in a \*(BK file and 
-.B bk log 
-can extract most of them.
+.BR "bk changes" ,
+.BR "bk log" ,
+and 
+.B "bk sccslog" 
+commands have a default output format which can be overridden.  There are
+many different pieces of information in a \*(BK file and virtually all of
+them can be extracted using a non-default output format.
 To extract specific information, a \*(lqdspec\*(rq
 (data specification) string must be provided and should contain
 keywords surrounded by colons.
-.B bk\ log
-will expand each of these keywords in the output it produces.
-To specify a 
-.SM TAB
-character in the output, use
-.BR \et ;
-to specify a 
-.SM NEWLINE
-in the output,
-use 
-.BR \en .
+Each keyword corresponds to some piece of information and will be expanded
+as that information in the output it produces.
+.LP
+The
+.I dspecs
+can contain the following set of escaped characters which
+will be replaced with the specified string:
+.LP
+.ta .75i
+.nf
+\\b	Backspace
+\\f	Form feed
+\\n	Newline
+\\r	Carriage return
+\\t	Tab
+\\123	3 digit octal value (pad with leading zeros)
+.LP
+.fi
 An example dspec 
 which prints the \*(BK file name and the revision number
 is 
@@ -130,9 +143,12 @@ The list of variables which currently provide one are:
 .V PATH ,
 and
 .V TAGS .
+The newline can be added in line or you can specify the
+.B \-n
+option which will provide one as needed.
 .LP
 Multi-line variables are printed with no spacing or newlines between the
-lines by default.  You may insert spaces or newlines with a 
+lines by default.  You can insert spaces or newlines with a 
 .B $each(\|) 
 loop like so
 .DS
@@ -151,8 +167,7 @@ bk log -d'$each(:C:){>> (:C:)\en}' foo.c
 .DE
 .LP
 The list of variables with this behavior is:
-.V C ,
-.V FD ,
+.V C 
 and
 .V TAG .
 .br
@@ -160,19 +175,19 @@ and
 .SS CONDITIONAL OUTPUT
 The 
 .I dspec
-can produce output conditionally.  The following will print the default
-output format for each revision made by 
-.IR lm :
+can produce output conditionally.
+The following prints the revisions of
+.B foo.c
+that were made by
+.IR joe :
 .DS
-bk log -d'$if(:P:=lm){:PRS:}' foo.c
+bk log -nd'$if(:USER:=joe){:REV:}' foo.c
 .DE
 .br
 .ne 5
 .SS CONDITIONAL STATEMENTS
-.TP \fB\-c1992/07.\|.1992\fP
-.if t \fB$if(\fIexpr\fB)\fB{\fIanything\fB}\fR
-.\" XXX needs to be conditional on helpdoc?
-.if n \fB$if(\fI<expr>\fB)\fB{\fI<anything>\fB}\fR
+.TP 
+\fB$if(\fI\*<expr\*>\fB)\fB{\fI\*<anything\*>\fB}\fR
 prints 
 .ARG anything
 if
@@ -183,20 +198,27 @@ is a field, i.e.,
 .V :MERGE: ,
 then the field is examined and returns true if it has a value.
 .ARG anything 
-can contain fields as normal, i.e.,
+can contain keywords, i.e.,
 .V :REV: .
 .tp
-.if t \fB$unless(\fIexpr\fB)\fB{\fIanything\fB}\fR
-.\" XXX needs to be conditional on helpdoc?
-.if n \fB$unless(\fI<expr>\fB)\fB{\fI<anything>\fB}\fR
+\fB$unless(\fI\*<expr\*>\fB)\fB{\fI\*<anything\*>\fB}\fR
 prints 
 .ARG anything
-if
+unless
 .ARG expr
-is false.
+is true.
+.tp
+.if n \fB$if(\fI\*<expr\*>\fB)\fB{\fI\*<stuff if true\*>\fB}$else{\fI\*<stuff if false\*>}\fR
+both
+.B $if
+and
+.B $unless
+can have an optional
+.B $else
+clause that prints if the preceeding clause was not printed.
 .SS CONDITIONAL OPERATORS
 .ad l
-.TP \fB\-c1992/07.\|.1992\fP
+.TP "strings "
 .B strings
 .ARGc lhs
 .B =\c
@@ -214,8 +236,13 @@ true if
 is different than
 .ARG rhs .
 .br
-.BR Note :
-no spaces on either side of the operator.
+.ARGc str
+.B =~\c
+.ARG glob
+true if
+.ARG str
+matches
+.ARG glob .
 .tp
 .B numbers
 .ARGc lhs
@@ -247,6 +274,11 @@ less than.
 spaces 
 .B required
 on both sides of the operator.
+.SS COMPOUND EXPRESSIONS
+As of \*[BK] release 4.2,
+.I dspecs
+support logical AND (A && B), logical OR (A || B),
+and parenthesized subexpressions ((A && B) || (C && D)).
 .SS ITERATIVE OUTPUT
 .ad b
 Some fields, such as comments or tags, may be multi-line.  To print a prefix
@@ -255,8 +287,7 @@ in front of each of these lines, the idiom is:
 bk log -d'$if(:C:){$each(:C:){C\ \ (:C:)\en}}' foo.c
 .DE
 The variables that support this kind of iteration are
-.V C ,
-.V FD ,
+.V C 
 and
 .V TAG .
 The
@@ -494,10 +525,6 @@ Name	T	What is printed
 :UTC_FUDGE:	D	like UTC but without the date fudge
 .xx
 :VERSION:	F	file format version
-.xx
-:W:	D	what string
-.xx
-:Z:	D	@(#)
 .SH NOTES
 There used to be a
 .Q \-m
@@ -517,6 +544,62 @@ and
 respectively.
 The old forms will continue to work but the new forms are used
 in the documentation.
+.LP
+Keywords marked with type D above can optionally be resticted to a
+given revision as follows:
+.DS
+.B :KW|REV:
+.DE
+For example:
+.DS
+bk -r log -r+ -hnd'$if(:DPN|1.0: != :DPN:){rename :DPN|1.0: => :DPN:}'
+.DE
+.SH EXAMPLES
+To extract a key, which is a stable internal name for a changeset:
+.DS
+bk changes -r1.234 -nd:MD5KEY:
+.DE
+To count up all the deltas in all user files:
+.DS
+bk -Ur log -nd:REV: | wc -l
+.DE
+List users who have made changes in a subdirectory in the last month:
+.DS
+bk -rSubDir log -c-1M.. -nd:USER: | sort -u
+.DE
+To see the number of merge changesets:
+.DS
+bk changes -nd'$if(:MERGE:){merge}' | wc -l
+.DE
+To see the number of merges in user files:
+.DS
+bk -Ur log -nd'$if(:MERGE:){merge}' | wc -l
+.DE
+Count up lines inserted by a particular user in all non-merge deltas:
+.DS
+bk -Ur log -nd'$if(:USER: = joe && !:MERGE:){:LI:}' |
+awk '{ lines += $1 } END { print lines }'
+.DE
+Note that the preceeding example uses new features in the 
+.I dspec 
+language.
+The following will work in older bk-4.x releases:
+.DS
+bk -Ur log -nd'$if(:USER:=joe){$unless(:MERGE:){:LI:}}' |
+awk '{ lines += $1 } END { print lines }'
+.DE
+The default
+.I dspec
+for the
+.B bk changes command is this:
+.DS
+"$unless(:CHANGESET:){  }"
+":DPN:@:REV:, :Dy:-:Dm:-:Dd: :T::TZ:, :USER:$if(:HOST:){@:HOST:} "
+"+:LI: -:LD:\\n"
+"$each(:C:){$unless(:CHANGESET:){  }  (:C:)\\n}"
+"$each(:TAG:){  TAG: (:TAG:)\\n}"
+"$if(:MERGE:){$unless(:CHANGESET:){  }  MERGE: :MPARENT:\\n}\\n"
+.DE
 .SH "SEE ALSO"
 .SA range
 .SH CATEGORY
@@ -627,8 +710,6 @@ in the documentation.
 .\" help://:UTC:
 .\" help://:UTC_FUDGE:
 .\" help://:VERSION:
-.\" help://:W:
-.\" help://:Z:
 .\" END dspecs help links ## IMPORTANT: Do not edit or delete this line! ##
 .\" XXX - break the dspec stuff into it's own man page and reference it
 .\" XXX - verify that the examples are all correct, I think $each may be wrong

@@ -499,7 +499,7 @@ _unrm () {
 	trap 'rm -f $LIST $TMPFILE' 0
 
 	# Find all the possible files, sort with most recent delete first.
-	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
+	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE:' | \
 		bk sort -r -n | awk -F'|' '{print $2}' | \
 		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
@@ -772,39 +772,6 @@ _links() {		# /* doc 3.0 */
 	done
 }
 
-# usage: regression [-s]
-# -s says use ssh
-# -l says local only (don't do remote).
-# -r says do remote.
-# If neither -r or -l is specified,
-# the defaule is -l
-_regression() {		# /* doc 2.0 */
-	PREFER_RSH=YES
-	DO_REMOTE=NO	# don't run remote by default
-	V=
-	X=
-	while getopts lrsvx OPT
-	do	case $OPT in
-		l)	DO_REMOTE=NO;;
-		r)	DO_REMOTE=YES;;
-		s)	PREFER_RSH=;;
-		v)	V=-v;;
-		x)	X=-x;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	export DO_REMOTE PREFER_RSH
-
-	tdir=`bk bin`/t
-
-	test -x "$tdir"/doit || {
-	    echo "The regression suite is not included with this release of BitKeeper" 1>&2
-	    exit 1
-	}
-	# Do not use "exec" to invoke "./doit", it causes problem on cygwin
-	cd "$tdir" && time ./doit $V $X "$@"
-}
-
 __init() {
 	BK_ETC="BitKeeper/etc/"
 
@@ -925,8 +892,17 @@ _c2r() {	# undoc
 # XXX undocumented hack that wayne uses.
 #
 # clone a remote repo using a local tree as a baseline
-# assumes UNIX (clone -l)
+# assumes UNIX/NTFS (clone -l)
 _clonemod() {
+	CSETS=BitKeeper/etc/csets-in
+	Q=
+	while getopts q OPT
+	do	case $OPT in
+		q)	Q=-q;;
+		*)	bk clonemod; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	if [ $# -ne 3 ]
 	then
 		echo "usage: bk clonemod URL LOCAL NEW" 1>&2
@@ -937,7 +913,13 @@ _clonemod() {
 	cd "$3" || exit 1
 	bk parent -sq "$1" || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
-	bk pull 
+	# remove any local tags that the above undo missed
+	bk changes -qkL > $CSETS || exit 1
+	if [ -s "$CSETS" ]
+	then	bk unpull -sfq || exit 1
+	else	rm $CSETS || exit 1
+	fi
+	bk pull $Q -u || exit 1
 }
 
 # XXX undocumented alias from 3.0.4 
@@ -1416,7 +1398,16 @@ _tclsh() {
 }
 
 _wish() {
-	WISH=`bk bin`/gui/bin/bkgui
+	AQUAWISH="`bk bin`/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
+	if [ -z "$DISPLAY" -a -x "$AQUAWISH" ] ; then
+		WISH="$AQUAWISH"
+	else
+		TCL_LIBRARY=`bk bin`/gui/lib/tcl8.5
+		export TCL_LIBRARY
+		TK_LIBRARY=`bk bin`/gui/lib/tk8.5
+		export TK_LIBRARY
+		WISH="`bk bin`/gui/bin/bkgui"
+	fi
 	test "X$OSTYPE" = "Xmsys" && WISH=`win2msys "$WISH"`
 	exec "$WISH" "$@"
 }

@@ -211,6 +211,11 @@ main(int ac, char **av, char **env)
 			    case '@': remote = 1; break;
 			    case 'q': quiet = 1; break;
 			    case 'r':				/* doc 2.0 */
+				if (dashr) {
+					fprintf(stderr,
+					    "bk: Only one -r allowed\n");
+					return (1);
+				}
 				dir = optarg;
 				dashr++;
 				break;
@@ -833,13 +838,15 @@ launch_wish(char *script, char **av)
 			    bin);
 		} else {
 			path = aprintf("%s/gui/bin/bkgui", bin);
-		}
-		if (executable(path)) {
-			safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.4", bin);
-			safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.4", bin);
-		} else {
-			free(path);
-			path = 0;
+			if (executable(path)) {
+				safe_putenv("TCL_LIBRARY=%s/gui/lib/tcl8.5",
+				    bin);
+				safe_putenv("TK_LIBRARY=%s/gui/lib/tk8.5",
+				    bin);
+			} else {
+				free(path);
+				path = 0;
+			}
 		}
 	}
 	unless (path) {

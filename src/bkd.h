@@ -3,7 +3,6 @@
 
 #include "system.h"
 #include "sccs.h"
-#include "zlib/zlib.h"
 
 /*
  * Version 1.2 - removes the @DONE@ in the push path.
@@ -142,6 +141,7 @@ int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
 int	getServerInfoBlock(remote *r);
+char	*vpath_translate(char *path);
 
 #define	SENDENV_NOREPO	   1 /* don't assume we are called from a repo */
 #define	SENDENV_NOLICENSE  2 /* don't send BK_LICENSE, in lease code */

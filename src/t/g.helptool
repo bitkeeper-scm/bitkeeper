@@ -20,7 +20,7 @@ RC="`bk dotbk`/help.rc"
 echo $N Simple startup and exit......................................$NL
 bk guitest helptool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 err=$?
 if [ -s "$OUT" ] ; then echo failed; cat "$OUT"; exit 1 ; fi
@@ -31,7 +31,7 @@ echo $N Create dotbk/help.rc ........................................$NL
 test -f "$RC" && rm -f "$RC"
 bk guitest helptool >"$OUT" 2>&1 <<'EOF'
     test_buttonPress Quit
-    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+    test_die 99
 EOF
 test -f "$RC" || { echo "failed"; exit 1; }
 echo "OK"

@@ -34,16 +34,18 @@ bk makepatch $Q -r1.2..+ > "$HERE/patch"
 cd "$HERE/clone1"
 bk lease flush -a
 bk takepatch $Q -a < "$HERE/patch" || exit 1
-bk changes -L "$HERE/project" > c1 || [ -s c1 ] || {
+bk changes -aqL > c1 || exit 1
+test -s c1 && {
        echo "unexpected output from changes -L:"
        cat c1
        exit 1
-} >&2
-bk changes -R "$HERE/project" > c2 || [ -s c2 ] || {
+}
+bk changes -aqR > c2 || exit 1
+test -s c2 && {
        echo "unexpected output from changes -R:"
        cat c2
        exit 1
-} >&2
+}
 echo OK
 
 echo $N Do another takepatch, verify no output ......................$NL
@@ -52,10 +54,39 @@ bk takepatch -a < "$HERE/patch" > e1 2>&1 || {
 	echo "takepatch exited with $?" >&2
 	exit 1;
 }
-[ -s e1 ] && {
+test -s e1 && {
 	echo
 	echo "Unexpected output from takepatch:"
 	cat e1
 	exit 1
-} >&2
+}
+echo OK
+
+echo $N Make a patch with a tag and verify that the tag moved .......$NL
+cd "$HERE/project"
+bk tag $Q TIP
+bk makepatch $Q -r+ > "$HERE/patch"
+cd ../clone1
+bk takepatch -a < "$HERE/patch" > e1 2>&1 || {
+	echo "takepatch exited with $?" >&2
+	exit 1;
+}
+test -s e1 && {
+	echo
+	echo "Unexpected output from takepatch:"
+	cat e1
+	exit 1
+}
+bk changes -aqL > c1 || exit 1
+test -s c1 && {
+       echo "unexpected output from changes -L:"
+       cat c1
+       exit 1
+}
+bk changes -aqR > c2 || exit 1
+test -s c2 && {
+       echo "unexpected output from changes -R:"
+       cat c2
+       exit 1
+}
 echo OK

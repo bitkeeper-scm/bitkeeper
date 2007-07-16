@@ -50,7 +50,10 @@ proc initGlobals {} \
 		set runtime(enableShellxLocal) 1
 		set runtime(enableShellxNetwork) 0
 		set key {HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft}
-		append key {\Windows\CurrentVersion} 
+		append key {\Windows\CurrentVersion}
+		if {[catch {package require registry}]} {
+			puts "ERROR: Could not find registry package"
+		}
 		if {[catch {set pf [registry get $key ProgramFilesDir]}]} {
 			puts "Can't read $key"
 			set pf {C:\Program Files}
@@ -530,13 +533,6 @@ proc widgets {} \
 			    -padx 0 \
 			    -command [list setDestination $dir]
 
-			if {$tcl_platform(platform) == "unix"} {
-				# this gives the radiobuttons a nice
-				# "bk blue" color. Unfortunately, this
-				# option behaves differently on windows...
-				$w.rb-$row configure -selectcolor #00008b
-			}
-
 			grid $w.rb-$row -row $row -column 0 \
 			    -sticky ew -padx 0 -ipadx 0 -columnspan 2
 
@@ -635,7 +631,7 @@ proc widgets {} \
 				-offvalue 0 
 			    checkbutton $w.bkscc \
 				-anchor w \
-				-text "Enable VC++ integration" \
+				-text "Enable Visual Studio integration" \
 				-borderwidth 1 \
 				-variable ::runtime(enableSccDLL) \
 				-onvalue 1 \
@@ -691,13 +687,6 @@ proc widgets {} \
 			}
                     after idle  [list focus $w.overwrite]
 
-		    if {$tcl_platform(platform) == "unix"} {
-			    # this gives the radiobuttons a nice
-			    # "bk blue" color. Unfortunately, this
-			    # option behaves differently on windows...
-			    $w.overwrite configure -selectcolor #00008b
-		    }
-	
 		    pack $w.overwrite -side top -fill x -anchor w -pady 16
 	    }
 
@@ -1314,33 +1303,21 @@ set strings(Overwrite) {
 
 set strings(InstallDLLsNoAdmin) {
 	BitKeeper includes optional integration with Windows Explorer
-	and Visual Studio (but not Visual Studio.net, that's coming soon).
+	and Visual Studio.
 
 	You do not have sufficient privileges on this machine to install 
 	these features. These features must be must be installed from a user 
 	account that has Administrator privileges. 
-
-	These features are only available to commercial users of BitKeeper.
-	If you are evaluating BitKeeper for commercial use please make
-	sure you have received an evaluation key to enable these
-	features. See http://www.bitkeeper.com for information on
-	getting an evaluation key or a commercial license key.
 }
 
 set strings(InstallDLLs) {
 	BitKeeper includes optional integration with Windows Explorer
-	and Visual Studio (but not Visual Studio.net, that's coming soon).
+	and Visual Studio.
 
 	The Explorer integration can be enabled separately for local
 	and remote hard drives.  Enabling this option on remote drives
 	can lead to performance problems if you have a slow or
 	unreliable network. 
-
-	These features are only available to commercial users of BitKeeper.
-	If you are evaluating BitKeeper for commercial use please make
-	sure you have received an evaluation key to enable these
-	features. See http://www.bitkeeper.com for information on
-	getting an evaluation key or a commercial license key.
 }
 
 set strings(Install) {

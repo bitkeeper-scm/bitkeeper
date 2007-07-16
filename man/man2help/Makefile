@@ -10,7 +10,7 @@ SUM=All Overview Common Repository GUI-tools File Admin Compat Utility
 
 helptxt: summaries
 
-PAGES:=$(shell $(BK) sfiles -g1 ../man1 'bk-*.1')
+PAGES:=$(shell $(BK) sfiles -xlug1 ../man1 'bk-*.1')
 
 pages: ../bk-macros ../man.tmac man2help.pl verify-dspecs FORCE
 	@$(BK) get -STq ../man1

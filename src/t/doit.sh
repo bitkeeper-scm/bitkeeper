@@ -582,10 +582,20 @@ EXIT=100	# Because I'm paranoid
 echo ------------------------------------------------
 if [ "X$FAILED" = X ]
 then
-	echo All requested tests passed, must be my lucky day
+	if [ X"$GUI_TEST" = XYES ]
+	then
+		echo All GUI tests passed, tell ob@perforce.com
+	else
+		echo All requested tests passed, must be my lucky day
+	fi
 	EXIT=0
 else
-	echo Not your lucky day, the following tests failed:
+	if [ X"$GUI_TEST" = XYES ]
+	then
+		echo The following GUI tests failed:
+	else
+		echo Not your lucky day, the following tests failed:
+	fi
 	for i in $FAILED
 	do	echo "	$i"
 	done

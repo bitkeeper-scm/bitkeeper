@@ -72,13 +72,16 @@ Specifying revisions is incompatible with the
 .Q \-R/\-L
 options.
 .SH OPTIONS
-.TP \-/\*<str\*>/[i]
-.OPTreq \-/ str \fB/\fP[\fBi\fP]
+.TP \-/\*<str\*>/[igt]
+.OPTreq \-/ str \fB/\fP[\fBigt\fP]
 List only those changesets whose comments contain the string
 .ARG str .
 .ARG str
-may be a regular expression.
+may be a regular expression, or if the
+.ARG g
+option is specified, a glob.
 If there is a trailing \*(lqi\*(rq then ignore case in the search.
+If there is a trailing \*(lqt\*(rq then search only in tag names.
 .tp
 .OPTreq \-c dates
 Specifies the changesets to be listed as a date range, i.e.,
@@ -123,7 +126,7 @@ pattern (see below).
 .B \-k
 Produce a list of matching changeset keys, usually for scripts.
 Equivalent to 
-.QI \-Dand:KEY:
+.QR \-Dand:KEY: .
 .tp
 .B \-L
 List everything that would be sent with a bk push.

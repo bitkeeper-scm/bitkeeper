@@ -555,4 +555,33 @@ grep -q "not in a BitKeeper repository" mv.out || { echo failed; exit 1; }
 bk mv foo.c "$HERE/copy" 2> mv.out
 grep -q "not in the same BitKeeper repository" mv.out || { echo failed; exit 1; }
 echo OK
-exit 0
+
+if [ $PLATFORM != "WIN32" ]
+then	#----------------------------------------------------------------
+echo $N BugID 2007-02-07-001 - see if bk rm follows symlinks ........$NL
+	cd "$HERE"
+	commercial inner
+	cd "$HERE"
+	bk clone $Q inner outer
+	cd inner
+	mkdir somedir
+	echo whatever > somedir/a.txt
+	bk new $Q somedir/a.txt
+	bk commit $Q -ywhatever
+	cd ../outer
+	ln -s ../inner/somedir somedir
+	bk rm somedir/a.txt
+	test `bk sfiles -p | wc -l` -eq 0 || {
+		    echo should not have pending files
+		    exit 1
+	}
+	bk -r check -ac || exit 1
+	cd ../inner
+	test `bk sfiles -p | wc -l` -eq 1 || {
+		    echo should have pending files
+		    exit 1
+	}
+	bk commit $Q -ywhatever
+	bk -r check -ac || exit 1
+	echo OK
+fi	#----------------------------------------------------------------

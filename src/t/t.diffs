@@ -434,3 +434,41 @@ cat - <<'EOF' > WANT
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N diffs -u should emit the same relative path for both sides ..$NL
+cd "$HERE"
+rm -rf project
+commercial project
+mkdir -p sub/dir
+cd sub/dir
+cat <<EOF > file
+This is a file
+EOF
+bk new $Q file
+bk edit $Q file
+echo Some new stuff >> file
+# Should be something like
+#     +++ edited/sub/dir/file
+bk diffs -u -N | fgrep '+++ edited/file' > /dev/null && {
+	echo failed
+	bk diffs -u -N
+	exit 1
+}
+echo OK
+
+if [ X$PLATFORM != XWIN32 ]
+then
+echo $N Replacing an edited file with a symlink should work .........$NL
+rm file
+ln -s /nonexistant file
+bk diffs file > DIFFS || exit 1
+cat <<EOF > WANT
+===== file 1.1 vs edited =====
+1c1
+< This is a file
+---
+> SYMLINK -> /nonexistant
+EOF
+cmpfiles DIFFS WANT
+echo OK
+fi

@@ -243,6 +243,33 @@ LIST=`bk changes -'/^s.* CHECKIN$/i' -d:I:`
 test 1.3 = "$LIST" || fail
 echo OK
 
+echo $N Check that -/search/junk fails ..............................$NL
+bk changes -/Second/junk -d:I: 2> ERR && {
+	echo failed to fail
+	exit 1
+}
+grep -q '\/j not implemented' ERR || {
+	echo wrong error
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Check regex on tags -/pattern/t .............................$NL
+cd "$HERE/diamond"
+# Tags present are MYTAG, second and branch.
+# use common 'a' in MYTAG and branch
+bk changes -/a/t -nd:I: > GOT
+printf "1.4\n" > WANT
+cmpfiles WANT GOT
+bk changes -/a/ti -nd:I: > GOT
+printf "1.5\n1.4\n" > WANT
+cmpfiles WANT GOT
+bk changes -'/s.*d/t' -nd:I: > GOT
+printf "1.1.1.2\n" > WANT
+cmpfiles WANT GOT
+echo OK
+
 # -v tests
 # flush out some corners in 3.2.x -v code which did
 # pure date sorting using sccslog

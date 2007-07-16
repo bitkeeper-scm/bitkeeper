@@ -389,7 +389,8 @@ int	checking_rmdir(char *dir);
 			    ((buf[0] == CNTLA_ESCAPE) && (buf[1] == '\001')))
 #define	seekto(s,o)	(s)->where = ((s)->mmap + o)
 #define	eof(s)		(((s)->encoding & E_GZIP) ? \
-			    zeof() : ((s)->where >= (s)->mmap + (s)->size))
+			    zeof(s->zin) : \
+			    ((s)->where >= (s)->mmap + (s)->size))
 #define	new(p)		p = calloc(1, sizeof(*p))
 
 typedef	u32		ser_t;
@@ -597,6 +598,7 @@ typedef	struct sccs {
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
 				/* Actually is of type "name *" in resolve.h */
+	zgetbuf	*zin;		/* Buffer expanding sccsfile while reading */
 	u16	version;	/* file format version */
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
@@ -825,8 +827,8 @@ int	sccs_clean(sccs *s, u32 flags);
 int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
-int	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
-char	*sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec);
+int	sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out);
+char	*sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec);
 delta	*sccs_findDate(sccs *s, char *date, int roundup);
 int	sccs_patheq(char *file1, char *file2);
 delta	*sccs_findDelta(sccs *s, delta *d);
@@ -1221,6 +1223,12 @@ void	randomBits(char *buf);
 int	almostUnique(void);
 int	uninstall(char *path, int upgrade);
 int	remote_bk(int quiet, int ac, char **av);
+void	dspec_eval(FILE * out, char ***buf, sccs *s, delta *d, char *start);
+void	dspec_printline(sccs *s, FILE *out, char ***vbuf);
+void	dspec_printeach(sccs *s, FILE *out, char ***vbuf);
+int	kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d);
+void	show_s(sccs *s, FILE *out, char ***vbuf, char *data, int len);
+void	show_d(sccs *s, FILE *out, char ***vbuf, char *format, int num);
 
 extern	char	*editor;
 extern	char	*bin;

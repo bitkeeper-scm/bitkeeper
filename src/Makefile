@@ -126,7 +126,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	check.o checksum.o clean.o cleanpath.o clone.o cmd.o \
 	collapse.o comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	delta.o diffs.o diffsplit.o \
+	delta.o diffs.o diffsplit.o dspec.o \
 	eula.o export.o \
 	find.o findcset.o findkey.o fixlod.o fixtool.o \
 	g2bk.o gca.o get.o gethelp.o \
@@ -170,7 +170,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	tagmerge.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
-	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
+	user.o utils.o uu.o version.o what.o which.o xflags.o \
 	zone.o
 SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
@@ -181,7 +181,7 @@ LOCALSCR= build \
 	www/document_plain.png www/folder.png www/repo.png
 PSCR	= t/doit t/guitest
 PROGS	= hidestring libc/mtst$(EXE)
-LIBS	= libc/libc.a zlib/libz.a tomcrypt/libtomcrypt.a tommath/libtommath.a
+LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES \
 	Academic.lic Basic.lic Pro.lic Enterprise.lic MLA.lic bkcl.lic
@@ -189,7 +189,7 @@ ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) \
 	$(PROGS) GUI
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Ilibc -Izlib -Itommath -Itomcrypt/src/headers
+CPPFLAGS= -Ilibc -Itommath -Itomcrypt/src/headers
 # Override this if you don't have it.
 RANLIB	= ranlib
 
@@ -197,7 +197,7 @@ RANLIB	= ranlib
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bkd.h logging.h \
-	  purify.h range.h rcs.h resolve.h sccs.h zgets.h \
+	  purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h bkver.h proj.h redblack.h inskeys.h
 
 # list of non-C sources in bk
@@ -214,7 +214,7 @@ export	GET
 default:
 	bk cat BUILD.txt
 
-SUBDIRS = libc tommath tomcrypt zlib
+SUBDIRS = libc tommath tomcrypt
 
 
 all: $(ALL)
@@ -267,7 +267,8 @@ clean: FORCE
 	for sub in $(SUBDIRS) ../doc ../man gnu gui utils win32; \
 	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" $@; \
 	done
-	$(RM) $(OBJ) bk.o $(BINS) $(SCRIPTS) $(LOCALSRC) $(PSRC) $(PROGS)
+	$(RM) $(OBJ) bk.o inskeys.o inskeys_main.o $(BINS) $(SCRIPTS) \
+	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		bkver.h tclkey.h core *.bb *.bbg *.da *.gcov \
 		bk.ico bk16.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
@@ -507,7 +508,8 @@ crankrelease: crank.sh remote.sh
 	rm -f MD5SUMS ; \
 	md5sum bk-* >> MD5SUMS ; \
 	echo "Your images are in /home/bk/images/$$TAG" ; \
-	echo "Run './mkupgrades $$TAG' to create upgrade area." )
+	echo "Run './mkupgrades $$TAG' to create upgrade area."; \
+	echo "Run './mkrelease $$TAG' to release this version of bk.")
 
 crankclean: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh clean
@@ -539,7 +541,7 @@ tclwrap: blowfish.o tclwrap.o
 
 tclwrap.o blowfish.o: blowfish.h tclkey.h
 
-cmd.c cmd.h: cmd.pl bk.sh
+cmd.c cmd.h: cmd.pl bk.sh $(filter bkd_%,$(SRCS))
 	perl cmd.pl || (rm -f cmd.c cmd.h; exit 1)
 
 # This parses slib.c and extracts the meta-data keywords expanded

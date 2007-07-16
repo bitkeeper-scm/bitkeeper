@@ -2326,7 +2326,8 @@ chkCaseChg(FILE *f)
 		getRealName(buf, localDB, realname);
 		unless (streq(buf, realname)) {
 			if (strcasecmp(buf, realname) == 0) {
-				getMsg("case_folding", 0, '=', stderr);
+				getMsg2("case_folding",
+				    buf, realname, '=', stderr);
 			} else {
 				assert("Unknown error" == 0);
 			}
@@ -2557,8 +2558,7 @@ err:			unapply(save);
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
-
-	sync();
+	unless (proj_configbool(0, "nosync")) sync();
 	if (proj_configbool(0, "partial_check")) {
 		fflush(save); /*  important */
 		ret = run_check(APPLIED, opts->quiet ? 0 : "-v");

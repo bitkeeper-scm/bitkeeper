@@ -239,7 +239,8 @@ realloc:
 		nchar = l->bufsiz;
 	}
 	unless (fgets(p, nchar, f)) return (0);
-	unless (chomp(p)) goto realloc;
+	unless (strlen(p) < (nchar-1)) goto realloc;
+	chomp(p);
 	return (l->buf);
 }
 

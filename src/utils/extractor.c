@@ -3,7 +3,6 @@
  * Copyright (c) 1999 Larry McVoy
  */
 #include "system.h"
-#include "../zlib/zlib.h"
 
 #ifndef MAXPATH
 #define	MAXPATH		1024
@@ -11,7 +10,7 @@
 #ifdef	WIN32
 #define	PFKEY		"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
 #define	SFIOCMD		"sfio.exe -im < sfioball"
-#define	WIN_UNSUPPORTED	"Windows 2000 or later required to install BitKeeper"
+#define	WIN_UNSUPPORTED	"BitKeeper is not supported on this version of Windows"
 #else
 #define	SFIOCMD		"sfio.exe -iqm < sfioball"
 #endif

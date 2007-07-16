@@ -50,7 +50,10 @@ usage:			system("bk help -s unlock");
 		if (av[optind]) {
                         chdir(av[optind]);
                 }
-                proj_cd2root();
+                if (proj_cd2root() < 0) {
+			fprintf(stderr, "unlock: Not in a repository.\n");
+			return (0);
+		};
 		return (repo(flags));
 	}
 
@@ -84,7 +87,7 @@ usage:			system("bk help -s unlock");
 		}
 		name = sfileNext();
 	}
-	if (sfileDone()) c |= 2;
+	if (sfileDone()) c = 1;
 	return (c);
 }
 
@@ -120,7 +123,7 @@ repo(u32 flags)
 		if (repository_hasLocks(0, READER_LOCK_DIR)) {
 			fprintf(stderr, "read unlock failed.\n");
 			repository_lockers(0);
-			error++;
+			error = 1;
 		}
 	}
 
@@ -129,7 +132,7 @@ repo(u32 flags)
 		if (repository_hasLocks(0, WRITER_LOCK_DIR)) {
 			fprintf(stderr, "write unlock failed.\n");
 			repository_lockers(0);
-			error++;
+			error = 1;
 		}
 	}
 

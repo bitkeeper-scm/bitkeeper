@@ -1,0 +1,54 @@
+# Because some proxy disallow proxy for localhost
+unsetHttpProxy
+
+# Make 100% sure wed don't get stuck on a bk prompt
+# showing us the EULA.
+unset DISPLAY
+
+echo $N Create initial repository ...................................$NL
+# No point running performance numbers across the cluster
+test "$HOSTNAME" = "redhat71.bitmover.com" || {
+	echo skipped
+	exit 0
+}
+test -d /home/bk/test_data/perf || {
+	echo skipped
+	exit 0
+}
+BK_CONFIG="license:$BKL_PRO;licsign1:$BKL_P1$BKL_P2$BKL_P3"
+export BK_CONFIG
+echo y | bk clone $Q /home/bk/test_data/perf > OUT 2>&1 || {
+	cat OUT
+	echo skipped
+	exit 0
+}
+cd perf
+echo OK
+
+echo $N Time fetching slib.c fully annotated.........................$NL
+EXPECTED=96000.0
+P=`port 50000`
+bk bkd -d -D -l -p$P -ikill > STDOUT 2> STDERR &
+bk tclsh <<EOF >TIME
+	set times 5
+	set t [lindex [split [time {
+		package require http
+		set out [open FETCH w]
+		set token [http::geturl "http://localhost:$P/src/slib.c?PAGE=anno&REV=1.774" -channel \$out -blocksize 4096]
+		close \$out
+	} \$times]] 0]
+	if {\$t > ($EXPECTED + $EXPECTED * 0.15)} {
+		puts \$t
+		exit 1
+	}
+	exit 0
+EOF
+rc=$?
+bk _kill bk://localhost:$P || exit 1
+test $rc = 0 || {
+	echo failed
+	T=`cat TIME`
+	echo expected $EXPECTED microseconds and got $T microseconds
+	exit 1
+}
+echo OK

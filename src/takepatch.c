@@ -7,7 +7,6 @@ left||right->path == s->gfile.
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
-#include "zlib/zlib.h"
 #include <time.h>
 
 /*

@@ -170,6 +170,15 @@ bk changes -rsecond >> WANT
 checkfiles WANT GOT
 echo OK
 
+echo $N Check that -/regex/t works ..................................$NL
+bk changes -/s.*/t -nd:SYMBOL: > GOT
+echo second > WANT
+cmpfiles WANT GOT
+bk changes -/t*/gt -nd:SYMBOL: > GOT
+echo third > WANT
+cmpfiles WANT GOT
+echo OK
+
 echo $N Check remote/local listings .................................$NL
 cd "$HERE"
 bk clone $Q project clone
