@@ -463,7 +463,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 
 empty:	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) {
-			unless (flags & PK_LREV) d->flags &= ~D_RED;
+			d->flags &= ~D_RED;
 			continue;
 		}
 		if (flags & PK_LKEY) {
