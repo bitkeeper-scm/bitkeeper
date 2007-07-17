@@ -24,11 +24,7 @@
  * Options for prunekey()
  */
 #define	PK_REVPREFIX	0x00001 /* input key has rev + tag prefix */
-#define	PK_LSER		0x00002 /* want local cset in serial format */
-#define	PK_LREV		0x00004 /* want local cset in rev/tag format */
 #define	PK_LKEY		0x00008 /* want local cset in key format */
-#define	PK_RSER		0x00010	/* want remote cset in serial format */
-#define	PK_RREV		0x00020	/* want remote cset in rev/tag format */
 #define	PK_RKEY		0x00040	/* want remote cset in key format */
 
 /*

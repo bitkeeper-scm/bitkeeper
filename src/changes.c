@@ -311,7 +311,7 @@ _doit_local(char **nav, char *url)
 	char	tmpf[MAXPATH];
 
 	/*
-	 * What we get here is: bk synckey -lk url | bk changes opts -
+	 * What we get here is: bk synckey -l url | bk changes opts -
 	 */
 	if (opts.showdups) {
 		f = popenvp(nav, "w");
