@@ -487,7 +487,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	rc = pull_part2(av, opts, r, key_list, envVar);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
 	if (!rc && got_patch &&
-	    (bp_hasBAM()|| ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
+	    (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
 		chdir(ROOT2RESYNC);
 		rc = bkd_BAM_part3(r, envVar, opts.quiet, "- < " CSETS_IN);
 		chdir(RESYNC2ROOT);

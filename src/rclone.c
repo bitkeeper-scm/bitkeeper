@@ -1,27 +1,31 @@
 #include "bkd.h"
 #include "logging.h"
 
-typedef	struct {
+private	struct {
 	u32	debug:1;		/* -d debug mode */
 	u32	verbose:1;		/* -q shut up */
 	int	gzip;			/* -z[level] compression */
 	char	*rev;
 	u32	in, out;
+	u64	bpsz;
 } opts;
 
 private void usage(void);
-private int rclone(char **av, opts opts, remote *r, char **envVar);
-private int rclone_part1(opts opts, remote *r, char **envVar);
-private int rclone_part2(char **av, opts opts, remote *r, char **envVar);
-private int send_part1_msg(opts opts, remote *r, char **envVar);
-private int send_sfio_msg(opts opts, remote *r, char **envVar);
-private u32 gensfio(opts opts, int verbose, int level, int wfd);
+private int rclone(char **av, remote *r, char **envVar);
+private int rclone_part1(remote *r, char **envVar);
+private int rclone_part2(char **av, remote *r, char **ev, char *bp);
+private	int rclone_part3(char **av, remote *r, char **ev, char *bp);
+private int send_part1_msg(remote *r, char **envVar);
+private	int send_sfio_msg(remote *r, char **envVar);
+private u32 send_sfio(int level, int wfd);
+extern	u32 send_BAM_sfio(int level, int wfd, char *bp_keys, u64 bpsz);
+extern	int send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz);
+
 
 int
 rclone_main(int ac, char **av)
 {
 	int	c, rc, isLocal;
-	opts	opts;
 	char    **envVar = 0;
 	remote	*l, *r;
 
@@ -71,7 +75,7 @@ rclone_main(int ac, char **av)
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
 
-	rc = rclone(av, opts, r, envVar);
+	rc = rclone(av, r, envVar);
 	freeLines(envVar, free);
 	remote_free(r);
 	return (rc);
@@ -84,18 +88,29 @@ usage(void)
 	exit(1);
 }
 
+/*
+ * XXX - does not appear to do csets-out
+ */
 private int
-rclone(char **av, opts opts, remote *r, char **envVar)
+rclone(char **av, remote *r, char **envVar)
 {
 	int	rc;
+	char	*bp_keys = 0;
 	char	revs[MAXKEY];
 
-	if (rc = bp_updateServer(opts.rev, 0, !opts.verbose)) goto done;
+	if (rc = bp_updateServer("..", 0, !opts.verbose)) goto done;
 	sprintf(revs, "..%s", opts.rev ? opts.rev : "+");
 	safe_putenv("BK_CSETS=%s", revs);
 	if (rc = trigger(av[0], "pre"))  goto done;
-	if (rc = rclone_part1(opts, r, envVar))  goto done;
-	rc = rclone_part2(av, opts, r, envVar);
+	if (rc = rclone_part1(r, envVar))  goto done;
+	if (bp_hasBAM()) bp_keys = bktmp(0, "bpkeys");
+	rc = rclone_part2(av, r, envVar, bp_keys);
+	if (bp_keys) {
+		unless (rc) {
+			rc = rclone_part3(av, r, envVar, bp_keys);
+		}
+		unlink(bp_keys);
+	}
 	if (rc) {
 		putenv("BK_STATUS=FAILED");
 	} else {
@@ -108,12 +123,13 @@ done:	putenv("BK_CSETS=");
 }
 
 private int
-rclone_part1(opts opts, remote *r, char **envVar)
+rclone_part1(remote *r, char **envVar)
 {
+	char	*url;
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
-	if (send_part1_msg(opts, r, envVar)) return (-1);
+	if (send_part1_msg(r, envVar)) return (-1);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if (streq(buf, "@SERVER INFO@"))  {
@@ -127,12 +143,22 @@ rclone_part1(opts opts, remote *r, char **envVar)
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
+	if (bp_hasBAM() && !bkd_hasFeature("BAM")) {
+		url = remote_unparse(r);
+		fprintf(stderr, "%s is not BAM aware, needs upgrade.\n", url);
+		free(url);
+		return (-1);
+	}
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	if (bp_updateServer(opts.rev ? opts.rev : "+", 0, !opts.verbose)) {
+		fprintf(stderr, "Unable to update local BAM server\n");
+		return (-1);
+	}
 	return (0);
 }
 
 private  int
-send_part1_msg(opts opts, remote *r, char **envVar)
+send_part1_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE	*f;
@@ -162,9 +188,13 @@ send_part1_msg(opts opts, remote *r, char **envVar)
 }
 
 private int
-rclone_part2(char **av, opts opts, remote *r, char **envVar)
+rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 {
-	int	rc = 0, n;
+	zgetbuf	*zin;
+	FILE	*f;
+	char	*line, *p;
+	int	rc = 0, n, i;
+	u32	bytes;
 	char	buf[MAXPATH];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, opts.verbose)) {
@@ -172,7 +202,7 @@ rclone_part2(char **av, opts opts, remote *r, char **envVar)
 		goto done;
 	}
 
-	send_sfio_msg(opts, r, envVar);
+	send_sfio_msg(r, envVar);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
@@ -184,24 +214,83 @@ rclone_part2(char **av, opts opts, remote *r, char **envVar)
 	}
 
 	/*
-	 * get remote progress status
+	 * Get remote progress status
+	 * Get any remote BAM keys we need to send.
 	 */
 	getline2(r, buf, sizeof(buf));
-	if (streq(buf, "@SFIO INFO@")) {
-		while ((n = read_blk(r, buf, 1)) > 0) {
-			if (buf[0] == BKD_NUL) break;
-			if (opts.verbose) writen(2, buf, n);
-		}
+	unless (streq(buf, "@SFIO INFO@")) {
+		fprintf(stderr, "rclone: protocol error, no SFIO INFO\n");
+		rc = 1;
+		goto done;
+	}
+
+	/* Spit out anything we see until a null. */
+	while ((n = read_blk(r, buf, 1)) > 0) {
+		if (buf[0] == BKD_NUL) break;
+		if (opts.verbose) writen(2, buf, n);
+	}
+	getline2(r, buf, sizeof(buf));
+
+	/* optional bad exit status */
+	if (buf[0] == BKD_RC) {
+		rc = atoi(&buf[1]);
 		getline2(r, buf, sizeof(buf));
-		if (buf[0] == BKD_RC) {
-			rc = atoi(&buf[1]);
+	}
+
+	unless (streq(buf, "@END@") && (rc == 0)) {
+		rc = 1;
+		goto done;
+	}
+	getline2(r, buf, sizeof(buf));
+
+	/* optional BAM keys */
+	if (streq(buf, "@BAM@")) {
+		assert(rc == 0);
+		if (streq(buf, "@BAM@")) {
+			unless (bp_keys) {
+				fprintf(stderr,
+				    "rclone: unexpected BAM keys\n");
+				rc = 1;
+				goto done;
+			}
+			unless (r->rf) r->rf = fdopen(r->rfd, "r");
+			zin = zgets_initCustom(zgets_hfread, r->rf);
+			f = fopen(bp_keys, "w");
+			while ((line = zgets(zin)) &&
+			    strneq(line, "@STDIN=", 7)) {
+				bytes = atoi(line+7);
+				unless (bytes) break;
+				while (bytes > 0) {
+					i = min(bytes, sizeof(buf));
+					i = zread(zin, buf, i);
+					fwrite(buf, 1, i, f);
+					bytes -= i;
+				}
+			}
+			if (zgets_done(zin)) {
+				rc = 1;
+				goto done;
+			}
 			getline2(r, buf, sizeof(buf));
-		}
-		unless (streq(buf, "@END@") && (rc == 0)) {
+			unless (strneq(buf, "@DATASIZE=", 10)) {
+				fprintf(stderr,
+				    "rclone: bad input '%s'\n", buf);
+				rc = 1;
+				goto done;
+			}
+			p = strchr(buf, '=');
+			opts.bpsz = scansize(p+1);
+			fclose(f);
+			if (r->type == ADDR_HTTP) disconnect(r, 2);
+			// part 3 will eat the triggers
+			return (0);
+		} else if (bp_keys) {
+			fprintf(stderr,
+			    "rclone failed: "
+			    "@BAM@ section expected, got %s\n", buf);
 			rc = 1;
 			goto done;
 		}
-		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
@@ -218,20 +307,20 @@ done:	disconnect(r, 1);
 }
 
 private u32
-sfio_size(opts opts, int gzip)
+sfio_size(int gzip)
 {
 	int     fd;
 	u32     n;
 
 	fd = open(DEVNULL_WR, O_WRONLY, 0644);
 	assert(fd > 0);
-	n = gensfio(opts, 0, gzip, fd);
+	n = send_sfio(gzip, fd);
 	close(fd);
 	return (n);
 }           
 
 private  int
-send_sfio_msg(opts opts, remote *r, char **envVar)
+send_sfio_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE	*f;
@@ -263,7 +352,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	 * 6 is the size of "@END@" string
 	 */
 	if (r->type == ADDR_HTTP) {
-		m = sfio_size(opts, gzip);
+		m = sfio_size(gzip);
 		assert(m > 0);
 		extra = m + 7 + 6;
 	}
@@ -271,7 +360,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	unlink(buf);
 
 	writen(r->wfd, "@SFIO@\n", 7);
-	n = gensfio(opts, opts.verbose, gzip, r->wfd);
+	n = send_sfio(gzip, r->wfd);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(stderr,
 		    "Error: sfio file changed size from %d to %d\n", m, n);
@@ -282,10 +371,65 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	return (rc);
 }
 
+private int
+rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
+{
+	int	rc = 0;
+	char	buf[4096];
 
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, opts.verbose)) {
+		rc = 1;
+		goto done;
+	}
 
+	if (rc = send_BAM_msg(r, bp_keys, envVar, opts.bpsz)) goto done;
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+	getline2(r, buf, sizeof(buf));
+	if (remote_lock_fail(buf, opts.verbose)) {
+		rc = 1;
+		goto done;
+	} else if (streq(buf, "@SERVER INFO@")) {
+		if (getServerInfoBlock(r)) {
+			rc = 1;
+			goto done;
+		}
+	}
+
+	/*
+	 * get remote progress status
+	 */
+	getline2(r, buf, sizeof(buf));
+	if (buf[0] == BKD_RC) {
+		rc = atoi(&buf[1]);
+		goto done;
+	}
+	unless (streq(buf, "@END@")) {
+		rc = 1;
+		goto done;
+	}
+	getline2(r, buf, sizeof(buf));
+	if (streq(buf, "@TRIGGER INFO@")) {
+		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
+			rc = 1;
+			goto done;
+		}
+		getline2(r, buf, sizeof(buf));
+	}
+
+done:
+	if (rc) putenv("BK_STATUS=FAILED");
+	trigger(av[0], "post");
+	wait_eof(r, opts.debug); /* wait for remote to disconnect */
+	disconnect(r, 2);
+	return (rc);
+}
+
+/*
+ * XXX - for the size pass for http this could be oh so much faster.
+ * We need a -s option to sfio that just adds up the sizes and spits it out.
+ */
 private u32
-gensfio(opts opts, int verbose, int level, int wfd)
+send_sfio(int level, int wfd)
 {
 	int	status;
 	char	*tmpf;
@@ -303,7 +447,7 @@ gensfio(opts opts, int verbose, int level, int wfd)
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 
 	sfiocmd = aprintf("bk sfio -o%s < '%s'", 
-	    (verbose ? "" : "q"), tmpf);
+	    (opts.verbose ? "" : "q"), tmpf);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	opts.in = opts.out = 0;

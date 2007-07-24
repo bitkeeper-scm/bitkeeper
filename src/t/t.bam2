@@ -72,9 +72,15 @@ echo OK
 echo $N "Verify that bk clone fails if it can't find the bp server ...$NL"
 cd "$HERE"
 BK_CONFIG="BAM_server:file://$HERE/gone!" \
-	bk clone pmaster pcopy2 2> ERR && exit 1
-grep -q 'ERROR-unable to update BAM server' ERR || exit 1
+	bk clone $Q pmaster pcopy2 2> ERR && exit 1
+grep -q 'ERROR-unable to update BAM server' ERR || {
+	cat ERR
+	exit 1
+}
 echo OK
+
+# XXX - this error message leaves a lot to be desired.
+# cat ERR
 
 echo $N Verify that bk fails if it cannot find BAM data .............$NL
 bk clone $Q pmaster pjunk || exit 1

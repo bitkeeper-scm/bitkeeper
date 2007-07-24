@@ -1243,7 +1243,7 @@ int	bp_fetchkeys(char *me, int quiet, char **keys);
 int	bp_get(sccs *s, delta *d, u32 flags, char *out);
 int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);
-int	bp_updateServer(char *tiprev, int all, int quiet);
+int	bp_updateServer(char *range, char *list, int quiet);
 int	bp_serverID(char **id);
 int	bp_sharedServer(void);
 int	bp_hasBAM(void);

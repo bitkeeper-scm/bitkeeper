@@ -268,6 +268,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
 	if (do_part2) {
 		p = aprintf("-r..%s", opts->rev ? opts->rev : "");
+		// Do I need this here?
+		// proj_reset(0);
 		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
 		free(p);
 		if (rc) goto done;
@@ -294,6 +296,8 @@ done:	if (rc) {
 	return (rc);
 }
 
+// XXX - don't we need a proj_reset() in here after we have unpacked a
+// config file?  And a rollback may have changed it?
 private	int
 clone2(remote *r)
 {
@@ -689,7 +693,7 @@ out:
 		touch("BitKeeper/log/BAM", 0444);
 		sprintf(buf, "%s/BitKeeper/log/BAM.index", from);
 		fileCopy(buf, "BitKeeper/log/BAM.index");
-		system("bk bam replay < BitKeeper/log/BAM.index");
+		system("bk bam reload");
 		chdir(from);
 	}
 

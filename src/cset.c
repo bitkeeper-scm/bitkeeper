@@ -714,7 +714,7 @@ again:	/* doDiffs can make it two pass */
 			/* try and fetch from my local BAM pool but recurse
 			 * through to the server.
 			 */
-			f = popen("bk sfio -oqBR1 -", "w");
+			f = popen("bk sfio -oqB -", "w");
 			EACH(cs->BAM) fprintf(f, "%s\n", cs->BAM[i]);
 			if (pclose(f)) {
 				fprintf(stderr, "BAM sfio -o failed.\n");

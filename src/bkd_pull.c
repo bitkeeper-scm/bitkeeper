@@ -60,7 +60,7 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
-	if (proj_configbool(0, "BAM") && !bk_hasFeature("BAM")) {
+	if (bp_hasBAM() && !bk_hasFeature("BAM")) {
 		out("ERROR-old clients cannot pull "
 		    "from a bkd with BAM enabled\n");
 		drain();
@@ -70,10 +70,6 @@ cmd_pull_part1(int ac, char **av)
 	/* look to see if probekey returns an error */
 	unless (fnext(buf, f) && streq("@LOD PROBE@\n", buf)) {
 		fputs(buf, stdout);
-		goto done;
-	}
-	if (bp_updateServer(tiprev, 0, SILENT)) {
-		fputs("ERROR-unable to update BAM server\n", stdout);
 		goto done;
 	}
 	fputs("@OK@\n", stdout);
@@ -181,6 +177,11 @@ cmd_pull_part2(int ac, char **av)
 	if (update_only && (rem || rtags)) {
 		printf("@NO UPDATE BECAUSE OF LOCAL CSETS OR TAGS@\n");
 		rc = 1;
+		goto done;
+	}
+
+	if (bp_updateServer(0, keys, SILENT)) {
+		fputs("ERROR-unable to update BAM server\n", stdout);
 		goto done;
 	}
 

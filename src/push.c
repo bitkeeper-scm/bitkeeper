@@ -18,10 +18,9 @@ private	struct {
 	u32	lcsets;
 	u32	rcsets;
 	u32	rtags;
+	u64	bpsz;
 	FILE	*out;
 } opts;
-
-u64	bpsz = 0;
 
 private	int	push(char **av, remote *r, char **envVar);
 private	void	pull(remote *r);
@@ -104,12 +103,6 @@ push_main(int ac, char **av)
 
 	if (sane(0, 0) != 0) return (1);
 
-	/* push BAM data to server */
-	if (bp_updateServer(0, 0, !opts.verbose)) {
-		fprintf(stderr, "push: unable to update BAM server\n");
-		exit(1);
-	}
-
 	unless (urls) {
 		urls = parent_pushp();
 		unless (urls) {
@@ -127,6 +120,7 @@ err:		freeLines(envVar, free);
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
+
 	EACH (urls) {
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
@@ -528,13 +522,15 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 	return (0);
 }
 
-private u32
-gen_bpdata(int level, int wfd, char *bp_keys)
+// XXX - always recurses even when it shouldn't
+// XXX - needs to be u64
+u32
+send_BAM_sfio(int level, int wfd, char *bp_keys, u64 bpsz)
 {
 	u32	n;
 	int	fd0, fd, rfd, status;
 	pid_t	pid;
-	char	*sfio[10] = {"bk", "sfio", "-oBR1", 0, "-", 0};
+	char	*sfio[10] = {"bk", "sfio", "-oB", 0, "-", 0};
 	char	buf[64];
 
 	if (opts.verbose) {
@@ -561,10 +557,8 @@ gen_bpdata(int level, int wfd, char *bp_keys)
 	return (n);
 }
 
-
-
-private int
-send_BAM_msg(remote *r, char *bp_keys, char **envVar)
+int
+send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 {
 	FILE	*f;
 	int	rc;
@@ -607,7 +601,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar)
 		 */
 		if (r->type == ADDR_HTTP) {
 			fd = open(DEVNULL_WR, O_WRONLY, 0);
-			m = gen_bpdata(gzip, fd, bp_keys);
+			m = send_BAM_sfio(gzip, fd, bp_keys, bpsz);
 			close(fd);
 			assert(m > 0);
 			extra = m + 6 + 6;
@@ -621,7 +615,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar)
 
 	if (extra > 0) {
 		writen(r->wfd, "@BAM@\n", 6);
-		n = gen_bpdata(gzip, r->wfd, bp_keys);
+		n = send_BAM_sfio(gzip, r->wfd, bp_keys, bpsz);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(opts.out,
 			    "Error: patch has changed size from %d to %d\n",
@@ -673,8 +667,8 @@ maybe_trigger(remote *r)
 }
 
 private int
-push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
-    char *bp_keys)
+push_part2(char **av,
+	remote *r, char *rev_list, int ret, char **envVar, char *bp_keys)
 {
 	zgetbuf	*zin;
 	FILE	*f;
@@ -703,6 +697,12 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 		send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 		rc = 1;
 		done = 1;
+	} else if (bp_updateServer(0, rev_list, !opts.verbose)) {
+		/* push BAM data to server */
+		fprintf(stderr, "push: unable to update BAM server\n");
+		send_end_msg(r, "@ABORT@\n", rev_list, envVar);
+		rc = 1;
+		done = 2;
 	} else {
 		/*
 		 * We are about to request the patch, fire pre trigger
@@ -789,7 +789,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 			goto done;
 		}
 		p = strchr(buf, '=');
-		bpsz = scansize(p+1);
+		opts.bpsz = scansize(p+1);
 		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		fclose(f);
 		return (0);
@@ -865,8 +865,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar,
 }
 
 private int
-push_part3(char **av, remote *r, char *rev_list, char **envVar,
-    char *bp_keys)
+push_part3(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 {
 	int	n, rc = 0, done = 0, do_pull = 0;
 	char	*p;
@@ -877,7 +876,7 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar,
 		goto done;
 	}
 
-	if (rc = send_BAM_msg(r, bp_keys, envVar)) goto done;
+	if (rc = send_BAM_msg(r, bp_keys, envVar, opts.bpsz)) goto done;
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (remote_lock_fail(buf, opts.verbose)) {
@@ -998,12 +997,13 @@ push(char **av, remote *r, char **envVar)
 		return (ret); /* failed */
 	}
 	if (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES"))) {
-		bp_keys = bktmp(0, 0);
+		bp_keys = bktmp(0, "bpkeys");
 	}
 	ret = push_part2(av, r, rev_list, ret, envVar, bp_keys);
-	if (bp_keys) ret = push_part3(av, r, rev_list, envVar, bp_keys);
-
 	if (bp_keys) {
+		unless (ret) {
+			ret = push_part3(av, r, rev_list, envVar, bp_keys);
+		}
 		unlink(bp_keys);
 		free(bp_keys);
 	}

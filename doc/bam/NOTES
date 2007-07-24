@@ -1,0 +1,183 @@
+shouldUpdate()
+{
+	/* filter out no BAM and/or serverless */
+	unless (BAM && I have a server) return (0);
+
+	/* If I am the server, skip it, there's no point */
+	if (I am the server) return (0);
+
+	/*
+	 * If the other side is my server,
+	 * skip it because we won't get a lock to update it.
+	 * It's their responsibility to ask for any data they need.
+	 */
+	if (they are my server) return (0);
+
+	return (1);
+}
+[Mon Jul 16 14:33:01 PDT 2007]
+============================================================================
+So the logic here doesn't take into consideration that we really want to
+leverage the idea that the outgoing server gets updated before the data
+gets sent.  
+
+We could use that if the servers had a way to tell each other who they 
+were.  So in the US -> India pull, the US repo updates the US server,
+the India client asks the India server, the India server asks the US
+server, and the data is accessable so no data is sent at that point.
+
+So what we want to do, instead saying "recurse one level deep" is say
+"here only" or "go into the server cloud and keep going until you loop
+or hit some max".  We need to sort this out now because it is an
+interface change across the wire.
+
+So I'm using -l to mean local only.
+
+XXX - need to make sfio match.
+
+We also need to sort out the locking / retries.  The problem is that if
+the repo we are looking at is locked, i.e., someone is updating it, and
+we want to get in there to run a havekeys which wants a read lock, we're
+going to present the user with a pretty crappy error message.  They 
+are in the middle of a clone and they get a locked message that may have
+nothing to do with the repo from which they this just cloned.
+============================================================================
+
+============================================================================
+= pull =====================================================================
+============================================================================
+client side of pull
+	if (we have no server ||	// get the data, no place else to look
+	    we are our server ||	// get the data, need data for csets
+	    we are their server ||	// get the data because they couldn't update
+	    their server is not our server) {
+	    				// get the data if recursive havekeys
+					// doesn't find it
+		bk changes -B ... < CSETS-IN | 
+		if (unshared servers) {
+			bk havekeys 	// recurse into cloud
+		} else {
+			/*
+			 * we either have no server, or we are the server.
+			 * In either case, we need to get the data so no
+			 * recursion to other places to look for it.
+			 */
+			bk havekeys -l
+		} | request these keys
+	}
+
+bkd side of pull
+    part2
+	This is really bp_serverID(&id) == 0 && id && !streq(id, theirID)
+	if (I have a server &&
+	    I am not the server &&
+	    they are not the server) {
+	    	update server with stuff in CSETS-OUT
+	}
+
+	The logic is in bp_updateServer().
+
+    part3
+	if (I get bam list of keys to send) {
+		// This logic is done on the pull side
+		if (unshared servers) {
+			bk sfio -Bo < KEYS	// recurse to server
+		} else {
+			bk sfio -Bo -l < KEYS	// no recurse
+		}
+	}
+
+============================================================================
+= push =====================================================================
+============================================================================
+client side of push
+    part2
+	This is really bp_serverID(&id) == 0 && id && !streq(id, theirID)
+	if (I have a server &&
+	    I am not the server &&
+	    they are not the server) {
+	    	update server with stuff in CSETS-OUT
+	}
+
+    part3
+	if (I get bam list of keys to send) {
+		// XXX - this is in send_BAM_sfio() and we don't tell it -l or not
+		// That may be OK if the code is smart enough to not recurse when
+		// it shouldn't.
+		if (unshared servers) {
+			bk sfio -Bo < KEYS	// recurse to server
+		} else {
+			bk sfio -Blo < KEYS	// no recurse
+		}
+	}
+
+bkd side of push
+	// This one looks done.
+	if (ret = bp_fetchData()) {
+		bk changes -B ... < CSETS-IN | 
+		if (ret == 2) {
+			bk havekeys 	// recurse into cloud
+		} else {
+			/*
+			 * we either have no server, or we are the server.
+			 * In either case, we need to get the data so no
+			 * recursion to other places to look for it.
+			 */
+			bk havekeys -l
+		} | request these keys
+	}
+
+============================================================================
+= clone bk://... local_repo ================================================
+============================================================================
+client side of clone
+	// This should work because it's the same as pull path,
+	// assuming that all the bits that bp_fetchData() have been set up.
+	if (ret = bp_fetchData()) {
+		if (ret == 2) {
+			bk changes -B -r.. ... |
+			bk havekeys -R1
+		} else {
+			bk changes -B -r.. ... 
+		} | request these keys
+	}
+
+bkd side of clone
+    part2
+	bp_updateServer("..")
+
+    part3
+    	if (we get a bam list) {
+		if (unshared servers) {
+			bk sfio -Bo < KEYS	// recurse to server
+		} else {
+			bk sfio -Blo < KEYS	// no recurse
+		}
+	}
+
+============================================================================
+= clone local_repo bk://... (aka rclone) ===================================
+============================================================================
+client side of rclone
+    part2 
+	bp_updateServer("..")
+
+    part3
+    	if (we get a bam list) {
+		// As above, we don't pass down the local/recurse option
+		if (unshared servers) {
+			bk sfio -Bo < KEYS  // recurse to server
+		} else {
+			bk sfio -Blo < KEYS      // no recurse
+		}
+	}
+
+bkd side of rclone
+	if (ret = bp_fetchData()) {
+		if (ret == 2) {	// unshared servers
+			bk changes -B -r.. ... |
+			bk havekeys 
+		} else {
+			bk changes -B -r.. ... 
+		} | request these keys
+	}

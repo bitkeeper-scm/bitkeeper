@@ -17,14 +17,14 @@ havekeys_main(int ac, char **av)
 {
 	char	*dfile, *key;
 	int	c;
-	int	rc = 0, BAM = 0, recurse = 0;
+	int	rc = 0, BAM = 0, recurse = 1;
 	FILE	*f = 0;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "BR;q")) != -1) {
+	while ((c = getopt(ac, av, "Blq")) != -1) {
 		switch (c) {
 		    case 'B': BAM = 1; break;
-		    case 'R': recurse = atoi(optarg); break;
+		    case 'l': recurse = 0; break;
 		    case 'q': break;	/* ignored for now */
 		    default:
 usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
@@ -85,6 +85,8 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 
 /*
  * Figure out if we have a server and if we do go run a havekeys there.
+ * XXX - this doesn't handle loops other than just failing miserably
+ * if the server is locked.
  */
 private FILE *
 server(int recurse)
@@ -92,19 +94,19 @@ server(int recurse)
 	char	*p;
 	FILE	*f;
 
-	unless (recurse > 0) return (stdout);
+	unless (recurse) return (stdout);
 	if (bp_serverID(&p)) return (stdout);	// OK?
 	if (p == 0) return (stdout);
 	free(p);
-	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -BR%d -",
-	    proj_configval(0,"BAM_server"), recurse - 1);
+	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B -",
+	    proj_configval(0,"BAM_server"));
 	f = popen(p, "w");
 	free(p);
 	return (f ? f : stdout);
 }
 
 /*
- * An options last part of the bkd connection for clone and pull that
+ * An optional last part of the bkd connection for clone and pull that
  * examines the incoming data and requests BAM keys that are missing.
  * from the local server.
  * This extra pass is only called if BKD_BAM=YES indicating that the
@@ -134,8 +136,12 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	 */
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 
-	/* we do want to recurse one level here, this is the proxy case */
-	fprintf(f, "bk -zo0 -Bstdin sfio -oqBR1 -\n");
+	if (bp_fetchData() == 2) {
+		/* we do want to recurse here, havekeys did */
+		fprintf(f, "bk -zo0 -Bstdin sfio -oqB -\n");
+	} else {
+		fprintf(f, "bk -zo0 -Bstdin sfio -oqBl -\n");
+	}
 	fflush(f);
 	if (rc = bp_sendkeys(fileno(f), range, &sfio)) goto done;
 	fprintf(f, "rdunlock\n");
@@ -190,27 +196,33 @@ int
 bp_sendkeys(int fdout, char *range, u64 *bytep)
 {
 	FILE	*f;
-	int	len, space, where, rc = 0;
+	int	debug, len, space, where, ret;
+	int	rc = 0;
 	char	*cmd, *p;
 	zputbuf	*zout;
 	char	hdr[64];
 	char	line[MAXLINE];
 	char	buf[BSIZE];	/* must match remote.c:doit() buf */
 
+	debug = ((p = getenv("_BK_BAM_DEBUG")) && *p);
 	*bytep = 0;
 	zout = zputs_init(zputs_hwrite, int2p(fdout));
-	unless (bp_sharedServer()) {
+	if (ret = bp_fetchData()) {
+		/*
+		 * If we have a server then we want to recurse one level up
+		 * to the server because we don't need the data here, we just
+		 * need to be able to get it from somewhere.  So that's the
+		 * R1 option to havekeys.
+		 */
 		cmd = aprintf("bk changes -Bv -nd'"
 		    "$if(:BAMHASH:){|:SIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' %s |"
-		    /* The Wayne meister says one level of recursion.
-		     * It's obvious.  Obvious to Leonardo...
-		     */
-		    "bk havekeys -BR1 -", range);
+		    "bk havekeys -B%s -", range, ret == 2 ? "" : "l");
 		f = popen(cmd, "r");
 		assert(f);
 		space = sizeof(buf);
 		where = 0;
 		while (fnext(line, f)) {
+			if (debug) ttyprintf("%s", line);
 			p = strchr(line+1, '|'); /* skip size */
 			*p++ = 0;
 			*bytep += atoi(line+1);

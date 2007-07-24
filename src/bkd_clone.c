@@ -63,7 +63,8 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	if (bp_updateServer(rev, 0, SILENT)) {
+	/* has to be here, we use the OK below as a marker. */
+	if (bp_updateServer("..", 0, SILENT)) {
 		out("ERROR-unable to update BAM server\n");
 		drain();
 		return (1);

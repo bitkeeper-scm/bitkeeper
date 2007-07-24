@@ -341,7 +341,7 @@ bp_fetchkeys(char *me, int quiet, char **keys, u64 todo)
 	}
 	/* no recursion, I'm remoted to the server already */
 	sprintf(buf,
-	    "bk -q@'%s' -zo0 -Lr -Bstdin sfio -qoB - |"
+	    "bk -q@'%s' -zo0 -Lr -Bstdin sfio -qoBl - |"
 	    "bk -R sfio -%sriBb%s -", server, quiet ? "q" : "", psize(todo));
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);

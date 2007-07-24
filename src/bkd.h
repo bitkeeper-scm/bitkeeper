@@ -70,6 +70,7 @@ int	cmd_chg_part2(int ac, char **av);
 
 int	cmd_rclone_part1(int ac, char **av);
 int	cmd_rclone_part2(int ac, char **av);
+int	cmd_rclone_part3(int ac, char **av);
 int	cmd_kill(int ac, char **av);
 
 int	cmd_rdlock(int ac, char **av);

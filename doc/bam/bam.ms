@@ -15,9 +15,6 @@
 .	ft
 .	DE
 ..
-.de CW
-\f(CW\\$*\fP
-..
 .de LI
 .	IP \\n+[NUM]) 4
 ..
@@ -771,6 +768,59 @@ client bk sends the BAM files to BKD and
 exits, dropping the read lock,
 .LI
 remote BKD unpacks BAM files and exits, dropping write lock.
+.NH 1
+Future work
+.LP
+What we have so far is something that works well enough that we can ship it
+and support it.
+However, there are some known areas where we could make improvements.
+.NH 2
+Direct access to BAM server's BAM pool
+.LP
+As soon as people realize how this system works they are going to ask why,
+if the BAM server is on my laptop and read/writable by me, can I not just
+fetch files from that BAM pool directly?  
+I.e., a checkout looks local and then looks in the server BAM pool for the
+files (after getting a repo read lock on the server).
+Similarly for any other operation.
+If we don't build this functionality in people will symlink the BAM directory
+to the server which is broken unless they symlink the 
+.CW BitKeeper/log/BAM.index
+file as well.
+.LP
+So far as we know, there is no reason that we cannot use the BAM server's
+BAM pool directly in the future.
+.NH 2
+BAM server "clouds"
+.LP
+In the description of the unshared servers above we are implicitly assuming
+that the servers cannot talk to each other.
+In reality, that's not likely to be true.
+If the servers can talk to each other then there is value in having the 
+recurse level be a little smarter.  
+We don't want a numeric recurse so much as we want "keep going until you
+run out of servers or deadlock".
+.LP
+Implementing this will require some tinkering, our current linkage of 
+repository to BAM server doesn't lend itself well to the idea.
+.LP
+It is worth implementing it for the following use case: US and India have
+BAM servers and we get a sideways pull between two non-server repos.
+The pull pushes some large amount of data up to the US server, the India
+client repo does a 
+.CW "bk havekeys -Rkeep_going"
+and doesn't find the data in the local repo, doesn't find it in the India
+BAM server, and then does find it in the US repo.
+The India client will cause the data to be moved from the US BAM server to
+the India BAM server which is what we want (better than a direct move from
+US to India client repo).
+.NH 2
+Version BAM.index
+.LP
+When we have orphans in the BAM server we'll want any hint as to where this
+stuff came from.
+We could version control BAM.index with comments that say who sent us the
+new keys.
 .NH 1
 Summary
 .LP

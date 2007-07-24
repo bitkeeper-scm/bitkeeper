@@ -36,12 +36,75 @@ cd clone
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
+for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
+do	test -f $i || echo $i
+done >> OUT
 test -s OUT && {
 	echo failed
 	cat OUT
 	exit 1
 }
 echo OK
+
+echo $N Make sure that clone w/ server does not copy BAM pool .......$NL
+cd "$HERE"
+BK_CONFIG="BAM_server:file://$HERE/pmaster" bk clone $Q pmaster clone2
+cd clone2
+(cd ../pmaster && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x && echo $x is present
+done > OUT 2>&1
+for i in BitKeeper/log/BAM
+do	test -f $i || echo $i is not present
+done >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure that clone w/ diff server does not copy BAM pool ..$NL
+cd "$HERE"
+BK_CONFIG="BAM_server:file://$HERE/clone" bk clone $Q pmaster clone3
+cd clone3
+(cd ../pmaster && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x && echo $x is present
+done > OUT 2>&1
+for i in BitKeeper/log/BAM
+do	test -f $i || echo $i is not present
+done >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+if false
+then
+(cd "$HERE" && tar czf /tmp/TGZ .)
+# This can't work, the env var makes it a shared server case.
+echo $N Make sure that clone w/ empty server copies BAM pool ........$NL
+cd "$HERE"
+BK_SHOWPROC=YES BK_CONFIG="BAM_server:file://$HERE/clone2!" bk clone $Q pmaster clone4
+cd clone4
+(cd ../pmaster && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x || echo $x is missing
+done > OUT 2>&1
+for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
+do	test -f $i || echo $i
+done >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	find BitKeeper -type f -print
+	exit 1
+}
+echo OK
+fi
 
 echo $N Make sure that clone -l copies the BAM pool .................$NL
 cd "$HERE"
@@ -52,6 +115,9 @@ cd clone
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
+for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
+do	test -f $i || echo $i
+done >> OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -61,3 +127,74 @@ test -s OUT && {
 echo OK
 
 # XXX rclone
+
+test X$PREFER_RSH = XYES && {
+
+echo $N Make sure that rclone copies the BAM pool ...................$NL
+cd "$HERE"
+P=`port 50000`
+bk bkd -d -p$P -ikill -l"$HERE/XXX"
+bk clone $Q pmaster bk://localhost:$P/rclone
+bk _kill bk://localhost:$P || exit 1
+cd rclone || exit 1
+(cd ../pmaster && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x || echo $x is missing
+done > OUT 2>&1
+for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
+do	test -f $i || echo $i
+done >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	cat "$HERE/XXX"
+	exit 1
+}
+echo OK
+
+echo $N Make sure that rclone w/ server does not copy BAM pool ......$NL
+cd "$HERE"
+P=`port 50000`
+BK_CONFIG='BAM_server:bk://localhost/pmaster' bk bkd -dp$P -ikill -l"$HERE/XXX"
+bk clone $Q pmaster bk://localhost:$P/rclone2
+bk _kill bk://localhost:$P || exit 1
+cd rclone2 || exit 1
+(cd ../pmaster && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x && echo $x is present
+done > OUT 2>&1
+for i in BitKeeper/log/BAM
+do	test -f $i || echo $i should be present
+done >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	cat "$HERE/XXX"
+	exit 1
+}
+echo OK
+
+echo $N Make sure that rclone w/ diff server does not copy BAM pool .$NL
+cd "$HERE"
+P=`port 50000`
+BK_CONFIG='BAM_server:bk://localhost/rclone' bk bkd -dp$P -ikill -l"$HERE/XXX"
+bk clone $Q pmaster bk://localhost:$P/rclone3
+bk _kill bk://localhost:$P || exit 1
+cd rclone3 || exit 1
+(cd ../rclone && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x && echo $x is present
+done > OUT 2>&1
+for i in BitKeeper/log/BAM
+do	test -f $i || echo $i should be present
+done >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	cat "$HERE/XXX"
+	exit 1
+}
+echo OK
+
+}
+exit 0
