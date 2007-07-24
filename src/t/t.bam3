@@ -152,12 +152,14 @@ test -s OUT && {
 }
 echo OK
 
-echo $N Make sure that rclone w/ server does not copy BAM pool ......$NL
+echo $N Make sure that rclone of server does not copy BAM pool ......$NL
 cd "$HERE"
+rm -f XXX
 P=`port 50000`
-BK_CONFIG='BAM_server:bk://localhost/pmaster' bk bkd -dp$P -ikill -l"$HERE/XXX"
-bk clone $Q pmaster bk://localhost:$P/rclone2
-bk _kill bk://localhost:$P || exit 1
+BK_CONFIG="BAM_server:bk://localhost:$P/pmaster" \
+    bk bkd -dp$P -ikill -l"$HERE/XXX"
+BK_CONFIG="BAM_server:bk://localhost:$P/pmaster" \
+    bk clone $Q pmaster bk://localhost:$P/rclone2
 cd rclone2 || exit 1
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -174,12 +176,31 @@ test -s OUT && {
 }
 echo OK
 
+echo $N Make sure we can get the data after the fact ................$NL
+cd "$HERE/rclone2"
+BK_CONFIG="BAM_server:bk://localhost:$P/pmaster" bk -r co $Q 
+(cd ../pmaster && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x || echo $x is not found
+done > OUT 2>&1
+for i in BitKeeper/log/BAM
+do	test -f $i || echo $i should be present
+done >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk _kill bk://localhost:$P || exit 1
+echo OK
+
 echo $N Make sure that rclone w/ diff server does not copy BAM pool .$NL
 cd "$HERE"
 P=`port 50000`
-BK_CONFIG='BAM_server:bk://localhost/rclone' bk bkd -dp$P -ikill -l"$HERE/XXX"
-bk clone $Q pmaster bk://localhost:$P/rclone3
-bk _kill bk://localhost:$P || exit 1
+BK_CONFIG="BAM_server:bk://localhost:$P/rclone" \
+    bk bkd -dp$P -ikill -l"$HERE/XXX"
+BK_CONFIG="BAM_server:bk://localhost:$P/rclone" \
+    bk clone $Q pmaster bk://localhost:$P/rclone3
 cd rclone3 || exit 1
 (cd ../rclone && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -194,6 +215,24 @@ test -s OUT && {
 	cat "$HERE/XXX"
 	exit 1
 }
+echo OK
+
+echo $N Make sure we can get the data after the fact ................$NL
+cd "$HERE/rclone3"
+BK_CONFIG="BAM_server:bk://localhost:$P/rclone" bk -r co $Q 
+(cd ../pmaster && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x || echo $x is not found
+done > OUT 2>&1
+for i in BitKeeper/log/BAM
+do	test -f $i || echo $i should be present
+done >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk _kill bk://localhost:$P || exit 1
 echo OK
 
 }
