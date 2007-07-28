@@ -181,7 +181,8 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	if (bp_updateServer(0, keys, SILENT)) {
-		fputs("ERROR-unable to update BAM server\n", stdout);
+		printf("@UNABLE TO UPDATE BAM SERVER@\n");
+		rc = 1;
 		goto done;
 	}
 

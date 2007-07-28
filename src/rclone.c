@@ -98,7 +98,12 @@ rclone(char **av, remote *r, char **envVar)
 	char	*bp_keys = 0;
 	char	revs[MAXKEY];
 
-	if (rc = bp_updateServer("..", 0, !opts.verbose)) goto done;
+	if (rc = bp_updateServer("..", 0, !opts.verbose)) {
+		if (opts.verbose) {
+			fprintf(stderr, "Unable to update BAM server.\n");
+		}
+		goto done;
+	}
 	sprintf(revs, "..%s", opts.rev ? opts.rev : "+");
 	safe_putenv("BK_CSETS=%s", revs);
 	if (rc = trigger(av[0], "pre"))  goto done;

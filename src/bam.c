@@ -595,10 +595,11 @@ serverID(char **id, int notme)
 	assert(id);
 	*id = 0;
 	unless ((url = proj_configval(0,"BAM_server")) && *url) return (0);
+//ttyprintf("[%d] BAM_SERVER=%s\n", getpid(), url);
 
 	strcpy(cfile, proj_root(0));
 	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
-	concat_path(cfile, cfile, "BitKeeper/log/BP_SERVER");
+	concat_path(cfile, cfile, "BitKeeper/log/BAM_SERVER");
 	if (cache = loadfile(cfile, 0)) {
 		if (p = strchr(cache, '\n')) {
 			*p++ = 0;

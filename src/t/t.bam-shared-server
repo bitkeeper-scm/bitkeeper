@@ -1,0 +1,366 @@
+echo ---- Server to client tests ...................................
+# These tests are to see that all the basic operations do not move
+# any BAM data until the user requests a checkout.  And also that
+# only the checked out versions are sent.
+echo $N Set up a repo with some binary data .........................$NL
+P=`port 50000`
+bk bkd -d -p$P -ikill -l"$HERE/XXX"
+trap "bk _kill bk://localhost:$P" 0
+commercial project
+bk edit $Q BitKeeper/etc/config
+echo "BAM_server: bk://localhost:$P/project" >> BitKeeper/etc/config
+bk ci $Q -ybamserver BitKeeper/etc/config
+BK="`bk bin`/bk"
+test $PLATFORM = WIN32 && BK=${BK}.exe
+DATA="$HERE"/data
+perl -e 'sysread(STDIN, $buf, 81920);
+syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
+cp "$DATA" data
+bk new $Q data || exit 1
+test -d BitKeeper/BAM || exit 1
+bk commit $Q -ywhatever
+cp "$DATA" moredata
+echo foo >> moredata
+bk new $Q moredata || exit 1
+bk edit $Q data
+echo bar >> data
+bk delta $Q -ychanged data
+bk commit $Q -ywhatever
+echo OK
+
+echo $N clone should not replicate the BAM data .....................$NL
+cd "$HERE"
+bk clone $Q project clone
+cd clone
+test -d BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+echo OK
+
+echo $N Checkout should fetch data but only top deltas ..............$NL
+bk co $Q
+test -f data -a -f moredata || {
+	echo co failed
+	exit 1
+}
+# 2 files and the index.db
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 3 || {
+	echo fetched too much data
+	find BitKeeper/BAM -type f -print
+	exit 1
+}
+echo OK
+
+echo $N lclone should replicate the BAM data ........................$NL
+cd "$HERE"
+bk clone $Q -l project lclone
+cd lclone
+(cd ../project && find BitKeeper/BAM -type f -print ) |
+while read x
+do	test -f $x || echo $x is missing
+done > OUT 2>&1
+for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
+do	test -f $i || echo $i
+done >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Check that pull does not bring in BAM data ..................$NL
+cd "$HERE"
+bk clone $Q -r1.1 project pull
+test -d pull/BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+cd pull
+bk pull $Q
+test -d BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+echo OK
+
+echo $N Checkout should fetch data but only top deltas ..............$NL
+bk co $Q
+test -f data -a -f moredata || {
+	echo co failed
+	exit 1
+}
+# 2 files and the index.db
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 3 || {
+	echo fetched too much data
+	exit 1
+}
+echo OK
+
+echo $N Check that push does not send BAM data ......................$NL
+cd "$HERE"
+bk clone $Q -r1.1 project push
+test -d push/BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+cd project
+bk push $Q ../push
+cd ../push
+test -d BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+echo OK
+
+echo $N Checkout should fetch data but only top deltas ..............$NL
+bk co $Q
+test -f data -a -f moredata || {
+	echo co failed
+	exit 1
+}
+# 2 files and the index.db
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 3 || {
+	echo fetched too much data
+	exit 1
+}
+echo OK
+
+echo $N Check that rclone does not send BAM data ....................$NL
+cd "$HERE"
+bk clone $Q project bk://localhost:$P/rclone
+cd rclone
+test -d BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+echo OK
+
+echo $N Checkout should fetch data but only top deltas ..............$NL
+bk co $Q
+test -f data -a -f moredata || {
+	echo co failed
+	exit 1
+}
+# 2 files and the index.db
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 3 || {
+	echo fetched too much data
+	exit 1
+}
+echo OK
+
+echo ---- Client to client tests to see that server is updated .....
+# These tests are to see that when the outgoing repo has local only
+# BAM files, the server gets those BAM files as a side effect of the
+# operation.
+
+echo $N clone with local data should update server ..................$NL
+cd "$HERE/clone"
+rm -rf BitKeeper/BAM
+for i in 1 2
+do	bk cat data > data.$i
+	echo data.$i >> data.$i
+	bk new $Q data.$i
+done
+bk commit $Q -ymore
+find BitKeeper/BAM -type f -print | grep -v index.db > ../LIST
+test `wc -l < ../LIST` -eq 2 || {
+	echo did not create the right number of BAM files
+	cat ../LIST
+	exit 1
+}
+cd "$HERE"
+bk clone $Q clone clone2
+cd project
+while read x
+do	test -f $x || echo $x is missing
+done < ../LIST > OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd ../clone2
+test -d BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+echo OK
+
+echo $N Checkout should fetch data but only top deltas ..............$NL
+bk co $Q
+test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
+	echo co failed
+	exit 1
+}
+# 4 files and the index.db
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 5 || {
+	echo fetched too much data
+	find BitKeeper/BAM -type f -print
+	exit 1
+}
+echo OK
+
+# Now repeat the ops, deleting `cat ../LIST` in the server each time and
+# checking that the server gets filled in.
+echo $N Pull with local data should update server ...................$NL
+cd "$HERE"
+cd project; rm -f `cat ../LIST`; cd ..
+rm -rf pull
+bk clone $Q -r1.1 project pull
+test -d pull/BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+cd pull
+bk pull $Q ../clone || exit 1
+test -d BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+cd ../project
+while read x
+do	test -f $x || echo $x is missing
+done < ../LIST > OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Checkout should fetch data but only top deltas ..............$NL
+cd ../pull
+bk co $Q
+test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
+	echo co failed
+	exit 1
+}
+# 4 files and the index.db
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 5 || {
+	echo fetched too much data
+	find BitKeeper/BAM -type f -print
+	exit 1
+}
+echo OK
+
+echo $N Push with local data should update server ...................$NL
+cd "$HERE"
+cd project; rm -f `cat ../LIST`; cd ..
+rm -rf push
+bk clone $Q -r1.1 project push
+test -d push/BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+cd clone
+bk push $Q ../push
+cd ../push
+test -d BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+cd ../project
+while read x
+do	test -f $x || echo $x is missing
+done < ../LIST > OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Checkout should fetch data but only top deltas ..............$NL
+cd ../push
+bk co $Q
+test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
+	echo co failed
+	exit 1
+}
+# 4 files and the index.db
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 5 || {
+	echo fetched too much data
+	find BitKeeper/BAM -type f -print
+	exit 1
+}
+echo OK
+
+echo $N Rclone with local data should update server .................$NL
+cd "$HERE"
+rm -rf rclone
+cd project; rm -f `cat ../LIST`; cd ..
+bk clone $Q clone bk://localhost:$P/rclone
+cd rclone
+test -d BitKeeper/BAM && {
+	echo should not have BAM directory yet
+	exit 1
+}
+cd ../project
+while read x
+do	test -f $x || echo $x is missing
+done < ../LIST > OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Checkout should fetch data but only top deltas ..............$NL
+cd ../rclone
+bk co $Q
+test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
+	echo co failed
+	exit 1
+}
+# 4 files and the index.db
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 5 || {
+	echo fetched too much data
+	find BitKeeper/BAM -type f -print
+	exit 1
+}
+echo OK
+
+echo ---- Client to server tests to see that server is updated .....
+# These tests are to see that when the outgoing repo has local only
+# BAM files, the server gets those BAM files as a side effect of the
+# operation.  This is different than the previous series because the
+# server is locked, it is the destination.
+
+echo $N Pull with local data should update server ...................$NL
+cd "$HERE"
+cd project
+rm -f `cat ../LIST`
+bk pull $Q ../clone || exit 1
+while read x
+do	test -f $x || echo $x is missing
+done < ../LIST > OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Push with local data should update server ...................$NL
+cd "$HERE"
+cd project
+bk unpull -fs $Q
+rm -f `cat ../LIST`
+cd ../clone
+bk push $Q ../project
+cd ../project
+while read x
+do	test -f $x || echo $x is missing
+done < ../LIST > OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+bk _kill bk://localhost:$P 
+trap '' 0

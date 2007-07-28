@@ -450,6 +450,13 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		}
 		putenv("BK_STATUS=OK");
 		rc = 0;
+	}  else if (streq(buf, "@UNABLE TO UPDATE BAM SERVER@")) {
+		unless (opts.quiet) {
+			fprintf(stderr,
+			    "Unable to update remote BAM server.\n");
+		}
+		putenv("BK_STATUS=FAILED");
+		rc = 1;
 	}  else if (streq(buf, "@NOTHING TO SEND@")) {
 		unless (opts.quiet) {
 			fprintf(stderr, "Nothing to pull.\n");

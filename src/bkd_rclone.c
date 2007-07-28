@@ -221,7 +221,6 @@ done:
 			printf("@BAM@\n");
 			fflush(stdout); 
 			rc = bp_sendkeys(1, "-r..", &sfio);
-			free(p);
 			// XXX - rc != 0?
 			printf("@DATASIZE=%s@\n", psize(sfio));
 			fflush(stdout);

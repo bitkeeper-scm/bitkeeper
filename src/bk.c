@@ -137,7 +137,7 @@ main(int ac, char **av, char **env)
 	cmdlog_flags = 0;
 	if (i = setjmp(exit_buf)) {
 		i -= 1000;
-		cmdlog_end(i);
+		cmdlog_end(i, 0);
 		return (i >= 0 ? i : 1);
 	}
 	atexit(cmdlog_exit);
@@ -327,7 +327,7 @@ run:	getoptReset();
 	close(1);
 	fflush(stderr);
 	close(2);
-	cmdlog_end(ret);
+	cmdlog_end(ret, 0);
 	exit(ret);
 }
 
@@ -452,7 +452,7 @@ cmdlog_exit(void)
 	}
 	bktmpcleanup();
 	lockfile_cleanup();
-	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
+	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT, 0);
 
 	/*
 	 * XXX TODO: We need to make win32 serivce child process send the
@@ -505,7 +505,6 @@ cmdlog_start(char **av, int httpMode)
 	int	i, len, do_lock = 1;
 	int	is_remote = strneq("remote ", av[0], 7);
 	char	*repo1, *repo2;
-	char	*p;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -517,17 +516,6 @@ cmdlog_start(char **av, int httpMode)
 			cmdlog_repo = i;
 			break;
 		}
-	}
-
-	/*
-	 * If either side of the connection thinks it has BAM data then
-	 * we will add in the extra data passes to the protocol.
-	 */
-	if ((cmdlog_flags & CMD_BAM) &&
-	    (((p = getenv("BK_BAM")) && streq(p, "YES")) || bp_hasBAM())){
-		/* in BAM-mode, allow another part */
-		cmdlog_flags &= ~CMD_FAST_EXIT;
-		unless (httpMode) cmdlog_flags &= ~(CMD_RDUNLOCK|CMD_WRUNLOCK);
 	}
 
 	/*
@@ -697,11 +685,10 @@ write_log(char *root, char *file, int rotate, char *format, ...)
 }
 
 int
-cmdlog_end(int ret)
+cmdlog_end(int ret, int httpMode)
 {
-	int	flags = cmdlog_flags & CMD_FAST_EXIT;
-	char	*log;
-	int	len, savelen;
+	char	*p, *log;
+	int	flags, len, savelen;
 	kvpair	kv;
 
 	purify_list();
@@ -716,7 +703,7 @@ cmdlog_end(int ret)
 		buffer = 0;
 	}
 	bktmpcleanup();
-	unless (cmdlog_buffer[0]) return (flags);
+	unless (cmdlog_buffer[0]) return (cmdlog_flags & CMD_FAST_EXIT);
 
 	/* add last minute notes */
 	if (cmdlog_repo && (cmdlog_flags&CMD_BYTES)) {
@@ -770,6 +757,16 @@ cmdlog_end(int ret)
 		cmdlog_flags |= CMD_RDUNLOCK;
 		cmdlog_flags |= CMD_FAST_EXIT;
 	}
+	/*
+	 * If either side of the connection thinks it has BAM data then
+	 * we will add in the extra data passes to the protocol.
+	 */
+	if ((ret == 0) && (cmdlog_flags & CMD_BAM) &&
+	    (((p = getenv("BK_BAM")) && streq(p, "YES")) || bp_hasBAM())){
+		/* in BAM-mode, allow another part */
+		cmdlog_flags &= ~CMD_FAST_EXIT;
+		unless (httpMode) cmdlog_flags &= ~(CMD_RDUNLOCK|CMD_WRUNLOCK);
+	}
 	if (cmdlog_flags & (CMD_WRUNLOCK|CMD_RDUNLOCK)) repository_unlock(0);
 
 #ifndef	NOPROC
@@ -804,6 +801,7 @@ cmdlog_end(int ret)
 out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
+	flags = cmdlog_flags & CMD_FAST_EXIT;
 	cmdlog_flags = 0;
 	return (flags);
 }
