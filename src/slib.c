@@ -9241,6 +9241,22 @@ binaryCheck(MMAP *m)
 	return (0);
 }
 
+private int
+toobig(sccs *s)
+{
+	u64	sz;
+
+	sz = 0x7fffffff;	/* 2GB - 1, always positive */
+	sz *= 2;		/* 4294967294 or fffffffe */
+	if (BAM(s) && exists(s->gfile) && (size(s->gfile) > sz)) {
+		fprintf(stderr,
+		    "%s is too large for this version of BitKeeper\n",
+		    s->gfile);
+		return (1);
+	}
+	return (0);
+}
+
 /*
  * Check in initial sfile.
  *
@@ -9295,6 +9311,7 @@ out:		sccs_unlock(s, 'z');
 			perror(s->gfile);
 			goto out;
 		}
+		if (toobig(s)) goto out;
 	} else if (S_ISLNK(s->mode) && BINARY(s)) {
 		fprintf(stderr, "%s: symlinks should not use BINARY mode!\n",
 		    s->gfile);
@@ -12691,6 +12708,7 @@ out:
 	}
 
 	if (BINARY(s) && license_binCheck(s)) OUT;
+	if (toobig(s)) OUT;
 
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
 		fprintf(stderr, "delta: %s is not an SCCS file\n", s->sfile);

@@ -493,7 +493,11 @@ bp_updateServer(char *range, char *list, int quiet)
 		out = fopen(tmpkeys, "w");
 		for (kv = mdbm_first(bp); kv.key.dsize; kv = mdbm_next(bp)) {
 			sprintf(buf, "BitKeeper/BAM/%s", kv.val.dptr);
-			fprintf(out, "|%u|%s\n", size(buf), kv.key.dptr);
+			/* If we want to allow >= 2^32 then fix sccs_delta() 
+			 * to not enforce the size limit.
+			 * And fix this to handle the %u portably.
+			 */
+			fprintf(out, "|%u|%s\n", (u32)size(buf), kv.key.dptr);
 		}
 		fclose(out);
 	} else {
