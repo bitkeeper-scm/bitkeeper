@@ -2555,7 +2555,16 @@ err:			unapply(save);
 		    "resolve: running consistency check, please wait...\n");
 	}
 	proj_restoreAllCO(0, opts->idDB);
-	unless (proj_configbool(0, "nosync")) sync();
+	unless (proj_configbool(0, "nosync")) {
+		/*
+		 * It's worth pointing out that we still call this when we
+		 * are resolving the creation of a new project.  It doesn't
+		 * happen in the real world, it's a makepatch -r.. |
+		 * takepatch -i type of thing but I ran into it when doing
+		 * some perf tests.
+		 */
+		sync();
+	}
 	if (proj_configbool(0, "partial_check")) {
 		fflush(save); /*  important */
 		ret = run_check(APPLIED, opts->quiet ? 0 : "-v");

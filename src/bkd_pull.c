@@ -180,12 +180,6 @@ cmd_pull_part2(int ac, char **av)
 		goto done;
 	}
 
-	if (bp_updateServer(0, keys, SILENT)) {
-		printf("@UNABLE TO UPDATE BAM SERVER@\n");
-		rc = 1;
-		goto done;
-	}
-
 	/*
 	 * Fire up the pre-trigger
 	 */
@@ -211,6 +205,12 @@ cmd_pull_part2(int ac, char **av)
 	if (dont) {
 		fflush(stdout);
 		rc = 0;
+		goto done;
+	}
+
+	if (bp_updateServer(0, keys, SILENT)) {
+		printf("@UNABLE TO UPDATE BAM SERVER@\n");
+		rc = 1;
 		goto done;
 	}
 

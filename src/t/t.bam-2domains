@@ -722,7 +722,9 @@ bk lock -L
 cd ..
 bk clone C1 bk://localhost:$P/C2 > OUT 2>&1
 bk _kill `cat LOCK`
-test -d C2 && {
+# This one will leave an empty repo, can't be helped if we want to do it 
+# post pre-incoming triggers.
+test -f C2/SCCS/s.ChangeSet && {
 	echo should not have cloned
 	find C2 -print
 	exit 1
@@ -737,7 +739,9 @@ bk lock -L
 cd ..
 bk clone C1 bk://localhost:$P/C2 > OUT 2>&1
 bk _kill `cat LOCK`
-test -d C2 && {
+# This one will leave an empty repo, can't be helped if we want to do it 
+# post pre-incoming triggers.
+test -f C2/SCCS/s.ChangeSet && {
 	echo should not have cloned
 	find C2 -print
 	exit 1
@@ -757,7 +761,9 @@ bk lock -L
 cd ..
 bk clone C1 bk://localhost:$P/C2 > OUT 2>&1
 bk _kill `cat LOCK`
-test -d C2 && {
+# This one will leave an empty repo, can't be helped if we want to do it 
+# post pre-incoming triggers.
+test -f C2/SCCS/s.ChangeSet && {
 	echo should not have cloned
 	find C2 -print
 	exit 1
@@ -772,7 +778,9 @@ bk lock -L
 cd ..
 bk clone C1 bk://localhost:$P/C2 > OUT 2>&1
 bk _kill `cat LOCK`
-test -d C2 && {
+# This one will leave an empty repo, can't be helped if we want to do it 
+# post pre-incoming triggers.
+test -f C2/SCCS/s.ChangeSet && {
 	echo should not have cloned
 	find C2 -print
 	exit 1

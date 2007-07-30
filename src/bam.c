@@ -728,6 +728,27 @@ bp_hasBAM(void)
 	}
 }
 
+/*
+ * This is used to override whatever the repo thinks the server is.
+ * Useful for "bk bam pull $URL".
+ */
+void
+bp_server(char *server)
+{
+	char	*p = getenv("BK_CONFIG");
+
+	if (p && *p) {
+		if (strstr(p, "BAM_server:")) {
+			fprintf(stderr,
+			    "BK_CONFIG already contains a server, abort.\n");
+			exit(1);
+		}
+		safe_putenv("BK_CONFIG=%s;BAM_server:%s!", p, server);
+	} else {
+		safe_putenv("BK_CONFIG=BAM_server:%s!", server);
+	}
+}
+
 /* make local repository contain BAM data for all deltas */
 private int
 bam_pull_main(int ac, char **av)
@@ -748,6 +769,15 @@ bam_pull_main(int ac, char **av)
 		}
 	}
 
+	if (proj_cd2root()) {
+		fprintf(stderr, "Not in a repository.\n");
+		return (1);
+	}
+	unless (bp_hasBAM()) {
+		fprintf(stderr, "No BAM data in this repository\n");
+		return (0);
+	}
+	if (av[optind]) bp_server(av[optind]);
 	if (bp_serverID(&p)) return (1);
 	unless (p) return (0);
 	free(p);
@@ -792,6 +822,11 @@ bam_push_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
+	unless (bp_hasBAM()) {
+		fprintf(stderr, "No BAM data in this repository\n");
+		return (0);
+	}
+	if (av[optind]) bp_server(av[optind]);
 	return (bp_updateServer("..", 0, quiet));
 }
 
@@ -827,6 +862,10 @@ bam_clean_main(int ac, char **av)
 	if (proj_cd2root()) {
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
+	}
+	unless (bp_hasBAM()) {
+		fprintf(stderr, "No BAM data in this repository\n");
+		return (0);
 	}
 	if (sys("bk", "BAM", "check", "-Fq", SYS)) {
 		fprintf(stderr,
@@ -1100,6 +1139,10 @@ bam_check_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
 	}
+	unless (bp_hasBAM()) {
+		fprintf(stderr, "No BAM data in this repository\n");
+		return (0);
+	}
 	while ((i = getopt(ac, av, "Fq")) != -1) {
 		switch (i) {
 		    case 'F': fast = 1; break;
@@ -1114,7 +1157,8 @@ bam_check_main(int ac, char **av)
 	f = popen("bk -r prs -hnd'" BAM_DSPEC "'", "r");
 	assert(f);
 	while (fnext(buf, f)) {
-		unless (quiet) fprintf(stderr, "%d\r", ++n);
+		++n;
+		unless (quiet) fprintf(stderr, "%d\r", n);
 		chomp(buf);
 
 		if (bp_check_hash(buf, &missing, fast)) rc = 1;
@@ -1165,6 +1209,10 @@ bam_repair_main(int ac, char **av)
 	if (proj_cd2root()) {
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
+	}
+	unless (bp_hasBAM()) {
+		fprintf(stderr, "No BAM data in this repository\n");
+		return (0);
 	}
 	db = proj_BAMindex(0, 0);	/* ok if db is null */
 	missing = mdbm_mem();
@@ -1342,6 +1390,10 @@ bam_reload_main(int ac, char **av)
 		fprintf(stderr, "No repo root?\n");
 		exit(1);
 	}
+	unless (bp_hasBAM()) {
+		fprintf(stderr, "No BAM data in this repository\n");
+		return (0);
+	}
 	unless (f = fopen("BitKeeper/log/BAM.index", "r")) {
 		perror("BitKeeper/log/BAM.index");
 	    	exit(1);
@@ -1394,7 +1446,6 @@ bam_convert_main(int ac, char **av)
 	char	*p;
 	int	c, i, j, n;
 	int	min = 128<<10, matched = 0, errors = 0;
-	u64	w;
 	FILE	*in, *out, *sfiles;
 	char	buf[MAXKEY * 2];
 
@@ -1433,30 +1484,10 @@ bam_convert_main(int ac, char **av)
 			continue;
 		}
 
-#if 1
 		if (size(s->sfile) < min) {
 			sccs_free(s);
 			continue;
 		}
-#else
-		if (exists(s->gfile)) {
-			if (size(s->gfile) < min) {
-				sccs_free(s);
-				continue;
-			}
-		} else {
-			/*
-			 * Approximate the size of the gfile by the size of the
-			 * weave divided by the number of deltas.
-			 * This is less expensive that checking it out.
-			 */
-			w = (s->size - s->data) / (s->numdeltas - 1);
-			unless (w >= min) {
-				sccs_free(s);
-				continue;
-			}
-		}
-#endif
 		errors |= uu2bp(s);
 		sccs_free(s);
 	}
@@ -1608,7 +1639,6 @@ bam_main(int ac, char **av)
 		{"reload", bam_reload_main },
 		{"repair", bam_repair_main },
 		{"sizes", bam_sizes_main },
-
 		{0, 0}
 	};
 

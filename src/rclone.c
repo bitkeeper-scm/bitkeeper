@@ -98,12 +98,6 @@ rclone(char **av, remote *r, char **envVar)
 	char	*bp_keys = 0;
 	char	revs[MAXKEY];
 
-	if (rc = bp_updateServer("..", 0, !opts.verbose)) {
-		if (opts.verbose) {
-			fprintf(stderr, "Unable to update BAM server.\n");
-		}
-		goto done;
-	}
 	sprintf(revs, "..%s", opts.rev ? opts.rev : "+");
 	safe_putenv("BK_CSETS=%s", revs);
 	if (rc = trigger(av[0], "pre"))  goto done;
@@ -155,7 +149,7 @@ rclone_part1(remote *r, char **envVar)
 		return (-1);
 	}
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
-	if (bp_updateServer(opts.rev ? opts.rev : "+", 0, !opts.verbose)) {
+	if (bp_updateServer("..", 0, !opts.verbose)) {
 		fprintf(stderr, "Unable to update local BAM server\n");
 		return (-1);
 	}

@@ -697,12 +697,6 @@ push_part2(char **av,
 		send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 		rc = 1;
 		done = 1;
-	} else if (bp_updateServer(0, rev_list, !opts.verbose)) {
-		/* push BAM data to server */
-		fprintf(stderr, "push: unable to update BAM server\n");
-		send_end_msg(r, "@ABORT@\n", rev_list, envVar);
-		rc = 1;
-		done = 2;
 	} else {
 		/*
 		 * We are about to request the patch, fire pre trigger
@@ -711,6 +705,12 @@ push_part2(char **av,
 		 */
 		safe_putenv("BK_CSETLIST=%s", rev_list);
 		if (trigger(av[0], "pre")) {
+			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
+			rc = 1;
+			done = 2;
+		} else if (bp_updateServer(0, rev_list, !opts.verbose)) {
+			/* push BAM data to server */
+			fprintf(stderr, "push: unable to update BAM server\n");
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 2;
