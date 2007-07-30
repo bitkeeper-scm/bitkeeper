@@ -237,9 +237,9 @@ for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
 do	test -f $i || echo $i is missing
 done > "$HERE/OUT"
 cd ../S
-while read x
-do	test -f $x || echo $x is missing
-done >> "$HERE/OUT" 2>&1 < "$HERE/BAMFILES"
+cat "$HERE/BAMFILES" | while read x
+do	test -f "$x" || echo $x is missing
+done >> "$HERE/OUT" 2>&1 
 test -s "$HERE/OUT" && {
 	echo failed to update the server from C1
 	cat "$HERE/OUT"
@@ -271,9 +271,9 @@ for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
 do	test -f $i || echo $i is missing
 done > "$HERE/OUT"
 cd ../S
-while read x
+cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
-done >> "$HERE/OUT" 2>&1 < "$HERE/BAMFILES"
+done >> "$HERE/OUT" 2>&1 
 test -s "$HERE/OUT" && {
 	echo failed to update the server from C1
 	cat "$HERE/OUT"
@@ -305,9 +305,9 @@ for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
 do	test -f $i || echo $i is missing
 done > "$HERE/OUT"
 cd ../S
-while read x
+cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
-done >> "$HERE/OUT" 2>&1 < "$HERE/BAMFILES"
+done >> "$HERE/OUT" 2>&1 
 test -s "$HERE/OUT" && {
 	echo failed to update the server from C1
 	cat "$HERE/OUT"
@@ -341,9 +341,9 @@ for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
 do	test -f $i || echo $i is missing
 done > "$HERE/OUT"
 cd ../S
-while read x
+cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
-done >> "$HERE/OUT" 2>&1 < "$HERE/BAMFILES"
+done >> "$HERE/OUT" 2>&1 
 test -s "$HERE/OUT" && {
 	echo failed to update the server from C1
 	cat "$HERE/OUT"

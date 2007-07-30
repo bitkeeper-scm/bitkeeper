@@ -173,9 +173,9 @@ test `wc -l < ../LIST` -eq 2 || {
 cd "$HERE"
 bk clone $Q clone clone2
 cd project
-while read x
+cat ../LIST | while read x
 do	test -f $x || echo $x is missing
-done < ../LIST > OUT
+done > OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -220,9 +220,9 @@ test -d BitKeeper/BAM && {
 	exit 1
 }
 cd ../project
-while read x
+cat ../LIST | while read x
 do	test -f $x || echo $x is missing
-done < ../LIST > OUT
+done > OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -262,9 +262,9 @@ test -d BitKeeper/BAM && {
 	exit 1
 }
 cd ../project
-while read x
+cat ../LIST | while read x
 do	test -f $x || echo $x is missing
-done < ../LIST > OUT
+done > OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -298,9 +298,9 @@ test -d BitKeeper/BAM && {
 	exit 1
 }
 cd ../project
-while read x
+cat ../LIST | while read x
 do	test -f $x || echo $x is missing
-done < ../LIST > OUT
+done > OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -334,9 +334,9 @@ cd "$HERE"
 cd project
 rm -f `cat ../LIST`
 bk pull $Q ../clone || exit 1
-while read x
+cat ../LIST | while read x
 do	test -f $x || echo $x is missing
-done < ../LIST > OUT
+done > OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -352,9 +352,9 @@ rm -f `cat ../LIST`
 cd ../clone
 bk push $Q ../project
 cd ../project
-while read x
+cat ../LIST | while read x
 do	test -f $x || echo $x is missing
-done < ../LIST > OUT
+done > OUT
 test -s OUT && {
 	echo failed
 	cat OUT
