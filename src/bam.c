@@ -565,6 +565,15 @@ bp_updateServer(char *range, char *list, int quiet)
 	return (rc);
 }
 
+char	*
+bp_serverName(void)
+{
+	char	*url;
+
+	unless ((url = proj_configval(0,"BAM_server")) && *url) return (0);
+	return (url);
+}
+
 /*
  * Find the repo_id of the BAM server and returns it as a malloc'ed
  * string in *id.
@@ -788,8 +797,8 @@ bam_pull_main(int ac, char **av)
 	/* reduce to list of deltas missing locally, no recursion. */
 	cmds = addLine(cmds, strdup("bk havekeys -Bl -"));
 
-	/* request deltas from server, no recursion (yet) */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqBl -",
+	/* request deltas from server */
+	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -",
 	    proj_configval(0, "BAM_server")));
 
 	/* unpack locally */
