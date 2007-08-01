@@ -430,7 +430,8 @@ recurse(delta *d)
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
-		"$if(:TAG:){<tr bgcolor=yellow><td>&nbsp;Tag: :TAG:" \
+		"$if(:TAG:){<tr bgcolor=yellow><td>" \
+		"$each(:SYMBOL:){&nbsp;TAG: (:SYMBOL:)<br>\n}" \
 		"</td></tr>\n}" \
 		"<tr bgcolor=white><td>" \
 		"$each(:C:){&nbsp;(:C:)<br>\n}</td></tr>\n"
@@ -443,7 +444,8 @@ recurse(delta *d)
 		":P:@:HT:&nbsp;&nbsp;:I:}" \
 		"$if(:TYPE:=BitKeeper){&nbsp;:DPN: :I:}" \
 		"</td></tr>\n" \
-		"$if(:TAG:){<tr bgcolor=yellow><td>&nbsp;Tag: :TAG:" \
+		"$if(:TAG:){<tr bgcolor=yellow><td>" \
+		"$each(:SYMBOL:){&nbsp;TAG: (:SYMBOL:)<br>\n}" \
 		"</td></tr>\n}" \
 		"<tr bgcolor=white><td>" \
 		"$each(:C:){&nbsp;" \
