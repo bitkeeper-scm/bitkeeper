@@ -263,7 +263,7 @@ do_cmds(void)
 			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
 			if (log &&
-			    (cmdlog_end(ret, httpMode) & CMD_FAST_EXIT)) {
+			    (cmdlog_end(ret) & CMD_FAST_EXIT)) {
 				drain();
 				exit(ret);
 			}
