@@ -647,13 +647,6 @@ disconnect(remote *r, int how)
 		 * already, but just in case we close the connections
 		 * and wait for that process to exit.
 		 */
-		FILE	*f;
-
-		if (f = efopen("BK_SHOWPROC")) {
-			fprintf(f, "disconnect(): pid %u waiting for %u...\n",
-			    getpid(), r->pid);
-			fclose(f);
-		}
 		waitpid(r->pid, 0, 0);
 		r->pid = 0;
 	}
@@ -680,6 +673,10 @@ get_ok(remote *r, char *read_ahead, int verbose)
 
 	if (streq(p, "@OK@")) return (0); /* ok */
 	if (streq(p, "ERROR-bogus license key")) return (100);
+	if (strneq(p, "ERROR-unable to update BAM server", 33)) {
+		if (verbose) fprintf(stderr, "%s\n", p);
+		return (-1000);
+	}
 	if (verbose) {
 		i = 0;
 		if (p && *p) fprintf(stderr, "remote: %s\n", p);

@@ -710,7 +710,9 @@ push_part2(char **av,
 			done = 2;
 		} else if (bp_updateServer(0, rev_list, !opts.verbose)) {
 			/* push BAM data to server */
-			fprintf(stderr, "push: unable to update BAM server\n");
+			fprintf(stderr,
+			    "push: unable to update BAM server %s\n",
+			    bp_serverName());
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 2;

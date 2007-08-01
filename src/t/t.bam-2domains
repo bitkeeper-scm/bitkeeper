@@ -662,6 +662,11 @@ test -d C2 && {
 	find C2 -print
 	exit 1
 }
+grep -q "ERROR-unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Clone C1 to C2 with part in C1 and rest in S w/ S rlocked ...$NL
@@ -675,6 +680,11 @@ bk _kill `cat LOCK`
 test -d C2 && {
 	echo should not have cloned
 	find C2 -print
+	exit 1
+}
+grep -q "ERROR-unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
 	exit 1
 }
 echo OK
@@ -695,6 +705,11 @@ test -d C2 && {
 	find C2 -print
 	exit 1
 }
+grep -q "ERROR-unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Clone C1 to C2 with all in S with S rlocked .................$NL
@@ -708,6 +723,11 @@ bk _kill `cat LOCK`
 test -d C2 && {
 	echo should not have cloned
 	find C2 -print
+	exit 1
+}
+grep -q "ERROR-unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
 	exit 1
 }
 echo OK
@@ -729,6 +749,11 @@ test -f C2/SCCS/s.ChangeSet && {
 	find C2 -print
 	exit 1
 }
+grep -q "Unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N rClone C1 to C2 with part in C1 and rest in S w/ S rlocked ..$NL
@@ -744,6 +769,11 @@ bk _kill `cat LOCK`
 test -f C2/SCCS/s.ChangeSet && {
 	echo should not have cloned
 	find C2 -print
+	exit 1
+}
+grep -q "Unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
 	exit 1
 }
 echo OK
@@ -768,6 +798,11 @@ test -f C2/SCCS/s.ChangeSet && {
 	find C2 -print
 	exit 1
 }
+grep -q "Unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N rClone C1 to C2 with all in S with S rlocked ................$NL
@@ -783,6 +818,11 @@ bk _kill `cat LOCK`
 test -f C2/SCCS/s.ChangeSet && {
 	echo should not have cloned
 	find C2 -print
+	exit 1
+}
+grep -q "Unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
 	exit 1
 }
 echo OK
@@ -803,6 +843,11 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
+grep -q "unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Push C1 to C2 with part in C1 and rest in S w/ S rlocked ....$NL
@@ -816,6 +861,11 @@ bk _kill `cat ../LOCK`
 bk changes -L ../C2 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
+	exit 1
+}
+grep -q "unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
 	exit 1
 }
 echo OK
@@ -836,6 +886,11 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
+grep -q "unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Push C1 to C2 with all in S with S rlocked ..................$NL
@@ -849,6 +904,11 @@ bk _kill `cat ../LOCK`
 bk changes -L ../C2 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
+	exit 1
+}
+grep -q "unable to update BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
 	exit 1
 }
 echo OK
@@ -869,6 +929,11 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
+grep -q "Unable to update remote BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Pull C1 to C2 with part in C1 and rest in S w/ S rlocked ....$NL
@@ -882,6 +947,11 @@ bk _kill `cat ../LOCK`
 bk changes -L ../C1 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
+	exit 1
+}
+grep -q "Unable to update remote BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
 	exit 1
 }
 echo OK
@@ -902,6 +972,11 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
+grep -q "Unable to update remote BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Pull C1 to C2 with all in S with S rlocked ..................$NL
@@ -915,6 +990,11 @@ bk _kill `cat ../LOCK`
 bk changes -L ../C1 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
+	exit 1
+}
+grep -q "Unable to update remote BAM server bk://localhost:$P/S" OUT || {
+	echo wrong error message
+	cat OUT
 	exit 1
 }
 echo OK

@@ -149,13 +149,7 @@ err:		freeLines(envVar, free);
 				    "pull: remote locked, trying again...\n");
 			}
 			disconnect(r, 2);
-			/*
-			 * if we are sending via the pipe, reap the child
-			 */
-			if (r->pid)  {
-				waitpid(r->pid, NULL, 0);	
-				r->pid = 0; /* just in case */
-			}
+			assert(r->pid == 0);
 			sleep(min((j++ * 2), 10));
 		}
 		remote_free(r);
@@ -450,10 +444,12 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		}
 		putenv("BK_STATUS=OK");
 		rc = 0;
-	}  else if (streq(buf, "@UNABLE TO UPDATE BAM SERVER@")) {
+	}  else if (strneq(buf, "@UNABLE TO UPDATE BAM SERVER", 28)) {
 		unless (opts.quiet) {
+			chop(buf);
 			fprintf(stderr,
-			    "Unable to update remote BAM server.\n");
+			    "Unable to update remote BAM server %s.\n",
+			    &buf[29]);	/* it's "SERVER $URL */
 		}
 		putenv("BK_STATUS=FAILED");
 		rc = 1;
