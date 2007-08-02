@@ -458,10 +458,13 @@ rmlink(char *link, char *bkpath)
 	char	buf[MAXPATH];
 	char	*dir;
 	struct	stat sb;
+	int	len;
 
 	if (lstat(link, &sb)) return (-1);
 	unless (S_ISLNK(sb.st_mode)) return (-1);
-	readlink(link, buf, sizeof(buf));
+	len = readlink(link, buf, sizeof(buf));
+	if ((len == -1) || (len >= sizeof(buf))) return (-1);
+	buf[len] = 0;
 	dir = dirname(buf);
 	unless (streq(dir, bkpath)) return (-1);
 	return (unlink(link));
