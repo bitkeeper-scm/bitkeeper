@@ -463,7 +463,7 @@ nameOK(opts *opts, sccs *s)
 		strcpy(realname, path);
 	}
 	if (streq(path, realname) &&
-	    (local = sccs_init(path, INIT_NOCKSUM)) &&
+	    (local = sccs_init(path, INIT_NOCKSUM|INIT_MUSTEXIST)) &&
 	    HAS_SFILE(local)) {
 		if (EDITED(local) && sccs_hasDiffs(local, SILENT, 1)) {
 			fprintf(stderr,
@@ -1318,6 +1318,44 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	}
 }
 
+/*
+ * Walk a directory tree and determine if it is a directory conflict or
+ * it can be removed because the only contents are sfiles that will be
+ * renamed as part of the incoming patch.
+ */
+private int
+findDirConflict(char *file, struct stat *sb, void *token)
+{
+	opts	*opts = token;
+	char	*t;
+	char	*sfile;
+
+	if (S_ISDIR(sb->st_mode)) return (0);
+
+	if (t = strstr(file, "/SCCS/")) {
+		if (strneq(t+6, "s.", 2)) {
+			if (mdbm_fetch_str(opts->rootDB, file)) {
+				if (opts->debug) {
+					fprintf(stderr,
+					    "%s exists in local repository\n",
+					    file);
+				}
+				return (DIR_CONFLICT);
+			}
+			/* Saw a sfile that is already renamed in RESYNC */
+			opts->sawfile = 1;
+		}
+		/* ignore other files in SCCS */
+		return (0);
+	}
+	sfile = name2sccs(file);
+	if (exists(sfile)) {
+		free(sfile);
+		return (0);
+	}
+	return (DIR_CONFLICT);
+}
+
 private int
 pathConflict(opts *opts, char *gfile)
 {
@@ -1395,9 +1433,20 @@ slotTaken(opts *opts, char *slot)
 		if (exists(gfile)) {
 			int	conf;
 
-			conf = isdir(gfile) ? DIR_CONFLICT : GFILE_CONFLICT;
-			if (opts->debug) {
-			    	fprintf(stderr,
+			if (isdir(gfile)) {
+				opts->sawfile = 0;
+				conf = walkdir(gfile, findDirConflict, opts);
+				/*
+				 * The directory must contain at least 1 sfile
+				 * that is renamed in RESYNC for this conflict
+				 * to autoresolve.
+				 */
+				unless (opts->sawfile) conf = DIR_CONFLICT;
+			} else {
+				conf = GFILE_CONFLICT;
+			}
+			if (conf && opts->debug) {
+				fprintf(stderr,
 				    "%s %s exists in local repository\n",
 				    conf == DIR_CONFLICT ? "dir" : "file",
 				    gfile);

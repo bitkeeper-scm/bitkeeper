@@ -204,3 +204,11 @@ then	echo failed to leave local dir JUNKDIR
 	exit 1
 fi
 echo OK
+
+echo $N Demonstrate problem where a directory is replaced w file ....$NL
+bk mv src old || exit 1
+echo 2 > src
+bk new $Q src
+bk commit $Q -yfile || exit 1
+bk push $Q || exit 1
+echo OK
