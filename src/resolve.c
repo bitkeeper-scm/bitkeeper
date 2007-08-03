@@ -1329,30 +1329,40 @@ findDirConflict(char *file, struct stat *sb, void *token)
 	opts	*opts = token;
 	char	*t;
 	char	*sfile;
+	char	buf[MAXKEY];
 
-	if (S_ISDIR(sb->st_mode)) return (0);
+	if (S_ISDIR(sb->st_mode)) {
+		opts->dirlist = addLine(opts->dirlist, strdup(file));
+		return (0);
+	}
 
 	if (t = strstr(file, "/SCCS/")) {
 		if (strneq(t+6, "s.", 2)) {
-			if (mdbm_fetch_str(opts->rootDB, file)) {
+			sccs	*local = sccs_init(file, INIT_NOCKSUM);
+
+			sccs_sdelta(local, sccs_ino(local), buf);
+			sccs_free(local);
+			unless (mdbm_fetch_str(opts->rootDB, buf)) {
 				if (opts->debug) {
 					fprintf(stderr,
-					    "%s exists in local repository\n",
+					    "%s new sfile in local repo\n",
 					    file);
 				}
 				return (DIR_CONFLICT);
 			}
-			/* Saw a sfile that is already renamed in RESYNC */
-			opts->sawfile = 1;
 		}
 		/* ignore other files in SCCS */
 		return (0);
 	}
+	/*
+	 * Ignore gfiles with sfiles, because we'll pick them up above
+	 */
 	sfile = name2sccs(file);
 	if (exists(sfile)) {
 		free(sfile);
 		return (0);
 	}
+	free(sfile);
 	return (DIR_CONFLICT);
 }
 
@@ -1379,6 +1389,7 @@ pathConflict(opts *opts, char *gfile)
 					    gfile);
 				}
 				*t = '/';
+				free(sfile);
 				return (1);
 			}
 			free(sfile);
@@ -1388,6 +1399,20 @@ pathConflict(opts *opts, char *gfile)
 		*s = '/';
 	}
 	return (0);
+}
+
+private	void
+deleteDirs(char **list)
+{
+	int	i;
+
+	reverseLines(list);
+	EACH(list) {
+		if (rmdir(list[i]) == 0) {
+			fprintf(stderr,
+			    "resolve: removing empty directory: %s\n", list[i]);
+		}
+	}
 }
 
 
@@ -1434,14 +1459,10 @@ slotTaken(opts *opts, char *slot)
 			int	conf;
 
 			if (isdir(gfile)) {
-				opts->sawfile = 0;
+				opts->dirlist = 0;
 				conf = walkdir(gfile, findDirConflict, opts);
-				/*
-				 * The directory must contain at least 1 sfile
-				 * that is renamed in RESYNC for this conflict
-				 * to autoresolve.
-				 */
-				unless (opts->sawfile) conf = DIR_CONFLICT;
+				deleteDirs(opts->dirlist);
+				freeLines(opts->dirlist, free);
 			} else {
 				conf = GFILE_CONFLICT;
 			}

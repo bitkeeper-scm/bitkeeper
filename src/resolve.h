@@ -48,7 +48,6 @@ typedef struct {
 	u32	from_pullpush:1;/* set if we are being called from pull/push */
 	u32	partial:1;	/* partial resolve - don't commit changeset */
 	u32	autoOnly:1;	/* do as much as possible automatically &exit */
-	u32	sawfile:1;	/* flag for findDirConflict() */
 	int	hadConflicts;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */
@@ -65,6 +64,7 @@ typedef struct {
 	char	**includes;	/* list of globs indicating files to resolve */
 	char	**excludes;	/* list of globs indicating files to skip */
 	char	**notmerged;	/* list of files that didn't automerge */
+	char	**dirlist;	/* list of directories to delete */
 } opts;
 
 /*
