@@ -310,7 +310,7 @@ echo OK
 
 bk _kill bk://localhost:$P
 
-echo $N Test BAM repair .............................................$NL
+echo $N Test BAM reattach ...........................................$NL
 cd "$HERE"/cclone1
 bk -r clean || exit 1
 mv BitKeeper/BAM junk
@@ -318,7 +318,7 @@ bk -r get $Q 2>ERR && {
 	echo should have failed
 	exit 1
 }
-bk BAM repair $Q junk || exit 1
+find junk -type f | bk BAM reattach $Q - || exit 1
 bk -r get $Q || exit 1
 echo OK
 

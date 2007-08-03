@@ -10,6 +10,7 @@ int		proj_chdir(char *newdir);
 MDBM*		proj_config(project *p);
 char*		proj_configval(project *p, char *key);
 int		proj_configbool(project *p, char *key);
+u32		proj_configsize(project *p, char *key);
 
 /*
  * defines for proj_checkout() 

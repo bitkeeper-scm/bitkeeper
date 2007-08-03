@@ -329,6 +329,28 @@ proj_configval(project *p, char *key)
 	return (ret ? ret : "");
 }
 
+u32
+proj_configsize(project *p, char *key)
+{
+	char	*ret;
+	u32	sz;
+	MDBM	*db = proj_config(p);
+
+	assert(db);
+	unless ((ret = mdbm_fetch_str(db, key)) && *ret) return (0);
+	sz = atoi(ret);
+	while (isdigit(*ret)) ret++;
+	switch (*ret) {
+	    case 'k': case 'K': return (sz << 10);
+	    case 'm': case 'M': return (sz << 20);
+	    case 0:
+	    	return (sz);
+	    default:
+	    	return (0);
+	}
+	/* NOT REACHED */
+}
+
 int
 proj_configbool(project *p, char *key)
 {

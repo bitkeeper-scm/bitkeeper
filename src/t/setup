@@ -70,7 +70,7 @@ description: BitKeeper Test repository
 email: nobody@nowhere.bk
 eoln: unix
 keyword: sccs
-BAM: on
+BAM: 1
 nosync: on
 EOF
 }

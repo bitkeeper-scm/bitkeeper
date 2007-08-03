@@ -1,0 +1,111 @@
+.so ../bk-macros
+.TH "bk bam" "\*[BKVER]" %D% "\*(BC" "\*(UM"
+.SH NAME
+bk bam \- BAM utility routines
+.SH SYNOPSIS
+.B bk bam check 
+.[B] \-Fq
+.br
+.B bk bam clean
+.[B] \-an
+.br
+.B bk bam convert
+.br
+.B bk bam pull
+.[B] \-q
+.br
+.B bk bam push
+.[B] \-q
+.br
+.B bk bam reload
+.br
+.B bk bam repair
+.[B] \-q
+.ARG dir
+.SH DESCRIPTION
+\*(BK Binary Asset Management (BAM) is a licensed subfeature that provides
+support for large binary files, such as tool chains, cell
+libraries, game data, etc.
+BAM differs from traditional binary storage in that the data does not need
+to be replicated in all clones, it may be lazily fetched on demand from
+a BAM server.
+.LP
+The
+.B bk bam
+command is a utility command which provides interfaces for checking 
+integrity of BAM files,
+removing "orphaned" BAM files,
+converting old binary files to BAM files,
+fetching BAM files from the BAM server,
+pushing local BAM files to the BAM server,
+or repairing a BAM pool.
+In general, the convert or pull interfaces are most likely to be useful, 
+the others are typically used debugging.
+.LP
+In any operation with a 
+.Q \-q
+option, that option means to run quietly.
+The operations supported are:
+.TP \fBconvert\fP
+.B check
+Check that the BAM files are present and are not corrupted.
+If the
+.Q \-F
+option is included, then the corruption check is skipped.
+Any files which are not found locally are looked for in the BAM server.
+Note: currently there is no way to check for corruption remotely.
+.tp
+.B clean
+Remove any BAM files that are not referenced by any delta in the repository.
+If the
+.Q \-a
+option is included, then flush local BAM files which are copies from the 
+BAM server.
+If the
+.Q \-n
+option is included, then just say what would be done but do not do it.
+.br
+NOTE: it is not recommended to run this command in a BAM server since
+the server may have BAM files referenced only by clients.
+.tp
+.B convert
+Convert the set of specified files from traditional binary encoding to BAM
+encoding.
+Only files greater than a certain size are converted since small files 
+perform better with the traditional encoding.
+.tp
+.B pull
+This interface is used to populate a local BAM pool with all BAM files
+referenced by any delta in the local repository.
+Normally, the local BAM pool contains only those files which have been either
+checked out locally or created locally, i.e., the BAM pool is sparse.
+This command may be useful to populate a laptop clone with all revisions
+for disconnected operation or to set up a new BAM server.
+.tp
+.B push
+This interface is used to populate a BAM server with any BAM files which
+have been created locally but not sent to the server.
+In general, this command is not needed because the BAM server is automatically
+updated if the local BAM files are either cloned or pulled to another repo.
+.tp
+.B reload
+The BAM pool has an on disk binary index in BitKeeper/BAM/index.db that is
+used for fast lookups.
+The data in the index is also stored in BitKeeper/log/BAM.index in text
+format.
+Should the index get corrupted, it may be recreated running this command.
+.tp
+.B repair
+Used to try and reinsert data into the BAM directory.
+If your disk crashed and some files were lost from the BAM directory
+(which bk bam check -F will tell you) and you believe you have that 
+data, you can tell bk bam repair to put it back.
+.sp .5
+For each file in the named directory, see if the hash of the file matches
+one of the missing files.
+If so, reinsert that file.
+.\" XXX - tell them that it may be wrong?
+.LP
+.SH CATEGORY
+.B Utility
+.\" help://BAM

@@ -765,13 +765,11 @@ bam_pull_main(int ac, char **av)
 	int	rc, c;
 	char	*p;
 	char	**cmds = 0;
+	int	quiet = 0;
 
-	while ((c = getopt(ac, av, "a")) != -1) {
+	while ((c = getopt(ac, av, "q")) != -1) {
 		switch (c) {
-		    case 'a':
-			fprintf(stderr,
-			    "BAM pull: -a not implemeneted.\n");
-			return (1);
+		    case 'q': quiet = 1; break;
 		    default:
 			system("bk help -s BAM");
 			return (1);
@@ -802,7 +800,11 @@ bam_pull_main(int ac, char **av)
 	    proj_configval(0, "BAM_server")));
 
 	/* unpack locally */
-	cmds = addLine(cmds, strdup("bk sfio -irB -"));
+	if (quiet) {
+		cmds = addLine(cmds, strdup("bk sfio -qirB -"));
+	} else {
+		cmds = addLine(cmds, strdup("bk sfio -irB -"));
+	}
 
 	rc = spawn_filterPipeline(cmds);
 	freeLines(cmds, free);
@@ -814,14 +816,12 @@ private int
 bam_push_main(int ac, char **av)
 {
 	int	c;
-	int	all = 0, quiet = 0;
-	char	*tiprev = "+";
+	int	quiet = 0;
 
-	while ((c = getopt(ac, av, "aqr;")) != -1) {
+	while ((c = getopt(ac, av, "aq")) != -1) {
 		switch (c) {
-		    case 'a': all = 1; break;
+		    case 'a': break;	/* currently the default */
 		    case 'q': quiet = 1; break;
-		    case 'r': tiprev = optarg; break;
 		    default:
 			system("bk help -s BAM");
 			return (1);
@@ -1188,13 +1188,16 @@ bam_check_main(int ac, char **av)
 }
 
 /*
- * Examine the files in a directory and add any files that have the
+ * Examine the specified files and add any files that have the
  * right hash to be data missing from my BAM pool back to the BAM pool.
+ * In theory, this will work:
+ * 	mv BitKeeper/BAM ..
+ * 	find ../BAM | bk bam reattach -
  */
 private int
-bam_repair_main(int ac, char **av)
+bam_reattach_main(int ac, char **av)
 {
-	char	*dir, *cmd, *hval, *p;
+	char	*hval, *p, *tmp = 0;
 	int	i, c, quiet = 0;
 	MDBM	*db = 0, *missing;
 	FILE	*f;
@@ -1210,11 +1213,20 @@ bam_repair_main(int ac, char **av)
 			return (1);
 		}
 	}
-	unless (av[optind] && !av[optind+1]) {
-		fprintf(stderr, "usage: bk BAM repair DIR\n");
+	unless (av[optind]) {
+		system("bk help -s BAM");
 		return (1);
 	}
-	dir = fullname(av[optind]);
+	unless (streq(av[optind], "-")) {
+		tmp = bktmp(0, "bam");
+		f = fopen(tmp, "w");
+		while (av[optind]) {
+			fprintf(f, "%s\n", fullname(av[optind++]));
+		}
+		fclose(f);
+		/* rewind appears to be not always portable */
+		f = fopen(tmp, "r");
+	}
 	if (proj_cd2root()) {
 		fprintf(stderr, "Not in a repository.\n");
 		return (1);
@@ -1257,38 +1269,41 @@ bam_repair_main(int ac, char **av)
 	}
 	pclose(f);
 
-	/* hash all files in directory ... */
-	cmd = aprintf("bk _find '%s' -type f", dir);
-	f = popen(cmd, "r");
-	assert(f);
+	if (av[optind]) f = stdin;
 	while (fnext(buf, f)) {
 		chomp(buf);
 
+		/*
+		 * XXX - we could use file size as well.
+		 */
 		if (bp_hashgfile(buf, &hval, &sum)) continue;
-		unless (p = mdbm_fetch_str(missing, hval)) {
-			free(hval);
-			continue;
-		}
 
-		/* found a file we are missing */
 		for (i = -1; ; i++) {
-			unless (i == -1) {
+			if (i == -1) {
+				strcpy(key, hval);
+			} else {
 				sprintf(key, "%s.%d", hval, i);
-				unless (p = mdbm_fetch_str(missing, key)) {
-					break;
-				}
 			}
+			unless (p = mdbm_fetch_str(missing, key)) break;
+
+			/* found a file we are missing */
 			unless (quiet) printf("Inserting %s for %s\n", buf, p);
 			if (bp_insert(0, buf, p, 0)) {
 				fprintf(stderr,
-				"BAM repair: failed to insert %s for %s\n",
-				buf, p);
+				    "reattach: failed to insert %s for %s\n",
+				    buf, p);
 			}
 			/* don't reinsert this key again */
 			mdbm_delete_str(missing, key);
 		}
+		free(hval);
 	}
 	mdbm_close(missing);
+	unless (av[optind]) {
+		fclose(f);
+		unlink(tmp);
+		free(tmp);
+	}
 	return (0);
 }
 
@@ -1645,8 +1660,8 @@ bam_main(int ac, char **av)
 		{"index", bam_index_main },
 		{"pull", bam_pull_main },
 		{"push", bam_push_main },
+		{"reattach", bam_reattach_main },
 		{"reload", bam_reload_main },
-		{"repair", bam_repair_main },
 		{"sizes", bam_sizes_main },
 		{0, 0}
 	};

@@ -9012,10 +9012,13 @@ ascii(char *file)
 /*
  * Return the encoding for a binary file.
  */
-int
-sccs_binaryenc(sccs *s)
+private int
+binaryenc(sccs *s)
 {
-	if (proj_configbool(s ? s->proj : 0, "BAM")) {
+	/* we can't switch encodings on a per delta basis */
+	if (s && HASGRAPH(s)) return (s->encoding);
+
+	if (proj_configsize(s ? s->proj : 0, "BAM")) {
 		return (E_BAM);
 	} else {
 		return (E_UUENCODE);
@@ -9044,7 +9047,10 @@ openInput(sccs *s, int flags, FILE **inp)
 	enc = s->encoding & E_DATAENC;
 	/* handle auto promoting ascii to binary if needed */
 	if ((enc == E_ASCII) && !streq("-", file) && !ascii(file)) {
-		enc = sccs_binaryenc(s);
+		enc = binaryenc(s);
+		if (proj_configsize(s ? s->proj : 0, "BAM") > size(file)) {
+			enc = E_UUENCODE;
+		}
 		s->encoding = enc | compress;
 		/* BAM doesn't support gzip */
 		if (BAM(s)) s->encoding &= ~E_GZIP;
@@ -10703,7 +10709,7 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 	if (encp) {
 		if (streq(encp, "text")) enc = E_ASCII;
 		else if (streq(encp, "ascii")) enc = E_ASCII;
-		else if (streq(encp, "binary")) enc = sccs_binaryenc(sc);
+		else if (streq(encp, "binary")) enc = binaryenc(sc);
 		else if (streq(encp, "uuencode")) enc = E_UUENCODE;
 		else if (streq(encp, "BAM")) enc = E_BAM;
 		else {
