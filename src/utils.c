@@ -55,13 +55,17 @@ in(char *buf, int n)
 int
 writen(int to, void *buf, int size)
 {
-	int	done;
-	int	n;
+	int	done, n, retry = 5;
 
 	for (done = 0; done < size; ) {
 		n = write(to, (u8 *)buf + done, size - done);
 		if ((n == -1) && ((errno == EINTR) || (errno == EAGAIN))) {
 			usleep(10000);
+			unless (--retry) {
+				perror("write");
+				exit(1);
+			}
+			continue;
 		} else if (n <= 0) {
 			break;
 		}
