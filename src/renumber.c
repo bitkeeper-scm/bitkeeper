@@ -63,7 +63,7 @@ renumber_main(int ac, char **av)
 				fprintf(stderr,
 				    "%s: not writing %s\n", av[0], s->sfile);
 			}
-		} else if (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0)) {
+		} else if (sccs_newchksum(s)) {
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr,
 				    "admin -z of %s failed.\n", s->sfile);

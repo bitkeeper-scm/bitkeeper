@@ -264,7 +264,7 @@ regen(sccs *s, int verbose, char *key)
 	unless (1 || verify) goto out;
 
         if (sccs_admin(s2, 0,
-            ADMIN_FORMAT|ADMIN_BK|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0, 0)) {
+            ADMIN_FORMAT|ADMIN_BK|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0)) {
                 perror(s->sfile);
                 exit(1);
         }

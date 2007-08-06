@@ -9034,25 +9034,9 @@ ascii(char *file)
 }
 
 /*
- * Return the encoding for a binary file.
- */
-private int
-binaryenc(sccs *s)
-{
-	/* we can't switch encodings on a per delta basis */
-	if (s && HASGRAPH(s)) return (s->encoding);
-
-	if (proj_configsize(s ? s->proj : 0, "BAM")) {
-		return (E_BAM);
-	} else {
-		return (E_UUENCODE);
-	}
-}
-
-/*
  * Open the input for a checkin/delta.
  * The set of options we have are:
- *	{empty, stdin, file} | {cat, gzip|uuencode}
+ *	{empty, stdin, file} | {cat, gzip|uuencode|bam}
  */
 private int
 openInput(sccs *s, int flags, FILE **inp)
@@ -9071,10 +9055,7 @@ openInput(sccs *s, int flags, FILE **inp)
 	enc = s->encoding & E_DATAENC;
 	/* handle auto promoting ascii to binary if needed */
 	if ((enc == E_ASCII) && !streq("-", file) && !ascii(file)) {
-		enc = binaryenc(s);
-		if (proj_configsize(s ? s->proj : 0, "BAM") > size(file)) {
-			enc = E_UUENCODE;
-		}
+		enc = sccs_encoding(s, size(file), "binary", 0);
 		s->encoding = enc | compress;
 		/* BAM doesn't support gzip */
 		if (BAM(s)) s->encoding &= ~E_GZIP;
@@ -10726,19 +10707,27 @@ sccs_xflags(delta *d)
  * (e.g. "gzip") to a suitable value for sccs->encoding.
  */
 int
-sccs_encoding(sccs *sc, char *encp, char *compp)
+sccs_encoding(sccs *sc, off_t size, char *encp, char *compp)
 {
-	int enc, comp;
+	int	enc, comp;
+	int	bam;
 
 	if (encp) {
 		if (streq(encp, "text")) enc = E_ASCII;
 		else if (streq(encp, "ascii")) enc = E_ASCII;
-		else if (streq(encp, "binary")) enc = binaryenc(sc);
+		else if (streq(encp, "binary")) {
+			bam = proj_configsize(sc ? sc->proj : 0, "BAM");
+			if (bam && (bam <= size)) {
+				enc = E_BAM;
+			} else {
+				enc = E_UUENCODE;
+			}
+		}
 		else if (streq(encp, "uuencode")) enc = E_UUENCODE;
 		else if (streq(encp, "BAM")) enc = E_BAM;
 		else {
-			fprintf(stderr,	"admin: unknown encoding format %s\n",
-				encp);
+			fprintf(stderr,
+			    "admin: unknown encoding format %s\n", encp);
 			return (-1);
 		}
 	} else if (sc) {
@@ -10852,7 +10841,7 @@ remove_1_0(sccs *s)
 int
 sccs_newchksum(sccs *s)
 {
-	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0));
+	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0));
 }
 
 /*
@@ -10942,7 +10931,7 @@ obscure_comments(sccs *s)
  * For large files, this is a win.
  */
 int
-sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
+sccs_admin(sccs *sc, delta *p, u32 flags, char *new_compp,
 	admin *f, admin *z, admin *u, admin *s, char *mode, char *text)
 {
 	FILE	*sfile = 0;
@@ -10955,7 +10944,7 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 
 	assert(!z); /* XXX used to be LOD item */
 
-	new_enc = sccs_encoding(sc, new_encp, new_compp);
+	new_enc = sccs_encoding(sc, 0, 0, new_compp);
 	if (new_enc == -1) return (-1);
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
@@ -11166,11 +11155,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			    case 'e':
 				if (BITKEEPER(sc)) {
 					fprintf(stderr, "Unsupported.\n");
-				} else {
-					if (*v) new_enc = atoi(v);
-					verbose((stderr,
-					    "New encoding %d\n", new_enc));
-					flagsChanged++;
 				}
 		   		break;
 			    default:

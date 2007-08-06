@@ -1486,7 +1486,7 @@ err:		if (s) sccs_free(s);
 			goto err;
 		}
 		b->flags &= ~D_CSET;
-		sccs_admin(sf, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+		sccs_newchksum(sf);
 		sccs_free(sf);
 		sf = 0;
 	}       
@@ -2425,8 +2425,8 @@ pass4_apply(opts *opts)
 			resolve_cleanup(opts, 0);
 		}
 #define	F ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK
-		if (sccs_admin(r, 0, SILENT|F, 0, 0, 0, 0, 0, 0, 0, 0)) {
-			sccs_admin(r, 0, F, 0, 0, 0, 0, 0, 0, 0, 0);
+		if (sccs_admin(r, 0, SILENT|F, 0, 0, 0, 0, 0, 0, 0)) {
+			sccs_admin(r, 0, F, 0, 0, 0, 0, 0, 0, 0);
 			fprintf(stderr, "resolve: bad file %s;\n", r->sfile);
 			fprintf(stderr, "resolve: no files were applied.\n");
 			fclose(save);

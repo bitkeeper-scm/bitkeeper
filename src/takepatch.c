@@ -1035,7 +1035,7 @@ apply:
 
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
 	if (!confThisFile && (s->state & S_CSET) && 
-	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
+	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
 	}
@@ -1391,7 +1391,7 @@ apply:
 		return (-1);
 	}
 	if (!confThisFile && (s->state & S_CSET) && 
-	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
+	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
 	}
@@ -2082,7 +2082,7 @@ sccs_unzip(sccs *s)
 {
 	s = sccs_restart(s);
 	if (sccs_admin(s, 0,
-	    SILENT|ADMIN_FORCE|NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
+	    SILENT|ADMIN_FORCE|NEWCKSUM, "none", 0, 0, 0, 0, 0, 0)) {
 		return (0);
 	}
 	s = sccs_restart(s);
@@ -2094,7 +2094,7 @@ sccs_gzip(sccs *s)
 {
 	s = sccs_restart(s);
 	if (sccs_admin(s,
-	    0, ADMIN_FORCE|NEWCKSUM, 0, "gzip", 0, 0, 0, 0, 0, 0)) {
+	    0, ADMIN_FORCE|NEWCKSUM, "gzip", 0, 0, 0, 0, 0, 0)) {
 		sccs_whynot("admin", s);
 	}
 	s = sccs_restart(s);

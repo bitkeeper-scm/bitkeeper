@@ -453,8 +453,8 @@ cd  "$HERE"
 rm -rf "$HERE/copy"
 tar xmf chkpoint.tar
 cd "$HERE/project/src"
-cp $BIN1 data
-bk admin $Q -idata -Ebinary bdata
+cp $BIN1 bdata
+bk new $Q -Ebinary bdata
 bk get $Q -r1.1 -Gbdata bdata
 cmp -s bdata $BIN1
 if [ $? -ne 0 ]; then echo failed test 1; cmp bdata $BIN1; exit 1; fi

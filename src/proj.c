@@ -339,6 +339,10 @@ proj_configsize(project *p, char *key)
 
 	assert(db);
 	unless ((ret = mdbm_fetch_str(db, key)) && *ret) return (0);
+	/* If they gave us a bool for BAM give them some reasonable defaults */
+	if (streq(key, "BAM") && !isdigit(*ret)) {
+		return (proj_configbool(p, key) ? 64<<10 : 0);
+	}
 	sz = atoi(ret);
 	while (isdigit(*ret)) ret++;
 	switch (*ret) {

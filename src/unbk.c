@@ -29,7 +29,7 @@ unbk_main(int ac, char **av)
 		}
 		s->bitkeeper = 0;
 		sccs_admin(s,
-		    0, NEWCKSUM|ADMIN_RM1_0, 0, "none", 0, 0, 0, 0, 0, 0);
+		    0, NEWCKSUM|ADMIN_RM1_0, "none", 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
 	}
 	if (sfileDone()) errors |= 2;

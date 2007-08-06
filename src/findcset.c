@@ -632,7 +632,7 @@ mkDeterministicKeys(void)
 	d2 = d2->kid;
 	assert(d2);
 	fix_delta(oldest, d2, 1);
-	sccs_admin(cset, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+	sccs_newchksum(cset);
 	sccs_free(cset);
 }
 
