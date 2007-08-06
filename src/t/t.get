@@ -17,7 +17,8 @@ test "$PLATFORM" = "WIN32" && USER=`bk getuser -r`
 SAVE=`bk getuser`
 commercial project
 echo Hallo > date
-bk new $Q date
+printf "bam\0data\0" > bam
+bk new $Q date bam
 
 echo $N Check for path in initial checkin ...........................$NL
 grep -q '^.cP.*date$' SCCS/s.date
@@ -56,8 +57,10 @@ bk ci $Q -y date
 echo $N Make sure -Gname works ......................................$NL
 bk get $S -GA -r1.1 date
 bk get $S -G B -r1.2 date
+bk get $S -GC -r1.1 bam
 if [ ! -f A ]; then echo Failed to creat A.; exit 1; fi
 if [ ! -f B ]; then echo Failed to creat B.; exit 1; fi
+if [ ! -f C ]; then echo Failed to creat C.; exit 1; fi
 if writable B; then echo B is writable; exit 1; fi
 if [ -f date ]; then echo Created date and it should not have; exit 1; fi
 grep -q Hallo A
@@ -68,8 +71,10 @@ grep -q Hallo B
 if [ $? -ne 0 ]; then echo Bad data in B.; exit 1; fi
 grep -q Hi B
 if [ $? -ne 0 ]; then echo Bad data in B.; exit 1; fi
+printf "bam\0data\0" > WANT
+checkfiles WANT C
 echo OK
-rm -f A B
+rm -f A B C WANT
 
 echo $N Make sure -Ga/b/c/name works ................................$NL
 mkdir -p a/b/c
@@ -88,6 +93,20 @@ if [ $? -ne 0 ]; then echo Bad data in a/b/c/B.; exit 1; fi
 grep -q Hi a/b/c/B
 if [ $? -ne 0 ]; then echo Bad data in a/b/c/B.; exit 1; fi
 echo OK
+
+echo $N Make sure -p works ..........................................$NL
+rm -f A
+bk get $Q -p -r1.1 date > A
+test -f A || exit 1
+grep -q Hallo A || exit 1
+rm -f A
+bk get $Q -p -r1.1 bam > A
+test -f A || exit 1
+printf "bam\0data\0" > WANT
+checkfiles WANT A
+echo OK
+rm -f A WANT
+
 echo $N Check error if get -r with no -p ............................$NL
 bk get $Q -r1.1 date 2> ERR
 if [ $? -eq 0 ]; then echo Get succeed; exit 1; fi

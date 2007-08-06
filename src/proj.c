@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
+#include "bam.h"
 
 /*
  * This file contains a series of accessor functions for the project
@@ -875,7 +876,7 @@ proj_BAMindex(project *p, int write)
 		}
 	}
 	/* open a new BAM pool */
-	concat_path(idx, p->root, "BitKeeper/BAM/index.db");
+	concat_path(idx, p->root, BAM_DB);
 	if (write || exists(idx)) {
 		p->BAM_idx = mdbm_open(idx,
 		    write ? O_RDWR|O_CREAT : O_RDONLY, 0666, 8192);

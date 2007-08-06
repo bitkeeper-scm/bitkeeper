@@ -30,12 +30,13 @@
  *
  * The files are stored in
  *	BitKeeper/BAM/xy/xyzabc...d1	// data
- *	BitKeeper/BAM/index.db
- *	// "hash key md5rootkey cset_md5rootkey" => "xy/xyzabc...d1"
+ *	BitKeeper/BAM/index.db - on disk mdbm with key => val :
+ *		prs -hnd"$BAM_DSPEC" => "xy/xyzabc...d1"
  */
 
 private	char*	hash2path(project *p, char *hash);
-private int	bp_insert(project *proj, char *file, char *keys, int canmv);
+private int	bp_insert(project *proj, char *file, char *keys,
+		    int canmv, mode_t mode);
 private	int	uu2bp(sccs *s);
 private int	serverID(char **id, int clever);
 
@@ -50,14 +51,14 @@ bp_delta(sccs *s, delta *d)
 {
 	char	*keys;
 	int	rc;
-	char	*p = aprintf("%s/BitKeeper/log/BAM", proj_root(s->proj));
+	char	*p = aprintf("%s/" BAM_MARKER, proj_root(s->proj));
 
 	unless (exists(p)) touch(p, 0664);
 	free(p);
 	if (bp_hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
 	s->dsum = d->sum;
 	keys = sccs_prsbuf(s, d, 0, BAM_DSPEC);
-	rc = bp_insert(s->proj, s->gfile, keys, 0);
+	rc = bp_insert(s->proj, s->gfile, keys, 0, d->mode);
 	free(keys);
 	if (rc) return (-1);
 	d->added = size(s->gfile);
@@ -73,7 +74,8 @@ bp_delta(sccs *s, delta *d)
  * Return:
  *   0 no diffs
  *   1 diffs
- *   2 error
+ *   2 error - also means "not in local BAM storage"
+ *     XXX: bp_get() uses EAGAIN to "mean not in local BAM storage"
  */
 int
 bp_diff(sccs *s, delta *d, char *gfile)
@@ -108,6 +110,7 @@ bp_fdelta(sccs *s, delta *d)
 
 /*
  * sccs_get() code path for BAM
+ * return EAGAIN if not in BAM storage
  */
 int
 bp_get(sccs *s, delta *din, u32 flags, char *gfile)
@@ -118,9 +121,10 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	MMAP	*m;
 	int	n, fd, ok;
 	int	rc = -1;
-	mode_t	mode;
+	int	use_stdout = ((flags & PRINT) && streq(gfile, "-"));
 	char	hash[10];
 
+	s->bamlink = 0;
 	d = bp_fdelta(s, din);
 	unless (dfile = bp_lookup(s, d)) return (EAGAIN);
 	unless (m = mopen(dfile, "rb")) {
@@ -141,58 +145,75 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 			}
 		}
 	}
-	ok = (sum == strtoul(d->hash, 0, 16));
-	unless (ok) {
+	unless (ok = (sum == strtoul(d->hash, 0, 16))) {
 		p = strchr(d->hash, '.');
 		*p = 0;
 		fprintf(stderr,
 		    "crc mismatch in %s: %08x vs %s\n", s->gfile, sum, d->hash);
 		*p = '.';
 	}
-	if (ok || (flags & GET_FORCE)) {
-		if ((flags & (GET_EDIT|PRINT)) ||
-		    !proj_configbool(s->proj, "BAM_hardlinks") ||
-		    (link(dfile, gfile) != 0)) {
-			unless (flags & PRINT) unlink(gfile);
-			assert(din->mode);
-			if ((flags & PRINT) && streq(gfile, "-")) {
-				fd = 1;
-			} else {
-				assert(din->mode & 0200);
-				(void)mkdirf(gfile);
-				fd = open(gfile, O_WRONLY|O_CREAT, din->mode);
+	unless (ok || (flags & GET_FORCE)) goto done;
+
+	/*
+	 * Hardlink if the conditions are right
+	 * XXX: PRINT means stdout or tmp file like resolve
+	 * shouldn't resolve use hardlink even if read only?
+	 * Or is the stronger requirement that PRINT files should
+	 * be writable?  Note: get -G doesn't use print, but re-assigns
+	 * s->gfile.
+	 * If we want hardlinks for temp file usage like diff, then
+	 * switch test to !stdout.
+	 */
+	if (!(flags & (GET_EDIT|PRINT)) &&
+	    proj_configbool(s->proj, "BAM_hardlinks")) {
+		struct	stat	statbuf;
+
+		if (lstat(dfile, &statbuf)) {
+			perror(dfile);
+			goto done;
+		}
+		if ((statbuf.st_mode & 0555) == (din->mode & 0555)) {
+			/*
+			 * Hardlink only if the local copy matches perms
+			 */
+			unless (link(dfile, gfile)) {
+				s->bamlink = 1;
+				rc = 0;
+				goto done;
 			}
-			if (fd == -1) {
-				perror(gfile);
-				goto out;
-			}
-			if (writen(fd, m->mmap, m->size) != m->size) {
-				unless (flags & PRINT) {
-					perror(gfile);
-					unlink(gfile);
-					close(fd);
-				}
-				goto out;
-			}
+		}
+		/* mode different or linking failed, fall through */
+	}
+	/* try copying the file */
+	assert(din->mode);
+	if (use_stdout) {
+		fd = 1;
+	} else {
+		unlink(gfile);
+		assert(din->mode & 0200);
+		(void)mkdirf(gfile);
+		fd = open(gfile, O_WRONLY|O_CREAT, din->mode);
+	}
+	if (fd == -1) {
+		perror(gfile);
+		goto done;
+	}
+	if (writen(fd, m->mmap, m->size) != m->size) {
+		perror(gfile);
+		unless (use_stdout) {
+			unlink(gfile);
 			close(fd);
 		}
-		unless (flags & PRINT) {
-			mode = din->mode;
-			unless (flags & GET_EDIT) mode &= ~0222;
-			if (chmod(gfile, mode)) {
-				fprintf(stderr,
-				    "bp_get: cannot chmod %s\n", gfile);
-				perror(gfile);
-				goto out;
-			}
-		}
-		rc = 0;
+		goto done;
 	}
-	unless (n = m->size) n = 1;	/* zero is bad */
+	unless (use_stdout) close(fd);
+	rc = 0;
+
+done:	unless (n = m->size) n = 1;	/* zero is bad */
 	s->dsum = sum & 0xffff;
 	s->added = n;
 	s->same = s->deleted = 0;
-out:	mclose(m);
+	mclose(m);
 	free(dfile);
 	return (rc);
 }
@@ -255,15 +276,16 @@ bp_hashgfile(char *gfile, char **hashp, sum_t *sump)
  * Insert the named file into the BAM pool, checking to be sure that we do
  * not have another file with the same hash but different data.
  * If canmv is set then move instead of copy.
+ * XXX: does canmv mean "act like move in all cases" or "if you need a
+ * file, move it, otherwise leave it there and it might save a get later?"
  */
 private int
-bp_insert(project *proj, char *file, char *keys, int canmv)
+bp_insert(project *proj, char *file, char *keys, int canmv, mode_t mode)
 {
 	char	*base, *p;
 	MDBM	*db;
 	int	j;
 	char	buf[MAXPATH];
-	char	tmp[MAXPATH];
 
 	base = hash2path(proj, keys);
 	p = buf + sprintf(buf, "%s", base);
@@ -278,21 +300,28 @@ bp_insert(project *proj, char *file, char *keys, int canmv)
 		 * If the data matches then we have two deltas which point at
 		 * the same data.
 		 */
-		if (sameFiles(file, buf)) goto domap;//XXX bug
+		if (sameFiles(file, buf)) {
+			if (canmv) unlink(file);
+			goto domap;	/* XXX what was the bug? */
+		}
 	}
 	/* need to insert new entry */
 	mkdirf(buf);
 
-	unless (canmv) {
-		sprintf(tmp, "%s.tmp", buf);
-		if (fileCopy(file, tmp)) goto nofile;
-		file = tmp;
-	}
-	if (rename(file, buf) && fileCopy(file, buf)) {
+	/*
+	 * If we can mv it, then mv or cp, the orig file should be gone
+	 */
+	if (canmv) {
+		if (rename(file, buf)) {
+			if (fileCopy(file, buf)) goto nofile;
+			unlink(file);
+		}
+	} else if (fileCopy(file, buf)) {
 nofile:		fprintf(stderr, "BAM: insert to %s failed\n", buf);
-		unless (canmv) unlink(buf);
+		unlink(buf);	/* Why unlink?  In case file created? */
 		return (1);
 	}
+	chmod(buf, (mode & 0555));
 domap:
 	/* move p to path relative to BAM dir */
 	while (*p != '/') --p;
@@ -366,7 +395,7 @@ hash2path(project *proj, char *hash)
 	unless (p = proj_root(proj)) return (0);
 	strcpy(bam, p);
 	if ((p = strrchr(bam, '/')) && patheq(p, "/RESYNC")) *p = 0;
-	strcat(bam, "/BitKeeper/BAM");
+	strcat(bam, "/" BAM_ROOT);
 	if (hash) {
 		i = strlen(bam);
 		if (t = strchr(hash, '.')) *t = 0;
@@ -431,7 +460,7 @@ bp_logUpdate(char *key, char *val)
 	unless (val) val = INDEX_DELETE;
 	strcpy(buf, proj_root(0));
 	if (proj_isResync(0)) concat_path(buf, buf, RESYNC2ROOT);
-	strcat(buf, "/BitKeeper/log/BAM.index");
+	strcat(buf, "/" BAM_INDEX);
 	unless (f = fopen(buf, "a")) return (-1);
 	sprintf(buf, "%s %s", key, val);
 	fprintf(f, "%s %08x\n", buf, adler32(0, buf, strlen(buf)));
@@ -440,7 +469,7 @@ bp_logUpdate(char *key, char *val)
 }
 
 /*
- * Copy all data local to the BAM pool to my server.
+ * Copy all local BAM pool data to my server.
  * XXX we ignore tiprev for now.
  */
 int
@@ -492,7 +521,7 @@ bp_updateServer(char *range, char *list, int quiet)
 		}
 		out = fopen(tmpkeys, "w");
 		for (kv = mdbm_first(bp); kv.key.dsize; kv = mdbm_next(bp)) {
-			sprintf(buf, "BitKeeper/BAM/%s", kv.val.dptr);
+			sprintf(buf, BAM_ROOT "/%s", kv.val.dptr);
 			/* If we want to allow >= 2^32 then fix sccs_delta() 
 			 * to not enforce the size limit.
 			 * And fix this to handle the %u portably.
@@ -612,7 +641,7 @@ serverID(char **id, int notme)
 
 	strcpy(cfile, proj_root(0));
 	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
-	concat_path(cfile, cfile, "BitKeeper/log/BAM_SERVER");
+	concat_path(cfile, cfile, BAM_SERVER);
 	if (cache = loadfile(cfile, 0)) {
 		if (p = strchr(cache, '\n')) {
 			*p++ = 0;
@@ -731,9 +760,9 @@ bp_hasBAM(void)
 	/* No root, no bam bam, needed for old clients */
 	unless (exists(BKROOT)) return (0);
 	if (proj_isResync(0)) {
-		return (exists("../BitKeeper/log/BAM"));
+		return (exists("../" BAM_MARKER));
 	} else {
-		return (exists("BitKeeper/log/BAM"));
+		return (exists(BAM_MARKER));
 	}
 }
 
@@ -915,7 +944,7 @@ bam_clean_main(int ac, char **av)
 		return (1);
 	}
 
-	chdir("BitKeeper/BAM");
+	chdir(BAM_ROOT);
 
 	/* get list of data files */
 	dfiles = hash_new(HASH_MEMHASH);
@@ -1288,7 +1317,7 @@ bam_reattach_main(int ac, char **av)
 
 			/* found a file we are missing */
 			unless (quiet) printf("Inserting %s for %s\n", buf, p);
-			if (bp_insert(0, buf, p, 0)) {
+			if (bp_insert(0, buf, p, 0, 0444)) {
 				fprintf(stderr,
 				    "reattach: failed to insert %s for %s\n",
 				    buf, p);
@@ -1358,7 +1387,7 @@ bp_index_check(int quiet)
 	kvpair	kv;
 
 	i = proj_BAMindex(0, 0);
-	f = fopen("BitKeeper/log/BAM.index", "r");
+	f = fopen(BAM_INDEX, "r");
 
 	if (!i && !f) return (0);
 	unless (i && f) {
@@ -1418,11 +1447,11 @@ bam_reload_main(int ac, char **av)
 		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
-	unless (f = fopen("BitKeeper/log/BAM.index", "r")) {
-		perror("BitKeeper/log/BAM.index");
+	unless (f = fopen(BAM_INDEX, "r")) {
+		perror(BAM_INDEX);
 	    	exit(1);
 	}
-	m = mdbm_open("BitKeeper/BAM/index.db", O_RDWR|O_CREAT, 0666, 4096);
+	m = mdbm_open(BAM_DB, O_RDWR|O_CREAT, 0666, 4096);
 	load_logfile(m, f);
 	mdbm_close(m);
 	fclose(f);

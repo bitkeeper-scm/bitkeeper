@@ -358,6 +358,7 @@ cmpfiles 155 BitKeeper/BAM/01/01d700a5.d1
 echo OK
 
 echo $N Test BAM check ..............................................$NL
+chmod u+w BitKeeper/BAM/01/01d700a5.d1
 echo 1 > BitKeeper/BAM/01/01d700a5.d1
 bk BAM check -q 2>ERR && {
 	echo should have failed

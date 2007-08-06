@@ -15,6 +15,22 @@
  *	char	adler32[10];
  *	char	mode[3];	(VERSMODE only)
  * repeats, except for the version number.
+ *
+ * opts not appearing in 'bk help sfio': a;A;b;BHrR;
+ * 	a <fileName> - add this file name to the list of things to pack
+ * 		NOTE: filename could be a bptuple if option is set
+ * 	A <fileName> - file with each line being like '-a' option
+ * 	b <size-ish> - look for wacky bk size string (suffixes)
+ * 		used in reading and writing for printing
+ * 		uses some rounding so may go above 100%? or not get there?
+ * 	B - interpret file names as bptuple names
+ * 	H - hardlinks - sfio encodes hardlink info
+ * 		XXX can't find any usage
+ * 	r - use \r to terminate output trace - XXX: no padding to erase
+ * 	R <level> - if can't find locally, recurse to my server?
+ * 		decremented by one for each server call.
+ * 		bkd_bam.c, cset.c, push.c use -R1 
+ *
  */
 #include "system.h"
 #ifdef SFIO_STANDALONE
@@ -646,7 +662,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 		sscanf(datalen, "%010d", &todo);
 
 		/* extract to new file in BAM pool (adler32 is first in keys) */
-		p = file + sprintf(file, "BitKeeper/BAM/%c%c/%.*s",
+		p = file + sprintf(file, BAM_ROOT "/%c%c/%.*s",
 		    keys[0], keys[1], 8, keys);
 		/* find unused entry */
 		for (i = 1; ; i++) {

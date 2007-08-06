@@ -14,6 +14,7 @@
 #include "logging.h"
 #include "tomcrypt.h"
 #include "range.h"
+#include "bam.h"
 
 #define	WRITABLE_REG(s)	(WRITABLE(s) && isRegularFile((s)->mode))
 private delta	*rfind(sccs *s, char *rev);
@@ -1416,7 +1417,7 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
-	if (getenv("BKD_BAM")) touch("BitKeeper/log/BAM", 0664);
+	if (getenv("BKD_BAM")) touch(BAM_MARKER, 0664);
 }
 
 /*
@@ -6812,7 +6813,13 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 			"gotten anyway.");
 		}
 	}
-
+	if ((flags & GET_DTIME) && s->bamlink) {
+		unless (flags & SILENT) {
+			fprintf(stderr, "Ignoring timestamp modification "
+			    "on hardlinked BAM file: %s\n", s->gfile);
+		}
+		flags &= ~GET_DTIME;
+	}
 	/* Win32 restriction, must do this before we chmod to read only */
 	if ((flags & GET_DTIME) && !(flags & PRINT)) {
 		time_t	now;
@@ -6837,6 +6844,23 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 			s->state |= S_WARNED;
 			error = 1;
 		}
+	}
+	if (flags & GET_EDIT) {
+		if (d->mode) {
+			error = chmod(s->gfile, d->mode);
+		} else {
+			error = chmod(s->gfile, 0666);
+		}
+	} else if (!(flags & PRINT)) {
+		if (d->mode) {
+			error = chmod(s->gfile, d->mode & ~0222);
+		} else {
+			error = chmod(s->gfile, 0444);
+		}
+	}
+	if (error) {
+		fprintf(stderr, "get_bp: cannot chmod %s\n", s->gfile);
+		perror(s->gfile);
 	}
 	if (ln) *ln = s->added;
 	return (error);

@@ -226,3 +226,31 @@ bk chmod o-rwx prog
 bk edit $Q prog
 checkperm -rw------- prog
 echo OK
+
+echo $N Test BAM permissions ........................................$NL
+printf "binary\0data\0" > bam
+cp -f bam bamx
+chmod ugo+x bamx
+bk new $Q bam bamx
+test -f bam -o -f bamx && {
+	echo failed
+	exit 1
+}
+bk get $Q bam bamx
+checkperm -r--r--r-- bam
+checkperm -r-xr-xr-x bamx
+bk edit $Q bam bamx
+checkperm -rw-rw-r-- bam
+checkperm -rwxrwxr-x bamx
+echo OK
+
+echo $N Test get -G permissions .....................................$NL
+bk clean prog
+bk chmod ugo+rwx prog
+bk get $Q -Gnewprog prog
+bk get $Q -Gnewbam bam
+bk get $Q -Gnewbamx bamx
+checkperm -r-xr-xr-x newprog
+checkperm -r--r--r-- newbam
+checkperm -r-xr-xr-x newbamx
+echo OK

@@ -525,12 +525,12 @@ doit(int dash)
 		}
 	}
 	//assert(!SET(s));
-	if (opts.verbose || opts.inc || opts.exc) {
+	if (opts.verbose || opts.inc || opts.exc || opts.BAM) {
 		/* loads all file key pairs for csets marked D_SET */
 		csetDB = loadcset(s);
 	}
 	sccs_close(s);
-	if (opts.inc || opts.exc) fileFilt(s, csetDB);
+	if (opts.inc || opts.exc || opts.BAM) fileFilt(s, csetDB);
 
 	/*
 	 * What we want is: this process | pager
@@ -592,7 +592,7 @@ fileFilt(sccs *s, MDBM *csetDB)
 	for (d = s->table; d; d = d->next) {
 		unless (d->flags & D_SET) continue;
 		/* if cset changed nothing, keep it if not filtering by inc */
-		if (!opts.inc && !d->added) continue;
+		if (!(opts.inc || opts.BAM) && !d->added) continue;
 		k.dptr = d->rev;
 		k.dsize = strlen(d->rev);
 		v = mdbm_fetch(csetDB, k);

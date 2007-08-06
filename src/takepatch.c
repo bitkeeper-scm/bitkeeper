@@ -7,6 +7,7 @@ left||right->path == s->gfile.
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
+#include "bam.h"
 #include <time.h>
 
 /*
@@ -1395,7 +1396,7 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
-	if (BAM(s)) touch("../BitKeeper/log/BAM", 0664);
+	if (BAM(s)) touch("../" BAM_MARKER, 0664);
 	sccs_free(s);
 	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();

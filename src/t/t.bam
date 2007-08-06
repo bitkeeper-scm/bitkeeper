@@ -9,6 +9,10 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+linkcount() {
+	bk _stat $1 | awk -F\| '{print $4}'
+}
+
 echo $N Create initial repository ...................................$NL
 commercial project
 echo OK
@@ -62,7 +66,12 @@ cp "$DATA" fake_hash
 _BK_FAKE_HASH=deadbeef bk new $Q fake_hash
 test -d BitKeeper/BAM || exit 1
 test -f BitKeeper/BAM/de/deadbeef.d1 || exit 2
-echo OK
+if [ -w BitKeeper/BAM/de/deadbeef.d1 ]
+then	echo failed
+	echo file in BAM storage is writable
+	ls -l BitKeeper/BAM/de/deadbeef.d1
+else	echo OK
+fi
 
 echo $N See if a failed get changes the file to RW ..................$NL
 bk clean fake_hash
@@ -108,7 +117,12 @@ echo OK
 echo $N Same data should just get added to the same BAM file ........$NL
 cp "$DATA" data4
 _BK_FAKE_HASH=deadbeef bk new $Q data4
-test -f BitKeeper/BAM/de/deadbeef.d2 && exit 2
+test -f BitKeeper/BAM/de/deadbeef.d2 && {
+	echo failed
+	set -x
+	ls -lR BitKeeper/BAM
+	exit 2
+}
 echo OK
 
 echo $N Clean the file, check it out, make sure that worked .........$NL
@@ -390,26 +404,11 @@ bk push $Q 2> ERR || {
 bk _kill bk://localhost:$P
 echo OK
 
-test "$PLATFORM" != "WIN32" && {
-
-echo $N Test get/clean cycle with hardlinks .........................$NL
-cd "$HERE"/remote
-for i in 1 2 3
-do	BK_CONFIG='BAM_hardlinks:yes' bk clean data 
-	test -f data && { echo failed to clean $i; exit 1; }
-	BK_CONFIG='BAM_hardlinks:yes' bk get $Q data
-	test -f data || { echo failed to get $i; exit 1; }
-	test -w data && { echo failed to get ${i} RO; exit 1; }
-	BK_CONFIG='BAM_hardlinks:yes' bk clean data
-	test -f data && { echo failed to clean ${i}B; exit 1; }
-	BK_CONFIG='BAM_hardlinks:yes' bk edit $Q data
-	test -f data || { echo failed to get ${i}B; exit 1; }
-	test -w data || { echo failed to edit ${i}B; exit 1; }
-done
-echo OK
-
 # This test skipped on windows because I can't figure out how to make a file
 # unreadable.  Oy.
+#
+test "$PLATFORM" != "WIN32" && {
+
 echo $N Test that we do not go remote for errors in the cache .......$NL
 cd "$HERE"/remote
 bk _find BitKeeper/BAM -type f -name '*.d1' | while read x
@@ -434,6 +433,30 @@ test -f data && {
 	cat OUT
 	exit 1
 }
+bk _find BitKeeper/BAM -type f -name '*.d1' | while read x
+do	 chmod 444 $x
+done
+echo OK
+
+} # end of if-not-windows block
+
+## HARDLINK tests -- do they work, get permissions and timestamps right?
+## XXX put tests here or distribute t.permissions and t.timestamp ?
+
+echo $N Test get/clean cycle with hardlinks .........................$NL
+cd "$HERE"/remote
+for i in 1 2 3
+do	BK_CONFIG='BAM_hardlinks:yes' bk clean data 
+	test -f data && { echo failed to clean $i; exit 1; }
+	BK_CONFIG='BAM_hardlinks:yes' bk get $Q data
+	test -f data || { echo failed to get $i; exit 1; }
+	test -w data && { echo failed to get ${i} RO; exit 1; }
+	BK_CONFIG='BAM_hardlinks:yes' bk clean data
+	test -f data && { echo failed to clean ${i}B; exit 1; }
+	BK_CONFIG='BAM_hardlinks:yes' bk edit $Q data
+	test -f data || { echo failed to get ${i}B; exit 1; }
+	test -w data || { echo failed to edit ${i}B; exit 1; }
+done
 echo OK
 
 echo $N Test that get does not hardlink without BAM_hardlinks .......$NL
@@ -441,8 +464,7 @@ cd "$HERE"/project
 bk -r clean
 test -f data && { echo failed to clean; exit 1; }
 bk get $Q data || exit 1
-perl -e 'if ((stat("data"))[3] == 2) { exit(1); } else { exit(0); }'
-test $? = 0 || {
+test `linkcount data` = 1 || {
 	echo failed
 	ls -l data
 	exit 1
@@ -454,8 +476,7 @@ cd "$HERE"/project
 bk -r clean
 test -f data && { echo failed to clean; exit 1; }
 BK_CONFIG='BAM_hardlinks:yes' bk get $Q data || exit 1
-perl -e 'if ((stat("data"))[3] == 2) { exit(0); } else { exit(1); }'
-test $? = 0 || {
+test `linkcount data` = 2 || {
 	echo failed
 	ls -l data
 	exit 1
@@ -467,8 +488,7 @@ cd "$HERE"/project
 bk clean data
 test -f data && { echo failed to clean; exit 1; }
 bk edit $Q data || exit 1
-perl -e 'if ((stat("data"))[3] == 2) { exit(1); } else { exit(0); }'
-test $? = 0 || {
+test `linkcount data` = 1 || {
 	echo failed
 	ls -l data
 	exit 1
@@ -480,15 +500,49 @@ cd "$HERE"/project
 bk clean data
 test -f data && { echo failed to clean; exit 1; }
 BK_CONFIG='BAM_hardlinks:yes' bk edit $Q data || exit 1
-perl -e 'if ((stat("data"))[3] == 2) { exit(1); } else { exit(0); }'
-test $? = 0 || {
+test `linkcount data` = 1 || {
 	echo failed
 	ls -l data
 	exit 1
 }
 echo OK
-
+# Fall through with 'data' in edit state to ..
+echo $N Test that hardlinking does not alter permissions ............$NL
+test -f data || { echo expected data from last test; exit 1; }
+test -x data && { echo expected data with no execute; exit 1; }
+cp data prog
+chmod +x prog
+test -x prog || { echo expected prog with execute; exit 1; }
+bk new $Q -b prog
+bk clean data prog
+BK_CONFIG='BAM_hardlinks:yes' bk get $Q data prog || exit 1
+DLINK=`linkcount data`
+PLINK=`linkcount prog`
+test `expr $DLINK + $PLINK` -le 2 && {
+	echo failed - no hardlinks
+	ls -l data prog
+	exit 1
 }
+test -x data && { echo expected data with no execute; exit 1; }
+test -x prog || { echo expected prog with execute; exit 1; }
+echo OK
+
+echo $N Test that chmod +x works with hardlinks .....................$NL
+TIP=`bk prs -r+ -hnd:I: data`
+bk chmod ugo+x data
+BK_CONFIG='BAM_hardlinks:yes' bk get $Q -r$TIP -Gdata-old data
+BK_CONFIG='BAM_hardlinks:yes' bk get $Q -r+ -Gdata-new data
+OLINK=`linkcount data-old`
+NLINK=`linkcount data-new`
+test `expr $OLINK + $NLINK` -le 2 && {
+	echo failed - no hardlinks
+	# ls -l data-old data-new
+	ls -l
+	exit 1
+}
+test -x data-old && { echo expected data with no execute; exit 1; }
+test -x data-new || { echo expected prog with execute; exit 1; }
+echo OK
 
 exit 0
 

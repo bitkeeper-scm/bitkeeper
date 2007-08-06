@@ -70,9 +70,14 @@ bk edit $Q f
 BK_USER=$NAME2 bk delta $Q -fy'Second checkin' f
 BK_USER=$NAME2 bk commit $Q -Ssecond -y'Second checkin' || fail
 cd ../diamond
+# binary data
+printf "binary\0data\0" > b
+bk new $Q -b b
+BAMCKEY=`bk prs -r+ -hnd:KEY: b`
 bk edit $Q f g
 BK_USER=$NAME2 bk delta $Q -fy'Branch checkin' f g
 BK_USER=$NAME2 bk commit $Q -Sbranch -y'Branch checkin' || fail
+BAMCSET=`bk changes -kr+`
 bk pull $Q
 BK_USER=$TAGGER bk tag $Q MYTAG
 echo OK
@@ -129,7 +134,7 @@ printf "1.3 \n1.2 \n1.1 \n1.0 \n" > WANT
 checkfiles WANT GOT
 echo OK
 
-# restrict options: -a, -e, -m, -i/-x, -t, -u/-U, -/
+# restrict options: -a, -B, -e, -m, -i/-x, -t, -u/-U, -/
 
 echo $N Check that -a lists tags and empty merges ...................$NL
 cd "$HERE/diamond"
@@ -140,6 +145,16 @@ bk changes -ad'$if(:DT:=T){:KEY:\n}' > TAG
 test -s WITH -a -s WITHOUT -a -s EMPTY -a -s TAG || fail
 cat WITHOUT EMPTY TAG | bk sort > SORT
 checkfiles WITH SORT
+echo OK
+
+echo $N Check that -B limits to csets with binary data ..............$NL
+echo "$BAMCSET" > WANT
+bk changes -B -nd:KEY: > GOT
+checkfiles WANT GOT
+# see that it limits it only to the bam file 'b', even though
+# cset changes other files.
+echo "$BAMKEY" >> WANT
+bk changes -Bv -nd:KEY: > GOT
 echo OK
 
 echo $N Check that -e adds in empty merges ..........................$NL

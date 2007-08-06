@@ -37,10 +37,13 @@ bk _touch now
 echo %'K'% > keyword
 echo foo > nokeyword
 echo foo > deltatime
-bk _touch -t $T11 keyword nokeyword deltatime
-BK_DATE_TIME_ZONE="$DTZ12" bk new $Q keyword nokeyword
-bk delta $Q -i -T deltatime
-test -f keyword -o -f nokeyword -o -f deltatime && {
+printf "binary\0data\0" > binary
+printf "binary\0time\0" > binary_deltatime
+bk _touch -t $T11 keyword nokeyword deltatime binary binary_deltatime
+BK_DATE_TIME_ZONE="$DTZ12" bk new $Q keyword nokeyword binary
+bk delta $Q -i -T deltatime binary_deltatime
+test -f keyword -o -f nokeyword -o -f deltatime -o -f binary \
+    -o -f binary_deltatime && {
 	echo failed
 	ls
 	exit 1
@@ -48,7 +51,9 @@ test -f keyword -o -f nokeyword -o -f deltatime && {
 # setStime puts things 2 seconds behind tip delta
 test $T12 -ge `_mtime SCCS/s.keyword`	|| { echo failed; exit 1; }
 test $T12 -ge `_mtime SCCS/s.nokeyword`	|| { echo failed; exit 1; }
+test $T12 -ge `_mtime SCCS/s.binary`	|| { echo failed; exit 1; }
 test $T11 -ge `_mtime SCCS/s.deltatime`	|| { echo failed; exit 1; }
+test $T11 -ge `_mtime SCCS/s.binary_deltatime` || { echo failed; exit 1; }
 echo OK
 
 echo $N Test admin ..................................................$NL

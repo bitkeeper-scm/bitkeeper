@@ -274,7 +274,7 @@ check_main(int ac, char **av)
 		sccs_free(s);
 	}
 	if (e = sfileDone()) return (e);
-	if (BAM && !bp_hasBAM()) touch("BitKeeper/log/BAM", 0664);
+	if (BAM && !bp_hasBAM()) touch(BAM_MARKER, 0664);
 	if (all || update_idcache(idDB, keys)) {
 		fprintf(idcache, "#$sum$ %u\n", id_sum);
 		fclose(idcache);

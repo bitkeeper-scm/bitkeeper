@@ -3,6 +3,7 @@
  */
 #include "bkd.h"
 #include "logging.h"
+#include "bam.h"
 
 /*
  * Do not change this sturct until we phase out bkd 1.2 support
@@ -677,12 +678,12 @@ out:
 	 * Hard link the BAM pool files
 	 */
 	if (bp_hasBAM()) {
-		f = popen("bk _find -type d BitKeeper/BAM", "r");
+		f = popen("bk _find -type d " BAM_ROOT, "r");
 		chdir(dest);
-		mkdirp("BitKeeper/BAM");
+		mkdirp(BAM_ROOT);
 		while (fnext(buf, f)) {
 			chomp(buf);
-			if (streq("BitKeeper/BAM", buf)) continue;
+			if (streq(BAM_ROOT, buf)) continue;
 			if (linkdir(from, buf, 0)) {
 				/* leave it locked */
 				mkdir(ROOT2RESYNC, 0775);
@@ -690,9 +691,9 @@ out:
 			}
 		}
 		pclose(f);
-		touch("BitKeeper/log/BAM", 0444);
-		sprintf(buf, "%s/BitKeeper/log/BAM.index", from);
-		fileCopy(buf, "BitKeeper/log/BAM.index");
+		touch(BAM_MARKER, 0444);
+		sprintf(buf, "%s/" BAM_INDEX, from);
+		fileCopy(buf, BAM_INDEX);
 		system("bk bam reload");
 		chdir(from);
 	}

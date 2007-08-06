@@ -4,6 +4,7 @@
 // After beta.
 #include "system.h"
 #include "sccs.h"
+#include "bam.h"
 
 #define	TSTATE	0	/* type: d/D/i/j/r/s/x */
 #define	LSTATE	1	/* lock state: l,u */
@@ -752,7 +753,7 @@ load_ignore(project *p)
 	ignore = ignorebase = prunedirs = 0;
 
 	/* add default pruned dirs */
-	prunedirs = addLine(prunedirs, strdup("/BitKeeper/BAM"));
+	prunedirs = addLine(prunedirs, strdup("/" BAM_ROOT));
 	prunedirs = addLine(prunedirs, strdup("/BitKeeper/log"));
 	prunedirs = addLine(prunedirs, strdup("/BitKeeper/tmp"));
 	prunedirs = addLine(prunedirs, strdup("/BitKeeper/writer"));
