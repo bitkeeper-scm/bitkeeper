@@ -834,7 +834,7 @@ doMarks(cset_t *cs, sccs *s)
 		}
 	}
 	if (did) {
-		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+		sccs_newchksum(s);
 		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,
 			    "Marked %d csets in %s\n", did, s->gfile);
@@ -1114,7 +1114,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	delta	**list;
 	char	*gfile = 0;
 
-        if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
+        if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
 		fprintf(stderr, "Patch aborted, %s has errors\n", s->sfile);
 		fprintf(stderr,
 		    "Run ``bk -r check -a'' for more information.\n");

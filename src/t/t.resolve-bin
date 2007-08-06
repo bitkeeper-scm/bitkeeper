@@ -22,7 +22,8 @@ chmod u+w ${data}
 echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g >> $data
 cp $data saved_bin
 BIN1=saved_bin
-bk admin $Q -i${data} -Ebinary uuencode
+cp $data uuencode
+bk new $Q -Euuencode uuencode
 bk co $Q -l uuencode
 cmp -s ${BIN1} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi

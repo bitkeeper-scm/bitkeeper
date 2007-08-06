@@ -337,7 +337,7 @@ mkconfig(FILE *out, MDBM *flist, int verbose)
 	val = flist ? mdbm_fetch_str(flist, "BAM") : 0;
 	/* force BAM to default off, it's licensed */
 	unless (val && *val) {
-		char fld[] =  "BAM=0";
+		char fld[] =  "BAM=no";
 		flist = addField(flist, fld);
 	}
 

@@ -21,10 +21,23 @@ perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
 bk new $Q data || exit 1
+perl -e 'printf "Hi there\x0\n";' > small
+BK_CONFIG='BAM:1k!' bk new $Q small
 test -d BitKeeper/BAM || exit 1
 echo OK
 # find BitKeeper/BAM -type f 
 # find BitKeeper/BAM -type f -name '*.a1' | xargs cat
+
+echo $N Check encoding for large/small binaries .....................$NL
+test `bk prs -hr+ -nd:ENC: data` = BAM || {
+	echo data should have been BAM
+	exit 1
+}
+test `bk prs -hr+ -nd:ENC: small` = uuencode || {
+	echo small should have been uuencode
+	exit 1
+}
+echo OK
 
 echo $N Create some different binary data and delta it ..............$NL
 bk edit $Q data || exit 1

@@ -10,7 +10,7 @@
 			exit(1); \
 		    }
 
-private	int	do_checkin(char *nm, char *ep, char *cp, int fl,
+private	int	do_checkin(char *nm, char *cp, int fl,
 		   char *rev, char *newf, char *com);
 private	void	clearCsets(sccs *s);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
@@ -28,7 +28,7 @@ admin_main(int ac, char **av)
 	char	*comment = 0, *text = 0, *newfile = 0;
 	char	*path = 0, *merge = 0;
 	char	*name;
-	char	*encp = 0, *compp = 0;
+	char	*compp = 0;
 	int	error = 0;
 	int	dopath = 0, rmCsets = 0, newCset = 0;
 	int	doDates = 0, touchGfile = 0;
@@ -73,12 +73,13 @@ admin_main(int ac, char **av)
 		    		flags |= ADMIN_SHUTUP|NEWCKSUM;
 				dopath++;
 				break;
-		/* encoding and compression */
+		/* compression */
 		    case 'Z':	compp = optarg ? optarg : "gzip"; /* doc 2.0 */
 				touchGfile++;
 		   		/* NEWCKSUM done in sccs_admin */
 				break;
-		    case 'E':	encp = optarg; break;		/* undoc */
+		    case 'E':	fprintf(stderr, "No longer supported.\n");
+		    		exit(1);
 		/* symbols */
 		    case 'S':	OP(s, optarg, A_ADD); break;	/* undoc */
 		/* text */
@@ -141,11 +142,6 @@ admin_main(int ac, char **av)
 		    "admin: comment may only be specified with -i and/or -n\n");
 		goto usage;
 	}
-	if (encp && !(flags & NEWFILE)) {
-		fprintf(stderr,
-		    "admin: encoding may only be specified with -i\n");
-		goto usage;
-	}
 	if (obscure) {
 		unless (getenv("BK_FORCE")) {
 			fprintf(stderr, "Set BK_FORCE to do this\n");
@@ -189,9 +185,8 @@ admin_main(int ac, char **av)
 
 	while (name) {
 		if (flags & NEWFILE) {
-			if (do_checkin(name, encp, compp,
-				       flags&(SILENT|NEWFILE),
-				       rev, newfile, comment)) {
+			if (do_checkin(name, compp,
+			    flags&(SILENT|NEWFILE), rev, newfile, comment)) {
 				error  = 1;
 				name = sfileNext();
 				continue;
@@ -216,7 +211,7 @@ admin_main(int ac, char **av)
 				name = sfileNext();
 				continue;
 			}
-			if (sccs_admin(sc, 0, flags, 0, 0, 0, 0, 0, 0, 0, 0)) {
+			if (sccs_admin(sc, 0, flags, 0, 0, 0, 0, 0, 0, 0)) {
 			    	fprintf(stderr,
 				    "admin: failed to add 1.0 to %s\n",
 				    sc->gfile);
@@ -256,8 +251,7 @@ admin_main(int ac, char **av)
 			}
 		}
 		if (rev) d = sccs_findrev(sc, rev);
-		if (sccs_admin(
-			    sc, d, flags, encp, compp, f, 0, u, s, m, text)) {
+		if (sccs_admin( sc, d, flags, compp, f, 0, u, s, m, text)) {
 			sccs_whynot("admin", sc);
 			error = 1;
 		}
@@ -306,12 +300,12 @@ clearCsets(sccs *s)
  * to stuff the initFile into the sccs* and have checkin() respect that.
  */
 private	int
-do_checkin(char *name, char *encp, char *compp,
-	   int flags, char *rev, char *newfile, char *comment)
+do_checkin(char *name,
+	char *compp, int flags, char *rev, char *newfile, char *comment)
 {
 	delta	*d = 0;
 	sccs	*s;
-	int	error, enc;
+	int	error;
 	struct	stat sb;
 
 	unless (s = sccs_init(name, flags)) return (-1);
@@ -321,10 +315,6 @@ do_checkin(char *name, char *encp, char *compp,
 		sccs_free(s);
 		return (-1);
 	}
-	enc = sccs_encoding(s, encp, compp);
-	if (enc == -1) return (-1);
-
-	s->encoding = enc;
 	if (HAS_SFILE(s)) {
 		fprintf(stderr, "admin: %s exists.\n", s->sfile);
 		sccs_free(s);

@@ -93,8 +93,7 @@ checksum_main(int ac, char **av)
 		}
 		if ((doit || !s->cksumok) && fix) {
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
-			if (sccs_admin(
-			    s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0)) {
+			if (sccs_newchksum(s)) {
 			    	ret = 2;
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,

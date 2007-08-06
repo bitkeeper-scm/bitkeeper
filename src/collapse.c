@@ -301,15 +301,15 @@ do_file(char *file, char *tiprev)
 		tipd = sccs_findrev((s = sccs_reopen(s)), "+");
 		unless (S_ISLNK(mode) || (mode == tipd->mode)) {
 			if (sccs_admin(s,
-				0, 0, 0, 0, 0, 0, 0, 0, mode2a(mode), 0)) {
+			    0, 0, 0, 0, 0, 0, 0, mode2a(mode), 0)) {
 				sccs_whynot(me, s);
 				goto done;
 			}
 			tipd = sccs_findrev((s = sccs_reopen(s)), "+");
 		}
 		unless (streq(pathname, tipd->pathname)) {
-			if (sccs_admin(s, 0, ADMIN_NEWPATH,
-				0, 0, 0, 0, 0, 0, 0, 0)) {
+			if (sccs_admin(s,
+			    0, ADMIN_NEWPATH, 0, 0, 0, 0, 0, 0, 0)) {
 				sccs_whynot(me, s);
 				goto done;
 			}

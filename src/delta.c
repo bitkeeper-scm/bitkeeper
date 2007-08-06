@@ -119,7 +119,7 @@ strip_danglers(char *name, u32 flags)
 		p = strdup("Turn on MONOTONIC flag");
 		d->comments = addLine(d->comments, p);
 	}
-	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0, 0);
+	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0);
 	sccs_free(s);
 	return (0);
 }
@@ -133,7 +133,7 @@ delta_main(int ac, char **av)
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK|SF_NOHASREVS;
 	int	checkout = 0, ignorePreference = 0;
-	int	c, rc, enc;
+	int	c, rc;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*prog, *name;
@@ -144,6 +144,7 @@ delta_main(int ac, char **av)
 	MMAP	*init = 0;
 	pfile	pf;
 	int	dash, errors = 0, fire, dangling;
+	off_t	sz;
 
 	prog = strrchr(av[0], '/');
 	if (prog) prog++;
@@ -234,15 +235,17 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	def_compp  = proj_configval(0, "compression");
 	unless (def_compp && *def_compp) def_compp = NULL;
 
-	if ((encp || compp) && !(dflags & NEWFILE)) {
-		fprintf(stderr, "-Z is allowed with -i option only\n");
-		goto usage;
+	if (encp || compp) {
+		unless (dflags & NEWFILE) {
+			fprintf(stderr,
+			    "Encoding is allowed only when creating files\n");
+			goto usage;
+		}
+		/* check that they gave us something we can parse */
+		if (sccs_encoding(0, 0, encp, compp) == -1) goto usage;
 	}
 
 	if (chk_host() || chk_user()) return (1);
-
-	enc = sccs_encoding(0, encp, compp);
-	if (enc == -1) goto usage;
 
 	dash = av[optind] && streq(av[optind], "-");
 	name = sfileFirst(av[0], &av[optind], sflags);
@@ -358,7 +361,11 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			}
 		}
 
-		s->encoding = sccs_encoding(s, encp, compp);
+		if (df & NEWFILE) {
+			sz = diffs ? (off_t)msize(diffs) : size(s->gfile);
+			s->encoding = sccs_encoding(s, sz, encp, compp);
+		}
+
 		dangling = MONOTONIC(s) && sccs_top(s)->dangling;
 		if (dangling) df |= DELTA_MONOTONIC;
 		rc = sccs_delta(s, df, d, init, diffs, 0);

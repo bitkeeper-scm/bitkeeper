@@ -195,7 +195,7 @@ err:		if (sname) free(sname);
 		was_edited = 0;
 	}
 	flags = isDelete ? ADMIN_DELETE : ADMIN_NEWPATH;
-	if (sccs_admin(s, 0, flags, 0, 0, 0, 0, 0, 0, 0, 0)) {
+	if (sccs_admin(s, 0, flags, 0, 0, 0, 0, 0, 0, 0)) {
 		sccs_whynot("mv", s);
 		sccs_free(s);
 		return (1);

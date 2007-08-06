@@ -1153,12 +1153,12 @@ check(sccs *s)
 	 */
 #define	FL	ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME
 #define	RFL	ADMIN_FORMAT|ADMIN_TIME
-	if (resync && sccs_admin(s, 0, SILENT|RFL, 0, 0, 0, 0, 0, 0, 0, 0)) {
-		sccs_admin(s, 0, RFL, 0, 0, 0, 0, 0, 0, 0, 0);
+	if (resync && sccs_admin(s, 0, SILENT|RFL, 0, 0, 0, 0, 0, 0, 0)) {
+		sccs_admin(s, 0, RFL, 0, 0, 0, 0, 0, 0, 0);
 		errors++;
 	}
-	if (!resync && sccs_admin(s, 0, SILENT|FL, 0, 0, 0, 0, 0, 0, 0, 0)) {
-		sccs_admin(s, 0, FL, 0, 0, 0, 0, 0, 0, 0, 0);
+	if (!resync && sccs_admin(s, 0, SILENT|FL, 0, 0, 0, 0, 0, 0, 0)) {
+		sccs_admin(s, 0, FL, 0, 0, 0, 0, 0, 0, 0);
 	    	errors++;
 	}
 

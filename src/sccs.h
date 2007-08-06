@@ -817,13 +817,13 @@ typedef struct {
 
 
 
-int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
+int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs,
 		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *);
-int	sccs_encoding(sccs *s, char *enc, char *comp);
+int	sccs_encoding(sccs *s, off_t size, char *enc, char *comp);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
 int	sccs_hashcount(sccs *s);
