@@ -27,7 +27,7 @@ checkperm()
 	${1}*)
 	    ;;
 	*)
-	    echo failed to set permissions correctly; ls -l prog; exit 1
+	    echo failed to set permissions correctly; ls -l $FILE; exit 1
 	    ;;
     esac
 }
@@ -228,6 +228,7 @@ checkperm -rw------- prog
 echo OK
 
 echo $N Test BAM permissions ........................................$NL
+umask 002
 printf "binary\0data\0" > bam
 cp -f bam bamx
 chmod ugo+x bamx
