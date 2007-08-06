@@ -286,6 +286,7 @@ bp_insert(project *proj, char *file, char *keys, int canmv, mode_t mode)
 	MDBM	*db;
 	int	j;
 	char	buf[MAXPATH];
+	char	tmp[MAXPATH];
 
 	base = hash2path(proj, keys);
 	p = buf + sprintf(buf, "%s", base);
@@ -300,25 +301,19 @@ bp_insert(project *proj, char *file, char *keys, int canmv, mode_t mode)
 		 * If the data matches then we have two deltas which point at
 		 * the same data.
 		 */
-		if (sameFiles(file, buf)) {
-			if (canmv) unlink(file);
-			goto domap;	/* XXX what was the bug? */
-		}
+		if (sameFiles(file, buf)) goto domap;//XXX bug
 	}
 	/* need to insert new entry */
 	mkdirf(buf);
 
-	/*
-	 * If we can mv it, then mv or cp, the orig file should be gone
-	 */
-	if (canmv) {
-		if (rename(file, buf)) {
-			if (fileCopy(file, buf)) goto nofile;
-			unlink(file);
-		}
-	} else if (fileCopy(file, buf)) {
+	unless (canmv) {
+		sprintf(tmp, "%s.tmp", buf);
+		if (fileCopy(file, tmp)) goto nofile;
+		file = tmp;
+	}
+	if (rename(file, buf) && fileCopy(file, buf)) {
 nofile:		fprintf(stderr, "BAM: insert to %s failed\n", buf);
-		unlink(buf);	/* Why unlink?  In case file created? */
+		unless (canmv) unlink(buf);
 		return (1);
 	}
 	chmod(buf, (mode & 0555));
