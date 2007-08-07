@@ -58,6 +58,7 @@
 #define	realmkdir(d, m)	(mkdir)(d, m)
 #define	mkdir(d, m)	smartMkdir(d, m)
 #define	closesocket(i)	close(i)
+#define	linkcount(a, b)	(b)->st_nlink
 
 #define	win32()		0
 #define	isWin2000()	0

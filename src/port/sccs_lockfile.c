@@ -2,9 +2,9 @@
 
 #ifdef	WIN32
 #define		ino(file)	0
-#define		linkcount(file)	0
+#define		links(file)	0
 #else
-private	int	linkcount(char *file);
+private	int	links(char *file);
 private	u32	ino(char *file);
 #endif
 private	char	*uniqfile(char *file, pid_t p, char *host);
@@ -95,7 +95,7 @@ retry:	unlink(uniq);
 
 		/* Wait for the attribute cache to time out */
 		while ((ino(uniq) == ino(file)) &&
-		    (linkcount(uniq) == 1) && (linkcount(file) == 1)) {
+		    (links(uniq) == 1) && (links(file) == 1)) {
 			if (getenv("BK_DBGLOCKS")) {
 				ttyprintf(
 				    "%s: waiting for attribute cache\n", file);
@@ -103,7 +103,7 @@ retry:	unlink(uniq);
 		    	sleep(1);
 		}
 
-		if ((linkcount(uniq) == 2) && (ino(uniq) == ino(file))) {
+		if ((links(uniq) == 2) && (ino(uniq) == ino(file))) {
 			addLock(uniq, file);
 			free(uniq);
 			free(p);
@@ -114,7 +114,7 @@ retry:	unlink(uniq);
 		 * the link count ends up being 3.  Retry, recreating the
 		 * unique file to break the link.
 		 */
-		if (linkcount(uniq) > 2) {
+		if (links(uniq) > 2) {
 			if (getenv("BK_DBGLOCKS")) {
 				ttyprintf(
 				    "%s: NFS is confused, nlink > 2\n", file);
@@ -233,7 +233,7 @@ stale:			if (discard) {
 				    getpid(), sccs_realhost(), file);
 				ttyprintf("%u:%u %d:%d\n",
 				    ino(uniq), ino(file),
-				    linkcount(uniq), linkcount(file));
+				    links(uniq), links(file));
 				free(uniq);
 			}
 			usleep(100000);
@@ -444,7 +444,7 @@ getstat(char *file, struct stat *sb)
 }
 
 private int
-linkcount(char *file)
+links(char *file)
 {
 	struct	stat sb;
 

@@ -27,12 +27,31 @@ nt_stat(const char *file, struct stat *sb)
 	sb->st_mode = attribute2mode(info.dwFileAttributes);
 
 	sb->st_nlink = 1;
-
 	/* We don't support files larger than 4GB on NTFS */
 	assert(info.nFileSizeHigh == 0);
 	sb->st_size = info.nFileSizeLow;
 
 	return (0);
+}
+
+int
+linkcount(char *file, struct stat *sb)
+{
+	int	n = -1;
+
+        if (S_ISREG(sb->st_mode)) {
+                HANDLE  h; 
+                BY_HANDLE_FILE_INFORMATION info;
+
+                h = CreateFile(file,                                                                0, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+                if (h != INVALID_HANDLE_VALUE) {
+                        if (GetFileInformationByHandle(h, &info)) {
+                                n = info.nNumberOfLinks;
+                        }
+                        CloseHandle(h);
+                }      
+        }
+	return (n);
 }
 
 private inline FILETIME

@@ -500,6 +500,8 @@ BK_CONFIG='BAM_hardlinks:yes' bk get $Q data || exit 1
 test `linkcount data` = 2 || {
 	echo failed
 	ls -l data
+	echo links is `linkcount data`
+	bk _stat data
 	exit 1
 }
 echo OK
@@ -527,10 +529,13 @@ test `linkcount data` = 1 || {
 	exit 1
 }
 echo OK
+
+# Windows won't let me turn off execute bits
+test $PLATFORM != WIN32 && {
 # Fall through with 'data' in edit state to ..
 echo $N Test that hardlinking does not alter permissions ............$NL
 test -f data || { echo expected data from last test; exit 1; }
-test -x data && { echo expected data with no execute; exit 1; }
+test -x data && { echo expected data with no execute; ls -l data; exit 1; }
 cp data prog
 chmod +x prog
 test -x prog || { echo expected prog with execute; exit 1; }
@@ -564,8 +569,7 @@ test `expr $OLINK + $NLINK` -le 2 && {
 test -x data-old && { echo expected data with no execute; exit 1; }
 test -x data-new || { echo expected prog with execute; exit 1; }
 echo OK
-
-exit 0
+}
 
 echo $N Test undo with many renames .................................$NL
 cd "$HERE"/project 

@@ -186,11 +186,15 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		}
 		/* Hardlink only if the local copy matches perms */
 		if ((statbuf.st_mode & 0555) == (din->mode & 0555)) {
+			/* win2k can't link while the file is open.  Sigh. */
+			if (win32()) mclose(m);
 			unless (link(dfile, gfile)) {
 				s->bamlink = 1;
 				rc = 0;
+				if (win32()) m = mopen(dfile, "rb");
 				goto done;
 			}
+			if (win32()) m = mopen(dfile, "rb");
 		}
 		/* mode different or linking failed, fall through */
 	}

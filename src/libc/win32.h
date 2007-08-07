@@ -103,4 +103,6 @@ int	reg_delete(char *key, char *value);
 char	**reg_keys(char *key);
 char	**reg_values(char *key);
 
+/* win32/nt_stat.c */
+int	linkcount(char *file, struct stat *sp);
 #endif

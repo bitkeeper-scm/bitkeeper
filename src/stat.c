@@ -82,13 +82,13 @@ print_sb(struct stat *sb, char *fn)
 #endif
 	szfmt(sb->st_dev); szfmt(sb->st_ino);
 	strcat(fmtbuf, "%o|"); /* st_mode goes in octal */
-	szfmt(sb->st_nlink); szfmt(sb->st_uid); szfmt(sb->st_gid);
+	szfmt(linkcount(fn, sb)); szfmt(sb->st_uid); szfmt(sb->st_gid);
 	szfmt(sb->st_rdev); szfmt(sb->st_size); szfmt(sb->st_atime);
 	szfmt(sb->st_mtime); szfmt(sb->st_ctime);
 	strcat(fmtbuf, "%s\n");
 	printf(fmtbuf,
 	    sb->st_dev, sb->st_ino, sb->st_mode,
-	    sb->st_nlink, sb->st_uid, sb->st_gid,
+	    linkcount(fn, sb), sb->st_uid, sb->st_gid,
 	    sb->st_rdev, sb->st_size, sb->st_atime,
 	    sb->st_mtime, sb->st_ctime,
 	    fn);
