@@ -95,7 +95,7 @@ if [ $? -ne 0 ]; then echo Bad data in a/b/c/B.; exit 1; fi
 echo OK
 
 echo $N Make sure -p works ..........................................$NL
-rm -f A
+rm -rf A	# may be the "a" dir from previous test (case folding)
 bk get $Q -p -r1.1 date > A
 test -f A || exit 1
 grep -q Hallo A || exit 1

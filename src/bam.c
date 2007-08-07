@@ -43,7 +43,7 @@ private int	serverID(char **id, int clever);
 #define	INDEX_DELETE	"----delete----"
 
 /*
- * Allocate s->gfile into the BAM pool and update the delta stuct with
+ * Allocate s->gfile into the BAM pool and update the delta struct with
  * the correct information.
  */
 int
@@ -52,6 +52,7 @@ bp_delta(sccs *s, delta *d)
 	char	*keys;
 	int	rc;
 	char	*p = aprintf("%s/" BAM_MARKER, proj_root(s->proj));
+	struct	utimbuf ut;
 
 	unless (exists(p)) touch(p, 0664);
 	free(p);
@@ -64,6 +65,13 @@ bp_delta(sccs *s, delta *d)
 	d->added = size(s->gfile);
 	unless (d->added) d->added = 1; /* added = 0 is bad */
 	d->same = d->deleted = 0;
+
+	/* fix up timestamps so that hardlinks work */
+	p = bp_lookup(s, d);
+	assert(p);
+	ut.modtime = (d->date - d->dateFudge);
+	ut.actime = time(0);
+	utime(p, &ut);
 	return (0);
 }
 
@@ -172,10 +180,12 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 			perror(dfile);
 			goto done;
 		}
+		if ((flags & GET_DTIME) &&
+		    (statbuf.st_mtime != (din->date - din->dateFudge))) {
+		    	goto copy;
+		}
+		/* Hardlink only if the local copy matches perms */
 		if ((statbuf.st_mode & 0555) == (din->mode & 0555)) {
-			/*
-			 * Hardlink only if the local copy matches perms
-			 */
 			unless (link(dfile, gfile)) {
 				s->bamlink = 1;
 				rc = 0;
@@ -184,7 +194,8 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		}
 		/* mode different or linking failed, fall through */
 	}
-	/* try copying the file */
+
+copy:	/* try copying the file */
 	assert(din->mode);
 	if (use_stdout) {
 		fd = 1;
@@ -752,13 +763,19 @@ bp_fetchData(void)
 int
 bp_hasBAM(void)
 {
+	char	*root = proj_root(0);
+	char	path[MAXPATH];
+
 	/* No root, no bam bam, needed for old clients */
-	unless (exists(BKROOT)) return (0);
+	unless (root) return (0);
+	sprintf(path, "%s/%s", root, BKROOT);
+	unless (exists(path)) return (0);
 	if (proj_isResync(0)) {
-		return (exists("../" BAM_MARKER));
+		sprintf(path, "%s/%s/%s", root, RESYNC2ROOT, BAM_MARKER);
 	} else {
-		return (exists(BAM_MARKER));
+		sprintf(path, "%s/%s", root, BAM_MARKER);
 	}
+	return (exists(path));
 }
 
 /*
@@ -1485,6 +1502,82 @@ err:			sccs_free(s);
 	return (errors);
 }
 
+/*
+ * Set the timestamps on the BAM to whatever is implied by the history.
+ * Note: this will screw up on any aliases, there isn't anything I can
+ * do about that.
+ */
+int
+bam_timestamps_main(int ac, char **av)
+{
+	sccs	*s;
+	delta	*d;
+	char	*name, *dfile;
+	int	c;
+	int	dryrun = 0, errors = 0;
+	time_t	got, want, sfile;
+	struct	utimbuf ut;
+
+	while ((c = getopt(ac, av, "n")) != -1) {
+		switch (c) {
+		    case 'n': dryrun = 1; break;
+		    default:
+			system("bk help -s BAM");
+			return (1);
+		}
+	}
+	unless (bp_hasBAM()) {
+		fprintf(stderr, "No BAM data in this repository\n");
+		return (0);
+	}
+	for (name = sfileFirst("BAM_timestamps", &av[optind], 0);
+	    name; name = sfileNext()) {
+		unless (s = sccs_init(name, 0)) continue;
+		unless (HASGRAPH(s) && BAM(s)) {
+			sccs_free(s);
+			errors |= 1;
+			continue;
+		}
+		/*
+		 * Fix up the sfile first, it has to be older than the first
+		 * delta.
+		 */
+		sfile = mtime(s->sfile);
+		d = sccs_top(s);
+		unless (sfile <= (d->date - (d->dateFudge + 2))) {
+			if (dryrun) {
+				printf("Would fix sfile %s\n", s->sfile);
+			} else {
+				ut.actime = time(0);
+				ut.modtime = (d->date - (d->dateFudge + 2));
+				if (utime(s->sfile, &ut)) errors |= 2;
+			}
+		}
+		if (dfile = bp_lookup(s, d)) {
+			got = mtime(dfile);
+			want = (d->date - d->dateFudge);
+			unless (got == want) {
+				ut.actime = time(0);
+				ut.modtime = want;
+				if (dryrun) {
+					printf("Would fix %s|%s\n",
+					    s->gfile, d->rev);
+#define	CT(d)	ctime(&d) + 4
+					printf("\tdfile: %s", CT(got));
+					printf("\tdelta: %s", CT(want));
+					printf("\tsfile: %s", CT(sfile));
+				} else if (utime(dfile, &ut)) {
+					errors |= 4;
+				}
+			}
+		}
+		sccs_free(s);
+	}
+	if (sfileDone()) errors |= 2;
+	return (errors);
+}
+
+
 char	**keys;
 
 int
@@ -1687,6 +1780,7 @@ bam_main(int ac, char **av)
 		{"reattach", bam_reattach_main },
 		{"reload", bam_reload_main },
 		{"sizes", bam_sizes_main },
+		{"timestamps", bam_timestamps_main },
 		{0, 0}
 	};
 

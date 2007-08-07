@@ -6813,13 +6813,6 @@ get_bp(sccs *s, char *printOut, int flags, delta *d,
 			"gotten anyway.");
 		}
 	}
-	if ((flags & GET_DTIME) && s->bamlink) {
-		unless (flags & SILENT) {
-			fprintf(stderr, "Ignoring timestamp modification "
-			    "on hardlinked BAM file: %s\n", s->gfile);
-		}
-		flags &= ~GET_DTIME;
-	}
 	/* Win32 restriction, must do this before we chmod to read only */
 	if ((flags & GET_DTIME) && !(flags & PRINT)) {
 		time_t	now;

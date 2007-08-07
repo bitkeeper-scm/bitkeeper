@@ -61,6 +61,15 @@ test $NUM = 2 || {
 }
 echo OK
 
+echo $N Check that we picked up the right timestamps ................$NL
+bk -Ur bam timestamps -n > OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
 echo $N Same data should just get added to the same BAM file ........$NL
 mkdir subdir
 cp "$DATA" subdir/data3
@@ -72,7 +81,6 @@ test $NUM = 2 || {
 	exit 1
 }
 echo OK
-
 
 echo $N Force a fake hash and see if that worked ....................$NL
 cp "$DATA" fake_hash

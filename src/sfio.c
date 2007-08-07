@@ -26,11 +26,9 @@
  * 	B - interpret file names as bptuple names
  * 	H - hardlinks - sfio encodes hardlink info
  * 		XXX can't find any usage
+ * 	l - local - do not recurse to any BAM servers; typical usage is
+ * 		when bk havekeys does -l then sfio wants -l
  * 	r - use \r to terminate output trace - XXX: no padding to erase
- * 	R <level> - if can't find locally, recurse to my server?
- * 		decremented by one for each server call.
- * 		bkd_bam.c, cset.c, push.c use -R1 
- *
  */
 #include "system.h"
 #ifdef SFIO_STANDALONE
