@@ -22,7 +22,7 @@ struct zgetbuf	{
 	char		*line;		/* used by zgets to hold line */
 };
 
-private int	zgets_fileread(void *token, u8 **buf);
+private	int	zgets_fileread(void *token, u8 **buf);
 
 /*
  * Setup to read a stream of compressed data.  The data to be
@@ -69,9 +69,9 @@ zgets_fileread(void *token, u8 **buf)
 	static	char *data = 0;
 
 	if (buf) {
-		unless (data) data = malloc(8<<10);
+		unless (data) data = malloc(ZBUFSIZ);
 		*buf = data;
-		return (fread(data, 1, 8<<10, f));
+		return (fread(data, 1, ZBUFSIZ, f));
 	} else {
 		/* called from zgets_done */
 		if (data) {
@@ -207,15 +207,22 @@ char	*
 zgets(zgetbuf *in)
 {
 	char	*ret;
+	char	**data = 0;
 	int	didfill = 0;
 	int	i;
-	int	size, allocsize;
 
 	if (in->line) {
 		free(in->line);
 		in->line = 0;
 	}
 
+	/*
+	 * XXX Caution -- Wayne optimized code --
+	 * in the didfill block, zfill() resets in->next
+	 * and loops back knowing that 'i' offset will still work
+	 * because any remaining data was copied to the beginning
+	 * of the buffer.
+	 */
 	i = 0;
 again:
 	if (zeof(in)) return (0);
@@ -231,36 +238,22 @@ again:
 		didfill = 1;
 		goto again;
 	}
-	/* line is bigger than ZBUFSIZ ! */
-
-	allocsize = 2 * ZBUFSIZ;
-	in->line = malloc(allocsize);
-
-	memcpy(in->line, in->next, in->left);
-	size = in->left;
-	in->next = 0;
+	/*
+	 * line is bigger than ZBUFSIZ !
+	 * Non-Wayne unoptimized for ease of lesser folks reading ability.
+	 */
+	data = data_append(data, in->next, in->left, 0);
 	in->left = 0;
 
 	while (zfill(in)) {
 		i = 0;
 		while (i < in->left) if (in->next[i++] == '\n') break;
-		if (size + i >= allocsize) {
-			char	*new;
-
-			allocsize *= 2;
-			/* realloc */
-			new = malloc(allocsize);
-			memcpy(new, in->line, size);
-			free(in->line);
-			in->line = new;
-		}
-		memcpy(in->line + size, in->next, i);
-		size += i;
+		data = data_append(data, in->next, i, 0);
 		in->next += i;
 		in->left -= i;
-		if (in->line[size-1] == '\n') break;
+		if (in->next[-1] == '\n') break;
 	}
-	return (in->line);
+	return (in->line = data_pullup(0, data));
 }
 
 /*
@@ -282,6 +275,14 @@ zread(zgetbuf *in, u8 *buf, int len)
 		in->left -= cnt;
 	}
 	assert((len == 0) || (in->left == 0));
+
+	/*
+	 * Arbitrarily decide that requests larger than 1024 should be
+	 * decompressed directly into the user's buffer rather than
+	 * being put it in the zgetbuf and copied out.  It is a trade
+	 * off between an extra data copy and running the compress
+	 * code on a short block.
+	 */
 	if (len > 1024) {
 		/* decompress big blocks directly in place */
 		cnt = zfillbuf(in, p, len);

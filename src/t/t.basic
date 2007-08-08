@@ -159,3 +159,17 @@ if [ $? != 0 ]
 then	echo failed to ignore modified file; exit 1
 fi
 echo OK
+echo $N bk -rFOO -rBAR should fail ..................................$NL
+cd "$HERE"
+rm -fr FOO BAR
+mkdir FOO BAR
+bk -rFOO -rBAR 2>ERR && {
+	echo failed by passing
+	exit 1
+}
+grep -q "Only one -r allowed" ERR || {
+	echo wrong message
+	cat ERR
+	exit 1
+}
+echo OK

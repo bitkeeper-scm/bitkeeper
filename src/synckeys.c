@@ -348,8 +348,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
 	delta	*d;
 	int	rc = 0, rcsets = 0, rtags = 0, local = 0;
-	char	*p, *k;
-	char	**tags = NULL;
+	char	*k;
 
 	/*
 	 * Reopen stdin with a stdio stream.  We will be reading a LOT of
@@ -397,7 +396,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		k = get_key(key, flags);
 		d = sccs_findKey(s, k);
 		/*
-	 	 * If there is garbage on the wire,
+		 * If there is garbage on the wire,
 		 * it is ok to drop a key, this just means we
 		 * we send more csets then we need, not a big deal.
 		 */
@@ -439,17 +438,6 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 			if (sccs_istagkey(k)) {
 				rtags++;
 			} else {
-				if (flags & PK_RREV) {
-					p = strchr(key, '|');
-					assert(p);
-					*p++ = 0;
-					writen(outfd, key, strlen(key));
-					write(outfd, "\n", 1);
-					if (*p != '|') {
-						k[-1] = 0;
-						tags = addLine(tags, strdup(p));
-					}
-				}
 				rcsets++;
 			}
 			if (flags & PK_RKEY) {
@@ -459,55 +447,15 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		}
 	}
 
-	/*
-	 * Print remote tags
-	 * XXX: TODO we need a way to handle multiple tags on the same delta
-	 * May be we should extent the format 
-	 * 	from "rev | tag | key"
-	 * 	to   "rev | tag, tag .. | key"
-	 * However, if we are just using it to feed "bk makepatch"
-	 * or "bk change", we probably don't care.
-	 */
-	if (flags & PK_RREV) {
-		int	i;
-		EACH(tags) {
-			writen(outfd, tags[i], strlen(tags[i]));
-			write(outfd, "\n", 1);
-		}
-		freeLines(tags, free);
-	}
 
 empty:	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
-		if (flags & PK_LSER) {
-			sprintf(key, "%u\n", d->serial);
-			writen(outfd, key, strlen(key));
-		}
-		if (flags & PK_LREV) {
-			if (d->type == 'D') {
-				sprintf(key, "%s\n", d->rev);
-				writen(outfd, key, strlen(key));
-			}
-		}
 		if (flags & PK_LKEY) {
 			sccs_md5delta(s, d, key);
 			writen(outfd, key, strlen(key));
 			write(outfd, "\n", 1);
 		}
 		local++;
-	}
-	if (flags & PK_LREV) { /* list the tags */
-		for (d = s->table; d; d = d->next) {
-			char	*tag;
-
-			if (d->flags & D_RED) continue;
-			unless (d->flags & D_SYMBOLS) continue;
-			tag = sccs_d2tag(s, d);
-			if (tag) {
-				writen(outfd, tag, strlen(tag));
-				write(outfd, "\n", 1);
-			}
-		}
 	}
 	if (remote_csets) *remote_csets = rcsets;
 	if (remote_tags) *remote_tags = rtags;
@@ -657,22 +605,12 @@ synckeys_main(int ac, char **av)
 {
 	int	c, rc = 1;
 	remote  *r = 0;
-	int 	flags = 0;
+	int	flags = 0;
 
-	while ((c = getopt(ac, av, "l|r|")) != -1) {
+	while ((c = getopt(ac, av, "lr")) != -1) {
 		switch (c) {
-		    case 'l':	if (optarg && (optarg[0] == 'k')) {
-					flags |= PK_LKEY;
-				} else {
-					flags |= PK_LREV;
-				}
-				break;
-		    case 'r':	if (optarg && (optarg[0] == 'k')) {
-					flags |= PK_RKEY;
-				} else {
-					flags |= PK_RREV;
-				}
-				break;
+		    case 'l': flags |= PK_LKEY; break;
+		    case 'r': flags |= PK_RKEY; break;
 		    default:  fprintf(stderr, "bad option %c\n", c);
 			      exit(1);
 		}

@@ -28,7 +28,7 @@ getNewRevs(char *to, char *rev, char *url)
 	touch(x_sendlog, 0660);
 
 	if (url) {
-		sprintf(buf, "bk synckeys -lk '%s' > '%s'", url, keysFile);
+		sprintf(buf, "bk synckeys -l '%s' > '%s'", url, keysFile);
 		status = system(buf);
 		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
 			fprintf(stderr, "send: synckeys failed\n");

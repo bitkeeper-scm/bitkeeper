@@ -308,14 +308,14 @@ _doit_local(char **nav, char *url)
 	char	buf[MAXKEY];
 
 	/*
-	 * What we get here is: bk synckey -lk url | bk changes opts -
+	 * What we get here is: bk synckey -l url | bk changes opts -
 	 */
 	if (opts.showdups) {
 		f = popenvp(nav, "w");
 		assert(f);
 	}
 
-	sprintf(buf, "bk synckeys -lk '%s'", url);
+	sprintf(buf, "bk synckeys -l '%s'", url);
 	p = popen(buf, "r");
 	assert(p);
 	while (fnext(buf, p)) {
