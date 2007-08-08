@@ -53,6 +53,16 @@ mopen(char *file, char *mode)
 		return (m);
 	}
 	m->mmap = mmap(0, m->size, mprot, MAP_SHARED, fd, 0);
+
+#if     defined(hpux)
+	if (m->mmap == (caddr_t)-1) {
+                /*
+                 * HP-UX won't let you have two shared mmap to the same file.
+                 */
+		m->mmap = mmap(0, m->size, mprot, MAP_PRIVATE, fd, 0);
+        }
+#endif
+
 	if (m->mmap == (caddr_t)-1) {
 		perror(file);
 		free(m);
