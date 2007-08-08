@@ -16464,6 +16464,7 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	sccs	*s;
 	char	*localkey = 0;
 	delta	*d;
+	project	*localp;
 	char	buf[MAXKEY];
 
 	/*
@@ -16488,6 +16489,9 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	s = sccs_init(p, flags|INIT_MUSTEXIST);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
+	localp = proj_init(".");
+	proj_free(localp);
+	if (s->proj != localp) goto out; /* use after free OK */
 
 	/*
 	 * Go look for this key in the file.

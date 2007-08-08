@@ -107,6 +107,11 @@ proj_init(char *dir)
 	char	*fdir, *cwd;
 	char	buf[MAXPATH];
 
+	if (streq(dir, ".") && proj.curr) {
+		/* optimize common case */
+		ret = proj.curr;
+		goto done;
+	}
 	if (IsFullPath(dir)) {
 		fdir = dir;
 	} else {
