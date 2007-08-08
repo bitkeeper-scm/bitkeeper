@@ -65,6 +65,7 @@ typedef struct {
 	char	**includes;	/* list of globs indicating files to resolve */
 	char	**excludes;	/* list of globs indicating files to skip */
 	char	**notmerged;	/* list of files that didn't automerge */
+	char	**dirlist;	/* list of directories to delete */
 } opts;
 
 /*

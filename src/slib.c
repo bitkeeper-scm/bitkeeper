@@ -4175,12 +4175,13 @@ sccs_init(char *name, u32 flags)
 		s->state |= S_CSET;
 	}
 
+	rc = lstat(s->sfile, &sbuf);
+	if ((flags & INIT_MUSTEXIST) && rc) goto err;
 	if (flags & INIT_NOSTAT) {
 		if ((flags & INIT_HASgFILE) && check_gfile(s, flags)) return 0;
 	} else {
 		if (check_gfile(s, flags)) return (0);
 	}
-	rc = lstat(s->sfile, &sbuf);
 	if (rc == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
@@ -16126,6 +16127,7 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	sccs	*s;
 	char	*localkey = 0;
 	delta	*d;
+	project	*localp;
 	char	buf[MAXKEY];
 
 	/*
@@ -16147,9 +16149,12 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 		p = name2sccs(t);
 		*r = '|';
 	}
-	s = sccs_init(p, flags);
+	s = sccs_init(p, flags|INIT_MUSTEXIST);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
+	localp = proj_init(".");
+	proj_free(localp);
+	if (s->proj != localp) goto out; /* use after free OK */
 
 	/*
 	 * Go look for this key in the file.
