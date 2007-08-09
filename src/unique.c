@@ -160,14 +160,16 @@ keycache_main(int ac, char **av)
 private	int
 uniq_regen(void)
 {
+	int	rc;
 	char	*tmp = keysHome();
 
 	/*
 	 * Only called with a locked cache, so we can overwrite it.
 	 */
 	unless (tmp) return (-1);
-	sysio(0, tmp, 0, "bk", "keycache", SYS);
+	if (rc = sysio(0, tmp, 0, "bk", "keycache", SYS)) perror("keycache");
 	sccs_unlockfile(lockHome());
+	if (rc) return (-1);
 	return (uniq_open());
 }
 
