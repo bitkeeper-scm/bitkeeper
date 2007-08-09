@@ -73,6 +73,7 @@ cd ../diamond
 bk edit $Q f g
 BK_USER=$NAME2 bk delta $Q -fy'Branch checkin' f g
 BK_USER=$NAME2 bk commit $Q -Sbranch -y'Branch checkin' || fail
+BK_USER=$NAME2 bk tag $Q branchtag
 bk pull $Q
 BK_USER=$TAGGER bk tag $Q MYTAG
 echo OK
@@ -140,6 +141,22 @@ bk changes -ad'$if(:DT:=T){:KEY:\n}' > TAG
 test -s WITH -a -s WITHOUT -a -s EMPTY -a -s TAG || fail
 cat WITHOUT EMPTY TAG | bk sort > SORT
 checkfiles WITH SORT
+echo OK
+
+echo $N Check that -a lists tags separately .........................$NL
+# without -a -- all tags listed on delta
+# with -a -- tags listed if delta created them
+bk changes -rbranch -nd':DT:$each(:TAG:){ (:TAG:)}' > BRANCH
+bk changes -rbranch -and':DT:$each(:TAG:){ (:TAG:)}' > BRANCHTAG
+cat <<'EOF' > WANT
+D branchtag branch
+EOF
+checkfiles WANT BRANCH
+cat <<'EOF' > WANT
+T branchtag
+D branch
+EOF
+checkfiles WANT BRANCHTAG
 echo OK
 
 echo $N Check that -e adds in empty merges ..........................$NL

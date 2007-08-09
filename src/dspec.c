@@ -193,6 +193,7 @@ dollar(int output, FILE *out, char ***buf)
 	} else if (strneq("$each(", g.p, 6)) {
 		nextln	state;
 		char	*bufptr;
+		int	savejoin;
 
 		if (in_each++) err("nested each illegal");
 
@@ -216,6 +217,8 @@ dollar(int output, FILE *out, char ***buf)
 		bzero(&state, sizeof(state));
 		bufptr	  = g.p;
 		g.line	  = 1;
+		savejoin  = g.s->prs_join;
+		g.s->prs_join = 0;
 		while (g.eachval = getnext(g.eachkey, &state)) {
 			g.p = bufptr;
 			stmtList(output);
@@ -223,6 +226,7 @@ dollar(int output, FILE *out, char ***buf)
 		}
 		g.eachkey.dptr = 0;
 		g.eachkey.dsize = 0;
+		g.s->prs_join = savejoin;
 		--in_each;
 		/* Eat the body if we never parsed it above. */
 		if (g.line == 1) stmtList(0);
@@ -557,12 +561,12 @@ again:
 	    strneq(kw.dptr, "TAG", kw.dsize)) {
 		if (state->i == 1) {
 			unless (g.d && (g.d->flags & D_SYMBOLS)) return (0);
-			while (g.d->type == 'R') g.d = g.d->parent;
 			state->sym = g.s->symbols;
 		} else {
 			state->sym = state->sym->next;
 		}
-		while (state->sym && (state->sym->d != g.d)) {
+		while (state->sym && (g.d !=
+		    (g.s->prs_all ? state->sym->metad : state->sym->d))) {
 			state->sym = state->sym->next;
 		}
 		unless (state->sym) return (0);

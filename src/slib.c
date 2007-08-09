@@ -14009,7 +14009,9 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
 		for (sym = s->symbols; sym; sym = sym->next) {
-			unless (sym->d == d) continue;
+			unless (d == (s->prs_all ? sym->metad : sym->d)) {
+				continue;
+			}
 			j++;
 			fs("S ");
 			fs(sym->symname);
@@ -14222,9 +14224,10 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		int	j = 0;
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
-		while (d->type == 'R') d = d->parent;
 		for (sym = s->symbols; sym; sym = sym->next) {
-			unless (sym->d == d) continue;
+			unless (d == (s->prs_all ? sym->metad : sym->d)) {
+				continue;
+			}
 			j++;
 			fs(sym->symname);
 		}
@@ -14851,6 +14854,7 @@ sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
+	s->prs_all = ((flags & PRS_ALL) != 0);
 	s->prs_output = 0;
 	dspec_eval(out, 0, s, d, dspec);
 	if (s->prs_output) {
@@ -14867,6 +14871,7 @@ sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec)
 
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if (SET(s) && !(d->flags & D_SET)) return (0);
+	s->prs_all = ((flags & PRS_ALL) != 0);
 	dspec_eval(0, &buf, s, d, dspec);
 	if (data_length(buf)) {
 		s->prs_odd = !s->prs_odd;
