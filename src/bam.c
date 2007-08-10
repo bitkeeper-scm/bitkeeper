@@ -175,11 +175,29 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	if (!(flags & (GET_EDIT|PRINT)) &&
 	    proj_configbool(s->proj, "BAM_hardlinks")) {
 		struct	stat	statbuf;
+		struct	utimbuf ut;
 
 		if (lstat(dfile, &statbuf)) {
 			perror(dfile);
 			goto done;
 		}
+
+		/* fix up mtime/modes if there are no aliases */
+		if (linkcount(dfile, &statbuf) == 1) {
+			if (statbuf.st_mtime != (din->date - din->dateFudge)) {
+				ut.modtime = (din->date - din->dateFudge);
+				ut.actime = time(0);
+				unless (utime(dfile, &ut)) {
+					statbuf.st_mtime = ut.modtime;
+				}
+			}
+			if ((statbuf.st_mode & 0555) != (din->mode & 0555)) {
+				unless (chmod(dfile, din->mode & 0555)) {
+					statbuf.st_mode = din->mode & 0555;
+				}
+			}
+		}
+
 		if ((flags & GET_DTIME) &&
 		    (statbuf.st_mtime != (din->date - din->dateFudge))) {
 		    	goto copy;
