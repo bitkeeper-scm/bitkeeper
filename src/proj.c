@@ -748,10 +748,13 @@ proj_saveCO(sccs *s)
 void
 proj_saveCOkey(project *p, char *key, int co)
 {
+	char	*path;
 	char	state[2];
 
 	unless (p) p = curr_proj();
 	if (proj_isResync(p)) return;
+	path = strchr(key, '|') + 1;
+	if (strneq(path, "ChangeSet|", 10)) return; /* no co on ChangeSet */
 	unless (p->coDB) p->coDB = mdbm_mem();
 	state[0] = co + '0';
 	state[1] = 0;
@@ -759,32 +762,18 @@ proj_saveCOkey(project *p, char *key, int co)
 }
 
 private int
-restoreCO(sccs *s)
+restoreCO(sccs *s, int co)
 {
-	char	*state;
-	int	co;
 	int	getFlags = 0;
-	char	key[MAXKEY];
 
-	unless (s && s->proj) return (0);
-	if (proj_isResync(s->proj)) return (0);
 	if (CSET(s) || strneq("BitKeeper/", s->gfile, 10)) return (0);
 
 	/* Let's just be sure we're up to date */
 	if (check_gfile(s, 0)) return (-1);
 
-	sccs_sdelta(s, sccs_ino(s), key);
-	if (state = mdbm_fetch_str(s->proj->coDB, key)) {
-		co = (*state - '0');
-	} else {
-		/* Use the repo defaults for new files */
-		co = proj_checkout(s->proj);
-	}
 	switch (co) {
 	    case CO_EDIT: unless (HAS_PFILE(s)) getFlags = GET_EDIT; break;
 	    case CO_GET: unless (HAS_GFILE(s)) getFlags = GET_EXPAND; break;
-	    case CO_NONE: break;
-	    case CO_LAST: break;
 	    default: assert(0);
 	}
 	unless (getFlags) return (0);
@@ -813,7 +802,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 {
 	sccs	*s;
 	kvpair	kv;
-	int	i, errs = 0, freeid = 0;
+	int	i, errs = 0, freeid = 0, co;
 	char	*t;
 	FILE	*f;
 
@@ -832,11 +821,15 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 
 	}
 	EACH_KV(p->coDB) {
-		s = sccs_keyinit(kv.key.dptr, INIT_NOCKSUM|SILENT, idDB);
-		unless (s) continue;
-		assert(p == s->proj);
-		if (restoreCO(s)) errs++;
-		sccs_free(s);
+		co = (kv.val.dptr[0] - '0');
+		if ((co != CO_NONE) && (co != CO_LAST)) {
+			s = sccs_keyinit(kv.key.dptr,
+			    INIT_NOCKSUM|SILENT, idDB);
+			unless (s) continue;
+			assert(p == s->proj);
+			if (restoreCO(s, co)) errs++;
+			sccs_free(s);
+		}
 	}
 	mdbm_close(p->coDB);
 	p->coDB = 0;

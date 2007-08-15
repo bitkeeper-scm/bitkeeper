@@ -112,6 +112,7 @@ idcache_update(char *filelist)
 
 	while (fnext(buf, in)) {
 		chomp(buf);
+		if (streq(buf, CHANGESET)) continue; /* cset can't move */
 		unless (s = sccs_init(buf, INIT_NOCKSUM)) continue;
 		unless (HASGRAPH(s)) {
 			fprintf(stderr, "No graph in %s?\n", buf);
