@@ -1231,6 +1231,7 @@ void	dspec_printeach(sccs *s, FILE *out, char ***vbuf);
 int	kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d);
 void	show_s(sccs *s, FILE *out, char ***vbuf, char *data, int len);
 void	show_d(sccs *s, FILE *out, char ***vbuf, char *format, int num);
+void	gdb_backtrace(void);
 
 extern	char	*editor;
 extern	char	*bin;

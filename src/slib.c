@@ -4119,6 +4119,25 @@ err:			sccs_free(s);
 	return (0);
 }
 
+void
+gdb_backtrace(void)
+{
+	FILE	*f;
+	char	*cmd;
+
+	unless (getenv("_BK_BACKTRACE")) return;
+	unless ((f = efopen("BK_TTYPRINTF")) ||
+	    (f = fopen(DEV_TTY, "w"))) {
+		f = stderr;
+	}
+	cmd = aprintf("gdb -batch -ex backtrace '%s/bk' %u 1>&%d 2>&%d",
+	    bin, getpid(), fileno(f), fileno(f));
+
+	system(cmd);
+	free(cmd);
+	if (f != stderr) fclose(f);
+}
+
 /*
  * Initialize an SCCS file.  Do this before anything else.
  * If the file doesn't exist, the graph isn't set up.
@@ -4137,12 +4156,16 @@ sccs_init(char *name, u32 flags)
 	static	int _YEAR4;
 	static	char *glob = 0;
 	static	int show = -1;
+	extern	char	*prog;
 
 	if (show == -1) {
 		glob = getenv("BK_SHOWINIT");
 		show = glob != 0;
 	}
-	if (show && match_one(name, glob, 0)) ttyprintf("init(%s)\n", name);
+	if (show && match_one(name, glob, 0)) {
+		ttyprintf("init(%s) [%s]\n", name, prog);
+		gdb_backtrace();
+	}
 
 	if (strchr(name, '\n') || strchr(name, '\r')) {
 		fprintf(stderr,
