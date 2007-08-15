@@ -8056,8 +8056,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		unless (bktmp(sbuf, "getU")) RET(-1);
 		name = strdup(sbuf);
 		if (deflate_gfile(s, name)) {
-			unlink(name);
-			free(name);
+			verbose((stderr, "can't open %s\n", s->gfile));
 			RET(-1);
 		}
 	} else {
@@ -8277,13 +8276,15 @@ private int
 deflate_gfile(sccs *s, char *tmpfile)
 {
 	FILE	*in, *out;
-	int	n;
 
 	unless (out = fopen(tmpfile, "w")) return (-1);
 	switch (s->encoding & E_DATAENC) {
 	    case E_UUENCODE:
-		in = fopen(s->gfile, "r");
-		n = uuencode(in, out);
+		unless (in = fopen(s->gfile, "r")) {
+			fclose(out);
+			return (-1);
+		}
+		uuencode(in, out);
 		fclose(in);
 		fclose(out);
 		break;
