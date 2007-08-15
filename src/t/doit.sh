@@ -474,6 +474,15 @@ get_options()
 
 get_options $@
 setup_env
+if [ "$GUI_TEST" = YES ]
+then	echo 'exit' | bk wish >OUT 2>&1
+	grep -q 'initialization failed' OUT && {
+		echo Skipping GUI tests because Wish did not run
+		rm OUT
+		exit 0 
+	}
+	rm OUT
+fi
 init_main_loop
 test $PLATFORM = WIN32 && bk bkd -R
 
