@@ -115,8 +115,8 @@ strip_danglers(char *name, u32 flags)
 	 */
 	d = sccs_top(s);
 	if ((d->xflags & X_MONOTONIC) && !(d->parent->xflags & X_MONOTONIC)) {
-		p = strdup("Turn on MONOTONIC flag");
-		d->comments = addLine(d->comments, p);
+		comments_load(s, d);
+		comments_append(d, strdup("Turn on MONOTONIC flag"));
 	}
 	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0, 0);
 	sccs_free(s);

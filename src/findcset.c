@@ -117,7 +117,6 @@ findcset_main(int ac, char **av)
 			verbose((stderr, "Skipping non-user file %s.\n", name));
 			continue;
 		}
-		sccs_close(s);
 		unless (HASGRAPH(s)) goto next;
 		save = deltaCounter;
 		sccs_sdelta(s, sccs_ino(s), key);
@@ -664,6 +663,7 @@ typedef struct {
 private void
 mkCset(mkcs_t *cur, delta *d)
 {
+	char	**comments;
 	int	v;
 	ser_t	k;
 	kvpair	kv, vk;
@@ -685,7 +685,9 @@ mkCset(mkcs_t *cur, delta *d)
 	/* More into 'e' from sccs * and by hand. */
 	e = sccs_dInit(e, 'D', cur->cset, 1);
 	e->flags |= D_CSET; /* copied from cset.c, probably redundant */
-	e->comments = db2line(cur->csetComment);
+	comments = db2line(cur->csetComment);
+	EACH(comments) comments_append(e, comments[i]);
+	freeLines(comments, 0);
 
 	/*
 	 * Need to do compute patch diff entry (and save into 'lines')
@@ -804,7 +806,7 @@ mkTag(mkcs_t *cur, char *tag)
 
 	/* More into 'e' from sccs * and by hand. */
 	e = sccs_dInit(e, 'R', cur->cset, 1);
-	e->comments = 0;
+	comments_free(e);
 
 	/* Some hacks to get sccs_prs to do some work for us */
 	cur->cset->rstart = cur->cset->rstop = e;
@@ -1026,7 +1028,7 @@ findcset(void)
 		/*
 		 * Extract per file comment and copy them to cset comment
 		 */
-		p = line2str(d->comments);
+		p = line2str(d->cmnts);
 		saveComment(cur.csetComment, d->rev, p, d->pathname);
 		free(p);
 		/* pathname will be freeed in freeComment() */
@@ -1143,6 +1145,8 @@ mkList(sccs *s, int fileIdx)
 	}
 
 	for (d = s->table; d; ) {
+		/* make comments standalone */
+		comments_load(s, d);
 		e = d->next;
 		if (d->flags & D_SET) {
 			/*
@@ -1257,7 +1261,7 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 	if (d->csetFile) fprintf(out, "B %s\n", d->csetFile);
 	if (d->flags & D_CSET) fprintf(out, "C\n");
 	if (d->dangling) fprintf(out, "D\n");
-	EACH(d->comments) fprintf(out, "c %s\n", d->comments[i]);
+	EACH_COMMENT(s, d) fprintf(out, "c %s\n", d->cmnts[i]);
 	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
 	assert(!d->include);
 	if (d->flags & D_CKSUM) {

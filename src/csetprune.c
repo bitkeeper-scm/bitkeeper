@@ -497,10 +497,7 @@ fixTags(sccs *s)
 			md->type = 'R';
 			md->flags &= ~(D_GONE|D_CKSUM|D_CSET);
 			md->added = md->deleted = md->same = 0;
-			if (md->comments) {
-				freeLines(md->comments, free);
-				md->comments = 0;
-			}
+			comments_free(md);
 			assert(!md->include && !md->exclude && !md->merge);
 		}
 	}
@@ -553,10 +550,7 @@ fixTags(sccs *s)
 			d->type = 'R';
 			d->flags &= ~(D_GONE|D_CKSUM|D_CSET);
 			d->added = d->deleted = d->same = 0;
-			if (d->comments) {
-				freeLines(d->comments, free);
-				d->comments = 0;
-			}
+			comments_free(d);
 			assert(!d->include && !d->exclude && !d->merge);
 		}
 	}

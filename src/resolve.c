@@ -1564,11 +1564,12 @@ err:		if (s) sccs_free(s);
 		sccs_admin(sf, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		sccs_free(sf);
 		sf = 0;
-	}       
+	}
 	pclose(f);
 	f = 0;
 	/* preserve ChangeSet comments */
-	lines2File(a->comments, CCHANGESET);
+	comments_load(s, a);
+	lines2File(a->cmnts, CCHANGESET);
 	/* now stripdel the top revision of the ChangeSet file */
 	a->flags |= D_SET;
 	MK_GONE(s, a);

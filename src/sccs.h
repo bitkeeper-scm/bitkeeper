@@ -432,7 +432,7 @@ typedef struct delta {
 	ser_t	pserial;		/* serial number of parent */
 	ser_t	*include;		/* include serial #'s */
 	ser_t	*exclude;		/* exclude serial #'s */
-	char	**comments;		/* Comment log */
+	char	**cmnts;		/* comment offset or lines array */
 	/* New stuff in lm's sccs */
 	ser_t	ptag;			/* parent in tag graph */
 	ser_t	mtag;			/* merge parent in tag graph */
@@ -461,10 +461,15 @@ typedef struct delta {
 	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
 					/* Needed for tag conflicts with 2 */
 					/* open tips, so maintained always */
+	u32	localcomment:1;		/* comments are stored locally */
 	char	type;			/* Delta or removed delta */
 } delta;
+#define	COMMENTS(d)	((d)->cmnts != 0)
 #define	TAG(d)		((d)->type != 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
+#define	EACH_COMMENT(s, d) \
+			comments_load(s, d); \
+			EACH_INDEX(d->cmnts, i)
 
 /*
  * Rap on lod/symbols wrt deltas.
@@ -1231,6 +1236,9 @@ void	dspec_printeach(sccs *s, FILE *out, char ***vbuf);
 int	kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d);
 void	show_s(sccs *s, FILE *out, char ***vbuf, char *data, int len);
 void	show_d(sccs *s, FILE *out, char ***vbuf, char *format, int num);
+void	comments_append(delta *d, char *line);
+char	**comments_load(sccs *s, delta *d);
+void	comments_free(delta *d);
 void	gdb_backtrace(void);
 
 extern	char	*editor;

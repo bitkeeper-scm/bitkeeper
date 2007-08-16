@@ -537,13 +537,14 @@ getnext(datum kw, nextln *state)
 again:
 	++state->i;	/* first call has it set to 0, so now 1 */
 	if (strneq(kw.dptr, "C", kw.dsize)) {
-		unless (g.d && g.d->comments &&
-		    (state->i < LSIZ(g.d->comments)) &&
-		    g.d->comments[state->i]) {
+		comments_load(g.s, g.d);
+		unless (g.d && g.d->cmnts &&
+		    (state->i < LSIZ(g.d->cmnts)) &&
+		    g.d->cmnts[state->i]) {
 			return (0);
 		}
-		if (g.d->comments[state->i][0] == '\001') goto again;
-		return(g.d->comments[state->i]);
+		if (g.d->cmnts[state->i][0] == '\001') goto again;
+		return(g.d->cmnts[state->i]);
 	}
 
 	/* XXX FD depracated */

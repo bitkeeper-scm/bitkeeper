@@ -50,8 +50,8 @@ comments_main(int ac, char **av)
 
 		comments_save(comment);
 		d = comments_get(0);
-		lines = d->comments;
-		d->comments = 0;
+		lines = d->cmnts;
+		d->cmnts = 0;
 		sccs_freetree(d);
 	} else if (file) {
 		unless (lines = readFile(file)) return (1);
@@ -258,8 +258,9 @@ write_editfile(FILE *f, char **files, int to_stdout)
 			fprintf(f, "### Change the comments to %s%c%s below\n",
 			    name, BK_FS, d->rev);
 		}
-		EACH_INDEX(d->comments, j) {
-			fprintf(f, "%s\n", d->comments[j]);
+		comments_load(s, d);
+		EACH_INDEX(d->cmnts, j) {
+			fprintf(f, "%s\n", d->cmnts[j]);
 		}
 		fprintf(f, "\n");
 next:		if (s) sccs_free(s);
@@ -293,9 +294,10 @@ change_comments(char *file, char *rev, char **comments)
 		comments[i] = 0;
 	}
 	unless (comments && comments[1]) goto err;
-	freeLines(d->comments, free);
-	d->comments = comments;
-	if (d->comments) sccs_newchksum(s);
+	comments_free(d);
+	EACH(comments) comments_append(d, comments[i]);
+	freeLines(comments, 0);
+	sccs_newchksum(s);
 	rc = 0;
  err:	if (s) sccs_free(s);
 	if (sfile) free(sfile);

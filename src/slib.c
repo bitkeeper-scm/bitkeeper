@@ -36,7 +36,6 @@ private sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
 private int	fflushdata(sccs *s, FILE *out);
 private void	putserlist(sccs *sc, ser_t *s, FILE *out);
 private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
-private int	hasComments(delta *d);
 private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, delta *d, char *who);
@@ -466,9 +465,8 @@ atoiMult_p(char **p)
 private void
 freedelta(delta *d)
 {
-	freeLines(d->comments, free);
+	comments_free(d);
 	freeLines(d->text, free);
-
 	if (d->rev) free(d->rev);
 	if (d->user) free(d->user);
 	if (d->sdate) free(d->sdate);
@@ -3285,7 +3283,7 @@ bad:
 
 			switch (buf[1]) {
 			    case 'c':
-				i = 0; goto comment;
+				goto comment;
 			    case 'i':
 				d->include = getserlist(s, 1, &buf[3], 0);
 				break;
@@ -3312,7 +3310,7 @@ bad:
 		for (;;) {
 			if (!(buf = fastnext(s)) || buf[0] != '\001') {
 				expected = "^A";
-				freeLines(d->comments, free);
+				comments_free(d);
 				goto bad;
 			}
 			line++;
@@ -3324,14 +3322,13 @@ comment:		switch (buf[1]) {
 				} else if (buf[2] != ' ') {
 					meta(s, d, buf);
 				} else {
-					d->comments =
-					    addLine(d->comments,
-					    strnonldup(&buf[3]));
+					if (d->cmnts) break;
+					d->cmnts = int2p(buf - s->mmap);
 				}
 				break;
 			    default:
 				expected = "^A{e,c}";
-				freeLines(d->comments, free);
+				comments_free(d);
 				goto bad;
 			}
 		}
@@ -7608,7 +7605,7 @@ check_removed(sccs *s, delta *d, int strip_tags)
 	/*
 	 * We don't need no skinkin' removed deltas.
 	 */
-	unless (d->symGraph || (d->flags & D_SYMBOLS) || d->comments) {
+	unless (d->symGraph || (d->flags & D_SYMBOLS) || COMMENTS(d)) {
 		MK_GONE(s, d);
 	}
 }
@@ -7774,9 +7771,9 @@ delta_table(sccs *s, FILE *out, int willfix)
 			putserlist(s, d->exclude, out);
 			fputmeta(s, "\n", out);
 		}
-		EACH(d->comments) {
+		EACH_COMMENT(s, d) {
 			p = fmts(buf, "\001c ");
-			p = fmts(p, d->comments[i]);
+			p = fmts(p, d->cmnts[i]);
 			*p++ = '\n';
 			*p   = '\0';
 			fputmeta(s, buf, out);
@@ -8258,15 +8255,6 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	}
 	free_pfile(&pf);
 	return (ret);
-}
-
-private inline int
-hasComments(delta *d)
-{
-	int	i;
-
-	EACH(d->comments) return (1);
-	return (0);
 }
 
 /*
@@ -9342,7 +9330,7 @@ out:		sccs_unlock(s, 'z');
 			randomBits(buf);
 			if (buf[0]) d->random = strdup(buf);
 		}
-		unless (hasComments(n)) {
+		unless (COMMENTS(n)) {
 			if (comments_readcfile(s, 0, n)) {
 				if (flags & DELTA_CFILE) {
 					fprintf(stderr,
@@ -9352,9 +9340,9 @@ out:		sccs_unlock(s, 'z');
 				}
 			}
 		}
-		unless (hasComments(n)) {
+		unless (COMMENTS(n)) {
 			sprintf(buf, "BitKeeper file %s", fullname(s->gfile));
-			n->comments = addLine(d->comments, strdup(buf));
+			comments_append(n, strdup(buf));
 		}
 	}
 	if (BITKEEPER(s)) {
@@ -10224,18 +10212,14 @@ zoneArg(delta *d, char *arg)
 private delta *
 commentArg(delta *d, char *arg)
 {
-	char	*tmp;
+	char	*p;
 
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
-	if (!arg) {
-		/* don't call me unless you want one. */
-		d->comments = addLine(d->comments, strdup(""));
-		return (d);
-	}
+	unless (arg) arg = "\n";
 	while (arg && *arg) {
-		tmp = arg;
-		while (*arg && *arg++ != '\n');
-		d->comments = addLine(d->comments, strnonldup(tmp));
+		p = strdup_tochar(arg, '\n');
+		comments_append(d, p);
+		if (arg = strchr(arg, '\n')) ++arg;
 	}
 	return (d);
 }
@@ -10437,7 +10421,7 @@ addMode(char *me, sccs *sc, delta *n, mode_t m)
 	assert(n);
 	newmode = mode2a(m);
 	sprintf(buf, "Change mode to %s", newmode);
-	n->comments = addLine(n->comments, strdup(buf));
+	comments_append(n, strdup(buf));
 	(void)modeArg(n, newmode);
 }
 
@@ -10476,7 +10460,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	/* pseudo flag, we speak only native & windows */
 	unless (changing == X_EOLN_UNIX) {
 		sprintf(buf, "Turn %s %s flag", add ? "on": "off", flag);
-		n->comments = addLine(n->comments, strdup(buf));
+		comments_append(n, strdup(buf));
 	}
 	/*
 	 * We have two real EOLN xflags: X_EOLN_NATIVE and X_WINDOWS
@@ -10489,35 +10473,35 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	if (add && (eoln & changing)) {
 		if (changing == X_EOLN_NATIVE) {
 			if (n->xflags & X_EOLN_WINDOWS) {
-				sprintf(buf, "Turn off EOLN_WINDOWS flag");
-				n->comments = addLine(n->comments, strdup(buf));
+				comments_append(n,
+				    strdup("Turn off EOLN_WINDOWS flag"));
 				n->xflags &= ~X_EOLN_WINDOWS;
 			}
 		}
 		if (changing == X_EOLN_WINDOWS) {
 			if (n->xflags & X_EOLN_NATIVE) {
-				sprintf(buf, "Turn off EOLN_NATIVE flag");
-				n->comments = addLine(n->comments, strdup(buf));
+				comments_append(n,
+				    strdup("Turn off EOLN_NATIVE flag"));
 				n->xflags &= ~X_EOLN_NATIVE;
 			}
 		}
 		if (changing == X_EOLN_UNIX) {
 			if (n->xflags & X_EOLN_WINDOWS) {
-				sprintf(buf, "Turn off EOLN_WINDOWS flag");
-				n->comments = addLine(n->comments, strdup(buf));
+				comments_append(n,
+				    strdup("Turn off EOLN_WINDOWS flag"));
 				n->xflags &= ~X_EOLN_WINDOWS;
 			}
 			if (n->xflags & X_EOLN_NATIVE) {
-				sprintf(buf, "Turn off EOLN_NATIVE flag");
-				n->comments = addLine(n->comments, strdup(buf));
+				comments_append(n,
+				    strdup("Turn off EOLN_NATIVE flag"));
 				n->xflags &= ~X_EOLN_NATIVE;
 			}
 		}
 		n->xflags &= ~X_EOLN_UNIX;	/* fake, in mem only */
 	} else if (!add) {
 		if (changing & (X_EOLN_WINDOWS|X_EOLN_UNIX)) {
-			sprintf(buf, "Turn on EOLN_NATIVE flag");
-			n->comments = addLine(n->comments, strdup(buf));
+			comments_append(n,
+			    strdup("Turn on EOLN_NATIVE flag"));
 			n->xflags |= X_EOLN_NATIVE;
 		}
 	}
@@ -10734,10 +10718,10 @@ obscure_comments(sccs *s)
 	int	i;
 
 	for (d = s->table; d; d = d->next) {
-		EACH(d->comments) {
-			buf = obscure(0, 0, d->comments[i]);
-			free(d->comments[i]);
-			d->comments[i] = buf;
+		EACH_COMMENT(s, d) {
+			buf = obscure(0, 0, d->cmnts[i]);
+			free(d->cmnts[i]);
+			d->cmnts[i] = buf;
 		}
 	}
 }
@@ -10857,7 +10841,6 @@ skipmode:
 
 	if (text) {
 		FILE	*desc;
-		char	*c;
 		char	dbuf[200];
 
 		unless (text[0]) {
@@ -10867,8 +10850,8 @@ skipmode:
 				flags |= NEWCKSUM;
 			}
 			ALLOC_D();
-			c = "Remove Descriptive Text";
-			d->comments = addLine(d->comments, strdup(c));
+			comments_append(d,
+			    strdup("Remove Descriptive Text"));
 			assert(d->text == 0);
 			d->flags |= D_TEXT;
 			goto user;
@@ -10884,8 +10867,7 @@ skipmode:
 			sc->text = 0;
 		}
 		ALLOC_D();
-		c = "Change Descriptive Text";
-		d->comments = addLine(d->comments, strdup(c));
+		comments_append(d, strdup("Change Descriptive Text"));
 		d->flags |= D_TEXT;
 		while (fgets(dbuf, sizeof(dbuf), desc)) {
 			sc->text = addLine(sc->text, strnonldup(dbuf));
@@ -11019,17 +11001,17 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if (flags & ADMIN_NEWPATH) {
 		ALLOC_D(); /* We pick up the new path when we init the delta */
 		assert(d->pathname);
-		d->comments = addLine(d->comments,
-				aprintf("Rename: %s -> %s",
-					d->parent->pathname, d->pathname));
+		buf = aprintf("Rename: %s -> %s",
+			d->parent->pathname, d->pathname);
+		comments_append(d, buf);
 		flags |= NEWCKSUM;
 	}
 
 	if (flags & ADMIN_DELETE) {
 		ALLOC_D(); /* We pick up the new path when we init the delta */
 		assert(d->pathname);
-		d->comments = addLine(d->comments,
-				aprintf("Delete: %s", d->parent->pathname));
+		buf = aprintf("Delete: %s", d->parent->pathname);
+		comments_append(d, buf);
 		flags |= NEWCKSUM;
 	}
 
@@ -11885,7 +11867,7 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
 {
 	char	*s, *t;
 	char	*buf;
-	int	nocomments = d && d->comments;
+	int	nocomments = d && COMMENTS(d);
 	int	error = 0;
 	int	lines = 0;
 	char	type = '?';
@@ -11992,9 +11974,7 @@ skip:
 		if (buf[1] == ' ') p = &buf[2];
 		else if (buf[1] == '\0') p = &buf[1];
 		else break;
-		unless (nocomments) {
-			d->comments = addLine(d->comments, strdup(p));
-		}
+		unless (nocomments) comments_append(d, strdup(p));
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -12161,7 +12141,7 @@ skip:
 	}
 
 out:	if (d) {
-		unless (hasComments(d)) d->flags |= D_NOCOMMENTS;
+		unless (COMMENTS(d)) d->flags |= D_NOCOMMENTS;
 		unless (d->pathname) d->flags |= D_NOPATH;
 		if (type == 'M') {
 			d->flags |= D_META;
@@ -12705,7 +12685,7 @@ out:
 	s->table = n;
 	assert(d);
 	n->pserial = d->serial;
-	if (!hasComments(n) && !init &&
+	if (!COMMENTS(n) && !init &&
 	    !(flags & DELTA_DONTASK) && !(n->flags & D_NOCOMMENTS)) {
 		/*
 		 * If they told us there should be a c.file, use it.
@@ -13750,9 +13730,9 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		/* comments */
 		/* XXX TODO: we may need to the walk the comment graph	*/
 		/* to get the latest comment				*/
-		EACH(d->comments) {
+		EACH_COMMENT(s, d) {
 			j++;
-			fs(d->comments[i]);
+			fs(d->cmnts[i]);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -13763,17 +13743,17 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		char	html_ch[20];
 		unsigned char *p;
 
-		unless (d->comments && (int)(long)(d->comments[0])) {
+		unless (COMMENTS(d)) {
 			fs("&nbsp;");
 		} else {
-			EACH(d->comments) {
+			EACH_COMMENT(s, d) {
 				if (i > 1) fs("<br>");
-				if (d->comments[i][0] == '\t') {
+				if (d->cmnts[i][0] == '\t') {
 					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
 					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
-					p = &d->comments[i][1];
+					p = &d->cmnts[i][1];
 				} else {
-					p = d->comments[i];
+					p = d->cmnts[i];
 				}
 				for ( ; *p ; ++p) {
 					if (isalnum(*p)) {
@@ -14051,14 +14031,13 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		/* comments */
 		/* XXX TODO: we may need to the walk the comment graph	*/
 		/* to get the latest comment				*/
-		EACH(d->comments) {
+		EACH_COMMENT(s, d) {
 			fs("C ");
-			fs(d->comments[i]);
+			fs(d->cmnts[i]);
 			fc('\n');
 		}
 		if (j) return (strVal);
 		return (nullVal);
-		
 	}
 
 	case KW_DEFAULT: /* DEFAULT */
@@ -14084,9 +14063,9 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		fc(' '); KW("P");
 		if (d->hostname) { fc('@'); fs(d->hostname); } fc(' ');
 		fc('+'); KW("LI"); fs(" -"); KW("LD"); fc('\n');
-		EACH(d->comments) {
+		EACH_COMMENT(s, d) {
 			fs("  ");
-			fs(d->comments[i]);
+			fs(d->cmnts[i]);
 			fc('\n');
 		}
 		fc('\n');
@@ -15010,7 +14989,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	if (d->csetFile) fprintf(out, "B %s\n", d->csetFile);
 	if (d->flags & D_CSET) fprintf(out, "C\n");
 	if (d->dangling) fprintf(out, "D\n");
-	EACH(d->comments) fprintf(out, "c %s\n", d->comments[i]);
+	EACH_COMMENT(s, d) fprintf(out, "c %s\n", d->cmnts[i]);
 	if (d->dateFudge) fprintf(out, "F %d\n", (int)d->dateFudge);
 	EACH(d->include) {
 		delta	*e = sfind(s, d->include[i]);
@@ -16593,4 +16572,3 @@ updateTimestampDB(sccs *s, hash *timestamps, int different)
 	}
 out:	free(relpath);
 }
-
