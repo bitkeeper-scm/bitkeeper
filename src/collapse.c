@@ -426,15 +426,16 @@ fix_setupcomments(sccs *s, char **rmdeltas)
 		d = (delta *)rmdeltas[i];
 
 		if (streq(d->rev, "1.0")) continue;
-		unless (d->comments && d->comments[1]) continue;
+		unless (COMMENTS(d)) continue;
 
 		/*
 		 * If the comments are just one line and then match our
 		 * pattern, then ignore these comments.
 		 */
-		if (!d->comments[2] && re_exec(d->comments[1])) continue;
+		comments_load(s, d);
+		if (!d->cmnts[2] && re_exec(d->cmnts[1])) continue;
 
-		comments = addLine(comments, joinLines("\n", d->comments));
+		comments = addLine(comments, joinLines("\n", d->cmnts));
 	}
 	if (p = loadfile(cfile, 0)) {
 		chomp(p);

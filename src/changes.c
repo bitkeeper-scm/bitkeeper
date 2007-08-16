@@ -536,7 +536,6 @@ doit(int dash)
 		/* loads all file key pairs for csets marked D_SET */
 		csetDB = loadcset(s);
 	}
-	sccs_close(s);
 	if (opts.inc || opts.exc) fileFilt(s, csetDB);
 
 	/*
@@ -703,6 +702,7 @@ sccs_keyinitAndCache(char *key,
 	static	int	rebuilt = 0;
 	datum	k, v;
 	sccs	*s;
+	delta	*d;
 
 	k.dptr = key;
 	k.dsize = strlen(key);
@@ -736,7 +736,11 @@ sccs_keyinitAndCache(char *key,
 	if (mdbm_store(graphDB, k, v, MDBM_INSERT)) { /* cache the new entry */
 		perror("sccs_keyinitAndCache");
 	}
-	if (s) sccs_close(s); /* we don't need the delta body */
+	if (s) {
+		/* capture the comments */
+		for (d = s->table; d; d = d->next) comments_load(s, d);
+		sccs_close(s); /* we don't need the delta body */
+	}
 	return (s);
 }
 
@@ -1010,8 +1014,8 @@ want(sccs *s, delta *e)
 	if (opts.doSearch) {
 		int	i;
 
-		EACH(e->comments) {
-			if (search_either(e->comments[i], opts.search)) {
+		EACH_COMMENT(s, e) {
+			if (search_either(e->cmnts[i], opts.search)) {
 				return (1);
 			}
 		}

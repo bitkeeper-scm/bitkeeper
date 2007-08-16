@@ -423,9 +423,9 @@ test -d "$HERE/DEADBEEF" && {
 echo OK
 
 echo $N Make sure uninstaller removes symlinks.......................$NL
-BIN="$HERE/DEADBEEF"
-echo y | ./bk-academic-licensed "$HERE/DEADBEEF" >OUT 2>&1
-test -f "$HERE/DEADBEEF/bk" || {
+BIN="$HERE/DEADBEEF.1"
+echo y | ./bk-academic-licensed "$BIN" >OUT 2>&1
+test -f "$BIN/bk" || {
 	echo failed
 	echo installer failed
 	cat OUT
@@ -454,8 +454,9 @@ test -h "$HERE/bin/bk" && {
 echo OK
 
 echo $N Uninstaller in upgrade mode should not remove symlinks.......$NL
-echo y | ./bk-academic-licensed "$HERE/DEADBEEF" >OUT 2>&1
-test -f "$HERE/DEADBEEF/bk" || {
+BIN="$HERE/DEADBEEF.2"
+echo y | ./bk-academic-licensed "$BIN" >OUT 2>&1
+test -f "$BIN/bk" || {
 	echo failed
 	echo installer failed
 	cat OUT
@@ -469,14 +470,14 @@ test -f "$HERE/DEADBEEF/bk" || {
 	exit 1
 }
 export PATH="$HERE/bin:$PATH"
-"$HERE/DEADBEEF/bk" uninstall -u >OUT 2>&1 || {
+"$BIN/bk" uninstall -u >OUT 2>&1 || {
 	echo failed
 	echo Uninstaller in upgrade mode failed
 	cat OUT
 	exit 1
 }
 times=2
-while [ -d "$HERE/DEADBEEF" ]; do
+while [ -d "$BIN" ]; do
 	test $times -eq 0 && {
 		echo failed to uninstall
 		exit 1

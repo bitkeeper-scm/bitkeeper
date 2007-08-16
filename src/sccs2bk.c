@@ -116,8 +116,8 @@ sccs2bk(sccs *s, int verbose, char *csetkey)
 	 */
 	if (streq(s->tree->rev, "1.0")) {
 		d = s->tree;
-		EACH(d->comments) {
-			if (strneq("BitKeeper file", d->comments[i], 14)) {
+		EACH_COMMENT(s, d) {
+			if (strneq("BitKeeper file", d->cmnts[i], 14)) {
 				d->flags |= D_SET|D_GONE;
 				break;
 			}
@@ -181,6 +181,7 @@ regen(sccs *s, int verbose, char *key)
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, (ser_t) i)) continue;
+		comments_load(s, d);
 		if (!(d->flags & D_GONE) && (d->type == 'D')) {
 			table[n++] = d;
 		}
@@ -398,8 +399,8 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		fprintf(fh, "D %s %s %s@%s\n",
 		    d->rev, d->sdate, d->user,
 		    d->hostname ? d->hostname : sccs_gethost());
-		EACH(d->comments) {
-			fprintf(fh, "c %s\n", d->comments[i]);
+		EACH_COMMENT(s, d) {
+			fprintf(fh, "c %s\n", d->cmnts[i]);
 		}
 		if (d->dateFudge) fprintf(fh, "F %lu\n", d->dateFudge);
 	}

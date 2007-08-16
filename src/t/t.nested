@@ -1,0 +1,37 @@
+echo $N Setup .......................................................$NL
+commercial project
+mkdir nest
+touch nest/foo
+bk new $Q nest/foo || exit 1
+bk commit $Q -y1 || exit 1
+bk clone $Q ../project ../copy || exit 1
+bk edit $Q nest/foo || exit 1
+echo hi > nest/foo
+bk delta $Q -y2 nest/foo || exit 1
+bk commit $Q -y2 || exit 1
+
+mv nest old
+commercial nest
+mkdir -p nest/SCCS
+mv ../old/SCCS/s.foo nest/SCCS
+bk admin -D nest/foo || exit 1
+bk sfiles -P > /dev/null
+bk mv nest/foo foo || exit 1
+bk commit -ynest $Q || exit 1
+cd ..
+
+KEY=`bk prs -hnd:KEY: -r1.0 nest/foo`
+bk gone $Q $KEY || exit 1
+bk commit $Q -ygone || exit 1
+bk -r check -acf || exit 1
+echo OK
+
+echo $N Do pull .....................................................$NL
+cd "$HERE"/copy
+bk pending
+bk pull $Q 2> GOT || exit 1
+cat > WANT <<EOF
+Marked gone (bk help chk1): nest/foo
+EOF
+cmpfiles WANT GOT
+echo OK

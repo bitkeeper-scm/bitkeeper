@@ -117,17 +117,14 @@ comments_get(delta *d)
 	if (!comment && !saved && gotComment) return (d);
 	if (!comment) {
 		if (saved) {
-			EACH(saved) {
-				d->comments =
-				    addLine(d->comments, strdup(saved[i]));
-			}
+			EACH(saved) comments_append(d, strdup(saved[i]));
 			return (d);
 		}
 		if (sccs_getComments("Group comments", 0, d)) {
 			return (0);
 		}
-		EACH(d->comments) {
-			saved = addLine(saved, strdup(d->comments[i]));
+		EACH_COMMENT(0, d) {
+			saved = addLine(saved, strdup(d->cmnts[i]));
 		}
 	} else {
 		d = sccs_parseArg(d, 'C', comment, 0);
@@ -186,7 +183,7 @@ comments_readcfile(sccs *s, int prompt, delta *d)
 	if (prompt && comments_prompt(cfile)) return (-2);
 	unless (m = mopen(cfile, "r")) return (-1);
 	while (p = mnext(m)) {
-		d->comments = addLine(d->comments, strnonldup(p));
+		comments_append(d, strnonldup(p));
 	}
 	mclose(m);
 	return (0);
@@ -237,4 +234,46 @@ comments_checkStr(u8 *s)
 	return (0);
 }
 
+/*
+ * Append 1 line to the comments for a delta.
+ * A newline is added to the line.
+ */
+void
+comments_append(delta *d, char *line)
+{
+	assert(d->localcomment || (d->cmnts == 0));
 
+	d->localcomment = 1;
+	d->cmnts = addLine(d->cmnts, line);
+}
+
+/* force comments to be allocated locally */
+char **
+comments_load(sccs *s, delta *d)
+{
+	char	**lines = 0;
+	char	*p, *t;
+
+	if (d->localcomment) goto out;
+	d->localcomment = 1;
+	unless (d->cmnts) goto out;
+	assert(s && (s->state & S_SOPEN));
+	p = s->mmap + p2int(d->cmnts);
+	while (*p) {
+		unless (strneq(p, "\001c ", 3)) break;
+		p += 3;
+		t = strchr(p, '\n');
+		lines = addLine(lines, strndup(p, t-p));
+		p = t+1;
+	}
+	d->cmnts = lines;
+out:	return (d->cmnts);
+}
+
+void
+comments_free(delta *d)
+{
+	if (d->localcomment) freeLines(d->cmnts, free);
+	d->cmnts = 0;
+	d->localcomment = 0;
+}

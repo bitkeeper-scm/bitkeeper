@@ -10,6 +10,7 @@ private	char	*type(char *name);
 private void	httphdr(char *file);
 private void	http_error(int status, char *fmt, ...);
 private void	http_index(char *page);
+private	void	http_cat(char *page);
 private void	http_changes(char *page);
 private void	http_cset(char *page);
 private void	http_anno(char *page);
@@ -23,7 +24,6 @@ private void	http_related(char *page);
 private void	http_tags(char *page);
 private void	http_robots(void);
 private void	http_repos(char *page);
-private	void	http_reserved(char *file);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
 private void	header(char *color, char *title, char *header, ...);
@@ -33,7 +33,7 @@ private	void	mk_querystr(void);
 private void	trailer(void);
 private	void	detect_oldurls(char *url);
 private void	flushExit(int status);
-
+private char	*dl_link(void);
 
 #define	COLOR		"white"
 
@@ -60,6 +60,7 @@ private struct pageref {
 	char	*page;
 } pages[] = {
     { http_index,   "index" },
+    { http_cat,	    "cat" },
     { http_changes, "changes" },
     { http_cset,    "cset" },
     { http_dir,     "dir" },
@@ -130,11 +131,6 @@ cmd_httpget(int ac, char **av)
 
 	/* expand url and extract arguments */
 	if (parseurl(url)) http_error(503, "unable to parse URL");
-
-	if (strneq(fpath, "BitKeeper/www/", 14)) {
-		http_reserved(fpath + 14);
-		flushExit(0);
-	}
 
 	/* check for a proper license */
 	if (root) {
@@ -632,7 +628,7 @@ http_dir(char *page)
 	int	i;
 	char	**d;
 	FILE	*f;
-	struct	stat sbuf;
+	time_t	now = time(0);
 	char	buf[MAXLINE];
 
 	unless (d = getdir(fpath)) {
@@ -658,18 +654,17 @@ http_dir(char *page)
 	EACH (d) {
 		if (streq("SCCS", d[i])) continue;
 		concat_path(buf, fpath, d[i]);
-		if (lstat(buf, &sbuf) == -1) continue;
-		unless (S_ISDIR(sbuf.st_mode)) continue;
+		unless (isdir(buf)) continue;
 		printf("<tr bgcolor=#e0e0e0>"
 		    "<td><a href=\"%s/%s\"><img border=0 src=%s></a></td>"
 		    "<td>&nbsp;<a href=\"%s/%s\">%s</a></td>"
 		    "<td>&nbsp;</td>"			/* rev */
 		    "<td>&nbsp;</td>"
-		    "<td align=right>&nbsp;</td>"
+		    "<td align=right>&nbsp;</td>"	/* age */
 		    "<td>&nbsp;</td>"			/* user */
 		    "<td>&nbsp;</td></tr>\n",		/* comments */
 		    d[i], querystr,
-		    BKWWW "folder.png",
+		    BKWWW "folder_plain.png",
 		    d[i], querystr,
 		    d[i]);
 	}
@@ -702,7 +697,7 @@ http_dir(char *page)
 			hash_storeStr(qout, "REV", md5key);
 			mk_querystr();
 			printf("<td><a href=\"%s\"><img border=0 src="
-			    BKWWW "document_plain.png></a></td>"
+			    BKWWW "document_delta.png></a></td>"
 			    "<td>&nbsp;<a href=\"%s\">%s</a></td>",
 			    querystr,
 			    querystr, gfile);
@@ -719,7 +714,7 @@ http_dir(char *page)
 			enc = str_pullup(0,
 			    webencode(0, gfile ,strlen(gfile)+1));
 			printf("<td><a href=\"%s%s\"><img border=0 src="
-			    BKWWW "document_plain.png></a></td>",
+			    BKWWW "document_delta.png></a></td>",
 			    enc, querystr);
 			hash_storeStr(qout, "PAGE", "anno");
 			hash_storeStr(qout, "REV", md5key);
@@ -743,6 +738,31 @@ http_dir(char *page)
 		}
 	}
 	pclose(f);
+
+	cmd = aprintf("bk sfiles -1x '%s'", fpath);
+	f = popen(cmd, "r");
+	free(cmd);
+	while (fnext(buf, f)) {
+		chomp(buf);
+		gfile = basenm(buf);
+		hash_storeStr(qout, "PAGE", "cat");
+		hash_deleteStr(qout, "REV");
+		mk_querystr();
+		enc = str_pullup(0, webencode(0, gfile ,strlen(gfile)+1));
+		printf("%s<tr bgcolor=white>\n"
+		    "<td><img border=0 src="
+		    BKWWW "document_plain.png></td>"
+		    "<td><a href=\"%s%s\">%s<a/></td>"
+		    "<td align=center>-</td>"
+		    "<td align=center>-</td>"
+		    "<td align=right>%s</td>"
+		    "<td align=center>-</td>"
+		    "<td>non-version controlled file</td>\n"
+		    "</tr>\n%s",
+		    prefix, enc, querystr, gfile,
+		    age(now - mtime(buf), "&nbsp;"), suffix);
+	}
+	pclose(f);
 	puts(INNER_END OUTER_END);
 	trailer();
 }
@@ -755,9 +775,16 @@ http_anno(char *page)
 	char	buf[4096];
 	int	n, empty = 1;
 	char	*rev = hash_fetchStr(qin, "REV");
+	char	*freeme;
 
 	httphdr(".html");
-	header(COLOR, "Annotated listing of %s", 0, fpath);
+	/*
+	 * Second param is title, third is header, both use same
+	 * varargs list, so use hack of %.0s to have it skip string
+	 */
+	header(COLOR, "Annotated listing of %s%.0s", 
+	    "Annotated listing of %.0s%s", fpath, freeme = dl_link());
+	free(freeme);
 
 	printf("<pre><font size=3>");
 	sprintf(buf, "bk annotate -Aru -r'%s' '%s'", rev, fpath);
@@ -778,6 +805,26 @@ http_anno(char *page)
 	if (empty) puts("\nEmpty file");
 	puts("</font></pre>");
 	trailer();
+}
+
+private char *
+dl_link(void)
+{
+	char	**link = 0;
+
+	link = str_append(link, "<a href=\"/", 0);
+	link = webencode(link, root, strlen(root)+1);
+	link = str_append(link, "/", 0);
+	link = webencode(link, fpath, strlen(fpath)+1);
+	link = str_append(link, "?PAGE=cat", 0);
+	if (hash_fetchStr(qin, "REV")) {
+		link = str_append(link, "&REV=", 0);
+		link = webencode(link, qin->vptr, qin->vlen);
+	}
+	link = str_append(link, "\">", 0);
+	link = webencode(link, fpath, strlen(fpath)+1);
+	link = str_append(link, "</a>", 0);
+	return (str_pullup(0, link));
 }
 
 #define BLACK 1
@@ -827,9 +874,16 @@ http_diffs(char *page)
 	char	dspec[MAXPATH*2];
 	char	argrev[100];
 	char	buf[4096];
+	char	*freeme;
 
 	httphdr(".html");
-	header(COLOR, "Changes for %s", 0, fpath);
+	/*
+	 * Second param is title, third is header, both use same
+	 * varargs list, so use hack of %.0s to have it skip string
+	 */
+	header(COLOR, "Changes for %s%.0s", 
+	    "Changes for %.0s%s", fpath, freeme = dl_link());
+	free(freeme);
 
 	hash_storeStr(qout, "PAGE", "anno");
 	mk_querystr();
@@ -1425,7 +1479,7 @@ parseurl(char *url)
 			if (streq(fpath, ".")) {
 				page = "index";
 			} else {
-				page = dir ? "dir" : "history";
+				page = dir ? "dir" : "cat";
 			}
 		} else {
 			page = dir ? "repos" : "cat";
@@ -1728,7 +1782,7 @@ http_repos(char *page)
 			enc = str_pullup(0, webencode(0, d[i],strlen(d[i])+1));
 			printf("<tr bgcolor=white>\n"
 			    "<td align=center><a href=\"%s/%s\">"
-			    "<img border=0 src=" BKWWW "repo.png></a></td>"
+			    "<img border=0 src=" BKWWW "folder_delta.png></a></td>"
 			    "<td>&nbsp;<a href=\"%s/%s\">%s</a></td>\n"
 			    "<td align=center>%s</td></tr>",
 			    enc, querystr, 
@@ -1739,7 +1793,7 @@ http_repos(char *page)
 			enc = str_pullup(0, webencode(0, d[i], strlen(d[i])+1));
 			printf("<tr bgcolor=#e0e0e0>\n"
 			    "<td align=center><a href=\"%s/%s\">"
-			    "<img border=0 src=" BKWWW "folder.png></a></td>"
+			    "<img border=0 src=" BKWWW "folder_plain.png></a></td>"
 			    "<td>&nbsp;<a href=\"%s/%s\">%s</a></td>\n"
 			    "<td align=center>%s</td></tr>",
 			    enc, querystr, 
@@ -1821,22 +1875,35 @@ detect_oldurls(char *url)
 }
 
 private void
-http_reserved(char *file)
+http_cat(char *page)
 {
-	char	*path;
 	FILE	*f;
 	int	i;
+	char	*cmd, *file;
 	char	buf[MAXLINE];
+	char	*rev = hash_fetchStr(qin, "REV");
 
-	path = aprintf("%s/www/%s", bin, file);
-	unless (f = fopen(path, "r")) http_error(404, "unknown file");
-	free(path);
+	/* handle reserved namespace */
+	// XXX search both dirs? which order?
+	if (strneq(fpath, "BitKeeper/www/", 14)) {
+		file = aprintf("%s/www/%s", bin, fpath + 14);
+	} else {
+		file = fpath;
+	}
+	if (rev) {
+		cmd = aprintf("bk get -qkpr'%s' '%s'", rev, file);
+	} else {
+		cmd = aprintf("bk cat '%s'", file);
+	}
+	f = popen(cmd, "r");
+	free(cmd);
+	unless (f) http_error(404, "unknown file");
 	httphdr(file);
 
 	while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
 		fwrite(buf, 1, i, stdout);
 	}
-	fclose(f);
+	pclose(f);
 }
 
 private void

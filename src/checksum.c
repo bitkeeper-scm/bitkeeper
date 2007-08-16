@@ -217,9 +217,9 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 		if (d->hostname) {
 			new = adler32(new, d->hostname, strlen(d->hostname));
 		}
-		EACH(d->comments) {
+		EACH_COMMENT(s, d) {
 			new = adler32(new,
-			    d->comments[i], strlen(d->comments[i]));
+			    d->cmnts[i], strlen(d->cmnts[i]));
 		}
 		unless (fix) {
 			fprintf(stderr, "%s:%s actual=<none> sum=%d\n",

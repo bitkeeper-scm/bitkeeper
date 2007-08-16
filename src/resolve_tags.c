@@ -22,12 +22,12 @@ t_help(resolve *rs)
 
 	fprintf(stderr, "Tag ``%s'' was added to two changesets.\n", t->name);
 	fprintf(stderr, "\nLocal:  ChangeSet %s\n", t->local->rev);
-	EACH(t->local->comments) {
-		fprintf(stderr, "\t%s\n", t->local->comments[i]);
+	EACH_COMMENT(rs->s, t->local) {
+		fprintf(stderr, "\t%s\n", t->local->cmnts[i]);
 	}
 	fprintf(stderr, "Remote: ChangeSet %s\n", t->remote->rev);
-	EACH(t->remote->comments) {
-		fprintf(stderr, "\t%s\n", t->remote->comments[i]);
+	EACH_COMMENT(rs->s, t->remote) {
+		fprintf(stderr, "\t%s\n", t->remote->cmnts[i]);
 	}
 	fprintf(stderr, "\n");
 	for (i = 0; rs->funcs[i].spec; i++) {

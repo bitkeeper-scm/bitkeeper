@@ -162,6 +162,12 @@ case $CMD in
 			echo succeeded. \(GUI tests succeeded too\)
 			exit 1
 		}
+		MSG="Skipping GUI tests because Wish did not run"
+		grep "$MSG" $LOG >/dev/null 2>&1
+		test $? = 0 && {
+			echo succeeded. \(GUI tests skipped\)
+			exit 1
+		}
 	fi
 	echo is not done yet.
 	;;
