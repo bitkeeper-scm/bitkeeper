@@ -176,9 +176,10 @@ SCRIPTS	= applypatch bk.script import \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build \
-	www/arrow.gif www/bkpowered.gif www/repo.gif www/back.gif www/dir.gif \
-	www/file.gif www/trailer.gif \
-	www/document_plain.png www/folder.png www/repo.png
+	www/arrow.gif www/bkpowered.gif www/back.gif \
+	www/trailer.gif \
+	www/document_plain.png www/document_delta.png \
+	www/folder_plain.png www/folder_delta.png
 PSCR	= t/doit t/guitest
 PROGS	= hidestring libc/mtst$(EXE)
 LIBS	= libc/libc.a tomcrypt/libtomcrypt.a tommath/libtommath.a
