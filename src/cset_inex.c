@@ -172,7 +172,7 @@ getComments(char *op, char *revs)
 	}
 	while (fgets(&buf[14], sizeof(buf) - 14, f)) {
 		chop(buf);
-		d->comments = addLine(d->comments, strdup(buf));
+		comments_append(d, strdup(buf));
 	}
 	pclose(f);
 	return (d);
@@ -187,8 +187,8 @@ commit(int quiet, delta *d)
 	char	*tmp = bktmp(0, "commit");
 	FILE	*f = fopen(tmp, "w");
 
-	EACH(d->comments) {
-		fputs(d->comments[i], f);
+	EACH_COMMENT(0, d) {
+		fputs(d->cmnts[i], f);
 		fputc('\n', f);
 	}
 	fclose(f);

@@ -115,12 +115,12 @@ checkXflags(sccs *s, delta *d, int what)
 		}
 		return (0);
 	}
-	EACH(d->comments) {
-		if (strneq(d->comments[i], "Turn on ", 8)) {
-			t = &(d->comments[i][8]);
+	EACH_COMMENT(s, d) {
+		if (strneq(d->cmnts[i], "Turn on ", 8)) {
+			t = &(d->cmnts[i][8]);
 			p = &added;
-		} else if (strneq(d->comments[i], "Turn off ", 9)) {
-			t = &(d->comments[i][9]);
+		} else if (strneq(d->cmnts[i], "Turn off ", 9)) {
+			t = &(d->cmnts[i][9]);
 			p = &deleted;
 		} else {
 			continue;
@@ -152,7 +152,7 @@ checkXflags(sccs *s, delta *d, int what)
 	/* just in case this blows up in the field */
 	if (getenv("_BK_NO_XFLAGS_CHECK")) return (0);
 
-	// fprintf(stderr, "\ndelta = %s, %s\n", d->rev, d->comments[1]);
+	// fprintf(stderr, "\ndelta = %s, %s\n", d->rev, d->cmnts[1]);
 	// fprintf(stderr, "old\t"); pflags(old);
 	// fprintf(stderr, "\nnew\t"); pflags(new);
 	// fprintf(stderr, "\nwant\t"); pflags(want);

@@ -449,6 +449,8 @@ nameOK(opts *opts, sccs *s)
 	sccs	*local = 0;
 	int	ret;
 
+	if (CSET(s)) return (1); /* ChangeSet won't have conflicts */
+
 	/*
 	 * Same path slot and key?
 	 */
@@ -460,7 +462,7 @@ nameOK(opts *opts, sccs *s)
 		strcpy(realname, path);
 	}
 	if (streq(path, realname) &&
-	    (local = sccs_init(path, INIT_NOCKSUM)) &&
+	    (local = sccs_init(path, INIT_NOCKSUM|INIT_MUSTEXIST)) &&
 	    HAS_SFILE(local)) {
 		if (EDITED(local) && sccs_hasDiffs(local, SILENT, 1)) {
 			fprintf(stderr,
@@ -1315,6 +1317,54 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	}
 }
 
+/*
+ * Walk a directory tree and determine if it is a directory conflict or
+ * it can be removed because the only contents are sfiles that will be
+ * renamed as part of the incoming patch.
+ */
+private int
+findDirConflict(char *file, struct stat *sb, void *token)
+{
+	opts	*opts = token;
+	char	*t;
+	char	*sfile;
+	char	buf[MAXKEY];
+
+	if (S_ISDIR(sb->st_mode)) {
+		opts->dirlist = addLine(opts->dirlist, strdup(file));
+		return (0);
+	}
+
+	if (t = strstr(file, "/SCCS/")) {
+		if (strneq(t+6, "s.", 2)) {
+			sccs	*local = sccs_init(file, INIT_NOCKSUM);
+
+			sccs_sdelta(local, sccs_ino(local), buf);
+			sccs_free(local);
+			unless (mdbm_fetch_str(opts->rootDB, buf)) {
+				if (opts->debug) {
+					fprintf(stderr,
+					    "%s new sfile in local repo\n",
+					    file);
+				}
+				return (DIR_CONFLICT);
+			}
+		}
+		/* ignore other files in SCCS */
+		return (0);
+	}
+	/*
+	 * Ignore gfiles with sfiles, because we'll pick them up above
+	 */
+	sfile = name2sccs(file);
+	if (exists(sfile)) {
+		free(sfile);
+		return (0);
+	}
+	free(sfile);
+	return (DIR_CONFLICT);
+}
+
 private int
 pathConflict(opts *opts, char *gfile)
 {
@@ -1338,6 +1388,7 @@ pathConflict(opts *opts, char *gfile)
 					    gfile);
 				}
 				*t = '/';
+				free(sfile);
 				return (1);
 			}
 			free(sfile);
@@ -1347,6 +1398,20 @@ pathConflict(opts *opts, char *gfile)
 		*s = '/';
 	}
 	return (0);
+}
+
+private	void
+deleteDirs(char **list)
+{
+	int	i;
+
+	reverseLines(list);
+	EACH(list) {
+		if (rmdir(list[i]) == 0) {
+			fprintf(stderr,
+			    "resolve: removing empty directory: %s\n", list[i]);
+		}
+	}
 }
 
 
@@ -1392,9 +1457,16 @@ slotTaken(opts *opts, char *slot)
 		if (exists(gfile)) {
 			int	conf;
 
-			conf = isdir(gfile) ? DIR_CONFLICT : GFILE_CONFLICT;
-			if (opts->debug) {
-			    	fprintf(stderr,
+			if (isdir(gfile)) {
+				opts->dirlist = 0;
+				conf = walkdir(gfile, findDirConflict, opts);
+				deleteDirs(opts->dirlist);
+				freeLines(opts->dirlist, free);
+			} else {
+				conf = GFILE_CONFLICT;
+			}
+			if (conf && opts->debug) {
+				fprintf(stderr,
 				    "%s %s exists in local repository\n",
 				    conf == DIR_CONFLICT ? "dir" : "file",
 				    gfile);
@@ -1489,11 +1561,12 @@ err:		if (s) sccs_free(s);
 		sccs_newchksum(sf);
 		sccs_free(sf);
 		sf = 0;
-	}       
+	}
 	pclose(f);
 	f = 0;
 	/* preserve ChangeSet comments */
-	lines2File(a->comments, CCHANGESET);
+	comments_load(s, a);
+	lines2File(a->cmnts, CCHANGESET);
 	/* now stripdel the top revision of the ChangeSet file */
 	a->flags |= D_SET;
 	MK_GONE(s, a);

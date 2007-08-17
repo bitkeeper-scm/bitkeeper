@@ -17,17 +17,6 @@ do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 	sccs_free(s);
 }
 
-void
-do_clean(char *file, int flags)
-{
-	sccs *s;
-
-	if (s = sccs_init(file, INIT_NOCKSUM)) {
-		if (HASGRAPH(s)) sccs_clean(s, flags);
-		sccs_free(s);
-	}
-}
-
 int
 get(char *path, int flags, char *output)
 {

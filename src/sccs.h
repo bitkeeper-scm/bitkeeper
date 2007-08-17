@@ -62,6 +62,7 @@ int	checking_rmdir(char *dir);
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_CHK_STIME	0x00010000	/* check that s.file <= gfile */
 #define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
+#define	INIT_MUSTEXIST	0x00040000	/* the sfile must exist or we fail */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -433,7 +434,7 @@ typedef struct delta {
 	ser_t	pserial;		/* serial number of parent */
 	ser_t	*include;		/* include serial #'s */
 	ser_t	*exclude;		/* exclude serial #'s */
-	char	**comments;		/* Comment log */
+	char	**cmnts;		/* comment offset or lines array */
 	/* New stuff in lm's sccs */
 	ser_t	ptag;			/* parent in tag graph */
 	ser_t	mtag;			/* merge parent in tag graph */
@@ -463,10 +464,15 @@ typedef struct delta {
 	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
 					/* Needed for tag conflicts with 2 */
 					/* open tips, so maintained always */
+	u32	localcomment:1;		/* comments are stored locally */
 	char	type;			/* Delta or removed delta */
 } delta;
+#define	COMMENTS(d)	((d)->cmnts != 0)
 #define	TAG(d)		((d)->type != 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
+#define	EACH_COMMENT(s, d) \
+			comments_load(s, d); \
+			EACH_INDEX(d->cmnts, i)
 
 /*
  * Rap on lod/symbols wrt deltas.
@@ -621,6 +627,7 @@ struct sccs {
 	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
 	u32	prs_one:1;	/* stop printing after printing the first one */
 	u32	prs_join:1;	/* for joining together items in dspecs */
+	u32	prs_all:1;	/* including tag deltas in prs output */
 	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
@@ -829,7 +836,6 @@ int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
 int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
-void	do_clean(char *file, int flags);
 int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
@@ -947,6 +953,7 @@ int	sccs_readlockf(char *file, pid_t *pidp, char **hostp, time_t *tp);
 sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
+void	sccs_kidlink(delta *d);
 void	sccs_renumber(sccs *s, u32 flags, int spinners);
 char 	*sccs_iskeylong(char *key);
 int	linelen(char *s);
@@ -1114,7 +1121,7 @@ int	out(char *buf);
 int	getlevel(void);
 delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
 int	cset_map(sccs *s, int extras);
-int	cset_write(sccs *s);
+int	cset_write(sccs *s, int spinners);
 int	cset_diffs(sccs *s, ser_t ser);
 sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
@@ -1237,6 +1244,10 @@ void	dspec_printeach(sccs *s, FILE *out, char ***vbuf);
 int	kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d);
 void	show_s(sccs *s, FILE *out, char ***vbuf, char *data, int len);
 void	show_d(sccs *s, FILE *out, char ***vbuf, char *format, int num);
+void	comments_append(delta *d, char *line);
+char	**comments_load(sccs *s, delta *d);
+void	comments_free(delta *d);
+void	gdb_backtrace(void);
 char	*bp_lookup(sccs *s, delta *d);
 delta	*bp_fdelta(sccs *s, delta *d);
 int	bp_fetch(sccs *s, delta *din);

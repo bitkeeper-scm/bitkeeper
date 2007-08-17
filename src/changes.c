@@ -61,6 +61,7 @@ private	void	fileFilt(sccs *s, MDBM *csetDB);
 private	int	prepSearch(char *str);
 
 private	hash	*seen; /* list of keys seen already */
+private	sccs	*s_cset;
 
 int
 changes_main(int ac, char **av)
@@ -213,6 +214,7 @@ usage:			system("bk help -s changes");
 		proj_cd2root();
 	}
 
+	s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
 	if (opts.local) {
 		if (rc = doit_local(nac, nav, lurls)) goto out;
 	}
@@ -265,7 +267,8 @@ usage:			system("bk help -s changes");
 	/*
 	 * clean up
 	 */
-out:	if (pid > 0)  {
+out:	if (s_cset) sccs_free(s_cset);
+	if (pid > 0)  {
 		fclose(stdout);
 		waitpid(pid, 0, 0);
 	}
@@ -305,7 +308,9 @@ _doit_local(char **nav, char *url)
 	int	status;
 	int	rc = 0;
 	FILE	*p;
+	remote	*r;
 	char	buf[MAXKEY];
+	char	tmpf[MAXPATH];
 
 	/*
 	 * What we get here is: bk synckey -l url | bk changes opts -
@@ -315,8 +320,15 @@ _doit_local(char **nav, char *url)
 		assert(f);
 	}
 
-	sprintf(buf, "bk synckeys -l '%s'", url);
-	p = popen(buf, "r");
+	r = remote_parse(url, REMOTE_BKDURL);
+	assert(r);
+
+	bktmp(tmpf, 0);
+	p = fopen(tmpf, "w");
+	rc = synckeys(r, s_cset, PK_LKEY, p);
+	fclose(p);
+	remote_free(r);
+	p = fopen(tmpf, "r");
 	assert(p);
 	while (fnext(buf, p)) {
 		if (opts.showdups) {
@@ -331,10 +343,8 @@ _doit_local(char **nav, char *url)
 			*v += 1;
 		}
 	}
-	status = pclose(p);
-	unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) {
-		rc = 1;
-	}
+	fclose(p);
+	unlink(tmpf);
 	if (opts.showdups) {
 		status = pclose(f);
 		unless (WIFEXITED(status) && (WEXITSTATUS(status) == 0)) rc=1;
@@ -460,7 +470,6 @@ private int
 doit(int dash)
 {
 	char	cmd[MAXKEY];
-	char	s_cset[] = CHANGESET;
 	char	*spec;
 	pid_t	pid;
 	sccs	*s = 0;
@@ -475,7 +484,7 @@ doit(int dash)
 	} else {
 		spec = opts.diffs ? VSPEC : DSPEC;
 	}
-	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM);
+	s = s_cset;
 	unless (s && HASGRAPH(s)) {
 		system("bk help -s changes");
 		exit(1);
@@ -529,7 +538,6 @@ doit(int dash)
 		/* loads all file key pairs for csets marked D_SET */
 		csetDB = loadcset(s);
 	}
-	sccs_close(s);
 	if (opts.inc || opts.exc || opts.BAM) fileFilt(s, csetDB);
 
 	/*
@@ -578,7 +586,6 @@ next:
 		}
 		mdbm_close(csetDB);
 	}
-	if (s) sccs_free(s);
 	return (rc);
 }
 
@@ -697,6 +704,7 @@ sccs_keyinitAndCache(char *key,
 	static	int	rebuilt = 0;
 	datum	k, v;
 	sccs	*s;
+	delta	*d;
 
 	k.dptr = key;
 	k.dsize = strlen(key);
@@ -728,7 +736,11 @@ sccs_keyinitAndCache(char *key,
 	if (mdbm_store(graphDB, k, v, MDBM_INSERT)) { /* cache the new entry */
 		perror("sccs_keyinitAndCache");
 	}
-	if (s) sccs_close(s); /* we don't need the delta body */
+	if (s) {
+		/* capture the comments */
+		for (d = s->table; d; d = d->next) comments_load(s, d);
+		sccs_close(s); /* we don't need the delta body */
+	}
 	return (s);
 }
 
@@ -1000,8 +1012,8 @@ want(sccs *s, delta *e)
 	if (opts.doSearch) {
 		int	i;
 
-		EACH(e->comments) {
-			if (search_either(e->comments[i], opts.search)) {
+		EACH_COMMENT(s, e) {
+			if (search_either(e->cmnts[i], opts.search)) {
 				return (1);
 			}
 		}
@@ -1040,8 +1052,12 @@ send_part1_msg(remote *r, char **av)
 
 	if (opts.remote) {
 		probef = bktmp(0, 0);
-		unless (rc = sysio(0, probef, 0, "bk", "_probekey", SYS)) {
+		if (f = fopen(probef, "wb")) {
+			rc = probekey(s_cset, 0, f);
+			fclose(f);
 			extra = size(probef);
+		} else {
+			rc = 1;
 		}
 	}
 	unless (rc) rc = send_file(r, cmdf, extra);
@@ -1126,9 +1142,8 @@ send_part2_msg(remote *r, char **av, char *key_list)
 private int
 changes_part1(remote *r, char **av, char *key_list)
 {
-	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	int	flags, fd, rc, rcsets = 0, rtags = 0;
-	sccs	*s;
+	char	buf[MAXPATH];
 
 	if (bkd_connect(r, 0, 1)) return (-1);
 	if (send_part1_msg(r, av)) return (-1);
@@ -1176,9 +1191,8 @@ changes_part1(remote *r, char **av, char *key_list)
 	 */
 	bktmp(key_list, "keylist");
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
-	s = sccs_init(s_cset, 0);
 	flags = PK_REVPREFIX|PK_RKEY;
-	rc = prunekey(s, r, seen, fd, flags, 0, NULL, &rcsets, &rtags);
+	rc = prunekey(s_cset, r, seen, fd, flags, 0, NULL, &rcsets, &rtags);
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:
@@ -1190,11 +1204,9 @@ changes_part1(remote *r, char **av, char *key_list)
 		}
 		close(fd);
 		disconnect(r, 2);
-		sccs_free(s);
 		return (-1);
 	}
 	close(fd);
-	sccs_free(s);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	return (rcsets + rtags);
 }

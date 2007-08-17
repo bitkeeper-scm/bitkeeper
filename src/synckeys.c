@@ -62,29 +62,42 @@ int
 probekey_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*d = 0;
+	char	*rev = 0;
+	int	rc;
 
 	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
 		out("ERROR-Can't init changeset\n@END@\n");
 		exit(1);
 	}
 	if (av[1] && strneq(av[1], "-r", 2)) {
-		unless (d = sccs_findrev(s, &av[1][2])) {
-			printf("ERROR-Can't find revision %s\n", &av[1][2]);
+		rev = &av[1][2];
+	}
+	rc = probekey(s, rev, stdout);
+	sccs_free(s);
+	return (rc);
+}
+
+int
+probekey(sccs *s, char *rev, FILE *f)
+{
+	delta	*d;
+
+	if (rev) {
+		unless (d = sccs_findrev(s, rev)) {
+			fprintf(f, "ERROR-Can't find revision %s\n", rev);
 			return (1);
 		}
 		range_gone(s, d, D_GONE);
 	} else {
 		d = sccs_top(s);
 	}
-	fputs("@LOD PROBE@\n", stdout);
-	lod_probekey(s, d, stdout);
-	tag_probekey(s, stdout);
-	fputs("@END PROBE@\n", stdout);
-	sccs_free(s);
+	fputs("@LOD PROBE@\n", f);
+	lod_probekey(s, d, f);
+	tag_probekey(s, f);
+	fputs("@END PROBE@\n", f);
+
 	return (0);
 }
-
 /*
  * This one must be called after we have done sccs_color and must
  * not stop at an already colored node because a node can be both
@@ -449,7 +462,10 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 
 
 empty:	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_RED) continue;
+		if (d->flags & D_RED) {
+			d->flags &= ~D_RED;
+			continue;
+		}
 		if (flags & PK_LKEY) {
 			sccs_md5delta(s, d, key);
 			writen(outfd, key, strlen(key));
@@ -545,11 +561,10 @@ send_sync_msg(remote *r)
  *	3 empty dir
  *	4 package doesn't match
  */
-private int
-synckeys(remote *r, int flags)
+int
+synckeys(remote *r, sccs *s, int flags, FILE *fout)
 {
 	int	rc = 1, i;
-	sccs	*s = 0;
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r, 0, 1)) return (1);
@@ -573,12 +588,9 @@ synckeys(remote *r, int flags)
 	/*
 	 * What we want is: "remote => bk _prunekey => stdout"
 	 */
-	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
-		fprintf(stderr, "synckeys: Unable to read SCCS/s.ChangeSet\n");
-		goto out;
-	}
 	flags |= PK_REVPREFIX;
-	i = prunekey(s, r, NULL, 1, flags, 0, NULL, NULL, NULL);
+	fflush(fout);
+	i = prunekey(s, r, NULL, fileno(fout), flags, 0, NULL, NULL, NULL);
 	if (i < 0) {
 		switch (i) {
 		    case -2:	/* needed to force bkd unlock */
@@ -593,8 +605,7 @@ synckeys(remote *r, int flags)
 		goto out;
 	}
 	rc = 0;
-out:	if (s) sccs_free(s);
-	disconnect(r, 2);
+out:	disconnect(r, 2);
 	return (rc);
 }
 
@@ -605,6 +616,7 @@ synckeys_main(int ac, char **av)
 {
 	int	c, rc = 1;
 	remote  *r = 0;
+	sccs	*s;
 	int	flags = 0;
 
 	while ((c = getopt(ac, av, "lr")) != -1) {
@@ -624,7 +636,12 @@ synckeys_main(int ac, char **av)
 		fprintf(stderr, "synckeys: cannot find package root.\n"); 
 		goto out;
 	}
-	rc = synckeys(r, flags);
+	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
+		fprintf(stderr, "synckeys: Unable to read SCCS/s.ChangeSet\n");
+		goto out;
+	}
+	rc = synckeys(r, s, flags, stdout);
+	sccs_free(s);
 out:	if (r) remote_free(r);
 	return (rc);
 }

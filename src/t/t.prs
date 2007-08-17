@@ -177,6 +177,14 @@ echo "data" >FILE3
 bk new $Q FILE3
 bk edit $Q FILE3
 cat >cmt <<EOF
+z1
+z2
+z3
+z4
+EOF
+bk delta $Q -f -Ycmt FILE3
+bk edit $Q FILE3
+cat >cmt <<EOF
 l1
 l2
 l3
@@ -191,7 +199,8 @@ $each(:C:){:each::each:x}		# l1l1xl2l2xl3l3xl4l4x
 $each(:C:){(:C:) :each:x}		# l1 l1xl2 l2xl3 l3xl4 l4x
 $each(:C:){:line: :each:x}		# 1 l1x2 l2x3 l3x4 l4x
 $each(:C:){$if(:line:=1){one}$if(:line:=2){two}$if(:line:=3){three}}	# onetwothree
-$each(:REV:){:each:}		# 1.2
+$each(:REV:){:each:}		# 1.3
+$each(:C:){:JOIN::each:}		# l1,l2,l3,l4
 EOF
 cat cmds | perl -ne '
 	chomp;
@@ -315,13 +324,28 @@ cmpfiles CMP1 CMP2
 echo OK
 
 echo $N test EVEN ODD and JOIN ......................................$NL
-
 cat <<EOF > WANT
 e1.4,o1.3,e1.2,o1.1
 EOF
 bk prs -r..1.4 -hd'$if(:EVEN:){:JOIN:e:REV:}$if(:ODD:){:JOIN:o:REV:}' \
 	FILE > GOT
 echo >> GOT	# missing newline
+cmpfiles WANT GOT
+echo OK
+
+echo $N test JOIN is reset for each \$each ...........................$NL
+# Similar to FILE3 tests done above, but we need two revisions
+bk prs -r1.2,1.3 -hnd'Comments $each(:C:){:JOIN:(:C:)}' FILE3 > GOT
+cat <<'EOF' > WANT
+Comments l1,l2,l3,l4
+Comments z1,z2,z3,z4
+EOF
+cmpfiles WANT GOT
+bk prs -r1.2,1.3 -hd':JOIN:$each(:C:){:JOIN:(:C:)}' FILE3 > GOT
+echo >> GOT	# newline
+cat <<'EOF' > WANT
+l1,l2,l3,l4,z1,z2,z3,z4
+EOF
 cmpfiles WANT GOT
 echo OK
 

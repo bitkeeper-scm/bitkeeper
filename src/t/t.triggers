@@ -59,7 +59,103 @@ test -z "$DUMP_VARS" || {
 	cat "$HERE/post-commit"
 }
 
+echo $N Test trigger path support by running repo triggers 3x .......$NL
+cd "$HERE"
+bk clone $Q project test_path
+cd test_path
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-commit <<EOF
+#!/bin/bash
+echo \$BK_TRIGGERPATH >> "$HERE/paths"
+exit 0
+EOF
+chmod +x BitKeeper/triggers/*
+echo whatever > whatever
+bk new $Q whatever
+BK_CONFIG='triggers: .|.|.' bk commit $Q -ywhatever
+test -f "$HERE/paths" || {
+	echo did not run the triggers
+	exit 1
+}
+grep -q "./BitKeeper/triggers/pre-commit" "$HERE/paths" || {
+	echo bad paths
+	cat "$HERE/paths"
+	exit 1
+}
+test `wc -l < "$HERE/paths"` -eq 3 || {
+	echo did not run all trigger paths
+	cat "$HERE/paths"
+	exit 1
+}
+echo OK
+
+echo $N make sure that triggers:none works ..........................$NL
+echo whatever > whatever2
+bk new $Q whatever2
+rm -f "$HERE/paths"
+BK_CONFIG='triggers: none' bk commit $Q -ywhatever
+test -f "$HERE/paths" && {
+	echo should not have run the triggers
+	exit 1
+}
+echo OK
+
+echo $N Test trigger path support with path outside of repo .........$NL
+mkdir -p "$HERE/trigger_dir/BitKeeper/triggers"
+cp BitKeeper/triggers/pre-commit "$HERE/trigger_dir/BitKeeper/triggers/"
+chmod +x "$HERE/trigger_dir/BitKeeper/triggers/pre-commit"
+echo whatever > whatever3
+bk new $Q whatever3
+rm -f "$HERE/paths"
+BK_CONFIG="triggers: $HERE/trigger_dir" bk commit $Q -ywhatever
+test -f "$HERE/paths" || {
+	echo did not run the triggers
+	exit 1
+}
+cat > WANT <<EOF
+$HERE/trigger_dir/BitKeeper/triggers/pre-commit
+EOF
+cmpfiles WANT "$HERE/paths"
+echo OK
+
+echo $N Test trigger path support with path inside+outside repo .....$NL
+echo whatever > whatever4
+bk new $Q whatever4
+rm -f "$HERE/paths"
+BK_CONFIG="triggers: .|$HERE/trigger_dir" bk commit $Q -ywhatever
+test -f "$HERE/paths" || {
+	echo did not run the triggers
+	exit 1
+}
+cat > WANT <<EOF
+$HERE/test_path/BitKeeper/triggers/pre-commit
+$HERE/trigger_dir/BitKeeper/triggers/pre-commit
+EOF
+cmpfiles WANT "$HERE/paths"
+echo OK
+
+echo $N Test trigger path support with path inside+BK_DOTBK .........$NL
+mv "$HERE/trigger_dir/BitKeeper" "$BK_DOTBK"
+rmdir "$HERE/trigger_dir"
+echo whatever > whatever5
+bk new $Q whatever5
+rm -f "$HERE/paths"
+BK_CONFIG='triggers: .|$BK_DOTBK' bk commit $Q -ywhatever
+test -f "$HERE/paths" || {
+	echo did not run the triggers
+	exit 1
+}
+cat > WANT <<EOF
+$HERE/test_path/BitKeeper/triggers/pre-commit
+$BK_DOTBK/BitKeeper/triggers/pre-commit
+EOF
+cmpfiles WANT "$HERE/paths"
+echo OK
+
+exit 0
+
 echo $N Make sure commit can be told to fail and it does so nicely ..$NL
+cd "$HERE/project"
 cat > BitKeeper/triggers/pre-commit <<EOF
 #!/bin/bash
 exit 1

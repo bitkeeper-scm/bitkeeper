@@ -34,6 +34,7 @@ names_main(int ac, char **av)
 		return (1);
 	}
 	for (n = sfileFirst("names", &av[optind], 0); n; n = sfileNext()) {
+		if (streq(n, CHANGESET)) continue;
 		unless (s = sccs_init(n, 0)) continue;
 		unless (d = sccs_top(s)) {
 			sccs_free(s);

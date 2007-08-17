@@ -215,7 +215,6 @@ check_main(int ac, char **av)
 			if (fix) s = fix_merges(s);
 			errors |= 0x20;
 		}
-		sccs_close(s); /* for HP */
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,

@@ -47,7 +47,7 @@ sccs_getComments(char *file, char *rev, delta *n)
 			fprintf(stderr, "Skipped.\n");
 			continue;
 		}
-		n->comments = addLine(n->comments, strdup(buf2));
+		comments_append(n, strdup(buf2));
 		if (rev) {
 			fprintf(stderr, "%s@%s>>  ", file, rev);
 		} else {

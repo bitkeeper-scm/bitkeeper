@@ -24,7 +24,9 @@ private	struct {
 
 private	int	push(char **av, remote *r, char **envVar);
 private	void	pull(remote *r);
-private	void	listIt(sccs *s, int list);
+private	void	listIt(char *keys, int list);
+
+private	sccs	*s_cset;
 
 private void
 usage(void)
@@ -120,7 +122,7 @@ err:		freeLines(envVar, free);
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
-
+	s_cset = sccs_csetInit(0);
 	EACH (urls) {
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
@@ -158,7 +160,7 @@ err:		freeLines(envVar, free);
 		if (rc == -2) rc = 1; /* if retry failed, set exit code to 1 */
 		if (rc) break;
 	}
-
+	sccs_free(s_cset);
 	freeLines(urls, free);
 	freeLines(envVar, free);
 	if (opts.out && (opts.out != stderr)) fclose(opts.out);
@@ -192,7 +194,13 @@ send_part1_msg(remote *r, char **envVar)
 	fclose(f);
 
 	probef = bktmp(0, 0);
-	unless (rc = sysio(0, probef, 0, "bk", "_probekey", SYS)) {
+	if (f = fopen(probef, "w")) {
+		rc = probekey(s_cset, 0, f);
+		fclose(f);
+	} else {
+		rc = 1;
+	}
+	unless (rc) {
 		rc = send_file(r, buf, size(probef));
 		unlink(buf);
 		f = fopen(probef, "rb");
@@ -219,10 +227,10 @@ send_part1_msg(remote *r, char **envVar)
 private int
 push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 {
-	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	int	fd, rc, n;
-	sccs	*s;
 	delta	*d;
+	FILE	*f;
+	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-3);
 	if (send_part1_msg(r, envVar)) return (-3);
@@ -262,20 +270,17 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	bktmp_local(rev_list, "pushrev");
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
-	s = sccs_init(s_cset, 0);
-	rc = prunekey(s, r, NULL, fd, PK_LKEY,
+	rc = prunekey(s_cset, r, NULL, fd, PK_LKEY,
 		!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:	getMsg("unrelated_repos", 0, 0, opts.out);
 				close(fd);
 				unlink(rev_list);
-				sccs_free(s);
 				if (r->type == ADDR_HTTP) disconnect(r, 2);
 				return (1); /* needed to force bkd unlock */
 		    case -3:	unless (opts.forceInit) {
 		    			getMsg("no_repo", 0, 0, opts.out);
-					sccs_free(s);
 					if (r->type == ADDR_HTTP) {
 						disconnect(r, 2);
 					}
@@ -286,7 +291,6 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		close(fd);
 		unlink(rev_list);
 		if (r->type == ADDR_HTTP) disconnect(r, 2);
-		sccs_free(s);
 		return (-1);
 	}
 	close(fd);
@@ -316,11 +320,14 @@ tags:			fprintf(opts.out,
 			    "Would send the following csets "
 			    "------------------------\n");
 			if (opts.list) {
-				listIt(s, opts.list);
+				listIt(rev_list, opts.list);
 			} else {
+				f = fopen(rev_list, "r");
+				assert(f);
 				n = 0;
-				for (d = s->table; d; d = d->next) {
-					if (d->flags & D_RED) continue;
+				while (fnext(buf, f)) {
+					chomp(buf);
+					d = sccs_findKey(s_cset, buf);
 					unless (d->type == 'D') continue;
 					n += strlen(d->rev) + 1;
 					fprintf(opts.out, "%s", d->rev);
@@ -331,6 +338,7 @@ tags:			fprintf(opts.out,
 						fputs(" ", opts.out);
 					}
 				}
+				fclose(f);
 				if (n) fputs("\n", opts.out);
 			}
 			fprintf(opts.out,
@@ -351,7 +359,6 @@ tags:			fprintf(opts.out,
 		}
 		free(url);
 	}
-	sccs_free(s);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if ((opts.lcsets == 0) || !opts.doit) return (0);
 	if ((opts.rcsets || opts.rtags)) {
@@ -1020,6 +1027,10 @@ pull(remote *r)
 	int	i;
 
 	/* We have a read lock which we need to drop before we can pull. */
+	if (s_cset) {
+		sccs_free(s_cset);	/* let go of changeset file */
+		s_cset = 0;
+	}
 	repository_rdunlock(0);
 	cmd[i = 0] = "bk";
 	cmd[++i] = "pull";
@@ -1036,29 +1047,18 @@ pull(remote *r)
 }
 
 private	void
-listIt(sccs *s, int list)
+listIt(char *keys, int list)
 {
-	delta	*d;
-	char	*tmp = bktmp(0, "push_list");
+	FILE	*f;
 	char	*cmd;
 	char	buf[BUFSIZ];
-	FILE	*f;
-	
-	cmd = aprintf("bk changes %s - > '%s'", list > 1 ? "-v" : "", tmp);
-	f = popen(cmd, "w");
+
+	cmd = aprintf("bk changes %s - < '%s'", list > 1 ? "-v" : "", keys);
+	f = popen(cmd, "r");
 	assert(f);
-	for (d = s->table; d; d = d->next) {
-		unless (d->type == 'D') continue;
-		if (d->flags & D_RED) continue;
-		fprintf(f, "%s\n", d->rev);
-	}
-	pclose(f);
-	f = fopen(tmp, "r");
 	while (fnext(buf, f)) {
 		fputs(buf, opts.out);
 	}
-	fclose(f);
+	pclose(f);
 	free(cmd);
-	unlink(tmp);
-	free(tmp);
 }

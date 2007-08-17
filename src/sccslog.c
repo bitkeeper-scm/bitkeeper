@@ -202,8 +202,9 @@ printConsolidatedLog(FILE *f)
 	for (j = 0; j < n; ++j) {
 		d = sorted[j];
 		unless (d->type == 'D') continue;
-		unless (d->comments) continue;
-		saveComment(db, d->rev, line2str(d->comments), d->pathname);
+		comments_load(0, d);
+		unless (COMMENTS(d)) continue;
+		saveComment(db, d->rev, line2str(d->cmnts), d->pathname);
 	}
 
 	lines = db2line(db);
@@ -255,8 +256,9 @@ pdelta(delta *d, FILE *f)
 	char	*y;
 
 	if (opts.dspec) {
-		if (d->comments && d->comments[1]) {
-			fputs(d->comments[1], f);
+		if (COMMENTS(d)) {
+			comments_load(0, d);
+			fputs(d->cmnts[1], f);
 			if (opts.newline) fputc('\n', f);
 		}
 		return;
@@ -271,12 +273,12 @@ pdelta(delta *d, FILE *f)
 		indent = opts.indent;
 	}
 	if (opts.changeset) {
-		EACH(d->comments) {
+		EACH_COMMENT(0, d) {
 			if (indent) fprintf(f, "%*s", indent, "");
 			if (d->pathname) {
 				fprintf(f, "%-8s\t", basenm(d->pathname));
 			}
-			fprintf(f, "%s\n", d->comments[i]);
+			fprintf(f, "%s\n", d->cmnts[i]);
 		}
 		return;
 	}
@@ -299,10 +301,10 @@ pdelta(delta *d, FILE *f)
 	    d->user);
 	if (d->hostname) fprintf(f, "@%s", d->hostname);
 	fprintf(f, " +%d -%d\n", d->added, d->deleted);
-	EACH(d->comments) {
-		if (d->comments[i][0] == '\001') continue;
+	EACH_COMMENT(0, d) {
+		if (d->cmnts[i][0] == '\001') continue;
 		if (indent) fprintf(f, "%*s", indent, "");
-		fprintf(f, "  %s\n", d->comments[i]);
+		fprintf(f, "  %s\n", d->cmnts[i]);
 	}
 	fprintf(f, "\n");
 }
@@ -320,10 +322,10 @@ printlog(FILE *f)
 private void
 do_dspec(sccs *s, delta *d)
 {
-	char	**p = addLine(0, sccs_prsbuf(s, d, PRS_ALL, opts.dspec));
+	char	*p = sccs_prsbuf(s, d, PRS_ALL, opts.dspec);
 
-	freeLines(d->comments, free);
-	d->comments = p;
+	comments_free(d);
+	comments_append(d, p);
 }
 
 /*
@@ -340,6 +342,7 @@ sccslog(sccs *s)
 	unless (SET(s)) {
 		if (CSET(s)) ChangeSet = 1;
 		for (d = s->table, n++; d; n++, d = d->next) {
+			comments_load(s, d);
 			if (opts.dspec) do_dspec(s, d);
 			unless (d->pathname) d->pathname = strdup(s->gfile);
 			unless (d->next) break;
@@ -353,6 +356,7 @@ sccslog(sccs *s)
 		return;
 	}
 	for (d = s->table; d; ) {
+		comments_load(s, d);
 		d->kid = d->siblings = 0;
 		if (d->flags & D_SET) {
 			if (CSET(s)) ChangeSet = 1;

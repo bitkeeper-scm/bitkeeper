@@ -91,14 +91,13 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 	if (sDB) {
 		char *p = basenm(name);
 
-		assert(gDB);
 		flags |= INIT_NOSTAT;
 		assert(*p == 's');
 		if (hasfile(p, 'c', sDB)) flags |= INIT_HAScFILE;
 		if (hasfile(p, 'p', sDB)) flags |= INIT_HASpFILE;
 		if (hasfile(p, 'x', sDB)) flags |= INIT_HASxFILE;
 		if (hasfile(p, 'z', sDB)) flags |= INIT_HASzFILE;
-		if (mdbm_fetch_str(gDB, &p[2])) flags |= INIT_HASgFILE;
+		if (gDB && mdbm_fetch_str(gDB, &p[2])) flags |= INIT_HASgFILE;
 		*p = 's'; /* because hasfile() stomps */
 	}
 	if (strneq(name, "./", 2)) name += 2;
@@ -335,7 +334,11 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	int	local_s = 0, printed = 0;
 	char	buf[MAXPATH], *dfile = 0, *p;
 
-
+	if (streq(gfile, "./ChangeSet")) {
+		state[PSTATE] = ' ';
+		do_print(state, gfile, 0);
+		return;
+	}
 	if (opts.dfile) {
 		if (sDB) {
 			strcpy(buf, "d.");
@@ -1112,6 +1115,7 @@ sccsdir(winfo *wi)
 	sortLines(slist, 0);	/* walkdir() has a funny sort */
 	EACH (slist) {
 		char 	*file;
+		u32	flags = INIT_NOCKSUM;
 		STATE	state = "       ";
 
 		p = slist[i];
@@ -1120,6 +1124,11 @@ sccsdir(winfo *wi)
 		gfile = &file[2];
 
 		state[TSTATE] = 's';
+		if (mdbm_fetch_str(gDB, gfile)) {
+			state[GSTATE] = 'G';
+			flags = INIT_HASgFILE;
+		}
+
 		/*
 		 * look for p.file,
 		 */
@@ -1142,18 +1151,17 @@ sccsdir(winfo *wi)
 				timestamps = generateTimestampDB(proj);
 			}
 			if ((opts.verbose || opts.changed) &&
+			    (flags & INIT_HASgFILE) &&
 			    (!timestamps ||
 				!timeMatch(proj, gfile, sfile,
 				    timestamps)) &&
-			    (s = init(buf, INIT_NOCKSUM, sDB, gDB)) &&
+			    (s = init(buf, flags, sDB, 0)) &&
 			    chk_diffs(s)) {
 				state[CSTATE] = 'c';
 			}
 			free(gfile);
 			if (opts.names) {
-				unless (s) {
-					s = init(buf, INIT_NOCKSUM, sDB, gDB);
-				}
+				unless (s) s = init(buf, flags, sDB, 0);
 				d = sccs_top(s);
 				relp = proj_relpath(s->proj, s->gfile);
 				unless (d->pathname &&
@@ -1178,7 +1186,7 @@ sccsdir(winfo *wi)
 			concat_path(buf, dir, "SCCS");
 			concat_path(buf, buf, file);
 			if (opts.names &&
-			    (s = init(buf, INIT_NOCKSUM, sDB, gDB))) {
+			    (s = init(buf, flags, sDB, 0))) {
 				d = sccs_top(s);
 				relp = proj_relpath(s->proj, s->gfile);
 				unless (d->pathname &&
@@ -1190,7 +1198,6 @@ sccsdir(winfo *wi)
 				s = 0;
 			}
 		}
-		if (mdbm_fetch_str(gDB, gfile)) state[GSTATE] = 'G';
 		file[0] = 'c';
 		if (mdbm_fetch_str(sDB, file)) state[YSTATE] = 'y';
 		file[0] = 's';

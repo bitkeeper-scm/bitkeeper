@@ -18,11 +18,11 @@ int
 commit_main(int ac, char **av)
 {
 	int	c, doit = 0, force = 0;
-	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
-	char	pendingFiles[MAXPATH] = "";
 	char	*sym = 0;
 	int	dflags = 0;
 	c_opts	opts  = {0, 0};
+	char	pendingFiles[MAXPATH] = "";
+	char	buf[MAXLINE];
 
 	while ((c = getopt(ac, av, "dfFl:RqsS:y:Y:")) != -1) {
 		switch (c) {
@@ -163,7 +163,7 @@ commit_main(int ac, char **av)
 		if (comments_savefile(commentFile)) return (1);
 		unlink(commentFile);
 	}
-	do_clean(s_cset, SILENT);
+	unlink("ChangeSet");
 	return (do_commit(av, opts, sym, pendingFiles, dflags));
 }
 
@@ -178,9 +178,10 @@ do_commit(char **av,
 	char	commentFile[MAXPATH];
 	char	buf[MAXLINE];
 
-	if (enforceLicense()) {
-		if (pendingFiles) unlink(pendingFiles);
-		return (1);
+	cset = sccs_csetInit(0);
+	if (enforceLicense(cset)) {
+		rc = 1;
+		goto done;
 	}
 	/*
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?
@@ -194,7 +195,10 @@ do_commit(char **av,
 
 	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
 	comments_done();
-	if (comments_savefile(commentFile)) return (1);
+	if (comments_savefile(commentFile)) {
+		rc = 1;
+		goto done;
+	}
 	if (opts.quiet) dflags |= SILENT;
 	if (sym) syms = addLine(syms, strdup(sym));
 	if (f = fopen("SCCS/t.ChangeSet", "r")) {
@@ -229,13 +233,13 @@ do_commit(char **av,
 		}
 	}
 
-	cset = sccs_csetInit(0);
 	rc = csetCreate(cset, dflags, pendingFiles, syms);
 
 	putenv("BK_STATUS=OK");
 	if (rc) putenv("BK_STATUS=FAILED");
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
+	sccs_free(cset);
 	unlink(commentFile);
 	if (rc) return (rc); /* if commit failed do not send log */
 	/*

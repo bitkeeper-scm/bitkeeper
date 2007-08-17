@@ -61,6 +61,29 @@ post-incoming.regression-test
 .DE
 Files ending in ~ are ignored to avoid editor backup files.
 .SS
+TRIGGER PATHS
+.LP
+By default, triggers are stored in the repository under the
+.B BitKeeper/triggers/
+directory.
+More than one triggers directory may be used by setting the 
+.B triggers
+variable in the 
+.B BitKeeper/etc/config
+file.
+The format is is one or more paths separated by a vertical bar.
+For example, if you wanted to run triggers from 
+.B /etc/BitKeeper/triggers
+and from the repositories'
+.BR BitKeeper/triggers ,
+set the variable as follows:
+.DS
+triggers: /etc|.
+.DE
+The directories are processed in the order found in the variable.
+.LP
+If the variable contains the value "none" then no triggers are processed.
+.SS
 TRIGGER CLASSES
 .LP
 There are multiple event classes which may activate triggers: incoming

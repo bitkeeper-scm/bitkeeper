@@ -1,3 +1,146 @@
+Release notes for BitKeeper version 4.2 (released XXX)
+
+Summary of changes
+
+Windows Vista support
+    The Windows version of BitKeeper now runs on Windows Vista on 32-bit
+    architectures.  64-bit support will be in a future release.
+
+Undo triggers
+    This release introduces support for pre-undo triggers.  
+    See bk help triggers.
+
+BK/Web
+    BK/Web now uses MD5 keys for all URLs and revision numbers.  This
+    allows bookmarks to continue to work even after revision numbers are
+    changed by merges.  For this reason, the "Link to this page" links have
+    been removed.
+    Note the URL syntax has not changed from the 4.0 release, so old URLs
+    will still work correctly.
+    
+    BK/Web now lists extra files while browsing the source tree; they are
+    at the end of the directory listing which is { dirs, bk files, extras }.
+    Extra files are only listed if they are not ignored.
+
+    BK/Web has links on the file names in the history/annotate pages that
+    will let you download a copy of that file with no markups.
+
+SSH URLs
+    BitKeeper now allows an SSH URL to specify a non-standard port,
+    for example ssh://host.example.com:5555/repopath.  See bk help url.
+
+Remote command execution
+    The command syntax 'bk -@URL command' allows a bk command to be
+    run on a remote repository with the output returned locally.
+    See 'bk help bk' for more information.
+
+Configuration
+    nosync: on
+
+    By default, BK does a sync in the resolver after updating your repository.
+    The reason it does not fsync() individual files is that on some Linux
+    file systems, the fsync() is like a sync() and sync() is global.  Doing
+    it over and over again hurt server performance.  So we do one sync after
+    applying all the files.
+
+    Some customers prefer performance over safety; they can set this variable
+    and get no syncs at all.  We don't recommend that.
+
+bk admin
+    The -H option formerly checked sfile structure, limited to AT&T
+    SCCS features, and checked whether the file contents were ASCII.
+    As BitKeeper now fully supports non-ASCII characters, this option
+    is deprecated.  Use -h, -hh, or -hhh instead.  See bk help admin.
+    (Does anyone other than Larry call admin -h/-H directly?)
+
+bk bkd
+    The -p option now allows you to restrict allowed connections to
+    those originating from a specified IP address.  A common usage is
+    "-p127.0.0.1:", which accepts connections only on the default port
+    (14690) on localhost.  See bk help bkd.
+
+bk changes
+    The search facility ("-/<pattern>/") now supports two additional
+    suffixes:  "g", which indicates that <pattern> is a glob, not a regular
+    expression; and "t", which restricts the search to tag names.  See bk
+    help changes.
+
+    Data specifications (dspecs) have been extended.  See the entry for
+    'bk log' below.
+
+bk ci
+    The new environment variable BK_NODIREXPAND, when set to a nonzero
+    value, prevents bk ci from automatically checking in all modified
+    files in the current directory.  See bk help ci.
+
+bk clone
+    The -l option, which uses hardlinks when creating a clone, now works on
+    Windows if supported by the local filesystem.  See bk help clone.
+
+bk gethost -n
+    Returns the IP address of the host.
+
+bk log
+    Data specifications (dspecs) now support compound-expression logic
+    with the operators &&, ||, (), and !.  Also $else can be used with
+    $if to create if/then/else logic and the =~ operator can compare
+    text to a glob.
+
+    See bk help log.
+
+bk tags
+    bk tags can now take an optional repository URL.  See bk help tags.
+
+Performance enhancements
+    This release contains several performance improvements related to the
+    ChangeSet file.
+
+Bugs fixed
+    2002-02-11-001	pulls fails to replace directory with file/symlink
+    2003-08-28-003	"	"	"	"	"	"	"
+    2004-09-07-001	"	"	"	"	"	"	"
+    2002-03-06-004	resolve doesn't support multi-word $EDITOR
+    2006-06-28-001	diffs -N doesn't prefix the new file with the directory
+    2006-10-30-001	bk export fails reporting malformed revision
+    2006-12-18-001	can't update triggers in a pull
+    2007-05-10-001	When resolving sfile create conflicts with
+    			checkout:edit, rl subcommand is broken
+
+Other bug fixes
+    Fixed an error in bk diffs when encountering a checked out file
+    that was replaced by a broken symbolic link.  [mysql collapse/diff
+    symlink problem -- @1.1807]
+
+    When a case-folding conflict was detected (two files mapped to
+    the same name due to case insensitivity), the error message didn't
+    clearly identify the conflicting files; in this release, the error
+    message does identify them.  [resolve case-folding error -- @1.1785]
+
+    Fixed a problem with bk lock that prevented "-f" from working correctly
+    with "-L" and "-U".
+    [lock -f works with -L and -U -- @1.1771.5.1]
+
+    If the ChangeSet file was edited and contained files with spaces in
+    their root keys.  This is fixed.
+    XXX -- needs more vague description.
+    [resolve failure -- Bluearc -- @1.1771.1.5]
+
+    Fixed a problem that could cause faults when reading directories.
+    [Bluearc _getdir() faults -- @1.1765.10.2]
+
+    Fixed bug where 'bk changes -v' can fail when it encounters missing
+    file delta that were marked as gone.
+    [Deltas in the gone file not noticed by bk changes -- @1.1765.9.1]
+
+    bk import could incorrectly generate tags when importing from CVS.
+    This is fixed.
+    [Fix tag generation on import -- @1.1766]
+
+
+Other items to add
+    - BK_NO_FSYNC
+    - 'nosync' config option
+
 ===============================================================================
 Release notes for BitKeeper version 4.0.2 (released 2006-12-14)
 

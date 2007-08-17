@@ -332,13 +332,30 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
  * Write out the new ChangeSet file.
  */
 int
-cset_write(sccs *s)
+cset_write(sccs *s, int spinners)
 {
 	FILE	*f;
+	int	i;
+	delta	*d;
 
 	assert(s);
 	assert(s->state & S_CSET);
 	assert(s->locs);
+
+	/*
+	 * Call sccs_renumber() before writing out the new cset file.
+	 * Since the cweave code doesn't build the ->kid pointers
+	 * correctly we need to create them here. First we invalidate
+	 * the sfind() cache and then call the code used by dinsert()
+	 * to update d->kid and d->siblings.
+	 */
+	s->ser2dsize = 0;
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, i)) continue;
+		d->kid = d->siblings = 0;
+		sccs_kidlink(d);
+	}
+	sccs_renumber(s, SILENT, spinners);
 
 	unless (f = fopen(sccs_Xfile(s, 'x'), "w")) {
 		perror(sccs_Xfile(s, 'x'));

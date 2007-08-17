@@ -168,7 +168,7 @@ usage:			system("bk help -s diffs");
 			}
 			free(gfile);
 		}
-		s = sccs_init(name, flags);
+		s = sccs_init(name, SILENT);
 		unless (s && HASGRAPH(s)) {
 			if (nulldiff(name, kind, flags) == 2) goto out;
 			goto next;

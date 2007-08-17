@@ -1712,3 +1712,27 @@ EOF
 bk sfiles -x > GOT
 cmpfiles WANT GOT
 echo OK
+
+test $PLATFORM != WIN32 && {
+
+echo $N Check sfiles -v does not dump core on an unreadable binary ..$NL
+perl -e 'printf "a\000b\n"' > binary_file
+bk new $Q binary_file
+bk edit $Q binary_file
+chmod 000 binary_file
+bk sfiles -v binary_file >OUT 2>ERR 
+RET=$?
+test $RET -eq 0 || {
+	echo failed
+	cat ERR
+	exit 1
+}
+grep -q "can't open binary_file" ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+}
+
+exit 0

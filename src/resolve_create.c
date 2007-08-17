@@ -494,13 +494,30 @@ gc_ml(resolve *rs)
 int
 dc_ml(resolve *rs)
 {
+	int	count = 0;
+	FILE	*list;
+	char	*t;
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
-	char	*t;
 
+	/* Check to see that a simple rename is possible */
+	getFileConflict(rs->d->pathname, path);
+	chdir(RESYNC2ROOT);
+	t = aprintf("bk sfiles '%s'", path);
+	list = popen(t, "r");
+	free(t);
+	while (fnext(buf, list)) count++;
+	pclose(list);
+	chdir(ROOT2RESYNC);
+	if (count) {
+		fprintf(stderr,
+		    "Local directory has version controlled files.\n"
+		    "Either do a 'mr', then fix up after the merge,\n"
+		    "or 'bk abort' the merge, and 'bk mv' the directory.\n");
+		return (0);
+	}
 	if (common_ml(rs, "Move local directory to:", buf)) return (0);
 	t = sccs2name(buf);
-	getFileConflict(rs->d->pathname, path);
 	chdir(RESYNC2ROOT);
 	if (rs->opts->debug) {
 		fprintf(stderr, "rename(%s, %s)\n", path, t);

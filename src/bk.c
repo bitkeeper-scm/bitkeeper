@@ -19,6 +19,7 @@ char	cmdlog_buffer[MAXPATH*4];
 int	cmdlog_flags;
 int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
 ltc_math_descriptor	ltc_mp;
+char	*prog;
 
 private	char	*buffer = 0;	/* copy of stdin */
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
@@ -82,7 +83,7 @@ main(int ac, char **av, char **env)
 {
 	int	i, c, si, is_bk = 0, dashr = 0, remote = 0, quiet = 0;
 	int	ret;
-	char	*p, *prog, *dir = 0, *locking = 0;
+	char	*p, *dir = 0, *locking = 0;
 	char	sopts[30];
 
 	ltc_mp = ltm_desc;

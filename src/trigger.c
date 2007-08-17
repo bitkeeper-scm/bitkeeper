@@ -2,69 +2,12 @@
  * Copyright (c) 2001-2006 BitMover, Inc.
  */
 #include "bkd.h"
-private int runTriggers(int rem, char *ev, char *what, char *when, char **trs);
-
-private void
-put_trigger_env(char *prefix, char *v, char *value)
-{
-	unless (value) value = "";
-	safe_putenv("%s_%s=%s", prefix, v, value);
-}
-
-/*
- * set up the trigger environment
- */
-private void
-trigger_env(char *prefix, char *event, char *what)
-{
-	char	buf[100];
-	char	*repoid, *lic;
-
-	if (streq("BK", prefix)) {
-		put_trigger_env("BK", "SIDE", "client");
-		if (lic = licenses_accepted()) {
-			safe_putenv("BK_ACCEPTED=%s", lic);
-			free(lic);
-		}
-	} else {
-		put_trigger_env("BK", "SIDE", "server");
-		put_trigger_env("BK", "HOST", getenv("_BK_HOST"));
-		put_trigger_env("BK", "USER", getenv("BK_USER"));
-	}
-	put_trigger_env(prefix, "HOST", sccs_gethost());
-	put_trigger_env(prefix, "USER", sccs_getuser());
-	put_trigger_env("BK", "EVENT", event);
-	putroot(prefix);
-	put_trigger_env(prefix, "TIME_T", bk_time);
-	put_trigger_env(prefix, "UTC", bk_utc);
-	put_trigger_env(prefix, "VERSION", bk_vers);
-	sprintf(buf, "%d", getlevel());
-	put_trigger_env(prefix, "LEVEL", buf);
-	repoid = proj_repoID(0);
-	if (repoid) put_trigger_env(prefix, "REPO_ID", repoid);
-	put_trigger_env(prefix, "REALUSER", sccs_realuser());
-	put_trigger_env(prefix, "REALHOST", sccs_realhost());
-	put_trigger_env(prefix, "PLATFORM", platform());
-	if (streq(event, "resolve")) {
-		char    pwd[MAXPATH];
-		FILE    *f = fopen("BitKeeper/tmp/patch", "r");
-		char    *p;
-
-		if (f) {
-			buf[0] = 0;
-			fnext(buf, f);
-			fclose(f);
-			assert(buf[0]);
-			chomp(buf);
-			chdir(RESYNC2ROOT);
-			getcwd(pwd, sizeof(pwd));
-			chdir(ROOT2RESYNC);
-			p = aprintf("%s/%s", pwd, buf);
-			put_trigger_env("BK", "PATCH", p);
-			free(p);
-		}
-	}
-}
+private int	runTriggers(int rem, char *ev, char *what, char *when,
+		    char **trs);
+private void	trigger_env(char *prefix, char *event, char *what);
+private void	trigger_putenv(char *prefix, char *v, char *value);
+private void	trigger_restoreEnv(void);
+private char	**trigger_dirs(void);
 
 /*
  * trigger:  Fire triggers before and/or after repository level commands.
@@ -75,31 +18,20 @@ trigger_env(char *prefix, char *event, char *what)
 int
 trigger(char *cmd, char *when)
 {
-	char	buf[MAXPATH], triggerDir[MAXPATH];
-	char	*what, *t, **triggers = 0;
+	char	*what, *root, **triggers = 0, **dirs = 0;
 	char	*event = 0;
-	int	rc = 0;
-
-	if (getenv("BK_SHOW_TRIGGERS")) {
-		ttyprintf("TRIGGER cmd(%s) when(%s)\n", cmd, when);
-	}
+	int	i;
+	int	use_enclosing = 0, rc = 0;
+	char	buf[MAXPATH], triggerDir[MAXPATH];
 
 	if (getenv("BK_NO_TRIGGERS")) return (0);
-	/*
-	 * For right now, if you set this at all, it means /etc.
-	 * In the 3.0 tree, we'll actually respect it.
-	 */
-	if (getenv("BK_TRIGGER_PATH")) {
-		t = strdup("/etc");
-	} else unless (t = proj_root(0)) {
+
+	unless (root = proj_root(0)) {
 		ttyprintf("No root for triggers!\n");
 		return (0);
 	}
-	unless (streq(t, ".")) {
-		sprintf(triggerDir, "%s/BitKeeper/triggers", t);
-	} else {
-		strcpy(triggerDir, "BitKeeper/triggers");
-	}
+
+	unless (dirs = trigger_dirs()) return (0);
 
 	if (strneq(cmd, "remote pull", 11)) {
 		what = "outgoing";
@@ -130,12 +62,12 @@ trigger(char *cmd, char *when)
 		event = "incoming pull";
 	} else if (strneq(cmd, "apply", 5) || strneq(cmd, "remote apply", 12)) {
 		what = event = "apply";
-		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
+		use_enclosing = 1;
 	} else if (strneq(cmd, "commit", 6)) {
 		what = event = "commit";
 	} else if (strneq(cmd, "merge", 5)) {
 		what = event = "commit";
-		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
+		use_enclosing = 1;
 	} else if (strneq(cmd, "delta", 5)) {
 		what = event = "delta";
 	} else if (strneq(cmd, "tag", 3)) {
@@ -154,51 +86,76 @@ trigger(char *cmd, char *when)
 		return (0);
 	}
 
-	unless (isdir(triggerDir)) {
-		if (getenv("BK_SHOW_TRIGGERS")) {
-			ttyprintf("No trigger dir %s\n", triggerDir);
-		}
-		return (0);
-	}
-
-	/*
-	 * XXX - we should see if we need to fork this process before
-	 * doing so.  FIXME.
-	 */
-	sys("bk", "get", "-Sq", triggerDir, SYS);
-
 	/* run post-triggers with a read lock */
 	if (streq(when, "post")) repository_downgrade();
 
 	/* post-resolve == post-incoming */
 	if (streq(when, "post") && streq(event, "resolve")) what = "incoming";
 
-	/* Run the incoming trigger in the RESYNC dir if there is one.  */
-	if (streq(what, "resolve")) {
-		strcpy(triggerDir, RESYNC2ROOT "/BitKeeper/triggers");
-		assert(isdir(ROOT2RESYNC));
-	    	chdir(ROOT2RESYNC);
-	}
-
-	/*
-	 * Find all the trigger scripts associated with this event.
-	 */
-	sprintf(buf, "%s-%s", when, what);
-	unless (triggers = getTriggers(triggerDir, buf)) {
-		if (streq(what, "resolve")) chdir(RESYNC2ROOT);
-		if (getenv("BK_SHOW_TRIGGERS")) {
-			ttyprintf("No %s triggers in %s \n", buf, triggerDir);
+	EACH (dirs) {
+		/* the use_enclosing ones must be called at project root */
+		unless (streq(dirs[i], ".")) {
+			sprintf(triggerDir, "%s/BitKeeper/triggers", dirs[i]);
+		} else if (use_enclosing) {
+			sprintf(triggerDir,
+			    "%s/%s/BitKeeper/triggers", root, RESYNC2ROOT);
+		} else {
+			sprintf(triggerDir, "%s/BitKeeper/triggers", root);
 		}
-		return (0);
-	}
+		unless (isdir(triggerDir)) {
+			if (getenv("BK_SHOW_TRIGGERS")) {
+				ttyprintf("No trigger dir %s\n", triggerDir);
+			}
+			continue;
+		} else if (getenv("BK_SHOW_TRIGGERS")) {
+			ttyprintf("TRIGGER cmd(%s) when(%s)", cmd, when);
+			unless (streq(dirs[i], ".")) ttyprintf(" dir(%s)");
+			ttyprintf("\n");
+		}
 
-	/*
-	 * Run the triggers, they are already sorted by getdir().
-	 */
-	unless (getenv("BK_STATUS")) putenv("BK_STATUS=UNKNOWN");
-	rc = runTriggers(strneq(cmd, "remote ",7), event, what, when, triggers);
-	freeLines(triggers, free);
-	if (streq(what, "resolve")) chdir(RESYNC2ROOT);
+		/*
+		 * XXX - we should see if we need to fork this process before
+		 * doing so.  FIXME.
+		 */
+		sys("bk", "get", "-Sq", triggerDir, SYS);
+		sprintf(buf, "%s-%s", when, what);
+
+		/* Run the resolve triggers in the RESYNC dir if there is one.
+		 * Find all the trigger scripts associated this dir/event.
+		 */
+		if (streq(what, "resolve") && streq(dirs[i], ".")) {
+			assert(isdir(ROOT2RESYNC));
+			chdir(ROOT2RESYNC);
+			triggers =
+			    getTriggers(RESYNC2ROOT "/BitKeeper/triggers", buf);
+		} else {
+			triggers = getTriggers(triggerDir, buf);
+		}
+
+		unless (triggers) {
+			if (streq(what, "resolve") && streq(dirs[i], ".")) {
+				chdir(RESYNC2ROOT);
+			}
+			if (getenv("BK_SHOW_TRIGGERS")) {
+				ttyprintf("No %s triggers in %s \n",
+				    buf, triggerDir);
+			}
+			continue;
+		}
+
+		/*
+		 * Run the triggers, they are already sorted by getdir().
+		 */
+		unless (getenv("BK_STATUS")) putenv("BK_STATUS=UNKNOWN");
+		rc = runTriggers(
+		    strneq(cmd, "remote ",7), event, what, when, triggers);
+		freeLines(triggers, free);
+		if (streq(what, "resolve") && streq(dirs[i], ".")) {
+			chdir(RESYNC2ROOT);
+		}
+		if (rc && streq(when, "pre")) goto out;
+	}
+out:	freeLines(dirs, free);
 	return (rc);
 }
 
@@ -237,6 +194,7 @@ runit(char *file, char *what, char *output)
 	char	*path = strdup(getenv("PATH"));
 
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
+	safe_putenv("BK_TRIGGERPATH=%s", file);
 	write_log(root, "cmd_log", 0, "Running trigger %s", file);
 	if (getenv("BK_SHOW_TRIGGERS")) ttyprintf("Running trigger %s\n", file);
 	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
@@ -387,5 +345,129 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 	if (gui) fclose(gui);	/* citool socket */
 	unlink(output);
 	if (logfile) fclose(logfile);
+	trigger_restoreEnv();
 	return (rc);
+}
+
+/*
+ * set up the trigger environment
+ */
+private void
+trigger_env(char *prefix, char *event, char *what)
+{
+	char	buf[100];
+	char	*repoid, *lic;
+
+	if (streq("BK", prefix)) {
+		trigger_putenv("BK", "SIDE", "client");
+		if (lic = licenses_accepted()) {
+			safe_putenv("BK_ACCEPTED=%s", lic);
+			free(lic);
+		}
+	} else {
+		trigger_putenv("BK", "SIDE", "server");
+		trigger_putenv("BK", "HOST", getenv("_BK_HOST"));
+		trigger_putenv("BK", "USER", getenv("BK_USER"));
+	}
+	trigger_putenv(prefix, "HOST", sccs_gethost());
+	trigger_putenv(prefix, "USER", sccs_getuser());
+	trigger_putenv("BK", "EVENT", event);
+	putroot(prefix);
+	trigger_putenv(prefix, "TIME_T", bk_time);
+	trigger_putenv(prefix, "UTC", bk_utc);
+	trigger_putenv(prefix, "VERSION", bk_vers);
+	sprintf(buf, "%d", getlevel());
+	trigger_putenv(prefix, "LEVEL", buf);
+	repoid = proj_repoID(0);
+	if (repoid) trigger_putenv(prefix, "REPO_ID", repoid);
+	trigger_putenv(prefix, "REALUSER", sccs_realuser());
+	trigger_putenv(prefix, "REALHOST", sccs_realhost());
+	trigger_putenv(prefix, "PLATFORM", platform());
+	if (streq(event, "resolve")) {
+		char    pwd[MAXPATH];
+		FILE    *f = fopen("BitKeeper/tmp/patch", "r");
+		char    *p;
+
+		if (f) {
+			buf[0] = 0;
+			fnext(buf, f);
+			fclose(f);
+			assert(buf[0]);
+			chomp(buf);
+			chdir(RESYNC2ROOT);
+			getcwd(pwd, sizeof(pwd));
+			chdir(ROOT2RESYNC);
+			p = aprintf("%s/%s", pwd, buf);
+			trigger_putenv("BK", "PATCH", p);
+			free(p);
+		}
+	}
+}
+
+static  char    **backup_env = 0;
+
+/*
+* Add a value to the environment for use by trigger scripts.  Also
+* maintain a list of changes to the enviroment so that they can be
+* undone when we are done running triggers.  We do this so that some
+* variables from one trigger don't spill over to another when the
+* more than one trigger is run by the same process.
+* Also since we cannot portabilty delete variables from the enviroment
+* we just NULL them on restore if they didn't exist previously.
+*/
+private void
+trigger_putenv(char *prefix, char *v, char *value)
+{
+	char	*var = aprintf("%s_%s", prefix, v);
+	char	*old = getenv(var);
+
+	unless (value) value = "";
+	if (old && streq(old, value)) {
+		free(var);
+		return;
+	}
+
+	if (old) {
+		backup_env = addLine(backup_env, strdup(old - strlen(var) - 1));
+	} else {
+		backup_env = addLine(backup_env, aprintf("%s=", var));
+	}
+
+	safe_putenv("%s=%s", var, value);
+}
+
+private void
+trigger_restoreEnv(void)
+{
+	int     i;
+
+	EACH (backup_env) putenv(backup_env[i]);
+	freeLines(backup_env, free);
+	backup_env = 0;
+}
+
+private	char	**
+trigger_dirs(void)
+{
+	char	*p, **dirs = 0;
+	int	i;
+
+	p = proj_configval(0, "triggers");
+	if (!p || streq(p, "")) p = ".";
+	if (streq(p, "none")) return (0);
+
+	dirs = splitLine(p, "|", 0);
+	EACH(dirs) {
+		unless (dirs[i][0] == '$') continue;
+		if (streq(&dirs[i][1], "BK_DOTBK")) {
+			free(dirs[i]);
+			dirs[i] = strdup(getDotBk());
+		} else if (streq(&dirs[i][1], "BK_BIN")) {
+			free(dirs[i]);
+			dirs[i] = strdup(bin);
+		} else {
+			/* XXX: no habla this $var ? */
+		}
+	}
+	return (dirs);
 }

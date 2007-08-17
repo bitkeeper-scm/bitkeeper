@@ -27,8 +27,12 @@ is_encoded(int c)
 
 
 /*
- * Encode the data in ptr/len and add it to buf
- * using data_append().
+ * Encode the data in ptr/len and add it to buf using data_append().
+ *
+ * If you want to encode a string using webencode(), you should pass
+ * it strlen(str)+1 for the length, otherwise you'll get a %FF on the
+ * end.  This is because webencode() needs to be binary safe, since
+ * it's used by hash_toStr().
  */
 char **
 webencode(char **buf, u8 *ptr, int len)

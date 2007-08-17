@@ -193,6 +193,7 @@ dollar(int output, FILE *out, char ***buf)
 	} else if (strneq("$each(", g.p, 6)) {
 		nextln	state;
 		char	*bufptr;
+		int	savejoin;
 
 		if (in_each++) err("nested each illegal");
 
@@ -216,6 +217,8 @@ dollar(int output, FILE *out, char ***buf)
 		bzero(&state, sizeof(state));
 		bufptr	  = g.p;
 		g.line	  = 1;
+		savejoin  = g.s->prs_join;
+		g.s->prs_join = 0;
 		while (g.eachval = getnext(g.eachkey, &state)) {
 			g.p = bufptr;
 			stmtList(output);
@@ -223,6 +226,7 @@ dollar(int output, FILE *out, char ***buf)
 		}
 		g.eachkey.dptr = 0;
 		g.eachkey.dsize = 0;
+		g.s->prs_join = savejoin;
 		--in_each;
 		/* Eat the body if we never parsed it above. */
 		if (g.line == 1) stmtList(0);
@@ -533,13 +537,14 @@ getnext(datum kw, nextln *state)
 again:
 	++state->i;	/* first call has it set to 0, so now 1 */
 	if (strneq(kw.dptr, "C", kw.dsize)) {
-		unless (g.d && g.d->comments &&
-		    (state->i < LSIZ(g.d->comments)) &&
-		    g.d->comments[state->i]) {
+		comments_load(g.s, g.d);
+		unless (g.d && g.d->cmnts &&
+		    (state->i < LSIZ(g.d->cmnts)) &&
+		    g.d->cmnts[state->i]) {
 			return (0);
 		}
-		if (g.d->comments[state->i][0] == '\001') goto again;
-		return(g.d->comments[state->i]);
+		if (g.d->cmnts[state->i][0] == '\001') goto again;
+		return(g.d->cmnts[state->i]);
 	}
 
 	/* XXX FD depracated */
@@ -557,12 +562,12 @@ again:
 	    strneq(kw.dptr, "TAG", kw.dsize)) {
 		if (state->i == 1) {
 			unless (g.d && (g.d->flags & D_SYMBOLS)) return (0);
-			while (g.d->type == 'R') g.d = g.d->parent;
 			state->sym = g.s->symbols;
 		} else {
 			state->sym = state->sym->next;
 		}
-		while (state->sym && (state->sym->d != g.d)) {
+		while (state->sym && (g.d !=
+		    (g.s->prs_all ? state->sym->metad : state->sym->d))) {
 			state->sym = state->sym->next;
 		}
 		unless (state->sym) return (0);
