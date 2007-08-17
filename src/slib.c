@@ -14230,7 +14230,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		int	i;
 		symbol	*sym;
 
-		fs(d->pathname);
+		fs(d->pathname ? d->pathname : s->gfile);
 		fc(' ');
 		KW("REV");
 		fs("\n  ");
@@ -14946,7 +14946,8 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
 		}
 		n = (names *)s->rrevs;
-		if (n && n->remote && (d = findrev(s, n->remote))) {
+		if (n && n->remote &&
+		    (d = findrev(s, n->remote)) && d->pathname) {
 			fs(d->pathname);
 			return (strVal);
 		}
@@ -14960,7 +14961,8 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
 		}
 		n = (names *)s->rrevs;
-		if (n && n->local && (d = findrev(s, n->local))) {
+		if (n && n->local &&
+		    (d = findrev(s, n->local)) && d->pathname) {
 			fs(d->pathname);
 			return (strVal);
 		}
@@ -14974,7 +14976,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
 		}
 		n = (names *)s->rrevs;
-		if (n && n->gca && (d = findrev(s, n->gca))) {
+		if (n && n->gca && (d = findrev(s, n->gca)) && d->pathname) {
 			fs(d->pathname);
 			return (strVal);
 		}

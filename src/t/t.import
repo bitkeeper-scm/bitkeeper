@@ -746,14 +746,12 @@ bk sccs2bk -cx co_edit_foo >OUT 2>ERR || {
 echo OK
 
 echo $N Import SCCS binary file with null in 1.2 ....................$NL
-cd "$HERE"
 echo hi > co_edit_bar
 bk new $Q -b co_edit_bar
-bk edit $Q co_edit_bar
 perl -e 'printf "a line with a \000 in it\n"' >> co_edit_bar
 bk delta $Q -ywithnull co_edit_bar
-cp SCCS/s.co_edit_bar co_edit/SCCS
-cd co_edit
+bk clean co_edit_bar
+bk _unbk --I-know-this-destroys-my-bk-repo co_edit_bar
 bk sccs2bk -cx co_edit_bar >OUT 2>ERR || {
 	echo FAILED
 	echo STDOUT

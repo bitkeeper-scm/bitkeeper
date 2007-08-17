@@ -4,6 +4,7 @@
 #include "tomcrypt.h"
 #include "range.h"
 #include "bam.h"
+#include "logging.h"
 
 /*
  * TODO:
@@ -1617,13 +1618,13 @@ bam_convert_main(int ac, char **av)
 		fprintf(stderr, "Not in a repository.\n");
 		exit(1);
 	}
+	if (proj_cd2root()) {
+		fprintf(stderr, "Not in a repository.\n");
+		exit(1);
+	}
 	if (strneq(p, "B:", 2)) {
 		fprintf(stderr,
 		    "This repository has already been converted.\n");
-		exit(1);
-	}
-	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
-		fprintf(stderr, "Must be run at repo root\n");
 		exit(1);
 	}
 	while ((c = getopt(ac, av, "")) != -1) {
@@ -1632,6 +1633,14 @@ bam_convert_main(int ac, char **av)
 			system("bk help -s BAM");
 			return (1);
 		}
+	}
+	unless (proj_configsize(0, "BAM")) {
+		fprintf(stderr, "Turning on BAM in your config file.\n");
+		get("BitKeeper/etc/config", SILENT|GET_EDIT, "-");
+		system("echo 'BAM:on' >> BitKeeper/etc/config");
+		system("bk delta -qy'Add BAM' BitKeeper/etc/config");
+		system("echo 'BitKeeper/etc/SCCS/s.config|+' | "
+		    "bk commit -qy'Add BAM' -");
 	}
 	sfiles = popen("bk sfiles", "r");
 	while (fnext(buf, sfiles)) {
@@ -1655,7 +1664,12 @@ bam_convert_main(int ac, char **av)
 		sccs_free(s);
 	}
 	if (sfileDone()) errors |= 2;
+	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
+		perror("SCCS/s.ChangeSet");
+		exit(1);
+	}
 	unless (out = fopen("SCCS/x.ChangeSet", "w")) {
+		perror("SCCS/x.ChangeSet");
 		exit(1);
 	}
 	fprintf(stderr, "Redoing ChangeSet entries ...\n");
@@ -1693,12 +1707,18 @@ bam_convert_main(int ac, char **av)
 	EACH(keys) {
 		fprintf(stderr, "%s", keys[i]);
 	}
-	rename("SCCS/s.ChangeSet", "s.ChangeSet");
+	rename("SCCS/s.ChangeSet", "BitKeeper/tmp/s.ChangeSet");
 	rename("SCCS/x.ChangeSet", "SCCS/s.ChangeSet");
 	system("bk admin -z ChangeSet");
 	system("bk checksum -f/ ChangeSet");
 	fprintf(stderr, "Redoing ChangeSet ids ...\n");
 	system("bk newroot -kB:");
+	if (errors || system("bk -r check -accv")) {
+		fprintf(stderr, "Conversion failed\n");
+		exit(1);
+	} else {
+		unlink("BitKeeper/tmp/s.ChangeSet");
+	}
 	return (errors);
 }
 
@@ -1805,6 +1825,8 @@ bam_main(int ac, char **av)
 		{"timestamps", bam_timestamps_main },
 		{0, 0}
 	};
+
+	if (license_binCheck(0)) exit(1);
 
 	while ((c = getopt(ac, av, "")) != -1) {
 		switch (c) {
