@@ -80,6 +80,7 @@ struct {
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
+	char	*prefix;	/* dir prefix to put on the file listing */
 	hash	*sent;		/* list of d.files we have set, for dups */
 	int	recurse;	/* if set, try and find a server on cachemiss */
 	char	**missing;	/* tuples we couldn't find here */
@@ -99,8 +100,9 @@ sfio_main(int ac, char **av)
 	opts = (void*)calloc(1, sizeof(*opts));
 	opts->newline = '\n';
 	opts->recurse = 1;
+	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefHilmopqr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefHilmopP;qr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -128,6 +130,7 @@ sfio_main(int ac, char **av)
 			if (opts->mode) goto usage;
 			opts->mode = M_LIST;
 			break; 
+		    case 'P': opts->prefix = optarg; break;
 		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
 		    case 'r': opts->newline = '\r'; break;
@@ -135,6 +138,7 @@ sfio_main(int ac, char **av)
 			goto usage;
 		}
 	}
+	if (getenv("BK_NO_SFIO_PREFIX")) opts->prefix = "";	// just in case
 
 	/*
 	 * If we're being executed remotely don't let them grab everything.
@@ -305,7 +309,9 @@ out_symlink(char *file, struct stat *sp, off_t *byte_count)
 	assert(opts->doModes);
 	sprintf(buf, "%03o", sp->st_mode & 0777);
 	*byte_count += writen(1, buf, 3);
-	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
+	unless (opts->quiet) {
+		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
+	}
 	return (0);
 }
 
@@ -334,7 +340,9 @@ out_hardlink(char *file, struct stat *sp, off_t *byte_count, char *linkMe)
 		sprintf(buf, "%03o", sp->st_mode & 0777);
 		*byte_count += writen(1, buf, 3);
 	}
-	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
+	unless (opts->quiet) {
+		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
+	}
 	return (0);
 }
 
@@ -407,7 +415,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 			}
 			fprintf(stderr, "%-72s\r", buf);
 		} else {
-			fprintf(stderr, "%s\n", file);
+			fprintf(stderr, "%s%s\n", opts->prefix, file);
 		}
 	}
 #endif
@@ -740,7 +748,9 @@ in_symlink(char *file, int pathlen, int extract)
 		chmod(file, mode & 0777);
 		 */
 	}
-	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
+	unless (opts->quiet) {
+		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
+	}
 	if (opts->echo) printf("%s\n", file);
 	return (0);
 
@@ -785,7 +795,9 @@ in_hardlink(char *file, int pathlen, int extract)
 			goto err;
 		}
 	}
-	unless (opts->quiet) fprintf(stderr, "%s%c", file, opts->newline);
+	unless (opts->quiet) {
+		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
+	}
 	if (opts->echo) printf("%s\n", file);
 	return (0);
 
@@ -887,7 +899,7 @@ done:	if (readn(0, buf, 10) != 10) {
 			}
 			fprintf(stderr, "%-72s\r", buf);
 		} else {
-			fprintf(stderr, "%s\n", file);
+			fprintf(stderr, "%s%s\n", opts->prefix, file);
 		}
 	}
 #endif

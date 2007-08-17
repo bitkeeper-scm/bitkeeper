@@ -109,7 +109,9 @@ trigger(char *cmd, char *when)
 			continue;
 		} else if (getenv("BK_SHOW_TRIGGERS")) {
 			ttyprintf("TRIGGER cmd(%s) when(%s)", cmd, when);
-			unless (streq(dirs[i], ".")) ttyprintf(" dir(%s)");
+			unless (streq(dirs[i], ".")) {
+				ttyprintf(" dir(%s)", dirs[i]);
+			}
 			ttyprintf("\n");
 		}
 

@@ -17,7 +17,7 @@ private int rclone_part2(char **av, remote *r, char **ev, char *bp);
 private	int rclone_part3(char **av, remote *r, char **ev, char *bp);
 private int send_part1_msg(remote *r, char **envVar);
 private	int send_sfio_msg(remote *r, char **envVar);
-private u32 send_sfio(int level, int wfd);
+private u32 send_sfio(int level, remote *r);
 extern	u32 send_BAM_sfio(int level, int wfd, char *bp_keys, u64 bpsz);
 extern	int send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz);
 
@@ -306,19 +306,6 @@ done:	disconnect(r, 1);
 	return (rc);
 }
 
-private u32
-sfio_size(int gzip)
-{
-	int     fd;
-	u32     n;
-
-	fd = open(DEVNULL_WR, O_WRONLY, 0644);
-	assert(fd > 0);
-	n = send_sfio(gzip, fd);
-	close(fd);
-	return (n);
-}           
-
 private  int
 send_sfio_msg(remote *r, char **envVar)
 {
@@ -352,7 +339,7 @@ send_sfio_msg(remote *r, char **envVar)
 	 * 6 is the size of "@END@" string
 	 */
 	if (r->type == ADDR_HTTP) {
-		m = sfio_size(gzip);
+		m = send_sfio(gzip, 0);
 		assert(m > 0);
 		extra = m + 7 + 6;
 	}
@@ -360,7 +347,7 @@ send_sfio_msg(remote *r, char **envVar)
 	unlink(buf);
 
 	writen(r->wfd, "@SFIO@\n", 7);
-	n = send_sfio(gzip, r->wfd);
+	n = send_sfio(gzip, r);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(stderr,
 		    "Error: sfio file changed size from %d to %d\n", m, n);
@@ -429,13 +416,14 @@ done:
  * We need a -s option to sfio that just adds up the sizes and spits it out.
  */
 private u32
-send_sfio(int level, int wfd)
+send_sfio(int level, remote *r)
 {
 	int	status;
 	char	*tmpf;
 	FILE	*fh;
 	char	*sfiocmd;
 	char	*cmd;
+	int     fd;
 
 	tmpf = bktmp(0, "rclone_sfiles");
 	fh = fopen(tmpf, "w");
@@ -446,15 +434,24 @@ send_sfio(int level, int wfd)
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 
-	sfiocmd = aprintf("bk sfio -o%s < '%s'", 
-	    (opts.verbose ? "" : "q"), tmpf);
+	if (r && r->path) {
+		sfiocmd = aprintf("bk sfio -P'%s/' -o%s < '%s'", 
+		    r->path, (opts.verbose ? "" : "q"), tmpf);
+		fd = r->wfd;
+	} else {
+		fd = open(DEVNULL_WR, O_WRONLY, 0644);
+		assert(fd > 0);
+		sfiocmd = aprintf("bk sfio -o%s < '%s'", 
+		    (opts.verbose ? "" : "q"), tmpf);
+	}
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	opts.in = opts.out = 0;
-	gzipAll2fd(fileno(fh), wfd, level, &opts.in, &opts.out, 1, 0);
+	gzipAll2fd(fileno(fh), fd, level, &opts.in, &opts.out, 1, 0);
 	status = pclose(fh);
 	unlink(tmpf);
 	free(tmpf);
+	unless (r) close(fd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 	return (opts.out);
 

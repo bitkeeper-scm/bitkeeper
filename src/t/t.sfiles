@@ -1727,7 +1727,7 @@ test $RET -eq 0 || {
 	cat ERR
 	exit 1
 }
-grep -q "can't open binary_file" ERR || {
+grep -iq "binary_file: Permission denied" ERR || {
 	echo failed
 	cat ERR
 	exit 1

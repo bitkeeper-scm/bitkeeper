@@ -20,11 +20,11 @@ struct {
 private int	clone(char **, remote *, char *, char **);
 private	int	clone2(remote *r);
 private void	parent(remote *r);
-private int	sfio(int gz, remote *r, int BAM);
+private int	sfio(int gz, remote *r, int BAM, char *prefix);
 private void	usage(void);
 private int	initProject(char *root);
 private	int	lclone(remote *, char *to);
-private int	linkdir(char *from, char *dir, int doSCCS);
+private int	linkdir(char *from, char *to, char *dir, int doSCCS);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
@@ -261,7 +261,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	rc = 1;
 
 	/* eat the data */
-	if (sfio(gzip, r, 0) != 0) {
+	if (sfio(gzip, r, 0, local) != 0) {
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
@@ -395,7 +395,7 @@ initProject(char *root)
 
 
 private int
-sfio(int gzip, remote *r, int BAM)
+sfio(int gzip, remote *r, int BAM, char *prefix)
 {
 	int	n, status;
 	pid_t	pid;
@@ -406,7 +406,11 @@ sfio(int gzip, remote *r, int BAM)
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
 	if (BAM) cmds[++n] = "-B";
-	if (opts->quiet) cmds[++n] = "-q";
+	if (opts->quiet) {
+		cmds[++n] = "-q";
+	} else {
+		cmds[++n] = aprintf("-P%s/", prefix);
+	}
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
 	if (pid == -1) {
@@ -665,7 +669,7 @@ out:
 	setlevel(level);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		if (linkdir(from, buf, 1)) {
+		if (linkdir(from, to, buf, 1)) {
 			pclose(f);
 			mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
 			goto out;
@@ -684,7 +688,7 @@ out:
 		while (fnext(buf, f)) {
 			chomp(buf);
 			if (streq(BAM_ROOT, buf)) continue;
-			if (linkdir(from, buf, 0)) {
+			if (linkdir(from, to, buf, 0)) {
 				/* leave it locked */
 				mkdir(ROOT2RESYNC, 0775);
 				goto out;
@@ -791,7 +795,7 @@ in_trigger(char *status, char *rev, char *root, char *repoID)
 }
 
 private int
-linkdir(char *from, char *dir, int doSCCS)
+linkdir(char *from, char *to, char *dir, int doSCCS)
 {
 	char	buf[MAXPATH];
 	char	dest[MAXPATH];
@@ -808,7 +812,7 @@ linkdir(char *from, char *dir, int doSCCS)
 	if (doSCCS) strcat(buf, "/SCCS");
 	unless (d = getdir(buf)) return (-1);
 	unless (opts->quiet) {
-		fprintf(stderr, "Linking %s\n", dir);
+		fprintf(stderr, "Linking %s/%s\n", to, dir);
 	}
 	EACH (d) {
 		if (doSCCS) {

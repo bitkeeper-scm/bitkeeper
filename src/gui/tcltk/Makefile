@@ -111,17 +111,17 @@ tk/$S/Makefile: tk/$S/configure Makefile
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY TCLURL
-	test -d tcl || bk clone -qr`tail -1 TCLKEY` `cat TCLURL` tcl
+	test -d tcl || bk clone -r`tail -1 TCLKEY` `cat TCLURL` tcl
 	cd tcl; bk -Ur get -qS
 
 # fetch tk subdirectory if needed
 tk/$S/configure: TKKEY TKURL
-	test -d tk || bk clone -qr`tail -1 TKKEY` `cat TKURL` tk
+	test -d tk || bk clone -r`tail -1 TKKEY` `cat TKURL` tk
 	cd tk; bk -Ur get -qS
 
 # fetch tktable subdirectory if needed
 tktable/configure: TKTABLEKEY
-	test -d tktable || bk clone -qr`tail -1 TKTABLEKEY` \
+	test -d tktable || bk clone -r`tail -1 TKTABLEKEY` \
 				bk://data.bitmover.com/tcl/tktable.bk tktable
 	cd tktable; bk -Ur get -qS
 
@@ -158,7 +158,7 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 
 # fetch tktreectrl subdirectory if needed
 tktreectrl/configure: TKTREECTRLKEY
-	test -d tktreectrl || bk clone -qr`tail -1 TKTREECTRLKEY` \
+	test -d tktreectrl || bk clone -r`tail -1 TKTREECTRLKEY` \
 			bk://data.bitmover.com/tcl/tktreectrl.bk tktreectrl
 	cd tktreectrl; bk -Ur get -qS
 
@@ -193,7 +193,7 @@ $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
 	    libdir=lib bindir=Resources install
 
 lib/$(BWIDGET)/pkgIndex.tcl: BWIDGETKEY
-	test -d bwidget || bk clone -qr`tail -1 BWIDGETKEY` \
+	test -d bwidget || bk clone -r`tail -1 BWIDGETKEY` \
 			bk://data.bitmover.com/tcl/bwidget.bk bwidget
 	cd bwidget; bk -Ur get -qS
 	mkdir -p lib/$(BWIDGET)/lang
@@ -208,7 +208,7 @@ $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl
 	cp -fRPH lib/$(BWIDGET) $(BKAPP)/Contents/lib
 
 lib/Tkcon/pkgIndex.tcl: TKCONKEY
-	test -d tkcon || bk clone -qr`tail -1 TKCONKEY` \
+	test -d tkcon || bk clone -r`tail -1 TKCONKEY` \
 			bk://data.bitmover.com/tcl/tkcon.bk tkcon
 	cd tkcon; bk -Ur get -qS
 	mkdir -p lib/Tkcon
