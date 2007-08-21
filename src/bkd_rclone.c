@@ -149,6 +149,8 @@ cmd_rclone_part2(int ac, char **av)
 	}
 
 	sccs_mkroot(".");
+	putenv("_BK_NEWPROJECT=YES");
+	if (sane(0, 0)) return (-1);
 	repository_wrlock();
 	if (getenv("BK_LEVEL")) {
 		setlevel(atoi(getenv("BK_LEVEL")));

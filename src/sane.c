@@ -40,12 +40,35 @@ int
 sane(int readonly, int resync)
 {
 	int	errors = 0;
+	char	*a, *b;
 
 	/* commits in RESYNC may not have everything, this lets us know */
 	if (proj_isResync(0)) resync = 1;
 	if (chk_host()) errors++;
 	if (chk_user()) errors++;
 	if (proj_cd2root() == 0) {
+		unless (readonly || win32()) {
+			a = aprintf("BitKeeper/tmp/a%d", getpid());
+			b = aprintf("BitKeeper/tmp/b%d", getpid());
+			(void)unlink(a);
+			(void)unlink(b);
+			if (touch(a, 0666)) {
+				fprintf(stderr,
+				    "sane: read only file system?\n");
+				errors++;
+			} else if (link(a, b)) {
+				fprintf(stderr, 
+				    "sane: hardlinks do not work and are "
+				    "required on this platform for locking.\n");
+				errors++;
+			}
+			(void)unlink(a);
+			(void)unlink(b);
+			free(a);
+			free(b);
+			/* If this fails the idcache lock will hang so return */
+			if (errors) return (errors);
+		}
 		if (!readonly && chk_permissions()) {
 			errors++;
 		} else if (chk_idcache()) {
@@ -53,7 +76,7 @@ sane(int readonly, int resync)
 		}
 #define	_exists(f)	(exists(f) || (resync && exists(RESYNC2ROOT "/" f)))
 #define	_size(f)	(size(f) || (resync && size(RESYNC2ROOT "/" f)))
-		unless (getenv("BK_NEWPROJECT")) {
+		unless (getenv("_BK_NEWPROJECT")) {
 			unless (_exists(CHANGESET)) {
 				fprintf(stderr,
 				    "sane: missing ChangeSet file!\n");

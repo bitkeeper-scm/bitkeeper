@@ -55,7 +55,10 @@ send_gzip_hdr(int fd,  u16 n)
 
 	hlen = htons(n);
 	if (writen(fd, (char *) &hlen, sizeof(hlen)) != sizeof(hlen)) {
-		fprintf(stderr, "can not write header %d\n", n);
+		if ((errno != EPIPE) || getenv("BK_SHOWPROC")) {
+			fprintf(stderr,
+			    "gzip: can not write header len %d\n", n);
+		}
 		exit(1);
 	};
 	return (sizeof(hlen));
@@ -95,7 +98,9 @@ gzip2fd(char *input, int len, int fd, int hflag)
 			bytes += n;
 			if (hflag) hbytes += send_gzip_hdr(fd, n);
 			unless (writen(fd, buf, n) == n) {
-				perror("write on fd gzip_in gzip2fd");
+				if ((errno != EPIPE) || getenv("BK_SHOWPROC")) {
+					perror("write on fd gzip_in gzip2fd");
+				}
 				exit(1);
 			}
 		} else {

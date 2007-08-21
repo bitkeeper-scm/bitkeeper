@@ -382,7 +382,9 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		opts->done += n;
 		if (dosum) sum = adler32(sum, buf, n);
 		if (writen(1, buf, n) != n) {
-			perror(file);
+			if ((errno != EPIPE) || getenv("BK_SHOWPROC")) {
+				perror(file);
+			}
 			close(fd);
 			return (1);
 		}

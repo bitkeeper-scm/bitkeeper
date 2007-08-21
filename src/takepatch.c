@@ -144,11 +144,8 @@ usage:		system("bk help -s takepatch");
 		return (1);
 	}
 	p = init(input, flags);
-	if (newProject) {
-		putenv("BK_NEWPROJECT=YES");
-	} else {
-		if (sane(0, 0)) exit(1);
-	}
+	if (newProject) putenv("_BK_NEWPROJECT=YES");
+	if (sane(0, 0)) exit(1);
 
 	if (newProject) {
 		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {

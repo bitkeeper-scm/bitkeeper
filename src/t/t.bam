@@ -230,7 +230,7 @@ echo OK
 
 echo $N Run resolve and make sure it applies the data ...............$NL
 cd "$HERE"/new
-echo q | BK_NEWPROJECT=YES bk resolve > OUT 2>&1
+echo q | _BK_NEWPROJECT=YES bk resolve > OUT 2>&1
 test -d RESYNC && {
 	echo failed
 	cat OUT

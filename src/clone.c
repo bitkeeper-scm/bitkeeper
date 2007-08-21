@@ -257,7 +257,11 @@ clone(char **av, remote *r, char *local, char **envVar)
 	unless (streq(buf, "@SFIO@")) goto done;
 
 	/* create the new package */
-	if (initProject(local) != 0) goto done;
+	if (initProject(local) != 0) {
+		disconnect(r, 2);
+		goto done;
+	}
+
 	rc = 1;
 
 	/* eat the data */
@@ -386,6 +390,8 @@ initProject(char *root)
 	}
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(".");
+	putenv("_BK_NEWPROJECT=YES");
+	if (sane(0, 0)) return (-1);
 	repository_wrlock();
 	if (getenv("BKD_LEVEL")) {
 		setlevel(atoi(getenv("BKD_LEVEL")));
