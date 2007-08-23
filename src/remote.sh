@@ -27,12 +27,6 @@ failed() {
 	exit 1
 }
 
-guifailed() {
-	echo '*********************'
-	echo '!!!! GUI Failed! !!!!'
-	echo '*********************'
-}
-
 case $CMD in
     build|save|release)
 	exec > /build/$LOG 2>&1
@@ -65,20 +59,9 @@ case $CMD in
 	make build || failed
 	./build p image install test || failed
 
-	case $OSTYPE in
-		msys|cygwin)
-			# No GUI tests on Windows, they hang
-			;;
-		darwin*)
-			./build guitest || guifailed
-			DISPLAY=amd64:1 ./build guitest || guifailed
-			;;
-		*)
-			DISPLAY=amd64:1 ./build guitest || guifailed
-			;;
-	esac
 	MSG="Not your lucky day, the following tests failed:"
-	test "X`grep "$MSG" /build/$LOG`" = "X$MSG" && exit 1
+	GOT=`grep "$MSG" /build/$LOG | bk undos`
+	test "X$GOT" = "X$MSG" && exit 1
 
 	test -d /build/.images || mkdir /build/.images
 	cp utils/bk-* /build/.images
@@ -94,18 +77,18 @@ case $CMD in
 			echo "Architecture unknown, not copying images"
 			exit 1
 		}
-		if [ $OSTYPE = "msys" -o $OSTYPE = "cygwin" ] ; 
+		if [ $OSTYPE = msys -o $OSTYPE = cygwin ] ; 
 		then	# we're on Windows
 			IMG=$TAG-$ARCH.exe
 			DEST="work:/home/bk/images/$TAG"
-			CP="rcp"
+			CP=rcp
 			# We only want images done on WinXP
-			test $HOSTNAME = "winxp2" || exit 0
+			test $HOSTNAME = winxp2 || exit 0
 		else
 			IMG=$TAG-$ARCH.bin
 			DEST="/home/bk/images/$TAG"
 			test -d $DEST || mkdir $DEST
-			CP="cp"
+			CP=cp
 		fi
 		test -f /build/.images/$IMG || {
 			echo "Could not find image /build/.images/$IMG"
@@ -134,40 +117,23 @@ case $CMD in
 
     status)
 	MSG="Not your lucky day, the following tests failed:"
-	test "X`grep "$MSG" $LOG`" = "X$MSG" && {
+	GOT=`grep "$MSG" $LOG | bk undos`
+	test "X$GOT" = "X$MSG" && {
 		echo regressions failed.
 		exit 1
 	}
 	# grep -q is not portable so we use this
-	test "X`grep '!!!! Failed! !!!!' $LOG`" = 'X!!!! Failed! !!!!' && {
+	GOT=`grep '!!!! Failed! !!!!' $LOG | bk undos`
+	test "X$GOT" = 'X!!!! Failed! !!!!' && {
 		echo failed to build.
 		exit 1
 	}
 	MSG="All requested tests passed, must be my lucky day"
-	if [ "X`grep "$MSG" $LOG`" = "X$MSG" ]
+	GOT=`grep "$MSG" $LOG | bk undos`
+	if [ "X$GOT" = "X$MSG" ]
 	then
-		test $OSTYPE = "msys" -o $OSTYPE = "cygwin" && {
-			echo succeeded. \(GUI tests not run\)
-			exit 1
-		}
-		MSG="The following GUI tests failed:"
-		grep "$MSG" $LOG >/dev/null 2>&1
-		test $? = 0 && {
-			echo succeeded. \(GUI tests failed\)
-			exit 1
-		}
-		MSG="All GUI tests passed, tell ob@perforce.com"
-		grep "$MSG" $LOG >/dev/null 2>&1
-		test $? = 0 && {
-			echo succeeded. \(GUI tests succeeded too\)
-			exit 1
-		}
-		MSG="Skipping GUI tests because Wish did not run"
-		grep "$MSG" $LOG >/dev/null 2>&1
-		test $? = 0 && {
-			echo succeeded. \(GUI tests skipped\)
-			exit 1
-		}
+		echo succeeded. \(GUI tests not run\)
+		exit 0
 	fi
 	echo is not done yet.
 	;;

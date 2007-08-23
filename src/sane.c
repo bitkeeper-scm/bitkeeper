@@ -90,11 +90,13 @@ sane(int readonly, int resync)
 				    "sane: no BitKeeper/etc/config file.\n");
 				errors++;
 			}
-		}
-		if (proj_configsize(0, "BAM") && !(proj_bklbits(0) & LIC_BAM)) {
-		    	fprintf(stderr,
-			"BAM is enabled in config but not found in license.\n");
-			errors++;
+			if (proj_configsize(0, "BAM") &&
+			    !(proj_bklbits(0) & LIC_BAM)) {
+				fprintf(stderr,
+				    "BAM is enabled in config "
+				    "but not found in license.\n");
+				errors++;
+			}
 		}
 	} else {
 		fprintf(stderr, "sane: not in a BitKeeper repository\n");

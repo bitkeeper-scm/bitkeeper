@@ -436,7 +436,7 @@ send_sfio(int level, remote *r)
 
 	if (r && r->path) {
 		sfiocmd = aprintf("bk sfio -P'%s/' -o%s < '%s'", 
-		    r->path, (opts.verbose ? "" : "q"), tmpf);
+		    basenm(r->path), (opts.verbose ? "" : "q"), tmpf);
 		fd = r->wfd;
 	} else {
 		fd = open(DEVNULL_WR, O_WRONLY, 0644);

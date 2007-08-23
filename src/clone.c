@@ -265,16 +265,18 @@ clone(char **av, remote *r, char *local, char **envVar)
 	rc = 1;
 
 	/* eat the data */
-	if (sfio(gzip, r, 0, local) != 0) {
+	if (sfio(gzip, r, 0, basenm(local)) != 0) {
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
+
+	/* Make sure we pick up config info from what we just unpacked */
+	proj_reset(0);
+
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
 	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
 	if (do_part2) {
 		p = aprintf("-r..%s", opts->rev ? opts->rev : "");
-		// Do I need this here?
-		// proj_reset(0);
 		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
 		free(p);
 		if (rc) goto done;
