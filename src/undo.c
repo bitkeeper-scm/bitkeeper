@@ -252,19 +252,21 @@ bad:		mclose(m);
 private char **
 getrev(char *top_rev, int aflg)
 {
-	char	*cmd;
+	char	*cmd, *rev;
 	int	status;
 	char	**list = 0;
 	FILE	*f;
 	char	revline[MAXKEY];
 
 	if (aflg) {
-		cmd = aprintf("bk changes -and:KEY: -r'%s..'", top_rev);
+		rev = aprintf("-r'%s..'", top_rev);
 	} else if (IsFullPath(top_rev) && isreg(top_rev)) {
-		cmd = aprintf("bk changes -and:KEY: - < '%s'", top_rev);
+		rev = aprintf("- < '%s'", top_rev);
 	} else {
-		cmd = aprintf("bk changes -nd:KEY: -r'%s'", top_rev);
+		rev = aprintf("-r'%s'", top_rev);
 	}
+	cmd = aprintf("bk changes -and:KEY: %s 2>" DEVNULL_WR, rev);
+	free(rev);
 	f = popen(cmd, "r");
 	free(cmd);
 	while (fnext(revline, f)) {
