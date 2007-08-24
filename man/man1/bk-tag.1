@@ -9,7 +9,9 @@ bk tags \- list tagged changesets
 .B bk tag
 .[OPTreq] \-r rev
 .ARG symbol
-.\" XXX bk tags missing
+.br
+.B bk tags
+.[ARG] repo
 .SH DESCRIPTION
 .LP
 Tags (aka symbols or labels) are used when you want to record the state of 
@@ -37,6 +39,10 @@ which is just an alias for
 .DS
 $ bk changes -t
 .DE
+Optionally, you can pass
+.B bk tags
+a repository URL (see
+.BR "bk help url" ).
 If you want to recover the state of the world as of a tag, do this:
 .DS
 $ bk clone \-rAlpha source_repository Alpha

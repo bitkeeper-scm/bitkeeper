@@ -23,6 +23,17 @@ This command is fairly rich in features and is the preferred interface
 for scripting.  For interactive checkins, 
 .B "bk citool" 
 is the preferred interface.
+.LP
+By default,
+.B bk ci
+with no file arguments checks in all checked out, modified files in the
+current directory and runs the equivalent of
+.B bk clean
+to unedit all unmodified, checked out files in the current directory.
+If you want to disable this behavior, for example to prevent accidental
+checkins, you can set the
+.V BK_NODIREXPAND
+environment variable to a value of 1.
 .SH OPTIONS
 .TP \-y\*<comment\*>
 .B \-a
@@ -88,6 +99,7 @@ Sets the revision comment to
 .if t .IR comment .
 .if n <comment>.
 .SH BUGS
+.\" XXX Is this necessary?
 The format of the init file is not documented.
 .SH "SEE ALSO"
 .SA citool
