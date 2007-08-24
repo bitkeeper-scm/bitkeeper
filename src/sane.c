@@ -12,7 +12,6 @@
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 
-private	int	chk_permissions(void);
 private	int	chk_idcache(void);
 
 int
@@ -251,7 +250,7 @@ again:	unless (exists(path)) {
 	return (0);
 }
 
-private int
+int
 chk_permissions(void)
 {
 	return (write_chkdir("BitKeeper", 1) |

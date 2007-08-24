@@ -271,6 +271,7 @@ receive
 regex
 _registry
 renumber
+repair
 repogca
 relink
 repo

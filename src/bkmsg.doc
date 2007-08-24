@@ -104,6 +104,23 @@ safely run
 to fix up your repository.  If it is somewhere other than the MySQL 
 tree, contact BitMover.
 $
+#chk5
+The ChangeSet file retrieved from your parent appears to be behind the
+files in this repository.  If this repository had changesets that were
+committed here but not pulled elsewhere then the changeset will need to
+be recreated, contact BitMover for assistance.
+
+If the tip mentioned in the error message can be found in some other 
+repository by running the following command:
+
+	bk findkey #BKARG# ChangeSet
+
+then you should run 
+
+	bk repair -@<url>
+
+where <url> is the BK url to that repository.
+$
 #cset1
 An attempt was made to include or exclude a merge changeset.
 This is not currently supported.

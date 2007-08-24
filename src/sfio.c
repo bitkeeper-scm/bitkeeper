@@ -77,6 +77,7 @@ struct {
 	u32	force:1;	/* overwrite existing files */
 	u32	bp_tuple:1;	/* -B rkey dkey bphash path */
 	u32	hardlinks:1;	/* save hardlinks */
+	u32	key2path:1;	/* -K read keys on stdin */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
@@ -86,6 +87,7 @@ struct {
 	char	**missing;	/* tuples we couldn't find here */
 	u64	todo;		/* -b`psize` - bytes we think we are moving */
 	u64	done;		/* file bytes we've moved so far */
+	MDBM	*idDB;		/* idcache */
 } *opts;
 
 #define M_IN	1
@@ -102,7 +104,7 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefHilmopP;qr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefHiKlmopP;qr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -121,6 +123,7 @@ sfio_main(int ac, char **av)
 			if (opts->mode) goto usage;
 			opts->mode = M_IN;
 			break;
+		    case 'K': opts->key2path = 1; break;
 		    case 'l': opts->recurse = 0; break;
 		    case 'o': 					/* doc 2.0 */
 			if (opts->mode) goto usage;
@@ -143,14 +146,16 @@ sfio_main(int ac, char **av)
 	/*
 	 * If we're being executed remotely don't let them grab everything.
 	 */
-	if (getenv("_BK_VIA_REMOTE") && !opts->bp_tuple) {
+	if (getenv("_BK_VIA_REMOTE") && !(opts->bp_tuple || opts->key2path)) {
 		fprintf(stderr, "Remote is limited to keys.\n");
 		exit(1);
 	}
 	/* ignore "-" it makes bk -r sfio -o work */
 	if (av[optind] && streq(av[optind], "-")) optind++;
 	if (optind != ac) goto usage;
-	if (opts->more && (opts->mode != M_OUT)) goto usage;
+	if ((opts->more || opts->key2path) && (opts->mode != M_OUT)) {
+		goto usage;
+	}
 #ifdef	WIN32
 	if (opts->hardlinks) {
 		fprintf(stderr, "%s: hardlink-mode not supported on Windows\n",
@@ -202,11 +207,15 @@ sfio_out(void)
 	struct	stat sb;
 	off_t	byte_count = 0;
 	int	n;
+	char	*gfile, *sfile;
 	hash	*links = 0;
+	MDBM	*idDB;
 	char	ln[32];
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	writen(1, SFIO_VERS, 10);
+
+	if (opts->key2path) idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	if (opts->bp_tuple) opts->sent = hash_new(HASH_MEMHASH);
 	if (opts->hardlinks) links = hash_new(HASH_MEMHASH);
 	byte_count = 10;
@@ -218,6 +227,15 @@ sfio_out(void)
 				return (n);
 			}
 			continue;
+		}
+		if (opts->key2path) {
+			unless (gfile = key2path(buf, idDB)) {
+				continue;
+			}
+			sfile = name2sccs(gfile);
+			strcpy(buf, sfile);
+			free(gfile);
+			free(sfile);
 		}
 		if (lstat(buf, &sb)) {
 			perror(buf);

@@ -1,0 +1,46 @@
+.so ../bk-macros
+.TH "bk repair" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk repair \- attempt to repair a repository
+.SH SYNOPSIS
+.B bk repair
+.OPTreq \-@ url
+.ARG repo
+.SH DESCRIPTION
+Because \*[BK] files are stored in the file system they are sometimes
+mistakenly removed or moved, resulting in an inconsistent repository.
+The 
+.B bk check
+command will complain about missing files or deltas.
+.LP
+The
+.B bk repair
+command attempts to restore the missing files from the parent
+repository (or repositories if there are multiple parents).
+If the parent is at the same point, or ahead of, the repository being
+repaired then the repair will succeed.  
+If the parent is behind the repository being repaired then the repair
+may fail if the missing files contained work unique to the damaged
+repository.
+.LP
+The 
+.B bk repair
+command expects to be run in a repository but an alternative repository
+may be named on the command line.
+.LP
+If the repository has nothing to repair the command will exit silently.
+.SH OPTIONS
+.TP
+.B \-@\*<url\*>
+Look in 
+.ARG url
+for any missing files instead of the recorded parent[s].
+.SH "EXIT STATUS"
+0 on success, non-zero on failure.
+Exit codes are from 
+.BR "bk check" .
+.SH "SEE ALSO"
+.SA check
+.SA parent
+.SH CATEGORY
+.B Utility

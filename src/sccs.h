@@ -1149,6 +1149,7 @@ void	sccs_adjustSet(sccs *sc, sccs *scb, delta *d);
 int	chk_host(void);
 int	chk_user(void);
 int	chk_nlbug(sccs *s);
+int	chk_permissions(void);
 int	fix_gmode(sccs *s, int gflags);
 int	do_checkout(sccs *s);
 int	unsafe_path(char *s);
@@ -1269,6 +1270,7 @@ void	zputs_hwrite(void *token, u8 *data, int len);
 char	*psize(u64 bytes);
 u64	scansize(char *bytes);
 void	idcache_update(char *filelist);
+void	cset_savetip(sccs *s, int force);
 
 extern	char	*editor;
 extern	char	*bin;

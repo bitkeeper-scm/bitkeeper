@@ -552,22 +552,6 @@ _unrm () {
 	rm -f $LIST $TMPFILE
 }
 
-# For fixing delete/gone files that re-appear in the patch when we pull
-_repair()
-{
-	_MASTER=$1  # MASTER should have the super set of the local tree
-	echo "Fixing renames..."
-	bk -r names
-	bk idcache 	# Must be up-to-date
-		 	# Otherwise we get false resolve conflict
-	echo "Parking any edited files"
-	bk park	-y"park for repair"	# otherwise edited file will
-					# failed the pull
-	echo "Pulling a jumbo patch..."
-	bk pull -F "${_MASTER}" || exit 1
-	echo "Repair is complete."
-}
-
 # For sending repositories back to BitMover, this removes all comments
 # and obscures data contents.
 _obscure() {

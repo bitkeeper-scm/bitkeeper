@@ -23,7 +23,7 @@ bk ci -yignore1 -u $Q BitKeeper/etc/ignore
 bk commit $Q -yignore1 || exit 1
 echo OK
 
-CNT=3
+CNT=2
 echo $N "Count the inits for a 'bk clone' ($CNT)........................."$NL
 rm "$FILE"
 bk clone $Q ../project ../copy || exit 1
@@ -77,7 +77,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=17
+CNT=16
 echo $N "Count the inits for a 'bk pull' ($CNT)........................."$NL
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
@@ -96,7 +96,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=12
+CNT=11
 echo $N "Count the inits for a 'bk unpull' ($CNT)......................."$NL
 rm "$FILE"
 bk unpull -f $Q || exit 1
@@ -126,7 +126,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=13
+CNT=12
 echo $N "Count the inits for a 'bk resolve' ($CNT)......................"$NL
 rm "$FILE"
 bk resolve $Q || exit 1
@@ -137,7 +137,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=13
+CNT=12
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || exit 1
