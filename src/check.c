@@ -32,7 +32,6 @@ private int	chk_merges(sccs *s);
 private sccs*	fix_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, hash *keys);
 private	void	fetch_changeset(void);
-private	void	any_sfiles(void);
 private	int	repair(hash *db);
 
 private	int	nfiles;		/* for progress bar */
@@ -158,18 +157,13 @@ check_main(int ac, char **av)
 	/* Go get the ChangeSet file if it is missing */
 	if (!exists(CHANGESET) && (fix > 1)) {
 		fetch_changeset();
+		// XXX why restart?
 		fprintf(stderr, "Restarting a full repository check.\n");
 		return (system("bk -r check -acvff"));
 	}
 
-	/* Make sure we're sane and we have at least one s.file or bail. */
-	if (sane(0, resync)) {
-		if (fix > 1) {
-			any_sfiles();
-		} else {
-			return (1);
-		}
-	}
+	/* Make sure we're sane or bail. */
+	if (sane(0, resync)) return (1);
 
 	/* revtool: the code below is restored from a previous version */
 retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
@@ -899,8 +893,7 @@ repair(hash *db)
 
 	if (verbose == 1) fprintf(stderr, "\n");
 	EACH_HASH(db) {
-		/* We already did the ChangeSet file if it was missing */
-		unless (strstr(db->kptr, "|ChangeSet|")) n++;
+		++n;
 		if (verbose > 2) fprintf(stderr, "Missing: %s\n", db->kptr);
 	}
 
@@ -908,47 +901,25 @@ repair(hash *db)
 	unless (n) return (0);
 
 	f = rsfiocmd(1);
-	EACH_HASH(db) {
-		/* We already did the ChangeSet file if it was missing */
-		if (strstr(db->kptr, "|ChangeSet|")) continue;
-		fprintf(f, "%s\n", db->kptr);
-	}
+	EACH_HASH(db) fprintf(f, "%s\n", db->kptr);
 	if (pclose(f) != 0) return (n);
 	if (system("bk sfiles BitKeeper/repair | bk check -s -") != 0) {
 		fprintf(stderr, "check: stripdel pass failed, aborting.\n");
-		return (n);
+		goto out;
 	}
 	fprintf(stderr, "Moving files into place...\n");
 	if (system("bk sfiles BitKeeper/repair | bk names -q -") != 0) {
-		rmtree("BitKeeper/repair");
-		return (n);
+		goto out;
 	}
 	fprintf(stderr, "Rerunning check...\n");
 	if (system("bk -r check -acf") != 0) {
 		fprintf(stderr, "Repository is not fully repaired.\n");
-		rmtree("BitKeeper/repair");
-		return (n);
+		goto out;
 	}
 	fprintf(stderr, "Repository is repaired.\n");
-	rmtree("BitKeeper/repair");
-	return (0);
-}
-
-private void
-any_sfiles(void)
-{
-	FILE	*f;
-	char	*p;
-	char	buf[MAXPATH];
-
-	f = popen("bk sfiles", "r");
-	p = fnext(buf, f);
-	pclose(f);
-	unless (p) {
-		fprintf(stderr,
-		    "There are no BK files in this tree, giving up.\n");
-		exit(0x40);
-	}
+	n = 0;
+out:	rmtree("BitKeeper/repair");
+	return (n);
 }
 
 /*
