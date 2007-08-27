@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-private	u32	id_sum;
-private	MDBM	*idDB;		/* used to detect duplicate keys */
 private	int	dups;		/* duplicate key count */
 private	int	mixed;		/* running in mixed long/short mode */
 private	void	rebuild(void);
@@ -36,8 +34,7 @@ private	void
 rebuild(void)
 {
 	sccs	*cset;
-	FILE	*id_cache;
-	char	*id_tmp;
+	MDBM	*idDB;
 
 	/* only the bitmover tree might have short keys */
 	if (streq(proj_rootkey(0),
@@ -55,45 +52,14 @@ rebuild(void)
 		mixed = !LONGKEY(cset);
 		sccs_free(cset);
 	}
-	unless (id_tmp = bktmp_local(0, "id_tmp")) {
-		perror("bktmp_local");
-		exit(1);
-	}
-	unless (id_cache = fopen(id_tmp, "w")) {
-		perror(id_tmp);
-		exit(1);
-	}
-	fprintf(id_cache, "\
-# This is a BitKeeper cache file.\n\
-# If you suspect that the file is corrupted, simply remove it and \n\
-# and it will be rebuilt as needed.  \n\
-# The format of the file is <ID> <PATHNAME>\n\
-# The file is used for performance during makepatch/takepatch commands.\n");
-	id_sum = 0;
 	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(idDB);
-	walksfiles(".", caches, id_cache);
-	fprintf(id_cache, "#$sum$ %u\n", id_sum);
-	fclose(id_cache);
+	walksfiles(".", caches, idDB);
 	if (dups) {
 		fprintf(stderr, "Not updating idcache due to dups.\n");
-		unlink(id_tmp);
-		goto out;
-	}
-	if (sccs_lockfile(IDCACHE_LOCK, 16, 0)) {
-		fprintf(stderr, "Not updating cache due to locking.\n");
-		unlink(id_tmp);
 	} else {
-		unlink(IDCACHE);
-		if (rename(id_tmp, IDCACHE)) {
-			perror("rename of idcache");
-			unlink(IDCACHE);
-		}
-		if (sccs_unlockfile(IDCACHE_LOCK)) perror(IDCACHE_LOCK);
-		chmod(IDCACHE, GROUP_MODE);
+		idcache_write(0, idDB);
 	}
-out:	
-	free(id_tmp);
 	mdbm_close(idDB);
 }
 
@@ -106,9 +72,7 @@ idcache_update(char *filelist)
 {
 	MDBM	*idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	FILE	*in = fopen(filelist, "r");
-	FILE	*out = fopen(IDCACHE, "a");
 	sccs	*s;
-	u32	sum = 0;
 	u8	*u;
 	int	n = 0;
 	char	buf[MAXKEY + MAXPATH];
@@ -126,16 +90,14 @@ idcache_update(char *filelist)
 		sccs_sdelta(s, sccs_ino(s), key);
 		u = mdbm_fetch_str(idDB, key);
 		unless (u && streq(u, s->gfile)) {
-			sprintf(buf, "%s %s\n", key, s->gfile);
-			for (u = buf; *u; sum += *u++);
-			fprintf(out, buf);
-			n++;
+			mdbm_store_str(idDB, key, s->gfile, MDBM_REPLACE);
+			++n;
 		}
 		sccs_free(s);
 	}
-	if (n) fprintf(out, "#$sum$ %u\n", sum);
 	fclose(in);
-	fclose(out);
+	unless (n) return;
+	idcache_write(0, idDB);
 	mdbm_close(idDB);
 }
 
@@ -158,16 +120,10 @@ save(sccs *sc, MDBM *idDB, char *buf)
 	}
 }
 
-private void
-idsum(u8 *s)
-{
-	while (*s) id_sum += *s++;
-}
-
 private	int
 caches(char *file, struct stat *sb, void *data)
 {
-	FILE	*id_cache = (FILE *)data;
+	MDBM	*idDB = (MDBM *)data;
 	sccs	*sc;
 	delta	*ino;
 	char	*t;
@@ -191,21 +147,8 @@ caches(char *file, struct stat *sb, void *data)
 		assert(ino->pathname);
 		sccs_sdelta(sc, ino, buf);
 		save(sc, idDB, buf);
-		if (sc->grafted || !streq(ino->pathname, sc->gfile)) {
-			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
-			idsum(buf);
-			idsum(sc->gfile);
-			idsum(" \n");
-		}
 		if (mixed && (t = sccs_iskeylong(buf))) {
 			*t = 0;
-			unless (streq(ino->pathname, sc->gfile)) {
-				fprintf(id_cache,
-				    "%s %s\n", buf, sc->gfile);
-				idsum(buf);
-				idsum(sc->gfile);
-				idsum(" \n");
-			}
 			save(sc, idDB, buf);
 			*t = '|';
 		}
@@ -215,5 +158,54 @@ caches(char *file, struct stat *sb, void *data)
 		}
 	} while (ino);
 	sccs_free(sc);
+	return (0);
+}
+
+int
+idcache_write(project *p, MDBM *idDB)
+{
+	FILE	*f;
+	char	*t, *root;
+	u32	id_sum;
+	kvpair	kv;
+	char	buf[MAXLINE];
+	char	id_tmp[MAXPATH];
+	char	id_lock[MAXPATH];
+
+	root = proj_root(p);
+	sprintf(id_tmp, "%s/%s.new", root, IDCACHE);
+	unless (f = fopen(id_tmp, "w")) {
+		perror(id_tmp);
+		return (1);
+	}
+	fprintf(f,
+"# This is a BitKeeper cache file.\n\
+# If you suspect that the file is corrupted, simply remove it and \n\
+# and it will be rebuilt as needed.\n\
+# The format of the file is <ID> <PATHNAME>\n\
+# The file is used for performance during makepatch/takepatch commands.\n");
+	id_sum = 0;
+	EACH_KV(idDB) {
+		sprintf(buf, "%s %s\n", kv.key.dptr, kv.val.dptr);
+		for (t = buf; *t; ++t) id_sum += (u8)*t;
+		fputs(buf, f);
+	}
+	fprintf(f, "#$sum$ %u\n", id_sum);
+	fclose(f);
+
+	sprintf(id_lock, "%s/%s", root, IDCACHE_LOCK);
+	sprintf(buf, "%s/%s", root, IDCACHE);
+	if (sccs_lockfile(id_lock, 16, 0)) {
+		fprintf(stderr, "Not updating cache due to locking.\n");
+		unlink(id_tmp);
+		return (1);
+	} else {
+		if (rename(id_tmp, buf)) {
+			perror("rename of idcache");
+			unlink(buf);
+		}
+		if (sccs_unlockfile(id_lock)) perror(id_lock);
+		chmod(buf, GROUP_MODE);
+	}
 	return (0);
 }

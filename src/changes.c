@@ -883,7 +883,7 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 	/*
 	 * Init idDB, goneDB, graphDB and csetDB
 	 */
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		exit(1);
 	}
