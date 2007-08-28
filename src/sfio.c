@@ -236,11 +236,13 @@ sfio_out(void)
 			strcpy(buf, sfile);
 			free(gfile);
 			free(sfile);
-		}
-		if (lstat(buf, &sb)) {
-			perror(buf);
-			send_eof(SFIO_LSTAT);
-			return (SFIO_LSTAT);
+			if (lstat(buf, &sb)) continue;
+		} else {
+			if (lstat(buf, &sb)) {
+				perror(buf);
+				send_eof(SFIO_LSTAT);
+				return (SFIO_LSTAT);
+			}
 		}
 		n = strlen(buf);
 		sprintf(len, "%04d", n);

@@ -71,7 +71,7 @@ private	int	bp_fullcheck;
  *
  * r2deltas is a hash that maps all delta keys in the ChangeSet file to
  * another hash that contains all the delta keys for that rootkey.
- * The nested hash doesn't store any day. In this way we can walk all
+ * The nested hash doesn't store any data. In this way we can walk all
  * rootkeys and all deltakeys for a given rootkey.
  */
 private	hash	*r2deltas;
@@ -850,7 +850,7 @@ rsfiocmd(int in_repair)
        strcpy(buf, "bk -q");
        len = strlen(buf);
        EACH(parent) len += sprintf(&buf[len], " -@'%s'", parent[i]);
-       strcpy(&buf[len], " sfio -Ko - | bk sfio -i");
+       strcpy(&buf[len], " sfio -Kqo - | bk sfio -i");
 
        /*
         * Set things up so that the incoming data is splatted into
@@ -1432,9 +1432,9 @@ checkKeys(sccs *s, char *root)
 				    s->gfile);
 				continue;
 			} else {
-		    		errors++;
+				errors++;
 			}
-			
+
 			/*
 			 * XXX - this is a place where we don't do repair
 			 * properly.  We know we have marked deltas which
@@ -1464,7 +1464,7 @@ checkKeys(sccs *s, char *root)
 			fprintf(stderr,
 			    "%s@%s is in ChangeSet but not marked\n",
 			   s->gfile, d->rev);
-		    	errors++;
+			errors++;
 		} else if (verbose > 2) {
 			fprintf(stderr, "%s: found %s from ChangeSet\n",
 			    s->gfile, d->rev);
