@@ -104,6 +104,11 @@ reverseLines(char **space)
 	}
 }
 
+/*
+ * Looking for a key_sort?  It's in check.c and sorts on the key starting
+ * at the pathname part.
+ */
+
 int
 string_sort(const void *a, const void *b)
 {

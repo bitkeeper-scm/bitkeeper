@@ -87,7 +87,6 @@ struct {
 	char	**missing;	/* tuples we couldn't find here */
 	u64	todo;		/* -b`psize` - bytes we think we are moving */
 	u64	done;		/* file bytes we've moved so far */
-	MDBM	*idDB;		/* idcache */
 } *opts;
 
 #define M_IN	1
@@ -209,7 +208,7 @@ sfio_out(void)
 	int	n;
 	char	*gfile, *sfile;
 	hash	*links = 0;
-	MDBM	*idDB;
+	MDBM	*idDB = 0;
 	char	ln[32];
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
@@ -897,6 +896,7 @@ done:	if (readn(0, buf, 10) != 10) {
 				    "%s existed but contents match, skipped.\n",
 				    file);
 			}
+			return (0);
 		} else {
 			fprintf(stderr, "%s already exists.\n", file);
 			return (1);

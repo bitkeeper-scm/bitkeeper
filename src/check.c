@@ -153,9 +153,17 @@ check_main(int ac, char **av)
 	/* Go get the ChangeSet file if it is missing */
 	if (!exists(CHANGESET) && (fix > 1)) {
 		fetch_changeset();
-		// XXX why restart?
-		fprintf(stderr, "Restarting a full repository check.\n");
-		return (system("bk -r check -acvff"));
+		/*
+		 * Restart because we're in a bk -r and the ChangeSet
+		 * was not in that list.
+		 */
+		if (verbose) {
+			fprintf(stderr,
+			    "Restarting a full repository check.\n");
+			return (system("bk -r check -acvff"));
+		} else {
+			return (system("bk -r check -acff"));
+		}
 	}
 
 	/* Make sure we're sane or bail. */
@@ -347,7 +355,7 @@ retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
 		freeLines(bp_missing, free);
 	}
 	if (goneDB) mdbm_close(goneDB);
-	if (all && !errors) cset_savetip(cset, 1);
+	unless (errors) cset_savetip(cset, 1);
 	sccs_free(cset);
 	cset = 0;
 	if (errors && fix) {
@@ -434,13 +442,13 @@ chk_dfile(sccs *s)
 	d = sccs_top(s);
 	unless (d) return (0);
 
-       /*
-	* XXX There used to be code here to handle the old style
-	* lod "not in view" file (s->defbranch == 1.0).  Pulled
-	* that and am leaving this marker as a reminder to see
-	* if new single tip LOD design needs to handle 'not in view'
-	* as a special case.
-        */
+	/*
+	 * XXX There used to be code here to handle the old style
+	 * lod "not in view" file (s->defbranch == 1.0).  Pulled
+	 * that and am leaving this marker as a reminder to see
+	 * if new single tip LOD design needs to handle 'not in view'
+	 * as a special case.
+	 */
 
 	p = basenm(s->sfile);
 	*p = 'd';
@@ -837,69 +845,91 @@ listFound(hash *db)
 }
 
 private FILE *
-rsfiocmd(int in_repair)
+sfiocmd(int in_repair)
 {
-       int     i, len;
-       char    *buf;
-       FILE    *f;
+	int	i, len;
+	char	*buf;
+	FILE	*f;
 
-       unless(parent) parent = addLine(parent, ""); /* force default */
-       len = 100;      /* prefix/postfix */
-       EACH(parent) len += strlen(parent[i]) + 5;
-       buf = malloc(len);
-       strcpy(buf, "bk -q");
-       len = strlen(buf);
-       EACH(parent) len += sprintf(&buf[len], " -@'%s'", parent[i]);
-       strcpy(&buf[len], " sfio -Kqo - | bk sfio -i");
+	unless(parent) parent = addLine(parent, ""); /* force default */
+	len = 100;	/* prefix/postfix */
+	EACH(parent) len += strlen(parent[i]) + 5;
+	buf = malloc(len);
+	strcpy(buf, "bk -q");
+	len = strlen(buf);
+	EACH(parent) len += sprintf(&buf[len], " -@'%s'", parent[i]);
+	if (verbose) {
+		strcpy(&buf[len], " sfio -Kqo - | bk sfio -i");
+	} else {
+		strcpy(&buf[len], " sfio -Kqo - | bk sfio -iq");
+	}
 
-       /*
-        * Set things up so that the incoming data is splatted into
-        * BitKeeper/repair but we are back where we started.
-        */
-       if (in_repair) {
-	       if (isdir("BitKeeper/repair")) rmtree("BitKeeper/repair");
-	       mkdir("BitKeeper/repair", 0775);
-	       chdir("BitKeeper/repair");
-       }
-       f = popen(buf, "w");
-       free(buf);
-       if (in_repair) chdir("../..");
-       return (f);
+	/*
+	 * Set things up so that the incoming data is splatted into
+	 * BitKeeper/repair but we are back where we started.
+	 */
+	if (in_repair) {
+		if (isdir("BitKeeper/repair")) rmtree("BitKeeper/repair");
+		mkdir("BitKeeper/repair", 0775);
+		chdir("BitKeeper/repair");
+	}
+	f = popen(buf, "w");
+	free(buf);
+	if (in_repair) chdir("../..");
+	return (f);
 }
 
+/*
+ * sort on pathnames ... of the key
+ */
+int
+key_sort(const void *a, const void *b)
+{
+	char	*aa = *(char**)a;
+	char	*bb = *(char**)b;
+
+	aa = strchr(aa, '|');
+	bb = strchr(bb, '|');
+	return (strcmp(aa, bb));
+}
 
 private int
 repair(hash *db)
 {
-	int	n = 0;
+	int	i, n = 0;
+	char	**sorted = 0;
 	FILE	*f;
 
 	if (verbose == 1) fprintf(stderr, "\n");
-	EACH_HASH(db) {
-		++n;
-		if (verbose > 2) fprintf(stderr, "Missing: %s\n", db->kptr);
-	}
+	EACH_HASH(db) sorted = addLine(sorted, db->kptr);
 
 	/* Unneeded but left here in case we screw up the calling code */
-	unless (n) return (0);
+	unless (n = nLines(sorted)) return (0);
 
-	f = rsfiocmd(1);
-	EACH_HASH(db) fprintf(f, "%s\n", db->kptr);
+
+	sortLines(sorted, key_sort);
+	if (verbose) fprintf(stderr, "Attempting to fetch %d files...\n", n);
+	f = sfiocmd(1);
+	EACH(sorted) {
+		fprintf(f, "%s\n", sorted[i]);
+		if (verbose > 2) fprintf(stderr, "Missing: %s\n", sorted[i]);
+	}
+	freeLines(sorted, 0);
 	if (pclose(f) != 0) return (n);
 	if (system("bk sfiles BitKeeper/repair | bk check -s -") != 0) {
 		fprintf(stderr, "check: stripdel pass failed, aborting.\n");
 		goto out;
 	}
-	fprintf(stderr, "Moving files into place...\n");
+	if (verbose) fprintf(stderr, "Moving files into place...\n");
 	if (system("bk sfiles BitKeeper/repair | bk names -q -") != 0) {
 		goto out;
 	}
-	fprintf(stderr, "Rerunning check...\n");
+	if (verbose) fprintf(stderr, "Rerunning check...\n");
 	if (system("bk -r check -acf") != 0) {
 		fprintf(stderr, "Repository is not fully repaired.\n");
 		goto out;
 	}
-	fprintf(stderr, "Repository is repaired.\n");
+	if (verbose) fprintf(stderr, "Repository is repaired.\n");
 	n = 0;
 out:	rmtree("BitKeeper/repair");
 	return (n);
@@ -922,7 +952,7 @@ fetch_changeset(void)
 		fprintf(stderr, "Don't have original cset rootkey, sorry,\n");
 		exit(0x40);
 	}
-	f = rsfiocmd(0);
+	f = sfiocmd(0);
 	fprintf(f, "%s\n", proj_rootkey(0));
 	if (pclose(f) != 0) {
 		fprintf(stderr, "Unable to retrieve ChangeSet, sorry.\n");
@@ -957,7 +987,7 @@ fetch_changeset(void)
 		fprintf(stderr, "Giving up, sorry.\n");
 		exit(0x40);
 	}
-	fprintf(stderr, "ChangeSet rollback complete.\n");
+	fprintf(stderr, "ChangeSet restoration complete.\n");
 }
 
 
@@ -1592,7 +1622,7 @@ repair_main(int ac, char **av)
 	nav[i=0] = "bk";
 	nav[++i] = "-r";
 	nav[++i] = "check";
-	nav[++i] = "-acff";
+	nav[++i] = "-acffv";
 	while ((c = getopt(ac, av, "@;")) != -1) {
 		switch (c) {
 		    case '@':
