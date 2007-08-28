@@ -11,13 +11,12 @@
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
-private	int	check(sccs *s);
+private	int	check(sccs *s, MDBM *idDB);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
 private	char	*getFile(char *root, MDBM *idDB);
 private	int	checkAll(hash *keys);
 private	void	listFound(hash *db);
 private	void	listCsetRevs(char *key);
-private void	init_idcache(void);
 private int	checkKeys(sccs *s, char *root);
 private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
@@ -51,9 +50,6 @@ private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
 private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM|INIT_CHK_STIME;
-private	FILE	*idcache;
-private	u32	id_sum;
-private char	id_tmp[MAXPATH]; /* BitKeeper/tmp/bkXXXXXX */
 private	int	poly;
 private	int	polyList;
 private	int	stripdel;	/* strip any ahead deltas */
@@ -191,8 +187,7 @@ retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
 	buildKeys(idDB);
 	if (all) {
 		mdbm_close(idDB);
-		idDB = 0;
-		init_idcache();
+		idDB = mdbm_mem();
 	}
 
 	/* This can legitimately return NULL */
@@ -318,7 +313,7 @@ retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
 			}
 		}
 
-		if (e = check(s)) {
+		if (e = check(s, idDB)) {
 			errors |= 0x40;
 		} else {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
@@ -328,20 +323,8 @@ retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
 	if (e = sfileDone()) return (e);
 	if (BAM && !bp_hasBAM()) touch(BAM_MARKER, 0664);
 	if (all || update_idcache(idDB, keys)) {
-		fprintf(idcache, "#$sum$ %u\n", id_sum);
-		fclose(idcache);
-		if (sccs_lockfile(IDCACHE_LOCK, 16, 0)) {
-			fprintf(stderr, "Not updating cache due to locking.\n");
-			unlink(id_tmp);
-		} else {
-			unlink(IDCACHE);
-			if (rename(id_tmp, IDCACHE)) {
-				perror("rename of idcache");
-				unlink(IDCACHE);
-			}
-			sccs_unlockfile(IDCACHE_LOCK);
-			chmod(IDCACHE, GROUP_MODE);
-		}
+		idcache_write(0, idDB);
+		mdbm_close(idDB);
 	}
 	/*
 	 * Note: we may update NFILES more than needed when not in verbose mode.
@@ -978,20 +961,6 @@ fetch_changeset(void)
 }
 
 
-private void
-init_idcache(void)
-{
-	unless (bktmp_local(id_tmp, "check")) {
-		perror("bktmp_local");
-		exit(1);
-	}
-	unless (idcache = fopen(id_tmp, "w")) {
-		perror(id_tmp);
-		exit(1);
-	}
-	id_sum = 0;
-}
-
 /*
  * Open up the ChangeSet file and get every key ever added.  Build the
  * r2deltas hash which is described at the top f the file.  We'll use
@@ -1168,12 +1137,6 @@ markCset(sccs *s, delta *d)
 	} while (d && !(d->flags & D_CSET));
 }
 
-private void
-idsum(u8 *s)
-{
-	while (*s) id_sum += *s++;
-}
-
 /*
 	1) for each key in the changeset file, we need to make sure the
 	   key is in the source file and is marked.
@@ -1189,7 +1152,7 @@ idsum(u8 *s)
 	5) rebuild the idcache if in -a mode.
 */
 private int
-check(sccs *s)
+check(sccs *s, MDBM *idDB)
 {
 	static	int	haspoly = -1;
 	delta	*d, *ino, *tip = 0;
@@ -1300,19 +1263,14 @@ check(sccs *s)
 			sccs_sdelta(s, ino, buf);
 			if (s->grafted ||
 			    !sccs_patheq(ino->pathname, s->gfile)) {
-				fprintf(idcache, "%s %s\n", buf, s->gfile);
-				idsum(buf);
-				idsum(s->gfile);
-				idsum(" \n");
+				mdbm_store_str(idDB, buf, s->gfile,
+				    MDBM_REPLACE);
 				if (mixed && (t = sccs_iskeylong(buf))) {
 					*t = 0;
-					 fprintf(idcache,
-					    "%s %s\n", buf, s->gfile);
-					idsum(buf);
-					idsum(s->gfile);
-					idsum(" \n");
+					mdbm_store_str(idDB, buf, s->gfile,
+					    MDBM_REPLACE);
 					*t = '|';
-				} 
+				}
 			}
 			unless (s->grafted) break;
 			while (ino = ino->next) {
@@ -1622,16 +1580,6 @@ update_idcache(MDBM *idDB, hash *keys)
 			}
 		}
 	}
-	if (updated) {
-		init_idcache();
-		EACH_KV (idDB) {
-			fprintf(idcache, "%s %s\n", kv.key.dptr, kv.val.dptr);
-			idsum(kv.key.dptr);
-			idsum(kv.val.dptr);
-			idsum(" \n");
-		}
-	}
-	mdbm_close(idDB);
 	return (updated);
 }
 

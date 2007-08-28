@@ -16201,8 +16201,7 @@ out:		if (f) fclose(f);
 			if (strneq(buf, "#$sum$ ", 7)) {
 				if (atoi(&buf[7]) == sum) {
 					idcache = 2;	/* OK */
-					sum = 0;
-					continue;
+					break;		/* done */
 				}
 				if (first) {
 					fprintf(stderr,
@@ -16219,7 +16218,6 @@ out:		if (f) fclose(f);
 			u8	*u;
 
 			for (u = buf; *u; sum += *u++);
-			idcache = 1;	// In case we saw a sum already
 		}
 		if (chop(buf) != '\n') {
 			if (first && idcache) {
