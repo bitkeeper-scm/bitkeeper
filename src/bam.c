@@ -1609,7 +1609,7 @@ bam_convert_main(int ac, char **av)
 	sccs	*s;
 	char	*p;
 	int	c, i, j, n;
-	int	min = 128<<10, matched = 0, errors = 0;
+	int	matched = 0, errors = 0;
 	FILE	*in, *out, *sfiles;
 	char	buf[MAXKEY * 2];
 
@@ -1656,10 +1656,6 @@ bam_convert_main(int ac, char **av)
 			continue;
 		}
 
-		if (size(s->sfile) < min) {
-			sccs_free(s);
-			continue;
-		}
 		errors |= uu2bp(s);
 		sccs_free(s);
 	}
@@ -1736,6 +1732,7 @@ uu2bp(sccs *s)
 	delta	*d;
 	FILE	*out;
 	int	locked;
+	int	n = 0;
 	char	*t;
 	char	oldroot[MAXKEY], newroot[MAXKEY];
 	char	key[MAXKEY];
@@ -1754,7 +1751,11 @@ uu2bp(sccs *s)
 	}
 	for (d = s->table; d; d = d->next) {
 		assert(d->type == 'D');
-		if (sccs_get(s, d->rev, 0, 0, 0, 0, "-")) return (8);
+		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
+
+		/* see if we're too small to bother */
+		if ((d == s->table) && (size(s->gfile) < 64<<10)) goto out;
+
 		/*
 		 * XXX - if this logic is wrong then we lose data.
 		 * It may be worth it to go ahead and do the insert
@@ -1771,11 +1772,13 @@ uu2bp(sccs *s)
 			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
 			continue;
 		}
+
 		if (d->flags & D_CSET) {
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
 		}
 		if (bp_delta(s, d)) return (16);
+		n++;
 		if (d->flags & D_CSET) {
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
@@ -1801,7 +1804,8 @@ err:		sccs_unlock(s, 'z');
 	}
 	sccs_setStime(s, 0);
 	chmod(s->sfile, 0444);
-	sccs_unlock(s, 'z');
+	fprintf(stderr, "Converted %d deltas in %s\n", n, s->gfile);
+out:	sccs_unlock(s, 'z');
 	return (0);
 }
 

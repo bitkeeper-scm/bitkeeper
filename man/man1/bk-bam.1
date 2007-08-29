@@ -65,8 +65,10 @@ If the
 .Q \-n
 option is included, then just say what would be done but do not do it.
 .br
-NOTE: it is not recommended to run this command in a BAM server since
-the server may have BAM files referenced only by clients.
+NOTE: this command should 
+.B never 
+be run in a BAM server since the server may have BAM files referenced
+only by clients.
 .tp
 .B convert
 Convert the set of specified files from traditional binary encoding to BAM
@@ -105,7 +107,8 @@ For each file in the named directory, see if the hash of the file matches
 one of the missing files.
 If so, reinsert that file.
 .\" XXX - tell them that it may be wrong?
-.LP
+.SH SEE ALSO
+.SA Howto-BAM
 .SH CATEGORY
 .B Utility
 .\" help://BAM
