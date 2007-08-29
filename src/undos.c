@@ -1,38 +1,50 @@
 #include "system.h"
 #include "sccs.h"
 
-private	void	undos(char *s);
-private void	undos_stdin(void);
-private	void	redos_stdin(void);
-int	auto_new_line = 1;
+private	void	undos(FILE *f);
+private	void	redos(FILE *f);
+
+private	int	auto_new_line = 1;
 
 int
 undos_main(int ac, char **av)
 {
-	int 	c;
-	int	redos = 0;
+	FILE	*f;
+	int	c;
+	int	do_redos = 0;
+	int	rc = 0;
 
- 	while ((c = getopt(ac, av, "nr")) != -1) { 
+	while ((c = getopt(ac, av, "nr")) != -1) {
 		switch (c) {
 		    case 'n': auto_new_line = 0; break;		/* doc 2.0 */
-		    case 'r': redos = 1; break;			/* undoc */
+		    case 'r': do_redos = 1; break;		/* doc */
 		    default:
 			system("bk help -s undos");
 			return (1);
 		}
 	}
 	unless (av[optind]) {
-		if (redos) {
-			redos_stdin();
+		if (do_redos) {
+			redos(stdin);
 		} else {
-			undos_stdin();
+			undos(stdin);
 		}
 		return (0);
 	}
-	while (av[optind]) {
-		undos(av[optind++]);
+	for (; av[optind]; optind++) {
+		unless (f = fopen(av[optind], "r")) {
+			perror(av[optind]);
+			rc = 1;
+			break;
+		}
+		if (do_redos) {
+			redos(f);
+		} else {
+			undos(f);
+		}
+		fclose(f);
 	}
-	return (0);
+	return (rc);
 }
 
 /*
@@ -41,29 +53,31 @@ undos_main(int ac, char **av)
  * it does a s|\r|\n| otherwise it does a s|\r||.
  */
 private void
-undos_stdin(void)
+undos(FILE *f)
 {
-	int	c;
+	int	c, lastc = 0;
 
-	while ((c = getchar()) != EOF) {
-		unless (c == '\r') {
-			putchar(c);
-			continue;
-		}
-again:		switch (c = getchar()) {
-		    case EOF:
-			if (auto_new_line) putchar('\n');
-			return;
-		    case '\n':
-		    	putchar(c);
-			break;
-		    case '\r':
-			if (auto_new_line) putchar('\n');
-			goto again;
+	while (lastc != EOF) {
+		c = getc(f);
+		if (c == '\032') c = EOF; /* ^Z DOS end of file marker */
+		switch (c) {
+		    case '\r': break; /* skip CRs */
+		    case '\n': putchar(c); break;
 		    default:
-		    	putchar(c);
+			if (lastc == '\r') {
+				putchar(auto_new_line ? '\n' : '\r');
+				lastc = '\n';
+			}
+			if (c == EOF) {
+				if ((lastc != '\n') && auto_new_line) {
+					putchar('\n');
+				}
+			} else {
+				putchar(c);
+			}
 			break;
 		}
+		lastc = c;
 	}
 }
 
@@ -71,41 +85,29 @@ again:		switch (c = getchar()) {
  * Make out have CRLF if it doesn't already
  */
 private void
-redos_stdin(void)
+redos(FILE *f)
 {
-	int	c, sawcr = 0;
+	int	c, lastc = 0;
 
-	while ((c = getchar()) != EOF) {
+	while (lastc != EOF) {
+		c = getc(f);
 		switch (c) {
-		case '\r': sawcr = 1; break;
-		case '\n':
-			unless (sawcr) putchar('\r');
-		default:
-			sawcr = 0;
-			putchar(c);
+		    case '\r': break; /* skip CRs */
+		    case '\n': fputs("\r\n", stdout); break;
+		    default:
+			if (lastc == '\r') {
+				fputs("\r\n", stdout);
+				lastc = '\n';
+			}
+			if (c == EOF) {
+				if ((lastc != '\n') && auto_new_line) {
+					fputs("\r\n", stdout);
+				}
+			} else {
+				putchar(c);
+			}
 			break;
 		}
-	} 
-}
-
-private void
-undos(char *file)
-{
-	MMAP	*m = mopen(file, "r");
-	char	*p;
-	u32	sz;
-
-	unless (m) {
-		/* perror(file);  mopen already printed the error */
-		exit(1);
+		lastc = c;
 	}
-	for (p = m->where, sz = m->size; sz--; p++) {
-		unless (*p == '\r') {
-			putchar(*p);
-			continue;
-		}
-		if (p[1] == '\n') continue;
-		if (auto_new_line) putchar('\n');
-	}
-	mclose(m);
 }
