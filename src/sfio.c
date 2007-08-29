@@ -77,6 +77,7 @@ struct {
 	u32	force:1;	/* overwrite existing files */
 	u32	bp_tuple:1;	/* -B rkey dkey bphash path */
 	u32	hardlinks:1;	/* save hardlinks */
+	u32	key2path:1;	/* -K read keys on stdin */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
@@ -102,7 +103,7 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefHilmopP;qr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefHiKlmopP;qr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -121,6 +122,7 @@ sfio_main(int ac, char **av)
 			if (opts->mode) goto usage;
 			opts->mode = M_IN;
 			break;
+		    case 'K': opts->key2path = 1; break;
 		    case 'l': opts->recurse = 0; break;
 		    case 'o': 					/* doc 2.0 */
 			if (opts->mode) goto usage;
@@ -143,14 +145,16 @@ sfio_main(int ac, char **av)
 	/*
 	 * If we're being executed remotely don't let them grab everything.
 	 */
-	if (getenv("_BK_VIA_REMOTE") && !opts->bp_tuple) {
+	if (getenv("_BK_VIA_REMOTE") && !(opts->bp_tuple || opts->key2path)) {
 		fprintf(stderr, "Remote is limited to keys.\n");
 		exit(1);
 	}
 	/* ignore "-" it makes bk -r sfio -o work */
 	if (av[optind] && streq(av[optind], "-")) optind++;
 	if (optind != ac) goto usage;
-	if (opts->more && (opts->mode != M_OUT)) goto usage;
+	if ((opts->more || opts->key2path) && (opts->mode != M_OUT)) {
+		goto usage;
+	}
 #ifdef	WIN32
 	if (opts->hardlinks) {
 		fprintf(stderr, "%s: hardlink-mode not supported on Windows\n",
@@ -197,16 +201,21 @@ nextfile(char *buf)
 int
 sfio_out(void)
 {
+#ifndef	SFIO_STANDALONE
 	char	buf[MAXPATH];
 	char	len[5];
 	struct	stat sb;
 	off_t	byte_count = 0;
 	int	n;
+	char	*gfile, *sfile;
 	hash	*links = 0;
+	MDBM	*idDB = 0;
 	char	ln[32];
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	writen(1, SFIO_VERS, 10);
+
+	if (opts->key2path) idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	if (opts->bp_tuple) opts->sent = hash_new(HASH_MEMHASH);
 	if (opts->hardlinks) links = hash_new(HASH_MEMHASH);
 	byte_count = 10;
@@ -219,10 +228,21 @@ sfio_out(void)
 			}
 			continue;
 		}
-		if (lstat(buf, &sb)) {
-			perror(buf);
-			send_eof(SFIO_LSTAT);
-			return (SFIO_LSTAT);
+		if (opts->key2path) {
+			unless (gfile = key2path(buf, idDB)) {
+				continue;
+			}
+			sfile = name2sccs(gfile);
+			strcpy(buf, sfile);
+			free(gfile);
+			free(sfile);
+			if (lstat(buf, &sb)) continue;
+		} else {
+			if (lstat(buf, &sb)) {
+				perror(buf);
+				send_eof(SFIO_LSTAT);
+				return (SFIO_LSTAT);
+			}
 		}
 		n = strlen(buf);
 		sprintf(len, "%04d", n);
@@ -270,16 +290,17 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	} else {
 		send_eof(0);
 	}
-#ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
-#endif
 	if (opts->more) freeLines(opts->more, free);
 	if (opts->sent) hash_free(opts->sent);
 	if (opts->hardlinks) hash_free(links);
 	NEWLINE();
 	free(opts);
+#endif
 	return (0);
 }
+
+#ifndef	SFIO_STANDALONE
 
 private int
 out_symlink(char *file, struct stat *sp, off_t *byte_count)
@@ -405,7 +426,6 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		*byte_count += n;
 	}
 	close(fd);
-#ifndef	SFIO_STANDALONE
 	unless (opts->quiet) {
 		if (opts->newline == '\r') {
 			if (opts->todo) {
@@ -420,7 +440,6 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 			fprintf(stderr, "%s%s\n", opts->prefix, file);
 		}
 	}
-#endif
 	return (0);
 }
 
@@ -428,7 +447,6 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 private int
 out_bptuple(char *keys, off_t *byte_count)
 {
-#ifndef SFIO_STANDALONE
 	char	*path, *freeme;
 	int	n;
 	struct	stat sb;
@@ -461,10 +479,6 @@ out_bptuple(char *keys, off_t *byte_count)
 	}
 	free(freeme);
 	return (n);
-#else
-	fprintf(stderr, "Unsupported.\n");
-	return (1);
-#endif
 }
 
 /*
@@ -473,7 +487,6 @@ out_bptuple(char *keys, off_t *byte_count)
 private void
 missing(off_t *byte_count)
 {
-#ifndef	SFIO_STANDALONE
 	char	*p, *tmpf;
 	FILE	*f;
 	int	i;
@@ -509,8 +522,8 @@ err:		send_eof(SFIO_LOOKUP);
 	unlink(tmpf);
 	free(tmpf);
 	/* they should have sent EOF */
-#endif
 }
+#endif	/* SFIO_STANDALONE */
 
 /*
  * Send an eof by sending a 0 or less than 0 for the pathlen of the "next"
@@ -877,6 +890,7 @@ done:	if (readn(0, buf, 10) != 10) {
 				    "%s existed but contents match, skipped.\n",
 				    file);
 			}
+			return (0);
 		} else {
 			fprintf(stderr, "%s already exists.\n", file);
 			return (1);

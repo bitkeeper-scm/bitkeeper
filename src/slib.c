@@ -8115,6 +8115,22 @@ SCCS:
 	return (0);
 }
 
+void
+cset_savetip(sccs *s, int force)
+{
+	FILE	*f;
+	char	buf[MAXPATH];
+
+	assert(s->proj);
+	sprintf(buf, "%s/BitKeeper/log/TIP", proj_root(s->proj));
+	if (!force && exists(buf)) return;
+	f = fopen(buf, "w");
+	assert(f);
+	sccs_md5delta(s, sccs_top(s), buf);
+	fprintf(f, "%s\n", buf);
+	fclose(f);
+}
+
 /*
  * If we are trying to compare with expanded strings, do so.
  */
@@ -13384,6 +13400,8 @@ mkDiffTarget(sccs *s,
 		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
 		return (-1);
 	}
+	/* Assumes that we only delta the ChangeSet file from the root */
+	if (CSET(s)) cset_savetip(s, 1);
 	return (0);
 }
 
@@ -16183,8 +16201,7 @@ out:		if (f) fclose(f);
 			if (strneq(buf, "#$sum$ ", 7)) {
 				if (atoi(&buf[7]) == sum) {
 					idcache = 2;	/* OK */
-					sum = 0;
-					continue;
+					break;		/* done */
 				}
 				if (first) {
 					fprintf(stderr,
@@ -16201,7 +16218,6 @@ out:		if (f) fclose(f);
 			u8	*u;
 
 			for (u = buf; *u; sum += *u++);
-			idcache = 1;	// In case we saw a sum already
 		}
 		if (chop(buf) != '\n') {
 			if (first && idcache) {

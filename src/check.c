@@ -11,13 +11,12 @@
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
-private	int	check(sccs *s);
+private	int	check(sccs *s, MDBM *idDB);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
 private	char	*getFile(char *root, MDBM *idDB);
 private	int	checkAll(hash *keys);
 private	void	listFound(hash *db);
 private	void	listCsetRevs(char *key);
-private void	init_idcache(void);
 private int	checkKeys(sccs *s, char *root);
 private	int	chk_csetpointer(sccs *s);
 private void	warnPoly(void);
@@ -31,6 +30,8 @@ private int	chk_eoln(sccs *s, int eoln_unix);
 private int	chk_merges(sccs *s);
 private sccs*	fix_merges(sccs *s);
 private	int	update_idcache(MDBM *idDB, hash *keys);
+private	void	fetch_changeset(void);
+private	int	repair(hash *db);
 
 private	int	nfiles;		/* for progress bar */
 private	int	actual;		/* for progress bar cache */
@@ -47,13 +48,13 @@ private	int	csetpointer;	/* if set, we need to fix cset pointers */
 private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
+private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM|INIT_CHK_STIME;
-private	FILE	*idcache;
-private	u32	id_sum;
-private char	id_tmp[MAXPATH]; /* BitKeeper/tmp/bkXXXXXX */
 private	int	poly;
 private	int	polyList;
+private	int	stripdel;	/* strip any ahead deltas */
 private	MDBM	*goneDB;
+private	char	**parent;	/* for repair usage */
 int		xflags_failed;	/* notification */
 private	u32	timestamps;
 private	char	**bp_getFiles;
@@ -70,7 +71,7 @@ private	int	bp_fullcheck;
  *
  * r2deltas is a hash that maps all delta keys in the ChangeSet file to
  * another hash that contains all the delta keys for that rootkey.
- * The nested hash doesn't store any day. In this way we can walk all
+ * The nested hash doesn't store any data. In this way we can walk all
  * rootkeys and all deltakeys for a given rootkey.
  */
 private	hash	*r2deltas;
@@ -94,8 +95,10 @@ check_main(int ac, char **av)
 	int	BAM = 0;
 
 	timestamps = 0;
-	while ((c = getopt(ac, av, "aBcdefgpRTvw")) != -1) {
+	while ((c = getopt(ac, av, "@;aBcdefgpRsTvw")) != -1) {
 		switch (c) {
+			/* XXX: leak - free parent freeLines(parent, 0) */
+		    case '@': parent = addLine(parent, optarg); break;
 		    case 'a': all++; break;			/* doc 2.0 */
 		    case 'B': bp_missing = allocLines(64); break;
 		    case 'c':					/* doc 2.0 */
@@ -108,6 +111,7 @@ check_main(int ac, char **av)
 		    case 'g': goneKey++; break;			/* doc 2.0 */
 		    case 'p': polyList++; break;		/* doc 2.0 */
 		    case 'R': resync++; break;			/* doc 2.0 */
+		    case 's': stripdel++; break;
 		    case 'T': timestamps = GET_DTIME; break;
 		    case 'v': verbose++; break;			/* doc 2.0 */
 		    case 'w': badWritable++; break;		/* doc 2.0 */
@@ -131,20 +135,67 @@ check_main(int ac, char **av)
 		fprintf(stderr, "check: cannot find package root.\n");
 		return (1);
 	}
-	if (sane(0, resync)) return (1);
+	/* We need write perm on the tmp dirs, etc. */
+	if (chk_permissions()) {
+		fprintf(stderr,
+		    "Insufficient repository permissions.\n");
+		return (1);
+	}
 	if (all && bp_index_check(!verbose)) return (1);
 
 	checkout = CO_NONE;
 	if (!resync && all) checkout = proj_checkout(0);
 	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
-		exit(1);
+		return (1);
+	}
+
+	/* Go get the ChangeSet file if it is missing */
+	if (!exists(CHANGESET) && (fix > 1)) {
+		fetch_changeset();
+		/*
+		 * Restart because we're in a bk -r and the ChangeSet
+		 * was not in that list.
+		 */
+		if (verbose) {
+			fprintf(stderr,
+			    "Restarting a full repository check.\n");
+			return (system("bk -r check -acvff"));
+		} else {
+			return (system("bk -r check -acff"));
+		}
+	}
+
+	/* Make sure we're sane or bail. */
+	if (sane(0, resync)) return (1);
+
+	/* revtool: the code below is restored from a previous version */
+retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
+		fprintf(stderr, "Can't init ChangeSet\n");
+		return (1);
+	}
+	if (cset->encoding & E_GZIP) {
+		sccs_free(cset);
+		if (verbose == 1) {
+			fprintf(stderr, "Uncompressing ChangeSet file...\n");
+		}
+		/* This will fail if we are locked */
+		if (sys("bk", "admin", "-Znone", "ChangeSet", SYS)) exit(1);
+		if (verbose == 1) {
+			fprintf(stderr,
+			    "Restarting check from the beginning...\n");
+		}
+		goto retry;
+	}
+	mixed = (LONGKEY(cset) == 0);
+	if (verbose == 1) {
+		nfiles = repo_nfiles(cset);
+		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
 	}
 	buildKeys(idDB);
 	if (all) {
 		mdbm_close(idDB);
-		idDB = 0;
-		init_idcache();
+		idDB = mdbm_mem();
 	}
 
 	/* This can legitimately return NULL */
@@ -159,7 +210,12 @@ check_main(int ac, char **av)
 	want_dfile = exists(DFILE);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
-		unless (s = sccs_init(name, flags)) {
+		if (all && streq(name, CHANGESET)) {
+			s = cset;
+		} else {
+			s = sccs_init(name, flags);
+		}
+		unless (s) {
 			if (all) fprintf(stderr, "%s init failed.\n", name);
 			errors |= 1;
 			continue;
@@ -172,7 +228,7 @@ check_main(int ac, char **av)
 			fprintf(stderr,
 			    "%s: bad file checksum, corrupted file?\n",
 			    s->gfile);
-			sccs_free(s);
+			unless (s == cset) sccs_free(s);
 			errors |= 1;
 			continue;
 		}
@@ -183,7 +239,7 @@ check_main(int ac, char **av)
 			} else {
 				perror(s->gfile);
 			}
-			sccs_free(s);
+			unless (s == cset) sccs_free(s);
 			errors |= 1;
 			continue;
 		}
@@ -265,30 +321,18 @@ check_main(int ac, char **av)
 			}
 		}
 
-		if (e = check(s)) {
+		if (e = check(s, idDB)) {
 			errors |= 0x40;
 		} else {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
 		}
-		sccs_free(s);
+		unless (s == cset) sccs_free(s);
 	}
 	if (e = sfileDone()) return (e);
 	if (BAM && !bp_hasBAM()) touch(BAM_MARKER, 0664);
 	if (all || update_idcache(idDB, keys)) {
-		fprintf(idcache, "#$sum$ %u\n", id_sum);
-		fclose(idcache);
-		if (sccs_lockfile(IDCACHE_LOCK, 16, 0)) {
-			fprintf(stderr, "Not updating cache due to locking.\n");
-			unlink(id_tmp);
-		} else {
-			unlink(IDCACHE);
-			if (rename(id_tmp, IDCACHE)) {
-				perror("rename of idcache");
-				unlink(IDCACHE);
-			}
-			sccs_unlockfile(IDCACHE_LOCK);
-			chmod(IDCACHE, GROUP_MODE);
-		}
+		idcache_write(0, idDB);
+		mdbm_close(idDB);
 	}
 	/*
 	 * Note: we may update NFILES more than needed when not in verbose mode.
@@ -311,6 +355,9 @@ check_main(int ac, char **av)
 		freeLines(bp_missing, free);
 	}
 	if (goneDB) mdbm_close(goneDB);
+	unless (errors) cset_savetip(cset, 1);
+	sccs_free(cset);
+	cset = 0;
 	if (errors && fix) {
 		if (names && !gotDupKey) {
 			fprintf(stderr, "check: trying to fix names...\n");
@@ -395,13 +442,13 @@ chk_dfile(sccs *s)
 	d = sccs_top(s);
 	unless (d) return (0);
 
-       /*
-	* XXX There used to be code here to handle the old style
-	* lod "not in view" file (s->defbranch == 1.0).  Pulled
-	* that and am leaving this marker as a reminder to see
-	* if new single tip LOD design needs to handle 'not in view'
-	* as a special case.
-        */
+	/*
+	 * XXX There used to be code here to handle the old style
+	 * lod "not in view" file (s->defbranch == 1.0).  Pulled
+	 * that and am leaving this marker as a reminder to see
+	 * if new single tip LOD design needs to handle 'not in view'
+	 * as a special case.
+	 */
 
 	p = basenm(s->sfile);
 	*p = 'd';
@@ -506,14 +553,15 @@ chk_BAM(sccs *s, char ***missing)
 private int
 keywords(sccs *s)
 {
-	char	*a = bktmp(0, "check_wk");
-	char	*b = bktmp(0, "check_wok");
+	char	*a = bktmp(0, "expanded");
+	char	*b = bktmp(0, "unexpanded");
 	int	same;
 
 	assert(a && b);
 	sysio(0, a, 0, "bk", "get", "-qp", s->gfile, SYS);
 	sysio(0, b, 0, "bk", "get", "-qkp", s->gfile, SYS);
 	same = sameFiles(a, b);
+	if (getenv("BK_DEBUG") && !same) sys("bk", "diff", "-up", a, b, SYS);
 	unlink(a);
 	unlink(b);
 	free(a);
@@ -767,7 +815,13 @@ checkAll(hash *keys)
 		hash_storeStr(warned, rkey, 0);
 		found++;
 	}
-	if (found) listFound(warned);
+	if (found) {
+		if (fix > 1) {
+			found = repair(warned);
+		} else {
+			listFound(warned);
+		}
+	}
 	hash_free(warned);
 	if (local) hash_free(local);
 	return (found != 0);
@@ -790,19 +844,152 @@ listFound(hash *db)
 	}
 }
 
-private void
-init_idcache(void)
+private FILE *
+sfiocmd(int in_repair)
 {
-	unless (bktmp_local(id_tmp, "check")) {
-		perror("bktmp_local");
-		exit(1);
+	int	i, len;
+	char	*buf;
+	FILE	*f;
+
+	unless(parent) parent = addLine(parent, ""); /* force default */
+	len = 100;	/* prefix/postfix */
+	EACH(parent) len += strlen(parent[i]) + 5;
+	buf = malloc(len);
+	strcpy(buf, "bk -q");
+	len = strlen(buf);
+	EACH(parent) len += sprintf(&buf[len], " -@'%s'", parent[i]);
+	if (verbose) {
+		strcpy(&buf[len], " sfio -Kqo - | bk sfio -i");
+	} else {
+		strcpy(&buf[len], " sfio -Kqo - | bk sfio -iq");
 	}
-	unless (idcache = fopen(id_tmp, "w")) {
-		perror(id_tmp);
-		exit(1);
+
+	/*
+	 * Set things up so that the incoming data is splatted into
+	 * BitKeeper/repair but we are back where we started.
+	 */
+	if (in_repair) {
+		if (isdir("BitKeeper/repair")) rmtree("BitKeeper/repair");
+		mkdir("BitKeeper/repair", 0775);
+		chdir("BitKeeper/repair");
 	}
-	id_sum = 0;
+	f = popen(buf, "w");
+	free(buf);
+	if (in_repair) chdir("../..");
+	return (f);
 }
+
+/*
+ * sort on pathnames ... of the key
+ */
+int
+key_sort(const void *a, const void *b)
+{
+	char	*aa = *(char**)a;
+	char	*bb = *(char**)b;
+
+	aa = strchr(aa, '|');
+	bb = strchr(bb, '|');
+	return (strcmp(aa, bb));
+}
+
+private int
+repair(hash *db)
+{
+	int	i, n = 0;
+	char	**sorted = 0;
+	FILE	*f;
+
+	if (verbose == 1) fprintf(stderr, "\n");
+	EACH_HASH(db) sorted = addLine(sorted, db->kptr);
+
+	/* Unneeded but left here in case we screw up the calling code */
+	unless (n = nLines(sorted)) return (0);
+
+
+	sortLines(sorted, key_sort);
+	if (verbose) fprintf(stderr, "Attempting to fetch %d files...\n", n);
+	f = sfiocmd(1);
+	EACH(sorted) {
+		fprintf(f, "%s\n", sorted[i]);
+		if (verbose > 2) fprintf(stderr, "Missing: %s\n", sorted[i]);
+	}
+	freeLines(sorted, 0);
+	if (pclose(f) != 0) return (n);
+	if (system("bk sfiles BitKeeper/repair | bk check -s -") != 0) {
+		fprintf(stderr, "check: stripdel pass failed, aborting.\n");
+		goto out;
+	}
+	if (verbose) fprintf(stderr, "Moving files into place...\n");
+	if (system("bk sfiles BitKeeper/repair | bk names -q -") != 0) {
+		goto out;
+	}
+	if (verbose) fprintf(stderr, "Rerunning check...\n");
+	if (system("bk -r check -acf") != 0) {
+		fprintf(stderr, "Repository is not fully repaired.\n");
+		goto out;
+	}
+	if (verbose) fprintf(stderr, "Repository is repaired.\n");
+	n = 0;
+out:	rmtree("BitKeeper/repair");
+	return (n);
+}
+
+/*
+ * Either get a ChangeSet file from the parent or exit.
+ */
+private void
+fetch_changeset(void)
+{
+	FILE	*f;
+	sccs	*s;
+	delta	*d;
+	int	i;
+	char	buf[MAXKEY];	/* overkill, key should be md5key */
+
+	fprintf(stderr, "Missing ChangeSet file, attempting restoration...\n");
+	unless (exists("BitKeeper/log/ROOTKEY")) {
+		fprintf(stderr, "Don't have original cset rootkey, sorry,\n");
+		exit(0x40);
+	}
+	f = sfiocmd(0);
+	fprintf(f, "%s\n", proj_rootkey(0));
+	if (pclose(f) != 0) {
+		fprintf(stderr, "Unable to retrieve ChangeSet, sorry.\n");
+		exit(0x40);
+	}
+	unless (f = fopen("BitKeeper/log/TIP", "r")) {
+		fprintf(stderr, "Unable to open BitKeeper/log/TIP\n");
+		exit(1);
+	}
+	fgets(buf, sizeof(buf), f);
+	chomp(buf);
+	s = sccs_init(CHANGESET, 0);
+	unless (d = sccs_findrev(s, buf)) {
+		getMsg("chk5", buf, '=', stderr);
+		exit(1);
+	}
+	if (verbose > 1) fprintf(stderr, "TIP %s %s\n", d->rev, d->sdate);
+	s->hasgone = 1;
+	range_gone(s, d, D_SET);
+	(void)stripdel_fixTable(s, &i);
+	unless (i) {
+		sccs_free(s);
+		return;
+	}
+	if (verbose > 1) fprintf(stderr, "Stripping %d csets/tags\n", i);
+	if (sccs_stripdel(s, "repair")) {
+		fprintf(stderr, "stripdel failed\n");
+		exit(0x40);
+	}
+	sccs_free(s);
+	if (system("bk renumber -q ChangeSet") != 0) {
+		fprintf(stderr, "Giving up, sorry.\n");
+		exit(0x40);
+	}
+	fprintf(stderr, "ChangeSet restoration complete.\n");
+}
+
 
 /*
  * Open up the ChangeSet file and get every key ever added.  Build the
@@ -812,44 +999,12 @@ init_idcache(void)
 private void
 buildKeys(MDBM *idDB)
 {
-	sccs	*cset;
 	char	*p, *s, *t, *r;
 	int	n = 0, e = 0;
 	delta	*d;
 	hash	*deltas;
 	char	key[MAXKEY];
 
-	unless (exists(CHANGESET)) {
-		fprintf(stderr, "ERROR: "CHANGESET" is missing, aborting.\n");
-		exit(1);
-	}
-retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
-		fprintf(stderr, "Can't init ChangeSet\n");
-		exit(1);
-	}
-	if (cset->encoding & E_GZIP) {
-		sccs_free(cset);
-		if (verbose == 1) {
-			fprintf(stderr, "Uncompressing ChangeSet file...\n");
-		}
-		/* This will fail if we are locked */
-		if (sys("bk", "admin", "-Znone", "ChangeSet", SYS)) exit(1);
-		if (verbose == 1) {
-			fprintf(stderr,
-			    "Restarting check from the beginning...\n");
-		}
-		goto retry;
-	}
-	mixed = LONGKEY(cset) == 0;
-	if (verbose == 1) {
-		nfiles = repo_nfiles(cset);
-		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
-	}
-
-	unless (cset && HASGRAPH(cset)) {
-		fprintf(stderr, "check: ChangeSet file not inited\n");
-		exit(1);
-	}
 	unless (r2deltas = hash_new(HASH_MEMHASH)) {
 		perror("buildkeys");
 		exit(1);
@@ -907,7 +1062,6 @@ retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
 			    "check: key %s replicated in ChangeSet.\n", key);
 		}
 	}
-	sccs_free(cset);
 
 	if (verbose > 2) {
 		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
@@ -1013,12 +1167,6 @@ markCset(sccs *s, delta *d)
 	} while (d && !(d->flags & D_CSET));
 }
 
-private void
-idsum(u8 *s)
-{
-	while (*s) id_sum += *s++;
-}
-
 /*
 	1) for each key in the changeset file, we need to make sure the
 	   key is in the source file and is marked.
@@ -1034,10 +1182,10 @@ idsum(u8 *s)
 	5) rebuild the idcache if in -a mode.
 */
 private int
-check(sccs *s)
+check(sccs *s, MDBM *idDB)
 {
 	static	int	haspoly = -1;
-	delta	*d, *ino;
+	delta	*d, *ino, *tip = 0;
 	int	errors = 0;
 	int	i;
 	char	*t, *term;
@@ -1086,16 +1234,37 @@ check(sccs *s)
 		}
 		unless (t) {
 			if (MONOTONIC(s) && d->dangling) continue;
+			errors++;
+			if (stripdel) continue;
 			fprintf(stderr,
 		    "%s: marked delta %s should be in ChangeSet but is not.\n",
 			    s->gfile, d->rev);
 			sccs_sdelta(s, d, buf);
 			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
-			errors++;
-		} else if (verbose > 2) {
-			fprintf(stderr, "%s: found %s in ChangeSet\n",
-			    s->gfile, buf);
+		} else {
+			unless (tip) tip = d;
+			if (verbose > 2) {
+				fprintf(stderr, "%s: found %s in ChangeSet\n",
+				    s->gfile, buf);
+			}
 		}
+	}
+
+	if (stripdel) {
+		if (CSET(s)) {
+			fprintf(stderr, "check: can't do ChangeSet files.\n");
+			return (1);
+		}
+		unless (errors) return (0);
+		sccs_open(s, 0);
+		range_gone(s, tip, D_SET);
+		(void)stripdel_fixTable(s, &i);
+		if (verbose > 2) {
+			fprintf(stderr,
+			    "Rolling back %d deltas in %s\n", i, s->gfile);
+		}
+		errors = sccs_stripdel(s, "check");
+		return (errors);
 	}
 
 	/*
@@ -1124,19 +1293,14 @@ check(sccs *s)
 			sccs_sdelta(s, ino, buf);
 			if (s->grafted ||
 			    !sccs_patheq(ino->pathname, s->gfile)) {
-				fprintf(idcache, "%s %s\n", buf, s->gfile);
-				idsum(buf);
-				idsum(s->gfile);
-				idsum(" \n");
+				mdbm_store_str(idDB, buf, s->gfile,
+				    MDBM_REPLACE);
 				if (mixed && (t = sccs_iskeylong(buf))) {
 					*t = 0;
-					 fprintf(idcache,
-					    "%s %s\n", buf, s->gfile);
-					idsum(buf);
-					idsum(s->gfile);
-					idsum(" \n");
+					mdbm_store_str(idDB, buf, s->gfile,
+					    MDBM_REPLACE);
 					*t = '|';
-				} 
+				}
 			}
 			unless (s->grafted) break;
 			while (ino = ino->next) {
@@ -1298,9 +1462,21 @@ checkKeys(sccs *s, char *root)
 				    s->gfile);
 				continue;
 			} else {
-		    		errors++;
+				errors++;
 			}
 
+			/*
+			 * XXX - this is a place where we don't do repair
+			 * properly.  We know we have marked deltas which
+			 * means the ChangeSet file is behind.  So we should
+			 * go get the ChangeSet file from our parent and see
+			 * if that fixes it.
+			 * But we also need to not lose any other local csets
+			 * we might have in the local ChangeSet file.
+			if (fix > 1) {
+				assert("extra" == 0);
+			}
+			 */
 
 			/*
 			 * If we get here we have the key in the ChangeSet
@@ -1318,7 +1494,7 @@ checkKeys(sccs *s, char *root)
 			fprintf(stderr,
 			    "%s@%s is in ChangeSet but not marked\n",
 			   s->gfile, d->rev);
-		    	errors++;
+			errors++;
 		} else if (verbose > 2) {
 			fprintf(stderr, "%s: found %s from ChangeSet\n",
 			    s->gfile, d->rev);
@@ -1361,7 +1537,10 @@ csetFind(char *key)
 private int
 chk_csetpointer(sccs *s)
 {
-	char	*csetkey = proj_rootkey(s->proj);
+	/* we don't use s->proj, it's in BitKeeper/repair which can look
+	 * like a repo but is not, it's partial maybe w/o the ChangeSet file.
+	 */
+	char	*csetkey = proj_rootkey(0);
 
 	if (s->tree->csetFile == NULL ||
 	    !(streq(csetkey, s->tree->csetFile))) {
@@ -1431,15 +1610,43 @@ update_idcache(MDBM *idDB, hash *keys)
 			}
 		}
 	}
-	if (updated) {
-		init_idcache();
-		EACH_KV (idDB) {
-			fprintf(idcache, "%s %s\n", kv.key.dptr, kv.val.dptr);
-			idsum(kv.key.dptr);
-			idsum(kv.val.dptr);
-			idsum(" \n");
+	return (updated);
+}
+
+int
+repair_main(int ac, char **av)
+{
+	int	c, i, status;
+	char	*nav[20];
+
+	nav[i=0] = "bk";
+	nav[++i] = "-r";
+	nav[++i] = "check";
+	nav[++i] = "-acffv";
+	while ((c = getopt(ac, av, "@;")) != -1) {
+		switch (c) {
+		    case '@':
+			nav[++i] = aprintf("-@%s", optarg);
+			break;
+		    default:
+usage:			system("bk help -s repair");
+			return (1);
 		}
 	}
-	mdbm_close(idDB);
-	return (updated);
+	nav[++i] = 0;
+	assert(i < 20);
+
+	if (av[optind+1]) goto usage;
+	if (av[optind]) {
+		if (chdir(av[optind])) {
+			perror(av[optind]);
+			return (1);
+		}
+	}
+	status = spawnvp(_P_WAIT, nav[0], nav);
+	if (WIFEXITED(status)) {
+		return (WEXITSTATUS(status));
+	} else {
+		return (66);
+	}
 }

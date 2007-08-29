@@ -11,10 +11,165 @@
 #    modifications under any license.
 
 
-# Copyright (c) 1999 Andrew Chang?
+# Copyright (c) 1999-2006 BitMover, Inc.
 # %K%
 
-echo $N Create initial repository ...................................$NL
+echo $N Make sure we can restore an identical ChangeSet file ........$NL
+commercial repair1
+for i in foo bar blech whatsit
+do	echo $i > $i
+	bk new $Q $i
+done
+bk commit $Q -ycomment || exit 1
+bk clone $Q "$HERE/repair1" "$HERE/repair2" || exit 1
+cd "$HERE"/repair2
+rm -f SCCS/s.ChangeSet
+bk repair > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk -r check -ac || exit 1
+bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
+echo OK
+
+echo $N Make sure we can restore an identical file ..................$NL
+rm -f SCCS/s.foo
+bk repair > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk -r check -ac || exit 1
+bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
+echo OK
+
+echo $N Make sure we can restore a ChangeSet file which is ahead ....$NL
+cd "$HERE/repair1"
+for i in foo bar blech whatsit
+do	bk edit $Q $i
+	echo $i >> $i
+	bk delta -ywhatever $Q $i
+done
+bk commit $Q -ycomment || exit 1
+cd "$HERE/repair2"
+rm -f SCCS/s.ChangeSet
+bk repair > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk -r check -ac || exit 1
+bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
+echo OK
+
+echo $N Make sure we can restore a file which is ahead...............$NL
+rm -f SCCS/s.foo
+bk repair > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk -r check -ac || exit 1
+bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
+echo OK
+
+echo $N Make sure we can restore multiple files which are ahead .....$NL
+rm -f SCCS/s.[a-z]*
+bk repair > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk -r check -ac || exit 1
+bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
+echo OK
+
+echo $N Sane error message if the parent file is behind..............$NL
+for i in foo bar blech whatsit
+do	bk edit $Q $i
+	echo $i >> $i
+	bk delta -ywhatever $Q $i
+done
+bk commit $Q -yahead || exit 1
+mv -f SCCS/s.foo save.foo
+bk repair > OUT 2>&1 && {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q 'Missing delta (bk help chk2) in foo' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -d BitKeeper/repair && {
+	echo failed to clean up repair directory
+	exit 1
+}
+mv -f save.foo SCCS/s.foo 
+bk -r check -ac || exit 1
+bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
+echo OK
+
+echo $N Sane error message if the parent ChangeSet is behind ........$NL
+bk clone $Q "$HERE/repair2" "$HERE/repair3" || exit 1
+rm -f SCCS/s.ChangeSet
+bk repair > OUT 2>&1 && {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q 'The ChangeSet file retrieved from your parent appears to be' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can repair with a different parent .............$NL
+rm -f SCCS/s.ChangeSet
+bk repair -@"$HERE"/repair3 > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	bk changes -r+ "$HERE"/repair3 
+	exit 1
+}
+bk -r check -ac || exit 1
+bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
+echo OK
+
+echo $N Make sure we can repair with a named repo and named parent ..$NL
+rm -f SCCS/s.ChangeSet
+cd "$HERE"
+bk repair -@"$HERE"/repair3 "$HERE"/repair2 > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	bk changes -r+ "$HERE"/repair3 
+	exit 1
+}
+cd "$HERE"/repair2
+bk -r check -ac || exit 1
+bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
+echo OK
+
+echo $N Make sure we can repair with a named repo ...................$NL
+rm -f SCCS/s.ChangeSet
+bk parent $Q "$HERE"/repair3
+cd "$HERE"
+bk repair "$HERE"/repair2 > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	bk changes -r+ "$HERE"/repair3 
+	exit 1
+}
+cd "$HERE"/repair2
+bk -r check -ac || exit 1
+bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
+echo OK
+
+echo $N Create initial repository for awc gone test .................$NL
+cd "$HERE"
 commercial project
 bk admin -Z
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -22,6 +177,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N "Try to update a deleted (i.e gone) file" .....................$NL
 mkdir src
 cd src
@@ -45,10 +201,4 @@ cd "$HERE/project/src"
 bk pull "$HERE/copy"  > out 2>&1
 grep -q "cannot accept updates" out || { echo failed; exit 1; }
 echo OK
-echo $N "Check bk repair" .............................................$NL
-cd "$HERE/project/src"
-bk repair "$HERE/copy" > /dev/null 2> /dev/null
-if [ ! -f SCCS/s.foo2.c ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/s.bar.c ]; then echo warnning bar.c not restaored; fi
-#bk rmgone -n
-echo OK
+
