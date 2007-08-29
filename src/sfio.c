@@ -201,6 +201,7 @@ nextfile(char *buf)
 int
 sfio_out(void)
 {
+#ifndef	SFIO_STANDALONE
 	char	buf[MAXPATH];
 	char	len[5];
 	struct	stat sb;
@@ -289,16 +290,17 @@ reg:			if (n = out_file(buf, &sb, &byte_count)) {
 	} else {
 		send_eof(0);
 	}
-#ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
-#endif
 	if (opts->more) freeLines(opts->more, free);
 	if (opts->sent) hash_free(opts->sent);
 	if (opts->hardlinks) hash_free(links);
 	NEWLINE();
 	free(opts);
+#endif
 	return (0);
 }
+
+#ifndef	SFIO_STANDALONE
 
 private int
 out_symlink(char *file, struct stat *sp, off_t *byte_count)
@@ -424,7 +426,6 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		*byte_count += n;
 	}
 	close(fd);
-#ifndef	SFIO_STANDALONE
 	unless (opts->quiet) {
 		if (opts->newline == '\r') {
 			if (opts->todo) {
@@ -439,7 +440,6 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 			fprintf(stderr, "%s%s\n", opts->prefix, file);
 		}
 	}
-#endif
 	return (0);
 }
 
@@ -447,7 +447,6 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 private int
 out_bptuple(char *keys, off_t *byte_count)
 {
-#ifndef SFIO_STANDALONE
 	char	*path, *freeme;
 	int	n;
 	struct	stat sb;
@@ -480,10 +479,6 @@ out_bptuple(char *keys, off_t *byte_count)
 	}
 	free(freeme);
 	return (n);
-#else
-	fprintf(stderr, "Unsupported.\n");
-	return (1);
-#endif
 }
 
 /*
@@ -492,7 +487,6 @@ out_bptuple(char *keys, off_t *byte_count)
 private void
 missing(off_t *byte_count)
 {
-#ifndef	SFIO_STANDALONE
 	char	*p, *tmpf;
 	FILE	*f;
 	int	i;
@@ -528,8 +522,8 @@ err:		send_eof(SFIO_LOOKUP);
 	unlink(tmpf);
 	free(tmpf);
 	/* they should have sent EOF */
-#endif
 }
+#endif	/* SFIO_STANDALONE */
 
 /*
  * Send an eof by sending a 0 or less than 0 for the pathlen of the "next"
