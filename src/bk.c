@@ -27,7 +27,6 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 
 private	void	cmdlog_exit(void);
 private	int	cmdlog_repo;
-private	int	cmdlog_dump(int, char **);
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
 private	void	showproc_start(char **av);
@@ -304,10 +303,6 @@ main(int ac, char **av, char **env)
 
 run:	getoptReset();
 	if (exists("gmon.out")) save_gmon();
-
-	if (streq(prog, "cmdlog")) {
-		return (cmdlog_dump(ac, av) ? 1 : 0);
-	}
 
 #ifdef	WIN32
 	/* This gets rid of an annoying message when sfiles is killed */
@@ -810,8 +805,8 @@ out:
 	return (flags);
 }
 
-private	int
-cmdlog_dump(int ac, char **av)
+int
+cmdlog_main(int ac, char **av)
 {
 	FILE	*f;
 	time_t	t, cutoff = 0;
@@ -829,7 +824,7 @@ cmdlog_dump(int ac, char **av)
 			cutoff = range_cutoff(optarg + 1);
 			break;
 		    default:
-			system("bk help cmdlog");
+			system("bk help -s cmdlog");
 			return (1);
 		}
 	}

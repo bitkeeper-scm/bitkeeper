@@ -165,6 +165,7 @@ checksum
 clean
 _cleanpath
 clone
+cmdlog
 collapse
 comments
 commit
