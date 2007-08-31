@@ -131,7 +131,7 @@ proj_init(char *dir)
 	if (ret = projcache_lookup(fdir)) goto done;
 
 	/* missed the cache */
-	unless (root = find_root(fullname(dir))) return (0);
+	unless (root = find_root(dir)) return (0);
 
 	unless (streq(root, fdir)) {
 		/* fdir is not a root, was root in cache? */
@@ -187,8 +187,31 @@ proj_free(project *p)
 private char *
 find_root(char *dir)
 {
+	int	i;
 	char	*p;
 	char	buf[MAXPATH];
+	char	sym[MAXPATH];
+
+	while (1) {
+		/* convert dir to a full pathname and expand symlinks */
+		dir = fullname(dir);
+		unless(isSymlnk(dir)) break;
+
+		/*
+		 * fullname() doesn't expand symlinks in the last
+		 * componant so fix that.
+		 */
+		i = readlink(dir, sym, sizeof(sym));
+		sym[i] = 0;
+		if (IsFullPath(sym)) {
+			strcpy(buf, sym);
+		} else {
+			p = strrchr(dir, '/');
+			*p = 0;
+			concat_path(buf, dir, sym);
+		}
+		dir = buf;
+	}
 
 	/* This code assumes dir is a full pathname with nothing funny */
 	strcpy(buf, dir);
@@ -266,14 +289,14 @@ proj_relpath(project *p, char *path)
 	int	len;
 
 	assert(root);
-	unless (IsFullPath(path)) path = fullname(path);
+	path = fullname(path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {
 		if (!path[len]) {
 			return (strdup("."));
 		} else {
-                       assert(path[len] == '/');
-                       return(strdup(&path[len+1]));
+			assert(path[len] == '/');
+			return(strdup(&path[len+1]));
 		}
 	} else {
 		return (0);

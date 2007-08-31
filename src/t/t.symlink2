@@ -53,3 +53,30 @@ if [ $status -eq 0 ]
 then	echo failed \(bug 2002-02-08-007\)
 else	echo 'bug 2002-02-08-007 passing! update testcase.'; exit 1
 fi
+
+echo $N Bug 2007-06-21-001, attempt to tickle slib.c rpath assert ...$NL
+cd "$HERE"
+mkdir adir
+cd adir
+commercial project2
+touch foo
+bk new $Q foo
+bk commit $Q -f -y"Added foo"
+bk edit $Q foo
+echo foo >> foo
+cd "$HERE"
+ln -s "$HERE"/adir/project2 myrepo
+bk diffs "$HERE"/myrepo/foo > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Bug 2007-06-21-001, make sfiles -v dump core ................$NL
+bk sfiles -v myrepo/foo > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
