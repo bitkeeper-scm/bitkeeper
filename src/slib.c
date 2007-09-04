@@ -9071,8 +9071,8 @@ openInput(sccs *s, int flags, FILE **inp)
 	enc = s->encoding & E_DATAENC;
 	/* handle auto promoting ascii to binary if needed */
 	if ((enc == E_ASCII) && !streq("-", file) && !ascii(file)) {
-		enc = sccs_encoding(s, size(file), "binary", 0);
-		s->encoding = enc | compress;
+		s->encoding = sccs_encoding(s, size(file), "binary", 0);
+		enc = s->encoding & E_DATAENC;
 		/* BAM doesn't support gzip */
 		if (BAM(s)) s->encoding &= ~E_GZIP;
 	}
