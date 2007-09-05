@@ -12,7 +12,6 @@
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 
-private	int	chk_idcache(void);
 
 int
 sane_main(int ac, char **av)
@@ -65,12 +64,9 @@ sane(int readonly, int resync)
 			(void)unlink(b);
 			free(a);
 			free(b);
-			/* If this fails the idcache lock will hang so return */
 			if (errors) return (errors);
 		}
 		if (!readonly && chk_permissions()) {
-			errors++;
-		} else if (chk_idcache()) {
 			errors++;
 		}
 #define	_exists(f)	(exists(f) || (resync && exists(RESYNC2ROOT "/" f)))
@@ -262,17 +258,6 @@ chk_permissions(void)
 	    write_chkfile("BitKeeper/log/repo_log", 0) |
 	    write_chkdir("BitKeeper/triggers", 0) |
 	    write_chkdir("SCCS", 1));
-}
-
-private int
-chk_idcache(void)
-{
-	if (sccs_lockfile(IDCACHE_LOCK, 6, 0)) {
-		fprintf(stderr, "sane: can't lock id cache\n");
-		return (1);
-	}
-	sccs_unlockfile(IDCACHE_LOCK);
-	return (0);
 }
 
 /*
