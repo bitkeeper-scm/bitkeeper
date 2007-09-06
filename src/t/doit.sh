@@ -314,6 +314,12 @@ setup_env()
 	BKL_RE2=leOR1WVcGkRbSxPjTe8OTnX1ejU+JO1ji3Gd2CYAEpH56owpVGmEFGgK5rwnAJvA
 	BKL_RE3=K9UHfAA3arxygeGkaZGqEjx8hkGif458lVg13RUf+wq/77fI/lrwNxs/lxvPEg==
 
+	# Valid 3.2.8 license that is remote for current
+	BKL_3=BKL648b94e4b46d7ca800003200fffff000000000
+	BKL_31=YgAAAo4AAAADgQAAAAIT0xMiciBU9xa8rFrLOnSuMOC1Qee59zLAD3FKAydjTT0t
+	BKL_32=sjj10l26y+28Vw4BVyWZbXrfipAiyC/bLDubKDkt2ljjNv4N6c1et/UIH77R3Njf
+	BKL_33=iI8hVqWnHKXORC/7v3hxpnrlq9BXSjNHntPbyHF11VAC/dLOm/mUR3c7TaqvOA==
+
 	test "$GUI_TEST" = YES || {
 		BK_NO_GUI_PROMPT=YES
 		export BK_NO_GUI_PROMPT
@@ -411,6 +417,7 @@ init_main_loop()
 	export BKL_EX BKL_EX1 BKL_EX2 BKL_EX3
 	export BKL_REMOTE BKL_R1 BKL_R2 BKL_R3
 	export BKL_REMOTEEX BKL_RE1 BKL_RE2 BKL_RE3
+	export BKL_3 BKL_31 BKL_32 BKL_33
 	export BK_GLOB_EQUAL
 	export BK_BIN
 	mkdir -p "$BK_CACHE"
