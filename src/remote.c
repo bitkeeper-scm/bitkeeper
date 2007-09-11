@@ -176,6 +176,13 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 		fprintf(stderr, "Protocol error, aborting.\n");
 		goto out;
 	}
+	if (strneq("ERROR-BAD CMD: bk", line, 17)) {
+		fprintf(stderr,
+		    "error: bkd does not support remote commands (%s)\n",
+		    url);
+		i = 63;
+		goto out;
+	}
 	if (strneq("ERROR-", line, 6)) {
 err:		fprintf(stderr, "##### %s #####\n", u);
 		fprintf(stderr, "%s\n", &line[6]);

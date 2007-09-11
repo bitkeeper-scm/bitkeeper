@@ -158,13 +158,14 @@ getMode(char *arg)
 	if (isdigit(*arg)) {
 		char	*p = arg;
 		for (m = 0; isdigit(*p); m <<= 3, m |= (*p - '0'), p++) {
-			unless ((*p >= '0') && (*p <= '7')) {
+err:			unless ((*p >= '0') && (*p <= '7')) {
 				fprintf(stderr, "Illegal octal file mode: %s\n",
 				    arg);
 				return (0);
 			}
 		}
-		if (!S_ISLNK(m) && !S_ISDIR(m)) m |= S_IFREG;
+		unless (m & S_IFMT) m |= S_IFREG;
+		unless (S_ISLNK(m) || S_ISDIR(m) || S_ISREG(m)) goto err;
 	} else {
 		m = a2mode(arg);
 	}
@@ -9086,8 +9087,8 @@ openInput(sccs *s, int flags, FILE **inp)
 	enc = s->encoding & E_DATAENC;
 	/* handle auto promoting ascii to binary if needed */
 	if ((enc == E_ASCII) && !streq("-", file) && !ascii(file)) {
-		enc = sccs_encoding(s, size(file), "binary", 0);
-		s->encoding = enc | compress;
+		s->encoding = sccs_encoding(s, size(file), "binary", 0);
+		enc = s->encoding & E_DATAENC;
 		/* BAM doesn't support gzip */
 		if (BAM(s)) s->encoding &= ~E_GZIP;
 	}
@@ -10631,6 +10632,7 @@ addMode(char *me, sccs *sc, delta *n, mode_t m)
 
 	assert(n);
 	newmode = mode2a(m);
+	assert(!streq(newmode, "<bad mode>"));
 	sprintf(buf, "Change mode to %s", newmode);
 	comments_append(n, strdup(buf));
 	(void)modeArg(n, newmode);

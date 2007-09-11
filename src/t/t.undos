@@ -1,0 +1,76 @@
+
+echo $N Test undos ..................................................$NL
+
+# create test file with lots of line terminations
+printf "\n1\n2\r\n3\r4\r\r\n\n5" > test1
+cp test1 test2
+printf "\n" >> test2
+cp test1 test3
+printf "\r\n" >> test3
+cp test1 test4
+printf "\r" >> test4
+cp test1 test5
+printf "\032junk" >> test5
+
+printf "\n1\n2\n3\n4\n\n5\n" > want
+
+bk undos test1 > got
+checkfiles got want
+bk undos test2 > got
+checkfiles got want
+bk undos test3 > got
+checkfiles got want
+bk undos test4 > got
+checkfiles got want
+bk undos test5 > got
+checkfiles got want
+echo OK
+
+echo $N Test undos -n................................................$NL
+printf "\n1\n2\n3\r4\n\n5\n" > want
+printf "\n1\n2\n3\r4\n\n5" > want.no
+bk undos -n test1 > got
+checkfiles got want.no
+bk undos -n test2 > got
+checkfiles got want
+bk undos -n test3 > got
+checkfiles got want
+printf "\n1\n2\n3\r4\n\n5\r" > want.cr
+bk undos -n test4 > got
+checkfiles got want.cr
+bk undos -n test5 > got
+checkfiles got want.no
+echo OK
+
+echo $N Test undos -r................................................$NL
+printf "\r\n1\r\n2\r\n3\r\n4\r\n\r\n5\r\n" > want
+bk undos -r test1 > got
+checkfiles got want
+bk undos -r test2 > got
+checkfiles got want
+bk undos -r test3 > got
+checkfiles got want
+bk undos -r test4 > got
+checkfiles got want
+printf "\r\n1\r\n2\r\n3\r\n4\r\n\r\n5\032junk\r\n" > want
+bk undos -r test5 > got
+checkfiles got want
+echo OK
+
+echo $N Test undos -rn...............................................$NL
+printf "\r\n1\r\n2\r\n3\r\n4\r\n\r\n5\r\n" > want
+printf "\r\n1\r\n2\r\n3\r\n4\r\n\r\n5" > want.no
+bk undos -rn test1 > got
+checkfiles got want.no
+bk undos -rn test2 > got
+checkfiles got want
+bk undos -rn test3 > got
+checkfiles got want
+bk undos -rn test4 > got
+checkfiles got want
+printf "\r\n1\r\n2\r\n3\r\n4\r\n\r\n5\032junk" > want
+bk undos -rn test5 > got
+checkfiles got want
+echo OK
+
+

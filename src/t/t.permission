@@ -255,3 +255,11 @@ checkperm -r-xr-xr-x newprog
 checkperm -r--r--r-- newbam
 checkperm -r-xr-xr-x newbamx
 echo OK
+
+echo $N Don\'t allow weird file types ................................$NL
+bk chmod 0140770 prog 2>ERR && {
+   echo should not pass
+   exit 1
+}
+grep -q "admin: prog: Illegal file mode" ERR || exit 1
+echo OK

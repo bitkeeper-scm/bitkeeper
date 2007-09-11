@@ -16,6 +16,7 @@ commercial proj
 bk edit $Q BitKeeper/etc/config
 cp BitKeeper/etc/config c
 grep -v BAM c > BitKeeper/etc/config
+cp BitKeeper/etc/config c
 
 echo $N Trying to check in some binary data .........................$NL
 cp ${BIN1} data
@@ -25,8 +26,13 @@ echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@
 cp data saved_bin
 BIN1=saved_bin
 cp $BIN1 uuencode1
+cp $BIN1 uuencode1z
 # test old auto-binary
 bk new $Q uuencode1 || exit 1
+# test old auto-binary zipped
+echo compression:gzip >> BitKeeper/etc/config
+bk new $Q uuencode1z || exit 1
+cp c BitKeeper/etc/config
 echo BAM:1 >> BitKeeper/etc/config
 cp data uuencode2
 bk new $Q -Euuencode uuencode2 || exit 1
@@ -35,16 +41,18 @@ cp $BIN1 bam2
 # test auto-binary
 bk new $Q bam1 || exit 1
 bk new $Q -EBAM bam2 || exit 1
-for f in uuencode1 uuencode2 bam1 bam2
+for f in uuencode1 uuencode1z uuencode2 bam1 bam2
 do	bk co $Q -l $f
 	cmp -s ${BIN1} $f || {
 		echo failed $f
 		exit 1
 	}
 done
-bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1 uuencode2 bam1 bam2 > OUT
+bk prs -hnr+ -d:COMPRESSION:,:ENC: uuencode1 uuencode1z uuencode2 bam1 bam2 \
+    > OUT
 cat <<EOF >WANT
 none,uuencode
+gzip,uuencode
 none,uuencode
 none,BAM
 none,BAM

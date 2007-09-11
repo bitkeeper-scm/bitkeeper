@@ -190,14 +190,12 @@ bk cmdlog -z > /dev/null 2> ERR && {
 	echo "Should fail"
 	exit 1
 }
-bk grep -iq usage ERR
-if [ $? -ne 0 ]
-then	echo "failed (bug no usage)"
-else
-	echo "OK, fix test"
+bk grep -iq usage ERR || {
+	echo "No usage"
 	exit 1
-fi
+}
 rm -f ERR
+echo OK
 
 echo $N bk co with bogus option .....................................$NL
 bk co -z > /dev/null 2> ERR && {
@@ -448,6 +446,7 @@ bk grep -iq usage ERR || {
 	exit 1
 }
 rm -f ERR
+echo OK
 
 echo $N bk getuser with bogus option ................................$NL
 bk getuser -z > /dev/null 2> ERR

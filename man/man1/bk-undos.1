@@ -4,7 +4,7 @@
 bk undos \- convert DOS files to UNIX files
 .SH SYNOPSIS
 .B bk undos
-.[B] \-n
+.[B] \-nr
 .FILES
 .SH DESCRIPTION
 The
@@ -13,9 +13,17 @@ command reads the specified file and translates each
 .Q \er\en
 into 
 .QR \en .
+A trailing
+.Q \en
+will also be added to the file if it doesn't have one already.
 .SH OPTIONS
 .TP
 .B \-n
-automatically add a trailing newline if the file does not already have one.
+Prevents adding a missing trailing
+.Q \en
+to the file.
+.tp
+.B \-r
+Reverses the process and converts a UNIX file to DOS line endings.
 .SH CATEGORY
 .B Utility

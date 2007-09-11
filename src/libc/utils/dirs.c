@@ -227,11 +227,17 @@ _getdir(char *dir, struct stat *sb1)
 	char	**lines = 0;
 	char	buf[MAXPATH];
 	long	dh;
+	int	retry = 5;
 
 	bm2ntfname(dir, buf);
 	strcat(buf, "\\*.*");
+again:
 	if ((dh =  _findfirst(buf, &found_file)) == -1L) {
 		if (errno == ENOENT) return (0);
+		if ((errno == EINVAL) && (retry-- > 0)) {
+			usleep(100000);
+			goto again;
+		}
 		perror(dir);
 		return (0);
 	}
