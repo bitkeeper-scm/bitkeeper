@@ -1342,8 +1342,13 @@ _install()
 	fi
 
 	test $CRANKTURN = YES && exit 0
+	echo "$DEST" > "$SRC/install_dir"
+	exit 0
+}
+
+__register()
+{
 	# Log the fact that the installation occurred
-	PATH="${DEST}:$PATH"
 	(
 	bk version
 	echo USER=`bk getuser`/`bk getuser -r`
@@ -1352,8 +1357,6 @@ _install()
 	echo LICENSE=`bk config license 2>/dev/null`
 	) | bk _mail -u http://bitmover.com/cgi-bin/bkdmail \
 	    -s 'bk install' install@bitmover.com >/dev/null 2>&1 &
-
-	exit 0
 }
 
 # alias for only removed 'bk _sortmerge'

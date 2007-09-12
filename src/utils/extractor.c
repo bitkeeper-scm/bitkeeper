@@ -279,6 +279,21 @@ main(int ac, char **av)
 
 	/* Clean up your room, kids. */
 out:	cd(tmpdir);
+	if ((rc == 0) && (f = fopen("bitkeeper/install_dir", "r"))) {
+		/*
+		 * install_dir is written at the end of _install in bk.sh
+		 * We need to run the new bk so register can run in the
+		 * background while the old bk is deleted.  Fixes a
+		 * windows race condition.
+		 */
+		if (fnext(buf, f)) {
+			chomp(buf);
+			p = aprintf("\"%s/bk\" _register", buf);
+			system(p);
+			free(p);
+		}
+		fclose(f);
+	}
 	unless (getenv("BK_SAVE_INSTALL")) {
 		cd("..");
 		fprintf(stderr,
@@ -287,7 +302,12 @@ out:	cd(tmpdir);
 		/*
 		 * Sometimes windows has processes sitting in here and we
 		 * have to wait for them to go away.
-		 * XXX - what processes?  Why are they here?
+		 * XXX - The "if (install_dir) system(bk _register)"
+		 * above intends to fix the waiting problem, so the retry
+		 * loop is not needed anymore -- yet we're not wanting to
+		 * pull it out right before a release and have customers
+		 * hit a problem that this would solve.
+		 * Please remove the retry loop and test on windows.
 		 */
 		for (i = 0; i < 10; ) {
 			/* careful */

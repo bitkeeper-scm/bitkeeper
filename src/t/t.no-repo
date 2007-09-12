@@ -16,6 +16,7 @@
 
 cat <<EOF > SKIP
 _locktest
+_register
 editor
 gvim
 jed
