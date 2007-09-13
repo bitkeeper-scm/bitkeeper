@@ -79,11 +79,11 @@ case $CMD in
 		}
 		if [ $OSTYPE = msys -o $OSTYPE = cygwin ] ; 
 		then	# we're on Windows
-			IMG=$TAG-$ARCH.exe
+			IMG=$TAG-${ARCH}-setup.exe
 			DEST="work:/home/bk/images/$TAG"
 			CP=rcp
 			# We only want images done on WinXP
-			test $HOSTNAME = winxp2 || exit 0
+			test $HOSTNAME = winxp-safe || exit 0
 		else
 			IMG=$TAG-$ARCH.bin
 			DEST="/home/bk/images/$TAG"

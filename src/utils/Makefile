@@ -8,7 +8,7 @@ OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "msys"
         SYS=win32
 	EXE=.exe
-	EXT=exe
+	EXT=-setup.exe
 	H=../win32.h
 	CFLAGS=-O
 	LD=$(CC)
@@ -19,7 +19,7 @@ ifeq "$(OSTYPE)" "msys"
 else
         SYS=unix
 	EXE=
-	EXT=bin
+	EXT=.bin
 	H=../unix.h
 	CFLAGS=-O
 	LD=$(CC)
@@ -36,7 +36,7 @@ SYSTEM_OBJS=../libc/libc.a
 SFIO=sfio$(EXE)
 CPPFLAGS=-I../libc
 VERS	:= $(shell test -x vers || bk get vers; BINDIR=$(BINDIR) ./vers)
-IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
+IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`$(EXT) )
 
 all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE)
 	strip $(IMAGE)

@@ -48,6 +48,7 @@ foreach $file (@ARGV) {
     # parse bk install binary filename
     #   VERSION-PLATFORM.{bin,exe}
     ($platform) = ($base =~ /^$version-([^\.]+)/);
+    $platform =~ s/-setup$//;
     die "Can't include $base, all images must be from $version\n"
 	unless $platform;
     
