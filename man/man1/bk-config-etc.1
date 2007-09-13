@@ -99,8 +99,6 @@ This is like
 for a clone.
 If the file was later locked and then checked in, it will be checked out
 again with a lock.
-(This is likely to become the default in all cases, it is already the default
-for push/pull operations.)
 .tp
 .B none
 Clear the gfile after doing a bk ci
@@ -286,6 +284,27 @@ for files that are updated.
 .LP
 We recommend that you start in full check mode and turn on partial
 check later if needed.
+.SS TRIGGER PATHS
+.LP
+By default, triggers are stored in the repository under the
+.B BitKeeper/triggers/
+directory and this is the only directory searched when looking for
+triggers.
+More than one triggers directory may be used by setting the
+.B triggers
+variable.
+The format is is one or more paths separated by a vertical bar.
+For example, if you wanted to run triggers from
+.B /etc/BitKeeper/triggers
+and from the repositories'
+.BR BitKeeper/triggers ,
+set the variable as follows:
+.DS
+triggers:	/etc|.
+.DE
+The directories are processed in the order found in the variable.
+.LP
+If the variable contains the value "none" then no triggers are processed.
 .SS UPGRADE URL
 .LP
 The upgrade command normally looks for new versions of \*[BK] here:

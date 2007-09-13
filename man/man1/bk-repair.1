@@ -4,8 +4,8 @@
 bk repair \- attempt to repair a repository
 .SH SYNOPSIS
 .B bk repair
-.OPTreq \-@ url
-.ARG repo
+[\fB\-@\fP\*<url\*>]
+.[ARG] repo
 .SH DESCRIPTION
 Because \*[BK] files are stored in the file system they are sometimes
 mistakenly removed or moved, resulting in an inconsistent repository.
@@ -15,7 +15,10 @@ command will complain about missing files or deltas.
 .LP
 The
 .B bk repair
-command attempts to restore the missing files from the parent
+command, which is invoked automatically if 
+.B \-ff
+is passed to check,
+attempts to restore the missing files from the parent
 repository (or repositories if there are multiple parents).
 If the parent is at the same point, or ahead of, the repository being
 repaired then the repair will succeed.  
@@ -29,6 +32,13 @@ command expects to be run in a repository but an alternative repository
 may be named on the command line.
 .LP
 If the repository has nothing to repair the command will exit silently.
+.SH NOTES
+The
+.B bk repair
+command replaces an earlier command of the same name.
+This verision uses new functionality first released in bk-4.1 to run 
+.B much
+more quickly (seconds instead of minutes in larger repositories).
 .SH OPTIONS
 .TP
 .B \-@\*<url\*>
@@ -40,6 +50,7 @@ for any missing files instead of the recorded parent[s].
 Exit codes are from 
 .BR "bk check" .
 .SH "SEE ALSO"
+.SA bk
 .SA check
 .SA parent
 .SH CATEGORY

@@ -33,7 +33,7 @@ private	int	update_idcache(MDBM *idDB, hash *keys);
 private	void	fetch_changeset(void);
 private	int	repair(hash *db);
 
-private	int	nfiles;		/* for progress bar */
+private	u64	nfiles;		/* for progress bar */
 private	int	actual;		/* for progress bar cache */
 private	int	verbose;
 private	int	details;	/* if set, show more information */
@@ -79,7 +79,8 @@ private	hash	*r2deltas;
 int
 check_main(int ac, char **av)
 {
-	int	c, n;
+	int	c;
+	u64	n;
 	FILE	*f;
 	MDBM	*idDB;
 	MDBM	*pathDB = mdbm_mem();

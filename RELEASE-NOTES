@@ -1,14 +1,77 @@
-Release notes for BitKeeper version 4.2 (released XXX)
+Release notes for BitKeeper version 4.1 (released 12-Sep-2007)
+
+Major features
+    BAM support.  BAM stands for "Binary Asset Management" and it adds 
+    support to BK for versioning large binaries.  It solves two problems:
+    a) one or more binary files that are frequently changed.
+    b) collections of many large binaries where you only need a subset.
+    The way it solves this is to introduce the concept of BAM server[s].
+    A BAM server manages a collection of binaries for one or more BAM
+    clients.  BAM clients may have no data present; when it is needed
+    the data is fetched from the BAM server.  
+    
+    In the first case above, only the tip will be fetched.  Imagine that
+    you have 100 deltas, each 10MB in size.  The history is 1GB but you
+    only need 10MB in your clone.
+
+    In the second case, imagine that you have thousands of game assets
+    distributed across multiple directories.  You typically work only
+    in one directory at a time.  You will only need to fetch the subset
+    of files that you need, the rest of the repository will have the
+    history of what changed but no data (so bk log will work but 
+    bk cat will have to go fetch the data).
+
+    BAM files are currently limited to 32 bits in size.
+
+    See bk help Howto-BAM and bk help bam for more information.
+
+    -----
+
+    bk repair makes use of the new -@<url> and BAM infrastructure to run
+    much more quickly.  Our stress tests for this amount to a loop, cloning
+    each tagged version of BitKeeper, removing each top level directory,
+    and running bk repair to restore.  Works fine, and works quickly.
+    Please let us know if you find problems with this feature, for now it
+    is enabled when you run check with -ff (2 "f" chars) but in the future
+    we intend to turn it on in any repo with autofix configured.
+    See bk help repair for more information.
 
 Summary of changes
 
+Performance fixes
+    Repositories with large numbers of changesets will run faster when
+    doing pull/push/changes.  For example, in the Linux kernel 2.6 tree
+    with 128 thousand changesets, the time to do "bk changes -r+" is 1/2
+    of what it was in bk-4.0.2.  Null pulls/pushes should see similar
+    performance gains.
+
+    Pulls which update repositories with large numbers of deleted files
+    will run significantly faster.
+
 Windows Vista support
     The Windows version of BitKeeper now runs on Windows Vista on 32-bit
-    architectures.  64-bit support will be in a future release.
+    architectures.  64-bit support for Vista and/or XP will be in a future
+    release.
 
-Undo triggers
+Triggers
+    This release introduces the concept of a trigger path.  The trigger
+    path may be set in the configuration file to create a set of directories
+    to search.  All triggers found in all directories are run (unless one
+    is a pre- trigger and it fails).
+    See bk help config-etc.
+
     This release introduces support for pre-undo triggers.  
     See bk help triggers.
+
+Checkout mode
+    A new checkout mode, checkout:last, has been added.  For clones, it
+    is the same as checkout:none, but after the file has been checked out
+    (read-only or read-write), BK will maintain that state.  The main
+    use is for repositories with large numbers of large BAM binaries.
+    The mode makes it possible to work on a subset of those files which
+    gives you the effect of a sparse tree.  If said repository was in
+    checkout:get or checkout:edit mode then the tips of all files will
+    be present, i.e., the repository will not be sparse.
 
 BK/Web
     BK/Web now uses MD5 keys for all URLs and revision numbers.  This
@@ -19,8 +82,9 @@ BK/Web
     will still work correctly.
     
     BK/Web now lists extra files while browsing the source tree; they are
-    at the end of the directory listing which is { dirs, bk files, extras }.
-    Extra files are only listed if they are not ignored.
+    at the end of the directory listing which is { dirs, BK files, extras }.
+    Extra files are only listed if they are not ignored.  Extra files 
+    may be clicked on and viewed.
 
     BK/Web has links on the file names in the history/annotate pages that
     will let you download a copy of that file with no markups.
@@ -33,6 +97,9 @@ Remote command execution
     The command syntax 'bk -@URL command' allows a bk command to be
     run on a remote repository with the output returned locally.
     See 'bk help bk' for more information.
+    Example showing work in progress (diffs and new files) in a remote repo:
+
+    	bk -@bk://work/BAM -r diffs -Nur
 
 Configuration
     nosync: on
@@ -77,6 +144,22 @@ bk clone
     The -l option, which uses hardlinks when creating a clone, now works on
     Windows if supported by the local filesystem.  See bk help clone.
 
+    bk clone now puts the last component of the pathname to the new repo
+    in the files being listed, i.e., 
+
+    	bk clone repo newrepo
+
+    will list
+
+    	newrepo/SCCS/s.ChangeSet
+    	newrepo/SCCS/s.Makefile
+	...
+
+    This was added so people would not think that clone was writing in ".",
+    if you parse the output and need to shut this off you can set 
+
+    	BK_NO_SFIO_PREFIX=TRUE
+
 bk gethost -n
     Returns the IP address of the host.
 
@@ -86,7 +169,7 @@ bk log
     $if to create if/then/else logic and the =~ operator can compare
     text to a glob.
 
-    See bk help log.
+    See bk help dspec.
 
 bk tags
     bk tags can now take an optional repository URL.  See bk help tags.
@@ -105,6 +188,7 @@ Bugs fixed
     2006-12-18-001	can't update triggers in a pull
     2007-05-10-001	When resolving sfile create conflicts with
     			checkout:edit, rl subcommand is broken
+    2007-06-21-001	symbolic links in absolute paths
 
 Other bug fixes
     Fixed an error in bk diffs when encountering a checked out file

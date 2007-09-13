@@ -1,0 +1,26 @@
+.so ../bk-macros
+.TH "bk pwd" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk pwd \- print directory name
+.SH SYNOPSIS
+.B bk pwd
+.[B] \-rs
+.[ARG] dir
+.SH DESCRIPTION
+The
+.B bk pwd
+command is used to print the pathname to a directory.
+If 
+.ARG dir
+is supplied then that is the directory in question, otherwise the
+current working directory is used.
+By default, the full pathname to the directory is printed.
+.SH OPTIONS
+.TP
+.B \-r
+Print the relative path from the root of the repository to the directory.
+.TP
+.B \-s
+Print the short form (aka 8.3 form) of the path.  (Windows only).
+.SH CATEGORY
+.B Utility

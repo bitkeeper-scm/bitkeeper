@@ -460,7 +460,8 @@ http_send(remote *r, char *msg, size_t mlen, size_t extra, char *user_agent)
 int
 http_fetch(remote *r, char *file)
 {
-	int	got, len, i;
+	int	i;
+	u64	got, len;
 	int	rc = -1;
 	int	binary = 0;
 	char	*p;
@@ -504,7 +505,7 @@ http_fetch(remote *r, char *file)
 			}
 			if (r->progressbar) {
 				progressbar(got, len,
-				    (got<len) ? "failed" : "OK");
+				    (got<len) ? "FAILED" : "OK");
 			}
 		} else {
 			while (getline2(r, buf, sizeof(buf)) > 0) {

@@ -1192,7 +1192,7 @@ int	bkmail(char *url, char **to, char *subject, char *file);
 void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);
-void	progressbar(int n, int max, char *msg);
+void	progressbar(u64 n, u64 max, char *msg);
 char	*signed_loadFile(char *filename);
 int	signed_saveFile(char *filename, char *data);
 void	bk_preSpawnHook(int flags, char *av[]);

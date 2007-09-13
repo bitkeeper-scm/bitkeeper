@@ -1372,7 +1372,7 @@ again:
  * %3u% |================================ \r
  */
 void
-progressbar(int n, int max, char *msg)
+progressbar(u64 n, u64 max, char *msg)
 {
 	static	int	last = 0;
 	static	struct	timeval start;
@@ -1390,13 +1390,14 @@ progressbar(int n, int max, char *msg)
 		start.tv_sec = 0;
 		lastup = 0.0;
 	}
-	unless ((percent > last) || msg) return;
+	unless ((percent > last) || (n == 0) || msg) return;
 	gettimeofday(&tv, 0);
 	unless (start.tv_sec) start = tv;
 	elapsed =
 	    (tv.tv_sec - start.tv_sec) + (tv.tv_usec - start.tv_usec) / 1.0e6;
 	/* This wacky expression is to try and smooth the drawing */
-	if (!msg && ((elapsed - lastup) < 0.25) && ((percent - last) <= 2)) {
+	if (n && !msg &&
+	    ((elapsed - lastup) < 0.25) && ((percent - last) <= 2)) {
 		return;
 	}
 	last = percent;

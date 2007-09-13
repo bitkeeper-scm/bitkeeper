@@ -15072,7 +15072,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		}
 		return (nullVal);
 
-	case KW_SIZE: /* SIZE */
+	case KW_BAMSIZE: /* BAMSIZE */
 		if (d->hash) {
 			fd(d->added);
 			return (strVal);

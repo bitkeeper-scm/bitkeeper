@@ -13,8 +13,7 @@
  *  - checkout:get shouldn't make multiple BAM_server connections
  *    resolve.c:copyAndGet(), check.c, others?
  *  * clean shouldn't be allowed to run on a BAM server
- *  - check needs a progress bar
- *  - check show list data files not linked in the index
+ *  - check should list data files not linked in the index
  *  - BAM gone-file support
  *  - work on errors when BAM repos are used by old clients
  *  - keysync should sync BP data for non-shared server case
@@ -566,7 +565,7 @@ bp_updateServer(char *range, char *list, int quiet)
 			p = aprintf("- < '%s'", list);
 		}
 		cmd = aprintf("bk changes -qBv -nd'"
-		    "$if(:BAMHASH:){|:SIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' "
+		    "$if(:BAMHASH:){|:BAMSIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' "
 		    "%s > '%s'",
 		    p, tmpkeys);
 		if (system(cmd)) {
@@ -1203,9 +1202,12 @@ bp_check_findMissing(int quiet, char **missing)
 private int
 bam_check_main(int ac, char **av)
 {
-	int	rc = 0, quiet = 0, fast = 0, n = 0, i;
+	int	rc = 0, quiet = 0, fast = 0, i;
+	u64	bytes = 0, done = 0;
 	FILE	*f;
-	char	**missing = 0;
+	char	*p;
+	char	**missing = 0, **lines = 0;
+	char	*spin = "|/-\\";
 	char	buf[MAXLINE];
 
 	if (proj_cd2root()) {
@@ -1227,17 +1229,32 @@ bam_check_main(int ac, char **av)
 	}
 
 	/* load BAM deltas and hashs */
-	f = popen("bk -r prs -hnd'" BAM_DSPEC "'", "r");
+	f = popen("bk -Ur prs -hnd" 
+	    "'$if(:BAMHASH:){:BAMSIZE: :BAMHASH: :KEY: :MD5KEY|1.0:}'", "r");
 	assert(f);
+	unless (quiet) fprintf(stderr, "Loading list of BAM deltas ");
+	i = 0;
 	while (fnext(buf, f)) {
-		++n;
-		unless (quiet) fprintf(stderr, "%d\r", n);
+		unless (quiet) fprintf(stderr, "%c\b", spin[i++ % 4]);
+		bytes += atoi(buf);
 		chomp(buf);
-
-		if (bp_check_hash(buf, &missing, fast)) rc = 1;
+		lines = addLine(lines, strdup(buf));
+	}
+	unless (quiet) {
+		fprintf(stderr,
+		    "- done, %d found using %sB.\n", i, psize(bytes));
 	}
 	pclose(f);
-	unless (quiet) fprintf(stderr, "\n");
+	done = 0;
+	unless (quiet) progressbar(done, bytes, 0);
+	EACH(lines) {
+		done += atoi(lines[i]);
+		p = strchr(lines[i], ' ') + 1;
+		if (bp_check_hash(p, &missing, fast)) rc = 1;
+		unless (quiet) progressbar(done, bytes, 0);
+	}
+	freeLines(lines, free);
+	unless (quiet) progressbar(bytes, bytes, rc ? "FAILED" : "OK");
 
 	/*
 	 * if we are missing some data make sure it is not covered by the

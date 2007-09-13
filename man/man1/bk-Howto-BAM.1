@@ -1,0 +1,87 @@
+.so ../bk-macros
+.TH "Howto-BAM" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.\"    =================== Quickstart Admin =========================
+.SH NAME
+bk Howto-BAM \- configuring the Binary Asset Management (BAM) subsystem
+.SH OVERVIEW
+Binary Asset Management, or BAM, 
+is a storage management system for versioning larger binary assets,
+such as tool chains, libraries, photos, music, videos, etc.
+.LP
+The BAM system is a hybrid, combining the best of the traditional
+centralized models with advantages of the distributed
+model developed by \*[BK].
+When BAM is enabled, and one or more servers are configured, then BAM files
+in \*[BK] repositories are passed by reference rather than copied.  
+BAM files appear to be the same as regular \*[BK] files but they contain
+no data, only a pointer which names the data.
+The data typically resides in the BAM server and is fetched on demand as
+needed.
+.LP
+What this means to a user is that a 20GB repository full of BAM files
+can be cloned in a few seconds and if the user needs to work on only
+a small portion of the data, only that data needs to be fetched from
+the BAM server.
+.SH CONFIGURATION
+In order to have larger binaries be stored in BAM format, the
+configuration file (BitKeeper/etc/config) will need to have 
+BAM enabled:
+.DS
+BAM: on
+.DE
+In order to fetch BAM data on demand a server must be configured:
+.DS
+BAM_server: bk://MyBigBox/MyRepo
+.DE
+.SH CONVERTING REPOS
+If you have a repository that contains larger binaries (minimum checked out
+size of 64KB), then you may do a one time conversion to BAM format.
+.LP
+The conversion must be done in a clone because the conversion changes the
+identity of the repository, i.e., the converted repository will no longer
+be able to synchronize with the unconverted repositories.
+It is a flag day type of operation.
+.LP
+The conversion process tends to be longer in projects with more changesets
+and files (for example, the MySQL 5.2 tree with 51,000 changesets and
+14,000 files took 5 minutes on a 2Ghz Opteron running Linux).
+.LP
+The conversion process is simple:
+.DS
+bk clone my_repo my_repo.BAM
+cd my_repo.BAM
+bk bam convert
+.DE
+.SH USAGE
+Once the repository is converted, usage is as it was in the past, you clone,
+pull, push, etc., as normal.
+In order to check out BAM files the BAM server listed in the config file
+must be accessible.
+At the end of a "bk -Ur co" command you may see lines like:
+.DS
+Fetching 18 BAM files from bk://MyBigBox/MyRepo...
+BitKeeper/BAM/62/62af0d9c.d1 (5.41M of 6.29M)
+.DE
+followed by the normal check out messages for the associated files.
+.SH AVAILABILITY
+BAM is a licensed feature of \*[BK] and must be enabled for your license;
+it is not a bundled "for-free" feature.
+To see if you license has BAM in abled, you can run
+.DS
+bk lease renew
+bk lease show
+.DE
+and if the options field has "BAM" listed then you have.  If it does not and
+you need BAM contact BitMover sales.
+.SH "SEE ALSO"
+.SA Howto
+.SA BAM
+.SA newroot
+.SH CATEGORY
+.B Overview
+.\" help://bam-howto
+.\" help://bam-HOWTO
+.\" help://BAM-HOWTO
+.\" help://howto-bam
+.\" help://Howto-bam
+.\" help://HOWTO-BAM
