@@ -402,10 +402,10 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			errors |= 8;
 			goto next;
 		}
-
-		if (reget || (df & NEWFILE)) {
+		if (df & DELTA_SAVEGFILE) {
 			if (fix_gmode(s, gf)) errors |= 16;
-
+		}
+		if (df & NEWFILE) {
 			/*
 			 * The 'keyword' preference for a new file might
 			 * have set keywords in sccs_delta() so we need to
