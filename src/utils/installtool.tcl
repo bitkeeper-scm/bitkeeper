@@ -856,7 +856,7 @@ proc widgets {} \
 	}
 	    
 	bind . <<WizCancel>> {set ::done 1}
-	bind . <<WizFinish>> {set ::done 1}
+	bind . <<WizFinish>> {set ::done 0}
 
 	bind . <<WizBackStep>> {
 		# this button may have been reconfigured to say "Install"..

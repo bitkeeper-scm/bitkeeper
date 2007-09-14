@@ -903,9 +903,20 @@ done:	if (readn(0, buf, 10) != 10) {
 			chmod(file, 0444);
 		}
 	}
-#ifndef	SFIO_STANDALONE
 	unless (opts->quiet) {
 		if (opts->newline == '\r') {
+			/*
+			 * NOTE: Why the STANDALONE ifdefs here?
+			 * The next block is not in STANDALONE because no
+			 * there is no psize() function.  However, the
+			 * 'else' block is needed to be outside of the
+			 * ifdef because the windows installer runs with
+			 * sfio -im to list the files being unpacked as
+			 * sort of a progress bar.  If this block becomes
+			 * needed in STANDALONE, then add psize() to
+			 * utils/sfio_utils.c
+			 */
+#ifndef	SFIO_STANDALONE
 			if (opts->todo) {
 				sprintf(buf, "%s (%s of %s)",
 				    file, psize(opts->done), psize(opts->todo));
@@ -914,11 +925,11 @@ done:	if (readn(0, buf, 10) != 10) {
 				    file, psize(sz), psize(opts->done));
 			}
 			fprintf(stderr, "%-72s\r", buf);
+#endif
 		} else {
 			fprintf(stderr, "%s%s\n", opts->prefix, file);
 		}
 	}
-#endif
 	return (0);
 
 err:	

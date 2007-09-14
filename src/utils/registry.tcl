@@ -2,6 +2,7 @@
 # e.g. tclsh registry.tcl "c:/bitkeeper"
 
 package require registry
+package require dde
 
 proc main {} \
 {
