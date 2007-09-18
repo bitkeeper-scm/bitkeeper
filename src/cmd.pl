@@ -6,7 +6,7 @@ $gperf = 'gperf' unless -x $gperf;
 $_ = `$gperf --version`;
 die "mk-cmd.pl: Requires gperf version >3\n" unless /^GNU gperf 3/;
 
-open(C, "| $gperf > cmd.c") or die;
+open(C, "| $gperf > cmd.c.new") or die;
 
 print C <<EOF;
 %{
@@ -24,7 +24,7 @@ struct CMD;
 %%
 EOF
 
-open(H, ">cmd.h") || die;
+open(H, ">cmd.h.new") || die;
 print H <<END;
 /* !!! automatically generated file !!! Do not edit. */
 #ifndef	_CMD_H_
@@ -102,6 +102,14 @@ while (<SH>) {
 }
 close(SH) or die;
 close(C) or die;
+
+# only replace cmd.c and cmd.h if they have changed
+foreach (qw(cmd.c cmd.h)) {
+    if (system("cmp -s $_ $_.new") != 0) {
+	rename("$_.new", $_);
+    }
+    unlink "$_.new";
+}
 
 # all commands tagged with 'remote' must live in files named bkd_*.c
 # (can't use perl's glob() because win32 perl is missing library)
