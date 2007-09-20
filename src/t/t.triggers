@@ -152,8 +152,6 @@ EOF
 cmpfiles WANT "$HERE/paths"
 echo OK
 
-exit 0
-
 echo $N Make sure commit can be told to fail and it does so nicely ..$NL
 cd "$HERE/project"
 cat > BitKeeper/triggers/pre-commit <<EOF
@@ -650,6 +648,7 @@ set | grep $DASHA ^BK | grep -v _BK_ |
     grep -v BK_IGNORE_WRLOCK |
     grep -v BKD_LEVEL |
     grep -v BK_REPO_ID |
+    grep -v BKD_ROOTKEY1 |
     grep -v _FEATURES |
     grep -v BKD_LICTYPE |
     grep -v BKD_SEED= |

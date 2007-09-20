@@ -777,6 +777,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		} else {
 			fprintf(f, "putenv BK_ROOT=%s\n", proj);
 		}
+		fprintf(f, "putenv BK_ROOTKEY1=%s\n", proj_md5rootkey(p));
 		if (repo = proj_repoID(0)) {
 			if (strchr(repo, ' ')) {
 				fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
@@ -885,7 +886,7 @@ getServerInfoBlock(remote *r)
 int
 sendServerInfoBlock(int is_rclone)
 {
-	char	*repoid, *p, *errs = 0;
+	char	*repoid, *md5rootkey, *p, *errs = 0;
 	char	buf[MAXPATH];
 
 	out("@SERVER INFO@\n");
@@ -952,7 +953,10 @@ sendServerInfoBlock(int is_rclone)
 			free(p);
 		}
 	}
-
+	if (md5rootkey = proj_md5rootkey(0)) {
+		sprintf(buf, "\nROOTKEY1=%s", md5rootkey);
+		out(buf);
+	}
 	/* only send back a seed if we received one */
 	if (p = getenv("BKD_SEED")) {
 		out("\nSEED=");
