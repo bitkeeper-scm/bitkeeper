@@ -494,6 +494,11 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		chdir(ROOT2RESYNC);
 		rc = bkd_BAM_part3(r, envVar, opts.quiet, "- < " CSETS_IN);
 		chdir(RESYNC2ROOT);
+		if (rc) {
+			fprintf(stderr, "BAM fetch failed, aborting pull.\n");
+			system("bk abort -f");
+			exit(1);
+		}
 	}
 	if (got_patch) {
 		/*

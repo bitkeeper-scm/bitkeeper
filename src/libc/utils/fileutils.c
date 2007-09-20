@@ -78,7 +78,7 @@ loadfile(char *file, int *size)
 int
 touch(char *file, int mode)
 {
-	int	fh = open(file, O_CREAT|O_EXCL|O_WRONLY, mode);
+	int	fh = open(file, O_CREAT|O_WRONLY, mode);
 
 	if (fh < 0) return (fh);
 	return (close(fh));

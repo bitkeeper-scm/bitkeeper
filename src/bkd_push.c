@@ -353,7 +353,7 @@ cmd_push_part3(int ac, char **av)
 		gunzipAll2fd(0, pfd, gzip, &inbytes, &outbytes);
 		close(pfd);
 		getline(0, buf, sizeof(buf));
-		if (!streq("@END@", buf)) {
+		unless (streq("@END@", buf)) {
 			fprintf(stderr,
 			    "cmd_push: warning: lost end marker\n");
 		}
@@ -370,6 +370,15 @@ cmd_push_part3(int ac, char **av)
 		if (rc) {
 			printf("%c%d\n", BKD_RC, rc);
 			fflush(stdout);
+			/*
+			 * Clear out the push because we got corrupted data
+			 * which failed the push.  It's not as bad as it might
+			 * seem that we do this because we enter BAM data 
+			 * directly into the BAM pool so we won't resend when
+			 * they sort out the bad file.
+			 */
+			system("bk abort -f");
+			goto done;
 		}
 	} else if (!streq(buf, "@NOBAM@")) {
 		fprintf(stderr, "expect @BAM@, got <%s>\n", buf);

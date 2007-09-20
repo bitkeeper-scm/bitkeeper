@@ -130,3 +130,235 @@ test -s OUT && {
 	exit 1
 }
 echo OK
+
+echo $N Check pushing a BAM file into repo with no BAM ..............$NL
+cd "$HERE"
+commercial project2
+cd ..
+bk clone $Q project2 push2
+bk clone $Q project2 pull2
+cd project2
+# make BAM file
+echo foo > foo
+bk new $Q -b foo
+bk commit $Q -yfoo
+bk push $Q ../push2 || exit 1
+cd ../push2 || exit 1
+test -d BitKeeper/BAM || exit 1
+echo OK
+
+echo $N Check pulling a BAM file in repo with no BAM ................$NL
+cd "$HERE/pull2"
+bk pull $Q || exit 1
+bk get $Q foo || exit 1
+echo OK
+
+echo $N Check pushing a BAM file in repo with BAM ...................$NL
+cd "$HERE"
+bk clone $Q project2 pushbam
+bk clone $Q project2 pullbam
+cd project2
+# make BAM file
+bk edit $Q foo
+echo more data > foo
+bk delta $Q -ymore foo
+bk commit $Q -ymore
+bk push $Q ../pushbam || exit 1
+cd ../pushbam || exit 1
+bk get $Q foo || exit 1
+echo OK
+
+echo $N Check pulling a BAM file in repo with BAM ...................$NL
+cd "$HERE/pullbam"
+bk pull $Q || exit 1
+bk get $Q foo || exit 1
+echo OK
+
+echo $N Check pushing a corrupt BAM file into repo with no BAM ......$NL
+cd "$HERE"
+commercial project2_corrupt
+cd ..
+bk clone $Q project2_corrupt push_corrupt
+bk clone $Q project2_corrupt pull_corrupt
+cd project2_corrupt
+# make BAM file
+echo foo > foo
+bk new $Q -b foo
+bk commit $Q -yfoo
+FOOPATH=`find BitKeeper/BAM -type f | grep -v index`
+chmod +w "$FOOPATH"
+cp "$FOOPATH" "$HERE/backupbam"
+echo boo1 > "$FOOPATH"
+chmod -w "$FOOPATH"
+bk push $Q ../push_corrupt 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "Checksum mismatch" ERR || exit 1
+# XXX: the push creates unused directories BAM/03/, so skip test
+# cd ../push_corrupt || exit 1
+# test -d BitKeeper/BAM && exit 1
+echo OK
+
+echo $N Check that we did not leave remote locked ...................$NL
+cd "$HERE/push_corrupt"
+test -d RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+bk -r check -acc || {
+	echo check failed
+	exit 1
+}
+echo OK
+
+# The error here is that we failed in the BAM get but the new cset data
+# that has pointers to the non-gotten data is present.  What this should
+# do is leave the repo locked with the error messag.
+echo $N Check pulling a corrupt BAM file into repo with no BAM ......$NL
+cd "$HERE/pull_corrupt"
+bk pull $Q 2> ERR && exit 1
+grep -q "Checksum mismatch" ERR || {
+	echo bad errors
+	cat ERR
+	exit 1
+}
+test -d RESYNC && exit 1
+bk -r check -acB || {
+	echo failed to pass check
+	exit 1
+}
+echo OK
+
+echo $N Check pushing a corrupt BAM file into repo with BAM .........$NL
+cd "$HERE/project2_corrupt"
+chmod +w "$FOOPATH"
+cp "$HERE/backupbam" "$FOOPATH"
+chmod -w "$FOOPATH"
+cd ..
+bk clone $Q project2_corrupt pushbam_corrupt
+bk clone $Q project2_corrupt pullbam_corrupt
+cd project2_corrupt
+# make BAM file
+bk edit $Q foo
+echo bar > foo
+bk delta $Q -ybar foo
+bk commit $Q -ybar
+FOOPATH=`find BitKeeper/BAM -type f | grep -v index | grep -v "$FOOPATH"`
+chmod +w "$FOOPATH"
+echo boo2 > "$FOOPATH"
+chmod -w "$FOOPATH"
+bk bam check 2> ERR && exit 1
+bk push $Q ../pushbam_corrupt 2> ERR && {
+   echo should have failed
+   exit 1
+}
+grep -q "Checksum mismatch" ERR || exit 1
+echo OK
+
+echo $N Check pulling a corrupt BAM file into repo with BAM .........$NL
+cd "$HERE/pullbam_corrupt"
+bk pull $Q 2> ERR && exit 1
+grep -q "Checksum mismatch" ERR || exit 1
+test -d RESYNC && exit 1
+bk -r check -acB || {
+	echo failed to pass check
+	exit 1
+}
+echo OK
+
+echo $N Check cloning a repo with a corrupt BAM file ................$NL
+cd "$HERE"
+bk clone $Q project2_corrupt clone_corrupt 2> ERR && {
+	echo clone worked
+	exit 1
+}
+grep -q "Checksum mismatch" ERR || exit 1
+# XXX repo is there and passes check, but has no BAM data
+# cd clone_corrupt || exit 1
+# bk get $Q || exit 1
+echo OK
+
+echo $N Check rcloning a repo with a corrupt BAM file ...............$NL
+cd "$HERE"
+P=`port 50000`
+bk bkd -d -p$P -ikill -l"$HERE/XXX"
+bk clone $Q project2_corrupt bk://localhost:$P/rclone_corrupt 2> ERR
+RC=$?
+bk _kill bk://localhost:$P || exit 1
+test $RC -ne 0 || exit 1
+grep -q "Checksum mismatch" ERR || exit 1
+# XXX repo is there and passes check, but has no BAM data
+# cd rclone_corrupt || exit 1
+# bk get $Q || exit 1
+echo OK
+
+echo $N Check a repo with a missing BAM file ........................$NL
+cd "$HERE"
+bk clone $Q project2 project2_missing
+cd project2_missing
+bk _find BitKeeper/BAM -type f > LIST
+bk edit $Q foo
+echo missing > foo
+bk delta $Q -ymissing foo
+bk commit $Q -ymissing
+MISSING=`bk _find BitKeeper/BAM -type f | grep -vf LIST`
+test -f "$MISSING" || { echo no bam file to delete $MISSING; exit 1; }
+rm -f "$MISSING" || exit 1
+bk -r check 2> ERR && { echo passed check; exit 1; }
+grep -q "Failed to locate BAM data for the following deltas" ERR || {
+	echo wrong message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Check pushing a repo with a missing BAM file ................$NL
+cd "$HERE"
+bk clone $Q project2 push_missing
+cd project2_missing
+bk push $Q ../push_missing 2> ERR && { echo pushed passed; exit 1; }
+grep -q "Incomplete archive" ERR || { echo wrong msg; cat ERR; exit 1; }
+echo OK
+
+echo $N Check pulling a repo with a missing BAM file ................$NL
+cd "$HERE"
+bk clone $Q project2 pull_missing
+cd pull_missing
+bk pull $Q ../project2_missing 2> ERR && { echo pulled passed; exit 1; }
+grep -q "Incomplete archive" ERR || { echo wrong msg; cat ERR; exit 1; }
+echo OK
+
+echo $N Check cloning a repo with a missing BAM file ................$NL
+cd "$HERE"
+bk clone $Q project2_missing clone_missing 2> ERR && exit 1
+grep -q "Incomplete archive" ERR || { echo wrong msg; cat ERR; exit 1; }
+cd clone_missing || exit 1
+test -d RESYNC || exit 1
+bk -r check 2> ERR && { echo passed check; exit 1; }
+grep -q "Failed to locate BAM data for the following deltas" ERR || {
+	echo wrong message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Check rcloning a repo with a missing BAM file ...............$NL
+cd "$HERE"
+P=`port 50000`
+bk bkd -d -p$P -ikill -l"$HERE/XXX"
+bk clone $Q project2_missing bk://localhost:$P/rclone_missing 2> ERR
+RC=$?
+bk _kill bk://localhost:$P || exit 1
+test $RC -ne 0 || exit 1
+grep -q "Incomplete archive" ERR || { echo wrong msg; cat ERR; exit 1; }
+cd rclone_missing || exit 1
+# XXX: rclone doesn't check run_check()
+test -d RESYNC && { echo fix test; exit 1; }
+bk -r check 2> ERR && { echo passed check; exit 1; }
+grep -q "Failed to locate BAM data for the following deltas" ERR || {
+	echo wrong message
+	cat ERR
+	exit 1
+}
+echo OK

@@ -177,7 +177,10 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 			bytes -= i;
 		}
 	}
-	if (f) pclose(f);
+	if (f && pclose(f)) {
+		rc = 1;
+		goto done;
+	}
 	unless (streq(buf, "@EXIT=0@\n")) {
 		fprintf(stderr, "bad exit in part3: %s\n", buf);
 		rc = 1;
@@ -214,8 +217,8 @@ bp_sendkeys(int fdout, char *range, u64 *bytep)
 		 * need to be able to get it from somewhere.  So that's the
 		 * R1 option to havekeys.
 		 */
-		cmd = aprintf("bk changes -Bv -nd'"
-		    "$if(:BAMHASH:){|:SIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' %s |"
+		cmd = aprintf("bk changes -Bv -nd'$if(:BAMHASH:)"
+		    "{|:BAMSIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' %s |"
 		    "bk havekeys -B%s -", range, ret == 2 ? "" : "l");
 		f = popen(cmd, "r");
 		assert(f);

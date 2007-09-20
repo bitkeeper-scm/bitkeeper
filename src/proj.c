@@ -868,7 +868,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 		// XXX - what about hardlinks for BAM?
 		f = popen("bk get -q -", "w");
 		EACH(p->bp_getFiles) fprintf(f, "%s\n", p->bp_getFiles[i]);
-		(void)pclose(f);
+		if (pclose(f)) errs++;
 		freeLines(p->bp_getFiles, free);
 		p->bp_getFiles = 0;
 	}
@@ -876,7 +876,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 		// XXX - what about hardlinks for BAM?
 		f = popen("bk edit -q -", "w");
 		EACH(p->bp_editFiles) fprintf(f, "%s\n", p->bp_editFiles[i]);
-		(void)pclose(f);
+		if (pclose(f)) errs++;
 		freeLines(p->bp_editFiles, free);
 		p->bp_editFiles = 0;
 	}

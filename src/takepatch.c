@@ -1378,7 +1378,9 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
-	if (BAM(s)) touch("../" BAM_MARKER, 0664);
+	if (BAM(s)) {
+		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
+	}
 	sccs_free(s);
 	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();

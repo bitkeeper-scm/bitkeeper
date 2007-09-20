@@ -703,7 +703,7 @@ out:
 			}
 		}
 		pclose(f);
-		touch(BAM_MARKER, 0444);
+		touch(BAM_MARKER, 0664);
 		sprintf(buf, "%s/" BAM_INDEX, from);
 		fileCopy(buf, BAM_INDEX);
 		system("bk bam reload");

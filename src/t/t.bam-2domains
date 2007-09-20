@@ -616,11 +616,12 @@ echo OK
 
 echo $N Push across domains, unique data should go ..................$NL
 cd "$HERE/C5"
-bk undo -fsa1.2 $Q
+bk undo -fsa1.2 $Q || exit 1
 rm -rf BitKeeper/BAM
-bk bam check -q || exit 1
+bk bam check -q 2> ERR|| exit 1
+grep -q "No BAM data" ERR || exit 1
 cd ../C3
-bk push $Q ../C5
+bk push $Q ../C5 || exit 1
 cd ../C5
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
@@ -635,7 +636,8 @@ echo $N Pull across domains, unique data should go ..................$NL
 cd "$HERE/C5"
 bk undo -fsa1.2 $Q
 rm -rf BitKeeper/BAM
-bk bam check -q || exit 1
+bk bam check -q 2> ERR|| exit 1
+grep -q "No BAM data" ERR || exit 1
 bk pull $Q ../C3
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.

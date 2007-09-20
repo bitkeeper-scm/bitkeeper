@@ -58,7 +58,7 @@ private	char	**parent;	/* for repair usage */
 int		xflags_failed;	/* notification */
 private	u32	timestamps;
 private	char	**bp_getFiles;
-private	int	bp_fullcheck;
+private	int	bp_fullcheck;	/* do bam CRC */
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 
@@ -94,6 +94,7 @@ check_main(int ac, char **av)
 	int	checkout;
 	char	**bp_missing = 0;
 	int	BAM = 0;
+	int	doBAM = 0;
 
 	timestamps = 0;
 	while ((c = getopt(ac, av, "@;aBcdefgpRsTvw")) != -1) {
@@ -101,7 +102,7 @@ check_main(int ac, char **av)
 			/* XXX: leak - free parent freeLines(parent, 0) */
 		    case '@': parent = addLine(parent, optarg); break;
 		    case 'a': all++; break;			/* doc 2.0 */
-		    case 'B': bp_missing = allocLines(64); break;
+		    case 'B': doBAM++; break;
 		    case 'c':					/* doc 2.0 */
 			unless (flags & INIT_NOCKSUM) bp_fullcheck = 1;
 			flags &= ~INIT_NOCKSUM;
@@ -135,6 +136,10 @@ check_main(int ac, char **av)
 	if (proj_cd2root()) {
 		fprintf(stderr, "check: cannot find package root.\n");
 		return (1);
+	}
+	/* force -B if no BAM server */
+	if (doBAM || !bp_serverName()) {
+		bp_missing = allocLines(64);
 	}
 	/* We need write perm on the tmp dirs, etc. */
 	if (chk_permissions()) {
@@ -197,6 +202,7 @@ retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
 	if (all) {
 		mdbm_close(idDB);
 		idDB = mdbm_mem();
+		unlink(BAM_MARKER); /* recreate BAM_MARKER */
 	}
 
 	/* This can legitimately return NULL */
@@ -330,7 +336,9 @@ retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
 		unless (s == cset) sccs_free(s);
 	}
 	if (e = sfileDone()) return (e);
-	if (BAM && !bp_hasBAM()) touch(BAM_MARKER, 0664);
+	if (BAM) {
+		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
+	}
 	if (all || update_idcache(idDB, keys)) {
 		idcache_write(0, idDB);
 		mdbm_close(idDB);
@@ -530,6 +538,11 @@ err:		getMsg2("file_dir_conflict", buf, type, '=', stderr);
 	/* NOTREACHED */
 }
 
+/*
+ * Note that this does not do CRC's by default, you need to call check -cc
+ * which sets bp_fullcheck to do that.
+ * Without bp_fullcheck, it just verifies that the BAM data file is present.
+ */
 private int
 chk_BAM(sccs *s, char ***missing)
 {

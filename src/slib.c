@@ -1425,7 +1425,9 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
-	if (getenv("BKD_BAM")) touch(BAM_MARKER, 0664);
+	if (getenv("BKD_BAM")) {
+		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
+	}
 }
 
 /*

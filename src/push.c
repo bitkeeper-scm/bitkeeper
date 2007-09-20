@@ -903,14 +903,15 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	/*
 	 * get remote progress status
 	 */
-	getline2(r, buf, sizeof(buf));
-	if (buf[0] == BKD_RC) {
-		rc = atoi(&buf[1]);
-		goto done;
-	}
-	unless (streq(buf, "@END@")) {
-		rc = 1;
-		goto done;
+	while (1) {
+		n = getline2(r, buf, sizeof(buf));
+		if (!n || (buf[0] == BKD_RC)) {
+			fprintf(stderr, "push: bkd failed to apply BAM data\n");
+			rc = n ? atoi(&buf[1]) : 1;
+			goto done;
+		}
+		if (streq(buf, "@END@")) break;
+		fprintf(stderr, "%s\n", buf);	/* echo msgs */
 	}
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TRIGGER INFO@")) {
