@@ -118,7 +118,6 @@ bk admin
     SCCS features, and checked whether the file contents were ASCII.
     As BitKeeper now fully supports non-ASCII characters, this option
     is deprecated.  Use -h, -hh, or -hhh instead.  See bk help admin.
-    (Does anyone other than Larry call admin -h/-H directly?)
 
 bk bkd
     The -p option now allows you to restrict allowed connections to
@@ -192,38 +191,25 @@ Bugs fixed
 
 Other bug fixes
     Fixed an error in bk diffs when encountering a checked out file
-    that was replaced by a broken symbolic link.  [mysql collapse/diff
-    symlink problem -- @1.1807]
+    that was replaced by a broken symbolic link.  
 
     When a case-folding conflict was detected (two files mapped to
     the same name due to case insensitivity), the error message didn't
     clearly identify the conflicting files; in this release, the error
-    message does identify them.  [resolve case-folding error -- @1.1785]
+    message does identify them.
 
     Fixed a problem with bk lock that prevented "-f" from working correctly
     with "-L" and "-U".
-    [lock -f works with -L and -U -- @1.1771.5.1]
 
-    If the ChangeSet file was edited and contained files with spaces in
-    their root keys.  This is fixed.
-    XXX -- needs more vague description.
-    [resolve failure -- Bluearc -- @1.1771.1.5]
+    An edited ChangeSet file that contained files with spaces in their
+    root keys had problems.  Fixed.
 
     Fixed a problem that could cause faults when reading directories.
-    [Bluearc _getdir() faults -- @1.1765.10.2]
 
     Fixed bug where 'bk changes -v' can fail when it encounters missing
     file delta that were marked as gone.
-    [Deltas in the gone file not noticed by bk changes -- @1.1765.9.1]
 
     bk import could incorrectly generate tags when importing from CVS.
-    This is fixed.
-    [Fix tag generation on import -- @1.1766]
-
-
-Other items to add
-    - BK_NO_FSYNC
-    - 'nosync' config option
 
 ===============================================================================
 Release notes for BitKeeper version 4.0.2 (released 2006-12-14)

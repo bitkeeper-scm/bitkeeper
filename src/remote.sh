@@ -83,7 +83,7 @@ case $CMD in
 			DEST="work:/home/bk/images/$TAG"
 			CP=rcp
 			# We only want images done on WinXP
-			test $HOSTNAME = winxp-safe || exit 0
+			test $HOSTNAME = winxp || exit 0
 		else
 			IMG=$TAG-$ARCH.bin
 			DEST="/home/bk/images/$TAG"
