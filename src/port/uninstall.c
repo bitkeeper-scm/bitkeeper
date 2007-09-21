@@ -25,7 +25,7 @@ private	FILE *dfd;	/* Debug FD */
 private void	delete_onReboot(char *path);
 private	char	*path_sansBK(char *path);
 private void	remove_shortcuts(void);
-private void	unregister_shellx(char *path);
+private int	unregister_shellx(char *path);
 
 int
 uninstall(char *path, int upgrade)
@@ -88,7 +88,10 @@ uninstall(char *path, int upgrade)
 			free(uninstall_cmd);
 		}
 		/* Unregister ShellX DLL */
-		unregister_shellx(path);
+		if (unregister_shellx(path)) {
+			if (dfd) fprintf(dfd, "unregister_shellx(%s) failed\n",
+			    path);
+		}
 		free(old_ver);
 	}
 
@@ -323,16 +326,16 @@ remove_shortcuts(void)
 	}
 }
 
-private void
+private int
 unregister_shellx(char *path)
 {
 	char	*cmd;
+	int	rc;
 
 	cmd = aprintf("regsvr32.exe /u /s \"%s\\%s\"", path, "bkshellx.dll");
-	if (system(cmd)) {
-		fprintf(stderr, "failed to unregister shellx\n");
-	}
+	rc = system(cmd);
 	free(cmd);
+	return (rc);
 }
 
 #else

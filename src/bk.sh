@@ -1204,6 +1204,15 @@ _install()
 		   exit 1;;
 		esac
 	done
+	if [ "X$OSTYPE" = "Xmsys" -a "$UPGRADE" = "-u" ]
+	then
+		SHELLX_KEY="HKEY_LOCAL_MACHINE\\Software\\bitmover\\bitkeeper\\shellx"
+		LOCAL_SHELLX=`bk _registry get $SHELLX_KEY LocalDrive`
+		NETWORK_SHELLX=`bk _registry get $SHELLX_KEY networkDrive`
+		test "$LOCAL_SHELLX" = 1 -o "$NETWORK_SHELLX" = 1 && {
+			REGSHELLX=YES;
+		}
+	fi
 	shift `expr $OPTIND - 1`
 	test X"$1" = X -o X"$2" != X && {
 		echo "usage: bk install [-dfSv] <destdir>" 1>&2
