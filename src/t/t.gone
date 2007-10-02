@@ -94,3 +94,38 @@ ChangeSet@1.5
 EOF
 cmpfiles OUT WANT
 echo OK
+
+echo $N Create missing delta, gone/comit it, push ...................$NL
+commercial project2
+# create a bucket brigadge  again2 -> copy2 -> project2
+# each start with a file called foo
+# again creates a delta record in foo, puts it in a cset, the deletes s.foo
+# marks file gone and pushes.  Now copy has foo, but is missing a delta,
+# so runs gone to mark delta as gone and pushes
+# makepatch fails because the file is there, but nothing in the file
+# is available for the patch.  It's a bug in cset.c:sccs_patch
+# where the assert(gfile) is getting hit because no deltas are being
+# selected.
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ..
+bk clone $Q project2 copy2
+bk clone $Q copy2 again2
+cd again2
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo
+rm SCCS/?.foo
+bk -r check -ag | bk gone - 2> ERR
+bk commit $Q -ygone
+bk push $Q
+cd ../copy2
+bk -r check -aggg | bk gone - 2> ERR
+bk commit $Q -ygone
+bk push $Q 2> ERR || {
+	echo "failed (bug 2007-03-13-002)"
+	cat ERR
+	exit 1
+}
+echo OK

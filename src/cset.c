@@ -1137,6 +1137,7 @@ sccs_patch(sccs *s, cset_t *cs)
 			n++;
 		}
 	}
+	unless (n) return;
 	assert(gfile);
 	list = calloc(n, sizeof(delta*));
 	newfile = s->tree->flags & D_SET;
