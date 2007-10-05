@@ -2174,6 +2174,43 @@ nextdata(sccs *s)
 	return (zgets(s->zin));
 }
 
+/* setup to call sccs_rdweave() */
+void
+sccs_rdweaveInit(sccs *s)
+{
+	seekto(s, s->data);
+	if (s->encoding & E_GZIP) {
+		s->zin = zgets_init(s->where, s->size - s->data);
+	}
+}
+
+/* returns a line from the weave, including newline */
+char *
+sccs_rdweave(sccs *s)
+{
+	return (nextdata(s));
+}
+
+/*
+ * Cleans up gzip stuff.
+ * fails if the whole weave was not read.
+ */
+int
+sccs_rdweaveDone(sccs *s)
+{
+	int	ret = 0;
+
+	if (s->encoding & E_GZIP) {
+		unless (zeof(s->zin)) ret = 1;
+		if (zgets_done(s->zin)) ret = 1;
+		s->zin = 0;
+	} else {
+		assert(!s->zin);
+		unless (s->where == s->mmap + s->size) ret = 1;
+	}
+	return (ret);
+}
+
 /*
  * Look for a bug in the weave that could be created by bitkeeper
  * versions 3.0.1 or older.  It happens when a file is delta'ed on
@@ -6412,6 +6449,8 @@ get_reg(sccs *s, char *printOut, int flags, delta *d,
 		if (flags&GET_REVNUMS) len += s->revLen + 1;
 		if (flags&GET_LINENUM) len += 7;
 		if (flags&GET_LINENAME) len += 37;
+		if (flags&GET_SERIAL) len += 7;
+		/* XXX GET_MD5KEY */
 		len += 2;
 		align[0] = 0;
 		while (len++ % 8) strcat(align, " ");
@@ -6951,6 +6990,8 @@ get_link(sccs *s, char *printOut, int flags, delta *d, int *ln)
 				if (flags&GET_USER) len += s->userLen + 1;
 				if (flags&GET_REVNUMS) len += s->revLen + 1;
 				if (flags&GET_LINENUM) len += 7;
+				if (flags&GET_SERIAL) len += 7;
+				/* XXX GET_MD5KEY */
 				len += 2;
 				while (len++ % 8) fputc(' ', out);
 				fputs("| ", out);
@@ -7169,24 +7210,9 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 		if (flags&GET_USER) fprintf(out, "%-*s ", s->userLen, d->user);
 		if (flags&GET_REVNUMS) fprintf(out, "%-*s ", s->revLen, d->rev);
 		if (flags&GET_LINENUM) fprintf(out, "%6d ", lines);
+		if (flags&GET_SERIAL) fprintf(out, "%6d ", d->serial);
+		/* XXX GET_MD5KEY  */
 	} else {
-#if 0
-		/* maybe, need to think about it */
-		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s|",name);
-		if (flags&GET_PREFIXDATE) {
-			if (YEAR4(s)) {
-				if (atoi(d->sdate) > 69) {
-					fprintf(out, "19");
-				} else {
-					fprintf(out, "20");
-				}
-			}
-			fprintf(out, "%8.8s|", d->sdate);
-		}
-		if (flags&GET_USER) fprintf(out, "%s|", d->user);
-		if (flags&GET_REVNUMS) fprintf(out, "%s|", d->rev);
-		if (flags&GET_LINENUM) fprintf(out, "%d|", lines);
-#else
 		/* tab style */
 		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s\t",name);
 		if (flags&GET_PREFIXDATE) {
@@ -7202,7 +7228,15 @@ prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
 		if (flags&GET_USER) fprintf(out, "%s\t", d->user);
 		if (flags&GET_REVNUMS) fprintf(out, "%s\t", d->rev);
 		if (flags&GET_LINENUM) fprintf(out, "%d\t", lines);
+#if 0
+		if (flags&GET_MD5KEY) {
+			char	key[MD5LEN];
+
+			sccs_md5delta(s, d, key);
+			fprintf(out, "%s\t", key);
+		}
 #endif
+		if (flags&GET_SERIAL) fprintf(out, "%d\t", d->serial);
 	}
 }
 
@@ -10767,9 +10801,6 @@ sccs_encoding(sccs *sc, off_t size, char *encp, char *compp)
 		enc = 0;
 	}
 
-	/* never compress ChangeSet file */
-	if (sc && CSET(sc)) compp = "none";
-
 	if (compp) {
 		if (streq(compp, "gzip")) {
 			comp = E_GZIP;
@@ -11982,11 +12013,12 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	lp = s->locs;
 	i = s->iloc - 1; /* set index to final element in array */
 	assert(i > 0); /* base 1 data structure */
+	if (s->encoding & E_GZIP) sccs_zputs_init(s, f);
+	unless (HAS_SFILE(s)) goto skip;
 
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
 		s->zin = zgets_init(s->where, s->size - s->data);
-		sccs_zputs_init(s, f);
 	}
 	while (line = nextdata(s)) {
 		assert(strneq(line, "\001I ", 3));
@@ -12016,12 +12048,6 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 		fputdata(s, "\n", f);
 	}
 	assert(!(i && line));
-	/* Print out remaining, forcing serial 1 block at the end */
-	for ( ; i ; i--) {
-		unless (lp[i].p || lp[i].serial == 1) continue;
-		sertoa(buf, lp[i].serial);
-		patchweave(s, lp[i].p, lp[i].len, buf, f);
-	}
 	/* No translation of serial numbers needed for remainder of file */
 	for ( ; line; line = nextdata(s)) {
 		fputdata(s, line, f);
@@ -12029,6 +12055,12 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	if (s->encoding & E_GZIP) {
 		zgets_done(s->zin);
 		s->zin = 0;
+	}
+	/* Print out remaining, forcing serial 1 block at the end */
+skip:	for ( ; i ; i--) {
+		unless (lp[i].p || lp[i].serial == 1) continue;
+		sertoa(buf, lp[i].serial);
+		patchweave(s, lp[i].p, lp[i].len, buf, f);
 	}
 	if (fflushdata(s, f)) return (-1);
 	return (0);

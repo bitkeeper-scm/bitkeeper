@@ -380,6 +380,7 @@ annotate_args(int flags, char *args)
 {
 	while (*args) {
 		switch (*args) {
+		    //case '5': flags |= GET_MD5REV; break;
 		    case 'b': flags |= GET_MODNAME; break;
 		    case 'd': flags |= GET_PREFIXDATE; break;
 		    case 'p': flags |= GET_RELPATH; break;
@@ -389,6 +390,7 @@ annotate_args(int flags, char *args)
 		    case 'l': /* undoc-ed - alias */
 		    case 'n': flags |= GET_LINENUM; break;
 		    case 'O': flags |= GET_LINENAME; break;
+		    case 'S': flags |= GET_SERIAL; break;
 		    case 'u': flags |= GET_USER; break;
 		    default:
 			return (-1);

@@ -368,7 +368,6 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	ser_t	ins_ser = 0;
 	char	*p, *q;
 	u8	*e;
-	char	*end = s->mmap + s->size;
 	u16	sum;
 	int	cnt, i, added, n = 0;
 	serset	**map;
@@ -392,8 +391,8 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 	}
 
 	/* build up weave data structure */
-	p = s->mmap + s->data;
-	while (p < end) {
+	sccs_rdweaveInit(s);
+	while (p = sccs_rdweave(s)) {
 		if (p[0] == '\001') {
 			if (p[1] == 'I') ins_ser = atoi(p + 3);
 			e = p;
@@ -409,6 +408,11 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 		}
 		p = e;
 	}
+	if (sccs_rdweaveDone(s)) {
+		fprintf(stderr, "checksum: failed to read cset weave\n");
+		exit(1);
+	}
+
 	cnt = 0;
 	EACH_KV(root2map) ++cnt;
 	map = malloc(cnt * sizeof(serset *));

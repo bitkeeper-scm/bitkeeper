@@ -908,20 +908,7 @@ apply:
 				    p->resyncFile);
 				goto err;
 			}
-			if (perfile) {
-				sccscopy(s, perfile);
-				/*
-				 * For takepatch performance
-				 * turn off compression when we are in 
-				 * takepatch.
-				 * 
-				 * Note: Since this is a new file from remote,
-				 * there is no local setting. We save the 
-				 * compression setting of the remote file
-				 * and use that as the new local file when
-				 * when takepatch is done.
-				 */
-			}
+			if (perfile) sccscopy(s, perfile);
 			iF = p->initMmap;
 			dF = p->diffMmap;
 			cweave_init(s, nfound);
@@ -1340,11 +1327,9 @@ apply:
 	assert(s);
 
 	/*
-	 * Never gzip the ChangeSet file.
 	 * Honor gzip on all files.
-	 * Always gzip !commercial files.
 	 */
-	if (!CSET(s) && (encoding & E_GZIP)) s = sccs_gzip(s);
+	if (encoding & E_GZIP) s = sccs_gzip(s);
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);

@@ -176,22 +176,9 @@ check_main(int ac, char **av)
 	if (sane(0, resync)) return (1);
 
 	/* revtool: the code below is restored from a previous version */
-retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
+	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		return (1);
-	}
-	if (cset->encoding & E_GZIP) {
-		sccs_free(cset);
-		if (verbose == 1) {
-			fprintf(stderr, "Uncompressing ChangeSet file...\n");
-		}
-		/* This will fail if we are locked */
-		if (sys("bk", "admin", "-Znone", "ChangeSet", SYS)) exit(1);
-		if (verbose == 1) {
-			fprintf(stderr,
-			    "Restarting check from the beginning...\n");
-		}
-		goto retry;
 	}
 	mixed = (LONGKEY(cset) == 0);
 	if (verbose == 1) {
@@ -1013,7 +1000,7 @@ fetch_changeset(void)
 private void
 buildKeys(MDBM *idDB)
 {
-	char	*p, *s, *t, *r;
+	char	*p, *s, *t;
 	int	n = 0, e = 0;
 	delta	*d;
 	hash	*deltas;
@@ -1023,14 +1010,9 @@ buildKeys(MDBM *idDB)
 		perror("buildkeys");
 		exit(1);
 	}
-	s = t = cset->mmap + cset->data;
-	r = cset->mmap + cset->size;
-	assert(r[-1] == '\n');	/* make sure we can't walk off mmap */
-	while (s < r) {
-		if (*s == '\001') {
-			s = strchr(s, '\n') + 1;
-			continue;
-		}
+	sccs_rdweaveInit(cset);
+	while (s = sccs_rdweave(cset)) {
+		if (*s == '\001') continue;
 		t = separator(s);
 		/* copy rootkey to add trailing null */
 		p = key;
@@ -1061,7 +1043,10 @@ buildKeys(MDBM *idDB)
 			listCsetRevs(key);
 			if (polyList) e++;
 		}
-		++s;		/* skip newline */
+	}
+	if (sccs_rdweaveDone(cset)) {
+		fprintf(stderr, "check: failed to read cset weave\n");
+		exit(1);
 	}
 
 	/* Add in ChangeSet keys */

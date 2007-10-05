@@ -75,7 +75,7 @@ int	checking_rmdir(char *dir);
 #define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
 #define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
 #define	GET_PREFIXDATE	0x00200000	/* get -d: show date */
-/* available		0x00400000	*/
+#define	GET_SERIAL	0x00400000	/* serial annotate */
 #define	GET_SHUTUP	0x00800000	/* quiet on certain errors */
 #define	GET_ALIGN	0x00010000	/* nicely align prefix output */
 #define	GET_FORCE	0x00020000	/* do it even with errors */
@@ -97,7 +97,7 @@ int	checking_rmdir(char *dir);
 #define	DIFF_COMMENTS	GET_COMMENTS
 #define	GET_PREFIX	\
     (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
-     GET_RELPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME)
+     GET_RELPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME|GET_SERIAL)
 
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 #define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
@@ -372,7 +372,6 @@ int	checking_rmdir(char *dir);
 #define	CHECKED		"BitKeeper/log/checked"
 #define	REPO_ID		"BitKeeper/log/repo_id"
 #define	BKSKIP		".bk_skip"
-#define	TMP_MODE	0666
 #define	GROUP_MODE	0664
 #define	BAM_DSPEC	"$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}"
 
@@ -853,7 +852,6 @@ void	sccs_freetree(delta *);
 void	sccs_close(sccs *);
 sccs	*sccs_csetInit(u32 flags);
 char	**sccs_files(char **, int);
-int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
@@ -1120,9 +1118,7 @@ void	sccs_color(sccs *s, delta *d);
 int	out(char *buf);
 int	getlevel(void);
 delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
-int	cset_map(sccs *s, int extras);
 int	cset_write(sccs *s, int spinners);
-int	cset_diffs(sccs *s, ser_t ser);
 sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
 int	isNullFile(char *rev, char *file);
@@ -1272,6 +1268,9 @@ u64	scansize(char *bytes);
 void	idcache_update(char *filelist);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s, int force);
+void	sccs_rdweaveInit(sccs *s);
+char	*sccs_rdweave(sccs *s);
+int	sccs_rdweaveDone(sccs *s);
 
 extern	char	*editor;
 extern	char	*bin;

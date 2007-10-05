@@ -17,8 +17,8 @@ echo $N Create commercial repository and check gzip on ChangeSet ....$NL
 commercial project
 bk admin -Znone ChangeSet
 bk admin -Zgzip ChangeSet
-test "`bk compression ChangeSet`" = "ChangeSet none" || {
-	echo should not have compressed the ChangeSet file
+test "`bk compression ChangeSet`" = "ChangeSet gzip" || {
+	echo should have compressed the ChangeSet file
 	exit 1
 }
 echo OK

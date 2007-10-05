@@ -28,7 +28,9 @@ typedef	struct cset {
 	int	ndeltas;
 	int	nfiles;
 	pid_t	pid;		/* adler32 process id */
+	int	lasti;		/* last idx in cweave for cset_diffs */
 
+	char	**cweave;	/* weave of cset file for this patch */
 	char	**BAM;		/* list of keys we need to send */
 } cset_t;
 
@@ -40,6 +42,7 @@ private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc, char kind);
 private	void	sccs_patch(sccs *, cset_t *);
+private	int	cset_diffs(cset_t *cs, ser_t ser);
 private	void	cset_exit(int n);
 private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
@@ -375,11 +378,7 @@ header(sccs *cset, int diffs)
 private void
 markThisCset(cset_t *cs, sccs *s, delta *d)
 {
-	if (TAG(d)) {
-		d->flags |= D_SET;
-		return;
-	}
-	if (cs->mark) {
+	if (TAG(d) || cs->mark) {
 		d->flags |= D_SET;
 		return;
 	}
@@ -423,7 +422,6 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 {
 	static	MDBM *idDB;
 	static	int doneFullRebuild;
-	static	int doneFullRemark;
 	static	sccs *sc;
 	static	char *lastkey;
 	delta	*d;
@@ -446,7 +444,6 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 			sc = 0;
 		}
 		doneFullRebuild = 0;
-		doneFullRemark = 0;
 		doit(cs, 0);
 		return (0);
 	}
@@ -457,14 +454,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	 *
 	 * With long/short keys mixed, we have to be a little careful here.
 	 */
-	if (lastkey && sameFile(cs, lastkey, key)) {
-		unless (d = sccs_findKey(sc, val)) {
-			if (gone(val, goneDB)) return (0);
-			return (cs->force ? 0 : -1);
-		}
-		markThisCset(cs, sc, d);
-		return (0);
-	}
+	if (lastkey && sameFile(cs, lastkey, key)) goto markkey;
 
 	/*
 	 * This would be later - do the last file and clean up.
@@ -480,11 +470,11 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	/*
 	 * Set up the new file.
 	 */
-	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
+	lastkey = strdup(key);
+retry:	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
 		perror("idcache");
 	}
-	lastkey = strdup(key);
-retry:	if (cset && strstr(lastkey, "|ChangeSet|")) {
+	if (cset && strstr(lastkey, "|ChangeSet|")) {
 		sc = cset;
 	} else {
 		sc = sccs_keyinit(lastkey, INIT_NOWARN, idDB);
@@ -499,15 +489,13 @@ retry:	if (cset && strstr(lastkey, "|ChangeSet|")) {
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {
 			mdbm_close(idDB);
+			idDB = 0;
 			if (sccs_reCache(!cs->verbose)) {
 				fprintf(stderr,
 				    "cset: cannot build %s\n", IDCACHE);
 				// XXX - exit or not?
 			}
 			doneFullRebuild = 1;
-			unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
-				perror("idcache");
-			}
 			goto retry;
 		}
 		fprintf(stderr, "cset: unable to keyinit %s\n", lastkey);
@@ -515,14 +503,14 @@ retry:	if (cset && strstr(lastkey, "|ChangeSet|")) {
 		lastkey = 0;
 		return (cs->force ? 0 : -1);
 	}
-
+markkey:
 	unless (d = sccs_findKey(sc, val)) {
 		/* OK to have missing keys if the gone file told us so */
 		if (gone(val, goneDB)) return (0);
 
 		fprintf(stderr,
 		    "cset: cannot find\n\t%s in\n\t%s\n", val, sc->sfile);
-		return (-1);
+		return (cs->force ? 0 : -1);
 	}
 	markThisCset(cs, sc, d);
 	return (0);
@@ -574,18 +562,47 @@ marklist(char *file)
 }
 
 /*
+ * sort by rootkeys by pathname first
+ * lines:
+ *    <serial>\t<rootkey> <deltakey>
+ */
+private int
+cset_bykeys(const void *a, const void *b)
+{
+	char	*s1 = *(char**)a;
+	char	*s2 = *(char**)b;
+	char	*p1 = strchr(s1, '|');	/* path in rootkey */
+	char	*p2 = strchr(s2, '|');
+	char	*d1 = separator(p1); /* start of delta key */
+	char	*d2 = separator(p2);
+	int	rc;
+
+	*d1 = 0;
+	*d2 = 0;
+	rc = strcmp(p1, p2);
+	*d1 = ' ';
+	*d2 = ' ';
+	unless (rc) {
+		p1 = strchr(s1, '\t');
+		p2 = strchr(s2, '\t');
+		rc = strcmp(p1, p2);
+	}
+	return (rc);
+}
+
+/*
  * List all the revisions which make up a range of changesets.
  * The list is sorted for performance.
  */
 private void
 csetlist(cset_t *cs, sccs *cset)
 {
-	char	*t;
+	char	*rk, *t;
 	FILE	*list = 0;
 	char	buf[MAXPATH*2];
-	char	cat[MAXPATH], csort[MAXPATH];
+	char	cat[MAXPATH];
 	char	*csetid;
-	int	status;
+	int	status, i;
 	delta	*d;
 	MDBM	*goneDB = 0;
 
@@ -612,24 +629,29 @@ csetlist(cset_t *cs, sccs *cset)
 	csetid = strdup(buf);
 
 	bktmp(cat, "catZ");
-	bktmp(csort, "csort");
 	/*
-	 * Get the list of key tuples in a sorted file.
+	 * Get the list of key tuples in a lines array
 	 */
-	if (sccs_cat(cset, GET_NOHASH|PRINT, cat)) {
+	if (sccs_cat(cset, GET_SERIAL|GET_NOHASH|PRINT, cat)) {
 		sccs_whynot("cset", cset);
 		unlink(cat);
 		goto fail;
 	}
-	if (sysio(cat, csort, 0, "bk", "sort", SYS)) {
-		unlink(cat);
+	unless (list = fopen(cat, "r")) {
+		perror(cat);
 		goto fail;
 	}
-	chmod(csort, TMP_MODE);		/* in case we don't unlink */
-	unlink(cat);
-	if (cs->verbose > 5) {;
-		sys("cat", csort, SYS);
+	/* preallocate cweave? */
+	while (fnext(buf, list)) {
+		chomp(buf);
+		cs->cweave = addLine(cs->cweave, strdup(buf));
 	}
+	fclose(list);
+	if (cs->verbose > 5) {;
+		sys("cat", cat, SYS);
+	}
+	unlink(cat);
+
 	if (exists(SGONE)) {
 		char tmp_gone[MAXPATH];
 
@@ -637,11 +659,6 @@ csetlist(cset_t *cs, sccs *cset)
 		sysio(0, tmp_gone, 0, "bk", "get", "-kpsr@+", GONE, SYS);
 		goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
 		unlink(tmp_gone);
-	}
-	unlink(cat);
-	unless (list = fopen(csort, "rt")) { /* win32 sort used text mode */
-		perror(buf);
-		goto fail;
 	}
 
 	/* checksum the output */
@@ -666,21 +683,20 @@ again:	/* doDiffs can make it two pass */
 	/*
 	 * Do the ChangeSet deltas first, takepatch needs it to be so.
 	 */
-	for (d = cset->table; d; d = d->next) {
-		if (d->flags & D_SET) {
-			sccs_sdelta(cset, d, buf);
-			if (doKey(cs, csetid, buf, goneDB)) goto fail;
-		}
-	}
+	sortLines(cs->cweave, number_sort); /* sort by serials */
+	cs->lasti = 0;
+	doit(cs, cset);
 
 	/*
 	 * Now do the real data.
 	 */
-	while (fnext(buf, list)) {
-		chop(buf);
-		t = separator(buf); *t++ = 0;
-		if (sameFile(cs, csetid, buf)) continue;
-		if (doKey(cs, buf, t, goneDB)) {
+	sortLines(cs->cweave, cset_bykeys); /* sort by rootkeys */
+	EACH (cs->cweave) {
+		rk = strchr(cs->cweave[i], '\t');
+		++rk;
+		t = separator(rk); *t++ = 0;
+		if (sameFile(cs, csetid, rk)) continue; /* skip ChangeSet */
+		if (doKey(cs, rk, t, goneDB)) {
 			fprintf(stderr,
 			    "File named by key\n\t%s\n\tis missing and key is "
 			    "not in a committed gone delta, aborting.\n", buf);
@@ -692,12 +708,10 @@ again:	/* doDiffs can make it two pass */
 		doKey(cs, 0, 0, goneDB);
 		cs->doDiffs = 0;
 		fputs(PATCH_END, stdout);
-		rewind(list);
 		goto again;
 	}
-	fclose(list);
-	list = 0;
 	doKey(cs, 0, 0, goneDB);
+	freeLines(cs->cweave, free);
 	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
 		    "makepatch: patch contains %d revisions from %d files\n",
@@ -736,7 +750,6 @@ again:	/* doDiffs can make it two pass */
 		}
 		cs->pid = 0;
 	}
-	unlink(csort);
 	free(csetid);
 	if (goneDB) mdbm_close(goneDB);
 	return;
@@ -748,8 +761,6 @@ fail:
 		waitpid(cs->pid, &status, 0);	/* for win32: child inherited */
 						/* a low level csort handle */
 	}
-	if (list) fclose(list);
-	unlink(csort);
 	free(csetid);
 	if (goneDB) mdbm_close(goneDB);
 	cset_exit(1);
@@ -917,13 +928,13 @@ add(FILE *diffs, char *buf)
 
 	unless (chomp(buf) && (rev = strrchr(buf, BK_FS))) {
 		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
-		system("bk clean -u ChangeSet");
+		system("bk clean ChangeSet");
 		cset_exit(1);
 	}
 	*rev++ = 0;
 
 	/*
-	 * XXX Optimazation note: We should probaly check for ChangeSet
+	 * XXX Optimization note: We should probably check for ChangeSet
 	 * file first before we waste cpu to call sccs_init()
 	 * This should be a win if we have complex graph and large 
 	 * ChangeSet file. Since we ae going to sccs_free() and
@@ -931,7 +942,7 @@ add(FILE *diffs, char *buf)
 	 */
 	unless (s = sccs_init(buf, SILENT)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
-		system("bk clean -u ChangeSet");
+		system("bk clean -q ChangeSet");
 		cset_exit(1);
 	}
 	if (s->state & S_CSET) {
@@ -940,7 +951,7 @@ add(FILE *diffs, char *buf)
 	}
 	unless (d = sccs_findrev(s, rev)) {
 		fprintf(stderr, "cset: can't find %s in %s\n", rev, buf);
-		system("bk clean -u ChangeSet");
+		system("bk clean -q ChangeSet");
 		cset_exit(1);
 	}
 
@@ -1050,7 +1061,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 
 	bktmp(filename, "cdif");
-	unless (fdiffs = fopen(filename, "w+")) {
+	unless (fdiffs = fopen(filename, "w")) {
 		perror(filename);
 		sccs_free(cset);
 		cset_exit(1);
@@ -1131,37 +1142,31 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * Clear the D_SET flag because we need to be able to do one at
 	 * a time when sending the cset diffs.
 	 */
+	newfile = s->tree->flags & D_SET;
+	list = 0;
 	for (n = 0, d = s->table; d; d = d->next) {
-		if (d->flags & D_SET) {
-			unless (gfile) gfile = d->pathname;
-			n++;
-		}
+		unless (d->flags & D_SET) continue;
+		unless (gfile) gfile = d->pathname;
+		n++;
+		list = (delta **)addLine((char **)list, d);
+		d->flags &= ~D_SET;
 	}
 	unless (n) return;
 	assert(gfile);
-	list = calloc(n, sizeof(delta*));
-	newfile = s->tree->flags & D_SET;
-	for (i = 0, d = s->table; d; d = d->next) {
-		if (d->flags & D_SET) {
-			assert(i < n);
-			list[i++] = d;
-			d->flags &= ~D_SET;
-		}
-	}
 
 	/*
 	 * For each file, spit out file seperators when the filename
 	 * changes.
 	 * Spit out the root rev so we can find if it has moved.
 	 */
-	for (i = n - 1; i >= 0; i--) {
+	for (i = n; i > 0; i--) {
 		d = list[i];
 		assert(d);
 		if (cs->verbose > 2) fprintf(stderr, "%s ", d->rev);
 		if ((cs->verbose == 2) && !cs->notty) {
 			fprintf(stderr, "%c\b", spin[deltas % 4]);
 		}
-		if (i == n - 1) {
+		if (i == n) {
 			unless (s->gfile) {
 				fprintf(stderr, "\n%s%c%s has no path\n",
 				    s->gfile, BK_FS, d->rev);
@@ -1185,26 +1190,13 @@ sccs_patch(sccs *s, cset_t *cs)
 			printf("\n");
 		}
 		s->rstop = s->rstart = d;
-		/*
-		 * XXX FIXME
-		 * TODO  move the test out side this loop. This would
-		 * be a little faster.
-		 */
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");
 		if (d->type == 'D') {
 			int	rc = 0;
 
 			if (s->state & S_CSET) {
-				if (d->added) {
-					if (s->encoding & E_GZIP) {
-						rc = sccs_getdiffs(s,
-						    d->rev, GET_HASHDIFFS, "-");
-					} else {
-						rc = cset_diffs(s, d->serial);
-					}
-				}
-
+				if (d->added) rc = cset_diffs(cs, d->serial);
 			} else if (BAM(s) && copts.doBAM) {
 				assert(d->hash || (!d->added && !d->deleted));
 				if (d->hash) {
@@ -1232,4 +1224,27 @@ sccs_patch(sccs *s, cset_t *cs)
 	}
 	cs->ndeltas += deltas;
 	if (list) free(list);
+}
+
+private int
+cset_diffs(cset_t *cs, ser_t ser)
+{
+	int	i;
+	ser_t	n;
+	char	*t;
+
+	printf("0a0\n");
+	/* walk annotated list from last match */
+	EACH_START(cs->lasti, cs->cweave, i) {
+		t = cs->cweave[i];
+		n = atoi(t);
+		if (ser == n) {
+			t = strchr(t, '\t');
+			printf("> %s\n", t + 1);
+		} else if (n > ser) {
+			break;
+		}
+	}
+	cs->lasti = i;		/* save last match */
+	return (0);
 }

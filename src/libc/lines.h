@@ -61,6 +61,8 @@
 #define	p2int(p)			((int)(long)(p))
 #define	LSIZ(s)				p2int(s[0])
 #define	EACH_INDEX(s, i)	for (i=1; (s) && (i < LSIZ(s)) && (s)[i]; i++)
+#define	EACH_START(x, s, i)	\
+    for (i = ((x) < 1) ? 1 : (x); (s) && (i < LSIZ(s)) && (s)[i]; i++)
 #define	EACH(s)				EACH_INDEX(s, i)
 #define	emptyLines(s)			(!s || !s[1])
 #define	str_empty(s)			(!s || !s[2])
@@ -79,6 +81,7 @@ void	removeLineN(char **space, int rm, void(*freep)(void *ptr));
 void	reverseLines(char **space);
 void	sortLines(char **space, int (*compar)(const void *, const void *));
 int	string_sort(const void *a, const void *b);
+int	number_sort(const void *a, const void *b);
 char	**shellSplit(const char *line);
 char	**file2Lines(char **space, char *file);
 int	lines2File(char **space, char *file);

@@ -119,6 +119,17 @@ string_sort(const void *a, const void *b)
 	return (strcmp(l, r));
 }
 
+int
+number_sort(const void *a, const void *b)
+{
+	int	l, r;
+
+	l = atoi(*(char**)a);
+	r = atoi(*(char**)b);
+	if (l - r) return (l - r);
+	return (string_sort(a, b));
+}
+
 void
 sortLines(char **space, int (*compar)(const void *, const void *))
 {
