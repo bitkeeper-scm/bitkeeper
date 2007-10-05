@@ -117,13 +117,9 @@ void	remote_free(remote *r);
 void	remote_print(remote *r, FILE *f);
 void	remote_perror(remote *r, char *msg);
 pid_t	bkd(int compress, remote *r);
-int	gunzip2fd(char *input, int len, int fd, int hflag);
-int	gzip2fd(char *input, int len, int fd, int hflag);
-void	gzip_done(void);
-void	gzip_init(int level);
-int	gzipAll2fd(int rfd, int wfd, int level, int *in, int *out,
-							int hflag, int verbose);
-int	gunzipAll2fd(int rfd, int wfd, int level, int *in, int *out);
+int	gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out,
+    int verbose);
+int	gunzipAll2fh(int rfd, FILE *wf, int *in, int *out);
 int	in(char *s, int len);
 int	outfd(int fd, char*buf);
 

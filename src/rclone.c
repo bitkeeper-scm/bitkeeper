@@ -425,7 +425,7 @@ send_sfio(int level, remote *r)
 	FILE	*fh;
 	char	*sfiocmd;
 	char	*cmd;
-	int     fd;
+	FILE	*fout;
 
 	tmpf = bktmp(0, "rclone_sfiles");
 	fh = fopen(tmpf, "w");
@@ -439,22 +439,22 @@ send_sfio(int level, remote *r)
 	if (r && r->path) {
 		sfiocmd = aprintf("bk sfio -P'%s/' -o%s < '%s'", 
 		    basenm(r->path), (opts.verbose ? "" : "q"), tmpf);
-		fd = r->wfd;
+		fout = fdopen(dup(r->wfd), "wb");
 	} else {
-		fd = open(DEVNULL_WR, O_WRONLY, 0644);
-		assert(fd > 0);
+		fout = fopen(DEVNULL_WR, "w");
 		sfiocmd = aprintf("bk sfio -o%s < '%s'", 
 		    (opts.verbose ? "" : "q"), tmpf);
 	}
+	assert(fout);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	opts.in = opts.out = 0;
-	gzipAll2fd(fileno(fh), fd, level, &opts.in, &opts.out, 1, 0);
+	gzipAll2fh(fileno(fh), fout, level, &opts.in, &opts.out, 0);
 	status = pclose(fh);
 	unlink(tmpf);
 	free(tmpf);
-	unless (r) close(fd);
-	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
+	fclose(fout);
+unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 	return (opts.out);
 
 }

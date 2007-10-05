@@ -8,7 +8,7 @@
 
 #include "system.h"
 
-#define ZBUFSIZ (8<<10) 	/* doesn't seem to work for < 8 */
+#define ZBUFSIZ (4<<10)		/* see note in compress.c */
 
 struct zgetbuf	{
 	z_stream	z;		/* zlib data */
@@ -137,11 +137,12 @@ zfillbuf(zgetbuf *in, u8 *buf, int len)
 
 	in->z.next_out = buf;
 	in->z.avail_out = len;
-	do {
+	while (in->z.avail_out) {
 		unless (in->z.avail_in) {
 			in->z.avail_in =
 				in->callback(in->token, &in->z.next_in);
 		}
+		unless (in->z.avail_in) break;
 		err = inflate(&in->z, Z_NO_FLUSH);
 		if (err == Z_STREAM_END) {
 			in->eof = 1;
@@ -150,7 +151,7 @@ zfillbuf(zgetbuf *in, u8 *buf, int len)
 			unless (in->err) in->err = err;
 			break;
 		}
-	} while (!in->z.avail_in && in->z.avail_out);
+	}
 	return (len - in->z.avail_out);
 }
 
@@ -266,35 +267,35 @@ zread(zgetbuf *in, u8 *buf, int len)
 	int	cnt;
 	u8	*p = buf;
 
-	if (in->left) {
-		cnt = min(in->left, len);
-		memcpy(p, in->next, cnt);
-		p += cnt;
-		len -= cnt;
-		in->next += cnt;
-		in->left -= cnt;
-	}
-	assert((len == 0) || (in->left == 0));
-
-	/*
-	 * Arbitrarily decide that requests larger than 1024 should be
-	 * decompressed directly into the user's buffer rather than
-	 * being put it in the zgetbuf and copied out.  It is a trade
-	 * off between an extra data copy and running the compress
-	 * code on a short block.
-	 */
-	if (len > 1024) {
-		/* decompress big blocks directly in place */
-		cnt = zfillbuf(in, p, len);
-		p += cnt;
-		len -= cnt;
-	} else if (len > 0) {
-		zfill(in);
-		assert(in->left > len);
-		memcpy(p, in->next, len);
-		p += len;
-		in->next += len;
-		in->left -= len;
+	for (;;) {
+		if (in->left) {
+			cnt = min(in->left, len);
+			memcpy(p, in->next, cnt);
+			p += cnt;
+			len -= cnt;
+			in->next += cnt;
+			in->left -= cnt;
+		}
+		/*
+		 * Arbitrarily decide that requests larger than 1024
+		 * should be decompressed directly into the user's
+		 * buffer rather than being put it in the zgetbuf and
+		 * copied out.  It is a trade off between an extra
+		 * data copy and running the compress code on a short
+		 * block.
+		 * 1024 is the stdio buf size
+		 */
+		if (len >= 1024) {
+			assert(in->left == 0);
+			cnt = zfillbuf(in, p, len);
+			p += cnt;
+			len -= cnt;
+		} else if (len > 0) {
+			cnt = zfill(in);
+		} else {
+			break;	/* done */
+		}
+		unless (cnt) break; /* at EOF */
 	}
 	if (in->err) return (-1);
 	return (p - buf);
@@ -327,7 +328,7 @@ struct zputbuf	{
 };
 
 zputbuf *
-zputs_init(zputs_func callback, void *token)
+zputs_init(zputs_func callback, void *token, int level)
 {
 	zputbuf	*out;
 
@@ -340,7 +341,7 @@ zputs_init(zputs_func callback, void *token)
 	out->z.avail_in = 0;
 	out->callback = callback ? callback : zputs_filewrite;
 	out->token = token;
-	if (deflateInit(&out->z, 4) != Z_OK) {
+	if (deflateInit(&out->z, (level == -1) ? 4 : level) != Z_OK) {
 		free(out->inbuf);
 		free(out->outbuf);
 		free(out);
@@ -360,7 +361,7 @@ zflush(zputbuf *out)
 			out->z.avail_out = ZBUFSIZ;
 			out->z.next_out = out->outbuf;
 		}
-		if (err = deflate(&out->z, Z_NO_FLUSH)) {
+		if (err = deflate(&out->z, Z_PARTIAL_FLUSH)) {
 			fprintf(stderr,
 				"zputs: compression failure %d\n", err);
 			unless (out->err) out->err = err;
@@ -376,7 +377,7 @@ zputs(zputbuf *out, u8 *data, int len)
 	int	i;
 
 	i = ZBUFSIZ - out->z.avail_in; /* space left in buf */
-	if ((len > 1024) && (len > i)) {
+	if ((len >= 1024) && (len > i)) {
 		if (out->z.avail_in) zflush(out);
 		out->z.next_in = data;
 		out->z.avail_in = len;
@@ -400,6 +401,9 @@ zputs_done(zputbuf *out)
 {
 	int	err = Z_OK;
 	int	len;
+
+	/* Clear input buffer.  (needed for 3.2.8 compat) */
+	zflush(out);
 
 	/* Clear output buffer.  */
 	for (;;) {

@@ -142,8 +142,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	} else {
 		fprintf(f, "bk -zo0 -Bstdin sfio -oqBl -\n");
 	}
-	fflush(f);
-	if (rc = bp_sendkeys(fileno(f), range, &sfio)) goto done;
+	if (rc = bp_sendkeys(f, range, &sfio)) goto done;
 	fprintf(f, "rdunlock\n");
 	fprintf(f, "quit\n");
 	fclose(f);
@@ -196,7 +195,7 @@ done:	wait_eof(r, 0);
 }
 
 int
-bp_sendkeys(int fdout, char *range, u64 *bytep)
+bp_sendkeys(FILE *fout, char *range, u64 *bytep)
 {
 	FILE	*f;
 	int	debug, len, space, where, ret;
@@ -209,7 +208,7 @@ bp_sendkeys(int fdout, char *range, u64 *bytep)
 
 	debug = ((p = getenv("_BK_BAM_DEBUG")) && *p);
 	*bytep = 0;
-	zout = zputs_init(zputs_hwrite, int2p(fdout));
+	zout = zputs_init(zputs_hfwrite, fout, -1);
 	if (ret = bp_fetchData()) {
 		/*
 		 * If we have a server then we want to recurse one level up

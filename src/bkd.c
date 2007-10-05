@@ -255,6 +255,7 @@ do_cmds(void)
 			 * Do the real work
 			 */
 			ret = cmds[i].cmd(ac, av);
+			fflush(stdout);
 			if (peer && !logged_peer) {
 				/* first command records peername */
 				if (log) cmdlog_addnote("peer", peer);

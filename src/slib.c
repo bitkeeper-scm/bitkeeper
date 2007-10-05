@@ -5677,7 +5677,7 @@ sccs_zputs_init(sccs *s, FILE *fout)
 
 	data[0] = s;
 	data[1] = fout;
-	zput = zputs_init(gzip_sum, data);
+	zput = zputs_init(gzip_sum, data, -1);
 	assert(zput);
 }
 

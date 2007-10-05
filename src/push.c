@@ -170,16 +170,10 @@ err:		freeLines(envVar, free);
 private int
 send_part1_msg(remote *r, char **envVar)
 {
-	FILE 	*f;
-	int	gzip, rc, i;
+	FILE	*f;
+	int	rc, i;
 	char	*probef;
 	char	buf[MAXPATH];
-
-	/*
-	 * If we are using ssh/rsh do not do gzip ourself
-	 * Let ssh do it
-	 */
-	gzip = r->port ? opts.gzip : 0;
 
 	bktmp(buf, "push1");
 	f = fopen(buf, "w");
@@ -187,7 +181,6 @@ send_part1_msg(remote *r, char **envVar)
 	sendEnv(f, envVar, r, 0);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "push_part1");
-	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
 	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
@@ -368,7 +361,7 @@ tags:			fprintf(opts.out,
 }
 
 private u32
-genpatch(int level, int wfd, char *rev_list)
+genpatch(int level, FILE *wf, char *rev_list)
 {
 	char	*makepatch[10] = {"bk", "makepatch", 0};
 	int	fd0, fd, rfd, n, status;
@@ -388,7 +381,7 @@ genpatch(int level, int wfd, char *rev_list)
 	assert(fd == 0);
 	pid = spawnvpio(0, &rfd, 0, makepatch);
 	dup2(fd0, 0); close(fd0);
-	gzipAll2fd(rfd, wfd, level, &(opts.inBytes), &(opts.outBytes), 1, 0);
+	gzipAll2fh(rfd, wf, level, &(opts.inBytes), &(opts.outBytes), 0);
 	close(rfd);
 	waitpid(pid, &status, 0);
 	return (opts.outBytes);
@@ -397,13 +390,13 @@ genpatch(int level, int wfd, char *rev_list)
 private u32
 patch_size(int gzip, char *rev_list)
 {
-	int	fd;
+	FILE	*f;
 	u32	n;
 
-	fd = open(DEVNULL_WR, O_WRONLY, 0644);
-	assert(fd > 0);
-	n = genpatch(gzip, fd, rev_list);
-	close(fd);
+	f = fopen(DEVNULL_WR, "w");
+	assert(f);
+	n = genpatch(gzip, f, rev_list);
+	fclose(f);
 	return (n);
 }
 
@@ -432,7 +425,6 @@ send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 	 */
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "push_part2");
-	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
 	fclose(f);
@@ -471,7 +463,6 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 	 */
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "push_part2");
-	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
 	if (!opts.verbose) fprintf(f, " -q");
 	if (opts.nospin) {
@@ -504,15 +495,18 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 
 	rc = send_file(r, msgfile, extra);
 
-	writen(r->wfd, "@PATCH@\n", 8);
-	n = genpatch(gzip, r->wfd, rev_list);
+	f = fdopen(dup(r->wfd), "wb"); /* dup() so fclose preserves wfd */
+	fprintf(f, "@PATCH@\n");
+	n = genpatch(gzip, f, rev_list);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(opts.out,
 		    "Error: patch has changed size from %d to %d\n", m, n);
+		fclose(f);
 		disconnect(r, 2);
 		return (-1);
 	}
-	writen(r->wfd, "@END@\n", 6);
+	fprintf(f, "@END@\n");
+	fclose(f);
 
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {
@@ -532,7 +526,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 // XXX - always recurses even when it shouldn't
 // XXX - needs to be u64
 u32
-send_BAM_sfio(int level, int wfd, char *bp_keys, u64 bpsz)
+send_BAM_sfio(int level, FILE *wf, char *bp_keys, u64 bpsz)
 {
 	u32	n;
 	int	fd0, fd, rfd, status;
@@ -557,7 +551,7 @@ send_BAM_sfio(int level, int wfd, char *bp_keys, u64 bpsz)
 	pid = spawnvpio(0, &rfd, 0, sfio);
 	dup2(fd0, 0); close(fd0);
 	n = 0;
-	gzipAll2fd(rfd, wfd, level, 0, &n, 1, 0);
+	gzipAll2fh(rfd, wf, level, 0, &n, 0);
 	close(rfd);
 	waitpid(pid, &status, 0);
 	assert(status == 0);
@@ -567,11 +561,10 @@ send_BAM_sfio(int level, int wfd, char *bp_keys, u64 bpsz)
 int
 send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 {
-	FILE	*f;
+	FILE	*f, *fnull;
 	int	rc;
 	u32	extra = 1, m = 0, n;
 	int	gzip;
-	int	fd;
 	char	msgfile[MAXPATH];
 
 	/*
@@ -591,7 +584,6 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	 */
 	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
 	fprintf(f, "push_part3");
-	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
 	if (!opts.verbose) fprintf(f, " -q");
 	fputs("\n", f);
@@ -607,9 +599,10 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 		 * 6 is the size of "@END@\n" string
 		 */
 		if (r->type == ADDR_HTTP) {
-			fd = open(DEVNULL_WR, O_WRONLY, 0);
-			m = send_BAM_sfio(gzip, fd, bp_keys, bpsz);
-			close(fd);
+			fnull = fopen(DEVNULL_WR, "w");
+			assert(fnull);
+			m = send_BAM_sfio(gzip, fnull, bp_keys, bpsz);
+			fclose(fnull);
 			assert(m > 0);
 			extra = m + 6 + 6;
 		} else {
@@ -621,16 +614,19 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	rc = send_file(r, msgfile, extra);
 
 	if (extra > 0) {
-		writen(r->wfd, "@BAM@\n", 6);
-		n = send_BAM_sfio(gzip, r->wfd, bp_keys, bpsz);
+		f = fdopen(dup(r->wfd), "wb");
+		fprintf(f, "@BAM@\n");
+		n = send_BAM_sfio(gzip, f, bp_keys, bpsz);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(opts.out,
 			    "Error: patch has changed size from %d to %d\n",
 			    m, n);
+			fclose(f);
 			disconnect(r, 2);
 			return (-1);
 		}
-		writen(r->wfd, "@END@\n", 6);
+		fprintf(f, "@END@\n");
+		fclose(f);
 	}
 	disconnect(r, 1);
 
@@ -987,12 +983,10 @@ private	int
 push(char **av, remote *r, char **envVar)
 {
 	int	ret;
-	int	gzip;
 	char	*p;
 	char	*bp_keys = 0;
 	char	rev_list[MAXPATH] = "";
 
-	gzip = opts.gzip && r->port;
 	if (opts.debug) {
 		fprintf(opts.out, "Root Key = \"%s\"\n", proj_rootkey(0));
 	}

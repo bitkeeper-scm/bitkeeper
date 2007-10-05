@@ -212,7 +212,6 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	fputs("@PATCH@\n", stdout);
-	fflush(stdout); 
 
 	n = 2;
 	makepatch[n++] = "-";
@@ -225,7 +224,7 @@ cmd_pull_part2(int ac, char **av)
 	assert(fd == 0);
 	pid = spawnvpio(0, &rfd, 0, makepatch);
 	dup2(fd0, 0); close(fd0);
-	gzipAll2fd(rfd, 1, gzip, 0, 0, 1, 0);
+	gzipAll2fh(rfd, stdout, gzip, 0, 0, 0);
 	close(rfd);
 
 	/*

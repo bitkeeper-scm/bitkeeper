@@ -9,7 +9,7 @@ int
 cmd_push_part1(int ac, char **av)
 {
 	char	*p, buf[MAXKEY], cmd[MAXPATH];
-	int	c, n, status, gzip = 0;
+	int	c, n, status;
 	int	debug = 0;
 	MMAP    *m;
 	FILE	*l;
@@ -18,10 +18,7 @@ cmd_push_part1(int ac, char **av)
 
 	while ((c = getopt(ac, av, "dnz|")) != -1) {
 		switch (c) {
-		    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
-			break;
+		    case 'z': break; /* ignored */
 		    case 'd': debug = 1; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
@@ -113,21 +110,19 @@ cmd_push_part1(int ac, char **av)
 int
 cmd_push_part2(int ac, char **av)
 {
-	int	fd2, pfd, c, rc = 0, gzip = 0;
+	int	fd2, pfd, c, rc = 0;
 	int	status, debug = 0, nothing = 0, conflict = 0;
 	pid_t	pid;
 	char	*p;
 	char	bkd_nul = BKD_NUL;
 	u64	sfio;
+	FILE	*f;
 	char	*takepatch[] = { "bk", "takepatch", "-c", "-vvv", 0};
 	char	buf[4096];
 
 	while ((c = getopt(ac, av, "dGnqz|")) != -1) {
 		switch (c) {
-		    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
-			break;
+		    case 'z': break; /* ignored */
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
@@ -184,9 +179,11 @@ cmd_push_part2(int ac, char **av)
 	fd2 = dup(2); dup2(1, 2);
 	putenv("BK_REMOTE=YES");
 	pid = spawnvpio(&pfd, 0, 0, takepatch);
+	f = fdopen(pfd, "wb");
 	dup2(fd2, 2); close(fd2);
-	gunzipAll2fd(0, pfd, gzip, 0, 0);
-	close(pfd);
+	/* stdin needs to be unbuffered when calling takepatch... */
+	gunzipAll2fh(0, f, 0, 0);
+	fclose(f);
 	getline(0, buf, sizeof(buf));
 	if (!streq("@END@", buf)) {
 		fprintf(stderr, "cmd_push: warning: lost end marker\n");
@@ -224,9 +221,8 @@ cmd_push_part2(int ac, char **av)
 		// send bp keys
 		putenv("BKD_DAEMON="); /* allow new bkd connections */
 		printf("@BAM@\n");
-		fflush(stdout);
 		chdir(ROOT2RESYNC);
-		rc = bp_sendkeys(1, "- < " CSETS_IN, &sfio);
+		rc = bp_sendkeys(stdout, "- < " CSETS_IN, &sfio);
 		printf("@DATASIZE=%s@\n", psize(sfio));
 		fflush(stdout);
 		chdir(RESYNC2ROOT);
@@ -306,19 +302,17 @@ done:	/*
 int
 cmd_push_part3(int ac, char **av)
 {
-	int	fd2, pfd, c, rc = 0, gzip = 0;
+	int	fd2, pfd, c, rc = 0;
 	int	status, debug = 0;
 	int	inbytes, outbytes;
 	pid_t	pid;
+	FILE	*f;
 	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
 	char	buf[4096];
 
 	while ((c = getopt(ac, av, "dGqz|")) != -1) {
 		switch (c) {
-		    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 0 || gzip > 9) gzip = 6;
-			break;
+		    case 'z': break;
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'q': break;
@@ -350,8 +344,10 @@ cmd_push_part3(int ac, char **av)
 		pid = spawnvpio(&pfd, 0, 0, sfio);
 		dup2(fd2, 2); close(fd2);
 		inbytes = outbytes = 0;
-		gunzipAll2fd(0, pfd, gzip, &inbytes, &outbytes);
-		close(pfd);
+		f = fdopen(pfd, "wb");
+		/* stdin needs to be unbuffered when calling sfio */
+		gunzipAll2fh(0, f, &inbytes, &outbytes);
+		fclose(f);
 		getline(0, buf, sizeof(buf));
 		unless (streq("@END@", buf)) {
 			fprintf(stderr,

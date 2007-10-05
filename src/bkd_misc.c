@@ -191,10 +191,13 @@ cmd_bk(int ac, char **av)
 		if (streq(av[i], "-zo0")) gzip &= ~GZ_TOREMOTE;
 	}
 	if (line = getenv("_BK_REMOTEGZIP")) gzip = atoi(line);
-	if (gzip & GZ_FROMREMOTE) zin=zgets_initCustom(&zgets_hread, int2p(0));
+	if (gzip & GZ_FROMREMOTE) {
+		/* this read needs to be unbuffered below... */
+		zin=zgets_initCustom(&zgets_hread, int2p(0));
+	}
 	if (gzip & GZ_TOREMOTE) {
-		out("@GZIP@\n");
-		zout = zputs_init(&zputs_hwrite, int2p(1));
+		fputs("@GZIP@\n", stdout);
+		zout = zputs_init(&zputs_hfwrite, stdout, -1);
 	}
 
 	/*
@@ -215,7 +218,7 @@ cmd_bk(int ac, char **av)
 err:			if (zout) {
 				zputs(zout, buf, strlen(buf));
 			} else {
-				out(buf);
+				fputs(buf, stdout);
 			}
 			goto out;
 		}
@@ -332,8 +335,8 @@ err:			if (zout) {
 					zputs(zout, hdr, strlen(hdr));
 					zputs(zout, buf, i);
 				} else {
-					out(hdr);
-					if (writen(1, buf, i) != i) {
+					fputs(hdr, stdout);
+					if (fwrite(buf, 1, i, stdout) != i) {
 						perror("writen");
 						goto err;
 					}
@@ -350,8 +353,8 @@ err:			if (zout) {
 					zputs(zout, hdr, strlen(hdr));
 					zputs(zout, buf, i);
 				} else {
-					out(hdr);
-					if (writen(1, buf, i) != i) {
+					fputs(hdr, stdout);
+					if (fwrite(buf, 1, i, stdout) != i) {
 						perror("writen");
 						goto err;
 					}
@@ -371,7 +374,7 @@ err:			if (zout) {
 	if (zout) {
 		zputs(zout, hdr, strlen(hdr));
 	} else {
-		out(hdr);
+		fputs(hdr, stdout);
 	}
 out:	if (zin) zgets_done(zin);
 	if (zout) zputs_done(zout);

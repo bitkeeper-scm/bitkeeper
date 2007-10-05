@@ -203,7 +203,6 @@ sfio_out(void)
 {
 #ifndef	SFIO_STANDALONE
 	char	buf[MAXPATH];
-	char	len[5];
 	struct	stat sb;
 	off_t	byte_count = 0;
 	int	n;
@@ -213,7 +212,7 @@ sfio_out(void)
 	char	ln[32];
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
-	writen(1, SFIO_VERS, 10);
+	fputs(SFIO_VERS, stdout);
 
 	if (opts->key2path) idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	if (opts->bp_tuple) opts->sent = hash_new(HASH_MEMHASH);
@@ -244,11 +243,7 @@ sfio_out(void)
 				return (SFIO_LSTAT);
 			}
 		}
-		n = strlen(buf);
-		sprintf(len, "%04d", n);
-		writen(1, len, 4);
-		writen(1, buf, n);
-		byte_count += (n + 4);
+		byte_count += printf("%04d%s", strlen(buf), buf);
 		if (opts->hardlinks) {
 			sprintf(ln, "%x %x", (u32)sb.st_dev, (u32)sb.st_ino);
 			unless (hash_insertStr(links, ln, buf)) {
@@ -306,7 +301,6 @@ private int
 out_symlink(char *file, struct stat *sp, off_t *byte_count)
 {
 	char	buf[MAXPATH];
-	char	len[11];
 	int	n;
 	u32	sum = 0;
 
@@ -321,15 +315,11 @@ out_symlink(char *file, struct stat *sp, off_t *byte_count)
 	 * We know the pathname is <= 4 chars, so we encode the
 	 * symlink as "SLNK001024".
 	 */
-	sprintf(len, "SLNK%06u", (unsigned int)n);
-	*byte_count += writen(1, len, 10);
-	*byte_count += writen(1, buf, n);
+	*byte_count += printf("SLNK%06u%s", n, buf);
 	sum += adler32(sum, buf, n);
-	sprintf(buf, "%010u", sum);
-	*byte_count += writen(1, buf, 10);
+	*byte_count += printf("%010u", sum);
 	assert(opts->doModes);
-	sprintf(buf, "%03o", sp->st_mode & 0777);
-	*byte_count += writen(1, buf, 3);
+	*byte_count += printf("%03o", sp->st_mode & 0777);
 	unless (opts->quiet) {
 		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
 	}
@@ -339,8 +329,6 @@ out_symlink(char *file, struct stat *sp, off_t *byte_count)
 private int
 out_hardlink(char *file, struct stat *sp, off_t *byte_count, char *linkMe)
 {
-	char	buf[MAXPATH];
-	char	len[11];
 	int	n;
 	u32	sum = 0;
 
@@ -351,16 +339,10 @@ out_hardlink(char *file, struct stat *sp, off_t *byte_count, char *linkMe)
 	 * We know the pathname is <= 4 chars, so we encode the
 	 * hardlink as "HLNK001024".
 	 */
-	sprintf(len, "HLNK%06u", (unsigned int)n);
-	*byte_count += writen(1, len, 10);
-	*byte_count += writen(1, linkMe, n);
+	*byte_count += printf("HLNK%06u%s", n, linkMe);
 	sum += adler32(sum, linkMe, n);
-	sprintf(buf, "%010u", sum);
-	*byte_count += writen(1, buf, 10);
-	if (opts->doModes) {
-		sprintf(buf, "%03o", sp->st_mode & 0777);
-		*byte_count += writen(1, buf, 3);
-	}
+	*byte_count += printf("%010u", sum);
+	if (opts->doModes) *byte_count += printf("%03o", sp->st_mode & 0777);
 	unless (opts->quiet) {
 		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
 	}
@@ -371,7 +353,6 @@ private int
 out_file(char *file, struct stat *sp, off_t *byte_count)
 {
 	char	buf[SFIO_BSIZ];
-	char	len[11];
 	int	fd = open(file, 0, 0);
 	int	n, nread = 0, dosum = 1;
 	u32	sum = 0, sz = (u32)sp->st_size;
@@ -395,14 +376,12 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	}
 
 	setmode(fd, _O_BINARY);
-	sprintf(len, "%010u", (unsigned int)sp->st_size);
-	n = writen(1, len, 10);
-	*byte_count += n;
+	*byte_count += printf("%010u", (unsigned int)sp->st_size);
 	while ((n = readn(fd, buf, sizeof(buf))) > 0) {
 		nread += n;
 		opts->done += n;
 		if (dosum) sum = adler32(sum, buf, n);
-		if (writen(1, buf, n) != n) {
+		if (fwrite(buf, 1, n, stdout) != n) {
 			if ((errno != EPIPE) || getenv("BK_SHOWPROC")) {
 				perror(file);
 			}
@@ -417,14 +396,8 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		close(fd);
 		return (SFIO_SIZE);
 	}
-	sprintf(buf, "%010u", sum);
-	n = writen(1, buf, 10);
-	*byte_count += n;
-	if (opts->doModes) {
-		sprintf(buf, "%03o", sp->st_mode & 0777);
-		n = writen(1, buf, 3);
-		*byte_count += n;
-	}
+	*byte_count += printf("%010u", sum);
+	if (opts->doModes) *byte_count += printf("%03o", sp->st_mode & 0777);
 	close(fd);
 	unless (opts->quiet) {
 		if (opts->newline == '\r') {
@@ -450,7 +423,6 @@ out_bptuple(char *keys, off_t *byte_count)
 	char	*path, *freeme;
 	int	n;
 	struct	stat sb;
-	char	buf[MAXPATH];
 
 	unless (freeme = bp_lookupkeys(0, keys)) {
 		if (opts->recurse) {
@@ -467,11 +439,7 @@ out_bptuple(char *keys, off_t *byte_count)
 		perror(path);
 		return (SFIO_LSTAT);
 	}
-	n = strlen(keys);
-	sprintf(buf, "%04d", n);
-	writen(1, buf, 4);
-	writen(1, keys, n);
-	*byte_count += (n + 4);
+	*byte_count += printf("%04d%s", strlen(keys), keys);
 	unless (hash_insertStr(opts->sent, path, keys)) {
 		n = out_hardlink(path, &sb, byte_count, opts->sent->vptr);
 	} else {
@@ -515,8 +483,7 @@ err:		send_eof(SFIO_LOOKUP);
 	unless (f) goto err;
 	send_eof(SFIO_MORE);
 	while ((i = fread(buf, 1, sizeof(buf), f)) > 0) {
-		writen(1, buf, i);
-		*byte_count += i;
+		*byte_count += fwrite(buf, 1, i, stdout);
 	}
 	pclose(f);	// If we error here we're just hosed.
 	unlink(tmpf);
@@ -532,13 +499,9 @@ err:		send_eof(SFIO_LOOKUP);
 private void
 send_eof(int error)
 {
-	char	buf[10];
-
 	/* negative lengths are exit codes */
 	if (error > 0) error = -error;
-	sprintf(buf, "%4d", error);
-	assert(strlen(buf) == 4);
-	writen(1, buf, 4);
+	printf("%4d", error);
 }
 
 /*

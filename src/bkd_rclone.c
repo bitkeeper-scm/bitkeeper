@@ -1,11 +1,10 @@
 #include "bkd.h"
 
-private int	getsfio(int gzip);
+private int	getsfio(void);
 
 typedef	struct {
 	u32	debug:1;
 	u32	verbose:1;
-	int	gzip;
 	char    *rev;
 } opts;
 
@@ -21,10 +20,7 @@ rclone_common(int ac, char **av, opts *opts)
 		    case 'd': opts->debug = 1; break;
 		    case 'r': opts->rev = optarg; break; 
 		    case 'v': opts->verbose = 1; break;
-		    case 'z':
-			opts->gzip = optarg ? atoi(optarg) : 6;
-			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = 6;
-			break;
+		    case 'z': break;
 		    default: break;
 		}
 	}
@@ -165,7 +161,7 @@ cmd_rclone_part2(int ac, char **av)
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
-	rc = getsfio(opts.gzip);
+	rc = getsfio();
 	getline(0, buf, sizeof(buf));
 	if (!streq("@END@", buf)) {
 		fprintf(stderr, "cmd_rclone: warning: lost end marker\n");
@@ -221,8 +217,7 @@ done:
 		if (bp_hasBAM()) {
 			putenv("BKD_DAEMON="); /* allow new bkd connections */
 			printf("@BAM@\n");
-			fflush(stdout); 
-			rc = bp_sendkeys(1, "-r..", &sfio);
+			rc = bp_sendkeys(stdout, "-r..", &sfio);
 			// XXX - rc != 0?
 			printf("@DATASIZE=%s@\n", psize(sfio));
 			fflush(stdout);
@@ -246,12 +241,13 @@ done:
 int
 cmd_rclone_part3(int ac, char **av)
 {
-	int	fd2, pfd, rc = 0, gzip = 0;
+	int	fd2, pfd, rc = 0;
 	int	status;
 	int	inbytes, outbytes;
 	pid_t	pid;
 	char	*path, *p;
 	opts	opts;
+	FILE	*f;
 	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
 	char	buf[4096];
 
@@ -283,8 +279,10 @@ cmd_rclone_part3(int ac, char **av)
 		pid = spawnvpio(&pfd, 0, 0, sfio);
 		dup2(fd2, 2); close(fd2);
 		inbytes = outbytes = 0;
-		gunzipAll2fd(0, pfd, gzip, &inbytes, &outbytes);
-		close(pfd);
+		f = fdopen(pfd, "wb");
+		/* stdin needs to be unbuffered when calling sfio */
+		gunzipAll2fh(0, f, &inbytes, &outbytes);
+		fclose(f);
 		getline(0, buf, sizeof(buf));
 		if (!streq("@END@", buf)) {
 			fprintf(stderr,
@@ -326,10 +324,11 @@ done:
 }
 
 private int
-getsfio(int gzip)
+getsfio(void)
 {
 	int	status, pfd;
 	u32	in, out;
+	FILE	*f;
 	char	*cmds[10] = {"bk", "sfio", "-i", "-q", 0};
 	pid_t	pid;
 
@@ -338,8 +337,10 @@ getsfio(int gzip)
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return (1);
 	}
-	gunzipAll2fd(0, pfd, gzip, &in, &out);
-	close(pfd);
+	f = fdopen(pfd, "wb");
+	/* stdin needs to be unbuffered here */
+	gunzipAll2fh(0, f, &in, &out);
+	fclose(f);
 	waitpid(pid, &status, 0);
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));

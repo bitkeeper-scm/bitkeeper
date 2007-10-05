@@ -408,6 +408,7 @@ sfio(int gzip, remote *r, int BAM, char *prefix)
 	int	n, status;
 	pid_t	pid;
 	int	pfd;
+	FILE	*f;
 	char	*cmds[10];
 
 	cmds[n = 0] = "bk";
@@ -425,8 +426,9 @@ sfio(int gzip, remote *r, int BAM, char *prefix)
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	}
-	gunzipAll2fd(r->rfd, pfd, gzip, &(opts->in), &(opts->out));
-	close(pfd);
+	f = fdopen(pfd, "wb");
+	gunzipAll2fh(r->rfd, f, &(opts->in), &(opts->out));
+	fclose(f);
 	waitpid(pid, &status, 0);
 	if (gzip && !opts->quiet) {
 		fprintf(stderr, "%s uncompressed to %s, ",

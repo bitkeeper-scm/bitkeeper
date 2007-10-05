@@ -1,7 +1,7 @@
 #include "bkd.h"
 #include "logging.h"
 
-private int	compressed(int, int);
+private int	compressed(int);
 
 /*
  * Send the sfio file to stdout
@@ -65,7 +65,6 @@ cmd_clone(int ac, char **av)
 	}
 	/* has to be here, we use the OK below as a marker. */
 	if (bp_updateServer("..", 0, SILENT)) {
-		fflush(stdout);
 		printf(
 		    "ERROR-unable to update BAM server %s\n", bp_serverName());
 		fflush(stdout);
@@ -86,8 +85,8 @@ cmd_clone(int ac, char **av)
 	}
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	if (trigger(av[0], "pre")) return (1);
-	out("@SFIO@\n");
-	rc = compressed(gzip, 1);
+	printf("@SFIO@\n");
+	rc = compressed(gzip);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (trigger(av[0], "post")) exit (1);
@@ -104,7 +103,7 @@ cmd_clone(int ac, char **av)
 }
 
 private int
-compressed(int level, int hflag)
+compressed(int level)
 {
 	int	status, fd;
 	char	*tmpf1, *tmpf2;
@@ -134,7 +133,8 @@ compressed(int level, int hflag)
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);
-	gzipAll2fd(fd, 1, level, 0, 0, hflag, 0);
+	gzipAll2fh(fd, stdout, level, 0, 0, 0);
+	fflush(stdout);
 	status = pclose(fh);
 	rc = 0;
  out:

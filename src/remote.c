@@ -127,10 +127,9 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 		free(p);
 	}
 	fprintf(f, "\n");
-	fflush(f);
 	dostream = (!input && streq(av[i-1], "-"));
 	if ((gzip & GZ_TOBKD) && !dostream) {
-		zout = zputs_init(zputs_hwrite, int2p(fileno(f)));
+		zout = zputs_init(zputs_hfwrite, f, -1);
 	}
 	if (input) {
 		assert(bytes > 0);
@@ -165,9 +164,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	if (dostream) stream_stdin(r, gzip);
 	writen(r->wfd, "quit\n", 5);
 	disconnect(r, 1);
-	unless (gzip & GZ_FROMBKD) {
-		unless (r->rf) r->rf = fdopen(r->rfd, "r");
-	}
+	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	line = (getline2(r, buf, sizeof(buf)) > 0) ? buf : 0;
 	unless (line) {
@@ -190,7 +187,7 @@ err:		fprintf(stderr, "##### %s #####\n", u);
 		goto out;
 	}
 	if (streq("@GZIP@", line)) {
-		zin = zgets_initCustom(zgets_hread, int2p(r->rfd));
+		zin = zgets_initCustom(zgets_hfread, r->rf);
 		line = zgets(zin);
 	}
 	while (strneq(line, "@STDOUT=", 8) || strneq(line, "@STDERR=", 8)) {
@@ -238,11 +235,13 @@ private void
 stream_stdin(remote *r, int gzip)
 {
 	int	i;
+	FILE	*f;
 	zputbuf	*zout = 0;
 	char	line[64];
 	char	buf[BSIZE];
 
-	if (gzip & GZ_TOBKD) zout = zputs_init(zputs_hwrite, int2p(r->wfd));
+	f = fdopen(dup(r->wfd), "w"); /* dup() so fclose leaves r->wfd open */
+	if (gzip & GZ_TOBKD) zout = zputs_init(zputs_hfwrite, f, -1);
 	while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
 		sprintf(line, "@STDIN=%u@\n", i);
 		if (zout) {
@@ -260,4 +259,5 @@ stream_stdin(remote *r, int gzip)
 		writen(r->wfd, line, strlen(line));
 	}
 	if (zout) zputs_done(zout);
+	fclose(f);
 }

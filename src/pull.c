@@ -216,7 +216,8 @@ private int
 pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	buf[MAXPATH];
-	int	rc, n, fd;
+	int	rc;
+	FILE	*f;
 
 	if (bkd_connect(r, opts.gzip, !opts.quiet)) return (-1);
 	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
@@ -255,16 +256,13 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	bktmp(probe_list, "pullprobe");
-	fd = open(probe_list, O_CREAT|O_WRONLY, 0644);
-	assert(fd >= 0);
-	if (opts.gzip) gzip_init(opts.gzip);
-	while ((n = getline2(r, buf, sizeof(buf))) > 0) {
-		writen(fd, buf, n);
-		write(fd, "\n", 1);
+	f = fopen(probe_list, "w");
+	assert(f);
+	while (getline2(r, buf, sizeof(buf)) > 0) {
+		fprintf(f, "%s\n", buf);
 		if (streq("@END PROBE@", buf)) break;
 	}
-	if (opts.gzip) gzip_done();
-	close(fd);
+	fclose(f);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	return (0);
 }
@@ -476,7 +474,7 @@ done:	unlink(probe_list);
 private int
 pull(char **av, opts opts, remote *r, char **envVar)
 {
-	int	gzip, rc, i;
+	int	rc, i;
 	char	*p;
 	int	got_patch;
 	char	key_list[MAXPATH];
@@ -485,7 +483,6 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		usage();
 		exit(1);
 	}
-	gzip = opts.gzip && r->port;
 	if (rc = pull_part1(av, opts, r, key_list, envVar)) return (rc);
 	rc = pull_part2(av, opts, r, key_list, envVar);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
@@ -551,6 +548,7 @@ takepatch(opts opts, int gzip, remote *r)
 {
 	int	n, status, pfd;
 	pid_t	pid;
+	FILE	*f;
 	char	*cmds[10];
 
 	cmds[n = 0] = "bk";
@@ -565,8 +563,9 @@ takepatch(opts opts, int gzip, remote *r)
 	if (opts.collapsedups) cmds[++n] = "-D";
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
-	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
-	close(pfd);
+	f = fdopen(pfd, "wb");
+	gunzipAll2fh(r->rfd, f, &(opts.in), &(opts.out));
+	fclose(f);
 
 	n = waitpid(pid, &status, 0);
 	if (n != pid) {
