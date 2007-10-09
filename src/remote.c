@@ -41,7 +41,13 @@ remote_bk(int quiet, int ac, char **av)
 		/* find '@<opt>' argument, but don't look in -r<dir> */
 		if ((p = strchrs(av[i], "Lr@")) && (*p == '@')) {
 			if (streq(p, "@")) {
-				l = parent_allp();
+				unless (l = parent_allp()) {
+					fprintf(stderr,
+					    "failed: repository "
+					    "has no default parent\n");
+					ret = 1;
+					goto out;
+				}
 				EACH_INDEX(l, j) urls = addLine(urls, l[j]);
 				freeLines(l, 0);
 				l = 0;

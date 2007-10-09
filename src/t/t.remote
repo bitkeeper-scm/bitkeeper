@@ -26,6 +26,12 @@ bk -q -@ pwd > "$HERE"/GOT || exit 1
 checkfiles "$HERE"/WANT "$HERE"/GOT
 echo OK
 
+echo $N Test bk -@ with no parent ...................................$NL
+bk parent -rq
+bk -q -@ pwd 2> ERR && exit 1
+grep -q "repository has no default parent" ERR || exit 1
+echo OK
+
 echo $N Test bk -@ with specified parent ............................$NL
 cd "$HERE"/clone2
 bk -q -@"$HERE"/project pwd > "$HERE"/GOT || exit 1
