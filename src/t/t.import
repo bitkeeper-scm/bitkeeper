@@ -877,8 +877,6 @@ grep -q 'not writable' OUT || {
 chmod 777 "$HERE/dest"
 echo OK
 
-TESTDATA=/home/bk/test_data
-
 test -d $TESTDATA/lmbench && {
 echo $N Make sure that traditional RCS imports works ................$NL
 cd "$HERE"

@@ -40,6 +40,10 @@ win32_common_setup()
 	DO_REMOTE=NO
 	export DO_REMOTE
 
+	# test data loaded on this machine
+	TESTDATA=/c/test_data
+	export TESTDATA
+
 	B=`bk bin`
 	BIN1="$B/bk.exe"
 	BIN2="$B/diff.exe"
@@ -64,6 +68,10 @@ unix_common_setup()
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
+
+	# test data loaded on this machine
+	TESTDATA=/home/bk/test_data
+	export TESTDATA
 
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test

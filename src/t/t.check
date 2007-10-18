@@ -342,7 +342,6 @@ grep "^Missing" ERRS > /dev/null || {
 }
 echo OK
 
-TESTDATA=/home/bk/test_data
 test -d $TESTDATA/cset-gzipped && {
 echo $N Make sure check works with compressed ChangeSet files........$NL
 cd "$HERE"
