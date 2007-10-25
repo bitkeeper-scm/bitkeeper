@@ -109,19 +109,17 @@ and starts in the user's home directory.
 .ARGc host /
 .ARG pathname
 .br
-Connects to
-.ARG host
-using 
-.BR ssh ,
-assumes that 
+This is a deprecated form of
+.B ssh
+that only worked with a
 .B bkd
-is the login shell
-and starts in the user's home directory.
-.B Note:
-this is not the same as the preceding URL; this is a more secure form since
-the 
+run as a login shell.
+Connecting to a
 .B bkd
-is the login shell.
+running as a login shell is still supported.
+Please use the
+\fBssh\fR://
+URL form.
 .\" XXX - remember to mention turning off remote when we get to 3.3.x
 .SS BKD
 .in +4

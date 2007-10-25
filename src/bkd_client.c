@@ -355,7 +355,7 @@ bkd(int compress, remote *r)
 	char	*cmd[100];
 	char	port[6];
 
-	if (r->port && (r->type != ADDR_SSH)) {
+	if (r->port && (r->type != ADDR_SSH) && !r->loginshell) {
 		assert(r->host);
 		return (bkd_tcp_connect(r));
 	}

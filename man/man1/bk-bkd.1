@@ -79,14 +79,31 @@ There two ways to invoke
 .BR ssh :
 .TP
 a)
-when the repository is specified in this form: 
 [\c
 .ARGc user
 .Bc @
 ]\c
 .ARGc host
 .Bc :
-.ARG pathname ,
+.ARG pathname
+.tp
+b)
+.Bc ssh://
+[\c
+.ARGc user
+.Bc @
+]\c
+.ARGc host
+[\c
+.Bc :
+.ARGc port
+]\c
+[\c
+.Bc /
+.ARGc pathname
+]\c
+.LP
+Using either form,
 .B ssh
 will be called to run
 .B bk bkd
@@ -95,39 +112,28 @@ on the remote host.  When the client command completes, the
 connection is broken and the 
 .B bkd
 daemon goes away.
-.tp
-b)
-when the repository is specified in this form: 
-.Bc bk://
-.ARGc user
-.Bc @
-.ARGc host
-.[ARGc] pathname
-,
-.B ssh
-will be called to remote login to 
-.ARG host
-and will expect that the login shell is the \*(BK daemon.
-.B Note:
-This is the most secure way to run
-.B bk bkd
-because it restricts the user's access to
-.ARG host .
 .LP
 .SS BKD LOGIN SHELL
+To add security when using
+.B ssh\c
+,
+run the
+.B bk bkd
+as the login shell.
+.LP
 On Red Hat Linux, the following steps are necessary to add a \*(BK 
 daemon login shell:
 create a simple shell script, call it 
-.BR bkd , 
+.BR bkd_login , 
 put it someplace like 
-.BR /usr/libexec/bitkeeper/bkd ,
+.BR /usr/libexec/bitkeeper/bkd_login ,
 add the full path to the script in 
 .BR /etc/shells ,
 and add a user with that path as their shell.
 .LP
 An example 
-.B bkd
-shell script which works is known to work:
+.B bkd_login
+shell script:
 .DS
 #!/bin/sh
 exec bk bkd -C -xcd
