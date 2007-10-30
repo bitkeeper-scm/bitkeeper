@@ -361,7 +361,7 @@ zflush(zputbuf *out)
 			out->z.avail_out = ZBUFSIZ;
 			out->z.next_out = out->outbuf;
 		}
-		if (err = deflate(&out->z, Z_PARTIAL_FLUSH)) {
+		if (err = deflate(&out->z, Z_NO_FLUSH)) {
 			fprintf(stderr,
 				"zputs: compression failure %d\n", err);
 			unless (out->err) out->err = err;
@@ -402,26 +402,38 @@ zputs_done(zputbuf *out)
 	int	err = Z_OK;
 	int	len;
 
-	/* Clear input buffer.  (needed for 3.2.8 compat) */
-	zflush(out);
-
 	/* Clear output buffer.  */
 	for (;;) {
-		len = ZBUFSIZ - out->z.avail_out;
-		if (len) {
-			out->callback(out->token, out->outbuf, len);
-			out->z.avail_out = ZBUFSIZ;
-			out->z.next_out = out->outbuf;
-		}
-		if (err != Z_OK) break;
-
-		err = deflate(&out->z, Z_FINISH);
-		if (err != Z_OK && err != Z_STREAM_END) {
+		err = deflate(&out->z, Z_PARTIAL_FLUSH);
+		if (err != Z_OK && err != Z_BUF_ERROR) {
 			fprintf(stderr,
 				"zputs_done: compression failure %d\n", err);
 			goto out;
 		}
+		if (len = ZBUFSIZ - out->z.avail_out) {
+			out->callback(out->token, out->outbuf, len);
+			out->z.avail_out = ZBUFSIZ;
+			out->z.next_out = out->outbuf;
+		} else {
+			/* until no data left in or out... */
+			if (out->z.avail_in == 0) break;
+		}
+
 	}
+	/* write trailer */
+	err = deflate(&out->z, Z_FINISH);
+	if (err != Z_STREAM_END) {
+		fprintf(stderr,
+		    "zputs_done: finsish failure %d\n", err);
+		goto out;
+	}
+	if (len = ZBUFSIZ - out->z.avail_out) {
+		assert(len < ZBUFSIZ);	/* should be partial */
+		out->callback(out->token, out->outbuf, len);
+		out->z.avail_out = ZBUFSIZ;
+		out->z.next_out = out->outbuf;
+	}
+
 	/* signal end to callback */
 	out->callback(out->token, 0, 0);
 
