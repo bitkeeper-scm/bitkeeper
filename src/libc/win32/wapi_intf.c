@@ -645,34 +645,13 @@ get_osinfo(void)
 int
 win_supported(void)
 {
-	HMODULE handle;
-	FARPROC addr;
-	TCHAR	wow64path[MAXPATH];
-
 	get_osinfo();
 	/* older than win2k: unsupported */
 	unless (osinfo.dwMajorVersion > 4) return (0);
-	/* older than vista: supported */
-	if (osinfo.dwMajorVersion < 6) return (1);
-
-	/*
-	 * What's left is Vista.  We want to allow 32 bit and deny 64 bit.
-	 * This is necessary because we compile with _WIN32_WINNT
-	 * set to 0x0500 (for w2k minimum).  If we change to 0x0501
-	 * them GetSystemWow64Directory() will be declared in a header
-	 * and presumably we can call it.  For now, we grub around in
-	 * the system dll for it.
-	 */
-	unless (handle = GetModuleHandle("Kernel32")) return (0);
-	unless (addr = GetProcAddress(handle, "GetSystemWow64DirectoryW")) {
-		return (0);
-	}
-	/*
-	 * according to the docs, the Wow64 directory should only
-	 * be found on 64 bit xp or vista
-	 */
-	if (addr(wow64path, sizeof(wow64path))) return (0);
-	return (1);
+	/* up to and including vista: supported */
+	if (osinfo.dwMajorVersion <= 6) return (1);
+	/* unlikely */
+	return (0);
 }
 
 /*
