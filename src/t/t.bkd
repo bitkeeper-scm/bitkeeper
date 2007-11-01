@@ -419,6 +419,7 @@ echo $N make sure bkd with -phost:port option works..................$NL
 cd "$HERE/project"
 P=`port 50000`
 bk bkd -q -p127.0.0.1:$P -d -ikill
+OPATH="$PATH"
 PATH="/bin:/usr/sbin:/usr/etc:$PATH"
 export PATH
 netstat -an | grep -i LISTEN | grep 127.0.0.1.$P > "$DEV_NULL" 2>&1 || {
@@ -445,4 +446,48 @@ then
 	}
 fi
 bk _kill bk://localhost:$P
+PATH="$OPATH"
+export PATH
 echo OK
+
+# run time testing of what machines work.
+bk which ssh > /dev/null && {
+	ssh -V 2>&1 | grep -q '^OpenSSH_[345]' && SSH_GOOD=1
+}
+
+if [ -f /home/bk/test_data/ppfree -a "$SSH_GOOD" = 1 ]
+then
+echo $N make sure bkd login shell works .............................$NL
+cd "$HERE/project"
+cp /home/bk/test_data/ppfree .
+chmod 600 ppfree
+echo 1.1 > WANT
+# Save the ERR because some machines complain about psuedo tty
+BK_RSH="ssh -i ppfree" \
+    bk changes -q -r+ -nd:I: \
+    bk://bkdshell@work/empty > GOT 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+checkfiles WANT GOT
+echo OK
+
+echo $N make sure ssh url works with a bkd login shell ..............$NL
+cd "$HERE/project"
+BK_RSH="ssh -i ppfree" \
+    bk changes -q -r+ -nd:I: \
+    ssh://bkdshell@work/empty > GOT 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+checkfiles WANT GOT
+echo OK
+
+else
+echo $N make sure bkd login shell works .............................skipped
+fi
+# End of region which is limited to /home/bk/test_data/ppfree existing
+
+exit 0

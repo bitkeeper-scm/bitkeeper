@@ -13,7 +13,7 @@ PATH=/bin	# for sed
 MSYSWINDIR=$(echo $WINDIR | sed 's,\(.\):\\,/\1/,')
 PATH="/bin:$MSYSWINDIR/system32:$MSYSWINDIR"
 # Add bk to end of PATH
-BK_PATH=$(mount | tr 'A-Z' 'a-z' | sed -ne 's,\(.\):,/\1,' -e 's,\\,/,g' -e 's,/gnu/bin,,' -e 's, on /bin type.*,,p') 
+BK_PATH=$(mount | tr 'A-Z' 'a-z' | sed -ne 's,\(.\):,/\1,' -e 's,\\,/,g' -e 's,/gnu,,' -e 's, on /usr type.*,,p') 
 PATH="$PATH:$BK_PATH"
 
 if [ -d /r/temp ]
@@ -58,9 +58,11 @@ mkdir $D/mingw
 tar -C$D/mingw -xzf $W32TOOLS/binutils-2.13.90-20030111-1.tar.gz
 tar -C$D/mingw -xzf $W32TOOLS/mingw-runtime-3.2.tar.gz
 
+GCCVER=3.4.1
+GCCVEREXTRA=20040711-1
 echo extracting GCC
-tar -C$D/mingw -xzf $W32TOOLS/gcc-core-3.4.1-20040711-1.tar.gz
-tar -C$D/mingw -xzf $W32TOOLS/gcc-g++-3.4.1-20040711-1.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/gcc-core-${GCCVER}-${GCCVEREXTRA}.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/gcc-g++-${GCCVER}-${GCCVEREXTRA}.tar.gz
 tar -C$D/mingw -xzf $W32TOOLS/w32api-2.5.tar.gz
 
 echo extracting bison and flex
@@ -85,7 +87,7 @@ cp $W32TOOLS/*.dll $D/mingw/bin
 
 # create custom startup scripts with fixed PATH
 rm -f $D/etc/profile
-echo PATH=\"/bin:/mingw/bin:$BK_PATH:/perl/bin:/groff/bin:$MSYSWINDIR/system32:$MSYSWINDIR\" > $D/etc/profile
+echo PATH=\"/bin:/mingw/bin:/mingw/libexec/gcc/mingw32/${GCCVER}:$BK_PATH:/perl/bin:/groff/bin:$MSYSWINDIR/system32:$MSYSWINDIR\" > $D/etc/profile
 #echo HOME=`pwd` >> $D/etc/profile
 echo "unset BK_USEMSYS" >> $D/etc/profile
 echo "unset BK_OLDPATH" >> $D/etc/profile
