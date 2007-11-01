@@ -33,7 +33,6 @@ else
 	else
 	    ifeq "$(shell uname -m)" "x86_64"
 	        ENABLE_64BIT=--enable-64bit
-		WITHOUT_X := --with-x
         endif
 	endif
 endif
@@ -45,7 +44,6 @@ endif
 ifeq "$(TCLVERSION)" "8.4"
 DDEVERSION := 1.2
 REGVERSION := 1.1
-WITHOUT_X :=
 TCLBUILD := /build/tcl-$(USER)/Tcl.framework
 TKBUILD  := /build/tk-$(USER)/Tk.framework
 WISHPATH := /build/tk-$(USER)/BitKeeper.app
@@ -60,9 +58,6 @@ LIBTKTABLE := lib$(TKTABLE)$(SO)
 TREECTRL := treectrl2.2.2
 LIBTREECTRL := libtreectrl2.2$(SO)
 BWIDGET := BWidget1.7
-ifndef WITHOUT_X
-WITHOUT_X := --without-x
-endif
 TCLBUILD := ../build/tcl/Tcl.framework
 TKBUILD  := ../build/tk/Tk.framework
 WISHPATH := build/tk/Wish.app
@@ -106,8 +101,7 @@ tcl/$S/Makefile: tcl/$S/configure Makefile
 
 tk/$S/Makefile: tk/$S/configure Makefile
 	cd tk/$S; \
-	./configure $(WITHOUT_X) \
-	    $(ENABLE_64BIT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
+	./configure $(ENABLE_64BIT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY TCLURL
