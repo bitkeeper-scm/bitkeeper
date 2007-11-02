@@ -514,3 +514,12 @@ cmp -s LOCAL REMOTE && fail
 checkfiles LOCAL ../clone/REMOTE
 checkfiles REMOTE ../clone/LOCAL
 echo OK
+
+echo $N Changes -h should show multiple tags correctly...............$NL
+#commercial project
+bk tag $Q foo
+bk tag $Q bar
+bk tag $Q baz
+# The output of changes should have some kind of delimiter between tags
+bk changes -h -r+ | grep 'bazbarfoo' >OUT 2>ERR && fail
+echo OK
