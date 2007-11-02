@@ -373,6 +373,13 @@ LIST=`bk changes -fvTr+ -d":GFILE::I: "`
 test "ChangeSet1.5 a1.2 b1.2 a1.3 b1.3 b1.4 a1.4 " = "$LIST" || fail
 echo OK
 
+echo $N Check -v for not including -a ...............................$NL
+bk tag $Q TOP
+echo TOP > WANT
+bk changes -r+ -vnd:TAG: > GOT
+checkfiles WANT GOT
+echo OK
+
 # remote repository - same as above but repo(s) are elsewhere
 
 echo $N Changes on remote repo prints a header line .................$NL

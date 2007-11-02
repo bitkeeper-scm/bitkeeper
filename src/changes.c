@@ -870,7 +870,8 @@ loadcset(sccs *cset)
 private void
 cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 {
-	int	flags = PRS_ALL, iflags = INIT_NOCKSUM;
+	int	flags = opts.all ? PRS_ALL : 0;
+	int	iflags = INIT_NOCKSUM;
 	int 	i, j;
 	char	**keys, **csets = 0;
 	char	**list;

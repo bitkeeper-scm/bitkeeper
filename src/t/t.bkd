@@ -93,6 +93,7 @@ P=`port 51000`
 bk bkd -dqp$P -l"$HERE/LOG" -P"$HERE/PID" -ikill &
 PARENT=$!
 wait $PARENT
+bk _usleep 20000
 test -f "$HERE/PID" || {
 	echo No pid file
 	exit 1
