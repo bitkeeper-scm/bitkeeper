@@ -1,0 +1,124 @@
+# Copyright (c) 2007 BitMover, Inc.
+# %K%
+
+echo $N Initialize and test a good checksum .........................$NL
+commercial project
+# Make b1 - b2 with bad checksums
+for x in 1 2; do
+	echo this > b$x
+	bk new $Q b$x
+	bk edit $Q b$x
+	echo that > b$x
+	bk delta $Q -yokay b$x
+	mv SCCS/s.b$x sb$x
+	perl -pe 's/K00450/K00451/' sb$x | bk undos > SCCS/s.b$x
+	chmod 444 SCCS/s.b$x
+	bk admin -z b$x
+done
+# Make g1 - g2 with good checksums
+for x in 1 2; do
+	echo this > g$x
+	bk new $Q g$x
+	bk edit $Q g$x
+	echo that > g$x
+	bk delta $Q -yokay g$x
+done
+# check a bunch of combinations to see if checksums are good.
+bk checksum -r+ g1 || exit 1
+bk checksum g1 || exit 1
+bk checksum -r+ g1 g2 || exit 1
+bk checksum g1 g2 || exit 1
+bk checksum -v g1 g2 2> GOT || exit 1
+cat <<EOF > WANT
+g1: bad metadata in 0 deltas
+g2: bad metadata in 0 deltas
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Test for specific checksum to be bad ........................$NL
+bk checksum -r+ b1 || exit 1
+bk checksum -r1.1 b1 2> GOT && exit 1
+echo 'Bad checksum 451:450 in b1|1.1' > WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N Test for finding a bad checksum in a file ...................$NL
+bk checksum b1 2> GOT && exit 1
+echo 'Bad checksum 451:450 in b1|1.1' > WANT
+checkfiles WANT GOT
+bk checksum -v b1 b2 2> GOT && exit 1
+cat <<EOF > WANT
+Bad checksum 451:450 in b1|1.1
+b1: bad metadata in 1 deltas
+Bad checksum 451:450 in b2|1.1
+b2: bad metadata in 1 deltas
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Test for finding a bad checksum in a list of files ..........$NL
+bk checksum -v g1 b1 g2 2> GOT && exit 1
+cat <<EOF > WANT
+g1: bad metadata in 0 deltas
+Bad checksum 451:450 in b1|1.1
+b1: bad metadata in 1 deltas
+g2: bad metadata in 0 deltas
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Make some csets, alter the checksum and test a good one .....$NL
+cat <<EOF | bk commit $Q -yr1.1 -
+SCCS/s.b1|1.1
+SCCS/s.b2|1.1
+SCCS/s.g1|1.1
+SCCS/s.g2|1.1
+EOF
+cat <<EOF | bk commit $Q -yr1.1 -
+SCCS/s.b1|+
+SCCS/s.b2|+
+SCCS/s.g1|+
+SCCS/s.g2|+
+EOF
+DSUM=`bk changes -r1.2 -nd:DSUM:`
+DSUM=`printf "%0.5u" $DSUM`
+if [ $DSUM = "41232" ]
+then	NSUM="23765"
+else	NSUM="41232"
+fi
+mv SCCS/s.ChangeSet scset
+perl -pe "s/K$DSUM/K$NSUM/" scset | bk undos > SCCS/s.ChangeSet
+chmod 444 SCCS/s.ChangeSet
+bk admin -z ChangeSet
+bk checksum -r+ ChangeSet || exit 1
+bk checksum -vr+ ChangeSet 2> GOT || exit 1
+cat <<EOF > WANT
+ChangeSet: bad metadata in 0 deltas
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Test for cset checksum to be bad ............................$NL
+bk checksum -r1.2 ChangeSet 2> GOT && exit 1
+echo "Bad checksum $NSUM:$DSUM in ChangeSet|1.2" > WANT
+checkfiles WANT GOT
+bk checksum ChangeSet 2> GOT && exit 1
+checkfiles WANT GOT
+bk checksum -v ChangeSet 2> GOT && exit 1
+echo "ChangeSet: bad metadata in 1 deltas" >> WANT
+checkfiles WANT GOT
+echo OK
+
+echo $N Fix the files ...............................................$NL
+bk checksum -fv b1 ChangeSet g1 g2 b2 2> GOT || exit 1
+cat <<EOF > WANT
+b1: fixed bad metadata in 1 deltas
+ChangeSet: fixed bad metadata in 1 deltas
+g1: fixed bad metadata in 0 deltas
+g2: fixed bad metadata in 0 deltas
+b2: fixed bad metadata in 1 deltas
+EOF
+checkfiles WANT GOT
+echo OK
+
