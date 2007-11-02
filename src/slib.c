@@ -6035,8 +6035,17 @@ write_pfile(sccs *s, int flags, delta *d,
 {
 	int	fd, len;
 	char	*tmp, *tmp2;
-	
-	if ((WRITABLE_REG(s) ||
+
+	if (WRITABLE_REG(s) && HAS_PFILE(s) && (iLst || i2 || xLst)) {
+		/* going from plain edit to -i/-x -- need to clean first */
+		if (sccs_clean(s, CLEAN_SHUTUP|SILENT)) {
+			verbose((stderr,
+			    "Writable %s exists which cannot be cleaned, "
+			    "skipping it.\n", s->gfile));
+			s->state |= S_WARNED;
+			return (-1);
+		}
+	} else if ((WRITABLE_REG(s) ||
 		S_ISLNK(s->mode) && HAS_GFILE(s) && HAS_PFILE(s)) && 
 	    !(flags & GET_SKIPGET)) {
 		verbose((stderr,
@@ -8759,8 +8768,11 @@ sccs_clean(sccs *s, u32 flags)
 
 	if (sccs_read_pfile("clean", s, &pf)) return (1);
 	if (pf.mRev || pf.iLst || pf.xLst) {
-		fprintf(stderr,
-		    "%s has merge|include|exclude, not cleaned.\n", s->gfile);
+		unless (flags & CLEAN_SHUTUP) {
+			fprintf(stderr,
+			    "%s has merge|include|exclude, not cleaned.\n",
+			    s->gfile);
+		}
 		free_pfile(&pf);
 		return (1);
 	}

@@ -482,3 +482,63 @@ do	test -f subdir/$i || {
 	}
 done
 echo OK
+
+echo $N Check get -e -x+ works ......................................$NL
+bk get $Q -kp foo.c > WANT
+bk get $Q -e -g foo.c
+echo newfoo.c > foo.c
+bk delta $Q -ynew foo.c
+bk get $Q -e foo.c
+# assert data is different
+cmp -s WANT foo.c && exit 1
+bk unedit foo.c
+bk get $Q -e -x+ foo.c
+checkfiles WANT foo.c
+bk unedit foo.c
+echo OK
+
+echo $N Check get -e -x+ fails with bam data ........................$NL
+bk get $Q -e -x+ bam || { echo fix test; exit 1; }
+bk unedit bam
+echo "failed (bug not filed)"
+
+echo $N Check get -e when running checkout: edit ....................$NL
+BK_CONFIG="checkout:edit! "
+export BK_CONFIG
+bk get $Q -e foo.c || exit 1
+# trying to re-edit fails
+bk get $Q -e foo.c && exit 1
+bk get -e foo.c 2> ERR && exit 1
+grep -q 'Writable foo\.c exists' ERR || exit 1
+# trying to add -x+ passes
+bk get $Q -e -x+ foo.c || exit 1
+checkfiles foo.c WANT
+# but if we do it again -- fail
+bk get $Q -e -x+ foo.c && exit 1
+bk get -e -x+ foo.c 2> ERR && exit 1
+grep -q 'Writable foo\.c exists' ERR || exit 1
+# switching back to plain edit fails
+bk get $Q -e foo.c && exit 1
+# reset to just edited, then modify and retest
+bk unedit foo.c
+echo x > foo.c
+bk get $Q -e foo.c 2> ERR && exit 1
+bk get -e foo.c 2> ERR && exit 1
+grep -q 'Writable foo\.c exists' ERR || exit 1
+bk get $Q -e -x+ foo.c && exit 1
+bk get -e -x+ foo.c 2> ERR && exit 1
+grep -q 'Writable foo\.c exists' ERR || exit 1
+# set to just edit, mv foo.c bar.c and test
+bk unedit foo.c
+rm -f bar.c SCCS/?.bar.c
+mv foo.c bar.c
+mv SCCS/s.foo.c SCCS/s.bar.c
+mv SCCS/p.foo.c SCCS/p.bar.c
+mv SCCS/d.foo.c SCCS/d.bar.c
+bk get -e -x+ bar.c 2> ERR && exit 1
+grep -q 'Writable bar\.c exists' ERR || exit 1
+bk get $Q -e -x+ foo.c 2> ERR && exit 1
+bk get -e bar.c 2> ERR && exit 1
+grep -q 'Writable bar\.c exists' ERR || exit 1
+bk get $Q -e bar.c 2> ERR && exit 1
+echo OK
