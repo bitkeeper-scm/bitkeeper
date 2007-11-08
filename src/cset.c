@@ -598,7 +598,6 @@ private void
 csetlist(cset_t *cs, sccs *cset)
 {
 	char	*rk, *t;
-	FILE	*list = 0;
 	char	buf[MAXPATH*2];
 	char	cat[MAXPATH];
 	char	*csetid;
@@ -637,16 +636,7 @@ csetlist(cset_t *cs, sccs *cset)
 		unlink(cat);
 		goto fail;
 	}
-	unless (list = fopen(cat, "r")) {
-		perror(cat);
-		goto fail;
-	}
-	/* preallocate cweave? */
-	while (fnext(buf, list)) {
-		chomp(buf);
-		cs->cweave = addLine(cs->cweave, strdup(buf));
-	}
-	fclose(list);
+	cs->cweave = file2Lines(0, cat);
 	if (cs->verbose > 5) {;
 		sys("cat", cat, SYS);
 	}

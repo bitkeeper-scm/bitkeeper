@@ -428,7 +428,7 @@ recurse(delta *d)
 		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"+:LI: -:LD:\n" \
 		"$each(:C:){$unless(:CHANGESET:){  }  (:C:)\n}" \
-		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
+		"$each(:TAG:){  TAG: (:TAG:)\n}" \
 		"$if(:MERGE:){$unless(:CHANGESET:){  }  MERGE: " \
 		":MPARENT:\n}\n"
 #define	VSPEC	"$if(:CHANGESET:){\n#### :DPN: ####\n}" \
@@ -437,13 +437,13 @@ recurse(delta *d)
 		"$unless(:CHANGESET:){+:LI: -:LD:}" \
 		"\n" \
 		"$each(:C:){  (:C:)\n}" \
-		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}" \
+		"$each(:TAG:){  TAG: (:TAG:)\n}" \
 		"$unless(:CHANGESET:){:DIFFS_UP:}"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
 		"$if(:TAG:){<tr bgcolor=yellow><td>" \
-		"$each(:SYMBOL:){&nbsp;TAG: (:SYMBOL:)<br>\n}" \
+		"$each(:TAG:){&nbsp;TAG: (:TAG:)<br>\n}" \
 		"</td></tr>\n}" \
 		"<tr bgcolor=white><td>" \
 		"$each(:C:){&nbsp;(:C:)<br>\n}</td></tr>\n"
@@ -457,7 +457,7 @@ recurse(delta *d)
 		"$if(:TYPE:=BitKeeper){&nbsp;:DPN: :I:}" \
 		"</td></tr>\n" \
 		"$if(:TAG:){<tr bgcolor=yellow><td>" \
-		"$each(:SYMBOL:){&nbsp;TAG: (:SYMBOL:)<br>\n}" \
+		"$each(:TAG:){&nbsp;TAG: (:TAG:)<br>\n}" \
 		"</td></tr>\n}" \
 		"<tr bgcolor=white><td>" \
 		"$each(:C:){&nbsp;" \
