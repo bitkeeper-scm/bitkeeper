@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)rget.c	8.1 (Berkeley) 6/4/93";
@@ -57,9 +56,8 @@ __srget(fp)
 	FILE *fp;
 {
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
-	_SET_ORIENTATION(fp, -1);
 	if (__srefill(fp) == 0) {
 		fp->_r--;
 		return (*fp->_p++);

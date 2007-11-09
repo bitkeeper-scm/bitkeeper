@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)gets.c	8.1 (Berkeley) 6/4/93";
@@ -59,7 +58,7 @@ gets(buf)
 	int c;
 	char *s;
 
-	_DIAGASSERT(buf != NULL);
+	assert(buf != NULL);
 
 	FLOCKFILE(stdin);
 	for (s = buf; (c = getchar_unlocked()) != '\n'; ) {

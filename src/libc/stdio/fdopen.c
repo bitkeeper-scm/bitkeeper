@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fdopen.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: fdopen.c,v 1.13 2003/01/18 11:29:51 thorpej Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <sys/types.h>
 
 #include <assert.h>
@@ -49,13 +47,10 @@ __RCSID("$NetBSD: fdopen.c,v 1.13 2003/01/18 11:29:51 thorpej Exp $");
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include "reentrant.h"
 #include "local.h"
-
-#ifdef __weak_alias
-__weak_alias(fdopen,_fdopen)
-#endif
 
 FILE *
 fdopen(fd, mode)
@@ -65,11 +60,14 @@ fdopen(fd, mode)
 	FILE *fp;
 	int flags, oflags, fdflags, tmp;
 
-	_DIAGASSERT(fd != -1);
+	assert(fd != -1);
 
 	if ((flags = __sflags(mode, &oflags)) == 0)
 		return (NULL);
 
+#ifdef	WIN32
+	fdflags = 0;
+#else
 	/* Make sure the mode the user wants is a subset of the actual mode. */
 	if ((fdflags = fcntl(fd, F_GETFL, 0)) < 0)
 		return (NULL);
@@ -89,6 +87,7 @@ fdopen(fd, mode)
 			return (NULL);
 		}
 	}
+#endif
 
 	if ((fp = __sfp()) == NULL)
 		return (NULL);

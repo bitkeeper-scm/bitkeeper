@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fsetpos.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: fsetpos.c,v 1.9 2000/07/08 13:51:27 kleink Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
@@ -54,8 +52,8 @@ fsetpos(iop, pos)
 	FILE *iop;
 	const fpos_t *pos;
 {
-	_DIAGASSERT(iop != NULL);
-	_DIAGASSERT(pos != NULL);
+	assert(iop != NULL);
+	assert(pos != NULL);
 
 	return (fseeko(iop, (off_t)*pos, SEEK_SET));
 }

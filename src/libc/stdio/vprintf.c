@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)vprintf.c	8.1 (Berkeley) 6/4/93";
@@ -46,12 +45,10 @@ __RCSID("$NetBSD: vprintf.c,v 1.9 1999/09/20 04:39:34 lukem Exp $");
 #include <stdio.h>
 
 int
-vprintf(fmt, ap)
-	char const *fmt;
-	_BSD_VA_LIST_ ap;
+vprintf(char const *fmt, va_list ap)
 {
 
-	_DIAGASSERT(fmt != NULL);
+	assert(fmt != NULL);
 
 	return (vfprintf(stdout, fmt, ap));
 }

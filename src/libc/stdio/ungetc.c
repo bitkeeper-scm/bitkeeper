@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)ungetc.c	8.2 (Berkeley) 11/3/93";
@@ -49,7 +48,7 @@ __RCSID("$NetBSD: ungetc.c,v 1.13 2003/01/18 11:29:59 thorpej Exp $");
 #include "reentrant.h"
 #include "local.h"
 
-static int __submore __P((FILE *));
+static int __submore(FILE *);
 /*
  * Expand the ungetc buffer `in place'.  That is, adjust fp->_p when
  * the buffer moves, so that it points the same distance from the end,
@@ -63,7 +62,7 @@ __submore(fp)
 	int i;
 	unsigned char *p;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	if (_UB(fp)._base == fp->_ubuf) {
 		/*
@@ -97,14 +96,13 @@ ungetc(c, fp)
 	FILE *fp;
 {
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	if (c == EOF)
 		return (EOF);
 	if (!__sdidinit)
 		__sinit();
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, -1);
 	if ((fp->_flags & __SRD) == 0) {
 		/*
 		 * Not already reading: no good unless reading-and-writing.

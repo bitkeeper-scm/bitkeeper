@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)setbuf.c	8.1 (Berkeley) 6/4/93";
@@ -53,7 +52,7 @@ setbuf(fp, buf)
 	char *buf;
 {
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 	/* buf may be NULL */
 
 	(void) setvbuf(fp, buf, buf ? _IOFBF : _IONBF, BUFSIZ);

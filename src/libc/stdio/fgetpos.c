@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fgetpos.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: fgetpos.c,v 1.10 2000/07/08 13:51:27 kleink Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
@@ -51,8 +49,8 @@ fgetpos(fp, pos)
 	FILE *fp;
 	fpos_t *pos;
 {
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(pos != NULL);
+	assert(fp != NULL);
+	assert(pos != NULL);
 
 	return((*pos = (off_t)ftello(fp)) == (off_t)-1);
 }

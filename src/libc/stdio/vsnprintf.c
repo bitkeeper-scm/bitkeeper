@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)vsnprintf.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: vsnprintf.c,v 1.20 2005/02/09 21:35:47 kleink Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -54,24 +52,20 @@ __RCSID("$NetBSD: vsnprintf.c,v 1.20 2005/02/09 21:35:47 kleink Exp $");
 #define vsnprintf _vsnprintf
 #endif
 
-#ifdef __weak_alias
-__weak_alias(vsnprintf,_vsnprintf)
-#endif
-
 int
 vsnprintf(str, n, fmt, ap)
 	char *str;
 	size_t n;
 	const char *fmt;
-	_BSD_VA_LIST_ ap;
+	va_list ap;
 {
 	int ret;
 	FILE f;
 	struct __sfileext fext;
 	unsigned char dummy[1];
 
-	_DIAGASSERT(n == 0 || str != NULL);
-	_DIAGASSERT(fmt != NULL);
+	assert(n == 0 || str != NULL);
+	assert(fmt != NULL);
 
 	if ((int)n < 0) {
 		errno = EINVAL;

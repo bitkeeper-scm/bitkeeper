@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)tmpnam.c	8.3 (Berkeley) 3/28/94";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: tmpnam.c,v 1.13 2003/01/18 11:29:58 thorpej Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <sys/types.h>
 #include <stdio.h>
 #include <unistd.h>

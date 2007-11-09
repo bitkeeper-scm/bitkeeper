@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fclose.c	8.1 (Berkeley) 6/4/93";
@@ -44,7 +43,6 @@ __RCSID("$NetBSD: fclose.c,v 1.15 2003/01/18 11:29:50 thorpej Exp $");
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <wchar.h>
 #include "reentrant.h"
 #include "local.h"
 
@@ -54,14 +52,13 @@ fclose(fp)
 {
 	int r;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	if (fp->_flags == 0) {	/* not open! */
 		errno = EBADF;
 		return (EOF);
 	}
 	FLOCKFILE(fp);
-	WCIO_FREE(fp);
 	r = fp->_flags & __SWR ? __sflush(fp) : 0;
 	if (fp->_close != NULL && (*fp->_close)(fp->_cookie) < 0)
 		r = EOF;

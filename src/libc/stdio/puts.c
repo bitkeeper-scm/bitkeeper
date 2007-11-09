@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)puts.c	8.1 (Berkeley) 6/4/93";
@@ -61,7 +60,7 @@ puts(s)
 	struct __siov iov[2];
 	int r;
 
-	_DIAGASSERT(s != NULL);
+	assert(s != NULL);
 
 	if (s == NULL)
 		s = "(null)";

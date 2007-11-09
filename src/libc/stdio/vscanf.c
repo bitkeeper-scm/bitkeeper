@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)vscanf.c	8.1 (Berkeley) 6/4/93";
@@ -51,10 +50,10 @@ __RCSID("$NetBSD: vscanf.c,v 1.11 2003/01/18 11:29:59 thorpej Exp $");
 int
 vscanf(fmt, ap)
 	const char *fmt;
-	_BSD_VA_LIST_ ap;
+	va_list ap;
 {
 
-	_DIAGASSERT(fmt != NULL);
+	assert(fmt != NULL);
 
 	return (__svfscanf(stdin, fmt, ap));
 }

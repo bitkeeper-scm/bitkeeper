@@ -37,32 +37,28 @@
 #ifndef	_STDIO_H_
 #define	_STDIO_H_
 
-#include <sys/cdefs.h>
-#include <sys/featuretest.h>
-#include <sys/ansi.h>
+#include "stdio_remap.h"
 
-#include <machine/ansi.h>
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#include <stdarg.h>
+#ifndef	WIN32
+#include <unistd.h>
+#endif
+#include <sys/types.h>
+
+#ifndef	NULL
+#define	NULL	0
 #endif
 
-#include <sys/null.h>
+#ifndef __restrict
+#define __restrict
+#endif
 
-/*      
+/*
  * This is fairly grotesque, but pure ANSI code must not inspect the
  * innards of an fpos_t anyway.  The library internally uses off_t,
  * which we assume is exactly as big as eight chars.
  */
-#if (!defined(_ANSI_SOURCE) && !defined(__STRICT_ANSI__)) || defined(_LIBC)
-typedef __off_t fpos_t;
-#else
-typedef struct __sfpos {
-	__off_t _pos;
-} fpos_t;
-#endif
-
-#define	_FSTDIO			/* Define for new stdio with functions. */
+typedef off_t fpos_t;
 
 /*
  * NB: to fit things in six character monocase externals, the stdio
@@ -137,9 +133,7 @@ typedef	struct __sFILE {
 	fpos_t	_offset;	/* current lseek offset */
 } FILE;
 
-__BEGIN_DECLS
 extern FILE __sF[];
-__END_DECLS
 
 #define	__SLBF	0x0001		/* line buffered */
 #define	__SNBF	0x0002		/* unbuffered */
@@ -183,16 +177,6 @@ __END_DECLS
 #define	FOPEN_MAX	20	/* must be <= OPEN_MAX <sys/syslimits.h> */
 #define	FILENAME_MAX	1024	/* must be <= PATH_MAX <sys/syslimits.h> */
 
-/* System V/ANSI C; this is the wrong way to do this, do *not* use these. */
-#if defined(_XOPEN_SOURCE) || defined(_NETBSD_SOURCE)
-#define	P_tmpdir	"/var/tmp/"
-#endif
-#define	L_tmpnam	1024	/* XXX must be == PATH_MAX */
-/* Always ensure that this is consistent with <limits.h> */
-#ifndef TMP_MAX
-#define TMP_MAX			308915776	/* Legacy */
-#endif
-
 /* Always ensure that these are consistent with <fcntl.h> and <unistd.h>! */
 #ifndef SEEK_SET
 #define	SEEK_SET	0	/* set file offset to offset */
@@ -211,7 +195,6 @@ __END_DECLS
 /*
  * Functions defined in ANSI C standard.
  */
-__BEGIN_DECLS
 void	 clearerr(FILE *);
 int	 fclose(FILE *);
 int	 feof(FILE *);
@@ -247,50 +230,26 @@ int	 setvbuf(FILE * __restrict, char * __restrict, int, size_t);
 int	 sscanf(const char * __restrict, const char * __restrict, ...);
 FILE	*tmpfile(void);
 int	 ungetc(int, FILE *);
-int	 vfprintf(FILE * __restrict, const char * __restrict, _BSD_VA_LIST_);
-int	 vprintf(const char * __restrict, _BSD_VA_LIST_);
+int	 vfprintf(FILE * __restrict, const char * __restrict, va_list);
+int	 vprintf(const char * __restrict, va_list);
 
 #ifndef __AUDIT__
 char	*gets(char *);
 int	 sprintf(char * __restrict, const char * __restrict, ...);
 char	*tmpnam(char *);
-int	 vsprintf(char * __restrict, const char * __restrict,
-	    _BSD_VA_LIST_);
+int	 vsprintf(char * __restrict, const char * __restrict, va_list);
 #endif
 
-#if defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE)
-int	 rename (const char *, const char *) __RENAME(__posix_rename);
-#else
-int	 rename (const char *, const char *);
-#endif
-__END_DECLS
 
 /*
  * IEEE Std 1003.1-90
  */
-#if defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE) || \
-    defined(_NETBSD_SOURCE)
-#define	L_ctermid	1024	/* size for ctermid(); PATH_MAX */
-#define L_cuserid	9	/* size for cuserid(); UT_NAMESIZE + 1 */
-
-__BEGIN_DECLS
-char	*ctermid(char *);
-#ifndef __CUSERID_DECLARED
-#define __CUSERID_DECLARED
-/* also declared in unistd.h */
-char	*cuserid(char *);
-#endif /* __CUSERID_DECLARED */
 FILE	*fdopen(int, const char *);
 int	 fileno(FILE *);
-__END_DECLS
-#endif /* not ANSI */
 
 /*
  * IEEE Std 1003.1c-95, also adopted by X/Open CAE Spec Issue 5 Version 2
  */
-#if (_POSIX_C_SOURCE - 0) >= 199506L || (_XOPEN_SOURCE - 0) >= 500 || \
-    defined(_REENTRANT) || defined(_NETBSD_SOURCE)
-__BEGIN_DECLS
 void	flockfile(FILE *);
 int	ftrylockfile(FILE *);
 void	funlockfile(FILE *);
@@ -298,122 +257,88 @@ int	getc_unlocked(FILE *);
 int	getchar_unlocked(void);
 int	putc_unlocked(int, FILE *);
 int	putchar_unlocked(int);
-__END_DECLS
-#endif /* _POSIX_C_SOURCE >= 1995056 || _XOPEN_SOURCE >= 500 || ... */
 
 /*
  * Functions defined in POSIX 1003.2 and XPG2 or later.
  */
-#if (_POSIX_C_SOURCE - 0) >= 2 || (_XOPEN_SOURCE - 0) >= 2 || \
-    defined(_NETBSD_SOURCE)
-__BEGIN_DECLS
 int	 pclose(FILE *);
 FILE	*popen(const char *, const char *);
-__END_DECLS
-#endif
 
 /*
  * Functions defined in ISO XPG4.2, ISO C99, POSIX 1003.1-2001 or later.
  */
-#if ((__STDC_VERSION__ - 0) >= 199901L) || \
-    ((_POSIX_C_SOURCE - 0) >= 200112L) || \
-    (defined(_XOPEN_SOURCE) && defined(_XOPEN_SOURCE_EXTENDED)) || \
-    ((_XOPEN_SOURCE - 0) >= 500) || \
-    defined(_ISOC99_SOURCE) || defined(_NETBSD_SOURCE)
-__BEGIN_DECLS
 int	 snprintf(char * __restrict, size_t, const char * __restrict, ...)
 	    __attribute__((__format__(__printf__, 3, 4)));
 int	 vsnprintf(char * __restrict, size_t, const char * __restrict,
-	    _BSD_VA_LIST_)
+	    va_list)
 	    __attribute__((__format__(__printf__, 3, 0)));
-__END_DECLS
-#endif
-
-/*
- * Functions defined in XPG4.2.
- */
-#if defined(_XOPEN_SOURCE) || defined(_NETBSD_SOURCE)
-__BEGIN_DECLS
-int	 getw(FILE *);
-int	 putw(int, FILE *);
-
-#ifndef __AUDIT__
-char	*tempnam(const char *, const char *);
-#endif
-__END_DECLS
-#endif
 
 /*
  * X/Open CAE Specification Issue 5 Version 2
  */
-#if (_XOPEN_SOURCE - 0) >= 500 || defined(_LARGEFILE_SOURCE) || \
-    defined(_NETBSD_SOURCE)
-#ifndef	off_t
-typedef	__off_t		off_t;
-#define	off_t		__off_t
-#endif /* off_t */
-
-__BEGIN_DECLS
 int	 fseeko(FILE *, off_t, int);
 off_t	 ftello(FILE *);
-__END_DECLS
-#endif /* _XOPEN_SOURCE >= 500 || _LARGEFILE_SOURCE || _NETBSD_SOURCE */
 
 /*
  * Routines that are purely local.
  */
-#if defined(_NETBSD_SOURCE)
-
 #define	FPARSELN_UNESCESC	0x01
 #define	FPARSELN_UNESCCONT	0x02
 #define	FPARSELN_UNESCCOMM	0x04
 #define	FPARSELN_UNESCREST	0x08
 #define	FPARSELN_UNESCALL	0x0f
 
-__BEGIN_DECLS
 int	 asprintf(char ** __restrict, const char * __restrict, ...)
 	    __attribute__((__format__(__printf__, 2, 3)));
 char	*fgetln(FILE * __restrict, size_t * __restrict);
+char	*fgetline(FILE * __restrict);
 char	*fparseln(FILE *, size_t *, size_t *, const char[3], int);
 int	 fpurge(FILE *);
 void	 setbuffer(FILE *, char *, int);
 int	 setlinebuf(FILE *);
-int	 vasprintf(char ** __restrict, const char * __restrict,
-	    _BSD_VA_LIST_)
+int	 vasprintf(char ** __restrict, const char * __restrict ab,
+	    va_list)
 	    __attribute__((__format__(__printf__, 2, 0)));
-int	 vscanf(const char * __restrict, _BSD_VA_LIST_)
+int	 vscanf(const char * __restrict, va_list)
 	    __attribute__((__format__(__scanf__, 1, 0)));
 int	 vfscanf(FILE * __restrict, const char * __restrict,
-	    _BSD_VA_LIST_)
+	    va_list)
 	    __attribute__((__format__(__scanf__, 2, 0)));
 int	 vsscanf(const char * __restrict, const char * __restrict,
-	    _BSD_VA_LIST_)
+	    va_list)
 	    __attribute__((__format__(__scanf__, 2, 0)));
 const char *fmtcheck(const char *, const char *)
 	    __attribute__((__format_arg__(2)));
-__END_DECLS
+
+/* macro for bk source */
+static inline char *
+aprintf(const char *fmt, ...)
+{
+	va_list ap;
+	char *retval;
+
+	va_start(ap, fmt);
+	if (vasprintf(&retval, fmt, ap) < 0) retval = 0;
+	va_end(ap);
+	return (retval);
+}
 
 /*
  * Stdio function-access interface.
  */
-__BEGIN_DECLS
 FILE	*funopen(const void *,
 		int (*)(void *, char *, int),
 		int (*)(void *, const char *, int),
 		fpos_t (*)(void *, fpos_t, int),
 		int (*)(void *));
-__END_DECLS
 #define	fropen(cookie, fn) funopen(cookie, fn, 0, 0, 0)
 #define	fwopen(cookie, fn) funopen(cookie, 0, fn, 0, 0)
-#endif /* _NETBSD_SOURCE */
 
 /*
  * Functions internal to the implementation.
  */
-__BEGIN_DECLS
 int	__srget(FILE *);
 int	__swbuf(int, FILE *);
-__END_DECLS
 
 /*
  * The __sfoo macros are here so that we can 
@@ -421,7 +346,7 @@ __END_DECLS
  */
 #define	__sgetc(p) (--(p)->_r < 0 ? __srget(p) : (int)(*(p)->_p++))
 #if defined(__GNUC__) && defined(__STDC__)
-static __inline int __sputc(int _c, FILE *_p) {
+static inline int __sputc(int _c, FILE *_p) {
 	if (--_p->_w >= 0 || (_p->_w >= _p->_lbfsize && (char)_c != '\n'))
 		return (*_p->_p++ = _c);
 	else
@@ -460,24 +385,12 @@ static __inline int __sputc(int _c, FILE *_p) {
 #define	getchar()	getc(stdin)
 #define	putchar(x)	putc(x, stdout)
 
-#if defined(_POSIX_C_SOURCE) || defined(_XOPEN_SOURCE) || \
-    defined(_NETBSD_SOURCE)
-#if !defined(_REENTRANT) && !defined(_PTHREADS)
 #define	fileno(p)	__sfileno(p)
-#endif /* !_REENTRANT && !_PTHREADS */
-#endif /* !_ANSI_SOURCE */
 
-#if (_POSIX_C_SOURCE - 0) >= 199506L || (_XOPEN_SOURCE - 0) >= 500 || \
-    defined(_REENTRANT) || defined(_NETBSD_SOURCE)
 #define getc_unlocked(fp)	__sgetc(fp)
 #define putc_unlocked(x, fp)	__sputc(x, fp)
 
 #define getchar_unlocked()	getc_unlocked(stdin)
 #define putchar_unlocked(x)	putc_unlocked(x, stdout)
-#endif /* _POSIX_C_SOURCE >= 199506 || _XOPEN_SOURCE >= 500 || _REENTRANT... */
-
-#if _FORTIFY_SOURCE > 0
-#include <ssp/stdio.h>
-#endif
 
 #endif /* _STDIO_H_ */

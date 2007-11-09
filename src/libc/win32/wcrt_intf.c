@@ -303,15 +303,3 @@ pipe(int fd[2], int pipe_size)
 	if (pipe_size == 0) pipe_size = 512;
 	return (_pipe(fd, pipe_size, _O_BINARY|_O_NOINHERIT));
 }
-
-int
-snprintf(char *buf, size_t count, const char *format, ...)
-{
-	va_list	ap;
-	int	rc;
-
-	va_start(ap, format);
-	rc = _vsnprintf(buf, count, format, ap);
-	va_end(ap);
-	return (rc);
-}

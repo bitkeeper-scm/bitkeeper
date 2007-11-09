@@ -28,7 +28,6 @@
  * $Citrus$
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD$");
 #endif /* LIBC_SCCS and not lint */
@@ -45,13 +44,12 @@ ungetwc(wint_t wc, FILE *fp)
 {
 	struct wchar_io_data *wcio;
 
-	_DIAGASSERT(fp);
+	assert(fp);
 
 	if (wc == WEOF)
 		return WEOF;
 
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, 1);
 	/*
 	 * XXX since we have no way to transform a wchar string to
 	 * a char string in reverse order, we can't use ungetc.

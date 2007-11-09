@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)vfprintf.c	8.1 (Berkeley) 6/4/93";
@@ -46,29 +45,15 @@ __RCSID("$NetBSD: vfwprintf.c,v 1.9 2006/10/01 10:29:21 tnozaki Exp $");
  * Actual {w,}printf innards.
  */
 
-#include "namespace.h"
-#include <sys/types.h>
-
-#include <assert.h>
-#include <ctype.h>
-#include <limits.h>
-#include <locale.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <wchar.h>
-#include <wctype.h>
+#define	NO_FLOATING_POINT
 
 #include "reentrant.h"
 #include "local.h"
-#include "extern.h"
 #include "fvwrite.h"
 
 #ifndef NARROW
+#include <wctype.h>
+#include <wchar.h>
 #define MCHAR_T		char
 #define CHAR_T		wchar_t
 #define STRLEN(a)	wcslen(a)
@@ -79,11 +64,13 @@ __RCSID("$NetBSD: vfwprintf.c,v 1.9 2006/10/01 10:29:21 tnozaki Exp $");
 #define END_OF_FILE	WEOF
 #define MULTI		0
 #else
+#ifdef	NOTBK
 #define MCHAR_T		wchar_t
+#define SCONV(a, b)	__wcsconv(a, b)
+#endif
 #define CHAR_T		char
 #define STRLEN(a)	strlen(a)
 #define MEMCHR(a, b, c)	memchr(a, b, c)
-#define SCONV(a, b)	__wcsconv(a, b)
 #define STRCONST(a)	a
 #define WDECL(a, b)	a ## b
 #define END_OF_FILE	EOF
@@ -92,9 +79,9 @@ __RCSID("$NetBSD: vfwprintf.c,v 1.9 2006/10/01 10:29:21 tnozaki Exp $");
 
 union arg {
 	int	intarg;
-	u_int	uintarg;
+	unsigned int	uintarg;
 	long	longarg;
-	u_long	ulongarg;
+	unsigned long	ulongarg;
 	long long longlongarg;
 	unsigned long long ulonglongarg;
 	ptrdiff_t ptrdiffarg;
@@ -115,8 +102,10 @@ union arg {
 	double	doublearg;
 	long double longdoublearg;
 #endif
+#ifdef	NOTBK
 	wint_t	wintarg;
 	wchar_t	*pwchararg;
+#endif
 };
 
 /*
@@ -133,13 +122,15 @@ enum typeid {
 static int	__sbprintf(FILE *, const CHAR_T *, va_list);
 static CHAR_T	*__ujtoa(uintmax_t, CHAR_T *, int, int, const char *, int,
 		    char, const char *);
-static CHAR_T	*__ultoa(u_long, CHAR_T *, int, int, const char *, int,
+static CHAR_T	*__ultoa(unsigned long, CHAR_T *, int, int, const char *, int,
 		    char, const char *);
 #ifndef NARROW
 static CHAR_T	*__mbsconv(char *, int);
 static wint_t	__xfputwc(CHAR_T, FILE *);
 #else
+#ifdef	NOTBK
 static char	*__wcsconv(wchar_t *, int);
+#endif
 static int	__sprint(FILE *, struct __suio *);
 #endif
 static void	__find_arguments(const CHAR_T *, va_list, union arg **);
@@ -158,8 +149,8 @@ __sbprintf(FILE *fp, const CHAR_T *fmt, va_list ap)
 	struct __sfileext fakeext;
 	unsigned char buf[BUFSIZ];
 
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(fmt != NULL);
+	assert(fp != NULL);
+	assert(fmt != NULL);
 
 	_FILEEXT_SETUP(&fake, &fakeext);
 
@@ -223,8 +214,8 @@ __sprint(FILE *fp, struct __suio *uio)
 {
 	int err;
 
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(uio != NULL);
+	assert(fp != NULL);
+	assert(uio != NULL);
 
 	if (uio->uio_resid == 0) {
 		uio->uio_iovcnt = 0;
@@ -251,7 +242,7 @@ __sprint(FILE *fp, struct __suio *uio)
  * use the given digits.
  */
 static CHAR_T *
-__ultoa(u_long val, CHAR_T *endp, int base, int octzero, const char *xdigs,
+__ultoa(unsigned long val, CHAR_T *endp, int base, int octzero, const char *xdigs,
 	int needgrp, char thousep, const char *grp)
 {
 	CHAR_T *cp = endp;
@@ -338,7 +329,7 @@ __ujtoa(uintmax_t val, CHAR_T *endp, int base, int octzero,
 	/* quick test for small values; __ultoa is typically much faster */
 	/* (perhaps instead we should run until small, then call __ultoa?) */
 	if (val <= ULONG_MAX)
-		return (__ultoa((u_long)val, endp, base, octzero, xdigs,
+		return (__ultoa((unsigned long)val, endp, base, octzero, xdigs,
 		    needgrp, thousep, grp));
 	switch (base) {
 	case 10:
@@ -397,6 +388,40 @@ __ujtoa(uintmax_t val, CHAR_T *endp, int base, int octzero,
 	}
 	return (cp);
 }
+
+#ifdef	NO_FLOATING_POINT
+private char *
+fptoa(char *endp, double d, int prec)
+{
+	int	i;
+	int	neg = 0;
+	u32	num;
+
+	if (d < 0) {
+		d = -d;
+		neg = 1;
+	}
+	for (i = 0; i < prec; i++) d *= 10.0;
+	d += 0.5;	/* round */
+	while (d > (float)UINT_MAX) {
+		/* too big to represent in u32 */
+		d /= 10.0;
+		*--endp = '0';
+		if (--prec == 0) *--endp = '.';
+	}
+	num = d;
+
+	while ((num > 0) || (prec > 0)) {
+		*--endp = (num % 10) + '0';
+		if (--prec == 0) *--endp = '.';
+		num /= 10;
+	}
+	if (prec == 0) *--endp = '0';
+	if (neg) *--endp = '-';
+	return (endp);
+}
+#endif
+
 
 #ifndef NARROW
 /*
@@ -472,6 +497,7 @@ __mbsconv(char *mbsarg, int prec)
 	return (convbuf);
 }
 #else
+#ifdef	NOTBK
 /*
  * Convert a wide character string argument for the %ls format to a multibyte
  * string representation. If not -1, prec specifies the maximum number of
@@ -530,6 +556,7 @@ __wcsconv(wchar_t *wcsarg, int prec)
 	convbuf[nbytes] = '\0';
 	return (convbuf);
 }
+#endif
 #endif
 
 /*
@@ -644,7 +671,7 @@ WDECL(__vf,printf_unlocked)(FILE *fp, const CHAR_T *fmt0, va_list ap)
 	int nseps;		/* number of group separators with ' */
 	int nrepeats;		/* number of repeats of the last group */
 #endif
-	u_long	ulval;		/* integer arguments %[diouxX] */
+	unsigned long	ulval;		/* integer arguments %[diouxX] */
 	uintmax_t ujval;	/* %j, %ll, %q, %t, %z integers */
 	int base;		/* base for [diouxX] conversion */
 	int dprec;		/* a copy of prec if [diouxX], 0 otherwise */
@@ -749,10 +776,10 @@ WDECL(__vf,printf_unlocked)(FILE *fp, const CHAR_T *fmt0, va_list ap)
 	    flags&CHARINT ? (long)(signed char)GETARG(int) : \
 	    (long)GETARG(int))
 #define	UARG() \
-	(flags&LONGINT ? GETARG(u_long) : \
-	    flags&SHORTINT ? (u_long)(u_short)GETARG(int) : \
-	    flags&CHARINT ? (u_long)(u_char)GETARG(int) : \
-	    (u_long)GETARG(u_int))
+	(flags&LONGINT ? GETARG(unsigned long) : \
+	    flags&SHORTINT ? (unsigned long)(u_short)GETARG(int) : \
+	    flags&CHARINT ? (unsigned long)(u_char)GETARG(int) : \
+	    (unsigned long)GETARG(unsigned int))
 #define	INTMAX_SIZE	(INTMAXT|SIZET|PTRDIFFT|LLONGINT)
 #define SJARG() \
 	(flags&INTMAXT ? GETARG(intmax_t) : \
@@ -790,16 +817,15 @@ WDECL(__vf,printf_unlocked)(FILE *fp, const CHAR_T *fmt0, va_list ap)
 		val = GETARG (int); \
 	}
 
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(fmt0 != NULL);
+	assert(fp != NULL);
+	assert(fmt0 != NULL);
 
-	_SET_ORIENTATION(fp, -1);
 
-	ndig = -1;	/* XXX gcc */
 
 	thousands_sep = '\0';
 	grouping = NULL;
 #ifndef NO_FLOATING_POINT
+	ndig = -1;	/* XXX gcc */
 	decimal_point = localeconv()->decimal_point;
 	expsize = 0;		/* XXXGCC -Wuninitialized [sh3,m68000] */
 #endif
@@ -852,9 +878,11 @@ WDECL(__vf,printf_unlocked)(FILE *fp, const CHAR_T *fmt0, va_list ap)
 		prec = -1;
 		sign = '\0';
 		ox[1] = '\0';
+#ifndef	NO_FLOATING_POINT
 		expchar = '\0';
 		lead = 0;
 		nseps = nrepeats = 0;
+#endif
 		ulval = 0;
 		ujval = 0;
 		xdigs = NULL;
@@ -893,8 +921,8 @@ reswitch:	switch (ch) {
 			goto rflag;
 		case '\'':
 			flags |= GROUPING;
-			thousands_sep = *(localeconv()->thousands_sep);
-			grouping = localeconv()->grouping;
+			thousands_sep = 0;
+			grouping = 0;
 			goto rflag;
 		case '.':
 			if ((ch = *fmt++) == '*') {
@@ -933,11 +961,13 @@ reswitch:	switch (ch) {
 			}
 			width = n;
 			goto reswitch;
-#ifndef NO_FLOATING_POINT
 		case 'L':
+#ifdef NO_FLOATING_POINT
+			assert("no L fmt " == 0);
+#else
 			flags |= LONGDBL;
-			goto rflag;
 #endif
+			goto rflag;
 		case 'h':
 			if (flags & SHORTINT) {
 				flags &= ~SHORTINT;
@@ -970,6 +1000,7 @@ reswitch:	switch (ch) {
 		case 'c':
 #ifdef NARROW
 			if (flags & LONGINT) {
+#ifdef	NOTBK
 				static const mbstate_t initial;
 				mbstate_t mbs;
 				size_t mbseqlen;
@@ -982,6 +1013,7 @@ reswitch:	switch (ch) {
 					goto error;
 				}
 				size = (int)mbseqlen;
+#endif
 			} else {
 				*buf = GETARG(int);
 				size = 1;
@@ -1016,7 +1048,23 @@ reswitch:	switch (ch) {
 			}
 			base = 10;
 			goto number;
-#ifndef NO_FLOATING_POINT
+#ifdef NO_FLOATING_POINT
+		case 'a':
+		case 'A':
+		case 'e':
+		case 'E':
+		case 'F':
+		case 'g':
+		case 'G':
+		    assert("only %f fp fprintf support" == 0);
+			break;
+		case 'f':
+			if (prec == -1) prec = 6; /* DEFPREC */
+			result = fptoa(buf + BUF, GETARG(double), prec);
+			assert(result >= buf);
+			size = buf + BUF - result;
+			break;
+#else
 #ifdef WIDE_DOUBLE
 		case 'a':
 		case 'A':
@@ -1278,6 +1326,7 @@ fp_common:
 				if ((result = GETARG(CHAR_T *)) == NULL)
 					result = STRCONST("(null)");
 			} else {
+#if NOTBK
 				MCHAR_T *mc;
 
 				if (convbuf != NULL)
@@ -1292,8 +1341,8 @@ fp_common:
 					}
 					result = convbuf;
 				}
+#endif
 			}
-
 			if (prec >= 0) {
 				/*
 				 * can't use STRLEN; can only look for the
@@ -1828,12 +1877,18 @@ done:
 		    case TP_VOID:
 			(*argtable) [n].pvoidarg = va_arg (ap, void *);
 			break;
+#ifdef NOTBK
 		    case T_WINT:
 			(*argtable) [n].wintarg = va_arg (ap, wint_t);
 			break;
 		    case TP_WCHAR:
 			(*argtable) [n].pwchararg = va_arg (ap, wchar_t *);
 			break;
+#else
+		    case T_WINT:
+		    case TP_WCHAR:
+			break;
+#endif
 		}
 	}
 
@@ -1880,9 +1935,9 @@ cvt(double value, int ndigits, int flags, char *sign, int *decpt, int ch,
 	int mode, dsgn;
 	char *digits, *bp, *rve;
 
-	_DIAGASSERT(decpt != NULL);
-	_DIAGASSERT(length != NULL);
-	_DIAGASSERT(sign != NULL);
+	assert(decpt != NULL);
+	assert(length != NULL);
+	assert(sign != NULL);
 
 	if (ch == 'f') {
 		mode = 3;		/* ndigits after the decimal point */

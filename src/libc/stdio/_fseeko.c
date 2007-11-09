@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD: _fseeko.c,v 1.3 2005/07/30 15:21:20 christos Exp $");
 #endif /* LIBC_SCCS and not lint */

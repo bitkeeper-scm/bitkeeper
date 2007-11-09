@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)scanf.c	8.1 (Berkeley) 6/4/93";
@@ -55,7 +54,7 @@ scanf(char const *fmt, ...)
 	int ret;
 	va_list ap;
 
-	_DIAGASSERT(fmt != NULL);
+	assert(fmt != NULL);
 
 	va_start(ap, fmt);
 	ret = __svfscanf(stdin, fmt, ap);

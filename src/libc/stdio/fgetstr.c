@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fgetline.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: fgetstr.c,v 1.3 2005/05/14 23:51:02 christos Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -52,10 +50,8 @@ __RCSID("$NetBSD: fgetstr.c,v 1.3 2005/05/14 23:51:02 christos Exp $");
 
 /*
  * Expand the line buffer.  Return -1 on error.
-#ifdef notdef
  * The `new size' does not account for a terminating '\0',
  * so we add 1 here.
-#endif
  */
 int
 __slbexpand(fp, newsize)
@@ -64,10 +60,8 @@ __slbexpand(fp, newsize)
 {
 	void *p;
 
-#ifdef notdef
 	++newsize;
-#endif
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	if (fp->_lb._size >= newsize)
 		return (0);
@@ -95,8 +89,8 @@ __fgetstr(fp, lenp, sep)
 	size_t len;
 	size_t off;
 
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(lenp != NULL);
+	assert(fp != NULL);
+	assert(lenp != NULL);
 
 	/* make sure there is input */
 	if (fp->_r <= 0 && __srefill(fp)) {
@@ -163,9 +157,7 @@ __fgetstr(fp, lenp, sep)
 		break;
 	}
 	*lenp = len;
-#ifdef notdef
 	fp->_lb._base[len] = 0;
-#endif
 	return ((char *)fp->_lb._base);
 
 error:

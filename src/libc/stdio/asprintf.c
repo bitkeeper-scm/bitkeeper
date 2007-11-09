@@ -27,24 +27,13 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD: asprintf.c,v 1.14 2005/02/09 21:35:47 kleink Exp $");
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
-#include <assert.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
 
 #include "reentrant.h"
 #include "local.h"
-
-#ifdef __weak_alias
-__weak_alias(asprintf, _asprintf)
-#endif
 
 int
 asprintf(char **str, char const *fmt, ...)
@@ -55,7 +44,7 @@ asprintf(char **str, char const *fmt, ...)
 	struct __sfileext fext;
 	unsigned char *_base;
 
-	_DIAGASSERT(str != NULL);
+	assert(str != NULL);
 
 	_FILEEXT_SETUP(&f, &fext);
 	f._file = -1;

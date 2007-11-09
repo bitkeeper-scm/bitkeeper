@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fflush.c	8.1 (Berkeley) 6/4/93";
@@ -83,7 +82,7 @@ __sflush(fp)
 	unsigned char *p;
 	int n, t;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	t = fp->_flags;
 	if ((t & __SWR) == 0)

@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fwrite.c	8.1 (Berkeley) 6/4/93";
@@ -62,13 +61,13 @@ fwrite(buf, size, count, fp)
 	struct __suio uio;
 	struct __siov iov;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 	/*
 	 * SUSv2 requires a return value of 0 for a count or a size of 0.
 	 */
 	if ((n = count * size) == 0)
 		return (0);
-	_DIAGASSERT(buf != NULL);
+	assert(buf != NULL);
 
 	iov.iov_base = __UNCONST(buf);
 	uio.uio_resid = iov.iov_len = n;

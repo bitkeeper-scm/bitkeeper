@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fileno.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: fileno.c,v 1.11 2003/08/07 16:43:23 agc Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
@@ -52,9 +50,7 @@ __RCSID("$NetBSD: fileno.c,v 1.11 2003/08/07 16:43:23 agc Exp $");
  * A subroutine version of the macro fileno.
  */
 #undef fileno
-int _fileno __P((FILE *));	/* XXX */
-
-__weak_alias(fileno,_fileno)
+int _fileno(FILE *);	/* XXX */
 
 int
 _fileno(fp)
@@ -62,7 +58,7 @@ _fileno(fp)
 {
 	int r;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	FLOCKFILE(fp);
 	r = __sfileno(fp);

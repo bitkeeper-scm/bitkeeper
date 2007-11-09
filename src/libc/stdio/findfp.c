@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)findfp.c	8.2 (Berkeley) 1/4/94";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: findfp.c,v 1.22 2006/10/07 20:46:59 thorpej Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <sys/param.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -78,6 +76,12 @@ struct __sfileext __sFext[3] = { STDEXT,
 struct __sfileext __sFext[3];
 #endif
 
+#ifndef STDIN_FILENO
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+#endif
+
 FILE __sF[3] = {
 	std(__SRD, STDIN_FILENO),		/* stdin */
 	std(__SWR, STDOUT_FILENO),		/* stdout */
@@ -85,8 +89,8 @@ FILE __sF[3] = {
 };
 struct glue __sglue = { &uglue, 3, __sF };
 
-static struct glue *moreglue __P((int));
-void f_prealloc __P((void));
+static struct glue *moreglue(int);
+void f_prealloc(void);
 
 #ifdef _REENTRANT
 rwlock_t __sfp_lock = RWLOCK_INITIALIZER;
@@ -105,7 +109,7 @@ moreglue(n)
 		+ n * sizeof(struct __sfileext));
 	if (g == NULL)
 		return (NULL);
-	p = (FILE *)ALIGN((u_long)(g + 1));
+	p = (FILE *)ALIGN((unsigned long)(g + 1));
 	g->next = NULL;
 	g->niobs = n;
 	g->iobs = p;
@@ -156,11 +160,12 @@ found:
 	_UB(fp)._size = 0;
 	fp->_lb._base = NULL;	/* no line buffer */
 	fp->_lb._size = 0;
-	memset(WCIO_GET(fp), 0, sizeof(struct wchar_io_data));
+	//memset(WCIO_GET(fp), 0, sizeof(struct wchar_io_data));
 	rwlock_unlock(&__sfp_lock);
 	return (fp);
 }
 
+#ifdef	NOTBK
 /*
  * XXX.  Force immediate allocation of internal memory.  Not used by stdio,
  * but documented historically for certain applications.  Bad applications.
@@ -177,6 +182,7 @@ f_prealloc()
 	if (n > 0)
 		g->next = moreglue(n);
 }
+#endif
 
 /*
  * exit() calls _cleanup() through *__cleanup, set whenever we
@@ -204,6 +210,6 @@ __sinit()
 		_FILEEXT_SETUP(&usual[i], &usualext[i]);
 
 	/* make sure we clean up on exit */
-	__cleanup = _cleanup;		/* conservative */
+	atexit(_cleanup);
 	__sdidinit = 1;
 }

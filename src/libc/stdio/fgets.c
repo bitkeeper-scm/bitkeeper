@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fgets.c	8.2 (Berkeley) 12/22/93";
@@ -65,13 +64,12 @@ fgets(buf, n, fp)
 	char *s;
 	unsigned char *p, *t;
 
-	_DIAGASSERT(buf != NULL);
-	_DIAGASSERT(fp != NULL);
+	assert(buf != NULL);
+	assert(fp != NULL);
 	if (n <= 0)					/* sanity check */
 		return (NULL);
 
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, -1);
 	s = buf;
 	n--;			/* leave space for NUL */
 	while (n != 0) {

@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fgetline.c	8.1 (Berkeley) 6/4/93";
@@ -41,16 +40,11 @@ __RCSID("$NetBSD: fgetln.c,v 1.13 2004/04/21 00:01:57 christos Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #include <stdio.h>
 
 #include "reentrant.h"
 #include "local.h"
-
-#ifdef __weak_alias
-__weak_alias(fgetln,_fgetln)
-#endif
 
 /*
  * Get an input line.  The returned pointer often (but not always)

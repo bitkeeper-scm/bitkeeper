@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fwalk.c	8.1 (Berkeley) 6/4/93";
@@ -49,14 +48,13 @@ __RCSID("$NetBSD: fwalk.c,v 1.10 2003/01/18 11:29:54 thorpej Exp $");
 #include "glue.h"
 
 int
-_fwalk(function)
-	int (*function) __P((FILE *));
+_fwalk(int (*function)(FILE *))
 {
 	FILE *fp;
 	int n, ret;
 	struct glue *g;
 
-	_DIAGASSERT(function != NULL);
+	assert(function != NULL);
 
 	ret = 0;
 	for (g = &__sglue; g != NULL; g = g->next)

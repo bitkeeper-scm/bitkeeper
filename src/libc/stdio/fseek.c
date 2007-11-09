@@ -32,7 +32,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD: fseek.c,v 1.21 2005/03/04 16:25:20 dsl Exp $");
 #endif /* LIBC_SCCS and not lint */
@@ -40,7 +39,6 @@ __RCSID("$NetBSD: fseek.c,v 1.21 2005/03/04 16:25:20 dsl Exp $");
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "namespace.h"
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>

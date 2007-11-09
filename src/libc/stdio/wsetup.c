@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)wsetup.c	8.1 (Berkeley) 6/4/93";
@@ -58,7 +57,7 @@ __swsetup(fp)
 	FILE *fp;
 {
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	/* make sure stdio is set up */
 	if (!__sdidinit)

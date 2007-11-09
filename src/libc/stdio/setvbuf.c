@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)setvbuf.c	8.2 (Berkeley) 11/16/93";
@@ -45,7 +44,6 @@ __RCSID("$NetBSD: setvbuf.c,v 1.16 2003/01/18 11:29:57 thorpej Exp $");
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <wchar.h>
 #include "reentrant.h"
 #include "local.h"
 
@@ -64,7 +62,7 @@ setvbuf(fp, buf, mode, size)
 	size_t iosize;
 	int ttyflag;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 	/* buf may be NULL */
 
 	/*
@@ -87,7 +85,6 @@ setvbuf(fp, buf, mode, size)
 	(void)__sflush(fp);
 	if (HASUB(fp))
 		FREEUB(fp);
-	WCIO_FREE(fp);
 	fp->_r = fp->_lbfsize = 0;
 	flags = fp->_flags;
 	if (flags & __SMBF)
@@ -168,7 +165,11 @@ nbf:
 		/* begin/continue reading, or stay in intermediate state */
 		fp->_w = 0;
 	}
+#ifdef	NOTBK
 	__cleanup = _cleanup;
+#else
+	atexit(_cleanup);
+#endif
 
 	FUNLOCKFILE(fp);
 	return (ret);

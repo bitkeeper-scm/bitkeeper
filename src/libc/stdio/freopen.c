@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)freopen.c	8.1 (Berkeley) 6/4/93";
@@ -50,7 +49,7 @@ __RCSID("$NetBSD: freopen.c,v 1.13 2003/01/18 11:29:53 thorpej Exp $");
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <wchar.h>
+//#include <wchar.h>
 #include "reentrant.h"
 #include "local.h"
 
@@ -67,9 +66,9 @@ freopen(file, mode, fp)
 	int f;
 	int flags, isopen, oflags, sverrno, wantfd;
 
-	_DIAGASSERT(file != NULL);
-	_DIAGASSERT(mode != NULL);
-	_DIAGASSERT(fp != NULL);
+	assert(file != NULL);
+	assert(mode != NULL);
+	assert(fp != NULL);
 
 	if ((flags = __sflags(mode, &oflags)) == 0) {
 		(void) fclose(fp);
@@ -132,7 +131,6 @@ freopen(file, mode, fp)
 	fp->_lbfsize = 0;
 	if (HASUB(fp))
 		FREEUB(fp);
-	WCIO_FREE(fp);
 	_UB(fp)._size = 0;
 	if (HASLB(fp))
 		FREELB(fp);
@@ -144,6 +142,7 @@ freopen(file, mode, fp)
 		return (NULL);
 	}
 
+#ifndef	WIN32
 	if (oflags & O_NONBLOCK) {
 		struct stat st;
 		if (fstat(f, &st) == -1) {
@@ -158,6 +157,7 @@ freopen(file, mode, fp)
 			return (NULL);
 		}
 	}
+#endif
 
 	/*
 	 * If reopening something that was open before on a real file, try

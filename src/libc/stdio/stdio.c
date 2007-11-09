@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)stdio.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: stdio.c,v 1.12 2003/01/18 11:29:58 thorpej Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -65,8 +63,8 @@ __sread(cookie, buf, n)
 	FILE *fp = cookie;
 	int ret;
 	
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(buf != NULL);
+	assert(fp != NULL);
+	assert(buf != NULL);
 
 	ret = read(fp->_file, buf, (size_t)n);
 	/* if the read succeeded, update the current offset */
@@ -85,8 +83,8 @@ __swrite(cookie, buf, n)
 {
 	FILE *fp = cookie;
 
-	_DIAGASSERT(cookie != NULL);
-	_DIAGASSERT(buf != NULL);
+	assert(cookie != NULL);
+	assert(buf != NULL);
 
 	if (fp->_flags & __SAPP)
 		(void) lseek(fp->_file, (off_t)0, SEEK_END);
@@ -103,7 +101,7 @@ __sseek(cookie, offset, whence)
 	FILE *fp = cookie;
 	off_t ret;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 	
 	ret = lseek(fp->_file, (off_t)offset, whence);
 	if (ret == -1L)
@@ -120,7 +118,7 @@ __sclose(cookie)
 	void *cookie;
 {
 
-	_DIAGASSERT(cookie != NULL);
+	assert(cookie != NULL);
 
 	return (close(((FILE *)cookie)->_file));
 }

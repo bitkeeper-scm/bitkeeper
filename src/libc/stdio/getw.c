@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)getw.c	8.1 (Berkeley) 6/4/93";
@@ -51,7 +50,7 @@ getw(fp)
 {
 	int x;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	return (fread((void *)&x, sizeof(x), 1, fp) == 1 ? x : EOF);
 }

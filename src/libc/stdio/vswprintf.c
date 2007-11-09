@@ -27,7 +27,6 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 __FBSDID("$FreeBSD: src/lib/libc/stdio/vswprintf.c,v 1.6 2005/02/21 19:41:44 fjoe Exp $");

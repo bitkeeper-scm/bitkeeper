@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)makebuf.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: makebuf.c,v 1.13 2003/01/18 11:29:55 thorpej Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -68,7 +66,7 @@ __smakebuf(fp)
 	size_t size;
 	int couldbetty;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	if (fp->_flags & __SNBF) {
 		fp->_bf._base = fp->_p = fp->_nbuf;
@@ -82,7 +80,11 @@ __smakebuf(fp)
 		fp->_bf._size = 1;
 		return;
 	}
+#ifdef	NOTBK
 	__cleanup = _cleanup;
+#else
+	atexit(_cleanup);
+#endif
 	flags |= __SMBF;
 	fp->_bf._base = fp->_p = p;
 	fp->_bf._size = size;
@@ -101,10 +103,11 @@ __swhatbuf(fp, bufsize, couldbetty)
 	int *couldbetty;
 {
 	struct stat st;
+	int st_blksize;
 
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(bufsize != NULL);
-	_DIAGASSERT(couldbetty != NULL);
+	assert(fp != NULL);
+	assert(bufsize != NULL);
+	assert(couldbetty != NULL);
 
 	if (fp->_file < 0 || fstat(fp->_file, &st) < 0) {
 		*couldbetty = 0;
@@ -114,7 +117,12 @@ __swhatbuf(fp, bufsize, couldbetty)
 
 	/* could be a tty iff it is a character device */
 	*couldbetty = S_ISCHR(st.st_mode);
-	if (st.st_blksize == 0) {
+#ifdef	WIN32
+	st_blksize = STDIO_BLKSIZE;
+#else
+	st_blksize = st.st_blksize;
+#endif
+	if (st_blksize == 0) {
 		*bufsize = BUFSIZ;
 		return (__SNPT);
 	}
@@ -124,8 +132,8 @@ __swhatbuf(fp, bufsize, couldbetty)
 	 * __sseek is mainly paranoia.)  It is safe to set _blksize
 	 * unconditionally; it will only be used if __SOPT is also set.
 	 */
-	*bufsize = st.st_blksize;
-	fp->_blksize = st.st_blksize;
+	*bufsize = st_blksize;
+	fp->_blksize = st_blksize;
 	return ((st.st_mode & S_IFMT) == S_IFREG && fp->_seek == __sseek ?
 	    __SOPT : __SNPT);
 }

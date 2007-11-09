@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)wbuf.c	8.1 (Berkeley) 6/4/93";
@@ -59,9 +58,8 @@ __swbuf(c, fp)
 {
 	int n;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
-	_SET_ORIENTATION(fp, -1);
 
 	/*
 	 * In case we cannot write, or longjmp takes us out early,

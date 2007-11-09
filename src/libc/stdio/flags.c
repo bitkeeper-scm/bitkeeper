@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)flags.c	8.1 (Berkeley) 6/4/93";
@@ -61,7 +60,7 @@ __sflags(mode, optr)
 {
 	int ret, m, o;
 
-	_DIAGASSERT(mode != NULL);
+	assert(mode != NULL);
 
 	switch (*mode++) {
 
@@ -98,10 +97,19 @@ __sflags(mode, optr)
 			ret = __SRW;
 			m = O_RDWR;
 			break;
+#ifdef	WIN32
+		case 't':
+			o |= O_TEXT;
+			break;
+#else
 		case 'f':
 			o |= O_NONBLOCK;
 			break;
+#endif
 		case 'b':
+#ifdef	WIN32
+			o |= O_BINARY;
+#endif
 			break;
 		default:	/* We could produce a warning here */
 			break;

@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fread.c	8.2 (Berkeley) 12/11/93";
@@ -59,7 +58,7 @@ fread(buf, size, count, fp)
 	int r;
 	size_t total;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 	/*
 	 * The ANSI standard requires a return value of 0 for a count
 	 * or a size of 0.  Whilst ANSI imposes no such requirements on
@@ -68,7 +67,7 @@ fread(buf, size, count, fp)
 	if ((resid = count * size) == 0)
 		return (0);
 
-	_DIAGASSERT(buf != NULL);
+	assert(buf != NULL);
 
 	FLOCKFILE(fp);
 	if (fp->_r < 0)

@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)vfscanf.c	8.1 (Berkeley) 6/4/93";
@@ -42,32 +41,11 @@ __RCSID("$NetBSD: vfscanf.c,v 1.37 2006/02/16 23:26:19 christos Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
-#include <assert.h>
-#include <ctype.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <stdarg.h>
-#include <string.h>
-#include <wchar.h>
-#include <wctype.h>
-
 #include "reentrant.h"
 #include "local.h"
 
 #ifndef NO_FLOATING_POINT
 #include <locale.h>
-#endif
-
-/*
- * Provide an external name for vfscanf.  Note, we don't use the normal
- * namespace.h method; stdio routines explicitly use the internal name
- * __svfscanf.
- */
-#ifdef __weak_alias
-__weak_alias(vfscanf,__svfscanf)
 #endif
 
 #define	BUF		513	/* Maximum length of numeric string. */
@@ -122,7 +100,11 @@ __collate_range_cmp(int c1, int c2)
 
 	s1[0] = c1;
 	s2[0] = c2;
+#ifdef	NOTBK
 	return strcoll(s1, s2);
+#else
+	return strcmp(s1, s2);
+#endif
 }
 
 
@@ -159,19 +141,20 @@ __svfscanf_unlocked(FILE *fp, const char *fmt0, va_list ap)
 	int base;		/* base argument to conversion function */
 	char ccltab[256];	/* character class table for %[...] */
 	char buf[BUF];		/* buffer for numeric and mb conversions */
+#ifdef	NOTBK
 	wchar_t *wcp;		/* handy wide character pointer */
 	size_t nconv;		/* length of multibyte sequence converted */
 	static const mbstate_t initial;
 	mbstate_t mbs;
+#endif
 
 	/* `basefix' is used to avoid `if' tests in the integer scanner */
 	static const short basefix[17] =
 		{ 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
 
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(fmt0 != NULL);
+	assert(fp != NULL);
+	assert(fmt0 != NULL);
 
-	_SET_ORIENTATION(fp, -1);
 
 	nassigned = 0;
 	nconversions = 0;
@@ -230,7 +213,11 @@ literal:
 			flags |= SIZET;
 			goto again;
 		case 'L':
+#ifdef	NOTBK
 			flags |= LONGDBL;
+#else
+			assert("no long double support in scanf" == 0);
+#endif
 			goto again;
 		case 'h':
 			if (flags & SHORT) {
@@ -278,7 +265,12 @@ literal:
 			base = 16;
 			break;
 
-#ifndef NO_FLOATING_POINT
+#ifdef NO_FLOATING_POINT
+		case 'A': case 'E': case 'F': case 'G':
+		case 'a': case 'e': case 'f': case 'g':
+			assert("no fscanf float support" == 0);
+			break;
+#else
 		case 'A': case 'E': case 'F': case 'G':
 		case 'a': case 'e': case 'f': case 'g':
 			c = CT_FLOAT;
@@ -379,6 +371,7 @@ literal:
 			/* scan arbitrary characters (sets NOSKIP) */
 			if (width == 0)
 				width = 1;
+#ifdef	NOTBK
 			if (flags & LONG) {
 				if ((flags & SUPPRESS) == 0)
 					wcp = va_arg(ap, wchar_t *);
@@ -418,7 +411,9 @@ literal:
 				}
 				if (!(flags & SUPPRESS))
 					nassigned++;
-			} else if (flags & SUPPRESS) {
+			} else
+#endif
+			if (flags & SUPPRESS) {
 				size_t sum = 0;
 				for (;;) {
 					if ((n = fp->_r) < width) {
@@ -456,6 +451,7 @@ literal:
 				width = (size_t)~0;	/* `infinity' */
 			/* take only those things in the class */
 			if (flags & LONG) {
+#ifdef	NOTBK
 				wchar_t twc;
 				int nchars;
 
@@ -517,6 +513,7 @@ literal:
 					*wcp = L'\0';
 					nassigned++;
 				}
+#endif
 			} else if (flags & SUPPRESS) {
 				n = 0;
 				while (ccltab[*fp->_p]) {
@@ -559,6 +556,7 @@ literal:
 			if (width == 0)
 				width = (size_t)~0;
 			if (flags & LONG) {
+#ifdef	NOTBK
 				wchar_t twc;
 
 				if ((flags & SUPPRESS) == 0)
@@ -609,6 +607,7 @@ literal:
 					*wcp = L'\0';
 					nassigned++;
 				}
+#endif
 			} else if (flags & SUPPRESS) {
 				n = 0;
 				while (!isspace(*fp->_p)) {
@@ -764,9 +763,9 @@ literal:
 
 				*p = 0;
 				if ((flags & UNSIGNED) == 0)
-				    res = strtoimax(buf, (char **)NULL, base);
+				    res = strtol(buf, (char **)NULL, base);
 				else
-				    res = strtoumax(buf, (char **)NULL, base);
+				    res = strtoul(buf, (char **)NULL, base);
 				if (flags & POINTER)
 					*va_arg(ap, void **) =
 							(void *)(uintptr_t)res;
@@ -801,14 +800,17 @@ literal:
 			if ((width = parsefloat(fp, buf, buf + width)) == 0)
 				goto match_failure;
 			if ((flags & SUPPRESS) == 0) {
+#ifdef	NOTBK
 				if (flags & LONGDBL) {
 					long double res = strtold(buf, &p);
 					*va_arg(ap, long double *) = res;
-				} else if (flags & LONG) {
+				} else
+#endif
+					if (flags & LONG) {
 					double res = strtod(buf, &p);
 					*va_arg(ap, double *) = res;
 				} else {
-					float res = strtof(buf, &p);
+					float res = strtod(buf, &p);
 					*va_arg(ap, float *) = res;
 				}
 				if (__scanfdebug && p - buf != width)
@@ -840,8 +842,8 @@ __sccl(tab, fmt)
 {
 	int c, n, v, i;
 
-	_DIAGASSERT(tab != NULL);
-	_DIAGASSERT(fmt != NULL);
+	assert(tab != NULL);
+	assert(fmt != NULL);
 	/* first `clear' the whole table */
 	c = *fmt++;		/* first char hat => negated scanset */
 	if (c == '^') {
@@ -949,7 +951,7 @@ parsefloat(FILE *fp, char *buf, char *end)
 	} state = S_START;
 	unsigned char c;
 	char decpt = *localeconv()->decimal_point;
-	_Bool gotmantdig = 0, ishex = 0;
+	int gotmantdig = 0, ishex = 0;
 
 	/*
 	 * We set commit = p whenever the string we have read so far

@@ -35,7 +35,6 @@
 
 #if !HAVE_NBTOOL_CONFIG_H || !HAVE_MKSTEMP
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)mktemp.c	8.1 (Berkeley) 6/4/93";
@@ -44,7 +43,6 @@ __RCSID("$NetBSD: mkstemp.c,v 1.8 2003/10/27 00:12:42 lukem Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #if HAVE_NBTOOL_CONFIG_H
 #define	GETTEMP		gettemp
@@ -59,17 +57,13 @@ __RCSID("$NetBSD: mkstemp.c,v 1.8 2003/10/27 00:12:42 lukem Exp $");
 #define	GETTEMP		__gettemp
 #endif
 
-#ifdef __weak_alias
-__weak_alias(mkstemp,_mkstemp)
-#endif
-
 int
 mkstemp(path)
 	char *path;
 {
 	int fd;
 
-	_DIAGASSERT(path != NULL);
+	assert(path != NULL);
 
 	return (GETTEMP(path, &fd, 0) ? fd : -1);
 }

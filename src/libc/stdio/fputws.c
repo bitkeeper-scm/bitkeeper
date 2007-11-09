@@ -29,7 +29,6 @@
  * FreeBSD: src/lib/libc/stdio/fputws.c,v 1.4 2002/09/20 13:25:40 tjr Exp
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD$");
 #endif
@@ -46,11 +45,10 @@ fputws(ws, fp)
 	const wchar_t * __restrict ws;
 	FILE * __restrict fp;
 {
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(ws != NULL);
+	assert(fp != NULL);
+	assert(ws != NULL);
 
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, 1);
 
 	while (*ws != '\0') {
 		if (__fputwc_unlock(*ws++, fp) == WEOF) {

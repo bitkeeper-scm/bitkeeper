@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)vsscanf.c	8.1 (Berkeley) 6/4/93";
@@ -48,7 +47,7 @@ __RCSID("$NetBSD: vsscanf.c,v 1.13 2003/08/07 16:43:35 agc Exp $");
 #include "reentrant.h"
 #include "local.h"
 
-static int eofread __P((void *, char *, int));
+static int eofread(void *, char *, int);
 
 /* ARGSUSED */
 static int
@@ -64,13 +63,13 @@ int
 vsscanf(str, fmt, ap)
 	const char *str;
 	const char *fmt;
-	_BSD_VA_LIST_ ap;
+	va_list ap;
 {
 	FILE f;
 	struct __sfileext fext;
 
-	_DIAGASSERT(str != NULL);
-	_DIAGASSERT(fmt != NULL);
+	assert(str != NULL);
+	assert(fmt != NULL);
 
 	_FILEEXT_SETUP(&f, &fext);
 	f._flags = __SRD;

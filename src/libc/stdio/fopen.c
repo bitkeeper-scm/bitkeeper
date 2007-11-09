@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fopen.c	8.1 (Berkeley) 6/4/93";
@@ -60,13 +59,14 @@ fopen(file, mode)
 	int f;
 	int flags, oflags;
 
-	_DIAGASSERT(file != NULL);
+	assert(file != NULL);
 	if ((flags = __sflags(mode, &oflags)) == 0)
 		return (NULL);
 	if ((fp = __sfp()) == NULL)
 		return (NULL);
 	if ((f = open(file, oflags, DEFFILEMODE)) < 0)
 		goto release;
+#ifndef	WIN32
 	if (oflags & O_NONBLOCK) {
 		struct stat st;
 		if (fstat(f, &st) == -1) {
@@ -81,6 +81,7 @@ fopen(file, mode)
 			goto release;
 		}
 	}
+#endif
 	fp->_file = f;
 	fp->_flags = flags;
 	fp->_cookie = fp;

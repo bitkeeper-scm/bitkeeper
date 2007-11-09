@@ -7,7 +7,7 @@
 #undef rename
 
 /* functions that expect file name as input */ 
-#define fopen(n, f)		nt_fopen(n, f)
+//#define fopen(n, f)		nt_fopen(n, f)
 #define open(x,f,p)		nt_open(x, f, p)
 #define unlink(f)		nt_unlink(f)
 #define rename(oldf, newf)	nt_rename(oldf, newf)
@@ -30,7 +30,6 @@
 #define	dup2(fd1, fd2)		nt_dup2(fd1, fd2)
 #define sleep(x)		nt_sleep(x)
 #define execvp(a, b)		nt_execvp(a, b)
-#define vsnprintf(a, b, c, d)	_vsnprintf(a, b, c, d)
 
 #endif /* _RE_MAP_H_ */
 

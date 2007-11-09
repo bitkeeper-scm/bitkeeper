@@ -28,7 +28,6 @@
  * $Citrus$
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD$");
 #endif /* LIBC_SCCS and not lint */
@@ -52,14 +51,13 @@ __fputwc_unlock(wchar_t wc, FILE *fp)
 	struct __suio uio;
 	struct __siov iov;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 	
 	/* LINTED we don't play with buf */
 	iov.iov_base = (void *)buf;
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
 
-	_SET_ORIENTATION(fp, 1);
 	wcio = WCIO_GET(fp);
 	if (wcio == 0) {
 		errno = ENOMEM;
@@ -75,7 +73,7 @@ __fputwc_unlock(wchar_t wc, FILE *fp)
 		return WEOF;
 	}
 
-	_DIAGASSERT(size != 0);
+	assert(size != 0);
 
 	uio.uio_resid = iov.iov_len = size;
 	if (__sfvwrite(fp, &uio)) {
@@ -90,7 +88,7 @@ fputwc(wchar_t wc, FILE *fp)
 {
 	wint_t r;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	FLOCKFILE(fp);
 	r = __fputwc_unlock(wc, fp);

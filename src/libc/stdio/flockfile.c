@@ -36,12 +36,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD: flockfile.c,v 1.7 2003/07/21 22:24:47 nathanw Exp $");
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #include <assert.h>
 #include <errno.h>

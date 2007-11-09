@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fputs.c	8.1 (Berkeley) 6/4/93";
@@ -61,8 +60,8 @@ fputs(s, fp)
 	struct __siov iov;
 	int r;
 
-	_DIAGASSERT(s != NULL);
-	_DIAGASSERT(fp != NULL);
+	assert(s != NULL);
+	assert(fp != NULL);
 
 	if (s == NULL)
 		s = "(null)";
@@ -72,7 +71,6 @@ fputs(s, fp)
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, -1);
 	r = __sfvwrite(fp, &uio);
 	FUNLOCKFILE(fp);
 	return r;

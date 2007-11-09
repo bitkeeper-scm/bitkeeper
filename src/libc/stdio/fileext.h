@@ -33,7 +33,7 @@
  */
 struct __sfileext {
 	struct	__sbuf _ub; /* ungetc buffer */
-	struct wchar_io_data _wcio;	/* wide char i/o status */
+	//	struct wchar_io_data _wcio;	/* wide char i/o status */
 #ifdef _REENTRANT
 	mutex_t	_lock;	/* Lock for FLOCKFILE/FUNLOCKFILE */
 	cond_t _lockcond; /* Condition variable for signalling lock releases */

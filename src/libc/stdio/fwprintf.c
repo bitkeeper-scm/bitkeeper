@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 __FBSDID("$FreeBSD: src/lib/libc/stdio/fwprintf.c,v 1.1 2002/09/21 13:00:30 tjr Exp $");

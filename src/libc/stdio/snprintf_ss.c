@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)snprintf.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: snprintf_ss.c,v 1.3 2006/11/22 17:23:25 christos Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -49,7 +47,6 @@ __RCSID("$NetBSD: snprintf_ss.c,v 1.3 2006/11/22 17:23:25 christos Exp $");
 #include <stdio.h>
 
 #include "reentrant.h"
-#include "extern.h"
 #include "local.h"
 
 #ifdef __weak_alias

@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)perror.c	8.1 (Berkeley) 6/4/93";
@@ -38,12 +37,10 @@ __RCSID("$NetBSD: perror.c,v 1.23 2005/07/28 16:26:29 christos Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
-#include "extern.h"
 
 /*
  * Since perror() is not allowed to change the contents of strerror()'s

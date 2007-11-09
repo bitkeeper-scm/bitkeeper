@@ -32,12 +32,10 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD: fseeko.c,v 1.5 2005/03/04 16:04:58 dsl Exp $");
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -48,10 +46,6 @@ __RCSID("$NetBSD: fseeko.c,v 1.5 2005/03/04 16:04:58 dsl Exp $");
 #include <stdlib.h>
 #include "reentrant.h"
 #include "local.h"
-
-#ifdef __weak_alias
-__weak_alias(fseeko, _fseeko)
-#endif
 
 #define	POS_ERR	(-(fpos_t)1)
 
@@ -68,7 +62,7 @@ fseeko(FILE *fp, off_t offset, int whence)
 	struct stat st;
 	int havepos;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	/* make sure stdio is set up */
 	if (!__sdidinit)
@@ -150,7 +144,11 @@ fseeko(FILE *fp, off_t offset, int whence)
 			fp->_flags |= __SNPT;
 			goto dumb;
 		}
+#ifndef	WIN32
 		fp->_blksize = st.st_blksize;
+#else
+		fp->_blksize = STDIO_BLKSIZE;
+#endif
 		fp->_flags |= __SOPT;
 	}
 

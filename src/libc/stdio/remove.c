@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)remove.c	8.1 (Berkeley) 6/4/93";
@@ -55,7 +54,7 @@ remove(file)
 {
 	struct stat sb;
 
-	_DIAGASSERT(file != NULL);
+	assert(file != NULL);
 
 	if (lstat(file, &sb) < 0)
 		return (-1);

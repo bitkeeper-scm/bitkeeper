@@ -34,53 +34,84 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  */
 
-#include "wcio.h"
+#include "system.h"
+#include <limits.h>
+#ifdef	WIN32
+#include <stdint.h>
+#endif
+
 #include "fileext.h"
+
+#define	STDIO_BLKSIZE	(8<<10)
+
+#ifndef	DEFFILEMODE
+#define	DEFFILEMODE 0666
+#endif
+
+#ifndef	EFTYPE
+#define	EFTYPE ENOSYS
+#endif
+
+#ifndef	ALIGNBYTES
+#define	ALIGNBYTES	(sizeof(void *) - 1)
+#endif
+#ifndef	ALIGN
+#define	ALIGN(p)	(((unsigned long)(p) + ALIGNBYTES) &~ ALIGNBYTES)
+#endif
+
+#ifndef	INTMAX_MAX
+#define	intmax_t	long int
+#define	uintmax_t	unsigned long int
+#define	INTMAX_MAX	9223372036854775807L
+#define	intptr_t	long
+#endif
+#ifndef	UINTPTR_MAX
+#define	uintptr_t	unsigned long int
+#endif
+
+#ifndef NULL
+#define	NULL	0
+#endif
+
+#define	__UNCONST(s)	((unsigned char *)s)
 
 /*
  * Information local to this implementation of stdio,
  * in particular, macros and private variables.
  */
 
-extern int	__sflush __P((FILE *));
-extern FILE	*__sfp __P((void));
-extern int	__srefill __P((FILE *));
-extern int	__sread __P((void *, char *, int));
-extern int	__swrite __P((void *, char const *, int));
-extern fpos_t	__sseek __P((void *, fpos_t, int));
-extern int	__sclose __P((void *));
-extern void	__sinit __P((void));
-extern void	_cleanup __P((void));
-extern void	(*__cleanup) __P((void));
-extern void	__smakebuf __P((FILE *));
-extern int	__swhatbuf __P((FILE *, size_t *, int *));
-extern int	_fwalk __P((int (*)(FILE *)));
-extern char	*_mktemp __P((char *));
-extern int	__swsetup __P((FILE *));
-extern int	__sflags __P((const char *, int *));
-extern int	__svfscanf __P((FILE * __restrict, const char * __restrict,
-		    _BSD_VA_LIST_))
+extern int	__sflush(FILE *);
+extern FILE	*__sfp(void);
+extern int	__srefill(FILE *);
+extern int	__sread(void *, char *, int);
+extern int	__swrite(void *, char const *, int);
+extern fpos_t	__sseek(void *, fpos_t, int);
+extern int	__sclose(void *);
+extern void	__sinit(void);
+extern void	_cleanup(void);
+extern void	(*__cleanup)(void);
+extern void	__smakebuf(FILE *);
+extern int	__swhatbuf(FILE *, size_t *, int *);
+extern int	_fwalk(int (*)(FILE *));
+extern char	*_mktemp(char *);
+extern int	__swsetup(FILE *);
+extern int	__sflags(const char *, int *);
+extern int	__svfscanf(FILE * __restrict, const char * __restrict,
+		    va_list)
 		    __attribute__((__format__(__scanf__, 2, 0)));
-extern int	__svfscanf_unlocked __P((FILE * __restrict, const char * __restrict,
-		    _BSD_VA_LIST_))
+extern int	__svfscanf_unlocked(FILE * __restrict, const char * __restrict,
+		    va_list)
 		    __attribute__((__format__(__scanf__, 2, 0)));
-extern int	__vfprintf_unlocked __P((FILE * __restrict, const char * __restrict,
-		    _BSD_VA_LIST_));
+extern int	__vfprintf_unlocked(FILE * __restrict, const char * __restrict,
+		    va_list);
 
 
 extern int	__sdidinit;
 
-extern int	__gettemp __P((char *, int *, int));
+extern int	__gettemp(char *, int *, int);
 
-extern wint_t	__fgetwc_unlock __P((FILE *));
-extern wint_t	__fputwc_unlock __P((wchar_t, FILE *));
-
-extern char	*__fgetstr __P((FILE * __restrict, size_t * __restrict, int));
-extern int	 __slbexpand __P((FILE *, size_t));
-extern int 	 __vfwprintf_unlocked __P((FILE *, const wchar_t *,
-    _BSD_VA_LIST_));
-extern int	 __vfwscanf_unlocked __P((FILE * __restrict,
-    const wchar_t * __restrict, _BSD_VA_LIST_));
+extern char	*__fgetstr(FILE * __restrict, size_t * __restrict, int);
+extern int	 __slbexpand(FILE *, size_t);
 
 /*
  * Return true iff the given FILE cannot be written now.
@@ -109,5 +140,5 @@ extern int	 __vfwscanf_unlocked __P((FILE * __restrict,
 	(fp)->_lb._base = NULL; \
 }
 
-extern void __flockfile_internal __P((FILE *, int));
-extern void __funlockfile_internal __P((FILE *, int));
+extern void __flockfile_internal(FILE *, int);
+extern void __funlockfile_internal(FILE *, int);

@@ -26,7 +26,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 __FBSDID("$FreeBSD: src/lib/libc/stdio/fgetwln.c,v 1.2 2004/08/06 17:00:09 tjr Exp $");
@@ -35,7 +34,6 @@ __RCSID("$NetBSD: ftell.c,v 1.15 2003/08/07 16:43:25 agc Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <stdio.h>
 #include <wchar.h>
 #include "reentrant.h"
@@ -52,7 +50,6 @@ fgetwln(FILE * __restrict fp, size_t *lenp)
 	size_t len;
 
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, 1);
 
 	len = 0;
 	while ((wc = __fgetwc_unlock(fp)) != WEOF) {

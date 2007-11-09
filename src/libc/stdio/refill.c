@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)refill.c	8.1 (Berkeley) 6/4/93";
@@ -52,14 +51,14 @@ __RCSID("$NetBSD: refill.c,v 1.12 2003/01/18 11:29:56 thorpej Exp $");
 extern rwlock_t __sfp_lock;
 #endif
 
-static int lflush __P((FILE *));
+static int lflush(FILE *);
 
 static int
 lflush(fp)
 	FILE *fp;
 {
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	if ((fp->_flags & (__SLBF|__SWR)) == (__SLBF|__SWR))
 		return (__sflush(fp));
@@ -75,7 +74,7 @@ __srefill(fp)
 	FILE *fp;
 {
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	/* make sure stdio is set up */
 	if (!__sdidinit)

@@ -35,7 +35,6 @@
 
 #if !HAVE_NBTOOL_CONFIG_H || !HAVE_MKSTEMP || !HAVE_MKDTEMP
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)mktemp.c	8.1 (Berkeley) 6/4/93";
@@ -71,7 +70,7 @@ GETTEMP(path, doopen, domkdir)
 {
 	char *start, *trv;
 	struct stat sbuf;
-	u_int pid;
+	unsigned int pid;
 
 	/* To guarantee multiple calls generate unique names even if
 	   the file is not created. 676 different possibilities with 7
@@ -79,7 +78,7 @@ GETTEMP(path, doopen, domkdir)
 	static char xtra[2] = "aa";
 	int xcnt = 0;
 
-	_DIAGASSERT(path != NULL);
+	assert(path != NULL);
 	/* doopen may be NULL */
 
 	pid = getpid();

@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fvwrite.c	8.1 (Berkeley) 6/4/93";
@@ -68,8 +67,8 @@ __sfvwrite(fp, uio)
 	char *nl;
 	int nlknown, nldist;
 
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(uio != NULL);
+	assert(fp != NULL);
+	assert(uio != NULL);
 
 	if ((len = uio->uio_resid) == 0)
 		return (0);
@@ -79,7 +78,9 @@ __sfvwrite(fp, uio)
 		return (EOF);
 	}
 
+#ifndef MIN
 #define	MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
 #define	COPY(n)	  (void)memcpy((void *)fp->_p, (void *)p, (size_t)(n))
 
 	iov = uio->uio_iov;

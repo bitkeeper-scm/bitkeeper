@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)putc.c	8.1 (Berkeley) 6/4/93";
@@ -60,7 +59,7 @@ putc(c, fp)
 {
 	int r;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	FLOCKFILE(fp);
 	r = __sputc(c, fp);
@@ -74,7 +73,7 @@ putc_unlocked(c, fp)
 	FILE *fp;
 {
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	return (__sputc(c, fp));
 }

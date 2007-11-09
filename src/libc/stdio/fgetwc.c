@@ -28,7 +28,6 @@
  * $Citrus$
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD: fgetwc.c,v 1.7 2007/04/01 17:49:10 tnozaki Exp $");
 #endif /* LIBC_SCCS and not lint */
@@ -47,11 +46,10 @@ __fgetwc_unlock(FILE *fp)
 	wchar_t wc;
 	size_t nr;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
-	_SET_ORIENTATION(fp, 1);
 	wcio = WCIO_GET(fp);
-	_DIAGASSERT(wcio != NULL);
+	assert(wcio != NULL);
 
 	/* if there're ungetwc'ed wchars, use them */
 	if (wcio->wcio_ungetwc_inbuf)
@@ -90,7 +88,7 @@ fgetwc(FILE *fp)
 {
 	wint_t r;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	FLOCKFILE(fp);
 	r = __fgetwc_unlock(fp);

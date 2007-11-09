@@ -27,7 +27,6 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD: vasprintf.c,v 1.9 2003/01/18 11:29:59 thorpej Exp $");
 #endif /* LIBC_SCCS and not lint */
@@ -43,15 +42,15 @@ int
 vasprintf(str, fmt, ap)
 	char **str;
 	const char *fmt;
-	_BSD_VA_LIST_ ap;
+	va_list ap;
 {
 	int ret;
 	FILE f;
 	struct __sfileext fext;
 	unsigned char *_base;
 
-	_DIAGASSERT(str != NULL);
-	_DIAGASSERT(fmt != NULL);
+	assert(str != NULL);
+	assert(fmt != NULL);
 
 	_FILEEXT_SETUP(&f, &fext);
 	f._file = -1;

@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)vsnprintf.c	8.1 (Berkeley) 6/4/93";
@@ -41,7 +40,6 @@ __RCSID("$NetBSD: vsnprintf_ss.c,v 1.5 2007/02/03 00:27:52 christos Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #include <sys/types.h>
 #include <inttypes.h>
@@ -51,7 +49,6 @@ __RCSID("$NetBSD: vsnprintf_ss.c,v 1.5 2007/02/03 00:27:52 christos Exp $");
 #include <stdarg.h>
 #include <string.h>
 #include "reentrant.h"
-#include "extern.h"
 #include "local.h"
 
 #ifdef __weak_alias
@@ -116,7 +113,7 @@ __weak_alias(vsnprintf_ss,_vsnprintf_ss)
 } while (/*CONSTCOND*/0)
 
 int
-vsnprintf_ss(char *sbuf, size_t slen, const char *fmt0, _BSD_VA_LIST_ ap)
+vsnprintf_ss(char *sbuf, size_t slen, const char *fmt0, va_list ap)
 {
 	const char *fmt;	/* format string */
 	int ch;			/* character from fmt */
@@ -140,8 +137,8 @@ vsnprintf_ss(char *sbuf, size_t slen, const char *fmt0, _BSD_VA_LIST_ ap)
 	static const char xdigs_lower[16] = "0123456789abcdef";
 	static const char xdigs_upper[16] = "0123456789ABCDEF";
 
-	_DIAGASSERT(slen == 0 || sbuf != NULL);
-	_DIAGASSERT(fmt0 != NULL);
+	assert(slen == 0 || sbuf != NULL);
+	assert(fmt0 != NULL);
 
 	if ((int)slen < 0) {
 		errno = EINVAL;

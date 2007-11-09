@@ -35,7 +35,6 @@
 
 #if !HAVE_NBTOOL_CONFIG_H || !HAVE_MKDTEMP
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)mktemp.c	8.1 (Berkeley) 6/4/93";
@@ -61,7 +60,7 @@ char *
 mkdtemp(path)
 	char *path;
 {
-	_DIAGASSERT(path != NULL);
+	assert(path != NULL);
 
 	return (GETTEMP(path, (int *)NULL, 1) ? path : (char *)NULL);
 }

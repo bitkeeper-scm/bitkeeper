@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)fpurge.c	8.1 (Berkeley) 6/4/93";
@@ -45,7 +44,7 @@ __RCSID("$NetBSD: fpurge.c,v 1.12 2003/01/18 11:29:52 thorpej Exp $");
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <wchar.h>
+//#include <wchar.h>
 #include "reentrant.h"
 #include "local.h"
 
@@ -58,7 +57,7 @@ fpurge(fp)
 	FILE *fp;
 {
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	if (fp->_flags == 0) {
 		errno = EBADF;
@@ -67,7 +66,6 @@ fpurge(fp)
 	FLOCKFILE(fp);
 	if (HASUB(fp))
 		FREEUB(fp);
-	WCIO_FREE(fp);
 	fp->_p = fp->_bf._base;
 	fp->_r = 0;
 	fp->_w = fp->_flags & (__SLBF|__SNBF) ? 0 : fp->_bf._size;

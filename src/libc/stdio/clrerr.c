@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)clrerr.c	8.1 (Berkeley) 6/4/93";
@@ -51,7 +50,7 @@ void
 clearerr(fp)
 	FILE *fp;
 {
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	FLOCKFILE(fp);
 	__sclearerr(fp);

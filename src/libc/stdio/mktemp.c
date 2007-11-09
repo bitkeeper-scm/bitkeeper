@@ -29,7 +29,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)mktemp.c	8.1 (Berkeley) 6/4/93";
@@ -51,7 +50,7 @@ _mktemp(path)
 	char *path;
 {
 
-	_DIAGASSERT(path != NULL);
+	assert(path != NULL);
 
 	return (__gettemp(path, (int *)NULL, 0) ? path : (char *)NULL);
 }
@@ -64,7 +63,7 @@ mktemp(path)
 	char *path;
 {
 
-	_DIAGASSERT(path != NULL);
+	assert(path != NULL);
 
 	return (__gettemp(path, (int *)NULL, 0) ? path : (char *)NULL);
 }

@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)putw.c	8.1 (Berkeley) 6/4/93";
@@ -57,7 +56,7 @@ putw(w, fp)
 	struct __siov iov;
 	int r;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	iov.iov_base = &w;
 	iov.iov_len = uio.uio_resid = sizeof(w);

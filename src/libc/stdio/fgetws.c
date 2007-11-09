@@ -30,7 +30,6 @@
  *
  */
 
-#include <sys/cdefs.h>
 #if defined(LIB_SCCS) && !defined(lint)
 __RCSID("$NetBSD: fgetws.c,v 1.1 2003/03/07 07:11:37 tshiozak Exp $");
 #endif
@@ -51,11 +50,10 @@ fgetws(ws, n, fp)
 	wchar_t *wsp;
 	wint_t wc;
 
-	_DIAGASSERT(fp != NULL);
-	_DIAGASSERT(ws != NULL);
+	assert(fp != NULL);
+	assert(ws != NULL);
 
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, 1);
 
 	if (n <= 0) {
 		errno = EINVAL;

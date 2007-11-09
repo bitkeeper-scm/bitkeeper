@@ -36,7 +36,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)ftell.c	8.2 (Berkeley) 5/4/95";
@@ -46,7 +45,6 @@ __RCSID("$NetBSD: vfwscanf.c,v 1.1 2005/05/14 23:51:02 christos Exp $");
 #endif
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -117,7 +115,6 @@ vfwscanf(FILE * __restrict fp, const wchar_t * __restrict fmt, va_list ap)
 	int ret;
 
 	FLOCKFILE(fp);
-	_SET_ORIENTATION(fp, 1);
 	ret = __vfwscanf_unlocked(fp, fmt, ap);
 	FUNLOCKFILE(fp);
 	return (ret);

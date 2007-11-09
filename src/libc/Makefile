@@ -8,6 +8,7 @@ include hash/Makefile
 include mdbm/Makefile
 include regex/Makefile
 include string/Makefile
+include stdio/Makefile
 include tcp/Makefile
 include utils/Makefile
 ifeq "$(OSTYPE)" "msys"
@@ -15,12 +16,14 @@ include win32/Makefile
 endif
 include zlib/Makefile
 
-OBJS = $(HASH_OBJS) $(MDBM_OBJS) $(REGEX_OBJS) $(STRING_OBJS) $(TCP_OBJS) $(UTILS_OBJS) $(WIN32_OBJS) $(ZLIB_OBJS)
+OBJS = $(HASH_OBJS) $(MDBM_OBJS) $(REGEX_OBJS) $(STRING_OBJS) $(STDIO_OBJS) \
+	$(TCP_OBJS) $(UTILS_OBJS) $(WIN32_OBJS) $(ZLIB_OBJS)
 SRCS = $(OBJS:%.o=%.c)
-HDRS = $(HASH_HDRS) $(MDBM_HDRS) $(REGEX_HDRS) $(STRING_HDRS) $(TCP_HDRS) $(UTILS_HDRS) $(WIN32_HDRS) $(ZLIB_HDRS)
+HDRS = $(HASH_HDRS) $(MDBM_HDRS) $(REGEX_HDRS) $(STRING_HDRS) $(STDIO_HDRS) \
+	$(TCP_HDRS) $(UTILS_HDRS) $(WIN32_HDRS) $(ZLIB_HDRS)
 
 CC = gcc
-CFLAGS = -g -O2 -Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wchar-subscripts -Wredundant-decls -Wextra -Wno-sign-compare -Wno-unused-parameter -Wdeclaration-after-statement -Wmissing-prototypes
+CFLAGS = -fno-builtin -g -O2 -Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k -Wstrict-prototypes -Wchar-subscripts -Wredundant-decls -Wextra -Wno-sign-compare -Wno-unused-parameter -Wdeclaration-after-statement -Wmissing-prototypes
 CPPFLAGS = -I.
 AR=ar rc
 RANLIB=ranlib

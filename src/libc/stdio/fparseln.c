@@ -29,22 +29,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD: fparseln.c,v 1.6 2007/03/07 15:12:01 drochner Exp $");
 #endif /* LIBC_SCCS and not lint */
 
-#include "namespace.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-#ifdef __weak_alias
-__weak_alias(fparseln,_fparseln)
-#endif
 
 #if ! HAVE_FPARSELN
 
@@ -74,8 +68,8 @@ isescaped(const char *sp, const char *p, int esc)
 	const char     *cp;
 	size_t		ne;
 
-	_DIAGASSERT(sp != NULL);
-	_DIAGASSERT(p != NULL);
+	assert(sp != NULL);
+	assert(p != NULL);
 
 	/* No escape character */
 	if (esc == '\0')
@@ -106,7 +100,7 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 	int	cnt;
 	char	esc, con, nl, com;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	len = 0;
 	buf = NULL;

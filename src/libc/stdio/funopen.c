@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)funopen.c	8.1 (Berkeley) 6/4/93";
@@ -49,10 +48,10 @@ __RCSID("$NetBSD: funopen.c,v 1.9 2003/08/07 16:43:26 agc Exp $");
 FILE *
 funopen(cookie, readfn, writefn, seekfn, closefn)
 	const void *cookie;
-	int (*readfn) __P((void *, char *, int));
-	int (*writefn) __P((void *, const char *, int));
-	fpos_t (*seekfn) __P((void *, fpos_t, int));
-	int (*closefn) __P((void *));
+	int (*readfn)(void *, char *, int);
+	int (*writefn)(void *, const char *, int);
+	fpos_t (*seekfn)(void *, fpos_t, int);
+	int (*closefn)(void *);
 {
 	FILE *fp;
 	int flags;

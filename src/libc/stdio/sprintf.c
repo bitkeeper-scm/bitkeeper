@@ -32,7 +32,6 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 #if 0
 static char sccsid[] = "@(#)sprintf.c	8.1 (Berkeley) 6/4/93";
@@ -62,8 +61,8 @@ sprintf(char *str, char const *fmt, ...)
 	FILE f;
 	struct __sfileext fext;
 
-	_DIAGASSERT(str != NULL);
-	_DIAGASSERT(fmt != NULL);
+	assert(str != NULL);
+	assert(fmt != NULL);
 
 	_FILEEXT_SETUP(&f, &fext);
 	f._file = -1;

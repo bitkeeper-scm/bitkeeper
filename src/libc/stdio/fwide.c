@@ -28,7 +28,6 @@
  * $Citrus$
  */
 
-#include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD$");
 #endif /* LIBC_SCCS and not lint */
@@ -44,7 +43,7 @@ fwide(FILE *fp, int mode)
 {
 	struct wchar_io_data *wcio;
 
-	_DIAGASSERT(fp != NULL);
+	assert(fp != NULL);
 
 	/*
 	 * this implementation use only -1, 0, 1
