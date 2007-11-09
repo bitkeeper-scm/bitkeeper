@@ -734,3 +734,16 @@ bk delta $Q -ycomment || exit 1
 bk sfiles -gc > GOT
 test -s GOT && exit 1
 echo OK
+
+echo $N Check that p-locked read-only file cannot be checked in .....$NL
+touch b
+bk new $Q b
+bk edit $Q b
+echo b > b
+chmod 444 b
+bk ci $Q -y'should fail' b 2>ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
