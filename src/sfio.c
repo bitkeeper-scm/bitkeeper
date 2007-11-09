@@ -679,6 +679,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 			    file);
 			return (1);
 		}
+		p = strcpy(file, p); /* mdbm can't write pointers to itself */
 	} else {
 		sscanf(datalen, "%010d", &todo);
 
