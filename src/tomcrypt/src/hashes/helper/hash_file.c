@@ -42,7 +42,7 @@ int hash_file(int hash, const char *fname, unsigned char *out, unsigned long *ou
        return CRYPT_FILE_NOTFOUND;
     }
 
-    err = hash_filehandle(hash, in, out, outlen);
+    err = hash_fd(hash, fileno(in), out, outlen);
     if (fclose(in) != 0) {
        return CRYPT_ERROR;
     }

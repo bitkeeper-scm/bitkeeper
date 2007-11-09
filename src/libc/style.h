@@ -13,7 +13,6 @@
 #define	strneq(a,b,n)	(!strncmp((a),(b),(n)))
 #define	index(s, c)	strchr(s, c)
 #define	rindex(s, c)	strrchr(s, c)
-#define setlinebuf(f)	setvbuf(f, NULL, _IOLBF, 0)
 #define	notnull(s)	((s) ? (s) : "")
 #define	unless(e)	if (!(e))
 #define	verbose(x)	unless (flags&SILENT) fprintf x

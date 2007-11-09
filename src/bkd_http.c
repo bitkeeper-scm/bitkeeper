@@ -10,7 +10,7 @@ private	char	*type(char *name);
 private void	httphdr(char *file);
 private void	http_error(int status, char *fmt, ...)
 #ifdef __GNUC__
-     __attribute__((format (printf, 2, 3)))
+     __attribute__((format (__printf__, 2, 3)))
 #endif
      ;
 private void	http_index(char *page);
@@ -422,15 +422,13 @@ http_cset(char *page)
 	f = popenvp(av, "r");
 	free(dspec);
 	free(buf);
-	while (buf = gets_alloc(0, f)) {
+	while (buf = fgetline(f)) {
 		if (buf[0] != '#') {
 			fputs(buf, stdout);
-next:
-			free(buf);
 			continue;
 		}
 		if (buf[1] == '#') {
-			if (didhead) goto next;
+			if (didhead) continue;
 			httphdr("cset.html");
 			header(COLOR, "Changeset details for %s", 0, buf+2);
 			puts("<table width=100% bgcolor=black cellspacing=0 "
@@ -438,7 +436,7 @@ next:
 	    		    "<table width=100% bgcolor=darkgray cellspacing=1 "
 	    		    "border=0 cellpadding=4>");
 			didhead = 1;
-			goto next;
+			continue;
 		}
 		md5key = buf+1;
 		p = strchr(md5key, '@');
@@ -478,7 +476,6 @@ next:
 			    "<font size=2 color=darkblue>diffs</font></a>\n",
 			    p, querystr);
 		}
-		free(buf);
 	}
 	pclose(f);
 
@@ -593,11 +590,8 @@ http_prs(char *page)
 	av[++i] = 0;
 
 	f = popenvp(av, "r");
-	while (buf = gets_alloc(0, f)) {
-		chomp(buf);
-
+	while (buf = fgetline(f)) {
 		items = splitLine(buf, "|", 0);
-		free(buf);
 		if (streq(items[2], "1.1")) items[3][0] = ' ';
 
 		hash_storeStr(qout, "REV", items[1]);

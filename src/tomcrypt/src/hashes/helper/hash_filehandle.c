@@ -23,19 +23,18 @@
   @param outlen [in/out] The max size and resulting size of the digest
   @result CRYPT_OK if successful   
 */
-int hash_filehandle(int hash, FILE *in, unsigned char *out, unsigned long *outlen)
+int hash_fd(int hash, int fd, unsigned char *out, unsigned long *outlen)
 {
 #ifdef LTC_NO_FILE
     return CRYPT_NOP;
 #else
     hash_state md;
-    unsigned char buf[512];
+    unsigned char buf[8192];
     size_t x;
     int err;
 
     LTC_ARGCHK(out    != NULL);
     LTC_ARGCHK(outlen != NULL);
-    LTC_ARGCHK(in     != NULL);
 
     if ((err = hash_is_valid(hash)) != CRYPT_OK) {
         return err;
@@ -50,12 +49,11 @@ int hash_filehandle(int hash, FILE *in, unsigned char *out, unsigned long *outle
     }
 
     *outlen = hash_descriptor[hash].hashsize;
-    do {
-        x = fread(buf, 1, sizeof(buf), in);
+    while ((x = read(fd, buf, sizeof(buf))) > 0) {
         if ((err = hash_descriptor[hash].process(&md, buf, x)) != CRYPT_OK) {
            return err;
         }
-    } while (x == sizeof(buf));
+    }
     err = hash_descriptor[hash].done(&md, out);
 
 #ifdef LTC_CLEAN_STACK
