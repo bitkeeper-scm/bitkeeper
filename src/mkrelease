@@ -21,7 +21,7 @@ ssh root@bitmover.com mkdir /var/www/bitmover/download/$vernum || {
 	exit 1
 }
 echo "Mirroring $ver to bitmover.com"
-rsync -av $S root@bitmover.com:/var/www/bitmover/download/$vernum/. || {
+rsync -av $S/. root@bitmover.com:/var/www/bitmover/download/$vernum/. || {
 	echo failed installing bitmover.com:/var/www/bitmover/download/$vernum
 	echo Go take a look and possibly remove that directory.
 	exit 1

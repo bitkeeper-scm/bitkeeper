@@ -71,7 +71,12 @@ checksum_main(int ac, char **av)
 			if (c & 2) bad++;
 		} else {
 			if (CSET(s)) {
-				doit = bad = cset_resum(s, diags, fix, spin, 0);
+				c = cset_resum(s, diags, fix, spin, 0);
+				if (fix) {
+					doit = c;
+				} else {
+					bad = c;
+				}
 			} else {
 				for (d = s->table; d; d = d->next) {
 					unless (d->type == 'D') continue;
@@ -94,7 +99,7 @@ checksum_main(int ac, char **av)
 		if ((doit || !s->cksumok) && fix) {
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (sccs_newchksum(s)) {
-			    	ret = 2;
+			    	unless (ret) ret = 2;
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					    "admin -z of %s failed.\n",
@@ -102,11 +107,12 @@ checksum_main(int ac, char **av)
 				}
 			}
 		}
+		if (bad && !ret) ret = 1;
 		sccs_free(s);
 	}
-	if (sfileDone()) ret = 1;
+	if (sfileDone() && !ret) ret = 1;
 	fix ? repository_wrunlock(0) : repository_rdunlock(0);
-	return (ret ? ret : (doit ? 1 : 0));
+	return (ret);
 }
 
 int
