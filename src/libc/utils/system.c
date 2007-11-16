@@ -264,7 +264,7 @@ popenvp(char *av[], char *type)
 		wfd = 0;
 	}
 	pid = spawnvpio(rfd, wfd, 0, av);
-	unless (pid) {
+	unless (pid > 0) {
 		fprintf(stderr, "popenvp: spawn failed\n");
 		return (0);
 	}

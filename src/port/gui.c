@@ -30,7 +30,9 @@ int
 gui_useAqua(void)
 {
 #ifdef	__APPLE__
-	unless (getenv("DISPLAY")) {return (1);}
+	char	*disp = getenv("DISPLAY");
+
+	if ((disp == 0) || strneq(disp, "/tmp/launch", 11)) return (1);
 #endif
 	return 0;
 }

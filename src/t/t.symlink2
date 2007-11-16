@@ -80,3 +80,27 @@ bk sfiles -v myrepo/foo > OUT 2>&1 || {
 	exit 1
 }
 echo OK
+
+echo $N Check the checksum of a symlink .............................$NL
+# there are two places where checksum is computed: checkin and sccs_delta
+# The BAM code broke the sccs_delta one. Make sure to check both.
+cd "$HERE/project"
+ln -s somename checksumtest
+bk new $Q checksumtest
+SUM=`bk prs -r+ -hnd:DSUM: checksumtest`
+test "$SUM" -eq 853 || {
+	echo failed
+	echo "for a new file: WANTED 853 and GOT '$SUM'"
+	exit 1
+}
+bk edit $Q checksumtest
+rm checksumtest
+ln -s someothername checksumtest
+bk delta $Q -y'change linkto path' checksumtest
+SUM=`bk prs -r+ -hnd:DSUM: checksumtest`
+test "$SUM" -eq 1399 || {
+	echo failed
+	echo "delta of file: WANTED 1399 and GOT '$SUM'"
+	exit 1
+}
+echo OK

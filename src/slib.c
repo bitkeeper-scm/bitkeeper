@@ -12808,14 +12808,14 @@ out:
 			OUT;
 		} else {
 			verbose((stderr,
-			    "delta: %s is not locked.\n", s->sfile);
+			    "delta: %s is not locked.\n", s->sfile));
 			goto out;
 		}
 	}
 
 	unless (WRITABLE(s) || diffs) {
 		fprintf(stderr,
-		    "delta: %s is locked but not writable.\n", s->gfile));
+		    "delta: %s is locked but not writable.\n", s->gfile);
 		OUT;
 	}
 
@@ -13043,7 +13043,8 @@ out:
 			sfile, &added, &deleted, &unchanged)) {
 			OUT;
 		}
-	} else if (S_ISLNK(n->mode)) {
+	}
+	if (S_ISLNK(n->mode)) {
 		u8 *t;
 		/*
 		 * if symlink, check sum the symlink path

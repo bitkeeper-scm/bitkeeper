@@ -69,6 +69,7 @@ mdbm_test_1(char *dbname, int pre_split, int compress, int hash)
 	fprintf(stderr, "checking insert of duplicate.................................");
 	sprintf(lbuf, "%d", MAXK - 1);
 	l.dptr = (void *) &lbuf;
+	r.dptr = strcpy(vbuf, r.dptr);
 	if (mdbm_store(tst_db, l, r, MDBM_INSERT) != 1) {
 		fprintf(stderr, "Failed\n");
 	} else {

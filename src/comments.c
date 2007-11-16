@@ -54,6 +54,8 @@ comments_savefile(char *s)
 {
 	FILE	*f;
 	char	*last;
+	int	split = 0;
+	char	splitmsg[51];
 	char	buf[MAXCMT];
 
 	if (!s || !exists(s) || (size(s) <= 0)) {
@@ -69,9 +71,16 @@ comments_savefile(char *s)
 		last = buf;
 		while (*last && (*last != '\n')) last++;
 		while ((last > buf) && (last[-1] == '\r')) --last;
-		if ((last == &buf[MAXCMT - 1]) && !*last) {
+		if (split) {
+			split = 0;
+			if (last == buf) continue;
 			fprintf(stderr,
-			    "Splitting comment line \"%.50s\"...\n", buf);
+			    "Splitting comment line \"%s\"...\n", splitmsg);
+		}
+		if ((last == &buf[MAXCMT - 1]) && !*last) {
+			split = 1;
+			strncpy(splitmsg, buf, 50);
+			splitmsg[50] = 0;
 		}
 		*last = 0;	/* strip any trailing NL */
 		if (comments_checkStr(buf)) {

@@ -358,6 +358,7 @@ mdbm_store(MDBM *db, datum key, datum val, int flags)
 	register uint32 need;
 	register char	*page;
 	ubig	hash;
+	void	*dbend;
 
 	if bad(key)
 		return errno = EINVAL, -1;
@@ -378,6 +379,15 @@ mdbm_store(MDBM *db, datum key, datum val, int flags)
 	}
 	if  (_write_access_check(db))
 		return -1;
+
+	/*
+	 * Existing MDBM data cannot be used to create new entries.
+	 * The store may cause the data to be moved around and
+	 * invalidate the pointers.
+	 */
+	dbend = db->m_db + DB_SIZE(db->m_npgshift, db->m_pshift);
+	assert((key.dptr < db->m_db) || (key.dptr > dbend));
+	assert((val.dptr < db->m_db) || (val.dptr > dbend));
 
 	need = (uint32)(key.dsize + val.dsize +
 	    (2 * INO_SIZE) + _Mdbm_alnmask(db));
