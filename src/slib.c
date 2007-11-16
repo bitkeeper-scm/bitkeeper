@@ -13011,7 +13011,8 @@ out:
 			sfile, &added, &deleted, &unchanged)) {
 			OUT;
 		}
-	} else if (S_ISLNK(n->mode)) {
+	}
+	if (S_ISLNK(n->mode)) {
 		u8 *t;
 		/*
 		 * if symlink, check sum the symlink path
