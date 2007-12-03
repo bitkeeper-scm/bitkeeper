@@ -51,6 +51,13 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
+	if (((p = getenv("BK_VERSION")) && streq(p, "bk-4.1")) &&
+	    (bp_hasBAM() || ((p = getenv("BK_BAM")) && streq(p, "YES")))) {
+		out("ERROR- requires an upgrade of the local/client "
+		"version of bk.\n");
+		drain();
+		return (1);
+	}
 	unless(isdir("BitKeeper")) { /* not a packageg root */
 		if (debug) {
 			fprintf(stderr, "cmd_push_part1: not package root\n");
@@ -367,6 +374,7 @@ cmd_push_part3(int ac, char **av)
 		} else {
 			rc = 253;
 		}
+		fputc(BKD_NUL, stdout);
 		if (rc) {
 			printf("%c%d\n", BKD_RC, rc);
 			fflush(stdout);
@@ -380,7 +388,9 @@ cmd_push_part3(int ac, char **av)
 			system("bk abort -f");
 			goto done;
 		}
-	} else if (!streq(buf, "@NOBAM@")) {
+	} else if (streq(buf, "@NOBAM@")) {
+		fputc(BKD_NUL, stdout);
+	} else {
 		fprintf(stderr, "expect @BAM@, got <%s>\n", buf);
 		rc = 1;
 		goto done;

@@ -230,6 +230,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 {
 	int	fd, rc, n;
 	delta	*d;
+	char	*p;
 	FILE	*f;
 	char	buf[MAXPATH];
 
@@ -251,6 +252,14 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 			fprintf(opts.out,
 "push: cannot push to lower level repository (remote level == %s)\n",
 			    getenv("BKD_LEVEL"));
+			goto err;
+		}
+		if (((p = getenv("BKD_VERSION")) && streq(p, "bk-4.1")) &&
+		    (bp_hasBAM() ||
+		     ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
+			fprintf(opts.out,
+			    "push: requires an upgrade of the remote/bkd "
+			    "version of bk.\n");
 			goto err;
 		}
 		getline2(r, buf, sizeof(buf));
@@ -650,6 +659,10 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	return (0);
 }
 
+/*
+ * look for trigger output in the middle of the resolve data.
+ * this can happen for pre-apply triggers.
+ */
 private int
 maybe_trigger(remote *r)
 {
@@ -904,24 +917,25 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	/*
 	 * get remote progress status
 	 */
-	while (1) {
-		n = getline2(r, buf, sizeof(buf));
-		if (!n || (buf[0] == BKD_RC)) {
-			fprintf(stderr, "push: bkd failed to apply BAM data\n");
-			rc = n ? atoi(&buf[1]) : 1;
-			goto done;
+	while ((n = read_blk(r, buf, 1)) > 0) {
+		if (buf[0] == BKD_NUL) break;
+		fputc(buf[0], stderr);
+	}
+	if (n) {
+		getline2(r, buf, sizeof(buf));
+		if (buf[0] == BKD_RC) {
+			rc = atoi(&buf[1]);
+			getline2(r, buf, sizeof(buf));
 		}
-		if (streq(buf, "@END@")) break;
-		fprintf(stderr, "%s\n", buf);	/* echo msgs */
+		unless (streq(buf, "@END@") && (rc == 0)) rc = 1;
+	} else {
+		rc = 1;
+	}
+	if (rc) {
+		fprintf(stderr, "push: bkd failed to apply BAM data\n");
+		goto done;
 	}
 	getline2(r, buf, sizeof(buf));
-	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
-			rc = 1;
-			goto done;
-		}
-		getline2(r, buf, sizeof(buf));
-	}
 	if (streq(buf, "@RESOLVE INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
