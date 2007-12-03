@@ -4250,9 +4250,12 @@ sccs_init(char *name, u32 flags)
 			if ((t = getenv("_BK_DEVELOPER")) && *t) {
 				fprintf(stderr,
 				    "timestamp %s\n\ts\t%u\n\tgtime\t%u\n\t",
-				    s->gfile, sbuf.st_mtime, s->gtime);
+				    s->gfile,
+				    (unsigned)sbuf.st_mtime,
+				    (unsigned)s->gtime);
 				if (lstat(s->gfile, &sbuf)) sbuf.st_mtime = 0;
-				fprintf(stderr, "g\t%u\n", sbuf.st_mtime);
+				fprintf(stderr, "g\t%u\n",
+				    (unsigned)sbuf.st_mtime);
 				exit(1);
 			}
 			fixstime = 1;

@@ -491,7 +491,7 @@ bp_logUpdate(char *key, char *val)
 	strcat(buf, "/" BAM_INDEX);
 	unless (f = fopen(buf, "a")) return (-1);
 	sprintf(buf, "%s %s", key, val);
-	fprintf(f, "%s %08x\n", buf, adler32(0, buf, strlen(buf)));
+	fprintf(f, "%s %08x\n", buf, (u32)adler32(0, buf, strlen(buf)));
 	fclose(f);
 	return (0);
 }
