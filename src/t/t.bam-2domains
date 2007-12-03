@@ -56,9 +56,9 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	exit 1
@@ -79,9 +79,9 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	exit 1
@@ -102,9 +102,9 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	exit 1
@@ -130,9 +130,9 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	ls BitKeeper/log
@@ -160,9 +160,9 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	ls BitKeeper/log
@@ -189,9 +189,9 @@ while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	exit 1
@@ -240,7 +240,7 @@ cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f "$x" || echo $x is missing
 done >> "$HERE/OUT" 2>&1 
-test -s "$HERE/OUT" && {
+grep -q missing "$HERE/OUT" && {
 	echo failed to update the server from C1
 	cat "$HERE/OUT"
 	exit 1
@@ -274,7 +274,7 @@ cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
 done >> "$HERE/OUT" 2>&1 
-test -s "$HERE/OUT" && {
+grep -q missing "$HERE/OUT" && {
 	echo failed to update the server from C1
 	cat "$HERE/OUT"
 	exit 1
@@ -308,7 +308,7 @@ cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
 done >> "$HERE/OUT" 2>&1 
-test -s "$HERE/OUT" && {
+grep -q missing "$HERE/OUT" && {
 	echo failed to update the server from C1
 	cat "$HERE/OUT"
 	exit 1
@@ -344,7 +344,7 @@ cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
 done >> "$HERE/OUT" 2>&1 
-test -s "$HERE/OUT" && {
+grep -q missing "$HERE/OUT" && {
 	echo failed to update the server from C1
 	cat "$HERE/OUT"
 	exit 1
@@ -380,7 +380,7 @@ test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	echo C1
@@ -406,9 +406,9 @@ test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
 	exit 1
 }
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	echo C1
@@ -435,9 +435,9 @@ test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
 	exit 1
 }
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	echo C1
@@ -465,9 +465,9 @@ test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
 	exit 1
 }
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	echo C1
@@ -525,9 +525,9 @@ test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
 	exit 1
 }
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	echo C1
@@ -568,9 +568,9 @@ test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
 	exit 1
 }
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	echo C1
@@ -600,9 +600,9 @@ test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
 	exit 1
 }
 for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
-do	test -f $i || echo $i
+do	test -f $i || echo $i is missing
 done >> OUT
-test -s OUT && {
+grep -q missing OUT && {
 	echo failed
 	cat OUT
 	echo C1

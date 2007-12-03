@@ -249,14 +249,13 @@ bk BAM check -Fq || exit 1
 echo OK
 
 echo $N Try remote clone across zones ...............................$NL
-echo skipped
 cd "$HERE"
 P=`port 50000`
 bk bkd -d -p$P -ikill
-#bk clone $Q cclone1 bk://localhost:$P/zclone2 || exit 1
-#cd zclone2 || exit 1
-#bk BAM check -Fq || exit 1
-#echo OK
+bk clone $Q cclone1 bk://localhost:$P/zclone2 || exit 1
+cd zclone2 || exit 1
+bk BAM check -Fq || exit 1
+echo OK
 
 echo $N Try remote push across zones with file based bp master url ..$NL
 # Assume (from above) that cclone1 and pclone2 are equal and have different

@@ -25,6 +25,7 @@ private	struct {
 private	int	push(char **av, remote *r, char **envVar);
 private	void	pull(remote *r);
 private	void	listIt(char *keys, int list);
+private	int	send_BAM_msg(remote *r, char *bp_keys, char **envVar,u64 bpsz);
 
 private	sccs	*s_cset;
 
@@ -564,7 +565,7 @@ send_BAM_sfio(int level, int wfd, char *bp_keys, u64 bpsz)
 	return (n);
 }
 
-int
+private int
 send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 {
 	FILE	*f;

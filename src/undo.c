@@ -168,6 +168,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	proj_restoreAllCO(0, 0);
 
 	unless (quiet) printf("Running consistency check...\n");
+	fflush(stdout);
 	if (fromclone) {
 		p = quiet ? "-fT" : "-fvT";
 	} else {
