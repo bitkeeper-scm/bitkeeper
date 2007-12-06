@@ -460,6 +460,45 @@ then	echo 'failed (bug not filed)'
 else	echo OK
 fi
 
+echo $N Changes bug when listing -L and multiple repos on the cli ...$NL
+# thanks to Tim@mysql
+cd "$HERE"
+for x in tb1 tb2; do bk clone $Q diamond $x; done
+cd diamond
+for x in ../tb1 ../tb2 ; do bk changes -qL $x; done > SOLO
+test -s SOLO && {
+	echo failed
+	echo test set up failed. Tags showing up in SOLO
+	for x in ../tb1 ../tb2 ; do bk changes -L $x; done
+	exit 1
+}
+bk changes -qL ../tb1 ../tb2 > MULTIPLE
+test -s MULTIPLE && {
+	echo failed
+	echo Tags showing up when multiple desinations listed.
+	bk changes -L ../tb1 ../tb2
+	exit 1
+}
+echo OK
+
+echo $N Changes bug when listing -R and multiple repos on the cli ...$NL
+# this wasn't a bug before -- just testing for symmetry sake
+for x in ../tb1 ../tb2 ; do bk changes -qR $x; done > SOLO
+test -s SOLO && {
+	echo failed
+	echo test set up failed. Tags showing up in SOLO
+	for x in ../tb1 ../tb2 ; do bk changes -R $x; done
+	exit 1
+}
+bk changes -qR ../tb1 ../tb2 > MULTIPLE
+test -s MULTIPLE && {
+	echo failed
+	echo Tags showing up when multiple desinations listed.
+	bk changes -R ../tb1 ../tb2
+	exit 1
+}
+echo OK
+
 # -L -R - working between repositories
 
 echo $N Make some repositories to check out -L and -R ...............$NL
