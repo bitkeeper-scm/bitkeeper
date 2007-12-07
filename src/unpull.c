@@ -73,8 +73,10 @@ unpull(int force, int quiet, char *patch)
 		}
 		if (e->type == 'D') {
 			chg = e;
-		} else {
-			tag = e;
+		}
+		if (e->symGraph) {
+			if (!tag) tag = e;	/* first is oldest */
+			e->flags |= D_BLUE;
 		}
 	}
 	fclose(f);
@@ -95,8 +97,16 @@ err:			sccs_free(s);
 		}
 	}
 	if (tag) {
-		for (d = s->table; d; d = d->next) {
-			unless (d->type == 'D') break;
+		for (d = s->table; d && (d != tag); d = d->next) {
+			if (!d->symGraph || (d->flags & D_BLUE)) continue;
+			if (d->ptag) {
+				e = sfind(s, d->ptag);
+				if (e->flags & D_BLUE) break;
+			}
+			if (d->mtag) {
+				e = sfind(s, d->mtag);
+				if (e->flags & D_BLUE) break;
+			}
 		}
 		unless (d == tag) {
 			sccs_sdelta(s, d, key);
