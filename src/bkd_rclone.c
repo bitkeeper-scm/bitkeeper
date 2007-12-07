@@ -1,12 +1,14 @@
 #include "bkd.h"
-
-private int	getsfio(void);
+#include "bam.h"
 
 typedef	struct {
 	u32	debug:1;
 	u32	verbose:1;
 	char    *rev;
 } opts;
+
+private int	getsfio(void);
+private int	rclone_end(opts *opts);
 
 private char *
 rclone_common(int ac, char **av, opts *opts)
@@ -69,6 +71,12 @@ cmd_rclone_part1(int ac, char **av)
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
 	if (sendServerInfoBlock(1)) {
+		drain();
+		return (1);
+	}
+	if (((p = getenv("BK_BAM")) && streq(p, "YES")) &&
+	    ((p = getenv("BK_VERSION")) && streq(p, "bk-4.1"))) {
+		out("ERROR-remote clone: please upgrade local bk version\n.");
 		drain();
 		return (1);
 	}
@@ -166,69 +174,41 @@ cmd_rclone_part2(int ac, char **av)
 	if (!streq("@END@", buf)) {
 		fprintf(stderr, "cmd_rclone: warning: lost end marker\n");
 	}
-	if (rc) {
-		fputc(BKD_NUL, stdout);
-		printf("%c%d\n", BKD_RC, rc);
-		fflush(stdout);
-		goto done;
-	}
-
-	/* remove any uncommited stuff */
-	sccs_rmUncommitted(!opts.verbose, 0);
-
-	/*
-	 * XXX TODO: set up parent pointer
-	 */
-
-	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
-	/* remove any later stuff */
-	if (opts.rev) {
-		after(!opts.verbose, opts.rev);
-	} else {
-		/* undo already runs check so we only need this case */
-		if (opts.verbose) {
-			fprintf(stderr, "Running consistency check ...\n");
-		}
-		run_check(0, opts.verbose ? "-fvT" : "-fT");
-	}
-
-	switch (proj_checkout(0)) {
-	    case CO_EDIT:
-		sys("bk", "-Ur", "edit", "-STq", SYS);
-		break;
-	    case CO_GET:
-		sys("bk", "-Ur", "get", "-STq", SYS);
-		break;
+	unless (rc || getenv("BK_BAM")) {
+		rc = rclone_end(&opts);
 	}
 
 	/* restore original stderr */
 	dup2(fd2, 2); close(fd2);
 	fputc(BKD_NUL, stdout);
+	if (rc) printf("%c%d\n", BKD_RC, rc);
 
 done:
-	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	fputs("@END@\n", stdout); /* end SFIO INFO block */
 	fflush(stdout);
 	unless (rc) {
 		/*
 		 * Send any BAM keys we need.
-		 * We're counting on check to have set the BAM marker.
 		 */
-		if (bp_hasBAM()) {
+		if (getenv("BK_BAM")) {
+			touch(BAM_MARKER, 0666);
 			putenv("BKD_DAEMON="); /* allow new bkd connections */
 			printf("@BAM@\n");
-			rc = bp_sendkeys(stdout, "-r..", &sfio);
+			p = aprintf("-r..%s", opts.rev ? opts.rev : "");
+			rc = bp_sendkeys(stdout, p, &sfio);
+			free(p);
 			// XXX - rc != 0?
 			printf("@DATASIZE=%s@\n", psize(sfio));
 			fflush(stdout);
 			return (0);
 		}
-
-		/* If we're not doing BAM then we are running the trigger. */
+	}
+	unless (rc) {
 		putenv("BK_STATUS=OK");
 	} else {
 		putenv("BK_STATUS=FAILED");
 	}
+	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	trigger(av[0], "post");
 	repository_unlock(0);
 	putenv("BK_CSETS=");
@@ -270,14 +250,13 @@ cmd_rclone_part3(int ac, char **av)
 
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
+	/* Arrange to have stderr go to stdout */
+	fd2 = dup(2); dup2(1, 2);
 	if (streq(buf, "@BAM@")) {
 		/*
 		 * Do sfio
 		 */
-		/* Arrange to have stderr go to stdout */
-		fd2 = dup(2); dup2(1, 2);
 		pid = spawnvpio(&pfd, 0, 0, sfio);
-		dup2(fd2, 2); close(fd2);
 		inbytes = outbytes = 0;
 		f = fdopen(pfd, "wb");
 		/* stdin needs to be unbuffered when calling sfio */
@@ -298,15 +277,18 @@ cmd_rclone_part3(int ac, char **av)
 		} else {
 			rc = 253;
 		}
-		if (rc) {
-			printf("%c%d\n", BKD_RC, rc);
-			fflush(stdout);
-		}
 	} else unless (streq(buf, "@NOBAM@")) {
 		fprintf(stderr, "expect @BAM@, got <%s>\n", buf);
 		rc = 1;
-		goto done;
 	}
+	unless (rc) {
+		rc = rclone_end(&opts);
+	}
+	/* restore original stderr */
+	dup2(fd2, 2); close(fd2);
+	fputc(BKD_NUL, stdout);
+	if (rc) printf("%c%d\n", BKD_RC, rc);
+
 	fputs("@END@\n", stdout);
 	fflush(stdout);
 
@@ -322,6 +304,29 @@ done:
 	putenv("BK_CSETS=");
 	return (rc);
 }
+
+private int
+rclone_end(opts *opts)
+{
+	int	rc;
+
+	/* remove any uncommited stuff */
+	sccs_rmUncommitted(!opts->verbose, 0);
+
+	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
+	/* remove any later stuff */
+	if (opts->rev) {
+		rc = after(!opts->verbose, opts->rev);
+	} else {
+		/* undo already runs check so we only need this case */
+		if (opts->verbose) {
+			fprintf(stderr, "running consistency check ...\n");
+		}
+		rc = run_check(0, opts->verbose ? "-fvT" : "-fT");
+	}
+	return (rc);
+}
+
 
 private int
 getsfio(void)

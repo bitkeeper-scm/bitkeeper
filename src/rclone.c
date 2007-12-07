@@ -19,7 +19,6 @@ private int send_part1_msg(remote *r, char **envVar);
 private	int send_sfio_msg(remote *r, char **envVar);
 private u32 send_sfio(int level, remote *r);
 extern	u32 send_BAM_sfio(int level, int wfd, char *bp_keys, u64 bpsz);
-extern	int send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz);
 
 
 int
@@ -124,7 +123,7 @@ done:	putenv("BK_CSETS=");
 private int
 rclone_part1(remote *r, char **envVar)
 {
-	char	*url;
+	char	*url, *p;
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
@@ -145,6 +144,15 @@ rclone_part1(remote *r, char **envVar)
 	if (bp_hasBAM() && !bkd_hasFeature("BAM")) {
 		url = remote_unparse(r);
 		fprintf(stderr, "%s is not BAM aware, needs upgrade.\n", url);
+		free(url);
+		return (-1);
+	}
+	if (bp_hasBAM() && 
+	    ((p = getenv("BKD_VERSION")) && streq(p, "bk-4.1"))) {
+		url = remote_unparse(r);
+		fprintf(stderr,
+		    "%s does not work to receive a BAM clone;\n"
+		    "please upgrade the bk in the remote location.\n", url);
 		free(url);
 		return (-1);
 	}
@@ -359,6 +367,91 @@ send_sfio_msg(remote *r, char **envVar)
 }
 
 private int
+send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
+{
+	FILE	*f;
+	int	rc;
+	u32	extra = 1, m = 0, n;
+	int	gzip;
+	int	fd;
+	char	msgfile[MAXPATH];
+
+	/*
+	 * If we are using ssh/rsh do not do gzip ourself
+	 * Let ssh do it
+	 */
+	gzip = r->port ? opts.gzip : 0;
+
+	bktmp(msgfile, "pullbpmsg3");
+	f = fopen(msgfile, "w");
+	assert(f);
+	sendEnv(f, envVar, r, 0);
+
+	/*
+	 * No need to do "cd" again if we have a non-http connection
+	 * becuase we already did a "cd" in pull part 1
+	 */
+	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	fprintf(f, "rclone_part3");
+	if (gzip) fprintf(f, " -z%d", opts.gzip);
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
+	if (opts.debug) fprintf(f, " -d");
+	if (opts.verbose) fprintf(f, " -v");
+	fputs("\n", f);
+
+	if (size(bp_keys) == 0) {
+		fprintf(f, "@NOBAM@\n");
+		extra = 0;
+	} else {
+		/*
+		 * Httpd wants the message length in the header
+		 * We have to compute the patch size before we sent
+		 * 6 is the size of "@BAM@\n"
+		 * 6 is the size of "@END@\n" string
+		 */
+		if (r->type == ADDR_HTTP) {
+			fd = open(DEVNULL_WR, O_WRONLY, 0);
+			m = send_BAM_sfio(gzip, fd, bp_keys, bpsz);
+			close(fd);
+			assert(m > 0);
+			extra = m + 6 + 6;
+		} else {
+			extra = 1;
+		}
+	}
+	fclose(f);
+
+	rc = send_file(r, msgfile, extra);
+
+	if (extra > 0) {
+		writen(r->wfd, "@BAM@\n", 6);
+		n = send_BAM_sfio(gzip, r->wfd, bp_keys, bpsz);
+		if ((r->type == ADDR_HTTP) && (m != n)) {
+			fprintf(stderr,
+			    "Error: patch has changed size from %d to %d\n",
+			    m, n);
+			disconnect(r, 2);
+			return (-1);
+		}
+		writen(r->wfd, "@END@\n", 6);
+	}
+	disconnect(r, 1);
+
+	if (unlink(msgfile)) perror(msgfile);
+	if (rc == -1) {
+		disconnect(r, 2);
+		return (-1);
+	}
+
+	if (opts.debug) {
+		if (r->type == ADDR_HTTP) {
+			getMsg("http_delay", 0, 0, stderr);
+		}
+	}
+	return (0);
+}
+
+private int
 rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 {
 	int	n, rc = 0;
@@ -381,20 +474,21 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 			goto done;
 		}
 	}
-
-	/*
-	 * get remote progress status
-	 */
-	while (1) {
-		n = getline2(r, buf, sizeof(buf));
-		if (!n || (buf[0] == BKD_RC)) {
+	/* Spit out anything we see until a null. */
+	while (read_blk(r, buf, 1) > 0) {
+		if (buf[0] == BKD_NUL) {
+			/* now back in protocol - look for end or RC */
+			n = getline2(r, buf, sizeof(buf));
+			if ((n > 0) && streq(buf, "@END@")) break;
 			fprintf(stderr,
-			    "rclone: bkd failed to apply BAM data\n");
-			rc = n ? atoi(&buf[1]) : 1;
+			    "rclone: bkd failed to apply BAM data %s\n", buf);
+			rc = 1;
+			if ((n > 0) && (buf[0] == BKD_RC)) {
+				rc = strtol(&buf[1], 0, 10);
+			}
 			goto done;
 		}
-		if (streq(buf, "@END@")) break;
-		fprintf(stderr, "%s\n", buf);	/* echo msgs */
+		fputc(buf[0], stderr);
 	}
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@TRIGGER INFO@")) {
