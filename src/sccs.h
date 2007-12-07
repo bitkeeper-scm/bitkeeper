@@ -1259,6 +1259,7 @@ int	bp_sharedServer(void);
 char	*bp_serverName(void);
 int	bp_hasBAM(void);
 int	bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range);
+u32	send_BAM_sfio(int level, FILE *wf, char *bp_keys, u64 bpsz);
 int	bp_sendkeys(FILE *f, char *range, u64 *bytes);
 int	zgets_hread(void *token, u8 **buf);
 int	zgets_hfread(void *token, u8 **buf);

@@ -18,8 +18,6 @@ private	int rclone_part3(char **av, remote *r, char **ev, char *bp);
 private int send_part1_msg(remote *r, char **envVar);
 private	int send_sfio_msg(remote *r, char **envVar);
 private u32 send_sfio(int level, remote *r);
-extern	u32 send_BAM_sfio(int level, int wfd, char *bp_keys, u64 bpsz);
-
 
 int
 rclone_main(int ac, char **av)
@@ -369,11 +367,10 @@ send_sfio_msg(remote *r, char **envVar)
 private int
 send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 {
-	FILE	*f;
+	FILE	*f, *fnull;
 	int	rc;
 	u32	extra = 1, m = 0, n;
 	int	gzip;
-	int	fd;
 	char	msgfile[MAXPATH];
 
 	/*
@@ -410,9 +407,10 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 		 * 6 is the size of "@END@\n" string
 		 */
 		if (r->type == ADDR_HTTP) {
-			fd = open(DEVNULL_WR, O_WRONLY, 0);
-			m = send_BAM_sfio(gzip, fd, bp_keys, bpsz);
-			close(fd);
+			fnull = fopen(DEVNULL_WR, "w");
+			assert(fnull);
+			m = send_BAM_sfio(gzip, fnull, bp_keys, bpsz);
+			fclose(fnull);
 			assert(m > 0);
 			extra = m + 6 + 6;
 		} else {
@@ -424,8 +422,9 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	rc = send_file(r, msgfile, extra);
 
 	if (extra > 0) {
+		f = fdopen(dup(r->wfd), "wb");
 		writen(r->wfd, "@BAM@\n", 6);
-		n = send_BAM_sfio(gzip, r->wfd, bp_keys, bpsz);
+		n = send_BAM_sfio(gzip, f, bp_keys, bpsz);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(stderr,
 			    "Error: patch has changed size from %d to %d\n",
@@ -433,7 +432,8 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 			disconnect(r, 2);
 			return (-1);
 		}
-		writen(r->wfd, "@END@\n", 6);
+		fputs("@END@\n", f);
+		fclose(f);
 	}
 	disconnect(r, 1);
 
