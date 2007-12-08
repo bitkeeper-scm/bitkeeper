@@ -4334,7 +4334,7 @@ sccs_init(char *name, u32 flags)
 		/*
 		 * Don't allow them to check in a gfile of a different type.
 		 */
-		if (HAS_GFILE(s)) {
+		if (HAS_GFILE(s) && (!(t=getenv("BK_NO_TYPECHECK")) || !*t)) {
 			for (d = s->table; TAG(d); d = d->next);
 			assert(d);
 			if ((d->flags & D_MODE) &&
@@ -8485,6 +8485,7 @@ diff_gmode(sccs *s, pfile *pf)
 		}
 	}
 
+	unless (sameFileType(s, d)) return (1);
 	if (S_ISLNK(s->mode)) {
 		unless (streq(s->symlink, d->symlink)) {
 			return (2);
@@ -9226,6 +9227,7 @@ private int
 needsMode(sccs *s, delta *p)
 {
 	unless (p) return (1);
+	unless (sameFileType(s, p)) return (1);
 	unless (s->symlink) return (0);
 	return (!streq(s->symlink, p->symlink));
 }
