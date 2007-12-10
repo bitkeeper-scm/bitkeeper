@@ -886,7 +886,7 @@ _clonemod() {
 	bk parent -sq "$1" || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
 	# remove any local tags that the above undo missed
-	bk changes -qkL > $CSETS || exit 1
+	bk changes -qfkL > $CSETS || exit 1
 	if [ -s "$CSETS" ]
 	then	bk unpull -sfq || exit 1
 	else	rm $CSETS || exit 1

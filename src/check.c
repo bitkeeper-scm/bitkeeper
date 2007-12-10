@@ -343,6 +343,7 @@ check_main(int ac, char **av)
 			fclose(f);
 		}
 	}
+	/* note: checkAll can mangle r2deltas */
 	if ((all || resync) && checkAll(keys)) errors |= 0x40;
 	mdbm_close(pathDB);
 	hash_free(keys);
@@ -782,28 +783,41 @@ checkAll(hash *keys)
 {
 	char	*t, *rkey;
 	hash	*warned = hash_new(HASH_MEMHASH);
-	hash	*local = 0;
+	hash	**deltas = 0;
 	int	found = 0;
 	char	buf[MAXPATH*3];
 
 	/*
-	 * If we are doing the resync tree, we just want the keys which
-	 * are not in the local repo.
+	 * If we are doing the resync tree, we only require that the
+	 * RESYNC tree contain the files updated in the patch.  To do
+	 * this we remove all deltas from the toplevel ChangeSet file
+	 * from r2deltas.
+	 * This is somewhat expensive.
 	 */
 	if (resync) {
 		FILE	*f;
 
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
 		if (exists(buf)) {
-			local = hash_new(HASH_MEMHASH);
 			sprintf(buf,
-			    "bk annotate -R -h '%s/ChangeSet'", RESYNC2ROOT);
+			    "bk annotate -R -h '%s/ChangeSet' | bk sort",
+			    RESYNC2ROOT);
 			f = popen(buf, "r");
-			while (fgets(buf, sizeof(buf), f)) {
+			r2deltas->kptr = "";
+			while (fnext(buf, f)) {
+				chomp(buf);
 				t = separator(buf);
 				assert(t);
-				*t = 0;
-				hash_storeStr(local, buf, 0);
+				*t++ = 0;
+				unless (streq(buf, r2deltas->kptr)) {
+					deltas = hash_fetchStr(r2deltas, buf);
+					assert(deltas && *deltas);
+				}
+				if (hash_deleteStr(*deltas, t)) {
+					fprintf(stderr, "delta %s missing?\n",
+					    t);
+					exit(1);
+				}
 			}
 			pclose(f);
 		}
@@ -811,7 +825,8 @@ checkAll(hash *keys)
 	EACH_HASH(r2deltas) {
 		rkey = r2deltas->kptr;
 		if (hash_fetchStr(keys, rkey)) continue;
-		if (local && hash_fetchStr(local, rkey)) continue;
+		deltas = r2deltas->vptr;
+		if (!hash_first(*deltas)) continue; /* no resync deltas */
 		if (mdbm_fetch_str(goneDB, rkey)) continue;
 		hash_storeStr(warned, rkey, 0);
 		found++;
@@ -824,7 +839,6 @@ checkAll(hash *keys)
 		}
 	}
 	hash_free(warned);
-	if (local) hash_free(local);
 	return (found != 0);
 }
 

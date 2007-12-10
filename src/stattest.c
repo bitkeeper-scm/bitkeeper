@@ -44,6 +44,6 @@ print_stimes(char *f, struct utimbuf *ub)
 		return;
 	}
 	printf("%u(%d) %u(%d)\n",
-	       sb.st_mtime, (int)(ub->modtime - sb.st_mtime),
-	       sb.st_atime, (int)(ub->actime - sb.st_atime));
+	       (unsigned)sb.st_mtime, (int)(ub->modtime - sb.st_mtime),
+	       (unsigned)sb.st_atime, (int)(ub->actime - sb.st_atime));
 }

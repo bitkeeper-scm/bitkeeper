@@ -120,7 +120,7 @@ sccs_key2md5key(char *delta, char *random, char *b64)
 
 	p = strchr(delta, '|');
 	p = strchr(p+1, '|');
-	sprintf(b64, "%08x%s", 	sccs_date2time(p+1, 0), hash);
+	sprintf(b64, "%08x%s", (u32)sccs_date2time(p+1, 0), hash);
 }
 
 /*

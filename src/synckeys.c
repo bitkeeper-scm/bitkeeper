@@ -462,6 +462,8 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 
 
 empty:	for (d = s->table; d; d = d->next) {
+		/* reset sccs_tagcolor D_BLUE markings*/
+		if (d->flags & D_BLUE) d->flags &= ~D_BLUE;
 		if (d->flags & D_RED) {
 			d->flags &= ~D_RED;
 			continue;

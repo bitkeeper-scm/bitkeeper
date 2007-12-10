@@ -142,10 +142,26 @@ cd ..
 echo OK
 
 echo $N Test clonemod with adding a local tag .......................$NL
-cd cmbase
-bk tag $Q TAGLOCAL
+bk clone $Q project tagbase
+cd tagbase
+# two local tags to show need for -f added to changes
+bk tag $Q TAGLOCAL1
+bk tag $Q TAGLOCAL2
+bk edit $Q src/bar.c
+bk delta $Q -fybar src/bar.c
+bk commit $Q -ybar
+cd ../project
+bk edit $Q src/h.h
+bk delta $Q -fybar src/h.h
+bk commit $Q -yh.h
+bk tag $Q TAGPROJECT
+cd ../tagbase
+# create a tag on a cset which will be undone, leaving 2 tips in tag graph
+# such that we want to keep the newer tip
+bk tag $Q TAGLOCAL3
+bk pull $Q ../project
 cd ..
-bk clonemod $Q "$HERE/project" cmbase localtag || exit 1
+bk clonemod $Q "$HERE/project" tagbase localtag || exit 1
 cd localtag
 bk parent -l > GOT
 bk parent $Q ../project

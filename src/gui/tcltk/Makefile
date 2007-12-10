@@ -17,6 +17,7 @@ else
 	S := unix
 	EXE :=
 	SO  := .so
+	XSSSUPPORT := --disable-xss
 	XFTSUPPORT := --disable-xft
 #	Once we solve the font issues, we can turn on True Type Font support
 #	XFTSUPPORT := --enable-xft
@@ -101,7 +102,8 @@ tcl/$S/Makefile: tcl/$S/configure Makefile
 
 tk/$S/Makefile: tk/$S/configure Makefile
 	cd tk/$S; \
-	./configure $(ENABLE_64BIT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
+	./configure $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) \
+	    $(SYMBOLS)
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY TCLURL
