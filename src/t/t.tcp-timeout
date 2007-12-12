@@ -1,0 +1,105 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2007 BitMover
+# %K%
+
+# In Win2k, there was a supposed 4 minute tcp timeout after one
+# side of a tcp connection was closed.  In XP and later, the
+# timeout was set to 2 minutes.  In win2k3-SP1, there was a bug
+# which cause the tcp connection to be reset after one side was
+# closed, even if there was data coming over the other channel.
+
+# These were tested on XP, and without the accompanying changes,
+# fail the test.  Since timeout takes 2 minutes to hit, these
+# are only run if the _BK_SLOW_TEST=YES is set in the environment.
+
+test "$_BK_SLOW_TEST" = YES || {
+echo $N Set _BK_SLOW_TEST=YES to run these tests ....................$NL
+echo skipped
+exit 0
+}
+
+# Run a bkd
+P=`port 50000`
+bk bkd -q -U -d -p$P -ikill
+
+echo $N Check the remote command ....................................$NL
+commercial project
+echo "sleep 130; touch '$HERE/DONE'" > test.remote
+chmod +x test.remote
+rm -f "$HERE/DONE"
+bk -q@bk://localhost:$P/project sh ./test.remote
+test -f "$HERE/DONE" || {
+	echo FAILED
+	bk _kill bk://localhost:$P || exit 1
+	exit 1
+}
+echo OK
+
+echo $N Push a cset in a non-BAM repo ...............................$NL
+mkdir BitKeeper/triggers
+cd BitKeeper/triggers
+cat <<EOF > pre-resolve.delay
+#!/bin/sh
+sleep 130
+touch "$HERE/DONE"
+EOF
+chmod +x pre-resolve.delay
+bk new $Q pre-resolve.delay
+bk commit $Q -ystuff
+cd "$HERE"
+BK_NO_TRIGGERS=1 bk clone $Q project copy
+# Now do a plain push
+cd project
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+rm -f "$HERE/DONE"
+bk push $Q bk://localhost:$P/copy
+test -f "$HERE/DONE" || {
+	echo failed
+	bk _kill bk://localhost:$P
+	exit 1
+}
+echo OK
+
+echo $N Push a cset in a BAM repo ...................................$NL
+echo foo > bin
+bk new $Q -b bin
+bk commit $Q -ystuff
+rm -f "$HERE/DONE"
+bk push $Q bk://localhost:$P/copy
+test -f "$HERE/DONE" || {
+	echo failed
+	bk _kill bk://localhost:$P
+	exit 1
+}
+echo OK
+
+echo $N Rclone a BAM repository .....................................$NL
+# rename the trigger for this test
+cd BitKeeper/triggers || exit 1
+bk mv -f pre-resolve.delay post-incoming.delay
+bk commit $Q -yrename
+cd ../..
+# Do the rclone
+rm -f "$HERE/DONE"
+bk clone $Q . bk://localhost:$P/rcopy
+test -f "$HERE/DONE" || {
+	echo failed
+	bk _kill bk://localhost:$P || exit 1
+	exit 1
+}
+echo OK
+
+bk _kill bk://localhost:$P || exit 1
