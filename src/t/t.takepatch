@@ -90,3 +90,16 @@ test -s c2 && {
        exit 1
 }
 echo OK
+
+echo $N Check that missing ChangeSet in RESYNC is dealt with ........$NL
+echo foo > foo
+bk new $Q foo
+bk commit $Q -y'Added foo'
+bk makepatch -r+ > P
+bk stripdel $Q -C -r+ foo
+bk takepatch -a < P 2>ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
