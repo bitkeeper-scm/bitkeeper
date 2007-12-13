@@ -435,7 +435,6 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 		fputs("@END@\n", f);
 		fclose(f);
 	}
-	disconnect(r, 1);
 
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {
@@ -502,6 +501,7 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 done:
 	if (rc) putenv("BK_STATUS=FAILED");
 	trigger(av[0], "post");
+	disconnect(r, 1);
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);
 	return (rc);

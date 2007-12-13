@@ -638,7 +638,6 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 		fprintf(f, "@END@\n");
 		fclose(f);
 	}
-	disconnect(r, 1);
 
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {
@@ -738,7 +737,6 @@ push_part2(char **av,
 			done = 1;
 		}
 	}
-	if (!bp_keys || (r->type == ADDR_HTTP)) disconnect(r, 1);
 
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);

@@ -212,9 +212,8 @@ usage:			system("bk help -s changes");
 		pid = mkpager();
 		putenv("BK_PAGER=cat");
 		proj_cd2root();
+		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
 	}
-
-	s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
 	if (opts.local) {
 		if (rc = doit_local(nac, nav, lurls)) goto out;
 	}
@@ -255,6 +254,7 @@ usage:			system("bk help -s changes");
 			fprintf(stderr, "Can't find package root\n");
 			exit(1);
 		}
+		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
 		unless (av[optind]) {
 			rc = doit(0); /* bk changes */
 		} else {

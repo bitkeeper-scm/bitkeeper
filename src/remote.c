@@ -169,7 +169,6 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	if (rc) goto out;
 	if (dostream) stream_stdin(r, gzip);
 	writen(r->wfd, "quit\n", 5);
-	disconnect(r, 1);
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	line = (getline2(r, buf, sizeof(buf)) > 0) ? buf : 0;
@@ -233,6 +232,7 @@ err:		fprintf(stderr, "##### %s #####\n", u);
 	if (strneq("ERROR-", line, 6)) goto err;
 	unless (sscanf(line, "@EXIT=%d@", &i)) i = 100;
 out:	if (zin) zgets_done(zin);
+	disconnect(r, 1);
 	wait_eof(r, 0);
 	disconnect(r, 2);
 	return (i);
