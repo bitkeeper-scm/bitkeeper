@@ -124,6 +124,53 @@ then	echo failed to leave local file in JUNK
 fi
 echo OK
 
+echo $N Sfile/create conflict .......................................$NL
+cd "$HERE"
+rm -rf copy
+tar xmf TAR
+cd copy
+rm -fr RESYNC PENDING
+bk new $Q CONFLICT
+bk commit $Q -y"make a mess"
+bk pull $Q -R
+echo q | bk resolve $Q -a 2> ERR && { echo failed; exit 1; }
+tail ERR | grep -q '^(create/sfile conflict) CONFLICT' || {
+	echo failed: wrong msg
+	cat ERR
+	exit 1
+}
+(echo rr; echo y) | bk resolve -l -a $Q > OUT 2>&1 || {
+	echo FAILED
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Sfile/create conflict with a merge ..........................$NL
+cd "$HERE"
+rm -rf copy
+tar xmf TAR
+cd copy
+rm -fr RESYNC PENDING
+bk edit $Q src/foo.c
+echo "/* end */" >> src/foo.c
+bk delta $Q -ynewend src/foo.c
+bk new $Q CONFLICT
+bk commit $Q -y"make a mess"
+bk pull $Q -R
+echo q | bk resolve $Q -a 2> ERR && { echo failed; exit 1; }
+tail ERR | grep -q '^(create/sfile conflict) CONFLICT' || {
+	echo failed: wrong msg
+	cat ERR
+	exit 1
+}
+printf "rr\ny\nm\nC\n" | bk resolve -l -a $Q > OUT 2>&1 || {
+	echo FAILED
+	cat OUT
+	exit 1
+}
+echo OK
+
 echo $N Prepare to test dir/file conflict ...........................$NL
 cd "$HERE"
 rm -fr project copy
