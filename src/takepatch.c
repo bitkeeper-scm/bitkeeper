@@ -58,6 +58,7 @@ private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private	int	skipPatch(MMAP *p);
 private	void	getGone(void);
+private	void	getChangeSet(void);
 private	void	loadskips(void);
 private int	sfio(MMAP *m);
 
@@ -255,6 +256,14 @@ usage:		system("bk help -s takepatch");
 	 */
 	getGone();
 
+	/*
+	 * There are instances (contrived) where the ChangeSet
+	 * file will not be in the RESYNC tree.  Make sure that
+	 * it is.  This will prevent resolve from failing and
+	 * hopefully those scary support emails.
+	 */
+	getChangeSet();
+
 	if (resolve) {
 		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0, 0};
 		int 	i;
@@ -282,6 +291,16 @@ getGone(void)
 		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
 			system("bk cat BitKeeper/etc/gone "
 			    "> RESYNC/BitKeeper/etc/gone");
+		}
+    	}
+}
+
+private void
+getChangeSet(void)
+{
+	if (exists(CHANGESET)) {
+		unless (exists(ROOT2RESYNC "/" CHANGESET)) {
+			sys("cp", CHANGESET, ROOT2RESYNC "/" CHANGESET, SYS);
 		}
     	}
 }

@@ -896,23 +896,8 @@ sc_rmr(resolve *rs)
 		    "BitKeeper/deleted/SCCS/s..del-%s~%d", nm, ++filenum);
 		sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
 	}
-	sccs_close(rs->s);
-	if (rename(rs->s->sfile, resync)) {
-		perror("rename");
-		fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, resync);
-		exit(1);
-	}
-
-	/*
-	 * Force a delta to lock it down to this name.
-	 */
-	if (sys("bk", "edit", "-q", resync, SYS)) {
-		perror(repo);
-		exit(1);
-	}
-	sprintf(repo, "-PyDelete: %s", rs->d->pathname);
-	if (sys("bk", "delta", "-f", repo, resync, SYS)) {
-		perror(repo);
+	if (move_remote(rs, resync)) {
+		perror("move_remote");
 		exit(1);
 	}
 	return (1);	/* XXX - EAGAIN? */

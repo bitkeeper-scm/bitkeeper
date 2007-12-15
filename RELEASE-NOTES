@@ -1,3 +1,87 @@
+Release notes for BitKeeper version 4.1a (released 14-Dec-2007)
+
+This is a bugfix release.
+
+Bugs fixed
+    2007-12-06-001	changes -L a b c printed extra tags for b and c
+    2006-02-06-001	Fix changes -h to correctly output tags when there
+			is more than one tag on a given cset.
+
+bk changes (also see "Bugs fixed" above)
+    Fix a bug in bk-4.1 where the :GFILE: dspec expands to an absolute
+    path only for the ChangeSet file when the command is run in a
+    subdirectory.  It now expands to "ChangeSet" when run from any
+    directory.
+
+    Show tags in changes -av.
+
+bk check -R
+    Fix bug in bk-4.1 where check didn't fail if not all the files
+    in the patch were present.
+
+bk -r checksum
+    Fix a bug in bk-4.1 where in some cases, it could give a return
+    code of 0 when there was an error.
+
+bk clone local bk://remote
+    If cloning from a local machine to a remote machine with a repository
+    that has BAM data, the remote repository would run check before the
+    BAM data had been sent.  The clone would succeed, and look like the
+    check failed.  It is now fixed to run check after the BAM data has
+    been sent.  Also fixed is check failing causing the clone to fail.
+
+    Due to the nature of the changes, bk-4.1a must be used
+    on both the local and remote machines.
+
+bk commit
+    BK splits long comment lines.  A bug in bk-4.1 caused a blank
+    line to be inserted between the split lines.  This is fixed.
+
+bk delta
+    Symlink checksums were being incorrectly calculated in bk-4.1,
+    which could lead to push and pull failing.  Using bk-4.1
+    to check in a symlink wasn't the problem as much as moving
+    an existing symlink around.
+
+bk edit
+    Allow bk edit -x<rev> (or -i<rev>) to work when the file is
+    already checked out in edit mode, but has no edits.  Previous
+    versions would give an error message that the file was already
+    checked out for editing.
+
+bk pull
+    See bk delta for a fix which affected a bug seen when pulling.
+
+bk push
+    A Windows TCP timeout could happen during a push, such as
+    with a pre-resolve trigger that ran silently for more than
+    2 minutes.  Now it doesn't.  This fix serves as a work-around
+    for a windows 2003 server running without SP2 as described on
+    http://support.microsoft.com/kb/923200
+
+    Pushing data in a repository with BAM had a bug in the progress
+    bar code.  Due to the fix, both sides of a push in a repository
+    with BAM data must be running bk-4.1a or later.
+
+    See also bk delta for a fix which affected a bug seen when pushing.
+
+bk sfio
+    Fix a corner case where unpacking of BAM data would fail.
+
+bk url
+    The bkd login urls (bk://user@host/path/to/repo) didn't work in bk-4.1.
+    They work again.  And are deprecated in the documentation.
+    Use instead ssh://user@host/path/to/repo.  That will work
+    and avoid the annoying "can not allocate pseudo tty" message.
+
+Other fixes
+    Disable XScreenSaver (libXss and libXext) from being linked
+    with the gui tools.
+
+    Mac OS X 10.5 (Leopard): Don't launch X11 unnecessarily.
+    BK will use X if the user has it running and DISPLAY explicitly
+    to a X session.  Otherwise, BK gui will run in natively.
+
 Release notes for BitKeeper version 4.1 (released 12-Oct-2007)
 
 Major features
