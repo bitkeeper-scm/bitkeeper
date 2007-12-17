@@ -51,23 +51,20 @@
 #define	MAXPATH	1024
 #endif
 
+#ifndef va_copy
+/* gcc 2.95 defines __va_copy */
+# ifdef __va_copy
+# define va_copy(dest, src) __va_copy(dest, src)
+# else
+# define va_copy(dest, src) ((dest) = (src))
+# endif /* __va_copy */
+#endif        /* va_copy */
+
 #define BIG_PIPE 4096	/* 16K pipe buffer for win32, ingored on unix */
 #define	GOOD_PSIZE	(16<<10)
 
 #define	isDriveColonPath(p)	(isalpha((p)[0]) && ((p)[1] == ':'))
 #define	executable(p)	((access(p, X_OK) == 0) && !isdir(p))
-
-/* aprintf.c */
-char	*aprintf(char *fmt, ...)
-#ifdef __GNUC__
-     __attribute__((format (printf, 1, 2)))
-#endif
-     ;
-void	ttyprintf(char *fmt, ...)
-#ifdef __GNUC__
-     __attribute__((format (printf, 1, 2)))
-#endif
-;
 
 /* cleanpath.c */
 char	*basenm(char *s);
@@ -138,7 +135,7 @@ int	mkdirf(char *file);
 #define	putenv(s)	safe_putenv("%s", s)
 void	safe_putenv(char *fmt, ...)
 #ifdef __GNUC__
-     __attribute__((format (printf, 1, 2)))
+     __attribute__((format (__printf__, 1, 2)))
 #endif
      ;
 
@@ -199,7 +196,7 @@ void	syserr(const char *postfix);
 #define	system(cmd)	safe_system(cmd)
 #define	popen(f, m)	safe_popen(f, m)
 #define	pclose(f)	safe_pclose(f)
-#define	fclose(f)	safe_fclose(f)
+//#define	fclose(f)	safe_fclose(f)
 
 int	safe_system(char *cmd);
 FILE *	safe_popen(char *cmd, char *type);
@@ -230,6 +227,13 @@ int	tty_cols(void);
 int	tty_getchar(void);
 void	tty_clear(void);
 int	myisatty(int fd);
+
+/* ttyprintf.c */
+void	ttyprintf(char *fmt, ...)
+#ifdef __GNUC__
+     __attribute__((format (__printf__, 1, 2)))
+#endif
+;
 
 /* utils.c */
 FILE	*efopen(char *env);

@@ -342,7 +342,7 @@ signdata(rsa_key *key)
 
 	/* hash it */
 	hashlen = sizeof(hbuf);
-	if (err = hash_filehandle(hash, stdin, hbuf, &hashlen)) {
+	if (err = hash_fd(hash, 0, hbuf, &hashlen)) {
 err:		fprintf(stderr, "crypto: %s\n", error_to_string(err));
 		return (1);
 	}
@@ -371,7 +371,7 @@ validatedata(rsa_key *key, char *signfile)
 		return (1);
 	}
 	hashlen = sizeof(hbuf);
-	if (err = hash_filehandle(hash, stdin, hbuf, &hashlen)) {
+	if (err = hash_fd(hash, 0, hbuf, &hashlen)) {
 error:		fprintf(stderr, "crypto: %s\n", error_to_string(err));
 		return (1);
 	}
@@ -515,7 +515,7 @@ secure_hashstr(char *str, int len, char *key)
 		if (hmac_memory(hash, key, strlen(key),
 			str, len, md5, &md5len)) return (0);
 	} else if ((len == 1) && streq(str, "-")) {
-		if (hash_filehandle(hash, stdin, md5, &md5len)) return (0);
+		if (hash_fd(hash, 0, md5, &md5len)) return (0);
 	} else {
 		if (hash_memory(hash, str, len, md5, &md5len)) return (0);
 	}
@@ -547,7 +547,7 @@ hashstr(char *str, int len)
 }
 
 char *
-hashstream(FILE *f)
+hashstream(int fd)
 {
 	int	hash = register_hash(&md5_desc);
 	unsigned long md5len, b64len;
@@ -556,7 +556,7 @@ hashstream(FILE *f)
 	char	b64[32];
 
 	md5len = sizeof(md5);
-	if (hash_filehandle(hash, f, md5, &md5len)) return (0);
+	if (hash_fd(hash, fd, md5, &md5len)) return (0);
 	b64len = sizeof(b64);
 	if (base64_encode(md5, md5len, b64, &b64len)) return (0);
 	for (p = b64; *p; p++) {

@@ -538,8 +538,8 @@ sccs.h: libc/system.h
 tclkey.h: genkeys.pl
 	perl genkeys.pl > tclkey.h
 
-tclwrap: blowfish.o tclwrap.o
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tclwrap.o blowfish.o
+tclwrap: blowfish.o tclwrap.o libc/libc.a
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tclwrap.o blowfish.o libc/libc.a $(XLIBS)
 
 tclwrap.o blowfish.o: blowfish.h tclkey.h
 

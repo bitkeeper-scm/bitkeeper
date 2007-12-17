@@ -2,7 +2,6 @@ utils.fake:
 	$(MAKE) -C.. utils
 
 UTILS_OBJS = $(patsubst %,utils/%, \
-	aprintf.o \
 	cleanpath.o \
 	concat_path.o \
 	dirname.o dirs.o \

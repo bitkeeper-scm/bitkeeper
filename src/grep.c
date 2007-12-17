@@ -199,8 +199,8 @@ private	line	*lines;	/* array of opts.before+1 lines */
 private	char	*lower;
 private	int	cur, lsiz, nlines;
 
-char	*
-fgetline(FILE *f)
+private char	*
+grep_getline(FILE *f)
 {
 	char	*p;
 	int	nchar;
@@ -305,7 +305,7 @@ doit(FILE *f)
 	char	*buf = 0;
 
 	opts.line = 0;
-	while (buf = fgetline(f)) {
+	while (buf = grep_getline(f)) {
 		if ((buf[0] == '|') && (p = getfile(buf))) {
 			unless (first) done(file, count);
 			count = opts.line = first = skip = 0;

@@ -1054,7 +1054,7 @@ void	cmdlog_addnote(char *key, char *val);
 int	cmdlog_end(int ret);
 int	write_log(char *root, char *file, int rotate, char *format, ...)
 #ifdef __GNUC__
-     __attribute__((format (printf, 4, 5)))
+     __attribute__((format (__printf__, 4, 5)))
 #endif
 	;
 off_t	get_byte_count(void);
@@ -1159,7 +1159,7 @@ int	run_check(char *partial, char *opts);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
-char	*hashstream(FILE *f);
+char	*hashstream(int fd);
 char	*secure_hashstr(char *str, int len, char *key);
 
 #define	KEY_LEASE		0
