@@ -199,7 +199,7 @@ private	line	*lines;	/* array of opts.before+1 lines */
 private	char	*lower;
 private	int	cur, lsiz, nlines;
 
-char	*
+private char	*
 fgetline(FILE *f)
 {
 	char	*p;

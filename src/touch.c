@@ -1,4 +1,4 @@
-#include <system.h>
+#include "sccs.h"
 
 typedef struct opts {
 	u32	atime:1;		/* change access time */

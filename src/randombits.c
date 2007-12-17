@@ -1,4 +1,4 @@
-#include "system.h"
+#include "sccs.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
 

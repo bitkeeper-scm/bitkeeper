@@ -84,10 +84,10 @@ reviewmerge_main(int ac, char **av)
 		f = stdout;
 	}
 	EACH_HASH(reviews) {
-		fprintf(f, "%s", reviews->kptr);
+		fprintf(f, "%s", (char *)reviews->kptr);
 		taghash = (hash **)reviews->vptr;
 		EACH_HASH(*taghash) {
-			fprintf(f, " %s", (*taghash)->kptr);
+			fprintf(f, " %s", (char *)(*taghash)->kptr);
 			range = (RBtree **)(*taghash)->vptr;
 			d = RBtree_first(*range);
 			while (d) {

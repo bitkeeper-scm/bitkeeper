@@ -4040,7 +4040,8 @@ config_merge(char *file1, char *file2)
 	EACH_HASH(config) keys = addLine(keys, config->kptr);
 	sortLines(keys, 0);
 	EACH(keys) {
-		printf("%s: %s\n", keys[i], hash_fetchStr(config, keys[i]));
+		printf("%s: %s\n", keys[i],
+		    (char *)hash_fetchStr(config, keys[i]));
 	}
 	freeLines(keys, 0);
 	hash_free(config);
@@ -6574,7 +6575,7 @@ out:			if (slist) free(slist);
 				}
 				if (flags & GET_ALIGN) {
 					if (p) fprintf(out, "%-36s", p);
-					fprintf(out, align);
+					fputs(align, out);
 				} else {
 					if (p) fprintf(out, "%s\t", p);
 				}
@@ -9004,7 +9005,7 @@ _print_pfile(sccs *s)
 		char	*s;
 		for (s = buf; *s && *s != '\n'; ++s);
 		*s = 0;
-		printf(buf);
+		fputs(buf, stdout);
 	} else {
 		printf("(can't read pfile)\n");
 	}
@@ -16752,7 +16753,7 @@ dumpTimestampDB(project *p, hash *db)
 
 		assert(db->vlen == sizeof(*ts));
 		fprintf(f, "%s%c%lx%c%ld%c0%o%c%lx%c%ld\n",
-		    db->kptr, BK_FS,
+		    (char *)db->kptr, BK_FS,
 		    ts->gfile_mtime, BK_FS, ts->gfile_size, BK_FS,
 		    ts->permissions, BK_FS,
 		    ts->sfile_mtime, BK_FS, ts->sfile_size);

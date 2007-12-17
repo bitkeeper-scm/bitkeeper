@@ -17,7 +17,7 @@ pwd_main(int ac, char **av)
 			case 's': shortname = 1; break;
 			case 'r': bk_rpath = 1; break; /* bk relative path */
 			case 'w': windows = 1; break;
-			default: fprintf(stderr, usage); exit(1);
+			default: fprintf(stderr, "%s", usage); exit(1);
 		}
 	}
 	

@@ -47,7 +47,7 @@ sinfo_main(int ac, char **av)
 				for (s = buf; *s && *s != '\n'; ++s)
 					;
 				*s = 0;
-				printf(buf);
+				fputs(buf, stdout);
 			}
 			fclose(f);
 done:			if (gfile) free(gfile);

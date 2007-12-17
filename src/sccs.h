@@ -1269,6 +1269,7 @@ u64	scansize(char *bytes);
 void	idcache_update(char *filelist);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s, int force);
+void	symGraph(sccs *s, delta *d);
 void	sccs_rdweaveInit(sccs *s);
 char	*sccs_rdweave(sccs *s);
 int	sccs_rdweaveDone(sccs *s);

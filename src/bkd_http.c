@@ -109,9 +109,8 @@ cmd_httpget(int ac, char **av)
 				safe_putenv("BK_VHOST=%s", s);
 				p = vpath_translate(Opts.vhost_dirpath);
 				if (chdir(p)) {
-					sprintf(buf,
+					http_error(404,
 					    "Unable to chdir to '%s'", p);
-					http_error(404, buf);
 				}
 				free(p);
 			} else if (buf[0] == '\r' || buf[0] == '\n') {

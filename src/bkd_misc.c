@@ -405,12 +405,6 @@ cmd_wrunlock(int ac, char **av)
 	return (0);
 }
 
-int
-cmd_exit(int ac, char **av)
-{
-	return (0);
-}
-
 /*
  * A useful debugging function.  It can be called remotely so it
  * must be secure.
