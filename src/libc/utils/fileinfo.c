@@ -235,14 +235,21 @@ Reserved(char *baseName)
  * fd0 and fd1 are still marked as taken. This function is used to probe
  * the low level os handles and close fd0 and fd1 if they point to invalid
  * handles.
+ *
+ * On Vista, _get_osfhandle() which is documented to return INVALID_HANDLE_VALUE
+ * has been observed to return -2.  Grr.
  */
+#define INVALID_HANDLE_VALUE_VISTA -2
 void
 closeBadFds(void)
 {
 	int	i;
+	HANDLE	fh;
 
 	for (i = 0; i < 3; i++) {
-		if ((HANDLE)_get_osfhandle(i) == INVALID_HANDLE_VALUE) {
+		fh = (HANDLE)_get_osfhandle(i);
+		if ((fh == INVALID_HANDLE_VALUE) ||
+		    (is_vista() && (fh == INVALID_HANDLE_VALUE_VISTA))) {
 			close(i);
 		}
 	}

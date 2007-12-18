@@ -39,7 +39,7 @@ platformInit(char **av)
 
 	unless (win_supported()) {
 		fprintf(stderr,
-		    "BitKeeper is not supported on this version of Windows.\n");
+		    "This version of BK requires Windows 2000 or later.\n");
 		exit(1);
 	}
 
