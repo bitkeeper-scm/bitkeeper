@@ -2127,60 +2127,26 @@ ok:
 }
 
 private inline char *
-peek(sccs *s)
-{
-	if (s->encoding & E_GZIP) return (zpeek(s->zin, 2));
-	return (s->where);
-}
-
-private off_t
-sccstell(sccs *s)
-{
-	return (s->where - s->mmap);
-}
-
-private char	*
-fastnext(sccs *s)
-{
-	register char *t = s->where;
-	register char *tmp = s->mmap + s->size;
-	register size_t n = tmp - t;
-
-	if (n <= 0) return (0);
-	/*
-	 * I tried unrolling this a couple of ways and it got worse
-	 *
-	 * An idea for improvement: read ahead and cache the pointers.
-	 * It can be done here but be careful not to screw up s->where, that
-	 * needs to stay valid, peekc and others use it.
-	 */
-	while (n-- && *t++ != '\n');
-
-	tmp = s->where;
-	s->where = t;
-	return (tmp);
-}
-
-/*
- * uncompress data into a local buffer and return a pointer to it.
- * Callers of this interface want a \n terminated buffer, so if we get
- * to the end of the buffer and there isn't enough space, we have to
- * move and decompress some more.
- */
-private inline char *
 nextdata(sccs *s)
 {
-	unless (s->encoding & E_GZIP) return (fastnext(s));
-	return (zgets(s->zin));
+	size_t	len;
+
+	return (fgetln(s->fh, &len));
 }
+
+
 
 /* setup to call sccs_rdweave() */
 void
 sccs_rdweaveInit(sccs *s)
 {
-	seekto(s, s->data);
+	zgetbuf	*zin;
+
+	fseek(s->fh, s->data, SEEK_SET);
 	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
+		s->oldfh = s->fh;
+		zin = zgets_initCustom(0, s->oldfh);
+		s->fh = funopen(zin, zread, 0, 0, zgets_done);
 	}
 }
 
@@ -2191,6 +2157,7 @@ sccs_rdweave(sccs *s)
 	return (nextdata(s));
 }
 
+
 /*
  * Cleans up gzip stuff.
  * fails if the whole weave was not read.
@@ -2198,15 +2165,17 @@ sccs_rdweave(sccs *s)
 int
 sccs_rdweaveDone(sccs *s)
 {
-	int	ret = 0;
+	int	c, ret = 0;
 
+	unless ((c = fgetc(s->fh)) == EOF) {
+		ungetc(c, s->fh);
+		ret = 1;
+	}
 	if (s->encoding & E_GZIP) {
-		unless (zeof(s->zin)) ret = 1;
-		if (zgets_done(s->zin)) ret = 1;
-		s->zin = 0;
-	} else {
-		assert(!s->zin);
-		unless (s->where == s->mmap + s->size) ret = 1;
+		assert(s->oldfh);
+		ret = fclose(s->fh);
+		s->fh = s->oldfh;
+		s->oldfh = 0;
 	}
 	return (ret);
 }
@@ -2235,10 +2204,7 @@ chk_nlbug(sccs *s)
 	int	sawblank = 0;
 	int	ret = 0;
 
-	seekto(s, s->data);
-	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
-	}
+	sccs_rdweaveInit(s);
 	while (buf = nextdata(s)) {
 		if (buf[0] == '\001' && buf[1] == 'E') {
 			p = buf + 3;
@@ -2250,8 +2216,7 @@ chk_nlbug(sccs *s)
 		}
 		sawblank = (buf[0] == '\n');
 	}
-	if ((s->encoding & E_GZIP) && zgets_done(s->zin)) ret = 1;
-	s->zin = 0;
+	if (sccs_rdweaveDone(s)) ret = 1;
 	return (ret);
 }
 
@@ -3222,12 +3187,12 @@ mkgraph(sccs *s, int flags)
 	char	*expected = "?";
 	char	*buf;
 
-	seekto(s, 0);
-	fastnext(s);			/* checksum */
+	rewind(s->fh);
+	nextdata(s);		/* checksum */
 	line++;
 	debug((stderr, "mkgraph(%s)\n", s->sfile));
 	for (;;) {
-		unless (buf = fastnext(s)) {
+		unless (buf = nextdata(s)) {
 bad:
 			fprintf(stderr,
 			    "%s: bad delta on line %d, expected `%s'",
@@ -3267,7 +3232,7 @@ bad:
 		d->same = atoiMult_p(&p);
 		/* ^Ad D 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
 		/* ^Ad R 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
-		buf = fastnext(s);
+		buf = nextdata(s);
 		line++;
 		if (buf[0] != '\001' || buf[1] != 'd' || buf[2] != ' ') {
 			expected = "^Ad ";
@@ -3321,7 +3286,7 @@ bad:
 		d->sdate = strdup(tmp);
 		d->user = strdup(user);
 		for (;;) {
-			if (!(buf = fastnext(s)) || buf[0] != '\001') {
+			if (!(buf = nextdata(s)) || buf[0] != '\001') {
 				expected = "^A";
 				goto bad;
 			}
@@ -3366,7 +3331,7 @@ bad:
 		}
 		/* ^Ac branch. */
 		for (;;) {
-			if (!(buf = fastnext(s)) || buf[0] != '\001') {
+			if (!(buf = nextdata(s)) || buf[0] != '\001') {
 				expected = "^A";
 				comments_free(d);
 				goto bad;
@@ -3381,7 +3346,8 @@ comment:		switch (buf[1]) {
 					meta(s, d, buf);
 				} else {
 					if (d->cmnts) break;
-					d->cmnts = int2p(buf - s->mmap);
+					d->cmnts =
+					    int2p(ftell(s->fh)-linelen(buf));
 				}
 				break;
 			    default:
@@ -3446,7 +3412,7 @@ misc(sccs *s)
 	char	*buf;
 
 	/* Save the users / groups list */
-	for (; (buf = fastnext(s)) && !strneq(buf, "\001U\n", 3); ) {
+	for (; (buf = nextdata(s)) && !strneq(buf, "\001U\n", 3); ) {
 		if (buf[0] == '\001') {
 			fprintf(stderr, "%s: corrupted user section.\n",
 			    s->sfile);
@@ -3458,7 +3424,7 @@ misc(sccs *s)
 	/* Save the flags.  Some are handled by the flags routine; those
 	 * are not handled here.
 	 */
-	for (; (buf = fastnext(s)) && !strneq(buf, "\001t\n", 3); ) {
+	for (; (buf = nextdata(s)) && !strneq(buf, "\001t\n", 3); ) {
 		if (strneq(buf, "\001f &", 4) ||
 		    strneq(buf, "\001f z _", 6)) {	/* XXX - obsolete */
 			/* We strip these now */
@@ -3496,11 +3462,11 @@ misc(sccs *s)
 	}
 
 	/* Save descriptive text. AT&T/teamware might have more after T */
-	for (; (buf = fastnext(s)) &&
+	for (; (buf = nextdata(s)) &&
 	    !strneq(buf, "\001T\n", BITKEEPER(s) ? 3 : 2); ) {
 		s->text = addLine(s->text, strnonldup(buf));
 	}
-	s->data = sccstell(s);
+	s->data = ftell(s->fh);
 	return (0);
 }
 
@@ -4323,11 +4289,9 @@ sccs_init(char *name, u32 flags)
 	}
 	debug((stderr, "init(%s) -> %s, %s\n", s->gfile, s->sfile, s->gfile));
 	s->nextserial = 1;
-	s->fd = -1;
-	s->mmap = (caddr_t)-1;
 	sccs_open(s, &sbuf);
 
-	if (s->mmap == (caddr_t)-1) {
+	unless (s->fh) {
 		if ((errno == ENOENT) || (errno == ENOTDIR)) {
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
@@ -4422,9 +4386,10 @@ bad:			sccs_free(s);
 	unless ((s->state & S_SOPEN) && (s->size == sbuf.st_size)) {
 		sccs_close(s);
 		if (sccs_open(s, &sbuf)) return (s);
-		seekto(s, 0);
-		while(buf = fastnext(s)) if (strneq(buf, "\001T\n", 3)) break;
-		s->data = sccstell(s);
+		rewind(s->fh);
+		/* XXX need data-offset in header */
+		while(buf = fgetline(s->fh)) if (streq(buf, "\001T")) break;
+		s->data = ftell(s->fh);
 	}
 	if (isreg(s->pfile)) {
 		s->state |= S_PFILE;
@@ -4469,42 +4434,21 @@ sccs_reopen(sccs *s)
 int
 sccs_open(sccs *s, struct stat *sp)
 {
+	struct	stat sbuf;
+
 	assert(s);
 	if (s->state & S_SOPEN) {
-		assert(s->fd != -1);
-		assert(s->mmap != (caddr_t)-1L);
+		assert(s->fh);
 		return (0);
 	} else {
-		assert(s->fd == -1);
-		assert(s->mmap == (caddr_t)-1);
+		assert(s->fh == 0);
 	}
-	if ((s->fd = open(s->sfile, O_RDONLY, 0)) == -1) return (-1);
-	if (sp) {
-		s->size = sp->st_size;
-	} else {
-		struct	stat sbuf;
-
-		fstat(s->fd, &sbuf);
-		s->size = sbuf.st_size;
+	unless (s->fh = fopen(s->sfile, "rb")) return (-1);
+	unless (sp) {
+		sp = &sbuf;
+		fstat(fileno(s->fh), sp);
 	}
-	s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
-#if     defined(hpux)
-	if (s->mmap == (caddr_t)-1) {
-		/*
-		 * HP-UX won't let you have two shared mmap to the same file.
-		 */
-		debug((stderr,
-		       "MAP_SHARED failed, trying MAP_PRIVATE\n"));
-		s->mmap =
-		    mmap(0, s->size, PROT_READ, MAP_PRIVATE, s->fd, 0);
-		s->state |= S_MAPPRIVATE;
-	}
-#endif
-	if (s->mmap == (caddr_t)-1) {
-		close(s->fd);
-		s->fd = -1;
-		return (-1);
-	}
+	s->size = sp->st_size;
 	s->state |= S_SOPEN;
 	return (0);
 }
@@ -4517,18 +4461,13 @@ void
 sccs_close(sccs *s)
 {
 	if (s->state & S_SOPEN) {
-		assert(s->fd != -1);
-		assert(s->mmap != (caddr_t)-1L);
+		assert(s->fh != 0);
+		fclose(s->fh);
+		s->fh = 0;
+		s->state &= ~S_SOPEN;
 	} else {
-		assert(s->fd == -1);
-		assert(s->mmap == (caddr_t)-1L);
-		return;
+		assert(s->fh == 0);
 	}
-	munmap(s->mmap, s->size);
-	close(s->fd);
-	s->mmap = (caddr_t) -1;
-	s->fd = -1;
-	s->state &= ~S_SOPEN;
 }
 
 /*
@@ -4604,7 +4543,7 @@ sccs_free(sccs *s)
 	if (s->state & S_CHMOD) {
 		struct	stat sbuf;
 
-		if (fstat(s->fd, &sbuf) == 0) {
+		if (fstat(fileno(s->fh), &sbuf) == 0) {
 			sbuf.st_mode &= ~0200;
 			chmod(s->sfile, sbuf.st_mode & 0777);
 		}
@@ -6501,10 +6440,7 @@ out:			if (slist) free(slist);
 	same = 0;
 	other = 0;
 	counter = &other;
-	seekto(s, s->data);
-	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
-	}
+	sccs_rdweaveInit(s);
 	while (buf = nextdata(s)) {
 		register u8 *e, *e1, *e2;
 
@@ -6731,12 +6667,9 @@ write:
 			fclose(out);
 		}
 	}
-	if (s->encoding & E_GZIP) {
-		if (zgets_done(s->zin)) {
-			error = 1;
-			s->io_error = s->io_warned = 1;
-		}
-		s->zin = 0;
+	if (sccs_rdweaveDone(s)) {
+		error = 1;
+		s->io_error = s->io_warned = 1;
 	}
 
 	if (error) {
@@ -7485,10 +7418,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	}
 	slist = serialmap(s, d, 0, 0, &error);
 	state = allocstate(0, s->nextserial);
-	seekto(s, s->data);
-	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
-	}
+	sccs_rdweaveInit(s);
 	side = NEITHER;
 	nextside = NEITHER;
 
@@ -7554,14 +7484,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		no_lf = 0;
 	}
 	ret = 0;
-done:   
-	if (s->encoding & E_GZIP) {
-		if (zgets_done(s->zin)) {
-			s->io_error = 1;
-			ret = -1; /* compression failure */
-		}
-		s->zin = 0;
-	}
+done:   ret = sccs_rdweaveDone(s);
 done2:	/* for GET_HASHDIFFS, the encoding has been handled in get_reg() */
 	if (lbuf) {
 		if (flushFILE(lbuf)) {
@@ -7589,82 +7512,36 @@ done3:
  * Return true if bad cksum
  */
 private int
-signed_badcksum(sccs *s, int flags)
-{
-	register char *t;
-	register char *end = s->mmap + s->size;
-	register unsigned int sum = 0;
-	int	filesum;
-
-	debug((stderr, "Checking sum from %p to %p (%d)\n",
-	    s->mmap + 8, end, (char*)end - s->mmap - 8));
-	assert(s);
-	seekto(s, 0);
-	filesum = atoi(&s->mmap[2]);
-	debug((stderr, "File says sum is %d\n", filesum));
-	t = s->mmap + 8;
-	end -= 16;
-	while (t < end) {
-		sum += t[0] + t[1] + t[2] + t[3] + t[4] + t[5] + t[6] + t[7] +
-		    t[8] + t[9] + t[10] + t[11] + t[12] + t[13] + t[14] + t[15];
-		t += 16;
-	}
-	end += 16;
-	while (t < end) sum += *t++;
-	if ((sum_t)sum == filesum) {
-		s->cksumok = 1;
-	} else {
-		verbose((stderr,
-		    "Bad old style checksum for %s, got %d, wanted %d\n",
-		    s->sfile, (sum_t)sum, filesum));
-	}
-	debug((stderr,
-	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
-	return ((sum_t)sum != filesum);
-}
-
-/*
- * Return true if bad cksum
- */
-private int
 badcksum(sccs *s, int flags)
 {
-	register u8 *t;
-	register u8 *end = s->mmap + s->size;
-	register unsigned int sum = 0;
+	u8	*t;
+	u32	sum = 0;
+	int	i;
 	int	filesum;
+	u8	buf[4<<10];
 
-#ifdef	PURIFY
-	assert(size(s->sfile) == s->size);
-#endif
-	debug((stderr, "Checking sum from %p to %p (%d)\n",
-	    s->mmap + 8, end, (char*)end - s->mmap - 8));
 	assert(s);
-	seekto(s, 0);
-	s->cksum = filesum = atoi(&s->mmap[2]);
+	rewind(s->fh);
+	t = fgetline(s->fh);
+	s->cksum = filesum = atoi(&t[2]);
 	s->cksumdone = 1;
 	debug((stderr, "File says sum is %d\n", filesum));
-	t = s->mmap + 8;
-	end -= 16;
-	while (t < end) {
-		sum += t[0] + t[1] + t[2] + t[3] + t[4] + t[5] + t[6] + t[7] +
-		    t[8] + t[9] + t[10] + t[11] + t[12] + t[13] + t[14] + t[15];
-		t += 16;
-	}
-	end += 16;
-	while (t < end) sum += *t++;
-	debug((stderr, "Calculated sum is %d\n", (sum_t)sum));
-	if ((sum_t)sum == filesum) {
-		s->cksumok = 1;
-	} else {
-		if (signed_badcksum(s, flags)) {
-			verbose((stderr,
-			    "Bad checksum for %s, got %d, wanted %d\n",
-			    s->sfile, (sum_t)sum, filesum));
-		} else {
-			return (0);
+	/* fread is not ideal here... */
+	while ((i = fread(buf, 1, sizeof(buf), s->fh)) > 0) {
+		t = buf;
+		while (i >= 16) {
+			sum +=
+			    t[0] + t[1] + t[2] + t[3] +
+			    t[4] + t[5] + t[6] + t[7] +
+			    t[8] + t[9] + t[10] + t[11] +
+			    t[12] + t[13] + t[14] + t[15];
+			t += 16;
+			i -= 16;
 		}
+		while (i--) sum += *t++;
 	}
+	debug((stderr, "Calculated sum is %d\n", (sum_t)sum));
+	if ((sum_t)sum == filesum) s->cksumok = 1;
 	debug((stderr,
 	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
 	return ((sum_t)sum != filesum);
@@ -8184,13 +8061,13 @@ cset_savetip(sccs *s, int force)
  * If we are trying to compare with expanded strings, do so.
  */
 private int
-expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
+expandnleq(sccs *s, delta *d, char *gbuf, int glen, char *fbuf, int *flags)
 {
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
 
-	if (BINARY(s)) return (MCMP_DIFF);
-	unless (*flags & GET_EXPAND) return (MCMP_DIFF);
+	if (BINARY(s)) return (0);
+	unless (*flags & GET_EXPAND) return (0);
 	if (SCCS(s)) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
 		if (EXPAND1(s) && sccs_expanded) *flags &= ~GET_EXPAND;
@@ -8199,7 +8076,7 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 		e = e2 = rcsexpand(s, d, e, &rcs_expanded);
 		if (EXPAND1(s) && rcs_expanded) *flags &= ~GET_EXPAND;
 	}
-	rc = mcmp(gbuf, e);
+	rc = (glen == linelen(e)) && strneq(gbuf, e, glen);
 	if (sccs_expanded) free(e1);
 	if (rcs_expanded) free(e2);
 	return (rc);
@@ -8212,7 +8089,9 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 private int
 _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 {
-	MMAP	*gfile = 0;
+	FILE	*gfile = 0;
+	char	*gline;
+	size_t	glen;
 	MDBM	*ghash = 0;
 	MDBM	*shash = 0;
 	serlist *state = 0;
@@ -8221,9 +8100,9 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	char	sbuf[MAXLINE];
 	char	*name = 0, *mode = "rb";
 	int	tmpfile = 0;
-	int	mcmprc;
 	char	*fbuf;
 	int	no_lf = 0;
+	int	in_weave = 0;
 	int	lf_pend = 0;
 	u32	eflags = flags; /* copy because expandnleq destroys bits */
 	int	error = 0, serial;
@@ -8267,7 +8146,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		ghash = loadDB(name, 0, flags|DB_USEFIRST);
 		shash = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	}
-	else unless (gfile = mopen(name, mode)) {
+	else unless (gfile = fopen(name, mode)) {
 		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
@@ -8275,10 +8154,8 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	slist = serialmap(s, d, pf->iLst, pf->xLst, &error);
 	assert(!error);
 	state = allocstate(0, s->nextserial);
-	seekto(s, s->data);
-	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
-	}
+	sccs_rdweaveInit(s);
+	in_weave = 1;
 	while (fbuf = nextdata(s)) {
 		if (isData(fbuf)) {
 			if (fbuf[0] == CNTLA_ESCAPE) fbuf++;
@@ -8335,39 +8212,21 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 				mdbm_delete_str(ghash, sbuf);
 				continue;
 			}
-			mcmprc = mcmp(gfile, fbuf);
-			if (mcmprc == MCMP_DIFF) {
-				mcmprc = expandnleq(s, d, gfile, fbuf, &eflags);
-			}
 			no_lf = 0;
 			lf_pend = print;
-			switch (mcmprc) {
-			    case MCMP_ERROR:
-			    	fprintf(stderr, "sccs_hasDiffs: mcmp error\n");
-				exit(1);
-			    case MCMP_MATCH:
-			    	break;
-			    case MCMP_NOLF:
-			    	no_lf = print;
-				break;
-			    case MCMP_DIFF:
-				debug((stderr, "diff because diff data\n"));
-				RET(1);
-			    case MCMP_SFILE_EOF:
-			    case MCMP_BOTH_EOF:
-			    	fprintf(stderr, "sccs_hasDiffs: "
-				    "sfile has data and is EOF?\n");
-				RET(1);
-			    case MCMP_GFILE_EOF:
+			unless (gline = fgetln(gfile, &glen)) {
 				debug((stderr, "diff because EOF on gfile\n"));
 				RET(1);
-			    default:
-			    	fprintf(stderr,
-				    "sccs_hasDiffs: switch with no case %d\n",
-				    mcmprc);
-				exit(1);
 			}
-			debug2((stderr, "SAME %.*s", linelen(fbuf), fbuf));
+			/* remember lines missing NL */
+			if (gline[glen-1] != '\n') no_lf = 1;
+			unless (((glen == linelen(fbuf)) &&
+				    strneq(gline, fbuf, glen)) ||
+			    expandnleq(s, d, gline, glen, fbuf, &eflags)) {
+				debug((stderr, "diff because diff data\n"));
+				RET(1);
+			}
+			debug2((stderr, "SAME %s", fbuf));
 			continue;
 		}
 		serial = atoi(&fbuf[3]);
@@ -8405,20 +8264,16 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		debug((stderr, "diff because EOF on sfile\n"));
 		RET(1);
 	}
-	mcmprc = mcmp(gfile, 0);
-	if (mcmprc == MCMP_BOTH_EOF) {
+	if (gline = fgetline(gfile)) {
+		debug((stderr, "diff because EOF on sfile\n"));
+		RET(1);
+	} else {
 		debug((stderr, "same\n"));
 		RET(0);
 	}
-	assert(mcmprc == MCMP_SFILE_EOF);
-	debug((stderr, "diff because EOF on sfile\n"));
-	RET(1);
 out:
-	if (s->zin) {
-		zgets_done(s->zin);
-		s->zin = 0;
-	}
-	if (gfile) mclose(gfile); /* must close before we unlink */
+	if (in_weave) sccs_rdweaveDone(s);
+	if (gfile) fclose(gfile); /* must close before we unlink */
 	if (ghash) mdbm_close(ghash);
 	if (shash) mdbm_close(shash);
 	if (name) {
@@ -9662,8 +9517,10 @@ out:		sccs_unlock(s, 'z');
 			}
 			mclose(diffs);
 		} else if (gfile) {
+			int	crnl_bug = (getenv("_BK_CRNL_BUG") != 0);
+
 			while (fnext(buf, gfile)) {
-				fix_crnl(buf);
+				unless (crnl_bug) fix_crnl(buf);
 				fix_cntl_a(s, buf, sfile);
 				s->dsum += fputdata(s, buf, sfile);
 				added++;
@@ -10372,11 +10229,9 @@ modeArg(delta *d, char *arg)
 private delta *
 sumArg(delta *d, char *arg)
 {
-	char	*p;
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
 	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
-	for (p = arg; isdigit(*p); p++);
 	return (d);
 }
 
@@ -11309,7 +11164,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
 	assert(sc->state & S_SOPEN);
-	seekto(sc, sc->data);
 	debug((stderr, "seek to %d\n", (int)sc->data));
 	obscure_it = (flags & ADMIN_OBSCURE);
 	rmlicense = (flags & ADMIN_RMLICENSE);
@@ -11327,12 +11181,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 	if (rmlicense) obscure_it = 1;
-	if (old_enc & E_GZIP) {
-		sc->zin = zgets_init(sc->where, sc->size - sc->data);
-	}
 	if (new_enc & E_GZIP) sccs_zputs_init(sc, sfile);
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
+	sccs_rdweaveInit(sc);
 	while (buf = nextdata(sc)) {
 		if (obscure_it) {
 			buf = obscure(rmlicense, old_enc & E_UUENCODE, buf);
@@ -11355,6 +11207,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		sc->encoding = old_enc;
 		if (obscure_it) free(buf);
 	}
+	sccs_rdweaveDone(sc);
 	if (flags & ADMIN_ADD1_0) {
 		sc->encoding = new_enc;
 		fputdata(sc, "\001I 1\n", sfile);
@@ -11375,10 +11228,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	badcksum(sc, flags);
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
-	if (old_enc & E_GZIP) {
-		if (zgets_done(sc->zin)) OUT;
-		sc->zin = 0;
-	}
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
 		fprintf(stderr,
@@ -11473,12 +11322,9 @@ out:
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
 	assert(s->state & S_SOPEN);
-	seekto(s, s->data);
 	debug((stderr, "seek to %d\n", (int)s->data));
-	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
-		sccs_zputs_init(s, sfile);
-	}
+	sccs_rdweaveInit(s);
+	if (s->encoding & E_GZIP) sccs_zputs_init(s, sfile);
 	while (buf = nextdata(s)) {
 		unless (buf[0] == '\001') {
 			fputdata(s, buf, sfile);
@@ -11495,11 +11341,8 @@ out:
 	}
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
+	sccs_rdweaveDone(s);
 	sccs_close(s), fclose(sfile), sfile = NULL;
-	if (s->encoding & E_GZIP) {
-		if (zgets_done(s->zin)) OUT;
-		s->zin = 0;
-	}
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -11538,7 +11381,7 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 	debug((stderr, "finish(incr=%d, sum=%d, print=%d) ",
 		incr, s->dsum, print));
 	if (lf_pend) s->dsum -= '\n';
-	while (!eof(s)) {
+	while (!feof(s->fh)) {
 		unless (buf = nextdata(s)) break;
 		debug2((stderr, "G> %.*s", linelen(buf), buf));
 		sum = fputdata(s, buf, out);
@@ -11595,14 +11438,20 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
 	int	print = *pp, incr = *ip, lines = *lp;
 	int	serial;
 	char	*n;
+	int	len;
 	sum_t	sum;
 	register char	*buf;
+	char	peek[3];	/* 2 chars plus \0 */
 
 	debug((stderr, "nxtline(@%d, before=%d print=%d, sum=%d) ",
 	    lines, before, print, s->dsum));
-	while (!eof(s)) {
+	while (!feof(s->fh)) {
 		if (before && print) { /* if move upto next printable line */
-			if (isData(peek(s))) break;
+			/* peek - read up to 2 and put them back */
+			len = fread(peek, 1, 2, s->fh);
+			peek[len] = 0;
+			while (len--) ungetc(peek[len], s->fh);
+			if (isData(peek)) break;
 		}
 		unless (buf = nextdata(s)) break;
 		debug2((stderr, "[%d] ", lines));
@@ -11791,11 +11640,8 @@ again:
 	/*
 	 * Do the actual delta.
 	 */
-	seekto(s, s->data);
-	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
-		sccs_zputs_init(s, out);
-	}
+	sccs_rdweaveInit(s);
+	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
 	slist = serialmap(s, n, 0, 0, 0);	/* XXX - -gLIST */
 	s->dsum = 0;
 	assert(s->state & S_SOPEN);
@@ -11934,10 +11780,7 @@ newcmd:
 	*up = unchanged;
 	if (state) free(state);
 	if (slist) free(slist);
-	if (s->encoding & E_GZIP) {
-		if (zgets_done(s->zin)) return (-1);
-		s->zin = 0;
-	}
+	sccs_rdweaveDone(s);
 	if (last) {
 		off_t	end = offset;
 		int	fd = fileno(out);
@@ -12033,10 +11876,7 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	if (s->encoding & E_GZIP) sccs_zputs_init(s, f);
 	unless (HAS_SFILE(s)) goto skip;
 
-	seekto(s, s->data);
-	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
-	}
+	sccs_rdweaveInit(s);
 	while (line = nextdata(s)) {
 		assert(strneq(line, "\001I ", 3));
 		ser = atoi(&line[3]);
@@ -12069,10 +11909,7 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	for ( ; line; line = nextdata(s)) {
 		fputdata(s, line, f);
 	}
-	if (s->encoding & E_GZIP) {
-		zgets_done(s->zin);
-		s->zin = 0;
-	}
+	sccs_rdweaveDone(s);
 	/* Print out remaining, forcing serial 1 block at the end */
 skip:	for ( ; i ; i--) {
 		unless (lp[i].p || lp[i].serial == 1) continue;
@@ -12640,9 +12477,8 @@ abort:		fclose(sfile);
 		sccs_unlock(s, 'x');
 		return (-1);
 	}
-	seekto(s, s->data);
+	sccs_rdweaveInit(s);
 	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
 		sccs_zputs_init(s, sfile);
 	}
 	assert(s->state & S_SOPEN);
@@ -12650,10 +12486,7 @@ abort:		fclose(sfile);
 		fputdata(s, buf, sfile);
 	}
 	if (fflushdata(s, sfile)) goto abort;
-	if (s->encoding & E_GZIP) {
-		if (zgets_done(s->zin)) goto abort;
-		s->zin = 0;
-	}
+	sccs_rdweaveDone(s);
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
@@ -16497,9 +16330,8 @@ stripDeltas(sccs *s, FILE *out)
 	slist = setmap(s, D_SET, 1);
 
 	state = allocstate(0, s->nextserial);
-	seekto(s, s->data);
+	sccs_rdweaveInit(s);
 	if (s->encoding & E_GZIP) {
-		s->zin = zgets_init(s->where, s->size - s->data);
 		sccs_zputs_init(s, out);
 	}
 	while (buf = nextdata(s)) {
@@ -16517,10 +16349,7 @@ stripDeltas(sccs *s, FILE *out)
 	free(state);
 	free(slist);
 	if (fflushdata(s, out)) return (1);
-	if (s->encoding & E_GZIP) {
-		if (zgets_done(s->zin)) return (1);
-		s->zin = 0;
-	}
+	if (sccs_rdweaveDone(s)) return (1);
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s);

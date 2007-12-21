@@ -358,7 +358,7 @@ mdbm_store(MDBM *db, datum key, datum val, int flags)
 	register uint32 need;
 	register char	*page;
 	ubig	hash;
-	void	*dbend;
+	char	*dbend;
 
 	if bad(key)
 		return errno = EINVAL, -1;

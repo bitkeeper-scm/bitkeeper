@@ -34,10 +34,10 @@ echo $N Check new and co with files having termination CRLF .........$NL
 printf 'data\r\n' > data
 echo 'data' > data.ref
 bk ci $Q -i data
-bk co $Q data
+bk co $Q data || exit 1
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-bk edit $Q data
+bk edit $Q data || exit 1
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -47,7 +47,7 @@ echo $N Check edit and co with files having termination CRLF ........$NL
 printf 'last line\r\n' >> data
 echo 'last line' >> data.ref
 bk ci $Q -m'newlastline' data
-bk co $Q data
+bk co $Q data || exit 1
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk edit $Q data
@@ -55,15 +55,43 @@ cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
-echo $N Check edit and co with files having midline CF ..............$NL
+echo $N Check edit and co with files having midline CR ..............$NL
 # File is checked out edit already
 echo -e 'last line\ranother last line' >> data
 cp data data.ref
 bk ci $Q -m'anothernewlastline' data
-bk co $Q data
+bk co $Q data  || exit 1
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk edit $Q data
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+
+echo $N Reproduce a old broken sfile with CRLF in weave .............$NL
+
+cat <<EOF | bk undos -r > testfile
+1
+2
+3
+4
+5
+EOF
+cp testfile WANT
+_BK_CRNL_BUG=1 bk new $Q testfile || exit 1
+bk get $Q testfile || exit 1
+
+# we don't fix old bug, so the next line isn't needed
+#bk undos < testfile > WANT
+# but we do want to check our assumptions about the checked out file
+checkfiles testfile WANT
+
+bk -r check -ac || exit 1
+echo OK
+
+echo $N Pull cset with CRLF in weave ................................$NL
+bk clone $Q . ../copy || exit 1
+bk commit $Q -yjunk || exit 1
+cd ../copy
+bk pull $Q || exit 1
 echo OK

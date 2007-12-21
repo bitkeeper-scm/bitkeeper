@@ -261,19 +261,17 @@ char **
 comments_load(sccs *s, delta *d)
 {
 	char	**lines = 0;
-	char	*p, *t;
+	char	*p;
 
 	if (d->localcomment) goto out;
 	d->localcomment = 1;
 	unless (d->cmnts) goto out;
 	assert(s && (s->state & S_SOPEN));
-	p = s->mmap + p2int(d->cmnts);
-	while (*p) {
+	fseek(s->fh, p2int(d->cmnts), SEEK_SET);
+	while (p = fgetline(s->fh)) {
 		unless (strneq(p, "\001c ", 3)) break;
 		p += 3;
-		t = strchr(p, '\n');
-		lines = addLine(lines, strndup(p, t-p));
-		p = t+1;
+		lines = addLine(lines, strdup(p));
 	}
 	d->cmnts = lines;
 out:	return (d->cmnts);

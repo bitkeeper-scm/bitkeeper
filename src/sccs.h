@@ -389,10 +389,6 @@ int	checking_rmdir(char *dir);
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
 #define	isData(buf)	((buf[0] != '\001') || \
 			    ((buf[0] == CNTLA_ESCAPE) && (buf[1] == '\001')))
-#define	seekto(s,o)	(s)->where = ((s)->mmap + o)
-#define	eof(s)		(((s)->encoding & E_GZIP) ? \
-			    zeof(s->zin) : \
-			    ((s)->where >= (s)->mmap + (s)->size))
 #define	new(p)		p = calloc(1, sizeof(*p))
 
 typedef	u32		ser_t;
@@ -575,10 +571,9 @@ struct sccs {
 				/* due to gaps, those two may not be the same */
 	delta	**ser2delta;	/* indexed by serial, returns delta */
 	int	ser2dsize;	/* just to be sure */
-	char	*mmap;		/* mapped file */
-	char	*where;		/* where we are in the mapped file */
 	off_t	size;		/* size of mapping */
-	int	fd;		/* cached copy of the file descriptor */
+	FILE	*fh;		/* cached copy of the file handle */
+	FILE	*oldfh;		/* uncompressed fh */
 	char	*sfile;		/* SCCS/s.foo.c */
 	char	*pfile;		/* SCCS/p.foo.c */
 	char	*zfile;		/* SCCS/z.foo.c */
@@ -607,7 +602,6 @@ struct sccs {
 	project	*proj;		/* If in BK mode, pointer to project */
 	void	*rrevs;		/* If has conflicts, revs in conflict */
 				/* Actually is of type "name *" in resolve.h */
-	zgetbuf	*zin;		/* Buffer expanding sccsfile while reading */
 	u16	version;	/* file format version */
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
