@@ -220,7 +220,6 @@ int	 getchar(void);
 void	 perror(const char *);
 int	 printf(const char * __restrict, ...);
 int	 putc(int, FILE *);
-int	 putchar(int);
 int	 puts(const char *);
 int	 remove(const char *);
 void	 rewind(FILE *);
@@ -256,7 +255,6 @@ void	funlockfile(FILE *);
 int	getc_unlocked(FILE *);
 int	getchar_unlocked(void);
 int	putc_unlocked(int, FILE *);
-int	putchar_unlocked(int);
 
 /*
  * Functions defined in POSIX 1003.2 and XPG2 or later.

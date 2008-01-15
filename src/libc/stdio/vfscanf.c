@@ -107,6 +107,17 @@ __collate_range_cmp(int c1, int c2)
 #endif
 }
 
+int
+vfscanf(FILE *fp, char const *fmt0, va_list ap)
+{
+	int ret;
+
+	FLOCKFILE(fp);
+	ret = __svfscanf_unlocked(fp, fmt0, ap);
+	FUNLOCKFILE(fp);
+	return (ret);
+}
+
 
 /*
  * __svfscanf - MT-safe version

@@ -294,7 +294,7 @@ safe_pclose(FILE *f)
 		if (child[j].pf == f) break;
 	}
 	assert(j != MAX_POPEN);
-	(fclose)(f);
+	bk_fclose(f);
 	EACH (child[j].pids) {
 		pid = p2int(child[j].pids[i]);
 		unless (waitpid(pid, &rc, 0) == pid) rc = -1;
@@ -317,7 +317,7 @@ safe_fclose(FILE *f)
 		}
 		assert(j == MAX_POPEN);
 	}
-	return ((fclose)(f));
+	return (bk_fclose(f));
 }
 
 char *

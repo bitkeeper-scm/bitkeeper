@@ -103,7 +103,7 @@ nt_fopen(const char *filename, const char *mode)
 		return (NULL);
 	}
 
-	fd = _fileno(f);
+	fd = fileno(f);
 	if (fd >= 0) make_fd_uninheritable(fd);
 	return (f);
 }

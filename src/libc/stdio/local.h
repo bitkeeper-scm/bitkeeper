@@ -42,6 +42,14 @@
 
 #include "fileext.h"
 
+/* "fix" remapping of fclose from bk's system.h */
+#undef	fclose
+#define	fclose	bk_fclose
+
+/* same for fopen on win32 */
+#undef	fopen
+#define	fopen	bk_fopen
+
 #define	STDIO_BLKSIZE	(8<<10)
 
 #ifndef	DEFFILEMODE

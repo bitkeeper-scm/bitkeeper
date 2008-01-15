@@ -90,6 +90,7 @@
 #define __smakebuf	bk___smakebuf
 #define __sread	bk___sread
 #define __vfprintf_unlocked	bk___vfprintf_unlocked
+#define vfscanf		bk_vfscanf
 #define __svfscanf	bk___svfscanf
 #define vfprintf	bk_vfprintf
 
