@@ -7,7 +7,7 @@
  * timezone offset in seconds normalized to (-12h, +13h].
  * The extra hour is for daylight savings time.
  */
-#include "system.h"
+#include "sccs.h"
 
 struct tm *
 localtimez(time_t *timep, long *offsetp)

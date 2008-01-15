@@ -76,7 +76,7 @@ tar -C$D/mingw -xzf $W32TOOLS/bison-1.875.tar.gz
 tar -C$D/mingw -xzf $W32TOOLS/flex-2.5.4.tar.gz
 
 echo extracting gdb
-tar -C$D/mingw -xzf $W32TOOLS/gdb-5.1.1-1-mingw.tar.gz
+tar -C$D -xzf $W32TOOLS/gdb-5.1.1-1-mingw.tar.gz
 
 echo extract perl
 tar -C$D -xzf $W32TOOLS/perl.tar.gz

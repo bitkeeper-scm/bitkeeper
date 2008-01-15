@@ -640,18 +640,12 @@ get_osinfo(void)
 
 /*
  * Return false if OS is Win98 (or older) (Including WinNT)
- * Return false if Vista64
  */
 int
 win_supported(void)
 {
 	get_osinfo();
-	/* older than win2k: unsupported */
-	unless (osinfo.dwMajorVersion > 4) return (0);
-	/* up to and including vista: supported */
-	if (osinfo.dwMajorVersion <= 6) return (1);
-	/* unlikely */
-	return (0);
+	return (osinfo.dwMajorVersion > 4); /* older than win2k: unsupported */
 }
 
 /*
@@ -662,6 +656,16 @@ isWin2000(void)
 {
 	get_osinfo();
 	return ((osinfo.dwMajorVersion == 5) && (osinfo.dwMinorVersion == 0));
+}
+
+/*
+ * Return true if OS is Vista
+ */
+int
+is_vista(void)
+{
+	get_osinfo();
+	return (osinfo.dwMajorVersion == 6);
 }
 
 #define	MAXPATH	1024

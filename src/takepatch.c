@@ -968,7 +968,7 @@ apply:
 			if (hash_fetchStr(cdb, buf)) {
 				/* find cset that added that entry */
 				sprintf(buf, "bk -R r2c -r%s " COLLAPSED,
-				    cdb->vptr);
+				    (char *)cdb->vptr);
 				f = popen(buf, "r");
 				fnext(buf, f);
 				chomp(buf);
@@ -1724,7 +1724,7 @@ init(char *inputFile, int flags)
 		if (fnext(buf, stdin)) {
 			if (streq(buf, "ERROR\n")) exit(1);
 			if (streq(buf, "OK-Nothing to resync.\n")) {
-				if (echo) fprintf(stderr, buf);
+				if (echo) fputs(buf, stderr);
 				exit(0);
 			}
 		} else {

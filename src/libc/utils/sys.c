@@ -10,7 +10,7 @@ syserr(const char *postfix)
 	for (n = 0; av[n]; n++) {
 		fprintf(stderr, "{%s} ", av[n]);
 	}
-	fprintf(stderr, postfix);
+	fprintf(stderr, "%s", postfix);
 }
 
 private int

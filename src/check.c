@@ -33,7 +33,7 @@ private	int	update_idcache(MDBM *idDB, hash *keys);
 private	void	fetch_changeset(void);
 private	int	repair(hash *db);
 
-private	u64	nfiles;		/* for progress bar */
+private	int	nfiles;		/* for progress bar */
 private	int	actual;		/* for progress bar cache */
 private	int	verbose;
 private	int	details;	/* if set, show more information */
@@ -897,7 +897,7 @@ sfiocmd(int in_repair)
 /*
  * sort on pathnames ... of the key
  */
-int
+private int
 key_sort(const void *a, const void *b)
 {
 	char	*aa = *(char**)a;

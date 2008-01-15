@@ -804,7 +804,7 @@ bp_hasBAM(void)
  * This is used to override whatever the repo thinks the server is.
  * Useful for "bk bam pull $URL".
  */
-void
+private void
 bp_server(char *server)
 {
 	char	*p = getenv("BK_CONFIG");
@@ -1389,7 +1389,7 @@ bam_reattach_main(int ac, char **av)
 }
 
 /* check that the log matches the index and vice versa */
-int
+private int
 bam_index_main(int ac, char **av)
 {
 	if (proj_cd2root()) {
@@ -1485,7 +1485,7 @@ bp_index_check(int quiet)
 }
 
 /* reload */
-int
+private int
 bam_reload_main(int ac, char **av)
 {
 	MDBM	*m;
@@ -1510,7 +1510,7 @@ bam_reload_main(int ac, char **av)
 	return (0);
 }
 
-int
+private int
 bam_sizes_main(int ac, char **av)
 {
 	sccs	*s;
@@ -1547,7 +1547,7 @@ err:			sccs_free(s);
  * Note: this will screw up on any aliases, there isn't anything I can
  * do about that.
  */
-int
+private int
 bam_timestamps_main(int ac, char **av)
 {
 	sccs	*s;
@@ -1620,7 +1620,7 @@ bam_timestamps_main(int ac, char **av)
 
 char	**keys;
 
-int
+private int
 bam_convert_main(int ac, char **av)
 {
 	sccs	*s;

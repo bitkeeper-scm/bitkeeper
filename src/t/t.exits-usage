@@ -1331,17 +1331,16 @@ rm -f ERR
 echo OK
 
 echo $N bk what with bogus option ...................................$NL
-bk what -z > /dev/null 2> ERR
-if [ $? -eq 0 ]
-then	echo "failed (bug bad status)"
-else	echo "OK, fix test"
+bk what -z > /dev/null 2> ERR && {
+	echo "Should fail"
 	exit 1
-fi
+}
 bk grep -iq usage ERR || {
 	echo "No usage"
 	exit 1
 }
 rm -f ERR
+echo OK
 
 echo $N bk xflags with bogus option .................................$NL
 bk xflags -z > /dev/null 2> ERR && {

@@ -13,46 +13,69 @@ int
 what_main(int ac, char **av)
 {
 	char	*name, *gfile;
+	int	c, rc = 0;
 
-	for (name = sfileFirst("what", &av[1], 0); name; name = sfileNext()) {
+	while ((c = getopt(ac, av, "")) != -1) {
+		switch (c) {
+		    default:
+			system("bk help -s what");
+			return (1);
+		}
+	}
+
+	for (name = sfileFirst("what", &av[optind], 0);
+	    name; name = sfileNext()) {
 		gfile = sccs2name(name);
-		print_id(gfile);
+		if (print_id(gfile)) rc = 1;
 		free(gfile);
 	}
 	sfileDone();
-	return (0);
+	return (rc);
 }
 
 private int
 print_id(char *file)
 {
-	FILE	*f;
-	char	*p, *cmd;
-	int	printed;
-	char	buf[MAXLINE];
+	int	dotab;
+	char	*p;
+	MMAP	*m;
 
-	cmd = aprintf("bk cat '%s'", file);
-	unless (f = popen(cmd, "r")) {
-		free(cmd);
-		return (1);
+	unless (m = mopen(file, "b")) return (-1);
+	if ((m->fd == -1) && !m->size) {
+		fprintf(stderr, "what: %s not a file\n", file);
+		return (-1);
 	}
-	free(cmd);
-	while (fnext(buf, f)) {
-		unless (p = strstr(buf, "@(#)")) continue;
-		printed = 0;
-		p += 4;
-		for (;;) {
-			if ((*p == '\r') ||
-			    (*p == '\n') || (*p == '"') || (*p == 0)) break;
-			unless (printed) {
-				printf("%s:", file);
-				printed = 1;
+
+	printf("%s:\n", file);
+	p = m->mmap;
+	while (p < (m->end - 4)) { /* at least 5 chars left */
+		if ((p[0] == '@') && (p[1] == '(') &&
+		    (p[2] == '#') && (p[3] == ')')) {
+			dotab = 1;
+			p += 4;
+			while (p < m->end) {
+				/* list from ATT what.c */
+				if ((*p == 0) || (*p == '\n') || (*p == '"') \
+				    || (*p == '\\') || (*p == '>')) {
+					break;
+				}
+				if (dotab && isspace(*p)) {
+					p++;
+					continue;
+				}
+				if (dotab) {
+					putchar('\t');
+					dotab = 0;
+				}
+				putchar(*p);
+				p++;
 			}
-			putchar(*p);
+			/* we can have a null entry above so dotab is set */
+			unless (dotab) putchar('\n');
+		} else {
 			p++;
 		}
-		if (printed) putchar('\n');
 	}
-	pclose(f);
+	mclose(m);
 	return (0);
 }

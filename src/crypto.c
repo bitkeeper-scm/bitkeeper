@@ -875,7 +875,7 @@ findhashdup_main(int ac, char **av)
 
 		unless (hash_insert(h, &a32, 4, buf, len)) {
 			printf("dup %.*s && %.*s == %08x\n",
-			    len-1, buf, h->vlen-1, h->vptr,
+			    len-1, buf, h->vlen-1, (char *)h->vptr,
 			    *(u32 *)h->kptr);
 			if (++cnt >= max) return (0);
 		}

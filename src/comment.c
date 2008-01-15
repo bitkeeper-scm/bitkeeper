@@ -235,16 +235,14 @@ write_editfile(FILE *f, char **files, int to_stdout)
 	EACH(files) {
 		sccs	*s;
 		delta	*d;
-		char	*t;
-		char	*name;
+		char	*t, *name;
 		int	j;
 
-		name = strdup(files[i]);
+		name = files[i];
 		t = strchr(name, BK_FS);
-		*t++ = 0;
-
+		*t = 0;
 		s = sccs_init(name, 0);
-		free(name);
+		*t++ = BK_FS;
 		unless (s && HASGRAPH(s)) goto next;
 		unless (d = sccs_findrev(s, t)) {
 			fprintf(stderr, "%s|%s not found\n", s->gfile, t);
