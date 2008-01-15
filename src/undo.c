@@ -474,7 +474,7 @@ move_file(char *checkfiles)
 	FILE	*f;
 	FILE	*chk;
 	int	rc = 0;
-	int	sync = bk_fsync();
+	int	sync = proj_sync(0);
 	int	fd;
 
 	/*

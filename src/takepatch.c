@@ -110,9 +110,7 @@ takepatch_main(int ac, char **av)
 	int	remote = 0;
 	int	resolve = 0;
 	int	textOnly = 0;
-	extern	int do_fsync;
 
-	do_fsync = 0;
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
 	while ((c = getopt(ac, av, "acDFf:iLmqsStTvy;")) != -1) {
