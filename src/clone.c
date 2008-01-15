@@ -20,7 +20,7 @@ struct {
 private int	clone(char **, remote *, char *, char **);
 private	int	clone2(remote *r);
 private void	parent(remote *r);
-private int	sfio(int gz, remote *r, int BAM, char *prefix);
+private int	sfio(remote *r, int BAM, char *prefix);
 private void	usage(void);
 private int	initProject(char *root);
 private	int	lclone(remote *, char *to);
@@ -139,7 +139,7 @@ usage(void)
 }
 
 private int
-send_clone_msg(int gzip, remote *r, char **envVar)
+send_clone_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE    *f;
@@ -151,7 +151,7 @@ send_clone_msg(int gzip, remote *r, char **envVar)
 	sendEnv(f, envVar, r, SENDENV_NOREPO);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
-	if (gzip) fprintf(f, " -z%d", gzip);
+	if (opts->gzip) fprintf(f, " -z%d", opts->gzip);
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
 	if (opts->quiet) fprintf(f, " -q");
 	if (opts->delay) fprintf(f, " -w%d", opts->delay);
@@ -169,9 +169,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
 	char	*lic;
-	int	gzip, rc = 2, do_part2;
+	int	rc = 2, do_part2;
 
-	gzip = r->port ? opts->gzip : 0;
 	if (local && exists(local) && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
 		usage();
@@ -183,7 +182,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
 	if (bkd_connect(r, opts->gzip, !opts->quiet)) goto done;
-	if (send_clone_msg(gzip, r, envVar)) goto done;
+	if (r->compressed) opts->gzip = 0;
+	if (send_clone_msg(r, envVar)) goto done;
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
@@ -265,7 +265,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	rc = 1;
 
 	/* eat the data */
-	if (sfio(gzip, r, 0, basenm(local)) != 0) {
+	if (sfio(r, 0, basenm(local)) != 0) {
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
@@ -277,7 +277,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
 	if (do_part2) {
 		p = aprintf("-r..%s", opts->rev ? opts->rev : "");
-		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
+		rc = bkd_BAM_part3(r, envVar, opts->quiet, p, opts->gzip);
 		free(p);
 		if (rc) goto done;
 	}
@@ -403,7 +403,7 @@ initProject(char *root)
 
 
 private int
-sfio(int gzip, remote *r, int BAM, char *prefix)
+sfio(remote *r, int BAM, char *prefix)
 {
 	int	n, status;
 	pid_t	pid;
@@ -430,11 +430,15 @@ sfio(int gzip, remote *r, int BAM, char *prefix)
 	gunzipAll2fh(r->rfd, f, &(opts->in), &(opts->out));
 	fclose(f);
 	waitpid(pid, &status, 0);
-	if (gzip && !opts->quiet) {
-		fprintf(stderr, "%s uncompressed to %s, ",
-		    psize(opts->in), psize(opts->out));
-		fprintf(stderr,
-		    "%.2fX expansion\n", (double)opts->out/opts->in);
+	unless (opts->quiet) {
+		if (opts->gzip) {
+			fprintf(stderr, "%s uncompressed to %s, ",
+			    psize(opts->in), psize(opts->out));
+			fprintf(stderr,
+			    "%.2fX expansion\n", (double)opts->out/opts->in);
+		} else {
+			fprintf(stderr, "%s transferred\n", psize(opts->out));
+		}
 	}
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));

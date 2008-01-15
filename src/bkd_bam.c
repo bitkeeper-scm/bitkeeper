@@ -114,7 +114,7 @@ server(int recurse)
  * we won't request data.
  */
 int
-bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
+bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range, int gzip)
 {
 	FILE	*f;
 	int	i, bytes, rc = 1;
@@ -123,7 +123,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	char	cmd_file[MAXPATH];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, 1, !quiet)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, gzip, !quiet)) {
 		return (-1);
 	}
 	bktmp(cmd_file, "BAMmsg");
@@ -142,7 +142,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	} else {
 		fprintf(f, "bk -zo0 -Bstdin sfio -oqBl -\n");
 	}
-	if (rc = bp_sendkeys(f, range, &sfio)) goto done;
+	if (rc = bp_sendkeys(f, range, &sfio, gzip)) goto done;
 	fprintf(f, "rdunlock\n");
 	fprintf(f, "quit\n");
 	fclose(f);
@@ -195,7 +195,7 @@ done:	wait_eof(r, 0);
 }
 
 int
-bp_sendkeys(FILE *fout, char *range, u64 *bytep)
+bp_sendkeys(FILE *fout, char *range, u64 *bytep, int gzip)
 {
 	FILE	*f;
 	int	debug, len, space, where, ret;
@@ -208,7 +208,7 @@ bp_sendkeys(FILE *fout, char *range, u64 *bytep)
 
 	debug = ((p = getenv("_BK_BAM_DEBUG")) && *p);
 	*bytep = 0;
-	zout = zputs_init(zputs_hfwrite, fout, -1);
+	zout = zputs_init(zputs_hfwrite, fout, gzip);
 	if (ret = bp_fetchData()) {
 		/*
 		 * If we have a server then we want to recurse one level up

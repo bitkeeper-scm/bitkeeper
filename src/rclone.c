@@ -17,7 +17,7 @@ private int rclone_part2(char **av, remote *r, char **ev, char *bp);
 private	int rclone_part3(char **av, remote *r, char **ev, char *bp);
 private int send_part1_msg(remote *r, char **envVar);
 private	int send_sfio_msg(remote *r, char **envVar);
-private u32 send_sfio(int level, remote *r);
+private u32 send_sfio(remote *r);
 
 int
 rclone_main(int ac, char **av)
@@ -125,6 +125,7 @@ rclone_part1(remote *r, char **envVar)
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
+	if (r->compressed) opts.gzip = 0;
 	if (send_part1_msg(r, envVar)) return (-1);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
@@ -168,21 +169,15 @@ send_part1_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE	*f;
-	int	gzip, rc;
-
-	/*
-	 * If we are using ssh/rsh do not do gzip ourself
-	 * Let ssh do it
-	 */
-	gzip = r->port ? opts.gzip : 0;
+	int	rc;
 
 	bktmp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 	fprintf(f, "rclone_part1");
-	if (gzip) fprintf(f, " -z%d", gzip);
-	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
+	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.verbose) fprintf(f, " -v");
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
@@ -317,21 +312,14 @@ send_sfio_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE	*f;
-	int	gzip, rc;
+	int	rc;
 	u32	m = 0, n, extra = 0;
-
-	/*
-	 * If we are using ssh/rsh do not do gzip ourself
-	 * Let ssh do it
-	 */
-	gzip = r->port ? opts.gzip : 0;
 
 	bktmp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 	fprintf(f, "rclone_part2");
-	if (gzip) fprintf(f, " -z%d", gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (r->path) fprintf(f, " '%s'", r->path);
@@ -345,7 +333,7 @@ send_sfio_msg(remote *r, char **envVar)
 	 * 6 is the size of "@END@" string
 	 */
 	if (r->type == ADDR_HTTP) {
-		m = send_sfio(gzip, 0);
+		m = send_sfio(0);
 		assert(m > 0);
 		extra = m + 7 + 6;
 	}
@@ -353,7 +341,7 @@ send_sfio_msg(remote *r, char **envVar)
 	unlink(buf);
 
 	writen(r->wfd, "@SFIO@\n", 7);
-	n = send_sfio(gzip, r);
+	n = send_sfio(r);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(stderr,
 		    "Error: sfio file changed size from %d to %d\n", m, n);
@@ -409,7 +397,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 		if (r->type == ADDR_HTTP) {
 			fnull = fopen(DEVNULL_WR, "w");
 			assert(fnull);
-			m = send_BAM_sfio(gzip, fnull, bp_keys, bpsz);
+			m = send_BAM_sfio(fnull, bp_keys, bpsz);
 			fclose(fnull);
 			assert(m > 0);
 			extra = m + 6 + 6;
@@ -424,7 +412,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	if (extra > 0) {
 		f = fdopen(dup(r->wfd), "wb");
 		writen(r->wfd, "@BAM@\n", 6);
-		n = send_BAM_sfio(gzip, f, bp_keys, bpsz);
+		n = send_BAM_sfio(f, bp_keys, bpsz);
 		if ((r->type == ADDR_HTTP) && (m != n)) {
 			fprintf(stderr,
 			    "Error: patch has changed size from %d to %d\n",
@@ -512,7 +500,7 @@ done:
  * We need a -s option to sfio that just adds up the sizes and spits it out.
  */
 private u32
-send_sfio(int level, remote *r)
+send_sfio(remote *r)
 {
 	int	status;
 	char	*tmpf;
@@ -543,7 +531,7 @@ send_sfio(int level, remote *r)
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	opts.in = opts.out = 0;
-	gzipAll2fh(fileno(fh), fout, level, &opts.in, &opts.out, 0);
+	gzipAll2fh(fileno(fh), fout, opts.gzip, &opts.in, &opts.out, 0);
 	status = pclose(fh);
 	unlink(tmpf);
 	free(tmpf);

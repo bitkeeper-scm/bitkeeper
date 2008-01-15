@@ -4,6 +4,7 @@
 typedef	struct {
 	u32	debug:1;
 	u32	verbose:1;
+	int	gzip;
 	char    *rev;
 } opts;
 
@@ -22,7 +23,10 @@ rclone_common(int ac, char **av, opts *opts)
 		    case 'd': opts->debug = 1; break;
 		    case 'r': opts->rev = optarg; break; 
 		    case 'v': opts->verbose = 1; break;
-		    case 'z': break;
+		    case 'z':
+			opts->gzip = optarg ? atoi(optarg) : 6;
+			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = 6;
+			break;
 		    default: break;
 		}
 	}
@@ -195,7 +199,7 @@ done:
 			putenv("BKD_DAEMON="); /* allow new bkd connections */
 			printf("@BAM@\n");
 			p = aprintf("-r..%s", opts.rev ? opts.rev : "");
-			rc = bp_sendkeys(stdout, p, &sfio);
+			rc = bp_sendkeys(stdout, p, &sfio, opts.gzip);
 			free(p);
 			// XXX - rc != 0?
 			printf("@DATASIZE=%s@\n", psize(sfio));

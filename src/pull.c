@@ -27,7 +27,7 @@ typedef	struct {
 private int	pull(char **av, opts opts, remote *r, char **envVar);
 private void	resolve_comments(remote *r);
 private	int	resolve(opts opts);
-private	int	takepatch(opts opts, int gzip, remote *r);
+private	int	takepatch(opts opts, remote *r);
 
 private void
 usage(void)
@@ -220,6 +220,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	FILE	*f;
 
 	if (bkd_connect(r, opts.gzip, !opts.quiet)) return (-1);
+	if (r->compressed) opts.gzip = 0;
 	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -433,7 +434,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 	if (streq(buf, "@PATCH@")) {
-		if (i = takepatch(opts, opts.gzip, r)) {
+		if (i = takepatch(opts, r)) {
 			fprintf(stderr,
 			    "Pull failed: takepatch exited %d.\n", i);
 			putenv("BK_STATUS=TAKEPATCH FAILED");
@@ -489,7 +490,8 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	if (!rc && got_patch &&
 	    (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
 		chdir(ROOT2RESYNC);
-		rc = bkd_BAM_part3(r, envVar, opts.quiet, "- < " CSETS_IN);
+		rc = bkd_BAM_part3(r, envVar, opts.quiet,
+		    "- < " CSETS_IN, opts.gzip);
 		chdir(RESYNC2ROOT);
 		if (rc) {
 			fprintf(stderr, "BAM fetch failed, aborting pull.\n");
@@ -544,7 +546,7 @@ done:	putenv("BK_RESYNC=FALSE");
 }
 
 private	int
-takepatch(opts opts, int gzip, remote *r)
+takepatch(opts opts, remote *r)
 {
 	int	n, status, pfd;
 	pid_t	pid;
@@ -573,12 +575,16 @@ takepatch(opts opts, int gzip, remote *r)
 		fprintf(stderr, "Waiting for %d\n", pid);
 	}
 
-	if (gzip && !opts.quiet) {
-		fprintf(stderr,
-		    "%s uncompressed to %s, ", psize(opts.in), psize(opts.out));
-		fprintf(stderr,
-		    "%.2fX expansion\n",
-		    (double)opts.out/opts.in);
+	unless (opts.quiet) {
+		if (opts.gzip) {
+			fprintf(stderr, "%s uncompressed to %s, ",
+			    psize(opts.in), psize(opts.out));
+			fprintf(stderr,
+			    "%.2fX expansion\n",
+			    (double)opts.out/opts.in);
+		} else {
+			fprintf(stderr, "%s transferred\n", psize(opts.out));
+		}
 	}
 	if (WIFEXITED(status)) return (WEXITSTATUS(status));
 	if (WIFSIGNALED(status)) return (-WTERMSIG(status));

@@ -398,7 +398,10 @@ bkd(int compress, remote *r)
 				freeme = 0;
 			}
 			cmd[i = 0] = remsh;
-			if (remopts) cmd[++i] = remopts;
+			if (remopts) { /* must be -C above */
+				cmd[++i] = remopts;
+				r->compressed = 1;
+			}
 		}
 		cmd[++i] = r->host;
 		if (r->user) {

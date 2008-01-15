@@ -10,7 +10,7 @@ cmd_push_part1(int ac, char **av)
 {
 	char	*p, buf[MAXKEY], cmd[MAXPATH];
 	int	c, n, status;
-	int	debug = 0;
+	int	debug = 0, gzip = 0;
 	MMAP    *m;
 	FILE	*l;
 	char	*lktmp;
@@ -18,7 +18,10 @@ cmd_push_part1(int ac, char **av)
 
 	while ((c = getopt(ac, av, "dnz|")) != -1) {
 		switch (c) {
-		    case 'z': break; /* ignored */
+		    case 'z': break;
+			gzip = optarg ? atoi(optarg) : 6;
+			if (gzip < 0 || gzip > 9) gzip = 6;
+			break;
 		    case 'd': debug = 1; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
@@ -118,6 +121,7 @@ int
 cmd_push_part2(int ac, char **av)
 {
 	int	fd2, pfd, c, rc = 0;
+	int	gzip = 0;
 	int	status, debug = 0, nothing = 0, conflict = 0;
 	pid_t	pid;
 	char	*p;
@@ -129,7 +133,10 @@ cmd_push_part2(int ac, char **av)
 
 	while ((c = getopt(ac, av, "dGnqz|")) != -1) {
 		switch (c) {
-		    case 'z': break; /* ignored */
+		    case 'z':
+			gzip = optarg ? atoi(optarg) : 6;
+			if (gzip < 0 || gzip > 9) gzip = 6;
+			break;
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
@@ -229,7 +236,7 @@ cmd_push_part2(int ac, char **av)
 		putenv("BKD_DAEMON="); /* allow new bkd connections */
 		printf("@BAM@\n");
 		chdir(ROOT2RESYNC);
-		rc = bp_sendkeys(stdout, "- < " CSETS_IN, &sfio);
+		rc = bp_sendkeys(stdout, "- < " CSETS_IN, &sfio, gzip);
 		printf("@DATASIZE=%s@\n", psize(sfio));
 		fflush(stdout);
 		chdir(RESYNC2ROOT);
@@ -312,6 +319,7 @@ cmd_push_part3(int ac, char **av)
 	int	fd2, pfd, c, rc = 0;
 	int	status, debug = 0;
 	int	inbytes, outbytes;
+	int	gzip = 0;
 	pid_t	pid;
 	FILE	*f;
 	char	*sfio[] = {"bk", "sfio", "-iqB", "-", 0};
@@ -319,7 +327,10 @@ cmd_push_part3(int ac, char **av)
 
 	while ((c = getopt(ac, av, "dGqz|")) != -1) {
 		switch (c) {
-		    case 'z': break;
+		    case 'z':
+			gzip = optarg ? atoi(optarg) : 6;
+			if (gzip < 0 || gzip > 9) gzip = 6;
+			break;
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'q': break;
