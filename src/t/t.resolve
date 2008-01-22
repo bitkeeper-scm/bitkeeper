@@ -54,8 +54,26 @@ cmp -s file ../file.bak || {
 }
 echo OK
 
-echo $N Test exiting out a resolve early deleting files .............$NL
+echo $N Test out aborting a conflict ................................$NL
 bk unpull -f $Q || exit 1
+bk pull $Q -R
+{ echo a; echo y; } | bk resolve -q 2> ERR && {
+	echo expected to fail
+	exit 1
+}
+# If there is an error, it will be in the slot after the space and before
+# the equals.
+grep -q 'Abort patch? (y/n) =*$' ERR || {
+	echo unexpected msg
+	cat ERR
+	exit 1
+}
+test -d RESYNC && exit 1
+test -d PENDING || exit 1
+rm -fr PENDING
+echo OK
+
+echo $N Test exiting out a resolve early deleting files .............$NL
 bk edit $Q file || exit 1
 _BK_PREVENT_RESOLVE_RERUN=1 bk pull $Q 2> OUT && {
 	echo should not pass
