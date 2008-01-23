@@ -446,7 +446,7 @@ bp_fetch(sccs *s, delta *din)
 	if (bp_serverID(&repoID)) return (-1);
 	unless (repoID) return (0);	/* no need to update myself */
 	free(repoID);
-	url = proj_configval(0, "BAM_server");
+	url = bp_serverURL();
 	assert(url);
 
 	unless (din = bp_fdelta(s, din)) return (-1);
@@ -536,7 +536,7 @@ bp_updateServer(char *range, char *list, int quiet)
 	}
 	free(repoID);
 
-	url = proj_configval(0, "BAM_server");
+	url = bp_serverURL();
 	assert(url);
 
 	tmpkeys = bktmp(0, 0);
@@ -623,7 +623,7 @@ bp_updateServer(char *range, char *list, int quiet)
 }
 
 char	*
-bp_serverName(void)
+bp_serverURL(void)
 {
 	char	*url;
 
@@ -664,7 +664,7 @@ serverID(char **id, int notme)
 
 	assert(id);
 	*id = 0;
-	unless ((url = proj_configval(0,"BAM_server")) && *url) return (0);
+	unless (url = bp_serverURL()) return (0);
 //ttyprintf("[%d] BAM_SERVER=%s\n", getpid(), url);
 
 	strcpy(cfile, proj_root(0));
@@ -860,7 +860,7 @@ bam_pull_main(int ac, char **av)
 
 	/* request deltas from server */
 	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -",
-	    proj_configval(0, "BAM_server")));
+	    bp_serverURL()));
 
 	/* unpack locally */
 	if (quiet) {
@@ -959,7 +959,7 @@ bam_clean_main(int ac, char **av)
 			return (1);
 		}
 		free(p2);
-		p2 = proj_configval(0, "BAM_server");
+		p2 = bp_serverURL();
 		/* No recursion, we just want that server's list */
 		cmd = aprintf("%s | "
 			"bk -q@'%s' -Lr -Bstdin havekeys -Bl -", p1, p2);
@@ -1148,14 +1148,14 @@ bp_check_findMissing(int quiet, char **missing)
 			fprintf(stderr,
 			    "Looking for %d missing files in %s\n",
 			    nLines(missing),
-			    proj_configval(0, "BAM_server"));
+			    bp_serverURL());
 		}
 		free(p);
 
 		tmp = bktmp(0, 0);
 		/* no recursion, we are remoted to the server already */
 		p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -Bl - > '%s'",
-		    proj_configval(0, "BAM_server"), tmp);
+		    bp_serverURL(), tmp);
 		f = popen(p, "w");
 		free(p);
 		assert(f);
@@ -1163,7 +1163,7 @@ bp_check_findMissing(int quiet, char **missing)
 		if (pclose(f)) {
 			fprintf(stderr,
 			    "Failed to contact BAM_server at %s\n",
-			    proj_configval(0, "BAM_server"));
+			    bp_serverURL());
 			rc = 1;
 		} else {
 			EACH(missing) {	/* clear array in place */

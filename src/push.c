@@ -732,7 +732,7 @@ push_part2(char **av,
 			/* push BAM data to server */
 			fprintf(stderr,
 			    "push: unable to update BAM server %s\n",
-			    bp_serverName());
+			    bp_serverURL());
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 2;

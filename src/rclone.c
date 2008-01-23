@@ -159,7 +159,7 @@ rclone_part1(remote *r, char **envVar)
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if (bp_updateServer("..", 0, !opts.verbose)) {
 		fprintf(stderr,
-		    "Unable to update BAM server %s\n", bp_serverName());
+		    "Unable to update BAM server %s\n", bp_serverURL());
 		return (-1);
 	}
 	return (0);

@@ -99,7 +99,7 @@ server(int recurse)
 	if (p == 0) return (stdout);
 	free(p);
 	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B -",
-	    proj_configval(0,"BAM_server"));
+	    bp_serverURL());
 	f = popen(p, "w");
 	free(p);
 	return (f ? f : stdout);

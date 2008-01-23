@@ -509,7 +509,7 @@ err:		send_eof(SFIO_LOOKUP);
 	 * XXX - this will fail miserably on loops or locks.
 	 */
 	p = aprintf("bk -q@'%s' -Lr -Bstdin sfio -qoB - < '%s'",
-	    proj_configval(0, "BAM_server"), tmpf);
+	    bp_serverURL(), tmpf);
 	f = popen(p, "r");
 	free(p);
 	unless (f) goto err;

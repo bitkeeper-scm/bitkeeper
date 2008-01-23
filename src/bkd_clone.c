@@ -67,7 +67,7 @@ cmd_clone(int ac, char **av)
 	if (bp_updateServer("..", 0, SILENT)) {
 		fflush(stdout);
 		printf(
-		    "ERROR-unable to update BAM server %s\n", bp_serverName());
+		    "ERROR-unable to update BAM server %s\n", bp_serverURL());
 		fflush(stdout);
 		drain();
 		return (1);

@@ -327,10 +327,10 @@ bp_fetchkeys(char *me, int quiet, char **keys, u64 todo)
 {
 	int	i;
 	FILE	*f;
-	char	*server = proj_configval(0, "BAM_server");
+	char	*server = bp_serverURL();
 	char	buf[MAXPATH];
 
-	unless (*server) {
+	unless (server) {
 		fprintf(stderr, "%s: no server for BAM data.\n", me);
 		return (1);
 	}
