@@ -273,10 +273,11 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 	trigger_env(remote ? "BKD" : "BK", event, what);
 
 	/*
-	 * If we are a remote pre trigger then we wrap the protocol around
+	 * If we are a remote trigger then we wrap the protocol around
 	 * the output unless it is lclone.
 	 */
-	proto = remote && streq(when, "pre") && !getenv("_BK_LCLONE");
+	proto = remote && !getenv("_BK_LCLONE") &&
+	    (streq(when, "pre") || streq(event, "incoming push"));
 	if (proto) {
 	    	bkd_data = "D";
 		out = stdout;

@@ -276,7 +276,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
 	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
 	if (do_part2) {
-		p = aprintf("-r..%s", opts->rev ? opts->rev : "");
+		p = aprintf("-r..'%s'", opts->rev ? opts->rev : "");
 		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
 		free(p);
 		if (rc) goto done;
@@ -641,6 +641,7 @@ out2:		repository_rdunlock(0);
 	} else {
 		safe_putenv("BKD_BAM_SERVER=%s", proj_repoID(0));
 	}
+	if (bp_hasBAM()) putenv("BKD_BAM=YES");
 
 	chdir(here);
 	unless (to) to = basenm(r->path);
@@ -753,6 +754,7 @@ out:
 
 	putenv("BKD_REPO_ID=");
 	putenv("BKD_BAM_SERVER=");
+	putenv("BKD_BAM=");
 	out_trigger("BK_STATUS=OK", opts->rev, "post");
 	remote_free(r);
 	return (0);
