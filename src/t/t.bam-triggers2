@@ -1,0 +1,27 @@
+echo $N Create initial repository with BAM data .....................$NL
+commercial project
+BK="`bk bin`/bk"
+test $PLATFORM = WIN32 && BK=${BK}.exe
+DATA="$HERE"/data
+perl -e 'sysread(STDIN, $buf, 81920);
+syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
+cp "$DATA" data
+bk new $Q data || exit 1
+mkdir -p BitKeeper/triggers
+cat > BitKeeper/triggers/pre-resolve <<EOF
+#!/bin/sh
+
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-resolve
+bk new $Q BitKeeper/triggers/pre-resolve
+bk commit -ywhatever $Q
+echo OK
+
+echo $N Check that a null push does not die on triggers .............$NL
+cd ..
+bk clone $Q project clone
+cd project
+bk push $Q ../clone
+cores
+echo OK
