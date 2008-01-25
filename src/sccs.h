@@ -1261,6 +1261,7 @@ int	bp_updateServer(char *range, char *list, int quiet);
 int	bp_serverID(char **id);
 int	bp_sharedServer(void);
 char	*bp_serverURL(void);
+char	*bp_serverURL2ID(char *url);
 int	bp_hasBAM(void);
 int	bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range);
 int	bp_sendkeys(int fdout, char *range, u64 *bytes);

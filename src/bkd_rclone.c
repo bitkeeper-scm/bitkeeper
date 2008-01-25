@@ -6,6 +6,7 @@ typedef	struct {
 	u32	verbose:1;
 	int	gzip;
 	char    *rev;
+	char	*bam_url;
 } opts;
 
 private int	getsfio(int gzip);
@@ -18,8 +19,9 @@ rclone_common(int ac, char **av, opts *opts)
 	char	*p;
 
 	bzero(opts, sizeof(*opts));
-	while ((c = getopt(ac, av, "dr;vz|")) != -1) {
+	while ((c = getopt(ac, av, "B;dr;vz|")) != -1) {
 		switch (c) {
+		    case 'B': opts->bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;
 		    case 'r': opts->rev = optarg; break; 
 		    case 'v': opts->verbose = 1; break;
@@ -70,8 +72,10 @@ isEmptyDir(char *dir)
 int
 cmd_rclone_part1(int ac, char **av)
 {
+	FILE	*f;
 	opts	opts;
 	char	*path, *p;
+	char	buf[MAXPATH];
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
 	if (sendServerInfoBlock(1)) {
@@ -124,6 +128,38 @@ err:				out(p);
 			path, strerror(errno));
 		goto err;
 	}
+	if (opts.bam_url) {
+		if (streq(opts.bam_url, ".")) {
+			concat_path(buf, path, BAM_SERVER);
+			mkdirf(buf);
+			if (f = fopen(buf, "w")) {
+				fprintf(f, ".\n%s\n", proj_repoID(0));
+				fclose(f);
+			} else {
+				out("no write\n");
+			}
+		} else if (!streq(opts.bam_url, "none")) {
+			unless (p = bp_serverURL2ID(opts.bam_url)) {
+				p = aprintf(
+		    "ERROR-BAM server URL \"%s\" is not valid\n",
+				opts.bam_url);
+				goto err;
+			}
+			concat_path(buf, path, BAM_SERVER);
+			mkdirf(buf);
+			if (f = fopen(buf, "w")) {
+				fprintf(f, "%s\n%s\n", opts.bam_url, p);
+				fclose(f);
+			} else {
+				out("no write\n");
+			}
+			free(p);
+		}
+	} else if ((p = getenv("BK_BAM_SERVER_URL")) && streq(p, ".")) {
+		p = aprintf("ERROR-must pass -B to clone BAM server\n");
+		goto err;
+	}
+
 	out("@OK@\n");
 	free(path);
 	return (0);
@@ -133,6 +169,7 @@ int
 cmd_rclone_part2(int ac, char **av)
 {
 	opts	opts;
+	FILE	*f;
 	char	buf[MAXPATH];
 	char	*path, *p;
 	int	fd2, rc = 0;
@@ -163,7 +200,11 @@ cmd_rclone_part2(int ac, char **av)
 	if (getenv("BK_LEVEL")) {
 		setlevel(atoi(getenv("BK_LEVEL")));
 	}
-
+	if (!opts.bam_url && (p = getenv("BK_BAM_SERVER_URL"))) {
+		f = fopen(BAM_SERVER, "w");
+		fprintf(f, "%s\n%s\n", p, getenv("BK_BAM_SERVER"));
+		fclose(f);
+	}
 	if (sendServerInfoBlock(1)) {
 		drain();
 		rc = 1;

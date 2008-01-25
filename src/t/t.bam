@@ -328,7 +328,8 @@ cd "$HERE"
 _BK_ALLOW_BAD_CRC=YES bk clone $Q project remote
 cd remote
 rm -rf BitKeeper/BAM
-BK_CONFIG="BAM_server:file://"$HERE"/project" bk get $Q data || {
+bk bam server $Q ../project || exit 1
+bk get $Q data || {
 	echo get failed
 	exit 1
 }
@@ -346,7 +347,7 @@ echo $N See if we can fetch remote BAM data with get in subdir ......$NL
 cd "$HERE"/remote
 rm -rf BitKeeper/BAM
 cd subdir
-BK_CONFIG="BAM_server:file://"$HERE"/project" bk get $Q data3 || {
+bk get $Q data3 || {
 	echo get failed
 	exit 1
 }
@@ -364,7 +365,7 @@ echo $N See if we can fetch remote BAM data with bk -r get ..........$NL
 cd "$HERE"/remote
 rm -rf BitKeeper/BAM
 _BK_ALLOW_BAD_CRC=YES \
-BK_CONFIG="BAM_server:file://"$HERE"/project" bk -r get -F $Q || {
+ bk -r get -F $Q || {
 	echo failed
 	exit 1
 }
@@ -402,9 +403,7 @@ cd "$HERE"
 P=`port 50000`
 bk bkd -q -d -p$P -ikill > BKD 2>&1
 commercial servmaster
-bk edit $Q BitKeeper/etc/config
-echo "BAM_server: bk://localhost:$P/project" >> BitKeeper/etc/config
-bk delta $Q -y"set up BAM server" BitKeeper/etc/config
+bk bam server $Q ../project || exit 1
 bk commit $Q -ysetup
 cd ..
 bk clone $Q bk://localhost:$P/servmaster someclient || exit 1

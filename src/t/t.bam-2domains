@@ -2,6 +2,7 @@
 echo ---- Server S w/ client C1 to a serverless client C2 ..........
 # S and C1 are the server and client, C2 is the serverless client.
 # Make sure S is updated in a C1->C2 transfer.
+# S3 is the server for *3 clients
 # any BAM data until the user requests a checkout.  And also that
 # only the checked out versions are sent.
 echo $N Set up a repo with some binary data .........................$NL
@@ -11,14 +12,7 @@ P2=`port 50001`
 bk bkd -d -p$P2 -ikill 
 trap "bk _kill bk://localhost:$P; bk _kill bk://localhost:$P2" 0
 commercial S
-bk edit $Q BitKeeper/etc/config
-echo "[:*/C2]BAM_server:" >> BitKeeper/etc/config
-echo "[:*/C2/RESYNC]BAM_server:" >> BitKeeper/etc/config
-echo "[:*/?3]BAM_server: bk://localhost:$P2/S3" >> BitKeeper/etc/config
-echo "[:*/?3/RESYNC]BAM_server: bk://localhost:$P2/S3" >> BitKeeper/etc/config
-echo "BAM_server: bk://localhost:$P/S" >> BitKeeper/etc/config
-bk ci $Q -ybamserver BitKeeper/etc/config
-bk commit $Q -yconfig
+bk bam server $Q . || exit 1
 BK="`bk bin`/bk"
 test $PLATFORM = WIN32 && BK=${BK}.exe
 DATA="$HERE"/data
@@ -39,7 +33,7 @@ echo OK
 
 echo $N clone within domain should not replicate the BAM data .......$NL
 cd "$HERE"
-bk clone $Q S C1
+bk clone $Q bk://localhost:$P/S C1
 cd C1
 test -d BitKeeper/BAM && {
 	echo should not have BAM directory yet
@@ -49,8 +43,10 @@ echo OK
 
 echo $N clone to serverless domain should replicate the BAM data ....$NL
 cd "$HERE"
-bk clone $Q S C2
+bk clone -Bnone $Q S C2
 cd C2
+bk bam pull $Q || exit 1
+bk bam server $Q -r || exit 1
 (cd ../S && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x || echo $x is missing
@@ -72,7 +68,7 @@ echo OK
 echo $N rclone to serverless domain should replicate the BAM data ...$NL
 cd "$HERE"
 rm -rf C2
-bk clone $Q S bk://localhost:$P/C2
+bk clone $Q -Bnone S bk://localhost:$P/C2
 cd C2
 (cd ../S && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -95,7 +91,7 @@ echo OK
 echo $N lclone should replicate the BAM data ........................$NL
 cd "$HERE"
 rm -rf C2
-bk clone $Q -l S C2
+bk clone $Q -Bnone -l S C2
 cd C2
 (cd ../S && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -118,7 +114,7 @@ echo OK
 echo $N Check that pull from server to serverless gets BAM data .....$NL
 cd "$HERE"
 rm -rf C2
-bk clone $Q -r1.2 S C2
+bk clone $Q -Bnone -r1.1 S C2 || exit 1
 test -d C2/BitKeeper/BAM && {
 	echo should not have BAM directory yet
 	exit 1
@@ -147,7 +143,7 @@ echo OK
 echo $N Check that push from server to serverless sends BAM data ....$NL
 cd "$HERE"
 rm -rf C2
-bk clone $Q -r1.2 S C2
+bk clone $Q -Bnone -r1.1 S C2
 test -d C2/BitKeeper/BAM && {
 	echo should not have BAM directory yet
 	exit 1
@@ -177,7 +173,7 @@ echo OK
 echo $N Check that pull can recurse thru C1 to S to get BAM data ....$NL
 cd "$HERE"
 rm -rf C2
-bk clone $Q -r1.2 S C2
+bk clone $Q -Bnone -r1.1 S C2
 test -d C2/BitKeeper/BAM && {
 	echo should not have BAM directory yet
 	exit 1
@@ -218,7 +214,7 @@ find BitKeeper/BAM/?? -type f -print >> "$HERE/BAMFILES"
 cd "$HERE"
 tar cf TAR S C1
 rm -rf C2
-bk clone $Q -r1.2 S C2
+bk clone $Q -Bnone -r1.1 S C2
 test -d C2/BitKeeper/BAM && {
 	echo should not have BAM directory yet
 	exit 1
@@ -257,7 +253,7 @@ echo $N Clone C1 to C2 with part in C1 and rest in S ................$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
-bk clone $Q C1 C2
+bk clone $Q -Bnone C1 C2
 cd C2
 test -f BitKeeper/log/BAM_SERVER && {
 	echo should not have BAM server
@@ -291,7 +287,7 @@ echo $N rClone C1 to C2 with part in C1 and rest in S ...............$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
-bk clone $Q C1 bk://localhost:$P/C2
+bk clone $Q -Bnone C1 bk://localhost:$P/C2
 cd C2
 test -f BitKeeper/log/BAM_SERVER && {
 	echo should not have BAM server
@@ -325,7 +321,7 @@ echo $N Push C1 to C2 with part in C1 and rest in S .................$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
-bk clone -r1.2 $Q C1 C2
+bk clone -r1.1 $Q -Bnone C1 C2
 cd C1
 bk push $Q ../C2
 cd ../C2
@@ -367,7 +363,7 @@ echo data.c2 >> data.c2
 bk new $Q data.c2
 bk commit -ywhatever $Q
 cd ..
-bk clone $Q C2 C1
+bk clone $Q -Bbk://localhost:$P/S C2 C1
 cd C1
 bk bam check -q || exit 1
 # The data.c2 file is the only one unique to C2 repo so that's the one
@@ -395,7 +391,7 @@ echo OK
 echo $N rClone C2 to C1, should send unique BAM data ................$NL
 cd "$HERE"
 rm -rf C1
-bk clone $Q C2 bk://localhost:$P/C1
+bk clone $Q -Bbk://localhost:$P/S C2 bk://localhost:$P/C1
 cd C1
 bk bam check -q || exit 1
 # The data.c2 file is the only one unique to C2 repo so that's the one
@@ -423,7 +419,7 @@ echo OK
 echo $N Pull C2 to C1, should send unique BAM data ..................$NL
 cd "$HERE"
 rm -rf C1
-bk clone -r1.2 $Q C2 C1
+bk clone -Bbk://localhost:$P/S -r1.1 $Q C2 C1
 cd C1
 bk pull $Q
 bk bam check -q || exit 1
@@ -452,7 +448,7 @@ echo OK
 echo $N Push C2 to C1, should send unique BAM data ..................$NL
 cd "$HERE"
 rm -rf C1
-bk clone -r1.2 $Q C2 C1
+bk clone -Bbk://localhost:$P/S -r1.1 $Q C2 C1
 cd C2
 bk push $Q ../C1
 cd ../C1
@@ -482,7 +478,7 @@ echo OK
 echo ---- Two server domains .......................................
 echo $N Set up second server, should send all BAM data ..............$NL
 cd "$HERE"
-bk clone $Q S S3
+bk clone $Q -B. S S3
 cd S3
 bk bam check -q || {
 	echo failed
@@ -502,20 +498,12 @@ cp "$DATA" data.c3
 echo data.c3 >> data.c3
 bk new $Q data.c3
 bk commit $Q -ywhatever
-bk config > ../C3.conf
-cd ../C1
-bk config > ../C1.conf
-cd ..
-cmp -s C1.conf C3.conf && {
-	echo hosed configs, these should be different
-	exit 1
-}
 echo OK
 
 echo $N Clone C3 to other server domain, unique data should go ......$NL
 cd "$HERE"
 find S3/BitKeeper/BAM -type f -print > BEFORE
-bk clone $Q C3 C4
+bk clone $Q -Bbk://localhost:$P/S C3 C4
 cd C4
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
@@ -558,7 +546,7 @@ echo OK
 echo $N Clone C3 to other server domain, unique data should go ......$NL
 cd "$HERE"
 rm -rf C4
-bk clone $Q C3 C4
+bk clone $Q -Bbk://localhost:$P/S C3 C4
 cd C4
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
@@ -590,7 +578,7 @@ echo OK
 
 echo $N rClone C3 to other server domain, unique data should go .....$NL
 cd "$HERE"
-bk clone $Q C3 bk://localhost:$P/C5
+bk clone $Q -Bbk://localhost:$P/S C3 bk://localhost:$P/C5
 cd C5
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
@@ -616,7 +604,7 @@ echo OK
 
 echo $N Push across domains, unique data should go ..................$NL
 cd "$HERE/C5"
-bk undo -fsa1.2 $Q || exit 1
+bk undo -fsa1.1 $Q || exit 1
 rm -rf BitKeeper/BAM
 bk bam check -q 2> ERR|| exit 1
 grep -q "No BAM data" ERR || exit 1
@@ -634,7 +622,7 @@ echo OK
 
 echo $N Pull across domains, unique data should go ..................$NL
 cd "$HERE/C5"
-bk undo -fsa1.2 $Q
+bk undo -fsa1.1 $Q
 rm -rf BitKeeper/BAM
 bk bam check -q 2> ERR|| exit 1
 grep -q "No BAM data" ERR || exit 1
@@ -657,7 +645,7 @@ cd S
 bk lock -wt > ../LOCK &
 bk lock -L
 cd ..
-bk clone C1 C2 > OUT 2>&1
+bk clone -Bnone C1 C2 > OUT 2>&1
 bk _kill `cat LOCK`
 test -d C2 && {
 	echo should not have cloned
@@ -677,7 +665,7 @@ cd S
 bk lock -rt > ../LOCK &
 bk lock -L
 cd ..
-bk clone C1 C2 > OUT 2>&1
+bk clone -Bnone C1 C2 > OUT 2>&1
 bk _kill `cat LOCK`
 test -d C2 && {
 	echo should not have cloned
@@ -700,7 +688,7 @@ cd ../S
 bk lock -wt > ../LOCK &
 bk lock -L
 cd ..
-bk clone C1 C2 > OUT 2>&1
+bk clone -Bnone C1 C2 > OUT 2>&1
 bk _kill `cat LOCK`
 test -d C2 && {
 	echo should not have cloned
@@ -720,7 +708,7 @@ cd S
 bk lock -rt > ../LOCK &
 bk lock -L
 cd ..
-bk clone C1 C2 > OUT 2>&1
+bk clone -Bnone C1 C2 > OUT 2>&1
 bk _kill `cat LOCK`
 test -d C2 && {
 	echo should not have cloned
@@ -742,7 +730,7 @@ cd S
 bk lock -wt > ../LOCK &
 bk lock -L
 cd ..
-bk clone C1 bk://localhost:$P/C2 > OUT 2>&1
+bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
 bk _kill `cat LOCK`
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
@@ -764,7 +752,7 @@ cd S
 bk lock -rt > ../LOCK &
 bk lock -L
 cd ..
-bk clone C1 bk://localhost:$P/C2 > OUT 2>&1
+bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
 bk _kill `cat LOCK`
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
@@ -791,7 +779,7 @@ cd ../S
 bk lock -wt > ../LOCK &
 bk lock -L
 cd ..
-bk clone C1 bk://localhost:$P/C2 > OUT 2>&1
+bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
 bk _kill `cat LOCK`
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
@@ -813,7 +801,7 @@ cd S
 bk lock -rt > ../LOCK &
 bk lock -L
 cd ..
-bk clone C1 bk://localhost:$P/C2 > OUT 2>&1
+bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
 bk _kill `cat LOCK`
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
@@ -833,7 +821,7 @@ echo $N Push C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
-bk clone -r1.2 $Q C1 C2
+bk clone -Bnone -r1.1 $Q C1 C2
 cd S
 bk lock -wt > ../LOCK &
 bk lock -L
@@ -919,7 +907,7 @@ echo $N Pull C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
-bk clone -r1.2 $Q C1 C2
+bk clone -Bnone -r1.1 $Q C1 C2
 cd S
 bk lock -wt > ../LOCK &
 bk lock -L

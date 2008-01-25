@@ -784,8 +784,17 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			} else {
 				fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 			}
-			if (bp_hasBAM()) {
-				fprintf(f, "putenv BK_BAM=YES\n");
+			if (bp_hasBAM()) fprintf(f, "putenv BK_BAM=YES\n");
+			if (bp = bp_serverURL()) {
+				if (strchr(bp, ' ')) {
+					fprintf(f,
+					    "putenv 'BK_BAM_SERVER_URL=%s'\n",
+					    bp);
+				} else {
+					fprintf(f,
+					    "putenv BK_BAM_SERVER_URL=%s\n",
+					    bp);
+				}
 			}
 			unless (bp_serverID(&bp)) {
 				unless (bp) bp = strdup(repo);
@@ -921,7 +930,13 @@ sendServerInfoBlock(int is_rclone)
 		out("LICTYPE=");
 		out(eula_name());
 		out("\n");
-		if (bp_hasBAM()) out("BAM=YES\n");
+		if (bp_hasBAM()) {
+			out("BAM=YES\n");
+			if (p = bp_serverURL()) {
+				sprintf(buf, "BAM_SERVER_URL=%s\n", p);
+				out(buf);
+			}
+		}
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));

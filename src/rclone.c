@@ -6,6 +6,7 @@ private	struct {
 	u32	verbose:1;		/* -q shut up */
 	int	gzip;			/* -z[level] compression */
 	char	*rev;
+	char	*bam_url;		/* -B URL */
 	u32	in, out;
 	u64	bpsz;
 } opts;
@@ -31,8 +32,9 @@ rclone_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
 	opts.gzip = 6;
-	while ((c = getopt(ac, av, "dE:qr;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B:dE:qr;w|z|")) != -1) {
 		switch (c) {
+		    case 'B': opts.bam_url = optarg; break;
 		    case 'd': opts.debug = 1; break;
 		    case 'E':
 			unless (strneq("BKU_", optarg, 4)) {
@@ -184,8 +186,9 @@ send_part1_msg(remote *r, char **envVar)
 	sendEnv(f, envVar, r, 0);
 	fprintf(f, "rclone_part1");
 	if (gzip) fprintf(f, " -z%d", gzip);
-	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.verbose) fprintf(f, " -v");
+	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
 	fclose(f);
@@ -336,6 +339,7 @@ send_sfio_msg(remote *r, char **envVar)
 	if (gzip) fprintf(f, " -z%d", gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
+	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
 	fclose(f);
@@ -397,6 +401,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.verbose) fprintf(f, " -v");
+	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
 	fputs("\n", f);
 
 	if (size(bp_keys) == 0) {

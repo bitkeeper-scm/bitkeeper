@@ -17,6 +17,7 @@ do	echo $f > F$f
 	perl -e 'printf "a\000b\n"' >> F$f
 done
 commercial pmaster
+bk bam server $Q . || exit 1
 echo OK
 
 echo $N Create some binary data and check BAM .......................$NL
@@ -30,7 +31,7 @@ echo OK
 
 echo $N Make sure that clone copies the BAM pool ....................$NL
 cd "$HERE"
-bk clone $Q pmaster clone
+bk clone $Q -Bnone pmaster clone
 cd clone
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -48,7 +49,7 @@ echo OK
 
 echo $N Make sure that clone w/ server does not copy BAM pool .......$NL
 cd "$HERE"
-BK_CONFIG="BAM_server:file://$HERE/pmaster" bk clone $Q pmaster clone2
+bk clone $Q pmaster clone2
 cd clone2
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x

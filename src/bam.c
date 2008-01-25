@@ -622,12 +622,27 @@ bp_updateServer(char *range, char *list, int quiet)
 	return (rc);
 }
 
+/*
+ * Return the URL to the current BAM_server.  This server has been contacted
+ * at least once from this repository, so it is probably valid.
+ * Return 0, if no URL is found.
+ */
 char	*
 bp_serverURL(void)
 {
-	char	*url;
+	static	char	*url;
+	FILE	*f;
+	char	cfile[MAXPATH];
+	char	buf[MAXLINE];
 
-	unless ((url = proj_configval(0,"BAM_server")) && *url) return (0);
+	strcpy(cfile, proj_root(0));
+	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
+	concat_path(cfile, cfile, BAM_SERVER);
+	unless (f = fopen(cfile, "r")) return (0);
+	unless (fnext(buf, f)) return (0);
+	chomp(buf);
+	if (url) free(url);
+	url = strdup(buf);
 	return (url);
 }
 
@@ -649,6 +664,29 @@ bp_serverID(char **id)
 }
 
 /*
+ * use a bk remote connection to find the repoid of a bam server URL.
+ * Returns malloc'ed string.
+ * On error: 0 is returned and connection error go to stderr.
+ */
+char *
+bp_serverURL2ID(char *url)
+{
+	FILE	*f;
+	char	buf[MAXLINE];
+
+	sprintf(buf, "bk -q@'%s' id -r", url);
+	unless (f = popen(buf, "r")) return (0);
+	unless (fnext(buf, f)) return (0);
+	chomp(buf);
+	if (pclose(f)) {
+		fprintf(stderr,
+		    "Failed to contact BAM server at '%s'\n", url);
+		return (0);
+	}
+	return (strdup(buf));
+}
+
+/*
  * Return the server id for this repo.
  * The semantics of not returning it if I am the server (bp_serverID)
  * are optional.
@@ -656,7 +694,6 @@ bp_serverID(char **id)
 private int
 serverID(char **id, int notme)
 {
-	char	*cache, *p, *url;
 	char	*ret = 0;
 	FILE	*f;
 	char	cfile[MAXPATH];
@@ -664,35 +701,17 @@ serverID(char **id, int notme)
 
 	assert(id);
 	*id = 0;
-	unless (url = bp_serverURL()) return (0);
-//ttyprintf("[%d] BAM_SERVER=%s\n", getpid(), url);
+
 
 	strcpy(cfile, proj_root(0));
 	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
 	concat_path(cfile, cfile, BAM_SERVER);
-	if (cache = loadfile(cfile, 0)) {
-		if (p = strchr(cache, '\n')) {
-			*p++ = 0;
-			chomp(p);
-			if (streq(url, cache)) ret = strdup(p);
-		}
-		free(cache);
-		if (ret) goto out;
-	}
-	sprintf(buf, "bk -q@'%s' id -r", url);
-	f = popen(buf, "r");
-	fnext(buf, f);
+	unless (f = fopen(cfile, "r")) return (0);
+	unless (fnext(buf, f)) return (0); /* url */
+	unless (fnext(buf, f)) return (0); /* id */
 	chomp(buf);
-	if (pclose(f)) {
-		fprintf(stderr, "Failed to contact BAM server at '%s'\n", url);
-		return (-1);
-	}
 	ret = strdup(buf);
-	if (f = fopen(cfile, "w")) {
-		fprintf(f, "%s\n%s\n", url, ret);
-		fclose(f);
-	}
-out:	if (notme && streq(proj_repoID(0), ret)) {
+	if (notme && streq(proj_repoID(0), ret)) {
 		free(ret);
 		ret = 0;
 	}
@@ -1827,6 +1846,68 @@ out:	sccs_unlock(s, 'z');
 }
 
 int
+bam_server_main(int ac, char **av)
+{
+	int	c, list = 0, quiet = 0, rm = 0;
+	char	*server = 0, *repoid;
+	FILE	*f;
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "Not in a repository.\n");
+		return (1);
+	}
+	while ((c = getopt(ac, av, "lqr")) != -1) {
+		switch (c) {
+		    case 'l': list++; break;
+		    case 'q': quiet++; break;
+		    case 'r': rm++; break;
+		    default:
+			system("bk help -s BAM");
+			return (1);
+		}
+	}
+	if (rm) {
+		unlink(BAM_SERVER);
+		return (0);
+	}
+	if (av[optind]) {
+		server = streq(av[optind], ".") ?
+		    strdup(".") : parent_normalize(av[optind]);
+		unless (repoid = bp_serverURL2ID(server)) {
+			free(server);
+			return (1);
+		}
+		unless (f = fopen(BAM_SERVER, "w")) {
+			perror(BAM_SERVER);
+			free(server);
+			free(repoid);
+			return (1);
+		}
+		//fprintf(f, "# format is BAM server URL\\nBAM Server id\n");
+		fprintf(f, "%s\n%s\n", server, repoid);
+		fclose(f);
+		unless (quiet) printf("Set BAM server to %s\n", server);
+		free(server);
+		free(repoid);
+		return (0);
+	}
+
+	if (server = bp_serverURL()) {
+		if (streq(server, ".")) {
+			unless(list) {
+				printf("This repository is the BAM server.\n");
+			}
+		} else {
+			unless (list) printf("BAM server: ");
+			printf("%s\n", server);
+		}
+	} else {
+		printf("This repository has no BAM server.\n");
+	}
+	return (0);
+}
+
+int
 bam_main(int ac, char **av)
 {
 	int	c, i;
@@ -1842,6 +1923,7 @@ bam_main(int ac, char **av)
 		{"push", bam_push_main },
 		{"reattach", bam_reattach_main },
 		{"reload", bam_reload_main },
+		{"server", bam_server_main },
 		{"sizes", bam_sizes_main },
 		{"timestamps", bam_timestamps_main },
 		{0, 0}

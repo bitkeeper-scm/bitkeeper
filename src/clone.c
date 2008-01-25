@@ -22,13 +22,16 @@ private	int	clone2(remote *r);
 private void	parent(remote *r);
 private int	sfio(int gz, remote *r, int BAM, char *prefix);
 private void	usage(void);
-private int	initProject(char *root);
+private int	initProject(char *root, remote *r);
 private	int	lclone(remote *, char *to);
 private int	linkdir(char *from, char *to, char *dir, int doSCCS);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
 private int	in_trigger(char *status, char *rev, char *root, char *repoID);
+
+private	char	*bam_url;
+private	char	*bam_repoid;
 
 int
 clone_main(int ac, char **av)
@@ -40,8 +43,9 @@ clone_main(int ac, char **av)
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
-	while ((c = getopt(ac, av, "dE:lqr;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B:dE:lqr;w|z|")) != -1) {
 		switch (c) {
+		    case 'B': bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
 			unless (strneq("BKU_", optarg, 4)) {
@@ -181,6 +185,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 			(local ? local : "current directory"), strerror(errno));
 		usage();
 	}
+	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
+		unless (bam_repoid = bp_serverURL2ID(bam_url)) {
+			fprintf(stderr,
+			    "clone: unable to contact new BAM server @ %s\n",
+			    bam_url);
+			return (1);
+		}
+	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
 	if (bkd_connect(r, opts->gzip, !opts->quiet)) goto done;
 	if (send_clone_msg(gzip, r, envVar)) goto done;
@@ -257,7 +269,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	unless (streq(buf, "@SFIO@")) goto done;
 
 	/* create the new package */
-	if (initProject(local) != 0) {
+	if (initProject(local, r) != 0) {
 		disconnect(r, 2);
 		goto done;
 	}
@@ -308,7 +320,7 @@ done:	if (rc) {
 private	int
 clone2(remote *r)
 {
-	char	*p;
+	char	*p, *url;
 	char	*checkfiles;
 	FILE	*f;
 	int	rc;
@@ -322,6 +334,26 @@ clone2(remote *r)
 
 	parent(r);
 	(void)proj_repoID(0);		/* generate repoID */
+
+	/* validate bam server URL */
+	if (f = fopen(BAM_SERVER, "r")) {
+		if (fnext(buf, f) && chomp(buf)) {
+			url = strdup(buf);
+			p = bp_serverURL2ID(url);
+			fnext(buf, f);
+			chomp(buf);
+			unless (p && streq(p, buf)) {
+				fprintf(stderr,
+				    "Bad BAM server URL '%s', please fix.\n",
+				    url);
+				free(p);
+				unlink(BAM_SERVER);
+				putenv("_BK_CHECK_NO_BAM_FETCH=1");
+			}
+			free(url);
+		}
+		fclose(f);
+	}
 
 	sprintf(buf, "..%s", opts->rev ? opts->rev : "");
 	checkfiles = bktmp(0, "clonechk");
@@ -384,8 +416,11 @@ docheck:	/* undo already runs check so we only need this case */
 }
 
 private int
-initProject(char *root)
+initProject(char *root, remote *r)
 {
+	char	*p, *url, *repoid;
+	FILE	*f;
+
 	if (mkdirp(root) || chdir(root)) {
 		perror(root);
 		return (-1);
@@ -397,6 +432,32 @@ initProject(char *root)
 	repository_wrlock();
 	if (getenv("BKD_LEVEL")) {
 		setlevel(atoi(getenv("BKD_LEVEL")));
+	}
+
+	/* setup the new BAM server_URL */
+	if (getenv("BKD_BAM")) {
+		if (bam_repoid) {
+			url = strdup(bam_url);
+			repoid = bam_repoid;
+		} else if (bam_url) {
+			assert(streq(bam_url, ".") || streq(bam_url, "none"));
+			url = strdup(bam_url);
+			repoid = proj_repoID(0);
+		} else if (p = getenv("BKD_BAM_SERVER_URL")) {
+
+			url = streq(p, ".") ? remote_unparse(r) : strdup(p);
+			repoid = getenv("BKD_BAM_SERVER");
+		} else {
+			url = 0;
+		}
+		if (url) {
+			unless (streq(url, "none")) {
+				f = fopen(BAM_SERVER, "w");
+				fprintf(f, "%s\n%s\n", url, repoid);
+				fclose(f);
+			}
+			free(url);
+		}
 	}
 	return (0);
 }
