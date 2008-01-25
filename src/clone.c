@@ -336,23 +336,16 @@ clone2(remote *r)
 	(void)proj_repoID(0);		/* generate repoID */
 
 	/* validate bam server URL */
-	if (f = fopen(BAM_SERVER, "r")) {
-		if (fnext(buf, f) && chomp(buf)) {
-			url = strdup(buf);
-			p = bp_serverURL2ID(url);
-			fnext(buf, f);
-			chomp(buf);
-			unless (p && streq(p, buf)) {
-				fprintf(stderr,
-				    "Bad BAM server URL '%s', please fix.\n",
-				    url);
-				free(p);
-				unlink(BAM_SERVER);
-				putenv("_BK_CHECK_NO_BAM_FETCH=1");
-			}
-			free(url);
+	if (url = bp_serverURL()) {
+		p = bp_serverURL2ID(url);
+		unless (p && streq(p, bp_serverID(0))) {
+			fprintf(stderr,
+			    "Bad BAM server URL '%s', please fix. (%s vs %s)\n",
+			    url, p, bp_serverID(0));
+			bp_setBAMserver(0, 0, 0);
+			putenv("_BK_CHECK_NO_BAM_FETCH=1");
 		}
-		fclose(f);
+		if (p) free(p);
 	}
 
 	sprintf(buf, "..%s", opts->rev ? opts->rev : "");
@@ -419,7 +412,6 @@ private int
 initProject(char *root, remote *r)
 {
 	char	*p, *url, *repoid;
-	FILE	*f;
 
 	if (mkdirp(root) || chdir(root)) {
 		perror(root);
@@ -452,9 +444,7 @@ initProject(char *root, remote *r)
 		}
 		if (url) {
 			unless (streq(url, "none")) {
-				f = fopen(BAM_SERVER, "w");
-				fprintf(f, "%s\n%s\n", url, repoid);
-				fclose(f);
+				bp_setBAMserver(0, url, repoid);
 			}
 			free(url);
 		}
@@ -688,17 +678,14 @@ out1:		remote_free(r);
 			}
 		}
 	}
-	if (bp_serverID(&p)) goto out2;
-
 	/* give them a change to disallow it */
 	if (out_trigger(0, opts->rev, "pre")) {
 out2:		repository_rdunlock(0);
 		goto out1;
 	}
 
-	if (p) {
+	if (p = bp_serverID(0)) {
 		safe_putenv("BKD_BAM_SERVER=%s", p);
-		free(p);
 	} else {
 		safe_putenv("BKD_BAM_SERVER=%s", proj_repoID(0));
 	}

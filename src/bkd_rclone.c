@@ -169,7 +169,6 @@ int
 cmd_rclone_part2(int ac, char **av)
 {
 	opts	opts;
-	FILE	*f;
 	char	buf[MAXPATH];
 	char	*path, *p;
 	int	fd2, rc = 0;
@@ -201,9 +200,7 @@ cmd_rclone_part2(int ac, char **av)
 		setlevel(atoi(getenv("BK_LEVEL")));
 	}
 	if (!opts.bam_url && (p = getenv("BK_BAM_SERVER_URL"))) {
-		f = fopen(BAM_SERVER, "w");
-		fprintf(f, "%s\n%s\n", p, getenv("BK_BAM_SERVER"));
-		fclose(f);
+		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER"));
 	}
 	if (sendServerInfoBlock(1)) {
 		drain();

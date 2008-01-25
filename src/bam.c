@@ -18,6 +18,15 @@
  *  - work on errors when BAM repos are used by old clients
  *  - keysync should sync BP data for non-shared server case
  *   ( no need to send all data)
+ *
+ *  this cset (delete me)
+ *  - comments in BAM_SERVER file
+ *  - testcase 'bk clone server bk://localhost/client' should fail
+ *  - error message above and clone repo with local serverURL
+ *  - testcase 'bk clone -B BADURL' and 'bk rclone -B BADURL'
+ *  - bk bam pull URL (needs override) (must need a testcase)
+ *  - manpage updates
+ *  - lclone doesn't set BAM_SERVER correctly
  */
 
 /*
@@ -38,7 +47,6 @@ private	char*	hash2path(project *p, char *hash);
 private int	bp_insert(project *proj, char *file, char *keys,
 		    int canmv, mode_t mode);
 private	int	uu2bp(sccs *s);
-private int	serverID(char **id, int clever);
 
 #define	INDEX_DELETE	"----delete----"
 
@@ -440,12 +448,9 @@ int
 bp_fetch(sccs *s, delta *din)
 {
 	FILE	*f;
-	char	*repoID, *url, *cmd, *keys;
+	char	*url, *cmd, *keys;
 
-	/* find the repo_id of my server */
-	if (bp_serverID(&repoID)) return (-1);
-	unless (repoID) return (0);	/* no need to update myself */
-	free(repoID);
+	unless (bp_serverID(1)) return (0);	/* no need to update myself */
 	url = bp_serverURL();
 	assert(url);
 
@@ -517,11 +522,8 @@ bp_updateServer(char *range, char *list, int quiet)
 
 	putenv("BKD_DAEMON="); /* allow new bkd connections */
 
-	/* find the repo_id of my server */
-	if (bp_serverID(&repoID)) return (-1);
-
 	/* no need to update myself */
-	unless (repoID) return (0);
+	unless (repoID = bp_serverID(1)) return (0);
 
 	/*
 	 * If we're in a transaction with the server then skip updating,
@@ -530,11 +532,7 @@ bp_updateServer(char *range, char *list, int quiet)
 	p = getenv("_BK_IN_BKD");
 	p = (p && *p) ? getenv("BK_REPO_ID") : getenv("BKD_REPO_ID");
 // unless (p && *p) ttyprintf("No BK[D]_REPO_ID\n");
-	if (p && streq(repoID, p)) {
-		free(repoID);
-		return (0);
-	}
-	free(repoID);
+	if (p && streq(repoID, p)) return (0);
 
 	url = bp_serverURL();
 	assert(url);
@@ -622,6 +620,38 @@ bp_updateServer(char *range, char *list, int quiet)
 	return (rc);
 }
 
+/* not a cache, need to move to proj_ for that. */
+private char *server_url, *server_repoid;
+
+private int
+load_bamserver(void)
+{
+	FILE	*f;
+	char	cfile[MAXPATH];
+	char	buf[MAXLINE];
+
+	if (server_url) {
+		free(server_url);
+		server_url = 0;
+	}
+	if (server_repoid) {
+		free(server_repoid);
+		server_repoid = 0;
+	}
+	strcpy(cfile, proj_root(0));
+	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
+	concat_path(cfile, cfile, BAM_SERVER);
+	unless (f = fopen(cfile, "r")) return (-1);
+	unless (fnext(buf, f)) return (-1);
+	chomp(buf);
+	server_url = strdup(buf);
+	unless (fnext(buf, f)) return (-1);
+	chomp(buf);
+	server_repoid = strdup(buf);
+	fclose(f);
+	return (0);
+}
+
 /*
  * Return the URL to the current BAM_server.  This server has been contacted
  * at least once from this repository, so it is probably valid.
@@ -630,37 +660,25 @@ bp_updateServer(char *range, char *list, int quiet)
 char	*
 bp_serverURL(void)
 {
-	static	char	*url;
-	FILE	*f;
-	char	cfile[MAXPATH];
-	char	buf[MAXLINE];
-
-	strcpy(cfile, proj_root(0));
-	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
-	concat_path(cfile, cfile, BAM_SERVER);
-	unless (f = fopen(cfile, "r")) return (0);
-	unless (fnext(buf, f)) return (0);
-	chomp(buf);
-	if (url) free(url);
-	url = strdup(buf);
-	return (url);
+	load_bamserver();
+	return (server_url);
 }
 
 /*
- * Find the repo_id of the BAM server and returns it as a malloc'ed
- * string in *id.
- * Returns non-zero if we failed to determine the repo_id of the server.
- * XXX - this interface leaves a lot to be desired because sometimes
- * you want to know if there is a server at all and other times you
- * want to know if there is a server that is not this repo.
- * I use
- *	url = proj_configval(0, "BAM_server");
- *	if (bp_hasBAM() && !*url) {
+ * Return the repoid of the current BAM_server.  This server has been
+ * contacted at least once from this repository, so it is probably
+ * valid.
+ * if notme, then return 0 if I am the server.
+ * Return 0, if no URL is found.
  */
-int
-bp_serverID(char **id)
+char *
+bp_serverID(int notme)
 {
-	return (serverID(id, 1));
+	load_bamserver();
+	if (server_repoid && notme && streq(server_repoid, proj_repoID(0))) {
+		return (0);
+	}
+	return (server_repoid);
 }
 
 /*
@@ -686,37 +704,30 @@ bp_serverURL2ID(char *url)
 	return (strdup(buf));
 }
 
-/*
- * Return the server id for this repo.
- * The semantics of not returning it if I am the server (bp_serverID)
- * are optional.
- */
-private int
-serverID(char **id, int notme)
+void
+bp_setBAMserver(char *path, char *url, char *repoid)
 {
-	char	*ret = 0;
 	FILE	*f;
 	char	cfile[MAXPATH];
-	char	buf[MAXLINE];
 
-	assert(id);
-	*id = 0;
-
-
-	strcpy(cfile, proj_root(0));
-	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
-	concat_path(cfile, cfile, BAM_SERVER);
-	unless (f = fopen(cfile, "r")) return (0);
-	unless (fnext(buf, f)) return (0); /* url */
-	unless (fnext(buf, f)) return (0); /* id */
-	chomp(buf);
-	ret = strdup(buf);
-	if (notme && streq(proj_repoID(0), ret)) {
-		free(ret);
-		ret = 0;
+	if (path) {
+		strcpy(cfile, path);
+	} else {
+		strcpy(cfile, proj_root(0));
+		if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
 	}
-	*id = ret;
-	return (0);
+	concat_path(cfile, cfile, BAM_SERVER);
+	if (url) {
+		if (f = fopen(cfile, "w")) {
+			fprintf(f, "%s\n%s\n", url, repoid);
+			fclose(f);
+		} else {
+			perror(cfile);
+		}
+	} else {
+		assert(!repoid);
+		unlink(cfile);
+	}
 }
 
 /*
@@ -750,17 +761,7 @@ bp_fetchData(void)
 		return (0);
 	}
 
-	/*
-	 * If this errors it's probably because we couldn't contact the BAM
-	 * server to get the repoid.  In that case, treat it like we have no
-	 * server so we ask for the data.
-	 */
-	if (serverID(&local_repoID, 0)) {
-		// ttyprintf("unable to fetch serverID\n");
-		return (1);
-	}
-	// ttyprintf("MY serverID is %s\n", local_repoID);
-	
+	local_repoID = bp_serverID(0);
 	remote_repoID =
 	    getenv(inbkd ? "BK_BAM_SERVER" : "BKD_BAM_SERVER");
 	unless (remote_repoID) {
@@ -769,14 +770,12 @@ bp_fetchData(void)
 		 * will catch this.
 		 */
 		// ttyprintf("no remote_id\n");
-		free(local_repoID);
 		return (0);
 	}
 	// ttyprintf("Their serverID is %s\n", remote_repoID);
 
 	/* if the local server matches my repoid, we're our own server */
 	if (local_repoID && streq(local_repoID, proj_repoID(0))) {
-		free(local_repoID);
 		return (1);
 	}
 
@@ -789,15 +788,13 @@ bp_fetchData(void)
 	 * If we have no local server then we pretend we are it,
 	 * that's what they do.
 	 */
-	unless (local_repoID) local_repoID = strdup(proj_repoID(0));
+	unless (local_repoID) local_repoID = proj_repoID(0);
 
 	/* if the local server matches their repoid, we're their server */
 	if (streq(local_repoID, remote_repoID)) {
-		free(local_repoID);
 		return (1);
 	}
 
-	free(local_repoID);
 	return (2);	// unshared servers
 }
 
@@ -845,7 +842,6 @@ private int
 bam_pull_main(int ac, char **av)
 {
 	int	rc, c;
-	char	*p;
 	char	**cmds = 0;
 	int	quiet = 0;
 
@@ -867,9 +863,7 @@ bam_pull_main(int ac, char **av)
 		return (0);
 	}
 	if (av[optind]) bp_server(av[optind]);
-	if (bp_serverID(&p)) return (1);
-	unless (p) return (0);
-	free(p);
+	unless (bp_serverID(1)) return (0);	/* no server to pull from */
 
 	/* list of all BAM deltas */
 	cmds = addLine(cmds, aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
@@ -969,15 +963,13 @@ bam_clean_main(int ac, char **av)
 	if (check_server) {
 		/* remove deltas already in BAM server */
 		p1 = cmd;
-		if (bp_serverID(&p2)) return (1);
-		unless (p2) {
+		unless (bp_serverID(1)) {
 			// XXX - bad error message if we are the server.
 			fprintf(stderr,
 			    "bk BAM clean: No BAM_server set\n");
 			free(p1);
 			return (1);
 		}
-		free(p2);
 		p2 = bp_serverURL();
 		/* No recursion, we just want that server's list */
 		cmd = aprintf("%s | "
@@ -1162,14 +1154,13 @@ bp_check_findMissing(int quiet, char **missing)
 	char	buf[MAXLINE];
 
 	if (emptyLines(missing)) return (0);
-	if (!bp_serverID(&p) && p) {
+	if (bp_serverID(1)) {
 		unless (quiet) {
 			fprintf(stderr,
 			    "Looking for %d missing files in %s\n",
 			    nLines(missing),
 			    bp_serverURL());
 		}
-		free(p);
 
 		tmp = bktmp(0, 0);
 		/* no recursion, we are remoted to the server already */

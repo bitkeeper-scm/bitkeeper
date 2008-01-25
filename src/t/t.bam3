@@ -110,7 +110,7 @@ fi
 echo $N Make sure that clone -l copies the BAM pool .................$NL
 cd "$HERE"
 rm -rf clone
-bk clone $Q -l pmaster clone
+bk clone $Q -l pmaster clone || exit 1
 cd clone
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
