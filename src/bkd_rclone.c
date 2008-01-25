@@ -140,6 +140,7 @@ err:				out(p);
 			}
 		} else if (!streq(opts.bam_url, "none")) {
 			unless (p = bp_serverURL2ID(opts.bam_url)) {
+				rmdir(path);
 				p = aprintf(
 		    "ERROR-BAM server URL \"%s\" is not valid\n",
 				opts.bam_url);
@@ -156,6 +157,7 @@ err:				out(p);
 			free(p);
 		}
 	} else if ((p = getenv("BK_BAM_SERVER_URL")) && streq(p, ".")) {
+		rmdir(path);
 		p = aprintf("ERROR-must pass -B to clone BAM server\n");
 		goto err;
 	}

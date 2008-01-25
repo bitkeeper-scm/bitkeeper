@@ -21,12 +21,9 @@
  *
  *  this cset (delete me)
  *  - comments in BAM_SERVER file
- *  - testcase 'bk clone server bk://localhost/client' should fail
  *  - error message above and clone repo with local serverURL
- *  - testcase 'bk clone -B BADURL' and 'bk rclone -B BADURL'
  *  - bk bam pull URL (needs override) (must need a testcase)
  *  - manpage updates
- *  - lclone doesn't set BAM_SERVER correctly
  */
 
 /*

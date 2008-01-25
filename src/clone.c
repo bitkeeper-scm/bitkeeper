@@ -97,6 +97,14 @@ clone_main(int ac, char **av)
 		chdir(here);
 	}
 
+	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
+		unless (bam_repoid = bp_serverURL2ID(bam_url)) {
+			fprintf(stderr,
+			    "clone: unable to contact new BAM server @ %s\n",
+			    bam_url);
+			return (1);
+		}
+	}
 	if (link) {
 		return (lclone(r, av[optind+1]));
 		/* NOT REACHED */
@@ -184,14 +192,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s: %s\n",
 			(local ? local : "current directory"), strerror(errno));
 		usage();
-	}
-	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
-		unless (bam_repoid = bp_serverURL2ID(bam_url)) {
-			fprintf(stderr,
-			    "clone: unable to contact new BAM server @ %s\n",
-			    bam_url);
-			return (1);
-		}
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
 	if (bkd_connect(r, opts->gzip, !opts->quiet)) goto done;
@@ -637,7 +637,7 @@ lclone(remote *r, char *to)
 {
 	sccs	*s;
 	FILE	*f;
-	char	*p, *fromid;
+	char	*p, *fromid, *toid;
 	char	**files;
 	int	i, level, hasrev;
 	struct	stat sb;
@@ -740,6 +740,7 @@ out:
 	if (bp_hasBAM()) {
 		f = popen("bk _find -type d " BAM_ROOT, "r");
 		chdir(dest);
+		toid = proj_repoID(0);
 		mkdirp(BAM_ROOT);
 		while (fnext(buf, f)) {
 			chomp(buf);
@@ -756,6 +757,33 @@ out:
 		fileCopy(buf, BAM_INDEX);
 		system("bk bam reload");
 		chdir(from);
+
+		/*
+		 * Setup new BAM_SERVER file.  Basically we copy the
+		 * previous server (assuming we can talk to the same
+		 * hosts), but if we are lcloning a a bam server we
+		 * need to setup the new link.
+		 */
+		i = 0; /* is bam server? */
+		if (f = fopen(BAM_SERVER, "r")) {
+			fnext(buf, f);
+			chomp(buf);
+			i = streq(buf, ".");
+			fclose(f);
+		}
+		if (bam_repoid) {
+			bp_setBAMserver(dest, bam_url, bam_repoid);
+		} else if (bam_url && streq(bam_url, "none")) {
+			/* don't create a BAM_SERVER file */
+		} else if (bam_url) {
+			assert(streq(bam_url, "."));
+			bp_setBAMserver(dest, ".", toid);
+		} else if (i) {
+			bp_setBAMserver(dest, from, proj_repoID(0));
+		} else if (f) {	/* exists(BAM_SERVER) :-) */
+			concat_path(buf, dest, BAM_SERVER);
+			fileCopy(BAM_SERVER, buf);
+		}
 	}
 
 	/* copy timestamp on CHECKED file */

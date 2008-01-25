@@ -421,7 +421,56 @@ bk push $Q 2> ERR || {
 	cat ERR
 	exit 1
 }
+echo OK
+
+echo $N Test rclone of binpool master ...............................$NL
+cd ../servmaster
+bk bam server $Q . || exit 1
+bk clone $Q . bk://localhost:$P/servmaster.copy 2>ERR && {
+	echo should have failed
+	cat ERR
+	bk _kill bk://localhost:$P
+	exit 1
+}
+cat ERR
+test -d ../servmaster.copy && {
+	echo should not have left directory
+	bk _kill bk://localhost:$P
+	exit 1
+}
+echo OK
+
+
+echo $N Test rclone -Bjunk ..........................................$NL
+cd ../project
+bk clone $Q -Bjunk . bk://localhost:$P/servmaster.copy 2>ERR && {
+	echo should have failed
+	cat ERR
+	bk _kill bk://localhost:$P
+	exit 1
+}
+cat ERR
+test -d ../servmaster.copy && {
+	echo should not have left directory
+	bk _kill bk://localhost:$P
+	exit 1
+}
+echo OK
+
 bk _kill bk://localhost:$P
+
+echo $N Test clone -Bjunk ...........................................$NL
+cd "$HERE"
+bk clone $Q -Bjunk project test1 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+test -d test1 && {
+	echo should not have left directory
+	exit 1
+}
+cat ERR
 echo OK
 
 # This test skipped on windows because I can't figure out how to make a file
@@ -598,3 +647,4 @@ bk undo $Q -f -r+ 2>ERR || {
 	exit 1
 }
 echo OK
+
