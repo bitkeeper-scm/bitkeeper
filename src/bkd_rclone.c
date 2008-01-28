@@ -72,7 +72,6 @@ isEmptyDir(char *dir)
 int
 cmd_rclone_part1(int ac, char **av)
 {
-	FILE	*f;
 	opts	opts;
 	char	*path, *p;
 	char	buf[MAXPATH];
@@ -130,14 +129,7 @@ err:				out(p);
 	}
 	if (opts.bam_url) {
 		if (streq(opts.bam_url, ".")) {
-			concat_path(buf, path, BAM_SERVER);
-			mkdirf(buf);
-			if (f = fopen(buf, "w")) {
-				fprintf(f, ".\n%s\n", proj_repoID(0));
-				fclose(f);
-			} else {
-				out("no write\n");
-			}
+			/* handled in part2 */
 		} else if (!streq(opts.bam_url, "none")) {
 			unless (p = bp_serverURL2ID(opts.bam_url)) {
 				rmdir(path);
@@ -146,14 +138,9 @@ err:				out(p);
 				opts.bam_url);
 				goto err;
 			}
-			concat_path(buf, path, BAM_SERVER);
-			mkdirf(buf);
-			if (f = fopen(buf, "w")) {
-				fprintf(f, "%s\n%s\n", opts.bam_url, p);
-				fclose(f);
-			} else {
-				out("no write\n");
-			}
+			concat_path(buf, path, "BitKeeper/log");
+			mkdirp(buf);
+			bp_setBAMserver(path, opts.bam_url, p);
 			free(p);
 		}
 	} else if ((p = getenv("BK_BAM_SERVER_URL")) && streq(p, ".")) {
@@ -201,7 +188,11 @@ cmd_rclone_part2(int ac, char **av)
 	if (getenv("BK_LEVEL")) {
 		setlevel(atoi(getenv("BK_LEVEL")));
 	}
-	if (!opts.bam_url && (p = getenv("BK_BAM_SERVER_URL"))) {
+	if (opts.bam_url) {
+		if (streq(opts.bam_url, ".")) {
+			bp_setBAMserver(path, ".", proj_repoID(0));
+		}
+	} else if (p = getenv("BK_BAM_SERVER_URL")) {
 		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER"));
 	}
 	if (sendServerInfoBlock(1)) {

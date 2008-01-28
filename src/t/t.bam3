@@ -129,13 +129,11 @@ echo OK
 
 # XXX rclone
 
-test X$PREFER_RSH = XYES && {
-
 echo $N Make sure that rclone copies the BAM pool ...................$NL
 cd "$HERE"
 P=`port 50000`
 bk bkd -d -p$P -ikill -l"$HERE/XXX"
-bk clone $Q pmaster bk://localhost:$P/rclone
+bk clone $Q -B. pmaster bk://localhost:$P/rclone
 bk _kill bk://localhost:$P || exit 1
 cd rclone || exit 1
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
@@ -157,10 +155,8 @@ echo $N Make sure that rclone of server does not copy BAM pool ......$NL
 cd "$HERE"
 rm -f XXX
 P=`port 50000`
-BK_CONFIG="BAM_server:bk://localhost:$P/pmaster" \
-    bk bkd -dp$P -ikill -l"$HERE/XXX"
-BK_CONFIG="BAM_server:bk://localhost:$P/pmaster" \
-    bk clone $Q pmaster bk://localhost:$P/rclone2
+bk bkd -dp$P -ikill -l"$HERE/XXX"
+bk clone $Q -Bbk://localhost:$P/pmaster pmaster bk://localhost:$P/rclone2
 cd rclone2 || exit 1
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -179,7 +175,7 @@ echo OK
 
 echo $N Make sure we can get the data after the fact ................$NL
 cd "$HERE/rclone2"
-BK_CONFIG="BAM_server:bk://localhost:$P/pmaster" bk -r co $Q 
+bk -r co $Q 
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x || echo $x is not found
@@ -198,10 +194,8 @@ echo OK
 echo $N Make sure that rclone w/ diff server does not copy BAM pool .$NL
 cd "$HERE"
 P=`port 50000`
-BK_CONFIG="BAM_server:bk://localhost:$P/rclone" \
-    bk bkd -dp$P -ikill -l"$HERE/XXX"
-BK_CONFIG="BAM_server:bk://localhost:$P/rclone" \
-    bk clone $Q pmaster bk://localhost:$P/rclone3
+bk bkd -dp$P -ikill -l"$HERE/XXX"
+bk clone $Q -Bbk://localhost:$P/rclone pmaster bk://localhost:$P/rclone3
 cd rclone3 || exit 1
 (cd ../rclone && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -220,7 +214,7 @@ echo OK
 
 echo $N Make sure we can get the data after the fact ................$NL
 cd "$HERE/rclone3"
-BK_CONFIG="BAM_server:bk://localhost:$P/rclone" bk -r co $Q 
+bk -r co $Q 
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x || echo $x is not found
@@ -236,5 +230,4 @@ test -s OUT && {
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
-}
 exit 0
