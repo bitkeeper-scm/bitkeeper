@@ -339,9 +339,17 @@ clone2(remote *r)
 	if (url = bp_serverURL()) {
 		p = bp_serverURL2ID(url);
 		unless (p && streq(p, bp_serverID(0))) {
+			if (p) free(p);
+			p = remote_unparse(r);
 			fprintf(stderr,
-			    "Bad BAM server URL '%s', please fix. (%s vs %s)\n",
-			    url, p, bp_serverID(0));
+			    "clone: The BAM server used by the repository"
+			    " at %s is\n"
+			    "\t%s, but that does not appear to be accessible"
+			    " on this machine.\n"
+			    "\tThe clone will complete, but a new server URL"
+			    " will be need to be assigned with the"
+			    " 'bk bam server <url>' command.\n",
+			    p, url);
 			bp_setBAMserver(0, 0, 0);
 			putenv("_BK_CHECK_NO_BAM_FETCH=1");
 		}

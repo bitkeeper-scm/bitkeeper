@@ -411,7 +411,7 @@ retry:	unless ((cset = sccs_csetInit(flags)) && HASGRAPH(cset)) {
 	}
 out:
 	if (verbose == 1) progressbar(nfiles, nfiles, errors ? "FAILED":"OK");
-	if (!errors && bp_getFiles &&
+	if (!errors && bp_getFiles && !getenv("_BK_CHECK_NO_BAM_FETCH") &&
 	    ((checkout == CO_EDIT) || (checkout == CO_GET))) {
 		sprintf(buf, "bk %s -q%s -",
 		    (checkout == CO_EDIT) ? "edit" : "get",
