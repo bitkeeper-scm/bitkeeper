@@ -97,14 +97,6 @@ clone_main(int ac, char **av)
 		chdir(here);
 	}
 
-	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
-		unless (bam_repoid = bp_serverURL2ID(bam_url)) {
-			fprintf(stderr,
-			    "clone: unable to contact new BAM server @ %s\n",
-			    bam_url);
-			return (1);
-		}
-	}
 	if (link) {
 		return (lclone(r, av[optind+1]));
 		/* NOT REACHED */
@@ -136,6 +128,14 @@ err:			if (r) remote_free(r);
 		remote_free(l);
 	}
 
+	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
+		unless (bam_repoid = bp_serverURL2ID(bam_url)) {
+			fprintf(stderr,
+			    "clone: unable to contact new BAM server @ %s\n",
+			    bam_url);
+			return (1);
+		}
+	}
 	if (opts->debug) r->trace = 1;
 	rc = clone(av, r, av[optind+1], envVar);
 	freeLines(envVar, free);

@@ -26,6 +26,7 @@ int
 rclone_main(int ac, char **av)
 {
 	int	c, rc, isLocal;
+	char	*url;
 	char    **envVar = 0;
 	remote	*l, *r;
 
@@ -75,6 +76,12 @@ rclone_main(int ac, char **av)
 	}
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
+
+	if (!opts.bam_url && (url = bp_serverURL()) && streq(url, ".")) {
+		fprintf(stderr,
+		    "clone: must pass -B<url> when cloning BAM server\n");
+		return (1);
+	}
 
 	rc = rclone(av, r, envVar);
 	freeLines(envVar, free);
@@ -141,6 +148,16 @@ rclone_part1(remote *r, char **envVar)
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
+	}
+	if (strneq(buf, "ERROR-BAM server URL \"", 22)) {
+		if (p = strchr(buf + 22, '"')) *p = 0;
+		p = remote_unparse(r);
+		fprintf(stderr,
+		    "clone: The repository at %s is unable to contact\n"
+		    "the BAM server at %s, clone aborted.\n",
+		    p, buf + 22);
+		free(p);
+		return (-1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
 	if (bp_hasBAM() && !bkd_hasFeature("BAM")) {

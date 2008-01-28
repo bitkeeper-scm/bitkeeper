@@ -657,6 +657,10 @@ load_bamserver(void)
 char	*
 bp_serverURL(void)
 {
+	char	*url;
+
+	if (url = getenv("_BK_FORCE_BAM_URL")) return (url);
+
 	load_bamserver();
 	return (server_url);
 }
@@ -671,6 +675,10 @@ bp_serverURL(void)
 char *
 bp_serverID(int notme)
 {
+	char	*repoid;
+
+	if (repoid = getenv("_BK_FORCE_BAM_REPOID")) return (repoid);
+
 	load_bamserver();
 	if (server_repoid && notme && streq(server_repoid, proj_repoID(0))) {
 		return (0);
@@ -726,6 +734,23 @@ bp_setBAMserver(char *path, char *url, char *repoid)
 		unlink(cfile);
 	}
 }
+
+/*
+ * This is used to override whatever the repo thinks the server is.
+ * Useful for "bk bam pull $URL".
+ */
+private int
+bp_forceServer(char *url)
+{
+	char	*repoid;
+
+	unless (repoid = bp_serverURL2ID(url)) return (1);
+
+	safe_putenv("_BK_FORCE_BAM_URL=%s", url);
+	safe_putenv("_BK_FORCE_BAM_REPOID=%s", repoid);
+	return (0);
+}
+
 
 /*
  * This is used to decide whether or not we should ask the other side to
@@ -813,27 +838,6 @@ bp_hasBAM(void)
 	return (exists(path));
 }
 
-/*
- * This is used to override whatever the repo thinks the server is.
- * Useful for "bk bam pull $URL".
- */
-void
-bp_server(char *server)
-{
-	char	*p = getenv("BK_CONFIG");
-
-	if (p && *p) {
-		if (strstr(p, "BAM_server:")) {
-			fprintf(stderr,
-			    "BK_CONFIG already contains a server, abort.\n");
-			exit(1);
-		}
-		safe_putenv("BK_CONFIG=%s;BAM_server:%s!", p, server);
-	} else {
-		safe_putenv("BK_CONFIG=BAM_server:%s!", server);
-	}
-}
-
 /* make local repository contain BAM data for all deltas */
 private int
 bam_pull_main(int ac, char **av)
@@ -859,7 +863,11 @@ bam_pull_main(int ac, char **av)
 		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
-	if (av[optind]) bp_server(av[optind]);
+	if (av[optind] && bp_forceServer(av[optind])) {
+		fprintf(stderr, "bam pull: unable to pull from %s\n",
+		    av[optind]);
+		return (1);
+	}
 	unless (bp_serverID(1)) return (0);	/* no server to pull from */
 
 	/* list of all BAM deltas */
@@ -908,7 +916,11 @@ bam_push_main(int ac, char **av)
 		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
-	if (av[optind]) bp_server(av[optind]);
+	if (av[optind] && bp_forceServer(av[optind])) {
+		fprintf(stderr, "bam push: unable to push to %s\n",
+		    av[optind]);
+		return (1);
+	}
 	return (bp_updateServer("..", 0, quiet));
 }
 

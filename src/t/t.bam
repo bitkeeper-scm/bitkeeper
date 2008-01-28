@@ -432,12 +432,12 @@ bk clone $Q . bk://localhost:$P/servmaster.copy 2>ERR && {
 	bk _kill bk://localhost:$P
 	exit 1
 }
-cat ERR
 test -d ../servmaster.copy && {
 	echo should not have left directory
 	bk _kill bk://localhost:$P
 	exit 1
 }
+grep -q "must pass -B" ERR || exit 1
 echo OK
 
 
@@ -449,12 +449,17 @@ bk clone $Q -Bjunk . bk://localhost:$P/servmaster.copy 2>ERR && {
 	bk _kill bk://localhost:$P
 	exit 1
 }
-cat ERR
 test -d ../servmaster.copy && {
 	echo should not have left directory
 	bk _kill bk://localhost:$P
 	exit 1
 }
+grep -q "clone: The repository at bk://localhost.*is unable" ERR || {
+	echo bad error msg
+	cat ERR
+	exit 1
+}
+grep -q "the BAM server at junk" ERR || exit 1
 echo OK
 
 bk _kill bk://localhost:$P
@@ -470,7 +475,7 @@ test -d test1 && {
 	echo should not have left directory
 	exit 1
 }
-cat ERR
+grep -q "clone: unable to contact new BAM server" ERR || exit 1
 echo OK
 
 # This test skipped on windows because I can't figure out how to make a file
