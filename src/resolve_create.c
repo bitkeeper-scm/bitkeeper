@@ -9,7 +9,13 @@ private	void	getFileConflict(char *gfile, char *path);
 int
 res_abort(resolve *rs)
 {
-	if (confirm("Abort patch?")) resolve_cleanup(rs->opts, CLEAN_RESYNC);
+	if (confirm("Abort patch?")) {
+		if (rs->s) {
+			sccs_free(rs->s);
+			rs->s = 0;
+		}
+		resolve_cleanup(rs->opts, CLEAN_RESYNC);
+	}
 	return (0);
 }
 
