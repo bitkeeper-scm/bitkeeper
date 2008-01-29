@@ -77,9 +77,16 @@ rclone_main(int ac, char **av)
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
 
+	/*
+	 * If rcloning a master, they MUST provide a back pointer URL to
+	 * a master (not necessarily this one).  If they point at a different
+	 * server Dr Wayne says we'll magically fill in the missing parts.
+	 */
 	if (!opts.bam_url && (url = bp_serverURL()) && streq(url, ".")) {
 		fprintf(stderr,
-		    "clone: must pass -B<url> when cloning BAM server\n");
+		    "clone: when cloning a BAM server -B<url> is required.\n"
+		    "<url> must name a BAM server reachable from %s\n",
+		    av[optind+1]);
 		return (1);
 	}
 
@@ -153,8 +160,7 @@ rclone_part1(remote *r, char **envVar)
 		if (p = strchr(buf + 22, '"')) *p = 0;
 		p = remote_unparse(r);
 		fprintf(stderr,
-		    "clone: The repository at %s is unable to contact\n"
-		    "the BAM server at %s, clone aborted.\n",
+		    "%s: unable to contact BAM server '%s'\n",
 		    p, buf + 22);
 		free(p);
 		return (-1);

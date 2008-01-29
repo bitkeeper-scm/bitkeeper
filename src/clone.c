@@ -131,7 +131,7 @@ err:			if (r) remote_free(r);
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
 		unless (bam_repoid = bp_serverURL2ID(bam_url)) {
 			fprintf(stderr,
-			    "clone: unable to contact new BAM server @ %s\n",
+			    "clone: unable to get id from BAM server '%s'\n",
 			    bam_url);
 			return (1);
 		}
@@ -342,15 +342,13 @@ clone2(remote *r)
 			if (p) free(p);
 			p = remote_unparse(r);
 			fprintf(stderr,
-			    "clone: The BAM server used by the repository"
-			    " at %s is\n"
-			    "\t%s, but that does not appear to be accessible"
-			    " on this machine.\n"
-			    "\tThe clone will complete, but a new server URL"
-			    " will be need to be assigned with the"
-			    " 'bk bam server <url>' command.\n",
-			    p, url);
-			bp_setBAMserver(0, 0, 0);
+			    "clone: our parent '%s' has\n"
+				"BAM server '%s'\n"
+				"which is inaccessible from this repository.\n"
+				"Please set a valid BAM server with "
+				"bk bam server <url>\n",
+				p, url);
+			// So we can still pass check says Dr Wayne
 			putenv("_BK_CHECK_NO_BAM_FETCH=1");
 		}
 		if (p) free(p);

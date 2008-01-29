@@ -5,6 +5,7 @@ bk clone \- create a new copy of a package
 .SH SYNOPSIS
 .B bk clone
 .[B] \-ql 
+.[OPTreq] \-B url
 .[OPTequal] \-E env val
 .[OPTreq] \-r rev
 .ARG from
@@ -25,6 +26,12 @@ pathnames as well as \*(BK URLs.
 See 
 .B bk help url
 for further naming information.
+.LP
+If
+.ARG url
+is specified, it tells the destination repository what to use as a
+BAM server.
+This argument is required when cloning a BAM server to a BKD.
 .LP
 If 
 .ARG rev
@@ -47,6 +54,11 @@ Only completed changesets are cloned.  Any pending deltas are removed
 from the child before the clone completes.
 .SH OPTIONS
 .TP \-E\*<env\*>=\*<val\*>
+.OPTreq \-B url
+Set the BAM server url to 
+.ARG url
+in the destination repository.
+.tp
 .OPTequal \-E env val
 Export an environment variable to the 
 .B bkd
@@ -73,6 +85,7 @@ See
 .B bk help terms
 for more information.
 .SH "SEE ALSO"
+.SA BAM
 .SA bkd
 .SA parent
 .SA pull

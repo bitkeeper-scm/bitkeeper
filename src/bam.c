@@ -697,13 +697,12 @@ bp_serverURL2ID(char *url)
 	FILE	*f;
 	char	buf[MAXLINE];
 
-	sprintf(buf, "bk -q@'%s' id -r", url);
+	sprintf(buf, "bk -q@'%s' id -r 2>%s", url, DEVNULL_WR);
 	unless (f = popen(buf, "r")) return (0);
 	unless (fnext(buf, f)) return (0);
 	chomp(buf);
 	if (pclose(f)) {
-		fprintf(stderr,
-		    "Failed to contact BAM server at '%s'\n", url);
+		fprintf(stderr, "Failed to contact BAM server at '%s'\n", url);
 		return (0);
 	}
 	return (strdup(buf));
@@ -744,8 +743,10 @@ bp_forceServer(char *url)
 {
 	char	*repoid;
 
-	unless (repoid = bp_serverURL2ID(url)) return (1);
-
+	unless (repoid = bp_serverURL2ID(url)) {
+		fprintf(stderr, "Unable to get id from BAM server %s\n", url);
+		return (1);
+	}
 	safe_putenv("_BK_FORCE_BAM_URL=%s", url);
 	safe_putenv("_BK_FORCE_BAM_REPOID=%s", repoid);
 	return (0);
@@ -784,6 +785,7 @@ bp_fetchData(void)
 	}
 
 	local_repoID = bp_serverID(0);
+	// ttyprintf("Our serverID is   %s\n", local_repoID);
 	remote_repoID =
 	    getenv(inbkd ? "BK_BAM_SERVER" : "BKD_BAM_SERVER");
 	unless (remote_repoID) {
@@ -803,6 +805,7 @@ bp_fetchData(void)
 
 	/* if we both have the same server, nothing to do */
 	if (local_repoID && streq(local_repoID, remote_repoID)) {
+		// ttyprintf("No fetch\n");
 		return (0);
 	}
 
@@ -1874,6 +1877,9 @@ bam_server_main(int ac, char **av)
 		server = streq(av[optind], ".") ?
 		    strdup(".") : parent_normalize(av[optind]);
 		unless (repoid = bp_serverURL2ID(server)) {
+			fprintf(stderr,
+			    "bam server: unable to get id from BAM server %s\n",
+			    server);
 			free(server);
 			return (1);
 		}

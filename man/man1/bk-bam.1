@@ -22,6 +22,9 @@ bk bam \- BAM utility routines
 .B bk bam repair
 .[B] \-q
 .ARG dir
+.br
+.B bk bam server
+.[ARG] URL
 .SH DESCRIPTION
 \*(BK Binary Asset Management (BAM) is a licensed subfeature that provides
 support for large binary files, such as tool chains, cell
@@ -107,6 +110,11 @@ For each file in the named directory, see if the hash of the file matches
 one of the missing files.
 If so, reinsert that file.
 .\" XXX - tell them that it may be wrong?
+.tp
+.B server
+Used to report or, with the optional 
+.ARG URL ,
+set the BAM server from which BAM data will be fetched.
 .SH SEE ALSO
 .SA Howto-BAM
 .SH CATEGORY
