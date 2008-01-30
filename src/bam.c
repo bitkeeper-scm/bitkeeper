@@ -1865,15 +1865,18 @@ bam_server_main(int ac, char **av)
 		    case 'q': quiet++; break;
 		    case 'r': rm++; break;
 		    default:
-			system("bk help -s BAM");
+usage:			system("bk help -s BAM");
 			return (1);
 		}
 	}
 	if (rm) {
-		unlink(BAM_SERVER);
+		if (av[optind]) goto usage;
+rm:		unlink(BAM_SERVER);
 		return (0);
 	}
 	if (av[optind]) {
+		if (av[optind+1]) goto usage;
+		if (streq(av[optind], "none")) goto rm;
 		server = streq(av[optind], ".") ?
 		    strdup(".") : parent_normalize(av[optind]);
 		unless (repoid = bp_serverURL2ID(server)) {

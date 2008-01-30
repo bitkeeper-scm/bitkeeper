@@ -5,7 +5,7 @@ bk clone \- create a new copy of a package
 .SH SYNOPSIS
 .B bk clone
 .[B] \-ql 
-.[OPTreq] \-B url
+.[OPTreq] \-B bam_url
 .[OPTequal] \-E env val
 .[OPTreq] \-r rev
 .ARG from
@@ -28,9 +28,11 @@ See
 for further naming information.
 .LP
 If
-.ARG url
+.ARG bam_url
 is specified, it tells the destination repository what to use as a
 BAM server.
+Normally a new repository inherits the BAM server URL from the source
+repository.
 This argument is required when cloning a BAM server to a BKD.
 .LP
 If 
