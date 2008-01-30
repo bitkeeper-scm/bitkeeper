@@ -554,7 +554,7 @@ chk_BAM(sccs *s, char ***missing)
 	unless (*missing) missing = 0;
 	for (d = s->table; d; d = d->next) {
 		unless (d->hash) continue;
-		key = sccs_prsbuf(s, d, 0, BAM_DSPEC);
+		key = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 		if (bp_check_hash(key, missing, !bp_fullcheck)) rc = 1;
 		free(key);
 	}
