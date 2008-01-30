@@ -63,7 +63,7 @@ bp_delta(sccs *s, delta *d)
 	free(p);
 	if (bp_hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
 	s->dsum = d->sum;
-	keys = sccs_prsbuf(s, d, 0, BAM_DSPEC);
+	keys = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 	rc = bp_insert(s->proj, s->gfile, keys, 0, d->mode);
 	free(keys);
 	if (rc) return (-1);
@@ -406,8 +406,8 @@ bp_lookup(sccs *s, delta *d)
 	char	*keys;
 	char	*ret = 0;
 
-	d = bp_fdelta(s, d);
-	keys = sccs_prsbuf(s, d, 0, BAM_DSPEC);
+	unless (d = bp_fdelta(s, d)) return (0);
+	keys = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 	ret = bp_lookupkeys(s->proj, keys);
 	free(keys);
 	return (ret);
@@ -462,7 +462,7 @@ bp_fetch(sccs *s, delta *din)
 	f = popen(cmd, "w");
 	free(cmd);
 	assert(f);
-	keys = sccs_prsbuf(s, din, 0, BAM_DSPEC);
+	keys = sccs_prsbuf(s, din, PRS_FORCE, BAM_DSPEC);
 	fprintf(f, "%s\n", keys);
 	free(keys);
 	if (pclose(f)) {

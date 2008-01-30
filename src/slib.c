@@ -15106,6 +15106,21 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		}
 		return (nullVal);
 
+	case KW_BAMFILE: /* BAMFILE */
+		if (BAM(s) && (p = bp_lookup(s, d))) {
+			fs(p);
+			free(p);
+			return (strVal);
+		}
+		return (nullVal);
+	case KW_BAM: /* BAM */
+		if (BAM(s)) {
+			fs("1");
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
+
 	default:
 		return (notKeyword);
 	}
@@ -15114,8 +15129,8 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 int
 sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
-	if (SET(s) && !(d->flags & D_SET)) return (0);
+	if (d->type != 'D' && !(flags & (PRS_ALL|PRS_FORCE))) return (0);
+	if (SET(s) && !(d->flags & D_SET) && !(flags & PRS_FORCE)) return (0);
 	s->prs_all = ((flags & PRS_ALL) != 0);
 	s->prs_output = 0;
 	dspec_eval(out, 0, s, d, dspec);
@@ -15131,8 +15146,8 @@ sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec)
 {
 	char	**buf = 0;
 
-	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
-	if (SET(s) && !(d->flags & D_SET)) return (0);
+	if (d->type != 'D' && !(flags & (PRS_ALL|PRS_FORCE))) return (0);
+	if (SET(s) && !(d->flags & D_SET) && !(flags & PRS_FORCE)) return (0);
 	s->prs_all = ((flags & PRS_ALL) != 0);
 	dspec_eval(0, &buf, s, d, dspec);
 	if (data_length(buf)) {
@@ -15371,13 +15386,6 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 	if (flags & PRS_PATCH) {
 		assert(s->rstart == s->rstop);
 		return (do_patch(s, s->rstart, flags, out));
-	}
-	/* print metadata if they asked */
-	if (flags & PRS_META) {
-		symbol	*sym;
-		for (sym = s->symbols; sym; sym = sym->next) {
-			fprintf(out, "S %s %s\n", sym->symname, sym->rev);
-		}
 	}
 	unless (SET(s)) {
 		for (d = s->rstop; d; d = d->next) {

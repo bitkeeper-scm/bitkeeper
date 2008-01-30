@@ -130,7 +130,7 @@ int	checking_rmdir(char *dir);
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK)
 
-#define	PRS_META	0x10000000	/* show metadata */
+#define	PRS_FORCE	0x10000000	/* ignore the D_SET/S_SET filter */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
 #define	PRS_PATCH	0x40000000	/* print in patch format */
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
