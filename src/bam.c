@@ -145,7 +145,12 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		if (getenv("_BK_FAKE_HASH")) {
 			sum = strtoul(getenv("_BK_FAKE_HASH"), 0, 16);
 		} else {
-			sum = adler32(0, m->mmap, m->size); // XXX hash dfile?
+			if (m->size) {
+				// XXX hash dfile?
+				sum = adler32(0, m->mmap, m->size);
+			} else {
+				sum = 0;
+			}
 			if (p = getenv("_BP_HASHCHARS")) {
 				sprintf(hash, "%08x", sum);
 				hash[atoi(p)] = 0;
@@ -157,7 +162,8 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		p = strchr(d->hash, '.');
 		*p = 0;
 		fprintf(stderr,
-		    "crc mismatch in %s: %08x vs %s\n", s->gfile, sum, d->hash);
+		    "crc mismatch in %s|%s: %08x vs %s\n",
+		    s->gfile, d->rev, sum, d->hash);
 		*p = '.';
 	}
 	unless (ok || (flags & GET_FORCE)) goto done;
@@ -276,7 +282,6 @@ bp_hashgfile(char *gfile, char **hashp, sum_t *sump)
 	hash_descriptor[hdesc].init(&md);
 	while ((i = read(fd, buf, sizeof(buf))) > 0) {
 		sum = adler32(sum, buf, i);
-
 		hash_descriptor[hdesc].process(&md, buf, i);
 	}
 	hash_descriptor[hdesc].done(&md, buf);
@@ -1779,7 +1784,7 @@ uu2bp(sccs *s)
 		 * anyway, it's an extra tuple but the data will collapse.
 		 * Review carefully.
 		 */
-		unless (d->added || d->deleted) {
+		if (d == s->tree) {
 			d->deleted = d->same = 0;
 			d->added = size(s->gfile);
 			unlink(s->gfile);
