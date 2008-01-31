@@ -790,7 +790,7 @@ bp_fetchData(void)
 	local_repoID = bp_serverID(0);
 	// ttyprintf("Our serverID is   %s\n", local_repoID);
 	remote_repoID =
-	    getenv(inbkd ? "BK_BAM_SERVER" : "BKD_BAM_SERVER");
+	    getenv(inbkd ? "BK_BAM_SERVER_ID" : "BKD_BAM_SERVER_ID");
 	unless (remote_repoID) {
 		/*
 		 * Remote side doesn't support BAM, other error checks

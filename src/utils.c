@@ -798,9 +798,10 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			}
 			unless (bp = bp_serverID(0)) bp = repo;
 			if (strchr(bp, ' ')) {
-				fprintf(f, "putenv 'BK_BAM_SERVER=%s'\n", bp);
+				fprintf(f,
+				    "putenv 'BK_BAM_SERVER_ID=%s'\n", bp);
 			} else {
-				fprintf(f, "putenv BK_BAM_SERVER=%s\n", bp);
+				fprintf(f, "putenv BK_BAM_SERVER_ID=%s\n", bp);
 			}
 		}
 	}
@@ -957,7 +958,7 @@ sendServerInfoBlock(int is_rclone)
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
 		unless (p = bp_serverID(0)) p = repoid;
-		sprintf(buf, "\nBAM_SERVER=%s", p);
+		sprintf(buf, "\nBAM_SERVER_ID=%s", p);
 		out(buf);
 	}
 	if (md5rootkey = proj_md5rootkey(0)) {

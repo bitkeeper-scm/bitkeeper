@@ -578,7 +578,8 @@ set | grep $DASHA ^BK | grep -v _BK_ |
 	grep -v BK_LICENSE= |
 	grep -v BK_NO_REPO_LOCK= |
 	grep -v BK_IGNORE_WRLOCK= |
-	grep -v BKD_BAM_SERVER= |
+	grep -v BKD_BAM_SERVER_ID= |
+	grep -v BKD_BAM_SERVER_URL= |
 	grep -v BKD_BAM= |
 	bk sort > "$HERE/post-outgoing-l"
 EOF
