@@ -1,6 +1,5 @@
 .so ../bk-macros
 .TH "Howto-BAM" "\*[BKVER]" %E% "\*(BC" "\*(UM"
-.\"    =================== Quickstart Admin =========================
 .SH NAME
 bk Howto-BAM \- configuring the Binary Asset Management (BAM) subsystem
 .SH OVERVIEW
@@ -11,7 +10,7 @@ such as tool chains, libraries, photos, music, videos, etc.
 The BAM system is a hybrid, combining the best of the traditional
 centralized models with advantages of the distributed
 model developed by \*[BK].
-When BAM is enabled, and one or more servers are configured, then BAM files
+When BAM is enabled, and a BAM server is set, then BAM files
 in \*[BK] repositories are passed by reference rather than copied.  
 BAM files appear to be the same as regular \*[BK] files but they contain
 no data, only a pointer which names the data.
@@ -31,8 +30,10 @@ BAM: on
 .DE
 In order to fetch BAM data on demand a server must be configured:
 .DS
-BAM_server: bk://MyBigBox/MyRepo
+$ bk bam server bk://MyBigBox/MyRepo
 .DE
+Note that the BAM server is per repository construct that is inherited on
+clone, much like the repository level is inherited on clone.
 .SH CONVERTING REPOS
 If you have a repository that contains larger binaries (minimum checked out
 size of 64KB), then you may do a one time conversion to BAM format.

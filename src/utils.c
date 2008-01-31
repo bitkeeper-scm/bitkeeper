@@ -784,19 +784,23 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 			} else {
 				fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 			}
-			if (bp_hasBAM()) {
-				fprintf(f, "putenv BK_BAM=YES\n");
-			}
-			unless (bp_serverID(&bp)) {
-				unless (bp) bp = strdup(repo);
+			if (bp_hasBAM()) fprintf(f, "putenv BK_BAM=YES\n");
+			if (bp = bp_serverURL()) {
 				if (strchr(bp, ' ')) {
 					fprintf(f,
-					    "putenv 'BK_BAM_SERVER=%s'\n", bp);
+					    "putenv 'BK_BAM_SERVER_URL=%s'\n",
+					    bp);
 				} else {
 					fprintf(f,
-					    "putenv BK_BAM_SERVER=%s\n", bp);
+					    "putenv BK_BAM_SERVER_URL=%s\n",
+					    bp);
 				}
-				free(bp);
+			}
+			unless (bp = bp_serverID(0)) bp = repo;
+			if (strchr(bp, ' ')) {
+				fprintf(f, "putenv 'BK_BAM_SERVER=%s'\n", bp);
+			} else {
+				fprintf(f, "putenv BK_BAM_SERVER=%s\n", bp);
 			}
 		}
 	}
@@ -921,7 +925,13 @@ sendServerInfoBlock(int is_rclone)
 		out("LICTYPE=");
 		out(eula_name());
 		out("\n");
-		if (bp_hasBAM()) out("BAM=YES\n");
+		if (bp_hasBAM()) {
+			out("BAM=YES\n");
+			if (p = bp_serverURL()) {
+				sprintf(buf, "BAM_SERVER_URL=%s\n", p);
+				out(buf);
+			}
+		}
 	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));
@@ -946,12 +956,9 @@ sendServerInfoBlock(int is_rclone)
 	if (repoid = proj_repoID(0)) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
-		unless (bp_serverID(&p)) {
-			unless (p) p = strdup(repoid);
-			sprintf(buf, "\nBAM_SERVER=%s", p);
-			out(buf);
-			free(p);
-		}
+		unless (p = bp_serverID(0)) p = repoid;
+		sprintf(buf, "\nBAM_SERVER=%s", p);
+		out(buf);
 	}
 	if (md5rootkey = proj_md5rootkey(0)) {
 		sprintf(buf, "\nROOTKEY1=%s", md5rootkey);

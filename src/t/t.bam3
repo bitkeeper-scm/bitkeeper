@@ -17,6 +17,7 @@ do	echo $f > F$f
 	perl -e 'printf "a\000b\n"' >> F$f
 done
 commercial pmaster
+bk bam server $Q . || exit 1
 echo OK
 
 echo $N Create some binary data and check BAM .......................$NL
@@ -30,7 +31,7 @@ echo OK
 
 echo $N Make sure that clone copies the BAM pool ....................$NL
 cd "$HERE"
-bk clone $Q pmaster clone
+bk clone $Q -Bnone pmaster clone
 cd clone
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -48,7 +49,7 @@ echo OK
 
 echo $N Make sure that clone w/ server does not copy BAM pool .......$NL
 cd "$HERE"
-BK_CONFIG="BAM_server:file://$HERE/pmaster" bk clone $Q pmaster clone2
+bk clone $Q pmaster clone2
 cd clone2
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -66,7 +67,7 @@ echo OK
 
 echo $N Make sure that clone w/ diff server does not copy BAM pool ..$NL
 cd "$HERE"
-BK_CONFIG="BAM_server:file://$HERE/clone" bk clone $Q pmaster clone3
+bk clone $Q -B"$HERE"/clone pmaster clone3
 cd clone3
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -82,13 +83,10 @@ test -s OUT && {
 }
 echo OK
 
-if false
-then
 (cd "$HERE" && tar czf /tmp/TGZ .)
-# This can't work, the env var makes it a shared server case.
 echo $N Make sure that clone w/ empty server copies BAM pool ........$NL
 cd "$HERE"
-BK_SHOWPROC=YES BK_CONFIG="BAM_server:file://$HERE/clone2!" bk clone $Q pmaster clone4
+bk clone -B"$HERE/clone2" $Q pmaster clone4 || exit 1
 cd clone4
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -104,12 +102,11 @@ test -s OUT && {
 	exit 1
 }
 echo OK
-fi
 
 echo $N Make sure that clone -l copies the BAM pool .................$NL
 cd "$HERE"
 rm -rf clone
-bk clone $Q -l pmaster clone
+bk clone $Q -l pmaster clone || exit 1
 cd clone
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -128,13 +125,11 @@ echo OK
 
 # XXX rclone
 
-test X$PREFER_RSH = XYES && {
-
 echo $N Make sure that rclone copies the BAM pool ...................$NL
 cd "$HERE"
 P=`port 50000`
 bk bkd -d -p$P -ikill -l"$HERE/XXX"
-bk clone $Q pmaster bk://localhost:$P/rclone
+bk clone $Q -B. pmaster bk://localhost:$P/rclone
 bk _kill bk://localhost:$P || exit 1
 cd rclone || exit 1
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
@@ -156,10 +151,8 @@ echo $N Make sure that rclone of server does not copy BAM pool ......$NL
 cd "$HERE"
 rm -f XXX
 P=`port 50000`
-BK_CONFIG="BAM_server:bk://localhost:$P/pmaster" \
-    bk bkd -dp$P -ikill -l"$HERE/XXX"
-BK_CONFIG="BAM_server:bk://localhost:$P/pmaster" \
-    bk clone $Q pmaster bk://localhost:$P/rclone2
+bk bkd -dp$P -ikill -l"$HERE/XXX"
+bk clone $Q -Bbk://localhost:$P/pmaster pmaster bk://localhost:$P/rclone2
 cd rclone2 || exit 1
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -178,7 +171,7 @@ echo OK
 
 echo $N Make sure we can get the data after the fact ................$NL
 cd "$HERE/rclone2"
-BK_CONFIG="BAM_server:bk://localhost:$P/pmaster" bk -r co $Q 
+bk -r co $Q 
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x || echo $x is not found
@@ -197,10 +190,8 @@ echo OK
 echo $N Make sure that rclone w/ diff server does not copy BAM pool .$NL
 cd "$HERE"
 P=`port 50000`
-BK_CONFIG="BAM_server:bk://localhost:$P/rclone" \
-    bk bkd -dp$P -ikill -l"$HERE/XXX"
-BK_CONFIG="BAM_server:bk://localhost:$P/rclone" \
-    bk clone $Q pmaster bk://localhost:$P/rclone3
+bk bkd -dp$P -ikill -l"$HERE/XXX"
+bk clone $Q -Bbk://localhost:$P/rclone pmaster bk://localhost:$P/rclone3
 cd rclone3 || exit 1
 (cd ../rclone && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -219,7 +210,7 @@ echo OK
 
 echo $N Make sure we can get the data after the fact ................$NL
 cd "$HERE/rclone3"
-BK_CONFIG="BAM_server:bk://localhost:$P/rclone" bk -r co $Q 
+bk -r co $Q 
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x || echo $x is not found
@@ -235,5 +226,4 @@ test -s OUT && {
 bk _kill bk://localhost:$P || exit 1
 echo OK
 
-}
 exit 0

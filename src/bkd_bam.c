@@ -95,11 +95,9 @@ server(int recurse)
 	FILE	*f;
 
 	unless (recurse) return (stdout);
-	if (bp_serverID(&p)) return (stdout);	// OK?
-	if (p == 0) return (stdout);
-	free(p);
-	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B -",
-	    proj_configval(0,"BAM_server"));
+	unless (bp_serverID(1)) return (stdout);
+	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B -l -",
+	    bp_serverURL());
 	f = popen(p, "w");
 	free(p);
 	return (f ? f : stdout);
