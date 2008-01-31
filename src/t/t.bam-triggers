@@ -11,6 +11,8 @@
 
 DASHA=
 test X`uname -s` = XDarwin && DASHA=-a
+PERL=`type perl | awk '{ print $NF }'`
+echo $PERL | grep -q "not found"  && { echo failed; exit 1; }
 
 echo $N Check commit trigger environment variables ..................$NL
 cd "$HERE"
@@ -1936,8 +1938,6 @@ echo "checkout: get" >> BitKeeper/etc/config
 bk delta $Q -ycheckout BitKeeper/etc/config
 bk commit $Q -ycheckout
 mkdir BitKeeper/triggers
-PERL=`type -p perl`
-test $? = 0 || { echo failed w no perl; exit 1; }
 cat > BitKeeper/triggers/pre-commit <<EOF
 #! $PERL -w
 print "I am in perl";
