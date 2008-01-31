@@ -193,7 +193,7 @@ cmd_rclone_part2(int ac, char **av)
 			bp_setBAMserver(path, ".", proj_repoID(0));
 		}
 	} else if (p = getenv("BK_BAM_SERVER_URL")) {
-		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER"));
+		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER_ID"));
 	}
 	if (sendServerInfoBlock(1)) {
 		drain();

@@ -444,7 +444,7 @@ initProject(char *root, remote *r)
 		} else if (p = getenv("BKD_BAM_SERVER_URL")) {
 
 			url = streq(p, ".") ? remote_unparse(r) : strdup(p);
-			repoid = getenv("BKD_BAM_SERVER");
+			repoid = getenv("BKD_BAM_SERVER_ID");
 		} else {
 			url = 0;
 		}
@@ -691,9 +691,9 @@ out2:		repository_rdunlock(0);
 	}
 
 	if (p = bp_serverID(0)) {
-		safe_putenv("BKD_BAM_SERVER=%s", p);
+		safe_putenv("BKD_BAM_SERVER_ID=%s", p);
 	} else {
-		safe_putenv("BKD_BAM_SERVER=%s", proj_repoID(0));
+		safe_putenv("BKD_BAM_SERVER_ID=%s", proj_repoID(0));
 	}
 
 	chdir(here);
@@ -834,7 +834,7 @@ out:
 	chdir(from);
 
 	putenv("BKD_REPO_ID=");
-	putenv("BKD_BAM_SERVER=");
+	putenv("BKD_BAM_SERVER_ID=");
 	out_trigger("BK_STATUS=OK", opts->rev, "post");
 	remote_free(r);
 	return (0);
