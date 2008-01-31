@@ -188,7 +188,7 @@ echo OK
 
 echo $N Clone to different bp master ................................$NL
 cd ..
-bk clone $Q -B . pmaster cmaster || exit 1
+bk clone $Q -B. pmaster cmaster || exit 1
 cd cmaster
 bk -Ur get $Q || exit 1
 bk BAM check -Fq || exit 1
@@ -211,14 +211,14 @@ echo OK
 
 echo $N Clone to repo without a bp master ...........................$NL
 cd ..
-bk clone -B none $Q cclone1 zclone1 || exit 1
+bk clone -Bnone $Q cclone1 zclone1 || exit 1
 cd zclone1
 bk -Ur get $Q || exit 1
 echo OK
 
 echo $N Clone again in checkout:get mode ............................$NL
 cd ..
-BK_CONFIG='checkout:get!' bk clone -B none $Q cclone1 zclone3 || exit 1
+BK_CONFIG='checkout:get!' bk clone -Bnone $Q cclone1 zclone3 || exit 1
 cd zclone3
 bk -Ur get $Q -S || exit 1
 bk BAM check -Fq || exit 1
@@ -248,7 +248,7 @@ echo $N Try remote clone across zones................................$NL
 cd "$HERE"
 P=`port 50000`
 bk bkd -d -p$P -ikill
-bk clone $Q -B none cclone1 bk://localhost:$P/zclone2 || exit 1
+bk clone $Q -Bnone cclone1 bk://localhost:$P/zclone2 || exit 1
 cd zclone2 || exit 1
 bk BAM check -Fq || exit 1
 echo OK

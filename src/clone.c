@@ -43,7 +43,7 @@ clone_main(int ac, char **av)
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
-	while ((c = getopt(ac, av, "B:dE:lqr;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:lqr;w|z|")) != -1) {
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
