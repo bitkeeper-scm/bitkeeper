@@ -67,7 +67,7 @@ echo OK
 
 echo $N Make sure that clone w/ diff server does not copy BAM pool ..$NL
 cd "$HERE"
-BK_CONFIG="BAM_server:file://$HERE/clone" bk clone $Q pmaster clone3
+bk clone $Q -B"$HERE"/clone pmaster clone3
 cd clone3
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -83,13 +83,10 @@ test -s OUT && {
 }
 echo OK
 
-if false
-then
 (cd "$HERE" && tar czf /tmp/TGZ .)
-# This can't work, the env var makes it a shared server case.
 echo $N Make sure that clone w/ empty server copies BAM pool ........$NL
 cd "$HERE"
-BK_SHOWPROC=YES BK_CONFIG="BAM_server:file://$HERE/clone2!" bk clone $Q pmaster clone4
+bk clone -B"$HERE/clone2" $Q pmaster clone4 || exit 1
 cd clone4
 (cd ../pmaster && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -105,7 +102,6 @@ test -s OUT && {
 	exit 1
 }
 echo OK
-fi
 
 echo $N Make sure that clone -l copies the BAM pool .................$NL
 cd "$HERE"

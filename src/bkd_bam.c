@@ -96,7 +96,7 @@ server(int recurse)
 
 	unless (recurse) return (stdout);
 	unless (bp_serverID(1)) return (stdout);
-	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B -",
+	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B -l -",
 	    bp_serverURL());
 	f = popen(p, "w");
 	free(p);

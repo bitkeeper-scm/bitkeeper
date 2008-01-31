@@ -18,12 +18,6 @@
  *  - work on errors when BAM repos are used by old clients
  *  - keysync should sync BP data for non-shared server case
  *   ( no need to send all data)
- *
- *  this cset (delete me)
- *  - comments in BAM_SERVER file
- *  - error message above and clone repo with local serverURL
- *  - bk bam pull URL (needs override) (must need a testcase)
- *  - manpage updates
  */
 
 /*
@@ -659,8 +653,9 @@ bp_serverURL(void)
 {
 	char	*url;
 
-	if (url = getenv("_BK_FORCE_BAM_URL")) return (url);
-
+	if (url = getenv("_BK_FORCE_BAM_URL")) {
+		return (streq(url, "none") ? 0 :url);
+	}
 	load_bamserver();
 	return (server_url);
 }
@@ -677,8 +672,9 @@ bp_serverID(int notme)
 {
 	char	*repoid;
 
-	if (repoid = getenv("_BK_FORCE_BAM_REPOID")) return (repoid);
-
+	if (repoid = getenv("_BK_FORCE_BAM_REPOID")) {
+		return (streq(repoid, "none") ? 0 : repoid);
+	}
 	load_bamserver();
 	if (server_repoid && notme && streq(server_repoid, proj_repoID(0))) {
 		return (0);
@@ -743,7 +739,9 @@ bp_forceServer(char *url)
 {
 	char	*repoid;
 
-	unless (repoid = bp_serverURL2ID(url)) {
+	if (streq(url, "none")) {
+		repoid = "none";
+	} else if (!(repoid = bp_serverURL2ID(url))) {
 		fprintf(stderr, "Unable to get id from BAM server %s\n", url);
 		return (1);
 	}
@@ -846,11 +844,16 @@ private int
 bam_pull_main(int ac, char **av)
 {
 	int	rc, c;
+	char	*url, *id;
 	char	**cmds = 0;
 	int	quiet = 0;
 
-	while ((c = getopt(ac, av, "q")) != -1) {
+	if (url = bp_serverURL()) strdup(url);	/* save original bam server */
+	while ((c = getopt(ac, av, "B:q")) != -1) {
 		switch (c) {
+		    case 'B':
+			if (bp_forceServer(optarg)) return (1);
+			break;
 		    case 'q': quiet = 1; break;
 		    default:
 			system("bk help -s BAM");
@@ -866,22 +869,32 @@ bam_pull_main(int ac, char **av)
 		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
-	if (av[optind] && bp_forceServer(av[optind])) {
-		fprintf(stderr, "bam pull: unable to pull from %s\n",
-		    av[optind]);
-		return (1);
+	if (av[optind]) {
+		if (av[optind+1]) {
+			fprintf(stderr, "bam pull: only one URL allowed\n");
+			return (1);
+		}
+		if (url) free(url);
+		url = strdup(av[optind]);
+		unless (id = bp_serverURL2ID(url)) {
+			fprintf(stderr, "bam pull: unable to pull from %s\n",
+			    url);
+			free(url);
+			return (1);
+		}
+		free(id);
 	}
-	unless (bp_serverID(1)) return (0);	/* no server to pull from */
+	unless (url) return (0);	/* no server to pull from */
 
 	/* list of all BAM deltas */
 	cmds = addLine(cmds, aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
 
-	/* reduce to list of deltas missing locally, no recursion. */
-	cmds = addLine(cmds, strdup("bk havekeys -Bl -"));
+	/* reduce to list of deltas missing. */
+	cmds = addLine(cmds, strdup("bk havekeys -B -"));
 
 	/* request deltas from server */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -",
-	    bp_serverURL()));
+	cmds = addLine(cmds,
+	    aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -", url));
 
 	/* unpack locally */
 	if (quiet) {
@@ -978,7 +991,7 @@ bam_clean_main(int ac, char **av)
 		unless (bp_serverID(1)) {
 			// XXX - bad error message if we are the server.
 			fprintf(stderr,
-			    "bk BAM clean: No BAM_server set\n");
+			    "bk BAM clean: No BAM server set\n");
 			free(p1);
 			return (1);
 		}
@@ -1184,7 +1197,7 @@ bp_check_findMissing(int quiet, char **missing)
 		EACH(missing) fprintf(f, "%s\n", missing[i]);
 		if (pclose(f)) {
 			fprintf(stderr,
-			    "Failed to contact BAM_server at %s\n",
+			    "Failed to contact BAM server at %s\n",
 			    bp_serverURL());
 			rc = 1;
 		} else {
