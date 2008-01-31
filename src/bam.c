@@ -853,7 +853,7 @@ bam_pull_main(int ac, char **av)
 	char	**cmds = 0;
 	int	all = 0;	/* don't check server */
 	int	quiet = 0;
-	int	stdin = 0;	/* read keys to fetch from stdin */
+	int	dash = 0;	/* read keys to fetch from stdin */
 
 	while ((c = getopt(ac, av, "B:q")) != -1) {
 		switch (c) {
@@ -875,10 +875,10 @@ bam_pull_main(int ac, char **av)
 	}
 	for (i = 0; av[optind+i]; i++);
 	if ((i-- > 0) && streq(av[optind+i], "-")) {
-		stdin = 1;
+		dash = 1;
 		av[optind+i] = 0;
 	}
-	if (stdin && all) {
+	if (dash && all) {
 		fprintf(stderr, "bam pull: Can't pull from - with -a\n");
 		return (1);
 	}
@@ -904,7 +904,7 @@ bam_pull_main(int ac, char **av)
 		}
 	}
 
-	unless (stdin) {
+	unless (dash) {
 		/* list of all BAM deltas */
 		cmds = addLine(cmds,
 		    aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
