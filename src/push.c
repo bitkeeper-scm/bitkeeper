@@ -676,7 +676,7 @@ maybe_trigger(remote *r)
 			return (0);
 		}
 	}
-	if (getTriggerInfoBlock(r, 1|opts.verbose)) {
+	if (getTriggerInfoBlock(r, opts.verbose)) {
 		return (1);
 	}
 	return (0);
@@ -817,7 +817,7 @@ push_part2(char **av,
 		goto done;
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
+		if (getTriggerInfoBlock(r, opts.verbose)) {
 			rc = 1;
 			goto done;
 		}
@@ -843,6 +843,16 @@ push_part2(char **av,
 		unless (streq(buf, "@END@") && (rc == 0)) {
 			rc = 1;
 			goto done;
+		}
+	}
+	if (getline2(r, buf, sizeof(buf)) > 0) {
+		if (streq(buf, "@TRIGGER INFO@")) {
+			if (getTriggerInfoBlock(r, opts.verbose)) {
+				rc = 1;
+				goto done;
+			}
+		} else {
+			fprintf(stderr, "Protocol error? %s\n", buf);
 		}
 	}
 
@@ -930,6 +940,13 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 		goto done;
 	}
 	getline2(r, buf, sizeof(buf));
+	if (streq(buf, "@TRIGGER INFO@")) {
+		if (getTriggerInfoBlock(r, opts.verbose)) {
+			rc = 1;
+			goto done;
+		}
+		getline2(r, buf, sizeof(buf));
+	}
 	if (streq(buf, "@RESOLVE INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
@@ -952,6 +969,17 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 			goto done;
 		}
 	}
+	if (getline2(r, buf, sizeof(buf)) > 0) {
+		if (streq(buf, "@TRIGGER INFO@")) {
+			if (getTriggerInfoBlock(r, opts.verbose)) {
+				rc = 1;
+				goto done;
+			}
+		} else {
+			fprintf(stderr, "Protocol error? %s\n", buf);
+		}
+	}
+
 
 	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
 

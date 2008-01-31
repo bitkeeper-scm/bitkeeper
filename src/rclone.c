@@ -527,8 +527,6 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 	}
 
 done:
-	if (rc) putenv("BK_STATUS=FAILED");
-	trigger(av[0], "post");
 	disconnect(r, 1);
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);

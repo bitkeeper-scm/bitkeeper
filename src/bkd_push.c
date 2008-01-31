@@ -394,6 +394,6 @@ cmd_push_part3(int ac, char **av)
 	fputs("@END@\n", stdout);
 	fflush(stdout);
 
-	rc = do_resolve(av);
+	if (isdir(ROOT2RESYNC)) rc = do_resolve(av);
 done:	return (rc);
 }
