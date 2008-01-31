@@ -83,7 +83,6 @@ test -s OUT && {
 }
 echo OK
 
-(cd "$HERE" && tar czf /tmp/TGZ .)
 echo $N Make sure that clone w/ empty server copies BAM pool ........$NL
 cd "$HERE"
 bk clone -B"$HERE/clone2" $Q pmaster clone4 || exit 1
