@@ -843,17 +843,16 @@ bp_hasBAM(void)
 private int
 bam_pull_main(int ac, char **av)
 {
-	int	rc, c;
+	int	rc, c, i;
 	char	*url, *id;
 	char	**cmds = 0;
+	int	all = 0;	/* don't check server */
 	int	quiet = 0;
+	int	stdin = 0;	/* read keys to fetch from stdin */
 
-	if (url = bp_serverURL()) strdup(url);	/* save original bam server */
 	while ((c = getopt(ac, av, "B:q")) != -1) {
 		switch (c) {
-		    case 'B':
-			if (bp_forceServer(optarg)) return (1);
-			break;
+		    case 'a': all = 1; break;
 		    case 'q': quiet = 1; break;
 		    default:
 			system("bk help -s BAM");
@@ -869,28 +868,46 @@ bam_pull_main(int ac, char **av)
 		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
+	for (i = 0; av[optind+i]; i++);
+	if ((i-- > 0) && streq(av[optind+i], "-")) {
+		stdin = 1;
+		av[optind+i] = 0;
+	}
+	if (stdin && all) {
+		fprintf(stderr, "bam pull: Can't pull from - with -a\n");
+		return (1);
+	}
 	if (av[optind]) {
 		if (av[optind+1]) {
 			fprintf(stderr, "bam pull: only one URL allowed\n");
 			return (1);
 		}
-		if (url) free(url);
-		url = strdup(av[optind]);
+		url = av[optind];
 		unless (id = bp_serverURL2ID(url)) {
 			fprintf(stderr, "bam pull: unable to pull from %s\n",
 			    url);
-			free(url);
 			return (1);
 		}
 		free(id);
+	} else {
+		unless (all) {
+			fprintf(stderr, "bam pull: need URL or -a\n");
+			return (1);
+		}
+		unless (url = bp_serverURL()) {
+			return (0);/* no server to pull from */
+		}
 	}
-	unless (url) return (0);	/* no server to pull from */
 
-	/* list of all BAM deltas */
-	cmds = addLine(cmds, aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
+	unless (stdin) {
+		/* list of all BAM deltas */
+		cmds = addLine(cmds,
+		    aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
 
-	/* reduce to list of deltas missing. */
-	cmds = addLine(cmds, strdup("bk havekeys -B -"));
+		/* reduce to list of deltas missing. */
+		cmds = addLine(cmds,
+		    aprintf("bk havekeys -%sB -", all ? "l" : ""));
+	}
 
 	/* request deltas from server */
 	cmds = addLine(cmds,

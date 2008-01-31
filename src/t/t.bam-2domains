@@ -45,8 +45,6 @@ echo $N clone to serverless domain should replicate the BAM data ....$NL
 cd "$HERE"
 bk clone -Bnone $Q S C2
 cd C2
-bk bam pull $Q || exit 1
-bk bam server $Q -r || exit 1
 (cd ../S && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x || echo $x is missing
