@@ -31,7 +31,7 @@ rclone_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
 	opts.gzip = 6;
-	while ((c = getopt(ac, av, "B:dE:qr;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:qr;w|z|")) != -1) {
 		switch (c) {
 		    case 'B': opts.bam_url = optarg; break;
 		    case 'd': opts.debug = 1; break;

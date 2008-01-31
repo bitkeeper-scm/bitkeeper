@@ -855,7 +855,7 @@ bam_pull_main(int ac, char **av)
 	int	quiet = 0;
 	int	dash = 0;	/* read keys to fetch from stdin */
 
-	while ((c = getopt(ac, av, "B:q")) != -1) {
+	while ((c = getopt(ac, av, "aq")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'q': quiet = 1; break;
