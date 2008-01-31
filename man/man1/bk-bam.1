@@ -12,10 +12,12 @@ bk bam \- BAM utility routines
 .B bk bam convert
 .br
 .B bk bam pull
-.[B] \-q
+.[B] \-aq
+.[ARG] URL
 .br
 .B bk bam push
 .[B] \-q
+.[ARG] URL
 .br
 .B bk bam reload
 .br
@@ -81,8 +83,12 @@ Only files greater than a certain size are converted since small files
 perform better with the traditional encoding.
 .tp
 .B pull
-This interface is used to populate a local BAM pool with all BAM files
-referenced by any delta in the local repository.
+This interface is used to transfer any BAM data that is missing from the
+current repository or its BAM server.  This is useful to request any missing
+BAM data after switching to a new BAM server.
+With the
+.B \-a
+option the local BAM server is ignored, so all BAM data will be requested.
 Normally, the local BAM pool contains only those files which have been either
 checked out locally or created locally, i.e., the BAM pool is sparse.
 This command may be useful to populate a laptop clone with all revisions
