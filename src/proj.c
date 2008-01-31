@@ -351,9 +351,6 @@ proj_configval(project *p, char *key)
 		if (streq(key, "clock_skew")) {
 			ret = mdbm_fetch_str(db, "trust_window");
 		}
-		if (streq(key, "BAM_server")) {
-			ret = mdbm_fetch_str(db, "binpool_server");
-		}
 	}
 	return (ret ? ret : "");
 }

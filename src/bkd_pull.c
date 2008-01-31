@@ -206,7 +206,7 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	if (bp_updateServer(0, keys, SILENT)) {
-		printf("@UNABLE TO UPDATE BAM SERVER %s@\n", bp_serverName());
+		printf("@UNABLE TO UPDATE BAM SERVER %s@\n", bp_serverURL());
 		rc = 1;
 		goto done;
 	}

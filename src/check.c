@@ -138,7 +138,7 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	/* force -B if no BAM server */
-	if (doBAM || !bp_serverName()) {
+	if (doBAM || !bp_serverURL()) {
 		bp_missing = allocLines(64);
 	}
 	/* We need write perm on the tmp dirs, etc. */
@@ -398,7 +398,7 @@ check_main(int ac, char **av)
 	}
 out:
 	if (verbose == 1) progressbar(nfiles, nfiles, errors ? "FAILED":"OK");
-	if (!errors && bp_getFiles &&
+	if (!errors && bp_getFiles && !getenv("_BK_CHECK_NO_BAM_FETCH") &&
 	    ((checkout == CO_EDIT) || (checkout == CO_GET))) {
 		sprintf(buf, "bk %s -q%s -",
 		    (checkout == CO_EDIT) ? "edit" : "get",
@@ -541,7 +541,7 @@ chk_BAM(sccs *s, char ***missing)
 	unless (*missing) missing = 0;
 	for (d = s->table; d; d = d->next) {
 		unless (d->hash) continue;
-		key = sccs_prsbuf(s, d, 0, BAM_DSPEC);
+		key = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 		if (bp_check_hash(key, missing, !bp_fullcheck)) rc = 1;
 		free(key);
 	}

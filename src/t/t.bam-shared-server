@@ -7,9 +7,7 @@ P=`port 50000`
 bk bkd -d -p$P -ikill -l"$HERE/XXX"
 trap "bk _kill bk://localhost:$P" 0
 commercial project
-bk edit $Q BitKeeper/etc/config
-echo "BAM_server: bk://localhost:$P/project" >> BitKeeper/etc/config
-bk ci $Q -ybamserver BitKeeper/etc/config
+bk bam server $Q . || exit 1
 BK="`bk bin`/bk"
 test $PLATFORM = WIN32 && BK=${BK}.exe
 DATA="$HERE"/data
@@ -129,7 +127,9 @@ echo OK
 
 echo $N Check that rclone does not send BAM data ....................$NL
 cd "$HERE"
-bk clone $Q project bk://localhost:$P/rclone
+bk clone $Q -Bbk://localhost:$P/project project bk://localhost:$P/rclone || {
+	exit 1
+}
 cd rclone
 test -d BitKeeper/BAM && {
 	echo should not have BAM directory yet

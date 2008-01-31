@@ -36,7 +36,9 @@ private struct {
 	int	tcl;		/* whether we are inside a $tcl construct */
 	sccs	*s;
 	delta	*d;
-} g;
+} _g[2];
+private	int	gindex;
+#define	g	_g[gindex]
 
 private void	dollar(int output, FILE *out, char ***buf);
 private void	err(char *msg);
@@ -52,6 +54,7 @@ private char	**string(op *next_tok);
 void
 dspec_eval(FILE * out, char ***buf, sccs *s, delta *d, char *dspec)
 {
+	gindex = gindex ? 0 : 1;	// flip flop
 	bzero(&g, sizeof(g));
 	g.out = out;
 	g.buf = buf;
