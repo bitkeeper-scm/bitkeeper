@@ -63,8 +63,9 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
+	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	/* has to be here, we use the OK below as a marker. */
-	if (bp_updateServer("..", 0, SILENT)) {
+	if (bp_updateServer(getenv("BK_CSETS"), 0, SILENT)) {
 		printf(
 		    "ERROR-unable to update BAM server %s\n", bp_serverURL());
 		fflush(stdout);
@@ -83,7 +84,6 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	if (trigger(av[0], "pre")) return (1);
 	printf("@SFIO@\n");
 	rc = compressed(gzip);

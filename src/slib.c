@@ -15141,8 +15141,10 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 
 	case KW_BAMFILE: /* BAMFILE */
 		if (BAM(s) && (p = bp_lookup(s, d))) {
-			fs(p);
+			q = proj_relpath(s->proj, p);
 			free(p);
+			fs(q);
+			free(q);
 			return (strVal);
 		}
 		return (nullVal);

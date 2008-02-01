@@ -498,8 +498,10 @@ bp_logUpdate(char *key, char *val)
 }
 
 /*
- * Copy all local BAM pool data to my server.
- * XXX we ignore tiprev for now.
+ * Sends local BAM pool data to my BAM server.
+ * if range, then send BAM data from that range of csets
+ * if list, then list is a filename with csets to process (ex: csets-in)
+ * if range==0 && list==0, then all local bam data is sent to my server.
  */
 int
 bp_updateServer(char *range, char *list, int quiet)
@@ -535,11 +537,11 @@ bp_updateServer(char *range, char *list, int quiet)
 
 	tmpkeys = bktmp(0, 0);
 
-	if (range && streq("..", range)) {
-		unless (bp = proj_BAMindex(0, 0)) {
+	if (!range && !list) {
+		unless (bp = proj_BAMindex(0, 0)) { /* no local data anyway */
 			unlink(tmpkeys);
 			free(tmpkeys);
-			return (1);
+			return (0);
 		}
 		out = fopen(tmpkeys, "w");
 		for (kv = mdbm_first(bp); kv.key.dsize; kv = mdbm_next(bp)) {
@@ -554,8 +556,9 @@ bp_updateServer(char *range, char *list, int quiet)
 	} else {
 		/* check the set of csets we are sending */
 		if (range) {
-			p = aprintf("-r%s", range);
+			p = aprintf("-r'%s'", range);
 		} else {
+			assert(list);
 			p = aprintf("- < '%s'", list);
 		}
 		cmd = aprintf("bk changes -qBv -nd'"
@@ -936,10 +939,11 @@ bam_push_main(int ac, char **av)
 {
 	int	c;
 	int	quiet = 0;
+	int	all = 0;
 
 	while ((c = getopt(ac, av, "aq")) != -1) {
 		switch (c) {
-		    case 'a': break;	/* currently the default */
+		    case 'a': all = 1; break;
 		    case 'q': quiet = 1; break;
 		    default:
 			system("bk help -s BAM");
@@ -959,7 +963,7 @@ bam_push_main(int ac, char **av)
 		    av[optind]);
 		return (1);
 	}
-	return (bp_updateServer("..", 0, quiet));
+	return (bp_updateServer(all ? 0 : "..", 0, quiet));
 }
 
 /*
