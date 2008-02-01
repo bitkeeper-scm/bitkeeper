@@ -180,7 +180,7 @@ rclone_part1(remote *r, char **envVar)
 		return (-1);
 	}
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
-	if (bp_updateServer("..", 0, !opts.verbose)) {
+	if (bp_updateServer(getenv("BK_CSETS"), 0, !opts.verbose)) {
 		fprintf(stderr,
 		    "Unable to update BAM server %s\n", bp_serverURL());
 		return (-1);
