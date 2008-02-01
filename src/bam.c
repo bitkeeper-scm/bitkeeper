@@ -978,14 +978,15 @@ bam_clean_main(int ac, char **av)
 	hash	*renames = 0;	/* list renamed data files */
 	char	*p1, *p2;
 	char	*cmd;
-	int	check_server = 0, dryrun = 0;
+	int	check_server = 0, dryrun = 0, verbose = 0;
 	kvpair	kv;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "an")) != -1) {
+	while ((c = getopt(ac, av, "anv")) != -1) {
 		switch (c) {
 		    case 'a': check_server = 1; break;
 		    case 'n': dryrun = 1; break;
+		    case 'v': verbose = 1; break;
 		    default:
 			system("bk help -s BAM");
 			return (1);
@@ -1072,16 +1073,11 @@ bam_clean_main(int ac, char **av)
 		 * delete the datafile yet because it might be pointed at
 		 * by other delta keys.
 		 */
-		if (dryrun) {
-			fprintf(stderr,
-			    "BAM clean: would remove %s\n", kv.key.dptr);
-		} else {
-			fnames = addLine(fnames, strdup(kv.key.dptr));
-		}
+		fnames = addLine(fnames, strdup(kv.key.dptr));
 	}
 	EACH(fnames) {
 		mdbm_delete_str(db, fnames[i]);
-		bp_logUpdate(fnames[i], 0);
+		unless (dryrun) bp_logUpdate(fnames[i], 0);
 	}
 	freeLines(fnames, free);
 	hash_free(bpdeltas);
@@ -1096,6 +1092,16 @@ bam_clean_main(int ac, char **av)
 	EACH(fnames) {
 		if ((p1 = hash_fetchStr(dfiles, fnames[i])) && *p1) continue;
 
+		if (dryrun) {
+			fprintf(stderr,
+			    "BAM clean: would remove %s\n", fnames[i]);
+			if (verbose) {
+				p1 = aprintf(" %s ", fnames[i]);
+				sys("bk", "grep", p1, "../log/BAM.index", SYS);
+				free(p1);
+			}
+			continue;
+		}
 		unlink(fnames[i]); /* delete data file */
 		dels = 1;
 
