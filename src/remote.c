@@ -190,6 +190,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	}
 	if (strneq("ERROR-", line, 6)) {
 err:		fprintf(stderr, "##### %s #####\n", u);
+		if (p = strchr(line+6, '\n')) *p = 0; /* terminate line */
 		fprintf(stderr, "%s\n", &line[6]);
 		i = 1<<5;
 		goto out;
