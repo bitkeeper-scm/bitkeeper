@@ -826,7 +826,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 *   lkey:1	use leasekey #1 to sign lease requests
 	 *   BAM
 	 */
-	fprintf(f, "putenv BK_FEATURES=lkey:1,BAM\n");
+	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2\n");
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 	if (p) proj_free(p);
@@ -950,9 +950,9 @@ sendServerInfoBlock(int is_rclone)
 	/*
 	 * Return a comma seperated list of features supported by the bkd.
 	 *   pull-r	pull -r is parsed correctly
-	 *   BAM	support BAM operations
+	 *   BAMv2	support BAM operations (4.1.1 and later)
 	 */
-	out("\nFEATURES=pull-r,BAM");
+	out("\nFEATURES=pull-r,BAMv2");
 
 	if (repoid = proj_repoID(0)) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);

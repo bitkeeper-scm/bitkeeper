@@ -286,6 +286,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 	proj_reset(0);
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
+	if (do_part2 && !bkd_hasFeature("BAMv2")) {
+		fprintf(stderr,
+		    "clone: please upgrade the remote bkd to a "
+		    "BAMv2 aware version (4.1.1 or later).\n"
+		    "No BAM data will be transferred at this time, you "
+		    "need to update the bkd first.\n");
+		do_part2 = 0;
+	}
 	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
 	if (do_part2) {
 		p = aprintf("-r..'%s'", opts->rev ? opts->rev : "");

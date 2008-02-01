@@ -78,8 +78,9 @@ cmd_rclone_part1(int ac, char **av)
 		return (1);
 	}
 	if (((p = getenv("BK_BAM")) && streq(p, "YES")) &&
-	    ((p = getenv("BK_VERSION")) && streq(p, "bk-4.1"))) {
-		out("ERROR-remote clone: please upgrade local bk version\n.");
+	    !bk_hasFeature("BAMv2")) {
+		out("ERROR-please upgrade your BK to a BAMv2 aware version "
+		    "(4.1.1 or later)\n");
 		drain();
 		return (1);
 	}

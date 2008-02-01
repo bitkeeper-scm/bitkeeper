@@ -57,9 +57,9 @@ cmd_clone(int ac, char **av)
 			}
 		}
 	}
-	if (bp_hasBAM() && !bk_hasFeature("BAM")) {
-		out("ERROR-old clients cannot clone "
-		    "from a bkd with BAM enabled\n");
+	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
+		out("ERROR-please upgrade your BK to a BAMv2 aware version "
+		    "(4.1.1 or later)\n");
 		drain();
 		return (1);
 	}

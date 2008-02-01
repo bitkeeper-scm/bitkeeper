@@ -215,9 +215,10 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 private int
 pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 {
-	char	buf[MAXPATH];
+	char	*p;
 	int	rc;
 	FILE	*f;
+	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, !opts.quiet)) return (-1);
 	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
@@ -243,6 +244,15 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 	if (opts.rev && !bkd_hasFeature("pull-r")) {
 		notice("no-pull-dash-r", 0, "-e");
+		disconnect(r, 2);
+		return (1);
+	}
+	if ((bp_hasBAM() ||
+	    ((p = getenv("BKD_BAM")) && streq(p, "YES"))) &&
+	    !bkd_hasFeature("BAMv2")) {
+		fprintf(stderr,
+		    "pull: please upgrade the remote bkd to a "
+		    "BAMv2 aware version (4.1.1 or later).\n");
 		disconnect(r, 2);
 		return (1);
 	}

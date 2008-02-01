@@ -137,7 +137,7 @@ done:	putenv("BK_CSETS=");
 private int
 rclone_part1(remote *r, char **envVar)
 {
-	char	*url, *p;
+	char	*p;
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
@@ -164,19 +164,10 @@ rclone_part1(remote *r, char **envVar)
 		return (-1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
-	if (bp_hasBAM() && !bkd_hasFeature("BAM")) {
-		url = remote_unparse(r);
-		fprintf(stderr, "%s is not BAM aware, needs upgrade.\n", url);
-		free(url);
-		return (-1);
-	}
-	if (bp_hasBAM() && 
-	    ((p = getenv("BKD_VERSION")) && streq(p, "bk-4.1"))) {
-		url = remote_unparse(r);
+	if (bp_hasBAM() && !bkd_hasFeature("BAMv2")) {
 		fprintf(stderr,
-		    "%s does not work to receive a BAM clone;\n"
-		    "please upgrade the bk in the remote location.\n", url);
-		free(url);
+		    "clone: please upgrade the remote bkd to a "
+		    "BAMv2 aware version (4.1.1 or later).\n");
 		return (-1);
 	}
 	if (r->type == ADDR_HTTP) disconnect(r, 2);

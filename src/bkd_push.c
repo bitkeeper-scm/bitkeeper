@@ -48,10 +48,10 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
-	if (((p = getenv("BK_VERSION")) && streq(p, "bk-4.1")) &&
-	    (bp_hasBAM() || ((p = getenv("BK_BAM")) && streq(p, "YES")))) {
-		out("ERROR- requires an upgrade of the local/client "
-		"version of bk.\n");
+	if ((bp_hasBAM() || ((p = getenv("BK_BAM")) && streq(p, "YES"))) &&
+	    !bk_hasFeature("BAMv2")) {
+		out("ERROR-please upgrade your BK to a BAMv2 aware version "
+		    "(4.1.1 or later)\n");
 		drain();
 		return (1);
 	}

@@ -247,12 +247,12 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 			    getenv("BKD_LEVEL"));
 			goto err;
 		}
-		if (((p = getenv("BKD_VERSION")) && streq(p, "bk-4.1")) &&
-		    (bp_hasBAM() ||
-		     ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
+		if ((bp_hasBAM() ||
+		     ((p = getenv("BKD_BAM")) && streq(p, "YES"))) &&
+		     !bkd_hasFeature("BAMv2")) {
 			fprintf(opts.out,
-			    "push: requires an upgrade of the remote/bkd "
-			    "version of bk.\n");
+			    "push: please upgrade the remote bkd to a "
+			    "BAMv2 aware version (4.1.1 or later).\n");
 			goto err;
 		}
 		getline2(r, buf, sizeof(buf));
