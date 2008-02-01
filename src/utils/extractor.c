@@ -279,6 +279,7 @@ main(int ac, char **av)
 
 	/* Clean up your room, kids. */
 out:	cd(tmpdir);
+	p = 0;
 	if ((rc == 0) && (f = fopen("bitkeeper/install_dir", "r"))) {
 		/*
 		 * install_dir is written at the end of _install in bk.sh
@@ -289,13 +290,15 @@ out:	cd(tmpdir);
 		if (fnext(buf, f)) {
 			chomp(buf);
 			p = aprintf("\"%s/bk\" _register", buf);
-			system(p);
-			free(p);
 		}
 		fclose(f);
 	}
+	cd("..");
+	if (p) {
+		system(p);
+		free(p);
+	}
 	unless (getenv("BK_SAVE_INSTALL")) {
-		cd("..");
 		fprintf(stderr,
 		    "Cleaning up temp files in %s%u ...\n", TMP, pid);
 		sprintf(buf, "%s%u", TMP, pid);
