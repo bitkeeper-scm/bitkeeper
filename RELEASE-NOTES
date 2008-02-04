@@ -1,4 +1,30 @@
-Release notes for BitKeeper version 4.1a (released 14-Dec-2007)
+===============================================================================
+Release notes for BitKeeper version 4.1.1 (released 1-Feb-2008)
+
+This release improves and extends BK's binary asset management (BAM),
+the versioning and efficient handling of large binary files.
+
+New or extended commands:
+	bk bam server - instead of storing BAM server in the config file
+	bk clone - has new -B<url> option to specify BAM server for clone
+	bk bam pull - add -a option to pull in all instead of minimal missing.
+
+Fixes to:
+	bk bam convert fixed bug for 0 size file
+
+Plus documentation updates to "bk help bam" and "bk help Howto-BAM"
+
+Additional changes
+
+Windows:
+	The system BK uses for shell support, MSYS, has been updated
+	to the latest.  This should fix installation problems that
+	some users have seen.
+
+	Vista 64 - BK now installs on Vista 64 as it did on XP 64.
+
+===============================================================================
+Release notes for BitKeeper version 4.1a (released 9-Jan-2008)
 
 This is a bugfix release.
 
@@ -82,6 +108,7 @@ Other fixes
     BK will use X if the user has it running and DISPLAY explicitly
     to a X session.  Otherwise, BK gui will run in natively.
 
+===============================================================================
 Release notes for BitKeeper version 4.1 (released 12-Oct-2007)
 
 Major features
