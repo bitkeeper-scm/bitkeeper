@@ -204,6 +204,10 @@ zseek(zgetbuf *in, int len)
 	return (0);
 }
 
+/*
+ * Return one line of text from the compressed stream.  The line ends
+ * with a newline and is NOT null terminated.
+ */
 char	*
 zgets(zgetbuf *in)
 {
