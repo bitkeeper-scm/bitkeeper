@@ -1,5 +1,5 @@
 
-echo $N Setup master and clone ...................................... $NL
+echo $N Setup master and clone ......................................$NL
 commercial pmaster
 bk bam server $Q . || exit 1
 
