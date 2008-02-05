@@ -17,15 +17,7 @@ do	echo $f > F$f
 	perl -e 'printf "a\000b\n"' >> F$f
 done
 commercial pmaster
-cd BitKeeper/etc
-bk edit $Q config
-cat <<EOF >> config
-[:*/p*]BAM_server: file://$HERE/pmaster
-[:*/c*]BAM_server: file://$HERE/cmaster
-EOF
-bk delta $Q -yc config || exit 1
-bk commit $Q -yc || exit 1
-cd "$HERE"/pmaster
+bk bam server $Q . || exit 1
 echo OK
 
 echo $N Create some binary data and check BAM .......................$NL
@@ -56,7 +48,7 @@ echo $N Set up a remote fetch of a file .............................$NL
 cd ..
 bk clone $Q pmaster pcopy || exit 1
 cd pcopy
-rm -fr BitKeeper/BAM
+test -d BitKeeper/BAM && exit 1
 bk get $Q bin.data || exit 1
 test -d BitKeeper/BAM || {
 	echo BAM pool not restored
@@ -70,13 +62,17 @@ checkfiles "$HERE"/F1 bin.data
 echo OK
 
 echo $N "Verify that bk clone fails if it can't find the bp server ...$NL"
-cd "$HERE"
-BK_CONFIG="BAM_server:file://$HERE/gone!" \
-	bk clone $Q pmaster pcopy2 2> ERR && exit 1
+cd "$HERE"/pmaster
+bk clone $Q . ../gone || exit 1
+bk bam server $Q ../gone || exit 1
+rm -rf ../gone
+cd ..
+bk clone $Q pmaster pcopy2 2> ERR && exit 1
 grep -q 'ERROR-unable to update BAM server' ERR || {
 	cat ERR
 	exit 1
 }
+(cd pmaster; bk bam server $Q . || exit 1)
 echo OK
 
 # XXX - this error message leaves a lot to be desired.
@@ -85,9 +81,10 @@ echo OK
 echo $N Verify that bk fails if it cannot find BAM data .............$NL
 bk clone $Q pmaster pjunk || exit 1
 cd pjunk
-rm -rf BitKeeper/BAM
-# use myself as the BAM server	
-BK_CONFIG='BAM_server:.!' bk -Ur get $Q 2>ERR && {
+test -d BitKeeper/BAM && exit 1
+# remove my BAM server	
+bk bam server $Q -r || exit 1
+bk -Ur get $Q 2>ERR && {
 	echo should have failed
 	exit 1
 }
@@ -190,9 +187,8 @@ checkfiles "$HERE"/F4 F4
 echo OK
 
 echo $N Clone to different bp master ................................$NL
-unset BK_CONFIG
 cd ..
-bk clone $Q pmaster cmaster || exit 1
+bk clone $Q -B. pmaster cmaster || exit 1
 cd cmaster
 bk -Ur get $Q || exit 1
 bk BAM check -Fq || exit 1
@@ -215,14 +211,14 @@ echo OK
 
 echo $N Clone to repo without a bp master ...........................$NL
 cd ..
-bk clone $Q cclone1 zclone1 || exit 1
+bk clone -Bnone $Q cclone1 zclone1 || exit 1
 cd zclone1
 bk -Ur get $Q || exit 1
 echo OK
 
 echo $N Clone again in checkout:get mode ............................$NL
 cd ..
-BK_CONFIG='checkout:get!' bk clone $Q cclone1 zclone3 || exit 1
+BK_CONFIG='checkout:get!' bk clone -Bnone $Q cclone1 zclone3 || exit 1
 cd zclone3
 bk -Ur get $Q -S || exit 1
 bk BAM check -Fq || exit 1
@@ -248,11 +244,11 @@ checkfiles "$HERE"/F4 F4
 bk BAM check -Fq || exit 1
 echo OK
 
-echo $N Try remote clone across zones ...............................$NL
+echo $N Try remote clone across zones................................$NL
 cd "$HERE"
 P=`port 50000`
 bk bkd -d -p$P -ikill
-bk clone $Q cclone1 bk://localhost:$P/zclone2 || exit 1
+bk clone $Q -Bnone cclone1 bk://localhost:$P/zclone2 || exit 1
 cd zclone2 || exit 1
 bk BAM check -Fq || exit 1
 echo OK

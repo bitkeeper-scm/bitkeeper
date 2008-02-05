@@ -249,12 +249,12 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 			    getenv("BKD_LEVEL"));
 			goto err;
 		}
-		if (((p = getenv("BKD_VERSION")) && streq(p, "bk-4.1")) &&
-		    (bp_hasBAM() ||
-		     ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
+		if ((bp_hasBAM() ||
+		     ((p = getenv("BKD_BAM")) && streq(p, "YES"))) &&
+		     !bkd_hasFeature("BAMv2")) {
 			fprintf(opts.out,
-			    "push: requires an upgrade of the remote/bkd "
-			    "version of bk.\n");
+			    "push: please upgrade the remote bkd to a "
+			    "BAMv2 aware version (4.1.1 or later).\n");
 			goto err;
 		}
 		getline2(r, buf, sizeof(buf));
@@ -660,7 +660,7 @@ maybe_trigger(remote *r)
 			return (0);
 		}
 	}
-	if (getTriggerInfoBlock(r, 1|opts.verbose)) {
+	if (getTriggerInfoBlock(r, opts.verbose)) {
 		return (1);
 	}
 	return (0);
@@ -712,7 +712,7 @@ push_part2(char **av,
 			/* push BAM data to server */
 			fprintf(stderr,
 			    "push: unable to update BAM server %s\n",
-			    bp_serverName());
+			    bp_serverURL());
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 2;
@@ -801,7 +801,7 @@ push_part2(char **av,
 		goto done;
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
+		if (getTriggerInfoBlock(r, opts.verbose)) {
 			rc = 1;
 			goto done;
 		}
@@ -827,6 +827,16 @@ push_part2(char **av,
 		unless (streq(buf, "@END@") && (rc == 0)) {
 			rc = 1;
 			goto done;
+		}
+	}
+	if (getline2(r, buf, sizeof(buf)) > 0) {
+		if (streq(buf, "@TRIGGER INFO@")) {
+			if (getTriggerInfoBlock(r, opts.verbose)) {
+				rc = 1;
+				goto done;
+			}
+		} else {
+			fprintf(stderr, "Protocol error? %s\n", buf);
 		}
 	}
 
@@ -914,6 +924,13 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 		goto done;
 	}
 	getline2(r, buf, sizeof(buf));
+	if (streq(buf, "@TRIGGER INFO@")) {
+		if (getTriggerInfoBlock(r, opts.verbose)) {
+			rc = 1;
+			goto done;
+		}
+		getline2(r, buf, sizeof(buf));
+	}
 	if (streq(buf, "@RESOLVE INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
@@ -936,6 +953,17 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 			goto done;
 		}
 	}
+	if (getline2(r, buf, sizeof(buf)) > 0) {
+		if (streq(buf, "@TRIGGER INFO@")) {
+			if (getTriggerInfoBlock(r, opts.verbose)) {
+				rc = 1;
+				goto done;
+			}
+		} else {
+			fprintf(stderr, "Protocol error? %s\n", buf);
+		}
+	}
+
 
 	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
 

@@ -460,11 +460,10 @@ missing(off_t *byte_count)
 	int	i;
 	char	buf[BUFSIZ];
 
-	if (bp_serverID(&p) || (p == 0)) {
+	unless (bp_serverID(1)) {
 err:		send_eof(SFIO_LOOKUP);
 		return;
 	}
-	free(p);
 	tmpf = bktmp(0, "bp_missing");
 	unless (f = fopen(tmpf, "w")) {
 		perror(tmpf);
@@ -477,7 +476,7 @@ err:		send_eof(SFIO_LOOKUP);
 	 * XXX - this will fail miserably on loops or locks.
 	 */
 	p = aprintf("bk -q@'%s' -Lr -Bstdin sfio -qoB - < '%s'",
-	    proj_configval(0, "BAM_server"), tmpf);
+	    bp_serverURL(), tmpf);
 	f = popen(p, "r");
 	free(p);
 	unless (f) goto err;

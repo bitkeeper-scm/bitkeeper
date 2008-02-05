@@ -38,7 +38,6 @@ private	char*	hash2path(project *p, char *hash);
 private int	bp_insert(project *proj, char *file, char *keys,
 		    int canmv, mode_t mode);
 private	int	uu2bp(sccs *s);
-private int	serverID(char **id, int clever);
 
 #define	INDEX_DELETE	"----delete----"
 
@@ -58,7 +57,7 @@ bp_delta(sccs *s, delta *d)
 	free(p);
 	if (bp_hashgfile(s->gfile, &d->hash, &d->sum)) return (-1);
 	s->dsum = d->sum;
-	keys = sccs_prsbuf(s, d, 0, BAM_DSPEC);
+	keys = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 	rc = bp_insert(s->proj, s->gfile, keys, 0, d->mode);
 	free(keys);
 	if (rc) return (-1);
@@ -145,7 +144,12 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		if (getenv("_BK_FAKE_HASH")) {
 			sum = strtoul(getenv("_BK_FAKE_HASH"), 0, 16);
 		} else {
-			sum = adler32(0, m->mmap, m->size); // XXX hash dfile?
+			if (m->size) {
+				// XXX hash dfile?
+				sum = adler32(0, m->mmap, m->size);
+			} else {
+				sum = 0;
+			}
 			if (p = getenv("_BP_HASHCHARS")) {
 				sprintf(hash, "%08x", sum);
 				hash[atoi(p)] = 0;
@@ -157,7 +161,8 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 		p = strchr(d->hash, '.');
 		*p = 0;
 		fprintf(stderr,
-		    "crc mismatch in %s: %08x vs %s\n", s->gfile, sum, d->hash);
+		    "crc mismatch in %s|%s: %08x vs %s\n",
+		    s->gfile, d->rev, sum, d->hash);
 		*p = '.';
 	}
 	unless (ok || (flags & GET_FORCE)) goto done;
@@ -276,7 +281,6 @@ bp_hashgfile(char *gfile, char **hashp, sum_t *sump)
 	hash_descriptor[hdesc].init(&md);
 	while ((i = read(fd, buf, sizeof(buf))) > 0) {
 		sum = adler32(sum, buf, i);
-
 		hash_descriptor[hdesc].process(&md, buf, i);
 	}
 	hash_descriptor[hdesc].done(&md, buf);
@@ -401,8 +405,8 @@ bp_lookup(sccs *s, delta *d)
 	char	*keys;
 	char	*ret = 0;
 
-	d = bp_fdelta(s, d);
-	keys = sccs_prsbuf(s, d, 0, BAM_DSPEC);
+	unless (d = bp_fdelta(s, d)) return (0);
+	keys = sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC);
 	ret = bp_lookupkeys(s->proj, keys);
 	free(keys);
 	return (ret);
@@ -440,13 +444,10 @@ int
 bp_fetch(sccs *s, delta *din)
 {
 	FILE	*f;
-	char	*repoID, *url, *cmd, *keys;
+	char	*url, *cmd, *keys;
 
-	/* find the repo_id of my server */
-	if (bp_serverID(&repoID)) return (-1);
-	unless (repoID) return (0);	/* no need to update myself */
-	free(repoID);
-	url = proj_configval(0, "BAM_server");
+	unless (bp_serverID(1)) return (0);	/* no need to update myself */
+	url = bp_serverURL();
 	assert(url);
 
 	unless (din = bp_fdelta(s, din)) return (-1);
@@ -460,7 +461,7 @@ bp_fetch(sccs *s, delta *din)
 	f = popen(cmd, "w");
 	free(cmd);
 	assert(f);
-	keys = sccs_prsbuf(s, din, 0, BAM_DSPEC);
+	keys = sccs_prsbuf(s, din, PRS_FORCE, BAM_DSPEC);
 	fprintf(f, "%s\n", keys);
 	free(keys);
 	if (pclose(f)) {
@@ -497,8 +498,10 @@ bp_logUpdate(char *key, char *val)
 }
 
 /*
- * Copy all local BAM pool data to my server.
- * XXX we ignore tiprev for now.
+ * Sends local BAM pool data to my BAM server.
+ * if range, then send BAM data from that range of csets
+ * if list, then list is a filename with csets to process (ex: csets-in)
+ * if range==0 && list==0, then all local bam data is sent to my server.
  */
 int
 bp_updateServer(char *range, char *list, int quiet)
@@ -517,11 +520,8 @@ bp_updateServer(char *range, char *list, int quiet)
 
 	putenv("BKD_DAEMON="); /* allow new bkd connections */
 
-	/* find the repo_id of my server */
-	if (bp_serverID(&repoID)) return (-1);
-
 	/* no need to update myself */
-	unless (repoID) return (0);
+	unless (repoID = bp_serverID(1)) return (0);
 
 	/*
 	 * If we're in a transaction with the server then skip updating,
@@ -530,22 +530,18 @@ bp_updateServer(char *range, char *list, int quiet)
 	p = getenv("_BK_IN_BKD");
 	p = (p && *p) ? getenv("BK_REPO_ID") : getenv("BKD_REPO_ID");
 // unless (p && *p) ttyprintf("No BK[D]_REPO_ID\n");
-	if (p && streq(repoID, p)) {
-		free(repoID);
-		return (0);
-	}
-	free(repoID);
+	if (p && streq(repoID, p)) return (0);
 
-	url = proj_configval(0, "BAM_server");
+	url = bp_serverURL();
 	assert(url);
 
 	tmpkeys = bktmp(0, 0);
 
-	if (range && streq("..", range)) {
-		unless (bp = proj_BAMindex(0, 0)) {
+	if (!range && !list) {
+		unless (bp = proj_BAMindex(0, 0)) { /* no local data anyway */
 			unlink(tmpkeys);
 			free(tmpkeys);
-			return (1);
+			return (0);
 		}
 		out = fopen(tmpkeys, "w");
 		for (kv = mdbm_first(bp); kv.key.dsize; kv = mdbm_next(bp)) {
@@ -560,8 +556,9 @@ bp_updateServer(char *range, char *list, int quiet)
 	} else {
 		/* check the set of csets we are sending */
 		if (range) {
-			p = aprintf("-r%s", range);
+			p = aprintf("-r'%s'", range);
 		} else {
+			assert(list);
 			p = aprintf("- < '%s'", list);
 		}
 		cmd = aprintf("bk changes -qBv -nd'"
@@ -622,83 +619,145 @@ bp_updateServer(char *range, char *list, int quiet)
 	return (rc);
 }
 
-char	*
-bp_serverName(void)
-{
-	char	*url;
+/* not a cache, need to move to proj_ for that. */
+private char *server_url, *server_repoid;
 
-	unless ((url = proj_configval(0,"BAM_server")) && *url) return (0);
-	return (url);
-}
-
-/*
- * Find the repo_id of the BAM server and returns it as a malloc'ed
- * string in *id.
- * Returns non-zero if we failed to determine the repo_id of the server.
- * XXX - this interface leaves a lot to be desired because sometimes
- * you want to know if there is a server at all and other times you
- * want to know if there is a server that is not this repo.
- * I use
- *	url = proj_configval(0, "BAM_server");
- *	if (bp_hasBAM() && !*url) {
- */
-int
-bp_serverID(char **id)
-{
-	return (serverID(id, 1));
-}
-
-/*
- * Return the server id for this repo.
- * The semantics of not returning it if I am the server (bp_serverID)
- * are optional.
- */
 private int
-serverID(char **id, int notme)
+load_bamserver(void)
 {
-	char	*cache, *p, *url;
-	char	*ret = 0;
 	FILE	*f;
 	char	cfile[MAXPATH];
 	char	buf[MAXLINE];
 
-	assert(id);
-	*id = 0;
-	unless ((url = proj_configval(0,"BAM_server")) && *url) return (0);
-//ttyprintf("[%d] BAM_SERVER=%s\n", getpid(), url);
-
+	if (server_url) {
+		free(server_url);
+		server_url = 0;
+	}
+	if (server_repoid) {
+		free(server_repoid);
+		server_repoid = 0;
+	}
 	strcpy(cfile, proj_root(0));
 	if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
 	concat_path(cfile, cfile, BAM_SERVER);
-	if (cache = loadfile(cfile, 0)) {
-		if (p = strchr(cache, '\n')) {
-			*p++ = 0;
-			chomp(p);
-			if (streq(url, cache)) ret = strdup(p);
-		}
-		free(cache);
-		if (ret) goto out;
+	unless (f = fopen(cfile, "r")) return (-1);
+	unless (fnext(buf, f)) return (-1);
+	chomp(buf);
+	server_url = strdup(buf);
+	unless (fnext(buf, f)) return (-1);
+	chomp(buf);
+	server_repoid = strdup(buf);
+	fclose(f);
+	return (0);
+}
+
+/*
+ * Return the URL to the current BAM_server.  This server has been contacted
+ * at least once from this repository, so it is probably valid.
+ * Return 0, if no URL is found.
+ */
+char	*
+bp_serverURL(void)
+{
+	char	*url;
+
+	if (url = getenv("_BK_FORCE_BAM_URL")) {
+		return (streq(url, "none") ? 0 :url);
 	}
-	sprintf(buf, "bk -q@'%s' id -r", url);
-	f = popen(buf, "r");
-	fnext(buf, f);
+	load_bamserver();
+	return (server_url);
+}
+
+/*
+ * Return the repoid of the current BAM_server.  This server has been
+ * contacted at least once from this repository, so it is probably
+ * valid.
+ * if notme, then return 0 if I am the server.
+ * Return 0, if no URL is found.
+ */
+char *
+bp_serverID(int notme)
+{
+	char	*repoid;
+
+	if (repoid = getenv("_BK_FORCE_BAM_REPOID")) {
+		return (streq(repoid, "none") ? 0 : repoid);
+	}
+	load_bamserver();
+	if (server_repoid && notme && streq(server_repoid, proj_repoID(0))) {
+		return (0);
+	}
+	return (server_repoid);
+}
+
+/*
+ * use a bk remote connection to find the repoid of a bam server URL.
+ * Returns malloc'ed string.
+ * On error: 0 is returned and connection error go to stderr.
+ */
+char *
+bp_serverURL2ID(char *url)
+{
+	FILE	*f;
+	char	buf[MAXLINE];
+
+	sprintf(buf, "bk -q@'%s' id -r 2>%s", url, DEVNULL_WR);
+	unless (f = popen(buf, "r")) return (0);
+	unless (fnext(buf, f)) return (0);
 	chomp(buf);
 	if (pclose(f)) {
 		fprintf(stderr, "Failed to contact BAM server at '%s'\n", url);
-		return (-1);
+		return (0);
 	}
-	ret = strdup(buf);
-	if (f = fopen(cfile, "w")) {
-		fprintf(f, "%s\n%s\n", url, ret);
-		fclose(f);
+	return (strdup(buf));
+}
+
+void
+bp_setBAMserver(char *path, char *url, char *repoid)
+{
+	FILE	*f;
+	char	cfile[MAXPATH];
+
+	if (path) {
+		strcpy(cfile, path);
+	} else {
+		strcpy(cfile, proj_root(0));
+		if (proj_isResync(0)) concat_path(cfile, cfile, RESYNC2ROOT);
 	}
-out:	if (notme && streq(proj_repoID(0), ret)) {
-		free(ret);
-		ret = 0;
+	concat_path(cfile, cfile, BAM_SERVER);
+	if (url) {
+		if (f = fopen(cfile, "w")) {
+			fprintf(f, "%s\n%s\n", url, repoid);
+			fclose(f);
+		} else {
+			perror(cfile);
+		}
+	} else {
+		assert(!repoid);
+		unlink(cfile);
 	}
-	*id = ret;
+}
+
+/*
+ * This is used to override whatever the repo thinks the server is.
+ * Useful for "bk bam pull $URL".
+ */
+private int
+bp_forceServer(char *url)
+{
+	char	*repoid;
+
+	if (streq(url, "none")) {
+		repoid = "none";
+	} else if (!(repoid = bp_serverURL2ID(url))) {
+		fprintf(stderr, "Unable to get id from BAM server %s\n", url);
+		return (1);
+	}
+	safe_putenv("_BK_FORCE_BAM_URL=%s", url);
+	safe_putenv("_BK_FORCE_BAM_REPOID=%s", repoid);
 	return (0);
 }
+
 
 /*
  * This is used to decide whether or not we should ask the other side to
@@ -731,38 +790,28 @@ bp_fetchData(void)
 		return (0);
 	}
 
-	/*
-	 * If this errors it's probably because we couldn't contact the BAM
-	 * server to get the repoid.  In that case, treat it like we have no
-	 * server so we ask for the data.
-	 */
-	if (serverID(&local_repoID, 0)) {
-		// ttyprintf("unable to fetch serverID\n");
-		return (1);
-	}
-	// ttyprintf("MY serverID is %s\n", local_repoID);
-	
+	local_repoID = bp_serverID(0);
+	// ttyprintf("Our serverID is   %s\n", local_repoID);
 	remote_repoID =
-	    getenv(inbkd ? "BK_BAM_SERVER" : "BKD_BAM_SERVER");
+	    getenv(inbkd ? "BK_BAM_SERVER_ID" : "BKD_BAM_SERVER_ID");
 	unless (remote_repoID) {
 		/*
 		 * Remote side doesn't support BAM, other error checks
 		 * will catch this.
 		 */
 		// ttyprintf("no remote_id\n");
-		free(local_repoID);
 		return (0);
 	}
 	// ttyprintf("Their serverID is %s\n", remote_repoID);
 
 	/* if the local server matches my repoid, we're our own server */
 	if (local_repoID && streq(local_repoID, proj_repoID(0))) {
-		free(local_repoID);
 		return (1);
 	}
 
 	/* if we both have the same server, nothing to do */
 	if (local_repoID && streq(local_repoID, remote_repoID)) {
+		// ttyprintf("No fetch\n");
 		return (0);
 	}
 
@@ -770,15 +819,13 @@ bp_fetchData(void)
 	 * If we have no local server then we pretend we are it,
 	 * that's what they do.
 	 */
-	unless (local_repoID) local_repoID = strdup(proj_repoID(0));
+	unless (local_repoID) local_repoID = proj_repoID(0);
 
 	/* if the local server matches their repoid, we're their server */
 	if (streq(local_repoID, remote_repoID)) {
-		free(local_repoID);
 		return (1);
 	}
 
-	free(local_repoID);
 	return (2);	// unshared servers
 }
 
@@ -800,38 +847,20 @@ bp_hasBAM(void)
 	return (exists(path));
 }
 
-/*
- * This is used to override whatever the repo thinks the server is.
- * Useful for "bk bam pull $URL".
- */
-private void
-bp_server(char *server)
-{
-	char	*p = getenv("BK_CONFIG");
-
-	if (p && *p) {
-		if (strstr(p, "BAM_server:")) {
-			fprintf(stderr,
-			    "BK_CONFIG already contains a server, abort.\n");
-			exit(1);
-		}
-		safe_putenv("BK_CONFIG=%s;BAM_server:%s!", p, server);
-	} else {
-		safe_putenv("BK_CONFIG=BAM_server:%s!", server);
-	}
-}
-
 /* make local repository contain BAM data for all deltas */
 private int
 bam_pull_main(int ac, char **av)
 {
-	int	rc, c;
-	char	*p;
+	int	rc, c, i;
+	char	*url, *id;
 	char	**cmds = 0;
+	int	all = 0;	/* don't check server */
 	int	quiet = 0;
+	int	dash = 0;	/* read keys to fetch from stdin */
 
-	while ((c = getopt(ac, av, "q")) != -1) {
+	while ((c = getopt(ac, av, "aq")) != -1) {
 		switch (c) {
+		    case 'a': all = 1; break;
 		    case 'q': quiet = 1; break;
 		    default:
 			system("bk help -s BAM");
@@ -847,20 +876,50 @@ bam_pull_main(int ac, char **av)
 		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
-	if (av[optind]) bp_server(av[optind]);
-	if (bp_serverID(&p)) return (1);
-	unless (p) return (0);
-	free(p);
+	for (i = 0; av[optind+i]; i++);
+	if ((i-- > 0) && streq(av[optind+i], "-")) {
+		dash = 1;
+		av[optind+i] = 0;
+	}
+	if (dash && all) {
+		fprintf(stderr, "bam pull: Can't pull from - with -a\n");
+		return (1);
+	}
+	if (av[optind]) {
+		if (av[optind+1]) {
+			fprintf(stderr, "bam pull: only one URL allowed\n");
+			return (1);
+		}
+		url = av[optind];
+		unless (id = bp_serverURL2ID(url)) {
+			fprintf(stderr, "bam pull: unable to pull from %s\n",
+			    url);
+			return (1);
+		}
+		free(id);
+	} else {
+		unless (all) {
+			fprintf(stderr, "bam pull: need URL or -a\n");
+			return (1);
+		}
+		unless (url = bp_serverURL()) {
+			return (0);/* no server to pull from */
+		}
+	}
 
-	/* list of all BAM deltas */
-	cmds = addLine(cmds, aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
+	unless (dash) {
+		/* list of all BAM deltas */
+		cmds = addLine(cmds,
+		    aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
 
-	/* reduce to list of deltas missing locally, no recursion. */
-	cmds = addLine(cmds, strdup("bk havekeys -Bl -"));
+		/* reduce to list of deltas missing. */
+		cmds = addLine(cmds,
+		    aprintf("bk havekeys -%sB -", all ? "l" : ""));
+	}
 
 	/* request deltas from server */
-	cmds = addLine(cmds, aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -",
-	    proj_configval(0, "BAM_server")));
+	cmds = addLine(cmds,
+	    aprintf("bk -q@'%s' -zo0 -Lr -Bstdin sfio -oqB -", url));
 
 	/* unpack locally */
 	if (quiet) {
@@ -880,10 +939,11 @@ bam_push_main(int ac, char **av)
 {
 	int	c;
 	int	quiet = 0;
+	int	all = 0;
 
 	while ((c = getopt(ac, av, "aq")) != -1) {
 		switch (c) {
-		    case 'a': break;	/* currently the default */
+		    case 'a': all = 1; break;
 		    case 'q': quiet = 1; break;
 		    default:
 			system("bk help -s BAM");
@@ -898,8 +958,12 @@ bam_push_main(int ac, char **av)
 		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
-	if (av[optind]) bp_server(av[optind]);
-	return (bp_updateServer("..", 0, quiet));
+	if (av[optind] && bp_forceServer(av[optind])) {
+		fprintf(stderr, "bam push: unable to push to %s\n",
+		    av[optind]);
+		return (1);
+	}
+	return (bp_updateServer(all ? 0 : "..", 0, quiet));
 }
 
 /*
@@ -918,14 +982,15 @@ bam_clean_main(int ac, char **av)
 	hash	*renames = 0;	/* list renamed data files */
 	char	*p1, *p2;
 	char	*cmd;
-	int	check_server = 0, dryrun = 0;
+	int	check_server = 0, dryrun = 0, verbose = 0;
 	kvpair	kv;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "an")) != -1) {
+	while ((c = getopt(ac, av, "anv")) != -1) {
 		switch (c) {
 		    case 'a': check_server = 1; break;
 		    case 'n': dryrun = 1; break;
+		    case 'v': verbose = 1; break;
 		    default:
 			system("bk help -s BAM");
 			return (1);
@@ -950,16 +1015,14 @@ bam_clean_main(int ac, char **av)
 	if (check_server) {
 		/* remove deltas already in BAM server */
 		p1 = cmd;
-		if (bp_serverID(&p2)) return (1);
-		unless (p2) {
+		unless (bp_serverID(1)) {
 			// XXX - bad error message if we are the server.
 			fprintf(stderr,
-			    "bk BAM clean: No BAM_server set\n");
+			    "bk BAM clean: No BAM server set\n");
 			free(p1);
 			return (1);
 		}
-		free(p2);
-		p2 = proj_configval(0, "BAM_server");
+		p2 = bp_serverURL();
 		/* No recursion, we just want that server's list */
 		cmd = aprintf("%s | "
 			"bk -q@'%s' -Lr -Bstdin havekeys -Bl -", p1, p2);
@@ -1014,16 +1077,11 @@ bam_clean_main(int ac, char **av)
 		 * delete the datafile yet because it might be pointed at
 		 * by other delta keys.
 		 */
-		if (dryrun) {
-			fprintf(stderr,
-			    "BAM clean: would remove %s\n", kv.key.dptr);
-		} else {
-			fnames = addLine(fnames, strdup(kv.key.dptr));
-		}
+		fnames = addLine(fnames, strdup(kv.key.dptr));
 	}
 	EACH(fnames) {
 		mdbm_delete_str(db, fnames[i]);
-		bp_logUpdate(fnames[i], 0);
+		unless (dryrun) bp_logUpdate(fnames[i], 0);
 	}
 	freeLines(fnames, free);
 	hash_free(bpdeltas);
@@ -1038,6 +1096,16 @@ bam_clean_main(int ac, char **av)
 	EACH(fnames) {
 		if ((p1 = hash_fetchStr(dfiles, fnames[i])) && *p1) continue;
 
+		if (dryrun) {
+			fprintf(stderr,
+			    "BAM clean: would remove %s\n", fnames[i]);
+			if (verbose) {
+				p1 = aprintf(" %s ", fnames[i]);
+				sys("bk", "grep", p1, "../log/BAM.index", SYS);
+				free(p1);
+			}
+			continue;
+		}
 		unlink(fnames[i]); /* delete data file */
 		dels = 1;
 
@@ -1143,27 +1211,26 @@ bp_check_findMissing(int quiet, char **missing)
 	char	buf[MAXLINE];
 
 	if (emptyLines(missing)) return (0);
-	if (!bp_serverID(&p) && p) {
+	if (bp_serverID(1)) {
 		unless (quiet) {
 			fprintf(stderr,
 			    "Looking for %d missing files in %s\n",
 			    nLines(missing),
-			    proj_configval(0, "BAM_server"));
+			    bp_serverURL());
 		}
-		free(p);
 
 		tmp = bktmp(0, 0);
 		/* no recursion, we are remoted to the server already */
 		p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -Bl - > '%s'",
-		    proj_configval(0, "BAM_server"), tmp);
+		    bp_serverURL(), tmp);
 		f = popen(p, "w");
 		free(p);
 		assert(f);
 		EACH(missing) fprintf(f, "%s\n", missing[i]);
 		if (pclose(f)) {
 			fprintf(stderr,
-			    "Failed to contact BAM_server at %s\n",
-			    proj_configval(0, "BAM_server"));
+			    "Failed to contact BAM server at %s\n",
+			    bp_serverURL());
 			rc = 1;
 		} else {
 			EACH(missing) {	/* clear array in place */
@@ -1779,7 +1846,7 @@ uu2bp(sccs *s)
 		 * anyway, it's an extra tuple but the data will collapse.
 		 * Review carefully.
 		 */
-		unless (d->added || d->deleted) {
+		if (d == s->tree) {
 			d->deleted = d->same = 0;
 			d->added = size(s->gfile);
 			unlink(s->gfile);
@@ -1827,6 +1894,74 @@ out:	sccs_unlock(s, 'z');
 }
 
 int
+bam_server_main(int ac, char **av)
+{
+	int	c, list = 0, quiet = 0, rm = 0;
+	char	*server = 0, *repoid;
+	FILE	*f;
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "Not in a repository.\n");
+		return (1);
+	}
+	while ((c = getopt(ac, av, "lqr")) != -1) {
+		switch (c) {
+		    case 'l': list++; break;
+		    case 'q': quiet++; break;
+		    case 'r': rm++; break;
+		    default:
+usage:			system("bk help -s BAM");
+			return (1);
+		}
+	}
+	if (rm) {
+		if (av[optind]) goto usage;
+rm:		unlink(BAM_SERVER);
+		return (0);
+	}
+	if (av[optind]) {
+		if (av[optind+1]) goto usage;
+		if (streq(av[optind], "none")) goto rm;
+		server = streq(av[optind], ".") ?
+		    strdup(".") : parent_normalize(av[optind]);
+		unless (repoid = bp_serverURL2ID(server)) {
+			fprintf(stderr,
+			    "bam server: unable to get id from BAM server %s\n",
+			    server);
+			free(server);
+			return (1);
+		}
+		unless (f = fopen(BAM_SERVER, "w")) {
+			perror(BAM_SERVER);
+			free(server);
+			free(repoid);
+			return (1);
+		}
+		//fprintf(f, "# format is BAM server URL\\nBAM Server id\n");
+		fprintf(f, "%s\n%s\n", server, repoid);
+		fclose(f);
+		unless (quiet) printf("Set BAM server to %s\n", server);
+		free(server);
+		free(repoid);
+		return (0);
+	}
+
+	if (server = bp_serverURL()) {
+		if (streq(server, ".")) {
+			unless(list) {
+				printf("This repository is the BAM server.\n");
+			}
+		} else {
+			unless (list) printf("BAM server: ");
+			printf("%s\n", server);
+		}
+	} else {
+		printf("This repository has no BAM server.\n");
+	}
+	return (0);
+}
+
+int
 bam_main(int ac, char **av)
 {
 	int	c, i;
@@ -1842,6 +1977,7 @@ bam_main(int ac, char **av)
 		{"push", bam_push_main },
 		{"reattach", bam_reattach_main },
 		{"reload", bam_reload_main },
+		{"server", bam_server_main },
 		{"sizes", bam_sizes_main },
 		{"timestamps", bam_timestamps_main },
 		{0, 0}

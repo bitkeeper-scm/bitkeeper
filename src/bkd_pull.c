@@ -50,9 +50,9 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
-	if (bp_hasBAM() && !bk_hasFeature("BAM")) {
-		out("ERROR-old clients cannot pull "
-		    "from a bkd with BAM enabled\n");
+	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
+		out("ERROR-please upgrade your BK to a BAMv2 aware version "
+		    "(4.1.1 or later)\n");
 		drain();
 		return (1);
 	}
@@ -206,7 +206,7 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	if (bp_updateServer(0, keys, SILENT)) {
-		printf("@UNABLE TO UPDATE BAM SERVER %s@\n", bp_serverName());
+		printf("@UNABLE TO UPDATE BAM SERVER %s@\n", bp_serverURL());
 		rc = 1;
 		goto done;
 	}

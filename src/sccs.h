@@ -128,7 +128,7 @@ int	checking_rmdir(char *dir);
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_TIME|ADMIN_BK)
 
-#define	PRS_META	0x10000000	/* show metadata */
+#define	PRS_FORCE	0x10000000	/* ignore the D_SET/S_SET filter */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
 #define	PRS_PATCH	0x40000000	/* print in patch format */
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
@@ -1247,9 +1247,11 @@ int	bp_get(sccs *s, delta *d, u32 flags, char *out);
 int	bp_delta(sccs *s, delta *d);
 int	bp_diff(sccs *s, delta *d, char *gfile);
 int	bp_updateServer(char *range, char *list, int quiet);
-int	bp_serverID(char **id);
 int	bp_sharedServer(void);
-char	*bp_serverName(void);
+char	*bp_serverURL(void);
+char	*bp_serverID(int notme);
+char	*bp_serverURL2ID(char *url);
+void	bp_setBAMserver(char *path, char *url, char *repoid);
 int	bp_hasBAM(void);
 u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz);
 int	bkd_BAM_part3(remote *r, char **env, int quiet, char *range, int gz);

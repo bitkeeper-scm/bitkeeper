@@ -12,16 +12,22 @@ bk bam \- BAM utility routines
 .B bk bam convert
 .br
 .B bk bam pull
-.[B] \-q
+.[B] \-aq
+.[ARG] URL
 .br
 .B bk bam push
 .[B] \-q
+.[ARG] URL
 .br
 .B bk bam reload
 .br
 .B bk bam repair
 .[B] \-q
 .ARG dir
+.br
+.B bk bam server
+.[B] \-lrq
+.[ARG] URL
 .SH DESCRIPTION
 \*(BK Binary Asset Management (BAM) is a licensed subfeature that provides
 support for large binary files, such as tool chains, cell
@@ -77,8 +83,12 @@ Only files greater than a certain size are converted since small files
 perform better with the traditional encoding.
 .tp
 .B pull
-This interface is used to populate a local BAM pool with all BAM files
-referenced by any delta in the local repository.
+This interface is used to transfer any BAM data that is missing from the
+current repository or its BAM server.  This is useful to request any missing
+BAM data after switching to a new BAM server.
+With the
+.B \-a
+option the local BAM server is ignored, so all BAM data will be requested.
 Normally, the local BAM pool contains only those files which have been either
 checked out locally or created locally, i.e., the BAM pool is sparse.
 This command may be useful to populate a laptop clone with all revisions
@@ -107,6 +117,15 @@ For each file in the named directory, see if the hash of the file matches
 one of the missing files.
 If so, reinsert that file.
 .\" XXX - tell them that it may be wrong?
+.tp
+.B server
+Used to report or, with the optional 
+.ARG URL ,
+set the BAM server from which BAM data will be fetched.
+If the
+.Q \-r
+option is set then the current server URL is deleted.
+.\" also -l list -q quiet
 .SH SEE ALSO
 .SA Howto-BAM
 .SH CATEGORY

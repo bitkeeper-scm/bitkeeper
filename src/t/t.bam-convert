@@ -1,0 +1,65 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+commercial proj
+bk edit $Q BitKeeper/etc/config
+cp BitKeeper/etc/config c
+grep -v BAM c > BitKeeper/etc/config
+
+echo $N Trying to check in some binary data .........................$NL
+cp ${BIN1} data
+chmod u+w data
+bk new $Q data || exit 1
+bk commit -ywhatever $Q
+test -d BitKeeper/BAM && {
+	echo should not have created BAM dir
+	exit 1
+}
+# save data for convert test
+bk get -kpq data > ../data-1.1
+echo OK
+
+echo $N Exclude it and then exclude the exclude then check contents .$NL
+bk clean data || exit 1
+bk cset $Q -x+
+bk co $Q data
+test -s data && {
+	echo expected empty data
+	exit 1
+}
+# save data for convert test
+bk get -kpq data > ../data-1.2
+bk cset $Q -x+
+bk get -kpq data > ../data-1.3
+bk clean data || exit 1
+test -f data && exit 1
+bk co $Q data || exit 1
+cmp -s ${BIN1} data || {
+	echo failed to retrieve the data
+	exit 1
+}
+echo OK
+
+echo $N Now try and BAM convert it and see what we get ..............$NL
+# bk clone -q ../proj ../save
+# Restore BAM to config file
+cp c BitKeeper/etc/config
+bk bam convert > OUT 2>&1 || exit 1
+for i in 1 2 3
+do	bk get -kpqr1.$i data > data-1.$i
+	cmp data-1.$i ../data-1.$i || touch busted
+done
+test -f busted && {
+	echo failed
+	ls -l data-* ../data-*
+	exit 1
+}
+echo OK
