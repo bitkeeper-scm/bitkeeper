@@ -476,7 +476,7 @@ err:		if (error) fprintf(stderr, "ERR(%s) ", error);
 		exit(1);
 	}
 
-	new(rcs);
+	rcs = new(RCS);
 	rcs->rcsfile = strdup(file);
 	rcs->workfile = strdup(file);
 	t = strrchr(rcs->workfile, ',');
@@ -1192,7 +1192,7 @@ err:		perror("EOF in delta?");
 	rcsdebug((stderr, "DELTA %.10s\n", p));
 	unless (isdigit(*p)) return (0);
 
-	new(d);
+	d = new(rdelta);
 	rcs->n++;
 	for (t = buf;
 	    (p < m->end) && (isdigit(*p) || (*p == '.')); *t++ = *p++);
@@ -1292,7 +1292,7 @@ eatsym(RCS *rcs, MMAP *m)
 {
 	sym	*s;
 	char	*p, *t;
-	char	sym[4096];
+	char	buf[4096];
 	char	rev[1024];
 
 
@@ -1303,7 +1303,7 @@ err:		perror("EOF in symbols?");
 	}
 	if (*p == ';') goto done;
 
-	for (t = sym; (p < m->end) && !isspace(*p) && (*p != ':'); *t++ = *p++);
+	for (t = buf; (p < m->end) && !isspace(*p) && (*p != ':'); *t++ = *p++);
 	if (p >= m->end) goto err;
 	*t = 0;
 	while ((p < m->end) && (*p != ':')) p++;
@@ -1315,8 +1315,8 @@ err:		perror("EOF in symbols?");
 	    (p < m->end) && (isdigit(*p) || (*p == '.')); *t++ = *p++);
 	if (p >= m->end) goto err;
 	*t = 0;
-	new(s);
-	s->name = strdup(sym);
+	s = new(sym);
+	s->name = strdup(buf);
 	s->rev = strdup(rev);
 	s->next = rcs->symbols;
 	rcs->symbols = s;
@@ -1331,10 +1331,10 @@ err:		perror("EOF in symbols?");
 	t = strrchr(rev, '.');
 	if (t > rev + 4 && t[-2] == '.' && t[-1] == '0') {
 		t[-2] = 0;
-		strcat(sym, "_BASE");
+		strcat(buf, "_BASE");
 
-		new(s);
-		s->name = strdup(sym);
+		s = new(sym);
+		s->name = strdup(buf);
 		s->rev = strdup(rev);
 		s->next = rcs->symbols;
 		rcs->symbols = s;

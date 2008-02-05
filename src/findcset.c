@@ -668,7 +668,7 @@ mkCset(mkcs_t *cur, delta *d)
 	ser_t	k;
 	kvpair	kv, vk;
 	delta	*top;
-	delta	*e = calloc(sizeof(delta), 1);
+	delta	*e = new(delta);
 	char	dkey[MAXKEY];
 	char	dline[2 * MAXKEY + 4];
 	char	**lines;
@@ -792,7 +792,7 @@ mkCset(mkcs_t *cur, delta *d)
 private void
 mkTag(mkcs_t *cur, char *tag)
 {
-	delta	*e = calloc(sizeof(delta), 1);
+	delta	*e = new(delta);
 	char	dkey[MAXKEY];
 	char	*tagparent = cur->tagparent[0] ? cur->tagparent : 0;
 
@@ -1085,7 +1085,7 @@ findFirstDelta(sccs *s, delta *first)
 	 * we need to sort on sfile name
 	 */
 	if ((first == NULL) || (d->date < first->date)) {
-		unless (first) first = calloc(sizeof(*first), 1);
+		unless (first) first = new(delta);
 		if (first->zone) free(first->zone);
 		if (first->sdate) free(first->sdate);
 		if (first->user) free(first->user);

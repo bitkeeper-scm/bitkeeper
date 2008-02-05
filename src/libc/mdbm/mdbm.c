@@ -100,7 +100,7 @@ mdbm_open(char *file, int flags, int mode, int psize)
 	if (file && !*file) {
 		return errno = EINVAL, (MDBM *)0;
 	}
-	if (!(db = (MDBM *)calloc(1, sizeof (MDBM)))) {
+	if (!(db = new(MDBM))) {
 		return errno = ENOMEM, (MDBM *)0;
 	}
 	db->m_kino = -1;  /* just in case */
@@ -158,8 +158,8 @@ mdbm_open(char *file, int flags, int mode, int psize)
 		dbsize = DATA_SIZE(0, db->m_pshift);
 		if (_Mdbm_memdb(db)) { /* memory only db */
 			db->pmapSize = 1;
-			db->page_map = calloc(1, sizeof (mpage_t *));
-			db->page_map[0] = calloc(1, sizeof (mpage_t));
+			db->page_map = new(mpage_t*);
+			db->page_map[0] = new(mpage_t);
 			db->page_map[0]->page_addr = ALLOC_PAGE(db);
 			db->m_db = TOP(db, db->page_map[0]->page_addr);
 		} else {

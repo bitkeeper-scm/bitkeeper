@@ -163,7 +163,7 @@ getComments(char *op, char *revs)
 		perror("popenvp");
 		return (0);
 	}
-	d = calloc(1, sizeof(delta));
+	d = new(delta);
 	if (comments_got()) d = comments_get(d);
 	if (streq(op, "-i")) {
 		strcpy(buf, "Cset include: ");

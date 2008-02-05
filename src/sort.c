@@ -14,7 +14,7 @@ private	int	sortfield = 0;
 private mem_t	*
 moreMem(mem_t *m)
 {
-	mem_t	*n = calloc(sizeof(mem_t), 1);
+	mem_t	*n = new(mem_t);
 
 	unless (n && (n->data = malloc(n->left = 4<<20))) return (0);
 	n->avail = n->data;

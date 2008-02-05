@@ -615,7 +615,7 @@ loadskips(void)
 		}
 		*dkey++ = '\0';
 		unless (s && streq(buf, s->rkey)) {
-			s = calloc(1, sizeof(*s));
+			s = new(skips);
 			assert(s);
 			s->next = skiplist;
 			skiplist = s;
@@ -728,7 +728,7 @@ delta1:	off = mtell(f);
 		}
 		line++;
 		if (echo>5) fprintf(stderr, "\n");
-		p = calloc(1, sizeof(patch));
+		p = new(patch);
 		p->remote = 1;
 		p->pid = pid;
 		sccs_sdelta(s, d, buf);
@@ -1443,7 +1443,7 @@ getLocals(sccs *s, delta *g, char *name)
 		}
 		fclose(t);
 
-		p = calloc(1, sizeof(patch));
+		p = new(patch);
 		p->local = 1;
 		p->initFile = strdup(tmpf);
 		p->localFile = strdup(name);

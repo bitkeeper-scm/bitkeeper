@@ -764,7 +764,7 @@ collectDelta(sccs *s, delta *d, char **list, char *dspec, int flags)
 		d->flags |= D_SET;
 
 		/* add delta to list */
-		ll = calloc(sizeof (slog), 1);
+		ll = new(slog);
 		ll->log = sccs_prsbuf(s, d, flags, dspec);
 		ll->date = d->date;
 		ll->gfile = strdup(s->gfile);

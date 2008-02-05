@@ -78,7 +78,7 @@ projcache_store(char *dir, project *p)
 	unless (streq(dir, p->root)) {
 		dirlist	*dl;
 
-		new(dl);
+		dl = new(dirlist);
 		dl->dir = strdup(dir);
 		dl->next = p->dirs;
 		p->dirs = dl;
@@ -144,7 +144,7 @@ proj_init(char *dir)
 	}
 	assert(ret == 0);
 	/* Totally new project */
-	new(ret);
+	ret = new(project);
 	proj_reset(ret);	/* default values */
 	ret->root = root;
 
@@ -627,7 +627,7 @@ proj_fakenew(void)
 	project	*ret;
 
 	if (ret = projcache_lookup("/")) return (ret);
-	new(ret);
+	ret = new(project);
 	ret->root = strdup("/.");
 	ret->rootkey = strdup("SCCS");
 	ret->md5rootkey = strdup("SCCS");

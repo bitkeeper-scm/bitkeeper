@@ -122,7 +122,7 @@ comments_get(delta *d)
 {
 	int	i;
 
-	unless (d) d = calloc(1, sizeof(*d));
+	unless (d) d = new(delta);
 	if (!comment && !saved && gotComment) return (d);
 	if (!comment) {
 		if (saved) {

@@ -555,7 +555,7 @@ find_conflicts(void)
 		}
 		if (at_end) break;
 
-		new(p);
+		p = new(conflct);
 
 		/* link into end of chain */
 		if (list) {
@@ -774,7 +774,7 @@ diffwalk_new(file_t *left, file_t *right)
 	difwalk	*dw;
 	char	*cmd;
 
-	new(dw);
+	dw = new(difwalk);
 	cmd = aprintf("bk diff %s '%s' '%s'",
 	    (anno ? "--ignore-to-str='\\| '" : ""),
 	    left->tmpfile, right->tmpfile);
@@ -1779,7 +1779,7 @@ split_conflict(conflct *c, int splitidx[3])
 	assert(seq);
 
 	/* create a new conflict region */
-	new(newc);
+	newc = new(conflct);
 
 	for (i = 0; i < 3; i++) {
 		newc->end[i] = c->end[i];

@@ -813,11 +813,11 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 		/* dummy up names which make it a remote move */
 		if (rs->gnames) freenames(rs->gnames, 1);
 		if (rs->snames) freenames(rs->snames, 1);
-		rs->gnames	   = calloc(1, sizeof(names));
+		rs->gnames	   = new(names);
 		rs->gnames->local  = strdup(local->gfile);
 		rs->gnames->gca    = strdup(local->gfile);
 		rs->gnames->remote = strdup(rs->d->pathname);
-		rs->snames	   = calloc(1, sizeof(names));
+		rs->snames	   = new(names);
 		rs->snames->local  = name2sccs(rs->gnames->local);
 		rs->snames->gca    = name2sccs(rs->gnames->gca);
 		rs->snames->remote = name2sccs(rs->gnames->remote);

@@ -124,7 +124,7 @@ rfuncs	b_funcs[] = {
 int
 resolve_binary(resolve *rs)
 {
-	names	*n = calloc(1, sizeof(*n));
+	names	*n = new(names);
 	delta	*d;
 	char	*nm = basenm(rs->s->gfile);
 	int	ret;

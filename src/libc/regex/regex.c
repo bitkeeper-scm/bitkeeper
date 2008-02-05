@@ -190,10 +190,7 @@
 #endif
 #include <string.h>
 #include "regex.h"
-
-#define	private	static
-#define	unless(x)	if (!(x))
-#define	streq(a,b)	!strcmp(a, b)
+#include "style.h"
 
 #define MAXTAG  10
 
@@ -282,7 +279,7 @@ re_comp(char *pat)
 		} else {
 			t = 0;
 		}
-		e = calloc(1, sizeof(*expr));
+		e = new(nfa);
 		e->size = strlen(pat) * 2;
 		e->next = expr;
 		expr = e;

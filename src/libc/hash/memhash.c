@@ -59,7 +59,7 @@ memhash_new(va_list ap)
 {
 	memhash	*ret;
 
-	ret = calloc(1, sizeof(*ret));
+	ret = new(memhash);
 	ret->nodes = 0;
 	ret->mask = 63;
 	ret->arr = calloc(ret->mask + 1, sizeof(node));

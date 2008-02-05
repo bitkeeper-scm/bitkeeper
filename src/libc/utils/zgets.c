@@ -47,7 +47,7 @@ zgets_initCustom(zgets_func callback, void *token)
 {
 	zgetbuf	*in;
 
-	in = calloc(1, sizeof(*in));
+	in = new(zgetbuf);
 	in->buf = malloc(ZBUFSIZ);
 	in->callback = callback ? callback : zgets_fileread;
 	in->token = token;
@@ -336,7 +336,7 @@ zputs_init(zputs_func callback, void *token, int level)
 {
 	zputbuf	*out;
 
-	out = calloc(1, sizeof(*out));
+	out = new(zputbuf);
 	out->outbuf = malloc(ZBUFSIZ);
 	out->z.next_out = out->outbuf;
 	out->z.avail_out = ZBUFSIZ;

@@ -13,7 +13,7 @@ wrapmdbm_new(va_list ap)
 {
 	whash	*ret;
 
-	ret = calloc(1, sizeof(*ret));
+	ret = new(whash);
 	ret->db = mdbm_open(0, 0, 0, GOOD_PSIZE);
 	return ((hash *)ret);
 }
@@ -23,7 +23,7 @@ wrapmdbm_open(char *file, int flags, mode_t mode, va_list ap)
 {
 	whash	*ret;
 
-	ret = calloc(1, sizeof(*ret));
+	ret = new(whash);
 	ret->db = mdbm_open(file, flags, mode, GOOD_PSIZE);
 	return ((hash *)ret);
 }
@@ -60,7 +60,7 @@ doinsert(hash *_h, void *key, int klen, void *val, int vlen, int flags)
 
 	k.dptr = key;
 	k.dsize = klen;
-	v.dptr = val ? val : calloc(vlen, 1);
+	v.dptr = val ? val : new(int);
 	v.dsize = vlen;
 	failed = mdbm_store(h->db, k, v, flags);
 	unless (val) free(v.dptr);

@@ -78,7 +78,7 @@ file_parse(char *p)
 {
 	remote	*r;
 
-	new(r);
+	r = new(remote);
 	r->rfd = r->wfd = -1;
 	if (isDriveColonPath(p + 7)) { /* for win32 */
 		r->path = strdup(p + 7);
@@ -96,7 +96,7 @@ nfs_parse(char *p)
 	char	*s;
 	
 	unless (*p) return (0);
-	new(r);
+	r = new(remote);
 	r->rfd = r->wfd = -1;
 	/* user@host:path */
 	if (s = strchr(p, '@')) {
@@ -142,7 +142,7 @@ url_parse(char *p, int default_port)
 	char	save;
 
 	unless (*p) return (0);
-	new(r);
+	r = new(remote);
 	r->rfd = r->wfd = -1;
 	r->port = default_port;
 

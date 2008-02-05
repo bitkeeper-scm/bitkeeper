@@ -481,7 +481,7 @@ resolve_contents(resolve *rs)
 		fprintf(stderr, "resolve_contents: ");
 		resolve_dump(rs);
 	}
-	n = calloc(1, sizeof(*n));
+	n = new(names);
 	nm = basenm(rs->s->gfile);
 	d = sccs_findrev(rs->s, rs->revs->local);
 	assert(d);

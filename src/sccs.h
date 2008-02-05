@@ -387,7 +387,6 @@ int	checking_rmdir(char *dir);
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
 #define	isData(buf)	((buf[0] != '\001') || \
 			    ((buf[0] == CNTLA_ESCAPE) && (buf[1] == '\001')))
-#define	new(p)		p = calloc(1, sizeof(*p))
 
 typedef	u32		ser_t;
 typedef	unsigned short	sum_t;

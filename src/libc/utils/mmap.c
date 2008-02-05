@@ -41,7 +41,7 @@ mopen(char *file, char *mode)
 		close(fd);
 		return (0);
 	}
-	m = calloc(1, sizeof(*m));
+	m = new(MMAP);
 	if (strchr(mode, 'b')) m->flags |= MMAP_BIN_MODE;
 	/*
 	 * Allow zero sized mappings,
@@ -85,7 +85,7 @@ mopen(char *file, char *mode)
 MMAP	*
 mrange(char *start, char *stop, char *mode)
 {
-	MMAP	*m = calloc(1, sizeof(*m));
+	MMAP	*m = new(MMAP);
 
 	if (*mode == 'b') m->flags |= MMAP_BIN_MODE;
 	if (start == stop) return (m);

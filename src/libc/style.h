@@ -15,6 +15,7 @@
 #define	rindex(s, c)	strrchr(s, c)
 #define	notnull(s)	((s) ? (s) : "")
 #define	unless(e)	if (!(e))
+#define	new(type)	(type*)calloc(1, sizeof(type))
 #define	verbose(x)	unless (flags&SILENT) fprintf x
 #define	strsz(s)	(sizeof(s) - 1)
 #define fnext(buf, in)  fgets(buf, sizeof(buf), in)

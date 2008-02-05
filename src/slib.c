@@ -3210,7 +3210,7 @@ bad:
 		}
 		line++;
 		if (strneq(buf, "\001u\n", 3)) break;
-		t = calloc(sizeof(*t), 1);
+		t = new(delta);
 		assert(t);
 		s->numdeltas++;
 		t->kid = d;
@@ -3559,7 +3559,7 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 	if (sym && rev && streq(sym->rev, rev)) {
 		return (1);
 	} else {
-		sym = calloc(1, sizeof(*sym));
+		sym = new(symbol);
 		assert(sym);
 	}
 	sym->rev = rev ? strdup(rev) : NULL;
@@ -3612,7 +3612,7 @@ pref_parse(char *buf)
 	char	*p;
 	int 	want_path = 0, want_host = 0;
 
-	new(r);
+	r = new(remote);
 	r->rfd = r->wfd = -1;
 	unless (*buf) return (r);
 	/* user */
@@ -4198,7 +4198,7 @@ sccs_init(char *name, u32 flags)
 	}
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
-		s = calloc(1, sizeof(*s));
+		s = new(sccs);
 		s->sfile = strdup(name);
 		s->gfile = sccs2name(name);
 	} else {
@@ -9029,7 +9029,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 {
 	char	*t;
 
-	unless (d) d = calloc(1, sizeof(*d));
+	unless (d) d = new(delta);
 	d->type = type;
 	assert(s);
 	if (BITKEEPER(s) && (type == 'D')) d->flags |= D_CKSUM;
@@ -9324,9 +9324,9 @@ out:		sccs_unlock(s, 'z');
 	 */
 	if (nodefault ||
 	    (flags & DELTA_EMPTY) || (prefilled && prefilled->rev)) {
-		first = n = prefilled ? prefilled : calloc(1, sizeof(*n));
+		first = n = prefilled ? prefilled : new(delta);
 	} else {
-		first = n0 = calloc(1, sizeof(*n0));
+		first = n0 = new(delta);
 		/*
 		 * We don't do modes here.  The modes should be part of the
 		 * per LOD state, so each new LOD starting from 1.0 should
@@ -9347,7 +9347,7 @@ out:		sccs_unlock(s, 'z');
 		n0->sum = almostUnique();
 		dinsert(s, n0, fixDate && !(flags & DELTA_PATCH));
 
-		n = prefilled ? prefilled : calloc(1, sizeof(*n));
+		n = prefilled ? prefilled : new(delta);
 		n->pserial = n0->serial;
 		n->next = n0;
 	}
@@ -10072,7 +10072,7 @@ dateArg(delta *d, char *arg, int defaults)
 	int	rcs = 0;
 	int	gotZone = 0;
 
-	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	if (!d) d = new(delta);
 	if (!arg || !*arg) { d->flags = D_ERROR; return (d); }
 	year = getval(arg);
 	if (year == -1) {
@@ -10162,7 +10162,7 @@ userArg(delta *d, char *arg)
 {
 	char	*save = arg;
 
-	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	if (!d) d = new(delta);
 	if (!arg || !*arg) { d->flags = D_ERROR; return (d); }
 	while (*arg && (*arg++ != '@'));
 	if (arg[-1] == '@') {
@@ -10176,7 +10176,7 @@ userArg(delta *d, char *arg)
 }
 
 #define	ARG(field, flag, dup) \
-	if (!d) d = (delta *)calloc(1, sizeof(*d)); \
+	if (!d) d = new(delta);			\
 	if (!arg || !*arg) { \
 		d->flags |= flag; \
 	} else { \
@@ -10214,7 +10214,7 @@ modeArg(delta *d, char *arg)
 {
 	unsigned int m;
 
-	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	if (!d) d = new(delta);
 	unless (m = getMode(arg)) return (0);
 	if (S_ISLNK(m))	 {
 		char *p = strchr(arg , ' ');
@@ -10230,7 +10230,7 @@ modeArg(delta *d, char *arg)
 private delta *
 sumArg(delta *d, char *arg)
 {
-	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	if (!d) d = new(delta);
 	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
 	return (d);
@@ -10239,7 +10239,7 @@ sumArg(delta *d, char *arg)
 private delta *
 mergeArg(delta *d, char *arg)
 {
-	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	if (!d) d = new(delta);
 	assert(d->merge == 0);
 	assert(isdigit(arg[0]));
 	d->merge = atoi(arg);
@@ -10283,7 +10283,7 @@ symArg(sccs *s, delta *d, char *name)
 		return;
 	}
 
-	sym = calloc(1, sizeof(*sym));
+	sym = new(symbol);
 	sym->rev = strdup(d->rev);
 	sym->symname = strnonldup(name);
 	if (!s->symbols) {
@@ -10333,7 +10333,7 @@ commentArg(delta *d, char *arg)
 {
 	char	*p;
 
-	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	if (!d) d = new(delta);
 	unless (arg) arg = "\n";
 	while (arg && *arg) {
 		p = strdup_tochar(arg, '\n');
@@ -10349,7 +10349,7 @@ commentArg(delta *d, char *arg)
 private delta *
 revArg(delta *d, char *arg)
 {
-	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	if (!d) d = new(delta);
 	d->rev = strdup(arg);
 	explode_rev(d);
 	return (d);
@@ -10454,7 +10454,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		safe_putenv("BK_TAG=%s", sym);
 		if (trigger("tag", "pre")) goto sym_err;
 
-		n = calloc(1, sizeof(delta));
+		n = new(delta);
 		n->next = sc->table;
 		sc->table = n;
 		n = sccs_dInit(n, 'R', sc, 0);
@@ -10511,7 +10511,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		return (0);
 	}
 
-	n = calloc(1, sizeof(delta));
+	n = new(delta);
 	n->next = sc->table;
 	sc->table = n;
 	n = sccs_dInit(n, 'D', sc, 0);
@@ -10730,7 +10730,7 @@ insert_1_0(sccs *s)
 		t = d;
 	}
 
-	d = calloc(1, sizeof(*d));
+	d = new(delta);
 	t->next = d;		/* table is now linked */
 	t = s->tree;
 	d->kid = t;
@@ -12759,7 +12759,7 @@ out:
 		n = prefilled;
 		prefilled = 0;
 	} else {
-		n = calloc(sizeof(*n), 1);
+		n = new(delta);
 		assert(n);
 	}
 	if (pf.iLst) {
@@ -15053,7 +15053,7 @@ sccs_perfile(sccs *s, FILE *out)
 sccs	*
 sccs_getperfile(MMAP *in, int *lp)
 {
-	sccs	*s = calloc(1, sizeof(sccs));
+	sccs	*s = new(sccs);
 	int	unused = 1;
 	char	*buf;
 

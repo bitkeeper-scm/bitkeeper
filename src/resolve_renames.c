@@ -213,7 +213,7 @@ resolve_renames(resolve *rs)
 		resolve_dump(rs);
 	}
 	if (rs->revs) {
-		n = calloc(1, sizeof(*n));
+		n = new(names);
 		d = sccs_findrev(rs->s, rs->revs->local);
 		assert(d);
 		sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);

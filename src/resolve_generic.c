@@ -9,7 +9,7 @@
 resolve	*
 resolve_init(opts *opts, sccs *s)
 {
-	resolve	*rs = calloc(1, sizeof(*rs));
+	resolve	*rs = new(resolve);
 	char	buf[MAXKEY];
 
 	rs->opts = opts;
@@ -20,7 +20,7 @@ resolve_init(opts *opts, sccs *s)
 	assert(rs->d);	/* XXX: not all files have a 1.0 .  What to do? */
 	rs->dname = name2sccs(rs->d->pathname);
 	if (rs->snames = res_getnames(sccs_Xfile(rs->s, 'm'), 'm')) {
-		rs->gnames         = calloc(1, sizeof(names));
+		rs->gnames	   = new(names);
 		rs->gnames->local  = sccs2name(rs->snames->local);
 		rs->gnames->gca    = sccs2name(rs->snames->gca);
 		rs->gnames->remote = sccs2name(rs->snames->remote);
