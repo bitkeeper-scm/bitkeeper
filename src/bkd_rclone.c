@@ -213,12 +213,9 @@ cmd_rclone_part2(int ac, char **av)
 	/* restore original stderr */
 	dup2(fd2, 2); close(fd2);
 	fputc(BKD_NUL, stdout);
-	if (rc) printf("%c%d\n", BKD_RC, rc);
-
-done:
-	fputs("@END@\n", stdout); /* end SFIO INFO block */
-	fflush(stdout);
-	unless (rc) {
+	if (rc) {
+		printf("%c%d\n", BKD_RC, rc);
+	} else {
 		/*
 		 * Send any BAM keys we need.
 		 */
@@ -235,6 +232,9 @@ done:
 			return (0);
 		}
 	}
+done:
+	fputs("@END@\n", stdout); /* end SFIO INFO block */
+	fflush(stdout);
 	unless (rc) {
 		putenv("BK_STATUS=OK");
 	} else {

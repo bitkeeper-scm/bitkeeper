@@ -195,6 +195,10 @@ err:		fprintf(stderr, "##### %s #####\n", u);
 	if (streq("@GZIP@", line)) {
 		zin = zgets_initCustom(zgets_hfread, r->rf);
 		line = zgets(zin);
+		unless (line) {
+			i = 1<<6;
+			goto out;
+		}
 	}
 	while (strneq(line, "@STDOUT=", 8) || strneq(line, "@STDERR=", 8)) {
 		bytes = atoi(&line[8]);
