@@ -115,5 +115,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 	}
 	disconnect(r, 1);
 	wait_eof(r, 0);
+	disconnect(r, 2);
+	remote_free(r);
 	return (rc);
 }

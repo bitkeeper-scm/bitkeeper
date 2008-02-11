@@ -169,6 +169,12 @@ read_blk(remote *r, char *buf, int len)
  * we might be attached to a random port that will never close we
  * shouldn't wait forever.  For now, we wait until 2 Megs of junk has
  * been read.
+ *
+ * This function should appear in code like this:
+ *     disconnect(r, 1);
+ *     wait_eof(r, 0);
+ *     disconnect(r, 2);
+ *     remote_free(r);
  */
 void
 wait_eof(remote *r, int verbose)
