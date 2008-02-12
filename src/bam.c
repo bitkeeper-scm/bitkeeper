@@ -1731,6 +1731,7 @@ bam_convert_main(int ac, char **av)
 		system("bk delta -qy'Add BAM' BitKeeper/etc/config");
 		system("echo 'BitKeeper/etc/SCCS/s.config|+' | "
 		    "bk commit -qy'Add BAM' -");
+		proj_reset(0);
 	}
 	sfiles = popen("bk sfiles", "r");
 	while (fnext(buf, sfiles)) {
@@ -1798,7 +1799,8 @@ bam_convert_main(int ac, char **av)
 	system("bk admin -z ChangeSet");
 	system("bk checksum -f/ ChangeSet");
 	fprintf(stderr, "Redoing ChangeSet ids ...\n");
-	system("bk newroot -kB:");
+	sprintf(buf, "bk newroot -kB:%x:", proj_configsize(0, "BAM"));
+	system(buf);
 	if (errors || system("bk -r check -accv")) {
 		fprintf(stderr, "Conversion failed\n");
 		exit(1);
