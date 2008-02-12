@@ -845,16 +845,6 @@ push_part2(char **av,
 			goto done;
 		}
 	}
-	if (getline2(r, buf, sizeof(buf)) > 0) {
-		if (streq(buf, "@TRIGGER INFO@")) {
-			if (getTriggerInfoBlock(r, opts.verbose)) {
-				rc = 1;
-				goto done;
-			}
-		} else {
-			fprintf(stderr, "Protocol error? %s\n", buf);
-		}
-	}
 
 	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
 
@@ -969,17 +959,6 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 			goto done;
 		}
 	}
-	if (getline2(r, buf, sizeof(buf)) > 0) {
-		if (streq(buf, "@TRIGGER INFO@")) {
-			if (getTriggerInfoBlock(r, opts.verbose)) {
-				rc = 1;
-				goto done;
-			}
-		} else {
-			fprintf(stderr, "Protocol error? %s\n", buf);
-		}
-	}
-
 
 	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
 
