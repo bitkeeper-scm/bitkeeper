@@ -661,7 +661,7 @@ set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
     grep -v BK_IGNORE_WRLOCK |
     grep -v BKD_LEVEL |
     grep -v BK_REPO_ID |
-    grep -v BKD_ROOTKEY1 |
+    grep -v BKD_ROOTKEY |
     grep -v _FEATURES |
     grep -v BKD_LICTYPE |
     grep -v BKD_SEED= |
