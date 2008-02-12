@@ -982,14 +982,15 @@ bam_clean_main(int ac, char **av)
 	hash	*renames = 0;	/* list renamed data files */
 	char	*p1, *p2;
 	char	*cmd;
-	int	check_server = 0, dryrun = 0, verbose = 0;
+	int	check_server = 0, dryrun = 0, quiet = 0, verbose = 1;
 	kvpair	kv;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "anv")) != -1) {
+	while ((c = getopt(ac, av, "anqv")) != -1) {
 		switch (c) {
 		    case 'a': check_server = 1; break;
 		    case 'n': dryrun = 1; break;
+		    case 'q': quiet = 1; break;
 		    case 'v': verbose = 1; break;
 		    default:
 			system("bk help -s BAM");
@@ -1004,7 +1005,12 @@ bam_clean_main(int ac, char **av)
 		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
-	if (sys("bk", "BAM", "check", "-Fq", SYS)) {
+	p1 = bp_serverID(0);
+	if (p1 && streq(p1, proj_repoID(0))) {
+		fprintf(stderr, "bam clean: will not run in a BAM server.\n");
+		return (1);
+	}
+	if (sys("bk", "BAM", "check", "-F", quiet ? "-q" : "--", SYS)) {
 		fprintf(stderr,
 		    "bk BAM clean: check failed, clean cancelled.\n");
 		return (1);
@@ -1016,7 +1022,6 @@ bam_clean_main(int ac, char **av)
 		/* remove deltas already in BAM server */
 		p1 = cmd;
 		unless (bp_serverID(1)) {
-			// XXX - bad error message if we are the server.
 			fprintf(stderr,
 			    "bk BAM clean: No BAM server set\n");
 			free(p1);
@@ -1106,6 +1111,7 @@ bam_clean_main(int ac, char **av)
 			}
 			continue;
 		}
+		unless (quiet) fprintf(stderr, "BAM clean %s\n", fnames[i]);
 		unlink(fnames[i]); /* delete data file */
 		dels = 1;
 

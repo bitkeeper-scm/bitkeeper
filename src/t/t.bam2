@@ -277,7 +277,7 @@ echo OK
 
 echo $N Repeat push using http ......................................$NL
 bk unpull -f $Q || exit 1
-bk BAM clean || exit 1
+bk BAM clean $Q || exit 1
 cd ../pclone2
 bk push $Q http://localhost:$P/cclone1 || {
 	echo push failed
@@ -295,7 +295,7 @@ echo OK
 
 echo $N Now do an http pull .........................................$NL
 bk unpull -f $Q || exit 1
-bk BAM clean || exit 1
+bk BAM clean $Q || exit 1
 bk pull $Q http://localhost:$P/pclone2 || {
 	bk _kill bk://localhost:$P
 	exit 1
@@ -333,7 +333,7 @@ cmpfiles 317 BitKeeper/BAM/01/01d700a5.d3
 
 bk clean || exit 1
 bk stripdel $Q -r.. 155 || exit 1
-bk BAM clean || exit 1
+bk BAM clean $Q || exit 1
 bk BAM check $Q || exit 1
 bk get $Q || exit 1
 cmpfiles t.236 236
@@ -345,7 +345,7 @@ bk new -b $Q 155 || exit 1
 bk clean || exit 1
 bk stripdel $Q -r.. 236 || exit 1
 bk stripdel $Q -r.. 317 || exit 1
-bk BAM clean || exit 1
+bk BAM clean $Q || exit 1
 bk BAM check $Q || exit 1
 bk get $Q || exit 1
 cmpfiles t.155 155

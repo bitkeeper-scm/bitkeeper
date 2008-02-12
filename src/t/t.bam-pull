@@ -83,7 +83,10 @@ test -f $FILE || {
 	echo file should be here
 	exit 1
 }
-bk bam clean || exit 1
+# Some hackery to flush our BAM data
+bk bam server -r
+bk bam clean $Q || exit 1
+bk bam server $Q .
 test -f $FILE && {
 	echo clean should have removed file
 	exit 1
