@@ -877,6 +877,8 @@ void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
 int	sccs_newchksum(sccs *s);
+int	sccs_compress(sccs *s);
+int	sccs_uncompress(sccs *s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);

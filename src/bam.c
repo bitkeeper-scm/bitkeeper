@@ -1817,7 +1817,9 @@ uu2bp(sccs *s)
 	FILE	*out;
 	int	locked;
 	int	n = 0;
+	off_t	sz;
 	char	*t;
+	char	*spin = "|/-\\";
 	char	oldroot[MAXKEY], newroot[MAXKEY];
 	char	key[MAXKEY];
 
@@ -1833,12 +1835,31 @@ uu2bp(sccs *s)
 		fprintf(stderr, "BP can't get lock on %s\n", s->gfile);
 		return (4);
 	}
+	
+	/*
+	 * Use the initial size to determine whether we convert or not.
+	 * It's idempotent and if we guess wrong they can bk rm the file
+	 * and start a new history.
+	 */
+	if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
+	sz = size(s->gfile);
+	unlink(s->gfile);
+	if (sz < proj_configsize(s->proj, "BAM")) goto out;
+
+	if ((s->encoding & E_COMP) == E_GZIP) {
+		sccs_unlock(s, 'z');
+		sccs_uncompress(s);
+		s = sccs_restart(s);
+		unless (locked = sccs_lock(s, 'z')) {
+			fprintf(stderr, "BP can't get lock on %s\n", s->gfile);
+			return (4);
+		}
+	}
+
+	fprintf(stderr, "Converting %s ", s->gfile);
 	for (d = s->table; d; d = d->next) {
 		assert(d->type == 'D');
 		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
-
-		/* see if we're too small to bother */
-		if ((d == s->table) && (size(s->gfile) < 64<<10)) goto out;
 
 		/*
 		 * XXX - if this logic is wrong then we lose data.
@@ -1862,13 +1883,14 @@ uu2bp(sccs *s)
 			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
 		}
 		if (bp_delta(s, d)) return (16);
-		n++;
+		fprintf(stderr, "%c\b", spin[n++ % 4]);
 		if (d->flags & D_CSET) {
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
 		}
 		unlink(s->gfile);
 	}
+	fprintf(stderr, "\n");
 	unless (out = fopen(sccs_Xfile(s, 'x'), "w")) {
 		fprintf(stderr, "BP: can't create %s: ", sccs_Xfile(s, 'x'));
 err:		sccs_unlock(s, 'z');
