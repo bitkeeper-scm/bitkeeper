@@ -44,6 +44,7 @@ newroot(char *ranbits, int quiet)
 {
 	sccs	*s;
 	int	rc = 0;
+	char	*p;
 	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
@@ -63,11 +64,19 @@ newroot(char *ranbits, int quiet)
 			sprintf(buf, "%s%s", ranbits, s->tree->random);
 			assert(strlen(buf) < MAXPATH - 1);
 		} else {
-			if (strlen(ranbits) > MAXPATH - 1) {
+			p = buf;
+			if (strneq("B:", s->tree->random, 2)) {
+				p = strrchr(s->tree->random, ':');
+				assert(p);
+				strncpy(buf, s->tree->random,
+				    p - s->tree->random + 1);
+				p = buf + (p - s->tree->random + 1);
+			}
+			if ((p - buf + strlen(ranbits)) > (MAXPATH - 1)) {
 				fprintf(stderr, "Rootkey too long\n");
 				exit(1);
 			}
-			strcpy(buf, ranbits);
+			strcpy(p, ranbits);
 		}
 	} else {
 		randomBits(buf);
