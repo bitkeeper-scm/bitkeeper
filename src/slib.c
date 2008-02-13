@@ -13177,8 +13177,7 @@ Breaks up citool
 		s->io_warned = 1;
 		return (-1);
 	}
-	if (do_fsync == -1) do_fsync = bk_fsync();
-	if (do_fsync) fsync(fileno(out));
+	if (proj_sync(s->proj)) fsync(fileno(out));
 	return (0);
 }
 

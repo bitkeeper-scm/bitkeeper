@@ -114,7 +114,6 @@ resolve_main(int ac, char **av)
 		opts.from_pullpush = 1;
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
-	opts.fsync = bk_fsync();
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind++]);
 	while (av[optind]) {
 		opts.includes = addLine(opts.includes, strdup(av[optind++]));
@@ -2637,7 +2636,7 @@ err:			unapply(save);
 		    "resolve: running consistency check, please wait...\n");
 	}
 	proj_restoreAllCO(0, opts->idDB);
-	unless (proj_configbool(0, "nosync")) {
+	if (proj_sync(0)) {
 		/*
 		 * It's worth pointing out that we still call this when we
 		 * are resolving the creation of a new project.  It doesn't
