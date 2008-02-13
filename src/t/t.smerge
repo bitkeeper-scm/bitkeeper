@@ -731,3 +731,42 @@ cat <<EOF >>WANT
 EOF
 checkfiles GOT WANT
 echo OK
+
+echo $N failures involving a disappearing newline in a merge ........$NL
+cd "$HERE"
+rm -rf project
+commercial project
+# Make something which ends without a newline.
+printf "a\nb\nc" > foo
+bk new $Q foo
+bk commit $Q -yfoo foo
+cd ..
+bk clone $Q project copy
+# put something after it.  First change will remove the 'c' line
+# and replace it with 'c\n'.  Second change will append a block.
+# Third change will remove the first change, restoring the sequence
+# number for 'c', but since a token appears after it, will show up
+# as 'c\n'.  Same token, different lenghth
+cd project
+bk edit $Q foo
+printf "a\nb\nc\nd\n" > foo
+bk delta $Q -yfoo foo
+REV=`bk log -r+ -nd:I: foo`
+bk edit $Q foo
+printf "a\nb\nc\nd\ne\n" > foo
+bk delta $Q -yfoo foo
+bk edit $Q -x$REV foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo foo
+# create a conflict area that includes the 'c' token
+cd ../copy
+bk edit $Q foo
+printf "a\nq\nk\nm\nv\n" > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+printf "ul\n.\n" | bk pull $Q 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
