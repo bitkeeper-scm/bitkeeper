@@ -40,6 +40,7 @@ struct project {
 	int	leaseok;	/* if set, we've checked and have a lease */
 	MDBM	*BAM_idx;	/* BAM index file */
 	int	BAM_write;	/* BAM index file opened for write? */
+	int	sync;		/* sync/fsync data? */
 
 	/* checkout state */
 	MDBM	*coDB;		/* $coDB{rootkey} = e|g|n */
@@ -144,9 +145,8 @@ proj_init(char *dir)
 	assert(ret == 0);
 	/* Totally new project */
 	new(ret);
+	proj_reset(ret);	/* default values */
 	ret->root = root;
-	ret->casefolding = -1;
-	ret->leaseok = -1;
 
 	projcache_store(root, ret);
 	unless (streq(root, fdir)) projcache_store(fdir, ret);
@@ -552,9 +552,13 @@ proj_reset(project *p)
 			p->bkl = 0;
 		}
 		p->bklbits = 0;
+		p->casefolding = -1;
 		p->leaseok = -1;
-		if (p->coDB) mdbm_close(p->coDB);
-		p->coDB = 0;
+		p->sync = -1;
+		if (p->coDB) {
+			mdbm_close(p->coDB);
+			p->coDB = 0;
+		}
 		if (p->BAM_idx) {
 			mdbm_close(p->BAM_idx);
 			p->BAM_idx = 0;
@@ -905,4 +909,21 @@ proj_BAMindex(project *p, int write)
 		p->BAM_write = write;
 	}
 	return (p->BAM_idx);
+}
+
+int
+proj_sync(project *p)
+{
+	unless (p || (p = curr_proj())) return (0);
+
+	if (p->rparent) return (0); /* no syncs in RESYNC */
+
+	if (p->sync == -1) {
+		if (getenv("BK_NO_FSYNC") || proj_configbool(p, "nosync")) {
+			p->sync = 0;
+		} else {
+			p->sync = 1;
+		}
+	}
+	return (p->sync);
 }
