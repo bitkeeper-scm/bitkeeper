@@ -230,8 +230,6 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 	}
 
-	unless (ignorePreference || checkout) checkout = proj_checkout(0);
-
 	def_compp  = proj_configval(0, "compression");
 	unless (def_compp && *def_compp) def_compp = NULL;
 
@@ -294,6 +292,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		int	df = dflags;
 		int	gf = gflags;
 		int	reget = 0;
+		int	co;
 
 		if (df & DELTA_DONTASK) {
 			unless (d = comments_get(0)) goto usage;
@@ -320,14 +319,16 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		/*
 		 * Checkout option does not applies to ChangeSet file
 		 * see rev 1.118
-		 * XXX - delta -l|u will be ignored.  oh well.
+		 * XXX - delta -l|u will be ignored for ChangeSet.
 		 */
+		co = checkout;		// This is from -l/-u, it goes first
+		unless (co || ignorePreference) co = CO(s);
 		unless (CSET(s)) {
-			if (checkout & (CO_EDIT|CO_LAST)) {
+			if (co & (CO_EDIT|CO_LAST)) {
 				gf |= GET_SKIPGET|GET_EDIT;
 				df |= DELTA_SAVEGFILE;
 				reget = 1;	/* to write pfile */
-			} else if (checkout == CO_GET) {
+			} else if (co & CO_GET) {
 				if (hasKeyword(s))  {
 					gf |= GET_EXPAND;
 					reget = 1;
@@ -414,7 +415,9 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 			if (hasKeyword(s) && !(gf & GET_EDIT)) {
 				gf |= GET_EXPAND;
 				gf &= ~GET_SKIPGET;
-				reget = checkout;
+				reget = 0;
+				unless (co = checkout) co = CO(s);
+				reget = co & CO_GET;
 			}
 		}
 

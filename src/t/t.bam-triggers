@@ -17,6 +17,9 @@ echo $PERL | grep -q "not found"  && { echo failed; exit 1; }
 echo $N Check commit trigger environment variables ..................$NL
 cd "$HERE"
 commercial project
+bk edit $Q BitKeeper/etc/config
+echo "checkout: get" >> BitKeeper/etc/config
+bk delta $Q -ycheckout BitKeeper/etc/config
 # Force BAM data into the repo to test those code paths.
 BK="`bk bin`/bk"
 test $PLATFORM = WIN32 && BK=${BK}.exe
@@ -24,9 +27,6 @@ perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > data
 bk new $Q data
 #
-bk edit $Q BitKeeper/etc/config
-echo "checkout: get" >> BitKeeper/etc/config
-bk delta $Q -ycheckout BitKeeper/etc/config
 bk commit $Q -ycheckout
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-commit <<EOF

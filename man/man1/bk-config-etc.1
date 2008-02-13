@@ -70,8 +70,8 @@ file as follows:
 .DS
 checkout:option
 .DE
-Where option is one of:
-.TP \fBnone\fP
+where option is one of:
+.TP \fBnone \fP
 .B get
 Automatically do a bk co
 .ARG file
@@ -104,6 +104,15 @@ again with a lock.
 Clear the gfile after doing a bk ci
 .ARG file .
 (This is the default.)
+.LP
+For those repositories with BAM data, there is a checkout mode 
+specifically for those files:
+.DS
+BAM_checkout:option
+.DE
+where option is as above.
+.LP
+BitMover recommends "BAM_checkout:last".
 .SS CLOCK_SKEW
 .br
 When using the 
@@ -262,6 +271,21 @@ In general, the default of native line terminations is the right answer and
 for exceptions the
 .B bk admin 
 command may be used to set this option on a per file basis.
+.SH NOSYNC
+By default, BitKeeper does an fsync() after each update of a history file
+and a sync() after a resolve.
+Both of these may be performance problems, especially on some Linux file
+systems where a fsync() is implemented as a system wide sync.
+The syncs may be 
+disabled temporarily with
+.DS
+BK_CONFIG=nosync:on
+.DE
+or permanently with
+.DS
+nosync:on
+.DE
+in the config file.
 .SS PARTIAL CHECK
 .LP
 By default, BitKeeper does a full repository integrity check after
@@ -279,7 +303,7 @@ checks once every 24 hours.
 .DS
 partial_check: on
 .DE
-Subsequent checks validate the metadata and file integrities only
+Subsequent checks validate the metadata and file integrity's only
 for files that are updated.
 .LP
 We recommend that you start in full check mode and turn on partial
