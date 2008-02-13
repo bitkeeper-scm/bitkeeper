@@ -16,10 +16,18 @@ u32		proj_configsize(project *p, char *key);
  * defines for proj_checkout() 
  * bitfields in case we add CO_TIMESTAMPS
  */
-#define	CO_NONE	0	/* don't do any checkout */
-#define	CO_GET	1	/* do a get */
-#define	CO_EDIT	2	/* do an edit */
-#define	CO_LAST	4	/* preserve previous checkout state */
+#define	CO_NONE		0x01	/* don't do any checkout */
+#define	CO_GET		0x02	/* do a get */
+#define	CO_EDIT		0x04	/* do an edit */
+#define	CO_LAST		0x08	/* preserve previous checkout state */
+#define	CO_BAM_NONE	0x10	/* don't do any checkout */
+#define	CO_BAM_GET	0x20	/* do a get */
+#define	CO_BAM_EDIT	0x40	/* do an edit */
+#define	CO_BAM_LAST	0x80	/* preserve previous checkout state */
+
+#define	CO(s)	(BAM(s) ? \
+			(proj_checkout(s->proj) >> 4) : \
+			(proj_checkout(s->proj) & 0xf))
 
 int		proj_checkout(project *p);
 char*		proj_cwd(void);
@@ -42,6 +50,7 @@ void		proj_saveCOkey(project *p, char *key, int co);
 int		proj_restoreCO(sccs *s);
 int		proj_restoreAllCO(project *p, MDBM *idDB);
 MDBM*		proj_BAMindex(project *p, int write);
+int		proj_sync(project *p);
 
 #define		chdir	proj_chdir
 

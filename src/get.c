@@ -26,6 +26,7 @@ get_main(int ac, char **av)
 	int	caseFoldingFS = 1;
 	int	closetips = 0;
 	int	skip_bin = 0;
+	int	checkout = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	ac_optend;
 	MDBM	*realNameCache = 0;
@@ -44,9 +45,10 @@ get_main(int ac, char **av)
 		flags |= GET_EDIT;
 	} else if (streq(prog, "_get")) {
 		branch_ok = 1;
+	} else if (streq(prog, "checkout")) {
+		checkout = 1;
 	}
 
-	if (streq(av[0], "edit")) flags |= GET_EDIT;
 	while ((c =
 	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|pPqr;RSstTx;")) != -1) {
 		switch (c) {
@@ -158,6 +160,19 @@ onefile:	fprintf(stderr,
 			name = realname;
 		}
 		unless (s = sccs_init(name, iflags)) continue;
+		if (checkout) {
+			flags &= ~GET_EDIT;
+			switch (CO(s)) {
+			    case CO_NONE:
+			    case CO_LAST:
+				sccs_free(s);
+				continue;
+			    case CO_EDIT:
+			    	flags |= GET_EDIT;
+				break;
+			    /*   CO_GET already implied in flags */
+			}
+		}
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];

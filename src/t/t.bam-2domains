@@ -533,7 +533,7 @@ echo OK
 
 echo $N Flush the local data so we know we go to the server .........$NL
 cd "$HERE/C3"
-bk bam clean -a
+bk bam clean -a $Q
 test `find BitKeeper/BAM -type f -print | wc -l` -eq 1 || {
 	echo failed to flush
 	find BitKeeper/BAM -type f -print

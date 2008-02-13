@@ -8947,7 +8947,8 @@ sccs_unedit(sccs *s, u32 flags)
 		return (0);
 	}
 
-	switch(proj_checkout(s->proj)) {
+	// XXX - pretty similar to do_checkout 
+	switch (CO(s)) {
 	    case CO_GET: getFlags = GET_EXPAND; break;
 	    case CO_EDIT: getFlags = GET_EDIT; break;
 	    case CO_LAST:
@@ -13176,8 +13177,7 @@ Breaks up citool
 		s->io_warned = 1;
 		return (-1);
 	}
-	if (do_fsync == -1) do_fsync = bk_fsync();
-	if (do_fsync) fsync(fileno(out));
+	if (proj_sync(s->proj)) fsync(fileno(out));
 	return (0);
 }
 

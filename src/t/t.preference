@@ -9,8 +9,6 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-
-# Copyright (c) 2001 Andrew Chang
 # %K%
 
 echo $N Create initial repository ...................................$NL
@@ -27,11 +25,156 @@ cd src
 echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
-bk ci $Q -i foo.c bar.c h.h
+perl -e 'printf "a\000b\n"' > bam
+bk ci $Q -i foo.c bar.c h.h bam
 bk co -q # checkout:get is added later
 echo OK
 
+echo $N clone with checkout:get and BAM_checkout:none ...............$NL
+cd "$HERE"
+cp -rp project source
+cd source
+bk commit -ywhatever $Q
+cd ..
+BK_CONFIG='BAM_checkout:none!;checkout:get!' bk clone $Q source checkout
+cd checkout/src
+test -f foo.c -a -f bar.c -a -f h.h || {
+	echo failed on text checkout
+	exit 1
+}
+test -f bam && {
+	echo failed on bam non-checkout
+	exit 1
+}
+echo OK
+
+echo $N rclone with checkout:get and BAM_checkout:none ..............$NL
+cd "$HERE"
+P=`port 50000`
+BK_CONFIG='BAM_checkout:none!;checkout:get!' bk bkd -d -p$P -ikill
+rm -rf checkout
+bk clone $Q source bk://localhost:$P/checkout
+bk _kill bk://localhost:$P
+cd checkout/src
+bk parent -q "$HERE/source"
+test -f foo.c -a -f bar.c -a -f h.h || {
+	echo failed on text checkout
+	exit 1
+}
+test -f bam && {
+	echo failed on bam non-checkout
+	exit 1
+}
+echo OK
+
+echo $N pull with checkout:get and BAM_checkout:none ................$NL
+cd "$HERE/source/src"
+bk edit $Q bam
+echo foo >> bam
+bk delta -ywhatever $Q bam
+bk commit -ywhatever $Q
+cd "$HERE/checkout/src"
+bk clean bam
+BK_CONFIG='BAM_checkout:none!;checkout:get!' bk pull $Q
+test -f bam && {
+	echo failed on bam non-checkout
+	exit 1
+}
+echo OK
+
+echo $N push with checkout:get and BAM_checkout:none ................$NL
+bk edit $Q bam
+echo foo >> bam
+bk delta -ywhatever $Q bam
+bk commit -ywhatever $Q
+bk clean "$HERE/source/src/bam"
+BK_CONFIG='BAM_checkout:none!;checkout:get!' bk push $Q
+cd "$HERE/source/src"
+test -f bam && {
+	echo failed on bam non-checkout
+	exit 1
+}
+echo OK
+
+echo $N clone with checkout:get and BAM_checkout:last ...............$NL
+cd "$HERE"
+rm -rf source checkout
+cp -rp project source
+cd source
+bk commit -ywhatever $Q
+cd ..
+BK_CONFIG='BAM_checkout:last!;checkout:get!' bk clone $Q source checkout
+cd checkout/src
+test -f foo.c -a -f bar.c -a -f h.h || {
+	echo failed on text checkout
+	exit 1
+}
+test -f bam && {
+	echo failed on bam non-checkout
+	exit 1
+}
+echo OK
+
+echo $N rclone with checkout:get and BAM_checkout:last ..............$NL
+cd "$HERE"
+P=`port 50000`
+BK_CONFIG='BAM_checkout:last!;checkout:get!' bk bkd -d -p$P -ikill
+rm -rf checkout
+bk clone $Q source bk://localhost:$P/checkout
+bk _kill bk://localhost:$P
+cd checkout/src
+bk parent -q "$HERE/source"
+test -f foo.c -a -f bar.c -a -f h.h || {
+	echo failed on text checkout
+	exit 1
+}
+test -f bam && {
+	echo failed on bam non-checkout
+	exit 1
+}
+echo OK
+
+echo $N pull with checkout:get and BAM_checkout:last ................$NL
+cd "$HERE/source/src"
+bk edit $Q bam
+echo foo >> bam
+bk delta -ywhatever $Q bam
+bk commit -ywhatever $Q
+cd "$HERE/checkout/src"
+bk clean bam
+BK_CONFIG='BAM_checkout:last!;checkout:get!' bk pull $Q
+test -f bam && {
+	echo failed on bam non-checkout
+	exit 1
+}
+echo OK
+
+echo $N push with checkout:get and BAM_checkout:last ................$NL
+bk edit $Q bam
+echo foo >> bam
+bk delta -ywhatever $Q bam
+bk commit -ywhatever $Q
+bk clean "$HERE/source/src/bam"
+BK_CONFIG='BAM_checkout:last!;checkout:get!' bk push $Q
+cd "$HERE/source/src"
+test -f bam && {
+	echo failed on bam non-checkout
+	exit 1
+}
+echo OK
+
+echo $N delta with BAM_checkout:last ................................$NL
+bk edit $Q bam
+echo foo >> bam
+bk delta -ywhatever $Q bam
+test -f bam -a -w bam && {
+	echo failed on bam checkout
+	exit 1
+}
+echo OK
+
 echo $N checkout:GET w admin ........................................$NL
+cd "$HERE/project/src"
 bk edit $Q "$HERE/project/BitKeeper/etc/config"
 echo "checkout:GET" >> "$HERE/project/BitKeeper/etc/config"
 bk get $Q foo.c
@@ -59,9 +202,30 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w delta .......................................$NL
+bk edit $Q bam
 echo new >> foo.c
-bk delta $Q -ynew foo.c
+echo new >> bam
+bk delta $Q -ynew foo.c bam
 bk commit $Q -ynew_stuff
+test -f bam -a -w bam || { echo failed bam; exit 1; }
+if [ ! -f foo.c ]; then echo failed; exit 1; fi
+if [ ! -w foo.c ]; then echo failed; exit 1; fi
+if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+
+echo $N BAM_checkout:get w delta ....................................$NL
+bk edit $Q bam
+echo new >> foo.c
+echo new >> bam
+bk delta $Q -ynew foo.c 
+BK_CONFIG=BAM_checkout:get bk delta $Q -ynew bam
+test -f bam || { echo failed bam; exit 1; }
+test -w bam && { echo failed bam ro; exit 1; }
+BK_CONFIG=BAM_checkout:get bk commit $Q -ynew_stuff
+test -f bam || { echo failed bam; exit 1; }
+test -w bam && { echo failed bam ro; exit 1; }
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ ! -w foo.c ]; then echo failed; exit 1; fi
 if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi

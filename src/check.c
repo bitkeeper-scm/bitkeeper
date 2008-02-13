@@ -149,8 +149,8 @@ check_main(int ac, char **av)
 	}
 	if (all && bp_index_check(!verbose)) return (1);
 
-	checkout = CO_NONE;
-	if (!resync && all) checkout = proj_checkout(0);
+	checkout = CO_NONE|CO_BAM_NONE;
+	if (all) checkout = proj_checkout(0);
 	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		return (1);
@@ -399,10 +399,8 @@ check_main(int ac, char **av)
 out:
 	if (verbose == 1) progressbar(nfiles, nfiles, errors ? "FAILED":"OK");
 	if (!errors && bp_getFiles && !getenv("_BK_CHECK_NO_BAM_FETCH") &&
-	    ((checkout == CO_EDIT) || (checkout == CO_GET))) {
-		sprintf(buf, "bk %s -q%s -",
-		    (checkout == CO_EDIT) ? "edit" : "get",
-		    (timestamps ? "T" : ""));
+	    (checkout & (CO_BAM_EDIT|CO_BAM_GET))) {
+		sprintf(buf, "bk checkout -q%s -", timestamps ? "T" : "");
 		if (verbose) fprintf(stderr,
 		    "check: fetching BAM data...\n");
 		f = popen(buf, "w");
@@ -480,6 +478,7 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 		}
 		free(sfile);
 	}
+	checkout = BAM(s) ? (checkout >> 4) : (checkout & 0xf);
 	if (!CSET(s) &&
 	    !(strneq(s->gfile, "BitKeeper/", 10) &&
 		!strneq(s->gfile, "BitKeeper/triggers/", 19)) &&
@@ -488,8 +487,10 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 		if (win32() && S_ISLNK(sccs_top(s)->mode)) {
 			/* do nothing, no symlinks on windows */
 		} else if ((p = getenv("_BK_DEVELOPER")) && *p) {
-			fprintf(stderr, "check: %s not checked out(%d)\n",
-			    s->gfile, checkout);
+			// flags both missing and ro when we want rw
+			fprintf(stderr,
+			    "check: '%s' checkout CO=0x%x BAM=%s\n",
+			    s->gfile, checkout, BAM(s) ? "yes" : "no");
 			return (1);
 		} else {
 			flags = (checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND;

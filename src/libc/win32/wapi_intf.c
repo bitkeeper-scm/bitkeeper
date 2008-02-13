@@ -171,12 +171,17 @@ getlogin(void)
 	return (name);
 }
 
-/*
- * Not sure what to do here, we need admin privs to make this work.
- */
 int
 sync()
 {
+	/*
+	 * We should be able to call FlushFileBuffers() on a open
+	 * handle to the current volume to flush all data on the disk,
+	 * but that will only work if we have admin privs.  That might
+	 * be good enough, if it is quiet on failure.
+	 *
+	 * For now we just ignore the call.
+	 */
 	return (0);
 }
 

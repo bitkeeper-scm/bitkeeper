@@ -40,8 +40,10 @@ struct project {
 	int	leaseok;	/* if set, we've checked and have a lease */
 	MDBM	*BAM_idx;	/* BAM index file */
 	int	BAM_write;	/* BAM index file opened for write? */
+	int	sync;		/* sync/fsync data? */
 
 	/* checkout state */
+	u32	co;		/* cache of proj_checkout() return */
 	MDBM	*coDB;		/* $coDB{rootkey} = e|g|n */
 	char	**bp_getFiles;	/* files we need to fetch and get */
 	char	**bp_editFiles;	/* files we need to fetch and edit */
@@ -144,9 +146,8 @@ proj_init(char *dir)
 	assert(ret == 0);
 	/* Totally new project */
 	new(ret);
+	proj_reset(ret);	/* default values */
 	ret->root = root;
-	ret->casefolding = -1;
-	ret->leaseok = -1;
 
 	projcache_store(root, ret);
 	unless (streq(root, fdir)) projcache_store(fdir, ret);
@@ -420,20 +421,41 @@ proj_checkout(project *p)
 {
 	MDBM	*db;
 	char	*s;
+	int	bits = CO_NONE|CO_BAM_NONE;
 
 	unless (p || (p = curr_proj())) p = proj_fakenew();
-	if (proj_isResync(p)) return (CO_NONE);
+	if (proj_isResync(p)) return (bits);
+	if (p->co) return (p->co);
 	db = proj_config(p);
 	assert(db);
-	unless (s = mdbm_fetch_str(db, "checkout")) return (CO_NONE);
-	if (strieq(s, "get")) return (CO_GET);
-	if (strieq(s, "edit")) return (CO_EDIT);
-	if (strieq(s, "none")) return (CO_NONE);
-	if (strieq(s, "last")) return (CO_LAST);
-	fprintf(stderr,
-	    "WARNING: config key 'checkout' should be a get or edit.\n"
-	    "Meaning of '%s' unknown. Assuming none.\n", s);
-	return (CO_NONE);
+	if (s = mdbm_fetch_str(db, "checkout")) {
+		bits = 0;
+		if (strieq(s, "get")) bits = CO_GET|CO_BAM_GET;
+		if (strieq(s, "edit")) bits = CO_EDIT|CO_BAM_EDIT;
+		if (strieq(s, "last")) bits = CO_LAST|CO_BAM_LAST;
+		if (strieq(s, "none")) bits = CO_NONE|CO_BAM_NONE;
+		unless (bits) {
+			fprintf(stderr,
+			    "WARNING: checkout: should be get|edit|last|none.\n"
+			    "Meaning of '%s' unknown. Assuming none.\n", s);
+			bits = CO_NONE;
+		}
+	}
+	if (s = mdbm_fetch_str(db, "BAM_checkout")) {
+		bits &= 0xf;
+		if (strieq(s, "get")) bits |= CO_BAM_GET;
+		if (strieq(s, "edit")) bits |= CO_BAM_EDIT;
+		if (strieq(s, "last")) bits |= CO_BAM_LAST;
+		if (strieq(s, "none")) bits |= CO_BAM_NONE;
+		unless (bits & 0xf0) {
+			fprintf(stderr,
+			    "WARNING: BAM_checkout: "
+			    "should be get|edit|last|none.\n"
+			    "Meaning of '%s' unknown. Assuming none.\n", s);
+			bits |= CO_BAM_NONE;
+		}
+	}
+	return (p->co = bits);
 }
 
 
@@ -552,9 +574,14 @@ proj_reset(project *p)
 			p->bkl = 0;
 		}
 		p->bklbits = 0;
+		p->casefolding = -1;
 		p->leaseok = -1;
-		if (p->coDB) mdbm_close(p->coDB);
-		p->coDB = 0;
+		p->co = 0;
+		p->sync = -1;
+		if (p->coDB) {
+			mdbm_close(p->coDB);
+			p->coDB = 0;
+		}
 		if (p->BAM_idx) {
 			mdbm_close(p->BAM_idx);
 			p->BAM_idx = 0;
@@ -797,9 +824,13 @@ restoreCO(sccs *s, int co)
 	if (check_gfile(s, 0)) return (-1);
 
 	switch (co) {
-	    case CO_EDIT: unless (HAS_PFILE(s)) getFlags = GET_EDIT; break;
-	    case CO_GET: unless (HAS_GFILE(s)) getFlags = GET_EXPAND; break;
-	    default: assert(0);
+	    case CO_EDIT:
+		unless (HAS_PFILE(s)) getFlags = GET_EDIT; break;
+	    case CO_GET:
+		unless (HAS_GFILE(s)) getFlags = GET_EXPAND; break;
+	    default:
+		fprintf(stderr, "co=0x%x\n", co);
+		assert(0);
 	}
 	unless (getFlags) return (0);
 	unless (sccs_get(s, 0, 0, 0, 0, SILENT|GET_NOREMOTE|getFlags, "-")) {
@@ -847,7 +878,8 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 	}
 	EACH_KV(p->coDB) {
 		co = (kv.val.dptr[0] - '0');
-		if ((co != CO_NONE) && (co != CO_LAST)) {
+		assert(!(co & (CO_BAM_GET|CO_BAM_EDIT)));
+		if (co & (CO_GET|CO_EDIT)) {
 			s = sccs_keyinit(kv.key.dptr,
 			    INIT_NOCKSUM|SILENT, idDB);
 			unless (s) continue;
@@ -905,4 +937,21 @@ proj_BAMindex(project *p, int write)
 		p->BAM_write = write;
 	}
 	return (p->BAM_idx);
+}
+
+int
+proj_sync(project *p)
+{
+	unless (p || (p = curr_proj())) return (0);
+
+	if (p->rparent) return (0); /* no syncs in RESYNC */
+
+	if (p->sync == -1) {
+		if (getenv("BK_NO_FSYNC") || proj_configbool(p, "nosync")) {
+			p->sync = 0;
+		} else {
+			p->sync = 1;
+		}
+	}
+	return (p->sync);
 }

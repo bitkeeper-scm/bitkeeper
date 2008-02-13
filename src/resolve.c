@@ -114,7 +114,6 @@ resolve_main(int ac, char **av)
 		opts.from_pullpush = 1;
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
-	opts.fsync = bk_fsync();
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind++]);
 	while (av[optind]) {
 		opts.includes = addLine(opts.includes, strdup(av[optind++]));
@@ -2419,6 +2418,7 @@ pass4_apply(opts *opts)
 	char	key[MAXKEY];
 	MDBM	*permDB = mdbm_mem();
 	char	*cmd = "apply";
+	char	*p;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2531,8 +2531,16 @@ pass4_apply(opts *opts)
 			/* buf+7 == skip RESYNC/ */
 			mdbm_store_str(opts->idDB, key, buf + 7, MDBM_REPLACE);
 		} else {
-			/* handle new files */
-			proj_saveCOkey(0, key, proj_checkout(0));
+			/*
+			 * handle new files.
+			 * This little chunk of magic is to detect BAM files
+			 * and respect BAM_checkout.
+			 */
+			if ((p = strrchr(key, '|')) && strneq(p, "|B:", 3)) {
+				proj_saveCOkey(0, key, proj_checkout(0) >> 4);
+			} else {
+				proj_saveCOkey(0, key, proj_checkout(0) & 0xf);
+			}
 		}
 	}
 	fclose(save);
@@ -2628,7 +2636,7 @@ err:			unapply(save);
 		    "resolve: running consistency check, please wait...\n");
 	}
 	proj_restoreAllCO(0, opts->idDB);
-	unless (proj_configbool(0, "nosync")) {
+	if (proj_sync(0)) {
 		/*
 		 * It's worth pointing out that we still call this when we
 		 * are resolving the creation of a new project.  It doesn't

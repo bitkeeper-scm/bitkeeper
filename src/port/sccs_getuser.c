@@ -70,6 +70,7 @@ char	*
 sccs_realuser(void)
 {
 #ifndef WIN32
+	struct	passwd	*p;
 	uid_t	id = getuid();
 
 	/* if the world is as it was last time, cache hit */
@@ -77,19 +78,29 @@ sccs_realuser(void)
 	uid = id;
 	r = 0;
 
-	/* redundant on Linux, getlogin does the same thing but just in case */
-	unless (id) r = getenv("SUDO_USER");
-	unless (r && r[0]) {
-		if (id) {
-			struct	passwd	*p = getpwuid(id);
-			if (p) r = p->pw_name;
-		}
+	if (id) {
+		if (p = getpwuid(id)) r = p->pw_name;
+	} else {
+		/*
+		 * redundant on Linux, getlogin does the same thing
+		 * but just in case
+		 */
+		r = getenv("SUDO_USER");
 	}
 #else
 	if (r) return (r);
 #endif
 	unless (r && r[0]) r = getlogin();
-
+#ifndef WIN32
+	unless (r && r[0]) {
+		/*
+		 * if getlogin() returns null then I am probably running
+		 * where I don't have a tty.  Like in cron.
+		 * We tried, just return 'root'.
+		 */
+		unless (id) r = ROOT_USER;
+	}
+#endif
 	/* XXX - it might be nice to return basename of $HOME or something */
 	unless (r && r[0]) r = UNKNOWN_USER;
 	return (r = cleanup(r));

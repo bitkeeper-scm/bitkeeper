@@ -406,18 +406,12 @@ docheck:	/* undo already runs check so we only need this case */
 	 * a side effect of check.c, but if partial check is enabled
 	 * we still might need this.
 	 */
-	if (proj_configbool(0, "partial_check")) {
-		switch(proj_checkout(0)) {
-		    case CO_GET: p = "get"; break;
-		    case CO_EDIT: p = "edit"; break;
-		    default: p = 0; break;
+	if (proj_configbool(0, "partial_check") &&
+	    proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT)) {
+		unless (opts->quiet) {
+			fprintf(stderr, "Checking out files...\n");
 		}
-		if (p) {
-			unless (opts->quiet) {
-				fprintf(stderr, "Checking out files...\n");
-			}
-			sys("bk", "-Ur", p, "-TSq", SYS);
-		}
+		sys("bk", "-Ur", "checkout", "-TSq", SYS);
 	}
 	return (0);
 }

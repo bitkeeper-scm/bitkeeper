@@ -15,8 +15,6 @@
 #define SPLIT_ROOT	/* enable split_root support */
 #define BK_FS		'|' /* Field seperator used in file|rev names */
 
-#define	bk_fsync()	(getenv("BK_NO_FSYNC") == 0)
-
 void	reserveStdFds(void);
 struct tm *localtimez(time_t *timep, long *offsetp);
 
