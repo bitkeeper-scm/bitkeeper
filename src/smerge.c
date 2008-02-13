@@ -1405,17 +1405,18 @@ unidiff(conflct *curr, int left, int right)
 	delp = del = calloc(el - llines, sizeof(diffln));
 	insp = ins = calloc(er - rlines, sizeof(diffln));
 
-	while (llines < el || rlines < er) {
-		if (rlines == er || llines < el && llines->seq < rlines->seq) {
+	while ((llines < el) || (rlines < er)) {
+		if ((rlines == er) ||
+		    ((llines < el) && (llines->seq < rlines->seq))) {
 			delp->ld = llines++;
 			delp->c = '-';
 			++delp;
-		} else if (llines == el || rlines->seq < llines->seq) {
+		} else if ((llines == el) || (rlines->seq < llines->seq)) {
 			insp->ld = rlines++;
 			insp->c = '+';
 			++insp;
 		} else {
-			assert(llines->len == rlines->len);
+			assert(llines->seq == rlines->seq);
 			if (delp > del) {
 				int	cnt = delp - del;
 				memcpy(p, del, cnt * sizeof(diffln));

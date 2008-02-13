@@ -6,7 +6,7 @@ do_checkout(sccs *s)
 {
 	int	getFlags;
 
-	switch(proj_checkout(s->proj)) {
+	switch (CO(s)) {
 	    case CO_GET: getFlags = GET_EXPAND; break;
 	    case CO_EDIT: getFlags = GET_EDIT; break;
 	    case CO_LAST:

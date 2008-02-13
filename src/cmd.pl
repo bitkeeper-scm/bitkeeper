@@ -347,6 +347,7 @@ enter => delta
 new => delta
 _get => get
 co => get
+checkout => get
 edit => get
 comment => comments	# alias for Linus, remove...
 _fix_lod1 => _fixlod

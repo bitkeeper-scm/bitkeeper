@@ -982,14 +982,15 @@ bam_clean_main(int ac, char **av)
 	hash	*renames = 0;	/* list renamed data files */
 	char	*p1, *p2;
 	char	*cmd;
-	int	check_server = 0, dryrun = 0, verbose = 0;
+	int	check_server = 0, dryrun = 0, quiet = 0, verbose = 1;
 	kvpair	kv;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "anv")) != -1) {
+	while ((c = getopt(ac, av, "anqv")) != -1) {
 		switch (c) {
 		    case 'a': check_server = 1; break;
 		    case 'n': dryrun = 1; break;
+		    case 'q': quiet = 1; break;
 		    case 'v': verbose = 1; break;
 		    default:
 			system("bk help -s BAM");
@@ -1004,7 +1005,12 @@ bam_clean_main(int ac, char **av)
 		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
-	if (sys("bk", "BAM", "check", "-Fq", SYS)) {
+	p1 = bp_serverID(0);
+	if (p1 && streq(p1, proj_repoID(0))) {
+		fprintf(stderr, "bam clean: will not run in a BAM server.\n");
+		return (1);
+	}
+	if (sys("bk", "BAM", "check", "-F", quiet ? "-q" : "--", SYS)) {
 		fprintf(stderr,
 		    "bk BAM clean: check failed, clean cancelled.\n");
 		return (1);
@@ -1016,7 +1022,6 @@ bam_clean_main(int ac, char **av)
 		/* remove deltas already in BAM server */
 		p1 = cmd;
 		unless (bp_serverID(1)) {
-			// XXX - bad error message if we are the server.
 			fprintf(stderr,
 			    "bk BAM clean: No BAM server set\n");
 			free(p1);
@@ -1106,6 +1111,7 @@ bam_clean_main(int ac, char **av)
 			}
 			continue;
 		}
+		unless (quiet) fprintf(stderr, "BAM clean %s\n", fnames[i]);
 		unlink(fnames[i]); /* delete data file */
 		dels = 1;
 
@@ -1725,6 +1731,7 @@ bam_convert_main(int ac, char **av)
 		system("bk delta -qy'Add BAM' BitKeeper/etc/config");
 		system("echo 'BitKeeper/etc/SCCS/s.config|+' | "
 		    "bk commit -qy'Add BAM' -");
+		proj_reset(0);
 	}
 	sfiles = popen("bk sfiles", "r");
 	while (fnext(buf, sfiles)) {
@@ -1744,6 +1751,7 @@ bam_convert_main(int ac, char **av)
 		sccs_free(s);
 	}
 	if (sfileDone()) errors |= 2;
+	if (errors) goto out;
 	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
 		perror("SCCS/s.ChangeSet");
 		exit(1);
@@ -1792,14 +1800,15 @@ bam_convert_main(int ac, char **av)
 	system("bk admin -z ChangeSet");
 	system("bk checksum -f/ ChangeSet");
 	fprintf(stderr, "Redoing ChangeSet ids ...\n");
-	system("bk newroot -kB:");
+	sprintf(buf, "bk newroot -kB:%x:", proj_configsize(0, "BAM"));
+	system(buf);
 	if (errors || system("bk -r check -accv")) {
 		fprintf(stderr, "Conversion failed\n");
 		exit(1);
 	} else {
 		unlink("BitKeeper/tmp/s.ChangeSet");
 	}
-	return (errors);
+out:	return (errors);
 }
 
 /*
@@ -1817,7 +1826,9 @@ uu2bp(sccs *s)
 	FILE	*out;
 	int	locked;
 	int	n = 0;
+	off_t	sz;
 	char	*t;
+	char	*spin = "|/-\\";
 	char	oldroot[MAXKEY], newroot[MAXKEY];
 	char	key[MAXKEY];
 
@@ -1833,12 +1844,22 @@ uu2bp(sccs *s)
 		fprintf(stderr, "BP can't get lock on %s\n", s->gfile);
 		return (4);
 	}
+	
+	/*
+	 * Use the initial size to determine whether we convert or not.
+	 * It's idempotent and if we guess wrong they can bk rm the file
+	 * and start a new history.
+	 */
+	if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
+	sz = size(s->gfile);
+	unlink(s->gfile);
+	if (sz < proj_configsize(s->proj, "BAM")) goto out;
+
+	if ((s->encoding & E_COMP) == E_GZIP) sccs_unzip(s);
+	fprintf(stderr, "Converting %s ", s->gfile);
 	for (d = s->table; d; d = d->next) {
 		assert(d->type == 'D');
 		if (sccs_get(s, d->rev, 0, 0, 0, SILENT, "-")) return (8);
-
-		/* see if we're too small to bother */
-		if ((d == s->table) && (size(s->gfile) < 64<<10)) goto out;
 
 		/*
 		 * XXX - if this logic is wrong then we lose data.
@@ -1862,13 +1883,14 @@ uu2bp(sccs *s)
 			keys = addLine(keys, aprintf("%s %s\n", oldroot, key));
 		}
 		if (bp_delta(s, d)) return (16);
-		n++;
+		fprintf(stderr, "%c\b", spin[n++ % 4]);
 		if (d->flags & D_CSET) {
 			sccs_sdelta(s, d, key);
 			keys = addLine(keys, aprintf("%s %s\n", newroot, key));
 		}
 		unlink(s->gfile);
 	}
+	fprintf(stderr, "\n");
 	unless (out = fopen(sccs_Xfile(s, 'x'), "w")) {
 		fprintf(stderr, "BP: can't create %s: ", sccs_Xfile(s, 'x'));
 err:		sccs_unlock(s, 'z');

@@ -169,6 +169,12 @@ read_blk(remote *r, char *buf, int len)
  * we might be attached to a random port that will never close we
  * shouldn't wait forever.  For now, we wait until 2 Megs of junk has
  * been read.
+ *
+ * This function should appear in code like this:
+ *     disconnect(r, 1);
+ *     wait_eof(r, 0);
+ *     disconnect(r, 2);
+ *     remote_free(r);
  */
 void
 wait_eof(remote *r, int verbose)
@@ -777,7 +783,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 		} else {
 			fprintf(f, "putenv BK_ROOT=%s\n", proj);
 		}
-		fprintf(f, "putenv BK_ROOTKEY1=%s\n", proj_md5rootkey(p));
+		fprintf(f, "putenv BK_ROOTKEY=%s\n", proj_rootkey(p));
 		if (repo = proj_repoID(0)) {
 			if (strchr(repo, ' ')) {
 				fprintf(f, "putenv 'BK_REPO_ID=%s'\n", repo);
@@ -891,7 +897,7 @@ getServerInfoBlock(remote *r)
 int
 sendServerInfoBlock(int is_rclone)
 {
-	char	*repoid, *md5rootkey, *p, *errs = 0;
+	char	*repoid, *rootkey, *p, *errs = 0;
 	char	buf[MAXPATH];
 
 	out("@SERVER INFO@\n");
@@ -961,8 +967,8 @@ sendServerInfoBlock(int is_rclone)
 		sprintf(buf, "\nBAM_SERVER_ID=%s", p);
 		out(buf);
 	}
-	if (md5rootkey = proj_md5rootkey(0)) {
-		sprintf(buf, "\nROOTKEY1=%s", md5rootkey);
+	if (rootkey = proj_rootkey(0)) {
+		sprintf(buf, "\nROOTKEY=%s", rootkey);
 		out(buf);
 	}
 	/* only send back a seed if we received one */

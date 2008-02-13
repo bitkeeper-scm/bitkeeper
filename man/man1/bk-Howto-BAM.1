@@ -36,12 +36,20 @@ Note that the BAM server is per repository construct that is inherited on
 clone, much like the repository level is inherited on clone.
 .SH CONVERTING REPOS
 If you have a repository that contains larger binaries (minimum checked out
-size of 64KB), then you may do a one time conversion to BAM format.
+size of 64KB in revision 1.1),
+then you may do a conversion to BAM.
 .LP
-The conversion must be done in a clone because the conversion changes the
+The conversion should be  done in a clone because the conversion changes the
 identity of the repository, i.e., the converted repository will no longer
 be able to synchronize with the unconverted repositories.
-It is a flag day type of operation.
+Note that while the conversion does change the package identity, it is
+idempotent so other repositories may also do the conversion and they
+will end up with the same package identity and be able to synchronize.
+.LP
+The conversion process will add a "BAM:on" variable to your config file.
+If you wish to minimize the number of those changesets, turn that variable
+on in your main tree and tell your team to pull that changeset before 
+converting.
 .LP
 The conversion process tends to be longer in projects with more changesets
 and files (for example, the MySQL 5.2 tree with 51,000 changesets and
@@ -52,6 +60,13 @@ The conversion process is simple:
 bk clone my_repo my_repo.BAM
 cd my_repo.BAM
 bk bam convert
+.DE
+.SH PERFORMANCE
+By default, BitKeeper does an fsync after each update of a history file.
+This can be a performance problem and it may be disabled for a conversion
+or initial checkin of files as follows:
+.DS
+"BK_CONFIG=nosync:on! "
 .DE
 .SH USAGE
 Once the repository is converted, usage is as it was in the past, you clone,
@@ -64,6 +79,21 @@ Fetching 18 BAM files from bk://MyBigBox/MyRepo...
 BitKeeper/BAM/62/62af0d9c.d1 (5.41M of 6.29M)
 .DE
 followed by the normal check out messages for the associated files.
+.SH CHECKOUT
+There is a 
+.B BAM_checkout
+configuration variable which is specific to BAM files.
+If this variable is not set then BAM files use the
+.B checkout
+configuration variable.
+For large collections of large files partitioned by directories,
+BitMover suggests
+.BI BAM_checkout: last
+as the best setting.
+That setting will not pull BAM data into a clone until a user 
+requests an edit or a checkout.
+After that, the file will remain in whatever mode it was, even
+across deltas.
 .SH AVAILABILITY
 BAM is a licensed feature of \*[BK] and must be enabled for your license;
 it is not a bundled "for-free" feature.

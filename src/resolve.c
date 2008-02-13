@@ -2418,6 +2418,7 @@ pass4_apply(opts *opts)
 	char	key[MAXKEY];
 	MDBM	*permDB = mdbm_mem();
 	char	*cmd = "apply";
+	char	*p;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2530,8 +2531,16 @@ pass4_apply(opts *opts)
 			/* buf+7 == skip RESYNC/ */
 			mdbm_store_str(opts->idDB, key, buf + 7, MDBM_REPLACE);
 		} else {
-			/* handle new files */
-			proj_saveCOkey(0, key, proj_checkout(0));
+			/*
+			 * handle new files.
+			 * This little chunk of magic is to detect BAM files
+			 * and respect BAM_checkout.
+			 */
+			if ((p = strrchr(key, '|')) && strneq(p, "|B:", 3)) {
+				proj_saveCOkey(0, key, proj_checkout(0) >> 4);
+			} else {
+				proj_saveCOkey(0, key, proj_checkout(0) & 0xf);
+			}
 		}
 	}
 	fclose(save);

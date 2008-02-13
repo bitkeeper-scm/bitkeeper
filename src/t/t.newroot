@@ -1,0 +1,40 @@
+# Copyright (c) 2008 BitMover
+# %K%
+
+echo $N Test newroot by default changes random bits .................$NL
+commercial project
+A=`bk changes -r+ -nd:RANDOM:`
+bk newroot $Q || exit 1
+B=`bk changes -r+ -nd:RANDOM:`
+test "X$A" = "X$B" && { echo failed; exit 1; }
+echo OK
+
+echo $N Test newroot with parameter changes random bits to param ....$NL
+# changes to lower case hex
+bk newroot $Q -kab29387 || exit 1
+A=`bk changes -r+ -nd:RANDOM:`
+test "X$A" = "Xab29387" || { echo failed; exit 1; }
+echo OK
+
+echo $N Test newroot with illegal character .........................$NL
+bk newroot $Q -kabs29387 2> ERR && exit 1
+grep -q "16 lower case hex digits" ERR || { echo failed; exit 1; }
+echo OK
+
+echo $N Test newroot switching to having a BAM marker ...............$NL
+bk newroot $Q -kB:2323: || exit 1
+A=`bk changes -r+ -nd:RANDOM:`
+test "X$A" = "XB:2323:ab29387" || { echo failed; exit 1; }
+echo OK
+
+echo $N Test newroot ignoring new BAM marker after switching ........$NL
+bk newroot $Q -kB:75: || exit 1
+A=`bk changes -r+ -nd:RANDOM:`
+test "X$A" = "XB:2323:ab29387" || { echo failed; exit 1; }
+echo OK
+
+echo $N Test newroot changing random bits after BAM marker ..........$NL
+bk newroot $Q -k27 || exit 1
+A=`bk changes -r+ -nd:RANDOM:`
+test "X$A" = "XB:2323:27" || { echo failed; exit 1; }
+echo OK

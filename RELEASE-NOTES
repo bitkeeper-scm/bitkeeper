@@ -1,27 +1,55 @@
 ===============================================================================
-Release notes for BitKeeper version 4.1.1 (released 1-Feb-2008)
+Release notes for BitKeeper version 4.1.1 (released 13-Feb-2008)
 
 This release improves and extends BK's binary asset management (BAM),
 the versioning and efficient handling of large binary files.
 
-New or extended commands:
-	bk bam server - instead of storing BAM server in the config file
-	bk clone - has new -B<url> option to specify BAM server for clone
-	bk bam pull - add -a option to pull in all instead of minimal missing.
+bk bam server
+    New command to set or show the BAM server.  Setting the server in
+    the config file is deprecated.
 
-Fixes to:
-	bk bam convert fixed bug for 0 size file
+bk clone -B<url>
+    New option to clone to allow the specification of the BAM server in
+    the destination.
 
-Plus documentation updates to "bk help bam" and "bk help Howto-BAM"
+bk bam convert
+    Fixed a bug where it tripped up on a zero lengthed file.
 
-Additional changes
+    Is now idempotent, meaning the conversion may be run in repositories
+    as needed and they will be able to communicate.  Note that the error
+    message when one side has not been converted is not optimal, it
+    just says the packages have different ids.
 
+bk help bam
+bk help Howto-BAM
+    Documentation updates to assist with conversions.
+
+BAM_checkout
+    There is a new configuration variable that controls the checkout mode
+    for BAM files.  By default, they obey the old checkout variable.  For
+    repositories that contain a mixture, the following might be a good
+    combination:
+
+    	checkout:get
+	BAM_checkout:last
+
+nosync
+    There is a configuration variable to turn off fsync/sync.  This can be
+    a performance win at the loss of some reliability.  
+    bk help config-etc
+    
 Windows:
-	The system BK uses for shell support, MSYS, has been updated
-	to the latest.  This should fix installation problems that
-	some users have seen.
+    The system BK uses for shell support, MSYS, has been updated to
+    the latest.  This should fix installation problems that some users
+    have seen.
 
-	Vista 64 - BK now installs on Vista 64 as it did on XP 64.
+    Vista 64 - BK now installs on Vista 64 as it did on XP 64.
+
+    Installer - fixed a bug where sometimes the installer would finish
+    with an error that rmtree failed.
+
+Bugs fixed
+    2008-02-07-001 - smerge fails in no newline corner case
 
 ===============================================================================
 Release notes for BitKeeper version 4.1a (released 9-Jan-2008)

@@ -251,73 +251,62 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 
 	/* optional bad exit status */
 	if (buf[0] == BKD_RC) {
-		rc = atoi(&buf[1]);
+		if (rc = atoi(&buf[1])) {
+			rc = 1;
+			goto done;
+		}
 		getline2(r, buf, sizeof(buf));
 	}
-
-	unless (streq(buf, "@END@") && (rc == 0)) {
-		rc = 1;
-		goto done;
-	}
-	getline2(r, buf, sizeof(buf));
 
 	/* optional BAM keys */
 	if (streq(buf, "@BAM@")) {
 		assert(rc == 0);
-		if (streq(buf, "@BAM@")) {
-			unless (bp_keys) {
-				fprintf(stderr,
-				    "rclone: unexpected BAM keys\n");
-				rc = 1;
-				goto done;
-			}
-			unless (r->rf) r->rf = fdopen(r->rfd, "r");
-			zin = zgets_initCustom(zgets_hfread, r->rf);
-			f = fopen(bp_keys, "w");
-			while ((line = zgets(zin)) &&
-			    strneq(line, "@STDIN=", 7)) {
-				bytes = atoi(line+7);
-				unless (bytes) break;
-				while (bytes > 0) {
-					i = min(bytes, sizeof(buf));
-					i = zread(zin, buf, i);
-					fwrite(buf, 1, i, f);
-					bytes -= i;
-				}
-			}
-			if (zgets_done(zin)) {
-				rc = 1;
-				goto done;
-			}
-			getline2(r, buf, sizeof(buf));
-			unless (strneq(buf, "@DATASIZE=", 10)) {
-				fprintf(stderr,
-				    "rclone: bad input '%s'\n", buf);
-				rc = 1;
-				goto done;
-			}
-			p = strchr(buf, '=');
-			opts.bpsz = scansize(p+1);
-			fclose(f);
-			if (r->type == ADDR_HTTP) disconnect(r, 2);
-			// part 3 will eat the triggers
-			return (0);
-		} else if (bp_keys) {
-			fprintf(stderr,
-			    "rclone failed: "
-			    "@BAM@ section expected, got %s\n", buf);
+		unless (bp_keys) {
+			fprintf(stderr, "rclone: unexpected BAM keys\n");
 			rc = 1;
 			goto done;
 		}
-	}
-	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
+		unless (r->rf) r->rf = fdopen(r->rfd, "r");
+		zin = zgets_initCustom(zgets_hfread, r->rf);
+		f = fopen(bp_keys, "w");
+		while ((line = zgets(zin)) &&
+		    strneq(line, "@STDIN=", 7)) {
+			bytes = atoi(line+7);
+			unless (bytes) break;
+			while (bytes > 0) {
+				i = min(bytes, sizeof(buf));
+				i = zread(zin, buf, i);
+				fwrite(buf, 1, i, f);
+				bytes -= i;
+			}
+		}
+		if (zgets_done(zin)) {
 			rc = 1;
 			goto done;
 		}
 		getline2(r, buf, sizeof(buf));
+		unless (strneq(buf, "@DATASIZE=", 10)) {
+			fprintf(stderr, "rclone: bad input '%s'\n", buf);
+			rc = 1;
+			goto done;
+		}
+		p = strchr(buf, '=');
+		opts.bpsz = scansize(p+1);
+		fclose(f);
+		if (r->type == ADDR_HTTP) disconnect(r, 2);
+		return (0);
+	} else if (bp_keys) {
+		fprintf(stderr,
+		    "rclone failed: @BAM@ section expected, got %s\n", buf);
+		rc = 1;
+		goto done;
+	} else {
+		unless (streq(buf, "@END@")) {
+			fprintf(stderr, "rclone: unexpected data '%s'\n", buf);
+			rc = 1;
+			goto done;
+		}
 	}
-
 done:	disconnect(r, 1);
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);
@@ -496,15 +485,6 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 		}
 		fputc(buf[0], stderr);
 	}
-	getline2(r, buf, sizeof(buf));
-	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
-			rc = 1;
-			goto done;
-		}
-		getline2(r, buf, sizeof(buf));
-	}
-
 done:
 	disconnect(r, 1);
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */

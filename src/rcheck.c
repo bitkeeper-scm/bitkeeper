@@ -87,5 +87,6 @@ remoteCheck(remote *r)
 	unless (streq("@END@", buf)) return(1); /* protocol error */
 	disconnect(r, 1);
 	wait_eof(r, 0);
+	disconnect(r, 2);
 	return (rc);
 }

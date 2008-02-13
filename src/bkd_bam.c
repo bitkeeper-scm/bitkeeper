@@ -186,7 +186,8 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range, int gzip)
 	// XXX error handling
 
 	rc = 0;
-done:	wait_eof(r, 0);
+done:	disconnect(r, 1);
+	wait_eof(r, 0);
 	disconnect(r, 2);
 	unlink(cmd_file);
 	return (rc);
