@@ -149,8 +149,8 @@ check_main(int ac, char **av)
 	}
 	if (all && bp_index_check(!verbose)) return (1);
 
-	checkout = CO_NONE;
-	if (!resync && all) checkout = proj_checkout(0);
+	checkout = CO_NONE|CO_BAM_NONE;
+	if (all) checkout = proj_checkout(0);
 	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		return (1);
@@ -478,11 +478,12 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 		}
 		free(sfile);
 	}
+	checkout = BAM(s) ? (checkout >> 4) : (checkout & 0xf);
 	if (!CSET(s) &&
 	    !(strneq(s->gfile, "BitKeeper/", 10) &&
 		!strneq(s->gfile, "BitKeeper/triggers/", 19)) &&
-	    (((CO(s) == CO_EDIT) && !EDITED(s)) ||
-	     ((CO(s) == CO_GET) && !HAS_GFILE(s)))) {
+	    (((checkout == CO_EDIT) && !EDITED(s)) ||
+	     ((checkout == CO_GET) && !HAS_GFILE(s)))) {
 		if (win32() && S_ISLNK(sccs_top(s)->mode)) {
 			/* do nothing, no symlinks on windows */
 		} else if ((p = getenv("_BK_DEVELOPER")) && *p) {
@@ -492,7 +493,7 @@ chk_gfile(sccs *s, MDBM *pathDB, int checkout)
 			    s->gfile, checkout, BAM(s) ? "yes" : "no");
 			return (1);
 		} else {
-			flags = (CO(s) == CO_EDIT) ? GET_EDIT : GET_EXPAND;
+			flags = (checkout == CO_EDIT) ? GET_EDIT : GET_EXPAND;
 			if (sccs_get(s, 0, 0, 0, 0,
 			    flags|timestamps|GET_NOREMOTE|SILENT, "-")) {
 				if (s->cachemiss) {

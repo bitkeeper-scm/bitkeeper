@@ -1751,6 +1751,7 @@ bam_convert_main(int ac, char **av)
 		sccs_free(s);
 	}
 	if (sfileDone()) errors |= 2;
+	if (errors) goto out;
 	unless (in = fopen("SCCS/s.ChangeSet", "r")) {
 		perror("SCCS/s.ChangeSet");
 		exit(1);
@@ -1807,7 +1808,7 @@ bam_convert_main(int ac, char **av)
 	} else {
 		unlink("BitKeeper/tmp/s.ChangeSet");
 	}
-	return (errors);
+out:	return (errors);
 }
 
 /*
@@ -1854,16 +1855,7 @@ uu2bp(sccs *s)
 	unlink(s->gfile);
 	if (sz < proj_configsize(s->proj, "BAM")) goto out;
 
-	if ((s->encoding & E_COMP) == E_GZIP) {
-		sccs_unlock(s, 'z');
-		sccs_uncompress(s);
-		s = sccs_restart(s);
-		unless (locked = sccs_lock(s, 'z')) {
-			fprintf(stderr, "BP can't get lock on %s\n", s->gfile);
-			return (4);
-		}
-	}
-
+	if ((s->encoding & E_COMP) == E_GZIP) sccs_unzip(s);
 	fprintf(stderr, "Converting %s ", s->gfile);
 	for (d = s->table; d; d = d->next) {
 		assert(d->type == 'D');

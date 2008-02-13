@@ -10920,18 +10920,6 @@ remove_1_0(sccs *s)
 }
 
 int
-sccs_compress(sccs *s)
-{
-	return (sccs_admin(s, 0, NEWCKSUM, "gzip", 0, 0, 0, 0, 0, 0));
-}
-
-int
-sccs_uncompress(sccs *s)
-{
-	return (sccs_admin(s, 0, NEWCKSUM, "none", 0, 0, 0, 0, 0, 0));
-}
-
-int
 sccs_newchksum(sccs *s)
 {
 	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0));

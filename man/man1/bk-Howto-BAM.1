@@ -37,15 +37,19 @@ clone, much like the repository level is inherited on clone.
 .SH CONVERTING REPOS
 If you have a repository that contains larger binaries (minimum checked out
 size of 64KB in revision 1.1),
-then you may do a conversion to BAM format.
+then you may do a conversion to BAM.
+.LP
+The conversion should be  done in a clone because the conversion changes the
+identity of the repository, i.e., the converted repository will no longer
+be able to synchronize with the unconverted repositories.
 Note that while the conversion does change the package identity, it is
 idempotent so other repositories may also do the conversion and they
 will end up with the same package identity and be able to synchronize.
 .LP
-The conversion must be done in a clone because the conversion changes the
-identity of the repository, i.e., the converted repository will no longer
-be able to synchronize with the unconverted repositories.
-It is a flag day type of operation.
+The conversion process will add a "BAM:on" variable to your config file.
+If you wish to minimize the number of those changesets, turn that variable
+on in your main tree and tell your team to pull that changeset before 
+converting.
 .LP
 The conversion process tends to be longer in projects with more changesets
 and files (for example, the MySQL 5.2 tree with 51,000 changesets and
@@ -62,7 +66,7 @@ By default, BitKeeper does an fsync after each update of a history file.
 This can be a performance problem and it may be disabled for a conversion
 or initial checkin of files as follows:
 .DS
-BK_CONFIG=nosync:on
+"BK_CONFIG=nosync:on! "
 .DE
 .SH USAGE
 Once the repository is converted, usage is as it was in the past, you clone,

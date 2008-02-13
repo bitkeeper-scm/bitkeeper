@@ -39,7 +39,10 @@ bkd_server(int ac, char **av)
 		nav[i++] = "-D";
 		j = 1;
 		while (nav[i++] = av[j++]);
-		spawnvp(_P_DETACH, nav[0], nav);
+		if (spawnvp(_P_DETACH, nav[0], nav) == (pid_t)-1) {
+			perror("bk bkd -D");
+			exit(1);
+		}
 
 		/* wait for bkd to start */
 		if ((nsock = tcp_accept(startsock)) >= 0) closesocket(nsock);

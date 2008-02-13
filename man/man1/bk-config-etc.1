@@ -279,7 +279,7 @@ systems where a fsync() is implemented as a system wide sync.
 The syncs may be 
 disabled temporarily with
 .DS
-BK_CONFIG=nosync:on
+"BK_CONFIG=nosync:on! "
 .DE
 or permanently with
 .DS
@@ -303,7 +303,7 @@ checks once every 24 hours.
 .DS
 partial_check: on
 .DE
-Subsequent checks validate the metadata and file integrity's only
+Subsequent checks validate the metadata and file integrities only
 for files that are updated.
 .LP
 We recommend that you start in full check mode and turn on partial
