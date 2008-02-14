@@ -12,10 +12,11 @@ reap(int sig)
 void
 bkd_server(int ac, char **av)
 {
-	int	i, j, port, killsock, startsock, sock, nsock, maxfd;
+	int	i, j, port, killsock, startsock, sock, nsock, maxfd, tries;
 	char	*addr;
 	char	*p;
 	FILE	*f;
+	pid_t	pid = 0;
 	fd_set	fds;
 	struct timeval delay;
 	char	buf[4];
@@ -39,15 +40,51 @@ bkd_server(int ac, char **av)
 		nav[i++] = "-D";
 		j = 1;
 		while (nav[i++] = av[j++]);
-		if (spawnvp(_P_DETACH, nav[0], nav) == (pid_t)-1) {
-			perror("bk bkd -D");
-			exit(1);
-		}
+		assert(i < 100);
+		/*
+		 * On Linux I have see the child be a zombie once in while.
+		 * Our guess is that the port we want has gotten used
+		 * between the time we checked in bkd.c and now.
+		 * We do a few tries to see if we can get it and then give up.
+		 */
+		tries = getenv("BK_REGRESSION") ? 5 : 1;
+		while (tries) {
+			unless (pid) {
+				pid = spawnvp(_P_DETACH, nav[0], nav);
+				if (pid == (pid_t)-1) {
+					perror("bk bkd -D");
+					exit(1);
+				}
+			}
 
-		/* wait for bkd to start */
-		if ((nsock = tcp_accept(startsock)) >= 0) closesocket(nsock);
-		closesocket(startsock);
-		exit(nsock >= 0 ? 0 : 1);
+			FD_ZERO(&fds);
+			FD_SET(startsock, &fds);
+			delay.tv_sec = 10;
+			delay.tv_usec = 0;
+			if (select(startsock+1, &fds, 0, 0, &delay) < 0) {
+				continue;
+			}
+			reap(0);
+			if (kill(pid, 0) != 0) {
+				tries--;
+				pid = 0;
+				continue;
+			}
+			unless (FD_ISSET(startsock, &fds)) continue;
+
+			/* should be started */
+			if ((nsock = tcp_accept(startsock)) >= 0) {
+				closesocket(nsock);
+				closesocket(startsock);
+				if (nsock >= 0) {
+					exit(0);
+				} else {
+					break;
+				}
+			}
+		}
+		fprintf(stderr, "Failed to start background BKD\n");
+		exit(1);
 	}
 
 	/*

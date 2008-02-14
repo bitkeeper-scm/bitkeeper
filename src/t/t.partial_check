@@ -15,6 +15,8 @@ commercial project
 bk edit $Q BitKeeper/etc/config
 echo partial_check:yes >> BitKeeper/etc/config
 bk ci $Q -yy BitKeeper/etc/config
+echo 'keywords: %''A%' > keywords
+bk new $Q keywords
 bk commit $Q -yy
 echo OK
 
@@ -33,5 +35,16 @@ bk -r check -ac || exit 1
 bk pull $Q ../copy || exit 1
 grep -q '|file|.* file2' BitKeeper/etc/SCCS/x.id_cache || {
 	echo idcache not updated!
+}
+echo OK
+
+echo $N Clone and make sure we did not mess up keywords .............$NL
+cd "$HERE"
+BK_CONFIG='checkout:edit!' bk clone -l $Q project clone
+cd clone
+bk get -qp keywords > WANT
+cmp -s WANT keywords && {
+	echo failed to unexpand keywords
+	exit 1
 }
 echo OK
