@@ -67,7 +67,7 @@ echo $N Commit gone file and try pull again .........................$NL
 cd "$HERE/project"
 bk commit $Q -ygone
 cd "$HERE/copy"
-bk pull -t $Q 2>MSGS || {
+BK_CONFIG=partial_check:off! bk pull -t $Q 2>MSGS || {
 	cat MSGS
 	find . -type f -print
 	exit 1

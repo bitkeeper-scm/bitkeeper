@@ -129,7 +129,7 @@ bk new $Q duplicate
 bk commit $Q -ywhatever
 cp SCCS/s.duplicate "$HERE/clone/SCCS/s.catch_me"
 cd ../clone
-bk pull >OUT 2>&1 && {
+BK_CONFIG=partial_check:off! bk pull >OUT 2>&1 && {
 	echo failed to exit non zero
 	cat OUT
 	exit 1
