@@ -35,8 +35,14 @@ cd src
 bk get -S ./update_buildenv
 bk sh ./update_buildenv
 set HOME=%CD%
-if exist r:\build\buildenv\bin r:\build\buildenv\bin\sh --login -i
+if exist r:\build\buildenv\bin GOTO USE_R
 if exist c:\build\buildenv\bin c:\build\buildenv\bin\sh --login -i
-exit
+goto EOF
+
+:USE_R
+if exist r:\temp set TMP=r:\temp
+r:\build\buildenv\bin\sh --login -i
 
 :EOF
+rem or could do a 'exit' like it used to.
+cd ..
