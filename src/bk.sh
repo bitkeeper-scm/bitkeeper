@@ -120,6 +120,77 @@ _merging() {
 	exec bk help merging
 }
 
+_ensemble() {
+	__cd2root
+
+	test "X$1" = Xcreate && {
+		test -f BitKeeper/log/PRODUCT && {
+			echo This repository is already a product.
+			exit 0
+		}
+		touch BitKeeper/log/PRODUCT
+		echo ensemble create complete
+		exit 0
+	}
+
+	# All other commands need it to be in a product
+	test -f BitKeeper/log/PRODUCT || {
+		echo ensemble must be run in a product
+		exit 1
+	}
+
+	# bk ensemble add -y<m>|Y<f> url loc [url loc ...]
+	test "X$1" = Xadd && {
+		shift
+		MSG=
+		MSGFILE=
+		QUIET=
+		while getopts qy:Y: opt
+		do
+			case "$opt" in
+			q) QUIET=-q;;
+			y) MSG="-y$OPTARG";;
+			Y) MSGFILE="-Y$OPTARG";;
+			esac
+		done
+		test "X$MSG" = X -a "X$MSGFILE" = X && {
+			bk help -s ensemble
+			exit 1
+		}
+		shift `expr $OPTIND - 1`
+		while true
+		do	test "X$1" = X -o "X$2" = X && {
+				bk help -s ensemble
+				exit 1
+			}
+			bk clone $QUIET "$1" "$2" || {
+				echo "ensemble add failed to clone $1"
+				rm -f /tmp/ensemble_add$$
+				exit 1
+			}
+			echo "$2" >> /tmp/ensemble_add$$
+			test "X$3" = X && break
+			shift
+			shift
+		done
+		while read x
+		do	bk new $QUIET || {
+				echo "ensemble add failed to link $x"
+				exit 1
+			}
+		done < /tmp/ensemble_add$$
+		cat /tmp/ensemble_add$$ |
+		while read x
+		do	echo "$1|+"
+		done | bk commit $MSG $MSGFILE -
+		rm -f /tmp/ensemble_add$$
+		echo ensemble add complete
+	}
+
+	bk help -s ensemble
+	exit 1
+}
+
 # superset - see if the parent is ahead
 _superset() {
 	__cd2root
