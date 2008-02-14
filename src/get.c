@@ -51,6 +51,10 @@ get_main(int ac, char **av)
 
 	while ((c =
 	    getopt(ac, av, "A;a;BCDeFgG:hi;klM|pPqr;RSstTx;")) != -1) {
+		if (checkout && !strchr("qRST", c)) {
+			fprintf(stderr, "checkout: no options allowed\n");
+			exit(1);
+		}
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -161,7 +165,7 @@ onefile:	fprintf(stderr,
 		}
 		unless (s = sccs_init(name, iflags)) continue;
 		if (checkout) {
-			flags &= ~GET_EDIT;
+			flags &= ~(GET_EDIT|GET_EXPAND);
 			switch (CO(s)) {
 			    case CO_NONE:
 			    case CO_LAST:
@@ -170,7 +174,9 @@ onefile:	fprintf(stderr,
 			    case CO_EDIT:
 			    	flags |= GET_EDIT;
 				break;
-			    /*   CO_GET already implied in flags */
+			    case CO_GET:
+				flags |= GET_EXPAND;
+				break;
 			}
 		}
 		if (Gname) {
