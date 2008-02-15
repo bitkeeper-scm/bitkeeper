@@ -216,6 +216,7 @@ graft
 grep
 _gzip
 _hashstr_test
+_hashfile_test
 havekeys remote
 help
 helpsearch
@@ -301,10 +302,10 @@ set
 setup
 sfiles
 sfio remote
+_shellSplit_test
 shrink
 sinfo
 smerge
-_shellSplit_test
 sort
 _stat
 _stattest
