@@ -1264,6 +1264,7 @@ void	idcache_update(char *filelist);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s, int force);
 void	symGraph(sccs *s, delta *d);
+void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
 char	*sccs_rdweave(sccs *s);
 int	sccs_rdweaveDone(sccs *s);
@@ -1272,5 +1273,8 @@ extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;
 extern	time_t	licenseEnd;
+
+#define	componentKey(k) ((int)strstr(k, "/ChangeSet|"))
+#define	changesetKey(k) ((int)strstr(k, "|ChangeSet|"))
 
 #endif	/* _SCCS_H_ */

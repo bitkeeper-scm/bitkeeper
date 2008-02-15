@@ -310,7 +310,7 @@ doit(int flags, char *file, char *op, char *revs)
 err:		sccs_free(s);
 		return (1);
 	}
-	unless (sccs_top(s)->flags & D_CSET) {
+	unless (CSET(s) || (sccs_top(s)->flags & D_CSET)) {
 		fprintf(stderr,
 		    "cset: %s has uncommitted deltas, aborting.\n", s->gfile);
 		goto err;

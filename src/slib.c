@@ -3370,6 +3370,18 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
+	if (CSET(s) &&
+	    proj_product(s->proj) &&
+	    s->sfile[0] != '/' &&
+	    !strneq(s->sfile, "RESYNC/SCCS/s.ChangeSet", 23) &&
+	    !streq(s->sfile, "SCCS/s.ChangeSet")) {
+		/* this is a nested ChangeSet file
+		 * so whack the path to point to where it
+		 * is in the context of the product
+		 */
+		pathArg(s->tree->kid,
+		    proj_relpath(proj_product(s->proj), s->gfile));
+	}
 	sccs_inherit(s, d);
 	d = d->kid;
 	s->tree->kid = 0;
@@ -7894,7 +7906,14 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		if (d->pathname && !(d->flags & D_DUPPATH)) {
+		if (CSET(s) && (d->serial == 1)) {
+			p = fmts(buf, "\001cP");
+			p = fmts(p, "ChangeSet");
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
+		}
+		if (!CSET(s) && d->pathname && !(d->flags & D_DUPPATH)) {
 			p = fmts(buf, "\001cP");
 			p = fmts(p, d->pathname);
 			*p++ = '\n';
@@ -9079,11 +9098,12 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				hostArg(d, sccs_host());
 			}
 		}
-		unless (d->pathname && s) {
+		if (!(d->pathname && s) && !CSET(s)) {
 			char *p, *q;
 
 			/*
-			 * Get the relativename of the sfile, _not_ the gfile,
+			 * Get the relativename of the sfile,
+			 * _not_ the gfile,
 			 * because we cannot trust the gfile name on
 			 * win32 case-folding file system.
 			 */
@@ -9144,7 +9164,7 @@ updMode(sccs *s, delta *d, delta *dParent)
 private void
 updatePending(sccs *s)
 {
-	if (CSET(s)) return;
+	if (CSET(s) && !proj_isComponent(s->proj)) return;
 	touch(sccsXfile(s, 'd'),  GROUP_MODE);
 }
 
@@ -16072,7 +16092,10 @@ recache:		first = 0;
 			sum = 0;
 			if (f) fclose(f);
 			if (DB) mdbm_close(DB), DB = 0;
-			if (sccs_reCache(quiet)) goto out;
+			if (sccs_reCache(quiet)) {
+				fprintf(stderr, "Failed to rebuild idcache\n");
+				goto out;
+			}
 			goto again;
 		}
 		if (first && streq(file, GONE) && exists(SGONE)) {
@@ -16283,7 +16306,10 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	unless (s && HAS_SFILE(s))  goto out;
 	localp = proj_init(".");
 	proj_free(localp);
-	if (s->proj != localp) goto out; /* use after free OK */
+	if (!proj_isComponent(s->proj) &&
+	    (s->proj != localp)) { /* use after free OK */
+		goto out;
+	}
 
 	/*
 	 * Go look for this key in the file.
