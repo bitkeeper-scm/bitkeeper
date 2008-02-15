@@ -28,12 +28,18 @@ u32		proj_configsize(project *p, char *key);
 #define	CO(s)	(BAM(s) ? \
 			(proj_checkout(s->proj) >> 4) : \
 			(proj_checkout(s->proj) & 0xf))
+#define	proj_isEnsemble(p) \
+		(proj_isProduct(p) || proj_isComponent(p))
 
 int		proj_checkout(project *p);
+char*		proj_csetFile(project *p);
 char*		proj_cwd(void);
 void		proj_free(project *p);
 char*		proj_fullpath(project *p, char *path);
 int		proj_isCaseFoldingFS(project *p);
+int		proj_isComponent(project *p);
+int		proj_isProduct(project *p);
+project*	proj_product(project *p);
 int		proj_isResync(project *p);
 int		proj_leaseChecked(project *p, int write);
 char*		proj_md5rootkey(project *p);

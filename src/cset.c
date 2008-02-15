@@ -378,7 +378,7 @@ header(sccs *cset, int diffs)
 private void
 markThisCset(cset_t *cs, sccs *s, delta *d)
 {
-	if (TAG(d) || cs->mark) {
+	if (cs->mark || TAG(d) || (CSET(s) && proj_isEnsemble(s->proj))) {
 		d->flags |= D_SET;
 		return;
 	}
@@ -935,7 +935,7 @@ add(FILE *diffs, char *buf)
 		system("bk clean -q ChangeSet");
 		cset_exit(1);
 	}
-	if (s->state & S_CSET) {
+	if (CSET(s) && !proj_isComponent(s->proj)) {
 		sccs_free(s);
 		return;
 	}
@@ -1067,7 +1067,8 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 		cset_exit(1);
 	}
 
-	d->flags |= D_CSET;	/* XXX: longrun, don't tag cset file */
+	/* for compat with old versions of BK not using ensembles */
+	unless (proj_isEnsemble(cset->proj)) d->flags |= D_CSET;	
 
 	/*
 	 * Make /dev/tty where we get input.

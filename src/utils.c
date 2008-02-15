@@ -143,7 +143,7 @@ getline(int in, char *buf, int size)
 		    default:
 			buf[i] = 0;
 			if (echo) {
-				perror("getline");
+				if (ret) perror("getline");
 				fprintf(stderr, "[%s]=%d\n", buf, ret);
 			}
 			return (-1);
@@ -246,7 +246,7 @@ getline2(remote *r, char *buf, int size)
 		    default:
 			buf[i] = 0;
 			if (echo) {
-				perror("getline2");
+				if (ret) perror("getline2");
 				fprintf(stderr, "[%s]=%d\n", buf, ret);
 			}
 			return (-1);
