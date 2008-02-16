@@ -91,6 +91,21 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Check that gfiles lists components ..........................$NL
+cd "$HERE/project"
+bk gfiles > GOT
+cat > WANT <<EOF
+ChangeSet
+BitKeeper/etc/collapsed
+BitKeeper/etc/config
+BitKeeper/etc/gone
+BitKeeper/etc/ignore
+gcc/ChangeSet
+gdb/ChangeSet
+EOF
+cmpfiles WANT GOT
+echo OK
+
 echo $N Check that sfiles -x lists extra repos ......................$NL
 bk clone $Q ../gcc extra
 mkdir foo
@@ -109,3 +124,133 @@ test `bk sfiles -x foo` = "foo/extra" || {
 }
 echo OK
 
+echo $N Run a full integrity check with and w/o extra repos .........$NL
+bk -r check -acvv > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+rm -rf extra foo
+bk -r check -acvv > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make a cset in a subrepo and make sure bk sfiles -p works ...$NL
+cd gcc
+bk edit $Q name
+echo him mom > name
+bk delta $Q -yxxx name
+bk commit -yxxx $Q 
+test -f SCCS/d.ChangeSet || {
+	echo failed to leave d.file
+	exit 1
+}
+cd "$HERE/project"
+test "`bk sfiles -p`" = "gcc/SCCS/s.ChangeSet" || {
+	echo failed
+	bk sfiles -p
+	exit 1
+}
+echo OK
+
+echo $N Check sfiles -pC ............................................$NL
+test "`bk sfiles -pC`" = "gcc/SCCS/s.ChangeSet|1.3" || {
+	echo failed
+	bk sfiles -pC
+	bk sfiles -E
+	exit 1
+}
+echo OK
+
+echo $N Check sfiles -pA with more than one cset pending ............$NL
+cd gcc
+bk edit $Q name
+echo him mom >> name
+bk delta $Q -yxxx name
+bk commit -yxxx $Q
+test -f SCCS/d.ChangeSet || {
+	echo failed to leave d.file
+	exit 1
+}
+cd "$HERE/project"
+cat > WANT <<EOF
+gcc/SCCS/s.ChangeSet|1.4
+gcc/SCCS/s.ChangeSet|1.3
+EOF
+bk sfiles -pA > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk pending ............................................$NL
+bk pending > GOT
+grep -q 1.4 GOT || {
+	echo failed to find 1.4
+	exit 1
+}
+grep -q 1.3 GOT || {
+	echo failed to find 1.3
+	exit 1
+}
+echo OK
+
+echo $N Make sure that commit finds the two csets ...................$NL
+REV=`bk changes -r+ -nd:REV:`
+bk commit -y'1.3 and 1.4' $Q || {
+	echo failed
+	exit 1
+}
+test "`bk changes -r+ -nd:REV:`" = $REV && {
+	echo did not make a changeset
+	exit 1
+}
+test "`bk sfiles -p`" = "" || {
+	echo failed to clear pending state
+	exit 1
+}
+bk changes -vr+ -nd'$if(:FILE:){:FILE:|:REV:}' > GOT
+cat > WANT <<EOF
+gcc/ChangeSet|1.4
+gcc/ChangeSet|1.3
+EOF
+cmpfiles WANT GOT 
+echo OK
+
+echo $N Make sure check will pass if a component is removed .........$NL
+rm -rf gdb
+bk -r check -ac > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -s OUT && {
+	echo should have been quiet
+	cat OUT
+	exit 1
+}
+echo OK
+
+# Not until we figure out the pathname problem.
+test 1 = 2 && {
+echo $N Make sure check will fail if a component is moved ...........$NL
+mv gcc gcc-wrongplace
+BK_SHOWPROC=YES bk -r check -ac
+exit 1
+bk -r check -ac > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+test -s OUT && {
+	echo should have been quiet
+	cat OUT
+	exit 1
+}
+echo OK
+
+# XXX - move it and see if names fixes it
+}
+
+exit 0

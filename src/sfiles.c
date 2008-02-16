@@ -1009,7 +1009,7 @@ do_print(STATE buf, char *gfile, char *rev)
 	STATE	state;
 	int	doit;
 	project	*comp;
-	char	*freeme = 0;
+	char	*p, *freeme = 0;
 
 	strcpy(state, buf);	/* So we have writable strings */
 	if (opts.glob) {
@@ -1063,8 +1063,22 @@ do_print(STATE buf, char *gfile, char *rev)
 		comp = proj_init(gfile);
 		assert(comp);
 		if (proj_isComponent(comp)) {
-			freeme = gfile = aprintf("%s/SCCS/s.ChangeSet", gfile);
 			state[TSTATE] = 's';
+			if (opts.pending && (state[PSTATE] == ' ')) {
+				freeme = aprintf("%s/SCCS/s.ChangeSet", gfile);
+				p = strrchr(freeme, '/');
+				p[1] = 'd';
+				if (exists(freeme)) {
+					state[PSTATE] = 'p';
+					free(freeme);
+					freeme = aprintf("%s/ChangeSet", gfile);
+					chk_pending(0, freeme, state, 0, 0);
+					goto out;
+				}
+				free(freeme);
+			}
+			freeme = gfile = aprintf("%s/ChangeSet", gfile);
+			// XXX -l/-u/-G/-n/-y not done
 		} else {
 			state[TSTATE] = 'x';
 		}
