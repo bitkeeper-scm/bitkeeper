@@ -124,7 +124,79 @@ test `bk sfiles -x foo` = "foo/extra" || {
 }
 echo OK
 
+echo $N Check that sfiles -U does not list gcc/ChangeSet ............$NL
+cd "$HERE/project"
+bk sfiles -U > LIST
+grep ChangeSet LIST && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Check iterator from product root - quiet mode ...............$NL
+cd "$HERE/project"
+bk -qA pwd -R > GOT
+cat > WANT <<EOF
+.
+gcc
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check iterator from product root - noisy mode ...............$NL
+cd "$HERE/project"
+bk -A pwd -R > GOT
+cat > WANT <<EOF
+===== . =====
+.
+===== gcc =====
+gcc
+===== gdb =====
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check iterator from component - quiet mode ..................$NL
+cd "$HERE/project/gcc"
+bk -qA pwd -R > GOT
+cat > WANT <<EOF
+.
+gcc
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check iterator from component - noisy mode ..................$NL
+cd "$HERE/project/gcc"
+bk -A pwd -R > GOT
+cat > WANT <<EOF
+===== . =====
+.
+===== gcc =====
+gcc
+===== gdb =====
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check iterator with get .....................................$NL
+bk -UAr get > GOT 2>&1
+cat > WANT <<EOF
+===== . =====
+===== gcc =====
+name 1.1: 1 lines
+===== gdb =====
+name 1.1: 1 lines
+EOF
+cmpfiles GOT WANT
+echo OK
+
 echo $N Run a full integrity check with and w/o extra repos .........$NL
+cd "$HERE/project"
 bk -r check -acvv > OUT 2>&1 || {
 	echo failed
 	cat OUT
@@ -138,8 +210,24 @@ bk -r check -acvv > OUT 2>&1 || {
 }
 echo OK
 
+echo $N Same thing in a sub repo ....................................$NL
+cd "$HERE/project/gcc"
+bk clone $Q "$HERE/gcc" extra
+bk -r check -acvv > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+rm -rf extra 
+bk -r check -acvv > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
 echo $N Make a cset in a subrepo and make sure bk sfiles -p works ...$NL
-cd gcc
+cd "$HERE/project/gcc"
 bk edit $Q name
 echo him mom > name
 bk delta $Q -yxxx name

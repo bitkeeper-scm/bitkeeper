@@ -794,7 +794,6 @@ checkAll(hash *keys)
 	hash	*warned = hash_new(HASH_MEMHASH);
 	hash	**deltas = 0;
 	int	found = 0;
-	int	comp;
 	char	buf[MAXPATH*3];
 
 	/*
@@ -1573,9 +1572,16 @@ chk_csetpointer(sccs *s)
 	 * like a repo but is not, it's partial maybe w/o the ChangeSet file.
 	 */
 	char	*csetkey = proj_rootkey(0);
+	project	*p;
 
 	if (s->tree->csetFile == NULL ||
 	    !(streq(csetkey, s->tree->csetFile))) {
+		if (CSET(s) && proj_isComponent(s->proj) &&
+		    (p = proj_product(s->proj)) &&
+		    streq(proj_rootkey(p), s->tree->csetFile)) {
+			// It's cool baby.
+		    	return (0);
+		}
 		fprintf(stderr, 
 "Extra file: %s\n\
      belongs to: %s\n\

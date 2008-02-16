@@ -311,8 +311,9 @@ bk -r check -a >OUT 2>ERRS && {
 	echo check should have failed
 	exit 1
 }
-grep -q 'has pending deltas but no d.file' OUT || {
+grep -q 'has pending deltas but no d.file' ERRS || {
 	echo bad error message
+	cat ERRS
 	exit 1
 }
 cd "$HERE"

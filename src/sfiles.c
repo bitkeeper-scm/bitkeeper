@@ -951,7 +951,19 @@ hidden(char *file)
 private int
 isBkFile(char *gfile)
 {
+	char	*p, *t;
+
 	if (streq(gfile, "ChangeSet") && isdir(BKROOT)) return (1);
+	if (p = strrchr(gfile, '/')) {
+		*p = 0;
+		t = aprintf("%s/%s", gfile, BKROOT);
+		*p = '/';
+		if (isdir(t)) {
+			free(t);
+			return (1);
+		}
+		free(t);
+	}
 	if (strneq(gfile, "BitKeeper/", 10) &&
 	    !strneq(gfile, "BitKeeper/triggers/", 19) && isdir(BKROOT)) {
 		return (1);
