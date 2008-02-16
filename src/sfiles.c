@@ -56,6 +56,7 @@ typedef struct {
 	u32	unlocked:1;		/* -u: list unlocked files */
 	u32	useronly:1;		/* -U: list user files only */
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
+	u32	inverse:1;		/* -!: list the opposite */
 
 	FILE	*out;			/* -o<file>: send output here */
 	char	*glob;			/* only files which match this */
@@ -127,8 +128,9 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "01acCdDeEgGijlno:p|P|RsSuUvxy")) != -1) {
+	while ((c = getopt(ac, av, "^01acCdDeEgGijlno:p|P|RsSuUvxy")) != -1) {
 		switch (c) {
+		    case '^':	opts.inverse = 1; break;
 		    case '0':	opts.null = 1; break;		/* doc */
 		    case '1':	opts.onelevel = 1; break;
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
@@ -1002,6 +1004,7 @@ private void
 do_print(STATE buf, char *gfile, char *rev)
 {
 	STATE	state;
+	int	doit;
 
 	strcpy(state, buf);	/* So we have writable strings */
 	if (opts.glob) {
@@ -1046,7 +1049,7 @@ do_print(STATE buf, char *gfile, char *rev)
 	}
 	if (opts.summarize) return; /* skip the detail */
 
-	unless (((state[TSTATE] == 'd') && opts.dirs) ||
+	doit = ((state[TSTATE] == 'd') && opts.dirs) ||
 	    ((state[TSTATE] == 'D') && opts.xdirs) ||
 	    ((state[TSTATE] == 'i') && opts.ignored) ||
 	    ((state[TSTATE] == 'j') && opts.junk && !hidden(gfile)) ||
@@ -1059,9 +1062,9 @@ do_print(STATE buf, char *gfile, char *rev)
 	    ((state[PSTATE] == 'p') && opts.pending) ||
 	    ((state[GSTATE] == 'G') && opts.gotten) ||
 	    ((state[NSTATE] == 'n') && opts.names) ||
-	    ((state[YSTATE] == 'y') && opts.cfiles)) {
-	    	return;
-	}
+	    ((state[YSTATE] == 'y') && opts.cfiles);
+	if (opts.inverse) doit = !doit;
+	unless (doit) return;
 
 	print_it(state, gfile, rev);
 }
