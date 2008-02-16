@@ -3370,6 +3370,7 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
+	unless (CSET(s)) s->file = 1;
 	if (CSET(s) &&
 	    proj_product(s->proj) &&
 	    s->sfile[0] != '/' &&
@@ -3381,6 +3382,8 @@ done:		if (CSET(s) && (d->type == 'R') &&
 		 */
 		pathArg(s->tree->kid,
 		    proj_relpath(proj_product(s->proj), s->gfile));
+		assert(s->proj);
+		if (proj_isComponent(s->proj)) s->file = 1;
 	}
 	sccs_inherit(s, d);
 	d = d->kid;
@@ -14393,6 +14396,14 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 			fs(s->gfile);
 		}
 		return (strVal);
+	}
+
+	case KW_FILE: /* FILE */ {
+		if (s->file) {
+			fs(s->gfile);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	case KW_HT: /* HT */

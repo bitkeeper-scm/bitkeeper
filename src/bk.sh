@@ -120,16 +120,41 @@ _merging() {
 	exec bk help merging
 }
 
+verbose() {
+	test -z "$QUIET" && echo "$*" > /dev/tty
+}
+
 _ensemble() {
 	__cd2root
 
+	test "X$1" = X && {
+		test -f BitKeeper/log/PRODUCT && {
+			echo This is the product.
+			exit 0
+		}
+		test -f BitKeeper/log/COMPONENT && {
+			echo This is a component
+			exit 0
+		}
+		echo This is not an ensemble repository
+		exit 0
+	}
+
 	test "X$1" = Xcreate && {
+		shift
+		QUIET=
+		while getopts q opt
+		do
+			case "$opt" in
+			q) QUIET=-q;;
+			esac
+		done
 		test -f BitKeeper/log/PRODUCT && {
 			echo This repository is already a product.
 			exit 0
 		}
 		touch BitKeeper/log/PRODUCT
-		echo ensemble create complete
+		verbose ensemble create complete
 		exit 0
 	}
 
@@ -163,6 +188,7 @@ _ensemble() {
 				bk help -s ensemble
 				exit 1
 			}
+			verbose Adding "$1" as "$2" 
 			bk clone $QUIET "$1" "$2" || {
 				echo "ensemble add failed to clone $1"
 				rm -f /tmp/ensemble_add$$
@@ -173,18 +199,31 @@ _ensemble() {
 			shift
 			shift
 		done
+		PRODUCT=`bk id`
 		while read x
-		do	bk new $QUIET || {
-				echo "ensemble add failed to link $x"
-				exit 1
-			}
+		do	verbose "Attaching $x" 
+			( cd "$x" && bk newroot $QUIET )
+			bk admin -D -C"$PRODUCT" "$x/ChangeSet"
+			echo "$x" > "$x/BitKeeper/log/COMPONENT"
+			rm -f "$x/BitKeeper/log/CSETFILE"
 		done < /tmp/ensemble_add$$
-		cat /tmp/ensemble_add$$ |
+
 		while read x
-		do	echo "$1|+"
-		done | bk commit $MSG $MSGFILE -
-		rm -f /tmp/ensemble_add$$
-		echo ensemble add complete
+		do	echo "$x/SCCS/s.ChangeSet|+"
+			touch "$x/SCCS/d.ChangeSet"
+		done < /tmp/ensemble_add$$ > /tmp/ensemble_commit$$
+		
+		if [ -z "$MSG" ]
+		then	bk commit $QUIET "$MSGFILE" - < /tmp/ensemble_commit$$
+		else	bk commit $QUIET "$MSG" - < /tmp/ensemble_commit$$
+		fi
+		
+		while read x
+		do	rm -f "$x/BitKeeper/log/CSETFILE"
+		done < /tmp/ensemble_add$$
+		rm -f /tmp/ensemble_add$$ /tmp/ensemble_commit$$
+		verbose ensemble add complete
+		exit 0
 	}
 
 	bk help -s ensemble

@@ -1,0 +1,24 @@
+bk ensemble
+        bk ensemble - create and manage SAM repository collections
+
+        bk ensemble is part of the Scalable Asset Management feature of
+        BitKeeper.  Blah, blah, blah.
+
+        bk ensemble create [-q]         # creates product, no new root
+                                        # works on .
+                                        # touch BitKeeper/log/PRODUCT
+        bk ensemble add [-q] -y<m>|Y<f> url loc ...
+                                        # clones component, newroots
+                                        # bk new loc
+                                        # bk commit -y<m>|Y<f>
+                                        # BitKeeper/log/COMPONENT
+                                        # which contains `bk pwd -R`
+
+Files on disk
+	BitKeeper/log/PRODUCT - currently empty, marks a product root
+	BitKeeper/log/COMPONENT - contains the relative path to the component
+	BitKeeper/log/CSETFILE - normally contains `bk id` but in the case
+	of a component contains `bk id` of the product.
+
+	Note that all these things are going away and stored in a single
+	BitKeeper/log/CACHE db file real soon now.

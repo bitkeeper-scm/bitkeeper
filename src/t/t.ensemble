@@ -1,0 +1,77 @@
+echo $N Setup .......................................................$NL
+commercial project
+cd "$HERE"
+bk clone $Q project gcc
+cd gcc
+echo gcc > name
+bk new $Q name
+bk commit $Q -ygcc 
+cd "$HERE"
+bk clone $Q project gdb
+cd gdb
+echo gdb > name
+bk new $Q name
+bk commit $Q -ygcc 
+echo OK
+
+echo $N Convert to product ..........................................$NL
+cd "$HERE/project"
+bk ensemble create $Q
+test "`bk ensemble`" = "This is the product." || {
+	echo failed to make it a product
+    	exit 1
+}
+test -f BitKeeper/log/PRODUCT || {
+	echo failed to touch product turd
+    	exit 1
+}
+echo OK
+
+echo $N Add some components .........................................$NL
+bk ensemble add $Q -y'gcc & gdb' ../gcc gcc ../gdb gdb
+cd gcc
+test "`bk ensemble`" = "This is a component" || {
+	echo failed to make it a component
+	ls BitKeeper/log
+	exit 1
+}
+test -z "`bk pending`" || {
+	echo did not clear pending marks
+	exit 1
+}
+echo OK
+
+echo $N Check dspecs ................................................$NL
+cd "$HERE/project"
+test "`bk log -r+ -nd:FILE: gcc/ChangeSet`" = gcc/ChangeSet || {
+	echo bad gcc/ChangeSet
+	exit 1
+}
+echo OK
+
+echo $N Check for components in top changeset .......................$NL
+cd "$HERE/project"
+bk changes -v -r+ -nd'$if(:FILE:){:GFILE:}' | sort > GOT
+cat > WANT <<EOF
+gcc/ChangeSet
+gcc/ChangeSet
+gcc/ChangeSet
+gdb/ChangeSet
+gdb/ChangeSet
+gdb/ChangeSet
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that we can get a relative name from product ..........$NL
+mkdir -p gcc/a/b/c
+cd gcc/a/b/c
+test `bk pwd -R` = gcc/a/b/c || {
+	echo pwd -R failed
+	exit 1
+}
+test `bk pwd -r` = a/b/c || {
+	echo pwd -r failed
+	exit 1
+}
+echo OK

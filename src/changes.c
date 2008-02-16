@@ -424,21 +424,21 @@ recurse(delta *d)
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
-#define	DSPEC	"$unless(:CHANGESET:){  }" \
+#define	DSPEC	"$if(:FILE:){  }" \
 		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"+:LI: -:LD:\n" \
-		"$each(:C:){$unless(:CHANGESET:){  }  (:C:)\n}" \
+		"$each(:C:){$if(:FILE:){  }  (:C:)\n}" \
 		"$each(:TAG:){  TAG: (:TAG:)\n}" \
-		"$if(:MERGE:){$unless(:CHANGESET:){  }  MERGE: " \
+		"$if(:MERGE:){$if(:FILE:){  }  MERGE: " \
 		":MPARENT:\n}\n"
-#define	VSPEC	"$if(:CHANGESET:){\n#### :DPN: ####\n}" \
+#define	VSPEC	"$unless(:FILE:){\n#### :DPN: ####\n}" \
 		"$else{\n==== :DPN: ====\n}" \
 		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
-		"$unless(:CHANGESET:){+:LI: -:LD:}" \
+		"$if(:FILE:){+:LI: -:LD:}" \
 		"\n" \
 		"$each(:C:){  (:C:)\n}" \
 		"$each(:TAG:){  TAG: (:TAG:)\n}" \
-		"$unless(:CHANGESET:){:DIFFS_UP:}"
+		"$if(:FILE:){:DIFFS_UP:}"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -932,7 +932,8 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 			*dkey++ = 0;
 			s = sccs_keyinitAndCache(
 				keys[i], iflags, &idDB, graphDB, goneDB);
-			unless (s && !CSET(s)) continue;
+			unless (s) continue;
+			if (CSET(s) && !proj_isComponent(s->proj)) continue;
 			if (mdbm_fetch_str(goneDB, dkey)) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);

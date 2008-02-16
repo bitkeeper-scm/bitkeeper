@@ -623,6 +623,7 @@ struct sccs {
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
 	u32	cachemiss:1;	/* BAM file not found locally */
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
+	u32	file:1;		/* treat as a file in DSPECS */
 };
 
 typedef struct {

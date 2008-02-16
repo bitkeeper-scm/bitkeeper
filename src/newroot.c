@@ -94,6 +94,7 @@ newroot(char *ranbits, int quiet)
 	sccs_newchksum(s);
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
+	unlink("BitKeeper/log/CSETFILE");
 	f = popen("bk sfiles", "r");
 	unless (quiet) {
 		fprintf(stderr, "Pointing files at new changeset id...\n");
