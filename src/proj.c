@@ -1039,8 +1039,10 @@ proj_isProduct(project *p)
 int
 proj_isComponent(project *p)
 {
+	char	buf[MAXPATH];
+
 	unless (p || (p = curr_proj())) return (0);
 	unless (proj_product(p)) return (0);
-	return (!(PROD_SELF(p)) &&
-	    streq(proj_csetFile(p), proj_rootkey(proj_product(p))));
+	sprintf(buf, "%s/BitKeeper/log/COMPONENT", p->root);
+	return (exists(buf));
 }

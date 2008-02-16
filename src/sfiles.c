@@ -57,6 +57,7 @@ typedef struct {
 	u32	useronly:1;		/* -U: list user files only */
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
 	u32	inverse:1;		/* -!: list the opposite */
+	u32	ensemble:1;		/* set if we are in one */
 
 	FILE	*out;			/* -o<file>: send output here */
 	char	*glob;			/* only files which match this */
@@ -122,6 +123,8 @@ sfiles_main(int ac, char **av)
 	if (setjmp(sfiles_exit)) {
 		return (1); /* error exit */
 	}
+
+	if (proj_product(0)) opts.ensemble = 1;
 
 	if (ac == 1) {
 		walksfiles(".", fastprint, 0);
@@ -1005,6 +1008,8 @@ do_print(STATE buf, char *gfile, char *rev)
 {
 	STATE	state;
 	int	doit;
+	project	*comp;
+	char	*freeme = 0;
 
 	strcpy(state, buf);	/* So we have writable strings */
 	if (opts.glob) {
@@ -1049,6 +1054,22 @@ do_print(STATE buf, char *gfile, char *rev)
 	}
 	if (opts.summarize) return; /* skip the detail */
 
+	if ((state[TSTATE] == 'R') && opts.ensemble && !opts.subrepos) {
+		/*
+		 * Figure out if we are a component or
+		 * not.  If not, list dir as extra,
+		 * otherwise list s.ChangeSet as file.
+		 */
+		comp = proj_init(gfile);
+		assert(comp);
+		if (proj_isComponent(comp)) {
+			freeme = gfile = aprintf("%s/SCCS/s.ChangeSet", gfile);
+			state[TSTATE] = 's';
+		} else {
+			state[TSTATE] = 'x';
+		}
+	}
+
 	doit = ((state[TSTATE] == 'd') && opts.dirs) ||
 	    ((state[TSTATE] == 'D') && opts.xdirs) ||
 	    ((state[TSTATE] == 'i') && opts.ignored) ||
@@ -1064,9 +1085,9 @@ do_print(STATE buf, char *gfile, char *rev)
 	    ((state[NSTATE] == 'n') && opts.names) ||
 	    ((state[YSTATE] == 'y') && opts.cfiles);
 	if (opts.inverse) doit = !doit;
-	unless (doit) return;
-
+	unless (doit) goto out;
 	print_it(state, gfile, rev);
+out:	if (freeme) free(freeme);
 }
 
 private void
@@ -1335,6 +1356,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 {
 	char	*p = strrchr(file, '/');
 	sinfo	*si = (sinfo *)data;
+	project	*comp;
 	char	buf[MAXPATH];
 
 	unless (p) return (0);
@@ -1345,7 +1367,19 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 * (e.g. RESYNC).
 			 */
 			strcat(file, "/etc");
-			if (exists(file)) return (-2);
+			if (exists(file)) {
+				if (opts.ensemble) {
+					*p = 0;
+					comp = proj_init(file);
+					assert(comp);
+					if (proj_isComponent(comp)) {
+						sprintf(p, "/SCCS/s.ChangeSet");
+						si->fn(file, 0, si->data);
+					}
+					proj_free(comp);
+				}
+				return (-2);
+			}
 		}
 		if (proj) {
 			concat_path(buf, si->proj_prefix,

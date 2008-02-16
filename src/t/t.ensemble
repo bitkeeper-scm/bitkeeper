@@ -75,3 +75,37 @@ test `bk pwd -r` = a/b/c || {
 	exit 1
 }
 echo OK
+
+echo $N Check that sfiles lists components ..........................$NL
+cd "$HERE/project"
+bk sfiles > GOT
+cat > WANT <<EOF
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+gcc/SCCS/s.ChangeSet
+gdb/SCCS/s.ChangeSet
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that sfiles -x lists extra repos ......................$NL
+bk clone $Q ../gcc extra
+mkdir foo
+bk clone $Q ../gcc foo/extra
+bk sfiles -x > GOT
+cat > WANT <<EOF
+GOT
+WANT
+extra
+foo/extra
+EOF
+cmpfiles WANT GOT
+test `bk sfiles -x foo` = "foo/extra" || {
+	echo failed on foo/extra
+	exit 1
+}
+echo OK
+
