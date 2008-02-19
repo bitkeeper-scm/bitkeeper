@@ -2146,7 +2146,10 @@ sccs_rdweaveInit(sccs *s)
 	if (s->encoding & E_GZIP) {
 		s->oldfh = s->fh;
 		zin = zgets_initCustom(0, s->oldfh);
-		s->fh = funopen(zin, zread, 0, 0, zgets_done);
+		s->fh = funopen(zin,
+		    (int (*)(void*, char*, int))zread,
+		    0, 0,
+		    (int (*)(void*))zgets_done);
 	}
 }
 
