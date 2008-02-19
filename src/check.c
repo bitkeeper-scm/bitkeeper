@@ -362,6 +362,10 @@ check_main(int ac, char **av)
 	sccs_free(cset);
 	cset = 0;
 	if (errors && fix) {
+		// LMXXX - how lame is this?
+		// We could keep track of a fixnames, fixxflags, etc
+		// and pass them into the commands with a popen.
+		// In a large repo, these _hurt_.
 		if (names && !gotDupKey) {
 			fprintf(stderr, "check: trying to fix names...\n");
 			system("bk -r names");
@@ -1221,6 +1225,7 @@ check(sccs *s, MDBM *idDB)
 	int	i;
 	char	*t, *term;
 	hash	*deltas, *shortdeltas = 0;
+	char	**lines = 0;
 	char	buf[MAXKEY];
 
 
@@ -1304,11 +1309,31 @@ check(sccs *s, MDBM *idDB)
 	unless (d = sccs_top(s)) {
 		fprintf(stderr, "check: can't get TOT in %s\n", s->gfile);
 		errors++;
+	} else if (CSET(s) && proj_isComponent(s->proj)) {
+		char	*x;
+
+		x = proj_relpath(proj_product(s->proj), proj_root(s->proj));
+		*strrchr(d->pathname, '/') = 0;	// chomp /ChangeSet
+		unless (streq(x, d->pathname)) {
+			fprintf(stderr,
+			    "check: component '%s' should be '%s'\n",
+			    x, d->pathname);
+			errors++;
+			names = 1;
+		}
+		lines = addLine(lines, d->pathname);
+		buf[0] = 0;
+		unless (streq(s->sfile, CHANGESET)) {
+			sprintf(buf, "%s/", d->pathname);
+		}
+		strcat(buf, "BitKeeper/log/COMPONENT");
+		lines2File(lines, buf);
+		freeLines(lines, 0);
+		strcat(d->pathname, "/ChangeSet");
 	} else unless (resync || sccs_patheq(d->pathname, s->gfile)) {
 		char	*x = name2sccs(d->pathname);
 
-		fprintf(stderr,
-		    "check: %s should be %s\n", s->sfile, x);
+		fprintf(stderr, "check: %s should be %s\n", s->sfile, x);
 		free(x);
 		errors++;
 		names = 1;

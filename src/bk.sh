@@ -154,6 +154,9 @@ _ensemble() {
 			exit 0
 		}
 		touch BitKeeper/log/PRODUCT
+		touch BitKeeper/etc/modules
+		bk new -q BitKeeper/etc/modules
+		bk commit -q -y"Ensemble create."
 		verbose ensemble create complete
 		exit 0
 	}
@@ -183,7 +186,7 @@ _ensemble() {
 			exit 1
 		}
 		shift `expr $OPTIND - 1`
-		while true
+		while [ 1 = 1 ]
 		do	test "X$1" = X -o "X$2" = X && {
 				bk help -s ensemble
 				exit 1
@@ -205,6 +208,10 @@ _ensemble() {
 			( cd "$x" && bk newroot $QUIET )
 			bk admin -D -C"$PRODUCT" "$x/ChangeSet"
 			echo "$x" > "$x/BitKeeper/log/COMPONENT"
+			( cd "$x"
+			bk edit -q ChangeSet
+			bk delta -f -q -y"Ensemble add $x" ChangeSet
+			)
 			rm -f "$x/BitKeeper/log/CSETFILE"
 		done < /tmp/ensemble_add$$
 
@@ -1190,7 +1197,7 @@ _explore_merge()
 	bk get -qkpr$REV "$FILE" > $REAL
 
 	help=1
-	while true
+	while [ 1 = 1 ]
 	do
 		test $help -eq 1 && {
 		    help=0

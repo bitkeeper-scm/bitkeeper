@@ -4,7 +4,6 @@
 #include "ensemble.h"
 
 private int repo_sort(const void *a, const void *b);
-private repo *repo_find(char **list, char *rootkey);
 
 /*
  * Return the list of repos for this product.
@@ -19,6 +18,7 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 	delta	*tip;
 	char	*tmp, *tiprev, *t;
 	FILE	*f;
+	hash	*h;
 	int	close = 0;
 	char	buf[MAXPATH];
 	char	tipkey[MAXKEY];
@@ -39,6 +39,7 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 	sccs_get(sc, rev, 0, 0, 0, SILENT|PRINT, tmp);
 	f = fopen(tmp, "rt");
 	assert(f);
+	h = hash_new(HASH_MEMHASH);
 	while(fnext(buf, f)) {
 		chomp(buf);
 		t = separator(buf);
@@ -50,6 +51,7 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 			e->path     = key2path(e->deltakey, 0);
 			*strrchr(e->path, '/') = 0;	// lose /ChangeSet
 			list = addLine(list, (void*)e);
+			hash_store(h, buf, strlen(buf), e, sizeof(e));
 		}
 	}
 	fclose(f);
@@ -78,8 +80,8 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 			chomp(buf);
 			t = separator(buf);
 			*t++ = 0;
-			// N^2
-			if (componentKey(buf) && (e = repo_find(list, buf))) {
+			if (componentKey(t) && 
+			    (e = (repo*)hash_fetch(h, buf, strlen(buf)))) {
 				unless (streq(e->path, t = key2path(t, 0))) {
 					free(e->path);
 					e->path = t;
@@ -92,6 +94,7 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 		unlink(tmp);
 		free(tmp);
 	}
+	hash_free(h);
 	if (product_too) {
 		e = new(repo);
 		e->rootkey = strdup(proj_rootkey(sc->proj));
@@ -105,19 +108,6 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 	r = new(repos);
 	r->repos = (repo**)list;
 	return (r);
-}
-
-private repo *
-repo_find(char **list, char *rootkey)
-{
-	int	i;
-	repo	*e;
-	
-	EACH(list) {
-		e = (repo*)list[i];
-		if (streq(e->rootkey, rootkey)) return (e);
-	}
-	return (0);
 }
 
 private int

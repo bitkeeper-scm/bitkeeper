@@ -3371,20 +3371,7 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 */
 	s->tree = d;
 	unless (CSET(s)) s->file = 1;
-	if (CSET(s) &&
-	    proj_product(s->proj) &&
-	    s->sfile[0] != '/' &&
-	    !strneq(s->sfile, "RESYNC/SCCS/s.ChangeSet", 23) &&
-	    !streq(s->sfile, "SCCS/s.ChangeSet")) {
-		/* this is a nested ChangeSet file
-		 * so whack the path to point to where it
-		 * is in the context of the product
-		 */
-		pathArg(s->tree->kid,
-		    proj_relpath(proj_product(s->proj), s->gfile));
-		assert(s->proj);
-		if (proj_isComponent(s->proj)) s->file = 1;
-	}
+	if (CSET(s) && proj_isComponent(s->proj)) s->file = 1;
 	sccs_inherit(s, d);
 	d = d->kid;
 	s->tree->kid = 0;
@@ -7909,14 +7896,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		if (CSET(s) && (d->serial == 1)) {
-			p = fmts(buf, "\001cP");
-			p = fmts(p, "ChangeSet");
-			*p++ = '\n';
-			*p   = '\0';
-			fputmeta(s, buf, out);
-		}
-		if (!CSET(s) && d->pathname && !(d->flags & D_DUPPATH)) {
+		if (d->pathname && !(d->flags & D_DUPPATH)) {
 			p = fmts(buf, "\001cP");
 			p = fmts(p, d->pathname);
 			*p++ = '\n';
@@ -9101,8 +9081,10 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				hostArg(d, sccs_host());
 			}
 		}
-		if (!(d->pathname && s) && !CSET(s)) {
+		if (s && !d->pathname &&
+		    (!CSET(s) || proj_isComponent(s->proj))) {
 			char *p, *q;
+			project	*proj = s->proj;
 
 			/*
 			 * Get the relativename of the sfile,
@@ -9110,7 +9092,12 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * because we cannot trust the gfile name on
 			 * win32 case-folding file system.
 			 */
-			p = _relativeName(s->sfile, 0, 0, 1, s->proj);
+			if (CSET(s)) {
+				proj = proj_product(proj);
+				p = _relativeName(s->sfile, 1, 1, 1, proj);
+			} else {
+				p = _relativeName(s->sfile, 0, 0, 1, proj);
+			}
 			q = sccs2name(p);
 			pathArg(d, q);
 			free(q);

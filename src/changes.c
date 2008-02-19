@@ -438,7 +438,7 @@ recurse(delta *d)
 		"\n" \
 		"$each(:C:){  (:C:)\n}" \
 		"$each(:TAG:){  TAG: (:TAG:)\n}" \
-		"$if(:FILE:){:DIFFS_UP:}"
+		"$unless(:CHANGESET:){:DIFFS_UP:}"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -700,7 +700,7 @@ dumplog(char **list, FILE *f)
  * Cache the sccs struct to avoid re-initing the same sfile
  */
 private sccs *
-sccs_keyinitAndCache(char *key,
+sccs_keyinitAndCache(char *key, char *dkey,
 	int	flags, MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
 {
 	static	int	rebuilt = 0;
@@ -718,6 +718,11 @@ sccs_keyinitAndCache(char *key,
  retry:
 	s = sccs_keyinit(key, flags|INIT_NOWARN, *idDB);
 	unless (s || gone(key, goneDB)) {
+		/*
+		 * Do not rebuild the idcache for a missing component?
+		 * Seems like a perf win but may be a lose in real life.
+		 */
+		if (componentKey(dkey)) return (0);
 		unless (rebuilt) {
 			mdbm_close(*idDB);
 			if (sccs_reCache(1)) {
@@ -931,7 +936,7 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 			assert(dkey);
 			*dkey++ = 0;
 			s = sccs_keyinitAndCache(
-				keys[i], iflags, &idDB, graphDB, goneDB);
+				keys[i], dkey, iflags, &idDB, graphDB, goneDB);
 			unless (s) continue;
 			if (CSET(s) && !proj_isComponent(s->proj)) continue;
 			if (mdbm_fetch_str(goneDB, dkey)) continue;

@@ -1023,6 +1023,7 @@ do_print(STATE buf, char *gfile, char *rev)
 	project	*comp;
 	char	*p, *freeme = 0;
 
+	gfile =  strneq("./",  gfile, 2) ? &gfile[2] : gfile;
 	strcpy(state, buf);	/* So we have writable strings */
 	if (opts.glob) {
 		char	*p;
@@ -1089,11 +1090,20 @@ do_print(STATE buf, char *gfile, char *rev)
 				}
 				free(freeme);
 			}
+			if (opts.names && (state[NSTATE] == ' ')) {
+				p = proj_relpath(proj_product(comp), gfile);
+				unless (streq(p, proj_comppath(comp))) {
+					state[NSTATE] = 'n';
+				}
+			}
+			// This is sort of bogus because for some things you
+			// want to list the repo name (i.e., sfiles -n)
 			freeme = gfile = aprintf("%s/ChangeSet", gfile);
-			// XXX -l/-u/-G/-n/-y not done
+			// XXX -l/-u/-G/-y not done
 		} else {
 			state[TSTATE] = 'x';
 		}
+		proj_free(comp);
 	}
 
 	doit = ((state[TSTATE] == 'd') && opts.dirs) ||

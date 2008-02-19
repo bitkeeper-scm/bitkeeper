@@ -72,9 +72,19 @@ pass1(sccs *s)
 		mkdir("BitKeeper/RENAMES", 0777);
 		mkdir("BitKeeper/RENAMES/SCCS", 0777);
 	}
+	if (CSET(s) && proj_isComponent(s->proj)) {
+		sprintf(path, "BitKeeper/RENAMES/repo.%d", ++filenum);
+		if (rename(s->gfile, path)) {
+			fprintf(stderr,
+			    "Unable to rename(%s, %s)\n", s->gfile, path);
+			exit(1);
+		}
+		return;
+	} 
 	sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
 	if (rename(s->sfile, path)) {
 		fprintf(stderr, "Unable to rename(%s, %s)\n", s->sfile, path);
+		exit(1);
 	}
 }
 
@@ -89,8 +99,13 @@ pass2(u32 flags)
 	
 	unless (filenum) return;
 	for (i = 1; i <= filenum; ++i) {
-		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", i);
-		unless (s = sccs_init(path, 0)) {
+		sprintf(path, "BitKeeper/RENAMES/repo.%d/SCCS/s.ChangeSet", i);
+		unless ((s = sccs_init(path, 0)) && HASGRAPH(s)) {
+			sccs_free(s);
+			sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", i);
+			s = sccs_init(path, 0);
+		}
+		unless (s) {
 			fprintf(stderr, "Unable to init %s\n", path);
 			failed++;
 			continue;
@@ -115,10 +130,10 @@ pass2(u32 flags)
 		sccs_free(s);
 		worked++;
 	}
-	unless (flags & SILENT) {
-		fprintf(stderr,
-		    "names: %d/%d worked, %d/%d failed\n",
-		    worked, filenum, failed, filenum);
+	if (failed) {
+		fprintf(stderr, "Failed to fix %d renames\n", failed);
+	} else {
+		verbose((stderr, "names: all renames problems corrected.\n"));
 	}
 }
 
@@ -130,9 +145,31 @@ private	int
 try_rename(sccs *s, delta *d, int dopass1, u32 flags)
 {
 	int	ret;
+	char	*sfile;
 
-	char	*sfile = name2sccs(d->pathname);
+	/* Handle components */
+	if (CSET(s) && proj_isComponent(s->proj)) {
+		*strrchr(s->gfile, '/') = 0;	// chomp /ChangeSet
+		*strrchr(d->pathname, '/') = 0;	// chomp /ChangeSet
+		s->state |= S_READ_ONLY;	// don't put those names back
+		if (exists(d->pathname)) {
+			/* circular or deadlock */
+			if (dopass1) pass1(s);
+			return (1);
+		}
+		mkdirf(d->pathname);
+		if (rename(s->gfile, d->pathname)) {
+			fprintf(stderr,
+			    "%s->%s failed?\n", s->gfile, d->pathname);
+			// dunno, we'll try later
+			if (dopass1) pass1(s);
+			return (1);
+		}
+		verbose((stderr, "names: %s -> %s\n", s->gfile, d->pathname));
+		return (0);
+	}
 
+	sfile = name2sccs(d->pathname);
 	assert(sfile);
 	if (exists(sfile)) {
 		/* circular or deadlock */
