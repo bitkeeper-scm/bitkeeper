@@ -257,7 +257,12 @@ usage:			system("bk help -s diffs");
 		 * the file.
 		 */
 		if (!r1 && WRITABLE(s) && HAS_PFILE(s) && !MONOTONIC(s)) {
-			unless (sccs_hasDiffs(s, flags|ex, 1)) goto next;
+			rc = sccs_hasDiffs(s, flags|ex, 1);
+			if (BAM(s) && ((rc < 0) || (rc > 1))) {
+				errors |= 2;
+				goto next;
+			}
+			unless (rc) goto next;
 			if (BAM(s)) {
 				if (flags & DIFF_HEADER) {
 					printf("===== %s %s vs edited =====\n",
