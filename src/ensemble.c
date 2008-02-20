@@ -22,7 +22,6 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 	int	close = 0;
 	char	buf[MAXPATH];
 	char	tipkey[MAXKEY];
-	char	tipmd5key[MD5LEN];
 
 	unless (proj_isProduct(0)) {
 		fprintf(stderr, "ensemble_list called in a non-product.\n");
@@ -31,7 +30,7 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 	unless (rev) rev = "+";
 	unless (sc) {
 		concat_path(buf, proj_root(proj_product(0)), CHANGESET);
-		sc = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
+		sc = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT);
 		close = 1;
 	}
 	assert(CSET(sc) && proj_isProduct(sc->proj));
@@ -51,7 +50,7 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 			e->path     = key2path(e->deltakey, 0);
 			*strrchr(e->path, '/') = 0;	// lose /ChangeSet
 			list = addLine(list, (void*)e);
-			hash_store(h, buf, strlen(buf), e, sizeof(e));
+			hash_store(h, buf, strlen(buf)+1, e, sizeof(e));
 		}
 	}
 	fclose(f);
@@ -64,13 +63,7 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 	 *
 	 * There are many ways to say TIP. */
 	tip = sccs_top(sc);
-	tiprev = tip->rev;
-	sccs_sdelta(sc, tip, tipkey);
-	sccs_md5delta(sc, tip, tipmd5key);
-	unless (streq(rev, "+") ||
-	    streq(rev, tiprev) ||
-	    streq(rev, tipkey) ||
-	    streq(rev, tipmd5key)) {
+	unless (tip == sccs_findrev(sc, rev)) {
 		/* Fetch TIP and see if any paths have changed */
 		tmp = bktmp(0, "components_tip");
 		sccs_get(sc, tiprev, 0, 0, 0, SILENT|PRINT, tmp);
@@ -80,8 +73,8 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 			chomp(buf);
 			t = separator(buf);
 			*t++ = 0;
-			if (componentKey(t) && 
-			    (e = (repo*)hash_fetch(h, buf, strlen(buf)))) {
+			if (componentKey(t) &&
+			    (e = (repo*)hash_fetchStr(h, buf))) {
 				unless (streq(e->path, t = key2path(t, 0))) {
 					free(e->path);
 					e->path = t;
@@ -171,8 +164,10 @@ ensemble_free(repos *list)
 	free(list);
 }
 
+/* Run a command in each repository of the ensemble, including the
+ * product. */
 int
-all_bk(int quiet, int ac, char **av)
+ensemble_cmd(int quiet, int ac, char **av)
 {
 	repos	*list;
 	project	*p = proj_product(0);

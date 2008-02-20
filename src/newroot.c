@@ -95,6 +95,10 @@ newroot(char *ranbits, int quiet)
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
 	unlink("BitKeeper/log/CSETFILE");
+
+	unlink("BitKeeper/log/PRODUCT");
+	unlink("BitKeeper/log/COMPONENT");
+
 	f = popen("bk sfiles", "r");
 	unless (quiet) {
 		fprintf(stderr, "Pointing files at new changeset id...\n");

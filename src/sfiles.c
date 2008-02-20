@@ -1086,9 +1086,11 @@ do_print(STATE buf, char *gfile, char *rev)
 					free(freeme);
 					freeme = aprintf("%s/ChangeSet", gfile);
 					chk_pending(0, freeme, state, 0, 0);
-					goto out;
+					free(freeme);
+					return;
 				}
 				free(freeme);
+				freeme = 0;
 			}
 			if (opts.names && (state[NSTATE] == ' ')) {
 				p = proj_relpath(proj_product(comp), gfile);
@@ -1121,9 +1123,8 @@ do_print(STATE buf, char *gfile, char *rev)
 	    ((state[NSTATE] == 'n') && opts.names) ||
 	    ((state[YSTATE] == 'y') && opts.cfiles);
 	if (opts.inverse) doit = !doit;
-	unless (doit) goto out;
-	print_it(state, gfile, rev);
-out:	if (freeme) free(freeme);
+	if (doit) print_it(state, gfile, rev);
+	if (freeme) free(freeme);
 }
 
 private void

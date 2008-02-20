@@ -562,3 +562,5 @@ MLA.lic: MLA.preamble Enterprise.lic.txt $(BK)
 %.lic: %.lic.txt bkupgrade.key $(BK)
 	./bk crypto -E 048d6aa55c30b3b4 < $< > $@
 
+check-syntax:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -S ${CHK_SOURCES} -o /dev/null

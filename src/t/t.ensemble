@@ -430,5 +430,3 @@ test wrong = `cat BitKeeper/log/COMPONENT` && {
 	exit 1
 }
 echo OK
-
-bk changes -vr+

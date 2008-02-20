@@ -473,7 +473,6 @@ proj_rootkey(project *p)
 	sccs	*sc;
 	FILE	*f;
 	char	*ret;
-	project	*prod;
 	char	file[MAXPATH];
 	char	buf[MAXPATH];
 
