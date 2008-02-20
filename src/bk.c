@@ -655,14 +655,18 @@ cmdlog_addnote(char *key, char *val)
 }
 
 int
-write_log(char *root, char *file, int rotate, char *format, ...)
+write_log(char *file, int rotate, char *format, ...)
 {
 	FILE	*f;
+	char	*root;
 	char	path[MAXPATH];
 	off_t	logsize;
 	va_list	ap;
 
-	concat_path(path, root, "/BitKeeper/log/");
+	unless (root = proj_root(0)) return (1);
+	strcpy(path, root);
+	if (proj_isResync(0)) concat_path(path, path, RESYNC2ROOT);
+	concat_path(path, path, "/BitKeeper/log/");
 	concat_path(path, path, file);
 	unless (f = fopen(path, "a")) {
 		concat_path(path, root, BKROOT);
@@ -753,10 +757,8 @@ cmdlog_end(int ret)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	write_log(proj_root(0), "cmd_log", 0, "%s", log);
-	if (cmdlog_repo) {
-		write_log(proj_root(0), "repo_log", LOG_MAXSIZE, "%s", log);
-	}
+	write_log("cmd_log", 0, "%s", log);
+	if (cmdlog_repo) write_log("repo_log", LOG_MAXSIZE, "%s", log);
 	free(log);
 
 	/*

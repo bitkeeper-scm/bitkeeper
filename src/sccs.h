@@ -1044,9 +1044,9 @@ int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int want_http_hdr);
 void	cmdlog_addnote(char *key, char *val);
 int	cmdlog_end(int ret);
-int	write_log(char *root, char *file, int rotate, char *format, ...)
+int	write_log(char *file, int rotate, char *format, ...)
 #ifdef __GNUC__
-     __attribute__((format (__printf__, 4, 5)))
+     __attribute__((format (__printf__, 3, 4)))
 #endif
 	;
 off_t	get_byte_count(void);
