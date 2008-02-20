@@ -66,6 +66,11 @@ clone_main(int ac, char **av)
 			usage();
 	    	}
 	}
+	if (link && bam_url) {
+		fprintf(stderr,
+		    "clone: -l and -B are not supported together.\n");
+		exit(1);
+	}
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	unless (av[optind]) usage();
 	localName2bkName(av[optind], av[optind]);
@@ -775,25 +780,19 @@ out:
 		 * hosts), but if we are lcloning a a bam server we
 		 * need to setup the new link.
 		 */
-		i = 0; /* is bam server? */
+		assert(!(bam_url || bam_repoid)); /* no clone -l -B */
 		if (f = fopen(BAM_SERVER, "r")) {
 			fnext(buf, f);
 			chomp(buf);
 			i = streq(buf, ".");
 			fclose(f);
-		}
-		if (bam_repoid) {
-			bp_setBAMserver(dest, bam_url, bam_repoid);
-		} else if (bam_url && streq(bam_url, "none")) {
-			/* don't create a BAM_SERVER file */
-		} else if (bam_url) {
-			assert(streq(bam_url, "."));
-			bp_setBAMserver(dest, ".", toid);
-		} else if (i) {
-			bp_setBAMserver(dest, from, proj_repoID(0));
-		} else if (f) {	/* exists(BAM_SERVER) :-) */
-			concat_path(buf, dest, BAM_SERVER);
-			fileCopy(BAM_SERVER, buf);
+
+			if (i) {
+				bp_setBAMserver(dest, from, proj_repoID(0));
+			} else {
+				concat_path(buf, dest, BAM_SERVER);
+				fileCopy(BAM_SERVER, buf);
+			}
 		}
 	}
 
