@@ -89,7 +89,7 @@ echo OK
 echo $N lclone should replicate the BAM data ........................$NL
 cd "$HERE"
 rm -rf C2
-bk clone $Q -Bnone -l S C2
+bk clone $Q -l S C2
 cd C2
 (cd ../S && find BitKeeper/BAM -type f -print ) |
 while read x
@@ -101,10 +101,6 @@ done >> OUT
 grep -q missing OUT && {
 	echo failed
 	cat OUT
-	exit 1
-}
-test -f BitKeeper/log/BAM_SERVER && {
-	echo should not have BAM server
 	exit 1
 }
 echo OK

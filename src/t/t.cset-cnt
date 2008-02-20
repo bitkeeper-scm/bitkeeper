@@ -88,7 +88,7 @@ EOF
 bk ci -yignore3 -u $Q BitKeeper/etc/ignore
 bk commit $Q -yignore1 || exit 1
 rm "$FILE"
-bk pull $Q || exit 1
+BK_CONFIG=partial_check:off! bk pull $Q || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN

@@ -982,7 +982,7 @@ bam_clean_main(int ac, char **av)
 	hash	*renames = 0;	/* list renamed data files */
 	char	*p1, *p2;
 	char	*cmd;
-	int	check_server = 0, dryrun = 0, quiet = 0, verbose = 1;
+	int	check_server = 0, dryrun = 0, quiet = 0, verbose = 0;
 	kvpair	kv;
 	char	buf[MAXLINE];
 
@@ -1288,7 +1288,7 @@ bam_check_main(int ac, char **av)
 		return (1);
 	}
 	unless (bp_hasBAM()) {
-		fprintf(stderr, "No BAM data in this repository\n");
+none:		fprintf(stderr, "No BAM data in this repository\n");
 		return (0);
 	}
 	while ((i = getopt(ac, av, "Fq")) != -1) {
@@ -1301,8 +1301,8 @@ bam_check_main(int ac, char **av)
 		}
 	}
 
-	/* load BAM deltas and hashs */
-	f = popen("bk -Ur prs -hnd" 
+	/* load BAM deltas and hashs (BAM_DSPEC + :BAMSIZE:) */
+	f = popen("bk -r prs -hnd"
 	    "'$if(:BAMHASH:){:BAMSIZE: :BAMHASH: :KEY: :MD5KEY|1.0:}'", "r");
 	assert(f);
 	unless (quiet) fprintf(stderr, "Loading list of BAM deltas ");
@@ -1313,11 +1313,15 @@ bam_check_main(int ac, char **av)
 		chomp(buf);
 		lines = addLine(lines, strdup(buf));
 	}
+	if (pclose(f)) return (1);
 	unless (quiet) {
 		fprintf(stderr,
 		    "- done, %d found using %sB.\n", i, psize(bytes));
 	}
-	pclose(f);
+	unless (lines) {	/* No BAM data in repo */
+		unlink(BAM_MARKER);
+		goto none;
+	}
 	done = 0;
 	unless (quiet) progressbar(done, bytes, 0);
 	EACH(lines) {

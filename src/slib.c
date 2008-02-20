@@ -8143,7 +8143,11 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		name = strdup(s->gfile);
 	}
 	if (BAM(s)) {
-		RET(bp_diff(s, d, name));
+		different = bp_diff(s, d, name);
+		if ((different == 2) && !bp_fetch(s, d)) {
+			different = bp_diff(s, d, name);
+		}
+		goto out;
 	} else if (HASH(s)) {
 		int	flags = CSET(s) ? DB_KEYFORMAT : 0;
 
@@ -8515,6 +8519,9 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 		ret = diffMDBM(s, old, new, tmpfile);
 	} else if (BAM(s)) {
 		ret = bp_diff(s, d, new);
+		if ((ret == 2) && !bp_fetch(s, d)) {
+			ret = bp_diff(s, d, new);
+		}
 	} else {
 		ret = diff(old, new, DF_DIFF, tmpfile);
 	}
