@@ -242,4 +242,7 @@ hash_prev(hash *h)
 char	*hash_toStr(hash *h);
 int	hash_fromStr(hash *h, char *str);
 
+int	hash_toFile(hash *h, FILE *f);
+hash	*hash_fromFile(hash *h, FILE *f);
+
 #endif

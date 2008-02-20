@@ -676,7 +676,7 @@ WDECL(__vf,printf_unlocked)(FILE *fp, const CHAR_T *fmt0, va_list ap)
 	int base;		/* base for [diouxX] conversion */
 	int dprec;		/* a copy of prec if [diouxX], 0 otherwise */
 	int realsz;		/* field size expanded by dprec, sign, etc */
-	int size;		/* size of converted field or string */
+	int size = 0;		/* size of converted field or string */
 	int prsize;             /* max size of printed field */
 	const char *xdigs;	/* digits for %[xX] conversion */
 #ifdef NARROW
