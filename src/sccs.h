@@ -570,7 +570,7 @@ struct sccs {
 	int	ser2dsize;	/* just to be sure */
 	off_t	size;		/* size of mapping */
 	FILE	*fh;		/* cached copy of the file handle */
-	FILE	*oldfh;		/* uncompressed fh */
+	FILE	*oldfh;		/* orig fh (no ungzip layer) */
 	char	*sfile;		/* SCCS/s.foo.c */
 	char	*pfile;		/* SCCS/p.foo.c */
 	char	*zfile;		/* SCCS/z.foo.c */
