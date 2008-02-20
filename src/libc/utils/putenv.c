@@ -1,6 +1,22 @@
 #include "system.h"
 
 #undef	putenv
+#undef	getenv
+
+/*
+ * We "clear" variables by doing putenv("VAR=").
+ * So we want variables that exist in the environment but have no value
+ * to appear to not exist at all.
+ */
+char *
+safe_getenv(char *var)
+{
+	char	*ret;
+
+	ret = getenv(var);
+	if (ret && !*ret) ret = 0;
+	return (ret);
+}
 
 /*
  * impliment putenv() but make a copy of each string and only save

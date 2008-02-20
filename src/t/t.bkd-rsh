@@ -134,17 +134,3 @@ grep -q "Command not found" ERR || {
 	exit 1
 }
 echo OK
-
-echo $N test empty BK_RSH exits gracefully ..........................$NL
-# this used to hang because spawn_rwPipe would close stdout, and not restore
-BK_RSH= bk changes rsh://host/path > OUT 2> ERR && {
-	echo failed
-	exit 1
-}
-grep -q "BK_RSH empty" ERR || {
-	echo failed
-	echo wrong error message
-	cat ERR
-	exit 1
-}
-echo OK

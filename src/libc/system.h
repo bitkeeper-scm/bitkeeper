@@ -132,12 +132,14 @@ int	test_mkdirp(char *dir);
 int	mkdirf(char *file);
 
 /* putenv.c */
+#define	getenv(s)	safe_getenv(s)
 #define	putenv(s)	safe_putenv("%s", s)
 void	safe_putenv(char *fmt, ...)
 #ifdef __GNUC__
      __attribute__((format (__printf__, 1, 2)))
 #endif
      ;
+char	*safe_getenv(char *var);
 
 /* rlimit.c */
 void	core(void);
