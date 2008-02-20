@@ -982,7 +982,7 @@ bam_clean_main(int ac, char **av)
 	hash	*renames = 0;	/* list renamed data files */
 	char	*p1, *p2;
 	char	*cmd;
-	int	check_server = 0, dryrun = 0, quiet = 0, verbose = 1;
+	int	check_server = 0, dryrun = 0, quiet = 0, verbose = 0;
 	kvpair	kv;
 	char	buf[MAXLINE];
 
