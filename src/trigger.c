@@ -192,12 +192,11 @@ private int
 runit(char *file, char *what, char *output)
 {
 	int	status, rc;
-	char	*root = streq(what, "resolve") ? RESYNC2ROOT : ".";
 	char	*path = strdup(getenv("PATH"));
 
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
 	safe_putenv("BK_TRIGGERPATH=%s", file);
-	write_log(root, "cmd_log", 0, "Running trigger %s", file);
+	write_log("cmd_log", 0, "Running trigger %s", file);
 	if (getenv("BK_SHOW_TRIGGERS")) ttyprintf("Running trigger %s\n", file);
 	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
 
@@ -210,7 +209,7 @@ runit(char *file, char *what, char *output)
 	} else {
 		rc = 100;
 	}
-	write_log(root, "cmd_log", 0, "Trigger %s returns %d", file, rc);
+	write_log("cmd_log", 0, "Trigger %s returns %d", file, rc);
 	if (getenv("BK_SHOWPROC") || getenv("BK_SHOW_TRIGGERS")) {
 		ttyprintf("TRIGGER %s => %d\n", basenm(file), rc);
 	}
