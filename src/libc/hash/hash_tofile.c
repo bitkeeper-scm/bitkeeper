@@ -62,7 +62,7 @@ hash_fromFile(hash *h, FILE *f)
 
 	unless (h) h = hash_new(HASH_MEMHASH);
 	while (line = fgetline(f)) {
-		if (line[0] == '@' && line[1] != '@') {
+		if ((line[0] == '@') && (line[1] != '@')) {
 			if (streq(line, "@END@")) break;
 			if (key || val) {
 				/* save old key */
@@ -164,21 +164,18 @@ writeField(FILE *f, char *key, u8 *data, int len)
 			len -= inlen;
 		}
 	} else {
+		/* data is normal \0 terminated C string */
 		fputc('\n', f);
-		len--;		/* strip last null of string value */
-		while (len) {
-			p = data;
-			while (p - data < len && *p++ != '\n');
+		while (*data) {
 			if (*data == '@') fputc('@', f);
-			inlen = p - data;
-			fwrite(data, inlen, 1, f);
-			data += inlen;
-			len -= inlen;
+			p = data;
+			while (*p && (*p++ != '\n'));
+			fwrite(data, p - data, 1, f);
+			data = p;
 		}
 	}
 	fputc('\n', f);
 }
-
 
 private void
 savekey(hash *h, int base64, char *key, char **val)
