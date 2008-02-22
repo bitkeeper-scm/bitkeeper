@@ -16308,6 +16308,8 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	proj_free(localp);
 	if (!proj_isComponent(s->proj) &&
 	    (s->proj != localp)) { /* use after free OK */
+		/* We're trying to commit an sfile from a nested project
+		 * in the enclosing project. Bail.*/
 		goto out;
 	}
 

@@ -1597,10 +1597,25 @@ chk_csetpointer(sccs *s)
 	 * like a repo but is not, it's partial maybe w/o the ChangeSet file.
 	 */
 	char	*csetkey = proj_rootkey(0);
+	project	*product = proj_product(0);
 	project	*p;
 
 	if (s->tree->csetFile == NULL ||
 	    !(streq(csetkey, s->tree->csetFile))) {
+		if (CSET(s) && product) {
+			unless (proj_isComponent(s->proj)) return (0);
+			assert(product);
+			if (!streq(s->tree->csetFile, proj_rootkey(product))) {
+				fprintf(stderr,
+				    "Wrong Product pointer: %s\n"
+				    "Should be: %s\n",
+				    s->tree->csetFile,
+				    proj_rootkey(product));
+				csetpointer++;
+				return (1);
+			}
+			return (0);
+		}
 		if (CSET(s) && proj_isComponent(s->proj) &&
 		    (p = proj_product(s->proj)) &&
 		    streq(proj_rootkey(p), s->tree->csetFile)) {

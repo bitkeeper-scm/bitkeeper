@@ -241,7 +241,7 @@ main(int ac, char **av, char **env)
 		if (remote) return (remote_bk(quiet, ac, av));
 		if (all && !getenv("_BK_ITERATOR")) {
 			putenv("_BK_ITERATOR=YES");
-			return (ensemble_cmd(quiet, ac, av));
+			return (ensemble_each(quiet, ac, av));
 		}
 
 		if (dashr) {

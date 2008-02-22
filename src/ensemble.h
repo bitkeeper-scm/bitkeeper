@@ -22,7 +22,7 @@ repos*	ensemble_next(repos *repos);
 repos*	ensemble_find(repos *repos, char *rootkey);
 void	ensemble_free(repos *repos);
 
-int	ensemble_cmd(int quiet, int ac, char **av);
+int	ensemble_each(int quiet, int ac, char **av);
 
 #define	EACH_REPO(c) \
 	for (ensemble_first(c); (c) && (c)->index; ensemble_next(c))

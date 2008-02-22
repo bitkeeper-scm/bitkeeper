@@ -14,6 +14,15 @@ bk new $Q name
 bk commit $Q -ygcc 
 echo OK
 
+echo $N id -p when not on a product should fail......................$NL
+cd "$HERE/project"
+bk id -p >GOT 2>&1 && {
+	echo failed
+	cat GOT
+	exit 1
+}
+echo OK
+
 echo $N Convert to product ..........................................$NL
 cd "$HERE/project"
 bk ensemble create $Q
@@ -27,6 +36,17 @@ test -f BitKeeper/log/PRODUCT || {
 }
 echo OK
 
+echo $N id -p on a product should return not a component.............$NL
+cd "$HERE/project"
+echo "Not a component." > WANT
+bk id -p >GOT 2>&1 && {
+	echo failed
+	cat GOT
+	exit 1
+}
+cmpfiles WANT GOT
+echo OK
+
 echo $N Add some components .........................................$NL
 bk ensemble add $Q -y'gcc & gdb' ../gcc gcc ../gdb gdb
 cd gcc
@@ -37,6 +57,23 @@ test "`bk ensemble`" = "This is a component" || {
 }
 test -z "`bk pending`" || {
 	echo did not clear pending marks
+	exit 1
+}
+echo OK
+
+
+echo $N id -p on a component should work.............................$NL
+cd "$HERE/project"
+ROOTKEY=`bk id`
+cd "gcc"
+bk id -p >GOT 2>&1 || {
+	echo failed
+	cat GOT
+	exit 1
+}
+test "`cat GOT`" = "$ROOTKEY" || {
+	echo failed
+	cat GOT
 	exit 1
 }
 echo OK

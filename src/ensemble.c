@@ -164,10 +164,12 @@ ensemble_free(repos *list)
 	free(list);
 }
 
-/* Run a command in each repository of the ensemble, including the
- * product. */
+/*
+ * Run a command in each repository of the ensemble, including the
+ * product.
+ */
 int
-ensemble_cmd(int quiet, int ac, char **av)
+ensemble_each(int quiet, int ac, char **av)
 {
 	repos	*list;
 	project	*p = proj_product(0);
