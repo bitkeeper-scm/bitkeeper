@@ -215,6 +215,15 @@ find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 
+echo $N checkout:edit w no-nl file with sfiles -c ...................$NL
+printf "line\nno nl" > nonl
+bk new $Q nonl || exit 1
+test `bk sfiles -c | wc -l` -ne 0 && {
+     echo failure
+     exit 1
+}
+echo OK
+
 echo $N BAM_checkout:get w delta ....................................$NL
 bk edit $Q bam
 echo new >> foo.c

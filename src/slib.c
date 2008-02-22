@@ -8226,8 +8226,24 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 				debug((stderr, "diff because EOF on gfile\n"));
 				RET(1);
 			}
-			/* remember lines missing NL */
-			if (gline[glen-1] != '\n') no_lf = 1;
+			/* add back newline if it was missing */
+			if (gline[glen-1] != '\n') {
+				no_lf = 1;
+				/*
+				 * This next part relies on knowledge
+				 * on how fgetln() works.  If a line
+				 * at the end of the file doesn't end
+				 * in a newline then it will be
+				 * allocated in a malloc'ed buffer
+				 * with an entry null at the end of
+				 * the string.  We overwrite the null
+				 * with a newline so the following
+				 * logic works.  This change and
+				 * comment should be removed when
+				 * merged into the full bk-stdio cset.
+				 */
+				gline[glen++] = '\n';
+			}
 			unless (((glen == linelen(fbuf)) &&
 				    strneq(gline, fbuf, glen)) ||
 			    expandnleq(s, d, gline, glen, fbuf, &eflags)) {
