@@ -236,6 +236,22 @@ main(int ac, char **av)
 
 	/* cd back to the original pwd so we get any config's */
 	cd(pwd);
+#ifdef	WIN32
+	/*
+	 * XXX Careful... understand before removing..
+	 * Without this, a gui install can fail with
+	 * .. bkscript: bk not found
+	 * Debugging shows that PATH=c/tmp/bksetupXXX/bitkeeper:c/tmp/...
+	 * That is, the leading '/' is missing from all components in
+	 * PATH, HOME, TMP, TEMP
+	 * which is stuff that msys munges with the mount stuff.
+	 * however, this is the first time msys.dll might have been
+	 * called and there might not be a fstab setup up yet?
+	 * Anyway, calling it once early on seems to fix later races
+	 * from happening.
+	 */
+	system("bk sh -c true");
+#endif
 
 	if (dest) {
 		putenv("BK_NO_GUI_PROMPT=1");
