@@ -444,7 +444,7 @@ chk_dfile(sccs *s)
 	delta	*d;
 	char	*p;
 
-	if (proj_isProduct(s->proj)) return (0);
+	if (CSET(s) && proj_isProduct(s->proj)) return (0);
 
 	d = sccs_top(s);
 	unless (d) return (0);
@@ -845,10 +845,10 @@ checkAll(hash *keys)
 		/* Allow components to be treated as magically goned.
 		 * Note that all delta keys recorded in the ChangeSet
 		 * file must be |something.../ChangeSet|
+		 * LMXXX - Wayne says this is wrong and he is right.
 		 */
 		if (changesetKey(rkey) && componentKey(t)) continue;
 			
-		if (!hash_first(*deltas)) continue; /* no resync deltas */
 		if (mdbm_fetch_str(goneDB, rkey)) continue;
 		hash_storeStr(warned, rkey, 0);
 		found++;

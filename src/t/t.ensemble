@@ -5,13 +5,13 @@ bk clone $Q project gcc
 cd gcc
 echo gcc > name
 bk new $Q name
-bk commit $Q -ygcc 
+bk commit $Q -y'Create gcc repo'
 cd "$HERE"
 bk clone $Q project gdb
 cd gdb
 echo gdb > name
 bk new $Q name
-bk commit $Q -ygcc 
+bk commit $Q -y'Create gdb repo'
 echo OK
 
 echo $N id -p when not on a product should fail......................$NL
@@ -327,7 +327,7 @@ echo OK
 
 echo $N Make sure that commit finds the two csets ...................$NL
 REV=`bk changes -r+ -nd:REV:`
-bk commit -y'1.4 and 1.5' $Q || {
+bk commit -y'Commit the 1.4 and 1.5 gcc csets' $Q || {
 	echo failed
 	exit 1
 }
@@ -466,4 +466,41 @@ test wrong = `cat BitKeeper/log/COMPONENT` && {
 	echo failed
 	exit 1
 }
+echo OK
+
+echo $N Make some csets and look at changes output ..................$NL
+# First commit the rename
+cd "$HERE/project"
+bk commit $Q -y"rename cset"
+cd gcc4
+for i in file1 file2 file3
+do	echo $i > $i
+	bk new $Q $i
+	bk commit $Q -y"Add in $i in gcc"
+done
+cd "$HERE/project"
+bk commit $Q -y"Should be 3 csets"
+bk changes -vr+ > GOT
+grep -q gcc4/ChangeSet@1.9 GOT || exit 1
+grep -q gcc4/ChangeSet@1.8 GOT || exit 1
+grep -q gcc4/ChangeSet@1.7 GOT || exit 1
+echo OK
+
+echo $N See if bk log -r@1.6 maps to 1.9 in the component ...........$NL
+test "`bk log -r@1.6 -nd:REV: gcc4/ChangeSet`" = 1.9 || {
+	echo failed
+	bk log -r@1.6 -nd:REV: gcc4/ChangeSet
+	exit 1
+}
+echo OK
+
+echo $N Check that cset -l output lists component changesets ........$NL
+bk cset -l -r+ > GOT
+cat > WANT <<EOF
+ChangeSet|1.6
+gcc4/ChangeSet|1.9
+gcc4/ChangeSet|1.8
+gcc4/ChangeSet|1.7
+EOF
+cmpfiles WANT GOT
 echo OK

@@ -378,7 +378,7 @@ header(sccs *cset, int diffs)
 private void
 markThisCset(cset_t *cs, sccs *s, delta *d)
 {
-	if (cs->mark || TAG(d) || (CSET(s) && proj_isEnsemble(s->proj))) {
+	if (cs->mark || TAG(d)) {
 		d->flags |= D_SET;
 		return;
 	}
@@ -474,7 +474,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 retry:	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
 		perror("idcache");
 	}
-	if (cset && strstr(lastkey, "|ChangeSet|")) {
+	if (cset && streq(lastkey, proj_rootkey(0))) {
 		sc = cset;
 	} else {
 		sc = sccs_keyinit(lastkey, INIT_NOWARN, idDB);
@@ -764,7 +764,7 @@ doDiff(sccs *sc, char kind)
 {
 	delta	*d, *e = 0;
 
-	if (sc->state & S_CSET) return;	/* no changeset diffs */
+	if (CSET(sc)) return;		/* no changeset diffs */
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			e = d;
@@ -796,7 +796,7 @@ doEndpoints(cset_t *cs, sccs *sc)
 {
 	delta	*d, *earlier = 0, *later = 0;
 
-	if (sc->state & S_CSET) return;
+	if (CSET(sc)) return;		
 	for (d = sc->table; d; d = d->next) {
 		unless (d->flags & D_SET) continue;
 		unless (later) {
@@ -935,6 +935,12 @@ add(FILE *diffs, char *buf)
 		system("bk clean -q ChangeSet");
 		cset_exit(1);
 	}
+
+	/*
+	 * This is really testing two things:
+	 * a) If I'm a ChangeSet file and not in an ensemble
+	 * b) If I'm a ChangeSet file and not a component
+	 */
 	if (CSET(s) && !proj_isComponent(s->proj)) {
 		sccs_free(s);
 		return;
@@ -1186,7 +1192,8 @@ sccs_patch(sccs *s, cset_t *cs)
 		if (d->type == 'D') {
 			int	rc = 0;
 
-			if (s->state & S_CSET) {
+			// Nested XXX
+			if (CSET(s)) {
 				if (d->added) rc = cset_diffs(cs, d->serial);
 			} else if (BAM(s) && copts.doBAM) {
 				assert(d->hash || (!d->added && !d->deleted));

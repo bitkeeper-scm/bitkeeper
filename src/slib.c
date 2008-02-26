@@ -1807,7 +1807,7 @@ sccs_findrev(sccs *s, char *rev)
 again:	if (rev[0] == '@') {
 		if (rev[1] == '@') {
 			d = 0;
-		} else if (CSET(s)) {
+		} else if (CSET(s) && !s->file) {
 			++rev;
 			goto again;
 		} else {
@@ -3373,7 +3373,9 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	unless (CSET(s)) s->file = 1;
 	if (CSET(s) &&
 	    proj_isComponent(s->proj) &&
-	    proj_isProduct(0)) s->file = 1;
+	    proj_isProduct(0)) {
+	    	s->file = 1;
+    	}
 	sccs_inherit(s, d);
 	d = d->kid;
 	s->tree->kid = 0;
@@ -9083,7 +9085,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				hostArg(d, sccs_host());
 			}
 		}
-		if (!d->pathname &&
+		if (s && !d->pathname &&
 		    (!CSET(s) || proj_isComponent(s->proj))) {
 			char *p, *q;
 			project	*proj = s->proj;

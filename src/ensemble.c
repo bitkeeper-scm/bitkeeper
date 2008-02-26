@@ -3,6 +3,12 @@
 #include "logging.h"
 #include "ensemble.h"
 
+typedef struct {
+	char	*rootkey;		/* rootkey of the repo */
+	char	*deltakey;		/* deltakey of repo as of rev */
+	char	*path;			/* path to component or null */
+} repo;
+
 private int repo_sort(const void *a, const void *b);
 
 /*
@@ -16,7 +22,7 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 	repos	*r;
 	char	**list = 0;	/* really repos **list */
 	delta	*tip;
-	char	*tmp, *tiprev, *t;
+	char	*tmp, *t;
 	FILE	*f;
 	hash	*h;
 	int	close = 0;
@@ -59,14 +65,14 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 
 	/* Now see if we have the TIP, otherwise we need to overwrite
 	 * the path field with whatever path is in the TIP delta
-	 * keys.
-	 *
-	 * There are many ways to say TIP. */
+	 * keys.  The TIP of the changeset file contains the current
+	 * locations (unless someone did a mv on a repo).
+	 */
 	tip = sccs_top(sc);
 	unless (tip == sccs_findrev(sc, rev)) {
 		/* Fetch TIP and see if any paths have changed */
 		tmp = bktmp(0, "components_tip");
-		sccs_get(sc, tiprev, 0, 0, 0, SILENT|PRINT, tmp);
+		sccs_get(sc, tip->rev, 0, 0, 0, SILENT|PRINT, tmp);
 		f = fopen(tmp, "rt");
 		assert(f);
 		while (fnext(buf, f)) {
@@ -99,7 +105,7 @@ ensemble_list(sccs *sc, char *rev, int product_too)
 	if (close) sccs_free(sc);
 	sortLines(list, repo_sort);
 	r = new(repos);
-	r->repos = (repo**)list;
+	r->repos = (void**)list;
 	return (r);
 }
 
@@ -116,7 +122,7 @@ repo_sort(const void *a, const void *b)
 repos *
 ensemble_first(repos *list)
 {
-	unless (list) return (0);
+	assert(list);
 	list->index = -1;
 	return (ensemble_next(list));
 }
@@ -126,8 +132,7 @@ ensemble_next(repos *list)
 {
 	repo	*r;
 
-	unless (list) return (0);
-	assert(list->index != -2);
+	assert(list);
 	if (list->index == -1) list->index = 0;
 	list->index++;
 	/* This next if is EACH_INDEX() unrolled */
@@ -139,13 +144,16 @@ ensemble_next(repos *list)
 		list->path = r->path;
 	} else {
 		list->index = 0;
+		list->rootkey = list->deltakey = list->path = 0;
 	}
 	return (list);
 }
 
+/* lm3di */
 repos *
 ensemble_find(repos *list, char *rootkey)
 {
+	assert(list);
 	EACH_REPO(list) {
 		if (streq(list->rootkey, rootkey)) return (list);
 	}
