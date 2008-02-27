@@ -506,7 +506,7 @@ retry:	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
 markkey:
 	unless (d = sccs_findKey(sc, val)) {
 		/* OK to have missing keys if the gone file told us so */
-		if (gone(val, goneDB)) return (0);
+		if (gone(key, goneDB) || gone(val, goneDB)) return (0);
 
 		fprintf(stderr,
 		    "cset: cannot find\n\t%s in\n\t%s\n", val, sc->sfile);

@@ -129,3 +129,47 @@ bk push $Q 2> ERR || {
 	exit 1
 }
 echo OK
+
+echo $N Demonstrate users pushing deleted goned files ...............$NL
+cd "$HERE"
+rm -rf project copy1 copy2
+commercial project
+bk clone $Q . ../copy2 || exit 1
+touch foo
+bk new $Q foo || exit 1
+bk commit $Q -yadd || exit 1
+cd ..
+bk clone $Q project copy1 || exit 1
+cd copy1
+KEY=`bk prs -r1.0 -nd:KEY: foo`
+bk rm  foo || exit 1
+bk commit $Q -yrm || exit 1
+#bk push $Q || exit 1
+rm -rf BitKeeper/deleted
+bk gone $Q "$KEY" || exit 1
+bk commit $Q -ygone || exit 1
+bk push $Q || exit 1
+cd ../copy2
+# without this cset the following pull will error like this:
+# cset: cannot find
+#	ROOTKEY
+#	SCCS/s.foo
+# File named by key
+#	CSETKEY
+#	is missing and key is not in a committed gone delta, aborting.
+#adler32 aborting
+#cmd_pull_part2: makepatch failed; status = 1
+#----------------------------------------------------------------------------
+#ChangeSet: 3 deltas
+#BitKeeper/etc/gone takepatch.c:1962: fnext: No such file or directory
+#
+#=================================== ERROR ====================================
+#takepatch: missing checksum line in patch, aborting.
+#==============================================================================
+#
+bk pull -q 2>ERR || exit 1
+cat <<EOF > WANT
+Marked gone (bk help chk1): foo
+EOF
+checkfiles ERR WANT
+echo OK
