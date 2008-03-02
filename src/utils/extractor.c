@@ -177,7 +177,11 @@ main(int ac, char **av)
 	 * Add this directory and BK directory to the path.
 	 * Save the old path first, subprocesses need it.
 	 */
-	safe_putenv("BK_OLDPATH=%s", getenv("PATH"));
+#ifdef	WIN32
+	safe_putenv("BK_USEMSYS=1");
+#endif
+	safe_putenv("_BK_ITOOL_OPATH=%s", getenv("PATH"));
+	safe_putenv("BK_OLDPATH=");
 	safe_putenv("PATH=%s%c%s/bitkeeper%c%s",
 	    tmpdir, PATH_DELIM, tmpdir, PATH_DELIM, getenv("PATH"));
 
@@ -250,7 +254,7 @@ main(int ac, char **av)
 	 * Anyway, calling it once early on seems to fix later races
 	 * from happening.
 	 */
-	system("bk sh -c true");
+	system("bk sh -c exit");
 #endif
 
 	if (dest) {
