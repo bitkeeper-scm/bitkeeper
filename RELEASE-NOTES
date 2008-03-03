@@ -1,5 +1,5 @@
 ===============================================================================
-Release notes for BitKeeper version 4.1.1 (released 13-Feb-2008)
+Release notes for BitKeeper version 4.1.1 (released 02-Mar-2008)
 
 This release improves and extends BK's binary asset management (BAM),
 the versioning and efficient handling of large binary files.
