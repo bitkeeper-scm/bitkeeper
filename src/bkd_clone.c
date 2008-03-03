@@ -63,6 +63,11 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
+	if (hasLocalWork(GONE)) {
+		out("ERROR-must commit local changes to " GONE "\n");
+		drain();
+		return (1);
+	}
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	/* has to be here, we use the OK below as a marker. */
 	if (bp_updateServer(getenv("BK_CSETS"), 0, SILENT)) {
