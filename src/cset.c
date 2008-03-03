@@ -642,14 +642,13 @@ csetlist(cset_t *cs, sccs *cset)
 	}
 	unlink(cat);
 
-	if (exists(SGONE)) {
-		char tmp_gone[MAXPATH];
-
-		bktmp(tmp_gone, "gone");
-		sysio(0, tmp_gone, 0, "bk", "get", "-kpsr@+", GONE, SYS);
-		goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
-		unlink(tmp_gone);
+	if (hasLocalWork(GONE)) {
+		fprintf(stderr,
+		    "cset: must commit local changes to " GONE "\n");
+		cs->makepatch = 0;
+		goto fail;
 	}
+	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 
 	/* checksum the output */
 	if (cs->makepatch) {
@@ -689,7 +688,7 @@ again:	/* doDiffs can make it two pass */
 		if (doKey(cs, rk, t, goneDB)) {
 			fprintf(stderr,
 			    "File named by key\n\t%s\n\tis missing and key is "
-			    "not in a committed gone delta, aborting.\n", buf);
+			    "not in gone file, aborting.\n", buf);
 			fflush(stderr); /* for win32 */
 			goto fail;
 		}
