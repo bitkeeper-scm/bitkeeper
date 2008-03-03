@@ -816,7 +816,7 @@ _rmgone() {
 		echo "rmgone: there is no gone file" 1>&2
 		exit 0
 	fi
-	bk -r prs -hr+ -nd':ROOTKEY: :SFILE: :GFILE:' | $AWK '
+	bk -r prs -hr+ -nd':ROOTKEY:\001:SFILE:\001:GFILE:' | $AWK '-F\001' '
 	BEGIN {
 		while ("bk cat BitKeeper/etc/gone" | getline)
 			gone[$0] = 1;
@@ -827,7 +827,7 @@ _rmgone() {
 	# $3 is gfile
 	{
 		if ($1 in gone)
-			printf("%s\n%s\n", $2, $3);
+			printf("\"%s\"\n\"%s\"\n", $2, $3);
 	}' | xargs -n 1 $CMD
 }
 
