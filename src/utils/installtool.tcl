@@ -167,7 +167,7 @@ proc findOldInstall {} \
 	global env
 	set oldinstall ""
 	set PATH $env(PATH)
-	set env(PATH) $env(BK_OLDPATH)
+	set env(PATH) $env(_BK_ITOOL_OPATH)
 	set pwd [pwd] ;# too bad tcl's cd doesn't have a "cd -" equivalent
 	cd /
 	if {![catch {exec bk bin} result]} {

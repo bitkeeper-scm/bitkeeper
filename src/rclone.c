@@ -72,6 +72,11 @@ rclone_main(int ac, char **av)
 		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
 		exit(1);
 	}
+	if (hasLocalWork(GONE)) {
+		fprintf(stderr,
+		    "clone: must commit local changes to " GONE "\n");
+		exit(1);
+	}
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
 
