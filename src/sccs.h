@@ -1267,6 +1267,7 @@ void	symGraph(sccs *s, delta *d);
 void	sccs_rdweaveInit(sccs *s);
 char	*sccs_rdweave(sccs *s);
 int	sccs_rdweaveDone(sccs *s);
+int	hasLocalWork(char *gfile);
 
 extern	char	*editor;
 extern	char	*bin;

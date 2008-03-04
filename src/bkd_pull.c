@@ -117,6 +117,11 @@ cmd_pull_part2(int ac, char **av)
 		drain();
 		return (1);
 	}
+	if (hasLocalWork(GONE)) {
+		out("ERROR-must commit local changes to " GONE "\n");
+		drain();
+		return (1);
+	}
 	s = sccs_csetInit(0);
 	assert(s && HASGRAPH(s));
 	if (rev) {
@@ -239,6 +244,7 @@ cmd_pull_part2(int ac, char **av)
 			fprintf(stderr,
 			    "cmd_pull_part2: makepatch failed; status = %d\n",
 			    n);
+			rc = 1;
 		}
 	}
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */

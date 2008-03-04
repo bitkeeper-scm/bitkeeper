@@ -663,6 +663,11 @@ lclone(remote *r, char *to)
 	char	here[MAXPATH], from[MAXPATH], dest[MAXPATH], buf[MAXPATH];
 
 	assert(r);
+	if (hasLocalWork(GONE)) {
+		fprintf(stderr,
+		    "clone: must commit local changes to " GONE "\n");
+		exit(1);
+	}
 	unless (r->type == ADDR_FILE) {
 		p = remote_unparse(r);
 		fprintf(stderr, "clone: invalid parent %s\n", p);

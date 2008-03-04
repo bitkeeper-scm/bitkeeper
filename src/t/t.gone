@@ -50,18 +50,187 @@ grep -q 'Missing file (bk help chk3)' ERR || {
 	cat ERR
 	exit 1
 }
-bk gone $Q "$KEY"
+bk mv -f BitKeeper/etc/gone gone
+echo "$KEY" > BitKeeper/etc/gone
 bk -r check -a || exit 1
 echo OK
 
-echo $N Pull to child without committing gone file, should fail .....$NL
-cd "$HERE/copy"
-bk pull $Q 2>OUT
-grep -q 'is missing and key is not in a committed gone delta' OUT || {
-	find . -type f -print
+echo $N Makepatch with a gfile gone file, should fail ...............$NL
+cd "$HERE/project"
+bk makepatch $Q -r+ 2> OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
 	exit 1
 }
 echo OK
+
+# bkd to test rclone
+cd ..
+P=`port 50000`
+bk bkd -q -p$P -d -ikill > BKD.OUT 2> BKD.ERR
+cd project
+
+echo $N Clone to child with gone as a gfile only, should fail .......$NL
+bk clone $Q . ../copy-clone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Lclone to child with gone as a gfile only, should fail ......$NL
+bk clone $Q -l . ../copy-lclone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Rclone to child with gone as a gfile only, should fail ......$NL
+bk clone $Q . bk://localhost:$P/copy-rclone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Push to child with gone as gfile only, should fail ..........$NL
+bk push $Q ../copy 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Bkd clone to child with gone as gfile only, should fail .....$NL
+cd "$HERE"
+bk clone $Q bk://localhost:$P/project copy-bkdclone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Pull to child with gone as gfile only, should fail ..........$NL
+cd "$HERE/copy"
+bk pull $Q 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Clone to child with edited gone file, should fail ...........$NL
+cd "$HERE/project"
+rm -f BitKeeper/etc/gone
+bk mv -f gone BitKeeper/etc/gone
+bk edit $Q BitKeeper/etc/gone
+echo "$KEY" >> BitKeeper/etc/gone
+bk -r check -a || exit 1
+bk clone $Q . ../copy-clone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Lclone to child with edited gone file, should fail ..........$NL
+bk clone $Q -l . ../copy-lclone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Rclone to child with edited gone file, should fail ..........$NL
+bk clone $Q . bk://localhost:$P/copy-rclone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Push to child with edited gone file, should fail ............$NL
+bk push $Q ../copy 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Bkd clone to child with edited gone file, should fail .......$NL
+cd "$HERE"
+bk clone $Q bk://localhost:$P/project copy-bkdclone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Pull to child with edited gone file, should fail ............$NL
+cd "$HERE/copy"
+bk pull $Q 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Clone to child with pending gone file, should fail ..........$NL
+cd "$HERE/project"
+bk delta $Q -y"gone the key" BitKeeper/etc/gone
+bk -r check -a || exit 1
+bk clone $Q . ../copy-clone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Lclone to child with pending gone file, should fail .........$NL
+bk clone $Q -l . ../copy-lclone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Rclone to child with pending gone file, should fail .........$NL
+bk clone $Q . bk://localhost:$P/copy-rclone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Push to child with pending gone file, should fail ...........$NL
+bk push $Q ../copy 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Bkd clone to child with pending gone file, should fail ......$NL
+cd "$HERE"
+bk clone $Q bk://localhost:$P/project copy-bkdclone 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Pull to child with pending gone file, should fail ...........$NL
+cd "$HERE/copy"
+bk pull $Q 2>OUT && exit 1
+grep -q 'must commit local changes to BitKeeper/etc/gone' OUT || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+# Done with the bkd
+bk _kill bk://localhost:$P
 
 echo $N Commit gone file and try pull again .........................$NL
 cd "$HERE/project"
@@ -128,4 +297,48 @@ bk push $Q 2> ERR || {
 	cat ERR
 	exit 1
 }
+echo OK
+
+echo $N Demonstrate users pushing deleted goned files ...............$NL
+cd "$HERE"
+rm -rf project copy1 copy2
+commercial project
+bk clone $Q . ../copy2 || exit 1
+touch foo
+bk new $Q foo || exit 1
+bk commit $Q -yadd || exit 1
+cd ..
+bk clone $Q project copy1 || exit 1
+cd copy1
+KEY=`bk prs -r1.0 -nd:KEY: foo`
+bk rm  foo || exit 1
+bk commit $Q -yrm || exit 1
+#bk push $Q || exit 1
+rm -rf BitKeeper/deleted
+bk gone $Q "$KEY" || exit 1
+bk commit $Q -ygone || exit 1
+bk push $Q || exit 1
+cd ../copy2
+# without this cset the following pull will error like this:
+# cset: cannot find
+#	ROOTKEY
+#	SCCS/s.foo
+# File named by key
+#	CSETKEY
+#	is missing and key is not in a committed gone delta, aborting.
+#adler32 aborting
+#cmd_pull_part2: makepatch failed; status = 1
+#----------------------------------------------------------------------------
+#ChangeSet: 3 deltas
+#BitKeeper/etc/gone takepatch.c:1962: fnext: No such file or directory
+#
+#=================================== ERROR ====================================
+#takepatch: missing checksum line in patch, aborting.
+#==============================================================================
+#
+bk pull -q 2>ERR || exit 1
+cat <<EOF > WANT
+Marked gone (bk help chk1): foo
+EOF
+checkfiles ERR WANT
 echo OK
