@@ -1,0 +1,29 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2008 BitMover
+# %K%
+
+echo $N Unbk and make sure the end of the file is as expected .......$NL
+commercial project
+touch foo
+bk new $Q foo
+bk admin -Znone foo
+bk _unbk --I-know-this-destroys-my-bk-repo
+cat <<EOF > WANT
+t
+T
+I 1
+E 1
+EOF
+tail -4 SCCS/s.foo | sed s/.// > GOT
+checkfiles WANT GOT
+echo OK

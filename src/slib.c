@@ -311,19 +311,6 @@ fileTypeOk(mode_t m)
 }
 
 /*
- * Compare up to but not including the newline.
- * They should be newlines or nulls.
- */
-#if 0
-private int
-strnonleq(register char *s, register char *t)
-{
-	while (*s && *t && (*s == *t) && (*s || (*s != '\n'))) s++, t++;
-	return ((!*s || (*s == '\n')) && (!*t || (*t == '\n')));
-}
-#endif
-
-/*
  * remove last character from string and return it
  * XXX this function is deprecated, pls use chomp() instead.
  */
@@ -385,21 +372,6 @@ linelen(char *s)
 	while (*t && (*t++ != '\n'));
 	return (t-s);
 }
-
-#if 0
-/*
- * Compare up to and including the newline.  Both have to be on \n to match.
- */
-private int
-strnleq(register char *s, register char *t)
-{
-	while (*t == *s) {
-		if (!*t || (*t == '\n')) return (1);
-		t++, s++;
-	}
-	return (0);
-}
-#endif
 
 /*
  * Convert a serial to an ascii string.
@@ -2126,17 +2098,7 @@ ok:
 	return (e);
 }
 
-private inline char *
-nextdata(sccs *s)
-{
-	size_t	len;
-
-	return (fgetln(s->fh, &len));
-}
-
-
-
-/* setup to call sccs_rdweave() */
+/* setup to call sccs_nextdata() */
 void
 sccs_rdweaveInit(sccs *s)
 {
@@ -2153,13 +2115,29 @@ sccs_rdweaveInit(sccs *s)
 	}
 }
 
-/* returns a line from the weave, including newline */
+/*
+ * Returns a line from the sfile with the trailing NL stripped. It is
+ * expected that all sfiles end in a trailing newline so this function
+ * asserts if that is not true.  For any lines that contain a CRLF the
+ * CR will not be stripped.  This is for compat with old broken
+ * versions of bk.
+ */
 char *
-sccs_rdweave(sccs *s)
+sccs_nextdata(sccs *s)
 {
-	return (nextdata(s));
-}
+	char	*buf;
+	size_t	i;
 
+	unless (buf = fgetln(s->fh, &i)) return (0);
+	--i;
+	unless (buf[i] == '\n') {
+		fprintf(stderr, "error, truncated sccs file '%s', exiting.\n",
+		    s->sfile);
+		abort();
+	}
+	buf[i] = 0;
+	return (buf);
+}
 
 /*
  * Cleans up gzip stuff.
@@ -2208,7 +2186,7 @@ chk_nlbug(sccs *s)
 	int	ret = 0;
 
 	sccs_rdweaveInit(s);
-	while (buf = nextdata(s)) {
+	while (buf = sccs_nextdata(s)) {
 		if (buf[0] == '\001' && buf[1] == 'E') {
 			p = buf + 3;
 			while (isdigit(*p)) p++;
@@ -2217,7 +2195,7 @@ chk_nlbug(sccs *s)
 				ret = 1;
 			}
 		}
-		sawblank = (buf[0] == '\n');
+		sawblank = (buf[0] == 0);
 	}
 	if (sccs_rdweaveDone(s)) ret = 1;
 	return (ret);
@@ -2243,9 +2221,9 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	a[0] = a[1] = a[2] = a[3] = 0;
 	/* pre scan the line to determine if it needs keyword expansion */
 	*expanded = 0;
-	for (t = l; *t != '\n'; t++) {
+	for (t = l; *t; t++) {
 		if (hasKeyword) continue;
-		if (t[0] != '%' || t[1] == '\n' || t[2] != '%') continue;
+		unless ((t[0] == '%') && t[1] && (t[2] == '%')) continue;
 		/* NOTE: this string *must* match the case label below */
 		if (strchr("ABCDEFGHIKLMPQRSTUWYZ@", t[1])) hasKeyword = 1;
 	}
@@ -2255,8 +2233,8 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	/* ok, we need to expand keyword, allocate a new buffer */
 	t = buf = malloc(buf_size);
 	a[0] = a[1] = a[2] = a[3] = 0;	/* bogus gcc 4 warning */
-	while (*l != '\n') {
-		if (l[0] != '%' || l[1] == '\n' || l[2] != '%') {
+	while (*l) {
+		unless ((l[0] == '%') && l[1] && (l[2] == '%')) {
 			*t++ = *l++;
 			continue;
 		}
@@ -2432,7 +2410,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 		}
 		l += 3;
 	}
-	*t++ = '\n'; *t = 0;
+	*t = 0;
 	assert((t - buf) <= buf_size);
 	*expanded = 1;  /* Note: if expanded flag is set	 */
 					/* caller must free buffer when done */			
@@ -2483,18 +2461,18 @@ rcsexpand(sccs *s, delta *d, char *line, int *expanded)
 
 	*expanded = 0;
 	p = line;
-	while (*p != '\n') {
+	while (*p) {
 		/* Look for keyword */
-		while (*p != '\n' && *p != '$') p++;
-		if (*p == '\n') break;
+		while (*p && (*p != '$')) p++;
+		unless (*p) break;
 		ks = ++p;  /* $ */
 		while (isalpha(*p)) p++;
 		if (*p == '$') {
 			ke = p;
 		} else if (*p == ':') {
 			ke = p;
-			while (*p != '\n' && *p != '$') p++;
-			if (*p == '\n') break;
+			while (*p && (*p != '$')) p++;
+			unless (*p) break;
 		} else {
 		        continue;
 		}
@@ -2509,7 +2487,7 @@ rcsexpand(sccs *s, delta *d, char *line, int *expanded)
 
 		unless (out) {
 			char	*nl = p;
-			while (*nl != '\n') nl++;
+			while (*nl) nl++;
 			outend = out = malloc(nl - line + EXTRA);
 		}
 		*expanded = 1;
@@ -3126,7 +3104,7 @@ meta(sccs *s, delta *d, char *buf)
 		assert(d);
 		d->flags |= D_TEXT;
 		if (buf[3] == ' ') {
-			d->text = addLine(d->text, strnonldup(&buf[4]));
+			d->text = addLine(d->text, strdup(&buf[4]));
 		}
 		break;
 	    case 'V':
@@ -3191,19 +3169,18 @@ mkgraph(sccs *s, int flags)
 	char	*buf;
 
 	rewind(s->fh);
-	nextdata(s);		/* checksum */
+	sccs_nextdata(s);		/* checksum */
 	line++;
 	debug((stderr, "mkgraph(%s)\n", s->sfile));
 	for (;;) {
-		unless (buf = nextdata(s)) {
+		unless (buf = sccs_nextdata(s)) {
 bad:
 			fprintf(stderr,
 			    "%s: bad delta on line %d, expected `%s'",
 			    s->sfile, line, expected);
 			if (buf) {
 				fprintf(stderr,
-				    ", line follows:\n\t``%.*s''\n",
-				    linelen(buf)-1, buf);
+				    ", line follows:\n\t``%s''\n", buf);
 			} else {
 				fprintf(stderr, "\n");
 			}
@@ -3212,7 +3189,7 @@ bad:
 			return;
 		}
 		line++;
-		if (strneq(buf, "\001u\n", 3)) break;
+		if (streq(buf, "\001u")) break;
 		t = new(delta);
 		assert(t);
 		s->numdeltas++;
@@ -3235,7 +3212,7 @@ bad:
 		d->same = atoiMult_p(&p);
 		/* ^Ad D 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
 		/* ^Ad R 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
-		buf = nextdata(s);
+		buf = sccs_nextdata(s);
 		line++;
 		if (buf[0] != '\001' || buf[1] != 'd' || buf[2] != ' ') {
 			expected = "^Ad ";
@@ -3289,7 +3266,7 @@ bad:
 		d->sdate = strdup(tmp);
 		d->user = strdup(user);
 		for (;;) {
-			if (!(buf = nextdata(s)) || buf[0] != '\001') {
+			if (!(buf = sccs_nextdata(s)) || buf[0] != '\001') {
 				expected = "^A";
 				goto bad;
 			}
@@ -3302,9 +3279,7 @@ bad:
 			    case 'i':
 			    case 'x':
 			    case 'g':
-				if ((buf[2] == '\n') || (buf[3] == '\n')) {
-					continue;
-				}
+				unless (buf[2] && buf[3]) continue;
 			}
 
 			switch (buf[1]) {
@@ -3334,7 +3309,7 @@ bad:
 		}
 		/* ^Ac branch. */
 		for (;;) {
-			if (!(buf = nextdata(s)) || buf[0] != '\001') {
+			if (!(buf = sccs_nextdata(s)) || (buf[0] != '\001')) {
 				expected = "^A";
 				comments_free(d);
 				goto bad;
@@ -3350,7 +3325,7 @@ comment:		switch (buf[1]) {
 				} else {
 					if (d->cmnts) break;
 					d->cmnts =
-					    int2p(ftell(s->fh)-linelen(buf));
+					    int2p(ftell(s->fh)-strlen(buf)-1);
 				}
 				break;
 			    default:
@@ -3415,19 +3390,19 @@ misc(sccs *s)
 	char	*buf;
 
 	/* Save the users / groups list */
-	for (; (buf = nextdata(s)) && !strneq(buf, "\001U\n", 3); ) {
+	for (; (buf = sccs_nextdata(s)) && !streq(buf, "\001U"); ) {
 		if (buf[0] == '\001') {
 			fprintf(stderr, "%s: corrupted user section.\n",
 			    s->sfile);
 			return (-1);
 		}
-		s->usersgroups = addLine(s->usersgroups, strnonldup(buf));
+		s->usersgroups = addLine(s->usersgroups, strdup(buf));
 	}
 
 	/* Save the flags.  Some are handled by the flags routine; those
 	 * are not handled here.
 	 */
-	for (; (buf = nextdata(s)) && !strneq(buf, "\001t\n", 3); ) {
+	for (; (buf = sccs_nextdata(s)) && !streq(buf, "\001t"); ) {
 		if (strneq(buf, "\001f &", 4) ||
 		    strneq(buf, "\001f z _", 6)) {	/* XXX - obsolete */
 			/* We strip these now */
@@ -3460,14 +3435,13 @@ misc(sccs *s)
 			continue;
 		}
 		if (!getflags(s, buf)) {
-			s->flags = addLine(s->flags, strnonldup(&buf[3]));
+			s->flags = addLine(s->flags, strdup(&buf[3]));
 		}
 	}
 
 	/* Save descriptive text. AT&T/teamware might have more after T */
-	for (; (buf = nextdata(s)) &&
-	    !strneq(buf, "\001T\n", BITKEEPER(s) ? 3 : 2); ) {
-		s->text = addLine(s->text, strnonldup(buf));
+	for (; (buf = sccs_nextdata(s)) && !strneq(buf, "\001T", 2); ) {
+		s->text = addLine(s->text, strdup(buf));
 	}
 	s->data = ftell(s->fh);
 	return (0);
@@ -3736,7 +3710,7 @@ parseConfigKV(char *buf, int nofilter, char **kp, char **vp)
 	/*
 	 * Lose trailing whitespace including newline.
 	 */
-	while (p[1]) p++;
+	while (p[0] && p[1]) p++;
 	while (isspace(*p)) *p-- = 0;
 //fprintf(stderr, "[%s] -> [%s]\n", *kp, *vp);
 	return (1);
@@ -4392,7 +4366,7 @@ bad:			sccs_free(s);
 		if (sccs_open(s, &sbuf)) return (s);
 		rewind(s->fh);
 		/* XXX need data-offset in header */
-		while(buf = fgetline(s->fh)) if (streq(buf, "\001T")) break;
+		while(buf = sccs_nextdata(s)) if (streq(buf, "\001T")) break;
 		s->data = ftell(s->fh);
 	}
 	if (isreg(s->pfile)) {
@@ -5071,7 +5045,7 @@ getserlist(sccs *sc, int isSer, char *s, int *ep)
 	delta	*t;
 	ser_t	*l = 0;
 
-	debug((stderr, "getserlist(%.*s)\n", linelen(s), s));
+	debug((stderr, "getserlist(%s)\n", s));
 	if (isSer) {
 		while (*s && *s != '\n') {
 			l = addSerial(l, (ser_t) atoi(s));
@@ -5529,48 +5503,6 @@ printstate(const serlist *state, const ser_t *slist)
 	debug2((stderr, "printstate {} = 0\n"));
 
 	return (0);
-}
-
-private inline void
-fnnlputs(char *buf, FILE *out)
-{
-	register char	*t = buf;
-	char		fbuf[MAXLINE];
-	register char	*p = fbuf;
-
-	while (*t && (*t != '\n')) {
-		*p++ = *t++;
-		if (p == &fbuf[MAXLINE-1]) {
-			*p = 0;
-			p = fbuf;
-			fputs(fbuf, out);
-		}
-	}
-	if (p != fbuf) {
-		*p = 0;
-		fputs(fbuf, out);
-	}
-}
-
-private void
-fnlputs(char *buf, FILE *out)
-{
-	register char	*t = buf;
-	char		fbuf[MAXLINE];
-	register char	*p = fbuf;
-
-	do {
-		*p++ = *t;
-		if (p == &fbuf[MAXLINE-1]) {
-			*p = 0;
-			p = fbuf;
-			fputs(fbuf, out);
-		}
-	} while (*t && (*t++ != '\n'));
-	if (p != fbuf) {
-		*p = 0;
-		fputs(fbuf, out);
-	}
 }
 
 /*
@@ -6226,18 +6158,12 @@ getSymlnkCksumDelta(sccs *s, delta *d)
 	return (d);
 }
 
-private sum_t
-getKey(MDBM *DB, char *buf, int flags)
+private int
+getKey(MDBM *DB, char *data, int flags)
 {
 	char	*k, *v;
-	int	len;
-	char	data[MAXLINE];
+	int	rc;
 
-	for (k = buf; *k != '\n'; ++k);
-	len = (char *)k - buf;
-	assert(len < MAXLINE);
-	if (len) strncpy(data, buf, len);
-	data[len] = 0;
 	if (flags & DB_CONFIG) {
 		parseConfig(data, DB);
 		return (1);
@@ -6249,18 +6175,16 @@ getKey(MDBM *DB, char *buf, int flags)
 		if (v = strchr(data, ' ')) *v++ = 0;
 	}
 	unless (v) {
-		chomp(data);
 		fprintf(stderr, "get hash: no separator in '%s'\n", data);
 		return (-1);
 	}
-	switch (mdbm_store_str(DB, k, v, MDBM_INSERT)) {
-	    case 1:	/* key already in DB */
-		return (0);
-	    case -1:
-		return (-1);
-	    default:
-		return (1);
+	if (mdbm_store_str(DB, k, v, MDBM_INSERT) && (errno == EEXIST)) {
+		rc = 0;
+	} else {
+		rc = 1;
 	}
+	v[-1] = ' ';
+	return (rc);
 }
 
 private char	*
@@ -6445,7 +6369,7 @@ out:			if (slist) free(slist);
 	other = 0;
 	counter = &other;
 	sccs_rdweaveInit(s);
-	while (buf = nextdata(s)) {
+	while (buf = sccs_nextdata(s)) {
 		register u8 *e, *e1, *e2;
 
 		e1= e2 = 0;
@@ -6477,11 +6401,11 @@ out:			if (slist) free(slist);
 				if (getKey(DB, buf, hashFlags|flags) == 1) {
 					unless (flags &
 					    (GET_HASHONLY|GET_SUM)) {
-						fnlputs(buf, out);
+						fputs(buf, out);
+						fputc('\n', out);
 					}
 					if (flags & NEWCKSUM) {
-						for (e = buf;
-						    *e != '\n'; sum += *e++);
+						for (e = buf; *e; sum += *e++);
 						sum += '\n';
 					}
 					lines++;
@@ -6495,7 +6419,7 @@ out:			if (slist) free(slist);
 				lf_pend = 0;
 			}
 			if (flags & NEWCKSUM) {
-				for (e = buf; *e != '\n'; sum += *e++);
+				for (e = buf; *e; sum += *e++);
 				sum += '\n';
 			}
 			if (flags&GET_SEQ) smerge_saveseq(seq);
@@ -6524,7 +6448,7 @@ out:			if (slist) free(slist);
 			sccs_expanded = rcs_expanded = 0;
 			unless (flags & GET_EXPAND) goto write;
 			if (SCCS(s)) {
-				for (e = buf; *e != '%' && *e != '\n'; e++);
+				for (e = buf; *e && (*e != '%'); e++);
 				if (*e == '%') {
 					e = e1 =
 					    expand(s, d, buf, &sccs_expanded);
@@ -6538,7 +6462,7 @@ out:			if (slist) free(slist);
 			if (RCS(s)) {
 				char	*t;
 
-				for (t = e; *t != '$' && *t != '\n'; t++);
+				for (t = e; *t && (*t != '$'); t++);
 				if (*t == '$') {
 					e = e2 =
 					    rcsexpand(s, d, e, &rcs_expanded);
@@ -6563,7 +6487,7 @@ write:
 			    }
 			    case E_ASCII:
 			    case E_ASCII|E_GZIP:
-				unless (flags & GET_SUM) fnnlputs(e, out);
+				unless (flags & GET_SUM) fputs(e, out);
 				if (flags & NEWCKSUM) sum -= '\n';
 				lf_pend = print;
 				if (sccs_expanded) free(e1);
@@ -6576,7 +6500,7 @@ write:
 			continue;
 		}
 
-		debug2((stderr, "%.*s", linelen(buf), buf));
+		debug2((stderr, "%s", buf));
 		serial = atoi(&buf[3]);
 		/* seek out E which closes text block for last line
 		 * printed.  serial for that block is in lf_pend.
@@ -7426,9 +7350,9 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	side = NEITHER;
 	nextside = NEITHER;
 
-	while (buf = nextdata(s)) {
+	while (buf = sccs_nextdata(s)) {
 		unless (isData(buf)) {
-			debug2((stderr, "%.*s", linelen(buf), buf));
+			debug2((stderr, "%s", buf));
 			serial = atoi(&buf[3]);
 			if (buf[1] == 'E' && serial == with &&
 			    serial == d->serial)
@@ -7471,7 +7395,8 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 					    == E_ASCII);
 					buf++; /* skip the escape character */
 				}
-				fnlputs(buf, lbuf);
+				fputs(buf, lbuf);
+				fputc('\n', lbuf);
 			}
 			break;
 		    case BOTH:
@@ -7526,7 +7451,7 @@ badcksum(sccs *s, int flags)
 
 	assert(s);
 	rewind(s->fh);
-	t = fgetline(s->fh);
+	t = sccs_nextdata(s);
 	s->cksum = filesum = atoi(&t[2]);
 	s->cksumdone = 1;
 	debug((stderr, "File says sum is %d\n", filesum));
@@ -8065,7 +7990,7 @@ cset_savetip(sccs *s, int force)
  * If we are trying to compare with expanded strings, do so.
  */
 private int
-expandnleq(sccs *s, delta *d, char *gbuf, int glen, char *fbuf, int *flags)
+expandeq(sccs *s, delta *d, char *gbuf, int glen, char *fbuf, int *flags)
 {
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
@@ -8080,7 +8005,7 @@ expandnleq(sccs *s, delta *d, char *gbuf, int glen, char *fbuf, int *flags)
 		e = e2 = rcsexpand(s, d, e, &rcs_expanded);
 		if (EXPAND1(s) && rcs_expanded) *flags &= ~GET_EXPAND;
 	}
-	rc = (glen == linelen(e)) && strneq(gbuf, e, glen);
+	rc = (glen == strlen(e)) && strneq(gbuf, e, glen);
 	if (sccs_expanded) free(e1);
 	if (rcs_expanded) free(e2);
 	return (rc);
@@ -8108,7 +8033,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	int	no_lf = 0;
 	int	in_weave = 0;
 	int	lf_pend = 0;
-	u32	eflags = flags; /* copy because expandnleq destroys bits */
+	u32	eflags = flags; /* copy because expandeq destroys bits */
 	int	error = 0, serial;
 
 #define	RET(x)	{ different = x; goto out; }
@@ -8164,7 +8089,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	state = allocstate(0, s->nextserial);
 	sccs_rdweaveInit(s);
 	in_weave = 1;
-	while (fbuf = nextdata(s)) {
+	while (fbuf = sccs_nextdata(s)) {
 		if (isData(fbuf)) {
 			if (fbuf[0] == CNTLA_ESCAPE) fbuf++;
 			if (!print) {
@@ -8185,14 +8110,12 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 				for (from = fbuf, to = sbuf;
 				    from != val;
 				    *to++ = *from++) /* null body */;
-				*to++ = '\0';
+				*to++ = 0;
 				from++;
 				val = to;
-				for ( ;
-				    *from && *from != '\n';
-				    *to++ = *from++) /* null body */;
-				assert(*from == '\n');
-				*to = '\0';
+				for ( ; *from; *to++ = *from++) /* null body */;
+				assert(*from == 0);
+				*to = 0;
 				/* XXX: could use the MDBM_INSERT fails */
 				if (mdbm_fetch_str(shash, sbuf)) continue;
 				if (mdbm_store_str(shash, sbuf, "1",
@@ -8226,27 +8149,15 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 				debug((stderr, "diff because EOF on gfile\n"));
 				RET(1);
 			}
-			/* add back newline if it was missing */
-			if (gline[glen-1] != '\n') {
+			/* strip newline and remember if it was missing */
+			if (gline[glen-1] == '\n') {
+				glen--;
+			} else {
 				no_lf = 1;
-				/*
-				 * This next part relies on knowledge
-				 * on how fgetln() works.  If a line
-				 * at the end of the file doesn't end
-				 * in a newline then it will be
-				 * allocated in a malloc'ed buffer
-				 * with an entry null at the end of
-				 * the string.  We overwrite the null
-				 * with a newline so the following
-				 * logic works.  This change and
-				 * comment should be removed when
-				 * merged into the full bk-stdio cset.
-				 */
-				gline[glen++] = '\n';
 			}
-			unless (((glen == linelen(fbuf)) &&
+			unless (((glen == strlen(fbuf)) &&
 				    strneq(gline, fbuf, glen)) ||
-			    expandnleq(s, d, gline, glen, fbuf, &eflags)) {
+			    expandeq(s, d, gline, glen, fbuf, &eflags)) {
 				debug((stderr, "diff because diff data\n"));
 				RET(1);
 			}
@@ -8270,7 +8181,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 			lf_pend = 0;
 		}
 		changestate(state, fbuf[1], serial);
-		debug2((stderr, "%.*s\n", linelen(fbuf), fbuf));
+		debug2((stderr, "%s\n", fbuf));
 		print = printstate((const serlist*)state, (const ser_t*)slist);
 	}
 	if (HASH(s)) {
@@ -8288,7 +8199,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 		debug((stderr, "diff because EOF on sfile\n"));
 		RET(1);
 	}
-	if (gline = fgetline(gfile)) {
+	if (gline = fgetln(gfile, &glen)) {
 		debug((stderr, "diff because EOF on sfile\n"));
 		RET(1);
 	} else {
@@ -10208,7 +10119,7 @@ userArg(delta *d, char *arg)
 		d->flags |= flag; \
 	} else { \
 		if (d->field && !(d->flags & dup)) free(d->field); \
-		d->field = strnonldup(arg); \
+		d->field = strdup(arg); \
 		d->flags &= ~(flag); \
 	} \
 	d->flags &= ~(dup); \
@@ -10245,9 +10156,9 @@ modeArg(delta *d, char *arg)
 	unless (m = getMode(arg)) return (0);
 	if (S_ISLNK(m))	 {
 		char *p = strchr(arg , ' ');
-		
+
 		unless (p) return (0);
-		d->symlink = strnonldup(++p);
+		d->symlink = strdup(++p);
 		assert(!(d->flags & D_DUPLINK));
 	}
 	if (d->mode = m) d->flags |= D_MODE;
@@ -10312,7 +10223,7 @@ symArg(sccs *s, delta *d, char *name)
 
 	sym = new(symbol);
 	sym->rev = strdup(d->rev);
-	sym->symname = strnonldup(name);
+	sym->symname = strdup(name);
 	if (!s->symbols) {
 		s->symbols = s->symTail = sym;
 	} else {
@@ -10999,7 +10910,7 @@ skipmode:
 
 	if (text) {
 		FILE	*desc;
-		char	dbuf[200];
+		char	*dbuf;
 
 		unless (text[0]) {
 			if (sc->text) {
@@ -11027,9 +10938,9 @@ skipmode:
 		ALLOC_D();
 		comments_append(d, strdup("Change Descriptive Text"));
 		d->flags |= D_TEXT;
-		while (fgets(dbuf, sizeof(dbuf), desc)) {
-			sc->text = addLine(sc->text, strnonldup(dbuf));
-			d->text = addLine(d->text, strnonldup(dbuf));
+		while (dbuf = fgetline(desc)) {
+			sc->text = addLine(sc->text, strdup(dbuf));
+			d->text = addLine(d->text, strdup(dbuf));
 		}
 		fclose(desc);
 		flags |= NEWCKSUM;
@@ -11213,7 +11124,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	/* if old_enc == new_enc, this is slower but handles both cases */
 	sc->encoding = old_enc;
 	sccs_rdweaveInit(sc);
-	while (buf = nextdata(sc)) {
+	while (buf = sccs_nextdata(sc)) {
 		if (obscure_it) {
 			buf = obscure(rmlicense, old_enc & E_UUENCODE, buf);
 		}
@@ -11221,17 +11132,18 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		if (flags & ADMIN_ADD1_0) {
 			fputbumpserial(sc, buf, 1, sfile);
 		} else if (flags & ADMIN_RM1_0) {
-			if (strneq(buf, "\001I 1\n", 5)) {
+			if (streq(buf, "\001I 1")) {
 				sc->encoding = old_enc;
-				buf = nextdata(sc);
-				assert(strneq(buf, "\001E 1\n", 5));
-				assert(!nextdata(sc));
+				buf = sccs_nextdata(sc);
+				assert(streq(buf, "\001E 1"));
+				assert(!sccs_nextdata(sc));
 				break;
 			}
 			fputbumpserial(sc, buf, -1, sfile);
 		} else {
 			fputdata(sc, buf, sfile);
 		}
+		fputdata(sc, "\n", sfile);
 		sc->encoding = old_enc;
 		if (obscure_it) free(buf);
 	}
@@ -11353,13 +11265,14 @@ out:
 	debug((stderr, "seek to %d\n", (int)s->data));
 	sccs_rdweaveInit(s);
 	if (s->encoding & E_GZIP) sccs_zputs_init(s, sfile);
-	while (buf = nextdata(s)) {
-		unless (buf[0] == '\001') {
+	while (buf = sccs_nextdata(s)) {
+		if (buf[0] != '\001') {
 			fputdata(s, buf, sfile);
-			continue;
+		} else {
+			ser = atoi(&buf[3]);
+			fputbumpserial(s, buf, remap[ser] - ser, sfile);
 		}
-		ser = atoi(&buf[3]);
-		fputbumpserial(s, buf, remap[ser] - ser, sfile);
+		fputdata(s, "\n", sfile);
 	}
 	if (fflushdata(s, sfile)) {
 		sccs_unlock(s, 'x');
@@ -11410,9 +11323,10 @@ finish(sccs *s, int *ip, int *pp, int *last, FILE *out, register serlist *state,
 		incr, s->dsum, print));
 	if (lf_pend) s->dsum -= '\n';
 	while (!feof(s->fh)) {
-		unless (buf = nextdata(s)) break;
-		debug2((stderr, "G> %.*s", linelen(buf), buf));
+		unless (buf = sccs_nextdata(s)) break;
+		debug2((stderr, "G> %s", buf));
 		sum = fputdata(s, buf, out);
+		sum += fputdata(s, "\n", out);
 		if (isData(buf)) {
 			/* CNTLA_ESCAPE is not part of the check sum */
 			if (buf[0] == CNTLA_ESCAPE) sum -= CNTLA_ESCAPE;
@@ -11481,17 +11395,15 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, int *last, FILE *out,
 			while (len--) ungetc(peek[len], s->fh);
 			if (isData(peek)) break;
 		}
-		unless (buf = nextdata(s)) break;
+		unless (buf = sccs_nextdata(s)) break;
 		debug2((stderr, "[%d] ", lines));
-		debug2((stderr, "G> %.*s", linelen(buf), buf));
+		debug2((stderr, "G> %s", buf));
 		sum = fputdata(s, buf, out);
+		sum += fputdata(s, "\n", out);
 		if (isData(buf)) {
 			if (print) {
 				if (*savenext) {
-					char	*p = strchr(buf, '\n');
-
-					assert(p);
-					**savenext = strndup(buf, p - buf + 1);
+					**savenext = strdup(buf);
 					assert(**savenext);
 					*savenext = 0;
 				}
@@ -11569,7 +11481,7 @@ getHashSum(sccs *sc, delta *n, MMAP *diffs)
 	}
 	else unless (strneq(buf, "I0 ", 3)) {
 		fprintf(stderr, "Missing '0a0' or 'I0 #lines', ");
-bad:		fprintf(stderr, "bad diffs: '%.*s'\n", linelen(buf), buf);
+bad:		fprintf(stderr, "bad diffs: 's'\n", buf);
 		return (-1);
 	}
 	while (buf = mnext(diffs)) {
@@ -11798,6 +11710,7 @@ newcmd:
 		last = 0;
 		ctrl("\001I ", n->serial, "");
 		s->dsum += fputdata(s, addthis, out);
+		s->dsum += fputdata(s, "\n", out);
 		if (addthis[0] == CNTLA_ESCAPE) s->dsum -= CNTLA_ESCAPE;
 		ctrl("\001E ", n->serial, "");
 		free(addthis);
@@ -11905,7 +11818,7 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	unless (HAS_SFILE(s)) goto skip;
 
 	sccs_rdweaveInit(s);
-	while (line = nextdata(s)) {
+	while (line = sccs_nextdata(s)) {
 		assert(strneq(line, "\001I ", 3));
 		ser = atoi(&line[3]);
 
@@ -11923,9 +11836,10 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 		fputdata(s, "\001I ", f);
 		fputdata(s, buf, f);
 		fputdata(s, "\n", f);
-		while (line = nextdata(s)) {
+		while (line = sccs_nextdata(s)) {
 			if (*line == '\001') break;
 			fputdata(s, line, f);
+			fputdata(s, "\n", f);
 		}
 		assert(strneq(line, "\001E ", 3));
 		fputdata(s, "\001E ", f);
@@ -11934,8 +11848,9 @@ sccs_csetPatchWeave(sccs *s, FILE *f)
 	}
 	assert(!(i && line));
 	/* No translation of serial numbers needed for remainder of file */
-	for ( ; line; line = nextdata(s)) {
+	for ( ; line; line = sccs_nextdata(s)) {
 		fputdata(s, line, f);
+		fputdata(s, "\n", f);
 	}
 	sccs_rdweaveDone(s);
 	/* Print out remaining, forcing serial 1 block at the end */
@@ -12199,7 +12114,7 @@ skip:
 
 	/* Random bits are used only for 1.0 deltas in conversion scripts */
 	if (WANT('R')) {
-		d->random = strnonldup(&buf[2]);
+		d->random = strdup(&buf[2]);
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -12510,8 +12425,9 @@ abort:		fclose(sfile);
 		sccs_zputs_init(s, sfile);
 	}
 	assert(s->state & S_SOPEN);
-	while (buf = nextdata(s)) {
+	while (buf = sccs_nextdata(s)) {
 		fputdata(s, buf, sfile);
+		fputdata(s, "\n", sfile);
 	}
 	if (fflushdata(s, sfile)) goto abort;
 	sccs_rdweaveDone(s);
@@ -12631,7 +12547,7 @@ out:
 				}
 				EACH(prefilled->text) {
 					s->text = addLine(s->text,
-						strnonldup(prefilled->text[i]));
+						strdup(prefilled->text[i]));
 				}
 			}
 			unless (flags & NEWFILE) {
@@ -14017,6 +13933,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 			if (s->text[i][0] == '\001') continue;
 			j++;
 			fs(s->text[i]);
+			fc('\n');
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -15112,7 +15029,7 @@ err:			fprintf(stderr,
 	}
 	while (strneq(buf, "T ", 2)) {
 		unused = 0;
-		s->text = addLine(s->text, strnonldup(&buf[2]));
+		s->text = addLine(s->text, strdup(&buf[2]));
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	if (strneq(buf, "V ", 2)) {
@@ -16371,14 +16288,20 @@ stripDeltas(sccs *s, FILE *out)
 	if (s->encoding & E_GZIP) {
 		sccs_zputs_init(s, out);
 	}
-	while (buf = nextdata(s)) {
+	while (buf = sccs_nextdata(s)) {
 		if (isData(buf)) {
-			unless (print) fputdata(s, buf, out);
+			unless (print) {
+				fputdata(s, buf, out);
+				fputdata(s, "\n", out);
+			}
 			continue;
 		}
-		debug2((stderr, "%.*s", linelen(buf), buf));
+		debug2((stderr, "%s", buf));
 		ser = atoi(&buf[3]);
-		if (slist[ser] == 0) fputdata(s, buf, out);
+		if (slist[ser] == 0) {
+			fputdata(s, buf, out);
+			fputdata(s, "\n", out);
+		}
 		changestate(state, buf[1], ser);
 		print =
 		    visitedstate((const serlist*)state, (const ser_t*)slist);

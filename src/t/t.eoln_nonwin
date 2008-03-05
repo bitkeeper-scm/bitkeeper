@@ -80,6 +80,7 @@ EOF
 cp testfile WANT
 _BK_CRNL_BUG=1 bk new $Q testfile || exit 1
 bk get $Q testfile || exit 1
+bk checksum testfile || exit 1
 
 # we don't fix old bug, so the next line isn't needed
 #bk undos < testfile > WANT

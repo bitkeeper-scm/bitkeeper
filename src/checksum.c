@@ -398,21 +398,16 @@ cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch)
 
 	/* build up weave data structure */
 	sccs_rdweaveInit(s);
-	while (p = sccs_rdweave(s)) {
+	while (p = sccs_nextdata(s)) {
 		if (p[0] == '\001') {
 			if (p[1] == 'I') ins_ser = atoi(p + 3);
-			e = p;
-			while (*e++ != '\n');
 		} else {
 			q = separator(p);
 			sum = 0;
-			e = p;
-			do {
-				sum += *e;
-			} while (*e++ != '\n');
+			for (e = p; *e; e++) sum += *e;
+			sum += '\n';
 			add_ins(root2map, p, q-p, ins_ser, sum);
 		}
-		p = e;
 	}
 	if (sccs_rdweaveDone(s)) {
 		fprintf(stderr, "checksum: failed to read cset weave\n");

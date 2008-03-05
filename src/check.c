@@ -1015,7 +1015,7 @@ fetch_changeset(void)
 private void
 buildKeys(MDBM *idDB)
 {
-	char	*p, *s, *t;
+	char	*s, *t;
 	int	n = 0, e = 0;
 	delta	*d;
 	hash	*deltas;
@@ -1026,25 +1026,17 @@ buildKeys(MDBM *idDB)
 		exit(1);
 	}
 	sccs_rdweaveInit(cset);
-	while (s = sccs_rdweave(cset)) {
+	while (s = sccs_nextdata(cset)) {
 		if (*s == '\001') continue;
 		t = separator(s);
-		/* copy rootkey to add trailing null */
-		p = key;
-		while (s != t) *p++ = *s++;
-		*p++ = 0;
-		if (hash_insert(r2deltas, key, p-key, 0, sizeof(hash *))) {
+		*t++ = 0;
+		if (hash_insert(r2deltas, s, t-s, 0, sizeof(hash *))) {
 			*(hash **)r2deltas->vptr = hash_new(HASH_MEMHASH);
 		}
 		deltas = *(hash **)r2deltas->vptr;
 		assert(deltas);
 
-		/* copy deltakey to add trailing null */
-		p = key;
-		++s;		/* skip separator */
-		while (*s != '\n') *p++ = *s++;
-		*p++ = 0;
-		unless (hash_insert(deltas, key, p-key, 0, 0)) {
+		unless (hash_insertStr(deltas, t, 0)) {
 			char	*a;
 
 			fprintf(stderr,
