@@ -1,0 +1,94 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2005 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+#
+
+echo $N Push -r needs to work with multiple destinations ............$NL
+commercial project
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ..
+bk clone $Q project copy
+cd copy
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -STRUNK -yfoo
+cd ../project
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -SBRANCH -yfoo
+bk clone $Q . ../copy2
+bk pull $Q ../copy
+bk tag $Q T1
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo
+bk changes -fk -rTRUNK..T1 > ../COPY_KEYS
+bk changes -fk -rBRANCH..T1 > ../COPY2_KEYS
+bk push -n -rT1 ../copy ../copy2 2> GOT || {
+	echo failed
+	exit 1
+}
+cat <<EOF > WANT
+----------------------- Would send the following csets ------------------------
+1.4 1.2.1.1 
+-------------------------------------------------------------------------------
+----------------------- Would send the following csets ------------------------
+1.4 1.3 
+-------------------------------------------------------------------------------
+EOF
+checkfiles WANT GOT
+bk push $Q -rT1 ../copy ../copy2 || {
+	echo failed
+	exit 1
+}
+cd ../copy
+checkfiles BitKeeper/etc/csets-in ../COPY_KEYS
+cd ../copy2
+checkfiles BitKeeper/etc/csets-in ../COPY2_KEYS
+echo OK
+
+echo $N Simple tag graph push -r test ....,..........................$NL
+cd "$HERE/project"
+bk tag $Q -rT1 T1_PULL_THIS_TO_TEST_LEAF_MARKED
+bk changes -krT1 > ../KEY
+bk tag $Q T2
+bk tag $Q -rT1 NOT_THIS
+bk push $Q -rT1 ../copy ../copy2 || {
+	echo failed
+	exit 1
+}
+cd ../copy
+bk changes -kr+ > KEY
+checkfiles ../KEY KEY
+bk changes -rNOT_THIS -ndx 2> ERR && {
+	echo failed: NOT_THIS tag sent
+	exit 1
+}
+grep -q "no such delta.*NOT_THIS" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+cd ../copy2
+bk changes -kr+ > KEY2
+checkfiles ../KEY KEY2
+bk changes -rNOT_THIS -ndx 2> ERR && {
+	echo failed: NOT_THIS tag sent
+	exit 1
+}
+grep -q "no such delta.*NOT_THIS" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+# XXX: How to test if top tag is marked as a leaf node?
+echo OK

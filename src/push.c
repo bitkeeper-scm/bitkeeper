@@ -3,6 +3,7 @@
  */
 #include "bkd.h"
 #include "logging.h"
+#include "range.h"
 
 private	struct {
 	u32	doit:1;
@@ -19,6 +20,8 @@ private	struct {
 	u32	rcsets;
 	u32	rtags;
 	u64	bpsz;
+	delta	*d;
+	char	*rev;
 	FILE	*out;
 } opts;
 
@@ -50,7 +53,7 @@ push_main(int ac, char **av)
 	opts.doit = opts.verbose = 1;
 	opts.out = stderr;
 
-	while ((c = getopt(ac, av, "ac:deE:Gilno;qtTz|")) != -1) {
+	while ((c = getopt(ac, av, "ac:deE:Gilno;qr;tTz|")) != -1) {
 		switch (c) {
 		    case 'a': opts.autopull = 1; break;		/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
@@ -70,6 +73,7 @@ push_main(int ac, char **av)
 		    case 'o': opts.out = fopen(optarg, "w"); 
 			      unless (opts.out) perror(optarg);
 			      break;
+		    case 'r': opts.rev = optarg; break;
 		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'z':					/* doc 2.0 */
@@ -129,7 +133,17 @@ err:		freeLines(envVar, free);
 		return (1);
 	}
 	s_cset = sccs_csetInit(0);
+	if (opts.rev) {
+		unless (opts.d = sccs_findrev(s_cset, opts.rev)) {
+			fprintf(stderr, "push: can't find rev %s\n", opts.rev);
+			exit(1);
+		}
+	}
 	EACH (urls) {
+		if (i > 1) {
+			/* clear between each use probekey/prunekey */
+			sccs_clearbits(s_cset, D_RED|D_BLUE|D_GONE|D_SET);
+		}
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
@@ -195,7 +209,7 @@ send_part1_msg(remote *r, char **envVar)
 
 	probef = bktmp(0, 0);
 	if (f = fopen(probef, "w")) {
-		rc = probekey(s_cset, 0, f);
+		rc = probekey(s_cset, opts.rev, f);
 		fclose(f);
 	} else {
 		rc = 1;
@@ -277,6 +291,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	/*
 	 * What we want is: "remote => bk _prunekey => keys"
 	 */
+	if (opts.d) range_gone(s_cset, opts.d, D_RED);
 	bktmp_local(rev_list, "pushrev");
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
