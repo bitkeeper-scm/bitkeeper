@@ -1368,9 +1368,7 @@ check(sccs *s, MDBM *idDB)
 	 */
 	if (haspoly == -1) haspoly = (exists(POLY) != 0);
 	if (!haspoly && CSETMARKED(s)) {
-		for (d = s->table; d; d = d->next) {
-			d->flags &= ~D_SET;
-		}
+		sccs_clearbits(s, D_SET);
 		for (d = s->table; d; d = d->next) {
 			if (d->flags & D_CSET) markCset(s, d);
 		}

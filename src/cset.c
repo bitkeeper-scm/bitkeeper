@@ -820,9 +820,7 @@ doMarks(cset_t *cs, sccs *s)
 	/*
 	 * Throw away the existing marks if we are rebuilding.
 	 */
-	if (cs->remark) {
-		for (d = s->table; d; d = d->next) d->flags &= ~D_CSET;
-	}
+	if (cs->remark) sccs_clearbits(s, D_CSET);
 
 	for (d = s->table; d; d = d->next) {
 		if ((d->type == 'D') && (d->flags & D_SET)) {

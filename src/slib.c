@@ -2760,10 +2760,10 @@ sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag)
 	char	k1[MAXKEY];
 	time_t	tt = time(0);
 	int	rc;
-	delta	*e, *l1 = 0, *l2 = 0;
+	delta	*l1 = 0, *l2 = 0;
 
 	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
-	for (e = s->table; e; e = e->next) e->flags &= ~D_RED;
+	sccs_clearbits(s, D_RED);
 	sccs_tagcolor(s, l1);
 	if (md->flags & D_RED) {
 		md = l1;
@@ -16553,6 +16553,19 @@ dumpTimestampDB(project *p, hash *db)
 	}
 	free(tsname);
 	fclose(f);
+}
+
+void
+sccs_clearbits(sccs *s, u32 flags)
+{
+	delta	*d;
+
+	unless (s) return;
+	for (d = s->table; d; d = d->next) {
+		d->flags &= ~flags;
+	}
+	if (flags & D_GONE) s->hasgone = 0;
+	if (flags & D_SET) s->state &= ~S_SET;
 }
 
 /*

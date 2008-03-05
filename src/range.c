@@ -34,9 +34,7 @@ usage:			fprintf(stderr,
 	for (name = sfileFirst("range", &av[optind], 0);
 	    name; name = sfileNext()) {
 		if (s && (streq(s->gfile, name) || streq(s->sfile, name))) {
-			for (e = s->table; e; e = e->next) {
-				e->flags &= ~(D_SET|D_RED|D_BLUE);
-			}
+			sccs_clearbits(s, D_SET|D_RED|D_BLUE);
 		} else {
 			if (s) sccs_free(s);
 			unless (s = sccs_init(name, INIT_NOCKSUM)) {

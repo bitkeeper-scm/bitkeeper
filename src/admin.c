@@ -12,7 +12,6 @@
 
 private	int	do_checkin(char *nm, char *cp, int fl,
 		   char *rev, char *newf, char *com);
-private	void	clearCsets(sccs *s);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
 
 int
@@ -229,7 +228,7 @@ admin_main(int ac, char **av)
 			sccs_parseArg(sc->tree, 'B', csetFile, 0);
 			flags |= NEWCKSUM;
 		}
-		if (rmCsets) clearCsets(sc);
+		if (rmCsets) sccs_clearbits(sc, D_CSET);
 		if (doDates) sccs_fixDates(sc);
 		if (merge) {
 			if (setMerge(sc, merge, rev) == -1) {
@@ -278,14 +277,6 @@ next:		sccs_free(sc);
 	return (error);
 usage:	system("bk help -s admin");
 	return (1);
-}
-
-private	void
-clearCsets(sccs *s)
-{
-	delta	*d;
-
-	for (d = s->table; d; d = d->next) d->flags &= ~D_CSET;
 }
 
 /*

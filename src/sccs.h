@@ -1215,6 +1215,7 @@ u32	crc(char *s);
 int	annotate_args(int flags, char *args);
 void	platformInit(char **av);
 int	sccs_csetPatchWeave(sccs *s, FILE *f);
+void	sccs_clearbits(sccs *s, u32 flags);
 MDBM	*loadkv(char *file);
 char	**getParkComment(int *err);
 int	launch_wish(char *script, char **av);

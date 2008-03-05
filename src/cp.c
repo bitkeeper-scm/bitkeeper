@@ -34,7 +34,6 @@ private int
 cp(char *from, char *to, int force)
 {
 	sccs	*s;
-	delta	*d;
 	char	buf[100];
 	char	*sfile, *gfile, *tmp;
 	int	err;
@@ -79,7 +78,7 @@ cp(char *from, char *to, int force)
 	 */
 	if (s->tree->pathname) free(s->tree->pathname);
 	s->tree->pathname = strdup(_relativeName(gfile, 0, 0, 0, 0));
-	for (d = s->table; d; d = d->next) d->flags &= ~D_CSET;
+	sccs_clearbits(s, D_CSET);
 	free(s->sfile);
 	s->sfile = sfile;
 	free(s->gfile);
