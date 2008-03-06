@@ -19,6 +19,10 @@
 #define	chdir	nt_chdir
 #endif
 
+#define	PROD_UNINITIALIZED	(void*)~0
+#define	PROD_NOPROD		(void*)0
+#define	PROD_SELF(p)		(proj_product(p) == (p))
+
 typedef struct dirlist dirlist;
 struct dirlist {
 	char	*dir;
@@ -29,9 +33,12 @@ struct project {
 	char	*root;		/* fullpath root of the project */
 	char	*rootkey;	/* Root key of ChangeSet file */
 	char	*md5rootkey;	/* MD5 root key of ChangeSet file */
+	char	*csetFile;	/* ChangeSet file we belong to (aka product) */
 	char	*repoID;	/* RepoID */
+	char	*comppath;	/* if component, path to root from product */
 	MDBM	*config;	/* config DB */
 	project	*rparent;	/* if RESYNC, point at enclosing repo */
+	project	*product;	/* if Nested, point at the product repo */
 
 	/* per proj cache data */
 	char	*bkl;		/* key - filled from lease_bkl() */
@@ -278,6 +285,18 @@ proj_cd2root(void)
 }
 
 /*
+ * chdir to the root of the product, if there is one, or return an error
+ */
+int
+proj_cd2product(void)
+{
+	project	*p;
+
+	if (p = proj_product(0)) return (proj_chdir(proj_root(p)));
+	return (-1);
+}
+
+/*
  * When given a pathname to a file, this function returns the pathname
  * to the file relative to the current project.  If the file is not under
  * the current project then, NULL is returned.
@@ -466,7 +485,7 @@ proj_rootkey(project *p)
 	sccs	*sc;
 	FILE	*f;
 	char	*ret;
-	char	rkfile[MAXPATH];
+	char	file[MAXPATH];
 	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) p = proj_fakenew();
@@ -477,35 +496,62 @@ proj_rootkey(project *p)
 	if (p->rootkey) return (p->rootkey);
 	if (p->rparent && (ret = proj_rootkey(p->rparent))) return (ret);
 
-	concat_path(rkfile, p->root, "/BitKeeper/log/ROOTKEY");
-	if (f = fopen(rkfile, "rt")) {
+	/*
+	 * Do this one first, the others go to recache and skip it.
+	 */
+	concat_path(file, p->root, "/BitKeeper/log/COMPONENT");
+	if (f = fopen(file, "rt")) {
 		fnext(buf, f);
 		chomp(buf);
-		p->rootkey = strdup(buf);
-		fnext(buf, f);
-		chomp(buf);
-		p->md5rootkey = strdup(buf);
+		p->comppath = strdup(buf);
 		fclose(f);
-	} else {
-		concat_path(buf, p->root, CHANGESET);
-		if (exists(buf)) {
-			sc = sccs_init(buf,
-			    INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
-			assert(sc->tree);
-			sccs_sdelta(sc, sc->tree, buf);
-			p->rootkey = strdup(buf);
-			sccs_md5delta(sc, sc->tree, buf);
-			p->md5rootkey = strdup(buf);
-			sccs_free(sc);
-			if (f = fopen(rkfile, "wt")) {
-				fputs(p->rootkey, f);
-				putc('\n', f);
-				fputs(p->md5rootkey, f);
-				putc('\n', f);
-				fclose(f);
-			}
+	}
+
+	concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
+	unless (f = fopen(file, "rt")) goto recache;
+	fnext(buf, f);
+	chomp(buf);
+	p->rootkey = strdup(buf);
+	fnext(buf, f);
+	chomp(buf);
+	p->md5rootkey = strdup(buf);
+	fclose(f);
+	
+	concat_path(file, p->root, "/BitKeeper/log/CSETFILE");
+	unless (f = fopen(file, "rt")) goto recache;
+	fnext(buf, f);
+	chomp(buf);
+	p->csetFile = strdup(buf);
+	fclose(f);
+	return (p->rootkey);
+
+recache:
+	concat_path(buf, p->root, CHANGESET);
+	if (exists(buf)) {
+		sc = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
+		assert(sc->tree);
+		sccs_sdelta(sc, sc->tree, buf);
+		p->rootkey = strdup(buf);
+		sccs_md5delta(sc, sc->tree, buf);
+		p->md5rootkey = strdup(buf);
+		p->csetFile = strdup(sc->tree->csetFile);
+		sccs_free(sc);
+		concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
+		if (f = fopen(file, "wt")) {
+			fputs(p->rootkey, f);
+			putc('\n', f);
+			fputs(p->md5rootkey, f);
+			putc('\n', f);
+			fclose(f);
+		}
+		concat_path(file, p->root, "/BitKeeper/log/CSETFILE");
+		if (f = fopen(file, "wt")) {
+			fputs(p->csetFile, f);
+			putc('\n', f);
+			fclose(f);
 		}
 	}
+
 	return (p->rootkey);
 }
 
@@ -521,6 +567,70 @@ proj_md5rootkey(project *p)
 	if (p->rparent && (ret = proj_md5rootkey(p->rparent))) return (ret);
 	return (p->md5rootkey);
 }
+
+/*
+ * Return the cset backpointer.
+ */
+char *
+proj_csetFile(project *p)
+{
+	char	*ret;
+
+	unless (p || (p = curr_proj())) p = proj_fakenew();
+
+	unless (p->csetFile) proj_rootkey(p);
+	if (p->rparent && (ret = proj_csetFile(p->rparent))) return (ret);
+	return (p->csetFile);
+}
+
+/*
+ * Return the product if there is one.
+ */
+project *
+proj_product(project *p)
+{
+	char	*t, *tmp;
+	char	buf[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (0);
+	if (p->product == PROD_UNINITIALIZED) {
+		/* find product root */
+		p->product = PROD_NOPROD;
+		concat_path(buf, p->root, "BitKeeper/log/PRODUCT");
+		if (exists(buf)) {	/* we're our own product */
+			p->product = p;
+		} else {		/* go look if we are in a product */
+			tmp = strdup(p->root);
+			while ((t = strrchr(tmp, '/')) && (t != tmp)) {
+				*t = 0;
+				concat_path(buf, tmp, "BitKeeper/log/PRODUCT");
+				unless (exists(buf)) continue;
+				*t = 0;
+				concat_path(buf, tmp, BKROOT);
+				unless (exists(buf)) continue;
+				p->product = proj_init(tmp);
+			}
+		}
+	}
+	return (p->product);
+}
+
+/*
+ * Return the path to the component, if any.
+ */
+char *
+proj_comppath(project *p)
+{
+	char	*ret;
+
+	unless (p || (p = curr_proj())) p = proj_fakenew();
+
+	unless (p->comppath) proj_rootkey(p);
+	// LMXXX - right?  Or not?
+	if (p->rparent && (ret = proj_comppath(p->rparent))) return (ret);
+	return (p->comppath);
+}
+
 
 /*
  * Return the repoID if there is one.
@@ -585,6 +695,12 @@ proj_reset(project *p)
 		if (p->BAM_idx) {
 			mdbm_close(p->BAM_idx);
 			p->BAM_idx = 0;
+		}
+		if (p->product != PROD_UNINITIALIZED) {
+			if (p->product && (p->product != p)) {
+				proj_free(p->product);
+			}
+			p->product = PROD_UNINITIALIZED;
 		}
 	} else {
 		/*
@@ -954,4 +1070,22 @@ proj_sync(project *p)
 		}
 	}
 	return (p->sync);
+}
+
+int
+proj_isProduct(project *p)
+{
+	unless (p || (p = curr_proj())) return (0);
+	return ((proj_product(p) != PROD_NOPROD) && PROD_SELF(p));
+}
+
+int
+proj_isComponent(project *p)
+{
+	char	buf[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (0);
+	unless (proj_product(p) && p->root) return (0);
+	sprintf(buf, "%s/BitKeeper/log/COMPONENT", p->root);
+	return (exists(buf));
 }

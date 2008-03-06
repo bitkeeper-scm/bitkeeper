@@ -127,7 +127,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	collapse.o comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	delta.o diffs.o diffsplit.o dspec.o \
-	eula.o export.o \
+	ensemble.o eula.o export.o \
 	find.o findcset.o findkey.o fixlod.o fixtool.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
@@ -198,7 +198,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h logging.h \
+HDRS	= bam.h bkd.h ensemble.h logging.h \
 	  purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h bkver.h proj.h redblack.h inskeys.h libc/system.h
 
@@ -562,3 +562,5 @@ MLA.lic: MLA.preamble Enterprise.lic.txt $(BK)
 %.lic: %.lic.txt bkupgrade.key $(BK)
 	./bk crypto -E 048d6aa55c30b3b4 < $< > $@
 
+check-syntax:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -S ${CHK_SOURCES} -o /dev/null

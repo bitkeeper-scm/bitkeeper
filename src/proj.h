@@ -6,6 +6,7 @@ typedef struct	project project;
 char*		proj_bkl(project *p);
 u32		proj_bklbits(project *p);
 int		proj_cd2root(void);
+int		proj_cd2product(void);
 int		proj_chdir(char *newdir);
 MDBM*		proj_config(project *p);
 char*		proj_configval(project *p, char *key);
@@ -28,12 +29,18 @@ u32		proj_configsize(project *p, char *key);
 #define	CO(s)	(BAM(s) ? \
 			(proj_checkout(s->proj) >> 4) : \
 			(proj_checkout(s->proj) & 0xf))
+#define	proj_isEnsemble(p) \
+		(proj_isProduct(p) || proj_isComponent(p))
 
 int		proj_checkout(project *p);
+char*		proj_csetFile(project *p);
 char*		proj_cwd(void);
 void		proj_free(project *p);
 char*		proj_fullpath(project *p, char *path);
 int		proj_isCaseFoldingFS(project *p);
+int		proj_isComponent(project *p);
+int		proj_isProduct(project *p);
+project*	proj_product(project *p);
 int		proj_isResync(project *p);
 int		proj_leaseChecked(project *p, int write);
 char*		proj_md5rootkey(project *p);
@@ -51,6 +58,7 @@ int		proj_restoreCO(sccs *s);
 int		proj_restoreAllCO(project *p, MDBM *idDB);
 MDBM*		proj_BAMindex(project *p, int write);
 int		proj_sync(project *p);
+char*		proj_comppath(project *p);
 
 #define		chdir	proj_chdir
 

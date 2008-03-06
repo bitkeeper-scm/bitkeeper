@@ -1,9 +1,11 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
+#include "ensemble.h"
 
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
 #define	UNDO_CSETS  "BitKeeper/tmp/undo_csets"
+#define	SFILES	    "BitKeeper/tmp/sfiles"
 
 #define	UNDO_ERR	1	/* exitcode for errors */
 #define	UNDO_SKIP	2	/* exitcode for early exit with no work */
@@ -65,6 +67,7 @@ usage:			system("bk help -s undo");
 	unless (rev) goto usage;
 
 	save_log_markers();
+	// XXX - be nice to do this only if we actually are going to undo
 	unlink(BACKUP_SFIO); /* remove old backup file */
 	unless (csetrev_list = getrev(rev, aflg)) {
 		/* No revs we are done. */
@@ -72,6 +75,13 @@ usage:			system("bk help -s undo");
 	}
 	rev = 0;  /* don't use wrong value */
 	bktmp(rev_list, "rev_list");
+
+	/*
+	 * The fileList addlines returned is each file which needs one or
+	 * more deltas removed.
+	 * The rev_list tmpfile contains <file>|<md5sum> entries, one per
+	 * delta, so it may have multiple entries for the same file.
+	 */
 	fileList = mk_list(rev_list, csetrev_list);
 	unless (fileList) goto err;
 
@@ -124,10 +134,81 @@ err:		if (undo_list[0]) unlink(undo_list);
 		if (trigger("undo", "pre")) goto err;
 	}
 
+	/*
+	 * If we are the product, then don't do the work here, call subprocesses
+	 * to do it here and in each component.  We know that it is OK to do it
+	 * here so unless the other guys are pending we should be cool.
+	 */
+	if (proj_isProduct(0)) {
+		sccs	*cset = sccs_csetInit(0);
+		repos	*r;
+		char	**vp;
+		eopts	opts;
+
+		assert(cset);
+		opts.sc = cset;
+		bzero(&opts, sizeof(opts));
+		opts.rev = aflg ? rev : sccs_newtip(cset, csetrev_list)->rev;
+		opts.revs = csetrev_list;
+		unless (r = ensemble_list(opts)) {
+			fprintf(stderr, "undo: ensemble failed.\n");
+			sccs_free(cset);
+			goto err;
+		}
+		sccs_free(cset);
+
+		EACH_REPO(r) {
+			if (r->new) continue;
+			vp = addLine(0, strdup("bk"));
+			vp = addLine(vp, strdup("undo"));
+			cmd = aprintf("-fa%s", r->deltakey);
+			vp = addLine(vp, cmd);
+			vp = addLine(vp, 0);
+			printf("Undo in %s ...\n", r->path);
+			fflush(stdout);
+			if (chdir(r->path) || spawnvp(_P_WAIT, "bk", &vp[1])) {
+dios:				fprintf(stderr, "Vaya con dios, amigo.\n");
+				exit(123);
+			}
+			freeLines(vp, free);
+			proj_cd2product();
+		}
+		EACH_REPO(r) {
+			unless (r->new) continue;
+			sysio(0,
+			    SFILES, 0, "bk", "sfiles", "-gcxp", r->path, SYS);
+			if (size(SFILES) > 0) {
+				fprintf(stderr,
+				    "Changed/extra files in '%s'\n", r->path);
+				cat(SFILES);
+				goto dios;
+			}
+			unlink(SFILES);
+		}
+		EACH_REPO(r) {
+			if (r->new) rmtree(r->path);
+		}
+
+		/*
+		 * We may have undone some renames so just call names on
+		 * the set of repos and see what happens.
+		 */
+		f = popen("bk names -", "w");
+		EACH_REPO(r) {
+			if (r->new) continue;
+			fprintf(f, "%s/SCCS/s.ChangeSet\n", r->path);
+		}
+		pclose(f);
+
+		ensemble_free(r);
+		printf("Undo in . ...\n");
+	}
+
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		/* like bk makepatch but skips over missing files/keys */
-		cmd = aprintf("bk cset -Bffm - > '%s'", patch);
+		cmd = aprintf("bk cset -Bff%sm - > '%s'",
+		    proj_isProduct(0) ? "P" : "", patch);
 		f = popen(cmd, "w");
 		free(cmd);
 		if (f) {
@@ -263,7 +344,7 @@ getrev(char *top_rev, int aflg)
 	} else {
 		rev = aprintf("-r'%s'", top_rev);
 	}
-	cmd = aprintf("bk changes -and:KEY: %s 2>" DEVNULL_WR, rev);
+	cmd = aprintf("bk changes -afnd:KEY: %s 2>" DEVNULL_WR, rev);
 	free(rev);
 	f = popen(cmd, "r");
 	free(cmd);
@@ -291,11 +372,10 @@ mk_list(char *rev_list, char **csetrev_list)
 	kvpair	kv;
 
 	assert(csetrev_list);
-	cmd = aprintf("bk cset -ffl5 - > '%s'", rev_list);
+	cmd = aprintf("bk cset -ffl5%s - > '%s'",
+	    proj_isProduct(0) ? "P" : "", rev_list);
 	f = popen(cmd, "w");
-	if (f) {
-		EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
-	}
+	EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
 	status = pclose(f);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		printf("undo: %s\n", cmd);
@@ -344,6 +424,7 @@ do_rename(char **fileList, char *qflag)
 	assert(f);
 	EACH (fileList) {
 		char	*sfile = fileList[i];
+
 		unless (exists(sfile)) continue;
 		fprintf(f, "%s\n", sfile);
 	}
@@ -531,8 +612,8 @@ save_log_markers(void)
 {
 	char	*mark;
 	sccs	*s = sccs_csetInit(0);
-	unless (s) return;
 
+	unless (s) return;
 	valid_marker = 0;
 	if (mark = signed_loadFile(CMARK)) {
 		if (sccs_findKey(s, mark)) valid_marker = 1;

@@ -56,6 +56,8 @@ typedef struct {
 	u32	unlocked:1;		/* -u: list unlocked files */
 	u32	useronly:1;		/* -U: list user files only */
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
+	u32	inverse:1;		/* -!: list the opposite */
+	u32	ensemble:1;		/* set if we are in one */
 
 	FILE	*out;			/* -o<file>: send output here */
 	char	*glob;			/* only files which match this */
@@ -122,13 +124,16 @@ sfiles_main(int ac, char **av)
 		return (1); /* error exit */
 	}
 
+	if (proj_product(0)) opts.ensemble = 1;
+
 	if (ac == 1) {
 		walksfiles(".", fastprint, 0);
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "01acCdDeEgGijlno:p|P|RsSuUvxy")) != -1) {
+	while ((c = getopt(ac, av, "^01acCdDeEgGijlno:p|P|RsSuUvxy")) != -1) {
 		switch (c) {
+		    case '^':	opts.inverse = 1; break;
 		    case '0':	opts.null = 1; break;		/* doc */
 		    case '1':	opts.onelevel = 1; break;
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
@@ -946,7 +951,19 @@ hidden(char *file)
 private int
 isBkFile(char *gfile)
 {
+	char	*p, *t;
+
 	if (streq(gfile, "ChangeSet") && isdir(BKROOT)) return (1);
+	if (p = strrchr(gfile, '/')) {
+		*p = 0;
+		t = aprintf("%s/%s", gfile, BKROOT);
+		*p = '/';
+		if (isdir(t)) {
+			free(t);
+			return (1);
+		}
+		free(t);
+	}
 	if (strneq(gfile, "BitKeeper/", 10) &&
 	    !strneq(gfile, "BitKeeper/triggers/", 19) && isdir(BKROOT)) {
 		return (1);
@@ -1002,7 +1019,11 @@ private void
 do_print(STATE buf, char *gfile, char *rev)
 {
 	STATE	state;
+	int	doit;
+	project	*comp;
+	char	*p, *freeme = 0;
 
+	gfile =  strneq("./",  gfile, 2) ? &gfile[2] : gfile;
 	strcpy(state, buf);	/* So we have writable strings */
 	if (opts.glob) {
 		char	*p;
@@ -1046,7 +1067,48 @@ do_print(STATE buf, char *gfile, char *rev)
 	}
 	if (opts.summarize) return; /* skip the detail */
 
-	unless (((state[TSTATE] == 'd') && opts.dirs) ||
+	if ((state[TSTATE] == 'R') && opts.ensemble && !opts.subrepos) {
+		/*
+		 * Figure out if we are a component or
+		 * not.  If not, list dir as extra,
+		 * otherwise list s.ChangeSet as file.
+		 */
+		comp = proj_init(gfile);
+		assert(comp);
+		if (proj_isComponent(comp)) {
+			state[TSTATE] = 's';
+			if (opts.pending && (state[PSTATE] == ' ')) {
+				freeme = aprintf("%s/SCCS/s.ChangeSet", gfile);
+				p = strrchr(freeme, '/');
+				p[1] = 'd';
+				if (exists(freeme)) {
+					state[PSTATE] = 'p';
+					free(freeme);
+					freeme = aprintf("%s/ChangeSet", gfile);
+					chk_pending(0, freeme, state, 0, 0);
+					free(freeme);
+					return;
+				}
+				free(freeme);
+				freeme = 0;
+			}
+			if (opts.names && (state[NSTATE] == ' ')) {
+				p = proj_relpath(proj_product(comp), gfile);
+				unless (streq(p, proj_comppath(comp))) {
+					state[NSTATE] = 'n';
+				}
+			}
+			// This is sort of bogus because for some things you
+			// want to list the repo name (i.e., sfiles -n)
+			freeme = gfile = aprintf("%s/ChangeSet", gfile);
+			// XXX -l/-u/-G/-y not done
+		} else {
+			state[TSTATE] = 'x';
+		}
+		proj_free(comp);
+	}
+
+	doit = ((state[TSTATE] == 'd') && opts.dirs) ||
 	    ((state[TSTATE] == 'D') && opts.xdirs) ||
 	    ((state[TSTATE] == 'i') && opts.ignored) ||
 	    ((state[TSTATE] == 'j') && opts.junk && !hidden(gfile)) ||
@@ -1059,11 +1121,10 @@ do_print(STATE buf, char *gfile, char *rev)
 	    ((state[PSTATE] == 'p') && opts.pending) ||
 	    ((state[GSTATE] == 'G') && opts.gotten) ||
 	    ((state[NSTATE] == 'n') && opts.names) ||
-	    ((state[YSTATE] == 'y') && opts.cfiles)) {
-	    	return;
-	}
-
-	print_it(state, gfile, rev);
+	    ((state[YSTATE] == 'y') && opts.cfiles);
+	if (opts.inverse) doit = !doit;
+	if (doit) print_it(state, gfile, rev);
+	if (freeme) free(freeme);
 }
 
 private void
@@ -1332,6 +1393,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 {
 	char	*p = strrchr(file, '/');
 	sinfo	*si = (sinfo *)data;
+	project	*comp;
 	char	buf[MAXPATH];
 
 	unless (p) return (0);
@@ -1342,7 +1404,19 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 * (e.g. RESYNC).
 			 */
 			strcat(file, "/etc");
-			if (exists(file)) return (-2);
+			if (exists(file)) {
+				if (opts.ensemble) {
+					*p = 0;
+					comp = proj_init(file);
+					assert(comp);
+					if (proj_isComponent(comp)) {
+						sprintf(p, "/SCCS/s.ChangeSet");
+						si->fn(file, 0, si->data);
+					}
+					proj_free(comp);
+				}
+				return (-2);
+			}
 		}
 		if (proj) {
 			concat_path(buf, si->proj_prefix,

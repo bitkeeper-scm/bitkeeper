@@ -8,6 +8,7 @@
 #include "sccs.h"
 #include "range.h"
 #include "bam.h"
+#include "ensemble.h"
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
@@ -86,7 +87,7 @@ check_main(int ac, char **av)
 	MDBM	*pathDB = mdbm_mem();
 	hash	*keys = hash_new(HASH_MEMHASH);
 	sccs	*s;
-	int	errors = 0, eoln_native = 1, want_dfile;
+	int	ferr, errors = 0, eoln_native = 1, want_dfile;
 	int	i, e;
 	char	*name;
 	char	buf[MAXKEY];
@@ -204,6 +205,7 @@ check_main(int ac, char **av)
 	want_dfile = exists(DFILE);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
+		ferr = 0;
 		if (all && streq(name, CHANGESET)) {
 			s = cset;
 		} else {
@@ -247,23 +249,26 @@ check_main(int ac, char **av)
 			 * They might be big and not present.  Instead
 			 * we have a separate command for that.
 			 */
-			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
-			if (s->has_nonl && chk_nlbug(s)) errors |= 0x04;
+			if (sccs_resum(s, 0, 0, 0)) ferr++, errors |= 0x04;
+			if (s->has_nonl && chk_nlbug(s)) ferr++, errors |= 0x04;
 		}
 		if (BAM(s)) {
 			BAM = 1;
-			if (chk_BAM(s, &bp_missing)) errors |= 0x04;
+			if (chk_BAM(s, &bp_missing)) ferr++, errors |= 0x04;
 		}
-		if (chk_gfile(s, pathDB, checkout)) errors |= 0x08;
-		if (no_gfile(s)) errors |= 0x08;
-		if (readonly_gfile(s)) errors |= 0x08;
-		if (writable_gfile(s)) errors |= 0x08;
-		if (chk_csetpointer(s)) errors |= 0x10;
-		if (want_dfile && chk_dfile(s)) errors |= 0x10;
-		if (check_eoln && chk_eoln(s, eoln_native)) errors |= 0x10;
+		if (chk_gfile(s, pathDB, checkout)) ferr++, errors |= 0x08;
+		if (no_gfile(s)) ferr++, errors |= 0x08;
+		if (readonly_gfile(s)) ferr++, errors |= 0x08;
+		if (writable_gfile(s)) ferr++, errors |= 0x08;
+		if (chk_csetpointer(s)) ferr++, errors |= 0x10;
+		if (want_dfile && chk_dfile(s)) ferr++, errors |= 0x10;
+		if (check_eoln && chk_eoln(s, eoln_native)) {
+			ferr++, errors |= 0x10;
+		}
 		if (chk_merges(s)) {
 			if (fix) s = fix_merges(s);
 			errors |= 0x20;
+			ferr++;
 		}
 
 		/*
@@ -289,6 +294,7 @@ check_main(int ac, char **av)
 			free(sfile);
 			gotDupKey = 1;
 			errors |= 1;
+			ferr++;
 		}
 		if (mixed) {
 			t = sccs_iskeylong(buf);
@@ -312,12 +318,13 @@ check_main(int ac, char **av)
 				free(sfile);
 				gotDupKey = 1;
 				errors |= 1;
+				ferr++;
 			}
 		}
 
 		if (e = check(s, idDB)) {
 			errors |= 0x40;
-		} else {
+		} else unless (ferr) {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->gfile);
 		}
 		unless (s == cset) sccs_free(s);
@@ -356,6 +363,10 @@ check_main(int ac, char **av)
 	sccs_free(cset);
 	cset = 0;
 	if (errors && fix) {
+		// LMXXX - how lame is this?
+		// We could keep track of a fixnames, fixxflags, etc
+		// and pass them into the commands with a popen.
+		// In a large repo, these _hurt_.
 		if (names && !gotDupKey) {
 			fprintf(stderr, "check: trying to fix names...\n");
 			system("bk -r names");
@@ -434,6 +445,8 @@ chk_dfile(sccs *s)
 	delta	*d;
 	char	*p;
 
+	if (CSET(s) && proj_isProduct(s->proj)) return (0);
+
 	d = sccs_top(s);
 	unless (d) return (0);
 
@@ -449,7 +462,7 @@ chk_dfile(sccs *s)
 	*p = 'd';
 	if  (!(d->flags & D_CSET) && !exists(s->sfile)) { 
 		*p = 's';
-		getMsg("missing_dfile", s->gfile, '=', stdout);
+		getMsg("missing_dfile", s->gfile, '=', stderr);
 		return (1);
 	}
 	*p = 's';
@@ -767,7 +780,7 @@ chk_eoln(sccs *s, int eoln_native)
 private void
 warnPoly(void)
 {
-	getMsg("warn_poly", 0, 0, stdout);
+	getMsg("warn_poly", 0, 0, stderr);
 	touch(POLY, 0664);
 }
 
@@ -827,7 +840,16 @@ checkAll(hash *keys)
 		rkey = r2deltas->kptr;
 		if (hash_fetchStr(keys, rkey)) continue;
 		deltas = r2deltas->vptr;
-		if (!hash_first(*deltas)) continue; /* no resync deltas */
+		/* no resync deltas, whatever that means */
+		unless (t = hash_first(*deltas)) continue;
+
+		/* Allow components to be treated as magically goned.
+		 * Note that all delta keys recorded in the ChangeSet
+		 * file must be |something.../ChangeSet|
+		 * LMXXX - Wayne says this is wrong and he is right.
+		 */
+		if (changesetKey(rkey) && componentKey(t)) continue;
+			
 		if (mdbm_fetch_str(goneDB, rkey)) continue;
 		hash_storeStr(warned, rkey, 0);
 		found++;
@@ -1194,8 +1216,9 @@ check(sccs *s, MDBM *idDB)
 	delta	*d, *ino, *tip = 0;
 	int	errors = 0;
 	int	i;
-	char	*t, *term;
+	char	*t, *term, *x;
 	hash	*deltas, *shortdeltas = 0;
+	char	**lines = 0;
 	char	buf[MAXKEY];
 
 
@@ -1275,15 +1298,47 @@ check(sccs *s, MDBM *idDB)
 
 	/*
 	 * The location recorded and the location found should match.
+	 * We allow a component ChangeSet file to be out of place if
+	 * we are in the component but not if we are in the product.
+	 * The product wants it in a particular place but the comp
+	 * just cares that it is in SCCS/s.ChangeSet
 	 */
 	unless (d = sccs_top(s)) {
 		fprintf(stderr, "check: can't get TOT in %s\n", s->gfile);
 		errors++;
+	} else if (CSET(s) && proj_isComponent(s->proj) && proj_isProduct(0)) {
+		x = proj_relpath(proj_product(s->proj), proj_root(s->proj));
+		csetChomp(d->pathname);
+		unless (streq(x, d->pathname)) {
+			fprintf(stderr,
+			    "check: component '%s' should be '%s'\n",
+			    x, d->pathname);
+			errors++;
+			names = 1;
+		}
+		free(x);
+		lines = addLine(0, d->pathname);
+		buf[0] = 0;
+		unless (streq(s->sfile, CHANGESET)) {
+			sprintf(buf, "%s/", d->pathname);
+		}
+		strcat(buf, "BitKeeper/log/COMPONENT");
+		lines2File(lines, buf);
+		freeLines(lines, 0);
+		strcat(d->pathname, "/ChangeSet");
+	} else if (CSET(s) && proj_isComponent(s->proj)) {
+		/*
+		 * The test above caught the case we are looking at it from
+		 * the product's point of view.  This case is from the 
+		 * component's point of view.
+		 */
+		x = proj_relpath(proj_product(s->proj), proj_root(s->proj));
+		lines = addLine(0, x);
+		lines2File(lines, "BitKeeper/log/COMPONENT");
+		freeLines(lines, 0);
 	} else unless (resync || sccs_patheq(d->pathname, s->gfile)) {
-		char	*x = name2sccs(d->pathname);
-
-		fprintf(stderr,
-		    "check: %s should be %s\n", s->sfile, x);
+		x = name2sccs(d->pathname);
+		fprintf(stderr, "check: %s should be %s\n", s->sfile, x);
 		free(x);
 		errors++;
 		names = 1;
@@ -1545,9 +1600,31 @@ chk_csetpointer(sccs *s)
 	 * like a repo but is not, it's partial maybe w/o the ChangeSet file.
 	 */
 	char	*csetkey = proj_rootkey(0);
+	project	*product = proj_product(0);
+	project	*p;
 
 	if (s->tree->csetFile == NULL ||
 	    !(streq(csetkey, s->tree->csetFile))) {
+		if (CSET(s) && product) {
+			unless (proj_isComponent(s->proj)) return (0);
+			assert(product);
+			if (!streq(s->tree->csetFile, proj_rootkey(product))) {
+				fprintf(stderr,
+				    "Wrong Product pointer: %s\n"
+				    "Should be: %s\n",
+				    s->tree->csetFile,
+				    proj_rootkey(product));
+				csetpointer++;
+				return (1);
+			}
+			return (0);
+		}
+		if (CSET(s) && proj_isComponent(s->proj) &&
+		    (p = proj_product(s->proj)) &&
+		    streq(proj_rootkey(p), s->tree->csetFile)) {
+			// It's cool baby.
+		    	return (0);
+		}
 		fprintf(stderr, 
 "Extra file: %s\n\
      belongs to: %s\n\

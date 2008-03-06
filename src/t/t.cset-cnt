@@ -12,6 +12,7 @@ fresh_commercial project
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 bk edit $Q BitKeeper/etc/ignore
@@ -30,6 +31,7 @@ bk clone $Q ../project ../copy || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 echo OK
@@ -50,6 +52,7 @@ bk commit $Q -ycommit || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 echo OK
@@ -62,6 +65,7 @@ bk changes -L > OUT || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 echo OK
@@ -73,6 +77,7 @@ bk changes -R > OUT || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 echo OK
@@ -92,6 +97,7 @@ BK_CONFIG=partial_check:off! bk pull $Q || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 echo OK
@@ -103,6 +109,7 @@ bk unpull -f $Q || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 echo OK
@@ -122,6 +129,7 @@ bk pull -R $Q || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 echo OK
@@ -133,6 +141,7 @@ bk resolve $Q || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 echo OK
@@ -144,6 +153,7 @@ bk push $Q || exit 1
 SEEN=`wc -l < "$FILE"`
 test $SEEN -ne $CNT && {
 	echo was $CNT now $SEEN
+	cat "$FILE"
 	exit 1
 }
 echo OK

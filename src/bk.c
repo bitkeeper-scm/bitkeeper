@@ -5,6 +5,7 @@
 #include "cmd.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
+#include "ensemble.h"
 
 #define	BK "bk"
 
@@ -80,7 +81,7 @@ save_gmon(void)
 int
 main(int ac, char **av, char **env)
 {
-	int	i, c, si, is_bk = 0, dashr = 0, remote = 0, quiet = 0;
+	int	i, c, si, is_bk = 0, dashr = 0, remote = 0, quiet = 0, all = 0;
 	int	ret;
 	char	*p, *dir = 0, *locking = 0;
 	char	sopts[30];
@@ -203,7 +204,7 @@ main(int ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c =
-		    getopt(ac, av, "@|1aB;cCdDgGjL|lnpqr|RuUxz;")) != -1) {
+		    getopt(ac, av, "@|1aAB;cCdDgGjL|lnpqr|RuUxz;")) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'C': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -211,6 +212,7 @@ main(int ac, char **av, char **env)
 				sopts[++si] = c;
 				break;
 			    case '@': remote = 1; break;
+			    case 'A': all = 1; break;
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
@@ -237,6 +239,10 @@ main(int ac, char **av, char **env)
 		}
 
 		if (remote) return (remote_bk(quiet, ac, av));
+		if (all && !getenv("_BK_ITERATOR")) {
+			putenv("_BK_ITERATOR=YES");
+			return (ensemble_each(quiet, ac, av));
+		}
 
 		if (dashr) {
 			if (dir) {
@@ -1009,6 +1015,7 @@ private void
 showproc_start(char **av)
 {
 	int	i;
+	char	*p;
 	FILE	*f;
 
 	if (prefix) free(prefix);
@@ -1016,6 +1023,10 @@ showproc_start(char **av)
 	unless (prefix) prefix = "";
 	prefix = strdup(prefix);
 
+	// Make it so that SHOWTERSE works like SHOWPROC so you can use just 1
+	if ((p = getenv("BK_SHOWTERSE")) && !getenv("BK_SHOWPROC")) {
+		safe_putenv("BK_SHOWPROC=%s", p);
+	}
 	unless (f = efopen("BK_SHOWPROC")) return;
 	unless (getenv("BK_SHOWTERSE")) {
 		fprintf(f, "BK  (%5u %5s)%s", getpid(), milli(), prefix);

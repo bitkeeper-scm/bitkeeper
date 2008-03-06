@@ -461,6 +461,7 @@ typedef struct delta {
 } delta;
 #define	COMMENTS(d)	((d)->cmnts != 0)
 #define	TAG(d)		((d)->type != 'D')
+#define	REG(d)		((d)->type == 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
 #define	EACH_COMMENT(s, d) \
 			comments_load(s, d); \
@@ -623,6 +624,7 @@ struct sccs {
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
 	u32	cachemiss:1;	/* BAM file not found locally */
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
+	u32	file:1;		/* treat as a file in DSPECS */
 };
 
 typedef struct {
@@ -928,6 +930,7 @@ delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(int quiet);
 int	sccs_meta(char *m,sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_findtips(sccs *s, delta **a, delta **b);
+delta*	sccs_newtip(sccs *s, char **revs);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
@@ -1265,6 +1268,7 @@ void	idcache_update(char *filelist);
 int	idcache_write(project *p, MDBM *idDB);
 void	cset_savetip(sccs *s, int force);
 void	symGraph(sccs *s, delta *d);
+void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
 char	*sccs_nextdata(sccs *s);
 int	sccs_rdweaveDone(sccs *s);
@@ -1274,5 +1278,8 @@ extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;
 extern	time_t	licenseEnd;
+
+#define	componentKey(k) ((int)strstr(k, "/ChangeSet|"))
+#define	changesetKey(k) ((int)strstr(k, "|ChangeSet|"))
 
 #endif	/* _SCCS_H_ */

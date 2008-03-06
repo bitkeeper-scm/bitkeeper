@@ -1,0 +1,823 @@
+echo $N Setup .......................................................$NL
+commercial project
+cd "$HERE"
+bk clone $Q project gcc
+cd gcc
+echo gcc > name
+bk new $Q name
+bk commit $Q -y'Create gcc repo'
+cd "$HERE"
+bk clone $Q project gdb
+cd gdb
+echo gdb > name
+bk new $Q name
+bk commit $Q -y'Create gdb repo'
+echo OK
+
+echo $N id -p when not on a product should fail......................$NL
+cd "$HERE/project"
+bk id -p >GOT 2>&1 && {
+	echo failed
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Convert to product ..........................................$NL
+cd "$HERE/project"
+bk ensemble create $Q
+test "`bk ensemble`" = "This is the product." || {
+	echo failed to make it a product
+    	exit 1
+}
+test -f BitKeeper/log/PRODUCT || {
+	echo failed to touch product turd
+    	exit 1
+}
+echo OK
+
+echo $N id -p on a product should return not a component.............$NL
+cd "$HERE/project"
+echo "Not a component." > WANT
+bk id -p >GOT 2>&1 && {
+	echo failed
+	cat GOT
+	exit 1
+}
+cmpfiles WANT GOT
+echo OK
+
+echo $N Add some components .........................................$NL
+bk ensemble add $Q -y'gcc & gdb' ../gcc gcc ../gdb gdb
+cd gcc
+test "`bk ensemble`" = "This is a component" || {
+	echo failed to make it a component
+	ls BitKeeper/log
+	exit 1
+}
+test -z "`bk pending`" || {
+	echo did not clear pending marks
+	exit 1
+}
+echo OK
+
+
+echo $N id -p on a component should work.............................$NL
+cd "$HERE/project"
+ROOTKEY=`bk id`
+cd "gcc"
+bk id -p >GOT 2>&1 || {
+	echo failed
+	cat GOT
+	exit 1
+}
+test "`cat GOT`" = "$ROOTKEY" || {
+	echo failed
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Check dspecs ................................................$NL
+cd "$HERE/project"
+test "`bk log -r+ -nd:FILE: gcc/ChangeSet`" = gcc/ChangeSet || {
+	echo bad gcc/ChangeSet
+	exit 1
+}
+echo OK
+
+echo $N Check for components in top changeset .......................$NL
+cd "$HERE/project"
+bk changes -v -r+ -nd'$if(:FILE:){:GFILE:}' | sort > GOT
+cat > WANT <<EOF
+gcc/ChangeSet
+gcc/ChangeSet
+gcc/ChangeSet
+gcc/ChangeSet
+gdb/ChangeSet
+gdb/ChangeSet
+gdb/ChangeSet
+gdb/ChangeSet
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that we can get a relative name from product ..........$NL
+mkdir -p gcc/a/b/c
+cd gcc/a/b/c
+test `bk pwd -R` = gcc/a/b/c || {
+	echo pwd -R failed
+	exit 1
+}
+test `bk pwd -r` = a/b/c || {
+	echo pwd -r failed
+	exit 1
+}
+echo OK
+
+echo $N Check that sfiles lists components ..........................$NL
+cd "$HERE/project"
+bk sfiles > GOT
+cat > WANT <<EOF
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+BitKeeper/etc/SCCS/s.modules
+gcc/SCCS/s.ChangeSet
+gdb/SCCS/s.ChangeSet
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that gfiles lists components ..........................$NL
+cd "$HERE/project"
+bk gfiles > GOT
+cat > WANT <<EOF
+ChangeSet
+BitKeeper/etc/collapsed
+BitKeeper/etc/config
+BitKeeper/etc/gone
+BitKeeper/etc/ignore
+BitKeeper/etc/modules
+gcc/ChangeSet
+gdb/ChangeSet
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that sfiles -x lists extra repos ......................$NL
+bk clone $Q ../gcc extra
+mkdir foo
+bk clone $Q ../gcc foo/extra
+bk sfiles -x > GOT
+cat > WANT <<EOF
+GOT
+WANT
+extra
+foo/extra
+EOF
+cmpfiles WANT GOT
+test `bk sfiles -x foo` = "foo/extra" || {
+	echo failed on foo/extra
+	exit 1
+}
+echo OK
+
+echo $N Check that sfiles -U does not list gcc/ChangeSet ............$NL
+cd "$HERE/project"
+bk sfiles -U > LIST
+grep ChangeSet LIST && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Check iterator from product root - quiet mode ...............$NL
+cd "$HERE/project"
+bk -qA pwd -R > GOT
+cat > WANT <<EOF
+.
+gcc
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check iterator from product root - noisy mode ...............$NL
+cd "$HERE/project"
+bk -A pwd -R > GOT
+cat > WANT <<EOF
+===== . =====
+.
+===== gcc =====
+gcc
+===== gdb =====
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check iterator from component - quiet mode ..................$NL
+cd "$HERE/project/gcc"
+bk -qA pwd -R > GOT
+cat > WANT <<EOF
+.
+gcc
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check iterator from component - noisy mode ..................$NL
+cd "$HERE/project/gcc"
+bk -A pwd -R > GOT
+cat > WANT <<EOF
+===== . =====
+.
+===== gcc =====
+gcc
+===== gdb =====
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check iterator with get .....................................$NL
+bk -UAr get > GOT 2>&1
+cat > WANT <<EOF
+===== . =====
+===== gcc =====
+name 1.1: 1 lines
+===== gdb =====
+name 1.1: 1 lines
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Run a full integrity check with and w/o extra repos .........$NL
+cd "$HERE/project"
+bk -r check -acvv > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+rm -rf extra foo
+bk -r check -acvv > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Same thing in a sub repo ....................................$NL
+cd "$HERE/project/gcc"
+bk clone $Q "$HERE/gcc" extra
+bk -r check -acvv > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+rm -rf extra 
+bk -r check -acvv > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make a cset in a subrepo and make sure bk sfiles -p works ...$NL
+cd "$HERE/project/gcc"
+bk edit $Q name
+echo him mom > name
+bk delta $Q -yxxx name
+bk commit -yxxx $Q 
+test -f SCCS/d.ChangeSet || {
+	echo failed to leave d.file
+	exit 1
+}
+cd "$HERE/project"
+test "`bk sfiles -p`" = "gcc/SCCS/s.ChangeSet" || {
+	echo failed
+	bk sfiles -p
+	exit 1
+}
+echo OK
+
+echo $N Check sfiles -pC ............................................$NL
+test "`bk sfiles -pC`" = "gcc/SCCS/s.ChangeSet|1.4" || {
+	echo failed
+	bk sfiles -pC
+	bk sfiles -E
+	exit 1
+}
+echo OK
+
+echo $N Check sfiles -pA with more than one cset pending ............$NL
+cd gcc
+bk edit $Q name
+echo him mom >> name
+bk delta $Q -yxxx name
+bk commit -yxxx $Q
+test -f SCCS/d.ChangeSet || {
+	echo failed to leave d.file
+	exit 1
+}
+cd "$HERE/project"
+cat > WANT <<EOF
+gcc/SCCS/s.ChangeSet|1.5
+gcc/SCCS/s.ChangeSet|1.4
+EOF
+bk sfiles -pA > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check bk pending ............................................$NL
+bk pending > GOT
+grep -q 1.4 GOT || {
+	echo failed to find 1.4
+	exit 1
+}
+grep -q 1.5 GOT || {
+	echo failed to find 1.5
+	exit 1
+}
+echo OK
+
+echo $N Make sure that commit finds the two csets ...................$NL
+REV=`bk changes -r+ -nd:REV:`
+bk commit -y'Commit the 1.4 and 1.5 gcc csets' $Q || {
+	echo failed
+	exit 1
+}
+test "`bk changes -r+ -nd:REV:`" = $REV && {
+	echo did not make a changeset
+	exit 1
+}
+test "`bk sfiles -p`" = "" || {
+	echo failed to clear pending state
+	exit 1
+}
+bk changes -vr+ -nd'$if(:FILE:){:FILE:|:REV:}' > GOT
+cat > WANT <<EOF
+gcc/ChangeSet|1.5
+gcc/ChangeSet|1.4
+EOF
+cmpfiles WANT GOT 
+echo OK
+
+
+echo $N Make sure check will pass if a component is removed .........$NL
+mv gdb "$HERE/gdb.save"
+bk -r check -ac > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -s OUT && {
+	echo should have been quiet
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure changes -v is OK with missing components ..........$NL
+bk changes -v > OUT 2>ERR
+test -s ERR && {
+	echo not so much
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Make sure product check will fail if a component is moved ...$NL
+mv gcc gcc4
+bk -r check -ac > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q "check: component 'gcc4' should be 'gcc'" OUT  || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure check in moved component will succeed .............$NL
+cd gcc4
+bk -r check -ac > OUT 2>&1 || {
+	echo should not have failed
+	cat OUT
+	exit 1
+}
+cd ..
+echo OK
+
+echo $N Make sure changes -v is OK with moved components ............$NL
+bk changes -v > OUT 2>ERR
+test -s ERR && {
+	echo not so much
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N A rename delta in the ChangeSet file should fix things up ...$NL
+cd gcc4
+bk edit $Q ChangeSet
+bk delta -f $Q -y'Rename gcc -> gcc4'
+cd ..
+bk -r check -ac || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N bk sfiles -n should list components in the wrong location ...$NL
+mv gcc4 gcc
+bk sfiles -n > OUT
+test -s OUT || {
+	echo failed
+	bk sfiles -E
+	exit 1
+}
+grep -q gcc/SCCS/s.ChangeSet OUT || grep -q gcc OUT || {
+	echo bogus path
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N See if bk names will fix simple rename ......................$NL
+bk -r check -acf > OUT 2>&1
+test $? = 2 || {
+	bad exit
+	cat OUT
+	exit 1
+}
+bk -r check -ac || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N See if bk names will fix circular rename ....................$NL
+mv gcc4 gdb
+mv "$HERE/gdb.save" gcc4
+bk -r check -acf > OUT 2>&1
+test $? = 2 || {
+	bad exit
+	cat OUT
+	exit 1
+}
+bk -r check -ac || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure that check will fix BitKeeper/log/COMPONENT .......$NL
+echo wrong > gcc4/BitKeeper/log/COMPONENT
+bk -r check -a
+test wrong = `cat gcc4/BitKeeper/log/COMPONENT` && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Same thing in the component .................................$NL
+cd gcc4
+echo wrong > BitKeeper/log/COMPONENT
+bk -r check -a
+test wrong = `cat BitKeeper/log/COMPONENT` && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Make some csets and look at changes output ..................$NL
+# First commit the rename
+cd "$HERE/project"
+bk commit $Q -y"rename cset"
+cd gcc4
+for i in file1 file2 file3
+do	echo $i > $i
+	bk new $Q $i
+	bk commit $Q -y"Add in $i in gcc"
+done
+cd "$HERE/project"
+bk commit $Q -y"Should be 3 csets"
+bk changes -vr+ > GOT
+grep -q gcc4/ChangeSet@1.9 GOT || exit 1
+grep -q gcc4/ChangeSet@1.8 GOT || exit 1
+grep -q gcc4/ChangeSet@1.7 GOT || exit 1
+echo OK
+
+echo $N See if bk log -r@1.6 maps to 1.9 in the component ...........$NL
+test "`bk log -r@1.6 -nd:REV: gcc4/ChangeSet`" = 1.9 || {
+	echo failed
+	bk log -r@1.6 -nd:REV: gcc4/ChangeSet
+	exit 1
+}
+echo OK
+
+echo $N Check that cset -l output lists component changesets ........$NL
+bk cset -l -r+ > GOT
+cat > WANT <<EOF
+ChangeSet|1.6
+gcc4/ChangeSet|1.9
+gcc4/ChangeSet|1.8
+gcc4/ChangeSet|1.7
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list -r+ lists product and components ...........$NL
+bk ensemble_list -1r+ > GOT
+cat > WANT <<EOF
+.
+gcc4
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list -r+ -p lists components only ...............$NL
+bk ensemble_list -r+ -p > GOT
+cat > WANT <<EOF
+gcc4
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list -r1.3 lists product and components .........$NL
+bk ensemble_list -1r1.3 > GOT
+cat > WANT <<EOF
+.
+gcc4
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list -r1.5 -r1.6 lists just gcc4 ................$NL
+cat > LIST <<EOF
+1.5
+1.6
+EOF
+bk ensemble_list -1 - < LIST > GOT
+cat > WANT <<EOF
+.
+gcc4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for undo -r+ ...............................$NL
+echo + | bk ensemble_list -1lpd -r1.5 - > GOT
+# The list should be desired tips of .|1.5 and gcc4|1.6
+(
+bk changes -qnd".|:KEY:" -r1.5 .
+bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for undo -a1.2, check the removes ..........$NL
+(
+echo 1.6
+echo 1.5
+echo 1.4
+echo 1.3
+) | bk ensemble_list -1lnp -r1.2 - > GOT
+cat > WANT <<EOF
+.
+gcc4|(new)
+gdb|(new)
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for undo -a1.2 .............................$NL
+(
+echo 1.6
+echo 1.5
+echo 1.4
+echo 1.3
+) | bk ensemble_list -lpd -r1.2 - > GOT
+# The list should be desired tips of .|1.2
+# because the other two are removed.
+(
+bk changes -qnd".|:KEY:" -r1.2 .
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for undo -a1.3 .............................$NL
+(
+echo 1.6
+echo 1.5
+echo 1.4
+) | bk ensemble_list -1lpd -r1.3 - > GOT
+# The list should be desired tips of 1.3 (just works out that way)
+(
+bk changes -qnd".|:KEY:" -r1.3 .
+bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for clone -r+ ..............................$NL
+bk ensemble_list -1lpd -r+ > GOT
+(
+bk changes -qnd".|:KEY:" -r+ .
+bk changes -qnd"gcc4|:KEY:" -r+ gcc4
+bk changes -qnd"gdb|:KEY:" -r+ gdb
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for clone -r1.3 ............................$NL
+bk ensemble_list -1lpd -r1.3 > GOT
+# They are all at 1.3 in 1.3
+(
+bk changes -qnd".|:KEY:" -r1.3 .
+bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
+bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for clone -r1.4 ............................$NL
+bk ensemble_list -1lpd -r1.4 > GOT
+(
+bk changes -qnd".|:KEY:" -r1.4 .
+bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
+bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for push -r1.6 .............................$NL
+echo 1.6 | bk ensemble_list -1lpd - > GOT
+# The list should be desired tips of .|1.6 and gcc4|1.9
+(
+bk changes -qnd".|:KEY:" -r1.6 .
+bk changes -qnd"gcc4|:KEY:" -r1.9 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for push -r1.5 .............................$NL
+echo 1.5 | bk ensemble_list -1lpd - > GOT
+(
+bk changes -qnd".|:KEY:" -r1.5 .
+bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for push -r1.4 .............................$NL
+echo 1.4 | bk ensemble_list -1lpd - > GOT
+(
+bk changes -qnd".|:KEY:" -r1.4 .
+bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for push -r1.3 .............................$NL
+echo 1.3 | bk ensemble_list -1lpd - > GOT
+(
+bk changes -qnd".|:KEY:" -r1.3 .
+bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
+bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+# bk changes -vnd:GFILE:\ :REV:
+
+echo $N bk ensemble list for push -r1.2 .............................$NL
+echo 1.2 | bk ensemble_list -lpd - > GOT
+(
+bk changes -qnd".|:KEY:" -r1.2 .
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes / bk cset core dumps .............................$NL
+bk changes -afnd:KEY: -r1.3.. > OUT
+test -f core && {
+	echo changes died
+	exit 1
+}
+bk cset -ffl5 - < OUT > GOT
+test -f core && {
+	echo cset died
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk cset listing can skip components ...............$NL
+echo 1.6 | bk cset -fflP - > GOT
+echo 'ChangeSet|1.6' > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure bk cset listing can list components ...............$NL
+echo 1.6 | bk cset -ffl - > GOT
+cat > WANT <<EOF
+ChangeSet|1.6
+gcc4/ChangeSet|1.9
+gcc4/ChangeSet|1.8
+gcc4/ChangeSet|1.7
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure bk cset creating a patch can skip components ......$NL
+echo 1.6 | bk cset -BffPm - > PATCH
+grep -q '== gcc4/ChangeSet ==' PATCH && {
+	echo failed
+	cat PATCH
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk makepatch can skip components ..................$NL
+bk makepatch -r+ -P > PATCH
+grep -q '== gcc4/ChangeSet ==' PATCH && {
+	echo failed
+	cat PATCH
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk makepatch can include components ...............$NL
+bk makepatch -r+ > PATCH
+grep -q '== gcc4/ChangeSet ==' PATCH || {
+	echo failed
+	cat PATCH
+	exit 1
+}
+echo OK
+
+cd "$HERE"
+tar cf TAR project
+cd project
+
+echo $N Test bk undo -r+ in an ensemble, removes data in one comp ...$NL
+bk undo -fsr+ > OUT 2>&1  || {
+	echo failed undo
+	cat OUT
+	exit 1
+}
+bk -Ar check -ac > OUT 2>&1 || {
+	echo failed check
+	cat OUT
+	exit 1
+}
+cd gcc4
+test `bk changes -r+ -nd:I:` = "1.6" || {
+	echo failed in gcc4
+	bk changes
+	exit 1
+}
+cd ..
+echo OK
+
+echo $N Test bk undo in an ensemble that renames a component ........$NL
+bk undo -fsr+ > OUT 2>&1  || {
+	echo failed undo
+	cat OUT
+	exit 1
+}
+cp OUT "$HERE"
+grep -q "check: trying to fix names..." OUT && {
+	echo warning: should have fixed names before running check
+	cat OUT
+}
+bk -Ar check -ac > OUT 2>&1 || {
+	echo failed check
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test bk undo with extras ....................................$NL
+bk undo -fsr1.4,1.3 > OUT 2>&1 && {
+	echo should have failed undo
+	cat OUT
+	exit 1
+}
+grep -q "Changed/extra files in 'gcc'" OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test bk undo in an ensemble that removes a component ........$NL
+rm -f gcc/GOT gcc/OUT gcc/WANT
+bk undo -fsr1.4,1.3 > OUT 2>&1  || {
+	echo failed undo
+	cat OUT
+	exit 1
+}
+bk -Ar check -ac > OUT 2>&1 || {
+	echo failed check
+	cat OUT
+	exit 1
+}
+echo OK
+
+# XXX - write a test to make sure that we can list only the repos that are
+# present w/ bk ensemble_list
+
+# ditto for one that has been moved but does not yet have the rename delta

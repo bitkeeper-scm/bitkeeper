@@ -1779,7 +1779,7 @@ sccs_findrev(sccs *s, char *rev)
 again:	if (rev[0] == '@') {
 		if (rev[1] == '@') {
 			d = 0;
-		} else if (CSET(s)) {
+		} else if (CSET(s) && !s->file) {
 			++rev;
 			goto again;
 		} else {
@@ -3348,6 +3348,12 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
+	unless (CSET(s)) s->file = 1;
+	if (CSET(s) &&
+	    proj_isComponent(s->proj) &&
+	    proj_isProduct(0)) {
+	    	s->file = 1;
+    	}
 	sccs_inherit(s, d);
 	d = d->kid;
 	s->tree->kid = 0;
@@ -5345,6 +5351,26 @@ sccs_set(sccs *s, delta *d, char *iLst, char *xLst)
 	int	junk;
 
 	return (serialmap(s, d, iLst, xLst, &junk));
+}
+
+delta *
+sccs_newtip(sccs *s, char **revs)
+{
+	delta	*d, *after = 0;
+	int	i;
+
+	for (d = s->table; d; d = d->next) d->flags &= ~D_SET;
+	EACH(revs) {
+		d = sccs_findrev(s, revs[i]);
+		assert(d);
+		d->flags |= D_SET;
+	}
+	for (d = s->table; d; d = d->next) {
+		if (!after && REG(d) && !(d->flags & D_SET)) after = d;
+		d->flags &= ~D_SET;
+	}
+	assert(after);
+	return (after);
 }
 
 private void
@@ -9016,15 +9042,23 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				hostArg(d, sccs_host());
 			}
 		}
-		unless (d->pathname && s) {
+		if (s && !d->pathname &&
+		    (!CSET(s) || proj_isComponent(s->proj))) {
 			char *p, *q;
+			project	*proj = s->proj;
 
 			/*
-			 * Get the relativename of the sfile, _not_ the gfile,
+			 * Get the relativename of the sfile,
+			 * _not_ the gfile,
 			 * because we cannot trust the gfile name on
 			 * win32 case-folding file system.
 			 */
-			p = _relativeName(s->sfile, 0, 0, 1, s->proj);
+			if (CSET(s)) {
+				proj = proj_product(proj);
+				p = _relativeName(s->sfile, 1, 1, 1, proj);
+			} else {
+				p = _relativeName(s->sfile, 0, 0, 1, proj);
+			}
 			q = sccs2name(p);
 			pathArg(d, q);
 			free(q);
@@ -9081,7 +9115,7 @@ updMode(sccs *s, delta *d, delta *dParent)
 private void
 updatePending(sccs *s)
 {
-	if (CSET(s)) return;
+	if (CSET(s) && !proj_isComponent(s->proj)) return;
 	touch(sccsXfile(s, 'd'),  GROUP_MODE);
 }
 
@@ -14318,6 +14352,14 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		return (strVal);
 	}
 
+	case KW_FILE: /* FILE */ {
+		if (s->file) {
+			fs(s->gfile);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	case KW_HT: /* HT */
 	case KW_HOST: /* HOST */ {
 		/* host without any importer name */
@@ -16015,7 +16057,10 @@ recache:		first = 0;
 			sum = 0;
 			if (f) fclose(f);
 			if (DB) mdbm_close(DB), DB = 0;
-			if (sccs_reCache(quiet)) goto out;
+			if (sccs_reCache(quiet)) {
+				fprintf(stderr, "Failed to rebuild idcache\n");
+				goto out;
+			}
 			goto again;
 		}
 		if (first && streq(file, GONE) && exists(SGONE)) {
@@ -16226,7 +16271,12 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	unless (s && HAS_SFILE(s))  goto out;
 	localp = proj_init(".");
 	proj_free(localp);
-	if (s->proj != localp) goto out; /* use after free OK */
+	if (!proj_isComponent(s->proj) &&
+	    (s->proj != localp)) { /* use after free OK */
+		/* We're trying to commit an sfile from a nested project
+		 * in the enclosing project. Bail.*/
+		goto out;
+	}
 
 	/*
 	 * Go look for this key in the file.

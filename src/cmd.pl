@@ -190,6 +190,7 @@ delta
 diffs
 diffsplit
 dotbk
+ensemble_list
 _eula
 _exists
 export

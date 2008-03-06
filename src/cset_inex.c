@@ -310,7 +310,12 @@ doit(int flags, char *file, char *op, char *revs)
 err:		sccs_free(s);
 		return (1);
 	}
-	unless (sccs_top(s)->flags & D_CSET) {
+	/*
+	 * If we are a product cset, don't do this test, we have no marks.
+	 * XXX - if we ever make marks in normal repos optional this breaks.
+	 */
+	unless ((CSET(s) && proj_isProduct(s->proj)) ||
+	    (sccs_top(s)->flags & D_CSET)) {
 		fprintf(stderr,
 		    "cset: %s has uncommitted deltas, aborting.\n", s->gfile);
 		goto err;

@@ -14,7 +14,7 @@ typedef	struct cset {
 	int	remark;		/* clear & redo all the ChangeSet marks */
 	int	dash;
 	int	historic;	/* list the historic name */
-	int	hide_cset;	/* exclude cset from file@rev list */
+	int	hide_comp;	/* exclude comp from file@rev list */
 	int	include;	/* create new cset with includes */
 	int	exclude;	/* create new cset with excludes */
 	int	serial;		/* the revs passed in are serial numbers */
@@ -57,7 +57,7 @@ makepatch_main(int ac, char **av)
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "Bdr|sCqv")) != -1) {
+	while ((c = getopt(ac, av, "Bdr|sCPqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
@@ -77,6 +77,9 @@ makepatch_main(int ac, char **av)
 		    	break;
 		    case 's':					/* undoc? 2.0 */
 			copts.serial = 1;
+			break;
+		    case 'P':
+			nav[++i] = "-P";
 			break;
 		    case 'q':					/* undoc? 2.0 */
 			nav[++i] = "-q";
@@ -120,13 +123,13 @@ cset_main(int ac, char **av)
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5BCd|DfHhi;lm|M|qr|svx;")) != -1) {
+	while ((c = getopt(ac, av, "5BCd|Dfhi;lm|M|Pqr|svx;")) != -1) {
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
 		    case 'h': copts.historic++; break;		/* undoc? 2.0 */
-		    case 'H': copts.hide_cset++; break;		/* undoc 2.0 */
+		    case 'P': copts.hide_comp++; break;		/* undoc 2.0 */
 		    case 'i':					/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
 			copts.include++;
@@ -336,6 +339,7 @@ doit(cset_t *cs, sccs *sc)
 		if (cs->doDiffs && cs->makepatch) printf("\n");
 		return;
 	}
+	if (copts.hide_comp && CSET(sc) && proj_isComponent(sc->proj)) return;
 	cs->nfiles++;
 	if (cs->doDiffs) {
 		doDiff(sc, DF_UNIFIED);
@@ -378,7 +382,7 @@ header(sccs *cset, int diffs)
 private void
 markThisCset(cset_t *cs, sccs *s, delta *d)
 {
-	if (TAG(d) || cs->mark) {
+	if (cs->mark || TAG(d)) {
 		d->flags |= D_SET;
 		return;
 	}
@@ -474,7 +478,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 retry:	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
 		perror("idcache");
 	}
-	if (cset && strstr(lastkey, "|ChangeSet|")) {
+	if (cset && streq(lastkey, proj_rootkey(0))) {
 		sc = cset;
 	} else {
 		sc = sccs_keyinit(lastkey, INIT_NOWARN, idDB);
@@ -763,7 +767,7 @@ doDiff(sccs *sc, char kind)
 {
 	delta	*d, *e = 0;
 
-	if (sc->state & S_CSET) return;	/* no changeset diffs */
+	if (CSET(sc)) return;		/* no changeset diffs */
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			e = d;
@@ -795,7 +799,7 @@ doEndpoints(cset_t *cs, sccs *sc)
 {
 	delta	*d, *earlier = 0, *later = 0;
 
-	if (sc->state & S_CSET) return;
+	if (CSET(sc)) return;		
 	for (d = sc->table; d; d = d->next) {
 		unless (d->flags & D_SET) continue;
 		unless (later) {
@@ -856,7 +860,6 @@ doSet(sccs *sc)
 	delta	*d;
 	char	key[MD5LEN];
 
-	if (copts.hide_cset  && streq(CHANGESET, sc->sfile))  return;
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			printf("%s", sc->gfile);
@@ -932,7 +935,13 @@ add(FILE *diffs, char *buf)
 		system("bk clean -q ChangeSet");
 		cset_exit(1);
 	}
-	if (s->state & S_CSET) {
+
+	/*
+	 * This is really testing two things:
+	 * a) If I'm a ChangeSet file and not in an ensemble
+	 * b) If I'm a ChangeSet file and not a component
+	 */
+	if (CSET(s) && !proj_isComponent(s->proj)) {
 		sccs_free(s);
 		return;
 	}
@@ -1064,7 +1073,8 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 		cset_exit(1);
 	}
 
-	d->flags |= D_CSET;	/* XXX: longrun, don't tag cset file */
+	/* for compat with old versions of BK not using ensembles */
+	unless (proj_isEnsemble(cset->proj)) d->flags |= D_CSET;	
 
 	/*
 	 * Make /dev/tty where we get input.
@@ -1182,7 +1192,8 @@ sccs_patch(sccs *s, cset_t *cs)
 		if (d->type == 'D') {
 			int	rc = 0;
 
-			if (s->state & S_CSET) {
+			// Nested XXX
+			if (CSET(s)) {
 				if (d->added) rc = cset_diffs(cs, d->serial);
 			} else if (BAM(s) && copts.doBAM) {
 				assert(d->hash || (!d->added && !d->deleted));

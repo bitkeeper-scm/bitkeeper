@@ -12,10 +12,11 @@ pwd_main(int ac, char **av)
 	char	buf[MAXPATH], *p;
 	int	c, shortname = 0, bk_rpath = 0, windows = 0;
 
-	while ((c = getopt(ac, av, "srw")) != -1) {
+	while ((c = getopt(ac, av, "srRw")) != -1) {
 		switch (c) {
 			case 's': shortname = 1; break;
 			case 'r': bk_rpath = 1; break; /* bk relative path */
+			case 'R': bk_rpath = 2; break; /* from product root */
 			case 'w': windows = 1; break;
 			default: fprintf(stderr, "%s", usage); exit(1);
 		}
@@ -52,7 +53,17 @@ pwd_main(int ac, char **av)
 	nt2bmfname(p, p); /* needed for win98 */
 	if (windows) bm2ntfname(p, p);
 #endif
-	printf("%s\n", bk_rpath ? _relativeName(p, 1, 1, 1, 0): p);
+	switch (bk_rpath) {
+	    case 0: printf("%s\n", p); break;
+	    case 1: printf("%s\n", _relativeName(p, 1, 1, 1, 0)); break;
+	    case 2: 
+		unless (proj_product(0)) {
+			fprintf(stderr, "Not in an ensemble.\n");
+			exit(1);
+		}
+		printf("%s\n", _relativeName(p, 1, 1, 1, proj_product(0)));
+		break;
+	}
 	return (0);
 }
 
