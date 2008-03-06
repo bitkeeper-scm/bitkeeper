@@ -1013,6 +1013,7 @@ private void
 showproc_start(char **av)
 {
 	int	i;
+	char	*p;
 	FILE	*f;
 
 	if (prefix) free(prefix);
@@ -1020,6 +1021,10 @@ showproc_start(char **av)
 	unless (prefix) prefix = "";
 	prefix = strdup(prefix);
 
+	// Make it so that SHOWTERSE works like SHOWPROC so you can use just 1
+	if ((p = getenv("BK_SHOWTERSE")) && !getenv("BK_SHOWPROC")) {
+		safe_putenv("BK_SHOWPROC=%s", p);
+	}
 	unless (f = efopen("BK_SHOWPROC")) return;
 	unless (getenv("BK_SHOWTERSE")) {
 		fprintf(f, "BK  (%5u %5s)%s", getpid(), milli(), prefix);

@@ -5376,6 +5376,26 @@ sccs_set(sccs *s, delta *d, char *iLst, char *xLst)
 	return (serialmap(s, d, iLst, xLst, &junk));
 }
 
+delta *
+sccs_newtip(sccs *s, char **revs)
+{
+	delta	*d, *after = 0;
+	int	i;
+
+	for (d = s->table; d; d = d->next) d->flags &= ~D_SET;
+	EACH(revs) {
+		d = sccs_findrev(s, revs[i]);
+		assert(d);
+		d->flags |= D_SET;
+	}
+	for (d = s->table; d; d = d->next) {
+		if (!after && REG(d) && !(d->flags & D_SET)) after = d;
+		d->flags &= ~D_SET;
+	}
+	assert(after);
+	return (after);
+}
+
 private void
 changestate(register serlist *state, char type, int serial)
 {

@@ -371,7 +371,7 @@ test -s ERR && {
 }
 echo OK
 
-echo $N Make sure check will fail if a component is moved ...........$NL
+echo $N Make sure product check will fail if a component is moved ...$NL
 mv gcc gcc4
 bk -r check -ac > OUT 2>&1 && {
 	echo should have failed
@@ -383,6 +383,16 @@ grep -q "check: component 'gcc4' should be 'gcc'" OUT  || {
 	cat OUT
 	exit 1
 }
+echo OK
+
+echo $N Make sure check in moved component will succeed .............$NL
+cd gcc4
+bk -r check -ac > OUT 2>&1 || {
+	echo should not have failed
+	cat OUT
+	exit 1
+}
+cd ..
 echo OK
 
 echo $N Make sure changes -v is OK with moved components ............$NL
@@ -504,3 +514,310 @@ gcc4/ChangeSet|1.7
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N bk ensemble list -r+ lists product and components ...........$NL
+bk ensemble_list -1r+ > GOT
+cat > WANT <<EOF
+.
+gcc4
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list -r+ -p lists components only ...............$NL
+bk ensemble_list -r+ -p > GOT
+cat > WANT <<EOF
+gcc4
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list -r1.3 lists product and components .........$NL
+bk ensemble_list -1r1.3 > GOT
+cat > WANT <<EOF
+.
+gcc4
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list -r1.5 -r1.6 lists just gcc4 ................$NL
+cat > LIST <<EOF
+1.5
+1.6
+EOF
+bk ensemble_list -1 - < LIST > GOT
+cat > WANT <<EOF
+.
+gcc4
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for undo -r+ ...............................$NL
+echo + | bk ensemble_list -1lpd -r1.5 - > GOT
+# The list should be desired tips of .|1.5 and gcc4|1.6
+(
+bk changes -qnd".|:KEY:" -r1.5 .
+bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for undo -a1.2, check the removes ..........$NL
+(
+echo 1.6
+echo 1.5
+echo 1.4
+echo 1.3
+) | bk ensemble_list -1lnp -r1.2 - > GOT
+cat > WANT <<EOF
+.
+gcc4|(new)
+gdb|(new)
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for undo -a1.2 .............................$NL
+(
+echo 1.6
+echo 1.5
+echo 1.4
+echo 1.3
+) | bk ensemble_list -lpd -r1.2 - > GOT
+# The list should be desired tips of .|1.2
+# because the other two are removed.
+(
+bk changes -qnd".|:KEY:" -r1.2 .
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for undo -a1.3 .............................$NL
+(
+echo 1.6
+echo 1.5
+echo 1.4
+) | bk ensemble_list -1lpd -r1.3 - > GOT
+# The list should be desired tips of 1.3 (just works out that way)
+(
+bk changes -qnd".|:KEY:" -r1.3 .
+bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for clone -r+ ..............................$NL
+bk ensemble_list -1lpd -r+ > GOT
+(
+bk changes -qnd".|:KEY:" -r+ .
+bk changes -qnd"gcc4|:KEY:" -r+ gcc4
+bk changes -qnd"gdb|:KEY:" -r+ gdb
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for clone -r1.3 ............................$NL
+bk ensemble_list -1lpd -r1.3 > GOT
+# They are all at 1.3 in 1.3
+(
+bk changes -qnd".|:KEY:" -r1.3 .
+bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
+bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for clone -r1.4 ............................$NL
+bk ensemble_list -1lpd -r1.4 > GOT
+(
+bk changes -qnd".|:KEY:" -r1.4 .
+bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
+bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for push -r1.6 .............................$NL
+echo 1.6 | bk ensemble_list -1lpd - > GOT
+# The list should be desired tips of .|1.6 and gcc4|1.9
+(
+bk changes -qnd".|:KEY:" -r1.6 .
+bk changes -qnd"gcc4|:KEY:" -r1.9 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for push -r1.5 .............................$NL
+echo 1.5 | bk ensemble_list -1lpd - > GOT
+(
+bk changes -qnd".|:KEY:" -r1.5 .
+bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for push -r1.4 .............................$NL
+echo 1.4 | bk ensemble_list -1lpd - > GOT
+(
+bk changes -qnd".|:KEY:" -r1.4 .
+bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk ensemble list for push -r1.3 .............................$NL
+echo 1.3 | bk ensemble_list -1lpd - > GOT
+(
+bk changes -qnd".|:KEY:" -r1.3 .
+bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
+bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+# bk changes -vnd:GFILE:\ :REV:
+
+echo $N bk ensemble list for push -r1.2 .............................$NL
+echo 1.2 | bk ensemble_list -lpd - > GOT
+(
+bk changes -qnd".|:KEY:" -r1.2 .
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk changes / bk cset core dumps .............................$NL
+bk changes -afnd:KEY: -r1.3.. > OUT
+test -f core && {
+	echo changes died
+	exit 1
+}
+bk cset -ffl5 - < OUT > GOT
+test -f core && {
+	echo cset died
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk cset listing can skip components ...............$NL
+echo 1.6 | bk cset -fflP - > GOT
+echo 'ChangeSet|1.6' > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure bk cset listing can list components ...............$NL
+echo 1.6 | bk cset -ffl - > GOT
+cat > WANT <<EOF
+ChangeSet|1.6
+gcc4/ChangeSet|1.9
+gcc4/ChangeSet|1.8
+gcc4/ChangeSet|1.7
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure bk cset creating a patch can skip components ......$NL
+echo 1.6 | bk cset -BffPm - > PATCH
+grep -q '== gcc4/ChangeSet ==' PATCH && {
+	echo failed
+	cat PATCH
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk makepatch can skip components ..................$NL
+bk makepatch -r+ -P > PATCH
+grep -q '== gcc4/ChangeSet ==' PATCH && {
+	echo failed
+	cat PATCH
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk makepatch can include components ...............$NL
+bk makepatch -r+ > PATCH
+grep -q '== gcc4/ChangeSet ==' PATCH || {
+	echo failed
+	cat PATCH
+	exit 1
+}
+echo OK
+
+cd "$HERE"
+tar cf TAR project
+cd project
+
+echo $N Test bk undo -r+ in an ensemble, removes data in one comp ...$NL
+bk undo -fsr+ > OUT 2>&1  || {
+	echo failed undo
+	cat OUT
+	exit 1
+}
+bk -Ar check -ac > OUT 2>&1 || {
+	echo failed check
+	cat OUT
+	exit 1
+}
+cd gcc4
+test `bk changes -r+ -nd:I:` = "1.6" || {
+	echo failed in gcc4
+	bk changes
+	exit 1
+}
+cd ..
+echo OK
+
+echo $N Test bk undo in an ensemble that renames a component ........$NL
+bk undo -fsr+ > OUT 2>&1  || {
+	echo failed undo
+	cat OUT
+	exit 1
+}
+cp OUT "$HERE"
+grep -q "check: trying to fix names..." OUT && {
+	echo warning: should have fixed names before running check
+	cat OUT
+}
+bk -Ar check -ac > OUT 2>&1 || {
+	echo failed check
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test bk undo with extras ....................................$NL
+bk undo -fsr1.4,1.3 > OUT 2>&1 && {
+	echo should have failed undo
+	cat OUT
+	exit 1
+}
+grep -q "Changed/extra files in 'gcc'" OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test bk undo in an ensemble that removes a component ........$NL
+rm -f gcc/GOT gcc/OUT gcc/WANT
+bk undo -fsr1.4,1.3 > OUT 2>&1  || {
+	echo failed undo
+	cat OUT
+	exit 1
+}
+bk -Ar check -ac > OUT 2>&1 || {
+	echo failed check
+	cat OUT
+	exit 1
+}
+echo OK
+
+# XXX - write a test to make sure that we can list only the repos that are
+# present w/ bk ensemble_list
+
+# ditto for one that has been moved but does not yet have the rename delta

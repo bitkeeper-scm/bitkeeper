@@ -1792,7 +1792,7 @@ test $TIP = `bk changes -r+ -nd:I:` || {
 	echo should not have removed top cset
 	exit 1
 }
-bk changes -and:KEY: -r1.1.. > WANT
+bk changes -afnd:KEY: -r1.1.. > WANT
 cmpfiles WANT LIST
 echo OK
 

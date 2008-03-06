@@ -6,6 +6,7 @@ typedef struct	project project;
 char*		proj_bkl(project *p);
 u32		proj_bklbits(project *p);
 int		proj_cd2root(void);
+int		proj_cd2product(void);
 int		proj_chdir(char *newdir);
 MDBM*		proj_config(project *p);
 char*		proj_configval(project *p, char *key);

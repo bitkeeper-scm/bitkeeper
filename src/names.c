@@ -8,6 +8,7 @@
  */
 #include "system.h"
 #include "sccs.h"
+#include "ensemble.h"
 
 private	 void	pass1(sccs *s);
 private	 void	pass2(u32 flags);
@@ -149,8 +150,8 @@ try_rename(sccs *s, delta *d, int dopass1, u32 flags)
 
 	/* Handle components */
 	if (CSET(s) && proj_isComponent(s->proj)) {
-		*strrchr(s->gfile, '/') = 0;	// chomp /ChangeSet
-		*strrchr(d->pathname, '/') = 0;	// chomp /ChangeSet
+		csetChomp(s->gfile);
+		csetChomp(d->pathname);
 		s->state |= S_READ_ONLY;	// don't put those names back
 		if (exists(d->pathname)) {
 			/* circular or deadlock */

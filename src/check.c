@@ -8,6 +8,7 @@
 #include "sccs.h"
 #include "range.h"
 #include "bam.h"
+#include "ensemble.h"
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
@@ -1223,7 +1224,7 @@ check(sccs *s, MDBM *idDB)
 	delta	*d, *ino, *tip = 0;
 	int	errors = 0;
 	int	i;
-	char	*t, *term;
+	char	*t, *term, *x;
 	hash	*deltas, *shortdeltas = 0;
 	char	**lines = 0;
 	char	buf[MAXKEY];
@@ -1305,15 +1306,17 @@ check(sccs *s, MDBM *idDB)
 
 	/*
 	 * The location recorded and the location found should match.
+	 * We allow a component ChangeSet file to be out of place if
+	 * we are in the component but not if we are in the product.
+	 * The product wants it in a particular place but the comp
+	 * just cares that it is in SCCS/s.ChangeSet
 	 */
 	unless (d = sccs_top(s)) {
 		fprintf(stderr, "check: can't get TOT in %s\n", s->gfile);
 		errors++;
-	} else if (CSET(s) && proj_isComponent(s->proj)) {
-		char	*x;
-
+	} else if (CSET(s) && proj_isComponent(s->proj) && proj_isProduct(0)) {
 		x = proj_relpath(proj_product(s->proj), proj_root(s->proj));
-		*strrchr(d->pathname, '/') = 0;	// chomp /ChangeSet
+		csetChomp(d->pathname);
 		unless (streq(x, d->pathname)) {
 			fprintf(stderr,
 			    "check: component '%s' should be '%s'\n",
@@ -1321,7 +1324,8 @@ check(sccs *s, MDBM *idDB)
 			errors++;
 			names = 1;
 		}
-		lines = addLine(lines, d->pathname);
+		free(x);
+		lines = addLine(0, d->pathname);
 		buf[0] = 0;
 		unless (streq(s->sfile, CHANGESET)) {
 			sprintf(buf, "%s/", d->pathname);
@@ -1330,9 +1334,18 @@ check(sccs *s, MDBM *idDB)
 		lines2File(lines, buf);
 		freeLines(lines, 0);
 		strcat(d->pathname, "/ChangeSet");
+	} else if (CSET(s) && proj_isComponent(s->proj)) {
+		/*
+		 * The test above caught the case we are looking at it from
+		 * the product's point of view.  This case is from the 
+		 * component's point of view.
+		 */
+		x = proj_relpath(proj_product(s->proj), proj_root(s->proj));
+		lines = addLine(0, x);
+		lines2File(lines, "BitKeeper/log/COMPONENT");
+		freeLines(lines, 0);
 	} else unless (resync || sccs_patheq(d->pathname, s->gfile)) {
-		char	*x = name2sccs(d->pathname);
-
+		x = name2sccs(d->pathname);
 		fprintf(stderr, "check: %s should be %s\n", s->sfile, x);
 		free(x);
 		errors++;

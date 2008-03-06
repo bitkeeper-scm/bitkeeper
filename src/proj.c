@@ -285,6 +285,18 @@ proj_cd2root(void)
 }
 
 /*
+ * chdir to the root of the product, if there is one, or return an error
+ */
+int
+proj_cd2product(void)
+{
+	project	*p;
+
+	if (p = proj_product(0)) return (proj_chdir(proj_root(p)));
+	return (-1);
+}
+
+/*
  * When given a pathname to a file, this function returns the pathname
  * to the file relative to the current project.  If the file is not under
  * the current project then, NULL is returned.
