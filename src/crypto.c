@@ -764,7 +764,16 @@ crypto_symDecrypt(char *key, FILE *fin, FILE *fout)
 void
 bk_preSpawnHook(int flags, char *av[])
 {
-	rand_setSeed((flags & _P_DETACH) ? 0 : 1);
+	if (spawn_tcl || streq(av[0], "bk")) {
+		/* bk calling itself */
+		rand_setSeed((flags & _P_DETACH) ? 0 : 1);
+	} else {
+		/*
+		 * calling other commands, need to clear since win32
+		 * can't validate the ppid pointer.
+		 */
+		putenv("RANDSEED=");
+	}
 }
 
 

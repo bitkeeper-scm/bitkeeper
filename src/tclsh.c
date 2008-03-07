@@ -6,8 +6,7 @@
  */
 
 #include "system.h"
-
-extern	char *bin;
+#include "sccs.h"
 
 int
 tclsh_main(int ac, char **av)
@@ -23,9 +22,11 @@ tclsh_main(int ac, char **av)
 	}
 
 	av[0] = cmd;
+	spawn_tcl = 1;
 	if ((pid = spawnvp(_P_NOWAIT, av[0], av)) < 0) {
 		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
 	}
+	spawn_tcl = 0;
 	if (waitpid(pid, &ret, 0) < 0) {
 		return (126);
 	} else if (!WIFEXITED(ret)) {
