@@ -1274,5 +1274,6 @@ extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;
 extern	time_t	licenseEnd;
+extern	int	spawn_tcl;
 
 #endif	/* _SCCS_H_ */
