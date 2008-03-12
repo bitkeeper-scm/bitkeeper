@@ -114,6 +114,11 @@ usage:			system("bk help -s mvdir");
 	from = av[optind];
 	to = av[optind + 1];
 
+	localName2bkName(from, from);
+	localName2bkName(to, to);
+	cleanPath(from, from);
+	cleanPath(to, to);
+
 	unless (isdir(from)) {
 		fprintf(stderr, "%s is not a directory\n", from);
 		return (1);
@@ -129,8 +134,6 @@ usage:			system("bk help -s mvdir");
                 return (1);
         }
 
-	localName2bkName(from, from);
-	localName2bkName(to, to);
 	if (streq(basenm(from), "SCCS")) {
 		fprintf(stderr, "mvdir: %s is not a movable directory\n", from);
 		return (1);
