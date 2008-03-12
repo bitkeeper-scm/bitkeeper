@@ -17,15 +17,34 @@ extern int base64_encode(const unsigned char *in,  unsigned long inlen,
     unsigned char *out, unsigned long *outlen);
 
 /*
+ * write the hash files to a file named by path.
+ * returns -1 on error, or 0
+ */
+int
+hash_toFile(hash *h, char *path)
+{
+	FILE	*f;
+	int	rc = -1;
+
+	if (f = fopen(path, "w")) {
+		rc = hash_toStream(h, f);
+		fclose(f);
+	}
+	return (rc);
+}
+
+/*
  * write the hash files to a FILE*
  * returns -1 on error, or 0
  */
 int
-hash_toFile(hash *h, FILE *f)
+hash_toStream(hash *h, FILE *f)
 {
 	char	**fieldlist = 0;
 	int	i, rc = -1;
 	u8	*data;
+
+	assert(h && f);
 
 	/*
 	 * Sort the fields and print them
@@ -45,12 +64,30 @@ out:	freeLines(fieldlist, 0);
 }
 
 /*
+ * Read a file written by the function above and add keys to 'h'
+ * overwriting any existing keys.  If h==0 and path exists,
+ * then a new hash is returned.
+ */
+hash *
+hash_fromFile(hash *h, char *path)
+{
+	FILE	*f = fopen(path, "r");
+	hash	*ret = 0;
+
+	if (f = fopen(path, "r")) {
+		ret = hash_fromStream(h, f);
+		fclose(f);
+	}
+	return (ret);
+}
+
+/*
  * Read a stream written by the function above and add keys to 'h'
  * overwriting any existing keys.  If h==0, then a new hash is
  * returned.
  */
 hash *
-hash_fromFile(hash *h, FILE *f)
+hash_fromStream(hash *h, FILE *f)
 {
 	char	*line;
 	char	*key = 0;
@@ -60,6 +97,7 @@ hash_fromFile(hash *h, FILE *f)
 	unsigned long len;
 	char	data[256];
 
+	assert(f);
 	unless (h) h = hash_new(HASH_MEMHASH);
 	while (line = fgetline(f)) {
 		if ((line[0] == '@') && (line[1] != '@')) {
@@ -192,6 +230,7 @@ savekey(hash *h, int base64, char *key, char **val)
 	}
 	hash_store(h, key, strlen(key)+1, data, len); /* overwrite existing */
 	free(key);
+	free(data);
 }
 
 int
@@ -218,7 +257,7 @@ hashfile_test_main(int ac, char **av)
 		rc = 1;
 		goto out;
 	}
-	if (hash_toFile(h, f)) {
+	if (hash_toStream(h, f)) {
 		fprintf(stderr, "Failed to save hash\n");
 		rc = 1;
 		goto out;
@@ -232,7 +271,7 @@ hashfile_test_main(int ac, char **av)
 		rc = 1;
 		goto out;
 	}
-	unless (h = hash_fromFile(0, f)) {
+	unless (h = hash_fromStream(0, f)) {
 		fprintf(stderr, "Failed to load hash\n");
 		goto out;
 	}

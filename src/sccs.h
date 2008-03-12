@@ -1278,8 +1278,9 @@ extern	char	*editor;
 extern	char	*bin;
 extern	char	*BitKeeper;
 extern	time_t	licenseEnd;
+extern	int	spawn_tcl;
 
-#define	componentKey(k) ((int)strstr(k, "/ChangeSet|"))
-#define	changesetKey(k) ((int)strstr(k, "|ChangeSet|"))
+#define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
+#define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)
 
 #endif	/* _SCCS_H_ */

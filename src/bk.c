@@ -19,6 +19,7 @@ jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
 int	cmdlog_flags;
 int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
+int	spawn_tcl;		/* needed in crypto.c:bk_preSpawnHook() */
 ltc_math_descriptor	ltc_mp;
 char	*prog;
 
@@ -988,9 +989,11 @@ launch_wish(char *script, char **av)
 	}
 	argv[ac+1] = 0;
 	if (streq(argv[ac], "--")) argv[ac] = 0;
+	spawn_tcl = 1;
 	if ((pid = spawnvp(_P_NOWAIT, argv[0], argv)) < 0) {
 		fprintf(stderr, "bk: cannot spawn %s\n", argv[0]);
 	}
+	spawn_tcl = 0;
 #ifdef	WIN32
 	/*
 	 * If we are about to call a GUI command hide the console
