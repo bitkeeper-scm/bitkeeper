@@ -171,18 +171,24 @@ getlogin(void)
 	return (name);
 }
 
-int
-sync()
+void
+nt_sync(void)
 {
+	HANDLE	vhandle;
+	char	cwd[MAXPATH], volume[MAXPATH];
+
+	if (GetCurrentDirectory(sizeof(cwd), cwd) == 0) return;
+	if (GetVolumePathName(cwd, volume, sizeof(volume)) == 0) return;
 	/*
-	 * We should be able to call FlushFileBuffers() on a open
-	 * handle to the current volume to flush all data on the disk,
-	 * but that will only work if we have admin privs.  That might
-	 * be good enough, if it is quiet on failure.
-	 *
-	 * For now we just ignore the call.
+	 * for non-Administrator users, the CreateFile() and FlushFileBuffers()
+	 * calls should fail but we don't care.  Let it not be said we didn't
+	 * do the least we could.
 	 */
-	return (0);
+	vhandle = CreateFile(volume,
+	    GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
+	if (vhandle == INVALID_HANDLE_VALUE) return;
+	FlushFileBuffers(vhandle);
+	CloseHandle(vhandle);
 }
 
 int

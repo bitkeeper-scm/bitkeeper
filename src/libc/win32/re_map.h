@@ -32,6 +32,8 @@
 #define sleep(x)		nt_sleep(x)
 #define execvp(a, b)		nt_execvp(a, b)
 
+#define sync()			nt_sync()
+
 #endif /* _RE_MAP_H_ */
 
 
