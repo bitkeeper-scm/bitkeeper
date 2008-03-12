@@ -252,6 +252,7 @@ makepatch
 mdiff
 merge
 mklock
+module
 more
 mtime
 mv
@@ -357,6 +358,7 @@ identity => id
 info => sinfo
 _key2path => key2path
 _mail => mail
+modules => module
 pager => more
 _preference => config
 rechksum => checksum

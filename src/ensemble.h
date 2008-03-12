@@ -20,6 +20,7 @@ typedef	struct {
 	sccs	*sc;		// product changeset file if set
 	char	*rev;		// if set, we want the deltakeys as of this
 	char	**revs;		// if set, limit the components to these csets 
+	hash	*modules;	// if set, limit the comps to these root keys
 	u32	product:1;	// include the product in the list
 	u32	present:1;	// return components iff present
 	u32	product_first:1;// default is last in list
@@ -31,6 +32,7 @@ repos*	ensemble_next(repos *repos);
 void	ensemble_free(repos *repos);
 
 int	ensemble_each(int quiet, int ac, char **av);
+hash	*module_list(char **names, sccs *cset);
 
 #define	EACH_REPO(c)	for (ensemble_first(c); (c)->index; ensemble_next(c))
 

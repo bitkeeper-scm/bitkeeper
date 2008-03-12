@@ -139,7 +139,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
-	mailsplit.o mtime.o mv.o names.o newroot.o \
+	mailsplit.o modules.o mtime.o mv.o names.o newroot.o \
 	opark.o parent.o park.o \
 	pending.o preference.o proj.o \
 	port/bkd_server.o \

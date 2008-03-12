@@ -50,12 +50,12 @@ ensemble_list(eopts opts)
 	repos	*r = 0;
 	char	**list = 0;	/* really repos **list */
 	delta	*d;
-	char	*tmp, *t;
-	FILE	*f;
+	char	*t;
 	int	close = 0;
 	int	undo_or_push = opts.rev && opts.revs;
 	int	i;
 	MDBM	*idDB = 0;
+	kvpair	kv;
 	char	buf[MAXKEY];
 
 	unless (proj_isProduct(0)) {
@@ -72,7 +72,6 @@ ensemble_list(eopts opts)
 		close = 1;
 	}
 	assert(CSET(opts.sc) && proj_isProduct(opts.sc->proj));
-	tmp = bktmp(0, "component_rev");
 
 	/*
 	 * Undo/pull/push get here.
@@ -85,34 +84,20 @@ ensemble_list(eopts opts)
 			}
 		    	fprintf(stderr, "ensemble: bad rev %s\n", opts.revs[i]);
 err:			if (close) sccs_free(opts.sc);
-			unlink(tmp);
 			return (0);
 		}
-		// XXX - I think that GET_HASHONLY would be better because
-		// of the fact that we want the tips of each component for
-		// pull/push.  And the first we find is the tip and if we
-		// use GET_HASHONLY that's the one we get.
-		if (sccs_cat(opts.sc, GET_NOHASH|PRINT, tmp)) goto err;
-		f = fopen(tmp, "r");
-		assert(f);
-		r = new(repos);
-		while(fnext(buf, f)) {
-			chomp(buf);
-			t = separator(buf);
-			*t++ = 0;
-			if (componentKey(t) && !find(r, buf)) {
-				e = new(repo);
-				e->rootkey  = strdup(buf);
-				e->deltakey = strdup(t);
-				e->path     = key2path(e->deltakey, 0);
-				csetChomp(e->path);
-				list = addLine(list, (void*)e);
-				r->repos = (void**)list;
-			}
+		if (sccs_cat(opts.sc, GET_HASHONLY, 0)) goto err;
+		EACH_KV(opts.sc->mdbm) {
+			unless (componentKey(kv.val.dptr)) continue;
+			e = new(repo);
+			e->rootkey  = strdup(kv.key.dptr);
+			e->deltakey = strdup(kv.val.dptr);
+			e->path     = key2path(e->deltakey, 0);
+			csetChomp(e->path);
+			list = addLine(list, (void*)e);
 		}
-		fclose(f);
-		unlink(tmp);
-		// XXX - check that we found some?
+		r = new(repos);
+		r->repos = (void**)list;
 	}
 
 	/*
@@ -126,40 +111,34 @@ err:			if (close) sccs_free(opts.sc);
 			}
 		}
 		
-		if (sccs_get(opts.sc, opts.rev, 0, 0, 0, SILENT|PRINT, tmp)) {
+		if (sccs_get(opts.sc,
+		    opts.rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 			goto err;
 		}
-		f = fopen(tmp, "r");
-		assert(f);
 		if (undo_or_push) {
 			assert(r);
 		} else {
 			r = new(repos);
 		}
-		while(fnext(buf, f)) {
-			chomp(buf);
-			t = separator(buf);
-			*t++ = 0;
-			unless (componentKey(t)) continue;
+		EACH_KV(opts.sc->mdbm) {
+			unless (componentKey(kv.val.dptr)) continue;
 			if (undo_or_push) {
-				unless (e = find(r, buf)) continue;
+				unless (e = find(r, kv.key.dptr)) continue;
 				e->new = 0;
-				assert(!streq(e->deltakey, t));
+				assert(!streq(e->deltakey, kv.val.dptr));
 				free(e->deltakey);
-				e->deltakey = strdup(t);
+				e->deltakey = strdup(kv.val.dptr);
 				// Don't bother w/ the path, it's stomped below
 			} else {
 				e = new(repo);
-				e->rootkey  = strdup(buf);
-				e->deltakey = strdup(t);
+				e->rootkey  = strdup(kv.key.dptr);
+				e->deltakey = strdup(kv.val.dptr);
 				e->path     = key2path(e->deltakey, 0);
 				csetChomp(e->path);
 				list = addLine(list, (void*)e);
 				r->repos = (void**)list;
 			}
 		}
-		fclose(f);
-		unlink(tmp);
 	}
 
 	/*
@@ -171,15 +150,11 @@ err:			if (close) sccs_free(opts.sc);
 	d = sccs_top(opts.sc);
 	unless (opts.rev && (d == sccs_findrev(opts.sc, opts.rev))) {
 		/* Fetch TIP and see if any paths have changed */
-		sccs_get(opts.sc, d->rev, 0, 0, 0, SILENT|PRINT, tmp);
-		f = fopen(tmp, "rt");
-		assert(f);
-		while (fnext(buf, f)) {
-			chomp(buf);
-			t = separator(buf);
-			*t++ = 0;
-			if (componentKey(t) && (e = find(r, buf))) {
-				t = key2path(t, 0);
+		sccs_get(opts.sc, d->rev, 0, 0, 0, SILENT|GET_HASHONLY, 0);
+		EACH_KV(opts.sc->mdbm) {
+			if (componentKey(kv.val.dptr) &&
+			    (e = find(r, kv.key.dptr))) {
+				t = key2path(kv.val.dptr, 0);
 				unless (streq(e->path, t)) {
 					free(e->path);
 					e->path = t;
@@ -189,16 +164,12 @@ err:			if (close) sccs_free(opts.sc);
 				}
 			}
 		}
-		fclose(f);
-		unlink(tmp);
-		free(tmp);
 	} else {
 		assert(!undo_or_push);
 	}
 
 	/*
 	 * Prune entries that are not present if so instructed.
-	 * Note this could be extended for module filtering.
 	 */
 	if (opts.present) {
 		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
@@ -219,6 +190,23 @@ err:			if (close) sccs_free(opts.sc);
 		}
 		mdbm_close(idDB);
 	}
+
+	/*
+	 * Filter the list through the modules requested, if any.
+	 */
+	if (opts.modules) {
+		EACH(list) {
+			e = (repo*)list[i];
+			unless (hash_fetchStr(opts.modules, e->rootkey)) {
+				free(e->path);
+				free(e->rootkey);
+				free(e->deltakey);
+				removeLineN(list, i, free);
+				i--;
+			}
+		}
+	}
+
 	sortLines(list, repo_sort);
 	if (opts.product) {
 		if (opts.rev) {			/* undo / [r]clone/ push */
@@ -268,12 +256,13 @@ ensemble_list_main(int ac, char **av)
 	char	*p;
 	repos	*r;
 	eopts	opts;
+	char	**modules = 0;
 	char	buf[MAXKEY];
 
 	bzero(&opts, sizeof(opts));
 	opts.product = 1;
 
-	while ((c = getopt(ac, av, "1l;pr;")) != -1) {
+	while ((c = getopt(ac, av, "1l;M;pr;")) != -1) {
 		switch (c) {
 		    case '1':
 			opts.product_first = 1;
@@ -287,6 +276,9 @@ ensemble_list_main(int ac, char **av)
 				    case 'r': want |= L_ROOT; break;
 			    	}
 			}
+			break;
+		    case 'M':
+			modules = addLine(modules, optarg);
 			break;
 		    case 'p':
 		    	opts.product = 0;
@@ -304,6 +296,7 @@ ensemble_list_main(int ac, char **av)
 			opts.revs = addLine(opts.revs, strdup(buf));
 		}
 	}
+	if (modules) opts.modules = module_list(modules, 0);
 
 	unless (want) want = L_PATH;
 	unless (r = ensemble_list(opts)) exit(0);
@@ -329,26 +322,9 @@ ensemble_list_main(int ac, char **av)
 		printf("\n");
 	}
 	ensemble_free(r);
+	if (modules) freeLines(modules, 0);
 	exit(0);
 }
-
-#if 0
-int
-ensemble_ok(repos *r, int pending)
-{
-	char	*p;
-
-	unless (r) return (-1);
-	unless (pending) 
-	EACH_REPO(r) {
-		if (want & L_PATH) printf("%s\n", r->path);
-		if (want & L_ROOT) printf("R=%s\n", r->rootkey);
-		if (want & L_DELTA) printf("D=%s\n", r->deltakey);
-	}
-	ensemble_free(r);
-	exit(0);
-}
-#endif
 
 private int
 repo_sort(const void *a, const void *b)
