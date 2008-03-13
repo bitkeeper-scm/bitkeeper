@@ -404,7 +404,9 @@ ensemble_each(int quiet, int ac, char **av)
 {
 	repos	*list;
 	project	*p = proj_product(0);
+	int	c;
 	int	errors = 0;
+	char	**modules = 0;
 	eopts	opts;
 
 	unless (p) {
@@ -416,6 +418,18 @@ ensemble_each(int quiet, int ac, char **av)
 	opts.product = 1;
 	opts.product_first = 1;
 	opts.rev = "+";
+	getoptReset();
+	// has to track bk.c's getopt string
+	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
+		unless (c == 'M') continue;
+		if (optarg[0] == '|') {
+			opts.rev = &optarg[1];
+		} else {
+			modules = addLine(modules, optarg);
+		}
+	}
+	if (modules) opts.modules = module_list(modules, 0);
+
 	unless (list = ensemble_list(opts)) {
 		fprintf(stderr, "No ensemble list?\n");
 		return (1);
@@ -427,7 +441,11 @@ ensemble_each(int quiet, int ac, char **av)
 		}
 		chdir(proj_root(p));
 		if (chdir(list->path)) continue;
+		unless (streq(".", list->path)) {
+			safe_putenv("_BK_PREFIX=%s/", list->path);
+		}
 		errors |= spawnvp(_P_WAIT, "bk", av);
+		putenv("_BK_PREFIX=");
 	}
 	ensemble_free(list);
 	return (errors);

@@ -58,7 +58,9 @@ typedef struct {
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
 	u32	inverse:1;		/* -!: list the opposite */
 	u32	ensemble:1;		/* set if we are in one */
+	u32	skip_comps:1;		/* -h: list only files really "here" */
 
+	char	*prefix;		/* set from env for path prefix */
 	FILE	*out;			/* -o<file>: send output here */
 	char	*glob;			/* only files which match this */
 } options;
@@ -107,9 +109,12 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
         return (s);
 }
 
+private	char *prefix;
+
 private int
 fastprint(char *file, struct stat *sb, void *data)
 {
+	if (prefix) fputs(prefix, stdout);
 	puts(file + 2);
 	return (0);
 }
@@ -126,12 +131,16 @@ sfiles_main(int ac, char **av)
 
 	if (proj_product(0)) opts.ensemble = 1;
 
-	if (ac == 1) {
+	/* pass in path/to/component/ and note the trailing slash */
+	if ((prefix = getenv("_BK_PREFIX")) && !strlen(prefix)) prefix = 0;
+
+	if (av[1] && streq("-h", av[1])) opts.skip_comps = 1;
+	if ((ac == 1) || opts.skip_comps)  {
 		walksfiles(".", fastprint, 0);
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "^01acCdDeEgGijlno:p|P|RsSuUvxy")) != -1) {
+	while ((c = getopt(ac, av, "^01acCdDeEgGhijlno:p|P|RsSuUvxy")) != -1) {
 		switch (c) {
 		    case '^':	opts.inverse = 1; break;
 		    case '0':	opts.null = 1; break;		/* doc */
@@ -156,6 +165,7 @@ sfiles_main(int ac, char **av)
 		    case 'v':	opts.verbose = 1; break;
 		    case 'g':	opts.gfile = 1; break;		/* doc 2.0 */
 		    case 'G':	opts.gotten = 1; break;		/* doc */
+		    case 'h':	opts.skip_comps = 1; break;
 		    case 'i':	opts.ignored = 1; break;
 		    case 'j':	opts.junk = 1; break;		/* doc 2.0 */
 		    		/* XXX - should list BitKeeper/tmp stuff */
@@ -1409,7 +1419,8 @@ findsfiles(char *file, struct stat *sb, void *data)
 					*p = 0;
 					comp = proj_init(file);
 					assert(comp);
-					if (proj_isComponent(comp)) {
+					if (proj_isComponent(comp) &&
+					    !opts.skip_comps) {
 						sprintf(p, "/SCCS/s.ChangeSet");
 						si->fn(file, 0, si->data);
 					}

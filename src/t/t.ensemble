@@ -916,3 +916,121 @@ bk changes -qnd"gcc4|:KEY:" -r+ gcc4
 cmpfiles WANT GOT
 echo OK
 
+echo $N Test prefix in the iterator, with no -h, dup cset files .....$NL
+bk -qAr > GOT
+cat > WANT <<EOF
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+BitKeeper/etc/SCCS/s.modules
+gcc4/SCCS/s.ChangeSet
+gdb/SCCS/s.ChangeSet
+gcc4/SCCS/s.ChangeSet
+gcc4/SCCS/s.file1
+gcc4/SCCS/s.file2
+gcc4/SCCS/s.file3
+gcc4/SCCS/s.name
+gcc4/BitKeeper/etc/SCCS/s.collapsed
+gcc4/BitKeeper/etc/SCCS/s.config
+gcc4/BitKeeper/etc/SCCS/s.gone
+gcc4/BitKeeper/etc/SCCS/s.ignore
+gdb/SCCS/s.ChangeSet
+gdb/SCCS/s.name
+gdb/BitKeeper/etc/SCCS/s.collapsed
+gdb/BitKeeper/etc/SCCS/s.config
+gdb/BitKeeper/etc/SCCS/s.gone
+gdb/BitKeeper/etc/SCCS/s.ignore
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test prefix in the iterator with modules ....................$NL
+bk -qhAr -Mgcc4/ > GOT
+cat > WANT <<EOF
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+BitKeeper/etc/SCCS/s.modules
+gcc4/SCCS/s.ChangeSet
+gcc4/SCCS/s.file1
+gcc4/SCCS/s.file2
+gcc4/SCCS/s.file3
+gcc4/SCCS/s.name
+gcc4/BitKeeper/etc/SCCS/s.collapsed
+gcc4/BitKeeper/etc/SCCS/s.config
+gcc4/BitKeeper/etc/SCCS/s.gone
+gcc4/BitKeeper/etc/SCCS/s.ignore
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test prefix in the iterator with rev ........................$NL
+cd ..
+bk clone $Q gcc liberty
+cd project
+REV=`bk changes -r+ -d:REV:`
+bk ensemble add $Q -yliberty ../liberty liberty
+bk -qhAr -M"|$REV" > GOT
+cat > WANT <<EOF
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+BitKeeper/etc/SCCS/s.modules
+gcc4/SCCS/s.ChangeSet
+gcc4/SCCS/s.file1
+gcc4/SCCS/s.file2
+gcc4/SCCS/s.file3
+gcc4/SCCS/s.name
+gcc4/BitKeeper/etc/SCCS/s.collapsed
+gcc4/BitKeeper/etc/SCCS/s.config
+gcc4/BitKeeper/etc/SCCS/s.gone
+gcc4/BitKeeper/etc/SCCS/s.ignore
+gdb/SCCS/s.ChangeSet
+gdb/SCCS/s.name
+gdb/BitKeeper/etc/SCCS/s.collapsed
+gdb/BitKeeper/etc/SCCS/s.config
+gdb/BitKeeper/etc/SCCS/s.gone
+gdb/BitKeeper/etc/SCCS/s.ignore
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test prefix in the iterator with no rev, should see liberty .$NL
+bk -qhAr > GOT
+cat > WANT <<EOF
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+BitKeeper/etc/SCCS/s.modules
+gcc4/SCCS/s.ChangeSet
+gcc4/SCCS/s.file1
+gcc4/SCCS/s.file2
+gcc4/SCCS/s.file3
+gcc4/SCCS/s.name
+gcc4/BitKeeper/etc/SCCS/s.collapsed
+gcc4/BitKeeper/etc/SCCS/s.config
+gcc4/BitKeeper/etc/SCCS/s.gone
+gcc4/BitKeeper/etc/SCCS/s.ignore
+gdb/SCCS/s.ChangeSet
+gdb/SCCS/s.name
+gdb/BitKeeper/etc/SCCS/s.collapsed
+gdb/BitKeeper/etc/SCCS/s.config
+gdb/BitKeeper/etc/SCCS/s.gone
+gdb/BitKeeper/etc/SCCS/s.ignore
+liberty/SCCS/s.ChangeSet
+liberty/SCCS/s.name
+liberty/BitKeeper/etc/SCCS/s.collapsed
+liberty/BitKeeper/etc/SCCS/s.config
+liberty/BitKeeper/etc/SCCS/s.gone
+liberty/BitKeeper/etc/SCCS/s.ignore
+EOF
+cmpfiles WANT GOT
+echo OK

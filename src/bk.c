@@ -205,15 +205,17 @@ main(int ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c =
-		    getopt(ac, av, "@|1aAB;cCdDgGjL|lnpqr|RuUxz;")) != -1) {
+		    getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'C': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
 			    case 'n': case 'p': case 'u': case 'U': case 'x':
+			    case 'h':
 				sopts[++si] = c;
 				break;
 			    case '@': remote = 1; break;
 			    case 'A': all = 1; break;
+			    case 'M': break;	// for ensemble each
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
