@@ -424,6 +424,8 @@ ensemble_each(int quiet, int ac, char **av)
 		unless (c == 'M') continue;
 		if (optarg[0] == '|') {
 			opts.rev = &optarg[1];
+		} else if (streq("!.", optarg)) {
+			opts.product = 0;
 		} else {
 			modules = addLine(modules, optarg);
 		}

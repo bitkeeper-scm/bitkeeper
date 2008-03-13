@@ -1034,3 +1034,31 @@ liberty/BitKeeper/etc/SCCS/s.ignore
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test that we can suppress the product .......................$NL
+bk -qhAr -M'!.' > GOT
+cat > WANT <<EOF
+gcc4/SCCS/s.ChangeSet
+gcc4/SCCS/s.file1
+gcc4/SCCS/s.file2
+gcc4/SCCS/s.file3
+gcc4/SCCS/s.name
+gcc4/BitKeeper/etc/SCCS/s.collapsed
+gcc4/BitKeeper/etc/SCCS/s.config
+gcc4/BitKeeper/etc/SCCS/s.gone
+gcc4/BitKeeper/etc/SCCS/s.ignore
+gdb/SCCS/s.ChangeSet
+gdb/SCCS/s.name
+gdb/BitKeeper/etc/SCCS/s.collapsed
+gdb/BitKeeper/etc/SCCS/s.config
+gdb/BitKeeper/etc/SCCS/s.gone
+gdb/BitKeeper/etc/SCCS/s.ignore
+liberty/SCCS/s.ChangeSet
+liberty/SCCS/s.name
+liberty/BitKeeper/etc/SCCS/s.collapsed
+liberty/BitKeeper/etc/SCCS/s.config
+liberty/BitKeeper/etc/SCCS/s.gone
+liberty/BitKeeper/etc/SCCS/s.ignore
+EOF
+cmpfiles WANT GOT
+echo OK
