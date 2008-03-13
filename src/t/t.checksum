@@ -82,13 +82,14 @@ SCCS/s.g1|+
 SCCS/s.g2|+
 EOF
 DSUM=`bk changes -r1.2 -nd:DSUM:`
-DSUM=`printf "%0.5u" $DSUM`
 if [ $DSUM = "41232" ]
 then	NSUM="23765"
 else	NSUM="41232"
 fi
 mv SCCS/s.ChangeSet scset
-perl -pe "s/K$DSUM/K$NSUM/" scset | bk undos > SCCS/s.ChangeSet
+# make a leading zero (LZ) 5 digit version of DSUM; NSUM is already 5 digits
+DSUMLZ=`printf "%0.5u" $DSUM`
+perl -pe "s/K$DSUMLZ/K$NSUM/" scset | bk undos > SCCS/s.ChangeSet
 chmod 444 SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk checksum -r+ ChangeSet || exit 1
