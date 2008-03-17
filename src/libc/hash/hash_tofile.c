@@ -71,14 +71,14 @@ out:	freeLines(fieldlist, 0);
 hash *
 hash_fromFile(hash *h, char *path)
 {
-	FILE	*f = fopen(path, "r");
-	hash	*ret = 0;
+	FILE	*f;
 
+	unless (h) h = hash_new(HASH_MEMHASH);
 	if (f = fopen(path, "r")) {
-		ret = hash_fromStream(h, f);
+		h = hash_fromStream(h, f);
 		fclose(f);
 	}
-	return (ret);
+	return (h);
 }
 
 /*

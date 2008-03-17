@@ -87,10 +87,6 @@ hash_close(hash *h)
 {
 	int	ret;
 
-	unless (h) {
-		errno = EINVAL;
-		return (-1);
-	}
 	assert(h->ops->close);
 	ret = h->ops->close(h);
 	free(h);
@@ -108,10 +104,6 @@ hash_free(hash *h)
 {
 	int	ret;
 
-	unless (h) {
-		errno = EINVAL;
-		return (-1);
-	}
 	ret = h->ops->free(h);
 	free(h);
 	return (ret);

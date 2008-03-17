@@ -78,10 +78,6 @@ int	hash_close(hash *h);
 private inline void *
 hash_fetch(hash *h, void *key, int klen)
 {
-	unless (h) {
-		errno = EINVAL;
-		return (0);
-	}
 	return (h->ops->fetch(h, key, klen));
 }
 
@@ -92,10 +88,6 @@ hash_fetch(hash *h, void *key, int klen)
 private inline void *
 hash_fetchStr(hash *h, void *key)
 {
-	unless (h) {
-		errno = EINVAL;
-		return (0);
-	}
 	return (h->ops->fetch(h, key, strlen(key) + 1));
 }
 
@@ -196,10 +188,6 @@ hash_deleteStr(hash *h, void *key)
 private inline void *
 hash_first(hash *h)
 {
-	unless (h) {
-		errno = EINVAL;
-		return (0);
-	}
 	return (h->ops->first(h));
 }
 
@@ -248,7 +236,7 @@ hash_prev(hash *h)
  * Walk all items in hash
  */
 #define EACH_HASH(h) \
-        for (hash_first(h); (h) && (h)->kptr; hash_next(h))
+        for (hash_first(h); (h)->kptr; hash_next(h))
 
 
 char	*hash_toStr(hash *h);
