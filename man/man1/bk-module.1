@@ -1,0 +1,171 @@
+.so ../bk-macros
+.TH "bk module" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk module \- manage SAM component lists
+.SH SYNOPSIS
+.B bk module add|rm|show|list
+.[B] -Cer
+.[OPTreq] -c comp
+.I module
+.br
+.SS ADDING COMPONENTS TO A MODULE
+.B bk module add
+.[B] \-C
+.OPTreq \-c component
+.[I] ...
+.I module
+.br
+.SS REMOVING A COMPONENT FROM A MODULE
+.B bk module rm
+.[B] \-C
+.OPTreq \-c component
+.[I] ...
+.I module
+.br
+.SS REMOVING A MODULE
+.B bk module rm
+.[B] \-C
+.I module
+.br
+.SS LIST COMPONENTS IN A MODULE
+.B bk module show
+.[B] \-er
+.I module
+.[I] ...
+.br
+.SS LIST ALL MODULE NAMES
+.B bk module list
+.SH DESCRIPTION
+The 
+.B bk module
+command is used to create, modify, remove, or list modules.
+A module is a symbolic name that resolves to one or more components (aka
+sub-repositories in a SAM ensemble).
+.SP
+Module names are similar to C identifiers and must match this regular
+expression:
+.\" This is a lot more restrictive than we need to be
+.\" but I figure we can loosen it easier than we can tighten it.
+.DS
+[A-Za-z][A-Za-z0-9_+-=]*
+.DE
+Each name expands to one or more components which were specified as follows:
+.\"
+.\" Capturing some IRC discussion:
+.\" Modules and a repo that is in the top dir of the product create an
+.\" ambiguity.  Add symbolic names for root keys and the ambiguity can 
+.\" get worse because you could have
+.\" symbolic name: foo -> some rootkey 
+.\" module: foo -> a b c
+.\" dir: foo -> some other root key
+.\" So we need a way to make it clear what we mean.
+.\" The precedence is as above, symbolic name, module, dir, and here is how
+.\" we will disambiguate:
+.\" -a./foo means the dir
+.\" -a'$foo' means the module
+.\" -afoo means the symbolic name
+.\" All of that assumes we have symbolic names, which we don't yet, so we only
+.\" have the two cases and -a./foo makes it clear from day one.
+.\"
+.TP "module "
+.B dir/
+When the component name is a directory with a trailing forward slash, 
+the list of components is the set of repositories at or below
+.B dir/
+provided that they have been added (committed) the ensemble.
+.B dir/
+must be a relative path from the ensemble root.
+The list of components implied may increase or decrease as
+they are attached or detached below the directory.
+.SP
+.tp
+.B repo
+When the component name is a relative path from the ensemble root to 
+the component, it just means that component and only that component,
+even if other components are below that component.
+.SP
+.tp
+.B module
+When the component name is a module name, it means to recursively 
+expand the named module.
+For example, 
+.B GCC
+might point to the compiler and the assembler, and 
+.B DEV
+might point to 
+.B GCC
+and the debugger.
+.LP
+When adding a component to a module, if the module does not exist
+it is automatically created in the modules file.
+When removing a component from a module, if there are no other components
+left in the module it is automatically deleted from the modules file.
+.LP
+When adding a component to a module the component must exist:
+if it is a directory then the directory must exist,
+if it is a module name then the module must exist in the modules file,
+if it is a path name then the path must exist and be a component.
+.LP
+In the event that there is ambiguity between a module name and a
+path to a component that is a single directory, use
+.OPTreq \-a ./path
+to mean the path and not the module.
+The default is that it means the module.
+.SH OPTIONS
+.TP
+.B \-C
+Normally, modifying the modules file results in a changeset committing that
+change.
+This option suppresses the commit.
+.TP
+.OPTreq \-c component
+Used to specify a component to add or remove.
+.ARG component
+may be any of the three forms above.
+Multiple components may be specified for one invocation by repeating this
+option.
+.TP
+.B \-e
+Used when listing modules in a component.
+This option suppresses the listing of the component if it is not present in
+the ensemble.
+This option may not be combined with
+.B \-r.
+.TP
+.B \-r
+Used when listing modules in a component.
+This option shows the "raw" form of the component without any directory
+expansion or recursive module expansion.
+This option may not be combined with
+.B \-e.
+.SH EXAMPLES
+To create a module that points at some existing components:
+.DS
+$ bk module add -ccmd/gcc -ccmd/as -ccmd/ld -ccmd/nm compiler
+.DE
+To create a higher level module that includes the debugger:
+.DS
+$ bk module add -ccmd/gdb -ccompiler dev-tools
+.DE
+List all modules:
+.DS
+$ bk module list
+compiler
+dev-tools
+.DE
+To remove a component from a module
+.DS
+$ bk module rm -ccmd/nm compiler
+.DE
+.SH NOTES
+The modules database is a flat text file stored in
+.IR BitKeeper/etc/modules .
+Any components that are specified on the command line are stored internally
+as their rootkeys and rootkeys may be used as the name of a component.
+.SH "SEE ALSO"
+.SA ensemble
+.SA id
+.SA regex
+.SA SAM-Howto
+.SH CATEGORY
+.B Repository

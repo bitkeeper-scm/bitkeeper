@@ -516,6 +516,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list -r+ lists product and components ...........$NL
+# valgrind --tool=memcheck --leak-check=full --show-reachable=yes \
 bk ensemble_list -1r+ > GOT
 cat > WANT <<EOF
 .
@@ -826,17 +827,34 @@ echo OK
 # Modules tests start here
 # ============================================================================
 
-echo $N Test simple module expansion ................................$NL
 cd "$HERE"
 rm -rf project
 tar xf TAR
 cd project
-bk edit $Q BitKeeper/etc/modules
-echo @dev > BitKeeper/etc/modules
-(cd gcc4 && bk id ) >> BitKeeper/etc/modules
-(cd gdb && bk id ) >> BitKeeper/etc/modules
-echo >> BitKeeper/etc/modules
-bk modules dev | bk _sort > GOT
+
+echo $N Test simple module addition .................................$NL
+REV=`bk changes -r+ -d:REV:`
+bk module add -cgcc4 -cgdb dev
+test $REV = `bk changes -r+ -d:REV:` && {
+	echo failed to commit change
+	bk cmdlog -a | tail -20
+	exit 1
+}
+(
+echo @dev 
+    (
+	(cd gcc4 && bk id ) 
+	(cd gdb && bk id )
+    ) | bk _sort
+echo 
+) > WANT
+bk cat BitKeeper/etc/modules > GOT 
+cmpfiles WANT GOT
+bk clean BitKeeper/etc/modules
+echo OK
+
+echo $N Test simple module expansion ................................$NL
+bk module show dev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -845,7 +863,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test simple directory expansion .............................$NL
-bk modules gcc4/ > GOT
+bk module show gcc4/ > GOT
 cat > WANT <<EOF
 gcc4
 EOF
@@ -853,7 +871,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Combine the two .............................................$NL
-bk modules dev gcc4/ | bk _sort > GOT
+bk module show dev gcc4/ > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -861,10 +879,24 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Add a module that names another module ......................$NL
+bk module add -cdev mydev
+(
+echo @dev 
+    (
+	(cd gcc4 && bk id ) 
+	(cd gdb && bk id )
+    ) | bk _sort
+echo 
+echo @mydev
+echo dev
+) > WANT
+bk cat BitKeeper/etc/modules > GOT
+cmpfiles WANT GOT
+echo OK
+
 echo $N Test a module that names another module .....................$NL
-echo @mydev >> BitKeeper/etc/modules
-echo dev >> BitKeeper/etc/modules
-bk modules mydev | bk _sort > GOT
+bk module show mydev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -873,15 +905,26 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test a module that names another module, 2 levels ...........$NL
-echo @A >> BitKeeper/etc/modules
-echo B >> BitKeeper/etc/modules
-echo C >> BitKeeper/etc/modules
-echo >> BitKeeper/etc/modules
-echo @B >> BitKeeper/etc/modules
-(cd gcc4 && bk id ) >> BitKeeper/etc/modules
-echo @C >> BitKeeper/etc/modules
-(cd gdb && bk id ) >> BitKeeper/etc/modules
-bk modules A | bk _sort > GOT
+REV=`bk changes -r+ -d:REV:`
+bk module create -C -cgcc4 B
+test $REV = `bk changes -r+ -d:REV:` || {
+	echo should not have commited change
+	bk cmdlog -a | tail -20
+	exit 1
+}
+bk module create -C -cgdb C
+test $REV = `bk changes -r+ -d:REV:` || {
+	echo should not have commited change
+	bk cmdlog -a | tail -20
+	exit 1
+}
+bk module create -cB -cC A
+test $REV = `bk changes -r+ -d:REV:` && {
+	echo should have commited change
+	bk cmdlog -a | tail -20
+	exit 1
+}
+bk module show A > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -889,12 +932,122 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Make sure that the changeset got the module create comments .$NL
+bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
+cat > WANT <<EOF
+Create module B
+Create module C
+Create module A
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Make sure we can remove a component from a module ...........$NL
+REV=`bk changes -r+ -d:REV:`
+bk module rm -cB A
+echo C > WANT
+bk module show -r A > GOT
+cmpfiles WANT GOT
+test $REV = `bk changes -r+ -d:REV:` && {
+	echo should have commited change
+	bk cmdlog -a | tail -20
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can add a component to a module ................$NL
+REV=`bk changes -r+ -d:REV:`
+bk module add -cB A
+echo B > WANT
+echo C >> WANT
+bk module show -r A > GOT
+cmpfiles WANT GOT
+test $REV = `bk changes -r+ -d:REV:` && {
+	echo should have commited change
+	bk cmdlog -a | tail -20
+	exit 1
+}
+echo OK
+
+echo $N Adding a component that is already there is a no-op .........$NL
+REV=`bk changes -r+ -d:REV:`
+bk module add -cB A >OUT 2>&1
+test $REV = `bk changes -r+ -d:REV:` || {
+	echo should not have done anything
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N If we modify remove all components it should be a delete ....$NL
+bk module rm -cB -cC A
+bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
+echo Delete module A > WANT
+cmpfiles WANT GOT
+bk module create -cB -cC A
+echo OK
+
+echo $N List all module names .......................................$NL
+bk grep '^@' BitKeeper/etc/modules | sed 's/^@//' | bk _sort > WANT
+bk module list > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N List only present components ................................$NL
+bk module show -e `bk module list` > GOT
+cat > WANT <<EOF
+gcc4
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Adding a directory that does not exist is an error ..........$NL
+bk module add -csomedir/ A 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q 'somedir/ is not a directory' ERR || {
+	echo bad error message
+	cat ERR
+	exit 1
+}
+mkdir somedir
+bk module add -csomedir/ A || exit 1
+echo OK
+
+echo $N Show raw expansion for A ....................................$NL
+bk module show -r A > GOT
+cat > WANT <<EOF
+B
+C
+somedir/
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Show raw expansion for B ....................................$NL
+bk module show -r B > GOT
+(cd gcc4 && bk id ) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Show raw expansion for C ....................................$NL
+bk module show -r C > GOT
+(cd gdb && bk id ) > WANT
+cmpfiles WANT GOT
+echo OK
+
 echo $N Test infinite loop in modules ...............................$NL
-echo @recursion >> BitKeeper/etc/modules
-echo see_recursion >> BitKeeper/etc/modules
-echo @see_recursion >> BitKeeper/etc/modules
-echo recursion >> BitKeeper/etc/modules
-bk modules recursion > OUT 2>&1
+bk edit $Q BitKeeper/etc/modules
+(
+echo @recursion
+echo see_recursion
+echo @see_recursion
+echo recursion
+) >> BitKeeper/etc/modules
+bk delta $Q -ywhatever BitKeeper/etc/modules
+bk module show recursion > OUT 2>&1
 test $? = 1 || {
 	echo should have failed
 	cat OUT
@@ -907,6 +1060,26 @@ grep -q 'too many levels of recursion.' OUT || {
 }
 echo OK
 
+echo $N Try removing module recursion ...............................$NL
+bk module rm recursion || exit 1
+bk diffs -h -R+ BitKeeper/etc/modules | grep '< ' > GOT
+(
+echo '< @recursion'
+echo '< see_recursion'
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Try removing module see_recursion ...........................$NL
+bk module rm see_recursion || exit 1
+bk diffs -h -R+ BitKeeper/etc/modules | grep '< ' > GOT
+(
+echo '< @see_recursion'
+echo '< recursion'
+) > WANT
+cmpfiles WANT GOT
+echo OK
+
 echo $N bk ensemble list for clone -r+ but limited to -Mgcc4/........$NL
 bk ensemble_list -Mgcc4/ -1lpd -r+ > GOT
 (
@@ -917,7 +1090,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test prefix in the iterator, with no -h, dup cset files .....$NL
-bk -qAr > GOT
+bk -qA prefixed_sfiles > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.collapsed
@@ -947,7 +1120,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test prefix in the iterator with modules ....................$NL
-bk -qhAr -Mgcc4/ > GOT
+bk -qA -Mgcc4/ prefixed_sfiles -h > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.collapsed
@@ -974,7 +1147,7 @@ bk clone $Q gcc liberty
 cd project
 REV=`bk changes -r+ -d:REV:`
 bk ensemble add $Q -yliberty ../liberty liberty
-bk -qhAr -M"|$REV" > GOT
+bk -qA -M"|$REV" prefixed_sfiles -h > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.collapsed
@@ -1002,7 +1175,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test prefix in the iterator with no rev, should see liberty .$NL
-bk -qhAr > GOT
+bk -qA prefixed_sfiles -h > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.collapsed
@@ -1036,7 +1209,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test that we can suppress the product .......................$NL
-bk -qhAr -M'!.' > GOT
+bk -qA -M'!.' prefixed_sfiles -h > GOT
 cat > WANT <<EOF
 gcc4/SCCS/s.ChangeSet
 gcc4/SCCS/s.file1

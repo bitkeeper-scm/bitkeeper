@@ -1,6 +1,8 @@
 #ifndef _NESTED_H
 #define _NESTED_H
 
+#define	MODULES	"BitKeeper/etc/modules"
+
 #define	csetChomp(path)	{			\
 	char	*slash = strrchr(path, '/');	\
 	assert(slash);				\

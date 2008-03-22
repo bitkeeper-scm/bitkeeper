@@ -150,6 +150,9 @@
 .de [B]
 [\fB\\$*\fP]
 ..
+.de [I]
+[\fI\\$*\fP]
+..
 .\" OPTreq -f filename ==> -f<filename>
 .de OPTreq
 \fB\\$1\fP\*<\\$2\*>\\$3
@@ -211,5 +214,5 @@
 .	LI \\$1 \\$2
 ..
 .
-.if '\*[BKVER]'' .ds BKVER \\s-23.2.7\\s0
+.if '\*[BKVER]'' .ds BKVER \\s-24.1.1\\s0
 .\}

@@ -124,6 +124,13 @@ verbose() {
 	test -z "$QUIET" && echo "$*" > /dev/tty
 }
 
+_prefixed_sfiles() {
+	if [ -f BitKeeper/log/COMPONENT ]
+	then	_BK_PREFIX=`bk pwd -R`/ bk sfiles "$@"
+	else	bk sfiles "$@"
+	fi
+}
+
 _ensemble() {
 	__cd2root
 
@@ -163,28 +170,23 @@ _ensemble() {
 
 	# All other commands need it to be in a product
 	test -f BitKeeper/log/PRODUCT || {
-		echo ensemble must be run in a product
+		echo ensemble must be run in the product root
 		exit 1
 	}
 
 	# bk ensemble add -y<m>|Y<f> url loc [url loc ...]
 	test "X$1" = Xadd && {
 		shift
-		MSG=
-		MSGFILE=
+		COMMENT=
 		QUIET=
 		while getopts qy:Y: opt
 		do
 			case "$opt" in
 			q) QUIET=-q;;
-			y) MSG="-y$OPTARG";;
-			Y) MSGFILE="-Y$OPTARG";;
+			y) COMMENT="-y$OPTARG";;
+			Y) COMMENT="-Y$OPTARG";;
 			esac
 		done
-		test "X$MSG" = X -a "X$MSGFILE" = X && {
-			bk help -s ensemble
-			exit 1
-		}
 		shift `expr $OPTIND - 1`
 		while [ 1 = 1 ]
 		do	test "X$1" = X -o "X$2" = X && {
@@ -205,7 +207,7 @@ _ensemble() {
 		PRODUCT=`bk id`
 		while read x
 		do	verbose "Attaching $x" 
-			( cd "$x" && bk newroot $QUIET )
+			( cd "$x" && bk newroot $QUIET && bk parent -rq )
 			bk admin -D -C"$PRODUCT" "$x/ChangeSet"
 			echo "$x" > "$x/BitKeeper/log/COMPONENT"
 			( cd "$x"
@@ -220,9 +222,9 @@ _ensemble() {
 			touch "$x/SCCS/d.ChangeSet"
 		done < /tmp/ensemble_add$$ > /tmp/ensemble_commit$$
 		
-		if [ -z "$MSG" ]
-		then	bk commit $QUIET "$MSGFILE" - < /tmp/ensemble_commit$$
-		else	bk commit $QUIET "$MSG" - < /tmp/ensemble_commit$$
+		if [ -z "$COMMENT" ]
+		then	bk commit $QUIET -l/tmp/ensemble_commit$$
+		else	bk commit $QUIET "$COMMENT" -l/tmp/ensemble_commit$$
 		fi
 		
 		while read x

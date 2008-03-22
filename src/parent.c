@@ -41,6 +41,26 @@ parent_main(int ac,  char **av)
 
 	opts.normalize = 1;
 	opts.annotate = 1;
+	/*
+	 * Add support for an alternative interface:
+	 * bk parent add [-inoq] <repository> [<repository>]
+	 * bk parent rm [-ioq] <repository> [<repository>]
+	 * bk parent set [-inoq] <repository> [<repository>]
+	 * bk parent list [-1ioq]
+	 */
+	if (av[1] && (av[1][0] != '-') && (!isdir(av[1]))) {
+		if (streq(av[1], "add")) opts.add = 1;
+		if (streq(av[1], "rm")) opts.rm = 1;
+		if (streq(av[1], "remove")) opts.rm = 1;
+		if (streq(av[1], "delete")) opts.rm = 1;
+		if (streq(av[1], "set")) opts.set = 1;
+		if (streq(av[1], "list")) opts.annotate = 0;
+		if (opts.add || opts.rm || opts.set || !opts.annotate) {
+			av[1] = av[0];
+			av++;
+			ac--;
+		}
+	}
 	while ((c = getopt(ac, av, "1anilopqrs")) != -1) {
 		switch (c) {
 		    case '1': opts.one = 1; break;

@@ -406,6 +406,7 @@ ensemble_each(int quiet, int ac, char **av)
 	project	*p = proj_product(0);
 	int	c;
 	int	errors = 0;
+	int	status;
 	char	**modules = 0;
 	eopts	opts;
 
@@ -443,11 +444,12 @@ ensemble_each(int quiet, int ac, char **av)
 		}
 		chdir(proj_root(p));
 		if (chdir(list->path)) continue;
-		unless (streq(".", list->path)) {
-			safe_putenv("_BK_PREFIX=%s/", list->path);
+		status = spawnvp(_P_WAIT, "bk", av);
+		if (WIFEXITED(status)) {
+			errors |= WEXITSTATUS(status);
+		} else {
+			errors |= 1;
 		}
-		errors |= spawnvp(_P_WAIT, "bk", av);
-		putenv("_BK_PREFIX=");
 	}
 	ensemble_free(list);
 	return (errors);
