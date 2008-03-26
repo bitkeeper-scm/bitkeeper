@@ -27,6 +27,7 @@ private void	progress(int force);
 private	void	sccsdir(winfo *wi);
 private void	walk(char *dir);
 private void	load_ignore(project *p);
+private	void	print_components(void);
 
 typedef struct {
 	u32	Aflg:1;			/* -pA: show all pending deltas */
@@ -75,6 +76,7 @@ private	project	*proj;
 private	char	**ignore;	/* list of file pathname globs to ignore */
 private	char	**ignorebase;	/* list of file basename globs to ignore */
 private	char	**prunedirs;	/* set of dirs to prune */
+private	char	**components;	/* list of subcomponents */
 
 private u32	d_count, s_count, x_count; /* progress counter */
 private u32	s_last, x_last; /* progress counter */
@@ -109,13 +111,21 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
         return (s);
 }
 
-private	char *prefix;
-
 private int
 fastprint(char *file, struct stat *sb, void *data)
 {
-	if (prefix) fputs(prefix, stdout);
-	puts(file + 2);
+	int	len;
+
+	file += 2;
+	len = strlen(file);
+	if ((len > strlen(CHANGESET)) &&
+	    streq(file + len - strlen(CHANGESET) - 1, "/" CHANGESET)) {
+		/* pick out subcomponents */
+		file[len - strlen(CHANGESET) - 1] = 0;
+		components = addLine(components, strdup(file));
+	} else {
+		puts(file);
+	}
 	return (0);
 }
 
@@ -132,11 +142,12 @@ sfiles_main(int ac, char **av)
 	if (proj_product(0)) opts.ensemble = 1;
 
 	/* pass in path/to/component/ and note the trailing slash */
-	if ((prefix = getenv("_BK_PREFIX")) && !strlen(prefix)) prefix = 0;
+	opts.prefix = getenv("_BK_PREFIX");
 
-	if (av[1] && streq("-h", av[1])) opts.skip_comps = 1;
-	if ((ac == 1) || opts.skip_comps)  {
+	if ((ac == 1) && !opts.prefix)  {
+		opts.sfiles = 1;
 		walksfiles(".", fastprint, 0);
+		if (opts.ensemble) print_components();
 		return (0);
 	}
 
@@ -286,6 +297,7 @@ usage:				system("bk help -s sfiles");
                         }
                 }
 	}
+	if (opts.ensemble) print_components();
 	if (opts.out) fclose(opts.out);
 	if (opts.progress) progress(2);
 	return (0);
@@ -1011,6 +1023,7 @@ error:				perror("output error");
 		}
 	}
 	/* if gfile or !sfile then print gfile style name */
+	if (opts.prefix) fputs(opts.prefix, opts.out);
 	if (opts.gfile || (state[TSTATE] != 's')) {
 		if (fputs(gfile, opts.out) < 0) goto error;
 	} else {
@@ -1031,7 +1044,6 @@ do_print(STATE buf, char *gfile, char *rev)
 	STATE	state;
 	int	doit;
 	project	*comp;
-	char	*p, *freeme = 0;
 
 	gfile =  strneq("./",  gfile, 2) ? &gfile[2] : gfile;
 	strcpy(state, buf);	/* So we have writable strings */
@@ -1086,31 +1098,7 @@ do_print(STATE buf, char *gfile, char *rev)
 		comp = proj_init(gfile);
 		assert(comp);
 		if (proj_isComponent(comp)) {
-			state[TSTATE] = 's';
-			if (opts.pending && (state[PSTATE] == ' ')) {
-				freeme = aprintf("%s/SCCS/s.ChangeSet", gfile);
-				p = strrchr(freeme, '/');
-				p[1] = 'd';
-				if (exists(freeme)) {
-					state[PSTATE] = 'p';
-					free(freeme);
-					freeme = aprintf("%s/ChangeSet", gfile);
-					chk_pending(0, freeme, state, 0, 0);
-					free(freeme);
-					return;
-				}
-				free(freeme);
-				freeme = 0;
-			}
-			if (opts.names && (state[NSTATE] == ' ')) {
-				p = proj_relpath(proj_product(comp), gfile);
-				unless (streq(p, proj_comppath(comp))) {
-					state[NSTATE] = 'n';
-				}
-			}
-			// This is sort of bogus because for some things you
-			// want to list the repo name (i.e., sfiles -n)
-			freeme = gfile = aprintf("%s/ChangeSet", gfile);
+			components = addLine(components, strdup(gfile));
 			// XXX -l/-u/-G/-y not done
 		} else {
 			state[TSTATE] = 'x';
@@ -1134,7 +1122,6 @@ do_print(STATE buf, char *gfile, char *rev)
 	    ((state[YSTATE] == 'y') && opts.cfiles);
 	if (opts.inverse) doit = !doit;
 	if (doit) print_it(state, gfile, rev);
-	if (freeme) free(freeme);
 }
 
 private void
@@ -1419,8 +1406,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 					*p = 0;
 					comp = proj_init(file);
 					assert(comp);
-					if (proj_isComponent(comp) &&
-					    !opts.skip_comps) {
+					if (proj_isComponent(comp)) {
 						sprintf(p, "/SCCS/s.ChangeSet");
 						si->fn(file, 0, si->data);
 					}
@@ -1473,4 +1459,66 @@ walksfiles(char *dir, walkfn fn, void *data)
 		proj_free(proj);
 	}
 	return (rc);
+}
+
+private void
+print_components(void)
+{
+	project	*comp;
+	int	i, doit;
+	char	*gfile, *freeme, *p;
+	STATE	state;
+	char	buf[MAXPATH];
+
+	if (opts.skip_comps) return;
+	unless (opts.out) opts.out = stdout;
+
+	components = file2Lines(components,
+	    proj_fullpath(0, "BitKeeper/log/deep-nests"));
+	uniqLines(components, free);
+	EACH (components) {
+		gfile = components[i];
+		concat_path(buf, components[i], CHANGESET);
+		unless (exists(buf)) continue;
+		comp = proj_init(gfile);
+		strcpy(state, "       ");
+		state[TSTATE] = 's';
+		if (opts.pending) {
+			freeme = aprintf("%s/SCCS/s.ChangeSet", gfile);
+			p = strrchr(freeme, '/');
+			p[1] = 'd';
+			if (exists(freeme)) {
+				state[PSTATE] = 'p';
+				free(freeme);
+				freeme = aprintf("%s/ChangeSet", gfile);
+				chk_pending(0, freeme, state, 0, 0);
+				free(freeme);
+				proj_free(comp);
+				continue;
+			}
+			free(freeme);
+			freeme = 0;
+		}
+		if (opts.names) {
+			p = proj_relpath(proj_product(comp), gfile);
+			unless (streq(p, proj_comppath(comp))) {
+				state[NSTATE] = 'n';
+			}
+		}
+		// This is sort of bogus because for some things you
+		// want to list the repo name (i.e., sfiles -n)
+		gfile = aprintf("%s/ChangeSet", gfile);
+		doit = ((state[TSTATE] == 's') && opts.sfiles) ||
+		    ((state[LSTATE] == 'l') && opts.locked) ||
+		    ((state[LSTATE] == 'u') && opts.unlocked) ||
+		    ((state[CSTATE] == 'c') && opts.changed) ||
+		    ((state[PSTATE] == 'p') && opts.pending) ||
+		    ((state[GSTATE] == 'G') && opts.gotten) ||
+		    ((state[NSTATE] == 'n') && opts.names) ||
+		    ((state[YSTATE] == 'y') && opts.cfiles);
+		if (opts.inverse) doit = !doit;
+		if (doit) print_it(state, gfile, 0);
+		free(gfile);
+		proj_free(comp);
+	}
 }

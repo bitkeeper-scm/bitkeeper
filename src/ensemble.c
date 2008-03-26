@@ -463,49 +463,37 @@ void
 ensemble_nestedCheck(void)
 {
 	project	*p;
-	project	*prod = 0;	// set to the product if we find one
+	project	*prod;	// set to the product if we find one
 	char	*t, *rel, *hints;
 	char	**paths;
-	int	i;
 
-	unless (p = proj_init("..")) return;
-
-	/* directly nested, let sfiles find it naturally. */
-	if (proj_isProduct(p)) {
-		proj_free(p);
-		return;
-	}
+	if (proj_isProduct(0)) return;	/* only components */
+	unless (prod = proj_product(0)) return;
+	p = proj_init("..");
+	assert(p);
 	proj_free(p);
 
-	p = proj_init(".");
-	unless (prod = proj_product(p)) {
-		proj_free(p);
-		return;
-	}
+	/* directly nested, let sfiles find it naturally. */
+	if (p == prod) return;	/* use after free ok */
 
-	rel = proj_relpath(prod, ".");
+	rel = proj_relpath(prod, proj_root(0));
 	hints = aprintf("%s/BitKeeper/log/deep-nests", proj_root(prod));
 	paths = file2Lines(0, hints);
-	EACH(paths) {
-		// already there?
-		if (streq(paths[i], rel)) {
-			free(rel);
-			rel = 0;
-			break;
-		}
-	}
-	if (rel) {
+	unless (removeLine(paths, rel, free)) { /* have rel? */
+		freeLines(paths, free);
+		paths = 0;
 		t = aprintf("%s/BitKeeper/log/deep-nests.lck", proj_root(prod));
 		if (sccs_lockfile(t, 10, 0) == 0) {
 			// reload now that we have it locked
 			paths = file2Lines(0, hints);
-			paths = addLine(paths, rel);
+			paths = addLine(paths, strdup(rel));
 			uniqLines(paths, free);
 			lines2File(paths, hints);
 			sccs_unlockfile(t);
 		}
+		free(t);
 	}
-	proj_free(p);	// frees product as well, weirdly enough.
+	free(rel);
 	freeLines(paths, free);
 	free(hints);
 }
