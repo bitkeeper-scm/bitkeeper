@@ -1464,25 +1464,41 @@ walksfiles(char *dir, walkfn fn, void *data)
 private void
 print_components(void)
 {
-	project	*comp;
-	int	i, doit;
-	char	*gfile, *freeme, *p;
+	project	*comp, *prod;
+	int	i, doit, rel_len;
+	char	*gfile, *freeme, *p, *rel;
 	STATE	state;
 	char	buf[MAXPATH];
 
 	if (opts.skip_comps) return;
 	unless (opts.out) opts.out = stdout;
 
+	unless (prod = proj_product(0)) return;
+	p = proj_relpath(prod, ".");
+	if (streq(p, ".")) {
+		rel = 0;
+		rel_len = 0;
+	} else {
+		rel = aprintf("%s/", p);
+		rel_len = strlen(rel);
+	}
+	free(p);
+
 	components = file2Lines(components,
-	    proj_fullpath(0, "BitKeeper/log/deep-nests"));
+	    proj_fullpath(prod, "BitKeeper/log/deep-nests"));
 	uniqLines(components, free);
 	EACH (components) {
 		gfile = components[i];
-		concat_path(buf, components[i], CHANGESET);
+		if (rel) {
+			unless (strneq(gfile, rel, rel_len)) continue;
+			gfile += rel_len;
+		}
+		concat_path(buf, gfile, CHANGESET);
 		unless (exists(buf)) continue;
 		comp = proj_init(gfile);
 		strcpy(state, "       ");
 		state[TSTATE] = 's';
+		unless (proj_isComponent(comp)) state[TSTATE] = 'x';
 		if (opts.pending) {
 			freeme = aprintf("%s/SCCS/s.ChangeSet", gfile);
 			p = strrchr(freeme, '/');
@@ -1515,10 +1531,12 @@ print_components(void)
 		    ((state[PSTATE] == 'p') && opts.pending) ||
 		    ((state[GSTATE] == 'G') && opts.gotten) ||
 		    ((state[NSTATE] == 'n') && opts.names) ||
+	    	    ((state[TSTATE] == 'x') && opts.extras) ||
 		    ((state[YSTATE] == 'y') && opts.cfiles);
 		if (opts.inverse) doit = !doit;
 		if (doit) print_it(state, gfile, 0);
 		free(gfile);
 		proj_free(comp);
 	}
+	if (rel) free(rel);
 }
