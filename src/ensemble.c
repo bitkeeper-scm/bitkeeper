@@ -454,3 +454,58 @@ ensemble_each(int quiet, int ac, char **av)
 	ensemble_free(list);
 	return (errors);
 }
+
+/*
+ * See if we are nested under a BK product somewhere up the file system path.
+ * Note that we may be deeply nested so we have to keep going until we hit /.
+ */
+void
+ensemble_nestedCheck(void)
+{
+	project	*p;
+	project	*prod = 0;	// set to the product if we find one
+	char	*t, *rel, *hints;
+	char	**paths;
+	int	i;
+
+	unless (p = proj_init("..")) return;
+
+	/* directly nested, let sfiles find it naturally. */
+	if (proj_isProduct(p)) {
+		proj_free(p);
+		return;
+	}
+	proj_free(p);
+
+	p = proj_init(".");
+	unless (prod = proj_product(p)) {
+		proj_free(p);
+		return;
+	}
+
+	rel = proj_relpath(prod, ".");
+	hints = aprintf("%s/BitKeeper/log/deep-nests", proj_root(prod));
+	paths = file2Lines(0, hints);
+	EACH(paths) {
+		// already there?
+		if (streq(paths[i], rel)) {
+			free(rel);
+			rel = 0;
+			break;
+		}
+	}
+	if (rel) {
+		t = aprintf("%s/BitKeeper/log/deep-nests.lck", proj_root(prod));
+		if (sccs_lockfile(t, 10, 0) == 0) {
+			// reload now that we have it locked
+			paths = file2Lines(0, hints);
+			paths = addLine(paths, rel);
+			uniqLines(paths, free);
+			lines2File(paths, hints);
+			sccs_unlockfile(t);
+		}
+	}
+	proj_free(p);	// frees product as well, weirdly enough.
+	freeLines(paths, free);
+	free(hints);
+}

@@ -310,7 +310,14 @@ main(int ac, char **av, char **env)
 		prog = av[0];
 	}
 
-run:	getoptReset();
+run:	
+
+	/*
+	 * XXX - we could check to see if we are licensed for SAM and make
+	 * this conditional.
+	 */
+	if (dashr) ensemble_nestedCheck();
+	getoptReset();
 	if (exists("gmon.out")) save_gmon();
 
 #ifdef	WIN32

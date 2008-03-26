@@ -1235,3 +1235,101 @@ liberty/BitKeeper/etc/SCCS/s.ignore
 EOF
 cmpfiles WANT GOT
 echo OK
+
+
+# Deep nesting
+echo $N Test that we see a nested component .........................$NL
+cd "$HERE"
+for i in A B C
+do	bk clone -q gcc $i
+	(cd $i && bk newroot -q)
+done
+cd project
+bk clone $Q ../A gdb/A
+test -f BitKeeper/log/deep-nests || {
+	echo failed to create hints file
+	exit 1
+}
+grep -q '^gdb/A$' BitKeeper/log/deep-nests || {
+	echo bad path
+	cat BitKeeper/log/deep-nests
+	exit 1
+}
+bk sfiles > GOT
+grep -q gdb/A/SCCS/s.ChangeSet GOT || {
+	echo bk sfiles did not find nested ChangeSet
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Test that we see a nested/nested component ..................$NL
+bk clone $Q ../B gdb/A/B
+test -f BitKeeper/log/deep-nests || {
+	echo failed to maintain hints file
+	exit 1
+}
+grep -q '^gdb/A$' BitKeeper/log/deep-nests || {
+	echo bad path
+	cat BitKeeper/log/deep-nests
+	exit 1
+}
+grep -q '^gdb/A/B$' BitKeeper/log/deep-nests || {
+	echo bad path
+	cat BitKeeper/log/deep-nests
+	exit 1
+}
+bk sfiles > GOT
+grep -q gdb/A/SCCS/s.ChangeSet GOT || {
+	echo bk sfiles did not find nested A/ChangeSet
+	cat GOT
+	exit 1
+}
+grep -q gdb/A/B/SCCS/s.ChangeSet GOT || {
+	echo bk sfiles did not find nested A/B/ChangeSet
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Test that we see a nested/nested/nested component ...........$NL
+bk clone $Q ../C gdb/A/B/C
+test -f BitKeeper/log/deep-nests || {
+	echo failed to maintain hints file
+	exit 1
+}
+grep -q '^gdb/A$' BitKeeper/log/deep-nests || {
+	echo bad path
+	cat BitKeeper/log/deep-nests
+	exit 1
+}
+grep -q '^gdb/A/B$' BitKeeper/log/deep-nests || {
+	echo bad path
+	cat BitKeeper/log/deep-nests
+	exit 1
+}
+grep -q '^gdb/A/B/C$' BitKeeper/log/deep-nests || {
+	echo bad path
+	cat BitKeeper/log/deep-nests
+	exit 1
+}
+bk sfiles > GOT
+grep -q gdb/A/SCCS/s.ChangeSet GOT || {
+	echo bk sfiles did not find nested A/ChangeSet
+	cat GOT
+	exit 1
+}
+grep -q gdb/A/B/SCCS/s.ChangeSet GOT || {
+	echo bk sfiles did not find nested A/B/ChangeSet
+	cat GOT
+	exit 1
+}
+grep -q gdb/A/B/C/SCCS/s.ChangeSet GOT || {
+	echo bk sfiles did not find nested A/B/C/ChangeSet
+	cat GOT
+	exit 1
+}
+echo OK
+
+# echo $N Test sfiles -x ..............................................$NL
+# bk sfiles -x
