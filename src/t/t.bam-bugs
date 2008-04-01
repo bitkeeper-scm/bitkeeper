@@ -1,0 +1,92 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create initial repository ...................................$NL
+commercial project
+echo OK
+
+echo $N Create some binary data and check BAM .......................$NL
+bk edit $Q BitKeeper/etc/config
+grep -v checkout < BitKeeper/etc/config > c
+echo 'checkout: last!' >> c
+mv c BitKeeper/etc/config
+bk delta -ycheckout $Q BitKeeper/etc/config
+BK="`bk bin`/bk"
+test $PLATFORM = WIN32 && BK=${BK}.exe
+DATA="$HERE"/data
+perl -e 'sysread(STDIN, $buf, 81920);
+syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
+cp "$DATA" data 
+cp "$DATA" data2 
+echo make me different >> data2
+bk new $Q data data2 || exit 1
+ls > text
+bk new $Q text || exit 1
+test -d BitKeeper/BAM || exit 1
+bk commit $Q -ybaseline
+bk clone $Q . ../clone
+echo OK
+
+echo $N Check for wagerworks auto-edit bug - serverless .............$NL
+bk edit $Q data data2 text
+echo foo >> data
+echo foo bar >> data2
+echo foo >> text
+bk delta $Q -y2 data data2 text
+bk commit $Q -y2 
+cd ../clone
+bk -r clean
+bk -r co -q
+for i in data data2 text 
+do	test -f $i -a ! -w $i || {
+		echo $i should be read only
+		ls -l
+		exit 1
+	}
+done
+bk pull $Q || exit 1
+for i in data data2 text 
+do	test -f $i -a ! -w $i || {
+		echo after pull, $i should be read only
+		ls -l
+		exit 1
+	}
+done
+echo OK
+
+echo $N Check for wagerworks auto-edit bug - with bam server ........$NL
+bk unpull -fsq || exit 1
+bk bam server -q ../project
+bk bam clean -a > /dev/null 2>&1
+find BitKeeper/BAM -type f | grep -v index.db > FILES
+test -s FILES && {
+	echo failed to flush data
+	cat FILES
+	exit 1
+}
+bk -r clean
+bk -r co -q
+for i in data data2 text 
+do	test -f $i -a ! -w $i || {
+		echo $i should be read only
+		ls -l
+		exit 1
+	}
+done
+bk pull $Q || exit 1
+for i in data data2 text 
+do	test -f $i -a ! -w $i || {
+		echo after pull, $i should be read only
+		ls -l
+		exit 1
+	}
+done
+echo OK

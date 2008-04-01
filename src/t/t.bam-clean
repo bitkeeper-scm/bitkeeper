@@ -29,12 +29,15 @@ bk ci -y2 $Q file || exit 1
 bk commit $Q -y2 || exit 1
 cd ../copy
 bk get $Q file || exit 1
+test -w file && exit 1
 bk bam clean $Q -a || exit 1
 BK_CONFIG=checkout:get bk pull $Q || exit 1
 checkfiles file ../F2
 echo OK
 
 echo $N Test diffs when the BAM file is missing in master ...........$NL
+bk edit $Q file
+test -w file || exit 1
 bk bam clean $Q -a || exit 1
 mv ../pmaster/BitKeeper/BAM ../BAM-hold
 bk diffs -u file > OUT 2> ERR && exit 1
