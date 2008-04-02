@@ -66,6 +66,10 @@
 #define	NOPROC
 #define ELOOP		40
 
+#define	GetLastError()	bk_GetLastError()
+
+DWORD	bk_GetLastError(void);
+
 /* tcp/tcp.c */
 #define SOCK_ADDR_CAST
 #define SOCK_OPT_CAST (char *)
