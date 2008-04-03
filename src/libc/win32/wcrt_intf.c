@@ -296,7 +296,6 @@ nt_is_full_path_name(char *path)
 	return (0);		/* Nope, not a full path name  */
 }
 
-
 int
 pipe(int fd[2], int pipe_size)
 {
@@ -314,4 +313,22 @@ snprintf(char *buf, size_t count, const char *format, ...)
 	rc = _vsnprintf(buf, count, format, ap);
 	va_end(ap);
 	return (rc);
+}
+
+#undef	GetLastError
+
+DWORD
+bk_GetLastError(void)
+{
+	DWORD	ret = GetLastError();
+	char	*p;
+	static	int debug = ~0;
+
+	if (debug == ~0) {
+		p = getenv("BK_DEBUG_LAST_ERROR");
+		debug = (p && *p) ? 1 : 0;
+	}
+
+	if (debug) fprintf(stderr, "GetLastError() = %u\n", ret);
+	return (ret);
 }
