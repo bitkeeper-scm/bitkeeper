@@ -205,6 +205,10 @@ islink() {
 	perl -e "exit ((-l '$1') ? 0 : 1)"
 }
 
+_mtime() {
+	bk _stat "$1" | awk -F\| '{print $10}'
+}
+
 cd "$HERE" || exit 1
 
 # We need this because ksh on Solaris override $PATH from .profile
