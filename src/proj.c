@@ -954,11 +954,11 @@ restoreCO(sccs *s, int co)
 	}
 	if (s->cachemiss) {
 		if (getFlags & GET_EDIT) {
-			s->proj->bp_getFiles =
-			    addLine(s->proj->bp_getFiles, strdup(s->gfile));
-		} else {
 			s->proj->bp_editFiles =
 			    addLine(s->proj->bp_editFiles, strdup(s->gfile));
+		} else {
+			s->proj->bp_getFiles =
+			    addLine(s->proj->bp_getFiles, strdup(s->gfile));
 		}
 		return (0);
 	}

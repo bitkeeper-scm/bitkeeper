@@ -87,8 +87,8 @@ hash_close(hash *h)
 {
 	int	ret;
 
-	assert(h->ops->close);
-	ret = h->ops->close(h);
+	assert(h->ops->hashclose);
+	ret = h->ops->hashclose(h);
 	free(h);
 	return (ret);
 }

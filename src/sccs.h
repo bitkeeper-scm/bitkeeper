@@ -29,7 +29,6 @@ struct tm *localtimez(time_t *timep, long *offsetp);
 #ifndef	NOPROC
 void	rmdir_findprocs(void);
 int	checking_rmdir(char *dir);
-#define	rmdir(d)	checking_rmdir(d)
 #endif
 
 /*

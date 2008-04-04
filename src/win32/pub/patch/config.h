@@ -54,3 +54,5 @@
 #define HAVE_MKTEMP	1
 #define HAVE_VPRINTF	1
 #define	HAVE_STRERROR	1
+
+#include "fslayer/fslayer.h"

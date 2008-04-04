@@ -6,6 +6,14 @@ can not longer be set to an empty string.  So for example:
 won't work.  Use BK_NO_TRIGGERS=1 instead.
 
 ===============================================================================
+Release notes for BitKeeper version 4.1.1a (released 03-Apr-2008)
+
+BAM fix for case where update changed from read-only to read-write
+
+Bugs fixed
+    2008-03-11-002 - windows core dump on a prompt during pull
+
+===============================================================================
 Release notes for BitKeeper version 4.1.1 (released 02-Mar-2008)
 
 This release improves and extends BK's binary asset management (BAM),
