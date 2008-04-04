@@ -296,10 +296,27 @@ nt_is_full_path_name(char *path)
 	return (0);		/* Nope, not a full path name  */
 }
 
-
 int
 pipe(int fd[2], int pipe_size)
 {
 	if (pipe_size == 0) pipe_size = 512;
 	return (_pipe(fd, pipe_size, _O_BINARY|_O_NOINHERIT));
+}
+
+#undef	GetLastError
+
+DWORD
+bk_GetLastError(void)
+{
+	DWORD	ret = GetLastError();
+	char	*p;
+	static	int debug = ~0;
+
+	if (debug == ~0) {
+		p = getenv("BK_DEBUG_LAST_ERROR");
+		debug = (p && *p) ? 1 : 0;
+	}
+
+	if (debug) fprintf(stderr, "GetLastError() = %u\n", ret);
+	return (ret);
 }

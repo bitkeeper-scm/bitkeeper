@@ -1116,12 +1116,17 @@ private char *
 error2msg(int error)
 {
 	LPTSTR  errormsg;
+	char	*ret = 0;
 
 	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
 	    FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 	    NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 	    (LPTSTR) &errormsg, 0, NULL);
-	return (errormsg);
+	if (errormsg) {
+		ret = strdup(errormsg);
+		LocalFree(errormsg);
+	}
+	return (ret);
 }
 
 private void
@@ -1134,7 +1139,7 @@ stuck(char *fmt, const char *arg)
 		fprintf(stderr, fmt, arg);
 		e = GetLastError();
 		m = error2msg(e);
-		fprintf(stderr, "error (%d): %s\n", e, m?m:"Unknown");
+		fprintf(stderr, "error (%4ld): %s\n", e, m?m:"Unknown");
 		if (m) free(m);
 	}
 }
