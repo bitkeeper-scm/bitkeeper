@@ -83,32 +83,6 @@ _switch_char(const char *ofn, char *nfn, char ochar, char nchar)
 	return (nfn);
 }
 
-/*
- * Our version of fopen, does two additional things
- * a) Translate Bitmover filename to Win32 (i.e NT) path name
- * b) Make fd uninheritable
- */
-FILE *
-nt_fopen(const char *filename, const char *mode)
-{
-	FILE	*f;
-	char	buf[1024];
-	int	fd;
-
-	f = fopen(bm2ntfname(filename, buf), mode);
-	if (f == NULL) {
-		debug((stderr,
-		    "nt_fopen: fail to open file %s, mode %s\n",
-		    filename, mode));
-		return (NULL);
-	}
-
-	fd = fileno(f);
-	if (fd >= 0) make_fd_uninheritable(fd);
-	return (f);
-}
-
-
 private int
 _exists(char *file)
 {

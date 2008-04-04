@@ -58,8 +58,6 @@
 #define	fast_getcwd(b, l)	nt_getcwd(b, l)
 #define	reserved(f)	Reserved(f)
 #define	mkpipe(p, size)	pipe(p, size)
-#define	realmkdir(d, m)	nt_mkdir(d)
-#define	mkdir(d, m)	smartMkdir(d, m)
 
 #define	win32()		1
 #define	macosx()	0

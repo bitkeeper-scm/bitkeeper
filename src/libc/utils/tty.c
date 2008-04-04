@@ -144,7 +144,7 @@ init(void)
 	rows = win.ws_row;
 	cols = win.ws_col;
 
-	tty_fd = open("/dev/tty", O_RDONLY);
+	tty_fd = open("/dev/tty", O_RDONLY, 0);
 	if (tty_fd == -1) {
 		fprintf(stderr, "/dev/tty: %s\n", strerror(errno));
 		return (0);

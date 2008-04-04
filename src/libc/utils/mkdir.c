@@ -1,20 +1,5 @@
 #include "system.h"
 
-private int
-do_mkdir(char *dir, int mode)
-{
-	int	ret;
-	int	save;
-
-	if (ret = mkdir(dir, mode)) {
-		if (errno == EEXIST)  return (0);
-		save = errno;
-		if (isdir_follow(dir)) return (0);
-		errno = save;
-	}
-	return (ret);
-}
-
 /*
  * Given a pathname, make the directory.
  */
@@ -24,17 +9,17 @@ mkdirp(char *dir)
 	char	*t;
 	int	ret;
 
-	if (do_mkdir(dir, 0777) == 0) return (0);
+	if (mkdir(dir, 0777) == 0) return (0);
 	for (t = dir; *t; t++) {
 		if ((*t != '/') || (t == dir)) continue;
 		*t = 0;
-		if (ret = do_mkdir(dir, 0777)) {
+		if (ret = mkdir(dir, 0777)) {
 			*t = '/';
 			return (ret);
 		}
 		*t = '/';
 	}
-	return (do_mkdir(dir, 0777));
+	return (mkdir(dir, 0777));
 }
 
 /*

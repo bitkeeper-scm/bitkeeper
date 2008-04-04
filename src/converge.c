@@ -101,7 +101,7 @@ resync_list(char *gfile)
 		unless (exists(kv.val.dptr)) {
 			mkdirf(kv.val.dptr);
 			sprintf(cmd, "%s/%s",  RESYNC2ROOT, kv.val.dptr);
-			sys("cp", cmd, kv.val.dptr, SYS);
+			fileCopy(cmd, kv.val.dptr);
 			mdbm_store_str(vals, kv.key.dptr, kv.val.dptr, 0);
 			continue;
 		}
@@ -116,7 +116,7 @@ resync_list(char *gfile)
 
 		mkdirf(kv.val.dptr);
 		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
-		sys("cp", cmd, t, SYS);
+		fileCopy(cmd, t);
 		sys("bk", "get", "-qe", t, SYS);
 		sys("bk", "delta", "-fdqy'Auto converge rename'", t, SYS);
 		mdbm_store_str(vals, kv.key.dptr, t, 0);

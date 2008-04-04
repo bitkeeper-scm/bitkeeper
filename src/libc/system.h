@@ -78,7 +78,8 @@ char	*dirname(char *path);
 char	*dirname_alloc(char *path);
 
 /* dirs.c */
-char	**getdir(char *);
+#define	getdir(dir)	_getdir(dir, 0)
+char	**_getdir(char *dir, struct stat *sb);
 typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
 int	walkdir(char *dir, walkfn fn, void *data);
 
@@ -164,7 +165,8 @@ void	sig_default(void);
 /* smartrename.c */
 int	smartUnlink(char *name);
 int	smartRename(char *old, char *new);
-int	smartMkdir(char *pathname, mode_t mode);
+int	smartMkdir(char *dir, mode_t mode);
+#define	mkdir(d, m)	smartMkdir((char *)d, m)
 
 /* spawn.c */
 #ifndef WIN32
@@ -270,5 +272,8 @@ typedef void (*zputs_func)(void *, u8 *, int);
 zputbuf	*zputs_init(zputs_func callback, void *token, int level);
 int	zputs(zputbuf *, u8 *data, int len);
 int	zputs_done(zputbuf *);
+
+
+#include "fslayer/fslayer.h"
 
 #endif /* _SYSTEM_H */
