@@ -858,6 +858,9 @@ bam_pull_main(int ac, char **av)
 	int	quiet = 0;
 	int	dash = 0;	/* read keys to fetch from stdin */
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM pull: "); fprintf x ; }
+
 	while ((c = getopt(ac, av, "aq")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
@@ -869,11 +872,11 @@ bam_pull_main(int ac, char **av)
 	}
 
 	if (proj_cd2root()) {
-		fprintf(stderr, "Not in a repository.\n");
+		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
 	unless (bp_hasBAM()) {
-		fprintf(stderr, "No BAM data in this repository\n");
+		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
 	for (i = 0; av[optind+i]; i++);
@@ -882,24 +885,23 @@ bam_pull_main(int ac, char **av)
 		av[optind+i] = 0;
 	}
 	if (dash && all) {
-		fprintf(stderr, "bam pull: Can't pull from - with -a\n");
+		ERROR((stderr, "can't pull from - with -a\n"));
 		return (1);
 	}
 	if (av[optind]) {
 		if (av[optind+1]) {
-			fprintf(stderr, "bam pull: only one URL allowed\n");
+			ERROR((stderr, "only one URL allowed\n"));
 			return (1);
 		}
 		url = av[optind];
 		unless (id = bp_serverURL2ID(url)) {
-			fprintf(stderr, "bam pull: unable to pull from %s\n",
-			    url);
+			ERROR((stderr, "unable to pull from %s\n", url));
 			return (1);
 		}
 		free(id);
 	} else {
 		unless (all) {
-			fprintf(stderr, "bam pull: need URL or -a\n");
+			ERROR((stderr, "need URL or -a\n"));
 			return (1);
 		}
 		unless (url = bp_serverURL()) {
@@ -941,6 +943,9 @@ bam_push_main(int ac, char **av)
 	int	quiet = 0;
 	int	all = 0;
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM push: "); fprintf x ; }
+
 	while ((c = getopt(ac, av, "aq")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
@@ -951,16 +956,15 @@ bam_push_main(int ac, char **av)
 		}
 	}
 	if (proj_cd2root()) {
-		fprintf(stderr, "Not in a repository.\n");
+		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
 	unless (bp_hasBAM()) {
-		fprintf(stderr, "No BAM data in this repository\n");
+		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
 	if (av[optind] && bp_forceServer(av[optind])) {
-		fprintf(stderr, "bam push: unable to push to %s\n",
-		    av[optind]);
+		ERROR((stderr, "unable to push to %s\n", av[optind]));
 		return (1);
 	}
 	return (bp_updateServer(all ? 0 : "..", 0, quiet));
@@ -986,6 +990,9 @@ bam_clean_main(int ac, char **av)
 	kvpair	kv;
 	char	buf[MAXLINE];
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM clean: "); fprintf x ; }
+
 	while ((c = getopt(ac, av, "anqv")) != -1) {
 		switch (c) {
 		    case 'a': check_server = 1; break;
@@ -998,21 +1005,20 @@ bam_clean_main(int ac, char **av)
 		}
 	}
 	if (proj_cd2root()) {
-		fprintf(stderr, "Not in a repository.\n");
+		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
 	unless (bp_hasBAM()) {
-		fprintf(stderr, "No BAM data in this repository\n");
+		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
 	p1 = bp_serverID(0);
 	if (p1 && streq(p1, proj_repoID(0))) {
-		fprintf(stderr, "bam clean: will not run in a BAM server.\n");
+		ERROR((stderr, "will not run in a BAM server.\n"));
 		return (1);
 	}
 	if (sys("bk", "BAM", "check", "-F", quiet ? "-q" : "--", SYS)) {
-		fprintf(stderr,
-		    "bk BAM clean: check failed, clean cancelled.\n");
+		ERROR((stderr, "BAM check failed, clean cancelled.\n"));
 		return (1);
 	}
 
@@ -1022,8 +1028,7 @@ bam_clean_main(int ac, char **av)
 		/* remove deltas already in BAM server */
 		p1 = cmd;
 		unless (bp_serverID(1)) {
-			fprintf(stderr,
-			    "bk BAM clean: No BAM server set\n");
+			ERROR((stderr, "no BAM server set\n"));
 			free(p1);
 			return (1);
 		}
@@ -1042,7 +1047,7 @@ bam_clean_main(int ac, char **av)
 		hash_storeStr(bpdeltas, buf, 0);
 	}
 	if (pclose(f)) {
-		fprintf(stderr, "bk BAM clean: failed to contact server\n");
+		ERROR((stderr, "failed to contact server\n"));
 		return (1);
 	}
 
@@ -1071,9 +1076,9 @@ bam_clean_main(int ac, char **av)
 				*p1 = '1';	/* keep the file */
 				continue;	/* keep the key */
 			} else {
-				fprintf(stderr,
-				"BAM clean: data for key '%s' missing,\n"
-				"\tdeleting key.\n", kv.key.dptr);
+				ERROR((stderr,
+				    "data for key '%s' missing,\n"
+				    "\tdeleting key.\n", kv.key.dptr));
 			}
 		}
 
@@ -1084,9 +1089,11 @@ bam_clean_main(int ac, char **av)
 		 */
 		fnames = addLine(fnames, strdup(kv.key.dptr));
 	}
-	EACH(fnames) {
-		mdbm_delete_str(db, fnames[i]);
-		unless (dryrun) bp_logUpdate(fnames[i], 0);
+	unless (dryrun) {
+		EACH(fnames) {
+			mdbm_delete_str(db, fnames[i]);
+			bp_logUpdate(fnames[i], 0);
+		}
 	}
 	freeLines(fnames, free);
 	hash_free(bpdeltas);
@@ -1102,8 +1109,7 @@ bam_clean_main(int ac, char **av)
 		if ((p1 = hash_fetchStr(dfiles, fnames[i])) && *p1) continue;
 
 		if (dryrun) {
-			fprintf(stderr,
-			    "BAM clean: would remove %s\n", fnames[i]);
+			ERROR((stderr, "would remove %s\n", fnames[i]));
 			if (verbose) {
 				p1 = aprintf(" %s ", fnames[i]);
 				sys("bk", "grep", p1, "../log/BAM.index", SYS);
@@ -1111,7 +1117,7 @@ bam_clean_main(int ac, char **av)
 			}
 			continue;
 		}
-		unless (quiet) fprintf(stderr, "BAM clean %s\n", fnames[i]);
+		unless (quiet) ERROR((stderr, "%s\n", fnames[i]));
 		unlink(fnames[i]); /* delete data file */
 		dels = 1;
 
@@ -1283,12 +1289,15 @@ bam_check_main(int ac, char **av)
 	char	*spin = "|/-\\";
 	char	buf[MAXLINE];
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM check: "); fprintf x ; }
+
 	if (proj_cd2root()) {
-		fprintf(stderr, "Not in a repository.\n");
+		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
 	unless (bp_hasBAM()) {
-none:		fprintf(stderr, "No BAM data in this repository\n");
+none:		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
 	while ((i = getopt(ac, av, "Fq")) != -1) {
@@ -1363,6 +1372,9 @@ bam_reattach_main(int ac, char **av)
 	char	buf[MAXLINE];
 	char	key[100];
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM reattach: "); fprintf x ; }
+
 	while ((c = getopt(ac, av, "q")) != -1) {
 		switch (c) {
 		    case 'q': quiet = 1; break;
@@ -1386,11 +1398,11 @@ bam_reattach_main(int ac, char **av)
 		f = fopen(tmp, "r");
 	}
 	if (proj_cd2root()) {
-		fprintf(stderr, "Not in a repository.\n");
+		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
 	unless (bp_hasBAM()) {
-		fprintf(stderr, "No BAM data in this repository\n");
+		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
 	db = proj_BAMindex(0, 0);	/* ok if db is null */
@@ -1445,11 +1457,12 @@ bam_reattach_main(int ac, char **av)
 			unless (p = mdbm_fetch_str(missing, key)) break;
 
 			/* found a file we are missing */
-			unless (quiet) printf("Inserting %s for %s\n", buf, p);
+			unless (quiet) {
+				printf("Inserting %s for %s\n", buf, p);
+			}
 			if (bp_insert(0, buf, p, 0, 0444)) {
-				fprintf(stderr,
-				    "reattach: failed to insert %s for %s\n",
-				    buf, p);
+				ERROR((stderr,
+				    "failed to insert %s for %s\n", buf, p));
 			}
 			/* don't reinsert this key again */
 			mdbm_delete_str(missing, key);
@@ -1505,58 +1518,61 @@ load_logfile(MDBM *m, FILE *f)
 	return (0);
 }
 
-
 int
 bp_index_check(int quiet)
 {
-	MDBM	*m, *i;
+	MDBM	*logDB, *idxDB;
 	FILE	*f;
 	char	*p;
 	int	log = 0, index = 0, missing = 0, mismatch = 0;
 	kvpair	kv;
 
-	i = proj_BAMindex(0, 0);
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM index: "); fprintf x ; }
+
+	idxDB = proj_BAMindex(0, 0);
 	f = fopen(BAM_INDEX, "r");
 
-	if (!i && !f) return (0);
-	unless (i && f) {
-		fprintf(stderr, "No BAM.{db,index}?\n");
+	if (!idxDB && !f) return (0);
+	unless (idxDB && f) {
+		ERROR((stderr, "no BAM.{db,index}?\n"));
 		return (1);
 	}
-	m = mdbm_mem();
-	load_logfile(m, f);
+	load_logfile(logDB = mdbm_mem(), f);
 	fclose(f);
-	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
+	for (kv = mdbm_first(logDB); kv.key.dsize; kv = mdbm_next(logDB)) {
 		log++;
-		unless (p = mdbm_fetch_str(i, kv.key.dptr)) {
-			fprintf(stderr, "Not found: %s\n", kv.key.dptr);
+		unless (p = mdbm_fetch_str(idxDB, kv.key.dptr)) {
+			ERROR((stderr,
+			    "not found in index: %s\n", kv.key.dptr));
 			missing++;
 		} else unless (streq(p, kv.val.dptr)) {
-			fprintf(stderr, "Mismatch: %s: %s != %s\n",
-			    kv.key.dptr, kv.val.dptr, p);
+			ERROR((stderr, "log/index mismatch: %s: %s != %s\n",
+			    kv.key.dptr, kv.val.dptr, p));
 			mismatch++;
 		}
 	}
-	for (kv = mdbm_first(i); kv.key.dsize; kv = mdbm_next(i)) {
+	for (kv = mdbm_first(idxDB); kv.key.dsize; kv = mdbm_next(idxDB)) {
 		index++;
-		unless (p = mdbm_fetch_str(m, kv.key.dptr)) {
-			fprintf(stderr,
-			    "Extra: %s => %s\n", kv.key.dptr, kv.val.dptr);
+		unless (p = mdbm_fetch_str(logDB, kv.key.dptr)) {
+			ERROR((stderr,
+			    "extra in index: %s => %s\n",
+			    kv.key.dptr, kv.val.dptr));
 		} else unless (streq(p, kv.val.dptr)) {
-			fprintf(stderr, "Mismatch2: %s: %s != %s\n",
-			    kv.key.dptr, kv.val.dptr, p);
+			ERROR((stderr, "index/log mismatch: %s:\n\t%s\n\t%s\n",
+			    kv.key.dptr, kv.val.dptr, p));
 		}
 	}
-	mdbm_close(m);
+	mdbm_close(logDB);
 	unless (log == index) {
-		fprintf(stderr,
-		    "Count mismatch: %u in log, %u in index\n", log, index);
+		ERROR((stderr,
+		    "count mismatch: %u in log, %u in index\n", log, index));
 	}
 	if (missing) {
-		fprintf(stderr, "%d items missing in index.\n", missing);
+		ERROR((stderr, "%d items missing in index.\n", missing));
 	}
 	if (mismatch) {
-		fprintf(stderr, "%d items mismatched in index.\n", mismatch);
+		ERROR((stderr, "%d items mismatched in index.\n", mismatch));
 	}
 	return (missing || mismatch || (log != index));
 }
@@ -1568,15 +1584,19 @@ bam_reload_main(int ac, char **av)
 	MDBM	*m;
 	FILE	*f;
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM reload: "); fprintf x ; }
+
 	if (proj_cd2root()) {
-		fprintf(stderr, "No repo root?\n");
+		ERROR((stderr, "no repo root?\n"));
 		exit(1);
 	}
 	unless (bp_hasBAM()) {
-		fprintf(stderr, "No BAM data in this repository\n");
+		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
 	unless (f = fopen(BAM_INDEX, "r")) {
+		fprintf(stderr, "BAM reload: ");
 		perror(BAM_INDEX);
 	    	exit(1);
 	}
@@ -1596,6 +1616,9 @@ bam_sizes_main(int ac, char **av)
 	int	errors = 0;
 	u32	bytes;
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM sizes: "); fprintf x ; }
+
 	for (name = sfileFirst("BAM_sizes", &av[1], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
@@ -1605,7 +1628,7 @@ err:			sccs_free(s);
 			continue;
 		}
 		unless (HAS_GFILE(s)) {
-			fprintf(stderr, "%s: not checked out.\n", s->gfile);
+			ERROR((stderr, "%s: not checked out.\n", s->gfile));
 			goto err;
 		}
 		unless (d = bp_fdelta(s, sccs_top(s))) goto err;
@@ -1635,6 +1658,9 @@ bam_timestamps_main(int ac, char **av)
 	time_t	got, want, sfile;
 	struct	utimbuf ut;
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM timestamps: "); fprintf x ; }
+
 	while ((c = getopt(ac, av, "n")) != -1) {
 		switch (c) {
 		    case 'n': dryrun = 1; break;
@@ -1644,7 +1670,7 @@ bam_timestamps_main(int ac, char **av)
 		}
 	}
 	unless (bp_hasBAM()) {
-		fprintf(stderr, "No BAM data in this repository\n");
+		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
 	for (name = sfileFirst("BAM_timestamps", &av[optind], 0);
@@ -1707,18 +1733,19 @@ bam_convert_main(int ac, char **av)
 	FILE	*in, *out, *sfiles;
 	char	buf[MAXKEY * 2];
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM convert: "); fprintf x ; }
+
 	// XXX - locking
-	unless (p = proj_rootkey(0)) {
-		fprintf(stderr, "Not in a repository.\n");
-		exit(1);
-	}
 	if (proj_cd2root()) {
-		fprintf(stderr, "Not in a repository.\n");
+		ERROR((stderr, "not in a repository.\n"));
 		exit(1);
 	}
+	p = proj_rootkey(0);
+	assert(p);
 	if (strneq(p, "B:", 2)) {
-		fprintf(stderr,
-		    "This repository has already been converted.\n");
+		ERROR((stderr,
+		    "this repository has already been converted.\n"));
 		exit(1);
 	}
 	while ((c = getopt(ac, av, "")) != -1) {
@@ -1729,7 +1756,7 @@ bam_convert_main(int ac, char **av)
 		}
 	}
 	unless (proj_configsize(0, "BAM")) {
-		fprintf(stderr, "Turning on BAM in your config file.\n");
+		ERROR((stderr, "turning on BAM in your config file.\n"));
 		get("BitKeeper/etc/config", SILENT|GET_EDIT, "-");
 		system("echo 'BAM:on' >> BitKeeper/etc/config");
 		system("bk delta -qy'Add BAM' BitKeeper/etc/config");
@@ -1764,7 +1791,7 @@ bam_convert_main(int ac, char **av)
 		perror("SCCS/x.ChangeSet");
 		exit(1);
 	}
-	fprintf(stderr, "Redoing ChangeSet entries ...\n");
+	ERROR((stderr, "redoing ChangeSet entries ...\n"));
 	while (fnext(buf, in)) {
 		fputs(buf, out);
 		if (streq("\001T\n", buf)) break;
@@ -1786,7 +1813,7 @@ bam_convert_main(int ac, char **av)
 			i++;
 		}
 		if (j) {
-			fprintf(stderr, "Found %d of %d\r", matched, n);
+			ERROR((stderr, "found %d of %d\r", matched, n));
 			removeLineN(keys, j, free);
 			removeLineN(keys, j, free);
 		} else {
@@ -1796,6 +1823,7 @@ bam_convert_main(int ac, char **av)
 	fprintf(stderr, "\n");
 	fclose(in);
 	fclose(out);
+	// LMXXX - why is this here?
 	EACH(keys) {
 		fprintf(stderr, "%s", keys[i]);
 	}
@@ -1803,11 +1831,11 @@ bam_convert_main(int ac, char **av)
 	rename("SCCS/x.ChangeSet", "SCCS/s.ChangeSet");
 	system("bk admin -z ChangeSet");
 	system("bk checksum -f/ ChangeSet");
-	fprintf(stderr, "Redoing ChangeSet ids ...\n");
+	ERROR((stderr, "redoing ChangeSet ids ...\n"));
 	sprintf(buf, "bk newroot -kB:%x:", proj_configsize(0, "BAM"));
 	system(buf);
 	if (errors || system("bk -r check -accv")) {
-		fprintf(stderr, "Conversion failed\n");
+		ERROR((stderr, "failed\n"));
 		exit(1);
 	} else {
 		unlink("BitKeeper/tmp/s.ChangeSet");
@@ -1926,8 +1954,11 @@ bam_server_main(int ac, char **av)
 	char	*server = 0, *repoid;
 	FILE	*f;
 
+#undef	ERROR
+#define	ERROR(x)	{ fprintf(stderr, "BAM server: "); fprintf x ; }
+
 	if (proj_cd2root()) {
-		fprintf(stderr, "Not in a repository.\n");
+		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
 	while ((c = getopt(ac, av, "lqr")) != -1) {
@@ -1951,9 +1982,8 @@ rm:		unlink(BAM_SERVER);
 		server = streq(av[optind], ".") ?
 		    strdup(".") : parent_normalize(av[optind]);
 		unless (repoid = bp_serverURL2ID(server)) {
-			fprintf(stderr,
-			    "bam server: unable to get id from BAM server %s\n",
-			    server);
+			ERROR((stderr,
+			    "unable to get id from BAM server %s\n", server));
 			free(server);
 			return (1);
 		}

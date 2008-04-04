@@ -499,7 +499,7 @@ isCsetFile(char *spath)
 	if (q == spath) return (0);				/* case ' d' */
 
 	/* test if pathname contains BKROOT */
-	sprintf(buf, "%.*s/" BKROOT, q - spath, spath);
+	sprintf(buf, "%.*s/" BKROOT, (int)(q - spath), spath);
 	return (isdir(buf));					/* case ' e' */
 }
 
@@ -1347,8 +1347,6 @@ unsafe_path(char *s)
 	/*NOTREACHED*/
 }
 
-#define	STALE	DAY
-
 /*
  * If they hand us a partial list use that if we can.
  * Otherwise do a full check.
@@ -1359,13 +1357,20 @@ run_check(char *flist, char *opts)
 	int	i, j, ret;
 	struct	stat sb;
 	time_t	now = time(0);
+	time_t	stale;
 	char	buf[20];
 
 again:
 	assert(!opts || (strlen(opts) < sizeof(buf)));
 	unless (opts && *opts) opts = "--";
+	if (stale = proj_configsize(0, "check_frequency")) {
+		stale *= DAY;
+	} else {
+		stale = DAY;
+	}
+	if (stale > 2*WEEK) stale = 2*WEEK;
 	if (!flist || 
-	    lstat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
+	    lstat(CHECKED, &sb) || ((now - sb.st_mtime) > stale)) {
 		ret = sys("bk", "-r", "check", "-ac", opts, SYS);
 	} else {
 		ret = sysio(flist, 0, 0, "bk", "check", "-c", opts, "-", SYS);
