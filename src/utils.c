@@ -1156,11 +1156,6 @@ savefile(char *dir, char *prefix, char *pathname)
 		fd = open(path, O_CREAT|O_EXCL|O_WRONLY, 0666);
 		if (fd == -1) {
 			if (errno == EEXIST) continue;	/* name taken */
-			if (errno == ENOENT &&
-			    (realmkdir(dir, 0777) == 0)) {
-				/* dir missing, applyall race? */
-				continue;
-			}
 			return (0);
 		}
 		if (close(fd)) return (0);

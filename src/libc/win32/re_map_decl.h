@@ -8,7 +8,6 @@
 char*	_switch_char(const char *, char [], char, char);
 
 /* functions that expect file name as input */
-FILE*	nt_fopen(const char *, const char *);
 int	nt_open(const char *, int, int);
 int	nt_close(int);
 int	nt_unlink(const char *);

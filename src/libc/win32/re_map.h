@@ -3,12 +3,8 @@
  */
 #ifndef	_RE_MAP_H_
 #define	_RE_MAP_H_
-#undef unlink
-#undef rename
 
 /* functions that expect file name as input */ 
-#undef	fopen
-#define fopen(n, f)		nt_fopen(n, f)
 #define open(x,f,p)		nt_open(x, f, p)
 #define unlink(f)		nt_unlink(f)
 #define rename(oldf, newf)	nt_rename(oldf, newf)
@@ -35,5 +31,3 @@
 #define sync()			nt_sync()
 
 #endif /* _RE_MAP_H_ */
-
-

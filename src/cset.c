@@ -1072,8 +1072,6 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	 *     We shouldn't do this if we are not getting comments
 	 *     interactively.
 	 */
-#undef	close
-#undef	open
 	fd0 = dup(0);
 	close(0);
 	if (open(DEV_TTY, 0, 0) < 0) {

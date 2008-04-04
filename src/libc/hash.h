@@ -37,7 +37,7 @@ struct hashops {
 	char	*name;
 	hash	*(*hashnew)(va_list ap);
 	hash	*(*hashopen)(char *file, int flags, mode_t mode, va_list ap);
-	int	(*close)(hash *h);
+	int	(*hashclose)(hash *h);
 	int	(*free)(hash *h);
 	void	*(*fetch)(hash *h, void *key, int klen);
 	void	*(*store)(hash *h, void *key, int klen, void *val, int vlen);
