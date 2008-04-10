@@ -190,6 +190,30 @@ test -d RESYNC || {
 rmdir RESYNC
 echo OK
 
+unset _BK_DEVELOPER
+echo $N checkout:get should resurrect deleted files after undo ......$NL
+cd "$HERE"
+rm -rf project
+commercial project
+bk edit $Q BitKeeper/etc/config || exit 1
+echo "checkout: get" >> BitKeeper/etc/config
+echo "partial_check: yes" >> BitKeeper/etc/config
+bk ci $Q -y'Added checkout:get' BitKeeper/etc/config
+bk commit $Q -y'Added checkout:get' || exit 1
+echo foo > foo
+bk new $Q foo || exit 1
+bk commit $Q -y'Added foo' || exit 1
+bk rm foo || exit 1
+bk commit $Q -y'Removed foo' || exit 1
+bk clean BitKeeper/deleted || exit 1
+bk -r check -ac || exit 1
+bk undo $Q -fa1.3 || exit 1
+test -f foo || {
+	echo failed
+	exit 1
+}
+echo OK
+
 echo $N Undo cset created by Cunning Plan -- 1.1 and 1.0.1.1 on 1.0 .$NL
 cd "$HERE"
 rm -fr project copy
