@@ -9,6 +9,8 @@
 #    possible inclusion in future releases.  Sending such modifications
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
+#
+CHECKED=BitKeeper/log/checked
 
 echo $N Create initial repository ...................................$NL
 commercial project
@@ -47,4 +49,75 @@ cmp -s WANT keywords && {
 	echo failed to unexpand keywords
 	exit 1
 }
+echo OK
+
+echo $N Make sure partial check is partial at 23 hours old ..........$NL
+# the patch only changes "file" so remove s.keyword
+# so a partial check will pass and a full test will fail.
+cd "$HERE/project"
+bk unpull $Q -f
+mv BitKeeper/tmp/unpull.patch PATCH
+mv SCCS/s.keywords x
+touch NOW
+CUR=`_mtime NOW`
+# save this setup for the following tests
+cd ..
+tar cf TAR project
+# okay, do this test
+THEN=`expr $CUR - \( 23 \* 3600 \)`
+cd project
+bk takepatch -af PATCH || exit 1
+echo OK
+
+echo $N Make sure partial check is full at 25 hours old .............$NL
+cd "$HERE"
+rm -fr project
+tar xf TAR
+cd project
+THEN=`expr $CUR - \( 25 \* 3600 \)`
+bk _touch -t $THEN $CHECKED
+bk takepatch -af PATCH 2> ERR && exit 1
+grep -q "Missing file.*keywords" ERR || exit 1
+echo OK
+
+echo $N check_frequency = 13 days and test 12 days 23 hours - P .....$NL
+cd "$HERE"
+rm -fr project
+tar xf TAR
+cd project
+THEN=`expr $CUR - \( 13 \* 24 \* 3600 \) + 3600`
+bk _touch -t $THEN $CHECKED
+BK_CONFIG="check_frequency: 13! " bk takepatch -af PATCH || exit 1
+echo OK
+
+echo $N check_frequency = 13 days and test 13 days 1 hour - F .......$NL
+cd "$HERE"
+rm -fr project
+tar xf TAR
+cd project
+THEN=`expr $CUR - \( 13 \* 24 \* 3600 \) - 3600`
+bk _touch -t $THEN $CHECKED
+BK_CONFIG="check_frequency: 13! " bk takepatch -af PATCH 2> ERR && exit 1
+grep -q "Missing file.*keywords" ERR || exit 1
+echo OK
+
+echo $N check_frequency = 15 days and test 13 days 23 hours - P .....$NL
+cd "$HERE"
+rm -fr project
+tar xf TAR
+cd project
+THEN=`expr $CUR - \( 14 \* 24 \* 3600 \) + 3600`
+bk _touch -t $THEN $CHECKED
+BK_CONFIG="check_frequency: 15! " bk takepatch -af PATCH || exit 1
+echo OK
+
+echo $N check_frequency = 15 days and test 14 days 1 hour - F .......$NL
+cd "$HERE"
+rm -fr project
+tar xf TAR
+cd project
+THEN=`expr $CUR - \( 14 \* 24 \* 3600 \) - 3600`
+bk _touch -t $THEN $CHECKED
+BK_CONFIG="check_frequency: 15! " bk takepatch -af PATCH 2> ERR && exit 1
+grep -q "Missing file.*keywords" ERR || exit 1
 echo OK

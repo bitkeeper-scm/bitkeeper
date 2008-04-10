@@ -136,6 +136,9 @@ doit(sccs *s, s_opts opts)
 		return (0);
 	}
 
+	/* work with bluearc Cunning Plan */
+	s->tree->flags &= ~(D_SET|D_GONE);
+
 	if (sccs_stripdel(s, "stripdel")) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr,
