@@ -189,3 +189,29 @@ test -d RESYNC || {
 }
 rmdir RESYNC
 echo OK
+
+echo $N Undo cset created by Cunning Plan -- 1.1 and 1.0.1.1 on 1.0 .$NL
+cd "$HERE"
+rm -fr project copy
+umask 0
+commercial project
+touch foo
+bk new $Q foo
+cd ..
+cp -r project copy
+cd project
+bk commit $Q -ytrunk
+cd ../copy
+bk parent $Q ../project
+bk stripdel $Q -r+ foo
+TIP=`bk log -r+ -nd:I: foo`
+test "$TIP" = 1.0 || exit 1
+bk chmod 666 foo
+TIP=`bk log -r+ -nd:I: foo`
+test "$TIP" = 1.1 || exit 1
+bk commit $Q -ybranch
+bk pull $Q
+TIP=`bk log -r+ -nd:I: foo`
+test "$TIP" = 1.2 || exit 1
+bk unpull $Q -f || exit 1
+echo OK
