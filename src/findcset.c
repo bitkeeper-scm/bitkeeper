@@ -1243,9 +1243,7 @@ do_patch(sccs *s, delta *d, char *tag, char *tagparent, FILE *out)
 
 	if (!d) return (0);
 	type = d->type;
-	if ((d->type == 'R') && d->parent && streq(d->rev, d->parent->rev)) {
-	    	type = 'M';
-	}
+	if (d->type == 'R') type = 'M';
 
 	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
 	    type, d->rev, d->sdate,
