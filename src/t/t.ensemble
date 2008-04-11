@@ -818,6 +818,25 @@ bk -Ar check -ac > OUT 2>&1 || {
 }
 echo OK
 
+cd "$HERE"
+rm -rf project
+tar xf TAR 
+cd project
+
+echo $N Test bk undo -r+ in a sparse ensemble .......................$NL
+rm -rf gcc4
+bk undo -fsr+ > OUT 2>&1  || {
+	echo failed undo
+	cat OUT
+	exit 1
+}
+bk -Ar check -ac > OUT 2>&1 || {
+	echo failed check
+	cat OUT
+	exit 1
+}
+echo OK
+
 # XXX - write a test to make sure that we can list only the repos that are
 # present w/ bk ensemble_list
 
