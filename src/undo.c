@@ -73,7 +73,6 @@ usage:			system("bk help -s undo");
 		/* No revs we are done. */
 		return (fromclone ? UNDO_SKIP : 0);
 	}
-	rev = 0;  /* don't use wrong value */
 	bktmp(rev_list, "rev_list");
 
 	/*

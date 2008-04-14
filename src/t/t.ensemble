@@ -482,6 +482,7 @@ echo $N Make some csets and look at changes output ..................$NL
 # First commit the rename
 cd "$HERE/project"
 bk commit $Q -y"rename cset"
+cp -rp gcc4 ../gcc4-save
 cd gcc4
 for i in file1 file2 file3
 do	echo $i > $i
@@ -804,8 +805,8 @@ grep -q "Changed/extra files in 'gcc'" OUT || {
 }
 echo OK
 
-echo $N Test bk undo in an ensemble that removes a component ........$NL
-rm -f gcc/GOT gcc/OUT gcc/WANT
+echo $N Test bk undo in an ensemble that removes a component - list .$NL
+rm -f */GOT */OUT */WANT
 bk undo -fsr1.4,1.3 > OUT 2>&1  || {
 	echo failed undo
 	cat OUT
@@ -823,8 +824,31 @@ rm -rf project
 tar xf TAR 
 cd project
 
-echo $N Test bk undo -r+ in a sparse ensemble .......................$NL
+echo $N Test bk undo in an ensemble that removes a component - -a ...$NL
+rm -f */GOT */OUT */WANT
+echo y | bk undo -sa1.2 > OUT 2>&1  || {
+	echo failed undo
+	cat OUT
+	exit 1
+}
+bk -Ar check -ac > OUT 2>&1 || {
+	echo failed check
+	cat OUT
+	exit 1
+}
+echo OK
+
+cd "$HERE"
+rm -rf project
+tar xf TAR 
+cd project
+
+echo $N Test bk changes in a sparse ensemble ........................$NL
+bk cset -ffl5P -r+ > A
 rm -rf gcc4
+echo OK
+
+echo $N Test bk undo -r+ in a sparse ensemble .......................$NL
 bk undo -fsr+ > OUT 2>&1  || {
 	echo failed undo
 	cat OUT
@@ -836,6 +860,22 @@ bk -Ar check -ac > OUT 2>&1 || {
 	exit 1
 }
 echo OK
+
+cd "$HERE"
+rm -rf project
+tar xf TAR 
+cd project
+
+echo $N Test bk undo -r+ in where undo has been already done in gcc..$NL
+rm -rf gcc4
+cp -rp ../gcc4-save gcc4
+bk undo -fsr+ > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
 
 # XXX - write a test to make sure that we can list only the repos that are
 # present w/ bk ensemble_list
