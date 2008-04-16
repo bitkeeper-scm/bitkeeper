@@ -1,7 +1,7 @@
 #include "bkd.h"
 #include "logging.h"
 
-private int	compressed(int);
+private int	compressed(int level, int lclone);
 
 /*
  * Send the sfio file to stdout
@@ -10,7 +10,7 @@ int
 cmd_clone(int ac, char **av)
 {
 	int	c, rc;
-	int	gzip = 0, delay = -1;
+	int	gzip = 0, delay = -1, lclone = 0;
 	char 	*p, *rev = 0;
 
 	if (sendServerInfoBlock(0)) {
@@ -23,8 +23,11 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	while ((c = getopt(ac, av, "qr;w;z|")) != -1) {
+	while ((c = getopt(ac, av, "lqr;w;z|")) != -1) {
 		switch (c) {
+		    case 'l':
+			lclone = 1;
+			break;
 		    case 'w':
 			delay = atoi(optarg);
 			break;
@@ -91,7 +94,7 @@ cmd_clone(int ac, char **av)
 	}
 	if (trigger(av[0], "pre")) return (1);
 	printf("@SFIO@\n");
-	rc = compressed(gzip);
+	rc = compressed(gzip, lclone);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (trigger(av[0], "post")) exit (1);
@@ -108,45 +111,20 @@ cmd_clone(int ac, char **av)
 }
 
 private int
-compressed(int level)
+compressed(int level, int lclone)
 {
 	int	status, fd;
-	char	*tmpf1, *tmpf2;
 	FILE	*fh;
 	char	*sfiocmd;
-	char	*cmd;
-	int	rc = 1;
+	char	*larg = (lclone ? "-L" : "");
 
-	/*
-	 * Generate list of sfiles and log markers to transfer to
-	 * remote site.  It is important that the markers appear in
-	 * sorted order so that the other end knows when the entire
-	 * BitKeeper directory is finished unpacking.
-	 */
-	tmpf1 = bktmp(0, "clone1");
-	tmpf2 = bktmp(0, "clone2");
-	fh = fopen(tmpf1, "w");
-	if (exists(CMARK)) fprintf(fh, CMARK "\n");
-	fclose(fh);
-	cmd = aprintf("bk sfiles > '%s'", tmpf2);
-	status = system(cmd);
-	free(cmd);
-	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
-
-	sfiocmd = aprintf("cat '%s' '%s' | bk sort | bk sfio -oq",
-	    tmpf1, tmpf2);
+	sfiocmd = aprintf("bk _sfiles_clone %s | bk sfio -oq %s", larg, larg);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);
 	gzipAll2fh(fd, stdout, level, 0, 0, 0);
 	fflush(stdout);
 	status = pclose(fh);
-	rc = 0;
- out:
-	unlink(tmpf1);
-	unlink(tmpf2);
-	free(tmpf1);
-	free(tmpf2);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
-	return (rc);
+	return (0);
 }

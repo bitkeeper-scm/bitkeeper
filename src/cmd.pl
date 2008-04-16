@@ -301,6 +301,7 @@ sendbug
 set
 setup
 sfiles
+_sfiles_clone
 sfio remote
 _shellSplit_test
 shrink

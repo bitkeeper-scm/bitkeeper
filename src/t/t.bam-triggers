@@ -515,18 +515,14 @@ cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
 	grep -v _SEED= |
-	grep -v _FEATURES |
-	grep -v BK_LICENSE= |
- 	grep -v BK_AUTH_HMAC=GOOD | bk sort > "$HERE/pre-outgoing"
+ 	bk sort > "$HERE/pre-outgoing"
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
 	grep -v _SEED= |
-	grep -v BK_LICENSE= |
-	grep -v _FEATURES |
-	grep -v BK_AUTH_HMAC=GOOD | bk sort > "$HERE/post-outgoing"
+	bk sort > "$HERE/post-outgoing"
 EOF
 chmod +x BitKeeper/triggers/*
 project_repoid=`bk identity -r`
@@ -580,18 +576,14 @@ cd "$HERE/project"
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
-	grep -v BK_LICENSE= |
+	grep -v _SEED= |
 	bk sort > "$HERE/pre-outgoing-l"
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
-	grep -v BK_LICENSE= |
-	grep -v BK_NO_REPO_LOCK= |
-	grep -v BK_IGNORE_WRLOCK= |
-	grep -v BKD_BAM_SERVER= |
-	grep -v BKD_BAM= |
+	grep -v _SEED= |
 	bk sort > "$HERE/post-outgoing-l"
 EOF
 chmod +x BitKeeper/triggers/*
@@ -604,7 +596,11 @@ test -d lclone && {
 	echo should not have created repository
 	exit 1
 }
-echo '>> Trigger "pre-outgoing" (exit status was 1)' > WANT
+cat <<EOF > WANT
+------------------------- Remote trigger message --------------------------
+>> Trigger "pre-outgoing" (exit status was 1)
+---------------------------------------------------------------------------
+EOF
 cmpfiles WANT GOT
 bk clone $Q -l -r1.1 project lclone 2> /dev/null
 grep -q BK_CSETS=..1.1 "$HERE/pre-outgoing" || {
@@ -658,14 +654,8 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 # ignore BK_REPO_ID because clone and clone-l had different ids
 set | grep $DASHA ^BK | grep -v _BK_ | egrep -v '^[^=]+=$' |
-    grep -v BK_IGNORE_WRLOCK |
-    grep -v BKD_LEVEL |
-    grep -v BK_REPO_ID |
-    grep -v BKD_ROOTKEY |
-    grep -v _FEATURES |
-    grep -v BKD_LICTYPE |
-    grep -v BKD_SEED= |
-    grep -v BKD_SEED_OK=1 |
+    grep -v _SEED= |
+    grep -v BK_REPO_ID= |
     bk sort > "$HERE/post-incoming-clone"
 exit 0
 EOF
@@ -697,11 +687,8 @@ bk edit $Q BitKeeper/triggers
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/bash
 set | grep $DASHA ^BK | egrep -v '^[^=]+=$' |
-    grep -v _BK_ |
-    grep -v BK_LICENSE= |  # leftover from pre-triggers (remove in 3.3.x)
-    grep -v BK_REPO_ID |
-    grep -v BK_IGNORE_WRLOCK |
-    grep -v BK_NO_REPO_LOCK |
+    grep -v _SEED= |
+    grep -v BK_REPO_ID= |
     bk sort > "$HERE/post-incoming-clone-l"
 exit 0
 EOF
