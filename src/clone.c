@@ -11,6 +11,7 @@
 struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
+	u32	link:1;			/* -l: lclone-mode */
 	int	delay;			/* wait for (ssh) to drain */
 	int	gzip;			/* -z[level] compression */
 	char	*rev;			/* remove everything after this */
@@ -23,12 +24,9 @@ private void	parent(remote *r);
 private int	sfio(remote *r, int BAM, char *prefix);
 private void	usage(void);
 private int	initProject(char *root, remote *r);
-private	int	lclone(remote *, char *to);
-private int	linkdir(char *from, char *to, char *dir, int doSCCS);
+private	void	lclone(char *from);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
-private int	out_trigger(char *status, char *rev, char *when);
-private int	in_trigger(char *status, char *rev, char *root, char *repoID);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -39,7 +37,6 @@ clone_main(int ac, char **av)
 	int	c, rc;
 	char	**envVar = 0;
 	remote 	*r = 0;
-	int	link = 0;
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
@@ -54,7 +51,7 @@ clone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
-		    case 'l': link = 1; break;			/* doc 2.0 */
+		    case 'l': opts->link = 1; break;		/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
 		    case 'w': opts->delay = atoi(optarg); break; /* undoc 2.0 */
@@ -66,7 +63,7 @@ clone_main(int ac, char **av)
 			usage();
 	    	}
 	}
-	if (link && bam_url) {
+	if (opts->link && bam_url) {
 		fprintf(stderr,
 		    "clone: -l and -B are not supported together.\n");
 		exit(1);
@@ -85,12 +82,17 @@ clone_main(int ac, char **av)
 	 */
 	unless (r = remote_parse(av[optind], REMOTE_BKDURL)) usage();
 
-	/*
-	 * Go prompt with the remotes license, it makes cleanup nicer.
-	 */
-	unless (r->host) {
+	if (r->host) {
+		if (opts->link) {
+			fprintf(stderr, "clone: no -l for remote sources.\n");
+			return (1);
+		}
+	} else {
 		char	here[MAXPATH];
 
+		/*
+		 * Go prompt with the remotes license, it makes cleanup nicer.
+		 */
 		getcwd(here, sizeof(here));
 		assert(r->path);
 		chdir(r->path);
@@ -100,11 +102,6 @@ clone_main(int ac, char **av)
 			exit(1);
 		}
 		chdir(here);
-	}
-
-	if (link) {
-		return (lclone(r, av[optind+1]));
-		/* NOT REACHED */
 	}
 	if (av[optind + 1]) {
 		remote	*l;
@@ -126,6 +123,11 @@ err:			if (r) remote_free(r);
 			remote_free(r);
 			remote_free(l);
 			freeLines(envVar, free);
+			if (opts->link) {
+				fprintf(stderr,
+				    "clone: no -l for remote targets.\n");
+				return (1);
+			}
 			getoptReset();
 			av[0] = "_rclone";
 			return (rclone_main(ac, av));
@@ -172,6 +174,7 @@ send_clone_msg(remote *r, char **envVar)
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
 	if (opts->quiet) fprintf(f, " -q");
 	if (opts->delay) fprintf(f, " -w%d", opts->delay);
+	if (opts->link) fprintf(f, " -l");
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");
 	fputs("\n", f);
 	fclose(f);
@@ -289,6 +292,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 	/* Make sure we pick up config info from what we just unpacked */
 	proj_reset(0);
+
+	if (opts->link) lclone(r->path);
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
 	if (do_part2 && !bkd_hasFeature("BAMv2")) {
@@ -526,9 +531,8 @@ sccs_rmUncommitted(int quiet, FILE *f)
 		    "Looking for, and removing, any uncommitted deltas...\n");
     	}
 	/*
-	 * "sfile -p" should run in "slow scan" mode because sfio did not
-	 * copy over the d.file and x.dfile
-	 * But they do exist after an lclone.
+	 * "sfile -p" should run in "fast scan" mode because sfio
+	 * copied over the d.file and x.dfile
 	 */
 	unless (in = popen("bk sfiles -pAC", "r")) {
 		perror("popen of bk sfiles -pAC");
@@ -558,7 +562,7 @@ sccs_rmUncommitted(int quiet, FILE *f)
 	EACH (files) {
 		if (f && exists(files[i])) fprintf(f, "%s\n", files[i]);
 
-		/* remove d.file.  If is there is an lclone */
+		/* remove d.file */
 		s = strrchr(files[i], '/');
 		assert(s[1] == 's');
 		s[1] = 'd';
@@ -568,6 +572,7 @@ sccs_rmUncommitted(int quiet, FILE *f)
 
 	/*
 	 * We have a clean tree, enable the "fast scan" mode for pending file
+	 * Only needed for older bkd's.
 	 */
 	enableFastPendingScan();
 }
@@ -649,300 +654,32 @@ rmEmptyDirs(int quiet)
 }
 
 /*
- * Hard link from the source to the destination.
+ * Fixup links after a lclone
  */
-private int
-lclone(remote *r, char *to)
+private void
+lclone(char *from)
 {
-	sccs	*s;
-	FILE	*f;
-	char	*p, *fromid, *toid;
-	char	**files;
-	int	i, level, hasrev;
 	struct	stat sb;
-	char	here[MAXPATH], from[MAXPATH], dest[MAXPATH], buf[MAXPATH];
+	struct	utimbuf tb;
+	char	buf[MAXPATH];
 
-	assert(r);
-	if (hasLocalWork(GONE)) {
-		fprintf(stderr,
-		    "clone: must commit local changes to " GONE "\n");
-		exit(1);
-	}
-	unless (r->type == ADDR_FILE) {
-		p = remote_unparse(r);
-		fprintf(stderr, "clone: invalid parent %s\n", p);
-		free(p);
-out1:		remote_free(r);
-		return (1);
-	}
-	getcwd(here, MAXPATH);
-	unless (chdir(r->path) == 0) {
-		fprintf(stderr, "clone: cannot chdir to %s\n", r->path);
-		goto out1;
-	}
-	getcwd(from, MAXPATH);
-	unless (exists(BKROOT)) {
-		fprintf(stderr, "clone: %s is not a package root\n", from);
-		goto out1;
-	}
-	if (repository_rdlock()) {
-		fprintf(stderr, "clone: unable to readlock %s\n", from);
-		goto out1;
-	}
-
-	/* Make sure the rev exists before we get started */
-	if (opts->rev) {
-		if (s = sccs_csetInit(SILENT)) {
-			hasrev = (sccs_findrev(s, opts->rev) != 0);
-			sccs_free(s);
-			unless (hasrev) {
-				fprintf(stderr, "ERROR: rev %s doesn't exist\n",
-				    opts->rev);
-				goto out2;
-			}
-		}
-	}
-	/* give them a change to disallow it */
-	if (out_trigger(0, opts->rev, "pre")) {
-out2:		repository_rdunlock(0);
-		goto out1;
-	}
-
-	if (p = bp_serverID(0)) {
-		safe_putenv("BKD_BAM_SERVER_ID=%s", p);
-	} else {
-		safe_putenv("BKD_BAM_SERVER_ID=%s", proj_repoID(0));
-	}
-	if (bp_hasBAM()) putenv("BKD_BAM=YES");
-
-	chdir(here);
-	unless (to) to = basenm(r->path);
-	if (exists(to)) {
-		fprintf(stderr, "clone: %s exists\n", to);
-out:
-		/*
-		 * This could be a wrunlock() because as of the writing of this
-		 * comment there wasn't a way to get here after going through a
-		 * trigger that would have downgraded.  But just in case...
-		 */
-		repository_unlock(0);
-		chdir(from);
-		repository_rdunlock(0);
-		remote_free(r);
-		out_trigger("BK_STATUS=FAILED", opts->rev, "post");
-		return (1);
-	}
-	if (mkdirp(to)) {
-		perror(to);
-		goto out;
-	}
-	chdir(to);
-	getcwd(dest, MAXPATH);
-	sccs_mkroot(".");
-	if (repository_wrlock()) {
-		fprintf(stderr, "Unable to lock new repo?\n");
-		goto out;
-	}
-	chdir(from);
-	unless (f = popen("bk sfiles -d", "r")) goto out;
-	level = getlevel();
-	chdir(dest);
-	setlevel(level);
-	while (fnext(buf, f)) {
-		chomp(buf);
-		if (linkdir(from, to, buf, 1)) {
-			pclose(f);
-			mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
-			goto out;
-		}
-	}
-	pclose(f);
-	chdir(from);
-
-	/*
-	 * Hard link the BAM pool files
-	 */
-	if (bp_hasBAM()) {
-		f = popen("bk _find -type d " BAM_ROOT, "r");
-		chdir(dest);
-		toid = proj_repoID(0);
-		mkdirp(BAM_ROOT);
-		while (fnext(buf, f)) {
-			chomp(buf);
-			if (streq(BAM_ROOT, buf)) continue;
-			if (linkdir(from, to, buf, 0)) {
-				/* leave it locked */
-				mkdir(ROOT2RESYNC, 0775);
-				goto out;
-			}
-		}
-		pclose(f);
+	unlink(BAM_DB);	/* break link */
+	concat_path(buf, from,  BAM_MARKER);
+	if (exists(buf)) {
 		touch(BAM_MARKER, 0664);
-		sprintf(buf, "%s/" BAM_INDEX, from);
+		concat_path(buf, from, BAM_INDEX);
 		fileCopy(buf, BAM_INDEX);
 		system("bk bam reload");
-		chdir(from);
-
-		/*
-		 * Setup new BAM_SERVER file.  Basically we copy the
-		 * previous server (assuming we can talk to the same
-		 * hosts), but if we are lcloning a a bam server we
-		 * need to setup the new link.
-		 */
-		assert(!(bam_url || bam_repoid)); /* no clone -l -B */
-		if (f = fopen(BAM_SERVER, "r")) {
-			fnext(buf, f);
-			chomp(buf);
-			i = streq(buf, ".");
-			fclose(f);
-
-			if (i) {
-				bp_setBAMserver(dest, from, proj_repoID(0));
-			} else {
-				concat_path(buf, dest, BAM_SERVER);
-				fileCopy(BAM_SERVER, buf);
-			}
-		}
 	}
 
 	/* copy timestamp on CHECKED file */
-	unless (stat(CHECKED, &sb)) {
-		struct	utimbuf tb;
-		sprintf(buf, "%s/%s", dest, CHECKED);
-		touch(buf, GROUP_MODE);
+	concat_path(buf, from, CHECKED);
+	unless (lstat(buf, &sb)) {
+		touch(CHECKED, GROUP_MODE);
 		tb.actime = sb.st_atime;
 		tb.modtime = sb.st_mtime;
-		utime(buf, &tb);
+		utime(CHECKED, &tb);
 	}
-	sprintf(buf, "%s/%s", dest, IDCACHE);
-	link(IDCACHE, buf);	/* linking IDCACHE is safe */
-	files = getdir("BitKeeper/etc/SCCS");
-	EACH (files) {
-		if (streq(files[i], "x.id_cache")) continue;
-		if (strneq("x.", files[i], 2)) {
-			p = aprintf("cp '%s/%s' '%s/%s'",
-			    "BitKeeper/etc/SCCS", files[i],
-			    dest, "BitKeeper/etc/SCCS");
-			system(p);
-			free(p);
-		}
-	}
-	freeLines(files, free);
-	chdir(from);
-	repository_rdunlock(0);
-	fromid = proj_repoID(0);
-	if (chdir(dest)) goto out;
-	if (clone2(r)) {
-		in_trigger("BK_STATUS=FAILED", opts->rev, from, fromid);
-		mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
-		goto out;
-	}
-	in_trigger("BK_STATUS=OK", opts->rev, from, fromid);
-
-	/*
-	 * The repo may be readlocked (if there were triggers then the
-	 * lock got downgraded to a readlock) or writelocked (no triggers).
-	 */
-	repository_unlock(0);
-	chdir(from);
-
-	putenv("BKD_REPO_ID=");
-	putenv("BKD_BAM_SERVER_ID=");
-	putenv("BKD_BAM=");
-	out_trigger("BK_STATUS=OK", opts->rev, "post");
-	remote_free(r);
-	return (0);
-}
-
-private int
-out_trigger(char *status, char *rev, char *when)
-{
-	char	*lic;
-
-	safe_putenv("BK_REMOTE_PROTOCOL=%s", BKD_VERSION);
-	safe_putenv("BK_VERSION=%s", bk_vers);
-	safe_putenv("BK_UTC=%s", bk_utc);
-	safe_putenv("BK_TIME_T=%s", bk_time);
-	safe_putenv("BK_USER=%s", sccs_getuser());
-	safe_putenv("_BK_HOST=%s", sccs_gethost());
-	safe_putenv("BK_REALUSER=%s", sccs_realuser());
-	safe_putenv("BK_REALHOST=%s", sccs_realhost());
-	safe_putenv("BK_PLATFORM=%s", platform());
-	if (lic = licenses_accepted()) {
-		safe_putenv("BK_ACCEPTED=%s", lic);
-		free(lic);
-	}
-	safe_putenv("BK_LICENSE=%s", proj_bkl(0));
-	if (status) putenv(status);
-	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
-	putenv("_BK_LCLONE=YES");
-	return (trigger("remote clone", when));
-}
-
-private int
-in_trigger(char *status, char *rev, char *root, char *repoID)
-{
-	safe_putenv("BKD_HOST=%s", sccs_gethost());
-	safe_putenv("BKD_ROOT=%s", root);
-	safe_putenv("BKD_TIME_T=%s", bk_time);
-	safe_putenv("BKD_USER=%s", sccs_getuser());
-	safe_putenv("BKD_UTC=%s", bk_utc);
-	safe_putenv("BKD_VERSION=%s", bk_vers);
-	safe_putenv("BKD_REALUSER=%s", sccs_realuser());
-	safe_putenv("BKD_REALHOST=%s", sccs_realhost());
-	safe_putenv("BKD_PLATFORM=%s", platform());
-	if (status) putenv(status);
-	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
-	if (repoID) safe_putenv("BKD_REPO_ID=%s", repoID);
-	putenv("_BK_LCLONE=YES");
-	return (trigger("clone", "post"));
-}
-
-private int
-linkdir(char *from, char *to, char *dir, int doSCCS)
-{
-	char	buf[MAXPATH];
-	char	dest[MAXPATH];
-	int	i;
-	char	**d;
-
-	strcpy(buf, dir);
-	if (doSCCS) strcat(buf, "/SCCS");
-	if (mkdirp(buf)) {
-		perror(buf);
-		return (-1);
-	}
-	sprintf(buf, "%s/%s", from, dir);
-	if (doSCCS) strcat(buf, "/SCCS");
-	unless (d = getdir(buf)) return (-1);
-	unless (opts->quiet) {
-		fprintf(stderr, "Linking %s/%s\n", to, dir);
-	}
-	EACH (d) {
-		if (doSCCS) {
-			unless (d[i][0] == 's' || d[i][0] == 'd') continue;
-			sprintf(buf, "%s/%s/SCCS/%s", from, dir, d[i]);
-		} else {
-			sprintf(buf, "%s/%s/%s", from, dir, d[i]);
-		}
-		if (access(buf, R_OK)) {
-			perror(buf);
-			freeLines(d, free);
-			return (-1);
-		}
-		if (doSCCS) {
-			sprintf(dest, "%s/SCCS/%s", dir, d[i]);
-		} else {
-			sprintf(dest, "%s/%s", dir, d[i]);
-		}
-		if (link(buf, dest)) {
-			perror(dest);
-			freeLines(d, free);
-			return (-1);
-		}
-	}
-	freeLines(d, free);
-	return (0);
 }
 
 /*

@@ -25,7 +25,8 @@
  * 		uses some rounding so may go above 100%? or not get there?
  * 	B - interpret file names as bptuple names
  * 	H - hardlinks - sfio encodes hardlink info
- * 		XXX can't find any usage
+ * 		if sfio includes files hardlinked on the source they will
+ *		be hardlinked at dest
  * 	l - local - do not recurse to any BAM servers; typical usage is
  * 		when bk havekeys does -l then sfio wants -l
  * 	r - use \r to terminate output trace - XXX: no padding to erase
@@ -77,6 +78,7 @@ struct {
 	u32	bp_tuple:1;	/* -B rkey dkey bphash path */
 	u32	hardlinks:1;	/* save hardlinks */
 	u32	key2path:1;	/* -K read keys on stdin */
+	u32	lclone:1;	/* lclone-mode, hardlink everything */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
@@ -102,7 +104,7 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefHiKlmopP;qr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefHiKLlmopP;qr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -122,6 +124,7 @@ sfio_main(int ac, char **av)
 			opts->mode = M_IN;
 			break;
 		    case 'K': opts->key2path = 1; break;
+		    case 'L': opts->lclone = 1; break;
 		    case 'l': opts->recurse = 0; break;
 		    case 'o': 					/* doc 2.0 */
 			if (opts->mode) goto usage;
@@ -156,6 +159,12 @@ sfio_main(int ac, char **av)
 	}
 #ifdef	WIN32
 	if (opts->hardlinks) {
+		/*
+		 * This code detects hardlinked files by comparing
+		 * st_dev/st_inode and nt_stat() doesn't currently set
+		 * these fields.  If nt_stat() was fixed then win32
+		 * could include this mode too.
+		 */
 		fprintf(stderr, "%s: hardlink-mode not supported on Windows\n",
 		    av[0]);
 		return (1);
@@ -241,6 +250,7 @@ sfio_out(void)
 				send_eof(SFIO_LSTAT);
 				return (SFIO_LSTAT);
 			}
+			cleanPath(buf, buf);  /* avoid stuff like ./file */
 		}
 		byte_count += printf("%04d%s", strlen(buf), buf);
 		if (opts->hardlinks) {
@@ -255,6 +265,20 @@ sfio_out(void)
 				}
 				continue;
 			}
+		}
+		if (opts->lclone) {
+			/*
+			 * In lclone-mode every file is a "hardlink" to
+			 * the absolute path of the file in the original
+			 * repository.  This sfio will only unpack on the
+			 * same machine as it was created.
+			 */
+			n = out_hardlink(buf, &sb, &byte_count, fullname(buf));
+			if (n) {
+				send_eof(n);
+				return (n);
+			}
+			continue;
 		}
 		if (S_ISLNK(sb.st_mode)) {
 			unless (opts->doModes) {
