@@ -14,6 +14,9 @@ typedef struct {
 private	repo	*find(repos *list, char *rootkey);
 private int	repo_sort(const void *a, const void *b);
 
+private	char	*ensemble_version = "1.0";
+
+
 /*
  * Return the list of repos for this product.
  * Optionally include the product.
@@ -252,9 +255,10 @@ int
 ensemble_list_main(int ac, char **av)
 {
 	int	c;
-	int	want = 0;
+	int	want = 0, serialize = 0;
+	int	input = 0, output = 0;
 	char	*p;
-	repos	*r;
+	repos	*r = 0;
 	eopts	opts;
 	char	**modules = 0;
 	char	buf[MAXKEY];
@@ -262,11 +266,12 @@ ensemble_list_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.product = 1;
 
-	while ((c = getopt(ac, av, "1l;M;pr;")) != -1) {
+	while ((c = getopt(ac, av, "1il;M;opr;")) != -1) {
 		switch (c) {
 		    case '1':
 			opts.product_first = 1;
 			break;
+		    case 'i': input = 1; break;
 		    case 'l':
 			for (p = optarg; *p; p++) {
 				switch (*p) {
@@ -280,13 +285,18 @@ ensemble_list_main(int ac, char **av)
 		    case 'M':
 			modules = addLine(modules, optarg);
 			break;
+		    case 'o': output = 1; break;
 		    case 'p':
-		    	opts.product = 0;
+			opts.product = 0;
 			break;
 		    case 'r':
 			opts.rev = optarg;
 			break;
+		    case 's':
+			serialize = 1;
+			break;
 		    default:
+			system("bk help ensemble_list");
 			exit(1);
 		}
 	}
@@ -299,7 +309,15 @@ ensemble_list_main(int ac, char **av)
 	if (modules) opts.modules = module_list(modules, 0);
 
 	unless (want) want = L_PATH;
-	unless (r = ensemble_list(opts)) exit(0);
+	if (input) {
+		r = ensemble_fromStream(r, stdin);
+	} else {
+		unless (r = ensemble_list(opts)) exit(0);
+	}
+	if (output) {
+		ensemble_toStream(r, stdout);
+		goto out;
+	}
 	EACH_REPO(r) {
 		if (r->new && !(want & L_NEW)) continue;
 		p = "";
@@ -321,7 +339,7 @@ ensemble_list_main(int ac, char **av)
 		}
 		printf("\n");
 	}
-	ensemble_free(r);
+out:	ensemble_free(r);
 	if (modules) freeLines(modules, 0);
 	exit(0);
 }
@@ -393,6 +411,57 @@ ensemble_free(repos *list)
 		free((char*)list->repos[list->index]);
 	}
 	free(list);
+}
+
+int
+ensemble_toStream(repos *repos, FILE *f)
+{
+	fprintf(f, "@ensemble_list %s@\n", ensemble_version);
+	EACH_REPO(repos) {
+		fprintf(f, "rk:%s\n", repos->rootkey);
+		fprintf(f, "dk:%s\n", repos->deltakey);
+		fprintf(f, "pt:%s\n", repos->path);
+		fprintf(f, "nw:%d\n", repos->new);
+	}
+	fprintf(f, "@ensemble_list end@\n");
+	return (0);
+}
+
+repos *
+ensemble_fromStream(repos *r, FILE *f)
+{
+	char	*buf;
+	char	*rk, *dk, *pt;
+	int	nw;
+	repo	*e;
+	char	**list = 0;
+
+	buf = fgetline(f);
+	unless (strneq(buf, "@ensemble_list ", 15)) return (0);
+	while (buf = fgetline(f)) {
+		if (strneq(buf, "@ensemble_list end@", 19)) break;
+		while (!strneq(buf, "rk:", 3)) continue;
+		rk = strdup(buf+3);
+		buf = fgetline(f);
+		assert(strneq(buf, "dk:", 3));
+		dk = strdup(buf+3);
+		buf = fgetline(f);
+		assert(strneq(buf, "pt:", 3));
+		pt = strdup(buf+3);
+		buf = fgetline(f);
+		assert(strneq(buf, "nw:", 3));
+		nw = atoi(buf+3);
+		/* now add it */
+		e = new(repo);
+		e->rootkey = rk;
+		e->deltakey = dk;
+		e->path = pt;
+		e->new = nw;
+		list = addLine(list, (void*)e);
+	}
+	unless (r) r = new(repos);
+	r->repos = (void **)list;
+	return (r);
 }
 
 /*

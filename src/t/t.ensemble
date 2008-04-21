@@ -1235,3 +1235,10 @@ liberty/BitKeeper/etc/SCCS/s.ignore
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test serializing/deserializing and ensemble..................$NL
+bk ensemble_list -r+ > WANT
+bk ensemble_list -r+ -o > SERIALIZED
+bk ensemble_list -i < SERIALIZED  > GOT
+cmpfiles WANT GOT
+echo OK

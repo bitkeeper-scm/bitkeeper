@@ -33,6 +33,9 @@ repos*	ensemble_first(repos *repos);
 repos*	ensemble_next(repos *repos);
 void	ensemble_free(repos *repos);
 
+int	ensemble_toStream(repos *repos, FILE *f);
+repos*	ensemble_fromStream(repos *repos, FILE *f);
+
 int	ensemble_each(int quiet, int ac, char **av);
 hash	*module_list(char **names, sccs *cset);
 
