@@ -842,14 +842,8 @@ checkAll(hash *keys)
 		/* no resync deltas, whatever that means */
 		unless (t = hash_first(*deltas)) continue;
 
-		/* Allow components to be treated as magically goned.
-		 * Note that all delta keys recorded in the ChangeSet
-		 * file must be |something.../ChangeSet|
-		 * LMXXX - Wayne says this is wrong and he is right.
-		 */
-		if (changesetKey(rkey) && componentKey(t)) continue;
-			
-		if (mdbm_fetch_str(goneDB, rkey)) continue;
+		if (gone(rkey, goneDB)) continue;
+
 		hash_storeStr(warned, rkey, 0);
 		found++;
 	}

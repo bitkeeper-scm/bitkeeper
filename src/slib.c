@@ -16033,7 +16033,16 @@ gone(char *key, MDBM *db)
 {
 	unless (db) return (0);
 	unless (strchr(key, '|')) return (0);
-	return (mdbm_fetch_str(db, key) != 0);
+	if (mdbm_fetch_str(db, key) != 0) return (1);
+	
+	/*
+	 * OK, so it's not marked as gone.  It might be a changeset rootkey
+	 * for a component and we're going to let those be considered 
+	 * auto-goned for now.
+	 * XXX - needs an env var so we can turn this off.
+	 */
+	return (changesetKey(key) &&
+	    proj_isProduct(0) && !streq(key, proj_rootkey(0)));
 }
 
 MDBM	*

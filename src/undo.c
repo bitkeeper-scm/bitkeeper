@@ -73,7 +73,6 @@ usage:			system("bk help -s undo");
 		/* No revs we are done. */
 		return (fromclone ? UNDO_SKIP : 0);
 	}
-	rev = 0;  /* don't use wrong value */
 	bktmp(rev_list, "rev_list");
 
 	/*
@@ -150,6 +149,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		bzero(&opts, sizeof(opts));
 		opts.rev = aflg ? rev : sccs_newtip(cset, csetrev_list)->rev;
 		opts.revs = csetrev_list;
+		opts.present = 1;
 		unless (r = ensemble_list(opts)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
 			sccs_free(cset);
