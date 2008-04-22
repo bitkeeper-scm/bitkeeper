@@ -4,6 +4,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "bam.h"
+#include "ensemble.h"
 
 /*
  * Do not change this sturct until we phase out bkd 1.2 support
@@ -16,6 +17,7 @@ struct {
 	int	gzip;			/* -z[level] compression */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
+	char	**av;			/* saved opts for ensemble commands */
 } *opts;
 
 private int	clone(char **, remote *, char *, char **);
@@ -41,6 +43,14 @@ clone_main(int ac, char **av)
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
 	while ((c = getopt(ac, av, "B;dE:lqr;w|z|")) != -1) {
+		unless (c == 'r') {
+			if (optarg) {
+				opts->av = addLine(opts->av,
+				    aprintf("-%c%s", c, optarg));
+			} else {
+				opts->av = addLine(opts->av, aprintf("-%c",c));
+			}
+		}
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
@@ -62,6 +72,7 @@ clone_main(int ac, char **av)
 		    default:
 			usage();
 	    	}
+		optarg = 0;
 	}
 	if (opts->link && bam_url) {
 		fprintf(stderr,
@@ -146,6 +157,7 @@ err:			if (r) remote_free(r);
 	if (opts->debug) r->trace = 1;
 	rc = clone(av, r, av[optind+1], envVar);
 	freeLines(envVar, free);
+	freeLines(opts->av, free);
 	remote_free(r);
 	return (rc);
 }
@@ -174,6 +186,7 @@ send_clone_msg(remote *r, char **envVar)
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
 	if (opts->quiet) fprintf(f, " -q");
 	if (opts->delay) fprintf(f, " -w%d", opts->delay);
+	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
 	if (opts->link) fprintf(f, " -l");
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");
 	fputs("\n", f);
@@ -181,6 +194,45 @@ send_clone_msg(remote *r, char **envVar)
 
 	rc = send_file(r, buf, 0);
 	unlink(buf);
+	return (rc);
+}
+
+private int
+cloneRepos(repos *repos, remote *r, char *local)
+{
+	char	*url;
+	char	**vp;
+	char	*name, *path;
+	int	i, rc = 0;
+
+	url = remote_unparse(r);
+	putenv("_BK_TRANSACTION=1");
+	EACH_REPO(repos) {
+		vp = addLine(0, strdup("bk"));
+		vp = addLine(vp, strdup("clone"));
+		EACH(opts->av) vp = addLine(vp, strdup(opts->av[i]));
+		vp = addLine(vp, aprintf("-r%s", repos->deltakey));
+		vp = addLine(vp, aprintf("%s/%s", url, repos->path));
+		path = aprintf("%s/%s", local, repos->path); /* free'd by vp */
+		vp = addLine(vp, path);
+		vp = addLine(vp, 0);
+		if (streq(repos->path, ".")) {
+			name = "Product";
+			putenv("_BK_NO_CHECK=1");
+		} else {
+			name = repos->path;
+			putenv("_BK_NO_CHECK=");
+		}
+		unless (opts->quiet) printf("=== %s ===\n", name);
+		fflush(stdout);
+		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
+			fprintf(stderr, "Cloning %s failed\n", name);
+			rc = 1;
+		}
+		freeLines(vp, free);
+		if (rc) break;
+	}
+	putenv("_BK_TRANSACTION=");
 	return (rc);
 }
 
@@ -274,6 +326,19 @@ clone(char **av, remote *r, char *local, char **envVar)
 		if (getTriggerInfoBlock(r, !opts->quiet)) goto done;
 		getline2(r, buf, sizeof (buf));
 	}
+	if (streq(buf, "@ENSEMBLE@")) {
+		/* we're cloning a product...  */
+		repos *repos;
+
+		unless (r->rf) r->rf = fdopen(r->rfd, "r");
+		unless (repos = ensemble_fromStream(0, r->rf)) goto done;
+		rc = cloneRepos(repos, r, local);
+		ensemble_free(repos);
+		chdir(local);
+		if (rc = clone2(r)) goto done;
+		rc = 0;
+		goto done;
+	}
 	unless (streq(buf, "@SFIO@")) goto done;
 
 	/* create the new package */
@@ -312,7 +377,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		if (rc) goto done;
 	}
 
-	if (rc = clone2(r)) goto done;
+	unless (getenv("_BK_NO_CHECK")) if (rc = clone2(r)) goto done;
 
 	rc  = 0;
 done:	if (rc) {
@@ -350,7 +415,7 @@ clone2(remote *r)
 		return (-1);
 	}
 
-	parent(r);
+	unless (getenv("_BK_TRANSACTION")) parent(r);
 	(void)proj_repoID(0);		/* generate repoID */
 
 	/* validate bam server URL */

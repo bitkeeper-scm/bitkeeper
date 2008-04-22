@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
+#include "ensemble.h"
 
 private int	compressed(int level, int lclone);
 
@@ -9,9 +10,9 @@ private int	compressed(int level, int lclone);
 int
 cmd_clone(int ac, char **av)
 {
-	int	c, rc;
+	int	c, rc = 0;
 	int	gzip = 0, delay = -1, lclone = 0;
-	char 	*p, *rev = 0;
+	char	*p, *rev = 0, *tid = 0;
 
 	if (sendServerInfoBlock(0)) {
 		drain();
@@ -23,7 +24,7 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	while ((c = getopt(ac, av, "lqr;w;z|")) != -1) {
+	while ((c = getopt(ac, av, "lqr;Tw;z|")) != -1) {
 		switch (c) {
 		    case 'l':
 			lclone = 1;
@@ -41,10 +42,21 @@ cmd_clone(int ac, char **av)
 		    case 'r':
 			rev = optarg;
 			break;
+		    case 'T':	/* eventually, this will be a trans_id */
+			tid = 1;	// On purpose, will go away w/ trans
+			break;
 		    default:
 			out("ERROR-unknown option\n");
 			exit(1);
 	    	}
+	}
+	/*
+	 * This is where we would put in an exception for bk port.
+	 */
+	if (!tid && proj_isComponent(0)) {
+		out("ERROR-clone of a component is not allowed, use -M\n");
+		drain();
+		return (1);
 	}
 	if (rev) {
 		sccs	*s = sccs_csetInit(SILENT);
@@ -59,6 +71,12 @@ cmd_clone(int ac, char **av)
 				return (1);
 			}
 		}
+	}
+	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv1")) {
+		out("ERROR-please upgrade your BK to a SAMv1 "
+		    "aware version (5.0 or later)\n");
+		drain();
+		return (1);
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
@@ -93,6 +111,20 @@ cmd_clone(int ac, char **av)
 		return (1);
 	}
 	if (trigger(av[0], "pre")) return (1);
+	if (!tid && proj_isProduct(0)) {
+		repos	*r;
+		eopts	opts;
+
+		bzero(&opts, sizeof(eopts));
+		opts.product = 1;
+		opts.product_first = 1;
+		opts.rev = rev ? rev : "+";
+		r = ensemble_list(opts);
+		printf("@ENSEMBLE@\n");
+		ensemble_toStream(r, stdout);
+		ensemble_free(r);
+		goto out;
+	}
 	printf("@SFIO@\n");
 	rc = compressed(gzip, lclone);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
@@ -104,7 +136,7 @@ cmd_clone(int ac, char **av)
 	 * Give ssh sometime to drain the data
 	 * We should not need this if ssh is working correctly 
 	 */
-	if (delay > 0) sleep(delay);
+out:	if (delay > 0) sleep(delay);
 
 	putenv("BK_CSETS=");
 	return (rc);

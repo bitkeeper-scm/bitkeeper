@@ -1,0 +1,203 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2002 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Tests for product clone.
+
+echo $N Create initial ensemble......................................$NL
+nested project
+# Now add some stuff
+for r in gcc gdb
+do
+	cd $r
+	for i in 1 2 3 4
+	do
+		echo $i > file$i
+		bk new $Q file$i
+	done
+	bk commit $Q -y"add some files"
+	cd ..
+done
+bk commit $Q -y"Added files to gcc & gdb"
+echo OK
+
+echo $N Clone the product............................................$NL
+cd "$HERE"
+bk clone $Q project copy >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd copy
+bk -Ar check -a >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test the parent pointer......................................$NL
+P=`bk parent -l`
+EP=file://"$HERE"/project
+test "$P" = "$EP" && {
+	echo OK
+	echo Yay, you fixed a bug
+	echo now fix me too
+	exit 1
+}
+echo failed \(bug in url handling\)
+
+echo $N Test that components have no parent pointer..................$NL
+for r in gcc gdb
+do
+	cd "$HERE/copy/$r"
+	P=`bk parent -l`
+	EP="This repository has no parent."
+	test "$P" = "$EP" || {
+		echo failed
+		echo "expected: $EP"
+		echo "got     : $P"
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test that clone on a component fails ........................$NL
+cd "$HERE"
+bk clone $Q project/gcc mynewgcc 2> ERR && {
+	echo failed
+	exit 1
+}
+grep -q "clone of a component is not allowed" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+bk clone $Q copy/gcc mynewgcc 2> ERR && {
+	echo failed
+	exit 1
+}
+grep -q "clone of a component is not allowed" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Add more stuff to gcc........................................$NL
+cd "$HERE/project/gcc"
+for i in 1 2 3 4
+do
+	bk edit $Q file$i
+	echo "stuff $i" > file$i
+	bk delta $Q -y"modify" file$i
+	bk commit $Q -y"Add $i to file$i"
+done
+cd ..
+bk commit $Q -y"more stuff to gcc"
+echo OK
+
+echo $N clone -r test................................................$NL
+TIP=`cd "$HERE/copy" && bk changes -nd:REV: -r+`
+cd "$HERE"
+bk clone $Q -r"$TIP" project copy2 >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd copy2
+T=`bk changes -nd:REV: -r+`
+test x$T = x$TIP || {
+	echo failed
+	echo cloned copy has $T as tip, expected $TIP
+	exit 1
+}
+echo OK
+
+echo $N Test clone through a bkd.....................................$NL
+cd "$HERE/project"
+P=`port 50000`
+# what is coming out stdout? and stderr?
+# bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
+bk bkd -q -d -p$P -ikill 
+cd "$HERE"
+bk clone $Q bk://localhost:$P clone3 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk _kill bk://localhost:$P || exit 1
+echo OK
+
+echo $N Test lclone..................................................$NL
+cd "$HERE"
+bk lclone $Q project lcopy >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd lcopy
+bk -Ar check -a >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test the parent pointer......................................$NL
+P=`bk parent -l`
+EP=file://"$HERE"/project
+test "$P" = "$EP" && {
+	echo OK
+	echo Yay, you fixed a bug
+	echo now fix me too
+	exit 1
+}
+echo failed \(bug in url handling\)
+
+echo $N Test that components have no parent pointer..................$NL
+for r in gcc gdb
+do
+	cd "$HERE/copy/$r"
+	P=`bk parent -l`
+	EP="This repository has no parent."
+	test "$P" = "$EP" || {
+		echo failed
+		echo "expected: $EP"
+		echo "got     : $P"
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test lclone -r...............................................$NL
+cd "$HERE"
+bk lclone $Q -r"$TIP" project lcopy2 >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd lcopy2
+T=`bk changes -nd:REV: -r+`
+test x$T = x$TIP || {
+	echo failed
+	echo cloned copy has $T as tip, expected $TIP
+	exit 1
+}
+echo OK
+
+echo $N Test clone with args.........................................$NL
+cd "$HERE"
+bk clone -EBKU_TEST=ff $Q project copy_args >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK

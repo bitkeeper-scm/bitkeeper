@@ -1430,11 +1430,6 @@ findsfiles(char *file, struct stat *sb, void *data)
 				return (-2);
 			}
 		}
-		if (prunedirs) {
-			concat_path(buf, si->proj_prefix,
-			    file + si->rootlen + 1);
-			if (match_globs(buf, prunedirs, 0)) return (-1);
-		}
 		if (si->is_clone && streq(file + 2, "BitKeeper/etc/SCCS")) {
 			/*
 			 * when doing a clone here are a couple more files to
@@ -1447,6 +1442,22 @@ findsfiles(char *file, struct stat *sb, void *data)
 			if (exists(file)) si->fn(file, sb, si->data);
 			strcpy(p+6, "x.id_cache");
 			if (exists(file)) si->fn(file, sb, si->data);
+		}
+		if (si->is_clone && streq(file + 2, "BitKeeper/log")) {
+			/*
+			 * when doing a clone here are a couple more files to
+			 * include from the BitKeeper/log dir
+			 */
+			p[4] = '/';
+			strcpy(p+5, "PRODUCT");
+			if (exists(file)) si->fn(file, sb, si->data);
+			strcpy(p+5, "COMPONENT");
+			if (exists(file)) si->fn(file, sb, si->data);
+		}
+		if (prunedirs) {
+			concat_path(buf, si->proj_prefix,
+			    file + si->rootlen + 1);
+			if (match_globs(buf, prunedirs, 0)) return (-1);
 		}
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
