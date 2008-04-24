@@ -13,6 +13,10 @@ cmd_clone(int ac, char **av)
 	int	c, rc = 0;
 	int	gzip = 0, delay = -1, lclone = 0;
 	char	*p, *rev = 0, *tid = 0;
+	char	**modules = 0;
+	sccs	*s = 0;
+	delta	*d;
+	hash	*h = 0;
 
 	if (sendServerInfoBlock(0)) {
 		drain();
@@ -24,10 +28,13 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	while ((c = getopt(ac, av, "lqr;Tw;z|")) != -1) {
+	while ((c = getopt(ac, av, "lM;qr;Tw;z|")) != -1) {
 		switch (c) {
 		    case 'l':
 			lclone = 1;
+			break;
+		    case 'M':
+			modules = addLine(modules, strdup(optarg));
 			break;
 		    case 'w':
 			delay = atoi(optarg);
@@ -58,25 +65,22 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	if (rev) {
-		sccs	*s = sccs_csetInit(SILENT);
-		if (s) {
-			delta	*d = sccs_findrev(s, rev);
-			sccs_free(s);
-			unless (d) {
-				out("ERROR-rev ");
-				out(rev);
-				out(" doesn't exist\n");
-				drain();
-				return (1);
-			}
+	if (proj_isEnsemble(0)) {
+		unless (bk_hasFeature("SAMv1")) {
+			out("ERROR-please upgrade your BK to a SAMv1 "
+			    "aware version (5.0 or later)\n");
+			drain();
+			return (1);
 		}
-	}
-	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv1")) {
-		out("ERROR-please upgrade your BK to a SAMv1 "
-		    "aware version (5.0 or later)\n");
-		drain();
-		return (1);
+		/*
+		 * If we're an ensemble and they did not specify any modules,
+		 * then imply whatever list we may have.
+		 * XXX - what if we've added one with ensemble add and it
+		 * does not appear in our MODULES file yet?
+		 */
+		unless (modules) {
+			modules = file2Lines(0, "BitKeeper/log/MODULES");
+		}
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
@@ -89,6 +93,36 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
+
+	/* moved down here because we're caching the sccs* */
+	if (rev || modules) {
+		s = sccs_csetInit(SILENT);
+		assert(s && HASGRAPH(s));
+		if (rev) {
+			d = sccs_findrev(s, rev);
+			unless (d) {
+				out("ERROR-rev ");
+				out(rev);
+				out(" doesn't exist\n");
+				drain();
+				sccs_free(s);
+				return (1);
+			}
+		}
+		if (modules) {
+			h = module_list(modules, s);
+			freeLines(modules, free);
+			unless (h) {
+				// XXX - weak.  Should pass in a protocol 
+				// marker and have module_list() do this.
+				out("ERROR-unable to expand module[s]\n");
+				drain();
+				sccs_free(s);
+				return (1);
+			}
+		}
+	}
+
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	/* has to be here, we use the OK below as a marker. */
 	if (bp_updateServer(getenv("BK_CSETS"), 0, SILENT)) {
@@ -96,6 +130,7 @@ cmd_clone(int ac, char **av)
 		    "ERROR-unable to update BAM server %s\n", bp_serverURL());
 		fflush(stdout);
 		drain();
+		sccs_free(s);
 		return (1);
 	}
 	p = getenv("BK_REMOTE_PROTOCOL");
@@ -108,9 +143,13 @@ cmd_clone(int ac, char **av)
 		out(p ? p : "");
 		out("\n");
 		drain();
+		sccs_free(s);
 		return (1);
 	}
-	if (trigger(av[0], "pre")) return (1);
+	if (trigger(av[0], "pre")) {
+		sccs_free(s);
+		return (1);
+	}
 	if (!tid && proj_isProduct(0)) {
 		repos	*r;
 		eopts	opts;
@@ -119,6 +158,8 @@ cmd_clone(int ac, char **av)
 		opts.product = 1;
 		opts.product_first = 1;
 		opts.rev = rev ? rev : "+";
+		opts.sc = s;
+		opts.modules = h;
 		r = ensemble_list(opts);
 		printf("@ENSEMBLE@\n");
 		ensemble_toStream(r, stdout);
@@ -139,6 +180,8 @@ cmd_clone(int ac, char **av)
 out:	if (delay > 0) sleep(delay);
 
 	putenv("BK_CSETS=");
+	sccs_free(s);
+	if (h) hash_free(h);
 	return (rc);
 }
 

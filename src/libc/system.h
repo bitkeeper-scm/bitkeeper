@@ -245,6 +245,7 @@ FILE	*efopen(char *env);
 void	my_perror(char *, int, char *);
 #define	perror(msg)	my_perror(__FILE__, __LINE__, msg)
 int	chomp(char *str);
+char	*backtick(char *cmd);
 
 /* webencode.c */
 char	**webencode(char **buf, u8 *ptr, int len);

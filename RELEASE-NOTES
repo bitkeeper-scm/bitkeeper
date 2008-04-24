@@ -1,5 +1,9 @@
 Release notes for BitKeeper version XXX (released ##-XXX-2007)
 
+sfio now passes modes (permissions) by default.  This should not
+be a user visible change but if it is there is an undocumented
+-M flag that reverts to the old behaviour.
+
 Environment variables that are used to control BitKeeper's behavior
 can not longer be set to an empty string.  So for example:
   BK_NO_TRIGGERS="" bk push

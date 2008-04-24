@@ -25,3 +25,22 @@ chomp(char *s)
 	*p = 0;
 	return (any);
 }
+
+char *
+backtick(char *cmd)
+{
+	FILE	*f;
+	char	*ret;
+	char	**output = 0;
+	char	buf[MAXLINE];
+
+	unless (f = popen(cmd, "r")) return (0);
+	while (fnext(buf, f)) {
+		chomp(buf);
+		output = addLine(output, strdup(buf));
+	}
+	pclose(f);
+	ret = joinLines(" ", output);
+	freeLines(output, free);
+	return (ret);
+}
