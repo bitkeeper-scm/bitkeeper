@@ -208,6 +208,7 @@ FILE *	safe_popen(char *cmd, char *type);
 FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);
 int	safe_fclose(FILE *f);
+char	*backtick(char *cmd);
 
 /* tcp/tcp.c */
 int	tcp_server(char *addr, int port, int quiet);
@@ -245,7 +246,6 @@ FILE	*efopen(char *env);
 void	my_perror(char *, int, char *);
 #define	perror(msg)	my_perror(__FILE__, __LINE__, msg)
 int	chomp(char *str);
-char	*backtick(char *cmd);
 
 /* webencode.c */
 char	**webencode(char **buf, u8 *ptr, int len);
