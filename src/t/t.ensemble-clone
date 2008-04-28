@@ -46,13 +46,17 @@ echo OK
 echo $N Test the parent pointer......................................$NL
 P=`bk parent -l`
 EP=file://"$HERE"/project
-test "$P" = "$EP" && {
-	echo OK
-	echo Yay, you fixed a bug
-	echo now fix me too
-	exit 1
+STATUS="OK"
+test "$P" = "$EP" || {
+	EP=file:/"$HERE"/project
+	test "$P" = "$EP" || {
+		echo failed
+		echo "got '$P'"
+		exit 1
+	}
+	STATUS="failed (bug in url handling)"
 }
-echo failed \(bug in url handling\)
+echo $STATUS
 
 echo $N Test that components have no parent pointer..................$NL
 for r in gcc gdb
@@ -154,13 +158,17 @@ echo OK
 echo $N Test the parent pointer......................................$NL
 P=`bk parent -l`
 EP=file://"$HERE"/project
-test "$P" = "$EP" && {
-	echo OK
-	echo Yay, you fixed a bug
-	echo now fix me too
-	exit 1
+STATUS="OK"
+test "$P" = "$EP" || {
+	EP=file:/"$HERE"/project
+	test "$P" = "$EP" || {
+		echo failed
+		echo "got '$P'"
+		exit 1
+	}
+	STATUS="failed (bug in url handling)"
 }
-echo failed \(bug in url handling\)
+echo $STATUS
 
 echo $N Test that components have no parent pointer..................$NL
 for r in gcc gdb

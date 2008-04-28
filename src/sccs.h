@@ -460,7 +460,6 @@ typedef struct delta {
 } delta;
 #define	COMMENTS(d)	((d)->cmnts != 0)
 #define	TAG(d)		((d)->type != 'D')
-#define	REG(d)		((d)->type == 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
 #define	EACH_COMMENT(s, d) \
 			comments_load(s, d); \
@@ -929,7 +928,6 @@ delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(int quiet);
 int	sccs_meta(char *m,sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_findtips(sccs *s, delta **a, delta **b);
-delta*	sccs_newtip(sccs *s, char **revs);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);

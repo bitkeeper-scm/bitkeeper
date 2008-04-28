@@ -610,6 +610,7 @@ proj_product(project *p)
 				unless (exists(buf)) continue;
 				p->product = proj_init(tmp);
 			}
+			free(tmp);
 		}
 	}
 	return (p->product);
@@ -670,6 +671,14 @@ proj_reset(project *p)
 			p->rootkey = 0;
 			free(p->md5rootkey);
 			p->md5rootkey = 0;
+		}
+		if (p->comppath) {
+			free(p->comppath);
+			p->comppath = 0;
+		}
+		if (p->csetFile) {
+			free(p->csetFile);
+			p->csetFile = 0;
 		}
 		if (p->repoID) {
 			free(p->repoID);

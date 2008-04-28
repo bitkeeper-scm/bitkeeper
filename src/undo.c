@@ -147,9 +147,8 @@ err:		if (undo_list[0]) unlink(undo_list);
 		assert(cset);
 		opts.sc = cset;
 		bzero(&opts, sizeof(opts));
-		opts.rev = aflg ? rev : sccs_newtip(cset, csetrev_list)->rev;
 		opts.revs = csetrev_list;
-		opts.present = 1;
+		opts.undo = 1;
 		unless (r = ensemble_list(opts)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
 			sccs_free(cset);
@@ -159,6 +158,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 
 		EACH_REPO(r) {
 			if (r->new) continue;
+			unless (r->present) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("undo"));
 			cmd = aprintf("-fa%s", r->deltakey);
@@ -167,7 +167,8 @@ err:		if (undo_list[0]) unlink(undo_list);
 			printf("Undo in %s ...\n", r->path);
 			fflush(stdout);
 			if (chdir(r->path) || spawnvp(_P_WAIT, "bk", &vp[1])) {
-dios:				fprintf(stderr, "Vaya con dios, amigo.\n");
+fail:				fprintf(stderr, "Could not undo %s to %s.\n",
+				    r->path, r->deltakey);
 				exit(123);
 			}
 			freeLines(vp, free);
@@ -181,7 +182,7 @@ dios:				fprintf(stderr, "Vaya con dios, amigo.\n");
 				fprintf(stderr,
 				    "Changed/extra files in '%s'\n", r->path);
 				cat(SFILES);
-				goto dios;
+				goto fail;
 			}
 			unlink(SFILES);
 		}
