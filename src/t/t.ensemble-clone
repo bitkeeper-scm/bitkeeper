@@ -118,6 +118,30 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
+echo $N Test that we can clone using the MODULES file ...............$NL
+rm -rf mynewgcc
+cd project
+bk module add -cgcc justgcc
+cd ..
+bk clone $Q -Mjustgcc project mynewgcc 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+test -d mynewgcc -a -d mynewgcc/gcc || {
+	echo did not bring gcc module across
+	cat ERR
+	exit 1
+}
+for i in `cat LIST`
+do	test -d mynewgcc/$i && {
+		echo should not have brought $i
+		cat ERR
+		exit 1
+	}
+done
+echo OK
+
 echo $N Test that we can clone just that component with -Mgcc/ ......$NL
 rm -rf mynewgcc
 bk clone $Q -Mgcc/ project mynewgcc 2> ERR || {
