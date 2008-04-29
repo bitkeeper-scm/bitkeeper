@@ -250,6 +250,17 @@ clone_ensemble(repos *repos, remote *r, char *local)
 			putenv("_BK_NO_CHECK=");
 		}
 		
+		unless (opts->quiet) printf("=== %s ===\n", name);
+		fflush(stdout);
+
+		unless (repos->present) {
+			if (opts->modules && !opts->quiet) {
+				fprintf(stderr,
+				    "clone: %s not present in %s\n",
+				    repos->path, url);
+			}
+			continue;
+		}
 		/*
 		 * If we're populating and there is something there, see
 		 * if it's what it should be and if so factor it out.
@@ -284,8 +295,6 @@ clone_ensemble(repos *repos, remote *r, char *local)
 		}
 		vp = addLine(vp, path);
 		vp = addLine(vp, 0);
-		unless (opts->quiet) printf("=== %s ===\n", name);
-		fflush(stdout);
 		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
 			fprintf(stderr, "Cloning %s failed\n", name);
 			rc = 1;

@@ -75,10 +75,11 @@ cmd_clone(int ac, char **av)
 		/*
 		 * If we're an ensemble and they did not specify any modules,
 		 * then imply whatever list we may have.
+		 * The tid part is because we want to do this in pass1 only.
 		 * XXX - what if we've added one with ensemble add and it
 		 * does not appear in our MODULES file yet?
 		 */
-		unless (modules) {
+		unless (modules || tid) {
 			modules = file2Lines(0, "BitKeeper/log/MODULES");
 		}
 	}
