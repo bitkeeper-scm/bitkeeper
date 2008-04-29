@@ -68,7 +68,7 @@ push_main(int ac, char **av)
 				    aprintf("-%c", c));
 			}
 		}
-		unless (c == 'r' || c == 'a' || c == 'c' || c == 'T') {
+		unless ((c == 'r') || (c == 'a') || (c == 'c') || (c == 'T')) {
 			if (optarg) {
 				opts.av_clone = addLine(opts.av_clone,
 				    aprintf("-%c%s", c, optarg));
@@ -1047,9 +1047,10 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 {
 	eopts	ropts;
 	repos	*rps;
-	char	**vp;
-	char	*name, *url;
-	int	i, rc = 0;
+	char	**vp, **missing;
+	char	*name, *url, *tmp;
+	int	status, i, rc = 0;
+	FILE	*f;
 
 	bzero(&ropts, sizeof(eopts));
 	url = remote_unparse(r);
@@ -1057,8 +1058,48 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	ropts.revs = file2Lines(0, rev_list);
 	assert(ropts.revs || ropts.rev);
 	rps = ensemble_list(ropts);
-	safe_putenv("_BK_TRANSACTION=1");
+	putenv("_BK_TRANSACTION=1");
+	vp = 0;
 	EACH_REPO(rps) {
+		unless (rps->present) vp = addLine(vp, rps->rootkey);
+	}
+	if (vp) {
+		tmp = bktmp(0, "havekeys");
+		name =
+		  aprintf("bk -q@'%s' -Bstdin havekeys -C -l - > '%s'",
+		  url, tmp);
+		f = popen(name, "w");
+		assert(f);
+		EACH(vp) fprintf(f, "%s\n", vp[i]);
+		status = pclose(f);
+		rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+		if (rc == 0) {
+			freeLines(vp, 0);
+			goto OK;
+		}
+		if (rc == -1) {
+			fprintf(stderr, "push: unknown error.\n");
+			freeLines(vp, 0);
+			ensemble_free(rps);
+			return (1);
+		}
+		missing = file2Lines(0, tmp);
+		unlink(tmp);
+		free(tmp);
+		EACH(missing) {
+			status = ensemble_find(rps, missing[i]);
+			assert(status);
+			fprintf(stderr,
+			    "push: component '%s' is missing in source.\n",
+			    rps->path);
+		}
+		freeLines(vp, 0);
+		freeLines(missing, free);
+		ensemble_free(rps);
+		return (1);
+	}
+		
+OK:	EACH_REPO(rps) {
 		proj_cd2product();
 		chdir(rps->path); /* XXX: needs error checking */
 		vp = addLine(0, strdup("bk"));
@@ -1080,15 +1121,18 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		name = streq(rps->path, ".")
 			? "Product"
 			: rps->path;
+		if (opts.verbose) printf("=== %s ===\n", name);
 		fflush(stdout);
-		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
+		unless (rps->present) {
+			// warning message goes here when modules are done
+		} else if (spawnvp(_P_WAIT, "bk", &vp[1])) {
 			fprintf(stderr, "Pushing %s failed\n", name);
 			rc = 1;
 		}
 		freeLines(vp, free);
 		if (rc) break;
 	}
-	safe_putenv("_BK_TRANSACTION=");
+	putenv("_BK_TRANSACTION=");
 	ensemble_free(rps);
 	return (rc);
 }

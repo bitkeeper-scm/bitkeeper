@@ -231,6 +231,33 @@ bk -r check -av >OUT 2>&1 || {
 }
 echo OK
 
+echo $N Try a push from sparse to full ..............................$NL
+cd "$HERE"
+bk clone $Q project full
+bk clone $Q full sparse
+# Now make a cset that spans two components, remove one of them, and push.
+cd sparse
+for i in gdb libc
+do	(cd $i
+	echo whatever > NEW_FILE
+	bk new $Q NEW_FILE
+	bk commit $Q -yNEW_FILE
+	)
+done
+bk commit $Q -yNEW_FILE
+rm -rf libc
+bk push > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q "push: component 'libc' is missing in source." OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
 echo $N Try same push through a BKD..................................$NL
 cd "$HERE"
 rm -rf project
