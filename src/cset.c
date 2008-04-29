@@ -57,7 +57,7 @@ makepatch_main(int ac, char **av)
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "Bdr|sCPqv")) != -1) {
+	while ((c = getopt(ac, av, "Bdr|sCqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
@@ -77,9 +77,6 @@ makepatch_main(int ac, char **av)
 		    	break;
 		    case 's':					/* undoc? 2.0 */
 			copts.serial = 1;
-			break;
-		    case 'P':
-			nav[++i] = "-P";
 			break;
 		    case 'q':					/* undoc? 2.0 */
 			nav[++i] = "-q";
@@ -123,13 +120,12 @@ cset_main(int ac, char **av)
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 	copts.notty = (getenv("BK_NOTTY") != 0);
 
-	while ((c = getopt(ac, av, "5BCd|Dfhi;lm|M|Pqr|svx;")) != -1) {
+	while ((c = getopt(ac, av, "5BCd|Dfhi;lm|M|qr|svx;")) != -1) {
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
 		    case 'h': copts.historic++; break;		/* undoc? 2.0 */
-		    case 'P': copts.hide_comp++; break;		/* undoc 2.0 */
 		    case 'i':					/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
 			copts.include++;
@@ -188,6 +184,8 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 			return (1);
 		}
 	}
+
+	if (proj_isProduct(0)) copts.hide_comp++;
 
 	if (rargs.rstop && (list != 1)) {
 		fprintf(stderr, "%s: only one rev allowed with -t\n", av[0]);
@@ -1141,7 +1139,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	list = 0;
 	for (n = 0, d = s->table; d; d = d->next) {
 		unless (d->flags & D_SET) continue;
-		unless (gfile) gfile = d->pathname;
+		unless (gfile) gfile = CSET(s) ? GCHANGESET : d->pathname;
 		n++;
 		list = (delta **)addLine((char **)list, d);
 		d->flags &= ~D_SET;

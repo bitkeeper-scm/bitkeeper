@@ -4,6 +4,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "range.h"
+#include "ensemble.h"
 
 private	struct {
 	u32	doit:1;
@@ -14,6 +15,7 @@ private	struct {
 	int	list;
 	u32	forceInit:1;
 	u32	debug:1;
+	u32	product:1;
 	int	gzip;
 	u32	inBytes, outBytes;		/* stats */
 	u32	lcsets;
@@ -23,9 +25,12 @@ private	struct {
 	delta	*d;
 	char	*rev;
 	FILE	*out;
+	char	**av_push;			/* for ensemble push */
+	char	**av_clone;			/* for ensemble clone */
 } opts;
 
 private	int	push(char **av, remote *r, char **envVar);
+private int	push_ensemble(remote *r, char *rev_list, char **envVar);
 private	void	pull(remote *r);
 private	void	listIt(char *keys, int list);
 private	int	send_BAM_msg(remote *r, char *bp_keys, char **envVar,u64 bpsz);
@@ -54,6 +59,24 @@ push_main(int ac, char **av)
 	opts.out = stderr;
 
 	while ((c = getopt(ac, av, "ac:deE:Gilno;qr;tTz|")) != -1) {
+		unless (c == 'r') {
+			if (optarg) {
+				opts.av_push = addLine(opts.av_push,
+				    aprintf("-%c%s", c, optarg));
+			} else {
+				opts.av_push = addLine(opts.av_push,
+				    aprintf("-%c", c));
+			}
+		}
+		unless (c == 'r' || c == 'a' || c == 'c' || c == 'T') {
+			if (optarg) {
+				opts.av_clone = addLine(opts.av_clone,
+				    aprintf("-%c%s", c, optarg));
+			} else {
+				opts.av_clone = addLine(opts.av_clone,
+				    aprintf("-%c", c));
+			}
+		}
 		switch (c) {
 		    case 'a': opts.autopull = 1; break;		/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
@@ -84,8 +107,10 @@ push_main(int ac, char **av)
 			usage();
 			return (1);
 		}
+		optarg = 0;
 	}
 	unless (opts.verbose) putenv("BK_QUIET_TRIGGERS=YES");
+	if (proj_isEnsemble(0)) opts.product = 1;
 	if (getenv("BK_NOTTY")) opts.nospin = 1;
 
 	/*
@@ -101,6 +126,13 @@ push_main(int ac, char **av)
 	if (proj_cd2root()) {
 		fprintf(opts.out, "push: cannot find package root.\n");
 		exit(1);
+	}
+
+	unless (getenv("_BK_TRANSACTION")) {
+		if (opts.product && proj_cd2product()) {
+			fprintf(opts.out, "push: cannot find product root.\n");
+			exit(1);
+		}
 	}
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
@@ -183,6 +215,8 @@ err:		freeLines(envVar, free);
 	sccs_free(s_cset);
 	freeLines(urls, free);
 	freeLines(envVar, free);
+	freeLines(opts.av_push, free);
+	freeLines(opts.av_clone, free);
 	if (opts.out && (opts.out != stderr)) fclose(opts.out);
 	return (rc);
 }
@@ -203,6 +237,7 @@ send_part1_msg(remote *r, char **envVar)
 	fprintf(f, "push_part1");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
+	if (opts.product) fprintf(f, " -P");
 	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
 	fclose(f);
@@ -728,6 +763,14 @@ push_part2(char **av,
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 2;
+		} else if (opts.product && !getenv("_BK_TRANSACTION")) {
+			rc = push_ensemble(r, rev_list, envVar);
+			done = 2;
+			/* XXX: When we add transactions, instead of
+			 * skipping to the end in the driving process, we'll
+			 * want to add a 'commit or undo' phase to the
+			 * protocol right about here. */
+			goto done;
 		} else if (bp_updateServer(0, rev_list, !opts.verbose)) {
 			/* push BAM data to server */
 			fprintf(stderr,
@@ -996,6 +1039,57 @@ done:
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);
 	if (do_pull) pull(r); /* pull does not return */
+	return (rc);
+}
+
+private int
+push_ensemble(remote *r, char *rev_list, char **envVar)
+{
+	eopts	ropts;
+	repos	*rps;
+	char	**vp;
+	char	*name, *url;
+	int	i, rc = 0;
+
+	bzero(&ropts, sizeof(eopts));
+	url = remote_unparse(r);
+	ropts.product = 1;
+	ropts.revs = file2Lines(0, rev_list);
+	assert(ropts.revs || ropts.rev);
+	rps = ensemble_list(ropts);
+	safe_putenv("_BK_TRANSACTION=1");
+	EACH_REPO(rps) {
+		proj_cd2product();
+		chdir(rps->path); /* XXX: needs error checking */
+		vp = addLine(0, strdup("bk"));
+		if (rps->new) {
+			vp = addLine(vp, strdup("clone"));
+			EACH(opts.av_clone) {
+				vp = addLine(vp, strdup(opts.av_clone[i]));
+			}
+		} else {
+			vp = addLine(vp, strdup("push"));
+			EACH(opts.av_push) {
+				vp = addLine(vp, strdup(opts.av_push[i]));
+			}
+		}
+		vp = addLine(vp, aprintf("-r%s", rps->deltakey));
+		if (rps->new) vp = addLine(vp, strdup("."));
+		vp = addLine(vp, aprintf("%s/%s", url, rps->path));
+		vp = addLine(vp, 0);
+		name = streq(rps->path, ".")
+			? "Product"
+			: rps->path;
+		fflush(stdout);
+		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
+			fprintf(stderr, "Pushing %s failed\n", name);
+			rc = 1;
+		}
+		freeLines(vp, free);
+		if (rc) break;
+	}
+	safe_putenv("_BK_TRANSACTION=");
+	ensemble_free(rps);
 	return (rc);
 }
 

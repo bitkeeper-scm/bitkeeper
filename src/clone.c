@@ -38,7 +38,7 @@ clone_main(int ac, char **av)
 {
 	int	c, rc;
 	char	**envVar = 0;
-	remote 	*r = 0;
+	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
@@ -85,6 +85,7 @@ clone_main(int ac, char **av)
 	if (av[optind + 1]) {
 		if (av[optind + 2]) usage();
 		localName2bkName(av[optind + 1], av[optind + 1]);
+		l = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	}
 
 	/*
@@ -115,8 +116,6 @@ clone_main(int ac, char **av)
 		chdir(here);
 	}
 	if (av[optind + 1]) {
-		remote	*l;
-		l = remote_parse(av[optind + 1], REMOTE_BKDURL);
 		unless (l) {
 err:			if (r) remote_free(r);
 			if (l) remote_free(l);
@@ -143,7 +142,6 @@ err:			if (r) remote_free(r);
 			av[0] = "_rclone";
 			return (rclone_main(ac, av));
 		}
-		remote_free(l);
 	}
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
@@ -155,9 +153,10 @@ err:			if (r) remote_free(r);
 		}
 	}
 	if (opts->debug) r->trace = 1;
-	rc = clone(av, r, av[optind+1], envVar);
+	rc = clone(av, r, l ? l->path : 0, envVar);
 	freeLines(envVar, free);
 	freeLines(opts->av, free);
+	if (l) remote_free(l);
 	remote_free(r);
 	return (rc);
 }
