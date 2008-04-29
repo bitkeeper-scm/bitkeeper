@@ -7,9 +7,6 @@
 #define	UNDO_CSETS  "BitKeeper/tmp/undo_csets"
 #define	SFILES	    "BitKeeper/tmp/sfiles"
 
-#define	UNDO_ERR	1	/* exitcode for errors */
-#define	UNDO_SKIP	2	/* exitcode for early exit with no work */
-
 private char	**getrev(char *rev, int aflg);
 private char	**mk_list(char *, char **);
 private int	clean_file(char **);

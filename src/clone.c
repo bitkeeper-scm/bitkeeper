@@ -198,7 +198,7 @@ send_clone_msg(remote *r, char **envVar)
 }
 
 private int
-cloneRepos(repos *repos, remote *r, char *local)
+clone_ensemble(repos *repos, remote *r, char *local)
 {
 	char	*url;
 	char	**vp;
@@ -332,7 +332,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 		unless (r->rf) r->rf = fdopen(r->rfd, "r");
 		unless (repos = ensemble_fromStream(0, r->rf)) goto done;
-		rc = cloneRepos(repos, r, local);
+		rc = clone_ensemble(repos, r, local);
 		ensemble_free(repos);
 		chdir(local);
 		if (rc = clone2(r)) goto done;
@@ -448,7 +448,7 @@ clone2(remote *r)
 	/* remove any later stuff */
 	if (opts->rev) {
 		rc = after(opts->quiet, opts->rev);
-		if (rc == 2) {
+		if (rc == UNDO_SKIP) {
 			/* undo exits 2 if it has no work to do */
 			goto docheck;
 		} else if (rc != 0) {

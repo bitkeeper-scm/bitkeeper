@@ -330,6 +330,12 @@ int	checking_rmdir(char *dir);
 #define CMD_BAM		0x00000080	/* optional next pass if BAM */
 
 /*
+ * Undo exit status for nothing to undo.
+ */
+#define	UNDO_ERR	1		/* exitcode for errors */
+#define	UNDO_SKIP	2		// exitcode for early exit with no work
+
+/*
  * Hash behaviour.  Bitmask.
  */
 #define	DB_NODUPS       0x01		/* keys must be unique */

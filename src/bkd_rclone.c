@@ -4,6 +4,7 @@
 typedef	struct {
 	u32	debug:1;
 	u32	verbose:1;
+	u32	product:1;
 	int	gzip;
 	char    *rev;
 	char	*bam_url;
@@ -19,11 +20,13 @@ rclone_common(int ac, char **av, opts *opts)
 	char	*p;
 
 	bzero(opts, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dr;vz|")) != -1) {
+	while ((c = getopt(ac, av, "B;dPr;Tvz|")) != -1) {
 		switch (c) {
 		    case 'B': opts->bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;
+		    case 'P': opts->product = 1; break;
 		    case 'r': opts->rev = optarg; break; 
+		    case 'T': /* ignored for now */ break;
 		    case 'v': opts->verbose = 1; break;
 		    case 'z':
 			opts->gzip = optarg ? atoi(optarg) : 6;
@@ -81,6 +84,12 @@ cmd_rclone_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
+
+	/*
+	 * No check for SAMv1 here because the other side has to send -P
+	 * and if they did then they obviously know about nested.
+	 */
+
 	if (((p = getenv("BK_BAM")) && streq(p, "YES")) &&
 	    !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
@@ -353,8 +362,9 @@ rclone_end(opts *opts)
 	/* remove any later stuff */
 	if (opts->rev) {
 		rc = after(!opts->verbose, opts->rev);
+		if (rc == UNDO_SKIP) goto docheck;
 	} else {
-		/* undo already runs check so we only need this case */
+docheck:	/* undo already runs check so we only need this case */
 		if (opts->verbose) {
 			fprintf(stderr, "running consistency check ...\n");
 		}
