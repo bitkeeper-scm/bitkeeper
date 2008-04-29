@@ -11,6 +11,7 @@ private	struct {
 	u32	in, out;
 	u64	bpsz;
 	char	**av;			/* ensemble commands */
+	char	**modules;		/* ensemble modules list */
 } opts;
 
 private void usage(void);
@@ -34,8 +35,8 @@ rclone_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
 	opts.gzip = 6;
-	while ((c = getopt(ac, av, "B;dE:qr;w|z|")) != -1) {
-		unless (c == 'r') {
+	while ((c = getopt(ac, av, "B;dE:M;qr;w|z|")) != -1) {
+		unless ((c == 'r') || (c == 'M')) {
 			if (optarg) {
 				opts.av = addLine(opts.av,
 				    aprintf("-%c%s", c, optarg));
@@ -53,6 +54,9 @@ rclone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'M':
+			opts.modules = addLine(opts.modules, strdup(optarg));
+			break;
 		    case 'q': opts.verbose = 0; break;
 		    case 'r': opts.rev = optarg; break;
 		    case 'w': /* ignored */ break;
@@ -118,6 +122,7 @@ rclone_main(int ac, char **av)
 	}
 	freeLines(envVar, free);
 	freeLines(opts.av, free);
+	freeLines(opts.modules, free);
 	remote_free(r);
 	return (rc);
 }
@@ -126,7 +131,9 @@ private int
 rclone_ensemble(remote *r)
 {
 	eopts	ropts;
-	repos	*rps;
+	repos	*rps = 0;
+	sccs	*cset;
+	hash	*h = 0;
 	char	**vp;
 	char	*name, *url;
 	int	i, status, rc = 0;
@@ -136,16 +143,32 @@ rclone_ensemble(remote *r)
 	ropts.product = 1;
 	ropts.product_first = 1;
 	ropts.rev = opts.rev ? opts.rev : "+";
+
+	/*
+	 * Mirror bkd_clone and imply whatever list we have unless they 
+	 * specified a list already.
+	 */
+	cset = sccs_csetInit(SILENT);
+	unless (opts.modules) {
+		opts.modules = file2Lines(0, "BitKeeper/log/MODULES");
+	}
+	if (opts.modules) {
+		unless (h = module_list(opts.modules, cset)) goto out;
+		ropts.modules = h;
+	}
 	rps = ensemble_list(ropts);
 	putenv("_BK_TRANSACTION=1");
 	EACH_REPO(rps) {
-		unless (rps->present) continue;
 		proj_cd2product();
 		vp = addLine(0, strdup("bk"));
 		vp = addLine(vp, strdup("clone"));
 		EACH(opts.av) vp = addLine(vp, strdup(opts.av[i]));
 		vp = addLine(vp, aprintf("-r%s", rps->deltakey));
 		if (streq(rps->path, ".")) {
+			EACH(opts.modules) {
+				vp = addLine(vp,
+				    aprintf("-M%s", opts.modules[i]));
+		    	}
 			name = "Product";
 			vp = addLine(vp, strdup("."));
 			vp = addLine(vp, strdup(url));
@@ -157,6 +180,15 @@ rclone_ensemble(remote *r)
 		vp = addLine(vp, 0);
 		if (opts.verbose) printf("=== %s ===\n", name);
 		fflush(stdout);
+		unless (rps->present) {
+			if (opts.modules && opts.verbose) {
+				fprintf(stderr,
+				    "clone: %s was not found, skipping.\n",
+				    rps->path);
+			}
+			freeLines(vp, free);
+			continue;
+		}
 		status = spawnvp(_P_WAIT, "bk", &vp[1]);
 		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
 		if (rc) {
@@ -171,6 +203,9 @@ rclone_ensemble(remote *r)
 	 * XXX - put code in here to finish the transaction.
 	 */
 
+out:
+	sccs_free(cset);
+	if (h) hash_free(h);
 	free(url);
 	ensemble_free(rps);
 	putenv("_BK_TRANSACTION=");
@@ -414,7 +449,7 @@ send_sfio_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE	*f;
-	int	rc;
+	int	i, rc;
 	u32	m = 0, n, extra = 0;
 
 	bktmp(buf, "rclone");
@@ -425,6 +460,7 @@ send_sfio_msg(remote *r, char **envVar)
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
+	EACH(opts.modules) fprintf(f, " '-M%s'", opts.modules[i]);
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
 	fclose(f);

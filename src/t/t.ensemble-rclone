@@ -102,5 +102,105 @@ test -d gdb || exit 1
 test -d gcc && exit 1
 echo OK
 
+echo $N Test that -Mkey clones work .................................$NL
+cd "$HERE"
+cd project
+bk sfiles -R | grep -v gcc > ../LIST
+cd ..
+KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
+rm -rf mynewgcc
+bk clone $Q -M"$KEY" project bk://localhost:$PORT/mynewgcc 2> ERR || {
+	echo failed
+	cat ERR
+	bk _kill bk://localhost:$PORT
+	exit 1
+}
+test -d mynewgcc -a -d mynewgcc/gcc || {
+	echo did not bring gcc module across
+	cat ERR
+	bk _kill bk://localhost:$PORT
+	exit 1
+}
+for i in `cat LIST`
+do	test -d mynewgcc/$i && {
+		echo should not have brought $i
+		cat ERR
+		bk _kill bk://localhost:$PORT
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test that we can clone using the MODULES file ...............$NL
+rm -rf mynewgcc
+cd project
+bk module add -cgcc justgcc
+cd ..
+bk clone $Q -Mjustgcc project bk://localhost:$PORT/mynewgcc 2> ERR || {
+	echo failed
+	cat ERR
+	bk _kill bk://localhost:$PORT
+	exit 1
+}
+test -d mynewgcc -a -d mynewgcc/gcc || {
+	echo did not bring gcc module across
+	cat ERR
+	bk _kill bk://localhost:$PORT
+	exit 1
+}
+for i in `cat LIST`
+do	test -d mynewgcc/$i && {
+		echo should not have brought $i
+		cat ERR
+		bk _kill bk://localhost:$PORT
+		exit 1
+	}
+done
+echo OK
+
+bk _kill bk://localhost:$PORT
+PORT=`port 50000`
+bk bkd -D -d -p$PORT -ikill  &
+echo $N Test that we can clone just that component with -Mgcc/ ......$NL
+rm -rf mynewgcc
+bk clone $Q -Mgcc/ project bk://localhost:$PORT/mynewgcc 2> ERR || {
+	echo failed
+	cat ERR
+	bk _kill bk://localhost:$PORT
+	bk _kill bk://localhost:$PORT
+	exit 1
+}
+test -d mynewgcc -a -d mynewgcc/gcc || {
+	echo did not bring gcc module across
+	cat ERR
+	bk _kill bk://localhost:$PORT
+	bk _kill bk://localhost:$PORT
+	exit 1
+}
+for i in `cat LIST`
+do	test -d mynewgcc/$i && {
+		echo should not have brought $i
+		cat ERR
+		bk _kill bk://localhost:$PORT
+		exit 1
+	}
+done
+echo OK
+
+echo $N Make sure that the MODULES file is correct ..................$NL
+cd mynewgcc
+test -f BitKeeper/log/MODULES || {
+	echo no MODULES file
+	bk _kill bk://localhost:$PORT
+	exit 1
+}
+test "`cat BitKeeper/log/MODULES`" = "gcc/" || {
+	echo bad content
+	cat BitKeeper/log/MODULES
+	bk _kill bk://localhost:$PORT
+	exit 1
+}
+echo OK
+
 bk _kill bk://localhost:$PORT
 exit 0

@@ -272,7 +272,7 @@ test -d mynewgcc4 && {
 echo OK
 
 # No way to test this now.
-test 0 == 1 && {
+test 0 -eq 1 && {
 echo $N clone -Mjunk/ when no such directory exists should fail .....$NL
 cd "$HERE"
 bk clone -Mjunk/ mynewgcc3 mynewgcc4 2> ERR && {
