@@ -208,6 +208,7 @@ FILE *	safe_popen(char *cmd, char *type);
 FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);
 int	safe_fclose(FILE *f);
+char	*backtick(char *cmd);
 
 /* tcp/tcp.c */
 int	tcp_server(char *addr, int port, int quiet);

@@ -95,6 +95,198 @@ grep -q "clone of a component is not allowed" ERR || {
 }
 echo OK
 
+cd "$HERE"
+cd project
+bk sfiles -R | grep -v gcc > ../LIST
+cd ..
+
+echo $N Test that -Mkey clones work .................................$NL
+KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
+rm -rf mynewgcc
+bk clone $Q -M"$KEY" project mynewgcc 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+test -d mynewgcc -a -d mynewgcc/gcc || {
+	echo did not bring gcc module across
+	cat ERR
+	exit 1
+}
+for i in `cat LIST`
+do	test -d mynewgcc/$i && {
+		echo should not have brought $i
+		cat ERR
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test that we can clone using the MODULES file ...............$NL
+rm -rf mynewgcc
+cd project
+bk module add -cgcc justgcc
+cd ..
+bk clone $Q -Mjustgcc project mynewgcc 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+test -d mynewgcc -a -d mynewgcc/gcc || {
+	echo did not bring gcc module across
+	cat ERR
+	exit 1
+}
+for i in `cat LIST`
+do	test -d mynewgcc/$i && {
+		echo should not have brought $i
+		cat ERR
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test that we can clone just that component with -Mgcc/ ......$NL
+rm -rf mynewgcc
+bk clone $Q -Mgcc/ project mynewgcc 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+test -d mynewgcc -a -d mynewgcc/gcc || {
+	echo did not bring gcc module across
+	cat ERR
+	exit 1
+}
+for i in `cat LIST`
+do	test -d mynewgcc/$i && {
+		echo should not have brought $i
+		cat ERR
+		exit 1
+	}
+done
+echo OK
+
+echo $N Make sure that the MODULES file is correct ..................$NL
+cd mynewgcc
+test -f BitKeeper/log/MODULES || {
+	echo no MODULES file
+	exit 1
+}
+test "`cat BitKeeper/log/MODULES`" = "gcc/" || {
+	echo bad content
+	cat BitKeeper/log/MODULES
+	exit 1
+}
+echo OK
+
+echo $N Make sure that the MODULES file propogates on clone .........$NL
+cd "$HERE"
+bk clone $Q mynewgcc mynewgcc2
+cd mynewgcc2
+test -f BitKeeper/log/MODULES || {
+	echo no MODULES file
+	exit 1
+}
+test "`cat BitKeeper/log/MODULES`" = "gcc/" || {
+	echo bad content
+	cat BitKeeper/log/MODULES
+	exit 1
+}
+echo OK
+
+echo $N Add a component with populate -Mgdb/ ........................$NL
+cd "$HERE/mynewgcc"
+bk populate $Q -Mgdb/ || exit 1
+test -d gdb || {
+	echo failed to get gdb
+	exit 1
+}
+echo OK
+
+echo $N Make sure that the MODULES file is correct ..................$NL
+test -f BitKeeper/log/MODULES || {
+	echo no MODULES file
+	exit 1
+}
+cat > WANT <<EOF
+gcc/
+gdb/
+EOF
+cmpfiles WANT BitKeeper/log/MODULES
+echo OK
+
+echo $N Check that populate is idempotent ...........................$NL
+cd "$HERE/mynewgcc"
+bk populate $Q -Mgdb/ || exit 1
+test -d gdb || {
+	echo failed to get gdb
+	exit 1
+}
+echo OK
+
+echo $N Make sure that the MODULES file is still correct ............$NL
+test -f BitKeeper/log/MODULES || {
+	echo no MODULES file
+	exit 1
+}
+cat > WANT <<EOF
+gcc/
+gdb/
+EOF
+cmpfiles WANT BitKeeper/log/MODULES
+echo OK
+
+# This is somewhat different in that the parent has a MODULES file.
+# In a fully populated tree you wouldn't expect one.
+echo $N clone -Mgcc should have only that in MODULES ................$NL
+cd "$HERE"
+bk clone $Q -Mgcc/ mynewgcc mynewgcc3
+cd mynewgcc3
+test -d gdb && {
+	echo should not have gdb
+	exit 1
+}
+test -f BitKeeper/log/MODULES || {
+	echo no MODULES file
+	exit 1
+}
+test "`cat BitKeeper/log/MODULES`" = "gcc/" || {
+	echo bad content
+	cat BitKeeper/log/MODULES
+	exit 1
+}
+echo OK
+
+echo $N clone -Mgdb when the parent only has gcc ....................$NL
+cd "$HERE"
+bk clone $Q -Mgdb/ mynewgcc3 mynewgcc4 2> ERR || {
+	echo fix the test
+	echo I think it should fail
+	echo and it now does
+	exit 1
+}
+grep -q "cannot cd to .*/mynewgcc3/gdb" ERR || {
+	echo diff msg
+	cat ERR
+	exit 1
+}
+cd mynewgcc4
+test -d gdb && {
+	echo should not have gdb
+	exit 1
+}
+test -f BitKeeper/log/MODULES || {
+	echo no MODULES file
+	exit 1
+}
+test "`cat BitKeeper/log/MODULES`" = "gdb/" || {
+	echo Yes, modules file should not have gdb
+	echo fix this test
+	exit 1
+}
+echo "failed (bug in missing modules)"
+
 echo $N Add more stuff to gcc........................................$NL
 cd "$HERE/project/gcc"
 for i in 1 2 3 4

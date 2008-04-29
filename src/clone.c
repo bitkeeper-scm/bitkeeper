@@ -13,18 +13,22 @@ struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
 	u32	link:1;			/* -l: lclone-mode */
+	u32	populate:1;		/* av[0] eq populate */
 	int	delay;			/* wait for (ssh) to drain */
 	int	gzip;			/* -z[level] compression */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
 	char	**av;			/* saved opts for ensemble commands */
+	char	**modules;		/* -M modules list */
+	char	*from;			/* where to get stuff from */
+	char	*to;			/* where to put it */
 } *opts;
 
 private int	clone(char **, remote *, char *, char **);
 private	int	clone2(remote *r);
 private void	parent(remote *r);
 private int	sfio(remote *r, int BAM, char *prefix);
-private void	usage(void);
+private void	usage(char *name);
 private int	initProject(char *root, remote *r);
 private	void	lclone(char *from);
 private int	relink(char *a, char *b);
@@ -42,8 +46,8 @@ clone_main(int ac, char **av)
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
-	while ((c = getopt(ac, av, "B;dE:lqr;w|z|")) != -1) {
-		unless (c == 'r') {
+	while ((c = getopt(ac, av, "B;dE:lM;qr;w|z|")) != -1) {
+		unless ((c == 'r') || (c == 'M')) {
 			if (optarg) {
 				opts->av = addLine(opts->av,
 				    aprintf("-%c%s", c, optarg));
@@ -62,6 +66,9 @@ clone_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'l': opts->link = 1; break;		/* doc 2.0 */
+		    case 'M':
+			opts->modules = addLine(opts->modules, strdup(optarg));
+			break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
 		    case 'w': opts->delay = atoi(optarg); break; /* undoc 2.0 */
@@ -70,7 +77,7 @@ clone_main(int ac, char **av)
 			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = 6;
 			break;
 		    default:
-			usage();
+			usage(av[0]);
 	    	}
 		optarg = 0;
 	}
@@ -80,18 +87,37 @@ clone_main(int ac, char **av)
 		exit(1);
 	}
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
-	unless (av[optind]) usage();
-	localName2bkName(av[optind], av[optind]);
-	if (av[optind + 1]) {
-		if (av[optind + 2]) usage();
-		localName2bkName(av[optind + 1], av[optind + 1]);
+	if (av[optind]) { localName2bkName(av[optind], av[optind]); }
+	if (av[optind+1]) { localName2bkName(av[optind+1], av[optind+1]); }
+	if (streq(av[0], "populate")) {
+		if (proj_cd2product()) {
+			fprintf(stderr, "populate: not in an ensemble.\n");
+			exit(1);
+		}
+		opts->populate = 1;
+		if (av[optind]) {
+			if (av[optind + 1]) usage(av[0]);
+			opts->from = strdup(av[optind]);
+		} else {
+			char	**p = parent_pullp();
+			assert(p);
+			opts->from = strdup(p[1]);
+			freeLines(p, free);
+		}
+	} else {
+		unless (av[optind]) usage(av[0]);
+		opts->from = strdup(av[optind]);
+		if (av[optind + 1]) {
+			if (av[optind + 2]) usage(av[0]);
+			opts->to = av[optind + 1];
+		}
 	}
 
 	/*
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	unless (r = remote_parse(av[optind], REMOTE_BKDURL)) usage();
+	unless (r = remote_parse(opts->from, REMOTE_BKDURL)) usage(av[0]);
 
 	if (r->host) {
 		if (opts->link) {
@@ -114,13 +140,13 @@ clone_main(int ac, char **av)
 		}
 		chdir(here);
 	}
-	if (av[optind + 1]) {
+	if (opts->to) {
 		remote	*l;
-		l = remote_parse(av[optind + 1], REMOTE_BKDURL);
+		l = remote_parse(opts->to, REMOTE_BKDURL);
 		unless (l) {
 err:			if (r) remote_free(r);
 			if (l) remote_free(l);
-			usage();
+			usage(av[0]);
 		}
 		/*
 		 * Source and destination cannot both be remote 
@@ -155,17 +181,19 @@ err:			if (r) remote_free(r);
 		}
 	}
 	if (opts->debug) r->trace = 1;
-	rc = clone(av, r, av[optind+1], envVar);
+	rc = clone(av, r, opts->to, envVar);
+	free(opts->from);
 	freeLines(envVar, free);
 	freeLines(opts->av, free);
+	freeLines(opts->modules, free);
 	remote_free(r);
 	return (rc);
 }
 
 private void
-usage(void)
+usage(char *name)
 {
-	system("bk help -s clone");
+	sys("bk", "help", "-s", name, SYS);
     	exit(1);
 }
 
@@ -174,7 +202,7 @@ send_clone_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE    *f;
-	int	rc;
+	int	i, rc;
 
 	bktmp(buf, "clone");
 	f = fopen(buf, "w");
@@ -186,7 +214,11 @@ send_clone_msg(remote *r, char **envVar)
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
 	if (opts->quiet) fprintf(f, " -q");
 	if (opts->delay) fprintf(f, " -w%d", opts->delay);
-	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
+	if (getenv("_BK_TRANSACTION")) {
+		fprintf(f, " -T");
+	} else {
+		EACH(opts->modules) fprintf(f, " -M%s", opts->modules[i]);
+	}
 	if (opts->link) fprintf(f, " -l");
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");
 	fputs("\n", f);
@@ -204,25 +236,54 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	char	**vp;
 	char	*name, *path;
 	int	i, rc = 0;
+	project	*proj;
 
 	url = remote_unparse(r);
 	putenv("_BK_TRANSACTION=1");
 	EACH_REPO(repos) {
-		vp = addLine(0, strdup("bk"));
-		vp = addLine(vp, strdup("clone"));
-		EACH(opts->av) vp = addLine(vp, strdup(opts->av[i]));
-		vp = addLine(vp, aprintf("-r%s", repos->deltakey));
-		vp = addLine(vp, aprintf("%s/%s", url, repos->path));
-		path = aprintf("%s/%s", local, repos->path); /* free'd by vp */
-		vp = addLine(vp, path);
-		vp = addLine(vp, 0);
 		if (streq(repos->path, ".")) {
+			if (opts->populate) continue;
 			name = "Product";
 			putenv("_BK_NO_CHECK=1");
 		} else {
 			name = repos->path;
 			putenv("_BK_NO_CHECK=");
 		}
+		
+		/*
+		 * If we're populating and there is something there, see
+		 * if it's what it should be and if so factor it out.
+		 * If it's there and not what it should be, error.
+		 */
+		if (opts->populate && exists(repos->path)) {
+			proj = proj_init(repos->path);
+			if (proj && streq(proj_rootkey(proj), repos->rootkey)) {
+				unless (opts->quiet) {
+					fprintf(stderr,
+					    "populate: %s is already here.\n",
+					    repos->path);
+				}
+				continue;
+			}
+			fprintf(stderr,
+			   "populate: can't add %s because of existing data.\n",
+			   repos->path);
+			rc = 1;
+			break;
+		}
+
+		vp = addLine(0, strdup("bk"));
+		vp = addLine(vp, strdup("clone"));
+		EACH(opts->av) vp = addLine(vp, strdup(opts->av[i]));
+		vp = addLine(vp, aprintf("-r%s", repos->deltakey));
+		vp = addLine(vp, aprintf("%s/%s", url, repos->path));
+		if (opts->populate) {
+			path = strdup(repos->path);
+		} else {
+			path = aprintf("%s/%s", local, repos->path);
+		}
+		vp = addLine(vp, path);
+		vp = addLine(vp, 0);
 		unless (opts->quiet) printf("=== %s ===\n", name);
 		fflush(stdout);
 		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
@@ -241,16 +302,16 @@ clone(char **av, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
 	char	*lic;
-	int	rc = 2, do_part2;
+	int	i, rc = 2, do_part2;
 
 	if (local && exists(local) && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
-		usage();
+		usage(av[0]);
 	}
 	if (local ? test_mkdirp(local) : access(".", W_OK)) {
 		fprintf(stderr, "clone: %s: %s\n",
 			(local ? local : "current directory"), strerror(errno));
-		usage();
+		usage(av[0]);
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
 	if (bkd_connect(r, opts->gzip, !opts->quiet)) goto done;
@@ -314,13 +375,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 		}
 	}
 
-	unless (opts->quiet) {
-		remote	*l = remote_parse(local, REMOTE_BKDURL);
-
-		fromTo("Clone", r, l);
-		remote_free(l);
-	}
-
 	getline2(r, buf, sizeof (buf));
 	if (streq(buf, "@TRIGGER INFO@")) { 
 		if (getTriggerInfoBlock(r, !opts->quiet)) goto done;
@@ -335,10 +389,36 @@ clone(char **av, remote *r, char *local, char **envVar)
 		rc = clone_ensemble(repos, r, local);
 		ensemble_free(repos);
 		chdir(local);
+		if (opts->modules) {
+			char	**p = 0;
+
+			/* Union if populate, stomp if clone */
+			if (opts->populate) {
+				p = file2Lines(0, "BitKeeper/log/MODULES");
+			}
+			EACH(opts->modules) {
+				p = addLine(p, strdup(opts->modules[i]));
+			}
+			uniqLines(p, free);
+			if (lines2File(p, "BitKeeper/log/MODULES")) {
+				perror("BitKeeper/log/MODULES");
+			}
+			freeLines(p, free);
+		}
 		if (rc = clone2(r)) goto done;
 		rc = 0;
 		goto done;
 	}
+
+	// XXX - would be nice if we did this before bailing out on any of
+	// the error/license conditions above but not when we have an ensemble.
+	unless (opts->quiet) {
+		remote	*l = remote_parse(local, REMOTE_BKDURL);
+
+		fromTo("Clone", r, l);
+		remote_free(l);
+	}
+
 	unless (streq(buf, "@SFIO@")) goto done;
 
 	/* create the new package */
@@ -388,8 +468,9 @@ done:	if (rc) {
 	}
 	/*
 	 * Don't bother to fire trigger if we have no tree.
+	 * XXX - should we differentiate between clone and populate?
 	 */
-	if (proj_root(0) && (rc != 2)) trigger(av[0], "post");
+	if (proj_root(0) && (rc != 2)) trigger("clone", "post");
 
 	repository_unlock(0);
 	unless (rc || opts->quiet) {

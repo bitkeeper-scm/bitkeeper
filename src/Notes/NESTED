@@ -19,6 +19,23 @@ Files on disk
 	BitKeeper/log/COMPONENT - contains the relative path to the component
 	BitKeeper/log/CSETFILE - normally contains `bk id` but in the case
 	of a component contains `bk id` of the product.
+	BitKeeper/log/MODULES - contains the list of modules currently active
 
-	Note that all these things are going away and stored in a single
-	BitKeeper/log/CACHE db file real soon now.
+Module support
+	Modules are used to specify a subset of the components.
+	The module command is used to manage the modules database (a DB
+	file located at BitKeeper/etc/modules).
+
+	When creating a clone of an ensemble, the resulting clone may
+	be limited to a subset of the components by specifying one
+	or more modules.  The specified modules are recorded in the
+	BitKeeper/log/MODULES; this file is consulted for later pulls.
+
+	The invariant is that the MODULES file and local set of comps
+	need to match.  If that is not true, check will at least warn
+	you each time it runs.  The implication is that when you 
+	bk ensemble add a repo, it should add path/to/repo/ to the
+	MODULES file.
+
+	Populating more modules is done with bk populate.  Getting rid
+	of modules is done with bk unpopulate.
