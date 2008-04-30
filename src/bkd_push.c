@@ -10,19 +10,20 @@ cmd_push_part1(int ac, char **av)
 {
 	char	*p, buf[MAXKEY], cmd[MAXPATH];
 	int	c, n, status;
-	int	debug = 0, gzip = 0;
+	int	debug = 0, gzip = 0, product = 0;
 	MMAP    *m;
 	FILE	*l;
 	char	*lktmp;
 	int	ret;
 
-	while ((c = getopt(ac, av, "dnz|")) != -1) {
+	while ((c = getopt(ac, av, "dnPz|")) != -1) {
 		switch (c) {
 		    case 'z': break;
 			gzip = optarg ? atoi(optarg) : 6;
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
+		    case 'P': product = 1; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
 		}
@@ -114,6 +115,7 @@ cmd_push_part1(int ac, char **av)
 	unlink(lktmp);
 	free(lktmp);
 	if (debug) fprintf(stderr, "cmd_push_part1: done\n");
+	if (product) repository_unlock(0);
 	return (ret);
 }
 

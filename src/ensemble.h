@@ -30,6 +30,7 @@ typedef	struct {
 } eopts;
 
 repos*	ensemble_list(eopts opts);
+int	ensemble_find(repos *repos, char *rootkey);
 repos*	ensemble_first(repos *repos);
 repos*	ensemble_next(repos *repos);
 void	ensemble_free(repos *repos);

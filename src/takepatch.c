@@ -488,9 +488,11 @@ error:		if (perfile) sccs_free(perfile);
 			s->state &= ~S_PFILE; 
 		}
 		tmp = sccs_top(s);
-		unless (sccs_patheq(tmp->pathname, s->gfile)) {
-			badpath(s, tmp);
-			goto error;
+		unless (CSET(s)) {
+			unless (sccs_patheq(tmp->pathname, s->gfile)) {
+				badpath(s, tmp);
+				goto error;
+			}
 		}
 		unless (tmp = sccs_findKey(s, t)) {
 			shout();

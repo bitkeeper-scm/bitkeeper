@@ -205,8 +205,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		/* like bk makepatch but skips over missing files/keys */
-		cmd = aprintf("bk cset -Bff%sm - > '%s'",
-		    proj_isProduct(0) ? "P" : "", patch);
+		cmd = aprintf("bk cset -Bfm - > '%s'", patch);
 		f = popen(cmd, "w");
 		free(cmd);
 		if (f) {
@@ -370,8 +369,7 @@ mk_list(char *rev_list, char **csetrev_list)
 	kvpair	kv;
 
 	assert(csetrev_list);
-	cmd = aprintf("bk cset -ffl5%s - > '%s'",
-	    proj_isProduct(0) ? "P" : "", rev_list);
+	cmd = aprintf("bk cset -fl5 - > '%s'", rev_list);
 	f = popen(cmd, "w");
 	EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
 	status = pclose(f);

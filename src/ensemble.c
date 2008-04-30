@@ -438,6 +438,17 @@ ensemble_next(repos *list)
 	return (list);
 }
 
+/* lm3di */
+int
+ensemble_find(repos *list, char *rootkey)
+{
+	assert(list);
+	EACH_REPO(list) {
+		if (streq(list->rootkey, rootkey)) return (1);
+	}
+	return (0);
+}
+
 void
 ensemble_free(repos *list)
 {

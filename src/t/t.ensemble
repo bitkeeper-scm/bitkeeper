@@ -505,13 +505,10 @@ test "`bk log -r@1.6 -nd:REV: gcc4/ChangeSet`" = 1.9 || {
 }
 echo OK
 
-echo $N Check that cset -l output lists component changesets ........$NL
+echo $N Check that cset -l does not list component changesets........$NL
 bk cset -l -r+ > GOT
 cat > WANT <<EOF
 ChangeSet|1.6
-gcc4/ChangeSet|1.9
-gcc4/ChangeSet|1.8
-gcc4/ChangeSet|1.7
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -737,7 +734,7 @@ test -f core && {
 	echo changes died
 	exit 1
 }
-bk cset -ffl5 - < OUT > GOT
+bk cset -fl5 - < OUT > GOT
 test -f core && {
 	echo cset died
 	cat OUT
@@ -745,44 +742,26 @@ test -f core && {
 }
 echo OK
 
-echo $N Make sure bk cset listing can skip components ...............$NL
-echo 1.6 | bk cset -fflP - > GOT
-echo 'ChangeSet|1.6' > WANT
-cmpfiles WANT GOT
-echo OK
-
-echo $N Make sure bk cset listing can list components ...............$NL
-echo 1.6 | bk cset -ffl - > GOT
+echo $N Make sure bk cset listing does not list components...........$NL
+echo 1.6 | bk cset -fl - > GOT
 cat > WANT <<EOF
 ChangeSet|1.6
-gcc4/ChangeSet|1.9
-gcc4/ChangeSet|1.8
-gcc4/ChangeSet|1.7
 EOF
 cmpfiles WANT GOT
 echo OK
 
 echo $N Make sure bk cset creating a patch can skip components ......$NL
-echo 1.6 | bk cset -BffPm - > PATCH
-grep -q '== gcc4/ChangeSet ==' PATCH && {
+echo 1.6 | bk cset -Bfm - > PATCH
+grep -q 'P gcc4/ChangeSet' PATCH && {
 	echo failed
 	cat PATCH
 	exit 1
 }
 echo OK
 
-echo $N Make sure bk makepatch can skip components ..................$NL
-bk makepatch -r+ -P > PATCH
-grep -q '== gcc4/ChangeSet ==' PATCH && {
-	echo failed
-	cat PATCH
-	exit 1
-}
-echo OK
-
-echo $N Make sure bk makepatch can include components ...............$NL
+echo $N Make sure bk makepatch does not include components...........$NL
 bk makepatch -r+ > PATCH
-grep -q '== gcc4/ChangeSet ==' PATCH || {
+grep -q 'P gcc4/ChangeSet' PATCH && {
 	echo failed
 	cat PATCH
 	exit 1
@@ -883,7 +862,7 @@ tar xf TAR
 cd project
 
 echo $N Test bk changes in a sparse ensemble ........................$NL
-bk cset -ffl5P -r+ > A
+bk cset -fl5 -r+ > A
 rm -rf gcc4
 echo OK
 

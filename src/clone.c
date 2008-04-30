@@ -42,7 +42,7 @@ clone_main(int ac, char **av)
 {
 	int	c, rc;
 	char	**envVar = 0;
-	remote 	*r = 0;
+	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
@@ -110,6 +110,7 @@ clone_main(int ac, char **av)
 		if (av[optind + 1]) {
 			if (av[optind + 2]) usage(av[0]);
 			opts->to = av[optind + 1];
+			l = remote_parse(opts->to, REMOTE_BKDURL);
 		}
 	}
 
@@ -141,25 +142,26 @@ clone_main(int ac, char **av)
 		chdir(here);
 	}
 	if (opts->to) {
-		remote	*l;
-		l = remote_parse(opts->to, REMOTE_BKDURL);
-		unless (l) {
-err:			if (r) remote_free(r);
-			if (l) remote_free(l);
-			usage(av[0]);
 		}
 		/*
 		 * Source and destination cannot both be remote 
 		 */
-		if (l->host && r->host) goto err;
+		if (l->host && r->host) {
+			if (r) remote_free(r);
+			if (l) remote_free(l);
+			usage(av[0]);
+		}
 
 		/*
 		 * If the destination address is remote, call bk _rclone instead
 		 */
 		if (l->host) {
-			remote_free(r);
-			remote_free(l);
+			free(opts->from);
 			freeLines(envVar, free);
+			freeLines(opts->av, free);
+			freeLines(opts->modules, free);
+			if (l) remote_free(l);
+			remote_free(r);
 			if (opts->link) {
 				fprintf(stderr,
 				    "clone: no -l for remote targets.\n");
@@ -169,7 +171,6 @@ err:			if (r) remote_free(r);
 			av[0] = "_rclone";
 			return (rclone_main(ac, av));
 		}
-		remote_free(l);
 	}
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
@@ -181,11 +182,12 @@ err:			if (r) remote_free(r);
 		}
 	}
 	if (opts->debug) r->trace = 1;
-	rc = clone(av, r, opts->to, envVar);
+	rc = clone(av, r, l ? l->path : 0, envVar);
 	free(opts->from);
 	freeLines(envVar, free);
 	freeLines(opts->av, free);
 	freeLines(opts->modules, free);
+	if (l) remote_free(l);
 	remote_free(r);
 	return (rc);
 }
