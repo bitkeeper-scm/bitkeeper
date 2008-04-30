@@ -143,7 +143,7 @@ __svfscanf_unlocked(FILE *fp, const char *fmt0, va_list ap)
 	int c;			/* character from format, or conversion */
 	size_t width;		/* field width, or 0 */
 	char *p;		/* points into all kinds of strings */
-	size_t n;		/* handy size_t */
+	size_t n = 0;		/* handy size_t */
 	int flags;		/* flags as defined above */
 	char *p0;		/* saves original value of p when necessary */
 	int nassigned;		/* number of fields assigned */

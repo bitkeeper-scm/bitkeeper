@@ -15,7 +15,6 @@ localtimez(time_t *timep, long *offsetp)
 	struct tm	*tm;
 	int		offset;
 	int		offset_sec;
-	int		year, yday;
 	time_t		before = *timep;
 
 #ifdef HAVE_GMTOFF
@@ -31,6 +30,8 @@ localtimez(time_t *timep, long *offsetp)
 	tm = localtime(timep);
 	offset	= -((tm->tm_isdst > 0) ? altzone : timezone);
 #else
+	int		year, yday;
+
 	/* Take the difference between gmtime() and localtime() as the
 	 * time zone.  This works on all systems but has extra overhead.
 	 */

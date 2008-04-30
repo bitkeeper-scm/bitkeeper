@@ -2,6 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 
+#undef	PLOCK
 #define	PLOCK	0x0002
 #define	XLOCK	0x0004
 #define	ZLOCK	0x0008
