@@ -191,12 +191,11 @@ rclone_ensemble(remote *r)
 		}
 		status = spawnvp(_P_WAIT, "bk", &vp[1]);
 		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
+		freeLines(vp, free);
 		if (rc) {
 			fprintf(stderr, "Rclone %s failed\n", name);
-			rc = 1;
+			break;
 		}
-		freeLines(vp, free);
-		if (rc) break;
 	}
 	
 	/*

@@ -17,7 +17,7 @@ private	struct {
 	u32	debug:1;
 	u32	product:1;
 	int	gzip;
-	u32	inBytes, outBytes;		/* stats */
+	u32	inBytes, outBytes;	/* stats */
 	u32	lcsets;
 	u32	rcsets;
 	u32	rtags;
@@ -25,8 +25,9 @@ private	struct {
 	delta	*d;
 	char	*rev;
 	FILE	*out;
-	char	**av_push;			/* for ensemble push */
-	char	**av_clone;			/* for ensemble clone */
+	char	**av_push;		/* for ensemble push */
+	char	**av_clone;		/* for ensemble clone */
+	char	**modules;		/* from the destination via protocol */
 } opts;
 
 private	int	push(char **av, remote *r, char **envVar);
@@ -175,6 +176,8 @@ err:		freeLines(envVar, free);
 		if (i > 1) {
 			/* clear between each use probekey/prunekey */
 			sccs_clearbits(s_cset, D_RED|D_BLUE|D_GONE|D_SET);
+			freeLines(opts.modules, free);
+			opts.modules = 0;
 		}
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
@@ -320,6 +323,12 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 		getline2(r, buf, sizeof(buf));
+	}
+	if (streq(buf, "@MODULES@")) {
+		while (getline2(r, buf, sizeof(buf)) > 0) {
+			if (buf[0] == '@') break;
+			opts.modules = addLine(opts.modules, strdup(buf));
+		}
 	}
 	if (get_ok(r, buf, 1)) goto err;
 
@@ -1046,7 +1055,9 @@ private int
 push_ensemble(remote *r, char *rev_list, char **envVar)
 {
 	eopts	ropts;
-	repos	*rps;
+	repos	*rps = 0;
+	sccs	*cset = 0;
+	hash	*h = 0;
 	char	**vp, **missing;
 	char	*name, *url, *tmp;
 	int	status, i, rc = 0;
@@ -1057,6 +1068,16 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	ropts.product = 1;
 	ropts.revs = file2Lines(0, rev_list);
 	assert(ropts.revs || ropts.rev);
+
+	/*
+	 * Filter through their modules list, if any.
+	 */
+	if (opts.modules) {
+		cset = ropts.sc = sccs_csetInit(SILENT);
+		unless (h = module_list(opts.modules, cset)) goto out;
+		ropts.modules = h;
+	}
+
 	rps = ensemble_list(ropts);
 	putenv("_BK_TRANSACTION=1");
 	vp = 0;
@@ -1101,7 +1122,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		
 OK:	EACH_REPO(rps) {
 		proj_cd2product();
-		chdir(rps->path); /* XXX: needs error checking */
+		chdir(rps->path);
 		vp = addLine(0, strdup("bk"));
 		if (rps->new) {
 			vp = addLine(vp, strdup("clone"));
@@ -1125,15 +1146,22 @@ OK:	EACH_REPO(rps) {
 		fflush(stdout);
 		unless (rps->present) {
 			// warning message goes here when modules are done
-		} else if (spawnvp(_P_WAIT, "bk", &vp[1])) {
-			fprintf(stderr, "Pushing %s failed\n", name);
-			rc = 1;
+		} else {
+			status = spawnvp(_P_WAIT, "bk", &vp[1]);
+			rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
 		}
 		freeLines(vp, free);
-		if (rc) break;
+		if (rc) {
+			fprintf(stderr, "Pushing %s failed\n", name);
+			break;
+		}
 	}
-	putenv("_BK_TRANSACTION=");
+out:
+	sccs_free(cset);
+	if (h) hash_free(h);
+	free(url);
 	ensemble_free(rps);
+	putenv("_BK_TRANSACTION=");
 	return (rc);
 }
 

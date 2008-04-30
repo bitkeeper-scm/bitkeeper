@@ -142,7 +142,6 @@ clone_main(int ac, char **av)
 		chdir(here);
 	}
 	if (opts->to) {
-		}
 		/*
 		 * Source and destination cannot both be remote 
 		 */
@@ -237,7 +236,7 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	char	*url;
 	char	**vp;
 	char	*name, *path;
-	int	i, rc = 0;
+	int	status, i, rc = 0;
 	project	*proj;
 
 	url = remote_unparse(r);
@@ -297,12 +296,13 @@ clone_ensemble(repos *repos, remote *r, char *local)
 		}
 		vp = addLine(vp, path);
 		vp = addLine(vp, 0);
-		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
-			fprintf(stderr, "Cloning %s failed\n", name);
-			rc = 1;
-		}
+		status = spawnvp(_P_WAIT, "bk", &vp[1]);
 		freeLines(vp, free);
-		if (rc) break;
+		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
+		if (rc) {
+			fprintf(stderr, "Cloning %s failed\n", name);
+			break;
+		}
 	}
 	putenv("_BK_TRANSACTION=");
 	return (rc);

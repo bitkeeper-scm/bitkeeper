@@ -8,13 +8,14 @@ private	int	do_resolve(char **av);
 int
 cmd_push_part1(int ac, char **av)
 {
-	char	*p, buf[MAXKEY], cmd[MAXPATH];
-	int	c, n, status;
+	char	*p, **modules;
+	int	i, c, n, status;
 	int	debug = 0, gzip = 0, product = 0;
 	MMAP    *m;
 	FILE	*l;
 	char	*lktmp;
 	int	ret;
+	char	buf[MAXKEY], cmd[MAXPATH];
 
 	while ((c = getopt(ac, av, "dnPz|")) != -1) {
 		switch (c) {
@@ -92,6 +93,16 @@ cmd_push_part1(int ac, char **av)
 		out(buf);
 		unlink(lktmp);
 		return (1);
+	}
+
+	if (product && (modules = file2Lines(0, "BitKeeper/log/MODULES"))) {
+		out("@MODULES@\n");
+		EACH(modules) {
+			out(modules[i]);
+			out("\n");
+		}
+		freeLines(modules, free);
+		modules = 0;
 	}
 
 	out("@OK@\n");
