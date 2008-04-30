@@ -250,8 +250,10 @@ uIntf *v;               /* working area: values in order of bit length */
 
       /* set up table entry in r */
       r.bits = (Byte)(k - w);
-      if (p >= v + n)
+      if (p >= v + n) {
         r.exop = 128 + 64;      /* out of values--invalid code */
+	r.base = 0;
+      }
       else if (*p < s)
       {
         r.exop = (Byte)(*p < 256 ? 0 : 32 + 64);     /* 256 is end-of-block */
