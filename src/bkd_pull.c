@@ -110,11 +110,11 @@ cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, dont = 0, verbose = 1, list = 0, triggers_failed = 0;
-	int	rtags, update_only = 0, delay = -1;
+	int	rtags, update_only = 0, delay = -1, eat_modules = 0;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	char	*rev = 0, *tid = 0;
-	char	*p;
+	char	*p, **modules = 0;
 	FILE	*f;
 	sccs	*s;
 	delta	*d;
@@ -122,7 +122,7 @@ cmd_pull_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "dlnqr|Tuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "dlMnqr|Tuw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -130,6 +130,7 @@ cmd_pull_part2(int ac, char **av)
 			break;
 		    case 'd': debug = 1; break;
 		    case 'l': list++; break;
+		    case 'M': eat_modules = 1; break;
 		    case 'n': dont = 1; break;
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;
@@ -165,11 +166,29 @@ cmd_pull_part2(int ac, char **av)
 		range_gone(s, d, D_RED);
 	}
 
+	bzero(&r, sizeof(r));
+	r.rf = fdopen(0, "r");
+
+	/*
+	 * Eat a list of modules if so instructed.
+	 */
+    	if (eat_modules) {
+		unless (getline2(&r, buf, sizeof(buf)) > 0) {
+err:			printf("ERROR-protocol error in modules\n");
+			rc = 1;
+			goto done;
+		}
+		unless (streq("@MODULES@", buf)) goto err;
+		while (getline2(&r, buf, sizeof(buf)) > 0) {
+			if (streq("@END@", buf)) break;
+			modules = addLine(modules, strdup(buf));
+		}
+	}
+
 	/*
 	 * What we want is: remote => bk _prunekey => keys
 	 */
 	fd = open(keys, O_WRONLY, 0);
-	bzero(&r, sizeof(r));
  	if (prunekey(s, &r, 0, fd, PK_LKEY, 1, &local, &rem, &rtags) < 0) {
 		local = 0;	/* not set on error */
 		sccs_free(s);
@@ -250,19 +269,32 @@ cmd_pull_part2(int ac, char **av)
 
 		bzero(&opts, sizeof(eopts));
 		opts.product = 1;
+		opts.product_first = 1;
 		unless (k = file2Lines(0, keys)) {
 			out("ERROR-Could not read list of keys");
-			drain();
+			rc = 1;
 			goto done;
 		}
 		opts.revs = k;
+		if (modules) {
+			opts.sc = sccs_csetInit(SILENT);
+			opts.modules = module_list(modules, opts.sc);
+			unless (opts.modules) {
+				printf("ERROR-unable to expand modules.\n");
+				rc = 1;
+				goto done;
+			}
+		}
 		r = ensemble_list(opts);
 		printf("@ENSEMBLE@\n");
 		ensemble_toStream(r, stdout);
 		freeLines(k, free);
+		if (opts.modules) hash_free(opts.modules);
+		sccs_free(opts.sc);
 		ensemble_free(r);
 		goto done;
 	}
+	freeLines(modules, free);
 
 	fputs("@PATCH@\n", stdout);
 

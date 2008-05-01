@@ -79,6 +79,35 @@ test -d junk && {
 }
 echo OK
 
+echo $N Try unpull and see if that works ............................$NL
+bk unpull -f > OUT 2>&1 || {
+	echo failed
+	exit 1
+}
+test -d libc && {
+	echo failed to remove libc
+	exit 1
+}
+echo OK
+
+echo $N Try a pull, should add libc but not junk ....................$NL
+bk pull > ../OUT 2>&1 || {
+	echo should not have failed
+	cat ../OUT
+	exit 1
+}
+test -d libc || {
+	echo did not add libc
+	cat ../OUT
+	exit 1
+}
+test -d junk && {
+	echo should not have added junk
+	cat ../OUT
+	exit 1
+}
+echo OK
+
 echo $N Setup a populate that needs to go backwards .................$NL
 cd ../project
 for i in 1 2

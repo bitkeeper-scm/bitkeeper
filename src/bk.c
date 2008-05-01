@@ -205,7 +205,7 @@ main(int ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c =
-		    getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
+		    getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npPqr|RuUxz;")) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'C': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -219,6 +219,13 @@ main(int ac, char **av, char **env)
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
+			    case 'P':				/* doc 2.0 */
+				if (proj_cd2product()) {
+					fprintf(stderr, 
+					    "bk: Cannot find product root.\n");
+					return(1);
+				}
+				break;
 			    case 'r':				/* doc 2.0 */
 				if (dashr) {
 					fprintf(stderr,

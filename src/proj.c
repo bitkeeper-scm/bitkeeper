@@ -894,8 +894,7 @@ proj_samerepo(char *source, char *dest)
 project *
 proj_isResync(project *p)
 {
-	unless (p) p = curr_proj();
-
+	unless (p || (p = curr_proj())) return (0);
 	return (p->rparent);
 }
 

@@ -20,6 +20,7 @@ typedef	struct {
 	u32	gotsome:1;		/* we got some csets */
 	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
 	u32	product:1;		/* is this a product pull? */
+	u32	pass1:1;		/* set if we are driver pull */
 	int	gzip;			/* -z[level] compression */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
@@ -113,8 +114,11 @@ pull_main(int ac, char **av)
 		usage();
 		return (1);
 	}
+	if (proj_isEnsemble(0)) {
+		opts.product = 1;
+		unless (getenv("_BK_TRANSACTION")) opts.pass1 = 1;
+	}
 
-	if (proj_isEnsemble(0)) opts.product = 1;
 	/*
 	 * Get pull parent(s)
 	 * Must do this before we chdir()
@@ -165,7 +169,7 @@ err:		freeLines(envVar, free);
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
-		unless (opts.quiet) {
+		unless (opts.quiet || opts.pass1) {
 			if (i > 1)  printf("\n");
 			fromTo("Pull", r, 0);
 		}
@@ -318,7 +322,8 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	msg_file[MAXPATH], buf[MAXPATH * 2];
 	FILE	*f;
-	int	status, rc;
+	char	**l;
+	int	i, status, rc;
 
 	bktmp(msg_file, "pullmsg");
 	f = fopen(msg_file, "w");
@@ -334,13 +339,21 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.dont) fprintf(f, " -n");
 	for (rc = opts.list; rc--; ) fprintf(f, " -l");
-	if (opts.quiet) fprintf(f, " -q");
+	if (opts.quiet || opts.pass1) fprintf(f, " -q");
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
 	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
 	if (opts.update_only) fprintf(f, " -u");
-	fputs("\n", f);
+	if (proj_isProduct(0) && (l = file2Lines(0, "BitKeeper/log/MODULES"))) {
+		fprintf(f, " -M\n");
+		fprintf(f, "@MODULES@\n");
+		EACH(l) fprintf(f, "%s\n", l[i]);
+		fprintf(f, "@END@\n");
+		freeLines(l, free);
+	} else {
+		fputs("\n", f);
+	}
 	fclose(f);
 
 	sprintf(buf, "bk _listkey %s -q < '%s' >> '%s'",
@@ -418,7 +431,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 					fprintf(stderr, "%s\n",
 					    "---------------------- "
 					    "Receiving the following csets "
-					    "--------------------------");
+					    "-----------------------");
 					opts.gotsome = 1;
 				}
 			}
@@ -440,7 +453,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		getline2(r, buf, sizeof(buf));
 		if (i) {
 			fprintf(stderr, "%s\n",
-			    "---------------------------------------"
+			    "--------------------------------------"
 			    "-------------------------------------");
 		}
 	}
@@ -548,7 +561,6 @@ pull_ensemble(repos *rps, remote *r, opts opts)
 
 	url = remote_unparse(r);
 	putenv("_BK_TRANSACTION=1");
-	unless (opts.quiet) fprintf(stderr, "Starting Ensemble Pull\n");
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	EACH_REPO (rps) {
 		product = 0;
@@ -559,6 +571,10 @@ pull_ensemble(repos *rps, remote *r, opts opts)
 		} else {
 			name = rps->path;
 			product = 0;
+		}
+		unless (opts.quiet) {
+			printf("=== %s ===\n", name);
+			fflush(stdout);
 		}
 		vp = addLine(0, strdup("bk"));
 		if (rps->new) {
@@ -610,6 +626,10 @@ err:					fprintf(stderr, "Could not chdir to "
 	/* Now we need to make it such that the resolver in the
 	 * product will work */
 	unless (opts.noresolve) {
+		unless (opts.quiet) {
+			printf("=== Resolve in product ===\n");
+			fflush(stdout);
+		}
 		proj_cd2product();
 		if (chdir(ROOT2RESYNC)) {
 			fprintf(stderr,
