@@ -319,7 +319,8 @@ bk push $Q ../copy 2> ERR && {
 	echo fix test
 	exit 1
 }
-grep -q "sane: read only file system" ERR || {
+grep -q "sane: read only file system" ERR || \
+    grep -q "cannot cd to .*/copy/gcc4" ERR || {
 	echo wrong msg
 	exit 1
 }

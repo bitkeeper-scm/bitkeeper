@@ -158,10 +158,11 @@ err:		if (undo_list[0]) unlink(undo_list);
 			unless (r->present) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("undo"));
+			if (quiet) vp = addLine(vp, strdup(qflag));
 			cmd = aprintf("-fa%s", r->deltakey);
 			vp = addLine(vp, cmd);
 			vp = addLine(vp, 0);
-			printf("Undo in %s ...\n", r->path);
+			unless (quiet) printf("Undo in %s ...\n", r->path);
 			fflush(stdout);
 			if (chdir(r->path) || spawnvp(_P_WAIT, "bk", &vp[1])) {
 fail:				fprintf(stderr, "Could not undo %s to %s.\n",
@@ -178,7 +179,13 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 			if (size(SFILES) > 0) {
 				fprintf(stderr,
 				    "Changed/extra files in '%s'\n", r->path);
-				cat(SFILES);
+				if (f = fopen(SFILES, "r")) {
+					while (
+					   (i = fread(buf, 1, sizeof(buf), f)) > 0) {
+						fwrite(buf, 1, i, stderr);
+					}
+					fclose(f);
+				}
 				goto fail;
 			}
 			unlink(SFILES);
@@ -191,7 +198,9 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		 * We may have undone some renames so just call names on
 		 * the set of repos and see what happens.
 		 */
-		f = popen("bk names -", "w");
+		cmd = aprintf("bk names %s -", qflag);
+		f = popen(cmd, "w");
+		free(cmd);
 		EACH_REPO(r) {
 			if (r->new) continue;
 			fprintf(f, "%s/SCCS/s.ChangeSet\n", r->path);
@@ -199,7 +208,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		pclose(f);
 
 		ensemble_free(r);
-		printf("Undo in . ...\n");
+		unless (quiet) printf("Undo in . ...\n");
 	}
 
 	if (save) {

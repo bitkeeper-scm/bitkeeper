@@ -17,11 +17,8 @@ all: os exe
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
-		if [ $${OS} = "BIN-x86-cygwin" ]; \
-		then unset MAKEFLAGS CFLAGS LDFLAGS LD; CC=gcc; \
-		     export MAKEFLAGS CFLAGS LDFLAGS LD CC; \
-		fi;\
 		echo $$i; \
+		unset CFLAGS; \
 		cd $$i; ../../bk get -q checkout; sh checkout; \
 		cd $$OS; test -f Makefile || sh ../configure $(CONFIG); \
 		$(MAKE) \
