@@ -13,6 +13,7 @@
 
 echo $N Create initial ensemble......................................$NL
 nested project
+test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || exit 1
 # Now add some stuff
 for r in gcc gdb
 do
