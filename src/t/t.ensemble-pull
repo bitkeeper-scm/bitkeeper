@@ -1,0 +1,218 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2002 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+#
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create an ensemble...........................................$NL
+nested project
+# add some files
+cd "$HERE/project/gcc"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+done
+bk commit $Q -y"Add $i to file$i"
+cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
+cd "$HERE/project/gdb"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+	bk commit $Q -y"add file $i"
+done
+cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
+echo OK
+
+echo $N Try a null pull..............................................$NL
+cd "$HERE"
+bk clone $Q project null-pull
+cd "$HERE/null-pull"
+bk pull >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q "Nothing to pull." OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a simple pull............................................$NL
+cd "$HERE"
+bk clone $Q project copy
+# add some csets to gcc
+cd "$HERE/project/gcc"
+for i in 1 2 3 4 5
+do
+	bk edit $Q file$i
+	echo "new stuff $i" >> file$i
+	bk delta $Q -y"modify" file$i
+	bk commit $Q -y"Add $i to file$i"
+done
+cd "$HERE/project"
+bk commit $Q -y"more stuff to gcc"
+cd "$HERE/copy"
+bk pull >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -z "`bk changes -qR`" || {
+	echo failed
+	echo Did not pull
+	bk changes -qR
+	cat OUT
+	exit 1
+}
+bk -Ar check -av >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a pull with conflicts that can be automerged.............$NL
+cd "$HERE"
+bk clone $Q null-pull remote
+bk clone $Q remote local
+cd "$HERE"/remote/gcc
+for i in 1 2 3 4 5
+do
+	bk edit $Q file$i
+	echo "new stuff $i" >> file$i
+	bk delta $Q -y"modify" file$i
+	bk commit $Q -y"Add $i to file$i"
+done
+cd "$HERE"/remote
+bk commit $Q -y"remote gcc"
+cd "$HERE"/local/gcc
+for i in 6 7 8 9
+do
+	echo "new stuff $i" >> file$i
+	bk new $Q -y"modify" file$i
+	bk commit $Q -y"Add $i to file$i"
+done
+cd "$HERE"/local
+bk commit $Q -y"local gcc"
+bk pull >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+
+# check must pass
+bk -Ar check -av >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+
+# gcc/ChangeSet is in product's changeset
+cd "$HERE"/local
+cat <<EOF > WANT
+ChangeSet
+gcc/ChangeSet
+EOF
+bk changes -nd:GFILE: -vr+ > GOT
+cmpfiles WANT GOT
+
+# Files were actually pulled
+cd "$HERE"/local/gcc
+cat <<EOF >WANT
+SCCS/s.ChangeSet
+SCCS/s.file1
+SCCS/s.file2
+SCCS/s.file3
+SCCS/s.file4
+SCCS/s.file5
+SCCS/s.file6
+SCCS/s.file7
+SCCS/s.file8
+SCCS/s.file9
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+EOF
+bk sfiles > GOT
+cmpfiles WANT GOT
+
+test -f SCCS/d.ChangeSet && {
+	echo failed
+	echo left dfile
+	pwd
+	ls SCCS
+	exit 1
+}
+echo OK
+
+
+echo $N Try a pull that adds a component.............................$NL
+cd "$HERE/project"
+commercial newcomp
+cd ..
+bk ensemble attach $Q newcomp
+cd "$HERE/copy"
+bk pull >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -d newcomp || {
+	echo failed
+	exit 1
+}
+cd newcomp
+bk -r check -av >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd ..
+bk -Ar check -av >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a pull with a moved component............................$NL
+cd "$HERE"
+rm -rf remote local
+bk clone $Q null-pull remote
+bk clone $Q remote local
+cd "$HERE"/local
+mv gcc gcc4
+bk edit $Q gcc4/ChangeSet
+bk delta $Q -y'rename' gcc4/ChangeSet
+bk commit $Q -y'rename component'
+cd "$HERE"/remote/gcc
+for i in 1 2 3 4 5
+do
+	bk edit $Q file$i
+	echo "new stuff $i" >> file$i
+	bk delta $Q -y"modify" file$i
+	bk commit $Q -y"Add $i to file$i"
+done
+cd "$HERE"/remote
+bk commit $Q -y"remote gcc"
+cd "$HERE"/local
+
+bk pull ../project >OUT 2>&1 && {
+	echo OK
+	echo You fixed it
+	exit 1
+}
+echo failed \(bug\)
+

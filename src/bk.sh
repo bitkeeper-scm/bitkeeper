@@ -174,8 +174,9 @@ _ensemble() {
 		exit 1
 	}
 
-	# bk ensemble add -y<m>|Y<f> url loc [url loc ...]
-	test "X$1" = Xadd && {
+	# bk ensemble [add|attach] -y<m>|Y<f> url loc [url loc ...]
+	test "X$1" = Xadd -o "X$1" = Xattach && {
+		CMD=$1
 		shift
 		COMMENT=
 		QUIET=
@@ -188,22 +189,35 @@ _ensemble() {
 			esac
 		done
 		shift `expr $OPTIND - 1`
-		while [ 1 = 1 ]
-		do	test "X$1" = X -o "X$2" = X && {
-				bk help -s ensemble
-				exit 1
-			}
-			verbose Adding "$1" as "$2" 
-			bk clone $QUIET "$1" "$2" || {
-				echo "ensemble add failed to clone $1"
-				rm -f /tmp/ensemble_add$$
-				exit 1
-			}
-			echo "$2" >> /tmp/ensemble_add$$
-			test "X$3" = X && break
-			shift
-			shift
-		done
+		if [ $CMD = add ]
+		then
+			while [ 1 = 1 ]
+			do
+				test "X$1" = X -o "X$2" = X && {
+					bk help -s ensemble
+					exit 1
+				}
+				verbose Adding "$1" as "$2"
+				bk clone $QUIET "$1" "$2" || {
+					echo "ensemble add failed to clone $1"
+					rm -f ${TMP}/ensemble_add$$
+					exit 1
+				}
+				echo "$2" >> ${TMP}/ensemble_add$$
+				test "X$3" = X && break
+				shift
+				shift
+			done
+		fi
+		if [ $CMD = attach ]
+		then
+			while [ 1 = 1 ]
+			do
+				echo "$1" >> ${TMP}/ensemble_add$$
+				test "X$2" = X && break
+				shift
+			done
+		fi
 		PRODUCT=`bk id`
 		while read x
 		do	verbose "Attaching $x" 
@@ -215,28 +229,30 @@ _ensemble() {
 			bk delta -f -q -y"Ensemble add $x" ChangeSet
 			)
 			rm -f "$x/BitKeeper/log/CSETFILE"
-		done < /tmp/ensemble_add$$
+		done < ${TMP}/ensemble_add$$
 
+		LIST="attached components:"
 		while read x
 		do	echo "$x/SCCS/s.ChangeSet|+"
 			touch "$x/SCCS/d.ChangeSet"
-		done < /tmp/ensemble_add$$ > /tmp/ensemble_commit$$
-		
-		if [ -z "$COMMENT" ]
-		then	bk commit $QUIET -l/tmp/ensemble_commit$$
-		else	bk commit $QUIET "$COMMENT" -l/tmp/ensemble_commit$$
-		fi
-		
+			LIST="$LIST $x"
+		done < ${TMP}/ensemble_add$$ > ${TMP}/ensemble_commit$$
+		test -z "$COMMENT" && COMMENT="-y$LIST"
+		bk commit $QUIET "$COMMENT" -l${TMP}/ensemble_commit$$
 		while read x
 		do	rm -f "$x/BitKeeper/log/CSETFILE"
-		done < /tmp/ensemble_add$$
-		rm -f /tmp/ensemble_add$$ /tmp/ensemble_commit$$
-		verbose ensemble add complete
+		done < ${TMP}/ensemble_add$$
+		rm -f ${TMP}/ensemble_add$$ ${TMP}/ensemble_commit$$
+		verbose ensemble $CMD complete
 		exit 0
 	}
 
 	bk help -s ensemble
 	exit 1
+}
+
+_attach() {
+	_ensemble attach ${1+"$@"}
 }
 
 # superset - see if the parent is ahead

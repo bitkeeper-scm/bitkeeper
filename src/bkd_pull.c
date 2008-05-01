@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "range.h"
+#include "ensemble.h"
 
 private void
 listIt(char *keys, int list)
@@ -23,14 +24,31 @@ cmd_pull_part1(int ac, char **av)
 	char	*probekey_av[] = {"bk", "_probekey", 0, 0};
 	int	status;
 	int	rc = 1;
-	char	*tiprev = "+";
 	FILE	*f;
+	char	*tid = 0;
+	int	c;
 
-	if (av[1] && strneq(av[1], "-r", 2)) {
-		probekey_av[2] =  av[1];
-		tiprev = av[1] + 2; /* just rev */
-	}
 	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
+
+	while ((c = getopt(ac, av, "r;T")) != -1) {
+		switch (c) {
+		    case 'r':
+			probekey_av[2] = aprintf("-r%s", optarg);
+			break;
+		    case 'T':
+			tid = 1;	// On purpose, will go away w/ trans
+			break;
+		    default:
+			system("bk help -s pull");
+			return (1);
+		}
+	}
+
+	if (!tid && proj_isComponent(0)) {
+		out("ERROR-Not a product root\n");
 		drain();
 		return (1);
 	}
@@ -40,6 +58,7 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
+
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");
@@ -50,6 +69,12 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
+	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv1")) {
+		out("ERROR-please upgrade your BK to a SAMv1 "
+		    "aware version (5.0 or later)\n");
+		drain();
+		return (1);
+	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
@@ -57,6 +82,7 @@ cmd_pull_part1(int ac, char **av)
 		return (1);
 	}
 	f = popenvp(probekey_av, "r");
+	if (probekey_av[2]) free(probekey_av[2]);
 	/* look to see if probekey returns an error */
 	unless (fnext(buf, f) && streq("@LOD PROBE@\n", buf)) {
 		fputs(buf, stdout);
@@ -87,7 +113,7 @@ cmd_pull_part2(int ac, char **av)
 	int	rtags, update_only = 0, delay = -1;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
-	char	*rev = 0;
+	char	*rev = 0, *tid = 0;
 	char	*p;
 	FILE	*f;
 	sccs	*s;
@@ -96,7 +122,7 @@ cmd_pull_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "dlnqr|uw|z|")) != -1) {
+	while ((c = getopt(ac, av, "dlnqr|Tuw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -107,6 +133,7 @@ cmd_pull_part2(int ac, char **av)
 		    case 'n': dont = 1; break;
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;
+		    case 'T': tid = 1; break;	// On purpose
 		    case 'w': delay = atoi(optarg); break;
 		    case 'u': update_only = 1; break;
 		    default: break;
@@ -213,6 +240,27 @@ cmd_pull_part2(int ac, char **av)
 	if (bp_updateServer(0, keys, SILENT)) {
 		printf("@UNABLE TO UPDATE BAM SERVER %s@\n", bp_serverURL());
 		rc = 1;
+		goto done;
+	}
+
+	if (!tid && proj_isProduct(0)) {
+		repos	*r;
+		eopts	opts;
+		char	**k = 0;
+
+		bzero(&opts, sizeof(eopts));
+		opts.product = 1;
+		unless (k = file2Lines(0, keys)) {
+			out("ERROR-Could not read list of keys");
+			drain();
+			goto done;
+		}
+		opts.revs = k;
+		r = ensemble_list(opts);
+		printf("@ENSEMBLE@\n");
+		ensemble_toStream(r, stdout);
+		freeLines(k, free);
+		ensemble_free(r);
 		goto done;
 	}
 
