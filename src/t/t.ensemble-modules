@@ -52,7 +52,7 @@ echo $N Try a push, should add libc but not junk ....................$NL
 bk parent $Q -ao ../stuff ../stuff2
 bk push > ../OUT 2>&1 || {
 	echo should not have failed
-	cat 
+	cat ../OUT
 	exit 1
 }
 cd ../stuff
@@ -77,4 +77,44 @@ test -d junk && {
 	cat ../OUT
 	exit 1
 }
+echo OK
+
+echo $N Setup a populate that needs to go backwards .................$NL
+cd ../project
+for i in 1 2
+do	cd libc
+	touch FILE$i
+	bk new $Q FILE$i
+	bk commit $Q -y$i
+	cd ../junk
+	touch FILE$i
+	bk new $Q FILE$i
+	bk commit $Q -y$i
+	cd ..
+	bk commit $Q -y$i
+done
+TIP=`bk changes -qr+ -d:REV: junk`
+echo OK
+
+echo $N Clone backwards, getting just libc, populate junk ...........$NL
+cd "$HERE"
+bk clone -r1.10 -Mlibc/ project behind > OUT 2>&1
+cd behind
+test -d junk && {
+	echo should not have junk
+	exit 1
+}
+test -d libc || {
+	echo should have libc
+	exit 1
+}
+bk populate $Q -Mjunk/ || {
+	echo failed
+	exit 1
+}
+test $TIP = `bk changes -qr+ -d:REV: junk` && {
+	echo failed to roll back junk
+	exit 1
+}
+bk -Aqr check -ac || exit 1
 echo OK

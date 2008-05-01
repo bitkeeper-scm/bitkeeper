@@ -43,6 +43,8 @@ clone_main(int ac, char **av)
 	int	c, rc;
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
+	char	*p;
+	char	revbuf[50];	// md5key
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
@@ -94,6 +96,14 @@ clone_main(int ac, char **av)
 			fprintf(stderr, "populate: not in an ensemble.\n");
 			exit(1);
 		}
+		if (opts->rev) {
+			fprintf(stderr, "populate: rev arg is not allowed.\n");
+			exit(1);
+		}
+		p = backtick("bk changes -r+ -d:MD5KEY:");
+		strcpy(revbuf, p);
+		free(p);
+		opts->rev = revbuf;
 		opts->populate = 1;
 		if (av[optind]) {
 			if (av[optind + 1]) usage(av[0]);
@@ -740,8 +750,14 @@ after(int quiet, char *rev)
 	char	*cmds[10];
 	char	*p;
 	int	i;
+	sccs	*s = 0;
+	delta	*d;
 
 	unless (quiet) {
+		if (isKey(rev)) {
+			s = sccs_csetInit(SILENT|INIT_NOCKSUM);
+			if (d = sccs_findrev(s, rev)) rev = d->rev;
+		}
 		fprintf(stderr, "Removing revisions after %s ...\n", rev);
 	}
 	cmds[i = 0] = "bk";
@@ -754,6 +770,7 @@ after(int quiet, char *rev)
 	putenv("BK_NO_REPO_LOCK=YES");	/* so undo doesn't lock */
 	i = spawnvp(_P_WAIT, "bk", cmds);
 	free(p);
+	sccs_free(s);
 	unless (WIFEXITED(i))  return (-1);
 	return (WEXITSTATUS(i));
 }
