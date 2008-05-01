@@ -421,6 +421,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 				p = addLine(p, strdup(opts->modules[i]));
 			}
 			uniqLines(p, free);
+			chmod("BitKeeper/log/MODULES", 0666);
 			if (lines2File(p, "BitKeeper/log/MODULES")) {
 				perror("BitKeeper/log/MODULES");
 			}

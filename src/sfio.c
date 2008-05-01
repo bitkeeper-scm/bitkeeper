@@ -103,9 +103,8 @@ sfio_main(int ac, char **av)
 	opts->newline = '\n';
 	opts->recurse = 1;
 	opts->prefix = "";
-	opts->doModes = 1;
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefHiKLlmMopP;qr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefHiKLlmopP;qr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -136,8 +135,7 @@ sfio_main(int ac, char **av)
 			opts->mode = M_LIST;
 			break; 
 		    case 'P': opts->prefix = optarg; break;
-		    case 'm': /* default */ break;
-		    case 'M': opts->doModes = 0; break;
+		    case 'm': opts->doModes = 1; break; 	/* doc 2.0 */
 		    case 'q': opts->quiet = 1; break; 		/* doc 2.0 */
 		    case 'r': opts->newline = '\r'; break;
 		    default:

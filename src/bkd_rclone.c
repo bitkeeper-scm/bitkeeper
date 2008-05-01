@@ -251,10 +251,13 @@ cmd_rclone_part2(int ac, char **av)
 
 		/*
 		 * Save the MODULES file.
+		 * chmod because sfio w/o perms doesn't leave it RW.
 		 */
-		if (opts.modules &&
-		    lines2File(opts.modules, "BitKeeper/log/MODULES")) {
-			perror("BitKeeper/log/MODULES");
+		if (opts.modules) {
+			chmod("BitKeeper/log/MODULES", 0666);
+		    	if (lines2File(opts.modules, "BitKeeper/log/MODULES")) {
+				perror("BitKeeper/log/MODULES");
+			}
 		}
 	}
 done:
