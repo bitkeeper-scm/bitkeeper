@@ -1,6 +1,7 @@
 #include "sccs.h"
 #include "bkd.h"
 #include "bam.h"
+#include "ensemble.h"
 
 private FILE	*server(int recurse);
 

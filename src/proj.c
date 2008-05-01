@@ -891,12 +891,12 @@ proj_samerepo(char *source, char *dest)
 	return (rc);
 }
 
-int
+project *
 proj_isResync(project *p)
 {
 	unless (p) p = curr_proj();
 
-	return (p && p->rparent);
+	return (p->rparent);
 }
 
 /*
