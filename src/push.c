@@ -303,7 +303,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 				close(fd);
 				unlink(rev_list);
 				if (r->type == ADDR_HTTP) disconnect(r, 2);
-				return (1); /* needed to force bkd unlock */
+				return (-1); /* needed to force bkd unlock */
 		    case -3:	unless (opts.forceInit) {
 		    			getMsg("no_repo", 0, 0, opts.out);
 					if (r->type == ADDR_HTTP) {

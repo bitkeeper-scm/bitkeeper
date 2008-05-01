@@ -333,7 +333,10 @@ echo $N push to unrelated project should error ......................$NL
 cd "$HERE"
 fresh_commercial unrelated
 cd "$HERE/project"
-bk push "$HERE/unrelated" > push.out 2>&1
+bk push "$HERE/unrelated" > push.out 2>&1 && {
+   echo should have failed
+   exit 1
+}
 grep -q "trying to synchronize with an unrelated" push.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
