@@ -289,27 +289,6 @@ echo $N Try a push of a renamed component ...........................$NL
 cd "$HERE"
 rm -fr project copy
 nested project
-cd ..
-bk clone $Q project copy
-cd copy
-mv gcc gcc4
-bk edit $Q gcc4/ChangeSet
-bk delta $Q -y'rename' gcc4/ChangeSet
-bk commit $Q -y'rename component'
-bk push $Q 2> ERR && {
-	echo fix test
-	exit 1
-}
-grep -q "cannot cd to .*/project/gcc4" ERR || {
-	echo wrong msg
-	exit 1
-}
-echo "failed (bug rename component)"
-
-echo $N Try a push of a renamed component using different cmd line ..$NL
-cd "$HERE"
-rm -fr project copy
-nested project
 bk clone $Q . ../copy
 mv gcc gcc4
 bk edit $Q gcc4/ChangeSet
@@ -319,12 +298,12 @@ bk push $Q ../copy 2> ERR && {
 	echo fix test
 	exit 1
 }
-grep -q "sane: read only file system" ERR || \
-    grep -q "cannot cd to .*/copy/gcc4" ERR || {
+grep -q "cannot cd to .*/copy/gcc4" ERR || {
 	echo wrong msg
+	cat ERR
 	exit 1
 }
 # clean up litter so doit won't whine
 cd ..
 rm -fr project
-echo "failed (bug sane failure)"
+echo "failed (bug )"

@@ -96,6 +96,8 @@ _make_repo() {
 		    BitKeeper/tmp/x "gcc" BitKeeper/tmp/x "gdb"
 		bk commit -q -y'components'
 		rm -fr BitKeeper/tmp/x
+		touch gcc/BitKeeper/tmp/saveme
+		touch gdb/BitKeeper/tmp/saveme
 	)
 
 	# Make a cached copy
