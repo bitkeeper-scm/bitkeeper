@@ -12,6 +12,7 @@
 struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
+	u32	verbose:1;		/* -v: more details */
 	u32	link:1;			/* -l: lclone-mode */
 	u32	populate:1;		/* av[0] eq populate */
 	int	delay;			/* wait for (ssh) to drain */
@@ -48,7 +49,7 @@ clone_main(int ac, char **av)
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
-	while ((c = getopt(ac, av, "B;dE:lM;qr;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:lM;qr;vw|z|")) != -1) {
 		unless ((c == 'r') || (c == 'M')) {
 			if (optarg) {
 				opts->av = addLine(opts->av,
@@ -73,6 +74,7 @@ clone_main(int ac, char **av)
 			break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
+		    case 'v': opts->verbose = 1; break;
 		    case 'w': opts->delay = atoi(optarg); break; /* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			opts->gzip = optarg ? atoi(optarg) : 6;
@@ -112,7 +114,12 @@ clone_main(int ac, char **av)
 			freeLines(p, free);
 			sprintf(revbuf, "bk repogca -5");
 		}
-		p = backtick(revbuf);
+		/*
+		 * They may not have this key in which case it will fail.
+		 * The "fix" is to tell them to push first.  Annoying but
+		 * the other approach of repogca meant we might undo locally.
+		 */
+		p = backtick("bk changes -r+ -nd:MD5KEY:");
 		strcpy(revbuf, p);
 		free(p);
 		opts->rev = revbuf;
@@ -251,22 +258,27 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	char	*url;
 	char	**vp;
 	char	*name, *path;
-	int	status, i, rc = 0;
+	int	status, i, n, which, rc = 0;
 	project	*proj;
 
 	url = remote_unparse(r);
 	putenv("_BK_TRANSACTION=1");
+	n = 0;
+	EACH_REPO(repos) if (repos->present) n++;
+	which = 1;
 	EACH_REPO(repos) {
 		if (streq(repos->path, ".")) {
 			if (opts->populate) continue;
-			name = "Product";
 			putenv("_BK_NO_CHECK=1");
+			safe_putenv("_BK_REPO_PREFIX=%s", basenm(local));
 		} else {
 			name = repos->path;
 			putenv("_BK_NO_CHECK=");
+			safe_putenv("_BK_REPO_PREFIX=%s/%s", basenm(local), repos->path);
 		}
+		name = getenv("_BK_REPO_PREFIX");
 		
-		unless (opts->quiet) printf("=== %s ===\n", name);
+		unless (opts->quiet) printf("=== %s (%d of %d) ===\n", name, which++, n);
 		fflush(stdout);
 
 		unless (repos->present) {
@@ -332,7 +344,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 	if (local && exists(local) && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
-		usage(av[0]);
+		exit(1);
 	}
 	if (local ? test_mkdirp(local) : access(".", W_OK)) {
 		fprintf(stderr, "clone: %s: %s\n",
@@ -439,7 +451,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 	// XXX - would be nice if we did this before bailing out on any of
 	// the error/license conditions above but not when we have an ensemble.
-	unless (opts->quiet) {
+	if (opts->verbose || !getenv("_BK_TRANSACTION")) {
 		remote	*l = remote_parse(local, REMOTE_BKDURL);
 
 		fromTo("Clone", r, l);
@@ -457,7 +469,10 @@ clone(char **av, remote *r, char *local, char **envVar)
 	rc = 1;
 
 	/* eat the data */
-	if (sfio(r, 0, basenm(local)) != 0) {
+	unless (p = getenv("_BK_REPO_PREFIX")) {
+		p = basenm(local);
+	}
+	if (sfio(r, 0, p) != 0) {
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
@@ -500,7 +515,7 @@ done:	if (rc) {
 	if (proj_root(0) && (rc != 2)) trigger("clone", "post");
 
 	repository_unlock(0);
-	unless (rc || opts->quiet) {
+	unless (rc || !opts->verbose || getenv("_BK_NO_CHECK")) {
 		fprintf(stderr, "Clone completed successfully.\n");
 	}
 	return (rc);
@@ -549,13 +564,13 @@ clone2(remote *r)
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
-	sccs_rmUncommitted(opts->quiet, f);
+	sccs_rmUncommitted(!opts->verbose, f);
 	fclose(f);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts->rev) {
-		rc = after(opts->quiet, opts->rev);
+		rc = after(!opts->verbose, opts->rev);
 		if (rc == UNDO_SKIP) {
 			/* undo exits 2 if it has no work to do */
 			goto docheck;
@@ -566,14 +581,11 @@ clone2(remote *r)
 		}
 	} else {
 docheck:	/* undo already runs check so we only need this case */
-		unless (opts->quiet) {
-			fprintf(stderr, "Running consistency check ...\n");
-		}
-		p = opts->quiet ? "-fT" : "-fvT";
+		p = opts->verbose ? "-fvT" : "-fT";
 		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(checkfiles, p);
+			rc = run_check(!opts->verbose, checkfiles, p);
 		} else {
-			rc = run_check(0, p);
+			rc = run_check(!opts->verbose, 0, p);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
@@ -657,10 +669,10 @@ sfio(remote *r, int BAM, char *prefix)
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
 	if (BAM) cmds[++n] = "-B";
-	if (opts->quiet) {
-		cmds[++n] = "-q";
-	} else {
+	if (opts->verbose) {
 		cmds[++n] = aprintf("-P%s/", prefix);
+	} else {
+		cmds[++n] = "-q";
 	}
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
@@ -672,7 +684,7 @@ sfio(remote *r, int BAM, char *prefix)
 	gunzipAll2fh(r->rfd, f, &(opts->in), &(opts->out));
 	fclose(f);
 	waitpid(pid, &status, 0);
-	unless (opts->quiet) {
+	if (opts->verbose) {
 		if (opts->gzip) {
 			fprintf(stderr, "%s uncompressed to %s, ",
 			    psize(opts->in), psize(opts->out));

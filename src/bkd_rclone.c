@@ -369,21 +369,19 @@ private int
 rclone_end(opts *opts)
 {
 	int	rc;
+	int	quiet = !opts->verbose;
 
 	/* remove any uncommited stuff */
-	sccs_rmUncommitted(!opts->verbose, 0);
+	sccs_rmUncommitted(quiet, 0);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts->rev) {
-		rc = after(!opts->verbose, opts->rev);
+		rc = after(quiet, opts->rev);
 		if (rc == UNDO_SKIP) goto docheck;
 	} else {
 docheck:	/* undo already runs check so we only need this case */
-		if (opts->verbose) {
-			fprintf(stderr, "running consistency check ...\n");
-		}
-		rc = run_check(0, opts->verbose ? "-fvT" : "-fT");
+		rc = run_check(quiet, 0, quiet ? "-fT" : "-fvT");
 	}
 	return (rc);
 }

@@ -254,17 +254,15 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 	idcache_update(checkfiles);
 	proj_restoreAllCO(0, 0);
 
-	unless (quiet) printf("Running consistency check...\n");
-	fflush(stdout);
 	if (fromclone) {
 		p = quiet ? "-fT" : "-fvT";
 	} else {
 		p = quiet ? "-f" : "-fv";
 	}
 	if (proj_configbool(0, "partial_check")) {
-		rc = run_check(checkfiles, p);
+		rc = run_check(quiet, checkfiles, p);
 	} else {
-		rc = run_check(0, p);
+		rc = run_check(quiet, 0, p);
 	}
 	unlink(checkfiles);
 	free(checkfiles);

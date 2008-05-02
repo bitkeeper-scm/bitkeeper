@@ -1347,17 +1347,22 @@ unsafe_path(char *s)
  * Otherwise do a full check.
  */
 int
-run_check(char *flist, char *opts)
+run_check(int quiet, char *flist, char *opts)
 {
 	int	i, j, ret;
 	struct	stat sb;
 	time_t	now = time(0);
 	time_t	stale;
 	char	buf[20];
+	char	pwd[MAXPATH];
 
 again:
 	assert(!opts || (strlen(opts) < sizeof(buf)));
 	unless (opts && *opts) opts = "--";
+	unless (quiet) {
+		getcwd(pwd, sizeof(pwd));
+		fprintf(stderr, "Running consistency check in %s ...\n", pwd);
+	}
 	if (stale = proj_configsize(0, "check_frequency")) {
 		stale *= DAY;
 	} else {

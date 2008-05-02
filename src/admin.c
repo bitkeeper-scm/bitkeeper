@@ -42,7 +42,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;O;p|r;S;t|y|Z|0DhHnqsTuz"))
+	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;O;p|P|r;S;t|y|Z|0DhHnqsTuz"))
 	       != -1) {
 		switch (c) {
 		/* user|group */
@@ -68,6 +68,7 @@ admin_main(int ac, char **av)
 		   		/* NEWCKSUM done in sccs_admin */
 				break;
 		/* pathname */
+		    case 'P':	dopath++;
 		    case 'p':	path = optarg;			/* undoc */
 		    		flags |= ADMIN_SHUTUP|NEWCKSUM;
 				dopath++;
@@ -160,7 +161,7 @@ admin_main(int ac, char **av)
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
 	 */
-	if (rev && (!(flags & NEWFILE) && !merge && !m && !nextf)) {
+	if (rev && (!(flags & NEWFILE) && !merge && !m && !nextf && !path)) {
 		fprintf(stderr, "%s %s\n",
 		    "admin: revision may only be specified with",
 		    "-i and/or -n or -M or -m or -f or -F\n");
@@ -221,8 +222,16 @@ admin_main(int ac, char **av)
 			continue;
 		}
 		if (dopath) {
-			delta	*top = sccs_top(sc);
-			sccs_parseArg(top, 'P', path ? path : sc->gfile, 0); 
+			delta	*d;
+
+			for (d = sc->table; (dopath == 2) && d; d = d->next) {
+				unless (d->next) break;
+				d->pathname = path;
+				d->flags |= D_DUPPATH;
+				d->flags |= D_NOPATH;
+			}
+			d = rev ? sccs_findrev(sc, rev) : sccs_top(sc);
+			sccs_parseArg(d, 'P', path ? path : sc->gfile, 0); 
 		}
 		if (newCset) {
 			sccs_parseArg(sc->tree, 'B', csetFile, 0);

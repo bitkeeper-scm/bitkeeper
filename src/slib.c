@@ -15889,7 +15889,7 @@ sccs_userfile(sccs *s)
 {
 	char	*pathname;
 
-	if (CSET(s))		/* ChangeSet */
+	if (CSET(s) && !proj_isComponent(s->proj))		/* ChangeSet */
 		return 0;
 
 	pathname = sccs_ino(s)->pathname;
