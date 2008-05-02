@@ -352,10 +352,10 @@ proj_config(project *p)
 	if (p->config) return (p->config);
 	if (p->rparent) {
 		/* If RESYNC doesn't have a config file, then don't use it. */
-		p->config = loadConfig(p->root, 1);
+		p->config = loadConfig(p, 1);
 		unless (p->config) return (proj_config(p->rparent));
 	} else {
-		p->config = loadConfig(p->root, 0);
+		p->config = loadConfig(p, 0);
 	}
 	return (p->config);
 }

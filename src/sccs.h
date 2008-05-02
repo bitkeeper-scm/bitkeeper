@@ -1035,7 +1035,7 @@ delta	*user_get(delta *);
 char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
-MDBM	*loadConfig(char *root, int forcelocal);
+MDBM	*loadConfig(project *p, int forcelocal);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s);
 int	sccs_rm(char *name, int force);
