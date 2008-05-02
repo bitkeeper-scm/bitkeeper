@@ -238,6 +238,30 @@ EOF
 cmpfiles WANT BitKeeper/log/MODULES
 echo OK
 
+echo $N Update a component now that it is here ......................$NL
+cd gdb
+bk edit $Q file1
+bk delta $Q -fyempty file1
+bk commit $Q -ytouch
+cd ..
+bk commit $Q -ytouch
+echo OK
+
+echo $N Pull in new cset without component, then populate ...........$NL
+cd "$HERE/mynewgcc2"
+bk pull $Q
+BEFORE=`bk changes -r+ -nd:I:`
+bk populate $Q -Mgdb/ "$HERE/project"
+# without accompanying unfix to clone, this is how it used to fail:
+AFTER=`bk changes -r+ -nd:I:`
+test "$BEFORE" = "$AFTER" && {
+	echo fix test
+	exit 1
+}
+# show they don't match
+# echo was $BEFORE and now $AFTER
+echo "failed (bug )"
+
 # This is somewhat different in that the parent has a MODULES file.
 # In a fully populated tree you wouldn't expect one.
 echo $N clone -Mgcc/ should have only that in MODULES ...............$NL
@@ -317,7 +341,7 @@ test "`cat BitKeeper/log/MODULES`" = "gdb/" || {
 echo OK
 
 echo $N Check that we can populate gdb from elsewhere ...............$NL
-bk populate -Mgdb/ ../project > OUT 2>&1
+bk populate -Mgdb/ ../mynewgcc > OUT 2>&1
 test -d gdb -a -f gdb/SCCS/s.ChangeSet || {
 	echo failed
 	cat OUT
