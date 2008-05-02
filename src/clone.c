@@ -451,7 +451,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 
 	// XXX - would be nice if we did this before bailing out on any of
 	// the error/license conditions above but not when we have an ensemble.
-	if (opts->verbose || !getenv("_BK_TRANSACTION")) {
+	if (!opts->quiet &&
+	    (!getenv("_BK_TRANSACTION") || opts->verbose)) {
 		remote	*l = remote_parse(local, REMOTE_BKDURL);
 
 		fromTo("Clone", r, l);
