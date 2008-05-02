@@ -55,13 +55,13 @@ pwd_main(int ac, char **av)
 #endif
 	switch (bk_rpath) {
 	    case 0: printf("%s\n", p); break;
-	    case 1: printf("%s\n", _relativeName(p, 1, 1, 1, 0)); break;
+	    case 1: printf("%s\n", _relativeName(".", 1, 1, 1, 0)); break;
 	    case 2: 
 		unless (proj_product(0)) {
 			fprintf(stderr, "Not in an ensemble.\n");
 			exit(1);
 		}
-		printf("%s\n", _relativeName(p, 1, 1, 1, proj_product(0)));
+		printf("%s\n", _relativeName(".", 1, 1, 1, proj_product(0)));
 		break;
 	}
 	return (0);
