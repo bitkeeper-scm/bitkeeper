@@ -78,6 +78,32 @@ test "`cat GOT`" = "$ROOTKEY" || {
 }
 echo OK
 
+echo $N Check nested configs ........................................$NL
+bk edit $Q BitKeeper/etc/config ../BitKeeper/etc/config || exit 1
+cat <<EOF >> BitKeeper/etc/config
+a: 1
+b: 2
+c: 3
+EOF
+cat <<EOF >> ../BitKeeper/etc/config
+a: 1p!
+b: 2p
+d: 4p
+EOF
+test X`bk config a` = X1p || exit 1
+test X`bk config b` = X2 || exit 1
+test X`bk config c` = X3 || exit 1
+test X`bk config d` = X4p || exit 1
+cd ..
+# make sure the trailing ! gets stripped
+test X`bk config a` = X1p || exit 1
+test X`bk config b` = X2p || exit 1
+test X`bk config c` = X || exit 1
+test X`bk config d` = X4p || exit 1
+cd gcc
+bk unedit $Q BitKeeper/etc/config ../BitKeeper/etc/config || exit 1
+echo OK
+
 echo $N Check dspecs ................................................$NL
 cd "$HERE/project"
 test "`bk log -r+ -nd:FILE: gcc/ChangeSet`" = gcc/ChangeSet || {

@@ -3764,6 +3764,7 @@ loadRepoConfig(char *root)
 	sccs	*s = 0;
 	char	config[MAXPATH];
 
+	unless (root) return (0);
 	/*
 	 * If the config is already checked out, use that.
 	 */
@@ -3871,13 +3872,24 @@ loadEnvConfig(MDBM *db)
  * if forcelocal is set, then we must find a repo config file.
  */
 MDBM *
-loadConfig(char *root, int forcelocal)
+loadConfig(project *p, int forcelocal)
 {
 	MDBM	*db;
+	project	*prod;
+	char	*config;
 
-	unless (db = loadRepoConfig(root)) {
+	unless (db = loadRepoConfig(proj_root(p))) {
 		if (forcelocal) return (0);
 		db = mdbm_mem();
+	}
+	if (proj_isComponent(p)) {
+		unless (prod = proj_isResync(p)) prod = p;
+		prod = proj_product(prod);
+
+		/* fetch config from product */
+		config = proj_fullpath(prod, "BitKeeper/etc/config");
+		unless (exists(config)) get(config, SILENT|GET_EXPAND, "-");
+		config2mdbm(db, config);
 	}
 	loadDotBkConfig(db);
 	unless (getenv("BK_REGRESSION")) loadGlobalConfig(db);
@@ -4045,7 +4057,16 @@ usage:			sys("bk", "help", "-s", "config", SYS);
 	}
 	if (av[optind]) goto usage;
 
+	/* repo config */
 	if (root = proj_root(0)) {
+		file = aprintf("%s/BitKeeper/etc/config", root);
+		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
+		printconfig(file, 0, cfg);
+		free(file);
+	}
+
+	/* product config */
+	if (proj_isComponent(0) && (root = proj_root(proj_product(0)))) {
 		file = aprintf("%s/BitKeeper/etc/config", root);
 		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
 		printconfig(file, 0, cfg);
