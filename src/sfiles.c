@@ -1508,6 +1508,7 @@ walksfiles(char *dir, walkfn fn, void *data)
 		}
 		free(p);
 	}
+	if (proj_product(0)) opts.ensemble = 1;
 	rc = walkdir(dir, findsfiles, &si);
 	if (proj) {
 		free_globs(ignore);

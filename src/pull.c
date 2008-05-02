@@ -557,6 +557,7 @@ pull_ensemble(repos *rps, remote *r, opts opts)
 	char	*name, *path;
 	char	**comps = 0;
 	MDBM	*idDB;
+	FILE	*f;
 	int	i, rc = 0, product;
 
 	url = remote_unparse(r);
@@ -637,14 +638,26 @@ err:					fprintf(stderr, "Could not chdir to "
 			rc = 1;
 			goto out;
 		}
-		/* go copy all the component's ChangeSet files to the
-		 * product's RESYNC directory */
+		mkdirp("BitKeeper/log");
+		touch("BitKeeper/log/PRODUCT", 0644);
+		/*
+		 * Copy all the component's ChangeSet files to the
+		 * product's RESYNC directory
+		 */
 		EACH (comps) {
 			char	*from, *to;
 			char	*dfile_to, *dfile_from;
 			char	*t;
 
-			mkdirp(comps[i]);
+			mkdirp(t = aprintf("%s/%s", comps[i], BKROOT));
+			free(t);
+			mkdirp(t = aprintf("%s/BitKeeper/log", comps[i]));
+			free(t);
+			t = aprintf("%s/BitKeeper/log/COMPONENT", comps[i]);
+			f = fopen(t, "w");
+			free(t);
+			fprintf(f, "%s\n", comps[i]);
+			fclose(f);
 			to = aprintf("%s/%s", comps[i], CHANGESET);
 			t = strrchr(to, '/');
 			*(++t) = 'd';
