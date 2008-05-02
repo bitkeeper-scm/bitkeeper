@@ -303,7 +303,10 @@ main(int ac, char **av, char **env)
 			goto run;
 		}
 
-		unless (prog = av[optind]) usage();
+		unless (prog = av[optind]) {
+			if (getenv("_BK_ITERATOR")) exit(0);
+			usage();
+		}
 		for (ac = 0; av[ac] = av[optind++]; ac++);
 		if (dashr) {
 			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {

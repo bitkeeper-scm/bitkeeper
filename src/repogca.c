@@ -12,10 +12,11 @@ repogca_main(int ac, char **av)
 	char	*dspec = ":REV:\n";
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "d;k")) != -1) {
+	while ((c = getopt(ac, av, "5d;k")) != -1) {
 		switch (c) {
 		    case 'd': dspec = optarg; break;
 		    case 'k': dspec = ":KEY:\n"; break;
+		    case '5': dspec = ":MD5KEY:\n"; break;
 		    default:  system("bk help -s repogca"); return (1);
 		}
 	}

@@ -353,7 +353,7 @@ ensemble_list_main(int ac, char **av)
 		}
 	}
 	if (modules) opts.modules = module_list(modules, 0);
-
+	unless (opts.revs || opts.rev) opts.rev = "+";
 	unless (want) want = L_PATH;
 	if (input) {
 		r = ensemble_fromStream(r, stdin);
@@ -563,6 +563,7 @@ ensemble_each(int quiet, int ac, char **av)
 		return (1);
 	}
 	EACH_REPO(list) {
+		unless (list->present) continue;
 		unless (quiet) {
 			printf("===== %s =====\n", list->path);
 			fflush(stdout);
