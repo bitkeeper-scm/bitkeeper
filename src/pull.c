@@ -558,11 +558,24 @@ pull_ensemble(repos *rps, remote *r, opts opts)
 	char	**comps = 0;
 	MDBM	*idDB;
 	FILE	*f;
-	int	i, rc = 0, product;
+	int	i, rc = 0, missing = 0, product;
 
 	url = remote_unparse(r);
 	putenv("_BK_TRANSACTION=1");
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	EACH_REPO (rps) {
+		if (rps->present) continue;
+		fprintf(stderr,
+		    "pull: %s is missing in %s\n", rps->path, url);
+		missing++;
+	}
+	if (missing) {
+		fprintf(stderr,
+		    "pull: update aborted due to %d missing components.\n",
+		    missing);
+		rc = 1;
+		goto out;
+	}
 	EACH_REPO (rps) {
 		product = 0;
 		proj_cd2product();
@@ -689,6 +702,7 @@ err:					fprintf(stderr, "Could not chdir to "
 		chdir(RESYNC2ROOT);
 	}
 out:	if (comps) freeLines(comps, free);
+	free(url);
 	putenv("_BK_TRANSACTION=");
 	return (rc);
 }

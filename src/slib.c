@@ -16269,6 +16269,20 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	} else {
 		char	*t, *r;
 
+		/*
+		 * For sparse trees we need to short circuit the inits
+		 * ChangeSet files that are not there or we will init
+		 * our changeset file over and over again only to find
+		 * that the key doesn't match.
+		 *
+		 * XXX - need to talk to Wayne about the localp thing
+		 * he did below.  Why is that better than 0?
+		 */
+		if (changesetKey(key) &&
+	            proj_isProduct(0) && !streq(key, proj_rootkey(0))) {
+		    	return (0);
+		}
+
 		for (t = k.dptr; *t++ != '|'; );
 		for (r = t; *r != '|'; r++);
 		assert(*r == '|');

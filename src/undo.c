@@ -640,5 +640,5 @@ update_log_markers(int verbose)
 		}
 	}
 	sccs_free(s);
-	if (valid_marker) updLogMarker(verbose, stderr);
+	if (valid_marker) updLogMarker();
 }

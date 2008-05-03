@@ -633,6 +633,8 @@ mkDeterministicKeys(void)
 	fix_delta(oldest, d2, 1);
 	sccs_newchksum(cset);
 	sccs_free(cset);
+	unlink("BitKeeper/log/ROOTKEY");
+	proj_reset(0);
 }
 
 typedef struct {
