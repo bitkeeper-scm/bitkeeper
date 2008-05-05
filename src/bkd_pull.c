@@ -33,7 +33,7 @@ cmd_pull_part1(int ac, char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "r;T")) != -1) {
+	while ((c = getopt(ac, av, "denlqr;Tz|")) != -1) {
 		switch (c) {
 		    case 'r':
 			probekey_av[2] = aprintf("-r%s", optarg);
@@ -41,6 +41,11 @@ cmd_pull_part1(int ac, char **av)
 		    case 'T':
 			tid = 1;	// On purpose, will go away w/ trans
 			break;
+		    case 'd':
+		    case 'e':
+		    case 'l':
+		    case 'q':
+		    case 'z': /* ignore */ break;
 		    default:
 			system("bk help -s pull");
 			return (1);

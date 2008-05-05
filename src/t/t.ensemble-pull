@@ -187,6 +187,9 @@ bk -Ar check -av >OUT 2>&1 || {
 }
 echo OK
 
+# Not until we do renames
+exit 0
+
 echo $N Try a pull with a moved component............................$NL
 cd "$HERE"
 rm -rf remote local

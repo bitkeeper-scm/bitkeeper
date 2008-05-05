@@ -91,6 +91,7 @@ clone_main(int ac, char **av)
 		exit(1);
 	}
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
+	unless (proj_isEnsemble(0)) opts->verbose = !opts->quiet;
 	if (av[optind]) localName2bkName(av[optind], av[optind]);
 	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
 	if (streq(av[0], "populate")) {
@@ -266,7 +267,7 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	n = 0;
 	EACH_REPO(repos) {
 		unless (repos->present) continue;
-		if (streq(".", repos->path)) continue;
+		if (opts->populate && streq(".", repos->path)) continue;
 		n++;
 	}
 	which = 1;
