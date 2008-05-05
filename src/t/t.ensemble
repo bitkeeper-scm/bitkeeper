@@ -215,11 +215,11 @@ echo $N Check iterator from product root - noisy mode ...............$NL
 cd "$HERE/project"
 bk -A pwd -R > GOT
 cat > WANT <<EOF
-===== . =====
+#### . ####
 .
-===== gcc =====
+#### gcc ####
 gcc
-===== gdb =====
+#### gdb ####
 gdb
 EOF
 cmpfiles WANT GOT
@@ -240,11 +240,11 @@ echo $N Check iterator from component - noisy mode ..................$NL
 cd "$HERE/project/gcc"
 bk -A pwd -R > GOT
 cat > WANT <<EOF
-===== . =====
+#### . ####
 .
-===== gcc =====
+#### gcc ####
 gcc
-===== gdb =====
+#### gdb ####
 gdb
 EOF
 cmpfiles WANT GOT
@@ -253,10 +253,10 @@ echo OK
 echo $N Check iterator with get .....................................$NL
 bk -UAr get > GOT 2>&1
 cat > WANT <<EOF
-===== . =====
-===== gcc =====
+#### . ####
+#### gcc ####
 name 1.1: 1 lines
-===== gdb =====
+#### gdb ####
 name 1.1: 1 lines
 EOF
 cmpfiles GOT WANT

@@ -17,7 +17,7 @@ r2c_main(int ac, char **av)
 	sccs	*s, *cset;
 	char	*t, *key, *shortkey;
 	FILE	*f = 0;
-	int	len;
+	int	rc, len;
 	char	tmpfile[MAXPATH];
 	char	buf[MAXKEY*2];
 	RANGE	rargs = {0};
@@ -32,7 +32,17 @@ r2c_main(int ac, char **av)
 		perror(name);
 		exit(1);
 	}
-	if (chdir(proj_root(s->proj))) {
+	unless (rc = chdir(proj_root(s->proj))) {
+		/*
+		 * This is a little bogus because it forces the view to the
+		 * product even if they were stupidly doing r2c on the 
+		 * changeset file.  Not sure what to do about it.
+		 */
+		if (CSET(s) && proj_isComponent(s->proj)) {
+			rc = proj_cd2product();	
+		}
+	}
+	if (rc) {
 		fprintf(stderr, "r2c: cannot find package root.\n");
 		exit(1);
 	}

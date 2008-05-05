@@ -181,10 +181,17 @@ err:		if (undo_list[0]) unlink(undo_list);
 				    r->path, which++, n);
 				fflush(stdout);
 			}
-			if (chdir(r->path) || spawnvp(_P_WAIT, "bk", &vp[1])) {
+			if (chdir(r->path)) {
+				fprintf(stderr,
+				    "Could not chdir %s\n", r->path);
+				exit(199);
+			}
+			rc = spawnvp(_P_WAIT, "bk", &vp[1]);
+			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
+			if (rc && !(fromclone && (rc == UNDO_SKIP))) {
 fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 				    r->path, r->deltakey);
-				exit(123);
+				exit(199);
 			}
 			freeLines(vp, free);
 			proj_cd2product();

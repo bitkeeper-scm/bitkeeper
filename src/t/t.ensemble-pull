@@ -198,7 +198,7 @@ bk edit $Q gcc4/ChangeSet
 bk delta $Q -y'rename' gcc4/ChangeSet
 bk commit $Q -y'rename component'
 cd "$HERE"/remote/gcc
-for i in 1 2 3 4 5
+for i in 1 
 do
 	bk edit $Q file$i
 	echo "new stuff $i" >> file$i
@@ -209,10 +209,15 @@ cd "$HERE"/remote
 bk commit $Q -y"remote gcc"
 cd "$HERE"/local
 
-bk pull ../project >OUT 2>&1 && {
-	echo OK
-	echo You fixed it
+bk pull ../project >OUT 2>&1 || {
+	echo failed
+	cat OUT
 	exit 1
 }
-echo failed \(bug\)
+test -d gcc && {
+	echo should not have made gcc
+	find gcc
+	# exit 1
+}
+echo '(bug)'
 
