@@ -1142,7 +1142,7 @@ OK:	EACH_REPO(rps) {
 		name = streq(rps->path, ".")
 			? "Product"
 			: rps->path;
-		if (opts.verbose) printf("=== %s ===\n", name);
+		if (opts.verbose) printf("#### %s ####\n", name);
 		fflush(stdout);
 		unless (rps->present) {
 			// warning message goes here when modules are done

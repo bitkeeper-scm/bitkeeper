@@ -587,7 +587,7 @@ pull_ensemble(repos *rps, remote *r, opts opts)
 			product = 0;
 		}
 		unless (opts.quiet) {
-			printf("=== %s ===\n", name);
+			printf("#### %s ####\n", name);
 			fflush(stdout);
 		}
 		vp = addLine(0, strdup("bk"));
@@ -641,7 +641,7 @@ err:					fprintf(stderr, "Could not chdir to "
 	 * product will work */
 	unless (opts.noresolve) {
 		unless (opts.quiet) {
-			printf("=== Resolve in product ===\n");
+			printf("#### Resolve in product ####\n");
 			fflush(stdout);
 		}
 		proj_cd2product();

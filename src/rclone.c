@@ -178,7 +178,7 @@ rclone_ensemble(remote *r)
 			vp = addLine(vp, aprintf("%s/%s", url, rps->path));
 		}
 		vp = addLine(vp, 0);
-		if (opts.verbose) printf("=== %s ===\n", name);
+		if (opts.verbose) printf("#### %s ####\n", name);
 		fflush(stdout);
 		unless (rps->present) {
 			if (opts.modules && opts.verbose) {

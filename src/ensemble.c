@@ -308,6 +308,7 @@ ensemble_list_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.product = 1;
 
+	// XXX -C for components?
 	while ((c = getopt(ac, av, "1il;M;opr;u")) != -1) {
 		switch (c) {
 		    case '1':
@@ -547,10 +548,11 @@ ensemble_each(int quiet, int ac, char **av)
 	getoptReset();
 	// has to track bk.c's getopt string
 	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
+		if (c == 'C') opts.product = 0;
 		unless (c == 'M') continue;
 		if (optarg[0] == '|') {
 			opts.rev = &optarg[1];
-		} else if (streq("!.", optarg)) {
+		} else if (streq("!.", optarg)) {	// XXX -M!. == -C
 			opts.product = 0;
 		} else {
 			modules = addLine(modules, optarg);
@@ -565,7 +567,7 @@ ensemble_each(int quiet, int ac, char **av)
 	EACH_REPO(list) {
 		unless (list->present) continue;
 		unless (quiet) {
-			printf("===== %s =====\n", list->path);
+			printf("#### %s ####\n", list->path);
 			fflush(stdout);
 		}
 		chdir(proj_root(p));

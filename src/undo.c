@@ -36,6 +36,7 @@ undo_main(int ac,  char **av)
 	char	*checkfiles;	/* filename of list of files to check */
 	char	*patch = "BitKeeper/tmp/undo.patch";
 	char	*p;
+	char	**nav = 0;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "undo: cannot find package root.\n");
@@ -44,6 +45,14 @@ undo_main(int ac,  char **av)
 
 	fromclone = 0;
 	while ((c = getopt(ac, av, "a:Cfqp;r:sv")) != -1) {
+		unless ((c == 'a') || (c == 'r')) {
+			if (optarg) {
+				nav = addLine(nav,
+				    aprintf("-%c'%s'", c, optarg));
+			} else {
+				nav = addLine(nav, aprintf("-%c", c));
+			}
+		}
 		switch (c) {
 		    case 'a': aflg = 1;				/* doc 2.0 */
 			/* fall though */
@@ -58,8 +67,10 @@ undo_main(int ac,  char **av)
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
 usage:			system("bk help -s undo");
+			freeLines(nav, free);
 			return (UNDO_ERR);
 		}
+		optarg = 0;
 	}
 	unless (rev) goto usage;
 
@@ -95,6 +106,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		}
 		unlink(BACKUP_SFIO);
 		if (rmresync && exists("RESYNC")) rmtree("RESYNC");
+		freeLines(nav, free);
 		return (UNDO_ERR);
 	}
 	EACH (csetrev_list) {
@@ -140,6 +152,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		repos	*r;
 		char	**vp;
 		eopts	opts;
+		int	n = 1, which = 1;
 
 		assert(cset);
 		opts.sc = cset;
@@ -153,17 +166,21 @@ err:		if (undo_list[0]) unlink(undo_list);
 		}
 		sccs_free(cset);
 
+		EACH_REPO(r) if (r->present && !r->new) n++;
 		EACH_REPO(r) {
 			if (r->new) continue;
 			unless (r->present) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("undo"));
-			if (quiet) vp = addLine(vp, strdup(qflag));
+			EACH(nav) vp = addLine(vp, strdup(nav[i]));
 			cmd = aprintf("-fa%s", r->deltakey);
 			vp = addLine(vp, cmd);
 			vp = addLine(vp, 0);
-			unless (quiet) printf("Undo in %s ...\n", r->path);
-			fflush(stdout);
+			unless (quiet) {
+				printf("#### Undo in %s (%d of %d) ####\n",
+				    r->path, which++, n);
+				fflush(stdout);
+			}
 			if (chdir(r->path) || spawnvp(_P_WAIT, "bk", &vp[1])) {
 fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 				    r->path, r->deltakey);
@@ -179,13 +196,9 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 			if (size(SFILES) > 0) {
 				fprintf(stderr,
 				    "Changed/extra files in '%s'\n", r->path);
-				if (f = fopen(SFILES, "r")) {
-					while (
-					   (i = fread(buf, 1, sizeof(buf), f)) > 0) {
-						fwrite(buf, 1, i, stderr);
-					}
-					fclose(f);
-				}
+				p = aprintf("/bin/cat < '%s' 1>&2", SFILES);
+				system(p);
+				free(p);
 				goto fail;
 			}
 			unlink(SFILES);
@@ -208,7 +221,11 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		pclose(f);
 
 		ensemble_free(r);
-		unless (quiet) printf("Undo in . ...\n");
+		unless (quiet) {
+			printf("#### Undo in Product (%d of %d) ####\n",
+			    which++, n);
+			fflush(stdout);
+		}
 	}
 
 	if (save) {

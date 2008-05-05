@@ -207,7 +207,7 @@ main(int ac, char **av, char **env)
 		while ((c =
 		    getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npPqr|RuUxz;")) != -1) {
 			switch (c) {
-			    case '1': case 'a': case 'c': case 'C': case 'd':
+			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
 			    case 'n': case 'p': case 'u': case 'U': case 'x':
 			    case 'h':
@@ -215,6 +215,7 @@ main(int ac, char **av, char **env)
 				break;
 			    case '@': remote = 1; break;
 			    case 'A': all = 1; break;
+			    case 'C': all = 1; break;
 			    case 'M': break;	// for ensemble each
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;

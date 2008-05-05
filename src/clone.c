@@ -264,7 +264,11 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	url = remote_unparse(r);
 	putenv("_BK_TRANSACTION=1");
 	n = 0;
-	EACH_REPO(repos) if (repos->present) n++;
+	EACH_REPO(repos) {
+		unless (repos->present) continue;
+		if (streq(".", repos->path)) continue;
+		n++;
+	}
 	which = 1;
 	EACH_REPO(repos) {
 		if (streq(repos->path, ".")) {
@@ -274,12 +278,15 @@ clone_ensemble(repos *repos, remote *r, char *local)
 		} else {
 			name = repos->path;
 			putenv("_BK_NO_CHECK=");
-			safe_putenv("_BK_REPO_PREFIX=%s/%s", basenm(local), repos->path);
+			safe_putenv("_BK_REPO_PREFIX=%s/%s",
+			    basenm(local), repos->path);
 		}
 		name = getenv("_BK_REPO_PREFIX");
 		
-		unless (opts->quiet) printf("=== %s (%d of %d) ===\n", name, which++, n);
-		fflush(stdout);
+		unless (opts->quiet) {
+			printf("#### %s (%d of %d) ####\n", name, which++, n);
+			fflush(stdout);
+		}
 
 		unless (repos->present) {
 			if (opts->modules && !opts->quiet) {
