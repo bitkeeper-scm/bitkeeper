@@ -43,7 +43,7 @@ VERSION = @VERSION@
 
 # override Solaris make.rules
 .SCCS_GET:
-	bk get -q $@
+	$(Q)bk get -q $@
 
 prefix = @prefix@
 exec_prefix = @exec_prefix@
@@ -91,14 +91,16 @@ info::
 check::
 installcheck::
 
-COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -Ded_PROGRAM=\"$(ed_PROGRAM)\" \
+COMPILE = $(Q)$(CC) -c $(CPPFLAGS) $(DEFS) -Ded_PROGRAM=\"$(ed_PROGRAM)\" \
 	-I. -I$(srcdir) $(CFLAGS)
 
 .c.o:
+	$(if $(Q),@echo CC gnu/patch/$<,)
 	$(COMPILE) $<
 
 patch$(EXEEXT): $(OBJS)
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJS) $(LIBS)
+	$(if $(Q),@echo LINK gnu/patch/$<,)
+	$(Q)$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJS) $(LIBS)
 
 install:: all installdirs
 	$(INSTALL_PROGRAM) patch$(EXEEXT) $(bindir)/$(patch_name)$(EXEEXT)

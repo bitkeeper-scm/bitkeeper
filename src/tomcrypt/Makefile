@@ -6,7 +6,7 @@ RANLIB=ranlib
 
 # Override Solaris make.rules
 .SCCS_GET:
-	bk get -q $@
+	$(Q)bk get -q $@
 
 OBJS =	oldrsa.o \
 	randseed.o \
@@ -153,22 +153,25 @@ HDRS =  oldrsa.h \
 all: libtomcrypt.a
 
 libtomcrypt.a: $(OBJS)
-	$(RM) $@
-	$(AR) $@ $(OBJS)
+	$(if $(Q),@echo AR libtomcrypt.a,)
+	$(Q)$(RM) $@
+	$(Q)$(AR) $@ $(OBJS)
 	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
 
 $(OBJS): $(HDRS)
 
 src/ciphers/aes/aes_enc.o: src/ciphers/aes/aes.c src/ciphers/aes/aes_tab.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -DENCRYPT_ONLY -c $< -o $@
+	$(if $(Q),@echo CC tomcrypt/aes_enc.c,)
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -DENCRYPT_ONLY -c $< -o $@
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) libtomcrypt.a tags.local
+	$(if $(Q),@echo Cleaning tomcrypt,)
+	$(Q)rm -f $(OBJS) libtomcrypt.a tags.local
 
 .PHONY: clobber
 clobber: clean
-	-bk -r. clean
+	-$(Q)bk -r. clean
 
 srcs: $(SRCS) $(HDRS)
 
@@ -177,3 +180,6 @@ tags.local: $(filter-out %/aes_enc.c,$(SRCS)) $(HDRS)
 	ctags -f tomcrypt/$@ --file-tags=yes --c-types=d+f+s+t \
 		$(patsubst %,tomcrypt/%,$^)
 
+.c.o:
+	$(if $(Q),@echo CC tomcrypt/$<,)
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@

@@ -7,16 +7,17 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	dirname.o dirs.o \
 	efopen.o \
 	filecopy.o fileutils.o findpid.o fullname.o fileinfo.o \
-	getnull.o getopt.o \
+	getnull.o getopt.o glob.o \
 	lines.o \
 	mkdir.o \
+	milli.o \
 	mmap.o \
 	putenv.o \
 	rlimit.o rmtree.o \
 	samepath.o sig.o smartrename.o \
 	spawn.o spawnvpio.o spawn_filterpipeline.o \
 	stdioext.o sys.o system.o \
-	tty.o ttyprintf.o \
+	trace.o tty.o ttyprintf.o \
 	utils.o \
 	webencode.o \
 	which.o \
