@@ -16,7 +16,7 @@ efopen(char *env)
 		*p = ':';
 		if (sock >= 0) f = fdopen(sock, "w");
 	} else {
-		f = fopen(DEV_TTY, "w");
+		unless (f = fopen(DEV_TTY, "w")) f = fdopen(2, "w");
 	}
 	if (f) setvbuf(f, 0, _IONBF, 0);
 	return (f);

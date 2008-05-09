@@ -43,30 +43,6 @@ usage(void)
 
 #define	MAXARGS	1024
 
-private char *
-milli(void)
-{
-	struct	timeval	tv;
-	u64	now, start;
-	double	d;
-	static	char time[20];	/* 12345.999\0 plus slop */
-
-	gettimeofday(&tv, 0);
-	unless (getenv("BK_SEC")) {
-		safe_putenv("BK_SEC=%u", (u32)tv.tv_sec);
-		safe_putenv("BK_MSEC=%u", (u32)tv.tv_usec / 1000);
-		d = 0;
-	} else {
-		start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
-		start += (u64)atoi(getenv("BK_MSEC"));
-		now = (u64)tv.tv_sec * (u64)1000;
-		now += (u64)(tv.tv_usec / 1000);
-		d = now - start;
-	}
-	sprintf(time, "%6.3f", d / 1000.0);
-	return (time);
-}
-
 private void
 save_gmon(void)
 {
@@ -87,6 +63,7 @@ main(int ac, char **av, char **env)
 	char	*p, *dir = 0, *locking = 0;
 	char	sopts[30];
 
+	trace_init(av[0]);
 	ltc_mp = ltm_desc;
 	for (i = 3; i < 20; i++) close(i);
 	reserveStdFds();
@@ -321,7 +298,8 @@ main(int ac, char **av, char **env)
 		prog = av[0];
 	}
 
-run:	getoptReset();
+run:	trace_init(prog);	/* again 'cause we changed prog */
+	getoptReset();
 	if (exists("gmon.out")) save_gmon();
 
 #ifdef	WIN32
@@ -482,6 +460,7 @@ cmdlog_exit(void)
 	 */
 	repository_lockcleanup();
 	proj_reset(0);		/* flush data cached in proj struct */
+	trace_free();
 }
 
 private	struct {
@@ -574,7 +553,6 @@ cmdlog_start(char **av, int httpMode)
 		if (i) strcat(cmdlog_buffer, " ");
 		strcat(cmdlog_buffer, av[i]);
 	}
-	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
 	unless (proj_root(0)) return;
 

@@ -127,10 +127,32 @@ extern	char	*optarg;
 int	getopt(int ac, char **av, char *opts);
 void	getoptReset(void);
 
+
+/* glob.c */
+
+typedef struct {
+	char    *pattern;	/* what we want to find */
+	u8      ignorecase:1;	/* duh */
+	u8	want_glob:1;	/* do a glob based search */
+	u8	want_re:1;	/* do a regex based search */
+} search;
+
+char**	globdir(char *dir, char *glob);
+int	is_glob(char *glob);
+char*	match_globs(char *string, char **globs, int ignorecase);
+int	match_one(char *string, char *glob, int ignorecase);
+int	search_either(char *s, search search);
+int	search_glob(char *s, search search);
+int	search_regex(char *s, search search);
+search	search_parse(char *str);
+
 /* mkdir.c */
 int	mkdirp(char *dir);
 int	test_mkdirp(char *dir);
 int	mkdirf(char *file);
+
+/* milli.c */
+char *	milli(void);
 
 /* putenv.c */
 #define	getenv(s)	safe_getenv(s)
@@ -223,6 +245,19 @@ char	*hostaddr(char *);
 int	tcp_pair(int fds[2]);
 char	*peeraddr(int s);
 int	issock(int);
+
+/* trace.c */
+extern	int bk_trace;
+void	trace_init(char *prog);
+void	trace_msg(char *fmt, char *file, int line, const char *function, ...);
+void	trace_free(void);
+
+#define	TRACE(format, args...)	\
+	if (bk_trace) {						\
+		trace_msg(format, __FILE__, __LINE__, __FUNCTION__, ##args); \
+	}
+
+#define	HERE()	TRACE(0, 0)
 
 /* tty.c */
 #define	isatty		myisatty

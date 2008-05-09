@@ -26,7 +26,6 @@ ms_env()
 test "X$G" = X && G=-g
 test "X$CC" = X && CC=gcc
 test "X$LD" = X && LD=$CC
-test "X$WARN" = X && WARN=YES  
 
 KEYFILE=/home/bk/internal/.wish-key
 case "X`uname -s`" in
@@ -114,14 +113,6 @@ case "X`uname -s`" in
 			CCXTRA="$CCXTRA -DLTC_NO_ASM"
 		}
 		;;
-	XOSF1)
-		CC=gcc
-		LD=gcc
-		G=-g
-		CHECK=1
-		WARN=NO
-		export CC LD G WARN
-		;;
 	*)
 		CHECK=1
 		;;
@@ -158,7 +149,10 @@ test -z "$BK_STATIC" || {
 	export BK_STATIC
 }
 
-if [ $WARN = NO ]
-then	make -e WARNINGS= "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
-else	make -e "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
-fi
+V=
+test "x$1" = "x-v" && {
+	V="V=1"
+	shift
+}
+test "x$BK_VERBOSE_BUILD" != "x" && { V="V=1"; }
+make -e $V "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"

@@ -43,10 +43,11 @@ dist:
 
 .PHONY: clean
 clean:
-	$(RM) PS PS2 PS4 ALL
-	rm -rf bk-man
-	$(MAKE) -C man2help clean
-	$(MAKE) -C man2html clean
+	$(if $(Q),@echo Cleaning man,)
+	$(Q)$(RM) PS PS2 PS4 ALL
+	$(Q)rm -rf bk-man
+	$(Q)$(MAKE) -C man2help clean
+	$(Q)$(MAKE) -C man2html clean
 
 clobber: clean
-	bk -r. clean
+	$(Q)bk -r. clean

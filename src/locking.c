@@ -5,17 +5,6 @@
  */
 #include "system.h"
 #include "sccs.h"
-#if 1
-#define	ldebug(x)	if (getenv("BK_DBGLOCKS")) {\
-				pwd(); \
-				ttyprintf("[%u]==> ", getpid()); \
-			} \
-			if (getenv("BK_DBGLOCKS")) ttyprintf x
-private void
-pwd(void) { char p[MAXPATH]; getcwd(p, MAXPATH); ttyprintf("%s ",p); }
-#else
-#define	ldebug(x)
-#endif
 
 /*
  * Return all the lock files which start with a digit, i.e.,
@@ -28,7 +17,7 @@ lockers(char *path)
 	int	i;
 
 	EACH(lines) {
-		ldebug(("DIR=%s/%s\n", path, lines[i]));
+		TRACE("DIR=%s/%s", path, lines[i]);
 		while (lines[i] && !isdigit(lines[i][0])) {
 			removeLineN(lines, i, free);
 		}
@@ -48,15 +37,15 @@ cleandir(char *dir)
 
 	EACH(lines) {
 		sprintf(path, "%s/%s", dir, lines[i]);
-		ldebug(("unlink(%s)\n", path));
+		TRACE("unlink(%s)", path);
 		unlink(path);
 	}
 	freeLines(lines, free);
 	sprintf(path, "%s/lock", dir);
 	unlink(path);
-	ldebug(("unlink(%s)\n", path));
+	TRACE("unlink(%s)", path);
 	rmdir(dir);
-	ldebug(("rmdir(%s)\n", dir));
+	TRACE("rmdir(%s)", dir);
 }
 
 /*
@@ -92,7 +81,7 @@ repository_hasLocks(char *root, char *dir)
 		unless (sccs_stalelock(path, 1)) n++;
 	}
 	freeLines(lines, free);
-	ldebug(("repository_hasLocks(%s/%s) = %d\n", root ?root : ".", dir, n));
+	TRACE("repository_hasLocks(%s/%s) = %d", root ?root : ".", dir, n);
 	return (n);
 }
 
@@ -107,7 +96,7 @@ repository_mine(char type)
 {
 	char path[MAXPATH];
 
-	ldebug(("repository_mine()\n"));
+	TRACE(0, 0);
 	if (type == 'r') {
 		rdlockfile(".", path);
 		return (exists(path));
@@ -121,7 +110,7 @@ global_wrlock(void)
 	char	*p;
 
 	unless (p = getenv("BK_WRITE_LOCK")) p = "/etc/BitKeeper/locks/wrlock";
-	ldebug(("global_lock=%s\n", p));
+	TRACE("global_lock=%s", p);
 	return (p);
 }
 
@@ -131,7 +120,7 @@ global_rdlock(void)
 	char	*p;
 
 	unless (p = getenv("BK_READ_LOCK")) p = "/etc/BitKeeper/locks/rdlock";
-	ldebug(("global_lock=%s\n", p));
+	TRACE("global_lock=%s", p);
 	return (p);
 }
 
@@ -140,7 +129,7 @@ global_rdlocked(void)
 {
 	int	ret = exists(global_rdlock());
 
-	ldebug(("global_rdlocked=%s\n", ret ? "YES" : "NO"));
+	TRACE("global_rdlocked=%s", ret ? "YES" : "NO");
 	return (ret);
 }
 
@@ -149,7 +138,7 @@ global_wrlocked(void)
 {
 	int	ret = exists(global_wrlock());
 
-	ldebug(("global_wrlocked=%s\n", ret ? "YES" : "NO"));
+	TRACE("global_wrlocked=%s", ret ? "YES" : "NO");
 	return (ret);
 }
 
@@ -158,7 +147,7 @@ global_locked(void)
 {
 	int	ret = exists(global_wrlock()) || exists(global_rdlock());
 
-	ldebug(("global_locked=%s\n", ret ? "YES" : "NO"));
+	TRACE("global_locked=%s", ret ? "YES" : "NO");
 	return (ret);
 }
 
@@ -175,7 +164,7 @@ repository_locked(project *p)
 	char	path[MAXPATH];
 
 	unless (root = proj_root(p)) return (0);
-	ldebug(("repository_locked(%s)\n", root));
+	TRACE("repository_locked(%s)", root);
 	if (global_locked()) {
 		ret = 1;
 		goto out;
@@ -183,7 +172,7 @@ repository_locked(project *p)
 	ret = repository_hasLocks(root, READER_LOCK_DIR);
 	unless (ret) {
 		if ((s = getenv("BK_IGNORE_WRLOCK")) && streq(s, "YES")) {
-			ldebug(("repository_locked(%s) = 0\n", root));
+			TRACE("repository_locked(%s) = 0", root);
 			return (0);
 		}
 		ret = repository_hasLocks(root, WRITER_LOCK_DIR);
@@ -193,7 +182,7 @@ repository_locked(project *p)
 			ret = exists(path);
 		}
 	}
-out:	ldebug(("repository_locked(%s) = %d\n", root, ret));
+out:	TRACE("repository_locked(%s) = %d", root, ret);
 	return (ret);
 }
 
@@ -209,7 +198,7 @@ repository_lockers(project *p)
 	int	i, rm;
 
 	unless (root = proj_root(p)) return (0);
-	ldebug(("repository_lockers(%s)\n", root));
+	TRACE("repository_lockers(%s)", root);
 
 	if (global_wrlocked()) {
 		fprintf(stderr, "Entire repository is locked by:\n");
@@ -287,7 +276,7 @@ rdlock(void)
 	char	*root;
 
 	unless (root = proj_root(0)) return (LOCKERR_NOREPO);
-	ldebug(("repository_rdlock(%s)\n", root));
+	TRACE("repository_rdlock(%s)", root);
 
 	/*
 	 * We go ahead and create the lock and then see if there is a
@@ -303,7 +292,7 @@ rdlock(void)
 	rdlockfile(root, path);
 	close(creat(path, 0666));
 	unless (exists(path)) {
-		ldebug(("RDLOCK by %u failed, no perms?\n", getpid()));
+		TRACE("RDLOCK by %u failed, no perms?", getpid());
 		return (LOCKERR_PERM);
 	}
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
@@ -312,11 +301,11 @@ rdlock(void)
 		unlink(path);
 		sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 		(void)rmdir(path);
-		ldebug(("RDLOCK by %u failed, write locked\n", getpid()));
+		TRACE("RDLOCK by %u failed, write locked", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 	write_log("cmd_log", 1, "obtain read lock (%u)", getpid());
-	ldebug(("RDLOCK %u\n", getpid()));
+	TRACE("RDLOCK %u", getpid());
 	return (0);
 }
 
@@ -345,7 +334,7 @@ wrlock(void)
 	char	*root;
 
 	unless (root = proj_root(0)) return (LOCKERR_NOREPO);
-	ldebug(("repository_wrlock(%s)\n", root));
+	TRACE("repository_wrlock(%s)", root);
 
 	sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 	unless (exists(path)) mkdir(path, 0777);
@@ -356,7 +345,7 @@ wrlock(void)
 	sprintf(lock, "%s/%s", root, WRITER_LOCK);
 	if (global_locked() || sccs_lockfile(lock, 0, 0)) {
 		(void)rmdir(path);
-		ldebug(("WRLOCK by %u failed, lockfile failed\n", getpid()));
+		TRACE("WRLOCK by %u failed, lockfile failed", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 
@@ -365,7 +354,7 @@ wrlock(void)
 		sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
-		ldebug(("WRLOCK by %d failed, RESYNC won\n", getpid()));
+		TRACE("WRLOCK by %d failed, RESYNC won", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 
@@ -376,7 +365,7 @@ wrlock(void)
 	    	sccs_unlockfile(lock);
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		(void)rmdir(path);
-		ldebug(("WRLOCK by %u failed, readers won\n", getpid()));
+		TRACE("WRLOCK by %u failed, readers won", getpid());
 		return (LOCKERR_LOST_RACE);
 	}
 	write_log("cmd_log", 1, "obtain write lock (%u)", getpid());
@@ -384,7 +373,7 @@ wrlock(void)
 	 * like the contents of the lock file.  Then we ignore iff that matches.
 	 */
 	putenv("BK_IGNORE_WRLOCK=YES");
-	ldebug(("WRLOCK %u\n", getpid()));
+	TRACE("WRLOCK %u", getpid());
 	return (0);
 }
 
@@ -411,7 +400,7 @@ repository_downgrade(void)
 	char	*root;
 
 	unless (root = proj_root(0)) return (0);
-	ldebug(("repository_downgrade(%s)\n", root));
+	TRACE("repository_downgrade(%s)", root);
 
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	unless (sccs_mylock(path)) {
@@ -435,7 +424,7 @@ repository_downgrade(void)
 void
 repository_unlock(int all)
 {
-	ldebug(("repository_unlock(%d)\n", all));
+	TRACE("repository_unlock(%d)", all);
 	repository_rdunlock(all);
 	repository_wrunlock(all);
 }
@@ -451,7 +440,7 @@ repository_rdunlock(int all)
 		return (0);
 	}
 	unless (root = proj_root(0)) return (0);
-	ldebug(("repository_rdunlock(%s)\n", root));
+	TRACE("repository_rdunlock(%s)", root);
 	if (all) {
 		sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 		cleandir(path);
@@ -462,7 +451,7 @@ repository_rdunlock(int all)
 	rdlockfile(root, path);
 	if (unlink(path) == 0) {
 		write_log("cmd_log", 1, "read unlock (%u)", getpid());
-		ldebug(("RDUNLOCK %u\n", getpid()));
+		TRACE("RDUNLOCK %u", getpid());
 	}
 	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
 	rmdir(path);
@@ -482,7 +471,7 @@ repository_wrunlock(int all)
 		return (0);
 	}
 	unless (root = proj_root(0)) return (0);
-	ldebug(("repository_wrunlock(%s)\n", root));
+	TRACE("repository_wrunlock(%s)", root);
 	if (all) {
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		cleandir(path);
@@ -493,11 +482,11 @@ repository_wrunlock(int all)
 	sprintf(path, "%s/%s", root, WRITER_LOCK);
 	if (sccs_mylock(path) && (sccs_unlockfile(path) == 0)) {
 		write_log("cmd_log", 1, "write unlock (%u)", getpid());
-		ldebug(("WRUNLOCK %u\n", getpid()));
+		TRACE("WRUNLOCK %u", getpid());
 		sprintf(path, "%s/%s", root, WRITER_LOCK_DIR);
 		rmdir(path);
 	} else {
-		ldebug(("WRUNLOCK %u FAILED\n", getpid()));
+		TRACE("WRUNLOCK %u FAILED", getpid());
 		error = -1;
 	}
 	return (error);
