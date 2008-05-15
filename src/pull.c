@@ -240,7 +240,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
-	if (r->path) add_cd_command(f, r);
+	add_cd_command(f, r);
 	fprintf(f, "pull_part1");
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
@@ -334,7 +334,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in pull part 1
 	 */
-	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "pull_part2");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.dont) fprintf(f, " -n");

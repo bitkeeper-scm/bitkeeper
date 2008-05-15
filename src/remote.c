@@ -125,7 +125,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	f = fopen(tmpf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, SENDENV_NOREPO);
-	if (r->path) add_cd_command(f, r);
+	add_cd_command(f, r);
 	/* Force the command name to "bk" because full paths aren't allowed */
 	fprintf(f, "bk ");
 	for (i = 1; av[i]; i++) {

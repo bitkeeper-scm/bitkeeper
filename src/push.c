@@ -236,7 +236,7 @@ send_part1_msg(remote *r, char **envVar)
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
-	if (r->path) add_cd_command(f, r);
+	add_cd_command(f, r);
 	fprintf(f, "push_part1");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
@@ -493,7 +493,7 @@ send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in pull part 1
 	 */
-	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "push_part2");
 	unless (opts.doit) fprintf(f, " -n");
 	fputs("\n", f);
@@ -524,7 +524,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in pull part 1
 	 */
-	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "push_part2");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
@@ -639,7 +639,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in pull part 1
 	 */
-	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "push_part3");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");

@@ -23,8 +23,10 @@ cores()
 	OUT="$BK_REGRESSION/cores"
 	find "$BK_REGRESSION" -name core -print > "$OUT"
 	if [ -s "$OUT" ]
-	then    ls -l "`cat '$OUT'`"
-		file "`cat '$OUT'`"
+	then    cat "$OUT" | while read f
+		do	ls -l "$f"
+			file "$f"
+		done
 		exit 10
 	fi
 }

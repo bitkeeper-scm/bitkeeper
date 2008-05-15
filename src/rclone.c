@@ -514,7 +514,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in pull part 1
 	 */
-	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "rclone_part3");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
