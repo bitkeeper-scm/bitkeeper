@@ -49,6 +49,8 @@ r2c_main(int ac, char **av)
 	}
 	sccs_sdelta(s, e, buf);
 	key = strdup(buf);
+	sccs_free(s);
+	s = 0;
 	if (t = sccs_iskeylong(buf)) {
 		*t = 0;
 		shortkey = strdup(buf);
@@ -71,6 +73,7 @@ r2c_main(int ac, char **av)
 		}
 		exit(1);
 	}
+	sccs_free(cset);
 	unless (f = fopen(tmpfile, "r")) {
 		perror(tmpfile);
 		exit(1);

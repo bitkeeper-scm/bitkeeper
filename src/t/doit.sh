@@ -551,6 +551,12 @@ echo ''
 	rm -rf "$TMPDIR" || exit 1
 	mkdir -p "$TMPDIR" || exit 1
 
+	# capture all ttyprintf output
+	BK_TTYPRINTF="$TMPDIR/TTY.$$"
+	#export BK_TTYPRINTF    # uncomment to enable
+	rm -rf "$BK_TTYPRINTF"
+	touch "$BK_TTYPRINTF"
+
 	# Save the list of file currently in $TMPDIR
 	# check it again for tmp file leak when we are in clean_up()
 	touch "$TMPDIR/T.${USER} new"
@@ -578,6 +584,12 @@ echo ''
 				BADOUTPUT="$i $BADOUTPUT"
 			fi
 		}
+	}
+	test -s "$BK_TTYPRINTF" && {
+		echo
+		echo WARNING: unexpected ttyprintfs
+		cat "$BK_TTYPRINTF"
+		BADOUTPUT="$i $BADOUTPUT"
 	}
 
 	if [ "$PAUSE" = "YES" ]

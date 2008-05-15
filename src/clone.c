@@ -287,6 +287,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	/* eat the data */
 	if (sfio(r, 0, basenm(local)) != 0) {
 		fprintf(stderr, "sfio errored\n");
+		disconnect(r, 2);
 		goto done;
 	}
 
