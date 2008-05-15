@@ -41,7 +41,7 @@ repos*	ensemble_fromStream(repos *repos, FILE *f);
 int	ensemble_each(int quiet, int ac, char **av);
 hash	*module_list(char **names, sccs *cset);
 int	isComponent(char *path);
-
+void	ensemble_nestedCheck(void);
 #define	EACH_REPO(c)	for (ensemble_first(c); (c)->index; ensemble_next(c))
 
 #endif /* _NESTED_H */

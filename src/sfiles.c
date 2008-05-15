@@ -26,6 +26,8 @@ private	void	print_summary(void);
 private void	progress(int force);
 private	void	sccsdir(winfo *wi);
 private void	walk(char *dir);
+private	void	load_project(char *dir);
+private	void	free_project(void);
 private void	load_ignore(project *p);
 private	void	print_components(void);
 
@@ -58,7 +60,6 @@ typedef struct {
 	u32	useronly:1;		/* -U: list user files only */
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
 	u32	inverse:1;		/* -!: list the opposite */
-	u32	ensemble:1;		/* set if we are in one */
 	u32	skip_comps:1;		/* -h: list only files really "here" */
 
 	char	*prefix;		/* set from env for path prefix */
@@ -71,7 +72,7 @@ typedef struct {
 private	jmp_buf	sfiles_exit;
 private hash	*timestamps = 0;
 private options	opts;
-private	project	*proj;
+private	project	*proj, *prodproj;
 
 private	char	**ignore;	/* list of file pathname globs to ignore */
 private	char	**ignorebase;	/* list of file basename globs to ignore */
@@ -117,6 +118,7 @@ fastprint(char *file, struct stat *sb, void *data)
 	int	len;
 
 	file += 2;
+	/* if (file =~ /\/SCCS\/s.ChangeSet$/) */
 	len = strlen(file);
 	if ((len > strlen(CHANGESET)) &&
 	    streq(file + len - strlen(CHANGESET) - 1, "/" CHANGESET)) {
@@ -139,15 +141,15 @@ sfiles_main(int ac, char **av)
 		return (1); /* error exit */
 	}
 
-	if (proj_product(0)) opts.ensemble = 1;
-
 	/* pass in path/to/component/ and note the trailing slash */
 	opts.prefix = getenv("_BK_PREFIX");
 
 	if ((ac == 1) && !opts.prefix)  {
 		opts.sfiles = 1;
 		walksfiles(".", fastprint, 0);
-		if (opts.ensemble) print_components();
+		load_project(".");
+		print_components();
+		free_project();
 		return (0);
 	}
 
@@ -270,9 +272,7 @@ usage:				system("bk help -s sfiles");
 				 */
 				unless (proj) {
 					s = dirname_alloc(path);
-					if (proj = proj_init(s)) {
-						load_ignore(proj);
-					}
+					load_project(s);
 					free(s);
 				}
                                 file(path);
@@ -288,21 +288,21 @@ usage:				system("bk help -s sfiles");
                                 path = av[i];
 				unless (proj) {
 					s = dirname_alloc(path);
-					if (proj = proj_init(s)) {
-						load_ignore(proj);
-					}
+					load_project(s);
 					free(s);
 				}
                                 file(path);
                         }
                 }
 	}
-	if (opts.ensemble) print_components();
-	if (opts.out) fclose(opts.out);
+	print_components();
+	if (opts.out != stdout) fclose(opts.out);
 	if (opts.progress) progress(2);
+	free_project();
 	return (0);
 }
 
+/* only called from file().  Used to get state of sfile */
 private sccs *
 chk_sfile(char *name, STATE state)
 {
@@ -461,6 +461,10 @@ out:	unless (printed) do_print(state, gfile, 0);
 	if (dfile) free(dfile);
 }
 
+/*
+ * process a file on the sfiles command line or read from stdin.
+ * The global 'proj' should be set to the project that matches these files.
+ */
 private void
 file(char *f)
 {
@@ -530,7 +534,12 @@ file(char *f)
 		free(sfile);
 		strcpy(buf, f);
 	}
-
+	if (sc && (sc->proj != proj)) {
+		fprintf(stderr,
+		    "sfiles: error file %s is from a different repository\n"
+		    "than other files. %s vs %s\n",
+		    sc->gfile, proj_root(sc->proj), proj_root(proj));
+	}
 	/*
 	 * When we get here buf contains the gname (for the sfile case).
 	 */
@@ -835,24 +844,56 @@ load_ignore(project *p)
 	fclose(ignoref);
 }
 
+/*
+ * maintain the global 'proj' pointer to point and the project for this
+ * directory.
+ */
+private void
+load_project(char *dir)
+{
+	project	*newproj;
+	char	tmp[MAXPATH];
+
+	newproj = proj_init(dir);
+	if (newproj != proj) {
+		free_project();
+		proj = newproj;
+		prodproj = proj_product(proj);
+		load_ignore(proj);
+		unless (opts.fixdfile) {
+			concat_path(tmp, proj_root(proj), DFILE);
+			opts.dfile = exists(tmp);
+		}
+	} else {
+		if (newproj) proj_free(newproj);
+	}
+}
+
+private void
+free_project(void)
+{
+	if (proj) {
+		proj_free(proj);
+		proj = prodproj = 0;
+		freeLines(ignore, free);
+		freeLines(ignorebase, free);
+		freeLines(prunedirs, free);
+		ignore = ignorebase = prunedirs = 0;
+	}
+}
+
+/* called on directories on stdin or the command line */
 private void
 walk(char *indir)
 {
 	char	*p;
 	winfo	wi = {0};
-	char	tmp[MAXPATH];
 	char	dir[MAXPATH];
 
 	cleanPath(indir, dir);
 	if (streq(dir, "/")) strcpy(dir, "/.");
-	if (proj) proj_free(proj);
-	if (proj = proj_init(dir)) {
-		load_ignore(proj);
-		unless (opts.fixdfile) {
-			sprintf(tmp, "%s/%s", proj_root(proj), DFILE);
-			opts.dfile = exists(tmp);
-		}
-	} else {
+	load_project(dir);
+	unless (proj) {
 		/*
 		 * Dir is not a BitKeeper repository,
 		 * turn off all BitKeeper specific feature.
@@ -878,14 +919,7 @@ walk(char *indir)
 	}
 	walkdir(dir, sfiles_walk, &wi);
 	if (wi.sccsdir) sccsdir(&wi);
-
-	if (proj) {
-		freeLines(ignore, free);
-		freeLines(ignorebase, free);
-		freeLines(prunedirs, free);
-		ignore = ignorebase = prunedirs = 0;
-		free(wi.proj_prefix);
-	}
+	if (proj) free(wi.proj_prefix);
 	if (opts.timestamps && timestamps && proj) {
 		dumpTimestampDB(proj, timestamps);
 		hash_free(timestamps);
@@ -944,6 +978,9 @@ isIgnored(char *file)
 	unless (p = proj_relpath(proj, file)) return (0);
 	sprintf(gfile, "/%s", p);
 	free(p);
+
+	/* If this is a subcomponent, then no */
+	if ((p = strrchr(file, '/')) && streq(p+1, "ChangeSet")) return (0);
 
 	if (match_globs(gfile, ignore, 0) ||		 /* pathname match */
 	    match_globs(basenm(gfile), ignorebase, 0) || /* basename match */
@@ -1043,7 +1080,6 @@ do_print(STATE buf, char *gfile, char *rev)
 {
 	STATE	state;
 	int	doit;
-	project	*comp;
 
 	gfile =  strneq("./",  gfile, 2) ? &gfile[2] : gfile;
 	strcpy(state, buf);	/* So we have writable strings */
@@ -1067,7 +1103,7 @@ do_print(STATE buf, char *gfile, char *rev)
 
 	switch (state[TSTATE]) {
 	    case 'j': break;
-	    case 'x': 
+	    case 'x':
 	    	if (isIgnored(gfile)) {
 			state[TSTATE] = 'i';
 			i_count++;
@@ -1089,23 +1125,15 @@ do_print(STATE buf, char *gfile, char *rev)
 	}
 	if (opts.summarize) return; /* skip the detail */
 
-	if ((state[TSTATE] == 'R') && opts.ensemble && !opts.subrepos) {
+	if ((state[TSTATE] == 'R') && prodproj && !opts.subrepos) {
 		/*
-		 * Figure out if we are a component or
-		 * not.  If not, list dir as extra,
-		 * otherwise list s.ChangeSet as file.
+		 * found a subrepo while walking nested tree when
+		 * subrepos were not enabled.
 		 */
-		comp = proj_init(gfile);
-		assert(comp);
-		if (proj_isComponent(comp)) {
-			components = addLine(components, strdup(gfile));
-			// XXX -l/-u/-G/-y not done
-		} else {
-			state[TSTATE] = 'x';
-		}
-		proj_free(comp);
+		components =
+		    addLine(components, proj_relpath(prodproj, gfile));
+		/* won't print anything below */
 	}
-
 	doit = ((state[TSTATE] == 'd') && opts.dirs) ||
 	    ((state[TSTATE] == 'D') && opts.xdirs) ||
 	    ((state[TSTATE] == 'i') && opts.ignored) ||
@@ -1391,7 +1419,6 @@ findsfiles(char *file, struct stat *sb, void *data)
 {
 	char	*p = strrchr(file, '/');
 	sinfo	*si = (sinfo *)data;
-	project	*comp;
 	char	buf[MAXPATH];
 
 	unless (p) return (0);
@@ -1403,15 +1430,11 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 */
 			strcat(file, "/etc");
 			if (exists(file)) {
-				if (opts.ensemble) {
+				if (proj == prodproj) {  /* this is product */
 					*p = 0;
-					comp = proj_init(file);
-					assert(comp);
-					if (proj_isComponent(comp)) {
-						sprintf(p, "/SCCS/s.ChangeSet");
-						si->fn(file, 0, si->data);
-					}
-					proj_free(comp);
+					sprintf(p, "/SCCS/s.ChangeSet");
+					si->fn(file, 0, si->data);
+					*p = '/';
 				}
 				return (-2);
 			}
@@ -1484,8 +1507,8 @@ walksfiles(char *dir, walkfn fn, void *data)
 	si.fn = fn;
 	si.data = data;
 	si.rootlen = strlen(dir);
-	if (proj = proj_init(dir)) {
-		load_ignore(proj);
+	load_project(dir);
+	if (proj) {
 		p = proj_relpath(proj, dir);
 		if (streq(p, ".")) {
 			si.proj_prefix = strdup("/");
@@ -1494,17 +1517,9 @@ walksfiles(char *dir, walkfn fn, void *data)
 		}
 		free(p);
 	}
-	if (proj_product(0)) opts.ensemble = 1;
 	rc = walkdir(dir, findsfiles, &si);
-	if (proj) {
-		freeLines(ignore, free);
-		freeLines(ignorebase, free);
-		freeLines(prunedirs, free);
-		ignore = ignorebase = prunedirs = 0;
-		free(si.proj_prefix);
-		proj_free(proj);
-		proj = 0;
-	}
+	if (proj) free(si.proj_prefix);
+	free_project();
 	return (rc);
 }
 
@@ -1526,7 +1541,7 @@ usage:			fprintf(stderr, "usage: _sfiles_clone [-L]\n");
 		}
 	}
 	if (av[optind]) goto usage;
-	load_ignore(0);
+	load_project(".");
 	/* in lclone mode decsend into BAM */
 	if (lclone) removeLine(prunedirs, "/" BAM_ROOT, free);
 	si.fn = fastprint;
@@ -1534,89 +1549,68 @@ usage:			fprintf(stderr, "usage: _sfiles_clone [-L]\n");
 	si.proj_prefix = "/";
 	si.is_clone = 1;
 	rc = walkdir(".", findsfiles, &si);
-	freeLines(ignore, free);
-	freeLines(ignorebase, free);
-	freeLines(prunedirs, free);
-	ignore = ignorebase = prunedirs = 0;
+	free_project();
 	return (rc);
 }
 
 private void
 print_components(void)
 {
-	project	*comp, *prod;
-	int	i, doit, rel_len;
-	char	*gfile, *freeme, *p, *rel;
+	project	*comp;
+	int	i, cwd_len;
+	char	*gfile, *freeme, *p, *cwd;
 	STATE	state;
 	char	buf[MAXPATH];
 
 	if (opts.skip_comps) return;
+	unless (proj && (proj == prodproj)) return;
 	unless (opts.out) opts.out = stdout;
 
-	unless (prod = proj_product(0)) return;
-	p = proj_relpath(prod, ".");
-	if (streq(p, ".")) {
-		rel = 0;
-		rel_len = 0;
-	} else {
-		rel = aprintf("%s/", p);
-		rel_len = strlen(rel);
-	}
-	free(p);
-
+	cwd = proj_cwd();
+	cwd_len = strlen(cwd);
 	components = file2Lines(components,
-	    proj_fullpath(prod, "BitKeeper/log/deep-nests"));
+	    proj_fullpath(prodproj, "BitKeeper/log/deep-nests"));
 	uniqLines(components, free);
 	EACH (components) {
-		gfile = components[i];
-		if (rel) {
-			unless (strneq(gfile, rel, rel_len)) continue;
-			gfile += rel_len;
-		}
+		gfile = proj_fullpath(prodproj, components[i]);
+		unless (pathneq(gfile, cwd, cwd_len)) continue;
+		gfile += cwd_len + 1;
 		concat_path(buf, gfile, CHANGESET);
 		unless (exists(buf)) continue;
+		// XXX
 		comp = proj_init(gfile);
 		strcpy(state, "       ");
 		state[TSTATE] = 's';
-		unless (proj_isComponent(comp)) state[TSTATE] = 'x';
-		if (opts.pending) {
-			freeme = aprintf("%s/SCCS/s.ChangeSet", gfile);
-			p = strrchr(freeme, '/');
-			p[1] = 'd';
-			if (exists(freeme)) {
-				state[PSTATE] = 'p';
+		if (proj_isComponent(comp)) {
+			if (opts.pending) {
+				freeme = aprintf("%s/SCCS/s.ChangeSet", gfile);
+				p = strrchr(freeme, '/');
+				p[1] = 'd';
+				if (exists(freeme)) {
+					state[PSTATE] = 'p';
+					free(freeme);
+					freeme = aprintf("%s/ChangeSet", gfile);
+					chk_pending(0, freeme, state, 0, 0);
+					free(freeme);
+					proj_free(comp);
+					continue;
+				}
 				free(freeme);
-				freeme = aprintf("%s/ChangeSet", gfile);
-				chk_pending(0, freeme, state, 0, 0);
-				free(freeme);
-				proj_free(comp);
-				continue;
+				freeme = 0;
 			}
-			free(freeme);
-			freeme = 0;
-		}
-		if (opts.names) {
-			p = proj_relpath(proj_product(comp), gfile);
-			unless (streq(p, proj_comppath(comp))) {
-				state[NSTATE] = 'n';
+			if (opts.names) {
+				unless (patheq(components[i],
+					proj_comppath(comp))) {
+					state[NSTATE] = 'n';
+				}
 			}
+		} else {
+			state[TSTATE] = 'x';
 		}
-		// This is sort of bogus because for some things you
-		// want to list the repo name (i.e., sfiles -n)
-		gfile = aprintf("%s/ChangeSet", gfile);
-		doit = ((state[TSTATE] == 's') && opts.sfiles) ||
-		    ((state[LSTATE] == 'l') && opts.locked) ||
-		    ((state[LSTATE] == 'u') && opts.unlocked) ||
-		    ((state[CSTATE] == 'c') && opts.changed) ||
-		    ((state[PSTATE] == 'p') && opts.pending) ||
-		    ((state[GSTATE] == 'G') && opts.gotten) ||
-		    ((state[NSTATE] == 'n') && opts.names) ||
-	    	    ((state[TSTATE] == 'x') && opts.extras) ||
-		    ((state[YSTATE] == 'y') && opts.cfiles);
-		if (opts.inverse) doit = !doit;
-		if (doit) print_it(state, gfile, 0);
+		gfile = aprintf("%s/%sChangeSet", gfile,
+		    ((state[TSTATE] == 'x') && !opts.gfile) ? "SCCS/s." : "");
+		do_print(state, gfile, 0);
 		free(gfile);
 		proj_free(comp);
 	}
-	if (rel) free(rel);
 }

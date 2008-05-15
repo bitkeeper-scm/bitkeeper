@@ -885,6 +885,7 @@ lclone(char *from)
 		tb.modtime = sb.st_mtime;
 		utime(CHECKED, &tb);
 	}
+	ensemble_nestedCheck();
 }
 
 /*

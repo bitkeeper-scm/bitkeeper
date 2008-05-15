@@ -181,11 +181,11 @@ bk sfiles -x > GOT
 cat > WANT <<EOF
 GOT
 WANT
-extra
-foo/extra
+extra/SCCS/s.ChangeSet
+foo/extra/SCCS/s.ChangeSet
 EOF
 cmpfiles WANT GOT
-test `bk sfiles -x foo` = "foo/extra" || {
+test `bk sfiles -x foo` = "foo/extra/SCCS/s.ChangeSet" || {
 	echo failed on foo/extra
 	exit 1
 }
@@ -462,6 +462,35 @@ bk -r check -ac || {
 	exit 1
 }
 echo OK
+
+echo $N See if sfiles working with deep nested ......................$NL
+mv gcc4 gdb
+bk edit $Q gdb/gcc4/ChangeSet
+bk delta $Q -yrename gdb/gcc4/ChangeSet
+# should work but doesn't at the moment
+bk sfiles | grep -q gdb/gcc4 && {
+	echo fix test
+	exit 1
+}
+# first try to fix, cd there, and run sfiles
+cd gdb/gcc4
+bk sfiles > /dev/null
+cd ../..
+bk sfiles | grep -q gdb/gcc4 && exit 1
+# second try to fix, same thing but use 'bk -r' as way to run sfiles
+cd gdb/gcc4
+bk -r > /dev/null
+cd ../..
+bk sfiles | grep -q gdb/gcc4 || {
+	echo failed
+	echo this one should work
+	exit 1
+}
+rm BitKeeper/log/deep-nests || exit 1
+bk stripdel $Q -r+ gdb/gcc4/ChangeSet
+mv gdb/gcc4 gcc4
+bk -r check -ac || exit 1
+echo "failed (bug )"
 
 echo $N Make sure that check will fix BitKeeper/log/COMPONENT .......$NL
 echo wrong > gcc4/BitKeeper/log/COMPONENT
@@ -1405,13 +1434,8 @@ grep -q gdb/A/B/SCCS/s.ChangeSet GOT || {
 	cat GOT
 	exit 1
 }
-grep -q gdb/A/B/C/ChangeSet GOT && {
-	echo should not have found extra gdb/A/B/C/ChangeSet
-	cat GOT
-	exit 1
-}
 bk sfiles -x > GOT
-grep -q gdb/A/B/C/ChangeSet GOT || {
+grep -q gdb/A/B/C/SCCS/s.ChangeSet GOT || {
 	echo bk sfiles did not find nested A/B/C/ChangeSet
 	cat GOT
 	exit 1
@@ -1430,20 +1454,20 @@ echo OK
 
 echo $N Test that we see a nested/nested/nested extra repo from comp.$NL
 cd gdb
+# sfiles does NOT list sub-components when not in a product
 bk sfiles > GOT
-grep -q A/SCCS/s.ChangeSet GOT || {
-	echo bk sfiles did not find nested A/ChangeSet
-	cat GOT
-	exit 1
-}
-grep -q A/B/SCCS/s.ChangeSet GOT || {
-	echo bk sfiles did not find nested A/B/ChangeSet
-	cat GOT
-	exit 1
-}
+cat <<EOF > WANT
+SCCS/s.ChangeSet
+SCCS/s.name
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+EOF
+cmpfiles GOT WANT
 bk sfiles -x > GOT
-grep -q A/B/C/ChangeSet GOT || {
-	echo bk sfiles did not find nested A/B/C/ChangeSet
+test -s GOT || {
+	echo sfiles in a comp should not find extras
 	cat GOT
 	exit 1
 }

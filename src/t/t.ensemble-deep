@@ -1,0 +1,60 @@
+echo $N Create initial ensemble......................................$NL
+nested project
+test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || exit 1
+# Now add some stuff
+cd ..
+commercial nm
+cd "$HERE/project"
+bk ensemble add -ywhatever $Q ../nm gcc/nm
+echo OK
+
+echo $N Check that we see all components ............................$NL
+test -f BitKeeper/log/deep-nests || {
+        echo No BitKeeper/log/deep-nests
+        exit 1
+}
+bk -A > GOT
+cat > WANT <<EOF
+#### . ####
+#### gcc ####
+#### gcc/nm ####
+#### gdb ####
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that we see all components in a clone .................$NL
+cd ..
+bk clone project clone > OUT 2>&1
+cd clone
+test -f BitKeeper/log/deep-nests || {
+        echo No BitKeeper/log/deep-nests
+        exit 1
+}
+bk -A > GOT
+cat > WANT <<EOF
+#### . ####
+#### gcc ####
+#### gcc/nm ####
+#### gdb ####
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check that we see all components in a clone -l ..............$NL
+cd ..
+BK_CONFIG='partial_check:yes!' bk clone -l project lclone > OUT 2>&1
+cd lclone
+test -f BitKeeper/log/deep-nests || {
+        echo No BitKeeper/log/deep-nests
+        exit 1
+}
+bk -A > GOT
+cat > WANT <<EOF
+#### . ####
+#### gcc ####
+#### gcc/nm ####
+#### gdb ####
+EOF
+cmpfiles WANT GOT
+echo OK
