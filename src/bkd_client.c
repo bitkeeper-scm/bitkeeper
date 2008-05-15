@@ -17,17 +17,14 @@ remote_parse(const char *url, u32 flags)
 	char	*freeme = 0;
 	static	int echo = -1;
 	remote	*r;
-	char	*p;
+	char	*p, *params;
 
 	unless (url && *url) return (0);
 
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
 	freeme = p = strdup(url);
-	unless (p) {
-		if (freeme) free(freeme);
-		return (0);
-	}
+	if (params = strchr(p, '?')) *params++ = 0;
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5, BK_PORT);
 		if (r) {
@@ -36,9 +33,12 @@ remote_parse(const char *url, u32 flags)
 		}
 	} else if (strneq("http://", p, 7)) {
 		r = url_parse(p + 7, WEB_PORT);
-		if (r) r->type = ADDR_HTTP;
-		r->httppath =
-		    (flags & REMOTE_BKDURL) ? "/cgi-bin/web_bkd" : r->path;
+		if (r) {
+			r->type = ADDR_HTTP;
+			r->httppath =
+			    (flags & REMOTE_BKDURL)
+			    ? "/cgi-bin/web_bkd" : r->path;
+		}
 	} else if (strneq("rsh://", p, 6)) {
 		if (r = url_parse(p + 6, 0)) r->type = ADDR_RSH;
 	} else if (strneq("ssh://", p, 6)) {
@@ -55,6 +55,13 @@ remote_parse(const char *url, u32 flags)
 		} else {
 			r = nfs_parse(p);
 		}
+	}
+	if (params) {
+		if (r) {
+			r->params = hash_new(HASH_MEMHASH);
+			hash_fromStr(r->params, params);
+		}
+		params[-1] = '?';
 	}
 	if (echo && r) {
 	    	fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
@@ -211,6 +218,7 @@ error:		if (r->user) free(r->user);
 char	*
 remote_unparse(remote *r)
 {
+	char	*t, *ret;
 	char	buf[MAXPATH*2];
 	char	port[10];
 
@@ -245,27 +253,36 @@ remote_unparse(remote *r)
 			strcat(buf, "/");
 			strcat(buf, r->path);
 		}
-		return (strdup(buf));
+		goto out;
 	}
 	if (r->user) {
 		assert(r->host);
 		sprintf(buf, "%s@%s:", r->user, r->host);
 		if (r->path) strcat(buf, r->path);
-		return (strdup(buf));
+		goto out;
 	} else if (r->host) {
 		sprintf(buf, "%s:", r->host);
 		if (r->path) strcat(buf, r->path);
-		return (strdup(buf));
+		goto out;
 	}
 	assert(r->path);
 	if (isDriveColonPath(r->path)) { /* for win32 */
-		return (aprintf("file://%s", r->path));
+		sprintf(buf, "file://%s", r->path);
 	} else if (r->path[0] == '/') {
-		return (aprintf("file:/%s", r->path));
+		sprintf(buf, "file:/%s", r->path);
 	} else {
 		/* if we get here, we got a relative path */
-		return (strdup(r->path));
+		strcpy(buf, r->path);
 	}
+out:
+	if (r->params) {
+		t = hash_toStr(r->params);
+		ret = aprintf("%s?%s", buf, t);
+		free(t);
+	} else {
+		ret = strdup(buf);
+	}
+	return (ret);
 }
 
 void
@@ -289,6 +306,8 @@ remote_free(remote *r)
 	if (r->path) free(r->path);
 	if (r->cred) free(r->cred);
 	if (r->seed) free(r->seed);
+	// r->errs is freed in lease.c
+	if (r->params) hash_free(r->params);
 	free(r);
 }
 

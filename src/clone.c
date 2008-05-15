@@ -232,7 +232,7 @@ send_clone_msg(remote *r, char **envVar)
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, SENDENV_NOREPO);
-	if (r->path) add_cd_command(f, r);
+	add_cd_command(f, r);
 	fprintf(f, "clone");
 	if (opts->gzip) fprintf(f, " -z%d", opts->gzip);
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);

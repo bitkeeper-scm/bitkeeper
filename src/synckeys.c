@@ -537,7 +537,7 @@ send_sync_msg(remote *r)
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, 0);
-	if (r->path) add_cd_command(f, r);
+	add_cd_command(f, r);
 	fprintf(f, "synckeys\n");
 	fclose(f);
 

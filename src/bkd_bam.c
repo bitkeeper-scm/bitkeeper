@@ -158,7 +158,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range, int gzip)
 	 * No need to do "cd" again if we have a non-http connection
 	 * because we already did a "cd" in part 1
 	 */
-	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 
 	if (bp_fetchData() == 2) {
 		/* we do want to recurse here, havekeys did */
