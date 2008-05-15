@@ -57,10 +57,7 @@ test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 test -f copy/BitKeeper/log/parent || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
-if [ "$PLATFORM" = "WIN32" ]
-then	root="file://$HERE/project"
-else	root="file:/$HERE/project"
-fi
+root="file://$HERE/project"
 test x"$parent" = x"$root" || {
 	echo wrong parent $parent
 	echo should be $root

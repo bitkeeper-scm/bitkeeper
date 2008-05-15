@@ -47,24 +47,20 @@ echo OK
 echo $N Test the parent pointer......................................$NL
 P=`bk parent -l`
 EP=file://"$HERE"/project
-STATUS="OK"
 test "$P" = "$EP" || {
-	EP=file:/"$HERE"/project
-	test "$P" = "$EP" || {
-		echo failed
-		echo "got '$P'"
-		exit 1
-	}
-	STATUS="failed (bug in url handling)"
+	echo failed
+	echo "got  '$P'"
+	echo "want '$EP'"
+	exit 1
 }
-echo $STATUS
+echo OK
 
-echo $N Test that components have no parent pointer..................$NL
+echo $N Test that components have parent pointer ....................$NL
 for r in gcc gdb
 do
 	cd "$HERE/copy/$r"
 	P=`bk parent -l`
-	EP="This repository has no parent."
+	EP=file://"$HERE"/project
 	test "$P" = "$EP" || {
 		echo failed
 		echo "expected: $EP"
@@ -381,6 +377,18 @@ test x$T = x$TIP || {
 }
 echo OK
 
+test 0 = 1 && {
+echo $N Test that we can run changes -R in a component ..............$NL
+cd gcc
+bk changes -R > OUT
+grep -q gcc/ChangeSet OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+}
+
 echo $N Test clone through a bkd.....................................$NL
 cd "$HERE/project"
 P=`port 50000`
@@ -426,12 +434,12 @@ test "$P" = "$EP" || {
 }
 echo $STATUS
 
-echo $N Test that components have no parent pointer..................$NL
+echo $N Test that components have parent pointer ....................$NL
 for r in gcc gdb
 do
 	cd "$HERE/copy/$r"
 	P=`bk parent -l`
-	EP="This repository has no parent."
+	EP=file://"$HERE"/project
 	test "$P" = "$EP" || {
 		echo failed
 		echo "expected: $EP"
