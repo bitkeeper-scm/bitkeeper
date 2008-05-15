@@ -69,9 +69,11 @@ remote_parse(const char *url, u32 flags)
 }
 
 /*
- * file://full/path
+ * file:///full/path
  * Note: We do not support relative path in this format
  * due to ambiguouity with the host:/path format
+ * We accept file://full/path
+ * but treat it as a full path.
  */
 private remote *
 file_parse(char *p)
@@ -80,11 +82,13 @@ file_parse(char *p)
 
 	r = new(remote);
 	r->rfd = r->wfd = -1;
-	if (isDriveColonPath(p + 7)) { /* for win32 */
-		r->path = strdup(p + 7);
-	} else {
-		r->path = aprintf("/%s", p + 7);
+	p += 7;	/* skip file:// */
+	if (isDriveColonPath(p)) { /* for win32 */
+		r->path = strdup(p);
+		return (r);
 	}
+	while (*p == '/') p++;
+	r->path = aprintf("/%s", p);
 	return (r);
 }
 
@@ -258,10 +262,8 @@ remote_unparse(remote *r)
 		return (strdup(buf));
 	}
 	assert(r->path);
-	if (isDriveColonPath(r->path)) { /* for win32 */
+	if (IsFullPath(r->path)) {
 		return (aprintf("file://%s", r->path));
-	} else if (r->path[0] == '/') {
-		return (aprintf("file:/%s", r->path));
 	} else {
 		/* if we get here, we got a relative path */
 		return (strdup(r->path));
