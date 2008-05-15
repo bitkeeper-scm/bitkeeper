@@ -9,10 +9,7 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-case "$HERE" in
-    [A-Z]:/*)	PREFIX=file://"$HERE";;
-    *)		PREFIX=file:/"$HERE";;
-esac
+PREFIX=file://"$HERE"
 
 # Tests for parent manipulation
 echo $N Create initial repositories .................................$NL
@@ -681,4 +678,30 @@ cmp -s WANT GOT || {
 }
 test -f BitKeeper/log/parent || exit 1
 bk parent -naq ../project || exit 1
+echo OK
+
+echo $N Make sure that file://relpath is treated as absolute ........$NL
+RELPATH=`echo "$HERE" | sed 's?^/??'`
+bk parent -nsq file://"$RELPATH"/project || exit 1
+cd ../project
+ID=`bk id -r`
+cd ../clone
+GOT=`bk -@ -q id -r`
+test X"$ID" = X"$GOT" || {
+	echo failed
+	echo got $GOT
+	echo want $ID
+	exit 1
+}
+echo OK
+
+echo $N Make sure that file://abspath is treated as absolute ........$NL
+bk parent -nsq file://"$HERE"/project || exit 1
+GOT=`bk -@ -q id -r`
+test X"$ID" = X"$GOT" || {
+	echo failed
+	echo got $GOT
+	echo want $ID
+	exit 1
+}
 echo OK

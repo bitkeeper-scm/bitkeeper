@@ -1501,6 +1501,7 @@ rmdir_findprocs(void)
 	char	buf1[MAXLINE], buf2[MAXLINE];
 
 	unless (getenv("BK_REGRESSION")) return;
+	unless (bin) return;	/* platforminit failures can't run this */
 	d = getdir("/proc");
 	EACH (d) {
 		unless (isdigit(d[i][0])) continue;
@@ -1515,6 +1516,9 @@ rmdir_findprocs(void)
 
 		/* can't block on myself... */
 		if (atoi(d[i]) == getpid()) {
+			/* we are exiting the bkd so this is ok */
+			if (getenv("_BK_IN_BKD")) continue;
+
 			/*
 			 * Can't dump core if we are in a deleted directory...
 			 */

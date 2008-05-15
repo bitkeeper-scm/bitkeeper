@@ -32,18 +32,16 @@ echo $N Clone the product using rclone ..............................$NL
 cd "$HERE"
 PORT=`port 50000`
 bk bkd -d -p$PORT -ikill > "$HERE/BKD" 2>&1
-bk clone project bk://localhost:$PORT/copy >OUT 2>&1 || {
+bk clone $Q project bk://localhost:$PORT/copy || {
 	echo failed
-	cat OUT
 	cd copy 
 	bk cmdlog -a
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
 cd copy || exit 1
-bk -Ar check -a >OUT 2>&1 || {
+bk $Q -Ar check -a || {
 	echo failed
-	cat OUT
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
@@ -83,18 +81,16 @@ echo OK
 echo $N Clone partial product using rclone, should be fine ..........$NL
 cd "$HERE"
 rm -rf copy/gcc
-bk clone copy bk://localhost:$PORT/copy2 >OUT 2>&1 || {
+bk clone $Q copy bk://localhost:$PORT/copy2 || {
 	echo failed
-	cat OUT
-	cd copy 2
+	cd copy2
 	bk cmdlog -a
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
 cd copy2 || exit 1
-bk -Ar check -a >OUT 2>&1 || {
+bk $Q -Ar check -a || {
 	echo failed
-	cat OUT
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
@@ -109,9 +105,8 @@ bk sfiles -R | grep -v gcc > ../LIST
 cd ..
 KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
-bk clone $Q -M"$KEY" project bk://localhost:$PORT/mynewgcc 2> ERR || {
+bk clone $Q -M"$KEY" project bk://localhost:$PORT/mynewgcc || {
 	echo failed
-	cat ERR
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
@@ -136,9 +131,8 @@ rm -rf mynewgcc
 cd project
 bk module add -cgcc justgcc
 cd ..
-bk clone $Q -Mjustgcc project bk://localhost:$PORT/mynewgcc 2> ERR || {
+bk clone $Q -Mjustgcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
-	cat ERR
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
@@ -160,27 +154,22 @@ echo OK
 
 bk _kill bk://localhost:$PORT
 PORT=`port 50000`
-bk bkd -D -d -p$PORT -ikill  &
+bk bkd -d -p$PORT -ikill
 echo $N Test that we can clone just that component with -Mgcc/ ......$NL
 rm -rf mynewgcc
-bk clone $Q -Mgcc/ project bk://localhost:$PORT/mynewgcc 2> ERR || {
+bk clone $Q -Mgcc/ project bk://localhost:$PORT/mynewgcc || {
 	echo failed
-	cat ERR
-	bk _kill bk://localhost:$PORT
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
 	echo did not bring gcc module across
-	cat ERR
-	bk _kill bk://localhost:$PORT
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
 for i in `cat LIST`
 do	test -d mynewgcc/$i && {
 		echo should not have brought $i
-		cat ERR
 		bk _kill bk://localhost:$PORT
 		exit 1
 	}
