@@ -21,7 +21,7 @@ usage:		fprintf(stderr, "Usage: bk kill URL\n");
 		if ((rc = tcp_connect(av[1], atoi(p))) < 0) exit(1);
 		/* Wait for ACK */
 		read(rc, buf, 1);
-		close(rc);
+		closesocket(rc);
 		exit(0);
 	}
 	unless (r = remote_parse(av[1], REMOTE_BKDURL)) {
@@ -50,6 +50,6 @@ usage:		fprintf(stderr, "Usage: bk kill URL\n");
 			rc = 1;
 		}
 	}
-	disconnect(r, 1);
+	disconnect(r, 2);
 	return (rc);
 }
