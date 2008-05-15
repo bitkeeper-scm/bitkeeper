@@ -483,6 +483,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	if (sfio(r, 0, p) != 0) {
 		fprintf(stderr, "sfio errored\n");
+		disconnect(r, 2);
 		goto done;
 	}
 
