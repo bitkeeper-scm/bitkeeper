@@ -10,7 +10,7 @@ private int	compressed(int level, int lclone);
 int
 cmd_clone(int ac, char **av)
 {
-	int	c, rc = 0;
+	int	c, rc = 1;
 	int	gzip = 0, delay = -1, lclone = 0;
 	char	*p, *rev = 0, *tid = 0;
 	char	**modules = 0;
@@ -20,13 +20,13 @@ cmd_clone(int ac, char **av)
 
 	if (sendServerInfoBlock(0)) {
 		drain();
-		return (1);
+		goto out;
 	}
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
 		drain();
-		return (1);
+		goto out;
 	}
 	while ((c = getopt(ac, av, "lM;qr;Tw;z|")) != -1) {
 		switch (c) {
@@ -63,14 +63,14 @@ cmd_clone(int ac, char **av)
 	if (!tid && proj_isComponent(0)) {
 		out("ERROR-clone of a component is not allowed, use -M\n");
 		drain();
-		return (1);
+		goto out;
 	}
 	if (proj_isEnsemble(0)) {
 		unless (bk_hasFeature("SAMv1")) {
 			out("ERROR-please upgrade your BK to a SAMv1 "
 			    "aware version (5.0 or later)\n");
 			drain();
-			return (1);
+			goto out;
 		}
 		/*
 		 * If we're an ensemble and they did not specify any modules,
@@ -87,12 +87,12 @@ cmd_clone(int ac, char **av)
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
 		drain();
-		return (1);
+		goto out;
 	}
 	if (hasLocalWork(GONE)) {
 		out("ERROR-must commit local changes to " GONE "\n");
 		drain();
-		return (1);
+		goto out;
 	}
 
 	/* moved down here because we're caching the sccs* */
@@ -106,8 +106,7 @@ cmd_clone(int ac, char **av)
 				out(rev);
 				out(" doesn't exist\n");
 				drain();
-				sccs_free(s);
-				return (1);
+				goto out;
 			}
 		}
 		if (modules) {
@@ -118,8 +117,7 @@ cmd_clone(int ac, char **av)
 				// marker and have module_list() do this.
 				out("ERROR-unable to expand module[s]\n");
 				drain();
-				sccs_free(s);
-				return (1);
+				goto out;
 			}
 		}
 	}
@@ -131,8 +129,7 @@ cmd_clone(int ac, char **av)
 		    "ERROR-unable to update BAM server %s\n", bp_serverURL());
 		fflush(stdout);
 		drain();
-		sccs_free(s);
-		return (1);
+		goto out;
 	}
 	p = getenv("BK_REMOTE_PROTOCOL");
 	if (p && streq(p, BKD_VERSION)) {
@@ -144,13 +141,9 @@ cmd_clone(int ac, char **av)
 		out(p ? p : "");
 		out("\n");
 		drain();
-		sccs_free(s);
-		return (1);
+		goto out;
 	}
-	if (trigger(av[0], "pre")) {
-		sccs_free(s);
-		return (1);
-	}
+	if (trigger(av[0], "pre")) goto out;
 	if (!tid && proj_isProduct(0)) {
 		repos	*r;
 		eopts	opts;
@@ -165,14 +158,20 @@ cmd_clone(int ac, char **av)
 		printf("@ENSEMBLE@\n");
 		ensemble_toStream(r, stdout);
 		ensemble_free(r);
+		rc = 0;
 		goto out;
+	}
+	if (s) {
+		sccs_free(s);
+		s = 0;
 	}
 	printf("@SFIO@\n");
 	rc = compressed(gzip, lclone);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
-	if (trigger(av[0], "post")) exit (1);
+	if (trigger(av[0], "post")) goto out;
 
+	rc = 0;
 	/*
 	 * XXX Hack alert: workaround for a ssh bug
 	 * Give ssh sometime to drain the data
@@ -181,7 +180,7 @@ cmd_clone(int ac, char **av)
 out:	if (delay > 0) sleep(delay);
 
 	putenv("BK_CSETS=");
-	sccs_free(s);
+	if (s) sccs_free(s);
 	if (h) hash_free(h);
 	return (rc);
 }
