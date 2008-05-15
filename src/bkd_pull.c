@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "range.h"
+#include "ensemble.h"
 
 private void
 listIt(char *keys, int list)
@@ -23,14 +24,36 @@ cmd_pull_part1(int ac, char **av)
 	char	*probekey_av[] = {"bk", "_probekey", 0, 0};
 	int	status;
 	int	rc = 1;
-	char	*tiprev = "+";
 	FILE	*f;
+	char	*tid = 0;
+	int	c;
 
-	if (av[1] && strneq(av[1], "-r", 2)) {
-		probekey_av[2] =  av[1];
-		tiprev = av[1] + 2; /* just rev */
-	}
 	if (sendServerInfoBlock(0)) {
+		drain();
+		return (1);
+	}
+
+	while ((c = getopt(ac, av, "denlqr;Tz|")) != -1) {
+		switch (c) {
+		    case 'r':
+			probekey_av[2] = aprintf("-r%s", optarg);
+			break;
+		    case 'T':
+			tid = 1;	// On purpose, will go away w/ trans
+			break;
+		    case 'd':
+		    case 'e':
+		    case 'l':
+		    case 'q':
+		    case 'z': /* ignore */ break;
+		    default:
+			system("bk help -s pull");
+			return (1);
+		}
+	}
+
+	if (!tid && proj_isComponent(0)) {
+		out("ERROR-Not a product root\n");
 		drain();
 		return (1);
 	}
@@ -40,6 +63,7 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
+
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");
@@ -50,6 +74,12 @@ cmd_pull_part1(int ac, char **av)
 		drain();
 		return (1);
 	}
+	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv1")) {
+		out("ERROR-please upgrade your BK to a SAMv1 "
+		    "aware version (5.0 or later)\n");
+		drain();
+		return (1);
+	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
@@ -57,6 +87,7 @@ cmd_pull_part1(int ac, char **av)
 		return (1);
 	}
 	f = popenvp(probekey_av, "r");
+	if (probekey_av[2]) free(probekey_av[2]);
 	/* look to see if probekey returns an error */
 	unless (fnext(buf, f) && streq("@LOD PROBE@\n", buf)) {
 		fputs(buf, stdout);
@@ -84,11 +115,11 @@ cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, dont = 0, verbose = 1, list = 0, triggers_failed = 0;
-	int	rtags, update_only = 0, delay = -1;
+	int	rtags, update_only = 0, delay = -1, eat_modules = 0;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
-	char	*rev = 0;
-	char	*p;
+	char	*rev = 0, *tid = 0;
+	char	*p, **modules = 0;
 	FILE	*f;
 	sccs	*s;
 	delta	*d;
@@ -96,7 +127,7 @@ cmd_pull_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "dlnqr|uw|z|")) != -1) {
+	while ((c = getopt(ac, av, "dlMnqr|Tuw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -104,9 +135,11 @@ cmd_pull_part2(int ac, char **av)
 			break;
 		    case 'd': debug = 1; break;
 		    case 'l': list++; break;
+		    case 'M': eat_modules = 1; break;
 		    case 'n': dont = 1; break;
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;
+		    case 'T': tid = 1; break;	// On purpose
 		    case 'w': delay = atoi(optarg); break;
 		    case 'u': update_only = 1; break;
 		    default: break;
@@ -138,11 +171,29 @@ cmd_pull_part2(int ac, char **av)
 		range_gone(s, d, D_RED);
 	}
 
+	bzero(&r, sizeof(r));
+	r.rf = fdopen(0, "r");
+
+	/*
+	 * Eat a list of modules if so instructed.
+	 */
+    	if (eat_modules) {
+		unless (getline2(&r, buf, sizeof(buf)) > 0) {
+err:			printf("ERROR-protocol error in modules\n");
+			rc = 1;
+			goto done;
+		}
+		unless (streq("@MODULES@", buf)) goto err;
+		while (getline2(&r, buf, sizeof(buf)) > 0) {
+			if (streq("@END@", buf)) break;
+			modules = addLine(modules, strdup(buf));
+		}
+	}
+
 	/*
 	 * What we want is: remote => bk _prunekey => keys
 	 */
 	fd = open(keys, O_WRONLY, 0);
-	bzero(&r, sizeof(r));
  	if (prunekey(s, &r, 0, fd, PK_LKEY, 1, &local, &rem, &rtags) < 0) {
 		local = 0;	/* not set on error */
 		sccs_free(s);
@@ -215,6 +266,40 @@ cmd_pull_part2(int ac, char **av)
 		rc = 1;
 		goto done;
 	}
+
+	if (!tid && proj_isProduct(0)) {
+		repos	*r;
+		eopts	opts;
+		char	**k = 0;
+
+		bzero(&opts, sizeof(eopts));
+		opts.product = 1;
+		opts.product_first = 1;
+		unless (k = file2Lines(0, keys)) {
+			out("ERROR-Could not read list of keys");
+			rc = 1;
+			goto done;
+		}
+		opts.revs = k;
+		if (modules) {
+			opts.sc = sccs_csetInit(SILENT);
+			opts.modules = module_list(modules, opts.sc);
+			unless (opts.modules) {
+				printf("ERROR-unable to expand modules.\n");
+				rc = 1;
+				goto done;
+			}
+		}
+		r = ensemble_list(opts);
+		printf("@ENSEMBLE@\n");
+		ensemble_toStream(r, stdout);
+		freeLines(k, free);
+		if (opts.modules) hash_free(opts.modules);
+		sccs_free(opts.sc);
+		ensemble_free(r);
+		goto done;
+	}
+	freeLines(modules, free);
 
 	fputs("@PATCH@\n", stdout);
 

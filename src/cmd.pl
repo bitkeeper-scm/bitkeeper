@@ -303,6 +303,7 @@ sendbug
 set
 setup
 sfiles
+_sfiles_clone
 sfio remote
 _shellSplit_test
 shrink
@@ -360,6 +361,7 @@ _key2path => key2path
 _mail => mail
 modules => module
 pager => more
+populate => clone
 _preference => config
 rechksum => checksum
 rev2cset => r2c

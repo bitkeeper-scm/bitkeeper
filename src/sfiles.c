@@ -880,9 +880,9 @@ walk(char *indir)
 	if (wi.sccsdir) sccsdir(&wi);
 
 	if (proj) {
-		free_globs(ignore);
-		free_globs(ignorebase);
-		free_globs(prunedirs);
+		freeLines(ignore, free);
+		freeLines(ignorebase, free);
+		freeLines(prunedirs, free);
 		ignore = ignorebase = prunedirs = 0;
 		free(wi.proj_prefix);
 	}
@@ -1383,6 +1383,7 @@ struct sinfo {
 	void	*data;		/* pass this to the fn() */
 	int	rootlen;	/* the len of the dir passed to walksfiles() */
 	char	*proj_prefix;	/* the prefix needed to make a relpath */
+	int	is_clone;	/* special clone walkfn */
 };
 
 private int
@@ -1415,7 +1416,35 @@ findsfiles(char *file, struct stat *sb, void *data)
 				return (-2);
 			}
 		}
-		if (proj) {
+		if (si->is_clone && streq(file + 2, "BitKeeper/etc/SCCS")) {
+			/*
+			 * when doing a clone here are a couple more files to
+			 * include from the BitKeeper/etc/SCCS dir
+			 */
+			p[5] = '/';
+			strcpy(p+6, "x.cmark");
+			if (exists(file)) si->fn(file, sb, si->data);
+			strcpy(p+6, "x.dfile");
+			if (exists(file)) si->fn(file, sb, si->data);
+			strcpy(p+6, "x.id_cache");
+			if (exists(file)) si->fn(file, sb, si->data);
+		}
+		if (si->is_clone && streq(file + 2, "BitKeeper/log")) {
+			/*
+			 * when doing a clone here are a couple more files to
+			 * include from the BitKeeper/log dir
+			 */
+			p[4] = '/';
+			strcpy(p+5, "PRODUCT");
+			if (exists(file)) si->fn(file, sb, si->data);
+			strcpy(p+5, "COMPONENT");
+			if (exists(file)) si->fn(file, sb, si->data);
+			strcpy(p+5, "CSETFILE");
+			if (exists(file)) si->fn(file, sb, si->data);
+			strcpy(p+5, "MODULES");
+			if (exists(file)) si->fn(file, sb, si->data);
+		}
+		if (prunedirs) {
 			concat_path(buf, si->proj_prefix,
 			    file + si->rootlen + 1);
 			if (match_globs(buf, prunedirs, 0)) return (-1);
@@ -1423,11 +1452,23 @@ findsfiles(char *file, struct stat *sb, void *data)
 	} else {
 		if ((p - file >= 6) && pathneq(p - 5, "/SCCS/s.", 8)) {
 			return (si->fn(file, sb, si->data));
+		} else if (si->is_clone &&
+		    (p - file >= 6) && pathneq(p - 5, "/SCCS/d.", 8)) {
+			/* clone includes d.files too */
+			return (si->fn(file, sb, si->data));
 		} else if (patheq(p+1, BKSKIP)) {
 			/*
 			 * Skip directory containing a .bk_skip file
 			 */
 			return (-2);
+		} else if (si->is_clone &&
+		    pathneq(file+2, BAM_ROOT, strlen(BAM_ROOT))) {
+			/*
+			 * lclone wants all the BAM files.  Under
+			 * clone the default prunedirs will prune this
+			 * directory, but lclone will traverse it.
+			 */
+			return (si->fn(file, sb, si->data));
 		}
 	}
 	return (0);
@@ -1453,11 +1494,50 @@ walksfiles(char *dir, walkfn fn, void *data)
 		}
 		free(p);
 	}
+	if (proj_product(0)) opts.ensemble = 1;
 	rc = walkdir(dir, findsfiles, &si);
 	if (proj) {
+		freeLines(ignore, free);
+		freeLines(ignorebase, free);
+		freeLines(prunedirs, free);
+		ignore = ignorebase = prunedirs = 0;
 		free(si.proj_prefix);
 		proj_free(proj);
+		proj = 0;
 	}
+	return (rc);
+}
+
+/* generate a list of files to create the sfio in clone */
+int
+sfiles_clone_main(int ac, char **av)
+{
+	int	c;
+	int	lclone = 0;
+	int	rc = 2;
+	sinfo	si = {0};
+
+	while ((c = getopt(ac, av, "L")) != -1) {
+		switch (c) {
+		    case 'L': lclone = 1; break;
+		    default:
+usage:			fprintf(stderr, "usage: _sfiles_clone [-L]\n");
+			return (1);
+		}
+	}
+	if (av[optind]) goto usage;
+	load_ignore(0);
+	/* in lclone mode decsend into BAM */
+	if (lclone) removeLine(prunedirs, "/" BAM_ROOT, free);
+	si.fn = fastprint;
+	si.rootlen = 1;
+	si.proj_prefix = "/";
+	si.is_clone = 1;
+	rc = walkdir(".", findsfiles, &si);
+	freeLines(ignore, free);
+	freeLines(ignorebase, free);
+	freeLines(prunedirs, free);
+	ignore = ignorebase = prunedirs = 0;
 	return (rc);
 }
 

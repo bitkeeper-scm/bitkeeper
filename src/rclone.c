@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
+#include "ensemble.h"
 
 private	struct {
 	u32	debug:1;		/* -d debug mode */
@@ -9,6 +10,8 @@ private	struct {
 	char	*bam_url;		/* -B URL */
 	u32	in, out;
 	u64	bpsz;
+	char	**av;			/* ensemble commands */
+	char	**modules;		/* ensemble modules list */
 } opts;
 
 private void usage(void);
@@ -19,6 +22,7 @@ private	int rclone_part3(char **av, remote *r, char **ev, char *bp);
 private int send_part1_msg(remote *r, char **envVar);
 private	int send_sfio_msg(remote *r, char **envVar);
 private u32 send_sfio(remote *r);
+private	int rclone_ensemble(remote *r);
 
 int
 rclone_main(int ac, char **av)
@@ -31,7 +35,15 @@ rclone_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
 	opts.gzip = 6;
-	while ((c = getopt(ac, av, "B;dE:qr;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:M;qr;w|z|")) != -1) {
+		unless ((c == 'r') || (c == 'M')) {
+			if (optarg) {
+				opts.av = addLine(opts.av,
+				    aprintf("-%c%s", c, optarg));
+			} else {
+				opts.av = addLine(opts.av, aprintf("-%c", c));
+			}
+		}
 		switch (c) {
 		    case 'B': opts.bam_url = optarg; break;
 		    case 'd': opts.debug = 1; break;
@@ -42,6 +54,9 @@ rclone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'M':
+			opts.modules = addLine(opts.modules, strdup(optarg));
+			break;
 		    case 'q': opts.verbose = 0; break;
 		    case 'r': opts.rev = optarg; break;
 		    case 'w': /* ignored */ break;
@@ -52,6 +67,7 @@ rclone_main(int ac, char **av)
 		    default:
 			usage();
 		}
+		optarg = 0;
 	}
 
 	/*
@@ -70,6 +86,12 @@ rclone_main(int ac, char **av)
 	}
 	unless (exists(BKROOT)) {
 		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
+		exit(1);
+	}
+	if (!getenv("_BK_TRANSACTION") &&
+	    proj_isEnsemble(0) && !proj_isProduct(0)) {
+		fprintf(stderr,
+		    "clone: clone of a component is not allowed, use -M\n");
 		exit(1);
 	}
 	if (hasLocalWork(GONE)) {
@@ -93,9 +115,99 @@ rclone_main(int ac, char **av)
 		return (1);
 	}
 
-	rc = rclone(av, r, envVar);
+	if (!getenv("_BK_TRANSACTION") && proj_isEnsemble(0)) {
+		rc = rclone_ensemble(r);
+	} else {
+		rc = rclone(av, r, envVar);
+	}
 	freeLines(envVar, free);
+	freeLines(opts.av, free);
+	freeLines(opts.modules, free);
 	remote_free(r);
+	return (rc);
+}
+
+private int
+rclone_ensemble(remote *r)
+{
+	eopts	ropts;
+	repos	*rps = 0;
+	sccs	*cset;
+	hash	*h = 0;
+	char	**vp;
+	char	*name, *url;
+	int	i, status, rc = 0;
+
+	bzero(&ropts, sizeof(eopts));
+	url = remote_unparse(r);
+	ropts.product = 1;
+	ropts.product_first = 1;
+	ropts.rev = opts.rev ? opts.rev : "+";
+
+	/*
+	 * Mirror bkd_clone and imply whatever list we have unless they 
+	 * specified a list already.
+	 */
+	cset = sccs_csetInit(SILENT);
+	unless (opts.modules) {
+		opts.modules = file2Lines(0, "BitKeeper/log/MODULES");
+	}
+	if (opts.modules) {
+		unless (h = module_list(opts.modules, cset)) goto out;
+		ropts.modules = h;
+	}
+	rps = ensemble_list(ropts);
+	putenv("_BK_TRANSACTION=1");
+	EACH_REPO(rps) {
+		proj_cd2product();
+		vp = addLine(0, strdup("bk"));
+		vp = addLine(vp, strdup("clone"));
+		EACH(opts.av) vp = addLine(vp, strdup(opts.av[i]));
+		vp = addLine(vp, aprintf("-r%s", rps->deltakey));
+		if (streq(rps->path, ".")) {
+			EACH(opts.modules) {
+				vp = addLine(vp,
+				    aprintf("-M%s", opts.modules[i]));
+		    	}
+			name = "Product";
+			vp = addLine(vp, strdup("."));
+			vp = addLine(vp, strdup(url));
+		} else {
+			name = rps->path;
+			vp = addLine(vp, strdup(name));
+			vp = addLine(vp, aprintf("%s/%s", url, rps->path));
+		}
+		vp = addLine(vp, 0);
+		if (opts.verbose) printf("#### %s ####\n", name);
+		fflush(stdout);
+		unless (rps->present) {
+			if (opts.modules && opts.verbose) {
+				fprintf(stderr,
+				    "clone: %s was not found, skipping.\n",
+				    rps->path);
+			}
+			freeLines(vp, free);
+			continue;
+		}
+		status = spawnvp(_P_WAIT, "bk", &vp[1]);
+		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
+		freeLines(vp, free);
+		if (rc) {
+			fprintf(stderr, "Rclone %s failed\n", name);
+			break;
+		}
+	}
+	
+	/*
+	 * XXX - put code in here to finish the transaction.
+	 */
+
+out:
+	sccs_free(cset);
+	if (h) hash_free(h);
+	free(url);
+	ensemble_free(rps);
+	putenv("_BK_TRANSACTION=");
 	return (rc);
 }
 
@@ -176,6 +288,12 @@ rclone_part1(remote *r, char **envVar)
 		    "BAMv2 aware version (4.1.1 or later).\n");
 		return (-1);
 	}
+	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv1")) {
+		fprintf(stderr,
+		    "clone: please upgrade the remote bkd to a "
+		    "SAMv1 aware version (5.0 or later).\n");
+		return (-1);
+	}
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if (bp_updateServer(getenv("BK_CSETS"), 0, !opts.verbose)) {
 		fprintf(stderr,
@@ -200,6 +318,13 @@ send_part1_msg(remote *r, char **envVar)
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.verbose) fprintf(f, " -v");
+	if (getenv("_BK_TRANSACTION")) {
+		if (proj_isProduct(0)) {
+			fprintf(f, " -P");
+		} else {
+			fprintf(f, " -T");
+		}
+	}
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
@@ -323,7 +448,7 @@ send_sfio_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE	*f;
-	int	rc;
+	int	i, rc;
 	u32	m = 0, n, extra = 0;
 
 	bktmp(buf, "rclone");
@@ -334,6 +459,7 @@ send_sfio_msg(remote *r, char **envVar)
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
+	EACH(opts.modules) fprintf(f, " '-M%s'", opts.modules[i]);
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
 	fclose(f);
@@ -508,16 +634,10 @@ send_sfio(remote *r)
 	char	*tmpf;
 	FILE	*fh;
 	char	*sfiocmd;
-	char	*cmd;
 	FILE	*fout;
 
 	tmpf = bktmp(0, "rclone_sfiles");
-	fh = fopen(tmpf, "w");
-	if (exists(CMARK)) fprintf(fh, CMARK "\n");
-	fclose(fh);
-	cmd = aprintf("bk sfiles >> '%s'", tmpf);
-	status = system(cmd);
-	free(cmd);
+	status = sysio(0, tmpf, 0, "bk", "_sfiles_clone", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 
 	if (r && r->path) {

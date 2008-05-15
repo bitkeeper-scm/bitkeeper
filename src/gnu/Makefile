@@ -9,7 +9,7 @@ CONFIG=--cache-file=../../config.cache --quiet
 
 # Override Solaris make.rules
 .SCCS_GET:
-	bk get -q $@
+	$(Q)bk get -q $@
 
 all: os exe
 	@PATH="..:../..:$(PATH)"; export PATH; \
@@ -17,14 +17,11 @@ all: os exe
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
-		if [ $${OS} = "BIN-x86-cygwin" ]; \
-		then unset MAKEFLAGS CFLAGS LDFLAGS LD; CC=gcc; \
-		     export MAKEFLAGS CFLAGS LDFLAGS LD CC; \
-		fi;\
 		echo $$i; \
+		unset CFLAGS; \
 		cd $$i; ../../bk get -q checkout; sh checkout; \
 		cd $$OS; test -f Makefile || sh ../configure $(CONFIG); \
-		$(MAKE) \
+		$(MAKE) Q=$(Q) \
 		); \
 	done
 	rm -rf bin
@@ -36,20 +33,21 @@ install: all
 	cp -f $(BINS) $(BINDIR)
 
 os: ../utils/os ../utils/gnu-os
-	(cd ../utils && ./os) > _os
-	echo BIN-`cat _os` > os
-	/bin/rm -f _os
+	$(Q)(cd ../utils && ./os) > _os
+	$(Q)echo BIN-`cat _os` > os
+	$(Q)/bin/rm -f _os
 
 # win32, can not clean the current Makefile when we are
 # running this make file
 .PHONY: clean
 clean: os
+	$(if $(Q),@echo Cleaning gnu,)
 	-@OS=$(_OS); \
-	for i in $(DIRS); \
+	$(Q)for i in $(DIRS); \
 	do	(cd $$i && rm -rf BIN-* ); \
 	done
 	-@rm -rf bin
-	$(RM) os config.cache
+	$(Q)$(RM) os config.cache
 
 clobber: clean
-	-bk -r. clean
+	-$(Q)bk -r. clean

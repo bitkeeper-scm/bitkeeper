@@ -42,6 +42,10 @@ ifdef	DEBUG_TCL
 	SYMBOLS	:= --enable-symbols
 endif
 
+ifdef	Q
+	QUIET=-q
+endif
+
 ifeq "$(TCLVERSION)" "8.4"
 DDEVERSION := 1.2
 REGVERSION := 1.1
@@ -78,31 +82,34 @@ STRIP := strip
 export CC LD
 
 all: version.sh ../../tclkey.h
-	-rm -rf bin lib share
-	TCLVER=`./version.sh`; \
+	$(if $(Q),@echo Building Tcl/Tk,)
+	-$(Q)rm -rf bin lib share
+	$(Q)TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \
 	then	gunzip < "$$TCLVER" | tar -xf -; true; \
 	else	unset CC LD CCXTRA CFLAGS MAKEFLAGS; \
-		$(MAKE) bin/tclsh$(EXE) bin/bkgui$(EXE) \
+		$(MAKE) Q=$(Q) bin/tclsh$(EXE) bin/bkgui$(EXE) \
 		    $(EXTENSIONS) \
 		    || exit 1 ; \
 		if [ "X$(AQUA)" != X ]; \
-		then    $(MAKE) $(BKAPP)/Contents/MacOS/BitKeeper \
+		then    $(MAKE) Q=$(Q) $(BKAPP)/Contents/MacOS/BitKeeper \
 			$(AQUAEXTENSIONS) \
 			|| exit 1 ; \
 		fi \
 	fi
-	$(MAKE) verify
-	$(MAKE) rm_doc
-	$(MAKE) install
+	$(Q)$(MAKE) verify
+	$(Q)$(MAKE) rm_doc
+	$(Q)$(MAKE) install
 
 tcl/$S/Makefile: tcl/$S/configure Makefile
-	cd tcl/$S; \
-	./configure --disable-info-body $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
+	$(if $(Q),@echo Configuring Tcl,)
+	$(Q)cd tcl/$S; \
+	./configure $(QUIET) --disable-info-body $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
 
 tk/$S/Makefile: tk/$S/configure Makefile
-	cd tk/$S; \
-	./configure $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) \
+	$(if $(Q),@echo Configuring Tk,)
+	$(Q)cd tk/$S; \
+	./configure $(QUIET) $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) \
 	    $(SYMBOLS)
 
 # fetch tcl subdirectory if needed
@@ -128,7 +135,7 @@ lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure bin/bkgui$(EXE)
 		$(MAKE) distclean ; \
 	}; \
 	test -f Makefile || { \
-		./configure --with-tcl=../tcl/$S --with-tk=../tk/$S \
+		./configure $(QUIET) --with-tcl=../tcl/$S --with-tk=../tk/$S \
 			--with-tclinclude=../tcl/generic \
 			--with-tkinclude=../tk/generic \
 			--disable-threads $(ENABLE_64BIT) $(SYMBOLS) ; \
@@ -143,7 +150,7 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 		$(MAKE) distclean ; \
 	}; \
 	test -f Makefile || { \
-		./configure \
+		./configure $(QUIET) \
 		    --with-tcl=$(TCLBUILD) \
 		    --with-tk=$(TKBUILD) \
 		    --with-tclinclude=$(TCLBUILD)/Headers \
@@ -165,7 +172,7 @@ lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure bin/bkgui$(EXE)
 		$(MAKE) distclean ; \
 	}; \
 	test -f Makefile || { \
-		./configure --with-tcl=../tcl/$S --with-tk=../tk/$S \
+		./configure $(QUIET) --with-tcl=../tcl/$S --with-tk=../tk/$S \
 			--with-tclinclude=../tcl/generic \
 			--with-tkinclude=../tk/generic \
 			--disable-threads $(ENABLE_64BIT) $(SYMBOLS) ; \
@@ -179,7 +186,7 @@ $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
 		$(MAKE) distclean ; \
 	}; \
 	test -f Makefile || { \
-		./configure \
+		./configure $(QUIET) \
 		    --with-tcl=$(TCLBUILD) \
 		    --with-tk=$(TKBUILD) \
 		    --with-tclinclude=$(TCLBUILD)/Headers \

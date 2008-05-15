@@ -100,5 +100,22 @@ grep -q '^1.6 1.7' SCCS/p.edited || { echo failed 1; exit 1; }
 grep -q ' -i1.1 -x1.2$' SCCS/p.edited || { echo failed 1; exit 1; }
 bk -r check -a || { echo failed; exit 1; }
 echo OK
-exit 0
 
+echo $N mvdir should not delta things in the target directory .......$NL
+commercial project
+mkdir -p dir/sub
+mkdir lib
+touch dir/sub/a dir/sub/b lib/c
+bk new $Q dir/sub/a dir/sub/b lib/c
+bk commit $Q -y'added stuff'
+cd dir
+bk mv sub/ ../lib
+cd ../lib
+REV=`bk log -r+ -nd:REV: c`
+test "$REV" != "1.1" && {
+	echo failed
+	bk log -r+ c
+	exit 1
+}
+echo OK
+exit 0

@@ -9,10 +9,13 @@ typedef struct {
 	char	*deltakey;		/* deltakey of repo as of rev */
 	char	*path;			/* path to component or null */
 	u32	new:1;			/* if set, the undo will remove this */
+	u32	present:1;		/* if set, the repo is actually here */
 } repo;
 
-private	repo	*find(repos *list, char *rootkey);
 private int	repo_sort(const void *a, const void *b);
+private	void	setgca(sccs *s, u32 bit, u32 tmp);
+
+private	char	*ensemble_version = "1.0";
 
 /*
  * Return the list of repos for this product.
@@ -29,19 +32,17 @@ private int	repo_sort(const void *a, const void *b);
  * [r]clone wants a list of all components in a particular rev and their
  * tip keys.  It passes in the rev and not the list.
  *
- * pull/push wants a list components, which is the subset that changed in
+ * pull/push want a list components, which is the subset that changed in
  * the range of csets being moved in the product, and delta keys which are
  * the tips in each component.  "rev" is not passed in, "revs" is the list.
  * The first tip we see for each component is what we want, that's newest.
- * Ahem.  Except push, which is just like undo because it wants to know
- * the components that should be rcloned.  So it passes the rev, which is
- * the receiver's tip so it can see what has been created since then.
  *
  * The path field is always set to the current path of the component, not
  * the path as of the rev[s].  This is the final pass through the ChangeSet
  * file.
  *
- * XXX - I do not check to make sure D_SET is clear.
+ * The present field is set if the component is in the filesystem.
+ *
  */
 repos *
 ensemble_list(eopts opts)
@@ -49,15 +50,15 @@ ensemble_list(eopts opts)
 	repo	*e = 0;
 	repos	*r = 0;
 	char	**list = 0;	/* really repos **list */
-	delta	*d;
+	delta	*d, *top;
 	char	*t;
-	int	close = 0;
-	int	undo_or_push = opts.rev && opts.revs;
+	int	had_top = 0, close = 0;
 	int	i;
 	MDBM	*idDB = 0;
 	kvpair	kv;
 	char	buf[MAXKEY];
 
+	assert (!opts.rev ^ !opts.revs); /* logical xor: one or the other, not both */
 	unless (proj_isProduct(0)) {
 		fprintf(stderr, "ensemble_list called in a non-product.\n");
 		return (0);
@@ -73,18 +74,19 @@ ensemble_list(eopts opts)
 	}
 	assert(CSET(opts.sc) && proj_isProduct(opts.sc->proj));
 
-	/*
-	 * Undo/pull/push get here.
-	 */
+	r = new(repos);
+	top = sccs_top(opts.sc);
 	if (opts.revs) {
+		unless (close) sccs_clearbits(opts.sc, D_SET|D_RED|D_BLUE);
 		EACH(opts.revs) {
-			if (d = sccs_findrev(opts.sc, opts.revs[i])) {
-				d->flags |= D_SET;
-				continue;
+			unless (d = sccs_findrev(opts.sc, opts.revs[i])) {
+				fprintf(stderr,
+				    "ensemble: bad rev %s\n",opts.revs[i]);
+err:				if (close) sccs_free(opts.sc);
+				return (0);
 			}
-		    	fprintf(stderr, "ensemble: bad rev %s\n", opts.revs[i]);
-err:			if (close) sccs_free(opts.sc);
-			return (0);
+			d->flags |= (D_SET|D_BLUE);
+			if (d == top) had_top = 1;
 		}
 		if (sccs_cat(opts.sc, GET_HASHONLY, 0)) goto err;
 		EACH_KV(opts.sc->mdbm) {
@@ -93,102 +95,48 @@ err:			if (close) sccs_free(opts.sc);
 			e->rootkey  = strdup(kv.key.dptr);
 			e->deltakey = strdup(kv.val.dptr);
 			e->path     = key2path(e->deltakey, 0);
+			e->new	    = 1;	// cleared below if not true
+			e->present  = 1;	// ditto
 			csetChomp(e->path);
 			list = addLine(list, (void*)e);
 		}
-		r = new(repos);
-		r->repos = (void**)list;
-	}
-
-	/*
-	 * [r]clone/undo/push get here.
-	 */
-	if (opts.rev) {
-		if (undo_or_push) {
-			EACH(list) {
-				e = (repo*)list[i];
-				e->new = 1;
+		/* Mark the set gca of the range we marked in opts.revs */
+		setgca(opts.sc, D_SET, D_RED);
+		if (sccs_cat(opts.sc, GET_HASHONLY, 0)) goto err;
+		EACH(list) {
+			e = (repo*)list[i];
+			unless (
+			    t = mdbm_fetch_str(opts.sc->mdbm, e->rootkey)) {
+				continue;
+			}
+			e->new = 0;
+			/*
+			 * undo wants the keys as of opts.rev,
+			 * which is older.  push wants the key it
+			 * already has, the newest.
+			 */
+			if (opts.undo) {
+				assert(!streq(e->deltakey, t));
+				free(e->deltakey);
+				e->deltakey = strdup(t);
 			}
 		}
-		
+	} else {
 		if (sccs_get(opts.sc,
 		    opts.rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 			goto err;
 		}
-		if (undo_or_push) {
-			assert(r);
-		} else {
-			r = new(repos);
-		}
 		EACH_KV(opts.sc->mdbm) {
 			unless (componentKey(kv.val.dptr)) continue;
-			if (undo_or_push) {
-				unless (e = find(r, kv.key.dptr)) continue;
-				e->new = 0;
-				assert(!streq(e->deltakey, kv.val.dptr));
-				free(e->deltakey);
-				e->deltakey = strdup(kv.val.dptr);
-				// Don't bother w/ the path, it's stomped below
-			} else {
-				e = new(repo);
-				e->rootkey  = strdup(kv.key.dptr);
-				e->deltakey = strdup(kv.val.dptr);
-				e->path     = key2path(e->deltakey, 0);
-				csetChomp(e->path);
-				list = addLine(list, (void*)e);
-				r->repos = (void**)list;
-			}
+			e = new(repo);
+			e->rootkey  = strdup(kv.key.dptr);
+			e->deltakey = strdup(kv.val.dptr);
+			e->path     = key2path(e->deltakey, 0);
+			e->new	    = 1;	// cleared below if not true
+			e->present  = 1;	// ditto
+			csetChomp(e->path);
+			list = addLine(list, (void*)e);
 		}
-	}
-
-	/*
-	 * Now see if we have the TIP, otherwise we need to overwrite
-	 * the path field with whatever path is in the TIP delta
-	 * keys.  The TIP of the changeset file contains the current
-	 * locations (unless someone did a mv on a repo).
-	 */
-	d = sccs_top(opts.sc);
-	unless (opts.rev && (d == sccs_findrev(opts.sc, opts.rev))) {
-		/* Fetch TIP and see if any paths have changed */
-		sccs_get(opts.sc, d->rev, 0, 0, 0, SILENT|GET_HASHONLY, 0);
-		EACH_KV(opts.sc->mdbm) {
-			if (componentKey(kv.val.dptr) &&
-			    (e = find(r, kv.key.dptr))) {
-				t = key2path(kv.val.dptr, 0);
-				unless (streq(e->path, t)) {
-					free(e->path);
-					e->path = t;
-					csetChomp(e->path);
-				} else {
-					free(t);
-				}
-			}
-		}
-	} else {
-		assert(!undo_or_push);
-	}
-
-	/*
-	 * Prune entries that are not present if so instructed.
-	 */
-	if (opts.present) {
-		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-		EACH(list) {
-			e = (repo*)list[i];
-			// XXX - doesn't verify BKROOT.
-			if (isdir(e->path)) continue;
-			if ((t = mdbm_fetch_str(idDB, e->rootkey)) && isdir(t)){
-				free(e->path);
-				e->path = strdup(t);
-			} else {
-				free(e->path);
-				free(e->rootkey);
-				free(e->deltakey);
-				removeLineN(list, i, free);
-				i--;
-			}
-		}
-		mdbm_close(idDB);
 	}
 
 	/*
@@ -207,17 +155,68 @@ err:			if (close) sccs_free(opts.sc);
 		}
 	}
 
+	/*
+	 * Now see if we have the TIP, otherwise we need to overwrite
+	 * the path field with whatever path is in the TIP delta
+	 * keys.  The TIP of the changeset file contains the current
+	 * locations (unless someone did a mv on a repo).
+	 */
+	if ((opts.revs && !had_top) ||
+	    (top != sccs_findrev(opts.sc, opts.rev))) {
+		/* Fetch TIP and see if any paths have changed */
+		sccs_get(opts.sc, top->rev, 0, 0, 0, SILENT|GET_HASHONLY, 0);
+		EACH(list) {
+			e = (repo*)list[i];
+			unless (
+			    t = mdbm_fetch_str(opts.sc->mdbm, e->rootkey)) {
+				continue;
+			}
+			t = key2path(t, 0);
+			csetChomp(t);
+			if (streq(e->path, t)) {
+				free(t);
+			} else {
+				free(e->path);
+				e->path = t;
+			}
+		}
+	}
+
+	/*
+	 * Mark entries that are not present
+	 */
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	EACH(list) {
+		e = (repo*)list[i];
+		if (isComponent(e->path)) continue;
+		if ((t = mdbm_fetch_str(idDB, e->rootkey)) && isComponent(t)){
+			free(e->path);
+			e->path = strdup(t);
+		} else {
+			e->present = 0;
+		}
+	}
+	mdbm_close(idDB);
+
 	sortLines(list, repo_sort);
+
 	if (opts.product) {
 		if (opts.rev) {			/* undo / [r]clone/ push */
 			d = sccs_findrev(opts.sc, opts.rev);
+		} else if (had_top && !opts.undo) {
+			d = top;
 		} else {			/* push/pull */
+			u32	flag;
 			/*
-			 * Use the latest one, it matches what we do in
-			 * the weave.
+			 * Use the latest one, it matches what we do
+			 * in the weave. The newest key will be
+			 * colored D_BLUE while the oldest key will be
+			 * colored D_SET.
 			 */
+			flag = D_BLUE;
+			if (opts.undo) flag = D_SET;
 			for (d = opts.sc->table; d; d = d->next) {
-				if (REG(d) && (d->flags & D_SET)) break;
+				if (!TAG(d) && (d->flags & flag)) break;
 			}
 		}
 		assert(d);
@@ -226,6 +225,7 @@ err:			if (close) sccs_free(opts.sc);
 		sccs_sdelta(opts.sc, d, buf);
 		e->deltakey = strdup(buf);
 		e->path = strdup(".");
+		e->present = 1;
 		if (opts.product_first) {
 			char	**l = 0;
 
@@ -236,41 +236,90 @@ err:			if (close) sccs_free(opts.sc);
 		} else {
 			list = addLine(list, (void*)e);
 		}
-		r->repos = (void**)list;
 	}
-	if (close) sccs_free(opts.sc);
+	if (close) {
+		sccs_free(opts.sc);
+	} else {
+		if (opts.revs) sccs_clearbits(opts.sc, D_SET|D_RED|D_BLUE);
+	}
 	r->repos = (void**)list;
 	return (r);
+}
+
+/*
+ * Mark the set gca of a range
+ * Input: some region, like pull -r, is colored.
+ * bit - the color of the set region
+ * tmp - the color used as a tmp. Assumes all off and leaves it all off
+ */
+private void
+setgca(sccs *s, u32 bit, u32 tmp)
+{
+	delta	*d, *p;
+
+	for (d = s->table; d; d = d->next) {
+		if (TAG(d)) continue;
+		if (d->flags & bit) {
+			d->flags &= ~bit;
+			if ((p = d->parent) && !(p->flags & bit)) {
+				p->flags |= tmp;
+			}
+			if (d->merge && (p = sfind(s, d->merge)) &&
+			    !(p->flags & bit)) {
+				p->flags |= tmp;
+			}
+			continue;
+		}
+		unless (d->flags & tmp) continue;
+		d->flags &= ~tmp;
+		d->flags |= bit;
+		if (p = d->parent) {
+			p->flags |= tmp;
+		}
+		if (d->merge && (p = sfind(s, d->merge))) {
+			p->flags |= tmp;
+		}
+	}
 }
 
 #define	L_ROOT		1
 #define	L_DELTA		2
 #define	L_PATH		4
 #define	L_NEW		8
+#define	L_PRESENT	0x10
 
 int
 ensemble_list_main(int ac, char **av)
 {
 	int	c;
-	int	want = 0;
+	int	want = 0, serialize = 0;
+	int	input = 0, output = 0;
 	char	*p;
-	repos	*r;
+	repos	*r = 0;
 	eopts	opts;
 	char	**modules = 0;
 	char	buf[MAXKEY];
 
+	unless (proj_isProduct(0)) {
+		fprintf(stderr,
+		    "%s: needs to be called in a Product.\n", av[0]);
+		return (1);
+	}
 	bzero(&opts, sizeof(opts));
 	opts.product = 1;
 
-	while ((c = getopt(ac, av, "1l;M;pr;")) != -1) {
+	// XXX -C for components?
+	while ((c = getopt(ac, av, "1il;M;opr;u")) != -1) {
 		switch (c) {
 		    case '1':
 			opts.product_first = 1;
 			break;
+		    case 'i': input = 1; break;
 		    case 'l':
 			for (p = optarg; *p; p++) {
 				switch (*p) {
 				    case 'd': want |= L_DELTA; break;
+				    case 'h': want |= L_PRESENT; break;
 				    case 'n': want |= L_NEW; break;
 				    case 'p': want |= L_PATH; break;
 				    case 'r': want |= L_ROOT; break;
@@ -280,13 +329,21 @@ ensemble_list_main(int ac, char **av)
 		    case 'M':
 			modules = addLine(modules, optarg);
 			break;
+		    case 'o': output = 1; break;
 		    case 'p':
-		    	opts.product = 0;
+			opts.product = 0;
 			break;
 		    case 'r':
 			opts.rev = optarg;
 			break;
+		    case 's':
+			serialize = 1;
+			break;
+		    case 'u':
+			opts.undo = 1;
+			break;
 		    default:
+			system("bk help ensemble_list");
 			exit(1);
 		}
 	}
@@ -297,11 +354,19 @@ ensemble_list_main(int ac, char **av)
 		}
 	}
 	if (modules) opts.modules = module_list(modules, 0);
-
+	unless (opts.revs || opts.rev) opts.rev = "+";
 	unless (want) want = L_PATH;
-	unless (r = ensemble_list(opts)) exit(0);
+	if (input) {
+		r = ensemble_fromStream(r, stdin);
+	} else {
+		unless (r = ensemble_list(opts)) exit(0);
+	}
+	if (output) {
+		ensemble_toStream(r, stdout);
+		goto out;
+	}
 	EACH_REPO(r) {
-		if (r->new && !(want & L_NEW)) continue;
+		if (opts.undo && r->new && !(want & L_NEW)) continue;
 		p = "";
 		if (want & L_PATH) {
 			printf("%s", r->path);
@@ -319,10 +384,15 @@ ensemble_list_main(int ac, char **av)
 			printf("%s(new)", p);
 			p = "|";
 		}
+		if ((want & L_PRESENT) && r->present)  {
+			printf("%s(present)", p);
+			p = "|";
+		}
 		printf("\n");
 	}
-	ensemble_free(r);
+out:	ensemble_free(r);
 	if (modules) freeLines(modules, 0);
+	if (opts.revs) freeLines(opts.revs, free);
 	exit(0);
 }
 
@@ -360,23 +430,22 @@ ensemble_next(repos *list)
 		list->deltakey = r->deltakey;
 		list->path = r->path;
 		list->new = r->new;
+		list->present = r->present;
 	} else {
 		list->index = 0;
-		list->new = 0;
+		list->new = list->present = 0;
 		list->rootkey = list->deltakey = list->path = 0;
 	}
 	return (list);
 }
 
 /* lm3di */
-private repo *
-find(repos *list, char *rootkey)
+int
+ensemble_find(repos *list, char *rootkey)
 {
 	assert(list);
 	EACH_REPO(list) {
-		if (streq(list->rootkey, rootkey)) {
-			return (list->repos[list->index]);
-		}
+		if (streq(list->rootkey, rootkey)) return (1);
 	}
 	return (0);
 }
@@ -392,7 +461,64 @@ ensemble_free(repos *list)
 		free(list->path);
 		free((char*)list->repos[list->index]);
 	}
+	free(list->repos);
 	free(list);
+}
+
+int
+ensemble_toStream(repos *repos, FILE *f)
+{
+	fprintf(f, "@ensemble_list %s@\n", ensemble_version);
+	EACH_REPO(repos) {
+		fprintf(f, "rk:%s\n", repos->rootkey);
+		fprintf(f, "dk:%s\n", repos->deltakey);
+		fprintf(f, "pt:%s\n", repos->path);
+		fprintf(f, "nw:%d\n", repos->new);
+		fprintf(f, "pr:%d\n", repos->present);
+	}
+	fprintf(f, "@ensemble_list end@\n");
+	return (0);
+}
+
+repos *
+ensemble_fromStream(repos *r, FILE *f)
+{
+	char	*buf;
+	char	*rk, *dk, *pt;
+	int	nw, pr;
+	repo	*e;
+	char	**list = 0;
+
+	buf = fgetline(f);
+	unless (strneq(buf, "@ensemble_list ", 15)) return (0);
+	while (buf = fgetline(f)) {
+		if (strneq(buf, "@ensemble_list end@", 19)) break;
+		while (!strneq(buf, "rk:", 3)) continue;
+		rk = strdup(buf+3);
+		buf = fgetline(f);
+		assert(strneq(buf, "dk:", 3));
+		dk = strdup(buf+3);
+		buf = fgetline(f);
+		assert(strneq(buf, "pt:", 3));
+		pt = strdup(buf+3);
+		buf = fgetline(f);
+		assert(strneq(buf, "nw:", 3));
+		nw = atoi(buf+3);
+		buf = fgetline(f);
+		assert(strneq(buf, "pr:", 3));
+		pr = atoi(buf+3);
+		/* now add it */
+		e = new(repo);
+		e->rootkey = rk;
+		e->deltakey = dk;
+		e->path = pt;
+		e->new = nw;
+		e->present = pr;
+		list = addLine(list, (void*)e);
+	}
+	unless (r) r = new(repos);
+	r->repos = (void **)list;
+	return (r);
 }
 
 /*
@@ -422,10 +548,11 @@ ensemble_each(int quiet, int ac, char **av)
 	getoptReset();
 	// has to track bk.c's getopt string
 	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
+		if (c == 'C') opts.product = 0;
 		unless (c == 'M') continue;
 		if (optarg[0] == '|') {
 			opts.rev = &optarg[1];
-		} else if (streq("!.", optarg)) {
+		} else if (streq("!.", optarg)) {	// XXX -M!. == -C
 			opts.product = 0;
 		} else {
 			modules = addLine(modules, optarg);
@@ -438,8 +565,9 @@ ensemble_each(int quiet, int ac, char **av)
 		return (1);
 	}
 	EACH_REPO(list) {
+		unless (list->present) continue;
 		unless (quiet) {
-			printf("===== %s =====\n", list->path);
+			printf("#### %s ####\n", list->path);
 			fflush(stdout);
 		}
 		chdir(proj_root(p));

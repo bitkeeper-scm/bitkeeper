@@ -1,6 +1,7 @@
 #include "sccs.h"
 #include "bkd.h"
 #include "bam.h"
+#include "ensemble.h"
 
 private FILE	*server(int recurse);
 
@@ -8,26 +9,28 @@ private FILE	*server(int recurse);
  * Simple key sync.
  * Receive a list of keys on stdin and return a list of
  * keys not found locally.
- * Currently only -B (for BAM) is implemented.
  * With -B, if the key is a 4 tuple, ignore the first one, that's the size,
  * but send it back so we can calculate the total amount to be sent.
  */
 int
 havekeys_main(int ac, char **av)
 {
-	char	*dfile, *key;
+	char	*dfile, *key, *path;
 	int	c;
-	int	rc = 0, BAM = 0, recurse = 1;
+	int	rc = 0, BAM = 0, COMP = 0, ROOT = 0, recurse = 1;
 	FILE	*f = 0;
+        MDBM	*idDB;
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "Blq")) != -1) {
+	while ((c = getopt(ac, av, "BClqR")) != -1) {
 		switch (c) {
 		    case 'B': BAM = 1; break;
+		    case 'C': COMP = 1; break;
 		    case 'l': recurse = 0; break;
 		    case 'q': break;	/* ignored for now */
+		    case 'R': ROOT = 1; break;
 		    default:
-usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
+usage:			fprintf(stderr, "usage: bk %s [-q] [-BR] -\n", av[0]);
 			return (1);
 		}
 	}
@@ -36,10 +39,33 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 		fprintf(stderr, "%s: must be run in a bk repository.\n",av[0]);
 		return (1);
 	}
-	unless (BAM) {
-		fprintf(stderr, "%s: only -B(BAM) supported.\n", av[0]);
+	if ((BAM+COMP+ROOT == 0) || (BAM+COMP+ROOT > 1)) {
+		fprintf(stderr, "%s: only -B | -C | -R supported.\n", av[0]);
 		return (1);
 	}
+
+	/*
+	 * We do not lock ourselves, if the caller wants to lock they can
+	 * do so through bk -Lr -@ ....
+	 * This interface is used in ensemble pull/push so the other side
+	 * may already be locked.
+	 */
+	if (ROOT || COMP) {
+        	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+		while (fnext(buf, stdin)) {
+			chomp(buf);
+			path = key2path(buf, idDB);
+			unless (path &&
+			    exists(path) && (!COMP || isComponent(path))) {
+				printf("%s\n", buf);
+				rc = 1;
+			}
+			if (path) free(path);
+		}
+		mdbm_close(idDB);
+		return (rc);
+	}
+
 	/*
 	 * What this should do is on the first missing key, popen another
 	 * havekeys to our server (if we have one, else FILE * is just stdout)
@@ -68,7 +94,7 @@ usage:			fprintf(stderr, "usage: bk %s [-q] [-B] -\n", av[0]);
 			key = buf;
 		}
 		unless (dfile = bp_lookupkeys(0, key)) {
-			unless (f ) f = server(recurse);
+			unless (f) f = server(recurse);
 			// XXX - need to check error status.
 			fprintf(f, "%s\n", buf);	/* not here */
 		}

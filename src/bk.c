@@ -43,30 +43,6 @@ usage(void)
 
 #define	MAXARGS	1024
 
-private char *
-milli(void)
-{
-	struct	timeval	tv;
-	u64	now, start;
-	double	d;
-	static	char time[20];	/* 12345.999\0 plus slop */
-
-	gettimeofday(&tv, 0);
-	unless (getenv("BK_SEC")) {
-		safe_putenv("BK_SEC=%u", (u32)tv.tv_sec);
-		safe_putenv("BK_MSEC=%u", (u32)tv.tv_usec / 1000);
-		d = 0;
-	} else {
-		start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
-		start += (u64)atoi(getenv("BK_MSEC"));
-		now = (u64)tv.tv_sec * (u64)1000;
-		now += (u64)(tv.tv_usec / 1000);
-		d = now - start;
-	}
-	sprintf(time, "%6.3f", d / 1000.0);
-	return (time);
-}
-
 private void
 save_gmon(void)
 {
@@ -87,6 +63,7 @@ main(int ac, char **av, char **env)
 	char	*p, *dir = 0, *locking = 0;
 	char	sopts[30];
 
+	trace_init(av[0]);
 	ltc_mp = ltm_desc;
 	for (i = 3; i < 20; i++) close(i);
 	reserveStdFds();
@@ -205,9 +182,9 @@ main(int ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c =
-		    getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
+		    getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npPqr|RuUxz;")) != -1) {
 			switch (c) {
-			    case '1': case 'a': case 'c': case 'C': case 'd':
+			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
 			    case 'n': case 'p': case 'u': case 'U': case 'x':
 			    case 'h':
@@ -215,10 +192,18 @@ main(int ac, char **av, char **env)
 				break;
 			    case '@': remote = 1; break;
 			    case 'A': all = 1; break;
+			    case 'C': all = 1; break;
 			    case 'M': break;	// for ensemble each
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
+			    case 'P':				/* doc 2.0 */
+				if (proj_cd2product()) {
+					fprintf(stderr, 
+					    "bk: Cannot find product root.\n");
+					return(1);
+				}
+				break;
 			    case 'r':				/* doc 2.0 */
 				if (dashr) {
 					fprintf(stderr,
@@ -296,7 +281,10 @@ main(int ac, char **av, char **env)
 			goto run;
 		}
 
-		unless (prog = av[optind]) usage();
+		unless (prog = av[optind]) {
+			if (getenv("_BK_ITERATOR")) exit(0);
+			usage();
+		}
 		for (ac = 0; av[ac] = av[optind++]; ac++);
 		if (dashr) {
 			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
@@ -310,7 +298,7 @@ main(int ac, char **av, char **env)
 		prog = av[0];
 	}
 
-run:	
+run:	trace_init(prog);	/* again 'cause we changed prog */
 
 	/*
 	 * XXX - we could check to see if we are licensed for SAM and make
@@ -478,6 +466,7 @@ cmdlog_exit(void)
 	 */
 	repository_lockcleanup();
 	proj_reset(0);		/* flush data cached in proj struct */
+	trace_free();
 }
 
 private	struct {
@@ -486,6 +475,7 @@ private	struct {
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
+	{"collapse", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"fix", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"license", CMD_FAST_EXIT},
@@ -569,7 +559,6 @@ cmdlog_start(char **av, int httpMode)
 		if (i) strcat(cmdlog_buffer, " ");
 		strcat(cmdlog_buffer, av[i]);
 	}
-	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
 	unless (proj_root(0)) return;
 

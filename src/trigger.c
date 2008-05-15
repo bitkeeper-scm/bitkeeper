@@ -255,8 +255,6 @@ out:	freeLines(lines, free);
 /*
  * This is called for both local triggers and remote triggers.
  * The remote stuff has to be wrapped so that gets a little complicated.
- * lclone looks like it is remote but doesn't go through a bkd so it is
- * actually handled like it is local.
  * We send all trigger output to a file so we can funnel it where we want.
  */
 private int
@@ -273,9 +271,9 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 
 	/*
 	 * If we are a remote pre trigger then we wrap the protocol around
-	 * the output unless it is lclone.
+	 * the output.
 	 */
-	proto = remote && streq(when, "pre") && !getenv("_BK_LCLONE");
+	proto = remote && streq(when, "pre");
 	if (proto) {
 	    	bkd_data = "D";
 		out = stdout;

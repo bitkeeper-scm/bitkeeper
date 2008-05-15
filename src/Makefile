@@ -51,8 +51,19 @@ else
 	RESOURCE=
 endif
 
+# By default, we don't print verbose output. If you want to see
+# the full compiler command line, use 'make V=1'
+# The trick is to do "$(Q)$(CC)" instead of just "$(CC)" so that if
+# Q is not set, it's just "$(CC)" and if Q is set to @ it becomes
+# a quiet "@$(CC)".
+# For the verbose messages, gmake provides
+# $(if $(Q),<then>,<else>)
+# so we just conditionalize on Q. Empty is false.
+ifndef V
+	Q=@
+endif
 
-GET=	bk get -sS
+GET=	$(Q)bk get -sS
 BK=	bk$(EXE) 
 LD	=cc
 G	=-g
@@ -128,7 +139,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	delta.o diffs.o diffsplit.o dspec.o \
 	ensemble.o eula.o export.o \
-	find.o findcset.o findkey.o fixlod.o fixtool.o \
+	find.o findcset.o findkey.o fixlod.o fixtool.o fslayer.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
@@ -266,19 +277,20 @@ gcov:
 	$(MAKE) CFLAGS="$(CC_DEBUG) -fprofile-arcs -ftest-coverage" all
 
 clean: FORCE
-	for sub in $(SUBDIRS) ../doc ../man gnu gui utils win32; \
-	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" $@; \
+	$(if $(Q),@echo Cleaning up,)
+	$(Q)for sub in $(SUBDIRS) ../doc ../man gnu gui utils win32; \
+	do	$(MAKE) -C$$sub "CFLAGS=$(CFLAGS)" Q=$(Q) $@; \
 	done
-	$(RM) $(OBJ) bk.o inskeys.o inskeys_main.o $(BINS) $(SCRIPTS) \
+	$(Q)$(RM) $(OBJ) bk.o inskeys.o inskeys_main.o $(BINS) $(SCRIPTS) \
 	    $(LOCALSRC) $(PSRC) $(PROGS)
-	$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
+	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		bkver.h tclkey.h core *.bb *.bbg *.da *.gcov \
 		bk.ico bk16.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
 		diff.exe diff3.exe hidestring.exe inskeys_main.o patch.exe
-	$(RM) -r tmp
+	$(Q)$(RM) -r tmp
 
 clobber: clean FORCE
 	-@bk -r clean
@@ -289,10 +301,10 @@ wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 
 get-e: FORCE
 	-@bk edit -qT `echo $(HDRS) $(SRCS) $(SCRSRCS) $(MISC) | fmt -1|sort -u`
-	$(MAKE) tags
+	$(Q)$(MAKE) tags
 
 srcs: $(SRCS) $(HDRS) FORCE
-	for sub in $(SUBDIRS); do $(MAKE) -C$$sub $@; done
+	@(Q)for sub in $(SUBDIRS); do $(Q)$(MAKE) -C$$sub $@; done
 
 tags: $(patsubst %,%/tags.local, $(SUBDIRS)) tags.local
 	sort $^ > $@
@@ -302,7 +314,7 @@ tags.local: $(SRCS) $(HDRS)
 	ctags -f $@ --file-tags=yes --c-types=d+f+s+t $^
 
 %/tags.local: FORCE
-	$(MAKE) -C $(dir $@) tags.local
+	$(Q)$(MAKE) -C $(dir $@) tags.local
 
 ssh sshtest:
 	$(MAKE) realtest
@@ -336,17 +348,17 @@ FORCE:
 
 gnu: $(BK) FORCE
 	@bk get -sS gnu/Makefile
-	cd gnu && $(MAKE) BINDIR=$(BINDIR)
+	@cd gnu && $(MAKE) Q=$(Q) BINDIR=$(BINDIR)
 
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
 
 # build libraries in sub directories
 %.a: FORCE
-	$(MAKE) -C $(dir $@) "CC=$(CC)" "CFLAGS=$(CFLAGS)" $(notdir $@)
+	$(Q)$(MAKE) -C $(dir $@) "CC=$(CC)" "CFLAGS=$(CFLAGS)" Q=$(Q) $(notdir $@)
 
 libc/mtst$(EXE): FORCE
-	$(MAKE) -C libc "CC=$(CC)" "CFLAGS=$(CFLAGS)" mtst$(EXE)
+	$(Q)$(MAKE) -C libc "CC=$(CC)" "CFLAGS=$(CFLAGS)" mtst$(EXE)
 
 bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o
@@ -358,7 +370,8 @@ bk.ico: win32/data/bk.ico
 	@cp -f win32/data/bk.ico .
 
 $(BK): $(LIBS) bk.o $(RESOURCE) $(OBJ)
-	$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(XLIBS) 
+	$(if $(Q),@echo LINKING $(BK),)
+	$(Q)$(LD) $(LDFLAGS) -o $@ bk.o $(OBJ) $(RESOURCE) $(LIBS) $(XLIBS)
 
 inskeys$(EXE): inskeys.o inskeys_main.o $(LIBS)
 	$(LD) $(LDFLAGS) -o $@ inskeys.o inskeys_main.o $(LIBS) $(XLIBS)
@@ -388,30 +401,33 @@ bkhelp.txt: build $(BK) FORCE
 # It is structured like this so that rebuilding prs doesn't
 # force bk.ver (and thus the bk script) to be regenerated.
 bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
-	( echo \
+	$(if $(Q),@echo Building $@,)
+	$(Q)( echo \
 	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:\n' ../ChangeSet |\
 	  sed 's/ approved//g';` \
 	  for \
 	  `sh ./utils/os` \
 	) | ./bk undos >bk.v
-	mv -f bk.v bk.ver
+	$(Q)mv -f bk.v bk.ver
 
 # This must be rebuilt every time because it includes the build time
 bkver.c: FORCE
-	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
+	$(if $(Q),@echo Building $@,)
+	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
 	@if [ ! -x utils/os ]; then bk get -S utils/os; fi
-	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
-	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
-	echo "int test_release = "$(TRIAL)";" >> bk.v
-	mv -f bk.v bkver.c
+	$(Q)echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
+	$(Q)echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
+	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
+	$(Q)mv -f bk.v bkver.c
 
 bkver.h: Makefile
-	echo "/* auto-generated file */" > $@
-	echo "extern char *bk_vers;" >> $@
-	echo "extern char *bk_utc;" >> $@
-	echo "extern char *bk_time;" >> $@
-	echo "extern char *bk_platform;" >> $@
-	echo "#define bk_commercial() $(COMMERCIAL)" >> $@
+	$(if $(Q),@echo Building $@,)
+	$(Q)echo "/* auto-generated file */" > $@
+	$(Q)echo "extern char *bk_vers;" >> $@
+	$(Q)echo "extern char *bk_utc;" >> $@
+	$(Q)echo "extern char *bk_time;" >> $@
+	$(Q)echo "extern char *bk_platform;" >> $@
+	$(Q)echo "#define bk_commercial() $(COMMERCIAL)" >> $@
 
 
 bkver.o: bkver.c
@@ -422,9 +438,10 @@ utils/os utils/gnu-os: $(BK)
 	@if [ ! -x utils/gnu-os ]; then ./bk get -S utils/gnu-os; fi
 
 %: %.sh
-	$(RM) $@
-	cp $< $@
-	chmod +x $@
+	$(if $(Q),@echo Building $@,)
+	$(Q)$(RM) $@
+	$(Q)cp $< $@
+	$(Q)chmod +x $@
 
 import: import.sh port/$(SYS)_platform.sh
 	cat port/$(SYS)_platform.sh import.sh > import.T
@@ -434,14 +451,15 @@ import: import.sh port/$(SYS)_platform.sh
 logging.o: bkl5_hashs.h
 
 bkl5_hashs.h: mk_bkl5_license_tab.pl  USED_BKL5_LICENSES
-	perl mk_bkl5_license_tab.pl  USED_BKL5_LICENSES > $@
+	$(if $(Q),@echo Building $@,)
+	$(Q)perl mk_bkl5_license_tab.pl  USED_BKL5_LICENSES > $@
 
 # Quick and dirty target so we can make all the gui tools without the rest
 GUI: tclwrap FORCE
-	@cd gui && make gui
+	@cd gui && make Q=$(Q) gui
 
 gui-nowrap GUI-nowrap:
-	@cd gui && make nowrap
+	@cd gui && make Q=$(Q) nowrap
 
 install: installdir
 	tmp/bitkeeper/bk _eula -a
@@ -526,7 +544,8 @@ build: build.sh
 
 # The default .c.o rule is broken with some Makes.
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(if $(Q),@echo CC $<,)
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
@@ -544,23 +563,27 @@ tclwrap: blowfish.o tclwrap.o libc/libc.a
 tclwrap.o blowfish.o: blowfish.h tclkey.h
 
 cmd.c cmd.h: cmd.pl bk.sh $(filter bkd_%,$(SRCS))
-	perl cmd.pl || (rm -f cmd.c cmd.h; exit 1)
+	$(if $(Q),@echo Building $@,)
+	$(Q)perl cmd.pl || (rm -f cmd.c cmd.h; exit 1)
 
 # This parses slib.c and extracts the meta-data keywords expanded
 # by kw2val() and passes them to gperf to generate hash lookup code.
 slib.o:	kw2val_lookup.c
 kw2val_lookup.c: slib.c kw2val.pl
-	perl kw2val.pl slib.c || (rm -f kw2val_lookup.c; exit 1)
+	$(if $(Q),@echo Building $@,)
+	$(Q)perl kw2val.pl slib.c || (rm -f kw2val_lookup.c; exit 1)
 
 hidestring: hidestring.c	
 	$(CC) $(CC_FAST) -o hidestring hidestring.c
 
 MLA.lic: MLA.preamble Enterprise.lic.txt $(BK)
-	cat MLA.preamble Enterprise.lic.txt | \
+	$(if $(Q),@echo Encrypting $@,)
+	$(Q)cat MLA.preamble Enterprise.lic.txt | \
 	    ./bk crypto -E 048d6aa55c30b3b4 > MLA.lic
 
 %.lic: %.lic.txt bkupgrade.key $(BK)
-	./bk crypto -E 048d6aa55c30b3b4 < $< > $@
+	$(if $(Q),@echo Encrypting $@,)
+	$(Q)./bk crypto -E 048d6aa55c30b3b4 < $< > $@
 
 check-syntax:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -S ${CHK_SOURCES} -o /dev/null

@@ -87,6 +87,19 @@ _make_repo() {
 		echo "Setup failed!"
 		exit 1
 	}
+	# Make it a product
+	test "$TYPE" = nested && (
+		cd "$REPO"
+		bk clone -q . BitKeeper/tmp/x
+		bk ensemble create -q
+		bk ensemble add -q -y'components' \
+		    BitKeeper/tmp/x "gcc" BitKeeper/tmp/x "gdb"
+		bk commit -q -y'components'
+		rm -fr BitKeeper/tmp/x
+		touch gcc/BitKeeper/tmp/saveme
+		touch gdb/BitKeeper/tmp/saveme
+	)
+
 	# Make a cached copy
         (cd "$REPO" && find . -type f | perl -e '
 		# Input is a file name per line
@@ -157,6 +170,17 @@ fresh_commercial() {
 	cd "$1"
 }
 
+# 'nested foo' is a form of 'commercial foo' which gives a nested repo.
+nested() {
+	CF="$BK_CACHE/nested.config"
+	SFIO="$BK_CACHE/nested.sfio"
+	test -f "$SFIO" || {
+		_commercial_config > "$CF"
+		_make_repo nested "$CF" "$SFIO"
+	}
+	_get_cached_repo "$1" "$SFIO"
+}
+
 echon() {
 	echo $NX ${1+"$@"}$NXL
 }
@@ -203,6 +227,10 @@ verbose() {
 islink() {
 	# test -L is not portable - freebsd[34] and mac102 do not support
 	perl -e "exit ((-l '$1') ? 0 : 1)"
+}
+
+_mtime() {
+	bk _stat "$1" | awk -F\| '{print $10}'
 }
 
 cd "$HERE" || exit 1

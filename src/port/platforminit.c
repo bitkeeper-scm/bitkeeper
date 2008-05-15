@@ -21,7 +21,7 @@ platformInit(char **av)
 	MDBM	*uniq;
 	char	**newpath;
 	int	n;
-	int	flags = SILENT;	/* for debugging */
+	int	flags = SILENT;
 	int	got_tilda = 0;
 	mode_t	m;
 	char    *paths[] = {"", "/gnu/bin", "/gui/bin", 0};
@@ -31,7 +31,16 @@ platformInit(char **av)
 			      "BASH_ENV", "", 0};
 	char	buf2[MAXPATH];
 
-	if (bin) return;
+	if ((p = getenv("BK_DEBUG_PLATFORM")) && *p) {
+		flags = 0;
+		// Let's have a look at the errors if debugging
+		putenv("BK_DEBUG_LAST_ERROR=YES");
+    	}
+
+	if (bin) {
+		verbose((stderr, "Using '%s' as bin\n", bin));
+		return;
+	}
 	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
 	/* force user/group open and allow user to control other */
 	m = umask(0);
@@ -43,7 +52,10 @@ platformInit(char **av)
 		exit(1);
 	}
 
-	unless (p = getenv("PATH")) return;	/* and pray */
+	unless (p = getenv("PATH")) {
+		verbose((stderr, "No PATH in environment?"));
+		return;	/* and pray */
+	}
 
 #ifndef	WIN32
 	signal(SIGHUP, SIG_IGN);
@@ -108,7 +120,7 @@ platformInit(char **av)
 	 * Otherwise, set the bin dir to whereever we found the program.
 	 */
 	if (IsFullPath(av[0]) && executable(av[0])) {
-		verbose((stderr, "USING fullpath %s\n", av[0]));
+		verbose((stderr, "USING fullpath '%s'\n", av[0]));
 		strcpy(buf, av[0]);
 	} else {
 		/*
@@ -116,21 +128,26 @@ platformInit(char **av)
 		 */
 		verbose((stderr, "av[0]='%s'\n", av[0]));
 		if (t = strchr(av[0], '/')) {
-			verbose((stderr, "USING partial %s\n", av[0]));
+			verbose((stderr, "PARTIAL '%s'\n", av[0]));
 			strcpy(buf, av[0]);
 		} else {
 			s = p;
-			verbose((stderr, "p='%s'\n", p));
+			verbose((stderr, "SEARCH '%s'\n", p));
 			while (1) {
 				if (t = strchr(s, PATH_DELIM)) *t = 0;
 				if (s[0] == '~') got_tilda = 1;
 				sprintf(buf, "%s/%s", s, av[0]);
 				if (t) *t = PATH_DELIM;
 				if (executable(buf)) break;
+				if (exists(buf)) {
+					verbose((stderr,
+					    "Warning: found %s\n"
+					    "\tbut executable(...) returns 0\n",
+					    buf));
+				}
 				unless (t) {
 					verbose((stderr,
-						    "Can't find bk on PATH, "
-						    "bail and pray.\n"));
+					    "Can't find bk on your PATH.\n"));
 					if (got_tilda) {
 						fprintf(stderr, 
 						    "Please expand ~ when "
@@ -147,11 +164,11 @@ platformInit(char **av)
 			strcat(buf, "/");
 			strcat(buf, buf2);
 		}
-		verbose((stderr, "USING PATH %s\n", buf));
+		verbose((stderr, "USING PATH '%s'\n", buf));
 	}
 	if ((n = readlink(buf, buf2, sizeof(buf2))) != -1) {
 		buf2[n] = 0;
-		verbose((stderr, "LINK %s->%s\n", buf, buf2));
+		verbose((stderr, "LINK '%s'->'%s'\n", buf, buf2));
 		if  (IsFullPath(buf2)) {
 			strcpy(buf, buf2);
 		} else {
@@ -213,13 +230,17 @@ platformInit(char **av)
 	p = joinLines(buf2, newpath);
 	freeLines(newpath, free);
 	safe_putenv("PATH=%s", p);
+	verbose((stderr, "set PATH='%s'\n", p));
 	free(p);
 	safe_putenv("BK_BIN=%s", bin);
+	verbose((stderr, "set BK_BIN='%s'\n", bin));
 
 	/* stomp on any vars I don't want in the user's env */
 	for (n = 0; badvars[n]; n += 2) {
 		if (getenv(badvars[n])) {
 			safe_putenv("%s=%s", badvars[n], badvars[n+1]);
+			verbose((stderr,
+			    "set '%s=%s'\n", badvars[n], badvars[n+1]));
 		}
 	}
 }

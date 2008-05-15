@@ -352,10 +352,10 @@ proj_config(project *p)
 	if (p->config) return (p->config);
 	if (p->rparent) {
 		/* If RESYNC doesn't have a config file, then don't use it. */
-		p->config = loadConfig(p->root, 1);
+		p->config = loadConfig(p, 1);
 		unless (p->config) return (proj_config(p->rparent));
 	} else {
-		p->config = loadConfig(p->root, 0);
+		p->config = loadConfig(p, 0);
 	}
 	return (p->config);
 }
@@ -610,6 +610,7 @@ proj_product(project *p)
 				unless (exists(buf)) continue;
 				p->product = proj_init(tmp);
 			}
+			free(tmp);
 		}
 	}
 	return (p->product);
@@ -670,6 +671,14 @@ proj_reset(project *p)
 			p->rootkey = 0;
 			free(p->md5rootkey);
 			p->md5rootkey = 0;
+		}
+		if (p->comppath) {
+			free(p->comppath);
+			p->comppath = 0;
+		}
+		if (p->csetFile) {
+			free(p->csetFile);
+			p->csetFile = 0;
 		}
 		if (p->repoID) {
 			free(p->repoID);
@@ -882,12 +891,11 @@ proj_samerepo(char *source, char *dest)
 	return (rc);
 }
 
-int
+project *
 proj_isResync(project *p)
 {
-	unless (p) p = curr_proj();
-
-	return (p && p->rparent);
+	unless (p || (p = curr_proj())) return (0);
+	return (p->rparent);
 }
 
 /*
@@ -954,11 +962,11 @@ restoreCO(sccs *s, int co)
 	}
 	if (s->cachemiss) {
 		if (getFlags & GET_EDIT) {
-			s->proj->bp_getFiles =
-			    addLine(s->proj->bp_getFiles, strdup(s->gfile));
-		} else {
 			s->proj->bp_editFiles =
 			    addLine(s->proj->bp_editFiles, strdup(s->gfile));
+		} else {
+			s->proj->bp_getFiles =
+			    addLine(s->proj->bp_getFiles, strdup(s->gfile));
 		}
 		return (0);
 	}

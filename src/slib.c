@@ -3764,6 +3764,7 @@ loadRepoConfig(char *root)
 	sccs	*s = 0;
 	char	config[MAXPATH];
 
+	unless (root) return (0);
 	/*
 	 * If the config is already checked out, use that.
 	 */
@@ -3871,13 +3872,24 @@ loadEnvConfig(MDBM *db)
  * if forcelocal is set, then we must find a repo config file.
  */
 MDBM *
-loadConfig(char *root, int forcelocal)
+loadConfig(project *p, int forcelocal)
 {
 	MDBM	*db;
+	project	*prod;
+	char	*config;
 
-	unless (db = loadRepoConfig(root)) {
+	unless (db = loadRepoConfig(proj_root(p))) {
 		if (forcelocal) return (0);
 		db = mdbm_mem();
+	}
+	if (proj_isComponent(p)) {
+		unless (prod = proj_isResync(p)) prod = p;
+		prod = proj_product(prod);
+
+		/* fetch config from product */
+		config = proj_fullpath(prod, "BitKeeper/etc/config");
+		unless (exists(config)) get(config, SILENT|GET_EXPAND, "-");
+		config2mdbm(db, config);
 	}
 	loadDotBkConfig(db);
 	unless (getenv("BK_REGRESSION")) loadGlobalConfig(db);
@@ -4045,7 +4057,16 @@ usage:			sys("bk", "help", "-s", "config", SYS);
 	}
 	if (av[optind]) goto usage;
 
+	/* repo config */
 	if (root = proj_root(0)) {
+		file = aprintf("%s/BitKeeper/etc/config", root);
+		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
+		printconfig(file, 0, cfg);
+		free(file);
+	}
+
+	/* product config */
+	if (proj_isComponent(0) && (root = proj_root(proj_product(0)))) {
 		file = aprintf("%s/BitKeeper/etc/config", root);
 		unless (exists(file)) get(file, SILENT|GET_EXPAND, "-");
 		printconfig(file, 0, cfg);
@@ -5351,26 +5372,6 @@ sccs_set(sccs *s, delta *d, char *iLst, char *xLst)
 	int	junk;
 
 	return (serialmap(s, d, iLst, xLst, &junk));
-}
-
-delta *
-sccs_newtip(sccs *s, char **revs)
-{
-	delta	*d, *after = 0;
-	int	i;
-
-	for (d = s->table; d; d = d->next) d->flags &= ~D_SET;
-	EACH(revs) {
-		d = sccs_findrev(s, revs[i]);
-		assert(d);
-		d->flags |= D_SET;
-	}
-	for (d = s->table; d; d = d->next) {
-		if (!after && REG(d) && !(d->flags & D_SET)) after = d;
-		d->flags &= ~D_SET;
-	}
-	assert(after);
-	return (after);
 }
 
 private void
@@ -15909,7 +15910,7 @@ sccs_userfile(sccs *s)
 {
 	char	*pathname;
 
-	if (CSET(s))		/* ChangeSet */
+	if (CSET(s) && !proj_isComponent(s->proj))		/* ChangeSet */
 		return 0;
 
 	pathname = sccs_ino(s)->pathname;
@@ -16033,7 +16034,16 @@ gone(char *key, MDBM *db)
 {
 	unless (db) return (0);
 	unless (strchr(key, '|')) return (0);
-	return (mdbm_fetch_str(db, key) != 0);
+	if (mdbm_fetch_str(db, key) != 0) return (1);
+	
+	/*
+	 * OK, so it's not marked as gone.  It might be a changeset rootkey
+	 * for a component and we're going to let those be considered 
+	 * auto-goned for now.
+	 * XXX - needs an env var so we can turn this off.
+	 */
+	return (changesetKey(key) &&
+	    proj_isProduct(0) && !streq(key, proj_rootkey(0)));
 }
 
 MDBM	*
@@ -16258,6 +16268,20 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 		p = name2sccs(v.dptr);
 	} else {
 		char	*t, *r;
+
+		/*
+		 * For sparse trees we need to short circuit the inits
+		 * ChangeSet files that are not there or we will init
+		 * our changeset file over and over again only to find
+		 * that the key doesn't match.
+		 *
+		 * XXX - need to talk to Wayne about the localp thing
+		 * he did below.  Why is that better than 0?
+		 */
+		if (changesetKey(key) &&
+	            proj_isProduct(0) && !streq(key, proj_rootkey(0))) {
+		    	return (0);
+		}
 
 		for (t = k.dptr; *t++ != '|'; );
 		for (r = t; *r != '|'; r++);

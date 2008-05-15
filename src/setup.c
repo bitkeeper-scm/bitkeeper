@@ -125,7 +125,7 @@ again:
 		fclose(f1);
 	}
 
-	unless (m = loadConfig(".", 1)) {
+	unless (m = loadConfig(0, 1)) {
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}

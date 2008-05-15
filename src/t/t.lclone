@@ -141,19 +141,11 @@ test X$REV = X1.1 || {
 }
 echo OK
 
-echo $N Check that x.files are picked up ............................$NL
-echo foo > "$HERE/project/BitKeeper/etc/SCCS/x.dummy"
-bk clone $Q -l "$HERE/project" "$HERE/markers"
-test -f "$HERE/markers/BitKeeper/etc/SCCS/x.dummy" || {
-	echo failed to pick up file
-	exit 1
-}
-echo OK
-
 echo $N Check the s.file updates break links ........................$NL
 # I wish we could use 'test file1 -ef file2' to verify that the
 # files are really linked and unlinked, but that is not portable.
 cd "$HERE"
+bk clone $Q -l "$HERE/project" "$HERE/markers" || exit 1
 h1=project/src/SCCS/s.h.h
 h2=markers/src/SCCS/s.h.h
 h3=trigger/src/SCCS/s.h.h

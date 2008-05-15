@@ -48,15 +48,13 @@
 #define	fullname	full_name	/* Darwin libc collision */
 
 /* These functions are a "no-op" on unix */
-#define localName2bkName(x, y)		
+#define localName2bkName(x, y)		(void)1
 #define	make_fd_uninheritable(fd)  fcntl(fd, F_SETFD, 1)
 #define	mkpipe(p, size)	pipe(p)
 #define	setmode(a, b)
 
-#define	unlink(f)	smartUnlink(f)
-#define	rename(o, n)	smartRename(o, n)
-#define	realmkdir(d, m)	(mkdir)(d, m)
-#define	mkdir(d, m)	smartMkdir(d, m)
+#define	unlink(f)	smartUnlink((char *)f)
+#define	rename(o, n)	smartRename((char *)o, (char *)n)
 #define	closesocket(i)	close(i)
 #define	linkcount(a, b)	(b)->st_nlink
 

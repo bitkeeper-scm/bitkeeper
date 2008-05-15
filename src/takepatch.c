@@ -488,9 +488,11 @@ error:		if (perfile) sccs_free(perfile);
 			s->state &= ~S_PFILE; 
 		}
 		tmp = sccs_top(s);
-		unless (sccs_patheq(tmp->pathname, s->gfile)) {
-			badpath(s, tmp);
-			goto error;
+		unless (CSET(s)) {
+			unless (sccs_patheq(tmp->pathname, s->gfile)) {
+				badpath(s, tmp);
+				goto error;
+			}
 		}
 		unless (tmp = sccs_findKey(s, t)) {
 			shout();
@@ -1609,10 +1611,10 @@ resync_lock(void)
 	 * We assume that a higher level program called repository_wrlock(),
 	 * we're just doing the RESYNC part.
 	 *
-	 * Note: we need the real mkdir, not the so called smart one, we need
-	 * to fail if it exists.
+	 * Note: bk's mkdir will pass if RESYNC already exists so we need
+	 * to test that separately.
 	 */
-	if (realmkdir("RESYNC", 0777)) {
+	if (isdir("RESYNC") || mkdir("RESYNC", 0777)) {
 		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
 		repository_lockers(0);
 		cleanup(0);

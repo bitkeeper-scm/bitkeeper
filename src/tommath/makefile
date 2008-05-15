@@ -7,6 +7,7 @@ VERSION=0.39
 
 CPPFLAGS = -I.
 CFLAGS  +=  -Wall -W -Wshadow -Wsign-compare
+ARFLAGS=rc
 
 ifndef MAKE
    MAKE=make
@@ -90,9 +91,10 @@ bn_mp_init_set_int.o bn_mp_invmod_slow.o bn_mp_prime_rabin_miller_trials.o \
 bn_mp_to_signed_bin_n.o bn_mp_to_unsigned_bin_n.o
 
 $(LIBNAME):  $(OBJECTS)
-	$(RM) $@
-	$(AR) $(ARFLAGS) $@ $(OBJECTS)
-	$(RANLIB) $@
+	$(if $(Q),@echo AR $(LIBNAME),)
+	$(Q)$(RM) $@
+	$(Q)$(AR) $(ARFLAGS) $@ $(OBJECTS)
+	$(Q)$(RANLIB) $@
 
 $(OBJECTS): $(HEADERS)
 
@@ -172,12 +174,13 @@ pretty:
 	perl pretty.build
 
 clean:
-	rm -f *.bat *.pdf *.o *.a *.obj *.lib *.exe *.dll etclib/*.o demo/demo.o test ltmtest mpitest mtest/mtest mtest/mtest.exe \
+	$(if $(Q),@echo Cleaning tommath,)
+	$(Q)rm -f *.bat *.pdf *.o *.a *.obj *.lib *.exe *.dll etclib/*.o demo/demo.o test ltmtest mpitest mtest/mtest mtest/mtest.exe \
 	tags.local \
         *.idx *.toc *.log *.aux *.dvi *.lof *.ind *.ilg *.ps *.log *.s mpi.c *.da *.dyn *.dpi tommath.tex `find . -type f | grep [~] | xargs` *.lo *.la
-	rm -rf .libs
-	cd etc ; MAKE=${MAKE} ${MAKE} clean
-	cd pics ; MAKE=${MAKE} ${MAKE} clean
+	$(Q)rm -rf .libs
+	$(Q)cd etc ; MAKE=${MAKE} ${MAKE} clean
+	$(Q)cd pics ; MAKE=${MAKE} ${MAKE} clean
 
 #zipup the project (take that!)
 no_oops: clean
@@ -198,3 +201,6 @@ tags.local: $(OBJECTS:%.o=%.c) $(HEADERS)
 	ctags -f tommath/$@ --file-tags=yes --c-types=d+f+s+t \
 		$(patsubst %,tommath/%,$^)
 
+.c.o:
+	$(if $(Q),@echo CC tommath/$<,)
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@

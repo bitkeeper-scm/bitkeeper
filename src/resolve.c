@@ -2618,6 +2618,8 @@ err:			unapply(save);
 	}
 	fclose(f);
 
+	if (exists("RESYNC/SCCS/d.ChangeSet")) touch("SCCS/d.ChangeSet", 0644);
+
 	/* Remove cache of cset revisions */
 	delete_cset_cache(".", 0);
 
@@ -2630,10 +2632,6 @@ err:			unapply(save);
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
-	}
-	unless (opts->quiet) {
-		fprintf(stderr,
-		    "resolve: running consistency check, please wait...\n");
 	}
 	proj_restoreAllCO(0, opts->idDB);
 	if (proj_sync(0)) {
@@ -2648,9 +2646,9 @@ err:			unapply(save);
 	}
 	if (proj_configbool(0, "partial_check")) {
 		fflush(save); /*  important */
-		ret = run_check(APPLIED, opts->quiet ? 0 : "-v");
+		ret = run_check(opts->quiet, APPLIED, opts->quiet ? 0 : "-v");
 	} else {
-		ret = run_check(0, opts->quiet ? 0 : "-v");
+		ret = run_check(opts->quiet, 0, opts->quiet ? 0 : "-v");
 	}
 	if (ret) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");

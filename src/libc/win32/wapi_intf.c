@@ -171,18 +171,24 @@ getlogin(void)
 	return (name);
 }
 
-int
-sync()
+void
+nt_sync(void)
 {
+	HANDLE	vhandle;
+	char	cwd[MAXPATH], volume[MAXPATH];
+
+	if (GetCurrentDirectory(sizeof(cwd), cwd) == 0) return;
+	if (GetVolumePathName(cwd, volume, sizeof(volume)) == 0) return;
 	/*
-	 * We should be able to call FlushFileBuffers() on a open
-	 * handle to the current volume to flush all data on the disk,
-	 * but that will only work if we have admin privs.  That might
-	 * be good enough, if it is quiet on failure.
-	 *
-	 * For now we just ignore the call.
+	 * for non-Administrator users, the CreateFile() and FlushFileBuffers()
+	 * calls should fail but we don't care.  Let it not be said we didn't
+	 * do the least we could.
 	 */
-	return (0);
+	vhandle = CreateFile(volume,
+	    GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, 0);
+	if (vhandle == INVALID_HANDLE_VALUE) return;
+	FlushFileBuffers(vhandle);
+	CloseHandle(vhandle);
 }
 
 int
@@ -1110,12 +1116,17 @@ private char *
 error2msg(int error)
 {
 	LPTSTR  errormsg;
+	char	*ret = 0;
 
 	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
 	    FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 	    NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 	    (LPTSTR) &errormsg, 0, NULL);
-	return (errormsg);
+	if (errormsg) {
+		ret = strdup(errormsg);
+		LocalFree(errormsg);
+	}
+	return (ret);
 }
 
 private void
@@ -1128,7 +1139,7 @@ stuck(char *fmt, const char *arg)
 		fprintf(stderr, fmt, arg);
 		e = GetLastError();
 		m = error2msg(e);
-		fprintf(stderr, "error (%d): %s\n", e, m?m:"Unknown");
+		fprintf(stderr, "error (%4ld): %s\n", e, m?m:"Unknown");
 		if (m) free(m);
 	}
 }

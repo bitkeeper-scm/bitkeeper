@@ -83,32 +83,6 @@ _switch_char(const char *ofn, char *nfn, char ochar, char nchar)
 	return (nfn);
 }
 
-/*
- * Our version of fopen, does two additional things
- * a) Translate Bitmover filename to Win32 (i.e NT) path name
- * b) Make fd uninheritable
- */
-FILE *
-nt_fopen(const char *filename, const char *mode)
-{
-	FILE	*f;
-	char	buf[1024];
-	int	fd;
-
-	f = fopen(bm2ntfname(filename, buf), mode);
-	if (f == NULL) {
-		debug((stderr,
-		    "nt_fopen: fail to open file %s, mode %s\n",
-		    filename, mode));
-		return (NULL);
-	}
-
-	fd = fileno(f);
-	if (fd >= 0) make_fd_uninheritable(fd);
-	return (f);
-}
-
-
 private int
 _exists(char *file)
 {
@@ -296,10 +270,27 @@ nt_is_full_path_name(char *path)
 	return (0);		/* Nope, not a full path name  */
 }
 
-
 int
 pipe(int fd[2], int pipe_size)
 {
 	if (pipe_size == 0) pipe_size = 512;
 	return (_pipe(fd, pipe_size, _O_BINARY|_O_NOINHERIT));
+}
+
+#undef	GetLastError
+
+DWORD
+bk_GetLastError(void)
+{
+	DWORD	ret = GetLastError();
+	char	*p;
+	static	int debug = ~0;
+
+	if (debug == ~0) {
+		p = getenv("BK_DEBUG_LAST_ERROR");
+		debug = (p && *p) ? 1 : 0;
+	}
+
+	if (debug) fprintf(stderr, "GetLastError() = %u\n", ret);
+	return (ret);
 }

@@ -88,6 +88,7 @@ private int
 doit(sccs *s, s_opts opts)
 {
 	delta	*e;
+	char	*p;
 	int	left, n;
 	int	flags = 0;
 
@@ -132,9 +133,18 @@ doit(sccs *s, s_opts opts)
 		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
 		sccs_close(s); /* for win32 */
 		unlink(s->sfile);
+		p = strrchr(s->sfile, '/');
+		p[1] = 'c';	/* unlink c.file */
+		unlink(s->sfile);
+		p[1] = 'd';	/* unlink d.file */
+		unlink(s->sfile);
+		p[1] = 's';
 		sccs_rmEmptyDirs(s->sfile);
 		return (0);
 	}
+
+	/* work with bluearc Cunning Plan */
+	s->tree->flags &= ~(D_SET|D_GONE);
 
 	if (sccs_stripdel(s, "stripdel")) {
 		unless (BEEN_WARNED(s)) {
@@ -143,6 +153,7 @@ doit(sccs *s, s_opts opts)
 		}
 		return (1); /* failed */
 	}
+	/* XXX unlink dfile if all pending deltas are gone */
 	verbose((stderr, "stripdel: removed %d deltas from %s\n", n, s->gfile));
 
 	return (0);

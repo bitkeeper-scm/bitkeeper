@@ -4,6 +4,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "bam.h"
+#include "ensemble.h"
 
 /*
  * Do not change this sturct until we phase out bkd 1.2 support
@@ -11,24 +12,28 @@
 struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
+	u32	verbose:1;		/* -v: more details */
+	u32	link:1;			/* -l: lclone-mode */
+	u32	populate:1;		/* av[0] eq populate */
 	int	delay;			/* wait for (ssh) to drain */
 	int	gzip;			/* -z[level] compression */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
+	char	**av;			/* saved opts for ensemble commands */
+	char	**modules;		/* -M modules list */
+	char	*from;			/* where to get stuff from */
+	char	*to;			/* where to put it */
 } *opts;
 
 private int	clone(char **, remote *, char *, char **);
 private	int	clone2(remote *r);
 private void	parent(remote *r);
 private int	sfio(remote *r, int BAM, char *prefix);
-private void	usage(void);
+private void	usage(char *name);
 private int	initProject(char *root, remote *r);
-private	int	lclone(remote *, char *to);
-private int	linkdir(char *from, char *to, char *dir, int doSCCS);
+private	void	lclone(char *from);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
-private int	out_trigger(char *status, char *rev, char *when);
-private int	in_trigger(char *status, char *rev, char *root, char *repoID);
 
 private	char	*bam_url;
 private	char	*bam_repoid;
@@ -38,12 +43,21 @@ clone_main(int ac, char **av)
 {
 	int	c, rc;
 	char	**envVar = 0;
-	remote 	*r = 0;
-	int	link = 0;
+	remote 	*r = 0, *l = 0;
+	char	*p;
+	char	revbuf[MAXPATH];
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
-	while ((c = getopt(ac, av, "B;dE:lqr;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:lM;qr;vw|z|")) != -1) {
+		unless ((c == 'r') || (c == 'M')) {
+			if (optarg) {
+				opts->av = addLine(opts->av,
+				    aprintf("-%c%s", c, optarg));
+			} else {
+				opts->av = addLine(opts->av, aprintf("-%c",c));
+			}
+		}
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
@@ -54,43 +68,89 @@ clone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
-		    case 'l': link = 1; break;			/* doc 2.0 */
+		    case 'l': opts->link = 1; break;		/* doc 2.0 */
+		    case 'M':
+			opts->modules = addLine(opts->modules, strdup(optarg));
+			break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
+		    case 'v': opts->verbose = 1; break;
 		    case 'w': opts->delay = atoi(optarg); break; /* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			opts->gzip = optarg ? atoi(optarg) : 6;
 			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = 6;
 			break;
 		    default:
-			usage();
+			usage(av[0]);
 	    	}
+		optarg = 0;
 	}
-	if (link && bam_url) {
+	if (opts->link && bam_url) {
 		fprintf(stderr,
 		    "clone: -l and -B are not supported together.\n");
 		exit(1);
 	}
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
-	unless (av[optind]) usage();
-	localName2bkName(av[optind], av[optind]);
-	if (av[optind + 1]) {
-		if (av[optind + 2]) usage();
-		localName2bkName(av[optind + 1], av[optind + 1]);
+	unless (proj_isEnsemble(0)) opts->verbose = !opts->quiet;
+	if (av[optind]) localName2bkName(av[optind], av[optind]);
+	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
+	if (streq(av[0], "populate")) {
+		unless (proj_isEnsemble(0)) {
+			fprintf(stderr, "populate: must be in an ensemble.\n");
+			exit(1);
+		}
+		if (opts->rev) {
+			fprintf(stderr, "populate: rev arg is not allowed.\n");
+			exit(1);
+		}
+		opts->populate = 1;
+		if (av[optind]) {
+			if (av[optind + 1]) usage(av[0]);
+			opts->from = strdup(av[optind]);
+			sprintf(revbuf, "bk repogca -5 '%s'", opts->from);
+		} else {
+			char	**p = parent_pullp();
+			assert(p);
+			opts->from = strdup(p[1]);
+			freeLines(p, free);
+			sprintf(revbuf, "bk repogca -5");
+		}
+		/*
+		 * They may not have this key in which case it will fail.
+		 * The "fix" is to tell them to push first.  Annoying but
+		 * the other approach of repogca meant we might undo locally.
+		 */
+		p = backtick("bk changes -r+ -nd:MD5KEY:");
+		strcpy(revbuf, p);
+		free(p);
+		opts->rev = revbuf;
+	} else {
+		unless (av[optind]) usage(av[0]);
+		opts->from = strdup(av[optind]);
+		if (av[optind + 1]) {
+			if (av[optind + 2]) usage(av[0]);
+			opts->to = av[optind + 1];
+			l = remote_parse(opts->to, REMOTE_BKDURL);
+		}
 	}
 
 	/*
 	 * Trigger note: it is meaningless to have a pre clone trigger
 	 * for the client side, since we have no tree yet
 	 */
-	unless (r = remote_parse(av[optind], REMOTE_BKDURL)) usage();
+	unless (r = remote_parse(opts->from, REMOTE_BKDURL)) usage(av[0]);
 
-	/*
-	 * Go prompt with the remotes license, it makes cleanup nicer.
-	 */
-	unless (r->host) {
+	if (r->host) {
+		if (opts->link) {
+			fprintf(stderr, "clone: no -l for remote sources.\n");
+			return (1);
+		}
+	} else {
 		char	here[MAXPATH];
 
+		/*
+		 * Go prompt with the remotes license, it makes cleanup nicer.
+		 */
 		getcwd(here, sizeof(here));
 		assert(r->path);
 		chdir(r->path);
@@ -101,37 +161,39 @@ clone_main(int ac, char **av)
 		}
 		chdir(here);
 	}
-
-	if (link) {
-		return (lclone(r, av[optind+1]));
-		/* NOT REACHED */
-	}
-	if (av[optind + 1]) {
-		remote	*l;
-		l = remote_parse(av[optind + 1], REMOTE_BKDURL);
-		unless (l) {
-err:			if (r) remote_free(r);
-			if (l) remote_free(l);
-			usage();
-		}
+	if (opts->to) {
 		/*
 		 * Source and destination cannot both be remote 
 		 */
-		if (l->host && r->host) goto err;
+		if (l->host && r->host) {
+			if (r) remote_free(r);
+			if (l) remote_free(l);
+			usage(av[0]);
+		}
 
 		/*
 		 * If the destination address is remote, call bk _rclone instead
 		 */
 		if (l->host) {
-			remote_free(r);
-			remote_free(l);
+			free(opts->from);
 			freeLines(envVar, free);
+			freeLines(opts->av, free);
+			freeLines(opts->modules, free);
+			if (l) remote_free(l);
+			remote_free(r);
+			if (opts->link) {
+				fprintf(stderr,
+				    "clone: no -l for remote targets.\n");
+				return (1);
+			}
 			getoptReset();
 			av[0] = "_rclone";
 			return (rclone_main(ac, av));
 		}
-		remote_free(l);
 	}
+
+	/* checked above */
+	if (opts->populate) (void)proj_cd2product();
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
 		unless (bam_repoid = bp_serverURL2ID(bam_url)) {
@@ -142,16 +204,20 @@ err:			if (r) remote_free(r);
 		}
 	}
 	if (opts->debug) r->trace = 1;
-	rc = clone(av, r, av[optind+1], envVar);
+	rc = clone(av, r, l ? l->path : 0, envVar);
+	free(opts->from);
 	freeLines(envVar, free);
+	freeLines(opts->av, free);
+	freeLines(opts->modules, free);
+	if (l) remote_free(l);
 	remote_free(r);
 	return (rc);
 }
 
 private void
-usage(void)
+usage(char *name)
 {
-	system("bk help -s clone");
+	sys("bk", "help", "-s", name, SYS);
     	exit(1);
 }
 
@@ -160,7 +226,7 @@ send_clone_msg(remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE    *f;
-	int	rc;
+	int	i, rc;
 
 	bktmp(buf, "clone");
 	f = fopen(buf, "w");
@@ -172,6 +238,12 @@ send_clone_msg(remote *r, char **envVar)
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
 	if (opts->quiet) fprintf(f, " -q");
 	if (opts->delay) fprintf(f, " -w%d", opts->delay);
+	if (getenv("_BK_TRANSACTION")) {
+		fprintf(f, " -T");
+	} else {
+		EACH(opts->modules) fprintf(f, " -M%s", opts->modules[i]);
+	}
+	if (opts->link) fprintf(f, " -l");
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");
 	fputs("\n", f);
 	fclose(f);
@@ -182,20 +254,110 @@ send_clone_msg(remote *r, char **envVar)
 }
 
 private int
+clone_ensemble(repos *repos, remote *r, char *local)
+{
+	char	*url;
+	char	**vp;
+	char	*name, *path;
+	int	status, i, n, which, rc = 0;
+	project	*proj;
+
+	url = remote_unparse(r);
+	putenv("_BK_TRANSACTION=1");
+	n = 0;
+	EACH_REPO(repos) {
+		unless (repos->present) continue;
+		if (opts->populate && streq(".", repos->path)) continue;
+		n++;
+	}
+	which = 1;
+	EACH_REPO(repos) {
+		if (streq(repos->path, ".")) {
+			if (opts->populate) continue;
+			putenv("_BK_NO_CHECK=1");
+			safe_putenv("_BK_REPO_PREFIX=%s", basenm(local));
+		} else {
+			name = repos->path;
+			putenv("_BK_NO_CHECK=");
+			safe_putenv("_BK_REPO_PREFIX=%s/%s",
+			    basenm(local), repos->path);
+		}
+		name = getenv("_BK_REPO_PREFIX");
+		
+		unless (opts->quiet) {
+			printf("#### %s (%d of %d) ####\n", name, which++, n);
+			fflush(stdout);
+		}
+
+		unless (repos->present) {
+			if (opts->modules && !opts->quiet) {
+				fprintf(stderr,
+				    "clone: %s not present in %s\n",
+				    repos->path, url);
+			}
+			continue;
+		}
+		/*
+		 * If we're populating and there is something there, see
+		 * if it's what it should be and if so factor it out.
+		 * If it's there and not what it should be, error.
+		 */
+		if (opts->populate && exists(repos->path)) {
+			proj = proj_init(repos->path);
+			if (proj && streq(proj_rootkey(proj), repos->rootkey)) {
+				unless (opts->quiet) {
+					fprintf(stderr,
+					    "populate: %s is already here.\n",
+					    repos->path);
+				}
+				continue;
+			}
+			fprintf(stderr,
+			   "populate: can't add %s because of existing data.\n",
+			   repos->path);
+			rc = 1;
+			break;
+		}
+
+		vp = addLine(0, strdup("bk"));
+		vp = addLine(vp, strdup("clone"));
+		EACH(opts->av) vp = addLine(vp, strdup(opts->av[i]));
+		vp = addLine(vp, aprintf("-r%s", repos->deltakey));
+		vp = addLine(vp, aprintf("%s/%s", url, repos->path));
+		if (opts->populate) {
+			path = strdup(repos->path);
+		} else {
+			path = aprintf("%s/%s", local, repos->path);
+		}
+		vp = addLine(vp, path);
+		vp = addLine(vp, 0);
+		status = spawnvp(_P_WAIT, "bk", &vp[1]);
+		freeLines(vp, free);
+		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
+		if (rc) {
+			fprintf(stderr, "Cloning %s failed\n", name);
+			break;
+		}
+	}
+	putenv("_BK_TRANSACTION=");
+	return (rc);
+}
+
+private int
 clone(char **av, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
 	char	*lic;
-	int	rc = 2, do_part2;
+	int	i, rc = 2, do_part2;
 
 	if (local && exists(local) && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
-		usage();
+		exit(1);
 	}
 	if (local ? test_mkdirp(local) : access(".", W_OK)) {
 		fprintf(stderr, "clone: %s: %s\n",
 			(local ? local : "current directory"), strerror(errno));
-		usage();
+		usage(av[0]);
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
 	if (bkd_connect(r, opts->gzip, !opts->quiet)) goto done;
@@ -259,18 +421,52 @@ clone(char **av, remote *r, char *local, char **envVar)
 		}
 	}
 
-	unless (opts->quiet) {
+	getline2(r, buf, sizeof (buf));
+	if (streq(buf, "@TRIGGER INFO@")) { 
+		if (getTriggerInfoBlock(r, !opts->quiet)) goto done;
+		getline2(r, buf, sizeof (buf));
+	}
+	if (streq(buf, "@ENSEMBLE@")) {
+		/* we're cloning a product...  */
+		repos *repos;
+
+		unless (r->rf) r->rf = fdopen(r->rfd, "r");
+		unless (repos = ensemble_fromStream(0, r->rf)) goto done;
+		rc = clone_ensemble(repos, r, local);
+		ensemble_free(repos);
+		chdir(local);
+		if (opts->modules) {
+			char	**p = 0;
+
+			/* Union if populate, stomp if clone */
+			if (opts->populate) {
+				p = file2Lines(0, "BitKeeper/log/MODULES");
+			}
+			EACH(opts->modules) {
+				p = addLine(p, strdup(opts->modules[i]));
+			}
+			uniqLines(p, free);
+			chmod("BitKeeper/log/MODULES", 0666);
+			if (lines2File(p, "BitKeeper/log/MODULES")) {
+				perror("BitKeeper/log/MODULES");
+			}
+			freeLines(p, free);
+		}
+		if (rc = clone2(r)) goto done;
+		rc = 0;
+		goto done;
+	}
+
+	// XXX - would be nice if we did this before bailing out on any of
+	// the error/license conditions above but not when we have an ensemble.
+	if (!opts->quiet &&
+	    (!getenv("_BK_TRANSACTION") || opts->verbose)) {
 		remote	*l = remote_parse(local, REMOTE_BKDURL);
 
 		fromTo("Clone", r, l);
 		remote_free(l);
 	}
 
-	getline2(r, buf, sizeof (buf));
-	if (streq(buf, "@TRIGGER INFO@")) { 
-		if (getTriggerInfoBlock(r, !opts->quiet)) goto done;
-		getline2(r, buf, sizeof (buf));
-	}
 	unless (streq(buf, "@SFIO@")) goto done;
 
 	/* create the new package */
@@ -282,13 +478,18 @@ clone(char **av, remote *r, char *local, char **envVar)
 	rc = 1;
 
 	/* eat the data */
-	if (sfio(r, 0, basenm(local)) != 0) {
+	unless (p = getenv("_BK_REPO_PREFIX")) {
+		p = basenm(local);
+	}
+	if (sfio(r, 0, p) != 0) {
 		fprintf(stderr, "sfio errored\n");
 		goto done;
 	}
 
 	/* Make sure we pick up config info from what we just unpacked */
 	proj_reset(0);
+
+	if (opts->link) lclone(r->path);
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
 	if (do_part2 && !bkd_hasFeature("BAMv2")) {
@@ -307,7 +508,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		if (rc) goto done;
 	}
 
-	if (rc = clone2(r)) goto done;
+	unless (getenv("_BK_NO_CHECK")) if (rc = clone2(r)) goto done;
 
 	rc  = 0;
 done:	if (rc) {
@@ -318,11 +519,12 @@ done:	if (rc) {
 	}
 	/*
 	 * Don't bother to fire trigger if we have no tree.
+	 * XXX - should we differentiate between clone and populate?
 	 */
-	if (proj_root(0) && (rc != 2)) trigger(av[0], "post");
+	if (proj_root(0) && (rc != 2)) trigger("clone", "post");
 
 	repository_unlock(0);
-	unless (rc || opts->quiet) {
+	unless (rc || !opts->verbose || getenv("_BK_NO_CHECK")) {
 		fprintf(stderr, "Clone completed successfully.\n");
 	}
 	return (rc);
@@ -345,7 +547,7 @@ clone2(remote *r)
 		return (-1);
 	}
 
-	parent(r);
+	unless (getenv("_BK_TRANSACTION")) parent(r);
 	(void)proj_repoID(0);		/* generate repoID */
 
 	/* validate bam server URL */
@@ -371,14 +573,14 @@ clone2(remote *r)
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
-	sccs_rmUncommitted(opts->quiet, f);
+	sccs_rmUncommitted(!opts->verbose, f);
 	fclose(f);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts->rev) {
-		rc = after(opts->quiet, opts->rev);
-		if (rc == 2) {
+		rc = after(!opts->verbose, opts->rev);
+		if (rc == UNDO_SKIP) {
 			/* undo exits 2 if it has no work to do */
 			goto docheck;
 		} else if (rc != 0) {
@@ -388,14 +590,11 @@ clone2(remote *r)
 		}
 	} else {
 docheck:	/* undo already runs check so we only need this case */
-		unless (opts->quiet) {
-			fprintf(stderr, "Running consistency check ...\n");
-		}
-		p = opts->quiet ? "-fT" : "-fvT";
+		p = opts->verbose ? "-fvT" : "-fT";
 		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(checkfiles, p);
+			rc = run_check(!opts->verbose, checkfiles, p);
 		} else {
-			rc = run_check(0, p);
+			rc = run_check(!opts->verbose, 0, p);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
@@ -479,10 +678,10 @@ sfio(remote *r, int BAM, char *prefix)
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
 	if (BAM) cmds[++n] = "-B";
-	if (opts->quiet) {
-		cmds[++n] = "-q";
-	} else {
+	if (opts->verbose) {
 		cmds[++n] = aprintf("-P%s/", prefix);
+	} else {
+		cmds[++n] = "-q";
 	}
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
@@ -494,7 +693,7 @@ sfio(remote *r, int BAM, char *prefix)
 	gunzipAll2fh(r->rfd, f, &(opts->in), &(opts->out));
 	fclose(f);
 	waitpid(pid, &status, 0);
-	unless (opts->quiet) {
+	if (opts->verbose) {
 		if (opts->gzip) {
 			fprintf(stderr, "%s uncompressed to %s, ",
 			    psize(opts->in), psize(opts->out));
@@ -526,9 +725,8 @@ sccs_rmUncommitted(int quiet, FILE *f)
 		    "Looking for, and removing, any uncommitted deltas...\n");
     	}
 	/*
-	 * "sfile -p" should run in "slow scan" mode because sfio did not
-	 * copy over the d.file and x.dfile
-	 * But they do exist after an lclone.
+	 * "sfile -p" should run in "fast scan" mode because sfio
+	 * copied over the d.file and x.dfile
 	 */
 	unless (in = popen("bk sfiles -pAC", "r")) {
 		perror("popen of bk sfiles -pAC");
@@ -558,7 +756,7 @@ sccs_rmUncommitted(int quiet, FILE *f)
 	EACH (files) {
 		if (f && exists(files[i])) fprintf(f, "%s\n", files[i]);
 
-		/* remove d.file.  If is there is an lclone */
+		/* remove d.file */
 		s = strrchr(files[i], '/');
 		assert(s[1] == 's');
 		s[1] = 'd';
@@ -568,6 +766,7 @@ sccs_rmUncommitted(int quiet, FILE *f)
 
 	/*
 	 * We have a clean tree, enable the "fast scan" mode for pending file
+	 * Only needed for older bkd's.
 	 */
 	enableFastPendingScan();
 }
@@ -578,8 +777,19 @@ after(int quiet, char *rev)
 	char	*cmds[10];
 	char	*p;
 	int	i;
+	sccs	*s;
+	delta	*d;
+	char	revbuf[MAXREV];
 
 	unless (quiet) {
+		if (isKey(rev)) {
+			s = sccs_csetInit(SILENT|INIT_NOCKSUM);
+			if (d = sccs_findrev(s, rev)) {
+				strcpy(revbuf, d->rev);
+				rev = revbuf;
+			}
+			sccs_free(s);
+		}
 		fprintf(stderr, "Removing revisions after %s ...\n", rev);
 	}
 	cmds[i = 0] = "bk";
@@ -649,300 +859,32 @@ rmEmptyDirs(int quiet)
 }
 
 /*
- * Hard link from the source to the destination.
+ * Fixup links after a lclone
  */
-private int
-lclone(remote *r, char *to)
+private void
+lclone(char *from)
 {
-	sccs	*s;
-	FILE	*f;
-	char	*p, *fromid, *toid;
-	char	**files;
-	int	i, level, hasrev;
 	struct	stat sb;
-	char	here[MAXPATH], from[MAXPATH], dest[MAXPATH], buf[MAXPATH];
+	struct	utimbuf tb;
+	char	buf[MAXPATH];
 
-	assert(r);
-	if (hasLocalWork(GONE)) {
-		fprintf(stderr,
-		    "clone: must commit local changes to " GONE "\n");
-		exit(1);
-	}
-	unless (r->type == ADDR_FILE) {
-		p = remote_unparse(r);
-		fprintf(stderr, "clone: invalid parent %s\n", p);
-		free(p);
-out1:		remote_free(r);
-		return (1);
-	}
-	getcwd(here, MAXPATH);
-	unless (chdir(r->path) == 0) {
-		fprintf(stderr, "clone: cannot chdir to %s\n", r->path);
-		goto out1;
-	}
-	getcwd(from, MAXPATH);
-	unless (exists(BKROOT)) {
-		fprintf(stderr, "clone: %s is not a package root\n", from);
-		goto out1;
-	}
-	if (repository_rdlock()) {
-		fprintf(stderr, "clone: unable to readlock %s\n", from);
-		goto out1;
-	}
-
-	/* Make sure the rev exists before we get started */
-	if (opts->rev) {
-		if (s = sccs_csetInit(SILENT)) {
-			hasrev = (sccs_findrev(s, opts->rev) != 0);
-			sccs_free(s);
-			unless (hasrev) {
-				fprintf(stderr, "ERROR: rev %s doesn't exist\n",
-				    opts->rev);
-				goto out2;
-			}
-		}
-	}
-	/* give them a change to disallow it */
-	if (out_trigger(0, opts->rev, "pre")) {
-out2:		repository_rdunlock(0);
-		goto out1;
-	}
-
-	if (p = bp_serverID(0)) {
-		safe_putenv("BKD_BAM_SERVER_ID=%s", p);
-	} else {
-		safe_putenv("BKD_BAM_SERVER_ID=%s", proj_repoID(0));
-	}
-	if (bp_hasBAM()) putenv("BKD_BAM=YES");
-
-	chdir(here);
-	unless (to) to = basenm(r->path);
-	if (exists(to)) {
-		fprintf(stderr, "clone: %s exists\n", to);
-out:
-		/*
-		 * This could be a wrunlock() because as of the writing of this
-		 * comment there wasn't a way to get here after going through a
-		 * trigger that would have downgraded.  But just in case...
-		 */
-		repository_unlock(0);
-		chdir(from);
-		repository_rdunlock(0);
-		remote_free(r);
-		out_trigger("BK_STATUS=FAILED", opts->rev, "post");
-		return (1);
-	}
-	if (mkdirp(to)) {
-		perror(to);
-		goto out;
-	}
-	chdir(to);
-	getcwd(dest, MAXPATH);
-	sccs_mkroot(".");
-	if (repository_wrlock()) {
-		fprintf(stderr, "Unable to lock new repo?\n");
-		goto out;
-	}
-	chdir(from);
-	unless (f = popen("bk sfiles -d", "r")) goto out;
-	level = getlevel();
-	chdir(dest);
-	setlevel(level);
-	while (fnext(buf, f)) {
-		chomp(buf);
-		if (linkdir(from, to, buf, 1)) {
-			pclose(f);
-			mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
-			goto out;
-		}
-	}
-	pclose(f);
-	chdir(from);
-
-	/*
-	 * Hard link the BAM pool files
-	 */
-	if (bp_hasBAM()) {
-		f = popen("bk _find -type d " BAM_ROOT, "r");
-		chdir(dest);
-		toid = proj_repoID(0);
-		mkdirp(BAM_ROOT);
-		while (fnext(buf, f)) {
-			chomp(buf);
-			if (streq(BAM_ROOT, buf)) continue;
-			if (linkdir(from, to, buf, 0)) {
-				/* leave it locked */
-				mkdir(ROOT2RESYNC, 0775);
-				goto out;
-			}
-		}
-		pclose(f);
+	unlink(BAM_DB);	/* break link */
+	concat_path(buf, from,  BAM_MARKER);
+	if (exists(buf)) {
 		touch(BAM_MARKER, 0664);
-		sprintf(buf, "%s/" BAM_INDEX, from);
+		concat_path(buf, from, BAM_INDEX);
 		fileCopy(buf, BAM_INDEX);
 		system("bk bam reload");
-		chdir(from);
-
-		/*
-		 * Setup new BAM_SERVER file.  Basically we copy the
-		 * previous server (assuming we can talk to the same
-		 * hosts), but if we are lcloning a a bam server we
-		 * need to setup the new link.
-		 */
-		assert(!(bam_url || bam_repoid)); /* no clone -l -B */
-		if (f = fopen(BAM_SERVER, "r")) {
-			fnext(buf, f);
-			chomp(buf);
-			i = streq(buf, ".");
-			fclose(f);
-
-			if (i) {
-				bp_setBAMserver(dest, from, proj_repoID(0));
-			} else {
-				concat_path(buf, dest, BAM_SERVER);
-				fileCopy(BAM_SERVER, buf);
-			}
-		}
 	}
 
 	/* copy timestamp on CHECKED file */
-	unless (stat(CHECKED, &sb)) {
-		struct	utimbuf tb;
-		sprintf(buf, "%s/%s", dest, CHECKED);
-		touch(buf, GROUP_MODE);
+	concat_path(buf, from, CHECKED);
+	unless (lstat(buf, &sb)) {
+		touch(CHECKED, GROUP_MODE);
 		tb.actime = sb.st_atime;
 		tb.modtime = sb.st_mtime;
-		utime(buf, &tb);
+		utime(CHECKED, &tb);
 	}
-	sprintf(buf, "%s/%s", dest, IDCACHE);
-	link(IDCACHE, buf);	/* linking IDCACHE is safe */
-	files = getdir("BitKeeper/etc/SCCS");
-	EACH (files) {
-		if (streq(files[i], "x.id_cache")) continue;
-		if (strneq("x.", files[i], 2)) {
-			p = aprintf("cp '%s/%s' '%s/%s'",
-			    "BitKeeper/etc/SCCS", files[i],
-			    dest, "BitKeeper/etc/SCCS");
-			system(p);
-			free(p);
-		}
-	}
-	freeLines(files, free);
-	chdir(from);
-	repository_rdunlock(0);
-	fromid = proj_repoID(0);
-	if (chdir(dest)) goto out;
-	if (clone2(r)) {
-		in_trigger("BK_STATUS=FAILED", opts->rev, from, fromid);
-		mkdir(ROOT2RESYNC, 0775);	/* leave it locked */
-		goto out;
-	}
-	in_trigger("BK_STATUS=OK", opts->rev, from, fromid);
-
-	/*
-	 * The repo may be readlocked (if there were triggers then the
-	 * lock got downgraded to a readlock) or writelocked (no triggers).
-	 */
-	repository_unlock(0);
-	chdir(from);
-
-	putenv("BKD_REPO_ID=");
-	putenv("BKD_BAM_SERVER_ID=");
-	putenv("BKD_BAM=");
-	out_trigger("BK_STATUS=OK", opts->rev, "post");
-	remote_free(r);
-	return (0);
-}
-
-private int
-out_trigger(char *status, char *rev, char *when)
-{
-	char	*lic;
-
-	safe_putenv("BK_REMOTE_PROTOCOL=%s", BKD_VERSION);
-	safe_putenv("BK_VERSION=%s", bk_vers);
-	safe_putenv("BK_UTC=%s", bk_utc);
-	safe_putenv("BK_TIME_T=%s", bk_time);
-	safe_putenv("BK_USER=%s", sccs_getuser());
-	safe_putenv("_BK_HOST=%s", sccs_gethost());
-	safe_putenv("BK_REALUSER=%s", sccs_realuser());
-	safe_putenv("BK_REALHOST=%s", sccs_realhost());
-	safe_putenv("BK_PLATFORM=%s", platform());
-	if (lic = licenses_accepted()) {
-		safe_putenv("BK_ACCEPTED=%s", lic);
-		free(lic);
-	}
-	safe_putenv("BK_LICENSE=%s", proj_bkl(0));
-	if (status) putenv(status);
-	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
-	putenv("_BK_LCLONE=YES");
-	return (trigger("remote clone", when));
-}
-
-private int
-in_trigger(char *status, char *rev, char *root, char *repoID)
-{
-	safe_putenv("BKD_HOST=%s", sccs_gethost());
-	safe_putenv("BKD_ROOT=%s", root);
-	safe_putenv("BKD_TIME_T=%s", bk_time);
-	safe_putenv("BKD_USER=%s", sccs_getuser());
-	safe_putenv("BKD_UTC=%s", bk_utc);
-	safe_putenv("BKD_VERSION=%s", bk_vers);
-	safe_putenv("BKD_REALUSER=%s", sccs_realuser());
-	safe_putenv("BKD_REALHOST=%s", sccs_realhost());
-	safe_putenv("BKD_PLATFORM=%s", platform());
-	if (status) putenv(status);
-	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
-	if (repoID) safe_putenv("BKD_REPO_ID=%s", repoID);
-	putenv("_BK_LCLONE=YES");
-	return (trigger("clone", "post"));
-}
-
-private int
-linkdir(char *from, char *to, char *dir, int doSCCS)
-{
-	char	buf[MAXPATH];
-	char	dest[MAXPATH];
-	int	i;
-	char	**d;
-
-	strcpy(buf, dir);
-	if (doSCCS) strcat(buf, "/SCCS");
-	if (mkdirp(buf)) {
-		perror(buf);
-		return (-1);
-	}
-	sprintf(buf, "%s/%s", from, dir);
-	if (doSCCS) strcat(buf, "/SCCS");
-	unless (d = getdir(buf)) return (-1);
-	unless (opts->quiet) {
-		fprintf(stderr, "Linking %s/%s\n", to, dir);
-	}
-	EACH (d) {
-		if (doSCCS) {
-			unless (d[i][0] == 's' || d[i][0] == 'd') continue;
-			sprintf(buf, "%s/%s/SCCS/%s", from, dir, d[i]);
-		} else {
-			sprintf(buf, "%s/%s/%s", from, dir, d[i]);
-		}
-		if (access(buf, R_OK)) {
-			perror(buf);
-			freeLines(d, free);
-			return (-1);
-		}
-		if (doSCCS) {
-			sprintf(dest, "%s/SCCS/%s", dir, d[i]);
-		} else {
-			sprintf(dest, "%s/%s", dir, d[i]);
-		}
-		if (link(buf, dest)) {
-			perror(dest);
-			freeLines(d, free);
-			return (-1);
-		}
-	}
-	freeLines(d, free);
-	return (0);
 }
 
 /*

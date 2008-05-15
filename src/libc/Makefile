@@ -4,6 +4,7 @@ ifeq "$(OSTYPE)" "msys"
 endif
 all: libc.a mtst$(EXE)
 
+include fslayer/Makefile
 include hash/Makefile
 include mdbm/Makefile
 include regex/Makefile
@@ -16,10 +17,12 @@ include win32/Makefile
 endif
 include zlib/Makefile
 
-OBJS = $(HASH_OBJS) $(MDBM_OBJS) $(REGEX_OBJS) $(STRING_OBJS) $(STDIO_OBJS) \
+OBJS = $(FSLAYER_OBJS) $(HASH_OBJS) $(MDBM_OBJS) $(REGEX_OBJS) \
+	$(STRING_OBJS) $(STDIO_OBJS) \
 	$(TCP_OBJS) $(UTILS_OBJS) $(WIN32_OBJS) $(ZLIB_OBJS)
 SRCS = $(OBJS:%.o=%.c)
-HDRS = $(HASH_HDRS) $(MDBM_HDRS) $(REGEX_HDRS) $(STRING_HDRS) $(STDIO_HDRS) \
+HDRS = $(FSLAYER_HDRS) $(HASH_HDRS) $(MDBM_HDRS) $(REGEX_HDRS) \
+	$(STRING_HDRS) $(STDIO_HDRS) \
 	$(TCP_HDRS) $(UTILS_HDRS) $(WIN32_HDRS) $(ZLIB_HDRS)
 
 CC = gcc
@@ -32,16 +35,18 @@ RANLIB=ranlib
 $(OBJS): $(HDRS)
 
 libc.a: $(OBJS)
-	rm -f $@
-	$(AR) $@ $(OBJS)
-	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
+	$(if $(Q),@echo AR libc.a,)
+	$(Q)rm -f $@
+	$(Q)$(AR) $@ $(OBJS)
+	-$(Q) ($(RANLIB) $@ || true) >/dev/null 2>&1
 
 mtst$(EXE): mdbm/mtst.o libc.a
-	$(CC) -o $@ $^ $(XLIBS)
+	$(Q)$(CC) -o $@ $^ $(XLIBS)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) libc.a tags.local mtst$(EXE) mdbm/mtst.o
+	$(if $(Q),@echo Cleaning libc,)
+	$(Q)rm -f $(OBJS) libc.a tags.local mtst$(EXE) mdbm/mtst.o $(JUNK)
 
 .PHONY: clobber
 clobber: clean
@@ -54,3 +59,6 @@ tags.local: $(SRCS) $(HDRS)
 	cd ..;\
 	ctags -f libc/$@ --file-tags=yes --c-types=d+f+s+t \
 		$(patsubst %,libc/%,$^)
+.c.o:
+	$(if $(Q),@echo CC libc/$<,)
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@

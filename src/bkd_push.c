@@ -8,21 +8,23 @@ private	int	do_resolve(char **av);
 int
 cmd_push_part1(int ac, char **av)
 {
-	char	*p, buf[MAXKEY], cmd[MAXPATH];
-	int	c, n, status;
-	int	debug = 0, gzip = 0;
+	char	*p, **modules;
+	int	i, c, n, status;
+	int	debug = 0, gzip = 0, product = 0;
 	MMAP    *m;
 	FILE	*l;
 	char	*lktmp;
 	int	ret;
+	char	buf[MAXKEY], cmd[MAXPATH];
 
-	while ((c = getopt(ac, av, "dnz|")) != -1) {
+	while ((c = getopt(ac, av, "dnPz|")) != -1) {
 		switch (c) {
 		    case 'z': break;
 			gzip = optarg ? atoi(optarg) : 6;
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
+		    case 'P': product = 1; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
 		}
@@ -93,6 +95,16 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
+	if (product && (modules = file2Lines(0, "BitKeeper/log/MODULES"))) {
+		out("@MODULES@\n");
+		EACH(modules) {
+			out(modules[i]);
+			out("\n");
+		}
+		freeLines(modules, free);
+		modules = 0;
+	}
+
 	out("@OK@\n");
 	m = mopen(lktmp, "r");
 	unless (m && msize(m)) {
@@ -114,6 +126,7 @@ cmd_push_part1(int ac, char **av)
 	unlink(lktmp);
 	free(lktmp);
 	if (debug) fprintf(stderr, "cmd_push_part1: done\n");
+	if (product) repository_unlock(0);
 	return (ret);
 }
 

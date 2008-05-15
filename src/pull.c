@@ -3,6 +3,7 @@
  */
 #include "bkd.h"
 #include "logging.h"
+#include "ensemble.h"
 
 typedef	struct {
 	int	list;			/* -l: long listing */
@@ -18,13 +19,18 @@ typedef	struct {
 	u32	update_only:1;		/* -u: pull iff no local csets */
 	u32	gotsome:1;		/* we got some csets */
 	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
+	u32	product:1;		/* is this a product pull? */
+	u32	pass1:1;		/* set if we are driver pull */
 	int	gzip;			/* -z[level] compression */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
 	u32	in, out;		/* stats */
+	char	**av_pull;		/* saved av for ensemble pull */
+	char	**av_clone;		/* saved av for ensemble clone */
 } opts;
 
 private int	pull(char **av, opts opts, remote *r, char **envVar);
+private int	pull_ensemble(repos *rps, remote *r, opts opts);
 private void	resolve_comments(remote *r);
 private	int	resolve(opts opts);
 private	int	takepatch(opts opts, remote *r);
@@ -49,6 +55,25 @@ pull_main(int ac, char **av)
 	opts.gzip = 6;
 	opts.automerge = 1;
 	while ((c = getopt(ac, av, "c:DdE:GFilnqr;RstTuw|z|")) != -1) {
+		unless (c == 'r') {
+			if (optarg) {
+				opts.av_pull = addLine(opts.av_pull,
+				    aprintf("-%c%s", c, optarg));
+			} else {
+				opts.av_pull = addLine(opts.av_pull,
+				    aprintf("-%c", c));
+			}
+		}
+		if ((c == 'd') || (c == 'E') || (c == 'q') ||
+		    (c == 'w') || (c == 'z')) {
+			if (optarg) {
+				opts.av_clone = addLine(opts.av_clone,
+				    aprintf("-%c%s", c, optarg));
+			} else {
+				opts.av_clone = addLine(opts.av_clone,
+				    aprintf("-%c", c));
+			}
+		}
 		switch (c) {
 		    case 'D': opts.collapsedups = 1;
 		    case 'G': opts.nospin = 1; break;
@@ -81,12 +106,17 @@ pull_main(int ac, char **av)
 			usage();
 			return(1);
 		}
+		optarg = 0;
 	}
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	if (opts.autoOnly && !opts.automerge) {
 		fprintf(stderr, "pull: -s and -i cannot be used together\n");
 		usage();
 		return (1);
+	}
+	if (proj_isEnsemble(0)) {
+		opts.product = 1;
+		unless (getenv("_BK_TRANSACTION")) opts.pass1 = 1;
 	}
 
 	/*
@@ -102,6 +132,13 @@ pull_main(int ac, char **av)
 	if (proj_cd2root()) {
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
+	}
+	unless (getenv("_BK_TRANSACTION")) {
+		if (opts.product && proj_cd2product()) {
+			fprintf(stderr, "pull: cannot find product root.\n");
+			exit(1);
+		}
+
 	}
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
@@ -132,7 +169,7 @@ err:		freeLines(envVar, free);
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
-		unless (opts.quiet) {
+		unless (opts.quiet || opts.pass1) {
 			if (i > 1)  printf("\n");
 			fromTo("Pull", r, 0);
 		}
@@ -156,8 +193,9 @@ err:		freeLines(envVar, free);
 		if (rc == -2) rc = 1; /* if retry failed, set exit code to 1 */
 		if (rc) break;
 	}
-	
 	freeLines(urls, free);
+	freeLines(opts.av_pull, free);
+	freeLines(opts.av_clone, free);
 	return (rc);
 }
 
@@ -205,6 +243,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "pull_part1");
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
+	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
 	fputs("\n", f);
 	fclose(f);
 	rc = send_file(r, buf, 0);
@@ -283,7 +322,8 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	msg_file[MAXPATH], buf[MAXPATH * 2];
 	FILE	*f;
-	int	status, rc;
+	char	**l;
+	int	i, status, rc;
 
 	bktmp(msg_file, "pullmsg");
 	f = fopen(msg_file, "w");
@@ -299,12 +339,21 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.dont) fprintf(f, " -n");
 	for (rc = opts.list; rc--; ) fprintf(f, " -l");
-	if (opts.quiet) fprintf(f, " -q");
+	if (opts.quiet || opts.pass1) fprintf(f, " -q");
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
+	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
 	if (opts.update_only) fprintf(f, " -u");
-	fputs("\n", f);
+	if (proj_isProduct(0) && (l = file2Lines(0, "BitKeeper/log/MODULES"))) {
+		fprintf(f, " -M\n");
+		fprintf(f, "@MODULES@\n");
+		EACH(l) fprintf(f, "%s\n", l[i]);
+		fprintf(f, "@END@\n");
+		freeLines(l, free);
+	} else {
+		fputs("\n", f);
+	}
 	fclose(f);
 
 	sprintf(buf, "bk _listkey %s -q < '%s' >> '%s'",
@@ -382,7 +431,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 					fprintf(stderr, "%s\n",
 					    "---------------------- "
 					    "Receiving the following csets "
-					    "--------------------------");
+					    "-----------------------");
 					opts.gotsome = 1;
 				}
 			}
@@ -404,7 +453,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		getline2(r, buf, sizeof(buf));
 		if (i) {
 			fprintf(stderr, "%s\n",
-			    "---------------------------------------"
+			    "--------------------------------------"
 			    "-------------------------------------");
 		}
 	}
@@ -468,6 +517,24 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		}
 		putenv("BK_STATUS=NOTHING");
 		rc = 0;
+	} else if (streq(buf, "@ENSEMBLE@")) {
+		/* we're pulling from a product */
+		repos	*repos;
+
+		unless (r->rf) r->rf = fdopen(r->rfd, "r");
+		unless (repos = ensemble_fromStream(0, r->rf)) {
+			fprintf(stderr, "Could not read ensemble list\n");
+			putenv("BK_STATUS=FAILED");
+			rc = 1;
+			goto done;
+		}
+		repository_unlock(0);
+		if (rc = pull_ensemble(repos, r, opts)) {
+			putenv("BK_STATUS=FAILED");
+		} else {
+			putenv("BK_STATUS=OK");
+		}
+		ensemble_free(repos);
 	} else {
 		fprintf(stderr, "protocol error: <%s>\n", buf);
 		while (getline2(r, buf, sizeof(buf)) > 0) {
@@ -479,6 +546,164 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 
 done:	unlink(probe_list);
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	return (rc);
+}
+
+private int
+pull_ensemble(repos *rps, remote *r, opts opts)
+{
+	char	*url;
+	char	**vp;
+	char	*name, *path;
+	char	**comps = 0;
+	MDBM	*idDB;
+	FILE	*f;
+	int	i, rc = 0, missing = 0, product;
+
+	url = remote_unparse(r);
+	putenv("_BK_TRANSACTION=1");
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	EACH_REPO (rps) {
+		if (rps->present) continue;
+		fprintf(stderr,
+		    "pull: %s is missing in %s\n", rps->path, url);
+		missing++;
+	}
+	if (missing) {
+		fprintf(stderr,
+		    "pull: update aborted due to %d missing components.\n",
+		    missing);
+		rc = 1;
+		goto out;
+	}
+	EACH_REPO (rps) {
+		product = 0;
+		proj_cd2product();
+		if (streq(rps->path, ".")) {
+			name = "Product";
+			product = 1;
+		} else {
+			name = rps->path;
+			product = 0;
+		}
+		unless (opts.quiet) {
+			printf("#### %s ####\n", name);
+			fflush(stdout);
+		}
+		vp = addLine(0, strdup("bk"));
+		if (rps->new) {
+			vp = addLine(vp, strdup("clone"));
+			EACH(opts.av_clone) {
+				vp = addLine(vp, strdup(opts.av_clone[i]));
+			}
+		} else {
+			unless (product) {
+				/* we can't assume the component is in the same
+				 * path here than in the remote location */
+				unless (path = key2path(rps->rootkey, idDB)) {
+					fprintf(stderr, "Could not find "
+					    "component '%s'\n", rps->path);
+					goto err;
+				}
+				csetChomp(path);
+				if (chdir(path)) {
+err:					fprintf(stderr, "Could not chdir to "
+					    " '%s'\n", path);
+					free(path);
+					rc = 1;
+					break;
+				}
+				comps = addLine(comps, strdup(rps->path));
+				comps = addLine(comps, path);
+			}
+			vp = addLine(vp, strdup("pull"));
+			if (product && !opts.noresolve) {
+				vp = addLine(vp, strdup("-R"));
+			}
+			EACH(opts.av_pull) {
+				vp = addLine(vp, strdup(opts.av_pull[i]));
+			}
+		}
+		vp = addLine(vp, aprintf("-r%s", rps->deltakey));
+		vp = addLine(vp, aprintf("%s/%s", url, rps->path));
+		if (rps->new) vp = addLine(vp, strdup(rps->path));
+		vp = addLine(vp, 0);
+		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
+			fprintf(stderr, "Pulling %s failed\n", name);
+			rc = 1;
+		}
+		freeLines(vp, free);
+		if (rc) break;
+	}
+	mdbm_close(idDB);
+	if (rc) goto out;
+	/* Now we need to make it such that the resolver in the
+	 * product will work */
+	unless (opts.noresolve) {
+		unless (opts.quiet) {
+			printf("#### Resolve in product ####\n");
+			fflush(stdout);
+		}
+		proj_cd2product();
+		if (chdir(ROOT2RESYNC)) {
+			fprintf(stderr,
+			    "Could not find product's RESYNC directory\n");
+			rc = 1;
+			goto out;
+		}
+		mkdirp("BitKeeper/log");
+		touch("BitKeeper/log/PRODUCT", 0644);
+		/*
+		 * Copy all the component's ChangeSet files to the
+		 * product's RESYNC directory
+		 */
+		EACH (comps) {
+			char	*from, *to;
+			char	*dfile_to, *dfile_from;
+			char	*t;
+
+			mkdirp(t = aprintf("%s/%s", comps[i], BKROOT));
+			free(t);
+			mkdirp(t = aprintf("%s/BitKeeper/log", comps[i]));
+			free(t);
+			t = aprintf("%s/BitKeeper/log/COMPONENT", comps[i]);
+			f = fopen(t, "w");
+			free(t);
+			fprintf(f, "%s\n", comps[i]);
+			fclose(f);
+			to = aprintf("%s/%s", comps[i], CHANGESET);
+			t = strrchr(to, '/');
+			*(++t) = 'd';
+			dfile_to = strdup(to);
+			*t = 's';
+			i++;
+			from = aprintf("%s/%s/%s", RESYNC2ROOT,
+			    comps[i], CHANGESET);
+			t = strrchr(from, '/');
+			*(++t) = 'd';
+			dfile_from = strdup(from);
+			*t = 's';
+
+			if (fileCopy(from, to)) {
+				fprintf(stderr, "Could not copy '%s' to "
+				    "'%s'\n", from, to);
+				rc = 1;
+			}
+			if (exists(dfile_from)) {
+				touch(dfile_to, 0644);
+				unlink(dfile_from);
+			}
+			free(dfile_from);
+			free(dfile_to);
+			free(from);
+			free(to);
+			if (rc) goto out;
+		}
+		chdir(RESYNC2ROOT);
+	}
+out:	if (comps) freeLines(comps, free);
+	free(url);
+	putenv("_BK_TRANSACTION=");
 	return (rc);
 }
 

@@ -718,11 +718,6 @@ sccs_keyinitAndCache(char *key, char *dkey,
  retry:
 	s = sccs_keyinit(key, flags|INIT_NOWARN, *idDB);
 	unless (s || gone(key, goneDB)) {
-		/*
-		 * Do not rebuild the idcache for a missing component?
-		 * Seems like a perf win but may be a lose in real life.
-		 */
-		if (componentKey(dkey)) return (0);
 		unless (rebuilt) {
 			mdbm_close(*idDB);
 			if (sccs_reCache(1)) {

@@ -78,7 +78,8 @@ char	*dirname(char *path);
 char	*dirname_alloc(char *path);
 
 /* dirs.c */
-char	**getdir(char *);
+#define	getdir(dir)	_getdir(dir, 0)
+char	**_getdir(char *dir, struct stat *sb);
 typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
 int	walkdir(char *dir, walkfn fn, void *data);
 
@@ -126,10 +127,32 @@ extern	char	*optarg;
 int	getopt(int ac, char **av, char *opts);
 void	getoptReset(void);
 
+
+/* glob.c */
+
+typedef struct {
+	char    *pattern;	/* what we want to find */
+	u8      ignorecase:1;	/* duh */
+	u8	want_glob:1;	/* do a glob based search */
+	u8	want_re:1;	/* do a regex based search */
+} search;
+
+char**	globdir(char *dir, char *glob);
+int	is_glob(char *glob);
+char*	match_globs(char *string, char **globs, int ignorecase);
+int	match_one(char *string, char *glob, int ignorecase);
+int	search_either(char *s, search search);
+int	search_glob(char *s, search search);
+int	search_regex(char *s, search search);
+search	search_parse(char *str);
+
 /* mkdir.c */
 int	mkdirp(char *dir);
 int	test_mkdirp(char *dir);
 int	mkdirf(char *file);
+
+/* milli.c */
+char *	milli(void);
 
 /* putenv.c */
 #define	getenv(s)	safe_getenv(s)
@@ -164,7 +187,8 @@ void	sig_default(void);
 /* smartrename.c */
 int	smartUnlink(char *name);
 int	smartRename(char *old, char *new);
-int	smartMkdir(char *pathname, mode_t mode);
+int	smartMkdir(char *dir, mode_t mode);
+#define	mkdir(d, m)	smartMkdir((char *)d, m)
 
 /* spawn.c */
 #ifndef WIN32
@@ -206,6 +230,7 @@ FILE *	safe_popen(char *cmd, char *type);
 FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);
 int	safe_fclose(FILE *f);
+char	*backtick(char *cmd);
 
 /* tcp/tcp.c */
 int	tcp_server(char *addr, int port, int quiet);
@@ -220,6 +245,19 @@ char	*hostaddr(char *);
 int	tcp_pair(int fds[2]);
 char	*peeraddr(int s);
 int	issock(int);
+
+/* trace.c */
+extern	int bk_trace;
+void	trace_init(char *prog);
+void	trace_msg(char *fmt, char *file, int line, const char *function, ...);
+void	trace_free(void);
+
+#define	TRACE(format, args...)	\
+	if (bk_trace) {						\
+		trace_msg(format, __FILE__, __LINE__, __FUNCTION__, ##args); \
+	}
+
+#define	HERE()	TRACE(0, 0)
 
 /* tty.c */
 #define	isatty		myisatty
@@ -270,5 +308,8 @@ typedef void (*zputs_func)(void *, u8 *, int);
 zputbuf	*zputs_init(zputs_func callback, void *token, int level);
 int	zputs(zputbuf *, u8 *data, int len);
 int	zputs_done(zputbuf *);
+
+
+#include "fslayer/fslayer.h"
 
 #endif /* _SYSTEM_H */

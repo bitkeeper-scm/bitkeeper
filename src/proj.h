@@ -41,7 +41,7 @@ int		proj_isCaseFoldingFS(project *p);
 int		proj_isComponent(project *p);
 int		proj_isProduct(project *p);
 project*	proj_product(project *p);
-int		proj_isResync(project *p);
+project*	proj_isResync(project *p);
 int		proj_leaseChecked(project *p, int write);
 char*		proj_md5rootkey(project *p);
 char*		proj_repoID(project *p);

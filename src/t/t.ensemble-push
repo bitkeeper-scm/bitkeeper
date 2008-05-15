@@ -1,0 +1,309 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2002 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Tests for product clone.
+
+
+echo $N Create an ensemble...........................................$NL
+nested project
+# add some files
+cd "$HERE/project/gcc"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+done
+bk commit $Q -y"Add $i to file$i"
+cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
+cd "$HERE/project/gdb"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+	bk commit $Q -y"add file $i"
+done
+cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
+echo OK
+
+echo $N Try a null push..............................................$NL
+cd "$HERE"
+bk clone $Q project null-push
+cd "$HERE/null-push"
+bk push >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q "Nothing to push." OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a simple push............................................$NL
+cd "$HERE"
+bk clone $Q project copy
+# add some csets to gcc
+cd "$HERE/copy/gcc"
+for i in 1 2 3 4 5
+do
+	bk edit $Q file$i
+	echo "new stuff $i" >> file$i
+	bk delta $Q -y"modify" file$i
+	bk commit $Q -y"Add $i to file$i"
+done
+cd "$HERE/copy"
+bk commit $Q -y"more stuff to gcc"
+bk push >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -z "`bk changes -qL`" || {
+	echo failed
+	echo Did not push
+	bk changes -qL
+	exit 1
+}
+cd "$HERE/project"
+bk -Ar check -av >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a push -r................................................$NL
+cd "$HERE/project" && bk undo $Q -sfr+ >$DEV_NULL 2>&1
+cd "$HERE/copy"
+TIP=`bk changes -kr+`
+# add more stuff to gdb
+cd "$HERE/copy/gdb"
+for i in 1 2 3 4 5
+do
+	bk edit $Q file$i
+	echo "new stuff $i" >> file$i
+	bk delta $Q -y"modify" file$i
+	bk commit $Q -y"Add $i to file$i"
+done
+cd "$HERE/copy"
+bk commit $Q -y"more stuff to gdb"
+bk push $Q -r"$TIP" >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd "$HERE/project"
+test "`bk changes -kr+`" = "$TIP" || {
+	echo failed
+	echo Pushed too much
+	exit 1
+}
+echo OK
+
+echo $N Try a multi-parent push......................................$NL
+cd "$HERE"
+rm -rf project
+bk clone $Q -l null-push parent1
+bk clone $Q -l null-push parent2
+cd "$HERE/copy"
+TIP=`bk changes -kr+`
+bk push $Q "$HERE/parent1" "$HERE/parent2" >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd "$HERE/parent1"
+test "`bk changes -kr+`" = "$TIP" || {
+	echo failed
+	echo Pushed too much
+	exit 1
+}
+cd "$HERE/parent2"
+test "`bk changes -kr+`" = "$TIP" || {
+	echo failed
+	echo Pushed too much
+	exit 1
+}
+echo OK
+
+echo $N Try a push through the BKD...................................$NL
+cd "$HERE"
+bk clone $Q -l null-push project
+cd "$HERE/project"
+P=`port 50000`
+bk bkd -q -d -p$P -ikill 
+cd "$HERE/copy"
+bk push bk://localhost:$P >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk _kill bk://localhost:$P || exit 1
+echo OK
+
+echo $N Check to see that _BK_TRANSACTION is not set in a trigger ...$NL
+cd "$HERE"
+rm -rf project
+bk clone $Q null-push project
+cd copy/BitKeeper
+mkdir triggers
+cd triggers
+cat <<'EOF' > post-incoming.push
+#!/bin/sh
+env > ENV
+EOF
+chmod +x post-incoming.push
+bk new $Q post-incoming.push
+bk commit $Q -y'trigger'
+cd ../..
+bk push $Q ../project || exit 1
+cd ../project
+grep -q '_BK_TRANSACTION=.' ENV || {
+	echo "fix test"
+	cat ENV | grep BK_
+	exit 1
+}
+# _TRANSACTION shouldn't be defined at the top level of a trigger
+echo "failed (bug )"
+
+echo $N Make sure triggers are not being run twice...................$NL
+cd "$HERE"
+rm -rf project
+rm -f TRIGGER FAIL
+bk clone $Q null-push project
+cd copy/BitKeeper/triggers
+cat <<EOF > post-incoming.push2
+#!/bin/sh
+test -f "$HERE"/TRIGGER && touch "$HERE"/FAIL
+touch "$HERE"/TRIGGER
+EOF
+chmod +x post-incoming.push2
+bk new $Q post-incoming.push2
+bk commit $Q -y'trigger2'
+cd ../..
+bk push $Q ../project || exit 1
+test -f "$HERE/FAIL" && {
+	echo failed
+	echo Product triggers running twice
+	exit 1
+}
+rm -f "$HERE"/FAIL
+echo OK
+
+echo $N Try a push that adds a component.............................$NL
+cd "$HERE"
+rm -rf project copy TRIGGER FAIL
+bk clone $Q null-push project
+bk clone $Q project copy
+# XXX: some day we need to implement bk ensemble attach. It's even
+# documented but not implemented?
+cd "$HERE"
+commercial libc
+cd "$HERE"/copy
+bk ensemble add $Q -y"add libc" ../libc libc
+bk push >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd "$HERE"/project
+test -d libc || {
+	echo failed
+	exit 1
+}
+cd libc
+bk -r check -av >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a push from sparse to full ..............................$NL
+cd "$HERE"
+bk clone $Q project full
+bk clone $Q full sparse
+# Now make a cset that spans two components, remove one of them, and push.
+cd sparse
+for i in gdb libc
+do	(cd $i
+	echo whatever > NEW_FILE
+	bk new $Q NEW_FILE
+	bk commit $Q -yNEW_FILE
+	)
+done
+bk commit $Q -yNEW_FILE
+rm -rf libc
+bk push > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q "push: component 'libc' is missing in source." OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try same push through a BKD..................................$NL
+cd "$HERE"
+rm -rf project
+bk clone $Q null-push project
+cd "$HERE"/project
+P=`port 50000`
+bk bkd -q -d -p$P -ikill
+cd "$HERE/copy"
+bk push bk://localhost:$P >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+bk _kill bk://localhost:$P || exit 1
+cd "$HERE"/project
+test -d libc || {
+	echo failed
+	exit 1
+}
+cd libc
+bk -r check -av >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a push of a renamed component ...........................$NL
+cd "$HERE"
+rm -fr project copy
+nested project
+bk clone $Q . ../copy
+mv gcc gcc4
+bk edit $Q gcc4/ChangeSet
+bk delta $Q -y'rename' gcc4/ChangeSet
+bk commit $Q -y'rename component'
+bk push $Q ../copy 2> ERR && {
+	echo fix test
+	exit 1
+}
+grep -q "cannot cd to .*/copy/gcc4" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+# clean up litter so doit won't whine
+cd ..
+rm -fr project
+echo "failed (bug )"

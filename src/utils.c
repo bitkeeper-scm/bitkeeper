@@ -499,7 +499,7 @@ isCsetFile(char *spath)
 	if (q == spath) return (0);				/* case ' d' */
 
 	/* test if pathname contains BKROOT */
-	sprintf(buf, "%.*s/" BKROOT, q - spath, spath);
+	sprintf(buf, "%.*s/" BKROOT, (int)(q - spath), spath);
 	return (isdir(buf));					/* case ' e' */
 }
 
@@ -832,7 +832,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 *   lkey:1	use leasekey #1 to sign lease requests
 	 *   BAM
 	 */
-	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2\n");
+	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2,SAMv1\n");
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 	if (p) proj_free(p);
@@ -958,7 +958,7 @@ sendServerInfoBlock(int is_rclone)
 	 *   pull-r	pull -r is parsed correctly
 	 *   BAMv2	support BAM operations (4.1.1 and later)
 	 */
-	out("\nFEATURES=pull-r,BAMv2");
+	out("\nFEATURES=pull-r,BAMv2,SAMv1");
 
 	if (repoid = proj_repoID(0)) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
@@ -1156,11 +1156,6 @@ savefile(char *dir, char *prefix, char *pathname)
 		fd = open(path, O_CREAT|O_EXCL|O_WRONLY, 0666);
 		if (fd == -1) {
 			if (errno == EEXIST) continue;	/* name taken */
-			if (errno == ENOENT &&
-			    (realmkdir(dir, 0777) == 0)) {
-				/* dir missing, applyall race? */
-				continue;
-			}
 			return (0);
 		}
 		if (close(fd)) return (0);
@@ -1347,25 +1342,35 @@ unsafe_path(char *s)
 	/*NOTREACHED*/
 }
 
-#define	STALE	DAY
-
 /*
  * If they hand us a partial list use that if we can.
  * Otherwise do a full check.
  */
 int
-run_check(char *flist, char *opts)
+run_check(int quiet, char *flist, char *opts)
 {
 	int	i, j, ret;
 	struct	stat sb;
 	time_t	now = time(0);
+	time_t	stale;
 	char	buf[20];
+	char	pwd[MAXPATH];
 
 again:
 	assert(!opts || (strlen(opts) < sizeof(buf)));
 	unless (opts && *opts) opts = "--";
+	unless (quiet) {
+		getcwd(pwd, sizeof(pwd));
+		fprintf(stderr, "Running consistency check in %s ...\n", pwd);
+	}
+	if (stale = proj_configsize(0, "check_frequency")) {
+		stale *= DAY;
+	} else {
+		stale = DAY;
+	}
+	if (stale > 2*WEEK) stale = 2*WEEK;
 	if (!flist || 
-	    lstat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
+	    lstat(CHECKED, &sb) || ((now - sb.st_mtime) > stale)) {
 		ret = sys("bk", "-r", "check", "-ac", opts, SYS);
 	} else {
 		ret = sysio(flist, 0, 0, "bk", "check", "-c", opts, "-", SYS);

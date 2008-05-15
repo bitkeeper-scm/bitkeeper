@@ -1,0 +1,149 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2002 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Tests for modules
+
+
+echo $N Create an ensemble...........................................$NL
+nested project
+# add some files
+cd "$HERE/project/gcc"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+done
+bk commit $Q -y"Add $i to file$i"
+cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
+cd "$HERE/project/gdb"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+	bk commit $Q -y"add file $i"
+done
+cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
+echo OK
+
+echo $N Set up a test where we will add another module ..............$NL
+cd "$HERE/project"
+bk module add -cgcc -cgdb stuff
+cd ..
+bk clone $Q -Mstuff project stuff
+bk clone $Q -Mstuff project stuff2
+commercial libc
+cd "$HERE/project"
+bk ensemble add $Q -y"add libc" ../libc libc
+bk ensemble add $Q -y"add junk" ../libc junk
+bk module add -clibc stuff
+echo OK
+
+echo $N Try a push, should add libc but not junk ....................$NL
+bk parent $Q -ao ../stuff ../stuff2
+bk push > ../OUT 2>&1 || {
+	echo should not have failed
+	cat ../OUT
+	exit 1
+}
+cd ../stuff
+test -d libc || {
+	echo did not add libc
+	cat ../OUT
+	exit 1
+}
+test -d junk && {
+	echo should not have added junk
+	cat ../OUT
+	exit 1
+}
+cd ../stuff2
+test -d libc || {
+	echo did not add libc
+	cat ../OUT
+	exit 1
+}
+test -d junk && {
+	echo should not have added junk
+	cat ../OUT
+	exit 1
+}
+echo OK
+
+echo $N Try unpull and see if that works ............................$NL
+bk unpull -f > OUT 2>&1 || {
+	echo failed
+	exit 1
+}
+test -d libc && {
+	echo failed to remove libc
+	exit 1
+}
+echo OK
+
+echo $N Try a pull, should add libc but not junk ....................$NL
+bk pull > ../OUT 2>&1 || {
+	echo should not have failed
+	cat ../OUT
+	exit 1
+}
+test -d libc || {
+	echo did not add libc
+	cat ../OUT
+	exit 1
+}
+test -d junk && {
+	echo should not have added junk
+	cat ../OUT
+	exit 1
+}
+echo OK
+
+echo $N Setup a populate that needs to go backwards .................$NL
+cd ../project
+for i in 1 2
+do	cd libc
+	touch FILE$i
+	bk new $Q FILE$i
+	bk commit $Q -y$i
+	cd ../junk
+	touch FILE$i
+	bk new $Q FILE$i
+	bk commit $Q -y$i
+	cd ..
+	bk commit $Q -y$i
+done
+TIP=`bk changes -qr+ -d:REV: junk`
+echo OK
+
+echo $N Clone backwards, getting just libc, populate junk ...........$NL
+cd "$HERE"
+bk clone -r1.10 -Mlibc/ project behind > OUT 2>&1
+cd behind
+test -d junk && {
+	echo should not have junk
+	exit 1
+}
+test -d libc || {
+	echo should have libc
+	exit 1
+}
+bk populate $Q -Mjunk/ || {
+	echo failed
+	exit 1
+}
+test $TIP = `bk changes -qr+ -d:REV: junk` && {
+	echo failed to roll back junk
+	exit 1
+}
+bk -Aqr check -ac || exit 1
+echo OK

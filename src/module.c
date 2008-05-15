@@ -5,7 +5,6 @@
 #include "range.h"
 
 private int	finish(char *comment, hash *moduleDB, int commit);
-int		isComponent(char *path);
 char		*rootkey(char *path);
 
 /*

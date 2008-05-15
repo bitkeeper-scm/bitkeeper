@@ -150,8 +150,7 @@ check_main(int ac, char **av)
 	}
 	if (all && bp_index_check(!verbose)) return (1);
 
-	checkout = CO_NONE|CO_BAM_NONE;
-	if (all) checkout = proj_checkout(0);
+	checkout = proj_checkout(0);
 	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 		perror("idcache");
 		return (1);
@@ -843,14 +842,8 @@ checkAll(hash *keys)
 		/* no resync deltas, whatever that means */
 		unless (t = hash_first(*deltas)) continue;
 
-		/* Allow components to be treated as magically goned.
-		 * Note that all delta keys recorded in the ChangeSet
-		 * file must be |something.../ChangeSet|
-		 * LMXXX - Wayne says this is wrong and he is right.
-		 */
-		if (changesetKey(rkey) && componentKey(t)) continue;
-			
-		if (mdbm_fetch_str(goneDB, rkey)) continue;
+		if (gone(rkey, goneDB)) continue;
+
 		hash_storeStr(warned, rkey, 0);
 		found++;
 	}

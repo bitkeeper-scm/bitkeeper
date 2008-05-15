@@ -29,7 +29,6 @@ struct tm *localtimez(time_t *timep, long *offsetp);
 #ifndef	NOPROC
 void	rmdir_findprocs(void);
 int	checking_rmdir(char *dir);
-#define	rmdir(d)	checking_rmdir(d)
 #endif
 
 /*
@@ -331,6 +330,12 @@ int	checking_rmdir(char *dir);
 #define CMD_BAM		0x00000080	/* optional next pass if BAM */
 
 /*
+ * Undo exit status for nothing to undo.
+ */
+#define	UNDO_ERR	1		/* exitcode for errors */
+#define	UNDO_SKIP	2		// exitcode for early exit with no work
+
+/*
  * Hash behaviour.  Bitmask.
  */
 #define	DB_NODUPS       0x01		/* keys must be unique */
@@ -390,7 +395,6 @@ int	checking_rmdir(char *dir);
 
 typedef	u32		ser_t;
 typedef	unsigned short	sum_t;
-typedef	char		**globv;
 
 #include "bkver.h"
 #include "cmd.h"
@@ -461,7 +465,6 @@ typedef struct delta {
 } delta;
 #define	COMMENTS(d)	((d)->cmnts != 0)
 #define	TAG(d)		((d)->type != 'D')
-#define	REG(d)		((d)->type == 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
 #define	EACH_COMMENT(s, d) \
 			comments_load(s, d); \
@@ -806,18 +809,6 @@ typedef struct {
 				 */
 
 
-/*
- * search interface
- */
-typedef struct {
-	char    *pattern;	/* what we want to find */
-	u8      ignorecase:1;	/* duh */
-	u8	want_glob:1;	/* do a glob based search */
-	u8	want_re:1;	/* do a regex based search */
-} search;
-
-
-
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
@@ -930,7 +921,6 @@ delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(int quiet);
 int	sccs_meta(char *m,sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_findtips(sccs *s, delta **a, delta **b);
-delta*	sccs_newtip(sccs *s, char **revs);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
@@ -991,17 +981,7 @@ void	status(int verbose, FILE *out);
 void	notify(void);
 char	*package_name(void);
 int	bkusers(sccs *s, char *prefix, FILE *out);
-globv	read_globs(FILE *f, globv oldglobs);
-int	match_one(char *string, char *glob, int ignorecase);
 int	sfiles_glob(char *glob);
-int	is_glob(char *glob);
-char	**globdir(char *dir, char *glob);
-char	*match_globs(char *string, globv globs, int ignorecase);
-void	free_globs(globv globs);
-search	search_parse(char *str);
-int	search_glob(char *s, search search);
-int	search_regex(char *s, search search);
-int	search_either(char *s, search search);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, void *buf, int size);
@@ -1032,7 +1012,7 @@ delta	*user_get(delta *);
 char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
-MDBM	*loadConfig(char *root, int forcelocal);
+MDBM	*loadConfig(project *p, int forcelocal);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s);
 int	sccs_rm(char *name, int force);
@@ -1150,7 +1130,7 @@ int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
-int	run_check(char *partial, char *opts);
+int	run_check(int quiet, char *partial, char *opts);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);

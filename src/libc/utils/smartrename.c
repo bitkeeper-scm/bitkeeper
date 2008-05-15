@@ -1,3 +1,4 @@
+#define	FSLAYER_NODEFINES
 #include "system.h"
 
 int
@@ -62,6 +63,24 @@ smartRename(char *old, char *new)
 int
 smartMkdir(char *dir, mode_t mode)
 {
-	if (isdir(dir)) return (0);
-	return (realmkdir(dir, mode));
+	int	ret, save;
+
+#undef	mkdir
+	/* bk doesn't want to fail for existing dirs */
+#ifdef	WIN32
+	ret = nt_mkdir(dir);
+#else
+	ret = mkdir(dir, mode);
+#endif
+	if (ret) {
+		save = errno;
+		/* allow existing dir or symlink to dir */
+		if (isdir_follow(dir)) {
+			ret = 0;
+			errno = 0;
+		} else {
+			errno = save; /* restore errno */
+		}
+	}
+	return (ret);
 }

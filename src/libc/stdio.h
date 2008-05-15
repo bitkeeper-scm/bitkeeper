@@ -239,6 +239,7 @@ char	*tmpnam(char *);
 int	 vsprintf(char * __restrict, const char * __restrict, va_list);
 #endif
 
+int	rename(const char *src, const char *dst);
 
 /*
  * IEEE Std 1003.1-90

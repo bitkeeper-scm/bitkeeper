@@ -383,3 +383,20 @@ popensystem_main(int ac, char **av)
 	}
 	return (0);
 }
+
+
+char *
+backtick(char *cmd)
+{
+	FILE	*f;
+	char	*ret;
+	char	**output = 0;
+	char	*line;
+
+	unless (f = popen(cmd, "r")) return (0);
+	while (line = fgetline(f)) output = addLine(output, strdup(line));
+	pclose(f);
+	ret = joinLines(" ", output);
+	freeLines(output, free);
+	return (ret);
+}

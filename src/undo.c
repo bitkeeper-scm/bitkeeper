@@ -7,9 +7,6 @@
 #define	UNDO_CSETS  "BitKeeper/tmp/undo_csets"
 #define	SFILES	    "BitKeeper/tmp/sfiles"
 
-#define	UNDO_ERR	1	/* exitcode for errors */
-#define	UNDO_SKIP	2	/* exitcode for early exit with no work */
-
 private char	**getrev(char *rev, int aflg);
 private char	**mk_list(char *, char **);
 private int	clean_file(char **);
@@ -39,6 +36,7 @@ undo_main(int ac,  char **av)
 	char	*checkfiles;	/* filename of list of files to check */
 	char	*patch = "BitKeeper/tmp/undo.patch";
 	char	*p;
+	char	**nav = 0;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "undo: cannot find package root.\n");
@@ -47,6 +45,14 @@ undo_main(int ac,  char **av)
 
 	fromclone = 0;
 	while ((c = getopt(ac, av, "a:Cfqp;r:sv")) != -1) {
+		unless ((c == 'a') || (c == 'r')) {
+			if (optarg) {
+				nav = addLine(nav,
+				    aprintf("-%c'%s'", c, optarg));
+			} else {
+				nav = addLine(nav, aprintf("-%c", c));
+			}
+		}
 		switch (c) {
 		    case 'a': aflg = 1;				/* doc 2.0 */
 			/* fall though */
@@ -61,8 +67,10 @@ undo_main(int ac,  char **av)
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
 usage:			system("bk help -s undo");
+			freeLines(nav, free);
 			return (UNDO_ERR);
 		}
+		optarg = 0;
 	}
 	unless (rev) goto usage;
 
@@ -73,7 +81,6 @@ usage:			system("bk help -s undo");
 		/* No revs we are done. */
 		return (fromclone ? UNDO_SKIP : 0);
 	}
-	rev = 0;  /* don't use wrong value */
 	bktmp(rev_list, "rev_list");
 
 	/*
@@ -99,6 +106,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		}
 		unlink(BACKUP_SFIO);
 		if (rmresync && exists("RESYNC")) rmtree("RESYNC");
+		freeLines(nav, free);
 		return (UNDO_ERR);
 	}
 	EACH (csetrev_list) {
@@ -144,12 +152,13 @@ err:		if (undo_list[0]) unlink(undo_list);
 		repos	*r;
 		char	**vp;
 		eopts	opts;
+		int	n = 1, which = 1;
 
 		assert(cset);
 		opts.sc = cset;
 		bzero(&opts, sizeof(opts));
-		opts.rev = aflg ? rev : sccs_newtip(cset, csetrev_list)->rev;
 		opts.revs = csetrev_list;
+		opts.undo = 1;
 		unless (r = ensemble_list(opts)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
 			sccs_free(cset);
@@ -157,18 +166,32 @@ err:		if (undo_list[0]) unlink(undo_list);
 		}
 		sccs_free(cset);
 
+		EACH_REPO(r) if (r->present && !r->new) n++;
 		EACH_REPO(r) {
 			if (r->new) continue;
+			unless (r->present) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("undo"));
+			EACH(nav) vp = addLine(vp, strdup(nav[i]));
 			cmd = aprintf("-fa%s", r->deltakey);
 			vp = addLine(vp, cmd);
 			vp = addLine(vp, 0);
-			printf("Undo in %s ...\n", r->path);
-			fflush(stdout);
-			if (chdir(r->path) || spawnvp(_P_WAIT, "bk", &vp[1])) {
-dios:				fprintf(stderr, "Vaya con dios, amigo.\n");
-				exit(123);
+			unless (quiet) {
+				printf("#### Undo in %s (%d of %d) ####\n",
+				    r->path, which++, n);
+				fflush(stdout);
+			}
+			if (chdir(r->path)) {
+				fprintf(stderr,
+				    "Could not chdir %s\n", r->path);
+				exit(199);
+			}
+			rc = spawnvp(_P_WAIT, "bk", &vp[1]);
+			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
+			if (rc && !(fromclone && (rc == UNDO_SKIP))) {
+fail:				fprintf(stderr, "Could not undo %s to %s.\n",
+				    r->path, r->deltakey);
+				exit(199);
 			}
 			freeLines(vp, free);
 			proj_cd2product();
@@ -180,8 +203,10 @@ dios:				fprintf(stderr, "Vaya con dios, amigo.\n");
 			if (size(SFILES) > 0) {
 				fprintf(stderr,
 				    "Changed/extra files in '%s'\n", r->path);
-				cat(SFILES);
-				goto dios;
+				p = aprintf("/bin/cat < '%s' 1>&2", SFILES);
+				system(p);
+				free(p);
+				goto fail;
 			}
 			unlink(SFILES);
 		}
@@ -193,7 +218,9 @@ dios:				fprintf(stderr, "Vaya con dios, amigo.\n");
 		 * We may have undone some renames so just call names on
 		 * the set of repos and see what happens.
 		 */
-		f = popen("bk names -", "w");
+		cmd = aprintf("bk names %s -", qflag);
+		f = popen(cmd, "w");
+		free(cmd);
 		EACH_REPO(r) {
 			if (r->new) continue;
 			fprintf(f, "%s/SCCS/s.ChangeSet\n", r->path);
@@ -201,14 +228,17 @@ dios:				fprintf(stderr, "Vaya con dios, amigo.\n");
 		pclose(f);
 
 		ensemble_free(r);
-		printf("Undo in . ...\n");
+		unless (quiet) {
+			printf("#### Undo in Product (%d of %d) ####\n",
+			    which++, n);
+			fflush(stdout);
+		}
 	}
 
 	if (save) {
 		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		/* like bk makepatch but skips over missing files/keys */
-		cmd = aprintf("bk cset -Bff%sm - > '%s'",
-		    proj_isProduct(0) ? "P" : "", patch);
+		cmd = aprintf("bk cset -Bfm - > '%s'", patch);
 		f = popen(cmd, "w");
 		free(cmd);
 		if (f) {
@@ -248,17 +278,15 @@ dios:				fprintf(stderr, "Vaya con dios, amigo.\n");
 	idcache_update(checkfiles);
 	proj_restoreAllCO(0, 0);
 
-	unless (quiet) printf("Running consistency check...\n");
-	fflush(stdout);
 	if (fromclone) {
 		p = quiet ? "-fT" : "-fvT";
 	} else {
 		p = quiet ? "-f" : "-fv";
 	}
 	if (proj_configbool(0, "partial_check")) {
-		rc = run_check(checkfiles, p);
+		rc = run_check(quiet, checkfiles, p);
 	} else {
-		rc = run_check(0, p);
+		rc = run_check(quiet, 0, p);
 	}
 	unlink(checkfiles);
 	free(checkfiles);
@@ -372,8 +400,7 @@ mk_list(char *rev_list, char **csetrev_list)
 	kvpair	kv;
 
 	assert(csetrev_list);
-	cmd = aprintf("bk cset -ffl5%s - > '%s'",
-	    proj_isProduct(0) ? "P" : "", rev_list);
+	cmd = aprintf("bk cset -fl5 - > '%s'", rev_list);
 	f = popen(cmd, "w");
 	EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
 	status = pclose(f);
@@ -637,5 +664,5 @@ update_log_markers(int verbose)
 		}
 	}
 	sccs_free(s);
-	if (valid_marker) updLogMarker(verbose, stderr);
+	if (valid_marker) updLogMarker();
 }

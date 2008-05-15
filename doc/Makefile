@@ -5,7 +5,7 @@
 WIN32_GS_PATH=/cygdrive/c/gs/gs7.00
 
 .SCCS_GET:
-	bk get -q $@
+	$(Q)bk get -q $@
 
 all: bk_refcard.ps bk_refcard.pdf
 
@@ -30,7 +30,8 @@ g: bk_refcard.tr
 
 .PHONY: clean
 clean:
-	rm -f *.ps PS PDF *.pdf
+	$(if $(Q),@echo Cleaning doc,)
+	$(Q)rm -f *.ps PS PDF *.pdf
 
 clobber: clean
 	-bk clean

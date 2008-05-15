@@ -71,24 +71,28 @@ PROGRAMS = cmp diff diff3 sdiff
 
 all: $(PROGRAMS)
 
-COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -I. -I$(srcdir) $(CFLAGS)
+COMPILE = $(Q)$(CC) -c $(CPPFLAGS) $(DEFS) -I. -I$(srcdir) $(CFLAGS)
 
 .c.o:
+	$(if $(Q),@echo CC gnu/diffutils/$<,)
 	$(COMPILE) $<
 
 diff_o = diff.o analyze.o cmpbuf.o dir.o io.o util.o \
 	context.o ed.o ifdef.o normal.o side.o \
 	fnmatch.o getopt.o getopt1.o version.o $(LIBOBJS)
 diff: $(diff_o)
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(diff_o) $(LIBS)
+	$(if $(Q),@echo LINK gnu/diffutils/$<,)
+	$(Q)$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(diff_o) $(LIBS)
 
 diff3_o = diff3.o getopt.o getopt1.o version.o $(LIBOBJS)
 diff3: $(diff3_o)
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(diff3_o) $(LIBS)
+	$(if $(Q),@echo LINK gnu/diffutils/$<,)
+	$(Q)$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(diff3_o) $(LIBS)
 
 sdiff_o = sdiff.o getopt.o getopt1.o version.o $(LIBOBJS)
 sdiff: $(sdiff_o)
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(sdiff_o) $(LIBS)
+	$(if $(Q),@echo LINK gnu/diffutils/$<,)
+	$(Q)$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(sdiff_o) $(LIBS)
 
 cmp_o = cmp.o cmpbuf.o error.o getopt.o getopt1.o xmalloc.o version.o $(LIBOBJS)
 cmp: $(cmp_o)
@@ -109,16 +113,20 @@ diff.o fnmatch.o: fnmatch.h
 analyze.o cmpbuf.o cmp.o: cmpbuf.h
 
 cmp.o: cmp.c
+	$(if $(Q),@echo CC gnu/diffutils/$<,)
 	$(COMPILE) -DNULL_DEVICE=\"$(NULL_DEVICE)\" $(srcdir)/cmp.c
 
 diff3.o: diff3.c
+	$(if $(Q),@echo CC gnu/diffutils/$<,)
 	$(COMPILE) -DDIFF_PROGRAM=\"$(DIFF_PROGRAM)\" $(srcdir)/diff3.c
 
 sdiff.o: sdiff.c
+	$(if $(Q),@echo CC gnu/diffutils/$<,)
 	$(COMPILE) -DDEFAULT_EDITOR_PROGRAM=\"$(DEFAULT_EDITOR_PROGRAM)\" \
 		-DDIFF_PROGRAM=\"$(DIFF_PROGRAM)\" $(srcdir)/sdiff.c
 
 util.o: util.c
+	$(if $(Q),@echo CC gnu/diffutils/$<,)
 	$(COMPILE) -DPR_PROGRAM=\"$(PR_PROGRAM)\" $(srcdir)/util.c
 
 TAGS: $(srcs)

@@ -9,6 +9,7 @@ rmtree(char *dir)
 	int	i;
 	int	ret;
 
+	unless (exists(dir)) return (0);
 	ret = walkdir(dir, rmtreewalk, &dirs);
 	unless (ret) {
 		reverseLines(dirs);

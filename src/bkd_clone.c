@@ -1,7 +1,8 @@
 #include "bkd.h"
 #include "logging.h"
+#include "ensemble.h"
 
-private int	compressed(int);
+private int	compressed(int level, int lclone);
 
 /*
  * Send the sfio file to stdout
@@ -9,9 +10,13 @@ private int	compressed(int);
 int
 cmd_clone(int ac, char **av)
 {
-	int	c, rc;
-	int	gzip = 0, delay = -1;
-	char 	*p, *rev = 0;
+	int	c, rc = 0;
+	int	gzip = 0, delay = -1, lclone = 0;
+	char	*p, *rev = 0, *tid = 0;
+	char	**modules = 0;
+	sccs	*s = 0;
+	delta	*d;
+	hash	*h = 0;
 
 	if (sendServerInfoBlock(0)) {
 		drain();
@@ -23,8 +28,14 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
-	while ((c = getopt(ac, av, "qr;w;z|")) != -1) {
+	while ((c = getopt(ac, av, "lM;qr;Tw;z|")) != -1) {
 		switch (c) {
+		    case 'l':
+			lclone = 1;
+			break;
+		    case 'M':
+			modules = addLine(modules, strdup(optarg));
+			break;
 		    case 'w':
 			delay = atoi(optarg);
 			break;
@@ -38,23 +49,38 @@ cmd_clone(int ac, char **av)
 		    case 'r':
 			rev = optarg;
 			break;
+		    case 'T':	/* eventually, this will be a trans_id */
+			tid = 1;	// On purpose, will go away w/ trans
+			break;
 		    default:
 			out("ERROR-unknown option\n");
 			exit(1);
 	    	}
 	}
-	if (rev) {
-		sccs	*s = sccs_csetInit(SILENT);
-		if (s) {
-			delta	*d = sccs_findrev(s, rev);
-			sccs_free(s);
-			unless (d) {
-				out("ERROR-rev ");
-				out(rev);
-				out(" doesn't exist\n");
-				drain();
-				return (1);
-			}
+	/*
+	 * This is where we would put in an exception for bk port.
+	 */
+	if (!tid && proj_isComponent(0)) {
+		out("ERROR-clone of a component is not allowed, use -M\n");
+		drain();
+		return (1);
+	}
+	if (proj_isEnsemble(0)) {
+		unless (bk_hasFeature("SAMv1")) {
+			out("ERROR-please upgrade your BK to a SAMv1 "
+			    "aware version (5.0 or later)\n");
+			drain();
+			return (1);
+		}
+		/*
+		 * If we're an ensemble and they did not specify any modules,
+		 * then imply whatever list we may have.
+		 * The tid part is because we want to do this in pass1 only.
+		 * XXX - what if we've added one with ensemble add and it
+		 * does not appear in our MODULES file yet?
+		 */
+		unless (modules || tid) {
+			modules = file2Lines(0, "BitKeeper/log/MODULES");
 		}
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
@@ -68,6 +94,36 @@ cmd_clone(int ac, char **av)
 		drain();
 		return (1);
 	}
+
+	/* moved down here because we're caching the sccs* */
+	if (rev || modules) {
+		s = sccs_csetInit(SILENT);
+		assert(s && HASGRAPH(s));
+		if (rev) {
+			d = sccs_findrev(s, rev);
+			unless (d) {
+				out("ERROR-rev ");
+				out(rev);
+				out(" doesn't exist\n");
+				drain();
+				sccs_free(s);
+				return (1);
+			}
+		}
+		if (modules) {
+			h = module_list(modules, s);
+			freeLines(modules, free);
+			unless (h) {
+				// XXX - weak.  Should pass in a protocol 
+				// marker and have module_list() do this.
+				out("ERROR-unable to expand module[s]\n");
+				drain();
+				sccs_free(s);
+				return (1);
+			}
+		}
+	}
+
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	/* has to be here, we use the OK below as a marker. */
 	if (bp_updateServer(getenv("BK_CSETS"), 0, SILENT)) {
@@ -75,6 +131,7 @@ cmd_clone(int ac, char **av)
 		    "ERROR-unable to update BAM server %s\n", bp_serverURL());
 		fflush(stdout);
 		drain();
+		sccs_free(s);
 		return (1);
 	}
 	p = getenv("BK_REMOTE_PROTOCOL");
@@ -87,11 +144,31 @@ cmd_clone(int ac, char **av)
 		out(p ? p : "");
 		out("\n");
 		drain();
+		sccs_free(s);
 		return (1);
 	}
-	if (trigger(av[0], "pre")) return (1);
+	if (trigger(av[0], "pre")) {
+		sccs_free(s);
+		return (1);
+	}
+	if (!tid && proj_isProduct(0)) {
+		repos	*r;
+		eopts	opts;
+
+		bzero(&opts, sizeof(eopts));
+		opts.product = 1;
+		opts.product_first = 1;
+		opts.rev = rev ? rev : "+";
+		opts.sc = s;
+		opts.modules = h;
+		r = ensemble_list(opts);
+		printf("@ENSEMBLE@\n");
+		ensemble_toStream(r, stdout);
+		ensemble_free(r);
+		goto out;
+	}
 	printf("@SFIO@\n");
-	rc = compressed(gzip);
+	rc = compressed(gzip, lclone);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (trigger(av[0], "post")) exit (1);
@@ -101,52 +178,29 @@ cmd_clone(int ac, char **av)
 	 * Give ssh sometime to drain the data
 	 * We should not need this if ssh is working correctly 
 	 */
-	if (delay > 0) sleep(delay);
+out:	if (delay > 0) sleep(delay);
 
 	putenv("BK_CSETS=");
+	sccs_free(s);
+	if (h) hash_free(h);
 	return (rc);
 }
 
 private int
-compressed(int level)
+compressed(int level, int lclone)
 {
 	int	status, fd;
-	char	*tmpf1, *tmpf2;
 	FILE	*fh;
 	char	*sfiocmd;
-	char	*cmd;
-	int	rc = 1;
+	char	*larg = (lclone ? "-L" : "");
 
-	/*
-	 * Generate list of sfiles and log markers to transfer to
-	 * remote site.  It is important that the markers appear in
-	 * sorted order so that the other end knows when the entire
-	 * BitKeeper directory is finished unpacking.
-	 */
-	tmpf1 = bktmp(0, "clone1");
-	tmpf2 = bktmp(0, "clone2");
-	fh = fopen(tmpf1, "w");
-	if (exists(CMARK)) fprintf(fh, CMARK "\n");
-	fclose(fh);
-	cmd = aprintf("bk sfiles > '%s'", tmpf2);
-	status = system(cmd);
-	free(cmd);
-	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
-
-	sfiocmd = aprintf("cat '%s' '%s' | bk sort | bk sfio -oq",
-	    tmpf1, tmpf2);
+	sfiocmd = aprintf("bk _sfiles_clone %s | bk sfio -oq %s", larg, larg);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);
 	gzipAll2fh(fd, stdout, level, 0, 0, 0);
 	fflush(stdout);
 	status = pclose(fh);
-	rc = 0;
- out:
-	unlink(tmpf1);
-	unlink(tmpf2);
-	free(tmpf1);
-	free(tmpf2);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
-	return (rc);
+	return (0);
 }

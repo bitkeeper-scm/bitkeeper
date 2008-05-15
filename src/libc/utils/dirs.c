@@ -1,7 +1,6 @@
 #include "system.h"
 
 private	int	_walkdir(char *dir, struct stat *sbufp, walkfn fnc, void *data);
-private	char	**_getdir(char *dir, struct stat *sb1);
 
 /*
  * walkdir() will traverse the directory 'dir' and calls the func()
@@ -157,6 +156,9 @@ _walkdir(char *dir, struct stat *sbufp, walkfn fn, void *data)
 	return (ret);
 }
 
+/* this is the non-remapped _getdir */
+#undef	_getdir
+#undef	lstat
 
 #ifndef WIN32
 /*
@@ -166,25 +168,20 @@ _walkdir(char *dir, struct stat *sbufp, walkfn fn, void *data)
  * It also checks for updates to the dir and retries if it sees one.
  */
 char	**
-getdir(char *dir)
-{
-	struct	stat	statbuf;
-
-	if (lstat(dir, &statbuf)) {
-		unless (errno == ENOENT) perror(dir);
-		return (0);
-	}
-	return (_getdir(dir, &statbuf));
-}
-
-private char	**
 _getdir(char *dir, struct stat *sb1)
 {
 	char	**lines = 0;
 	DIR	*d;
 	struct	dirent   *e;
-	struct  stat	sb2;
+	struct  stat	stmp, sb2;
 
+	unless (sb1) {
+		sb1 = &stmp;
+		if (lstat(dir, sb1)) {
+			unless (errno == ENOENT) perror(dir);
+			return (0);
+		}
+	}
 again:
 	unless (d = opendir(dir)) {
 		unless (errno == ENOENT) perror(dir);
@@ -214,12 +211,6 @@ again:
 }
 #else
 char	**
-getdir(char *dir)
-{
-	return (_getdir(dir, 0));
-}
-
-private char	**
 _getdir(char *dir, struct stat *sb1)
 {
 	struct  _finddata_t found_file;
