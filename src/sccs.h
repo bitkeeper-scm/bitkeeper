@@ -793,6 +793,7 @@ typedef struct {
 	int	contentlen;	/* len from http header (recieve only) */
 	pid_t	pid;		/* if pipe, pid of the child */
 	hash	*errs;		/* encode error messages */
+	hash	*params;	/* optional url params */
 } remote;
 
 #define	ADDR_NFS	0x000	/* host:/path */

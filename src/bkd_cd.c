@@ -1,45 +1,14 @@
 #include "bkd.h"
+#include "ensemble.h"
 
-/*
- * Convert rootkey to a path name
- * Warning: This function stomp on the rootkey
- */
-private char *
-rootkey2path(char *rootkey, char *log_root, char *buf)
+private void
+send_keyerror(char *key, char *path)
 {
-	char *q, *uh, *p, *t, *s, *r;
-	char *u, *h;
-
-	unless (log_root) return (0);
-	uh=rootkey;
-	q = strchr(uh, '|');
-	unless (q) return (0);
-	*q++ = 0;
-	p = q;
-	q = strchr(q, '|');
-	unless (q) return (0);
-	*q++ = 0;
-	t = q;
-	q = strchr(q, '|');
-	unless (q) return (0);
-	*q++ = 0;
-	s = q;
-	r = strchr(q, '|');
-	if (r) {
-		*r++ = 0;
-	} else {
-		r = ""; /* some old repository have no random field */
-	}
-
-	u = uh;
-	h = strchr(uh, '@');
-	if (h) {
-		*h++ = 0;
-	} else {
-		h = "";
-	}
-	sprintf(buf, "%s/%s/%s-%s-%s-%s", log_root, h, u, t, s, r);
-	return (buf);
+	out("ERROR-cannot use key ");
+	out(key);
+	out(" inside repository ");
+	out(path);
+	out(" (nonexistent, or not a ensemble rootkey)\n");
 }
 
 private void
@@ -76,79 +45,63 @@ unsafe_cd(char *path)
 int
 cmd_cd(int ac, char **av)
 {
-	char *p = av[1];
-	char *rootkey, buf[MAXPATH];
+	char	*p = av[1];
+	char	*t, *u;
+	MDBM	*idDB;
+	char	*rootkey, buf[MAXPATH];
 
 	unless (p) {
 		out("ERROR-cd command must have path argument\n");
 		return (1);
 	}
-
 	/*
-	 * Win32 note: If the path look like /C:path, strip the leading slash.
-	 * We only need this for pre 2.0 client (which had a bug)
+	 * av[1] = <path>[|<rootkey>]
+	 * If we find a rootkey it is supposed to be a component in this
+	 * ensemble.
 	 */
-	if ((p[0] == '/') && isDriveColonPath(&p[1])) p++;
-
-	if ((strlen(p) >= 14) && strneq("///LOG_ROOT///", p, 14)) {
-
-		unless (logRoot) {
-			out("ERROR-cannot get log_root\n");
+	if (rootkey = strchr(p, '|')) *rootkey++ = 0;
+	if (*p && unsafe_cd(p)) {
+		send_cderror(p);
+		return (1);
+	}
+	if (rootkey && !streq(rootkey, proj_rootkey(0))) {
+		unless ((idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) &&
+		    (t = mdbm_fetch_str(idDB, rootkey))) {
+			send_keyerror(rootkey, p);
+			if (idDB) mdbm_close(idDB);
 			return (1);
 		}
-		unless (isdir(logRoot)) {
-			out("ERROR-log_root: ");
-			out(logRoot);
-			out(" does not exist\n");
+		/* csetChomp(t); -- but need access to innards */
+		unless ((u = strrchr(t, '/')) && streq(u+1, GCHANGESET)) {
+			send_keyerror(rootkey, p);
 			return (1);
 		}
-		rootkey=&(p[14]);
-		unless (rootkey2path(rootkey, logRoot, buf)) {
-			out("ERROR-cannot convert key to path\n");
-			return (1);
-		}
-		mkdirp(buf);
+		*u = 0;
+		strcpy(buf, t);
+		rootkey[-1] = '|';
+		mdbm_close(idDB);
 		if (chdir(buf)) {
-			out("ERROR-cannot cd to ");
-			out(p);
-			out("\n");
-			return (1);
-		}
-	} else {
-		if (unsafe_cd(p)) {
-			send_cderror(p);
-			return (1);
-		}
-
-		/*
-		 * XXX TODO need to check for permission error here
-		 */
-		unless (exists("BitKeeper/etc")) {
-			if (errno == ENOENT) {
-				send_cderror(p);
-			} else if (errno == EACCES) {
-				out("ERROR-");
-				out(p);
-				out(" access denied\n");
-			} else {
-				out("ERROR-unknown error");
-				sprintf(buf, "errno = %d\n", errno);
-				out(buf);
-			}
+			send_cderror(buf);
 			return (1);
 		}
 	}
-	unless (getenv("BK_REMOTE_PROTOCOL")) {
-		/*
-		 * For old 1.2 client
-		 */
-		unless (exists("BitKeeper/etc")) {
-			out("ERROR-directory '");
+
+	/*
+	 * XXX TODO need to check for permission error here
+	 */
+	unless (exists("BitKeeper/etc")) {
+		if (errno == ENOENT) {
+			send_cderror(p);
+		} else if (errno == EACCES) {
+			out("ERROR-");
 			out(p);
-			out("' is not a package root\n");
-			return (-1);
-		}    
-		out("OK-root OK\n");
+			out(" access denied\n");
+		} else {
+			out("ERROR-unknown error");
+			sprintf(buf, "errno = %d\n", errno);
+			out(buf);
+		}
+		return (1);
 	}
 	return (0);
 }

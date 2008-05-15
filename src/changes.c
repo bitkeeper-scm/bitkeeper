@@ -1039,7 +1039,7 @@ send_part1_msg(remote *r, char **av)
 	f = fopen(cmdf, "w");
 	assert(f);
 	sendEnv(f, 0, r, ((opts.remote || opts.local) ? 0 : SENDENV_NOREPO));
-	if (r->path) add_cd_command(f, r);
+	add_cd_command(f, r);
 	fprintf(f, "chg_part1");
 	if (opts.remote) {
 		/*
@@ -1095,7 +1095,7 @@ send_end_msg(remote *r, char *msg)
 	 * No need to do "cd" again if we have a non-http connection
 	 * becuase we already did a "cd" in part 1
 	 */
-	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "chg_part2\n");
 	fclose(f);
 
@@ -1117,7 +1117,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	assert(f);
 	sendEnv(f, 0, r, ((opts.remote || opts.local) ? 0 : SENDENV_NOREPO));
 
-	if (r->path && (r->type == ADDR_HTTP)) add_cd_command(f, r);
+	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "chg_part2");
 	/* Use the -L/-R cleaned options */
 	for (i = 1; av[i]; i++) fprintf(f, " %s", av[i]);

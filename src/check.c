@@ -995,6 +995,7 @@ fetch_changeset(void)
 	}
 	fgets(buf, sizeof(buf), f);
 	chomp(buf);
+	fclose(f);
 	s = sccs_init(CHANGESET, 0);
 	unless (d = sccs_findrev(s, buf)) {
 		getMsg("chk5", buf, '=', stderr);

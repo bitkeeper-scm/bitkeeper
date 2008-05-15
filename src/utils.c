@@ -705,10 +705,18 @@ get_ok(remote *r, char *read_ahead, int verbose)
 void
 add_cd_command(FILE *f, remote *r)
 {
-	char	*path = shellquote(r->path);
+	char	*t;
+	char	*rootkey = 0;
+	char	buf[MAXPATH];
 
-	fprintf(f, "cd %s\n", path);
-	free(path);
+	if (r->params) rootkey = hash_fetchStr(r->params, "ROOTKEY");
+	unless (r->path || rootkey) return;
+	buf[0] = 0;
+	if (r->path) strcpy(buf, r->path);
+	if (rootkey) sprintf(buf + strlen(buf), "|%s", rootkey);
+	t = shellquote(buf);
+	fprintf(f, "cd %s\n", t);
+	free(t);
 }
 
 void
@@ -1493,6 +1501,7 @@ rmdir_findprocs(void)
 	char	buf1[MAXLINE], buf2[MAXLINE];
 
 	unless (getenv("BK_REGRESSION")) return;
+	unless (bin) return;	/* platforminit failures can't run this */
 	d = getdir("/proc");
 	EACH (d) {
 		unless (isdigit(d[i][0])) continue;
@@ -1507,6 +1516,9 @@ rmdir_findprocs(void)
 
 		/* can't block on myself... */
 		if (atoi(d[i]) == getpid()) {
+			/* we are exiting the bkd so this is ok */
+			if (getenv("_BK_IN_BKD")) continue;
+
 			/*
 			 * Can't dump core if we are in a deleted directory...
 			 */

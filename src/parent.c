@@ -1,8 +1,8 @@
 #include "bkd.h"
 
-#define	PARENT		proj_fullpath(0, "BitKeeper/log/parent")
-#define	PUSH_PARENT	proj_fullpath(0, "BitKeeper/log/push-parent")
-#define	PULL_PARENT	proj_fullpath(0, "BitKeeper/log/pull-parent")
+#define	PARENT		"BitKeeper/log/parent"
+#define	PUSH_PARENT	"BitKeeper/log/push-parent"
+#define	PULL_PARENT	"BitKeeper/log/pull-parent"
 
 private	void	add(char *which, char *url, int *rc);
 private	void	rm(char *which, char *url, int *rc);
@@ -61,7 +61,7 @@ parent_main(int ac,  char **av)
 			ac--;
 		}
 	}
-	while ((c = getopt(ac, av, "1anilopqrs")) != -1) {
+	while ((c = getopt(ac, av, "1ailnopqrs")) != -1) {
 		switch (c) {
 		    case '1': opts.one = 1; break;
 		    case 'a': opts.add = 1; break;
@@ -119,6 +119,13 @@ usage:			system("bk help -s parent"); return (1);
 	/* Print */
 	if (opts.print) {
 		rc = print();
+		goto out;
+	}
+
+	if (proj_isComponent(0)) {
+		fprintf(stderr,
+		    "parent: modifications must be done in the product.\n");
+		rc = 1;
 		goto out;
 	}
 
@@ -424,6 +431,11 @@ parent_normalize(char *url)
 	if ((r = remote_parse(url, REMOTE_BKDURL))
 	    && (r->type ==  ADDR_FILE) && r->path) {
 		url = fullname(r->path);
+		if (r->params) {
+			free(r->path);
+			r->path = strdup(url);
+			url = remote_unparse(r);
+		}
 	}
 	if (r) remote_free(r);
 	return (strdup(url));
@@ -479,13 +491,23 @@ done:	if (r) remote_free(r);
 private	char **
 readf(char *file)
 {
-	char	**p = file2Lines(0, file);
+	char	**list;
+	project	*proj;
+	char	buf[MAXPATH];
 
-	p = file2Lines(p, PARENT);
-	uniqLines(p, free);
-	if (p && !p[1]) {
-		freeLines(p, free);
-		p = 0;
+	if (proj_isComponent(0)) {
+		proj = proj_product(0);
+	} else {
+		proj = 0;
 	}
-	return (p);
+	sprintf(buf, "%s/%s", proj_root(proj), file);
+	list = file2Lines(0, buf);
+	sprintf(buf, "%s/%s", proj_root(proj), PARENT);
+	list = file2Lines(list, buf);
+	uniqLines(list, free);
+	if (list && !list[1]) {
+		freeLines(list, free);
+		list = 0;
+	}
+	return (list);
 }
