@@ -26,7 +26,8 @@ private	char	*buffer = 0;	/* copy of stdin */
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
 
-private	void	cmdlog_exit(void);
+private	void	bk_atexit(void);
+private	void	bk_cleanup(int ret);
 private	int	cmdlog_repo;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
@@ -114,11 +115,10 @@ main(int ac, char **av, char **env)
 	cmdlog_buffer[0] = 0;
 	cmdlog_flags = 0;
 	if (i = setjmp(exit_buf)) {
-		i -= 1000;
-		cmdlog_end(i);
-		return (i >= 0 ? i : 1);
+		ret = (i >= 1000) ? (i - 1000) : 1;
+		goto out;
 	}
-	atexit(cmdlog_exit);
+	atexit(bk_atexit);
 	platformInit(av);
 	bk_environ = env;
 
@@ -301,14 +301,16 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	ret = cmd_run(prog, is_bk, ac, av);
 	if (locking && streq(locking, "r")) repository_rdunlock(0);
 	if (locking && streq(locking, "w")) repository_wrunlock(0);
-
+out:
+	cmdlog_end(ret);
+	bk_cleanup(ret);
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
 	close(1);
 	fflush(stderr);
 	close(2);
-	cmdlog_end(ret);
-	exit(ret);
+	if (ret < 0) ret = 1;	/* win32 MUST have a positive return */
+	return (ret);
 }
 
 /*
@@ -407,11 +409,23 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 
 #define	LOG_BADEXIT	-100000		/* some non-valid exit */
 
+/*
+ * This function is installed as an atexit() handler.
+ * In general, it shouldn't be needed but it is here as a fallback.
+ *
+ * On the normal exit path, both calls below will shortcircuit and
+ * do nothing.
+ *
+ * But if exit() is called in libc or some other place that doesn't
+ * include sccs.h and the macro replacing exit() with a longjmp, then
+ * this function will make sure that the cmdlog is updated and bk
+ * cleans up after itself.
+ */
 private void
-cmdlog_exit(void)
+bk_atexit(void)
 {
 	/*
-	 * XXX While almost all bkd command call this function on
+	 * XXX While almost all bkd commands call this function on
 	 * exit. (via the atexit() interface), there is one exception:
 	 * on win32, the top level bkd service thread cannot process atexit()
 	 * when the serice shutdown. (XP consider this an error)
@@ -419,6 +433,22 @@ cmdlog_exit(void)
 	 * new connection. The child process do follow the the normal
 	 * exit path and process atexit().
 	 */
+	cmdlog_end(LOG_BADEXIT);
+	bk_cleanup(LOG_BADEXIT);
+}
+
+/*
+ * Called before exiting, this function freed cached memory and looks for
+ * other cleanups like stale lockfiles.
+ */
+private void
+bk_cleanup(int ret)
+{
+	static	int	done = 0;
+
+	if (done) return;
+	done = 1;
+
 	purify_list();
 
 	/* this is attached to stdin and we have to clean it up or
@@ -430,9 +460,7 @@ cmdlog_exit(void)
 		free(buffer);
 		buffer = 0;
 	}
-	bktmpcleanup();
 	lockfile_cleanup();
-	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
 
 	/*
 	 * XXX TODO: We need to make win32 serivce child process send the
@@ -441,6 +469,44 @@ cmdlog_exit(void)
 	 */
 	repository_lockcleanup();
 	proj_reset(0);		/* flush data cached in proj struct */
+
+#ifndef	NOPROC
+	rmdir_findprocs();
+#endif
+
+	/*
+	 * Test for filehandles left open at the end of regressions
+	 * We only do with if bk exits successful as we can't fix
+	 * all error paths.
+	 */
+	if ((ret == 0) && getenv("BK_REGRESSION")
+#ifdef	MACOS_VER
+		/* XXX - someday maybe they'll fix this and we can
+		   enable this check */
+		&& (MACOS_VER < 1030)
+#endif
+	    ) {
+		int	i;
+		struct	stat sbuf;
+		char	buf[100];
+
+		for (i = 3; i < 20; i++) {
+			buf[0] = i;	// so gcc doesn't warn us it's unused
+			if (fstat(i, &sbuf)) continue;
+#if	defined(F_GETFD) && defined(FD_CLOEXEC)
+			if (fcntl(i, F_GETFD) & FD_CLOEXEC) continue;
+#endif
+			ttyprintf(
+			    "%s: warning fh %d left open\n", prog, i);
+#ifndef	NOPROC
+			sprintf(buf,
+			    "/bin/ls -l /proc/%d/fd | grep '%d -> ' >/dev/tty",
+			    getpid(), i);
+			system(buf);
+#endif
+		}
+	}
+	bktmpcleanup();
 	trace_free();
 }
 
@@ -689,19 +755,7 @@ cmdlog_end(int ret)
 	int	len, savelen;
 	kvpair	kv;
 
-	purify_list();
-
-	/* this is attached to stdin and we have to clean it up or
-	 * bktmpcleanup() will deadlock on windows.
-	 */
-	if (buffer && exists(buffer)) {
-		close(0);
-		unlink(buffer);
-		free(buffer);
-		buffer = 0;
-	}
-	bktmpcleanup();
-	unless (cmdlog_buffer[0]) return (flags);
+	unless (cmdlog_buffer[0]) goto out;
 
 	/* add last minute notes */
 	if (cmdlog_repo && (cmdlog_flags&CMD_BYTES)) {
@@ -750,36 +804,6 @@ cmdlog_end(int ret)
 		cmdlog_flags |= CMD_FAST_EXIT;
 	}
 	if (cmdlog_flags & (CMD_WRUNLOCK|CMD_RDUNLOCK)) repository_unlock(0);
-
-#ifndef	NOPROC
-	rmdir_findprocs();
-#endif
-#ifdef	MACOS_VER
-	/* XXX - someday maybe they'll fix this and we can enable this check */
-	if (getenv("BK_REGRESSION") && (MACOS_VER < 1030)) {
-#else
-	if (getenv("BK_REGRESSION")) {
-#endif
-		int	i;
-		struct	stat sbuf;
-		char	buf[100];
-
-		for (i = 3; i < 20; i++) {
-		    	buf[0] = i;	// so gcc doesn't warn us it's unused
-			if (fstat(i, &sbuf)) continue;
-#if	defined(F_GETFD) && defined(FD_CLOEXEC)
-			if (fcntl(i, F_GETFD) & FD_CLOEXEC) continue;
-#endif
-			ttyprintf(
-			    "%s: warning fh %d left open\n", cmdlog_buffer, i);
-#ifndef	NOPROC
-			sprintf(buf,
-			    "/bin/ls -l /proc/%d/fd | grep '%d -> ' >/dev/tty",
-			    getpid(), i);
-			system(buf);
-#endif
-		}
-	}
 out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
