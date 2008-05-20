@@ -147,8 +147,8 @@ chmod +w sccsexp
 result=`bk sfiles -c sccsexp | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to SCCS expand file .. check clean ................$NL
-bk clean $Q sccsexp
-if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
+bk clean sccsexp 2>ERR && exit 1
+echo OK
 echo $N No change to RCS expand file ....check sfiles -c ............$NL
 echo '$Revision$' > rcsexp
 bk ci $Q -i rcsexp
@@ -179,8 +179,8 @@ chmod +w exp1
 result=`bk sfiles -c exp1 | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to expand first keyword only .. check clean .......$NL
-bk clean $Q exp1
-if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
+bk clean $Q exp1 && exit 1
+echo OK
 echo $N Removing the newline from a file which used to have one .....$NL
 echo hadnl > hadnl
 bk ci $Q -i hadnl
@@ -250,8 +250,8 @@ if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 if [ $fail = yes ] ; then exit 1; fi
 
 echo $N Check cleaning of a chmod +w sccs keywords file .............$NL
-bk clean sccsexp || exit 1
-bk get $Q sccsexp
+bk unedit sccsexp || exit 1
+bk get $Q sccsexp || exit 1
 chmod +w sccsexp
 bk clean sccsexp || {
 	echo failed to clean sccsexp

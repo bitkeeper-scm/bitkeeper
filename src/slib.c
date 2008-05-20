@@ -8594,7 +8594,6 @@ sccs_clean(sccs *s, u32 flags)
 
 	unless (HAS_PFILE(s)) {
 		pfile	dummy = { "+", "?", "?", 0, "?", 0, 0, 0 };
-		int	flags = SILENT|GET_EXPAND;
 
 		if (isRegularFile(s->mode) && !WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
@@ -8605,9 +8604,9 @@ sccs_clean(sccs *s, u32 flags)
 		/*
 		 * It's likely that they did a chmod +w on the file.
 		 * Go look and see if there are any diffs and if not,
-		 * clean it.
+		 * clean it. (The GET_EXPAND ignores keywords)
 		 */
-		unless (_hasDiffs(s, sccs_top(s), flags, 0, &dummy)) {
+		unless (_hasDiffs(s, sccs_top(s), GET_EXPAND, 0, &dummy)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
 			return (0);
@@ -8707,15 +8706,11 @@ sccs_clean(sccs *s, u32 flags)
 		return (2);
 	}
 
-	unless (EDITED(s)) {
-		if (ASCII(s)) flags |= GET_EXPAND;
-	}
 	unless (bktmp(tmpfile, "diffg")) return (1);
 	/*
-	 * hasDiffs() ignores keyword expansion differences.
-	 * And it's faster.
+	 * hasDiffs() is faster.
 	 */
-	unless (sccs_hasDiffs(s, flags, 1)) goto nodiffs;
+	unless (sccs_hasDiffs(s, 0, 1)) goto nodiffs;
 	switch (diff_gfile(s, &pf, 0, tmpfile)) {
 	    case 1:		/* no diffs */
 nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));

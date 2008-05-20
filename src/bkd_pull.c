@@ -28,10 +28,7 @@ cmd_pull_part1(int ac, char **av)
 	char	*tid = 0;
 	int	c;
 
-	if (sendServerInfoBlock(0)) {
-		drain();
-		return (1);
-	}
+	if (sendServerInfoBlock(0)) return (1);
 
 	while ((c = getopt(ac, av, "denlqr;Tz|")) != -1) {
 		switch (c) {
@@ -54,13 +51,11 @@ cmd_pull_part1(int ac, char **av)
 
 	if (!tid && proj_isComponent(0)) {
 		out("ERROR-Not a product root\n");
-		drain();
 		return (1);
 	}
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
-		drain();
 		return (1);
 	}
 
@@ -71,19 +66,16 @@ cmd_pull_part1(int ac, char **av)
 		out(", got ");
 		out(p ? p : "");
 		out("\n");
-		drain();
 		return (1);
 	}
 	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv1")) {
 		out("ERROR-please upgrade your BK to a SAMv1 "
 		    "aware version (5.0 or later)\n");
-		drain();
 		return (1);
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
-		drain();
 		return (1);
 	}
 	f = popenvp(probekey_av, "r");
@@ -106,7 +98,6 @@ done:
 		    WEXITSTATUS(status));
 		rc = 1;
 	}
-	fflush(stdout);
 	return (rc);
 }
 
@@ -146,13 +137,9 @@ cmd_pull_part2(int ac, char **av)
 		}
 	}
 
-	if (sendServerInfoBlock(0)) {
-		drain();
-		return (1);
-	}
+	if (sendServerInfoBlock(0)) return (1);
 	if (hasLocalWork(GONE)) {
 		out("ERROR-must commit local changes to " GONE "\n");
-		drain();
 		return (1);
 	}
 	s = sccs_csetInit(0);

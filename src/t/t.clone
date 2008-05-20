@@ -171,3 +171,27 @@ bk changes -qLR > CHANGES
 test -s CHANGES && exit 1
 cd ..
 echo OK
+
+echo $N Test clone into an existing directory........................$NL
+cd "$HERE"
+mkdir existing || exit 1
+cd existing
+bk clone "$HERE/project" . >"$HERE"/OUT 2>&1 || {
+	echo failed
+	cat "$HERE"/OUT
+	exit 1
+}
+echo OK
+
+echo $N Test clone to . inside a project.............................$NL
+cd "$HERE"
+rm -rf existing
+commercial aproject
+mkdir existing
+cd existing
+bk clone "$HERE/project" . >"$HERE"/OUT 2>&1 || {
+	echo failed
+	cat "$HERE"/OUT
+	exit 1
+}
+echo OK

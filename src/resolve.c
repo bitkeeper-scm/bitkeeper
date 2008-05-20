@@ -2646,9 +2646,9 @@ err:			unapply(save);
 	}
 	if (proj_configbool(0, "partial_check")) {
 		fflush(save); /*  important */
-		ret = run_check(opts->quiet, APPLIED, opts->quiet ? 0 : "-v");
+		ret = run_check(opts->quiet, APPLIED, opts->quiet ? 0 : "-v", 0);
 	} else {
-		ret = run_check(opts->quiet, 0, opts->quiet ? 0 : "-v");
+		ret = run_check(opts->quiet, 0, opts->quiet ? 0 : "-v", 0);
 	}
 	if (ret) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");

@@ -540,6 +540,7 @@ clone2(remote *r)
 	char	*checkfiles;
 	FILE	*f;
 	int	rc;
+	int	did_partial = 0;
 	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
@@ -593,9 +594,9 @@ clone2(remote *r)
 docheck:	/* undo already runs check so we only need this case */
 		p = opts->verbose ? "-fvT" : "-fT";
 		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(!opts->verbose, checkfiles, p);
+			rc = run_check(!opts->verbose, checkfiles, p, &did_partial);
 		} else {
-			rc = run_check(!opts->verbose, 0, p);
+			rc = run_check(!opts->verbose, 0, p, 0);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
@@ -607,12 +608,14 @@ docheck:	/* undo already runs check so we only need this case */
 	free(checkfiles);
 
 	/*
-	 * checkout needed files.  Note: normally this will be done as
-	 * a side effect of check.c, but if partial check is enabled
-	 * we still might need this.
+	 * lclone brings the CHECKED file over, meaning a partial_check
+	 * might actually be partial.  Normally check is relied on to
+	 * checkout all files.  But it might not happen in the lclone
+	 * case.  If we actually did a partial check, get the rest
+	 * of the files.
 	 */
-	if (proj_configbool(0, "partial_check") &&
-	    proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT)) {
+	if (did_partial &&
+	    (proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT))) {
 		unless (opts->quiet) {
 			fprintf(stderr, "Checking out files...\n");
 		}

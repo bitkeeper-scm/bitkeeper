@@ -284,9 +284,9 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		p = quiet ? "-f" : "-fv";
 	}
 	if (proj_configbool(0, "partial_check")) {
-		rc = run_check(quiet, checkfiles, p);
+		rc = run_check(quiet, checkfiles, p, 0);
 	} else {
-		rc = run_check(quiet, 0, p);
+		rc = run_check(quiet, 0, p, 0);
 	}
 	unlink(checkfiles);
 	free(checkfiles);

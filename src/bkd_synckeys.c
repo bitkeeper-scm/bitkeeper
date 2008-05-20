@@ -14,14 +14,10 @@ cmd_synckeys(int ac, char **av)
 	int	ret;
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	if (sendServerInfoBlock(0)) {
-		drain();
-		return (1);
-	}
+	if (sendServerInfoBlock(0)) return (1);
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
-		drain();
 		return (1);
 	}
 
@@ -32,21 +28,18 @@ cmd_synckeys(int ac, char **av)
 		out(", got ");
 		out(p ? p : "");
 		out("\n");
-		drain();
 		return (1);
 	}
 
 	if (emptyDir(".")) {
 		out("@OK@\n");
 		out("@EMPTY TREE@\n");
-		drain();
 		return (0);
 	}
 
 	unless(isdir("BitKeeper")) { /* not a packageg root */
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
-		drain();
 		return (1);
 	}
 

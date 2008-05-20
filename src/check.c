@@ -205,7 +205,7 @@ check_main(int ac, char **av)
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
 		ferr = 0;
-		if (all && streq(name, CHANGESET)) {
+		if (streq(name, CHANGESET)) {
 			s = cset;
 		} else {
 			s = sccs_init(name, flags);

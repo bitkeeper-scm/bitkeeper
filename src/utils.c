@@ -1355,7 +1355,7 @@ unsafe_path(char *s)
  * Otherwise do a full check.
  */
 int
-run_check(int quiet, char *flist, char *opts)
+run_check(int quiet, char *flist, char *opts, int *did_partial)
 {
 	int	i, j, ret;
 	struct	stat sb;
@@ -1380,8 +1380,10 @@ again:
 	if (!flist || 
 	    lstat(CHECKED, &sb) || ((now - sb.st_mtime) > stale)) {
 		ret = sys("bk", "-r", "check", "-ac", opts, SYS);
+		if (did_partial) *did_partial = 0;
 	} else {
 		ret = sysio(flist, 0, 0, "bk", "check", "-c", opts, "-", SYS);
+		if (did_partial) *did_partial = 1;
 	}
 	ret = WIFEXITED(ret) ? WEXITSTATUS(ret) : 1;
 	if (strchr(opts, 'f') && (ret == 2)) {

@@ -18,14 +18,10 @@ cmd_clone(int ac, char **av)
 	delta	*d;
 	hash	*h = 0;
 
-	if (sendServerInfoBlock(0)) {
-		drain();
-		goto out;
-	}
+	if (sendServerInfoBlock(0)) goto out;
 	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
-		drain();
 		goto out;
 	}
 	while ((c = getopt(ac, av, "lM;qr;Tw;z|")) != -1) {
@@ -62,14 +58,12 @@ cmd_clone(int ac, char **av)
 	 */
 	if (!tid && proj_isComponent(0)) {
 		out("ERROR-clone of a component is not allowed, use -M\n");
-		drain();
 		goto out;
 	}
 	if (proj_isEnsemble(0)) {
 		unless (bk_hasFeature("SAMv1")) {
 			out("ERROR-please upgrade your BK to a SAMv1 "
 			    "aware version (5.0 or later)\n");
-			drain();
 			goto out;
 		}
 		/*
@@ -86,12 +80,10 @@ cmd_clone(int ac, char **av)
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
-		drain();
 		goto out;
 	}
 	if (hasLocalWork(GONE)) {
 		out("ERROR-must commit local changes to " GONE "\n");
-		drain();
 		goto out;
 	}
 
@@ -105,7 +97,6 @@ cmd_clone(int ac, char **av)
 				out("ERROR-rev ");
 				out(rev);
 				out(" doesn't exist\n");
-				drain();
 				goto out;
 			}
 		}
@@ -116,7 +107,6 @@ cmd_clone(int ac, char **av)
 				// XXX - weak.  Should pass in a protocol 
 				// marker and have module_list() do this.
 				out("ERROR-unable to expand module[s]\n");
-				drain();
 				goto out;
 			}
 		}
@@ -127,8 +117,6 @@ cmd_clone(int ac, char **av)
 	if (bp_updateServer(getenv("BK_CSETS"), 0, SILENT)) {
 		printf(
 		    "ERROR-unable to update BAM server %s\n", bp_serverURL());
-		fflush(stdout);
-		drain();
 		goto out;
 	}
 	p = getenv("BK_REMOTE_PROTOCOL");
@@ -140,7 +128,6 @@ cmd_clone(int ac, char **av)
 		out(", got ");
 		out(p ? p : "");
 		out("\n");
-		drain();
 		goto out;
 	}
 	if (trigger(av[0], "pre")) goto out;

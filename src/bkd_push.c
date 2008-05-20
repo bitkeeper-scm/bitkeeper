@@ -32,13 +32,9 @@ cmd_push_part1(int ac, char **av)
 
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	if (sendServerInfoBlock(0)) {
-		drain();
-		return (1);
-	}
+	if (sendServerInfoBlock(0)) return (1);
 	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */
-		drain();
 		return (1);
 	}
 
@@ -49,7 +45,6 @@ cmd_push_part1(int ac, char **av)
 		out(", got ");
 		out(p ? p : "");
 		out("\n");
-		drain();
 		return (1);
 	}
 
@@ -57,7 +52,6 @@ cmd_push_part1(int ac, char **av)
 	    !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
-		drain();
 		return (1);
 	}
 	unless(isdir("BitKeeper")) { /* not a packageg root */
@@ -66,15 +60,10 @@ cmd_push_part1(int ac, char **av)
 		}
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
-		drain();
 		return (1);
 	}
 
-	if (trigger(av[0], "pre")) {
-		drain();
-		return (1);
-	}
-
+	if (trigger(av[0], "pre")) return (1);
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
 	lktmp = bktmp(0, "bkdpush");
 	sprintf(cmd, "bk _listkey > '%s'", lktmp);
@@ -165,10 +154,7 @@ cmd_push_part2(int ac, char **av)
 		goto done;
 	}
 
-	if (sendServerInfoBlock(0)) {
-		drain();
-		return (1);
-	}
+	if (sendServerInfoBlock(0)) return (1);
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@ABORT@")) {
@@ -358,10 +344,7 @@ cmd_push_part3(int ac, char **av)
 		goto done;
 	}
 
-	if (sendServerInfoBlock(0)) {
-		drain();
-		return (1);
-	}
+	if (sendServerInfoBlock(0)) return (1);
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@BAM@")) {

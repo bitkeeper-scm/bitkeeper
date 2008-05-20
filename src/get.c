@@ -163,6 +163,13 @@ onefile:	fprintf(stderr,
 			getRealName(name, realNameCache, realname);
 			name = realname;
 		}
+		if (checkout && (flags && GET_NOREGET)) {
+			char   *gfile = sccs2name(name);
+
+			c = exists(gfile);
+			free(gfile);
+			if (c) continue;
+		}
 		unless (s = sccs_init(name, iflags)) continue;
 		if (checkout) {
 			flags &= ~(GET_EDIT|GET_EXPAND);
