@@ -60,7 +60,10 @@ newroot(char *ranbits, int quiet)
 	}
 	if (ranbits) {
 		if (strneq(ranbits, "B:", 2)) {
-			if (strneq("B:", s->tree->random, 2)) return (0);
+			if (strneq("B:", s->tree->random, 2)) {
+				sccs_free(s);
+				return (0);
+			}
 			sprintf(buf, "%s%s", ranbits, s->tree->random);
 			assert(strlen(buf) < MAXPATH - 1);
 		} else {

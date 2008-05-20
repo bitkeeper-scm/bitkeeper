@@ -389,7 +389,6 @@ int	checking_rmdir(char *dir);
 
 typedef	u32		ser_t;
 typedef	unsigned short	sum_t;
-typedef	char		**globv;
 
 #include "bkver.h"
 #include "cmd.h"
@@ -803,18 +802,6 @@ typedef struct {
 				 */
 
 
-/*
- * search interface
- */
-typedef struct {
-	char    *pattern;	/* what we want to find */
-	u8      ignorecase:1;	/* duh */
-	u8	want_glob:1;	/* do a glob based search */
-	u8	want_re:1;	/* do a regex based search */
-} search;
-
-
-
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
@@ -987,17 +974,7 @@ void	status(int verbose, FILE *out);
 void	notify(void);
 char	*package_name(void);
 int	bkusers(sccs *s, char *prefix, FILE *out);
-globv	read_globs(FILE *f, globv oldglobs);
-int	match_one(char *string, char *glob, int ignorecase);
 int	sfiles_glob(char *glob);
-int	is_glob(char *glob);
-char	**globdir(char *dir, char *glob);
-char	*match_globs(char *string, globv globs, int ignorecase);
-void	free_globs(globv globs);
-search	search_parse(char *str);
-int	search_glob(char *s, search search);
-int	search_regex(char *s, search search);
-int	search_either(char *s, search search);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, void *buf, int size);
@@ -1146,7 +1123,7 @@ int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
-int	run_check(char *partial, char *opts);
+int	run_check(char *partial, char *opts, int *did_partial);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);

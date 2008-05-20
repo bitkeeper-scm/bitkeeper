@@ -853,9 +853,9 @@ walk(char *indir)
 	if (wi.sccsdir) sccsdir(&wi);
 
 	if (proj) {
-		free_globs(ignore);
-		free_globs(ignorebase);
-		free_globs(prunedirs);
+		freeLines(ignore, free);
+		freeLines(ignorebase, free);
+		freeLines(prunedirs, free);
 		ignore = ignorebase = prunedirs = 0;
 		free(wi.proj_prefix);
 	}
@@ -1410,9 +1410,9 @@ walksfiles(char *dir, walkfn fn, void *data)
 	}
 	rc = walkdir(dir, findsfiles, &si);
 	if (proj) {
-		free_globs(ignore);
-		free_globs(ignorebase);
-		free_globs(prunedirs);
+		freeLines(ignore, free);
+		freeLines(ignorebase, free);
+		freeLines(prunedirs, free);
 		ignore = ignorebase = prunedirs = 0;
 		free(si.proj_prefix);
 		proj_free(proj);
@@ -1447,9 +1447,9 @@ usage:			fprintf(stderr, "usage: _sfiles_clone [-L]\n");
 	si.proj_prefix = "/";
 	si.is_clone = 1;
 	rc = walkdir(".", findsfiles, &si);
-	free_globs(ignore);
-	free_globs(ignorebase);
-	free_globs(prunedirs);
+	freeLines(ignore, free);
+	freeLines(ignorebase, free);
+	freeLines(prunedirs, free);
 	ignore = ignorebase = prunedirs = 0;
 	return (rc);
 }

@@ -13,7 +13,7 @@ do_trace(void)
 	return (strace != 0);
 }
 
-#define	TRACE(x) if (do_trace()) fprintf x
+#define	STRACE(x) if (do_trace()) fprintf x
 
 int
 fslayer_open(const char *path, int flags, mode_t mode)
@@ -23,7 +23,7 @@ fslayer_open(const char *path, int flags, mode_t mode)
 	ret = open(path, flags, mode);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "open(%s, %d, %o) = %d\n",
+		STRACE((strace, "open(%s, %d, %o) = %d\n",
 		    path, flags, mode, ret));
 		noloop = 0;
 	}
@@ -38,7 +38,7 @@ fslayer_close(int fd)
 	ret = close(fd);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "close(%d) = %d\n", fd, ret));
+		STRACE((strace, "close(%d) = %d\n", fd, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -52,7 +52,7 @@ fslayer_read(int fd, void *buf, size_t count)
 	ret = read(fd, buf, count);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "read(%d, buf, %d) = %d\n", fd, count, ret));
+		STRACE((strace, "read(%d, buf, %d) = %d\n", fd, count, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -66,7 +66,7 @@ fslayer_write(int fd, const void *buf, size_t count)
 	ret = write(fd, buf, count);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "write(%d, buf, %d) = %d\n", fd, count, ret));
+		STRACE((strace, "write(%d, buf, %d) = %d\n", fd, count, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -80,7 +80,7 @@ fslayer_lseek(int fildes, off_t offset, int whence)
 	ret = lseek(fildes, offset, whence);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "lseek(%d, %d, %d) = %d\n",
+		STRACE((strace, "lseek(%d, %d, %d) = %d\n",
 		    fildes, offset, whence, ret));
 		noloop = 0;
 	}
@@ -143,7 +143,7 @@ fslayer_unlink(const char *path)
 	ret = unlink(path);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "unlink(%s) = %d\n", path, ret));
+		STRACE((strace, "unlink(%s) = %d\n", path, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -157,7 +157,7 @@ fslayer_rename(const char *old, const char *new)
 	ret = rename(old, new);
 	unless (noloop) {
 		noloop  = 1;
-		TRACE((strace, "rename(%s, %s) = %d\n", old, new, ret));
+		STRACE((strace, "rename(%s, %s) = %d\n", old, new, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -171,7 +171,7 @@ fslayer_chmod(const char *path, mode_t mode)
 	ret = chmod(path, mode);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "chmod(%s, %o) = %d\n", path, mode, ret));
+		STRACE((strace, "chmod(%s, %o) = %d\n", path, mode, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -185,7 +185,7 @@ fslayer_link(const char *old, const char *new)
 	ret = link(old, new);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "link(%s, %s) = %d\n", old, new, ret));
+		STRACE((strace, "link(%s, %s) = %d\n", old, new, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -199,7 +199,7 @@ fslayer_symlink(const char *old, const char *new)
 	ret = symlink(old, new);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "symlink(%s, %s) = %d\n", old, new, ret));
+		STRACE((strace, "symlink(%s, %s) = %d\n", old, new, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -213,7 +213,7 @@ fslayer__getdir(char *dir, struct stat *sb)
 	ret = _getdir(dir, sb);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "_getdir(%s, sb) = list\n", dir));
+		STRACE((strace, "_getdir(%s, sb) = list\n", dir));
 		noloop = 0;
 	}
 	return (ret);
@@ -227,7 +227,7 @@ fslayer_access(const char *path, int mode)
 	ret = access(path, mode);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "access(%s, %d) = %d\n", path, mode, ret));
+		STRACE((strace, "access(%s, %d) = %d\n", path, mode, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -241,7 +241,7 @@ fslayer_utime(const char *path, const struct utimbuf *buf)
 	ret = utime(path, buf);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "utime(%s, buf) = %d\n", path, ret));
+		STRACE((strace, "utime(%s, buf) = %d\n", path, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -255,7 +255,7 @@ fslayer_mkdir(const char *path, mode_t mode)
 	ret = mkdir(path, mode);
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "mkdir(%s, %o) = %d\n", path, mode, ret));
+		STRACE((strace, "mkdir(%s, %o) = %d\n", path, mode, ret));
 		noloop = 0;
 	}
 	return (ret);
@@ -273,7 +273,7 @@ fslayer_rmdir(const char *dir)
 #endif
 	unless (noloop) {
 		noloop = 1;
-		TRACE((strace, "rmdir(%s) = %d\n", dir, ret));
+		STRACE((strace, "rmdir(%s) = %d\n", dir, ret));
 		noloop = 0;
 	}
 	return (ret);

@@ -41,7 +41,6 @@ rclone_common(int ac, char **av, opts *opts)
 		out(", got ");
 		out(p);
 		out("\n");
-		drain();
 		return (NULL);
 	}
 
@@ -77,15 +76,11 @@ cmd_rclone_part1(int ac, char **av)
 	char	buf[MAXPATH];
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
-	if (sendServerInfoBlock(1)) {
-		drain();
-		return (1);
-	}
+	if (sendServerInfoBlock(1)) return (1);
 	if (((p = getenv("BK_BAM")) && streq(p, "YES")) &&
 	    !bk_hasFeature("BAMv2")) {
 		out("ERROR-please upgrade your BK to a BAMv2 aware version "
 		    "(4.1.1 or later)\n");
-		drain();
 		return (1);
 	}
 	if (Opts.safe_cd || getenv("BKD_DAEMON")) {
@@ -97,13 +92,11 @@ cmd_rclone_part1(int ac, char **av)
 		    pathneq(cwd, new, strlen(cwd))) {
 			out("ERROR-illegal cd command\n");
 			free(path);
-			drain();
 			return (1);
 		}
 	}
 	if (global_locked()) {
 		out("ERROR-all repositories on this host are locked.\n");
-		drain();
 		return (1);
 	}
 	if (exists(path)) {
@@ -114,7 +107,6 @@ cmd_rclone_part1(int ac, char **av)
 err:				out(p);
 				free(p);
 				free(path);
-				drain();
 				return (1);
 			}
 		} else {
@@ -170,7 +162,6 @@ cmd_rclone_part2(int ac, char **av)
 		out(p);
 		free(p);
 		free(path);
-		drain();
 		return (1);
 	}
 	free(path);
@@ -197,7 +188,6 @@ cmd_rclone_part2(int ac, char **av)
 		bp_setBAMserver(0, p, getenv("BK_BAM_SERVER_ID"));
 	}
 	if (sendServerInfoBlock(1)) {
-		drain();
 		rc = 1;
 		goto done;
 	}
@@ -273,13 +263,11 @@ cmd_rclone_part3(int ac, char **av)
 		out(p);
 		free(p);
 		free(path);
-		drain();
 		return (1);
 	}
 	free(path);
 
 	if (sendServerInfoBlock(1)) {
-		drain();
 		rc = 1;
 		goto done;
 	}
@@ -358,7 +346,7 @@ rclone_end(opts *opts)
 		if (opts->verbose) {
 			fprintf(stderr, "running consistency check ...\n");
 		}
-		rc = run_check(0, opts->verbose ? "-fvT" : "-fT");
+		rc = run_check(0, opts->verbose ? "-fvT" : "-fT", 0);
 	}
 	return (rc);
 }

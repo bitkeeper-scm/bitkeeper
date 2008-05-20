@@ -11,7 +11,7 @@ private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
 private	void	log_cmd(char *peer, int ac, char **av);
 private	void	usage(void);
-private	void	do_cmds(void);
+private	int	do_cmds(void);
 private int	svc_uninstall(void);
 
 char		*bkd_getopt = "cCdDeE:hi:l|L:p:P:qRSt:UV:x:";
@@ -136,8 +136,7 @@ bkd_main(int ac, char **av)
 		exit(1);
 		/* NOTREACHED */
 	} else {
-		do_cmds();
-		return (0);
+		return (do_cmds());
 	}
 }
 
@@ -211,12 +210,12 @@ save_byte_count(unsigned int byte_count)
 	}
 }
 
-private void
+private int
 do_cmds(void)
 {
 	int	ac;
 	char	**av;
-	int	i, ret, httpMode, log;
+	int	i, ret = 1, httpMode, log;
 	int	debug = getenv("BK_DEBUG") != 0;
 	char	*peer = 0;
 	int	logged_peer = 0;
@@ -266,13 +265,13 @@ do_cmds(void)
 			if (log &&
 			    (cmdlog_end(ret) & CMD_FAST_EXIT)) {
 				drain();
-				exit(ret);
+				return (ret);
 			}
 			if (ret != 0) {
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
 					drain();
-					exit(ret);
+					return (ret);
 				}
 			}
 		} else if (av[0]) {
@@ -292,6 +291,7 @@ do_cmds(void)
 	}
 	repository_unlock(0);
 	drain();
+	return (ret);
 }
 
 private	void

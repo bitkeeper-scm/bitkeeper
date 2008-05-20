@@ -19,13 +19,11 @@ cmd_chg_part1(int ac, char **av)
 		 * go of lock.  This exercises wait code in lock.c case 'l'.
 		 */
 		if (getenv("BK_REGRESSION")) usleep(1000); /* cause race */
-		drain();
 		return (1);
 	}
 	unless(isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
-		drain();
 		return (1);
 	}
 
@@ -58,10 +56,7 @@ cmd_chg_part2(int ac, char **av)
 	FILE	*f;
 
 	setmode(0, _O_BINARY);
-	if (sendServerInfoBlock(0)) {
-		drain();
-		return (1);
-	}
+	if (sendServerInfoBlock(0)) return (1);
 
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
@@ -70,21 +65,18 @@ cmd_chg_part2(int ac, char **av)
 		out(", got ");
 		out(p ? p : "");
 		out("\n");
-		drain();
 		return (1);
 	}
 
 	if (emptyDir(".")) {
 		out("@OK@\n");
 		out("@EMPTY TREE@\n");
-		drain();
 		return (0);
 	}
 
 	unless(isdir("BitKeeper")) { /* not a packageg root */
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
-		drain();
 		return (1);
 	}
 

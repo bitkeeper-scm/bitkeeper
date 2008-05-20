@@ -39,7 +39,9 @@ sane(int readonly, int resync)
 {
 	int	errors = 0;
 	char	*a, *b;
+	char	*saved_dir;
 
+	saved_dir = strdup(proj_cwd());
 	/* commits in RESYNC may not have everything, this lets us know */
 	if (proj_isResync(0)) resync = 1;
 	if (chk_host()) errors++;
@@ -64,7 +66,7 @@ sane(int readonly, int resync)
 			(void)unlink(b);
 			free(a);
 			free(b);
-			if (errors) return (errors);
+			if (errors) goto out;
 		}
 		if (!readonly && chk_permissions()) {
 			errors++;
@@ -105,6 +107,8 @@ sane(int readonly, int resync)
 	//chk_ssh();
 	//chk_http();
 	proj_repoID(0);		/* make repoID if needed */
+out:	chdir(saved_dir);
+	free(saved_dir);
 	return (errors);
 }
 

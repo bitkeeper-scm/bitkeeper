@@ -203,7 +203,7 @@ check_main(int ac, char **av)
 	want_dfile = exists(DFILE);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
-		if (all && streq(name, CHANGESET)) {
+		if (streq(name, CHANGESET)) {
 			s = cset;
 		} else {
 			s = sccs_init(name, flags);
@@ -979,6 +979,7 @@ fetch_changeset(void)
 	}
 	fgets(buf, sizeof(buf), f);
 	chomp(buf);
+	fclose(f);
 	s = sccs_init(CHANGESET, 0);
 	unless (d = sccs_findrev(s, buf)) {
 		getMsg("chk5", buf, '=', stderr);

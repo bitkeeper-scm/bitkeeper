@@ -464,7 +464,7 @@ cp /home/bk/test_data/ppfree .
 chmod 600 ppfree
 echo 1.1 > WANT
 # Save the ERR because some machines complain about psuedo tty
-BK_RSH="ssh -i ppfree" \
+BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no" \
     bk changes -q -r+ -nd:I: \
     bk://bkdshell@work/empty > GOT 2> ERR || {
 	echo failed
@@ -476,7 +476,7 @@ echo OK
 
 echo $N make sure ssh url works with a bkd login shell ..............$NL
 cd "$HERE/project"
-BK_RSH="ssh -i ppfree" \
+BK_RSH="ssh -i ppfree -o StrictHostKeyChecking=no" \
     bk changes -q -r+ -nd:I: \
     ssh://bkdshell@work/empty > GOT 2> ERR || {
 	echo failed

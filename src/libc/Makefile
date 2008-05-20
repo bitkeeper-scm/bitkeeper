@@ -35,16 +35,18 @@ RANLIB=ranlib
 $(OBJS): $(HDRS)
 
 libc.a: $(OBJS)
-	rm -f $@
-	$(AR) $@ $(OBJS)
-	-@ ($(RANLIB) $@ || true) >/dev/null 2>&1
+	$(if $(Q),@echo AR libc.a,)
+	$(Q)rm -f $@
+	$(Q)$(AR) $@ $(OBJS)
+	-$(Q) ($(RANLIB) $@ || true) >/dev/null 2>&1
 
 mtst$(EXE): mdbm/mtst.o libc.a
-	$(CC) -o $@ $^ $(XLIBS)
+	$(Q)$(CC) -o $@ $^ $(XLIBS)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) libc.a tags.local mtst$(EXE) mdbm/mtst.o $(JUNK)
+	$(if $(Q),@echo Cleaning libc,)
+	$(Q)rm -f $(OBJS) libc.a tags.local mtst$(EXE) mdbm/mtst.o $(JUNK)
 
 .PHONY: clobber
 clobber: clean
@@ -57,3 +59,6 @@ tags.local: $(SRCS) $(HDRS)
 	cd ..;\
 	ctags -f libc/$@ --file-tags=yes --c-types=d+f+s+t \
 		$(patsubst %,libc/%,$^)
+.c.o:
+	$(if $(Q),@echo CC libc/$<,)
+	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
