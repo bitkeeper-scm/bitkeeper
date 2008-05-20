@@ -126,7 +126,7 @@ test $SEEN -ne $CNT && {
 }
 echo OK
 
-CNT=12
+CNT=11
 echo $N "Count the inits for a 'bk resolve' ($CNT)......................"$NL
 rm "$FILE"
 bk resolve $Q || exit 1

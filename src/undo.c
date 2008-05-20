@@ -175,9 +175,9 @@ err:		if (undo_list[0]) unlink(undo_list);
 		p = quiet ? "-f" : "-fv";
 	}
 	if (proj_configbool(0, "partial_check")) {
-		rc = run_check(checkfiles, p);
+		rc = run_check(checkfiles, p, 0);
 	} else {
-		rc = run_check(0, p);
+		rc = run_check(0, p, 0);
 	}
 	unlink(checkfiles);
 	free(checkfiles);

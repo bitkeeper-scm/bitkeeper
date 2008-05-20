@@ -1123,7 +1123,7 @@ int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
-int	run_check(char *partial, char *opts);
+int	run_check(char *partial, char *opts, int *did_partial);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
