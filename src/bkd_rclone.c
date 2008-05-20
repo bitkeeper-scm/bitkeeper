@@ -358,7 +358,7 @@ rclone_end(opts *opts)
 		if (opts->verbose) {
 			fprintf(stderr, "running consistency check ...\n");
 		}
-		rc = run_check(0, opts->verbose ? "-fvT" : "-fT");
+		rc = run_check(0, opts->verbose ? "-fvT" : "-fT", 0);
 	}
 	return (rc);
 }
