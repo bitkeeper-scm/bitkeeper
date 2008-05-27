@@ -103,7 +103,7 @@ cd "$HERE"
 cd project
 bk sfiles -R | grep -v gcc > ../LIST
 cd ..
-KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
+KEY=`bk changes -Cr+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
 bk clone $Q -M"$KEY" project bk://localhost:$PORT/mynewgcc || {
 	echo failed

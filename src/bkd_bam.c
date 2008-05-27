@@ -241,7 +241,7 @@ bp_sendkeys(FILE *fout, char *range, u64 *bytep, int gzip)
 		 * need to be able to get it from somewhere.  So that's the
 		 * R1 option to havekeys.
 		 */
-		cmd = aprintf("bk changes -Bv -nd'$if(:BAMHASH:)"
+		cmd = aprintf("bk changes -CBv -nd'$if(:BAMHASH:)"
 		    "{|:BAMSIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' %s |"
 		    "bk havekeys -B%s -", range, ret == 2 ? "" : "l");
 		f = popen(cmd, "r");

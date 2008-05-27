@@ -561,7 +561,7 @@ bp_updateServer(char *range, char *list, int quiet)
 			assert(list);
 			p = aprintf("- < '%s'", list);
 		}
-		cmd = aprintf("bk changes -qBv -nd'"
+		cmd = aprintf("bk changes -qCBv -nd'"
 		    "$if(:BAMHASH:){|:BAMSIZE:|:BAMHASH: :KEY: :MD5KEY|1.0:}' "
 		    "%s > '%s'",
 		    p, tmpkeys);
@@ -912,7 +912,7 @@ bam_pull_main(int ac, char **av)
 	unless (dash) {
 		/* list of all BAM deltas */
 		cmds = addLine(cmds,
-		    aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
+		    aprintf("bk changes -CBv -nd'" BAM_DSPEC "'"));
 
 		/* reduce to list of deltas missing. */
 		cmds = addLine(cmds,
@@ -1409,7 +1409,7 @@ bam_reattach_main(int ac, char **av)
 	missing = mdbm_mem();
 
 	/* save the hash for all the bp deltas we are missing */
-	f = popen("bk changes -Bv -nd'" BAM_DSPEC "'", "r");
+	f = popen("bk changes -CBv -nd'" BAM_DSPEC "'", "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);

@@ -5,7 +5,7 @@ bk repogca \- show greatest common ancestor across a set of repositories
 .SH SYNOPSIS
 .B bk repogca
 .[OPTreq] \-d spec
-.[B] \-k
+.[B] \-Ck5
 [\c
 .ARG repo
 .ARGc repo
@@ -19,6 +19,12 @@ By default,
 is the remote repository. 
 .SH OPTIONS
 .TP \-d\*<spec\*>
+.B \-C
+Find component level GCA.
+In an ensemble, the default is to run repogca at the product level,
+this option runs repogca at the component level.  
+(Ensemble only).
+.tp
 .OPTreq \-d spec
 Use
 .ARG spec
@@ -26,6 +32,9 @@ as the specification for displaying the revision.
 .tp
 .B \-k
 A short hand for asking for a spec of \*(lq:KEY:\*(rq.
+.tp
+.B \-5
+A short hand for asking for a spec of \*(lq:MD5KEY:\*(rq.
 .SH EXAMPLES
 To generate a traditional patch for the changes that exist only in the
 local repository:

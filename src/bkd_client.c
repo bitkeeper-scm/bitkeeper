@@ -56,12 +56,16 @@ remote_parse(const char *url, u32 flags)
 			r = nfs_parse(p);
 		}
 	}
-	if (params) {
-		if (r) {
+	if (r) {
+		if ((flags & REMOTE_ROOTKEY) && proj_isComponent(0)) {
 			r->params = hash_new(HASH_MEMHASH);
-			hash_fromStr(r->params, params);
+			hash_storeStr(r->params, "ROOTKEY", proj_rootkey(0));
 		}
-		params[-1] = '?';
+		if (params) {
+			unless (r->params) r->params = hash_new(HASH_MEMHASH);
+			hash_fromStr(r->params, params);
+			params[-1] = '?';
+		}
 	}
 	if (echo && r) {
 	    	fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));

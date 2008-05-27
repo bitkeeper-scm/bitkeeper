@@ -593,8 +593,8 @@ echo $N bk ensemble list for undo -r+ ...............................$NL
 echo + | bk ensemble_list -1lpnd -u - > GOT
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
-bk changes -qnd".|:KEY:" -r1.5 .
-bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+bk changes -Cqnd".|:KEY:" -r1.5 .
+bk changes -Cqnd"gcc4|:KEY:" -r1.6 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -605,8 +605,8 @@ echo + | bk ensemble_list -1lhpnd -u - > GOT
 mv ../gcc4 .
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
-bk changes -qnd".|:KEY:|(present)" -r1.5 .
-bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+bk changes -Cqnd".|:KEY:|(present)" -r1.5 .
+bk changes -Cqnd"gcc4|:KEY:" -r1.6 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -618,9 +618,9 @@ bk ensemble_list -1lhpnd -r+ > GOT
 mv ../gcc4 .
 # The list should be the current tips
 (
-bk changes -qnd".|:KEY:|(present)" -r+ .
-bk changes -qnd"gcc4|:KEY:|(new)" -r+ gcc4
-bk changes -qnd"gdb|:KEY:|(new)|(present)" -r+ gdb
+bk changes -Cqnd".|:KEY:|(present)" -r+ .
+bk changes -Cqnd"gcc4|:KEY:|(new)" -r+ gcc4
+bk changes -Cqnd"gdb|:KEY:|(new)|(present)" -r+ gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -650,7 +650,7 @@ echo 1.3
 # The list should be desired tips of .|1.2
 # because the other two are removed.
 (
-bk changes -qnd".|:KEY:" -r1.2 .
+bk changes -Cqnd".|:KEY:" -r1.2 .
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -663,8 +663,8 @@ echo 1.4
 ) | bk ensemble_list -1lpd -u - > GOT
 # The list should be desired tips of 1.3 (just works out that way)
 (
-bk changes -qnd".|:KEY:" -r1.3 .
-bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
+bk changes -Cqnd".|:KEY:" -r1.3 .
+bk changes -Cqnd"gcc4|:KEY:" -r1.3 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -672,9 +672,9 @@ echo OK
 echo $N bk ensemble list for clone -r+ ..............................$NL
 bk ensemble_list -1lpd -r+ > GOT
 (
-bk changes -qnd".|:KEY:" -r+ .
-bk changes -qnd"gcc4|:KEY:" -r+ gcc4
-bk changes -qnd"gdb|:KEY:" -r+ gdb
+bk changes -Cqnd".|:KEY:" -r+ .
+bk changes -Cqnd"gcc4|:KEY:" -r+ gcc4
+bk changes -Cqnd"gdb|:KEY:" -r+ gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -683,9 +683,9 @@ echo $N bk ensemble list for clone -r1.3 ............................$NL
 bk ensemble_list -1lpd -r1.3 > GOT
 # They are all at 1.3 in 1.3
 (
-bk changes -qnd".|:KEY:" -r1.3 .
-bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
-bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+bk changes -Cqnd".|:KEY:" -r1.3 .
+bk changes -Cqnd"gcc4|:KEY:" -r1.3 gcc4
+bk changes -Cqnd"gdb|:KEY:" -r1.3 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -693,9 +693,9 @@ echo OK
 echo $N bk ensemble list for clone -r1.4 ............................$NL
 bk ensemble_list -1lpd -r1.4 > GOT
 (
-bk changes -qnd".|:KEY:" -r1.4 .
-bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
-bk changes -qnd"gdb|:KEY:" -r1.3 gdb
+bk changes -Cqnd".|:KEY:" -r1.4 .
+bk changes -Cqnd"gcc4|:KEY:" -r1.5 gcc4
+bk changes -Cqnd"gdb|:KEY:" -r1.3 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -704,8 +704,8 @@ echo $N bk ensemble list for push -r1.6 .............................$NL
 echo 1.6 | bk ensemble_list -1lpd - > GOT
 # The list should be desired tips of .|1.6 and gcc4|1.9
 (
-bk changes -qnd".|:KEY:" -r1.6 .
-bk changes -qnd"gcc4|:KEY:" -r1.9 gcc4
+bk changes -Cqnd".|:KEY:" -r1.6 .
+bk changes -Cqnd"gcc4|:KEY:" -r1.9 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -713,8 +713,8 @@ echo OK
 echo $N bk ensemble list for push -r1.5 .............................$NL
 echo 1.5 | bk ensemble_list -1lpd - > GOT
 (
-bk changes -qnd".|:KEY:" -r1.5 .
-bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
+bk changes -Cqnd".|:KEY:" -r1.5 .
+bk changes -Cqnd"gcc4|:KEY:" -r1.6 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -722,8 +722,8 @@ echo OK
 echo $N bk ensemble list for push -r1.4 .............................$NL
 echo 1.4 | bk ensemble_list -1lpd - > GOT
 (
-bk changes -qnd".|:KEY:" -r1.4 .
-bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
+bk changes -Cqnd".|:KEY:" -r1.4 .
+bk changes -Cqnd"gcc4|:KEY:" -r1.5 gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -731,9 +731,9 @@ echo OK
 echo $N bk ensemble list for push -r1.3 .............................$NL
 echo 1.3 | bk ensemble_list -1lnpd - > GOT
 (
-bk changes -qnd".|:KEY:" -r1.3 .
-bk changes -qnd"gcc4|:KEY:|(new)" -r1.3 gcc4
-bk changes -qnd"gdb|:KEY:|(new)" -r1.3 gdb
+bk changes -Cqnd".|:KEY:" -r1.3 .
+bk changes -Cqnd"gcc4|:KEY:|(new)" -r1.3 gcc4
+bk changes -Cqnd"gdb|:KEY:|(new)" -r1.3 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -741,7 +741,7 @@ echo OK
 echo $N bk ensemble list for push -r1.2 .............................$NL
 echo 1.2 | bk ensemble_list -lpd - > GOT
 (
-bk changes -qnd".|:KEY:" -r1.2 .
+bk changes -Cqnd".|:KEY:" -r1.2 .
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -754,9 +754,9 @@ echo 1.5
 echo 1.6
 ) | bk ensemble_list -1lnpd - > GOT
 (
-bk changes -qnd".|:KEY:" -r1.6 .
-bk changes -qnd"gcc4|:KEY:|(new)" -r1.9 gcc4
-bk changes -qnd"gdb|:KEY:|(new)" -r1.3 gdb
+bk changes -Cqnd".|:KEY:" -r1.6 .
+bk changes -Cqnd"gcc4|:KEY:|(new)" -r1.9 gcc4
+bk changes -Cqnd"gdb|:KEY:|(new)" -r1.3 gdb
 ) > WANT
 cmpfiles WANT GOT
 echo OK
@@ -815,7 +815,7 @@ bk $Q -Ar check -ac || {
 	exit 1
 }
 cd gcc4
-test `bk changes -r+ -nd:I:` = "1.6" || {
+test `bk changes -Cr+ -nd:I:` = "1.6" || {
 	echo failed in gcc4
 	bk changes
 	exit 1
@@ -1187,8 +1187,8 @@ echo OK
 echo $N bk ensemble list for clone -r+ but limited to -Mgcc4/........$NL
 bk ensemble_list -Mgcc4/ -1lpd -r+ > GOT
 (
-bk changes -qnd".|:KEY:" -r+ .
-bk changes -qnd"gcc4|:KEY:" -r+ gcc4
+bk changes -Cqnd".|:KEY:" -r+ .
+bk changes -Cqnd"gcc4|:KEY:" -r+ gcc4
 ) > WANT
 cmpfiles WANT GOT
 echo OK

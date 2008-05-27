@@ -7,13 +7,14 @@ repogca_main(int ac, char **av)
 	sccs	*s;
 	delta	*d;
 	FILE	*f;
-	int	c, i, status;
+	int	c, i, status, component = 0;
 	char	**urls, **nav;
 	char	*dspec = ":REV:\n";
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "5d;k")) != -1) {
+	while ((c = getopt(ac, av, "5Cd;k")) != -1) {
 		switch (c) {
+		    case 'C': component = 1; break;
 		    case 'd': dspec = optarg; break;
 		    case 'k': dspec = ":KEY:\n"; break;
 		    case '5': dspec = ":MD5KEY:\n"; break;
@@ -27,7 +28,8 @@ repogca_main(int ac, char **av)
 	nav = addLine(0, strdup("bk"));
 	nav = addLine(nav, strdup("changes"));
 	nav = addLine(nav, strdup("-L"));
-	nav = addLine(nav, strdup("-end:KEY:"));
+	if (component) nav = addLine(nav, strdup("-C"));
+	nav = addLine(nav, strdup("-qend:KEY:"));
 
 	if (av[optind]) {
 		for (i = optind; av[i]; i++) nav = addLine(nav, strdup(av[i]));
@@ -37,14 +39,14 @@ repogca_main(int ac, char **av)
 		freeLines(urls, 0);
 	}
 	addLine(nav, 0);	/* null term list */
+	f = popenvp(nav + 1, "r");
+	freeLines(nav, free);
+
+	unless (component) proj_cd2product();
 	s = sccs_csetInit(SILENT);
 	assert(s && HASGRAPH(s));
 	sccs_findKeyDB(s, 0);
-
-	f = popenvp(nav + 1, "r");
-	freeLines(nav, free);
 	while (fnext(buf, f)) {
-		if (strneq(buf, "==== ", 5)) continue;
 		chop(buf);
 		d = sccs_findKey(s, buf);
 		assert(d);

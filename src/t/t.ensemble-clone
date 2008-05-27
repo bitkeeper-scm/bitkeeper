@@ -98,7 +98,7 @@ bk sfiles -R | grep -v gcc > ../LIST
 cd ..
 
 echo $N Test that -Mkey clones work .................................$NL
-KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
+KEY=`bk changes -Cr+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
 bk clone $Q -M"$KEY" project mynewgcc 2> ERR || {
 	echo failed

@@ -111,6 +111,7 @@ extern	char *logRoot;
 void	bkd_server(int ac, char **av);
 
 #define	REMOTE_BKDURL	1	/* URL is for BKD (effects http headers) */
+#define	REMOTE_ROOTKEY	2	/* add in rootkey if we are a component */
 remote	*remote_parse(const char *url, u32 flags);
 char	*remote_unparse(remote *r);
 void	remote_free(remote *r);

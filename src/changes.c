@@ -28,6 +28,7 @@ private struct {
 	char	**notusers;	/* lines list of users to exclude */
 	char	**inc;		/* list of globs for files to include */
 	char	**exc;		/* list of globs for files to exclude */
+	u32	component;	/* flags to enable per-component changes */
 
 	/* not opts */
 	FILE	*f;		/* global for recursion */
@@ -83,7 +84,7 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
+	while ((c = getopt(ac, av, "1aBCc;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -99,6 +100,7 @@ changes_main(int ac, char **av)
 		    case '1': opts.one = 1; break;
 		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'B': opts.BAM = 1; break;
+		    case 'C': opts.component = REMOTE_ROOTKEY; break;
 		    case 'c':
 			if (range_addArg(&opts.rargs, optarg, 1)) goto usage;
 			break;
@@ -212,6 +214,9 @@ usage:			system("bk help -s changes");
 		pid = mkpager();
 		putenv("BK_PAGER=cat");
 		proj_cd2root();
+		/* following ignored for non-ensemble */
+		unless (opts.component) proj_cd2product();
+		TRACE("cwd=%s", proj_cwd());
 		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
 	}
 	if (opts.local) {
@@ -254,6 +259,9 @@ usage:			system("bk help -s changes");
 			fprintf(stderr, "Can't find package root\n");
 			exit(1);
 		}
+		/* following ignored for non-ensemble */
+		unless (opts.component) proj_cd2product();
+		TRACE("cwd=%s", proj_cwd());
 		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
 		unless (av[optind]) {
 			rc = doit(0); /* bk changes */
@@ -320,7 +328,7 @@ _doit_local(char **nav, char *url)
 		assert(f);
 	}
 
-	r = remote_parse(url, REMOTE_BKDURL);
+	r = remote_parse(url, REMOTE_BKDURL | opts.component);
 	assert(r);
 
 	bktmp(tmpf, 0);
@@ -1273,7 +1281,7 @@ _doit_remote(char **av, char *url)
 	int	rc;
 	remote	*r;
 
-	r = remote_parse(url, REMOTE_BKDURL);
+	r = remote_parse(url, REMOTE_BKDURL | opts.component);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (1);
