@@ -663,11 +663,13 @@ disconnect(remote *r, int how)
 }
 
 
+// XXX verbose is always==1 other than in lconfig where stderr is
+//      redirected to /dev/null.  Perhaps it should be removed.
 int
 get_ok(remote *r, char *read_ahead, int verbose)
 {
 	int 	i, ret;
-	char	buf[512], *p;
+	char	buf[512], *p, *url;
 
 	if (read_ahead) {
 		p = read_ahead;
@@ -689,15 +691,20 @@ get_ok(remote *r, char *read_ahead, int verbose)
 	}
 	if (verbose) {
 		i = 0;
-		if (p && *p) fprintf(stderr, "remote: %s\n", p);
+		url = remote_unparse(r);
+		if (p && *p && strneq(p, "ERROR-", 6)) p += 6;
+		if (p && *p) fprintf(stderr, "%s: %s\n", url, p);
 		while (getline2(r, buf, sizeof(buf)) > 0) {
-			if (buf[0]) fprintf(stderr, "remote: %s\n", buf);
 			if (streq(buf, "@END@")) break;
+			p = buf;
+			if (p && *p && strneq(p, "ERROR-", 6)) p += 6;
+			if (p && *p) fprintf(stderr, "%s: %s\n", url, p);
 			/*
 			 * 20 lines of error message should be enough
 			 */
 			if (i++ > 20) break;
 		}
+		free(url);
 	}
 	return (1); /* failed */
 }

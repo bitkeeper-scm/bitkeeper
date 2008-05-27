@@ -30,6 +30,7 @@ typedef	struct {
 	u32	timeGap;		/* Time gap (in minutes) */
 	u32	singleUserCset:1;	/* Force one user per cset */
 	u32	noSkip:1;		/* do not skip recent deltas */
+	u32	ensemble:1;		/* shorten comments */
 	u32	verbose;		/* 1: basic, 2:debug */
 	u32	ignoreCsetMarker:1;	/*
 					 * Strip/re-do existing
@@ -74,6 +75,7 @@ findcset_main(int ac, char **av)
 	}
 
 	has_proj("findcset");
+	if (proj_isEnsemble(0)) opts.ensemble = 1;
 
 	if (tagFile && openTags(tagFile)) return (1);
 
@@ -491,7 +493,12 @@ db2line(MDBM *db)
 		/*
 		 * If gfile list is same as previous, skip
 		 */
-		if (!streq(lastg, gfiles)) lines = addLine(lines, gfiles);
+		if (opts.ensemble && streq(gfiles, "ChangeSet:")) {
+			// nothing
+			;
+		} else unless (streq(lastg, gfiles)) {
+			lines = addLine(lines, gfiles);
+		}
 		lastg = gfiles;
 
 		/*
@@ -856,6 +863,8 @@ saveComment(MDBM *db, char *rev, char *comment_str, char *gfile)
 	datum	k, v, tmp;
 	MDBM	*gDB = 0;
 	int	ret;
+	char	*p;
+	char	cset[MAXPATH*2];
 
 #define	CVS_NULL_COMMENT "*** empty log message ***\n"
 #define	SCCS_REV_1_1_DEFAULT_COMMENT	"date and time created "
@@ -875,8 +884,16 @@ saveComment(MDBM *db, char *rev, char *comment_str, char *gfile)
 		return;
 	}
 
-	k.dptr = (char *) comment_str;
-	k.dsize = strlen(comment_str) + 1;
+	if (opts.ensemble &&
+	    (p = strrchr(gfile, '/')) && streq(p, "/ChangeSet")) {
+		*p = 0;
+		sprintf(cset, "Commit in %s\n", gfile);
+		*p = '/';
+		k.dptr = cset;
+	} else {
+		k.dptr = comment_str;
+	}
+	k.dsize = strlen(k.dptr) + 1;
 	tmp = mdbm_fetch(db, k);
 	if (tmp.dptr) memcpy(&gDB, tmp.dptr, sizeof (MDBM *));
 	unless (gDB) gDB = mdbm_mem();

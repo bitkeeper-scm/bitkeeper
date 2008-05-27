@@ -6,6 +6,7 @@
 
 private int	finish(char *comment, hash *moduleDB, int commit);
 char		*rootkey(char *path);
+private void	error(const char *fmt, ...);
 
 /*
  * Given one or more module names, and optionally a changeset sccs*,
@@ -16,8 +17,8 @@ char		*rootkey(char *path);
  * - a pathname w/ trailing /
  * or nothing is returned.
  * All names are recursively expanded if the values have names in them.
- * XXX - only one level deep
  * XXX - always imply the product?
+ * XXX - does not take a rev and that's probably wrong
  */
 hash *
 module_list(char **names, sccs *cset)
@@ -27,21 +28,23 @@ module_list(char **names, sccs *cset)
 	hash	*modules = 0;	/* BitKeeper/etc/modules */
 	hash	*seen = 0;	/* all key|dir|names we've seen */
 	hash	*results = 0;	/* hash of results */
+	hash	*expanded = 0;	/* record of which ones expanded */
 	hash	*tmp = 0;	/* used for recursion */
 	char	**dirs = 0;	/* any dirs we've found and need to expand */
 	char	**keys;		/* used to split the hash value */
 	char	**more = 0;	/* used to hold module names found in value */
-	char	*p;
+	char	*p, *e;
+	char	*name;		/* used to hold a de-escaped copy */
 	kvpair	kv;		/* walks the cset hash */
 	static	int depth = 0;	/* limits to one level of recursion */
 	char	buf[MAXKEY];
 
 	unless (proj_isProduct(0)) {
-		fprintf(stderr, "module: called in a non-product.\n");
+		error("module: called in a non-product.\n");
 		return (0);
 	}
 	unless (names && names[1]) {
-		fprintf(stderr, "module_list with no names?\n");
+		error("module_list with no names?\n");
 		return (0);
 	}
 
@@ -50,60 +53,57 @@ module_list(char **names, sccs *cset)
 	 */
 	concat_path(buf, proj_root(proj_product(0)), MODULES);
 	if (!exists(buf) && get(buf, SILENT, "-")) {
-		fprintf(stderr, "module: can't get %s\n", buf);
+		error("module: can't get %s\n", buf);
 		return (0);
 	}
 	modules = hash_fromFile(0, buf);
 
 	/*
 	 * Foreach name,
-	 * if it is a directory, save that aside.
-	 * if it is a key, stuff that into expanded.
 	 * if it is in the hash, split the value into keys and stuff those
-	 * into expanded.
+	 * into results.
+	 * if it is a directory, save that aside.
+	 * if it is a key, stuff that into results.
 	 * if none of the above, error.
 	 */
 	seen = hash_new(HASH_MEMHASH);
 	results = hash_new(HASH_MEMHASH);
 	EACH(names) {
 		if (hash_fetchStr(seen, names[i])) {
-			fprintf(stderr,
-			    "modules: duplicate name %s\n", names[i]);
+			error("modules: duplicate name %s\n", names[i]);
 			goto err;
 		}
 		hash_storeStr(seen, names[i], "");
-		if ((p = strrchr(names[i], '/')) && !p[1]) {
-			dirs = addLine(dirs, names[i]);
-		} else if (isKey(names[i])) {
-			hash_storeStr(results, names[i], "");
-		} else if (p = hash_fetchStr(modules, names[i])) {
+		if (p = hash_fetchStr(modules, names[i])) {
 			keys = splitLine(p, "\r\n", 0);
 			EACH_INDEX(keys, j) {
-				if ((p = strrchr(keys[j], '/')) && !p[1]) {
-					dirs = addLine(dirs, keys[j]);
+				if (hash_fetchStr(modules, keys[j])) {
+					more = addLine(more, strdup(keys[j]));
 				} else if (isKey(keys[j])) {
 					hash_storeStr(results, keys[j], "");
 				} else {
-					more = addLine(more, strdup(keys[j]));
+					dirs = addLine(dirs, strdup(keys[j]));
 				}
 			}
 			freeLines(keys, free);
+		} else if (isKey(names[i])) {
+			hash_storeStr(results, names[i], "");
 		} else {
-			fprintf(stderr, "modules: bad name %s\n", names[i]);
-err:			hash_free(modules);
-			hash_free(results);
-			hash_free(seen);
-			freeLines(dirs, 0);
-			freeLines(more, free);
-			return (0);
+			dirs = addLine(dirs, strdup(names[i]));
 		}
 	}
 
 	if (more) {
 		if (depth > 5) {
-			fprintf(stderr,
-			    "modules: too many levels of recursion.\n");
-			goto err;
+			error("modules: too many levels of recursion.\n");
+			error("modules: bad name %s\n", names[i]);
+err:			hash_free(modules);
+			hash_free(results);
+			hash_free(seen);
+			if (expanded) hash_free(expanded);
+			freeLines(dirs, free);
+			freeLines(more, free);
+			return (0);
 		}
 		depth++;
 		tmp = module_list(more, cset);
@@ -124,27 +124,62 @@ err:			hash_free(modules);
 	}
 	assert(CSET(cset) && proj_isProduct(cset->proj));
 	sccs_get(cset, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0);
+
+	expanded = hash_new(HASH_MEMHASH);
+	/*
+	 * N*M alg.  lm3di
+	 */
 	EACH_KV(cset->mdbm) {
 		unless (componentKey(kv.val.dptr)) continue;
 		EACH(dirs) {
-			sprintf(buf, "|%s", dirs[i]);
 			/*
+			 * kv.val.dptr =
 			 * lm@bitmover.com|gdb/ChangeSet|20080311222908|21117
-			 * so even though it may be bk/lm there is no | before
-			 * the user name and the other fields can't contain /
-			 * And dirs[i] has a trailing / so that's all good.
+			 * dirs[i] =
+			 * .
+			 * ./something
+			 * ./glob_pattern
 			 */
-			if (strstr(kv.val.dptr, buf)) {
-				hash_storeStr(results, kv.key.dptr, "");
+			if (streq(dirs[i], ".")) {
+				hash_storeStr(results, proj_rootkey(0), "");
+				hash_storeStr(expanded, dirs[i], "");
 				break;
 			}
+
+			/* The expanded loop below will flag this. */
+			unless (strneq(dirs[i], "./", 2)) break;
+
+			p = strchr(kv.val.dptr, '|');
+			assert(p);
+			p++;
+			e = strchr(p, '|');
+			assert(e);
+			while ((--e > p) && (*e != '/'));
+			*e = 0;
+			unless (streq(dirs[i]+2, p) ||
+			    match_one(p, dirs[i]+2, 0)){
+				*e = '/';
+				continue;
+			}
+			hash_storeStr(results, kv.key.dptr, "");
+			hash_storeStr(expanded, dirs[i], "");
+			break;
 	    	}
 	}
+	j = 0;
+	EACH(dirs) {
+		unless (hash_fetchStr(expanded, dirs[i])) {
+			j++;
+			error("modules: no match for %s\n", dirs[i]);
+		}
+	}
+	if (j) goto err;
 
 	if (free_cset) sccs_free(cset);
 done:	hash_free(modules);
 	hash_free(seen);
-	freeLines(dirs, 0);
+	if (expanded) hash_free(expanded);
+	freeLines(dirs, free);
 	return (results);
 }
 
@@ -410,6 +445,26 @@ out:		mdbm_close(idDB);
 	goto out;
 }
 
+private void
+error(const char *fmt, ...)
+{
+	va_list	ap;
+	char	*retval;
+
+	va_start(ap, fmt);
+	if (vasprintf(&retval, fmt, ap) < 0) retval = 0;
+	va_end(ap);
+	if (retval) {
+		if (getenv("_BK_IN_BKD")) {
+			out("ERROR-");
+			out(retval);
+		} else {
+			fputs(retval, stderr);
+		}
+		free(retval);
+	}
+}
+
 int
 isComponent(char *path)
 {
@@ -460,4 +515,3 @@ finish(char *comment, hash *moduleDB, int commit)
 	}
 	return (0);
 }
-

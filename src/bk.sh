@@ -31,6 +31,12 @@ __cd2root() {
 	cd "$root"
 }
 
+__cd2product() {
+	root="`bk -P pwd`"
+	test $? -ne 0 && exit 1
+	cd "$root"
+}
+
 # faster way to get repository status
 _repocheck() {
 	bk -r check -acv
@@ -169,9 +175,11 @@ _ensemble() {
 	}
 
 	# All other commands need it to be in a product
-	test -f BitKeeper/log/PRODUCT || {
-		echo ensemble must be run in the product root
-		exit 1
+	__cd2product
+
+	test "X$1" = Xlist && {
+		shift
+		exec bk ensemble_list $@
 	}
 
 	# bk ensemble [add|attach] -y<m>|Y<f> url loc [url loc ...]
@@ -198,7 +206,7 @@ _ensemble() {
 					exit 1
 				}
 				verbose Adding "$1" as "$2"
-				bk clone $QUIET "$1" "$2" || {
+				bk clone -p $QUIET "$1" "$2" || {
 					echo "ensemble add failed to clone $1"
 					rm -f ${TMP}/ensemble_add$$
 					exit 1
@@ -221,7 +229,7 @@ _ensemble() {
 		PRODUCT=`bk id`
 		while read x
 		do	verbose "Attaching $x" 
-			( cd "$x" && bk newroot $QUIET && bk parent -rq )
+			( cd "$x" && bk newroot $QUIET )
 			bk admin -D -C"$PRODUCT" "$x/ChangeSet"
 			echo "$x" > "$x/BitKeeper/log/COMPONENT"
 			( cd "$x"
@@ -245,6 +253,12 @@ _ensemble() {
 		rm -f ${TMP}/ensemble_add$$ ${TMP}/ensemble_commit$$
 		verbose ensemble $CMD complete
 		exit 0
+	}
+
+	test "X$1" = Xdetach && {
+		# Not done yet, need newroot log.
+		echo Not implemented.
+		exit 1
 	}
 
 	bk help -s ensemble

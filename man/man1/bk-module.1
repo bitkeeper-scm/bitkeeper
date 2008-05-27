@@ -61,33 +61,38 @@ Each name expands to one or more components which were specified as follows:
 .\" So we need a way to make it clear what we mean.
 .\" The precedence is as above, symbolic name, module, dir, and here is how
 .\" we will disambiguate:
-.\" -a./foo means the dir
-.\" -a'$foo' means the module
-.\" -afoo means the symbolic name
+.\" -M./foo means the dir
+.\" -M'$foo' means the module
+.\" -Mfoo means the symbolic name
 .\" All of that assumes we have symbolic names, which we don't yet, so we only
-.\" have the two cases and -a./foo makes it clear from day one.
+.\" have the two cases and -M./foo makes it clear from day one.
 .\"
-.TP "module "
-.B dir/
-When the component name is a directory with a trailing forward slash, 
-the list of components is the set of repositories at or below
-.B dir/
-provided that they have been added (committed) the ensemble.
-.B dir/
-must be a relative path from the ensemble root.
-The list of components implied may increase or decrease as
-they are attached or detached below the directory.
-.SP
+.TP "./gcc/* "
+.B .
+Reserved name that means only the product.
 .tp
-.B repo
-When the component name is a relative path from the ensemble root to 
-the component, it just means that component and only that component,
-even if other components are below that component.
-.SP
+.B ./gcc
+A relative path from the root of the product to the root of a component
+means that component and only that component.
 .tp
-.B module
-When the component name is a module name, it means to recursively 
-expand the named module.
+.B ./gcc/*
+Another relative path form, with globbing support,
+that gets all components below 
+.BR gcc .
+.tp
+.B gcc
+When the component name is a module name, it means look the name up in
+the modules database and expand it.
+Note that 
+.B gcc 
+means a module database entry and
+.B ./gcc
+means a path in the file system; they are not the same thing.
+The form may expand to gcc, gdb, nm, etc., the latter expands to the
+component at that location.
+.LP
+Each of the names found will be recursively expanded and may take any
+of the forms described here.
 For example, 
 .B GCC
 might point to the compiler and the assembler, and 
@@ -108,7 +113,7 @@ if it is a path name then the path must exist and be a component.
 .LP
 In the event that there is ambiguity between a module name and a
 path to a component that is a single directory, use
-.OPTreq \-a ./path
+.OPTreq \-M ./path
 to mean the path and not the module.
 The default is that it means the module.
 .SH OPTIONS
@@ -164,8 +169,8 @@ Any components that are specified on the command line are stored internally
 as their rootkeys and rootkeys may be used as the name of a component.
 .SH "SEE ALSO"
 .SA ensemble
+.SA glob
 .SA id
-.SA regex
 .SA SAM-Howto
 .SH CATEGORY
 .B Repository

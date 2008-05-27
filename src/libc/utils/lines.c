@@ -273,8 +273,16 @@ lines2File(char **space, char *file)
 {
 	FILE	*f;
 	int	i;
+	struct	stat sbuf;
 
-	unless (file && (f = fopen(file, "w"))) return (-1);
+	unless (file) return (-1);
+	unless (f = fopen(file, "w")) {
+		if (stat(file, &sbuf)) return (-1);
+		sbuf.st_mode |= 0664;
+		chmod(file, sbuf.st_mode);
+		f = fopen(file, "w");
+	}
+	unless (f) return (-1);
 	EACH(space) {
 		fprintf(f, "%s\n", space[i]);
 	}

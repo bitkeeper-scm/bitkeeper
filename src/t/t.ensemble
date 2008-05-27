@@ -548,7 +548,7 @@ echo OK
 
 echo $N bk ensemble list -r+ lists product and components ...........$NL
 # valgrind --tool=memcheck --leak-check=full --show-reachable=yes \
-bk ensemble_list -1r+ > GOT
+bk ensemble list -1r+ > GOT
 cat > WANT <<EOF
 .
 gcc4
@@ -557,8 +557,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list -r+ -p lists components only ...............$NL
-bk ensemble_list -r+ -p > GOT
+echo $N bk ensemble list -r+ -C lists components only ...............$NL
+bk ensemble list -r+ -C > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -567,7 +567,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list -r1.3 lists product and components .........$NL
-bk ensemble_list -1r1.3 > GOT
+bk ensemble list -1r1.3 > GOT
 cat > WANT <<EOF
 .
 gcc4
@@ -581,7 +581,7 @@ cat > LIST <<EOF
 1.5
 1.6
 EOF
-bk ensemble_list -1 - < LIST > GOT
+bk ensemble list -1 - < LIST > GOT
 cat > WANT <<EOF
 .
 gcc4
@@ -590,7 +590,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list for undo -r+ ...............................$NL
-echo + | bk ensemble_list -1lpnd -u - > GOT
+echo + | bk ensemble list -1lpnd -u - > GOT
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
 bk changes -Cqnd".|:KEY:" -r1.5 .
@@ -601,7 +601,7 @@ echo OK
 
 echo $N bk ensemble list for undo -r+ with component missing ........$NL
 mv gcc4 ..
-echo + | bk ensemble_list -1lhpnd -u - > GOT
+echo + | bk ensemble list -1lhpnd -u - > GOT
 mv ../gcc4 .
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
@@ -614,7 +614,7 @@ echo OK
 echo $N bk ensemble list for push -r+ with component missing.........$NL
 # now do it the other way
 mv gcc4 ..
-bk ensemble_list -1lhpnd -r+ > GOT
+bk ensemble list -1lhpnd -r+ > GOT
 mv ../gcc4 .
 # The list should be the current tips
 (
@@ -631,7 +631,7 @@ echo 1.6
 echo 1.5
 echo 1.4
 echo 1.3
-) | bk ensemble_list -1lnp -u - > GOT
+) | bk ensemble list -1lnp -u - > GOT
 cat > WANT <<EOF
 .
 gcc4|(new)
@@ -646,7 +646,7 @@ echo 1.6
 echo 1.5
 echo 1.4
 echo 1.3
-) | bk ensemble_list -lpd -u - > GOT
+) | bk ensemble list -lpd -u - > GOT
 # The list should be desired tips of .|1.2
 # because the other two are removed.
 (
@@ -660,7 +660,7 @@ echo $N bk ensemble list for undo -a1.3 .............................$NL
 echo 1.6
 echo 1.5
 echo 1.4
-) | bk ensemble_list -1lpd -u - > GOT
+) | bk ensemble list -1lpd -u - > GOT
 # The list should be desired tips of 1.3 (just works out that way)
 (
 bk changes -Cqnd".|:KEY:" -r1.3 .
@@ -670,7 +670,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list for clone -r+ ..............................$NL
-bk ensemble_list -1lpd -r+ > GOT
+bk ensemble list -1lpd -r+ > GOT
 (
 bk changes -Cqnd".|:KEY:" -r+ .
 bk changes -Cqnd"gcc4|:KEY:" -r+ gcc4
@@ -680,7 +680,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list for clone -r1.3 ............................$NL
-bk ensemble_list -1lpd -r1.3 > GOT
+bk ensemble list -1lpd -r1.3 > GOT
 # They are all at 1.3 in 1.3
 (
 bk changes -Cqnd".|:KEY:" -r1.3 .
@@ -691,7 +691,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list for clone -r1.4 ............................$NL
-bk ensemble_list -1lpd -r1.4 > GOT
+bk ensemble list -1lpd -r1.4 > GOT
 (
 bk changes -Cqnd".|:KEY:" -r1.4 .
 bk changes -Cqnd"gcc4|:KEY:" -r1.5 gcc4
@@ -701,7 +701,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list for push -r1.6 .............................$NL
-echo 1.6 | bk ensemble_list -1lpd - > GOT
+echo 1.6 | bk ensemble list -1lpd - > GOT
 # The list should be desired tips of .|1.6 and gcc4|1.9
 (
 bk changes -Cqnd".|:KEY:" -r1.6 .
@@ -711,7 +711,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list for push -r1.5 .............................$NL
-echo 1.5 | bk ensemble_list -1lpd - > GOT
+echo 1.5 | bk ensemble list -1lpd - > GOT
 (
 bk changes -Cqnd".|:KEY:" -r1.5 .
 bk changes -Cqnd"gcc4|:KEY:" -r1.6 gcc4
@@ -720,7 +720,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list for push -r1.4 .............................$NL
-echo 1.4 | bk ensemble_list -1lpd - > GOT
+echo 1.4 | bk ensemble list -1lpd - > GOT
 (
 bk changes -Cqnd".|:KEY:" -r1.4 .
 bk changes -Cqnd"gcc4|:KEY:" -r1.5 gcc4
@@ -729,7 +729,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list for push -r1.3 .............................$NL
-echo 1.3 | bk ensemble_list -1lnpd - > GOT
+echo 1.3 | bk ensemble list -1lnpd - > GOT
 (
 bk changes -Cqnd".|:KEY:" -r1.3 .
 bk changes -Cqnd"gcc4|:KEY:|(new)" -r1.3 gcc4
@@ -739,7 +739,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk ensemble list for push -r1.2 .............................$NL
-echo 1.2 | bk ensemble_list -lpd - > GOT
+echo 1.2 | bk ensemble list -lpd - > GOT
 (
 bk changes -Cqnd".|:KEY:" -r1.2 .
 ) > WANT
@@ -752,7 +752,7 @@ echo 1.3
 echo 1.4
 echo 1.5
 echo 1.6
-) | bk ensemble_list -1lnpd - > GOT
+) | bk ensemble list -1lnpd - > GOT
 (
 bk changes -Cqnd".|:KEY:" -r1.6 .
 bk changes -Cqnd"gcc4|:KEY:|(new)" -r1.9 gcc4
@@ -923,7 +923,7 @@ echo OK
 
 
 # XXX - write a test to make sure that we can list only the repos that are
-# present w/ bk ensemble_list
+# present w/ bk ensemble list
 
 # ditto for one that has been moved but does not yet have the rename delta
 
@@ -967,7 +967,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test simple directory expansion .............................$NL
-bk module show gcc4/ > GOT
+bk module show ./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 EOF
@@ -975,7 +975,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Combine the two .............................................$NL
-bk module show dev gcc4/ > GOT
+bk module show dev ./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1184,8 +1184,8 @@ echo '< recursion'
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for clone -r+ but limited to -Mgcc4/........$NL
-bk ensemble_list -Mgcc4/ -1lpd -r+ > GOT
+echo $N bk ensemble list for clone -r+ but limited to -M./gcc4 ......$NL
+bk ensemble list -M./gcc4 -1lpd -r+ > GOT
 (
 bk changes -Cqnd".|:KEY:" -r+ .
 bk changes -Cqnd"gcc4|:KEY:" -r+ gcc4
@@ -1224,7 +1224,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test prefix in the iterator with modules ....................$NL
-bk -qA -Mgcc4/ prefixed_sfiles -h > GOT
+bk -qA -M./gcc4 prefixed_sfiles -h > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
 BitKeeper/etc/SCCS/s.collapsed
@@ -1341,9 +1341,9 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test serializing/deserializing and ensemble..................$NL
-bk ensemble_list -r+ > WANT
-bk ensemble_list -r+ -o > SERIALIZED
-bk ensemble_list -i < SERIALIZED  > GOT
+bk ensemble list -r+ > WANT
+bk ensemble list -r+ -o > SERIALIZED
+bk ensemble list -i < SERIALIZED  > GOT
 cmpfiles WANT GOT
 echo OK
 
