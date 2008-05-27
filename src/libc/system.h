@@ -139,6 +139,7 @@ typedef struct {
 
 char**	globdir(char *dir, char *glob);
 int	is_glob(char *glob);
+char	*unescape(char *glob);
 char*	match_globs(char *string, char **globs, int ignorecase);
 int	match_one(char *string, char *glob, int ignorecase);
 int	search_either(char *s, search search);

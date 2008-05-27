@@ -293,29 +293,30 @@ ensemble_list_main(int ac, char **av)
 {
 	int	c;
 	int	want = 0, serialize = 0;
-	int	input = 0, output = 0;
+	int	input = 0, output = 0, present = 0;
 	char	*p;
 	repos	*r = 0;
 	eopts	opts;
 	char	**modules = 0;
 	char	buf[MAXKEY];
 
-	unless (proj_isProduct(0)) {
+	if (proj_cd2product()) {
 		fprintf(stderr,
-		    "%s: needs to be called in a Product.\n", av[0]);
+		    "%s: needs to be run in a product.\n", av[0]);
 		return (1);
 	}
 	bzero(&opts, sizeof(opts));
 	opts.product = 1;
 
-	// XXX -C for components?
-	while ((c = getopt(ac, av, "1il;M;opr;u")) != -1) {
+	while ((c = getopt(ac, av, "1Cil;M;opr;u")) != -1) {
 		switch (c) {
 		    case '1':
 			opts.product_first = 1;
 			break;
-		    case 'i': input = 1; break;
-		    case 'l':
+		    case 'i':	/* undoc */
+		    	input = 1;
+			break;
+		    case 'l':	/* undoc */
 			for (p = optarg; *p; p++) {
 				switch (*p) {
 				    case 'd': want |= L_DELTA; break;
@@ -329,17 +330,22 @@ ensemble_list_main(int ac, char **av)
 		    case 'M':
 			modules = addLine(modules, optarg);
 			break;
-		    case 'o': output = 1; break;
-		    case 'p':
+		    case 'o':	/* undoc */
+			output = 1;
+			break;
+		    case 'C':
 			opts.product = 0;
+			break;
+		    case 'p':	
+			present = 1;
 			break;
 		    case 'r':
 			opts.rev = optarg;
 			break;
-		    case 's':
+		    case 's':	/* undoc */
 			serialize = 1;
 			break;
-		    case 'u':
+		    case 'u':	/* undoc */
 			opts.undo = 1;
 			break;
 		    default:
@@ -367,6 +373,7 @@ ensemble_list_main(int ac, char **av)
 	}
 	EACH_REPO(r) {
 		if (opts.undo && r->new && !(want & L_NEW)) continue;
+		if (present && !r->present) continue;
 		p = "";
 		if (want & L_PATH) {
 			printf("%s", r->path);

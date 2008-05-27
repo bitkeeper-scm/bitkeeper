@@ -289,7 +289,7 @@ bk clone $Q -rbad http://localhost:$PORT "$HERE/junk2" 2> err && {
 	echo should have failed
 	exit 1
 }
-grep -q "ERROR-rev bad doesn't exist" err || {
+grep -q "rev bad doesn't exist" err || {
 	echo wrong error
 	cat err
 	exit 1

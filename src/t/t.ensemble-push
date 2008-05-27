@@ -212,7 +212,15 @@ bk clone $Q project copy
 cd "$HERE"
 commercial libc
 cd "$HERE"/copy
+BEFORE=`bk parent -l`
 bk ensemble add $Q -y"add libc" ../libc libc
+AFTER=`bk parent -l`
+test "$BEFORE" = "$AFTER" || {
+	echo failed to leave parent pointer alone
+	echo "before $BEFORE"
+	echo "after $AFTER"
+	exit 1
+}
 bk push >OUT 2>&1 || {
 	echo failed
 	cat OUT

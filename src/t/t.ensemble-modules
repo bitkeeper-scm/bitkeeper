@@ -43,9 +43,62 @@ bk clone $Q -Mstuff project stuff
 bk clone $Q -Mstuff project stuff2
 commercial libc
 cd "$HERE/project"
-bk ensemble add $Q -y"add libc" ../libc libc
+bk ensemble add $Q -y"add libc" ../libc path/to/libc
 bk ensemble add $Q -y"add junk" ../libc junk
-bk module add -clibc stuff
+bk module add -cpath/to/libc stuff
+echo OK
+
+echo $N Test that we can read the name and dirs and globs ...........$NL
+bk module show stuff | bk _sort > GOT
+cat << EOF > WANT
+gcc
+gdb
+path/to/libc
+EOF
+checkfiles WANT GOT
+bk module show ./gcc > GOT
+echo gcc > WANT
+checkfiles WANT GOT
+# make sure longer and shorter don't match
+bk module show ./gccc\* 2> ERR > GOT && {
+	echo failed
+	exit 1
+}
+grep -q "modules: no match for ./gccc*" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+bk module show ./gc/\* 2> ERR > GOT && {
+	echo failed
+	exit 1
+}
+grep -q "modules: no match for ./gc/*" ERR || {
+	echo wrong msg
+	exit 1
+}
+# globs that work
+for p in "g*" "gc*" "g*c" "*c" "p*" "path/*"
+do	bk modules show "./$p" | bk _sort
+	echo ..
+done > GOT
+cat << EOF > WANT
+gcc
+gdb
+..
+gcc
+..
+gcc
+..
+gcc
+path/to/libc
+..
+path/to/libc
+..
+path/to/libc
+..
+EOF
+checkfiles WANT GOT
 echo OK
 
 echo $N Try a push, should add libc but not junk ....................$NL
@@ -56,7 +109,7 @@ bk push > ../OUT 2>&1 || {
 	exit 1
 }
 cd ../stuff
-test -d libc || {
+test -d path/to/libc || {
 	echo did not add libc
 	cat ../OUT
 	exit 1
@@ -67,7 +120,7 @@ test -d junk && {
 	exit 1
 }
 cd ../stuff2
-test -d libc || {
+test -d path/to/libc || {
 	echo did not add libc
 	cat ../OUT
 	exit 1
@@ -84,7 +137,7 @@ bk unpull -f > OUT 2>&1 || {
 	echo failed
 	exit 1
 }
-test -d libc && {
+test -d path/to/libc && {
 	echo failed to remove libc
 	exit 1
 }
@@ -96,7 +149,7 @@ bk pull > ../OUT 2>&1 || {
 	cat ../OUT
 	exit 1
 }
-test -d libc || {
+test -d path/to/libc || {
 	echo did not add libc
 	cat ../OUT
 	exit 1
@@ -111,11 +164,11 @@ echo OK
 echo $N Setup a populate that needs to go backwards .................$NL
 cd ../project
 for i in 1 2
-do	cd libc
+do	cd path/to/libc
 	touch FILE$i
 	bk new $Q FILE$i
 	bk commit $Q -y$i
-	cd ../junk
+	cd ../../../junk
 	touch FILE$i
 	bk new $Q FILE$i
 	bk commit $Q -y$i
@@ -127,17 +180,17 @@ echo OK
 
 echo $N Clone backwards, getting just libc, populate junk ...........$NL
 cd "$HERE"
-bk clone -r1.10 -Mlibc/ project behind > OUT 2>&1
+bk clone -r1.10 -M./path/to/libc project behind > OUT 2>&1
 cd behind
 test -d junk && {
 	echo should not have junk
 	exit 1
 }
-test -d libc || {
+test -d path/to/libc || {
 	echo should have libc
 	exit 1
 }
-bk populate $Q -Mjunk/ || {
+bk populate $Q -M./junk || {
 	echo failed
 	exit 1
 }
@@ -147,3 +200,50 @@ test $TIP = `bk changes -qr+ -d:REV: junk` && {
 }
 bk -Aqr check -ac || exit 1
 echo OK
+
+echo $N Test -M./gcc/nm .............................................$NL
+cd "$HERE"
+commercial nm
+cd "$HERE"/project
+bk ensemble add -ywhatever $Q ../nm gcc/nm
+cd "$HERE"
+bk clone -M./gcc/nm project project-nm > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test -M./gcc ................................................$NL
+cd "$HERE"
+bk clone -M./gcc project project-gcc > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -d project-gcc/gcc || {
+	echo failed to make gcc
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test -M. ....................................................$NL
+cd "$HERE"
+bk clone -M. project project-dot > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -d project-dot || {
+	echo failed to make project-dot
+	exit 1
+}
+test -d project-dot/gcc -o -d project-dot/gdb && {
+	echo should not have brought components
+	cat OUT
+	exit 1
+}
+echo OK
+
+exit 0

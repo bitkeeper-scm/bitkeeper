@@ -63,6 +63,10 @@ remote_parse(const char *url, u32 flags)
 		}
 		params[-1] = '?';
 	}
+	/*
+	 * Truncate ensemble roots which are like file:///build/freebsd-csets/.
+	 */
+	if (r->path && (p = strrchr(r->path, '/')) && streq(p, "/.")) *p = 0;
 	if (echo && r) {
 	    	fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
 		if (r->port) fprintf(stderr, "port=%u\n", r->port);

@@ -155,9 +155,9 @@ echo OK
 bk _kill bk://localhost:$PORT
 PORT=`port 50000`
 bk bkd -d -p$PORT -ikill
-echo $N Test that we can clone just that component with -Mgcc/ ......$NL
+echo $N Test that we can clone just that component with -M./gcc .....$NL
 rm -rf mynewgcc
-bk clone $Q -Mgcc/ project bk://localhost:$PORT/mynewgcc || {
+bk clone $Q -M./gcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
 	bk _kill bk://localhost:$PORT
 	exit 1
@@ -183,7 +183,7 @@ test -f BitKeeper/log/MODULES || {
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
-test "`cat BitKeeper/log/MODULES`" = "gcc/" || {
+test "`cat BitKeeper/log/MODULES`" = "./gcc" || {
 	echo bad content
 	cat BitKeeper/log/MODULES
 	bk _kill bk://localhost:$PORT

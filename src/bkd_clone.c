@@ -104,9 +104,6 @@ cmd_clone(int ac, char **av)
 			h = module_list(modules, s);
 			freeLines(modules, free);
 			unless (h) {
-				// XXX - weak.  Should pass in a protocol 
-				// marker and have module_list() do this.
-				out("ERROR-unable to expand module[s]\n");
 				goto out;
 			}
 		}

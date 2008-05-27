@@ -7,9 +7,10 @@
 #include "ensemble.h"
 
 /*
- * Do not change this sturct until we phase out bkd 1.2 support
+ * Do not change this struct until we phase out bkd 1.2 support
  */
 struct {
+	u32	no_parent:1;		/* -p: do not set parent pointer */
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
 	u32	verbose:1;		/* -v: more details */
@@ -49,7 +50,7 @@ clone_main(int ac, char **av)
 
 	opts = calloc(1, sizeof(*opts));
 	opts->gzip = 6;
-	while ((c = getopt(ac, av, "B;dE:lM;qr;vw|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:lM;pqr;vw|z|")) != -1) {
 		unless ((c == 'r') || (c == 'M')) {
 			if (optarg) {
 				opts->av = addLine(opts->av,
@@ -72,6 +73,7 @@ clone_main(int ac, char **av)
 		    case 'M':
 			opts->modules = addLine(opts->modules, strdup(optarg));
 			break;
+		    case 'p': opts->no_parent = 1; break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
 		    case 'v': opts->verbose = 1; break;
@@ -110,7 +112,12 @@ clone_main(int ac, char **av)
 			sprintf(revbuf, "bk repogca -5 '%s'", opts->from);
 		} else {
 			char	**p = parent_pullp();
-			assert(p);
+
+			unless (p) {
+				fprintf(stderr,
+				    "populate: no incoming parent.\n");
+				exit(1);
+			}
 			opts->from = strdup(p[1]);
 			freeLines(p, free);
 			sprintf(revbuf, "bk repogca -5");
@@ -266,37 +273,38 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	putenv("_BK_TRANSACTION=1");
 	n = 0;
 	EACH_REPO(repos) {
-		unless (repos->present) continue;
-		if (opts->populate && streq(".", repos->path)) continue;
-		n++;
-	}
-	which = 1;
-	EACH_REPO(repos) {
-		if (streq(repos->path, ".")) {
-			if (opts->populate) continue;
-			putenv("_BK_NO_CHECK=1");
-			safe_putenv("_BK_REPO_PREFIX=%s", basenm(local));
-		} else {
-			name = repos->path;
-			putenv("_BK_NO_CHECK=");
-			safe_putenv("_BK_REPO_PREFIX=%s/%s",
-			    basenm(local), repos->path);
-		}
-		name = getenv("_BK_REPO_PREFIX");
-		
-		unless (opts->quiet) {
-			printf("#### %s (%d of %d) ####\n", name, which++, n);
-			fflush(stdout);
-		}
-
 		unless (repos->present) {
 			if (opts->modules && !opts->quiet) {
 				fprintf(stderr,
 				    "clone: %s not present in %s\n",
 				    repos->path, url);
+				rc = 1;
 			}
 			continue;
 		}
+		if (opts->populate && streq(".", repos->path)) continue;
+		n++;
+	}
+	if (rc) goto out;
+	which = 1;
+	EACH_REPO(repos) {
+		if (streq(repos->path, ".")) {
+			if (opts->populate) continue;
+			putenv("_BK_PRODUCT=1");
+			safe_putenv("_BK_REPO_PREFIX=%s", basenm(local));
+		} else {
+			name = repos->path;
+			putenv("_BK_PRODUCT=");
+			safe_putenv("_BK_REPO_PREFIX=%s/%s",
+			    basenm(local), repos->path);
+		}
+		name = getenv("_BK_REPO_PREFIX");
+
+		unless (opts->quiet) {
+			printf("#### %s (%d of %d) ####\n", name, which++, n);
+			fflush(stdout);
+		}
+
 		/*
 		 * If we're populating and there is something there, see
 		 * if it's what it should be and if so factor it out.
@@ -339,7 +347,8 @@ clone_ensemble(repos *repos, remote *r, char *local)
 			break;
 		}
 	}
-	putenv("_BK_TRANSACTION=");
+out:	putenv("_BK_TRANSACTION=");
+	free(url);
 	return (rc);
 }
 
@@ -428,12 +437,13 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	if (streq(buf, "@ENSEMBLE@")) {
 		/* we're cloning a product...  */
-		repos *repos;
+		repos	*repos;
+		char	*checkfiles;
+		FILE	*f;
 
 		unless (r->rf) r->rf = fdopen(r->rfd, "r");
 		unless (repos = ensemble_fromStream(0, r->rf)) goto done;
 		rc = clone_ensemble(repos, r, local);
-		ensemble_free(repos);
 		chdir(local);
 		if (opts->modules) {
 			char	**p = 0;
@@ -446,14 +456,30 @@ clone(char **av, remote *r, char *local, char **envVar)
 				p = addLine(p, strdup(opts->modules[i]));
 			}
 			uniqLines(p, free);
-			chmod("BitKeeper/log/MODULES", 0666);
 			if (lines2File(p, "BitKeeper/log/MODULES")) {
 				perror("BitKeeper/log/MODULES");
 			}
 			freeLines(p, free);
 		}
-		if (rc = clone2(r)) goto done;
-		rc = 0;
+		checkfiles = bktmp(0, "clonechk");
+		f = fopen(checkfiles, "w");
+		assert(f);
+		EACH_REPO(repos) {
+			unless (streq(".", repos->path)) {
+				fprintf(f, "%s/ChangeSet\n", repos->path);
+			}
+		}
+		fclose(f);
+		ensemble_free(repos);
+		p = opts->verbose ? "-fvT" : "-fT";
+		rc += run_check(!opts->verbose, checkfiles, p, 0);
+		unlink(checkfiles);
+		free(checkfiles);
+		if (rc) {
+			fprintf(stderr, "Consistency check failed, "
+			    "repository left locked.\n");
+			return (-1);
+		}
 		goto done;
 	}
 
@@ -508,10 +534,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 		free(p);
 		if (rc) goto done;
 	}
+	rc = clone2(r);
 
-	unless (getenv("_BK_NO_CHECK")) if (rc = clone2(r)) goto done;
-
-	rc  = 0;
 done:	if (rc) {
 		putenv("BK_STATUS=FAILED");
 		if (rc == 1) mkdir("RESYNC", 0777);
@@ -522,12 +546,11 @@ done:	if (rc) {
 	 * Don't bother to fire trigger if we have no tree.
 	 * XXX - should we differentiate between clone and populate?
 	 */
-	if (proj_root(0) && (rc != 2)) trigger("clone", "post");
+	if (!getenv("_BK_TRANSACTION") && proj_root(0) && (rc != 2)) {
+		trigger("clone", "post");
+	}
 
 	repository_unlock(0);
-	unless (rc || !opts->verbose || getenv("_BK_NO_CHECK")) {
-		fprintf(stderr, "Clone completed successfully.\n");
-	}
 	return (rc);
 }
 
@@ -549,7 +572,7 @@ clone2(remote *r)
 		return (-1);
 	}
 
-	unless (getenv("_BK_TRANSACTION")) parent(r);
+	parent(r);
 	(void)proj_repoID(0);		/* generate repoID */
 
 	/* validate bam server URL */
@@ -817,10 +840,14 @@ parent(remote *r)
 	char	*p;
 	int	i;
 
+	unless (!opts->populate && !opts->no_parent &&
+	    (!proj_isEnsemble(0) || proj_isProduct(0))) {
+	    	return;
+	}
 	assert(r);
 	cmds[i = 0] = "bk";
 	cmds[++i] = "parent";
-	if (opts->quiet) cmds[++i] = "-q";
+	cmds[++i] = "-q";
 	cmds[++i] = p = remote_unparse(r);
 	cmds[++i] = 0;
 	spawnvp(_P_WAIT, "bk", cmds);

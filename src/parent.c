@@ -34,7 +34,7 @@ parent_main(int ac,  char **av)
 	int	i;
 	char	**pull, **push, *which;
 
-	if (proj_cd2root()) {
+	if (proj_cd2product() && proj_cd2root()) {
 		fprintf(stderr, "parent: cannot find package root.\n");
 		return (1);
 	}
@@ -119,13 +119,6 @@ usage:			system("bk help -s parent"); return (1);
 	/* Print */
 	if (opts.print) {
 		rc = print();
-		goto out;
-	}
-
-	if (proj_isComponent(0)) {
-		fprintf(stderr,
-		    "parent: modifications must be done in the product.\n");
-		rc = 1;
 		goto out;
 	}
 

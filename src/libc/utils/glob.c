@@ -53,6 +53,27 @@ is_glob(char *glob)
 	return (0);
 }
 
+char*
+unescape(char *glob)
+{
+	char	*ret, *p;
+	int	escape = 0;
+
+	unless (glob && *glob) return (0);
+	ret = strdup(glob);
+
+	for (p = ret; *glob; glob++) {
+		if (*glob == '\\') {
+			if (escape) *p++ = '\\';
+			escape = !escape;
+		} else {
+			*p++ = *glob;
+		}
+	}
+	*p = 0;
+	return (ret);
+}
+
 /* Match a string against one glob pattern.  */
 int
 match_one(char *string, char *glob, int ignorecase)
