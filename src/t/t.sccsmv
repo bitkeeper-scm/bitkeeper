@@ -124,7 +124,7 @@ echo OK
 echo $N Test bk rm w/ p locked file .................................$NL
 bk get $Q -e B/file1
 bk rm B/file1
-test -f BitKeeper/deleted/SCCS/s..del-file1 || {
+test -f BitKeeper/deleted/SCCS/s..del-file1* || {
 	echo failed to move file to deleted
 	find . -type f
 	exit 1
@@ -133,11 +133,11 @@ test -f B/SCCS/p.file1 && {
 	echo failed to clean up old p.file
 	exit 1
 }
-test -f BitKeeper/deleted/SCCS/p..del-file1 && {
+test -f BitKeeper/deleted/SCCS/p..del-file1* && {
 	echo failed to toss p..del
 	exit 1
 }
-REV=`bk prs -hr+ -d:I: BitKeeper/deleted/.del-file1`
+REV=`bk prs -hr+ -nd:I: BitKeeper/deleted/SCCS/s..del-file1*`
 if [ ${REV}X != "1.10"X ]; then echo failed 3 $REV; exit 1; fi
 echo OK
 
@@ -160,7 +160,7 @@ bk rm -f foo || {
 	echo rm -f should have worked
 	exit 1
 }
-test -f BitKeeper/deleted/SCCS/s..del-foo || {
+test -f BitKeeper/deleted/SCCS/s..del-foo* || {
 	echo failed to move file to deleted
 	exit 1
 }
@@ -168,7 +168,7 @@ test -f SCCS/p.foo && {
 	echo failed to clean up old p.file
 	exit 1
 }
-test -f BitKeeper/deleted/SCCS/p..del-foo && {
+test -f BitKeeper/deleted/SCCS/p..del-foo* && {
 	echo failed to clean deleted p.file
 	exit 1
 }
@@ -177,7 +177,7 @@ echo OK
 
 echo $N Test bk rm w non p-locked file ..............................$NL
 bk rm C/file3
-test -f BitKeeper/deleted/SCCS/s..del-file3 || {
+test -f BitKeeper/deleted/SCCS/s..del-file3* || {
 	echo failed to move file to deleted
 	exit 1
 }
