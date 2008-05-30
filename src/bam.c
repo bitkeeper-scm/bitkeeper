@@ -1008,7 +1008,7 @@ bam_clean_main(int ac, char **av)
 		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
-	unless (bp_hasBAM()) {
+	unless (bp_hasBAM() && isdir(BAM_ROOT)) {
 		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
@@ -1065,8 +1065,7 @@ bam_clean_main(int ac, char **av)
 	if (pclose(f)) assert(0); /* shouldn't happen */
 
 	/* walk all bp deltas */
-	db = proj_BAMindex(0, 1);
-	assert(db);
+	db = proj_BAMindex(0, 0); /* ok if db==0 */
 	fnames = 0;
 	EACH_KV(db) {
 		/* keep keys we still need */
@@ -1090,6 +1089,7 @@ bam_clean_main(int ac, char **av)
 		fnames = addLine(fnames, strdup(kv.key.dptr));
 	}
 	unless (dryrun) {
+		if (fnames) db = proj_BAMindex(0, 1);
 		EACH(fnames) {
 			mdbm_delete_str(db, fnames[i]);
 			bp_logUpdate(fnames[i], 0);
