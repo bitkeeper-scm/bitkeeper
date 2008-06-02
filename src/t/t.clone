@@ -195,3 +195,12 @@ bk clone "$HERE/project" . >"$HERE"/OUT 2>&1 || {
 	exit 1
 }
 echo OK
+
+echo $N Test clone will emit cannot resolve message even with -q ....$NL
+cd "$HERE"
+bk clone -q bk://doesntexist/foo 2> ERR
+grep -q 'Cannot resolve' ERR || {
+	echo failed
+	exit 1
+}
+echo OK
