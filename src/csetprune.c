@@ -88,7 +88,7 @@ k_err:			fprintf(stderr,
 		sys("bk", "admin", "-z", "ChangeSet", SYS);
 		sys("bk", "renumber", "-q", "ChangeSet", SYS);
 		sys("bk", "checksum", "-fv", "ChangeSet", SYS);
-		sys("bk", "newroot", "-k", ranbits, SYS);
+		sys("bk", "newroot", "-ycsetprune command", "-k", ranbits, SYS);
 		sys("bk", "-r", "check", "-ac", SYS);
 		exit(0);
 	}
@@ -127,7 +127,7 @@ k_err:			fprintf(stderr,
 	sys("bk", "checksum", "-fv", "ChangeSet", SYS);
 	rename("SCCS/s..ChangeSet", "SCCS/b.ChangeSet");
 	verbose((stderr, "Generating a new root key and updating files...\n"));
-	sys("bk", "newroot", "-k", ranbits, SYS);
+	sys("bk", "newroot", "-ycsetprune command", "-k", ranbits, SYS);
 	verbose((stderr, "Running a check -ac...\n"));
 	if (sys("bk", "-r", "check", "-ac", SYS)) exit(1);
 	verbose((stderr, "All operations completed.\n"));

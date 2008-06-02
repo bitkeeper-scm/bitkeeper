@@ -5,6 +5,9 @@ bk newroot \- change the identity of a repository
 .SH SYNOPSIS
 .B bk newroot
 .[OPTreq] \-k randombits
+.[OPTreq] \-y comment
+.br
+.B bk newroot
 .SH DESCRIPTION
 .LP
 .B bk newroot
@@ -20,6 +23,10 @@ any other related repository.
 .OPTreq \-k bits
 Specify the string of random bits used as part of the repository identity.
 The string must be 16 hex digits.
+.TP \-y\*<comment\*>
+.OPTreq \-y comment
+Specify a comment to be used for why the rootkey was changed.
+Must be a single line.
 .SH "SEE ALSO"
 .SA identity
 .SA clone

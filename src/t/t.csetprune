@@ -34,10 +34,26 @@ cd line
 bk edit $Q a
 bk delta $Q -fy1.2 a
 bk commit $Q -y1.3 || exit 1
+OLD=`bk id`
 bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 tip=`bk prs -h -r+ -d':I:\n' ChangeSet`
 if [ "$tip" != 1.2 ]; then echo Failed; exit 1; fi
+echo OK
+
+echo $N Check that the rootlog was preserved ........................$NL
+bk prs -hr+ -d:FD: ChangeSet > GOT
+echo @ROOTLOG > WANT
+# just copy timestamp of new item
+head -2 GOT | tail -1 >> WANT
+echo csetprune command >> WANT
+bk id >> WANT
+# recreate timestamp of original entry from cset@1.0
+bk prs -hr1.0 -nd':USER:@:HOST: :Dy:/:Dm:/:Dd: :T::TZ:' ChangeSet |
+   sed 's/ 20/ /' >> WANT
+echo original >> WANT
+echo $OLD >> WANT
+cmpfiles GOT WANT
 echo OK
 
 # Test inherit of a time zone (this is single user, so no user or host)

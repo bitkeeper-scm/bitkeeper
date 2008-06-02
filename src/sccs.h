@@ -1030,6 +1030,7 @@ void	save_byte_count(unsigned int byte_count);
 char	*getHomeDir(void);
 char	*getDotBk(void);
 char	*age(time_t secs, char *space);
+char	*time2date(time_t tt);
 char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
 int	sccs_tagMerge(sccs *s, delta *d, char *tag);
