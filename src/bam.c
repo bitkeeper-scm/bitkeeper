@@ -1832,7 +1832,8 @@ bam_convert_main(int ac, char **av)
 	system("bk admin -z ChangeSet");
 	system("bk checksum -f/ ChangeSet");
 	ERROR((stderr, "redoing ChangeSet ids ...\n"));
-	sprintf(buf, "bk newroot -kB:%x:", proj_configsize(0, "BAM"));
+	sprintf(buf, "bk newroot -y'bam convert B:%x:' -kB:%x:",
+	    proj_configsize(0, "BAM"), proj_configsize(0, "BAM"));
 	system(buf);
 	if (errors || system("bk -r check -accv")) {
 		ERROR((stderr, "failed\n"));
