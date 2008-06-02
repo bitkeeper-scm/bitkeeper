@@ -201,7 +201,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		usage();
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
-	if (bkd_connect(r, opts->gzip, !opts->quiet)) goto done;
+	if (bkd_connect(r, opts->gzip)) goto done;
 	if (r->compressed) opts->gzip = 0;
 	if (send_clone_msg(r, envVar)) goto done;
 

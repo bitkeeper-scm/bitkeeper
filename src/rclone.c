@@ -145,7 +145,7 @@ rclone_part1(remote *r, char **envVar)
 	char	*p;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
+	if (bkd_connect(r, opts.gzip)) return (-1);
 	if (r->compressed) opts.gzip = 0;
 	if (send_part1_msg(r, envVar)) return (-1);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -220,7 +220,7 @@ rclone_part2(char **av, remote *r, char **envVar, char *bp_keys)
 	u32	bytes;
 	char	buf[MAXPATH];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, opts.verbose)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip)) {
 		rc = 1;
 		goto done;
 	}
@@ -457,7 +457,7 @@ rclone_part3(char **av, remote *r, char **envVar, char *bp_keys)
 	int	n, rc = 0;
 	char	buf[4096];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, opts.verbose)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip)) {
 		rc = 1;
 		goto done;
 	}

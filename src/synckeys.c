@@ -569,7 +569,7 @@ synckeys(remote *r, sccs *s, int flags, FILE *fout)
 	int	rc = 1, i;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r, 0, 1)) return (1);
+	if (bkd_connect(r, 0)) return (1);
 	if (send_sync_msg(r)) goto out;
 	if (r->rfd < 0) goto out;
 

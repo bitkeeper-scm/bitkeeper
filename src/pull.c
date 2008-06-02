@@ -220,7 +220,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r, opts.gzip, !opts.quiet)) return (-1);
+	if (bkd_connect(r, opts.gzip)) return (-1);
 	if (r->compressed) opts.gzip = 0;
 	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
 
@@ -341,7 +341,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	int	rc = 0, n, i;
 	char	buf[MAXPATH * 2];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, !opts.quiet)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip)) {
 		return (-1);
 	}
 	if (send_keys_msg(opts, r, probe_list, envVar)) {

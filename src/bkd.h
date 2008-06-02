@@ -130,7 +130,7 @@ int	get_ok(remote *r, char *read_ahead, int verbose);
 int	send_file(remote *r, char *file, int extra);
 int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
-int	bkd_connect(remote *r, int compress, int verbose);
+int	bkd_connect(remote *r, int compress);
 void	disconnect(remote *r, int how);
 void	drain(void);
 char	**getClientInfoBlock(void);
