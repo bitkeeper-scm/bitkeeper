@@ -448,6 +448,25 @@ grep -q "Cannot resolve host 'badhostname'." ERR || {
 }
 echo OK
 
+echo $N Make sure illegal hostname error is emitted even with -q ....$NL
+bk push -q bk://badhostname 2> ERR
+grep -q "Cannot resolve host 'badhostname'." ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N And the same for pull -q ....................................$NL
+bk pull -q bk://badhostname 2> ERR
+grep -q "Cannot resolve host 'badhostname'." ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+
 # Set up next two tests
 cd "$HERE"
 commercial pull-self

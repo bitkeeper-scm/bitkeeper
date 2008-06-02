@@ -247,7 +247,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-3);
+	if (bkd_connect(r, opts.gzip)) return (-3);
 	if (r->compressed) opts.gzip = 0;
 	if (send_part1_msg(r, envVar)) return (-3);
 	if (r->rfd < 0) return (-1);
@@ -698,7 +698,7 @@ push_part2(char **av,
 	int	n, rc = 0, done = 0, do_pull = 0;
 	char	buf[4096];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, opts.verbose)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip)) {
 		rc = 1;
 		goto done;
 	}
@@ -892,7 +892,7 @@ push_part3(char **av, remote *r, char *rev_list, char **envVar, char *bp_keys)
 	char	*p;
 	char	buf[4096];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, opts.verbose)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip)) {
 		rc = 1;
 		goto done;
 	}

@@ -440,7 +440,7 @@ HOST=`bk gethost -r`
 IP=`bk gethost -nr`
 if [ $IP != "127.0.0.1" ]
 then
-	bk clone $Q "bk://$HOST:$P" "$HERE/copy4" && {
+	bk clone $Q "bk://$HOST:$P" "$HERE/copy4" 2> ERR && {
 		echo failed
 		echo "bk clone bk://$HOST:$P should have failed, but succeeded"
 		exit 1
