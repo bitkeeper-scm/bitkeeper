@@ -554,7 +554,7 @@ $(OBJ) bk.o: $(HDRS)
 
 sccs.h: libc/system.h
 
-tclkey.h: genkeys.pl
+tclkey.h: genkeys.pl ../SCCS/s.ChangeSet
 	perl genkeys.pl > tclkey.h
 
 tclwrap: blowfish.o tclwrap.o libc/libc.a
