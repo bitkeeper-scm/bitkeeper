@@ -21,7 +21,6 @@ typedef	struct {
 	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
 	u32	product:1;		/* is this a product pull? */
 	u32	pass1:1;		/* set if we are driver pull */
-	int	gzip;			/* -z[level] compression */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
 	u32	in, out;		/* stats */
@@ -47,12 +46,12 @@ pull_main(int ac, char **av)
 	int	c, i, j = 1;
 	int	try = -1; /* retry forever */
 	int	rc = 0;
+	int	gzip = 6;
 	opts	opts;
 	remote	*r;
 	char	**envVar = 0, **urls = 0;
 
 	bzero(&opts, sizeof(opts));
-	opts.gzip = 6;
 	opts.automerge = 1;
 	while ((c = getopt(ac, av, "c:DdE:GFilnqr;RstTuw|z|")) != -1) {
 		unless (c == 'r') {
@@ -99,8 +98,8 @@ pull_main(int ac, char **av)
 		    case 'u': opts.update_only = 1; break;
 		    case 'w': opts.delay = atoi(optarg); break;	/* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
-			opts.gzip = optarg ? atoi(optarg) : 6;
-			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
+			if (optarg) gzip = atoi(optarg);
+			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
 		    default:
 			usage();
@@ -169,6 +168,7 @@ err:		freeLines(envVar, free);
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
+		r->gzip_in = gzip;
 		unless (opts.quiet || opts.pass1) {
 			if (i > 1)  printf("\n");
 			fromTo("Pull", r, 0);
@@ -259,8 +259,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	if (bkd_connect(r, opts.gzip, !opts.quiet)) return (-1);
-	if (r->compressed) opts.gzip = 0;
+	if (bkd_connect(r)) return (-1);
 	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -336,7 +335,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	 */
 	if (r->type == ADDR_HTTP) add_cd_command(f, r);
 	fprintf(f, "pull_part2");
-	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
+	fprintf(f, " -z%d", r->gzip);
 	if (opts.dont) fprintf(f, " -n");
 	for (rc = opts.list; rc--; ) fprintf(f, " -l");
 	if (opts.quiet || opts.pass1) fprintf(f, " -q");
@@ -390,7 +389,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	int	rc = 0, n, i;
 	char	buf[MAXPATH * 2];
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, opts.gzip, !opts.quiet)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
 		return (-1);
 	}
 	if (send_keys_msg(opts, r, probe_list, envVar)) {
@@ -726,7 +725,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	    (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
 		chdir(ROOT2RESYNC);
 		rc = bkd_BAM_part3(r, envVar, opts.quiet,
-		    "- < " CSETS_IN, opts.gzip);
+		    "- < " CSETS_IN);
 		chdir(RESYNC2ROOT);
 		if (rc) {
 			fprintf(stderr, "BAM fetch failed, aborting pull.\n");
@@ -811,7 +810,7 @@ takepatch(opts opts, remote *r)
 	}
 
 	unless (opts.quiet) {
-		if (opts.gzip) {
+		if (r->gzip) {
 			fprintf(stderr, "%s uncompressed to %s, ",
 			    psize(opts.in), psize(opts.out));
 			fprintf(stderr,

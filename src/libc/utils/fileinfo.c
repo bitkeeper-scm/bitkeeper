@@ -249,7 +249,7 @@ closeBadFds(void)
 	for (i = 0; i < 3; i++) {
 		fh = (HANDLE)_get_osfhandle(i);
 		if ((fh == INVALID_HANDLE_VALUE) ||
-		    (is_vista() && (fh == INVALID_HANDLE_VALUE_VISTA))) {
+		    (is_vista() && (fh == (HANDLE)INVALID_HANDLE_VALUE_VISTA))) {
 			close(i);
 		}
 	}

@@ -75,7 +75,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 
 	r = remote_parse(url, 0);
 	assert(r);
-	if (bkd_connect(r, 0, 1)) return (1);
+	if (bkd_connect(r)) return (1);
 	bkmsg = bktmp(0, "mail");
 	f = fopen(bkmsg, "w");
 	assert(f);

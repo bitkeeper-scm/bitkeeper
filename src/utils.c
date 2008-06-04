@@ -504,16 +504,15 @@ isCsetFile(char *spath)
 }
 
 int
-bkd_connect(remote *r, int compress, int verbose)
+bkd_connect(remote *r)
 {
 	assert((r->rfd == -1) && (r->wfd == -1));
-	r->pid = bkd(compress, r);
+	r->pid = bkd(r);
 	if (r->trace) {
 		fprintf(stderr,
 		    "bkd_connect: r->rfd = %d, r->wfd = %d\n", r->rfd, r->wfd);
 	}
 	if (r->wfd >= 0) return (0);
-	unless (verbose) return (-1);
 	if (r->badhost) {
 		fprintf(stderr, "Cannot resolve host '%s'.\n", r->host);
 	} else if (r->badconnect) {

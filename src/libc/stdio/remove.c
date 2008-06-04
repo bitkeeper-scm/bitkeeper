@@ -42,6 +42,9 @@ __RCSID("$NetBSD: remove.c,v 1.12 1999/09/20 04:39:32 lukem Exp $");
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef WIN32
+#define	lstat(file, sb)	stat(file, sb)	/* No lstat() on windows */
+#endif
 
 #include <assert.h>
 #include <errno.h>

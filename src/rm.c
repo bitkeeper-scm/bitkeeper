@@ -37,41 +37,34 @@ usage:			system("bk help -s rm");
 char *
 sccs_rmName(sccs *s)
 {
-	char	path[MAXPATH];
-	char	*r, *t, *b;
+	char	*rand, *t, *base, *root;
 	int	try = 0;
 	delta	*d;
-	char	*root;
+	char	path[MAXPATH];
+	char	buf[50];
 
-	b = basenm(s->sfile);
-	b += 2;
+	base = basenm(s->sfile);
+	base += 2;
 	unless (root = proj_root(s->proj)) {
 		fprintf(stderr, "sccsrm: cannot find root?\n");
 		return (NULL);
 	}
 
-	/* easy way */
-	sprintf(path, "%s/BitKeeper/deleted/SCCS/s..del-%s", root, b);
-	unless (exists(path)) return (strdup(path));
-
-	/* hard way */
 	sprintf(path, "%s/BitKeeper/deleted/SCCS", root);
 	t = &path[strlen(path)];
 	*t++ = '/';
 	d = sccs_ino(s);
 	if (d->random) {
-		r = d->random;
+		rand = d->random;
 	} else {
-		char	buf[50];
-
 		sprintf(buf, "%05u", d->sum);
-		r = buf;
+		rand = buf;
 	}
 	for (try = 0; ; try++) {
 		if (try) {
-			sprintf(t, "s..del-%s~%s~%d", b, r, try);
+			sprintf(t, "s..del-%s~%s~%d", base, rand, try);
 		} else {
-			sprintf(t, "s..del-%s~%s", b, r);
+			sprintf(t, "s..del-%s~%s", base, rand);
 		}
 		unless (exists(path)) break;
 	}

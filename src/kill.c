@@ -29,7 +29,7 @@ usage:		fprintf(stderr, "Usage: bk kill URL\n");
 		goto usage;
 	}
 
-	if (bkd_connect(r, 0, 0)) {
+	if (bkd_connect(r)) {
 		fprintf(stderr, "kill: failed to connect to %s\n", av[1]);
 		return (1);
 	}

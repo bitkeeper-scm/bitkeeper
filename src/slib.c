@@ -54,7 +54,6 @@ private	int	unlinkGfile(sccs *s);
 private int	write_pfile(sccs *s, int flags, delta *d,
 		    char *rev, char *iLst, char *i2, char *xLst, char *mRev);
 private time_t	date2time(char *asctime, char *z, int roundup);
-private char	*time2date(time_t tt);
 private	char	*sccsrev(delta *d);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 private void	updatePending(sccs *s);
@@ -4906,7 +4905,7 @@ testdate(time_t t)
  * get the full time string.
  * Return value is in a staticly allocated buffer.
  */
-private char *
+char *
 time2date(time_t tt)
 {
 	static	char	tmp[50];

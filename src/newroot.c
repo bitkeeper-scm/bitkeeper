@@ -1,23 +1,32 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-private int	newroot(char *ranbits, int quiet);
+
+private int	newroot(char *ranbits, int quiet, char *comment);
+private void	update_rootlog(sccs *s, char *key, char *comment);
 
 int
 newroot_main(int ac, char **av)
 {
 	int	c, quiet = 0;
 	char	*ranbits = 0;
+	char	*comments = 0;
 	u8	*p;
 
-	while ((c = getopt(ac, av, "k:q")) != -1) {
+	while ((c = getopt(ac, av, "k:qy:")) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
 		    case 'q': quiet = 1; break;
+		    case 'y': comments = optarg; break;
 		    default:
 usage:			sys("bk", "help", "-s", "newroot", SYS);
 			return (1);
 		}
+	}
+	unless (comments) comments = "newroot command";
+	if (strchr(comments, '\n')) {
+		fprintf(stderr, "ERROR: -y comment must only be one line\n");
+		goto usage;
 	}
 	if (ranbits && !strneq("B:", ranbits, 2)) {
 		if (strlen(ranbits) > 16) {
@@ -32,7 +41,7 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	return (newroot(ranbits, quiet));
+	return (newroot(ranbits, quiet, comments));
 }
 
 /*
@@ -40,10 +49,10 @@ k_err:			fprintf(stderr,
  * Update the csetfile pointer in all files.
  */
 private int
-newroot(char *ranbits, int quiet)
+newroot(char *ranbits, int quiet, char *comments)
 {
 	sccs	*s;
-	int	rc = 0;
+	int	rc = 0, i;
 	char	*p;
 	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
@@ -58,6 +67,19 @@ newroot(char *ranbits, int quiet)
 		fprintf(stderr, "Cannot init ChangeSet.\n");
 		exit(1);
 	}
+	/* create initial ROOTLOG, if needed. */
+	EACH (s->text) {
+		if (streq(s->text[i], "@ROOTLOG")) {
+			i = -1;
+			break;
+		}
+	}
+	unless (i == -1) {
+		s->text = addLine(s->text, strdup("@ROOTLOG"));
+		sccs_sdelta(s, sccs_ino(s), key);
+		update_rootlog(s, key, "original");
+	}
+
 	if (ranbits) {
 		if (strneq(ranbits, "B:", 2)) {
 			if (strneq("B:", s->tree->random, 2)) {
@@ -93,7 +115,9 @@ newroot(char *ranbits, int quiet)
 		free(s->tree->random);
 	}
 	s->tree->random = strdup(buf);
+
 	sccs_sdelta(s, sccs_ino(s), key);
+	update_rootlog(s, key, comments);
 	sccs_newchksum(s);
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
@@ -121,6 +145,35 @@ newroot(char *ranbits, int quiet)
 		sccs_free(s);
 	}
 	pclose(f);
+
 	unless (quiet) fprintf(stderr, "\n");
 	return (rc);
+}
+
+private void
+update_rootlog(sccs *s, char *key, char *comments)
+{
+	char	**oldtext;
+	int	i;
+	time_t	now = time(0);
+
+	oldtext = s->text;
+	s->text = 0;
+	EACH (oldtext) {
+		s->text = addLine(s->text, oldtext[i]);
+		unless (streq(oldtext[i], "@ROOTLOG")) continue;
+
+		if (streq(comments, "original")) {
+			s->text = addLine(s->text, aprintf("%s@%s %s%s",
+				s->tree->user, s->tree->hostname,
+				s->tree->sdate, s->tree->zone));
+		} else {
+			s->text = addLine(s->text, aprintf("%s@%s %s%s",
+				sccs_user(), sccs_host(),
+				time2date(now), sccs_zone(now)));
+		}
+		s->text = addLine(s->text, strdup(comments));
+		s->text = addLine(s->text, strdup(key));
+	}
+	if (oldtext) freeLines(oldtext, 0);
 }

@@ -84,6 +84,8 @@ retry:	unlink(uniq);
 				free(p);
 				free(uniq);
 				return (0);
+				/* Not reached, avoids gcc warning */
+				goto retry;
 			}
 			unlink(file);
 		}
