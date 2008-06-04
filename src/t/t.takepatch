@@ -30,7 +30,7 @@ echo $N Test basic takepatch ........................................$NL
 cd "$HERE"
 bk clone $Q -r1.2 project clone1
 cd project
-bk makepatch $Q -r1.2..+ > "$HERE/patch"
+bk makepatch $Q -d -r1.2..+ > "$HERE/patch" || exit 1
 cd "$HERE/clone1"
 bk lease flush -a
 bk takepatch $Q -a < "$HERE/patch" || exit 1
