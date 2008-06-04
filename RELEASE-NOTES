@@ -1,3 +1,28 @@
+Release notes for BitKeeper version 4.1.2 (released 04-Jun-2008)
+
+bk undo / clone -rREV
+    Fixed a bug where some files being undeleted sometimes failed to be
+    checked out.
+
+bk collapse
+    Now obtains a repository write lock for duration of operation.
+
+bk import
+    Fix an issue with importing tags from a CVS repository.
+
+bk changes
+    Handle some more problem where SCCS files are marked 'gone', but not
+    removed from the repository.
+
+bk makepatch
+   The -d option to generate diffs was broken.
+
+BAM (Binary Asset Management)
+   Fix problems with locking and BAM where concurrent operations would
+   fail with no explination.  Operations will now block much less, and
+   see less concurrency problems.  Also locking failures are reported
+   to the user.
+
 ===============================================================================
 Release notes for BitKeeper version 4.1.1a (released 03-Apr-2008)
 
