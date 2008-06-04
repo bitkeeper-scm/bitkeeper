@@ -85,7 +85,7 @@ filetime2timet(FILETIME *ft)
 }
 
 private void
-timet2filetime(time_t *t, FILETIME *ft)
+timet2filetime(const time_t *t, FILETIME *ft)
 {
 	__int64	ftime = *t;
 
@@ -114,7 +114,7 @@ attribute2mode(int attribute)
 }
 
 int
-nt_utime(char *file, struct utimbuf *ut)
+nt_utime(const char *file, const struct utimbuf *ut)
 {
 	HANDLE	fh;
 	FILETIME	atime, mtime;

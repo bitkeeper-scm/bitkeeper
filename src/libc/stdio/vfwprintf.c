@@ -856,7 +856,7 @@ WDECL(__vf,printf_unlocked)(FILE *fp, const CHAR_T *fmt0, va_list ap)
 	 * Scan the format for conversions (`%' character).
 	 */
 	for (;;) {
-		const CHAR_T *result;
+		const CHAR_T *result = 0;
 
 		for (cp = fmt; (ch = *fmt) != '\0' && ch != '%'; fmt++)
 			continue;

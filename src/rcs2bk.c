@@ -323,9 +323,11 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 	MMAP	*init;
 	char	*t, *q;
 	sym	*sy;
-	pid_t	pid;
 	static	char *buf = 0;
 	static	int buflen;
+#ifndef	WIN32
+	pid_t	pid;
+#endif
 
 	unless (buf) buf = malloc(buflen = 64<<10);
 #ifdef	WIN32

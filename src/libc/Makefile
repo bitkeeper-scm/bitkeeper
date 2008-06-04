@@ -14,6 +14,7 @@ include tcp/Makefile
 include utils/Makefile
 ifeq "$(OSTYPE)" "msys"
 include win32/Makefile
+XCPPFLAGS=-Wno-redundant-decls
 endif
 include zlib/Makefile
 
@@ -61,4 +62,4 @@ tags.local: $(SRCS) $(HDRS)
 		$(patsubst %,libc/%,$^)
 .c.o:
 	$(if $(Q),@echo CC libc/$<,)
-	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(Q)$(CC) $(CFLAGS) $(XCPPFLAGS) $(CPPFLAGS) -c $< -o $@

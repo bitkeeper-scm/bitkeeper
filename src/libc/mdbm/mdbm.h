@@ -354,9 +354,6 @@ char * mdbm_alloc_page(MDBM *);
 #include "win32/misc.h"
 #endif
 
-#ifdef	WIN32
-#define	bzero(s, l)	memset(s, 0, l)
-#endif
 #ifndef	SGI
 /* define locking stuff to null */
 #define	init_lock(x)

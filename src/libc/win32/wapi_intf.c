@@ -1145,7 +1145,7 @@ stuck(char *fmt, const char *arg)
 }
 
 int
-nt_rmdir(char *dir)
+nt_rmdir(const char *dir)
 {
 	HANDLE	h;
 	int	err, i = 0;

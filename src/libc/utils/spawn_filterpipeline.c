@@ -51,7 +51,7 @@ spawn_filterPipeline(char **cmds)
 			while (1) {
 				DWORD	bytes, b, c;
 
-				rc = PeekNamedPipe(_get_osfhandle(0),
+				rc = PeekNamedPipe((HANDLE)_get_osfhandle(0),
 				    &lookahead, 1, &bytes, &b, &c);
 
 				if (rc && (bytes == 1)) break;

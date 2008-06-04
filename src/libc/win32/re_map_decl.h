@@ -17,10 +17,11 @@ int	nt_chmod(const char *, int);
 int	nt_stat(const char *, struct stat *);
 int	nt_mkdir(char *dirname);
 int	nt_chdir(char *dirname);
-int	nt_utime(char *file, struct utimbuf *ut);
+int	nt_utime(const char *file, const struct utimbuf *ut);
 pid_t	nt_execvp (char *cmd, char **av);
-int	nt_rmdir(char *dirname);
+int	nt_rmdir(const char *dirname);
 int	nt_link(const char *file1, const char *file2);
+void	nt_sync(void);
 
 /* functions that return file name as output */
 char*	nt_tmpnam(void);
