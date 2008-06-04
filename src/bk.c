@@ -237,7 +237,10 @@ main(int ac, char **av, char **env)
 			}
 		}
 
-		if (remote) return (remote_bk(quiet, ac, av));
+		if (remote) {
+			ret = remote_bk(quiet, ac, av);
+			goto out;
+		}
 
 		if (dashr) {
 			if (dir) {
@@ -252,22 +255,43 @@ main(int ac, char **av, char **env)
 			}
 		}
 		if (locking) {
-			if (streq(locking, "r")) {
-				if (repository_rdlock()) {
-					fprintf(stderr,
-"%s: failed to get repository read lock.\n", av[0]);
-					return (1);
+			int	waitsecs;
+
+			if (locking[1]) {
+				waitsecs = strtoul(locking+1, &p, 10);
+				unless (*p == 0) {
+bad_locking:				fprintf(stderr,
+					    "bk: unknown option -L%s\n",
+					    locking);
+					ret = 1;
+					goto out;
 				}
-			} else if (streq(locking, "w")) {
-				if (repository_wrlock()) {
-					fprintf(stderr,
-"%s: failed to get repository write lock.\n", av[0]);
-					return (1);
-				}
+			} else if ((p = proj_configval(0, "lockwait")) &&
+			    isdigit(*p)) {
+				waitsecs = atoi(p);
 			} else {
-				fprintf(stderr,
-				    "bk: unknown option -L%s\n", locking);
-				return (1);
+				waitsecs = 30;
+			}
+			while (1) {
+				if (*locking == 'r') {
+					unless (repository_rdlock()) break;
+				} else if (*locking == 'w') {
+					unless (repository_wrlock()) break;
+				} else {
+					goto bad_locking;
+				}
+				if (waitsecs == 0) {
+					fprintf(stderr,
+					    "%s: failed to get repository %s "
+					    "lock.\n",
+					    av[0],
+					    (*locking == 'r') ?
+					    "read" : "write");
+					ret = 2;
+					goto out;
+				}
+				--waitsecs;
+				sleep(1);
 			}
 		}
 
@@ -324,6 +348,7 @@ run:	getoptReset();
 	if (locking && streq(locking, "r")) repository_rdunlock(0);
 	if (locking && streq(locking, "w")) repository_wrunlock(0);
 
+out:
 	/* flush stdout/stderr, needed for bk-remote on windows */
 	fflush(stdout);
 	close(1);

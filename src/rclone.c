@@ -142,6 +142,7 @@ done:	putenv("BK_CSETS=");
 private int
 rclone_part1(remote *r, char **envVar)
 {
+	int	rc;
 	char	*p;
 	char	buf[MAXPATH];
 
@@ -176,9 +177,10 @@ rclone_part1(remote *r, char **envVar)
 		return (-1);
 	}
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
-	if (bp_updateServer(getenv("BK_CSETS"), 0, !opts.verbose)) {
-		fprintf(stderr,
-		    "Unable to update BAM server %s\n", bp_serverURL());
+	if (rc = bp_updateServer(getenv("BK_CSETS"), 0, !opts.verbose)) {
+		fprintf(stderr, "Unable to update BAM server %s (%s)\n",
+		    bp_serverURL(),
+		    (rc == 2) ? "can't get lock" : "unknown reason");
 		return (-1);
 	}
 	return (0);
