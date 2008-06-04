@@ -112,7 +112,7 @@ server(int recurse)
  * we won't request data.
  */
 int
-bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range, int gzip)
+bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 {
 	FILE	*f;
 	int	i, bytes, rc = 1;
@@ -121,7 +121,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range, int gzip)
 	char	cmd_file[MAXPATH];
 	char	buf[BSIZE];	/* must match remote.c:doit()/buf */
 
-	if ((r->type == ADDR_HTTP) && bkd_connect(r, gzip)) {
+	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
 		return (-1);
 	}
 	bktmp(cmd_file, "BAMmsg");
@@ -140,7 +140,7 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range, int gzip)
 	} else {
 		fprintf(f, "bk -zo0 -Bstdin sfio -oqBl -\n");
 	}
-	if (rc = bp_sendkeys(f, range, &sfio, gzip)) goto done;
+	if (rc = bp_sendkeys(f, range, &sfio, r->gzip)) goto done;
 	fprintf(f, "rdunlock\n");
 	fprintf(f, "quit\n");
 	fclose(f);

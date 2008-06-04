@@ -773,10 +773,11 @@ typedef struct {
 	u16	badconnect:1;	/* if set, connect failed */
 	u16	withproxy:1;	/* connected via a proxy */
 	u16	remote_cmd:1;	/* client wants to run command via bkd */
-	u32	compressed:1;	/* using compressed connection to bkd*/
 	int	rfd;		/* read fd for the remote channel */
 	FILE	*rf;		/* optional stream handle for remote channel */
 	int	wfd;		/* write fd for the remote channel */
+	int	gzip_in;	/* gzip-level wanted by user*/
+	int	gzip;		/* gzip-level to use in protocal */
 	char	*user;		/* remote user if set */
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
@@ -1230,8 +1231,8 @@ char	*bp_serverID(int notme);
 char	*bp_serverURL2ID(char *url);
 void	bp_setBAMserver(char *path, char *url, char *repoid);
 int	bp_hasBAM(void);
-u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz);
-int	bkd_BAM_part3(remote *r, char **env, int quiet, char *range, int gz);
+u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip);
+int	bkd_BAM_part3(remote *r, char **env, int quiet, char *range);
 int	bp_sendkeys(FILE *f, char *range, u64 *bytes, int gzip);
 int	zgets_hread(void *token, u8 **buf);
 int	zgets_hfread(void *token, u8 **buf);

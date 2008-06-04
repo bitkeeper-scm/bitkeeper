@@ -119,7 +119,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 
 	unless (r) return (1<<2);
 	r->remote_cmd = 1;
-	if (bkd_connect(r, 0)) return (1<<3);
+	if (bkd_connect(r)) return (1<<3);
 	u = remote_unparse(r);
 	tmpf = bktmp(0, "rcmd");
 	f = fopen(tmpf, "w");

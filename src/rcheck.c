@@ -67,7 +67,7 @@ remoteCheck(remote *r)
 	char	buf[MAXPATH];
 	int	rc = 0;
 
-	if (bkd_connect(r, 0)) return (1);
+	if (bkd_connect(r)) return (1);
 	if (send_check_msg(r)) return (1);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 

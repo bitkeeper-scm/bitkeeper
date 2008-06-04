@@ -13,7 +13,6 @@ struct {
 	u32	quiet:1;		/* -q: shut up */
 	u32	link:1;			/* -l: lclone-mode */
 	int	delay;			/* wait for (ssh) to drain */
-	int	gzip;			/* -z[level] compression */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
 } *opts;
@@ -35,11 +34,11 @@ int
 clone_main(int ac, char **av)
 {
 	int	c, rc;
+	int	gzip = 6;
 	char	**envVar = 0;
 	remote 	*r = 0;
 
 	opts = calloc(1, sizeof(*opts));
-	opts->gzip = 6;
 	while ((c = getopt(ac, av, "B;dE:lqr;w|z|")) != -1) {
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
@@ -56,8 +55,8 @@ clone_main(int ac, char **av)
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
 		    case 'w': opts->delay = atoi(optarg); break; /* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
-			opts->gzip = optarg ? atoi(optarg) : 6;
-			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = 6;
+			if (optarg) gzip = atoi(optarg);
+			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
 		    default:
 			usage();
@@ -81,7 +80,7 @@ clone_main(int ac, char **av)
 	 * for the client side, since we have no tree yet
 	 */
 	unless (r = remote_parse(av[optind], REMOTE_BKDURL)) usage();
-
+	r->gzip_in = gzip;
 	if (r->host) {
 		if (opts->link) {
 			fprintf(stderr, "clone: no -l for remote sources.\n");
@@ -170,7 +169,7 @@ send_clone_msg(remote *r, char **envVar)
 	sendEnv(f, envVar, r, SENDENV_NOREPO);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
-	if (opts->gzip) fprintf(f, " -z%d", opts->gzip);
+	fprintf(f, " -z%d", r->gzip);
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
 	if (opts->quiet) fprintf(f, " -q");
 	if (opts->delay) fprintf(f, " -w%d", opts->delay);
@@ -201,8 +200,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		usage();
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
-	if (bkd_connect(r, opts->gzip)) goto done;
-	if (r->compressed) opts->gzip = 0;
+	if (bkd_connect(r)) goto done;
 	if (send_clone_msg(r, envVar)) goto done;
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -308,7 +306,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	if ((r->type == ADDR_HTTP) || !do_part2) disconnect(r, 2);
 	if (do_part2) {
 		p = aprintf("-r..'%s'", opts->rev ? opts->rev : "");
-		rc = bkd_BAM_part3(r, envVar, opts->quiet, p, opts->gzip);
+		rc = bkd_BAM_part3(r, envVar, opts->quiet, p);
 		free(p);
 		if (rc) goto done;
 	}
@@ -504,7 +502,7 @@ sfio(remote *r, int BAM, char *prefix)
 	fclose(f);
 	waitpid(pid, &status, 0);
 	unless (opts->quiet) {
-		if (opts->gzip) {
+		if (r->gzip) {
 			fprintf(stderr, "%s uncompressed to %s, ",
 			    psize(opts->in), psize(opts->out));
 			fprintf(stderr,

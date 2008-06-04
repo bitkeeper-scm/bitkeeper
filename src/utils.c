@@ -504,10 +504,10 @@ isCsetFile(char *spath)
 }
 
 int
-bkd_connect(remote *r, int compress)
+bkd_connect(remote *r)
 {
 	assert((r->rfd == -1) && (r->wfd == -1));
-	r->pid = bkd(compress, r);
+	r->pid = bkd(r);
 	if (r->trace) {
 		fprintf(stderr,
 		    "bkd_connect: r->rfd = %d, r->wfd = %d\n", r->rfd, r->wfd);

@@ -344,7 +344,7 @@ bkd_tcp_connect(remote *r)
  * **Win32 note: ssh does not work with BitKeeper when CYGWIN=tty is set,
  */
 pid_t
-bkd(int compress, remote *r)
+bkd(remote *r)
 {
 	char	*t, *freeme = 0;
 	char	*remsh;
@@ -354,6 +354,9 @@ bkd(int compress, remote *r)
 	pid_t	p = -1;
 	char	*cmd[100];
 	char	port[6];
+
+	/* default to user's compress level, but override later */
+	r->gzip = r->gzip_in;
 
 	if (r->port && (r->type != ADDR_SSH) && !r->loginshell) {
 		assert(r->host);
@@ -378,7 +381,7 @@ bkd(int compress, remote *r)
 		} else {
 			/* use rsh if told, or preferred or no ssh */
 			remsh = "ssh";
-			remopts = compress ? "-C" : 0;
+			remopts = r->gzip ? "-C" : 0;
 			if ((r->type == ADDR_RSH) ||
 			    ((r->type == ADDR_NFS) &&
 			    (t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
@@ -400,7 +403,7 @@ bkd(int compress, remote *r)
 			cmd[i = 0] = remsh;
 			if (remopts) { /* must be -C above */
 				cmd[++i] = remopts;
-				r->compressed = 1;
+				r->gzip = 0; /* don't compress extra */
 			}
 		}
 		cmd[++i] = r->host;
