@@ -58,7 +58,10 @@ fdopen(fd, mode)
 	const char *mode;
 {
 	FILE *fp;
-	int flags, oflags, fdflags, tmp;
+	int flags, oflags, fdflags;
+#ifndef	WIN32
+	int tmp;
+#endif
 
 	assert(fd != -1);
 

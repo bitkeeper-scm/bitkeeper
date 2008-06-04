@@ -175,6 +175,9 @@ extern FILE __sF[];
  */
 				/* must be == _POSIX_STREAM_MAX <limits.h> */
 #define	FOPEN_MAX	20	/* must be <= OPEN_MAX <sys/syslimits.h> */
+#ifdef WIN32
+#undef FILENAME_MAX
+#endif
 #define	FILENAME_MAX	1024	/* must be <= PATH_MAX <sys/syslimits.h> */
 
 /* Always ensure that these are consistent with <fcntl.h> and <unistd.h>! */

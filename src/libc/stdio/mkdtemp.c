@@ -57,8 +57,7 @@ __RCSID("$NetBSD: mkdtemp.c,v 1.8 2003/08/07 16:43:28 agc Exp $");
 #endif
 
 char *
-mkdtemp(path)
-	char *path;
+mkdtemp(char *path)
 {
 	assert(path != NULL);
 
