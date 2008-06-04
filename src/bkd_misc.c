@@ -325,7 +325,7 @@ err:			if (zout) {
 				wnext += i;
 			} else {
 				perror("write");
-				goto err;
+				break;
 			}
 		}
 		if (FD_ISSET(fd1, &rfds)) {
@@ -337,8 +337,8 @@ err:			if (zout) {
 				} else {
 					fputs(hdr, stdout);
 					if (fwrite(buf, 1, i, stdout) != i) {
-						perror("writen");
-						goto err;
+						perror("fwrite");
+						break;
 					}
 				}
 			} else {
@@ -355,8 +355,8 @@ err:			if (zout) {
 				} else {
 					fputs(hdr, stdout);
 					if (fwrite(buf, 1, i, stdout) != i) {
-						perror("writen");
-						goto err;
+						perror("fwrite");
+						break;
 					}
 				}
 			} else {

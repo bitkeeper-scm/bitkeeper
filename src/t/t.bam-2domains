@@ -646,7 +646,7 @@ test -d C2 && {
 	find C2 -print
 	exit 1
 }
-grep -q "ERROR-unable to update BAM server bk://localhost:$P/S" OUT || {
+grep -q "ERROR-unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -666,7 +666,7 @@ test -d C2 && {
 	find C2 -print
 	exit 1
 }
-grep -q "ERROR-unable to update BAM server bk://localhost:$P/S" OUT || {
+grep -q "ERROR-unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -689,7 +689,7 @@ test -d C2 && {
 	find C2 -print
 	exit 1
 }
-grep -q "ERROR-unable to update BAM server bk://localhost:$P/S" OUT || {
+grep -q "ERROR-unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -702,18 +702,12 @@ cd S
 bk lock -rt > ../LOCK &
 bk lock -L
 cd ..
-bk clone -Bnone C1 C2 > OUT 2>&1
+bk clone -Bnone $Q C1 C2 || {
+	bk _kill `cat LOCK`
+	echo clone should have worked
+	exit 1
+}
 bk _kill `cat LOCK`
-test -d C2 && {
-	echo should not have cloned
-	find C2 -print
-	exit 1
-}
-grep -q "ERROR-unable to update BAM server bk://localhost:$P/S" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
-}
 echo OK
 
 echo $N rClone C1 to C2 with part in C1 and rest in S w/ S wlocked ..$NL
@@ -733,7 +727,7 @@ test -f C2/SCCS/s.ChangeSet && {
 	find C2 -print
 	exit 1
 }
-grep -q "Unable to update BAM server bk://localhost:$P/S" OUT || {
+grep -q "Unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -755,7 +749,7 @@ test -f C2/SCCS/s.ChangeSet && {
 	find C2 -print
 	exit 1
 }
-grep -q "Unable to update BAM server bk://localhost:$P/S" OUT || {
+grep -q "Unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -782,7 +776,7 @@ test -f C2/SCCS/s.ChangeSet && {
 	find C2 -print
 	exit 1
 }
-grep -q "Unable to update BAM server bk://localhost:$P/S" OUT || {
+grep -q "Unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -795,20 +789,12 @@ cd S
 bk lock -rt > ../LOCK &
 bk lock -L
 cd ..
-bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
+bk clone -Bnone $Q C1 bk://localhost:$P/C2 || {
+	bk _kill `cat LOCK`
+	echo clone should have worked
+	exit 1
+}
 bk _kill `cat LOCK`
-# This one will leave an empty repo, can't be helped if we want to do it 
-# post pre-incoming triggers.
-test -f C2/SCCS/s.ChangeSet && {
-	echo should not have cloned
-	find C2 -print
-	exit 1
-}
-grep -q "Unable to update BAM server bk://localhost:$P/S" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
-}
 echo OK
 
 echo $N Push C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
@@ -827,7 +813,7 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
-grep -q "unable to update BAM server bk://localhost:$P/S" OUT || {
+grep -q "unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -847,7 +833,7 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
-grep -q "unable to update BAM server bk://localhost:$P/S" OUT || {
+grep -q "unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -870,7 +856,7 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
-grep -q "unable to update BAM server bk://localhost:$P/S" OUT || {
+grep -q "unable to update BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -883,18 +869,12 @@ cd S
 bk lock -rt > ../LOCK &
 bk lock -L
 cd ../C1
-bk push ../C2 > OUT 2>&1
+bk push $Q ../C2 || {
+	bk _kill `cat ../LOCK`
+	echo push should work
+	exit 1
+}
 bk _kill `cat ../LOCK`
-bk changes -L ../C2 > LOCAL
-test -s LOCAL || {
-	echo should not have sent csets without BAM data
-	exit 1
-}
-grep -q "unable to update BAM server bk://localhost:$P/S" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
-}
 echo OK
 
 echo $N Pull C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
@@ -913,7 +893,7 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
-grep -q "Unable to update remote BAM server bk://localhost:$P/S" OUT || {
+grep -q "Unable to update remote BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -933,7 +913,7 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
-grep -q "Unable to update remote BAM server bk://localhost:$P/S" OUT || {
+grep -q "Unable to update remote BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -956,7 +936,7 @@ test -s LOCAL || {
 	echo should not have sent csets without BAM data
 	exit 1
 }
-grep -q "Unable to update remote BAM server bk://localhost:$P/S" OUT || {
+grep -q "Unable to update remote BAM server bk://localhost:$P/S (can't get lock)" OUT || {
 	echo wrong error message
 	cat OUT
 	exit 1
@@ -969,16 +949,10 @@ cd S
 bk lock -rt > ../LOCK &
 bk lock -L
 cd ../C2
-bk pull ../C1 > OUT 2>&1
+bk pull $Q ../C1 || {
+	bk _kill `cat ../LOCK`
+	echo push should work
+	exit 1
+}
 bk _kill `cat ../LOCK`
-bk changes -L ../C1 > LOCAL
-test -s LOCAL || {
-	echo should not have sent csets without BAM data
-	exit 1
-}
-grep -q "Unable to update remote BAM server bk://localhost:$P/S" OUT || {
-	echo wrong error message
-	cat OUT
-	exit 1
-}
 echo OK

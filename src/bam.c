@@ -587,7 +587,7 @@ bp_updateServer(char *range, char *list, int quiet)
 	rc = sysio(tmpkeys, tmpkeys2, 0,
 	    "bk", p, "-Lr", "-Bstdin", "havekeys", "-Bl", "-", SYS);
 	free(p);
-	unless (rc || (sizeof(tmpkeys2) == 0)) {
+	unless (rc || (size(tmpkeys2) == 0)) {
 		unless (quiet) {
 			fprintf(stderr, "Updating BAM files at %s\n", url);
 		}
@@ -616,6 +616,15 @@ bp_updateServer(char *range, char *list, int quiet)
 	free(tmpkeys);
 	unlink(tmpkeys2);
 	free(tmpkeys2);
+	rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 99;
+	if (rc && !quiet) {
+		fprintf(stderr, "Update failed: ");
+		if (rc == 2) {
+			fprintf(stderr, "unable to acquire repository lock\n");
+		} else {
+			fprintf(stderr, "unknown reason\n");
+		}
+	}
 	return (rc);
 }
 
