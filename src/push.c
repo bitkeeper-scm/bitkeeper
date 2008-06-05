@@ -769,11 +769,12 @@ push_part2(char **av,
 			 * want to add a 'commit or undo' phase to the
 			 * protocol right about here. */
 			goto done;
-		} else if (bp_updateServer(0, rev_list, !opts.verbose)) {
+		} else if (i = bp_updateServer(0, rev_list, !opts.verbose)) {
 			/* push BAM data to server */
 			fprintf(stderr,
-			    "push: unable to update BAM server %s\n",
-			    bp_serverURL());
+			    "push: unable to update BAM server %s (%s)\n",
+			    bp_serverURL(),
+			    (i == 2) ? "can't get lock" : "unknown reason");
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 2;

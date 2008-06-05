@@ -248,8 +248,10 @@ err:			printf("ERROR-protocol error in modules\n");
 		goto done;
 	}
 
-	if (bp_updateServer(0, keys, SILENT)) {
-		printf("@UNABLE TO UPDATE BAM SERVER %s@\n", bp_serverURL());
+	if (rc = bp_updateServer(0, keys, SILENT)) {
+		printf("@UNABLE TO UPDATE BAM SERVER %s (%s)@\n",
+		    bp_serverURL(),
+		    (rc == 2) ? "can't get lock" : "unknown reason");
 		rc = 1;
 		goto done;
 	}
