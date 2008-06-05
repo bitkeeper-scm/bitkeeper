@@ -155,6 +155,12 @@ cat <<EOF > WANT_TAGS
 1.2 tag_start
 EOF
 bk diff -u TAGS WANT_TAGS
+bk renumber ChangeSet 2> ERR
+test -s ERR && {
+	echo failed
+	cat ERR
+	exit 1
+}
 echo OK
 
 echo $N Import CVS branch1...........................................$NL

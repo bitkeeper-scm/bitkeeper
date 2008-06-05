@@ -933,10 +933,17 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 			s = sccs_keyinitAndCache(
 				keys[i], iflags, &idDB, graphDB, goneDB);
 			unless (s && !CSET(s)) continue;
-			if (mdbm_fetch_str(goneDB, dkey)) continue;
-			d = sccs_findKey(s, dkey);
-			assert(d);
-
+			unless (d = sccs_findKey(s, dkey)) {
+				if (mdbm_fetch_str(goneDB, dkey)) continue;
+				if (mdbm_fetch_str(goneDB, keys[i])) continue;
+				fprintf(stderr,
+				    "changes: in file %s, there is a "
+				    "missing delta\n\t%s\n"
+				    "Please run 'bk -r check -vac' to check "
+				    "for this and any other problems\n",
+				    s->gfile, dkey);
+				continue;
+			}
 			/*
 			 * CollectDelta() compute cset boundaries,
 			 * when this function returns, "list" will contain

@@ -569,3 +569,61 @@ bk tag $Q baz
 # The output of changes should have some kind of delimiter between tags
 bk changes -h -r+ | grep 'bazbarfoo' >OUT 2>ERR && fail
 echo OK
+
+## check changes working when deltas or files are missing.
+echo $N Check delta key present but marked missing ..................$NL
+cd "$HERE"
+commercial missing-keys
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+bk mv foo bar
+bk commit $Q -S"THIS_ONE" -ymv
+KEY=`bk log -r+ -nd:KEY: bar`
+ROOTKEY=`bk log -r+ -nd:ROOTKEY: bar`
+bk edit $Q BitKeeper/etc/gone
+cp BitKeeper/etc/gone gone.orig
+echo "$KEY" >> BitKeeper/etc/gone
+bk changes -vr"THIS_ONE" -nd:GFILE: > GOT
+cat <<EOF > WANT
+ChangeSet
+bar
+EOF
+checkfiles GOT WANT
+cp gone.orig BitKeeper/etc/gone
+echo OK
+
+echo $N Check delta key missing in a file ...........................$NL
+bk stripdel $Q -Cr+ bar
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT 2> ERR || exit 1
+grep -q "missing delta" ERR || { echo wrong message; exit 1; }
+echo OK
+
+echo $N Check root key missing in a file ............................$NL
+mv SCCS/s.bar sbar
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT 2> ERR || exit 1
+grep -q "Cannot sccs_init" ERR || { echo wrong message; exit 1; }
+mv sbar SCCS/s.bar
+echo OK
+
+echo $N Check delta key missing with delta key in gone ..............$NL
+echo "$KEY" >> BitKeeper/etc/gone
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || exit 1
+cp BitKeeper/etc/gone gone.orig
+echo OK
+
+echo $N Check delta key missing with root key in gone ...............$NL
+echo "$ROOTKEY" >> BitKeeper/etc/gone
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || exit 1
+# next case wants ROOTKEY, so leave it
+# cp gone.orig BitKeeper/etc/gone
+echo OK
+
+echo $N Check root key missing with root key in gone ................$NL
+# set up by previous case:
+# echo "$ROOTKEY" >> BitKeeper/etc/gone
+mv SCCS/s.bar sbar
+bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || exit 1
+mv sbar SCCS/s.bar
+cp gone.orig BitKeeper/etc/gone
+echo OK

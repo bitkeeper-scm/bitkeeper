@@ -684,7 +684,7 @@ again:	/* doDiffs can make it two pass */
 		rk = strchr(cs->cweave[i], '\t');
 		++rk;
 		t = separator(rk); *t++ = 0;
-		if (sameFile(cs, csetid, rk)) continue; /* skip ChangeSet */
+		if (sameFile(cs, csetid, rk)) goto next; /* skip ChangeSet */
 		if (doKey(cs, rk, t, goneDB)) {
 			fprintf(stderr,
 			    "File named by key\n\t%s\n\tis missing and key is "
@@ -692,6 +692,7 @@ again:	/* doDiffs can make it two pass */
 			fflush(stderr); /* for win32 */
 			goto fail;
 		}
+next:		t[-1] = ' ';
 	}
 	if (cs->doDiffs && cs->makepatch) {
 		doKey(cs, 0, 0, goneDB);

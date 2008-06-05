@@ -587,7 +587,7 @@ bp_updateServer(char *range, char *list, int quiet)
 	rc = sysio(tmpkeys, tmpkeys2, 0,
 	    "bk", p, "-Lr", "-Bstdin", "havekeys", "-Bl", "-", SYS);
 	free(p);
-	unless (rc || (sizeof(tmpkeys2) == 0)) {
+	unless (rc || (size(tmpkeys2) == 0)) {
 		unless (quiet) {
 			fprintf(stderr, "Updating BAM files at %s\n", url);
 		}
@@ -616,6 +616,15 @@ bp_updateServer(char *range, char *list, int quiet)
 	free(tmpkeys);
 	unlink(tmpkeys2);
 	free(tmpkeys2);
+	rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 99;
+	if (rc && !quiet) {
+		fprintf(stderr, "Update failed: ");
+		if (rc == 2) {
+			fprintf(stderr, "unable to acquire repository lock\n");
+		} else {
+			fprintf(stderr, "unknown reason\n");
+		}
+	}
 	return (rc);
 }
 
@@ -1008,7 +1017,7 @@ bam_clean_main(int ac, char **av)
 		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
-	unless (bp_hasBAM()) {
+	unless (bp_hasBAM() && isdir(BAM_ROOT)) {
 		ERROR((stderr, "no BAM data in this repository\n"));
 		return (0);
 	}
@@ -1065,8 +1074,7 @@ bam_clean_main(int ac, char **av)
 	if (pclose(f)) assert(0); /* shouldn't happen */
 
 	/* walk all bp deltas */
-	db = proj_BAMindex(0, 1);
-	assert(db);
+	db = proj_BAMindex(0, 0); /* ok if db==0 */
 	fnames = 0;
 	EACH_KV(db) {
 		/* keep keys we still need */
@@ -1090,6 +1098,7 @@ bam_clean_main(int ac, char **av)
 		fnames = addLine(fnames, strdup(kv.key.dptr));
 	}
 	unless (dryrun) {
+		if (fnames) db = proj_BAMindex(0, 1);
 		EACH(fnames) {
 			mdbm_delete_str(db, fnames[i]);
 			bp_logUpdate(fnames[i], 0);

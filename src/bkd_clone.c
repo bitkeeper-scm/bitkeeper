@@ -66,9 +66,10 @@ cmd_clone(int ac, char **av)
 	}
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
 	/* has to be here, we use the OK below as a marker. */
-	if (bp_updateServer(getenv("BK_CSETS"), 0, SILENT)) {
-		printf(
-		    "ERROR-unable to update BAM server %s\n", bp_serverURL());
+	if (rc = bp_updateServer(getenv("BK_CSETS"), 0, SILENT)) {
+		printf("ERROR-unable to update BAM server %s (%s)\n",
+		    bp_serverURL(),
+		    (rc == 2) ? "can't get lock" : "unknown reason");
 		return (1);
 	}
 	p = getenv("BK_REMOTE_PROTOCOL");
