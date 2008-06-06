@@ -1084,6 +1084,7 @@ int
 proj_isProduct(project *p)
 {
 	unless (p || (p = curr_proj())) return (0);
+	if (p->rparent) p = p->rparent;
 	return ((proj_product(p) != PROD_NOPROD) && PROD_SELF(p));
 }
 
@@ -1094,6 +1095,7 @@ proj_isComponent(project *p)
 
 	unless (p || (p = curr_proj())) return (0);
 	unless (proj_product(p) && p->root) return (0);
+	if (p->rparent) p = p->rparent;
 	sprintf(buf, "%s/BitKeeper/log/COMPONENT", p->root);
 	return (exists(buf));
 }

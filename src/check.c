@@ -1300,36 +1300,32 @@ check(sccs *s, MDBM *idDB)
 	unless (d = sccs_top(s)) {
 		fprintf(stderr, "check: can't get TOT in %s\n", s->gfile);
 		errors++;
-	} else if (CSET(s) && proj_isComponent(s->proj) && proj_isProduct(0)) {
-		x = proj_relpath(proj_product(s->proj), proj_root(s->proj));
-		csetChomp(d->pathname);
-		unless (streq(x, d->pathname)) {
-			fprintf(stderr,
-			    "check: component '%s' should be '%s'\n",
-			    x, d->pathname);
-			errors++;
-			names = 1;
-		}
-		free(x);
-		lines = addLine(0, d->pathname);
-		buf[0] = 0;
-		unless (streq(s->sfile, CHANGESET)) {
-			sprintf(buf, "%s/", d->pathname);
-		}
-		strcat(buf, "BitKeeper/log/COMPONENT");
-		lines2File(lines, buf);
-		freeLines(lines, 0);
-		strcat(d->pathname, "/ChangeSet");
 	} else if (CSET(s) && proj_isComponent(s->proj)) {
-		/*
-		 * The test above caught the case we are looking at it from
-		 * the product's point of view.  This case is from the 
-		 * component's point of view.
-		 */
 		x = proj_relpath(proj_product(s->proj), proj_root(s->proj));
-		lines = addLine(0, x);
-		lines2File(lines, "BitKeeper/log/COMPONENT");
+		/* strip out RESYNC */
+		if (proj_isResync(s->proj) && (t = strstr(x, "/RESYNC/"))) {
+			memmove(t+1, t+8, strlen(t+8)+1);
+		}
+
+		if (proj_isProduct(0)) {
+			csetChomp(d->pathname);
+			unless (streq(x, d->pathname)) {
+			    fprintf(stderr,
+				"check: component '%s' should be '%s'\n",
+				x, d->pathname);
+			    errors++;
+			    names = 1;
+			    /* magic autofix occurrs here */
+			}
+			free(x);
+			lines = addLine(0, d->pathname);
+		} else {
+			lines = addLine(0, x);
+		}
+		lines2File(lines,
+		    proj_fullpath(s->proj, "BitKeeper/log/COMPONENT"));
 		freeLines(lines, 0);
+		if (proj_isProduct(0)) strcat(d->pathname, "/ChangeSet");
 	} else unless (resync || sccs_patheq(d->pathname, s->gfile)) {
 		x = name2sccs(d->pathname);
 		fprintf(stderr, "check: %s should be %s\n", s->sfile, x);

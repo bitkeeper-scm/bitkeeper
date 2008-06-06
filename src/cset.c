@@ -1048,7 +1048,6 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	int	fd0;
 	MMAP	*diffs;
 	FILE	*fdiffs;
-	project	*p;
 	char	filename[MAXPATH];
 
 	if ((cset->nextserial > 200) && getenv("BK_REGRESSION")) {
@@ -1074,8 +1073,7 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	}
 
 	/* for compat with old versions of BK not using ensembles */
-	if (proj_isComponent(cset->proj) ||
-	    ((p = proj_isResync(cset->proj)) && proj_isComponent(p))) {
+	if (proj_isComponent(cset->proj)) {
 		touch("SCCS/d.ChangeSet", 0644);
 	} else {
 		d->flags |= D_CSET;
