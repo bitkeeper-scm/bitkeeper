@@ -247,7 +247,7 @@ send_part1_msg(remote *r, char **envVar)
 
 	probef = bktmp(0, 0);
 	if (f = fopen(probef, "w")) {
-		rc = probekey(s_cset, opts.rev, f);
+		rc = probekey(s_cset, opts.rev, 0, f);
 		fclose(f);
 	} else {
 		rc = 1;

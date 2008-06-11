@@ -45,10 +45,10 @@ grep -q " comment must only be one line" ERR || exit 1
 echo OK
 
 echo $N Test newroot log after a blank comment has 3 more lines .....$NL
-LEN1=`bk changes -r+ -d:FD: | wc -l`
-test "$LEN1" -eq 16 || { echo wrong number of start lines: "$LEN1"; exit 1; }
+LEN1=`bk changes -r+ -d:ROOTLOG: | wc -l`
+test "$LEN1" -eq 15 || { echo wrong number of start lines: "$LEN1"; exit 1; }
 bk newroot $Q -y "" || exit 1
-LEN2=`bk changes -r+ -d:FD: | wc -l`
+LEN2=`bk changes -r+ -d:ROOTLOG: | wc -l`
 LEN3=`expr $LEN2 - $LEN1`
 test "$LEN3" -eq 3 || { echo wrong number of new lines: "$LEN3"; exit 1; }
 echo OK

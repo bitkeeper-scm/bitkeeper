@@ -21,6 +21,7 @@ typedef	struct {
 	u32	collapsedups:1;		/* -D: pass to takepatch (collapse dups) */
 	u32	product:1;		/* is this a product pull? */
 	u32	pass1:1;		/* set if we are driver pull */
+	u32	port:1;			/* is port command? */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
 	u32	in, out;		/* stats */
@@ -35,9 +36,9 @@ private	int	resolve(opts opts);
 private	int	takepatch(opts opts, remote *r);
 
 private void
-usage(void)
+usage(char *prog)
 {
-	system("bk help -s pull");
+	sys("bk", "help", "-s", prog, SYS);
 }
 
 int
@@ -49,9 +50,12 @@ pull_main(int ac, char **av)
 	int	gzip = 6;
 	opts	opts;
 	remote	*r;
+	char	*prog;
 	char	**envVar = 0, **urls = 0;
 
 	bzero(&opts, sizeof(opts));
+	prog = basenm(av[0]);
+	if (streq(prog, "port")) opts.port = 1;
 	opts.automerge = 1;
 	while ((c = getopt(ac, av, "c:DdE:GFilnqr;RstTuw|z|")) != -1) {
 		unless (c == 'r') {
@@ -102,7 +106,7 @@ pull_main(int ac, char **av)
 			if ((gzip < 0) || (gzip > 9)) gzip = 6;
 			break;
 		    default:
-			usage();
+			usage(prog);
 			return(1);
 		}
 		optarg = 0;
@@ -110,10 +114,16 @@ pull_main(int ac, char **av)
 	if (opts.quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	if (opts.autoOnly && !opts.automerge) {
 		fprintf(stderr, "pull: -s and -i cannot be used together\n");
-		usage();
+		usage(prog);
 		return (1);
 	}
-	if (proj_isEnsemble(0)) {
+	if (opts.port) {
+		unless (proj_isComponent(0)) {
+			fprintf(stderr,
+			    "port: can only port to an ensemble component.\n");
+			return (1);
+		}
+	} else if (proj_isEnsemble(0)) {
 		opts.product = 1;
 		unless (getenv("_BK_TRANSACTION")) opts.pass1 = 1;
 	}
@@ -146,7 +156,7 @@ pull_main(int ac, char **av)
 
 	if (sane(0, 0) != 0) return (1);
 
-	unless (urls) {
+	unless (opts.port || urls) {
 		urls = parent_pullp();
 		unless (urls) {
 			freeLines(envVar, free);
@@ -157,7 +167,7 @@ pull_main(int ac, char **av)
 
 	unless (urls) {
 err:		freeLines(envVar, free);
-		usage();
+		usage(prog);
 		return (1);
 	}
 
@@ -171,7 +181,7 @@ err:		freeLines(envVar, free);
 		r->gzip_in = gzip;
 		unless (opts.quiet || opts.pass1) {
 			if (i > 1)  printf("\n");
-			fromTo("Pull", r, 0);
+			fromTo(prog, r, 0);
 		}
 		/*
 		 * retry if parent is locked
@@ -223,7 +233,8 @@ fromTo(char *op, remote *f, remote *t)
 	}
 	width = strlen(op) - 3;
 	if (width < 0) width = 0;
-	printf("%s %s\n%*s -> %s\n", op, from, width, "", to);
+	putchar(toupper(op[0])); /* force op to upper-case */
+	printf("%s %s\n%*s -> %s\n", op+1, from, width, "", to);
 	fflush(stdout);
 	free(from);
 	free(to);
@@ -243,6 +254,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	add_cd_command(f, r);
 	fprintf(f, "pull_part1");
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
+	if (opts.port) fprintf(f, " -P");
 	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
 	fputs("\n", f);
 	fclose(f);
@@ -295,6 +307,19 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		disconnect(r, 2);
 		return (1);
 	}
+	if (opts.port && (p = getenv("BKD_PRODUCT_KEY")) &&
+	    streq(p, proj_rootkey(proj_product(0)))) {
+		fprintf(stderr,
+		    "port: may not port components with identical products\n");
+		disconnect(r, 2);
+		return (1);
+	}
+	if (opts.port && !bkd_hasFeature("SAMv1")) {
+		fprintf(stderr,
+		    "port: remote bkd too old to support 'bk port'\n");
+		disconnect(r, 2);
+		return (1);
+	}
 	if (get_ok(r, buf, 1)) {
 		disconnect(r, 2);
 		return (1);
@@ -342,6 +367,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
+	if (opts.port) fprintf(f, " '-P%s'", proj_rootkey(0));
 	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
 	if (opts.update_only) fprintf(f, " -u");
 	if (proj_isProduct(0) && (l = file2Lines(0, "BitKeeper/log/MODULES"))) {
@@ -355,9 +381,11 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	}
 	fclose(f);
 
-	sprintf(buf, "bk _listkey %s -q < '%s' >> '%s'",
-	    opts.fullPatch ? "-F" : "", probe_list, msg_file);
-	status = system(buf); 
+	sprintf(buf, "bk _listkey %s %s -q < '%s' >> '%s'",
+	    opts.fullPatch ? "-F" : "",
+	    opts.port ? "-A" : "",
+	    probe_list, msg_file);
+	status = system(buf);
 	rc = WEXITSTATUS(status);
 	if (opts.debug) fprintf(stderr, "listkey returned %d\n", rc);
 	switch (rc) {
@@ -369,10 +397,6 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 		    "Please check the pathnames and try again.\n");
 		unlink(msg_file);
 		return (-1);
-	    case 2:
-		fprintf(stderr,
-		    "pull: not pulling because of local-only changesets.\n");
-		/* fall through */
 	    default:
 		unlink(msg_file);
 		return (-1);
@@ -499,6 +523,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			rc = 1;
 			goto done;
 		}
+		if (opts.port) touch("RESYNC/SCCS/d.ChangeSet", 0666);
 		putenv("BK_STATUS=OK");
 		rc = 0;
 	}  else if (strneq(buf, "@UNABLE TO UPDATE BAM SERVER", 28)) {
@@ -714,10 +739,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	int	got_patch;
 	char	key_list[MAXPATH];
 
-	unless (r) {
-		usage();
-		exit(1);
-	}
+	assert(r);
 	if (rc = pull_part1(av, opts, r, key_list, envVar)) return (rc);
 	rc = pull_part2(av, opts, r, key_list, envVar);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));

@@ -21,19 +21,27 @@ int
 cmd_pull_part1(int ac, char **av)
 {
 	char	*p, buf[4096];
-	char	*probekey_av[] = {"bk", "_probekey", 0, 0};
+	char	**probekey_av = 0;
 	int	status;
 	int	rc = 1;
 	FILE	*f;
 	char	*tid = 0;
+	int	port = 0;
 	int	c;
 
 	if (sendServerInfoBlock(0)) return (1);
 
-	while ((c = getopt(ac, av, "denlqr;Tz|")) != -1) {
+	probekey_av = addLine(probekey_av, strdup("bk"));
+	probekey_av = addLine(probekey_av, strdup("_probekey"));
+	while ((c = getopt(ac, av, "denlPqr;Tz|")) != -1) {
 		switch (c) {
+		    case 'P':
+			port = 1;
+			probekey_av = addLine(probekey_av, strdup("-A"));
+			break;
 		    case 'r':
-			probekey_av[2] = aprintf("-r%s", optarg);
+			probekey_av = addLine(probekey_av,
+			    aprintf("-r%s", optarg));
 			break;
 		    case 'T':
 			tid = 1;	// On purpose, will go away w/ trans
@@ -49,7 +57,7 @@ cmd_pull_part1(int ac, char **av)
 		}
 	}
 
-	if (!tid && proj_isComponent(0)) {
+	if (!tid && !port && proj_isComponent(0)) {
 		out("ERROR-Not a product root\n");
 		return (1);
 	}
@@ -78,8 +86,9 @@ cmd_pull_part1(int ac, char **av)
 		    "(4.1.1 or later)\n");
 		return (1);
 	}
-	f = popenvp(probekey_av, "r");
-	if (probekey_av[2]) free(probekey_av[2]);
+	probekey_av = addLine(probekey_av, 0);
+	f = popenvp(probekey_av+1, "r");
+	freeLines(probekey_av, free);
 	/* look to see if probekey returns an error */
 	unless (fnext(buf, f) && streq("@LOD PROBE@\n", buf)) {
 		fputs(buf, stdout);
@@ -107,6 +116,7 @@ cmd_pull_part2(int ac, char **av)
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, dont = 0, verbose = 1, list = 0, triggers_failed = 0;
 	int	rtags, update_only = 0, delay = -1, eat_modules = 0;
+	char	*port = 0;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	char	*rev = 0, *tid = 0;
@@ -114,11 +124,12 @@ cmd_pull_part2(int ac, char **av)
 	FILE	*f;
 	sccs	*s;
 	delta	*d;
+	int	pkflags = PK_LKEY;
 	remote	r;
 	pid_t	pid;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "dlMnqr|Tuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "dlMnP;qr|Tuw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -128,6 +139,10 @@ cmd_pull_part2(int ac, char **av)
 		    case 'l': list++; break;
 		    case 'M': eat_modules = 1; break;
 		    case 'n': dont = 1; break;
+		    case 'P':
+			port = optarg;
+			pkflags |= PK_ORIGROOT;
+			break;
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;
 		    case 'T': tid = 1; break;	// On purpose
@@ -181,7 +196,7 @@ err:			printf("ERROR-protocol error in modules\n");
 	 * What we want is: remote => bk _prunekey => keys
 	 */
 	fd = open(keys, O_WRONLY, 0);
- 	if (prunekey(s, &r, 0, fd, PK_LKEY, 1, &local, &rem, &rtags) < 0) {
+ 	if (prunekey(s, &r, 0, fd, pkflags, 1, &local, &rem, &rtags) < 0) {
 		local = 0;	/* not set on error */
 		sccs_free(s);
 		close(fd);
@@ -293,6 +308,10 @@ err:			printf("ERROR-protocol error in modules\n");
 	fputs("@PATCH@\n", stdout);
 
 	n = 2;
+	if (port) {
+		makepatch[n++] = "-P";
+		makepatch[n++] = port;
+	}
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*

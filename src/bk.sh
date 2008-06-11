@@ -229,7 +229,7 @@ _ensemble() {
 		PRODUCT=`bk id`
 		while read x
 		do	verbose "Attaching $x" 
-			( cd "$x" && bk newroot $QUIET )
+			( cd "$x" && bk newroot -y"ensemble add $x" $QUIET )
 			bk admin -D -C"$PRODUCT" "$x/ChangeSet"
 			echo "$x" > "$x/BitKeeper/log/COMPONENT"
 			( cd "$x"

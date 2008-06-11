@@ -10,7 +10,7 @@
  * Design supports multiple LODs.
  */
 private void
-lod_probekey(sccs *s, delta *d, FILE *f)
+lod_probekey(sccs *s, delta *d, int origroot, FILE *f)
 {
 	int	i, j;
 	char	key[MAXKEY];
@@ -32,7 +32,15 @@ lod_probekey(sccs *s, delta *d, FILE *f)
 	 * Always send the root key because we want to force a match.
 	 * No match is a error condition.
 	 */
-	sccs_sdelta(s, sccs_ino(s), key);
+	if (origroot) {
+		/*
+		 * We want to send the original rootkey instead of the
+		 * current rootkey.
+		 */
+		sccs_origRoot(s, key);
+	} else {
+		sccs_sdelta(s, sccs_ino(s), key);
+	}
 	fprintf(f, "%s\n", key);
 }
 
@@ -63,22 +71,28 @@ probekey_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*rev = 0;
-	int	rc;
+	int	rc, c, origroot = 0;
 
+	while ((c = getopt(ac, av, "Ar;")) != -1) {
+		switch (c) {
+		    case 'A': origroot = 1; break;
+		    case 'r': rev = optarg; break;
+		    default:
+			fprintf(stderr, "usage: probekey OPTS\n");
+			return (2);
+		}
+	}
 	unless ((s = sccs_csetInit(0)) && HASGRAPH(s)) {
 		out("ERROR-Can't init changeset\n@END@\n");
-		exit(1);
+		return (1);
 	}
-	if (av[1] && strneq(av[1], "-r", 2)) {
-		rev = &av[1][2];
-	}
-	rc = probekey(s, rev, stdout);
+	rc = probekey(s, rev, origroot, stdout);
 	sccs_free(s);
 	return (rc);
 }
 
 int
-probekey(sccs *s, char *rev, FILE *f)
+probekey(sccs *s, char *rev, int origroot, FILE *f)
 {
 	delta	*d;
 
@@ -92,7 +106,7 @@ probekey(sccs *s, char *rev, FILE *f)
 		d = sccs_top(s);
 	}
 	fputs("@LOD PROBE@\n", f);
-	lod_probekey(s, d, f);
+	lod_probekey(s, d, origroot, f);
 	tag_probekey(s, f);
 	fputs("@END PROBE@\n", f);
 
@@ -136,10 +150,12 @@ sccs_d2tag(sccs *s, delta *d)
  * probe on stdin and returns the closest match and a list of other
  * keys on stdout.
  *
- * When this is called on openlogging.org for part1 of the meta push
- * operation, the repository will not be locked.  So this function
- * needs to be safe in that case.  Only open ChangeSet once, don't
- * read other files, etc...
+ * Exit codes from listkey matter:
+ *   0 - success
+ *   1 - didn't find matching rootkey / empty probe
+ *   2 - no data on stdin
+ *   3 - can't open cset file / bad data on stdin
+ *   5 - bad args
  */
 int
 listkey_main(int ac, char **av)
@@ -150,7 +166,8 @@ listkey_main(int ac, char **av)
 	int	sndRev = 0;
 	int	matched_tot = 0;
 	int	ForceFullPatch = 0; /* force a "makepatch -r.." */
-	char	key[MAXKEY], rootkey[MAXKEY];
+	int	origroot = 0;
+	char	key[MAXKEY], rootkey[MAXKEY], origkey[MAXKEY];
 	char	s_cset[] = CHANGESET;
 	char	**lines = 0;
 	char	*tag;
@@ -159,8 +176,9 @@ listkey_main(int ac, char **av)
 
 #define OUT(s)  unless(ForceFullPatch) out(s)
 
-	while ((c = getopt(ac, av, "dqrF")) != -1) {
+	while ((c = getopt(ac, av, "AdqrF")) != -1) {
 		switch (c) {
+		    case 'A':   origroot = 1; break;
 		    case 'd':	debug = 1; break;
 		    case 'q':	quiet = 1; break;
 		    case 'r':	sndRev = 1; break;
@@ -175,6 +193,10 @@ listkey_main(int ac, char **av)
 		return(3); /* cset error */
 	}
 	sccs_sdelta(s, sccs_ino(s), rootkey);
+	if (origroot) {
+		sccs_origRoot(s, origkey);
+		if (streq(rootkey, origkey)) origroot = 0;
+	}
 
 	/*
 	 * Phase 1, get the probe keys.
@@ -222,6 +244,10 @@ listkey_main(int ac, char **av)
 	 */
 	nomatch = 1;
 	EACH(lines) {
+		if (origroot && streq(lines[i], origkey)) {
+			free(lines[i]);
+			lines[i] = strdup(rootkey);
+		}
 		unless (streq(lines[i], rootkey)) continue;
 		unless (lines[i+1]) break;
 		if (streq(lines[i+1], "@END PROBE@") ||
@@ -261,7 +287,11 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 				if (tag = sccs_d2tag(s, d)) out(tag);
 				OUT("|");
 			}
-			OUT(lines[i]);
+			if (origroot && (d == sccs_ino(s))) {
+				OUT(origkey);
+			} else {
+				OUT(lines[i]);
+			}
 			OUT("\n");
 			nomatch = 0;
 		}
@@ -358,11 +388,11 @@ int
 prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 	int quiet, int *local_only, int *remote_csets, int *remote_tags)
 {
-	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
 	delta	*d;
 	int	rc = 0, rcsets = 0, rtags = 0, local = 0;
 	char	*k;
-
+	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
+	char	origkey[MAXKEY];
 	/*
 	 * Reopen stdin with a stdio stream.  We will be reading a LOT of
 	 * data and it will all be processed with this process so it is
@@ -408,6 +438,10 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		if (key[0] == '@') break;
 		k = get_key(key, flags);
 		d = sccs_findKey(s, k);
+		if (!d && (flags & PK_ORIGROOT)) {
+			sccs_origRoot(s, origkey);
+			if (streq(key, origkey)) d = sccs_ino(s);
+		}
 		/*
 		 * If there is garbage on the wire,
 		 * it is ok to drop a key, this just means we

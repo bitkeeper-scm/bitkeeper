@@ -5,6 +5,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "bam.h"
+#include "range.h"
 
 #define	TSTATE	0	/* type: d/D/i/j/r/s/x */
 #define	LSTATE	1	/* lock state: l,u */
@@ -354,6 +355,15 @@ chk_sfile(char *name, STATE state)
 	return (sc);
 }
 
+private int
+pending_print(sccs *s, delta *d, void *token)
+{
+	char	**data = token;
+
+	do_print(data[0], data[1], d->rev);
+	return (0);
+}
+
 private void
 chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 {
@@ -435,10 +445,14 @@ chk_pending(sccs *s, char *gfile, STATE state, MDBM *sDB, MDBM *gDB)
 	assert(!(d->flags & D_CSET));
 	state[PSTATE] = 'p';
 	if (opts.Aflg) {
-		do {
-			do_print(state, gfile, d->rev);
-			d = d->parent;
-		} while (d && !(d->flags & D_CSET));
+		char	*data[2] = {state, gfile};
+
+		/* find latest cset mark */
+		for (d = s->table; d; d = d->next) {
+			if (d->flags & D_CSET) break;
+		}
+		/* and walk all revs not included in that... */
+		range_walkrevs(s, d, 0, pending_print, data);
 		printed = 1;
 	} else if (opts.Cflg) {
 		do_print(state, gfile, d->rev);

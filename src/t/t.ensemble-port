@@ -1,0 +1,159 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2008 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+#
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create some ensembles sharing components ....................$NL
+fresh_commercial bash-sa
+echo hi > foo
+bk new $Q foo || exit 1
+bk commit $Q -y'add foo' || exit 1
+cd ..
+nested project
+bk ensemble add $Q ../bash-sa bash || exit 1
+cd bash
+bk edit $Q foo || exit 1
+echo stuff in project >> foo || exit 1
+bk commit -y'update foo in project/bash' $Q || exit 1
+bk -P commit -y'update foo in project' $Q || exit 1
+cd ../..
+commercial standalone
+echo sa1 > sa_file
+bk new $Q sa_file || exit 1
+bk commit -y'add sa_file' $Q || exit 1
+cd ..
+fresh_commercial project2
+bk ensemble create $Q || exit 1
+
+# XXX hack around ensemble-add restrictions
+#cd ..
+#cp -R project/bash bash-sa
+#cd bash-sa
+#rm BitKeeper/log/COMPONENT
+#bk newroot -y'make standalone' $Q || exit 1
+## edit out pathname changes in cset file
+#perl -ne 'print unless (1../^.d D 1.0 /) && /^.cP/' \
+#     < SCCS/s.ChangeSet > SCCS/x.ChangeSet
+#mv -f SCCS/x.ChangeSet SCCS/s.ChangeSet
+#bk admin -z ChangeSet || exit 1
+#bk -r admin -C`bk id` || exit 1
+#bk -r check -a || exit 1
+cd ../project2
+bk ensemble add $Q ../bash-sa mybash || exit 1
+bk ensemble add $Q ../standalone sa2 || exit 1
+cd ../project
+bk ensemble add $Q ../standalone sa1 || exit 1
+cd ..
+bk clone $Q project project-copy || exit 1
+echo OK
+
+echo $N Port csets from standalone repo .............................$NL
+cd standalone
+echo hi > file1
+bk new $Q file1 || exit 1
+bk commit $Q -y'add file1' || exit 1
+cd ../project2/sa2
+bk pull $Q ../../standalone 2> ERR && {
+	echo this should fail
+	cat ERR
+	exit 1
+}
+cd ..
+test "`bk prs -hnd:DPN: -r+ sa2/ChangeSet`" = sa2/ChangeSet || {
+     echo wrong pathnname before port
+     exit 1
+}
+cd sa2
+bk port $Q ../../standalone || exit 1
+cd ..
+test "`bk prs -hnd:DPN: -r+ sa2/ChangeSet`" = sa2/ChangeSet || {
+     echo wrong pathnname after port
+     bk changes -r+
+     exit 1
+}
+bk -r check -ac || exit 1
+bk sfiles -pAC > GOT
+cat <<EOF > WANT
+sa2/SCCS/s.ChangeSet|1.4
+sa2/SCCS/s.ChangeSet|1.2.1.1
+EOF
+cmpfiles GOT WANT
+bk log -C1.3 -d:JOIN::I: sa2/ChangeSet > WANT
+printf "1.3,1.2,1.1,1.0" > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test port of matching components in different products ......$NL
+cd ../project2
+test "`bk prs -hnd:DPN: -r+ mybash/ChangeSet`" = mybash/ChangeSet || {
+     echo wrong pathnname before port
+     exit 1
+}
+cd mybash
+echo junk > bar
+bk new $Q bar || exit 1
+bk commit $Q -y'add bar' || exit 1
+bk -P commit $Q -y'bar to bash' || exit 1
+echo junk2 > baz
+bk new $Q baz || exit 1
+bk commit $Q -y'add baz' || exit 1
+
+bk port $Q ../../project/bash || exit 1
+cd ..
+bk sfiles -pAC > GOT
+cat <<EOF > WANT
+mybash/SCCS/s.ChangeSet|1.4
+mybash/SCCS/s.ChangeSet|1.2.1.3
+mybash/SCCS/s.ChangeSet|1.3
+EOF
+cmpfiles GOT WANT
+bk commit $Q -ymkcset
+bk log -C+ -nd":SFILE:|:I:" mybash/ChangeSet > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test port of special graph to stress sccs_csetBoundary ......$NL
+cd "$HERE"
+commercial branch
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd ..
+bk clone $Q branch branch2
+cd branch
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo
+cd ../project
+bk ensemble add $Q ../branch branch
+cd ../project2
+bk ensemble add $Q ../branch2 branch2
+cd branch2
+bk port $Q ../../project/branch || exit 1
+cd ..
+printf "1.2.1.1,1.2,1.1,1.0" > WANT
+bk log -C1.2 -d:JOIN::I: branch2/ChangeSet > GOT
+cmpfiles GOT WANT
+bk commit $Q -y'cset on branch'
+bk log -C1.2 -d:JOIN::I: branch2/ChangeSet > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Try to port csets between matching products..................$NL
+cd "$HERE"/project-copy/bash
+bk port $Q ../../project/bash 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+cat <<EOF >WANT
+port: may not port components with identical products
+EOF
+cmpfiles WANT ERR
+echo OK

@@ -266,6 +266,7 @@ parent
 park
 pending
 _popensystem
+port => pull
 _probekey restricted
 prompt
 prs

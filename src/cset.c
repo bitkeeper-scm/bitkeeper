@@ -30,6 +30,7 @@ typedef	struct cset {
 	pid_t	pid;		/* adler32 process id */
 	int	lasti;		/* last idx in cweave for cset_diffs */
 
+	char	*csetkey;	/* lie about the cset rootkey */
 	char	**cweave;	/* weave of cset file for this patch */
 	char	**BAM;		/* list of keys we need to send */
 } cset_t;
@@ -57,12 +58,15 @@ makepatch_main(int ac, char **av)
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "Bdr|sCqv")) != -1) {
+	while ((c = getopt(ac, av, "BCdP:qr|sv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
 		    case 'd':					/* doc 2.0 */
 			nav[++i] = "-d";
+			break;
+		    case 'P':
+			copts.csetkey = optarg;
 			break;
 		    case 'r':					/* doc 2.0 */
 		    	c = 'm';
@@ -228,6 +232,7 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 
 	cset = sccs_init(csetFile, flags & SILENT);
 	if (!cset) return (101);
+	cset->state |= S_READ_ONLY;
 	copts.mixed = !LONGKEY(cset);
 
 	if (list && !rargs.rstart && !copts.dash) {
@@ -1177,7 +1182,11 @@ sccs_patch(sccs *s, cset_t *cs)
 				sccs_perfile(s, stdout);
 			}
 			s->rstop = s->rstart = s->tree;
-			sccs_pdelta(s, sccs_ino(s), stdout);
+			if (copts.csetkey && CSET(s)) {
+				fputs(copts.csetkey, stdout);
+			} else {
+				sccs_pdelta(s, sccs_ino(s), stdout);
+			}
 			printf("\n");
 		}
 
@@ -1187,6 +1196,18 @@ sccs_patch(sccs *s, cset_t *cs)
 		if (d->parent) {
 			sccs_pdelta(s, d->parent, stdout);
 			printf("\n");
+		}
+		if (copts.csetkey) {
+			if (d->csetFile) {
+				if (d->flags & D_DUPCSETFILE) {
+					d->flags &= ~D_DUPCSETFILE;
+				} else {
+					free(d->csetFile);
+				}
+				d->csetFile = CSET(s) ?
+				    0 : strdup(copts.csetkey);
+			}
+			if (CSET(s)) d->flags &= ~D_CSET;
 		}
 		s->rstop = s->rstart = d;
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);

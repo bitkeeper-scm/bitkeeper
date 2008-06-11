@@ -60,6 +60,9 @@ trigger(char *cmd, char *when)
 	} else if (strneq(cmd, "pull", 4)) {
 		what = "incoming";
 		event = "incoming pull";
+	} else if (streq(cmd, "port")) {
+		what = "incoming";
+		event = "incoming port";
 	} else if (strneq(cmd, "apply", 5) || strneq(cmd, "remote apply", 12)) {
 		what = event = "apply";
 		use_enclosing = 1;

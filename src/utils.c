@@ -990,6 +990,10 @@ sendServerInfoBlock(int is_rclone)
 		out("\nSEED=");
 		out(p);
 	}
+	if (proj_isComponent(0)) {
+		sprintf(buf, "\nPRODUCT_KEY=%s", proj_rootkey(proj_product(0)));
+		out(buf);
+	}
 	out("\n@END@\n");
 	return (0);
 }

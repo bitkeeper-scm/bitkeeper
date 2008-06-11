@@ -1072,7 +1072,7 @@ send_part1_msg(remote *r, char **av)
 	if (opts.remote) {
 		probef = bktmp(0, 0);
 		if (f = fopen(probef, "wb")) {
-			rc = probekey(s_cset, 0, f);
+			rc = probekey(s_cset, 0, 0, f);
 			fclose(f);
 			extra = size(probef);
 		} else {

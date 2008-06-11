@@ -177,3 +177,24 @@ update_rootlog(sccs *s, char *key, char *comments)
 	}
 	if (oldtext) freeLines(oldtext, 0);
 }
+
+void
+sccs_origRoot(sccs *s, char *key)
+{
+	int	i;
+	int	in_log = 0;
+
+	key[0] = 0;
+	EACH(s->text) {
+		unless (in_log) {
+			if (streq(s->text[i], "@ROOTLOG")) in_log = 1;
+			continue;
+		}
+		if (streq(s->text[i], "original")) {
+			strcpy(key, s->text[i+1]);
+			break;
+		}
+		if (s->text[i][0] == '@') break;
+	}
+	unless (key[0]) sccs_sdelta(s, sccs_ino(s), key);
+}

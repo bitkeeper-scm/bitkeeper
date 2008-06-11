@@ -125,7 +125,8 @@ void
 range_cset(sccs *s, delta *d)
 {
 	delta	*e;
-	ser_t	last;
+	ser_t	last, clean;
+	u32	color;
 
 	unless (d = sccs_csetBoundary(s, d)) return; /* if pending */
 
@@ -133,23 +134,44 @@ range_cset(sccs *s, delta *d)
 	s->rstop = d;
 
 	/* walk back all children until all deltas in this cset are marked */
-	last = d->serial;
+	clean = last = d->serial;
 	for (; d; d = d->next) {
-		unless (d->flags & D_SET) continue;
-		if ((e = d->parent) && !(e->flags & D_CSET)) {
-			e->flags |= D_SET;
-			if (e->serial < last) last = e->serial;
+		unless (color = (d->flags & (D_SET|D_RED))) continue;
+		if (color & D_RED) {
+			d->flags &= ~color;
+			color = D_RED;
 		}
-		if (d->merge &&
-		    (e = sfind(s, d->merge)) && !(e->flags & D_CSET)) {
-			e->flags |= D_SET;
-			if (e->serial < last) last = e->serial;
+		if (e = d->parent) {
+			if (e->flags & D_CSET) {
+				e->flags |= D_RED;
+			} else {
+				e->flags |= color;
+				if (color == D_SET) {
+					if (e->serial < last) last = e->serial;
+				}
+			}
+			if (e->serial < clean) clean = e->serial;
+		}
+		if (d->merge && (e = sfind(s, d->merge))) {
+			if (e->flags & D_CSET) {
+				e->flags |= D_RED;
+			} else {
+				e->flags |= color;
+				if (color == D_SET) {
+					if (e->serial < last) last = e->serial;
+				}
+			}
+			if (e->serial < clean) clean = e->serial;
 		}
 		if (d->serial == last) break;
 	}
 	d = d->next;		/* boundary for diffs.c (sorta wrong..) */
 	s->rstart = d ? d : s->tree;
 	s->state |= S_SET;
+	for ( ; d; d = d->next) {
+		if (d->serial < clean) break;
+		d->flags &= ~D_RED;
+	}
 }
 
 private delta *

@@ -13972,6 +13972,24 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		return (nullVal);
 	}
 
+	case KW_ROOTLOG: /* ROOTLOG */ {
+		int i, in_log = 0;
+
+		/* note: ROOTLOG does not support $each(:ROOTLOG:){} */
+		EACH(s->text) {
+			if (s->text[i][0] == '\001') continue;
+			unless (in_log) {
+				if (streq(s->text[i], "@ROOTLOG")) in_log = 1;
+				continue;
+			}
+			fs(s->text[i]);
+			fc('\n');
+			if (s->text[i][0] == '@') break;
+		}
+		if (in_log) return (strVal);
+		return (nullVal);
+	}
+
 	case KW_BD: /* BD */ {
 		/* Body text */
 		/* XX TODO: figure out where to extract this info */
@@ -15875,26 +15893,38 @@ delta	*
 sccs_csetBoundary(sccs *s, delta *d)
 {
 	delta	*e;
+	ser_t	last, ser;
 
-again:	
-	/* find newest delta on this tree with cset mark */
-	while (!(d->flags & D_CSET) && d->kid && (d->kid->type == 'D')) {
-		d = d->kid;
-	}
-	/* might be merge side of a cset created by resolve (see test) */
-	if (!(d->flags & D_CSET) && (d->flags & D_MERGED)) {
-		for (e = s->table; e && e != d; e = e->next) {
-			if (e->merge == d->serial) {
-				d = e;
-				goto again;
+	e = sfind(s, s->table->serial);		/* cache whole table */
+
+	d->flags |= D_RED;
+	last = d->serial;
+
+	for (ser = d->serial; ser < s->nextserial; (d = 0), ser++) {
+		unless ((d = sfind(s, ser)) && (d->flags & D_RED)) continue;
+		if (d->flags & D_CSET) break;
+		d->flags &= ~D_RED;
+		for (e = d->kid; e; e = e->siblings) {
+			if (TAG(e)) continue;
+			e->flags |= D_RED;
+			if (e->serial > last) last = e->serial;
+		}
+		if (d->flags & D_MERGED) {
+			for (e = s->table; e && e != d; e = e->next) {
+				if (e->merge == d->serial) {
+					e->flags |= D_RED;
+					if (e->serial > last) last = e->serial;
+				}
 			}
 		}
-		fprintf(stderr,
-		    "ERROR: delta %s marked merge, but no merge found\n",
-		    d->rev);
-		exit(1);
 	}
-	return ((d->flags & D_CSET) ? d : 0);
+	for (; ser < s->nextserial; ser++) {
+		if (last < ser) break;
+		unless (e = sfind(s, ser)) continue;
+		e->flags &= ~D_RED;
+	}
+	if (d && (d->flags & D_CSET)) return (d);
+	return (0);
 }
 
 /*

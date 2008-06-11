@@ -1317,7 +1317,6 @@ check(sccs *s, MDBM *idDB)
 			    names = 1;
 			    /* magic autofix occurrs here */
 			}
-			free(x);
 			lines = addLine(0, d->pathname);
 		} else {
 			lines = addLine(0, x);
@@ -1325,6 +1324,7 @@ check(sccs *s, MDBM *idDB)
 		lines2File(lines,
 		    proj_fullpath(s->proj, "BitKeeper/log/COMPONENT"));
 		freeLines(lines, 0);
+		free(x);
 		if (proj_isProduct(0)) strcat(d->pathname, "/ChangeSet");
 	} else unless (resync || sccs_patheq(d->pathname, s->gfile)) {
 		x = name2sccs(d->pathname);

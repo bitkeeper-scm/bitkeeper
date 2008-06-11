@@ -42,10 +42,9 @@ if [ "$tip" != 1.2 ]; then echo Failed; exit 1; fi
 echo OK
 
 echo $N Check that the rootlog was preserved ........................$NL
-bk prs -hr+ -d:FD: ChangeSet > GOT
-echo @ROOTLOG > WANT
+bk prs -hr+ -d:ROOTLOG: ChangeSet > GOT
 # just copy timestamp of new item
-head -2 GOT | tail -1 >> WANT
+head -1 GOT > WANT
 echo csetprune command >> WANT
 bk id >> WANT
 # recreate timestamp of original entry from cset@1.0
