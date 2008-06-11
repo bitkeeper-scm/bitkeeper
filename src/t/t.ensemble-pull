@@ -90,18 +90,18 @@ bk new $Q foo
 bk mv foo bar
 BADRK=`bk prs -r1.0 -hnd:KEY: bar`
 cd ../copy
-RK2=`bk changes -q -Cr1.0 -nd:KEY: ../project?ROOTKEY=$RK`
+RK2=`bk changes -q -r1.0 -nd:KEY: ../project?ROOTKEY=$RK`
 test "$RK" = "$RK2" || exit 1
 echo OK
 
 echo $N Test rootkey urls, file url, product root key ...............$NL
 PRK=`bk -R prs -r1.0 -hnd:KEY:`
-RK2=`bk changes -q -Cr1.0 -nd:KEY: ../project?ROOTKEY=$PRK`
+RK2=`bk changes -q -r1.0 -nd:KEY: ../project?ROOTKEY=$PRK`
 test "$PRK" = "$RK2" || exit 1
 echo OK
 
 echo $N Test rootkey urls, file url, nonexistant root key ...........$NL
-bk changes -q -Cr1.0 -nd:KEY: ../project?ROOTKEY=$RK.junk 2> ERR && {
+bk changes -q -r1.0 -nd:KEY: ../project?ROOTKEY=$RK.junk 2> ERR && {
 	echo should have failed
 	exit 1
 }
@@ -113,7 +113,7 @@ grep -q "cannot use key" ERR || {
 echo OK
 
 echo $N Test rootkey urls, file url, file root key ..................$NL
-bk changes -q -Cr1.0 -nd:KEY: ../project?ROOTKEY=$BADRK 2> ERR && {
+bk changes -q -r1.0 -nd:KEY: ../project?ROOTKEY=$BADRK 2> ERR && {
 	echo should have failed
 	exit 1
 }
@@ -128,7 +128,7 @@ echo $N Test rootkey urls, file url, component key, no component ....$NL
 cd ../project
 mv gcc hidden
 cd ../copy
-bk changes -q -Cr1.0 -nd:KEY: ../project?ROOTKEY=$RK 2> ERR && {
+bk changes -q -r1.0 -nd:KEY: ../project?ROOTKEY=$RK 2> ERR && {
 	echo should have failed
 	exit 1
 }
@@ -146,7 +146,7 @@ echo $N Test rootkey urls, bk:// url above, component root key ......$NL
 cd "$HERE"
 P=`port 50000`
 bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
-RK2=`bk changes -q -Cr1.0 -nd:KEY: bk://localhost:$P/project?ROOTKEY=$RK`
+RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P/project?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
 	echo failed
 	bk _kill bk://localhost:$P
@@ -156,7 +156,7 @@ test "$RK" = "$RK2" || {
 echo OK
 
 echo $N Test rootkey urls, bk:// url above, product root key ........$NL
-RK2=`bk changes -q -Cr1.0 -nd:KEY: bk://localhost:$P/project?ROOTKEY=$PRK`
+RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P/project?ROOTKEY=$PRK`
 test "$PRK" = "$RK2" || {
 	echo failed
 	bk _kill bk://localhost:$P
@@ -169,7 +169,7 @@ echo $N Test rootkey urls, bk:// url in repo, component root key ....$NL
 cd "$HERE/project"
 P=`port 50000`
 bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
-RK2=`bk changes -q -Cr1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK`
+RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK`
 test "$RK" = "$RK2" || {
 	echo failed
 	bk _kill bk://localhost:$P
@@ -178,7 +178,7 @@ test "$RK" = "$RK2" || {
 echo OK
 
 echo $N Test rootkey urls, bk:// url in repo, product root key ......$NL
-RK2=`bk changes -q -Cr1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$PRK`
+RK2=`bk changes -q -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$PRK`
 test "$PRK" = "$RK2" || {
 	echo failed
 	bk _kill bk://localhost:$P
@@ -187,7 +187,7 @@ test "$PRK" = "$RK2" || {
 echo OK
 
 echo $N Test rootkey urls, bk:// url, nonexistant root key ..........$NL
-bk changes -q -Cr1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK.junk 2> ERR && {
+bk changes -q -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK.junk 2> ERR && {
 	echo should have failed
 	exit 1
 }
@@ -200,7 +200,7 @@ grep -q "cannot use key" ERR || {
 echo OK
 
 echo $N Test rootkey urls, bk:// url, file root key .................$NL
-bk changes -q -Cr1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$BADRK 2> ERR && {
+bk changes -q -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$BADRK 2> ERR && {
 	echo should have failed
 	exit 1
 }
@@ -216,7 +216,7 @@ echo $N Test rootkey urls, bk:// url, component key, no component ...$NL
 cd "$HERE/project"
 mv gcc hidden
 cd ../copy
-bk changes -q -Cr1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK 2> ERR && {
+bk changes -q -r1.0 -nd:KEY: bk://localhost:$P?ROOTKEY=$RK 2> ERR && {
 	echo should have failed
 	bk _kill bk://localhost:$P
 	exit 1

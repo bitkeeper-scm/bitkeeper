@@ -1,11 +1,9 @@
 
 echo $N Create an ensemble...........................................$NL
 nested project
-# XXX this fails badly in the current tree, but works enough
-#     to complete test
 BASEP=`bk changes -r+ -nd:MD5KEY:`
-BASEGCC=`cd gcc; bk changes -C -r+ -nd:MD5KEY:`
-bk clone $Q  "$HERE"/project "$HERE"/copy 2>ERR|| exit 1
+BASEGCC=`cd gcc; bk changes -r+ -nd:MD5KEY:`
+bk clone $Q  "$HERE"/project "$HERE"/copy || exit 1
 # add some files
 cd gcc
 for i in 1 2 3
@@ -39,7 +37,7 @@ echo OK
 
 echo $N Run project level changes....................................$NL
 # expect on component csets that are committed in project
-bk changes  -r+ -qvnd':GFILE: :C:' > OUT || exit 1
+bk -P changes  -r+ -qvnd':GFILE: :C:' > OUT || exit 1
 cat <<EOF > WANT
 ChangeSet local
 gcc/ChangeSet addlocal
@@ -49,7 +47,7 @@ echo OK
 
 echo $N Run project level changes -L ................................$NL
 # again only commited stuff
-bk changes -L -qvnd':GFILE: :C:' > OUT || exit 1
+bk -P changes -L -qvnd':GFILE: :C:' > OUT || exit 1
 cat <<EOF > WANT
 ChangeSet local
 gcc/ChangeSet addlocal
@@ -57,9 +55,9 @@ EOF
 cmpfiles OUT WANT
 echo OK
 
-echo $N Run changes -CL in component ................................$NL
+echo $N Run changes -L in component .................................$NL
 # should compare matching component and show pending csets
-bk changes -CL -qvnd':GFILE: :C:' > OUT || exit 1
+bk changes -L -qvnd':GFILE: :C:' > OUT || exit 1
 cat <<EOF > WANT
 ChangeSet new
 local1 newlocal
@@ -70,9 +68,9 @@ EOF
 cmpfiles OUT WANT
 echo OK
 
-echo $N Run changes -CL in product ..................................$NL
+echo $N Run changes -L in product ...................................$NL
 cd ..
-bk changes -CL -qvnd':GFILE: :C:' > OUT || exit 1
+bk changes -L -qvnd':GFILE: :C:' > OUT || exit 1
 cat <<EOF > WANT
 ChangeSet local
 gcc/ChangeSet addlocal
@@ -82,15 +80,15 @@ echo OK
 
 echo $N Check running repogca .......................................$NL
 cd gcc
-test `bk repogca -5` = $BASEP || {
+test `bk -P repogca -5` = $BASEP || {
      echo repogca got wrong key
      bk repogca -k
      exit 1
 }
-test `bk repogca -C5` = $BASEGCC || {
+test `bk repogca -5` = $BASEGCC || {
      echo repogca got wrong key
-     bk repogca -C
-     bk changes -C
+     bk repogca
+     bk changes
      exit 1
 }
 echo OK

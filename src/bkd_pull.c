@@ -8,7 +8,7 @@ listIt(char *keys, int list)
 	FILE	*f;
 	char	buf[MAXPATH + 20];
 
-	sprintf(buf, "bk changes -Ce %s - < '%s'",
+	sprintf(buf, "bk changes -e %s - < '%s'",
 	    list > 1 ? "-v" : "", keys);
 	f = popen(buf, "r");
 	while (fnext(buf, f)) {
