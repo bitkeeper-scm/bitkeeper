@@ -121,7 +121,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	unless (force) {
 		for (i = 0; i<79; ++i) putchar('-'); putchar('\n');
 		fflush(stdout);
-		f = popen(verbose? "bk changes -Cav -" : "bk changes -Ca -", "w");
+		f = popen(verbose? "bk changes -av -" : "bk changes -a -", "w");
 		EACH (csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
 		pclose(f);
 		printf("Remove these [y/n]? ");
@@ -372,7 +372,7 @@ getrev(char *top_rev, int aflg)
 	} else {
 		rev = aprintf("-r'%s'", top_rev);
 	}
-	cmd = aprintf("bk changes -Cafnd:KEY: %s 2>" DEVNULL_WR, rev);
+	cmd = aprintf("bk changes -afnd:KEY: %s 2>" DEVNULL_WR, rev);
 	free(rev);
 	f = popen(cmd, "r");
 	free(cmd);

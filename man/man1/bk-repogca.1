@@ -5,7 +5,7 @@ bk repogca \- show greatest common ancestor across a set of repositories
 .SH SYNOPSIS
 .B bk repogca
 .[OPTreq] \-d spec
-.[B] \-Ck5
+.[B] \-k5
 [\c
 .ARG repo
 .ARGc repo
@@ -19,12 +19,6 @@ By default,
 is the remote repository. 
 .SH OPTIONS
 .TP \-d\*<spec\*>
-.B \-C
-Find component level GCA.
-In an ensemble, the default is to run repogca at the product level,
-this option runs repogca at the component level.  
-(Ensemble only).
-.tp
 .OPTreq \-d spec
 Use
 .ARG spec

@@ -1228,7 +1228,7 @@ listIt(char *keys, int list)
 	char	*cmd;
 	char	buf[BUFSIZ];
 
-	cmd = aprintf("bk changes -C %s - < '%s'", list > 1 ? "-v" : "", keys);
+	cmd = aprintf("bk changes %s - < '%s'", list > 1 ? "-v" : "", keys);
 	f = popen(cmd, "r");
 	assert(f);
 	while (fnext(buf, f)) {

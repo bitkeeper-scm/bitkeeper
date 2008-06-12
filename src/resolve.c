@@ -1539,7 +1539,7 @@ err:		if (s) sccs_free(s);
 	}
 	unless (opts->quiet) fprintf(stderr, "Autofixing partial merge\n");
 	unless (f = popen("bk changes "
-	    "-r+ -Cvnd'$unless(:CHANGESET:){:SFILE:|:REV:}'", "r")) {
+	    "-r+ -vnd'$unless(:CHANGESET:){:SFILE:|:REV:}'", "r")) {
 		fprintf(stderr, "Could not popen changes\n");
 		goto err;
 	}
