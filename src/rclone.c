@@ -87,8 +87,7 @@ rclone_main(int ac, char **av)
 		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
 		exit(1);
 	}
-	if (!getenv("_BK_TRANSACTION") &&
-	    proj_isEnsemble(0) && !proj_isProduct(0)) {
+	if (!getenv("_BK_TRANSACTION") && proj_isComponent(0)) {
 		fprintf(stderr,
 		    "clone: clone of a component is not allowed, use -M\n");
 		exit(1);

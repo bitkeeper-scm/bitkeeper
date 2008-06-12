@@ -110,7 +110,14 @@ push_main(int ac, char **av)
 		optarg = 0;
 	}
 	unless (opts.verbose) putenv("BK_QUIET_TRIGGERS=YES");
-	if (proj_isEnsemble(0)) opts.product = 1;
+	if (proj_isComponent(0)) {
+		unless (getenv("_BK_TRANSACTION")) {
+			fprintf(stderr, "push: no push from component\n");
+			return (1);
+		}
+	} else if (proj_isProduct(0)) {
+		opts.product = 1;
+	}
 	if (getenv("BK_NOTTY")) opts.nospin = 1;
 
 	/*
@@ -126,13 +133,6 @@ push_main(int ac, char **av)
 	if (proj_cd2root()) {
 		fprintf(opts.out, "push: cannot find package root.\n");
 		exit(1);
-	}
-
-	unless (getenv("_BK_TRANSACTION")) {
-		if (opts.product && proj_cd2product()) {
-			fprintf(opts.out, "push: cannot find product root.\n");
-			exit(1);
-		}
 	}
 
 	unless (eula_accept(EULA_PROMPT, 0)) {

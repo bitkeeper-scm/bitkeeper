@@ -22,6 +22,7 @@ typedef	struct {
 	u32	product:1;		/* is this a product pull? */
 	u32	pass1:1;		/* set if we are driver pull */
 	u32	port:1;			/* is port command? */
+	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
 	u32	in, out;		/* stats */
@@ -117,15 +118,20 @@ pull_main(int ac, char **av)
 		usage(prog);
 		return (1);
 	}
-	if (opts.port) {
-		unless (proj_isComponent(0)) {
+	if (getenv("_BK_TRANSACTION")) opts.transaction = 1;
+	if (proj_isComponent(0)) {
+		unless (opts.transaction || opts.port) {
 			fprintf(stderr,
-			    "port: can only port to an ensemble component.\n");
+			    "pull: component pulls are not allowed\n");
 			return (1);
 		}
-	} else if (proj_isEnsemble(0)) {
+	} else if (opts.port) {
+		fprintf(stderr,
+			"port: can only port to an ensemble component.\n");
+		return (1);
+	} else if (proj_isProduct(0)) {
 		opts.product = 1;
-		unless (getenv("_BK_TRANSACTION")) opts.pass1 = 1;
+		unless (opts.transaction) opts.pass1 = 1;
 	}
 
 	/*
@@ -141,13 +147,6 @@ pull_main(int ac, char **av)
 	if (proj_cd2root()) {
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
-	}
-	unless (getenv("_BK_TRANSACTION")) {
-		if (opts.product && proj_cd2product()) {
-			fprintf(stderr, "pull: cannot find product root.\n");
-			exit(1);
-		}
-
 	}
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
@@ -255,7 +254,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	fprintf(f, "pull_part1");
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.port) fprintf(f, " -P");
-	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
+	if (opts.transaction) fprintf(f, " -T");
 	fputs("\n", f);
 	fclose(f);
 	rc = send_file(r, buf, 0);
@@ -368,7 +367,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.port) fprintf(f, " '-P%s'", proj_rootkey(0));
-	if (getenv("_BK_TRANSACTION")) fprintf(f, " -T");
+	if (opts.transaction) fprintf(f, " -T");
 	if (opts.update_only) fprintf(f, " -u");
 	if (proj_isProduct(0) && (l = file2Lines(0, "BitKeeper/log/MODULES"))) {
 		fprintf(f, " -M\n");

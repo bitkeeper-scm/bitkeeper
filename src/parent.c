@@ -34,6 +34,7 @@ parent_main(int ac,  char **av)
 	int	i;
 	char	**pull, **push, *which;
 
+	unless (start_cwd) start_cwd = strdup(proj_cwd());
 	if (proj_cd2product() && proj_cd2root()) {
 		fprintf(stderr, "parent: cannot find package root.\n");
 		return (1);
@@ -420,18 +421,19 @@ char *
 parent_normalize(char *url)
 {
 	remote	*r = 0;
+	char	*ret = 0;
 
 	if ((r = remote_parse(url, REMOTE_BKDURL))
 	    && (r->type ==  ADDR_FILE) && r->path) {
-		url = fullname(r->path);
+		ret = r->path;
+		r->path = 0;
 		if (r->params) {
-			free(r->path);
-			r->path = strdup(url);
-			url = remote_unparse(r);
+			r->path = ret;
+			ret = remote_unparse(r);
 		}
 	}
 	if (r) remote_free(r);
-	return (strdup(url));
+	return (ret ? ret : strdup(url));
 }
 
 /*

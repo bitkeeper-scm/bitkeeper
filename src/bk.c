@@ -22,6 +22,7 @@ int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
 int	spawn_tcl;		/* needed in crypto.c:bk_preSpawnHook() */
 ltc_math_descriptor	ltc_mp;
 char	*prog;
+char	*start_cwd;		/* if -R or -P, where did I start? */
 
 private	char	*buffer = 0;	/* copy of stdin */
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
@@ -198,6 +199,7 @@ main(int ac, char **av, char **env)
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
 			    case 'P':				/* doc 2.0 */
+				start_cwd = strdup(proj_cwd());
 				if (proj_cd2product()) {
 					fprintf(stderr, 
 					    "bk: Cannot find product root.\n");
@@ -214,6 +216,7 @@ main(int ac, char **av, char **env)
 				dashr++;
 				break;
 			    case 'R':				/* doc 2.0 */
+				start_cwd = strdup(proj_cwd());
 				if (proj_cd2root()) {
 					fprintf(stderr, 
 					    "bk: Cannot find package root.\n");

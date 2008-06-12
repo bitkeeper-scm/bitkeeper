@@ -127,7 +127,13 @@ nfs_parse(char *p)
 			remote_free(r);
 			return (0);
 		}
-		r->path = strdup(fullname(p));
+		if (start_cwd && !IsFullPath(p)) {
+			p = aprintf("%s/%s", start_cwd, p);
+			r->path = strdup(fullname(p));
+			free(p);
+		} else {
+			r->path = strdup(fullname(p));
+		}
 		r->type = ADDR_FILE;
 		return (r);
 	}
