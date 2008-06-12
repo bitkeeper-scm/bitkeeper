@@ -93,45 +93,45 @@ wc: $(SRC)
 FORCE:
 
 bugform: $(COMMON) search.tcl appState.tcl buglib.tcl bugform.tcl
-	(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/bugform
+	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/bugform
 
 supportform: $(COMMON) search.tcl appState.tcl supportlib.tcl supportform.tcl
-	(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/supportform
+	@(echo 'wm withdraw .' ;  cat $^) | $(TCLWRAP) > $(LIBDIR)/supportform
 
 citool: $(COMMON) search.tcl appState.tcl progress.tcl ciedit.tcl citool.tcl
-	(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/citool
+	@(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/citool
 
 csettool: $(COMMON) search.tcl appState.tcl difflib.tcl csettool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/csettool
+	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/csettool
 
 difftool: $(COMMON) search.tcl appState.tcl difflib.tcl difftool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/difftool
+	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/difftool
 
 fmtool: $(COMMON) appState.tcl difflib.tcl fmtool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fmtool
+	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fmtool
 
 fm3tool: $(COMMON) appState.tcl tooltip.tcl fm3tool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fm3tool
+	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/fm3tool
 
 helptool: $(COMMON) appState.tcl helptool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/helptool
+	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/helptool
 
 msgtool: $(COMMON) msgtool.tcl
-	(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/msgtool
+	@(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/msgtool
 
 renametool: $(COMMON) appState.tcl renametool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/renametool
+	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/renametool
 
 revtool: $(COMMON) search.tcl appState.tcl revtool.tcl
-	(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/revtool
+	@(echo 'wm withdraw .' ; cat $^) |  $(TCLWRAP) > $(LIBDIR)/revtool
 
 setuptool: $(COMMON) tkwizard.tcl setuptool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/setuptool
+	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/setuptool
 
 newdifftool: $(COMMON) search.tcl appState.tcl newdifflib.tcl \
 	comm.tcl bktalk.tcl actions.tcl tooltip.tcl appState.tcl \
 	 newsearchlib.tcl newdifftool.tcl
-	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/newdifftool
+	@(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/newdifftool
 
 showproc: showproc.tcl
-	(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/showproc
+	@(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/showproc

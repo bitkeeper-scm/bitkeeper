@@ -5,7 +5,7 @@
 bk setup \- create a new \*(BK package
 .SH SYNOPSIS
 .B bk setup
-.[B] \-fp
+.[B] \-Efp
 .[OPTreq] \-F key\fB=\fIval
 .[OPTreq] \-c config_file
 .ARG directory
@@ -42,6 +42,9 @@ The first file found is used.
 Use 
 .ARG config_file
 as the configuration file to setup the repository.
+.tp
+.B \-E
+The repository being created is to be an ensemble.
 .tp
 .B \-f
 Don't ask for confirmation.

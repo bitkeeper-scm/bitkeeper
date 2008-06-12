@@ -29,7 +29,7 @@ bk new $Q sa_file || exit 1
 bk commit -y'add sa_file' $Q || exit 1
 cd ..
 fresh_commercial project2
-bk ensemble create $Q || exit 1
+bk ensemble createInClone $Q || exit 1
 
 # XXX hack around ensemble-add restrictions
 #cd ..

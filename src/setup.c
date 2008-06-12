@@ -4,7 +4,7 @@
 
 private int	mkconfig(FILE *out, MDBM *flist, int verbose);
 private void    usage(void);
-private void	defaultFiles(void);
+private void	defaultFiles(int);
 private void	printField(FILE *out, MDBM *flist, char *field);
 private MDBM	*addField(MDBM *flist, char *field);
 private	int	licensebad(MDBM *m);
@@ -23,8 +23,9 @@ setup_main(int ac, char **av)
 	FILE	*f, *f1;
 	int	status;
 	int	print = 0;
+	int	ensemble = 0;
 
-	while ((c = getopt(ac, av, "ac:efF:p")) != -1) {
+	while ((c = getopt(ac, av, "ac:eEfF:p")) != -1) {
 		switch (c) {
 		    case 'a': accept = 1; break;
 		    case 'c':
@@ -37,6 +38,7 @@ setup_main(int ac, char **av)
 			localName2bkName(optarg, optarg);
 			config_path = fullname(optarg);
 			break;
+		    case 'E': ensemble = 1; break;
 		    case 'e': allowNonEmptyDir = 1; break;
 		    case 'f': force = 1; break;
 		    case 'F': flist = addField(flist, optarg); break;
@@ -159,7 +161,7 @@ err:			unlink("BitKeeper/etc/config");
 	assert(s);
 	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
 	sccs_free(s);
-	defaultFiles();
+	defaultFiles(ensemble);
 
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
@@ -176,7 +178,7 @@ err:			unlink("BitKeeper/etc/config");
 }
 
 private void
-defaultFiles(void)
+defaultFiles(int ensemble)
 {
 	FILE	*f;
 
@@ -184,7 +186,11 @@ defaultFiles(void)
 	fprintf(f, "\n");
 	fclose(f);
 	system("bk new -Pq BitKeeper/etc/ignore");
-
+	if (ensemble) {
+		touch("BitKeeper/etc/modules", 0666);
+		system("bk new -Pq BitKeeper/etc/modules");
+		touch("BitKeeper/log/PRODUCT", 0444);
+	}
 	unless (getenv("_BK_SETUP_NOGONE")) {
 		f = fopen("BitKeeper/etc/gone", "w");
 		fprintf(f, "\n");

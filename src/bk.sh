@@ -138,8 +138,12 @@ _prefixed_sfiles() {
 }
 
 _ensemble() {
-	__cd2root
+	test "X$1" = Xcreate && {
+		shift
+		exec bk setup -E ${1+"$@"}
+	}
 
+	__cd2root
 	test "X$1" = X && {
 		test -f BitKeeper/log/PRODUCT && {
 			echo This is the product.
@@ -153,7 +157,8 @@ _ensemble() {
 		exit 0
 	}
 
-	test "X$1" = Xcreate && {
+	# XXX - going away, do not use
+	test "X$1" = XcreateInClone && {
 		shift
 		QUIET=
 		while getopts q opt
@@ -182,16 +187,18 @@ _ensemble() {
 		exec bk ensemble_list $@
 	}
 
-	# bk ensemble [add|attach] -y<m>|Y<f> url loc [url loc ...]
+	# bk ensemble [add|attach] -y<m>|Y<f> [-r<rev>] url loc [url loc ...]
 	test "X$1" = Xadd -o "X$1" = Xattach && {
 		CMD=$1
 		shift
 		COMMENT=
 		QUIET=
-		while getopts qy:Y: opt
+		REV=
+		while getopts qr:y:Y: opt
 		do
 			case "$opt" in
 			q) QUIET=-q;;
+			r) REV="-r$OPTARG";;
 			y) COMMENT="-y$OPTARG";;
 			Y) COMMENT="-Y$OPTARG";;
 			esac
@@ -206,7 +213,8 @@ _ensemble() {
 					exit 1
 				}
 				verbose Adding "$1" as "$2"
-				bk clone -p $QUIET "$1" "$2" || {
+				# XXX - won't handle spaces in rev, fix in C.
+				bk clone -p $QUIET $REV "$1" "$2" || {
 					echo "ensemble add failed to clone $1"
 					rm -f ${TMP}/ensemble_add$$
 					exit 1

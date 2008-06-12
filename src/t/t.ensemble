@@ -25,7 +25,7 @@ echo OK
 
 echo $N Convert to product ..........................................$NL
 cd "$HERE/project"
-bk ensemble create $Q
+bk ensemble createInClone $Q
 test "`bk ensemble`" = "This is the product." || {
 	echo failed to make it a product
     	exit 1

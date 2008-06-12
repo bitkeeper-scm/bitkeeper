@@ -94,7 +94,7 @@ _make_repo() {
 	test "$TYPE" = nested && (
 		cd "$REPO"
 		bk clone -q . BitKeeper/tmp/x
-		bk ensemble create -q
+		bk ensemble createInClone -q
 		bk ensemble add -q -y'components' \
 		    BitKeeper/tmp/x "gcc" BitKeeper/tmp/x "gdb"
 		bk commit -q -y'components'
