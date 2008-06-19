@@ -646,6 +646,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 			perror("chksum read");
 			return (1);
 		}
+		tmp[10] = 0;
 		sscanf(tmp, "%010u", &sum2);
 		if (sum != sum2) {
 			fprintf(stderr, "Checksum mismatch %u:%u for %s\n",
@@ -730,6 +731,7 @@ in_symlink(char *file, int pathlen, int extract)
 		perror("chksum read");
 		goto err;
 	}
+	buf[10] = 0;
 	sscanf(buf, "%010u", &sum2);
 	if (sum != sum2) {
 		fprintf(stderr,
@@ -740,6 +742,7 @@ in_symlink(char *file, int pathlen, int extract)
 		perror("mode read");
 		goto err;
 	}
+	buf[3] = 0;
 	sscanf(buf, "%03o", &imode);
 	mode = imode;
 	if (extract) {
@@ -784,6 +787,7 @@ in_hardlink(char *file, int pathlen, int extract)
 		perror("chksum read");
 		goto err;
 	}
+	buf[10] = 0;
 	sscanf(buf, "%010u", &sum2);
 	if (sum != sum2) {
 		fprintf(stderr,
@@ -854,6 +858,7 @@ done:	if (readn(0, buf, 10) != 10) {
 		perror("chksum read");
 		goto err;
 	}
+	buf[10] = 0;
 	sscanf(buf, "%010u", &sum2);
 	if ((sum != sum2) && !getenv("_BK_ALLOW_BAD_CRC")) {
 		fprintf(stderr,
@@ -866,6 +871,7 @@ done:	if (readn(0, buf, 10) != 10) {
 			perror("mode read");
 			goto err;
 		}
+		buf[3] = 0;
 		sscanf(buf, "%03o", &imode);
 		mode = imode;
 	}
