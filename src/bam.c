@@ -1933,8 +1933,7 @@ uu2bp(sccs *s)
 		unlink(s->gfile);
 	}
 	fprintf(stderr, "\n");
-	unless (out = fopen(sccs_Xfile(s, 'x'), "w")) {
-		fprintf(stderr, "BP: can't create %s: ", sccs_Xfile(s, 'x'));
+	unless (out = sccs_startWrite(s)) {
 err:		sccs_unlock(s, 'z');
 		return (32);
 	}
@@ -1942,16 +1941,7 @@ err:		sccs_unlock(s, 'z');
 	if (delta_table(s, out, 0)) goto err;
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", 'H', s->cksum);
-	fclose(out);
-	sccs_close(s);
-	t = sccs_Xfile(s, 'x');
-	if (rename(t, s->sfile)) {
-		fprintf(stderr,
-		    "BP: can't rename(%s, %s) left in %s\n", t, s->sfile, t);
-		goto err;
-	}
-	sccs_setStime(s, 0);
-	chmod(s->sfile, 0444);
+	if (sccs_finishWrite(s, &out)) goto err;
 	fprintf(stderr, "Converted %d deltas in %s\n", n, s->gfile);
 out:	sccs_unlock(s, 'z');
 	return (0);

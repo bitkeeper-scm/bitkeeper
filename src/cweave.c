@@ -284,10 +284,7 @@ cset_write(sccs *s, int spinners)
 	}
 	sccs_renumber(s, SILENT, spinners);
 
-	unless (f = fopen(sccs_Xfile(s, 'x'), "w")) {
-		perror(sccs_Xfile(s, 'x'));
-		return (-1);
-	}
+	unless (f = sccs_startWrite(s)) return (-1);
 	s->state |= S_ZFILE|S_PFILE;
 	if (delta_table(s, f, 0)) {
 		perror("table");
@@ -297,12 +294,6 @@ cset_write(sccs *s, int spinners)
 	if (sccs_csetPatchWeave(s, f)) return (-1);
 	fseek(f, 0L, SEEK_SET);
 	fprintf(f, "\001H%05u\n", s->cksum);
-	if (fclose(f)) perror(sccs_Xfile(s, 'x'));
-
-	sccs_close(s);
-	if (rename(sccs_Xfile(s, 'x'), s->sfile)) {
-		perror(s->sfile);
-		return (-1);
-	}
+	if (sccs_finishWrite(s, &f)) return (-1);
 	return (0);
 }
