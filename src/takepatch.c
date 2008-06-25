@@ -51,7 +51,6 @@ private	void	insertPatch(patch *p);
 private	void	reversePatch(void);
 private	void	initProject(void);
 private	MMAP	*init(char *file, int flags);
-private	int	rebuild_id(char *id);
 private	void	cleanup(int what);
 private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
@@ -368,7 +367,6 @@ extractPatch(char *name, MMAP *p, int flags)
 	int	reallyNew = 0;
 	char	*gfile = 0;
 	int	nfound = 0, rc;
-	static	int rebuilt = 0;	/* static - do it once only */
 	char	*t;
 
 	/*
@@ -409,7 +407,7 @@ extractPatch(char *name, MMAP *p, int flags)
 	if (newProject && !newFile) errorMsg("tp_notfirst", 0, 0);
 
 	if (echo>4) fprintf(stderr, "%s\n", t);
-again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
+	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -429,18 +427,6 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
 			} else {
 				errorMsg("tp_gone_error", t, 0);
 			}
-		}
-		unless (rebuilt++) {
-			if (rebuild_id(t)) {
-				fprintf(stderr,
-				    "ID cache problem causes abort.\n");
-				if (perfile) sccs_free(perfile);
-				if (gfile) free(gfile);
-				if (s) sccs_free(s);
-				free(name);
-				cleanup(CLEAN_RESYNC);
-			}
-			goto again;
 		}
 		SHOUT();
 		fprintf(stderr,
@@ -2085,37 +2071,6 @@ sccs_gzip(sccs *s)
 	}
 	s = sccs_restart(s);
 	return (s);
-}
-
-private	int
-rebuild_id(char *id)
-{
-	char	*s = 0;
-
-	if (echo > 0) {
-
-		s = strchr(id, '|');
-		assert(s);
-		s = strchr(++s, '|');
-		assert(s);
-		s = strchr(++s, '|');
-		assert(s);
-		*s = 0;
-		fprintf(stderr,
-"Rebuilding idcache - looking for the following key (may take a moment):\n"
-"    \"%s\"\n", id);
-	}
-	if (sccs_reCache(1)) return (1);
-	if (idDB) mdbm_close(idDB);
-	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
-		perror("SCCS/x.id_cache");
-		return (1);
-	}
-	if (echo > 0) {
-		*s = '|';
-		fprintf(stderr, "done\n");
-	}
-	return (0);
 }
 
 private	void

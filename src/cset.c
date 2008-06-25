@@ -421,7 +421,6 @@ private int
 doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 {
 	static	MDBM *idDB;
-	static	int doneFullRebuild;
 	static	sccs *sc;
 	static	char *lastkey;
 	delta	*d;
@@ -443,7 +442,6 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 			unless (sc == cset) sccs_free(sc);
 			sc = 0;
 		}
-		doneFullRebuild = 0;
 		doit(cs, 0);
 		return (0);
 	}
@@ -471,7 +469,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	 * Set up the new file.
 	 */
 	lastkey = strdup(key);
-retry:	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
+	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
 		perror("idcache");
 	}
 	if (cset && strstr(lastkey, "|ChangeSet|")) {
@@ -484,19 +482,6 @@ retry:	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_IDCACHE))) {
 			free(lastkey);
 			lastkey = 0;
 			return (0);
-		}
-
-		/* cache miss, rebuild cache */
-		unless (doneFullRebuild) {
-			mdbm_close(idDB);
-			idDB = 0;
-			if (sccs_reCache(!cs->verbose)) {
-				fprintf(stderr,
-				    "cset: cannot build %s\n", IDCACHE);
-				// XXX - exit or not?
-			}
-			doneFullRebuild = 1;
-			goto retry;
 		}
 		fprintf(stderr, "cset: unable to keyinit %s\n", lastkey);
 		free(lastkey);
@@ -688,7 +673,7 @@ again:	/* doDiffs can make it two pass */
 		if (doKey(cs, rk, t, goneDB)) {
 			fprintf(stderr,
 			    "File named by key\n\t%s\n\tis missing and key is "
-			    "not in gone file, aborting.\n", buf);
+			    "not in gone file, aborting.\n", rk);
 			fflush(stderr); /* for win32 */
 			goto fail;
 		}

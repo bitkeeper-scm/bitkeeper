@@ -400,19 +400,20 @@ cores
 echo $N resync w/ pending rename in source tree .....................$NL
 cd "$HERE/project/src"
 bk get $Q -e a.c
-mv a.c f.c
-mv SCCS/s.a.c SCCS/s.f.c
-mv SCCS/p.a.c SCCS/p.f.c
+KSRC=`bk prs -r+ -hnd:MD5KEY: a.c`
+bk mv a.c f.c
 cd  "$HERE"
 rm -rf "$HERE/copy"
 tar xmf chkpoint.tar
 bk clean "$HERE/copy/src"
 cd "$HERE/copy/src"
-bk pull $Q -R "$HERE/project"
-bk resolve -t $L $Q $L
-bk admin -z "$HERE/project/src/SCCS/s.f.c" "$HERE/copy/src/SCCS/s.a.c"
-diff "$HERE/project/src/SCCS/s.f.c" "$HERE/copy/src/SCCS/s.a.c"
-if [ $? -ne 0 ]; then echo failed on f.c; exit 1; fi;
+bk pull $Q -R "$HERE/project" || exit 1
+bk resolve -t $L $Q $L || exit 1
+KDST=`bk prs -r+ -hnd:MD5KEY: a.c`
+test $KSRC = $KDST || {
+     echo failed to restore pre-moved delta
+     exit 1
+}
 bk admin -z "$HERE/project/src/SCCS/s.b.c" "$HERE/copy/src/SCCS/s.b.c"
 diff "$HERE/project/src/SCCS/s.b.c" "$HERE/copy/src/SCCS/s.b.c"
 if [ $? -ne 0 ]; then echo failed on b.c; exit 1; fi;

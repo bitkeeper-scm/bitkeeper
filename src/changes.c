@@ -701,9 +701,8 @@ dumplog(char **list, FILE *f)
  */
 private sccs *
 sccs_keyinitAndCache(char *key,
-	int	flags, MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
+	int	flags, MDBM **idDB, MDBM *graphDB)
 {
-	static	int	rebuilt = 0;
 	datum	k, v;
 	sccs	*s;
 	delta	*d;
@@ -715,24 +714,7 @@ sccs_keyinitAndCache(char *key,
 		memcpy(&s, v.dptr, sizeof (sccs *));
 		return (s);
 	}
- retry:
 	s = sccs_keyinit(key, flags|INIT_NOWARN, *idDB);
-	unless (s || gone(key, goneDB)) {
-		unless (rebuilt) {
-			mdbm_close(*idDB);
-			if (sccs_reCache(1)) {
-				fprintf(stderr,
-				    "changes: cannot build %s\n",
-				    IDCACHE);
-			}
-			unless (*idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
-				perror("idcache");
-			}
-			rebuilt = 1;
-			goto retry;
-		}
-		fprintf(stderr, "Cannot sccs_init(), key = %s\n", key);
-	}
 	v.dptr = (void *) &s;
 	v.dsize = sizeof (sccs *);
 	if (mdbm_store(graphDB, k, v, MDBM_INSERT)) { /* cache the new entry */
@@ -917,7 +899,6 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 		k.dsize = strlen(e->rev);
 		v = mdbm_fetch(csetDB, k);
 		unless (v.dptr) continue;	/* no files */
-		
 		memcpy(&keys, v.dptr, v.dsize);
 		mdbm_delete(csetDB, k);
 
@@ -931,11 +912,19 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 			assert(dkey);
 			*dkey++ = 0;
 			s = sccs_keyinitAndCache(
-				keys[i], iflags, &idDB, graphDB, goneDB);
-			unless (s && !CSET(s)) continue;
+				keys[i], iflags, &idDB, graphDB);
+			unless (s) {
+			    unless (gone(keys[i], goneDB)) {
+				    fprintf(stderr,
+					"Cannot sccs_init(), key = %s\n",
+					keys[i]);
+			    }
+			    continue;
+			}
+			if (CSET(s)) continue;
 			unless (d = sccs_findKey(s, dkey)) {
-				if (mdbm_fetch_str(goneDB, dkey)) continue;
-				if (mdbm_fetch_str(goneDB, keys[i])) continue;
+				if (gone(dkey, goneDB)) continue;
+				if (gone(keys[i], goneDB)) continue;
 				fprintf(stderr,
 				    "changes: in file %s, there is a "
 				    "missing delta\n\t%s\n"

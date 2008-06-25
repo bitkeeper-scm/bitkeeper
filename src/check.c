@@ -358,7 +358,7 @@ check_main(int ac, char **av)
 		if (names && !gotDupKey) {
 			fprintf(stderr, "check: trying to fix names...\n");
 			system("bk -r names");
-			system("bk idcache");
+			sccs_reCache(0);
 		}
 		if (xflags_failed) {
 			fprintf(stderr, "check: trying to fix xflags...\n");

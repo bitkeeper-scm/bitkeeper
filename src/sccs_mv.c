@@ -261,7 +261,7 @@ again:
 			fprintf(stderr,
 			    "Out of date idcache detected, updating...\n");
 			mdbm_close(idDB);
-			system("bk idcache");
+			sccs_reCache(0);
 			goto again;
 		}
 		fprintf(stderr, "Key %s exists for %s\n", key, t);
