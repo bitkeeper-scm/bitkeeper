@@ -52,12 +52,18 @@ bk get $Q -e bar.c
 bk delta -fywhatever $Q bar.c
 bk commit $Q -ywhatever
 cd "$HERE/clone"
-bk pull $Q 2>ERROR
-grep -q "The location vs recorded location don't match.  The file is " ERROR
-if [ $? -ne 0 ]
-then	echo Failed to catch moved file; exit 1
-fi
+bk pull $Q 2>ERROR && {
+   echo ok to fail with bad repo
+   cat ERROR
+   exit 1
+}
+grep -q "takepatch: can't find key.*bar.c" ERROR || {
+     echo wrong error
+     cat ERROR
+     exit 1
+}
 echo OK
+
 echo $N Test by-hand resolve after resolve -a fails .................$NL
 # This tests the following: Suppose we have one file moved in one place,
 # and another file with a conflict.  resolve -a will give up because

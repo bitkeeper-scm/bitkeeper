@@ -71,9 +71,9 @@ getDotBk(void)
 	if (t = getHomeDir()) {
 		dir = aprintf("%s/%s", t, bkdir);
 		/* try to only stat() once */
-		if (rc = lstat(dir, &sb)) {
+		if (rc = stat(dir, &sb)) {
 			/* no .bk directory, lstat $HOME */
-			rc = lstat(t, &sb);
+			rc = stat(t, &sb);
 			free(t);
 			/* if -e $HOME and it is mine ... */
 			if (!rc && isMe(sb.st_uid)) {

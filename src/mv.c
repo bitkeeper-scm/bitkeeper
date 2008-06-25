@@ -233,7 +233,7 @@ err:		unless (skip_lock) repository_wrunlock(0);
 	pclose(f);
 
 	if (freeme) free(freeme);
-	if (sys("bk", "idcache", "-q", SYS))  {
+	if (sccs_reCache(1))  {
 		fprintf(stderr, "mvdir: cannot update idcache\n");
 	}
 	if (sys("bk", "-r", "check", "-a", SYS)) return (1);

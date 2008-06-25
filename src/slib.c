@@ -2161,6 +2161,51 @@ sccs_rdweaveDone(sccs *s)
 }
 
 /*
+ * We are about to write a new sfile, open the x.file for writing and
+ * return it.
+ */
+FILE *
+sccs_startWrite(sccs *s)
+{
+	FILE	*sfile;
+	char	*xfile;
+
+	xfile = sccsXfile(s, 'x');
+	unless (sfile = fopen(xfile, "w")) perror(xfile);
+	return (sfile);
+}
+
+/*
+ * We have finished writing a new x.file and now it is time to update
+ * the sfile.
+ */
+int
+sccs_finishWrite(sccs *s, FILE **f)
+{
+	char	*xfile = sccsXfile(s, 'x');
+	int	rc;
+
+	rc = fclose(*f);
+	*f = 0;
+	if (rc) {
+		perror(xfile);
+		return (-1);
+	}
+	sccs_close(s);
+	if (rename(xfile, s->sfile)) {
+		fprintf(stderr,
+		    "can't rename(%s, %s) left in %s\n",
+		    xfile, s->sfile, xfile);
+		return (-1);
+	}
+	assert(size(s->sfile) > 0);
+	/* Always set the time on the s.file behind the g.file or now */
+	if (sccs_setStime(s, 0)) perror(s->sfile);
+	if (chmod(s->sfile, 0444)) perror(s->sfile);
+	return (0);
+}
+
+/*
  * Look for a bug in the weave that could be created by bitkeeper
  * versions 3.0.1 or older.  It happens when a file is delta'ed on
  * Windows when it ends in a bare \r without a trailing \n.
@@ -9277,12 +9322,7 @@ out:		sccs_unlock(s, 'z');
 			"delta: checking in %s is not allowed\n", BKSKIP);
 		goto out;
 	}
-
-	sfile = fopen(sccsXfile(s, 'x'), "wb");
-	unless (s) {
-		perror(sccsXfile(s, 'x'));
-		goto out;
-	}
+	unless (sfile = sccs_startWrite(s)) goto out;
 	if ((flags & DELTA_PATCH) || proj_root(s->proj)) {
 		s->bitkeeper = 1;
 		s->xflags |= X_BITKEEPER;
@@ -9533,26 +9573,8 @@ skip_weave:
 		fprintf(stderr, "checkin: cannot construct sfile\n");
 		goto out;
 	}
-
-	t = sccsXfile(s, 'x');
-	if (fclose(sfile)) {
-		fprintf(stderr, "checkin: i/o error\n");
-		perror(t);
-		sfile = 0;
-		goto out;
-	}
-	sfile = 0;
-	if (rename(t, s->sfile)) {
-		fprintf(stderr,
-			 "checkin: can't rename(%s, %s) left in %s\n",
-			t, s->sfile, t);
-		goto out;
-	}
-	assert(size(s->sfile) > 0);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
-	/* Always set the time on the s.file behind the g.file or now */
-	sccs_setStime(s, 0);
-	chmod(s->sfile, 0444);
+	if (sccs_finishWrite(s, &sfile)) goto out;
 	if (BITKEEPER(s)) updatePending(s);
 	sccs_unlock(s, 'z');
 	return (0);
@@ -10843,7 +10865,6 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_compp,
 	FILE	*sfile = 0;
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
 	int	flagsChanged = 0;
-	char	*t;
 	char	*buf;
 	delta	*d = 0;
 	int	obscure_it, rmlicense;
@@ -11123,9 +11144,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		verbose((stderr, "admin: can't get lock on %s\n", sc->sfile));
 		OUT;
 	}
-	unless (sfile = fopen(sccsXfile(sc, 'x'), "w")) {
+	unless (sfile = sccs_startWrite(sc)) {
 		fprintf(stderr, "admin: can't create %s: ", sccsXfile(sc, 'x'));
-		perror("");
 		OUT;
 	}
 	old_enc = sc->encoding;
@@ -11200,17 +11220,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 #ifdef	DEBUG
 	badcksum(sc, flags);
 #endif
-	sccs_close(sc), fclose(sfile), sfile = NULL;
-	t = sccsXfile(sc, 'x');
-	if (rename(t, sc->sfile)) {
-		fprintf(stderr,
-		    "admin: can't rename(%s, %s) left in %s\n",
-		    t, sc->sfile, t);
-		OUT;
-	}
-
-	sccs_setStime(sc, 0);
-	chmod(sc->sfile, 0444);
+	if (sccs_finishWrite(sc, &sfile)) OUT;
 	goto out;
 #undef	OUT
 }
@@ -11243,7 +11253,6 @@ sccs_scompress(sccs *s, int flags)
 {
 	FILE	*sfile = 0;
 	int	ser, error = 0, locked = 0, i;
-	char	*t;
 	char	*buf;
 	delta	*d;
 	ser_t	*orig, *remap;
@@ -11283,12 +11292,7 @@ out:
 		EACH(d->exclude) d->exclude[i] = remap[d->exclude[i]];
 	}
 
-	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
-		fprintf(stderr,
-		    "scompress: can't create %s: ", sccsXfile(s, 'x'));
-		perror("");
-		OUT;
-	}
+	unless (sfile = sccs_startWrite(s)) OUT;
 	if (delta_table(s, sfile, 0)) {
 		sccs_unlock(s, 'x');
 		if (s->io_warned) OUT;
@@ -11316,16 +11320,7 @@ out:
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_rdweaveDone(s);
-	sccs_close(s), fclose(sfile), sfile = NULL;
-	t = sccsXfile(s, 'x');
-	if (rename(t, s->sfile)) {
-		fprintf(stderr,
-		    "admin: can't rename(%s, %s) left in %s\n",
-		    t, s->sfile, t);
-		OUT;
-	}
-	sccs_setStime(s, 0);
-	chmod(s->sfile, 0444);
+	if (sccs_finishWrite(s, &sfile)) OUT;
 	goto out;
 #undef	OUT
 }
@@ -12409,7 +12404,6 @@ sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 	delta	*m;
 	int	i, e = 0;
 	FILE	*sfile = 0;
-	char	*t;
 	char	*buf;
 	char	**syms;
 
@@ -12442,9 +12436,7 @@ sccs_meta(char *me, sccs *s, delta *parent, MMAP *iF, int fixDate)
 	/*
 	 * Do the delta table & misc.
 	 */
-	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
-		fprintf(stderr, "admin: can't create %s: ", sccsXfile(s, 'x'));
-		perror("");
+	unless (sfile = sccs_startWrite(s)) {
 		sccs_unlock(s, 'z');
 		exit(1);
 	}
@@ -12466,17 +12458,10 @@ abort:		fclose(sfile);
 	sccs_rdweaveDone(s);
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
-	sccs_close(s); fclose(sfile); sfile = NULL;
-	t = sccsXfile(s, 'x');
-	if (rename(t, s->sfile)) {
-		fprintf(stderr,
-		    "%s: can't rename(%s, %s) left in %s\n",
-		    me, t, s->sfile, t);
+	if (sccs_finishWrite(s, &sfile)) {
 		sccs_unlock(s, 'z');
 		exit(1);
 	}
-	sccs_setStime(s, 0);
-	chmod(s->sfile, 0444);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -12515,7 +12500,6 @@ sccs_delta(sccs *s,
 {
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
-	char	*t;
 	delta	*d = 0, *p, *n = 0;
 	char	*rev, *tmpfile = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
@@ -12830,11 +12814,7 @@ out:
 	/*
 	 * Do the delta table & misc.
 	 */
-	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
-		fprintf(stderr, "delta: can't create %s: ", sccsXfile(s, 'x'));
-		perror("");
-		OUT;
-	}
+	unless (sfile = sccs_startWrite(s)) OUT;
 
 	/*
 	 * If the new delta is a top-of-trunk, update the xflags
@@ -12871,25 +12851,15 @@ out:
 		sccs_unlock(s, 'x');
 		WARN;
 	}
-
-	sccs_close(s), fclose(sfile), sfile = NULL;
 	unless (flags & DELTA_SAVEGFILE)  {
 		if (unlinkGfile(s)) {				/* Careful. */
 			fprintf(stderr, "delta: cannot unlink %s\n", s->gfile);
 			OUT;
 		}
 	}
-	t = sccsXfile(s, 'x');
-	if (rename(t, s->sfile)) {
-		fprintf(stderr,
-		    "delta: can't rename(%s, %s) left in %s\n",
-		    t, s->sfile, t);
-		OUT;
-	}
+	if (sccs_finishWrite(s, &sfile)) OUT;
 	unlink(s->pfile);
 	comments_cleancfile(s->gfile);
-	sccs_setStime(s, 0);
-	chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
 	}
@@ -16414,17 +16384,7 @@ stripDeltas(sccs *s, FILE *out)
 	if (sccs_rdweaveDone(s)) return (1);
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
-	sccs_close(s);
-	fclose(out);
-	buf = sccsXfile(s, 'x');
-	if (rename(buf, s->sfile)) {
-		fprintf(stderr,
-		    "stripdel: can't rename(%s, %s) left in %s\n",
-		    buf, s->sfile, buf);
-		return (1);
-	}
-	sccs_setStime(s, 0);
-	chmod(s->sfile, 0444);
+	if (sccs_finishWrite(s, &out)) return (1);
 	return (0);
 }
 
@@ -16452,16 +16412,8 @@ sccs_stripdel(sccs *s, char *who)
 		fprintf(stderr, "%s: can't get lock on %s\n", who, s->sfile);
 		OUT;
 	}
-
-
 	if (stripChecks(s, 0, who)) OUT;
-
-	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
-		fprintf(stderr,
-		    "%s: can't create %s: ", who, sccsXfile(s, 'x'));
-		perror("");
-		OUT;
-	}
+	unless (sfile = sccs_startWrite(s)) OUT;
 
 	/*
 	 * Find the new top-of-trunk.
