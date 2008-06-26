@@ -152,7 +152,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
 	mailsplit.o module.o mtime.o mv.o names.o newroot.o \
 	opark.o parent.o park.o \
-	pending.o preference.o proj.o \
+	pending.o populate.o preference.o proj.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
 	port/gethomedir.o \

@@ -463,3 +463,23 @@ bk clone -EBKU_TEST=ff $Q project copy_args >OUT 2>&1 || {
 	exit 1
 }
 echo OK
+
+echo $N Test deep nest populate scenarios ...........................$NL
+cd "$HERE"/project/gcc
+commercial deep
+cd ../..
+bk ensemble attach $Q gcc/deep 2> ERR > OUT 
+# hack to link deep nest
+# (cd gcc/deep; bk -r > /dev/null)
+cd ..
+bk clone $Q -M./gdb project deeppop
+cd deeppop
+bk populate $Q -M./gcc/deep || {
+	echo fix deep test 1
+	exit 1
+}
+bk populate $Q -M./gcc 2> ERR && {
+	echo fix deep test 2
+	exit 1
+}
+echo "failed (bug )"

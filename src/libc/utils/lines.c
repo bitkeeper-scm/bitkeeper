@@ -245,21 +245,16 @@ popLine(char **space)
 /*
  * Fill a lines array from a file.
  * Each line is chomp()ed.
- * XXX - does not handle long lines.
  */
 char	**
 file2Lines(char **space, char *file)
 {
 	FILE	*f;
 	char	*p;
-	char	buf[MAXLINE];
 
 	unless (file && (f = fopen(file, "r"))) return (space);
-	while (fnext(buf, f)) {
-		p = strchr(buf, '\n');
-		assert(p);
-		while ((*p == '\n') || (*p == '\r')) *p-- = 0;
-		space = addLine(space, strdup(buf));
+	while (p = fgetline(f)) {
+		space = addLine(space, strdup(p));
 	}
 	fclose(f);
 	return (space);

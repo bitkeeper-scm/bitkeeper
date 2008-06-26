@@ -15,7 +15,6 @@ struct {
 	u32	quiet:1;		/* -q: shut up */
 	u32	verbose:1;		/* -v: more details */
 	u32	link:1;			/* -l: lclone-mode */
-	u32	populate:1;		/* av[0] eq populate */
 	int	delay;			/* wait for (ssh) to drain */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
@@ -45,8 +44,6 @@ clone_main(int ac, char **av)
 	int	gzip = 6;
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
-	char	*p;
-	char	revbuf[MAXPATH];
 
 	opts = calloc(1, sizeof(*opts));
 	while ((c = getopt(ac, av, "B;dE:lM;pqr;vw|z|")) != -1) {
@@ -95,49 +92,12 @@ clone_main(int ac, char **av)
 	unless (proj_isEnsemble(0)) opts->verbose = !opts->quiet;
 	if (av[optind]) localName2bkName(av[optind], av[optind]);
 	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
-	if (streq(av[0], "populate")) {
-		unless (proj_isEnsemble(0)) {
-			fprintf(stderr, "populate: must be in an ensemble.\n");
-			exit(1);
-		}
-		if (opts->rev) {
-			fprintf(stderr, "populate: rev arg is not allowed.\n");
-			exit(1);
-		}
-		opts->populate = 1;
-		if (av[optind]) {
-			if (av[optind + 1]) usage(av[0]);
-			opts->from = strdup(av[optind]);
-			sprintf(revbuf, "bk repogca -5 '%s'", opts->from);
-		} else {
-			char	**p = parent_pullp();
-
-			unless (p) {
-				fprintf(stderr,
-				    "populate: no incoming parent.\n");
-				exit(1);
-			}
-			opts->from = strdup(p[1]);
-			freeLines(p, free);
-			sprintf(revbuf, "bk repogca -5");
-		}
-		/*
-		 * They may not have this key in which case it will fail.
-		 * The "fix" is to tell them to push first.  Annoying but
-		 * the other approach of repogca meant we might undo locally.
-		 */
-		p = backtick("bk changes -r+ -nd:MD5KEY:");
-		strcpy(revbuf, p);
-		free(p);
-		opts->rev = revbuf;
-	} else {
-		unless (av[optind]) usage(av[0]);
-		opts->from = strdup(av[optind]);
-		if (av[optind + 1]) {
-			if (av[optind + 2]) usage(av[0]);
-			opts->to = av[optind + 1];
-			l = remote_parse(opts->to, REMOTE_BKDURL);
-		}
+	unless (av[optind]) usage(av[0]);
+	opts->from = strdup(av[optind]);
+	if (av[optind + 1]) {
+		if (av[optind + 2]) usage(av[0]);
+		opts->to = av[optind + 1];
+		l = remote_parse(opts->to, REMOTE_BKDURL);
 	}
 
 	/*
@@ -197,9 +157,6 @@ clone_main(int ac, char **av)
 			return (rclone_main(ac, av));
 		}
 	}
-
-	/* checked above */
-	if (opts->populate) (void)proj_cd2product();
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
 		unless (bam_repoid = bp_serverURL2ID(bam_url)) {
@@ -266,7 +223,6 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	char	**vp;
 	char	*name, *path;
 	int	status, i, n, which, rc = 0;
-	project	*proj;
 
 	url = remote_unparse(r);
 	putenv("_BK_TRANSACTION=1");
@@ -281,14 +237,12 @@ clone_ensemble(repos *repos, remote *r, char *local)
 			}
 			continue;
 		}
-		if (opts->populate && streq(".", repos->path)) continue;
 		n++;
 	}
 	if (rc) goto out;
 	which = 1;
 	EACH_REPO(repos) {
 		if (streq(repos->path, ".")) {
-			if (opts->populate) continue;
 			putenv("_BK_PRODUCT=1");
 			safe_putenv("_BK_REPO_PREFIX=%s", basenm(local));
 		} else {
@@ -304,38 +258,12 @@ clone_ensemble(repos *repos, remote *r, char *local)
 			fflush(stdout);
 		}
 
-		/*
-		 * If we're populating and there is something there, see
-		 * if it's what it should be and if so factor it out.
-		 * If it's there and not what it should be, error.
-		 */
-		if (opts->populate && exists(repos->path)) {
-			proj = proj_init(repos->path);
-			if (proj && streq(proj_rootkey(proj), repos->rootkey)) {
-				unless (opts->quiet) {
-					fprintf(stderr,
-					    "populate: %s is already here.\n",
-					    repos->path);
-				}
-				continue;
-			}
-			fprintf(stderr,
-			   "populate: can't add %s because of existing data.\n",
-			   repos->path);
-			rc = 1;
-			break;
-		}
-
 		vp = addLine(0, strdup("bk"));
 		vp = addLine(vp, strdup("clone"));
 		EACH(opts->av) vp = addLine(vp, strdup(opts->av[i]));
 		vp = addLine(vp, aprintf("-r%s", repos->deltakey));
 		vp = addLine(vp, aprintf("%s/%s", url, repos->path));
-		if (opts->populate) {
-			path = strdup(repos->path);
-		} else {
-			path = aprintf("%s/%s", local, repos->path);
-		}
+		path = aprintf("%s/%s", local, repos->path);
 		vp = addLine(vp, path);
 		vp = addLine(vp, 0);
 		status = spawnvp(_P_WAIT, "bk", &vp[1]);
@@ -446,10 +374,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 		if (opts->modules) {
 			char	**p = 0;
 
-			/* Union if populate, stomp if clone */
-			if (opts->populate) {
-				p = file2Lines(0, "BitKeeper/log/MODULES");
-			}
 			EACH(opts->modules) {
 				p = addLine(p, strdup(opts->modules[i]));
 			}
@@ -542,7 +466,6 @@ done:	if (rc) {
 	}
 	/*
 	 * Don't bother to fire trigger if we have no tree.
-	 * XXX - should we differentiate between clone and populate?
 	 */
 	if (!getenv("_BK_TRANSACTION") && proj_root(0) && (rc != 2)) {
 		trigger("clone", "post");
@@ -838,7 +761,7 @@ parent(remote *r)
 	char	*p;
 	int	i;
 
-	unless (!opts->populate && !opts->no_parent &&
+	unless (!opts->no_parent &&
 	    (!proj_isEnsemble(0) || proj_isProduct(0))) {
 	    	return;
 	}
