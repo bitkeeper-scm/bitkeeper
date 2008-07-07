@@ -2170,8 +2170,14 @@ sccs_startWrite(sccs *s)
 	FILE	*sfile;
 	char	*xfile;
 
-	xfile = sccsXfile(s, 'x');
-	unless (sfile = fopen(xfile, "w")) perror(xfile);
+	if (s->mem_out) {
+		unless(s->outfh) s->outfh = fmem_open();
+		assert(s->outfh);
+		sfile = s->outfh;
+	} else {
+		xfile = sccsXfile(s, 'x');
+		unless (sfile = fopen(xfile, "w")) perror(xfile);
+	}
 	return (sfile);
 }
 
@@ -2184,24 +2190,41 @@ sccs_finishWrite(sccs *s, FILE **f)
 {
 	char	*xfile = sccsXfile(s, 'x');
 	int	rc;
+ 	FILE	*tmp;
 
-	rc = fclose(*f);
-	*f = 0;
-	if (rc) {
-		perror(xfile);
-		return (-1);
+	if (s->mem_out) {
+		tmp = s->fh;
+		assert(s->state & S_SOPEN);
+		s->fh = s->outfh;
+		rewind(s->fh);
+		if (s->mem_in) {
+			s->outfh = tmp;
+			ftrunc(s->outfh, 0);
+		} else {
+			fclose(tmp);
+			s->outfh = fmem_open();
+			s->mem_in = 1;
+		}
+		*f = 0;
+	} else {
+		rc = fclose(*f);
+		*f = 0;
+		if (rc) {
+			perror(xfile);
+			return (-1);
+		}
+		sccs_close(s);
+		if (rename(xfile, s->sfile)) {
+			fprintf(stderr,
+			    "can't rename(%s, %s) left in %s\n",
+			    xfile, s->sfile, xfile);
+			return (-1);
+		}
+		assert(size(s->sfile) > 0);
+		/* Always set the time on the s.file behind the g.file or now */
+		if (sccs_setStime(s, 0)) perror(s->sfile);
+		if (chmod(s->sfile, 0444)) perror(s->sfile);
 	}
-	sccs_close(s);
-	if (rename(xfile, s->sfile)) {
-		fprintf(stderr,
-		    "can't rename(%s, %s) left in %s\n",
-		    xfile, s->sfile, xfile);
-		return (-1);
-	}
-	assert(size(s->sfile) > 0);
-	/* Always set the time on the s.file behind the g.file or now */
-	if (sccs_setStime(s, 0)) perror(s->sfile);
-	if (chmod(s->sfile, 0444)) perror(s->sfile);
 	return (0);
 }
 
@@ -4428,13 +4451,19 @@ sccs_restart(sccs *s)
 		if (!S_ISREG(sbuf.st_mode)) {
 bad:			sccs_free(s);
 			return (0);
-	}
+		}
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= S_SFILE;
+	}
+	if (s->mem_in) {
+		assert(s->state & S_SOPEN);
+		s->size = fseek(s->fh, 0, SEEK_END);
+		goto skip;
 	}
 	unless ((s->state & S_SOPEN) && (s->size == sbuf.st_size)) {
 		sccs_close(s);
 		if (sccs_open(s, &sbuf)) return (s);
+skip:
 		rewind(s->fh);
 		/* XXX need data-offset in header */
 		while(buf = sccs_nextdata(s)) if (streq(buf, "\001T")) break;
@@ -4511,6 +4540,7 @@ sccs_close(sccs *s)
 {
 	if (s->state & S_SOPEN) {
 		assert(s->fh != 0);
+		assert(!s->mem_in); /* don't want to lose data */
 		fclose(s->fh);
 		s->fh = 0;
 		s->state &= ~S_SOPEN;
@@ -4574,6 +4604,32 @@ sccs_free(sccs *s)
 	unless (s) return;
 	if (s->io_error && !s->io_warned) {
 		fprintf(stderr, "%s: unreported I/O error\n", s->sfile);
+	}
+	if (s->mem_out) {
+		FILE	*f, *out;
+		size_t	len;
+		char	*buf;
+
+		/* the sfile is still in memory.  Write it out. */
+		assert(s->sfile);
+		if (s->mem_in) {
+			f = s->fh;
+			assert(f != s->outfh);
+			fclose(s->outfh);
+			s->fh = 0;
+			s->state &= ~S_SOPEN;
+		} else {
+			f = s->outfh;
+		}
+		s->outfh = 0;
+		s->mem_in = s->mem_out = 0;
+
+		buf = fmem_getbuf(f, &len);
+		out = sccs_startWrite(s);
+		assert(buf);
+		fwrite(buf, 1, len, out);
+		sccs_finishWrite(s, &out);
+		fclose(f);
 	}
 	chk_gmode(s);
 	sccsXfile(s, 0);
@@ -11211,7 +11267,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	sc->encoding = new_enc;
 	if (fflushdata(sc, sfile)) {
 		sccs_unlock(sc, 'x');
-		sccs_close(sc), fclose(sfile), sfile = NULL;
+		sccs_finishWrite(sc, &sfile);
 		if (sc->io_warned) OUT;
 		goto out;
 	}
@@ -11313,7 +11369,7 @@ out:
 	}
 	if (fflushdata(s, sfile)) {
 		sccs_unlock(s, 'x');
-		sccs_close(s), fclose(sfile), sfile = NULL;
+		sccs_finishWrite(s, &sfile);
 		if (s->io_warned) OUT;
 		goto out;
 	}
@@ -11752,7 +11808,6 @@ newcmd:
 	sccs_rdweaveDone(s);
 	if (last) {
 		off_t	end = offset;
-		int	fd = fileno(out);
 
 		assert(!fixdel);	/* no infinite loops */
 		fixdel = lastdel;
@@ -11760,7 +11815,8 @@ newcmd:
 			perror("delta");
 			return (-1);
 		}
-		ftruncate(fd, end);	/* In case gzip file gets smaller */
+		/* In case gzip file gets smaller */
+		ftrunc(out, end);
 		mseekto(diffs, 0);
 		s->cksum = cksumsave;
 		goto again;
@@ -12827,7 +12883,7 @@ out:
 	}
 
 	if (delta_table(s, sfile, 1)) {
-		fclose(sfile); sfile = NULL;
+		sccs_finishWrite(s, &sfile);
 		sccs_unlock(s, 'x');
 		goto out;	/* not OUT - we want the warning */
 	}
@@ -12847,7 +12903,7 @@ out:
 		for (t = n->symlink; *t; t++) s->dsum += *t;
 	}
 	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
-		fclose(sfile); sfile = NULL;
+		sccs_finishWrite(s, &sfile);
 		sccs_unlock(s, 'x');
 		WARN;
 	}

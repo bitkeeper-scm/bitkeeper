@@ -107,6 +107,13 @@ int	touch(char *file, int mode);
 /* findpid.c */
 pid_t	findpid(pid_t pid);
 
+/* fmem.c */
+FILE	*fmem_open(void);
+char	*fmem_getbuf(FILE *f, size_t *len);
+char	*fmem_retbuf(FILE *f, size_t *len);
+void	fmem_tests(void);
+int	ftrunc(FILE *f, off_t offset);
+
 /* fullname.c */
 char    *fullname(char *path);
 

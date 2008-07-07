@@ -573,8 +573,9 @@ struct sccs {
 	delta	**ser2delta;	/* indexed by serial, returns delta */
 	int	ser2dsize;	/* just to be sure */
 	off_t	size;		/* size of mapping */
-	FILE	*fh;		/* cached copy of the file handle */
+	FILE	*fh;		/* cached copy of the input file handle */
 	FILE	*oldfh;		/* orig fh (no ungzip layer) */
+	FILE	*outfh;		/* fh for writing x.file */
 	char	*sfile;		/* SCCS/s.foo.c */
 	char	*pfile;		/* SCCS/p.foo.c */
 	char	*zfile;		/* SCCS/z.foo.c */
@@ -627,6 +628,8 @@ struct sccs {
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
 	u32	cachemiss:1;	/* BAM file not found locally */
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
+	u32	mem_in:1;	/* s->fh is in-memory FILE* */
+	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
 };
 
