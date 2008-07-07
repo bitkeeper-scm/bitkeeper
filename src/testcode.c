@@ -61,3 +61,13 @@ filtertest2_main(int ac, char **av)
 	fprintf(stderr, "spawn_filterPipeline returned %d\n", WEXITSTATUS(rc));
 	return (0);
 }
+
+/* run specialized code tests */
+int
+unittests_main(int ac, char **av)
+{
+	if (av[1]) return (1);
+
+	fmem_tests();
+	return (0);
+}

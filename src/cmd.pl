@@ -324,6 +324,7 @@ _unbk
 undo
 undos
 unedit
+_unittests
 _unlink
 unlock
 uninstall

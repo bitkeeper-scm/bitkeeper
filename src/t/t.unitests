@@ -1,0 +1,4 @@
+
+echo $N Run C-based unit tests ......................................$NL
+bk _unittests || exit 1
+echo OK

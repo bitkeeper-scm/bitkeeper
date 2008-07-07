@@ -1101,7 +1101,6 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 	int	pending = 0;
 	int	n = 0;
 	int	confThisFile;
-	FILE	*csets = 0;
 
 	reversePatch();
 	p = patchList;
@@ -1188,142 +1187,109 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 apply:
 
 	p = patchList;
-	while (p) {
+	if (p && !p->pid) {
+		/* initial file create */
 		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
-		if (p->pid) {
-			assert(s);
-			if (echo>9) {
-				fprintf(stderr,
-				    "------------- %s delta ---------\n"
-				    "PID: %s\nME:  %s\n",
-				    p->local ? "local" : "remote",
-				    p->pid, p->me);
-			}
-			unless (d = sccs_findKey(s, p->pid)) {
-				if ((echo == 2) || (echo == 3)) {
-					fprintf(stderr, " \n");
-				}
-				errorMsg("tp_ahead", p->pid, s->sfile);
-				/*NOTREACHED*/
-			}
-			unless (sccs_restart(s)) { perror("restart"); exit(1); }
-			if (echo>9) {
-				fprintf(stderr, "Child of %s", d->rev);
-				if (p->meta) {
-					fprintf(stderr, " meta\n");
-				} else {
-					fprintf(stderr, " data\n");
-				}
-			}
-			if (p->meta) {
-				MMAP	*m = p->initMmap;
-
-				unless (m) m = mopen(p->initFile, "b");
-				if (sccs_meta("takepatch", s, d, m, 0)) {
-					unless (s->io_error) perror("meta");
-					return -1;
-				}
-			} else {
-				newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
-				unless (echo > 6) newflags |= SILENT;
-				/* CSTYLED */
-				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
-				    	perror("get");
-					return -1;
-				}
-				sccs_restart(s);
-				if (p->initFile) {
-					iF = mopen(p->initFile, "b");
-				} else {
-					iF = p->initMmap;
-					p->initMmap = 0;
-				}
-				if (p->diffFile) {
-					dF = mopen(p->diffFile, "b");
-				} else {
-					dF = p->diffMmap;
-					p->diffMmap = 0;
-				}
-				newflags = 
-				    DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
-				if (echo <= 3) newflags |= SILENT;
-				if (sccs_delta(s, newflags, 0, iF, dF, 0)) {
-					unless (s->io_error) perror("delta");
-					return -1;
-				}
-				if (s->bad_dsum || s->io_error) return -1;
-				mclose(iF);
-				if ((s->state & S_CSET) && !p->local) {
-					delta	*d = sccs_findKey(s, p->me);
-
-					assert(d);
-					unless (csets) {
-						char csets_in[MAXPATH];
-
-						sprintf(csets_in, "%s/%s",
-							ROOT2RESYNC, CSETS_IN);
-						csets = fopen(csets_in, "w");
-						assert(csets);
-					}
-					fprintf(csets, "%s\n", d->rev);
-				}
-			}
-		} else {
-			assert(s == 0);
-			unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
-				SHOUT();
-				fprintf(stderr,
-				    "takepatch: can't create %s\n",
-				    p->resyncFile);
-				return -1;
-			}
-			if (perfile) {
-				sccscopy(s, perfile);
-				/*
-				 * For takepatch performance
-				 * turn off compression when we are in 
-				 * takepatch.
-				 * 
-				 * Note: Since this is a new file from remote,
-				 * there is no local setting. We save the 
-				 * compression setting of the remote file
-				 * and use that as the new local file when
-				 * when takepatch is done.
-				 */
-				encoding = s->encoding; /* save for later */
-				s->encoding &= ~E_GZIP;
-			}
-			if (p->initFile) {
-				iF = mopen(p->initFile, "b");
-			} else {
-				iF = p->initMmap;
-				p->initMmap = 0;
-			}
-			if (p->diffFile) {
-				dF = mopen(p->diffFile, "b");
-			} else {
-				dF = p->diffMmap;
-				p->diffMmap = 0;
-			}
-			d = 0;
-			newflags = 
-			    NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
-			if (echo <= 3) newflags |= SILENT;
-			if (sccs_delta(s, newflags, d, iF, dF, 0)) {
-				unless (s->io_error) perror("delta");
-				return -1;
-			}
-			if (s->bad_dsum || s->io_error) return (-1);
-			mclose(iF);	/* dF done by delta() */
-			sccs_free(s);
-			s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT);
+		assert(s == 0);
+		unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
+			SHOUT();
+			fprintf(stderr,
+			    "takepatch: can't create %s\n",
+			    p->resyncFile);
+			return -1;
 		}
-		p = p->next;
+		if (perfile) {
+			sccscopy(s, perfile);
+			/*
+			 * For takepatch performance turn off
+			 * compression when we are in takepatch.
+			 *
+			 * Note: Since this is a new file from remote,
+			 * there is no local setting. We save the
+			 * compression setting of the remote file and
+			 * use that as the new local file when when
+			 * takepatch is done.
+			 */
+			encoding = s->encoding; /* save for later */
+			s->encoding &= ~E_GZIP;
+		}
+		if (p->initFile) {
+			iF = mopen(p->initFile, "b");
+		} else {
+			iF = p->initMmap;
+			p->initMmap = 0;
+		}
+		if (p->diffFile) {
+			dF = mopen(p->diffFile, "b");
+		} else {
+			dF = p->diffMmap;
+			p->diffMmap = 0;
+		}
+		d = 0;
+		newflags = NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
+		if (echo <= 3) newflags |= SILENT;
+		if (sccs_delta(s, newflags, d, iF, dF, 0)) {
+			unless (s->io_error) perror("delta");
+			return -1;
+		}
+		if (s->bad_dsum || s->io_error) return (-1);
+		mclose(iF);	/* dF done by delta() */
+		sccs_free(s);
+		s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT);
+		if (p = p->next) s->mem_out = 1;
 	}
-
-	if (csets) {
-		fclose(csets);
+	/* enable in-memory mode, if more than one patch */
+	if (p && p->next) s->mem_out = 1;
+	while (p) {
+		assert(p->pid);
+		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
+		n++;
+		assert(s);
+		if (echo > 9) {
+			fprintf(stderr,
+			    "------------- %s delta ---------\n"
+			    "PID: %s\nME:  %s\n",
+			    p->local ? "local" : "remote",
+			    p->pid, p->me);
+		}
+		unless (d = sccs_findKey(s, p->pid)) {
+			if ((echo == 2) || (echo == 3)) {
+				fprintf(stderr, " \n");
+			}
+			errorMsg("tp_ahead", p->pid, s->sfile);
+			/*NOTREACHED*/
+		}
+		unless (sccs_restart(s)) { perror("restart"); exit(1); }
+		if (echo > 9) fprintf(stderr, "Child of %s\n", d->rev);
+		assert(!p->meta); /* this is not the cset file */
+		newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
+		unless (echo > 6) newflags |= SILENT;
+		if (sccs_get(s, d->rev, 0, 0, 0, newflags, "-")) {
+			perror("get");
+			return (-1);
+		}
+		if (p->initFile) {
+			iF = mopen(p->initFile, "b");
+		} else {
+			iF = p->initMmap;
+			p->initMmap = 0;
+		}
+		if (p->diffFile) {
+			dF = mopen(p->diffFile, "b");
+		} else {
+			dF = p->diffMmap;
+			p->diffMmap = 0;
+		}
+		newflags = DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
+		if (echo <= 3) newflags |= SILENT;
+		if (sccs_delta(s, newflags, 0, iF, dF, 0)) {
+			unless (s->io_error) perror("delta");
+			return (-1);
+		}
+		if (s->bad_dsum || s->io_error) return -1;
+		mclose(iF);
+		p = p->next;
 	}
 	sccs_free(s);
 	s = sccs_init(patchList->resyncFile, SILENT);
