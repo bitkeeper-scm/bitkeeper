@@ -15014,6 +15014,18 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		} else {
 			return (nullVal);
 		}
+	case KW_COMPONENT: /* COMPONENT */
+		if (q = proj_comppath(s->proj)) {
+			fs(q);
+			fc('/');
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
+	case KW_INDENT: /* INDENT */
+		if (s->prs_indentC && proj_isComponent(s->proj)) fs("  ");
+		if (s->file) fs("  ");
+		return (strVal);
 
 	default:
 		return (notKeyword);

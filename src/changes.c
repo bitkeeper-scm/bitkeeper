@@ -18,6 +18,7 @@ private struct {
 	u32	timesort:1;	/* force sorting based on time, not dspec */
 	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
+	u32	doComp:1;	/* do files inside components */
 	u32	diffs:1;	/* show diffs with verbose mode */
 	u32	tsearch:1;	/* pattern applies to tags instead of cmts */
 	u32	BAM:1;		/* only include BAM files */
@@ -29,12 +30,8 @@ private struct {
 	char	**inc;		/* list of globs for files to include */
 	char	**exc;		/* list of globs for files to exclude */
 
-	/* not opts */
-	FILE	*f;		/* global for recursion */
-	sccs	*s;		/* global for recursion */
-	char	*spec;		/* global for recursion */
-
 	RANGE	rargs;
+	FILE	*fmem;		/* in-mem output buffering */
 } opts;
 
 typedef struct slog {
@@ -44,6 +41,14 @@ typedef struct slog {
 	delta	*delta;
 	ser_t	serial;
 } slog;
+
+/* per-repo state */
+struct rstate {
+	MDBM	*idDB;
+	MDBM	*goneDB;
+	MDBM	*csetDB;
+	MDBM	*graphDB;
+};
 
 private int	doit(int dash);
 private int	want(sccs *s, delta *e);
@@ -55,7 +60,7 @@ private int	changes_part2(remote *r, char **av, char *key_list, int ret);
 private int	_doit_remote(char **av, char *url);
 private int	doit_remote(char **nav, char *url);
 private int	doit_local(int nac, char **nav, char **urls);
-private	void	cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec);
+private	int	cset(hash *state, sccs *cset, FILE *f, char *dspec);
 private	MDBM	*loadcset(sccs *cset);
 private	void	fileFilt(sccs *s, MDBM *csetDB);
 private	int	prepSearch(char *str);
@@ -83,7 +88,8 @@ changes_main(int ac, char **av)
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnqRr;tTu;U;v/;x;")) != -1) {
+	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnqRr;tTu;U;Vv/;x;")) != -1)
+	{
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -126,6 +132,7 @@ changes_main(int ac, char **av)
 		    case 'U':
 			opts.notusers = addLine(opts.notusers, strdup(optarg));
 			break;
+		    case 'V': opts.doComp = 1; break;
 		    case 'v':
 		    	if (opts.verbose) opts.diffs = 1;
 			opts.verbose =1 ;
@@ -152,10 +159,17 @@ usage:			system("bk help -s changes");
 
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
 	if (opts.html && opts.dspec) goto usage;
+	if (opts.diffs && opts.dspec) goto usage;
 
-	if (opts.local || opts.remote || (av[optind] == 0)) {
+	if (opts.local || opts.remote || !av[optind] ||
+	    (streq(av[optind], "-") && !av[optind + 1])) {
 		unless (proj_root(0)) {
 			fprintf(stderr, "bk: Cannot find package root.\n");
+			return (1);
+		}
+		if (opts.doComp && !proj_isProduct(0)) {
+			fprintf(stderr,
+			    "bk: -V only valid in an ensemble product\n");
 			return (1);
 		}
 	} else if (streq(av[optind], "-") && av[optind + 1]) {
@@ -394,45 +408,18 @@ done:
 	return (rc);
 }
 
-private int
-pdelta(delta *e)
-{
-	unless (e->flags & D_SET) return(0);
-	if (opts.keys) {
-		sccs_pdelta(opts.s, e, opts.f);
-		fputc('\n', opts.f);
-	} else {
-		if (opts.all || (e->type == 'D')) {
-			int	flags = opts.all ? PRS_ALL : 0;
-
-			if (opts.newline) flags |= PRS_LF;
-			sccs_prsdelta(opts.s, e, flags, opts.spec, opts.f);
-		}
-	}
-	return (fflush(opts.f) || opts.one);
-}
-
-private int
-recurse(delta *d)
-{
-	if (d->next) {
-		if (recurse(d->next)) return (1);
-	}
-	return (pdelta(d));
-}
-
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
-#define	DSPEC	"$if(:FILE:){  }" \
-		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
+#define	DSPEC	":INDENT:" \
+		"$unless(:CHANGESET:){:COMPONENT:}:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"+:LI: -:LD:\n" \
-		"$each(:C:){$if(:FILE:){  }  (:C:)\n}" \
+		"$each(:C:){:INDENT:  (:C:)\n}" \
 		"$each(:TAG:){  TAG: (:TAG:)\n}" \
-		"$if(:MERGE:){$if(:FILE:){  }  MERGE: " \
+		"$if(:MERGE:){:INDENT:  MERGE: " \
 		":MPARENT:\n}\n"
 #define	VSPEC	"$unless(:FILE:){\n#### :DPN: ####\n}" \
-		"$else{\n==== :DPN: ====\n}" \
+		"$else{\n==== :COMPONENT::DPN: ====\n}" \
 		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"$if(:FILE:){+:LI: -:LD:}" \
 		"\n" \
@@ -477,9 +464,12 @@ doit(int dash)
 	sccs	*s = 0;
 	delta	*e;
 	int	rc = 1;
-	MDBM	*csetDB = 0;
+	hash	*state;
+	struct	rstate *rstate;
+	char	**keys;
+	kvpair	kv;
 
-	if (opts.dspec && !opts.html) {
+	if (opts.dspec) {
 		spec = opts.dspec;
 	} else if (opts.html) {
 		spec = opts.verbose ? HSPECV : HSPEC;
@@ -514,6 +504,13 @@ doit(int dash)
 				    "changes: can't find key: %s\n", cmd);
 				goto next;
 			}
+			/* maintain the rstart->rstop range */
+			if (!s->rstart || (e->serial < s->rstart->serial)) {
+				s->rstart = e;
+			}
+			if (!s->rstop || (e->serial > s->rstop->serial)) {
+				s->rstop = e;
+			}
 #ifdef	CRAZY_WOW
 			/* this has cause more problems than solved
 			 * in that customers would have a tag difference
@@ -531,17 +528,11 @@ doit(int dash)
 			if (want(s, e)) e->flags |= D_SET;
 		}
 	} else {
+		s->rstop = s->table;
 		for (e = s->table; e; e = e->next) {
 			if (want(s, e)) e->flags |= D_SET;
 		}
 	}
-	//assert(!SET(s));
-	if (opts.verbose || opts.inc || opts.exc || opts.BAM) {
-		/* loads all file key pairs for csets marked D_SET */
-		csetDB = loadcset(s);
-	}
-	if (opts.inc || opts.exc || opts.BAM) fileFilt(s, csetDB);
-
 	/*
 	 * What we want is: this process | pager
 	 */
@@ -555,39 +546,42 @@ doit(int dash)
 		    "<tr><td>\n", stdout);
 		fflush(stdout);
 	}
-	if (opts.verbose) {
-		cset(s, csetDB, stdout, spec);
-	} else {
-		opts.f = stdout;
-		opts.s = s;
-		opts.spec = spec;
-		if (opts.forwards) {
-			recurse(s->table);
-		} else {
-			for (e = s->table; e; e = e->next) {
-				if (pdelta(e)) break;
-			}
-		}
+	state = hash_new(HASH_MEMHASH);
+	/*
+	 * If we are doing filtering in a nested environment then we
+	 * need to create a fmem FILE* to be used to buffer output
+	 * before we know if it will be printed.
+	 */
+	if (opts.doComp && (opts.BAM || opts.inc || opts.exc)) {
+		opts.fmem = fmem_open();
 	}
+	cset(state, s, stdout, spec);
+	if (opts.fmem) fclose(opts.fmem);
 	if (opts.html) {
 		fprintf(stdout, "</td></tr></table></table></body></html>\n");
 	}
+	EACH_HASH(state) {
+		rstate = state->vptr;
+		EACH_KV(rstate->graphDB) {
+			memcpy(&s, kv.val.dptr, sizeof (sccs *));
+			if (s) sccs_free(s);
+		}
+		mdbm_close(rstate->graphDB);
+		mdbm_close(rstate->idDB);
+		mdbm_close(rstate->goneDB);
+		EACH_KV(rstate->csetDB) {
+			memcpy(&keys, kv.val.dptr, sizeof (char **));
+			freeLines(keys, free);
+		}
+		mdbm_close(rstate->csetDB);
+	}
+	hash_free(state);
 	if (pid > 0) {
 		fclose(stdout);
 		waitpid(pid, 0, 0);
 	}
 	rc = 0;
 next:
-	if (csetDB) {
-		kvpair	kv;
-		char	**keys;
-
-		EACH_KV(csetDB) {
-			memcpy(&keys, kv.val.dptr, sizeof (char **));
-			freeLines(keys, free);
-		}
-		mdbm_close(csetDB);
-	}
 	return (rc);
 }
 
@@ -596,7 +590,7 @@ fileFilt(sccs *s, MDBM *csetDB)
 {
 	delta	*d;
 	datum	k, v;
-		
+
 	/* Unset any csets that don't contain files from -i and -x */
 	for (d = s->table; d; d = d->next) {
 		unless (d->flags & D_SET) continue;
@@ -691,16 +685,14 @@ dumplog(char **list, FILE *f)
 		free(ll->gfile);
 		free(ll);
 	}
-
 	freeLines(list, 0);
-	return;
 }
 
 /*
  * Cache the sccs struct to avoid re-initing the same sfile
  */
 private sccs *
-sccs_keyinitAndCache(char *key, int flags, MDBM **idDB, MDBM *graphDB)
+sccs_keyinitAndCache(char *key, int flags, MDBM *idDB, MDBM *graphDB)
 {
 	datum	k, v;
 	sccs	*s;
@@ -713,7 +705,7 @@ sccs_keyinitAndCache(char *key, int flags, MDBM **idDB, MDBM *graphDB)
 		memcpy(&s, v.dptr, sizeof (sccs *));
 		return (s);
 	}
-	s = sccs_keyinit(key, flags|INIT_NOWARN, *idDB);
+	s = sccs_keyinit(key, flags|INIT_NOWARN, idDB);
 	v.dptr = (void *) &s;
 	v.dsize = sizeof (sccs *);
 	if (mdbm_store(graphDB, k, v, MDBM_INSERT)) { /* cache the new entry */
@@ -723,6 +715,8 @@ sccs_keyinitAndCache(char *key, int flags, MDBM **idDB, MDBM *graphDB)
 		/* capture the comments */
 		for (d = s->table; d; d = d->next) comments_load(s, d);
 		sccs_close(s); /* we don't need the delta body */
+		sccs_findKeyDB(s, 0);
+		if (opts.doComp) s->prs_indentC = 1;
 	}
 	return (s);
 }
@@ -735,32 +729,26 @@ private char **
 collectDelta(sccs *s, delta *d, char **list, char *dspec, int flags)
 {
 	slog	*ll;
-	delta	*e;
 
 	/*
-	 * Walk d->parent and d->merge recursively to find cset boundaries
-	 * and collect the deltas/dspec-output along the way
+	 * Walk all deltas included in this cset and capture the
+	 * changes output.
 	 */
-	do {
-		d->flags |= D_SET;
+	range_cset(s, d);
+	for (d = s->rstop; d; d = d->next) {
+		if (d->flags & D_SET) {
+			/* add delta to list */
+			ll = new(slog);
+			ll->log = sccs_prsbuf(s, d, flags, dspec);
+			ll->date = d->date;
+			ll->gfile = strdup(s->gfile);
+			ll->serial = d->serial;
+			list = addLine(list, ll);
 
-		/* add delta to list */
-		ll = new(slog);
-		ll->log = sccs_prsbuf(s, d, flags, dspec);
-		ll->date = d->date;
-		ll->gfile = strdup(s->gfile);
-		ll->serial = d->serial;
-		list = addLine(list, ll);
-
-		if (d->merge) {
-			e = sfind(s, d->merge);
-			assert(e);
-			unless (e->flags & (D_SET|D_CSET)) {
-				list = collectDelta(s, e, list, dspec, flags);
-			}
+			d->flags &= ~D_SET;
 		}
-		d = d->parent;
-	} while (d && !(d->flags & (D_SET|D_CSET)));
+		if (d == s->rstart) break;
+	}
 	return (list);
 }
 
@@ -785,21 +773,32 @@ private MDBM *
 loadcset(sccs *cset)
 {
 	char	*rev = NULL;
-	char	**keylist = 0;
+	char	**keylist = 0, **cweave;
 	char	*keypath, *pipe;
 	char	*p, *t;
-	FILE	*f;
+	delta	*d;
 	MDBM	*db;
-	char	tmp[MAXPATH], buf[2 * MAXKEY + 100], path[MAXPATH];
+	int	i;
+	ser_t	ser;
+	char	*pathp;
+	char	path[MAXPATH];
 
-	bktmp(tmp, "loadcset");
-	sccs_cat(cset, SILENT|GET_NOHASH|GET_REVNUMS|PRINT, tmp);
-	f = fopen(tmp, "rt");
+	/*
+	 * Get a list of csets marked D_SET
+	 */
+	sccs_open(cset, 0);
+	if ((cweave = cset_mkList(cset)) == (char **)-1) return (0);
 
+	if (t = proj_comppath(0)) {
+		strcpy(path, t);
+		pathp = path + strlen(path);
+		*pathp++ = '/';
+	} else {
+		pathp = path;
+	}
 	db = mdbm_mem();
-	while (fnext(buf, f)) {
-		chomp(buf);
-		p = strchr(buf, '\t');
+	EACH(cweave) {
+		p = strchr(cweave[i], '\t');
 		assert(p);
 		*p++ = 0;
 		if (opts.BAM) {
@@ -816,114 +815,187 @@ loadcset(sccs *cset)
 			keypath++;
 			pipe = strchr(keypath, '|');
 			assert(pipe);
-			path[0] = 0;
-			strncat(path, keypath, pipe - keypath);
-			if (opts.inc && 
-			    !match_globs(path, opts.inc, 0)) {
-				continue;
-			}
-			if (opts.exc && match_globs(path, opts.exc, 0)){
-				continue;
+			/* if -V , traverse all components... */
+			unless (opts.doComp &&
+			    (pipe - keypath >= 10) &&
+			    strneq(&pipe[-10], "/ChangeSet", 10)) {
+				strncpy(pathp, keypath, pipe - keypath);
+				pathp[pipe-keypath] = 0;
+				if (opts.inc &&
+				    !match_globs(path, opts.inc, 0)) {
+					continue;
+				}
+				if (opts.exc &&
+				    match_globs(path, opts.exc, 0)) {
+					continue;
+				}
 			}
 		}
+		ser = atoi(cweave[i]);
+		d = sfind(cset, ser);
+		assert(d);
 		if (!rev) {
-			rev = strdup(buf);
+			rev = strdup(d->rev);
 			assert(keylist == NULL);
-		} else if (rev && !streq(rev, buf)) {
+		} else if (rev && !streq(rev, d->rev)) {
 			saveKey(db, rev, keylist);
 			free(rev);
-			rev = strdup(buf);
+			rev = strdup(d->rev);
 			keylist = 0;
 		}
 		keylist = addLine(keylist, strdup(p));
 	}
-	fclose(f);
+	freeLines(cweave, free);
 
 	if (rev) {
 		saveKey(db, rev, keylist);
 		free(rev);
 	}
-	
-	unlink(tmp);
+	if (opts.inc || opts.exc || opts.BAM) fileFilt(cset, db);
 	return (db);
 }
 
-private void
-cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
+/*
+ * generate output for all csets in 'sc' marked with D_SET
+ * returns true if any output printed (may all be filtered)
+ */
+private int
+cset(hash *state, sccs *sc, FILE *f, char *dspec)
 {
 	int	flags = opts.all ? PRS_ALL : 0;
 	int	iflags = INIT_NOCKSUM;
-	int 	i, j;
+	int	i, j, found;
 	char	**keys, **csets = 0;
 	char	**list;
-	delta	*e;
-	kvpair	kv;
+	sccs	*prodsc, *s;
+	delta	*d, *e;
+	char	*rkey, *dkey;
 	datum	k, v;
-	MDBM 	*idDB, *goneDB, *graphDB;
+	char	**complist;
+	int	rc = 0;
+	FILE	*fsave = 0;
+	char	*buf;
+	size_t	len;
+	struct	rstate	*rstate;
 
 	assert(dspec);
 	if (opts.newline) flags |= PRS_LF; /* for sccs_prsdelta() */
 
-	/*
-	 * Init idDB, goneDB, graphDB and csetDB
-	 */
-	unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
-		perror("idcache");
-		exit(1);
+	/* Create an empty rstate if it doesn't already exist */
+	hash_insert(state, &sc->proj, sizeof(project *),
+	    0, sizeof(struct rstate));
+	rstate = state->vptr;	/* ptr to current rstate */
+
+	unless (rstate->idDB) {
+		unless (rstate->idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
+			perror("idcache");
+			exit(1);
+		}
+		rstate->goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+		rstate->graphDB = mdbm_mem();
 	}
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
-	graphDB = mdbm_mem();
+	prodsc = sc;	/* product perspective of this cset file */
+	if (opts.doComp && proj_isComponent(0)) {
+		/*
+		 * For a component go ahead a load and cache the csets
+		 * file.  The cset file passed in was loaded by the
+		 * product has the wrong pathnames.
+		 * If this is the original loading, then add the marks.
+		 */
+		sc = sccs_keyinitAndCache(proj_rootkey(0), iflags,
+		    rstate->idDB, rstate->graphDB);
+		assert(sc);
+		unless (rstate->csetDB) {
+			for (e = sc->table; e; e = e->next) {
+				if (want(sc, e)) e->flags |= D_SET;
+			}
+		}
+	}
+	/*
+	 * loads all file key pairs for csets marked D_SET
+	 * Has the side-effect of unD_SETing when testing BAM||inc||exc
+	 */
+	unless (rstate->csetDB) rstate->csetDB = loadcset(sc);
+	assert(rstate->csetDB);
 
 	/*
 	 * Collect the cset in a list
+	 * 'e' will have delta records from the product perspective
+	 * of this cset file. 'd' will have delta records from the
+	 * repo the cset file is in. If the repo is the product repo,
+	 * these will be the same.
 	 */
-	for (e = cset->table; e; e = e->next) {
-		unless (e->flags & D_SET) continue;
-		csets = addLine(csets, e);
+	for (e = prodsc->rstop; e; e = e->next) {
+		if (e->flags & D_SET) {
+			if (sc == prodsc) {
+				d = e;
+			} else {
+				d = sfind(sc, e->serial);
+				assert(d);
+				/* don't include filtered csets */
+				unless (d->flags & D_SET) continue;
+			}
+			csets = addLine(csets, d);
+		}
+		if (e == prodsc->rstart) break;
 	}
-
 	if (opts.forwards) reverseLines(csets);
 
 	/*
 	 * Walk the ordered cset list and dump the file deltas contain in
 	 * each cset. The file deltas are also sorted on the fly in dumplog().
 	 */
-
 	EACH_INDEX(csets, j) {
 		e = (delta *)csets[j];
 
-		sccs_prsdelta(cset, e, flags, dspec, f);
+		unless (opts.doComp || opts.verbose) {
+			if (opts.keys) {
+				sccs_pdelta(sc, e, f);
+				fputc('\n', f);
+			} else {
+				sccs_prsdelta(sc, e, flags, dspec, f);
+			}
+			continue;
+		}
+
 		/* get key list */
 		k.dptr = e->rev;
 		k.dsize = strlen(e->rev);
-		v = mdbm_fetch(csetDB, k);
-		unless (v.dptr) continue;	/* no files */
-		memcpy(&keys, v.dptr, v.dsize);
-		mdbm_delete(csetDB, k);
+		v = mdbm_fetch(rstate->csetDB, k);
+		keys = 0;
+		if (v.dptr) memcpy(&keys, v.dptr, v.dsize);
+		mdbm_delete(rstate->csetDB, k);
 
 		list = 0;
+		found = 0;
+		complist = 0;
 		EACH_INDEX(keys, i) {
-			sccs	*s;
-			delta	*d;
-			char	*dkey;
-
-			dkey = separator(keys[i]);
+			rkey = keys[i];
+			dkey = separator(rkey);
 			assert(dkey);
 			*dkey++ = 0;
-			s = sccs_keyinitAndCache(
-				keys[i], iflags, &idDB, graphDB);
+			/*
+			 * bk changes -ifoo - print this cset if it
+			 * changes foo even if foo is gone.
+			 * XXX: Any good reason to change that behavior?
+			 */
+			unless (opts.doComp && strstr(dkey, "/ChangeSet|")) {
+				found = 1;
+			}
+			s = sccs_keyinitAndCache(rkey, iflags,
+			    rstate->idDB, rstate->graphDB);
 			unless (s) {
-			    unless (gone(keys[i], goneDB)) {
-				    fprintf(stderr,
-					"Cannot sccs_init(), key = %s\n",
-					keys[i]);
-			    }
-			    continue;
+				unless (gone(rkey, rstate->goneDB)) {
+					fprintf(stderr,
+					     "Cannot sccs_init(), key = %s\n",
+					     rkey);
+				}
+				continue;
 			}
 			if (CSET(s) && !proj_isComponent(s->proj)) continue;
 			unless (d = sccs_findKey(s, dkey)) {
-				if (gone(dkey, goneDB)) continue;
-				if (gone(keys[i], goneDB)) continue;
+				if (gone(dkey, rstate->goneDB)) continue;
+				if (gone(rkey, rstate->goneDB)) continue;
 				fprintf(stderr,
 				    "changes: in file %s, there is a "
 				    "missing delta\n\t%s\n"
@@ -932,19 +1004,87 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 				    s->gfile, dkey);
 				continue;
 			}
+			if (opts.doComp && CSET(s)) {
+				/* save components */
+				complist = addLine(complist, int2p(i));
+				continue;
+			}
 			/*
 			 * CollectDelta() compute cset boundaries,
 			 * when this function returns, "list" will contain
 			 * all member deltas/dspec in "s" for this cset
 			 */
-			list = collectDelta(s, d, list, dspec, flags);
+			if (opts.verbose) {
+				list = collectDelta(s, d, list, dspec, flags);
+			}
 		}
+		/*
+		 * if we have sub-components then we must be in the
+		 * product and it fmem is set then we must be
+		 * filtering in doComp verbose mode.  If so we don't know
+		 * if this product cset should be printed or not, so we
+		 * write it to the fmem file until we know
+		 */
+		if (!found && complist && opts.fmem) {
+			fsave = f;
+			ftrunc(opts.fmem, 0);
+			f = opts.fmem;
+		}
+		if (opts.keys) {
+			sccs_pdelta(sc, e, f);
+			fputc('\n', f);
+		} else {
+			sccs_prsdelta(sc, e, flags, dspec, f);
+		}
+		if (found) rc = 1; /* Remember we printed output */
+		dumplog(list, f); /* sort file dspec, print it, then free it */
+		if (fflush(f)) break;
+
+		/*
+		 * Foreach component delta found mark them with D_SET
+		 * and recursively call cset() with the new cset
+		 */
+		EACH(complist) {
+			rkey = keys[p2int(complist[i])];
+			s = sccs_keyinitAndCache(rkey, iflags,
+			    rstate->idDB, rstate->graphDB);
+
+			/* cd to component */
+			chdir(proj_root(s->proj));
+			dkey = rkey + strlen(rkey) + 1;
+			assert(dkey);
+
+			d = sccs_findKey(s, dkey);
+			assert(d);
+			/* mark csets from this prod-cset with D_SET*/
+			range_cset(s, d);
+
+			/* call cset() recursively */
+			if (cset(state, s, f, dspec) && fsave) {
+				/*
+				 * we generated output so flush the saved data
+				 */
+				buf = fmem_getbuf(f, &len);
+				f = fsave;
+				fsave = 0;
+				fwrite(buf, 1, len, f);
+			}
+
+			/* clear marks */
+			for (d = s->rstop; d; d = d->next) {
+				d->flags &= ~D_SET;
+				if (d == s->rstart) break;
+			}
+			proj_cd2product();
+		}
+		freeLines(complist, 0);
 		/* reduce mem foot print, could be huge */
 		freeLines(keys, free);
-
-		/* sort file dspec, print it, then free it */
-		dumplog(list, f);
-		if (fflush(f)) break;
+		if (fsave) {
+			/* No output generated, restore normal output */
+			f = fsave;
+			fsave = 0;
+		}
 	}
 
 	/*
@@ -953,18 +1093,7 @@ cset(sccs *cset, MDBM *csetDB, FILE *f, char *dspec)
 	 * We need to account for it.
 	 */
 	freeLines(csets, 0);
-
-	EACH_KV(graphDB) {
-		sccs	*s;
-
-		memcpy(&s, kv.val.dptr, sizeof (sccs *));
-		if (s) sccs_free(s);
-	}
-
-	mdbm_close(graphDB);
-	mdbm_close(idDB);
-	mdbm_close(goneDB);
-	return;
+	return (rc);
 }
 
 private int

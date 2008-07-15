@@ -623,6 +623,7 @@ struct sccs {
 	u32	prs_one:1;	/* stop printing after printing the first one */
 	u32	prs_join:1;	/* for joining together items in dspecs */
 	u32	prs_all:1;	/* including tag deltas in prs output */
+	u32	prs_indentC:1;	/* extra space for components in :INDENT: ? */
 	u32	unblock:1;	/* sccs_free: only if set */
 	u32	hasgone:1;	/* this graph has D_GONE deltas */
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
@@ -867,6 +868,8 @@ delta	*sccs_csetBoundary(sccs *s, delta *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
+char	**cset_mkList(sccs *cset);
+int	cset_bykeys(const void *a, const void *b);
 int	sccs_newchksum(sccs *s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);

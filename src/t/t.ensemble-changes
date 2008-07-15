@@ -1,6 +1,9 @@
 
 echo $N Create an ensemble...........................................$NL
 nested project
+touch prod_file
+bk new $Q prod_file
+bk commit $Q -yfile
 BASEP=`bk changes -r+ -nd:MD5KEY:`
 BASEGCC=`cd gcc; bk changes -r+ -nd:MD5KEY:`
 bk clone $Q  "$HERE"/project "$HERE"/copy || exit 1
@@ -28,6 +31,9 @@ touch local1
 echo "stuff 1" > local1
 bk new $Q -yadd local1 || exit 1
 bk commit $Q -yaddlocal || exit 1
+bk edit $Q ../prod_file
+echo 1 >> ../prod_file
+bk ci $Q -yupdate ../prod_file || exit 1
 bk -P commit $Q -ylocal || exit 1
 bk edit $Q local1 || exit 1
 echo new >> local1
@@ -41,6 +47,21 @@ bk -P changes  -r+ -qvnd':GFILE: :C:' > OUT || exit 1
 cat <<EOF > WANT
 ChangeSet local
 gcc/ChangeSet addlocal
+prod_file update
+EOF
+cmpfiles OUT WANT
+echo OK
+
+echo $N Run project level recursive changes .........................$NL
+bk -P changes -r+ -Vqvnd'$unless(:CHANGESET:){:COMPONENT:}:DPN: :C:' >OUT || {
+	exit 1
+}
+cat <<EOF > WANT
+ChangeSet local
+prod_file update
+gcc/ChangeSet addlocal
+gcc/local1 add
+gcc/local1 
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -51,6 +72,7 @@ bk -P changes -L -qvnd':GFILE: :C:' > OUT || exit 1
 cat <<EOF > WANT
 ChangeSet local
 gcc/ChangeSet addlocal
+prod_file update
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -74,6 +96,7 @@ bk changes -L -qvnd':GFILE: :C:' > OUT || exit 1
 cat <<EOF > WANT
 ChangeSet local
 gcc/ChangeSet addlocal
+prod_file update
 EOF
 cmpfiles OUT WANT
 echo OK
@@ -91,4 +114,108 @@ test `bk repogca -5` = $BASEGCC || {
      bk changes
      exit 1
 }
+echo OK
+
+echo $N Run enemble changes -V on a file url ........................$NL
+cd "$HERE"
+bk changes -nd:GFILE: -qvVr+ project | bk _sort -u > OUT || {
+	echo failed
+	exit 1
+}
+printf "ChangeSet\nfile1\nfile2\nfile3\n" > WANT
+cmpfiles OUT WANT
+echo OK
+
+echo $N Test filtering of csets .....................................$NL
+cd project
+bk changes -vV -i'*gone' \
+  -nd':COMPONENT::GFILE:@:REV:$if(:CHANGESET:){ :C:}'  > GOT || exit 1
+cat <<EOF > WANT
+ChangeSet@1.2 attach gcc, gdb
+gcc/ChangeSet@1.1 Initial repository create
+gcc/BitKeeper/etc/gone@1.1
+gcc/BitKeeper/etc/gone@1.0
+gdb/ChangeSet@1.1 Initial repository create
+gdb/BitKeeper/etc/gone@1.1
+gdb/BitKeeper/etc/gone@1.0
+ChangeSet@1.1 Initial repository create
+BitKeeper/etc/gone@1.1
+BitKeeper/etc/gone@1.0
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test filtering of csets in non-nested .......................$NL
+cd "$HERE"
+commercial nonest
+touch prod_file
+bk new $Q prod_file
+bk commit $Q -y'file it'
+bk changes -v -i'prod_file' \
+    -nd'$if(:CHANGESET:){:COMPONENT::GFILE:@:REV:}' > WANT || exit 1
+bk changes -i'prod_file' -nd':COMPONENT::GFILE:@:REV:' > GOT || exit 1
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test -V filtering of csets in verbose and not verbose .......$NL
+cd "$HERE"/project
+bk edit $Q prod_file
+bk delta $Q -fynull prod_file
+bk edit $Q gcc/file1
+bk delta $Q -fynull gcc/file1
+(cd gcc; bk commit $Q -yin-gcc)
+bk commit $Q -y"prod_file and gcc"
+bk changes -vV -i'prod_file' \
+    -nd'$if(:CHANGESET:){:COMPONENT::GFILE:@:REV:}' > WANT || exit 1
+bk changes -i'prod_file' -nd':COMPONENT::GFILE:@:REV:' > GOT || exit 1
+cmpfiles GOT WANT
+bk changes -V -i'prod_file' -nd':COMPONENT::GFILE:@:REV:' > GOT || exit 1
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test filtering of csets in verbose and not verbose ..........$NL
+bk changes -v -i'prod_file' \
+    -nd'$if(:CHANGESET:){:COMPONENT::GFILE:@:REV:}' > WANT || exit 1
+bk changes -i'prod_file' -nd':COMPONENT::GFILE:@:REV:' > GOT || exit 1
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test filtering of csets that are gone .......................$NL
+# sanity check before the gone
+printf "1.6\n1.3\n" > WANT
+bk changes -Vi'prod_file' -nd:I: > GOT
+cmpfiles WANT GOT
+# okay, now test it out
+KEY=`bk log -r+ -nd:ROOTKEY: prod_file`
+rm -f SCCS/?.prod_file prod_file
+bk gone "$KEY" > OUT 2> ERR || exit 1
+bk commit $Q -ygone
+bk changes -Vi'prod_file' -nd:I: > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test filtering of files in components .......................$NL
+# output nothing because these aren't in the product repo
+bk changes -igcc/file1 -nd:I::COMPONENT::GFILE:
+bk changes -vigcc/file1 -nd:I::COMPONENT::GFILE:
+# -V cases: output something
+bk changes -Vigcc/file1 -nd:I::COMPONENT::GFILE: > GOT
+cat <<'EOF' > WANT
+1.6ChangeSet
+1.4gcc/ChangeSet
+1.4ChangeSet
+1.3gcc/ChangeSet
+EOF
+cmpfiles WANT GOT
+bk changes -vVigcc/file1 -nd:I::COMPONENT::GFILE: > GOT
+cat <<'EOF' > WANT
+1.6ChangeSet
+1.4gcc/ChangeSet
+1.2gcc/file1
+1.4ChangeSet
+1.3gcc/ChangeSet
+1.1gcc/file1
+1.0gcc/file1
+EOF
+cmpfiles WANT GOT
 echo OK

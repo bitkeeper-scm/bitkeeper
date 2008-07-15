@@ -558,7 +558,7 @@ marklist(char *file)
  * lines:
  *    <serial>\t<rootkey> <deltakey>
  */
-private int
+int
 cset_bykeys(const void *a, const void *b)
 {
 	char	*s1 = *(char**)a;
@@ -591,7 +591,6 @@ csetlist(cset_t *cs, sccs *cset)
 {
 	char	*rk, *t;
 	char	buf[MAXPATH*2];
-	char	cat[MAXPATH];
 	char	*csetid;
 	int	status, i;
 	delta	*d;
@@ -619,21 +618,12 @@ csetlist(cset_t *cs, sccs *cset)
 	sccs_sdelta(cset, sccs_ino(cset), buf);
 	csetid = strdup(buf);
 
-	bktmp(cat, "catZ");
-	/*
-	 * Get the list of key tuples in a lines array
-	 */
-	if (sccs_cat(cset, GET_SERIAL|GET_NOHASH|PRINT, cat)) {
-		sccs_whynot("cset", cset);
-		unlink(cat);
+	if ((cs->cweave = cset_mkList(cset)) == (char **)-1) {
 		goto fail;
 	}
-	cs->cweave = file2Lines(0, cat);
 	if (cs->verbose > 5) {;
-		sys("cat", cat, SYS);
+		EACH(cs->cweave) printf("%s\n", cs->cweave[i]);
 	}
-	unlink(cat);
-
 	if (!cs->mark && hasLocalWork(GONE)) {
 		fprintf(stderr,
 		    "cset: must commit local changes to " GONE "\n");
@@ -1253,4 +1243,24 @@ cset_diffs(cset_t *cs, ser_t ser)
 	}
 	cs->lasti = i;		/* save last match */
 	return (0);
+}
+
+char **
+cset_mkList(sccs *cset)
+{
+	char	**list;
+	char	cat[MAXPATH];
+
+	bktmp(cat, "catZ");
+	/*
+	 * Get the list of key tuples in a lines array
+	 */
+	if (sccs_cat(cset, GET_SERIAL|GET_NOHASH|PRINT, cat)) {
+		sccs_whynot("cset", cset);
+		unlink(cat);
+		return ((char **)-1);
+	}
+	list = file2Lines(0, cat);
+	unlink(cat);
+	return (list);
 }
