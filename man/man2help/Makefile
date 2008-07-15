@@ -6,11 +6,11 @@ BK = ../../src/bk
 	$(BK) get -q $@
 
 # Order is important, this is the order they will show up in helptool.
-SUM=All Overview Common Repository GUI-tools File Admin Compat Utility 
+SUM=All Overview Common Repository Product GUI-tools File Admin Compat Utility 
 
 helptxt: summaries
 
-PAGES:=$(shell $(BK) sfiles -xlug1 ../man1 'bk-*.1')
+PAGES:=$(shell $(BK) sfiles -xlug1 ../man1 'bk-*.1' | $(BK) sort)
 
 pages: ../bk-macros ../man.tmac man2help.pl verify-dspecs FORCE
 	@$(BK) get -STq ../man1
@@ -20,6 +20,7 @@ helptxt2: pages
 	@cat -- $(PAGES:../man1/%.1=%-1.fmt) | $(BK) undos > helptxt2
 
 summaries: helptxt2 ../bk-macros help2sum.pl FORCE
+	-@$(BK) get -qS
 	@perl -Ssw ./help2sum.pl helptxt2
 	@for i in $(SUM); \
 	do	cat $$i.done; \
@@ -34,7 +35,7 @@ verify-dspecs: ../man1/bk-log.1 verify-dspecs.pl
 	perl ./verify-dspecs.pl $<
 
 clean: FORCE
-	/bin/rm -f -- *.fmt *.sum *.roff *.done helptxt* ALL UNIQUE tmp
+	/bin/rm -f -- *.fmt *.sum* *.roff *.done helptxt* ALL UNIQUE tmp
 
 clobber: clean
 	-$(BK) clean

@@ -122,7 +122,7 @@ echo OK
 echo $N Test that we can clone using the MODULES file ...............$NL
 rm -rf mynewgcc
 cd project
-bk module add -cgcc justgcc
+bk module add -Mjustgcc gcc
 cd ..
 bk clone $Q -Mjustgcc project mynewgcc 2> ERR || {
 	echo failed
@@ -353,7 +353,7 @@ echo OK
 echo $N clone -r test................................................$NL
 TIP=`cd "$HERE/copy" && bk changes -nd:REV: -r+`
 cd "$HERE"
-bk clone $Q -v -r"$TIP" project copy2 >OUT 2>&1 || {
+bk clone $Q -r"$TIP" project copy2 >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -468,9 +468,22 @@ echo $N Test deep nest populate scenarios ...........................$NL
 cd "$HERE"/project/gcc
 commercial deep
 cd ../..
-bk ensemble attach $Q gcc/deep 2> ERR > OUT 
-# hack to link deep nest
-# (cd gcc/deep; bk -r > /dev/null)
+bk attach $Q gcc/deep
+test -f BitKeeper/log/deep-nests || {
+	echo failed to make deep-nests
+	exit 1
+}
+grep -q gcc/deep BitKeeper/log/deep-nests || {
+	echo failed to add gcc/deep to deep-nests
+	exit 1
+}
+bk sfiles -p
+bk components > LIST
+grep -q gcc/deep LIST || {
+	echo ensemble list did not list gcc/deep
+	bk components
+	exit 1
+}
 cd ..
 bk clone $Q -M./gdb project deeppop
 cd deeppop

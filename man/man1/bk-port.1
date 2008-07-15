@@ -1,0 +1,103 @@
+.so ../bk-macros
+.TH "bk port" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk port \- pull changes from a different product's component
+.SH SYNOPSIS
+.B bk port
+.[B] \-iqRsTu
+.[OPTreq] \-c n
+.[OPTequal] \-E env var
+.[OPTreq] \-r rev
+.ARG from
+.SH DESCRIPTION
+.LP
+.B bk port
+is used to pull changes from a related repository that is either in a
+different product or is a standalone repository.
+It is similar to 
+.B bk pull
+but differs in that it can pull across product boundaries.
+.LP
+Changes are retrieved and automatically applied, if possible.
+You will only be asked to resolve conflicts by hand if a file
+has overlapping changes (changes where both repositories have
+touched the same line in the same file).
+.LP
+To see what would be ported run
+.DS
+bk changes -R <from>
+.DE
+.SH OPTIONS
+.TP \-E\*<env\*>=\*<val\*>
+.OPTreq \-c n
+try to get the remote lock
+.ARG n
+times before giving up (default forever).
+.tp
+.OPTequal \-E env val
+Export environment variable to remote site.
+The environment variable must start with
+.V BKU_ .
+.tp
+.B \-i
+Turn off automerge feature in resolve.
+For each file with parallel work, you are prompted
+to examine the changes and either manually or automatically
+merge them.
+Mutually exclusive with
+.QR \-s .
+.tp
+.B \-q
+Be quiet.
+.tp
+.B \-R
+Do not run resolve at all.  You must run 
+.B bk resolve 
+later.
+.tp
+.OPTreq \-r rev
+Pull up to and including this revision, but exclude later changes.
+(Or key or changeset revision. See 
+.B bk help terms
+under 'rev argument')
+.tp
+.B \-s
+Pass 
+.Q \-s
+to resolve (\c
+.Q \-s
+means do not do interactive resolve of any conflicts, leave that for later.)
+Mutually exclusive with
+.QR \-i .
+.tp
+.B \-T
+Pass 
+.Q \-T
+to resolve (\c
+.Q \-T
+means do not use the GUI tools.)
+.tp
+.B \-u
+Do not complete the port if there are local changesets, i.e., insist
+that this operation is an update operation.
+.SH "SEE ALSO"
+.SA bkd
+.SA parent
+.SA pull
+.SA changes
+.SA resolve
+.SA triggers
+.SA unpull
+.SH CATEGORY
+.B Product
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.

@@ -84,21 +84,22 @@ _make_repo() {
 	CF="$2"
 	SFIO="$3"
 	REPO="$BK_CACHE/${TYPE}"
+	DASH_P=
 
 	test -d "$REPO" && rm -rf "$REPO"		# should not happen
-	bk setup -a -f -c"$CF" "$REPO" || {
+	test "$TYPE" = nested && DASH_P="-P"		# Make it a product
+	bk setup -a -f -c"$CF" $DASH_P "$REPO" || {
 		echo "Setup failed!"
 		exit 1
 	}
-	# Make it a product
 	test "$TYPE" = nested && (
-		cd "$REPO"
-		bk clone -q . BitKeeper/tmp/x
-		bk ensemble createInClone -q
-		bk ensemble add -q -y'components' \
-		    BitKeeper/tmp/x "gcc" BitKeeper/tmp/x "gdb"
-		bk commit -q -y'components'
-		rm -fr BitKeeper/tmp/x
+		cd "$REPO" || {
+			echo failed to create $REPO
+			exit 1
+		}
+		bk setup -a -f -c"$CF" gcc
+		bk setup -a -f -c"$CF" gdb
+		bk attach -q gcc gdb
 		touch gcc/BitKeeper/tmp/saveme
 		touch gdb/BitKeeper/tmp/saveme
 	)

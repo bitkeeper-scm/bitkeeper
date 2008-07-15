@@ -23,9 +23,9 @@ setup_main(int ac, char **av)
 	FILE	*f, *f1;
 	int	status;
 	int	print = 0;
-	int	ensemble = 0;
+	int	product = 0;
 
-	while ((c = getopt(ac, av, "ac:eEfF:p")) != -1) {
+	while ((c = getopt(ac, av, "ac:ePfF:p")) != -1) {
 		switch (c) {
 		    case 'a': accept = 1; break;
 		    case 'c':
@@ -38,7 +38,7 @@ setup_main(int ac, char **av)
 			localName2bkName(optarg, optarg);
 			config_path = fullname(optarg);
 			break;
-		    case 'E': ensemble = 1; break;
+		    case 'P': product = 1; break;
 		    case 'e': allowNonEmptyDir = 1; break;
 		    case 'f': force = 1; break;
 		    case 'F': flist = addField(flist, optarg); break;
@@ -161,7 +161,7 @@ err:			unlink("BitKeeper/etc/config");
 	assert(s);
 	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
 	sccs_free(s);
-	defaultFiles(ensemble);
+	defaultFiles(product);
 
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
@@ -178,7 +178,7 @@ err:			unlink("BitKeeper/etc/config");
 }
 
 private void
-defaultFiles(int ensemble)
+defaultFiles(int product)
 {
 	FILE	*f;
 
@@ -186,7 +186,7 @@ defaultFiles(int ensemble)
 	fprintf(f, "\n");
 	fclose(f);
 	system("bk new -Pq BitKeeper/etc/ignore");
-	if (ensemble) {
+	if (product) {
 		touch("BitKeeper/etc/modules", 0666);
 		system("bk new -Pq BitKeeper/etc/modules");
 		touch("BitKeeper/log/PRODUCT", 0444);

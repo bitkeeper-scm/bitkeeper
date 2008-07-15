@@ -129,7 +129,7 @@ echo OK
 echo $N Test that we can clone using the MODULES file ...............$NL
 rm -rf mynewgcc
 cd project
-bk module add -cgcc justgcc
+bk module add -Mjustgcc gcc
 cd ..
 bk clone $Q -Mjustgcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed

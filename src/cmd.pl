@@ -161,6 +161,7 @@ abort
 _adler32
 admin
 annotate
+attach
 bam
 BAM => bam
 base64
@@ -177,6 +178,7 @@ cmdlog
 collapse
 comments
 commit
+components
 config
 cp
 create
@@ -190,7 +192,6 @@ delta
 diffs
 diffsplit
 dotbk
-ensemble_list
 _eula
 _exists
 export
@@ -269,6 +270,7 @@ _popensystem
 populate
 port => pull
 _probekey restricted
+product
 prompt
 prs
 _prunekey restricted

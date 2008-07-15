@@ -1,5 +1,9 @@
 echo $N Setup .......................................................$NL
 commercial project
+test -f BitKeeper/log/PRODUCT && {
+	echo should not be a product
+	exit 1
+}
 cd "$HERE"
 bk clone $Q project gcc
 cd gcc
@@ -25,8 +29,8 @@ echo OK
 
 echo $N Convert to product ..........................................$NL
 cd "$HERE/project"
-bk ensemble createInClone $Q
-test "`bk ensemble`" = "This is the product." || {
+bk newroot -P $Q
+test "`bk product`" = "This is the product." || {
 	echo failed to make it a product
     	exit 1
 }
@@ -48,9 +52,18 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Add some components .........................................$NL
-bk ensemble add $Q -y'gcc & gdb' ../gcc gcc ../gdb gdb
+bk clone $Q ../gcc gcc
+bk clone $Q ../gdb gdb
+bk attach -C $Q gcc gdb
+bk sfiles -p > GOT
+cat > WANT <<EOF
+gcc/SCCS/s.ChangeSet
+gdb/SCCS/s.ChangeSet
+EOF
+cmpfiles WANT GOT
+bk commit $Q -y'gcc & gdb'
 cd gcc
-test "`bk ensemble`" = "This is a component" || {
+test "`bk product`" = "This is a component." || {
 	echo failed to make it a component
 	ls BitKeeper/log
 	exit 1
@@ -61,6 +74,38 @@ test -z "`bk pending`" || {
 }
 echo OK
 
+echo $N Set up a new component ......................................$NL
+cd ..
+bk -R get $Q -S BitKeeper/etc/config
+bk setup -fc"`bk root`"/BitKeeper/etc/config new-comp
+cp -rp new-comp "$HERE/save"
+bk attach -C $Q new-comp
+cd new-comp || exit 1
+test "`bk product`" = "This is a component." || {
+	echo failed to make it a component
+	ls BitKeeper/log
+	exit 1
+}
+test -z "`bk pending`" || {
+	echo did not clear pending marks
+	exit 1
+}
+echo OK
+
+echo $N New component should be pending .............................$NL
+cd ..
+test X`bk gfiles -p` = Xnew-comp/ChangeSet || {
+	echo failed
+	bk gfiles -P
+	exit 1
+}
+test `cat new-comp/BitKeeper/log/COMPONENT` = new-comp || {
+	echo failed to leave pointer
+	exit 1
+}
+echo OK
+
+rm -rf new-comp
 
 echo $N id -p on a component should work.............................$NL
 cd "$HERE/project"
@@ -546,9 +591,9 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list -r+ lists product and components ...........$NL
+echo $N bk components -Pr+ lists product and components .............$NL
 # valgrind --tool=memcheck --leak-check=full --show-reachable=yes \
-bk ensemble list -1r+ > GOT
+bk components -Pr+ > GOT
 cat > WANT <<EOF
 .
 gcc4
@@ -557,8 +602,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list -r+ -C lists components only ...............$NL
-bk ensemble list -r+ -C > GOT
+echo $N bk components -r+ lists components only .....................$NL
+bk components -r+ > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -566,8 +611,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list -r1.3 lists product and components .........$NL
-bk ensemble list -1r1.3 > GOT
+echo $N bk components -Pr1.3 lists product and components ...........$NL
+bk components -Pr1.3 > GOT
 cat > WANT <<EOF
 .
 gcc4
@@ -576,12 +621,12 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list -r1.5 -r1.6 lists just gcc4 ................$NL
+echo $N bk components -r1.5 -r1.6 lists just gcc4 ...................$NL
 cat > LIST <<EOF
 1.5
 1.6
 EOF
-bk ensemble list -1 - < LIST > GOT
+bk components -P - < LIST > GOT
 cat > WANT <<EOF
 .
 gcc4
@@ -589,8 +634,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for undo -r+ ...............................$NL
-echo + | bk ensemble list -1lpnd -u - > GOT
+echo $N bk components for undo -r+ ..................................$NL
+echo + | bk components -Plpnd -u - > GOT
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
 bk changes -qnd".|:KEY:" -r1.5 .
@@ -599,9 +644,9 @@ bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for undo -r+ with component missing ........$NL
+echo $N bk components for undo -r+ with component missing ...........$NL
 mv gcc4 ..
-echo + | bk ensemble list -1lhpnd -u - > GOT
+echo + | bk components -Plhpnd -u - > GOT
 mv ../gcc4 .
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
@@ -611,10 +656,10 @@ bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for push -r+ with component missing.........$NL
+echo $N bk components for push -r+ with component missing............$NL
 # now do it the other way
 mv gcc4 ..
-bk ensemble list -1lhpnd -r+ > GOT
+bk components -Plhpnd -r+ > GOT
 mv ../gcc4 .
 # The list should be the current tips
 (
@@ -625,13 +670,13 @@ bk changes -qnd"gdb|:KEY:|(new)|(present)" -r+ gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for undo -a1.2, check the removes ..........$NL
+echo $N bk components for undo -a1.2, check the removes .............$NL
 (
 echo 1.6
 echo 1.5
 echo 1.4
 echo 1.3
-) | bk ensemble list -1lnp -u - > GOT
+) | bk components -Plnp -u - > GOT
 cat > WANT <<EOF
 .
 gcc4|(new)
@@ -640,13 +685,13 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for undo -a1.2 .............................$NL
+echo $N bk components for undo -a1.2 ................................$NL
 (
 echo 1.6
 echo 1.5
 echo 1.4
 echo 1.3
-) | bk ensemble list -lpd -u - > GOT
+) | bk components -Plpd -u - > GOT
 # The list should be desired tips of .|1.2
 # because the other two are removed.
 (
@@ -655,12 +700,12 @@ bk changes -qnd".|:KEY:" -r1.2 .
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for undo -a1.3 .............................$NL
+echo $N bk components for undo -a1.3 ................................$NL
 (
 echo 1.6
 echo 1.5
 echo 1.4
-) | bk ensemble list -1lpd -u - > GOT
+) | bk components -Plpd -u - > GOT
 # The list should be desired tips of 1.3 (just works out that way)
 (
 bk changes -qnd".|:KEY:" -r1.3 .
@@ -669,8 +714,8 @@ bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for clone -r+ ..............................$NL
-bk ensemble list -1lpd -r+ > GOT
+echo $N bk components for clone -r+ .................................$NL
+bk components -Plpd -r+ > GOT
 (
 bk changes -qnd".|:KEY:" -r+ .
 bk changes -qnd"gcc4|:KEY:" -r+ gcc4
@@ -679,8 +724,8 @@ bk changes -qnd"gdb|:KEY:" -r+ gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for clone -r1.3 ............................$NL
-bk ensemble list -1lpd -r1.3 > GOT
+echo $N bk components for clone -r1.3 ...............................$NL
+bk components -Plpd -r1.3 > GOT
 # They are all at 1.3 in 1.3
 (
 bk changes -qnd".|:KEY:" -r1.3 .
@@ -690,8 +735,8 @@ bk changes -qnd"gdb|:KEY:" -r1.3 gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for clone -r1.4 ............................$NL
-bk ensemble list -1lpd -r1.4 > GOT
+echo $N bk components for clone -r1.4 ...............................$NL
+bk components -Plpd -r1.4 > GOT
 (
 bk changes -qnd".|:KEY:" -r1.4 .
 bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
@@ -700,8 +745,8 @@ bk changes -qnd"gdb|:KEY:" -r1.3 gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for push -r1.6 .............................$NL
-echo 1.6 | bk ensemble list -1lpd - > GOT
+echo $N bk components for push -r1.6 ................................$NL
+echo 1.6 | bk components -Plpd - > GOT
 # The list should be desired tips of .|1.6 and gcc4|1.9
 (
 bk changes -qnd".|:KEY:" -r1.6 .
@@ -710,8 +755,8 @@ bk changes -qnd"gcc4|:KEY:" -r1.9 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for push -r1.5 .............................$NL
-echo 1.5 | bk ensemble list -1lpd - > GOT
+echo $N bk components for push -r1.5 ................................$NL
+echo 1.5 | bk components -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.5 .
 bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
@@ -719,8 +764,8 @@ bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for push -r1.4 .............................$NL
-echo 1.4 | bk ensemble list -1lpd - > GOT
+echo $N bk components for push -r1.4 ................................$NL
+echo 1.4 | bk components -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.4 .
 bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
@@ -728,8 +773,8 @@ bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for push -r1.3 .............................$NL
-echo 1.3 | bk ensemble list -1lnpd - > GOT
+echo $N bk components for push -r1.3 ................................$NL
+echo 1.3 | bk components -Plnpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.3 .
 bk changes -qnd"gcc4|:KEY:|(new)" -r1.3 gcc4
@@ -738,21 +783,21 @@ bk changes -qnd"gdb|:KEY:|(new)" -r1.3 gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for push -r1.2 .............................$NL
-echo 1.2 | bk ensemble list -lpd - > GOT
+echo $N bk components for push -r1.2 ................................$NL
+echo 1.2 | bk components -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.2 .
 ) > WANT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for push with a gca of 1.2..................$NL
+echo $N bk components for push with a gca of 1.2.....................$NL
 (
 echo 1.3
 echo 1.4
 echo 1.5
 echo 1.6
-) | bk ensemble list -1lnpd - > GOT
+) | bk components -Plnpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.6 .
 bk changes -qnd"gcc4|:KEY:|(new)" -r1.9 gcc4
@@ -923,7 +968,7 @@ echo OK
 
 
 # XXX - write a test to make sure that we can list only the repos that are
-# present w/ bk ensemble list
+# present w/ bk components
 
 # ditto for one that has been moved but does not yet have the rename delta
 
@@ -938,7 +983,7 @@ cd project
 
 echo $N Test simple module addition .................................$NL
 REV=`bk changes -r+ -d:REV:`
-bk module add -cgcc4 -cgdb dev
+bk module add -Mdev gcc4 gdb
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo failed to commit change
 	bk cmdlog -a | tail -20
@@ -958,7 +1003,7 @@ bk clean BitKeeper/etc/modules
 echo OK
 
 echo $N Test simple module expansion ................................$NL
-bk module show dev > GOT
+bk components -Mdev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -967,7 +1012,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test simple directory expansion .............................$NL
-bk module show ./gcc4 > GOT
+bk components -M./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 EOF
@@ -975,7 +1020,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Combine the two .............................................$NL
-bk module show dev ./gcc4 > GOT
+bk components -Mdev -M./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -984,7 +1029,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Add a module that names another module ......................$NL
-bk module add -cdev mydev
+bk module add -Mmydev dev
 (
 echo @dev 
     (
@@ -1000,7 +1045,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test a module that names another module .....................$NL
-bk module show mydev > GOT
+bk components -Mmydev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1010,25 +1055,25 @@ echo OK
 
 echo $N Test a module that names another module, 2 levels ...........$NL
 REV=`bk changes -r+ -d:REV:`
-bk module create -C -cgcc4 B
+bk module create -C -MB gcc4
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk module create -C -cgdb C
+bk module create -C -MC gdb
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk module create -cB -cC A
+bk module create -MA B C
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk module show A > GOT
+bk components -MA > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1048,9 +1093,9 @@ echo OK
 
 echo $N Make sure we can remove a component from a module ...........$NL
 REV=`bk changes -r+ -d:REV:`
-bk module rm -cB A
-echo C > WANT
-bk module show -r A > GOT
+bk module rm -MA B
+echo gdb > WANT
+bk components -MA > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1061,10 +1106,10 @@ echo OK
 
 echo $N Make sure we can add a component to a module ................$NL
 REV=`bk changes -r+ -d:REV:`
-bk module add -cB A
-echo B > WANT
-echo C >> WANT
-bk module show -r A > GOT
+bk module add -MA B
+echo gcc4 > WANT
+echo gdb >> WANT
+bk components -MA > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1075,7 +1120,7 @@ echo OK
 
 echo $N Adding a component that is already there is a no-op .........$NL
 REV=`bk changes -r+ -d:REV:`
-bk module add -cB A >OUT 2>&1
+bk module add -MA B >OUT 2>&1
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have done anything
 	cat OUT
@@ -1084,11 +1129,11 @@ test $REV = `bk changes -r+ -d:REV:` || {
 echo OK
 
 echo $N If we modify remove all components it should be a delete ....$NL
-bk module rm -cB -cC A
+bk module rm -MA B C
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
 echo Delete module A > WANT
 cmpfiles WANT GOT
-bk module create -cB -cC A
+bk module create -MA B C
 echo OK
 
 echo $N List all module names .......................................$NL
@@ -1098,7 +1143,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N List only present components ................................$NL
-bk module show -e `bk module list` > GOT
+bk components -h > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1107,7 +1152,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Adding a directory that does not exist is an error ..........$NL
-bk module add -csomedir/ A 2>ERR && {
+bk module add -MA somedir/ 2>ERR && {
 	echo should have failed
 	exit 1
 }
@@ -1117,29 +1162,7 @@ grep -q 'somedir/ is not a directory' ERR || {
 	exit 1
 }
 mkdir somedir
-bk module add -csomedir/ A || exit 1
-echo OK
-
-echo $N Show raw expansion for A ....................................$NL
-bk module show -r A > GOT
-cat > WANT <<EOF
-B
-C
-somedir/
-EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Show raw expansion for B ....................................$NL
-bk module show -r B > GOT
-(cd gcc4 && bk id ) > WANT
-cmpfiles WANT GOT
-echo OK
-
-echo $N Show raw expansion for C ....................................$NL
-bk module show -r C > GOT
-(cd gdb && bk id ) > WANT
-cmpfiles WANT GOT
+bk module add -MA somedir/ || exit 1
 echo OK
 
 echo $N Test infinite loop in modules ...............................$NL
@@ -1151,7 +1174,7 @@ echo @see_recursion
 echo recursion
 ) >> BitKeeper/etc/modules
 bk delta $Q -ywhatever BitKeeper/etc/modules
-bk module show recursion > OUT 2>&1
+bk components -Mrecursion > OUT 2>&1
 test $? = 1 || {
 	echo should have failed
 	cat OUT
@@ -1165,7 +1188,7 @@ grep -q 'too many levels of recursion.' OUT || {
 echo OK
 
 echo $N Try removing module recursion ...............................$NL
-bk module rm recursion || exit 1
+bk module rm -Mrecursion || exit 1
 bk diffs -h -R+ BitKeeper/etc/modules | grep '< ' > GOT
 (
 echo '< @recursion'
@@ -1175,7 +1198,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Try removing module see_recursion ...........................$NL
-bk module rm see_recursion || exit 1
+bk module rm -Msee_recursion || exit 1
 bk diffs -h -R+ BitKeeper/etc/modules | grep '< ' > GOT
 (
 echo '< @see_recursion'
@@ -1184,8 +1207,8 @@ echo '< recursion'
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk ensemble list for clone -r+ but limited to -M./gcc4 ......$NL
-bk ensemble list -M./gcc4 -1lpd -r+ > GOT
+echo $N bk components for clone -r+ but limited to -M./gcc4 .........$NL
+bk components -M./gcc4 -Plpd -r+ > GOT
 (
 bk changes -qnd".|:KEY:" -r+ .
 bk changes -qnd"gcc4|:KEY:" -r+ gcc4
@@ -1250,7 +1273,8 @@ cd ..
 bk clone $Q gcc liberty
 cd project
 REV=`bk changes -r+ -d:REV:`
-bk ensemble add $Q -yliberty ../liberty liberty
+bk clone $Q ../liberty liberty
+bk attach $Q liberty
 bk -qA -M"|$REV" prefixed_sfiles -h > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
@@ -1341,9 +1365,9 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test serializing/deserializing and ensemble..................$NL
-bk ensemble list -r+ > WANT
-bk ensemble list -r+ -o > SERIALIZED
-bk ensemble list -i < SERIALIZED  > GOT
+bk components -r+ > WANT
+bk components -r+ -o > SERIALIZED
+bk components -i < SERIALIZED  > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -1352,10 +1376,11 @@ echo $N Test that we see a nested component .........................$NL
 cd "$HERE"
 for i in A B C
 do	bk clone -q gcc $i
-	(cd $i && bk newroot -q)
+	# (cd $i && bk newroot -q)
 done
 cd project
-bk ensemble add -q -yA ../A gdb/A
+bk clone $Q ../A gdb/A
+bk attach $Q gdb/A
 test -f BitKeeper/log/deep-nests || {
 	echo failed to create hints file
 	exit 1
@@ -1374,7 +1399,8 @@ grep -q gdb/A/SCCS/s.ChangeSet GOT || {
 echo OK
 
 echo $N Test that we see a nested/nested component ..................$NL
-bk ensemble add -q -yB ../B gdb/A/B
+bk clone $Q ../B gdb/A/B
+bk attach $Q gdb/A/B
 test -f BitKeeper/log/deep-nests || {
 	echo failed to maintain hints file
 	exit 1

@@ -1,0 +1,59 @@
+.so ../bk-macros
+.TH "bk portal" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk portal \- set or show the portal status of a repository
+.SH SYNOPSIS
+.B bk portal
+.[B] \-q
+.B .
+.br
+.B bk portal
+.[B] \-q
+.B rm
+.SH DESCRIPTION
+.LP
+The
+.B bk portal
+command either reports whether the product repository is a portal
+or it sets that product repository to a portal.
+.LP
+A 
+.I portal
+repository is part of \*[BK]'s product line functionality.
+A portal is the product instance that may receive changes
+from other products in the same product line.  
+In other words, the portal is the place to which changes may
+be ported, i.e., the portal is the destination of any 
+.B "bk port"
+command.
+.LP
+For any given collection of repositories forming a product, only
+one instance should be a portal.
+.LP
+With an argument of ".", it marks the product as a portal.
+With an argument of "rm", it unmarks the product as a portal.
+With no argument, the command prints the repository portal status.
+With 
+.BR \-q ,
+the exit status indicates portal status; 0 means it is, 1 means it is not.
+.SH OPTIONS
+.TP
+.B \-q
+Run silently.
+.SH "SEE ALSO"
+.SA Howto-product
+.SA Howto-productLine
+.SA port
+.SH CATEGORY
+.B Product
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product-line" listed then your license has
+this feature enabled.
+If not, contact BitMover sales.

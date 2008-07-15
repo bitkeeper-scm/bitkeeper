@@ -12,6 +12,7 @@ STDIO_OBJS = $(patsubst %,stdio/%, \
 	fgetpos.o \
 	fgets.o \
 	fgetstr.o \
+	fileprintf.o \
 	findfp.o \
 	flags.o \
 	fopen.o \

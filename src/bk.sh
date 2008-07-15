@@ -137,144 +137,55 @@ _prefixed_sfiles() {
 	fi
 }
 
-_ensemble() {
-	test "X$1" = Xcreate && {
-		shift
-		exec bk setup -E ${1+"$@"}
-	}
-
-	__cd2root
-	test "X$1" = X && {
-		test -f BitKeeper/log/PRODUCT && {
-			echo This is the product.
-			exit 0
-		}
-		test -f BitKeeper/log/COMPONENT && {
-			echo This is a component
-			exit 0
-		}
-		echo This is not an ensemble repository
-		exit 0
-	}
-
-	# XXX - going away, do not use
-	test "X$1" = XcreateInClone && {
-		shift
-		QUIET=
-		while getopts q opt
-		do
-			case "$opt" in
-			q) QUIET=-q;;
-			esac
-		done
-		test -f BitKeeper/log/PRODUCT && {
-			echo This repository is already a product.
-			exit 0
-		}
-		touch BitKeeper/log/PRODUCT
-		touch BitKeeper/etc/modules
-		bk new -q BitKeeper/etc/modules
-		bk commit -q -y"Ensemble create."
-		verbose ensemble create complete
-		exit 0
-	}
-
-	# All other commands need it to be in a product
+_portal() {
 	__cd2product
-
-	test "X$1" = Xlist && {
+	ECHO=echo
+	RC=0
+	REMOVE=""
+	test "X$1" = "X-q" && {
+		ECHO='#'
 		shift
-		exec bk ensemble_list $@
 	}
-
-	# bk ensemble [add|attach] -y<m>|Y<f> [-r<rev>] url loc [url loc ...]
-	test "X$1" = Xadd -o "X$1" = Xattach && {
-		CMD=$1
+	test "X$1" = "Xrm" && {
+		REMOVE=1
 		shift
-		COMMENT=
-		QUIET=
-		REV=
-		while getopts qr:y:Y: opt
-		do
-			case "$opt" in
-			q) QUIET=-q;;
-			r) REV="-r$OPTARG";;
-			y) COMMENT="-y$OPTARG";;
-			Y) COMMENT="-Y$OPTARG";;
-			esac
-		done
-		shift `expr $OPTIND - 1`
-		if [ $CMD = add ]
-		then
-			while [ 1 = 1 ]
-			do
-				test "X$1" = X -o "X$2" = X && {
-					bk help -s ensemble
-					exit 1
-				}
-				verbose Adding "$1" as "$2"
-				# XXX - won't handle spaces in rev, fix in C.
-				bk clone -p $QUIET $REV "$1" "$2" || {
-					echo "ensemble add failed to clone $1"
-					rm -f ${TMP}/ensemble_add$$
-					exit 1
-				}
-				echo "$2" >> ${TMP}/ensemble_add$$
-				test "X$3" = X && break
-				shift
-				shift
-			done
+		test "X$1" = X || {
+			bk help -s portal
+			exit 1
+		}
+		if [ -f BitKeeper/log/PORTAL ]
+		then	rm -f BitKeeper/log/PORTAL
+			eval "$ECHO This is no longer a portal"
+		else	eval "$ECHO This is not a portal"
 		fi
-		if [ $CMD = attach ]
-		then
-			while [ 1 = 1 ]
-			do
-				echo "$1" >> ${TMP}/ensemble_add$$
-				test "X$2" = X && break
-				shift
-			done
-		fi
-		PRODUCT=`bk id`
-		while read x
-		do	verbose "Attaching $x" 
-			( cd "$x" && bk newroot -y"ensemble add $x" $QUIET )
-			bk admin -D -C"$PRODUCT" "$x/ChangeSet"
-			echo "$x" > "$x/BitKeeper/log/COMPONENT"
-			( cd "$x"
-			bk edit -q ChangeSet
-			bk delta -f -q -y"Ensemble add $x" ChangeSet
-			)
-			rm -f "$x/BitKeeper/log/CSETFILE"
-		done < ${TMP}/ensemble_add$$
-
-		LIST="attached components:"
-		while read x
-		do	echo "$x/SCCS/s.ChangeSet|+"
-			touch "$x/SCCS/d.ChangeSet"
-			LIST="$LIST $x"
-		done < ${TMP}/ensemble_add$$ > ${TMP}/ensemble_commit$$
-		test -z "$COMMENT" && COMMENT="-y$LIST"
-		bk commit $QUIET "$COMMENT" -l${TMP}/ensemble_commit$$
-		while read x
-		do	rm -f "$x/BitKeeper/log/CSETFILE"
-		done < ${TMP}/ensemble_add$$
-		rm -f ${TMP}/ensemble_add$$ ${TMP}/ensemble_commit$$
-		verbose ensemble $CMD complete
 		exit 0
 	}
-
-	test "X$1" = Xdetach && {
-		# Not done yet, need newroot log.
-		echo Not implemented.
+	test "X$1" = X && {
+		if [ -f BitKeeper/log/PORTAL ]
+		then	eval "$ECHO This is a portal"
+		else	eval "$ECHO This is not a portal"
+			RC=1
+		fi
+		exit $RC
+	}
+	test "$1" = "." || {
+		bk help -s portal
 		exit 1
 	}
-
-	bk help -s ensemble
-	exit 1
+	if [ -f BitKeeper/log/PORTAL ]
+	then	eval "$ECHO This is already a portal"
+	else	touch BitKeeper/log/PORTAL
+		eval "$ECHO This is now a portal"
+	fi
 }
 
-_attach() {
-	_ensemble attach ${1+"$@"}
+# This should take a list of components,
+# verify that each is a component,
+# save their rootkeys,
+# rm -rf them,
+# csetprune them out of the product.
+_detach() {
+	echo Not implemented
 }
 
 # superset - see if the parent is ahead

@@ -74,7 +74,14 @@ populate_main(int ac, char **av)
 	EACH (urls) {
 		url = urls[i];
 		EACH_REPO (repos) {
-			if (repos->present) continue;
+			if (repos->present) {
+				unless (quiet) {
+					fprintf(stderr,
+					    "populate: %s is already here.\n",
+					    repos->path);
+				    	}
+				continue;
+			}
 			if (hash_fetchStr(done, repos->path)) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("clone"));
@@ -103,24 +110,6 @@ populate_main(int ac, char **av)
 		rc = 1;
 	}
 	ensemble_free(repos);
-	if (modules) {
-		char	**p;
-
-		/*
-		 * populate adds the modules we have requested to
-		 * the MODULES file, but if there isn't a modules
-		 * file already then don't create one as that already
-		 * implies: fetch everything.
-		 */
-		if (p = file2Lines(0, "BitKeeper/log/MODULES")) {
-			EACH (modules) p = addLine(p, strdup(modules[i]));
-			uniqLines(p, free);
-			if (lines2File(p, "BitKeeper/log/MODULES")) {
-				perror("BitKeeper/log/MODULES");
-			}
-			freeLines(p, free);
-		}
-	}
 	sccs_free(s);
 
 	if (hash_first(done)) {
@@ -141,6 +130,25 @@ populate_main(int ac, char **av)
 		if (i) {
 			fprintf(stderr, "Consistency check failed, "
 			    "repository left locked.\n");
+		} else if (modules) {
+			char	**p;
+
+			/*
+			 * populate adds the modules we have requested to
+			 * the MODULES file, but if there isn't a modules
+			 * file already then don't create one as that already
+			 * implies: fetch everything.
+			 */
+			if (p = file2Lines(0, "BitKeeper/log/MODULES")) {
+				EACH (modules) {
+					p = addLine(p, strdup(modules[i]));
+				}
+				uniqLines(p, free);
+				if (lines2File(p, "BitKeeper/log/MODULES")) {
+					perror("BitKeeper/log/MODULES");
+				}
+				freeLines(p, free);
+			}
 		}
 	} else {
 		unless (quiet) {
