@@ -207,13 +207,12 @@ cd "$HERE"
 rm -rf project copy TRIGGER FAIL
 bk clone $Q null-push project
 bk clone $Q project copy
-# XXX: some day we need to implement bk ensemble attach. It's even
-# documented but not implemented?
 cd "$HERE"
 commercial libc
 cd "$HERE"/copy
 BEFORE=`bk parent -l`
-bk ensemble add $Q -y"add libc" ../libc libc
+bk clone $Q ../libc libc
+bk attach $Q libc
 AFTER=`bk parent -l`
 test "$BEFORE" = "$AFTER" || {
 	echo failed to leave parent pointer alone

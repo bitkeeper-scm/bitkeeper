@@ -94,16 +94,6 @@ That setting will not pull BAM data into a clone until a user
 requests an edit or a checkout.
 After that, the file will remain in whatever mode it was, even
 across deltas.
-.SH AVAILABILITY
-BAM is a licensed feature of \*[BK] and must be enabled for your license;
-it is not a bundled "for-free" feature.
-To see if your license has BAM enabled, you can run
-.DS
-bk lease renew
-bk lease show
-.DE
-and if the options field has "BAM" listed then you have.  If it does not and
-you need BAM contact BitMover sales.
 .SH "SEE ALSO"
 .SA Howto
 .SA BAM
@@ -116,3 +106,13 @@ you need BAM contact BitMover sales.
 .\" help://howto-bam
 .\" help://Howto-bam
 .\" help://HOWTO-BAM
+.SH AVAILABILITY
+BAM is a licensed feature of \*[BK] and must be enabled in your license;
+it is not a bundled "for-free" feature.
+To see if your license has BAM enabled, you can run
+.DS
+bk lease renew
+bk lease show
+.DE
+and if the options field has "BAM" listed then your license is BAM enabled. 
+If "BAM" is not listed, contact BitMover sales.

@@ -1,0 +1,56 @@
+.so ../bk-macros
+.TH "bk components" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk components \- list components in a product
+.SH SYNOPSIS
+.B bk components
+.[B] \-hP
+.[OPTreq] -M module
+.[OPTreq] -r rev
+.SH DESCRIPTION
+The 
+.B bk components
+command is used to list all or some of the repositories that make up a product.
+Strictly speaking, a product is different than a component, but in the context
+of this command the product is just another repository to be listed.
+.LP
+With no options, this command lists all repositories that make up the product,
+regardless of whether the repositories are all present or not.  
+There are options to restrict the listing to the subset that is present
+in this product instance, and/or to restrict the listing to one or more
+modules.
+.SH OPTIONS
+.TP \-M\*<module\*>
+.B \-h
+restrict the listing to those components which are present (here)
+in the product.
+.tp
+.OPTreq \-M module
+restrict the listing to components belonging to the specified module[s].
+This option may be repeated to specify multiple modules.
+.tp
+.B \-P
+include the product in the list as well.
+.tp
+.OPTreq \-r rev
+list the components as of the
+.ARG rev 
+version of the product.
+.SH "SEE ALSO"
+.SA Howto-Product
+.SA attach
+.SA module
+.SA product
+.SH CATEGORY
+.B Product
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.

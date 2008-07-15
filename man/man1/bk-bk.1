@@ -4,28 +4,12 @@
 bk \- \*(BK configuration management system front end
 .SH SYNOPSIS
 .B bk 
+.[OPTopt] \-@ url
+.[B] \-q
+.[B] \-APR
+.[OPTopt] \-[1acpx]r dir
 .ARG command 
 .[ARG] options
-.br
-.B bk \-R
-.ARG command 
-.[ARG] options
-.br
-.B bk 
-.[ARG] sfiles_opts
-.[OPTopt] \-r dir
-.ARG command
-.[ARG] options
-.ARG \-
-.br
-.B bk
-.OPT \-q
-.OPTopt \-@ url
-.[ARG] sfiles_opts
-.[OPTopt] \-r dir
-.ARG command
-.[ARG] options
-.ARG \-
 .SH DESCRIPTION
 .B bk
 is the front end to all \*(BK commands.
@@ -41,7 +25,7 @@ If you are looking for instructions on how to get started, try running the
 test drive at
 .BR http://www.bitkeeper.com/Test.html .
 .SH OPTIONS
-.TP \*<sfiles_opts\*>
+.TP -r[\*<dir\*>]\ 
 .OPTopt \-@ url
 Run the command in the specified repository rather than locally.
 If
@@ -51,17 +35,8 @@ If there are multiple parents, incoming and/or outgoing, use all of those
 parents.
 You can use the construct
 .OPTreq \-@@ file
-to specify a
-.ARG file
-containing a list of repository URLs, one per line; the command is
-run in each of the remote repositories.
-.IP
-Except when using
-.QR \-q ,
-output from each command is prefixed with a header:
-.DS
-#### \*<url\*> ####
-.DE
+to specify a file containing a list of repository URLs, one per line;
+the command is run in each of the remote repositories.
 .IP
 The
 .OPTopt \-r dir
@@ -75,6 +50,32 @@ If
 .Q \-
 is the last argument, then the standard input is read and buffered.
 Each remote command receives the same input.
+.tp
+.B \-A
+In a product, this option will cause the command to be run 
+in the product and then in each of the components.
+The
+.B \-A
+is stripped from the options but all others are passed through.
+For example, to check out all files in the product
+and all component repositories:
+.DS
+$ bk -Ar co
+.DE
+.tp
+.B \-P
+Change directories to the root of the product repository before running
+.ARG command .
+.tp
+.B \-q
+For remote commands (\-@) or multi-repository commands (\-A), the output
+from running the command in each repository is prefixed with a header:
+.DS
+#### \*<repo-url or location\*> ####
+.DE
+The
+.B \-q
+option suppresses that header.
 .tp
 .B \-R
 Change directories to the root of the repository before running
@@ -90,20 +91,19 @@ was not specified, apply
 recursively to
 .ARG dir
 and all subdirectories.
-This works by generating a list of sfiles and passing them to
+This works by generating a list of files and passing them to
 .ARG command
 on the standard input.
 .tp
-.ARG sfiles_opts
-One or more options may be used in combination with 
+.B \-1acpx
+One or more of these options may be used in combination with 
 .Q \-r
 to limit the set of files passed to
 .ARG command .
-The following sfiles options may be passed:
 .\" HEY!  YOU!  Man page hacker.  If you change these make sure you follow
 .\" whatever bk-sfiles.1 says, that's the authoritative source, OK?  Thanks!
 .RS
-.TP \fB\-p[A|C]\fPnn
+.TP ABCD
 .B \-1
 Only examine the current (or named) directory.
 Do not go into subdirectories.
@@ -114,83 +114,14 @@ Examine all files, even if listed in
 .tp
 .B \-c
 List changed files (locked and modified).
-If
-.I clock_skew
-is set in the config file then the file time stamps
-and other attributes are used to speed scanning.
-The acceptable clock skew can be configured, see
-.I clock_skew
-in
-.BR "bk help config-etc" .
+See EXAMPLES below for a typical usage.
 .tp
-.B \-d
-List directories under \*(BK control (SCCS subdir exists).
-.tp
-.B \-D
-List directories with no (or empty) SCCS subdirs.
-.tp
-.B \-g
-List the gfile name, not the sfile name.
-.tp
-.B \-G
-List files only if they are checked out ("gotten").
-.tp
-.B \-i
-List files which would normally be listed as extras (see
-.B \-x 
-below) but are suppressed because they are present in the 
-.B BitKeeper/etc/ignore 
-file.
-.tp
-.B \-j
-List junk files, i.e., files in \*(SC subdirectories which are not 
-metadata.
-.tp
-.B \-l
-List locked files (p.file and/or z.file).
-.tp
-.B \-n
-List s.files that are not in the correct location.  
-.tp
-.OPTopt \-p A|C
-List files with pending deltas.  If 
-.B \-pC
-then list 
-leaves which are not in a changeset as 
-.Q \-pC
-then list leaves which are not in a changeset as 
-.B file|1.3
-If
-.QR \-pA ,
-that implies 
-.QR \-pC ,
-and 
-lists all revisions, not just the tip.
-If
-.BR \-pA ,
-that implies 
-.BR \-pC ,
-and 
-lists all revisions, not just the tip.
-.Q \-pA
-.tp
-.B \-u
-List unlocked files.
-.tp
-.B \-U
-List user files only, skipping 
-the ChangeSet file 
-and everything below
-.B BitKeeper/
-other than 
-.BR BitKeeper/triggers/* .
+.B \-p
+List files with pending deltas.  
 .tp
 .B \-x
 List files which have no revision control files.
-.tp
-.B \-y
-List files which have saved checkin comments, the files listed
-may be either extra files and/or files under \*(BK control.
+See EXAMPLES below for a typical usage.
 .RE
 .SH EXIT STATUS
 Unless otherwise documented, all \*(BK commands return exit status
@@ -203,7 +134,23 @@ bk -r co
 bk -R sfiles | bk -R co -
 cd \`bk root\`; bk sfiles | bk co -
 .DE
+An example usage for generating a patch of all
+new and/or changed files:
+.DS
+$ bk -cxr diffs -Nu
+.DE
 .SH "SEE ALSO"
 .SA sfiles
 .SH CATEGORY
 .B Repository
+.SH AVAILABILITY
+The \-A/\-P options of this command are an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license is so enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.

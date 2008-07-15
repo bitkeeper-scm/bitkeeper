@@ -1,0 +1,74 @@
+.so ../bk-macros
+.TH "bk populate" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk populate \- fill in components in a sparse product repository
+.SH SYNOPSIS
+.B bk populate
+.[B] \-ql 
+.[OPTequal] \-E e v
+.[OPTreq] \-M module \ ...
+.[ARG] from
+.SH DESCRIPTION
+.LP
+The populate command is used to add one or more modules to
+a sparse product clone or to make sure that all components
+implied by the cached modules list are present.
+.LP
+When cloning a product, it is possible to clone a subset of it by 
+specifying one or more modules.
+If later you want to add another module, the populate command 
+can help:
+.DS
+$ bk clone -Mdev-tools bk://server/big-product
+$ cd big-product
+$ bk populate -Mdebugger
+.DE
+After running the above, the recorded list of modules will be
+"dev-tools" and "debugger".
+.LP
+If you have removed a component by mistake, just running the 
+populate command with no arguments will reclone any missing components.
+.SH OPTIONS
+.TP \-E\*<env\*>=\*<val\*>
+.OPTequal \-E env val
+Export an environment variable to the 
+.B bkd
+running in the remote \*(BK repository.
+Typically used to pass information to remote triggers.
+Only variables with the prefix
+.V BKU_
+are allowed.
+This option may be repeated to set more than one variable.
+.tp
+.B \-l
+Populate using hard links instead of copying the data.  
+This is faster and saves disk space, but only works 
+within filesystems supporting hard links.
+.tp
+.OPTreq \-M module
+If present, add this module to the list of modules that should be
+in this product instance.
+This option may be repeated to add more than one module.
+.tp
+.B \-q
+Run quietly.
+.SH "SEE ALSO"
+.SA bkd
+.SA clone
+.SA parent
+.SA relink
+.SA triggers
+.SA url
+.SH CATEGORY
+.B Product
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.

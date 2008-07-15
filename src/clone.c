@@ -13,7 +13,6 @@ struct {
 	u32	no_parent:1;		/* -p: do not set parent pointer */
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
-	u32	verbose:1;		/* -v: more details */
 	u32	link:1;			/* -l: lclone-mode */
 	int	delay;			/* wait for (ssh) to drain */
 	char	*rev;			/* remove everything after this */
@@ -46,7 +45,7 @@ clone_main(int ac, char **av)
 	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dE:lM;pqr;vw|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:lM;pqr;w|z|")) != -1) {
 		unless ((c == 'r') || (c == 'M')) {
 			if (optarg) {
 				opts->av = addLine(opts->av,
@@ -72,7 +71,6 @@ clone_main(int ac, char **av)
 		    case 'p': opts->no_parent = 1; break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
-		    case 'v': opts->verbose = 1; break;
 		    case 'w': opts->delay = atoi(optarg); break; /* undoc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			if (optarg) gzip = atoi(optarg);
@@ -89,7 +87,6 @@ clone_main(int ac, char **av)
 		exit(1);
 	}
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
-	unless (proj_isEnsemble(0)) opts->verbose = !opts->quiet;
 	if (av[optind]) localName2bkName(av[optind], av[optind]);
 	if (av[optind+1]) localName2bkName(av[optind+1], av[optind+1]);
 	unless (av[optind]) usage(av[0]);
@@ -393,8 +390,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 		}
 		fclose(f);
 		ensemble_free(repos);
-		p = opts->verbose ? "-fvT" : "-fT";
-		rc += run_check(!opts->verbose, checkfiles, p, 0);
+		p = opts->quiet ? "-fT" : "-fTv";
+		rc += run_check(opts->quiet, checkfiles, p, 0);
 		unlink(checkfiles);
 		free(checkfiles);
 		if (rc) {
@@ -408,7 +405,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	// XXX - would be nice if we did this before bailing out on any of
 	// the error/license conditions above but not when we have an ensemble.
 	if (!opts->quiet &&
-	    (!getenv("_BK_TRANSACTION") || opts->verbose)) {
+	    (!getenv("_BK_TRANSACTION") || !opts->quiet)) {
 		remote	*l = remote_parse(local, REMOTE_BKDURL);
 
 		fromTo("Clone", r, l);
@@ -519,13 +516,13 @@ clone2(remote *r)
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
-	sccs_rmUncommitted(!opts->verbose, f);
+	sccs_rmUncommitted(opts->quiet, f);
 	fclose(f);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts->rev) {
-		rc = after(!opts->verbose, opts->rev);
+		rc = after(opts->quiet, opts->rev);
 		if (rc == UNDO_SKIP) {
 			/* undo exits 2 if it has no work to do */
 			goto docheck;
@@ -536,11 +533,11 @@ clone2(remote *r)
 		}
 	} else {
 docheck:	/* undo already runs check so we only need this case */
-		p = opts->verbose ? "-fvT" : "-fT";
+		p = opts->quiet ? "-fT" : "-fvT";
 		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(!opts->verbose, checkfiles, p, &did_partial);
+			rc = run_check(opts->quiet, checkfiles, p, &did_partial);
 		} else {
-			rc = run_check(!opts->verbose, 0, p, 0);
+			rc = run_check(opts->quiet, 0, p, 0);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
@@ -577,8 +574,11 @@ initProject(char *root, remote *r)
 		perror(root);
 		return (-1);
 	}
+
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(".");
+	if (proj_product(0)) opts->no_parent = 1;
+
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);
 	repository_wrlock();
@@ -626,10 +626,10 @@ sfio(remote *r, int BAM, char *prefix)
 	cmds[++n] = "sfio";
 	cmds[++n] = "-i";
 	if (BAM) cmds[++n] = "-B";
-	if (opts->verbose) {
-		cmds[++n] = aprintf("-P%s/", prefix);
-	} else {
+	if (opts->quiet) {
 		cmds[++n] = "-q";
+	} else {
+		cmds[++n] = aprintf("-P%s/", prefix);
 	}
 	cmds[++n] = 0;
 	pid = spawnvpio(&pfd, 0, 0, cmds);
@@ -641,7 +641,7 @@ sfio(remote *r, int BAM, char *prefix)
 	gunzipAll2fh(r->rfd, f, &(opts->in), &(opts->out));
 	fclose(f);
 	waitpid(pid, &status, 0);
-	if (opts->verbose) {
+	unless (opts->quiet) {
 		if (r->gzip) {
 			fprintf(stderr, "%s uncompressed to %s, ",
 			    psize(opts->in), psize(opts->out));
@@ -761,10 +761,7 @@ parent(remote *r)
 	char	*p;
 	int	i;
 
-	unless (!opts->no_parent &&
-	    (!proj_isEnsemble(0) || proj_isProduct(0))) {
-	    	return;
-	}
+	if (opts->no_parent) return;
 	assert(r);
 	cmds[i = 0] = "bk";
 	cmds[++i] = "parent";

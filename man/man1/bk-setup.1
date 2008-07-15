@@ -5,7 +5,7 @@
 bk setup \- create a new \*(BK package
 .SH SYNOPSIS
 .B bk setup
-.[B] \-Efp
+.[B] \-fpP
 .[OPTreq] \-F key\fB=\fIval
 .[OPTreq] \-c config_file
 .ARG directory
@@ -43,15 +43,16 @@ Use
 .ARG config_file
 as the configuration file to setup the repository.
 .tp
-.B \-E
-The repository being created is to be an ensemble.
-.tp
 .B \-f
 Don't ask for confirmation.
 .tp
 .OPTreq \-F key\fB=\fIval
 Override default values for the specified field.
 Typically used in combination with a config template.
+.tp
+.B \-P
+The repository being created is a product repository, i.e., will have
+component repositories.
 .tp
 .B \-p
 print the field names to stdout (used by setuptool).
@@ -128,6 +129,7 @@ repository, see
 .SH "SEE ALSO"
 .SA Howto
 .SA Howto-setup
+.SA Howto-product
 .SA config-etc
 .SA import
 .SA setuptool

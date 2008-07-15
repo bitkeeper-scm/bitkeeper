@@ -313,7 +313,7 @@ echo $N Try a pull that adds a component.............................$NL
 cd "$HERE/project"
 commercial newcomp
 cd ..
-bk ensemble attach $Q newcomp
+bk attach $Q newcomp
 cd "$HERE/copy"
 bk pull >OUT 2>&1 || {
 	echo failed

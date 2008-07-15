@@ -2,20 +2,21 @@
 #include "system.h"
 #include "sccs.h"
 
-private int	newroot(char *ranbits, int quiet, char *comment);
+private int	newroot(char *ranbits, int quiet, int product, char *comment);
 private void	update_rootlog(sccs *s, char *key, char *comment);
 
 int
 newroot_main(int ac, char **av)
 {
-	int	c, quiet = 0;
+	int	c, quiet = 0, product = 0;
 	char	*ranbits = 0;
 	char	*comments = 0;
 	u8	*p;
 
-	while ((c = getopt(ac, av, "k:qy:")) != -1) {
+	while ((c = getopt(ac, av, "k:Pqy:")) != -1) {
 		switch (c) {
 		    case 'k': ranbits = optarg; break;
+		    case 'P': product = 1; break;
 		    case 'q': quiet = 1; break;
 		    case 'y': comments = optarg; break;
 		    default:
@@ -41,15 +42,17 @@ k_err:			fprintf(stderr,
 		}
 		if (*p) goto k_err;
 	}
-	return (newroot(ranbits, quiet, comments));
+	return (newroot(ranbits, quiet, product, comments));
 }
 
 /*
  * Generate a new ROOTKEY
  * Update the csetfile pointer in all files.
+ * XXX - what if we are a component, should newroot be allowed?
+ * Prolly not.
  */
 private int
-newroot(char *ranbits, int quiet, char *comments)
+newroot(char *ranbits, int quiet, int product, char *comments)
 {
 	sccs	*s;
 	int	rc = 0, i;
@@ -61,6 +64,14 @@ newroot(char *ranbits, int quiet, char *comments)
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root.\n");
+		exit(1);
+	}
+	if (proj_isComponent(0)) {
+		fprintf(stderr, "May not newroot components.\n");
+		exit(1);
+	}
+	if (product && proj_isProduct(0)) {
+		fprintf(stderr, "Repository is already a product.\n");
 		exit(1);
 	}
 	unless ((s = sccs_init(cset, 0)) && HASGRAPH(s)) {
@@ -122,10 +133,15 @@ newroot(char *ranbits, int quiet, char *comments)
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
 	unlink("BitKeeper/log/CSETFILE");
-
-	unlink("BitKeeper/log/PRODUCT");
-	unlink("BitKeeper/log/COMPONENT");
-
+	if (product) {
+		touch("BitKeeper/log/PRODUCT", 0664);
+		unless (exists("BitKeeper/etc/SCCS/s.modules")) {
+			touch("BitKeeper/etc/modules", 0664);
+			system("bk new -q BitKeeper/etc/modules");
+			system("bk sfiles -pC BitKeeper/etc/modules |"
+			    "bk commit -q -y'Add modules db' -");
+		}
+	}
 	f = popen("bk sfiles", "r");
 	unless (quiet) {
 		fprintf(stderr, "Pointing files at new changeset id...\n");

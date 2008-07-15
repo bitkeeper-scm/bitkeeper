@@ -584,7 +584,13 @@ proj_csetFile(project *p)
 }
 
 /*
- * Return the product if there is one.
+ * Return the product's project* if there is one, returns p if p is a
+ * product.
+ * The returned product is part of 'p' so it shouldn't be freed,
+ * and it only valid while 'p' is still active.
+ *
+ * Normal usage for this is if (proj_product(p)) tells you that there is
+ * a product above you somewhere.
  */
 project *
 proj_product(project *p)
@@ -1080,6 +1086,11 @@ proj_sync(project *p)
 	return (p->sync);
 }
 
+/*
+ * Returns true if p is a product repository.
+ * Do not use this to see if there is a product, use proj_product() for that.
+ * This interface is to specifically see if p is a product.
+ */
 int
 proj_isProduct(project *p)
 {
@@ -1088,6 +1099,12 @@ proj_isProduct(project *p)
 	return ((proj_product(p) != PROD_NOPROD) && PROD_SELF(p));
 }
 
+
+/*
+ * Returns true if p is a component repository.
+ * Note: Just being under a product is not enough.  It needs to have the
+ *       COMPONENT marker file setup.
+ */
 int
 proj_isComponent(project *p)
 {

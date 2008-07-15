@@ -1,37 +1,31 @@
 .so ../bk-macros
 .TH "bk module" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk module \- manage SAM component lists
+bk module \- manage aliases for a list of components
 .SH SYNOPSIS
-.B bk module add|rm|show|list
-.[B] -Cer
-.[OPTreq] -c comp
-.I module
+.B bk module add|rm|list
+.[B] -C
+.[OPTreq] -M module
+.[B] component ...
 .br
 .SS ADDING COMPONENTS TO A MODULE
 .B bk module add
 .[B] \-C
-.OPTreq \-c component
-.[I] ...
-.I module
+.OPTreq -M module
+.B component 
+.[B] component ...
 .br
-.SS REMOVING A COMPONENT FROM A MODULE
+.SS REMOVING COMPONENT[S] FROM A MODULE
 .B bk module rm
 .[B] \-C
-.OPTreq \-c component
-.[I] ...
-.I module
+.OPTreq -M module
+.B component 
+.[B] component ...
 .br
 .SS REMOVING A MODULE
 .B bk module rm
 .[B] \-C
-.I module
-.br
-.SS LIST COMPONENTS IN A MODULE
-.B bk module show
-.[B] \-er
-.I module
-.[I] ...
+.OPTreq -M module
 .br
 .SS LIST ALL MODULE NAMES
 .B bk module list
@@ -40,7 +34,7 @@ The
 .B bk module
 command is used to create, modify, remove, or list modules.
 A module is a symbolic name that resolves to one or more components (aka
-sub-repositories in a SAM ensemble).
+sub-repositories in a product).
 .SP
 Module names are similar to C identifiers and must match this regular
 expression:
@@ -88,7 +82,7 @@ Note that
 means a module database entry and
 .B ./gcc
 means a path in the file system; they are not the same thing.
-The form may expand to gcc, gdb, nm, etc., the latter expands to the
+The former may expand to gcc, gdb, nm, etc., the latter expands to the
 component at that location.
 .LP
 Each of the names found will be recursively expanded and may take any
@@ -110,47 +104,33 @@ When adding a component to a module the component must exist:
 if it is a directory then the directory must exist,
 if it is a module name then the module must exist in the modules file,
 if it is a path name then the path must exist and be a component.
-.LP
-In the event that there is ambiguity between a module name and a
-path to a component that is a single directory, use
-.OPTreq \-M ./path
-to mean the path and not the module.
-The default is that it means the module.
 .SH OPTIONS
-.TP
+.TP \*<component\*>
 .B \-C
 Normally, modifying the modules file results in a changeset committing that
 change.
 This option suppresses the commit.
-.TP
-.OPTreq \-c component
+Use this option when you wish to combine the module event with other
+changes to the product.
+.tp
+.OPTreq \-M module
+Used to specify the name of the module in the module database to add, remove,
+or modify.
+.tp
+.ARG component
 Used to specify a component to add or remove.
 .ARG component
-may be any of the three forms above.
+may be any of the forms described above.
 Multiple components may be specified for one invocation by repeating this
 option.
-.TP
-.B \-e
-Used when listing modules in a component.
-This option suppresses the listing of the component if it is not present in
-the ensemble.
-This option may not be combined with
-.B \-r.
-.TP
-.B \-r
-Used when listing modules in a component.
-This option shows the "raw" form of the component without any directory
-expansion or recursive module expansion.
-This option may not be combined with
-.B \-e.
 .SH EXAMPLES
 To create a module that points at some existing components:
 .DS
-$ bk module add -ccmd/gcc -ccmd/as -ccmd/ld -ccmd/nm compiler
+$ bk module add -Mcompiler cmd/gcc cmd/as cmd/ld cmd/nm 
 .DE
 To create a higher level module that includes the debugger:
 .DS
-$ bk module add -ccmd/gdb -ccompiler dev-tools
+$ bk module add -Mdev-tools cmd/gdb compiler
 .DE
 List all modules:
 .DS
@@ -160,7 +140,7 @@ dev-tools
 .DE
 To remove a component from a module
 .DS
-$ bk module rm -ccmd/nm compiler
+$ bk module rm -Mcompiler cmd/nm
 .DE
 .SH NOTES
 The modules database is a flat text file stored in
@@ -168,9 +148,20 @@ The modules database is a flat text file stored in
 Any components that are specified on the command line are stored internally
 as their rootkeys and rootkeys may be used as the name of a component.
 .SH "SEE ALSO"
-.SA ensemble
+.SA Howto-Product
 .SA glob
 .SA id
-.SA SAM-Howto
 .SH CATEGORY
-.B Repository
+.B Product
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.
+.\" help://modules

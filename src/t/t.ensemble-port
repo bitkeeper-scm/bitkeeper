@@ -16,7 +16,8 @@ bk new $Q foo || exit 1
 bk commit $Q -y'add foo' || exit 1
 cd ..
 nested project
-bk ensemble add $Q ../bash-sa bash || exit 1
+bk clone $Q ../bash-sa bash
+bk attach $Q bash
 cd bash
 bk edit $Q foo || exit 1
 echo stuff in project >> foo || exit 1
@@ -29,7 +30,7 @@ bk new $Q sa_file || exit 1
 bk commit -y'add sa_file' $Q || exit 1
 cd ..
 fresh_commercial project2
-bk ensemble createInClone $Q || exit 1
+bk newroot -P $Q || exit 1
 
 # XXX hack around ensemble-add restrictions
 #cd ..
@@ -45,16 +46,46 @@ bk ensemble createInClone $Q || exit 1
 #bk -r admin -C`bk id` || exit 1
 #bk -r check -a || exit 1
 cd ../project2
-bk ensemble add $Q ../bash-sa mybash || exit 1
-bk ensemble add $Q ../standalone sa2 || exit 1
+bk clone $Q ../bash-sa mybash
+bk clone $Q ../standalone sa2
+bk attach $Q mybash sa2
 cd ../project
-bk ensemble add $Q ../standalone sa1 || exit 1
+bk clone $Q ../standalone sa1
+bk attach $Q sa1 
 cd ..
 bk clone $Q project project-copy || exit 1
 echo OK
 
+echo $N Test the api for bk portal, leaving project2 a portal .......$NL
+# Not in a product
+cd "$HERE"
+bk portal 2> ERR && { echo failed; exit 1; }
+grep -q "bk: Cannot find product root" ERR || { echo wrong msg; exit 1; }
+bk portal . 2> ERR && { echo failed; exit 1; }
+grep -q "bk: Cannot find product root" ERR || { echo wrong msg; exit 1; }
+# In a product
+cd project2
+bk portal > OUT && { echo failed; exit 1; }
+grep -q "This is not a portal" OUT || { echo wrong msg; exit 1; }
+bk portal -q && { echo failed; exit 1; }
+# Now a portal
+bk portal $Q . || { echo failed; exit 1; }
+bk portal > OUT || { echo failed; exit 1; }
+grep -q "This is a portal" OUT || { echo wrong msg; exit 1; }
+bk portal -q || { echo failed; exit 1; }
+# remove it
+bk portal rm > OUT || exit 1
+grep -q "This is no longer a portal" OUT || exit 1
+bk portal rm > OUT || exit 1
+grep -q "This is not a portal" OUT || exit 1
+bk portal . > OUT || { echo failed; exit 1; }
+grep -q "This is now a portal" OUT || exit 1
+bk portal . > OUT || { echo failed; exit 1; }
+grep -q "This is already a portal" OUT || exit 1
+echo OK
+
 echo $N Port csets from standalone repo .............................$NL
-cd standalone
+cd "$HERE"/standalone
 echo hi > file1
 bk new $Q file1 || exit 1
 bk commit $Q -y'add file1' || exit 1
@@ -131,9 +162,11 @@ bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
 cd ../project
-bk ensemble add $Q ../branch branch
+bk clone $Q ../branch branch
+bk attach $Q branch
 cd ../project2
-bk ensemble add $Q ../branch2 branch2
+bk clone $Q ../branch2 branch2
+bk attach $Q branch2
 cd branch2
 bk port $Q ../../project/branch || exit 1
 cd ..
@@ -147,6 +180,7 @@ echo OK
 
 echo $N Try to port csets between matching products..................$NL
 cd "$HERE"/project-copy/bash
+bk portal $Q .
 bk port $Q ../../project/bash 2>ERR && {
 	echo should have failed
 	cat ERR

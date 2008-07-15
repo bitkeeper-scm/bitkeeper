@@ -37,49 +37,50 @@ echo OK
 
 echo $N Set up a test where we will add another module ..............$NL
 cd "$HERE/project"
-bk module add -cgcc -cgdb stuff
+bk module add -Mstuff gcc gdb
 cd ..
 bk clone $Q -Mstuff project stuff
 bk clone $Q -Mstuff project stuff2
 commercial libc
 cd "$HERE/project"
-bk ensemble add $Q -y"add libc" ../libc path/to/libc
-bk ensemble add $Q -y"add junk" ../libc junk
-bk module add -cpath/to/libc stuff
+bk clone $Q ../libc path/to/libc
+bk clone $Q ../libc junk
+bk attach $Q junk path/to/libc
+bk module add -Mstuff path/to/libc
 echo OK
 
 echo $N Test that we can read the name and dirs and globs ...........$NL
-bk module show stuff | bk _sort > GOT
+bk components -Mstuff | bk _sort > GOT
 cat << EOF > WANT
 gcc
 gdb
 path/to/libc
 EOF
 checkfiles WANT GOT
-bk module show ./gcc > GOT
+bk components -M./gcc > GOT
 echo gcc > WANT
 checkfiles WANT GOT
 # make sure longer and shorter don't match
-bk module show ./gccc\* 2> ERR > GOT && {
+bk components -M./gccc\* 2> ERR > GOT && {
 	echo failed
 	exit 1
 }
-grep -q "modules: no match for ./gccc*" ERR || {
+grep -q "components: no match for module ./gccc*" ERR || {
 	echo wrong msg
 	cat ERR
 	exit 1
 }
-bk module show ./gc/\* 2> ERR > GOT && {
+bk components -M./gc/\* 2> ERR > GOT && {
 	echo failed
 	exit 1
 }
-grep -q "modules: no match for ./gc/*" ERR || {
+grep -q "components: no match for module ./gc/*" ERR || {
 	echo wrong msg
 	exit 1
 }
 # globs that work
 for p in "g*" "gc*" "g*c" "*c" "p*" "path/*"
-do	bk modules show "./$p" | bk _sort
+do	bk components -M"./$p" | bk _sort
 	echo ..
 done > GOT
 cat << EOF > WANT
@@ -100,6 +101,7 @@ path/to/libc
 EOF
 checkfiles WANT GOT
 echo OK
+
 
 echo $N Try a push, should add libc but not junk ....................$NL
 bk parent $Q -ao ../stuff ../stuff2
@@ -180,7 +182,7 @@ echo OK
 
 echo $N Clone backwards, getting just libc, populate junk ...........$NL
 cd "$HERE"
-bk clone -r1.10 -M./path/to/libc project behind > OUT 2>&1
+bk clone -r1.8 -M./path/to/libc project behind > OUT 2>&1
 cd behind
 test -d junk && {
 	echo should not have junk
@@ -205,7 +207,8 @@ echo $N Test -M./gcc/nm .............................................$NL
 cd "$HERE"
 commercial nm
 cd "$HERE"/project
-bk ensemble add -ywhatever $Q ../nm gcc/nm
+bk clone $Q ../nm gcc/nm
+bk attach $Q gcc/nm
 cd "$HERE"
 bk clone -M./gcc/nm project project-nm > OUT 2>&1 || {
 	echo failed
@@ -246,4 +249,58 @@ test -d project-dot/gcc -o -d project-dot/gdb && {
 }
 echo OK
 
-exit 0
+echo $N Make sure populate -Mno-such-dir does not add to MODULES ....$NL
+cd project-dot
+cp BitKeeper/log/MODULES .
+bk populate -M./no-such-dir > OUT 2>&1 && {
+	echo populate should have failed
+	cat OUT
+	exit 1
+}
+cmpfiles MODULES BitKeeper/log/MODULES
+echo OK
+
+echo $N Same thing with a glob ......................................$NL
+bk populate -M'./no-such-dir*' > OUT 2>&1 && {
+	echo populate should have failed
+	cat OUT
+	exit 1
+}
+cmpfiles MODULES BitKeeper/log/MODULES
+echo OK
+
+echo $N Populate junk, run populate, should do nothing ..............$NL
+bk populate -M'./junk' > OUT 2>&1  || {
+	echo should not have failed
+	cat OUT
+	exit 1
+}
+test -d junk || exit 1
+bk populate > OUT 2>&1 
+grep -q 'no match' OUT && {
+	echo failed
+	cat OUT
+	echo MODULES
+	cat BitKeeper/log/MODULES
+	echo matches for ./junk 
+	bk components -M./junk
+	cd ../project
+	echo matches for ./junk in project
+	bk components -M./junk
+	exit 1
+}
+grep -q 'junk is already here.' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Same thing with a glob that matches junk when we have junk ..$NL
+test -d junk || exit 1
+bk populate -M'./junk*' > OUT 2>&1 || {
+	echo populate should not have failed
+	cat OUT
+	exit 1
+}
+echo OK

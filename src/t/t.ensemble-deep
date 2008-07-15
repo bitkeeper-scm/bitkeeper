@@ -5,7 +5,8 @@ test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || exit 1
 cd ..
 commercial nm
 cd "$HERE/project"
-bk ensemble add -ywhatever $Q ../nm gcc/nm
+bk clone $Q ../nm gcc/nm
+bk attach $Q gcc/nm
 echo OK
 
 echo $N Check that we see all components ............................$NL

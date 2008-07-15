@@ -6,9 +6,9 @@ bk pull \- update a repository from its parent[s]
 .SH SYNOPSIS
 .B bk pull
 .[B] \-iqRsTu
-.[OPTreq] \-r rev
-.[OPTequal] \-E env var
 .[OPTreq] \-c n
+.[OPTequal] \-E env var
+.[OPTreq] \-r rev
 .[ARG] parent \ .\|.\|.
 .SH DESCRIPTION
 .LP
@@ -21,7 +21,7 @@ touched the same line in the same file).
 .LP
 To see what would be pulled run
 .DS
-bk changes -aR
+bk changes -R
 .DE
 .\" XXX - do I really want to tell them this?
 .ig

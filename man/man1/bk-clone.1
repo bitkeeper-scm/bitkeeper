@@ -5,8 +5,9 @@ bk clone \- create a new copy of a package
 .SH SYNOPSIS
 .B bk clone
 .[B] \-ql 
-.[OPTreq] \-B bam_url
-.[OPTequal] \-E env val
+.[OPTreq] \-B url
+.[OPTequal] \-E e v
+.[OPTreq] \-M mod
 .[OPTreq] \-r rev
 .ARG from
 .[ARG] to
@@ -75,6 +76,11 @@ Clone using hard links instead of copying the data.
 This is faster and saves disk space, but only works 
 within filesystems supporting hard links.
 .tp
+.OPTreq \-M module
+When cloning a product, limit the components to those implied by
+.ARG module .
+This option may be repeated to clone more than one module.
+.tp
 .B \-q
 Run quietly.
 .tp
@@ -101,3 +107,14 @@ for more information.
 .br
 .B Repository
 .\" help://lclone
+.SH AVAILABILITY
+The \-M option of this command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license is so enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.

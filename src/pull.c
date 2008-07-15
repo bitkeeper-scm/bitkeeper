@@ -51,7 +51,7 @@ pull_main(int ac, char **av)
 	int	gzip = 6;
 	opts	opts;
 	remote	*r;
-	char	*prog;
+	char	*p, *prog;
 	char	**envVar = 0, **urls = 0;
 
 	bzero(&opts, sizeof(opts));
@@ -168,6 +168,17 @@ pull_main(int ac, char **av)
 err:		freeLines(envVar, free);
 		usage(prog);
 		return (1);
+	}
+
+	if (opts.port) {
+		p = aprintf("%s/BitKeeper/log/PORTAL",
+		    proj_root(proj_product(0)));
+		unless (exists(p)) {
+			fprintf(stderr, "port: destination is not a portal.\n");
+			free(p);
+			return (1);
+		}
+		free(p);
 	}
 
 	/*

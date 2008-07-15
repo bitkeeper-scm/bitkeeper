@@ -289,11 +289,29 @@ setgca(sccs *s, u32 bit, u32 tmp)
 #define	L_PRESENT	0x10
 
 int
-ensemble_list_main(int ac, char **av)
+product_main(int ac, char **av)
+{
+	if (proj_cd2root()) {
+		fprintf(stderr, "product: not in a repository.\n");
+		exit(1);
+	}
+	if (proj_isComponent(0)) {
+		printf("This is a component.\n");
+		exit(0);
+	}
+	if (proj_isProduct(0)) {
+		printf("This is the product.\n");
+		exit(0);
+	}
+	exit(0);
+}
+
+int
+components_main(int ac, char **av)
 {
 	int	c;
-	int	want = 0, serialize = 0;
-	int	input = 0, output = 0, present = 0;
+	int	rc = 0, want = 0, serialize = 0;
+	int	input = 0, output = 0, here = 0;
 	char	*p;
 	repos	*r = 0;
 	eopts	opts;
@@ -306,13 +324,10 @@ ensemble_list_main(int ac, char **av)
 		return (1);
 	}
 	bzero(&opts, sizeof(opts));
-	opts.product = 1;
+	opts.product_first = 1;
 
-	while ((c = getopt(ac, av, "1Cil;M;opr;u")) != -1) {
+	while ((c = getopt(ac, av, "hil;M;oPr;u")) != -1) {
 		switch (c) {
-		    case '1':
-			opts.product_first = 1;
-			break;
 		    case 'i':	/* undoc */
 		    	input = 1;
 			break;
@@ -333,11 +348,11 @@ ensemble_list_main(int ac, char **av)
 		    case 'o':	/* undoc */
 			output = 1;
 			break;
-		    case 'C':
-			opts.product = 0;
+		    case 'P':
+			opts.product = 1;
 			break;
-		    case 'p':	
-			present = 1;
+		    case 'h':
+			here = 1;
 			break;
 		    case 'r':
 			opts.rev = optarg;
@@ -349,7 +364,7 @@ ensemble_list_main(int ac, char **av)
 			opts.undo = 1;
 			break;
 		    default:
-			system("bk help ensemble_list");
+			system("bk help -s components");
 			exit(1);
 		}
 	}
@@ -359,7 +374,12 @@ ensemble_list_main(int ac, char **av)
 			opts.revs = addLine(opts.revs, strdup(buf));
 		}
 	}
-	if (modules) opts.modules = module_list(modules, 0);
+	if (modules) {
+		unless (opts.modules = module_list(modules, 0)) {
+			rc = 1;
+			goto out;
+		}
+	}
 	unless (opts.revs || opts.rev) opts.rev = "+";
 	unless (want) want = L_PATH;
 	if (input) {
@@ -373,7 +393,7 @@ ensemble_list_main(int ac, char **av)
 	}
 	EACH_REPO(r) {
 		if (opts.undo && r->new && !(want & L_NEW)) continue;
-		if (present && !r->present) continue;
+		if (here && !r->present) continue;
 		p = "";
 		if (want & L_PATH) {
 			printf("%s", r->path);
@@ -400,7 +420,7 @@ ensemble_list_main(int ac, char **av)
 out:	ensemble_free(r);
 	if (modules) freeLines(modules, 0);
 	if (opts.revs) freeLines(opts.revs, free);
-	exit(0);
+	exit(rc);
 }
 
 private int
@@ -631,4 +651,105 @@ ensemble_nestedCheck(void)
 	free(rel);
 	freeLines(paths, free);
 	free(hints);
+}
+
+int
+attach_main(int ac, char **av)
+{
+	int	commit = 1, quiet = 0, rc = 1;
+	int	c, i;
+	char	*tmp;
+	char	*relpath = 0;
+	char	**list = 0;
+	FILE	*f;
+	char	buf[MAXLINE];
+	char	pwd[MAXLINE];
+
+	while ((c = getopt(ac, av, "Cq")) != -1) {
+		switch (c) {
+		    case 'C': commit = 0; break;
+		    case 'q': quiet = 1; break;
+		    default:
+usage:		    	system("bk help -s attach");
+		    	return (1);
+		}
+	}
+	unless (proj_isProduct(0)) {
+		fprintf(stderr, "attach: not in a product\n");
+		goto err;
+	}
+	getcwd(pwd, sizeof(pwd));
+	while (av[optind]) {
+		chdir(pwd);
+		unless (isdir(av[optind])) {
+			fprintf(stderr,
+			    "attach: %s is not a directory\n", av[optind]);
+			goto usage;
+		}
+		if (chdir(av[optind])) {
+			perror(av[optind]);
+			goto err;
+		}
+		unless (isdir(BKROOT)) {
+			fprintf(stderr,
+			    "attach: %s is not a BitKeeper repository\n",
+			    av[optind]);
+			goto err;
+		}
+		if (proj_isComponent(0)) {
+			fprintf(stderr,
+			    "attach: %s is already a component\n", av[optind]);
+			goto err;
+		}
+		relpath = proj_relpath(proj_product(0), ".");
+		sprintf(buf,
+		    "bk newroot %s -y'attach %s'", quiet ? "-q" : "", relpath);
+		if (system(buf)) {
+			fprintf(stderr, "attach failed\n");
+			goto err;
+		}
+		sprintf(buf, "bk admin -D -C'%s' ChangeSet",
+		    proj_rootkey(proj_product(0)));
+		if (system(buf)) {
+			fprintf(stderr, "attach failed\n");
+			goto err;
+		}
+		unless (Fprintf("BitKeeper/log/COMPONENT", "%s\n", relpath)) {
+			fprintf(stderr,
+			    "writing BitKeeper/log/COMPONENT failed\n");
+			goto err;
+		}
+		system("bk edit -q ChangeSet");
+		sprintf(buf, "bk delta -f -q -y'attach %s'", relpath);
+		system(buf);
+		proj_reset(0);
+		ensemble_nestedCheck();
+		if (commit) {
+			list = addLine(list, relpath);
+		} else {
+			free(relpath);
+		}
+		optind++;
+	}
+	if (commit) {
+		proj_cd2product();
+		tmp = joinLines(", ", list);
+		sprintf(buf,
+		    "bk -P commit -y'attach %s' %s -", tmp, quiet ? "-q" : "");
+		if (f = popen(buf, "w")) {
+			EACH(list) {
+				fprintf(f, "%s/SCCS/s.ChangeSet|+\n", list[i]);
+			}
+		}
+		freeLines(list, free);
+		free(tmp);
+		if (!f || pclose(f)) {
+			fprintf(stderr, "attach failed in commit\n");
+			fprintf(stderr, "cmd: %s\n", buf);
+			goto err;
+		}
+	}
+	rc = 0;
+
+err:	return (rc);
 }

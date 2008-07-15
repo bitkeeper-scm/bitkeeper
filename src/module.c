@@ -7,6 +7,7 @@
 private int	finish(char *comment, hash *moduleDB, int commit);
 char		*rootkey(char *path);
 private void	error(const char *fmt, ...);
+extern	char	*prog;
 
 /*
  * Given one or more module names, and optionally a changeset sccs*,
@@ -40,11 +41,11 @@ module_list(char **names, sccs *cset)
 	char	buf[MAXKEY];
 
 	unless (proj_isProduct(0)) {
-		error("module: called in a non-product.\n");
+		error("%s: module expansion called in a non-product.\n", prog);
 		return (0);
 	}
 	unless (names && names[1]) {
-		error("module_list with no names?\n");
+		error("%s: module expansion with no names?\n");
 		return (0);
 	}
 
@@ -53,7 +54,7 @@ module_list(char **names, sccs *cset)
 	 */
 	concat_path(buf, proj_root(proj_product(0)), MODULES);
 	if (!exists(buf) && get(buf, SILENT, "-")) {
-		error("module: can't get %s\n", buf);
+		error("%s: can't get %s\n", prog, buf);
 		return (0);
 	}
 	modules = hash_fromFile(0, buf);
@@ -70,7 +71,7 @@ module_list(char **names, sccs *cset)
 	results = hash_new(HASH_MEMHASH);
 	EACH(names) {
 		if (hash_fetchStr(seen, names[i])) {
-			error("modules: duplicate name %s\n", names[i]);
+			error("%s: duplicate module name %s\n", prog, names[i]);
 			goto err;
 		}
 		hash_storeStr(seen, names[i], "");
@@ -95,8 +96,10 @@ module_list(char **names, sccs *cset)
 
 	if (more) {
 		if (depth > 5) {
-			error("modules: too many levels of recursion.\n");
-			error("modules: bad name %s\n", names[i]);
+			p = joinLines(" ", names);
+			error("%s: too many levels of "
+			    "recursion expanding module[s]: %s\n", prog, p);
+			free(p);
 err:			hash_free(modules);
 			hash_free(results);
 			hash_free(seen);
@@ -143,7 +146,7 @@ err:			hash_free(modules);
 			if (streq(dirs[i], ".")) {
 				hash_storeStr(results, proj_rootkey(0), "");
 				hash_storeStr(expanded, dirs[i], "");
-				break;
+				continue;
 			}
 
 			/* The expanded loop below will flag this. */
@@ -166,16 +169,15 @@ err:			hash_free(modules);
 			break;
 	    	}
 	}
+	if (free_cset && cset) sccs_free(cset);
 	j = 0;
 	EACH(dirs) {
 		unless (hash_fetchStr(expanded, dirs[i])) {
 			j++;
-			error("modules: no match for %s\n", dirs[i]);
+			error("%s: no match for module %s\n", prog, dirs[i]);
 		}
 	}
 	if (j) goto err;
-
-	if (free_cset) sccs_free(cset);
 done:	hash_free(modules);
 	hash_free(seen);
 	if (expanded) hash_free(expanded);
@@ -184,9 +186,8 @@ done:	hash_free(modules);
 }
 
 /*
- * bk module add -c<comp> ... module	// create/add to a module
- * bk module rm [-c<comp>] 		// remove a comp|module
- * bk module show [-eR] module ...	// show expansion of a module
+ * bk module add -M<module> <comp> ...	// create/add to a module
+ * bk module rm -M<module> [<comp> ...]	// remove a comp|module
  * bk module list			// list all modules
  */
 int
@@ -194,10 +195,10 @@ module_main(int ac, char **av)
 {
 	int	i, j, found;
 	int	ret = 1, commit = 1;
-	int	add = 0, rm = 0, show = 0, must_exist = 0, raw = 0;
+	int	add = 0, rm = 0;
 	char	**names = 0;
 	char	**comps = 0;
-	char	*key, *p;
+	char	*key = 0, *p;
 	hash	*h = 0, *moduleDB = 0;
 	MDBM	*idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	char	buf[MAXPATH];
@@ -224,7 +225,6 @@ out:		mdbm_close(idDB);
 	if (streq(av[1], "add")) add++;
 	if (streq(av[1], "create")) add++;
 	if (streq(av[1], "rm")) rm++;
-	if (streq(av[1], "show")) show++;
 	if (streq(av[1], "list")) {
 		EACH_HASH(moduleDB) names = addLine(names, moduleDB->kptr);
 		sortLines(names, 0);
@@ -235,66 +235,22 @@ out:		mdbm_close(idDB);
 		goto out;
 	}
 
-	unless (add || rm || show) goto err;
+	unless (add || rm) goto err;
 	av++, ac--;
 
-	while ((j = getopt(ac, av, "Cc;er")) != -1) {
+	while ((j = getopt(ac, av, "CM;")) != -1) {
 		switch (j) {
 		    case 'C': commit = 0; break;
-		    case 'c': comps = addLine(comps, strdup(optarg)); break;
-		    case 'e': must_exist = 1; break;
-		    case 'r': raw = 1; break;
+		    case 'M': key = optarg; break;
 	    	}
 	}
 
-	if ((add|rm) && (must_exist|raw)) {
-		fprintf(stderr, "module: add|rm may not have -e/-r\n");
+	unless (key) {
+		fprintf(stderr, "module: no module specified.\n");
 		goto err;
 	}
 
-	if (show) {
-		for (j = optind; av[j]; j++) {
-			if (raw) {
-				unless (hash_fetchStr(moduleDB, av[j])) {
-					fprintf(stderr,
-					    "module: no such module %s\n",
-					    av[j]);
-					continue;
-				}
-				names = splitLine(moduleDB->vptr, "\r\n", 0);
-				EACH(names) printf("%s\n", names[i]);
-				freeLines(names, free);
-				names = 0;
-			} else {
-				names = addLine(names, strdup(av[j]));
-			}
-		}
-		if (names) {
-			uniqLines(names, free);
-			unless (h = module_list(names, 0)) goto err;
-			freeLines(names, free);
-			names = 0;
-			EACH_HASH(h) {
-				p = key2path(h->kptr, idDB);
-				csetChomp(p);
-				if (must_exist) {
-					unless (isComponent(p)) {
-						free(p);
-						continue;
-					}
-				}
-				names = addLine(names, p);
-			}
-			sortLines(names, 0);
-			EACH(names) printf("%s\n", names[i]);
-		}
-		goto out;
-	}
-
-	unless ((key = av[optind]) && !av[optind+1]) {
-		fprintf(stderr, "module: wrong number of modules\n");
-		goto err;
-	}
+	while (av[optind]) comps = addLine(comps, strdup(av[optind++]));
 
 	/*
 	 * Both add and rm want these converted.

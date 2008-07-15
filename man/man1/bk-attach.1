@@ -1,0 +1,45 @@
+.so ../bk-macros
+.TH "bk attach" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk attach \- attach a component repository to a product repository
+.SH SYNOPSIS
+bk attach
+.[B] \-Cq
+.ARG component \ .\|.\|.
+.SH DESCRIPTION
+The 
+.B bk attach
+command is used to attach one or more repositories to a product repository.
+The specified repositories become components.
+This command is fairly similar to "bk new file" except it works on 
+a repository instead of a file.
+.LP
+The component must be within the product, either created with 
+.B bk setup
+or copied with
+.BR "bk clone" .
+.SH OPTIONS
+.TP
+.B \-C
+do not commit the component[s] to the product.
+Use this option when you wish to combine the attach event with other
+changes to the product.
+.TP
+.B \-q 
+run quietly when attaching a component.
+.SH SEE ALSO
+.SA clone
+.SA setup
+.SH CATEGORY
+.B Product
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.

@@ -1,7 +1,8 @@
+FILES=man1/*.1
 
 PS: 
 	@make get
-	cat man1/*.1 | grep -v bk-macros > ALL
+	cat $(FILES) | grep -v bk-macros > ALL
 	groff -man bk-macros ALL > PS
 
 PS2:
