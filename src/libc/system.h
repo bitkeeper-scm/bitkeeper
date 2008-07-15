@@ -219,6 +219,9 @@ int	spawn_filterPipeline(char **cmds);
 /* stdioext.c */
 char	*gets_alloc(char *(*fcn)(char *buf, int size, void *arg), void *arg);
 
+/* str_subst.c */
+char	*str_subst(char *str, char *search, char *replace, char *output);
+
 /* sys.c */
 #define	SYS	(char*)0, 0xdeadbeef	/* this must be the last argument to
 					 * all calls to sys/sysio */

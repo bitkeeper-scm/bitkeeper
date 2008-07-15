@@ -1303,9 +1303,7 @@ check(sccs *s, MDBM *idDB)
 	} else if (CSET(s) && proj_isComponent(s->proj)) {
 		x = proj_relpath(proj_product(s->proj), proj_root(s->proj));
 		/* strip out RESYNC */
-		if (proj_isResync(s->proj) && (t = strstr(x, "/RESYNC/"))) {
-			memmove(t+1, t+8, strlen(t+8)+1);
-		}
+		if (proj_isResync(s->proj)) str_subst(x, "/RESYNC/", "/", x);
 
 		if (proj_isProduct(0)) {
 			csetChomp(d->pathname);

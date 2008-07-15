@@ -9153,9 +9153,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 				proj = proj_product(proj);
 				p = _relativeName(s->sfile, 1, 1, 1, proj);
 				/* strip out RESYNC */
-				if (q = strstr(p, "/RESYNC/SCCS")) {
-					memmove(q+1, q+8, strlen(q+8)+1);
-				}
+				str_subst(p, "/RESYNC/", "/", p);
 			} else {
 				p = _relativeName(s->sfile, 0, 0, 1, proj);
 			}
