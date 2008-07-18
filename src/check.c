@@ -1598,7 +1598,7 @@ update_idcache(MDBM *idDB, hash *keys)
 		/* FIXUP idDB if it is wrong */
 		if (inkeyloc) {
 			if (cached) {
-				updated = !streq(cached, found);
+				unless(streq(cached, found)) updated = 1;
 				kv.key.dptr = keys->kptr;
 				kv.key.dsize = keys->klen;
 				mdbm_delete(idDB, kv.key);
