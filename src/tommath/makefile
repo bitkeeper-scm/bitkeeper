@@ -154,7 +154,8 @@ poster: poster.tex
 # makes the LTM book PDF file, requires tetex, cleans up the LaTeX temp files
 docs:   docdvi
 	dvipdf tommath
-	rm -f tommath.log tommath.aux tommath.dvi tommath.idx tommath.toc tommath.lof tommath.ind tommath.ilg
+	rm -f tommath.log tommath.aux tommath.dvi tommath.idx tommath.toc tommath.lof
+	bk clean tommath.ind tommath.ilg
 	cd pics ; MAKE=${MAKE} ${MAKE} clean
 
 #LTM user manual
@@ -175,9 +176,10 @@ pretty:
 
 clean:
 	$(if $(Q),@echo Cleaning tommath,)
+	$(Q)bk clean *.ilg *.ind tommath.tex
 	$(Q)rm -f *.bat *.pdf *.o *.a *.obj *.lib *.exe *.dll etclib/*.o demo/demo.o test ltmtest mpitest mtest/mtest mtest/mtest.exe \
 	tags.local \
-        *.idx *.toc *.log *.aux *.dvi *.lof *.ind *.ilg *.ps *.log *.s mpi.c *.da *.dyn *.dpi tommath.tex `find . -type f | grep [~] | xargs` *.lo *.la
+        *.idx *.toc *.log *.aux *.dvi *.lof *.ps *.log *.s mpi.c *.da *.dyn *.dpi `find . -type f | grep [~] | xargs` *.lo *.la
 	$(Q)rm -rf .libs
 	$(Q)cd etc ; MAKE=${MAKE} ${MAKE} clean
 	$(Q)cd pics ; MAKE=${MAKE} ${MAKE} clean
