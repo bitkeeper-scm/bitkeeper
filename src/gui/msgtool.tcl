@@ -10,8 +10,7 @@ proc main {} \
 
 	after idle [list wm deiconify .]
 	after idle [list focus -force .]
-	
-	catch {wm iconbitmap . $env(BK_BIN)/bk16.ico} 
+	catch {wm iconbitmap . $env(BK_BIN)/bk.ico} 
 }
 
 proc init {} \
