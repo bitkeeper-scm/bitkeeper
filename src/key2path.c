@@ -25,8 +25,7 @@ key2path_main(int ac, char **av)
 	while (fnext(key, stdin)) {
 		chomp(key);
 
-		path = key2path(key, idDB);
-		unless (path) {
+		unless (path = key2path(key, idDB)) {
 			fprintf(stderr, "Can't find path for key %s\n",key);
 			mdbm_close(idDB);
 			return (1);
@@ -42,25 +41,15 @@ key2path_main(int ac, char **av)
 char *
 key2path(char *key, MDBM *idDB)
 {
-	char	*path;
+	char	*path, *t;
 
-	path = mdbm_fetch_str(idDB, key);
-	unless (path) {
-		char    *t, *r;
+	if (path = mdbm_fetch_str(idDB, key)) return (strdup(path));
 
-		for (t = key; *t++ != '|'; );
-		for (r = t; *r != '|'; r++);
-		assert(*r == '|');
-		*r = 0;
-		path = strdup(t);
-		*r = '|';
-	}
-
-	unless (path) {
-		fprintf(stderr, "Can't find path for key %s\n",key);
-		exit(1);
-	}
-
-	if (path) return (strdup(path));
-	return (NULL);
+	unless (path = strchr(key, '|')) return (0);
+	path++;
+	unless (t = strchr(path, '|')) return (0);
+	*t = 0;
+	path = strdup(path);
+	*t = '|';
+	return (path);
 }

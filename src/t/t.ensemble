@@ -123,7 +123,23 @@ test "`cat GOT`" = "$ROOTKEY" || {
 }
 echo OK
 
+echo $N Test that a comp in a prod in a prod gets the right prod ....$NL
+cd "$HERE/project"
+commercial subproduct
+bk newroot $Q -P
+commercial comp
+cd ..
+bk attach $Q comp
+cd comp
+echo comp > WANT
+bk -P sfiles -R > GOT
+checkfiles WANT GOT
+cd "$HERE/project"
+rm -fr subproduct
+echo OK
+
 echo $N Check nested configs ........................................$NL
+cd "$HERE/project/gcc"
 bk edit $Q BitKeeper/etc/config ../BitKeeper/etc/config || exit 1
 cat <<EOF >> BitKeeper/etc/config
 a: 1
