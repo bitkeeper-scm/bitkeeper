@@ -147,6 +147,8 @@ proj_init(char *dir)
 		if (ret = projcache_lookup(root)) {
 			/* yes, make a new mapping */
 			projcache_store(fdir, ret);
+			free(root);
+			root = 0;
 			goto done;
 		}
 	}
@@ -495,7 +497,10 @@ proj_rootkey(project *p)
 	 */
 	if (p->rootkey) return (p->rootkey);
 	if (p->rparent && (ret = proj_rootkey(p->rparent))) return (ret);
-
+	if (p->md5rootkey) {
+		free(p->md5rootkey);
+		p->md5rootkey = 0;
+	}
 	/*
 	 * Do this one first, the others go to recache and skip it.
 	 */
@@ -531,8 +536,10 @@ recache:
 		sc = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
 		assert(sc->tree);
 		sccs_sdelta(sc, sc->tree, buf);
+		assert(!p->rootkey);
 		p->rootkey = strdup(buf);
 		sccs_md5delta(sc, sc->tree, buf);
+		assert(!p->md5rootkey);
 		p->md5rootkey = strdup(buf);
 		p->csetFile = strdup(sc->tree->csetFile);
 		sccs_free(sc);
@@ -615,6 +622,7 @@ proj_product(project *p)
 				concat_path(buf, tmp, BKROOT);
 				unless (exists(buf)) continue;
 				p->product = proj_init(tmp);
+				break;
 			}
 			free(tmp);
 		}
