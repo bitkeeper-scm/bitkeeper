@@ -97,9 +97,9 @@ _make_repo() {
 			echo failed to create $REPO
 			exit 1
 		}
-		bk setup -a -f -c"$CF" gcc
-		bk setup -a -f -c"$CF" gdb
-		bk attach -q gcc gdb
+		bk setup -C -a -f gcc
+		bk setup -C -a -f gdb
+		bk commit -q -y"attach gcc, gdb"
 		touch gcc/BitKeeper/tmp/saveme
 		touch gdb/BitKeeper/tmp/saveme
 	)

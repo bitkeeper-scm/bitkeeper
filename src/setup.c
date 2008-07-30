@@ -18,16 +18,21 @@ setup_main(int ac, char **av)
 	char	here[MAXPATH];
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
 	char 	config[] = "BitKeeper/etc/config";
+	project	*in_prod = 0;
 	sccs	*s;
 	MDBM	*m = 0, *flist = 0;
 	FILE	*f, *f1;
 	int	status;
 	int	print = 0;
 	int	product = 0;
+	int	noCommit = 0;
 
-	while ((c = getopt(ac, av, "ac:ePfF:p")) != -1) {
+	while ((c = getopt(ac, av, "aCc:ePfF:p")) != -1) {
 		switch (c) {
 		    case 'a': accept = 1; break;
+		    case 'C':
+		    	noCommit = 1;
+			break;
 		    case 'c':
 		    	unless(exists(optarg)) {
 				fprintf(stderr, 
@@ -36,7 +41,7 @@ setup_main(int ac, char **av)
 				exit(1);
 			}
 			localName2bkName(optarg, optarg);
-			config_path = fullname(optarg);
+			config_path = strdup(fullname(optarg));
 			break;
 		    case 'P': product = 1; break;
 		    case 'e': allowNonEmptyDir = 1; break;
@@ -47,6 +52,10 @@ setup_main(int ac, char **av)
 		}
 	}
 
+	if (noCommit && product) {
+		fprintf(stderr, "setup: can't use -C and -P together.\n");
+		exit(1);
+	}
 	if (print) {
 		if (config_path) {
 			fprintf(stderr, "setup: can't mix -c and -p.\n");
@@ -88,6 +97,21 @@ setup_main(int ac, char **av)
 		package_path);
 	}
 	sccs_mkroot(".");
+	unless (product) {
+		/*
+		 * in_prod will be used later - it is only set if
+		 * creating a component inside of a product.
+		 */
+		if (in_prod = proj_product(0)) {
+			/*
+			 * null config file is okay if in product
+			 * as the component will use the product's config
+			 * Create an empty one instead of none, both for
+			 * sane, and for limiting converge operations.
+			 */
+			unless (config_path) config_path = strdup(DEVNULL_RD);
+		}
+	}
 	if (config_path == 0) {
 		getMsg("setup_3", 0, '-', stdout);
 		/* notepad.exe wants text mode */
@@ -127,7 +151,7 @@ again:
 		fclose(f1);
 	}
 
-	unless (m = loadConfig(0, 1)) {
+	unless (m = loadConfig(in_prod, 1)) {
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
@@ -174,6 +198,16 @@ err:			unlink("BitKeeper/etc/config");
         }
 	enableFastPendingScan();
 	logChangeSet();
+	if (in_prod) {		/* we are a new component, attach ourself */
+		chdir(here);
+		status = sys("bk", "attach",
+		    noCommit ? "-qC" : "-q", package_path, SYS);
+		unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+			fprintf(stderr, "setup: bk attach failed.\n");
+			return (1);
+		}
+	}
+	if (config_path) free(config_path);
 	return (0);
 }
 

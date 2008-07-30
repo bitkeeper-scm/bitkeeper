@@ -77,9 +77,8 @@ echo OK
 echo $N Set up a new component ......................................$NL
 cd ..
 bk -R get $Q -S BitKeeper/etc/config
-bk setup -fc"`bk root`"/BitKeeper/etc/config new-comp
+bk setup -Cfc"`bk root`"/BitKeeper/etc/config new-comp
 cp -rp new-comp "$HERE/save"
-bk attach -C $Q new-comp
 cd new-comp || exit 1
 test "`bk product`" = "This is a component." || {
 	echo failed to make it a component

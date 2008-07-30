@@ -1,0 +1,158 @@
+_commercial_config > c
+echo $N Create a new standalone component............................$NL
+bk setup -afcc standalone >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	pwd
+	exit 1
+}
+test -f standalone/BitKeeper/log/PRODUCT && {
+	echo failed
+	exit 1
+}
+test -f standalone/BitKeeper/log/COMPONENT && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Create a new product.........................................$NL
+_commercial_config > c
+bk setup -afcc -P product >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -f product/BitKeeper/log/PRODUCT || {
+	echo failed
+	echo "Did not create product marker"
+	exit 1
+}
+cd product
+bk get $Q BitKeeper/etc/config
+cmpfiles "$HERE"/c BitKeeper/etc/config
+echo OK
+
+echo $N Create a new product inside the product......................$NL
+cd "$HERE"/product
+bk setup -afc"$HERE"/c -P product2 >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -f product2/BitKeeper/log/PRODUCT || {
+	echo failed
+	echo "Did not create product marker"
+	exit 1
+}
+test -f product2/BitKeeper/log/COMPONENT && {
+	echo failed
+	echo "Created unwanted component marker"
+	exit 1
+}
+echo OK
+
+echo $N Attach a component by hand...................................$NL
+cd "$HERE"
+commercial manual_component
+cd "$HERE"
+mv manual_component product
+cd product
+bk attach manual_component >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cat <<EOF > WANT
+manual_component
+EOF
+bk components > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Re-attaching the same component should fail..................$NL
+cd "$HERE"/product
+bk attach manual_component >GOT 2>&1 && {
+	echo failed
+	cat GOT
+	exit 1
+}
+cat <<EOF > WANT
+attach: manual_component is already a component
+EOF
+cmpfiles GOT WANT
+echo OK
+
+
+echo $N Create a new component with no config file...................$NL
+cd "$HERE"/product
+bk setup -aCf component >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+cd component
+test -f BitKeeper/log/COMPONENT || {
+	echo failed
+	echo "Did not create component marker"
+	exit 1
+}
+bk cat BitKeeper/etc/config > XXX || {
+	echo failed
+	echo Did not create empty config file
+	exit 1
+}
+test -z "`cat XXX`" || {
+	echo failed
+	echo Config file not empty
+	exit 1
+}
+cd "$HERE"/product
+cat <<EOF > WANT
+component/SCCS/s.ChangeSet
+EOF
+bk sfiles -cP > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Create a new component and give it a config file.............$NL
+cd "$HERE"/product
+bk setup -aCfc"$HERE"/c component2 >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -f component2/BitKeeper/log/COMPONENT || {
+	echo failed
+	echo "Did not create component marker"
+	exit 1
+}
+bk cat component2/BitKeeper/etc/config > GOT
+cmpfiles "$HERE"/c GOT
+cat <<EOF > WANT
+component/SCCS/s.ChangeSet
+component2/SCCS/s.ChangeSet
+EOF
+bk sfiles -cP > GOT
+echo OK
+
+echo $N Attach in a nested product...................................$NL
+cd "$HERE"
+printf "" > empty
+nested p1
+bk setup -fc"$HERE/empty" -P p2
+cd p2
+bk setup -fc"$HERE/empty" gcc
+# pending should be empty
+bk pending
+echo 'gcc' > WANT
+bk components > GOT
+cmpfiles WANT GOT
+cd "$HERE"/p1
+cat <<EOF >WANT
+gcc
+gdb
+EOF
+bk components > GOT
+cmpfiles WANT GOT
+echo OK

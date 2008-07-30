@@ -5,7 +5,7 @@
 bk setup \- create a new \*(BK package
 .SH SYNOPSIS
 .B bk setup
-.[B] \-fpP
+.[B] \-CfpP
 .[OPTreq] \-F key\fB=\fIval
 .[OPTreq] \-c config_file
 .ARG directory
@@ -38,6 +38,15 @@ file automatically.
 The first file found is used.
 .SH OPTIONS
 .TP \-c\*<config_file\*>
+.B \-C
+When run inside a product, setup will create a component.
+With -C, do not commit this new component to the product.
+Use this option when you wish to create many components
+and have only one commit.  The new component will be left
+in the pending state.  The -C option can not be used with -P.
+In all other cases (outside a product and with no -P), the
+-C option will be ignored.
+.tp
 .OPTreq \-c config_file
 Use 
 .ARG config_file
@@ -130,8 +139,21 @@ repository, see
 .SA Howto
 .SA Howto-setup
 .SA Howto-product
+.SA attach
 .SA config-etc
 .SA import
 .SA setuptool
 .SH CATEGORY
 .B Repository
+.SH AVAILABILITY
+The ability for setup to create a component in a product
+repository is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.
