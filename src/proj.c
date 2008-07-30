@@ -486,7 +486,7 @@ proj_rootkey(project *p)
 {
 	sccs	*sc;
 	FILE	*f;
-	char	*ret;
+	char	*ret, *t;
 	char	file[MAXPATH];
 	char	buf[MAXPATH];
 
@@ -497,50 +497,40 @@ proj_rootkey(project *p)
 	 */
 	if (p->rootkey) return (p->rootkey);
 	if (p->rparent && (ret = proj_rootkey(p->rparent))) return (ret);
-	if (p->md5rootkey) {
-		free(p->md5rootkey);
-		p->md5rootkey = 0;
-	}
-	/*
-	 * Do this one first, the others go to recache and skip it.
-	 */
-	concat_path(file, p->root, "/BitKeeper/log/COMPONENT");
+
+	/* clear existing values */
+	if (p->rootkey)    { free(p->rootkey);    p->rootkey = 0; }
+	if (p->md5rootkey) { free(p->md5rootkey); p->md5rootkey = 0; }
+	if (p->csetFile)   { free(p->csetFile);   p->csetFile = 0; }
+
+	/* load values from cache */
+	concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
 	if (f = fopen(file, "rt")) {
-		fnext(buf, f);
-		chomp(buf);
-		p->comppath = strdup(buf);
+		if (t = fgetline(f)) p->rootkey = strdup(t);
+		if (t = fgetline(f)) p->md5rootkey = strdup(t);
 		fclose(f);
 	}
 
-	concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
-	unless (f = fopen(file, "rt")) goto recache;
-	fnext(buf, f);
-	chomp(buf);
-	p->rootkey = strdup(buf);
-	fnext(buf, f);
-	chomp(buf);
-	p->md5rootkey = strdup(buf);
-	fclose(f);
-	
 	concat_path(file, p->root, "/BitKeeper/log/CSETFILE");
-	unless (f = fopen(file, "rt")) goto recache;
-	fnext(buf, f);
-	chomp(buf);
-	p->csetFile = strdup(buf);
-	fclose(f);
-	return (p->rootkey);
+	if (f = fopen(file, "rt")) {
+		if (t = fgetline(f)) p->csetFile = strdup(t);
+		fclose(f);
+	}
 
-recache:
+	if (p->rootkey && p->md5rootkey && p->csetFile) return (p->rootkey);
+
+	/* cache invalid, regenerate values */
 	concat_path(buf, p->root, CHANGESET);
 	if (exists(buf)) {
 		sc = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
 		assert(sc->tree);
 		sccs_sdelta(sc, sc->tree, buf);
-		assert(!p->rootkey);
+		if (p->rootkey) free(p->rootkey);
 		p->rootkey = strdup(buf);
 		sccs_md5delta(sc, sc->tree, buf);
-		assert(!p->md5rootkey);
+		if (p->md5rootkey) free(p->md5rootkey);
 		p->md5rootkey = strdup(buf);
+		if (p->csetFile) free(p->csetFile);
 		p->csetFile = strdup(sc->tree->csetFile);
 		sccs_free(sc);
 		concat_path(file, p->root, "/BitKeeper/log/ROOTKEY");
@@ -558,7 +548,6 @@ recache:
 			fclose(f);
 		}
 	}
-
 	return (p->rootkey);
 }
 
@@ -570,8 +559,8 @@ proj_md5rootkey(project *p)
 
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->md5rootkey) proj_rootkey(p);
 	if (p->rparent && (ret = proj_md5rootkey(p->rparent))) return (ret);
+	unless (p->md5rootkey) proj_rootkey(p);
 	return (p->md5rootkey);
 }
 
@@ -585,8 +574,8 @@ proj_csetFile(project *p)
 
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->csetFile) proj_rootkey(p);
 	if (p->rparent && (ret = proj_csetFile(p->rparent))) return (ret);
+	unless (p->csetFile) proj_rootkey(p);
 	return (p->csetFile);
 }
 
@@ -636,13 +625,22 @@ proj_product(project *p)
 char *
 proj_comppath(project *p)
 {
-	char	*ret;
+	FILE	*f;
+	char	*t;
+	char	file[MAXPATH];
 
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->comppath) proj_rootkey(p);
-	// LMXXX - right?  Or not?
-	if (p->rparent && (ret = proj_comppath(p->rparent))) return (ret);
+	if (p->rparent) p = p->rparent;
+
+	/* returned cached value if possible */
+	if (p->comppath) return (p->comppath);
+
+	concat_path(file, p->root, "/BitKeeper/log/COMPONENT");
+	if (f = fopen(file, "rt")) {
+		if (t = fgetline(f)) p->comppath = strdup(t);
+		fclose(f);
+	}
 	return (p->comppath);
 }
 
@@ -864,16 +862,13 @@ proj_isCaseFoldingFS(project *p)
 	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (-1);
+	if (p->rparent) p = p->rparent;
 	if (p->casefolding != -1) return (p->casefolding);
-	if (p->rparent) {
-		p->casefolding = proj_isCaseFoldingFS(p->rparent);
-	} else {
-		t = strrchr(s_cset, '/');
-		assert(t && (t[1] == 's'));
-		t[1] = 'S';  /* change to upper case */
-		concat_path(buf, p->root, s_cset);
-		p->casefolding = exists(buf);
-	}
+	t = strrchr(s_cset, '/');
+	assert(t && (t[1] == 's'));
+	t[1] = 'S';  /* change to upper case */
+	concat_path(buf, p->root, s_cset);
+	p->casefolding = exists(buf);
 	return (p->casefolding);
 }
 
@@ -1116,11 +1111,8 @@ proj_isProduct(project *p)
 int
 proj_isComponent(project *p)
 {
-	char	buf[MAXPATH];
-
 	unless (p || (p = curr_proj())) return (0);
-	unless (proj_product(p) && p->root) return (0);
 	if (p->rparent) p = p->rparent;
-	sprintf(buf, "%s/BitKeeper/log/COMPONENT", p->root);
-	return (exists(buf));
+	unless (proj_product(p) && p->root) return (0);
+	return (proj_comppath(p) != 0);
 }
