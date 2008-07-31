@@ -109,7 +109,7 @@ print_title(char *r1, char *r2)
 	char	buf[BUFSIZ];
 
 	printf("# This is a BitKeeper generated diff -Nru style patch.\n#\n");
-	p = aprintf("bk set -d -r'%s' -r'%s' | bk changes -vd'%s' -",
+	p = aprintf("bk changes -r'%s' -r'%s' -Pvd'%s' -",
 	    r1, r2, d);
 	f = popen(p, "r");
 	free(p);

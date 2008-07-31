@@ -96,14 +96,14 @@ bk pull $Q ../../standalone 2> ERR && {
 	exit 1
 }
 cd ..
-test "`bk prs -hnd:DPN: -r+ sa2/ChangeSet`" = sa2/ChangeSet || {
+test "`bk prs -hnd:DPN: -r+ sa2/ChangeSet`" = ChangeSet || {
      echo wrong pathnname before port
      exit 1
 }
 cd sa2
 bk port $Q ../../standalone || exit 1
 cd ..
-test "`bk prs -hnd:DPN: -r+ sa2/ChangeSet`" = sa2/ChangeSet || {
+test "`bk prs -hnd:DPN: -r+ sa2/ChangeSet`" = ChangeSet || {
      echo wrong pathnname after port
      bk changes -r+
      exit 1
@@ -122,7 +122,7 @@ echo OK
 
 echo $N Test port of matching components in different products ......$NL
 cd ../project2
-test "`bk prs -hnd:DPN: -r+ mybash/ChangeSet`" = mybash/ChangeSet || {
+test "`bk prs -hnd:DPN: -r+ mybash/ChangeSet`" = ChangeSet || {
      echo wrong pathnname before port
      exit 1
 }

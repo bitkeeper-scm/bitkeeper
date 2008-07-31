@@ -483,7 +483,7 @@ nameOK(opts *opts, sccs *s)
 
 	chdir(RESYNC2ROOT);
 	sccs_sdelta(s, sccs_ino(s), buf);
-	local = sccs_keyinit(buf, INIT_NOCKSUM, opts->idDB);
+	local = sccs_keyinit(0, buf, INIT_NOCKSUM, opts->idDB);
 	if (local) {
 		if (EDITED(local) && sccs_hasDiffs(local, SILENT, 1)) {
 			fprintf(stderr,
@@ -803,7 +803,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 	 */
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	chdir(RESYNC2ROOT);
-	local = sccs_keyinit(buf, INIT_NOCKSUM, opts->idDB);
+	local = sccs_keyinit(0, buf, INIT_NOCKSUM, opts->idDB);
 	chdir(ROOT2RESYNC);
 	if (local) {
 		if (opts->debug) {
@@ -1539,7 +1539,7 @@ err:		if (s) sccs_free(s);
 	}
 	unless (opts->quiet) fprintf(stderr, "Autofixing partial merge\n");
 	unless (f = popen("bk changes "
-	    "-r+ -vnd'$unless(:CHANGESET:){:SFILE:|:REV:}'", "r")) {
+	    "-r+ -Pvnd'$unless(:CHANGESET:){:SFILE:|:REV:}'", "r")) {
 		fprintf(stderr, "Could not popen changes\n");
 		goto err;
 	}
@@ -2511,7 +2511,7 @@ pass4_apply(opts *opts)
 
 		sccs_sdelta(r, sccs_ino(r), key);
 		sccs_free(r);
-		if (l = sccs_keyinit(key, INIT_NOCKSUM, opts->idDB)) {
+		if (l = sccs_keyinit(0, key, INIT_NOCKSUM, opts->idDB)) {
 			proj_saveCO(l);
 			/*
 			 * This should not happen, the repository is locked.

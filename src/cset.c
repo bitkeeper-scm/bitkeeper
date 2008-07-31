@@ -482,7 +482,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 	if (cset && streq(lastkey, proj_rootkey(0))) {
 		sc = cset;
 	} else {
-		sc = sccs_keyinit(lastkey, INIT_NOWARN, idDB);
+		sc = sccs_keyinit(0, lastkey, INIT_NOWARN, idDB);
 	}
 	unless (sc) {
 		if (gone(lastkey, goneDB)) {

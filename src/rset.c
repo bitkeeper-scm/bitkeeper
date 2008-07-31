@@ -163,7 +163,7 @@ process(char	*root,
 		return;
 	}
 
-	s = sccs_keyinit(root, INIT_NOWARN|INIT_NOGCHK|INIT_NOCKSUM, idDB);
+	s = sccs_keyinit(0, root, INIT_NOWARN|INIT_NOGCHK|INIT_NOCKSUM, idDB);
 	unless (s) {
 		unless (*goneDB) {
 			*goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);

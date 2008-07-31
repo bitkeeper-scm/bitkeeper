@@ -673,7 +673,7 @@ dc_help(resolve *rs)
 	getFileConflict(rs->d->pathname, path);
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	chdir(RESYNC2ROOT);
-	local = sccs_keyinit(buf, INIT_NOCKSUM, rs->opts->idDB);
+	local = sccs_keyinit(0, buf, INIT_NOCKSUM, rs->opts->idDB);
 	chdir(ROOT2RESYNC);
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\

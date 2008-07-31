@@ -139,6 +139,10 @@ Do not show any merge changesets, empty or not.
 add a newline to each printed record (sometimes useful with
 .QR \-d ).
 .tp
+.B \-P
+When used in a product repository, do not show component changesets
+or files (see product notes below).
+.tp
 .B \-q
 When listing local/remote changes from multiple parents (or remote
 repositories) do not print the location of the remote repositories.
@@ -175,7 +179,8 @@ This option may appear multiple times in which case the changeset is not
 listed if it matches any of the specified users.
 .tp
 .B \-V
-Valid only when used in the product repository (see product notes below).
+When used in a product repository, include component changesets
+(see product notes below).
 .tp
 .B \-v
 Shows individual file change history as well as changeset history.
@@ -223,49 +228,64 @@ If you told the system to report
 then the file will
 be in the set.
 .SH PRODUCT USAGE
-The behavior of this command is somewhat different when used in
-an optional product/product-line repository collection.
+This command has been extended to handle optional product
+repository collections.
 .LP
 When run in a
 .IR component, 
-the command operates as if the component repository is standalone;
+the command operates as if the component repository is stand-alone;
 the history viewed is for that component only, the product and the
-other component repositories are ignored.
+other component repositories are ignored.  The -V/-P options are
+silently ignored if present.
 .LP
-When run in the product, the set of things you may want to see are
-listed below:
-.IP (a)
-the product changesets:
+When run in the product, the behavior varies depending on whether you
+have specified
+.B -v
+or not.
+Without
+.BR -v ,
+only the product changesets are listed; with 
+.BR -v ,
+everything is listed, i.e., 
+the product changesets, product files, component changesets, and
+component files.
+This seems to match most user expectations, but there are options
+to modify it to do whatever you may want.
+.LP
+The most common uses are listed below:
+.LP
+List product changesets:
 .DS
 $ bk changes
 .DE
-.IP (b)
-the product and component changesets,
+Convert a product changeset to a key:
+.DS
+$ bk changes -r1.1234 -nd:KEY:
+.DE
+List only changesets but both product and components:
 .DS
 $ bk changes -V
 .DE
-.IP (c)
-the product changesets and component changesets as well as files from both,
+List the product changesets and component changesets as well as files from both:
 .DS
-$ bk changes -Vv
+$ bk changes -v
 .DE
-.IP (d)
-same as (c) but include diffs.
+same as previous but include diffs:
 .DS
-$ bk changes -Vvv
+$ bk changes -vv
 .DE
 .SH EXAMPLES
 Sample output:
 .DS
-ChangeSet@1.607, 2000-02-21 14:05:25-08:00, awc@host.com
+ChangeSet@1.607, 2000-02-21 14:05:25-08:00, awc@bitmover.com
   update citool to use the "bk unedit" interface. 
 
-ChangeSet@1.606, 2000-02-21 13:35:21-08:00, awc@host.com
-  This fix allows \*(BK to be installed in a non-standard directory.
+ChangeSet@1.606, 2000-02-21 13:35:21-08:00, awc@bitmover.com
+  This fix allows \*(BK to be installed in an alternate directory.
   The install directory is computed from the $PATH variable and 
   the bk symlink.
 
-ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@host.com
+ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@bitmover.com
   Fix a diagnostic in pull.
   An aborted attempt at key compression.
 .DE
@@ -287,8 +307,8 @@ ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@host.com
 .B Repository
 .SH AVAILABILITY
 The 
-.B \-V 
-option of this command is an optional feature of \*[BK]
+.B \-V/\-P
+options of this command are an optional feature of \*[BK]
 and must be enabled in your license.
 To see if your license has this enabled, run 
 .DS

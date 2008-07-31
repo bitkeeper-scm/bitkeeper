@@ -26,7 +26,7 @@ sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs)
 	int	ret;
 	char	*t;
 
-	unless (s = sccs_keyinit(key, INIT_NOCKSUM, idDB)) {
+	unless (s = sccs_keyinit(0, key, INIT_NOCKSUM, idDB)) {
 		fprintf(stderr, "Cannot init key %s\n", key);
 		return (1);
 	}

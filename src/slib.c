@@ -13397,6 +13397,9 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 {
 	struct kwval *kwval;
 	char	*p, *q;
+	delta	*e;
+	char	*rev;
+
 #define	KW(x)	kw2val(out, vbuf, x, strlen(x), s, d)
 #define	fc(c)	show_d(s, out, vbuf, "%c", c)
 #define	fd(n)	show_d(s, out, vbuf, "%d", n)
@@ -13411,9 +13414,6 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 	 */
 	for (p = kw, q = p+len; (*p != '|') && (p < q); ++p) ;
 	if (p < q) {
-		delta	*e;
-		char	*rev;
-
 		p++;
 		rev = strndup(p, len - (p-kw));
 		e = sccs_findrev(s, rev);
@@ -14620,7 +14620,21 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 
 	case KW_DPN: /* DPN */ {
 		/* per delta path name */
-		if (d->pathname) {
+		if (CSET(s)) {
+			if (s->prs_indentC) {
+				fs(d->pathname);
+			} else {
+				fs(basenm(d->pathname));
+			}
+			return (strVal);
+		} else if (d->pathname) {
+			if (s->prs_indentC && (e = s->changes_cset) &&
+			    (p = strrchr(e->pathname, '/'))) {
+				*p = 0;
+				fs(e->pathname);
+				*p = '/';
+				fc('/');
+			}
 			fs(d->pathname);
 			return (strVal);
 		}
@@ -15022,9 +15036,17 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		} else {
 			return (nullVal);
 		}
+	case KW_COMPONENT_V: /* COMPONENT_V */
+	        if (s->prs_indentC && (q = proj_comppath(s->proj))) {
+			fs(q);
+			fc('/');
+			return (strVal);
+		} else {
+			return (nullVal);
+		}
 	case KW_INDENT: /* INDENT */
 		if (s->prs_indentC && proj_isComponent(s->proj)) fs("  ");
-		if (s->file) fs("  ");
+		unless (CSET(s)) fs("  ");
 		return (strVal);
 
 	default:
@@ -16311,10 +16333,10 @@ sccs_iskeylong(char *t)
  * Return NULL if the file is there but does not have the same root inode.
  */
 sccs	*
-sccs_keyinit(char *key, u32 flags, MDBM *idDB)
+sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB)
 {
 	datum	k, v;
-	char	*p;
+	char	*p, *t, *r;
 	sccs	*s;
 	char	*localkey = 0;
 	delta	*d;
@@ -16331,19 +16353,14 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	if (v.dsize) {
 		p = name2sccs(v.dptr);
 	} else {
-		char	*t, *r;
-
 		/*
 		 * For sparse trees we need to short circuit the inits
 		 * ChangeSet files that are not there or we will init
 		 * our changeset file over and over again only to find
 		 * that the key doesn't match.
-		 *
-		 * XXX - need to talk to Wayne about the localp thing
-		 * he did below.  Why is that better than 0?
 		 */
 		if (changesetKey(key) &&
-	            proj_isProduct(0) && !streq(key, proj_rootkey(0))) {
+	            proj_isProduct(proj) && !streq(key, proj_rootkey(proj))) {
 		    	return (0);
 		}
 
@@ -16354,11 +16371,28 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 		p = name2sccs(t);
 		*r = '|';
 	}
+	if (proj) {
+		t = aprintf("%s/%s", proj_root(proj), p);
+		free(p);
+		r = proj_cwd();
+		if (strneq(t, r, strlen(r))) {
+			/* proj is below cwd, use relative path */
+			p = strdup(t + strlen(r) + 1);
+			free(t);
+		} else {
+			/* full pathname */
+			p = t;
+		}
+	}
 	s = sccs_init(p, flags|INIT_MUSTEXIST);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
-	localp = proj_init(".");
-	proj_free(localp);
+	if (proj) {
+		localp = proj;
+	} else {
+		localp = proj_init(".");
+		proj_free(localp);
+	}
 	if (!proj_isComponent(s->proj) &&
 	    (s->proj != localp)) { /* use after free OK */
 		/* We're trying to commit an sfile from a nested project
@@ -16368,31 +16402,20 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 
 	/*
 	 * Go look for this key in the file.
-	 * If we are a grafted together file, any root key is a match.
 	 */
 	d = sccs_ino(s);
-	do {
-		sccs_sdelta(s, d, buf);
+	sccs_sdelta(s, d, buf);
 
-		/* modifies buf and key, so copy key to local key */
-		localkey = strdup(key);
-		assert(localkey);
-		if (samekeystr(buf, localkey)) {
-			free(localkey);
-			return (s);
-		}
+	/* modifies buf and key, so copy key to local key */
+	localkey = strdup(key);
+	assert(localkey);
+	if (samekeystr(buf, localkey)) {
 		free(localkey);
-		localkey = 0;
-		unless (s->grafted) goto out;
-		while (d = d->next) {
-			if (d->random) break;
-		}
-	} while (d);
-
-out:	if (s) {
-		sccs_free(s);
+		return (s);
 	}
-	if (localkey) free(localkey);
+	free(localkey);
+	localkey = 0;
+out:	if (s) sccs_free(s);
 	return (0);
 }
 

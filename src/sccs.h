@@ -611,6 +611,7 @@ struct sccs {
 	u32	iloc;		/* index to element in *loc */ 
 	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
+	delta	*changes_cset;	/* current cset delta for changes */
 	u32	cksumok:1;	/* check sum was ok */
 	u32	cksumdone:1;	/* check sum was checked */
 	u32	grafted:1;	/* file has grafts */
@@ -931,7 +932,7 @@ int	sccs_reCache(int quiet);
 int	sccs_meta(char *m,sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_findtips(sccs *s, delta **a, delta **b);
 int	sccs_resolveFiles(sccs *s);
-sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
+sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);

@@ -1132,7 +1132,7 @@ out:	pclose(keys);
 private char	*
 getFile(char *root, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(root, flags, idDB);
+	sccs	*s = sccs_keyinit(0, root, flags, idDB);
 	char	*t;
 
 	unless (s) return (strdup("[can not init]"));
@@ -1144,7 +1144,7 @@ getFile(char *root, MDBM *idDB)
 private char	*
 getRev(char *root, char *key, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(root, flags, idDB);
+	sccs	*s = sccs_keyinit(0, root, flags, idDB);
 	delta	*d;
 
 	unless (s) return (strdup("[can not init]"));

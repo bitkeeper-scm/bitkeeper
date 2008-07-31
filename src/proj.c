@@ -1013,7 +1013,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 		co = (kv.val.dptr[0] - '0');
 		assert(!(co & (CO_BAM_GET|CO_BAM_EDIT)));
 		if (co & (CO_GET|CO_EDIT)) {
-			s = sccs_keyinit(kv.key.dptr,
+			s = sccs_keyinit(p, kv.key.dptr,
 			    INIT_NOCKSUM|SILENT, idDB);
 			unless (s) continue;
 			assert(p == s->proj);

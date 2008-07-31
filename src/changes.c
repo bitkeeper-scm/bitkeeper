@@ -18,10 +18,12 @@ private struct {
 	u32	timesort:1;	/* force sorting based on time, not dspec */
 	u32	urls:1;		/* list each URL for local/remote */
 	u32	verbose:1;	/* list the file checkin comments */
-	u32	doComp:1;	/* do files inside components */
+	u32	prodOnly:1;	/* limit output to just product repo */
+	u32	doComp:1;	/* decend to components from product */
 	u32	diffs:1;	/* show diffs with verbose mode */
 	u32	tsearch:1;	/* pattern applies to tags instead of cmts */
 	u32	BAM:1;		/* only include BAM files */
+	u32	filt:1;		/* output limited by filenames */
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
@@ -60,7 +62,7 @@ private int	changes_part2(remote *r, char **av, char *key_list, int ret);
 private int	_doit_remote(char **av, char *url);
 private int	doit_remote(char **nav, char *url);
 private int	doit_local(int nac, char **nav, char **urls);
-private	int	cset(hash *state, sccs *cset, FILE *f, char *dspec);
+private	int	cset(hash *state, sccs *cset, char *dkey, FILE *f, char *dspec);
 private	MDBM	*loadcset(sccs *cset);
 private	void	fileFilt(sccs *s, MDBM *csetDB);
 private	int	prepSearch(char *str);
@@ -82,13 +84,14 @@ changes_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.showdups = opts.urls = opts.noempty = 1;
+
 	nav[nac++] = "bk";
 	nav[nac++] = "changes";
 	/*
 	 * XXX Warning: The 'changes' command can NOT use the -K
 	 * option.  that is used internally by the bkd_changes part1 cmd.
 	 */
-	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnqRr;tTu;U;Vv/;x;")) != -1)
+	while ((c = getopt(ac, av, "1aBc;Dd;efhi;kLmnPqRr;tTu;U;Vv/;x;")) != -1)
 	{
 		unless (c == 'L' || c == 'R' || c == 'D') {
 			if (optarg) {
@@ -123,6 +126,7 @@ changes_main(int ac, char **av)
 			break;
 		    case 'm': opts.nomerge = 1; break;
 		    case 'n': opts.newline = 1; break;
+		    case 'P': opts.prodOnly = 1; break;
 		    case 'q': opts.urls = 0; break;
 		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
 		    case 'T': opts.timesort = 1; break;
@@ -152,11 +156,18 @@ usage:			system("bk help -s changes");
 		}
 		optarg = 0;
 	}
+	opts.filt = opts.BAM || opts.inc || opts.exc;
 
 	/* ERROR check options */
 	/* XXX: could have rev range limit output -- whose name space? */
 	if ((opts.local || opts.remote) && opts.rargs.rstart) goto usage;
 
+	if (proj_isProduct(0)) {
+		if (opts.verbose && !opts.prodOnly) opts.doComp = 1;
+		if (opts.filt && !opts.doComp) {
+			opts.doComp = opts.prodOnly = 1;
+		}
+	}
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
 	if (opts.html && opts.dspec) goto usage;
 	if (opts.diffs && opts.dspec) goto usage;
@@ -165,11 +176,6 @@ usage:			system("bk help -s changes");
 	    (streq(av[optind], "-") && !av[optind + 1])) {
 		unless (proj_root(0)) {
 			fprintf(stderr, "bk: Cannot find package root.\n");
-			return (1);
-		}
-		if (opts.doComp && !proj_isProduct(0)) {
-			fprintf(stderr,
-			    "bk: -V only valid in an ensemble product\n");
 			return (1);
 		}
 	} else if (streq(av[optind], "-") && av[optind + 1]) {
@@ -411,15 +417,16 @@ done:
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
-#define	DSPEC	":INDENT:" \
-		"$unless(:CHANGESET:){:COMPONENT:}:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
-		"+:LI: -:LD:\n" \
+#define	DSPEC	":INDENT::DPN:@:I:" \
+		"$if(:CHANGESET: && !:COMPONENT:){" \
+		", :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}}" \
+		"$unless(:CHANGESET:){ +:LI: -:LD:}\n" \
 		"$each(:C:){:INDENT:  (:C:)\n}" \
 		"$each(:TAG:){  TAG: (:TAG:)\n}" \
 		"$if(:MERGE:){:INDENT:  MERGE: " \
 		":MPARENT:\n}\n"
-#define	VSPEC	"$unless(:FILE:){\n#### :DPN: ####\n}" \
-		"$else{\n==== :COMPONENT::DPN: ====\n}" \
+#define	VSPEC	"$if(:CHANGESET:){\n#### :DPN: ####\n}" \
+		"$else{\n==== :DPN: ====\n}" \
 		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
 		"$if(:FILE:){+:LI: -:LD:}" \
 		"\n" \
@@ -552,10 +559,15 @@ doit(int dash)
 	 * need to create a fmem FILE* to be used to buffer output
 	 * before we know if it will be printed.
 	 */
-	if (opts.doComp && (opts.BAM || opts.inc || opts.exc)) {
+	if (opts.doComp && opts.filt) {
 		opts.fmem = fmem_open();
 	}
-	cset(state, s, stdout, spec);
+	/* capture the comments, for the csets we care about */
+	for (e = s->rstop; e; e = e->next) {
+		if (e->flags & D_SET) comments_load(s, e);
+		if (e == s->rstart) break;
+	}
+	cset(state, s, 0, stdout, spec);
 	if (opts.fmem) fclose(opts.fmem);
 	if (opts.html) {
 		fprintf(stdout, "</td></tr></table></table></body></html>\n");
@@ -692,7 +704,7 @@ dumplog(char **list, FILE *f)
  * Cache the sccs struct to avoid re-initing the same sfile
  */
 private sccs *
-sccs_keyinitAndCache(char *key, int flags, MDBM *idDB, MDBM *graphDB)
+sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *graphDB)
 {
 	datum	k, v;
 	sccs	*s;
@@ -705,7 +717,7 @@ sccs_keyinitAndCache(char *key, int flags, MDBM *idDB, MDBM *graphDB)
 		memcpy(&s, v.dptr, sizeof (sccs *));
 		return (s);
 	}
-	s = sccs_keyinit(key, flags|INIT_NOWARN, idDB);
+	s = sccs_keyinit(proj, key, flags|INIT_NOWARN, idDB);
 	v.dptr = (void *) &s;
 	v.dsize = sizeof (sccs *);
 	if (mdbm_store(graphDB, k, v, MDBM_INSERT)) { /* cache the new entry */
@@ -788,8 +800,9 @@ loadcset(sccs *cset)
 	 */
 	sccs_open(cset, 0);
 	if ((cweave = cset_mkList(cset)) == (char **)-1) return (0);
+	sccs_close(cset);
 
-	if (t = proj_comppath(0)) {
+	if (t = proj_comppath(cset->proj)) {
 		strcpy(path, t);
 		pathp = path + strlen(path);
 		*pathp++ = '/';
@@ -801,14 +814,7 @@ loadcset(sccs *cset)
 		p = strchr(cweave[i], '\t');
 		assert(p);
 		*p++ = 0;
-		if (opts.BAM) {
-			/* skip unless rootkey =~ /^B:/ */
-			t = separator(p);
-			assert(t);
-			while (*t != '|') --t;
-			unless (strneq(t, "|B:", 3)) continue;
-		}
-		if (opts.inc || opts.exc) {
+		if (opts.filt) {
 			keypath = separator(p);
 			keypath = strchr(keypath, '|');
 			assert(keypath);
@@ -816,18 +822,26 @@ loadcset(sccs *cset)
 			pipe = strchr(keypath, '|');
 			assert(pipe);
 			/* if -V , traverse all components... */
-			unless (opts.doComp &&
-			    (pipe - keypath >= 10) &&
+			unless (opts.doComp && (pipe - keypath >= 10) &&
 			    strneq(&pipe[-10], "/ChangeSet", 10)) {
-				strncpy(pathp, keypath, pipe - keypath);
-				pathp[pipe-keypath] = 0;
-				if (opts.inc &&
-				    !match_globs(path, opts.inc, 0)) {
-					continue;
+				if (opts.BAM) {
+					/* skip unless rootkey =~ /^B:/ */
+					t = separator(p);
+					assert(t);
+					while (*t != '|') --t;
+					unless (strneq(t, "|B:", 3)) continue;
 				}
-				if (opts.exc &&
-				    match_globs(path, opts.exc, 0)) {
-					continue;
+				if (opts.inc || opts.exc) {
+					strncpy(pathp, keypath, pipe - keypath);
+					pathp[pipe-keypath] = 0;
+					if (opts.inc &&
+					    !match_globs(path, opts.inc, 0)) {
+						continue;
+					}
+					if (opts.exc &&
+					    match_globs(path, opts.exc, 0)) {
+						continue;
+					}
 				}
 			}
 		}
@@ -851,25 +865,28 @@ loadcset(sccs *cset)
 		saveKey(db, rev, keylist);
 		free(rev);
 	}
-	if (opts.inc || opts.exc || opts.BAM) fileFilt(cset, db);
+	if (opts.filt) fileFilt(cset, db);
 	return (db);
 }
 
 /*
- * generate output for all csets in 'sc' marked with D_SET
+ * generate output for all csets in 'sc'
+ *   if no dkey, marked with then D_SET
+ *   if dkey, then all the component csets that are in same product
+ *   cset as the component cset delta key: dkey
  * returns true if any output printed (may all be filtered)
  */
 private int
-cset(hash *state, sccs *sc, FILE *f, char *dspec)
+cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 {
 	int	flags = opts.all ? PRS_ALL : 0;
 	int	iflags = INIT_NOCKSUM;
 	int	i, j, found;
 	char	**keys, **csets = 0;
 	char	**list;
-	sccs	*prodsc, *s;
+	sccs	*s;
 	delta	*d, *e;
-	char	*rkey, *dkey;
+	char	*rkey;
 	datum	k, v;
 	char	**complist;
 	int	rc = 0;
@@ -887,36 +904,47 @@ cset(hash *state, sccs *sc, FILE *f, char *dspec)
 	rstate = state->vptr;	/* ptr to current rstate */
 
 	unless (rstate->idDB) {
+		buf = strdup(proj_cwd());
+		/* need to be in component for loadDB() to work */
+		chdir(proj_root(sc->proj));
+
 		unless (rstate->idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
 			perror("idcache");
 			exit(1);
 		}
 		rstate->goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+		chdir(buf);
 		rstate->graphDB = mdbm_mem();
-	}
-	prodsc = sc;	/* product perspective of this cset file */
-	if (opts.doComp && proj_isComponent(0)) {
-		/*
-		 * For a component go ahead a load and cache the csets
-		 * file.  The cset file passed in was loaded by the
-		 * product has the wrong pathnames.
-		 * If this is the original loading, then add the marks.
-		 */
-		sc = sccs_keyinitAndCache(proj_rootkey(0), iflags,
-		    rstate->idDB, rstate->graphDB);
-		assert(sc);
-		unless (rstate->csetDB) {
+		if (dkey) {
+			/*
+			 * Cache the component graph as though the
+			 * product graph selected all (non optimal,
+			 * but safe).  XXX: this is doing an 'and'
+			 * with -u and -/re/ patterns: the product
+			 * cset && the component cset need to pass
+			 * the want() test.  Is anding useful?
+			 */
 			for (e = sc->table; e; e = e->next) {
 				if (want(sc, e)) e->flags |= D_SET;
 			}
 		}
+		/*
+		 * loads all file key pairs for csets marked D_SET
+		 * Has the side-effect of unD_SETing when testing BAM||inc||exc
+		 */
+		rstate->csetDB = loadcset(sc);
+		assert(rstate->csetDB);
+		if (dkey) {
+			for (e = sc->table; e; e = e->next) {
+				e->flags &= ~D_SET;
+			}
+		}
 	}
-	/*
-	 * loads all file key pairs for csets marked D_SET
-	 * Has the side-effect of unD_SETing when testing BAM||inc||exc
-	 */
-	unless (rstate->csetDB) rstate->csetDB = loadcset(sc);
-	assert(rstate->csetDB);
+	if (dkey) {
+		d = sccs_findKey(sc, dkey);
+		assert(d);
+		range_cset(sc, d);
+	}
 
 	/*
 	 * Collect the cset in a list
@@ -925,19 +953,11 @@ cset(hash *state, sccs *sc, FILE *f, char *dspec)
 	 * repo the cset file is in. If the repo is the product repo,
 	 * these will be the same.
 	 */
-	for (e = prodsc->rstop; e; e = e->next) {
+	for (e = sc->rstop; e; e = e->next) {
 		if (e->flags & D_SET) {
-			if (sc == prodsc) {
-				d = e;
-			} else {
-				d = sfind(sc, e->serial);
-				assert(d);
-				/* don't include filtered csets */
-				unless (d->flags & D_SET) continue;
-			}
-			csets = addLine(csets, d);
+			if (!dkey || want(sc, e)) csets = addLine(csets, e);
 		}
-		if (e == prodsc->rstart) break;
+		if (e == sc->rstart) break;
 	}
 	if (opts.forwards) reverseLines(csets);
 
@@ -982,7 +1002,7 @@ cset(hash *state, sccs *sc, FILE *f, char *dspec)
 			unless (opts.doComp && strstr(dkey, "/ChangeSet|")) {
 				found = 1;
 			}
-			s = sccs_keyinitAndCache(rkey, iflags,
+			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,
 			    rstate->idDB, rstate->graphDB);
 			unless (s) {
 				unless (gone(rkey, rstate->goneDB)) {
@@ -992,6 +1012,7 @@ cset(hash *state, sccs *sc, FILE *f, char *dspec)
 				}
 				continue;
 			}
+			s->changes_cset = e; /* pass cset pathname to :DPN: */
 			if (CSET(s) && !proj_isComponent(s->proj)) continue;
 			unless (d = sccs_findKey(s, dkey)) {
 				if (gone(dkey, rstate->goneDB)) continue;
@@ -1009,6 +1030,7 @@ cset(hash *state, sccs *sc, FILE *f, char *dspec)
 				complist = addLine(complist, int2p(i));
 				continue;
 			}
+			if (opts.prodOnly && CSET(s)) continue;
 			/*
 			 * CollectDelta() compute cset boundaries,
 			 * when this function returns, "list" will contain
@@ -1030,11 +1052,14 @@ cset(hash *state, sccs *sc, FILE *f, char *dspec)
 			ftrunc(opts.fmem, 0);
 			f = opts.fmem;
 		}
-		if (opts.keys) {
-			sccs_pdelta(sc, e, f);
-			fputc('\n', f);
-		} else {
-			sccs_prsdelta(sc, e, flags, dspec, f);
+		if (!opts.filt ||
+		    (keys && (!opts.prodOnly || proj_isProduct(sc->proj)))) {
+			if (opts.keys) {
+				sccs_pdelta(sc, e, f);
+				fputc('\n', f);
+			} else {
+				sccs_prsdelta(sc, e, flags, dspec, f);
+			}
 		}
 		if (found) rc = 1; /* Remember we printed output */
 		dumplog(list, f); /* sort file dspec, print it, then free it */
@@ -1046,21 +1071,14 @@ cset(hash *state, sccs *sc, FILE *f, char *dspec)
 		 */
 		EACH(complist) {
 			rkey = keys[p2int(complist[i])];
-			s = sccs_keyinitAndCache(rkey, iflags,
+			s = sccs_keyinitAndCache(sc->proj, rkey, iflags,
 			    rstate->idDB, rstate->graphDB);
 
-			/* cd to component */
-			chdir(proj_root(s->proj));
 			dkey = rkey + strlen(rkey) + 1;
 			assert(dkey);
 
-			d = sccs_findKey(s, dkey);
-			assert(d);
-			/* mark csets from this prod-cset with D_SET*/
-			range_cset(s, d);
-
 			/* call cset() recursively */
-			if (cset(state, s, f, dspec) && fsave) {
+			if (cset(state, s, dkey, f, dspec) && fsave) {
 				/*
 				 * we generated output so flush the saved data
 				 */
@@ -1069,13 +1087,6 @@ cset(hash *state, sccs *sc, FILE *f, char *dspec)
 				fsave = 0;
 				fwrite(buf, 1, len, f);
 			}
-
-			/* clear marks */
-			for (d = s->rstop; d; d = d->next) {
-				d->flags &= ~D_SET;
-				if (d == s->rstart) break;
-			}
-			proj_cd2product();
 		}
 		freeLines(complist, 0);
 		/* reduce mem foot print, could be huge */
@@ -1093,6 +1104,10 @@ cset(hash *state, sccs *sc, FILE *f, char *dspec)
 	 * We need to account for it.
 	 */
 	freeLines(csets, 0);
+
+	/* clear marks */
+	for (e = sc->rstop; e; e = e->next) e->flags &= ~D_SET;
+
 	return (rc);
 }
 

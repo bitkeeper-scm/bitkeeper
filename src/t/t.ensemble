@@ -174,7 +174,7 @@ echo OK
 
 echo $N Check for components in top changeset .......................$NL
 cd "$HERE/project"
-bk changes -v -r+ -nd'$if(:FILE:){:GFILE:}' | sort > GOT
+bk changes -V -r+ -nd'$if(:FILE:){:GFILE:}' | sort > GOT
 cat > WANT <<EOF
 gcc/ChangeSet
 gcc/ChangeSet
@@ -421,7 +421,7 @@ test "`bk sfiles -p`" = "" || {
 	echo failed to clear pending state
 	exit 1
 }
-bk changes -vr+ -nd'$if(:FILE:){:FILE:|:REV:}' > GOT
+bk changes -Vr+ -nd'$if(:FILE:){:FILE:|:REV:}' > GOT
 cat > WANT <<EOF
 gcc/ChangeSet|1.5
 gcc/ChangeSet|1.4

@@ -407,7 +407,7 @@ extractPatch(char *name, MMAP *p, int flags)
 	if (newProject && !newFile) errorMsg("tp_notfirst", 0, 0);
 
 	if (echo>4) fprintf(stderr, "%s\n", t);
-	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
+	s = sccs_keyinit(0, t, SILENT|INIT_NOCKSUM, idDB);
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
