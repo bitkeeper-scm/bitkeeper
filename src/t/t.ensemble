@@ -1010,7 +1010,6 @@ echo @dev
 	(cd gcc4 && bk id ) 
 	(cd gdb && bk id )
     ) | bk _sort
-echo 
 ) > WANT
 bk cat BitKeeper/etc/modules > GOT 
 cmpfiles WANT GOT
@@ -1051,7 +1050,6 @@ echo @dev
 	(cd gcc4 && bk id ) 
 	(cd gdb && bk id )
     ) | bk _sort
-echo 
 echo @mydev
 echo dev
 ) > WANT
@@ -1171,13 +1169,23 @@ bk module add -MA somedir/ 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q 'somedir/ is not a directory' ERR || {
+grep -q 'somedir/ must be either a glob, key, module, or component' ERR || {
 	echo bad error message
 	cat ERR
 	exit 1
 }
 mkdir somedir
-bk module add -MA somedir/ || exit 1
+bk module add -MA somedir/ >ERR 2>&1 && {
+	echo failed
+	cat ERR
+	exit 1
+}
+grep -q 'somedir/ must be either a glob, key, module, or component' ERR || {
+	echo failed
+	echo wrong error message
+	cat ERR
+	exit 1
+}
 echo OK
 
 echo $N Test infinite loop in modules ...............................$NL
@@ -1195,7 +1203,7 @@ test $? = 1 || {
 	cat OUT
 	exit 1
 }
-grep -q 'too many levels of recursion.' OUT || {
+grep -q "recursive module definition" OUT || {
 	echo bad error message
 	cat OUT
 	exit 1

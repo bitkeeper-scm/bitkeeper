@@ -65,7 +65,7 @@ bk components -M./gccc\* 2> ERR > GOT && {
 	echo failed
 	exit 1
 }
-grep -q "components: no match for module ./gccc*" ERR || {
+grep -q "components: no match for ./gccc*" ERR || {
 	echo wrong msg
 	cat ERR
 	exit 1
@@ -74,7 +74,7 @@ bk components -M./gc/\* 2> ERR > GOT && {
 	echo failed
 	exit 1
 }
-grep -q "components: no match for module ./gc/*" ERR || {
+grep -q "components: no match for ./gc/*" ERR || {
 	echo wrong msg
 	exit 1
 }
@@ -102,6 +102,15 @@ EOF
 checkfiles WANT GOT
 echo OK
 
+echo $N Test that what looks like a module is a module ..............$NL
+bk module add -Mgcc ./gcc ./gdb
+bk module add -Msamething gcc
+bk components -Mgcc > WANT
+bk components -Msamething > GOT
+checkfiles WANT GOT
+bk module rm -Mgcc
+bk module rm -Msamething
+echo OK
 
 echo $N Try a push, should add libc but not junk ....................$NL
 bk parent $Q -ao ../stuff ../stuff2
@@ -231,6 +240,21 @@ test -d project-gcc/gcc || {
 }
 echo OK
 
+echo $N Test -M./gcc -M./gcc*........................................$NL
+cd "$HERE"
+bk clone -M./gcc -M./gcc* project project-gcc-2 >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test -d project-gcc-2/gcc || {
+	echo failed to make gcc
+	cat OUT
+	exit 1
+}
+echo OK
+
+
 echo $N Test -M. ....................................................$NL
 cd "$HERE"
 bk clone -M. project project-dot > OUT 2>&1 || {
@@ -303,4 +327,177 @@ bk populate -M'./junk*' > OUT 2>&1 || {
 	cat OUT
 	exit 1
 }
+echo OK
+
+echo $N Test module with non-recursive duplicated definitions........$NL
+cd "$HERE"/project
+bk edit $Q BitKeeper/etc/modules
+(
+echo @module1
+echo module2
+echo @module2
+echo module3
+echo module3
+echo @module3
+echo ./gcc
+) >> BitKeeper/etc/modules
+bk delta $Q -ywhatever BitKeeper/etc/modules
+bk components -Mmodule1 > GOT 2>&1 || {
+	echo failed
+	cat GOT
+	exit 1
+}
+echo gcc > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test module with recursive definitiion ......................$NL
+cd "$HERE"/project
+bk edit $Q BitKeeper/etc/modules
+(
+echo @module1
+echo module2
+echo @module2
+echo module3
+echo @module3
+echo module1
+echo ./gcc
+) >> BitKeeper/etc/modules
+bk delta $Q -ywhatever BitKeeper/etc/modules
+bk components -Mmodule1 2> ERR && {
+	echo failed
+	cat GOT
+	exit 1
+}
+grep -q 'recursive module definition' ERR || exit 1
+echo OK
+
+echo $N Remove all modules...........................................$NL
+cd "$HERE"/project
+bk module list | while read x
+do
+	bk module rm -M$x
+done
+test x`bk module list` = x || {
+	echo failed
+	echo module list not empty
+	exit 1
+}
+echo OK
+
+echo $N Add all components as a module...............................$NL
+cd "$HERE"/project
+bk components | bk module add -Mall - || {
+	echo failed
+	exit 1
+}
+bk components > WANT
+bk components -Mall > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Add catch-all glob...........................................$NL
+cd "$HERE"/project
+bk module add -Mall-glob './*' || {
+	echo failed
+	exit 1
+}
+bk components > WANT
+bk components -Mall-glob > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Invalid module names should fail.............................$NL
+cd "$HERE"/project
+bk module add -M'this is invalid' gcc gdb >ERR 2>&1 && {
+	echo failed
+	cat ERR
+	exit 1
+}
+bk module add -M./foobar gcc gdb >ERR 2>&1 && {
+	echo failed
+	cat ERR
+	exit 1
+}
+bk module add -M+foo gcc gdb >ERR 2>&1 && {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+# XXX: there's a bug in bk attach in which if you run it inside a product
+# that is inside another product, the component will be attached to the
+# enclosing product and not to the immediate product. I didn't look into this.
+# as attach was rewritten in the setup cset.... (link RTI)
+echo $N Component of another product should fail.....................$NL
+cd "$HERE"
+printf "" > empty
+bk setup -fcempty -P p2
+cd p2
+bk setup -fc"$HERE/empty" gcc
+cd "$HERE"/project
+mv "$HERE"/p2 .
+bk module add -Mcompiler p2/gcc gcc >ERR 2>&1 && {
+	echo failed
+	echo attached a component from another product
+	exit 1
+}
+grep -q "p2/gcc must be either a glob, key, module, or component." ERR || {
+	echo failed
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N bk module -C should leave pending modules file...............$NL
+cd "$HERE"/project
+bk module add -C -Mdev gcc gdb >ERR 2>&1 || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo BitKeeper/etc/SCCS/s.modules > WANT
+bk sfiles -cP > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test show interface..........................................$NL
+cd "$HERE"/project
+for m in `bk module list`
+do
+	echo @$m
+	bk module show -M$m
+done > GOT
+bk cat BitKeeper/etc/modules > WANT
+cmpfiles WANT GOT
+bk module show -M"DOESNOTEXIST" 2> ERR && {
+	echo failed rc
+	exit 1
+}
+grep -q "module 'DOESNOTEXIST' does not exist" ERR || {
+	echo failed msg
+	exit 1
+}
+echo OK
+
+echo $N Test creating modules in a sparse tree ......................$NL
+(
+cd gcc
+bk id
+cd ../gdb
+bk id
+) > ../WANT
+cd "$HERE"
+bk clone $Q -M. project sparse || exit 1
+cd sparse || exit 1
+test -d gcc && {
+	echo should not have gcc
+	exit 1
+}
+# Note: trying both forms of "dir" and "./dir"
+bk module add -Msparse ./gcc gdb || exit 1
+bk module show -Msparse > GOT
+cmpfiles ../WANT GOT
 echo OK

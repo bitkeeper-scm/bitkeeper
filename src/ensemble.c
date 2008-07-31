@@ -477,6 +477,16 @@ ensemble_find(repos *list, char *rootkey)
 	return (0);
 }
 
+char	*
+ensemble_dir2key(repos *list, char *dir)
+{
+	unless (dir && list) return (0);
+	EACH_REPO(list) {
+		if (streq(dir, list->path)) return (list->rootkey);
+	}
+	return (0);
+}
+
 void
 ensemble_free(repos *list)
 {

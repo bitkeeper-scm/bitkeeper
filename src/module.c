@@ -4,186 +4,28 @@
 #include "ensemble.h"
 #include "range.h"
 
-private int	finish(char *comment, hash *moduleDB, int commit);
-char		*rootkey(char *path);
+typedef struct modules {
+	sccs	*cset;		/* pointer to product's ChangeSet file' */
+	int	free_cset;	/* whether we need to free the sccs * above */
+	repos	*comps;		/* component list as of "+" */
+	hash	*moduleDB;	/* modules db from the product */
+	hash	*seen;		/* auxiliary hash for recursive resolution */
+} modules;
+
+private hash	*moduledb_init(void);
+private int	moduledb_add(char *module, char **components, int commit);
+private int	moduledb_rm(char *module, char **components, int commit);
+private	char	**moduledb_show(char *module);
+private int	module_validName(char *name);
+private int	module_expand(char *name, modules *modules, hash *keys);
+private int	value_expand(char *name, modules *mdb, hash *keys);
+private void	modules_free(modules *mdb);
+private int	dir_expand(char *dir, modules *modules, hash *keys);
+private char	*dir2key(char *dir, modules *mdb);
 private void	error(const char *fmt, ...);
-extern	char	*prog;
-
-/*
- * Given one or more module names, and optionally a changeset sccs*,
- * return a hash of implied root keys.
- * All names must be
- * - in the on disk hash
- * - a key
- * - a pathname w/ trailing /
- * or nothing is returned.
- * All names are recursively expanded if the values have names in them.
- * XXX - always imply the product?
- * XXX - does not take a rev and that's probably wrong
- */
-hash *
-module_list(char **names, sccs *cset)
-{
-	int	i, j;
-	int	free_cset = 0;
-	hash	*modules = 0;	/* BitKeeper/etc/modules */
-	hash	*seen = 0;	/* all key|dir|names we've seen */
-	hash	*results = 0;	/* hash of results */
-	hash	*expanded = 0;	/* record of which ones expanded */
-	hash	*tmp = 0;	/* used for recursion */
-	char	**dirs = 0;	/* any dirs we've found and need to expand */
-	char	**keys;		/* used to split the hash value */
-	char	**more = 0;	/* used to hold module names found in value */
-	char	*p, *e;
-	char	*name;		/* used to hold a de-escaped copy */
-	kvpair	kv;		/* walks the cset hash */
-	static	int depth = 0;	/* limits to one level of recursion */
-	char	buf[MAXKEY];
-
-	unless (proj_isProduct(0)) {
-		error("%s: module expansion called in a non-product.\n", prog);
-		return (0);
-	}
-	unless (names && names[1]) {
-		error("%s: module expansion with no names?\n");
-		return (0);
-	}
-
-	/*
-	 * Go load the entire modules DB into a hash.  
-	 */
-	concat_path(buf, proj_root(proj_product(0)), MODULES);
-	if (!exists(buf) && get(buf, SILENT, "-")) {
-		error("%s: can't get %s\n", prog, buf);
-		return (0);
-	}
-	modules = hash_fromFile(0, buf);
-
-	/*
-	 * Foreach name,
-	 * if it is in the hash, split the value into keys and stuff those
-	 * into results.
-	 * if it is a directory, save that aside.
-	 * if it is a key, stuff that into results.
-	 * if none of the above, error.
-	 */
-	seen = hash_new(HASH_MEMHASH);
-	results = hash_new(HASH_MEMHASH);
-	EACH(names) {
-		if (hash_fetchStr(seen, names[i])) {
-			error("%s: duplicate module name %s\n", prog, names[i]);
-			goto err;
-		}
-		hash_storeStr(seen, names[i], "");
-		if (p = hash_fetchStr(modules, names[i])) {
-			keys = splitLine(p, "\r\n", 0);
-			EACH_INDEX(keys, j) {
-				if (hash_fetchStr(modules, keys[j])) {
-					more = addLine(more, strdup(keys[j]));
-				} else if (isKey(keys[j])) {
-					hash_storeStr(results, keys[j], "");
-				} else {
-					dirs = addLine(dirs, strdup(keys[j]));
-				}
-			}
-			freeLines(keys, free);
-		} else if (isKey(names[i])) {
-			hash_storeStr(results, names[i], "");
-		} else {
-			dirs = addLine(dirs, strdup(names[i]));
-		}
-	}
-
-	if (more) {
-		if (depth > 5) {
-			p = joinLines(" ", names);
-			error("%s: too many levels of "
-			    "recursion expanding module[s]: %s\n", prog, p);
-			free(p);
-err:			hash_free(modules);
-			hash_free(results);
-			hash_free(seen);
-			if (expanded) hash_free(expanded);
-			freeLines(dirs, free);
-			freeLines(more, free);
-			return (0);
-		}
-		depth++;
-		tmp = module_list(more, cset);
-		depth--;
-		unless (tmp) goto err;
-		EACH_HASH(tmp) hash_storeStr(results, tmp->kptr, "");
-		hash_free(tmp);
-		freeLines(more, free);
-		more = 0;
-	}
-
-	unless (dirs) goto done;
-
-	unless (cset) {
-		concat_path(buf, proj_root(proj_product(0)), CHANGESET);
-		cset = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT);
-		free_cset = 1;
-	}
-	assert(CSET(cset) && proj_isProduct(cset->proj));
-	sccs_get(cset, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0);
-
-	expanded = hash_new(HASH_MEMHASH);
-	/*
-	 * N*M alg.  lm3di
-	 */
-	EACH_KV(cset->mdbm) {
-		unless (componentKey(kv.val.dptr)) continue;
-		EACH(dirs) {
-			/*
-			 * kv.val.dptr =
-			 * lm@bitmover.com|gdb/ChangeSet|20080311222908|21117
-			 * dirs[i] =
-			 * .
-			 * ./something
-			 * ./glob_pattern
-			 */
-			if (streq(dirs[i], ".")) {
-				hash_storeStr(results, proj_rootkey(0), "");
-				hash_storeStr(expanded, dirs[i], "");
-				continue;
-			}
-
-			/* The expanded loop below will flag this. */
-			unless (strneq(dirs[i], "./", 2)) break;
-
-			p = strchr(kv.val.dptr, '|');
-			assert(p);
-			p++;
-			e = strchr(p, '|');
-			assert(e);
-			while ((--e > p) && (*e != '/'));
-			*e = 0;
-			unless (streq(dirs[i]+2, p) ||
-			    match_one(p, dirs[i]+2, 0)){
-				*e = '/';
-				continue;
-			}
-			hash_storeStr(results, kv.key.dptr, "");
-			hash_storeStr(expanded, dirs[i], "");
-			break;
-	    	}
-	}
-	if (free_cset && cset) sccs_free(cset);
-	j = 0;
-	EACH(dirs) {
-		unless (hash_fetchStr(expanded, dirs[i])) {
-			j++;
-			error("%s: no match for module %s\n", prog, dirs[i]);
-		}
-	}
-	if (j) goto err;
-done:	hash_free(modules);
-	hash_free(seen);
-	if (expanded) hash_free(expanded);
-	freeLines(dirs, free);
-	return (results);
-}
+private int	finish(char *comment, hash *moduleDB, int commit);
+private int	verifyKey(char *key, modules *mdb);
+extern char	*prog;
 
 /*
  * bk module add -M<module> <comp> ...	// create/add to a module
@@ -193,212 +35,425 @@ done:	hash_free(modules);
 int
 module_main(int ac, char **av)
 {
-	int	i, j, found;
-	int	ret = 1, commit = 1;
-	int	add = 0, rm = 0;
-	char	**names = 0;
+	char	*command, *p, *module = 0;
 	char	**comps = 0;
-	char	*key = 0, *p;
-	hash	*h = 0, *moduleDB = 0;
-	MDBM	*idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	char	buf[MAXPATH];
+	int	c, commit = 1, i;
 
 	unless (av[1]) {
 err:		system("bk help -s module");
-out:		mdbm_close(idDB);
-		freeLines(names, free);
-		freeLines(comps, free);
-		if (h) hash_free(h);
-		if (moduleDB) hash_free(moduleDB);
-		return (ret);
+		return (1);
 	}
 	if (proj_cd2product()) {
-		fprintf(stderr, "module called in a non-product.\n");
-		goto err;
+		fprintf(stderr, "module: called in a non-product.\n");
+		return (1);
 	}
-	if (!exists(MODULES) && get(MODULES, SILENT, "-")) {
-		fprintf(stderr, "module: unable to get modules db\n");
-		goto err;
-	}
-	moduleDB = hash_fromFile(0, MODULES);
-
-	if (streq(av[1], "add")) add++;
-	if (streq(av[1], "create")) add++;
-	if (streq(av[1], "rm")) rm++;
-	if (streq(av[1], "list")) {
-		EACH_HASH(moduleDB) names = addLine(names, moduleDB->kptr);
-		sortLines(names, 0);
-		EACH(names) printf("%s\n", names[i]);
-		freeLines(names, 0);
-		names = 0;
-		ret = 0;
-		goto out;
-	}
-
-	unless (add || rm) goto err;
+	command = av[1];
 	av++, ac--;
-
-	while ((j = getopt(ac, av, "CM;")) != -1) {
-		switch (j) {
+	while ((c = getopt(ac, av, "CM;")) != -1) {
+		switch (c) {
 		    case 'C': commit = 0; break;
-		    case 'M': key = optarg; break;
-	    	}
+		    case 'M': module = optarg; break;
+		}
 	}
+	/* handle list immediately since it's easy */
+	if (streq(command, "list")) {
+		hash	*moduleDB;
 
-	unless (key) {
+		unless (moduleDB = moduledb_init()) {
+			fprintf(stderr, "modules: no modules\n");
+			return (1);
+		}
+		EACH_HASH(moduleDB) comps = addLine(comps, moduleDB->kptr);
+		sortLines(comps, 0);
+		EACH(comps) printf("%s\n", comps[i]);
+		freeLines(comps, 0);
+		hash_free(moduleDB);
+		return (0);
+	}
+	unless (module) {
 		fprintf(stderr, "module: no module specified.\n");
 		goto err;
 	}
+	if (streq(command, "show")) {
+		char	**components = 0;
 
-	while (av[optind]) comps = addLine(comps, strdup(av[optind++]));
+		unless (components = moduledb_show(module)) {
+			fprintf(stderr,
+			    "module: module '%s' does not exist.\n", module);
+			return (1);
+		}
+		EACH(components) printf("%s\n", components[i]);
+		freeLines(components, free);
+		return (0);
+	}
+	/* gather list of components */
+	while (av[optind]) {
+		/* "-" has to be last */
+		if (streq(av[optind], "-")) {
+			while (p = fgetline(stdin)) comps = addLine(comps, p);
+			break;
+		}
+		comps = addLine(comps, strdup(av[optind++]));
+	}
+	if (streq(command, "add") || streq(command, "create")) {
+		if (moduledb_add(module, comps, commit)) return (1);
+	} else if (streq(command, "rm")) {
+		if (moduledb_rm(module, comps, commit)) return (1);
+	} else {
+		goto err;
+	}
+	return (0);
+}
 
-	/*
-	 * Both add and rm want these converted.
-	 */
-	EACH(comps) {
-		/* dir/ or path/to/repo/root */
-		if (isdir(comps[i])) {
-			p = strrchr(comps[i], '/');
-			if (p && (p[1] == 0)) {
-				names = addLine(names, strdup(comps[i]));
+/*
+ * Given one or more module names, and optionally a changeset sccs*,
+ * return a hash of implied root keys.
+ * All names are recursively expanded if the values have names in them.
+ * XXX - always imply the product?
+ * XXX - does not take a rev and that's probably wrong
+ */
+hash *
+module_list(char **names, sccs *cset)
+{
+	int	i, failed = 0;
+	modules	*mdb;		/* BitKeeper/etc/modules */
+	hash	*keys = 0;	/* resulting key expansion */
+	char	buf[MAXKEY];
+
+	unless (proj_isProduct(0)) {
+		error("%s: module expansion called in a non-product.\n", prog);
+		return (0);
+	}
+	unless (names && names[1]) {
+		error("%s: module expansion with no names?\n", prog);
+		return (0);
+	}
+	mdb = new(modules);
+	unless (mdb->moduleDB = moduledb_init()) {
+		error("%s: can't get %s\n", prog, buf);
+		return (0);
+	}
+	keys = hash_new(HASH_MEMHASH);
+	mdb->free_cset = (cset == 0);
+	mdb->cset = cset;
+	mdb->seen = hash_new(HASH_MEMHASH);
+	EACH(names) {
+		if (module_expand(names[i], mdb, keys)) {
+			failed = 1;
+			break;
+		}
+	}
+	modules_free(mdb);
+	if (failed) {
+		hash_free(keys);
+		keys = 0;
+	}
+	return (keys);
+}
+
+int
+isComponent(char *path)
+{
+	int	ret;
+	project	*p = 0;
+	char	buf[MAXPATH];
+
+	sprintf(buf, "%s/%s", path, BKROOT);
+	ret = exists(buf) && (p = proj_init(buf)) && proj_isComponent(p);
+	if (p) proj_free(p);
+	return (ret);
+}
+
+private hash *
+moduledb_init(void)
+{
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj_product(0)), MODULES);
+	if (!exists(buf) && get(buf, SILENT, "-")) {
+		error("%s: no module file found\n", prog);
+		return (0);
+	}
+	return (hash_fromFile(0, buf));
+}
+
+private char **
+moduledb_show(char *module)
+{
+	modules	*mdb;
+	char	**result = 0;
+	char	*val;
+
+	mdb = new(modules);
+	unless (mdb->moduleDB = moduledb_init()) goto out;
+	unless (val = hash_fetchStr(mdb->moduleDB, module)) goto out;
+	result = splitLine(mdb->moduleDB->vptr, "\r\n", 0);
+out:	modules_free(mdb);
+	return (result);
+}
+
+/*
+ * Add components to module 'module' in the modules db,
+ * creating module if it doesn't already exist
+ */
+private int
+moduledb_add(char *module, char **components, int commit)
+{
+	int	i;
+	int	rc = 1, errors = 0;
+	char	*comment = 0, *p = 0;
+	char	**list = 0, **val = 0;
+	char	*key;
+	modules	*mdb;
+
+	unless (module_validName(module)) {
+		fprintf(stderr, "%s: invalid module name %s.\n", prog, module);
+		return (1);
+	}
+	mdb = new(modules);
+	unless (mdb->moduleDB = moduledb_init()) goto err;
+	EACH (components) {
+		if (isKey(components[i])) {
+			unless (verifyKey(components[i], mdb)) {
+				fprintf(stderr, "%s: not a component key: "
+				    "'%s'\n", prog, components[i]);
+				errors++;
 				continue;
 			}
-			unless (isComponent(comps[i])) {
-				fprintf(stderr,
-				    "module: %s is not a component\n",
-				    comps[i]);
-				goto err;
-			}
-			p = rootkey(comps[i]);
-			assert(p);
-			names = addLine(names, p);
+			list = addLine(list, strdup(components[i]));
+		} else if (hash_fetchStr(mdb->moduleDB, components[i])) {
+			/* module name, just store it */
+			list = addLine(list, strdup(components[i]));
+		} else if (key = dir2key(components[i], mdb)) {
+			list = addLine(list, key);
+		} else if (is_glob(components[i])) {
+			/* glob, just store it */
+			/* XXX - should allow escapes */
+			list = addLine(list, strdup(components[i]));
+		} else {
+			fprintf(stderr, "%s: %s must be either a glob, key, "
+			    "module, or component.\n", prog, components[i]);
+			errors++;
 			continue;
 		}
-
-		/* rootkey */
-		if (isKey(comps[i])) {
-			p = key2path(comps[i], idDB);
-			unless (isComponent(p)) {
-				fprintf(stderr,
-				    "module: %s is not a component\n",
-				    comps[i]);
-				free(p);
-				goto err;
-			}
-			names = addLine(names, p);
-			continue;
-		}
-		
-		/* must be symbolic name */
-		if (add) {
-			/* check to see if it is a bogus dir or not in db */
-			p = strrchr(comps[i], '/');
-			if (p && (p[1] == 0)) {
-				p = "directory";
-			} else unless (hash_fetchStr(moduleDB, comps[i])) {
-				p = "module";
-			} else {
-				p = 0;
-			}
-			if (p ) {
-				fprintf(stderr,
-				    "module: %s is not a %s\n", comps[i], p);
-				goto err;
-			}
-		}
-		names = addLine(names, strdup(comps[i]));
 	}
-	if (comps) {
-		freeLines(comps, free);
-		comps = names;
-		names = 0;
+	if (errors) {
+		fprintf(stderr, "%s: %d error%s processing modules\n",
+		    prog, errors, (errors > 1)?"s":"");
+		goto err;
 	}
-
-	if (p = hash_fetchStr(moduleDB, key)) {
-		names = splitLine(moduleDB->vptr, "\r\n", 0);
+	unless (nLines(list)) {
+		fprintf(stderr, "%s: nothing to add\n", prog);
+		goto err;
 	}
+	unless (hash_fetchStr(mdb->moduleDB, module)) {
+		comment = aprintf("Create module %s", module);
+	} else {
+		comment = aprintf("Modify module %s", module);
+		val = splitLine(mdb->moduleDB->vptr, "\r\n", 0);
+	}
+	EACH (list) val = addLine(val, strdup(list[i]));
+	uniqLines(val, free);
+	p = joinLines("\n", val);
+	hash_storeStr(mdb->moduleDB, module, p);
+	rc = finish(comment, mdb->moduleDB, commit);
+err:	modules_free(mdb);
+	if (comment) free(comment);
+	if (list) freeLines(list, free);
+	return (rc);
+}
 
-	if (rm) {
-		unless (p) {
-			fprintf(stderr, "module %s doesn't exist\n", key);
-			goto err;
-		}
-		if (comps) {
-			EACH(comps) {
-				found = 0;
-				EACH_INDEX(names, j) {
-					if (streq(comps[i], names[j])) {
-						removeLineN(names, j, free);
-						found = 1;
-						break;
-					}
-				}
-				unless (found) {
-					fprintf(stderr,
-					    "module: %s is not part of %s, "
-					    "nothing modified.\n",
-					    comps[i], key);
-					goto err;
-				}
-			}
-			freeLines(comps, free);
-			comps = names;
-			names = 0;
-			if (nLines(comps) == 0) {
-				freeLines(comps, free);
-				comps = 0;
-			}
-		}
+/*
+ * Remove components from module. If components == 0
+ * then the module itself is removed.
+ */
+private int
+moduledb_rm(char *module, char **components, int commit)
+{
+	int	i, j, found, rc = 1;
+	char	*p, *comment = 0;
+	modules	*mdb;
+	char	**list = 0;
 
-		sprintf(buf, "Modify module %s", key);
-		switch (nLines(comps)) {
-		    case 0:
-			sprintf(buf, "Delete module %s", key);
-			hash_deleteStr(moduleDB, key);
-			break;
-		    case 1:
-			hash_storeStr(moduleDB, key, comps[1]);
-			break;
-		    default:
-			p = joinLines("\n", comps);
-			strcat(p, "\n");		// join chomps
-			hash_storeStr(moduleDB, key, p);
-			free(p);
-			break;
-		}
-		ret = finish(buf, moduleDB, commit);
+	mdb = new(modules);
+	unless (mdb->moduleDB = moduledb_init()) goto err;
+	unless (hash_fetchStr(mdb->moduleDB, module)) {
+		fprintf(stderr, "%s: no such module %s\n", prog, module);
+		goto err;
+	}
+	unless (components) {
+		/* delete the module itself */
+		hash_deleteStr(mdb->moduleDB, module);
+		comment = aprintf("Remove %s", module);
 		goto out;
 	}
-
-	/* add case */
-	unless (comps) goto err;
-	j = nLines(comps);
-	EACH(names) comps = addLine(comps, names[i]);
-	freeLines(names, 0);
-	names = 0;
-	uniqLines(comps, free);
-	if (hash_fetchStr(moduleDB, key)) {
-		if (nLines(comps) == j) {
-			fprintf(stderr, "Nothing to add.\n");
-			goto err;
+	list = splitLine(mdb->moduleDB->vptr, "\r\n", 0);
+	EACH (components) {
+		found = 0;
+		EACH_INDEX(list, j) {
+			if (streq(components[i], list[j])) {
+				removeLineN(list, j, free);
+				found = 1;
+				break;	/* or j-- if dups are expected */
+			}
 		}
-		sprintf(buf, "Modify module %s", key);
-	} else {
-		sprintf(buf, "Create module %s", key);
+		unless (found) {
+			fprintf(stderr, "%s: %s is not part of %s, "
+			    "nothing modified.\n", prog, components[i], module);
+			goto err;
+
+		}
 	}
-	switch (nLines(comps)) {
+	switch (nLines(list)) {
+	    case 0:
+		comment = aprintf("Delete module %s", module);
+		hash_deleteStr(mdb->moduleDB, module);
+		break;
 	    case 1:
-		hash_storeStr(moduleDB, key, comps[1]);
+		comment = aprintf("Modify module %s", module);
+		hash_storeStr(mdb->moduleDB, module, list[1]);
 		break;
 	    default:
-		p = joinLines("\n", comps);
-		strcat(p, "\n");		// join chomps
-		hash_storeStr(moduleDB, key, p);
+		comment = aprintf("Modify module %s", module);
+		p = joinLines("\n", list);
+		hash_storeStr(mdb->moduleDB, module, p);
 		free(p);
 		break;
 	}
-	ret = finish(buf, moduleDB, commit);
-	goto out;
+out:	rc = finish(comment, mdb->moduleDB, commit);
+err:	if (comment) free(comment);
+	if (list) freeLines(list, free);
+	modules_free(mdb);
+	return (rc);
+}
+
+/*
+ * Check that a module name is valid
+ */
+private int
+module_validName(char *name)
+{
+	char	*p;
+	int	valid = 1;
+
+	unless (isalpha(name[0])) return (0);
+	for (p = name+1; *p; p++) {
+		unless (isalnum(*p) ||
+		    (*p == '_') || (*p == '+') || (*p == '-') || (*p == '=')) {
+			valid = 0;
+		}
+	}
+	return (valid);
+}
+
+/*
+ * Expand a value of the module db into its keys, note that this doesn't handle
+ * module names. See module_expand for that.
+ */
+private int
+value_expand(char *name, modules *mdb, hash *keys)
+{
+	if (isKey(name)) {
+		hash_storeStr(keys, name, "");
+	} else if (strneq(name, "./", 2)) {
+		unless (dir_expand(&name[2], mdb, keys)) {
+			error("%s: no match for %s\n", prog, name);
+			return (1);
+		}
+	} else if (streq(name, ".")) {
+		/* just add the product */
+		hash_storeStr(keys, proj_rootkey(proj_product(0)), "");
+	}  else {
+		error("%s: could not find module '%s'\n", prog, name);
+		return (1);
+	}
+	return (0);
+}
+
+/*
+ * Expand a single module into its keys and put them
+ * in the keys hash.
+ */
+private int
+module_expand(char *name, modules *mdb, hash *keys)
+{
+	char	*mval;
+	char	**expansion = 0;
+	int	i, rc = 1;
+
+	unless (mval = hash_fetchStr(mdb->moduleDB, name)) {
+		/* not a module name */
+		return (value_expand(name, mdb, keys));
+	}
+	unless (hash_insertStr(mdb->seen, name, "")) {
+		error("%s: recursive module definition '%s'.\n",
+		    prog, name);
+		return (1);
+	}
+	unless (expansion = splitLine(mval, "\r\n", 0)) goto out;
+	EACH(expansion) {
+		if (module_expand(expansion[i], mdb, keys)) goto out;
+	}
+	rc = 0;
+out:	hash_deleteStr(mdb->seen, name);
+	if (expansion) freeLines(expansion, free);
+	return (rc);
+}
+
+private void
+modules_free(modules *mdb)
+{
+	assert(mdb);
+	if (mdb->free_cset && mdb->cset) sccs_free(mdb->cset);
+	if (mdb->comps) ensemble_free(mdb->comps);
+	if (mdb->moduleDB) hash_free(mdb->moduleDB);
+	if (mdb->seen) hash_free(mdb->seen);
+	free(mdb);
+}
+/*
+ * Get a list of keys that match a dir glob.
+ */
+private int
+dir_expand(char *dir, modules *mdb, hash *keys)
+{
+	int	rc = 0;
+	unless (mdb->comps) {
+		eopts	opts;
+
+		bzero(&opts, sizeof(eopts));
+		opts.rev = "+";
+		opts.sc = mdb->cset;
+		mdb->comps = ensemble_list(opts);
+	}
+	EACH_REPO(mdb->comps) {
+		if (match_one(mdb->comps->path, dir, 0)) {
+			hash_storeStr(keys, mdb->comps->rootkey, "");
+			rc = 1;
+		}
+	}
+	return (rc);
+}
+
+/*
+ * Get the rootkey of a directory and verify
+ * that it is indeed a component of this product
+ */
+private char *
+dir2key(char *dir, modules *mdb)
+{
+	eopts	opts;
+	char	*p;
+
+	assert(mdb);
+	unless (mdb->comps) {
+		bzero(&opts, sizeof(eopts));
+		opts.rev = "+";
+		opts.sc = mdb->cset;
+		mdb->comps = ensemble_list(opts);
+	}
+	if (strneq(dir, "./", 2)) dir += 2;
+	unless (p = ensemble_dir2key(mdb->comps, dir)) return (0);
+	return (strdup(p));
 }
 
 private void
@@ -421,35 +476,10 @@ error(const char *fmt, ...)
 	}
 }
 
-int
-isComponent(char *path)
-{
-	int	ret;
-	project	*p = 0;
-	char	buf[MAXPATH];
-
-	sprintf(buf, "%s/%s", path, BKROOT);
-	ret = exists(buf) && (p = proj_init(buf)) && proj_isComponent(p);
-	if (p) proj_free(p);
-	return (ret);
-}
-
-char	*
-rootkey(char *path)
-{
-	project	*p = proj_init(path);
-	char	*key;
-
-	assert(p);
-	key = strdup(proj_rootkey(p));
-	proj_free(p);
-	return (key);
-}
-
 private int
 finish(char *comment, hash *moduleDB, int commit)
 {
-	int	ret;
+	int	ret = 0;
 	char	buf[MAXPATH];
 
 	system("bk edit -q " MODULES);
@@ -469,5 +499,24 @@ finish(char *comment, hash *moduleDB, int commit)
 		sprintf(buf, "BitKeeper/tmp/cmt%u", getpid());
 		unlink(buf);
 	}
-	return (0);
+	return (ret);
+}
+
+/*
+ * Verify that a given key is indeed a component
+ * of this product
+ */
+private int
+verifyKey(char *key, modules *mdb)
+{
+	eopts	opts;
+
+	assert(mdb);
+	unless (mdb->comps) {
+		bzero(&opts, sizeof(eopts));
+		opts.rev = "+";
+		opts.sc = mdb->cset;
+		mdb->comps = ensemble_list(opts);
+	}
+	return (ensemble_find(mdb->comps, key));
 }
