@@ -355,11 +355,11 @@ int	checking_rmdir(char *dir);
 #define	BKDIR		"BitKeeper"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
-#define	GONE		"BitKeeper/etc/gone"
+#define	GONE		goneFile()
+#define	SGONE		sgoneFile()
 #define	COLLAPSED	"BitKeeper/etc/collapsed"
 #define	CSETS_IN	"BitKeeper/etc/csets-in"
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
-#define	SGONE		"BitKeeper/etc/SCCS/s.gone"
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
@@ -1274,6 +1274,8 @@ void	sccs_rdweaveInit(sccs *s);
 char	*sccs_rdweave(sccs *s);
 int	sccs_rdweaveDone(sccs *s);
 int	hasLocalWork(char *gfile);
+char	*goneFile(void);
+char	*sgoneFile(void);
 
 extern	char	*editor;
 extern	char	*bin;

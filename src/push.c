@@ -107,7 +107,7 @@ push_main(int ac, char **av)
 	if (sane(0, 0) != 0) return (1);
 	if (hasLocalWork(GONE)) {
 		fprintf(stderr,
-		    "push: must commit local changes to " GONE "\n");
+		    "push: must commit local changes to %s\n", GONE);
 		return (1);
 	}
 

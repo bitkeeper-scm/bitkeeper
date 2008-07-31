@@ -285,11 +285,16 @@ usage:		system("bk help -s takepatch");
 private void
 getGone(void)
 {
-	if (exists("BitKeeper/etc/SCCS/s.gone")) {
-		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
-			system("bk cat BitKeeper/etc/gone "
-			    "> RESYNC/BitKeeper/etc/gone");
+	char	*p, *cmd;
+
+	if (exists(SGONE)) {
+		p = aprintf("RESYNC/%s", SGONE);
+		unless (exists(p)) {
+			cmd = aprintf("bk cat %s > RESYNC/%s", GONE, GONE);
+			system(cmd);
+			free(cmd);
 		}
+		free(p);
     	}
 }
 

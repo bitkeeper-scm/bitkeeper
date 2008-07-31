@@ -661,7 +661,7 @@ lclone(remote *r, char *to)
 	assert(r);
 	if (hasLocalWork(GONE)) {
 		fprintf(stderr,
-		    "clone: must commit local changes to " GONE "\n");
+		    "clone: must commit local changes to %s\n", GONE);
 		exit(1);
 	}
 	unless (r->type == ADDR_FILE) {
