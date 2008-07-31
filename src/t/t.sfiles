@@ -629,7 +629,7 @@ blech/s.foo
 ChangeSet
 s.foo
 EOF
-cmp -s GOT WANT || { echo failed; exit 1; }
+cmpfiles GOT WANT
 echo OK
 
 echo $N Test sfile -U with triggers, they should be listed ..........$NL
@@ -1711,6 +1711,17 @@ sub/skip/2
 EOF
 bk sfiles -x > GOT
 cmpfiles WANT GOT
+echo OK
+
+echo $N Check that sfiles -U path supresses BK files ................$NL
+bk sfiles -U "$PWD" | grep ChangeSet > OUT
+# this will fail if the above repo has triggers
+bk sfiles -U "$PWD" | fgrep 'BitKeeper/' >> OUT
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
 echo OK
 
 test $PLATFORM != WIN32 && {

@@ -62,6 +62,7 @@ typedef struct {
 	u32	xdirs:1;		/* -D: list directories w/ no BK */
 	u32	inverse:1;		/* -!: list the opposite */
 	u32	skip_comps:1;		/* -h: list only files really "here" */
+	u32	atRoot:1;		/* running at root of repo? */
 
 	char	*prefix;		/* set from env for path prefix */
 	FILE	*out;			/* -o<file>: send output here */
@@ -256,6 +257,8 @@ usage:				system("bk help -s sfiles");
 	}
 	unless (av[optind]) {
 		path = ".";
+		/* flag running at the root of repo */
+		opts.atRoot = isdir(BKROOT);
 		walk(path);
 	} else if (streq("-", av[optind])) {
 		setmode(0, _O_TEXT); /* read file list in text mode */
@@ -1024,24 +1027,29 @@ hidden(char *file)
 private int
 isBkFile(char *gfile)
 {
-	char	*p, *t;
+	char	*rp = 0;
+	int	ret;
+	char	buf[MAXPATH];
 
-	if (streq(gfile, "ChangeSet") && isdir(BKROOT)) return (1);
-	if (p = strrchr(gfile, '/')) {
-		*p = 0;
-		t = aprintf("%s/%s", gfile, BKROOT);
-		*p = '/';
-		if (isdir(t)) {
-			free(t);
-			return (1);
-		}
-		free(t);
+	/* ChangeSet is reserved at the root of any repo */
+	if (streq(basenm(gfile), "ChangeSet")) {
+		strcpy(buf, gfile);
+		concat_path(buf, dirname(buf), BKROOT); /* yes, this works */
+		if (isdir(buf)) return (1);
 	}
-	if (strneq(gfile, "BitKeeper/", 10) &&
-	    !strneq(gfile, "BitKeeper/triggers/", 19) && isdir(BKROOT)) {
-		return (1);
+	if (opts.atRoot) {
+		/* gfile is already a relative path from root */
+	} else if (proj && strstr(gfile, "BitKeeper/")) {
+		unless (rp = proj_relpath(proj, gfile)) return (0);
+		gfile = rp;
+	} else {
+		/* not in root or no BitKeeper in pathname */
+		return (0);
 	}
-	return (0);
+	ret = (strneq(gfile, "BitKeeper/", 10) &&
+	    !strneq(gfile, "BitKeeper/triggers/", 19));
+	if (rp) free(rp);
+	return (ret);
 }
 
 /* ONLY call this from do_print */
