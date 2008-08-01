@@ -1111,7 +1111,10 @@ proc smerge {} \
 	set l [lindex $argv 0]
 	set r [lindex $argv 1]
 	set f [lindex $argv 2]
-	set ret [catch {exec bk smerge -Im -f $l $r $f > $smerge}]
+	if {[catch {exec bk smerge -Im -f $l $r $f > $smerge} error]} {
+		puts stderr $error
+		exit 1
+	}
 	set filename $f
 }
 
