@@ -50,6 +50,32 @@ test `find BitKeeper/BAM -type f -print | wc -l` -eq 3 || {
 }
 echo OK
 
+echo $N Take a clone of clone and see that it has a server ..........$NL
+cd "$HERE"
+bk clone $Q clone copy
+cd project
+bk lock -tr >L &
+bk lock -L
+LOCKURL=`cat L`
+cd ../copy
+bk BAM server $Q bk://localhost:$P/project
+cp "$BK" a
+bk new $Q -b a
+bk commit $Q -ybig
+bk push $Q bk://localhost:$P/clone 2> ERR && {
+	echo should have failed
+	cat ERR
+	bk _kill $LOCKURL
+	exit 1
+}
+bk _kill $LOCKURL
+grep -q "can't get lock" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+echo OK
+
 echo $N lclone should replicate the BAM data ........................$NL
 cd "$HERE"
 bk clone $Q -l project lclone
