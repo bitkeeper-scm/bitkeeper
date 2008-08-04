@@ -884,6 +884,11 @@ _rmgone() {
 		echo "rmgone: there is no gone file" 1>&2
 		exit 0
 	fi
+	if [ "X$BK_GONE" != "X" ]
+	then
+		echo "rmgone: rmgone is not supported with \$BK_GONE" 1>&2
+		exit 0
+	fi
 	bk -r prs -hr+ -nd':ROOTKEY:\001:SFILE:\001:GFILE:' | $AWK '-F\001' '
 	BEGIN {
 		while ("bk cat BitKeeper/etc/gone" | getline)

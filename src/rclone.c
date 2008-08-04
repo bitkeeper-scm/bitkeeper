@@ -94,7 +94,7 @@ rclone_main(int ac, char **av)
 	}
 	if (hasLocalWork(GONE)) {
 		fprintf(stderr,
-		    "clone: must commit local changes to " GONE "\n");
+		    "clone: must commit local changes to %s\n", GONE);
 		exit(1);
 	}
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);

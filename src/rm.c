@@ -120,9 +120,11 @@ gone_main(int ac, char **av)
 	char	tmpfile[MAXPATH];
 	FILE	*f;
 
-	while ((c =  getopt(ac, av, "q")) != -1) { 
+	while ((c =  getopt(ac, av, "gqs")) != -1) { 
 		switch (c) {
+		    case 'g': printf("%s\n", GONE); return (0);
 		    case 'q': quiet++; break;	/* doc 2.0 */
+		    case 's': printf("%s\n", SGONE); return (0);
 		    default: 
 usage:			      system("bk help -s gone");
 			      return (1);
@@ -167,8 +169,8 @@ sccs_gone(int quiet, FILE *f)
 		fprintf(stderr, "Can't find package root\n");
 		exit(1);
 	}
-	sprintf(s_gone, "%s/BitKeeper/etc/SCCS/s.gone", root);
-	sprintf(g_gone, "%s/BitKeeper/etc/gone", root);
+	sprintf(s_gone, "%s/%s", root, SGONE);
+	sprintf(g_gone, "%s/%s", root, GONE);
 
 	s = sccs_init(s_gone, SILENT);
 	assert(s);

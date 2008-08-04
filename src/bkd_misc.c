@@ -310,6 +310,18 @@ err:			if (zout) {
 			wnext = wbuf;
 			wtodo = bytes;
 		}
+		unless (fd1 || fd2) {
+			/*
+			 * bk is done, but we still need to consume stdin
+			 * XXX this is kinda busted as the user might transfer a
+			 *     bunch of data only to be given an error message.
+			 *     Better for remote.c to duplex reading and writing so
+			 *     it won't deadlock when the bkd sends and error and
+			 *     stops reading.
+			 */
+			wtodo = 0;
+			continue;
+		}
 		FD_ZERO(&rfds);
 		FD_ZERO(&wfds);
 		if (wtodo) FD_SET(fd0, &wfds);
@@ -317,7 +329,15 @@ err:			if (zout) {
 		if (fd2) FD_SET(fd2, &rfds);
 		if (select(bits, &rfds, &wfds, 0, 0) < 0) {
 			perror("select");
-			break;
+died:			if (fd1) {
+				close(fd1);
+				fd1 = 0;
+			}
+			if (fd2) {
+				close(fd2);
+				fd2 = 0;
+			}
+			continue;
 		}
 		if (wtodo && FD_ISSET(fd0, &wfds)) {
 			if ((i = write(fd0, wnext, wtodo)) > 0) {
@@ -325,7 +345,13 @@ err:			if (zout) {
 				wnext += i;
 			} else {
 				perror("write");
-				break;
+				/*
+				 * we failed to write to the child process
+				 * so we are going to assume it died and
+				 * follow the same path that select does
+				 * at this point.
+				 */
+				goto died;
 			}
 		}
 		if (FD_ISSET(fd1, &rfds)) {

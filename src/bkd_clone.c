@@ -83,7 +83,9 @@ cmd_clone(int ac, char **av)
 		goto out;
 	}
 	if (hasLocalWork(GONE)) {
-		out("ERROR-must commit local changes to " GONE "\n");
+		out("ERROR-must commit local changes to ");
+		out(GONE);
+		out("\n");
 		goto out;
 	}
 

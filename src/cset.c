@@ -626,7 +626,7 @@ csetlist(cset_t *cs, sccs *cset)
 	}
 	if (!cs->mark && hasLocalWork(GONE)) {
 		fprintf(stderr,
-		    "cset: must commit local changes to " GONE "\n");
+		    "cset: must commit local changes to %s\n", GONE);
 		cs->makepatch = 0;
 		goto fail;
 	}

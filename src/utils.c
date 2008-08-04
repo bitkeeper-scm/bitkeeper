@@ -1665,6 +1665,30 @@ scansize(char *size)
 	return (sz);
 }
 
+/*
+ * Allow override of the gone file so Scott McPeak at Coverity can try
+ * out his subsetting idea (per group gone file settings).
+ */
+char *
+goneFile(void)
+{
+	static	char *gone;
+
+	unless (gone) {
+		unless (gone = getenv("BK_GONE")) gone = "BitKeeper/etc/gone";
+	}
+	return (gone);
+}
+
+char *
+sgoneFile(void)
+{
+	static	char *sgone;
+
+	unless (sgone) sgone = name2sccs(goneFile());
+	return (sgone);
+}
+
 #if 0
 main()
 {

@@ -6,6 +6,20 @@ can not longer be set to an empty string.  So for example:
 won't work.  Use BK_NO_TRIGGERS=1 instead.
 
 ===============================================================================
+Release notes for BitKeeper version 4.1.2a (released 01-Aug-2008)
+
+This is a bugfix release.
+
+Fix bug where /home/USER is a symlink to the real home directory
+and bk used to refuse to create a $HOME/.bk dir.
+
+Fix a problem with BAM when using a BAM server that is locked
+in long transaction and another client tries to update the
+BAM server.  It used to timeout or hang and give an error
+message that was not too useful.  Now the client transaction
+completes with an error message that the BAM server is locked.
+
+===============================================================================
 Release notes for BitKeeper version 4.1.2 (released 04-Jun-2008)
 
 bk undo / clone -rREV
