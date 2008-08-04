@@ -81,4 +81,17 @@ else
        TKCONKEY=`tail -1 TKCONKEY`
 fi
 
-echo /build/obj/tcltk-`bk crypto -h "$TCLKEY-$TKKEY-$TKTABLEKEY-$TKTREECTRLKEY-$BWIDGETKEY-$TKCONKEY-$BUILDHASH"`.tgz
+if [ -d pcre ]
+then
+	test `(bk sfiles -cp pcre | wc -l)` -gt 0 && exit 1
+	PCREKEY=`bk prs -hnd:KEY: -r+ pcre/ChangeSet`
+	bk edit -q PCREKEY 2>/dev/null
+	echo '# Always delta this if there are diffs' > PCREKEY
+	echo $PCREKEY >> PCREKEY
+else
+	bk get -q PCREKEY
+        test -f PCREKEY || exit 1
+	PCREKEY=`tail -1 PCREKEY`
+fi
+
+echo /build/obj/tcltk-`bk crypto -h "$TCLKEY-$TKKEY-$TKTABLEKEY-$TKTREECTRLKEY-$BWIDGETKEY-$TKCONKEY-$PCREKEY-$BUILDHASH"`.tgz
