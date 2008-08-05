@@ -31,37 +31,41 @@ private struct {
 	datum	eachkey;	/* key of current $each */
 	char	*eachval;	/* val of eachkey in current iteration */
 	FILE	*out;		/* FILE* to receive output */
-	char	***buf;		/* lines array to receive output */
 	int	line;		/* current line in $each iteration */
 	int	tcl;		/* whether we are inside a $tcl construct */
 	sccs	*s;
 	delta	*d;
+	FILE	*flhs, *frhs;	/* tmp fmem handles to hold expressions */
 } _g[2];
 private	int	gindex;
 #define	g	_g[gindex]
 
-private void	dollar(int output, FILE *out, char ***buf);
+private void	dollar(int output, FILE *out);
 private void	err(char *msg);
-private void	evalId(FILE *out, char *** buf);
-private void	evalParenid(FILE *out, char ***buf, datum id);
+private void	evalId(FILE *out);
+private void	evalParenid(FILE *out, datum id);
 private int	expr(void);
 private int	expr2(op *next_tok);
 private char	*getnext(datum kw, nextln *state);
 private int	getParenid(datum *id);
 private void	stmtList(int output);
-private char	**string(op *next_tok);
+private char	*string(FILE *out, op *next_tok);
 
 void
-dspec_eval(FILE * out, char ***buf, sccs *s, delta *d, char *dspec)
+dspec_eval(FILE * out, sccs *s, delta *d, char *dspec)
 {
 	gindex = gindex ? 0 : 1;	// flip flop
-	bzero(&g, sizeof(g));
 	g.out = out;
-	g.buf = buf;
 	g.s = s;
 	g.d = d;
 	g.p = dspec;
 	g.start = dspec;
+	bzero(&g.eachkey, sizeof(g.eachkey));
+	g.eachval = 0;
+	g.line = 0;
+	g.tcl = 0;
+	/* we preserve any existing g.f[rl]hs */
+
 	stmtList(1);
 }
 
@@ -113,7 +117,6 @@ stmtList(int output)
 	char	c;
 	int	i;
 	FILE	*out = 0;
-	char	***buf = 0;
 	datum	id;
 	static int	depth = 0;
 
@@ -121,23 +124,20 @@ stmtList(int output)
 	 * output==1 means evaluate and output.	 output==0 means
 	 * evaluate but throw away.
 	 */
-	if (output) {
-		out = g.out;
-		buf = g.buf;
-	}
+	if (output) out = g.out;
 
 	++depth;
 	while (*g.p) {
 		switch (*g.p) {
 		    case '$':
-			dollar(output, out, buf);
+			dollar(output, out);
 			break;
 		    case ':':
-			evalId(out, buf);
+			evalId(out);
 			break;
 		    case '}':
 			if (depth == 1) {
-				show_s(g.s, out, buf, "}", 1);
+				show_s(g.s, out, "}", 1);
 				++g.p;
 			} else {
 				--depth;
@@ -160,13 +160,13 @@ stmtList(int output)
 				}
 				g.p += 2;
 			}
-			show_s(g.s, out, buf, &c, 1);
+			show_s(g.s, out, &c, 1);
 			break;
 		    default:
 			if (getParenid(&id)) {
-				evalParenid(out, buf, id);
+				evalParenid(out, id);
 			} else {
-				show_s(g.s, out, buf, g.p, 1);
+				show_s(g.s, out, g.p, 1);
 				++g.p;
 			}
 			break;
@@ -176,7 +176,7 @@ stmtList(int output)
 }
 
 private void
-dollar(int output, FILE *out, char ***buf)
+dollar(int output, FILE *out)
 {
 	int	rc;
 	static int	in_each = 0;
@@ -250,15 +250,15 @@ dollar(int output, FILE *out, char ***buf)
 		g.p += 5;
 		rc = g.tcl;
 		g.tcl = 0;
-		show_s(g.s, out, buf, "{", 1);
+		show_s(g.s, out, "{", 1);
 		g.tcl = rc + 1;
 		stmtList(output);
 		g.tcl = 0;
-		show_s(g.s, out, buf, "}", 1);
+		show_s(g.s, out, "}", 1);
 		g.tcl = rc;
 		if (*g.p++ != '}') err("missing }");
 	} else {
-		show_s(g.s, out, buf, "$", 1);
+		show_s(g.s, out, "$", 1);
 		g.p++;
 	}
 }
@@ -329,13 +329,13 @@ expr2(op *next_tok)
 		}
 		return (ret);
 	} else {
-		lhs = str_pullup(0, string(&op));
+		unless (g.flhs) g.flhs = fmem_open();
+		lhs = string(g.flhs, &op);
 		switch (op) {
 		    case T_RPAREN:
 		    case T_AND:
 		    case T_OR:
 			ret = *lhs;
-			free(lhs);
 			*next_tok = op;
 			return (ret);
 		    case T_EOF:
@@ -343,7 +343,8 @@ expr2(op *next_tok)
 		    default:
 			break;
 		}
-		rhs = str_pullup(0, string(next_tok));
+		unless (g.frhs) g.frhs = fmem_open();
+		rhs = string(g.frhs, next_tok);
 		switch (op) {
 		    case T_EQUALS:	ret =  streq(lhs, rhs); break;
 		    case T_NOTEQ:	ret = !streq(lhs, rhs); break;
@@ -356,83 +357,93 @@ expr2(op *next_tok)
 		    case T_EQTWID:	ret =  match_one(lhs, rhs, 1); break;
 		    default: assert(0); ret = 0; break;
 		}
-		free(lhs);
-		free(rhs);
 		return (ret);
 	}
 }
 
-private char **
-string(op *next_tok)
+/*
+ * evaluate a string a part of a conditional expression.
+ *
+ * f is a fmem FILE* that will hold the temporary result.  We are
+ * reusing this memory so we start with ftrunc() to throw away any
+ * existing data.
+ *
+ * A pointer into f's memory is returned.  This doesn't get free'd
+ * by the caller and remains vaild until the next time this function
+ * is called.
+ */
+private char *
+string(FILE *f, op *next_tok)
 {
-	char	**s = 0;
 	datum	id;
 
+	ftrunc(f, 0);
 	while (*g.p) {
 		if (g.p[0] == ':') {
-			evalId(0, &s);
+			evalId(f);
 			continue;
 		} else if (getParenid(&id)) {
-			evalParenid(0, &s, id);
+			evalParenid(f, id);
 			continue;
 		} else if (g.p[0] == ')') {
 			*next_tok = T_RPAREN;
-			return (s);
+			goto out;
 		} else if ((g.p[0] == '=') && (g.p[1] == '~')) {
 			*next_tok = T_EQTWID;
 			g.p += 2;
-			return (s);
+			goto out;
 		} else if (g.p[0] == '=') {
 			*next_tok = T_EQUALS;
 			++g.p;
-			return (s);
+			goto out;
 		} else if ((g.p[0] == '!') && (g.p[1] == '=')) {
 			*next_tok = T_NOTEQ;
 			g.p += 2;
-			return (s);
+			goto out;
 		} else if ((g.p[0] == ' ') &&
 		    (g.p[1] == '-') && (g.p[4] == ' ')) {
 			if ((g.p[2] == 'e') && (g.p[3] == 'q')) {
 				*next_tok = T_EQ;
 				g.p += 5;
-				return (s);
+				goto out;
 			} else if ((g.p[2] == 'n') && (g.p[3] == 'e')) {
 				*next_tok = T_NE;
 				g.p += 5;
-				return (s);
+				goto out;
 			} else if ((g.p[2] == 'g') && (g.p[3] == 't')) {
 				*next_tok = T_GT;
 				g.p += 5;
-				return (s);
+				goto out;
 			} else if ((g.p[2] == 'g') && (g.p[3] == 'e')) {
 				*next_tok = T_GE;
 				g.p += 5;
-				return (s);
+				goto out;
 			} else if ((g.p[2] == 'l') && (g.p[3] == 't')) {
 				*next_tok = T_LT;
 				g.p += 5;
-				return (s);
+				goto out;
 			} else if ((g.p[2] == 'l') && (g.p[3] == 'e')) {
 				*next_tok = T_LE;
 				g.p += 5;
-				return (s);
+				goto out;
 			}
 		} else if ((g.p[0] == '&') && (g.p[1] == '&')) {
 			*next_tok = T_AND;
 			g.p += 2;
-			return (s);
+			goto out;
 		} else if ((g.p[0] == '|') && (g.p[1] == '|')) {
 			*next_tok = T_OR;
 			g.p += 2;
-			return (s);
+			goto out;
 		} else if (g.p[0] == ' ') {
 			++g.p;
 			continue;
 		}
-		s = data_append(s, g.p++, 1, 0);
+		putc(*g.p, f);
+		++g.p;
 	}
 	*next_tok = T_EOF;
-	return (s);
+out:	return (fmem_getbuf(f, 0));
 }
 
 private int
@@ -460,7 +471,7 @@ getParenid(datum *id)
 }
 
 private void
-evalParenid(FILE *out, char ***buf, datum id)
+evalParenid(FILE *out, datum id)
 {
 	/*
 	 * Expand a (:ID:).  If the eachkey has a value for if id,
@@ -470,21 +481,21 @@ evalParenid(FILE *out, char ***buf, datum id)
 	 */
 	if ((id.dsize == g.eachkey.dsize) &&
 	    strneq(g.eachkey.dptr, id.dptr, id.dsize)) {
-		show_s(g.s, out, buf, g.eachval, strlen(g.eachval));
+		show_s(g.s, out, g.eachval, strlen(g.eachval));
 	} else {
-		show_s(g.s, out, buf, "(", 1);
-		if (kw2val(out, buf, id.dptr, id.dsize, g.s, g.d) < 0) {
-			show_s(g.s, out, buf, ":", 1);
-			show_s(g.s, out, buf, id.dptr, id.dsize);
-			show_s(g.s, out, buf, ":", 1);
+		show_s(g.s, out, "(", 1);
+		if (kw2val(out, id.dptr, id.dsize, g.s, g.d) < 0) {
+			show_s(g.s, out, ":", 1);
+			show_s(g.s, out, id.dptr, id.dsize);
+			show_s(g.s, out, ":", 1);
 		}
-		show_s(g.s, out, buf, ")", 1);
+		show_s(g.s, out, ")", 1);
 	}
 	g.p += id.dsize + 4;  /* move past ending ':)' */
 }
 
 private void
-evalId(FILE *out, char *** buf)
+evalId(FILE *out)
 {
 	/*
 	 * Call with g.p pointing to a ':'.  If what comes after is
@@ -497,12 +508,12 @@ evalId(FILE *out, char *** buf)
 	while (*c && (*c != ':')) ++c;
 
 	if (*c) {
-		if (kw2val(out, buf, id, c - id, g.s, g.d) >= 0) {
+		if (kw2val(out, id, c - id, g.s, g.d) >= 0) {
 			g.p = c + 1;  /* move past ending ':' */
 			return;
 		}
 	}
-	show_s(g.s, out, buf, ":", 1);
+	show_s(g.s, out, ":", 1);
 	++g.p;
 }
 
@@ -579,11 +590,13 @@ again:
 
 	/* Handle all single-line keywords. */
 	if (state->i == 1) {
-		char	**ret = 0;
+		FILE	*f = fmem_open();
 
 		/* First time in, get the keyword value. */
-		kw2val(0, &ret, kw.dptr, kw.dsize, g.s, g.d);
-		return (state->freeme = str_pullup(0, ret));
+		kw2val(f, kw.dptr, kw.dsize, g.s, g.d);
+		state->freeme = fmem_retbuf(f, 0);
+		fclose(f);
+		return (state->freeme);
 	} else {
 		/* Second time in, bail out. */
 		return (0);
@@ -593,15 +606,15 @@ again:
 
 
 void
-dspec_printeach(sccs *s, FILE *out, char ***vbuf)
+dspec_printeach(sccs *s, FILE *out)
 {
-	show_s(s, out, vbuf, g.eachval, strlen(g.eachval));
+	show_s(s, out, g.eachval, strlen(g.eachval));
 }
 
 void
-dspec_printline(sccs *s, FILE *out, char ***vbuf)
+dspec_printline(sccs *s, FILE *out)
 {
-	show_d(s, out, vbuf, "%d", g.line);
+	show_d(s, out, "%d", g.line);
 }
 
 private void
@@ -631,27 +644,29 @@ tclQuote(char *s, int len, FILE *f)
 }
 
 void
-show_d(sccs *s, FILE *out, char ***vbuf, char *format, int num)
+show_d(sccs *s, FILE *out, char *format, int num)
 {
-	if (out) {
-		fprintf(out, format, num);
-		s->prs_output = 1;
-	}
-	if (vbuf) *vbuf = str_append(*vbuf, aprintf(format, num), 1);
+	fprintf(out, format, num);
+	/*
+	 * The out==g.out test means that we are printing directly to
+	 * the prs output stream.  When it is not true we are probably
+	 * evaluating dspecs for a conditional expression.
+	 */
+	if (out == g.out) s->prs_output = 1;
 }
 
 void
-show_s(sccs *s, FILE *out, char ***vbuf, char *data, int len)
+show_s(sccs *s, FILE *out, char *data, int len)
 {
-	if (len == -1) len = strlen(data); /* special interface */
 	if (out) {
+		if (len == -1) len = strlen(data); /* special interface */
 		if (g.tcl) {
 			tclQuote(data, len, out);
 		} else {
 			fwrite(data, 1, len, out);
 		}
-		s->prs_output = 1;
+		/* see comment in show_d() about out==g.out */
+		if (out == g.out) s->prs_output = 1;
 	}
-	if (vbuf) *vbuf = data_append(*vbuf, data, len, 0);
 }
 

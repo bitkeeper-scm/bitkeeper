@@ -13374,7 +13374,6 @@ done:	free_pfile(&pf);
 /*
  * Given a PRS DSPEC keyword, get the associated string value
  * If out is non-null print to out
- * If vbuf is non-null, append the value to vbuf (vbuf size must be >= 1K)
  * If kw is not a keyword, return notKeyword
  * If kw has null value, return nullVal
  * Otherwise return strVal
@@ -13393,20 +13392,20 @@ done:	free_pfile(&pf);
  * the comment MUST appear before the {.
  */
 int
-kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
+kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 {
 	struct kwval *kwval;
 	char	*p, *q;
 	delta	*e;
 	char	*rev;
 
-#define	KW(x)	kw2val(out, vbuf, x, strlen(x), s, d)
-#define	fc(c)	show_d(s, out, vbuf, "%c", c)
-#define	fd(n)	show_d(s, out, vbuf, "%d", n)
-#define	fx(n)	show_d(s, out, vbuf, "0x%x", n)
-#define	f5d(n)	show_d(s, out, vbuf, "%05d", n)
-#define	fs(str)	show_s(s, out, vbuf, str, -1)
-#define	fsd(d)	show_s(s, out, vbuf, d.dptr, d.dsize)
+#define	KW(x)	kw2val(out, x, strlen(x), s, d)
+#define	fc(c)	show_d(s, out, "%c", c)
+#define	fd(n)	show_d(s, out, "%d", n)
+#define	fx(n)	show_d(s, out, "0x%x", n)
+#define	f5d(n)	show_d(s, out, "%05d", n)
+#define	fs(str)	show_s(s, out, str, -1)
+#define	fsd(d)	show_s(s, out, d.dptr, d.dsize)
 
 	/*
 	 * Allow keywords of the form "word|rev"
@@ -13425,14 +13424,14 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 	kwval = kw2val_lookup(kw, len);
 	unless (kwval) return notKeyword;
 
-	unless (out || vbuf) return (nullVal);
+	unless (out) return (nullVal);
 	switch (kwval->kwnum) {
 	case KW_each: /* each */ {
-		dspec_printeach(s, out, vbuf);
+		dspec_printeach(s, out);
 		return (strVal);
 	}
 	case KW_eachline: /* line */ {
-		dspec_printline(s, out, vbuf);
+		dspec_printline(s, out);
 		return (strVal);
 	}
 	case KW_Dt: /* Dt */ {
@@ -14949,6 +14948,7 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 	case KW_DIFFS_U: /* DIFFS_U */
 	case KW_DIFFS_UP: /* DIFFS_UP */ {
 		int	kind;
+		int	open = (s->state & S_SOPEN);
 
 		switch (kwval->kwnum) {
 		    default:
@@ -14957,25 +14957,9 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		    case KW_DIFFS_UP:	kind = DF_UNIFIED|DF_GNUp; break;
 		}
 		if (d == s->tree) return (nullVal);
-		if (out) {
-			sccs_diffs(s, d->rev, d->rev, SILENT, kind, out);
-		} else {
-			char	*cmd;
-			FILE	*f;
-			char	buf[BUFSIZ];
-
-			cmd = aprintf("bk diffs -%s%shR%s '%s'",
-			    kind == DF_DIFF ? "" : "u",
-			    kind & DF_GNUp ? "p" : "",
-			    d->rev, s->gfile);
-			unless (f = popen(cmd, "r")) {
-				free(cmd);
-				return (nullVal);
-			}
-			while (fnext(buf, f)) fs(buf);
-			pclose(f);
-			free(cmd);
-		}
+		unless (open) sccs_open(s, 0);
+		sccs_diffs(s, d->rev, d->rev, SILENT, kind, out);
+		unless (open) sccs_close(s);
 		return (strVal);
 	}
 
@@ -15061,7 +15045,7 @@ sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 	if (SET(s) && !(d->flags & D_SET) && !(flags & PRS_FORCE)) return (0);
 	s->prs_all = ((flags & PRS_ALL) != 0);
 	s->prs_output = 0;
-	dspec_eval(out, 0, s, d, dspec);
+	dspec_eval(out, s, d, dspec);
 	if (s->prs_output) {
 		s->prs_odd = !s->prs_odd;
 		if (flags & PRS_LF) fputc('\n', out);
@@ -15072,17 +15056,14 @@ sccs_prsdelta(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 char *
 sccs_prsbuf(sccs *s, delta *d, int flags, char *dspec)
 {
-	char	**buf = 0;
+	FILE	*f;
+	char	*ret;
 
-	if (d->type != 'D' && !(flags & (PRS_ALL|PRS_FORCE))) return (0);
-	if (SET(s) && !(d->flags & D_SET) && !(flags & PRS_FORCE)) return (0);
-	s->prs_all = ((flags & PRS_ALL) != 0);
-	dspec_eval(0, &buf, s, d, dspec);
-	if (data_length(buf)) {
-		s->prs_odd = !s->prs_odd;
-		if (flags & PRS_LF) buf = str_append(buf, "\n", 0);
-	}
-	return (str_pullup(0, buf));
+	f = fmem_open();
+	sccs_prsdelta(s, d, flags, dspec, f);
+	ret = fmem_retbuf(f, 0); /* FYI: returns "" if empty */
+	fclose(f);
+	return (ret);
 }
 
 
