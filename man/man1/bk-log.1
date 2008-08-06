@@ -294,6 +294,23 @@ The
 .V GB
 variable may not be used in a 
 .BR $each(\|) .
+.SS VARIABLES
+When the
+.BR "bk log"
+command is run over multiple revisions of one or more files, the data
+specification ("dspec") is evaluated once for each revision,
+and it sometimes is useful to use dspec variables, denoted as '$0', '$1', up to '$9',
+to remember values across revisions or files.
+A variable is assigned a value with:
+.DS
+${0=<dspec>}
+.DE
+where <dspec> is a recursively evaluated data specification.
+Once assigned, a variable retains its value for the remainder of the
+.BR "bk log"
+command.
+Variables start out as empty strings, and
+when re-assigned the old value is discarded.
 .SS KEYWORDS
 Some fields are per file and are marked with
 .B F

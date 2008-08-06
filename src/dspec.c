@@ -38,9 +38,12 @@ private struct {
 	FILE	*flhs, *frhs;	/* tmp fmem handles to hold expressions */
 } _g[2];
 private	int	gindex;
-#define	g	_g[gindex]
+#define	g	(_g[gindex])
 
-private void	dollar(int output, FILE *out);
+/* Globals for $0-$9 variables (using fmem). */
+private FILE	*fvars[10];
+
+private void	dollar(FILE *out);
 private void	err(char *msg);
 private void	evalId(FILE *out);
 private void	evalParenid(FILE *out, datum id);
@@ -48,7 +51,7 @@ private int	expr(void);
 private int	expr2(op *next_tok);
 private char	*getnext(datum kw, nextln *state);
 private int	getParenid(datum *id);
-private void	stmtList(int output);
+private void	stmtList(FILE *out);
 private char	*string(FILE *out, op *next_tok);
 
 void
@@ -66,7 +69,7 @@ dspec_eval(FILE * out, sccs *s, delta *d, char *dspec)
 	g.tcl = 0;
 	/* we preserve any existing g.f[rl]hs */
 
-	stmtList(1);
+	stmtList(g.out);
 }
 
 /*
@@ -78,10 +81,12 @@ dspec_eval(FILE * out, sccs *s, delta *d, char *dspec)
  * <stmt>      -> $if(<expr>){<stmt_list>}[[$else{<stmt_list>}]]
  *	       -> $unless(<expr>){<stmt_list>}[[$else{<stmt_list>}]]
  *	       -> $each(:ID:){<stmt_list>}
+ *	       -> ${<num>=<stmt_list>}
  *	       -> char
  *	       -> escaped_char
  *	       -> :ID:
  *	       -> (:ID:)
+ *	       -> $<num>
  * <expr>      -> <expr2> {{ <logop> <expr2> }}
  * <expr2>     -> <str> <relop> <str>
  *	       -> <str>
@@ -92,6 +97,7 @@ dspec_eval(FILE * out, sccs *s, delta *d, char *dspec)
  *	       -> escaped_char
  *	       -> :ID:
  *	       -> (:ID:)
+ *	       -> $<num>
  * <logop>     -> " && " | " || "
  * <relop>     -> "=" | "!=" | "=~" 
  *	       -> " -eq " | " -ne " | " -gt " | " -ge " | " -lt " | " -le "
@@ -107,30 +113,25 @@ dspec_eval(FILE * out, sccs *s, delta *d, char *dspec)
  * attributes which hold the expression values and the next token
  * of lookahead in some cases.	It has been written for speed.
  *
+ * NOTE: out==0 means evaluate but throw away.
+ *
  * Written by Rob Netzer <rob@bolabs.com> with some hacking
  * by wscott & lm.
  */
 
 private void
-stmtList(int output)
+stmtList(FILE *out)
 {
 	char	c;
 	int	i;
-	FILE	*out = 0;
 	datum	id;
 	static int	depth = 0;
-
-	/*
-	 * output==1 means evaluate and output.	 output==0 means
-	 * evaluate but throw away.
-	 */
-	if (output) out = g.out;
 
 	++depth;
 	while (*g.p) {
 		switch (*g.p) {
 		    case '$':
-			dollar(output, out);
+			dollar(out);
 			break;
 		    case ':':
 			evalId(out);
@@ -176,9 +177,11 @@ stmtList(int output)
 }
 
 private void
-dollar(int output, FILE *out)
+dollar(FILE *out)
 {
-	int	rc;
+	int	num, rc;
+	size_t	len;
+	char	*p;
 	static int	in_each = 0;
 
 	if (strneq("$if(", g.p, 4)) {
@@ -186,11 +189,11 @@ dollar(int output, FILE *out)
 		rc = expr();
 		if (*g.p++ != ')') err("missing )");
 		if (*g.p++ != '{') err("missing {");
-		stmtList(rc && output);
+		stmtList(rc ? out : 0);
 		if (*g.p++ != '}') err("missing }");
 		if (strneq("$else{", g.p, 6)) {
 			g.p += 6;
-			stmtList(!rc && output);
+			stmtList(rc ? 0 : out);
 			if (*g.p++ != '}') err("missing }");
 		}
 	} else if (strneq("$each(", g.p, 6)) {
@@ -224,7 +227,7 @@ dollar(int output, FILE *out)
 		g.s->prs_join = 0;
 		while (g.eachval = getnext(g.eachkey, &state)) {
 			g.p = bufptr;
-			stmtList(output);
+			stmtList(out);
 			++g.line;
 		}
 		g.eachkey.dptr = 0;
@@ -239,11 +242,11 @@ dollar(int output, FILE *out)
 		rc = !expr();
 		if (*g.p++ != ')') err("missing )");
 		if (*g.p++ != '{') err("missing {");
-		stmtList(rc && output);
+		stmtList(rc ? out : 0);
 		if (*g.p++ != '}') err("missing }");
 		if (strneq("$else{", g.p, 6)) {
 			g.p += 6;
-			stmtList(!rc && output);
+			stmtList(rc ? 0 : out);
 			if (*g.p++ != '}') err("missing }");
 		}
 	} else if (strneq("$tcl{", g.p, 5)) {
@@ -252,11 +255,37 @@ dollar(int output, FILE *out)
 		g.tcl = 0;
 		show_s(g.s, out, "{", 1);
 		g.tcl = rc + 1;
-		stmtList(output);
+		stmtList(out);
 		g.tcl = 0;
 		show_s(g.s, out, "}", 1);
 		g.tcl = rc;
 		if (*g.p++ != '}') err("missing }");
+	} else if ((g.p[0] == '$') && (g.p[1] == '{')) {
+		g.p += 2;
+		unless (isdigit(*g.p)) err("expected digit");
+		num = *g.p++ - '0';
+		unless (*g.p++ == '=') err("missing =");
+		/*
+		 * Recurse to parse the right-hand side of the ${n=<stmt_list>}
+		 * and put the output into the $n fmem.
+		 */
+		if (out) {
+			FILE	*memfile = fmem_open();
+
+			stmtList(memfile);
+			if (fvars[num]) fclose(fvars[num]);
+			fvars[num] = memfile;
+		} else {
+			stmtList(0);	/* ignore */
+		}
+		unless (*g.p++ == '}') err("missing }");
+	} else if ((g.p[0] == '$') && isdigit(g.p[1])) {
+		num = g.p[1] - '0';
+		g.p += 2;
+		if (out && fvars[num]) {
+			p = fmem_getbuf(fvars[num], &len);
+			show_s(g.s, out, p, len);
+		}
 	} else {
 		show_s(g.s, out, "$", 1);
 		g.p++;
@@ -375,6 +404,9 @@ expr2(op *next_tok)
 private char *
 string(FILE *f, op *next_tok)
 {
+	int	num;
+	size_t	len;
+	char	*p;
 	datum	id;
 
 	ftrunc(f, 0);
@@ -438,8 +470,16 @@ string(FILE *f, op *next_tok)
 		} else if (g.p[0] == ' ') {
 			++g.p;
 			continue;
+		} else if ((g.p[0] == '$') && isdigit(g.p[1])) {
+			num = g.p[1] - '0';
+			g.p += 2;
+			if (fvars[num]) {
+				p = fmem_getbuf(fvars[num], &len);
+				show_s(g.s, f, p, len);
+			}
+			continue;
 		}
-		putc(*g.p, f);
+		show_s(g.s, f, g.p, 1);
 		++g.p;
 	}
 	*next_tok = T_EOF;
@@ -660,6 +700,7 @@ show_s(sccs *s, FILE *out, char *data, int len)
 {
 	if (out) {
 		if (len == -1) len = strlen(data); /* special interface */
+		unless (len) return;
 		if (g.tcl) {
 			tclQuote(data, len, out);
 		} else {
