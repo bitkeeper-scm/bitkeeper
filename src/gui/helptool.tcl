@@ -546,7 +546,7 @@ proc widgets {} \
 		set x [winfo height .text.help]
 		# This gets executed once, when we know how big the text is
 		if {$firstConfig == 1} {
-			set h [winfo height .text.help]
+			set h [winfo reqheight .text.help]
 			set pixelsPerLine [expr {$h / $gc(help.height)}]
 			set firstConfig 0
 		}

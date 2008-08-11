@@ -169,10 +169,10 @@ proc edit_widgets {} \
 	bind .edit.t.t <Configure> {
 		global gc firstEditConfg
 
-		set x [winfo height .edit.t.t]
+		set x [winfo reqheight .edit.t.t]
 		# This gets executed once, when we know how big the text is
 		if {$firstEditConfg == 1} {
-			set h [winfo height .edit.t.t]
+			set h [winfo reqheight .edit.t.t]
 			set pixelsPerLine [expr {$h / $gc(ci.editHeight)}]
 			set firstEditConfg 0
 		}

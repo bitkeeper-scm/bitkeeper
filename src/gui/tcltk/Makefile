@@ -60,9 +60,9 @@ DDEVERSION := 1.3
 REGVERSION := 1.2
 TKTABLE := Tktable2.9
 LIBTKTABLE := lib$(TKTABLE)$(SO)
-TREECTRL := treectrl2.2.2
+TREECTRL := treectrl2.2.6
 LIBTREECTRL := libtreectrl2.2$(SO)
-BWIDGET := BWidget1.7
+BWIDGET := BWidget1.8
 TCLBUILD := ../build/tcl/Tcl.framework
 TKBUILD  := ../build/tk/Tk.framework
 WISHPATH := build/tk/Wish.app
@@ -100,6 +100,35 @@ all: version.sh ../../tclkey.h
 	$(Q)$(MAKE) verify
 	$(Q)$(MAKE) rm_doc
 	$(Q)$(MAKE) install
+
+srcs: 
+	$(if $(Q),@echo Fetching the TCL module source: start,)
+	-$(Q)bk get $(QUIET) -S
+	$(Q)test -d tcl || { \
+	    $(if $(Q),echo Fetching tcl,:); \
+	    bk clone $(QUIET) -r`tail -1 TCLKEY` `cat TCLURL` tcl; }
+	$(Q)test -d tk || bk clone $(QUIET) -r`tail -1 TKKEY` `cat TKURL` tk
+	$(Q)test -d tktable || { \
+	    $(if $(Q),echo Fetching tktable,:); \
+	    bk clone $(QUIET) -r`tail -1 TKTABLEKEY` \
+	    bk://data.bitmover.com/tcl/tktable.bk tktable; }
+	$(Q)test -d tktreectrl || { \
+	    $(if $(Q),echo Fetching tktreectrl,:); \
+	    bk clone $(QUIET) -r`tail -1 TKTREECTRLKEY` \
+	    bk://data.bitmover.com/tcl/tktreectrl.bk tktreectrl; }
+	$(Q)test -d bwidget || { \
+	    $(if $(Q),echo Fetching bwidget,:); \
+	    : bk clone $(QUIET) -r`tail -1 BWIDGETKEY` \
+	    bk://data.bitmover.com/tcl/bwidget.bk bwidget; }
+	$(Q)test -d tkcon || { \
+	    $(if $(Q),echo Fetching tkcon,:); \
+	    bk clone $(QUIET) -r`tail -1 TKCONKEY` \
+	    bk://data.bitmover.com/tcl/tkcon.bk tkcon; }
+	$(if $(Q),@echo Fetching the TCL module source: done,)
+
+src-check: src-check.sh
+	@make -s srcs
+	@./src-check.sh
 
 tcl/$S/Makefile: tcl/$S/configure Makefile
 	$(if $(Q),@echo Configuring Tcl,)
