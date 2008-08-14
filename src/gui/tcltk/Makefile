@@ -29,12 +29,16 @@ else
 		SINGLE_MODULE := "LDFLAGS=-single_module"
 		ENABLE_64BIT=
 		ifeq "$(shell uname -p)" "G5"
-		    ENABLE_64BIT=--enable-64bit
+			ENABLE_64BIT=--enable-64bit
 		endif
 	else
-	    ifeq "$(shell uname -m)" "x86_64"
-	        ENABLE_64BIT=--enable-64bit
-        endif
+		ifeq "$(shell uname -m)" "x86_64"
+			ENABLE_64BIT=--enable-64bit
+		endif
+	endif
+	# No rpath on freebsd 2.2.8
+	ifeq "$(shell uname -r)" "2.2.8-RELEASE"
+		SHARED := $(SHARED) --disable-rpath
 	endif
 endif
 
