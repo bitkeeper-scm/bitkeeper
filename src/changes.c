@@ -34,14 +34,12 @@ private struct {
 
 	RANGE	rargs;
 	FILE	*fmem;		/* in-mem output buffering */
+	FILE	*fcset;		/* save cset for ordering */
 } opts;
 
 typedef struct slog {
-	time_t	date;
-	char	*gfile;
-	char	*log;
-	delta	*delta;
-	ser_t	serial;
+	sccs	*s;
+	delta	*d;
 } slog;
 
 /* per-repo state */
@@ -415,11 +413,15 @@ done:
 }
 
 /*
- * XXX May need to change the @ to BK_FS in the following dspec
+ * dspec vars
+ *    $0 = user@host in last cset
+ *    $1 = user@host for this delta
  */
 #define	DSPEC	":INDENT::DPN:@:I:" \
+	        "${1=:P:$if(:HT:){@:HT:}}" \
 		"$if(:CHANGESET: && !:COMPONENT:){" \
-		", :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}}" \
+		", :Dy:-:Dm:-:Dd: :T::TZ:, $1${0=$1}}" \
+	        "$else{$if($0!=$1){, $1}}" \
 		"$unless(:CHANGESET:){ +:LI: -:LD:}\n" \
 		"$each(:C:){:INDENT:  (:C:)\n}" \
 		"$each(:TAG:){  TAG: (:TAG:)\n}" \
@@ -562,12 +564,14 @@ doit(int dash)
 	if (opts.doComp && opts.filt) {
 		opts.fmem = fmem_open();
 	}
+	if (opts.doComp || opts.verbose) opts.fcset = fmem_open();
 	/* capture the comments, for the csets we care about */
 	for (e = s->rstop; e; e = e->next) {
 		if (e->flags & D_SET) comments_load(s, e);
 		if (e == s->rstart) break;
 	}
 	cset(state, s, 0, stdout, spec);
+	if (opts.fcset) fclose(opts.fcset);
 	if (opts.fmem) fclose(opts.fmem);
 	if (opts.html) {
 		fprintf(stdout, "</td></tr></table></table></body></html>\n");
@@ -627,9 +631,9 @@ dateback(const void *a, const void *b)
 
 	d1 = *((slog**)a);
 	d2 = *((slog**)b);
-	if (cmp = (d2->date - d1->date)) return (cmp);
-	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
-	return (d2->serial - d1->serial);
+	if (cmp = (d2->d->date - d1->d->date)) return (cmp);
+	if (cmp = strcmp(d1->s->gfile, d2->s->gfile)) return (cmp);
+	return (d2->d->serial - d1->d->serial);
 }
 
 private int
@@ -640,9 +644,9 @@ dateforw(const void *a, const void *b)
 
 	d1 = *((slog**)a);
 	d2 = *((slog**)b);
-	if (cmp = (d1->date - d2->date)) return (cmp);
-	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
-	return (d1->serial - d2->serial);
+	if (cmp = (d1->d->date - d2->d->date)) return (cmp);
+	if (cmp = strcmp(d1->s->gfile, d2->s->gfile)) return (cmp);
+	return (d1->d->serial - d2->d->serial);
 }
 
 /*
@@ -656,9 +660,9 @@ strback(const void *a, const void *b)
 
 	d1 = *((slog**)a);
 	d2 = *((slog**)b);
-	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
-	if (cmp = (d2->date - d1->date)) return (cmp);
-	return (d2->serial - d1->serial);
+	if (cmp = strcmp(d1->s->gfile, d2->s->gfile)) return (cmp);
+	if (cmp = (d2->d->date - d1->d->date)) return (cmp);
+	return (d2->d->serial - d1->d->serial);
 }
 
 /* mostly same as dateforw - swap gfile and time stamp check */
@@ -670,13 +674,13 @@ strforw(const void *a, const void *b)
 
 	d1 = *((slog**)a);
 	d2 = *((slog**)b);
-	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
-	if (cmp = (d1->date - d2->date)) return (cmp);
-	return (d1->serial - d2->serial);
+	if (cmp = strcmp(d1->s->gfile, d2->s->gfile)) return (cmp);
+	if (cmp = (d1->d->date - d2->d->date)) return (cmp);
+	return (d1->d->serial - d2->d->serial);
 }
 
 private	void
-dumplog(char **list, FILE *f)
+dumplog(char **list, delta *cset, char *dspec, int flags, FILE *f)
 {
 	slog	*ll;
 	int	i;
@@ -692,9 +696,8 @@ dumplog(char **list, FILE *f)
 	 */
 	EACH(list) {
 		ll = (slog *)list[i];
-		fprintf(f, "%s", ll->log);
-		free(ll->log);
-		free(ll->gfile);
+		ll->s->changes_cset = cset; /* pass cset pathname to :DPN: */
+		sccs_prsdelta(ll->s, ll->d, flags, dspec, f);
 		free(ll);
 	}
 	freeLines(list, 0);
@@ -738,7 +741,7 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
  * It collect all the deltas inside a changeset and stuff them to "list".
  */
 private char **
-collectDelta(sccs *s, delta *d, char **list, char *dspec, int flags)
+collectDelta(sccs *s, delta *d, char **list)
 {
 	slog	*ll;
 
@@ -751,10 +754,8 @@ collectDelta(sccs *s, delta *d, char **list, char *dspec, int flags)
 		if (d->flags & D_SET) {
 			/* add delta to list */
 			ll = new(slog);
-			ll->log = sccs_prsbuf(s, d, flags, dspec);
-			ll->date = d->date;
-			ll->gfile = strdup(s->gfile);
-			ll->serial = d->serial;
+			ll->s = s;
+			ll->d = d;
 			list = addLine(list, ll);
 
 			d->flags &= ~D_SET;
@@ -879,7 +880,7 @@ loadcset(sccs *cset)
 private int
 cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 {
-	int	flags = opts.all ? PRS_ALL : 0;
+	int	flags = PRS_FORCE; /* skip checks in sccs_prsdelta(), no D_SET*/
 	int	iflags = INIT_NOCKSUM;
 	int	i, j, found;
 	char	**keys, **csets = 0;
@@ -897,6 +898,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 
 	assert(dspec);
 	if (opts.newline) flags |= PRS_LF; /* for sccs_prsdelta() */
+	if (opts.all) flags |= PRS_ALL;	   /* force s->prs_all */
 
 	/* Create an empty rstate if it doesn't already exist */
 	hash_insert(state, &sc->proj, sizeof(project *),
@@ -968,7 +970,15 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	EACH_INDEX(csets, j) {
 		e = (delta *)csets[j];
 
-		unless (opts.doComp || opts.verbose) {
+		if (opts.doComp || opts.verbose) {
+			ftrunc(opts.fcset, 0);
+			if (opts.keys) {
+				sccs_pdelta(sc, e, opts.fcset);
+				fputc('\n', opts.fcset);
+			} else {
+				sccs_prsdelta(sc, e, flags, dspec, opts.fcset);
+			}
+		} else {
 			if (opts.keys) {
 				sccs_pdelta(sc, e, f);
 				fputc('\n', f);
@@ -1012,7 +1022,6 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 				}
 				continue;
 			}
-			s->changes_cset = e; /* pass cset pathname to :DPN: */
 			if (CSET(s) && !proj_isComponent(s->proj)) continue;
 			unless (d = sccs_findKey(s, dkey)) {
 				if (gone(dkey, rstate->goneDB)) continue;
@@ -1036,9 +1045,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 			 * when this function returns, "list" will contain
 			 * all member deltas/dspec in "s" for this cset
 			 */
-			if (opts.verbose) {
-				list = collectDelta(s, d, list, dspec, flags);
-			}
+			if (opts.verbose) list = collectDelta(s, d, list);
 		}
 		/*
 		 * if we have sub-components then we must be in the
@@ -1054,15 +1061,13 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		}
 		if (!opts.filt ||
 		    (keys && (!opts.prodOnly || proj_isProduct(sc->proj)))) {
-			if (opts.keys) {
-				sccs_pdelta(sc, e, f);
-				fputc('\n', f);
-			} else {
-				sccs_prsdelta(sc, e, flags, dspec, f);
-			}
+			/* write cset data saved above */
+			buf = fmem_getbuf(opts.fcset, &len);
+			fwrite(buf, 1, len, f);
 		}
 		if (found) rc = 1; /* Remember we printed output */
-		dumplog(list, f); /* sort file dspec, print it, then free it */
+		/* sort file deltas, print it, then free it */
+		dumplog(list, e, dspec, flags, f);
 		if (fflush(f)) break;
 
 		/*

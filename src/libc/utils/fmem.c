@@ -67,6 +67,7 @@ ftrunc(FILE *f, off_t offset)
 
 	TRACE("ftrunc(%p, %d)", f, (int)offset);
 
+	fflush(f);
 	if (f->_close == fmem_close) {
 		/* this is a FMEM*, trunc but don't free memory */
 		fm = f->_cookie;
@@ -78,7 +79,6 @@ ftrunc(FILE *f, off_t offset)
 		rc = 0;
 	} else {
 		/* Assume it is a normal FILE* */
-		fflush(f);
 		rc = ftruncate(fileno(f), offset);
 	}
 	return (rc);
