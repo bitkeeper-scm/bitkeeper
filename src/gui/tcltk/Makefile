@@ -13,6 +13,7 @@ ifeq "$(OSTYPE)" "msys"
 	STRIP := true
 	XFTSUPPORT :=
 	SHARED := --enable-shared
+	PCRE_OBJ:= bin/tcl85.dll
 else
 	S := unix
 	EXE :=
@@ -22,6 +23,7 @@ else
 #	Once we solve the font issues, we can turn on True Type Font support
 #	XFTSUPPORT := --enable-xft
 	SHARED := --disable-shared
+	PCRE_OBJ:= bin/tclsh
 	ifeq "$(shell uname)" "Darwin"
 		AQUA := 1
 		BKAPP=bin/BitKeeper.app
@@ -67,7 +69,6 @@ BWIDGET := BWidget1.7
 TCLBUILD := ../build/tcl/Tcl.framework
 TKBUILD  := ../build/tk/Tk.framework
 WISHPATH := build/tk/Wish.app
-PCRE	:= --enable-pcre --with-pcre-include=../../pcre --with-pcre-lib=../../pcre/.libs
 EXTENSIONS := lib/$(TKTABLE)/$(LIBTKTABLE) \
 	      lib/$(TREECTRL)/$(LIBTREECTRL) \
 	      lib/$(BWIDGET)/pkgIndex.tcl \
@@ -79,7 +80,7 @@ AQUAEXTENSIONS := $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE) \
 endif
 
 LIBTOMCRYPT=$(BKROOT)/src/tomcrypt/libtomcrypt.a
-LIBPCRE=$(BKROOT)/src/gui/tcltk/pcre/.libs/libpcre.a
+LIBPCRE=$(BKROOT)/src/gui/tcltk/pcre/local/lib/libpcre.a
 
 CC := gcc
 LD := gcc
@@ -109,14 +110,15 @@ all: version.sh ../../tclkey.h
 tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 	$(if $(Q),@echo Configuring Tcl,)
 	$(Q)cd tcl/$S; \
-	./configure $(QUIET) --disable-info-body $(PCRE) $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
+	./configure $(QUIET) \
+	    --disable-info-body --enable-pcre --with-pcre=../../pcre/local \
+	    $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
 
 tk/$S/Makefile: tk/$S/configure Makefile
 	$(if $(Q),@echo Configuring Tk,)
-	@echo `pwd`
 	$(Q)cd tk/$S; \
-	./configure $(QUIET) $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) \
-	    $(SYMBOLS)
+	./configure $(QUIET) \
+	    $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY TCLURL
@@ -130,18 +132,23 @@ tk/$S/configure: TKKEY TKURL
 	$(Q)test -d tk || bk clone -r`tail -1 TKKEY` `cat TKURL` tk
 	$(Q)(cd tk && bk -Ur get -qS)
 
+pcre: $(LIBPCRE)
+
+$(LIBPCRE): pcre/Makefile Makefile
+	$(if $(Q), @echo Building PCRE,)
+	$(Q)(cd pcre && $(MAKE) && \
+	    $(MAKE) prefix= exec_prefix= DESTDIR="`pwd`"/local/ \
+		libdir=lib bindir=bin includedir=include install)
+
+pcre/Makefile: pcre/configure Makefile
+	$(if $(Q), @echo Configuring PCRE,)
+	$(Q)(cd pcre && \
+	    ./configure $(QUIET) --disable-cpp --disable-shared  --prefix=)
+
 pcre/configure: PCREKEY PCREURL Makefile
 	$(if $(Q), @echo Cloning PCRE,)
 	$(Q)test -d pcre || bk clone -r`tail -1 PCREKEY` `cat PCREURL` pcre
 	$(Q)(cd pcre && bk -Ur get -qS)
-
-pcre/Makefile: pcre/configure Makefile
-	$(if $(Q), @echo Configuring PCRE,)
-	$(Q)(cd pcre && ./configure $(QUIET) --disable-cpp --disable-shared  --prefix=)
-
-$(LIBPCRE): pcre/Makefile Makefile
-	$(if $(Q), @echo Building PCRE,)
-	$(Q)(cd pcre && make)
 
 # fetch tktable subdirectory if needed
 tktable/configure: TKTABLEKEY
@@ -293,6 +300,7 @@ bin/tclsh$(EXE): tcl/$S/Makefile
 	fi
 	rm -rf include usr lib/tcl$(TCLVERSION)/tcltest*
 	$(STRIP) bin/tclsh$(EXE)
+	strings -a $(PCRE_OBJ) | grep -q "pcre_exec"
 
 bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	rm -rf bin/bkgui$(EXE) lib/tk*
@@ -315,7 +323,8 @@ mkapp: FORCE
 
 bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) bin/bkgui$(EXE) mkapp
 	$(MAKE) -C tcl/macosx XLIBS="$(LIBTOMCRYPT)" \
-	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root` --disable-info-body" embedded
+	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root` --disable-info-body \
+	    --enable-pcre --with-pcre=../../../pcre/local" embedded
 	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root`" embedded
 	./mkapp BitKeeper 1.0 BkAp "BitMover, Inc" com.bitmover.bk "$(WISHPATH)"
