@@ -72,3 +72,22 @@ if [ $? -ne 0 ]; then
 fi
 echo "OK"
 
+echo $N Checking for PCRE............................................$NL
+bk guitest >GOT 2>&1 <<'EOF'
+L {
+pcre()
+{
+	string s[] = split("axbxc", "x");
+	if (defined(s[0])) {
+		printf("PCRE is working.\n");
+	} else {
+		printf("PCRE not present.\n");
+	}
+}
+}
+pcre
+exit 0
+EOF
+echo "PCRE is working." >WANT
+cmpfiles WANT GOT
+echo OK

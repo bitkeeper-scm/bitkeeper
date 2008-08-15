@@ -63,3 +63,20 @@ if [ $? -ne 0 ]; then echo failed ; exit 1; fi
 echo OK
 
 fi
+
+echo $N Test that PCRE is working....................................$NL
+cat <<EOF > pcre.l
+main()
+{
+	string s[] = split("axbxc", "x");
+	if (defined(s[0])) {
+		printf("PCRE is working.\n");
+	} else {
+		printf("PCRE not present.\n");
+	}
+}
+EOF
+bk _tclsh pcre.l 2>ERR >GOT
+echo "PCRE is working." >WANT
+cmpfiles WANT GOT
+echo OK

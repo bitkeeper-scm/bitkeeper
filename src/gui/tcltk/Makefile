@@ -13,6 +13,7 @@ ifeq "$(OSTYPE)" "msys"
 	STRIP := true
 	XFTSUPPORT :=
 	SHARED := --enable-shared
+	PCRE_OBJ:= bin/tcl85.dll
 else
 	S := unix
 	EXE :=
@@ -22,6 +23,7 @@ else
 #	Once we solve the font issues, we can turn on True Type Font support
 #	XFTSUPPORT := --enable-xft
 	SHARED := --disable-shared
+	PCRE_OBJ:= bin/tclsh
 	ifeq "$(shell uname)" "Darwin"
 		AQUA := 1
 		BKAPP=bin/BitKeeper.app
@@ -63,6 +65,7 @@ else
 DDEVERSION := 1.3
 REGVERSION := 1.2
 TKTABLE := Tktable2.9
+
 LIBTKTABLE := lib$(TKTABLE)$(SO)
 TREECTRL := treectrl2.2.6
 LIBTREECTRL := libtreectrl2.2$(SO)
@@ -79,6 +82,9 @@ AQUAEXTENSIONS := $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE) \
 		  $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl \
 		  $(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl
 endif
+
+LIBTOMCRYPT=$(BKROOT)/src/tomcrypt/libtomcrypt.a
+LIBPCRE=$(BKROOT)/src/gui/tcltk/pcre/local/lib/libpcre.a
 
 CC := gcc
 LD := gcc
@@ -134,32 +140,55 @@ src-check: src-check.sh
 	@make -s srcs
 	@./src-check.sh
 
-tcl/$S/Makefile: tcl/$S/configure Makefile
+tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 	$(if $(Q),@echo Configuring Tcl,)
 	$(Q)cd tcl/$S; \
-	./configure $(QUIET) --disable-info-body $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
+	./configure $(QUIET) \
+	    --disable-info-body --enable-pcre --with-pcre=../../pcre/local \
+	    $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
 
 tk/$S/Makefile: tk/$S/configure Makefile
 	$(if $(Q),@echo Configuring Tk,)
 	$(Q)cd tk/$S; \
-	./configure $(QUIET) $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) \
-	    $(SYMBOLS)
+	./configure $(QUIET) \
+	    $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY TCLURL
-	test -d tcl || bk clone -r`tail -1 TCLKEY` `cat TCLURL` tcl
-	cd tcl; bk -Ur get -qS
+	$(if $(Q), @echo Cloning Tcl,)
+	$(Q)test -d tcl || bk clone -r`tail -1 TCLKEY` `cat TCLURL` tcl
+	$(Q)(cd tcl && bk -Ur get -qS)
 
 # fetch tk subdirectory if needed
 tk/$S/configure: TKKEY TKURL
-	test -d tk || bk clone -r`tail -1 TKKEY` `cat TKURL` tk
-	cd tk; bk -Ur get -qS
+	$(if $(Q), @echo Cloning Tk,)
+	$(Q)test -d tk || bk clone -r`tail -1 TKKEY` `cat TKURL` tk
+	$(Q)(cd tk && bk -Ur get -qS)
+
+pcre: $(LIBPCRE)
+
+$(LIBPCRE): pcre/Makefile Makefile
+	$(if $(Q), @echo Building PCRE,)
+	$(Q)(cd pcre && $(MAKE) && \
+	    $(MAKE) prefix= exec_prefix= DESTDIR="`pwd`"/local/ \
+		libdir=lib bindir=bin includedir=include install)
+
+pcre/Makefile: pcre/configure Makefile
+	$(if $(Q), @echo Configuring PCRE,)
+	$(Q)(cd pcre && \
+	    ./configure $(QUIET) --disable-cpp --disable-shared  --prefix=)
+
+pcre/configure: PCREKEY PCREURL Makefile
+	$(if $(Q), @echo Cloning PCRE,)
+	$(Q)test -d pcre || bk clone -r`tail -1 PCREKEY` `cat PCREURL` pcre
+	$(Q)(cd pcre && bk -Ur get -qS)
 
 # fetch tktable subdirectory if needed
 tktable/configure: TKTABLEKEY
-	test -d tktable || bk clone -r`tail -1 TKTABLEKEY` \
+	$(if $(Q), @echo Cloning TKTable,)
+	$(Q)test -d tktable || bk clone -r`tail -1 TKTABLEKEY` \
 				bk://data.bitmover.com/tcl/tktable.bk tktable
-	cd tktable; bk -Ur get -qS
+	$(Q)(cd tktable && bk -Ur get -qS)
 
 # Tktable libs
 lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure bin/bkgui$(EXE)
@@ -194,9 +223,10 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 
 # fetch tktreectrl subdirectory if needed
 tktreectrl/configure: TKTREECTRLKEY
-	test -d tktreectrl || bk clone -r`tail -1 TKTREECTRLKEY` \
+	$(if $(Q), @echo Cloning TKTreeCtrl,)
+	$(Q)test -d tktreectrl || bk clone -r`tail -1 TKTREECTRLKEY` \
 			bk://data.bitmover.com/tcl/tktreectrl.bk tktreectrl
-	cd tktreectrl; bk -Ur get -qS
+	$(Q)(cd tktreectrl && bk -Ur get -qS)
 
 # TkTreeCtrl libs
 lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure bin/bkgui$(EXE)
@@ -229,27 +259,31 @@ $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
 	    libdir=lib bindir=Resources install
 
 lib/$(BWIDGET)/pkgIndex.tcl: BWIDGETKEY
-	test -d bwidget || bk clone -r`tail -1 BWIDGETKEY` \
+	$(if $(Q), @echo Cloning BWidget,)
+	$(Q)test -d bwidget || bk clone -r`tail -1 BWIDGETKEY` \
 			bk://data.bitmover.com/tcl/bwidget.bk bwidget
-	cd bwidget; bk -Ur get -qS
-	mkdir -p lib/$(BWIDGET)/lang
-	mkdir -p lib/$(BWIDGET)/images
-	cp bwidget/*.tcl lib/$(BWIDGET)
-	cp bwidget/lang/*.rc lib/$(BWIDGET)/lang
-	cp bwidget/images/*.gif lib/$(BWIDGET)/images
-	cp bwidget/images/*.xbm lib/$(BWIDGET)/images
+	$(Q)cd bwidget; bk -Ur get -qS
+	$(if $(Q), @echo Installing BWidget,)
+	$(Q)mkdir -p lib/$(BWIDGET)/lang
+	$(Q)mkdir -p lib/$(BWIDGET)/images
+	$(Q)cp bwidget/*.tcl lib/$(BWIDGET)
+	$(Q)cp bwidget/lang/*.rc lib/$(BWIDGET)/lang
+	$(Q)cp bwidget/images/*.gif lib/$(BWIDGET)/images
+	$(Q)cp bwidget/images/*.xbm lib/$(BWIDGET)/images
 
 $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl
 	test -d $(BKAPP)/Contents/lib || mkdir $(BKAPP)/Contents/lib
 	cp -fRPH lib/$(BWIDGET) $(BKAPP)/Contents/lib
 
 lib/Tkcon/pkgIndex.tcl: TKCONKEY
-	test -d tkcon || bk clone -r`tail -1 TKCONKEY` \
+	$(if $(Q), @echo Cloning TkCon,)
+	$(Q)test -d tkcon || bk clone -r`tail -1 TKCONKEY` \
 			bk://data.bitmover.com/tcl/tkcon.bk tkcon
 	cd tkcon; bk -Ur get -qS
-	mkdir -p lib/Tkcon
-	cp tkcon/tkcon.tcl lib/Tkcon
-	cp tkcon/pkgIndex.tcl lib/Tkcon
+	$(if $(Q), @echo Installing TkCon,)
+	$(Q)mkdir -p lib/Tkcon
+	$(Q)cp tkcon/tkcon.tcl lib/Tkcon
+	$(Q)cp tkcon/pkgIndex.tcl lib/Tkcon
 
 $(BKAPP)/Contents/lib/Tkcon/pkgIndex.tcl: lib/Tkcon/pkgIndex.tcl
 	test -d $(BKAPP)/Contents/lib || mkdir $(BKAPP)/Contents/lib
@@ -287,8 +321,8 @@ install: ./version.sh
 bin/tclsh$(EXE): tcl/$S/Makefile
 	rm -rf bin/tclsh$(EXE) lib/tcl*
 	cd tcl/$S && \
-	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
-	    XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
+	$(MAKE) Q=$(Q) prefix= exec_prefix= INSTALL_ROOT=../.. \
+	    XLIBS="$(LIBTOMCRYPT)" \
 	    install-binaries install-libraries
 	mv bin/tclsh* bin/tclsh$(EXE)
 	if [ -d usr/local/lib/dde$(DDEVERSION) ] ; then \
@@ -299,12 +333,13 @@ bin/tclsh$(EXE): tcl/$S/Makefile
 	fi
 	rm -rf include usr lib/tcl$(TCLVERSION)/tcltest*
 	$(STRIP) bin/tclsh$(EXE)
+	strings -a $(PCRE_OBJ) | grep -q "pcre_exec"
 
 bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	rm -rf bin/bkgui$(EXE) lib/tk*
 	cd tk/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
-	    XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
+	    XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
 	    install-binaries install-libraries
 	rm -rf include usr lib/tk*/images
 	cd lib/tcl$(TCLVERSION)/encoding/; \
@@ -320,9 +355,10 @@ mkapp: FORCE
 	-bk get mkapp
 
 bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) bin/bkgui$(EXE) mkapp
-	$(MAKE) -C tcl/macosx XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
-	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root` --disable-info-body" embedded
-	$(MAKE) -C tk/macosx XLIBS="$(BKROOT)/src/tomcrypt/libtomcrypt.a" \
+	$(MAKE) -C tcl/macosx XLIBS="$(LIBTOMCRYPT)" \
+	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root` --disable-info-body \
+	    --enable-pcre --with-pcre=../../../pcre/local" embedded
+	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root`" embedded
 	./mkapp BitKeeper 1.0 BkAp "BitMover, Inc" com.bitmover.bk "$(WISHPATH)"
 
@@ -331,6 +367,7 @@ clean-obj: FORCE
 	-test -d tk && cd tk/$S && test -f Makefile && $(MAKE) distclean
 	-test -d tktable && cd tktable && test -f Makefile && $(MAKE) distclean
 	-test -d tktreectrl && cd tktreectrl && test -f Makefile && $(MAKE) distclean
+	-test -d pcre && cd pcre && test -f Makefile && $(MAKE) distclean
 	-@$(MAKE) clean-config
 
 clean-config: FORCE
@@ -344,13 +381,14 @@ clean: clean-obj FORCE
 	-test -d tktable && cd tktable && bk -r clean
 	-test -d tktreectrl && cd tktreectrl && bk -r clean
 	-test -d bwidget && cd bwidget && bk -r clean
+	-test -d pcre && cd pcre && bk -r clean
 	-rm -rf build
 	-bk -r. clean
 
 clobber:
 	@$(MAKE) clean
 	rm -rf bin lib man build include usr share
-	@for i in tcl tk tktable tktreectrl bwidget tkcon ; do \
+	@for i in tcl tk tktable tktreectrl bwidget tkcon pcre ; do \
 		if [ -d $$i ] ; \
 		then	cd $$i ; \
 			bk superset > /dev/null 2>&1 ; \
