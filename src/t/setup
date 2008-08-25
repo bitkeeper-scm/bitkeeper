@@ -209,8 +209,8 @@ port() {
 
 # args: GOT WANT
 cmpfiles() {
-	"$BKDIFF" -q --ignore-trailing-cr "$1" "$2" || {
-		diff -u "$1" "$2"
+	bk diff -q --ignore-trailing-cr "$1" "$2" || {
+		bk diff -u "$1" "$2"
 		exit 1
 	}
 }

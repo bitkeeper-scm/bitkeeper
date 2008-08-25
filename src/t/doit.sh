@@ -48,8 +48,7 @@ win32_common_setup()
 	BIN1="$B/bk.exe"
 	BIN2="$B/diff.exe"
 	BIN3="$B/diff3.exe"
-	BKDIFF="$B/diff.exe"
-	export BIN1 BIN2 BIN3 BKDIFF
+	export BIN1 BIN2 BIN3
 
 	export WINDOWS
 	. win32_common
@@ -102,8 +101,7 @@ unix_common_setup()
 	BIN3=/bin/cat
 	test -r $BIN3 || BIN3=/usr/gnu/bin/wc
 	test -r $BIN3 || exit 1
-	BKDIFF="`bk bin`/gnu/bin/diff"
-	export BIN1 BIN2 BIN3 BKDIFF
+	export BIN1 BIN2 BIN3
 
 	test `uname` = SCO_SV && return
 

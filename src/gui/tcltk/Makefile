@@ -95,7 +95,7 @@ all: version.sh ../../tclkey.h
 	$(if $(Q),@echo Building Tcl/Tk,)
 	-$(Q)rm -rf bin lib share
 	$(Q)TCLVER=`./version.sh`; \
-	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \
+	if [ -n "$$TCLVER" -a -f "$$TCLVER" -a -z "$$FORCE_REBUILD" ]; \
 	then	gunzip < "$$TCLVER" | tar -xf -; true; \
 	else	unset CC LD CCXTRA CFLAGS MAKEFLAGS; \
 		$(MAKE) Q=$(Q) bin/tclsh$(EXE) bin/bkgui$(EXE) \
