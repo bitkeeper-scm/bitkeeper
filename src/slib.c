@@ -6093,6 +6093,12 @@ write_pfile(sccs *s, int flags, delta *d,
 		    "Writable %s exists, skipping it.\n", s->gfile));
 		s->state |= S_WARNED;
 		return (-1);
+	} else if (HAS_PFILE(s) && (!HAS_GFILE(s) || !WRITABLE_REG(s))) {
+		/* bk edit foo; rm or chmod 444 foo => cleanup SCCS/p.foo */
+		if (sccs_clean(s, CLEAN_SHUTUP|(flags & SILENT))) {
+			s->state |= S_WARNED;
+			return (-1);
+		}
 	}
 	unless (sccs_lock(s, 'Z')) {
 		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
@@ -8807,11 +8813,6 @@ sccs_clean(sccs *s, u32 flags)
 		return (1);
 	}
 
-	unless (HAS_GFILE(s)) {
-		verbose((stderr, "%s not checked out\n", s->gfile));
-		return (0);
-	}
-
 	if (sccs_read_pfile("clean", s, &pf)) return (1);
 	if (pf.mRev || pf.iLst || pf.xLst) {
 		unless (flags & CLEAN_SHUTUP) {
@@ -8821,6 +8822,14 @@ sccs_clean(sccs *s, u32 flags)
 		}
 		free_pfile(&pf);
 		return (1);
+	}
+
+	unless (HAS_GFILE(s)) {
+		free_pfile(&pf);
+		unlink(s->pfile);
+		s->state &= ~S_PFILE;
+		verbose((stderr, "cleaning plock for %s\n", s->gfile));
+		return (0);
 	}
 
 	unless (d = findrev(s, pf.oldrev)) {
@@ -8875,6 +8884,7 @@ sccs_clean(sccs *s, u32 flags)
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) {
 				unlink(s->pfile);
+				s->state &= ~S_PFILE;
 				unlinkGfile(s);
 			}
 			free_pfile(&pf);
@@ -8909,6 +8919,7 @@ sccs_clean(sccs *s, u32 flags)
 nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
 		unless (flags & CLEAN_CHECKONLY) {
 			unlink(s->pfile);
+			s->state &= ~S_PFILE;
 			unlinkGfile(s);
 		}
 		free_pfile(&pf);
@@ -8967,8 +8978,14 @@ sccs_unedit(sccs *s, u32 flags)
 		break;
 	}
 	if (HAS_PFILE(s)) {
-		if (!getFlags || sccs_hasDiffs(s, flags, 1)) modified = 1;
-		currState = GET_EDIT;
+		if (HAS_GFILE(s)) {
+			if (!getFlags || sccs_hasDiffs(s, flags, 1)) {
+				modified = 1;
+			}
+			currState = GET_EDIT;
+		} else {
+			verbose((stderr, "Removing plock for %s\n", s->gfile));
+		}
 	} else {
 		if (WRITABLE(s)) {
 			fprintf(stderr, 
@@ -8980,9 +8997,18 @@ sccs_unedit(sccs *s, u32 flags)
 		}
 	}
 	unlink(s->pfile);
+	s->state &= ~S_PFILE;
 	if (!modified && getFlags &&
 	    (getFlags == currState ||
 		(currState != 0 && !(SCCS(s) || RCS(s))))) {
+		if ((getFlags & GET_EDIT) && !WRITABLE(s)) {
+			/*
+			 * With GET_SKIPGET, sccs_get will unlink
+			 * readonly files (look for unlink in sccs_get()),
+			 * so fix perms here if EDIT and readonly
+			 */
+			fix_gmode(s, getFlags);
+		}
 		getFlags |= GET_SKIPGET;
 	} else {
 		unlinkGfile(s);
