@@ -90,3 +90,21 @@ test -f foo.c -a ! -w foo.c || {
 	exit 1
 }
 echo OK
+
+########## WIN32 TESTS ##########
+if [ $PLATFORM = "WIN32" ]; then
+echo $N Passing a full path in stdin should work.....................$NL
+cd "$HERE"/project/src
+bk clean foo.c
+bk edit $Q foo.c
+echo new_stuff >> foo.c
+WINFOO=$(bk pwd -w "`pwd`")\\foo.c
+echo "$WINFOO" | bk unedit - >OUT 2>&1
+bk sfiles -cg | grep -q foo.c && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+fi
