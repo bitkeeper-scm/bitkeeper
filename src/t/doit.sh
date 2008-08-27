@@ -51,6 +51,17 @@ win32_common_setup()
 	BKDIFF="$B/diff.exe"
 	export BIN1 BIN2 BIN3 BKDIFF
 
+	# clear any existing proxy settings is registry (see t.proxy-win32)
+	KEY="HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
+	bk _registry set "$KEY" ProxyEnable dword:0 || exit 1
+	bk _registry delete "$KEY" ProxyOverride 2>/dev/null
+	bk _registry delete "$KEY" ProxyServer 2>/dev/null
+	bk _registry delete "$KEY" AutoConfigURL 2>/dev/null
+	# 0103 is in octal, it means byte 8 bit #3.  See src/port/http_proxy.c
+	bk _registry clearbit \
+		"$KEY\\"Connections DefaultConnectionSettings 0103 >/dev/null 2>&1
+	unset http_proxy
+
 	export WINDOWS
 	. win32_common
 	win32_regSave

@@ -4,7 +4,7 @@ http_proxy=http://data.bitmover.com:3128
 export http_proxy
 
 BK_TRACE_REMOTE=1 bk changes -qrbk-3.2.5 -nd:MD5KEY: \
-    http://data.bitmover.com:14690/bk-3.2.x >OUT 2>ERR || {
+    http://proxytest:14690/bk-3.2.x >OUT 2>ERR || {
 	echo should not have failed
 	exit 1
 }
