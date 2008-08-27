@@ -207,7 +207,7 @@ bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
 # We need the new BK to come first in the path, so we mangle it by hand
 P=`bk _registry get "$SYSPATHKEY" Path`
 P="$HERE/DEAD BEEF;$P"
-bk _registry set "$SYSPATHKEY" Path "$P"
+bk _registry set "$SYSPATHKEY" Path expand_sz:"$P"
 PATH="$P" ./bk-academic-licensed -u > OUT 2>&1 || {
 	echo failed $?
 	echo Installer failed to upgrade
