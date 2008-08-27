@@ -9,6 +9,8 @@ registry_main(int ac, char **av)
 }
 #else
 
+typedef enum {CLRBIT, SETBIT, GETBIT} bitop;
+
 private	int	registry_broadcast(int ac, char **av);
 private int	registry_delete(int ac, char **av);
 private int	registry_dump(int ac, char **av);
@@ -17,6 +19,7 @@ private int	registry_keys(int ac, char **av);
 private	int	registry_set(int ac, char **av);
 private int	registry_type(int ac, char **av);
 private	int	registry_values(int ac, char **av);
+private	int	registry_bitop(bitop op, int ac, char **av);
 private void	printData(long type, void *data, int len);
 private	void	recursiveDump(char *key);
 private void	usage(void);
@@ -44,6 +47,12 @@ registry_main(int ac, char **av)
 		return (registry_type(ac-1, av+1));
 	} else if (streq(cmd, "values")) {
 		return (registry_values(ac-1, av+1));
+	} else if (streq(cmd, "getbit")) {
+		return (registry_bitop(GETBIT, ac-1,av+1));
+	} else if (streq(cmd, "setbit")) {
+		return (registry_bitop(SETBIT, ac-1,av+1));
+	} else if (streq(cmd, "clearbit")) {
+		return (registry_bitop(CLRBIT, ac-1,av+1));
 	} else {
 		usage();
 	}
@@ -159,20 +168,36 @@ private int
 registry_set(int ac, char **av)
 {
 	int	err;
-	int	type = REG_SZ;
+	int	type = 0;
 	char	*key = av[1];
-	char	*value = 0, *data = 0;
+	char	*value, *data = 0;
+	u32	dwordval;
 
 	unless (key) usage();
-	if (av[2]) {
-		value = av[2];
-		if (av[3]) data = av[3];
+	if (value = av[2]) {
+		unless (data = av[3]) usage();
+		if (!strncasecmp(data, "dword:", 6)) {
+			type = REG_DWORD;
+			dwordval = strtoul(data+6, 0, 0);
+			data = (char *)&dwordval;
+		} else if (!strncasecmp(data, "sz:", 3)) {
+			type = REG_SZ;
+			data += 3;
+		} else if (!strncasecmp(data, "expand_sz:", 10)) {
+			type = REG_EXPAND_SZ;
+			data += 10;
+		} else {
+			type = REG_SZ;
+		}
 	}
-	if (value && !strcasecmp(value, "path")) type = REG_EXPAND_SZ;
 	if (err = reg_set(key, value, type, data, 0)) {
-		fprintf(stderr, "Could not set entry: ");
-		if (value && !data) printf("no data");
-		printf("\n");
+		fprintf(stderr, "registery_set: ");
+		if (value) {
+			fprintf(stderr, "Could not set entry %s %s\n",
+			    key, value);
+		} else {
+			fprintf(stderr, "Could not create key %s\n", key);
+		}
 		return (1);
 	}
 	return (0);
@@ -215,7 +240,7 @@ printData(long type, void *data, int len)
 			printf("%.2x ", ((BYTE *)data)[i]);
 		break;
 	    case REG_DWORD:
-		printf("%l", (long *)data);
+		printf("%u", *(u32 *)data);
 		break;
 	    case REG_EXPAND_SZ:
 	    case REG_SZ:
@@ -226,6 +251,52 @@ printData(long type, void *data, int len)
 		break;
 	}
 	printf("\n");
+}
+
+private int
+registry_bitop(bitop op, int ac, char **av)
+{
+	u8	*val;
+	u8	mask;
+	int	bit;
+	long	len;
+
+	unless (av[1] && av[2] && av[3]) usage();
+	unless (val = reg_get(av[1], av[2], &len)) {
+		fprintf(stderr, "entry not found\n");
+		return (1);
+	}
+	unless (reg_type(av[1], av[2]) == REG_BINARY) {
+		fprintf(stderr, "entry not binary\n");
+		return (1);
+	}
+	bit = strtoul(av[3], 0, 0);
+	if (bit >= (8 * len)) {
+		fprintf(stderr, "bit %d too high (max %d)\n", bit, 8 * len);
+		return (1);
+	}
+	mask = 1<<(bit % 8);
+	/* print current value */
+	printf("%d\n", (val[bit/8] & mask) ? 1 : 0);
+
+	switch (op) {
+	    case GETBIT: break;
+	    case SETBIT:
+		val[bit/8] |= mask;
+		break;
+	    case CLRBIT:
+		val[bit/8] &= ~mask;
+		break;
+	   default: assert(0);
+	}
+	unless (op == GETBIT) {
+		if (reg_set(av[1], av[2], REG_BINARY, val, len)) {
+			fprintf(stderr, "failed to set bit\n");
+			return (1);
+		}
+	}
+	free(val);
+	return (0);
 }
 
 private void
