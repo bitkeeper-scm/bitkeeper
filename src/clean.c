@@ -45,17 +45,26 @@ next:		name = sfileNext();
 }
 
 /*
- * XXX - for bk -r clean, we should have this test also in sfiles.c
+ * Delay sccs_initing; return 0 (no need to clean) if no g and no p file.
  */
 private	int
 hasGfile(char *sfile)
 {
 	char	*gfile = sccs2name(sfile);
+	char	*pfile = 0, *p;
 	int	ret;
 	
 	assert(gfile);
 	ret = exists(gfile);
 	free(gfile);
+	unless (ret) {
+		pfile = sfile;
+		p = strrchr(pfile, '/');
+		assert(p);
+		p[1] = 'p';
+		ret = exists(pfile);
+		p[1] = 's';
+	}
 	return (ret);
 }
 

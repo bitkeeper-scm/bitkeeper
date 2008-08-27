@@ -278,8 +278,8 @@ do_file(char *file, char *tiprev)
 			rename(gfile, savefile);
 		}
 		/* remove p.file */
-		s->state &= ~S_PFILE;
 		unlink(pfile);
+		s->state &= ~S_PFILE;
 
 		/* mark deltas to remove. */
 		EACH(rmdeltas) {

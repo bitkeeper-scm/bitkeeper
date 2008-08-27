@@ -105,27 +105,30 @@ _get_http_proxy_reg(char **proxies, char *host)
 {
 #define KEY "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
 	char	*p, *q;
-	DWORD	*proxyEnable = 0;
-	char	*buf = 0;
+	DWORD	*proxyEnable;
+	char	*buf;
 
+	/*
+	 * These proxy settings from the registry don't appear to be
+	 * offically supported by Microsoft, but show up all over the
+	 * place on the web about how to discover this information.
+	 * It appears that officially for WinINet you should use
+	 * InternetQueryOption().
+	 */
 	if (buf = reg_get(KEY "\\Connections",
 		    "DefaultConnectionSettings", 0)) {
 		/* Automatically detect settings */
 		if (buf[8] & 0x8) {
 			proxies = _get_http_autoproxy(proxies, host);
-			goto done;
 		}
 	}
 	if (buf = reg_get(KEY, "AutoConfigURL", 0)) {
 		/* Use automatic configuration script */
 		if (buf[0]) {
 			proxies = _get_http_autoproxyurl(proxies, host, buf);
-			goto done;
 		}
 	}
-	if (proxyEnable = reg_get(KEY, "ProxyEnable", 0)) {
-		goto done;
-	}
+	proxyEnable = reg_get(KEY, "ProxyEnable", 0);
 	unless (proxyEnable && *proxyEnable) goto done;
 
 	if (buf = reg_get(KEY, "ProxyOverride", 0)) {
@@ -137,9 +140,8 @@ _get_http_proxy_reg(char **proxies, char *host)
 		}
 	}
 
-	if (buf = reg_get(KEY, "ProxyServer", 0)) {
-		goto done;
-	}
+	unless (buf = reg_get(KEY, "ProxyServer", 0)) goto done;
+
 	/*
 	 * We support 3 froms:
 	 * 1) host:port
@@ -249,6 +251,20 @@ IsInNet(char *ipaddr, char *dest, char *mask)
 #define  PROXY_AUTO_DETECT_TYPE_DHCP    1
 #define  PROXY_AUTO_DETECT_TYPE_DNS_A   2
 
+/*
+ * This finds the URL of a wpad.dat javascript file on the local
+ * network that provides the configuration details for proxies.
+ *
+ * This protocol is described here:
+ *    http://en.wikipedia.org/wiki/Web_Proxy_Autodiscovery_Protocol
+ *
+ * And read Microsoft's documentation for the DetectAutoProxyUrl()
+ * for details of their routines.
+ * Note: This stuff is perfectly valid on UNIX machines, but we are
+ * using Microsoft's libraries so this only works on Windows.  We don't
+ * bother with a portable version as the next step requires a
+ * javascript interperter and we don't ship one of those.
+ */
 private char **
 _get_http_autoproxy(char **proxies, char *host)
 {
@@ -283,6 +299,24 @@ _get_http_autoproxy(char **proxies, char *host)
 	return (proxies);
 }
 
+/*
+ * After an autoproxy URL is found, this routine fetches the file and
+ * executes the javascript call FindProxyForUrl()
+ * See:
+ *   http://en.wikipedia.org/wiki/Proxy_auto-config
+ * for more details.
+ *
+ * This code is based on the example here:
+ *    http://msdn.microsoft.com/en-us/library/aa383910(VS.85).aspx
+ *
+ * Note this code uses the WinInet API, The WinHTTP API is newer and
+ * should support more proxy configurations.  However as far as I
+ * could tell WinHTTP was one big wrapper that provided a "Open
+ * connection to this URL" API without even returning a generic file
+ * handle.   So to use in bk we would probably need to change our code
+ * that talks with bkd's to exclusively use stdio and then build a
+ * stdio-based wrapper around WinHTTP.
+ */
 private char **
 _get_http_autoproxyurl(char **proxies, char *host, char *WPAD_url)
 {

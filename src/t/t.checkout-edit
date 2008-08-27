@@ -1,0 +1,47 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+echo $N Create initial repository ...................................$NL
+commercial project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+
+echo $N Create some data, setup checkout:edit .......................$NL
+bk edit $Q "$HERE/project/BitKeeper/etc/config"
+echo "checkout:edit" >> "$HERE/project/BitKeeper/etc/config"
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk new $Q foo.c bar.c h.h
+test -f foo.c -a -f bar.c -a -f h.h || {
+	echo failed to save files
+	exit 1
+}
+test -w foo.c -a -w bar.c -a -w h.h || {
+	echo failed to save files RW
+	exit 1
+}
+echo OK
+
+echo $N Test plock problem...........................................$NL
+rm -f bar.c
+bk edit $Q bar.c >OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
