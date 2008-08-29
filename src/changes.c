@@ -970,6 +970,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 	EACH_INDEX(csets, j) {
 		e = (delta *)csets[j];
 
+		if (fflush(f)) break;		/* abort when stdout is closed */
 		if (opts.doComp || opts.verbose) {
 			ftrunc(opts.fcset, 0);
 			if (opts.keys) {
@@ -1068,7 +1069,6 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		if (found) rc = 1; /* Remember we printed output */
 		/* sort file deltas, print it, then free it */
 		dumplog(list, e, dspec, flags, f);
-		if (fflush(f)) break;
 
 		/*
 		 * Foreach component delta found mark them with D_SET

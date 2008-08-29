@@ -634,14 +634,15 @@ proj_comppath(project *p)
 	if (p->rparent) p = p->rparent;
 
 	/* returned cached value if possible */
-	if (p->comppath) return (p->comppath);
+	if (p->comppath) goto out;
 
 	concat_path(file, p->root, "/BitKeeper/log/COMPONENT");
 	if (f = fopen(file, "rt")) {
 		if (t = fgetline(f)) p->comppath = strdup(t);
 		fclose(f);
 	}
-	return (p->comppath);
+	unless (p->comppath) p->comppath = strdup("");
+out:	return (p->comppath[0] ? p->comppath : 0);
 }
 
 
