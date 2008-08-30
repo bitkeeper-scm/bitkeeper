@@ -111,6 +111,15 @@ core
 *.rej
 *.orig
 .DE
+.SH ADVANCED USAGE
+You may manually add additional ignore patterns on a per user basis.
+For example, if you have a tendency to have a file called "notes"
+that you never want to check in, and you also use .xxx as your junk
+files, then do this:
+.DS
+$ echo notes >> "`bk dotbk`/ignore"
+$ echo '*.xxx' >> "`bk dotbk`/ignore"
+.DE
 .SH SEE ALSO
 .LP
 .SA citool

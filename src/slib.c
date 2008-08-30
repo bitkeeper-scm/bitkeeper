@@ -4207,7 +4207,7 @@ sccs_init(char *name, u32 flags)
 	sccs	*s;
 	struct	stat sbuf;
 	char	*t;
-	int	rc;
+	int	lstat_rc;
 	delta	*d;
 	int	fixstime = 0;
 	static	int _YEAR4;
@@ -4231,14 +4231,15 @@ sccs_init(char *name, u32 flags)
 		return (0);
 	}
 	localName2bkName(name, name);
-	if (sccs_filetype(name) == 's') {
-		s = calloc(1, sizeof(*s));
-		s->sfile = strdup(name);
-		s->gfile = sccs2name(name);
-	} else {
+	if (sccs_filetype(name) != 's') {
 		fprintf(stderr, "Not an SCCS file: %s\n", name);
 		return (0);
 	}
+	lstat_rc = lstat(name, &sbuf);
+	if (lstat_rc && (flags & INIT_MUSTEXIST)) return (0);
+	s = calloc(1, sizeof(*s));
+	s->sfile = strdup(name);
+	s->gfile = sccs2name(name);
 
 	s->initFlags = flags;
 	t = strrchr(s->sfile, '/');
@@ -4255,14 +4256,12 @@ sccs_init(char *name, u32 flags)
 		s->state |= S_CSET;
 	}
 
-	rc = lstat(s->sfile, &sbuf);
-	if ((flags & INIT_MUSTEXIST) && rc) goto err;
 	if (flags & INIT_NOSTAT) {
 		if ((flags & INIT_HASgFILE) && check_gfile(s, flags)) return 0;
 	} else {
 		if (check_gfile(s, flags)) return (0);
 	}
-	if (rc == 0) {
+	if (lstat_rc == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
  err:			free(s->gfile);

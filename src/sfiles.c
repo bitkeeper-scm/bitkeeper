@@ -27,6 +27,7 @@ private void	progress(int force);
 private	void	sccsdir(winfo *wi);
 private void	walk(char *dir);
 private void	load_ignore(project *p);
+private	void	ignore_file(char *file);
 
 typedef struct {
 	u32	Aflg:1;			/* -pA: show all pending deltas */
@@ -748,10 +749,6 @@ private void
 load_ignore(project *p)
 {
 	char	*file;
-	char	*pat;
-	int	len, isbase, isprune;
-	FILE	*ignoref;
-	char	buf[MAXLINE];
 
 	ignore = ignorebase = prunedirs = 0;
 
@@ -770,10 +767,25 @@ load_ignore(project *p)
 
 	if (opts.all) return;
 
+
 	file = aprintf("%s/BitKeeper/etc/ignore", proj_root(p));
+	ignore_file(file);
+	free(file);
+	file = aprintf("%s/ignore", getDotBk());
+	ignore_file(file);
+	free(file);
+}
+
+private void
+ignore_file(char *file)
+{
+	char	*pat;
+	int	len, isbase, isprune;
+	FILE	*ignoref;
+	char	buf[MAXLINE];
+
 	unless (exists(file)) get(file, SILENT, "-");
 	ignoref = fopen(file, "r");
-	free(file);
 	unless (ignoref) return;
 	while (fnext(buf, ignoref)) {
 		chomp(buf);

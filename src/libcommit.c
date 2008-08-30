@@ -24,11 +24,11 @@ get(char *path, int flags, char *output)
 	int ret;
 
 	if (sccs_filetype(path) == 's') {
-		s = sccs_init(path, SILENT);
+		s = sccs_init(path, SILENT|INIT_MUSTEXIST);
 	} else {
 		char	*p = name2sccs(path);
 
-		s = sccs_init(p, SILENT);
+		s = sccs_init(p, SILENT|INIT_MUSTEXIST);
 		free(p);
 	}
 	unless (s && HASGRAPH(s)) {
