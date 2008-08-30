@@ -5,14 +5,14 @@
 bk commit \- commit deltas to a changeset
 .SH SYNOPSIS
 .B bk commit
-.[B] \-fq
+.[B] \-cfq
 .[OPTreq] \-l file 
 .[OPTreq] \-S tag
 .[OPTreq] \-Y file 
 .[B] \-
 .br
 .B bk commit
-.[B] \-fq
+.[B] \-cfq
 .[OPTreq] \-l file 
 .[OPTreq] \-S tag
 .[OPTreq] \-y comment
@@ -93,6 +93,10 @@ of activity in \*(BK, and having an unnecessarily large one will not help
 performance.
 .SH OPTIONS
 .TP \-y\*<comment\*>
+.B \-c
+Use comments saved by a previous run of citool, fix, collapse, etc.
+It is an error if there are no saved comments.
+.tp
 .B \-f
 Don't run interactively; do the commit with the default comments.
 Ignores the commit template, if any.

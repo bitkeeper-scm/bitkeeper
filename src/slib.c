@@ -9617,13 +9617,11 @@ out:		sccs_unlock(s, 'z');
 			}
 		}
 		unless (COMMENTS(n)) {
-			if (comments_readcfile(s, 0, n)) {
-				if (flags & DELTA_CFILE) {
-					fprintf(stderr,
-					    "checkin: no comments for %s\n",
-					    s->sfile);
-					goto out;
-				}
+			if (flags & DELTA_CFILE) {
+				if (comments_readcfile(s, 0, n)) goto out;
+			} else if (comments_readcfile(s, 1, n) == -2) {
+				/* aborted prompt */
+				goto out;
 			}
 		}
 		unless (COMMENTS(n)) {
@@ -9760,6 +9758,7 @@ skip_weave:
 	sccs_setStime(s, 0);
 	chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
+	comments_cleancfile(s);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -13112,7 +13111,7 @@ out:
 		OUT;
 	}
 	unlink(s->pfile);
-	comments_cleancfile(s->gfile);
+	comments_cleancfile(s);
 	sccs_setStime(s, 0);
 	chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {

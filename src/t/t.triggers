@@ -1518,11 +1518,6 @@ bk delta foo.c >OUT 2>&1 < /dev/null || {
 	cat OUT
 	exit 1
 }
-test -f SCCS/c.foo.c && {
-	echo should have cleaned up c.file
-	cat OUT
-	exit 1
-}
 test 'I am the trigger' = "`bk prs -hr+ -d:C: foo.c`" || {
 	echo set the wrong comment
 	bk prs foo.c

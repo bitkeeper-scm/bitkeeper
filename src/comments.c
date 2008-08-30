@@ -191,6 +191,7 @@ comments_readcfile(sccs *s, int prompt, delta *d)
 	unless (access(cfile, R_OK) == 0) return (-1);
 	if (prompt && comments_prompt(cfile)) return (-2);
 	unless (m = mopen(cfile, "r")) return (-1);
+	s->used_cfile = 1;
 	while (p = mnext(m)) {
 		comments_append(d, strnonldup(p));
 	}
@@ -199,17 +200,10 @@ comments_readcfile(sccs *s, int prompt, delta *d)
 }
 
 void
-comments_cleancfile(char *file)
+comments_cleancfile(sccs *s)
 {
-	char	*cfile = name2sccs(file);
-	char	*p;
-
-	p = strrchr(cfile, '/');
-	if (p) {
-		p[1] = 'c';
-		unlink(cfile);
-	}
-	free(cfile);
+	unless (s->used_cfile) return;
+	unlink(sccs_Xfile(s, 'c'));
 }
 
 void
