@@ -13,11 +13,7 @@ nt_stat(const char *file, struct stat *sb)
 	assert(file);
 	memset(sb, 0, sizeof(sb));
 	unless (GetFileAttributesEx(file, GetFileExInfoStandard, &info)) {
-		switch (GetLastError()) {
-			case ERROR_ACCESS_DENIED: errno = EACCES; break;
-			case ERROR_FILE_NOT_FOUND: errno = ENOENT; break;
-			default: errno = EINVAL;
-		}
+		(void)GetLastError(); /* set errno */
 		return (-1);
 	}
 	sb->st_atime = filetime2timet(&info.ftLastAccessTime);
@@ -124,11 +120,7 @@ nt_utime(const char *file, const struct utimbuf *ut)
 			FILE_SHARE_READ | FILE_SHARE_DELETE, 0,
 			OPEN_EXISTING, 0, 0);
 	if (fh == INVALID_HANDLE_VALUE) {
-err:		switch (GetLastError()) {
-			case ERROR_ACCESS_DENIED: errno = EACCES; break;
-			case ERROR_FILE_NOT_FOUND: errno = ENOENT; break;
-			default: errno = EINVAL;
-		}
+err:		(void)GetLastError(); /* set errno */
 		return (-1);
 	}
 	unless (ut) {

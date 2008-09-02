@@ -46,6 +46,7 @@ int	is_vista(void);
 int	alarm(int seconds);
 int	sync(void);
 int	fsync (int fd);
+int	err2errno(unsigned long oserrno);
 
 #endif /* _MISC_H_ */
 

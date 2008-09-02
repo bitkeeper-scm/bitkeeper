@@ -64,6 +64,7 @@
 #define	NOPROC
 #define ELOOP		40
 
+/* this sets errno as a side-effect */
 #define	GetLastError()	bk_GetLastError()
 
 DWORD	bk_GetLastError(void);

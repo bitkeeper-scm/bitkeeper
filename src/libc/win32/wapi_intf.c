@@ -382,7 +382,7 @@ mmap(caddr_t addr, size_t len, int prot, int flags, int fd, off_t off)
 {
 	HANDLE	fh, mh;
 	LPVOID	p;
-	DWORD	flProtect, dwDesiredAccess;
+	DWORD	flProtect, dwDesiredAccess, err;
 	int	i;
 	char	mmap_name[100];
 
@@ -435,9 +435,10 @@ mmap(caddr_t addr, size_t len, int prot, int flags, int fd, off_t off)
 	sprintf(mmap_name, "mmap%5d-%5d", getpid(), i); /* id must be unique */
 	if ((mh = CreateFileMapping(
 	    fh, NULL, flProtect, 0, len, mmap_name)) == NULL) {
+		err = GetLastError(); /* set errno */
 		fprintf(stderr, "mmap: cannot CreateFileMapping file, "
 				"error code =%lu, writeMode = %x, fd =%d\n",
-				GetLastError(), prot & PROT_WRITE, fd);
+				err, prot & PROT_WRITE, fd);
 		return (BAD_ADDR);
 	}
 
@@ -448,9 +449,9 @@ mmap(caddr_t addr, size_t len, int prot, int flags, int fd, off_t off)
 	 */
 	p = MapViewOfFileEx(mh, dwDesiredAccess, 0,  off, len, addr);
 	if (p == NULL) {
+		err = GetLastError(); /* set errno */
 		fprintf(stderr,
-		    "mmap: can not MapViewOfFile , error code =%lu\n",
-		    GetLastError());
+		    "mmap: can not MapViewOfFile , error code =%lu\n", err);
 		return (BAD_ADDR);
 	}
 	safeCloseHandle(mh);
@@ -467,6 +468,7 @@ mmap(caddr_t addr, size_t len, int prot, int flags, int fd, off_t off)
 int
 munmap(caddr_t addr, size_t notused)
 {
+	DWORD	err;
 	int i;
 
 	/*
@@ -485,9 +487,10 @@ munmap(caddr_t addr, size_t notused)
 	}
 
 	if (UnmapViewOfFile((LPVOID) addr) == 0) {
+		err = GetLastError(); /* set errno */
 		debug((stderr,
 		    "munmap: can not UnmapViewOfFile file, error code =%d\n",
-		    GetLastError()));
+		    err));
 		return (-1);
 	}
 
@@ -527,7 +530,7 @@ ftruncate(int fd, size_t len)
 
 	_lseek(fd, len, SEEK_SET);
 	if (!SetEndOfFile(h)) {
-		errno = GetLastError();
+		(void)GetLastError();			/* set errno */
 		fprintf(stderr, "error = %d\n", errno); /* awc debug */
 		return (-1);
 	}
@@ -795,7 +798,7 @@ _waitpid(int i, int *status, int flags)
 	        ret = -1;
 	        break;
 	}
-	if (ret == -1) errno = EINVAL;
+	if (ret == -1) GetLastError(); /* set errno */
 	return (ret);
 }
 
@@ -855,7 +858,7 @@ _spawnvp_ex(int flag, const char *cmdname, char *const av[], int fix_quote)
 	HANDLE	hProc = GetCurrentProcess();
 	char	*cmdLine, fullCmdPath[2048];
 	char	*p, *q;
-	DWORD	status = 0;
+	DWORD	status = 0, err;
 	int	cflags, i, j;
 	int	len, cmd_len;
 	int	do_quote = 1;
@@ -1019,9 +1022,9 @@ duph:
 	 */
 	cflags = hasConsole() ? 0 : DETACHED_PROCESS;
 	if (!CreateProcess(NULL, cmdLine, 0, 0, 1, cflags, 0, 0, &si, &pi)) {
+		err = GetLastError();
 		fprintf(stderr,
-		    "cannot create process: %s errno=%lu\n",
-		    cmdLine, GetLastError());
+		    "cannot create process: %s errno=%lu\n", cmdLine, err);
 		free(cmdLine);
 		return (-1);
 	}
@@ -1043,8 +1046,9 @@ duph:
 		goto done;
 	}
 	if (GetExitCodeProcess(pi.hProcess, &status) == 0) {
+		err = GetLastError();
 		fprintf(stderr,
-		    "GetExitCodeProcess failed: error = %lu\n", GetLastError());
+		    "GetExitCodeProcess failed: error = %lu\n", err);
 		status = 99;
 	}
 	status &= 0x000000ff; /* paranoid */
@@ -1067,7 +1071,7 @@ nt_chmod(const char * file, int mode)
 		attributes |= FILE_ATTRIBUTE_READONLY;
 	}
 	if (!SetFileAttributes(ntfname, attributes)) {
-		errno = ENOENT;
+		(void)GetLastError(); /* set errno */
 		return (-1);
 	}
 	return (0);
@@ -1157,7 +1161,6 @@ again:
 		switch (err = GetLastError()) {
 		    case ERROR_FILE_NOT_FOUND:
 		    case ERROR_PATH_NOT_FOUND:
-			errno = ENOTDIR;
 			return (-1);
 		    default:
 			fprintf(stderr,
@@ -1181,17 +1184,8 @@ fail:				errno = EBUSY;
 		}
 	}
 	unless (RemoveDirectory(dir)) {
+		(void)GetLastError(); /* set errno */
 		safeCloseHandle(h);
-		switch (err = GetLastError()) {
-		    case ERROR_DIR_NOT_EMPTY:
-			errno = ENOTEMPTY;
-			break;
-		    default:
-			fprintf(stderr, "rmdir(%s): failed win32 err %ld\n",
-				dir, GetLastError());
-			errno = EINVAL;
-			break;
-		}
 		return (-1);
 	}
 	safeCloseHandle(h);
@@ -1299,13 +1293,8 @@ nt_rename(const char *oldf, const char *newf)
 		to = CreateFile(newf, GENERIC_WRITE,
 		    0, 0, CREATE_ALWAYS, attribs, 0);
 		unless (to == INVALID_HANDLE_VALUE) break;
-		switch (err = GetLastError()) {
-		    case ERROR_PATH_NOT_FOUND:
-			errno = ENOENT;
-			return (-1);
-		   default:
-			break;
-		}
+		err = GetLastError();
+		if (err == ERROR_PATH_NOT_FOUND) return (-1);
 		// XXX permissions problems?
 		unless (win32_flags & WIN32_RETRY) {
 fail:			errno = EBUSY;

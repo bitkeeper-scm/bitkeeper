@@ -99,22 +99,17 @@ int
 nt_open(const char *filename, int flag, int pmode)
 {
 	char	buf[1024];
-	int	fd;
+	int	fd, save;
 
 	flag |= _O_NOINHERIT;
 	fd = _open(bm2ntfname(filename, buf), flag, pmode);
 	if (fd < 0) {
-		switch (GetLastError()) {
-		  case ERROR_SHARING_VIOLATION: errno = EAGAIN; break;
-		  case ERROR_ACCESS_DENIED:
-			if ((flag & O_CREAT) &&
-			    		(flag & O_EXCL) && _exists(buf)) {
-				errno = EEXIST;
-			} else {
-				errno = EACCES;
-			};
-			break;
-		  default: break; /* use errno set by _open() */
+		save = errno;
+		if ((GetLastError() == ERROR_ACCESS_DENIED) &&
+		    (flag & O_CREAT) && (flag & O_EXCL) && _exists(buf)) {
+			errno = EEXIST;
+		} else {
+			errno = save;	/* use errno set by _open */
 		}
 	}
 	return (fd);
@@ -149,39 +144,13 @@ nt_access(const char *file, int mode)
 	char	*buf;
 
 	if (attrs == INVALID_FILE_ATTRIBUTES) {
-		switch (GetLastError()) {
-			case ERROR_ACCESS_DENIED:
-			case ERROR_CANNOT_MAKE:
-			case ERROR_CURRENT_DIRECTORY:
-			case ERROR_DRIVE_LOCKED:
-			case ERROR_FAIL_I24:
-			case ERROR_LOCK_FAILED:
-			case ERROR_LOCK_VIOLATION:
-			case ERROR_NETWORK_ACCESS_DENIED:
-			case ERROR_NOT_LOCKED:
-			case ERROR_SEEK_ON_DEVICE:
-				errno = EACCES;
-				break;
-			case ERROR_BAD_NETPATH:
-			case ERROR_BAD_NET_NAME:
-			case ERROR_BAD_PATHNAME:
-			case ERROR_FILENAME_EXCED_RANGE:
-			case ERROR_FILE_NOT_FOUND:
-			case ERROR_INVALID_DRIVE:
-			case ERROR_NO_MORE_FILES:
-			case ERROR_PATH_NOT_FOUND:
-				errno = ENOENT;
-				break;
-			default:
-				errno = EINVAL;
-				break;
-		}
+		(void)GetLastError(); /* set errno */
 		if ((mode & X_OK) == X_OK) {
 			buf = aprintf("%s.exe", file);
 			attrs = GetFileAttributes(buf);
 			free(buf);
 			if (attrs != INVALID_FILE_ATTRIBUTES) {
-				/* No need to test for W_OK. 
+				/* No need to test for W_OK.
 				 * X_OK is never used with W_OK (I hope)
 				 */
 				return (0);
@@ -286,6 +255,7 @@ bk_GetLastError(void)
 	char	*p;
 	static	int debug = ~0;
 
+	errno = err2errno(ret);
 	if (debug == ~0) {
 		p = getenv("BK_DEBUG_LAST_ERROR");
 		debug = (p && *p) ? 1 : 0;
