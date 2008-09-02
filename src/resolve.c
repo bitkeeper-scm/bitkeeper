@@ -2284,7 +2284,7 @@ private	void
 commit(opts *opts)
 {
 	int	i;
-	char	*cmds[10], *cmt = 0;
+	char	*cmds[12], *cmt = 0;
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";
@@ -2297,9 +2297,8 @@ commit(opts *opts)
 		if (opts->comment[0]) {
 			cmt = cmds[++i] = aprintf("-y%s", opts->comment);
 		}
-	} else if (exists("SCCS/c.ChangeSet")) {
-		// XXX - shouldn't this be automagic?
-		cmds[++i] = "-YSCCS/c.ChangeSet";
+	} else if (size("SCCS/c.ChangeSet") > 0) {
+		cmds[++i] = "-c";
 	}
 	cmds[++i] = 0;
 	i = spawnvp(_P_WAIT, "bk", cmds);

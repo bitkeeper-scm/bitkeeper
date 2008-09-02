@@ -1,0 +1,155 @@
+
+commercial project
+echo $N Make sure bk new -c unlinks the c.file ......................$NL
+echo hi there > foo
+echo comments > SCCS/c.foo
+bk new -c $Q foo > OUT 2>&1 || {
+	echo should not have failed
+	cat OUT
+	exit 1
+}
+test -f SCCS/c.foo && {
+	echo did not unlink on new
+	exit 1
+}
+echo OK
+
+echo $N Make sure delta -c unlinks the c.file .......................$NL
+bk edit $Q foo
+echo hi there >> foo
+echo comments > SCCS/c.foo
+bk delta -c $Q foo > OUT 2>&1 || {
+	echo should not have failed
+	cat OUT
+	exit 1
+}
+test -f SCCS/c.foo && {
+	echo did not unlink on new
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk new unlinks the c.file after prompting .........$NL
+echo hi there > bar
+echo comments > SCCS/c.bar
+echo u | bk new $Q bar > OUT 2>&1 || {
+	echo should not have failed
+	cat OUT
+	exit 1
+}
+test -f SCCS/c.bar && {
+	echo did not unlink on new
+	exit 1
+}
+grep -q 'Use these comments:' OUT || {
+	echo bad prompt
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure delta unlinks the c.file after prompting ..........$NL
+bk edit $Q bar
+echo hi there >> bar
+echo comments > SCCS/c.bar
+echo u | bk delta $Q bar > OUT 2>&1 || {
+	echo should not have failed
+	cat OUT
+	exit 1
+}
+test -f SCCS/c.bar && {
+	echo did not unlink
+	exit 1
+}
+grep -q 'Use these comments:' OUT || {
+	echo bad prompt
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk new -y does not unlink the c.file ..............$NL
+echo hi there > blech
+echo comments > SCCS/c.blech
+bk new -ywhatever $Q blech > OUT 2>&1 || {
+	echo should not have failed
+	cat OUT
+	exit 1
+}
+test -f SCCS/c.blech || {
+	echo should not have unlinked
+	exit 1
+}
+echo OK
+
+echo $N Make sure delta does not unlink the c.file ..................$NL
+bk edit $Q blech
+echo hi there >> blech
+echo comments > SCCS/c.blech
+bk delta -ywhatever $Q blech > OUT 2>&1 || {
+	echo should not have failed
+	cat OUT
+	exit 1
+}
+test -f SCCS/c.blech || {
+	echo should not have unlinked
+	exit 1
+}
+echo OK
+
+echo $N Make sure commit -y does not unlink a c.ChangeSet ...........$NL
+echo whatever > SCCS/c.ChangeSet
+bk commit $Q -yblah || exit 1
+test -f SCCS/c.ChangeSet || {
+	echo unlinked
+	exit 1
+}
+test `bk changes -r+ -d:C:` = "blah" || {
+	echo bad comments stored
+	bk changes -r+ -nd:C:
+	exit 1
+}
+test `cat SCCS/c.ChangeSet` = whatever || {
+	echo stomped on SCCS/c.ChangeSet
+	cat SCCS/c.ChangeSet
+	exit 1
+}
+echo OK
+
+echo $N Make sure commit -c does unlink c.ChangeSet .................$NL
+bk edit $Q blech
+echo hi there >> blech
+bk ci $Q -ywhatever blech
+bk commit $Q -c || exit 1
+test -f SCCS/c.ChangeSet && {
+	echo not unlinked
+	exit 1
+}
+test `bk changes -r+ -d:C:` = "whatever" || {
+	echo bad comments stored
+	bk changes -r+ -nd:C:
+	exit 1
+}
+echo OK
+
+echo $N Make sure commit picks up c.ChangeSet and prompts ...........$NL
+bk edit $Q blech
+echo hi there >> blech
+bk ci $Q -ywhatever blech
+echo whatever2 > SCCS/c.ChangeSet
+echo u | bk commit $Q > OUT 2>&1 || exit 1
+test -f SCCS/c.ChangeSet && {
+	echo not unlinked
+	exit 1
+}
+test `bk changes -r+ -d:C:` = "whatever2" || {
+	echo bad comments stored
+	bk changes -r+ -nd:C:
+	exit 1
+}
+grep -q 'Use these comments:' OUT || {
+	echo bad prompt
+	cat OUT
+	exit 1
+}
+echo OK

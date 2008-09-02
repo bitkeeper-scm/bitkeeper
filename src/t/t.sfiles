@@ -251,7 +251,9 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Check the list of clean, unlocked files .....................$NL
-bk ci $Q -l -mfoo bar/s.foo
+bk ci $Q -l -yfoo bar/s.foo
+# We used to do this as a side-effect of a delta; no more.  Not our data.
+rm bar/SCCS/c.s.foo
 ls -R >bar/s.foo
 bk ci $Q -mfoo-R bar/s.foo
 bk ci $Q -mblech s.foo

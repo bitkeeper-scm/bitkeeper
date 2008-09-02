@@ -630,6 +630,7 @@ struct sccs {
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
 	u32	cachemiss:1;	/* BAM file not found locally */
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
+	u32	used_cfile:1;	/* comments_readcfile found one; for cleanup */
 	u32	mem_in:1;	/* s->fh is in-memory FILE* */
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
@@ -1138,7 +1139,7 @@ int	fix_gmode(sccs *s, int gflags);
 int	do_checkout(sccs *s);
 int	unsafe_path(char *s);
 char	**getTriggers(char *dir, char *prefix);
-void	comments_cleancfile(char *file);
+void	comments_cleancfile(sccs *s);
 int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);

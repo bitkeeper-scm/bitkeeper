@@ -24,8 +24,9 @@ commit_main(int ac, char **av)
 	char	pendingFiles[MAXPATH] = "";
 	char	buf[MAXLINE];
 
-	while ((c = getopt(ac, av, "dfFl:RqsS:y:Y:")) != -1) {
+	while ((c = getopt(ac, av, "cdfFl:qRsS:y:Y:")) != -1) {
 		switch (c) {
+		    case 'c': dflags |= DELTA_CFILE; break;
 		    case 'd': 
 		    case 'f':
 			doit = 1; break;			/* doc 2.0 */
@@ -81,10 +82,10 @@ commit_main(int ac, char **av)
 		if (av[optind] && streq("-", av[optind])) {
 			FILE	*f;
 
-			unless (dflags & DELTA_DONTASK) {
+			unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
 				fprintf(stderr,
-				    "You must use the -Y or -y "
-				    "option when using \"-\"\n");
+				    "You must use one of the -c, -Y or -y "
+				    "options when using \"-\"\n");
 				return (1);
 			}
 			bktmp(pendingFiles, "list");
@@ -119,7 +120,22 @@ commit_main(int ac, char **av)
 			return (1);
 		}
 	}
-	unless (dflags & DELTA_DONTASK) {
+
+	/*
+	 * Auto pickup a c.ChangeSet unless they already gave us comments.
+	 * Prompt though, that's what we do in delta.
+	 */
+	unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
+		if (size("SCCS/c.ChangeSet") > 0) {
+			if (comments_prompt("SCCS/c.ChangeSet")) {
+				fprintf(stderr, "Commit aborted.\n");
+				return (1);
+			}
+			dflags |= DELTA_CFILE;
+		}
+	}
+
+	unless (dflags & (DELTA_DONTASK|DELTA_CFILE)) {
 		char	*cmd, *p;
 		FILE	*f, *f1;
 		char	commentFile[MAXPATH];
@@ -154,7 +170,7 @@ commit_main(int ac, char **av)
 		free(cmd);
 
 		if (!doit && comments_prompt(commentFile)) {
-			printf("Commit aborted.\n");
+			fprintf(stderr, "Commit aborted.\n");
 			unlink(pendingFiles);
 			unlink(commentFile);
 			return (1);
@@ -189,8 +205,17 @@ do_commit(char **av,
 	safe_putenv("BK_PENDING=%s", pendingFiles);
 
 	/* XXX could avoid if we knew if a trigger would fire... */
-	bktmp(commentFile, "comments");
-	comments_writefile(commentFile);
+	if (dflags & DELTA_CFILE) {
+		strcpy(commentFile, sccs_Xfile(cset, 'c'));
+		unless (size(commentFile) > 0) {
+			fprintf(stderr, "commit: saved comments not found.\n");
+			rc = 1;
+			goto done;
+		}
+	} else {
+		bktmp(commentFile, "comments");
+		comments_writefile(commentFile);
+	}
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
 
 	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
@@ -240,7 +265,14 @@ do_commit(char **av,
 	trigger(opts.resync ? "merge" : av[0], "post");
 done:	if (unlink(pendingFiles)) perror(pendingFiles);
 	sccs_free(cset);
-	unlink(commentFile);
+	if (dflags & DELTA_CFILE) {
+		// Someone else created the c.file, unlink only on success
+		unless (rc) unlink(commentFile);
+	} else {
+		// we created it, always unlink
+		unlink(commentFile);
+	}
+	if ((dflags & DELTA_CFILE) && !rc) unlink(commentFile);
 	if (rc) return (rc); /* if commit failed do not send log */
 	/*
 	 * If we are doing a commit in RESYNC

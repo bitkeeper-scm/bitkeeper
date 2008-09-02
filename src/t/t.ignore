@@ -25,3 +25,25 @@ echo $N Verify reading ignore settings ..............................$NL
 bk ignore > GOT || exit 1
 cmpfiles BitKeeper/etc/ignore GOT
 echo OK
+
+echo $N Test per user ignore file ...................................$NL
+echo '*.junk' > "`bk dotbk`/ignore"
+touch foo.junk
+touch foo.c
+bk extras > GOT
+cat > WANT <<EOF
+GOT
+WANT
+foo.c
+EOF
+cmpfiles WANT GOT
+rm -f "`bk dotbk`/ignore"
+bk extras > GOT
+cat > WANT <<EOF
+GOT
+WANT
+foo.c
+foo.junk
+EOF
+cmpfiles WANT GOT
+echo OK
