@@ -254,6 +254,7 @@ proc getFiles {} \
 		if {$argv == "-"} { ;# typically from sfiles pipe
 			while {[gets stdin fname] >= 0} {
 				if {$fname != ""} {
+				    	set fname [normalizePath $fname]
 					set rfile $fname
 					set lfile [getRev $rfile "+" 1]
 					set rev1 "+"
@@ -265,13 +266,7 @@ proc getFiles {} \
 				}
 			}
 		} else { ;# bk difftool file
-			set rfile [lindex $argv 0]
-
-			# Fix Dos path, convert backward slash to forward slash
-			if {$gc(windows)} {
-				regsub -all "\\\\" $rfile "/" rfile
-			}
-
+			set rfile [normalizePath [lindex $argv 0]]
 			set lfile [getRev $rfile "+" 1]
 			set rev1 "+"
 
@@ -284,7 +279,7 @@ proc getFiles {} \
 	} elseif {$argc == 2} { ;# bk difftool -r<rev> file
 		set a [lindex $argv 0]
 		if {[regexp -- {-r(.*)} $a junk rev1]} {
-			set rfile [lindex $argv 1]
+			set rfile [normalizePath [lindex $argv 1]]
 			set lfile [getRev $rfile $rev1 0]
 			# If bk file and not checked out, check it out ro
 			#displayMessage "lfile=($lfile) rfile=($rfile)"
@@ -301,14 +296,8 @@ proc getFiles {} \
 			lappend tmps $lfile
 			if {[file exists $rfile] != 1} { usage }
 		} else { ;# bk difftool file file2"
-			set lfile [lindex $argv 0]
-			set rfile [lindex $argv 1]
-
-			# Fix Dos path, convert backward slash to forward slash
-			if {$gc(windows)} {
-				regsub -all "\\\\" $rfile "/" rfile
-				regsub -all "\\\\" $lfile "/" lfile
-			}
+			set lfile [normalizePath [lindex $argv 0]]
+			set rfile [normalizePath [lindex $argv 1]]
 
 			if {[file isdirectory $rfile]} {
 				set tfile [file tail $lfile]
@@ -325,7 +314,7 @@ proc getFiles {} \
 			}
 		}
 	} else { ;# bk difftool -r<rev> -r<rev2> file
-		set file [lindex $argv 2]
+		set file [normalizePath [lindex $argv 2]]
 		set a [lindex $argv 0]
 		if {![regexp -- {-r(.*)} $a junk rev1]} { usage }
 		set lfile [getRev $file $rev1 0]
