@@ -652,3 +652,46 @@ grep -q "You are trying to synchronize with an unrelated package" OUT || {
 	exit 1
 }
 echo OK
+
+echo $N Tests if changes output is static ...........................$NL
+cd "$HERE"/project
+KEY=`bk changes -r+ -nd:KEY:`
+
+bk changes -r"$KEY" -v > OUT1 || exit 1
+bk mv junk zzz || exit 1
+bk commit $Q -ymv || exit 1
+bk changes -r"$KEY" -v > OUT2 || exit 1
+cmpfiles OUT1 OUT2
+echo OK
+
+echo $N See that interleaved files do not interleave in output ......$NL
+BK_CONFIG="partial_check: on; checkout: edit"
+export BK_CONFIG
+touch a
+bk new $Q a
+bk commit $Q -ya
+cd ..
+bk clone $Q -l project copy
+cd project
+for x in 1 2
+do	cd ../copy
+	bk delta $Q -fycopy a
+	cd ../project
+	bk delta $Q -fyproject a
+done
+bk commit $Q -SPROJ -yproject
+cd ../copy
+bk commit $Q -SCOPY -ycopy
+bk pull $Q
+bk changes -v -rPROJ,COPY -nd:C: > GOT
+cat <<EOF > WANT
+copy
+copy
+copy
+project
+project
+project
+EOF
+cmpfiles GOT WANT
+unset BK_CONFIG
+echo OK

@@ -571,22 +571,17 @@ cset_bykeys(const void *a, const void *b)
 {
 	char	*s1 = *(char**)a;
 	char	*s2 = *(char**)b;
-	char	*p1 = strchr(s1, '|');	/* path in rootkey */
-	char	*p2 = strchr(s2, '|');
+	char	*p1 = strchr(s1, '\t');	/* start of rootkey */
+	char	*p2 = strchr(s2, '\t');
 	char	*d1 = separator(p1); /* start of delta key */
 	char	*d2 = separator(p2);
 	int	rc;
 
 	*d1 = 0;
 	*d2 = 0;
-	rc = strcmp(p1, p2);
+	rc = keycmp(p1+1, p2+1);
 	*d1 = ' ';
 	*d2 = ' ';
-	unless (rc) {
-		p1 = strchr(s1, '\t');
-		p2 = strchr(s2, '\t');
-		rc = strcmp(p1, p2);
-	}
 	return (rc);
 }
 

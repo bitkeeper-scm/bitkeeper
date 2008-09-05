@@ -38,11 +38,10 @@ private struct {
 } opts;
 
 typedef struct slog {
-	time_t	date;
-	char	*gfile;
+	sccs	*s;
+	delta	*d;
+	char	*path;
 	char	*log;
-	delta	*delta;
-	ser_t	serial;
 } slog;
 
 private int	doit(int dash);
@@ -608,65 +607,46 @@ fileFilt(sccs *s, MDBM *csetDB)
 		unless (v.dptr) d->flags &= ~D_SET;
 	}
 }
-/*
- * Note that the next two are identical except for
- * the date and serial subtraction orders is flipped
- */
 
 private int
-dateback(const void *a, const void *b)
+delta_sort(const void *a, const void *b)
 {
 	slog	*d1, *d2;
 	int	cmp;
+	char	key1[MAXKEY], key2[MAXKEY];
 
 	d1 = *((slog**)a);
 	d2 = *((slog**)b);
-	if (cmp = (d2->date - d1->date)) return (cmp);
-	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
-	return (d2->serial - d1->serial);
-}
 
-private int
-dateforw(const void *a, const void *b)
-{
-	slog	*d1, *d2;
-	int	cmp;
-
-	d1 = *((slog**)a);
-	d2 = *((slog**)b);
-	if (cmp = (d1->date - d2->date)) return (cmp);
-	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
-	return (d1->serial - d2->serial);
-}
-
-/*
- * Mostly same as dateback/dateforw - but swap gfile and date check
- */
-private int
-strback(const void *a, const void *b)
-{
-	slog	*d1, *d2;
-	int	cmp;
-
-	d1 = *((slog**)a);
-	d2 = *((slog**)b);
-	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
-	if (cmp = (d2->date - d1->date)) return (cmp);
-	return (d2->serial - d1->serial);
-}
-
-/* mostly same as dateforw - swap gfile and time stamp check */
-private int
-strforw(const void *a, const void *b)
-{
-	slog	*d1, *d2;
-	int	cmp;
-
-	d1 = *((slog**)a);
-	d2 = *((slog**)b);
-	if (cmp = strcmp(d1->gfile, d2->gfile)) return (cmp);
-	if (cmp = (d1->date - d2->date)) return (cmp);
-	return (d1->serial - d2->serial);
+	if (d1->s == d2->s) {
+		/* comparing deltas of the same sfiles, time order */
+		cmp = (d2->d->serial - d1->d->serial);
+		if (opts.forwards) cmp *= -1;
+		return (cmp);
+	} else {
+		/* comparing different sfiles */
+		if (opts.timesort && (cmp = d2->d->date - d1->d->date)) {
+			if (opts.forwards) cmp *= -1;
+			return (cmp);
+		}
+		/* compare latest pathnames */
+		if (cmp = strcmp(d1->path, d2->path)) {
+			return (cmp);
+		}
+		/*
+		 * XXX: To get here, two sfiles have to exist and have had the
+		 * same name at the same time.  I'm tempted to suggest
+		 * putting an assert() here but all that would do is point
+		 * to the crazy repo somewhere which had two files in the
+		 * same spot, then gone'd the file, then brought it back later.
+		 * Instead, I'll just leave this comment :)
+		 *
+		 * sort ties by rootkeys
+		 */
+		sccs_sdelta(d1->s, sccs_ino(d1->s), key1);
+		sccs_sdelta(d2->s, sccs_ino(d2->s), key2);
+		return (keycmp(key1, key2));
+	}
 }
 
 private	void
@@ -675,11 +655,7 @@ dumplog(char **list, FILE *f)
 	slog	*ll;
 	int	i;
 
-	if (opts.timesort) {
-		sortLines(list, opts.forwards ? dateforw : dateback);
-	} else {
-		sortLines(list, opts.forwards ? strforw : strback);
-	}
+	sortLines(list, delta_sort);
 
 	/*
 	 * Print the sorted list
@@ -688,7 +664,6 @@ dumplog(char **list, FILE *f)
 		ll = (slog *)list[i];
 		fprintf(f, "%s", ll->log);
 		free(ll->log);
-		free(ll->gfile);
 		free(ll);
 	}
 
@@ -754,32 +729,27 @@ private char **
 collectDelta(sccs *s, delta *d, char **list, char *dspec, int flags)
 {
 	slog	*ll;
-	delta	*e;
+	char	*path = 0;	/* The most recent :DPN: for this file */
 
 	/*
 	 * Walk d->parent and d->merge recursively to find cset boundaries
 	 * and collect the deltas/dspec-output along the way
 	 */
-	do {
-		d->flags |= D_SET;
-
-		/* add delta to list */
-		ll = calloc(sizeof (slog), 1);
-		ll->log = sccs_prsbuf(s, d, flags, dspec);
-		ll->date = d->date;
-		ll->gfile = strdup(s->gfile);
-		ll->serial = d->serial;
-		list = addLine(list, ll);
-
-		if (d->merge) {
-			e = sfind(s, d->merge);
-			assert(e);
-			unless (e->flags & (D_SET|D_CSET)) {
-				list = collectDelta(s, e, list, dspec, flags);
-			}
+	range_cset(s, d);
+	for (d = s->rstop; d; d = d->next) {
+		if (d->flags & D_SET) {
+			/* add delta to list */
+			ll = calloc(sizeof (slog), 1);
+			ll->s = s;
+			ll->d = d;
+			ll->log = sccs_prsbuf(s, d, flags, dspec);
+			unless (path) path = d->pathname;
+			ll->path = path;
+			list = addLine(list, ll);
+			d->flags &= ~D_SET;	/* done using it */
 		}
-		d = d->parent;
-	} while (d && !(d->flags & (D_SET|D_CSET)));
+		if (d == s->rstart) break;
+	}
 	return (list);
 }
 
