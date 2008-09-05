@@ -26,7 +26,7 @@ echo OK
 echo $N Make sure delta -i works with a c.file ......................$NL
 echo hi there > comments
 echo BitKeeper rocks > SCCS/c.comments
-bk delta $S -i comments
+echo u | bk delta $S -i comments > OUT 2>&1
 test "BitKeeper rocks" = "`bk prs -hr+ -nd:C: comments`" || {
 	echo failed
 	bk prs comments

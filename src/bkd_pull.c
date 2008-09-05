@@ -118,7 +118,9 @@ cmd_pull_part2(int ac, char **av)
 		return (1);
 	}
 	if (hasLocalWork(GONE)) {
-		out("ERROR-must commit local changes to " GONE "\n");
+		out("ERROR-must commit local changes to ");
+		out(GONE);
+		out("\n");
 		drain();
 		return (1);
 	}

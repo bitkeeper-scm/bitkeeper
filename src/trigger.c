@@ -321,6 +321,9 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 		if (quiet && (rc == 0)) continue;
 
 		fprintf(out, "%s>> Trigger \"%s\"", bkd_data, trigger);
+		if (strneq("pre-delta", trigger, 9) && getenv("BK_FILE")) {
+			fprintf(out, " on \"%s\"", getenv("BK_FILE"));
+		}
 		if (rc) {
 			fprintf(out, " (exit status was %d)", rc);
 			if (gui) {

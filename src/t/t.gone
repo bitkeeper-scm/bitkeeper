@@ -342,3 +342,82 @@ Marked gone (bk help chk1): foo
 EOF
 checkfiles ERR WANT
 echo OK
+
+## OUTSOURCING test
+
+echo $N Create initial repository for outsourcing ...................$NL
+cd "$HERE"
+rm -fr project staging contractor
+commercial project
+mkdir secret public
+for i in A B C D E F G
+do	echo $i > secret/$i
+	echo $i > public/$i
+done
+bk -xr new $Q
+bk commit $Q -ysetup
+echo OK
+
+echo $N Set up staging tree .........................................$NL
+BK_GONE=BitKeeper/etc/gone-outsource
+export BK_GONE
+cd "$HERE"
+bk clone $Q project staging || exit 1
+cd staging
+rm -rf secret
+bk -r check -ag | bk gone $Q -
+bk get $Q -S $BK_GONE
+test -f $BK_GONE || {
+	echo failed to create $BK_GONE
+	exit 1
+}
+# bk new $Q BitKeeper/etc/gone-outsource
+bk commit $Q -yOutsource
+echo OK
+
+echo $N Test contractor clone and commit ............................$NL
+cd "$HERE"
+bk clone $Q staging contractor
+cd contractor/public
+bk edit $Q
+for i in ?
+do	echo nice cheap outsource >> $i
+done
+bk -cr ci $Q -y'Nothing but the highest quality here'
+bk commit $Q -y'Contractors-R-Us goodness'
+echo OK
+
+echo $N Test push to staging ........................................$NL
+bk push $Q || exit 1
+echo OK
+
+echo $N Test push to main ...........................................$NL
+cd "$HERE/staging"
+bk push $Q || exit 1
+echo OK
+
+echo $N Make a cset in the full tree ................................$NL
+(
+BK_GONE=
+export BK_GONE
+cd "$HERE/project/secret"
+bk edit $Q
+for i in ?
+do	echo Buy American >> $i
+done
+bk -cr ci $Q -y'I got yer quality right here, Buddy'
+bk commit $Q -y"Proud to be an 'Merican"
+)
+echo OK
+
+echo $N Push to staging .............................................$NL
+cd "$HERE/project"
+# This only works because it is a file system push
+# The remote side needs BK_GONE_OK
+BK_GONE_OK=1 bk push $Q "$HERE/staging" || exit 1
+echo OK
+
+echo $N Pull from staging to contractor .............................$NL
+cd "$HERE/contractor"
+bk pull $Q || exit 1
+echo OK

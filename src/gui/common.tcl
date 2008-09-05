@@ -642,6 +642,11 @@ proc getEulaText {license licsign1 licsign2 licsign3 text} \
 	return $r
 }
 
+proc normalizePath {path} \
+{
+	return [file join {*}[file split $path]]
+}
+
 # Aqua stuff
 
 proc AboutAqua {} \

@@ -355,11 +355,11 @@ int	checking_rmdir(char *dir);
 #define	BKDIR		"BitKeeper"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
-#define	GONE		"BitKeeper/etc/gone"
+#define	GONE		goneFile()
+#define	SGONE		sgoneFile()
 #define	COLLAPSED	"BitKeeper/etc/collapsed"
 #define	CSETS_IN	"BitKeeper/etc/csets-in"
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
-#define	SGONE		"BitKeeper/etc/SCCS/s.gone"
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
@@ -630,6 +630,7 @@ struct sccs {
 	u32	has_nonl:1;	/* set by getRegBody() if a no-NL is seen */
 	u32	cachemiss:1;	/* BAM file not found locally */
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
+	u32	used_cfile:1;	/* comments_readcfile found one; for cleanup */
 };
 
 typedef struct {
@@ -1148,7 +1149,7 @@ int	fix_gmode(sccs *s, int gflags);
 int	do_checkout(sccs *s);
 int	unsafe_path(char *s);
 char	**getTriggers(char *dir, char *prefix);
-void	comments_cleancfile(char *file);
+void	comments_cleancfile(sccs *s);
 int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
@@ -1274,6 +1275,8 @@ void	sccs_rdweaveInit(sccs *s);
 char	*sccs_rdweave(sccs *s);
 int	sccs_rdweaveDone(sccs *s);
 int	hasLocalWork(char *gfile);
+char	*goneFile(void);
+char	*sgoneFile(void);
 
 extern	char	*editor;
 extern	char	*bin;

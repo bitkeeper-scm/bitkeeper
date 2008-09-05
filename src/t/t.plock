@@ -1,0 +1,159 @@
+echo $N Create initial repository ...................................$NL
+commercial project
+mkdir src
+cd src
+list="none get edit readonly readmod modified pnog dashx dashxnog"
+glist="writable writablechg keywords keywordschg"
+biglist="$list $glist"
+touch $biglist
+echo "%K%" > keywords
+echo "%K%" > keywordschg
+bk new $Q $biglist
+bk get $Q get writable writablechg keywords keywordschg
+chmod +w writable writablechg keywords keywordschg
+echo new data >> writablechg
+echo new data >> keywordschg
+bk edit $Q edit readonly readmod pnog modified
+echo modified > modified
+echo modified > readmod
+rm pnog
+chmod ugo-w readonly readmod
+bk edit $Q -x+ dashx
+bk edit $Q -x+ dashxnog
+rm dashxnog
+cd "$HERE"
+tar cf project.tar project
+echo OK
+
+for TYPE in none get edit last; do
+NAME=`printf "% 4s" $TYPE`
+
+echo $N Test clean and checkout: "$NAME" ...............................$NL
+(
+cd "$HERE"
+rm -fr project
+tar xf project.tar
+cd project/src
+BK_CONFIG="checkout: $TYPE! "
+export BK_CONFIG
+bk clean -v none || exit 1
+bk clean -v get  || exit 1
+test -f get && exit 1
+bk clean -v edit 2> ERR || exit 1
+grep -q "Clean edit" ERR || exit 1
+test -f edit && exit 1
+bk clean -v modified 2> ERR && exit 1
+grep -q "modified has been modified, needs delta" ERR || exit 1
+test -f modified || exit 1
+bk clean -v pnog 2> ERR || exit 1
+grep -q "cleaning plock for pnog" ERR || exit 1
+test -f SCCS/p.pnog && exit 1
+bk clean -v dashx 2> ERR && exit 1
+grep -q "dashx has merge|include|exclude, not cleaned" ERR || exit 1
+bk clean -v dashxnog 2> ERR && exit 1
+grep -q "dashxnog has merge|include|exclude, not cleaned" ERR || exit 1
+test -f SCCS/p.dashxnog || exit 1
+bk clean -v writable || exit 1
+test -f writable && exit 1
+bk clean -v writablechg 2> ERR && exit 1
+grep -q "writablechg writable, with changes, but not edited" ERR || exit 1
+test -f writablechg || exit 1
+bk clean -v keywords || exit 1
+test -f keywords && exit 1
+bk clean -v keywordschg 2> ERR && exit 1
+grep -q "keywordschg writable, with changes, but not edited" ERR || exit 1
+test -f keywordschg || exit 1
+) || exit 1
+echo OK
+
+echo $N Test unedit and checkout: "$NAME" ..............................$NL
+(
+cd "$HERE"
+rm -fr project
+tar xf project.tar
+cd project/src
+BK_CONFIG="checkout: $TYPE! "
+export BK_CONFIG
+for file in $list; do
+	if [ -f $file -o $file = pnog -o $file = dashxnog ]
+	then	THERE=1
+	else	THERE=0
+	fi
+	bk unedit $file || exit 1
+	if [ "$TYPE" = "none" ]
+	then	test -f $file && exit 1
+	elif [ "$TYPE" = "last" ]
+	then	if [ $THERE = 1 ]
+		then	test -f $file || exit 1
+		else	test -f $file && exit 1
+			test -f SCCS/p.$file && exit 1
+		fi
+	else	test -f $file || exit 1
+	fi
+done
+exit 0
+) || { cat "$HERE/project/src/ERR"; exit 1; }
+echo OK
+
+echo $N Test edit and checkout: "$NAME" ................................$NL
+(
+cd "$HERE"
+rm -fr project
+tar xf project.tar
+cd project/src
+BK_CONFIG="checkout: $TYPE! "
+export BK_CONFIG
+for file in $list; do
+	# Yay: pnog is not in the list of cases where 'bk edit' fails!
+	bk edit $Q $file || {
+		test $file = edit -o $file = modified -o $file = readmod \
+		    -o $file = dashx -o $file = dashxnog || exit 1
+	}
+	test -f $file || {
+		test $file = dashxnog || exit 1
+	}
+done
+for file in $glist; do
+	# XXX: disagree with some of these: "bk edit writable" should work
+	bk edit $Q $file && exit 1
+	test -f $file || exit 1
+done
+exit 0
+) || { cat "$HERE/project/src/ERR"; exit 1; }
+echo OK
+
+echo $N Test edit -x and checkout: "$NAME" .............................$NL
+(
+cd "$HERE"
+rm -fr project
+tar xf project.tar
+cd project/src
+BK_CONFIG="checkout: $TYPE! "
+export BK_CONFIG
+for file in $list; do
+	bk edit $Q -x+ $file || {
+		# different from previous test in that 'bk edit -x+ edit' works
+		test $file = modified -o $file = readmod \
+		    -o $file = dashx -o $file = dashxnog || exit 1
+	}
+	test -f $file || {
+		test $file = dashxnog || exit 1
+	}
+done
+exit 0
+) || { cat "$HERE/project/src/ERR"; exit 1; }
+echo OK
+
+# Done cycling through all the checkout types
+done
+
+echo $N Look inside this file for notes about suggested changes .....$NL
+# bk edit foo; bk edit foo; <- second one should just nop not error.
+# bk get foo; chmod +w foo; bk edit foo; <- If can clean, should work
+# Some way to recover bk edit -x+ foo; rm foo; bk <restore?> foo
+# currently it is a cut and paste from a gfile.
+#
+# also annoying that 'bk check -f <file>' does a cd2root :(
+#
+# See the XXX in the edit test above for a place that should be fixed.
+echo "failed (bug )"

@@ -66,6 +66,8 @@ again:
 			/* handle truncated buffer from sfiles being killed */
 			if (feof(flist) && sfilesDied(0)) return (0);
 		}
+		localName2bkName(buf, buf);
+		cleanPath(buf, buf);
 		debug((stderr, "sfiles::FILE got %s\n", buf));
 	} else if (d) {
 		while (di <= nLines(d)) {

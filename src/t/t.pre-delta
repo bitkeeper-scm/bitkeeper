@@ -1,0 +1,74 @@
+commercial project
+echo $N Make sure pre-delta can stop a bk new .......................$NL
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-delta <<EOF
+#!/bin/sh
+set > "$HERE/project/OUT"
+case \$BK_FILE in
+*fail*)
+	echo Failing the create of \$BK_FILE
+	exit 1
+	;;
+esac
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-delta
+echo hi there > fail
+bk new $Q fail > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+echo hi there > pass
+bk new $Q pass || {
+	echo should not have failed
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can fail one in the middle but others work .....$NL
+echo hi there > fail2
+echo hi there > pass1
+echo hi there > pass2
+bk new $Q pass1 fail pass2 > OUT 2>&1 && {
+	echo should have failed, right
+	cat OUT
+	exit 1
+}
+test -f SCCS/s.pass1 || {
+	echo failed to make pass1
+	exit 1
+}
+test -f SCCS/s.pass2 || {
+	echo failed to make pass1
+	exit 1
+}
+test -f SCCS/s.fail2 && {
+	echo should not have done fail2
+	exit 1
+}
+echo OK
+
+echo $N Same thing only delta not bk new ............................$NL
+bk edit $Q pass1 pass2
+echo hi there >> fail2
+echo hi there >> pass1
+echo hi there >> pass2
+bk delta -a -ywhatever $Q pass1 fail pass2 > OUT 2>&1 && {
+	echo should have failed, right
+	cat OUT
+	exit 1
+}
+test -f SCCS/s.pass1 || {
+	echo failed to make pass1
+	exit 1
+}
+test -f SCCS/s.pass2 || {
+	echo failed to make pass1
+	exit 1
+}
+test -f SCCS/s.fail2 && {
+	echo should not have done fail2
+	exit 1
+}
+echo OK

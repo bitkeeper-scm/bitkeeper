@@ -111,7 +111,7 @@ cp BitKeeper/log/BAM.index .
 
 echo $N Make sure fix -c does not confuse BAM .......................$NL
 bk fix -c
-bk new $Q x y z
+echo u | bk new $Q x y z > OUT 2>&1
 bk commit $Q -yxyz
 bk -r check -acc || exit 1
 echo OK

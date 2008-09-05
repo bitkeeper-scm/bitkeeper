@@ -54,6 +54,22 @@ cmp -s s1 s2 || {
 }
 echo OK
 
+echo $N checkout:edit with no gfile should restore the gfile ........$NL
+rm foo.c
+bk unedit foo.c || exit 1
+test -f foo.c || { echo failed no file; exit 1; }
+echo OK
+
+echo $N checkout:edit with -x+ and no gfile should clear -x+ ........$NL
+bk edit $Q -x+ foo.c
+cmp -s foo.c foo.ref && exit 1
+rm foo.c
+bk clean $Q foo.c && exit 1
+bk unedit foo.c || exit 1
+test -f foo.c || { echo failed no file; exit 1; }
+cmp -s foo.c foo.ref || exit 1
+echo OK
+
 echo $N  checkout:last with unedit on a RW file ......................$NL
 bk clean foo.c
 bk edit $Q foo.c
@@ -74,3 +90,21 @@ test -f foo.c -a ! -w foo.c || {
 	exit 1
 }
 echo OK
+
+########## WIN32 TESTS ##########
+if [ $PLATFORM = "WIN32" ]; then
+echo $N Passing a full path in stdin should work.....................$NL
+cd "$HERE"/project/src
+bk clean foo.c
+bk edit $Q foo.c
+echo new_stuff >> foo.c
+WINFOO=$(bk pwd -w "`pwd`")\\foo.c
+echo "$WINFOO" | bk unedit - >OUT 2>&1
+bk sfiles -cg | grep -q foo.c && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+fi

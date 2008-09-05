@@ -279,7 +279,17 @@ $
 BitKeeper was unable to make a connection to the license server at:
 	#BKARG#
 
-Please correct the problem or contact BitMover for help. support@bitmover.com
+Please see:
+    	http://www.bitkeeper.com/installing.html
+
+if you are having problems installing BitKeeper.  A common problem
+is related to web proxies; if your company uses proxies that web
+page will help.
+
+If you have BitKeeper installed, the proxy information may be seen with:
+
+	bk help url
+
 $
 #rejected-proxy-trigger
 The lease proxy server rejected your request to use BitKeeper.
