@@ -101,6 +101,20 @@ cd "$HERE/local"
 if [ ! -d RESYNC ]; then echo failed to create RESYNC directory; exit 1; fi
 echo OK
 
+echo $N "Starting fm3tool with bad file name, should stop itself .....$NL"
+cd "$HERE/local/RESYNC"
+bk fm3tool -geometry 800x600 \
+    -o merge.raw -f -l1.1.1.1 -r1.2 src/no-such-file 2> GOT && {
+	echo failed: fm3tool passed
+	exit 1
+}
+grep -q "ERROR: couldn't find 1.1.1.1 in src/no-such-file" GOT || {
+    echo "failed wrong msg"
+    cat GOT
+    exit 1
+}
+echo OK
+
 echo $N "Starting fm3tool interactively; you must quit manually.......$NL"
 cd "$HERE/local/RESYNC"
 bk fm3tool -geometry 800x600 -o merge.raw -f -l1.1.1.1 -r1.2 src/file1

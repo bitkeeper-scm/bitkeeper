@@ -78,3 +78,37 @@ if [ $? -ne 0 ]; then
 fi
 echo "OK"
 
+if [ "$PLATFORM" = "WIN32" ]; then
+	echo $N Testing windows path in command line.........................$NL
+	cd "$HERE"/project
+	echo "some stuff" > afile
+	bk new $Q afile
+	bk commit $Q -ycomment
+	WINFILE=$(bk pwd -w "`pwd`")\\afile
+	BKFILE=$(bk pwd "`pwd`")/afile
+	bk difftool "$WINFILE" >GOT 2>&1
+	err=$?
+	if [ $err -ne 1 ]; then
+	    echo failed
+	    echo "exited $err; expected 1"
+	    exit 1
+	fi
+	echo "$BKFILE is the same as the checked in version." > WANT
+	cmpfiles WANT GOT
+	echo OK
+
+	echo $N Testing windows path from stdin..............................$NL
+	cd "$HERE"/project
+	WINFILE=$(bk pwd -w "`pwd`")\\afile
+	BKFILE=$(bk pwd "`pwd`")/afile
+	echo "$WINFILE" | bk difftool - >GOT 2>&1
+	err=$?
+	if [ $err -ne 1 ]; then
+	    echo failed
+	    echo "exited $err; expected 1"
+	    exit 1
+	fi
+	echo "$BKFILE is the same as the checked in version." >WANT
+	cmpfiles WANT GOT
+	echo OK
+fi

@@ -40,6 +40,7 @@ private struct {
 typedef struct slog {
 	sccs	*s;
 	delta	*d;
+	char	*path;
 } slog;
 
 /* per-repo state */
@@ -618,65 +619,46 @@ fileFilt(sccs *s, MDBM *csetDB)
 		unless (v.dptr) d->flags &= ~D_SET;
 	}
 }
-/*
- * Note that the next two are identical except for
- * the date and serial subtraction orders is flipped
- */
 
 private int
-dateback(const void *a, const void *b)
+delta_sort(const void *a, const void *b)
 {
 	slog	*d1, *d2;
 	int	cmp;
+	char	key1[MAXKEY], key2[MAXKEY];
 
 	d1 = *((slog**)a);
 	d2 = *((slog**)b);
-	if (cmp = (d2->d->date - d1->d->date)) return (cmp);
-	if (cmp = strcmp(d1->s->gfile, d2->s->gfile)) return (cmp);
-	return (d2->d->serial - d1->d->serial);
-}
 
-private int
-dateforw(const void *a, const void *b)
-{
-	slog	*d1, *d2;
-	int	cmp;
-
-	d1 = *((slog**)a);
-	d2 = *((slog**)b);
-	if (cmp = (d1->d->date - d2->d->date)) return (cmp);
-	if (cmp = strcmp(d1->s->gfile, d2->s->gfile)) return (cmp);
-	return (d1->d->serial - d2->d->serial);
-}
-
-/*
- * Mostly same as dateback/dateforw - but swap gfile and date check
- */
-private int
-strback(const void *a, const void *b)
-{
-	slog	*d1, *d2;
-	int	cmp;
-
-	d1 = *((slog**)a);
-	d2 = *((slog**)b);
-	if (cmp = strcmp(d1->s->gfile, d2->s->gfile)) return (cmp);
-	if (cmp = (d2->d->date - d1->d->date)) return (cmp);
-	return (d2->d->serial - d1->d->serial);
-}
-
-/* mostly same as dateforw - swap gfile and time stamp check */
-private int
-strforw(const void *a, const void *b)
-{
-	slog	*d1, *d2;
-	int	cmp;
-
-	d1 = *((slog**)a);
-	d2 = *((slog**)b);
-	if (cmp = strcmp(d1->s->gfile, d2->s->gfile)) return (cmp);
-	if (cmp = (d1->d->date - d2->d->date)) return (cmp);
-	return (d1->d->serial - d2->d->serial);
+	if (d1->s == d2->s) {
+		/* comparing deltas of the same sfiles, time order */
+		cmp = (d2->d->serial - d1->d->serial);
+		if (opts.forwards) cmp *= -1;
+		return (cmp);
+	} else {
+		/* comparing different sfiles */
+		if (opts.timesort && (cmp = d2->d->date - d1->d->date)) {
+			if (opts.forwards) cmp *= -1;
+			return (cmp);
+		}
+		/* compare latest pathnames */
+		if (cmp = strcmp(d1->path, d2->path)) {
+			return (cmp);
+		}
+		/*
+		 * XXX: To get here, two sfiles have to exist and have had the
+		 * same name at the same time.  I'm tempted to suggest
+		 * putting an assert() here but all that would do is point
+		 * to the crazy repo somewhere which had two files in the
+		 * same spot, then gone'd the file, then brought it back later.
+		 * Instead, I'll just leave this comment :)
+		 *
+		 * sort ties by rootkeys
+		 */
+		sccs_sdelta(d1->s, sccs_ino(d1->s), key1);
+		sccs_sdelta(d2->s, sccs_ino(d2->s), key2);
+		return (keycmp(key1, key2));
+	}
 }
 
 private	void
@@ -685,11 +667,7 @@ dumplog(char **list, delta *cset, char *dspec, int flags, FILE *f)
 	slog	*ll;
 	int	i;
 
-	if (opts.timesort) {
-		sortLines(list, opts.forwards ? dateforw : dateback);
-	} else {
-		sortLines(list, opts.forwards ? strforw : strback);
-	}
+	sortLines(list, delta_sort);
 
 	/*
 	 * Print the sorted list
@@ -744,6 +722,7 @@ private char **
 collectDelta(sccs *s, delta *d, char **list)
 {
 	slog	*ll;
+	char	*path = 0;	/* The most recent :DPN: for this file */
 
 	/*
 	 * Walk all deltas included in this cset and capture the
@@ -756,9 +735,10 @@ collectDelta(sccs *s, delta *d, char **list)
 			ll = new(slog);
 			ll->s = s;
 			ll->d = d;
+			unless (path) path = d->pathname;
+			ll->path = path;
 			list = addLine(list, ll);
-
-			d->flags &= ~D_SET;
+			d->flags &= ~D_SET;	/* done using it */
 		}
 		if (d == s->rstart) break;
 	}

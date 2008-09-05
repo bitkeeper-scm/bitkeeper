@@ -36,7 +36,7 @@ proc bk_init {} \
 	# we can't find the icon, don't set the global variable. This
 	# way code that needs the icon can check for the existence of
 	# the variable rather than checking the filesystem.
-	set f "$env(BK_BIN)/gui/images/bk16.ico"
+	set f "$env(BK_BIN)/gui/images/bk.ico"
 	if {[file exists $f]} {
 		set ::wmicon $f
 		catch {wm iconbitmap . -default $f}

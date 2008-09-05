@@ -19,8 +19,8 @@ proc main {} \
 	}
 
 	widgets
-	if {[file exists bitkeeper/gui/images/bk16.ico]} {
-		catch {wm iconbitmap . bitkeeper/gui/images/bk16.ico}
+	if {[file exists bitkeeper/gui/images/bk.ico]} {
+		catch {wm iconbitmap . bitkeeper/gui/images/bk.ico}
 	}
 
 	set w [expr [font measure $fixedFont "="] * 79]

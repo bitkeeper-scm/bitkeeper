@@ -285,7 +285,7 @@ clean: FORCE
 	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		bkver.h tclkey.h core *.bb *.bbg *.da *.gcov \
-		bk.ico bk16.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
+		bk.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
@@ -362,9 +362,6 @@ libc/mtst$(EXE): FORCE
 
 bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o
-
-bk16.ico: win32/data/bk16.ico
-	@cp -f win32/data/bk16.ico .
 
 bk.ico: win32/data/bk.ico
 	@cp -f win32/data/bk.ico .

@@ -3,7 +3,7 @@
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "msys"
 	SYS=win32
-	ICONS=../win32/data/bk.ico ../win32/data/bk16.ico
+	ICONS=../win32/data/bk.ico
 else
 	SYS=unix
 	ICONS=

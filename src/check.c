@@ -911,17 +911,49 @@ sfiocmd(int in_repair)
 }
 
 /*
- * sort on pathnames ... of the key
+ * compare two bk long keys, by pathname first and then if the
+ * pathnames match by comparing the whole key.
  */
-private int
+int
+keycmp(const void *k1, const void *k2)
+{
+	char	*p1 = (char *)k1;
+	char	*p2 = (char *)k2;
+	int	cmp;
+
+	/* find char after first | */
+	while (*p1 && (*p1++ != '|'));
+	while (*p2 && (*p2++ != '|'));
+
+	/* compare pathnames */
+	while (*p1) {
+		if (cmp = (*(unsigned char *)p1 - *(unsigned char *)p2)) {
+			/*
+			 * path mismatch, but if one is short then invert
+			 * result.
+			 */
+			if (*p1 == '|') return (-1);
+			if (*p2 == '|') return (1);
+			return (cmp);
+		}
+		/* if both pathnames are identical, then just compare keys */
+		if (*p1 == '|') return (strcmp(k1, k2));
+		++p1, ++p2;
+	}
+	/* if we get here then one of the keys are malformed */
+	assert(0);
+}
+
+/*
+ * qsort routine to compare an array of keys
+ */
+int
 key_sort(const void *a, const void *b)
 {
 	char	*aa = *(char**)a;
 	char	*bb = *(char**)b;
 
-	aa = strchr(aa, '|');
-	bb = strchr(bb, '|');
-	return (strcmp(aa, bb));
+	return (keycmp(aa, bb));
 }
 
 private int
@@ -936,7 +968,6 @@ repair(hash *db)
 
 	/* Unneeded but left here in case we screw up the calling code */
 	unless (n = nLines(sorted)) return (0);
-
 
 	sortLines(sorted, key_sort);
 	if (verbose) fprintf(stderr, "Attempting to fetch %d files...\n", n);
