@@ -343,15 +343,15 @@ http_changes(char *page)
 		av[++i] = buf;
 	}
 	av[++i] = dspec = aprintf("-d%s"
-	    "$if(:Li: -gt 0){<tr bgcolor=white>\n"
-	    " <td align=right>:HTML_AGE:</td>\n"
-	    " <td align=center>:USER:</td>\n"
-	    " <td align=center$if(:TAG:){ bgcolor=yellow}>\n"
-	    "|:REV:|:MD5KEY:\n"
+	    "$if(:Li: -gt 0){<tr bgcolor=white>\\n"
+	    " <td align=right>:HTML_AGE:</td>\\n"
+	    " <td align=center>:USER:</td>\\n"
+	    " <td align=center$if(:TAG:){ bgcolor=yellow}>\\n"
+	    "|:REV:|:MD5KEY:\\n"
 	    "$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:) }}"
-	    "</td>\n"
-	    " <td>:HTML_C:</td>\n"
-	    "</tr>\n"
+	    "</td>\\n"
+	    " <td>:HTML_C:</td>\\n"
+	    "</tr>\\n"
 	    "}%s",
 	    prefix, suffix);
 	av[++i] = "ChangeSet";
@@ -396,17 +396,17 @@ http_cset(char *page)
 	char	*buf = malloc(2048);
 
 	dspec = aprintf("-d%s"
-	    "##:REV:\n"
-	    "<tr bgcolor=#e0e0e0><td><font size=2>\n"
+	    "##:REV:\\n"
+	    "<tr bgcolor=#e0e0e0><td><font size=2>\\n"
 	    "#:MD5KEY:@:GFILE:@:REV:&nbsp;&nbsp;:Dy:-:Dm:-:Dd: :T::TZ:&nbsp;&nbsp;:P:"
-	    "$if(:DOMAIN:){@:DOMAIN:}</font><br>\n"
-	    "</td></tr>\n"
+	    "$if(:DOMAIN:){@:DOMAIN:}</font><br>\\n"
+	    "</td></tr>\\n"
 	    "$if(:TAG:){"
 	      "<tr bgcolor=yellow><td>"
-	      "$each(:TAG:){TAG: (:TAG:)<br>}</td>\n</tr>\n"
+	      "$each(:TAG:){TAG: (:TAG:)<br>}</td>\\n</tr>\\n"
 	    "}"
-	    "<tr bgcolor=white>\n"
-	    "<td>:HTML_C:</td></tr>\n"
+	    "<tr bgcolor=white>\\n"
+	    "<td>:HTML_C:</td></tr>\\n"
 	    "%s",
 	    prefix, suffix);
 
@@ -668,12 +668,12 @@ http_dir(char *page)
 	freeLines(d, free);
 
 	cmd = aprintf("bk prs -h -r+ -d'"
-	    "%s<tr bgcolor=white>\n"
-	    "|:GFILE:|:REV:|:MD5KEY:\n"
+	    "%s<tr bgcolor=white>\\n"
+	    "|:GFILE:|:REV:|:MD5KEY:\\n"
 	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
 	    " <td align=center>:USER:</td>"
 	    " <td>:HTML_C:&nbsp;</td>"
-	    "</tr>\n%s' '%s'",
+	    "</tr>\\n%s' '%s'",
 	    prefix, suffix, fpath);
 	f = popen(cmd, "r");
 	free(cmd);
@@ -886,12 +886,12 @@ http_diffs(char *page)
 	mk_querystr();
 
 	i = snprintf(dspec, sizeof dspec,
-		"-d%s<tr bgcolor=white>\n"
-		" <td align=right>:HTML_AGE:</td>\n"
-		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
-		" <td align=center><a href=\"%s&REV=:MD5KEY:\">:I:</a></td>\n"
-		" <td>:HTML_C:</td>\n"
-		"</tr>\n%s", prefix, querystr, suffix);
+		"-d%s<tr bgcolor=white>\\n"
+		" <td align=right>:HTML_AGE:</td>\\n"
+		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\\n"
+		" <td align=center><a href=\"%s&REV=:MD5KEY:\">:I:</a></td>\\n"
+		" <td>:HTML_C:</td>\\n"
+		"</tr>\\n%s", prefix, querystr, suffix);
 
 	if (i == -1) {
 		http_error(500, "buffer overflow (#1) in http_diffs");
@@ -986,7 +986,7 @@ http_stats(char *page)
 	char	buf[200];
 	FILE	*p;
 
-	unless (p = popen("bk prs -h -d'$if(:Li: -gt 0){:USER: :AGE:\n}' ChangeSet | bk sort", "r"))
+	unless (p = popen("bk prs -h -d'$if(:Li: -gt 0){:USER: :AGE:\\n}' ChangeSet | bk sort", "r"))
 		http_error(500, "bk prs failed: %s", strerror(errno));
 
 	c_user[0] = 0;
@@ -1525,16 +1525,16 @@ http_related(char *page)
 	hash_storeStr(qout, "PAGE", "cset");
 	mk_querystr();
 
-	i = snprintf(dspec, sizeof dspec, "%s<tr bgcolor=white>\n"
-			" <td align=right>:HTML_AGE:</td>\n"
-			" <td align=center>:USER:</td>\n"
+	i = snprintf(dspec, sizeof dspec, "%s<tr bgcolor=white>\\n"
+			" <td align=right>:HTML_AGE:</td>\\n"
+			" <td align=center>:USER:</td>\\n"
 			" <td align=center"
 			"$if(:TAG:){ bgcolor=yellow}>"
 			"<a href=/%s/%s&REV=:MD5KEY:>:I:</a>"
 			"$if(:TAG:){$each(:TAG:){<br>TAG: (:TAG:)}}"
-			"</td>\n"
-			" <td>:HTML_C:</td>\n"
-			"</tr>\n%s", prefix, root, querystr, suffix);
+			"</td>\\n"
+			" <td>:HTML_C:</td>\\n"
+			"</tr>\\n%s", prefix, root, querystr, suffix);
 
 	if (i == -1)
 		http_error(500, "buffer overflow in http_related");
@@ -1590,10 +1590,10 @@ http_tags(char *page)
 
 
 	cmd = aprintf("bk changes -t -nd'%s"
-	    "<tr bgcolor=white>\n"
-	    "  <td align=right>:HTML_AGE:</td>\n"
-	    "$each(:TAG:){|(:TAG:)}\n"
-	    "  <td>:HTML_C:</td>\n"
+	    "<tr bgcolor=white>\\n"
+	    "  <td align=right>:HTML_AGE:</td>\\n"
+	    "$each(:TAG:){|(:TAG:)}\\n"
+	    "  <td>:HTML_C:</td>\\n"
 	    "</tr>%s'", prefix, suffix);
 	f = popen(cmd, "r");
 	free(cmd);
@@ -1671,14 +1671,14 @@ http_search(char *page)
 	switch (which) {
 	    case SEARCH_CSET:
 		sprintf(buf, "bk prs -h "
-		    "-d'$each(:C:){:GFILE:::I:::MD5KEY:|(:C:)\n}' ChangeSet");
+		    "-d'$each(:C:){:GFILE:::I:::MD5KEY:|(:C:)\\n}' ChangeSet");
 		break;
 	    case SEARCH_CONTENTS:
 		sprintf(buf, "bk -Ur grep -i -H -Ar '%s'", expr);
 		break;
 	    case SEARCH_COMMENTS:
 		sprintf(buf, "bk -Ur prs -h "
-		    "-d'$each(:C:){:GFILE:::I:::MD5KEY:|(:C:)\n}'");
+		    "-d'$each(:C:){:GFILE:::I:::MD5KEY:|(:C:)\\n}'");
 		break;
 	}
 	unless (f = popen(buf, "r")) http_error(404, "grep failed?\n");

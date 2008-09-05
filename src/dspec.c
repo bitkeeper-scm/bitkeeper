@@ -711,3 +711,135 @@ show_s(sccs *s, FILE *out, char *data, int len)
 	}
 }
 
+private char *
+str_closebracket(char *p)
+{
+	int	cnt = 0;
+
+	assert(p && *p == '{');
+	for (; *p; p++) {
+		switch (*p) {
+		    case '{': ++cnt; break;
+		    case '}': --cnt; break;
+		    case '\\': ++p; break;
+		    default: break;
+		}
+		if (cnt == 0) break;
+	}
+	if (cnt) return (0);
+	return (p);
+}
+
+/*
+ * handle the "extended" dspec syntax.
+ * strip out all unescaped whitespace and comments.
+ */
+void
+dspec_collapse(char **dspec, char **begin, char **end)
+{
+	FILE	*f;
+	char	*p, *t;
+	char	*who, ***where;
+
+	/*
+	 * Don't enable "extended" mode unless the dspec is more than
+	 * one line
+	*/
+	unless (strchr(*dspec, '\n')) return;
+	if (getenv("BK_4X_DSPEC_COMPAT")) return;
+
+	f = fmem_open();
+	p = *dspec;
+	for (; *p; p++) {
+		switch (*p) {
+		    case '#':	/* comment to end of line */
+			while (*p && (*p != '\n')) ++p;
+			break;
+		    case '\\':
+			fputc(*p, f);
+			if (p[1]) fputc(*++p, f);
+			break;
+		    case ' ':
+			if ((p[1] == '-') &&
+			    (strneq(p, " -eq ", 5) ||
+			     strneq(p, " -ne ", 5) ||
+			     strneq(p, " -gt ", 5) ||
+			     strneq(p, " -ge ", 5) ||
+			     strneq(p, " -lt ", 5) ||
+			     strneq(p, " -le ", 5))) {
+				/* don't trim number compares */
+				fwrite(p, 1, 5, f);
+				p += 4;
+				break;
+			}
+			/* fallthough */
+		    case '\t': case '\n':	/* skip whitespace */
+			break;
+		    case '"':
+			for (++p; *p && (*p != '"'); p++) {
+				switch (*p) {
+				    case '\n':
+					fprintf(stderr, "error in dspec, "
+					    "no multi-line strings");
+					exit(1);
+					break;
+				    case '\\':
+					fputc(*p, f);
+					if (p[1]) fputc(*++p, f);
+					break;
+				    case '$':
+					unless (isdigit(p[1])) fputc('\\', f);
+					fputc(*p, f);
+					break;
+				    default:
+					fputc(*p, f);
+					break;
+				}
+			}
+			break;
+		    case '$':
+			if (strneq(p+1, "begin", 5)) {
+				t = p+6;
+				where = &begin;
+				who = "$begin";
+			} else if (strneq(p+1, "end", 3)) {
+				t = p+4;
+				where = &end;
+				who = "$end";
+			} else {
+				fputc(*p, f);
+				break;
+			}
+			while (*t == ' ') t++;
+			if (*t != '{') { /* no match */
+				fputc(*p, f);
+				break;
+			}
+			unless (*where) {
+				fprintf(stderr, "%s not supported\n", who);
+				exit(1);
+			}
+			if (**where) {
+				fprintf(stderr, "only one %s\n", who);
+				exit(1);
+			}
+			p = t;
+			unless (t = str_closebracket(p)) {
+				fprintf(stderr, "unmatched } in %s\n", who);
+				exit(1);
+			}
+			*t = 0;
+			**where = strdup(p+1);
+			dspec_collapse(*where, 0, 0);
+			p = t;
+			break;
+		    default:
+			fputc(*p, f);
+			break;
+		}
+	}
+	p = fmem_retbuf(f, 0);
+	fclose(f);
+	free(*dspec);
+	*dspec = p;
+}

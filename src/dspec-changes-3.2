@@ -1,0 +1,14 @@
+# A dspec to try a mimic the output of the bk-3.2.8 release
+
+":INDENT::DPN:\n"
+":INDENT:  :REV: :D: :T: :USER:@:HOST: +:LI: -:LD:\n"
+$each(:C:) {
+	":INDENT:  (:C:)\n"
+}
+$each(:TAG:) {
+	"  TAG: (:TAG:)\n"
+}
+$if (:MERGE:) {
+	":INDENT:  MERGE: :MPARENT:\n"
+}
+\n

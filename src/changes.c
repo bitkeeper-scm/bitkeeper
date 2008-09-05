@@ -27,6 +27,8 @@ private struct {
 
 	search	search;		/* -/pattern/[i] matches comments w/ pattern */
 	char	*dspec;		/* override dspec */
+	char	*begin;		/* $begin{....} */
+	char	*end;		/* $end{....} */
 	char	**users;	/* lines list of users to include */
 	char	**notusers;	/* lines list of users to exclude */
 	char	**inc;		/* list of globs for files to include */
@@ -111,7 +113,7 @@ changes_main(int ac, char **av)
 			if (range_addArg(&opts.rargs, optarg, 1)) goto usage;
 			break;
 		    case 'D': opts.urls = opts.showdups = 0; break;
-		    case 'd': opts.dspec = optarg; break;
+		    case 'd': opts.dspec = strdup(optarg); break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
 		    case 'h': opts.html = 1; opts.urls = 0; break;
@@ -170,6 +172,7 @@ usage:			system("bk help -s changes");
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
 	if (opts.html && opts.dspec) goto usage;
 	if (opts.diffs && opts.dspec) goto usage;
+	if (opts.html && opts.diffs) goto usage;
 
 	if (opts.local || opts.remote || !av[optind] ||
 	    (streq(av[optind], "-") && !av[optind + 1])) {
@@ -191,6 +194,33 @@ usage:			system("bk help -s changes");
 	}
 	nav[nac] = 0;	/* terminate list of args with -L and -R removed */
 
+#if 0
+	// NOT YET
+	// Current thinking is that $include{filename} will read a file
+	// as a dspec.
+	if (opts.dspec && (opts.dspec[0] == '<')) {
+		// XXX replace with $include
+		if (streq(opts.dspec, "<-")) {
+			if (av[optind] && streq(av[optind], "-")) {
+				fprintf(stderr, "changes: "
+				    "can't read dspec and revs from stdin.\n");
+				return (1);
+			}
+			f = fmem_open();
+			while ((i = fread(buf, 1, sizeof(buf), stdin)) > 0) {
+				fwrite(buf, 1, i, f);
+			}
+			free(opts.dspec);
+			opts.dspec = fmem_retbuf(f, 0);
+			fclose(f);
+		} else if (exists(opts.dspec+1)) {
+			if (p = loadfile(opts.dspec+1, 0)) {
+				free(opts.dspec);
+				opts.dspec = p;
+			}
+		}
+	}
+#endif
 	/*
 	 * There are 5 major cases
 	 * 1) bk changes -L (url_list | -)
@@ -291,6 +321,9 @@ out:	if (s_cset) sccs_free(s_cset);
 		fclose(stdout);
 		waitpid(pid, 0, 0);
 	}
+	if (opts.dspec) free(opts.dspec);
+	if (opts.begin) free(opts.begin);
+	if (opts.end) free(opts.end);
 	if (seen) hash_free(seen);
 	for (c = 2; c < nac; c++) free(nav[c]);
 	freeLines(urls, free);
@@ -413,79 +446,41 @@ done:
 	return (rc);
 }
 
-/*
- * dspec vars
- *    $0 = user@host in last cset
- *    $1 = user@host for this delta
- */
-#define	DSPEC	":INDENT::DPN:@:I:" \
-	        "${1=:P:$if(:HT:){@:HT:}}" \
-		"$if(:CHANGESET: && !:COMPONENT:){" \
-		", :Dy:-:Dm:-:Dd: :T::TZ:, $1${0=$1}}" \
-	        "$else{$if($0!=$1){, $1}}" \
-		"$unless(:CHANGESET:){ +:LI: -:LD:}\n" \
-		"$each(:C:){:INDENT:  (:C:)\n}" \
-		"$each(:TAG:){  TAG: (:TAG:)\n}" \
-		"$if(:MERGE:){:INDENT:  MERGE: " \
-		":MPARENT:\n}\n"
-#define	VSPEC	"$if(:CHANGESET:){\n#### :DPN: ####\n}" \
-		"$else{\n==== :DPN: ====\n}" \
-		":Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
-		"$if(:FILE:){+:LI: -:LD:}" \
-		"\n" \
-		"$each(:C:){  (:C:)\n}" \
-		"$each(:TAG:){  TAG: (:TAG:)\n}" \
-		"$unless(:CHANGESET:){:DIFFS_UP:}"
-#define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
-		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
-		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
-		"$if(:TAG:){<tr bgcolor=yellow><td>" \
-		"$each(:TAG:){&nbsp;TAG: (:TAG:)<br>\n}" \
-		"</td></tr>\n}" \
-		"<tr bgcolor=white><td>" \
-		"$each(:C:){&nbsp;(:C:)<br>\n}</td></tr>\n"
-#define	HSPECV	"<tr bgcolor=" \
-		"$if(:TYPE:=BitKeeper|ChangeSet){lightblue>}" \
-		"$if(:TYPE:=BitKeeper){#f0f0f0>}" \
-		"<td font size=4>&nbsp;" \
-		"$if(:TYPE:=BitKeeper|ChangeSet){" \
-		":Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
-		":P:@:HT:&nbsp;&nbsp;:I:}" \
-		"$if(:TYPE:=BitKeeper){&nbsp;:DPN: :I:}" \
-		"</td></tr>\n" \
-		"$if(:TAG:){<tr bgcolor=yellow><td>" \
-		"$each(:TAG:){&nbsp;TAG: (:TAG:)<br>\n}" \
-		"</td></tr>\n}" \
-		"<tr bgcolor=white><td>" \
-		"$each(:C:){&nbsp;" \
-		"$if(:TYPE:=BitKeeper){&nbsp;&nbsp;&nbsp;&nbsp;}" \
-		"(:C:)<br>\n}" \
-		"$unless(:C:){" \
-		"$if(:TYPE:=BitKeeper){&nbsp;&nbsp;&nbsp;&nbsp;}" \
-		"&lt;no comments&gt;}" \
-		"</td></tr>\n"
-
 private int
 doit(int dash)
 {
 	char	cmd[MAXKEY];
-	char	*spec;
+	char	*spec, *specf;
 	pid_t	pid;
 	sccs	*s = 0;
-	delta	*e;
+	delta	*e, *dstart, *dstop;
 	int	rc = 1;
 	hash	*state;
 	struct	rstate *rstate;
 	char	**keys;
 	kvpair	kv;
+	int	flags;
 
-	if (opts.dspec) {
-		spec = opts.dspec;
-	} else if (opts.html) {
-		spec = opts.verbose ? HSPECV : HSPEC;
-	} else {
-		spec = opts.diffs ? VSPEC : DSPEC;
+	unless (opts.dspec) {
+		if (opts.html) {
+			spec = opts.verbose ?
+			    "dspec-changes-hv" :
+			    "dspec-changes-h";
+		} else {
+			spec = opts.diffs ?
+			    "dspec-changes-vv" :
+			    "dspec-changes";
+		}
+		specf = bk_searchFile(spec);
+		TRACE("Reading dspec from %s", specf ? specf : "(not found)");
+		unless (specf && (opts.dspec = loadfile(specf, 0))) {
+			fprintf(stderr,
+			    "changes: cant find %s/%s\n", bin, spec);
+			exit(1);
+		}
+		free(specf);
 	}
+	dspec_collapse(&opts.dspec, &opts.begin, &opts.end);
 	s = s_cset;
 	unless (s && HASGRAPH(s)) {
 		system("bk help -s changes");
@@ -548,14 +543,6 @@ doit(int dash)
 	 */
 	pid = mkpager();
 
-	if (opts.html) {
-		fputs("<html><body bgcolor=white>\n"
-		    "<table align=center bgcolor=black cellspacing=0 "
-		    "border=0 cellpadding=0><tr><td>\n"
-		    "<table width=100% cellspacing=1 border=0 cellpadding=1>"
-		    "<tr><td>\n", stdout);
-		fflush(stdout);
-	}
 	state = hash_new(HASH_MEMHASH);
 	/*
 	 * If we are doing filtering in a nested environment then we
@@ -567,16 +554,31 @@ doit(int dash)
 	}
 	if (opts.doComp || opts.verbose) opts.fcset = fmem_open();
 	/* capture the comments, for the csets we care about */
+	dstart = dstop = 0;
 	for (e = s->rstop; e; e = e->next) {
-		if (e->flags & D_SET) comments_load(s, e);
+		if (e->flags & D_SET) {
+			unless (dstart) dstart = e;
+			dstop = e;
+			comments_load(s, e);
+		}
 		if (e == s->rstart) break;
 	}
-	cset(state, s, 0, stdout, spec);
+	if (opts.forwards) {
+		e = dstop;
+		dstop = dstart;
+		dstart = e;
+	}
+	flags = PRS_FORCE;
+	if (opts.newline) flags |= PRS_LF;
+	if (opts.begin && dstart) {
+		sccs_prsdelta(s, dstart, flags, opts.begin, stdout);
+	}
+	cset(state, s, 0, stdout, opts.dspec);
+	if (opts.end && dstop) {
+		sccs_prsdelta(s, dstop, flags, opts.end, stdout);
+	}
 	if (opts.fcset) fclose(opts.fcset);
 	if (opts.fmem) fclose(opts.fmem);
-	if (opts.html) {
-		fprintf(stdout, "</td></tr></table></table></body></html>\n");
-	}
 	EACH_HASH(state) {
 		rstate = state->vptr;
 		EACH_KV(rstate->graphDB) {
@@ -1030,7 +1032,7 @@ cset(hash *state, sccs *sc, char *dkey, FILE *f, char *dspec)
 		}
 		/*
 		 * if we have sub-components then we must be in the
-		 * product and it fmem is set then we must be
+		 * product and if fmem is set then we must be
 		 * filtering in doComp verbose mode.  If so we don't know
 		 * if this product cset should be printed or not, so we
 		 * write it to the fmem file until we know

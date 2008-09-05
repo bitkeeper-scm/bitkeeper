@@ -24,10 +24,8 @@ log_main(int ac, char **av)
 	char	*cset = 0, *tip = 0;
 	int	want_parent = 0;
 	pid_t	pid = 0;	/* pager */
-	char	*dspec = getenv("BK_LOG_DSPEC");
+	char	*dspec = 0;
 	RANGE	rargs = {0};
-
-	unless (dspec) dspec = log ? ":LOG:" : ":PRS:";
 
 	while ((c = getopt(ac, av, "1abc;C;d:DfhMnopr;Y")) != -1) {
 		switch (c) {
@@ -39,7 +37,7 @@ log_main(int ac, char **av)
 		    case 'f':					/* doc */
 		    case 'b': reverse++; break;			/* undoc */
 		    case 'C': cset = optarg; break;		/* doc 2.0 */
-		    case 'd': dspec = optarg; break;		/* doc 2.0 */
+		    case 'd': dspec = strdup(optarg); break;	/* doc 2.0 */
 		    case 'h': doheader = 0; break;		/* doc 2.0 */
 		    case 'M': 	/* for backward compat, undoc 2.0 */
 			      break;
@@ -65,6 +63,22 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 			return (1);
 		}
 	}
+	// XXX removed BK_LOG_DSPEC (ok?)
+	unless (dspec) {
+		char	*specf;
+		char	*spec = log ? "dspec-log" : "dspec-prs";
+
+		specf = bk_searchFile(spec);
+		TRACE("Reading dspec from %s", specf ? specf : "(not found)");
+		unless (specf && (dspec = loadfile(specf, 0))) {
+			fprintf(stderr,
+			    "%s: cant find %s/%s\n", av[0], bin, spec);
+			return (1);
+		}
+		free(specf);
+	}
+	dspec_collapse(&dspec, 0, 0);
+
 	if (rargs.rstart && (cset || tip)) {
 		fprintf(stderr, "%s: -c, -C, and -r are mutually exclusive.\n",
 		    av[0]);
@@ -135,6 +149,7 @@ next:		rc = 1;
 		sccs_free(s);
 	}
 	if (sfileDone()) rc = 1;
+	free(dspec);
 	if (log && (pid > 0)) {
 		fclose(stdout);
 		waitpid(pid, 0, 0);

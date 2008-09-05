@@ -57,7 +57,10 @@ sccslog_main(int ac, char **av)
 		    case 'b': opts.basenames = 1; break;	/* doc 2.0 */
 		    case 'C': opts.changeset = 1; break;	/* doc 2.0 */
 		    case 'D': opts.rmdups = 1; break;
-		    case 'd': opts.dspec = optarg; break;
+		    case 'd':
+			opts.dspec = strdup(optarg);
+			dspec_collapse(&opts.dspec, 0, 0);
+			break;
 		    case 'f': opts.forwards = 1; break;
 		    case 'i':					/* doc 2.0 */
 			opts.indent = atoi(optarg);

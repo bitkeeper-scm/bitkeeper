@@ -56,7 +56,7 @@ list(char *gfile)
 	}
 	sprintf(buf,
 	    "bk prs -r+ "
-	    "-hd':ROOTKEY:\n:GFILE:\n' BitKeeper/deleted '.del-%s*'", 
+	    "-hd':ROOTKEY:\\n:GFILE:\\n' BitKeeper/deleted '.del-%s*'", 
 	    basenm(gfile));
 	f = popen(buf, "r");
 	assert(f);
@@ -277,7 +277,7 @@ converge_hash_files(void)
 	 * This list is likely to be small so we just look through them all.
 	 */
 	f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "
-	    "bk prs -r+ -hd':ROOTKEY:\n:GFILE:\n' -", "r");
+	    "bk prs -r+ -hd':ROOTKEY:\\n:GFILE:\\n' -", "r");
 	assert(f);
 	while (fnext(key, f))  {
 		q = strchr(key, '|') + 1;

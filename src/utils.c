@@ -1689,23 +1689,41 @@ sgoneFile(void)
 	return (sgone);
 }
 
-#if 0
-main()
+/*
+ * search for a file in the "usual" places:
+ *	<repo>/BitKeeper/etc
+ *	<product>/BitKeeper/etc
+ *	$HOME/.bk
+ *	/etc/BitKeeper/etc
+ *	$BIN
+ *
+ * and return the full path to the first file found.
+ */
+char *
+bk_searchFile(char *base)
 {
-	u64	a, b;
-	int	i;
-	char	*p;
+	char	*root;
+	char	buf[MAXPATH];
 
-	unless (sizeof(a) == 8) {
-		fprintf(stderr, "Wrong size for u64 %d\n", sizeof(a));
-		exit(1);
+	if (root = proj_root(0)) {
+		sprintf(buf, "%s/BitKeeper/etc/%s", root, base);
+		if (exists(buf) ||
+		    !get(buf, SILENT|GET_EXPAND, "-")) {
+			return (strdup(buf));
+		}
 	}
-	for (i = 1; i < 60; i++) {
-		a = 1;
-		a <<= i;
-		p = psize(a);
-		b = scansize(p);
-		printf("%llu = '%s' = %llu\n", a, p, b);
+	if (proj_isComponent(0) && (root = proj_root(proj_product(0)))) {
+		sprintf(buf, "%s/BitKeeper/etc/%s", root, base);
+		if (exists(buf) ||
+		    !get(buf, SILENT|GET_EXPAND, "-")) {
+			return (strdup(buf));
+		}
 	}
+	concat_path(buf, getDotBk(), base);
+	if (exists(buf)) return (strdup(buf));
+	sprintf(buf, "%s/BitKeeper/etc/%s", globalroot(), base);
+	if (exists(buf)) return (strdup(buf));
+	concat_path(buf, bin, base);
+	if (exists(buf)) return (strdup(buf));
+	return (0);
 }
-#endif

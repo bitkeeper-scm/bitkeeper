@@ -1,0 +1,36 @@
+# the default dspec used by 'bk changes -h'
+
+$begin {
+	"<html><body bgcolor=white>\n"
+	"<table align=center bgcolor=black cellspacing=0 "
+	"border=0 cellpadding=0>"
+	"<tr><td>\n"
+	"<table width=100% cellspacing=1 border=0 cellpadding=1>"
+	"<tr><td>\n"
+}
+
+"<tr bgcolor=lightblue>"
+  "<td font size=4>"
+    "&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;:USER:@:HOST:&nbsp;&nbsp;:REV:"
+  </td>
+</tr>\n
+$if (:TAG:) {
+	"<tr bgcolor=yellow>"
+	  <td>
+	    $each(:TAG:) {
+		"&nbsp;TAG: (:TAG:)<br>\n"
+	    }
+	  </td>
+	</tr>\n
+}
+"<tr bgcolor=white>"
+  <td>
+    $each(:C:) {
+      &nbsp;(:C:)<br>\n
+    }
+  </td>
+</tr>\n
+
+$end {
+	"</td></tr></table></table></body></html>\n"
+}

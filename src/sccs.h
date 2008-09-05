@@ -1271,6 +1271,8 @@ char	*goneFile(void);
 char	*sgoneFile(void);
 int	keycmp(const void *k1, const void *k2);
 int	key_sort(const void *a, const void *b);
+char	*bk_searchFile(char *base);
+void	dspec_collapse(char **dspec, char **begin, char **end);
 
 extern	char	*editor;
 extern	char	*bin;

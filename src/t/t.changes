@@ -505,9 +505,32 @@ bk commit $Q -ywhatever
 echo OK
 
 echo $N Demonstrate saving data across csets ........................$NL
-# XXX just need a '$end{$if($1){</CSET>}}' to be complete
-bk changes -r..1.2 -vf \
-   -d'$if(:CHANGESET:){${2=}$if($1){</CSET>\n}$else{${1=1}}<CSET rev=:I:>\n}$else{  <FILE path=$if(:DPN:=$2){SAME}$else{:DPN:${2=:DPN:}} rev=:I:>\n    :USER:@:HOST:\n  </FILE>\n}' > GOT
+bk changes -r..1.2 -vf -d'
+$if (:CHANGESET:) {
+	${2=}			# dont compare path with other csets
+	$if ($1) {		# close old cset
+		</CSET>\n
+	} $else {
+		${1=1}		# start new cset
+	}
+	"<CSET rev=:I:>\n"
+} $else {
+	"  <FILE path="
+	$if (:DPN: = $2) {
+		SAME
+	} $else {
+		:DPN:
+		${2=:DPN:}	# save pathname
+	}
+	" rev=:I:>\n"
+	"    :USER:@:HOST:\n"
+	"  </FILE>\n"
+}
+$end{
+	$if ($1) {
+		</CSET>\n
+	}
+}'> GOT
 cat > WANT <<EOF
 <CSET rev=1.0>
 </CSET>
@@ -544,6 +567,7 @@ cat > WANT <<EOF
   <FILE path=SAME rev=1.1>
     adam@bk_regression.bk
   </FILE>
+</CSET>
 EOF
 cmpfiles WANT GOT
 echo OK

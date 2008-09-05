@@ -139,11 +139,25 @@ BK_USER=u1 bk collapse -el $Q || exit 1
 BK_USER=u2 bk -xlr delta -a $Q -c || exit 1
 BK_USER=u3 bk commit $Q -ycollapse || exit 1
 
-bk changes -r+ -v -d':GFILE: :REV: $unless(:CHANGESET:){:DL: }:USER:$if(:ENC:!=ascii){ :ENC:}
-:FLAGS:
-$if(:DI:){inc/exc :DI:
-}$unless(:CHANGESET:){$unless(:REV:=1.0){:RWXMODE:
-}}:COMMENTS:$unless(:CHANGESET:){$if(:GFILE:!=BitKeeper/etc/collapsed){:DIFFS_U:}}---
+bk changes -r+ -v -d'
+:GFILE:\ :REV:\ $unless(:CHANGESET:){:DL:\ }:USER:
+$if(:ENC:!=ascii){\ :ENC:}\n
+:FLAGS:\n
+$if (:DI:) {
+	inc/exc\ :DI:\n
+}
+$unless (:CHANGESET:) {
+	$unless (:REV:=1.0) {
+		:RWXMODE:\n
+	}
+}
+:COMMENTS:
+$unless (:CHANGESET:) {
+	$if (:GFILE: != BitKeeper/etc/collapsed) {
+		:DIFFS_U:
+	}
+}
+---\n
 ' | perl -pe 's/^([-+]{3} \S+).*/$1/; s/([-l][-rwx]{3})[-rwx]{6}/$1/' > GOT
 
 CREATE_DELETE=`bk gfiles BitKeeper/deleted/SCCS/s..del-create_delete*`

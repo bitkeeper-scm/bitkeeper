@@ -551,7 +551,7 @@ exit 0 if ENV['BK_EVENT'] != "incoming push"
 exit 0 if ENV['BK_STATUS'] != "OK"
 
 tags = {}
-IO.popen("bk changes -ad'$if(:TAG:){$each(:TAG:){(:TAG:)\n}}' - " +
+IO.popen("bk changes -ad'$if(:TAG:){$each(:TAG:){(:TAG:)\\n}}' - " +
 	 "< \"#{ENV['BK_CSETLIST']}\"") {|f|
 	f.each {|tag| tags[tag.chomp] = 1 }
 }
