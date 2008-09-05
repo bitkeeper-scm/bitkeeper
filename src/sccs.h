@@ -1277,6 +1277,8 @@ int	sccs_rdweaveDone(sccs *s);
 int	hasLocalWork(char *gfile);
 char	*goneFile(void);
 char	*sgoneFile(void);
+int	keycmp(const void *k1, const void *k2);
+int	key_sort(const void *a, const void *b);
 
 extern	char	*editor;
 extern	char	*bin;
