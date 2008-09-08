@@ -784,7 +784,7 @@ proc balloon_aux_s {w rev1} \
 	toplevel $t
 	wm overrideredirect $t 1
 	set dspec \
-"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n" 
+"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\\n\$each(:C:){  (:C:)\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n" 
 
 	catch { exec bk prs $dspec -r$rev1 "$file" 2>$dev_null } msg
 
@@ -1369,7 +1369,7 @@ proc history {{opt {}}} \
 	busy 1
 	if {$opt == "tags"} {
 		set tags \
-"-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
+"-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\\n\$each(:C:){  (:C:)\\n}\$each(:TAG:){  TAG: (:TAG:)\\n}\\n}"
 		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
 		set ttype "file_prs"
 		filltext $w(aptext) $f 1 "There are no tags for $file"
@@ -1567,7 +1567,7 @@ proc currentMenu {} \
 		catch {close $fileEventHandle}
 	}
 	set fileEventHandle \
-	    [open "| bk changes -d:DPN:@:I:\\n -fv -er$rev1..$end"]
+	    [open "| bk changes -nd:DPN:@:I: -fv -er$rev1..$end"]
 
 	fconfigure $fileEventHandle -blocking false
 	fileevent $fileEventHandle readable \
@@ -1933,13 +1933,13 @@ proc widgets {} \
 	set sem "start"
 	set ttype ""
 	set dspec \
-"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\\n\$each(:C:){  (:C:)\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n"
 	# this one is used when calling 'bk changes'; its distinguishing
 	# feature is slighly different indentation and the fact that the
 	# filename is on a line by itself. The key bindings for changeset
 	# history depend on this (see selectTag)
 	set chgdspec \
-"-d\$if(:DPN:!=ChangeSet){  }:DPN:\n    :I: :Dy:/:Dm:/:Dd: :T: :P:\$if(:HT:){@:HT:} +:LI: -:LD: \n\$each(:C:){    (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+"-d\$if(:DPN:!=ChangeSet){  }:DPN:\\n    :I: :Dy:/:Dm:/:Dd: :T: :P:\$if(:HT:){@:HT:} +:LI: -:LD: \\n\$each(:C:){    (:C:)\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n"
 	set Opts(diff) "-u"
 	set Opts(line) "-u -t"
 	set yspace 20

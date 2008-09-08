@@ -436,8 +436,8 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	.diffs.right tag configure "select" -background $gc($app.infoColor)
 	# 1.0 files do not have a mode line. 
 	# XXX: Ask lm if x.0 files have mode lines...
-	set dspec1 "{-d:DPN:\n\tFlags = :FLAGS:\n\tMode  = :RWXMODE:\n}"
-	set dspec2 "{-d:DPN:\n\tFlags = :FLAGS:\n\n}"
+	set dspec1 "{-d:DPN:\\n\tFlags = :FLAGS:\\n\tMode  = :RWXMODE:\\n}"
+	set dspec2 "{-d:DPN:\\n\tFlags = :FLAGS:\\n\\n}"
 
 	set files [list left $lfile $parent right $rfile $stop]
 	foreach {side f r} $files {

@@ -93,16 +93,16 @@ proc dotFile {{line {}}} \
 		set start $stop
 		set file "$f"
 	}
-	set p [open "| bk prs -hr$start {-d:PARENT:\n} \"$file\""]
+	set p [open "| bk prs -hr$start -nd:PARENT: \"$file\""]
 	gets $p parent
 	catch { close $p }
 	if {$parent == ""} { set parent "1.0" }
 	set finfo(l) "$file@$parent"
 	set finfo(r) "$file@$stop"
-	set p [open "| bk prs -hr$parent {-d:T: :Dd::DM::Dy:\n} \"$file\""]
+	set p [open "| bk prs -hr$parent {-nd:T: :Dd::DM::Dy:} \"$file\""]
 	gets $p finfo(lt)
 	catch { close $p }
-	set p [open "| bk prs -hr$stop {-d:T: :Dd::DM::Dy:\n} \"$file\""]
+	set p [open "| bk prs -hr$stop {-nd:T: :Dd::DM::Dy:} \"$file\""]
 	gets $p finfo(rt)
 	catch { close $p }
 	set tmp [file tail "$file"]
@@ -132,7 +132,7 @@ proc dotFile {{line {}}} \
 	.l.sccslog.t delete 1.0 end
 
 	set dspec \
-	    "-d:GFILE: :I: :D: :T: :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}"
+	    "-d:GFILE: :I: :D: :T: :P:\$if(:HT:){@:HT:}\\n\$each(:C:){  (:C:)\\n}"
 	set prs [open "| bk prs {$dspec} -hr$crev ChangeSet" r]
 	set first 1
 	while { [gets $prs buf] >= 0 } {
@@ -717,7 +717,7 @@ proc main {} \
 		exit 0
 	}
 	if {$stdin == 0} {
-		set dspec "-d\$if(:Li: -gt 0){(:I:)\n}"
+		set dspec "-nd\$if(:Li: -gt 0){(:I:)}"
 		set fd [open "| bk prs -hr$revs {$dspec} ChangeSet" r]
 		# Only need to read first line to know whether there is content
 		gets $fd prs

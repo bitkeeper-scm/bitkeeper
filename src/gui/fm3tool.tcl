@@ -1326,8 +1326,8 @@ proc widgets {} \
 	set UNMERGED "<<<<<<\nUNMERGED\n>>>>>>\n"
 
         set DSPEC \
-"-d:I:  :Dy:-:Dm:-:Dd: :T::TZ:  :P:\n\$each(:C:){  (:C:)\
-\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
+"-d:I:  :Dy:-:Dm:-:Dd: :T::TZ:  :P:\\n\$each(:C:){  (:C:)\
+\\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}"
 
 	option add *background $gc(BG)
 
