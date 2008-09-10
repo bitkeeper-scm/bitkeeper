@@ -55,6 +55,8 @@ proc getConfig {prog} \
 	set _d(ci.csetIconBG) $BKBLUE1	;# background of some icons
 	set _d(ci.quitSaveBG) $BKSLATEBLUE1	;# "quit but save" button
 	set _d(ci.quitSaveActiveBG) $BKSLATEBLUE2	;# "quit but save" button
+	set _d(ci.listBG) white	
+	set _d(selectColor) #f0f0f0	;# current file/item/topic
 	set _d(ci.saveBG) $GRAY94		;# background of save dialog
 	set _d(ci.quitNosaveBG) $RED	;# "don't save" button
 	set _d(ci.quitNosaveActiveBG) $WHITE ;# "don't save" button
