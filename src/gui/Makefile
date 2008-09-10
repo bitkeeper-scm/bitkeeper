@@ -26,11 +26,6 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 	  renametool.tcl revtool.tcl search.tcl setuptool.tcl \
 	  ../port/$(SYS)_platform.tcl supportform.tcl supportlib.tcl \
 	  newdifftool.tcl showproc.tcl
-IMAGES  = imgsrc/bklogo.gif \
-	  imgsrc/ci-cset.xbm imgsrc/ci-done.xbm	\
-	  imgsrc/ci-exclude.xbm imgsrc/ci-modified.xbm \
-	  imgsrc/ci-new.xbm \
-	  imgsrc/next.gif imgsrc/previous.gif $(ICONS)
 
 default: notes/BUILD
 	@cat notes/BUILD
@@ -47,9 +42,13 @@ nowrap gui-nowrap:
 	$(MAKE) clean-here
 	$(MAKE) TCLWRAP=cat gui
 
-images: $(IMAGES)
+images: FORCE
+	rm -rf images
 	test -d images || mkdir images
-	cp -f $(IMAGES) images	
+	bk -rimgsrc co -S
+	bk -grimgsrc sfio -oq | (cd images && bk sfio -iq)
+	test "X$(ICONS)" = X || cp $(ICONS) images
+	chmod 664 images/*.gif
 
 ../tclwrap:
 	@cd .. && $(MAKE) tclwrap
