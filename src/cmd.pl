@@ -244,6 +244,7 @@ _locktest
 log
 _logging
 _lstat
+_mailslot
 mailsplit
 mail
 makepatch

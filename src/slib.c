@@ -3831,7 +3831,14 @@ loadRepoConfig(char *root)
 	concat_path(config, root, "BitKeeper/etc/SCCS/s.config");
 	unless (exists(config)) return (0);
 
-	unless (s = sccs_init(config, SILENT)) return (0);
+	/*
+	 * Note that we can't skip WACKGRAPH here because of a change
+	 * where we call the notifier on deltas.  That forces a load
+	 * of BitKeeper/etc/config while we're mucking with it.  So
+	 * we just have to live without checking revs in loading the
+	 * config file.  bk -r check -a will check them.
+	 */
+	unless (s = sccs_init(config, SILENT|INIT_WACKGRAPH)) return (0);
 	s->state |= S_CONFIG; /* This should really be stored on disk */
 	if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASH|GET_HASHONLY, 0)) {
 		sccs_free(s);
@@ -4582,12 +4589,29 @@ sccs_free(sccs *s)
 {
 	symbol	*sym, *t;
 	int	unblock;
+	char	*relpath = 0, *fullpath;
 
 	unless (s) return;
 	if (s->io_error && !s->io_warned) {
 		fprintf(stderr, "%s: unreported I/O error\n", s->sfile);
 	}
 	chk_gmode(s);
+
+	/*
+	 * If we modified the s.file and we're in checkout:edit|last
+	 * then kick explorer with the full pathname to this file.
+	 * It's fine to do it as we are tearing down the sccs*, we've
+	 * committed state to the file system already.
+	 */
+	if (s->modified &&
+	    (CO(s) & (CO_EDIT|CO_LAST)) &&
+	    (relpath = proj_relpath(s->proj, s->gfile)) &&
+	    (fullpath = proj_fullpath(s->proj, relpath))) {
+		notifier_changed(fullpath);
+	}
+	if (relpath) free(relpath);
+	// No free on fullpath, proj.c maintains it.
+
 	sccsXfile(s, 0);
 	if (s->table) sccs_freetable(s->table);
 	for (sym = s->symbols; sym; sym = t) {
@@ -6206,7 +6230,8 @@ sccs_rewrite_pfile(sccs *s, pfile *pf)
 private char *
 setupOutput(sccs *s, char *printOut, int flags, delta *d)
 {
-	char *f;
+	char	*f, *full;
+	char	*rel = 0;
 
 	/*
 	 * GET_SUM should always have PRINT as well because otherwise we
@@ -6229,6 +6254,17 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 					perror(s->gfile);
 					return ((char*)-1);
 				}
+				/*
+				 * We're changing the status of the file
+				 * without touching the file, tell bkshellx
+				 */
+				if (BITKEEPER(s) &&
+				    (rel = proj_relpath(s->proj, s->gfile)) &&
+				    (full = proj_fullpath(s->proj, rel))) {
+					notifier_changed(full);
+				}
+				if (rel) free(rel);
+				// No free on full, proj.c maintains it.
 			}
 			return (0);
 		}
@@ -8167,6 +8203,7 @@ SCCS:
 		s->io_warned = 1;
 		return (-1);
 	}
+	if (BITKEEPER(s)) s->modified = 1;
 	return (0);
 }
 
