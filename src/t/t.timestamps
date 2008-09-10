@@ -338,3 +338,83 @@ bk _touch -t $T11 bar || exit 1
 bk collapse $Q -e || exit 1
 test $T11 -ge `_mtime SCCS/s.bar` || exit 1
 echo OK
+
+if [ $WINDOWS = YES ]; then
+echo $N Test that we can notify when making changes .................$NL
+# skip this and it won't notify...
+BK_CONFIG='checkout:edit!'
+export BK_CONFIG
+
+rm -f BitKeeper/log/changed
+FILES="file_1 file_2 file_3"
+for i in $FILES
+do	echo foo > $i
+done
+BK_NOTIFIER="$HERE/log-notifier"
+export BK_NOTIFIER
+bk new $Q $FILES
+test -f "$BK_NOTIFIER" || {
+	echo failed on new
+	exit 1
+}
+rm -f "$BK_NOTIFIER"
+bk edit $Q $FILES
+for i in $FILES
+do	echo bar >> $i
+done
+bk delta $Q -ywhatever $FILES
+test -f "$BK_NOTIFIER" || {
+	echo failed on delta
+	exit 1
+}
+for i in $FILES
+do	echo `bk pwd`/$i >> WANT
+done
+cmpfiles WANT "$BK_NOTIFIER"
+grep -q '~' "$BK_NOTIFIER" && {
+	echo failed
+	echo used short path on windows
+	cat "$BK_NOTIFIER"
+	exit 1
+}
+rm -f "$BK_NOTIFIER"
+bk commit $Q -ywhatever
+test -f "$BK_NOTIFIER" || {
+	echo failed on commit
+	exit 1
+}
+bk clean file_1
+# no keywords causes bk edit -S to just chmod
+bk admin -FSCCS file_1
+bk get $Q file_1
+rm -f "$BK_NOTIFIER"
+bk edit $Q -S file_1
+test -f "$BK_NOTIFIER" || {
+	echo failed on bk edit -S
+	exit 1
+}
+echo OK
+echo $N Testing BAM files............................................$NL
+cd "$HERE"
+commercial bam_project
+perl -e 'printf "a\000b\n"' > bam
+bk ci $Q -i bam
+bk edit $Q
+perl -e 'printf "b\000b\n"' > bam
+rm -f "$BK_NOTIFIER"
+BK_CONFIG='BAM_checkout:edit!;checkout:none!' bk delta $Q -y. bam
+test -f "$BK_NOTIFIER" || {
+	echo failed on bk delta BAM
+	exit 1
+}
+echo OK
+
+echo $N Testing files outside of proj do not dump core...............$NL
+cd "$HERE"
+touch foo
+bk new $Q foo
+bk edit $Q foo
+echo hi > foo
+bk delta $Q -y. foo
+echo OK
+fi

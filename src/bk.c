@@ -478,6 +478,7 @@ cmdlog_exit(void)
 		buffer = 0;
 	}
 	bktmpcleanup();
+	notifier_flush();
 	lockfile_cleanup();
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
 
@@ -744,6 +745,7 @@ cmdlog_end(int ret)
 		buffer = 0;
 	}
 	bktmpcleanup();
+	notifier_flush();
 	unless (cmdlog_buffer[0]) return (flags);
 
 	/* add last minute notes */

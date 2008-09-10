@@ -139,6 +139,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	libsfiles.o libusers.o lines.o \
 	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
+	mailslot.o \
 	mailsplit.o mtime.o mv.o names.o newroot.o \
 	opark.o parent.o park.o \
 	pending.o preference.o proj.o \
@@ -149,7 +150,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	port/getrealname.o port/globalroot.o port/gui.o \
 	port/hostColonPath.o port/http_proxy.o \
 	port/lock_dir.o port/mail.o port/mnext.o \
-	port/ns_sock_host2ip.o port/platforminit.o \
+	port/notifier.o port/ns_sock_host2ip.o port/platforminit.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o \
 	port/svcinfo.o \
