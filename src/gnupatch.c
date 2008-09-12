@@ -102,10 +102,10 @@ print_title(char *r1, char *r2)
 {
 	FILE	*f;
 	char	*p;
-	char	*d = ":DPN:\n  :D: :T::TZ: :P:@:HT: "
-		     "$unless(:DPN:=ChangeSet){+:LI: -:LD:}\n"
-		     "$each(:C:){  (:C:)\n}"
-		     "$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n";
+	char	*d = ":DPN:\\n  :D: :T::TZ: :P:@:HT: "
+		     "$unless(:DPN:=ChangeSet){+:LI: -:LD:}\\n"
+		     "$each(:C:){  (:C:)\\n}"
+		     "$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n";
 	char	buf[BUFSIZ];
 
 	printf("# This is a BitKeeper generated diff -Nru style patch.\n#\n");
