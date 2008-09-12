@@ -27,7 +27,9 @@ f2csets_main(int argc, char **argv)
 	 * the rootkey and the bk root out of that
 	 */
 	sfile = name2sccs(argv[1]);
-	unless (s = sccs_init(sfile, INIT_NOCKSUM|INIT_NOSTAT)) return(1);
+	unless (s = sccs_init(sfile, INIT_MUSTEXIST|INIT_NOCKSUM|INIT_NOSTAT)){
+		return(1);
+	}
 	free(sfile);
 
 	has_proj("f2csets");

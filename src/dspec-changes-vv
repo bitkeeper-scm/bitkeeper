@@ -7,7 +7,7 @@ $if (:CHANGESET:) {
 	"==== :DPN: ===="
 }
 \n
-":Dy:-:Dm:-:Dd: :T::TZ:, :USER:$if(:HOST:){@:HOST:}"
+":Dy:-:Dm:-:Dd: :T::TZ:, " :USER:$if(:HOST:){@:HOST:}
 $if (:FILE:) {
 	" +:LI: -:LD:"
 }

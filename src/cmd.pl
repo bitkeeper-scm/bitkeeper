@@ -181,6 +181,7 @@ commit
 components
 config
 cp
+_cpartition
 create
 crypto
 cset
@@ -319,6 +320,7 @@ _stattest
 status
 stripdel
 _strings
+surgery
 _svcinfo
 synckeys
 tagmerge

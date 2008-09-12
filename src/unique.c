@@ -183,6 +183,10 @@ uniq_open(void)
 	char	buf[MAXPATH*2];
 	int	pipes;
 
+	if (getenv("_BK_NO_UNIQ")) {
+		db = 0;
+		return (0);
+	}
 	if (sccs_lockfile(lockHome(), -1, getenv("_BK_SHUT_UP") != 0)) {
 		return (-1);
 	}
@@ -244,6 +248,7 @@ unique(char *key)
 {
 	datum	k, v;
 
+	unless (db) return (1);
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
 	v.dsize = 0;
@@ -256,6 +261,7 @@ uniq_update(char *key, time_t t)
 {
 	datum	k, v;
 
+	unless (db) return (0);
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
 	v.dsize = sizeof(time_t);
@@ -279,6 +285,7 @@ uniq_close(void)
 	time_t	t;
 	char	*tmp;
 
+	unless (db) return (0);
 	unless (dirty) goto close;
 	unless (tmp = keysHome()) {
 		fprintf(stderr, "uniq_close:  cannot find keyHome");

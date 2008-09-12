@@ -21,9 +21,9 @@ bk bam \- BAM utility routines
 .br
 .B bk bam reload
 .br
-.B bk bam repair
+.B bk bam reattach
 .[B] \-q
-.ARG dir
+.ARG -
 .br
 .B bk bam server
 .[B] \-lrq
@@ -52,7 +52,7 @@ In any operation with a
 .Q \-q
 option, that option means to run quietly.
 The operations supported are:
-.TP \fBconvert\fP
+.TP \fBreattach\fP
 .B check
 Check that the BAM files are present and are not corrupted.
 If the
@@ -107,13 +107,13 @@ The data in the index is also stored in BitKeeper/log/BAM.index in text
 format.
 Should the index get corrupted, it may be recreated running this command.
 .tp
-.B repair
+.B reattach
 Used to try and reinsert data into the BAM directory.
 If your disk crashed and some files were lost from the BAM directory
 (which bk bam check -F will tell you) and you believe you have that 
-data, you can tell bk bam repair to put it back.
+data, you can tell bk bam reattach to put it back.
 .sp .5
-For each file in the named directory, see if the hash of the file matches
+For each file specified on standard input, see if the hash of the file matches
 one of the missing files.
 If so, reinsert that file.
 .\" XXX - tell them that it may be wrong?

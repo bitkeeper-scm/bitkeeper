@@ -20,14 +20,14 @@ unlink_main(int ac, char **av)
 }
 
 int
-sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs)
+sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs, u32 flags)
 {
 	sccs	*s;
 	int	ret;
 	char	*t;
 
 	unless (s = sccs_keyinit(0, key, INIT_NOCKSUM, idDB)) {
-		fprintf(stderr, "Cannot init key %s\n", key);
+		verbose((stderr, "Cannot init key %s\n", key));
 		return (1);
 	}
 	if (sccs_clean(s, SILENT)) {
@@ -67,7 +67,7 @@ keyunlink_main(int ac, char **av)
 			continue;
 		}
 		/* XXX - empty dirs, see csetprune.c:rmKeys */
-		errors |= sccs_keyunlink(buf, idDB, 0);
+		errors |= sccs_keyunlink(buf, idDB, 0, 0);
 	}
 	return (errors);
 }

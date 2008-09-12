@@ -344,7 +344,28 @@ bk -r get $Q 2>ERR && {
 	echo should have failed
 	exit 1
 }
-find junk -type f | bk BAM reattach $Q - || exit 1
+rm -rf BitKeeper/BAM	# lose items fetched by get
+mv `find junk -name '*.d1' | head -1` junk2
+find junk -type f | bk BAM reattach - >OUT
+test $? -eq 1 || {
+	echo missing data expected 1 exit
+	exit 1
+}
+grep -q "BAM datafiles are still missing" OUT || {
+	echo wrong out
+	cat OUT
+	exit 1
+}
+echo junk2 | bk BAM reattach - >OUT
+test $? -eq 0 || {
+	echo expected 0 exit
+	exit 1
+}
+grep -q "all missing BAM data found" OUT || {
+	echo wrong out2
+	cat OUT
+	exit 1
+}
 bk -r get $Q || exit 1
 echo OK
 
