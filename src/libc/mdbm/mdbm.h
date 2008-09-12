@@ -323,6 +323,8 @@ extern	int	mdbm_lock(MDBM *);
 extern	int	mdbm_unlock(MDBM *);
 extern	int	mdbm_sethash(MDBM *, int);
 
+#define	mdbm_isEmpty(db)	(mdbm_firstkey(db).dptr == 0)
+
 /* for debug */
 extern	ubig	count_all_page(MDBM *db);
 

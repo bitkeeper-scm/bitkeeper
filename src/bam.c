@@ -1369,15 +1369,25 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
  * In theory, this will work:
  * 	mv BitKeeper/BAM ..
  * 	find ../BAM | bk bam reattach -
+ *
+ * In the future we may support:
+ *	bk bam reattach <dir1> <dir2>
+ *	bk bam reattach <file1> <file2>
+ *
+ * Exit status:
+ *    0 -- no more missing data
+ *    1 -- still missing BAM data
+ *    2 -- error
  */
 private int
 bam_reattach_main(int ac, char **av)
 {
-	char	*hval, *p, *tmp = 0;
+	char	*hval, *p;
 	int	i, c, quiet = 0;
 	MDBM	*db = 0, *missing;
 	FILE	*f;
 	sum_t	sum;
+	kvpair	kv;
 	char	buf[MAXLINE];
 	char	key[100];
 
@@ -1388,30 +1398,21 @@ bam_reattach_main(int ac, char **av)
 		switch (c) {
 		    case 'q': quiet = 1; break;
 		    default:
-			system("bk help -s BAM");
-			return (1);
+usage:			system("bk help -s BAM");
+			return (2);
 		}
 	}
-	unless (av[optind]) {
-		system("bk help -s BAM");
-		return (1);
-	}
-	unless (streq(av[optind], "-")) {
-		tmp = bktmp(0, "bam");
-		f = fopen(tmp, "w");
-		while (av[optind]) {
-			fprintf(f, "%s\n", fullname(av[optind++]));
-		}
-		fclose(f);
-		/* rewind appears to be not always portable */
-		f = fopen(tmp, "r");
+	unless (av[optind] && streq(av[optind], "-") && !av[optind+1]) {
+		goto usage;
 	}
 	if (proj_cd2root()) {
 		ERROR((stderr, "not in a repository.\n"));
-		return (1);
+		return (2);
 	}
 	unless (bp_hasBAM()) {
-		ERROR((stderr, "no BAM data in this repository\n"));
+		unless (quiet) {
+			ERROR((stderr, "no BAM data in this repository\n"));
+		}
 		return (0);
 	}
 	db = proj_BAMindex(0, 0);	/* ok if db is null */
@@ -1426,7 +1427,7 @@ bam_reattach_main(int ac, char **av)
 
 		/*
 		 * buf contains: adler.md5 key md5rootkey
-		 * and what we want is 
+		 * and what we want is
 		 *	missing{adler.md5} = "adler.md5 key md5rootkey"
 		 * But we have to handle the case that more than one delta
 		 * wants this hash, doesn't happen often but it happens.
@@ -1447,10 +1448,10 @@ bam_reattach_main(int ac, char **av)
 		}
 	}
 	pclose(f);
-
-	if (av[optind]) f = stdin;
-	while (fnext(buf, f)) {
+	while (fnext(buf, stdin)) {
 		chomp(buf);
+
+		if (mdbm_isEmpty(missing)) break;
 
 		/*
 		 * XXX - we could use file size as well.
@@ -1472,19 +1473,26 @@ bam_reattach_main(int ac, char **av)
 			if (bp_insert(0, buf, p, 0, 0444)) {
 				ERROR((stderr,
 				    "failed to insert %s for %s\n", buf, p));
+				mdbm_close(missing);
+				free(hval);
+				return (2);
 			}
 			/* don't reinsert this key again */
 			mdbm_delete_str(missing, key);
 		}
 		free(hval);
 	}
-	mdbm_close(missing);
-	unless (av[optind]) {
-		fclose(f);
-		unlink(tmp);
-		free(tmp);
+	i = 0;
+	EACH_KV(missing) i++;
+	unless (quiet) {
+		if (i > 0) {
+			printf("%d BAM datafiles are still missing\n", i);
+		} else {
+			printf("all missing BAM data found\n");
+		}
 	}
-	return (0);
+	mdbm_close(missing);
+	return ((i > 0) ? 1 : 0);
 }
 
 /* check that the log matches the index and vice versa */
