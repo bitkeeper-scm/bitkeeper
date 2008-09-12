@@ -30,7 +30,14 @@ repogca_main(int ac, char **av)
 	nav = addLine(nav, strdup("-end:KEY:"));
 
 	if (av[optind]) {
-		for (i = optind; av[i]; i++) nav = addLine(nav, strdup(av[i]));
+		for (i = optind; av[i]; i++) {
+			unless (remote_valid(av[i])) {
+				fprintf(stderr,
+				    "repogca: invalid url %s\n", av[i]);
+				exit(1);
+			}
+			nav = addLine(nav, strdup(av[i]));
+		}
 	} else {
 		urls = parent_pullp();
 		EACH (urls) nav = addLine(nav, urls[i]);

@@ -23,6 +23,7 @@ jed
 joe
 reedit
 regression
+shrink
 testdates
 uninstall
 vi
@@ -31,27 +32,37 @@ wish
 EOF
 
 perl -ne 'print "$1\n" if /^\s+{"(\w+)",/' < "`bk bin`"/cmd.c | sort |
-grep -vf SKIP > .INTERFACES
+grep -vf SKIP > "$HERE/.INTERFACES"
 
 dotest()
 {
-	line="Simple interface test: $@ "
+	prefix="$1"
+	shift
+	line="$prefix $@ "
 	len=`echo "$line" | wc -c`
 	len=`expr 62 - $len`
 	fill=`printf "%${len}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
 	echo $N "$line$fill"$NL
 	rm -rf "$HERE"/*
-	bk "$@" > OUT 2>&1 < /dev/null
-	bk "$@" -r+ > OUT 2>&1 < /dev/null
-	bk "$@" XYZ > OUT 2>&1 < /dev/null
-	bk "$@" "" > OUT 2>&1 < /dev/null
-	echo XYZ  | bk "$@" - > OUT 2>&1 < /dev/null
+	(	set -x
+		bk "$@" < /dev/null
+		bk "$@" -r+ < /dev/null
+		bk "$@" XYZ < /dev/null
+		bk "$@" "" <  /dev/null
+		echo XYZ | bk "$@" - < /dev/null
+	) > OUT 2>&1
 	find . -type f -name 'core*' > XXX
 	test -s XXX && {
+		echo ========
+		echo cores
+		cat XXX
+		echo ========
+		echo output
 		cat OUT
 		return 1
 	}
 	echo OK
+	test "X$Q" = X && cat OUT
 	return 0
 }
 
@@ -60,7 +71,24 @@ EDITOR=$BK_EDITOR
 export BK_EDITOR EDITOR
 while read i
 do
-	dotest $i || break
-done < .INTERFACES
+	dotest "Simple interface test (no repo)" $i || break
+done < "$HERE/.INTERFACES"
 test -s XXX && exit 1
+commercial .project
+while read i
+do
+	dotest "Simple interface test (repo)" $i || break
+done < "$HERE/.INTERFACES"
+test -s XXX && exit 1
+cd "$HERE"
+nested .product
+while read i
+do
+	dotest "Simple interface test (product)" $i || break
+done < "$HERE/.INTERFACES"
+cd gcc
+while read i
+do
+	dotest "Simple interface test (component)" $i || break
+done < "$HERE/.INTERFACES"
 exit 0

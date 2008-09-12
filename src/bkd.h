@@ -118,6 +118,7 @@ char	*remote_unparse(remote *r);
 void	remote_free(remote *r);
 void	remote_print(remote *r, FILE *f);
 void	remote_perror(remote *r, char *msg);
+int	remote_valid(char *url);
 pid_t	bkd(remote *r);
 int	gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out,
     int verbose);

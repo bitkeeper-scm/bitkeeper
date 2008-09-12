@@ -665,8 +665,10 @@ synckeys_main(int ac, char **av)
 	}
 
 	has_proj("synckeys");
-	r = remote_parse(av[optind], REMOTE_BKDURL);
-	assert(r);
+	unless (r = remote_parse(av[optind], REMOTE_BKDURL)) {
+		fprintf(stderr, "synckeys: invalid url %s\n", av[optind]);
+		exit(1);
+	}
 
 	if (proj_cd2root()) { 
 		fprintf(stderr, "synckeys: cannot find package root.\n"); 
