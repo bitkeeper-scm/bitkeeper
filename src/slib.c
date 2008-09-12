@@ -9518,7 +9518,11 @@ out:		sccs_unlock(s, 'z');
 		delta	*d = n0 ? n0 : n;
 
 		if (!d->random && !short_key) {
-			randomBits(buf);
+			if (t = getenv("BK_RANDOM")) {
+				strcpy(buf, t);
+			} else {
+				randomBits(buf);
+			}
 			assert(buf[0]);
 			if (BAM(s)) {
 				d->random = malloc(strlen(buf) + 3);
@@ -11854,6 +11858,70 @@ newcmd:
 	if (CSET(s)) *up = 1;
 
 	return (0);
+}
+
+/*
+ * Dump a cset weave file out: format is from cset_mkList() ...
+ * <serial> tab <rootkey> space <deltakey>
+ */
+
+int
+sccs_csetWrite(sccs *s, char **cweave)
+{
+	int	i, ret = -1;
+	char	*keys;
+	FILE	*out = 0;
+	char	*ser, *oldser = 0;
+
+	unless (sccs_lock(s, 'z')) {
+		fprintf(stderr, "can't zlock %s\n", s->gfile);
+		repository_lockers(s->proj);
+		return (-1);
+	}
+	unless (out = sccs_startWrite(s)) goto err;
+	delta_table(s, out, 0);
+
+	EACH(cweave) {
+		unless (cweave[i][0]) continue;	/* skip deleted entries */
+		ser = cweave[i];
+		keys = strchr(ser, '\t');
+		*keys++ = 0;
+		unless (oldser && streq(ser, oldser)) {
+			if (oldser) {
+				fputdata(s, "\001E ", out);
+				fputdata(s, oldser, out);
+				fputdata(s, "\n", out);
+			}
+			oldser = ser;
+			fputdata(s, "\001I ", out);
+			fputdata(s, ser, out);
+			fputdata(s, "\n", out);
+		}
+		fputdata(s, keys, out);
+		fputdata(s, "\n", out);
+	}
+	if (oldser) {
+		fputdata(s, "\001E ", out);
+		fputdata(s, oldser, out);
+		fputdata(s, "\n", out);
+	}
+	fputdata(s, "\001I 1\n", out);
+	fputdata(s, "\001E 1\n", out);
+	if (fflushdata(s, out)) goto err;
+	fseek(out, 0L, SEEK_SET);
+	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
+	sccs_close(s);
+	if (sccs_finishWrite(s, &out)) goto err;
+	ret = 0;
+	
+err:
+	if (out) {
+		fclose(out);
+		unlink(sccsXfile(s, 'x'));
+	}
+	sccs_unlock(s, 'z');
+
+	return (ret);
 }
 
 /*

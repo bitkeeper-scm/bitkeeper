@@ -1,0 +1,86 @@
+#!/bin/sh
+
+BK_NO_TRIGGERS=1
+export BK_NO_TRIGGERS
+
+test -d dogfood || {
+	test $# -eq 1 || { echo usage mkdogfood repo; exit 1; }
+	bk lclone $1 dogfood
+}
+
+cd dogfood || exit 1
+
+# Shortkey transform been done?
+
+test -d TRANSFORM || {
+	test -f didgone || bk rmgone
+	touch didgone
+	runbk rmshort bk _rmshortkeys || exit 1
+}
+
+cd TRANSFORM || exit 1
+
+test -d PUPPYCHOW && {
+	mkdir -p junk
+	mv PUPPYCHOW junk/food-$$
+}
+
+# reorg the tree -- later
+# bk mv src/ide src/gui/ide
+# bk mv src/win32/t src/t/win32
+# bk commit -y'should push this in earlier?'
+
+# make two files: prune list and component root list
+bk -r log -r+ -nd:ROOTKEY: | grep 'src/win32/pub/vim' > prune
+cat <<EOF >> prune
+akushner@vermin.dsl.snfc21.pacbell.net|src/new_file1|20000915015026|40710|2cc413ccb203a0df
+amy@work.bitmover.com|man/GUI-tools/edittool.man|20000809010250|43555|e476e4d8ac45128
+amy@work.bitmover.com|man/Repository/unlock.man|20000809010312|60549|36fee934489721af
+lm@travis.bitmover.com|doc/bam/PS|20070627231835|32786|ac2465107f3854b4
+lm@work.bitmover.com|src/foo|20001029214955|19275|87fc4d79e747d3f2
+lm@work.bitmover.com|src/utils/afio/Makefile|19990929054303|30073|afda633ab9a8a6bd
+lm@work.bitmover.com|src/utils/afio/afio.1|19990929054303|31945|cba019bbe8d59ef9
+lm@work.bitmover.com|src/utils/afio/afio.c|19990929054303|33829|43ebc1ead5e000f3
+rick@sharp.rbsmith.com|src/t/proj/foo|20000411045556|52557|ccfa4bb9ed8c128c
+EOF
+
+cat <<EOF > map
+# product:
+#     .
+#     doc
+#     man
+#     src
+#     BitKeeper/deleted
+#     BitKeeper/etc
+#     BitKeeper/triggers
+#     src/* (unless listed below)
+src/libc
+# tom-stuff
+src/tomcrypt
+src/tommath
+# gnu
+src/gnu/diffutils
+src/gnu/patch
+# gui could be given to developer without bk
+src/gui
+# tests
+src/t
+#
+# Don't need to mess with meaningless old stuff because there
+# will only be one sfile per thing.  For now.
+# things which used to be there and are now elsewhere:
+# good to not have in the default component
+# This is because partition duplicates sfiles that are moved between
+# components
+# src/zlib
+# technically, yes, but don't bother -- too few files
+# src/win32/t
+# src/ide
+EOF
+
+# do the dogofooding ...
+bk partition -Gprune -Cmap . PUPPYCHOW 2>&1 | tee LOG
+cd ..
+mkdir -p junk
+test -d DOGFOOD && mv DOGFOOD junk/food-$$
+mv TRANSFORM/PUPPYCHOW DOGFOOD

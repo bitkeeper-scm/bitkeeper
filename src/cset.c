@@ -189,7 +189,7 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 		}
 	}
 
-	if (proj_isProduct(0)) copts.hide_comp++;
+	if (proj_isProduct(0) && !copts.remark) copts.hide_comp++;
 
 	if (rargs.rstop && (list != 1)) {
 		fprintf(stderr, "%s: only one rev allowed with -t\n", av[0]);
@@ -230,9 +230,9 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 	if (copts.include) return (cset_inex(flags, "-i", rargs.rstart));
 	if (copts.exclude) return (cset_inex(flags, "-x", rargs.rstart));
 
-	cset = sccs_init(csetFile, flags & SILENT);
+	cset = sccs_init(csetFile, 0);
 	if (!cset) return (101);
-	cset->state |= S_READ_ONLY;
+	if (copts.csetkey) cset->state |= S_READ_ONLY;
 	copts.mixed = !LONGKEY(cset);
 
 	if (list && !rargs.rstart && !copts.dash) {
@@ -304,7 +304,7 @@ cset_setup(int flags)
 	delta	*d = 0;
 	int	fd;
 
-	cset = sccs_init(csetFile, flags & SILENT);
+	cset = sccs_init(csetFile, 0);
 	assert(cset->proj);
 
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
@@ -904,7 +904,7 @@ add(FILE *diffs, char *buf)
 	 * ChangeSet file. Since we ae going to sccs_free() and
 	 * return anyway..
 	 */
-	unless (s = sccs_init(buf, SILENT)) {
+	unless (s = sccs_init(buf, 0)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
 		system("bk clean -q ChangeSet");
 		cset_exit(1);

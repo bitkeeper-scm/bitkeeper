@@ -42,6 +42,10 @@ sccs_host(void)
 
 	if ((r == e) || streq(r, e)) return (e);
 	if (ret) free(ret);
+	if (getenv("_BK_NO_UNIQ")) {
+		ret = aprintf("%s", e);
+		return (ret);
+	}
 	ret = aprintf("%s/%s", e, r);
 	return (ret);
 }
