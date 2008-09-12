@@ -179,6 +179,202 @@ _portal() {
 	fi
 }
 
+_partition() {
+	COMPS=
+	QUIET=
+	while getopts C:G:m:q opt
+	do
+		case "$opt" in
+		q) QUIET=-q;;
+		C) COMPS="$OPTARG";;
+		G) GONELIST="$OPTARG";;
+		m) COMPS="$OPTARG";;	# for any old scripts
+		*) bk help -s partition; exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+
+	# XXX: like clone, shouldn't need a second param, but
+	# if no second param, would need a way to know what the
+	# dir is.
+	test -z "$COMPS" && {
+		echo "partition: must specify a -C<file> list" 1>&2
+		bk help -s partition
+		exit 1
+	}
+	test -f "$COMPS" || {
+		echo "partition: component list '$COMPS' does not exist" 1>&2
+		bk help -s partition
+		exit 1
+	}
+	test -z "$GONELIST" -o -f "$GONELIST" || {
+		echo "partition: -G $GONELIST is not a file"
+		exit 1
+	}
+	test "$#" -eq 2 || {
+		echo "partition: must list source and destination" 1>&2
+		bk help -s partition
+		exit 1
+	}
+	from="$1"
+	to="$2"
+	test -d "$to" && {
+		echo "partition: destination '$to' exists" 1>&2
+		bk help -s partition
+		exit 1
+	}
+	test -d "$from" || {
+		echo "partition: source '$from' does not exist" 1>&2
+		bk help -s partition
+		exit 1
+	}
+
+	BK_CONFIG="checkout: none!; partial_check: on! "
+	export BK_CONFIG
+
+	verbose "### Cloning product"
+	bk clone -ql "$from" "$to" || exit 1
+
+	# Make a work area
+	WA=BitKeeper/tmp/partition.d
+	WA2PROD=../../..
+
+	mkdir "$to/$WA" || exit 1
+
+	# Get a local copy of gone and component list files
+	# For component file, pull out comments and blank lines
+	grep -v "^[ 	]*#" "$COMPS" | grep -v "^[ 	]*$" \
+	    | bk sort -u > "$to/$WA/map"
+	# XXX not complete for windows: fix when moving to C
+	grep -q "^/" "$to/$WA/map" && {
+		echo "partition: no absolute paths in map" 1>&2
+		exit 1
+	}
+	test -z "$GONELIST" || cp "$GONELIST" "$to/$WA/gonelist" || exit 1
+
+	HERE="`pwd`"
+	cd "$to" || exit 1
+
+	# Note; gone list could vary over time if the gone file
+	# were consulted, or missing files ignores.
+	# Since we want to be able to run partition on many repos
+	# and have them communicate, pass in a gonelist.
+
+	test -f BitKeeper/log/ROOTKEY || {
+		bk id > /dev/null
+		test -f BitKeeper/log/ROOTKEY || {
+			echo "No BitKeeper/log/ROOTKEY file" 1>&2
+			exit 1
+		}
+	}
+	if [ -f $WA/gonelist ]
+	then	RAND=`bk _sort < $WA/gonelist | cat BitKeeper/log/ROOTKEY - \
+		    | bk crypto -hX - | cut -c1-16`
+		verbose "### Removing unwanted files"
+		bk csetprune $QUIET -S -k"$RAND" - < $WA/gonelist || exit 1
+	else	RAND=`echo "no gonelist" | cat BitKeeper/log/ROOTKEY - \
+		    | bk crypto -hX - | cut -c1-16`
+		verbose "### Newrooting product"
+		bk newroot $QUIET -k"$RAND" || exit 1
+	fi
+
+	# Save a backup copy of the repo
+	bk clone -ql . $WA/repo
+
+	# Clean out the product
+
+	RAND=`echo "The Big Cheese" | cat - BitKeeper/log/ROOTKEY \
+		    | bk crypto -hX - | cut -c1-16`
+	bk csetprune $QUIET -NSE -C$WA/map "-k$RAND"
+
+	# Fill in the components
+	cat $WA/map | while read comp; do
+		verbose "### Cloning component $comp"
+		test -d "$comp" && {
+			echo fix rename bugs
+			rm -fr "$comp"
+		}
+		bk clone -ql $WA/repo $WA/new
+		(
+			cd $WA/new || exit 1
+			test -f BitKeeper/log/ROOTKEY || {
+				bk id > /dev/null
+				test -f BitKeeper/log/ROOTKEY || {
+					echo "No BitKeeper/log/ROOTKEY file" \
+					    1>&2
+					exit 1
+				}
+			}
+			RAND=`echo "$comp" | cat - BitKeeper/log/ROOTKEY \
+			    | bk crypto -hX - | cut -c1-16`
+			bk csetprune $QUIET -NS -C ../map -c"$comp" "-k$RAND"
+		) || exit 1
+		# XXX: this does not set exit code:
+		# bk changes -er1.2 -ndx $WA/new
+		(cd $WA/new && bk changes -qer1.2 -ndx > /dev/null 2>&1 ) || {
+			verbose "### $comp is empty: removed" 
+			rm -fr $WA/new
+			continue
+		}
+		mkdir -p "`dirname "$comp"`"
+		mv $WA/new "$comp" || exit 1
+	done || exit 1
+
+	# We now have a bunch of separate repos laid out like a product
+	# stitch them together
+	BP=`bk changes -r+ -nd:ROOTKEY:`
+	cat $WA/map | while read comp; do
+		test -d "$comp" || continue
+		verbose "### Fixing component $comp"
+		(
+			cd "$comp" || exit 1
+			bk surgery $QUIET -p"$comp" -B"$BP" || exit 1
+			# the 1.1.. is a simpler way of the same thing
+			# bk changes -nd'$if(:CSETKEY:){:DS:\t:ROOTKEY: :KEY:}'
+			bk changes -er1.1.. -nd':DS:\t:ROOTKEY: :KEY:'
+			# bk scompress -- okay to do it here
+		) || exit 1
+	done > $WA/allkeys || exit 1
+
+	touch BitKeeper/log/PRODUCT
+	chmod 444 BitKeeper/log/PRODUCT
+
+	# Hack a modules file
+	(
+		F=BitKeeper/etc/config
+		M=BitKeeper/etc/modules
+		DSPEC=':D: :T::TZ:'
+		DT=`BK_YEAR2=1 bk log -r1.1 -nd"$DSPEC" $F`
+		BK_DATE_TIME_ZONE="$DT"
+		BK_USER=`bk log -r1.1 -nd":P:" $F`
+		BK_HOST=`bk log -r1.1 -nd":HOST:" $F`
+		BK_RANDOM=`echo "$BK_DATE_TIME_ZON $BK_USER $BK_HOST" \
+		    | bk crypto -hX - | cut -c1-16`
+		export BK_USER BK_HOST BK_DATE_TIME_ZONE BK_RANDOM
+		touch $M
+		chmod 666 $M
+		_BK_NO_UNIQ=1 bk new -qP $M
+	)
+	SERIAL=`bk changes -r1.1 -nd:DS:`
+	bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/modules \
+	    >> $WA/allkeys
+
+	# Add in the rest of keys and slurp into cset body
+	bk annotate -aS -hR ChangeSet >> $WA/allkeys
+	bk surgery -W$WA/allkeys || exit 1
+
+	# HACK: Give the modules file a cset mark
+	bk cset -M1.1
+
+	# That's it!  Do the big check..
+	test -z "$QUIET" && VERBOSE=-v
+	bk $QUIET -Ar check $VERBOSE -ac || exit 1
+
+	rm -fr $WA
+	verbose partioning complete
+	exit 0
+}
+
 # This should take a list of components,
 # verify that each is a component,
 # save their rootkeys,

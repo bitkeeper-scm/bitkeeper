@@ -1,0 +1,74 @@
+On Sat, Sep 06, 2008 at 05:05:44PM -0700, Larry McVoy wrote:
+> That's an impressive chunk of work, I still don't completely
+> understand it but it is cool.  Some neat math in there.
+
+The secret sauce is keeping the serial numbers the same for
+all the cset files.
+
+Since the same changeset file is being transformed into many
+components and products changeset files, that by keeping the
+serial numbers the same even though graphs are getting collapsed,
+the final product cset file can be built up using a union of:
+  bk changes -er1.1.. -nd':DS:\t:ROOTKEY: :KEY:'
+on top of the existing weave in the post csetprune product cset
+file.
+
+The other magic is to not collapse out empty nodes in the product
+csetprune, as we know they will get filled back in using the above
+component content.
+
+There's some more magic down in the details, but at a high level
+it's pretty simple:
+  clone product
+  csetprune it to have the files it should
+
+  for each component
+    clone a repo
+    csetprune it to have the files it should with paths remapped
+  done
+
+  # At this point, there is no product /component stuf.
+  # just a nested arrangement of standalone old style repos,
+  # each passing 'bk -r check -vac'
+  #
+  # now stitch together
+
+  for each repo that will become a component
+    add meta data to a component: remove csetmarks on 1.0 and 1.1
+    change pathname of 1.2 to be component/path/ChangeSet
+    make a BitKeeper/log/COMPONENT file
+    bk changes -er1.1.. -nd':DS:\t:ROOTKEY: :KEY:'
+  done > list
+
+  # product
+  make a modules file, add it to 'list' to be woven into weave
+  make a PRODUCT file
+  add current weave to list
+  sort list
+  make new weave
+
+This is currently done in shell script in bk.sh:partition()
+and will be moved to partition.c 
+
+There's a helper file, surgery.c, which will go away as stuff moves
+to partition.c .
+
+== TODO
+
+Move to C again.  Thanks to Wayne for setting this up.
+
++ Managing the gone and ignore files.
+Currently looking to avoid the problem, but may be good to also
+solve the problem in the meantime.
+
+The gone file is made up of keys, which have been changed.
+So the history of the gone file will need to be whacked
+
+The ignore file is made up of paths, some of which are not in this
+repository and some are in this repo with a truncated path.
+
++ What other files will be wrong? 
+
+BitKeeper/log files like ROOTKEY and ?
+
++ More tests - gone, ignore, csetprune's ugly corners, etc.

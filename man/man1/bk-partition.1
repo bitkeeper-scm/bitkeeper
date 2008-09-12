@@ -1,0 +1,83 @@
+.so ../bk-macros
+.TH "bk partition" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk partition \- transform a single repository into a nested product
+.SH SYNOPSIS
+.B bk partition
+.[B] \-q
+.[OPTreq] \-C components
+.[OPTreq] \-G gonelist
+.ARG	from
+.ARG	to
+.SH DESCRIPTION
+.LP
+The
+.B partition
+command is used to transform a single large repository to product
+composed of a collection of component repositories.
+The collection of component files is determined by the map file,
+which is a list of directories which will become component repository
+roots.
+.LP
+Before the transform, it is possible to remove the record of some files
+that were accidentally added along the way, and or have since been
+removed and added to the gone file.
+A list of keys to be remove is stored in a gonelist file, one key per
+line.
+.LP
+The resulting repository will not be able to communicate with the
+original repository.
+This command can be run with the same map and gonelist over any repository
+that could communicate with the original repository and the result can
+communicate with the result of the original partition.
+.SH OPTIONS 
+.tp
+.OPTreq \-C components
+Specify the directories that will become component repository rooots
+by listing them in a file, one per line.  The file may include annotations.
+Lines starting with # will be ignored, as well as blank lines.
+.TP \-G\*<gonelist\*>n
+.OPTreq \-G gonelist
+Specify the keys to be removed before the partitioning is to be done.
+This is the same as running a csetprune before running this command.
+The difference is that the partition command will provide the stable
+-k paramater to the csetprune enable the resulting repositories to
+communicate with repositories that have gone through the same partitioning.
+.tp
+.B \-q
+Run quietly.
+.tp
+.SH EXAMPLE
+.LP
+Suppose there is a repository which has two major subsections, called
+.B docs
+and
+.B src
+respectively.  The repository has grown to be too large and people
+working on one part may not need the other part.
+.LP
+Make a file which defines the partition boundaries.  Call it mapfile:
+.DS
+cat mapfile
+# These are the partition boundaries
+doc
+src
+.DE
+Then run the command to transform the partition.
+.DS
+bk partition -m"mapfile"
+.SH "SEE ALSO"
+.SA Howto-Product
+.SH CATEGORY
+.B Product
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.

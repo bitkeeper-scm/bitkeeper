@@ -1,0 +1,99 @@
+# Theory of operation: start out with a clean single repository
+# and chop it up a number of times into a nested collection and
+# see if it has all the properities we want.
+# 
+#   src - a b c
+#   doc - a b c
+# 
+# With the understanding that src and doc will be components,
+# do some moves between src and doc and src and repo root.
+# Then make src and doc a component.
+
+echo $N Create initial repository ...................................$NL
+commercial project
+mkdir src doc
+cd src
+touch a b c
+bk new $Q a b c
+cd ../doc
+touch a b c
+bk new $Q a b c
+cd ..
+bk commit $Q -ybaseline
+bk mv src/a a
+bk commit $Q -ymoveit
+cd ..
+cat <<EOF > mapfile
+# The source component
+src
+
+# The doc component
+doc
+
+# The deep component
+src/deep/prune/path/starts/here
+EOF
+cat <<"EOF" > badmap
+$HERE/project/src
+$HERE/project/doc
+EOF
+echo OK
+
+echo $N Test out command line .......................................$NL
+bk partition 2> ERR && exit 1
+grep -q "partition: must specify a -C<file> list" ERR || exit 1
+bk partition a b 2> ERR && exit 1
+grep -q "partition: must specify a -C<file> list" ERR || exit 1
+bk partition -Cnotthere a b 2> ERR && exit 1
+grep -q "partition: component list 'notthere' does not exist" ERR || exit 1
+bk partition -Cmapfile notthere b 2> ERR && exit 1
+grep -q "partition: source 'notthere' does not exist" ERR || exit 1
+bk partition -Cmapfile project project 2> ERR && exit 1
+grep -q "partition: destination 'project' exists" ERR || exit 1
+echo OK
+
+echo $N Run a simple test ...........................................$NL
+bk partition $Q -Cmapfile project copy || exit 1
+echo OK
+
+echo $N Add a cset, run again, push to first partition ..............$NL
+cd project
+bk edit $Q a
+bk delta $Q -fynull a
+bk commit $Q -ya
+cd ..
+bk partition $Q -Cmapfile project copy2 || exit 1
+cd copy2
+bk push $Q ../copy 2> ERR || {
+   echo push failed
+   cat ERR
+   exit 1
+}
+echo OK
+
+echo $N Move a file between components and push again ...............$NL
+# We need to prune history such that the first cset that shows
+# up is a user space name as opposed to being created in the deleted
+# directory as is now down.  This needs to be a part of csetprune
+# and cset marks need to be regenerated for those files / csets.
+cd "$HERE/project"
+bk mv src/b doc/was-src-b
+bk commit $Q -ya
+cd ..
+bk partition $Q -Cmapfile project copymv || exit 1
+cd copymv
+bk push $Q ../copy || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Remove empty components .....................................$NL
+cd "$HERE"
+echo empty/repo > emptymap
+bk partition $Q -Cemptymap project empty || exit 1
+test -d empty/empty && {
+	echo failed
+	exit 1
+}
+echo OK

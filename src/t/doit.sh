@@ -120,7 +120,7 @@ unix_common_setup()
 	rm -rf "$BK_LIMITPATH"
 	mkdir "$BK_LIMITPATH"
 	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
-	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
+	    basename dirname cat cp cut ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip remsh rcmd uname xterm vi tar \
 	    chmod perl ls gdb
 	do	p=`bk which -e $f`

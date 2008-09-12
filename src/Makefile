@@ -151,7 +151,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
 	mailsplit.o module.o mtime.o mv.o names.o newroot.o \
-	opark.o parent.o park.o \
+	opark.o \
+	parent.o park.o partition.o \
 	pending.o populate.o preference.o proj.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
@@ -178,7 +179,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs2bk.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
-	slib.o smerge.o sort.o stat.o stattest.o status.o stripdel.o synckeys.o \
+	slib.o smerge.o sort.o stat.o stattest.o status.o \
+	stripdel.o surgery.o synckeys.o \
 	tagmerge.o testcode.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
