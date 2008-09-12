@@ -501,3 +501,27 @@ bk module add -Msparse ./gcc gdb || exit 1
 bk module show -Msparse > GOT
 cmpfiles ../WANT GOT
 echo OK
+
+echo $N Test creating files in the place of missing modules .........$NL
+cd "$HERE"/project-gcc
+mkdir gdb
+echo hi > gdb/foo
+bk new $Q gdb/foo || exit 1
+bk commit -ybadfile $Q 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q "check: gdb/foo conflicts with component at gdb" ERR || exit 1
+
+cd gcc
+mkdir nm
+echo hi > nm/foo
+bk new $Q nm/foo || exit 1
+bk commit -ybadfile $Q  2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q "check: nm/foo conflicts with component at nm" ERR || exit 1
+echo OK

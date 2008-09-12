@@ -60,6 +60,7 @@ int		xflags_failed;	/* notification */
 private	u32	timestamps;
 private	char	**bp_getFiles;
 private	int	bp_fullcheck;	/* do bam CRC */
+private	char	**subrepos = 0;
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 
@@ -190,6 +191,39 @@ check_main(int ac, char **av)
 		mdbm_close(idDB);
 		idDB = mdbm_mem();
 		unlink(BAM_MARKER); /* recreate BAM_MARKER */
+	}
+	/*
+	 * Get the list of components that exist under this
+	 * component.
+	 * XXX include pending component renames
+	 */
+	if (proj_isEnsemble(0)) {
+		repos	*r;
+		eopts	el_opts = {0};
+		char	*cp; /* path to this component */
+		int	cplen;
+
+		el_opts.rev = "+";
+		if (proj_isProduct(0)) {
+			el_opts.sc = cset;
+			cp = 0;
+			cplen = 0;
+		} else {
+			cp = aprintf("%s/", proj_comppath(0));
+			cplen = strlen(cp);
+		}
+		t = proj_root(0);
+		proj_cd2product();
+		r = ensemble_list(el_opts);
+		chdir(t);
+		EACH_REPO(r) {
+			if (!cp || strneq(r->path, cp, cplen)) {
+				subrepos = addLine(subrepos,
+				    strdup(r->path + cplen));
+			}
+		}
+		if (cp) free(cp);
+		ensemble_free(r);
 	}
 
 	/* This can legitimately return NULL */
@@ -336,6 +370,7 @@ check_main(int ac, char **av)
 		idcache_write(0, idDB);
 		mdbm_close(idDB);
 	}
+	freeLines(subrepos, free);
 	/*
 	 * Note: we may update NFILES more than needed when not in verbose mode.
 	 */
@@ -1332,6 +1367,22 @@ check(sccs *s, MDBM *idDB)
 		names = 1;
 	}
 
+	unless (CSET(s)) {
+		EACH(subrepos) {
+			char	*p = subrepos[i];
+			char	*q = d->pathname;
+
+			/* yes rick, I inlined a strcmp again... */
+			while (*p && (*p == *q)) ++p, ++q;
+			if (*p || (*q && (*q != '/'))) continue;
+
+			/* pathname conflict */
+			fprintf(stderr,
+			    "check: %s conflicts with component at %s\n",
+			    d->pathname, subrepos[i]);
+			errors++;
+		}
+	}
 	sccs_sdelta(s, ino = sccs_ino(s), buf);
 
 	/*
