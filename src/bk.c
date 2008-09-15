@@ -513,6 +513,7 @@ bk_cleanup(int ret)
 		free(buffer);
 		buffer = 0;
 	}
+	notifier_flush();
 	lockfile_cleanup();
 
 	/*
@@ -808,6 +809,7 @@ cmdlog_end(int ret)
 	int	len, savelen;
 	kvpair	kv;
 
+	notifier_flush();
 	unless (cmdlog_buffer[0]) goto out;
 
 	/* add last minute notes */

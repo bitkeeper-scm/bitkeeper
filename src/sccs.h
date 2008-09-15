@@ -631,6 +631,7 @@ struct sccs {
 	u32	cachemiss:1;	/* BAM file not found locally */
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
 	u32	used_cfile:1;	/* comments_readcfile found one; for cleanup */
+	u32	modified:1;	/* set if we wrote the s.file */
 	u32	mem_in:1;	/* s->fh is in-memory FILE* */
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
@@ -1274,6 +1275,14 @@ int	keycmp(const void *k1, const void *k2);
 int	key_sort(const void *a, const void *b);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
+
+#ifdef	WIN32
+void	notifier_changed(char *fullpath);
+void	notifier_flush(void);
+#else
+#define	notifier_changed(x)
+#define	notifier_flush()
+#endif
 
 extern	char	*editor;
 extern	char	*bin;

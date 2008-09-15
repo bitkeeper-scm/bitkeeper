@@ -363,7 +363,13 @@ proc getFiles {} \
 	} else {
 		# didn't find any valid arguments or there weren't any
 		# files that needed diffing...
-		puts stderr "There were no files available to diff"
+		if {$gc(windows)} {
+			tk_messageBox -parent . -type ok -icon info \
+			    -title "No differences found" -message \
+			    "There were no files found with differences"
+	    	} else {
+			puts stderr "There were no files available to diff"
+		}
 		cleanup
 	}
 }
