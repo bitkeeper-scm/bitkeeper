@@ -554,7 +554,7 @@ marklist(char *file)
 }
 
 /*
- * sort by rootkeys by pathname first
+ * sort rootkeys by pathname first
  * lines:
  *    <serial>\t<rootkey> <deltakey>
  */
@@ -574,6 +574,38 @@ cset_bykeys(const void *a, const void *b)
 	rc = keycmp(p1+1, p2+1);
 	*d1 = ' ';
 	*d2 = ' ';
+	return (rc);
+}
+
+/*
+ * sfile order: sort rootkeys by serial first, then whole rootkey
+ * lines:
+ *    <serial>\t<rootkey> <deltakey>\0
+ *    initial \0 - means line is deleted
+ */
+int
+cset_byserials(const void *a, const void *b)
+{
+	char	*s1 = *(char**)a;
+	char	*s2 = *(char**)b;
+	char	*p1, *p2;
+	char	*d1, *d2;
+	int	rc;
+
+	if (!*s1 || !*s2) return (!*s1 - !*s2);	/* deleted go at end */
+
+	unless (rc = (atoi(s2) - atoi(s1))) {
+		p1 = strchr(s1, '\t');	/* start of rootkey */
+		p2 = strchr(s2, '\t');
+		d1 = separator(p1); /* start of delta key */
+		d2 = separator(p2);
+		*d1 = 0;
+		*d2 = 0;
+		rc = keycmp(p1+1, p2+1);
+		*d1 = ' ';
+		*d2 = ' ';
+		assert(rc);
+	}
 	return (rc);
 }
 

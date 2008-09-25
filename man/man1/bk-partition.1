@@ -7,10 +7,9 @@ bk partition \- transform a single repository into a nested product
 .[B] \-q
 .[OPTreq] \-C components
 .[OPTreq] \-G gonelist
-.ARG	from
-.ARG	to
+.ARG from
+.ARG to
 .SH DESCRIPTION
-.LP
 The
 .B partition
 command is used to transform a single large repository to product
@@ -27,45 +26,52 @@ line.
 .LP
 The resulting repository will not be able to communicate with the
 original repository.
-This command can be run with the same map and gonelist over any repository
-that could communicate with the original repository and the result can
-communicate with the result of the original partition.
+This command can be run with the same 
+.ARG components
+and
+.ARG gonelist
+over any repository that could communicate with the original repository
+and the result can communicate with the result of the original partition.
 .SH OPTIONS 
-.tp
+.TP \-C\*<components\*>
 .OPTreq \-C components
-Specify the directories that will become component repository rooots
-by listing them in a file, one per line.  The file may include annotations.
+Specify a file containing the directories that will become
+component repository rooots.
+The directories are listed in the file, one per line.
 Lines starting with # will be ignored, as well as blank lines.
-.TP \-G\*<gonelist\*>n
+.tp
 .OPTreq \-G gonelist
-Specify the keys to be removed before the partitioning is to be done.
+Specify a file containing the keys to be removed before the partitioning
+begins.
 This is the same as running a csetprune before running this command.
 The difference is that the partition command will provide the stable
--k paramater to the csetprune enable the resulting repositories to
+-k parameter to the csetprune enable the resulting repositories to
 communicate with repositories that have gone through the same partitioning.
 .tp
 .B \-q
 Run quietly.
-.tp
 .SH EXAMPLE
 .LP
 Suppose there is a repository which has two major subsections, called
-.B docs
+.B doc
 and
 .B src
 respectively.  The repository has grown to be too large and people
-working on one part may not need the other part.
+working on one part may not need the other part. The following steps
+would convert it to a product comprising two components,
+namely 'doc' and 'src'.
 .LP
-Make a file which defines the partition boundaries.  Call it mapfile:
+Create a file which defines the partition boundaries.  Call it components:
 .DS
-cat mapfile
+$ cat components
 # These are the partition boundaries
 doc
 src
+$
 .DE
 Then run the command to transform the partition.
 .DS
-bk partition -m"mapfile"
+$ bk partition -Ccomponents
 .SH "SEE ALSO"
 .SA Howto-Product
 .SH CATEGORY

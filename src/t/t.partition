@@ -19,9 +19,10 @@ cd ../doc
 touch a b c
 bk new $Q a b c
 cd ..
-bk commit $Q -ybaseline
+bk commit $Q -SROOT -ybaseline
 bk mv src/a a
 bk commit $Q -ymoveit
+bk tag $Q TIP
 cd ..
 cat <<EOF > mapfile
 # The source component
@@ -54,6 +55,70 @@ echo OK
 
 echo $N Run a simple test ...........................................$NL
 bk partition $Q -Cmapfile project copy || exit 1
+echo OK
+
+echo $N See that bk names removes empty directories .................$NL
+test -d copy/src/src && {
+	echo failed
+	find copy/src/src
+	exit 1
+}
+echo OK
+
+echo $N See that tags only happen in the product repo ...............$NL
+cd copy/src
+test 0 -eq `bk changes -r+ -nd'$if(:TAG:){tagged}' | wc -l` || {
+	echo failed tags in component
+	exit 1
+}
+cd ../doc
+test 0 -eq `bk changes -r+ -nd'$if(:TAG:){tagged}' | wc -l` || {
+	echo failed tags in component
+	exit 1
+}
+cd ..
+test 1 -eq `bk changes -r+ -nd'$if(:TAG:){tagged}' | wc -l` || {
+	echo failed wrong number of tags in product
+	exit 1
+}
+cd ..
+echo OK
+
+echo $N Test that files are checked out according to checkout .......$NL
+test -f copy/src/b && {
+	echo failed
+	echo file checked out when none expected
+	exit 1
+}
+rm -fr copy
+_BK_DEVELOPER="" BK_CONFIG="checkout: get! " \
+    bk partition $Q -Cmapfile project copy || exit 1
+test -f copy/src/b || {
+	echo failed
+	echo no file checked out when one expected
+	exit 1
+}
+echo OK
+
+echo $N Test rollback without -X means src/a is there ...............$NL
+cd copy
+bk undo $Q -sfaROOT || exit 1
+test -f src/SCCS/s.a || {
+	echo not there
+	exit 1
+}
+cd ..
+echo OK
+
+echo $N Test rollback with -X means src/a is not there ..............$NL
+bk partition $Q -X -Cmapfile project xcomps || exit 1
+cd xcomps
+bk undo $Q -sfaROOT || exit 1
+test -f src/SCCS/s.a && {
+	echo there
+	exit 1
+}
+cd ..
 echo OK
 
 echo $N Add a cset, run again, push to first partition ..............$NL

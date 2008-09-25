@@ -265,7 +265,7 @@ int	checking_rmdir(char *dir);
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
 #define	SET(s)		((s)->state & S_SET)
 #define	IMPORT(s)	((s)->state & S_IMPORT)
-#define	MK_GONE(s, d)	(s)->hasgone = 1; (d)->flags |= D_GONE
+#define	MK_GONE(s, d)	do {(s)->hasgone = 1; (d)->flags |= D_GONE;} while (0)
 
 #define	GOODSCCS(s)	assert(s); unless ((s)->tree&&(s)->cksumok) return (-1)
 #define	HASGRAPH(s)	((s)->tree)
@@ -874,6 +874,7 @@ int	sccs_resum(sccs *s, delta *d, int diags, int dont);
 int	cset_resum(sccs *s, int diags, int fix, int spinners, int takepatch);
 char	**cset_mkList(sccs *cset);
 int	cset_bykeys(const void *a, const void *b);
+int	cset_byserials(const void *a, const void *b);
 int	sccs_newchksum(sccs *s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);

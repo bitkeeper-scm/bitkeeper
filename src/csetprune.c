@@ -68,7 +68,7 @@ csetprune_main(int ac, char **av)
 	int	i, c, ret = 1;
 
 	flags = PRUNE_NEW_TAG_GRAPH;
-	while ((c = getopt(ac, av, "c:C:Egk:NqSX")) != -1) {
+	while ((c = getopt(ac, av, "c:C:Egk:NqsSX")) != -1) {
 		switch (c) {
 		    case 'c': comppath = optarg; break;
 		    case 'C': compfile = optarg; break;
@@ -263,35 +263,6 @@ sortByKeySer(const void *a, const void *b)
 }
 
 /*
- * sort by rootkeys by serial first, then whole rootkey
- */
-private	int
-sortBySerKey(const void *a, const void *b)
-{
-	char	*s1 = *(char**)a;
-	char	*s2 = *(char**)b;
-	char	*p1, *p2;
-	char	*d1, *d2;
-	int	rc;
-
-	if (!*s1 || !*s2) return (!*s1 - !*s2);	/* deleted go at end */
-
-	unless (rc = atoi(s2) - atoi(s1)) {
-		p1 = strchr(s1, '\t');	/* path in rootkey */
-		p2 = strchr(s2, '\t');
-		d1 = separator(p1); /* start of delta key */
-		d2 = separator(p2);
-		*d1 = 0;
-		*d2 = 0;
-		rc = strcmp(p1, p2);
-		*d1 = ' ';
-		*d2 = ' ';
-		assert(rc);
-	}
-	return (rc);
-}
-
-/*
  * filterWeave - skip pruned, rename renames, add deleted
  */
 private	int
@@ -430,7 +401,7 @@ save:
 	if (marked) sccs_clearbits(cset, D_RED);
 	marked = 0;
 
-	sortLines(cweave, sortBySerKey);
+	sortLines(cweave, cset_byserials);
 
 	d = cset->table;
 	empty = 0;
@@ -496,7 +467,8 @@ rmKeys(char **delkeys)
 	verbose((stderr, "Removing files...\n"));
 	EACH(delkeys) {
 		verbose((stderr, "%d removed\r", ++n));
-		sccs_keyunlink(delkeys[i], idDB, dirs, flags & SILENT);
+		/* XXX: if have a verbose mode, pass a flags & SILENT */
+		sccs_keyunlink(delkeys[i], idDB, dirs, SILENT);
 	}
 	mdbm_close(idDB);
 	verbose((stderr, "\n"));

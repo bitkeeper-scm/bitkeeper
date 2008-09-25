@@ -182,13 +182,15 @@ _portal() {
 _partition() {
 	COMPS=
 	QUIET=
-	while getopts C:G:m:q opt
+	XCOMPS=
+	while getopts C:G:m:qX opt
 	do
 		case "$opt" in
 		q) QUIET=-q;;
 		C) COMPS="$OPTARG";;
 		G) GONELIST="$OPTARG";;
 		m) COMPS="$OPTARG";;	# for any old scripts
+		X) XCOMPS="-X";;
 		*) bk help -s partition; exit 1;;
 		esac
 	done
@@ -229,11 +231,14 @@ _partition() {
 		exit 1
 	}
 
+	# XXX: when moving to C, don't overwrite all of CONFIG
+	# For now, this is a good enough / demo hack
+	_BK_OCONFIG="$BK_CONFIG"
 	BK_CONFIG="checkout: none!; partial_check: on! "
 	export BK_CONFIG
 
 	verbose "### Cloning product"
-	bk clone -ql "$from" "$to" || exit 1
+	bk clone -ql "$from" "$to" || bk clone -q "$from" "$to" || exit 1
 
 	# Make a work area
 	WA=BitKeeper/tmp/partition.d
@@ -285,7 +290,7 @@ _partition() {
 
 	RAND=`echo "The Big Cheese" | cat - BitKeeper/log/ROOTKEY \
 		    | bk crypto -hX - | cut -c1-16`
-	bk csetprune $QUIET -NSE -C$WA/map "-k$RAND"
+	bk csetprune $QUIET -NSE $XCOMPS -C$WA/map "-k$RAND"
 
 	# Fill in the components
 	cat $WA/map | while read comp; do
@@ -307,7 +312,8 @@ _partition() {
 			}
 			RAND=`echo "$comp" | cat - BitKeeper/log/ROOTKEY \
 			    | bk crypto -hX - | cut -c1-16`
-			bk csetprune $QUIET -NS -C ../map -c"$comp" "-k$RAND"
+			_BK_STRIPTAGS=1 bk csetprune \
+			    $QUIET -NS $XCOMPS -C ../map -c"$comp" "-k$RAND"
 		) || exit 1
 		# XXX: this does not set exit code:
 		# bk changes -er1.2 -ndx $WA/new
@@ -366,9 +372,11 @@ _partition() {
 	# HACK: Give the modules file a cset mark
 	bk cset -M1.1
 
-	# That's it!  Do the big check..
+	# That's it!  Do the big check.. and restore files to proper state
 	test -z "$QUIET" && VERBOSE=-v
-	bk $QUIET -Ar check $VERBOSE -ac || exit 1
+	BK_CONFIG="$_BK_OCONFIG"
+	export BK_CONFIG
+	bk $QUIET -Ar check $VERBOSE -acfT || exit 1
 
 	rm -fr $WA
 	verbose partioning complete

@@ -59,6 +59,7 @@ names_main(int ac, char **av)
 	}
 	if (sfileDone()) error |= 4;
 	if (todo) pass2(flags);
+	rmEmptyDirs(flags & SILENT);
 	return (error);
 }
 
