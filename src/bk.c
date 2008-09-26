@@ -200,7 +200,7 @@ main(int ac, char **av, char **env)
 			    case 'L': locking = optarg; break;
 			    case 'P':				/* doc 2.0 */
 				start_cwd = strdup(proj_cwd());
-				if (proj_cd2product()) {
+				if (proj_cd2product() && proj_cd2root()) {
 					fprintf(stderr, 
 					    "bk: Cannot find product root.\n");
 					return(1);
