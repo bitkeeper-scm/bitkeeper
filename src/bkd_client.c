@@ -350,6 +350,7 @@ bkd(int compress, remote *r)
 	char	*remsh;
 	char	*remopts;
 	char	**bkrsh = 0;
+	char	*rpath = 0;
 	int	i, j;
 	pid_t	p = -1;
 	char	*cmd[100];
@@ -426,7 +427,23 @@ bkd(int compress, remote *r)
 				cmd[++i] = "env";
 				cmd[++i] = freeme;
 			}
-			cmd[++i] = "bk bkd";
+			/*
+			 * Allow passing of the path to the remote bk path
+			 * if we are using rsh or ssh.  In that case they
+			 * have a login anyway so they have access to the
+			 * machine.
+			 * XXX - what about where the bkd is the login shell?
+			 * I think in that case this is meaningless, correct?
+			 * Isn't it the case that the command is just lost if
+			 * we are already the bkd?
+			 */
+			if ((t = getenv("BK_REMOTEBIN")) &&
+			    (r->type & (ADDR_NFS|ADDR_RSH|ADDR_SSH))) {
+				rpath = aprintf("%s/bk bkd", t);
+				cmd[++i] = rpath;
+			} else {
+				cmd[++i] = "bk bkd";
+			}
 			if (r->remote_cmd) cmd[++i] = "-U";
 		} else if (streq(cmd[0], "rsh") || streq(cmd[0], "remsh")) {
 			fprintf(stderr,
@@ -449,6 +466,7 @@ bkd(int compress, remote *r)
 		fprintf(stderr, "%s: Command not found\n", cmd[0]);
 	}
 err:	if (freeme) free(freeme);
+	if (rpath) free(rpath);
 	if (bkrsh) freeLines(bkrsh, free);	/* if BK_RSH env var */
 	return (p);
 }

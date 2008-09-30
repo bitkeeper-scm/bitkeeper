@@ -775,7 +775,7 @@ struct tool
  */
 typedef struct {
 	u16	port;		/* remote port if set */
-	u16	type:3;		/* address type, nfs/bk/http/file/ssh/rsh */
+	u16	type;		/* address type, nfs/bk/http/file/ssh/rsh */
 	u16	loginshell:1;	/* if set, login shell is the bkd */
 	u16	trace:1;	/* for debug, trace send/recv msg */
 	u16	progressbar:1;	/* display progressbar for large transfers */
@@ -798,15 +798,15 @@ typedef struct {
 	hash	*errs;		/* encode error messages */
 } remote;
 
-#define	ADDR_NFS	0x000	/* host:/path */
-#define	ADDR_BK		0x001	/* bk://host:[port]//path */
-#define	ADDR_HTTP	0x002	/* http://host:[port]//path */
-#define	ADDR_FILE	0x003	/* file://path */
-#define	ADDR_SSH	0x004	/*
+#define	ADDR_NFS	0x001	/* host:/path */
+#define	ADDR_BK		0x002	/* bk://host:[port]//path */
+#define	ADDR_HTTP	0x004	/* http://host:[port]//path */
+#define	ADDR_FILE	0x008	/* file://path */
+#define	ADDR_SSH	0x010	/*
 				 * ssh:[user@]host//path or
 				 * ssh:[user@]host:/path
 				 */
-#define	ADDR_RSH	0x005	/*
+#define	ADDR_RSH	0x020	/*
 				 * rsh:[user@]host//path or
 				 * rsh:[user@]host:/path
 				 */
