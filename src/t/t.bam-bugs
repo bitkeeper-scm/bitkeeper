@@ -109,6 +109,13 @@ bk -r check -ac || exit 1
 echo OK
 cp BitKeeper/log/BAM.index .
 
+echo $N Make sure we can regenerate the lines in BAM.index ..........$NL
+bk prs -hr+ -nd'$if(:BAMHASH:){:BAMLOG:}' x > GOT
+FILE=`bk prs -hr+ -nd'$if(:BAMHASH:){:BAMENTRY:}' x`
+grep "$FILE" BitKeeper/log/BAM.index > WANT
+cmpfiles WANT GOT
+echo OK
+
 echo $N Make sure fix -c does not confuse BAM .......................$NL
 bk fix -c
 echo u | bk new $Q x y z > OUT 2>&1

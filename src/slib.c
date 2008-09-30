@@ -13632,7 +13632,7 @@ int
 kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 {
 	struct kwval *kwval;
-	char	*p, *q;
+	char	*p, *q, *t;
 #define	KW(x)	kw2val(out, vbuf, x, strlen(x), s, d)
 #define	fc(c)	show_d(s, out, vbuf, "%c", c)
 #define	fd(n)	show_d(s, out, vbuf, "%d", n)
@@ -15207,6 +15207,15 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		}
 		return (nullVal);
 
+	case KW_BAMENTRY: /* BAMENTRY */
+		if (BAM(s) && (p = bp_lookup(s, d))) {
+			if (q = strstr(p, "/BitKeeper/BAM/")) {
+				fs(q + 15);
+			}
+			free(p);
+			return (strVal);
+		}
+		return (nullVal);
 	case KW_BAMFILE: /* BAMFILE */
 		if (BAM(s) && (p = bp_lookup(s, d))) {
 			q = proj_relpath(s->proj, p);
@@ -15223,6 +15232,30 @@ kw2val(FILE *out, char ***vbuf, char *kw, int len, sccs *s, delta *d)
 		} else {
 			return (nullVal);
 		}
+	case KW_BAMLOG: /* BAMLOG */
+		if (BAM(s) && (p = bp_lookup(s, d))) {
+			char	key[MAXKEY];
+			char	b64[MD5LEN];
+
+			sccs_sdelta(s, d, key);
+			sccs_md5delta(s, s->tree, b64);
+			t = strstr(p, "/BitKeeper/BAM/");
+			assert(t);
+			t += 15;
+			q = aprintf("%s %s %s %s", d->hash, key, b64, t);
+			fs(q);
+			fc(' ');
+			sprintf(key, "%08x", (u32)adler32(0, q, strlen(q)));
+			fs(key);
+			free(p);
+			free(q);
+			return (strVal);
+		}
+		return (nullVal);
+
+	case KW_SPACE: /* SPACE */
+		fc(' ');
+		return (strVal);
 
 	default:
 		return (notKeyword);
