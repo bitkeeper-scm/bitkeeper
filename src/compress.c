@@ -228,5 +228,9 @@ zputs_hfwrite(void *token, u8 *data, int len)
 	fwrite(&hlen, 2, 1, f);
 	if (len) fwrite(data, 1, len, f);
 	outcnt += len + 2;
+	if (ferror(f)) {
+		perror("zputs_hfwrite");
+		exit(1);
+	}
 }
 
