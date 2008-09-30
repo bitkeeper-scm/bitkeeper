@@ -7164,7 +7164,38 @@ err:		if (i2) free(i2);
 			goto err;
 		}
 		locked = 1;
+	} else if (HAS_PFILE(s) &&
+	    !HAS_GFILE(s) && !(flags & (PRINT|GET_SKIPGET))) {
+		pfile	pf;
+		int	rc;
+
+		/*
+		 * If we have a pfile, no gfile, and we're getting the file,
+		 * the the pfile is leftover crud and we should lose it.
+		 * This happens when someone does "bk edit foo; rm foo".
+		 * The only gotcha I can think of is get -G/tmp/foo but
+		 * I walked the code and I think even that case is OK
+		 * (we should lose get -G).
+		 *
+		 * Eagle eye Rick points out that we probably don't want to
+		 * lose merge pointers.
+		 */
+		if (sccs_read_pfile("co", s, &pf) == 0) {
+			rc = 0;
+			if (pf.mRev || pf.iLst || pf.xLst) {
+			    rc = 1;
+			    fprintf(stderr,
+				"%s has merge|include|exclude "
+				"but no gfile, co aborted.\n",
+				s->gfile);
+			}
+			free_pfile(&pf);
+			if (rc) goto err;
+			unlink(s->pfile);
+			s->state &= ~S_PFILE;
+		}
 	}
+
 	if (flags & GET_SKIPGET) {
 		/*
 		 * XXX - need to think about this for various file types.

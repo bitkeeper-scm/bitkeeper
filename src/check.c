@@ -630,11 +630,24 @@ writable_gfile(sccs *s)
 private int
 no_gfile(sccs *s)
 {
-	if (HAS_PFILE(s) && !HAS_GFILE(s)) {
-		if (unlink(sccs_Xfile(s, 'p'))) return (1);
-		s->state &= ~S_PFILE;
+	pfile	pf;
+	int	rc = 0;
+
+	unless (HAS_PFILE(s) && !HAS_GFILE(s)) return (0);
+	if (sccs_read_pfile("co", s, &pf)) return (1);
+	if (pf.mRev || pf.iLst || pf.xLst) {
+		fprintf(stderr,
+		    "%s has merge|include|exclude but no gfile.\n", s->gfile);
+		rc = 1;
+	} else {
+		if (unlink(s->pfile)) {
+			rc = 1;
+		} else {
+			s->state &= ~S_PFILE;
+		}
 	}
-	return (0);
+	free_pfile(&pf);
+	return (rc);
 }
 
 private int

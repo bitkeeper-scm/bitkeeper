@@ -234,6 +234,37 @@ test -w d1/sub1/a || {
 }
 echo OK
 
+echo $N Make sure it removes p.files when no gfile ..................$NL
+rm d1/sub1/a
+test -f d1/sub1/SCCS/p.a || {
+	echo whoops, where did the p.file go
+	exit 1
+}
+bk -r check -a > OUT 2>&1
+test -f d1/sub1/SCCS/p.a && {
+	echo should have removed d1/sub1/SCCS/p.a
+	exit 1
+}
+echo OK
+
+echo $N No remove w/o gfile when -i/-x ..............................$NL
+bk edit $Q -x+ d1/sub1/a
+rm d1/sub1/a
+bk -r check -a > OUT 2>&1 && {
+	echo should have failed
+	exit 1
+}
+test -f d1/sub1/SCCS/p.a || {
+	echo should not have removed d1/sub1/SCCS/p.a
+	cat OUT
+	exit 1
+}
+grep -q 'd1/sub1/a has merge.include.exclude but no gfile.' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
 
 echo $N Make sure it complains about file/dir conflicts .............$NL
 bk unedit $Q d1/sub1/a
