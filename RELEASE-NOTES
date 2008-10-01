@@ -6,6 +6,86 @@ can not longer be set to an empty string.  So for example:
 won't work.  Use BK_NO_TRIGGERS=1 instead.
 
 ===============================================================================
+Release notes for BitKeeper version 4.2 (released 3-Oct-2008)
+
+This release contains a rewrite of the Windows Explorer Shell plugin,
+with changes supporting that rewrite, as well as bugfixes described below.
+
+It is backwards compatible with all 4.x releases.
+
+bk clone
+    Fix a bug where a scripted clone could repeatedly fail and overload
+    the bkd server.
+
+bk get|edit
+    A common user error is to remove unwanted files; this leaves behind
+    what BK calls a "p.file", some metadata describing by whom and when
+    a file was edited.  The fix detects when the metadata is no longer
+    needed and deletes it.
+
+bk bam
+    Fixed a bug where the wrong BAM index could be updated if you
+    ran BAM commands from a different repo that the one affected.
+
+    Add a feature for regenerating log/Bam.index entries.
+    
+bk changes
+    Fix a bug where the output of 'bk changes -v -r"$KEY"' was not stable,
+    i.e., the order of the files could be different when the command
+    was run in multiple repositories.  This change makes the sorted
+    order for the files be based on the the pathname of the file as of
+    the time of the changeset, making the output the same regardless of
+    when/where the command is run.
+
+    Some customers do things like
+
+    	cd some_repo && bk changes -L > /tmp/some_repo
+    	cd other_repo && bk changes -L > /tmp/other_repo
+	diff /tmp/some_repo /tmp/other_repo
+
+    to get an idea of what is in each and without this change the 
+    diffs could be bigger than they should be.
+
+bk ignore
+    Add per-user ignore patterns. These can be set in `bk dotbk`/ignore.
+
+Remote bk location
+    When running through an rsh:// or ssh:// url, it is not always true
+    that bk is in the remote machine's path.  If you wish to specify 
+    the location you may now do so like so:
+
+	$ BK_REMOTEBIN=/opt/bk-4.2 bk pull ssh://some-host/some-path
+
+    and the remote bk run will be /opt/bk-4.2/bk.
+
+bk fm3tool
+    Fix a bug where fm3tool would hang if smerge returned with an error.
+
+bk citool
+    New icons to match the explorer.exe plugin on Windows.
+
+    Changed citool behavior to be more friendly to pre-delta trigger
+    filtering.  It used to stop on the first failure (e.g., a spelling
+    or formatting error).  It now keeps going, notifying the user of
+    all the failures, so the user can go clean them all up and rerun
+    citool.
+
+bk difftool
+    Display a dialog on Windows when there are no files to diff.
+
+WINDOWS:
+    Several fixes for handling proxies on windows (to support the 
+    licensing / lease mechanism).
+
+    All full pathnames to be passed to bk commands on windows, paths
+    like C:\Program Files\whatever were sometimes not converted to
+    C:/Program Files/whatever.
+
+    New icon for BitKeeper.
+
+    New windows explorer.exe plugin.
+
+===============================================================================
 Release notes for BitKeeper version 4.1.2a (released 11-Aug-2008)
 
 This is a bugfix release.

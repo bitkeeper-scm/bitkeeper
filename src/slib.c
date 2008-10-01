@@ -7151,7 +7151,38 @@ err:		if (i2) free(i2);
 			goto err;
 		}
 		locked = 1;
+	} else if (HAS_PFILE(s) &&
+	    !HAS_GFILE(s) && !(flags & (PRINT|GET_SKIPGET))) {
+		pfile	pf;
+		int	rc;
+
+		/*
+		 * If we have a pfile, no gfile, and we're getting the file,
+		 * the the pfile is leftover crud and we should lose it.
+		 * This happens when someone does "bk edit foo; rm foo".
+		 * The only gotcha I can think of is get -G/tmp/foo but
+		 * I walked the code and I think even that case is OK
+		 * (we should lose get -G).
+		 *
+		 * Eagle eye Rick points out that we probably don't want to
+		 * lose merge pointers.
+		 */
+		if (sccs_read_pfile("co", s, &pf) == 0) {
+			rc = 0;
+			if (pf.mRev || pf.iLst || pf.xLst) {
+			    rc = 1;
+			    fprintf(stderr,
+				"%s has merge|include|exclude "
+				"but no gfile, co aborted.\n",
+				s->gfile);
+			}
+			free_pfile(&pf);
+			if (rc) goto err;
+			unlink(s->pfile);
+			s->state &= ~S_PFILE;
+		}
 	}
+
 	if (flags & GET_SKIPGET) {
 		/*
 		 * XXX - need to think about this for various file types.
@@ -13524,7 +13555,7 @@ int
 kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 {
 	struct kwval *kwval;
-	char	*p, *q;
+	char	*p, *q, *t;
 	delta	*e;
 	char	*rev;
 
@@ -15125,6 +15156,15 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		}
 		return (nullVal);
 
+	case KW_BAMENTRY: /* BAMENTRY */
+		if (BAM(s) && (p = bp_lookup(s, d))) {
+			if (q = strstr(p, "/BitKeeper/BAM/")) {
+				fs(q + 15);
+			}
+			free(p);
+			return (strVal);
+		}
+		return (nullVal);
 	case KW_BAMFILE: /* BAMFILE */
 		if (BAM(s) && (p = bp_lookup(s, d))) {
 			q = proj_relpath(s->proj, p);
@@ -15141,6 +15181,30 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		} else {
 			return (nullVal);
 		}
+	case KW_BAMLOG: /* BAMLOG */
+		if (BAM(s) && (p = bp_lookup(s, d))) {
+			char	key[MAXKEY];
+			char	b64[MD5LEN];
+
+			sccs_sdelta(s, d, key);
+			sccs_md5delta(s, s->tree, b64);
+			t = strstr(p, "/BitKeeper/BAM/");
+			assert(t);
+			t += 15;
+			q = aprintf("%s %s %s %s", d->hash, key, b64, t);
+			fs(q);
+			fc(' ');
+			sprintf(key, "%08x", (u32)adler32(0, q, strlen(q)));
+			fs(key);
+			free(p);
+			free(q);
+			return (strVal);
+		}
+		return (nullVal);
+
+	case KW_SPACE: /* SPACE */
+		fc(' ');
+		return (strVal);
 	case KW_COMPONENT: /* COMPONENT */
 		if (q = proj_comppath(s->proj)) {
 			fs(q);

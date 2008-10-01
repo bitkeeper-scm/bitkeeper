@@ -365,7 +365,7 @@ domap:
 	db = proj_BAMindex(proj, 1);
 	assert(db);
 	j = mdbm_store_str(db, keys, p, MDBM_REPLACE);
-	bp_logUpdate(keys, p);
+	bp_logUpdate(proj, keys, p);
 	assert(!j);
 	return (0);
 }
@@ -481,14 +481,14 @@ bp_fetch(sccs *s, delta *din)
  * val == 0 is a delete.
  */
 int
-bp_logUpdate(char *key, char *val)
+bp_logUpdate(project *p, char *key, char *val)
 {
 	FILE	*f;
 	char	buf[MAXPATH];
 
 	unless (val) val = INDEX_DELETE;
-	strcpy(buf, proj_root(0));
-	if (proj_isResync(0)) concat_path(buf, buf, RESYNC2ROOT);
+	strcpy(buf, proj_root(p));
+	if (proj_isResync(p)) concat_path(buf, buf, RESYNC2ROOT);
 	strcat(buf, "/" BAM_INDEX);
 	unless (f = fopen(buf, "a")) return (-1);
 	sprintf(buf, "%s %s", key, val);
@@ -1101,7 +1101,7 @@ bam_clean_main(int ac, char **av)
 		if (fnames) db = proj_BAMindex(0, 1);
 		EACH(fnames) {
 			mdbm_delete_str(db, fnames[i]);
-			bp_logUpdate(fnames[i], 0);
+			bp_logUpdate(0, fnames[i], 0);
 		}
 	}
 	freeLines(fnames, free);
@@ -1165,7 +1165,7 @@ bam_clean_main(int ac, char **av)
 			if (p1 = hash_fetchStr(renames, kv.val.dptr)) {
 				/* data will always fit */
 				strcpy(kv.val.dptr, p1);
-				bp_logUpdate(kv.key.dptr, p1);
+				bp_logUpdate(0, kv.key.dptr, p1);
 			}
 		}
 
