@@ -1196,10 +1196,10 @@ cmark:
 					p = strdup(p);
 					mdbm_store_str(db,
 					    bam_new, p, MDBM_REPLACE);
-					bp_logUpdate(bam_new, p);
+					bp_logUpdate(0, bam_new, p);
 					free(p);
 					mdbm_delete_str(db, d->bam_old);
-					bp_logUpdate(d->bam_old, 0);
+					bp_logUpdate(0, d->bam_old, 0);
 				}
 			}
 			free(bam_new);
