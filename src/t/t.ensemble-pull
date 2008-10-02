@@ -338,6 +338,98 @@ bk -Ar check -av >OUT 2>&1 || {
 }
 echo OK
 
+echo $N Setup for pulling conflict into missing component ...........$NL
+cd "$HERE"
+rm -fr project copy sparse
+nested project
+cd ..
+bk clone $Q project copy
+bk clone $Q -M./gcc project sparse
+# modify both components in both repos in a way which autoresolves
+for i in project copy
+do	for c in gcc gdb
+	do	cd "$HERE/$i/$c"
+		touch $i-$c
+		bk new $Q $i-$c
+		bk commit $Q -ywhatever
+	done
+	cd "$HERE/$i"
+	bk commit $Q -ywhatever
+done
+echo OK
+
+echo $N Pull of one should work .....................................$NL
+cd "$HERE/sparse"
+# make a conflict in the component that we have
+cd gcc
+touch sparse
+bk new $Q sparse
+bk commit $Q -ywhatever
+cd ..
+bk commit $Q -ywhatever
+bk pull $Q ../project 2> ERR || {
+	echo pull failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Pull of second one should fail ..............................$NL
+bk pull ../copy > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q "Unable to resolve conflict in non-present component 'gdb'." OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a pull where source did rm -rf component ................$NL
+cd "$HERE"
+bk clone $Q project clone
+cd project/gdb
+touch junk
+bk new $Q junk
+bk commit $Q -ywhatever
+cd ..
+bk commit $Q -ywhatever
+cd "$HERE"
+tar cf TAR project clone
+rm -rf project/gdb
+cd clone
+bk pull > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q 'pull: gdb is missing' OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try a pull where destination did rm -rf component ...........$NL
+cd "$HERE"
+rm -rf project clone
+tar xf TAR
+cd clone 
+rm -rf gdb
+bk pull > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q "Could not chdir to  component 'gdb'" OUT || {
+	echo bad message
+	cat OUT
+	exit 1
+}
+echo OK
+
 # Not until we do renames
 exit 0
 
@@ -374,4 +466,3 @@ test -d gcc && {
 	# exit 1
 }
 echo '(bug)'
-

@@ -591,6 +591,8 @@ struct sccs {
 	off_t	data;		/* offset to data in file */
 	delta	*rstart;	/* start of a range (1.1 - oldest) */
 	delta	*rstop;		/* end of range (1.5 - youngest) */
+	delta	*remote;	/* sccs_resolveFiles() sets this */
+	delta	*local;		/* sccs_resolveFiles() sets this */
 	sum_t	 cksum;		/* SCCS chksum */
 	sum_t	 dsum;		/* SCCS delta chksum */
 	u32	added;		/* lines added by this delta (u32!) */

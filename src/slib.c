@@ -15815,18 +15815,22 @@ err:
 	 * Always put the local stuff on the left, if there
 	 * is any.
 	 */
-	if (a->flags & D_LOCAL) {
+	unless (a->flags & D_REMOTE) {
+		s->local = a;
+		s->remote = b;
 		fprintf(f, "merge deltas %s %s %s %s %s\n",
-			a->rev, g->rev, b->rev, sccs_getuser(), time2date(time(0)));
+		    a->rev, g->rev, b->rev, sccs_getuser(), time2date(time(0)));
 	} else {
+		s->local = b;
+		s->remote = a;
 		fprintf(f, "merge deltas %s %s %s %s %s\n",
-			b->rev, g->rev, a->rev, sccs_getuser(), time2date(time(0)));
+		    b->rev, g->rev, a->rev, sccs_getuser(), time2date(time(0)));
 	}
 	fclose(f);
 	unless (streq(g->pathname, a->pathname) &&
 	    streq(g->pathname, b->pathname)) {
 rename:		n[1] = name2sccs(g->pathname);
-		if (b->flags & D_LOCAL) {
+		unless (b->flags & D_REMOTE) {
 			n[2] = name2sccs(a->pathname);
 			n[0] = name2sccs(b->pathname);
 		} else {
