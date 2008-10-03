@@ -7164,8 +7164,10 @@ err:		if (i2) free(i2);
 			goto err;
 		}
 		locked = 1;
-	} else if (HAS_PFILE(s) &&
-	    !HAS_GFILE(s) && !(flags & (PRINT|GET_SKIPGET))) {
+	} 
+#define	NOGFILE	(PRINT | GET_SKIPGET | \
+		GET_HASHONLY | GET_DIFFS | GET_BKDIFFS | GET_HASHDIFFS)
+	else if (HAS_PFILE(s) && !HAS_GFILE(s) && !(flags & NOGFILE)) {
 		pfile	pf;
 		int	rc;
 

@@ -641,6 +641,7 @@ no_gfile(sccs *s)
 		rc = 1;
 	} else {
 		if (unlink(s->pfile)) {
+			perror(s->pfile);
 			rc = 1;
 		} else {
 			s->state &= ~S_PFILE;
@@ -677,8 +678,11 @@ readonly_gfile(sccs *s)
 	/* XXX slow in checkout:edit mode */
 	if ((HAS_PFILE(s) && HAS_GFILE(s) && !writable(s->gfile))) {
 		if (gfile_unchanged(s) == 1) {
-			unlink(s->pfile);
-			s->state &= ~S_PFILE;
+			if (unlink(s->pfile)) {
+				perror(s->pfile);
+			} else {
+				s->state &= ~S_PFILE;
+			}
 			if (resync) return (0);
 			do_checkout(s);
 			return (0);
