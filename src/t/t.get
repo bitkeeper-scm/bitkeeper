@@ -595,3 +595,63 @@ grep -q 'foo.c has merge.include.exclude but no gfile' OUT || {
 	exit 1
 }
 echo OK
+
+echo $N Check that get -p does not care about -i/-x .................$NL
+bk edit -x+ $Q ChangeSet
+rm ChangeSet
+bk get -p -hr+ ChangeSet > XXX 2>&1
+test `wc -l < XXX` -eq 5 || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
+
+echo $N Check that get -D does not care about -i/-x .................$NL
+bk get -D -hr+ ChangeSet > XXX 2>&1
+test `wc -l < XXX` -eq 5 || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
+
+echo $N Check that get -DD does not care about -i/-x ................$NL
+bk get -DD -hr+ ChangeSet > XXX 2>&1
+test `wc -l < XXX` -eq 5 || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
+
+echo $N Check that get -DDD does not care about -i/-x ...............$NL
+bk get -DDD -hr+ ChangeSet > XXX 2>&1
+test `wc -l < XXX` -eq 5 || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
+
+echo $N Check that get -G does not care about -i/-x .................$NL
+# doesn't work. who cares?
+bk get -Gmyfoo -hr+ ChangeSet 2> ERR && {
+	echo fix test
+	exit 1
+}
+grep -q "myfoo has merge.include.exclude but no gfile, co aborted" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+echo "failed (bug )"
+
+echo $N Check that prs does not care about -i/-x ....................$NL
+bk prs -hr+ -nd:HASHCOUNT: ChangeSet > XXX 2>&1
+test "`cat XXX`" = "4" || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
