@@ -156,3 +156,42 @@ EOF
 bk components > GOT
 cmpfiles WANT GOT
 echo OK
+
+echo $N Attach in a deep nested product .............................$NL
+cd "$HERE"/p1/gcc
+bk setup -fc"$HERE/empty" closures || {
+	echo failed
+	exit 1
+}
+cd ..
+cat <<EOF >WANT
+gcc
+gcc/closures
+gdb
+EOF
+bk components > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Attach in a existing repo running in checkout edit ..........$NL
+cd "$HERE"/p1/gcc
+commercial s-expr
+BK_CONFIG="checkout: edit! "
+export BK_CONFIG
+touch foo
+bk new $Q foo
+bk commit $Q -f
+cd ..
+bk attach $Q s-expr || exit 1
+cd s-expr
+bk -cpr
+cd ../..
+cat <<EOF >WANT
+gcc
+gcc/closures
+gcc/s-expr
+gdb
+EOF
+bk components > GOT
+cmpfiles WANT GOT
+echo OK
