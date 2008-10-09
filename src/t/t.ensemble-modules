@@ -460,12 +460,12 @@ echo OK
 
 echo $N Add all components as a module...............................$NL
 cd "$HERE"/project
-bk components | bk module add -Mall - || {
+bk components | bk module add -MALL - || {
 	echo failed
 	exit 1
 }
 bk components > WANT
-bk components -Mall > GOT
+bk components -MALL > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -604,7 +604,7 @@ bk module rm -Mall > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 }
-grep -q 'is a reserved name and may not be changed.' OUT || {
+grep -q 'reserved name "all" may not be changed.' OUT || {
 	echo bad error message
 	cat OUT
 }
@@ -615,7 +615,7 @@ bk module rm -Mall ./gcc > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 }
-grep -q 'is a reserved name and may not be changed.' OUT || {
+grep -q 'reserved name "all" may not be changed.' OUT || {
 	echo bad error message
 	cat OUT
 }
@@ -626,7 +626,7 @@ bk module add -Mall ./gcc > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 }
-grep -q 'is a reserved name and may not be changed.' OUT || {
+grep -q 'reserved name "all" may not be changed.' OUT || {
 	echo bad error message
 	cat OUT
 }
