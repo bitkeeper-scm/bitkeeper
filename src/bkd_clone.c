@@ -74,8 +74,9 @@ cmd_clone(int ac, char **av)
 		 * does not appear in our MODULES file yet?
 		 */
 		unless (modules || tid) {
-			modules = file2Lines(0, "BitKeeper/log/MODULES");
-			assert(modules);
+			unless (modules = file2Lines(0, "BitKeeper/log/MODULES")) {
+				modules = addLine(0, strdup("default"));
+			}
 		}
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {

@@ -368,7 +368,7 @@ value_expand(char *name, modules *mdb, hash *keys)
 	} else if (streq(name, ".")) {
 		/* just add the product */
 		hash_storeStr(keys, proj_rootkey(proj_product(0)), "");
-	}  else {
+	} else {
 		error("%s: could not find module '%s'\n", prog, name);
 		return (1);
 	}
@@ -386,8 +386,14 @@ module_expand(char *name, modules *mdb, hash *keys)
 	char	**expansion = 0;
 	int	i, rc = 1;
 
+	if (streq("all", name)) {
+		return (value_expand("./*", mdb, keys));
+	}
 	unless (mval = hash_fetchStr(mdb->moduleDB, name)) {
 		/* not a module name */
+		if (streq("default", name)) {
+			return (module_expand("all", mdb, keys));
+		}
 		return (value_expand(name, mdb, keys));
 	}
 	unless (hash_insertStr(mdb->seen, name, "")) {
