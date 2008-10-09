@@ -157,6 +157,17 @@ The modules database is a flat text file stored in
 Any components that are specified as a path are stored internally
 as their rootkeys so that the module will expand correctly even if
 the specified component[s] is/are moved.
+.LP
+There are two pre-existing module names:
+.TP "default "
+all
+This name is an alias for "./*" and may not be modified.
+.tp
+default
+This module is what is cloned when no modules are specified and the
+remote side does not have a cached module list.
+It defaults to "all" but it may be changed to make the default set
+of components to be less than all.
 .SH "SEE ALSO"
 .SA Howto-Product
 .SA glob

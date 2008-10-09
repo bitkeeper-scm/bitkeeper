@@ -35,6 +35,21 @@ done
 cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
 echo OK
 
+echo $N Clone and see that we have a default module list ............$NL
+cd "$HERE"
+bk clone $Q project clone
+cd clone
+test -f BitKeeper/log/MODULES || {
+	echo failed to create MODULES
+	exit 1
+}
+grep -q default BitKeeper/log/MODULES || {
+	echo bad data
+	cat BitKeeper/log/MODULES
+	exit 1
+}
+echo OK
+
 echo $N Set up a test where we will add another module ..............$NL
 cd "$HERE/project"
 bk module add -Mstuff gcc gdb
@@ -226,6 +241,64 @@ bk clone -M./gcc/nm project project-nm > OUT 2>&1 || {
 }
 echo OK
 
+# XXX - we have a bug so not this way yet
+if false; then
+
+echo $N Set up by populating all ....................................$NL
+cd project-nm
+echo default > BitKeeper/log/MODULES
+bk populate $Q 
+cat > WANT <<EOF
+gcc
+gcc/nm
+gdb
+junk
+path/to/libc
+EOF
+bk components -h > GOT
+cmpfiles WANT GOT
+echo OK
+
+else 
+
+echo $N Set up by populating most ...................................$NL
+cd project-nm
+bk populate $Q -M./gdb -M./junk -M./path/to/libc
+cat > WANT <<EOF
+gcc/nm
+gdb
+junk
+path/to/libc
+EOF
+bk components -h > GOT
+cmpfiles WANT GOT
+echo OK
+
+fi
+
+echo $N Test a default that is just gdb .............................$NL
+bk edit $Q BitKeeper/etc/modules
+(
+echo @default
+cd gdb
+bk id
+) > BitKeeper/etc/modules
+echo default > BitKeeper/log/MODULES
+bk delta $Q -ygcc BitKeeper/etc/modules
+bk commit $Q -ygcc
+cd ..
+bk clone $Q project-nm project-just-gdb
+cd project-just-gdb
+grep -q default BitKeeper/log/MODULES || {
+	echo bad log
+	cat BitKeeper/log/MODULES
+	exit 1
+}
+bk components -h > GOT
+echo gdb > WANT
+cmpfiles WANT GOT
+echo OK
+
 echo $N Test -M./gcc ................................................$NL
 cd "$HERE"
 bk clone -M./gcc project project-gcc > OUT 2>&1 || {
@@ -374,13 +447,13 @@ echo OK
 
 echo $N Remove all modules...........................................$NL
 cd "$HERE"/project
-bk module list | while read x
+bk module list | grep -v all | while read x
 do
 	bk module rm -M$x
 done
-test x`bk module list` = x || {
+test x`bk module list` = xall || {
 	echo failed
-	echo module list not empty
+	bk module list
 	exit 1
 }
 echo OK
@@ -524,4 +597,37 @@ bk commit -ybadfile $Q  2>ERR && {
 	exit 1
 }
 grep -q "check: nm/foo conflicts with component at nm" ERR || exit 1
+echo OK
+
+echo $N Make sure we can not remove the all module ..................$NL
+bk module rm -Mall > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+}
+grep -q 'is a reserved name and may not be changed.' OUT || {
+	echo bad error message
+	cat OUT
+}
+echo OK
+
+echo $N Make sure we can not remove the gcc component from all.......$NL
+bk module rm -Mall ./gcc > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+}
+grep -q 'is a reserved name and may not be changed.' OUT || {
+	echo bad error message
+	cat OUT
+}
+echo OK
+
+echo $N Make sure we can not add to the all module ..................$NL
+bk module add -Mall ./gcc > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+}
+grep -q 'is a reserved name and may not be changed.' OUT || {
+	echo bad error message
+	cat OUT
+}
 echo OK

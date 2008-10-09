@@ -281,7 +281,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
 	char	*lic;
-	int	i, rc = 2, do_part2;
+	int	rc = 2, do_part2;
 
 	if (local && exists(local) && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
@@ -368,17 +368,15 @@ clone(char **av, remote *r, char *local, char **envVar)
 		unless (repos = ensemble_fromStream(0, r->rf)) goto done;
 		rc = clone_ensemble(repos, r, local);
 		chdir(local);
-		if (opts->modules) {
-			char	**p = 0;
-
-			EACH(opts->modules) {
-				p = addLine(p, strdup(opts->modules[i]));
+		if (opts->modules || !exists("BitKeeper/log/MODULES")) {
+			unless (opts->modules) {
+				opts->modules = addLine(0, strdup("default"));
 			}
-			uniqLines(p, free);
-			if (lines2File(p, "BitKeeper/log/MODULES")) {
+			uniqLines(opts->modules, free);
+			if (lines2File(opts->modules,
+			    "BitKeeper/log/MODULES")) {
 				perror("BitKeeper/log/MODULES");
 			}
-			freeLines(p, free);
 		}
 		checkfiles = bktmp(0, "clonechk");
 		f = fopen(checkfiles, "w");

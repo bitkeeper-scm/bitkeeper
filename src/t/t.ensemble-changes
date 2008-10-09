@@ -1,6 +1,10 @@
 
 echo $N Create an ensemble...........................................$NL
 nested project
+test -f BitKeeper/log/MODULES || {
+	echo no default MODULES
+	exit 1
+}
 touch prod_file
 bk new $Q prod_file
 bk commit $Q -yfile

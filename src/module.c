@@ -95,6 +95,11 @@ err:		system("bk help -s module");
 		}
 		comps = addLine(comps, strdup(av[optind++]));
 	}
+	if (streq(module, "all")) {
+		fprintf(stderr,
+		    "module: reserved name \"all\" may not be changed.\n");
+		goto err;
+	}
 	if (streq(command, "add") || streq(command, "create")) {
 		if (moduledb_add(module, comps, commit)) return (1);
 	} else if (streq(command, "rm")) {

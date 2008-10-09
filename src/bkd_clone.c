@@ -75,6 +75,7 @@ cmd_clone(int ac, char **av)
 		 */
 		unless (modules || tid) {
 			modules = file2Lines(0, "BitKeeper/log/MODULES");
+			assert(modules);
 		}
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
