@@ -177,7 +177,7 @@ test "`cat BitKeeper/log/MODULES`" = "./gcc" || {
 }
 echo OK
 
-echo $N Make sure that the MODULES file propogates on clone .........$NL
+echo $N Make sure that the MODULES file propagates on clone .........$NL
 cd "$HERE"
 bk clone $Q mynewgcc mynewgcc2
 cd mynewgcc2

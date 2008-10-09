@@ -451,7 +451,7 @@ bk module list | grep -v all | while read x
 do
 	bk module rm -M$x
 done
-test x`bk module list` = xall || {
+test x`bk module list` = x || {
 	echo failed
 	bk module list
 	exit 1
@@ -603,10 +603,12 @@ echo $N Make sure we can not remove the all module ..................$NL
 bk module rm -Mall > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
+	exit 1
 }
 grep -q 'reserved name "all" may not be changed.' OUT || {
 	echo bad error message
 	cat OUT
+	exit 1
 }
 echo OK
 
@@ -614,10 +616,12 @@ echo $N Make sure we can not remove the gcc component from all.......$NL
 bk module rm -Mall ./gcc > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
+	exit 1
 }
 grep -q 'reserved name "all" may not be changed.' OUT || {
 	echo bad error message
 	cat OUT
+	exit 1
 }
 echo OK
 
@@ -625,9 +629,11 @@ echo $N Make sure we can not add to the all module ..................$NL
 bk module add -Mall ./gcc > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
+	exit 1
 }
 grep -q 'reserved name "all" may not be changed.' OUT || {
 	echo bad error message
 	cat OUT
+	exit 1
 }
 echo OK

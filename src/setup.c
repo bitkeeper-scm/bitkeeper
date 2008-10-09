@@ -222,7 +222,7 @@ defaultFiles(int product)
 	system("bk new -Pq BitKeeper/etc/ignore");
 	if (product) {
 		f = fopen("BitKeeper/etc/modules", "w");
-		fprintf(f, "@all\n./*\n@default\nall\n");
+		fprintf(f, "@default\nall\n");
 		fclose(f);
 		system("bk new -Pq BitKeeper/etc/modules");
 		f = fopen("BitKeeper/log/MODULES", "w");
