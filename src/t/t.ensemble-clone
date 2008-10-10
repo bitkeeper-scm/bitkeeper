@@ -97,10 +97,10 @@ cd project
 bk sfiles -R | grep -v gcc > ../LIST
 cd ..
 
-echo $N Test that -Mkey clones work .................................$NL
+echo $N Test that -Akey clones work .................................$NL
 KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
-bk clone $Q -M"$KEY" project mynewgcc 2> ERR || {
+bk clone $Q -A"$KEY" project mynewgcc 2> ERR || {
 	echo failed
 	cat ERR
 	exit 1
@@ -122,9 +122,9 @@ echo OK
 echo $N Test that we can clone using the ALIASES file ...............$NL
 rm -rf mynewgcc
 cd project
-bk alias add -Mjustgcc gcc
+bk alias add -Ajustgcc gcc
 cd ..
-bk clone $Q -Mjustgcc project mynewgcc 2> ERR || {
+bk clone $Q -Ajustgcc project mynewgcc 2> ERR || {
 	echo failed
 	cat ERR
 	exit 1
@@ -143,9 +143,9 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Test that we can clone just that component with -M./gcc .....$NL
+echo $N Test that we can clone just that component with -A./gcc .....$NL
 rm -rf mynewgcc
-bk clone $Q -M./gcc project mynewgcc 2> ERR || {
+bk clone $Q -A./gcc project mynewgcc 2> ERR || {
 	echo failed
 	cat ERR
 	exit 1
@@ -192,9 +192,9 @@ test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
 }
 echo OK
 
-echo $N Add a component with populate -M./gdb .......................$NL
+echo $N Add a component with populate -A./gdb .......................$NL
 cd "$HERE/mynewgcc"
-bk populate $Q -M./gdb || exit 1
+bk populate $Q -A./gdb || exit 1
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
@@ -215,7 +215,7 @@ echo OK
 
 echo $N Check that populate is idempotent ...........................$NL
 cd "$HERE/mynewgcc"
-bk populate $Q -M./gdb || exit 1
+bk populate $Q -A./gdb || exit 1
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
@@ -248,7 +248,7 @@ echo $N Pull in new cset without component, then populate ...........$NL
 cd "$HERE/mynewgcc2"
 bk pull $Q
 BEFORE=`bk changes -r+ -nd:I:`
-bk populate $Q -M./gdb "$HERE/project"
+bk populate $Q -A./gdb "$HERE/project"
 # without accompanying unfix to clone, this is how it used to fail:
 AFTER=`bk changes -r+ -nd:I:`
 test "$BEFORE" = "$AFTER" && {
@@ -262,9 +262,9 @@ echo "failed (bug )"
 
 # This is somewhat different in that the parent has a ALIASES file.
 # In a fully populated tree you wouldn't expect one.
-echo $N clone -M./gcc should have only that in ALIASES ..............$NL
+echo $N clone -A./gcc should have only that in ALIASES ..............$NL
 cd "$HERE"
-bk clone $Q -M./gcc mynewgcc mynewgcc3
+bk clone $Q -A./gcc mynewgcc mynewgcc3
 cd mynewgcc3
 test -d gdb && {
 	echo should not have gdb
@@ -281,9 +281,9 @@ test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
 }
 echo OK
 
-echo $N clone -Mjunk when no such alias exists should fail ..........$NL
+echo $N clone -Ajunk when no such alias exists should fail ..........$NL
 cd "$HERE"
-bk clone -Mjunk mynewgcc3 mynewgcc4 2> ERR && {
+bk clone -Ajunk mynewgcc3 mynewgcc4 2> ERR && {
 	echo should have failed and did not
 	cat ERR
 	exit 1
@@ -294,9 +294,9 @@ test -d mynewgcc4 && {
 }
 echo OK
 
-echo $N clone -M./junk when no such directory exists should fail ....$NL
+echo $N clone -A./junk when no such directory exists should fail ....$NL
 cd "$HERE"
-bk clone -M./junk mynewgcc3 mynewgcc4 2> ERR && {
+bk clone -A./junk mynewgcc3 mynewgcc4 2> ERR && {
 	echo should have failed and did not
 	cat ERR
 	exit 1
@@ -307,9 +307,9 @@ test -d mynewgcc4 && {
 }
 echo OK
 
-echo $N clone -M./gdb when the parent only has gcc ..................$NL
+echo $N clone -A./gdb when the parent only has gcc ..................$NL
 cd "$HERE"
-bk clone -M./gdb mynewgcc3 mynewgcc4 > ERR 2>&1 && {
+bk clone -A./gdb mynewgcc3 mynewgcc4 > ERR 2>&1 && {
 	echo should have failed
 	cat ERR
 	exit 1
@@ -329,7 +329,7 @@ echo $N Check that we can populate gdb from elsewhere ...............$NL
 bk clone mynewgcc3 mynewgcc4 > ERR 2>&1 
 cd mynewgcc4 || exit 1
 rm -rf gdb
-bk populate -M./gdb ../mynewgcc > OUT 2>&1
+bk populate -A./gdb ../mynewgcc > OUT 2>&1
 test -d gdb -a -f gdb/SCCS/s.ChangeSet || {
 	echo failed
 	cat OUT
@@ -485,13 +485,13 @@ grep -q gcc/deep LIST || {
 	exit 1
 }
 cd ..
-bk clone $Q -M./gdb project deeppop
+bk clone $Q -A./gdb project deeppop
 cd deeppop
-bk populate $Q -M./gcc/deep || {
+bk populate $Q -A./gcc/deep || {
 	echo fix deep test 1
 	exit 1
 }
-bk populate $Q -M./gcc 2> ERR && {
+bk populate $Q -A./gcc 2> ERR && {
 	echo fix deep test 2
 	exit 1
 }

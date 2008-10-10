@@ -330,8 +330,11 @@ components_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.product_first = 1;
 
-	while ((c = getopt(ac, av, "hil;M;oPr;u")) != -1) {
+	while ((c = getopt(ac, av, "A;hil;oPr;u")) != -1) {
 		switch (c) {
+		    case 'A':
+			aliases = addLine(aliases, optarg);
+			break;
 		    case 'i':	/* undoc */
 		    	input = 1;
 			break;
@@ -345,9 +348,6 @@ components_main(int ac, char **av)
 				    case 'r': want |= L_ROOT; break;
 			    	}
 			}
-			break;
-		    case 'M':
-			aliases = addLine(aliases, optarg);
 			break;
 		    case 'o':	/* undoc */
 			output = 1;
@@ -590,7 +590,7 @@ ensemble_each(int quiet, int ac, char **av)
 	// has to track bk.c's getopt string
 	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
 		if (c == 'C') opts.product = 0;
-		unless (c == 'M') continue;
+		unless (c == 'M') continue; /* XXX: CONFLICT */
 		if (optarg[0] == '|') {
 			opts.rev = &optarg[1];
 		} else if (streq("!.", optarg)) {	// XXX -M!. == -C

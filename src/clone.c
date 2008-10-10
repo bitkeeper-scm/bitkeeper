@@ -18,7 +18,7 @@ struct {
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
 	char	**av;			/* saved opts for ensemble commands */
-	char	**aliases;		/* -M aliases list */
+	char	**aliases;		/* -A aliases list */
 	char	*from;			/* where to get stuff from */
 	char	*to;			/* where to put it */
 } *opts;
@@ -45,8 +45,8 @@ clone_main(int ac, char **av)
 	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dE:lM;pqr;w|z|")) != -1) {
-		unless ((c == 'r') || (c == 'M')) {
+	while ((c = getopt(ac, av, "A;B;dE:lpqr;w|z|")) != -1) {
+		unless ((c == 'r') || (c == 'A')) {
 			if (optarg) {
 				opts->av = addLine(opts->av,
 				    aprintf("-%c%s", c, optarg));
@@ -55,6 +55,9 @@ clone_main(int ac, char **av)
 			}
 		}
 		switch (c) {
+		    case 'A':
+			opts->aliases = addLine(opts->aliases, strdup(optarg));
+			break;
 		    case 'B': bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
@@ -65,9 +68,6 @@ clone_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'l': opts->link = 1; break;		/* doc 2.0 */
-		    case 'M':
-			opts->aliases = addLine(opts->aliases, strdup(optarg));
-			break;
 		    case 'p': opts->no_parent = 1; break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
@@ -201,7 +201,7 @@ send_clone_msg(remote *r, char **envVar)
 	if (getenv("_BK_TRANSACTION")) {
 		fprintf(f, " -T");
 	} else {
-		EACH(opts->aliases) fprintf(f, " -M%s", opts->aliases[i]);
+		EACH(opts->aliases) fprintf(f, " -A%s", opts->aliases[i]);
 	}
 	if (opts->link) fprintf(f, " -l");
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");

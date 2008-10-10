@@ -21,8 +21,8 @@ populate_main(int ac, char **av)
 	hash	*done;
 
 	unless (start_cwd) start_cwd = strdup(proj_cwd());
-	while ((c = getopt(ac, av, "dE;lM;qv")) != -1) {
-		unless (c == 'M') {
+	while ((c = getopt(ac, av, "A;dE;lqv")) != -1) {
+		unless (c == 'A') {
 			if (optarg) {
 				cav = addLine(cav, aprintf("-%c%s", c, optarg));
 			} else {
@@ -30,6 +30,9 @@ populate_main(int ac, char **av)
 			}
 		}
 		switch(c) {
+		    case 'A':
+			aliases = addLine(aliases, strdup(optarg));
+			break;
 		    case 'd': break;
 		    case 'E':
 			/* we just error check and pass through to clone */
@@ -40,9 +43,6 @@ populate_main(int ac, char **av)
 			}
 			break;
 		    case 'l': break;
-		    case 'M':
-			aliases = addLine(aliases, strdup(optarg));
-			break;
 		    case 'q': quiet = 1; break;
 		    case 'v': verbose = 1; break;
 		    default:

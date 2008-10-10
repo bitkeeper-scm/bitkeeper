@@ -129,15 +129,15 @@ cmd_pull_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "dlMnP;qr|Tuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "AdlnP;qr|Tuw|z|")) != -1) {
 		switch (c) {
+		    case 'A': eat_aliases = 1; break;
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'd': debug = 1; break;
 		    case 'l': list++; break;
-		    case 'M': eat_aliases = 1; break;
 		    case 'n': dont = 1; break;
 		    case 'P':
 			port = optarg;

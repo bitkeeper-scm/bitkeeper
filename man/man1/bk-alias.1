@@ -5,34 +5,34 @@ bk alias \- manage aliases for a list of components
 .SH SYNOPSIS
 .B bk alias add|rm|list
 .[B] -C
-.[OPTreq] -M alias
+.[OPTreq] -A alias
 .[B] component ...
 .br
 .SS ADDING COMPONENTS TO AN ALIAS
 .B bk alias add
 .[B] \-C
-.OPTreq -M alias
+.OPTreq -A alias
 .B component 
 .[B] component ...
 .br
 .SS REMOVING COMPONENT[S] FROM AN ALIAS
 .B bk alias rm
 .[B] \-C
-.OPTreq -M alias
+.OPTreq -A alias
 .B component 
 .[B] component ...
 .br
 .SS REMOVING AN ALIAS
 .B bk alias rm
 .[B] \-C
-.OPTreq -M alias
+.OPTreq -A alias
 .br
 .SS LIST ALL ALIAS NAMES
 .B bk alias list
 .br
 .SS DISPLAYING AN ALIAS
 .B bk alias show
-.OPTreq -M alias
+.OPTreq -A alias
 .SH DESCRIPTION
 The 
 .B bk alias
@@ -113,7 +113,7 @@ This option suppresses the commit.
 Use this option when you wish to combine the alias event with other
 changes to the product.
 .tp
-.OPTreq \-M alias
+.OPTreq \-A alias
 Used to specify the name of the alias in the alias database to add, remove,
 or modify.
 .tp
@@ -126,15 +126,15 @@ option.
 .SH EXAMPLES
 To create an alias that points to all components in a sparse clone:
 .DS
-$ bk components -h | bk alias add -Mmy-collection -
+$ bk components -h | bk alias add -Amy-collection -
 .DE
 To create an alias that points to a named list of components:
 .DS
-$ bk alias add -Mcompiler cmd/gcc cmd/as cmd/ld cmd/nm
+$ bk alias add -Acompiler cmd/gcc cmd/as cmd/ld cmd/nm
 .DE
 To create a higher level alias that includes the debugger:
 .DS
-$ bk alias add -Mdev-tools cmd/gdb compiler
+$ bk alias add -Adev-tools cmd/gdb compiler
 .DE
 List all aliases:
 .DS
@@ -144,12 +144,12 @@ dev-tools
 .DE
 To remove a component from an alias:
 .DS
-$ bk alias rm -Mcompiler cmd/nm
+$ bk alias rm -Acompiler cmd/nm
 .DE
 To display the unexpanded members of an alias (such as globs or other
 alias names):
 .DS
-$ bk alias show -Mcompiler
+$ bk alias show -Acompiler
 .DE
 .SH NOTES
 The aliases database is a flat text file stored in

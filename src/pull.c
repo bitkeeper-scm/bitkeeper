@@ -381,7 +381,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.transaction) fprintf(f, " -T");
 	if (opts.update_only) fprintf(f, " -u");
 	if (proj_isProduct(0) && (l = file2Lines(0, "BitKeeper/log/ALIASES"))) {
-		fprintf(f, " -M\n");
+		fprintf(f, " -A\n");
 		fprintf(f, "@ALIASES@\n");
 		EACH(l) fprintf(f, "%s\n", l[i]);
 		fprintf(f, "@END@\n");

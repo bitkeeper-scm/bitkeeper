@@ -21,13 +21,13 @@ rclone_common(int ac, char **av, opts *opts)
 	char	*p;
 
 	bzero(opts, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dM;Pr;Tvz|")) != -1) {
+	while ((c = getopt(ac, av, "A;B;dPr;Tvz|")) != -1) {
 		switch (c) {
-		    case 'B': opts->bam_url = optarg; break;
-		    case 'd': opts->debug = 1; break;
-		    case 'M':
+		    case 'A':
 			opts->aliases = addLine(opts->aliases, strdup(optarg));
 			break;
+		    case 'B': opts->bam_url = optarg; break;
+		    case 'd': opts->debug = 1; break;
 		    case 'P': opts->product = 1; break;
 		    case 'r': opts->rev = optarg; break; 
 		    case 'T': /* ignored for now */ break;

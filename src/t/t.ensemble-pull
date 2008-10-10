@@ -344,7 +344,7 @@ rm -fr project copy sparse
 nested project
 cd ..
 bk clone $Q project copy
-bk clone $Q -M./gcc project sparse
+bk clone $Q -A./gcc project sparse
 # modify both components in both repos in a way which autoresolves
 for i in project copy
 do	for c in gcc gdb

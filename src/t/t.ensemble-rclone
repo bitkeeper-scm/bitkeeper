@@ -98,14 +98,14 @@ test -d gdb || exit 1
 test -d gcc && exit 1
 echo OK
 
-echo $N Test that -Mkey clones work .................................$NL
+echo $N Test that -Akey clones work .................................$NL
 cd "$HERE"
 cd project
 bk sfiles -R | grep -v gcc > ../LIST
 cd ..
 KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
-bk clone $Q -M"$KEY" project bk://localhost:$PORT/mynewgcc || {
+bk clone $Q -A"$KEY" project bk://localhost:$PORT/mynewgcc || {
 	echo failed
 	bk _kill bk://localhost:$PORT
 	exit 1
@@ -129,9 +129,9 @@ echo OK
 echo $N Test that we can clone using the ALIASES file ...............$NL
 rm -rf mynewgcc
 cd project
-bk alias add -Mjustgcc gcc
+bk alias add -Ajustgcc gcc
 cd ..
-bk clone $Q -Mjustgcc project bk://localhost:$PORT/mynewgcc || {
+bk clone $Q -Ajustgcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
 	bk _kill bk://localhost:$PORT
 	exit 1
@@ -155,9 +155,9 @@ echo OK
 bk _kill bk://localhost:$PORT
 PORT=`port 50000`
 bk bkd -d -p$PORT -ikill
-echo $N Test that we can clone just that component with -M./gcc .....$NL
+echo $N Test that we can clone just that component with -A./gcc .....$NL
 rm -rf mynewgcc
-bk clone $Q -M./gcc project bk://localhost:$PORT/mynewgcc || {
+bk clone $Q -A./gcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
 	bk _kill bk://localhost:$PORT
 	exit 1

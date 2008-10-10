@@ -24,13 +24,13 @@ cmd_clone(int ac, char **av)
 		out("@END@\n");
 		goto out;
 	}
-	while ((c = getopt(ac, av, "lM;qr;Tw;z|")) != -1) {
+	while ((c = getopt(ac, av, "A;lqr;Tw;z|")) != -1) {
 		switch (c) {
+		    case 'A':
+			aliases = addLine(aliases, strdup(optarg));
+			break;
 		    case 'l':
 			lclone = 1;
-			break;
-		    case 'M':
-			aliases = addLine(aliases, strdup(optarg));
 			break;
 		    case 'w':
 			delay = atoi(optarg);
@@ -57,7 +57,7 @@ cmd_clone(int ac, char **av)
 	 * This is where we would put in an exception for bk port.
 	 */
 	if (!tid && proj_isComponent(0)) {
-		out("ERROR-clone of a component is not allowed, use -M\n");
+		out("ERROR-clone of a component is not allowed, use -A\n");
 		goto out;
 	}
 	if (proj_isEnsemble(0)) {

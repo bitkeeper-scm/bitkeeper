@@ -34,8 +34,8 @@ rclone_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
-	while ((c = getopt(ac, av, "B;dE:M;qr;w|z|")) != -1) {
-		unless ((c == 'r') || (c == 'M')) {
+	while ((c = getopt(ac, av, "A;B;dE:qr;w|z|")) != -1) {
+		unless ((c == 'r') || (c == 'A')) {
 			if (optarg) {
 				opts.av = addLine(opts.av,
 				    aprintf("-%c%s", c, optarg));
@@ -44,6 +44,9 @@ rclone_main(int ac, char **av)
 			}
 		}
 		switch (c) {
+		    case 'A':
+			opts.aliases = addLine(opts.aliases, strdup(optarg));
+			break;
 		    case 'B': opts.bam_url = optarg; break;
 		    case 'd': opts.debug = 1; break;
 		    case 'E':
@@ -53,9 +56,6 @@ rclone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
-		    case 'M':
-			opts.aliases = addLine(opts.aliases, strdup(optarg));
-			break;
 		    case 'q': opts.verbose = 0; break;
 		    case 'r': opts.rev = optarg; break;
 		    case 'w': /* ignored */ break;
@@ -89,7 +89,7 @@ rclone_main(int ac, char **av)
 	}
 	if (!getenv("_BK_TRANSACTION") && proj_isComponent(0)) {
 		fprintf(stderr,
-		    "clone: clone of a component is not allowed, use -M\n");
+		    "clone: clone of a component is not allowed, use -A\n");
 		exit(1);
 	}
 	if (hasLocalWork(GONE)) {
@@ -166,7 +166,7 @@ rclone_ensemble(remote *r)
 		if (streq(rps->path, ".")) {
 			EACH(opts.aliases) {
 				vp = addLine(vp,
-				    aprintf("-M%s", opts.aliases[i]));
+				    aprintf("-A%s", opts.aliases[i]));
 		    	}
 			name = "Product";
 			vp = addLine(vp, strdup("."));
@@ -459,7 +459,7 @@ send_sfio_msg(remote *r, char **envVar)
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
-	EACH(opts.aliases) fprintf(f, " '-M%s'", opts.aliases[i]);
+	EACH(opts.aliases) fprintf(f, " '-A%s'", opts.aliases[i]);
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
 	fclose(f);

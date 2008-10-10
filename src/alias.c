@@ -28,8 +28,8 @@ private int	verifyKey(char *key, aliases *mdb);
 extern char	*prog;
 
 /*
- * bk alias add -M<alias> <comp> ...	// create/add to a alias
- * bk alias rm -M<alias> [<comp> ...]	// remove a comp|alias
+ * bk alias add -A<alias> <comp> ...	// create/add to a alias
+ * bk alias rm -A<alias> [<comp> ...]	// remove a comp|alias
  * bk alias list			// list all aliases
  */
 int
@@ -49,10 +49,10 @@ err:		system("bk help -s alias");
 	}
 	command = av[1];
 	av++, ac--;
-	while ((c = getopt(ac, av, "CM;")) != -1) {
+	while ((c = getopt(ac, av, "A;C")) != -1) {
 		switch (c) {
+		    case 'A': alias = optarg; break;
 		    case 'C': commit = 0; break;
-		    case 'M': alias = optarg; break;
 		}
 	}
 	/* handle list immediately since it's easy */

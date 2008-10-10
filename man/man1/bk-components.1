@@ -5,7 +5,7 @@ bk components \- list components in a product
 .SH SYNOPSIS
 .B bk components
 .[B] \-hP
-.[OPTreq] -M module
+.[OPTreq] -A alias
 .[OPTreq] -r rev
 .SH DESCRIPTION
 The 
@@ -18,16 +18,16 @@ With no options, this command lists all repositories that make up the product,
 regardless of whether the repositories are all present or not.  
 There are options to restrict the listing to the subset that is present
 in this product instance, and/or to restrict the listing to one or more
-modules.
+aliases.
 .SH OPTIONS
-.TP \-M\*<module\*>
+.TP \-A\*<alias\*>
 .B \-h
 restrict the listing to those components which are present (here)
 in the product.
 .tp
-.OPTreq \-M module
-restrict the listing to components belonging to the specified module[s].
-This option may be repeated to specify multiple modules.
+.OPTreq \-A alias
+restrict the listing to components belonging to the specified alias[es].
+This option may be repeated to specify multiple aliases.
 .tp
 .B \-P
 include the product in the list as well.
@@ -39,7 +39,7 @@ version of the product.
 .SH "SEE ALSO"
 .SA Howto-Product
 .SA attach
-.SA module
+.SA alias
 .SA product
 .SH CATEGORY
 .B Product
