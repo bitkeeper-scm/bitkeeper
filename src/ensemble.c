@@ -688,7 +688,7 @@ usage:		    	system("bk help -s attach");
 		    	return (1);
 		}
 	}
-	unless (proj_isProduct(0)) {
+	unless (proj_product(0)) {
 		fprintf(stderr, "attach: not in a product\n");
 		goto err;
 	}
@@ -734,7 +734,7 @@ usage:		    	system("bk help -s attach");
 			goto err;
 		}
 		system("bk edit -q ChangeSet");
-		sprintf(buf, "bk delta -f -q -y'attach %s'", relpath);
+		sprintf(buf, "bk delta -f -q -y'attach %s' ChangeSet", relpath);
 		system(buf);
 		proj_reset(0);
 		ensemble_nestedCheck();
