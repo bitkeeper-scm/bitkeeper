@@ -192,7 +192,6 @@ sfileFirst(char *cmd, char **Av, int Flags)
 				return (0);
 			}
 			flist = stdin;
-			flags |= SF_SILENT;
 			return (sfileNext());
 		}
 		localName2bkName(Av[0], Av[0]);
