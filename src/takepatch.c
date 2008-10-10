@@ -4,11 +4,12 @@ left||right->path == s->gfile.
 */
 
 /* Copyright (c) 1999-2000 L.W.McVoy */
-#include "system.h"
 #include "sccs.h"
 #include "logging.h"
 #include "bam.h"
+#include "ensemble.h"
 #include <time.h>
+#include "range.h"
 
 /*
  * takepatch - apply a BitKeeper patch file
@@ -813,6 +814,15 @@ badXsum(int a, int b)
 	/* XXX - should clean up everything if this was takepatch -i */
 }
 
+private	int
+walkrevs_list(sccs *s, delta *d, void *token)
+{
+	char	***list = token;
+
+	*list = addLine(*list, d->rev);
+	return (0);
+}
+
 /*
  * Most of the code in this function is copied from applyPatch
  * We may want to merge the two function later.
@@ -985,11 +995,9 @@ apply:
 	fclose(csets);
 
 	/*
-	 * XXX What does this code do ??
-	 * this code seems to be setup the D_LOCAL ANd D_REMOTE flags 
-	 * used in sccs_resolveFiles()
+	 * D_REMOTE used in sccs_resolveFiles()
+	 * D_SET used in cset_resum()
 	 */
-	for (d = s->table; d; d = d->next) d->flags |= D_LOCAL;
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
@@ -1003,7 +1011,7 @@ apply:
 		 */
 		if (!d && p->meta) continue;
 		assert(d);
-		d->flags |= p->local ? D_LOCAL : (D_REMOTE|D_SET);
+		if (p->remote) d->flags |= (D_REMOTE|D_SET);
 	}
 	s->state |= S_SET;
 	if (echo == 3) fprintf(stderr, "\b, ");
@@ -1017,6 +1025,48 @@ apply:
 	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
+	}
+	if (confThisFile && proj_isProduct(s->proj)) {
+		eopts	opts = {0};
+		repos	*local, *remote;
+		char	**list;
+		int	fail = 0;
+
+		opts.sc = s;
+
+		/* set list to what is in local but not remote */
+		list = 0;
+		range_walkrevs(s,
+		    s->remote, s->local, walkrevs_list, (void *)&list);
+		opts.revs = list;
+		local = ensemble_list(opts);
+		freeLines(list, 0);
+
+		/* set list to what is in remote but not local */
+		list = 0;
+		range_walkrevs(s,
+		    s->local, s->remote, walkrevs_list, (void *)&list);
+		opts.revs = list;
+		remote = ensemble_list(opts);
+		freeLines(list, 0);
+
+		/* intersection and not here is an error */
+		EACH_REPO (local) {
+			// if it's here, no worries.
+			if (local->present) continue;
+			// if they don't have it then no worries
+			unless (ensemble_find(remote, local->rootkey)) continue;
+			// OK, worry.
+			fprintf(stderr,
+			    "\n\nUnable to resolve conflict "
+			    "in non-present component '%s'.\n"
+			    "You need to bk populate that component first.\n",
+			    local->path);
+		    	fail++;
+		}
+		ensemble_free(local);
+		ensemble_free(remote);
+		if (fail) goto err;
 	}
 	conflicts += confThisFile;
 	sccs_free(s);
@@ -1319,7 +1369,7 @@ apply:
 		 */
 		if (!d && p->meta) continue;
 		assert(d);
-		d->flags |= p->local ? D_LOCAL : D_REMOTE;
+		if (p->remote) d->flags |= D_REMOTE;
 		if (s->state & S_CSET) continue;
 		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) pending++;
 	}

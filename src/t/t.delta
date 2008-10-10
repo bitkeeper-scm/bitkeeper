@@ -747,3 +747,18 @@ bk ci $Q -y'should fail' b 2>ERR || {
 	exit 1
 }
 echo OK
+
+echo $N Check that read-only new files on stdin are flagged .........$NL
+touch bnew
+chmod 444 bnew
+echo bnew | bk ci -a -ynew - 2>ERR || {
+	echo should not fail
+	cat ERR
+	exit 1
+}
+grep -q "ci: bnew: no write permission" ERR || {
+	echo wrong err
+	cat ERR
+	exit 1
+}
+echo OK

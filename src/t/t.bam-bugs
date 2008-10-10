@@ -109,9 +109,28 @@ bk -r check -ac || exit 1
 echo OK
 cp BitKeeper/log/BAM.index .
 
+echo $N Make sure we can regenerate the lines in BAM.index ..........$NL
+bk prs -hr+ -nd'$if(:BAMHASH:){:BAMLOG:}' x > GOT
+FILE=`bk prs -hr+ -nd'$if(:BAMHASH:){:BAMENTRY:}' x`
+grep "$FILE" BitKeeper/log/BAM.index > WANT
+cmpfiles WANT GOT
+echo OK
+
 echo $N Make sure fix -c does not confuse BAM .......................$NL
 bk fix -c
 echo u | bk new $Q x y z > OUT 2>&1
 bk commit $Q -yxyz
 bk -r check -acc || exit 1
+echo OK
+
+echo $N Gamelogic - checkin repo1/foo from repo2 updates wrong log ..$NL
+cd "$HERE"
+bk clone $Q project gamelogic
+cd gamelogic
+bk edit $Q data
+echo 1234 >> data
+cd ../project
+bk delta $Q -ywhatever ../gamelogic/data
+cd ../gamelogic
+bk -r check -ac || exit 1
 echo OK

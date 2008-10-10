@@ -7,7 +7,8 @@
 typedef struct {
 	char	*rootkey;		/* rootkey of the repo */
 	char	*deltakey;		/* deltakey of repo as of rev */
-	char	*path;			/* path to component or null */
+	char	*path;			/* actual path to component or null */
+					/* not path as of 'rev' */
 	u32	new:1;			/* if set, the undo will remove this */
 	u32	present:1;		/* if set, the repo is actually here */
 } repo;
@@ -38,8 +39,8 @@ private	char	*ensemble_version = "1.0";
  * The first tip we see for each component is what we want, that's newest.
  *
  * The path field is always set to the current path of the component, not
- * the path as of the rev[s].  This is the final pass through the ChangeSet
- * file.
+ * the path as of the rev[s].  Note that if the component is not present
+ * the path is a best effort guess based on the deltakey or the idcache.
  *
  * The present field is set if the component is in the filesystem.
  *
@@ -50,15 +51,17 @@ ensemble_list(eopts opts)
 	repo	*e = 0;
 	repos	*r = 0;
 	char	**list = 0;	/* really repos **list */
-	delta	*d, *top;
+	delta	*d, *tip;
 	char	*t;
-	int	had_top = 0, close = 0;
+	int	had_tip = 0, close = 0;
 	int	i;
 	MDBM	*idDB = 0;
 	kvpair	kv;
 	char	buf[MAXKEY];
 
-	assert (!opts.rev ^ !opts.revs); /* logical xor: one or the other, not both */
+	/* logical xor: one or the other, not both */
+	assert (!opts.rev ^ !opts.revs);
+
 	unless (proj_isProduct(0)) {
 		fprintf(stderr, "ensemble_list called in a non-product.\n");
 		return (0);
@@ -75,7 +78,7 @@ ensemble_list(eopts opts)
 	assert(CSET(opts.sc) && proj_isProduct(opts.sc->proj));
 
 	r = new(repos);
-	top = sccs_top(opts.sc);
+	tip = sccs_top(opts.sc);
 	if (opts.revs) {
 		unless (close) sccs_clearbits(opts.sc, D_SET|D_RED|D_BLUE);
 		EACH(opts.revs) {
@@ -86,7 +89,7 @@ err:				if (close) sccs_free(opts.sc);
 				return (0);
 			}
 			d->flags |= (D_SET|D_BLUE);
-			if (d == top) had_top = 1;
+			if (d == tip) had_tip = 1;
 		}
 		if (sccs_cat(opts.sc, GET_HASHONLY, 0)) goto err;
 		EACH_KV(opts.sc->mdbm) {
@@ -156,42 +159,43 @@ err:				if (close) sccs_free(opts.sc);
 	}
 
 	/*
-	 * Now see if we have the TIP, otherwise we need to overwrite
-	 * the path field with whatever path is in the TIP delta
-	 * keys.  The TIP of the changeset file contains the current
-	 * locations (unless someone did a mv on a repo).
-	 */
-	if ((opts.revs && !had_top) ||
-	    (top != sccs_findrev(opts.sc, opts.rev))) {
-		/* Fetch TIP and see if any paths have changed */
-		sccs_get(opts.sc, top->rev, 0, 0, 0, SILENT|GET_HASHONLY, 0);
-		EACH(list) {
-			e = (repo*)list[i];
-			unless (
-			    t = mdbm_fetch_str(opts.sc->mdbm, e->rootkey)) {
-				continue;
-			}
-			t = key2path(t, 0);
-			csetChomp(t);
-			if (streq(e->path, t)) {
-				free(t);
-			} else {
-				free(e->path);
-				e->path = t;
-			}
-		}
-	}
-
-	/*
-	 * Mark entries that are not present
+	 * Mark entries that are not present and fix up the pathnames.
 	 */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	EACH(list) {
+		project	*p;
+
 		e = (repo*)list[i];
-		if (isComponent(e->path)) continue;
-		if ((t = mdbm_fetch_str(idDB, e->rootkey)) && isComponent(t)){
-			free(e->path);
-			e->path = strdup(t);
+		/*
+		 * e->path needs to be the pathname where this component
+		 * is at currently not as of the 'rev' above.
+		 * Since the idcache saves the current location we can
+		 * use it to fixup the path.
+		 *
+		 * WARNING: non-present components may not appear in
+		 * the idcache so their pathnames may be incorrect.
+		 */
+		if (t = mdbm_fetch_str(idDB, e->rootkey)) {
+			csetChomp(t);
+			if (isComponent(t)) {
+				free(e->path);
+				e->path = strdup(t);
+			}
+		}
+
+		/*
+		 * This is trying hard but it may get things wrong
+		 * if people have moved stuff around without letting
+		 * bk get in there and take a look.
+		 *
+		 * I wanted to stomp on e->path if not present but
+		 * the regressions convinced me that wasn't wise.
+		 */
+		if (p = proj_init(e->path)) {
+			unless (streq(proj_rootkey(p), e->rootkey)) {
+				e->present = 0;
+			}
+			proj_free(p);
 		} else {
 			e->present = 0;
 		}
@@ -203,8 +207,8 @@ err:				if (close) sccs_free(opts.sc);
 	if (opts.product) {
 		if (opts.rev) {			/* undo / [r]clone/ push */
 			d = sccs_findrev(opts.sc, opts.rev);
-		} else if (had_top && !opts.undo) {
-			d = top;
+		} else if (had_tip && !opts.undo) {
+			d = tip;
 		} else {			/* push/pull */
 			u32	flag;
 			/*

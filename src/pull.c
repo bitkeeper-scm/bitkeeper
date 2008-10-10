@@ -642,8 +642,10 @@ pull_ensemble(repos *rps, remote *r, opts opts)
 				csetChomp(path);
 				if (chdir(path)) {
 err:					fprintf(stderr, "Could not chdir to "
-					    " '%s'\n", path);
+					    " component '%s'\n", path);
 					free(path);
+					fprintf(stderr, 
+					    "pull: update aborted.\n");
 					rc = 1;
 					break;
 				}

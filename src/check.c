@@ -678,11 +678,25 @@ writable_gfile(sccs *s)
 private int
 no_gfile(sccs *s)
 {
-	if (HAS_PFILE(s) && !HAS_GFILE(s)) {
-		if (unlink(sccs_Xfile(s, 'p'))) return (1);
-		s->state &= ~S_PFILE;
+	pfile	pf;
+	int	rc = 0;
+
+	unless (HAS_PFILE(s) && !HAS_GFILE(s)) return (0);
+	if (sccs_read_pfile("co", s, &pf)) return (1);
+	if (pf.mRev || pf.iLst || pf.xLst) {
+		fprintf(stderr,
+		    "%s has merge|include|exclude but no gfile.\n", s->gfile);
+		rc = 1;
+	} else {
+		if (unlink(s->pfile)) {
+			perror(s->pfile);
+			rc = 1;
+		} else {
+			s->state &= ~S_PFILE;
+		}
 	}
-	return (0);
+	free_pfile(&pf);
+	return (rc);
 }
 
 private int
@@ -712,8 +726,11 @@ readonly_gfile(sccs *s)
 	/* XXX slow in checkout:edit mode */
 	if ((HAS_PFILE(s) && HAS_GFILE(s) && !writable(s->gfile))) {
 		if (gfile_unchanged(s) == 1) {
-			unlink(s->pfile);
-			s->state &= ~S_PFILE;
+			if (unlink(s->pfile)) {
+				perror(s->pfile);
+			} else {
+				s->state &= ~S_PFILE;
+			}
 			if (resync) return (0);
 			do_checkout(s);
 			return (0);

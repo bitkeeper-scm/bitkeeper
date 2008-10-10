@@ -647,6 +647,30 @@ proc normalizePath {path} \
 	return [file join {*}[file split $path]]
 }
 
+# run 'script' for each line in the text widget
+# binding 'var' to the contents of the line
+# e.g.
+#
+# EACH_LINE .t myline {
+#	puts $myline
+# }
+#
+# would dump the contents of the text widget on stdout
+# Note that 'myline' will still exist after the script
+# is done. Also, if 'myline' existed before EACH_LINE
+# is called, it will be stomped on.
+proc EACH_LINE {widget var script} {
+	upvar 1 $var line
+	set lno 1.0
+	while {[$widget compare $lno < [$widget index end]]} {
+		set line [$widget get $lno "$lno lineend"]
+		set lno [$widget index "$lno + 1 lines"]
+		# careful, the script must be run at the end
+		# because of 'continue' and 'break'
+		uplevel 1 $script
+	}
+}
+
 # Aqua stuff
 
 proc AboutAqua {} \

@@ -542,3 +542,116 @@ bk get -e bar.c 2> ERR && exit 1
 grep -q 'Writable bar\.c exists' ERR || exit 1
 bk get $Q -e bar.c 2> ERR && exit 1
 echo OK
+
+echo $N Check that get cleans up pfile...............................$NL
+cd "$HERE"/project
+BK_CONFIG="checkout:none! " bk clean $Q
+BK_CONFIG="checkout:get! "
+export BK_CONFIG
+touch foo.c
+bk new $Q foo.c
+bk edit $Q foo.c
+test -f SCCS/p.foo.c || {
+	echo failed
+	echo edit did not create pfile
+	exit 1
+}
+bk get $Q foo.c && {
+	echo failed
+	echo get should have errored
+	exit 1
+}
+rm -f foo.c
+bk get $Q foo.c || {
+	echo failed
+	echo get should have worked
+	exit 1
+}
+test -f SCCS/p.foo.c && {
+	echo failed
+	echo get did not clean up pfile
+	exit 1
+}
+echo OK
+
+echo $N Check that get does not clean up when -i/-x .................$NL
+bk clean foo.c
+bk edit $Q -x+ foo.c
+rm foo.c
+test -f SCCS/p.foo.c || {
+	echo failed
+	echo edit did not create pfile
+	exit 1
+}
+bk get foo.c > OUT 2>&1 && {
+	echo failed
+	echo get should have failed
+	cat OUT
+	exit 1
+}
+grep -q 'foo.c has merge.include.exclude but no gfile' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Check that get -p does not care about -i/-x .................$NL
+bk edit -x+ $Q ChangeSet
+rm ChangeSet
+bk get -p -hr+ ChangeSet > XXX 2>&1
+test `wc -l < XXX` -eq 5 || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
+
+echo $N Check that get -D does not care about -i/-x .................$NL
+bk get -D -hr+ ChangeSet > XXX 2>&1
+test `wc -l < XXX` -eq 5 || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
+
+echo $N Check that get -DD does not care about -i/-x ................$NL
+bk get -DD -hr+ ChangeSet > XXX 2>&1
+test `wc -l < XXX` -eq 5 || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
+
+echo $N Check that get -DDD does not care about -i/-x ...............$NL
+bk get -DDD -hr+ ChangeSet > XXX 2>&1
+test `wc -l < XXX` -eq 5 || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
+
+echo $N Check that get -G does not care about -i/-x .................$NL
+# doesn't work. who cares?
+bk get -Gmyfoo -hr+ ChangeSet 2> ERR && {
+	echo fix test
+	exit 1
+}
+grep -q "myfoo has merge.include.exclude but no gfile, co aborted" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+echo "failed (bug )"
+
+echo $N Check that prs does not care about -i/-x ....................$NL
+bk prs -hr+ -nd:HASHCOUNT: ChangeSet > XXX 2>&1
+test "`cat XXX`" = "4" || {
+	echo wrong answer
+	cat XXX
+	exit 1
+}
+echo OK
