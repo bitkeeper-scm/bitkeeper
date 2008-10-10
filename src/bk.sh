@@ -345,10 +345,10 @@ _partition() {
 	touch BitKeeper/log/PRODUCT
 	chmod 444 BitKeeper/log/PRODUCT
 
-	# Hack a modules file
+	# Hack a aliases file
 	(
 		F=BitKeeper/etc/config
-		M=BitKeeper/etc/modules
+		M=BitKeeper/etc/aliases
 		DSPEC=':D: :T::TZ:'
 		DT=`BK_YEAR2=1 bk log -r1.1 -nd"$DSPEC" $F`
 		BK_DATE_TIME_ZONE="$DT"
@@ -362,14 +362,14 @@ _partition() {
 		_BK_NO_UNIQ=1 bk new -qP $M
 	)
 	SERIAL=`bk changes -r1.1 -nd:DS:`
-	bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/modules \
+	bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/aliases \
 	    >> $WA/allkeys
 
 	# Add in the rest of keys and slurp into cset body
 	bk annotate -aS -hR ChangeSet >> $WA/allkeys
 	bk surgery -W$WA/allkeys || exit 1
 
-	# HACK: Give the modules file a cset mark
+	# HACK: Give the aliases file a cset mark
 	bk cset -M1.1
 
 	# That's it!  Do the big check.. and restore files to proper state

@@ -143,12 +143,12 @@ err:				if (close) sccs_free(opts.sc);
 	}
 
 	/*
-	 * Filter the list through the modules requested, if any.
+	 * Filter the list through the aliases requested, if any.
 	 */
-	if (opts.modules) {
+	if (opts.aliases) {
 		EACH(list) {
 			e = (repo*)list[i];
-			unless (hash_fetchStr(opts.modules, e->rootkey)) {
+			unless (hash_fetchStr(opts.aliases, e->rootkey)) {
 				free(e->path);
 				free(e->rootkey);
 				free(e->deltakey);
@@ -319,7 +319,7 @@ components_main(int ac, char **av)
 	char	*p;
 	repos	*r = 0;
 	eopts	opts;
-	char	**modules = 0;
+	char	**aliases = 0;
 	char	buf[MAXKEY];
 
 	if (proj_cd2product()) {
@@ -347,7 +347,7 @@ components_main(int ac, char **av)
 			}
 			break;
 		    case 'M':
-			modules = addLine(modules, optarg);
+			aliases = addLine(aliases, optarg);
 			break;
 		    case 'o':	/* undoc */
 			output = 1;
@@ -378,8 +378,8 @@ components_main(int ac, char **av)
 			opts.revs = addLine(opts.revs, strdup(buf));
 		}
 	}
-	if (modules) {
-		unless (opts.modules = module_list(modules, 0)) {
+	if (aliases) {
+		unless (opts.aliases = alias_list(aliases, 0)) {
 			rc = 1;
 			goto out;
 		}
@@ -422,7 +422,7 @@ components_main(int ac, char **av)
 		printf("\n");
 	}
 out:	ensemble_free(r);
-	if (modules) freeLines(modules, 0);
+	if (aliases) freeLines(aliases, 0);
 	if (opts.revs) freeLines(opts.revs, free);
 	exit(rc);
 }
@@ -574,7 +574,7 @@ ensemble_each(int quiet, int ac, char **av)
 	int	c;
 	int	errors = 0;
 	int	status;
-	char	**modules = 0;
+	char	**aliases = 0;
 	eopts	opts;
 
 	unless (p) {
@@ -596,10 +596,10 @@ ensemble_each(int quiet, int ac, char **av)
 		} else if (streq("!.", optarg)) {	// XXX -M!. == -C
 			opts.product = 0;
 		} else {
-			modules = addLine(modules, optarg);
+			aliases = addLine(aliases, optarg);
 		}
 	}
-	if (modules) opts.modules = module_list(modules, 0);
+	if (aliases) opts.aliases = alias_list(aliases, 0);
 
 	unless (list = ensemble_list(opts)) {
 		fprintf(stderr, "No ensemble list?\n");

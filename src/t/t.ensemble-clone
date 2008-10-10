@@ -106,7 +106,7 @@ bk clone $Q -M"$KEY" project mynewgcc 2> ERR || {
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
-	echo did not bring gcc module across
+	echo did not bring gcc alias across
 	cat ERR
 	exit 1
 }
@@ -119,10 +119,10 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Test that we can clone using the MODULES file ...............$NL
+echo $N Test that we can clone using the ALIASES file ...............$NL
 rm -rf mynewgcc
 cd project
-bk module add -Mjustgcc gcc
+bk alias add -Mjustgcc gcc
 cd ..
 bk clone $Q -Mjustgcc project mynewgcc 2> ERR || {
 	echo failed
@@ -130,7 +130,7 @@ bk clone $Q -Mjustgcc project mynewgcc 2> ERR || {
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
-	echo did not bring gcc module across
+	echo did not bring gcc alias across
 	cat ERR
 	exit 1
 }
@@ -151,7 +151,7 @@ bk clone $Q -M./gcc project mynewgcc 2> ERR || {
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
-	echo did not bring gcc module across
+	echo did not bring gcc alias across
 	cat ERR
 	exit 1
 }
@@ -164,30 +164,30 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Make sure that the MODULES file is correct ..................$NL
+echo $N Make sure that the ALIASES file is correct ..................$NL
 cd mynewgcc
-test -f BitKeeper/log/MODULES || {
-	echo no MODULES file
+test -f BitKeeper/log/ALIASES || {
+	echo no ALIASES file
 	exit 1
 }
-test "`cat BitKeeper/log/MODULES`" = "./gcc" || {
+test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
 	echo bad content
-	cat BitKeeper/log/MODULES
+	cat BitKeeper/log/ALIASES
 	exit 1
 }
 echo OK
 
-echo $N Make sure that the MODULES file propogates on clone .........$NL
+echo $N Make sure that the ALIASES file propogates on clone .........$NL
 cd "$HERE"
 bk clone $Q mynewgcc mynewgcc2
 cd mynewgcc2
-test -f BitKeeper/log/MODULES || {
-	echo no MODULES file
+test -f BitKeeper/log/ALIASES || {
+	echo no ALIASES file
 	exit 1
 }
-test "`cat BitKeeper/log/MODULES`" = "./gcc" || {
+test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
 	echo bad content
-	cat BitKeeper/log/MODULES
+	cat BitKeeper/log/ALIASES
 	exit 1
 }
 echo OK
@@ -201,16 +201,16 @@ test -d gdb || {
 }
 echo OK
 
-echo $N Make sure that the MODULES file is correct ..................$NL
-test -f BitKeeper/log/MODULES || {
-	echo no MODULES file
+echo $N Make sure that the ALIASES file is correct ..................$NL
+test -f BitKeeper/log/ALIASES || {
+	echo no ALIASES file
 	exit 1
 }
 cat > WANT <<EOF
 ./gcc
 ./gdb
 EOF
-cmpfiles WANT BitKeeper/log/MODULES
+cmpfiles WANT BitKeeper/log/ALIASES
 echo OK
 
 echo $N Check that populate is idempotent ...........................$NL
@@ -222,16 +222,16 @@ test -d gdb || {
 }
 echo OK
 
-echo $N Make sure that the MODULES file is still correct ............$NL
-test -f BitKeeper/log/MODULES || {
-	echo no MODULES file
+echo $N Make sure that the ALIASES file is still correct ............$NL
+test -f BitKeeper/log/ALIASES || {
+	echo no ALIASES file
 	exit 1
 }
 cat > WANT <<EOF
 ./gcc
 ./gdb
 EOF
-cmpfiles WANT BitKeeper/log/MODULES
+cmpfiles WANT BitKeeper/log/ALIASES
 echo OK
 
 echo $N Update a component now that it is here ......................$NL
@@ -260,9 +260,9 @@ test "$BEFORE" = "$AFTER" && {
 echo "failed (bug )"
 }
 
-# This is somewhat different in that the parent has a MODULES file.
+# This is somewhat different in that the parent has a ALIASES file.
 # In a fully populated tree you wouldn't expect one.
-echo $N clone -M./gcc should have only that in MODULES ..............$NL
+echo $N clone -M./gcc should have only that in ALIASES ..............$NL
 cd "$HERE"
 bk clone $Q -M./gcc mynewgcc mynewgcc3
 cd mynewgcc3
@@ -270,18 +270,18 @@ test -d gdb && {
 	echo should not have gdb
 	exit 1
 }
-test -f BitKeeper/log/MODULES || {
-	echo no MODULES file
+test -f BitKeeper/log/ALIASES || {
+	echo no ALIASES file
 	exit 1
 }
-test "`cat BitKeeper/log/MODULES`" = "./gcc" || {
+test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
 	echo bad content
-	cat BitKeeper/log/MODULES
+	cat BitKeeper/log/ALIASES
 	exit 1
 }
 echo OK
 
-echo $N clone -Mjunk when no such module exists should fail .........$NL
+echo $N clone -Mjunk when no such alias exists should fail ..........$NL
 cd "$HERE"
 bk clone -Mjunk mynewgcc3 mynewgcc4 2> ERR && {
 	echo should have failed and did not

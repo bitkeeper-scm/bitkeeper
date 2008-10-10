@@ -8,7 +8,7 @@ private	int	do_resolve(char **av);
 int
 cmd_push_part1(int ac, char **av)
 {
-	char	*p, **modules;
+	char	*p, **aliases;
 	int	i, c, n, status;
 	int	debug = 0, gzip = 0, product = 0;
 	MMAP    *m;
@@ -84,14 +84,14 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
-	if (product && (modules = file2Lines(0, "BitKeeper/log/MODULES"))) {
-		out("@MODULES@\n");
-		EACH(modules) {
-			out(modules[i]);
+	if (product && (aliases = file2Lines(0, "BitKeeper/log/ALIASES"))) {
+		out("@ALIASES@\n");
+		EACH(aliases) {
+			out(aliases[i]);
 			out("\n");
 		}
-		freeLines(modules, free);
-		modules = 0;
+		freeLines(aliases, free);
+		aliases = 0;
 	}
 
 	out("@OK@\n");

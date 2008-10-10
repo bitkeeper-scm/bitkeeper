@@ -90,6 +90,8 @@ cat <<EOF > WANT
     1.0 BitKeeper/etc/ignore 
   1.0 ChangeSet new
 1.1 ChangeSet Initial repository create
+  1.1 BitKeeper/etc/aliases new
+  1.0 BitKeeper/etc/aliases 
   1.1 BitKeeper/etc/collapsed new
   1.0 BitKeeper/etc/collapsed 
   1.1 BitKeeper/etc/config new
@@ -98,8 +100,6 @@ cat <<EOF > WANT
   1.0 BitKeeper/etc/gone 
   1.1 BitKeeper/etc/ignore new
   1.0 BitKeeper/etc/ignore 
-  1.1 BitKeeper/etc/modules new
-  1.0 BitKeeper/etc/modules 
 1.0 ChangeSet new
 EOF
 cmpfiles OUT WANT
@@ -247,6 +247,12 @@ cat <<EOF > WANT
 </CSET>
 <CSET rev=1.1>
   Initial repository create
+  <FILE path=BitKeeper/etc/aliases rev=1.1>
+      bk@bk_regression.bk
+  </FILE>
+  <FILE path=SAME rev=1.0>
+      bk@bk_regression.bk
+  </FILE>
   <FILE path=BitKeeper/etc/collapsed rev=1.1>
       bk@bk_regression.bk
   </FILE>
@@ -266,12 +272,6 @@ cat <<EOF > WANT
       bk@bk_regression.bk
   </FILE>
   <FILE path=BitKeeper/etc/ignore rev=1.1>
-      bk@bk_regression.bk
-  </FILE>
-  <FILE path=SAME rev=1.0>
-      bk@bk_regression.bk
-  </FILE>
-  <FILE path=BitKeeper/etc/modules rev=1.1>
       bk@bk_regression.bk
   </FILE>
   <FILE path=SAME rev=1.0>
@@ -353,6 +353,8 @@ cat <<EOF > WANT
     1.0 BitKeeper/etc/ignore 
   1.0 ChangeSet new
 1.1 ChangeSet Initial repository create
+  1.1 BitKeeper/etc/aliases new
+  1.0 BitKeeper/etc/aliases 
   1.1 BitKeeper/etc/collapsed new
   1.0 BitKeeper/etc/collapsed 
   1.1 BitKeeper/etc/config new
@@ -361,8 +363,6 @@ cat <<EOF > WANT
   1.0 BitKeeper/etc/gone 
   1.1 BitKeeper/etc/ignore new
   1.0 BitKeeper/etc/ignore 
-  1.1 BitKeeper/etc/modules new
-  1.0 BitKeeper/etc/modules 
 1.0 ChangeSet new
 EOF
 cmpfiles OUT WANT
@@ -379,6 +379,8 @@ cat <<EOF > WANT
   1.0 prod_file 
 1.2 ChangeSet attach gcc, gdb
 1.1 ChangeSet Initial repository create
+  1.1 BitKeeper/etc/aliases new
+  1.0 BitKeeper/etc/aliases 
   1.1 BitKeeper/etc/collapsed new
   1.0 BitKeeper/etc/collapsed 
   1.1 BitKeeper/etc/config new
@@ -387,8 +389,6 @@ cat <<EOF > WANT
   1.0 BitKeeper/etc/gone 
   1.1 BitKeeper/etc/ignore new
   1.0 BitKeeper/etc/ignore 
-  1.1 BitKeeper/etc/modules new
-  1.0 BitKeeper/etc/modules 
 1.0 ChangeSet new
 EOF
 cmpfiles OUT WANT

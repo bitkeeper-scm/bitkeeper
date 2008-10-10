@@ -9,7 +9,7 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-# Tests for modules
+# Tests for aliases
 
 
 echo $N Create an ensemble...........................................$NL
@@ -35,9 +35,9 @@ done
 cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
 echo OK
 
-echo $N Set up a test where we will add another module ..............$NL
+echo $N Set up a test where we will add another alias ...............$NL
 cd "$HERE/project"
-bk module add -Mstuff gcc gdb
+bk alias add -Mstuff gcc gdb
 cd ..
 bk clone $Q -Mstuff project stuff
 bk clone $Q -Mstuff project stuff2
@@ -46,7 +46,7 @@ cd "$HERE/project"
 bk clone $Q ../libc path/to/libc
 bk clone $Q ../libc junk
 bk attach $Q junk path/to/libc
-bk module add -Mstuff path/to/libc
+bk alias add -Mstuff path/to/libc
 echo OK
 
 echo $N Test that we can read the name and dirs and globs ...........$NL
@@ -102,14 +102,14 @@ EOF
 checkfiles WANT GOT
 echo OK
 
-echo $N Test that what looks like a module is a module ..............$NL
-bk module add -Mgcc ./gcc ./gdb
-bk module add -Msamething gcc
+echo $N Test that what looks like an alias is an alias ..............$NL
+bk alias add -Mgcc ./gcc ./gdb
+bk alias add -Msamething gcc
 bk components -Mgcc > WANT
 bk components -Msamething > GOT
 checkfiles WANT GOT
-bk module rm -Mgcc
-bk module rm -Msamething
+bk alias rm -Mgcc
+bk alias rm -Msamething
 echo OK
 
 echo $N Try a push, should add libc but not junk ....................$NL
@@ -273,15 +273,15 @@ test -d project-dot/gcc -o -d project-dot/gdb && {
 }
 echo OK
 
-echo $N Make sure populate -Mno-such-dir does not add to MODULES ....$NL
+echo $N Make sure populate -Mno-such-dir does not add to ALIASES ....$NL
 cd project-dot
-cp BitKeeper/log/MODULES .
+cp BitKeeper/log/ALIASES .
 bk populate -M./no-such-dir > OUT 2>&1 && {
 	echo populate should have failed
 	cat OUT
 	exit 1
 }
-cmpfiles MODULES BitKeeper/log/MODULES
+cmpfiles ALIASES BitKeeper/log/ALIASES
 echo OK
 
 echo $N Same thing with a glob ......................................$NL
@@ -290,7 +290,7 @@ bk populate -M'./no-such-dir*' > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-cmpfiles MODULES BitKeeper/log/MODULES
+cmpfiles ALIASES BitKeeper/log/ALIASES
 echo OK
 
 echo $N Populate junk, run populate, should do nothing ..............$NL
@@ -304,8 +304,8 @@ bk populate > OUT 2>&1
 grep -q 'no match' OUT && {
 	echo failed
 	cat OUT
-	echo MODULES
-	cat BitKeeper/log/MODULES
+	echo ALIASES
+	cat BitKeeper/log/ALIASES
 	echo matches for ./junk 
 	bk components -M./junk
 	cd ../project
@@ -329,20 +329,20 @@ bk populate -M'./junk*' > OUT 2>&1 || {
 }
 echo OK
 
-echo $N Test module with non-recursive duplicated definitions........$NL
+echo $N Test alias with non-recursive duplicated definitions.........$NL
 cd "$HERE"/project
-bk edit $Q BitKeeper/etc/modules
+bk edit $Q BitKeeper/etc/aliases
 (
-echo @module1
-echo module2
-echo @module2
-echo module3
-echo module3
-echo @module3
+echo @alias1
+echo alias2
+echo @alias2
+echo alias3
+echo alias3
+echo @alias3
 echo ./gcc
-) >> BitKeeper/etc/modules
-bk delta $Q -ywhatever BitKeeper/etc/modules
-bk components -Mmodule1 > GOT 2>&1 || {
+) >> BitKeeper/etc/aliases
+bk delta $Q -ywhatever BitKeeper/etc/aliases
+bk components -Malias1 > GOT 2>&1 || {
 	echo failed
 	cat GOT
 	exit 1
@@ -351,43 +351,43 @@ echo gcc > WANT
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test module with recursive definitiion ......................$NL
+echo $N Test alias with recursive definitiion .......................$NL
 cd "$HERE"/project
-bk edit $Q BitKeeper/etc/modules
+bk edit $Q BitKeeper/etc/aliases
 (
-echo @module1
-echo module2
-echo @module2
-echo module3
-echo @module3
-echo module1
+echo @alias1
+echo alias2
+echo @alias2
+echo alias3
+echo @alias3
+echo alias1
 echo ./gcc
-) >> BitKeeper/etc/modules
-bk delta $Q -ywhatever BitKeeper/etc/modules
-bk components -Mmodule1 2> ERR && {
+) >> BitKeeper/etc/aliases
+bk delta $Q -ywhatever BitKeeper/etc/aliases
+bk components -Malias1 2> ERR && {
 	echo failed
 	cat GOT
 	exit 1
 }
-grep -q 'recursive module definition' ERR || exit 1
+grep -q 'recursive alias definition' ERR || exit 1
 echo OK
 
-echo $N Remove all modules...........................................$NL
+echo $N Remove all aliases...........................................$NL
 cd "$HERE"/project
-bk module list | while read x
+bk alias list | while read x
 do
-	bk module rm -M$x
+	bk alias rm -M$x
 done
-test x`bk module list` = x || {
+test x`bk alias list` = x || {
 	echo failed
-	echo module list not empty
+	echo alias list not empty
 	exit 1
 }
 echo OK
 
-echo $N Add all components as a module...............................$NL
+echo $N Add all components as an alias...............................$NL
 cd "$HERE"/project
-bk components | bk module add -Mall - || {
+bk components | bk alias add -Mall - || {
 	echo failed
 	exit 1
 }
@@ -398,7 +398,7 @@ echo OK
 
 echo $N Add catch-all glob...........................................$NL
 cd "$HERE"/project
-bk module add -Mall-glob './*' || {
+bk alias add -Mall-glob './*' || {
 	echo failed
 	exit 1
 }
@@ -407,19 +407,19 @@ bk components -Mall-glob > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N Invalid module names should fail.............................$NL
+echo $N Invalid alias names should fail..............................$NL
 cd "$HERE"/project
-bk module add -M'this is invalid' gcc gdb >ERR 2>&1 && {
+bk alias add -M'this is invalid' gcc gdb >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
 }
-bk module add -M./foobar gcc gdb >ERR 2>&1 && {
+bk alias add -M./foobar gcc gdb >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
 }
-bk module add -M+foo gcc gdb >ERR 2>&1 && {
+bk alias add -M+foo gcc gdb >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
@@ -438,12 +438,12 @@ cd p2
 bk setup -fc"$HERE/empty" gcc
 cd "$HERE"/project
 mv "$HERE"/p2 .
-bk module add -Mcompiler p2/gcc gcc >ERR 2>&1 && {
+bk alias add -Mcompiler p2/gcc gcc >ERR 2>&1 && {
 	echo failed
 	echo attached a component from another product
 	exit 1
 }
-grep -q "p2/gcc must be either a glob, key, module, or component." ERR || {
+grep -q "p2/gcc must be either a glob, key, alias, or component." ERR || {
 	echo failed
 	echo wrong error message
 	cat ERR
@@ -451,38 +451,38 @@ grep -q "p2/gcc must be either a glob, key, module, or component." ERR || {
 }
 echo OK
 
-echo $N bk module -C should leave pending modules file...............$NL
+echo $N bk alias -C should leave pending aliases file................$NL
 cd "$HERE"/project
-bk module add -C -Mdev gcc gdb >ERR 2>&1 || {
+bk alias add -C -Mdev gcc gdb >ERR 2>&1 || {
 	echo failed
 	cat ERR
 	exit 1
 }
-echo BitKeeper/etc/SCCS/s.modules > WANT
+echo BitKeeper/etc/SCCS/s.aliases > WANT
 bk sfiles -cP > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Test show interface..........................................$NL
 cd "$HERE"/project
-for m in `bk module list`
+for m in `bk alias list`
 do
 	echo @$m
-	bk module show -M$m
+	bk alias show -M$m
 done > GOT
-bk cat BitKeeper/etc/modules > WANT
+bk cat BitKeeper/etc/aliases > WANT
 cmpfiles WANT GOT
-bk module show -M"DOESNOTEXIST" 2> ERR && {
+bk alias show -M"DOESNOTEXIST" 2> ERR && {
 	echo failed rc
 	exit 1
 }
-grep -q "module 'DOESNOTEXIST' does not exist" ERR || {
+grep -q "alias 'DOESNOTEXIST' does not exist" ERR || {
 	echo failed msg
 	exit 1
 }
 echo OK
 
-echo $N Test creating modules in a sparse tree ......................$NL
+echo $N Test creating aliases in a sparse tree ......................$NL
 (
 cd gcc
 bk id
@@ -497,12 +497,12 @@ test -d gcc && {
 	exit 1
 }
 # Note: trying both forms of "dir" and "./dir"
-bk module add -Msparse ./gcc gdb || exit 1
-bk module show -Msparse > GOT
+bk alias add -Msparse ./gcc gdb || exit 1
+bk alias show -Msparse > GOT
 cmpfiles ../WANT GOT
 echo OK
 
-echo $N Test creating files in the place of missing modules .........$NL
+echo $N Test creating files in the place of missing aliases .........$NL
 cd "$HERE"/project-gcc
 mkdir gdb
 echo hi > gdb/foo

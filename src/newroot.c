@@ -135,11 +135,11 @@ newroot(char *ranbits, int quiet, int product, char *comments)
 	unlink("BitKeeper/log/CSETFILE");
 	if (product) {
 		touch("BitKeeper/log/PRODUCT", 0664);
-		unless (exists("BitKeeper/etc/SCCS/s.modules")) {
-			touch("BitKeeper/etc/modules", 0664);
-			system("bk new -q BitKeeper/etc/modules");
-			system("bk sfiles -pC BitKeeper/etc/modules |"
-			    "bk commit -q -y'Add modules db' -");
+		unless (exists("BitKeeper/etc/SCCS/s.aliases")) {
+			touch("BitKeeper/etc/aliases", 0664);
+			system("bk new -q BitKeeper/etc/aliases");
+			system("bk sfiles -pC BitKeeper/etc/aliases |"
+			    "bk commit -q -y'Add aliases db' -");
 		}
 	}
 	f = popen("bk sfiles", "r");

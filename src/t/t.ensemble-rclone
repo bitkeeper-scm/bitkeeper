@@ -111,7 +111,7 @@ bk clone $Q -M"$KEY" project bk://localhost:$PORT/mynewgcc || {
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
-	echo did not bring gcc module across
+	echo did not bring gcc alias across
 	cat ERR
 	bk _kill bk://localhost:$PORT
 	exit 1
@@ -126,10 +126,10 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Test that we can clone using the MODULES file ...............$NL
+echo $N Test that we can clone using the ALIASES file ...............$NL
 rm -rf mynewgcc
 cd project
-bk module add -Mjustgcc gcc
+bk alias add -Mjustgcc gcc
 cd ..
 bk clone $Q -Mjustgcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
@@ -137,7 +137,7 @@ bk clone $Q -Mjustgcc project bk://localhost:$PORT/mynewgcc || {
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
-	echo did not bring gcc module across
+	echo did not bring gcc alias across
 	cat ERR
 	bk _kill bk://localhost:$PORT
 	exit 1
@@ -163,7 +163,7 @@ bk clone $Q -M./gcc project bk://localhost:$PORT/mynewgcc || {
 	exit 1
 }
 test -d mynewgcc -a -d mynewgcc/gcc || {
-	echo did not bring gcc module across
+	echo did not bring gcc alias across
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
@@ -176,16 +176,16 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Make sure that the MODULES file is correct ..................$NL
+echo $N Make sure that the ALIASES file is correct ..................$NL
 cd mynewgcc
-test -f BitKeeper/log/MODULES || {
-	echo no MODULES file
+test -f BitKeeper/log/ALIASES || {
+	echo no ALIASES file
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
-test "`cat BitKeeper/log/MODULES`" = "./gcc" || {
+test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
 	echo bad content
-	cat BitKeeper/log/MODULES
+	cat BitKeeper/log/ALIASES
 	bk _kill bk://localhost:$PORT
 	exit 1
 }

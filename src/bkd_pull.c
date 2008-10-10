@@ -115,12 +115,12 @@ cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, dont = 0, verbose = 1, list = 0, triggers_failed = 0;
-	int	rtags, update_only = 0, delay = -1, eat_modules = 0;
+	int	rtags, update_only = 0, delay = -1, eat_aliases = 0;
 	char	*port = 0;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	char	*rev = 0, *tid = 0;
-	char	*p, **modules = 0;
+	char	*p, **aliases = 0;
 	FILE	*f;
 	sccs	*s;
 	delta	*d;
@@ -137,7 +137,7 @@ cmd_pull_part2(int ac, char **av)
 			break;
 		    case 'd': debug = 1; break;
 		    case 'l': list++; break;
-		    case 'M': eat_modules = 1; break;
+		    case 'M': eat_aliases = 1; break;
 		    case 'n': dont = 1; break;
 		    case 'P':
 			port = optarg;
@@ -179,18 +179,18 @@ cmd_pull_part2(int ac, char **av)
 	r.rf = fdopen(0, "r");
 
 	/*
-	 * Eat a list of modules if so instructed.
+	 * Eat a list of aliases if so instructed.
 	 */
-    	if (eat_modules) {
+    	if (eat_aliases) {
 		unless (getline2(&r, buf, sizeof(buf)) > 0) {
-err:			printf("ERROR-protocol error in modules\n");
+err:			printf("ERROR-protocol error in aliases\n");
 			rc = 1;
 			goto done;
 		}
-		unless (streq("@MODULES@", buf)) goto err;
+		unless (streq("@ALIASES@", buf)) goto err;
 		while (getline2(&r, buf, sizeof(buf)) > 0) {
 			if (streq("@END@", buf)) break;
-			modules = addLine(modules, strdup(buf));
+			aliases = addLine(aliases, strdup(buf));
 		}
 	}
 
@@ -287,11 +287,11 @@ err:			printf("ERROR-protocol error in modules\n");
 			goto done;
 		}
 		opts.revs = k;
-		if (modules) {
+		if (aliases) {
 			opts.sc = sccs_csetInit(SILENT);
-			opts.modules = module_list(modules, opts.sc);
-			unless (opts.modules) {
-				printf("ERROR-unable to expand modules.\n");
+			opts.aliases = alias_list(aliases, opts.sc);
+			unless (opts.aliases) {
+				printf("ERROR-unable to expand aliases.\n");
 				rc = 1;
 				goto done;
 			}
@@ -300,12 +300,12 @@ err:			printf("ERROR-protocol error in modules\n");
 		printf("@ENSEMBLE@\n");
 		ensemble_toStream(r, stdout);
 		freeLines(k, free);
-		if (opts.modules) hash_free(opts.modules);
+		if (opts.aliases) hash_free(opts.aliases);
 		sccs_free(opts.sc);
 		ensemble_free(r);
 		goto done;
 	}
-	freeLines(modules, free);
+	freeLines(aliases, free);
 
 	fputs("@PATCH@\n", stdout);
 

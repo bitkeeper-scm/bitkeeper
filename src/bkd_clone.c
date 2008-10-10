@@ -13,7 +13,7 @@ cmd_clone(int ac, char **av)
 	int	c, rc = 1;
 	int	gzip = 0, delay = -1, lclone = 0;
 	char	*p, *rev = 0, *tid = 0;
-	char	**modules = 0;
+	char	**aliases = 0;
 	sccs	*s = 0;
 	delta	*d;
 	hash	*h = 0;
@@ -30,7 +30,7 @@ cmd_clone(int ac, char **av)
 			lclone = 1;
 			break;
 		    case 'M':
-			modules = addLine(modules, strdup(optarg));
+			aliases = addLine(aliases, strdup(optarg));
 			break;
 		    case 'w':
 			delay = atoi(optarg);
@@ -67,14 +67,14 @@ cmd_clone(int ac, char **av)
 			goto out;
 		}
 		/*
-		 * If we're an ensemble and they did not specify any modules,
+		 * If we're an ensemble and they did not specify any aliases,
 		 * then imply whatever list we may have.
 		 * The tid part is because we want to do this in pass1 only.
 		 * XXX - what if we've added one with ensemble add and it
-		 * does not appear in our MODULES file yet?
+		 * does not appear in our ALIASES file yet?
 		 */
-		unless (modules || tid) {
-			modules = file2Lines(0, "BitKeeper/log/MODULES");
+		unless (aliases || tid) {
+			aliases = file2Lines(0, "BitKeeper/log/ALIASES");
 		}
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
@@ -90,7 +90,7 @@ cmd_clone(int ac, char **av)
 	}
 
 	/* moved down here because we're caching the sccs* */
-	if (rev || modules) {
+	if (rev || aliases) {
 		s = sccs_csetInit(SILENT);
 		assert(s && HASGRAPH(s));
 		if (rev) {
@@ -102,9 +102,9 @@ cmd_clone(int ac, char **av)
 				goto out;
 			}
 		}
-		if (modules) {
-			h = module_list(modules, s);
-			freeLines(modules, free);
+		if (aliases) {
+			h = alias_list(aliases, s);
+			freeLines(aliases, free);
 			unless (h) {
 				goto out;
 			}
@@ -140,7 +140,7 @@ cmd_clone(int ac, char **av)
 		opts.product_first = 1;
 		opts.rev = rev ? rev : "+";
 		opts.sc = s;
-		opts.modules = h;
+		opts.aliases = h;
 		r = ensemble_list(opts);
 		printf("@ENSEMBLE@\n");
 		ensemble_toStream(r, stdout);

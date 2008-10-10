@@ -380,9 +380,9 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.port) fprintf(f, " '-P%s'", proj_rootkey(0));
 	if (opts.transaction) fprintf(f, " -T");
 	if (opts.update_only) fprintf(f, " -u");
-	if (proj_isProduct(0) && (l = file2Lines(0, "BitKeeper/log/MODULES"))) {
+	if (proj_isProduct(0) && (l = file2Lines(0, "BitKeeper/log/ALIASES"))) {
 		fprintf(f, " -M\n");
-		fprintf(f, "@MODULES@\n");
+		fprintf(f, "@ALIASES@\n");
 		EACH(l) fprintf(f, "%s\n", l[i]);
 		fprintf(f, "@END@\n");
 		freeLines(l, free);
