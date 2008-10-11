@@ -6,7 +6,7 @@ populate_main(int ac, char **av)
 {
 	int	c, i;
 	int	quiet = 0;
-	int	verbose = 0;
+	int	repair = 0;
 	char	**urls = 0;
 	char	*url;
 	char	**modules = 0;
@@ -21,8 +21,12 @@ populate_main(int ac, char **av)
 	hash	*done;
 
 	unless (start_cwd) start_cwd = strdup(proj_cwd());
-	while ((c = getopt(ac, av, "dE;lM;qv")) != -1) {
-		unless (c == 'M') {
+	while ((c = getopt(ac, av, "dE;lM;qr")) != -1) {
+		switch (c) {
+		    case 'M':
+		    case 'r':
+		    	break;
+		    default:
 			if (optarg) {
 				cav = addLine(cav, aprintf("-%c%s", c, optarg));
 			} else {
@@ -44,9 +48,9 @@ populate_main(int ac, char **av)
 			modules = addLine(modules, strdup(optarg));
 			break;
 		    case 'q': quiet = 1; break;
-		    case 'v': verbose = 1; break;
+		    case 'r': repair = 1; break;
 		    default:
-			sys("bk", "help", "-s", "populate", SYS);
+usage:			sys("bk", "help", "-s", "populate", SYS);
 			return (1);
 		}
 		optarg = 0;
@@ -59,9 +63,20 @@ populate_main(int ac, char **av)
 	for (i = 0; av[optind + i]; i++) {
 		urls = addLine(urls, strdup(av[optind +i]));
 	}
-	unless (urls) urls = parent_pullp();
+	unless (urls) {
+		unless (urls = parent_pullp()) {
+			fprintf(stderr,
+			    "populate: neither parent nor url provided.\n");
+			goto usage;
+		}
+	}
 
-	unless (modules) modules = file2Lines(0, "BitKeeper/log/MODULES");
+	if (repair) {
+		modules = file2Lines(modules, "BitKeeper/log/MODULES");
+	} else unless (modules) {
+		modules = addLine(0, strdup("default"));
+	}
+
 	s = sccs_csetInit(SILENT);
 	if (modules) {
 		unless (opts.modules = module_list(modules, s)) return (1);
@@ -122,8 +137,7 @@ populate_main(int ac, char **av)
 		}
 		fclose(f);
 		hash_free(done);
-		i = run_check(!verbose, checkfiles,
-		    verbose ? "-fv" : "-f", 0);
+		i = run_check(quiet, checkfiles, quiet ? "-f" : "-fv", 0);
 		rc += i;
 		unlink(checkfiles);
 		free(checkfiles);

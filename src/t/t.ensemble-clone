@@ -496,3 +496,245 @@ bk populate $Q -M./gcc 2> ERR && {
 	exit 1
 }
 echo "failed (bug )"
+
+# gcc
+# gcc/deep
+# gdb
+echo $N Test populate with no args ..................................$NL
+cd "$HERE"
+bk clone $Q -M. project product
+cd product
+bk components -h > LIST
+test -s LIST && {
+	echo should not have any components yet
+	cat LIST
+	exit 1
+}
+bk populate $Q || exit 1
+bk components -h > GOT
+cat > WANT <<EOF
+gcc
+gcc/deep
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test populate in repair mode with nothing to do .............$NL
+bk populate -r > GOT 2>&1 || exit 1
+cat > WANT <<EOF
+populate: gcc is already here.
+populate: gcc/deep is already here.
+populate: gdb is already here.
+populate: no components fetched
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Unpopulate gdb ..............................................$NL
+bk unpopulate $Q -A./gdb || {
+	echo unpopulate failed
+	exit 1
+}
+test -d gdb && {
+	echo gdb should be removed
+	exit 1
+}
+echo OK
+
+echo $N Test populate in repair mode with gdb missing ...............$NL
+bk populate -r > GOT 2>&1 || exit 1
+bk components -h > GOT
+cat > WANT <<EOF
+gcc
+gcc/deep
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Unpopulate gcc/deep .........................................$NL
+bk unpopulate $Q -A./gcc/deep || {
+	echo unpopulate failed
+	exit 1
+}
+test -d gcc/deep && {
+	echo gcc/deep should be removed
+	exit 1
+}
+echo OK
+
+echo $N Test populate in repair mode with gcc/deep missing ..........$NL
+bk populate -r > GOT 2>&1 || exit 1
+bk components -h > GOT
+cat > WANT <<EOF
+gcc
+gcc/deep
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test populate in repair mode with gcc/deep and gcc missing ..$NL
+bk unpopulate $Q -A./gcc/deep || exit 1
+bk populate -r > GOT 2>&1 || exit 1
+bk components -h > GOT
+cat > WANT <<EOF
+gcc
+gcc/deep
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Unpopulate all components ...................................$NL
+bk unpopulate $Q || {
+	echo unpopulate failed
+	exit 1
+}
+for i in `bk components`
+do	test -d $i && {
+		echo failed to remove $i
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test populate in repair mode with all components missing ....$NL
+bk populate -r > GOT 2>&1 || exit 1
+bk components -h > GOT
+cat > WANT <<EOF
+gcc
+gcc/deep
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test populate with no parent ................................$NL
+bk parent -r $Q
+rm -rf gcc gdb
+bk populate -r > GOT 2>&1 && {
+	cat GOT
+	exit 1
+}
+grep -q 'populate: neither parent nor url provided.' GOT || {
+	echo bad error message
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Test populate -r with url ...................................$NL
+rm -rf gcc gdb
+bk populate -r ../project > GOT 2>&1 || exit 1
+bk components -h > GOT
+cat > WANT <<EOF
+gcc
+gcc/deep
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test populate with url ......................................$NL
+rm -rf gcc gdb
+echo default > BitKeeper/log/MODULES
+bk populate ../project > GOT 2>&1 || exit 1
+bk components -h > GOT
+cat > WANT <<EOF
+gcc
+gcc/deep
+gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test unpopulate no parent ...................................$NL
+bk unpopulate $Q >OUT 2>&1 && {
+	echo should have failed
+	exit 1
+}
+# XXX - superset is not graceful
+grep -q 'Parent: This repository has no pull parent.' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test unpopulate with local extras ...........................$NL
+bk parent $Q ../project
+touch gcc/extra gdb/extra
+bk unpopulate $Q > OUT 2>&1 && {
+	echo unpopulate should have failed
+	exit 1
+}
+grep -q 'gdb has local changes' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+for i in `bk components`
+do	test -d $i || {
+		echo should not have removed $i
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test unpopulate with local extras forcing it ................$NL
+bk parent $Q ../project
+touch gcc/extra gdb/extra
+bk unpopulate -f $Q || {
+	echo unpopulate should not have failed
+	exit 1
+}
+for i in `bk components`
+do	test -d $i && {
+		echo should have removed $i
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test unpopulate with local cset .............................$NL
+bk parent $Q ../project
+bk populate $Q
+test -d gdb || exit 1
+(cd gdb
+echo foo > foo
+bk new $Q foo
+bk commit $Q -yfoo
+)
+bk unpopulate $Q >OUT 2>&1 && {
+	echo unpopulate should have failed
+	exit 1
+}
+grep -q 'gdb has local changes' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+for i in `bk components`
+do	test -d $i || {
+		echo should not have removed $i
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test unpopulate with local cset forcing it ..................$NL
+bk parent $Q ../project
+bk unpopulate -f $Q || {
+	echo unpopulate should not have failed
+	exit 1
+}
+for i in `bk components`
+do	test -d $i && {
+		echo should have removed $i
+		exit 1
+	}
+done
+echo OK
+
