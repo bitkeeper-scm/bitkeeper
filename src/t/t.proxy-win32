@@ -19,6 +19,16 @@
 
 test "$PLATFORM" = "WIN32" || exit 0
 
+cleanup() {
+	bk _registry set "$KEY" ProxyEnable dword:0 || exit 1
+	bk _registry delete "$KEY" ProxyOverride 2>/dev/null
+	bk _registry delete "$KEY" ProxyServer 2>/dev/null
+	bk _registry delete "$KEY" AutoConfigURL 2>/dev/null
+	bk _registry clearbit \
+	    "$KEY\\"Connections DefaultConnectionSettings 0103 >/dev/null 2>&1
+}
+
+
 KEY="HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings"
 
 # all proxies are current disabled from code in doit.sh
@@ -107,6 +117,7 @@ BK_HTTP_PROXY_DEBUG=1 BK_TRACE_REMOTE=1 bk changes -qrbk-3.2.5 -nd:MD5KEY: \
 	echo should not have failed
 	cat OUT
 	cat ERR
+	cleanup
 	exit 1
 }
 test "`cat OUT`" = 42f14254Fy_o9xwl7u_Ej-1mle8SMQ || {
@@ -128,13 +139,5 @@ echo OK
 else
 echo skipped
 fi
-
-# cleanup
-bk _registry set "$KEY" ProxyEnable dword:0 || exit 1
-bk _registry delete "$KEY" ProxyOverride 2>/dev/null
-bk _registry delete "$KEY" ProxyServer 2>/dev/null
-bk _registry delete "$KEY" AutoConfigURL 2>/dev/null
-bk _registry clearbit \
-	"$KEY\\"Connections DefaultConnectionSettings 0103 >/dev/null 2>&1
-
+cleanup
 exit 0
