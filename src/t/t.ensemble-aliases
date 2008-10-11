@@ -525,3 +525,16 @@ bk commit -ybadfile $Q  2>ERR && {
 }
 grep -q "check: nm/foo conflicts with component at nm" ERR || exit 1
 echo OK
+
+echo $N Using a relative path in bk alias should work................$NL
+cd "$HERE"/project/gcc
+bk alias add -Anm ./nm || {
+	echo failed
+	exit 1
+}
+bk components -Anm >GOT
+cat <<EOF >WANT
+gcc/nm
+EOF
+cmpfiles WANT GOT
+echo OK

@@ -43,7 +43,7 @@ alias_main(int ac, char **av)
 err:		system("bk help -s alias");
 		return (1);
 	}
-	if (proj_cd2product()) {
+	unless (proj_product(0)) {
 		fprintf(stderr, "alias: called in a non-product.\n");
 		return (1);
 	}
@@ -211,7 +211,10 @@ aliasdb_add(char *alias, char **components, int commit)
 		return (1);
 	}
 	mdb = new(aliases);
-	unless (mdb->aliasDB = aliasdb_init()) goto err;
+	unless (mdb->aliasDB = aliasdb_init()) {
+		fprintf(stderr, "%s: failed to open alias db.\n", prog);
+		goto err;
+	}
 	EACH (components) {
 		if (isKey(components[i])) {
 			unless (verifyKey(components[i], mdb)) {
@@ -451,8 +454,10 @@ dir2key(char *dir, aliases *mdb)
 		opts.sc = mdb->cset;
 		mdb->comps = ensemble_list(opts);
 	}
-	if (strneq(dir, "./", 2)) dir += 2;
-	unless (p = ensemble_dir2key(mdb->comps, dir)) return (0);
+	dir = proj_relpath(proj_product(0), dir);
+	p = ensemble_dir2key(mdb->comps, dir);
+	free(dir);
+	unless (p) return (0);
 	return (strdup(p));
 }
 
@@ -480,24 +485,26 @@ private int
 finish(char *comment, hash *aliasDB, int commit)
 {
 	int	ret = 0;
+	char	*tmpfile;
 	char	buf[MAXPATH];
 
-	system("bk edit -q " ALIASES);
-	hash_toFile(aliasDB, ALIASES);
-	sprintf(buf, "bk delta -qy'%s' %s", comment, ALIASES);
+	system("bk -P edit -q " ALIASES);
+	concat_path(buf, proj_root(proj_product(0)), ALIASES);
+	hash_toFile(aliasDB, buf);
+	sprintf(buf, "bk -P delta -qy'%s' %s", comment, ALIASES);
 	if (ret = system(buf)) return (ret);
 	if (commit) {
+		tmpfile = bktmp(0, "cmt");
 		sprintf(buf,
-		    "bk sfiles -pAC %s |"
-		    "bk sccslog -A -f -nd:C: - >BitKeeper/tmp/cmt%u",
-		    ALIASES, getpid());
+		    "bk -P sfiles -pAC %s |"
+		    "bk -P sccslog -A -f -nd:C: - >'%s'", ALIASES, tmpfile);
 		if (ret = system(buf)) return (ret);
 		sprintf(buf,
-		    "bk sfiles -pC %s |"
-		    "bk commit -qfYBitKeeper/tmp/cmt%u -", ALIASES, getpid());
+		    "bk -P sfiles -pC %s |"
+		    "bk -P commit -qfY'%s' -", ALIASES, tmpfile);
 		ret = system(buf);
-		sprintf(buf, "BitKeeper/tmp/cmt%u", getpid());
-		unlink(buf);
+		unlink(tmpfile);
+		free(tmpfile);
 	}
 	return (ret);
 }

@@ -62,7 +62,7 @@ ensemble_list(eopts opts)
 	/* logical xor: one or the other, not both */
 	assert (!opts.rev ^ !opts.revs);
 
-	unless (proj_isProduct(0)) {
+	unless (proj_product(0)) {
 		fprintf(stderr, "ensemble_list called in a non-product.\n");
 		return (0);
 	}
