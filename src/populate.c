@@ -9,7 +9,7 @@ populate_main(int ac, char **av)
 	int	verbose = 0;
 	char	**urls = 0;
 	char	*url;
-	char	**modules = 0;
+	char	**aliases = 0;
 	char	**vp = 0;
 	char	**cav = 0;
 	char	*checkfiles;
@@ -21,8 +21,8 @@ populate_main(int ac, char **av)
 	hash	*done;
 
 	unless (start_cwd) start_cwd = strdup(proj_cwd());
-	while ((c = getopt(ac, av, "dE;lM;qv")) != -1) {
-		unless (c == 'M') {
+	while ((c = getopt(ac, av, "A;dE;lqv")) != -1) {
+		unless (c == 'A') {
 			if (optarg) {
 				cav = addLine(cav, aprintf("-%c%s", c, optarg));
 			} else {
@@ -30,6 +30,9 @@ populate_main(int ac, char **av)
 			}
 		}
 		switch(c) {
+		    case 'A':
+			aliases = addLine(aliases, strdup(optarg));
+			break;
 		    case 'd': break;
 		    case 'E':
 			/* we just error check and pass through to clone */
@@ -40,9 +43,6 @@ populate_main(int ac, char **av)
 			}
 			break;
 		    case 'l': break;
-		    case 'M':
-			modules = addLine(modules, strdup(optarg));
-			break;
 		    case 'q': quiet = 1; break;
 		    case 'v': verbose = 1; break;
 		    default:
@@ -61,10 +61,10 @@ populate_main(int ac, char **av)
 	}
 	unless (urls) urls = parent_pullp();
 
-	unless (modules) modules = file2Lines(0, "BitKeeper/log/MODULES");
+	unless (aliases) aliases = file2Lines(0, "BitKeeper/log/ALIASES");
 	s = sccs_csetInit(SILENT);
-	if (modules) {
-		unless (opts.modules = module_list(modules, s)) return (1);
+	if (aliases) {
+		unless (opts.aliases = alias_list(aliases, s)) return (1);
 	}
 	opts.rev = "+";
 	opts.sc = s;
@@ -130,22 +130,22 @@ populate_main(int ac, char **av)
 		if (i) {
 			fprintf(stderr, "Consistency check failed, "
 			    "repository left locked.\n");
-		} else if (modules) {
+		} else if (aliases) {
 			char	**p;
 
 			/*
-			 * populate adds the modules we have requested to
-			 * the MODULES file, but if there isn't a modules
+			 * populate adds the aliases we have requested to
+			 * the ALIASES file, but if there isn't a aliases
 			 * file already then don't create one as that already
 			 * implies: fetch everything.
 			 */
-			if (p = file2Lines(0, "BitKeeper/log/MODULES")) {
-				EACH (modules) {
-					p = addLine(p, strdup(modules[i]));
+			if (p = file2Lines(0, "BitKeeper/log/ALIASES")) {
+				EACH (aliases) {
+					p = addLine(p, strdup(aliases[i]));
 				}
 				uniqLines(p, free);
-				if (lines2File(p, "BitKeeper/log/MODULES")) {
-					perror("BitKeeper/log/MODULES");
+				if (lines2File(p, "BitKeeper/log/ALIASES")) {
+					perror("BitKeeper/log/ALIASES");
 				}
 				freeLines(p, free);
 			}

@@ -1498,7 +1498,7 @@ findsfiles(char *file, struct stat *sb, void *data)
 			if (exists(file)) si->fn(file, sb, si->data);
 			strcpy(p+5, "CSETFILE");
 			if (exists(file)) si->fn(file, sb, si->data);
-			strcpy(p+5, "MODULES");
+			strcpy(p+5, "ALIASES");
 			if (exists(file)) si->fn(file, sb, si->data);
 		}
 		if (prunedirs) {

@@ -1,53 +1,53 @@
 .so ../bk-macros
-.TH "bk module" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk alias" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk module \- manage aliases for a list of components
+bk alias \- manage aliases for a list of components
 .SH SYNOPSIS
-.B bk module add|rm|list
+.B bk alias add|rm|list
 .[B] -C
-.[OPTreq] -M module
+.[OPTreq] -A alias
 .[B] component ...
 .br
-.SS ADDING COMPONENTS TO A MODULE
-.B bk module add
+.SS ADDING COMPONENTS TO AN ALIAS
+.B bk alias add
 .[B] \-C
-.OPTreq -M module
+.OPTreq -A alias
 .B component 
 .[B] component ...
 .br
-.SS REMOVING COMPONENT[S] FROM A MODULE
-.B bk module rm
+.SS REMOVING COMPONENT[S] FROM AN ALIAS
+.B bk alias rm
 .[B] \-C
-.OPTreq -M module
+.OPTreq -A alias
 .B component 
 .[B] component ...
 .br
-.SS REMOVING A MODULE
-.B bk module rm
+.SS REMOVING AN ALIAS
+.B bk alias rm
 .[B] \-C
-.OPTreq -M module
+.OPTreq -A alias
 .br
-.SS LIST ALL MODULE NAMES
-.B bk module list
+.SS LIST ALL ALIAS NAMES
+.B bk alias list
 .br
-.SS DISPLAYING A MODULE
-.B bk module show
-.OPTreq -M module
+.SS DISPLAYING AN ALIAS
+.B bk alias show
+.OPTreq -A alias
 .SH DESCRIPTION
 The 
-.B bk module
-command is used to create, modify, remove, or list modules.
-A module is a symbolic name that resolves to one or more components (aka
+.B bk alias
+command is used to create, modify, remove, or list aliases.
+An alias is a symbolic name that resolves to one or more components (aka
 sub-repositories in a product).
 .SP
-Module names are similar to C identifiers and must match this regular
+Alias names are similar to C identifiers and must match this regular
 expression:
 .\" This is a lot more restrictive than we need to be
 .\" but I figure we can loosen it easier than we can tighten it.
 .DS
 [A-Za-z][A-Za-z0-9_+-=]*
 .DE
-When creating, or adding to, a module, how the components are specified
+When creating, or adding to, an alias, how the components are specified
 and expanded is as follows:
 .TP "./gcc/* "
 .B .
@@ -81,40 +81,40 @@ gcc/A/XYZ/sneaky
 .DE
 .tp
 .B gcc
-When the component name is a module name, the specified name is added
-to this module for expansion on later use.
+When the component name is an alias name, the specified name is added
+to this alias for expansion on later use.
 .LP
 Note that there is an ambiguity when specifying an item that may be
-either a module name or a component.
+either an alias name or a component.
 If 
 .B gcc 
-is in the modules database and you use that name as one of the components
-in an add/rm operation, then it means the list implied by the gcc module.
+is in the aliases database and you use that name as one of the components
+in an add/rm operation, then it means the list implied by the gcc alias.
 If there is a 
 .B gcc
 repository in root of the product and you meant that repository, you 
 need to specify that as 
 .B ./gcc
-to force it to resolve to the repository and not the module entry.
-In general, unless you always use upper case for your modules and
+to force it to resolve to the repository and not the alias entry.
+In general, unless you always use upper case for your aliases and
 lower case for your components, you want use the leading \*[lq]./\*[rq]
 for naming components.
 .LP
-When adding a component to a module, if the module does not exist
-it is automatically created in the modules file.
-When removing a component from a module, if there are no other components
-left in the module it is automatically deleted from the modules file.
+When adding a component to an alias, if the alias does not exist
+it is automatically created in the aliases file.
+When removing a component from an alias, if there are no other components
+left in the alias it is automatically deleted from the aliases file.
 .SH OPTIONS
 .TP \*<component\*>
 .B \-C
-Normally, modifying the modules file results in a changeset committing that
+Normally, modifying the aliases file results in a changeset committing that
 change.
 This option suppresses the commit.
-Use this option when you wish to combine the module event with other
+Use this option when you wish to combine the alias event with other
 changes to the product.
 .tp
-.OPTreq \-M module
-Used to specify the name of the module in the module database to add, remove,
+.OPTreq \-A alias
+Used to specify the name of the alias in the alias database to add, remove,
 or modify.
 .tp
 .ARG component
@@ -124,38 +124,38 @@ may be any of the forms described above.
 Multiple components may be specified for one invocation by repeating this
 option.
 .SH EXAMPLES
-To create a module that points to all components in a sparse clone:
+To create an alias that points to all components in a sparse clone:
 .DS
-$ bk components -h | bk module add -Mmy-collection -
+$ bk components -h | bk alias add -Amy-collection -
 .DE
-To create a module that points to a named list of components:
+To create an alias that points to a named list of components:
 .DS
-$ bk module add -Mcompiler cmd/gcc cmd/as cmd/ld cmd/nm 
+$ bk alias add -Acompiler cmd/gcc cmd/as cmd/ld cmd/nm
 .DE
-To create a higher level module that includes the debugger:
+To create a higher level alias that includes the debugger:
 .DS
-$ bk module add -Mdev-tools cmd/gdb compiler
+$ bk alias add -Adev-tools cmd/gdb compiler
 .DE
-List all modules:
+List all aliases:
 .DS
-$ bk module list
+$ bk alias list
 compiler
 dev-tools
 .DE
-To remove a component from a module:
+To remove a component from an alias:
 .DS
-$ bk module rm -Mcompiler cmd/nm
+$ bk alias rm -Acompiler cmd/nm
 .DE
-To display the unexpanded members of a module (such as globs or other
-module names):
+To display the unexpanded members of an alias (such as globs or other
+alias names):
 .DS
-$ bk module show -Mcompiler
+$ bk alias show -Acompiler
 .DE
 .SH NOTES
-The modules database is a flat text file stored in
-.IR BitKeeper/etc/modules .
+The aliases database is a flat text file stored in
+.IR BitKeeper/etc/aliases .
 Any components that are specified as a path are stored internally
-as their rootkeys so that the module will expand correctly even if
+as their rootkeys so that the alias will expand correctly even if
 the specified component[s] is/are moved.
 .LP
 There are two pre-existing module names:
@@ -185,4 +185,4 @@ bk lease show
 If the options field has "product" or "product-line" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
-.\" help://modules
+.\" help://aliases

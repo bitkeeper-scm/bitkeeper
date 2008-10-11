@@ -6,24 +6,24 @@ bk populate \- fill in components in a sparse product repository
 .B bk populate
 .[B] \-ql 
 .[OPTequal] \-E e v
-.[OPTreq] \-M module \ ...
+.[OPTreq] \-A alias \ ...
 .[ARG] from
 .SH DESCRIPTION
 .LP
-The populate command is used to add one or more modules to
+The populate command is used to add one or more aliases to
 a sparse product clone or to make sure that all components
-implied by the cached modules list are present.
+implied by the cached aliases list are present.
 .LP
 When cloning a product, it is possible to clone a subset of it by 
-specifying one or more modules.
-If later you want to add another module, the populate command 
+specifying one or more aliases.
+If later you want to add another alias, the populate command
 can help:
 .DS
-$ bk clone -Mdev-tools bk://server/big-product
+$ bk clone -Adev-tools bk://server/big-product
 $ cd big-product
-$ bk populate -Mdebugger
+$ bk populate -Adebugger
 .DE
-After running the above, the recorded list of modules will be
+After running the above, the recorded list of aliases will be
 "dev-tools" and "debugger".
 .LP
 If you have removed a component by mistake, just running the 
@@ -45,10 +45,10 @@ Populate using hard links instead of copying the data.
 This is faster and saves disk space, but only works 
 within filesystems supporting hard links.
 .tp
-.OPTreq \-M module
-If present, add this module to the list of modules that should be
+.OPTreq \-A alias
+If present, add this alias to the list of aliases that should be
 in this product instance.
-This option may be repeated to add more than one module.
+This option may be repeated to add more than one alias.
 .tp
 .B \-q
 Run quietly.

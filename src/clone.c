@@ -18,7 +18,7 @@ struct {
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
 	char	**av;			/* saved opts for ensemble commands */
-	char	**modules;		/* -M modules list */
+	char	**aliases;		/* -A aliases list */
 	char	*from;			/* where to get stuff from */
 	char	*to;			/* where to put it */
 } *opts;
@@ -45,8 +45,8 @@ clone_main(int ac, char **av)
 	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dE:lM;pqr;w|z|")) != -1) {
-		unless ((c == 'r') || (c == 'M')) {
+	while ((c = getopt(ac, av, "A;B;dE:lpqr;w|z|")) != -1) {
+		unless ((c == 'r') || (c == 'A')) {
 			if (optarg) {
 				opts->av = addLine(opts->av,
 				    aprintf("-%c%s", c, optarg));
@@ -55,6 +55,9 @@ clone_main(int ac, char **av)
 			}
 		}
 		switch (c) {
+		    case 'A':
+			opts->aliases = addLine(opts->aliases, strdup(optarg));
+			break;
 		    case 'B': bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
@@ -65,9 +68,6 @@ clone_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'l': opts->link = 1; break;		/* doc 2.0 */
-		    case 'M':
-			opts->modules = addLine(opts->modules, strdup(optarg));
-			break;
 		    case 'p': opts->no_parent = 1; break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
@@ -141,7 +141,7 @@ clone_main(int ac, char **av)
 			free(opts->from);
 			freeLines(envVar, free);
 			freeLines(opts->av, free);
-			freeLines(opts->modules, free);
+			freeLines(opts->aliases, free);
 			if (l) remote_free(l);
 			remote_free(r);
 			if (opts->link) {
@@ -168,7 +168,7 @@ clone_main(int ac, char **av)
 	free(opts->from);
 	freeLines(envVar, free);
 	freeLines(opts->av, free);
-	freeLines(opts->modules, free);
+	freeLines(opts->aliases, free);
 	if (l) remote_free(l);
 	remote_free(r);
 	return (rc);
@@ -201,7 +201,7 @@ send_clone_msg(remote *r, char **envVar)
 	if (getenv("_BK_TRANSACTION")) {
 		fprintf(f, " -T");
 	} else {
-		EACH(opts->modules) fprintf(f, " -M%s", opts->modules[i]);
+		EACH(opts->aliases) fprintf(f, " -A%s", opts->aliases[i]);
 	}
 	if (opts->link) fprintf(f, " -l");
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");
@@ -226,7 +226,7 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	n = 0;
 	EACH_REPO(repos) {
 		unless (repos->present) {
-			if (opts->modules && !opts->quiet) {
+			if (opts->aliases && !opts->quiet) {
 				fprintf(stderr,
 				    "clone: %s not present in %s\n",
 				    repos->path, url);
@@ -368,14 +368,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 		unless (repos = ensemble_fromStream(0, r->rf)) goto done;
 		rc = clone_ensemble(repos, r, local);
 		chdir(local);
-		if (opts->modules || !exists("BitKeeper/log/MODULES")) {
-			unless (opts->modules) {
-				opts->modules = addLine(0, strdup("default"));
+		if (opts->aliases || !exists("BitKeeper/log/ALIASES")) {
+			unless (opts->aliases) {
+				opts->aliases = addLine(0, strdup("default"));
 			}
-			uniqLines(opts->modules, free);
-			if (lines2File(opts->modules,
-			    "BitKeeper/log/MODULES")) {
-				perror("BitKeeper/log/MODULES");
+			uniqLines(opts->aliases, free);
+			if (lines2File(opts->aliases,
+			    "BitKeeper/log/ALIASES")) {
+				perror("BitKeeper/log/ALIASES");
 			}
 		}
 		checkfiles = bktmp(0, "clonechk");

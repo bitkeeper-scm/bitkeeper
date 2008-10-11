@@ -62,7 +62,7 @@ ensemble_list(eopts opts)
 	/* logical xor: one or the other, not both */
 	assert (!opts.rev ^ !opts.revs);
 
-	unless (proj_isProduct(0)) {
+	unless (proj_product(0)) {
 		fprintf(stderr, "ensemble_list called in a non-product.\n");
 		return (0);
 	}
@@ -143,12 +143,12 @@ err:				if (close) sccs_free(opts.sc);
 	}
 
 	/*
-	 * Filter the list through the modules requested, if any.
+	 * Filter the list through the aliases requested, if any.
 	 */
-	if (opts.modules) {
+	if (opts.aliases) {
 		EACH(list) {
 			e = (repo*)list[i];
-			unless (hash_fetchStr(opts.modules, e->rootkey)) {
+			unless (hash_fetchStr(opts.aliases, e->rootkey)) {
 				free(e->path);
 				free(e->rootkey);
 				free(e->deltakey);
@@ -319,7 +319,7 @@ components_main(int ac, char **av)
 	char	*p;
 	repos	*r = 0;
 	eopts	opts;
-	char	**modules = 0;
+	char	**aliases = 0;
 	char	buf[MAXKEY];
 
 	if (proj_cd2product()) {
@@ -330,8 +330,11 @@ components_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.product_first = 1;
 
-	while ((c = getopt(ac, av, "hil;M;oPr;u")) != -1) {
+	while ((c = getopt(ac, av, "A;hil;oPr;u")) != -1) {
 		switch (c) {
+		    case 'A':
+			aliases = addLine(aliases, optarg);
+			break;
 		    case 'i':	/* undoc */
 		    	input = 1;
 			break;
@@ -345,9 +348,6 @@ components_main(int ac, char **av)
 				    case 'r': want |= L_ROOT; break;
 			    	}
 			}
-			break;
-		    case 'M':
-			modules = addLine(modules, optarg);
 			break;
 		    case 'o':	/* undoc */
 			output = 1;
@@ -378,8 +378,8 @@ components_main(int ac, char **av)
 			opts.revs = addLine(opts.revs, strdup(buf));
 		}
 	}
-	if (modules) {
-		unless (opts.modules = module_list(modules, 0)) {
+	if (aliases) {
+		unless (opts.aliases = alias_list(aliases, 0)) {
 			rc = 1;
 			goto out;
 		}
@@ -422,7 +422,7 @@ components_main(int ac, char **av)
 		printf("\n");
 	}
 out:	ensemble_free(r);
-	if (modules) freeLines(modules, 0);
+	if (aliases) freeLines(aliases, 0);
 	if (opts.revs) freeLines(opts.revs, free);
 	exit(rc);
 }
@@ -574,7 +574,7 @@ ensemble_each(int quiet, int ac, char **av)
 	int	c;
 	int	errors = 0;
 	int	status;
-	char	**modules = 0;
+	char	**aliases = 0;
 	eopts	opts;
 
 	unless (p) {
@@ -590,16 +590,16 @@ ensemble_each(int quiet, int ac, char **av)
 	// has to track bk.c's getopt string
 	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
 		if (c == 'C') opts.product = 0;
-		unless (c == 'M') continue;
+		unless (c == 'M') continue; /* XXX: CONFLICT */
 		if (optarg[0] == '|') {
 			opts.rev = &optarg[1];
 		} else if (streq("!.", optarg)) {	// XXX -M!. == -C
 			opts.product = 0;
 		} else {
-			modules = addLine(modules, optarg);
+			aliases = addLine(aliases, optarg);
 		}
 	}
-	if (modules) opts.modules = module_list(modules, 0);
+	if (aliases) opts.aliases = alias_list(aliases, 0);
 
 	unless (list = ensemble_list(opts)) {
 		fprintf(stderr, "No ensemble list?\n");

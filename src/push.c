@@ -26,7 +26,7 @@ private	struct {
 	FILE	*out;
 	char	**av_push;		/* for ensemble push */
 	char	**av_clone;		/* for ensemble clone */
-	char	**modules;		/* from the destination via protocol */
+	char	**aliases;		/* from the destination via protocol */
 } opts;
 
 private	int	push(char **av, remote *r, char **envVar);
@@ -175,8 +175,8 @@ err:		freeLines(envVar, free);
 		if (i > 1) {
 			/* clear between each use probekey/prunekey */
 			sccs_clearbits(s_cset, D_RED|D_BLUE|D_GONE|D_SET);
-			freeLines(opts.modules, free);
-			opts.modules = 0;
+			freeLines(opts.aliases, free);
+			opts.aliases = 0;
 		}
 		r = remote_parse(urls[i], REMOTE_BKDURL);
 		unless (r) goto err;
@@ -323,10 +323,10 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	}
-	if (streq(buf, "@MODULES@")) {
+	if (streq(buf, "@ALIASES@")) {
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (buf[0] == '@') break;
-			opts.modules = addLine(opts.modules, strdup(buf));
+			opts.aliases = addLine(opts.aliases, strdup(buf));
 		}
 	}
 	if (get_ok(r, buf, 1)) goto err;
@@ -1060,12 +1060,12 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	assert(ropts.revs || ropts.rev);
 
 	/*
-	 * Filter through their modules list, if any.
+	 * Filter through their aliases list, if any.
 	 */
-	if (opts.modules) {
+	if (opts.aliases) {
 		cset = ropts.sc = sccs_csetInit(SILENT);
-		unless (h = module_list(opts.modules, cset)) goto out;
-		ropts.modules = h;
+		unless (h = alias_list(opts.aliases, cset)) goto out;
+		ropts.aliases = h;
 	}
 
 	rps = ensemble_list(ropts);
@@ -1135,7 +1135,7 @@ OK:	EACH_REPO(rps) {
 		if (opts.verbose) printf("#### %s ####\n", name);
 		fflush(stdout);
 		unless (rps->present) {
-			// warning message goes here when modules are done
+			// warning message goes here when aliases are done
 		} else {
 			status = spawnvp(_P_WAIT, "bk", &vp[1]);
 			rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;

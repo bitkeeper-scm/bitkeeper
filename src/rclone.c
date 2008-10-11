@@ -10,7 +10,7 @@ private	struct {
 	u32	in, out;
 	u64	bpsz;
 	char	**av;			/* ensemble commands */
-	char	**modules;		/* ensemble modules list */
+	char	**aliases;		/* ensemble aliases list */
 } opts;
 
 private void usage(void);
@@ -34,8 +34,8 @@ rclone_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
-	while ((c = getopt(ac, av, "B;dE:M;qr;w|z|")) != -1) {
-		unless ((c == 'r') || (c == 'M')) {
+	while ((c = getopt(ac, av, "A;B;dE:qr;w|z|")) != -1) {
+		unless ((c == 'r') || (c == 'A')) {
 			if (optarg) {
 				opts.av = addLine(opts.av,
 				    aprintf("-%c%s", c, optarg));
@@ -44,6 +44,9 @@ rclone_main(int ac, char **av)
 			}
 		}
 		switch (c) {
+		    case 'A':
+			opts.aliases = addLine(opts.aliases, strdup(optarg));
+			break;
 		    case 'B': opts.bam_url = optarg; break;
 		    case 'd': opts.debug = 1; break;
 		    case 'E':
@@ -53,9 +56,6 @@ rclone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
-		    case 'M':
-			opts.modules = addLine(opts.modules, strdup(optarg));
-			break;
 		    case 'q': opts.verbose = 0; break;
 		    case 'r': opts.rev = optarg; break;
 		    case 'w': /* ignored */ break;
@@ -89,7 +89,7 @@ rclone_main(int ac, char **av)
 	}
 	if (!getenv("_BK_TRANSACTION") && proj_isComponent(0)) {
 		fprintf(stderr,
-		    "clone: clone of a component is not allowed, use -M\n");
+		    "clone: clone of a component is not allowed, use -A\n");
 		exit(1);
 	}
 	if (hasLocalWork(GONE)) {
@@ -121,7 +121,7 @@ rclone_main(int ac, char **av)
 	}
 	freeLines(envVar, free);
 	freeLines(opts.av, free);
-	freeLines(opts.modules, free);
+	freeLines(opts.aliases, free);
 	remote_free(r);
 	return (rc);
 }
@@ -148,12 +148,12 @@ rclone_ensemble(remote *r)
 	 * specified a list already.
 	 */
 	cset = sccs_csetInit(SILENT);
-	unless (opts.modules) {
-		opts.modules = file2Lines(0, "BitKeeper/log/MODULES");
+	unless (opts.aliases) {
+		opts.aliases = file2Lines(0, "BitKeeper/log/ALIASES");
 	}
-	if (opts.modules) {
-		unless (h = module_list(opts.modules, cset)) goto out;
-		ropts.modules = h;
+	if (opts.aliases) {
+		unless (h = alias_list(opts.aliases, cset)) goto out;
+		ropts.aliases = h;
 	}
 	rps = ensemble_list(ropts);
 	putenv("_BK_TRANSACTION=1");
@@ -164,9 +164,9 @@ rclone_ensemble(remote *r)
 		EACH(opts.av) vp = addLine(vp, strdup(opts.av[i]));
 		vp = addLine(vp, aprintf("-r%s", rps->deltakey));
 		if (streq(rps->path, ".")) {
-			EACH(opts.modules) {
+			EACH(opts.aliases) {
 				vp = addLine(vp,
-				    aprintf("-M%s", opts.modules[i]));
+				    aprintf("-A%s", opts.aliases[i]));
 		    	}
 			name = "Product";
 			vp = addLine(vp, strdup("."));
@@ -180,7 +180,7 @@ rclone_ensemble(remote *r)
 		if (opts.verbose) printf("#### %s ####\n", name);
 		fflush(stdout);
 		unless (rps->present) {
-			if (opts.modules && opts.verbose) {
+			if (opts.aliases && opts.verbose) {
 				fprintf(stderr,
 				    "clone: %s was not found, skipping.\n",
 				    rps->path);
@@ -459,7 +459,7 @@ send_sfio_msg(remote *r, char **envVar)
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
-	EACH(opts.modules) fprintf(f, " '-M%s'", opts.modules[i]);
+	EACH(opts.aliases) fprintf(f, " '-A%s'", opts.aliases[i]);
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
 	fclose(f);

@@ -8,7 +8,7 @@ typedef	struct {
 	int	gzip;
 	char    *rev;
 	char	*bam_url;
-	char	**modules;
+	char	**aliases;
 } opts;
 
 private int	getsfio(void);
@@ -21,13 +21,13 @@ rclone_common(int ac, char **av, opts *opts)
 	char	*p;
 
 	bzero(opts, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dM;Pr;Tvz|")) != -1) {
+	while ((c = getopt(ac, av, "A;B;dPr;Tvz|")) != -1) {
 		switch (c) {
+		    case 'A':
+			opts->aliases = addLine(opts->aliases, strdup(optarg));
+			break;
 		    case 'B': opts->bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;
-		    case 'M':
-			opts->modules = addLine(opts->modules, strdup(optarg));
-			break;
 		    case 'P': opts->product = 1; break;
 		    case 'r': opts->rev = optarg; break; 
 		    case 'T': /* ignored for now */ break;
@@ -240,13 +240,13 @@ cmd_rclone_part2(int ac, char **av)
 		}
 
 		/*
-		 * Save the MODULES file.
+		 * Save the ALIASES file.
 		 * chmod because sfio w/o perms doesn't leave it RW.
 		 */
-		if (opts.modules) {
-			chmod("BitKeeper/log/MODULES", 0666);
-		    	if (lines2File(opts.modules, "BitKeeper/log/MODULES")) {
-				perror("BitKeeper/log/MODULES");
+		if (opts.aliases) {
+			chmod("BitKeeper/log/ALIASES", 0666);
+		    	if (lines2File(opts.aliases, "BitKeeper/log/ALIASES")) {
+				perror("BitKeeper/log/ALIASES");
 			}
 		}
 	}

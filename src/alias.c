@@ -4,82 +4,82 @@
 #include "ensemble.h"
 #include "range.h"
 
-typedef struct modules {
+typedef struct aliases {
 	sccs	*cset;		/* pointer to product's ChangeSet file' */
 	int	free_cset;	/* whether we need to free the sccs * above */
 	repos	*comps;		/* component list as of "+" */
-	hash	*moduleDB;	/* modules db from the product */
+	hash	*aliasDB;	/* aliases db from the product */
 	hash	*seen;		/* auxiliary hash for recursive resolution */
-} modules;
+} aliases;
 
-private hash	*moduledb_init(void);
-private int	moduledb_add(char *module, char **components, int commit);
-private int	moduledb_rm(char *module, char **components, int commit);
-private	char	**moduledb_show(char *module);
-private int	module_validName(char *name);
-private int	module_expand(char *name, modules *modules, hash *keys);
-private int	value_expand(char *name, modules *mdb, hash *keys);
-private void	modules_free(modules *mdb);
-private int	dir_expand(char *dir, modules *modules, hash *keys);
-private char	*dir2key(char *dir, modules *mdb);
+private hash	*aliasdb_init(void);
+private int	aliasdb_add(char *alias, char **components, int commit);
+private int	aliasdb_rm(char *alias, char **components, int commit);
+private	char	**aliasdb_show(char *alias);
+private int	alias_validName(char *name);
+private int	alias_expand(char *name, aliases *aliases, hash *keys);
+private int	value_expand(char *name, aliases *mdb, hash *keys);
+private void	aliases_free(aliases *mdb);
+private int	dir_expand(char *dir, aliases *aliases, hash *keys);
+private char	*dir2key(char *dir, aliases *mdb);
 private void	error(const char *fmt, ...);
-private int	finish(char *comment, hash *moduleDB, int commit);
-private int	verifyKey(char *key, modules *mdb);
+private int	finish(char *comment, hash *aliasDB, int commit);
+private int	verifyKey(char *key, aliases *mdb);
 extern char	*prog;
 
 /*
- * bk module add -M<module> <comp> ...	// create/add to a module
- * bk module rm -M<module> [<comp> ...]	// remove a comp|module
- * bk module list			// list all modules
+ * bk alias add -A<alias> <comp> ...	// create/add to a alias
+ * bk alias rm -A<alias> [<comp> ...]	// remove a comp|alias
+ * bk alias list			// list all aliases
  */
 int
-module_main(int ac, char **av)
+alias_main(int ac, char **av)
 {
-	char	*command, *p, *module = 0;
+	char	*command, *p, *alias = 0;
 	char	**comps = 0;
 	int	c, commit = 1, i;
 
 	unless (av[1]) {
-err:		system("bk help -s module");
+err:		system("bk help -s alias");
 		return (1);
 	}
-	if (proj_cd2product()) {
-		fprintf(stderr, "module: called in a non-product.\n");
+	unless (proj_product(0)) {
+		fprintf(stderr, "alias: called in a non-product.\n");
 		return (1);
 	}
 	command = av[1];
 	av++, ac--;
-	while ((c = getopt(ac, av, "CM;")) != -1) {
+	while ((c = getopt(ac, av, "A;C")) != -1) {
 		switch (c) {
+		    case 'A': alias = optarg; break;
 		    case 'C': commit = 0; break;
-		    case 'M': module = optarg; break;
 		}
 	}
 	/* handle list immediately since it's easy */
 	if (streq(command, "list")) {
-		hash	*moduleDB;
+		hash	*aliasDB;
 
-		unless (moduleDB = moduledb_init()) {
-			fprintf(stderr, "modules: no modules\n");
+		unless (aliasDB = aliasdb_init()) {
+			fprintf(stderr, "aliases: no aliases\n");
 			return (1);
 		}
-		EACH_HASH(moduleDB) comps = addLine(comps, moduleDB->kptr);
+		EACH_HASH(aliasDB) comps = addLine(comps, aliasDB->kptr);
 		sortLines(comps, 0);
 		EACH(comps) printf("%s\n", comps[i]);
 		freeLines(comps, 0);
-		hash_free(moduleDB);
+		hash_free(aliasDB);
 		return (0);
 	}
-	unless (module) {
-		fprintf(stderr, "module: no module specified.\n");
+	unless (alias) {
+		fprintf(stderr, "alias: no alias specified.\n");
 		goto err;
 	}
 	if (streq(command, "show")) {
 		char	**components = 0;
 
-		unless (components = moduledb_show(module)) {
+		unless (components = aliasdb_show(alias)) {
 			fprintf(stderr,
-			    "module: module '%s' does not exist.\n", module);
+			    "alias: alias '%s' does not exist.\n", alias);
 			return (1);
 		}
 		EACH(components) printf("%s\n", components[i]);
@@ -101,9 +101,9 @@ err:		system("bk help -s module");
 		goto err;
 	}
 	if (streq(command, "add") || streq(command, "create")) {
-		if (moduledb_add(module, comps, commit)) return (1);
+		if (aliasdb_add(alias, comps, commit)) return (1);
 	} else if (streq(command, "rm")) {
-		if (moduledb_rm(module, comps, commit)) return (1);
+		if (aliasdb_rm(alias, comps, commit)) return (1);
 	} else {
 		goto err;
 	}
@@ -111,30 +111,30 @@ err:		system("bk help -s module");
 }
 
 /*
- * Given one or more module names, and optionally a changeset sccs*,
+ * Given one or more alias names, and optionally a changeset sccs*,
  * return a hash of implied root keys.
  * All names are recursively expanded if the values have names in them.
  * XXX - always imply the product?
  * XXX - does not take a rev and that's probably wrong
  */
 hash *
-module_list(char **names, sccs *cset)
+alias_list(char **names, sccs *cset)
 {
 	int	i, failed = 0;
-	modules	*mdb;		/* BitKeeper/etc/modules */
+	aliases	*mdb;		/* BitKeeper/etc/aliases */
 	hash	*keys = 0;	/* resulting key expansion */
 	char	buf[MAXKEY];
 
 	unless (proj_isProduct(0)) {
-		error("%s: module expansion called in a non-product.\n", prog);
+		error("%s: alias expansion called in a non-product.\n", prog);
 		return (0);
 	}
 	unless (names && names[1]) {
-		error("%s: module expansion with no names?\n", prog);
+		error("%s: alias expansion with no names?\n", prog);
 		return (0);
 	}
-	mdb = new(modules);
-	unless (mdb->moduleDB = moduledb_init()) {
+	mdb = new(aliases);
+	unless (mdb->aliasDB = aliasdb_init()) {
 		error("%s: can't get %s\n", prog, buf);
 		return (0);
 	}
@@ -143,12 +143,12 @@ module_list(char **names, sccs *cset)
 	mdb->cset = cset;
 	mdb->seen = hash_new(HASH_MEMHASH);
 	EACH(names) {
-		if (module_expand(names[i], mdb, keys)) {
+		if (alias_expand(names[i], mdb, keys)) {
 			failed = 1;
 			break;
 		}
 	}
-	modules_free(mdb);
+	aliases_free(mdb);
 	if (failed) {
 		hash_free(keys);
 		keys = 0;
@@ -170,53 +170,56 @@ isComponent(char *path)
 }
 
 private hash *
-moduledb_init(void)
+aliasdb_init(void)
 {
 	char	buf[MAXPATH];
 
-	concat_path(buf, proj_root(proj_product(0)), MODULES);
+	concat_path(buf, proj_root(proj_product(0)), ALIASES);
 	if (!exists(buf) && get(buf, SILENT, "-")) {
-		error("%s: no module file found\n", prog);
+		error("%s: no alias file found\n", prog);
 		return (0);
 	}
 	return (hash_fromFile(0, buf));
 }
 
 private char **
-moduledb_show(char *module)
+aliasdb_show(char *alias)
 {
-	modules	*mdb;
+	aliases	*mdb;
 	char	**result = 0;
 	char	*val;
 
-	mdb = new(modules);
-	unless (mdb->moduleDB = moduledb_init()) goto out;
-	unless (val = hash_fetchStr(mdb->moduleDB, module)) goto out;
-	result = splitLine(mdb->moduleDB->vptr, "\r\n", 0);
-out:	modules_free(mdb);
+	mdb = new(aliases);
+	unless (mdb->aliasDB = aliasdb_init()) goto out;
+	unless (val = hash_fetchStr(mdb->aliasDB, alias)) goto out;
+	result = splitLine(mdb->aliasDB->vptr, "\r\n", 0);
+out:	aliases_free(mdb);
 	return (result);
 }
 
 /*
- * Add components to module 'module' in the modules db,
- * creating module if it doesn't already exist
+ * Add components to alias 'alias' in the aliases db,
+ * creating alias if it doesn't already exist
  */
 private int
-moduledb_add(char *module, char **components, int commit)
+aliasdb_add(char *alias, char **components, int commit)
 {
 	int	i;
 	int	rc = 1, errors = 0;
 	char	*comment = 0, *p = 0;
 	char	**list = 0, **val = 0;
 	char	*key;
-	modules	*mdb;
+	aliases	*mdb;
 
-	unless (module_validName(module)) {
-		fprintf(stderr, "%s: invalid module name %s.\n", prog, module);
+	unless (alias_validName(alias)) {
+		fprintf(stderr, "%s: invalid alias name %s.\n", prog, alias);
 		return (1);
 	}
-	mdb = new(modules);
-	unless (mdb->moduleDB = moduledb_init()) goto err;
+	mdb = new(aliases);
+	unless (mdb->aliasDB = aliasdb_init()) {
+		fprintf(stderr, "%s: failed to open alias db.\n", prog);
+		goto err;
+	}
 	EACH (components) {
 		if (isKey(components[i])) {
 			unless (verifyKey(components[i], mdb)) {
@@ -226,8 +229,8 @@ moduledb_add(char *module, char **components, int commit)
 				continue;
 			}
 			list = addLine(list, strdup(components[i]));
-		} else if (hash_fetchStr(mdb->moduleDB, components[i])) {
-			/* module name, just store it */
+		} else if (hash_fetchStr(mdb->aliasDB, components[i])) {
+			/* alias name, just store it */
 			list = addLine(list, strdup(components[i]));
 		} else if (key = dir2key(components[i], mdb)) {
 			list = addLine(list, key);
@@ -237,13 +240,13 @@ moduledb_add(char *module, char **components, int commit)
 			list = addLine(list, strdup(components[i]));
 		} else {
 			fprintf(stderr, "%s: %s must be either a glob, key, "
-			    "module, or component.\n", prog, components[i]);
+			    "alias, or component.\n", prog, components[i]);
 			errors++;
 			continue;
 		}
 	}
 	if (errors) {
-		fprintf(stderr, "%s: %d error%s processing modules\n",
+		fprintf(stderr, "%s: %d error%s processing aliases\n",
 		    prog, errors, (errors > 1)?"s":"");
 		goto err;
 	}
@@ -251,48 +254,48 @@ moduledb_add(char *module, char **components, int commit)
 		fprintf(stderr, "%s: nothing to add\n", prog);
 		goto err;
 	}
-	unless (hash_fetchStr(mdb->moduleDB, module)) {
-		comment = aprintf("Create module %s", module);
+	unless (hash_fetchStr(mdb->aliasDB, alias)) {
+		comment = aprintf("Create alias %s", alias);
 	} else {
-		comment = aprintf("Modify module %s", module);
-		val = splitLine(mdb->moduleDB->vptr, "\r\n", 0);
+		comment = aprintf("Modify alias %s", alias);
+		val = splitLine(mdb->aliasDB->vptr, "\r\n", 0);
 	}
 	EACH (list) val = addLine(val, strdup(list[i]));
 	uniqLines(val, free);
 	p = joinLines("\n", val);
-	hash_storeStr(mdb->moduleDB, module, p);
-	rc = finish(comment, mdb->moduleDB, commit);
-err:	modules_free(mdb);
+	hash_storeStr(mdb->aliasDB, alias, p);
+	rc = finish(comment, mdb->aliasDB, commit);
+err:	aliases_free(mdb);
 	if (comment) free(comment);
 	if (list) freeLines(list, free);
 	return (rc);
 }
 
 /*
- * Remove components from module. If components == 0
- * then the module itself is removed.
+ * Remove components from alias. If components == 0
+ * then the alias itself is removed.
  */
 private int
-moduledb_rm(char *module, char **components, int commit)
+aliasdb_rm(char *alias, char **components, int commit)
 {
 	int	i, j, found, rc = 1;
 	char	*p, *comment = 0;
-	modules	*mdb;
+	aliases	*mdb;
 	char	**list = 0;
 
-	mdb = new(modules);
-	unless (mdb->moduleDB = moduledb_init()) goto err;
-	unless (hash_fetchStr(mdb->moduleDB, module)) {
-		fprintf(stderr, "%s: no such module %s\n", prog, module);
+	mdb = new(aliases);
+	unless (mdb->aliasDB = aliasdb_init()) goto err;
+	unless (hash_fetchStr(mdb->aliasDB, alias)) {
+		fprintf(stderr, "%s: no such alias %s\n", prog, alias);
 		goto err;
 	}
 	unless (components) {
-		/* delete the module itself */
-		hash_deleteStr(mdb->moduleDB, module);
-		comment = aprintf("Remove %s", module);
+		/* delete the alias itself */
+		hash_deleteStr(mdb->aliasDB, alias);
+		comment = aprintf("Remove %s", alias);
 		goto out;
 	}
-	list = splitLine(mdb->moduleDB->vptr, "\r\n", 0);
+	list = splitLine(mdb->aliasDB->vptr, "\r\n", 0);
 	EACH (components) {
 		found = 0;
 		EACH_INDEX(list, j) {
@@ -304,39 +307,39 @@ moduledb_rm(char *module, char **components, int commit)
 		}
 		unless (found) {
 			fprintf(stderr, "%s: %s is not part of %s, "
-			    "nothing modified.\n", prog, components[i], module);
+			    "nothing modified.\n", prog, components[i], alias);
 			goto err;
 
 		}
 	}
 	switch (nLines(list)) {
 	    case 0:
-		comment = aprintf("Delete module %s", module);
-		hash_deleteStr(mdb->moduleDB, module);
+		comment = aprintf("Delete alias %s", alias);
+		hash_deleteStr(mdb->aliasDB, alias);
 		break;
 	    case 1:
-		comment = aprintf("Modify module %s", module);
-		hash_storeStr(mdb->moduleDB, module, list[1]);
+		comment = aprintf("Modify alias %s", alias);
+		hash_storeStr(mdb->aliasDB, alias, list[1]);
 		break;
 	    default:
-		comment = aprintf("Modify module %s", module);
+		comment = aprintf("Modify alias %s", alias);
 		p = joinLines("\n", list);
-		hash_storeStr(mdb->moduleDB, module, p);
+		hash_storeStr(mdb->aliasDB, alias, p);
 		free(p);
 		break;
 	}
-out:	rc = finish(comment, mdb->moduleDB, commit);
+out:	rc = finish(comment, mdb->aliasDB, commit);
 err:	if (comment) free(comment);
 	if (list) freeLines(list, free);
-	modules_free(mdb);
+	aliases_free(mdb);
 	return (rc);
 }
 
 /*
- * Check that a module name is valid
+ * Check that a alias name is valid
  */
 private int
-module_validName(char *name)
+alias_validName(char *name)
 {
 	char	*p;
 	int	valid = 1;
@@ -352,11 +355,11 @@ module_validName(char *name)
 }
 
 /*
- * Expand a value of the module db into its keys, note that this doesn't handle
- * module names. See module_expand for that.
+ * Expand a value of the alias db into its keys, note that this doesn't handle
+ * alias names. See alias_expand for that.
  */
 private int
-value_expand(char *name, modules *mdb, hash *keys)
+value_expand(char *name, aliases *mdb, hash *keys)
 {
 	if (isKey(name)) {
 		hash_storeStr(keys, name, "");
@@ -369,18 +372,18 @@ value_expand(char *name, modules *mdb, hash *keys)
 		/* just add the product */
 		hash_storeStr(keys, proj_rootkey(proj_product(0)), "");
 	} else {
-		error("%s: could not find module '%s'\n", prog, name);
+		error("%s: could not find alias '%s'\n", prog, name);
 		return (1);
 	}
 	return (0);
 }
 
 /*
- * Expand a single module into its keys and put them
+ * Expand a single alias into its keys and put them
  * in the keys hash.
  */
 private int
-module_expand(char *name, modules *mdb, hash *keys)
+alias_expand(char *name, aliases *mdb, hash *keys)
 {
 	char	*mval;
 	char	**expansion = 0;
@@ -389,21 +392,21 @@ module_expand(char *name, modules *mdb, hash *keys)
 	if (streq("all", name)) {
 		return (value_expand("./*", mdb, keys));
 	}
-	unless (mval = hash_fetchStr(mdb->moduleDB, name)) {
-		/* not a module name */
+	unless (mval = hash_fetchStr(mdb->aliasDB, name)) {
 		if (streq("default", name)) {
-			return (module_expand("all", mdb, keys));
+			return (alias_expand("all", mdb, keys));
 		}
 		return (value_expand(name, mdb, keys));
+		/* not a alias name */
 	}
 	unless (hash_insertStr(mdb->seen, name, "")) {
-		error("%s: recursive module definition '%s'.\n",
+		error("%s: recursive alias definition '%s'.\n",
 		    prog, name);
 		return (1);
 	}
 	unless (expansion = splitLine(mval, "\r\n", 0)) goto out;
 	EACH(expansion) {
-		if (module_expand(expansion[i], mdb, keys)) goto out;
+		if (alias_expand(expansion[i], mdb, keys)) goto out;
 	}
 	rc = 0;
 out:	hash_deleteStr(mdb->seen, name);
@@ -412,12 +415,12 @@ out:	hash_deleteStr(mdb->seen, name);
 }
 
 private void
-modules_free(modules *mdb)
+aliases_free(aliases *mdb)
 {
 	assert(mdb);
 	if (mdb->free_cset && mdb->cset) sccs_free(mdb->cset);
 	if (mdb->comps) ensemble_free(mdb->comps);
-	if (mdb->moduleDB) hash_free(mdb->moduleDB);
+	if (mdb->aliasDB) hash_free(mdb->aliasDB);
 	if (mdb->seen) hash_free(mdb->seen);
 	free(mdb);
 }
@@ -425,7 +428,7 @@ modules_free(modules *mdb)
  * Get a list of keys that match a dir glob.
  */
 private int
-dir_expand(char *dir, modules *mdb, hash *keys)
+dir_expand(char *dir, aliases *mdb, hash *keys)
 {
 	int	rc = 0;
 	unless (mdb->comps) {
@@ -450,7 +453,7 @@ dir_expand(char *dir, modules *mdb, hash *keys)
  * that it is indeed a component of this product
  */
 private char *
-dir2key(char *dir, modules *mdb)
+dir2key(char *dir, aliases *mdb)
 {
 	eopts	opts;
 	char	*p;
@@ -462,8 +465,10 @@ dir2key(char *dir, modules *mdb)
 		opts.sc = mdb->cset;
 		mdb->comps = ensemble_list(opts);
 	}
-	if (strneq(dir, "./", 2)) dir += 2;
-	unless (p = ensemble_dir2key(mdb->comps, dir)) return (0);
+	dir = proj_relpath(proj_product(0), dir);
+	p = ensemble_dir2key(mdb->comps, dir);
+	free(dir);
+	unless (p) return (0);
 	return (strdup(p));
 }
 
@@ -488,27 +493,29 @@ error(const char *fmt, ...)
 }
 
 private int
-finish(char *comment, hash *moduleDB, int commit)
+finish(char *comment, hash *aliasDB, int commit)
 {
 	int	ret = 0;
+	char	*tmpfile;
 	char	buf[MAXPATH];
 
-	system("bk edit -q " MODULES);
-	hash_toFile(moduleDB, MODULES);
-	sprintf(buf, "bk delta -qy'%s' %s", comment, MODULES);
+	system("bk -P edit -q " ALIASES);
+	concat_path(buf, proj_root(proj_product(0)), ALIASES);
+	hash_toFile(aliasDB, buf);
+	sprintf(buf, "bk -P delta -qy'%s' %s", comment, ALIASES);
 	if (ret = system(buf)) return (ret);
 	if (commit) {
+		tmpfile = bktmp(0, "cmt");
 		sprintf(buf,
-		    "bk sfiles -pAC %s |"
-		    "bk sccslog -A -f -nd:C: - >BitKeeper/tmp/cmt%u",
-		    MODULES, getpid());
+		    "bk -P sfiles -pAC %s |"
+		    "bk -P sccslog -A -f -nd:C: - >'%s'", ALIASES, tmpfile);
 		if (ret = system(buf)) return (ret);
 		sprintf(buf,
-		    "bk sfiles -pC %s |"
-		    "bk commit -qfYBitKeeper/tmp/cmt%u -", MODULES, getpid());
+		    "bk -P sfiles -pC %s |"
+		    "bk -P commit -qfY'%s' -", ALIASES, tmpfile);
 		ret = system(buf);
-		sprintf(buf, "BitKeeper/tmp/cmt%u", getpid());
-		unlink(buf);
+		unlink(tmpfile);
+		free(tmpfile);
 	}
 	return (ret);
 }
@@ -518,7 +525,7 @@ finish(char *comment, hash *moduleDB, int commit)
  * of this product
  */
 private int
-verifyKey(char *key, modules *mdb)
+verifyKey(char *key, aliases *mdb)
 {
 	eopts	opts;
 
