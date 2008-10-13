@@ -95,9 +95,9 @@ err:		system("bk help -s alias");
 		}
 		comps = addLine(comps, strdup(av[optind++]));
 	}
-	if (streq(module, "all")) {
+	if (streq(alias, "all")) {
 		fprintf(stderr,
-		    "module: reserved name \"all\" may not be changed.\n");
+		    "alias: reserved name \"all\" may not be changed.\n");
 		goto err;
 	}
 	if (streq(command, "add") || streq(command, "create")) {

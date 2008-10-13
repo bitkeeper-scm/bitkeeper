@@ -23,27 +23,29 @@ $ bk populate -Adebugger
 .DE
 After running the above, the cached aliases list will be
 "dev-tools" and "debugger".
-If you need to populate a module that is not present in your parent[s],
+If you need to populate a component that is not present in your parent[s],
 add one or more trailing urls (populate will use each url in turn until
-all requested modules are found):
+all requested components are found):
 .DS
 $ bk populate -Mblimey bk://uk-server/big-product
 .DE
 .LP
-The set of modules populate will consider are specified on the command line with
-.BR \-M ,
-or retrieved from the cached modules list with
+The set of components populate will consider are
+specified on the command line with
+.BR \-A ,
+or retrieved from the cached aliases list with
 .BR \-r ,
-or implied by the "default" modules database entry if neither of
+or implied by the "default" aliases database entry if neither of
 the former apply.
 .SH OPTIONS
-.TP \-M\*<module\*>
+.TP \-A\*<alias\*>
 .B \-l
 Populate using hard links instead of copying the data.  
 This is faster and saves disk space, but only works 
 within filesystems supporting hard links.
 .tp
-Add this alias to the list of components that should be
+.OPTreq \-A alias
+Add this alias to the list of aliases that should be
 in this product instance.
 This option may be repeated to add more than one alias.
 .tp
@@ -52,7 +54,7 @@ Run quietly.
 .tp
 .B \-r
 Repair the product by replacing any components which listed in
-the cached modules list that have been manually removed.
+the cached aliases list that have been manually removed.
 .SH "SEE ALSO"
 .SA bkd
 .SA clone

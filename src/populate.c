@@ -72,11 +72,14 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 	}
 
 	if (repair) {
-		aliases = file2Lines(aliases, "BitKeeper/log/ALIASES");
+		if (aliases) {
+			fprintf(stderr, "populate: -r or -A but not both.\n");
+			exit(1);
+		}
+		aliases = file2Lines(0, "BitKeeper/log/ALIASES");
 	} else unless (aliases) {
 		aliases = addLine(0, strdup("default"));
 	}
-
 	s = sccs_csetInit(SILENT);
 	if (aliases) {
 		unless (opts.aliases = alias_list(aliases, s)) return (1);

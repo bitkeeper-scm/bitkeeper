@@ -1,8 +1,8 @@
 
 echo $N Create an ensemble...........................................$NL
 nested project
-test -f BitKeeper/log/MODULES || {
-	echo no default MODULES
+test -f BitKeeper/log/ALIASES || {
+	echo no default ALIASES
 	exit 1
 }
 touch prod_file

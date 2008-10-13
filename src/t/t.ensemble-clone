@@ -502,7 +502,7 @@ echo "failed (bug )"
 # gdb
 echo $N Test populate with no args ..................................$NL
 cd "$HERE"
-bk clone $Q -M. project product
+bk clone $Q -A. project product
 cd product
 bk components -h > LIST
 test -s LIST && {

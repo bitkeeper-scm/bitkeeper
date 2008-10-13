@@ -39,13 +39,13 @@ echo $N Clone and see that we have a default alias list ,............$NL
 cd "$HERE"
 bk clone $Q project clone
 cd clone
-test -f BitKeeper/log/MODULES || {
-	echo failed to create MODULES
+test -f BitKeeper/log/ALIASES || {
+	echo failed to create ALIASES
 	exit 1
 }
-grep -q default BitKeeper/log/MODULES || {
+grep -q default BitKeeper/log/ALIASES || {
 	echo bad data
-	cat BitKeeper/log/MODULES
+	cat BitKeeper/log/ALIASES
 	exit 1
 }
 echo OK
@@ -246,7 +246,7 @@ if false; then
 
 echo $N Set up by populating all ....................................$NL
 cd project-nm
-echo default > BitKeeper/log/MODULES
+echo default > BitKeeper/log/ALIASES
 bk populate $Q 
 cat > WANT <<EOF
 gcc
@@ -283,15 +283,15 @@ echo @default
 cd gdb
 bk id
 ) > BitKeeper/etc/aliases
-echo default > BitKeeper/log/MODULES
+echo default > BitKeeper/log/ALIASES
 bk delta $Q -ygcc BitKeeper/etc/aliases
 bk commit $Q -ygcc
 cd ..
 bk clone $Q project-nm project-just-gdb
 cd project-just-gdb
-grep -q default BitKeeper/log/MODULES || {
+grep -q default BitKeeper/log/ALIASES || {
 	echo bad log
-	cat BitKeeper/log/MODULES
+	cat BitKeeper/log/ALIASES
 	exit 1
 }
 bk components -h > GOT
@@ -451,7 +451,6 @@ bk alias list | grep -v all | while read x
 do
 	bk alias rm -A$x
 done
-test x`bk alias list` = x || {
 test x`bk alias list` = x || {
 	echo alias list not empty
 	bk alias list
