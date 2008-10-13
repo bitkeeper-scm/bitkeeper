@@ -98,43 +98,23 @@ all: version.sh ../../tclkey.h
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" -a -z "$$FORCE_REBUILD" ]; \
 	then	gunzip < "$$TCLVER" | tar -xf -; true; \
 	else	unset CC LD CCXTRA CFLAGS MAKEFLAGS; \
-		$(MAKE) Q=$(Q) bin/tclsh$(EXE) bin/bkgui$(EXE) \
-		    $(EXTENSIONS) \
-		    || exit 1 ; \
-		if [ "X$(AQUA)" != X ]; \
-		then    $(MAKE) Q=$(Q) $(BKAPP)/Contents/MacOS/BitKeeper \
-			$(AQUAEXTENSIONS) \
-			|| exit 1 ; \
-		fi \
+		$(MAKE) Q=$(Q) bin/tclsh$(EXE) || exit 1; \
+		$(MAKE) Q=$(Q) bin/bkgui$(EXE) $(EXTENSIONS) || exit 1; \
+		test "X$(AQUA)" = X && exit 0; \
+		$(MAKE) Q=$(Q) $(BKAPP)/Contents/MacOS/BitKeeper || exit 1; \
+		$(MAKE) Q=$(Q) $(AQUAEXTENSIONS) || exit 1; \
 	fi
 	$(Q)$(MAKE) verify
 	$(Q)$(MAKE) rm_doc
 	$(Q)$(MAKE) install
 
-srcs: 
-	$(if $(Q),@echo Fetching the TCL module source: start,)
-	-$(Q)bk get $(QUIET) -S
-	$(Q)test -d tcl || { \
-	    $(if $(Q),echo Fetching tcl,:); \
-	    bk clone $(QUIET) -r`tail -1 TCLKEY` `cat TCLURL` tcl; }
-	$(Q)test -d tk || bk clone $(QUIET) -r`tail -1 TKKEY` `cat TKURL` tk
-	$(Q)test -d tktable || { \
-	    $(if $(Q),echo Fetching tktable,:); \
-	    bk clone $(QUIET) -r`tail -1 TKTABLEKEY` \
-	    bk://data.bitmover.com/tcl/tktable.bk tktable; }
-	$(Q)test -d tktreectrl || { \
-	    $(if $(Q),echo Fetching tktreectrl,:); \
-	    bk clone $(QUIET) -r`tail -1 TKTREECTRLKEY` \
-	    bk://data.bitmover.com/tcl/tktreectrl.bk tktreectrl; }
-	$(Q)test -d bwidget || { \
-	    $(if $(Q),echo Fetching bwidget,:); \
-	    : bk clone $(QUIET) -r`tail -1 BWIDGETKEY` \
-	    bk://data.bitmover.com/tcl/bwidget.bk bwidget; }
-	$(Q)test -d tkcon || { \
-	    $(if $(Q),echo Fetching tkcon,:); \
-	    bk clone $(QUIET) -r`tail -1 TKCONKEY` \
-	    bk://data.bitmover.com/tcl/tkcon.bk tkcon; }
-	$(if $(Q),@echo Fetching the TCL module source: done,)
+srcs: pcre/configure \
+	tcl/$S/configure \
+	tk/$S/configure \
+	tktable/configure \
+	tktreectrl/configure \
+	lib/$(BWIDGET)/pkgIndex.tcl \
+	lib/Tkcon/pkgIndex.tcl
 
 src-check: src-check.sh
 	@make -s srcs
@@ -147,7 +127,7 @@ tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 	    --disable-info-body --enable-pcre --with-pcre=../../pcre/local \
 	    $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
 
-tk/$S/Makefile: tk/$S/configure Makefile
+tk/$S/Makefile: bin/tclsh$(EXE) tk/$S/configure Makefile
 	$(if $(Q),@echo Configuring Tk,)
 	$(Q)cd tk/$S; \
 	./configure $(QUIET) \
@@ -156,13 +136,13 @@ tk/$S/Makefile: tk/$S/configure Makefile
 # fetch tcl subdirectory if needed
 tcl/$S/configure: TCLKEY TCLURL
 	$(if $(Q), @echo Cloning Tcl,)
-	$(Q)test -d tcl || bk clone -r`tail -1 TCLKEY` `cat TCLURL` tcl
+	$(Q)test -d tcl || bk clone $(QUIET) -r`tail -1 TCLKEY` `cat TCLURL` tcl
 	$(Q)(cd tcl && bk -Ur get -qS)
 
 # fetch tk subdirectory if needed
 tk/$S/configure: TKKEY TKURL
 	$(if $(Q), @echo Cloning Tk,)
-	$(Q)test -d tk || bk clone -r`tail -1 TKKEY` `cat TKURL` tk
+	$(Q)test -d tk || bk clone $(QUIET) -r`tail -1 TKKEY` `cat TKURL` tk
 	$(Q)(cd tk && bk -Ur get -qS)
 
 pcre: $(LIBPCRE)
@@ -180,14 +160,15 @@ pcre/Makefile: pcre/configure Makefile
 
 pcre/configure: PCREKEY PCREURL Makefile
 	$(if $(Q), @echo Cloning PCRE,)
-	$(Q)test -d pcre || bk clone -r`tail -1 PCREKEY` `cat PCREURL` pcre
+	$(Q)test -d pcre || \
+	    bk clone $(QUIET) -r`tail -1 PCREKEY` `cat PCREURL` pcre
 	$(Q)(cd pcre && bk -Ur get -qS)
 
 # fetch tktable subdirectory if needed
 tktable/configure: TKTABLEKEY
 	$(if $(Q), @echo Cloning TKTable,)
-	$(Q)test -d tktable || bk clone -r`tail -1 TKTABLEKEY` \
-				bk://data.bitmover.com/tcl/tktable.bk tktable
+	$(Q)test -d tktable || bk clone $(QUIET) -r`tail -1 TKTABLEKEY` \
+	    bk://data.bitmover.com/tcl/tktable.bk tktable
 	$(Q)(cd tktable && bk -Ur get -qS)
 
 # Tktable libs
@@ -224,7 +205,7 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 # fetch tktreectrl subdirectory if needed
 tktreectrl/configure: TKTREECTRLKEY
 	$(if $(Q), @echo Cloning TKTreeCtrl,)
-	$(Q)test -d tktreectrl || bk clone -r`tail -1 TKTREECTRLKEY` \
+	$(Q)test -d tktreectrl || bk clone $(QUIET) -r`tail -1 TKTREECTRLKEY` \
 			bk://data.bitmover.com/tcl/tktreectrl.bk tktreectrl
 	$(Q)(cd tktreectrl && bk -Ur get -qS)
 
@@ -260,8 +241,8 @@ $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
 
 lib/$(BWIDGET)/pkgIndex.tcl: BWIDGETKEY
 	$(if $(Q), @echo Cloning BWidget,)
-	$(Q)test -d bwidget || bk clone -r`tail -1 BWIDGETKEY` \
-			bk://data.bitmover.com/tcl/bwidget.bk bwidget
+	$(Q)test -d bwidget || bk clone $(QUIET) -r`tail -1 BWIDGETKEY` \
+	    bk://data.bitmover.com/tcl/bwidget.bk bwidget
 	$(Q)cd bwidget; bk -Ur get -qS
 	$(if $(Q), @echo Installing BWidget,)
 	$(Q)mkdir -p lib/$(BWIDGET)/lang
@@ -277,8 +258,8 @@ $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl
 
 lib/Tkcon/pkgIndex.tcl: TKCONKEY
 	$(if $(Q), @echo Cloning TkCon,)
-	$(Q)test -d tkcon || bk clone -r`tail -1 TKCONKEY` \
-			bk://data.bitmover.com/tcl/tkcon.bk tkcon
+	$(Q)test -d tkcon || bk clone $(QUIET) -r`tail -1 TKCONKEY` \
+	    bk://data.bitmover.com/tcl/tkcon.bk tkcon
 	cd tkcon; bk -Ur get -qS
 	$(if $(Q), @echo Installing TkCon,)
 	$(Q)mkdir -p lib/Tkcon
