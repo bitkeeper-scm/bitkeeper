@@ -298,6 +298,7 @@ restore
 _reviewmerge
 rm
 rmdel
+_rmshortkeys
 root
 rset
 sane

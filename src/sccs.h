@@ -1269,6 +1269,7 @@ void	cset_savetip(sccs *s, int force);
 void	symGraph(sccs *s, delta *d);
 void	clearCsets(sccs *s);
 void	sccs_rdweaveInit(sccs *s);
+char	*short_random(char *str, int len);
 char	*sccs_nextdata(sccs *s);
 int	sccs_rdweaveDone(sccs *s);
 int	hasLocalWork(char *gfile);
