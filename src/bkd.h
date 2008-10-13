@@ -25,6 +25,7 @@
  * a chunk (before compression, after uncompression) bigger than the below.
  * DO NOT change this after shipping.
  */
+#undef	BSIZE		/* hpux exposes it; they shouldn't */
 #define	BSIZE		(32<<10)
 
 /*
