@@ -154,5 +154,11 @@ test "x$1" = "x-v" && {
 	V="V=1"
 	shift
 }
+test "X$MAKE" = X && {
+	MAKE=make
+	case "X$1" in
+	    X-j*) MAKE="make $1";;
+	esac
+}
 test "x$BK_VERBOSE_BUILD" != "x" && { V="V=1"; }
-make -e $V "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
+make -e $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"

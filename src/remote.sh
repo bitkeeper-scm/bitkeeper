@@ -57,7 +57,7 @@ case $CMD in
 	}
 	bk get -S Makefile build.sh
 	make build || failed
-	./build p image install test || failed
+	./build image install test || failed
 
 	MSG="Not your lucky day, the following tests failed:"
 	GOT=`grep "$MSG" /build/$LOG | bk undos`

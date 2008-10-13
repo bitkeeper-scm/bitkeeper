@@ -127,14 +127,16 @@ CC_WALL=$(GCCOPTS) $G -DLINT $(WARNINGS)
 BINS	= $(BK) inskeys$(EXE)
 
 # List of all objects in bk other than bk.o. Keep it sorted.
-OBJ =	abort.o adler32.o admin.o annotate.o \
+# But put bkver.o/cmd.o first, they generate headers.
+OBJ =	bkver.o cmd.o \
+	abort.o adler32.o admin.o annotate.o \
 	bam.o bkd.o bkd_bam.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
 	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o \
 	bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
-	bkusers.o bkver.o cat.o changes.o \
-	check.o checksum.o clean.o cleanpath.o clone.o cmd.o \
+	bkusers.o cat.o changes.o \
+	check.o checksum.o clean.o cleanpath.o clone.o \
 	collapse.o comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	delta.o diffs.o diffsplit.o dspec.o \
@@ -268,6 +270,7 @@ gWall Wall:
 # production builds
 p:
 	$(MAKE) CFLAGS="$(CC_FAST) $(CF)" all
+
 trial:
 	$(MAKE) TRIAL=1 CFLAGS="$(CC_FAST) $(CF)" all
 ndebug:
@@ -351,7 +354,7 @@ t/guitest: t/guitest.tcl tclwrap
 .PHONY: FORCE
 FORCE:
 
-gnu: $(BK) FORCE
+gnu: $(BK) libc/libc.a FORCE
 	@bk get -sS gnu/Makefile
 	@cd gnu && $(MAKE) Q=$(Q) BINDIR=$(BINDIR)
 
@@ -422,7 +425,7 @@ bkver.c: FORCE
 	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
 	$(Q)mv -f bk.v bkver.c
 
-bkver.h: Makefile
+bkver.h:
 	$(if $(Q),@echo Building $@,)
 	$(Q)echo "/* auto-generated file */" > $@
 	$(Q)echo "extern char *bk_vers;" >> $@
@@ -492,11 +495,12 @@ installdir: utils/registry.tcl
 trial_image trial-image:
 	$(MAKE) trial _image
 
-image:
-	test -x $(BK) || $(MAKE) p || exit 1
+image: $(BK)
+	$(MAKE) p
 	$(MAKE) _image
 
-_image: installdir
+_image:
+	$(MAKE) installdir
 	-cd $(IMGDIR) && strip *$(EXE) 2>/dev/null
 	-test -d $(IMGDIR)/gnu/bin && cd $(IMGDIR)/gnu/bin && { \
 		chmod +w *$(EXE); \
@@ -584,6 +588,7 @@ MLA.lic: MLA.preamble Enterprise.lic.txt $(BK)
 	    ./bk crypto -E 048d6aa55c30b3b4 > MLA.lic
 
 %.lic: %.lic.txt bkupgrade.key $(BK)
+	$(BK) co -Sq $<
 	$(if $(Q),@echo Encrypting $@,)
 	$(Q)./bk crypto -E 048d6aa55c30b3b4 < $< > $@
 
