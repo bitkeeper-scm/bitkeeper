@@ -131,6 +131,31 @@ main(int ac, char **av, char **env)
 	}
 	bk_isSubCmd = !i;
 
+	/*
+	 * The goal of this is to cause bk to not call a different bk as a
+	 * subprocess.  Coverity hit a problem where their bkd was still
+	 * running after they had installed over it.  So they were calling
+	 * a newer bk and something blew up.
+	 */
+	if (bk_isSubCmd &&
+	    (p = getenv("_BK_VERSION")) && !streq(bk_vers, p) &&
+	    !getenv("_BK_NO_VERSION_CHECK")) {
+		FILE	*f;
+
+		if (getenv("_BK_IN_BKD")) {
+			f = stdout;
+			fprintf(f, "ERROR-");
+		} else {
+			f = stderr;
+		}
+		fprintf(f,
+		    "bk: %s being called by %s not supported.\n", bk_vers, p);
+		fflush(f);
+		if (getenv("_BK_IN_BKD")) drain();
+		exit(1);
+	}
+	safe_putenv("_BK_VERSION=%s", bk_vers);
+
 	unless (bin) {
 		fprintf(stderr,
 		    "Unable to find the BitKeeper bin directory, aborting\n");
