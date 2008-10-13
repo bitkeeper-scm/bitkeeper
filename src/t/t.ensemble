@@ -206,11 +206,11 @@ cd "$HERE/project"
 bk sfiles > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.aliases
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
-BitKeeper/etc/SCCS/s.modules
 gcc/SCCS/s.ChangeSet
 gdb/SCCS/s.ChangeSet
 EOF
@@ -222,11 +222,11 @@ cd "$HERE/project"
 bk gfiles > GOT
 cat > WANT <<EOF
 ChangeSet
+BitKeeper/etc/aliases
 BitKeeper/etc/collapsed
 BitKeeper/etc/config
 BitKeeper/etc/gone
 BitKeeper/etc/ignore
-BitKeeper/etc/modules
 gcc/ChangeSet
 gdb/ChangeSet
 EOF
@@ -988,7 +988,7 @@ echo OK
 # ditto for one that has been moved but does not yet have the rename delta
 
 # ============================================================================
-# Modules tests start here
+# Aliases tests start here
 # ============================================================================
 
 cd "$HERE"
@@ -996,9 +996,9 @@ rm -rf project
 tar xf TAR
 cd project
 
-echo $N Test simple module addition .................................$NL
+echo $N Test simple alias addition ..................................$NL
 REV=`bk changes -r+ -d:REV:`
-bk module add -Mdev gcc4 gdb
+bk alias add -Adev gcc4 gdb
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo failed to commit change
 	bk cmdlog -a | tail -20
@@ -1011,13 +1011,13 @@ echo @dev
 	(cd gdb && bk id )
     ) | bk _sort
 ) > WANT
-bk cat BitKeeper/etc/modules > GOT 
+bk cat BitKeeper/etc/aliases > GOT
 cmpfiles WANT GOT
-bk clean BitKeeper/etc/modules
+bk clean BitKeeper/etc/aliases
 echo OK
 
-echo $N Test simple module expansion ................................$NL
-bk components -Mdev > GOT
+echo $N Test simple alias expansion .................................$NL
+bk components -Adev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1026,7 +1026,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test simple directory expansion .............................$NL
-bk components -M./gcc4 > GOT
+bk components -A./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 EOF
@@ -1034,7 +1034,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Combine the two .............................................$NL
-bk components -Mdev -M./gcc4 > GOT
+bk components -Adev -A./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1042,8 +1042,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Add a module that names another module ......................$NL
-bk module add -Mmydev dev
+echo $N Add an alias that names another alias .......................$NL
+bk alias add -Amydev dev
 (
 echo @dev 
     (
@@ -1053,12 +1053,12 @@ echo @dev
 echo @mydev
 echo dev
 ) > WANT
-bk cat BitKeeper/etc/modules > GOT
+bk cat BitKeeper/etc/aliases > GOT
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test a module that names another module .....................$NL
-bk components -Mmydev > GOT
+echo $N Test an alias that names another alias ......................$NL
+bk components -Amydev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1066,27 +1066,27 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test a module that names another module, 2 levels ...........$NL
+echo $N Test an alias that names another alias, 2 levels ............$NL
 REV=`bk changes -r+ -d:REV:`
-bk module create -C -MB gcc4
+bk alias create -C -AB gcc4
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk module create -C -MC gdb
+bk alias create -C -AC gdb
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk module create -MA B C
+bk alias create -AA B C
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk components -MA > GOT
+bk components -AA > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1094,21 +1094,21 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Make sure that the changeset got the module create comments .$NL
+echo $N Make sure that the changeset got the alias create comments ..$NL
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
 cat > WANT <<EOF
-Create module B
-Create module C
-Create module A
+Create alias B
+Create alias C
+Create alias A
 EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Make sure we can remove a component from a module ...........$NL
+echo $N Make sure we can remove a component from an alias ...........$NL
 REV=`bk changes -r+ -d:REV:`
-bk module rm -MA B
+bk alias rm -AA B
 echo gdb > WANT
-bk components -MA > GOT
+bk components -AA > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1117,12 +1117,12 @@ test $REV = `bk changes -r+ -d:REV:` && {
 }
 echo OK
 
-echo $N Make sure we can add a component to a module ................$NL
+echo $N Make sure we can add a component to an alias ................$NL
 REV=`bk changes -r+ -d:REV:`
-bk module add -MA B
+bk alias add -AA B
 echo gcc4 > WANT
 echo gdb >> WANT
-bk components -MA > GOT
+bk components -AA > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1133,7 +1133,7 @@ echo OK
 
 echo $N Adding a component that is already there is a no-op .........$NL
 REV=`bk changes -r+ -d:REV:`
-bk module add -MA B >OUT 2>&1
+bk alias add -AA B >OUT 2>&1
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have done anything
 	cat OUT
@@ -1142,16 +1142,16 @@ test $REV = `bk changes -r+ -d:REV:` || {
 echo OK
 
 echo $N If we modify remove all components it should be a delete ....$NL
-bk module rm -MA B C
+bk alias rm -AA B C
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
-echo Delete module A > WANT
+echo Delete alias A > WANT
 cmpfiles WANT GOT
-bk module create -MA B C
+bk alias create -AA B C
 echo OK
 
-echo $N List all module names .......................................$NL
-bk grep '^@' BitKeeper/etc/modules | sed 's/^@//' | bk _sort > WANT
-bk module list > GOT
+echo $N List all alias names ........................................$NL
+bk grep '^@' BitKeeper/etc/aliases | sed 's/^@//' | bk _sort > WANT
+bk alias list > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -1165,22 +1165,22 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Adding a directory that does not exist is an error ..........$NL
-bk module add -MA somedir/ 2>ERR && {
+bk alias add -AA somedir/ 2>ERR && {
 	echo should have failed
 	exit 1
 }
-grep -q 'somedir/ must be either a glob, key, module, or component' ERR || {
+grep -q 'somedir/ must be either a glob, key, alias, or component' ERR || {
 	echo bad error message
 	cat ERR
 	exit 1
 }
 mkdir somedir
-bk module add -MA somedir/ >ERR 2>&1 && {
+bk alias add -AA somedir/ >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
 }
-grep -q 'somedir/ must be either a glob, key, module, or component' ERR || {
+grep -q 'somedir/ must be either a glob, key, alias, or component' ERR || {
 	echo failed
 	echo wrong error message
 	cat ERR
@@ -1188,31 +1188,31 @@ grep -q 'somedir/ must be either a glob, key, module, or component' ERR || {
 }
 echo OK
 
-echo $N Test infinite loop in modules ...............................$NL
-bk edit $Q BitKeeper/etc/modules
+echo $N Test infinite loop in aliases ...............................$NL
+bk edit $Q BitKeeper/etc/aliases
 (
 echo @recursion
 echo see_recursion
 echo @see_recursion
 echo recursion
-) >> BitKeeper/etc/modules
-bk delta $Q -ywhatever BitKeeper/etc/modules
-bk components -Mrecursion > OUT 2>&1
+) >> BitKeeper/etc/aliases
+bk delta $Q -ywhatever BitKeeper/etc/aliases
+bk components -Arecursion > OUT 2>&1
 test $? = 1 || {
 	echo should have failed
 	cat OUT
 	exit 1
 }
-grep -q "recursive module definition" OUT || {
+grep -q "recursive alias definition" OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
 }
 echo OK
 
-echo $N Try removing module recursion ...............................$NL
-bk module rm -Mrecursion || exit 1
-bk diffs -h -R+ BitKeeper/etc/modules | grep '< ' > GOT
+echo $N Try removing alias recursion ................................$NL
+bk alias rm -Arecursion || exit 1
+bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @recursion'
 echo '< see_recursion'
@@ -1220,9 +1220,9 @@ echo '< see_recursion'
 cmpfiles WANT GOT
 echo OK
 
-echo $N Try removing module see_recursion ...........................$NL
-bk module rm -Msee_recursion || exit 1
-bk diffs -h -R+ BitKeeper/etc/modules | grep '< ' > GOT
+echo $N Try removing alias see_recursion ............................$NL
+bk alias rm -Asee_recursion || exit 1
+bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @see_recursion'
 echo '< recursion'
@@ -1230,8 +1230,8 @@ echo '< recursion'
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for clone -r+ but limited to -M./gcc4 .........$NL
-bk components -M./gcc4 -Plpd -r+ > GOT
+echo $N bk components for clone -r+ but limited to -A./gcc4 .........$NL
+bk components -A./gcc4 -Plpd -r+ > GOT
 (
 bk changes -qnd".|:KEY:" -r+ .
 bk changes -qnd"gcc4|:KEY:" -r+ gcc4
@@ -1243,11 +1243,11 @@ echo $N Test prefix in the iterator, with no -h, dup cset files .....$NL
 bk -qA prefixed_sfiles > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.aliases
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
-BitKeeper/etc/SCCS/s.modules
 gcc4/SCCS/s.ChangeSet
 gdb/SCCS/s.ChangeSet
 gcc4/SCCS/s.ChangeSet
@@ -1269,15 +1269,15 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test prefix in the iterator with modules ....................$NL
+echo $N Test prefix in the iterator with aliases ....................$NL
 bk -qA -M./gcc4 prefixed_sfiles -h > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.aliases
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
-BitKeeper/etc/SCCS/s.modules
 gcc4/SCCS/s.ChangeSet
 gcc4/SCCS/s.file1
 gcc4/SCCS/s.file2
@@ -1301,11 +1301,11 @@ bk attach $Q liberty
 bk -qA -M"|$REV" prefixed_sfiles -h > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.aliases
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
-BitKeeper/etc/SCCS/s.modules
 gcc4/SCCS/s.ChangeSet
 gcc4/SCCS/s.file1
 gcc4/SCCS/s.file2
@@ -1329,11 +1329,11 @@ echo $N Test prefix in the iterator with no rev, should see liberty .$NL
 bk -qA prefixed_sfiles -h > GOT
 cat > WANT <<EOF
 SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.aliases
 BitKeeper/etc/SCCS/s.collapsed
 BitKeeper/etc/SCCS/s.config
 BitKeeper/etc/SCCS/s.gone
 BitKeeper/etc/SCCS/s.ignore
-BitKeeper/etc/SCCS/s.modules
 gcc4/SCCS/s.ChangeSet
 gcc4/SCCS/s.file1
 gcc4/SCCS/s.file2

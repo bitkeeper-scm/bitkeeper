@@ -221,8 +221,13 @@ defaultFiles(int product)
 	fclose(f);
 	system("bk new -Pq BitKeeper/etc/ignore");
 	if (product) {
-		touch("BitKeeper/etc/modules", 0666);
-		system("bk new -Pq BitKeeper/etc/modules");
+		f = fopen("BitKeeper/etc/aliases", "w");
+		fprintf(f, "@default\nall\n");
+		fclose(f);
+		system("bk new -Pq BitKeeper/etc/aliases");
+		f = fopen("BitKeeper/log/ALIASES", "w");
+		fprintf(f, "default\n");
+		fclose(f);
 		touch("BitKeeper/log/PRODUCT", 0444);
 	}
 	unless (getenv("_BK_SETUP_NOGONE")) {

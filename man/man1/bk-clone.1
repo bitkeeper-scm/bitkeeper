@@ -76,10 +76,10 @@ Clone using hard links instead of copying the data.
 This is faster and saves disk space, but only works 
 within filesystems supporting hard links.
 .tp
-.OPTreq \-M module
+.OPTreq \-A alias
 When cloning a product, limit the components to those implied by
-.ARG module .
-This option may be repeated to clone more than one module.
+.ARG alias .
+This option may be repeated to clone more than one alias.
 .tp
 .B \-q
 Run quietly.
@@ -108,7 +108,7 @@ for more information.
 .B Repository
 .\" help://lclone
 .SH AVAILABILITY
-The \-M option of this command is an optional feature of \*[BK]
+The \-A option of this command is an optional feature of \*[BK]
 and must be enabled in your license.
 To see if your license is so enabled, run 
 .DS

@@ -129,7 +129,7 @@ BINS	= $(BK) inskeys$(EXE)
 # List of all objects in bk other than bk.o. Keep it sorted.
 # But put bkver.o/cmd.o first, they generate headers.
 OBJ =	bkver.o cmd.o \
-	abort.o adler32.o admin.o annotate.o \
+	abort.o adler32.o alias.o admin.o annotate.o \
 	bam.o bkd.o bkd_bam.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
 	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o \
@@ -153,7 +153,7 @@ OBJ =	bkver.o cmd.o \
 	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
 	mailslot.o \
-	mailsplit.o module.o mtime.o mv.o names.o newroot.o \
+	mailsplit.o mtime.o mv.o names.o newroot.o \
 	opark.o \
 	parent.o park.o partition.o \
 	pending.o populate.o preference.o proj.o \

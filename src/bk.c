@@ -219,7 +219,7 @@ main(int ac, char **av, char **env)
 			    case '@': remote = 1; break;
 			    case 'A': all = 1; break;
 			    case 'C': all = 1; break;
-			    case 'M': break;	// for ensemble each
+			    case 'M': break;	// for ensemble each XXX:CONFLICT
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;

@@ -3,7 +3,7 @@
 #define	WA	"BitKeeper/tmp/partition.d"
 #define	WA2PROD	"../../.."
 
-private	void	createInitialModules(void);
+private	void	createInitialAliases(void);
 private	void	push_hash2lines(hash *h, char *key, char *line);
 
 extern	char	*prog;	/* XXX: time to make this a global like bin? */
@@ -278,13 +278,13 @@ usage:			system("bk help -s partition");
 	}
 	unlink("BitKeeper/log/COMPONENT");
 
-	createInitialModules();
+	createInitialAliases();
 
-	/* add cset entry of modules in 1.1 */
+	/* add cset entry of aliases in 1.1 */
 	cset = sccs_csetInit(SILENT);
 	p = buf + sprintf(buf, "%d", sccs_findrev(cset, "1.1")->serial);
 	*p++ = 0;
-	s = sccs_init("BitKeeper/etc/SCCS/s.modules", SILENT);
+	s = sccs_init("BitKeeper/etc/SCCS/s.aliases", SILENT);
 	assert(s);
 	sccs_sdelta(s, sccs_ino(s), p);
 	t = p + strlen(p);
@@ -346,7 +346,7 @@ usage:			system("bk help -s partition");
 	pclose(f);
 	system(buf);
 
-	/* Give the modules file a cset mark */
+	/* Give the aliases file a cset mark */
 	system("bk cset -M1.1");
 	touch("BitKeeper/log/PRODUCT", 0444);
 	proj = proj_init(".");
@@ -406,7 +406,7 @@ out:
 }
 
 private void
-createInitialModules(void)
+createInitialAliases(void)
 {
 	sccs	*s;
 	delta	*d;
@@ -415,7 +415,7 @@ createInitialModules(void)
 
 	/*
 	 *
-	 * make an entry for the new modules file in the 1.1 cset
+	 * make an entry for the new aliases file in the 1.1 cset
 	 * Hmm, create time will be a bit wacky, won't it?
 	 * XXX: fix create time here just like the findcset code
 	 * messes with create time.  For now, it will just be wacky
@@ -444,9 +444,9 @@ createInitialModules(void)
 	safe_putenv("BK_RANDOM=%s", t);
 	pclose(f);
 
-	touch("BitKeeper/etc/modules", 0666);
+	touch("BitKeeper/etc/aliases", 0666);
 	putenv("_BK_NO_UNIQ=1");
-	system("bk new -qP BitKeeper/etc/modules");
+	system("bk new -qP BitKeeper/etc/aliases");
 }
 
 private void
