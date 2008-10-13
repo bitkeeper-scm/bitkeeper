@@ -4,15 +4,13 @@
 bk populate \- fill in components in a sparse product repository
 .SH SYNOPSIS
 .B bk populate
-.[B] \-ql 
-.[OPTequal] \-E e v
+.[B] \-lqr
 .[OPTreq] \-A alias \ ...
-.[ARG] from
+.[ARG] from \ .\|.\|.
 .SH DESCRIPTION
 .LP
-The populate command is used to add one or more aliases to
-a sparse product clone or to make sure that all components
-implied by the cached aliases list are present.
+The populate command is used to add components to a sparse product,
+or to reclone all components implied by the cached aliases list.
 .LP
 When cloning a product, it is possible to clone a subset of it by 
 specifying one or more aliases.
@@ -23,41 +21,45 @@ $ bk clone -Adev-tools bk://server/big-product
 $ cd big-product
 $ bk populate -Adebugger
 .DE
-After running the above, the recorded list of aliases will be
+After running the above, the cached aliases list will be
 "dev-tools" and "debugger".
+If you need to populate a module that is not present in your parent[s],
+add one or more trailing urls (populate will use each url in turn until
+all requested modules are found):
+.DS
+$ bk populate -Mblimey bk://uk-server/big-product
+.DE
 .LP
-If you have removed a component by mistake, just running the 
-populate command with no arguments will reclone any missing components.
+The set of modules populate will consider are specified on the command line with
+.BR \-M ,
+or retrieved from the cached modules list with
+.BR \-r ,
+or implied by the "default" modules database entry if neither of
+the former apply.
 .SH OPTIONS
-.TP \-E\*<env\*>=\*<val\*>
-.OPTequal \-E env val
-Export an environment variable to the 
-.B bkd
-running in the remote \*(BK repository.
-Typically used to pass information to remote triggers.
-Only variables with the prefix
-.V BKU_
-are allowed.
-This option may be repeated to set more than one variable.
-.tp
+.TP \-M\*<module\*>
 .B \-l
 Populate using hard links instead of copying the data.  
 This is faster and saves disk space, but only works 
 within filesystems supporting hard links.
 .tp
-.OPTreq \-A alias
-If present, add this alias to the list of aliases that should be
+Add this alias to the list of components that should be
 in this product instance.
 This option may be repeated to add more than one alias.
 .tp
 .B \-q
 Run quietly.
+.tp
+.B \-r
+Repair the product by replacing any components which listed in
+the cached modules list that have been manually removed.
 .SH "SEE ALSO"
 .SA bkd
 .SA clone
 .SA parent
 .SA relink
 .SA triggers
+.SA unpopulate
 .SA url
 .SH CATEGORY
 .B Product

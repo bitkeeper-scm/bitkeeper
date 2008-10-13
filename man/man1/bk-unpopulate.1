@@ -1,0 +1,45 @@
+.so ../bk-macros
+.TH "bk populate" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk unpopulate \- remove components from a product
+.SH SYNOPSIS
+.B bk unpopulate
+.[B] \-fq
+.[OPTreq] \-M module \ ...
+.SH DESCRIPTION
+.LP
+The unpopulate command is used to remove modules from a sparse product.
+.LP
+If you no longer need one or more components, you may remove them like
+so:
+.DS
+$ cd big-product
+$ bk unpopulate -Mdebugger
+.DE
+.SH OPTIONS
+.TP \-M\*<module\*>
+.OPTreq \-M module
+Add this module to the list of modules that should be removed.
+This option may be repeated to add more than one module.
+.tp
+.B \-f
+Force the unpopulate to work even if local work is present.
+.tp
+.B \-q
+Run quietly.
+.SH "SEE ALSO"
+.SA parent
+.SA populate
+.SH CATEGORY
+.B Product
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.
