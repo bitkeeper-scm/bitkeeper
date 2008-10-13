@@ -271,7 +271,7 @@ _get_http_autoproxy(char **proxies, char *host)
 	int	flags = getenv("BK_HTTP_PROXY_DEBUG") ? 0 : SILENT;
 	static HMODULE	hModWI = 0;
 	char	WPAD_url[1024]= "";
-	static BOOL (*DetectAutoProxyUrl)
+	static	BOOL (CALLBACK *DetectAutoProxyUrl)
 		(char *proxyurl, u32 proxyurllen, u32 flags);
 
 	unless (hModWI) {
@@ -382,6 +382,13 @@ _get_http_autoproxyurl(char **proxies, char *host, char *WPAD_url)
 
 	unless (tmpf = bktmp(0, "proxy")) goto out;
 	r = remote_parse(WPAD_url, 0);
+	unless (r && r->host) {
+		fprintf(stderr,
+		    "bk: no host in url returned by WPAD_url:\n\t'%s'\n",
+		    WPAD_url);
+		goto out;
+
+	}
 	r->rfd = r->wfd = connect_srv(r->host, r->port, r->trace);
 	if (r->rfd < 0) {
 		verbose((stderr, "Unable to connect to %s\n", WPAD_url));
