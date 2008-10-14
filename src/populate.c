@@ -74,7 +74,9 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 			fprintf(stderr, "populate: -r or -s but not both.\n");
 			exit(1);
 		}
-		aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
+		unless (aliases = file2Lines(0, "BitKeeper/log/COMPONENTS")) {
+			aliases = addLine(0, strdup("default"));
+		}
 	} else unless (aliases) {
 		aliases = addLine(0, strdup("default"));
 	}
@@ -178,7 +180,7 @@ unpopulate_main(int ac, char **av)
 	int	c, i;
 	char	*buf, *cmd;
 	char	**list = 0, **new_alias = 0;
-	hash	*h;
+	hash	*h = 0;
 	hash	*alias_unwanted = 0, *alias_wanted = 0, *alias_keep = 0;
 	hash	*comps_wanted = 0, *comps_unwanted = 0, *comps_delete = 0;
 	FILE	*f;
@@ -188,9 +190,9 @@ unpopulate_main(int ac, char **av)
 	int	quiet = 0, force = 0, rc = 1;
 
 	alias_unwanted = hash_new(HASH_MEMHASH);
-	while ((c = getopt(ac, av, "A;fq")) != -1) {
+	while ((c = getopt(ac, av, "fqs;")) != -1) {
 		switch (c) {
-		    case 'A':
+		    case 's':
 			hash_insertStr(alias_unwanted, optarg, "");
 			break;
 		    case 'f': force = 1; break;
@@ -210,7 +212,7 @@ unpopulate_main(int ac, char **av)
 	}
 
 	alias_wanted = hash_new(HASH_MEMHASH);
-	if (f = fopen("BitKeeper/log/ALIASES", "r")) {
+	if (f = fopen("BitKeeper/log/COMPONENTS", "r")) {
 		while (buf=fgetline(f)) hash_insertStr(alias_wanted, buf, "");
 		fclose(f);
 	} else {
@@ -219,7 +221,7 @@ unpopulate_main(int ac, char **av)
 
 	/*
 	 * This next 'if' says that you cannot unpopulate aliases that
-	 * are not in the ALIASES file. It is an arbitrary restriction that
+	 * are not in the COMPONENTS file. It is an arbitrary restriction that
 	 * I think is unnecessary. lm3di :)
 	 */
 	h = hash_setDifference(alias_unwanted, alias_wanted);
@@ -314,10 +316,10 @@ unpopulate_main(int ac, char **av)
 	unless (i) {
 		unless (quiet) printf("%s: no components removed.\n", av[0]);
 	}
-	/* update ALIAS file */
+	/* update COMPONENTS file */
 	sortLines(new_alias, 0);
-	if (lines2File(new_alias, "BitKeeper/log/ALIASES")) {
-		perror("BitKeeper/log/ALIASES");
+	if (lines2File(new_alias, "BitKeeper/log/COMPONENTS")) {
+		perror("BitKeeper/log/COMPONENTS");
 	}
 	putenv("_BK_TRANSACTION=");
 	rc = 0;

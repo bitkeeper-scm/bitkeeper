@@ -51,12 +51,12 @@ do	bk alias add -Aprimes comp$i
 done
 bk commit $Q -y"adding components and aliases"
 cd "$HERE"
-bk clone $Q -Aeven -Aodd -Aprimes project copy
+bk clone $Q -seven -sodd -sprimes project copy
 echo OK
 
 echo $N Unpopulate even and primes...................................$NL
 cd "$HERE/copy"
-bk unpopulate $Q -Aeven -Aprimes || {
+bk unpopulate $Q -seven -sprimes || {
 	echo failed
 	exit 1
 }
@@ -70,17 +70,17 @@ comp9
 EOF
 cmpfiles GOT WANT
 echo odd > WANT
-cmpfiles BitKeeper/log/ALIASES WANT
+cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Populate them back...........................................$NL
-bk populate $Q -Aeven -Aprimes
+bk populate $Q -seven -sprimes
 cat <<EOF > WANT
 even
 odd
 primes
 EOF
-cmpfiles BitKeeper/log/ALIASES WANT
+cmpfiles BitKeeper/log/COMPONENTS WANT
 bk components -h > GOT
 cat <<EOF > WANT
 comp1
@@ -98,7 +98,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate odd...............................................$NL
-bk unpopulate $Q -Aodd || {
+bk unpopulate $Q -sodd || {
 	echo failed
 	exit 1
 }
@@ -119,11 +119,11 @@ cat <<EOF > WANT
 even
 primes
 EOF
-cmpfiles BitKeeper/log/ALIASES WANT
+cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Unpopulate even..............................................$NL
-bk unpopulate $Q -Aeven || {
+bk unpopulate $Q -seven || {
 	echo failed
 	exit 1
 }
@@ -136,16 +136,16 @@ comp7
 EOF
 cmpfiles GOT WANT
 echo primes > WANT
-cmpfiles BitKeeper/log/ALIASES WANT
+cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Unpopulate alias not populated is an error...................$NL
-bk unpopulate -Adefault > GOT 2>&1
+bk unpopulate -sdefault > GOT 2>&1
 grep -q "cannot remove" GOT || {
 	echo failed
 	exit 1
 }
-bk unpopulate -Aall > GOT 2>&1
+bk unpopulate -sall > GOT 2>&1
 grep -q "cannot remove" GOT || {
 	echo failed
 	exit 1
@@ -153,7 +153,7 @@ grep -q "cannot remove" GOT || {
 echo OK
 
 echo $N Populate special alias \'all\' and unpopulate it...............$NL
-bk populate $Q -Aall
+bk populate $Q -sall
 bk components -h > GOT
 cat <<EOF > WANT
 comp1
@@ -174,8 +174,8 @@ cat <<EOF > WANT
 all
 primes
 EOF
-cmpfiles BitKeeper/log/ALIASES WANT
-bk unpopulate $Q -Aall
+cmpfiles BitKeeper/log/COMPONENTS WANT
+bk unpopulate $Q -sall
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -187,11 +187,11 @@ cmpfiles GOT WANT
 cat <<EOF > WANT
 primes
 EOF
-cmpfiles BitKeeper/log/ALIASES WANT
+cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Populate a glob and unpopulate it............................$NL
-bk populate $Q -A'./g*'
+bk populate $Q -s'./g*'
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -206,8 +206,8 @@ cat <<EOF > WANT
 ./g*
 primes
 EOF
-cmpfiles BitKeeper/log/ALIASES WANT
-bk unpopulate $Q -A'./g*'
+cmpfiles BitKeeper/log/COMPONENTS WANT
+bk unpopulate $Q -s'./g*'
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -219,20 +219,20 @@ cmpfiles GOT WANT
 cat <<EOF > WANT
 primes
 EOF
-cmpfiles BitKeeper/log/ALIASES WANT
+cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Unpopulate primes............................................$NL
-bk unpopulate $Q -Aprimes
+bk unpopulate $Q -sprimes
 bk components -h > GOT
 cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
-cmpfiles BitKeeper/log/ALIASES WANT
+cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Unpopulate a component with changes should fail..............$NL
-bk populate $Q -Aprimes
+bk populate $Q -sprimes
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -244,12 +244,12 @@ cmpfiles GOT WANT
 cat <<EOF > WANT
 primes
 EOF
-cmpfiles BitKeeper/log/ALIASES WANT
+cmpfiles BitKeeper/log/COMPONENTS WANT
 cd comp2
 touch foobar
 bk new $Q foobar
 cd ..
-bk unpopulate -Aprimes > GOT 2>&1
+bk unpopulate -sprimes > GOT 2>&1
 grep -q 'local changes' GOT || {
 	echo failed
 	exit 1
@@ -271,7 +271,7 @@ cd "$HERE/project"
 bk alias add -Asubprimes $SP
 cd "$HERE/copy"
 bk pull $Q || exit 1
-bk populate $Q -Asubprimes
+bk populate $Q -ssubprimes
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -287,7 +287,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate subprimes.........................................$NL
-bk unpopulate $Q -Asubprimes
+bk unpopulate $Q -ssubprimes
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -300,7 +300,7 @@ echo OK
 
 echo $N Remove enclosing and populate subcomponents should fail......$NL
 rm -rf comp*
-bk populate $Q -Asubprimes || exit 1
+bk populate $Q -ssubprimes || exit 1
 bk components -h > GOT
 cat <<EOF > WANT
 comp2/sub2
@@ -308,7 +308,7 @@ comp3/sub3
 comp5/sub5
 comp7/sub7
 EOF
-bk populate $Q -Aprimes > ERR 2>&1 && {
+bk populate $Q -sprimes > ERR 2>&1 && {
 	echo fixed
 	exit 1
 }
