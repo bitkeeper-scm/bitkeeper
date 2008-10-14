@@ -56,7 +56,7 @@ echo OK
 
 echo $N Unpopulate even and primes...................................$NL
 cd "$HERE/copy"
-bk unpopulate $Q -seven -sprimes || {
+BK_TRACE=1 BK_TRACE_FILES=populate.c bk unpopulate $Q -seven -sprimes || {
 	echo failed
 	exit 1
 }
@@ -298,7 +298,7 @@ EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N Remove enclosing and populate subcomponents should fail......$NL
+echo $N Remove enclosing and populate subcomponents should work......$NL
 rm -rf comp*
 bk populate $Q -ssubprimes || exit 1
 bk components -h > GOT
@@ -308,10 +308,36 @@ comp3/sub3
 comp5/sub5
 comp7/sub7
 EOF
-bk populate $Q -sprimes > ERR 2>&1 && {
-	echo fixed
+bk populate $Q -sprimes || {
+	echo failed
 	exit 1
 }
-echo failed \(bug\)
+bk components -h > GOT
+cat > WANT <<EOF
+comp2
+comp2/sub2
+comp3
+comp3/sub3
+comp5
+comp5/sub5
+comp7
+comp7/sub7
+EOF
+cmpfiles GOT WANT
+echo OK
 
-
+echo $N Unpopulate of subcomponents should work......................$NL
+bk unpopulate $Q -sprimes || exit 1
+cat > WANT <<EOF
+subprimes
+EOF
+cmpfiles BitKeeper/log/COMPONENTS WANT
+bk components -h > GOT
+cat > WANT <<EOF
+comp2/sub2
+comp3/sub3
+comp5/sub5
+comp7/sub7
+EOF
+cmpfiles GOT WANT
+echo OK

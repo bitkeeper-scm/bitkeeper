@@ -6,7 +6,7 @@ private hash*	hash_setDifference(hash *A, hash *B);
 int
 populate_main(int ac, char **av)
 {
-	int	c, i;
+	int	c, i, j;
 	int	quiet = 0;
 	int	repair = 0;
 	char	**urls = 0;
@@ -104,7 +104,7 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 			if (hash_fetchStr(done, repos->path)) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("clone"));
-			EACH(cav) vp = addLine(vp, strdup(cav[i]));
+			EACH_INDEX(cav, j) vp = addLine(vp, strdup(cav[j]));
 			vp = addLine(vp, aprintf("-r%s", repos->deltakey));
 			vp = addLine(vp, aprintf("%s?ROOTKEY=%s",
 				url, repos->rootkey));
@@ -187,7 +187,7 @@ unpopulate_main(int ac, char **av)
 	eopts	op = {0};
 	repos	*comps = 0;
 	sccs	*s = 0;
-	int	quiet = 0, force = 0, rc = 1;
+	int	quiet = 0, force = 0, rc = 1, errors;
 
 	alias_unwanted = hash_new(HASH_MEMHASH);
 	while ((c = getopt(ac, av, "fqs;")) != -1) {
@@ -311,7 +311,34 @@ unpopulate_main(int ac, char **av)
 		}
 		unless (quiet) printf("Removing '%s'.\n", comps->path);
 		i++;
-		if (rmtree(comps->path)) goto out;
+		/*
+		 * Note we don't call rmtree as there could be deeply nested
+		 * components.
+		 */
+		if (chdir(comps->path)) {
+			perror(comps->path);
+			goto out;
+		}
+		system("bk -r clean"); /* get rid of gfiles */
+		f = popen("bk sfiles -xa", "r");
+		errors = 0;
+		while (buf = fgetline(f)) errors |= unlink(buf);
+		pclose(f);
+		if (errors) {
+			fprintf(stderr, "Could not delete some files\n");
+			goto out;
+		}
+		f = popen("bk sfiles -d", "r");
+		while (buf = fgetline(f)) {
+			cmd = aprintf("%s/SCCS", buf);
+			errors |= rmtree(cmd);
+			free(cmd);
+		}
+		pclose(f);
+		rmEmptyDirs(1);
+		rmtree("BitKeeper");
+		proj_cd2product();
+		rmdir(comps->path);
 	}
 	unless (i) {
 		unless (quiet) printf("%s: no components removed.\n", av[0]);

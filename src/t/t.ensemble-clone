@@ -488,14 +488,14 @@ cd ..
 bk clone $Q -s./gdb project deeppop
 cd deeppop
 bk populate $Q -s./gcc/deep || {
-	echo fix deep test 1
+	echo failed
 	exit 1
 }
-bk populate $Q -s./gcc 2> ERR && {
-	echo fix deep test 2
+bk populate $Q -s./gcc 2> ERR || {
+	echo failed
 	exit 1
 }
-echo "failed (bug )"
+echo OK
 
 # gcc
 # gcc/deep
@@ -581,6 +581,7 @@ done
 echo OK
 
 echo $N Test populate in repair mode with all components missing ....$NL
+
 echo default > BitKeeper/log/COMPONENTS
 bk populate -r > GOT 2>&1 || exit 1
 bk components -h > GOT

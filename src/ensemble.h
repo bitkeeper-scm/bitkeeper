@@ -45,6 +45,7 @@ int	ensemble_each(int quiet, int ac, char **av);
 hash	*alias_list(char **names, sccs *cset);
 int	isComponent(char *path);
 void	ensemble_nestedCheck(void);
+int	ensemble_emptyDir(char *dir);
 #define	EACH_REPO(c)	for (ensemble_first(c); (c)->index; ensemble_next(c))
 
 #endif /* _NESTED_H */
