@@ -175,10 +175,14 @@ aliasdb_init(void)
 	char	buf[MAXPATH];
 
 	concat_path(buf, proj_root(proj_product(0)), ALIASES);
-	if (!exists(buf) && get(buf, SILENT, "-")) {
-		error("%s: no alias file found\n", prog);
-		return (0);
+	unless (exists(buf)) get(buf, SILENT, "-");
+	// Backwards compat for modules.
+	unless (exists(buf)) {
+		concat_path(buf,
+		    proj_root(proj_product(0)), "BitKeeper/etc/modules");
+		unless (exists(buf)) get(buf, SILENT, "-");
 	}
+	unless (exists(buf)) return (0);
 	return (hash_fromFile(0, buf));
 }
 

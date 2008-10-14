@@ -286,11 +286,12 @@ setgca(sccs *s, u32 bit, u32 tmp)
 	}
 }
 
-#define	L_ROOT		1
-#define	L_DELTA		2
-#define	L_PATH		4
-#define	L_NEW		8
+#define	L_ROOT		0x01
+#define	L_DELTA		0x02
+#define	L_PATH		0x04
+#define	L_NEW		0x08
 #define	L_PRESENT	0x10
+#define	L_MISSING	0x20
 
 int
 product_main(int ac, char **av)
@@ -315,7 +316,7 @@ components_main(int ac, char **av)
 {
 	int	c;
 	int	rc = 0, want = 0, serialize = 0;
-	int	input = 0, output = 0, here = 0;
+	int	input = 0, output = 0, here = 0, missing = 0;
 	char	*p;
 	repos	*r = 0;
 	eopts	opts;
@@ -330,7 +331,7 @@ components_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.product_first = 1;
 
-	while ((c = getopt(ac, av, "A;hil;oPr;u")) != -1) {
+	while ((c = getopt(ac, av, "A;hil;moPr;u")) != -1) {
 		switch (c) {
 		    case 'A':
 			aliases = addLine(aliases, optarg);
@@ -343,11 +344,15 @@ components_main(int ac, char **av)
 				switch (*p) {
 				    case 'd': want |= L_DELTA; break;
 				    case 'h': want |= L_PRESENT; break;
+				    case 'm': want |= L_MISSING; break;
 				    case 'n': want |= L_NEW; break;
 				    case 'p': want |= L_PATH; break;
 				    case 'r': want |= L_ROOT; break;
 			    	}
 			}
+			break;
+		    case 'm':
+		    	missing = 1;
 			break;
 		    case 'o':	/* undoc */
 			output = 1;
@@ -398,6 +403,7 @@ components_main(int ac, char **av)
 	EACH_REPO(r) {
 		if (opts.undo && r->new && !(want & L_NEW)) continue;
 		if (here && !r->present) continue;
+		if (missing && r->present) continue;
 		p = "";
 		if (want & L_PATH) {
 			printf("%s", r->path);
@@ -409,6 +415,10 @@ components_main(int ac, char **av)
 		}
 		if (want & L_ROOT) {
 			printf("%s%s", p, r->rootkey);
+			p = "|";
+		}
+		if ((want & L_MISSING) && !r->present)  {
+			printf("%s(missing)", p);
 			p = "|";
 		}
 		if ((want & L_NEW) && r->new)  {

@@ -3,36 +3,46 @@
 .SH NAME
 bk alias \- manage aliases for a list of components
 .SH SYNOPSIS
-.B bk alias add|rm|list
-.[B] -C
-.[OPTreq] -A alias
+.B bk alias 
+.[B] \-Cfq
+.B \-a|\-k|\-r|\-v
+.[B] name
 .[B] component ...
 .br
-.SS ADDING COMPONENTS TO AN ALIAS
-.B bk alias add
-.[B] \-C
-.OPTreq -A alias
-.B component 
-.[B] component ...
-.br
-.SS REMOVING COMPONENT[S] FROM AN ALIAS
-.B bk alias rm
-.[B] \-C
-.OPTreq -A alias
-.B component 
-.[B] component ...
+.SS CREATING AN ALIAS
+.B bk alias 
+.[B] \-Cf
+.ARG name
+.ARG component \ ...
 .br
 .SS REMOVING AN ALIAS
-.B bk alias rm
+.B bk alias 
 .[B] \-C
-.OPTreq -A alias
+.B \-r
+.ARG name
 .br
-.SS LIST ALL ALIAS NAMES
-.B bk alias list
+.SS ADDING COMPONENTS TO AN ALIAS
+.B bk alias 
+.[B] \-C
+.B -a
+.ARG name
+.ARG component \ ...
 .br
-.SS DISPLAYING AN ALIAS
-.B bk alias show
-.OPTreq -A alias
+.SS REMOVING COMPONENT[S] FROM AN ALIAS
+.B bk alias 
+.[B] \-C
+.B \-r
+.ARG name
+.ARG component \ ...
+.br
+.br
+.SS LIST ALL ALIASES
+.B bk alias
+.br
+.SS SHOW EXPANSION OF AN ALIAS
+.B bk alias
+.[B] \-k
+.ARG name
 .SH DESCRIPTION
 The 
 .B bk alias
@@ -83,6 +93,10 @@ gcc/A/XYZ/sneaky
 .B gcc
 When the component name is an alias name, the specified name is added
 to this alias for expansion on later use.
+.tp
+.B -
+If a single trailing dash is the only component then the list of components
+are read from the standard input.
 .LP
 Note that there is an ambiguity when specifying an item that may be
 either an alias name or a component.
@@ -97,7 +111,7 @@ need to specify that as
 .B ./gcc
 to force it to resolve to the repository and not the alias entry.
 In general, unless you always use upper case for your aliases and
-lower case for your components, you want use the leading \*[lq]./\*[rq]
+lower case for your components, you should use the leading \*[lq]./\*[rq]
 for naming components.
 .LP
 When adding a component to an alias, if the alias does not exist
@@ -105,51 +119,62 @@ it is automatically created in the aliases file.
 When removing a component from an alias, if there are no other components
 left in the alias it is automatically deleted from the aliases file.
 .SH OPTIONS
-.TP \*<component\*>
+.TP 
+.tp
+.B \-a
+Used to indicate that the alias is to be appended to; an error if no such
+alias exists.
 .B \-C
-Normally, modifying the aliases file results in a changeset committing that
+Normally, modifying the aliases database results in a changeset committing that
 change.
 This option suppresses the commit.
 Use this option when you wish to combine the alias event with other
 changes to the product.
 .tp
-.OPTreq \-A alias
-Used to specify the name of the alias in the alias database to add, remove,
-or modify.
+.B \-f
+When creating an alias, the operation will fail if there is a pre-existing
+alias of the same name unless this option is present.
 .tp
-.ARG component
-Used to specify a component to add or remove.
-.ARG component
-may be any of the forms described above.
-Multiple components may be specified for one invocation by repeating this
-option.
+.B \-k
+Used when listing aliases; causes the expanision of the alias to be listed
+as rootkeys.
+.tp
+.B \-r
+Used to remove an alias or remove one or more components in the alias.
+.tp
+.B \-v
+Used when listing aliases; causes the expansion of the alias to be shown
+as pathnames.
 .SH EXAMPLES
 To create an alias that points to all components in a sparse clone:
 .DS
-$ bk components -h | bk alias add -Amy-collection -
+$ bk components -h | bk alias HERE -
 .DE
 To create an alias that points to a named list of components:
 .DS
-$ bk alias add -Acompiler cmd/gcc cmd/as cmd/ld cmd/nm
+$ bk alias COMPILER cmd/gcc cmd/as cmd/ld cmd/nm
 .DE
 To create a higher level alias that includes the debugger:
 .DS
-$ bk alias add -Adev-tools cmd/gdb compiler
+$ bk alias DEV-TOOLS cmd/gdb compiler
 .DE
 List all aliases:
 .DS
-$ bk alias list
-compiler
-dev-tools
+$ bk alias
+COMPILER
+DEV-TOOLS
+.DE
+List alias expansion:
+.DS
+$ bk alias COMPILER
+\&./cmd/as
+\&./cmd/gcc
+\&./cmd/ld
+\&./cmd/nm
 .DE
 To remove a component from an alias:
 .DS
-$ bk alias rm -Acompiler cmd/nm
-.DE
-To display the unexpanded members of an alias (such as globs or other
-alias names):
-.DS
-$ bk alias show -Acompiler
+$ bk alias -r COMPILER cmd/nm
 .DE
 .SH NOTES
 The aliases database is a flat text file stored in
@@ -158,14 +183,14 @@ Any components that are specified as a path are stored internally
 as their rootkeys so that the alias will expand correctly even if
 the specified component[s] is/are moved.
 .LP
-There are two pre-existing module names:
+There are two pre-existing aliases:
 .TP "default "
 all
 This name is an alias for "./*" and may not be modified.
 .tp
 default
-This module is what is cloned when no modules are specified and the
-remote side does not have a cached module list.
+This alias is what is cloned when no aliases or components are specified and the
+remote side does not have a cached subset list.
 It defaults to "all" but it may be changed to make the default set
 of components to be less than all.
 .SH "SEE ALSO"

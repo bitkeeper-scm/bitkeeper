@@ -4,7 +4,7 @@
 bk components \- list components in a product
 .SH SYNOPSIS
 .B bk components
-.[B] \-hP
+.[B] \-hmP
 .[OPTreq] -A alias
 .[OPTreq] -r rev
 .SH DESCRIPTION
@@ -22,12 +22,14 @@ aliases.
 .SH OPTIONS
 .TP \-A\*<alias\*>
 .B \-h
-restrict the listing to those components which are present (here)
-in the product.
+restrict the listing to those components which are present (here).
 .tp
 .OPTreq \-A alias
 restrict the listing to components belonging to the specified alias[es].
 This option may be repeated to specify multiple aliases.
+.tp
+.B \-m
+restrict the listing to those components which are not present (missing).
 .tp
 .B \-P
 include the product in the list as well.
