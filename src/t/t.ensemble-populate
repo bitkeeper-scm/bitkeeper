@@ -40,15 +40,9 @@ cd "$HERE/project"
 for i in 1 2 3 4 5 6 7 8 9 10
 do	bk setup -fc$DEV_NULL comp$i
 done
-for i in 1 3 5 7 9
-do	bk alias add -Aodd comp$i
-done
-for i in 2 4 6 8 10
-do	bk alias add -Aeven comp$i
-done
-for i in 2 3 5 7
-do	bk alias add -Aprimes comp$i
-done
+bk alias -C odd comp1 comp3 comp5 comp7 comp9
+bk alias -C even comp2 comp4 comp6 comp8 comp10
+bk alias -C primes comp2 comp3 comp5 comp7
 bk commit $Q -y"adding components and aliases"
 cd "$HERE"
 bk clone $Q -seven -sodd -sprimes project copy
@@ -268,7 +262,7 @@ do	cd "$HERE/project/comp$i"
 	SP="$SP comp$i/sub$i"
 done
 cd "$HERE/project"
-bk alias add -Asubprimes $SP
+bk alias subprimes $SP
 cd "$HERE/copy"
 bk pull $Q || exit 1
 bk populate $Q -ssubprimes

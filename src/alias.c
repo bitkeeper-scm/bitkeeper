@@ -28,85 +28,149 @@ private int	verifyKey(char *key, aliases *mdb);
 extern char	*prog;
 
 /*
- * bk alias add -A<alias> <comp> ...	// create/add to a alias
- * bk alias rm -A<alias> [<comp> ...]	// remove a comp|alias
- * bk alias list			// list all aliases
+ * bk alias [-Cfq] name comp [...]	// create a new one or overwrite (w/ -f)
+ * bk alias [-Cq] -a name comp [...]	// append to existing alias
+ * bk alias [-Cq] -r name comp [...]	// remove comps from an alias
+ * bk alias [-Cq] -r name		// remove entire alias
+ * bk alias				// list all aliases
+ * bk alias [-k] name			// show expansion, as paths, 1 per line
  */
 int
 alias_main(int ac, char **av)
 {
-	char	*command, *p, *alias = 0;
-	char	**comps = 0;
-	int	c, commit = 1, i;
+	char	*p, *alias = 0;
+	char	**comps = 0, **tmp = 0;
+	int	c, i;
+	int	create = 0, append = 0, force = 0, rm = 0, list = 0;
+	int	commit = 1, paths = 1;
+	hash	*aliasDB;
+	MDBM	*idDB = 0;
+	char	buf[MAXPATH];
 
-	unless (av[1]) {
-err:		system("bk help -s alias");
-		return (1);
-	}
 	unless (proj_product(0)) {
 		fprintf(stderr, "alias: called in a non-product.\n");
 		return (1);
 	}
-	command = av[1];
-	av++, ac--;
-	while ((c = getopt(ac, av, "A;C")) != -1) {
+	while ((c = getopt(ac, av, "aCfkr")) != -1) {
 		switch (c) {
-		    case 'A': alias = optarg; break;
+		    case 'a': append = 1; break;
 		    case 'C': commit = 0; break;
+		    case 'f': force = 1; break;
+		    case 'k': paths = 0; break;
+		    case 'r': rm = 1; break;
+		    default:
+usage:			sys("bk", "help", "-s", "alias", SYS);
+			exit(1);
 		}
 	}
-	/* handle list immediately since it's easy */
-	if (streq(command, "list")) {
-		hash	*aliasDB;
 
-		unless (aliasDB = aliasdb_init()) {
-			fprintf(stderr, "aliases: no aliases\n");
-			return (1);
+	if ((append + rm) > 1) goto usage;
+	if (!append && !rm) {
+		if (av[optind] && av[optind+1]) {
+			create = 1;
+		} else {
+			list = 1;
 		}
-		EACH_HASH(aliasDB) comps = addLine(comps, aliasDB->kptr);
+	}
+	if (append || rm || create) {
+		unless (av[optind]) goto usage;
+		alias = av[optind++];
+	} else {
+		assert(list);
+		if (av[optind]) alias = av[optind++];
+	}
+
+	/* handle list immediately since it's easy */
+	if (list) {
+		if (alias) {
+			unless (comps = aliasdb_show(alias)) {
+				fprintf(stderr,
+				    "alias: '%s' not found\n", alias);
+				return (1);
+			}
+			if (paths) {
+				sprintf(buf, "%s/%s",
+				    proj_root(proj_product(0)), IDCACHE);
+				unless (idDB = loadDB(buf, 0, DB_IDCACHE)) {
+					fprintf(stderr, "alias: no idcache.\n");
+					return (1);
+				}
+				EACH(comps) {
+					if (p = mdbm_fetch_str(idDB, comps[i])){
+						free(comps[i]);
+						comps[i] = aprintf("./%s", p);
+					}
+				}
+				mdbm_close(idDB);
+			}
+		} else {
+			unless (aliasDB = aliasdb_init()) {
+				fprintf(stderr, "alias: no aliases\n");
+				return (1);
+			}
+			EACH_HASH(aliasDB) {
+				comps = addLine(comps, strdup(aliasDB->kptr));
+			}
+			hash_free(aliasDB);
+		}
 		sortLines(comps, 0);
 		EACH(comps) printf("%s\n", comps[i]);
-		freeLines(comps, 0);
-		hash_free(aliasDB);
+		freeLines(comps, free);
 		return (0);
 	}
+
 	unless (alias) {
 		fprintf(stderr, "alias: no alias specified.\n");
-		goto err;
+		goto usage;
 	}
-	if (streq(command, "show")) {
-		char	**components = 0;
 
-		unless (components = aliasdb_show(alias)) {
-			fprintf(stderr,
-			    "alias: alias '%s' does not exist.\n", alias);
-			return (1);
-		}
-		EACH(components) printf("%s\n", components[i]);
-		freeLines(components, free);
-		return (0);
-	}
 	/* gather list of components */
 	while (av[optind]) {
-		/* "-" has to be last */
-		if (streq(av[optind], "-")) {
-			while (p = fgetline(stdin)) comps = addLine(comps, p);
-			break;
+		unless (streq(av[optind], "-") && !av[optind+1]) {
+			comps = addLine(comps, strdup(av[optind++]));
+			continue;
 		}
-		comps = addLine(comps, strdup(av[optind++]));
+		while (p = fgetline(stdin)) comps = addLine(comps, strdup(p));
+		break;
 	}
+
 	if (streq(alias, "all")) {
 		fprintf(stderr,
 		    "alias: reserved name \"all\" may not be changed.\n");
-		goto err;
+		goto usage;
 	}
-	if (streq(command, "add") || streq(command, "create")) {
+
+	/*
+	 * Don't overwrite unless they told us that's what they wanted.
+	 */
+	if (create) {
+		if (!force && (tmp = aliasdb_show(alias))) {
+			freeLines(tmp, free);
+			fprintf(stderr, "alias: %x exists, use -f?\n", alias);
+			return (1);
+		}
 		if (aliasdb_add(alias, comps, commit)) return (1);
-	} else if (streq(command, "rm")) {
-		if (aliasdb_rm(alias, comps, commit)) return (1);
-	} else {
-		goto err;
 	}
+
+	/*
+	 * We have to go fetch the existing stuff and then union our stuff
+	 * when appending.
+	 */
+	if (append) {
+		unless (tmp = aliasdb_show(alias)) {
+			fprintf(stderr, "alias: %x does not exist.\n", alias);
+			return (1);
+		}
+		EACH(tmp) comps = addLine(comps, tmp[i]);
+		freeLines(tmp, 0);
+		uniqLines(comps, free);
+		if (aliasdb_add(alias, comps, commit)) return (1);
+	}
+
+	if (rm) {
+		if (aliasdb_rm(alias, comps, commit)) return (1);
+	}
+
 	return (0);
 }
 

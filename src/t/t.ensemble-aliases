@@ -52,7 +52,7 @@ echo OK
 
 echo $N Set up a test where we will add another alias ...............$NL
 cd "$HERE/project"
-bk alias add -Astuff gcc gdb
+bk alias stuff gcc gdb
 cd ..
 bk clone $Q -sstuff project stuff
 bk clone $Q -sstuff project stuff2
@@ -61,7 +61,7 @@ cd "$HERE/project"
 bk clone $Q ../libc path/to/libc
 bk clone $Q ../libc junk
 bk attach $Q junk path/to/libc
-bk alias add -Astuff path/to/libc
+bk alias -a stuff path/to/libc
 echo OK
 
 echo $N Test that we can read the name and dirs and globs ...........$NL
@@ -118,13 +118,13 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Test that what looks like an alias is an alias ..............$NL
-bk alias add -Agcc ./gcc ./gdb
-bk alias add -Asamething gcc
+bk alias gcc ./gcc ./gdb
+bk alias samething gcc
 bk components -sgcc > WANT
 bk components -ssamething > GOT
 checkfiles WANT GOT
-bk alias rm -Agcc
-bk alias rm -Asamething
+bk alias -r gcc
+bk alias -r samething
 echo OK
 
 echo $N Try a push, should add libc but not junk ....................$NL
@@ -447,20 +447,20 @@ echo OK
 
 echo $N Remove all aliases...........................................$NL
 cd "$HERE"/project
-bk alias list | grep -v all | while read x
+bk alias | grep -v all | while read x
 do
-	bk alias rm -A$x
+	bk alias -r $x
 done
-test x`bk alias list` = x || {
+test x`bk alias` = x || {
 	echo alias list not empty
-	bk alias list
+	bk alias
 	exit 1
 }
 echo OK
 
 echo $N Add all components as an alias...............................$NL
 cd "$HERE"/project
-bk components | bk alias add -AALL - || {
+bk components | bk alias ALL - || {
 	echo failed
 	exit 1
 }
@@ -471,7 +471,7 @@ echo OK
 
 echo $N Add catch-all glob...........................................$NL
 cd "$HERE"/project
-bk alias add -Aall-glob './*' || {
+bk alias all-glob './*' || {
 	echo failed
 	exit 1
 }
@@ -482,17 +482,17 @@ echo OK
 
 echo $N Invalid alias names should fail..............................$NL
 cd "$HERE"/project
-bk alias add -A'this is invalid' gcc gdb >ERR 2>&1 && {
+bk alias 'this is invalid' gcc gdb >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
 }
-bk alias add -A./foobar gcc gdb >ERR 2>&1 && {
+bk alias ./foobar gcc gdb >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
 }
-bk alias add -A+foo gcc gdb >ERR 2>&1 && {
+bk alias +foo gcc gdb >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
@@ -511,7 +511,7 @@ cd p2
 bk setup -fc"$HERE/empty" gcc
 cd "$HERE"/project
 mv "$HERE"/p2 .
-bk alias add -Acompiler p2/gcc gcc >ERR 2>&1 && {
+bk alias add compiler p2/gcc gcc >ERR 2>&1 && {
 	echo failed
 	echo attached a component from another product
 	exit 1
@@ -526,7 +526,7 @@ echo OK
 
 echo $N bk alias -C should leave pending aliases file................$NL
 cd "$HERE"/project
-bk alias add -C -Adev gcc gdb >ERR 2>&1 || {
+bk alias -C dev gcc gdb >ERR 2>&1 || {
 	echo failed
 	cat ERR
 	exit 1
@@ -538,19 +538,24 @@ echo OK
 
 echo $N Test show interface..........................................$NL
 cd "$HERE"/project
-for m in `bk alias list`
+for m in `bk alias`
 do
 	echo @$m
-	bk alias show -A$m
+	bk alias -k $m
 done > GOT
 bk cat BitKeeper/etc/aliases > WANT
 cmpfiles WANT GOT
-bk alias show -A"DOESNOTEXIST" 2> ERR && {
+echo OK
+
+echo $N Try and show an alias that is not there .....................$NL
+bk alias "DOESNOTEXIST" 2> ERR && {
 	echo failed rc
+	cat ERR
 	exit 1
 }
-grep -q "alias 'DOESNOTEXIST' does not exist" ERR || {
+grep -q "alias: 'DOESNOTEXIST' not found" ERR || {
 	echo failed msg
+	cat ERR
 	exit 1
 }
 echo OK
@@ -570,8 +575,8 @@ test -d gcc && {
 	exit 1
 }
 # Note: trying both forms of "dir" and "./dir"
-bk alias add -Asparse ./gcc gdb || exit 1
-bk alias show -Asparse > GOT
+bk alias sparse ./gcc gdb || exit 1
+bk alias -k sparse > GOT
 cmpfiles ../WANT GOT
 echo OK
 
@@ -600,7 +605,7 @@ grep -q "check: nm/foo conflicts with component at nm" ERR || exit 1
 echo OK
 
 echo $N Make sure we can not remove the all alias ...................$NL
-bk alias rm -Aall > OUT 2>&1 && {
+bk alias -r all > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 	exit 1
@@ -613,7 +618,7 @@ grep -q 'reserved name "all" may not be changed.' OUT || {
 echo OK
 
 echo $N Make sure we can not remove the gcc component from all.......$NL
-bk alias rm -Aall ./gcc > OUT 2>&1 && {
+bk alias -r all ./gcc > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 	exit 1
@@ -626,7 +631,7 @@ grep -q 'reserved name "all" may not be changed.' OUT || {
 echo OK
 
 echo $N Make sure we can not add to the all alias ...................$NL
-bk alias add -Aall ./gcc > OUT 2>&1 && {
+bk alias -a all ./gcc > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 	exit 1
@@ -640,7 +645,7 @@ echo OK
 
 echo $N Using a relative path in bk alias should work................$NL
 cd "$HERE"/project/gcc
-bk alias add -Anm ./nm || {
+bk alias nm ./nm || {
 	echo failed
 	exit 1
 }
@@ -648,5 +653,28 @@ bk components -snm >GOT
 cat <<EOF >WANT
 gcc/nm
 EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check alias listing in path mode ............................$NL
+cat > WANT <<EOF
+@ALL
+./gcc/ChangeSet
+./gcc/nm/ChangeSet
+./gdb/ChangeSet
+./junk/ChangeSet
+./path/to/libc/ChangeSet
+@all-glob
+./*
+@dev
+./gcc/ChangeSet
+./gdb/ChangeSet
+@nm
+./gcc/nm/ChangeSet
+EOF
+bk alias | while read x
+do	echo @$x
+	bk alias $x
+done > GOT
 cmpfiles WANT GOT
 echo OK
