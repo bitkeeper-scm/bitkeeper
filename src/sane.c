@@ -82,7 +82,8 @@ sane(int readonly, int resync)
 				fprintf(stderr,"sane: empty ChangeSet file!\n");
 				errors++;
 			}
-			unless (_exists(BKROOT "/SCCS/s.config")) {
+			unless (_exists(BKROOT "/SCCS/s.config") ||
+			    getenv("_BK_INSANE")) {
 				fprintf(stderr,
 				    "sane: no BitKeeper/etc/config file.\n");
 				errors++;

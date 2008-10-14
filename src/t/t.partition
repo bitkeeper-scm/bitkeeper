@@ -13,8 +13,9 @@ echo $N Create initial repository ...................................$NL
 commercial project
 mkdir src doc
 cd src
-touch a b c
-bk new $Q a b c
+mkdir -p deep/prune/path/starts/here
+touch a b c deep/prune/path/starts/here/a
+bk new $Q a b c deep/prune/path/starts/here/a
 cd ../doc
 touch a b c
 bk new $Q a b c
@@ -55,6 +56,20 @@ echo OK
 
 echo $N Run a simple test ...........................................$NL
 bk partition $Q -Cmapfile project copy || exit 1
+cd copy/BitKeeper/etc
+bk get $Q -S config
+test -s config || echo empty config
+cd ../../src/BitKeeper/etc
+bk get $Q -S config
+test -s config && echo non-empty config
+# Check idache
+cd "$HERE"/copy/src/deep/prune/path/starts/here
+bk log -r+ -nd:ROOTKEY: ChangeSet > "$HERE"/dnrk
+cd "$HERE"/copy
+cat ../dnrk | bk key2path > GOT
+echo src/deep/prune/path/starts/here/ChangeSet > WANT
+checkfiles WANT GOT
+cd "$HERE"
 echo OK
 
 echo $N See that bk names removes empty directories .................$NL
