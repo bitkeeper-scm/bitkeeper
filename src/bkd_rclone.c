@@ -21,15 +21,15 @@ rclone_common(int ac, char **av, opts *opts)
 	char	*p;
 
 	bzero(opts, sizeof(*opts));
-	while ((c = getopt(ac, av, "A;B;dPr;Tvz|")) != -1) {
+	while ((c = getopt(ac, av, "B;dPr;s;Tvz|")) != -1) {
 		switch (c) {
-		    case 'A':
-			opts->aliases = addLine(opts->aliases, strdup(optarg));
-			break;
 		    case 'B': opts->bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;
 		    case 'P': opts->product = 1; break;
 		    case 'r': opts->rev = optarg; break; 
+		    case 's':
+			opts->aliases = addLine(opts->aliases, strdup(optarg));
+			break;
 		    case 'T': /* ignored for now */ break;
 		    case 'v': opts->verbose = 1; break;
 		    case 'z':
@@ -240,13 +240,14 @@ cmd_rclone_part2(int ac, char **av)
 		}
 
 		/*
-		 * Save the ALIASES file.
+		 * Save the COMPONENTS file.
 		 * chmod because sfio w/o perms doesn't leave it RW.
 		 */
 		if (opts.aliases) {
-			chmod("BitKeeper/log/ALIASES", 0666);
-		    	if (lines2File(opts.aliases, "BitKeeper/log/ALIASES")) {
-				perror("BitKeeper/log/ALIASES");
+			chmod("BitKeeper/log/COMPONENTS", 0666);
+		    	if (lines2File(opts.aliases,
+			    "BitKeeper/log/COMPONENTS")) {
+				perror("BitKeeper/log/COMPONENTS");
 			}
 		}
 	}

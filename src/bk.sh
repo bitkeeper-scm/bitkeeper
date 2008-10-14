@@ -137,7 +137,7 @@ _prefixed_sfiles() {
 	fi
 }
 
-# bk unpopulate [-fq] [-M<mod>...]
+# bk unpopulate [-fq] [-s<mod>...]
 # For now each <mod> has to be a ./path form.  XXX.
 # For now, does nothing with BitKeeper/log/MODULES (which needs to be ALIASES)
 _unpopulate() {
@@ -145,12 +145,12 @@ _unpopulate() {
 	QUIET=
 	MODULES=
 	FORCE=
-	while getopts A:fM:q opt
+	while getopts fqs: opt
 	do
 		case "$opt" in
 		f) FORCE=-f;;
 		q) QUIET=-q;;
-		A|M)	case "$OPTARG" in
+		s)	case "$OPTARG" in
 			    ./*) MODULES="$MODULES $OPTARG";;
 			    *) echo unpopulate: only ./path form for now
 			       exit 1;;

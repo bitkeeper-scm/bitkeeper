@@ -1017,7 +1017,7 @@ bk clean BitKeeper/etc/aliases
 echo OK
 
 echo $N Test simple alias expansion .................................$NL
-bk components -Adev > GOT
+bk components -sdev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1026,7 +1026,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test simple directory expansion .............................$NL
-bk components -A./gcc4 > GOT
+bk components -s./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 EOF
@@ -1034,7 +1034,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Combine the two .............................................$NL
-bk components -Adev -A./gcc4 > GOT
+bk components -sdev -s./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1058,7 +1058,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test an alias that names another alias ......................$NL
-bk components -Amydev > GOT
+bk components -smydev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1086,7 +1086,7 @@ test $REV = `bk changes -r+ -d:REV:` && {
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk components -AA > GOT
+bk components -sA > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1108,7 +1108,7 @@ echo $N Make sure we can remove a component from an alias ...........$NL
 REV=`bk changes -r+ -d:REV:`
 bk alias rm -AA B
 echo gdb > WANT
-bk components -AA > GOT
+bk components -sA > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1122,7 +1122,7 @@ REV=`bk changes -r+ -d:REV:`
 bk alias add -AA B
 echo gcc4 > WANT
 echo gdb >> WANT
-bk components -AA > GOT
+bk components -sA > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1197,7 +1197,7 @@ echo @see_recursion
 echo recursion
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
-bk components -Arecursion > OUT 2>&1
+bk components -srecursion > OUT 2>&1
 test $? = 1 || {
 	echo should have failed
 	cat OUT
@@ -1230,8 +1230,8 @@ echo '< recursion'
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for clone -r+ but limited to -A./gcc4 .........$NL
-bk components -A./gcc4 -Plpd -r+ > GOT
+echo $N bk components for clone -r+ but limited to -s./gcc4 .........$NL
+bk components -s./gcc4 -Plpd -r+ > GOT
 (
 bk changes -qnd".|:KEY:" -r+ .
 bk changes -qnd"gcc4|:KEY:" -r+ gcc4

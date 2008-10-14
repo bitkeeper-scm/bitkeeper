@@ -97,10 +97,10 @@ cd project
 bk sfiles -R | grep -v gcc > ../LIST
 cd ..
 
-echo $N Test that -Akey clones work .................................$NL
+echo $N Test that -skey clones work .................................$NL
 KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
-bk clone $Q -A"$KEY" project mynewgcc 2> ERR || {
+bk clone $Q -s"$KEY" project mynewgcc 2> ERR || {
 	echo failed
 	cat ERR
 	exit 1
@@ -119,12 +119,12 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Test that we can clone using the ALIASES file ...............$NL
+echo $N Test that we can clone using the COMPONENTS file.............$NL
 rm -rf mynewgcc
 cd project
 bk alias add -Ajustgcc gcc
 cd ..
-bk clone $Q -Ajustgcc project mynewgcc 2> ERR || {
+bk clone $Q -sjustgcc project mynewgcc 2> ERR || {
 	echo failed
 	cat ERR
 	exit 1
@@ -143,9 +143,9 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Test that we can clone just that component with -A./gcc .....$NL
+echo $N Test that we can clone just that component with -s./gcc .....$NL
 rm -rf mynewgcc
-bk clone $Q -A./gcc project mynewgcc 2> ERR || {
+bk clone $Q -s./gcc project mynewgcc 2> ERR || {
 	echo failed
 	cat ERR
 	exit 1
@@ -164,74 +164,74 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Make sure that the ALIASES file is correct ..................$NL
+echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
-test -f BitKeeper/log/ALIASES || {
-	echo no ALIASES file
+test -f BitKeeper/log/COMPONENTS || {
+	echo no COMPONENTS file
 	exit 1
 }
-test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
+test "`cat BitKeeper/log/COMPONENTS`" = "./gcc" || {
 	echo bad content
-	cat BitKeeper/log/ALIASES
+	cat BitKeeper/log/COMPONENTS
 	exit 1
 }
 echo OK
 
-echo $N Make sure that the ALIASES file propagates on clone .........$NL
+echo $N Make sure that the COMPONENTS file propagates on clone ......$NL
 cd "$HERE"
 bk clone $Q mynewgcc mynewgcc2
 cd mynewgcc2
-test -f BitKeeper/log/ALIASES || {
-	echo no ALIASES file
+test -f BitKeeper/log/COMPONENTS || {
+	echo no COMPONENTS file
 	exit 1
 }
-test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
+test "`cat BitKeeper/log/COMPONENTS`" = "./gcc" || {
 	echo bad content
-	cat BitKeeper/log/ALIASES
+	cat BitKeeper/log/COMPONENTS
 	exit 1
 }
 echo OK
 
-echo $N Add a component with populate -A./gdb .......................$NL
+echo $N Add a component with populate -s./gdb .......................$NL
 cd "$HERE/mynewgcc"
-bk populate $Q -A./gdb || exit 1
+bk populate $Q -s./gdb || exit 1
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
 }
 echo OK
 
-echo $N Make sure that the ALIASES file is correct ..................$NL
-test -f BitKeeper/log/ALIASES || {
-	echo no ALIASES file
+echo $N Make sure that the COMPONENTS file is correct ...............$NL
+test -f BitKeeper/log/COMPONENTS || {
+	echo no COMPONENTS file
 	exit 1
 }
 cat > WANT <<EOF
 ./gcc
 ./gdb
 EOF
-cmpfiles WANT BitKeeper/log/ALIASES
+cmpfiles WANT BitKeeper/log/COMPONENTS
 echo OK
 
 echo $N Check that populate is idempotent ...........................$NL
 cd "$HERE/mynewgcc"
-bk populate $Q -A./gdb || exit 1
+bk populate $Q -s./gdb || exit 1
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
 }
 echo OK
 
-echo $N Make sure that the ALIASES file is still correct ............$NL
-test -f BitKeeper/log/ALIASES || {
-	echo no ALIASES file
+echo $N Make sure that the COMPONENTS file is still correct .........$NL
+test -f BitKeeper/log/COMPONENTS || {
+	echo no COMPONENTS file
 	exit 1
 }
 cat > WANT <<EOF
 ./gcc
 ./gdb
 EOF
-cmpfiles WANT BitKeeper/log/ALIASES
+cmpfiles WANT BitKeeper/log/COMPONENTS
 echo OK
 
 echo $N Update a component now that it is here ......................$NL
@@ -248,7 +248,7 @@ echo $N Pull in new cset without component, then populate ...........$NL
 cd "$HERE/mynewgcc2"
 bk pull $Q
 BEFORE=`bk changes -r+ -nd:I:`
-bk populate $Q -A./gdb "$HERE/project"
+bk populate $Q -s./gdb "$HERE/project"
 # without accompanying unfix to clone, this is how it used to fail:
 AFTER=`bk changes -r+ -nd:I:`
 test "$BEFORE" = "$AFTER" && {
@@ -260,30 +260,30 @@ test "$BEFORE" = "$AFTER" && {
 echo "failed (bug )"
 }
 
-# This is somewhat different in that the parent has a ALIASES file.
+# This is somewhat different in that the parent has a COMPONENTS file.
 # In a fully populated tree you wouldn't expect one.
-echo $N clone -A./gcc should have only that in ALIASES ..............$NL
+echo $N clone -s./gcc should have only that in COMPONENTS ...........$NL
 cd "$HERE"
-bk clone $Q -A./gcc mynewgcc mynewgcc3
+bk clone $Q -s./gcc mynewgcc mynewgcc3
 cd mynewgcc3
 test -d gdb && {
 	echo should not have gdb
 	exit 1
 }
-test -f BitKeeper/log/ALIASES || {
-	echo no ALIASES file
+test -f BitKeeper/log/COMPONENTS || {
+	echo no COMPONENTS file
 	exit 1
 }
-test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
+test "`cat BitKeeper/log/COMPONENTS`" = "./gcc" || {
 	echo bad content
-	cat BitKeeper/log/ALIASES
+	cat BitKeeper/log/COMPONENTS
 	exit 1
 }
 echo OK
 
-echo $N clone -Ajunk when no such alias exists should fail ..........$NL
+echo $N clone -sjunk when no such alias exists should fail ..........$NL
 cd "$HERE"
-bk clone -Ajunk mynewgcc3 mynewgcc4 2> ERR && {
+bk clone -sjunk mynewgcc3 mynewgcc4 2> ERR && {
 	echo should have failed and did not
 	cat ERR
 	exit 1
@@ -294,9 +294,9 @@ test -d mynewgcc4 && {
 }
 echo OK
 
-echo $N clone -A./junk when no such directory exists should fail ....$NL
+echo $N clone -s./junk when no such directory exists should fail ....$NL
 cd "$HERE"
-bk clone -A./junk mynewgcc3 mynewgcc4 2> ERR && {
+bk clone -s./junk mynewgcc3 mynewgcc4 2> ERR && {
 	echo should have failed and did not
 	cat ERR
 	exit 1
@@ -307,9 +307,9 @@ test -d mynewgcc4 && {
 }
 echo OK
 
-echo $N clone -A./gdb when the parent only has gcc ..................$NL
+echo $N clone -s./gdb when the parent only has gcc ..................$NL
 cd "$HERE"
-bk clone -A./gdb mynewgcc3 mynewgcc4 > ERR 2>&1 && {
+bk clone -s./gdb mynewgcc3 mynewgcc4 > ERR 2>&1 && {
 	echo should have failed
 	cat ERR
 	exit 1
@@ -329,7 +329,7 @@ echo $N Check that we can populate gdb from elsewhere ...............$NL
 bk clone mynewgcc3 mynewgcc4 > ERR 2>&1 
 cd mynewgcc4 || exit 1
 rm -rf gdb
-bk populate -A./gdb ../mynewgcc > OUT 2>&1
+bk populate -s./gdb ../mynewgcc > OUT 2>&1
 test -d gdb -a -f gdb/SCCS/s.ChangeSet || {
 	echo failed
 	cat OUT
@@ -485,13 +485,13 @@ grep -q gcc/deep LIST || {
 	exit 1
 }
 cd ..
-bk clone $Q -A./gdb project deeppop
+bk clone $Q -s./gdb project deeppop
 cd deeppop
-bk populate $Q -A./gcc/deep || {
+bk populate $Q -s./gcc/deep || {
 	echo fix deep test 1
 	exit 1
 }
-bk populate $Q -A./gcc 2> ERR && {
+bk populate $Q -s./gcc 2> ERR && {
 	echo fix deep test 2
 	exit 1
 }
@@ -502,7 +502,7 @@ echo "failed (bug )"
 # gdb
 echo $N Test populate with no args ..................................$NL
 cd "$HERE"
-bk clone $Q -A. project product
+bk clone $Q -s. project product
 cd product
 bk components -h > LIST
 test -s LIST && {
@@ -532,7 +532,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Unpopulate gdb ..............................................$NL
-bk unpopulate $Q -A./gdb || {
+bk unpopulate $Q -s./gdb || {
 	echo unpopulate failed
 	exit 1
 }
@@ -554,7 +554,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Unpopulate gcc/deep .........................................$NL
-bk unpopulate $Q -A./gcc/deep || {
+bk unpopulate $Q -s./gcc/deep || {
 	echo unpopulate failed
 	exit 1
 }
@@ -576,7 +576,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test populate in repair mode with gcc/deep and gcc missing ..$NL
-bk unpopulate $Q -A./gcc/deep || exit 1
+bk unpopulate $Q -s./gcc/deep || exit 1
 bk populate -r > GOT 2>&1 || exit 1
 bk components -h > GOT
 cat > WANT <<EOF

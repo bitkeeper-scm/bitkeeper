@@ -129,9 +129,8 @@ cmd_pull_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "AdlnP;qr|Tuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "dlnP;qr|sTuw|z|")) != -1) {
 		switch (c) {
-		    case 'A': eat_aliases = 1; break;
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
 			if (gzip < 0 || gzip > 9) gzip = 6;
@@ -145,6 +144,7 @@ cmd_pull_part2(int ac, char **av)
 			break;
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;
+		    case 's': eat_aliases = 1; break;
 		    case 'T': tid = 1; break;	// On purpose
 		    case 'w': delay = atoi(optarg); break;
 		    case 'u': update_only = 1; break;
@@ -187,7 +187,7 @@ err:			printf("ERROR-protocol error in aliases\n");
 			rc = 1;
 			goto done;
 		}
-		unless (streq("@ALIASES@", buf)) goto err;
+		unless (streq("@COMPONENTS@", buf)) goto err;
 		while (getline2(&r, buf, sizeof(buf)) > 0) {
 			if (streq("@END@", buf)) break;
 			aliases = addLine(aliases, strdup(buf));

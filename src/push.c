@@ -323,7 +323,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	}
-	if (streq(buf, "@ALIASES@")) {
+	if (streq(buf, "@COMPONENTS@")) {
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (buf[0] == '@') break;
 			opts.aliases = addLine(opts.aliases, strdup(buf));

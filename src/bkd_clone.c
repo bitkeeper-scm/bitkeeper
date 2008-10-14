@@ -24,11 +24,8 @@ cmd_clone(int ac, char **av)
 		out("@END@\n");
 		goto out;
 	}
-	while ((c = getopt(ac, av, "A;lqr;Tw;z|")) != -1) {
+	while ((c = getopt(ac, av, "lqr;s;Tw;z|")) != -1) {
 		switch (c) {
-		    case 'A':
-			aliases = addLine(aliases, strdup(optarg));
-			break;
 		    case 'l':
 			lclone = 1;
 			break;
@@ -44,6 +41,9 @@ cmd_clone(int ac, char **av)
 			break;
 		    case 'r':
 			rev = optarg;
+			break;
+		    case 's':
+			aliases = addLine(aliases, strdup(optarg));
 			break;
 		    case 'T':	/* eventually, this will be a trans_id */
 			tid = 1;	// On purpose, will go away w/ trans
@@ -71,10 +71,10 @@ cmd_clone(int ac, char **av)
 		 * then imply whatever list we may have.
 		 * The tid part is because we want to do this in pass1 only.
 		 * XXX - what if we've added one with ensemble add and it
-		 * does not appear in our ALIASES file yet?
+		 * does not appear in our COMPONENTS file yet?
 		 */
 		unless (aliases || tid) {
-			aliases = file2Lines(0, "BitKeeper/log/ALIASES");
+			aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
 			unless (aliases) {
 				aliases = addLine(0, strdup("default"));
 			}

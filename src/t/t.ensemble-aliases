@@ -39,13 +39,13 @@ echo $N Clone and see that we have a default alias list ,............$NL
 cd "$HERE"
 bk clone $Q project clone
 cd clone
-test -f BitKeeper/log/ALIASES || {
-	echo failed to create ALIASES
+test -f BitKeeper/log/COMPONENTS || {
+	echo failed to create COMPONENTS
 	exit 1
 }
-grep -q default BitKeeper/log/ALIASES || {
+grep -q default BitKeeper/log/COMPONENTS || {
 	echo bad data
-	cat BitKeeper/log/ALIASES
+	cat BitKeeper/log/COMPONENTS
 	exit 1
 }
 echo OK
@@ -54,8 +54,8 @@ echo $N Set up a test where we will add another alias ...............$NL
 cd "$HERE/project"
 bk alias add -Astuff gcc gdb
 cd ..
-bk clone $Q -Astuff project stuff
-bk clone $Q -Astuff project stuff2
+bk clone $Q -sstuff project stuff
+bk clone $Q -sstuff project stuff2
 commercial libc
 cd "$HERE/project"
 bk clone $Q ../libc path/to/libc
@@ -65,18 +65,18 @@ bk alias add -Astuff path/to/libc
 echo OK
 
 echo $N Test that we can read the name and dirs and globs ...........$NL
-bk components -Astuff | bk _sort > GOT
+bk components -sstuff | bk _sort > GOT
 cat << EOF > WANT
 gcc
 gdb
 path/to/libc
 EOF
 checkfiles WANT GOT
-bk components -A./gcc > GOT
+bk components -s./gcc > GOT
 echo gcc > WANT
 checkfiles WANT GOT
 # make sure longer and shorter don't match
-bk components -A./gccc\* 2> ERR > GOT && {
+bk components -s./gccc\* 2> ERR > GOT && {
 	echo failed
 	exit 1
 }
@@ -85,7 +85,7 @@ grep -q "components: no match for ./gccc*" ERR || {
 	cat ERR
 	exit 1
 }
-bk components -A./gc/\* 2> ERR > GOT && {
+bk components -s./gc/\* 2> ERR > GOT && {
 	echo failed
 	exit 1
 }
@@ -95,7 +95,7 @@ grep -q "components: no match for ./gc/*" ERR || {
 }
 # globs that work
 for p in "g*" "gc*" "g*c" "*c" "p*" "path/*"
-do	bk components -A"./$p" | bk _sort
+do	bk components -s"./$p" | bk _sort
 	echo ..
 done > GOT
 cat << EOF > WANT
@@ -120,8 +120,8 @@ echo OK
 echo $N Test that what looks like an alias is an alias ..............$NL
 bk alias add -Agcc ./gcc ./gdb
 bk alias add -Asamething gcc
-bk components -Agcc > WANT
-bk components -Asamething > GOT
+bk components -sgcc > WANT
+bk components -ssamething > GOT
 checkfiles WANT GOT
 bk alias rm -Agcc
 bk alias rm -Asamething
@@ -206,7 +206,7 @@ echo OK
 
 echo $N Clone backwards, getting just libc, populate junk ...........$NL
 cd "$HERE"
-bk clone -r1.8 -A./path/to/libc project behind > OUT 2>&1
+bk clone -r1.8 -s./path/to/libc project behind > OUT 2>&1
 cd behind
 test -d junk && {
 	echo should not have junk
@@ -216,7 +216,7 @@ test -d path/to/libc || {
 	echo should have libc
 	exit 1
 }
-bk populate $Q -A./junk || {
+bk populate $Q -s./junk || {
 	echo failed
 	exit 1
 }
@@ -227,14 +227,14 @@ test $TIP = `bk changes -qr+ -d:REV: junk` && {
 bk -Aqr check -ac || exit 1
 echo OK
 
-echo $N Test -A./gcc/nm .............................................$NL
+echo $N Test -s./gcc/nm .............................................$NL
 cd "$HERE"
 commercial nm
 cd "$HERE"/project
 bk clone $Q ../nm gcc/nm
 bk attach $Q gcc/nm
 cd "$HERE"
-bk clone -A./gcc/nm project project-nm > OUT 2>&1 || {
+bk clone -s./gcc/nm project project-nm > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -246,7 +246,7 @@ if false; then
 
 echo $N Set up by populating all ....................................$NL
 cd project-nm
-echo default > BitKeeper/log/ALIASES
+echo default > BitKeeper/log/COMPONENTS
 bk populate $Q 
 cat > WANT <<EOF
 gcc
@@ -263,7 +263,7 @@ else
 
 echo $N Set up by populating most ...................................$NL
 cd project-nm
-bk populate $Q -A./gdb -A./junk -A./path/to/libc
+bk populate $Q -s./gdb -s./junk -s./path/to/libc
 cat > WANT <<EOF
 gcc/nm
 gdb
@@ -283,15 +283,15 @@ echo @default
 cd gdb
 bk id
 ) > BitKeeper/etc/aliases
-echo default > BitKeeper/log/ALIASES
+echo default > BitKeeper/log/COMPONENTS
 bk delta $Q -ygcc BitKeeper/etc/aliases
 bk commit $Q -ygcc
 cd ..
 bk clone $Q project-nm project-just-gdb
 cd project-just-gdb
-grep -q default BitKeeper/log/ALIASES || {
+grep -q default BitKeeper/log/COMPONENTS || {
 	echo bad log
-	cat BitKeeper/log/ALIASES
+	cat BitKeeper/log/COMPONENTS
 	exit 1
 }
 bk components -h > GOT
@@ -299,9 +299,9 @@ echo gdb > WANT
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test -A./gcc ................................................$NL
+echo $N Test -s./gcc ................................................$NL
 cd "$HERE"
-bk clone -A./gcc project project-gcc > OUT 2>&1 || {
+bk clone -s./gcc project project-gcc > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -313,9 +313,9 @@ test -d project-gcc/gcc || {
 }
 echo OK
 
-echo $N Test -A./gcc -A./gcc*........................................$NL
+echo $N Test -s./gcc -s./gcc*........................................$NL
 cd "$HERE"
-bk clone -A./gcc -A./gcc* project project-gcc-2 >OUT 2>&1 || {
+bk clone -s./gcc -s./gcc* project project-gcc-2 >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -328,9 +328,9 @@ test -d project-gcc-2/gcc || {
 echo OK
 
 
-echo $N Test -A. ....................................................$NL
+echo $N Test -s. ....................................................$NL
 cd "$HERE"
-bk clone -A. project project-dot > OUT 2>&1 || {
+bk clone -s. project project-dot > OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -346,28 +346,28 @@ test -d project-dot/gcc -o -d project-dot/gdb && {
 }
 echo OK
 
-echo $N Make sure populate -Ano-such-dir does not add to ALIASES ....$NL
+echo $N Make sure populate -sno-such-dir does not add to COMPONENTS .$NL
 cd project-dot
-cp BitKeeper/log/ALIASES .
-bk populate -A./no-such-dir > OUT 2>&1 && {
+cp BitKeeper/log/COMPONENTS .
+bk populate -s./no-such-dir > OUT 2>&1 && {
 	echo populate should have failed
 	cat OUT
 	exit 1
 }
-cmpfiles ALIASES BitKeeper/log/ALIASES
+cmpfiles COMPONENTS BitKeeper/log/COMPONENTS
 echo OK
 
 echo $N Same thing with a glob ......................................$NL
-bk populate -A'./no-such-dir*' > OUT 2>&1 && {
+bk populate -s'./no-such-dir*' > OUT 2>&1 && {
 	echo populate should have failed
 	cat OUT
 	exit 1
 }
-cmpfiles ALIASES BitKeeper/log/ALIASES
+cmpfiles COMPONENTS BitKeeper/log/COMPONENTS
 echo OK
 
 echo $N Populate junk, run populate, should do nothing ..............$NL
-bk populate -A'./junk' > OUT 2>&1  || {
+bk populate -s'./junk' > OUT 2>&1  || {
 	echo should not have failed
 	cat OUT
 	exit 1
@@ -377,13 +377,13 @@ bk populate > OUT 2>&1
 grep -q 'no match' OUT && {
 	echo failed
 	cat OUT
-	echo ALIASES
-	cat BitKeeper/log/ALIASES
+	echo COMPONENTS
+	cat BitKeeper/log/COMPONENTS
 	echo matches for ./junk 
-	bk components -A./junk
+	bk components -s./junk
 	cd ../project
 	echo matches for ./junk in project
-	bk components -A./junk
+	bk components -s./junk
 	exit 1
 }
 grep -q 'junk is already here.' OUT || {
@@ -395,7 +395,7 @@ echo OK
 
 echo $N Same thing with a glob that matches junk when we have junk ..$NL
 test -d junk || exit 1
-bk populate -A'./junk*' > OUT 2>&1 || {
+bk populate -s'./junk*' > OUT 2>&1 || {
 	echo populate should not have failed
 	cat OUT
 	exit 1
@@ -415,7 +415,7 @@ echo @alias3
 echo ./gcc
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
-bk components -Aalias1 > GOT 2>&1 || {
+bk components -salias1 > GOT 2>&1 || {
 	echo failed
 	cat GOT
 	exit 1
@@ -437,7 +437,7 @@ echo alias1
 echo ./gcc
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
-bk components -Aalias1 2> ERR && {
+bk components -salias1 2> ERR && {
 	echo failed
 	cat GOT
 	exit 1
@@ -465,7 +465,7 @@ bk components | bk alias add -AALL - || {
 	exit 1
 }
 bk components > WANT
-bk components -AALL > GOT
+bk components -sALL > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -476,7 +476,7 @@ bk alias add -Aall-glob './*' || {
 	exit 1
 }
 bk components > WANT
-bk components -Aall-glob > GOT
+bk components -sall-glob > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -563,7 +563,7 @@ cd ../gdb
 bk id
 ) > ../WANT
 cd "$HERE"
-bk clone $Q -A. project sparse || exit 1
+bk clone $Q -s. project sparse || exit 1
 cd sparse || exit 1
 test -d gcc && {
 	echo should not have gcc
@@ -636,13 +636,15 @@ grep -q 'reserved name "all" may not be changed.' OUT || {
 	cat OUT
 	exit 1
 }
+echo OK
+
 echo $N Using a relative path in bk alias should work................$NL
 cd "$HERE"/project/gcc
 bk alias add -Anm ./nm || {
 	echo failed
 	exit 1
 }
-bk components -Anm >GOT
+bk components -snm >GOT
 cat <<EOF >WANT
 gcc/nm
 EOF

@@ -84,8 +84,8 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
-	if (product && (aliases = file2Lines(0, "BitKeeper/log/ALIASES"))) {
-		out("@ALIASES@\n");
+	if (product && (aliases = file2Lines(0, "BitKeeper/log/COMPONENTS"))) {
+		out("@COMPONENTS@\n");
 		EACH(aliases) {
 			out(aliases[i]);
 			out("\n");

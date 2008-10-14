@@ -4,32 +4,47 @@
 bk unpopulate \- remove components from a product
 .SH SYNOPSIS
 .B bk unpopulate
-.[B] \-fq
-.[OPTreq] \-M module \ ...
+.[B] \-flq
+.[OPTreq] \-s component \ ...
 .SH DESCRIPTION
 .LP
-The unpopulate command is used to remove modules from a sparse product.
+The unpopulate command is used to remove unneeded components from a product.
 .LP
 If you no longer need one or more components, you may remove them like
 so:
 .DS
 $ cd big-product
-$ bk unpopulate -Mdebugger
+$ bk unpopulate -sDEV-TOOLS
 .DE
 .SH OPTIONS
-.TP \-M\*<module\*>
-.OPTreq \-M module
-Add this module to the list of modules that should be removed.
-This option may be repeated to add more than one module.
+.TP \-s\*<comp\*>
 .tp
 .B \-f
 Force the unpopulate to work even if local work is present.
 .tp
+.B \-l
+list components and/or aliases that were specified to a previous
+clone and/or populate.
+This is list is what you may unpopulate.
+.tp
 .B \-q
 Run quietly.
+.OPTreq \-s comp
+restrict the unpopulate to the subset implied by
+.ARG comp .
+If this option is repeated the implied subset is the union of all
+specified components.
+.ARG comp
+must be one of the same values as specified to a previous clone and/or
+populate; use the
+.B \-l
+option to see those values.
 .SH "SEE ALSO"
+.SA alias
+.SA clone
 .SA parent
 .SA populate
+.SA superset
 .SH CATEGORY
 .B Product
 .SH AVAILABILITY

@@ -98,14 +98,14 @@ test -d gdb || exit 1
 test -d gcc && exit 1
 echo OK
 
-echo $N Test that -Akey clones work .................................$NL
+echo $N Test that -skey clones work .................................$NL
 cd "$HERE"
 cd project
 bk sfiles -R | grep -v gcc > ../LIST
 cd ..
 KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
-bk clone $Q -A"$KEY" project bk://localhost:$PORT/mynewgcc || {
+bk clone $Q -s"$KEY" project bk://localhost:$PORT/mynewgcc || {
 	echo failed
 	bk _kill bk://localhost:$PORT
 	exit 1
@@ -126,12 +126,12 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Test that we can clone using the ALIASES file ...............$NL
+echo $N Test that we can clone using the COMPONENTS file ............$NL
 rm -rf mynewgcc
 cd project
 bk alias add -Ajustgcc gcc
 cd ..
-bk clone $Q -Ajustgcc project bk://localhost:$PORT/mynewgcc || {
+bk clone $Q -sjustgcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
 	bk _kill bk://localhost:$PORT
 	exit 1
@@ -155,9 +155,9 @@ echo OK
 bk _kill bk://localhost:$PORT
 PORT=`port 50000`
 bk bkd -d -p$PORT -ikill
-echo $N Test that we can clone just that component with -A./gcc .....$NL
+echo $N Test that we can clone just that component with -s./gcc .....$NL
 rm -rf mynewgcc
-bk clone $Q -A./gcc project bk://localhost:$PORT/mynewgcc || {
+bk clone $Q -s./gcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
 	bk _kill bk://localhost:$PORT
 	exit 1
@@ -176,16 +176,16 @@ do	test -d mynewgcc/$i && {
 done
 echo OK
 
-echo $N Make sure that the ALIASES file is correct ..................$NL
+echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
-test -f BitKeeper/log/ALIASES || {
-	echo no ALIASES file
+test -f BitKeeper/log/COMPONENTS || {
+	echo no COMPONENTS file
 	bk _kill bk://localhost:$PORT
 	exit 1
 }
-test "`cat BitKeeper/log/ALIASES`" = "./gcc" || {
+test "`cat BitKeeper/log/COMPONENTS`" = "./gcc" || {
 	echo bad content
-	cat BitKeeper/log/ALIASES
+	cat BitKeeper/log/COMPONENTS
 	bk _kill bk://localhost:$PORT
 	exit 1
 }

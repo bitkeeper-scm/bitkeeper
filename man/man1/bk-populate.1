@@ -5,57 +5,62 @@ bk populate \- fill in components in a sparse product repository
 .SH SYNOPSIS
 .B bk populate
 .[B] \-lqr
-.[OPTreq] \-A alias \ ...
+.[OPTreq] \-s component \ ...
 .[ARG] from \ .\|.\|.
 .SH DESCRIPTION
 .LP
 The populate command is used to add components to a sparse product,
-or to reclone all components implied by the cached aliases list.
+or to repopulate any components previously populated and then 
+manually removed.
 .LP
 When cloning a product, it is possible to clone a subset of it by 
-specifying one or more aliases.
-If later you want to add another alias, the populate command
+specifying one or more component names or aliases.
+If later you want to add another component or alias, the populate command
 can help:
 .DS
-$ bk clone -Adev-tools bk://server/big-product
+$ bk clone -sDEV-TOOLS bk://server/big-product
 $ cd big-product
-$ bk populate -Adebugger
+$ bk populate -sDEBUGGER
 .DE
-After running the above, the cached aliases list will be
-"dev-tools" and "debugger".
+After running the above, the cached components list will be
+"DEV-TOOLS" and "DEBUGGER".
 If you need to populate a component that is not present in your parent[s],
 add one or more trailing urls (populate will use each url in turn until
 all requested components are found):
 .DS
-$ bk populate -Mblimey bk://uk-server/big-product
+$ bk populate -sblimey bk://uk-server/big-product
 .DE
 .LP
 The set of components populate will consider are
 specified on the command line with
-.BR \-A ,
+.BR \-s ,
 or retrieved from the cached aliases list with
 .BR \-r ,
 or implied by the "default" aliases database entry if neither of
 the former apply.
 .SH OPTIONS
-.TP \-A\*<alias\*>
+.TP \-s\*<comp\*>
 .B \-l
 Populate using hard links instead of copying the data.  
 This is faster and saves disk space, but only works 
 within filesystems supporting hard links.
 .tp
-.OPTreq \-A alias
-Add this alias to the list of aliases that should be
-in this product instance.
-This option may be repeated to add more than one alias.
+.OPTreq \-s comp
+Populate the components implied implied by
+.ARG comp .
+If this option is repeated the implied subset is the union of all
+specified components.
+.ARG comp
+may be a component or an alias for a set of components.
 .tp
 .B \-q
 Run quietly.
 .tp
 .B \-r
 Repair the product by replacing any components which listed in
-the cached aliases list that have been manually removed.
+the cached components list that have been manually removed.
 .SH "SEE ALSO"
+.SA alias
 .SA bkd
 .SA clone
 .SA parent

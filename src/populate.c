@@ -21,10 +21,10 @@ populate_main(int ac, char **av)
 	hash	*done;
 
 	unless (start_cwd) start_cwd = strdup(proj_cwd());
-	while ((c = getopt(ac, av, "A;dE;lqr")) != -1) {
+	while ((c = getopt(ac, av, "dE;lqrs;")) != -1) {
 		switch (c) {
-		    case 'A':
 		    case 'r':
+		    case 's':
 		    	break;
 		    default:
 			if (optarg) {
@@ -34,9 +34,6 @@ populate_main(int ac, char **av)
 			}
 		}
 		switch(c) {
-		    case 'A':
-			aliases = addLine(aliases, strdup(optarg));
-			break;
 		    case 'd': break;
 		    case 'E':
 			/* we just error check and pass through to clone */
@@ -49,6 +46,9 @@ populate_main(int ac, char **av)
 		    case 'l': break;
 		    case 'q': quiet = 1; break;
 		    case 'r': repair = 1; break;
+		    case 's':
+			aliases = addLine(aliases, strdup(optarg));
+			break;
 		    default:
 usage:			sys("bk", "help", "-s", "populate", SYS);
 			return (1);
@@ -73,10 +73,10 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 
 	if (repair) {
 		if (aliases) {
-			fprintf(stderr, "populate: -r or -A but not both.\n");
+			fprintf(stderr, "populate: -r or -s but not both.\n");
 			exit(1);
 		}
-		aliases = file2Lines(0, "BitKeeper/log/ALIASES");
+		aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
 	} else unless (aliases) {
 		aliases = addLine(0, strdup("default"));
 	}
@@ -152,17 +152,17 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 
 			/*
 			 * populate adds the aliases we have requested to
-			 * the ALIASES file, but if there isn't a aliases
+			 * the COMPONENTS file, but if there isn't a aliases
 			 * file already then don't create one as that already
 			 * implies: fetch everything.
 			 */
-			if (p = file2Lines(0, "BitKeeper/log/ALIASES")) {
+			if (p = file2Lines(0, "BitKeeper/log/COMPONENTS")) {
 				EACH (aliases) {
 					p = addLine(p, strdup(aliases[i]));
 				}
 				uniqLines(p, free);
-				if (lines2File(p, "BitKeeper/log/ALIASES")) {
-					perror("BitKeeper/log/ALIASES");
+				if (lines2File(p, "BitKeeper/log/COMPONENTS")) {
+					perror("BitKeeper/log/COMPONENTS");
 				}
 				freeLines(p, free);
 			}

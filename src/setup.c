@@ -225,7 +225,7 @@ defaultFiles(int product)
 		fprintf(f, "@default\nall\n");
 		fclose(f);
 		system("bk new -Pq BitKeeper/etc/aliases");
-		f = fopen("BitKeeper/log/ALIASES", "w");
+		f = fopen("BitKeeper/log/COMPONENTS", "w");
 		fprintf(f, "default\n");
 		fclose(f);
 		touch("BitKeeper/log/PRODUCT", 0444);

@@ -315,7 +315,7 @@ int
 components_main(int ac, char **av)
 {
 	int	c;
-	int	rc = 0, want = 0, serialize = 0;
+	int	rc = 0, want = 0;
 	int	input = 0, output = 0, here = 0, missing = 0;
 	char	*p;
 	repos	*r = 0;
@@ -331,11 +331,8 @@ components_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.product_first = 1;
 
-	while ((c = getopt(ac, av, "A;hil;moPr;u")) != -1) {
+	while ((c = getopt(ac, av, "hil;moPr;s;u")) != -1) {
 		switch (c) {
-		    case 'A':
-			aliases = addLine(aliases, optarg);
-			break;
 		    case 'i':	/* undoc */
 		    	input = 1;
 			break;
@@ -366,8 +363,8 @@ components_main(int ac, char **av)
 		    case 'r':
 			opts.rev = optarg;
 			break;
-		    case 's':	/* undoc */
-			serialize = 1;
+		    case 's':
+			aliases = addLine(aliases, optarg);
 			break;
 		    case 'u':	/* undoc */
 			opts.undo = 1;

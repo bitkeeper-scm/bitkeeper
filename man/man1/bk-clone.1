@@ -7,8 +7,8 @@ bk clone \- create a new copy of a package
 .[B] \-ql 
 .[OPTreq] \-B url
 .[OPTequal] \-E e v
-.[OPTreq] \-M mod
 .[OPTreq] \-r rev
+.[OPTreq] \-s comp
 .ARG from
 .[ARG] to
 .SH DESCRIPTION
@@ -76,10 +76,13 @@ Clone using hard links instead of copying the data.
 This is faster and saves disk space, but only works 
 within filesystems supporting hard links.
 .tp
-.OPTreq \-A alias
-When cloning a product, limit the components to those implied by
-.ARG alias .
-This option may be repeated to clone more than one alias.
+.OPTreq \-s comp
+When cloning a product, limit the components to the subset implied by
+.ARG comp .
+If this option is repeated the implied subset is the union of all
+specified components.
+.ARG comp
+may be a component or an alias for a set of components.
 .tp
 .B \-q
 Run quietly.
@@ -93,6 +96,7 @@ See
 .B bk help terms
 for more information.
 .SH "SEE ALSO"
+.SA alias
 .SA BAM
 .SA bkd
 .SA parent
