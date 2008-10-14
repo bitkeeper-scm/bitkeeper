@@ -704,6 +704,51 @@ ensemble_nestedCheck(void)
 	free(hints);
 }
 
+/*
+ * See if a directory can be considered "empty". What this means is
+ * that it doesn't have any dirs or files, except for deeply nested
+ * components.
+ */
+int
+ensemble_emptyDir(char *dir)
+{
+	eopts	op = {0};
+	repos	*r;
+	char	*relpath, *path;
+	char	**d = 0;
+	int	n, i, found;
+	project	*p;
+
+	unless (p = proj_product(0)) {
+		fprintf(stderr, "ensemble_emptyDir called in a non-product");
+		return (0);
+	}
+	unless (d = getdir(dir)) return (0);
+	op.rev = "+";
+	r = ensemble_list(op);
+	relpath = proj_relpath(p, dir);
+	n = 0;
+	EACH(d) {
+		path = aprintf("%s/%s", relpath, d[i]);
+		found = 0;
+		EACH_REPO(r) {
+			if (strneq(path, r->path, strlen(path))) {
+				found = 1;
+				break;
+			}
+		}
+		free(path);
+		unless (found) {
+			/* conflict */
+			n++;
+		}
+	}
+	freeLines(d, free);
+	free(relpath);
+	ensemble_free(r);
+	return (n == 0);
+}
+
 int
 attach_main(int ac, char **av)
 {

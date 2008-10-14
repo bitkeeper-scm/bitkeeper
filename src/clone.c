@@ -282,8 +282,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 	char	*p, buf[MAXPATH];
 	char	*lic;
 	int	rc = 2, do_part2;
+	int	(*empty)(char*);
 
-	if (local && exists(local) && !emptyDir(local)) {
+	if (getenv("_BK_TRANSACTION")) {
+		empty = ensemble_emptyDir;
+	} else {
+		empty = emptyDir;
+	}
+	if (local && exists(local) && !empty(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
 		exit(1);
 	}
@@ -317,7 +323,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			disconnect(r, 2);
 			goto done;
 		}
-		if (exists(local) && !emptyDir(local)) {
+		if (exists(local) && !empty(local)) {
 			fprintf(stderr, "clone: %s exists already\n", local);
 			disconnect(r, 2);
 			goto done;
@@ -575,6 +581,7 @@ initProject(char *root, remote *r)
 
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(".");
+	proj_reset(0);
 	if (proj_product(0)) opts->no_parent = 1;
 
 	putenv("_BK_NEWPROJECT=YES");
