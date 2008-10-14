@@ -55,6 +55,7 @@ private	int	flags;
 #define	PRUNE_NO_SCOMPRESS	0x40000000	/* leave serials alone */
 #define	PRUNE_XCOMP		0x80000000	/* prune cross comp moves */
 #define	PRUNE_LVEMPTY		0x01000000	/* leave empty nodes in graph */
+#define	PRUNE_ALL		0x02000000	/* prune all user says to */
 
 int
 csetprune_main(int ac, char **av)
@@ -68,16 +69,17 @@ csetprune_main(int ac, char **av)
 	int	i, c, ret = 1;
 
 	flags = PRUNE_NEW_TAG_GRAPH;
-	while ((c = getopt(ac, av, "c:C:Egk:NqsSX")) != -1) {
+	while ((c = getopt(ac, av, "ac:C:Egk:NqsSX")) != -1) {
 		switch (c) {
+		    case 'a': flags |= PRUNE_ALL; break;
 		    case 'c': comppath = optarg; break;
 		    case 'C': compfile = optarg; break;
 		    case 'E': flags |= PRUNE_LVEMPTY; break;
 		    case 'g': flags |= PRUNE_GONE; break;
 		    case 'k': ranbits = optarg; break;
+		    case 'N': flags |= PRUNE_NO_SCOMPRESS; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'S': flags &= ~PRUNE_NEW_TAG_GRAPH; break;
-		    case 'N': flags |= PRUNE_NO_SCOMPRESS; break;
 		    case 'X': flags |= PRUNE_XCOMP; break;
 		    default:
 usage:			system("bk help -s csetprune");
@@ -319,8 +321,8 @@ filterWeave(sccs *cset, char **cweave, char ***delkeys,
 			lasti = i;
 			strcpy(last_rk, rk);
 			skip = 0;
-			if (prunekeys && !keeper(rk) &&
-			    hash_fetchStr(prunekeys, rk)) {
+			if (prunekeys && ((flags & PRUNE_ALL) || !keeper(rk))
+			    && hash_fetchStr(prunekeys, rk)) {
 			    	skip = 1;
 zero:				cweave[i][0] = 0;
 				continue;
@@ -343,9 +345,7 @@ zero:				cweave[i][0] = 0;
 		/*
 		 * User may want to exclude specific deltas
 		 */
-		if (prunekeys && hash_fetchStr(prunekeys, dk)) {
-		    	goto zero;
-		}
+		if (prunekeys && hash_fetchStr(prunekeys, dk)) goto zero;
 		path = getPath(dk, &p);
 		*p = 0;
 		path[-1] = 0;
@@ -1169,7 +1169,9 @@ do_file(sccs *s, char *comppath, char **deepnest)
 		newpath = newname(delpath, comppath, d->pathname, deepnest);
 		if (newpath == d->pathname) goto cmark;	/* no change */
 
-		verbose((stderr, "Moving %s to %s\n", d->pathname, newpath));
+		/* too noisy */
+		//verbose((stderr, "Moving %s to %s\n", d->pathname, newpath));
+
 		/*
 		 * The order here is important: new can possibly
 		 * point to inside pathname, so grab a copy of
@@ -1242,7 +1244,7 @@ do_files(char *comppath, char **deepnest)
 {
 	int	ret = 1;
 	sccs	*s = 0;
-	char	*sfile, *cmd;
+	char	*sfile;
 	FILE	*sfiles;
 
 	unless (comppath || deepnest) return (0);
@@ -1251,6 +1253,7 @@ do_files(char *comppath, char **deepnest)
 		perror("sfiles");
 		goto err;
 	}
+	verbose((stderr, "Fixing file internals .....\n"));
 	while (sfile = fgetline(sfiles)) {
 		if (streq(CHANGESET, sfile)) continue;
 		unless (s = sccs_init(sfile, INIT_MUSTEXIST)) {
@@ -1262,9 +1265,9 @@ do_files(char *comppath, char **deepnest)
 		sccs_free(s);
 		s = 0;
 	}
-	cmd = aprintf("bk -r names%s", (flags & SILENT) ? " -q" : "");
-	system(cmd);
-	free(cmd);
+	/* Too noisy for (flags & SILENT) ? " -q" : "" */
+	verbose((stderr, "Fixing names .....\n"));
+	system("bk -r names -q");
 	ret = 0;
 err:
 	if (s) sccs_free(s);
