@@ -1,0 +1,317 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2002 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+#
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Tests for populate/unpopulate
+
+
+echo $N Create an ensemble...........................................$NL
+nested project
+# add some files
+cd "$HERE/project/gcc"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+done
+bk commit $Q -y"Add $i to file$i"
+cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
+cd "$HERE/project/gdb"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+	bk commit $Q -y"add file $i"
+done
+cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
+echo OK
+
+echo $N Set up some components.......................................$NL
+cd "$HERE/project"
+for i in 1 2 3 4 5 6 7 8 9 10
+do	bk setup -fc$DEV_NULL comp$i
+done
+for i in 1 3 5 7 9
+do	bk alias add -Aodd comp$i
+done
+for i in 2 4 6 8 10
+do	bk alias add -Aeven comp$i
+done
+for i in 2 3 5 7
+do	bk alias add -Aprimes comp$i
+done
+bk commit $Q -y"adding components and aliases"
+cd "$HERE"
+bk clone $Q -Aeven -Aodd -Aprimes project copy
+echo OK
+
+echo $N Unpopulate even and primes...................................$NL
+cd "$HERE/copy"
+bk unpopulate $Q -Aeven -Aprimes || {
+	echo failed
+	exit 1
+}
+bk components -h > GOT
+cat <<EOF > WANT
+comp1
+comp3
+comp5
+comp7
+comp9
+EOF
+cmpfiles GOT WANT
+echo odd > WANT
+cmpfiles BitKeeper/log/ALIASES WANT
+echo OK
+
+echo $N Populate them back...........................................$NL
+bk populate $Q -Aeven -Aprimes
+cat <<EOF > WANT
+even
+odd
+primes
+EOF
+cmpfiles BitKeeper/log/ALIASES WANT
+bk components -h > GOT
+cat <<EOF > WANT
+comp1
+comp10
+comp2
+comp3
+comp4
+comp5
+comp6
+comp7
+comp8
+comp9
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Unpopulate odd...............................................$NL
+bk unpopulate $Q -Aodd || {
+	echo failed
+	exit 1
+}
+bk components -h > GOT
+# gotta love our ordering :)
+cat <<EOF > WANT
+comp10
+comp2
+comp3
+comp4
+comp5
+comp6
+comp7
+comp8
+EOF
+cmpfiles GOT WANT
+cat <<EOF > WANT
+even
+primes
+EOF
+cmpfiles BitKeeper/log/ALIASES WANT
+echo OK
+
+echo $N Unpopulate even..............................................$NL
+bk unpopulate $Q -Aeven || {
+	echo failed
+	exit 1
+}
+bk components -h > GOT
+cat <<EOF > WANT
+comp2
+comp3
+comp5
+comp7
+EOF
+cmpfiles GOT WANT
+echo primes > WANT
+cmpfiles BitKeeper/log/ALIASES WANT
+echo OK
+
+echo $N Unpopulate alias not populated is an error...................$NL
+bk unpopulate -Adefault > GOT 2>&1
+grep -q "cannot remove" GOT || {
+	echo failed
+	exit 1
+}
+bk unpopulate -Aall > GOT 2>&1
+grep -q "cannot remove" GOT || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Populate special alias \'all\' and unpopulate it...............$NL
+bk populate $Q -Aall
+bk components -h > GOT
+cat <<EOF > WANT
+comp1
+comp10
+comp2
+comp3
+comp4
+comp5
+comp6
+comp7
+comp8
+comp9
+gcc
+gdb
+EOF
+cmpfiles GOT WANT
+cat <<EOF > WANT
+all
+primes
+EOF
+cmpfiles BitKeeper/log/ALIASES WANT
+bk unpopulate $Q -Aall
+bk components -h > GOT
+cat <<EOF > WANT
+comp2
+comp3
+comp5
+comp7
+EOF
+cmpfiles GOT WANT
+cat <<EOF > WANT
+primes
+EOF
+cmpfiles BitKeeper/log/ALIASES WANT
+echo OK
+
+echo $N Populate a glob and unpopulate it............................$NL
+bk populate $Q -A'./g*'
+bk components -h > GOT
+cat <<EOF > WANT
+comp2
+comp3
+comp5
+comp7
+gcc
+gdb
+EOF
+cmpfiles GOT WANT
+cat <<EOF > WANT
+./g*
+primes
+EOF
+cmpfiles BitKeeper/log/ALIASES WANT
+bk unpopulate $Q -A'./g*'
+bk components -h > GOT
+cat <<EOF > WANT
+comp2
+comp3
+comp5
+comp7
+EOF
+cmpfiles GOT WANT
+cat <<EOF > WANT
+primes
+EOF
+cmpfiles BitKeeper/log/ALIASES WANT
+echo OK
+
+echo $N Unpopulate primes............................................$NL
+bk unpopulate $Q -Aprimes
+bk components -h > GOT
+cat <<EOF > WANT
+EOF
+cmpfiles GOT WANT
+cmpfiles BitKeeper/log/ALIASES WANT
+echo OK
+
+echo $N Unpopulate a component with changes should fail..............$NL
+bk populate $Q -Aprimes
+bk components -h > GOT
+cat <<EOF > WANT
+comp2
+comp3
+comp5
+comp7
+EOF
+cmpfiles GOT WANT
+cat <<EOF > WANT
+primes
+EOF
+cmpfiles BitKeeper/log/ALIASES WANT
+cd comp2
+touch foobar
+bk new $Q foobar
+cd ..
+bk unpopulate -Aprimes > GOT 2>&1
+grep -q 'local changes' GOT || {
+	echo failed
+	exit 1
+}
+bk components -h | grep -q comp2 || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Add a deep nest and populate it..............................$NL
+SP=""
+for i in 2 3 5 7
+do	cd "$HERE/project/comp$i"
+	bk setup -fc$DEV_NULL sub$i
+	SP="$SP comp$i/sub$i"
+done
+cd "$HERE/project"
+bk alias add -Asubprimes $SP
+cd "$HERE/copy"
+bk pull $Q || exit 1
+bk populate $Q -Asubprimes
+bk components -h > GOT
+cat <<EOF > WANT
+comp2
+comp2/sub2
+comp3
+comp3/sub3
+comp5
+comp5/sub5
+comp7
+comp7/sub7
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Unpopulate subprimes.........................................$NL
+bk unpopulate $Q -Asubprimes
+bk components -h > GOT
+cat <<EOF > WANT
+comp2
+comp3
+comp5
+comp7
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Remove enclosing and populate subcomponents should fail......$NL
+rm -rf comp*
+bk populate $Q -Asubprimes || exit 1
+bk components -h > GOT
+cat <<EOF > WANT
+comp2/sub2
+comp3/sub3
+comp5/sub5
+comp7/sub7
+EOF
+bk populate $Q -Aprimes > ERR 2>&1 && {
+	echo fixed
+	exit 1
+}
+echo failed \(bug\)
+
+

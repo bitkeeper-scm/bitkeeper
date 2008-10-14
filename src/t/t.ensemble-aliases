@@ -636,6 +636,8 @@ grep -q 'reserved name "all" may not be changed.' OUT || {
 	cat OUT
 	exit 1
 }
+echo OK
+
 echo $N Using a relative path in bk alias should work................$NL
 cd "$HERE"/project/gcc
 bk alias add -Anm ./nm || {

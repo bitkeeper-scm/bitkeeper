@@ -338,6 +338,7 @@ _unlink
 unlock
 uninstall
 unpark
+unpopulate
 unpull
 unwrap
 upgrade

@@ -17,6 +17,8 @@ private int	repo_sort(const void *a, const void *b);
 private	void	setgca(sccs *s, u32 bit, u32 tmp);
 
 private	char	*ensemble_version = "1.0";
+private int	deeplast(const void *a, const void *b);
+private int	deepfirst(const void *a, const void *b);
 
 /*
  * Return the list of repos for this product.
@@ -202,7 +204,16 @@ err:				if (close) sccs_free(opts.sc);
 	}
 	mdbm_close(idDB);
 
-	sortLines(list, repo_sort);
+	/* nand: one or the other, not both, none is ok */
+	assert (!(opts.deepfirst & opts.deeplast));
+
+	if (opts.deepfirst) {
+		sortLines(list, deepfirst);
+	} else if (opts.deeplast) {
+		sortLines(list, deeplast);
+	} else {
+		sortLines(list, repo_sort);
+	}
 
 	if (opts.product) {
 		if (opts.rev) {			/* undo / [r]clone/ push */
@@ -425,6 +436,25 @@ out:	ensemble_free(r);
 	if (aliases) freeLines(aliases, 0);
 	if (opts.revs) freeLines(opts.revs, free);
 	exit(rc);
+}
+
+private int
+deeplast(const void *a, const void *b)
+{
+	repo	*ra = *(repo**)a;
+	repo	*rb = *(repo**)b;
+	int	la, lb;
+
+	la = strlen(ra->path);
+	lb = strlen(rb->path);
+	if (la - lb) return (la - lb);
+	return (strcmp(ra->path, rb->path));
+}
+
+private int
+deepfirst(const void *a, const void *b)
+{
+	return (deeplast(b, a));
 }
 
 private int

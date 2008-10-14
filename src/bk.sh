@@ -137,54 +137,6 @@ _prefixed_sfiles() {
 	fi
 }
 
-# bk unpopulate [-fq] [-M<mod>...]
-# For now each <mod> has to be a ./path form.  XXX.
-# For now, does nothing with BitKeeper/log/MODULES (which needs to be ALIASES)
-_unpopulate() {
-	__cd2product
-	QUIET=
-	MODULES=
-	FORCE=
-	while getopts A:fM:q opt
-	do
-		case "$opt" in
-		f) FORCE=-f;;
-		q) QUIET=-q;;
-		A|M)	case "$OPTARG" in
-			    ./*) MODULES="$MODULES $OPTARG";;
-			    *) echo unpopulate: only ./path form for now
-			       exit 1;;
-			esac
-			;;
-		*) bk help -s unpopulate; exit 1;;
-		esac
-	done
-	test "X$MODULES" = X && MODULES=`bk components -h`
-	# Reverse them so that gcc/deep comes before gcc
-	for dir in $MODULES
-	do	echo $dir
-	done | bk sort -r > BitKeeper/tmp/aliases
-	MODULES="`cat BitKeeper/tmp/aliases`"
-	rm -f BitKeeper/tmp/aliases
-	for dir in $MODULES
-	do	test -d $dir -a -f $dir/BitKeeper/log/COMPONENT || {
-			echo $dir is not a component
-			exit 1
-		}
-		test -z "$FORCE" && {
-			cd $dir
-			bk superset $QUIET || {
-				echo $dir has local changes
-				exit 1
-			}
-			__cd2product
-		}
-		# What could go wrong?  Sigh.
-		rm -rf $dir
-	done
-	exit 0
-}
-
 _portal() {
 	__cd2product
 	ECHO=echo
