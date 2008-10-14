@@ -524,25 +524,15 @@ echo $N Test populate in repair mode with nothing to do .............$NL
 bk populate -r > GOT 2>&1 || exit 1
 cat > WANT <<EOF
 populate: gcc is already here.
-populate: gcc/deep is already here.
 populate: gdb is already here.
+populate: gcc/deep is already here.
 populate: no components fetched
 EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Unpopulate gdb ..............................................$NL
-bk unpopulate $Q -s./gdb || {
-	echo unpopulate failed
-	exit 1
-}
-test -d gdb && {
-	echo gdb should be removed
-	exit 1
-}
-echo OK
-
 echo $N Test populate in repair mode with gdb missing ...............$NL
+rm -rf gdb
 bk populate -r > GOT 2>&1 || exit 1
 bk components -h > GOT
 cat > WANT <<EOF
@@ -553,18 +543,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Unpopulate gcc/deep .........................................$NL
-bk unpopulate $Q -s./gcc/deep || {
-	echo unpopulate failed
-	exit 1
-}
-test -d gcc/deep && {
-	echo gcc/deep should be removed
-	exit 1
-}
-echo OK
-
 echo $N Test populate in repair mode with gcc/deep missing ..........$NL
+rm -rf gcc/deep
 bk populate -r > GOT 2>&1 || exit 1
 bk components -h > GOT
 cat > WANT <<EOF
@@ -576,7 +556,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test populate in repair mode with gcc/deep and gcc missing ..$NL
-bk unpopulate $Q -s./gcc/deep || exit 1
+rm -rf gcc
 bk populate -r > GOT 2>&1 || exit 1
 bk components -h > GOT
 cat > WANT <<EOF
@@ -588,7 +568,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Unpopulate all components ...................................$NL
-bk unpopulate $Q || {
+bk unpopulate $Q > ERR 2>&1 || {
 	echo unpopulate failed
 	exit 1
 }
@@ -601,6 +581,7 @@ done
 echo OK
 
 echo $N Test populate in repair mode with all components missing ....$NL
+echo default > BitKeeper/log/ALIASES
 bk populate -r > GOT 2>&1 || exit 1
 bk components -h > GOT
 cat > WANT <<EOF
@@ -670,7 +651,7 @@ bk unpopulate $Q > OUT 2>&1 && {
 	echo unpopulate should have failed
 	exit 1
 }
-grep -q 'gdb has local changes' OUT || {
+grep -q 'has local changes' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -711,7 +692,7 @@ bk unpopulate $Q >OUT 2>&1 && {
 	echo unpopulate should have failed
 	exit 1
 }
-grep -q 'gdb has local changes' OUT || {
+grep -q 'local changes' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
