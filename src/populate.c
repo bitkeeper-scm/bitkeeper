@@ -369,7 +369,12 @@ hash_setDifference(hash *A, hash *B)
 {
 	hash	*ret;
 
-	unless (A) return (0);
+	/*
+	 * XXX: the return value isn't tested, but passed on into
+	 * hash_first, which goes into memhash, and does a dereference.
+	 * So don't pass back null.
+	 * // unless (A) return (0);
+	 */
 	ret = hash_new(HASH_MEMHASH);
 	EACH_HASH(A) {
 		unless (hash_fetchStr(B, A->kptr)) {

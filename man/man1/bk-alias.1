@@ -5,7 +5,7 @@ bk alias \- manage aliases for a list of components
 .SH SYNOPSIS
 .B bk alias 
 .[B] \-Cf
-.B \-a|\-k|\-r|\-v
+.B \-a|\-k|\-r
 .[B] name
 .[B] component ...
 .br
@@ -90,9 +90,9 @@ gcc/A/XYZ
 gcc/A/XYZ/sneaky
 .DE
 .tp
-.B gcc
-When the component name is an alias name, the specified name is added
-to this alias for expansion on later use.
+.B COMPILER
+When the component name does not match a component root, it is 
+taken as another alias to be expanded recursively.
 .tp
 .B -
 If a single trailing dash is the only component then the list of components
@@ -136,15 +136,11 @@ When creating an alias, the operation will fail if there is a pre-existing
 alias of the same name unless this option is present.
 .tp
 .B \-k
-Used when listing aliases; causes the expanision of the alias to be listed
-as rootkeys.
+Used when listing aliases; causes the expansion of the alias to be listed
+as rootkeys instead of pathnames.
 .tp
 .B \-r
 Used to remove an alias or remove one or more components in the alias.
-.tp
-.B \-v
-Used when listing aliases; causes the expansion of the alias to be shown
-as pathnames.
 .SH EXAMPLES
 To create an alias that points to all components in a sparse clone:
 .DS
@@ -156,7 +152,7 @@ $ bk alias COMPILER cmd/gcc cmd/as cmd/ld cmd/nm
 .DE
 To create a higher level alias that includes the debugger:
 .DS
-$ bk alias DEV-TOOLS cmd/gdb compiler
+$ bk alias DEV-TOOLS cmd/gdb COMPILER
 .DE
 List all aliases:
 .DS

@@ -708,6 +708,13 @@ ensemble_nestedCheck(void)
  * See if a directory can be considered "empty". What this means is
  * that it doesn't have any dirs or files, except for deeply nested
  * components.
+ *
+ * XXX: this is doesn't work in the general case but does work
+ * in some to demo the idea.  The strneq has path/to/foo match
+ * path/to/foobar as well as not handling the case where it is
+ * a multiple directory deep nest.  I think we want Wayne's find
+ * which is like sfiles, and do a prune on the deep nest entry
+ * points.  Later...
  */
 int
 ensemble_emptyDir(char *dir)

@@ -16,9 +16,14 @@ so:
 $ cd big-product
 $ bk unpopulate -sDEV-TOOLS
 .DE
+In order to preserve any local work, unpopulate will run
+bk superset, which searches for local changesets, deltas, 
+modifications, extra files, etc.
+See 
+.B \-f
+below for how to skip this check.
 .SH OPTIONS
-.TP \-s\*<comp\*>
-.tp
+.TP 
 .B \-f
 Force the unpopulate to work even if local work is present.
 .tp

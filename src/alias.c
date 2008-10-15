@@ -64,7 +64,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		}
 	}
 
-	if ((append + rm) > 1) goto usage;
+	if (append && rm) goto usage;
 	if (!append && !rm) {
 		if (av[optind] && av[optind+1]) {
 			create = 1;
@@ -171,6 +171,10 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		if (aliasdb_rm(alias, comps, commit)) return (1);
 	}
 
+	/*
+	 * XXX: comps memleaked in the error cases
+	 */
+	if (comps) freeLines(comps, free);
 	return (0);
 }
 
@@ -255,11 +259,10 @@ aliasdb_show(char *alias)
 {
 	aliases	*mdb;
 	char	**result = 0;
-	char	*val;
 
 	mdb = new(aliases);
 	unless (mdb->aliasDB = aliasdb_init()) goto out;
-	unless (val = hash_fetchStr(mdb->aliasDB, alias)) goto out;
+	unless (hash_fetchStr(mdb->aliasDB, alias)) goto out;
 	result = splitLine(mdb->aliasDB->vptr, "\r\n", 0);
 out:	aliases_free(mdb);
 	return (result);
@@ -567,6 +570,12 @@ finish(char *comment, hash *aliasDB, int commit)
 	char	*tmpfile;
 	char	buf[MAXPATH];
 
+	/*
+	 * XXX: this function will fail the edit and delta if the file
+	 * initially read was from BitKeeper/etc/modules
+	 * because there is no BitKeeper/etc/aliases
+	 * Add an -a to delta?  And let the edit just fail?
+	 */
 	system("bk -P edit -q " ALIASES);
 	concat_path(buf, proj_root(proj_product(0)), ALIASES);
 	hash_toFile(aliasDB, buf);

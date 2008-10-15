@@ -37,8 +37,9 @@ echo OK
 
 echo $N Set up some components.......................................$NL
 cd "$HERE/project"
+echo > "$HERE/empty"
 for i in 1 2 3 4 5 6 7 8 9 10
-do	bk setup -fc$DEV_NULL comp$i
+do	bk setup -fc"$HERE/empty" comp$i
 done
 bk alias -C odd comp1 comp3 comp5 comp7 comp9
 bk alias -C even comp2 comp4 comp6 comp8 comp10
@@ -50,7 +51,7 @@ echo OK
 
 echo $N Unpopulate even and primes...................................$NL
 cd "$HERE/copy"
-BK_TRACE=1 BK_TRACE_FILES=populate.c bk unpopulate $Q -seven -sprimes || {
+bk unpopulate $Q -seven -sprimes || {
 	echo failed
 	exit 1
 }
@@ -258,7 +259,7 @@ echo $N Add a deep nest and populate it..............................$NL
 SP=""
 for i in 2 3 5 7
 do	cd "$HERE/project/comp$i"
-	bk setup -fc$DEV_NULL sub$i
+	bk setup -fc"$HERE/empty" sub$i
 	SP="$SP comp$i/sub$i"
 done
 cd "$HERE/project"
