@@ -204,13 +204,6 @@ admin_main(int ac, char **av)
 			continue;
 		}
 		if (flags & ADMIN_ADD1_0) {
-			if (streq(sc->tree->rev, "1.0")) {
-				verbose((stderr,
-				    "admin: %s already has 1.0\n", sc->gfile));
-				sccs_free(sc);
-				name = sfileNext();
-				continue;
-			}
 			if (sccs_admin(sc, 0, flags, 0, 0, 0, 0, 0, 0, 0)) {
 			    	fprintf(stderr,
 				    "admin: failed to add 1.0 to %s\n",

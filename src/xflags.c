@@ -143,6 +143,8 @@ checkXflags(sccs *s, delta *d, int what)
 	 * Turn on EXPAND1 flag
 	 * Turn on SCCS flag
 	 * but that's too much of a pain.
+	 * XXX: this is fixed by rmshortkeys -- so safe to pull when
+	 * all repos have been converted.
 	 */
 	if (streq(s->tree->sdate, "97/05/18 16:29:28")) {
 		sccs_md5delta(s, s->tree, key);

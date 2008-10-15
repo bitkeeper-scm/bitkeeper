@@ -179,16 +179,40 @@ _portal() {
 	fi
 }
 
+__newEmpty() {
+	# repeatable file if you run from repeatable relative path
+	test "X$BK_DATE_TIME_ZONE" = X && {
+		DSPEC=':D: :T::TZ:'
+		DT=`BK_PAGER=cat BK_YEAR2=1 bk changes -r1.1 -nd"$DSPEC"`
+		BK_DATE_TIME_ZONE="$DT"
+		BK_USER=`BK_PAGER=cat bk changes -r1.1 -nd":P:"`
+		BK_HOST=`BK_PAGER=cat bk changes -r1.1 -nd":HOST:"`
+		export BK_USER BK_HOST BK_DATE_TIME_ZONE
+	}
+
+	F="$1"
+	R=`echo "$F $BK_DATE_TIME_ZONE $BK_USER $BK_HOST" \
+	    | bk crypto -hX - | cut -c1-16`
+	mkdir -p `dirname "$F"`
+	rm -f "$F"
+	touch "$F"
+	chmod 666 "$F"
+	_BK_NO_UNIQ=1 BK_RANDOM="$R" bk new -y"New $F" -qP "$F"
+}
+
 _partition() {
 	COMPS=
 	QUIET=
 	XCOMPS=
-	while getopts C:G:m:qX opt
+	GONELIST=
+	COMPGONELIST=
+	while getopts C:G:g:m:qX opt
 	do
 		case "$opt" in
 		q) QUIET=-q;;
 		C) COMPS="$OPTARG";;
 		G) GONELIST="$OPTARG";;
+		g) COMPGONELIST="$OPTARG";;
 		m) COMPS="$OPTARG";;	# for any old scripts
 		X) XCOMPS="-X";;
 		*) bk help -s partition; exit 1;;
@@ -211,6 +235,10 @@ _partition() {
 	}
 	test -z "$GONELIST" -o -f "$GONELIST" || {
 		echo "partition: -G $GONELIST is not a file"
+		exit 1
+	}
+	test -z "$COMPGONELIST" -o -f "$COMPGONELIST" || {
+		echo "partition: -G $COMPGONELIST is not a file"
 		exit 1
 	}
 	test "$#" -eq 2 || {
@@ -256,6 +284,8 @@ _partition() {
 		exit 1
 	}
 	test -z "$GONELIST" || cp "$GONELIST" "$to/$WA/gonelist" || exit 1
+	test -z "$COMPGONELIST" \
+	    || cp "$COMPGONELIST" "$to/$WA/compgonelist" || exit 1
 
 	HERE="`pwd`"
 	cd "$to" || exit 1
@@ -276,12 +306,38 @@ _partition() {
 	then	RAND=`bk _sort < $WA/gonelist | cat BitKeeper/log/ROOTKEY - \
 		    | bk crypto -hX - | cut -c1-16`
 		verbose "### Removing unwanted files"
-		bk csetprune $QUIET -S -k"$RAND" - < $WA/gonelist || exit 1
+		bk csetprune $QUIET -aSk"$RAND" - < $WA/gonelist || exit 1
 	else	RAND=`echo "no gonelist" | cat BitKeeper/log/ROOTKEY - \
 		    | bk crypto -hX - | cut -c1-16`
 		verbose "### Newrooting product"
 		bk newroot $QUIET -k"$RAND" || exit 1
 	fi
+
+	# If there is no gone or ignore file, add one
+	ADDONE=
+	rm -f $WA/allkeys
+	test -f BitKeeper/etc/SCCS/s.gone || {
+		ADDONE=YES
+		__newEmpty BitKeeper/etc/gone
+		SERIAL=`bk changes -r1.1 -nd:DS:`
+		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/gone \
+		    >> $WA/allkeys
+	}
+	test -f BitKeeper/etc/SCCS/s.ignore || {
+		ADDONE=YES
+		__newEmpty BitKeeper/etc/ignore
+		SERIAL=`bk changes -r1.1 -nd:DS:`
+		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/ignore \
+		    >> $WA/allkeys
+	}
+	test "X$ADDONE" = "XYES" && {
+		# Add in the rest of keys and slurp into cset body
+		bk annotate -aS -hR ChangeSet >> $WA/allkeys
+		bk surgery -W$WA/allkeys || exit 1
+		bk cset -M1.1
+		bk -r check -ac || exit 1
+		rm -f $WA/allkeys
+	}
 
 	# Save a backup copy of the repo
 	bk clone -ql . $WA/repo
@@ -291,6 +347,46 @@ _partition() {
 	RAND=`echo "The Big Cheese" | cat - BitKeeper/log/ROOTKEY \
 		    | bk crypto -hX - | cut -c1-16`
 	bk csetprune $QUIET -NSE $XCOMPS -C$WA/map "-k$RAND"
+
+	# Prepare the component.  Need insane in case config is stripped.
+	_BK_INSANE=1
+	export _BK_INSANE
+	cd $WA/repo || exit 1
+	test -f BitKeeper/log/ROOTKEY || {
+		bk id > /dev/null
+		test -f BitKeeper/log/ROOTKEY || {
+			echo "No BitKeeper/log/ROOTKEY file" 1>&2
+			exit 1
+		}
+	}
+	# add all config files - any rootkey or deltakey that has
+	# lived in the config file slot, prune the rootkey.
+	bk annotate -hR ChangeSet | grep '[|]BitKeeper/etc/config[|]' \
+	    | sed 's/ .*//' >> ../compgonelist
+	bk _sort -u < ../compgonelist > ../cgl
+	mv ../cgl ../compgonelist
+	test -f ../compgonelist && {
+		RAND=`cat BitKeeper/log/ROOTKEY ../compgonelist \
+		    | bk crypto -hX - | cut -c1-16`
+		verbose "### Removing unwanted files"
+		bk csetprune $QUIET -aNSk"$RAND" - < ../compgonelist || exit 1
+	}
+
+	# If there is no config file, add one
+	test -f $WA/repo/BitKeeper/etc/SCCS/s.config || {
+		__newEmpty BitKeeper/etc/config
+		bk annotate -aS -hR ChangeSet > ../allkeys
+		SERIAL=`bk changes -r1.1 -nd:DS:`
+		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/config \
+		    >> ../allkeys
+		# Add in the rest of keys and slurp into cset body
+		bk surgery -W../allkeys || exit 1
+		bk cset -M1.1
+		bk -r check -ac || exit 1
+		rm -f ../allkeys
+	}
+	cd ../$WA2PROD || exit 1
+	_BK_INSANE=
 
 	# Fill in the components
 	cat $WA/map | while read comp; do
@@ -328,6 +424,9 @@ _partition() {
 
 	# We now have a bunch of separate repos laid out like a product
 	# stitch them together
+	touch BitKeeper/log/PRODUCT
+	chmod 444 BitKeeper/log/PRODUCT
+
 	BP=`bk changes -r+ -nd:ROOTKEY:`
 	cat $WA/map | while read comp; do
 		test -d "$comp" || continue
@@ -342,31 +441,16 @@ _partition() {
 		) || exit 1
 	done > $WA/allkeys || exit 1
 
-	touch BitKeeper/log/PRODUCT
-	chmod 444 BitKeeper/log/PRODUCT
+	# Add in the existing keys
+	bk annotate -aS -hR ChangeSet >> $WA/allkeys
 
-	# Hack a aliases file
-	(
-		F=BitKeeper/etc/config
-		M=BitKeeper/etc/aliases
-		DSPEC=':D: :T::TZ:'
-		DT=`BK_YEAR2=1 bk log -r1.1 -nd"$DSPEC" $F`
-		BK_DATE_TIME_ZONE="$DT"
-		BK_USER=`bk log -r1.1 -nd":P:" $F`
-		BK_HOST=`bk log -r1.1 -nd":HOST:" $F`
-		BK_RANDOM=`echo "$BK_DATE_TIME_ZON $BK_USER $BK_HOST" \
-		    | bk crypto -hX - | cut -c1-16`
-		export BK_USER BK_HOST BK_DATE_TIME_ZONE BK_RANDOM
-		touch $M
-		chmod 666 $M
-		_BK_NO_UNIQ=1 bk new -qP $M
-	)
+	# Hack an alias file and add that too
+	__newEmpty BitKeeper/etc/aliases
 	SERIAL=`bk changes -r1.1 -nd:DS:`
 	bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/aliases \
 	    >> $WA/allkeys
 
-	# Add in the rest of keys and slurp into cset body
-	bk annotate -aS -hR ChangeSet >> $WA/allkeys
+	# sort and roll that into a cset weave body
 	bk surgery -W$WA/allkeys || exit 1
 
 	# HACK: Give the aliases file a cset mark

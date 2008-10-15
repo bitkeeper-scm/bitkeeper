@@ -10858,14 +10858,30 @@ adjust_serials(delta *d, int amount)
  * Cons up a 1.0 delta, initializing as much as possible from the 1.1 delta.
  * If this is a BitKeeper file with changeset marks, then we have to 
  * replicate the key on the 1.1 delta.
+ *
+ * RET: 0 - keeping going to add a 1.0 delta
+ *      1 - no need to do any more work
+ *      2 - 1.0 was there, but random added: only rechecksum
  */
-void
-insert_1_0(sccs *s)
+private	int
+insert_1_0(sccs *s, u32 flags)
 {
 	delta	*d;
 	delta	*t;
 	int	csets = 0;
+	int	len;
+	char	key[MAXKEY];
 
+	if (streq(s->tree->rev, "1.0")) {
+		unless (s->tree->random) {
+			assert(s->tree->kid);
+			len = sccs_sdelta(s, s->tree->kid, key);
+			s->tree->random = short_random(key, len);
+			return (2);
+		}
+		verbose((stderr, "admin: %s already has 1.0\n", s->gfile));
+		return (1);
+	}
 	/*
 	 * First bump all the serial numbers.
 	 */
@@ -10885,11 +10901,36 @@ insert_1_0(sccs *s)
 	d->user = strdup(t->user);
 	if (d->hostname = t->hostname) t->flags |= D_DUPHOST;
 	if (d->pathname = t->pathname) t->flags |= D_DUPPATH;
-	if (d->zone = t->zone) t->flags |= D_DUPZONE;
+	if (d->zone = t->zone) {
+		t->flags |= D_DUPZONE;
+	} else {
+		d->zone = strdup("-00:00");
+	}
 	d->serial = 1;
+
+	/* date needs to be 1 second earler than 1.1 */
+	/* date assuming local zone - 1 */
+	d->date = date2time(t->sdate, sccs_zone(t->date), EXACT) - 1;
+	/* sdate assuming local zone */
+	d->sdate = strdup(time2date(d->date));
+	/* date assuming correct zone */
+	d->date = date2time(d->sdate, d->zone, EXACT);
+
 	if (csets) {
-		d->date = t->date;	/* somebody is using this key already */
 		d->sum = t->sum;
+		if (t->random) {
+			d->random = t->random;
+			t->random = 0;
+		} else {
+			len = sccs_sdelta(s, t, key);
+			d->random = short_random(key, len);
+		}
+		/*
+		 * rmshortkeys sets BK_HOST -- use it if needed
+		 */
+		if (!d->hostname && (d->hostname = getenv("BK_HOST"))) {
+			d->hostname = strdup(d->hostname);
+		}
 	} else {
 		unless (d->random) {
 			char	buf[20];
@@ -10898,11 +10939,10 @@ insert_1_0(sccs *s)
 			randomBits(buf);
 			if (buf[0]) d->random = strdup(buf);
 		}
-		d->date = t->date - 1;
 		d->sum = almostUnique();
 	}
-	date(d, d->date);
 	d = sccs_dInit(d, 'D', s, 0);
+	return (0);
 }
 
 private int
@@ -11016,6 +11056,7 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_compp,
 {
 	FILE	*sfile = 0;
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
+	int	rc;
 	int	flagsChanged = 0;
 	char	*buf;
 	delta	*d = 0;
@@ -11258,7 +11299,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if (flagsChanged || (sc->encoding != new_enc)) flags |= NEWCKSUM;
 
 	if (flags & ADMIN_ADD1_0) {
-		insert_1_0(sc);
+		if ((rc = insert_1_0(sc, flags)) == 1) goto out;
+		if (rc == 2) flags &= ~ADMIN_ADD1_0;
 		flags |= NEWCKSUM;
 	} else if (flags & ADMIN_RM1_0) {
 		if (remove_1_0(sc)) {
