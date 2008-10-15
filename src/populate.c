@@ -84,7 +84,6 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 	}
 	opts.rev = "+";
 	opts.sc = s;
-	opts.deeplast = 1;
 	repos = ensemble_list(opts);
 	putenv("_BK_TRANSACTION=1");
 	done = hash_new(HASH_MEMHASH);

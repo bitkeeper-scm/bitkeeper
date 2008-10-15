@@ -28,7 +28,6 @@ typedef	struct {
 	u32	product_first:1;// default is last in list
 	u32	undo:1;		// undo wants the -a inferred from opts.revs
 	u32	deepfirst:1;	// sort such that deeply nested comps are first
-	u32	deeplast:1;	// sort such that deeply nested comps are last
 } eopts;
 
 repos*	ensemble_list(eopts opts);
