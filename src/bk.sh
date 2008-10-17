@@ -179,7 +179,7 @@ _portal() {
 	fi
 }
 
-__newEmpty() {
+__newFile() {
 	# repeatable file if you run from repeatable relative path
 	test "X$BK_DATE_TIME_ZONE" = X && {
 		DSPEC=':D: :T::TZ:'
@@ -194,8 +194,7 @@ __newEmpty() {
 	R=`echo "$F $BK_DATE_TIME_ZONE $BK_USER $BK_HOST" \
 	    | bk crypto -hX - | cut -c1-16`
 	mkdir -p `dirname "$F"`
-	rm -f "$F"
-	touch "$F"
+	test -f "$F" || touch "$F"
 	chmod 666 "$F"
 	_BK_NO_UNIQ=1 BK_RANDOM="$R" bk new -y"New $F" -qP "$F"
 }
@@ -318,14 +317,16 @@ _partition() {
 	rm -f $WA/allkeys
 	test -f BitKeeper/etc/SCCS/s.gone || {
 		ADDONE=YES
-		__newEmpty BitKeeper/etc/gone
+		test -f BitKeeper/etc/gone && rm -f BitKeeper/etc/gone
+		__newFile BitKeeper/etc/gone
 		SERIAL=`bk changes -r1.1 -nd:DS:`
 		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/gone \
 		    >> $WA/allkeys
 	}
 	test -f BitKeeper/etc/SCCS/s.ignore || {
 		ADDONE=YES
-		__newEmpty BitKeeper/etc/ignore
+		test -f BitKeeper/etc/ignore && rm -f BitKeeper/etc/ignore
+		__newFile BitKeeper/etc/ignore
 		SERIAL=`bk changes -r1.1 -nd:DS:`
 		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/ignore \
 		    >> $WA/allkeys
@@ -374,7 +375,8 @@ _partition() {
 
 	# If there is no config file, add one
 	test -f $WA/repo/BitKeeper/etc/SCCS/s.config || {
-		__newEmpty BitKeeper/etc/config
+		test -f BitKeeper/etc/config && rm -f BitKeeper/etc/config
+		__newFile BitKeeper/etc/config
 		bk annotate -aS -hR ChangeSet > ../allkeys
 		SERIAL=`bk changes -r1.1 -nd:DS:`
 		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/config \
@@ -444,8 +446,11 @@ _partition() {
 	# Add in the existing keys
 	bk annotate -aS -hR ChangeSet >> $WA/allkeys
 
-	# Hack an alias file and add that too
-	__newEmpty BitKeeper/etc/aliases
+	# Setting up aliases and COMPONENTS taken from 'bk setup'
+	echo default > BitKeeper/log/COMPONENTS
+	echo @default > BitKeeper/etc/aliases
+	echo all >> BitKeeper/etc/aliases
+	__newFile BitKeeper/etc/aliases
 	SERIAL=`bk changes -r1.1 -nd:DS:`
 	bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/aliases \
 	    >> $WA/allkeys

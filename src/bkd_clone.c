@@ -57,7 +57,7 @@ cmd_clone(int ac, char **av)
 	 * This is where we would put in an exception for bk port.
 	 */
 	if (!tid && proj_isComponent(0)) {
-		out("ERROR-clone of a component is not allowed, use -A\n");
+		out("ERROR-clone of a component is not allowed, use -s\n");
 		goto out;
 	}
 	if (proj_isEnsemble(0)) {

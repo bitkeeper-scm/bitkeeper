@@ -23,19 +23,20 @@ See
 .B \-f
 below for how to skip this check.
 .SH OPTIONS
-.TP 
+.TP \-s\*<comp\*>
 .B \-f
 Force the unpopulate to work even if local work is present.
 .tp
 .B \-l
-list components and/or aliases that were specified to a previous
+List components and/or aliases that were specified to a previous
 clone and/or populate.
 This is list is what you may unpopulate.
 .tp
 .B \-q
 Run quietly.
+.tp
 .OPTreq \-s comp
-restrict the unpopulate to the subset implied by
+Restrict the unpopulate to the subset implied by
 .ARG comp .
 If this option is repeated the implied subset is the union of all
 specified components.
