@@ -706,14 +706,24 @@ ensemble_subPath(repos *r, char *path)
 	return (l);
 }
 
+/*
+ * Return whether a given path, which must be in proj_relpath() form
+ * can be considered empty.
+ */
 private int
 empty(repos *r, char *dir)
 {
+	eopts	op = {0};
 	char	**d = 0, **ok = 0;
 	char	*path;
-	int	i, j, n, conflict;
+	int	i, j, n, conflict, free_r = 0;
 
 	unless (d = getdir(dir)) return (0);
+	unless (r) {
+		op.rev = "+";
+		r = ensemble_list(op);
+		free_r = 1;
+	}
 	ok = ensemble_subPath(r, dir);
 	n = 0;
 	EACH_INDEX(d, i) {
@@ -731,6 +741,7 @@ empty(repos *r, char *dir)
 		if (conflict) n++;
 	}
 	freeLines(ok, free);
+	if (free_r) ensemble_free(r);
 	return (n == 0);
 }
 
@@ -742,10 +753,7 @@ empty(repos *r, char *dir)
 int
 ensemble_emptyDir(char *dir)
 {
-	eopts	op = {0};
-	repos	*r;
 	char	*relpath;
-	char	**d = 0;
 	int	ret;
 	project	*p;
 
@@ -753,15 +761,9 @@ ensemble_emptyDir(char *dir)
 		fprintf(stderr, "ensemble_emptyDir called in a non-product");
 		return (0);
 	}
-	/* pay with a getdir() to try to save an ensemble_list() */
-	unless (d = getdir(dir)) return (0);
-	freeLines(d, free);
-	op.rev = "+";
-	r = ensemble_list(op);
 	relpath = proj_relpath(p, dir);
-	ret = empty(r, relpath);
+	ret = empty(0, relpath);
 	free(relpath);
-	ensemble_free(r);
 	return (ret);
 }
 
