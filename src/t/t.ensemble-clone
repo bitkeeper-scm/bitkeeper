@@ -524,8 +524,8 @@ echo $N Test populate in repair mode with nothing to do .............$NL
 bk populate -r > GOT 2>&1 || exit 1
 cat > WANT <<EOF
 populate: gcc is already here.
-populate: gdb is already here.
 populate: gcc/deep is already here.
+populate: gdb is already here.
 populate: no components fetched
 EOF
 cmpfiles WANT GOT

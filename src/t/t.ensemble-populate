@@ -336,3 +336,136 @@ comp7/sub7
 EOF
 cmpfiles GOT WANT
 echo OK
+
+echo $N Conflict in deep nest should be detected.....................$NL
+touch comp2/sub23
+bk populate $Q -sprimes > ERR 2>&1 && {
+	echo failed
+	exit 1
+}
+grep -q "failed to fetch comp2" ERR || {
+	echo failed
+	echo wrong error message
+	exit 1
+}
+grep -q "not empty" ERR || {
+	echo failed
+	exit 1
+}
+bk components -h > GOT
+cat > WANT <<EOF
+comp2/sub2
+comp3
+comp3/sub3
+comp5
+comp5/sub5
+comp7
+comp7/sub7
+EOF
+cmpfiles GOT WANT
+rm -f comp2/sub23
+echo OK
+
+echo ---- Test very deeply nested deep nests........................
+echo $N Setup the repo...............................................$NL
+cd "$HERE/project"
+for i in 1 2 3 4 5
+do	bk setup -C -fc"$HERE/empty" deep$i
+	cd deep$i
+done
+cd "$HERE/project"
+bk commit $Q -y"add deep stuff"
+cd "$HERE/copy"
+bk pull $Q
+bk unpopulate $Q -sprimes -ssubprimes
+# make sure the pull did not bring the deeps stuff
+# since it's not in our aliases file
+bk components -h > GOT
+cat > WANT <<EOF
+EOF
+cmpfiles GOT WANT
+echo OK
+
+# now start the deep nest fun
+echo $N Populate deep1/deep2/deep3/deep4/deep5.......................$NL
+bk populate $Q -s./deep1/deep2/deep3/deep4/deep5
+bk components -h > GOT
+cat > WANT <<EOF
+deep1/deep2/deep3/deep4/deep5
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Populate deep1/deep2.........................................$NL
+bk populate $Q -s./deep1/deep2
+bk components -h > GOT
+cat > WANT <<EOF
+deep1/deep2
+deep1/deep2/deep3/deep4/deep5
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Populate deep1/deep2/deep3 with a conflict...................$NL
+touch deep1/deep2/deep3/conflict
+bk populate $Q -s./deep1/deep2/deep3 >ERR 2>&1 && {
+	echo failed
+	exit 1
+}
+bk components -h > GOT
+cat > WANT <<EOF
+deep1/deep2
+deep1/deep2/deep3/deep4/deep5
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Unpopulate deep1/deep2 should work...........................$NL
+# superset thinks there's new work, thus we use -f
+bk unpopulate $Q -f -s./deep1/deep2
+bk components -h > GOT
+cat > WANT <<EOF
+deep1/deep2/deep3/deep4/deep5
+EOF
+cmpfiles GOT WANT
+# put the conflict back in
+touch deep1/deep2/deep3/conflict
+echo OK
+
+echo $N Repopulate deep1/deep2 with conflict should fail.............$NL
+bk populate $Q -s./deep1/deep2 > ERR 2>&1 && {
+	echo failed
+	exit 1
+}
+bk components -h > GOT
+cat > WANT <<EOF
+deep1/deep2/deep3/deep4/deep5
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Remove the conflict, now it works............................$NL
+rm -f deep1/deep2/deep3/conflict
+bk populate $Q -s./deep1/deep2
+bk components -h > GOT
+cat > WANT <<EOF
+deep1/deep2
+deep1/deep2/deep3/deep4/deep5
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N Populate with a symlink......................................$NL
+bk unpopulate $Q -s./deep1/deep2/deep3/deep4/deep5
+test -d deep1/deep2/deep3/deep4/deep5 && exit 1
+ln -s ../../../../deep1 deep1/deep2/deep3/deep4/deep5
+bk populate $Q -s./deep1/deep2/deep3 > ERR 2>&1 && {
+	echo failed
+	exit 1
+}
+bk components -h > GOT
+cat > WANT <<EOF
+deep1/deep2
+EOF
+cmpfiles GOT WANT
+echo OK
