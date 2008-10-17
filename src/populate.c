@@ -113,7 +113,7 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 			freeLines(vp, free);
 			if (WIFEXITED(status) ? WEXITSTATUS(status) : 1) {
 				/* failed */
-				rmtree(repos->path);
+/* 				rmtree(repos->path); */
 			} else {
 				hash_storeStr(done, repos->path, 0);
 			}

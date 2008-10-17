@@ -290,7 +290,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		empty = emptyDir;
 	}
 	if (local && exists(local) && !empty(local)) {
-		fprintf(stderr, "clone: %s exists already\n", local);
+		fprintf(stderr, "clone: %s exists and is not empty\n", local);
 		exit(1);
 	}
 	if (local ? test_mkdirp(local) : access(".", W_OK)) {
@@ -324,7 +324,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 			goto done;
 		}
 		if (exists(local) && !empty(local)) {
-			fprintf(stderr, "clone: %s exists already\n", local);
+			fprintf(stderr,
+			    "clone: %s exists and is not empty\n", local);
 			disconnect(r, 2);
 			goto done;
 		}

@@ -15,6 +15,8 @@ typedef struct {
 
 private int	repo_sort(const void *a, const void *b);
 private	void	setgca(sccs *s, u32 bit, u32 tmp);
+private char **	ensemble_subPath(repos *r, char *path);
+private int	empty(repos *r, char *dir);
 
 private	char	*ensemble_version = "1.0";
 
@@ -676,55 +678,91 @@ ensemble_nestedCheck(void)
 }
 
 /*
+ * Given a path, return the list of directory slots
+ * taken by components in r. Path must be given relative
+ * to the product root. The list returned is just the
+ * directory names (relative to path).
+ */
+private char **
+ensemble_subPath(repos *r, char *path)
+{
+	char	**l = 0;
+	char	*p1, *p2, x;
+	int	len;
+
+	assert(path);
+	len = strlen(path);
+	EACH_REPO(r) {
+		if (strneq(path, r->path, len) && (r->path[len] == '/')) {
+			p1 = &r->path[len];
+			p1++;
+			for (p2 = p1; *p2 && *p2 != '/'; p2++);
+			x = *p2;
+			*p2 = 0;
+			l = addLine(l, strdup(p1));
+			*p2 = x;
+		}
+	}
+	return (l);
+}
+
+private int
+empty(repos *r, char *dir)
+{
+	char	**d = 0, **ok = 0;
+	char	*path;
+	int	i, j, n, conflict;
+
+	unless (d = getdir(dir)) return (0);
+	ok = ensemble_subPath(r, dir);
+	n = 0;
+	EACH_INDEX(d, i) {
+		conflict = 1;
+		EACH_INDEX(ok, j) {
+			if (streq(d[i], ok[j])) {
+				path = aprintf("%s/%s", dir, d[i]);
+				if (isComponent(path) || empty(r, path)) {
+					conflict = 0;
+				}
+				free(path);
+				break;
+			}
+		}
+		if (conflict) n++;
+	}
+	freeLines(ok, free);
+	return (n == 0);
+}
+
+/*
  * See if a directory can be considered "empty". What this means is
  * that it doesn't have any dirs or files, except for deeply nested
  * components.
- *
- * XXX: this is doesn't work in the general case but does work
- * in some to demo the idea.  The strneq has path/to/foo match
- * path/to/foobar as well as not handling the case where it is
- * a multiple directory deep nest.  I think we want Wayne's find
- * which is like sfiles, and do a prune on the deep nest entry
- * points.  Later...
  */
 int
 ensemble_emptyDir(char *dir)
 {
 	eopts	op = {0};
 	repos	*r;
-	char	*relpath, *path;
+	char	*relpath;
 	char	**d = 0;
-	int	n, i, found;
+	int	ret;
 	project	*p;
 
 	unless (p = proj_product(0)) {
 		fprintf(stderr, "ensemble_emptyDir called in a non-product");
 		return (0);
 	}
+	/* pay with a getdir() to try to save an ensemble_list() */
 	unless (d = getdir(dir)) return (0);
+	freeLines(d, free);
 	op.rev = "+";
 	r = ensemble_list(op);
 	relpath = proj_relpath(p, dir);
-	n = 0;
-	EACH(d) {
-		path = aprintf("%s/%s", relpath, d[i]);
-		found = 0;
-		EACH_REPO(r) {
-			if (strneq(path, r->path, strlen(path))) {
-				found = 1;
-				break;
-			}
-		}
-		free(path);
-		unless (found) {
-			/* conflict */
-			n++;
-		}
-	}
-	freeLines(d, free);
+	ret = empty(r, relpath);
 	free(relpath);
 	ensemble_free(r);
-	return (n == 0);
+	return (ret);
 }
 
 int
