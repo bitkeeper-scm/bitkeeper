@@ -659,18 +659,18 @@ echo OK
 echo $N Check alias listing in path mode ............................$NL
 cat > WANT <<EOF
 @ALL
-./gcc/ChangeSet
-./gcc/nm/ChangeSet
-./gdb/ChangeSet
-./junk/ChangeSet
-./path/to/libc/ChangeSet
+./gcc
+./gcc/nm
+./gdb
+./junk
+./path/to/libc
 @all-glob
 ./*
 @dev
-./gcc/ChangeSet
-./gdb/ChangeSet
+./gcc
+./gdb
 @nm
-./gcc/nm/ChangeSet
+./gcc/nm
 EOF
 bk alias | while read x
 do	echo @$x

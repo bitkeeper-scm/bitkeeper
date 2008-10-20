@@ -42,14 +42,14 @@ alias_main(int ac, char **av)
 	char	**comps = 0, **tmp = 0;
 	int	c, i;
 	int	create = 0, append = 0, force = 0, rm = 0, list = 0;
-	int	commit = 1, paths = 1;
+	int	commit = 1, paths = 1, rc = 1;
 	hash	*aliasDB;
 	MDBM	*idDB = 0;
 	char	buf[MAXPATH];
 
 	unless (proj_product(0)) {
 		fprintf(stderr, "alias: called in a non-product.\n");
-		return (1);
+		goto err;
 	}
 	while ((c = getopt(ac, av, "aCfkr")) != -1) {
 		switch (c) {
@@ -60,7 +60,7 @@ alias_main(int ac, char **av)
 		    case 'r': rm = 1; break;
 		    default:
 usage:			sys("bk", "help", "-s", "alias", SYS);
-			exit(1);
+			goto err;
 		}
 	}
 
@@ -86,19 +86,20 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 			unless (comps = aliasdb_show(alias)) {
 				fprintf(stderr,
 				    "alias: '%s' not found\n", alias);
-				return (1);
+				goto err;
 			}
 			if (paths) {
 				sprintf(buf, "%s/%s",
 				    proj_root(proj_product(0)), IDCACHE);
 				unless (idDB = loadDB(buf, 0, DB_IDCACHE)) {
 					fprintf(stderr, "alias: no idcache.\n");
-					return (1);
+					goto err;
 				}
 				EACH(comps) {
 					if (p = mdbm_fetch_str(idDB, comps[i])){
 						free(comps[i]);
 						comps[i] = aprintf("./%s", p);
+						csetChomp(comps[i]);
 					}
 				}
 				mdbm_close(idDB);
@@ -106,7 +107,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		} else {
 			unless (aliasDB = aliasdb_init()) {
 				fprintf(stderr, "alias: no aliases\n");
-				return (1);
+				goto err;
 			}
 			EACH_HASH(aliasDB) {
 				comps = addLine(comps, strdup(aliasDB->kptr));
@@ -115,12 +116,17 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		}
 		sortLines(comps, 0);
 		EACH(comps) printf("%s\n", comps[i]);
-		freeLines(comps, free);
-		return (0);
+		goto done;
 	}
 
 	unless (alias) {
 		fprintf(stderr, "alias: no alias specified.\n");
+		goto usage;
+	}
+
+	if (streq(alias, "all")) {
+		fprintf(stderr,
+		    "alias: reserved name \"all\" may not be changed.\n");
 		goto usage;
 	}
 
@@ -134,12 +140,6 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		break;
 	}
 
-	if (streq(alias, "all")) {
-		fprintf(stderr,
-		    "alias: reserved name \"all\" may not be changed.\n");
-		goto usage;
-	}
-
 	/*
 	 * Don't overwrite unless they told us that's what they wanted.
 	 */
@@ -147,9 +147,9 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		if (!force && (tmp = aliasdb_show(alias))) {
 			freeLines(tmp, free);
 			fprintf(stderr, "alias: %x exists, use -f?\n", alias);
-			return (1);
+			goto err;
 		}
-		if (aliasdb_add(alias, comps, commit)) return (1);
+		if (aliasdb_add(alias, comps, commit)) goto err;
 	}
 
 	/*
@@ -159,23 +159,22 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 	if (append) {
 		unless (tmp = aliasdb_show(alias)) {
 			fprintf(stderr, "alias: %x does not exist.\n", alias);
-			return (1);
+			goto err;
 		}
 		EACH(tmp) comps = addLine(comps, tmp[i]);
 		freeLines(tmp, 0);
 		uniqLines(comps, free);
-		if (aliasdb_add(alias, comps, commit)) return (1);
+		if (aliasdb_add(alias, comps, commit)) goto err;
 	}
 
 	if (rm) {
-		if (aliasdb_rm(alias, comps, commit)) return (1);
+		if (aliasdb_rm(alias, comps, commit)) goto err;
 	}
-
-	/*
-	 * XXX: comps memleaked in the error cases
-	 */
+done:
+	rc = 0;
+err:
 	if (comps) freeLines(comps, free);
-	return (0);
+	return (rc);
 }
 
 /*
