@@ -113,7 +113,13 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 			freeLines(vp, free);
 			if (WIFEXITED(status) ? WEXITSTATUS(status) : 1) {
 				/* failed */
-/* 				rmtree(repos->path); */
+				/*
+				 * Can't call ensemble cleanup because
+				 * if the clone failed because of dir
+				 * not emtpy, this would blow away the
+				 * user's files. We need the transaction layer
+				 */
+/* 				ensemble_rmtree(repos->path); */
 			} else {
 				hash_storeStr(done, repos->path, 0);
 			}
@@ -186,7 +192,7 @@ unpopulate_main(int ac, char **av)
 	eopts	op = {0};
 	repos	*comps = 0;
 	sccs	*s = 0;
-	int	quiet = 0, force = 0, rc = 1, errors;
+	int	quiet = 0, force = 0, rc = 1;
 
 	alias_unwanted = hash_new(HASH_MEMHASH);
 	while ((c = getopt(ac, av, "fqs;")) != -1) {
@@ -310,34 +316,10 @@ unpopulate_main(int ac, char **av)
 		}
 		unless (quiet) printf("Removing '%s'.\n", comps->path);
 		i++;
-		/*
-		 * Note we don't call rmtree as there could be deeply nested
-		 * components.
-		 */
-		if (chdir(comps->path)) {
-			perror(comps->path);
+		if (ensemble_rmtree(comps->path)) {
+			fprintf(stderr, "Failed to remove '%s'\n", comps->path);
 			goto out;
-		}
-		system("bk -r clean"); /* get rid of gfiles */
-		f = popen("bk sfiles -xa", "r");
-		errors = 0;
-		while (buf = fgetline(f)) errors |= unlink(buf);
-		pclose(f);
-		if (errors) {
-			fprintf(stderr, "Could not delete some files\n");
-			goto out;
-		}
-		f = popen("bk sfiles -d", "r");
-		while (buf = fgetline(f)) {
-			cmd = aprintf("%s/SCCS", buf);
-			errors |= rmtree(cmd);
-			free(cmd);
-		}
-		pclose(f);
-		rmEmptyDirs(1);
-		rmtree("BitKeeper");
-		proj_cd2product();
-		rmdir(comps->path);
+		};
 	}
 	unless (i) {
 		unless (quiet) printf("%s: no components removed.\n", av[0]);
