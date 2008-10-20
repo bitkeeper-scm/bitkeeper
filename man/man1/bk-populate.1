@@ -23,12 +23,12 @@ $ cd big-product
 $ bk populate -sDEBUGGER
 .DE
 After running the above, the cached components list will be
-"DEV-TOOLS" and "DEBUGGER".
+"DEV-TOOLS" and "DEBUGGER" (and may be named with the "THERE" alias).
 If you need to populate a component that is not present in your parent[s],
 add one or more trailing urls (populate will use each url in turn until
 all requested components are found):
 .DS
-$ bk populate -sblimey bk://uk-server/big-product
+$ bk populate -sBLIMEY bk://uk-server/big-product
 .DE
 .LP
 The set of components populate will consider are
@@ -36,7 +36,7 @@ specified on the command line with
 .BR \-s ,
 or retrieved from the cached aliases list with
 .BR \-r ,
-or implied by the "default" aliases database entry if neither of
+or implied by the "DEFAULT" aliases database entry if neither of
 the former apply.
 .SH OPTIONS
 .TP \-s\*<comp\*>

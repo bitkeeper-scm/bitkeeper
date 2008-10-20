@@ -5,7 +5,7 @@ bk alias \- manage aliases for a list of components
 .SH SYNOPSIS
 .B bk alias 
 .[B] \-Cf
-.B \-a|\-k|\-r
+.B \-a|\-h|\-k|\-r
 .[B] name
 .[B] component ...
 .br
@@ -38,6 +38,7 @@ bk alias \- manage aliases for a list of components
 .br
 .SS LIST ALL ALIASES
 .B bk alias
+.[B] \-h
 .br
 .SS SHOW EXPANSION OF AN ALIAS
 .B bk alias
@@ -135,6 +136,9 @@ changes to the product.
 When creating an alias, the operation will fail if there is a pre-existing
 alias of the same name unless this option is present.
 .tp
+.B \-h
+When listing aliases list only those which are present in this repository.
+.tp
 .B \-k
 Used when listing aliases; causes the expansion of the alias to be listed
 as rootkeys instead of pathnames.
@@ -179,20 +183,37 @@ Any components that are specified as a path are stored internally
 as their rootkeys so that the alias will expand correctly even if
 the specified component[s] is/are moved.
 .LP
-There are two pre-existing aliases:
-.TP "default "
-all
-This name is an alias for "./*" and may not be modified.
+There are three pre-existing aliases:
+.TP "DEFAULT "
+ALL
+This alias means all components (as well as the product) and may not
+be modified.
+It is different than "./*" in that globs expand to whatever is present
+in the source repository (i.e., they are fine with missing components).
+If you try and expand all and there are missing components the expansion
+will fail.
 .tp
-default
-This alias is what is cloned when no aliases or components are specified and the
-remote side does not have a cached subset list.
+DEFAULT
+This alias is what is cloned when no aliases or components are specified.
 It defaults to "all" but it may be changed to make the default set
 of components to be less than all.
+.tp
+THERE
+This is another alias which may not be modified and it means all the
+components present in the repository.
+If you do not care what the other side has, you just want to replicate
+it, then 
+.DS
+$ bk clone -sTHERE bk://good-stuff/I-trust-you 
+.DE
+Note that the "there" alias is never found in the aliases file, it
+implied from the cached aliases list in BitKeeper/log.
 .SH "SEE ALSO"
 .SA Howto-Product
+.SA clone
 .SA glob
 .SA id
+.SA populate
 .SH CATEGORY
 .B Product
 .SH AVAILABILITY
