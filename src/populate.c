@@ -6,7 +6,7 @@ private hash*	hash_setDifference(hash *A, hash *B);
 int
 populate_main(int ac, char **av)
 {
-	int	c, i, j;
+	int	c, i, j, clonerc;
 	int	quiet = 0;
 	int	repair = 0;
 	char	**urls = 0;
@@ -111,17 +111,14 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 			vp = addLine(vp, 0);
 			status = spawnvp(_P_WAIT, "bk", vp + 1);
 			freeLines(vp, free);
-			if (WIFEXITED(status) ? WEXITSTATUS(status) : 1) {
-				/* failed */
-				/*
-				 * Can't call ensemble cleanup because
-				 * if the clone failed because of dir
-				 * not emtpy, this would blow away the
-				 * user's files. We need the transaction layer
-				 */
-/* 				ensemble_rmtree(repos->path); */
-			} else {
+			clonerc = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+			if (clonerc == 0) {
 				hash_storeStr(done, repos->path, 0);
+			} else if (clonerc == 2) {
+				/* failed because the dir was not empty */
+			} else {
+				/* failed and left crud */
+				ensemble_rmtree(repos->path);
 			}
 		}
 	}

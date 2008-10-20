@@ -291,7 +291,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	if (local && exists(local) && !empty(local)) {
 		fprintf(stderr, "clone: %s exists and is not empty\n", local);
-		exit(1);
+		exit(2);
 	}
 	if (local ? test_mkdirp(local) : access(".", W_OK)) {
 		fprintf(stderr, "clone: %s: %s\n",
