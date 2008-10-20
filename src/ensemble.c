@@ -15,8 +15,10 @@ typedef struct {
 
 private int	repo_sort(const void *a, const void *b);
 private	void	setgca(sccs *s, u32 bit, u32 tmp);
-private	char	**ensemble_deep(repos *r, char *path);
+private	char	**ensemble_deep(char *path);
+private int	ensemble_walkdir(char *dir, walkfn fn);
 private	int	empty(char *path, struct stat *statbuf, void *data);
+private	int	eremove(char *path, struct stat *statbuf, void *data);
 
 private	char	*ensemble_version = "1.0";
 
@@ -681,15 +683,19 @@ ensemble_nestedCheck(void)
  * Given a path, return the minimum list of components that
  * are deep nested in path.  For example,
  * if src, src/libc, and src/libc/stdio
- * and pass in src, then pass back only src/libc, 
+ * and pass in src, then pass back only src/libc.
  */
 private	char	**
-ensemble_deep(repos *r, char *path)
+ensemble_deep(char *path)
 {
+	eopts	op = {0};
+	repos	*r;
 	char	**list = 0;
 	char	*deep = 0;
 	int	len, deeplen;
 
+	op.rev = "+";
+	r = ensemble_list(op);
 	assert(path);
 	len = strlen(path);
 	EACH_REPO(r) {
@@ -709,6 +715,7 @@ ensemble_deep(repos *r, char *path)
 		deeplen = strlen(deep);
 		list = addLine(list, strdup(deep));
 	}
+	ensemble_free(r);
 	return (list);
 }
 
@@ -725,7 +732,9 @@ empty(char *path, struct stat *statbuf, void *data)
 	len = strlen(path);
 
 	/* bail if not a dir -- it's in the region of interest: not empty */
-	unless (statbuf && S_ISDIR(statbuf->st_mode)) return (1);
+	unless (statbuf && S_ISDIR(statbuf->st_mode)) {
+		return (1);
+	}
 	/*
 	 * if deep nest boundary, prune
 	 * if on the way to a deep nest boundary, keep going
@@ -744,6 +753,64 @@ empty(char *path, struct stat *statbuf, void *data)
 }
 
 /*
+ * Remove any files/directories in the component's namespace, making sure
+ * not to touch anything in any deeply nested components' namespaces.
+ */
+private int
+eremove(char *path, struct stat *statbuf, void *data)
+{
+	char	**list = (char **)data;
+	int	i, len;
+
+	len = strlen(path);
+
+	/* if it's not a dir, just delete it */
+	unless (statbuf && S_ISDIR(statbuf->st_mode)) {
+		return (unlink(path));
+	}
+	/* it's a dir */
+	EACH(list) {
+		if (streq(list[i], path)) {
+			return (-1); /* prune deep nest matches */
+		}
+		if (strneq(list[i], path, len) && (list[i][len] == '/')) {
+			/* partial path, just keep going */
+			return (0);
+		}
+	}
+	/* not a component or on a path to a component, just remove it */
+	if (rmtree(path)) return (1);
+	return (-1);
+}
+
+/*
+ * Set up a walkdir call in a dir. Data is the list of deeply nested
+ * components under the given dir.
+ */
+private int
+ensemble_walkdir(char *dir, walkfn fn)
+{
+	char	*relpath;
+	int	ret;
+	project	*p;
+	char	**list;
+
+	/* dir is fullpath; we want relative */
+	unless (p = proj_product(0)) {
+		fprintf(stderr, "%s called in a non-product", __FUNCTION__);
+		return (0);
+	}
+	relpath = proj_relpath(p, dir);
+
+	list = ensemble_deep(relpath);
+
+	ret = walkdir(relpath, fn, list);
+	freeLines(list, free);
+	free(relpath);
+	return (ret);
+}
+
+/*
  * See if a directory can be considered "empty". What this means is
  * that it doesn't have any dirs or files, except for deeply nested
  * components.
@@ -752,31 +819,21 @@ empty(char *path, struct stat *statbuf, void *data)
 int
 ensemble_emptyDir(char *dir)
 {
-	char	*relpath;
 	int	ret;
-	project	*p;
-	eopts	op = {0};
-	repos	*r;
-	char	**list;
-
-	/* dir is fullpath; we want relative */
-	unless (p = proj_product(0)) {
-		fprintf(stderr, "ensemble_emptyDir called in a non-product");
-		return (0);
-	}
-	relpath = proj_relpath(p, dir);
-
-	/* get list of deep nests */
-	op.rev = "+";
-	r = ensemble_list(op);
-	list = ensemble_deep(r, relpath);
-	ensemble_free(r);
 
 	/* ret = 0 if empty */
-	ret = walkdir(relpath, empty, list);
-	freeLines(list, free);
-	free(relpath);
+	ret = ensemble_walkdir(dir, empty);
 	return (ret == 0);
+}
+
+/*
+ * Smart rmtree that respects the namespaces of deep components, even
+ * if they are not present.
+ */
+int
+ensemble_rmtree(char *dir)
+{
+	return (ensemble_walkdir(dir, eremove));
 }
 
 int
