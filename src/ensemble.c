@@ -15,8 +15,8 @@ typedef struct {
 
 private int	repo_sort(const void *a, const void *b);
 private	void	setgca(sccs *s, u32 bit, u32 tmp);
-private char **	ensemble_subPath(repos *r, char *path);
-private int	empty(repos *r, char *dir);
+private	char	**ensemble_deep(repos *r, char *path);
+private	int	empty(char *path, struct stat *statbuf, void *data);
 
 private	char	*ensemble_version = "1.0";
 
@@ -678,77 +678,76 @@ ensemble_nestedCheck(void)
 }
 
 /*
- * Given a path, return the list of directory slots
- * taken by components in r. Path must be given relative
- * to the product root. The list returned is just the
- * directory names (relative to path).
+ * Given a path, return the minimum list of components that
+ * are deep nested in path.  For example,
+ * if src, src/libc, and src/libc/stdio
+ * and pass in src, then pass back only src/libc, 
  */
-private char **
-ensemble_subPath(repos *r, char *path)
+private	char	**
+ensemble_deep(repos *r, char *path)
 {
-	char	**l = 0;
-	char	*p1, *p2, x;
-	int	len;
+	char	**list = 0;
+	char	*deep = 0;
+	int	len, deeplen;
 
 	assert(path);
 	len = strlen(path);
 	EACH_REPO(r) {
-		if (strneq(path, r->path, len) && (r->path[len] == '/')) {
-			p1 = &r->path[len];
-			p1++;
-			for (p2 = p1; *p2 && *p2 != '/'; p2++);
-			x = *p2;
-			*p2 = 0;
-			l = addLine(l, strdup(p1));
-			*p2 = x;
+		unless (strneq(r->path, path, len) && (r->path[len] == '/')) {
+			continue;
 		}
+		/*
+		 * Just take the first in a series of components like
+		 * src, src/libc, src/libc/stdio
+		 */
+		if (deep &&
+		    strneq(r->path, deep, deeplen) &&
+		    r->path[deeplen] == '/') {
+			continue;
+		}
+		deep = r->path;
+		deeplen = strlen(deep);
+		list = addLine(list, strdup(deep));
 	}
-	return (l);
+	return (list);
 }
 
 /*
- * Return whether a given path, which must be in proj_relpath() form
- * can be considered empty.
+ * Prune any deep components, ignore any dirs on the way to deep components
+ * and bail if we find anything else -- then the dir is not empty.
  */
-private int
-empty(repos *r, char *dir)
+private	int
+empty(char *path, struct stat *statbuf, void *data)
 {
-	eopts	op = {0};
-	char	**d = 0, **ok = 0;
-	char	*path;
-	int	i, j, n, conflict, free_r = 0;
+	char	**list = (char **)data;
+	int	i, len;
 
-	unless (d = getdir(dir)) return (0);
-	unless (r) {
-		op.rev = "+";
-		r = ensemble_list(op);
-		free_r = 1;
-	}
-	ok = ensemble_subPath(r, dir);
-	n = 0;
-	EACH_INDEX(d, i) {
-		conflict = 1;
-		EACH_INDEX(ok, j) {
-			if (streq(d[i], ok[j])) {
-				path = aprintf("%s/%s", dir, d[i]);
-				if (isComponent(path) || empty(r, path)) {
-					conflict = 0;
-				}
-				free(path);
-				break;
-			}
+	len = strlen(path);
+
+	/* bail if not a dir -- it's in the region of interest: not empty */
+	unless (statbuf && S_ISDIR(statbuf->st_mode)) return (1);
+	/*
+	 * if deep nest boundary, prune
+	 * if on the way to a deep nest boundary, keep going
+	 * otherwise, it's a dir in the region of interest: not empty
+	 */
+	EACH(list) {
+		if (streq(list[i], path)) {
+			return (-1);	/* prune deep nest matches */
 		}
-		if (conflict) n++;
+		if (strneq(list[i], path, len) && (list[i][len] == '/')) {
+			return (0);	/* partial path to component */
+		}
+
 	}
-	freeLines(ok, free);
-	if (free_r) ensemble_free(r);
-	return (n == 0);
+	return (1);	/* found a dir outside of deepnest list - done! */
 }
 
 /*
  * See if a directory can be considered "empty". What this means is
  * that it doesn't have any dirs or files, except for deeply nested
  * components.
+ * ASSERT - a cd2product was run before calling this
  */
 int
 ensemble_emptyDir(char *dir)
@@ -756,15 +755,28 @@ ensemble_emptyDir(char *dir)
 	char	*relpath;
 	int	ret;
 	project	*p;
+	eopts	op = {0};
+	repos	*r;
+	char	**list;
 
+	/* dir is fullpath; we want relative */
 	unless (p = proj_product(0)) {
 		fprintf(stderr, "ensemble_emptyDir called in a non-product");
 		return (0);
 	}
 	relpath = proj_relpath(p, dir);
-	ret = empty(0, relpath);
+
+	/* get list of deep nests */
+	op.rev = "+";
+	r = ensemble_list(op);
+	list = ensemble_deep(r, relpath);
+	ensemble_free(r);
+
+	/* ret = 0 if empty */
+	ret = walkdir(relpath, empty, list);
+	freeLines(list, free);
 	free(relpath);
-	return (ret);
+	return (ret == 0);
 }
 
 int

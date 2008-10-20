@@ -428,11 +428,10 @@ cat > WANT <<EOF
 deep1/deep2/deep3/deep4/deep5
 EOF
 cmpfiles GOT WANT
-# put the conflict back in
-touch deep1/deep2/deep3/conflict
 echo OK
 
 echo $N Repopulate deep1/deep2 with conflict should fail.............$NL
+mkdir deep1/deep2/conflict || exit 1
 bk populate $Q -s./deep1/deep2 > ERR 2>&1 && {
 	echo failed
 	exit 1
@@ -445,7 +444,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Remove the conflict, now it works............................$NL
-rm -f deep1/deep2/deep3/conflict
+rmdir deep1/deep2/conflict || exit 1
 bk populate $Q -s./deep1/deep2
 bk components -h > GOT
 cat > WANT <<EOF
@@ -455,10 +454,11 @@ EOF
 cmpfiles GOT WANT
 echo OK
 
-echo $N Populate with a symlink......................................$NL
+echo $N Populate with a symlink -- fails.............................$NL
 bk unpopulate $Q -s./deep1/deep2/deep3/deep4/deep5
 test -d deep1/deep2/deep3/deep4/deep5 && exit 1
-ln -s ../../../../deep1 deep1/deep2/deep3/deep4/deep5
+rmdir deep1/deep2/deep3/deep4 || exit 1
+ln -s ../../../../deep1 deep1/deep2/deep3/deep4
 bk populate $Q -s./deep1/deep2/deep3 > ERR 2>&1 && {
 	echo failed
 	exit 1
@@ -466,6 +466,23 @@ bk populate $Q -s./deep1/deep2/deep3 > ERR 2>&1 && {
 bk components -h > GOT
 cat > WANT <<EOF
 deep1/deep2
+EOF
+cmpfiles GOT WANT
+# clean
+rm -f deep1/deep2/deep3/deep4 || exit 1
+echo OK
+
+echo $N Populate with a symlink in a deeper component -- passes......$NL
+mkdir deep1/deep2/deep3/deep4 || exit 1
+ln -s ../../../../deep1 deep1/deep2/deep3/deep4/deep5
+bk populate $Q -s./deep1/deep2/deep3 > ERR 2>&1 || {
+	echo failed
+	exit 1
+}
+bk components -h > GOT
+cat > WANT <<EOF
+deep1/deep2
+deep1/deep2/deep3
 EOF
 cmpfiles GOT WANT
 echo OK
