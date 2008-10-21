@@ -460,6 +460,7 @@ EOF
 cmpfiles GOT WANT
 echo OK
 
+if [ $WINDOWS = NO ]; then
 echo $N Populate with a symlink -- fails.............................$NL
 bk unpopulate $Q -s./deep1/deep2/deep3/deep4/deep5
 test -d deep1/deep2/deep3/deep4/deep5 && exit 1
@@ -492,3 +493,4 @@ deep1/deep2/deep3
 EOF
 cmpfiles GOT WANT
 echo OK
+fi
