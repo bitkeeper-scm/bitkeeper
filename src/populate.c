@@ -317,6 +317,7 @@ unpopulate_main(int ac, char **av)
 			fprintf(stderr, "Failed to remove '%s'\n", comps->path);
 			goto out;
 		};
+		rmdir(comps->path); /* ok if it fails */
 	}
 	unless (i) {
 		unless (quiet) printf("%s: no components removed.\n", av[0]);
