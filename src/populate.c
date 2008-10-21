@@ -1,7 +1,8 @@
 #include "sccs.h"
 #include "ensemble.h"
 
-private hash*	hash_setDifference(hash *A, hash *B);
+private	hash	*hash_setDifference(hash *A, hash *B, int inplace);
+extern	char	*prog;
 
 int
 populate_main(int ac, char **av)
@@ -183,8 +184,8 @@ unpopulate_main(int ac, char **av)
 	char	*buf, *cmd;
 	char	**list = 0, **new_alias = 0;
 	hash	*h = 0;
-	hash	*alias_unwanted = 0, *alias_wanted = 0, *alias_keep = 0;
-	hash	*comps_wanted = 0, *comps_unwanted = 0, *comps_delete = 0;
+	hash	*alias_unwanted = 0, *alias_wanted = 0;
+	hash	*comps_wanted = 0, *comps_unwanted = 0;
 	FILE	*f;
 	eopts	op = {0};
 	repos	*comps = 0;
@@ -195,7 +196,7 @@ unpopulate_main(int ac, char **av)
 	while ((c = getopt(ac, av, "fqs;")) != -1) {
 		switch (c) {
 		    case 's':
-			hash_insertStr(alias_unwanted, optarg, "");
+			hash_insertStr(alias_unwanted, optarg, 0);
 			break;
 		    case 'f': force = 1; break;
 		    case 'q': quiet = 1; break;
@@ -205,20 +206,20 @@ unpopulate_main(int ac, char **av)
 		}
 	}
 	if (proj_cd2product()) {
-		fprintf(stderr, "%s: must be called in a product.\n", av[0]);
+		fprintf(stderr, "%s: must be called in a product.\n", prog);
 		goto out;
 	}
 
 	unless (hash_first(alias_unwanted)) {
-		hash_insertStr(alias_unwanted, "default", "");
+		hash_insertStr(alias_unwanted, "default", 0);
 	}
 
 	alias_wanted = hash_new(HASH_MEMHASH);
 	if (f = fopen("BitKeeper/log/COMPONENTS", "r")) {
-		while (buf=fgetline(f)) hash_insertStr(alias_wanted, buf, "");
+		while (buf=fgetline(f)) hash_insertStr(alias_wanted, buf, 0);
 		fclose(f);
 	} else {
-		hash_insertStr(alias_wanted, "default", "");
+		hash_insertStr(alias_wanted, "default", 0);
 	}
 
 	/*
@@ -226,9 +227,9 @@ unpopulate_main(int ac, char **av)
 	 * are not in the COMPONENTS file. It is an arbitrary restriction that
 	 * I think is unnecessary. lm3di :)
 	 */
-	h = hash_setDifference(alias_unwanted, alias_wanted);
+	h = hash_setDifference(alias_unwanted, alias_wanted, 0);
 	if (hash_first(h)) {
-		fprintf(stderr, "%s: cannot remove ", av[0]);
+		fprintf(stderr, "%s: cannot remove ", prog);
 		i = 0;
 		EACH_HASH(h) {
 			fprintf(stderr, "'%s' ", h->kptr);
@@ -241,12 +242,12 @@ unpopulate_main(int ac, char **av)
 
 	unless (s = sccs_csetInit(SILENT)) goto out;
 
-	alias_keep = hash_setDifference(alias_wanted, alias_unwanted);
-	if (hash_first(alias_keep)) {
+	hash_setDifference(alias_wanted, alias_unwanted, 1);
+	if (hash_first(alias_wanted)) {
 		/* turn to keys */
 		new_alias = 0;
-		EACH_HASH(alias_keep) {
-			new_alias=addLine(new_alias, (char*)alias_keep->kptr);
+		EACH_HASH(alias_wanted) {
+			new_alias=addLine(new_alias, (char*)alias_wanted->kptr);
 		}
 		comps_wanted = alias_list(new_alias, s);
 		unless (comps_wanted) goto out;
@@ -264,12 +265,12 @@ unpopulate_main(int ac, char **av)
 	list = 0;
 	unless (comps_unwanted) goto out;
 
-	comps_delete = hash_setDifference(comps_unwanted, comps_wanted);
+	hash_setDifference(comps_unwanted, comps_wanted, 1);
 
 	op.sc = s;
 	op.rev = "+";
 	op.deepfirst = 1;
-	op.aliases = comps_delete;
+	op.aliases = comps_unwanted;
 
 	comps = ensemble_list(op);
 	putenv("_BK_TRANSACTION=1");
@@ -284,12 +285,12 @@ unpopulate_main(int ac, char **av)
 				perror(comps->path);
 				continue; /* maybe error? */
 			}
-			buf = bktmp(0, av[0]);
+			buf = bktmp(0, prog);
 			cmd = aprintf("bk superset > '%s'", buf);
 			if (system(cmd)) {
 				fprintf(stderr, "%s: component '%s' "
 				    "has local changes, not removing.\n",
-				    av[0], comps->path);
+				    prog, comps->path);
 				cat(buf);
 				unlink(buf);
 				free(buf);
@@ -307,7 +308,7 @@ unpopulate_main(int ac, char **av)
 		unless (comps->present) {
 			unless (quiet) {
 				fprintf(stderr, "%s: %s not present.\n",
-				    av[0], comps->path);
+				    prog, comps->path);
 			}
 			continue;
 		}
@@ -320,7 +321,7 @@ unpopulate_main(int ac, char **av)
 		rmdir(comps->path); /* ok if it fails */
 	}
 	unless (i) {
-		unless (quiet) printf("%s: no components removed.\n", av[0]);
+		unless (quiet) printf("%s: no components removed.\n", prog);
 	}
 	/* update COMPONENTS file */
 	sortLines(new_alias, 0);
@@ -333,31 +334,35 @@ out:	if (alias_unwanted) hash_free(alias_unwanted);
 	if (alias_wanted) hash_free(alias_wanted);
 	if (h) hash_free(h);
 	if (s) sccs_free(s);
-	if (alias_keep) hash_free(alias_keep);
 	if (new_alias) freeLines(new_alias, 0);
 	if (comps_wanted) hash_free(comps_wanted);
 	if (comps_unwanted) hash_free(comps_unwanted);
-	if (comps_delete) hash_free(comps_delete);
 	if (comps) ensemble_free(comps);
 	return (rc);
 }
 
 
-private hash*
-hash_setDifference(hash *A, hash *B)
+private	hash	*
+hash_setDifference(hash *A, hash *B, int inplace)
 {
 	hash	*ret;
 
-	/*
-	 * XXX: the return value isn't tested, but passed on into
-	 * hash_first, which goes into memhash, and does a dereference.
-	 * So don't pass back null.
-	 * // unless (A) return (0);
-	 */
-	ret = hash_new(HASH_MEMHASH);
-	EACH_HASH(A) {
-		unless (hash_fetchStr(B, A->kptr)) {
-			hash_insertStr(ret, A->kptr, A->vptr);
+	if (inplace) {
+		EACH_HASH(B) {
+			/*
+			 * XXX: Wayne, just call delete?
+			 */
+			if (hash_fetchStr(A, B->kptr)) {
+				hash_deleteStr(A, B->kptr);
+			}
+		}
+		ret = A;
+	} else {
+		ret = hash_new(HASH_MEMHASH);
+		EACH_HASH(A) {
+			unless (hash_fetchStr(B, A->kptr)) {
+				hash_insertStr(ret, A->kptr, A->vptr);
+			}
 		}
 	}
 	return (ret);

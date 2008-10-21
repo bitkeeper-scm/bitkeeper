@@ -819,11 +819,7 @@ ensemble_walkdir(char *dir, walkfn fn)
 int
 ensemble_emptyDir(char *dir)
 {
-	int	ret;
-
-	/* ret = 0 if empty */
-	ret = ensemble_walkdir(dir, empty);
-	return (ret == 0);
+	return (!ensemble_walkdir(dir, empty));
 }
 
 /*
