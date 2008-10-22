@@ -16,9 +16,10 @@
 
 cat <<EOF > SKIP
 _locktest
-_register
 _newFile
+_register
 editor
+graft
 gvim
 jed
 joe
