@@ -17,10 +17,12 @@
 cat <<EOF > SKIP
 _locktest
 _register
+_newFile
 editor
 gvim
 jed
 joe
+jove
 reedit
 regression
 shrink
