@@ -5,7 +5,7 @@
 #include "logging.h"
 #include "ensemble.h"
 
-typedef	struct {
+private struct {
 	int	list;			/* -l: long listing */
 	u32	automerge:1;		/* -i: turn off automerge */
 	u32	dont:1;			/* -n: do not actually do it */
@@ -23,6 +23,7 @@ typedef	struct {
 	u32	pass1:1;		/* set if we are driver pull */
 	u32	port:1;			/* is port command? */
 	u32	transaction:1;		/* is $_BK_TRANSACTION set? */
+	u32	local:1;		/* set if we find local work */
 	int	delay;			/* -w<delay> */
 	char	*rev;			/* -r<rev> - no revs after this */
 	u32	in, out;		/* stats */
@@ -30,11 +31,11 @@ typedef	struct {
 	char	**av_clone;		/* saved av for ensemble clone */
 } opts;
 
-private int	pull(char **av, opts opts, remote *r, char **envVar);
-private int	pull_ensemble(repos *rps, remote *r, opts opts);
+private int	pull(char **av, remote *r, char **envVar);
+private int	pull_ensemble(repos *rps, remote *r);
 private void	resolve_comments(remote *r);
-private	int	resolve(opts opts);
-private	int	takepatch(opts opts, remote *r);
+private	int	resolve(void);
+private	int	takepatch(remote *r);
 
 private void
 usage(char *prog)
@@ -49,7 +50,6 @@ pull_main(int ac, char **av)
 	int	try = -1; /* retry forever */
 	int	rc = 0;
 	int	gzip = 6;
-	opts	opts;
 	remote	*r;
 	char	*p, *prog;
 	char	**envVar = 0, **urls = 0;
@@ -197,7 +197,7 @@ err:		freeLines(envVar, free);
 		 * retry if parent is locked
 		 */
 		for (;;) {
-			rc = pull(av, opts, r, envVar);
+			rc = pull(av, r, envVar);
 			if (rc != -2) break;
 			if (try == 0) break;
 			if (try != -1) --try;
@@ -210,6 +210,9 @@ err:		freeLines(envVar, free);
 			sleep(min((j++ * 2), 10));
 		}
 		remote_free(r);
+		if ((rc == 2) && opts.local && !opts.quiet) {
+			sys("bk", "changes", "-L", urls[i], SYS);
+		}
 		if (rc == -2) rc = 1; /* if retry failed, set exit code to 1 */
 		if (rc) break;
 	}
@@ -251,7 +254,7 @@ fromTo(char *op, remote *f, remote *t)
 }
 
 private int
-send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
+send_part1_msg(remote *r, char probe_list[], char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE    *f;
@@ -274,7 +277,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 }
 
 private int
-pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
+pull_part1(char **av, remote *r, char probe_list[], char **envVar)
 {
 	char	*p;
 	int	rc;
@@ -282,7 +285,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r)) return (-1);
-	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
+	if (send_part1_msg(r, probe_list, envVar)) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
@@ -352,7 +355,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 }
 
 private int
-send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
+send_keys_msg(remote *r, char probe_list[], char **envVar)
 {
 	char	msg_file[MAXPATH], buf[MAXPATH * 2];
 	FILE	*f;
@@ -419,15 +422,16 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 }
 
 private int
-pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
+pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 {
 	int	rc = 0, n, i;
+	FILE	*info;
 	char	buf[MAXPATH * 2];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
 		return (-1);
 	}
-	if (send_keys_msg(opts, r, probe_list, envVar)) {
+	if (send_keys_msg(r, probe_list, envVar)) {
 		putenv("BK_STATUS=PROTOCOL ERROR");
 		rc = 1;
 		goto done;
@@ -452,41 +456,42 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	 */
 	getline2(r, buf, sizeof(buf));
 	i = n = 0;
+	info = fmem_open();
 	if (streq(buf, "@REV LIST@")) {
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq(buf, "@END@")) break;
 			unless (i++) {
 				if (opts.dont) {
-					fprintf(stderr, "%s\n",
+					fprintf(info, "%s\n",
 					    "---------------------- "
 					    "Would receive the following csets "
 					    "----------------------");
 				} else {
-					fprintf(stderr, "%s\n",
+					fprintf(info, "%s\n",
 					    "---------------------- "
 					    "Receiving the following csets "
 					    "-----------------------");
 					opts.gotsome = 1;
 				}
 			}
-			fprintf(stderr, "%s", &buf[1]);
+			fprintf(info, "%s", &buf[1]);
 			if (!isdigit(buf[1]) || (strlen(&buf[1]) > MAXREV)) {
-				fprintf(stderr, "\n");
+				fprintf(info, "\n");
 				continue;
 			}
 			n += strlen(&buf[1]) + 1;
 			if (n >= (80 - MAXREV)) {
-				fprintf(stderr, "\n");
+				fprintf(info, "\n");
 				n = 0;
 			} else {
-				fprintf(stderr, " ");
+				fprintf(info, " ");
 			}
 		}
-		if (n) fprintf(stderr, "\n");
+		if (n) fprintf(info, "\n");
 		/* load up the next line */
 		getline2(r, buf, sizeof(buf));
 		if (i) {
-			fprintf(stderr, "%s\n",
+			fprintf(info, "%s\n",
 			    "--------------------------------------"
 			    "-------------------------------------");
 		}
@@ -496,14 +501,18 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	 * See if we can't update because of local csets/tags.
 	 */
 	if (streq(buf, "@NO UPDATE BECAUSE OF LOCAL CSETS OR TAGS@")) {
+		fclose(info);
 		putenv("BK_STATUS=LOCAL_WORK");
 		rc = 2;
-		unless (opts.quiet) {
-			fprintf(stderr, 
-			    "pull: not updating due to local csets/tags.\n");
-		}
+		opts.local = 1;
 		goto done;
 	}
+
+	/*
+	 * Dump the status now that we know we are going to get it.
+	 */
+	fputs(fmem_getbuf(info, 0), stderr);
+	fclose(info);
 
 	/*
 	 * check remote trigger
@@ -527,7 +536,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 	if (streq(buf, "@PATCH@")) {
-		if (i = takepatch(opts, r)) {
+		if (i = takepatch(r)) {
 			fprintf(stderr,
 			    "Pull failed: takepatch exited %d.\n", i);
 			putenv("BK_STATUS=TAKEPATCH FAILED");
@@ -564,7 +573,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			goto done;
 		}
 		repository_unlock(0);
-		if (rc = pull_ensemble(repos, r, opts)) {
+		if (rc = pull_ensemble(repos, r)) {
 			putenv("BK_STATUS=FAILED");
 		} else {
 			putenv("BK_STATUS=OK");
@@ -585,7 +594,7 @@ done:	unlink(probe_list);
 }
 
 private int
-pull_ensemble(repos *rps, remote *r, opts opts)
+pull_ensemble(repos *rps, remote *r)
 {
 	char	*url;
 	char	**vp;
@@ -745,7 +754,7 @@ out:	if (comps) freeLines(comps, free);
 }
 
 private int
-pull(char **av, opts opts, remote *r, char **envVar)
+pull(char **av, remote *r, char **envVar)
 {
 	int	rc, i;
 	char	*p;
@@ -753,8 +762,8 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	char	key_list[MAXPATH];
 
 	assert(r);
-	if (rc = pull_part1(av, opts, r, key_list, envVar)) return (rc);
-	rc = pull_part2(av, opts, r, key_list, envVar);
+	if (rc = pull_part1(av, r, key_list, envVar)) return (rc);
+	rc = pull_part2(av, r, key_list, envVar);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
 	if (!rc && got_patch &&
 	    (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
@@ -786,7 +795,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		resolve_comments(r);
 		unless (opts.noresolve) {
 			putenv("FROM_PULLPUSH=YES");
-			if (resolve(opts)) {
+			if (resolve()) {
 				rc = 1;
 				putenv("BK_STATUS=CONFLICTS");
 				goto done;
@@ -815,7 +824,7 @@ done:	putenv("BK_RESYNC=FALSE");
 }
 
 private	int
-takepatch(opts opts, remote *r)
+takepatch(remote *r)
 {
 	int	n, status, pfd;
 	pid_t	pid;
@@ -890,7 +899,7 @@ resolve_comments(remote *r)
 }
 
 private	int
-resolve(opts opts)
+resolve(void)
 {
 	int	i, status;
 	char	*cmd[20];

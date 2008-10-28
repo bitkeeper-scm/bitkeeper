@@ -35,7 +35,7 @@ echo whatever > whatever
 bk new $Q whatever
 bk commit $Q -ywhatever
 bk pull -u > OUT 2>&1
-grep -q 'not updating due to local' OUT || {
+grep -q 'Not updating due to the following' OUT || {
 	echo Wrong error message
 	cat OUT
 	exit 1
@@ -46,7 +46,7 @@ echo $N Try to update with a local tag ..............................$NL
 cd "$HERE/tag"
 bk tag $Q local_tag
 bk pull -u > OUT 2>&1
-grep -q 'not updating due to local' OUT || {
+grep -q 'Not updating due to the following' OUT || {
 	echo Wrong error message
 	cat OUT
 	exit 1
@@ -57,7 +57,7 @@ echo $N Try to update with a local cset and local tag ...............$NL
 cd "$HERE/cset"
 bk tag $Q tag2
 bk pull -u > OUT 2>&1
-grep -q 'not updating due to local' OUT || {
+grep -q 'Not updating due to the following' OUT || {
 	echo Wrong error message
 	cat OUT
 	exit 1
@@ -67,7 +67,7 @@ echo OK
 echo $N Try to update successfully ..................................$NL
 cd "$HERE/clone"
 bk pull -u > OUT 2>&1
-grep -q 'not updating due to local' OUT && {
+grep -q 'Not updating due to the following' OUT && {
 	echo Wrong error message
 	cat OUT
 	exit 1
