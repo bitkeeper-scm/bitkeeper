@@ -1,0 +1,124 @@
+# Aaron Kushner
+#
+# %W% Zsh completion modes for BitKeeper
+#
+# BASH USERS:
+#
+#    zsh does not have the TAB-TAB binding to show the list of possible 
+#    completions. Instead zsh does the non-sensical ^D to show choices
+#
+# Some of the ideas for this mode were plagiarized from Bart Schaefer's 
+# cvs completion modes.
+#
+#echo "in .zsh_bkcompctl"
+
+bkflags=(-R -r)
+bkcmds=(new edit ci unedit get sfiles admin sccscat annotate vim emacs
+    tag check status info setup push pull parent
+    fmtool revtool citool csettool difftool repotool)
+
+compctl -k "($bkcmds $bkflags)" \
+    -x "r[new,;]" -k "(-b -q)" -K bknew \
+    - "r[get,;]" -k "(-G -i -r -a -C -d -D -e -F -k -m -n -N -p -q -u)" -f \
+    - "r[edit,;]" -K bktargets \
+    - "r[admin,;]" -K bktargets \
+    - "r[ci,;]" -K bktargets \
+    - "r[pull,;]" -K bkparent \
+    - "r[push,;]" -K bkparent \
+    - "r[parent,;]" -K bkparent \
+    - "r[unedit,;]" -k "(-q)" -K bktargets \
+    - "r[setup,;]" \
+    - "r[sfiles,;]" -f \
+    - "r[sccscat,;]" -K bktargets \
+    - "r[annotate,;]" -k "(-a -d -k -m -N -n -u)" -K bktargets \
+    - "r[check,;]" -k "-a -c -f)" \
+    - "r[status,;]" \
+    - "r[info,;]" \
+    - "r[revtool,;]" \
+    - "r[fmtool,;]" \
+    - "r[citool,;]" \
+    - "r[csettool,;]" -k "(-r)" \
+    - "r[repotool,;]" \
+    - "r[difftool,;]" \
+    - "r[vim,;]" -K bkalltargets \
+    - "r[emacs,;]" -K bkalltargets \
+    -- bk
+
+unset bkflags bkcmds
+
+# Yuck, bk 2.1 has 'bk parent -i' option which removes the info crud
+#
+bkparent () {
+	parent=(`bk parent`)
+	reply=(`echo $parent | sed -e 's/Parent repository is //'`)
+}
+
+# Return a list of files that can aren't currently under revision control
+#
+bknew () {
+	local nword args pref f
+	setopt localoptions nullglob
+	read -nc nword; read -Ac args
+	pref=$args[$nword]
+	if [[ -d $pref:h && -d $pref ]]; then
+		pref=$pref:h
+	elif [[ $pref != */* ]]; then
+		pref=
+	fi
+	[[ -n "$pref" && "$pref" != */ ]] && pref=$pref/
+
+	reply=(`bk sfiles -x`)
+}
+
+#
+# Yuggles, this will not be efficient if I do an sfiles on a large tree...
+# Need to get larry to do a version of sfiles which doesn't recurse...
+# Just looking at the sfiles for now, but sfiles will allow such things
+# as 'show me what files are editable', 'show me locked files', etc.
+#
+bktargets () {
+	local nword args pref f
+	setopt localoptions nullglob
+	read -nc nword; read -Ac args
+	pref=$args[$nword]
+	if [[ -d $pref:h && -d $pref ]]; then
+		pref=$pref:h
+	elif [[ $pref != */* ]]; then
+		pref=
+	fi
+	[[ -n "$pref" && "$pref" != */ ]] && pref=$pref/
+
+	#reply=(`bk sfiles`)
+	reply=($(for f in $(ls ${pref}SCCS/s.* 2>/dev/null | \
+	    sed -e 's/SCCS\/s.//')
+	    do 
+		    echo $f; 
+	    done))
+
+}
+
+# Used by the vim rule
+#
+# Show all of the sfiles and files that are not under revision control
+# (sfiles -x doesn't show the ignore files)
+#
+bkalltargets () {
+	local nword args pref f
+	setopt localoptions nullglob
+	read -nc nword; read -Ac args
+	pref=$args[$nword]
+	if [[ -d $pref:h && -d $pref ]]; then
+		pref=$pref:h
+	elif [[ $pref != */* ]]; then
+		pref=
+	fi
+	[[ -n "$pref" && "$pref" != */ ]] && pref=$pref/
+
+	#reply=(`bk sfiles`)
+	reply=($(for f in $(ls ${pref}SCCS/s.* 2>/dev/null | \
+		sed -e 's/SCCS\/s.//')
+		do 
+			echo $f; 
+		done)
+		`bk sfiles -x`)
+}

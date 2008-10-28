@@ -1,0 +1,184 @@
+2001-02-14  Steve Youngs  <youngs@xemacs.org>
+
+	* vc.el: Require compile, sendmail & ediff-util.
+
+	* Makefile (REQUIRES): Add vc, ediff, mail-lib.
+
+2001-02-13  Adrian Aichner  <adrian@xemacs.org>
+
+	* vc.el: Sync up with GNU Emacs 20.7 to make `cvs-mode-imerge'
+	work again.
+	* vc.el (vc-ensure-vc-buffer): New.
+	* vc.el (vc-merge): New.
+	* vc.el (vc-ediff-windows)): New.
+	* vc.el (vc-ediff-result)): New.
+	* vc.el (vc-resolve-conflicts): New.
+
+2000-10-05  Martin Buchholz  <martin@xemacs.org>
+
+	* *: Mega typo fix.
+
+2000-02-16  Yoshiki Hayashi  <yoshiki@xemacs.org>
+
+	* vc-hooks.el: Synch with FSF 20.5.
+
+1999-09-05  Richard Stallman  <rms@gnu.org>
+
+        * vc.el (vc-annotate-display): Treat 2-digit years under 70 as 20YY.
+
+1999-06-07  Colin Rafferty  <colin@xemacs.org>
+
+	* vc.el (vc-file-not-found-use-default): Created.
+	(vc-backend-checkout): Use the above variable.
+
+1999-02-25  SL Baur  <steve@xemacs.org>
+
+	* vc.el: Undocumented patch from Barry Warsaw.
+
+1998-10-16  Jan Vroonhof  <vroonhof@math.ethz.ch>
+
+	* vc-hooks.el ((featurep 'menubar)): Add special autoload
+	only minimal menu.
+
+1998-10-07  Jan Vroonhof  <vroonhof@math.ethz.ch>
+
+	* vc-hooks.el (vc-menu-filter): pass full path no
+	  vc-locking-user.
+
+1998-08-05  Jan Vroonhof  <vroonhof@math.ethz.ch>
+
+	* vc-hooks.el (vc-menu-filter): vc-locking-user is fast now and
+	vc-file-owner something completely different than in VC from
+	XEmacs 19.x, so use that.
+
+1998-05-30  Kirill M. Katsnelson  <kkm@kis.ru>
+
+	* vc.el: Marked my changes of 1998-05-28 with ';; XEmacs change'
+
+1998-05-28  Kirill M. Katsnelson  <kkm@kis.ru>
+
+	* vc.el (vc-do-command): Discard stderr of a vc process.
+	(vc-backend-checkout): Use (with-temp-file) instead of shell magic
+	to redirect external command stdout to a file.
+
+1998-05-14  Michael Sperber [Mr. Preprocessor]  <sperber@informatik.uni-tuebingen.de>
+
+	* vc.el (vc-version-diff): Fixed calls to `read-string'; bind
+ 	`minibuffer-default' instead.
+	(vc-backend-merge-news): Provided for "P" message from server CVS.
+
+1998-05-12  Jan Vroonhof  <vroonhof@math.ethz.ch>
+
+	* vc.el (vc-suppress-confirm): Customized [sync with FSF 20.2]
+	(vc-initial-comment): ditto
+	(vc-command-messages): ditto
+	(vc-checkin-switches): ditto
+	(vc-checkout-switches): ditto
+	(vc-register-switches): ditto
+	(vc-directory-exclusion-list): ditto
+	(vc-default-init-version): Customized [XEmacs only]
+	(vc-annotate-color-map): New variable [from FSF 20.2]
+	(vc-annotate-very-old-color): ditto
+	(vc-annotate-background): ditto
+	(vc-annotate-menu-elements): ditto
+	(vc-checkin-hook): Customized [sync with FSF 20.2]
+	(vc-before-checkin-hook): ditto
+	(vc-annotate-mode-hook): ditto
+	(vc-header-alist): ditto
+	(vc-static-header-alist): ditto
+	(vc-comment-alist): ditto
+	(vc-checkout-carefully): ditto
+	(vc-rcs-release): ditto
+	(vc-sccs-release): ditto
+	(vc-cvs-release): ditto
+	(vc-minor-part): New function [from FSF 20.2]. Used in vc-annotate.
+	(vc-previous-version): idem ditto
+	(vc-next-action-on-file): Policy change like in FSF 20.2. Don't do 
+	locking when the file is unmodified.
+	(vc-version-diff): When used interactively, supply sensible
+	defaults for revisions [from FSF 20.2]. Currently disfunctional.
+	(vc-clear-headers): Added comment explaining difference between
+	FSF and our version. Kept ours for the moment.
+	(vc-retrieve-snapshot): Updated doc string and prompt [Sync with FSF]
+	(vc-retrieve-snapshot): Moved question about buffers out of the
+	loop [Sync with 20.2]
+	(vc-update-change-log): Comment explaining difference with FSF
+	20.2. We do not have their 'rcs2log' version.
+	(vc-annotate-mode): 
+	(vc-annotate-mode-map): 
+	(vc-annotate-mode-syntax-table): 
+	(vc-annotate-ratio): 
+	(vc-annotate-mode): 
+	(vc-annotate-mode-variables): 
+	(vc-annotate-display-default): 
+	(vc-annotate): 
+	(vc-annotate-car-last-cons): 
+	(vc-annotate-time-span): 
+	(vc-annotate-compcar): 
+	(vc-annotate-display): New functionality do highlight 'cvs annote' 
+	buffers [from FSF 20.2]. Works under XEmacs (FSF version contains
+	XEmacs specifics!) for the highlighting. Menus not working making
+	it more of a gimmick at the moment.
+	(vc-backend-checkout): When the file was read only assume that
+	this was CVS telling us we need to do 'cvs edit' (somebody used
+	'cvs watch on'.) [sync with FSF 20.2]
+	(vc-backend-checkin): Be conservative and forget checkout-model
+	[sync with FSF 20.2]
+	(vc-backend-merge-news): Changed error detecting logic [sync FSF
+	20.2]. 
+	(vc-log-mode): Advertise vc-annotate.
+
+	* vc-hooks.el (vc-find-cvs-master): Changed logic detecting
+	whether a file is under CVS control. Seperate out detecting of
+	special time stamps, this makes it less prone to failures when the 
+	CVS texts change sligtly. Logic and regexps mostly from FSF 20.2.
+	Added another throw line after the textual date stamp case that
+	the FSF versions misses.
+	(vc-fetch-master-properties): Added new CVS text string [from FSF 20.2]
+	(vc-find-cvs-master): Moved resetting of 'case-fold-search' to the 
+	protect-form of unwind protect instead of trying to find every
+	exit point [XEmacs only].
+	vc-prefix-map: Added vc-annotate binding [FSF 20.2] 
+
+1998-04-27  SL Baur  <steve@altair.xemacs.org>
+
+	* dumped-lisp.el: Remove.  Load vc-hooks by hand to initialize.
+
+1998-03-20  SL Baur  <steve@altair.xemacs.org>
+
+	* vc.el:
+	* vc-hooks.el: Mark as not officially maintained.
+
+1998-03-20  William M. Perry  <wmperry@aventail.com>
+
+	* vc.el: regexp changes.
+
+1998-03-08  Kyle Jones  <kyle_jones@wonderworks.com>
+
+	* vc.el (vc-resynch-buffer): Use with-current-buffer
+	  instead of save-excursion to remember the current buffer.
+	  save-excursion can restore an incorrect value of point if
+	  the buffer reversion inside vc-resynch-window shifts markers
+	  in the buffer.
+
+1998-01-21  Kyle Jones  <kyle_jones@wonderworks.com>
+
+	* vc.el: Add new variable vc-diff-switches to replace
+	  diff-switches and remove the diff.el dependency from the
+	  package.
+
+1998-01-24  SL Baur  <steve@altair.xemacs.org>
+
+	* Makefile (VERSION): Update to package standard 1.0.
+
+1998-01-12  SL Baur  <steve@altair.xemacs.org>
+
+	* Makefile: Update to newer package interface.
+
+1998-01-03  SL Baur  <steve@altair.xemacs.org>
+
+	* Makefile: Update to newer package interface.
+
+1997-12-25  SL Baur  <steve@altair.xemacs.org>
+
+	* Makefile: Created.

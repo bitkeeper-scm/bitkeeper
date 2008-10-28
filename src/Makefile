@@ -335,12 +335,12 @@ nonet nonet_test localtest:
 
 realtest: $(ALL) t/doit
 	-cd gui/tcltk && $(MAKE) clobber
-	-./bk get -qS t/setup win32/t/win32_common t/x.chk_env
+	-./bk get -qS t/setup t/win32/win32_common t/x.chk_env
 	-./bk -rt get -qS 't.*'
 	cd t && ./doit -i -f
 
 guitest: $(ALL) t/doit
-	-./bk get -qS t/SCCS/s.g.* t/setup win32/t/win32_common \
+	-./bk get -qS t/SCCS/s.g.* t/setup t/win32/win32_common \
 	    t/x.chk_env t/guitest.tcl
 	cd t && ./doit -g -i -f
 
@@ -360,6 +360,7 @@ gnu: $(BK) libc/libc.a FORCE
 
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
+	cd t/win32 && $(MAKE)
 
 # build libraries in sub directories
 %.a: FORCE

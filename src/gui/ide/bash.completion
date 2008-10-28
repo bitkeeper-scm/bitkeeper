@@ -1,0 +1,112 @@
+# completion modes for bash-2.04 or later
+#
+# Copyright (c) 2001 by Aaron Kushner; All rights reserved.
+#
+# %W%
+#
+
+shopt -s extglob
+
+_bk () 
+{
+	bktargets()
+	{
+		#COMPREPLY=( $( mount | cut -d' ' -f 3 | grep ^$cur) )
+		#COMPREPLY=( $(ls ${pref}SCCS/s.* 2>/dev/null | \
+		#    sed -e 's/SCCS\/s.//' ))
+
+		pref=$cur
+
+		COMPREPLY=( $(compgen -d $cur) )
+		return 0
+
+		if [[ -d $pref ]]; then
+			pref=$pref
+		elif [[ -d $d ]]; then
+			echo "d=($d)"
+			pref="$d/"
+		elif [[ $pref != */* ]]; then
+			pref=
+		fi
+		[[ -n "$pref" && "$pref" != */ ]] && pref=$pref/
+		l=`ls ${pref}SCCS/s.* 2>/dev/null | \
+		    sed -e 's/SCCS\/s.//'` 
+		COMPREPLY=( $(compgen -W "$l" $cur) )
+	}
+
+	dashify()
+	{
+		local i
+
+		for (( i=0; i < ${#COMPREPLY[@]}; i++ )); do
+			if [ ${#COMPREPLY[i]} -le 2 ]; then
+				COMPREPLY[i]=-${COMPREPLY[i]}
+			else
+				COMPREPLY[i]=--${COMPREPLY[i]}
+			fi
+		done
+	}
+
+	local cur prev
+
+	COMPREPLY=()
+        cur=${COMP_WORDS[COMP_CWORD]}
+	cur_nodash=${cur#-}
+	prev=${COMP_WORDS[COMP_CWORD-1]}
+
+	f='new edit ci unedit get sfiles admin sccscat annotate vim emacs'
+	r='tag check status info setup push pull parent'
+	g='fmtool revtool citool csettool difftool repotool'
+	global_options="r R"
+
+	#echo "   cur=($cur) prev=($prev) CWORD=($COMP_CWORD)"
+
+	if [ $prev = "bk" ] && [ $cur = "-" ]; then
+		COMPREPLY=( $( compgen -W 'r R' $cur_nodash ) )
+		dashify
+		return 0
+	fi
+
+	if [ $COMP_CWORD -eq 1 ] || [ "${prev:0:1}" = "-" ]; then
+		COMPREPLY=( $( compgen -W "$f $r $g" $cur ))
+		return 0
+	fi
+
+	case "$prev" in
+	    push|pull|parent)
+		reply=`bk parent | sed -e 's/Parent repository is //'`
+		COMPREPLY=( $(compgen -W "$reply" $cur) )
+		return 0
+	       ;;	
+	    vim|emacs|vi)
+		l=`ls ${pref}SCCS/s.* 2>/dev/null | sed -e 's/SCCS\/s.//'` 
+		a=`bk sfiles -x` 
+		COMPREPLY=( $(compgen -W "$l $a" $cur) )
+		#echo "count=(${#COMPREPLY[@]})"
+		return 0
+		;;
+	    new)
+		l=`bk sfiles -x` 
+		COMPREPLY=( $(compgen -W "$l" $cur) )
+		return 0
+		;;
+	    edit|ci|unedit|get|sfiles|admin|sccscat|annotate|revtool)
+		#bktargets
+		COMPREPLY=( $( compgen -f $cur ))
+		return 0
+		;;
+	esac
+
+	return 0
+}
+
+major="${BASH_VERSION/.*/}"
+level="${BASH_VERSION#${major}.}"
+minor="${level%%.*}"
+
+if [ $major -ge 2 ] && [ $minor -ge 4 ]; then
+        complete -F _bk bk
+	#echo "major=($major) minor=($minor)"
+else
+	echo "Bash version $major.$minor does not have programmable completion"
+fi

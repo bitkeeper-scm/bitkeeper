@@ -1,10 +1,10 @@
-all: svcmgr diffutils patch msys bkscc bkshellx t
+all: svcmgr diffutils patch msys bkscc bkshellx
 	cd pub/winctl && unset MAKEFLAGS && make
 
 .PHONY: clean
 ifeq "$(OSTYPE)" "msys"
 clean:
-	for sub in svcmgr pub/blat pub/winctl pub/diffutils pub/patch t; \
+	for sub in svcmgr pub/blat pub/winctl pub/diffutils pub/patch; \
 	do	$(MAKE) -C $$sub clean; \
 	done
 	$(RM) -r dll
@@ -27,9 +27,6 @@ diffutils: FORCE
 
 patch: FORCE
 	cd pub/patch && unset MAKEFLAGS && make
-
-t:	FORCE
-	cd t && make
 
 MSYSBIN = ../gnu
 msys: ./msysver.sh MSYSKEY MSYSURL FORCE

@@ -24,7 +24,8 @@ win32_common_setup()
 		TST_DIR=`mount | sed -n 's, on /tmp.*,,p' | tr A-Z a-z`
 	}
 	BK_FS="|"
-	PATH=${PATH}:${BK_BIN}/win32/t
+	bk get -qS ${BK_BIN}/t/win32/win32_common
+	PATH=${PATH}:${BK_BIN}/t/win32
 	export PATH
 	BK_BIN="`cd .. && ./bk pwd -s`"
 	CWD="$BK_BIN/bk pwd"

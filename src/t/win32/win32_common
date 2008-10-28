@@ -1,0 +1,102 @@
+# All of the files in this directory are Copyright (c) 2006 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+#
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Setup code for tests
+# Copright (c) 2006 Oscar Bonilla
+# %K%
+
+# Stick the recovery file here
+WIN32_REGFILE="/build/fix-registry-$USER.sh"
+
+# Registry keys
+BMKEY="HKEY_LOCAL_MACHINE\\Software\\BitMover\\BitKeeper"
+SHELLXKEY="$BMKEY\\shellx"
+USRPATHKEY="HKEY_CURRENT_USER\\Environment"
+SYSPATHKEY="HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\Environment"
+UNINSTALLKEY="HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+
+# public functions
+win32_regSave() {
+	_savereg "$BMKEY" installdir OLDINSTALLDIR
+	_savereg "$BMKEY" rel OLDREL
+	_savereg "$SHELLXKEY" networkDrive OLDNETDRIVE
+	_savereg "$SHELLXKEY" LocalDrive OLDLOCALDRIVE
+	# OLDUSRPATH doesn't exist sometimes, so it's fine to fail
+	OLDUSRPATH=`bk _registry get "$USRPATHKEY" Path`
+	export OLDUSRPATH
+	_savereg "$SYSPATHKEY" Path OLDSYSPATH
+	_savefile "$WIN32_REGFILE"
+}
+
+win32_regRestore() {
+	test -x "$WIN32_REGFILE" && "$WIN32_REGFILE"
+}
+
+win32_regDiff() {
+	rc=0
+	_regdiff "$BMKEY" installdir "$OLDINSTALLDIR"
+	_regdiff "$BMKEY" rel "$OLDREL"
+	_regdiff "$SHELLXKEY" networkDrive "$OLDNETDRIVE"
+	_regdiff "$SHELLXKEY" LocalDrive "$OLDLOCALDRIVE"
+	# OLDUSRPATH doesn't exist sometimes, but that should match
+	_regdiff "$USRPATHKEY" Path "$OLDUSRPATH"
+	_regdiff "$SYSPATHKEY" Path "$OLDSYSPATH"
+	return $rc
+}
+
+# internal helpers
+_savereg() {
+	newvar=`bk _registry get "$1" $2` || {
+		echo failed to save old $2
+		exit 1
+	}
+	test "x$newvar" = "xentry not found" -o -z "$newvar" && {
+		echo failed to save old $2
+		exit 1
+	}
+	eval $3="'$newvar'"
+	export $3
+}
+
+_savefile() {
+	cat > "$1" <<EOF
+#!/bin/sh
+_restore() {
+	bk _registry set "\$1" \$2 "\$3" || {
+		echo could not restore \$2
+		rc=1
+	}
+}
+rc=0
+_restore "$BMKEY" installdir "$OLDINSTALLDIR"
+_restore "$BMKEY" rel "$OLDREL"
+_restore "$SHELLXKEY" networkDrive "$OLDNETDRIVE"
+_restore	"$SHELLXKEY" LocalDrive "$OLDLOCALDRIVE"
+# Restore PATH so that old BK works again
+test "x$OLDUSRPATH" != "xentry not found" && {
+	restore "$USRPATHKEY" Path expand_sz:"$OLDUSRPATH"
+}
+_restore "$SYSPATHKEY" Path expand_sz:"$OLDSYSPATH"
+# Tell other apps that we changed the Path
+bk _registry broadcast "Environment"
+exit \$rc
+EOF
+	chmod +x "$1"
+}
+
+_regdiff() {
+	newvar=`bk _registry get "$1" $2`
+	test "$3" = "$newvar" || {
+		echo "$1" $2
+		echo OLD: "$3"
+		echo NEW: "$newvar"
+		rc=1
+	}
+}
