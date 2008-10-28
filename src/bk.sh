@@ -192,7 +192,7 @@ __newFile() {
 
 	F="$1"
 	R=`echo "$F $BK_DATE_TIME_ZONE $BK_USER $BK_HOST" \
-	    | bk crypto -hX - | cut -c1-16`
+	    | bk undos -n | bk crypto -hX - | cut -c1-16`
 	mkdir -p `dirname "$F"`
 	test -f "$F" || touch "$F"
 	chmod 666 "$F"
@@ -303,11 +303,11 @@ _partition() {
 	}
 	if [ -f $WA/gonelist ]
 	then	RAND=`bk _sort < $WA/gonelist | cat BitKeeper/log/ROOTKEY - \
-		    | bk crypto -hX - | cut -c1-16`
+		    | bk undos -n | bk crypto -hX - | cut -c1-16`
 		verbose "### Removing unwanted files"
 		bk csetprune $QUIET -aSk"$RAND" - < $WA/gonelist || exit 1
 	else	RAND=`echo "no gonelist" | cat BitKeeper/log/ROOTKEY - \
-		    | bk crypto -hX - | cut -c1-16`
+		    | bk undos -n | bk crypto -hX - | cut -c1-16`
 		verbose "### Newrooting product"
 		bk newroot $QUIET -k"$RAND" || exit 1
 	fi
@@ -346,7 +346,7 @@ _partition() {
 	# Clean out the product
 
 	RAND=`echo "The Big Cheese" | cat - BitKeeper/log/ROOTKEY \
-		    | bk crypto -hX - | cut -c1-16`
+		    | bk undos -n | bk crypto -hX - | cut -c1-16`
 	bk csetprune $QUIET -NSE $XCOMPS -C$WA/map "-k$RAND"
 
 	# Prepare the component.  Need insane in case config is stripped.
@@ -368,7 +368,7 @@ _partition() {
 	mv ../cgl ../compgonelist
 	test -f ../compgonelist && {
 		RAND=`cat BitKeeper/log/ROOTKEY ../compgonelist \
-		    | bk crypto -hX - | cut -c1-16`
+		    | bk undos -n | bk crypto -hX - | cut -c1-16`
 		verbose "### Removing unwanted files"
 		bk csetprune $QUIET -aNSk"$RAND" - < ../compgonelist || exit 1
 	}
@@ -409,7 +409,7 @@ _partition() {
 				}
 			}
 			RAND=`echo "$comp" | cat - BitKeeper/log/ROOTKEY \
-			    | bk crypto -hX - | cut -c1-16`
+			    | bk undos -n | bk crypto -hX - | cut -c1-16`
 			_BK_STRIPTAGS=1 bk csetprune \
 			    $QUIET -NS $XCOMPS -C ../map -c"$comp" "-k$RAND"
 		) || exit 1
