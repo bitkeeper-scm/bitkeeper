@@ -408,6 +408,7 @@ private int
 doit_local(int nac, char **nav, char **urls)
 {
 	FILE	*f;
+	char	*p;
 	int	status, i;
 	int	ac = nac, rc = 0;
 	int	all = 0;
@@ -417,7 +418,13 @@ doit_local(int nac, char **nav, char **urls)
 	nav[ac] = 0;
 	EACH(urls) {
 		if (opts.urls) {
-			printf("==== changes -L %s ====\n", urls[i]);
+			if ((p = getenv("BK_STATUS")) &&
+			    streq(p, "LOCAL_WORK")) {
+			    	printf("#### Not updating "
+				    "due to the following local work:\n");
+			} else {
+				printf("==== changes -L %s ====\n", urls[i]);
+			}
 			fflush(stdout);
 		}
 		if (rc = _doit_local(nav, urls[i])) goto done;
