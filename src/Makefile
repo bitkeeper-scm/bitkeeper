@@ -312,7 +312,7 @@ get-e: FORCE
 	$(Q)$(MAKE) tags
 
 srcs: $(SRCS) $(HDRS) FORCE
-	@(Q)for sub in $(SUBDIRS); do $(Q)$(MAKE) -C$$sub $@; done
+	$(Q)for sub in $(SUBDIRS); do bk -r$$sub co -q; done
 
 tags: $(patsubst %,%/tags.local, $(SUBDIRS)) tags.local
 	sort $^ > $@
