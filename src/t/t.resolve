@@ -1066,3 +1066,32 @@ bk pull $Q || {
 	exit 1
 }
 echo OK
+
+echo $N Receive a patch, then resolve and offer a default cmt .......$NL
+bk edit $Q "foo-bar"
+bk delta $Q -fynull "foo-bar"
+bk commit $Q -f
+bk undo $Q -fr+
+mv BitKeeper/tmp/undo.patch u
+touch newbar
+bk new $Q newbar
+bk commit $Q -f
+bk receive < u
+echo u | bk resolve -q -a > GOT 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo >> GOT
+cat <<'EOF' > WANT
+
+-------------------------------------------------
+Merge
+-------------------------------------------------
+Use these comments: (e)dit, (a)bort, (u)se? 
+EOF
+cmpfiles WANT GOT
+bk changes -r+ -nd'$each(:C:){(:C:)}' > GOT
+echo Merge > WANT
+cmpfiles WANT GOT
+echo OK

@@ -2284,6 +2284,7 @@ private	void
 commit(opts *opts)
 {
 	int	i;
+	FILE	*cmtfile;
 	char	*cmds[12], *cmt = 0;
 
 	cmds[i = 0] = "bk";
@@ -2299,6 +2300,9 @@ commit(opts *opts)
 		}
 	} else if (size("SCCS/c.ChangeSet") > 0) {
 		cmds[++i] = "-c";
+	} else if (cmtfile = fopen("SCCS/c.ChangeSet", "w")) {
+		fputs("Merge\n", cmtfile);
+		fclose(cmtfile);
 	}
 	cmds[++i] = 0;
 	i = spawnvp(_P_WAIT, "bk", cmds);
