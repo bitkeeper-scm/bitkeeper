@@ -861,6 +861,7 @@ getServerInfoBlock(remote *r)
 	char	*newseed;
 	char	buf[4096];
 
+	putenv("BKD_BAM=");	/* clear previous value */
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq(buf, "@END@")) {
 			ret = 0; /* ok */

@@ -22,6 +22,9 @@ test -d TRANSFORM || {
 	}
 }
 
+echo Running 'bk bam convert'
+(cd TRANSFORM; bk bam convert)
+
 # Note:
 # This repo containing mkdogfood also has
 # bk mv src/ide src/gui/ide
@@ -200,7 +203,7 @@ awc@etp3.bitmover.com|src/win32/pub/vim/src/ctags/strlist.h|20000328135106|43779
 awc@etp3.bitmover.com|src/win32/pub/vim/src/ctags/strstr.c|20000328135104|44478|4bc608ed9916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/ctags/vstring.c|20000328135104|41752|4bc608ec9916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/ctags/vstring.h|20000328135106|41980|4bc608da9916233f
-awc@etp3.bitmover.com|src/win32/pub/vim/src/digraph.c|20000328135046|40083|4bc609739916233f
+awc@etp3.bitmover.com|src/win32/pub/vim/src/digraph.c|20000328135046|40083|B:4bc609739916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/dlldata.c|20000328135046|36806|4bc609729916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/dosinst.c|20000328135046|33529|4bc609759916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/edit.c|20000328135046|30252|4bc609749916233f
@@ -308,7 +311,7 @@ awc@etp3.bitmover.com|src/win32/pub/vim/src/tearoff.bmp|20000328135106|43779|4bc
 awc@etp3.bitmover.com|src/win32/pub/vim/src/term.c|20000328135051|45451|4bc6095d9916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/term.h|20000328135054|40126|4bc608b49916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/termlib.c|20000328135051|42584|4bc6095c9916233f
-awc@etp3.bitmover.com|src/win32/pub/vim/src/tools.bmp|20000328135106|41980|4bc608dc9916233f
+awc@etp3.bitmover.com|src/win32/pub/vim/src/tools.bmp|20000328135106|41980|B:4bc608dc9916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/typemap|20000328135100|45860|4bc6088d9916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/ui.c|20000328135051|45028|4bc6095f9916233f
 awc@etp3.bitmover.com|src/win32/pub/vim/src/undo.c|20000328135051|40126|4bc6095e9916233f
@@ -684,3 +687,6 @@ EOF
 
 # do the dogfooding ...
 bk partition -X -gcompprune -Gprune -Cmap TRANSFORM DOGFOOD 2>&1 | tee LOG
+
+# cleanup leftover BAM data in each component
+(cd DOGFOOD; bk -Aq bam clean -q)

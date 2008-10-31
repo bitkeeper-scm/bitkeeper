@@ -60,11 +60,11 @@ grep -q "failed to fetch delta" ERR || {
 mv ../BAM-hold ../pmaster/BitKeeper/BAM 
 echo OK
 
-echo $N Test bk clean -a agaist a clean tree ........................$NL
+echo $N Test bk clean -a against a clean tree .......................$NL
 cd ../pmaster
 bk clone $Q -r1.2 . ../clean || exit 1
 cd ../clean
-bk bam clean -a $Q 2>ERR || exit 1
+bk bam clean -a 2>ERR || exit 1
 echo 'BAM clean: no BAM data in this repository' > WANT
 cmpfiles ERR WANT
 echo OK

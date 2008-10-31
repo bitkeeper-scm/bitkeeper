@@ -1018,7 +1018,9 @@ bam_clean_main(int ac, char **av)
 		return (1);
 	}
 	unless (bp_hasBAM() && isdir(BAM_ROOT)) {
-		ERROR((stderr, "no BAM data in this repository\n"));
+		unless (quiet) {
+			ERROR((stderr, "no BAM data in this repository\n"));
+		}
 		return (0);
 	}
 	p1 = bp_serverID(0);
