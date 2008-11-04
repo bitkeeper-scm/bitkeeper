@@ -1,6 +1,6 @@
 HERE	:= $(shell pwd)
 OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
-BKROOT	:= $(shell bk root)
+BKROOT	:= $(shell bk -P root)
 
 # The Tk version is tied to the Tcl version so you only need to change TCL
 # If you change version don't forget to change TCLURL/TKURL/TCLKEY/TKKEY
@@ -337,10 +337,10 @@ mkapp: FORCE
 
 bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) bin/bkgui$(EXE) mkapp
 	$(MAKE) -C tcl/macosx XLIBS="$(LIBTOMCRYPT)" \
-	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root` --disable-info-body \
+	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --disable-info-body \
 	    --enable-pcre --with-pcre=../../../pcre/local" embedded
 	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
-	    EXTRA_CONFIGURE_ARGS="--with-bk=`bk root`" embedded
+	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT)" embedded
 	./mkapp BitKeeper 1.0 BkAp "BitMover, Inc" com.bitmover.bk "$(WISHPATH)"
 
 clean-obj: FORCE

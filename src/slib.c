@@ -10892,6 +10892,12 @@ insert_1_0(sccs *s, u32 flags)
 	}
 
 	d = new(delta);
+	if (s->tree->flags & D_XFLAGS) {
+		/* move 1.1 xflags to new 1.0 delta */
+		d->xflags = s->tree->xflags;
+		d->flags |= D_XFLAGS;
+		s->tree->flags &= ~D_XFLAGS;
+	}
 	t->next = d;		/* table is now linked */
 	t = s->tree;
 	d->kid = t;

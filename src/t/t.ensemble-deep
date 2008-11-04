@@ -59,3 +59,22 @@ cat > WANT <<EOF
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N Check that we do not list non-deep components ...............$NL
+cd "$HERE/project/gcc" || exit 1
+mkdir foo && cd foo || exit 1
+bk -r. > OUT
+cd ../..
+grep -q "^gcc$" BitKeeper/log/deep-nests && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Check that sfiles does not list deep nests always ...........$NL
+bk sfiles foobar > GOT
+echo gcc/nm/SCCS/s.ChangeSet > WANT
+# fix test if this fails
+checkfiles WANT GOT
+# else ..
+echo "failed (bug )"

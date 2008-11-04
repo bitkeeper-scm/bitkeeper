@@ -645,12 +645,14 @@ ensemble_nestedCheck(void)
 {
 	project	*p;
 	project	*prod;	// set to the product if we find one
-	char	*t, *rel, *hints;
+	char	*t, *rel, *hints, *path;
 	char	**paths;
 
 	if (proj_isProduct(0)) return;	/* only components */
 	unless (prod = proj_product(0)) return;
-	p = proj_init("..");
+	path = aprintf("%s/..", proj_root(0));
+	p = proj_init(path);
+	free(path);
 	assert(p);
 	proj_free(p);
 
@@ -692,7 +694,7 @@ ensemble_deep(char *path)
 	repos	*r;
 	char	**list = 0;
 	char	*deep = 0;
-	int	len, deeplen;
+	int	len, deeplen = 0;
 
 	op.rev = "+";
 	r = ensemble_list(op);

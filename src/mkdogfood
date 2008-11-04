@@ -12,18 +12,33 @@ cd "`bk root`"
 
 # Shortkey transform been done?
 
-rm -fr DOGFOOD
+test -d TRANSFORM && {
+	TIPKEY=X
+	test -f TRANSFORM/TIPKEY && TIPKEY="`cat TRANSFORM/TIPKEY`"
+	test "`bk changes -r+ -nd:KEY:`" = "$TIPKEY" || {
+		echo "New repo tipkey .. redoing TRANSFORM .."
+		rm -fr TRANSFORM
+	}
+}
 test -d TRANSFORM || {
 	echo Removing short keys ...
 	# not all bk's have rmshortkeys
-	bk _rmshortkeys || {
+	BK_CONFIG="checkout: none!; partial_check: on! " bk _rmshortkeys || {
 		echo "No local _rmshortkeys command. Trying runbk rmshort ..."
 		runbk rmshort bk _rmshortkeys || exit 1
 	}
+	test -d TRANSFORM || exit 1
+	bk changes -r+ -nd:KEY: > TRANSFORM/TIPKEY
+
+	echo Running 'bk bam convert'
+	(	cd TRANSFORM \
+		    && BK_CONFIG="checkout: none!; partial_check: on! " \
+		    bk bam convert
+	)
 }
 
-echo Running 'bk bam convert'
-(cd TRANSFORM; bk bam convert)
+# okay, clean out the old and in with the new
+test -e DOGFOOD && rm -fr DOGFOOD
 
 # Note:
 # This repo containing mkdogfood also has
