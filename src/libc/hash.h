@@ -246,5 +246,7 @@ int	hash_toStream(hash *h, FILE *f);
 hash	*hash_fromStream(hash *h, FILE *f);
 int	hash_toFile(hash *h, char *path);
 hash	*hash_fromFile(hash *h, char *path);
+int	hash_keyDiff3(hash *A, hash *B, hash *C);
+int	hash_keyDiff(hash *A, hash *B);
 
 #endif
