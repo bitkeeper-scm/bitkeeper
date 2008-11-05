@@ -63,6 +63,7 @@ main(int ac, char **av, char **env)
 	int	i, c, si, is_bk = 0, dashr = 0, remote = 0, quiet = 0, all = 0;
 	int	ret;
 	char	*p, *dir = 0, *locking = 0;
+	char	*envargs = 0;
 	char	sopts[30];
 
 	trace_init(av[0]);
@@ -182,8 +183,8 @@ main(int ac, char **av, char **env)
 			return (0);
 		}
 		is_bk = 1;
-		while ((c =
-		    getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npPqr|RuUxz;")) != -1) {
+		while ((c = getopt(ac, av,
+			"?;@|1aAB;cCdDgGhjL|lM;npPqr|RuUxz;")) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -191,6 +192,7 @@ main(int ac, char **av, char **env)
 			    case 'h':
 				sopts[++si] = c;
 				break;
+			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
 			    case 'A': all = 1; break;
 			    case 'C': all = 1; break;
@@ -229,6 +231,24 @@ main(int ac, char **av, char **env)
 			}
 		}
 
+		/* -'?VAR=val&BK_CHDIR=dir' */
+		if (envargs) {
+			hash	*h = hash_new(HASH_MEMHASH);
+
+			if (hash_fromStr(h, envargs)) return (1);
+			EACH_HASH(h) {
+				safe_putenv("%s=%s",
+				    (char *)h->kptr, (char *)h->vptr);
+			}
+			hash_free(h);
+		}
+		if (p = getenv("BK_CHDIR")) {
+			if (chdir(p)) {
+				fprintf(stderr, "bk: Cannot chdir to %s\n", p);
+				return (1);
+			}
+			putenv("BK_CHDIR=");
+		}
 		if (remote) {
 			ret = remote_bk(quiet, ac, av);
 			goto out;
