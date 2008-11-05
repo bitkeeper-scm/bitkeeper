@@ -108,3 +108,32 @@ hash_free(hash *h)
 	free(h);
 	return (ret);
 }
+
+/*
+ * Compute C = A - B and return > 0 if items in C.
+ */
+int
+hash_keyDiff3(hash *A, hash *B, hash *C)
+{
+        int     i = 0;
+
+        assert(A && B && C);
+        EACH_HASH(A) {
+                unless (hash_fetch(B, A->kptr, A->klen)) {
+                        hash_store(C, A->kptr, A->klen, A->vptr, A->vlen);
+                        i = 1;
+                }
+        }
+        return (i);
+}
+
+/*
+ * Compute A -= B and return > 0 if items left in A.
+ */
+int
+hash_keyDiff(hash *A, hash *B)
+{
+        assert(A && B);
+        EACH_HASH(B) hash_delete(A, B->kptr, B->klen);
+        return (hash_first(A) != 0);
+}

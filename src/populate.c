@@ -1,7 +1,6 @@
 #include "sccs.h"
 #include "ensemble.h"
 
-private	hash	*hash_setDifference(hash *A, hash *B, int inplace);
 extern	char	*prog;
 
 int
@@ -227,8 +226,8 @@ unpopulate_main(int ac, char **av)
 	 * are not in the COMPONENTS file. It is an arbitrary restriction that
 	 * I think is unnecessary. lm3di :)
 	 */
-	h = hash_setDifference(alias_unwanted, alias_wanted, 0);
-	if (hash_first(h)) {
+	h = hash_new(HASH_MEMHASH);
+	if (hash_keyDiff3(alias_unwanted, alias_wanted, h) > 0) {
 		fprintf(stderr, "%s: cannot remove ", prog);
 		i = 0;
 		EACH_HASH(h) {
@@ -242,8 +241,7 @@ unpopulate_main(int ac, char **av)
 
 	unless (s = sccs_csetInit(SILENT)) goto out;
 
-	hash_setDifference(alias_wanted, alias_unwanted, 1);
-	if (hash_first(alias_wanted)) {
+	if (hash_keyDiff(alias_wanted, alias_unwanted) > 0) {
 		/* turn to keys */
 		new_alias = 0;
 		EACH_HASH(alias_wanted) {
@@ -265,7 +263,7 @@ unpopulate_main(int ac, char **av)
 	list = 0;
 	unless (comps_unwanted) goto out;
 
-	hash_setDifference(comps_unwanted, comps_wanted, 1);
+	hash_keyDiff(comps_unwanted, comps_wanted);
 
 	op.sc = s;
 	op.rev = "+";
@@ -339,31 +337,4 @@ out:	if (alias_unwanted) hash_free(alias_unwanted);
 	if (comps_unwanted) hash_free(comps_unwanted);
 	if (comps) ensemble_free(comps);
 	return (rc);
-}
-
-
-private	hash	*
-hash_setDifference(hash *A, hash *B, int inplace)
-{
-	hash	*ret;
-
-	if (inplace) {
-		EACH_HASH(B) {
-			/*
-			 * XXX: Wayne, just call delete?
-			 */
-			if (hash_fetchStr(A, B->kptr)) {
-				hash_deleteStr(A, B->kptr);
-			}
-		}
-		ret = A;
-	} else {
-		ret = hash_new(HASH_MEMHASH);
-		EACH_HASH(A) {
-			unless (hash_fetchStr(B, A->kptr)) {
-				hash_insertStr(ret, A->kptr, A->vptr);
-			}
-		}
-	}
-	return (ret);
 }
