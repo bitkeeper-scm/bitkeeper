@@ -62,6 +62,8 @@
 
 #define BIG_PIPE 4096	/* 16K pipe buffer for win32, ingored on unix */
 #define	GOOD_PSIZE	(16<<10)
+#define	INVALID		(void *)~0u /* invalid pointer */
+
 
 #define	isDriveColonPath(p)	(isalpha((p)[0]) && ((p)[1] == ':'))
 #define	executable(p)	((access(p, X_OK) == 0) && !isdir(p))

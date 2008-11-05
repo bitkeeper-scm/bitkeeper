@@ -549,6 +549,8 @@ bk_cleanup(int ret)
 	repository_lockcleanup();
 	proj_reset(0);		/* flush data cached in proj struct */
 
+	fslayer_cleanup();
+
 #ifndef	NOPROC
 	rmdir_findprocs();
 #endif

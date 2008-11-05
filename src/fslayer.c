@@ -1,15 +1,13 @@
 #define	FSLAYER_NODEFINES
 #include "sccs.h"
 
-#define	NEG1	(void *)~0u
-
 private	int	noloop;
-private	FILE	*strace = NEG1;
+private	FILE	*strace = INVALID;
 
 private	inline int
 do_trace(void)
 {
-	if (strace == NEG1) strace = efopen("BK_STRACE");
+	if (strace == INVALID) strace = efopen("BK_STRACE");
 	return (strace != 0);
 }
 
@@ -277,4 +275,16 @@ fslayer_rmdir(const char *dir)
 		noloop = 0;
 	}
 	return (ret);
+}
+
+/*
+ * Called from main() to cleanup
+ */
+void
+fslayer_cleanup(void)
+{
+	if (strace && (strace != INVALID)) {
+		fclose(strace);
+		strace = 0;
+	}
 }

@@ -1,0 +1,121 @@
+
+DO_CNT="`bk bin`"/t/strace-cnt.pl
+TESTDATA=/home/bk/test_data
+FILE="$HERE"/OUT
+
+echo $N Create initial repository ...................................$NL
+test -d $TESTDATA/perf || {
+	echo skipped
+	exit 0
+}
+bk version | grep -q " for x86-glibc23-linux" || {
+	echo skipped
+	exit 0
+}
+bk get -Sq "$DO_CNT" || exit 1
+BK_CONFIG="license:$BKL_PRO!;licsign1:$BKL_P1!;licsign2:$BKL_P2!;licsign3:$BKL_P3!"
+export BK_CONFIG
+echo y | bk clone $Q $TESTDATA/perf project > OUT 2>&1 || {
+	cat OUT
+	exit 1
+}
+cd project
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+2
+3
+EOF
+bk ci -yignore1 -u $Q BitKeeper/etc/ignore
+bk commit $Q -yignore1 || exit 1
+echo OK
+
+echo $N "Count the syscalls for a 'bk clone'.........................."$NL
+rm -f "$FILE"
+BK_STRACE="$FILE" bk clone $Q ../project ../copy || exit 1
+"$DO_CNT" clone "$FILE" || exit 1
+echo OK
+
+echo $N "Count the syscalls for a 'bk commit' ........................"$NL
+echo hi > file
+bk new $Q file
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+2
+3
+4
+EOF
+bk ci -yignore2 -u $Q BitKeeper/etc/ignore
+rm -f "$FILE"
+BK_STRACE="$FILE" bk commit $Q -ycommit || exit 1
+"$DO_CNT" commit "$FILE" || exit 1
+echo OK
+
+echo $N "Count the syscalls for a 'bk changes -L' ...................."$NL
+cd ../copy
+rm -f "$FILE"
+BK_STRACE="$FILE" bk changes -L > OUT || exit 1
+"$DO_CNT" changes-l "$FILE" || exit 1
+echo OK
+
+echo $N "Count the syscalls for a 'bk changes -R' ...................."$NL
+rm -f "$FILE"
+BK_STRACE="$FILE" bk changes -R > OUT || exit 1
+"$DO_CNT" changes-r "$FILE" || exit 1
+echo OK
+
+echo $N "Count the syscalls for a 'bk pull' .........................."$NL
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+1
+2
+3
+EOF
+bk ci -yignore3 -u $Q BitKeeper/etc/ignore
+bk commit $Q -yignore1 || exit 1
+rm -f "$FILE"
+BK_STRACE="$FILE" bk pull $Q || exit 1
+"$DO_CNT" pull "$FILE" || exit 1
+echo OK
+
+echo $N "Count the syscalls for a 'bk unpull' ........................"$NL
+rm -f "$FILE"
+BK_STRACE="$FILE" bk unpull -f $Q || exit 1
+"$DO_CNT" unpull "$FILE" || exit 1
+echo OK
+
+echo $N "Count the syscalls for a 'bk pull -R' ......................."$NL
+bk edit $Q BitKeeper/etc/ignore
+cat <<EOF > BitKeeper/etc/ignore
+1
+2
+3
+EOF
+bk ci -yignore3 -u $Q BitKeeper/etc/ignore
+bk commit $Q -yignore1 || exit 1
+rm -f "$FILE"
+BK_STRACE="$FILE" bk pull -R $Q || exit 1
+"$DO_CNT" pull-r "$FILE" || exit 1
+echo OK
+
+echo $N "Count the syscalls for a 'bk resolve' ......................."$NL
+rm -f "$FILE"
+BK_STRACE="$FILE" bk resolve $Q || exit 1
+"$DO_CNT" resolve "$FILE" || exit 1
+echo OK
+
+echo $N "Count the syscalls for a 'bk push' .........................."$NL
+rm -f "$FILE"
+BK_STRACE="$FILE" bk push $Q || exit 1
+"$DO_CNT" push "$FILE" || exit 1
+echo OK
+
+echo $N Count the calls in a large sccs_init ........................$NL
+cp "`bk bin`"/SCCS/s.slib.c SCCS
+# delta past the bk-4.1.1 version of slib.c
+bk prs  -r47bc54abHgFhmT32MELop4T29i8gOQ.. -hnd'slib.c|:REV:' > REVS
+bk stripdel -Cq - < REVS
+rm -f "$FILE"
+BK_STRACE="$FILE" bk prs slib.c > OUT || exit 1
+"$DO_CNT" mkgraph "$FILE" || exit 1
+rm -f SCCS/s.slib.c
+echo OK

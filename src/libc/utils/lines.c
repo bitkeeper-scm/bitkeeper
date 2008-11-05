@@ -10,8 +10,7 @@
 #undef	calloc
 #endif
 
-#define	LINES_INVALID	((char **)-1)
-static	char	**addLine_lastp = LINES_INVALID;
+static	char	**addLine_lastp = INVALID;
 static	int	addLine_lasti;
 
 /*
@@ -31,7 +30,7 @@ allocLines(int n)
 	 * We might be reusing an old lines buffer, so we must stomp
 	 * the cache.
 	 */
-	addLine_lastp = LINES_INVALID;
+	addLine_lastp = INVALID;
 	return (space);
 }
 
@@ -179,7 +178,7 @@ freeLines(char **space, void(*freep)(void *ptr))
 	}
 	space[0] = 0;
 	free(space);
-	addLine_lastp = LINES_INVALID;
+	addLine_lastp = INVALID;
 }
 
 int
@@ -199,7 +198,7 @@ removeLine(char **space, char *s, void(*freep)(void *ptr))
 				space[i-1] = 0;
 				n++;
 				found = 1;
-				addLine_lastp = LINES_INVALID;
+				addLine_lastp = INVALID;
 				break;
 			}
 		}
@@ -219,7 +218,7 @@ removeLineN(char **space, int rm, void(*freep)(void *ptr))
 		space[i-1] = space[i];
 	}
 	space[i-1] = 0;
-	addLine_lastp = LINES_INVALID;
+	addLine_lastp = INVALID;
 }
 
 void	*

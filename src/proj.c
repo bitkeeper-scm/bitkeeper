@@ -19,8 +19,6 @@
 #define	chdir	nt_chdir
 #endif
 
-#define	PROD_UNINITIALIZED	(void*)~0
-#define	PROD_NOPROD		(void*)0
 #define	PROD_SELF(p)		(proj_product(p) == (p))
 
 typedef struct dirlist dirlist;
@@ -595,9 +593,9 @@ proj_product(project *p)
 	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (0);
-	if (p->product == PROD_UNINITIALIZED) {
+	if (p->product == INVALID) {
 		/* find product root */
-		p->product = PROD_NOPROD;
+		p->product = 0;
 		concat_path(buf, p->root, "BitKeeper/log/PRODUCT");
 		if (exists(buf)) {	/* we're our own product */
 			p->product = p;
@@ -718,11 +716,11 @@ proj_reset(project *p)
 			mdbm_close(p->BAM_idx);
 			p->BAM_idx = 0;
 		}
-		if (p->product != PROD_UNINITIALIZED) {
+		if (p->product != INVALID) {
 			if (p->product && (p->product != p)) {
 				proj_free(p->product);
 			}
-			p->product = PROD_UNINITIALIZED;
+			p->product = INVALID;
 		}
 	} else {
 		/*
@@ -1100,7 +1098,7 @@ proj_isProduct(project *p)
 {
 	unless (p || (p = curr_proj())) return (0);
 	if (p->rparent) p = p->rparent;
-	return ((proj_product(p) != PROD_NOPROD) && PROD_SELF(p));
+	return (proj_product(p) && PROD_SELF(p));
 }
 
 

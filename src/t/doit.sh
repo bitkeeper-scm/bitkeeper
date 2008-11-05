@@ -93,7 +93,7 @@ unix_common_setup()
 	rm -rf "$BK_BIN"
 	mkdir "$BK_BIN"
 	ln -s "`cd .. && pwd`/bk" "$BK_BIN/bk"
-	PATH=$BK_BIN:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+	PATH=$BK_BIN:/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
 
 	# clear any stale uniq locks
 	rm -f /tmp/.bk_kl$USER
