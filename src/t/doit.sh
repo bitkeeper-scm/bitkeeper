@@ -77,7 +77,6 @@ unix_common_setup()
 	if [ -z "$TST_DIR" ]; then TST_DIR="/build"; fi
 	TST_DIR=`bk pwd "$TST_DIR"`       # if symlink, force to real path
 	CWD="/bin/pwd"
-	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_FS="|"
 
 	# test data loaded on this machine
@@ -93,7 +92,9 @@ unix_common_setup()
 	rm -rf "$BK_BIN"
 	mkdir "$BK_BIN"
 	ln -s "`cd .. && pwd`/bk" "$BK_BIN/bk"
-	PATH=$BK_BIN:/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+	PATH=/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
+	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
+	PATH=$BK_BIN:$PATH
 
 	# clear any stale uniq locks
 	rm -f /tmp/.bk_kl$USER
