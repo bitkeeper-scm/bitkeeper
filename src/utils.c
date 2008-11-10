@@ -861,7 +861,10 @@ getServerInfoBlock(remote *r)
 	char	*newseed;
 	char	buf[4096];
 
-	putenv("BKD_BAM=");	/* clear previous value */
+	/* clear previous values for stuff that is set conditionally */
+	putenv("BKD_BAM=");
+	putenv("BKD_BAM_SERVER_URL=");
+	putenv("BKD_PRODUCT_KEY=");
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq(buf, "@END@")) {
 			ret = 0; /* ok */
@@ -947,12 +950,10 @@ sendServerInfoBlock(int is_rclone)
 		out("LICTYPE=");
 		out(eula_name());
 		out("\n");
-		if (bp_hasBAM()) {
-			out("BAM=YES\n");
-			if (p = bp_serverURL()) {
-				sprintf(buf, "BAM_SERVER_URL=%s\n", p);
-				out(buf);
-			}
+		if (bp_hasBAM()) out("BAM=YES\n");
+		if (p = bp_serverURL()) {
+			sprintf(buf, "BAM_SERVER_URL=%s\n", p);
+			out(buf);
 		}
 	}
 	out("ROOT=");

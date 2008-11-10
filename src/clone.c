@@ -582,7 +582,6 @@ initProject(char *root, remote *r)
 
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(".");
-	proj_reset(0);
 	if (proj_product(0)) opts->no_parent = 1;
 
 	putenv("_BK_NEWPROJECT=YES");
@@ -594,26 +593,26 @@ initProject(char *root, remote *r)
 
 	/* setup the new BAM server_URL */
 	if (getenv("BKD_BAM")) {
-		if (bam_repoid) {
-			url = strdup(bam_url);
-			repoid = bam_repoid;
-		} else if (bam_url) {
-			assert(streq(bam_url, ".") || streq(bam_url, "none"));
-			url = strdup(bam_url);
-			repoid = proj_repoID(0);
-		} else if (p = getenv("BKD_BAM_SERVER_URL")) {
-
-			url = streq(p, ".") ? remote_unparse(r) : strdup(p);
-			repoid = getenv("BKD_BAM_SERVER_ID");
-		} else {
-			url = 0;
+		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
+	}
+	if (bam_repoid) {
+		url = strdup(bam_url);
+		repoid = bam_repoid;
+	} else if (bam_url) {
+		assert(streq(bam_url, ".") || streq(bam_url, "none"));
+		url = strdup(bam_url);
+		repoid = proj_repoID(0);
+	} else if (p = getenv("BKD_BAM_SERVER_URL")) {
+		url = streq(p, ".") ? remote_unparse(r) : strdup(p);
+		repoid = getenv("BKD_BAM_SERVER_ID");
+	} else {
+		url = 0;
+	}
+	if (url) {
+		unless (streq(url, "none")) {
+			bp_setBAMserver(0, url, repoid);
 		}
-		if (url) {
-			unless (streq(url, "none")) {
-				bp_setBAMserver(0, url, repoid);
-			}
-			free(url);
-		}
+		free(url);
 	}
 	return (0);
 }

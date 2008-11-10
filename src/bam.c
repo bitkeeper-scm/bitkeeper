@@ -1017,7 +1017,7 @@ bam_clean_main(int ac, char **av)
 		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
-	unless (bp_hasBAM() && isdir(BAM_ROOT)) {
+	unless (isdir(BAM_ROOT)) {
 		unless (quiet) {
 			ERROR((stderr, "no BAM data in this repository\n"));
 		}
