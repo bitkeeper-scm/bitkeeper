@@ -1,0 +1,70 @@
+echo $N Create initial repository and clone .........................$NL
+nested server
+bk $Q -A bam server $Q .
+bk clone $Q ../server ../clone
+echo OK
+
+echo $N Create some binary data and check BAM .......................$NL
+cd gdb
+BK="`bk bin`/bk"
+test $PLATFORM = WIN32 && BK=${BK}.exe
+DATA="$HERE"/data
+perl -e 'sysread(STDIN, $buf, 81920);
+syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
+cp "$DATA" data
+bk new $Q data || exit 1
+test -d BitKeeper/BAM || exit 1
+bk commit $Q -ybam
+cd ..
+bk commit $Q -ybam
+echo OK
+
+echo $N Clone ensemble with BAM data ................................$NL
+cd ..
+bk clone $Q server clone2 || exit 1
+echo OK
+
+echo $N Create some binary data and check BAM .......................$NL
+cd clone
+bk pull $Q
+cd gdb
+test -d BitKeeper/BAM && {
+	echo should not have bam dir
+	find BitKeeper/BAM
+	exit 1
+}
+echo OK
+
+echo $N Create a new component with BAM data ........................$NL
+cd ..
+bk setup -f bam_comp || exit 1
+cd bam_comp
+echo junk > file1
+bk new $Q -b file1 || exit
+bk commit $Q -ybam2 || exit 1
+bk -P commit $Q -ybam2 || exit 1
+echo OK
+
+echo $N Pull repo with new BAM component ............................$NL
+cd "$HERE"/clone2
+bk pull $Q ../clone || exit 1
+echo OK
+
+echo $N Clone of repo with new BAM component ........................$NL
+cd ..
+bk clone $Q clone clone3 || exit 1
+echo OK
+
+echo $N Pushing a updates to non-BAM components with a BAM product ..$NL
+cd clone3
+echo hi > prod_bam
+bk new $Q -b prod_bam || exit 1
+bk commit $Q -yprod || exit 1
+bk push $Q || exit 1
+cd gcc
+touch hi > nonbam
+bk new $Q nonbam || exit 1
+bk commit $Q -ynonbam || exit 1
+bk -P commit $Q -yprod_gcc || exit 1
+bk -P push $Q || exit 1
+echo OK
