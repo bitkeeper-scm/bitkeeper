@@ -357,6 +357,30 @@ test -f ChangeSet && {
 }
 echo OK
 
+echo $N Demonstrate using collapse -d for multiple users ............$NL
+REV=`bk changes -r+ -nd:REV:`
+echo f1 > f1
+BK_USER=user1 bk new $Q f1 || exit 1
+BK_USER=user1 bk commit $Q -yf1 || exit 1
+echo f2 > f2
+BK_USER=user2 bk new $Q f2 || exit 1
+BK_USER=user2 bk commit $Q -yf2 || exit 1
+
+bk collapse -eda$REV || exit 1
+bk -r check -ac || exit 1
+# bk fix can be used to do a partial collapse of files before commit
+BK_USER=user3 bk commit $Q -ynew || exit 1
+bk changes -r+ -v -nd':USER: :GFILE:@:REV:' > GOT
+cat <<EOF > WANT
+user3 ChangeSet@1.5
+user1 f1@1.1
+user1 f1@1.0
+user2 f2@1.1
+user2 f2@1.0
+EOF
+cmpfiles GOT WANT
+echo OK
+
 #echo $N Test collapse -e -aREV ......................................$NL
 #  above plus
 #  merges

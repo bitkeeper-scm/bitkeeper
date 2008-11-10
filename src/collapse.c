@@ -18,6 +18,7 @@
 #define	COLLAPSE_FIX	0x10000000 /* 'bk fix' -> don't strip committed deltas */
 #define	COLLAPSE_NOSAVE	0x20000000 /* don't save backup patch */
 #define	COLLAPSE_LOG	0x40000000 /* Update BitKeeper/etc/collapsed */
+#define	COLLAPSE_DELTAS	0x80000000 /* -d save file deltas */
 
 private	int	do_cset(char *rev);
 private	int	do_file(char *file, char *tiprev);
@@ -41,9 +42,10 @@ collapse_main(int ac, char **av)
 
 	me = "collapse";
 	flags = 0;
-	while ((c = getopt(ac, av, "a:elmr:qs")) != -1) {
+	while ((c = getopt(ac, av, "a:delmr:qs")) != -1) {
 		switch (c) {
 		    case 'a': after = optarg; break;
+		    case 'd': flags |= COLLAPSE_DELTAS; break;
 		    case 'e': edit = 1; break;
 		    case 'l': flags |= COLLAPSE_LOG; break;
 		    case 'm': merge = 1; break;
@@ -70,7 +72,10 @@ usage:			system("bk help -s collapse");
 	}
 
 	/* Modes we don't support yet */
-	if (revlist) {
+	if (revlist && streq(revlist, "+")) {
+		/* roll back to my parent */
+		assert(after == 0); /* we should be doing parent already */
+	} else if (revlist) {
 		fprintf(stderr, "%s: -r option not yet supported\n", me);
 		return (1);
 	}
@@ -90,24 +95,28 @@ fix_main(int ac,  char **av)
 {
 	int	c, i;
 	int	cset = 0, rc = 0;
+	char	*after = 0;
 
 	me = "fix";
 	flags = COLLAPSE_FIX;
-	while ((c = getopt(ac, av, "cqs")) != -1) {
+	while ((c = getopt(ac, av, "a;cdqs")) != -1) {
 		switch (c) {
+		    case 'a': after = optarg; break;
 		    case 'c': cset = 1; flags &= ~COLLAPSE_FIX; break;
+		    case 'd': flags |= COLLAPSE_DELTAS; break;
 		    case 'q': flags |= SILENT; break;		/* undoc 2.0 */
 		    case 's': flags |= COLLAPSE_NOSAVE; break;
 		    default :
-			system("bk help -s fix");
+usage:			system("bk help -s fix");
 			return (1);
 		}
 	}
 	if (cset) {
+		if (after) goto usage; /* use collapse instead */
 		rc = do_cset(0);
 	} else {
 		for (i = optind; av[i]; i++) {
-			if (rc = do_file(av[i], 0)) break;
+			if (rc = do_file(av[i], after)) break;
 		}
 	}
 	return (rc);
@@ -260,6 +269,41 @@ do_file(char *file, char *tiprev)
 			fprintf(stderr, "%s: unable to edit %s\n", me, gfile);
 			rc = 1;
 			goto done;
+		}
+	}
+	/*
+	 * Handle ChangeSet files in nested environment.
+	 */
+	if ((!CSET(s) && (flags & COLLAPSE_DELTAS)) ||
+	    (CSET(s) && proj_isProduct(0) && proj_isComponent(s->proj))) {
+		/*
+		 * We need to preseve all the deltas and just strip
+		 * the existing cset merge.  This is either -d on the
+		 * command line or done always for a component cset
+		 * file.
+		 */
+		EACH(rmdeltas) {
+			e = (delta *)rmdeltas[i];
+			e->flags &= ~D_CSET;
+		}
+		updatePending(s);
+		sccs_newchksum(s);
+		rc = 0;
+		goto done;
+	} else if (CSET(s) && proj_isComponent(0)) {
+		/*
+		 * This is a component's cset file when running from
+		 * the component.  Here we don't want to allow the
+		 * collapse unless the csets to be removed were
+		 * pending in the product.
+		 */
+		EACH(rmdeltas) {
+			e = (delta *)rmdeltas[i];
+			if (e->flags & D_CSET) {
+				fprintf(stderr,
+"%s: cannot strip component cset that are still part of product\n", me);
+				goto done;
+			}
 		}
 	}
 	if (fix_setupcomments(s, rmdeltas)) goto done;

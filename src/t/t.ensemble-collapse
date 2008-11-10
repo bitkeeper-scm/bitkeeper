@@ -1,0 +1,47 @@
+
+echo $N Create an ensemble...........................................$NL
+nested project
+cd gcc
+echo hi > gcc_file
+bk new $Q gcc_file || exit 1
+bk commit -yadd $Q || exit 1
+bk -P commit -yadd $Q || exit 1
+echo OK
+
+echo $N Try to collapse top cset in committed component .............$NL
+bk changes -r+ -v  > WANT
+bk fix -c 2>ERR && {
+	echo should fail
+	cat ERR
+	exit 1
+}
+grep -q "cannot strip component cset" ERR || exit 1
+(cd ..; bk pending)
+bk changes -r+ -v  > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Try to collapse top cset in product .........................$NL
+cd ..
+bk fix -c || exit 1
+bk -r check -a || exit 1
+bk sfiles -p > GOT
+echo gcc/SCCS/s.ChangeSet > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Now collapse top cset in component ..........................$NL
+cd gcc
+bk fix -c || exit 1
+bk sfiles -x > GOT
+cat <<EOF > WANT
+ERR
+GOT
+WANT
+gcc_file
+EOF
+cmpfiles GOT WANT
+test -e SCCS/c.gcc_file || exit 1
+echo add > WANT
+cmpfiles SCCS/c.ChangeSet WANT
+echo OK
