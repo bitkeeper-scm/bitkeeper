@@ -56,7 +56,6 @@ private int	write_pfile(sccs *s, int flags, delta *d,
 private time_t	date2time(char *asctime, char *z, int roundup);
 private	char	*sccsrev(delta *d);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
-private void	updatePending(sccs *s);
 private int	sameFileType(sccs *s, delta *d);
 private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
@@ -9303,7 +9302,7 @@ updMode(sccs *s, delta *d, delta *dParent)
 	}
 }
 
-private void
+void
 updatePending(sccs *s)
 {
 	if (CSET(s) && !proj_isComponent(s->proj)) return;
