@@ -35,6 +35,7 @@ bk edit $Q a
 bk delta $Q -fy1.2 a
 bk commit $Q -y1.3 || exit 1
 OLD=`bk id`
+bk admin -Zgzip ChangeSet
 bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 tip=`bk prs -h -r+ -d':I:\n' ChangeSet`

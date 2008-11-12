@@ -431,7 +431,7 @@ _partition() {
 
 	BP=`bk changes -r+ -nd:ROOTKEY:`
 	cat $WA/map | while read comp; do
-		test -d "$comp" || continue
+		test -d "$comp/BitKeeper/etc" || continue
 		verbose "### Fixing component $comp"
 		(
 			cd "$comp" || exit 1
@@ -440,6 +440,7 @@ _partition() {
 			# bk changes -nd'$if(:CSETKEY:){:DS:\t:ROOTKEY: :KEY:}'
 			bk changes -er1.1.. -nd':DS:\t:ROOTKEY: :KEY:'
 			# bk scompress -- okay to do it here
+			# but means we can't recover, so do later.
 		) || exit 1
 	done > $WA/allkeys || exit 1
 
@@ -466,6 +467,9 @@ _partition() {
 	BK_CONFIG="$_BK_OCONFIG"
 	export BK_CONFIG
 	bk $QUIET -Ar check $VERBOSE -acfT || exit 1
+
+	verbose "### Compressing serials"
+	bk $QUIET -A _scompress -q ChangeSet
 
 	rm -fr $WA
 	verbose partioning complete

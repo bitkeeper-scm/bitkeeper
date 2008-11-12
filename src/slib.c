@@ -11996,6 +11996,7 @@ sccs_csetWrite(sccs *s, char **cweave)
 	unless (out = sccs_startWrite(s)) goto err;
 	delta_table(s, out, 0);
 
+	if (s->encoding & E_GZIP) sccs_zputs_init(s, out);
 	EACH(cweave) {
 		unless (cweave[i][0]) continue;	/* skip deleted entries */
 		ser = cweave[i];

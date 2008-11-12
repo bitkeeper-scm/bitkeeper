@@ -23,6 +23,10 @@ cd ..
 bk commit $Q -SROOT -ybaseline
 bk mv src/a a
 bk commit $Q -ymoveit
+# use for scompress verification
+touch doc/tip
+bk new $Q doc/tip
+bk commit $Q -ydoc-tip
 bk tag $Q TIP
 cd ..
 cat <<EOF > mapfile
@@ -33,6 +37,7 @@ src
 doc
 
 # The deep component
+src/deep/prune/path
 src/deep/prune/path/starts/here
 EOF
 cat <<"EOF" > badmap
@@ -56,6 +61,12 @@ echo OK
 
 echo $N Run a simple test ...........................................$NL
 bk partition $Q -Cmapfile project copy || exit 1
+TOP=`cd copy && bk changes -r+ -nd:DS:`
+COMP=`cd copy/doc && bk changes -r+ -nd:DS:`
+test "$TOP" -gt "$COMP" || {
+	echo failed scompress $TOP $COMP
+	exit 1
+}
 cd copy/BitKeeper/etc
 bk get $Q -S config
 test -s config || echo empty config
