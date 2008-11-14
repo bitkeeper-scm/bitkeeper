@@ -68,3 +68,15 @@ bk commit $Q -ynonbam || exit 1
 bk -P commit $Q -yprod_gcc || exit 1
 bk -P push $Q || exit 1
 echo OK
+
+echo $N Try an rclone ...............................................$NL
+cd "$HERE"
+P=`port 50000`
+bk bkd -q -d -p$P -ikill
+bk clone $Q clone3 bk://localhost:$P/clone4 || {
+	echo rclone failed
+	bk _kill bk://localhost:$P || exit 1
+	exit 1
+}
+bk _kill bk://localhost:$P || exit 1
+echo OK

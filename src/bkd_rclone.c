@@ -230,7 +230,7 @@ cmd_rclone_part2(int ac, char **av)
 			touch(BAM_MARKER, 0666);
 			putenv("BKD_DAEMON="); /* allow new bkd connections */
 			printf("@BAM@\n");
-			p = aprintf("-r..%s", opts.rev ? opts.rev : "");
+			p = aprintf("-r..'%s'", opts.rev ? opts.rev : "");
 			rc = bp_sendkeys(stdout, p, &sfio, opts.gzip);
 			free(p);
 			// XXX - rc != 0?

@@ -165,7 +165,7 @@ usage:			system("bk help -s changes");
 
 	if (proj_isProduct(0)) {
 		if (opts.verbose && !opts.prodOnly) opts.doComp = 1;
-		if (opts.filt && !opts.doComp) {
+		if (opts.filt && !opts.doComp && !opts.BAM) {
 			opts.doComp = opts.prodOnly = 1;
 		}
 	}
