@@ -601,8 +601,9 @@ pull_ensemble(repos *rps, remote *r)
 	char	*name, *path;
 	char	**comps = 0;
 	MDBM	*idDB;
-	FILE	*f;
+	FILE	*idfile;
 	int	i, rc = 0, missing = 0, product;
+	char	idname[MAXPATH];
 
 	url = remote_unparse(r);
 	putenv("_BK_TRANSACTION=1");
@@ -703,20 +704,17 @@ err:					fprintf(stderr, "Could not chdir to "
 		 * Copy all the component's ChangeSet files to the
 		 * product's RESYNC directory
 		 */
+		bktmp(idname, "idfile");
+		unless (idfile = fopen(idname, "w")) {
+			perror("idname");
+			rc = 1;
+			goto out;
+		}
 		EACH (comps) {
 			char	*from, *to;
 			char	*dfile_to, *dfile_from;
 			char	*t;
 
-			mkdirp(t = aprintf("%s/%s", comps[i], BKROOT));
-			free(t);
-			mkdirp(t = aprintf("%s/BitKeeper/log", comps[i]));
-			free(t);
-			t = aprintf("%s/BitKeeper/log/COMPONENT", comps[i]);
-			f = fopen(t, "w");
-			free(t);
-			fprintf(f, "%s\n", comps[i]);
-			fclose(f);
 			to = aprintf("%s/%s", comps[i], CHANGESET);
 			t = strrchr(to, '/');
 			*(++t) = 'd';
@@ -739,12 +737,17 @@ err:					fprintf(stderr, "Could not chdir to "
 				touch(dfile_to, 0644);
 				unlink(dfile_from);
 			}
+			fputs(to, idfile);
+			fputc('\n', idfile);
 			free(dfile_from);
 			free(dfile_to);
 			free(from);
 			free(to);
 			if (rc) goto out;
 		}
+		fclose(idfile);
+		idcache_update(idname);
+		unlink(idname);
 		chdir(RESYNC2ROOT);
 	}
 out:	if (comps) freeLines(comps, free);

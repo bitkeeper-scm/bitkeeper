@@ -237,7 +237,12 @@ echo $N Try a pull with conflicts that can be automerged.............$NL
 cd "$HERE"
 bk clone $Q null-pull remote
 bk clone $Q remote local
+cd remote
+echo bam > bam
+bk new $Q -b bam
 cd "$HERE"/remote/gcc
+echo bam > bam
+bk new $Q -b bam
 for i in 1 2 3 4 5
 do
 	bk edit $Q file$i
@@ -258,6 +263,11 @@ cd "$HERE"/local
 bk commit $Q -y"local gcc"
 bk pull >OUT 2>&1 || {
 	echo failed
+	cat OUT
+	exit 1
+}
+grep -q "sccs_init" OUT && {
+	echo failed sccs_init
 	cat OUT
 	exit 1
 }
@@ -282,6 +292,7 @@ cmpfiles WANT GOT
 cd "$HERE"/local/gcc
 cat <<EOF >WANT
 SCCS/s.ChangeSet
+SCCS/s.bam
 SCCS/s.file1
 SCCS/s.file2
 SCCS/s.file3
