@@ -1,0 +1,676 @@
+
+# typedef struct {
+# 	u32 	show_all:1;	/* -a show deleted files */
+# 	u32	show_diffs:1;	/* -r output in rev diff format */
+# 	u32	show_path:1;	/* -h show d->pathname */
+# 	u32	hide_cset:1;	/* -H hide ChangeSet file from file list */
+# 	u32	lflg:1;		/* -l list a rset */
+# 	u32	md5keys:1;	/* -5 use md5keys instead of revs */
+# 	u32	BAM:1;		/* -B only list BAM files */
+# 	u32	nested:1;	/* -P recurse into nested components */
+# 	char	**nav;
+# } options;
+
+# Need deleted files
+# Need moved files
+# Merge nodes
+# Nested project
+# BAM files - nope
+# Binary files - nope
+
+# Not tested because it's non documented and not really done
+#
+# -B only works if -5
+# -5 does no filtering, so like -a all the time
+# -5 reads like it is setup to core dump if no End
+
+echo $N Create initial repository ...................................$NL
+commercial project
+# make a trigger
+mkdir BitKeeper/triggers
+cat <<'EOF' > BitKeeper/triggers/pre-delta
+#!/bin/sh
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-delta
+# make some bam - needs to have at least a byte
+echo BAM > bam
+bk new -b $Q bam
+# make some others
+touch deleted base
+bk new $Q deleted base BitKeeper/triggers/pre-delta
+bk admin $Q -fEOLN_UNIX BitKeeper/triggers/pre-delta
+RAND=`bk log -r1.0 -nd:RANDOM: deleted`
+export RAND
+bk commit $Q -SONE -f
+cd ..
+bk clone $Q project copy
+cd project
+bk rm deleted
+bk edit $Q base
+bk delta $Q -fyuniq base
+bk mv base project
+touch new.project
+bk new $Q new.project
+bk commit $Q -STWO -f
+cd ../copy
+bk edit $Q base
+bk delta $Q -fyuniq base
+bk mv base copy
+touch new.copy
+bk new $Q new.copy
+bk commit $Q -STHREE -f
+{ echo m; echo merge; } | bk pull $Q 2> ERR || exit 1
+bk tag $Q FOUR
+echo OK
+
+echo $N Test all combinations of the interface on all revs ..........$NL
+# Doesn't include -5 because of random data that results
+for v in ONE TWO THREE FOUR; do
+  for a in "" a; do
+    for h in "" h; do
+      for H in "" H; do
+		opt="$a$h$H"
+		echo "# bk rset -${opt}r$v"
+		bk rset -${opt}r$v | bk _sort
+		echo "# bk rset -${opt}l$v"
+		bk rset -${opt}l$v | bk _sort
+      done
+    done
+  done
+done > GOT
+# Big HERE document -- look for EOF to skip over it.
+# :g/d\~[^|]*/s//d\~${RAND}/g - works on itself
+cat << EOF > WANT
+# bk rset -rONE
+BitKeeper/deleted/.del-deleted~${RAND}|1.0..1.1
+BitKeeper/triggers/pre-delta|1.0..1.2
+ChangeSet|1.1..1.2
+bam|1.0..1.1
+merge|1.0..1.1
+# bk rset -lONE
+BitKeeper/deleted/.del-deleted~${RAND}|1.1
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ONE
+bam|1.1
+merge|1.1
+# bk rset -HrONE
+BitKeeper/deleted/.del-deleted~${RAND}|1.0..1.1
+BitKeeper/triggers/pre-delta|1.0..1.2
+bam|1.0..1.1
+merge|1.0..1.1
+# bk rset -HlONE
+BitKeeper/deleted/.del-deleted~${RAND}|1.1
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+bam|1.1
+merge|1.1
+# bk rset -hrONE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.0|deleted|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|1.1|ChangeSet|1.2
+bam|bam|1.0|bam|1.1
+merge|base|1.0|base|1.1
+# bk rset -hlONE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|ONE
+bam|bam|1.1
+merge|base|1.1
+# bk rset -hHrONE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.0|deleted|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.0|bam|1.1
+merge|base|1.0|base|1.1
+# bk rset -hHlONE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.1
+merge|base|1.1
+# bk rset -arONE
+BitKeeper/deleted/.del-deleted~${RAND}|1.0..1.1
+BitKeeper/triggers/pre-delta|1.0..1.2
+ChangeSet|1.1..1.2
+bam|1.0..1.1
+merge|1.0..1.1
+# bk rset -alONE
+BitKeeper/deleted/.del-deleted~${RAND}|1.1
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ONE
+bam|1.1
+merge|1.1
+# bk rset -aHrONE
+BitKeeper/deleted/.del-deleted~${RAND}|1.0..1.1
+BitKeeper/triggers/pre-delta|1.0..1.2
+bam|1.0..1.1
+merge|1.0..1.1
+# bk rset -aHlONE
+BitKeeper/deleted/.del-deleted~${RAND}|1.1
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+bam|1.1
+merge|1.1
+# bk rset -ahrONE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.0|deleted|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|1.1|ChangeSet|1.2
+bam|bam|1.0|bam|1.1
+merge|base|1.0|base|1.1
+# bk rset -ahlONE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|ONE
+bam|bam|1.1
+merge|base|1.1
+# bk rset -ahHrONE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.0|deleted|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.0|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.0|bam|1.1
+merge|base|1.0|base|1.1
+# bk rset -ahHlONE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.1
+merge|base|1.1
+# bk rset -rTWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+ChangeSet|1.2..1.3
+merge|1.1..1.3
+new.project|1.0..1.1
+# bk rset -lTWO
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+ChangeSet|TWO
+bam|1.1
+merge|1.3
+new.project|1.1
+# bk rset -HrTWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+merge|1.1..1.3
+new.project|1.0..1.1
+# bk rset -HlTWO
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+bam|1.1
+merge|1.3
+new.project|1.1
+# bk rset -hrTWO
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+ChangeSet|ChangeSet|1.2|ChangeSet|1.3
+merge|base|1.1|project|1.3
+new.project|new.project|1.0|new.project|1.1
+# bk rset -hlTWO
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|TWO
+bam|bam|1.1
+merge|project|1.3
+new.project|new.project|1.1
+# bk rset -hHrTWO
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+merge|base|1.1|project|1.3
+new.project|new.project|1.0|new.project|1.1
+# bk rset -hHlTWO
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.1
+merge|project|1.3
+new.project|new.project|1.1
+# bk rset -arTWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+ChangeSet|1.2..1.3
+merge|1.1..1.3
+new.project|1.0..1.1
+# bk rset -alTWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.2
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+ChangeSet|TWO
+bam|1.1
+merge|1.3
+new.project|1.1
+# bk rset -aHrTWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+merge|1.1..1.3
+new.project|1.0..1.1
+# bk rset -aHlTWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.2
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+bam|1.1
+merge|1.3
+new.project|1.1
+# bk rset -ahrTWO
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+ChangeSet|ChangeSet|1.2|ChangeSet|1.3
+merge|base|1.1|project|1.3
+new.project|new.project|1.0|new.project|1.1
+# bk rset -ahlTWO
+BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|TWO
+bam|bam|1.1
+merge|project|1.3
+new.project|new.project|1.1
+# bk rset -ahHrTWO
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+merge|base|1.1|project|1.3
+new.project|new.project|1.0|new.project|1.1
+# bk rset -ahHlTWO
+BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.1
+merge|project|1.3
+new.project|new.project|1.1
+# bk rset -rTHREE
+ChangeSet|1.2..1.2.1.1
+merge|1.1..1.1.1.2
+new.copy|1.0..1.1
+# bk rset -lTHREE
+BitKeeper/deleted/.del-deleted~${RAND}|1.1
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+ChangeSet|THREE
+bam|1.1
+merge|1.1.1.2
+new.copy|1.1
+# bk rset -HrTHREE
+merge|1.1..1.1.1.2
+new.copy|1.0..1.1
+# bk rset -HlTHREE
+BitKeeper/deleted/.del-deleted~${RAND}|1.1
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+bam|1.1
+merge|1.1.1.2
+new.copy|1.1
+# bk rset -hrTHREE
+ChangeSet|ChangeSet|1.2|ChangeSet|1.2.1.1
+merge|base|1.1|copy|1.1.1.2
+new.copy|new.copy|1.0|new.copy|1.1
+# bk rset -hlTHREE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|THREE
+bam|bam|1.1
+merge|copy|1.1.1.2
+new.copy|new.copy|1.1
+# bk rset -hHrTHREE
+merge|base|1.1|copy|1.1.1.2
+new.copy|new.copy|1.0|new.copy|1.1
+# bk rset -hHlTHREE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.1
+merge|copy|1.1.1.2
+new.copy|new.copy|1.1
+# bk rset -arTHREE
+ChangeSet|1.2..1.2.1.1
+merge|1.1..1.1.1.2
+new.copy|1.0..1.1
+# bk rset -alTHREE
+BitKeeper/deleted/.del-deleted~${RAND}|1.1
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+ChangeSet|THREE
+bam|1.1
+merge|1.1.1.2
+new.copy|1.1
+# bk rset -aHrTHREE
+merge|1.1..1.1.1.2
+new.copy|1.0..1.1
+# bk rset -aHlTHREE
+BitKeeper/deleted/.del-deleted~${RAND}|1.1
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+bam|1.1
+merge|1.1.1.2
+new.copy|1.1
+# bk rset -ahrTHREE
+ChangeSet|ChangeSet|1.2|ChangeSet|1.2.1.1
+merge|base|1.1|copy|1.1.1.2
+new.copy|new.copy|1.0|new.copy|1.1
+# bk rset -ahlTHREE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|THREE
+bam|bam|1.1
+merge|copy|1.1.1.2
+new.copy|new.copy|1.1
+# bk rset -ahHrTHREE
+merge|base|1.1|copy|1.1.1.2
+new.copy|new.copy|1.0|new.copy|1.1
+# bk rset -ahHlTHREE
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.1
+merge|copy|1.1.1.2
+new.copy|new.copy|1.1
+# bk rset -rFOUR
+ChangeSet|1.3+1.2.1.1..1.4
+merge|1.1.1.2..1.5
+# bk rset -lFOUR
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+ChangeSet|FOUR
+bam|1.1
+merge|1.5
+new.copy|1.1
+new.project|1.1
+# bk rset -HrFOUR
+merge|1.1.1.2..1.5
+# bk rset -HlFOUR
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+bam|1.1
+merge|1.5
+new.copy|1.1
+new.project|1.1
+# bk rset -hrFOUR
+ChangeSet|ChangeSet|1.3+1.2.1.1|ChangeSet|1.4
+merge|copy|1.1.1.2|merge|1.5
+# bk rset -hlFOUR
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|FOUR
+bam|bam|1.1
+merge|merge|1.5
+new.copy|new.copy|1.1
+new.project|new.project|1.1
+# bk rset -hHrFOUR
+merge|copy|1.1.1.2|merge|1.5
+# bk rset -hHlFOUR
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.1
+merge|merge|1.5
+new.copy|new.copy|1.1
+new.project|new.project|1.1
+# bk rset -arFOUR
+ChangeSet|1.3+1.2.1.1..1.4
+merge|1.1.1.2..1.5
+# bk rset -alFOUR
+BitKeeper/deleted/.del-deleted~${RAND}|1.2
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+ChangeSet|FOUR
+bam|1.1
+merge|1.5
+new.copy|1.1
+new.project|1.1
+# bk rset -aHrFOUR
+merge|1.1.1.2..1.5
+# bk rset -aHlFOUR
+BitKeeper/deleted/.del-deleted~${RAND}|1.2
+BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|1.2
+bam|1.1
+merge|1.5
+new.copy|1.1
+new.project|1.1
+# bk rset -ahrFOUR
+ChangeSet|ChangeSet|1.3+1.2.1.1|ChangeSet|1.4
+merge|copy|1.1.1.2|merge|1.5
+# bk rset -ahlFOUR
+BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+ChangeSet|ChangeSet|FOUR
+bam|bam|1.1
+merge|merge|1.5
+new.copy|new.copy|1.1
+new.project|new.project|1.1
+# bk rset -ahHrFOUR
+merge|copy|1.1.1.2|merge|1.5
+# bk rset -ahHlFOUR
+BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+BitKeeper/etc/collapsed|BitKeeper/etc/collapsed|1.1
+BitKeeper/etc/config|BitKeeper/etc/config|1.1
+BitKeeper/etc/gone|BitKeeper/etc/gone|1.1
+BitKeeper/etc/ignore|BitKeeper/etc/ignore|1.1
+BitKeeper/triggers/pre-delta|BitKeeper/triggers/pre-delta|1.2
+bam|bam|1.1
+merge|merge|1.5
+new.copy|new.copy|1.1
+new.project|new.project|1.1
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test diffs across various ranges ............................$NL
+for v in ONE,TWO TWO,THREE THREE,FOUR; do
+  for a in "" a; do
+    for h in "" h; do
+      for H in "" H; do
+		opt="$a$h$H"
+		echo "# bk rset -${opt}r$v"
+		bk rset -${opt}r$v | bk _sort
+      done
+    done
+  done
+done > GOT1
+cat << EOF > WANT
+# bk rset -rONE,TWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+ChangeSet|1.2..1.3
+merge|1.1..1.3
+new.project|1.0..1.1
+# bk rset -HrONE,TWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+merge|1.1..1.3
+new.project|1.0..1.1
+# bk rset -hrONE,TWO
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+ChangeSet|ChangeSet|1.2|ChangeSet|1.3
+merge|base|1.1|project|1.3
+new.project|new.project|1.0|new.project|1.1
+# bk rset -hHrONE,TWO
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+merge|base|1.1|project|1.3
+new.project|new.project|1.0|new.project|1.1
+# bk rset -arONE,TWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+ChangeSet|1.2..1.3
+merge|1.1..1.3
+new.project|1.0..1.1
+# bk rset -aHrONE,TWO
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+merge|1.1..1.3
+new.project|1.0..1.1
+# bk rset -ahrONE,TWO
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+ChangeSet|ChangeSet|1.2|ChangeSet|1.3
+merge|base|1.1|project|1.3
+new.project|new.project|1.0|new.project|1.1
+# bk rset -ahHrONE,TWO
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+merge|base|1.1|project|1.3
+new.project|new.project|1.0|new.project|1.1
+# bk rset -rTWO,THREE
+BitKeeper/deleted/.del-deleted~${RAND}|1.2..1.1
+ChangeSet|1.3..1.2.1.1
+merge|1.3..1.1.1.2
+new.copy|1.0..1.1
+new.project|1.1..1.0
+# bk rset -HrTWO,THREE
+BitKeeper/deleted/.del-deleted~${RAND}|1.2..1.1
+merge|1.3..1.1.1.2
+new.copy|1.0..1.1
+new.project|1.1..1.0
+# bk rset -hrTWO,THREE
+BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2|deleted|1.1
+ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1
+merge|project|1.3|copy|1.1.1.2
+new.copy|new.copy|1.0|new.copy|1.1
+new.project|new.project|1.1|new.project|1.0
+# bk rset -hHrTWO,THREE
+BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2|deleted|1.1
+merge|project|1.3|copy|1.1.1.2
+new.copy|new.copy|1.0|new.copy|1.1
+new.project|new.project|1.1|new.project|1.0
+# bk rset -arTWO,THREE
+BitKeeper/deleted/.del-deleted~${RAND}|1.2..1.1
+ChangeSet|1.3..1.2.1.1
+merge|1.3..1.1.1.2
+new.copy|1.0..1.1
+new.project|1.1..1.0
+# bk rset -aHrTWO,THREE
+BitKeeper/deleted/.del-deleted~${RAND}|1.2..1.1
+merge|1.3..1.1.1.2
+new.copy|1.0..1.1
+new.project|1.1..1.0
+# bk rset -ahrTWO,THREE
+BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2|deleted|1.1
+ChangeSet|ChangeSet|1.3|ChangeSet|1.2.1.1
+merge|project|1.3|copy|1.1.1.2
+new.copy|new.copy|1.0|new.copy|1.1
+new.project|new.project|1.1|new.project|1.0
+# bk rset -ahHrTWO,THREE
+BitKeeper/deleted/.del-deleted~${RAND}|BitKeeper/deleted/.del-deleted~${RAND}|1.2|deleted|1.1
+merge|project|1.3|copy|1.1.1.2
+new.copy|new.copy|1.0|new.copy|1.1
+new.project|new.project|1.1|new.project|1.0
+# bk rset -rTHREE,FOUR
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+ChangeSet|1.2.1.1..1.4
+merge|1.1.1.2..1.5
+new.project|1.0..1.1
+# bk rset -HrTHREE,FOUR
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+merge|1.1.1.2..1.5
+new.project|1.0..1.1
+# bk rset -hrTHREE,FOUR
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
+merge|copy|1.1.1.2|merge|1.5
+new.project|new.project|1.0|new.project|1.1
+# bk rset -hHrTHREE,FOUR
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+merge|copy|1.1.1.2|merge|1.5
+new.project|new.project|1.0|new.project|1.1
+# bk rset -arTHREE,FOUR
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+ChangeSet|1.2.1.1..1.4
+merge|1.1.1.2..1.5
+new.project|1.0..1.1
+# bk rset -aHrTHREE,FOUR
+BitKeeper/deleted/.del-deleted~${RAND}|1.1..1.2
+merge|1.1.1.2..1.5
+new.project|1.0..1.1
+# bk rset -ahrTHREE,FOUR
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+ChangeSet|ChangeSet|1.2.1.1|ChangeSet|1.4
+merge|copy|1.1.1.2|merge|1.5
+new.project|new.project|1.0|new.project|1.1
+# bk rset -ahHrTHREE,FOUR
+BitKeeper/deleted/.del-deleted~${RAND}|deleted|1.1|BitKeeper/deleted/.del-deleted~${RAND}|1.2
+merge|copy|1.1.1.2|merge|1.5
+new.project|new.project|1.0|new.project|1.1
+EOF
+cmpfiles WANT GOT1
+echo OK

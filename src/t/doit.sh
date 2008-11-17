@@ -579,6 +579,8 @@ echo ''
 	else	OUTPIPE=" 2>&1 | tee '$TMPDIR/OUT.$$'"
 	fi
 	EXF="$TMPDIR/T.${USER} next"
+	test -f setup || bk get -q setup
+	test -f setup || exit 1
 	cat setup "$i" | eval "{ @TEST_SH@ $dashx; echo \$?>\"$EXF\"; } $OUTPIPE"
 	EXIT="`cat \"$EXF\"`"
 	rm -f "$EXF"

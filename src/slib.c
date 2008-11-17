@@ -16168,6 +16168,33 @@ sccs_md5delta(sccs *s, delta *d, char *b64)
 }
 
 /*
+ * Given a long rootkey/deltakey pair return the md5key for that delta.
+ */
+void
+sccs_key2md5(char *rootkey, char *deltakey, char *b64)
+{
+	char	*hash, *p, *random;
+	int	i;
+	char	key[MAXKEY+64];
+
+	/* like this to work with shortkeys */
+	random = rootkey;
+	for (i = 0; i < 4; i++) {
+		unless (random = strchr(random, '|')) break;
+		random++;
+	}
+
+	strcpy(key, deltakey);
+	if (random) strcat(key, random);
+	hash = hashstr(key, strlen(key));
+
+	p = strchr(deltakey, '|');
+	p = strchr(p+1, '|');
+	sprintf(b64, "%08x%s", (u32)sccs_date2time(p+1, 0), hash);
+	free(hash);
+}
+
+/*
  * Given a delta, return the delta which is the cset marked one for the cset
  * which contains this delta.  Note Rick's cool code that handles going through
  * merges.

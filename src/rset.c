@@ -1,19 +1,20 @@
 /* Copyright (c) 2000 Andrew Chang */ 
-#include "system.h"
 #include "sccs.h"
 
 typedef struct {
-	u32 	show_all:1;	/* show deleted files */
-	u32	show_diffs:1;	/* output in rev diff format */
-	u32	show_path:1;	/* show d->pathname */
-	u32	hide_cset:1;	/* hide ChangeSet file from file list */
-	u32	rflg:1;		/* diff two rset */
-	u32	lflg:1;		/* list a rset */
-	u32	md5keys:1;	/* use md5keys instead of revs */
-	u32	BAM:1;		/* only list BAM files */
+	u32 	show_all:1;	/* -a show deleted files */
+	u32	show_diffs:1;	/* -r output in rev diff format */
+	u32	show_path:1;	/* -h show d->pathname */
+	u32	hide_cset:1;	/* -H hide ChangeSet file from file list */
+	u32	lflg:1;		/* -l list a rset */
+	u32	md5keys:1;	/* -5 use md5keys instead of revs */
+	u32	BAM:1;		/* -B only list BAM files */
+	u32	nested:1;	/* -P recurse into nested components */
+	char	**nav;
 } options;
 
-private int mixed; /* if set, handle long and short keys */
+private	int	mixed; 		/* if set, handle long and short keys */
+private	char	*path_prefix;	/* = getenv("_BK_PREFIX"); */
 
 /*
  * return ture if the keys v1 and v2 is the same
@@ -108,59 +109,50 @@ isNullFile(char *rev, char *file)
 	return (0);
 }
 
-private void
-sccs_key2md5key(char *delta, char *random, char *b64)
+private char *
+prefix(char *path)
 {
-	char	*hash, *p;
-	char	key[MAXKEY+64];
+	static	char* buf = 0;
 
-	strcpy(key, delta);
-	if (random) strcat(key, random);
-	hash = hashstr(key, strlen(key));
-
-	p = strchr(delta, '|');
-	p = strchr(p+1, '|');
-	sprintf(b64, "%08x%s", (u32)sccs_date2time(p+1, 0), hash);
+	unless (path_prefix) return (path);
+	unless (buf) buf = malloc(MAXPATH);
+	sprintf(buf, "%s/%s", path_prefix, path);
+	return (buf);
 }
-
+	
 /*
- * Convert root/start/end keys to sfile^Apath1^Arev1^Apath2^Arev2 format
+ * Convert root/start/end keys to sfile|path1|rev1|path2|rev2 format
+ * If we are rset -r<rev> then start is null, and end is <rev>.
+ * If we are rset -r<rev1>,<rev2> then start is <rev1> and end is <rev2>.
  */
 private void
 process(char	*root,
 	char	*start, char *end, MDBM *idDB, MDBM **goneDB, options opts)
 {
-	sccs	*s;
+	sccs	*s = 0;
 	delta 	*d1, *d2;
 	char	*rev1, *rev2, *path1, *path2;
-	char	*p;
+	char	*p, *here, *t;
 	int	i;
-	char	c = BK_FS; /* field seperator */
-	char	smd5[64], emd5[64];
+	char	smd5[MD5LEN], emd5[MD5LEN];
 
 	if (is_same(start, end)) return;
 	if (opts.md5keys) {
-		unless (p = key2path(root, idDB)) {
+		if (opts.BAM) {
+			/* only allow if random field starts with B: */
+			p = strrchr(root, '|');
+			unless (p && strneq(p+1, "B:", 2)) goto done;
+		}
+		unless (path1 = key2path(root, idDB)) {
 			fprintf(stderr, "rset: Can't find %s\n", root);
 			return;
 		}
-		path1 = sccs2name(p);
-		free(p);
-		p = root;
-		for (i = 0; i < 4; i++) {
-			unless (p = strchr(p, '|')) break;
-			p++;
-		}
-		if (opts.BAM && !(p && strneq(p, "B:", 2))) {
-			free(path1);
-			return;
-		}
 		unless (start) start = root;
-		sccs_key2md5key(start, p, smd5);
-		sccs_key2md5key(end, p, emd5);
-		printf("%s%c%s..%s\n", path1, c, smd5, emd5);
+		sccs_key2md5(root, start, smd5);
+		sccs_key2md5(root, end, emd5);
+		printf("%s|%s..%s\n", prefix(path1), smd5, emd5);
 		free(path1);
-		return;
+		goto done;
 	}
 
 	s = sccs_keyinit(0, root, INIT_NOWARN|INIT_NOGCHK|INIT_NOCKSUM, idDB);
@@ -200,7 +192,12 @@ process(char	*root,
 		rev2 = d2->rev;
 		path2 = d2->pathname;
 	} else {
-		/* XXX - this is weird */
+		/*
+		 * XXX - this is weird
+		 * It can happen when -rS,E and S is not contained in E,
+		 * either because they are parallel (E not contained in S)
+		 * or reverse (E is contained in S).
+		 * */
 		rev2 = "1.0";
 		path2 = sccs_top(s)->pathname;
 	}
@@ -209,7 +206,9 @@ process(char	*root,
 	 * Do not print the ChangeSet file
 	 * we already printed it as the first entry
 	 */
-	if (streq(s->sfile, CHANGESET)) goto done; 
+	if (streq(s->sfile, CHANGESET)) goto done;
+	/* hide component cset with -H */
+	if (opts.hide_cset && CSET(s)) goto done;
 
 	if (opts.show_diffs) {
 		/*
@@ -221,20 +220,76 @@ process(char	*root,
 			goto done;
 		}
 		unless (opts.show_path) {
-			printf("%s%c%s..%s\n", s->gfile, c, rev1, rev2);
+			printf("%s|%s..%s\n", prefix(s->gfile), rev1, rev2);
 		} else {
-			printf("%s%c%s%c%s%c%s%c%s\n",
-			     s->gfile, c, path1, c, rev1, c, path2, c, rev2);
+			/* s->gfile|path1|rev1|path2|rev2 */
+			fputs(prefix(s->gfile), stdout);
+			putchar('|');
+			fputs(prefix(path1), stdout);
+			printf("|%s|", rev1);
+			fputs(prefix(path2), stdout);
+			printf("|%s\n", rev2);
 		}
 	} else {
 		if (!opts.show_all && isNullFile(rev2, path2)) goto done;
 		unless (opts.show_path) {
-			printf("%s%c%s\n", s->gfile, c, rev2);
+			printf("%s|%s\n", prefix(s->gfile), rev2);
 		} else {
-			printf("%s%c%s%c%s\n", s->gfile, c, path2, c, rev2);
+			/* s->gfile|path2|rev2 */
+			fputs(prefix(s->gfile), stdout);
+			printf("|%s|%s\n", prefix(path2), rev2);
 		}
 	}
-done:	sccs_free(s);
+done:	if (s) sccs_free(s);
+	if (opts.nested && end && componentKey(end)) {
+		char	buf[MAXPATH*2];
+
+		/*
+		 * call rset recursively here
+		 * We silently skip missing components
+		 */
+		unless (path1 = key2path(root, idDB)) return;
+		dirname(path1);
+		here = strdup(proj_cwd());
+		if (chdir(path1)) {
+			/*
+			 * in the -5 case we might get here for a
+			 * missing component.  Just skip it.
+			 */
+			free(here);
+			free(path1);
+			return;
+		}
+		sprintf(buf, "bk rset -H "); /* we already printed the cset */
+		EACH(opts.nav) {
+			strcat(buf, opts.nav[i]);
+			strcat(buf, " ");
+		}
+		if (opts.lflg) {
+			t = aprintf("-l'%s'", end);
+			strcat(buf, t);
+			free(t);
+		} else {
+			if (start && end) {
+				sccs_key2md5(root, start, smd5);
+				sccs_key2md5(root, end, emd5);
+				t = aprintf("-r'%s,%s'", smd5, emd5);
+			} else {
+				sccs_key2md5(root, end, emd5);
+				t = aprintf("-r'%s'", emd5);
+			}
+			strcat(buf, t);
+			free(t);
+		}
+		// XXX - sfiles uses this too so maybe I want a different one?
+		safe_putenv("_BK_PREFIX=%s", path1);
+		free(path1);
+		fflush(stdout);
+		system(buf);
+		chdir(here);
+		free(here);
+		putenv("_BK_PREFIX=");
+	}
 }
 
 /*
@@ -246,6 +301,7 @@ rel_diffs(MDBM	*db1, MDBM *db2,
 {
 	MDBM	*goneDB = 0, *short2long = 0;
 	char	*root_key, *start_key, *end_key, parents[100];
+	char	*cset;
 	kvpair	kv;
 
 	/*
@@ -258,29 +314,31 @@ rel_diffs(MDBM	*db1, MDBM *db2,
 	 * XXX this needs to be updated.
 	 */
 	unless (opts.hide_cset) {
+		/*
+		 * 'cset' only valid if prefix not called again,
+		 * which prefix is called in process() in EACH_KV below.
+		 */
+		cset = prefix("ChangeSet");
 		if (revM) {
 			sprintf(parents, "%s+%s", rev1, revM);
 		} else {
 			strcpy(parents, rev1);
 		}
 		unless (opts.show_path) {
-			printf("ChangeSet%c%s..%s\n", BK_FS, parents, rev2);
+			printf("%s|%s..%s\n", cset, parents, rev2);
 		} else {
-			printf("ChangeSet%cChangeSet%c%s%cChangeSet%c%s\n",
-			    BK_FS, BK_FS, parents, BK_FS, BK_FS, rev2);
+			printf("%s|%s|%s|%s|%s\n",
+			    cset, cset, parents, cset, rev2);
 		}
 	}
-	for (kv = mdbm_first(db1); kv.key.dsize != 0; kv = mdbm_next(db1)) {
+	EACH_KV(db1) {
 		char root_key2[MAXKEY];
 
 		root_key = kv.key.dptr;
 		start_key = kv.val.dptr;
 		strcpy(root_key2, root_key); /* because find_key stomps */
 		end_key = find_key(db2, root_key2, &short2long);
-		unless (is_same(start_key, end_key))  {
-			process(root_key, start_key, end_key,
-						    idDB, &goneDB, opts);
-		}
+		process(root_key, start_key, end_key, idDB, &goneDB, opts);
 		/*
 		 * Delete the entry from db2, so we don't 
 		 * re-process it in the next loop
@@ -292,7 +350,7 @@ rel_diffs(MDBM	*db1, MDBM *db2,
 			exit(1);
 		}
 	}
-	for (kv = mdbm_first(db2); kv.key.dsize != 0; kv = mdbm_next(db2)) {
+	EACH_KV(db2) {
 		root_key = kv.key.dptr;
 		end_key = kv.val.dptr;
 		process(root_key, NULL, end_key, idDB, &goneDB, opts);
@@ -310,16 +368,22 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 {
 	MDBM	*goneDB = 0, *short2long = 0;
 	char	*root_key, *end_key;
+	char	*cset;
 	kvpair	kv;
 
 	unless (opts.hide_cset) {
+		/*
+		 * 'cset' only valid if prefix not called again,
+		 * which prefix is called in process() in EACH_KV below.
+		 */
+		cset = prefix("ChangeSet");
 		unless (opts.show_path) {
-			printf("ChangeSet%c%s\n", BK_FS, rev);
+			printf("%s|%s\n", cset, rev);
 		} else {
-			printf("ChangeSet%cChangeSet%c%s\n", BK_FS, BK_FS, rev);
+			printf("%s|%s|%s\n", cset, cset, rev);
 		}
 	}
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+	EACH_KV(db) {
 		root_key = kv.key.dptr;
 		end_key = kv.val.dptr;
 		process(root_key, NULL, end_key, idDB, &goneDB, opts);
@@ -408,6 +472,7 @@ rset_main(int ac, char **av)
 	MDBM	*db1, *db2 = 0, *idDB;
 	options	opts;
 
+	path_prefix = getenv("_BK_PREFIX");
 	bzero(&opts, sizeof (options));
 	if (proj_cd2root()) {
 		fprintf(stderr, "mkrev: cannot find package root.\n");
@@ -416,7 +481,16 @@ rset_main(int ac, char **av)
 	s = sccs_init(s_cset, SILENT);
 	assert(s);
 
-	while ((c = getopt(ac, av, "5aBhHl;r;")) != -1) {
+	while ((c = getopt(ac, av, "5aBhHl;Pr;")) != -1) {
+		unless (c == 'r' || c == 'P' || c == 'l') {
+			if (optarg) {
+				opts.nav = addLine(opts.nav,
+				    aprintf("-%c%s", c, optarg));
+			} else {
+				opts.nav = addLine(opts.nav,
+				    aprintf("-%c", c));
+			}
+		}
 		switch (c) {
 		case '5':	opts.md5keys = 1; break;	/* undoc */
 		case 'B':	opts.BAM = 1; break;		/* undoc */
@@ -432,7 +506,9 @@ rset_main(int ac, char **av)
 		case 'l':	opts.lflg = 1;			/* doc 2.0 */
 				rev1 = strdup(optarg);
 				break;
-		case 'r':	opts.rflg = 1;			/* doc 2.0 */
+		case 'P':	opts.nested = 1;
+				break;
+		case 'r':	opts.show_diffs = 1;		/* doc 2.0 */
 				if (parse_rev(s, optarg,
 					&rev1, &revM, &rev2)) {
 					sccs_free(s);
@@ -447,8 +523,10 @@ usage:				system("bk help -s rset");
 	}
 
 	unless (rev1) goto usage;
+	if (opts.BAM && !opts.md5keys) goto usage;
 
-	if (opts.rflg) opts.show_diffs = 1;
+	/* Let them use -P by default but ignore it in non-products. */
+	unless (proj_isProduct(0)) opts.nested = 0;
 
 	/*
 	 * load the two ChangeSet 
@@ -470,7 +548,6 @@ usage:				system("bk help -s rset");
 		}
 		db2 = s->mdbm; s->mdbm = NULL;
 		assert(db2);
-		opts.show_diffs = 1;
 	}
 	mixed = !LONGKEY(s);
 	sccs_free(s);
