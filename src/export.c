@@ -6,7 +6,7 @@ private int export_patch(char *, char *, char **, char **, int, int);
 int
 export_main(int ac,  char **av)
 {
-	int	i, c, count, trim = 0;
+	int	c, count;
 	int	vflag = 0, hflag = 0, kflag = 0, tflag = 0, wflag = 0;
 	char	*rev = NULL, *diff_style = "u";
 	char	file_rev[MAXPATH];
@@ -14,15 +14,15 @@ export_main(int ac,  char **av)
 	char	**includes = 0;
 	char	**excludes = 0;
 	char	*src, *dst;
-	char	*p, *q, *p_sav;
 	char	src_path[MAXPATH], dst_path[MAXPATH];
 	sccs	*s;
 	delta	*d;
 	FILE	*f;
 	char	*type = 0;
 	int	sysfiles = 0;
+	int	product;
 
-	while ((c = getopt(ac, av, "d|hkp:t:Twvi:x:r:S")) != -1) {
+	while ((c = getopt(ac, av, "d|hkt:Twvi:x:r:S")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;		/* doc 2.0 */
 		    case 'q':					/* undoc 2.0 */
@@ -32,7 +32,6 @@ export_main(int ac,  char **av)
 		    case 'h':					/* doc 2.0 */
 			hflag = 1; break; /*disable patch header*/
 		    case 'k':	kflag = 1; break;		/* doc 2.0 */
-		    case 'p':	trim = atoi(optarg); break;
 		    case 'S':   sysfiles = 1; break;		/* undoc 2.2 */
 		    case 'r':	unless (rev) {			/* doc 2.0 */
 					rev  = optarg;
@@ -97,56 +96,52 @@ usage:			system("bk help -s export");
 		exit(1);
 	}
 	strcpy(src_path, fullname("."));
+	product = proj_isProduct(0) ? 1 : 0;
 
 	bktmp(file_rev, "file_rev");
-	if (rev) {
-		sprintf(buf, "bk rset -hl'%s' > '%s'", rev, file_rev);
-	} else {
-		sprintf(buf, "bk rset -hl+ > '%s'", file_rev);
-	}
+	sprintf(buf, "bk rset -%sHPhl'%s' > '%s'",
+	    sysfiles ? "a" : "",
+	    rev ? rev : "+",
+	    file_rev);
 	system(buf);
 
 	f = fopen(file_rev, "rt");
 	assert(f);
 	while (fgets(buf, sizeof(buf), f)) {
-		char	*t, output[MAXPATH];
+		char	*rev, *t, *historic;
 		int	flags = 0;
 		struct	stat sb;
+		char	output[MAXPATH];
 
-		/* trim off |1.5\n */
+		/*
+		 * src/Notes/DAEMON|src/DAEMON|1.2
+		 * ^                ^          ^
+		 * buf              historic   rev
+		 * buf is current path, historic is path as of 1.2
+		 */
+
 		chop(buf);
-		p = strchr(buf, BK_FS);
-		assert(p);
-		*p++ = '\0';
+		rev = strrchr(buf, '|');
+		assert(rev);
+		*rev++ = 0;
+		historic = strchr(buf, '|');
+		assert(historic);
+		*historic++ = 0;
 
-		if (excludes && match_globs(buf, excludes, 0)) continue;
-		if (includes && !match_globs(buf, includes, 0)) continue;
+		if (excludes && match_globs(historic, excludes, 0)) continue;
+		if (includes && !match_globs(historic, includes, 0)) continue;
 
 		/* skip BitKeeper and deleted files */
-		if (!sysfiles && strneq(p, "BitKeeper/", 10)) continue;
-		if (streq(buf, "ChangeSet")) continue;
+		if (!sysfiles && strneq(historic, "BitKeeper/", 10)) continue;
+
 		sprintf(buf1, "%s/%s", src_path, buf);
 		t = name2sccs(buf1);
 		s = sccs_init(t, SILENT);
 		free(t);
 		assert(s && HASGRAPH(s));
-		q = strchr(p, BK_FS); 
-		assert(q);
-		*q++ = '\0';
-		d = sccs_findrev(s, q);
+		d = sccs_findrev(s, rev);
 		assert(d);
-		p_sav = p;
-		for (i = 0; i < trim; i++) {
-			p = strchr(p, '/');
-			unless (p) {
-				fprintf(stderr,
-				    "Cannot trim short path, "
-				    "file %s skipped.\n", p_sav);
-				goto next;
-			}
-			p++;
-		}
-		sprintf(output, "%s/%s", dst_path, p);
+		sprintf(output, "%s/%s", dst_path, historic);
 		unless (vflag) flags |= SILENT;
 		unless (kflag) flags |= GET_EXPAND;
 		if (tflag) flags |= GET_DTIME;
@@ -157,14 +152,13 @@ usage:			system("bk help -s export");
 		 */
 		free(s->gfile);
 		s->gfile = strdup(output);
-		if (sccs_get(s, q, 0, 0, 0, flags, "-")) {
+		if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
 			fprintf(stderr, "cannot export to %s\n", output);
 		}
 		sccs_free(s);
 		if (wflag && !lstat(output, &sb) && S_ISREG(sb.st_mode)) {
 			chmod(output, sb.st_mode | S_IWUSR);
 		}
-next:		;
 	}
 	fclose(f);
 	unlink(file_rev);
@@ -180,7 +174,7 @@ export_patch(char *diff_style,
 	int	status;
 
 	bktmp(file_rev, "file_rev");
-	sprintf(buf, "bk rset -hr'%s' > '%s'", rev ? rev : "+", file_rev);
+	sprintf(buf, "bk rset -HPhr'%s' > '%s'", rev ? rev : "+", file_rev);
 	status = system(buf);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		unlink(file_rev);
@@ -230,16 +224,16 @@ export_patch(char *diff_style,
 		 * patches with changes for files that are deleted. We just
 		 * need the patch to have the delete.
 		 */
-		fstart = strchr(buf, BK_FS) + 1;
-		rev1 = strchr(fstart, BK_FS) + 1;
-		fend = strchr(rev1, BK_FS) + 1;
+		fstart = strchr(buf, '|') + 1;
+		rev1 = strchr(fstart, '|') + 1;
+		fend = strchr(rev1, '|') + 1;
 		fend[-1] = 0;
 		if (strchr(rev1, '+')) {
 			fprintf(stderr,
 			    "export: Can't make patch of merge node\n");
 			return (1);
 		}
-		fend[-1] = BK_FS;
+		fend[-1] = '|';
 		if (strneq(fstart, "BitKeeper/", 10) &&
 		    strneq(fend, "BitKeeper/", 10)) continue;
 		fprintf(f1, "%s\n", buf);
