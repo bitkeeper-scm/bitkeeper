@@ -1180,7 +1180,8 @@ push(char **av, remote *r, char **envVar)
 		if (rev_list[0]) unlink(rev_list);
 		return (ret); /* failed */
 	}
-	if (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES"))) {
+	if (!(opts.product && !getenv("_BK_TRANSACTION")) &&
+	    (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
 		bp_keys = bktmp(0, "bpkeys");
 	}
 	ret = push_part2(av, r, rev_list, ret, envVar, bp_keys);

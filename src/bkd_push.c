@@ -102,6 +102,20 @@ cmd_push_part1(int ac, char **av)
 		out("ERROR-listkey empty\n");
 		return (1);
 	}
+	if (product) {
+		/*
+		 * Locking is kinda broken for an ensemble push.  This
+		 * is a push_part1 for the product and the client will
+		 * go ahead and do pushes for each component and the
+		 * product as separate connects after this, so we go
+		 * ahead and drop the write lock here.  The other
+		 * connections will reacquire locks.  We do this
+		 * before sending the listkey output to prevent races
+		 * from here to the start of the component push of the
+		 * product.
+		 */
+		 repository_unlock(0);
+	}
 	if (debug) {
 		fprintf(stderr, "cmd_push_part1: sending key list\n");
 		writen(2, m->where,  msize(m));
@@ -115,7 +129,6 @@ cmd_push_part1(int ac, char **av)
 	unlink(lktmp);
 	free(lktmp);
 	if (debug) fprintf(stderr, "cmd_push_part1: done\n");
-	if (product) repository_unlock(0);
 	return (ret);
 }
 
