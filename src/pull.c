@@ -601,7 +601,7 @@ pull_ensemble(repos *rps, remote *r)
 	char	*name, *path;
 	char	**comps = 0;
 	MDBM	*idDB;
-	FILE	*idfile;
+	FILE	*f, *idfile;
 	int	i, rc = 0, missing = 0, product;
 	char	idname[MAXPATH];
 
@@ -715,6 +715,13 @@ err:					fprintf(stderr, "Could not chdir to "
 			char	*dfile_to, *dfile_from;
 			char	*t;
 
+			mkdirp(comps[i]);
+			sccs_mkroot(comps[i]);
+			t = aprintf("%s/BitKeeper/log/COMPONENT", comps[i]);
+			f = fopen(t, "w");
+			free(t);
+			fprintf(f, "%s\n", comps[i]);
+			fclose(f);
 			to = aprintf("%s/%s", comps[i], CHANGESET);
 			t = strrchr(to, '/');
 			*(++t) = 'd';

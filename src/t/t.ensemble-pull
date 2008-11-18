@@ -11,6 +11,8 @@
 
 echo $N Create an ensemble...........................................$NL
 nested project
+touch amerge
+bk new $Q amerge
 # add some files
 cd "$HERE/project/gcc"
 for i in 1 2 3 4 5
@@ -95,7 +97,7 @@ test "$RK" = "$RK2" || exit 1
 echo OK
 
 echo $N Test rootkey urls, file url, product root key ...............$NL
-PRK=`bk -R prs -r1.0 -hnd:KEY:`
+PRK=`bk -R prs -r1.0 -hnd:KEY: ChangeSet`
 RK2=`bk changes -q -r1.0 -nd:KEY: ../project?ROOTKEY=$PRK`
 test "$PRK" = "$RK2" || exit 1
 echo OK
@@ -236,10 +238,18 @@ bk _kill bk://localhost:$P
 echo $N Try a pull with conflicts that can be automerged.............$NL
 cd "$HERE"
 bk clone $Q null-pull remote
-bk clone $Q remote local
 cd remote
+bk setup -f x/y/z/comp || exit 1
+bk clone $Q ../remote ../local
+cd x/y/z/comp
+touch f.remote
+bk new $Q f.remote || exit 1
+bk commit $Q -yremote || exit 1
+cd "$HERE"/remote
 echo bam > bam
 bk new $Q -b bam
+bk edit $Q amerge
+bk delta $Q -fyamerge amerge
 cd "$HERE"/remote/gcc
 echo bam > bam
 bk new $Q -b bam
@@ -260,6 +270,8 @@ do
 	bk commit $Q -y"Add $i to file$i"
 done
 cd "$HERE"/local
+bk edit $Q amerge
+bk delta $Q -fyamerge amerge
 bk commit $Q -y"local gcc"
 bk pull >OUT 2>&1 || {
 	echo failed
@@ -283,6 +295,7 @@ bk -Ar check -av >OUT 2>&1 || {
 cd "$HERE"/local
 cat <<EOF > WANT
 ChangeSet
+amerge
 gcc/ChangeSet
 EOF
 bk changes -nd:GFILE: -vr+ > GOT
