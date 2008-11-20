@@ -49,11 +49,6 @@ __RCSID("$NetBSD: snprintf.c,v 1.20 2005/02/09 21:35:47 kleink Exp $");
 #include "reentrant.h"
 #include "local.h"
 
-#ifdef _FORTIFY_SOURCE
-#undef snprintf
-#define snprintf _snprintf
-#endif
-
 int
 snprintf(char *str, size_t n, char const *fmt, ...)
 {
