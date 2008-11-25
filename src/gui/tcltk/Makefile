@@ -3,7 +3,6 @@ OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
 BKROOT	:= $(shell bk -P root)
 
 # The Tk version is tied to the Tcl version so you only need to change TCL
-# If you change version don't forget to change TCLURL/TKURL/TCLKEY/TKKEY
 TCLVERSION := 8.5
 
 ifeq "$(OSTYPE)" "msys"
@@ -127,22 +126,22 @@ tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 	    --disable-info-body --enable-pcre --with-pcre=../../pcre/local \
 	    $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
 
-tk/$S/Makefile: bin/tclsh$(EXE) tk/$S/configure Makefile
+tk/$S/Makefile: tk/$S/configure Makefile
 	$(if $(Q),@echo Configuring Tk,)
 	$(Q)cd tk/$S; \
 	./configure $(QUIET) \
 	    $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
 # fetch tcl subdirectory if needed
-tcl/$S/configure: TCLKEY TCLURL
+tcl/$S/configure:
 	$(if $(Q), @echo Cloning Tcl,)
-	$(Q)test -d tcl || bk clone $(QUIET) -r`tail -1 TCLKEY` `cat TCLURL` tcl
+	$(Q)test -d tcl || bk -P populate -s./`bk pwd -R`/tcl
 	$(Q)(cd tcl && bk -Ur get -qS)
 
 # fetch tk subdirectory if needed
-tk/$S/configure: TKKEY TKURL
+tk/$S/configure:
 	$(if $(Q), @echo Cloning Tk,)
-	$(Q)test -d tk || bk clone $(QUIET) -r`tail -1 TKKEY` `cat TKURL` tk
+	$(Q)test -d tk || bk -P populate -s./`bk pwd -R`/tk
 	$(Q)(cd tk && bk -Ur get -qS)
 
 pcre: $(LIBPCRE)
@@ -158,17 +157,15 @@ pcre/Makefile: pcre/configure Makefile
 	$(Q)(cd pcre && \
 	    ./configure $(QUIET) --disable-cpp --disable-shared  --prefix=)
 
-pcre/configure: PCREKEY PCREURL Makefile
+pcre/configure: Makefile
 	$(if $(Q), @echo Cloning PCRE,)
-	$(Q)test -d pcre || \
-	    bk clone $(QUIET) -r`tail -1 PCREKEY` `cat PCREURL` pcre
+	$(Q)test -d pcre || bk -P populate -s./`bk pwd -R`/pcre
 	$(Q)(cd pcre && bk -Ur get -qS)
 
 # fetch tktable subdirectory if needed
-tktable/configure: TKTABLEKEY
+tktable/configure:
 	$(if $(Q), @echo Cloning TKTable,)
-	$(Q)test -d tktable || bk clone $(QUIET) -r`tail -1 TKTABLEKEY` \
-	    bk://data.bitmover.com/tcl/tktable.bk tktable
+	$(Q)test -d tktable || bk -P populate -s./`bk pwd -R`/tktable
 	$(Q)(cd tktable && bk -Ur get -qS)
 
 # Tktable libs
@@ -203,10 +200,9 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 	    libdir=lib bindir=Resources install
 
 # fetch tktreectrl subdirectory if needed
-tktreectrl/configure: TKTREECTRLKEY
+tktreectrl/configure:
 	$(if $(Q), @echo Cloning TKTreeCtrl,)
-	$(Q)test -d tktreectrl || bk clone $(QUIET) -r`tail -1 TKTREECTRLKEY` \
-			bk://data.bitmover.com/tcl/tktreectrl.bk tktreectrl
+	$(Q)test -d tktreectrl || bk -P populate -s./`bk pwd -R`/tktreectrl
 	$(Q)(cd tktreectrl && bk -Ur get -qS)
 
 # TkTreeCtrl libs
@@ -239,10 +235,9 @@ $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
 	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
 	    libdir=lib bindir=Resources install
 
-lib/$(BWIDGET)/pkgIndex.tcl: BWIDGETKEY
+lib/$(BWIDGET)/pkgIndex.tcl:
 	$(if $(Q), @echo Cloning BWidget,)
-	$(Q)test -d bwidget || bk clone $(QUIET) -r`tail -1 BWIDGETKEY` \
-	    bk://data.bitmover.com/tcl/bwidget.bk bwidget
+	$(Q)test -d bwidget || bk -P populate -s./`bk pwd -R`/bwidget
 	$(Q)cd bwidget; bk -Ur get -qS
 	$(if $(Q), @echo Installing BWidget,)
 	$(Q)mkdir -p lib/$(BWIDGET)/lang
@@ -256,10 +251,9 @@ $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl
 	test -d $(BKAPP)/Contents/lib || mkdir $(BKAPP)/Contents/lib
 	cp -fRPH lib/$(BWIDGET) $(BKAPP)/Contents/lib
 
-lib/Tkcon/pkgIndex.tcl: TKCONKEY
+lib/Tkcon/pkgIndex.tcl:
 	$(if $(Q), @echo Cloning TkCon,)
-	$(Q)test -d tkcon || bk clone $(QUIET) -r`tail -1 TKCONKEY` \
-	    bk://data.bitmover.com/tcl/tkcon.bk tkcon
+	$(Q)test -d tkcon || bk -P populate -s./`bk pwd -R`/tkcon
 	cd tkcon; bk -Ur get -qS
 	$(if $(Q), @echo Installing TkCon,)
 	$(Q)mkdir -p lib/Tkcon
@@ -359,6 +353,7 @@ clean-config: FORCE
 clean: clean-obj FORCE
 	-test -d tcl && cd tcl && bk -r clean
 	-test -d tk && cd tk && bk -r clean
+	-test -d tkcon && cd tkcon && bk -r clean
 	-test -d tktable && cd tktable && bk -r clean
 	-test -d tktreectrl && cd tktreectrl && bk -r clean
 	-test -d bwidget && cd bwidget && bk -r clean
@@ -369,19 +364,6 @@ clean: clean-obj FORCE
 clobber:
 	@$(MAKE) clean
 	rm -rf bin lib man build include usr share
-	@for i in tcl tk tktable tktreectrl bwidget tkcon pcre ; do \
-		if [ -d $$i ] ; \
-		then	cd $$i ; \
-			bk superset > /dev/null 2>&1 ; \
-			if [ $$? -eq 0 ] ; \
-			then	cd .. ; \
-				rm -rf $$i ;\
-			else \
-				cd .. ; \
-				echo $$i modified ; \
-			fi ; \
-		fi ; \
-	done
 
 rmcache: version.sh
 	rm -f `./version.sh`

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# convert a MSYS pathname to a window pathname
+
+# handle non absolute paths
+echo "$1" | grep -q '^/' || {
+	P=`bk pwd -s`
+	echo "$P/$1"
+	exit 0
+}
+
+# find closest match in mount table
+mount | sed 's,\\,/,g' | awk '{print $3,$1}' | sort -r |
+while read msys win
+do	echo "$1" | grep -q "^$msys\b" && {
+		echo -n "$win"
+		echo "$1" | sed "s,^$msys/\?,/,"
+		exit 0
+	}
+done

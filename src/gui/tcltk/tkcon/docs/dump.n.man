@@ -1,0 +1,60 @@
+[comment {-*- tcl -*- dump manpage}]
+[manpage_begin dump n 2.5]
+[copyright {Jeffrey Hobbs <jeff at hobbs.org>}]
+[moddesc   {TkCon}]
+[titledesc {Dump information about Tcl interpreter in TkCon}]
+
+[description]
+[para]
+The dump command provides a way for the user to spit out state
+information about the interpreter in a Tcl readable
+(and human readable) form.
+It takes the general form:
+
+[list_begin definitions]
+
+[call [cmd dump] [arg method]\
+		 [opt [arg -nocomplain]]\
+		 [opt [arg "-filter pattern"]]\
+		 [opt [cmd --]]\
+		 [arg pattern]\
+		 [opt [arg "pattern ..."]]]
+
+[list_end]
+
+[para]
+The patterns represent glob-style patterns (as in [cmd string] [arg {match pattern $str}]).
+[arg -nocomplain] will prevent dump from throwing an error if no items
+matched the pattern.
+[arg -filter] is interpreted as appropriate for the method.
+The various methods are:
+
+[list_begin definitions]
+
+[lst_item "[cmd dump] [arg command] [arg args]"]
+Outputs one or more commands.
+
+[lst_item "[cmd dump] [arg procedure] [arg args]"]
+Outputs one or more procs in sourceable form.
+
+[lst_item "[cmd dump] [arg variable] [arg args]"]
+Outputs the values of variables in sourceable form.
+Recognizes nested arrays.
+The -filter pattern is used as to filter array element
+names and is interepreted as a glob pattern (defaults to {*}).
+It is passed down for nested arrays.
+
+[lst_item "[cmd dump] [arg widget] [arg args]"]
+Outputs one or more widgets by giving their configuration options.
+The -filter pattern is used as to filter the config options and
+is interpreted as a case insensitive regexp pattern (defaults to {.*}).
+
+[list_end]
+
+[see_also [cmd tkcon](1)]
+[see_also [cmd tkconrc](5) [cmd tkcon](n) [cmd idebug](n)]
+[see_also [cmd observe](n)]
+[keywords Tk console dump]
+
+[manpage_end]
+

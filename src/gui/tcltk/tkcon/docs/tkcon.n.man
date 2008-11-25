@@ -1,0 +1,135 @@
+[comment {-*- tcl -*- tkcon manpage}]
+[manpage_begin tkcon n 2.5]
+[copyright {Jeffrey Hobbs <jeff at hobbs.org>}]
+[moddesc   {TkCon}]
+[titledesc {Controlling TkCon console}]
+
+[description]
+[para]
+This provides lots of useful control over a console:
+
+[list_begin definitions]
+
+[call [cmd tkcon] [arg attach] [arg interpreter]]
+Attaches tkcon to the named interpreter.
+The name must be that returned by [lb][cmd tk] [arg appname][rb] or a valid
+path to a slave interpreter.
+It's best to use this via the [arg {Console->Attach Console}] menu.
+
+[call [cmd tkcon] [arg buffer] [opt [arg size]]]
+Sets or queries the allowed size of the console text widget in lines.
+The text widget will automatically delete leading lines once this
+number has been exceeded (read: this is the scroll buffer size).
+
+[call [cmd tkcon] [arg bgerror] [opt "[arg msg] [arg errorInfo]"]]
+Does bgerror stuff in the tkcon master interpreter.
+
+[call [cmd tkcon] [arg close] or [cmd tkcon] [arg destroy]]
+Destroys this tkcon widget.
+
+[call [cmd tkcon] [arg congets]]
+Behaves like the traditional Tcl gets, but instead of using stdin,
+it uses the tkcon console window.
+By default, tkcon replaces the standard gets with this command.
+This behavior can be controlled by altering the [cmd ::tkcon::OPT(gets)]
+parameter at startup.
+This should not be called directly - instead rely on the overloaded
+gets, which has support for the optional varName parameter.
+
+[call [cmd tkcon] [arg console] [arg args]]
+Passes the args to the tkcon text widget (the console).
+
+[call [cmd tkcon] [arg error]]
+Pops up a dialog that gives the user a full trace of the
+last error received in the tkcon console.
+
+[call [cmd tkcon] [arg find] [arg string]\
+      [opt "[arg -case] [arg TCL_BOOLEAN] [arg -regexp] [arg TCL_BOOLEAN]"]]
+Highlights all instances of string in the console.
+If the string is empty, it clears any previous highlighting.
+
+[call [cmd tkcon] [arg font] [opt [arg fontname]]]
+Sets or returns the font used by tkcon text widgets.
+
+[call [cmd tkcon] [arg gets]]
+Behaves like the traditional Tcl gets, but instead of needing
+stdin, it pops a dialog box up for the user.
+The overloaded gets has support for the optional varName parameter.
+
+[call [cmd tkcon] [arg getcommand]]
+A variation of the congets method that requires a full
+command to be input before returning.
+
+[call [cmd tkcon] [arg hide]]
+Withdraw the tkcon display from the screen (make sure you
+have a way to get it back).
+
+[call [cmd tkcon] [arg history] [opt [arg -newline]]]
+Displays the tkcon history in sourceable form.
+If [arg -newline] is specified, it separates each command by
+an extra newline.
+
+[call [cmd tkcon] [arg iconify]]
+Iconifies the tkcon display.
+
+[call [cmd tkcon] [arg linelength] [opt [arg value]]]
+Sets or displays the number that specifies the limit of long result lines.
+True result is still captured in $_ (and 'puts $_' works).
+
+[call [cmd tkcon] [arg load] [arg filename]]
+Sources named file into the slave interpreter.
+If no filename is given, it will attempt to call
+[cmd tk_getOpenFile] to pop up the file select box.
+
+[call [cmd tkcon] [arg main] [opt "[arg arg] [arg arg] [arg ...]"]]
+Passes the args to the main tkcon interpreter to be
+evaluated and returns the result.
+
+[call [cmd tkcon] [arg master] [arg args]]
+Passes the args to the master interpreter to be evaluated
+and returns the result.
+
+[call [cmd tkcon] [arg new]]
+Creates a new tkcon widget.
+
+[call [cmd tkcon] [arg save] [opt "[arg filename] [opt [arg type]]"]]
+Saves the console buffer to the given filename.
+If no filename is given, it will attempt to call
+[cmd tk_getSaveFile] to pop up the file select box.
+If no type is given, a dialog will ask you to specify
+what portion of the text you want to save.
+
+[call [cmd tkcon] [arg set] [arg var] [opt [arg value]]]
+Queries or sets a master interpreter variable.
+
+[call [cmd tkcon] [arg append] [arg var] [opt [arg value]]]
+Like set, but uses append on the variable.
+
+[call [cmd tkcon] [arg lappend] [arg var] [opt [arg value]]]
+Like set, but uses lappend on the variable.
+
+[call [cmd tkcon] [arg show] or [cmd tkcon] [arg deiconify]]
+Redisplays tkcon on the screen.
+
+[call [cmd tkcon] [arg slave] [opt "[arg slavename] [opt [arg {arg arg ...}]]"]]
+If called with no args, it returns the name of all the tkcon interpreters.
+Otherwise given an interp name it passes the args to the named interpreter
+to be evaluated and returns the result.
+If no args are passed, then it returns the [lb][cmd tk] [arg appname][rb] of that
+interpreter.
+
+[call [cmd tkcon] [arg title] [opt [arg title]]]
+Sets or returns the title for tkcon.
+
+[call [cmd tkcon] [arg version]]
+Returns of version of tkcon.
+
+[list_end]
+
+[see_also [cmd tkcon](1)]
+[see_also [cmd tkconrc](5) [cmd tkcon](n) [cmd dump](n)]
+[see_also [cmd observe](n)]
+[keywords Tk console debug]
+
+[manpage_end]
+

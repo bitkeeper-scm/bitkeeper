@@ -1,0 +1,829 @@
+# Commands covered:  treectrl
+#
+# This file contains a collection of tests for the treectrl command of
+# the tktreectrl extension.  Sourcing this file into Tcl runs the tests and
+# generates output for errors.  No output means no errors were found.
+#
+# Copyright (c) 2000 by Scriptics Corporation.
+# Copyright (c) 2002 by Christian Krone.
+#
+# See the file "license.terms" for information on usage and redistribution
+# of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+#
+# RCS: @(#) $Id$
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest 2
+    namespace import ::tcltest::*
+}
+
+package require Tk
+package require treectrl
+
+test treectrl-1.1 {Usage} -body {
+    treectrl
+} -returnCodes error -result {wrong # args: should be "treectrl pathName ?options?"}
+
+test treectrl-1.2 {Unknown option} -body {
+    treectrl .t -foo bar
+} -returnCodes error -result {unknown option "-foo"}
+
+test treectrl-1.3 {Create a tree} -body {
+    treectrl .t
+} -result {.t}
+
+test treectrl-1.4 {configure: List all options} -body {
+	.t configure
+} -result {{-background background Background white *}*} -match glob
+
+test treectrl-1.5 {configure -background with totally empty visible tree} -body {
+    pack .t -expand yes -fill both
+    update idletasks
+    .t configure -background white
+    update idletasks
+} -result {}
+
+test treectrl-1.6 {configure: -background option} -body {
+    .t configure -background yellow
+    .t configure -background
+} -result {-background background Background white yellow}
+
+test treectrl-1.7 {configure: invalid -backgroundmode option} -body {
+    .t configure -backgroundmode foo
+} -returnCodes error -result {bad backgroundmode "foo": must be column, order, ordervisible, row, index, or visindex}
+
+test treectrl-1.8 {configure: -backgroundmode option} -body {
+    .t configure -backgroundmode column
+    .t configure -backgroundmode
+} -result {-backgroundmode backgroundMode BackgroundMode row column}
+
+test treectrl-1.9 {configure: invalid -buttonsize option} -body {
+    .t configure -buttonsize foo
+} -returnCodes error -result {bad screen distance "foo"}
+
+test treectrl-1.10 {configure: -buttonsize option} -body {
+    .t configure -buttonsize 1c
+    .t configure -buttonsize
+} -result {-buttonsize buttonSize ButtonSize 9 1c}
+
+test treectrl-1.11 {configure: invalid -buttoncolor option} -body {
+    .t configure -buttoncolor foo
+} -returnCodes error -result {unknown color name "foo"}
+
+test treectrl-1.12 {configure: -buttoncolor option} -body {
+    .t configure -buttoncolor red
+    .t configure -buttoncolor
+} -result {-buttoncolor buttonColor ButtonColor #808080 red}
+
+test treectrl-1.13 {configure: invalid -buttonbitmap option} -body {
+    .t configure -buttonbitmap foo
+} -returnCodes error -result {bitmap "foo" not defined}
+
+test treectrl-1.14 {configure: -buttonbitmap option} -body {
+    .t configure -buttonbitmap hourglass
+    .t configure -buttonbitmap
+} -result {-buttonbitmap buttonBitmap ButtonBitmap {} hourglass}
+
+test treectrl-1.17 {configure: invalid -buttonimage option} -body {
+    .t configure -buttonimage foo
+} -returnCodes error -result {image "foo" doesn't exist}
+
+test treectrl-1.18 {configure: -buttonimage option} -body {
+    image create photo emptyImg
+    .t configure -buttonimage emptyImg
+    .t configure -buttonimage
+} -result {-buttonimage buttonImage ButtonImage {} emptyImg}
+
+test treectrl-1.21 {configure: invalid -doublebuffer option} -body {
+    .t configure -doublebuffer foo
+} -returnCodes error -result {bad doublebuffer "foo": must be none, item, or window}
+
+test treectrl-1.22 {configure: -doublebuffer option} -body {
+    .t configure -doublebuffer window
+    .t configure -doublebuffer
+} -result {-doublebuffer doubleBuffer DoubleBuffer item window}
+
+test treectrl-1.23 {configure: invalid -indent option} -body {
+    .t configure -indent foo
+} -returnCodes error -result {bad screen distance "foo"}
+
+test treectrl-1.24 {configure: -indent option} -body {
+    .t configure -indent 2c
+    .t configure -indent
+} -result {-indent indent Indent 19 2c}
+
+test treectrl-1.25 {configure: invalid -itemheight option} -body {
+    .t configure -itemheight foo
+} -returnCodes error -result {bad screen distance "foo"}
+
+test treectrl-1.26 {configure: -itemheight option} -body {
+    .t configure -itemheight 18m
+    .t configure -itemheight
+} -result {-itemheight itemHeight ItemHeight 0 18m}
+
+test treectrl-1.27 {configure: invalid -linestyle option} -body {
+    .t configure -linestyle foo
+} -returnCodes error -result {bad linestyle "foo": must be dot or solid}
+
+test treectrl-1.28 {configure: -linestyle option} -body {
+    .t configure -linestyle solid
+    .t configure -linestyle
+} -result {-linestyle lineStyle LineStyle dot solid}
+
+test treectrl-1.29 {configure: invalid -linethickness option} -body {
+    .t configure -linethickness foo
+} -returnCodes error -result {bad screen distance "foo"}
+
+test treectrl-1.30 {configure: -linethickness option} -body {
+    .t configure -linethickness 3m
+    .t configure -linethickness
+} -result {-linethickness lineThickness LineThickness 1 3m}
+
+test treectrl-1.31 {configure: invalid -linecolor option} -body {
+    .t configure -linecolor #foo
+} -returnCodes error -result {invalid color name "#foo"}
+
+test treectrl-1.32 {configure: -linethickness option} -body {
+    .t configure -linecolor gray20
+    .t configure -linecolor
+} -result {-linecolor lineColor LineColor #808080 gray20}
+
+test treectrl-1.33 {configure: invalid -orient option} -body {
+    .t configure -orient foo
+} -returnCodes error -result {bad orient "foo": must be horizontal or vertical}
+
+test treectrl-1.34 {configure: -orient option} -body {
+    .t configure -orient h
+    .t configure -orient
+} -result {-orient orient Orient vertical horizontal}
+
+test treectrl-1.35 {configure: invalid -relief option} -body {
+    .t configure -relief foo
+} -returnCodes error -result {bad relief "foo": must be flat, groove, raised, ridge, solid, or sunken}
+
+test treectrl-1.36 {configure: -relief option} -body {
+    .t configure -relief flat
+    .t configure -relief
+} -result {-relief relief Relief sunken flat}
+
+test treectrl-1.37 {configure: invalid -showbuttons option} -body {
+    .t configure -showbuttons foo
+} -returnCodes error -result {expected boolean value but got "foo"}
+
+test treectrl-1.38 {configure: -showbuttons option} -body {
+    .t configure -showbuttons off
+    .t configure -showbuttons
+} -result {-showbuttons showButtons ShowButtons 1 0}
+
+test treectrl-1.39 {configure: invalid -showheader option} -body {
+    .t configure -showheader foo
+} -returnCodes error -result {expected boolean value but got "foo"}
+
+test treectrl-1.40 {configure: -showheader option} -body {
+    .t configure -showheader off
+    .t configure -showheader
+} -result {-showheader showHeader ShowHeader 1 0}
+
+test treectrl-1.41 {configure: invalid -showlines option} -body {
+    .t configure -showlines foo
+} -returnCodes error -result {expected boolean value but got "foo"}
+
+test treectrl-1.42 {configure: -showlines option} -body {
+    .t configure -showlines false
+    .t configure -showlines
+} -result {-showlines showLines ShowLines 1 0}
+
+test treectrl-1.43 {configure: invalid -showroot option} -body {
+    .t configure -showroot foo
+} -returnCodes error -result {expected boolean value but got "foo"}
+
+test treectrl-1.44 {configure: -showroot option} -body {
+    .t configure -showroot no
+    .t configure -showroot
+} -result {-showroot showRoot ShowRoot 1 0}
+
+test treectrl-1.45 {configure: invalid -showrootbutton option} -body {
+    .t configure -showrootbutton foo
+} -returnCodes error -result {expected boolean value but got "foo"}
+
+test treectrl-1.46 {configure: -showrootbutton option} -body {
+    .t configure -showrootbutton True
+    .t configure -showrootbutton
+} -result {-showrootbutton showRootButton ShowRootButton 0 1}
+
+test treectrl-1.47 {configure: invalid -treecolumn option} -body {
+    .t configure -treecolumn foo
+} -returnCodes error -result {column "foo" doesn't exist}
+
+test treectrl-1.49 {configure: -treecolumn option with known column} -body {
+    .t column create -tag column0
+    .t column create -tag column2
+    .t configure -treecolumn 1
+    .t configure -treecolumn
+} -result {-treecolumn treeColumn TreeColumn {} 1}
+
+test treectrl-1.50 {configure: invalid -wrap mode} -body {
+    .t configure -wrap foo
+} -returnCodes error -result {bad wrap "foo"}
+
+test treectrl-1.51 {configure: invalid -wrap option: bogus width} -body {
+    .t configure -wrap {item bar}
+} -returnCodes error -result {bad wrap "item bar"}
+
+test treectrl-1.52 {configure: invalid -wrap option: superflous width} -body {
+    .t configure -wrap {1 window}
+} -returnCodes error -result {bad wrap "1 window"}
+
+test treectrl-1.53 {configure: -wrap option} -body {
+    .t configure -wrap {7 items}
+    .t configure -wrap
+} -result {-wrap wrap Wrap {} {7 items}}
+
+test treectrl-1.54 {configure: -wrap empty option} -body {
+    .t configure -wrap {}
+    .t configure -wrap
+} -result {-wrap wrap Wrap {} {}}
+
+# Before continuing to test the item descriptions and their modifiers,
+# lets create some items with this hierarchy:
+# 0
+# + 1
+# | + 2
+# | + 3
+# |   + 4
+# + 5
+# | + 6
+# | + 7
+# + 8
+test treectrl-2.16 {create some items} -body {
+.t configure -showroot 1 -orient vertical
+    set n1 [.t item create]; .t item lastchild 0   $n1
+    set n2 [.t item create]; .t item lastchild $n1 $n2
+    set n3 [.t item create]; .t item lastchild $n1 $n3
+    set n4 [.t item create]; .t item lastchild $n3 $n4
+    set n5 [.t item create]; .t item lastchild 0   $n5
+    set n6 [.t item create]; .t item lastchild $n5 $n6
+    set n7 [.t item create]; .t item lastchild $n5 $n7
+    set n8 [.t item create]; .t item lastchild 0   $n8
+} -result {8}
+
+test treectrl-5.1 {state: missing args} -body {
+    .t state
+} -returnCodes error -result {wrong # args: should be ".t state command ?arg arg ...?"}
+
+test treectrl-5.2 {state: invalid command} -body {
+    .t state foo
+} -returnCodes error -result {bad command "foo": must be *} -match glob
+
+test treectrl-5.3 {state names: too many args} -body {
+    .t state names foo bar
+} -returnCodes error -result {wrong # args: should be ".t state names"}
+
+test treectrl-5.4 {state names: no states defined yet} -body {
+    .t state names
+} -result {}
+
+test treectrl-5.5 {state define: missing args} -body {
+    .t state define
+} -returnCodes error -result {wrong # args: should be ".t state define stateName"}
+
+test treectrl-5.6 {state define: overflow check} -body {
+    set msg ""
+    set ret 0
+    for {set ix 0} {$ix < 1000} {incr ix} {
+	set ret [catch {.t state define state$ix} msg]
+	if {$ret} {break}
+    }
+    list $ret $ix $msg
+} -result {1 27 {cannot define any more states}}
+
+test treectrl-5.7 {state names} -body {
+    .t state names
+} -result {state0 state1 state2 state3 state4 state5 state6 state7 state8 state9 state10 state11 state12 state13 state14 state15 state16 state17 state18 state19 state20 state21 state22 state23 state24 state25 state26}
+
+test treectrl-5.8 {state undefine: missing args is ok} -body {
+    .t state undefine
+} -result {}
+
+test treectrl-5.9 {state undefine: too many args} -body {
+    eval {.t state undefine} [lrange [.t state names] 3 end]
+    .t state names
+} -result {state0 state1 state2}
+
+test treectrl-5.10 {state undefine} -body {
+    foreach state [lrange [.t state names] 1 end] {
+	.t state undefine $state
+    }
+    .t state names
+} -result {state0}
+
+test treectrl-5.11 {state linkage: missing args} -body {
+    .t state linkage
+} -returnCodes error -result {wrong # args: should be ".t state linkage state"}
+
+test treectrl-5.12 {state linkage: unknown state} -body {
+    .t state linkage foo
+} -returnCodes error -result {unknown state "foo"}
+
+test treectrl-5.13 {state linkage: predefined state} -body {
+    .t state linkage open
+} -result {static}
+
+test treectrl-5.14 {state linkage: user defined state} -body {
+    .t state linkage state0
+} -result {dynamic}
+
+test treectrl-5.15 {state define: strange state name} -body {
+    .t state define ~user
+} -returnCodes error -result {invalid state name "~user"}
+
+test treectrl-5.17 {state define: strange state name} -body {
+    .t state linkage ~user
+} -returnCodes error -result {can't specify '~' for this command}
+
+test treectrl-5.18 {state undefine: strange state name} -body {
+    .t state undefine ~user
+} -returnCodes error -result {can't specify '~' for this command}
+
+test treectrl-5.19 {state define: strange state name} -body {
+    .t state define !WatchIt!
+} -returnCodes error -result {invalid state name "!WatchIt!"}
+
+test treectrl-5.20 {state define: strange state name} -body {
+    .t state define ""
+} -returnCodes error -result {invalid state name ""}
+
+test treectrl-7.0 {some prerequisites for the marquee test} -body {
+    .t element create eImage image -width 202 -height 18m
+    .t element create eRect rect -width 10c -height 18m
+    .t style create testStyle2
+    .t style elements testStyle2 {eImage eRect}
+    .t item style set 2
+    .t item style set 8 0 testStyle2
+    update idletasks
+} -result {}
+
+test treectrl-7.1 {marquee: missing args} -body {
+    .t marquee
+} -returnCodes error -result {wrong # args: should be ".t marquee command ?arg arg ...?"}
+
+test treectrl-7.2 {marquee: unknown command} -body {
+    .t marquee foo
+} -returnCodes error -result {bad command "foo": must be *} -match glob
+
+test treectrl-7.3 {marquee anchor: not yet modified} -body {
+    .t marquee anchor
+} -result {0 0}
+
+test treectrl-7.4 {marquee anchor: odd arguments} -body {
+    .t marquee anchor 1
+} -returnCodes error -result {wrong # args: should be ".t marquee anchor ?x y?"}
+
+test treectrl-7.5 {marquee identify: should be empty} -body {
+    .t marquee identify
+} -result {}
+
+test treectrl-7.6 {marquee anchor: set it} -body {
+    .t marquee anchor 5 5
+} -result {}
+
+test treectrl-7.7 {marquee coords: retrieve them} -body {
+    .t marquee coords
+} -result {5 5 0 0}
+
+test treectrl-7.8 {marquee identify: just the root} -body {
+    .t marquee identify
+} -result {{0 0}}
+
+test treectrl-7.9 {marquee corner: set it} -body {
+    .t marquee corner 600 600
+    .t marquee coords
+} -result {5 5 600 600}
+
+test treectrl-7.10 {marquee identify} -body {
+    .t marquee identify
+} -result {{0 0} {1 0} {2 0} {3 0} {4 0} {5 0} {6 0} {7 0} {8 {0 eRect eImage}}}
+
+test treectrl-7.11 {marquee identify: after invalid item style map} -body {
+    catch {.t item style map 1 0 noStyle {foo bar}}
+    .t marquee identify
+} -result {{0 0} {1 0} {2 0} {3 0} {4 0} {5 0} {6 0} {7 0} {8 {0 eRect eImage}}}
+
+test treectrl-7.12 {marquee visible} -body {
+    list [.t marquee configure -visible] \
+	 [.t marquee cget -visible] \
+	 [.t marquee configure -visible 1] \
+	 [.t marquee cget -visible]
+} -result {{-visible {} {} 0 0} 0 {} 1}
+
+test treectrl-8.1 {selection: missing args} -body {
+    .t selection
+} -returnCodes error -result {wrong # args: should be ".t selection command ?arg arg ...?"}
+
+test treectrl-8.2 {selection: unknown command} -body {
+    .t selection foo
+} -returnCodes error -result {bad command "foo": must be *} -match glob
+
+test treectrl-8.3 {selection count/get: nothing selected yet} -body {
+    list [.t selection count] [.t selection get]
+} -result {0 {}}
+
+test treectrl-8.4 {selection anchor: always defined} -body {
+    .t selection anchor
+} -result {0}
+
+test treectrl-8.5 {selection anchor: modifies the anchor item} -body {
+    .t selection anchor "root lastchild"
+    .t item id anchor
+} -result {8}
+
+test treectrl-8.6 {selection count/get: still nothing selected} -body {
+    list [.t selection count] [.t selection get]
+} -result {0 {}}
+
+test treectrl-8.7 {selection add: all children of an item} -body {
+    .t selection add "1 firstchild" "1 lastchild"
+    list [.t selection count] [lsort -integer [.t selection get]]
+} -result {2 {2 3}}
+
+test treectrl-8.8 {selection add: all items and then some} -body {
+    .t selection add all "1 lastchild"
+    list [.t selection count] [lsort -integer [.t selection get]]
+} -result {9 {0 1 2 3 4 5 6 7 8}}
+
+test treectrl-8.9 {selection clear} -body {
+    .t selection add all
+    .t selection clear "root firstchild"
+    list [.t selection count] [lsort -integer [.t selection get]]
+} -result {8 {0 2 3 4 5 6 7 8}}
+
+test treectrl-8.10 {selection clear: some items and then all} -body {
+    .t selection clear "root lastchild" all
+    list [.t selection count] [.t selection get]
+} -result {0 {}}
+
+test treectrl-8.11 {selection modify: to be or not to be?} -body {
+    .t selection modify all all
+    list [.t selection count] [lsort -integer [.t selection get]]
+} -result {9 {0 1 2 3 4 5 6 7 8}}
+
+test treectrl-8.12 {selection clear: totally empty} -body {
+    .t selection clear
+    list [.t selection count] [lsort -integer [.t selection get]]
+} -result {0 {}}
+
+test treectrl-8.12 {selection modify: to be or not to be?} -body {
+    .t selection modify {{root firstchild} {root lastchild}} {{root lastchild}}
+    list [.t selection count] [lsort -integer [.t selection get]]
+} -result {2 {1 8}}
+
+test treectrl-8.13 {selection includes: missing args} -body {
+    .t selection includes
+} -returnCodes error -result {wrong # args: should be ".t selection includes item"}
+
+test treectrl-8.14 {selection includes: invalid item} -body {
+    .t selection includes {foo bar}
+} -returnCodes error -result {item "foo bar" doesn't exist}
+
+test treectrl-8.15 {selection includes: item is selected} -body {
+    .t selection includes {root child 2}
+} -result {1}
+
+test treectrl-8.16 {selection includes: item is not selected} -body {
+    .t selection includes {root child 0 firstchild}
+} -result {0}
+
+test treectrl-9.1 {see: missing args} -body {
+    .t see
+} -returnCodes error -result {wrong # args: should be ".t see item"}
+
+test treectrl-9.2 {see: too many args} -body {
+    .t see foo bar
+} -returnCodes error -result {wrong # args: should be ".t see item"}
+
+test treectrl-9.3 {see: invalid item} -body {
+    .t see foo
+} -returnCodes error -result {item "foo" doesn't exist}
+
+test treectrl-9.4 {see: bottom most item} -body {
+    .t see "root bottom"
+} -result {}
+
+test treectrl-10.1 {range: missing args} -body {
+    .t item range
+} -returnCodes error -result {wrong # args: should be ".t item range first last"}
+
+test treectrl-10.2 {range: too many args} -body {
+    .t item range foo bar baz
+} -returnCodes error -result {wrong # args: should be ".t item range first last"}
+
+test treectrl-10.3 {range: select all from top to bottom} -body {
+    .t item range "root top" "root bottom"
+} -result {0 1 2 3 4 5 6 7 8}
+
+test treectrl-10.4 {range: select all from bottom to top} -body {
+    .t item range "root bottom" "root top"
+} -result {0 1 2 3 4 5 6 7 8}
+
+test treectrl-11.1 {orphans: too many args} -body {
+    .t orphans foo
+} -returnCodes error -result {wrong # args: should be ".t orphans"}
+
+test treectrl-11.2 {orphans: lets make one} -body {
+    .t item remove 8
+    .t orphans
+} -result {8}
+
+test treectrl-11.3 {orphans: no orphans} -body {
+    .t item lastchild 0 8
+    .t orphans
+} -result {}
+
+test treectrl-12.1 {contentbox: too many args} -body {
+    .t contentbox foo
+} -returnCodes error -result {wrong # args: should be ".t contentbox"}
+
+test treectrl-12.2 {contentbox} -body {
+    .t contentbox
+} -result {3 3 203 203}
+
+test treectrl-12.3 {contentbox: simple double check with borders} -body {
+    expr {[lindex [.t contentbox] 0] \
+		== ([.t cget -bd]+[.t cget -highlightthickness])}
+} -result {1}
+
+test treectrl-12.4 {element delete while item is still displayed} -body {
+    .t element create elText text -text hallo
+    .t style create stText
+    .t style element stText elText
+    set new [.t item create]
+    .t item style set $new 0 stText
+    .t item lastchild 0 $new
+    .t element delete elText
+    place [frame .obscure] -in .t -relwidth 1.0 -relheight 1.0
+    update
+    destroy .obscure
+    update
+} -result {}
+
+test treectrl-13.1 {depth: too many args} -body {
+    .t depth foo bar
+} -returnCodes error -result {wrong # args: should be ".t depth ?item?"}
+
+test treectrl-13.2 {depth of the root item} -body {
+    .t depth root
+} -result {0}
+
+test treectrl-13.3 {depth of a deeper item} -body {
+    .t depth "root firstchild lastchild"
+} -result {2}
+
+test treectrl-13.4 {depth of the tree} -body {
+    .t depth
+} -result {3}
+
+test treectrl-13.5 {depth of the tree} -body {
+    .t depth
+} -setup {
+    set rootKids [.t item children root]
+    foreach i $rootKids {.t item remove $i}
+} -cleanup {
+    foreach i $rootKids {.t item lastchild root $i}
+} -result {0}
+
+test treectrl-14.1 {rename and change some columns} -body {
+    .t column delete column0
+    .t column create -tag column1
+    .t column create -tag column3
+    .t column move "order 0" "order 2"
+    .t column move "order 0" tail
+    .t element create eRect2 rect -fill blue -height 20 -width 150
+    .t style create testStyle3
+    .t style elements testStyle3 eRect2
+    .t item style set 1 column1 testStyle3
+} -result {}
+
+test treectrl-15.1 {identify: missing args} -body {
+	wm geometry . 400x200 ; update
+    .t identify
+} -returnCodes error -result {wrong # args: should be ".t identify x y"}
+
+test treectrl-15.2 {identify: negative coords} -body {
+    .t configure -showheader 1 -showlines 1 -showbuttons 1 \
+	-borderwidth 2 -highlightthickness 1 -treecolumn 2 \
+	-itemheight 0 -linethickness 1 -indent 40
+    .t item configure 1 -button true
+    update idletasks
+    .t identify -5 -5
+} -result {}
+
+test treectrl-15.3 {identify: header left} -body {
+	# column 0 has width 0
+	# column 1 has width 0
+	# column 2 has width 40 + 40 + 150 = 230
+	# borders are 2 + 1 = 3
+    .t identify 3 4
+} -result {header 2 left}
+
+test treectrl-15.4 {identify: header} -body {
+    .t identify 40 4
+} -result {header 2}
+
+test treectrl-15.5 {identify: header right} -body {
+    .t identify 232 4
+} -result {header 2 right}
+
+test treectrl-15.6 {identify: tail left} -body {
+    .t identify 233 4
+} -result {header tail left}
+
+test treectrl-15.7 {identify: tail} -body {
+    .t identify 250 4
+} -result {header tail}
+
+test treectrl-15.8 {identify: item (to the left)} -body {
+    .t identify 4 10
+} -result {item 1}
+
+test treectrl-15.9 {identify: button} -body {
+    .t identify 60 10
+} -result {item 1 button}
+
+test treectrl-15.10 {identify: over element} -body {
+    .t identify 150 10
+} -result {item 1 column 2 elem eRect2}
+
+test treectrl-15.11 {identify: item (to the right)} -body {
+    # first make column wider, otherwise we can't get right of the item
+    .t column configure column1 -width 250
+    update idletasks 
+    .t identify 233 10
+} -result {item 1 column 2}
+
+test treectrl-16.1 {dragimage: missing args} -body {
+    .t dragimage
+} -returnCodes error -result {wrong # args: should be ".t dragimage command ?arg arg ...?"}
+
+test treectrl-16.2 {dragimage: unknown command} -body {
+    .t dragimage foo
+} -returnCodes error -result {bad command "foo": must be *} -match glob
+
+test treectrl-16.3 {dragimage configure} -body {
+    .t dragimage configure
+} -result {{-visible {} {} 0 0}}
+
+test treectrl-16.4 {dragimage configure -visible} -body {
+    .t dragimage configure -visible
+} -result {-visible {} {} 0 0}
+
+test treectrl-16.5 {dragimage cget -visible} -body {
+    .t dragimage cget -visible
+} -result {0}
+
+test treectrl-16.6 {dragimage offset: without preceding add} -body {
+    .t dragimage offset
+} -result {0 0}
+
+test treectrl-16.7 {dragimage add: invalid item} -body {
+    .t dragimage add foo
+} -returnCodes error -result {item "foo" doesn't exist}
+
+test treectrl-16.8 {dragimage add: invalid column} -body {
+    .t dragimage add 1 foo
+} -returnCodes error -result {column "foo" doesn't exist}
+
+test treectrl-16.9 {dragimage add: invalid element} -body {
+    .t dragimage add 1 2 foo
+} -returnCodes error -result {element "foo" doesn't exist}
+
+test treectrl-16.10 {dragimage add: is still not visible} -body {
+    .t dragimage add 1 2
+    .t dragimage cget -visible
+} -result {0}
+
+test treectrl-16.11 {dragimage visible} -body {
+    .t dragimage configure -visible 1
+    .t dragimage cget -visible
+} -result {1}
+
+test treectrl-16.12 {dragimage offset} -body {
+    .t dragimage offset 10 10
+    .t dragimage offset
+} -result {10 10}
+
+test treectrl-16.13 {dragimage clear: too many args} -body {
+    .t dragimage clear 1
+} -returnCodes error -result {wrong # args: should be ".t dragimage clear"}
+
+test treectrl-16.14 {dragimage clear: doesn't modify the offset} -body {
+    .t dragimage clear
+    .t dragimage offset
+} -result {10 10}
+
+test treectrl-17.1 {columnproxy: Normally left blank} -body {
+    # BTW: This shouldn't be an option...
+    .t cget -columnproxy
+} -result {}
+
+test treectrl-17.2 {columnproxy: Normally left blank} -body {
+    .t configure -columnproxy foo
+} -returnCodes error -result {bad screen distance "foo"}
+
+test treectrl-17.3 {columnproxy: Negative screen distance} -body {
+    # It is unclear if this should be forbiden...
+    .t configure -columnproxy -1c
+    update idletasks
+    .t cget -columnproxy
+} -result {-1c}
+
+test treectrl-17.4 {columnproxy: screen distance bigger than width} -body {
+    # It is unclear if this should be forbiden...
+	set x [expr {[winfo width .t] + 10}]
+    .t configure -columnproxy $x
+    update idletasks
+    expr {[.t cget -columnproxy] == $x}
+} -result {1}
+
+test treectrl-17.5 {columnproxy} -body {
+    .t configure -columnproxy 100
+    update idletasks
+    .t cget -columnproxy
+} -result {100}
+
+test treectrl-18.1 {-defaultstyle: setup} -body {
+    .t column delete all
+    .t column create -tags a
+    .t column create -tags b
+    .t column create -tags c
+    .t column create -tags d
+
+    .t item delete all
+
+    .t style create a
+    .t style create b
+    .t style create c
+    .t style create d
+} -result {d}
+
+test treectrl-18.2 {-defaultstyle: set} -constraints {
+    deprecated
+} -body {
+    .t configure -defaultstyle {a b c d}
+    .t cget -defaultstyle
+} -result {a b c d}
+
+test treectrl-18.3 {-defaultstyle: new items get default styles} -constraints {
+    deprecated
+} -body {
+    set I [.t item create]
+    .t item style set $I
+} -result {a b c d}
+
+test treectrl-18.4 {-defaultstyle: moving column updates -defaultstyle} -constraints {
+    deprecated
+} -body {
+    .t column move "tag a" "tag c"
+    .t cget -defaultstyle
+} -result {b a c d}
+
+test treectrl-18.5 {-defaultstyle: moving column updates -defaultstyle} -constraints {
+    deprecated
+} -body {
+    .t column move "tag a" tail
+    .t cget -defaultstyle
+} -result {b c d a}
+
+test treectrl-18.6 {-defaultstyle: moving column updates -defaultstyle} -constraints {
+    deprecated
+} -body {
+    .t column move "tag a" "tag b"
+    .t cget -defaultstyle
+} -result {a b c d}
+
+test treectrl-18.7 {-defaultstyle: moving column updates -defaultstyle} -constraints {
+    deprecated
+} -body {
+    .t column create -tags e
+    .t column move "tag e" "tag d"
+    .t cget -defaultstyle
+} -result {a b c {} d}
+
+test treectrl-18.8 {-defaultstyle: moving column updates -defaultstyle} -constraints {
+    deprecated
+} -body {
+    .t column create -tags f
+    .t column move "tag c" tail
+    .t cget -defaultstyle
+} -result {a b {} d {} c}
+
+test treectrl-18.9 {-defaultstyle: deleting column does not update -defaultstyle} -constraints {
+    deprecated
+} -body {
+    .t column delete "tag e"
+    .t cget -defaultstyle
+} -result {a b {} d {} c}
+
+# cleanup
+image delete emptyImg
+::tcltest::cleanupTests
+return

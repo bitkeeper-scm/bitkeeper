@@ -1,0 +1,83 @@
+[comment {-*- tcl -*- idebug manpage}]
+[manpage_begin idebug n 2.5]
+[copyright {Jeffrey Hobbs <jeff at hobbs.org>}]
+[moddesc   {TkCon}]
+[titledesc {Interactive debugging environment in TkCon}]
+
+[description]
+[para]
+The idebug command provides an interactive debugging
+environment for procedures via TkCon.
+You can place idebug break commands into your procedure
+to create breakpoints.
+It will pop up the TkCon console and put you into a
+"debugging" mode.
+The [arg body], [arg show] & [arg trace] methods are
+intended for internal use only.
+
+This procedure works for minimal debugging sessions.
+Comments are encouraged.
+
+[list_begin definitions]
+
+[call [cmd idebug] [arg body] [opt [arg level]]]
+Prints out the body of the command (if it is a procedure)
+at the specified level.
+level defaults to the current level.
+
+[call [cmd idebug] [arg break] [opt [arg id]]]
+Creates a breakpoint within a procedure.
+This will only trigger if idebug is on and the [arg id] matches the pattern.
+If so, TkCon will pop to the front with the prompt changed
+to an idebug prompt.
+You are given the basic ability to observe the call stack
+an query/set variables or execute Tcl commands at any level.
+A separate history is maintained in debugging mode.
+To see the special commands available at the debug prompt,
+type ? and hit return.
+
+[call [cmd idebug] \{[arg "[arg echo] [opt [arg id]]"]\} [opt [arg args]]]
+Behaves just like [cmd echo], but only triggers when idebug is on.
+You can specify an optional [arg id] to further restrict triggering.
+If no id is specified, it defaults to the name of the command
+in which the call was made.
+
+[call [cmd idebug] [arg id] [opt [arg id]]]
+Query or set the idebug id.
+This id is used by other idebug methods to determine if
+they should trigger or not.
+The idebug id can be a glob pattern and defaults to *.
+
+[call [cmd idebug] [arg off]]
+Turns idebug off.
+
+[call [cmd idebug] [arg on] [opt [arg id]]]
+Turns idebug on.
+If [arg id] is specified, it sets the id to it.
+
+[call [cmd idebug] \{[arg "[arg puts] [opt [arg id]]"]\} [arg args]]
+Behaves just like [cmd puts], but only triggers when idebug is on.
+You can specify an optional [arg id] to further restrict triggering.
+If no id is specified, it defaults to the name of the
+command in which the call was made.
+
+[call [cmd idebug] [arg show] [arg type] [opt [arg level]] [opt [arg VERBOSE]]]
+type must be one of vars, locals or globals.
+This method will output the variables/locals/globals present
+in a particular level.
+If [arg VERBOSE] is added, then it actually [cmd dump]s out the values as well.
+level defaults to the level in which this method was called.
+
+[call [cmd idebug] [arg trace] [opt [arg level]]]
+Prints out the stack trace from the specified level up to the top level.
+level defaults to the current level.
+
+[list_end]
+
+[see_also [cmd tkcon](1)]
+[see_also [cmd tkconrc](5) [cmd tkcon](n) [cmd dump](n)]
+[see_also [cmd observe](n)]
+[keywords Tk console debug]
+
+[manpage_end]
+

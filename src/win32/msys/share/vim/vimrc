@@ -1,0 +1,12 @@
+" vimrc - global settings file
+" Copyright (c) 2004 BitMover, Inc.
+"
+" This file is distributed as part of BitKeeper.
+" It will be removed when BitKeeper is uninstalled.
+" It will be replaced when a new version of BitKeeper is installed.
+"
+" Users settings can be done in $HOME/_vimrc or $VIM/_vimrc
+" See http://vim.org for documentation 
+
+" Act like vim, not old vi
+set nocompatible

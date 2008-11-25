@@ -29,14 +29,13 @@ patch: FORCE
 	cd pub/patch && unset MAKEFLAGS && make
 
 MSYSBIN = ../gnu
-msys: ./msysver.sh MSYSKEY MSYSURL FORCE
+msys: ./msysver.sh FORCE
 	mkdir -p $(MSYSBIN)/tmp
 	-MSYSVER=`./msysver.sh`; \
 	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
 	then	tar -C$(MSYSBIN) -xpzf $$MSYSVER; \
-	else	test -d msys || bk clone -r`tail -1 MSYSKEY` \
-			`cat MSYSURL` msys; \
-		bk sfiles -Ug msys | bk get -S -; \
+	else	test -d msys || bk -P populate -s./`bk pwd -R`/msys; \
+		(cd msys && bk -Ugr bk get -S); \
 		(cd msys; bk sfiles -Ug) | \
 			tar -Cmsys -cf- -T- | \
 			tar -C$(MSYSBIN) -xf-; \
@@ -49,14 +48,14 @@ msys: ./msysver.sh MSYSKEY MSYSURL FORCE
 	fi
 	rm -f $(MSYSBIN)/bin/rxvt.exe
 
-bkshellx: getdatarepo BKSHELLXKEY BKSHELLXURL FORCE
+bkshellx: FORCE
 	[ -d dll ] || mkdir dll
-	./getdatarepo dll/shellx `cat BKSHELLXURL` BKSHELLXKEY
+	test -d dll/shellx || bk -P populate -s./`bk pwd -R`/dll/shellx
 	cd dll/shellx; bk -Ur get -Sq
 
-bkscc: getdatarepo BKSCCKEY BKSCCURL FORCE
+bkscc: FORCE
 	[ -d dll ] || mkdir dll
-	./getdatarepo dll/scc `cat BKSCCURL` BKSCCKEY
+	test -d dll/scc || bk -P populate -s./`bk pwd -R`/dll/scc
 	cd dll/scc; bk -Ur get -Sq
 
 install: all blat data/bk.ico

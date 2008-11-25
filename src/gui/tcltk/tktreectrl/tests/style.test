@@ -1,0 +1,237 @@
+# Commands covered:  treectrl's widget command style
+#
+# This file contains a collection of tests for the style widget command of
+# the tktreectrl extension.  Sourcing this file into Tcl runs the tests and
+# generates output for errors.  No output means no errors were found.
+#
+# Copyright (c) 2000 by Scriptics Corporation.
+# Copyright (c) 2002 by Christian Krone.
+#
+# See the file "license.terms" for information on usage and redistribution
+# of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+#
+# CVS: @(#) $Id$
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest 2
+    namespace import ::tcltest::*
+}
+
+package require Tk
+package require treectrl
+
+test style-0.1 {some needed preparations} -body {
+    pack [treectrl .t]
+} -result {}
+
+test style-0.1 {some other preparations} -body {
+    .t element create eBorder border
+    .t element create eText text
+    .t element create eImage image
+    .t element create eRect rect
+    list
+} -result {}
+
+test style-1.1 {style: missing args} -body {
+    .t style
+} -returnCodes error -result {wrong # args: should be ".t style command ?arg arg ...?"}
+
+test style-1.2 {style: invalid command} -body {
+    .t style foo
+} -returnCodes error -result {bad command "foo": must be *} -match glob
+
+test style-1.3 {style names: no style exists yet} -body {
+    .t style names
+} -result {}
+
+test style-2.1 {style create: missing args} -body {
+    .t style create
+} -returnCodes error -result {wrong # args: should be ".t style create name ?option value ...?"}
+
+test style-2.2 {style create: invalid option} -body {
+    .t style create testStyle -foo bar
+} -returnCodes error -result {unknown option "-foo"}
+
+test style-2.3 {style create} -body {
+    .t style create testStyle
+} -result {testStyle}
+
+test style-2.4 {style create: already existing style} -body {
+    .t style create testStyle
+} -returnCodes error -result {style "testStyle" already exists}
+
+test style-3.1 {style configure: invalid option} -body {
+    .t style configure testStyle -foo bar
+} -returnCodes error -result {unknown option "-foo"}
+
+test style-3.2 {style configure: all options} -body {
+    .t style configure testStyle
+} -result {{-orient {} {} horizontal horizontal}}
+
+test style-3.3 {style configure: the only option} -body {
+    .t style configure testStyle -orient
+} -result {-orient {} {} horizontal horizontal}
+
+test style-3.4 {style configure: invalid option -orient} -body {
+    .t style configure testStyle -orient diagonal
+} -returnCodes error -result {bad orient "diagonal": must be horizontal or vertical}
+
+test style-3.5 {style configure/cget: option -orient} -body {
+    .t style configure testStyle -orient vertical
+    .t style cget testStyle -orient
+} -result {vertical}
+
+test style-4.1 {style delete: unknown style} -body {
+    .t style delete testStyle2
+} -returnCodes error -result {style "testStyle2" doesn't exist}
+
+test style-4.2 {style delete: unknown style} -body {
+    .t style names
+} -result {testStyle}
+
+test style-4.3 {style delete} -body {
+    .t style delete testStyle
+} -result {}
+
+test style-4.4 {style names: no style defined} -body {
+    .t style names
+} -result {}
+
+test style-5.1 {style elements: missing args} -body {
+    .t style elements
+} -returnCodes error -result {wrong # args: should be ".t style elements name ?elementList?"}
+
+test style-5.2 {style elements: unknown style} -body {
+    .t style elements testStyle
+} -returnCodes error -result {style "testStyle" doesn't exist}
+
+test style-5.3 {style elements: no element yet} -body {
+    .t style create testStyle
+    .t style elements testStyle
+} -result {}
+
+test style-5.4 {style elements: empty element list} -body {
+    .t style elements testStyle {}
+} -result {}
+
+test style-5.5 {style elements: add some elements} -setup {
+    # Create some items using the style.
+    # FIXME: add test to ensure the item-column styles are updated.
+    .t column create
+    .t item create -count 100 -parent root
+    .t item style set all 0 testStyle
+} -body {
+    .t style elements testStyle {eBorder eImage eText}
+    .t style elements testStyle
+} -result {eBorder eImage eText}
+
+test style-5.6 {style elements: duplicate elements are ignored} -body {
+    .t style elements testStyle {eBorder eImage eImage eText}
+    .t style elements testStyle
+} -result {eBorder eImage eText}
+
+test style-5.7 {style elements: duplicate elements are ignored} -body {
+    .t style elements testStyle {eBorder eImage eText eImage}
+    .t style elements testStyle
+} -result {eBorder eImage eText}
+
+test style-5.8 {style elements: rearrange elements} -body {
+    .t style elements testStyle {eText eImage eBorder}
+    .t style elements testStyle
+} -result {eText eImage eBorder}
+
+test style-5.9 {style elements: remove elements} -body {
+    .t style elements testStyle {eImage}
+    .t style elements testStyle
+} -result {eImage}
+
+test style-5.10 {style elements: add elements} -body {
+    .t style elements testStyle {eBorder eText eImage}
+    .t style elements testStyle
+} -result {eBorder eText eImage}
+
+test style-6.1 {style layout: missing args} -body {
+    .t style layout
+} -returnCodes error -result {wrong # args: should be ".t style layout name element ?option? ?value? ?option value ...?"}
+
+test style-6.2 {style layout: no options specified} -body {
+    .t style layout testStyle eText
+} -result {-detach no -draw {} -expand {} -height {} -iexpand {} *} -match glob
+
+test style-6.3 {style layout: option -padx} -body {
+    .t style layout testStyle eText -padx 3
+    .t style layout testStyle eText -padx
+} -result {3}
+
+test style-6.4 {style layout: invalid 2 element -pady} -body {
+    .t style layout testStyle eText -pady {3 ""}
+} -returnCodes error -result {bad pad amount "3 """: must be a list of 1 or 2 positive screen distances}
+
+test style-6.5 {style layout: invalid 2 element -pady} -body {
+    .t style layout testStyle eText -pady "\{"
+} -returnCodes error -result {unmatched open brace in list}
+
+test style-6.6 {style layout: invalid 2 element -pady} -body {
+    .t style layout testStyle eText -pady {3 -7}
+} -returnCodes error -result {bad pad amount "3 -7": must be a list of 1 or 2 positive screen distances}
+
+test style-6.7 {style layout: invalid 2 element -pady} -body {
+    .t style layout testStyle eText -pady {3 7}
+    .t style layout testStyle eText -pady
+} -result {3 7}
+
+test style-6.8 {style layout: option -expand} -body {
+    .t style layout testStyle eText -expand "hello world"
+} -returnCodes error -result {bad expand value "hello world": must be a string containing zero or more of n, e, s, and w}
+
+test style-6.9 {style layout: option -expand} -body {
+    .t style layout testStyle eText -expand ew
+    .t style layout testStyle eText -expand
+} -result {we}
+
+test style-6.10 {style layout: option -squeeze} -body {
+    .t style layout testStyle eText -squeeze xyzzy
+} -returnCodes error -result {bad squeeze value "xyzzy": must be a string containing zero or more of x and y}
+
+test style-6.11 {style layout: option -squeeze} -body {
+    .t style layout testStyle eText -squeeze xy
+    .t style layout testStyle eText -squeeze
+} -result {xy}
+
+test style-6.12 {style layout: option -union invalid list} -body {
+    .t style layout testStyle eText -union "\{"
+} -returnCodes error -result {unmatched open brace in list}
+
+test style-6.13 {style layout: option -union unknown elements} -body {
+    .t style layout testStyle eText -union {foo bar}
+} -returnCodes error -result {element "foo" doesn't exist}
+
+test style-6.14 {style layout: option -union element not in style} -body {
+    .t style layout testStyle eText -union {eBorder eRect}
+} -returnCodes error -result {style testStyle does not use element eRect}
+
+test style-6.15 {style layout: option -union with itself} -body {
+    .t style layout testStyle eText -union {eBorder eText}
+} -returnCodes error -result {element eText can't form union with itself}
+
+test style-6.16 {style layout: option -union} -body {
+    .t style layout testStyle eText -union {eBorder eImage}
+    .t style layout testStyle eText -union
+} -result {eBorder eImage}
+
+test style-6.17 {style layout: option invalid -detach} -body {
+    .t style layout testStyle eText -detach {x y}
+} -returnCodes error -result {expected boolean value but got "x y"}
+
+test style-6.18 {style layout: option -detach} -body {
+    .t style layout testStyle eText -detach true
+    .t style layout testStyle eText -detach
+} -result {yes}
+
+test style-99.1 {some needed cleanup} -body {
+    destroy .t
+} -result {}
+
+# cleanup
+::tcltest::cleanupTests
+return

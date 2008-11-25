@@ -1,0 +1,5875 @@
+# Test the L language.
+# Copyright (c) 2007 BitMover, Inc.
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest 2
+    namespace import -force ::tcltest::*
+    testConstraint exec [llength [info commands exec]]
+}
+
+test lfile-1.0 {Test autowrapping of empty .l file} -setup {
+	set fname [makeFile {} lfile-1.0.l]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $fname
+} -cleanup {
+	removeFile lfile-1.0.l
+} -result {}
+
+test lfile-1.1 {Test autowrapping of .l works} -setup {
+	set fname [makeFile {
+		main() {
+			printf("hi mom\n");
+		}
+	} lfile-1.1.l]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $fname
+} -cleanup {
+	removeFile lfile-1.1.l
+} -result {hi mom}
+
+# main shouldn't be automatically called if within an .l file we find
+# the #lang L directive... right?
+test lfile-1.2 {Test autowrapping doesn't wrap twice} -setup {
+	set fname [makeFile {#lang L -nowarn
+		main(int ac, string av[]) {
+			printf("hi dad\n");
+		}
+	} lfile-1.2.l]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $fname
+} -cleanup {
+	removeFile lfile-1.2.l
+} -result {}
+
+test parse-1.0 {Test parsing an empty L script} -body {
+#lang L
+}
+
+test parse-1.1 {Test parsing an L script that's just white space} -body {
+#lang L
+	
+
+
+}
+
+test parse-1.2 {Test parsing an empty L file} -setup {
+	set fName [makeFile {} LFileTest]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $fName
+} -cleanup {
+	removeFile LFileTest
+} -result {}
+
+test parse-1.3 {Test parsing an L file that just has whitespace} -setup {
+	set fName [makeFile {
+
+
+
+	} LFileTest]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $fName
+} -cleanup {
+	removeFile LFileTest
+} -result {}
+
+test parse-1.3 {parse an L function named by a pattern} -body {
+#lang L
+poly Pattern_*(int a, ...rest)
+{
+	puts("${$1}${a}${rest}");
+}
+#lang tcl
+} -result {}
+
+test proc-1.0 {Test L function definition.} -body {
+#lang L
+main(void) {
+        puts("foo");
+}
+#lang tcl
+main  
+} -output "foo\n"
+
+
+test proc-1.1 {Test L function returns.} -body {
+#lang L
+f1() {
+        puts("whiz");
+}
+string
+f2() {
+        puts("bang");
+        return "foo";
+        return "bar";
+}
+f3() {
+        return;
+}
+main(void) {
+        puts(f1());
+        puts(f2());
+        puts(f3());
+}
+#lang tcl
+main  
+} -output "whiz\n\nbang\nfoo\n\n"
+
+test proc-1.2 {Test L function parameters.} -body {
+#lang L
+proc_1_2(string arg1, string arg2) {
+        puts(arg1);
+        puts(arg2);
+} 
+#lang tcl
+proc_1_2 "val1" "val2" 
+} -output "val1\nval2\n"
+
+test proc-1.3 {Test variable arity functions} -body {
+#lang L
+proc_1_3() {
+	foo("a", "b", "c", "d");
+	foo();
+	bar(1, 2, 3, 4);
+	bar(1);
+}
+string foo(...stuff) {
+	int i;
+	for (i=0; defined(stuff[i]); i++) {
+		printf("%s ", stuff[i]);
+	}
+	printf("\n");
+}
+string bar(int a, ...stuff) {
+	puts(a);
+	puts(stuff);
+}
+#lang tcl
+proc_1_3
+} -output "a b c d \n\n1\n2 3 4\n1\n\n"
+
+test proc-1.4 {Ensure rest parameter comes last} -body {
+#lang L -nowarn
+proc_1_4(int a, ...b, int c) {
+	puts("oops");
+}
+#lang tcl
+proc_1_4
+} -returnCodes {error} -match glob -result "*:1: L Error: Rest parameter must be last\n"
+
+
+test var-1.0 {Test L variable assignment and reference} -body {
+#lang L
+var_1_0(void)
+{
+	string s;
+        s = "Hello";
+	puts(s);
+}
+#lang tcl
+var_1_0
+} -output "Hello\n"
+
+test var-1.1 {L global variables} -body {
+#lang L
+int lglobal1_1 = 1;
+var_1_1(void)
+{
+        puts(lglobal1_1);
+}
+#lang tcl
+var_1_1
+} -output "1\n"
+
+
+test var-1.2 {L global variables, harder} -body {
+#lang L
+int lglobal1_2 = 3;
+var_1_2(void)
+{
+        puts(lglobal1_2);
+        lglobal1_2 = 4;
+        var_1_2_aux();
+        puts(lglobal1_2);
+}
+
+var_1_2_aux()
+{
+        puts(lglobal1_2);
+        lglobal1_2 = 5;
+}
+#lang tcl
+var_1_2
+} -output "3\n4\n5\n"
+
+test var-1.4 {Variable function names} -body {
+#lang L
+var_1_4() {
+  string printfvar = "printf";
+  printfvar("Earth calling printf\n");
+}
+#lang tcl
+var_1_4
+} -output "Earth calling printf\n"
+
+
+test var-1.3 {A global array of structs} -body {
+#lang L
+
+struct var_1_3_point { int x, y; };
+struct var_1_3_point lglobal1_3[5];
+
+var_1_3(void)
+{
+        int i = 0;
+
+        puts(lglobal1_3);
+        while (i < 5) {
+          lglobal1_3[i].x = i * 10;
+          lglobal1_3[i].y = i * 20;
+          i++;
+        }
+        puts(lglobal1_3);
+        var_1_3_aux(3);
+        puts(lglobal1_3);
+}
+
+var_1_3_aux(int i)
+{
+        lglobal1_3[i].x = i * 35;
+        lglobal1_3[i].y = i * 45;
+}
+#lang tcl
+var_1_3
+} -output "
+{0 0} {10 20} {20 40} {30 60} {40 80}
+{0 0} {10 20} {20 40} {105 135} {40 80}
+"
+
+test var-1.4 {Test extern variables} -body {
+set tclvar "this is an extern variable"
+#lang L
+var_1_4()
+{
+	extern string tclvar;
+	puts(tclvar);
+}
+#lang tcl
+var_1_4
+} -output "this is an extern variable\n"
+
+test lang-1.0 {Test lang parsing} -body {
+# These are some Tcl Comments
+#lang L
+main(void)
+{
+	puts("worked");
+}
+
+#lang tcl
+# More comments
+main
+} -output "worked\n"
+
+test lang-2.0 {Test failure path in lang parsing} -body {
+#lang(foo)
+main(void)
+{
+	puts("worked");
+}
+
+#lang tcl
+main
+} -returnCodes {error} -result {malformed pragma}
+
+# no output because we're not calling any functions
+test lang-3.0 {Test not switching back to Tcl} -body {
+#lang L
+main(void)
+{
+	puts("worked");
+}
+}
+
+test decl-1.0 {Variable and parameter declaration syntax} -body {
+#lang L -nowarn
+fun1() { }
+fun2(void) { }
+void fun3() { }
+int fun4() { }
+fun5(int foo) { }
+hash fun6(hash foo, hash bar[], hash baz[23]) { }
+void fun7(int foo, float bar, hash baz, string quux, poly quuux, var quuuux) { }
+void fun8() {
+        int foo, bar[], baz[84][42][1];
+        string foo1[19], mani[], padmi = "hum";
+        hash whee;
+        if (0) {
+                int bleh = 5;
+        } else {
+                if (1) {
+                        poly padmi1 = "om";
+                        puts(padmi1);
+                }
+        }
+}
+#lang tcl
+fun8
+} -output "om\n";
+
+test decl-1.1 {Hairy literal hash syntax in initializers} -body {
+#lang L -nowarn
+initmewoo() {
+        hash h = { "key" => "val", "key2" => "val" };
+}
+#lang tcl
+}
+
+test decl-1.2 {Undeclared variable error} -body {
+#lang L
+undecl() {
+        foo = "bar";
+        puts(cheese);
+}
+#lang tcl
+undecl
+} -returnCodes error -match glob -result {*L Error: Undeclared variable: foo
+*L Error: Undeclared variable: cheese
+}
+
+
+test decl-1.3 {Variable shadowing} -body {
+#lang L
+shadow() {
+        int foo = 1;
+        if (1) {
+                int foo = 2;
+                puts(foo);
+        } 
+        puts(foo);
+}
+#lang tcl
+shadow
+} -returnCodes error -match glob -result {*L Error: Illegal redeclaration of local variable foo
+}
+
+test decl-1.4 {Single dimensional initializers actually initialize} -body {
+#lang L
+decl_1_4 () {
+  int foo[] = {4, 5, 6};
+  hash bar = {"foo" => 4, "bar" => 5, "baz" => 6};
+  struct { int x; int y; } point = { 1024, 768 };
+
+  printf("%s\n", foo);
+  printf("%s\n", bar);
+  printf("%s\n", point);
+}
+#lang tcl
+decl_1_4
+} -output "4 5 6\nfoo 4 bar 5 baz 6\n1024 768\n"
+
+test decl-1.5 {test one-dimensional partial array initializers} -body {
+#lang L
+void
+decl_1_5()
+{
+	/*
+	 * Check that partial array initializers get padded out with
+	 * 0/0.0/"" (based on the type).
+	 */
+
+	int	vi;
+	string	vs;
+	float	vf;
+	int	a1[];
+	int	a2[]  = {0, 1, 2};
+	int	a3[3] = {0, 1, 2};
+	int	a4[9] = {0, 1, 2};
+	float	f1[];
+	float	f2[]  = {0.1, 1.1, 2.1};
+	float	f3[3] = {0.1, 1.1, 2.1};
+	float	f4[9] = {0.1, 1.1, 2.1};
+	string	s1[];
+	string	s2[]  = {"zero", "one", "two"};
+	string	s3[3] = {"zero", "one", "two"};
+	string	s4[9] = {"zero", "one", "two"};
+
+	foreach (vi in a1) printf("a1 has %d\n", vi);
+	foreach (vi in a2) printf("a2 has %d\n", vi);
+	foreach (vi in a3) printf("a3 has %d\n", vi);
+	foreach (vi in a4) printf("a4 has %d\n", vi);
+	if (defined(a1[3])) puts("bad 1.1");
+	if (defined(a2[3])) puts("bad 1.2");
+	if (defined(a3[3])) puts("bad 1.3");
+	if (defined(a4[9])) puts("bad 1.4");
+
+	foreach (vf in f1) printf("f1 has %3.1f\n", vf);
+	foreach (vf in f2) printf("f2 has %3.1f\n", vf);
+	foreach (vf in f3) printf("f3 has %3.1f\n", vf);
+	foreach (vf in f4) printf("f4 has %3.1f\n", vf);
+	if (defined(f1[3])) puts("bad 2.1");
+	if (defined(f2[3])) puts("bad 2.2");
+	if (defined(f3[3])) puts("bad 2.3");
+	if (defined(f4[9])) puts("bad 2.4");
+
+	foreach (vs in s1) printf("s1 has '%s'\n", vs);
+	foreach (vs in s2) printf("s2 has '%s'\n", vs);
+	foreach (vs in s3) printf("s3 has '%s'\n", vs);
+	foreach (vs in s4) printf("s4 has '%s'\n", vs);
+	if (defined(s1[3])) puts("bad 3.1");
+	if (defined(s2[3])) puts("bad 3.2");
+	if (defined(s3[3])) puts("bad 3.3");
+	if (defined(s4[9])) puts("bad 3.4");
+}
+#lang tcl
+decl_1_5
+} -output "a2 has 0
+a2 has 1
+a2 has 2
+a3 has 0
+a3 has 1
+a3 has 2
+a4 has 0
+a4 has 1
+a4 has 2
+a4 has 0
+a4 has 0
+a4 has 0
+a4 has 0
+a4 has 0
+a4 has 0
+f2 has 0.1
+f2 has 1.1
+f2 has 2.1
+f3 has 0.1
+f3 has 1.1
+f3 has 2.1
+f4 has 0.1
+f4 has 1.1
+f4 has 2.1
+f4 has 0.0
+f4 has 0.0
+f4 has 0.0
+f4 has 0.0
+f4 has 0.0
+f4 has 0.0
+s2 has 'zero'
+s2 has 'one'
+s2 has 'two'
+s3 has 'zero'
+s3 has 'one'
+s3 has 'two'
+s4 has 'zero'
+s4 has 'one'
+s4 has 'two'
+s4 has ''
+s4 has ''
+s4 has ''
+s4 has ''
+s4 has ''
+s4 has ''
+"
+
+test if-1.0 {If statements} -body {
+#lang L
+if_1_0() {
+        if (1) puts("0 working");
+        if (0) {
+                puts("1 broken");
+        } 
+        puts("between");
+        if (1) {
+                puts("1 working");
+        } 
+}
+#lang tcl
+if_1_0
+} -output "0 working\nbetween\n1 working\n"
+
+
+test if-1.1 {If statements with else clauses and multistatement bodies} -body {
+#lang L
+if_1_1() {
+        if (1) {
+                puts("1 working");
+                puts(".");
+        } else {
+                puts("1 broken");
+                puts(".");
+        }
+        
+        if (0) {
+                puts("2 broken");
+                puts(".");
+                puts(".");
+        } else {
+                puts("2 working");
+                puts(".");
+                puts(".");
+        }
+}
+#lang tcl
+if_1_1
+} -output "1 working\n.\n2 working\n.\n.\n"
+
+
+test if-1.2 {"else if" clauses} -body {
+#lang L
+if_1_2() {
+        if (0) {
+                puts("1 broken");
+        } else if (1) {
+                puts("1 working");
+        }
+
+        puts("between");
+
+        if (0) {
+                puts("2 broken");
+        } else if (0) {
+                puts("2.2 broken");
+        } else {
+                puts("2 working");
+        }
+}
+#lang tcl
+if_1_2
+} -output "1 working\nbetween\n2 working\n"
+
+test if-1.3 {nested if statements} -body {
+#lang L
+if_1_3() {
+        if (1) {
+                puts("1 before");
+                if (0) {
+                        puts("1 broken");
+                } else {
+                        puts("1 working");
+                }
+                puts("1 after");
+        } else {
+                puts("1.1 broken");
+        }
+        puts("1 done");
+}
+#lang tcl
+if_1_3
+} -output "1 before\n1 working\n1 after\n1 done\n"
+
+
+test if-1.4 {else is only allowed with curly braces} -body {
+#lang L
+main(void)
+{
+	if (0) puts("1 broken"); else puts("1 even more broken");
+}
+#lang tcl
+} -returnCodes error -match glob -result "*3: L Error: syntax error, unexpected T_ELSE\n"
+
+
+test unless-1.0 {unless statements} -body {
+#lang L
+unless_1_0() {
+        unless(0) puts("0 working");
+        unless(0) {
+                puts("1 working");
+        }
+        unless(1) {
+                puts("2 broken");
+        } else {
+                puts("2 working");
+        }
+        unless(1) {
+                puts("3 broken");
+        } else unless (1) {
+                puts("3.1 broken");
+        } else {
+                puts("3 working");
+        }
+} 
+#lang tcl
+unless_1_0
+} -output "0 working\n1 working\n2 working\n3 working\n"
+
+test unless-1.1 {unless and if statements mixed} -body {
+#lang L
+unless_1_1() {
+        unless(1) {
+                puts("1 broken");
+        } else if (0) {
+                puts("1.1 broken");
+        } else unless(0) {
+                puts("1 working");
+        }
+        puts("done");
+} 
+#lang tcl
+unless_1_1
+} -output "1 working\ndone\n"
+
+test return-1.1 {return from void function allowed} -body {
+#lang L
+void good() { return; }
+} -returnCodes normal
+
+test return-1.2 {returning int from void function disallowed} -body {
+#lang L
+void bad() { return 0; }
+} -returnCodes error -match regexp -result ".*Cannot return value from void function"
+
+test return-1.3 {returning string from void function disallowed} -body {
+#lang L
+void bad() { return "str"; }
+} -returnCodes error -match regexp -result ".*Cannot return value from void function"
+
+test return-1.4 {returning float from void function disallowed} -body {
+#lang L
+void bad() { return 2.99792458; }
+} -returnCodes error -match regexp -result ".*Cannot return value from void function"
+
+test return-1.5 {returning array from void function disallowed} -body {
+#lang L
+void bad() {
+	int	a[3];
+	return a;
+}
+} -returnCodes error -match regexp -result ".*Cannot return value from void function"
+
+test return-1.6 {returning hash from void function disallowed} -body {
+#lang L
+void bad() {
+	hash	h;
+	return h;
+}
+} -returnCodes error -match regexp -result ".*Cannot return value from void function"
+
+test return-1.7 {returning struct from void function disallowed} -body {
+#lang L
+void bad() {
+	struct { int x,y; } s;
+	return s;
+}
+} -returnCodes error -match regexp -result ".*Cannot return value from void function"
+
+test return-1.8 {returning poly from void function disallowed} -body {
+#lang L
+void bad() {
+	poly	p;
+	return p;
+}
+} -returnCodes error -match regexp -result ".*Cannot return value from void function"
+
+test return-1.9 {return from global scope illegal} -body {
+#lang L
+return;
+} -returnCodes error -match regexp -result ".*Return from global scope illegal"
+
+test return-2.1 {int return value from int function allowed} -body {
+#lang L
+int f() { return 123; }
+unless (f() == 123) printf("BAD\n");
+} -output ""
+
+test return-2.2 {float return value from float function allowed} -body {
+#lang L
+float f() { return 123.456; }
+unless (f() == 123.456) printf("BAD\n");
+} -output ""
+
+test return-2.3 {string return value from string function allowed} -body {
+#lang L
+string f() { return "str"; }
+unless (f() eq "str") printf("BAD\n");
+} -output ""
+
+test return-2.4 {array return value from array function allowed} -body {
+#lang L
+int[]
+f()
+{
+	int	a[3] = {2,3,5};
+	return a;
+}
+int res[] = f();
+unless ((res[0] == 2) && (res[1] == 3) && (res[2] == 5)) printf("BAD\n");
+} -output ""
+
+test return-2.5 {hash return value from hash function allowed} -body {
+#lang L
+hash
+f()
+{
+	hash	h;
+	h{"one"} = 1;
+	h{"two"} = 2;
+	h{"ten"} = 10;
+	return h;
+}
+hash res = f();
+unless ((res{"one"} == 1) && (res{"two"} == 2) && (res{"ten"} == 10)) printf("BAD\n");
+} -output ""
+
+test return-2.6 {struct return value from struct function allowed} -body {
+#lang L
+struct s {
+	int x, y, z;
+};
+struct s
+f()
+{
+	struct s s;
+	s.x = 1;
+	s.y = 2;
+	s.z = 3;
+	return s;
+}
+struct s res = f();
+unless ((res.x == 1) && (res.y == 2) && (res.z == 3)) printf("BAD\n");
+} -output ""
+
+# Spot-check some of the type-checking cases to ensure that return-value
+# type checking is being done.  Do not check all possible permutations.
+
+test return-3.1 {int return value from string function disallowed} -body {
+#lang L
+string f() { return 1; }
+} -returnCodes error -match regexp -result ".*type error.*want L_TYPE_STRING.*got L_TYPE_INT"
+
+test return-3.2 {float return value from string function disallowed} -body {
+#lang L
+string f() { return 1.2; }
+} -returnCodes error -match regexp -result ".*type error.*want L_TYPE_STRING.*got L_TYPE_FLOAT"
+
+test return-3.3 {int return value from hash function disallowed} -body {
+#lang L
+hash f() { return 1; }
+} -returnCodes error -match regexp -result ".*type error.*want L_TYPE_HASH.*got L_TYPE_INT"
+
+test return-3.4 {array return value from hash function disallowed} -body {
+#lang L
+hash f() { int a[3]; return a; }
+} -returnCodes error -match regexp -result ".*type error.*want L_TYPE_HASH.*got L_TYPE_ARRAY"
+
+test return-3.5 {int return value from struct function disallowed} -body {
+#lang L
+struct s {
+	int x, y;
+};
+struct s f() { return 1; }
+} -returnCodes error -match regexp -result ".*type error.*want L_TYPE_STRUCT.*got L_TYPE_INT"
+
+test return-3.6 {hash return value from struct function disallowed} -body {
+#lang L
+struct s {
+	int x, y;
+};
+struct s f() { hash h; return h; }
+} -returnCodes error -match regexp -result ".*type error.*want L_TYPE_STRUCT.*got L_TYPE_HASH"
+
+test return-3.7 {int return value from array function disallowed} -body {
+#lang L
+int[] f() { return 1; }
+} -returnCodes error -match regexp -result ".*type error.*want L_TYPE_ARRAY.*got L_TYPE_INT"
+
+test return-3.8 {struct return value from array function disallowed} -body {
+#lang L
+struct s {
+	int x, y;
+};
+int[] f() { struct s s; return s; }
+} -returnCodes error -match regexp -result ".*type error.*want L_TYPE_ARRAY.*got L_TYPE_STRUCT"
+
+test return-3.9 {hash return value from array function disallowed} -body {
+#lang L
+int[] f() { hash h; return h; }
+} -returnCodes error -match regexp -result ".*type error.*want L_TYPE_ARRAY.*got L_TYPE_HASH"
+
+test syntax-1.0 {single-line comments a la C++} -body {
+#lang L
+syntax_1_0() {
+        // single-line comments are 
+        puts("working"); //see?
+        //////cruftilioucious 
+}
+#lang tcl
+syntax_1_0
+} -output "working\n" 
+
+
+test syntax-1.1 {structure syntax} -body {
+#lang L -nowarn
+
+struct syntax_1_1_point {
+        int x, y;
+        string label;
+        float froboz[128];
+        struct { int m, n; } sub_struct;
+};
+
+syntax_1_1() {
+        struct { string firstname; string lastname; } him;
+        struct { string firstname; string lastname; } me = {"john", "doe"};
+        struct syntax_1_1_point p1, p2 = {1, 2} , p3;
+        puts("didn't crash");
+}
+
+#lang tcl
+syntax_1_1
+} -output "didn't crash\n"
+
+test syntax-1.2 {interpolated strings} -body {
+#lang L
+
+syntax_1_2() {
+        int i = 1, j = 2;
+        string m = "ASDF";
+
+        puts("syntax_${ i + j - 2 }_${j}.");
+        puts("foo ${"bar ${m} baz"} zot");
+}
+
+#lang tcl
+syntax_1_2
+} -output "syntax_1_2.\nfoo bar ASDF baz zot\n"
+
+test syntax-1.3 {keywords} -body {
+#lang L
+syntax_1_3() {
+	printf("%s, %s, %s\n", foo : "bar", baz:);
+}
+#lang tcl
+syntax_1_3
+} -output "-foo, bar, -baz\n"
+
+test syntax-1.4 {string appendation} -body {
+#lang L
+syntax_1_4() {
+	printf("these" "strings"
+	    "stick" "together.\n");
+}
+#lang tcl
+syntax_1_4
+} -output "thesestringssticktogether.\n"
+
+test op-1.0 {increment and decrement operators} -body {
+#lang L
+op_1_0() {
+        int i = 1;
+
+        puts("pre:");
+        puts(i);
+        ++i;
+        puts(i);
+        puts(++i);
+        --i;
+        puts(i);
+        puts(--i);
+
+        puts("post:");
+        puts(i);
+        i++;
+        puts(i);
+        puts(i++);
+        puts(i);
+        i--;
+        puts(i);
+        puts(i--);
+        puts(i);
+}
+#lang tcl
+op_1_0
+} -output "pre:\n1\n2\n3\n2\n1\npost:\n1\n2\n2\n3\n2\n2\n1\n"
+
+test op-1.1 {plus, minus, multiply, divide, and modulus operators} -body {
+#lang L
+op_1_1() {
+        int i = 2;
+        puts(i + 5);
+        puts(i - 50);
+        puts(i * 500);
+        puts(i / 2);
+        puts(i / 4.0);
+        puts((i + 5) % 3);
+        // precedence
+        puts(i + i / i - i * i % i);
+}
+#lang tcl
+op_1_1
+} -output "7\n-48\n1000\n1\n0.5\n1\n3\n"
+
+test op-1.2 {unary plus and minus} -body {
+#lang L
+op_1_2() {
+        int i = -2;
+        int j = +2;
+
+        puts(i);
+        i = i + -100;
+        puts(i);
+        puts(i * -3);
+        puts(-8 - -2);
+
+        puts(j);
+        j = j + +100;
+        puts(j);
+        puts(j * +3);
+        puts(+8 - +2);
+}
+#lang tcl
+op_1_2
+} -output "-2\n-102\n306\n-6\n2\n102\n306\n6\n"
+
+test op-1.3 {numeric comparison operators} -body {
+#lang L
+op_1_3() {
+        if (-1 < 1) { puts("1okay"); } else { puts("1broken"); }
+        if (1 > -1) { puts("2okay"); } else { puts("2broken"); }
+        if (1 == 1) { puts("3okay"); } else { puts("3broken"); }
+        if (1 <= 1) { puts("4okay"); } else { puts("4broken"); }
+        if (-1 <= 1) { puts("5okay"); } else { puts("5broken"); }
+        if (1 >= -1) { puts("6okay"); } else { puts("6broken"); }
+        if (1 >= 0) { puts("7okay"); } else { puts("7broken"); }
+        if (0 != 1) { puts("8okay"); } else { puts("8broken"); }
+        // now from the other side
+        puts("--");
+        if (1 < 1) { puts("1broken"); } else { puts("1okay"); }
+        if (1 > 1) { puts("2broken"); } else { puts("2okay"); }
+        if (1 == 0) { puts("3broken"); } else { puts("3okay"); }
+        if (1 != 1) { puts("4broken"); } else { puts("4okay"); }
+        if (1 <= -1) { puts("5broken"); } else { puts("5okay"); }
+        if (-1 >= 1) { puts("6broken"); } else { puts("6okay"); }
+
+}
+#lang tcl
+op_1_3
+} -output "1okay\n2okay\n3okay\n4okay\n5okay\n6okay\n7okay\n8okay
+--\n1okay\n2okay\n3okay\n4okay\n5okay\n6okay\n"
+
+test op-1.4 {lexicographic comparison operators} -body {
+#lang L
+op_1_4() {
+        if ("aa" lt "ab") { puts("1okay"); } else { puts("1broken"); }
+        if ("ab" gt "aa") { puts("2okay"); } else { puts("2broken"); }
+        if ("aa" eq "aa") { puts("3okay"); } else { puts("3broken"); }
+        if ("aa" le "aa") { puts("4okay"); } else { puts("4broken"); }
+        if ("aa" le "ab") { puts("5okay"); } else { puts("5broken"); }
+        if ("aa" ge "aa") { puts("6okay"); } else { puts("6broken"); }
+        if ("ab" ge "aa") { puts("7okay"); } else { puts("7broken"); }
+        if ("aa" ne "ab") { puts("8okay"); } else { puts("8broken"); }
+        // now from the other side
+        puts("--");
+        if ("aa" lt "aa") { puts("1broken"); } else { puts("1okay"); }
+        if ("aa" gt "aa") { puts("2broken"); } else { puts("2okay"); }
+        if ("ab" eq "aa") { puts("3broken"); } else { puts("3okay"); }
+        if ("aa" ne "aa") { puts("4broken"); } else { puts("4okay"); }
+        if ("ab" le "aa") { puts("5broken"); } else { puts("5okay"); }
+        if ("aa" ge "ab") { puts("6broken"); } else { puts("6okay"); }
+
+}
+#lang tcl
+op_1_4
+} -output "1okay\n2okay\n3okay\n4okay\n5okay\n6okay\n7okay\n8okay
+--\n1okay\n2okay\n3okay\n4okay\n5okay\n6okay\n"
+
+
+test op-1.5 {boolean operators} -body {
+#lang L
+op_1_5() {
+        int true = 1, false = 0;
+        if (true && true)       { puts("1okay"); } else { puts("1broken"); }
+        if (!false)             { puts("2okay"); } else { puts("2broken"); }
+        if (false || true)      { puts("3okay"); } else { puts("3broken"); }
+        if (true && !false)     { puts("4okay"); } else { puts("4broken"); }
+        // && has higher precedence than ||
+        if (false && false || true) { puts("5okay"); } else { puts("5broken"); }
+        // now from the other side
+        puts("--");
+        if (true && !true)      { puts("1broken"); } else { puts("1okay"); }
+        if (false || false)     { puts("2broken"); } else { puts("2okay"); }
+        if (!true)              { puts("3broken"); } else { puts("3okay"); }
+
+}
+#lang tcl
+op_1_5
+} -output "1okay\n2okay\n3okay\n4okay\n5okay\n--\n1okay\n2okay\n3okay\n"
+
+
+test op-1.6 {bitwise operators} -body {
+#lang L
+op_1_6(){
+        int bits = 715827882;
+
+        puts(bits << 1);
+        puts(bits >> 1);
+        puts(bits >> 29);
+        puts(-1 << 10);
+        puts(-1024 >> 9);
+        puts(~bits);
+        puts(bits & ~bits);
+        puts(bits | ~bits);
+        puts(bits ^ (bits + 1));
+
+}
+#lang tcl
+op_1_6
+} -output "1431655764\n357913941\n1\n-1024\n-2\n-715827883\n0\n-1\n1\n"
+
+
+test op-1.7 {logical operator short-circuiting} -body {
+#lang L
+int
+puts_int(string str) {
+        puts(str);
+        return 9;
+}
+op_1_7(){
+        puts(0 && puts_int("1"));
+        puts(1 && puts_int("2"));
+        puts(0 || puts_int("3"));
+        puts(1 || puts_int("4"));
+}
+#lang tcl
+op_1_7
+} -output "0\n2\n9\n3\n9\n1\n"
+
+test op-1.8 {compound assignment operators, simple lvalues} -body {
+#lang L
+op_1_8() {
+  int foo;
+
+  puts(foo += 2);
+  puts(foo);
+  puts(foo -= 3);
+  puts(foo);
+  puts(foo *= 4);
+  puts(foo);
+  puts(foo /= -2);
+  puts(foo);
+  foo = 17;
+  puts(foo %= 7);
+  puts(foo);
+  puts(foo |= 9);
+  puts(foo);
+  puts(foo &= 8);
+  puts(foo);
+  puts(foo ^= 9);
+  puts(foo);
+  puts(foo <<= 3);
+  puts(foo);
+  puts(foo >>= 2);
+  puts(foo);
+}
+#lang tcl
+op_1_8
+} -output "2\n2\n-1\n-1\n-4\n-4\n2\n2\n3\n3\n11\n11\n8\n8\n1\n1\n8\n8\n2\n2\n"
+
+test op-1.9 {compound assignment operators, array lvalues} -body {
+#lang L
+op_1_9() {
+  int foo[4] = {0};
+
+  puts(foo[2] += 2);
+  puts(foo[2]);
+  puts(foo[2] -= 3);
+  puts(foo[2]);
+  puts(foo[2] *= 4);
+  puts(foo[2]);
+  puts(foo[2] /= -2);
+  puts(foo[2]);
+  foo[2] = 17;
+  puts(foo[2] %= 7);
+  puts(foo[2]);
+  puts(foo[2] |= 9);
+  puts(foo[2]);
+  puts(foo[2] &= 8);
+  puts(foo[2]);
+  puts(foo[2] ^= 9);
+  puts(foo[2]);
+  puts(foo[2] <<= 3);
+  puts(foo[2]);
+  puts(foo[2] >>= 2);
+  puts(foo[2]);
+  puts(foo);
+}
+#lang tcl
+op_1_9
+} -output "2\n2\n-1\n-1\n-4\n-4\n2\n2\n3\n3\n11\n11\n8\n8\n1\n1\n8\n8\n2\n2\n0 0 2 0\n"
+
+test cast-1.0 { Casts to integer and float } -body {
+#lang L
+cast_1_0() {
+    printf("%d\n", (int)1.9);
+    printf("%f\n", (float)5);
+}
+#lang tcl
+cast_1_0
+} -output "1\n5.000000\n"
+
+test cast-1.1 { Invalid cast from string to int } -body {
+#lang L
+cast_1_1() {
+    printf("%d\n", (int)"asdf");
+}
+#lang tcl
+cast_1_1
+} -returnCodes {error} -result {expected number but got "asdf"}
+
+test cast-1.2 { Invalid cast from string to float } -body {
+#lang L
+cast_1_2() {
+    printf("%f\n", (float)"asdf");
+}
+#lang tcl
+cast_1_2
+} -returnCodes {error} -result {expected floating-point number but got "asdf"}
+
+test array-1.0 { Single-dimensional array creation and indexing } -body {
+#lang L
+array_1_0() {
+    int array[3];
+
+    array[0] = 1;
+    array[1] = 2;
+    array[2] = 3;
+    puts(array[2]);
+}
+#lang tcl
+array_1_0
+} -output "3\n"
+
+test array-1.1 { Multi-dimensional array creation and indexing } -body {
+#lang L
+array_1_0() {
+    int array[4][3][2];
+
+    puts(array);
+    array[0][0][0] = 1;
+    array[1][1][1] = 2;
+    array[2][2][0] = 3;
+    array[3][0][1] = 4;
+    puts(array);
+}
+#lang tcl
+array_1_0
+} -output "
+1 {{} {{} 2}} {{} {} 3} {{{} 4}}\n"
+
+
+test array-1.2 {increment and decrement on array elements} -body {
+#lang L
+array_1_2() {
+  int foo[5] = {0};
+
+  foo[3] = 0;
+  for (foo[3]=0; foo[3]<5; foo[3]++);
+  puts(foo);
+
+  puts("pre:");
+  puts(foo[3]);
+  ++foo[3];
+  puts(foo[3]);
+  puts(++foo[3]);
+  --foo[3];
+  puts(foo[3]);
+  puts(--foo[3]);
+
+  puts("post:");
+  puts(foo[3]);
+  foo[3]++;
+  puts(foo[3]);
+  puts(foo[3]++);
+  puts(foo[3]);
+  foo[3]--;
+  puts(foo[3]);
+  puts(foo[3]--);
+  puts(foo[3]);
+  puts(foo);
+}
+#lang tcl
+array_1_2
+} -output "0 0 0 5 0\npre:\n5\n6\n7\n6\n5\npost:\n5\n6\n6\n7\n6\n6\n5\n0 0 0 5 0\n"
+
+test array_1_3 {1d arrays with no length auto-extend by one at a time} -body {
+#lang L
+array_1_3() {
+  int foo[];
+
+  foo[0] = 4;
+  foo[1] = 5;
+  foo[2] = 6;
+  puts(foo);
+}
+#lang tcl
+array_1_3
+} -output "4 5 6\n"
+
+test array_1_4 {extend arrays using push and pop} -body {
+#lang L
+array_1_4() {
+  int foo[];
+
+  push(&foo, 1);
+  push(&foo, 2);
+  push(&foo, 3);
+  puts(foo);
+  puts(pop(&foo));
+  puts(foo);
+  puts(pop(&foo));
+  puts(foo);
+  puts(pop(&foo));
+  puts(foo);
+  puts(pop(&foo));
+  puts(foo);
+} 
+#lang tcl
+array_1_4
+} -output "1 2 3\n3\n1 2\n2\n1\n1\n\n\n\n"
+
+
+test loop-1.0 {while loops} -body {
+#lang L
+loop_1_0() {
+        int i = 0;
+        while (i++ < 5) puts (i);
+        while (i) {
+                int j = i--;
+                puts(j);
+        }
+}
+#lang tcl
+loop_1_0
+} -output "1\n2\n3\n4\n5\n6\n5\n4\n3\n2\n1\n"
+test loop-1.1 {for loops} -body {
+#lang L
+loop_1_1() {
+        int i;
+        for (i=1; i<7; i++) {
+                puts(i);
+        }
+        puts("-*-");
+        for ( ; i; i--) {
+                puts(i);
+        }
+}
+#lang tcl
+loop_1_1
+} -output "1\n2\n3\n4\n5\n6\n-*-\n7\n6\n5\n4\n3\n2\n1\n"
+
+test loop-1.2.0 {simple foreach loops} -body {
+#lang L
+struct s {
+	int	i;
+	int	j;
+	string	s;
+};
+void
+loop_1_2_0()
+{
+	int	k, vi;
+	string	vs;
+	float	vf;
+	hash	h0 = { };
+	hash	h1 = { 0=>1 };
+	hash	h2 = { 0=>1, 1=>2 };
+	hash	h3 = { 0=>1, 1=>2, 2=>3 };
+	int	ai0[];
+	int	ai1[1] = { 11 };
+	int	ai2[2] = { 22, 23 };
+	int	ai3[3] = { 33, 34, 35 };
+	string	as0[0];
+	string	as1[1] = { "a" };
+	string	as2[2] = { "b", "c" };
+	string	as3[3] = { "d", "e", "f" };
+	float	af0[0];
+	float	af1[1] = { 1.1 };
+	float	af2[2] = { 2.1, 2.2 };
+	float	af3[3] = { 3.1, 3.2, 3.3 };
+	struct s	vc;
+	struct s	ac[3];
+
+	printf("start\n");
+	foreach (k in h0) {
+		printf("h0 has %d\n", k);
+	}
+	foreach (k in h1) {
+		printf("h1 has %d\n", k);
+	}
+	foreach (k in h2) {
+		printf("h2 has %d\n", k);
+	}
+	foreach (k in h3) {
+		printf("h3 has %d\n", k);
+	}
+	foreach (k=>vi in h0) {
+		printf("h0 has %d=>%d\n", k, vi);
+	}
+	foreach (k=>vi in h1) {
+		printf("h1 has %d=>%d\n", k, vi);
+	}
+	foreach (k=>vi in h2) {
+		printf("h2 has %d=>%d\n", k, vi);
+	}
+	foreach (k=>vi in h3) {
+		printf("h3 has %d=>%d\n", k, vi);
+	}
+	foreach (vi in ai0) {
+		printf("ai0 has %d\n", vi);
+	}
+	foreach (vi in ai1) {
+		printf("ai1 has %d\n", vi);
+	}
+	foreach (vi in ai2) {
+		printf("ai2 has %d\n", vi);
+	}
+	foreach (vi in ai3) {
+		printf("ai3 has %d\n", vi);
+	}
+	foreach (vs in as0) {
+		printf("as0 has %s\n", vs);
+	}
+	foreach (vs in as1) {
+		printf("as1 has %s\n", vs);
+	}
+	foreach (vs in as2) {
+		printf("as2 has %s\n", vs);
+	}
+	foreach (vs in as3) {
+		printf("as3 has %s\n", vs);
+	}
+	foreach (vf in af0) {
+		printf("af0 has %1.1f\n", vf);
+	}
+	foreach (vf in af1) {
+		printf("af1 has %1.1f\n", vf);
+	}
+	foreach (vf in af2) {
+		printf("af2 has %1.1f\n", vf);
+	}
+	foreach (vf in af3) {
+		printf("af3 has %1.1f\n", vf);
+	}
+	foreach (vf in ai0) {
+		printf("ai0 has %1.1f\n", vf);
+	}
+	foreach (vf in ai1) {
+		printf("ai1 has %1.1f\n", vf);
+	}
+	foreach (vf in ai2) {
+		printf("ai2 has %1.1f\n", vf);
+	}
+	foreach (vf in ai3) {
+		printf("ai3 has %1.1f\n", vf);
+	}
+	ac[0].i = 1;
+	ac[0].j = 2;
+	ac[0].s = "a";
+	ac[1].i = 11;
+	ac[1].j = 22;
+	ac[1].s = "aa";
+	ac[2].i = 111;
+	ac[2].j = 222;
+	ac[2].s = "aaa";
+	foreach (vc in ac) {
+		printf("ac has %d,%d,%s\n", vc.i, vc.j, vc.s);
+	}
+	printf("end\n");
+}
+#lang tcl
+loop_1_2_0
+} -output "start
+h1 has 0
+h2 has 0
+h2 has 1
+h3 has 0
+h3 has 1
+h3 has 2
+h1 has 0=>1
+h2 has 0=>1
+h2 has 1=>2
+h3 has 0=>1
+h3 has 1=>2
+h3 has 2=>3
+ai1 has 11
+ai2 has 22
+ai2 has 23
+ai3 has 33
+ai3 has 34
+ai3 has 35
+as1 has a
+as2 has b
+as2 has c
+as3 has d
+as3 has e
+as3 has f
+af1 has 1.1
+af2 has 2.1
+af2 has 2.2
+af3 has 3.1
+af3 has 3.2
+af3 has 3.3
+ai1 has 11.0
+ai2 has 22.0
+ai2 has 23.0
+ai3 has 33.0
+ai3 has 34.0
+ai3 has 35.0
+ac has 1,2,a
+ac has 11,22,aa
+ac has 111,222,aaa
+end
+"
+
+test loop-1.2.1 {foreach loops over arrays of arrays} -body {
+#lang L
+void
+fill2(int d1, int d2, int &a[][])
+{
+	int	i, j;
+
+	for (i = 0; i < d1; ++i) {
+		for (j = 0; j < d2; ++j) {
+			a[i][j] = i*10 + j;
+		}
+	}
+}
+
+void
+fill3(int d1, int d2, int d3, int &a[][][])
+{
+	int	i, j, k;
+
+	for (i = 0; i < d1; ++i) {
+		for (j = 0; j < d2; ++j) {
+			for (k = 0; k < d3; ++k) {
+				a[i][j][k] = i*100 + j*10 + k;
+			}
+		}
+	}
+}
+
+void
+loop_1_2_1()
+{
+	int	vi;
+	int	ai[3];
+	int	aii[4][3];
+	int	aiii[5][4][3];
+
+	fill2(4, 3, &aii);
+	fill3(5, 4, 3, &aiii);
+
+	printf("test 1\n");
+	foreach (ai in aii) {
+		foreach (vi in ai) {
+			printf("aii has %d\n", vi);
+		}
+	}
+
+	printf("test 2\n");
+	foreach (aii in aiii) {
+		foreach (ai in aii) {
+			foreach (vi in ai) {
+				printf("aiii has %d\n", vi);
+			}
+		}
+	}
+
+	printf("end\n");
+}
+loop_1_2_1();
+} -output "test 1
+aii has 0
+aii has 1
+aii has 2
+aii has 10
+aii has 11
+aii has 12
+aii has 20
+aii has 21
+aii has 22
+aii has 30
+aii has 31
+aii has 32
+test 2
+aiii has 0
+aiii has 1
+aiii has 2
+aiii has 10
+aiii has 11
+aiii has 12
+aiii has 20
+aiii has 21
+aiii has 22
+aiii has 30
+aiii has 31
+aiii has 32
+aiii has 100
+aiii has 101
+aiii has 102
+aiii has 110
+aiii has 111
+aiii has 112
+aiii has 120
+aiii has 121
+aiii has 122
+aiii has 130
+aiii has 131
+aiii has 132
+aiii has 200
+aiii has 201
+aiii has 202
+aiii has 210
+aiii has 211
+aiii has 212
+aiii has 220
+aiii has 221
+aiii has 222
+aiii has 230
+aiii has 231
+aiii has 232
+aiii has 300
+aiii has 301
+aiii has 302
+aiii has 310
+aiii has 311
+aiii has 312
+aiii has 320
+aiii has 321
+aiii has 322
+aiii has 330
+aiii has 331
+aiii has 332
+aiii has 400
+aiii has 401
+aiii has 402
+aiii has 410
+aiii has 411
+aiii has 412
+aiii has 420
+aiii has 421
+aiii has 422
+aiii has 430
+aiii has 431
+aiii has 432
+end
+"
+
+test loop-1.2.2 {foreach with int variable lists} -body {
+#lang L
+void
+loop_1_2_2()
+{
+	int	i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12;
+	int	a[12] = { 1,2,3,4,5,6,7,8,9,10,11,12 };
+
+	printf("test 1\n");
+	foreach (i1 in a) {
+		printf("a has %d\n", i1);
+	}
+	printf("test 2\n");
+	foreach (i1,i2 in a) {
+		printf("a has %d,%d\n", i1, i2);
+	}
+	printf("test 3\n");
+	foreach (i1,i2,i3 in a) {
+		printf("a has %d,%d,%d\n", i1, i2, i3);
+	}
+	printf("test 4\n");
+	foreach (i1,i2,i3,i4 in a) {
+		printf("a has %d,%d,%d,%d\n", i1, i2, i3, i4);
+	}
+	printf("test 5\n");
+	foreach (i1,i2,i3,i4,i5,i6 in a) {
+		printf("a has %d,%d,%d,%d,%d,%d\n", i1, i2, i3, i4, i5, i6);
+	}
+	printf("test 6\n");
+	foreach (i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12 in a) {
+		printf("a has %d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+		       i1, i2, i3, i4, i5, i6, i7, i8, i9, i10, i11, i12);
+	}
+	printf("end\n");
+}
+loop_1_2_2();
+} -output "test 1
+a has 1
+a has 2
+a has 3
+a has 4
+a has 5
+a has 6
+a has 7
+a has 8
+a has 9
+a has 10
+a has 11
+a has 12
+test 2
+a has 1,2
+a has 3,4
+a has 5,6
+a has 7,8
+a has 9,10
+a has 11,12
+test 3
+a has 1,2,3
+a has 4,5,6
+a has 7,8,9
+a has 10,11,12
+test 4
+a has 1,2,3,4
+a has 5,6,7,8
+a has 9,10,11,12
+test 5
+a has 1,2,3,4,5,6
+a has 7,8,9,10,11,12
+test 6
+a has 1,2,3,4,5,6,7,8,9,10,11,12
+end
+"
+
+test loop-1.2.3 {foreach with string variable lists} -body {
+#lang L
+void
+loop_1_2_3()
+{
+	string	s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14;
+	string	a[12] = { "a","b","c","d","e","f","g","h","i","j","k","l" };
+
+	printf("test 1\n");
+	foreach (s1 in a) {
+		printf("a has %s\n", s1);
+	}
+	printf("test 2\n");
+	foreach (s1,s2 in a) {
+		printf("a has %s,%s\n", s1, s2);
+	}
+	printf("test 3\n");
+	foreach (s1,s2,s3 in a) {
+		printf("a has %s,%s,%s\n", s1, s2, s3);
+	}
+	printf("test 4\n");
+	foreach (s1,s2,s3,s4 in a) {
+		printf("a has %s,%s,%s,%s\n", s1, s2, s3, s4);
+	}
+	printf("test 5\n");
+	foreach (s1,s2,s3,s4,s5,s6 in a) {
+		printf("a has %s,%s,%s,%s,%s,%s\n", s1, s2, s3, s4, s5, s6);
+	}
+	printf("test 6\n");
+	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12 in a) {
+		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		       s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12);
+	}
+
+	/*
+	 * The current semantics is that extra vars get "", so test that.
+	 * This may eventually be changed to be a run-time error.
+	 */
+
+	printf("test 7\n");
+	foreach (s1,s2,s3,s4,s5 in a) {
+		printf("a has %s,%s,%s,%s,%s\n", s1, s2, s3, s4, s5);
+	}
+
+	printf("test 8\n");
+	foreach (s1,s2,s3,s4,s5,s6,s7 in a) {
+		printf("a has %s,%s,%s,%s,%s,%s,%s\n",
+		       s1, s2, s3, s4, s5, s6, s7);
+	}
+
+	printf("test 9\n");
+	foreach (s1,s2,s3,s4,s5,s6,s7,s8 in a) {
+		printf("a has %s,%s,%s,%s,%s,%s,%s,%s\n",
+		       s1, s2, s3, s4, s5, s6, s7, s8);
+	}
+
+	printf("test 10\n");
+	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9 in a) {
+		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		       s1, s2, s3, s4, s5, s6, s7, s8, s9);
+	}
+
+	printf("test 11\n");
+	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10 in a) {
+		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		       s1, s2, s3, s4, s5, s6, s7, s8, s9, s10);
+	}
+
+	printf("test 12\n");
+	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11 in a) {
+		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		       s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11);
+	}
+
+	printf("test 13\n");
+	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13 in a) {
+		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		       s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13);
+	}
+
+	printf("test 14\n");
+	foreach (s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14 in a) {
+		printf("a has %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		       s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13,
+		       s14);
+	}
+
+	printf("end\n");
+}
+loop_1_2_3();
+} -output "test 1
+a has a
+a has b
+a has c
+a has d
+a has e
+a has f
+a has g
+a has h
+a has i
+a has j
+a has k
+a has l
+test 2
+a has a,b
+a has c,d
+a has e,f
+a has g,h
+a has i,j
+a has k,l
+test 3
+a has a,b,c
+a has d,e,f
+a has g,h,i
+a has j,k,l
+test 4
+a has a,b,c,d
+a has e,f,g,h
+a has i,j,k,l
+test 5
+a has a,b,c,d,e,f
+a has g,h,i,j,k,l
+test 6
+a has a,b,c,d,e,f,g,h,i,j,k,l
+test 7
+a has a,b,c,d,e
+a has f,g,h,i,j
+a has k,l,,,
+test 8
+a has a,b,c,d,e,f,g
+a has h,i,j,k,l,,
+test 9
+a has a,b,c,d,e,f,g,h
+a has i,j,k,l,,,,
+test 10
+a has a,b,c,d,e,f,g,h,i
+a has j,k,l,,,,,,
+test 11
+a has a,b,c,d,e,f,g,h,i,j
+a has k,l,,,,,,,,
+test 12
+a has a,b,c,d,e,f,g,h,i,j,k
+a has l,,,,,,,,,,
+test 13
+a has a,b,c,d,e,f,g,h,i,j,k,l,
+test 14
+a has a,b,c,d,e,f,g,h,i,j,k,l,,
+end
+"
+
+test loop-1.2.4 {foreach loops with large loop body (>127 bytes of bytecode)} -body {
+#lang L
+void
+loop_1_2_4()
+{
+	int	i, k, v;
+	int	a[3] = { 1,2,3 };
+	hash	h = { 1=>2, 2=>3, 3=>4 };
+
+	printf("start\n");
+	foreach (i in a) {
+		/* Just do whatever to rack up bytecodes. */
+		int	x = 1, y = 1, z = 1;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		printf("a has %d\n", i);
+	}
+	foreach (k=>v in h) {
+		/* Just do whatever to rack up bytecodes. */
+		int	x = 1, y = 1, z = 1;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		printf("h has %d=>%d\n", k, v);
+	}
+	printf("end\n");
+}
+loop_1_2_4();
+} -output "start
+a has 1
+a has 2
+a has 3
+h has 1=>2
+h has 2=>3
+h has 3=>4
+end
+"
+
+test loop-1.3 {continue statements} -body {
+#lang L
+loop_1_3() {
+  loop_1_3_for_continue();
+  loop_1_3_foreach_continue();
+}
+
+loop_1_3_for_continue() {
+  int i;
+
+  for (i=0; i<5; i++) {
+    if (i == 2) {
+      continue;
+    }
+    puts(i);
+  }
+}
+
+loop_1_3_foreach_continue() {
+  hash h;
+  string k, v, l;
+
+  h{"a"} = "x";
+  h{"b"} = "y";
+  h{"c"} = "z";
+
+  printf("foreach test 1\n");
+  foreach (k => v in h) {
+    if (k == "b") {
+      continue;
+    }
+    printf("%s => %s\n", k, v);
+  }
+
+  printf("foreach test 2\n");
+  foreach (l in h) {
+    if (l == "c") continue;
+    foreach (k => v in h) {
+      if (k == "b") {
+        continue;
+      }
+      printf("%s: %s => %s\n", l, k, v);
+    }
+  }
+}
+#lang tcl
+loop_1_3
+} -output {0
+1
+3
+4
+foreach test 1
+a => x
+c => z
+foreach test 2
+a: a => x
+a: c => z
+b: a => x
+b: c => z
+}
+
+test loop-1.4 {break statements} -body {
+#lang L
+loop_1_4() {
+  loop_1_4_foreach_break();
+  loop_1_4_for_break();
+}
+
+loop_1_4_foreach_break() {
+  hash h;
+  string k, v, l;
+
+  h{"a"} = "x";
+  h{"b"} = "y";
+  h{"c"} = "z";
+  foreach (l in h) {
+    foreach (k => v in h) {
+      if (k == "b") {
+        break;
+      }
+    }
+  }
+  printf("loop's over, k is %s, v is %s\n", k, v);
+}
+
+loop_1_4_for_break() {
+  int i;
+
+  for (i=0; i<10; i++) {
+    puts(i);
+    if (i == 5) {
+      puts("attempting to break");
+      break;
+    }
+  }
+  printf("at the end of the day, i is %d\n", i);
+}
+#lang tcl
+loop_1_4
+} -output {loop's over, k is b, v is y
+0
+1
+2
+3
+4
+5
+attempting to break
+at the end of the day, i is 5
+}
+
+test loop-1.5 {continues in nested foreach loops} -body {
+#lang L
+void
+fill3(int d1, int d2, int d3, int &a[][][])
+{
+	int	i, j, k;
+
+	for (i = 0; i < d1; ++i) {
+		for (j = 0; j < d2; ++j) {
+			for (k = 0; k < d3; ++k) {
+				a[i][j][k] = (i+1)*100 + (j+1)*10 + k+1;
+			}
+		}
+	}
+}
+
+void
+loop_1_5()
+{
+	int	d1, d2, vi;
+	int	ai[3];
+	int	aii[3][3];
+	int	aiii[3][3][3];
+
+	fill3(3, 3, 3, &aiii);
+
+	printf("test 1\n");
+	foreach (aii in aiii) {
+		foreach (ai in aii) {
+			foreach (vi in ai) {
+				// Omit all even numbers.
+				if ((vi%2) == 0) continue;
+				printf("aiii has %d\n", vi);
+			}
+		}
+	}
+	printf("test 2\n");
+	d1 = d2 = 0;
+	foreach (aii in aiii) {
+		++d1;
+		foreach (ai in aii) {
+			++d2;
+			// Omit 11x.
+			if (d2 == 1) continue;
+			foreach (vi in ai) {
+				printf("aiii has %d\n", vi);
+			}
+		}
+	}
+	printf("test 3\n");
+	d1 = d2 = 0;
+	foreach (aii in aiii) {
+		++d1;
+		// Omit 1xx.
+		if (d1 == 1) continue;
+		foreach (ai in aii) {
+			++d2;
+			foreach (vi in ai) {
+				printf("aiii has %d\n", vi);
+			}
+		}
+	}
+	printf("test 4\n");
+	d1 = d2 = 0;
+	foreach (aii in aiii) {
+		++d1;
+		// Omit 1xx.
+		if (d1 == 1) continue;
+		foreach (ai in aii) {
+			++d2;
+			// Omit 21x.
+			if (d2 == 1) continue;
+			foreach (vi in ai) {
+				printf("aiii has %d\n", vi);
+			}
+		}
+	}
+	printf("test 5\n");
+	d1 = d2 = 0;
+	foreach (aii in aiii) {
+		++d1;
+		// Omit 1xx.
+		if (d1 == 1) continue;
+		foreach (ai in aii) {
+			++d2;
+			// Omit 21x.
+			if (d2 == 1) continue;
+			foreach (vi in ai) {
+				// Omit 3xx.
+				if (vi >= 300) continue;
+				printf("aiii has %d\n", vi);
+			}
+		}
+	}
+	printf("end\n");
+}
+
+loop_1_5();
+} -output "test 1
+aiii has 111
+aiii has 113
+aiii has 121
+aiii has 123
+aiii has 131
+aiii has 133
+aiii has 211
+aiii has 213
+aiii has 221
+aiii has 223
+aiii has 231
+aiii has 233
+aiii has 311
+aiii has 313
+aiii has 321
+aiii has 323
+aiii has 331
+aiii has 333
+test 2
+aiii has 121
+aiii has 122
+aiii has 123
+aiii has 131
+aiii has 132
+aiii has 133
+aiii has 211
+aiii has 212
+aiii has 213
+aiii has 221
+aiii has 222
+aiii has 223
+aiii has 231
+aiii has 232
+aiii has 233
+aiii has 311
+aiii has 312
+aiii has 313
+aiii has 321
+aiii has 322
+aiii has 323
+aiii has 331
+aiii has 332
+aiii has 333
+test 3
+aiii has 211
+aiii has 212
+aiii has 213
+aiii has 221
+aiii has 222
+aiii has 223
+aiii has 231
+aiii has 232
+aiii has 233
+aiii has 311
+aiii has 312
+aiii has 313
+aiii has 321
+aiii has 322
+aiii has 323
+aiii has 331
+aiii has 332
+aiii has 333
+test 4
+aiii has 221
+aiii has 222
+aiii has 223
+aiii has 231
+aiii has 232
+aiii has 233
+aiii has 311
+aiii has 312
+aiii has 313
+aiii has 321
+aiii has 322
+aiii has 323
+aiii has 331
+aiii has 332
+aiii has 333
+test 5
+aiii has 221
+aiii has 222
+aiii has 223
+aiii has 231
+aiii has 232
+aiii has 233
+end
+"
+
+test loop-1.6 {breaks in nested foreach loops} -body {
+#lang L
+void
+fill3(int d1, int d2, int d3, int &a[][][])
+{
+	int	i, j, k;
+
+	for (i = 0; i < d1; ++i) {
+		for (j = 0; j < d2; ++j) {
+			for (k = 0; k < d3; ++k) {
+				a[i][j][k] = (i+1)*100 + (j+1)*10 + k+1;
+			}
+		}
+	}
+}
+
+void
+loop_1_6()
+{
+	int	d1, d2, vi;
+	int	ai[3];
+	int	aii[3][3];
+	int	aiii[3][3][3];
+
+	fill3(3, 3, 3, &aiii);
+
+	printf("test 1\n");
+	foreach (aii in aiii) {
+		foreach (ai in aii) {
+			foreach (vi in ai) {
+				// Should have no output.
+				break;
+				printf("aiii has %d\n", vi);
+			}
+		}
+	}
+	printf("test 2\n");
+	d1 = d2 = 0;
+	foreach (aii in aiii) {
+		++d1;
+		foreach (ai in aii) {
+			++d2;
+			// Omit 13x.
+			if (d2 == 3) break;
+			foreach (vi in ai) {
+				printf("aiii has %d\n", vi);
+			}
+		}
+	}
+	printf("test 3\n");
+	d1 = d2 = 0;
+	foreach (aii in aiii) {
+		++d1;
+		// Omit [23]xx.
+		if (d1 == 2) break;
+		foreach (ai in aii) {
+			++d2;
+			foreach (vi in ai) {
+				printf("aiii has %d\n", vi);
+			}
+		}
+	}
+	printf("end\n");
+}
+
+loop_1_6();
+} -output "test 1
+test 2
+aiii has 111
+aiii has 112
+aiii has 113
+aiii has 121
+aiii has 122
+aiii has 123
+aiii has 211
+aiii has 212
+aiii has 213
+aiii has 221
+aiii has 222
+aiii has 223
+aiii has 231
+aiii has 232
+aiii has 233
+aiii has 311
+aiii has 312
+aiii has 313
+aiii has 321
+aiii has 322
+aiii has 323
+aiii has 331
+aiii has 332
+aiii has 333
+test 3
+aiii has 111
+aiii has 112
+aiii has 113
+aiii has 121
+aiii has 122
+aiii has 123
+aiii has 131
+aiii has 132
+aiii has 133
+end
+"
+
+test struct-1.0 {structs} -body {
+#lang L
+struct struct_1_0_point {
+        int x, y;
+        string label;
+};
+
+struct_1_0() {
+        struct struct_1_0_point p1, p2;
+
+        p1.x = 1;
+        p1.y = 2;
+        p1.label = "this is a label";
+        puts("p1 is:");
+        puts(p1);
+        puts(format("p1.x is %d, p1.y is %d, and p1.label is %s", p1.x, p1.y, p1.label));
+        p2 = p1;
+        p2.label = "this is another label";
+        puts("p1 is:");
+        puts(p1);
+        puts("p2 is:");
+        puts(p2);
+}
+#lang tcl
+struct_1_0
+} -output "p1 is:
+1 2 {this is a label}
+p1.x is 1, p1.y is 2, and p1.label is this is a label
+p1 is:
+1 2 {this is a label}
+p2 is:
+1 2 {this is another label}
+"
+
+test struct-1.1 {struct allocation and arrays of structs} -body {
+#lang L
+struct struct_1_1_point {
+        int x, y;
+        string label;
+};
+
+struct_1_1() {
+   int i = 0;
+   struct struct_1_1_point s[10];
+
+   while(i < 10) {
+      s[i].y = i;
+      s[i].x = 42 + i;
+      s[i].label = format("%d cows", 10 - i);
+      i++;
+   }
+   for (i=0; i<10; i++) {
+     puts(s[i]);
+   }
+}
+#lang tcl
+struct_1_1
+} -output "42 0 {10 cows}
+43 1 {9 cows}
+44 2 {8 cows}
+45 3 {7 cows}
+46 4 {6 cows}
+47 5 {5 cows}
+48 6 {4 cows}
+49 7 {3 cows}
+50 8 {2 cows}
+51 9 {1 cows}
+"
+
+test struct-1.2 {arrays of structs containing arrays} -body {
+#lang L
+struct struct_1_2_point {
+        int x, y;
+        string label;
+  int z[4];
+};
+
+struct_1_2() {
+   int i = 0;
+   struct struct_1_2_point s[10];
+
+   while(i < 10) {
+      s[i].y = i;
+      s[i].x = 42 + i;
+      s[i].label = format("%d cows", 10 - i);
+      s[i].z[i%4] = i;
+      i++;
+   }
+   for (i=0; i<10; i++) {
+     puts(s[i]);
+   }
+}
+#lang tcl
+struct_1_2
+} -output "42 0 {10 cows} 0
+43 1 {9 cows} {{} 1}
+44 2 {8 cows} {{} {} 2}
+45 3 {7 cows} {{} {} {} 3}
+46 4 {6 cows} 4
+47 5 {5 cows} {{} 5}
+48 6 {4 cows} {{} {} 6}
+49 7 {3 cows} {{} {} {} 7}
+50 8 {2 cows} 8
+51 9 {1 cows} {{} 9}
+"
+
+test struct-1.3 {increment and decrement on struct fields} -body {
+#lang L
+struct foo {
+  int i;
+};
+
+struct_1_3() {
+  struct foo v;
+
+  v.i = 0;
+  for (v.i=0; v.i<5; v.i++);
+  puts(v);
+
+  puts("pre:");
+  puts(v.i);
+  ++v.i;
+  puts(v.i);
+  puts(++v.i);
+  --v.i;
+  puts(v.i);
+  puts(--v.i);
+
+  puts("post:");
+  puts(v.i);
+  v.i++;
+  puts(v.i);
+  puts(v.i++);
+  puts(v.i);
+  v.i--;
+  puts(v.i);
+  puts(v.i--);
+  puts(v.i);
+}
+#lang tcl
+struct_1_3
+} -output "5\npre:\n5\n6\n7\n6\n5\npost:\n5\n6\n6\n7\n6\n6\n5\n"
+
+
+test hash-1.0 {basic hashtable support} -body {
+#lang L
+void hash_1_0() {
+  hash foo;
+  foo{"key"} = "value";
+  puts(foo{"key"});
+}
+#lang tcl
+hash_1_0
+} -output "value\n"
+
+test hash-1.1 {array of hashtables} -body {
+#lang L
+void hash_1_1() {
+  hash foo[10];
+  foo[5]{"key"} = "value";
+  foo[4]{"key"} = "";
+  puts(foo[5]{"key"});
+  puts(foo[4]{"key"});
+}
+#lang tcl
+hash_1_1
+} -output "value\n\n"
+
+test hash-1.2 {increment and decrement on hash elements} -body {
+#lang L -poly
+hash_1_2() {
+  hash foo;
+
+  foo{"three"} = 0;
+  for (foo{"three"}=0; foo{"three"}<5; foo{"three"}++);
+  puts(foo);
+
+  puts("pre:");
+  puts(foo{"three"});
+  ++foo{"three"};
+  puts(foo{"three"});
+  puts(++foo{"three"});
+  --foo{"three"};
+  puts(foo{"three"});
+  puts(--foo{"three"});
+
+  puts("post:");
+  puts(foo{"three"});
+  foo{"three"}++;
+  puts(foo{"three"});
+  puts(foo{"three"}++);
+  puts(foo{"three"});
+  foo{"three"}--;
+  puts(foo{"three"});
+  puts(foo{"three"}--);
+  puts(foo{"three"});
+  puts(foo);
+}
+#lang tcl
+hash_1_2
+} -output "three 5\npre:\n5\n6\n7\n6\n5\npost:\n5\n6\n6\n7\n6\n6\n5\nthree 5\n"
+
+test hash-1.3 {a hash inside of an array inside a struct} -body {
+#lang L -poly
+hash_1_3() {
+	struct { int foo; hash bar[4][5]; } baz;
+
+  	baz.foo = 2;
+	baz.bar[3][4]{"asdf"} = 9;
+	baz.bar[3][4]{"asdf"} *= 2;
+	puts(baz.bar[3][4]{"asdf"}--);
+
+        // change original value while processing first group of indices
+        baz.bar[0][0]{"foo"} = 1;
+        baz.bar[0][(baz.bar[0][0]{"foo"} = 0)]{"foo"} += 1;
+
+        // change original value while processing nested group of indices
+        baz.bar[0][1]{"foo"} = "oof";
+        baz.bar[0][1]{(baz.bar[0][1]{"foo"} = "foo")} =~ s/f/m/;
+	puts(baz);
+}
+#lang tcl
+hash_1_3
+} -output "18\n2 {{{foo 1} {foo moo}} {} {} {{} {} {} {} {asdf 17}}}\n"
+
+test hash-1.4 {basic hash element types} -body {
+#lang L
+struct s {
+	int	x;
+	int	y;
+};
+void
+hash_1_4()
+{
+	int		ki, vi;
+	string		ks, vs;
+	float		kf, vf;
+	poly		kp, vp;
+	struct s	vst;
+	int		ihi{int};
+	int		ihs{string};
+	int		ihf{float};
+	int		ihp{poly};
+	string		shi{int};
+	string		shs{string};
+	string		shf{float};
+	string		shp{poly};
+	float		fhi{int};
+	float		fhs{string};
+	float		fhf{float};
+	float		fhp{poly};
+	poly		phi{int};
+	poly		phs{string};
+	poly		phf{float};
+	poly		php{poly};
+	struct s	sthi{int};
+	struct s	sths{string};
+	struct s	sthf{float};
+	struct s	sthp{poly};
+
+	printf("start\n");
+
+	ihi{0} = 100;
+	ihi{1} = 101;
+	ihi{2} = 102;
+	foreach (ki=>vi in ihi) {
+		printf("ihi has %d=>%d\n", ki, vi);
+	}
+
+	ihs{"zero"} = 100;
+	ihs{"one"}  = 101;
+	ihs{"two"}  = 102;
+	foreach (ks=>vi in ihs) {
+		printf("ihs has %s=>%d\n", ks, vi);
+	}
+
+	ihf{1.1} = 100;
+	ihf{2.2} = 101;
+	ihf{3.3} = 102;
+	foreach (kf=>vi in ihf) {
+		printf("ihf has %3.1f=>%d\n", kf, vi);
+	}
+
+	ihp{0}     = 100;
+	ihp{"two"} = 101;
+	ihp{3.3}   = 102;
+	foreach (kp=>vi in ihp) {
+		printf("ihp has %s=>%d\n", kp, vi);
+	}
+
+	shi{0} = "zero";
+	shi{1} = "one";
+	shi{2} = "two";
+	foreach (ki=>vs in shi) {
+		printf("shi has %d=>%s\n", ki, vs);
+	}
+
+	shs{"zero"} = "zero0";
+	shs{"one"}  = "one1";
+	shs{"two"}  = "two2";
+	foreach (ks=>vs in shs) {
+		printf("shs has %s=>%s\n", ks, vs);
+	}
+
+	shf{1.1} = "one.one";
+	shf{2.2} = "two.two";
+	shf{3.3} = "three.three";
+	foreach (kf=>vs in shf) {
+		printf("shf has %3.1f=>%s\n", kf, vs);
+	}
+
+	shp{0}     = "zero";
+	shp{1.1}   = "one.one";
+	shp{"two"} = "two2";
+	foreach (kp=>vs in shp) {
+		printf("shp has %s=>%s\n", kp, vs);
+	}
+
+	fhi{0} = 1.1;
+	fhi{1} = 2.2;
+	fhi{2} = 3.3;
+	foreach (ki=>vf in fhi) {
+		printf("fhi has %d=>%3.1f\n", ki, vf);
+	}
+
+	fhs{"zero"} = 1.1;
+	fhs{"one"}  = 2.2;
+	fhs{"two"}  = 3.3;
+	foreach (ks=>vf in fhs) {
+		printf("fhs has %s=>%3.1f\n", ks, vf);
+	}
+
+	fhf{1.1} = 11.1;
+	fhf{2.2} = 22.2;
+	fhf{3.3} = 33.3;
+	foreach (kf=>vf in fhf) {
+		printf("fhf has %3.1f=>%3.1f\n", kf, vf);
+	}
+
+	fhp{0}     = 1.1;
+	fhp{1.1}   = 2.2;
+	fhp{"two"} = 3.3;
+	foreach (kp=>vf in fhp) {
+		printf("fhp has %s=>%3.1f\n", kp, vf);
+	}
+
+	phi{0} = 1;
+	phi{1} = "two";
+	phi{2} = 3.3;
+	foreach (ki=>vp in phi) {
+		printf("phi has %d=>%s\n", ki, vp);
+	}
+
+	phs{"zero"} = 1;
+	phs{"one"}  = "two";
+	phs{"two"}  = 3.3;
+	foreach (ks=>vp in phs) {
+		printf("phs has %s=>%s\n", ks, vp);
+	}
+
+	phf{1.1} = 1;
+	phf{2.2} = "two";
+	phf{3.3} = 33.33;
+	foreach (kf=>vp in phf) {
+		printf("phf has %3.1f=>%s\n", kf, vp);
+	}
+
+	php{"one"} = 1;
+	php{1.1}   = "two";
+	php{2}     = 3.3;
+	foreach (kp=>vp in php) {
+		printf("php has %s=>%s\n", kp, vp);
+	}
+
+	sthi{0}.x = 100;
+	sthi{0}.y = 101;
+	sthi{1}.x = 200;
+	sthi{1}.y = 201;
+	sthi{2}.x = 300;
+	sthi{2}.y = 301;
+	foreach (ki=>vst in sthi) {
+		printf("sthi has %d=>(%d,%d)\n", ki, vst.x, vst.y);
+	}
+
+	sths{"zero"}.x = 100;
+	sths{"zero"}.y = 101;
+	sths{"one"}.x  = 200;
+	sths{"one"}.y  = 201;
+	sths{"two"}.x  = 300;
+	sths{"two"}.y  = 301;
+	foreach (ks=>vst in sths) {
+		printf("sths has %s=>(%d,%d)\n", ks, vst.x, vst.y);
+	}
+
+	sthf{1.1}.x = 100;
+	sthf{1.1}.y = 101;
+	sthf{2.2}.x = 200;
+	sthf{2.2}.y = 201;
+	sthf{3.3}.x = 300;
+	sthf{3.3}.y = 301;
+	foreach (kf=>vst in sthf) {
+		printf("sthf has %3.1f=>(%d,%d)\n", kf, vst.x, vst.y);
+	}
+
+	sthp{0}.x     = 100;
+	sthp{0}.y     = 101;
+	sthp{1.1}.x   = 200;
+	sthp{1.1}.y   = 201;
+	sthp{"two"}.x = 300;
+	sthp{"two"}.y = 301;
+	foreach (kp=>vst in sthp) {
+		printf("sthp has %s=>(%d,%d)\n", kp, vst.x, vst.y);
+	}
+
+	printf("end\n");
+}
+#lang tcl
+hash_1_4
+} -output "start
+ihi has 0=>100
+ihi has 1=>101
+ihi has 2=>102
+ihs has zero=>100
+ihs has one=>101
+ihs has two=>102
+ihf has 1.1=>100
+ihf has 2.2=>101
+ihf has 3.3=>102
+ihp has 0=>100
+ihp has two=>101
+ihp has 3.300000=>102
+shi has 0=>zero
+shi has 1=>one
+shi has 2=>two
+shs has zero=>zero0
+shs has one=>one1
+shs has two=>two2
+shf has 1.1=>one.one
+shf has 2.2=>two.two
+shf has 3.3=>three.three
+shp has 0=>zero
+shp has 1.100000=>one.one
+shp has two=>two2
+fhi has 0=>1.1
+fhi has 1=>2.2
+fhi has 2=>3.3
+fhs has zero=>1.1
+fhs has one=>2.2
+fhs has two=>3.3
+fhf has 1.1=>11.1
+fhf has 2.2=>22.2
+fhf has 3.3=>33.3
+fhp has 0=>1.1
+fhp has 1.100000=>2.2
+fhp has two=>3.3
+phi has 0=>1
+phi has 1=>two
+phi has 2=>3.300000
+phs has zero=>1
+phs has one=>two
+phs has two=>3.300000
+phf has 1.1=>1
+phf has 2.2=>two
+phf has 3.3=>33.330000
+php has one=>1
+php has 1.100000=>two
+php has 2=>3.300000
+sthi has 0=>(100,101)
+sthi has 1=>(200,201)
+sthi has 2=>(300,301)
+sths has zero=>(100,101)
+sths has one=>(200,201)
+sths has two=>(300,301)
+sthf has 1.1=>(100,101)
+sthf has 2.2=>(200,201)
+sthf has 3.3=>(300,301)
+sthp has 0=>(100,101)
+sthp has 1.100000=>(200,201)
+sthp has two=>(300,301)
+end
+"
+
+test hash-1.5 {hashes of hashes and arrays} -body {
+#lang L
+// "keys" eventually will be a built-in, but do an integer one
+// here for fun.
+int[]
+ikeys(poly h{int})
+{
+	int	k, thekeys[];
+
+	foreach (k in h) push(&thekeys, k);
+	return (thekeys);
+}
+
+// This is basically a cast since "sort" isn't yet a built-in so
+// the compiler doesn't see it as having the proper return type.
+int[]
+isort(int a[])
+{
+	int	sorted[] = sort(a);
+	return (sorted);
+}
+
+void
+hash_1_5()
+{
+	int	k1, k2;
+	string	vs;
+	string	hai[3]{int};
+	string	hia{int}[3];
+	string	hii{int}{int};
+	string	hi{int};
+
+	printf("start\n");
+
+	// Array of hashes.
+	hai[0]{1} = "01";
+	hai[0]{6} = "06";
+	hai[0]{5} = "05";
+	hai[1]{2} = "12";
+	hai[1]{3} = "13";
+	hai[1]{0} = "10";
+	hai[2]{0} = "20";
+	hai[2]{1} = "21";
+	hai[2]{2} = "22";
+	foreach (hi in hai) {
+		foreach (k1 in isort(ikeys(hi))) {
+			printf("hai has %d=>%s\n", k1, hi{k1});
+		}
+	}
+
+	// Hash of arrays.
+	hia{1}[0] = "10";
+	hia{1}[1] = "11";
+	hia{1}[2] = "12";
+	hia{0}[0] = "00";
+	hia{0}[1] = "01";
+	hia{0}[2] = "02";
+	hia{2}[0] = "20";
+	hia{2}[1] = "21";
+	hia{2}[2] = "22";
+	foreach (k1 in isort(ikeys(hia))) {
+		foreach (vs in hia{k1}) {
+			printf("hia{%d} has %s\n", k1, vs);
+		}
+	}
+
+	// Hash of hashes.
+	hii{0}{2} = "02";
+	hii{1}{0} = "10";
+	hii{0}{0} = "00";
+	hii{2}{1} = "21";
+	hii{1}{2} = "12";
+	hii{1}{1} = "11";
+	hii{0}{1} = "01";
+	hii{2}{0} = "20";
+	hii{2}{2} = "22";
+	foreach (k1 in isort(ikeys(hii))) {
+		foreach (k2 in isort(ikeys(hii{k1}))) {
+			printf("hii{%d}{%d} has %s\n", k1, k2, hii{k1}{k2});
+		}
+	}
+
+	printf("end\n");
+}
+#lang tcl
+hash_1_5
+} -output "start
+hai has 1=>01
+hai has 5=>05
+hai has 6=>06
+hai has 0=>10
+hai has 2=>12
+hai has 3=>13
+hai has 0=>20
+hai has 1=>21
+hai has 2=>22
+hia{0} has 00
+hia{0} has 01
+hia{0} has 02
+hia{1} has 10
+hia{1} has 11
+hia{1} has 12
+hia{2} has 20
+hia{2} has 21
+hia{2} has 22
+hii{0}{0} has 00
+hii{0}{1} has 01
+hii{0}{2} has 02
+hii{1}{0} has 10
+hii{1}{1} has 11
+hii{1}{2} has 12
+hii{2}{0} has 20
+hii{2}{1} has 21
+hii{2}{2} has 22
+end
+"
+
+test deep-1.1 {deep dive 1} -body {
+#lang L
+struct xy {
+	string		x;
+	string		y;
+};
+struct s {
+	string		a;
+	string		b;
+	struct xy	h{int};
+};
+
+void
+deep_1_1()
+{
+	int		k1, k2;
+	struct s	s;
+	struct xy	xy;
+	struct s	h{int};
+
+	printf("start\n");
+
+	/*
+	 * Test a hash that has a struct that has another hash.
+	 */
+
+	h{0}.a = "h{0}.a";
+	h{0}.b = "h{0}.b";
+	h{0}.h{0}.x = "h{0}.h{0}.x";
+	h{0}.h{0}.y = "h{0}.h{0}.y";
+	h{1}.a = "h{1}.a";
+	h{1}.b = "h{1}.b";
+	h{1}.h{0}.x = "h{1}.h{0}.x";
+	h{1}.h{0}.y = "h{1}.h{0}.y";
+	h{1}.h{2}.x = "h{1}.h{2}.x";
+	h{1}.h{2}.y = "h{1}.h{2}.y";
+
+	foreach (k1=>s in h) {
+		printf("h{%d}.a = %s\n", k1, s.a);
+		printf("h{%d}.b = %s\n", k1, s.b);
+		foreach (k2=>xy in s.h) {
+			printf("h{%d}.h{%d}.x = %s\n", k1, k2, xy.x);
+			printf("h{%d}.h{%d}.y = %s\n", k1, k2, xy.y);
+		}
+	}
+
+	printf("end\n");
+}
+#lang tcl
+deep_1_1
+} -output "start
+h{0}.a = h{0}.a
+h{0}.b = h{0}.b
+h{0}.h{0}.x = h{0}.h{0}.x
+h{0}.h{0}.y = h{0}.h{0}.y
+h{1}.a = h{1}.a
+h{1}.b = h{1}.b
+h{1}.h{0}.x = h{1}.h{0}.x
+h{1}.h{0}.y = h{1}.h{0}.y
+h{1}.h{2}.x = h{1}.h{2}.x
+h{1}.h{2}.y = h{1}.h{2}.y
+end
+"
+
+test deep-1.2 {deep dive with consecutive hash indices} -body {
+#lang L
+void
+deep_1_2()
+{
+	int	k1, k2, k3, k4;
+	string	v;
+	string	h{int};
+	string	hh{int}{int};
+	string	hhh{int}{int}{int};
+	string	hhhh{int}{int}{int}{int};
+
+	printf("start\n");
+
+	/*
+	 * Test various cases with consecutive hash indices.
+	 */
+
+	hh{0}{0} = "00";
+	hh{0}{1} = "01";
+	hh{1}{0} = "10";
+	foreach (k1=>h in hh) {
+		foreach (k2=>v in h) {
+			unless (hh{k1}{k2} eq h{k2}) {
+				printf("bad 1\n");
+			}
+			printf("hh{%d}{%d} has %s\n", k1, k2, hh{k1}{k2});
+		}
+	}
+
+	hhh{0}{0}{0} = "000";
+	hhh{0}{0}{1} = "001";
+	hhh{0}{1}{0} = "010";
+	hhh{1}{0}{0} = "100";
+	foreach (k1=>hh in hhh) {
+		foreach (k2=>h in hh) {
+			foreach (k3=>v in h) {
+				unless (hhh{k1}{k2}{k3} eq hh{k2}{k3}) {
+					printf("bad 2\n");
+				}
+				unless (hh{k2}{k3} eq h{k3}) {
+					printf("bad 3\n");
+				}
+				printf("hhh{%d}{%d}{%d} has %s\n", k1, k2, k3,
+				       hhh{k1}{k2}{k3});
+			}
+		}
+	}
+
+	hhhh{0}{0}{0}{0} = "0000";
+	hhhh{0}{0}{0}{1} = "0001";
+	hhhh{0}{0}{1}{0} = "0010";
+	hhhh{0}{1}{0}{0} = "0100";
+	hhhh{1}{0}{0}{0} = "1000";
+	foreach (k1=>hhh in hhhh) {
+		foreach (k2=>hh in hhh) {
+			foreach (k3=>h in hh) {
+				foreach (k4=>v in h) {
+					unless (hhhh{k1}{k2}{k3}{k4} eq
+						hhh{k2}{k3}{k4}) {
+						printf("bad 4\n");
+					}
+					unless (hhh{k2}{k3}{k4} eq hh{k3}{k4}) {
+						printf("bad 5\n");
+					}
+					unless (hh{k3}{k4} eq h{k4}) {
+						printf("bad 6\n");
+					}
+					printf("hhhh{%d}{%d}{%d}{%d} has %s\n",
+					       k1, k2, k3, k4,
+					       hhhh{k1}{k2}{k3}{k4});
+				}
+			}
+		}
+	}
+
+	printf("end\n");
+}
+#lang tcl
+deep_1_2
+} -output "start
+hh{0}{0} has 00
+hh{0}{1} has 01
+hh{1}{0} has 10
+hhh{0}{0}{0} has 000
+hhh{0}{0}{1} has 001
+hhh{0}{1}{0} has 010
+hhh{1}{0}{0} has 100
+hhhh{0}{0}{0}{0} has 0000
+hhhh{0}{0}{0}{1} has 0001
+hhhh{0}{0}{1}{0} has 0010
+hhhh{0}{1}{0}{0} has 0100
+hhhh{1}{0}{0}{0} has 1000
+end
+"
+
+test deep-1.3 {deep dive with consecutive array indices} -body {
+#lang L
+void
+deep_1_3()
+{
+	string	v;
+	string	a[3];
+	string	aa[2][2];
+	string	aaa[2][2][2];
+	string	aaaa[2][2][2][2];
+
+	printf("start\n");
+
+	/*
+	 * Test various cases with consecutive array indices.
+	 */
+
+	a[0] = "0";
+	a[1] = "1";
+	a[2] = "2";
+	foreach (v in a) {
+		printf("a has '%s'\n", v);
+	}
+
+	aa[0][0] = "00";
+	aa[0][1] = "01";
+	aa[0][2] = "02";
+	aa[1][0] = "10";
+	foreach (a in aa) {
+		foreach (v in a) {
+			printf("aa has '%s'\n", v);
+		}
+	}
+
+	aaa[0][0][0] = "000";
+	aaa[0][0][1] = "001";
+	aaa[0][1][0] = "010";
+	aaa[0][1][1] = "011";
+	aaa[1][0][0] = "100";
+	foreach (aa in aaa) {
+		foreach (a in aa) {
+			foreach (v in a) {
+				printf("aaa has '%s'\n", v);
+			}
+		}
+	}
+
+	aaaa[0][0][0][0] = "0000";
+	aaaa[0][0][0][1] = "0001";
+	aaaa[0][0][1][0] = "0010";
+	aaaa[0][1][0][0] = "0100";
+	aaaa[1][0][0][0] = "1000";
+	foreach (aaa in aaaa) {
+		foreach (aa in aaa) {
+			foreach (a in aa) {
+				foreach (v in a) {
+					printf("aaaa has '%s'\n", v);
+				}
+			}
+		}
+	}
+
+	printf("end\n");
+}
+#lang tcl
+deep_1_3
+} -output "start
+a has '0'
+a has '1'
+a has '2'
+aa has '00'
+aa has '01'
+aa has '02'
+aa has '10'
+aaa has '000'
+aaa has '001'
+aaa has '010'
+aaa has '011'
+aaa has '100'
+aaaa has '0000'
+aaaa has '0001'
+aaaa has '0010'
+aaaa has '0100'
+aaaa has '1000'
+end
+"
+
+test deep-1.4 {deep dive with alternating hash and array indices} -body {
+#lang L
+void
+deep_1_4()
+{
+	/*
+	 * Note that, because of the array auto-extend semantics, if
+	 * you write to a[i] but there are values before index i not
+	 * yet written, those get automatically set to an undefined
+	 * value, which the foreach's will iterate through.  When used
+	 * as a string, the undefined value shows up as "".  (Tcl
+	 * doesn't let you use it as an integer, which is why the
+	 * hashes are string hashes in these tests.)
+	 */
+
+	int	i, j, ki, k1, k2;
+	string	vs;
+	string	a[3];
+	string	aa[3][3];
+	string	h{int};
+	string	hh{int}{int};
+	string	ah[3]{int};
+	string	ha{int}[3];
+	string	aah[3][3]{int};
+	string	aha[3]{int}[3];
+	string	ahh[3]{int}{int};
+	string	haa{int}[3][3];
+	string	hah{int}[3]{int};
+	string	hha{int}{int}[3];
+
+	printf("start\n");
+
+	ah[0]{0} = "ah[0]{0}";
+	ah[2]{0} = "ah[2]{0}";
+	ah[2]{1} = "ah[2]{1}";
+	i = 0;
+	foreach (h in ah) {
+		foreach (ki=>vs in h) {
+			unless (ah[i]{ki} eq vs) printf("bad 1\n");
+			printf("ah[%d]{%d} = '%s'\n", i, ki, vs);
+		}
+		++i;
+	}
+
+	ha{0}[0] = "ha{0}[0]";
+	ha{0}[1] = "ha{0}[1]";
+	ha{1}[1] = "ha{1}[1]";
+	foreach (ki=>a in ha) {
+		i = 0;
+		foreach (vs in a) {
+			unless (ha{ki}[i] eq vs) printf("bad 2\n");
+			printf("ha{%d}[%d] = '%s'\n", ki, i, vs);
+			++i;
+		}
+	}
+
+	aah[0][0]{0} = "aah[0][0]{0}";
+	aah[0][1]{1} = "aah[0][1]{1}";
+	aah[1][0]{2} = "aah[1][0]{2}";
+	aah[1][0]{3} = "aah[1][0]{3}";
+	i = 0;
+	foreach (ah in aah) {
+		j = 0;
+		foreach (h in ah) {
+			foreach (ki=>vs in h) {
+				unless (aah[i][j]{ki} eq vs) printf("bad 3\n");
+				unless (ah[j]{ki} eq vs) printf("bad 4\n");
+				unless (h{ki} eq vs) printf("bad 5\n");
+				printf("aah[%d][%d]{%d} = '%s'\n", i, j, ki,
+				       aah[i][j]{ki});
+			}
+			++j;
+		}
+		++i;
+	}
+
+	aha[0]{0}[0] = "aha[0]{0}[0]";
+	aha[0]{1}[1] = "aha[0]{1}[1]";
+	aha[1]{2}[0] = "aha[1]{2}[0]";
+	aha[0]{3}[2] = "aha[0]{3}[2]";
+	i = 0;
+	foreach (ha in aha) {
+		foreach (ki=>a in ha) {
+			j = 0;
+			foreach (vs in a) {
+				unless (aha[i]{ki}[j] eq vs) printf("bad 6\n");
+				unless (ha{ki}[j] eq vs) printf("bad 7\n");
+				unless (a[j] eq vs) printf("bad 7\n");
+				printf("aha[%d]{%d}[%d] = '%s'\n", i, ki, j,
+				       aha[i]{ki}[j]);
+				++j;
+			}
+		}
+		++i;
+	}
+
+	ahh[0]{0}{1} = "ahh[0]{0}{1}";
+	ahh[0]{2}{3} = "ahh[0]{2}{3}";
+	ahh[1]{4}{5} = "ahh[1]{4}{5}";
+	ahh[2]{6}{7} = "ahh[2]{6}{7}";
+	i = 0;
+	foreach (hh in ahh) {
+		foreach (k1=>h in hh) {
+			foreach (k2=>vs in h) {
+				unless (ahh[i]{k1}{k2} eq vs) printf("bad 7\n");
+				unless (hh{k1}{k2} eq vs) printf("bad 8\n");
+				unless (h{k2} eq vs) printf("bad 9\n");
+			printf("ahh[%d]{%d}{%d} = '%s'\n", i, k1, k2,
+			       ahh[i]{k1}{k2});
+			}
+		}
+		++i;
+	}
+
+	haa{0}[0][0] = "haa{0}[0][0]";
+	haa{0}[1][0] = "haa{0}[1][0]";
+	haa{1}[0][0] = "haa{1}[0][0]";
+	haa{2}[0][1] = "haa{2}[0][1]";
+	foreach (ki=>aa in haa) {
+		i = 0;
+		foreach (a in aa) {
+			j = 0;
+			foreach (vs in a) {
+				unless (haa{ki}[i][j] eq vs) printf("bad 10\n");
+				unless (aa[i][j] eq vs) printf("bad 11\n");
+				unless (a[j] eq vs) printf("bad 12\n");
+				printf("haa{%d}[%d][%d] = '%s'\n", ki, i, j,
+				       haa{ki}[i][j]);
+				++j;
+			}
+			++i;
+		}
+	}
+
+	hha{0}{1}[0] = "hha{0}{1}[0]";
+	hha{2}{3}[0] = "hha{2}{3}[0]";
+	hha{4}{5}[1] = "hha{4}{5}[1]";
+	hha{6}{7}[2] = "hha{6}{7}[2]";
+	foreach (k1=>ha in hha) {
+		foreach (k2=>a in ha) {
+			i = 0;
+			foreach (vs in a) {
+				unless (hha{k1}{k2}[i] eq vs) printf("bad13\n");
+				unless (ha{k2}[i] eq vs) printf("bad 14n");
+				unless (a[i] eq vs) printf("bad 15\n");
+				printf("hha{%d}{%d}[%d] = '%s'\n", k1, k2, i,
+				       hha{k1}{k2}[i]);
+				++i;
+			}
+		}
+	}
+
+	hah{0}[0]{0} = "hah{0}[0]{0}";
+	hah{1}[0]{2} = "hah{1}[0]{2}";
+	hah{3}[1]{4} = "hah{3}[1]{4}";
+	hah{5}[2]{6} = "hah{5}[2]{6}";
+	foreach (k1=>ah in hah) {
+		i = 0;
+		foreach (h in ah) {
+			foreach (k2=>vs in h) {
+				unless (hah{k1}[i]{k2} eq vs) printf("bad16\n");
+				unless (ah[i]{k2} eq vs) printf("bad 17\n");
+				unless (h{k2} eq vs) printf("bad 18\n");
+				printf("hah{%d}[%d]{%d} = '%s'\n", k1, i, k2,
+				       hah{k1}[i]{k2});
+			}
+			++i;
+		}
+	}
+
+	printf("end\n");
+}
+
+#lang tcl
+deep_1_4
+} -output {start
+ah[0]{0} = 'ah[0]{0}'
+ah[2]{0} = 'ah[2]{0}'
+ah[2]{1} = 'ah[2]{1}'
+ha{0}[0] = 'ha{0}[0]'
+ha{0}[1] = 'ha{0}[1]'
+ha{1}[0] = ''
+ha{1}[1] = 'ha{1}[1]'
+aah[0][0]{0} = 'aah[0][0]{0}'
+aah[0][1]{1} = 'aah[0][1]{1}'
+aah[1][0]{2} = 'aah[1][0]{2}'
+aah[1][0]{3} = 'aah[1][0]{3}'
+aha[0]{0}[0] = 'aha[0]{0}[0]'
+aha[0]{1}[0] = ''
+aha[0]{1}[1] = 'aha[0]{1}[1]'
+aha[0]{3}[0] = ''
+aha[0]{3}[1] = ''
+aha[0]{3}[2] = 'aha[0]{3}[2]'
+aha[1]{2}[0] = 'aha[1]{2}[0]'
+ahh[0]{0}{1} = 'ahh[0]{0}{1}'
+ahh[0]{2}{3} = 'ahh[0]{2}{3}'
+ahh[1]{4}{5} = 'ahh[1]{4}{5}'
+ahh[2]{6}{7} = 'ahh[2]{6}{7}'
+haa{0}[0][0] = 'haa{0}[0][0]'
+haa{0}[1][0] = 'haa{0}[1][0]'
+haa{1}[0][0] = 'haa{1}[0][0]'
+haa{2}[0][0] = ''
+haa{2}[0][1] = 'haa{2}[0][1]'
+hha{0}{1}[0] = 'hha{0}{1}[0]'
+hha{2}{3}[0] = 'hha{2}{3}[0]'
+hha{4}{5}[0] = ''
+hha{4}{5}[1] = 'hha{4}{5}[1]'
+hha{6}{7}[0] = ''
+hha{6}{7}[1] = ''
+hha{6}{7}[2] = 'hha{6}{7}[2]'
+hah{0}[0]{0} = 'hah{0}[0]{0}'
+hah{1}[0]{2} = 'hah{1}[0]{2}'
+hah{3}[1]{4} = 'hah{3}[1]{4}'
+hah{5}[2]{6} = 'hah{5}[2]{6}'
+end
+}
+
+test deep-2.1 {deep dive array auto-extend} -body {
+#lang L
+void
+deep_2_1()
+{
+	int	i, j;
+	int	a1[];
+	int	a2[];
+	int	aa1[][];
+	int	aa2[][];
+
+	/*
+	 * Test that arrays auto-extend properly.
+	 */
+
+	a1[0] = 0;
+	a1[1] = 1;
+	a1[2] = 2;
+	unless ((a1[0] == 0) && (a1[1] == 1) && (a1[2] == 2)) {
+		puts("a1 bad 1");
+	}
+	if (defined(a1[3])) puts("a1 bad 2");
+
+	a2[1]  = 1;
+	a2[3]  = 3;
+	a2[6]  = 6;
+	a2[10] = 10;
+	unless ((a2[1] == 1) && (a2[3] == 3) && (a2[6] == 6) && (a2[10] == 10)) {
+		puts("a2 bad 1");
+	}
+	if (defined(a2[0])) puts("a2 bad 2");
+	if (defined(a2[2])) puts("a2 bad 3");
+	if (defined(a2[4])) puts("a2 bad 4");
+	if (defined(a2[5])) puts("a2 bad 5");
+	if (defined(a2[7])) puts("a2 bad 6");
+	if (defined(a2[8])) puts("a2 bad 7");
+	if (defined(a2[9])) puts("a2 bad 8");
+	if (defined(a2[11])) puts("a2 bad 9");
+
+	aa1[0][0] = 100;
+	aa1[0][1] = 101;
+	aa1[0][2] = 102;
+	aa1[1][0] = 110;
+	aa1[1][1] = 111;
+	aa1[2][0] = 120;
+	unless ((aa1[0][0] == 100) && (aa1[0][1] == 101) && (aa1[0][2] == 102) &&
+		(aa1[1][0] == 110) && (aa1[1][1] == 111) && (aa1[2][0] == 120)) {
+		puts("aa1 bad 1");
+	}
+	if (defined(aa1[0][3])) puts("aa1 bad 2");
+	if (defined(aa1[1][3])) puts("aa1 bad 3");
+	if (defined(aa1[2][1])) puts("aa1 bad 4");
+
+	aa2[1][1]   = 111;
+	aa2[3][3]   = 133;
+	aa2[6][6]   = 166;
+	aa2[10][10] = 1010;
+	unless ((aa2[1][1] == 111) && (aa2[3][3] == 133) && (aa2[6][6] == 166) &&
+		(aa2[10][10] == 1010)) {
+		puts("aa2 bad 2");
+	}
+	for (i = 0; i <= 10; ++i) {
+		for (j = 0; j <= i; ++j) {
+			if ((i == 1)  && (j == 1))  continue;
+			if ((i == 3)  && (j == 3))  continue;
+			if ((i == 6)  && (j == 6))  continue;
+			if ((i == 10) && (j == 10)) continue;
+			if (defined(aa2[i][j])) printf("aa2[%d][%d] defined\n",
+						       i, j);
+		}
+	}
+}
+#lang tcl
+deep_2_1
+} -output ""
+
+test deep-2.2 {check that a negative array index is an error} -body {
+#lang L
+void
+deep_2_2()
+{
+	int	a[3];
+	a[-1] = 0;
+}
+#lang tcl
+deep_2_2
+} -returnCodes error -match regexp -result {cannot write to negative array index}
+
+test regexp-1.0 {regular expression support} -body {
+#lang L
+void regexp_1_0() {
+        string s = "string";
+        puts(s =~ /ring/);
+        puts(s =~ /bob/);
+}
+#lang tcl
+regexp_1_0
+} -output "1\n0\n"
+
+test regexp-1.1 {magic submatch variables ($1, $2, ...)} -body {
+#lang L
+void regexp_1_1() {
+        string s = "Go not to the elves for counsel, for they will say both yes and no.";
+
+        if (s =~ /((Go).*(elves)).*/) {
+                puts($0);
+                puts($1);
+                puts($2);
+                puts($3);
+        }
+}
+#lang tcl
+regexp_1_1
+} -output "Go not to the elves for counsel, for they will say both yes and no.
+Go not to the elves\nGo\nelves\n"
+
+
+test regexp-1.2 {magic submatch variables with interpolation} -body {
+#lang L
+void regexp_1_2() {
+        string s = "Go not to the elves for counsel, for they will say both yes and no.";
+        string interp = "elves";
+
+        if (s =~ /((Go).*(${interp})).*/) {
+                puts($0);
+                puts($1);
+                puts($2);
+                puts($3);
+        }
+}
+#lang tcl
+regexp_1_2
+} -output "Go not to the elves for counsel, for they will say both yes and no.
+Go not to the elves\nGo\nelves\n"
+
+test regexp-1.3 {regexp substitution} -body {
+#lang L -poly
+regexp_1_3() {
+        string s = "string";
+	string s1[] = {"a", "b", "coochie"};
+	hash h[2];
+
+        puts(s =~ m/ring/);
+        puts(s =~ m|bob|);
+	puts("--------");
+	puts(s =~ s/ring/ling/);
+	puts(s);
+	puts("--------");
+	puts(s1[2] =~ s/c/f/);
+	puts(s1);
+	puts("--------");
+	h[0]{"a"} = "string";
+	h[1]{"m"} = "not a string";
+	puts(h);
+	h[1]{"m"} =~ s/not a/probably a/;
+	puts(h);
+}
+#lang tcl
+regexp_1_3
+} -output "1\n0\n--------\n1\nstling\n--------\n1\na b foochie\n--------\n{a string} {m {not a string}}\n{a string} {m {probably a string}}\n"
+
+test regexp-1.4 {regexp modifiers i and g} -body {
+#lang L -poly
+regexp_1_4() {
+	string foo = "aaa";
+	foo =~ s/a/b/;
+	puts(foo);
+	foo =~ s/a/b/g;
+	puts(foo);
+	foo =~ s/B/a/;
+	puts(foo);
+	foo =~ s/B/a/i;
+	puts(foo);
+	foo =~ s/B/a/ig;
+	puts(foo);
+	if (foo =~ /A/) {
+		puts("busted");
+	}
+	if (foo =~ /A/i) {
+		puts("works");
+	}
+}
+#lang tcl
+regexp_1_4
+} -output "baa\nbbb\nbbb\nabb\naaa\nworks\n"
+
+test regexp-1.5 {regexp quoting} -body {
+#lang L
+void
+regexp_1_5()
+{
+	string	r, s;
+
+	s = "a b c d";
+	s =~ s/\s//;
+	unless (s eq "ab c d") puts("bad 1");
+
+	s = "a  b    c     d";
+	s =~ s/\s+//g;
+	unless (s eq "abcd") puts("bad 2");
+
+	r = "\\s+";
+	s = "a  b    c     d";
+	s =~ s/${r}//g;
+	unless (s eq "abcd") puts("bad 3");
+
+	r = "\\s+";
+	s = "a  b    c     d";
+	s =~ s/\${r}//g;
+	unless (s eq "a  b    c     d") puts("bad 4");
+
+	s = "$a$b";
+	s =~ s/\$//g;  // should match a dollar sign
+	unless (s eq "ab") puts("bad 5");
+
+ 	r = "\\s+";
+	s = '${r} ${r}';
+	s =~ s/\${r}//g;  // should match '${r}' literally
+	unless (s eq " ") puts("bad 6");
+
+	s = "(in parens)";
+	s =~ s/\(//;
+	unless (s eq "in parens)") puts("bad 7");
+	s =~ s/(in)//;
+	unless (s eq " parens)") puts("bad 8");
+}
+#lang tcl
+regexp_1_5
+} -output ""
+
+test reference-1.0 {L references} -body {
+#lang L -nowarn
+reference_1_0() {
+  string foo = "this is a string";
+  printf("so far, so good: %s\n", foo);
+  reference_1_0_aux("bleh", &foo);
+  printf("%s\n", foo);
+}
+
+reference_1_0_aux(string dummy, string &bob) {
+  printf("foot: %s\n", bob);
+  bob = "This was a string.";
+}
+#lang tcl
+reference_1_0
+} -output "so far, so good: this is a string
+foot: this is a string
+This was a string.
+"
+
+test reference-1.1 {L references} -body {
+#lang L
+struct reference_1_1_point { int x, y; };
+
+reference_1_1() {
+  struct reference_1_1_point a;
+  puts(a);
+  reference_1_1_tweak(&a);
+  puts(a);
+}
+
+reference_1_1_tweak(struct reference_1_1_point &foo) {
+  foo.x = 2;
+}
+#lang tcl
+reference_1_1
+} -output "
+2
+"
+test reference-1.2 {widget pointer thingys} -body {
+#lang L
+int
+reference_1_2()
+{
+	int	a;
+
+	a = 5;
+	printf("%s %s\n", variable: &a);
+	eval("puts [set ::Lptr::[list 1 a]]");
+}
+#lang tcl
+reference_1_2
+} -output "-variable ::Lptr::1 a\n5\n"
+
+test reference-1.3 {widget pointers via the Lptr namespace} -body {
+#lang L
+reference_1_3()
+{
+  int reference_1_3_foo = 0;
+  printf("%s, %s\n", variable: &reference_1_3_foo);
+  eval("set {::Lptr::1 reference_1_3_foo} 93");
+  puts(reference_1_3_foo);
+}
+#lang tcl
+reference_1_3
+} -output "-variable, ::Lptr::1 reference_1_3_foo\n93\n"
+
+test typedef-1.0 {basic typedef support} -body {
+#lang L
+typedef int typedef_1_0_foot[5];
+typedef string typedef_1_0_nike;
+typedef struct typedef_1_0_point {
+  int x;
+  int y;
+} typedef_1_0_point;
+
+typedef_1_0() {
+  puts(typedef_1_0_aux());
+}
+
+typedef_1_0_nike typedef_1_0_aux() {
+  typedef_1_0_foot cheese;
+  typedef_1_0_nike shoe = "pegasus";
+  typedef_1_0_point p;
+
+  p.x = 1;
+  p.y = 2;
+  puts(p);
+  cheese[2] = 1;
+  cheese[3] = 2;
+  cheese[4] = 3;
+  puts(cheese[3]);
+  puts(shoe);
+  return shoe;
+}
+#lang tcl
+typedef_1_0
+} -output "1 2\n2\npegasus\npegasus\n"
+
+test typedef-1.1 {test redefining identical typedefs} -body {
+#lang L
+typedef int t1;
+typedef int t1;
+typedef int t1;
+
+typedef float t2;
+typedef float t2;
+typedef float t2;
+
+typedef string t3;
+typedef string t3;
+typedef string t3;
+
+typedef widget t4;
+typedef widget t4;
+typedef widget t4;
+
+typedef poly t5;
+typedef poly t5;
+typedef poly t5;
+
+typedef int a11_1[];
+typedef int a11_1[];
+typedef int a11_1[];
+
+typedef int a11_2[2];
+typedef int a11_2[2];
+typedef int a11_2[2];
+
+typedef int a11_3{int};
+typedef int a11_3{int};
+typedef int a11_3{int};
+
+typedef int a11_4[2][3];
+typedef int a11_4a[3];
+typedef a11_4a a11_4[2];
+
+typedef struct { int x,y; } s11_1;
+typedef struct { int x,y; } s11_1;
+typedef struct { int x,y; } s11_1;
+
+typedef int int_typedef;
+
+typedef int h11_1{int};
+typedef int h11_1{int_typedef};
+typedef int_typedef h11_1{int};
+typedef int_typedef h11_1{int_typedef};
+
+typedef int h11_2{int}{int};
+typedef int h11_2a{int};
+typedef h11_2a h11_2{int};
+} -output ""
+
+test typedef-1.2 {test redefining different typedefs} -body {
+#lang L
+typedef int t12;
+typedef float t12;
+typedef string t12;
+typedef widget t12;
+typedef poly t12;
+typedef int t12[];
+typedef int t12[2];
+typedef int t12{int};
+typedef struct { int i; } t12;
+
+typedef int a12_1[];
+typedef int a12_1[2];
+
+typedef int a12_2[2];
+typedef int a12_2[];
+
+typedef int a12_3[2];
+typedef string a12_3[2];
+
+typedef int h12_1{int};
+typedef int h12_1{string};
+
+typedef int h12_2{int};
+typedef string h12_2{int};
+
+typedef int h12_3{int};
+typedef string h12_3{string};
+
+typedef struct { int x; } s12_1;
+typedef struct { string x; } s12_1;
+
+typedef struct { int x; } s12_2;
+typedef struct { int x,y; } s12_2;
+
+typedef struct { int x,y; } s12_3;
+typedef struct { int x; } s12_3;
+
+typedef struct s { int x; } s12_4;
+typedef struct s { string x; } s12_4;
+
+typedef struct s { int x; } s12_5;
+typedef struct s { int x,y; } s12_5;
+
+typedef struct s { int x,y; } s12_6;
+typedef struct s { int x; } s12_6;
+} -returnCodes error -match regexp -result {.*2: L Error: Cannot redefine type: t12
+.*3: L Error: Cannot redefine type: t12
+.*4: L Error: Cannot redefine type: t12
+.*5: L Error: Cannot redefine type: t12
+.*6: L Error: Cannot redefine type: t12
+.*7: L Error: Cannot redefine type: t12
+.*8: L Error: Cannot redefine type: t12
+.*9: L Error: Cannot redefine type: t12
+.*12: L Error: Cannot redefine type: a12_1
+.*15: L Error: Cannot redefine type: a12_2
+.*18: L Error: Cannot redefine type: a12_3
+.*21: L Error: Cannot redefine type: h12_1
+.*24: L Error: Cannot redefine type: h12_2
+.*27: L Error: Cannot redefine type: h12_3
+.*30: L Error: Cannot redefine type: s12_1
+.*33: L Error: Cannot redefine type: s12_2
+.*36: L Error: Cannot redefine type: s12_3
+.*39: L Error: Cannot redefine type: s12_4
+.*42: L Error: Cannot redefine type: s12_5
+.*45: L Error: Cannot redefine type: s12_6
+}
+
+test defined-1.0 {interesting defined form support} -body {
+#lang L
+defined_1_0() {
+  int arr[5][2], i, j;
+  for (i = 0; defined(arr[i]); i++) {
+    for (j = 0; defined(arr[i][j]); j++) {
+      puts(format("%d, %d", i, j));
+    }
+  }
+  puts("-*-");
+  puts(defined(arr[3]));
+  puts(defined(arr[-1]));
+}
+#lang tcl
+defined_1_0
+} -output "-*-
+0
+0
+"
+
+test defined-1.1 {defined works on hashes} -body {
+#lang L
+defined_1_1() {
+	hash foo[5];
+
+	foo[2]{"a"} = 1;
+	foo[3]{"b"} = 2;
+	
+	if (defined(foo[2]{"a"})) {
+		puts("defined works");
+	}
+	if (!defined(foo[2]{"b"})) {
+		puts("defined works even better");
+	}
+}
+#lang tcl
+defined_1_1
+} -output "defined works\ndefined works even better\n"
+
+test main-1.0 {test that main gets called} -setup {
+	set fname [makeFile {
+		main() {
+			printf("main got called\n");
+		}
+	} test-1.0.l]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $fname
+} -cleanup {
+	removeFile test-1.0.l
+} -result {main got called}
+
+test defined-1.2 {defined operator on scalars} -body {
+#lang L
+int fint() { return 0; }
+float ffloat() { return 0.0; }
+string fstring() { return "0"; }
+void fvoid() { return; }
+void
+defined_1_2()
+{
+	int	i;
+	int	ii = 0;
+	string	s;
+	string	ss = "";
+	float	f;
+	float	ff = 3.14159;
+
+	unless (defined(i))  puts("err 1");
+	unless (defined(ii)) puts("err 2");
+	unless (defined(s))  puts("err 3");
+	unless (defined(ss)) puts("err 4");
+	unless (defined(f))  puts("err 5");
+	unless (defined(ff)) puts("err 6");
+	unless (defined(0))  puts("err 7");
+	unless (defined(1))  puts("err 7");
+	unless (defined("")) puts("err 8");
+	unless (defined("x")) puts("err 9");
+	unless (defined(0.0)) puts("err 10");
+	unless (defined(1.0)) puts("err 11");
+	unless (defined(fint()))    puts("err 12");
+	unless (defined(ffloat()))  puts("err 13");
+	unless (defined(fstring())) puts("err 14");
+	unless (defined(1-0))     puts("err 16");
+	unless (defined(1+2+3+4)) puts("err 17");
+}
+#lang tcl
+defined_1_2
+} -output ""
+
+test defined-1.3 {defined operator on auto-extended arrays} -body {
+#lang L
+void
+defined_1_3()
+{
+	int	i;
+	int	a[];
+	int	a3[3] = {0};
+	string	s[];
+	string	s3[3] = {""};
+	float	f[];
+	float	f3[3] = {0.0};
+	string	h{int}[];
+
+	a[3] = 3;
+	a[5] = 5;
+	a[6] = 6;
+	a[8] = 8;
+	if (defined(a[0]))     puts("err 1.1");
+	if (defined(a[1]))     puts("err 1.2");
+	if (defined(a[2]))     puts("err 1.3");
+	unless (defined(a[3])) puts("err 1.4");
+	if (defined(a[4]))     puts("err 1.5");
+	unless (defined(a[5])) puts("err 1.6");
+	unless (defined(a[6])) puts("err 1.7");
+	if (defined(a[7]))     puts("err 1.8");
+	unless (defined(a[8])) puts("err 1.9");
+	for (i = 9; i < 1000; ++i) {
+		if (defined(a[i])) printf("err 1.10 i=%d\n", i);
+	}
+
+	unless (defined(a3[0])) puts("err 2.1");
+	unless (defined(a3[1])) puts("err 2.2");
+	unless (defined(a3[2])) puts("err 2.3");
+	for (i = 3; i < 1000; ++i) {
+		if (defined(a3[i])) printf("err 2.4 i=%d\n", i);
+	}
+
+	s[3] = "3";
+	s[5] = "5";
+	s[6] = "6";
+	s[8] = "8";
+	if (defined(s[0]))     puts("err 3.1");
+	if (defined(s[1]))     puts("err 3.2");
+	if (defined(s[2]))     puts("err 3.3");
+	unless (defined(s[3])) puts("err 3.4");
+	if (defined(s[4]))     puts("err 3.5");
+	unless (defined(s[5])) puts("err 3.6");
+	unless (defined(s[6])) puts("err 3.7");
+	if (defined(s[7]))     puts("err 3.8");
+	unless (defined(s[8])) puts("err 3.9");
+	for (i = 9; i < 1000; ++i) {
+		if (defined(s[i])) printf("err 3.10 i=%d\n", i);
+	}
+
+	unless (defined(s3[0])) puts("err 4.1");
+	unless (defined(s3[1])) puts("err 4.2");
+	unless (defined(s3[2])) puts("err 4.3");
+	for (i = 3; i < 1000; ++i) {
+		if (defined(s3[i])) printf("err 4.4 i=%d\n", i);
+	}
+
+	f[3] = 3.0;
+	f[5] = 5.0;
+	f[6] = 6.0;
+	f[8] = 8.0;
+	if (defined(f[0]))     puts("err 5.1");
+	if (defined(f[1]))     puts("err 5.2");
+	if (defined(f[2]))     puts("err 5.3");
+	unless (defined(f[3])) puts("err 5.4");
+	if (defined(f[4]))     puts("err 5.5");
+	unless (defined(f[5])) puts("err 5.6");
+	unless (defined(f[6])) puts("err 5.7");
+	if (defined(f[7]))     puts("err 5.8");
+	unless (defined(f[8])) puts("err 5.9");
+	for (i = 9; i < 1000; ++i) {
+		if (defined(f[i])) printf("err 5.10 i=%d\n", i);
+	}
+
+	unless (defined(f3[0])) puts("err 5.1");
+	unless (defined(f3[1])) puts("err 5.2");
+	unless (defined(f3[2])) puts("err 5.3");
+	for (i = 3; i < 1000; ++i) {
+		if (defined(f3[i])) printf("err 5.4 i=%d\n", i);
+	}
+
+	h{0}[2] = "2";
+	if (defined(h{0}[0]))     puts("err 6.1");
+	if (defined(h{0}[1]))     puts("err 6.2");
+	unless (defined(h{0}[2])) puts("err 6.3");
+	if (defined(h{0}[3]))     puts("err 6.4");
+}
+#lang tcl
+defined_1_3
+} -output ""
+
+test defined-1.4 {check propagation of undefined values} -body {
+#lang L
+int
+f(int i)
+{
+	return (i);
+}
+void
+defined_1_4()
+{
+	int	i, j;
+	int	a[];
+
+	a[1] = 1;  // a[0] is now undefined
+	i = a[0];  // i is now undefined
+	j = f(i);  // j is now undefined
+
+	if (defined(a[0])) puts("err 1");
+	if (defined(i)) puts("err 2");
+	if (defined(j)) puts("err 3");
+	if (defined(f(i))) puts("err 4");
+	if (defined(f(j))) puts("err 5");
+	if (defined(f(f(j)))) puts("err 6");
+	if (defined(f(f(f(j))))) puts("err 7");
+}
+#lang tcl
+defined_1_4
+} -output ""
+
+
+test lib-1.0 {L library functions -- setenv, getenv, and unsetenv} -body {
+#lang L
+lib_1_0() {
+	puts("don't overwrite");
+	setenv("PATH", "nil", 0);
+	if (getenv("PATH") ne "nil") {
+		puts("worked");
+	}
+	puts("overwrite");
+	setenv("PATH", "nil");
+	if (getenv("PATH") eq "nil") {
+		puts("worked");
+	}
+	puts("unset");
+	unsetenv("PATH");
+	if (getenv("PATH") eq "") {
+		puts("worked");
+	}
+}
+#lang tcl
+lib_1_0
+} -output {don't overwrite
+worked
+overwrite
+worked
+unset
+worked
+}
+
+test toplevel-1.0 {Toplevel code in L} -body {
+#lang L
+int toplevel_1_0_i = 2;
+printf("at the toplevel, i is: %d\n", toplevel_1_0_i);
+
+toplevel_1_0(void) {
+  printf("in toplevel_1_0, i is: %d\n", toplevel_1_0_i);
+}
+#lang tcl
+toplevel_1_0
+} -output {at the toplevel, i is: 2
+in toplevel_1_0, i is: 2
+}
+
+test toplevel-1.1 {Toplevel code via the L command, sharing variables} -body {
+L { puts("Accent on helpful side of your nature.  Drain the moat."); }
+proc toplevel_1_1 {} {
+    set v 2
+    L {
+        string v = "Sphenic numbers always have exactly eight divisors.";
+    }
+    puts $v
+}
+toplevel_1_1
+} -output {Accent on helpful side of your nature.  Drain the moat.
+Sphenic numbers always have exactly eight divisors.
+}
+
+test typecheck-1.0 {L typechecking} -body {
+#lang L
+typecheck_1_0() {
+	puts(typecheck_1_0_foo() + 22);
+}
+
+string typecheck_1_0_foo() {
+	return "string";
+}
+#lang tcl
+typecheck_1_0
+} -returnCodes {error} -match glob \
+-result "*:2: L Error: type error, want L_TYPE_NUMBER, got L_TYPE_STRING\n"
+
+test typecheck-1.1 {arity check} -body {
+#lang L -nowarn
+typecheck_1_1() {
+	foo(1, 2, 3);
+	bar();
+}
+foo() {}
+bar(int a, int b) {}
+#lang tcl
+} -returnCodes {error} -match glob \
+-result "*:3: L Error: Not enough arguments for function bar
+*:2: L Error: Too many arguments for function foo\n"
+
+test typecheck-1.2 {check functions returning int arrays of arrays} -body {
+#lang L
+int[]
+f_int()
+{
+	int	i, a[3];
+
+	for (i = 0; i < 3; ++i) {
+		a[i] = i;
+	}
+	return a;
+}
+int[][]
+f_int_int()
+{
+	int	i, j, a[3][4];
+
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			a[i][j] = 10*i + j;
+		}
+	}
+	return a;
+}
+int[][][]
+f_int_int_int()
+{
+	int	i, j, k, a[3][4][5];
+
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			for (k = 0; k < 5; ++k) {
+				a[i][j][k] = 100*i + 10*j + k;
+			}
+		}
+	}
+	return a;
+}
+void
+foo()
+{
+	int	i, j, k;
+	int	one[3];
+	int	two[3][4];
+	int	three[3][4][5];
+
+	one   = f_int();
+	two   = f_int_int();
+	three = f_int_int_int();
+
+	for (i = 0; i < 3; ++i) {
+		unless (one[i] == i) {
+			printf("one: i=%d bad\n", i);
+		}
+	}
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			unless (two[i][j] == (10*i + j)) {
+				printf("two: i=%d j=%d bad\n", i, j);
+			}
+		}
+	}
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			for (k = 0; k < 5; ++k) {
+				unless (three[i][j][k] == (100*i + 10*j + k)) {
+					printf("three: i=%d j=%d k=%d bad\n",
+					       i, j, k);
+				}
+			}
+		}
+	}
+}
+foo();
+} -output {}
+
+test typecheck-1.3 {check functions returning float arrays of arrays} -body {
+#lang L
+float[]
+f_float()
+{
+	int	i;
+	float	a[3];
+
+	for (i = 0; i < 3; ++i) {
+		a[i] = i;
+	}
+	return a;
+}
+float[][]
+f_float_float()
+{
+	int	i, j;
+	float	a[3][4];
+
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			a[i][j] = 10.0*i + j;
+		}
+	}
+	return a;
+}
+float[][][]
+f_float_float_float()
+{
+	int	i, j, k;
+	float	a[3][4][5];
+
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			for (k = 0; k < 5; ++k) {
+				a[i][j][k] = 100.0*i + 10.0*j + k;
+			}
+		}
+	}
+	return a;
+}
+void
+foo()
+{
+	int	i, j, k;
+	float	one[3];
+	float	two[3][4];
+	float	three[3][4][5];
+
+	one   = f_float();
+	two   = f_float_float();
+	three = f_float_float_float();
+
+	/*
+	 * Although testing equality of floats is usually unwise,
+	 * there should be sufficient precision in this case to make
+	 * the comparisons true when they should be.
+	 */
+	for (i = 0; i < 3; ++i) {
+		unless (one[i] == i) {
+			printf("one: i=%d bad\n", i);
+		}
+	}
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			unless (two[i][j] == (10.0*i + j)) {
+				printf("two: i=%d j=%d bad\n", i, j);
+			}
+		}
+	}
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			for (k = 0; k < 5; ++k) {
+				unless (three[i][j][k] == (100.0*i+10.0*j+k)) {
+					printf("three: i=%d j=%d k=%d bad\n",
+					       i, j, k);
+				}
+			}
+		}
+	}
+}
+foo();
+} -output {}
+
+test typecheck-1.4 {check functions returning string arrays of arrays} -body {
+#lang L
+string[]
+f_string()
+{
+	int	i;
+	string	a[3];
+
+	for (i = 0; i < 3; ++i) {
+		a[i] = "${i}";
+	}
+	return a;
+}
+string[][]
+f_string_string()
+{
+	int	i, j;
+	string	a[3][4];
+
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			a[i][j] = "${i}:${j}";
+		}
+	}
+	return a;
+}
+string[][][]
+f_string_string_string()
+{
+	int	i, j, k;
+	string	a[3][4][5];
+
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			for (k = 0; k < 5; ++k) {
+				a[i][j][k] = "${i}:${j}:${k}";
+			}
+		}
+	}
+	return a;
+}
+void
+foo()
+{
+	int	i, j, k;
+	string	one[3];
+	string	two[3][4];
+	string	three[3][4][5];
+
+	one   = f_string();
+	two   = f_string_string();
+	three = f_string_string_string();
+
+	for (i = 0; i < 3; ++i) {
+		unless (one[i] eq "${i}") {
+			printf("one: i=%d bad\n", i);
+		}
+	}
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			unless (two[i][j] eq "${i}:${j}") {
+				printf("two: i=%d j=%d bad\n", i, j);
+			}
+		}
+	}
+	for (i = 0; i < 3; ++i) {
+		for (j = 0; j < 4; ++j) {
+			for (k = 0; k < 5; ++k) {
+				unless (three[i][j][k] eq "${i}:${j}:${k}") {
+					printf("three: i=%d j=%d k=%d bad\n",
+					       i, j, k);
+				}
+			}
+		}
+	}
+}
+foo();
+} -output {}
+
+test typecheck-1.5 {check functions returning void arrays are illegal} -body {
+#lang L
+void[] bad() { return; }
+} -returnCodes error -match regexp -result {.*syntax error.*unexpected.*\[}
+
+test typecheck-2.1 {check int-to-float casts and coercions} -body {
+#lang L
+float
+return_float(float f)
+{
+	return f;
+}
+
+float
+sum_three_floats(float f1, float f2, float f3)
+{
+	return f1 + f2 + f3;
+}
+
+foo()
+{
+	/*
+	 * Exact comparisons with floats must be done with care.  Keep
+	 * the precision of the numbers low so there is sufficient
+	 * precision for the variable comparisons to be true when
+	 * intended.
+	 */
+
+	/* Test initializers and all comparison ops that allow floats. */
+
+	int	i2, i1 = 1964;
+	float	f2, f1 = i1;
+
+	unless (f1 == 1964)        puts("BAD 1.1.1");
+	unless (1964 == f1)        puts("BAD 1.1.2");
+	unless (f1 == 1964.0)      puts("BAD 1.1.3");
+	unless (1964.0 == f1)      puts("BAD 1.1.4");
+	unless (f1 == (float)1964) puts("BAD 1.1.5");
+	unless ((float)1964 == f1) puts("BAD 1.1.6");
+	unless (f1 == (float)i1)   puts("BAD 1.1.7");
+	unless ((float)i1 == f1)   puts("BAD 1.1.8");
+	unless (f1 == i1)          puts("BAD 1.1.9");
+	unless (i1 == f1)          puts("BAD 1.1.10");
+
+	unless (f1 >= 1964)        puts("BAD 1.2.1");
+	unless (1964 >= f1)        puts("BAD 1.2.2");
+	unless (f1 >= 1964.0)      puts("BAD 1.2.3");
+	unless (1964.0 >= f1)      puts("BAD 1.2.4");
+	unless (f1 >= (float)1964) puts("BAD 1.2.5");
+	unless ((float)1964 >= f1) puts("BAD 1.2.6");
+	unless (f1 >= (float)i1)   puts("BAD 1.2.7");
+	unless ((float)i1 >= f1)   puts("BAD 1.2.8");
+	unless (f1 >= i1)          puts("BAD 1.2.9");
+	unless (i1 >= f1)          puts("BAD 1.2.10");
+
+	unless (f1 <= 1964)        puts("BAD 1.3.1");
+	unless (1964 <= f1)        puts("BAD 1.3.2");
+	unless (f1 <= 1964.0)      puts("BAD 1.3.3");
+	unless (1964.0 <= f1)      puts("BAD 1.3.4");
+	unless (f1 <= (float)1964) puts("BAD 1.3.5");
+	unless ((float)1964 <= f1) puts("BAD 1.3.6");
+	unless (f1 <= (float)i1)   puts("BAD 1.3.7");
+	unless ((float)i1 <= f1)   puts("BAD 1.3.8");
+	unless (f1 <= i1)          puts("BAD 1.3.9");
+	unless (i1 <= f1)          puts("BAD 1.3.10");
+
+	unless (f1 != 1999)        puts("BAD 1.4.1");
+	unless (1999 != f1)        puts("BAD 1.4.2");
+	unless (f1 != 1999.0)      puts("BAD 1.4.3");
+	unless (1999.0 != f1)      puts("BAD 1.4.4");
+	unless (f1 != (float)1999) puts("BAD 1.4.5");
+	unless ((float)1999 != f1) puts("BAD 1.4.6");
+	unless (f1 != (float)i2)   puts("BAD 1.4.7");
+	unless ((float)i2 != f1)   puts("BAD 1.4.8");
+	unless (f1 != i2)          puts("BAD 1.4.9");
+	unless (i2 != f1)          puts("BAD 1.4.10");
+
+	/* Test assignments and all binary ops that allow floats. */
+
+	i2 = 1965;
+	f2 = i2;
+	unless (f2 == 1965.0) puts("BAD 2.1");
+
+	f2 = f2 + 1;
+	unless (f2 == 1966.0) puts("BAD 2.2");
+
+	f2 = f2 - 2;
+	unless (f2 == 1964.0) puts("BAD 2.3");
+
+	f2 = f2 / 2;
+	unless (f2 == 982.0)  puts("BAD 2.4");
+
+	f2 = f2 * 2;
+	unless (f2 == 1964.0) puts("BAD 2.5");
+
+	f2 = i2;
+	f2 = 1 + f2;
+	unless (f2 == 1966.0) puts("BAD 3.1");
+
+	f2 = -2 + f2;
+	unless (f2 == 1964.0) puts("BAD 3.2");
+
+	f2 = f2 / 2;
+	unless (f2 == 982.0)  puts("BAD 3.3");
+
+	f2 = 2;
+	f2 = 2 / f2;
+	unless (f2 == 1.0)    puts("BAD 3.4");
+
+	i2 = 1965;
+	f2 = i2;
+	f2 += 1;
+	unless (f2 == 1966.0) puts("BAD 4.1");
+
+	f2 -= 2;
+	unless (f2 == 1964.0) puts("BAD 4.2");
+
+	f2 /= 2;
+	unless (f2 == 982.0)  puts("BAD 4.3");
+
+	f2 *= 2;
+	unless (f2 == 1964.0) puts("BAD 4.4");
+
+	/* Test that int actuals coerce to a float when the formal is a float. */
+
+	f2 = return_float(1);
+	unless (f2 == 1.0)    puts("BAD 5.1");
+
+	i2 = 3;
+	f2 = return_float(i2);
+	unless (f2 == 3.0)    puts("BAD 5.2");
+
+	f2 = sum_three_floats(1, 2, 3);
+	unless (f2 = 6.0)     puts("BAD 5.3");
+
+	i1 = 1;
+	i2 = 3;
+	f2 = sum_three_floats(i1, i2, 3);
+	unless (f2 = 6.0)     puts("BAD 5.4");
+}
+foo();
+} -output ""
+
+test typecheck-3.1 {void illegal in if-stmt conditional} -body {
+#lang L
+void v() { return; }
+void
+foo()
+{
+	if (v()) return;
+}
+} -returnCodes error -match regexp -result {Void not a legal predicate}
+
+test typecheck-3.2 {void illegal in unless-stmt conditional} -body {
+#lang L
+void v() { return; }
+void
+foo()
+{
+	unless (v()) return;
+}
+} -returnCodes error -match regexp -result {Void not a legal predicate}
+
+test typecheck-3.3 {void illegal in while-loop conditional} -body {
+#lang L
+void v() { return; }
+void
+foo()
+{
+	while (v()) return;
+}
+} -returnCodes error -match regexp -result {Void not a legal predicate}
+
+test typecheck-3.4 {void illegal in do-loop conditional} -body {
+#lang L
+void v() { return; }
+void
+foo()
+{
+	do {
+		return;
+	} while(v());
+}
+} -returnCodes error -match regexp -result {Void not a legal predicate}
+
+test typecheck-3.5 {void illegal in for-loop conditional} -body {
+#lang L
+void v() { return; }
+void
+foo()
+{
+	for (1; v(); 1) return;
+}
+} -returnCodes error -match regexp -result {Void not a legal predicate}
+
+test typecheck-3.6 {void illegal in abbreviated-for-loop conditional} -body {
+#lang L
+void v() { return; }
+void
+foo()
+{
+	for (1; v();) return;
+}
+} -returnCodes error -match regexp -result {Void not a legal predicate}
+
+test typecheck-3.10 {void illegal in binary operators} -body {
+#lang L
+void v() { return; }
+void
+foo()
+{
+	int	i;
+
+	if (v() && 0) return;
+	if (0 && v()) return;
+	if (v() || 0) return;
+	if (0 || v()) return;
+	if (v() =~ /bad/) return;
+	if (v() eq "") return;
+	if ("" eq v()) return;
+	if (v() ne "") return;
+	if ("" ne v()) return;
+	if (v() gt "") return;
+	if ("" gt v()) return;
+	if (v() ge "") return;
+	if ("" ge v()) return;
+	if (v() lt "") return;
+	if ("" lt v()) return;
+	if (v() le "") return;
+	if ("" le v()) return;
+	if (v() == 0)  return;
+	if (0 == v())  return;
+	if (v() != 0)  return;
+	if (0 != v())  return;
+	if (v() > 0)   return;
+	if (0 > v())   return;
+	if (v() >= 0)  return;
+	if (0 >= v())  return;
+	if (v() < 0)   return;
+	if (0 < v())   return;
+	if (v() <= 0)  return;
+	if (0 <= v())  return;
+	i = v() + 1;
+	i = 1 + v();
+	i = v() - 1;
+	i = 1 - v();
+	i = v() * 1;
+	i = 1 * v();
+	i = v() / 1;
+	i = 1 / v();
+	i = v() % 1;
+	i = 1 % v();
+	i = v() & 1;
+	i = 1 & v();
+	i = v() | 1;
+	i = 1 | v();
+	i = v() ^ 1;
+	i = 1 ^ v();
+	i = v() << 1;
+	i = 1 << v();
+	i = v() >> 1;
+	i = 1 >> v();
+}
+} -returnCodes error -match regexp -result {.*7: L Error: Void type illegal in assignment or operator
+.*8: L Error: Void type illegal in assignment or operator
+.*9: L Error: Void type illegal in assignment or operator
+.*10: L Error: Void type illegal in assignment or operator
+.*11: L Error: Void type illegal in assignment or operator
+.*12: L Error: Void type illegal in assignment or operator
+.*13: L Error: Void type illegal in assignment or operator
+.*14: L Error: Void type illegal in assignment or operator
+.*15: L Error: Void type illegal in assignment or operator
+.*16: L Error: Void type illegal in assignment or operator
+.*17: L Error: Void type illegal in assignment or operator
+.*18: L Error: Void type illegal in assignment or operator
+.*19: L Error: Void type illegal in assignment or operator
+.*20: L Error: Void type illegal in assignment or operator
+.*21: L Error: Void type illegal in assignment or operator
+.*22: L Error: Void type illegal in assignment or operator
+.*23: L Error: Void type illegal in assignment or operator
+.*24: L Error: Void type illegal in assignment or operator
+.*25: L Error: Void type illegal in assignment or operator
+.*26: L Error: Void type illegal in assignment or operator
+.*27: L Error: Void type illegal in assignment or operator
+.*28: L Error: Void type illegal in assignment or operator
+.*29: L Error: Void type illegal in assignment or operator
+.*30: L Error: Void type illegal in assignment or operator
+.*31: L Error: Void type illegal in assignment or operator
+.*32: L Error: Void type illegal in assignment or operator
+.*33: L Error: Void type illegal in assignment or operator
+.*34: L Error: Void type illegal in assignment or operator
+.*35: L Error: Void type illegal in assignment or operator
+.*36: L Error: Void type illegal in assignment or operator
+.*37: L Error: Void type illegal in assignment or operator
+.*38: L Error: Void type illegal in assignment or operator
+.*39: L Error: Void type illegal in assignment or operator
+.*40: L Error: Void type illegal in assignment or operator
+.*41: L Error: Void type illegal in assignment or operator
+.*42: L Error: Void type illegal in assignment or operator
+.*43: L Error: Void type illegal in assignment or operator
+.*44: L Error: Void type illegal in assignment or operator
+.*45: L Error: Void type illegal in assignment or operator
+.*46: L Error: Void type illegal in assignment or operator
+.*47: L Error: Void type illegal in assignment or operator
+.*48: L Error: Void type illegal in assignment or operator
+.*49: L Error: Void type illegal in assignment or operator
+.*50: L Error: Void type illegal in assignment or operator
+.*51: L Error: Void type illegal in assignment or operator
+.*52: L Error: Void type illegal in assignment or operator
+.*53: L Error: Void type illegal in assignment or operator
+.*54: L Error: Void type illegal in assignment or operator
+.*55: L Error: Void type illegal in assignment or operator
+}
+
+test typecheck-3.11 {void illegal in casts and unary operators} -body {
+#lang L
+void v() { return; }
+void
+foo()
+{
+	int	i;
+	float	f;
+	string	s;
+	hash	h;
+
+	i = (int)v();
+	f = (float)v();
+	s = (string)v();
+	h = (hash)v();
+	i = !v();
+	i = ~v();
+	i = +v();
+	i = -v();
+}
+} -returnCodes error -match regexp -result {.*10: L Error: Void type illegal in cast or operator
+.*11: L Error: Void type illegal in cast or operator
+.*12: L Error: Void type illegal in cast or operator
+.*13: L Error: Void type illegal in cast or operator
+.*14: L Error: Void type illegal in cast or operator
+.*15: L Error: Void type illegal in cast or operator
+.*16: L Error: Void type illegal in cast or operator
+.*17: L Error: Void type illegal in cast or operator
+}
+
+test typecheck-3.12 {void illegal in assignments} -body {
+#lang L
+void v() { return; }
+int takes_int(int i) { return i; }
+void
+foo()
+{
+	int	i;
+
+	i = v();
+	i += v();
+	i -= v();
+	i /= v();
+	i *= v();
+	i %= v();
+	i &= v();
+	i |= v();
+	i ^= v();
+	i >>= v();
+	i <<= v();
+	takes_int(v());
+}
+} -returnCodes error -match regexp -result {.*8: L Error: Void type illegal in assignment or operator
+.*9: L Error: Void type illegal in assignment or operator
+.*10: L Error: Void type illegal in assignment or operator
+.*11: L Error: Void type illegal in assignment or operator
+.*12: L Error: Void type illegal in assignment or operator
+.*13: L Error: Void type illegal in assignment or operator
+.*14: L Error: Void type illegal in assignment or operator
+.*15: L Error: Void type illegal in assignment or operator
+.*16: L Error: Void type illegal in assignment or operator
+.*17: L Error: Void type illegal in assignment or operator
+.*18: L Error: Void type illegal in assignment or operator
+.*19: L Error: type error, want L_TYPE_INT, got L_TYPE_VOID
+}
+
+test typehceck-3.13 {void illegal as foreach expr} -body {
+#lang L -nowarn
+void v() { return; }
+void
+foo()
+{
+	int	k;
+
+	foreach (k in v()) { }
+}
+foo();
+} -returnCodes error -match regexp -result {.*Illegal foreach expression}
+
+test typecheck-4.1 {type errors in foreach} -body {
+#lang L
+void
+foo()
+{
+	int	vi;
+	float	vf;
+	string	vs;
+	int	ai[2] = { 22, 23 };
+	string	as[2] = { "b", "c" };
+	float	af[2] = { 2.1, 2.2 };
+	hash	h = { 1=>2, 2=>3 };
+
+	foreach (vi in as) {}
+	foreach (vi in af) {}
+	foreach (vs in ai) {}
+	foreach (vs in af) {}
+	foreach (vf in as) {}
+	foreach (vi,vi in h) {}
+}
+} -returnCodes error -match regexp -result {.*12: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*13: L Error: type error, want L_TYPE_INT, got L_TYPE_FLOAT
+.*14: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*15: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*16: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRING
+.*17: L Error: multiple variables illegal in foreach over hash
+}
+
+test typecheck-4.2 {type errors in foreach with multiple variables} -body {
+#lang L
+void
+foo()
+{
+	int	i1,i2,i3;
+	float	f1,f2,f3;
+	string	s1,s2,s3;
+	int	ai[3] = { 22, 23, 24 };
+	string	as[3] = { "b", "c", "d" };
+	float	af[3] = { 2.1, 2.2, 2.3 };
+
+	foreach (i1,s2,s3 in as) {}
+	foreach (s1,i2,s3 in as) {}
+	foreach (s1,s2,i3 in as) {}
+	foreach (s1,i2,i3 in ai) {}
+	foreach (i1,s2,i3 in ai) {}
+	foreach (i1,i2,s3 in ai) {}
+	foreach (s1,f2,f3 in af) {}
+	foreach (f1,s2,f3 in af) {}
+	foreach (f1,f2,s3 in af) {}
+
+	/* Make sure that multiple type errors get caught. */
+	foreach (i1,i2,s3 in as) {}
+	foreach (i1,i2,i3 in as) {}
+}
+} -returnCodes error -match regexp -result {.*11: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*12: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*13: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*14: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*15: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*16: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*17: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*18: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*19: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*22: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*22: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*23: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*23: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*23: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+}
+
+test typecheck-5.1 {type errors in hash elements} -body {
+#lang L
+struct s {
+	int	x;
+	int	y;
+};
+void
+typecheck_5_1()
+{
+	int		a[3], i;
+	string		s;
+	float		f;
+	poly		p;
+	struct s	st = {0,0};
+
+	int		ihi{int};
+	int		ihs{string};
+	int		ihf{float};
+
+	string		shi{int};
+	string		shs{string};
+	string		shf{float};
+
+	float		fhi{int};
+	float		fhs{string};
+	float		fhf{float};
+
+	poly		phi{int};
+	poly		phs{string};
+	poly		phf{float};
+
+	ihi{1.1} = 0;	// These want an index of type int.
+	ihi{"s"} = 0;
+	ihi{st}  = 0;
+	ihi{a}   = 0;
+	ihi{shi} = 0;
+	shi{1.1} = "s";
+	shi{"s"} = "s";
+	shi{st}  = "s";
+	shi{a}   = "s";
+	shi{shi} = "s";
+	fhi{1.1} = 0.0;
+	fhi{"s"} = 0.0;
+	fhi{st}  = 0.0;
+	fhi{a}   = 0.0;
+	fhi{shi} = 0.0;
+	phi{1.1} = 0.0;
+	phi{"s"} = 0.0;
+	phi{st}  = 0.0;
+	phi{a}   = 0.0;
+	phi{shi} = 0.0;
+	i = ihi{1.1};
+	i = ihi{"s"};
+	i = ihi{st};
+	i = ihi{a};
+	i = ihi{shi};
+	s = shi{1.1};
+	s = shi{"s"};
+	s = shi{st};
+	s = shi{a};
+	s = shi{shi};
+	f = fhi{1.1};
+	f = fhi{"s"};
+	f = fhi{st};
+	f = fhi{a};
+	f = fhi{shi};
+	p = phi{1.1};
+	p = phi{"s"};
+	p = phi{st};
+	p = phi{a};
+	p = phi{shi};
+	ihs{1.1} = 0;	// These want an index of type string.
+	ihs{0}   = 0;
+	ihs{st}  = 0;
+	ihs{a}   = 0;
+	ihs{shi} = 0;
+	shs{1.1} = "s";
+	shs{0}   = "s";
+	shs{st}  = "s";
+	shs{a}   = "s";
+	shs{shi} = "s";
+	fhs{1.1} = 0.0;
+	fhs{0}   = 0.0;
+	fhs{st}  = 0.0;
+	fhs{a}   = 0.0;
+	fhs{shi} = 0.0;
+	phs{1.1} = 0.0;
+	phs{0}   = 0.0;
+	phs{st}  = 0.0;
+	phs{a}   = 0.0;
+	phs{shi} = 0.0;
+	i = ihs{1.1};
+	i = ihs{0};
+	i = ihs{st};
+	i = ihs{a};
+	i = ihs{shi};
+	s = shs{1.1};
+	s = shs{0};
+	s = shs{st};
+	s = shs{a};
+	s = shs{shi};
+	f = fhs{1.1};
+	f = fhs{0};
+	f = fhs{st};
+	f = fhs{a};
+	f = fhs{shi};
+	p = phs{1.1};
+	p = phs{0};
+	p = phs{st};
+	p = phs{a};
+	p = phs{shi};
+	ihf{"s"} = 0;	// These want an index of type float (but int is OK).
+	ihf{st}  = 0;
+	ihf{a}   = 0;
+	ihf{shi} = 0;
+	shf{"s"} = "s";
+	shf{st}  = "s";
+	shf{a}   = "s";
+	shf{shi} = "s";
+	fhf{"s"} = 0.0;
+	fhf{st}  = 0.0;
+	fhf{a}   = 0.0;
+	fhf{shi} = 0.0;
+	phf{"s"} = 0.0;
+	phf{st}  = 0.0;
+	phf{a}   = 0.0;
+	phf{shi} = 0.0;
+	i = ihf{"s"};
+	i = ihf{st};
+	i = ihf{a};
+	i = ihf{shi};
+	s = shf{"s"};
+	s = shf{st};
+	s = shf{a};
+	s = shf{shi};
+	f = fhf{"s"};
+	f = fhf{st};
+	f = fhf{a};
+	f = fhf{shi};
+	p = phf{"s"};
+	p = phf{st};
+	p = phf{a};
+	p = phf{shi};
+}
+#lang tcl
+typecheck_5_1
+} -returnCodes error -match regexp -result {.*30: L Error: type error, want L_TYPE_INT, got L_TYPE_FLOAT
+.*31: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*32: L Error: type error, want L_TYPE_INT, got L_TYPE_STRUCT
+.*33: L Error: type error, want L_TYPE_INT, got L_TYPE_ARRAY
+.*34: L Error: type error, want L_TYPE_INT, got L_TYPE_HASH
+.*35: L Error: type error, want L_TYPE_INT, got L_TYPE_FLOAT
+.*36: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*37: L Error: type error, want L_TYPE_INT, got L_TYPE_STRUCT
+.*38: L Error: type error, want L_TYPE_INT, got L_TYPE_ARRAY
+.*39: L Error: type error, want L_TYPE_INT, got L_TYPE_HASH
+.*40: L Error: type error, want L_TYPE_INT, got L_TYPE_FLOAT
+.*41: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*42: L Error: type error, want L_TYPE_INT, got L_TYPE_STRUCT
+.*43: L Error: type error, want L_TYPE_INT, got L_TYPE_ARRAY
+.*44: L Error: type error, want L_TYPE_INT, got L_TYPE_HASH
+.*45: L Error: type error, want L_TYPE_INT, got L_TYPE_FLOAT
+.*46: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*47: L Error: type error, want L_TYPE_INT, got L_TYPE_STRUCT
+.*48: L Error: type error, want L_TYPE_INT, got L_TYPE_ARRAY
+.*49: L Error: type error, want L_TYPE_INT, got L_TYPE_HASH
+.*50: L Error: type error, want L_TYPE_INT, got L_TYPE_FLOAT
+.*51: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*52: L Error: type error, want L_TYPE_INT, got L_TYPE_STRUCT
+.*53: L Error: type error, want L_TYPE_INT, got L_TYPE_ARRAY
+.*54: L Error: type error, want L_TYPE_INT, got L_TYPE_HASH
+.*55: L Error: type error, want L_TYPE_INT, got L_TYPE_FLOAT
+.*56: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*57: L Error: type error, want L_TYPE_INT, got L_TYPE_STRUCT
+.*58: L Error: type error, want L_TYPE_INT, got L_TYPE_ARRAY
+.*59: L Error: type error, want L_TYPE_INT, got L_TYPE_HASH
+.*60: L Error: type error, want L_TYPE_INT, got L_TYPE_FLOAT
+.*61: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*62: L Error: type error, want L_TYPE_INT, got L_TYPE_STRUCT
+.*63: L Error: type error, want L_TYPE_INT, got L_TYPE_ARRAY
+.*64: L Error: type error, want L_TYPE_INT, got L_TYPE_HASH
+.*65: L Error: type error, want L_TYPE_INT, got L_TYPE_FLOAT
+.*66: L Error: type error, want L_TYPE_INT, got L_TYPE_STRING
+.*67: L Error: type error, want L_TYPE_INT, got L_TYPE_STRUCT
+.*68: L Error: type error, want L_TYPE_INT, got L_TYPE_ARRAY
+.*69: L Error: type error, want L_TYPE_INT, got L_TYPE_HASH
+.*70: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*71: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*72: L Error: type error, want L_TYPE_STRING, got L_TYPE_STRUCT
+.*73: L Error: type error, want L_TYPE_STRING, got L_TYPE_ARRAY
+.*74: L Error: type error, want L_TYPE_STRING, got L_TYPE_HASH
+.*75: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*76: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*77: L Error: type error, want L_TYPE_STRING, got L_TYPE_STRUCT
+.*78: L Error: type error, want L_TYPE_STRING, got L_TYPE_ARRAY
+.*79: L Error: type error, want L_TYPE_STRING, got L_TYPE_HASH
+.*80: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*81: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*82: L Error: type error, want L_TYPE_STRING, got L_TYPE_STRUCT
+.*83: L Error: type error, want L_TYPE_STRING, got L_TYPE_ARRAY
+.*84: L Error: type error, want L_TYPE_STRING, got L_TYPE_HASH
+.*85: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*86: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*87: L Error: type error, want L_TYPE_STRING, got L_TYPE_STRUCT
+.*88: L Error: type error, want L_TYPE_STRING, got L_TYPE_ARRAY
+.*89: L Error: type error, want L_TYPE_STRING, got L_TYPE_HASH
+.*90: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*91: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*92: L Error: type error, want L_TYPE_STRING, got L_TYPE_STRUCT
+.*93: L Error: type error, want L_TYPE_STRING, got L_TYPE_ARRAY
+.*94: L Error: type error, want L_TYPE_STRING, got L_TYPE_HASH
+.*95: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*96: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*97: L Error: type error, want L_TYPE_STRING, got L_TYPE_STRUCT
+.*98: L Error: type error, want L_TYPE_STRING, got L_TYPE_ARRAY
+.*99: L Error: type error, want L_TYPE_STRING, got L_TYPE_HASH
+.*100: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*101: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*102: L Error: type error, want L_TYPE_STRING, got L_TYPE_STRUCT
+.*103: L Error: type error, want L_TYPE_STRING, got L_TYPE_ARRAY
+.*104: L Error: type error, want L_TYPE_STRING, got L_TYPE_HASH
+.*105: L Error: type error, want L_TYPE_STRING, got L_TYPE_FLOAT
+.*106: L Error: type error, want L_TYPE_STRING, got L_TYPE_INT
+.*107: L Error: type error, want L_TYPE_STRING, got L_TYPE_STRUCT
+.*108: L Error: type error, want L_TYPE_STRING, got L_TYPE_ARRAY
+.*109: L Error: type error, want L_TYPE_STRING, got L_TYPE_HASH
+.*110: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRING
+.*111: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRUCT
+.*112: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_ARRAY
+.*113: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_HASH
+.*114: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRING
+.*115: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRUCT
+.*116: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_ARRAY
+.*117: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_HASH
+.*118: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRING
+.*119: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRUCT
+.*120: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_ARRAY
+.*121: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_HASH
+.*122: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRING
+.*123: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRUCT
+.*124: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_ARRAY
+.*125: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_HASH
+.*126: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRING
+.*127: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRUCT
+.*128: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_ARRAY
+.*129: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_HASH
+.*130: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRING
+.*131: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRUCT
+.*132: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_ARRAY
+.*133: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_HASH
+.*134: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRING
+.*135: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRUCT
+.*136: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_ARRAY
+.*137: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_HASH
+.*138: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRING
+.*139: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_STRUCT
+.*140: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_ARRAY
+.*141: L Error: type error, want L_TYPE_FLOAT, got L_TYPE_HASH
+}
+
+test backtrace-1.0 {backtracing in L} -setup {
+	set fname [makeFile {
+foo()
+{
+	puts("foo", "bar");
+}
+
+bar()
+{
+	foo();
+}
+
+int
+main(int ac, string av[])
+{
+	bar();
+}
+
+	} backtrace-1.0.l]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $fname
+} -cleanup {
+	removeFile backtrace-1.0.l
+} -returnCodes {error} -match regexp -result {.*line 4.*line 9.*line 15}
+
+
+test evalorder-1.0 {read array} -body {
+    #lang L
+    int foo[2];
+    foo[1] = 2;
+    puts(foo[(foo[1]=1)]);
+} -output 1\n
+
+test evalorder-1.1 {read array-2D} -body {
+    #lang L
+    int foo[2][2];
+    foo[1][1] = 2;
+    puts(foo[1][(foo[1][1]=1)]);
+} -output 1\n
+
+test evalorder-1.2 {read hash} -body {
+    #lang L -poly
+    hash foo;
+    foo{"a"} = "b";
+    puts(foo{(foo{"a"}="a")});
+} -output a\n
+
+test evalorder-1.3 {read array of hashes} -body {
+    #lang L -poly
+    hash foo[2];
+    foo[1]{"a"} = "b";
+    puts(foo[1]{(foo[1]{"a"}="a")});
+} -output a\n
+
+test evalorder-1.4 {write array} -body {
+    #lang L
+    int foo[2];
+    foo[1] = 2;
+    foo[(foo[1]=1)] *= 3;
+    puts(foo[1]);
+} -output 3\n
+
+test evalorder-1.5 {write array-2D} -body {
+    #lang L
+    int foo[2][2];
+    foo[1][1] = 2;
+    foo[1][(foo[1][1]=1)] *= 3;
+    puts(foo[1][1]);
+} -output 3\n
+
+test evalorder-1.6 {write hash} -body {
+    #lang L -poly
+    hash foo;
+    foo{"a"} = "b";
+    foo{(foo{"a"}="a")} =~ s/a/c/;
+    puts(foo{"a"});
+} -output c\n
+
+test evalorder-1.7 {write array of hashes} -body {
+    #lang L -poly
+    hash foo[2];
+    foo[1]{"a"} = "b";
+    foo[1]{(foo[1]{"a"}="a")} =~ s/a/c/;
+    puts(foo[1]{"a"});
+} -output c\n
+
+
+test pattern-1.0 {L pattern functions} -body {
+#lang L
+poly Pattern_foo(int a, int b)
+{
+	puts("Pattern_foo special case ${a} ${b}");
+}
+poly Pattern_*(int a, int b)
+{
+	puts("Pattern_* ${$1} ${a} ${b}");
+}
+Pattern_foo(1, 2);
+Pattern_bar(3, 4);
+Pattern_baz(5, 6);
+#lang tcl
+} -output "Pattern_foo special case 1 2\nPattern_* bar 3 4\nPattern_* baz 5 6\n"
+
+
+# this test case creates two files, foo.l and bar.l.  bar.l includes
+# foo.l several times, using different paths.  It tests that typedefs
+# and pattern functions can be included, and that an include file will
+# only be included once, despite superficial path variations.
+test include-1.0 {support for including other files} -setup {
+	set fooname [makeFile {typedef int froboz;
+
+int
+Foo_*(int b)
+{
+	puts("$1 is ${$1} and b is ${b}");
+	return b;
+}
+
+
+main() {
+	puts("included foo.l");
+}
+} foo.l]
+	set dir [file dirname $fooname]
+	set barname [makeFile "include(\"$dir/foo.l\");
+include (\"$dir/foo.l\");
+include ( \"./foo.l\" );
+include(\"foo.l\");
+include ( \"$dir/fake/../foo.l\" ) ;
+
+main() {
+	froboz yadda = 5;
+	puts(Foo_baz(yadda));
+}
+" bar.l]
+} -constraints {
+	exec
+} -body {
+	exec [interpreter] $barname
+} -cleanup {
+	removeFile foo.l
+	removeFile bar.l
+} -result "included foo.l\n\$1 is baz and b is 5\n5"
+
+test split-1.0 {test split function} -body {
+#lang L
+void
+split_1_0()
+{
+	int	m;
+	string	s;
+	string	r[];
+
+	/* These are all white space. */
+	string	allspace[] = {
+		"",
+		" ",
+		"  ",
+		"   ",
+		"    ",
+		"\n",
+		"\t",
+		"\n\n" };
+
+	foreach (s in allspace) {
+		r = split(s);
+		if (defined(r[0])) printf("bad 1: '%s'\n", s);
+	}
+
+	/*
+	 * A split followed by a join should give the string back
+	 * (modulo a trailing delimeter).
+	 */
+
+	s = "This is not a test. This is really not a test.";
+	r = split(s);
+	unless (s eq join(r, " ")) puts("bad 2.1");
+
+	s = " This is not a test. This is really not a test.";
+	r = split(s);
+	unless (s eq join(r, " ")) puts("bad 2.2");
+
+	s = "This:is:not:a:test.:This:is:really:not:a:test.";
+	r = split(s, ":");
+	unless (s eq join(r, ":")) puts("bad 2.3");
+
+	s = ":This:is:not:a:test.:This:is:really:not:a:test.";
+	r = split(s, ":");
+	unless (s eq join(r, ":")) puts("bad 2.4");
+
+	/*
+	 * A split on ' ' should split on white space but return
+	 * no null field for any initial white space.
+	 */
+
+	r = split("has none", " ");
+	unless ((r[0] eq "has") && (r[1] eq "none")) puts("bad 3.1");
+	if (defined(r[2])) puts("bad 3.2");
+
+	r = split(" has one", " ");
+	unless ((r[0] eq "has") && (r[1] eq "one")) puts("bad 3.3");
+	if (defined(r[2])) puts("bad 3.4");
+
+	r = split(" has one");
+	unless ((r[0] eq "") && (r[1] eq "has") && (r[2] eq "one")) {
+		puts("bad 3.5");
+	}
+	if (defined(r[3])) puts("bad 3.6");
+
+	/* Trailing white space never produces a null field. */
+
+	r = split("trail ");
+	unless (r[0] eq "trail") puts("bad 4.1");
+	if (defined(r[1])) puts("bad 4.2");
+
+	r = split("trail ", " ");
+	unless (r[0] eq "trail") puts("bad 4.3");
+	if (defined(r[1])) puts("bad 4.4");
+
+	/* Check split on a regexp. */
+
+	r = split("XaXbXcX", "[abc]");
+	unless ((r[0] eq "X") && (r[1] eq "X") && (r[2] eq "X") &&
+		(r[3] eq "X")) {
+		puts("bad 5.1");
+	}
+	if (defined(r[4])) puts("bad 5.2");
+
+	r = split("XaXbXcX", /[abc]/);
+	unless ((r[0] eq "X") && (r[1] eq "X") && (r[2] eq "X") &&
+		(r[3] eq "X")) {
+		puts("bad 5.3");
+	}
+	if (defined(r[4])) puts("bad 5.4");
+
+	r = split("XaaXbXcX", "[abc]");
+	unless ((r[0] eq "X") && (r[1] eq "") && (r[2] eq "X") &&
+	        (r[3] eq "X") && (r[4] eq "X")) {
+		puts("bad 5.5");
+	}
+	if (defined(r[5])) puts("bad 5.6");
+
+	/* A regexp match on the last char never produces a null field. */
+
+	r = split("abcd", /[d]/);
+	unless (r[0] eq "abc") puts("bad 5.7");
+	if (defined(r[1])) puts("bad 5.8");
+
+	/* A regexp match on the first char produces a  null field. */
+
+	r = split("abcd", /[a]/);
+	unless ((r[0] eq "") && (r[1] eq "bcd")) puts("bad 5.9");
+	if (defined(r[2])) puts("bad 5.10");
+
+	/* Test interpolated regexp. */
+
+	s = "abc";
+	r = split("XaXbXcX", /[${s}]/);
+	unless ((r[0] eq "X") && (r[1] eq "X") && (r[2] eq "X") &&
+		(r[3] eq "X")) {
+		puts("bad 6.1");
+	}
+	if (defined(r[4])) puts("bad 6.2");
+
+	/* Test limits. */
+
+	r = split("1 2 3 4", " ", 5);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+	        (r[3] eq "4")) {
+		puts("bad 7.1");
+	}
+	if (defined(r[4])) puts("bad 7.2");
+
+	r = split("1 2 3 4", " ", 4);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+	        (r[3] eq "4")) {
+		puts("bad 7.3");
+	}
+	if (defined(r[4])) puts("bad 7.4");
+
+	r = split("1 2 3 4", " ", 3);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3 4")) {
+		puts("bad 7.5");
+	}
+	if (defined(r[3])) puts("bad 7.6");
+
+	r = split("1 2 3 4", " ", 2);
+	unless ((r[0] eq "1") && (r[1] eq "2 3 4")) puts("bad 7.7");
+	if (defined(r[2])) puts("bad 7.8");
+
+	r = split("1 2 3 4", " ", 1);
+	unless (r[0] eq "1 2 3 4") puts("bad 7.9");
+	if (defined(r[1])) puts("bad 7.10");
+
+	r = split("1 2 3 4", " ", 0);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+	        (r[3] eq "4")) {
+		puts("bad 7.11");
+	}
+	if (defined(r[4])) puts("bad 7.12");
+
+	r = split("1 2 3 4", " ", -1);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3") &&
+	        (r[3] eq "4")) {
+		puts("bad 7.13");
+	}
+	if (defined(r[4])) puts("bad 7.14");
+
+	/* Test that an escape of the regexp delimeter works. */
+
+	r = split("/this/is/a/pathname", /\//);
+	unless ((r[0] eq "") && (r[1] eq "this") && (r[2] eq "is") &&
+		(r[3] eq "a") && (r[4] eq "pathname")) {
+		puts("bad 8.1");
+	}
+	if (defined(r[5])) puts("bad 8.2");
+
+	/* Test alternate form of regexp. */
+
+	r = split("/this/is/a/pathname", m|/|);
+	unless ((r[0] eq "") && (r[1] eq "this") && (r[2] eq "is") &&
+		(r[3] eq "a") && (r[4] eq "pathname")) {
+		puts("bad 9.1");
+	}
+	if (defined(r[5])) puts("bad 9.2");
+
+	s = "abc";
+	r = split("XaXbXcX", m|[${s}]|);
+	unless ((r[0] eq "X") && (r[1] eq "X") && (r[2] eq "X") &&
+		(r[3] eq "X")) {
+		puts("bad 9.3");
+	}
+	if (defined(r[4])) puts("bad 9.4");
+
+	r = split("1 2 3 4", m| |, 3);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3 4")) {
+		puts("bad 9.5");
+	}
+	if (defined(r[3])) puts("bad 9.6");
+
+	/* Ensure third arg is not parsed as a regexp. */
+
+	m = 3;
+	r = split("1 2 3 4", m| |, m);
+	unless ((r[0] eq "1") && (r[1] eq "2") && (r[2] eq "3 4")) {
+		puts("bad 9.7");
+	}
+	if (defined(r[3])) puts("bad 9.8");
+}
+#lang tcl
+split_1_0
+} -output ""
+
+test consts-1.0 {test constants function} -body {
+#lang L
+void
+constants_1_0()
+{
+	int	i;
+	float	f;
+
+	i = 1234;
+	printf("%u\n", i);
+	i = 0xdeadbeef;
+	printf("%x\n", i);
+	i = 0o755;
+	printf("%o\n", i);
+
+	f = 1234.5678;
+	printf("%.4f\n", f);
+}
+#lang tcl
+constants_1_0
+} -output "1234\ndeadbeef\n755\n1234.5678\n"
+
+# These tests check the L compiler's mapping between the source-file
+# offsets of each "command" and the tcl bytecodes generated for it.
+# Generally speaking, a command is a statement or expression, although
+# some statements don't generate a mapping per-se (like "if"
+# statements).  This is tested by generating a bytecode disassembly
+# and checking that the text of the commands were identified properly
+# in various syntactic contexts.  This seems like the only way to get
+# at the mappings easily for testing.
+
+test src-mappings-1 {test bytecode <-> source-file-offset mappings 1} -body {
+#lang L -nowarn
+struct s {
+	int	i;
+};
+void
+src_mappings_1()
+{
+	/*
+	 * This test checks the mappings for declarations.
+	 * Note: avoid tabs in the source to make the test regexp clearer.
+	 */
+
+	int i1;
+	int i2 = 2;
+	int i3, i4;
+	int i5, i6 = 6, i7;
+	string s1;
+	string s2 = "str2";
+	string s3, s4;
+	string s5, s6 = "str6", s7;
+	float f1;
+	float f2 = 2.0;
+	float f3, f4;
+	float f5, f6 = 6.0, f7;
+	/* The hash ones test typedef names (hash is a typedef). */
+	hash h1;
+	hash h2 = {2=>2};
+	hash h3, h4;
+	hash h5, h6 = {6=>6}, h7;
+	struct s st1;
+	struct s st2 = {2};
+	struct s st3, st4;
+	struct s st5, st6 = {6}, st7;
+	poly p1;
+	poly p2 = 2;
+	poly p3, p4;
+	poly p5, p6 = 6, p7;
+	widget w1;
+	widget w2 = "w2";
+	widget w3, w4;
+	widget w5, w6 = "w6", w7;
+	int ai1[];
+	int ai2[2];
+	int ai3[] = {3};
+	int ai4[], ai5[5];
+	int ai6[], ai7[] = {7}, ai8[];
+	string as1[];
+	string as2[2];
+	string as3[] = {"3"};
+	string as4[], as5[5];
+	string as6[], as7[] = {"7"}, as8[];
+	float af1[];
+	float af2[2];
+	float af3[] = {3.0};
+	float af4[], af5[5];
+	float af6[], af7[] = {7.0}, af8[];
+	hash ah1[];
+	hash ah2[2];
+	hash ah3[], ah4[4], ah5[];
+	struct s ast1[];
+	struct s ast2[2];
+	struct s ast3[], ast4[4], ast5[];
+
+	puts(::tcl::unsupported::disassemble("proc", "src_mappings_1"));
+	return;
+}
+#lang tcl
+src_mappings_1
+} -match regexp -output {.*Command \d+: "int i1"
+.*Command \d+: "int i2 = 2"
+.*Command \d+: "int i3"
+.*Command \d+: "i4"
+.*Command \d+: "int i5"
+.*Command \d+: "i6 = 6"
+.*Command \d+: "i7"
+.*Command \d+: "string s1"
+.*Command \d+: "string s2 = \\"str2\\""
+.*Command \d+: "string s3"
+.*Command \d+: "s4"
+.*Command \d+: "string s5"
+.*Command \d+: "s6 = \\"str6\\""
+.*Command \d+: "s7"
+.*Command \d+: "float f1"
+.*Command \d+: "float f2 = 2.0"
+.*Command \d+: "float f3"
+.*Command \d+: "f4"
+.*Command \d+: "float f5"
+.*Command \d+: "f6 = 6.0"
+.*Command \d+: "f7"
+.*Command \d+: "hash h1"
+.*Command \d+: "hash h2 = \{2=>2\}"
+.*Command \d+: "hash h3"
+.*Command \d+: "h4"
+.*Command \d+: "hash h5"
+.*Command \d+: "h6 = \{6=>6\}"
+.*Command \d+: "h7"
+.*Command \d+: "struct s st1"
+.*Command \d+: "struct s st2 = \{2\}"
+.*Command \d+: "struct s st3"
+.*Command \d+: "st4"
+.*Command \d+: "struct s st5"
+.*Command \d+: "st6 = \{6\}"
+.*Command \d+: "st7"
+.*Command \d+: "poly p1"
+.*Command \d+: "poly p2 = 2"
+.*Command \d+: "poly p3"
+.*Command \d+: "p4"
+.*Command \d+: "poly p5"
+.*Command \d+: "p6 = 6"
+.*Command \d+: "p7"
+.*Command \d+: "widget w1"
+.*Command \d+: "widget w2 = \\"w2\\""
+.*Command \d+: "widget w3"
+.*Command \d+: "w4"
+.*Command \d+: "widget w5"
+.*Command \d+: "w6 = \\"w6\\""
+.*Command \d+: "w7"
+.*Command \d+: "int ai1\[\]"
+.*Command \d+: "int ai2\[2\]"
+.*Command \d+: "int ai3\[\] = \{3\}"
+.*Command \d+: "int ai4\[\]"
+.*Command \d+: "ai5\[5\]"
+.*Command \d+: "int ai6\[\]"
+.*Command \d+: "ai7\[\] = \{7\}"
+.*Command \d+: "ai8\[\]"
+.*Command \d+: "string as1\[\]"
+.*Command \d+: "string as2\[2\]"
+.*Command \d+: "string as3\[\] = \{\\"3\\"\}"
+.*Command \d+: "string as4\[\]"
+.*Command \d+: "as5\[5\]"
+.*Command \d+: "string as6\[\]"
+.*Command \d+: "as7\[\] = \{\\"7\\"\}"
+.*Command \d+: "as8\[\]"
+.*Command \d+: "float af1\[\]"
+.*Command \d+: "float af2\[2\]"
+.*Command \d+: "float af3\[\] = \{3.0\}"
+.*Command \d+: "float af4\[\]"
+.*Command \d+: "af5\[5\]"
+.*Command \d+: "float af6\[\]"
+.*Command \d+: "af7\[\] = \{7.0\}"
+.*Command \d+: "af8\[\]"
+.*Command \d+: "hash ah1\[\]"
+.*Command \d+: "hash ah2\[2\]"
+.*Command \d+: "hash ah3\[\]"
+.*Command \d+: "ah4\[4\]"
+.*Command \d+: "ah5\[\]"
+.*Command \d+: "struct s ast1\[\]"
+.*Command \d+: "struct s ast2\[2\]"
+.*Command \d+: "struct s ast3\[\]"
+.*Command \d+: "ast4\[4\]"
+.*Command \d+: "ast5\[\]"
+}
+
+test src-mappings-2 {test bytecode <-> source-file-offset mappings 2} -body {
+#lang L -nowarn
+int f0() { return (0); }
+int f1(int i) { return (1); }
+int f2(int i, int j) { return (2); }
+void
+src_mappings_2()
+{
+	/*
+	 * This test checks the mappings for expressions.
+	 * Note: avoid tabs in the source to make the test regexp clearer.
+	 */
+
+	int i, j;
+	int i1 = 1+2;
+	int i2 = i1+2*3;
+	int i3, i4, i5;
+	string s, t;
+	float f;
+	int ai[];
+	int aii[][];
+	int ah{int};
+	int ahh{int}{int};
+
+	puts(::tcl::unsupported::disassemble("proc", "src_mappings_2"));
+	return;
+
+	/* Check assignments. */
+	i1 = 1;
+	f = 3.14;
+	s = "str";
+
+	/* Check array and hash subscripts. */
+	i = ai[i1 - i2 - i3];
+	i = aii[i1][i2];
+	i = ah{i3 - i4};
+	i = ahh{i3}{i4 - i5};
+
+	/* Check that each sub-expression has a mapping. */
+	i3 = 3;
+	i4 = 4 + 3;
+	i5 = i3 + i4 * i5 - 5;
+
+	/* Check parameters. */
+	f0();
+	f1(i1);
+	f2(i1, i2);
+	f2(i1, i2 + f1(2));
+
+	/* Check that each binary and unary operator gets a mapping. */
+	(tcl)i;
+	(string)i;
+	(widget)i;
+	(float)i;
+	!i;
+	~i;
+	+i;
+	-i;
+	&i;
+	defined(i);
+	i = j;
+	i += j;	
+	i -= j;	
+	i *= j;	
+	i /= j;	
+	i %= j;	
+	i &= j;	
+	i |= j;	
+	i <<= j;	
+	i >>= j;	
+	i && j;	
+	i || j;
+	s eq t;
+	s ne t;
+	s gt t;
+	s ge t;
+	s lt t;
+	s le t;
+	i == j;
+	i != j;
+	i > j;
+	i >= j;
+	i < j;
+	i <= j;
+	i + j;
+	i - j;
+	i * j;
+	i / j;
+	i % j;
+	i & j;
+	i | j;
+	i ^ j;
+	i << j;
+	i >> j;
+	s =~ /x/;
+	s =~ /x/i;
+	s =~ /x/g;
+	s =~ /x/ig;
+	s =~ m|x|;
+	s =~ m|x|i;
+	s =~ m|x|g;
+	s =~ m|x|ig;
+	s =~ s/x/y/;
+	s =~ s/x/y/i;
+	s =~ s/x/y/g;
+	s =~ s/x/y/ig;
+
+	/* Check interpolated strings. */
+	s = "abc${t}";
+	s = "${t}xyz";
+	s = "abc${t}xyz";
+	s = "abc${"${t}"}xyz";
+}
+#lang tcl
+src_mappings_2
+} -match regexp -output {.*Command \d+: "1\+2"
+.*Command \d+: "int i1 = 1\+2"
+.*Command \d+: "i1\+2\*3"
+.*Command \d+: "int i2 = i1\+2\*3"
+.*Command \d+: "2\*3"
+.*Command \d+: "i1 = 1"
+.*Command \d+: "f = 3.14"
+.*Command \d+: "s = \\"str\\""
+.*Command \d+: "i1 - i2"
+.*Command \d+: "i1 - i2 - i3"
+.*Command \d+: "i = ai\[i1 - i2 - i3\]"
+.*Command \d+: "i = aii\[i1\]\[i2\]"
+.*Command \d+: "i3 - i4"
+.*Command \d+: "i = ah\{i3 - i4\}"
+.*Command \d+: "i = ahh\{i3\}\{i4 - i5\}"
+.*Command \d+: "i4 - i5"
+.*Command \d+: "i3 = 3"
+.*Command \d+: "4 \+ 3"
+.*Command \d+: "i4 = 4 \+ 3"
+.*Command \d+: "i3 \+ i4 \* i5"
+.*Command \d+: "i3 \+ i4 \* i5 - 5"
+.*Command \d+: "i5 = i3 \+ i4 \* i5 - 5"
+.*Command \d+: "i4 \* i5"
+.*Command \d+: "f0\(\)"
+.*Command \d+: "f1\(i1\)"
+.*Command \d+: "f2\(i1, i2\)"
+.*Command \d+: "f2\(i1, i2 \+ f1\(2\)\)"
+.*Command \d+: "i2 \+ f1\(2\)"
+.*Command \d+: "f1\(2\)"
+.*Command \d+: "\(tcl\)i"
+.*Command \d+: "\(string\)i"
+.*Command \d+: "\(widget\)i"
+.*Command \d+: "\(float\)i"
+.*Command \d+: "!i"
+.*Command \d+: "~i"
+.*Command \d+: "\+i"
+.*Command \d+: "-i"
+.*Command \d+: "&i"
+.*Command \d+: "defined\(i\)"
+.*Command \d+: "i = j"
+.*Command \d+: "i \+= j"
+.*Command \d+: "i -= j"
+.*Command \d+: "i \*= j"
+.*Command \d+: "i /= j"
+.*Command \d+: "i %= j"
+.*Command \d+: "i <<= j"
+.*Command \d+: "i >>= j"
+.*Command \d+: "i && j"
+.*Command \d+: "i \|\| j"
+.*Command \d+: "s eq t"
+.*Command \d+: "s ne t"
+.*Command \d+: "s gt t"
+.*Command \d+: "s ge t"
+.*Command \d+: "s lt t"
+.*Command \d+: "s le t"
+.*Command \d+: "i == j"
+.*Command \d+: "i != j"
+.*Command \d+: "i > j"
+.*Command \d+: "i >= j"
+.*Command \d+: "i < j"
+.*Command \d+: "i <= j"
+.*Command \d+: "i \+ j"
+.*Command \d+: "i - j"
+.*Command \d+: "i \* j"
+.*Command \d+: "i / j"
+.*Command \d+: "i % j"
+.*Command \d+: "i & j"
+.*Command \d+: "i \| j"
+.*Command \d+: "i \^ j"
+.*Command \d+: "i << j"
+.*Command \d+: "i >> j"
+.*Command \d+: "s =~ /x/"
+.*Command \d+: "s =~ /x/i"
+.*Command \d+: "s =~ /x/g"
+.*Command \d+: "s =~ /x/ig"
+.*Command \d+: "s =~ m\|x\|"
+.*Command \d+: "s =~ m\|x\|i"
+.*Command \d+: "s =~ m\|x\|g"
+.*Command \d+: "s =~ m\|x\|ig"
+.*Command \d+: "s =~ s/x/y/"
+.*Command \d+: "s =~ s/x/y/i"
+.*Command \d+: "s =~ s/x/y/g"
+.*Command \d+: "s =~ s/x/y/ig"
+.*Command \d+: "\\"abc\$\{t\}\\""
+.*Command \d+: "s = \\"abc\$\{t\}\\""
+.*Command \d+: "\\"\$\{t\}xyz\\""
+.*Command \d+: "s = \\"\$\{t\}xyz\\""
+.*Command \d+: "\\"abc\$\{t\}xyz\\""
+.*Command \d+: "s = \\"abc\$\{t\}xyz\\""
+.*Command \d+: "\\"abc\$\{\\"\$\{t\}\\"\}xyz\\""
+.*Command \d+: "s = \\"abc\$\{\\"\$\{t\}\\"\}xyz\\""
+.*Command \d+: "\\"\$\{t\}\\""
+}
+
+test src-mappings-3 {test bytecode <-> source-file-offset mappings 3} -body {
+#lang L -nowarn
+int
+f()
+{
+	return (0);
+}
+void
+fv()
+{
+	return;
+}
+int{int}
+fh()
+{
+	int h{int};
+	return (h);
+}
+int[]
+fa()
+{
+	int a[5];
+	return (a);
+}
+int
+src_mappings_3()
+{
+	/*
+	 * This test checks the mappings for statements.
+	 * Note: avoid tabs in the source to make the test regexp clearer.
+	 */
+
+	int i, j, k, v;
+	int a[5];
+	int h{int};
+
+	/* Disassemble fv() to get its "return" stmt w/no arg. */
+	puts(::tcl::unsupported::disassemble("proc", "fv"));
+	puts(::tcl::unsupported::disassemble("proc", "src_mappings_3"));
+	return(0);
+
+	while (0) f();
+	do f(); while (0);
+	for (i = 0; i < 10;) f();
+	for (i = 0; i < 10; ++i) f();
+	foreach (k => v in fh()) f();
+	foreach (i,j in fa()) f();
+	push (&a, f());
+	/* Check break and continue. */
+	do {
+		break;
+		continue;
+	} while (0);
+}
+#lang tcl
+src_mappings_3
+} -match regexp -output {.*Command \d+: "return"
+.*Command \d+: "return\(0\)"
+.*Command \d+: "while \(0\) f\(\);"
+.*Command \d+: "do f\(\); while \(0\);"
+.*Command \d+: "f\(\)"
+.*Command \d+: "i = 0"
+.*Command \d+: "for \(i = 0; i < 10;\) f\(\);"
+.*Command \d+: "f\(\)"
+.*Command \d+: "i < 10"
+.*Command \d+: "i = 0"
+.*Command \d+: "for \(i = 0; i < 10; \+\+i\) f\(\);"
+.*Command \d+: "f\(\)"
+.*Command \d+: "\+\+i"
+.*Command \d+: "i < 10"
+.*Command \d+: "fh\(\)"
+.*Command \d+: "foreach \(k => v in fh\(\)\) f\(\);"
+.*Command \d+: "f\(\)"
+.*Command \d+: "fa\(\)"
+.*Command \d+: "foreach \(i,j in fa\(\)\) f\(\);"
+.*Command \d+: "f\(\)"
+.*Command \d+: "push \(&a, f\(\)\);"
+.*Command \d+: "f\(\)"
+.*Command \d+: "break"
+.*Command \d+: "continue"
+}
+
+# cleanup
+::tcltest::cleanupTests
+return

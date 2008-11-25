@@ -1,0 +1,50 @@
+body, div, p, th, td, li, dd, ul, ol, dl, dt, blockquote {
+	font-family:	Arial, Helvetica, sans-serif;
+}
+body {
+	background-color:  #FFFFFF;
+	font-size:         12px;
+	line-height:       1.25;
+	letter-spacing:    .2px;
+}
+th {
+	font-style: 	bold;
+	text-align:	left;
+}
+a { text-decoration: none }
+.hi, .hi2 {
+	font-weight:	bold;
+	color:		#B82619;
+	background:	#FFFFCC;
+	text-decoration: none;
+}
+.hi2 {	background:	#CCFFCC; }
+.indent { margin:	3px; }
+
+/* general styles */	
+.heading { 
+	font-size: 	14px;
+	font-weight: 	bold;
+	color: 		#B82619;
+}
+.subheading { 
+	font-weight: 	bold;
+	color: 		#B82619;
+}
+
+.err { 
+	font-weight:	bold;
+	color:		#B82619;
+}
+.smallText{
+	font-size: 10px;
+}
+.notsosmallText {
+	font-size: 11px;
+}
+
+/* unordered list without bullets */
+ul.sans { 
+	list-style-type: none;
+	list-style-postition: inside;
+}

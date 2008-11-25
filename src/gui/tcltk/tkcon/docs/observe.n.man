@@ -1,0 +1,55 @@
+[comment {-*- tcl -*- observe manpage}]
+[manpage_begin observe n 2.5]
+[copyright {Jeffrey Hobbs <jeff at hobbs.org>}]
+[moddesc   {TkCon}]
+[titledesc {Runtime debugging output in TkCon}]
+
+[description]
+[para]
+This command provides runtime debugging output for variables
+and commands without the need to edit your code.
+For variables, the underlying mechanism uses [cmd trace] and [cmd dump] var.
+For commands, it renames the observed procedure and uses a
+special wrapper procedure.
+WARNING: using this procedure after checkpointing state will
+result in major problems if you clean state because the
+renamed (true) commands will be lost.
+
+[para]
+This procedure is experimental.
+Comments are encouraged.
+
+[list_begin definitions]
+
+[call [cmd observe] [arg command] [arg cmdname] [opt [arg maxlevel]]]
+This will create a wrapper command which prints out (using [cmd dump])
+the call stack to the console.
+maxlevel represents the maximum number of levels of the call
+stack which will be printed (defaults to 4).
+
+[call [cmd observe] [arg cdelete] [arg cmdname]]
+Removes the wrapper around an observed command.
+
+[call [cmd observe] [arg cinfo] [arg cmdname]]
+Prints out useless info.
+
+[call [cmd observe] [arg variable] [arg varname] [arg operation] [opt [arg args]]]
+Currently a wrapper around trace that uses [cmd dump] to print out
+the value of the named variable whenever the specified
+operation on that variable occurs (must be [arg read], [arg write] or [arg unset]).
+
+[call [cmd observe] [arg vdelete] [arg varname] [arg operation]]
+Deletes the trace wrapper around the named variable.
+
+[call [cmd observe] [arg vinfo] [arg varname]]
+Prints out trace info about the named variable.
+
+[list_end]
+
+[see_also [cmd tkcon](1)]
+[see_also [cmd tkconrc](5) [cmd tkcon](n) [cmd dump](n)]
+[see_also [cmd idebug](n)]
+[keywords Tk console debug]
+
+[manpage_end]
+
