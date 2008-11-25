@@ -59,6 +59,21 @@ private void
 print_sb(struct stat *sb, char *fn)
 {
 	char	fmtbuf[128];
+	u64	inode = sb->st_ino;
+#ifdef WIN32
+	HANDLE				h;
+	BY_HANDLE_FILE_INFORMATION	info;
+
+	h = CreateFile(fn, 0, FILE_SHARE_READ, 0,
+	    OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+	if (h != INVALID_HANDLE_VALUE) {
+		if (GetFileInformationByHandle(h, &info)) {
+			inode = ((u64)info.nFileIndexHigh << 32) |
+				info.nFileIndexLow;
+		}
+		CloseHandle(h);
+	}
+#endif
 
 	bzero(fmtbuf, sizeof(fmtbuf));
 	/* build the format string according to sizes */
@@ -80,14 +95,14 @@ print_sb(struct stat *sb, char *fn)
 				 return;				\
 		}
 #endif
-	szfmt(sb->st_dev); szfmt(sb->st_ino);
+	szfmt(sb->st_dev); szfmt(inode);
 	strcat(fmtbuf, "%o|"); /* st_mode goes in octal */
 	szfmt(linkcount(fn, sb)); szfmt(sb->st_uid); szfmt(sb->st_gid);
 	szfmt(sb->st_rdev); szfmt(sb->st_size); szfmt(sb->st_atime);
 	szfmt(sb->st_mtime); szfmt(sb->st_ctime);
 	strcat(fmtbuf, "%s\n");
 	printf(fmtbuf,
-	    sb->st_dev, sb->st_ino, sb->st_mode,
+	    sb->st_dev, inode, sb->st_mode,
 	    linkcount(fn, sb), sb->st_uid, sb->st_gid,
 	    sb->st_rdev, sb->st_size, sb->st_atime,
 	    sb->st_mtime, sb->st_ctime,
