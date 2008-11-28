@@ -231,6 +231,7 @@ private void
 write_editfile(FILE *f, char **files, int to_stdout)
 {
 	int	i;
+	project	*proj = proj_init(".");
 
 	EACH(files) {
 		sccs	*s;
@@ -248,7 +249,7 @@ write_editfile(FILE *f, char **files, int to_stdout)
 			fprintf(stderr, "%s|%s not found\n", s->gfile, t);
 			goto next;
 		}
-		name = _relativeName(s->gfile, 0, 0, 0, 0);
+		name = _relativeName(s->gfile, 0, 0, 0, proj);
 		if (to_stdout) {
 			fprintf(f, "### Comments for %s%c%s\n",
 			    name, BK_FS, d->rev);
@@ -263,6 +264,7 @@ write_editfile(FILE *f, char **files, int to_stdout)
 		fprintf(f, "\n");
 next:		if (s) sccs_free(s);
 	}
+	if (proj) proj_free(proj);
 }
 
 /*

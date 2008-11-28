@@ -1,0 +1,74 @@
+
+echo $N Test that comments include component path in a product ......$NL
+nested product
+bk comment -p > GOT
+cat <<'EOF' > WANT
+### Comments for ChangeSet|1.2
+attach gcc, gdb
+
+### Comments for gcc/ChangeSet|1.2
+attach gcc
+
+### Comments for gdb/ChangeSet|1.2
+attach gdb
+
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test that comments have no component path in a component ....$NL
+cd gcc
+bk comment -p > GOT
+cat <<'EOF' > WANT
+### Comments for ChangeSet|1.2
+attach gcc
+
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Change comment in component and see it is changed in prod ...$NL
+cat <<'EOF' > WANT
+### Comments for ChangeSet|1.2
+attach gcc using this new comment
+
+EOF
+bk comment - < WANT
+cd ..
+bk comment -p > GOT
+cat <<'EOF' > WANT
+### Comments for ChangeSet|1.2
+attach gcc, gdb
+
+### Comments for gcc/ChangeSet|1.2
+attach gcc using this new comment
+
+### Comments for gdb/ChangeSet|1.2
+attach gdb
+
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Change comment in product and see it is changed in comp .....$NL
+cat <<'EOF' > WANT
+### Comments for ChangeSet|1.2
+attach gcc, gdb
+
+### Comments for gcc/ChangeSet|1.2
+attach gcc using this new comment
+
+### Comments for gdb/ChangeSet|1.2
+attach gdb using this new comment made in the product
+
+EOF
+bk comment - < WANT
+cd gdb
+bk comment -p > GOT
+cat <<'EOF' > WANT
+### Comments for ChangeSet|1.2
+attach gdb using this new comment made in the product
+
+EOF
+cmpfiles WANT GOT
+echo OK
