@@ -1,0 +1,29 @@
+
+echo $N Run newcitool in a component - go ahead and commit ..........$NL
+nested project
+echo old > gcc/file
+bk new $Q gcc/file
+(cd gcc; bk commit $Q -f)
+bk commit $Q -f
+bk edit $Q gcc/file
+echo new > gcc/file
+cd gcc
+bk newcitool || exit 1
+cd ..
+echo OK
+
+echo $N Run newcitool in product - go ahead and commit ..............$NL
+echo data > extra
+bk newcitool || exit 1
+echo OK
+
+echo $N Run newcitool in product with only a component diff .........$NL
+bk edit $Q gcc/file
+echo latest > gcc/file
+bk newcitool || exit 1
+echo OK
+
+echo $N Run newcitool in product with only a component extra ........$NL
+echo check it in > gcc/comp-extra
+bk newcitool || exit 1
+echo OK

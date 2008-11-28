@@ -192,6 +192,7 @@ sfiles_main(int ac, char **av)
 		    			perror(optarg);
 					exit(1);
 				}
+				setlinebuf(opts.out);
 				opts.progress = 1;
 				break;
 		    case 'P':	opts.fixdfile = 1;	  	/* undoc 2.0 */

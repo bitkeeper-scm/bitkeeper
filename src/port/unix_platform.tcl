@@ -2,7 +2,7 @@
 # Copyright (c) 1999 Andrew Chang
 # %W% %@%
 
-proc bk_init {} \
+proc bk_initPlatform {} \
 {
 	global	tcl_platform dev_null tmp_dir wish sdiffw file_rev
 	global	file_start_stop file_stop line_rev keytmp file_old_new
