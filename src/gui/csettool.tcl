@@ -42,24 +42,20 @@ proc prevCset {} \
 
 proc file_history {} \
 {
-	global	lastFile Files file_start_stop file_stop RealFiles
+	global	lastFile Files file_stop RealFiles
 
 	set line $Files($lastFile)
 	set line "$line.0"
 	set file $RealFiles($lastFile)
-	if {[regexp "^  $file_start_stop" "$file" dummy file start stop] == 0} {
-		regexp "^  $file_stop" "$file" dummy f stop
-		set start $stop
-		set file "$f"
-	}
-	catch {exec bk -R revtool -l$stop "$file" &}
+	regexp "^  $file_stop" "$file" -> file rev
+	catch {exec bk -R revtool -l$rev "$file" &}
 }
 
 # Takes a line number as an arg when creating continuations for the file menu
 proc dotFile {{line {}}} \
 {
-	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
-	global	RealFiles file finfo currentCset
+	global	lastFile fileCount Files tmp_dir file_stop
+	global	RealFiles file finfo currentCset dev_null
 	global gc
 
 	set finfo(lt) ""
@@ -88,26 +84,21 @@ proc dotFile {{line {}}} \
 	# causes a screen update and we want the selection set quickly to make
 	# the user think we're responsive.
 	busy 1
-	if {[regexp "^  $file_start_stop" "$file" dummy file start stop] == 0} {
-		regexp "^  $file_stop" "$file" dummy f stop
-		set start $stop
-		set file "$f"
-	}
-	set p [open "| bk prs -hr$start -nd:PARENT: \"$file\""]
+	regexp "^  $file_stop" "$file" -> file rev
+	set    dspec ":PARENT:\\n"
+	append dspec ":T|PARENT: :Dd|PARENT::DM|PARENT::Dy|PARENT:\\n"
+	append dspec ":T: :Dd::DM::Dy:"
+	set p [open "| bk prs -hr$rev {-nd$dspec} \"$file\""]
 	gets $p parent
-	catch { close $p }
+	gets $p finfo(lt)
+	gets $p finfo(rt)
+	catch {close $p}
 	if {$parent == ""} { set parent "1.0" }
 	set finfo(l) "$file@$parent"
-	set finfo(r) "$file@$stop"
-	set p [open "| bk prs -hr$parent {-nd:T: :Dd::DM::Dy:} \"$file\""]
-	gets $p finfo(lt)
-	catch { close $p }
-	set p [open "| bk prs -hr$stop {-nd:T: :Dd::DM::Dy:} \"$file\""]
-	gets $p finfo(rt)
-	catch { close $p }
+	set finfo(r) "$file@$rev"
 	set tmp [file tail "$file"]
 	set l [file join $tmp_dir $tmp-${parent}_[pid]]
-	set r [file join $tmp_dir $tmp-${stop}_[pid]]
+	set r [file join $tmp_dir $tmp-${rev}_[pid]]
 	if {$::showAnnotations} {
 		set annotate "$gc(cset.annotation)"
 		if {[string index $annotate 0] != "-"} {
@@ -145,7 +136,7 @@ proc dotFile {{line {}}} \
 	}
 	catch { close $prs }
 
-	set prs [open "| bk prs -bhC$stop {$dspec} \"$file\"" r]
+	set prs [open "| bk prs -bhC$rev {$dspec} \"$file\"" r]
 	set save ""
 	while { [gets $prs buf] >= 0 } {
 		if {$buf == "  "} { continue }
@@ -171,13 +162,20 @@ proc dotFile {{line {}}} \
 
 	if {$annotate == ""} {
 		catch { exec bk get -qkpr$parent "$file" > $l}
-		catch { exec bk get -qkpr$stop "$file" > $r}
+		catch { exec bk get -qkpr$rev "$file" > $r}
 	} else {
 		catch { exec bk get -qkpr$parent $annotate "$file" > $l}
-		catch { exec bk get -qkpr$stop $annotate "$file" > $r}
+		catch { exec bk get -qkpr$rev $annotate "$file" > $r}
 	}
-	displayInfo $file $file $parent $stop 
-	readFiles $l $r
+	if {[isChangeSetFile $file] && [isComponent $file]} {
+		catch {
+			exec bk changes -vr$rev [file dirname $file] > $r
+		} result
+		readFiles $dev_null $r
+	} else {
+		displayInfo $file $file $parent $rev 
+		readFiles $l $r
+	}
 	catch {file delete $l $r}
 
 	busy 0
@@ -215,7 +213,7 @@ proc exportCset {} \
 
 proc getFiles {revs {file_rev {}}} \
 {
-	global	fileCount lastFile Files line2File file_start_stop
+	global	fileCount lastFile Files line2File
 	global  RealFiles fmenu file_old_new bk_fs
 
 	busy 1
@@ -281,6 +279,11 @@ proc getFiles {revs {file_rev {}}} \
 		    -command  "dotFile $fileCount"
 	}
 	catch { close $r }
+	if {$revs ne "-" && !$fileCount} {
+		displayMessage "This ChangeSet is a merge ChangeSet and does\
+		    not contain any files."
+		exit
+	}
 	if {($tags > 0) && ($csets == 0)} {
 		global	env
 
@@ -715,18 +718,6 @@ proc main {} \
 	if {[cd2root [file dirname $file_rev]] == -1} {
 		displayMessage "CsetTool must be run in a repository"
 		exit 0
-	}
-	if {$stdin == 0} {
-		set dspec "-nd\$if(:Li: -gt 0){(:I:)}"
-		set fd [open "| bk prs -hr$revs {$dspec} ChangeSet" r]
-		# Only need to read first line to know whether there is content
-		gets $fd prs
-		if {$prs == ""} {
-			catch {wm withdraw .}
-			displayMessage "This ChangeSet is a merge ChangeSet and does not contain any files."
-			exit
-		}
-		catch {close $fd}
 	}
 
 	loadState cset

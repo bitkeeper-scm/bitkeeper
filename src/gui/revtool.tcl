@@ -1328,10 +1328,13 @@ proc prs {{id ""} } \
 		set diffpair(left) $rev1
 		set diffpair(right) ""
 		busy 1
-		set base [file tail $file]
-		if {$base == "ChangeSet"} {
-			set cmd "|bk changes {$chgdspec} -evr$rev1 2>$dev_null"
+		if {[isChangeSetFile $file]} {
+			set cmd "|bk changes {$chgdspec} -evr$rev1"
 			set ttype "cset_prs"
+			if {[file dirname $file] ne "."} {
+				append cmd " [file dirname $file]"
+			}
+			append cmd " 2>$dev_null"
 		} else {
 			set cmd "|bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"
 			set ttype "file_prs"

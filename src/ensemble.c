@@ -298,22 +298,38 @@ setgca(sccs *s, u32 bit, u32 tmp)
 #define	L_PRESENT	0x10
 #define	L_MISSING	0x20
 
+/*
+ * 0 means product
+ * 1 means component
+ * 2 means not in nested
+ * 3 means error
+ */
 int
 product_main(int ac, char **av)
 {
+	int	flags = 0;
+
+	if (av[1] && streq(av[1], "-q")) {
+		flags |= SILENT;
+		ac--, av++;
+	}
+	if (av[1] && chdir(av[1])) {
+		perror(av[1]);
+		return (3);
+	}
 	if (proj_cd2root()) {
-		fprintf(stderr, "product: not in a repository.\n");
-		exit(1);
+		verbose((stderr, "product: not in a repository.\n"));
+		return (3);
 	}
 	if (proj_isComponent(0)) {
-		printf("This is a component.\n");
-		exit(0);
+		verbose((stdout, "This is a component.\n"));
+		return (1);
 	}
 	if (proj_isProduct(0)) {
-		printf("This is the product.\n");
-		exit(0);
+		verbose((stdout, "This is the product.\n"));
+		return (0);
 	}
-	exit(0);
+	return (2);
 }
 
 int

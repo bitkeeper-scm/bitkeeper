@@ -13623,7 +13623,13 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	if (p < q) {
 		p++;
 		rev = strndup(p, len - (p-kw));
-		e = sccs_findrev(s, rev);
+		if (streq(rev, "PARENT")) {
+			if (d) e = d->parent;
+		} else if (streq(rev, "MPARENT")) {
+			if (d) e = sfind(s, d->merge);
+		} else {
+			e = sccs_findrev(s, rev);
+		}
 		free(rev);
 		unless (e) return (nullVal);
 		len = p - 1 - kw;
