@@ -720,3 +720,16 @@ proc AquaMenus {} \
 if {[tk windowingsystem] eq "aqua"} {
 	AquaMenus
 }
+
+proc isComponent {path} {
+	catch {exec bk product [file dirname $path]} res
+	return [string match "*component*" $res]
+}
+
+proc isChangeSetFile {path} {
+	if {[file tail $path] eq "ChangeSet"
+	    && [file isdir [file join [file dirname $path] BitKeeper etc]]} {
+		return 1
+	}
+	return 0
+}
