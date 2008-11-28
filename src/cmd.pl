@@ -390,6 +390,7 @@ fmtool gui
 helptool gui
 installtool gui
 msgtool gui
+newcitool gui
 newdifftool gui
 renametool gui
 revtool gui

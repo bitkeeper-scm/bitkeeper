@@ -12,6 +12,10 @@ if {[info exists ::env(BK_DEBUG_GUI)]} {
 	rename newproc proc
 }
 
+proc bk_init {} {
+	bk_initPlatform
+}
+
 # Try to find the project root, limiting ourselves to 40 directories
 proc cd2root { {startpath {}} } \
 {

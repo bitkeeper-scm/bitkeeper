@@ -2,7 +2,7 @@
 # Copyright (c) 1999 Andrew Chang
 # %W% %@%
 
-proc bk_init {} \
+proc bk_initPlatform {} \
 {
 	global env dev_null tmp_dir 
 	global bithelp difftool helptool sccstool sdiffw bk_prs file_rev
