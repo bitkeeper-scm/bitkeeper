@@ -276,7 +276,7 @@ done:	if (s) sccs_free(s);
 				t = aprintf("-r'%s,%s'", smd5, emd5);
 			} else {
 				sccs_key2md5(root, end, emd5);
-				t = aprintf("-r'%s'", emd5);
+				t = aprintf("-r1.0..'%s'", emd5);
 			}
 			strcat(buf, t);
 			free(t);
