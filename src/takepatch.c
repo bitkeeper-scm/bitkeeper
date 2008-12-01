@@ -1121,8 +1121,6 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 	int	n = 0;
 	int	confThisFile;
 	FILE	*csets = 0;
-	char	*dir;
-	int	moved;
 
 	reversePatch();
 	p = patchList;
@@ -1207,35 +1205,13 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 		return -1;
 	}
 apply:
-	moved = 0;
+
 	p = patchList;
 	while (p) {
 		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
 		if (p->pid) {
 			assert(s);
-			/*
-			 * If we are going to apply more than one patch
-			 * and BK_PATCHDIR is set then we are going to move
-			 * the sfile to that directory and do all the operations
-			 * there.
-			 */
-			if (!moved && p->next &&
-			    (dir = getenv("BK_PATCHDIR"))) {
-				dir = aprintf("%s/%s", dir, basenm(s->sfile));
-				if (fileCopy(s->sfile, dir)) {
-					fprintf(stderr,
-					    "takepatch: "
-					    "problems with BK_PATCHDIR=%s\n",
-					    getenv("BK_PATCHDIR"));
-					cleanup(CLEAN_RESYNC);
-				}
-				sccs_close(s);
-				unlink(s->sfile);
-				free(s->sfile);
-				s->sfile = dir;
-				moved = 1;
-			}
 			if (echo>9) {
 				fprintf(stderr,
 				    "------------- %s delta ---------\n"
@@ -1367,10 +1343,6 @@ apply:
 
 	if (csets) {
 		fclose(csets);
-	}
-	if (moved) {
-		fileCopy2(s->sfile, patchList->resyncFile);
-		unlink(s->sfile);
 	}
 	sccs_free(s);
 	s = sccs_init(patchList->resyncFile, SILENT);
