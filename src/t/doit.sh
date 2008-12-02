@@ -279,41 +279,64 @@ setup_env()
 	#BKL_C2=N+tj8pHeubjkO1FnuMCch8sMdSW5IVEthUpUP9cE3uYQRQmJIcaKzwz4/R7A8kBt
 	#BKL_C3=iTqZHwNH3xI12yZG9fin2rvdAKq2F0JPGSK8udl4NvZfLUFDhw5bLfIRIT0DYQ==
 
-	# Valid Academic license (airgap)
-	BKL_ACADEMIC=BKL6495c7800368c80800001210fffff42e572b41
-	BKL_A1=YgAAAo4AAAADgQAAAAMOUm4JCYQo36XvKHRwiiq3zeEpdIUHjY4zQbTJa/SjOehu
-	BKL_A2=ImujMjmP+hdIujlDZIOaBJZNBZvLdKlz7rEdXr2R7rynkmYmUJJmgAweD1wlg3qw
-	BKL_A3=ut2Gk57Ej0dYquhFotSTuKb2Nz88HzlkJ8L/mslsOAY4F8cF9gJHQoegLPpXCw==
+	### HOWTO update Airgap licenses that expire
+	#
+	# You'll know a license has failed because a regression fails having
+	# nothing to do with the code change just made.
+	# The first to fail is t.conflog, which does so one month before
+	# the license expires.  That's the PRO license. The rest will
+	# follow.  So good to change them all at the same time.
+	#
+	# To do change them:
+	#   bk get genlic.pl
+	#   bk edit doit.sh
+	# # get the magic passphrase into your cutn'paste buffer
+	#   ./genlic.pl < doit.sh > new.sh
+	# # paste the passphrase in once for each airgap license made
+	#   cp new.sh doit.sh
+	# # build and test; ci and commit
+	#
+	# ## HOWTO add new airgap licenses:
+	# Start with a comment line: "<tab># Valid $NAME $SIGTAG $OPTS"
+	# Where $NAME is BKL_$NAME and $SIGTAG is for BKL_$SIGTAG[123]
+	# as you can see below.  Follow your comment line with 4 blank
+	# lines. They will be replace by licenses.
 
-	# Valid Basic license (airgap)
-	BKL_BASIC=BKL6495c7800368c80800001210fffff42e572b42
-	BKL_B1=YgAAAo4AAAADgQAAAAEJKmmHkBPQhixG/dUxyAbwNnAxublakPhuQBToZ2Y3BJ/0
-	BKL_B2=3cO6n9QZ6Fe69SPOLDQasPx3BlxO8fTtacLme6b7j/z0KWfcVS4q0jLeEYvoj1EP
-	BKL_B3=yxrV2HcUPCNCKExDgtNhCZ+7H2KJFhUoR4zRPVp459o5c4wsDKJB8r4fMr/svA==
+	# Valid ACADEMIC A --airgap --eula=academic
+	BKL_ACADEMIC=BKL64b3de341368c8080000121cfffff42e572b41
+	BKL_A1=YgAAAo4AAAADgQAAAADpQALgSJPYSomgxMl4NbPqGiYkxlU03/ELqjqCpJvJSbLp
+	BKL_A2=5ZTh9mbVl3OAm6n0FJkHvFYBodqsHZW9JKUaoNmb3cBRY9dtm0cpncBedyAb0hbA
+	BKL_A3=ZEq8xVxcYybvMfDipvSdOWslhH6DGPi8laIdnTBIGgchEM4vL3YTfq3+CDkYSQ==
 
-	# Valid pro license (bkweb,bugdb,import,airgap,BAM)
-	BKL_PRO=BKL6495c7800368c8080000123dfffff42e572b43
-	BKL_P1=YgAAAo4AAAADgQAAAAL9S9N9KGyA+YPh8DwQo0ZbjwAKNesNacOui/cY+ZzsgWyP
-	BKL_P2=sLz1mtGwr9V9a/KdcQ9c61RWEkGi6k7n7QIl4eIPETOIRmQkEbBDq68+2fNeTeGC
-	BKL_P3=n0cFpNN5SpCoSONpcp1x5a6FFqKwTS/xly2MoO/O2BbJ0e6xP6Fl9GTt/3l3DA==
+	# Valid BASIC B --airgap --eula=basic
+	BKL_BASIC=BKL64b3de342368c8080000121cfffff42e572b42
+	BKL_B1=YgAAAo4AAAADgQAAAAKy2roz8v/h/mZAqMVLhxivHXyXR0gQDrdxpv/643AAt7Uj
+	BKL_B2=nThFDMO4sUAy7piKocCQqh3r4c2gtpVtEGjEgpMU8I9zJKeid14ekZ6eL0b+CIjT
+	BKL_B3=fSWZonfLCBSJoAzGjrlGHOVNxvm2ZQ/4e759zEycyLaJdM3Pw24p4KmtLANR4A==
 
-	# Valid pro license (bkweb,bugdb,import,airgap)
-	BKL_pro=BKL6495c7800368c8080000121cfffff42e572b43
-	BKL_p1=YgAAAo4AAAADgQAAAAC1Tgl/+srPVn4Ty9RptUVEWc2E62nMGXR3aEMAOzalmNVF
-	BKL_p2=MxatmA0D7Ofen2KDxwuSDG5OxuzKNGqU6s1iyUeAfdfIReKvCbluBOS2dS+OEFv9
-	BKL_p3=468emJJnywKqPxqPkGEA4JCcnh24iQVhQy90kOf4EgRFmNx3XbPQyc74823k2g==
+	# Valid PRO P --airgap --bkweb --bugdb --import --bam --eula=pro
+	BKL_PRO=BKL64b3de343368c8080000123dfffff42e572b43
+	BKL_P1=YgAAAo4AAAADgQAAAABGrKhOQ0UO3Uk45daZGHqc3xLwsWU/5KeycoVOq1RnG0Xc
+	BKL_P2=uAo/HyLT3zkLKjBl5Wk5q1F5GrkYIcnQ1pxgMe8aCXbn9vZiNyb/TdRmNYVcghUx
+	BKL_P3=JZSiKck2WdHI1vTsNRsk/JB3KjVQ+alMfEjLrge4MY9kbQzKdbH+0ifyo6L0Xw==
 
-	# Valid Enterprise license (airgap)
-	BKL_ENTERPRISE=BKL6495c7800368c80800001210fffff42e572b44
-	BKL_E1=YgAAAo4AAAADgQAAAAE8WuixEChgDHVdBzFibnMG+O9goo/HSMKDahNKLnREC6iK
-	BKL_E2=q/GFW9DQShvFYYSSzY4wfXiGFMcqZc45piKHr2VaLDWk5sSVuYgprS/3m2OilueX
-	BKL_E3=iEyDOlfEFU8b+jI4GYVstv+vlUTxN+Dg06PReuG2FVJHwtghidvfsYHXyjyaeg==
+	# Valid pro p --airgap --bkweb --bugdb --import --eula=pro
+	BKL_pro=BKL64b3de344368c8080000121dfffff42e572b43
+	BKL_p1=YgAAAo4AAAADgQAAAAJ9gDW4knLx1EC/OZphvG5iQUM4PoGVkaW06JYl7br18T7y
+	BKL_p2=3Vvj7oCQvWieSelQg/a0H8kNq2COA4JuWLyTLHkF7bEOAA7RNVQ4tgYoxKP7wSMP
+	BKL_p3=gG8o1ksP5Sa/UBjHgh4Mv7hevSu9kNdq/62hUBsexILsWPPyehcJaNubPF8j7A==
 
-	# Valid MLA license (airgap)
-	BKL_MLA=BKL6495c7800368c80800001210fffff42e572b45
-	BKL_M1=YgAAAo4AAAADgQAAAAD4CGxSrLDVXePwUKY7683srAtmjdHSVSJm/faC4QvaqXEf
-	BKL_M2=izqLL0M7sf8/lLGlt9btqNUO4fM1h6497+UpEL5koPbM7eh7VaHXBevK4KTTQY70
-	BKL_M3=i9k/u2WVV032lXw3VKAx+YbxbBhOjKPAVjND/3PNFST9btoIEe0lZZg11Qxy8Q==
+	# Valid ENTERPRISE E --airgap --eula=enterprise
+	BKL_ENTERPRISE=BKL64b3de344368c8080000121cfffff42e572b44
+	BKL_E1=YgAAAo4AAAADgQAAAADE7FWJ0iyJWQK0HEzXzKJr/89caAVHKgNmISBVBNRfjnms
+	BKL_E2=opXbhEWlp1cmxODMR1WoxdS4+PEtHkXA5WRBt70F6i7ut5Cbusdc+OjknQBFY1HZ
+	BKL_E3=31v/I39AiMaECgYKdowFTT88+I+i/QPNjN8bnQEiCZ9QMvuOB/42/W8SgXgFLQ==
+
+	# Valid MLA M --airgap --eula=mla
+	BKL_MLA=BKL64b3de345368c8080000121cfffff42e572b45
+	BKL_M1=YgAAAo4AAAADgQAAAAKmWTYbHMCqDGrEaFgZSn6yowqQr3HN9gZM8Gn4CZkc7fUd
+	BKL_M2=GMW1ZfJZCt+tNYydXyuv+6/ykxhYrYsXlO3qV7K24fHsj4Jt1hlWKT5xI7M7kTfm
+	BKL_M3=mRcVtHxYSMnOM6fiRhvI4owAIYvdpbObk0gSqS87/wFS91f12EqTQjda1PsK4Q==
 
 	# Expired license (airgap)
 	BKL_EX=BKL63b174b80393618000001210fffff42e572b43
@@ -321,7 +344,8 @@ setup_env()
 	BKL_EX2=1nAJbaA8PmY/6ojX2ftvFwyl2Gj9EHeOJQ7tc7DRhI0Ts0W/ftTZCoszunGOkT0w
 	BKL_EX3=mfdVjvhvJNOiKDZB+mknP+mlZwSDX3dl+j0M7BaSTD4wWipm20cdgb7nyNPc
 
-	# Remote BK Pro license
+	# Remote BK Pro license -- to update: 
+	# http://config:7777/cgi-bin/view.cgi?id=2005-08-13-001
 	BKL_REMOTE=BKL60000000042ddda500001200fffff000000000
 	BKL_R1=YgAAAo4AAAADgQAAAAEwsGwQ17hcDCOMcxHHE/Iq9sP/bHI/sgAvVfsfDc9GtIiU
 	BKL_R2=PcHsdGaHplW7dqtbmsrK+UCYNizowwS+2SKLsrDLXQwsGYqLubzHuYBbkXFPrbSS
@@ -333,17 +357,18 @@ setup_env()
 	BKL_RE2=leOR1WVcGkRbSxPjTe8OTnX1ejU+JO1ji3Gd2CYAEpH56owpVGmEFGgK5rwnAJvA
 	BKL_RE3=K9UHfAA3arxygeGkaZGqEjx8hkGif458lVg13RUf+wq/77fI/lrwNxs/lxvPEg==
 
-	# Valid 3.2.8 license that is remote for current
+	# Valid 3.2.8 license that is remote for current -- to update:
+	# http://config:7777/cgi-bin/view.cgi?id=2007-08-31-001
 	BKL_3=BKL648b94e4b46d7ca800003200fffff000000000
 	BKL_31=YgAAAo4AAAADgQAAAAIT0xMiciBU9xa8rFrLOnSuMOC1Qee59zLAD3FKAydjTT0t
 	BKL_32=sjj10l26y+28Vw4BVyWZbXrfipAiyC/bLDubKDkt2ljjNv4N6c1et/UIH77R3Njf
 	BKL_33=iI8hVqWnHKXORC/7v3hxpnrlq9BXSjNHntPbyHF11VAC/dLOm/mUR3c7TaqvOA==
 
-	# BKL7 ./license --bkl=7 --airgap --bkweb -e+1Y 1998-12-12-078
-	BKL_7=BKL7494444ac367222800078211fffff000000000
-	BKL_71=YgAAAo4AAAADgQAAAAJsfDP2B2QN/MGaj3i48X3NXibYV01H8xf5/kk9mD4Diie2
-	BKL_72=6+JuG9VxEFO+hwnglX/3vLVQm0t4qb42WZAFxLN13UYX/FO6FWYRZ/p7tW582Vah
-	BKL_73=aaxyldi5yd3kkUKE02aYNA9vcCVMKGVLW1SvYEvq+x5/eeHCPZpM4KDEtPVWCQ==
+	# Valid 7 7 --bkl=7 --airgap --bkweb --eula=pro
+	BKL_7=BKL74b3de346368c8080000121dfffff42e572b43
+	BKL_71=YgAAAo4AAAADgQAAAAEtOAu+u0CcSZUsgDrsQrwKMj4q4JKOuc1iVv9R+17GcEHJ
+	BKL_72=yyK7Y3s07debOIhC3Ypxvwpn5346ZEdxn3hWQgg2JCz9aVD7Sd+R5EZpplgfnZYr
+	BKL_73=fHzg5wDbzUKkZG+73PccAEaVsSCoWHAIJYbUFrv8XyZMFPEtTwzr+JqRoPZB3g==
 
 
 	test "$GUI_TEST" = YES || {
