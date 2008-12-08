@@ -1,6 +1,20 @@
 
-echo $N Run newcitool in a component - go ahead and commit ..........$NL
+echo $N Run newcitool with a bad set of command line arguments ......$NL
 nested project
+# The only command line error at the moment is a dir if more than one arg
+bk newcitool gcc gdb 2> ERR && {
+	echo FAILED
+	exit 1
+}
+test "$PLATFORM" = "WIN32" || grep -q "usage:	bk citool " ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+rm -f ERR
+echo OK
+
+echo $N Run newcitool in a component - go ahead and commit ..........$NL
 echo old > gcc/file
 bk new $Q gcc/file
 (cd gcc; bk commit $Q -f)
@@ -26,4 +40,17 @@ echo OK
 echo $N Run newcitool in product with only a component extra ........$NL
 echo check it in > gcc/comp-extra
 bk newcitool || exit 1
+echo OK
+
+echo $N Run newcitool in product with a product and component diff ..$NL
+bk edit $Q extra
+echo more >> extra
+bk edit $Q gcc/file
+echo more >> gcc/file
+bk newcitool || exit 1
+P=`bk -Apqr | wc -l`
+if [ $P -ne 0 ]; then
+	echo "FAILED"
+	exit 1
+fi
 echo OK
