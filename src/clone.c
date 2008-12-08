@@ -440,7 +440,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	/* Make sure we pick up config info from what we just unpacked */
 	proj_reset(0);
 
-	if (opts->link) lclone(r->path);
+	if (opts->link) lclone(getenv("BKD_ROOT"));
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
 	if (do_part2 && !bkd_hasFeature("BAMv2")) {

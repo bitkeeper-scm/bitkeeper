@@ -32,7 +32,10 @@ do
 	bk new $Q -y"add" file$i
 	bk commit $Q -y"add file $i"
 done
-cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
+cd "$HERE/project"
+echo hi > bam
+bk new $Q -b bam || exit 1
+bk commit $Q -y"add csets to gdb"
 echo OK
 
 echo $N Set up some components.......................................$NL
@@ -69,7 +72,7 @@ cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Populate them back...........................................$NL
-bk populate $Q -seven -sprimes
+bk populate $Q -seven -sprimes || exit 1
 cat <<EOF > WANT
 even
 odd
@@ -135,12 +138,12 @@ cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Unpopulate alias not populated is an error...................$NL
-bk unpopulate -sdefault > GOT 2>&1
+bk unpopulate -sdefault > GOT 2>&1 && exit 1
 grep -q "cannot remove" GOT || {
 	echo failed
 	exit 1
 }
-bk unpopulate -sall > GOT 2>&1
+bk unpopulate -sall > GOT 2>&1 && exit 1
 grep -q "cannot remove" GOT || {
 	echo failed
 	exit 1
@@ -148,7 +151,7 @@ grep -q "cannot remove" GOT || {
 echo OK
 
 echo $N Populate special alias \'all\' and unpopulate it...............$NL
-bk populate $Q -sall
+bk populate $Q -l -sall || exit 1
 bk components -h > GOT
 cat <<EOF > WANT
 comp1
@@ -170,7 +173,7 @@ all
 primes
 EOF
 cmpfiles BitKeeper/log/COMPONENTS WANT
-bk unpopulate $Q -sall
+bk unpopulate $Q -sall || exit 1
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -186,7 +189,7 @@ cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Populate a glob and unpopulate it............................$NL
-bk populate $Q -s'./g*'
+bk populate $Q -s'./g*' || exit 1
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -202,7 +205,7 @@ cat <<EOF > WANT
 primes
 EOF
 cmpfiles BitKeeper/log/COMPONENTS WANT
-bk unpopulate $Q -s'./g*'
+bk unpopulate $Q -s'./g*' || exit 1
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -218,7 +221,7 @@ cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Unpopulate primes............................................$NL
-bk unpopulate $Q -sprimes
+bk unpopulate $Q -sprimes || exit 1
 bk components -h > GOT
 cat <<EOF > WANT
 EOF
@@ -227,7 +230,7 @@ cmpfiles BitKeeper/log/COMPONENTS WANT
 echo OK
 
 echo $N Unpopulate a component with changes should fail..............$NL
-bk populate $Q -sprimes
+bk populate $Q -sprimes || exit 1
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -244,7 +247,7 @@ cd comp2
 touch foobar
 bk new $Q foobar
 cd ..
-bk unpopulate -sprimes > GOT 2>&1
+bk unpopulate -sprimes > GOT 2>&1 && exit 1
 grep -q 'local changes' GOT || {
 	echo failed
 	exit 1
@@ -266,7 +269,7 @@ cd "$HERE/project"
 bk alias subprimes $SP
 cd "$HERE/copy"
 bk pull $Q || exit 1
-bk populate $Q -ssubprimes
+bk populate $Q -ssubprimes || exit 1
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -282,7 +285,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate subprimes.........................................$NL
-bk unpopulate $Q -ssubprimes
+bk unpopulate $Q -ssubprimes || exit 1
 bk components -h > GOT
 cat <<EOF > WANT
 comp2
@@ -377,7 +380,7 @@ cd "$HERE/project"
 bk commit $Q -y"add deep stuff"
 cd "$HERE/copy"
 bk pull $Q
-bk unpopulate $Q -sprimes -ssubprimes
+bk unpopulate $Q -sprimes -ssubprimes || exit 1
 # make sure the pull did not bring the deeps stuff
 # since it's not in our aliases file
 bk components -h > GOT
@@ -388,7 +391,7 @@ echo OK
 
 # now start the deep nest fun
 echo $N Populate deep1/deep2/deep3/deep4/deep5.......................$NL
-bk populate $Q -s./deep1/deep2/deep3/deep4/deep5
+bk populate $Q -s./deep1/deep2/deep3/deep4/deep5 || exit 1
 bk components -h > GOT
 cat > WANT <<EOF
 deep1/deep2/deep3/deep4/deep5
@@ -397,7 +400,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Populate deep1/deep2.........................................$NL
-bk populate $Q -s./deep1/deep2
+bk populate $Q -s./deep1/deep2 || exit 1
 bk components -h > GOT
 cat > WANT <<EOF
 deep1/deep2
@@ -422,7 +425,7 @@ echo OK
 
 echo $N Unpopulate deep1/deep2 should work...........................$NL
 # superset thinks there's new work, thus we use -f
-bk unpopulate $Q -f -s./deep1/deep2
+bk unpopulate $Q -f -s./deep1/deep2 || exit 1
 bk components -h > GOT
 cat > WANT <<EOF
 deep1/deep2/deep3/deep4/deep5
@@ -462,7 +465,7 @@ echo OK
 
 if [ $WINDOWS = NO ]; then
 echo $N Populate with a symlink -- fails.............................$NL
-bk unpopulate $Q -s./deep1/deep2/deep3/deep4/deep5
+bk unpopulate $Q -s./deep1/deep2/deep3/deep4/deep5 || exit 1
 test -d deep1/deep2/deep3/deep4/deep5 && exit 1
 rmdir deep1/deep2/deep3/deep4 || exit 1
 ln -s ../../../../deep1 deep1/deep2/deep3/deep4
