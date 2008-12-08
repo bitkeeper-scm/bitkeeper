@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 #
 # The idea is to copy the Mac OS X bundle that Tcl created (Wish.app)
 # and just replace the fields we care about (e.g. the icon, name, etc)
@@ -60,8 +60,8 @@ echo -n "APPL$abbrev" > PkgInfo
 
 cd Resources
 rm -f Wish.icns
-bk get -S `bk root`/src/macosx/data/BK.icns
-cp `bk root`/src/macosx/data/BK.icns $abbrev.icns
+bk -R get -S macosx/data/BK.icns
+cp `bk root`/macosx/data/BK.icns $abbrev.icns
 
 cd ../Frameworks
 
