@@ -102,6 +102,10 @@ test `cat new-comp/BitKeeper/log/COMPONENT` = new-comp || {
 	echo failed to leave pointer
 	exit 1
 }
+bk pending | grep -q "new-comp/ChangeSet@1.2" || {
+	echo wrong output
+	exit 1
+}
 echo OK
 
 rm -rf new-comp
