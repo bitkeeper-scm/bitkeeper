@@ -93,7 +93,9 @@ usage:			system("bk help -s undo");
 	unless (fileList) goto err;
 
 	bktmp(undo_list, "undo_list");
-	cmd = aprintf("bk stripdel -Cc - 2> '%s'", undo_list);
+	cmd = aprintf("bk stripdel -%sc - 2> '%s'",
+	    (proj_isComponent(0) && !getenv("_BK_TRANSACTION")) ? "" : "C",
+	    undo_list);
 	f = popen(cmd, "w");
 	free(cmd);
 	unless (f) {
@@ -167,6 +169,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		sccs_free(cset);
 
 		EACH_REPO(r) if (r->present && !r->new) n++;
+		putenv("_BK_TRANSACTION=1");
 		EACH_REPO(r) {
 			if (r->new) continue;
 			unless (r->present) continue;
@@ -196,6 +199,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 			freeLines(vp, free);
 			proj_cd2product();
 		}
+		putenv("_BK_TRANSACTION=");
 		EACH_REPO(r) {
 			unless (r->new) continue;
 			sysio(0,

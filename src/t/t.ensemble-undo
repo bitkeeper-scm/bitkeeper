@@ -1,0 +1,35 @@
+
+echo $N Test undo of a pending component cset .......................$NL
+nested project
+cd gcc
+test `bk changes -r+ -nd:REV:` = 1.2 || exit 1
+echo hi > file
+bk new $Q file || exit 1
+bk commit $Q -ynew || exit 1
+test `bk changes -r+ -nd:REV:` = 1.3 || exit 1
+bk undo $Q -fsr+ || exit 1
+test `bk changes -r+ -nd:REV:` = 1.2 || exit 1
+echo OK
+
+echo $N Now test component undo that is already committed ...........$NL
+echo hi > file
+bk new $Q file || exit 1
+bk commit $Q -ynew || exit 1
+bk -P commit $Q -yprod || exit 1
+bk undo $Q -fsr+ >ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q "can.t remove committed delta ChangeSet@1.3" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Test product undo of a committed component cset .............$NL
+test `bk changes -r+ -nd:REV:` = 1.3 || exit 1
+bk -P undo $Q -fsr+ || exit 1
+test `bk changes -r+ -nd:REV:` = 1.2 || exit 1
+echo OK
