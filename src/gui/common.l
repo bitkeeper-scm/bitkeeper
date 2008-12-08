@@ -156,6 +156,15 @@ bk_dieError(string message, int exitCode)
 	exit(exitCode);
 }
 
+void
+bk_usage()
+{
+	string	usage;
+
+	catch("exec bk help -s ${_bk.tool}tool", &usage);
+	bk_dieError(usage, 1);
+}
+
 widget[]
 getAllWidgets(widget top)
 {

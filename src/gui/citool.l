@@ -101,7 +101,7 @@ getNumFiles()
 
 	setStatus("Getting file count...");
 
-	result = exec("bk", "product");
+	result = bk("product");
 
 	if (result eq "" || result eq "This is a component."
 	    || catch("exec bk components -h", &result)) {
@@ -1091,10 +1091,13 @@ showFile(sfile sf)
 	}
 
 	if (sf.rev eq "") {
-		Text_insert(local.w_diffs, "end", bk("sinfo ${sf.name}"));
+		string	sinfo = bk("sinfo ${sf.file}");
+
+		sinfo = getRelativePath(sinfo, local.root);
+		Text_insert(local.w_diffs, "end", sinfo);
 		Text_insert(local.w_diffs, "end", "\n\n");
 
-		fd = popen("bk diffs -up ${sf.name}", "r");
+		fd = popen("bk diffs -up ${sf.file}", "r");
 	} else {
 		// Pending file.
 		string	pRev;
@@ -1150,7 +1153,7 @@ launchDifftool()
 {
 	sfile	sf = getSelectedFile();
 
-	exec("bk", "difftool", sf.name, "&");
+	exec("bk", "difftool", sf.file, "&");
 }
 
 void
@@ -1164,7 +1167,7 @@ launchRevtool()
 {
 	sfile	sf = getSelectedFile();
 
-	exec("bk", "revtool", sf.name, "&");
+	exec("bk", "revtool", sf.file, "&");
 }
 
 void
@@ -1246,7 +1249,8 @@ doCommit()
 				// If a change was committed in the component,
 				// we want to add its ChangeSet file to the
 				// list of files to commit in the product.
-				commit{local.root}[i++] =
+				i = llength(commit{local.root});
+				commit{local.root}[i] =
 				    File_join(comp, "ChangeSet");
 			}
 		}
@@ -1609,11 +1613,7 @@ main(int argc, string argv[])
 		string	file;
 
 		foreach (file in files) {
-			if (File_isdirectory(file)) {
-				bk_error("Bad arguments", "usage: "
-				    "bk citool ?dir? | ?file ...?");
-				exit(1);
-			}
+			if (File_isdirectory(file)) bk_usage();
 		}
 	}
 
