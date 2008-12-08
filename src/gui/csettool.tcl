@@ -663,7 +663,9 @@ proc keyboard_bindings {} \
 
 proc usage {} \
 {
-	puts stderr "usage: bk csettool \[-f<file>] \[-r<rev>] \[-]"
+	catch {exec bk help -s csettool} usage
+	puts stderr $usage
+	exit 1
 }
 
 
@@ -691,13 +693,16 @@ proc main {} \
 			set rev [lindex $argv $argindex]
 		   	regexp {^[ \t]*-r(.*)} $rev dummy revs
 			# make sure we don't get an empty revision
-			if {$revs eq ""} {
-				usage
-				exit 1
-			}
+			if {$revs eq ""} { usage }
 		    }
 		    "^-$" {
 			set stdin 1
+		    }
+
+		    default {
+			if {$file_rev ne ""
+			    || $argindex != [expr {$argc - 1}]
+			    || [catch {cd $arg} err]} { usage }
 		    }
 		}
 		incr argindex
