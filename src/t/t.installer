@@ -75,6 +75,7 @@ test -f relative/config && {
 	cat OUT
 	exit 1
 }
+rm -rf relative
 echo OK
 
 echo $N Absolute path installation, no config file...................$NL
@@ -86,7 +87,7 @@ grep -q LICENSE OUT || {
 	exit 1
 }
 test -d absolute || {
-	echo did not create relative 
+	echo did not create absolute 
 	cat OUT
 	exit 1
 }
@@ -106,7 +107,7 @@ grep -q LICENSE OUT || {
 	exit 1
 }
 test -d refuse && {
-	echo did not create relative 
+	echo created refuse
 	cat OUT
 	exit 1
 }
@@ -129,6 +130,7 @@ test -d use_repo || {
 	exit 1
 }
 echo OK
+rm -rf use_repo
 
 echo $N Upgrade with installed config, leave it and it should work ..$NL
 rm -f "$DOTBK"/accepted
@@ -159,6 +161,7 @@ grep -q "foo: bar" absolute/config || {
 	exit 1
 }
 echo OK
+rm -rf absolute
 
 echo $N Embedded license, should leave config file...................$NL
 rm -f "$DOTBK"/accepted "$DOTBK"/config
@@ -174,6 +177,7 @@ grep -q 'Inserted keys into binary' OUT || {
 	wc c
 	exit 1
 }
+rm -f bk-academic
 echo y | ./bk-academic-licensed embedded > OUT 2>&1
 grep -q LICENSE OUT || {
 	echo Did not prompt for license
@@ -181,7 +185,7 @@ grep -q LICENSE OUT || {
 	exit 1
 }
 test -d embedded || {
-	echo did not create relative 
+	echo did not create embedded 
 	cat OUT
 	exit 1
 }
@@ -191,6 +195,7 @@ test -f embedded/config || {
 	exit 1
 }
 echo OK
+rm -rf embedded
 
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
@@ -496,6 +501,6 @@ fi
 #####################################################################
 # Careful!!!!
 #####################################################################
-cd "$HERE"
+cd "$HERE" || exit 1
 chmod -R +w * >/dev/null 2>&1	# SCO's chmod barfs
 rm -rf *
