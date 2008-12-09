@@ -145,6 +145,7 @@ OBJ =	bkver.o cmd.o \
 	delta.o diffs.o diffsplit.o dspec.o \
 	ensemble.o eula.o export.o \
 	find.o findcset.o findkey.o fixlod.o fixtool.o fslayer.o \
+	fsl.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \

@@ -207,6 +207,16 @@ findkey
 fix
 _fixlod
 fixtool
+_fslchmod
+_chmod => _fslchmod
+_fslcp
+_cp => _fslcp
+_fslmkdir
+_mkdir => _fslmkdir
+_fslmv
+_mv => _fslmv
+_fslrm
+_rm => _fslrm
 gca
 get
 gethelp
