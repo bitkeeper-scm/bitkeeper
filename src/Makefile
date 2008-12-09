@@ -138,6 +138,7 @@ OBJ =	bkver.o cmd.o \
 	bkusers.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	collapse.o comment.o comments.o commit.o compress.o \
+	contrib/cat.o \
 	contrib/test.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
