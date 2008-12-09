@@ -137,7 +137,9 @@ OBJ =	bkver.o cmd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
-	collapse.o comment.o comments.o commit.o compress.o converge.o \
+	collapse.o comment.o comments.o commit.o compress.o \
+	contrib/test.o \
+	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	delta.o diffs.o diffsplit.o dspec.o \
 	ensemble.o eula.o export.o \
@@ -184,7 +186,8 @@ OBJ =	bkver.o cmd.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o stat.o stattest.o status.o \
 	stripdel.o surgery.o synckeys.o \
-	tagmerge.o testcode.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
+	tagmerge.o testcode.o tclsh.o takepatch.o testdates.o \
+	touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
 	user.o utils.o uu.o version.o what.o which.o xflags.o \
