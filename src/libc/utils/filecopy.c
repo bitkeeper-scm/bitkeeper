@@ -13,6 +13,7 @@ fileCopy(char *from, char *to)
 
 	strcpy(tofile, to);	/* 'to' might be read only */
 	mkdirf(tofile);
+	unlink(tofile);
 	if ((from_fd = open(from, 0, 0)) == -1) {
 		perror(from);
 		return (-1);
