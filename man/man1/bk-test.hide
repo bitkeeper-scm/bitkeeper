@@ -1,0 +1,365 @@
+.\"-
+.\" Copyright (c) 1991, 1993
+.\"	The Regents of the University of California.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to Berkeley by
+.\" the Institute of Electrical and Electronics Engineers, Inc.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 4. Neither the name of the University nor the names of its contributors
+.\"    may be used to endorse or promote products derived from this software
+.\"    without specific prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"     @(#)test.1	8.1 (Berkeley) 5/31/93
+.\" $FreeBSD$
+.\"
+.so ../bk-macros
+.TH "bk test" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk test \- condition evaluation utility
+.SH SYNOPSIS
+.B bk test
+.I
+expression
+.SH DESCRIPTION
+The
+.B bk test
+utility evaluates the expression and, if it evaluates
+to true, returns a zero (true) exit status; otherwise
+it returns 1 (false).
+If there is no expression,
+.B bk test
+also
+returns 1 (false).
+.LP
+All operators and flags are separate arguments to the
+.B bk test
+utility.
+.SH OPTIONS
+.LP
+The following primaries are used to construct expression:
+.tp
+.OPTreq \-b file
+True if
+.ARG file
+exists and is a block special
+file.
+.tp
+.OPTreq \-c file
+True if
+.ARG file
+exists and is a character
+special file.
+.tp
+.OPTreq \-d file
+True if
+.ARG file
+exists and is a directory.
+.tp
+.OPTreq \-e file
+True if
+.ARG file
+exists (regardless of type).
+.tp
+.OPTreq \-f file
+True if
+.ARG file
+exists and is a regular file.
+.tp
+.OPTreq \-g file
+True if
+.ARG file
+exists and its set group ID flag
+is set.
+.tp
+.OPTreq \-h file
+True if
+.ARG file
+exists and is a symbolic link.
+This operator is retained for compatibility with previous versions of
+this program.
+Do not rely on its existence; use \-L
+instead.
+.tp
+.OPTreq \-k file
+True if
+.ARG file
+exists and its sticky bit is set.
+.tp
+.OPTreq \-n string
+True if the length of
+.ARG string
+is nonzero.
+.tp
+.OPTreq \-p file
+True if
+.ARG file
+is a named pipe or FIFO
+.tp.
+.OPTreq \-r file
+True if
+.ARG file
+exists and is readable.
+.tp
+.OPTreq \-s file
+True if
+.ARG file
+exists and has a size greater
+than zero.
+.tp
+.OPTreq \-t file_descriptor
+True if the file whose file descriptor number
+is
+.ARG file_descriptor
+is open and is associated with a terminal.
+.tp
+.OPTreq \-u file
+True if
+.ARG file
+exists and its set user ID flag
+is set.
+.tp
+.OPTreq \-w file
+True if
+.ARG file
+exists and is writable.
+True
+indicates only that the write flag is on.
+The file is not writable on a read-only file
+system even if this test indicates true.
+.tp
+.OPTreq \-x file
+True if
+.ARG file
+exists and is executable.
+True
+indicates only that the execute flag is on.
+If
+.ARG file
+is a directory, true indicates that
+.ARG file
+can be searched.
+.tp
+.OPTreq \-z string
+True if the length of
+.ARG string
+is zero.
+.tp
+.OPTreq \-L file
+True if
+.ARG file
+exists and is a symbolic link.
+.tp
+.OPTreq \-O file
+True if
+.ARG file
+exists and its owner matches the effective user id of this process.
+.tp
+.OPTreq \-G file
+True if
+.ARG file
+exists and its group matches the effective group id of this process.
+.tp
+.OPTreq \-S file
+True if
+.ARG file
+exists and is a socket.
+.tp
+\*<file1\*> \fB\-nt\fR \*<file2\*>
+True if
+.ARG file1
+exists and is newer than
+.ARG file2 .
+.tp
+\*<file1\*> \fB\-ot\fR \*<file2\*>
+True if
+.ARG file1
+exists and is older than
+.ARG file2 .
+.tp
+\*<file1\*> \fB\-ef\fR \*<file2\*>
+True if
+.ARG file1
+and
+.ARG file2
+exist and refer to the same file.
+.tp
+.ARG string
+True if
+.ARG string
+is not the null
+string.
+.tp
+\*<s1\*> = \*<s2\*>
+True if the strings
+.ARG s1
+and
+.ARG s2
+are identical.
+.tp
+\*<s1\*> != \*<s2\*>
+True if the strings
+.ARG s1
+and
+.ARG s2
+are not identical.
+.tp
+\*<s1\*> < \*<s2\*>
+True if string
+.ARG s1
+comes before
+.ARG s2
+based on the binary value of their characters.
+.tp
+\*<s1\*> > \*<s2\*>
+True if string
+.ARG s1
+comes after
+.ARG s2
+based on the binary value of their characters.
+.tp
+\*<n1\*> \fB\-eq\fR \*<n2\*>
+True if the integers
+.ARG n1
+and
+.ARG n2
+are algebraically
+equal.
+.tp
+\*<n1\*> \fB\-ne\fR \*<n2\*>
+True if the integers
+.ARG n1
+and
+.ARG n2
+are not
+algebraically equal.
+.tp
+\*<n1\*> \fB\-gt\fR \*<n2\*>
+True if the integer
+.ARG n1
+is algebraically
+greater than the integer
+.ARG n2 .
+.tp
+\*<n1\*> \fB\-ge\fR \*<n2\*>
+True if the integer
+.ARG n1
+is algebraically
+greater than or equal to the integer
+.ARG n2 .
+.tp
+\*<n1\*> \fB\-lt\fR \*<n2\*>
+True if the integer
+.ARG n1
+is algebraically less
+than the integer
+.ARG n2 .
+.tp
+\*<n1\*> \fB\-le\fR \*<n2\*>
+True if the integer
+.ARG n1
+is algebraically less
+than or equal to the integer
+.ARG n2 .
+.LP
+If
+.ARG file
+is a symbolic link,
+.B bk test
+will fully dereference it and then evaluate the expression
+against the file referenced, except for the \fB\-h\fR and
+\fB\-L\fR primaries.
+.LP
+These primaries can be combined with the following operators:
+.tp
+\fB\&!\fR expression
+True if
+.ARG expression
+is false.
+.tp
+\*<expression1\*> \fB\-a\fR \*<expression2\*>
+True if both
+.ARG expression1
+and
+.ARG expression2
+are true.
+.tp
+\*<expression1\*> \fB\-o\fR \*<expression2\*>
+True if either
+.ARG expression1
+or
+.ARG expression2
+are true.
+.tp
+\fB\&(\fR \*<expression\*> \fB\&)\fR
+True if expression is true.
+.LP
+The \fB\-a\fR
+operator has higher precedence than the \fB\-o\fR
+operator.
+.LP
+Some shells may provide a builtin
+.B bk test
+command which is similar or identical to this utility.
+Consult the
+.Xr builtin 1
+manual page.
+.SH GRAMMAR AMBIGUITY
+The
+.B bk test
+grammar is inherently ambiguous.
+In order to assure a degree of consistency,
+the cases described in the
+IEEE-p1003.2 ,
+section D11.2/4.62.4, standard
+are evaluated consistently according to the rules specified in the
+standards document.
+All other cases are subject to the ambiguity in the
+command semantics.
+.SH RETURN VALUES
+The
+.B bk test
+utility exits with one of the following values:
+.tp
+.I 0
+expression evaluated to true.
+.tp
+.I 1
+expression evaluated to false or expression was
+missing.
+.tp
+.I >1
+An error occurred.
+.SH BUGS
+Both sides are always evaluated in
+\fB\-a\fR
+and
+\fB\-o\fR,
+unlike in the logical operators of \fBsh\fR.
+For instance, the writable status of
+.ARG file
+will be tested by the following command even though the former expression
+indicated false, which results in a gratuitous access to the file system:
+.LP
+.DS
+[ -z abc -a -w file ]
+.DE

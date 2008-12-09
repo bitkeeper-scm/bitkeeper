@@ -328,6 +328,7 @@ synckeys
 tagmerge
 takepatch
 _tclsh
+_test
 testdates
 _touch
 _unbk
