@@ -356,6 +356,7 @@ zone
 
 #aliases of builtin functions
 add => delta
+_cat => cat
 ci => delta
 enter => delta
 new => delta

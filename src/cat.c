@@ -11,6 +11,9 @@ cat_main(int ac, char **av)
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	c, gfile;
 
+	/* maybe run regular BSD cat (contrib/cat.c)  */
+	if (streq(av[0], "_cat")) return (catfile_main(ac, av));
+
 	while ((c = getopt(ac, av, "B")) != -1) {
 		switch (c) {
 		    case 'B': skip_bin = 1; break;
