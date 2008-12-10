@@ -44,6 +44,10 @@ smartRename(char *old, char *new)
 	unless (rc = rename(old, new)) return (0);
 	if (streq(old, new)) return (0);
 	save = errno;
+	/*
+	 * LMXX - this is bogus, we should stat it, turn on the write bits,
+	 * and put it back, right?
+	 */
 	if (chmod(new, 0700)) {
 		debug((stderr, "smartRename: chmod failed for %s, errno=%d\n",
 		    new, errno));
