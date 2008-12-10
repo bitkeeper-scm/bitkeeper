@@ -250,7 +250,7 @@ echo OK
 
 echo $N Installer should honor command line options..................$NL
 BK="$HERE/DEAD BEEF/bk"
-echo y | "$BK" install -vf -s -l -n "$HERE/DEAD2" > OUT 2>&1 || {
+echo y | "$BK" _install -vf -s -l -n "$HERE/DEAD2" > OUT 2>&1 || {
 	echo failed $?
 	echo Installer failed to install
 	cat OUT

@@ -136,7 +136,7 @@ proc install {} \
 
 	set installfrom [pwd]
 
-	set command [list doCommand bk install -vf]
+	set command [list doCommand bk _install -vf]
 	if {$runtime(hasWinAdminPrivs)} {
 		if {$runtime(enableSccDLL)}	   {lappend command -s}
 		if {$runtime(enableShellxLocal)}   {lappend command -l}

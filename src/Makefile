@@ -474,7 +474,7 @@ gui-nowrap GUI-nowrap:
 
 install: installdir
 	tmp/bitkeeper/bk _eula -a
-	tmp/bitkeeper/bk install -d -f $(BINDIR)
+	tmp/bitkeeper/bk _install -d -f $(BINDIR)
 	-$(BINDIR)/bk links /usr/bin
 
 installdir: utils/registry.tcl

@@ -1537,11 +1537,11 @@ __register_dll()
 	"$REGSVR32" -s "$1"
 }
 
-# usage: install dir
+# usage: _install dir
 # installs bitkeeper in directory <dir> such that the new
 # bk will be located at <dir>/bk
 # Any existing 'bk' directory will be deleted.
-_install()
+__install()
 {
 	test "X$BK_DEBUG" = X || {
 		echo "INSTALL: $@"
@@ -1570,7 +1570,7 @@ _install()
 		S) DOSYMLINKS=YES;;
 		u) FORCE=1; UPGRADE="-u";;
 		v) VERBOSE=YES;;
-		*) echo "usage: bk install [-dfvS] <destdir>" 1>&2
+		*) echo "usage: bk _install [-dfvS] <destdir>" 1>&2
 		   exit 1;;
 		esac
 	done
@@ -1585,7 +1585,7 @@ _install()
 	fi
 	shift `expr $OPTIND - 1`
 	test X"$1" = X -o X"$2" != X && {
-		echo "usage: bk install [-dfSv] <destdir>" 1>&2
+		echo "usage: bk _install [-dfSv] <destdir>" 1>&2
 		exit 1
 	}
 	test X"$BK_REGRESSION" != X && CRANKTURN=YES
@@ -1603,19 +1603,19 @@ _install()
 	test $NFILE -gt 0 && {
 		DEST=`bk pwd "$DEST"`
 		test "$DEST" = "$SRC" && {
-			echo "bk install: destination == source" 1>&2
+			echo "bk _install: destination == source" 1>&2
 			exit 1
 		}
 		test $FORCE -eq 0 && {
-			echo "bk install: destination exists, failed" 1>&2
+			echo "bk _install: destination exists, failed" 1>&2
 			exit 1
 		}
 		test -d "$DEST"/SCCS && {
-			echo "bk install: destination is a bk source tree!!" 1>&2
+			echo "bk _install: destination is a bk source tree!!" 1>&2
 			exit 1
 		}
 		test -f "$DEST"/bkhelp.txt || {
-			echo "bk install: destination is not an existing bk tree, failed" 1>&2
+			echo "bk _install: destination is not an existing bk tree, failed" 1>&2
 			exit 1
 		}
 		test -f "$DEST/config" && {
@@ -1624,16 +1624,16 @@ _install()
 		}
 		test $VERBOSE = YES && echo Uninstalling $DEST
 		bk uninstall $UPGRADE -f "$DEST" || {
-		    echo "bk install: failed to remove $DEST" 1>&2
+		    echo "bk _install: failed to remove $DEST" 1>&2
 		    exit 3
 		}
 	}
 	mkdir -p "$DEST" || {
-		echo "bk install: Unable to mkdir $DEST, failed" 1>&2
+		echo "bk _install: Unable to mkdir $DEST, failed" 1>&2
 		exit 1
 	}
 	test -d "$DEST" -a -w "$DEST" || {
-		echo "bk install: Unable to write to $DEST, failed" 1>&2
+		echo "bk _install: Unable to write to $DEST, failed" 1>&2
 		exit 1
 	}
 	# make DEST canonical full path w long names.

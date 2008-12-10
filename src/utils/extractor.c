@@ -270,7 +270,7 @@ main(int ac, char **av)
 			    goto out;
 		    }
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
-		sprintf(buf, "bk install %s %s \"%s\"",
+		sprintf(buf, "bk _install %s %s \"%s\"",
 			dolinks ? "-S" : "",
 			upgrade ? "-u" : "",
 			dest);
