@@ -39,7 +39,7 @@ case $CMD in
 	}
 	sleep 5		# give the other guys time to get rcp'ed and started
 
-	echo y | BK_NOTTY=YES bk clone -z0 $URL $BKDIR || {
+	echo y | BK_NOTTY=YES bk clone -sdefault -z0 $URL $BKDIR || {
 		failed
 	}
 
@@ -57,7 +57,11 @@ case $CMD in
 	}
 	bk get -S Makefile build.sh
 	make build || failed
-	./build image install test || failed
+	./build image install || failed
+	# save some diskspace for tight machines
+	(cd gui/tcltk; ../../build clean)
+	# run tests
+	./build test || failed
 
 	MSG="Not your lucky day, the following tests failed:"
 	GOT=`grep "$MSG" /build/$LOG | bk undos`
