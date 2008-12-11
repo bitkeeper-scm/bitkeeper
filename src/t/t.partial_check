@@ -35,7 +35,7 @@ cd ../project
 # update the check timestamp
 bk -r check -ac || exit 1
 bk pull $Q ../copy || exit 1
-grep -q '|file|.* file2' BitKeeper/etc/SCCS/x.id_cache || {
+bk _cat BitKeeper/etc/SCCS/x.id_cache | grep -q '|file|.* file2' || {
 	echo idcache not updated!
 }
 echo OK
@@ -57,7 +57,7 @@ echo $N Make sure partial check is partial at 23 hours old ..........$NL
 cd "$HERE/project"
 bk unpull $Q -f
 mv BitKeeper/tmp/unpull.patch PATCH
-mv SCCS/s.keywords x
+bk _mv SCCS/s.keywords x
 touch NOW
 CUR=`_mtime NOW`
 # save this setup for the following tests

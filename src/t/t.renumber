@@ -18,7 +18,7 @@ export BK_CONFIG
 echo $N Create a file with two branches .............................$NL
 echo base > foo.c
 bk new $Q foo.c
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Strip out the trunk and renumber ............................$NL
 bk get -e $Q foo.c
@@ -27,53 +27,56 @@ bk delta $Q -y1.2 foo.c
 bk get -e -r1.1 $Q foo.c
 echo second > foo.c
 bk delta $Q -y1.1.1.1 foo.c
-cp SCCS/s.foo.c sfoo
+bk _cp SCCS/s.foo.c sfoo
 bk stripdel $Q -r1.2 foo.c
 bk renumber $Q foo.c
-grep -q "^.d D 1.1.1.1" SCCS/s.foo.c 
+bk _cat SCCS/s.foo.c | grep -q "^.d D 1.1.1.1"
 if [ $? -eq 0 ]; then echo Failed to remove delta table entry.; exit 1; fi
-grep -q "^.d D 1.2" SCCS/s.foo.c 
+bk _cat SCCS/s.foo.c | grep -q "^.d D 1.2"
 if [ $? -ne 0 ]; then echo Failed to move delta table entry to 1.2; exit 1; fi
 echo OK
 # Do many tests based on copy
 echo $N Restore initial and move revision numbers then fix ..........$NL
-cp -f sfoo SCCS/s.foo.c
+bk _cp sfoo SCCS/s.foo.c
 bk get $Q foo.c
-rm -f SCCS/s.foo.c
+bk _rm SCCS/s.foo.c
 rm -f top
 mv foo.c top
 perl -p -e 's/ D 1\.1\.1\.1 / D 1.5 /;' -e 's/ D 1\.2 / D 1.1.1.1 /;'  \
-	-e 's/ D 1\.5 / D 1.2 /' sfoo | bk undos > SCCS/X
-bk undos SCCS/X > SCCS/s.foo.c 
+	-e 's/ D 1\.5 / D 1.2 /' sfoo | bk undos > X
+bk _mv X SCCS/s.foo.c 
 bk admin $Q -z foo.c
 cmp -s sfoo SCCS/s.foo.c
 if [ $? -eq 0 ]; then echo Failed to alter revions; exit 1; fi
 bk renumber $Q foo.c
-cp -f SCCS/s.foo.c cp
+bk _cp SCCS/s.foo.c cp
 bk renumber $Q foo.c
-cmp -s cp SCCS/s.foo.c
+bk _cp SCCS/s.foo.c cp2
+cmp -s cp cp2
 if [ $? -ne 0 ]; then echo Failed idempotent 1; exit 1; fi
 bk get $Q foo.c
 cmp -s top foo.c
 if [ $? -eq 0 ]; then echo Failed to get new top; exit 1; fi
 bk admin $Q -fd foo.c	# turn off default branch reassignment
-cmp -s sfoo SCCS/s.foo.c
+bk _cp SCCS/s.foo.c cp
+cmp -s sfoo cp
 if [ $? -ne 0 ]; then echo Failed to fix numbers; exit 1; fi
-cp -f SCCS/s.foo.c cp
+bk _cp SCCS/s.foo.c cp
 bk renumber $Q foo.c
-cmp -s cp SCCS/s.foo.c
+bk _cp SCCS/s.foo.c cp2
+cmp -s cp cp2
 if [ $? -ne 0 ]; then echo Failed idempotent 2; exit 1; fi
 echo OK
 # Do many tests based on copy
 echo $N Restore initial and move release numbers, then fix ..........$NL
-cp -f sfoo SCCS/s.foo.c
+bk _cp sfoo SCCS/s.foo.c
 bk get $Q foo.c
-rm -f SCCS/s.foo.c
+bk _rm SCCS/s.foo.c
 rm -f top
 mv foo.c top
 perl -p -e 's/ D 1\.1\.1\.1 / D 2.0.4.1 /; s/ D 1\.2 / D 2.0.7.1 /'  \
-	sfoo | bk undos > SCCS/X
- bk undos SCCS/X > SCCS/s.foo.c
+	sfoo | bk undos > X
+bk _mv X SCCS/s.foo.c
 bk admin $Q -z foo.c 2>OUT && {
 	echo should have failed
 	exit 1

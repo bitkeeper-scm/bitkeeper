@@ -183,7 +183,8 @@ echo $N Check remote/local listings .................................$NL
 cd "$HERE"
 bk clone $Q project clone
 cd project
-ls > LS
+touch LS
+ls | grep -v SCCS > LS
 bk new $Q LS
 BK_USER=jane bk commit $Q -yproject
 cd "$HERE/clone"
@@ -590,7 +591,7 @@ ChangeSet@1.4.1.1, DATE, joe@bk_regression.bk
   mommy@1.0, bk@bk_regression.bk +0 -0
 ChangeSet@1.5, DATE, jane@bk_regression.bk
   project
-  LS@1.1, bk@bk_regression.bk +7 -0
+  LS@1.1, bk@bk_regression.bk +6 -0
   LS@1.0, bk@bk_regression.bk +0 -0
 ChangeSet@1.4, DATE, third@bk_regression.bk
   Third checkin

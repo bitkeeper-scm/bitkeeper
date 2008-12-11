@@ -22,7 +22,7 @@ cd "$HERE"
 bk new $Q project1/file1 project2/file1 
 if [ $? != 0 ]; then echo Failed - new returned an error; exit 1; fi
 cd "$HERE/project1"
-if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+if bk _test -f file1 -o \! -f SCCS/s.file1; then
 	echo file1 should be checked in
 	exit 1
 fi
@@ -31,7 +31,7 @@ if [ `bk cat file1` != "file1" ]; then
 	exit 1
 fi
 cd "$HERE/project2"
-if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+if bk _test -f file1 -o \! -f SCCS/s.file1; then
 	echo file1 should be checked in
 	exit 1
 fi
@@ -54,12 +54,12 @@ commercial project3
 echo file3 > file1
 bk new $Q ../project1/file1 ../project2/file1 
 if [ $? != 0 ]; then echo Failed - new returned an error; exit 1; fi
-if [ ! -f file1 -o -f SCCS/s.file1 ]; then
+if bk _test ! -f file1 -o -f SCCS/s.file1; then
 	echo file1 shouldn\'t be checked in
 	exit 1
 fi
 cd "$HERE/project1"
-if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+if bk _test -f file1 -o \! -f SCCS/s.file1; then
 	echo file1 should be checked in
 	exit 1
 fi
@@ -68,7 +68,7 @@ if [ `bk cat file1` != "file1" ]; then
 	exit 1
 fi
 cd "$HERE/project2"
-if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+if bk _test -f file1 -o \! -f SCCS/s.file1; then
 	echo file1 should be checked in
 	exit 1
 fi
@@ -112,7 +112,7 @@ echo new2 >> project2/file1
 bk delta $Q -ystuff project1/file1 project2/file1
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cd project1
-if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+if bk _test -f file1 -o \! -f SCCS/s.file1; then
 	echo file1 should be checked in
 	exit 1
 fi
@@ -122,7 +122,7 @@ new1" ]; then
 	exit 1
 fi
 cd "$HERE/project2"
-if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+if bk _test -f file1 -o \! -f SCCS/s.file1; then
 	echo file1 should be checked in
 	exit 1
 fi
@@ -142,7 +142,7 @@ cd project3
 bk delta $Q -ystuff2 ../project1/file1 ../project2/file1
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cd "$HERE/project1"
-if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+if bk _test -f file1 -o \! -f SCCS/s.file1; then
 	echo file1 should be checked in
 	exit 1
 fi
@@ -153,7 +153,7 @@ morenew1" ]; then
 	exit 1
 fi
 cd "$HERE/project2"
-if [ -f file1 -o \! -f SCCS/s.file1 ]; then
+if bk _test -f file1 -o \! -f SCCS/s.file1; then
 	echo file1 should be checked in
 	exit 1
 fi

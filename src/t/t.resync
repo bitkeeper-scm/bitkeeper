@@ -28,7 +28,7 @@ echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -d BitKeeper/tmp ]; then echo failed to make BitKeeper/tmp; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -39,7 +39,7 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Check pending ...............................................$NL
 P=`bk pending | wc -l`
@@ -58,11 +58,11 @@ if [ ! -d clone ]; then echo failed to make top level directory; exit 1; fi
 cd clone
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -d BitKeeper/tmp ]; then echo failed to make BitKeeper/tmp; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
-P=`ls -l SCCS/s.ChangeSet`
+P=`bk _stat SCCS/s.ChangeSet | awk -F\| '{ print $3 }'`
 case "$P" in
--r--r--r--*) echo OK
+100444) echo OK
 	;;
 *)
 	echo failed
@@ -75,7 +75,7 @@ echo $N Should not be able to resync unrelated repositories .........$NL
 cd "$HERE"
 fresh_commercial project2
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo "don't stand in the doorway, don't block up the hall" > times
@@ -236,15 +236,15 @@ cd RESYNC/BitKeeper/RENAMES
 bk co $Q
 for n in 1 2 3 4
 do	set `cat $n`
-	mv SCCS/s.$n SCCS/s.FILE$2
-	if [ -f SCCS/r.$n ]; then mv SCCS/r.$n SCCS/r.FILE$2; fi
-	if [ -f SCCS/m.$n ]; then mv SCCS/m.$n SCCS/m.FILE$2; fi
+	bk _mv SCCS/s.$n SCCS/s.FILE$2
+	if bk _test -f SCCS/r.$n; then bk _mv SCCS/r.$n SCCS/r.FILE$2; fi
+	if bk _test -f SCCS/m.$n; then bk _mv SCCS/m.$n SCCS/m.FILE$2; fi
 	rm -f $n
 done
 for n in 1 2 3 4
-do	mv SCCS/s.FILE$n SCCS/s.$n
-	if [ -f SCCS/r.FILE$n ]; then mv SCCS/r.FILE$n SCCS/r.$n; fi
-	if [ -f SCCS/m.FILE$n ]; then mv SCCS/m.FILE$n SCCS/m.$n; fi
+do	bk _mv SCCS/s.FILE$n SCCS/s.$n
+	if bk _test -f SCCS/r.FILE$n; then bk _mv SCCS/r.FILE$n SCCS/r.$n; fi
+	if bk _test -f SCCS/m.FILE$n; then bk _mv SCCS/m.FILE$n SCCS/m.$n; fi
 	rm -f $n
 done
 cd  "$HERE/copy"
@@ -314,15 +314,15 @@ cd RESYNC/BitKeeper/RENAMES
 bk co $Q
 for n in 1 2 3 4
 do	set `cat $n`
-	mv SCCS/s.$n SCCS/s.FILE$2
-	if [ -f SCCS/r.$n ]; then mv SCCS/r.$n SCCS/r.FILE$2; fi
-	if [ -f SCCS/m.$n ]; then mv SCCS/m.$n SCCS/m.FILE$2; fi
+	bk _mv SCCS/s.$n SCCS/s.FILE$2
+	if bk _test -f SCCS/r.$n; then bk _mv SCCS/r.$n SCCS/r.FILE$2; fi
+	if bk _test -f SCCS/m.$n; then bk _mv SCCS/m.$n SCCS/m.FILE$2; fi
 	rm -f $n
 done
 for n in 1 2 3 4
-do	mv SCCS/s.FILE$n SCCS/s.$n
-	if [ -f SCCS/r.FILE$n ]; then mv SCCS/r.FILE$n SCCS/r.$n; fi
-	if [ -f SCCS/m.FILE$n ]; then mv SCCS/m.FILE$n SCCS/m.$n; fi
+do	bk _mv SCCS/s.FILE$n SCCS/s.$n
+	if bk _test -f SCCS/r.FILE$n; then bk _mv SCCS/r.FILE$n SCCS/r.$n; fi
+	if bk _test -f SCCS/m.FILE$n; then bk _mv SCCS/m.FILE$n SCCS/m.$n; fi
 	rm -f $n
 done
 
@@ -366,7 +366,7 @@ cd "$HERE/copy"
 bk pull $Q -R "$HERE/project"
 bk resolve -t $L $Q "$HERE/copy"
 cd "$HERE/copy/src"
-if [ ! -f SCCS/s.g.c ]; then echo failed, no g.c; exit 1; fi
+if bk _test ! -f SCCS/s.g.c; then echo failed, no g.c; exit 1; fi
 cd "$HERE/project/src"
 bk mv g.c r.c
 bk commit $S -yrename
@@ -415,11 +415,16 @@ test $KSRC = $KDST || {
      exit 1
 }
 bk admin -z "$HERE/project/src/SCCS/s.b.c" "$HERE/copy/src/SCCS/s.b.c"
-diff "$HERE/project/src/SCCS/s.b.c" "$HERE/copy/src/SCCS/s.b.c"
+bk _cp "$HERE/project/src/SCCS/s.b.c" A
+bk _cp "$HERE/copy/src/SCCS/s.b.c" B
+diff A B
 if [ $? -ne 0 ]; then echo failed on b.c; exit 1; fi;
 bk admin -z "$HERE/project/src/SCCS/s.c.c" "$HERE/copy/src/SCCS/s.c.c"
-diff "$HERE/project/src/SCCS/s.c.c" "$HERE/copy/src/SCCS/s.c.c"
+bk _cp "$HERE/project/src/SCCS/s.c.c" A
+bk _cp "$HERE/copy/src/SCCS/s.c.c" B
+diff A B
 if [ $? -ne 0 ]; then echo failed on c.c; exit 1; fi;
+rm A B
 echo OK
 cores
 
@@ -435,7 +440,7 @@ KEY1=`bk prs -hr+ -d:KEY: "$HERE/project/src/bb.c"`
 KEY2=`bk prs -hr+ -d:KEY: "$HERE/project/src/aa.c"`
 if [ "${KEY1}"X = "${KEY2}"X ]; then echo failed: duplicate key; exit 1; fi
 echo OK
-rm -f  "$HERE/project/src/SCCS/s.aa.c"  "$HERE/project/src/SCCS/s.bb.c"
+bk _rm "$HERE/project/src/SCCS/s.aa.c" "$HERE/project/src/SCCS/s.bb.c"
 echo $N Key conflict in two workspace ...............................$NL
 # this test is time dependent
 # this colud fail on a very fast machine
@@ -447,7 +452,7 @@ KEY2=`bk prs -hr1.0 -d:KEY: "$HERE/copy/src/dup.c"`
 if [ "${KEY1}"X = "${KEY2}"X ]; then echo failed: duplicate key; exit 1; fi
 echo OK
 cores
-rm -f "$HERE/project/src/SCCS/s.dup.c" "$HERE/copy/src/SCCS/s.dup.c"
+bk _rm "$HERE/project/src/SCCS/s.dup.c" "$HERE/copy/src/SCCS/s.dup.c"
 
 echo $N Check resync with binary file ...............................$NL
 cd  "$HERE"
@@ -505,10 +510,10 @@ cd "$HERE/copy"
 bk pull $Q -R "$HERE/project"
 bk resolve -t $L $Q "$HERE/copy"
 cd "$HERE/project/src"
-if [ ! -f "$HERE/copy/src/sub/SCCS/s.delete.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/copy/src/sub/SCCS/s.delete.c"; then echo failed; exit 1; fi
 bk rm sub/delete.c
 #if [ ! -f "$HERE/project/BitKeeper/deleted/SCCS/s..del-delete.c" ]
-ls "$HERE/project/BitKeeper/deleted/SCCS" | grep -q "^s..del-delete.c"
+bk sfiles "$HERE/project/BitKeeper/deleted" | grep -q 's..del-delete.c~'
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk co $Q -l merge.c
 sed -e"s/111/111-new/" merge.c > merge.tmp
@@ -523,7 +528,7 @@ bk ci $Q -y merge.c
 bk commit $S -y"abc"
 bk pull $Q -R "$HERE/project"
 bk resolve $L $Q -a -t "$HERE/copy"
-ls "$HERE/copy/BitKeeper/deleted/SCCS" | grep -q "^s..del-delete.c"
+bk sfiles "$HERE/copy/BitKeeper/deleted" | grep -q "s..del-delete.c~"
 if [ $? -ne 0 ]
 then	echo failed to delete delete.c;
 	pwd
@@ -564,8 +569,8 @@ bk new $Q symbol_test
 bk commit $S -y"symbol test" -S'symbol test'
 cd "$HERE/copy"
 bk pull $Q -t "$HERE/project"
-if [ ! -f src/SCCS/s.symbol_test ]; then echo failed to send file; exit 1; fi
-grep -q 'Ssymbol test' SCCS/s.ChangeSet
+if bk _test ! -f src/SCCS/s.symbol_test; then echo failed to send file; exit 1; fi
+bk _cat SCCS/s.ChangeSet | grep -q 'Ssymbol test'
 if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
 cores
@@ -586,7 +591,7 @@ grep -q 'S later symbol' "$HERE/copy/PENDING/"* || {
 cp "$HERE/copy/PENDING/"* "$HERE"
 bk resolve -t -a $Q "$HERE/copy"
 cd "$HERE/copy"
-grep -q 'Slater symbol' SCCS/s.ChangeSet
+bk _cat SCCS/s.ChangeSet | grep -q 'Slater symbol'
 if [ $? != 0 ]; then echo failed to send symbol; exit 1; fi
 echo OK
 
@@ -599,7 +604,7 @@ bk ci $Q -m'additional' dummy
 bk commit $S -y'additional symbol test 2'
 cd "$HERE/copy"
 bk pull $Q -t "$HERE/project"
-grep -q 'Sadditional symbol' SCCS/s.ChangeSet
+bk _cat SCCS/s.ChangeSet | grep -q 'Sadditional symbol'
 if [ $? != 0 ]; then echo failed; exit 1; else echo OK; fi
 
 echo $N Test propagation of a symbol added later by itself ..........$NL
@@ -607,7 +612,7 @@ cd "$HERE/project"
 bk admin $Q -S'YAsymbol:1.5' ChangeSet
 cd "$HERE/copy"
 bk pull $Q -t "$HERE/project"
-grep -q 'YAsymbol' SCCS/s.ChangeSet
+bk _cat SCCS/s.ChangeSet | grep -q 'YAsymbol'
 if [ $? != 0 ]; then echo failed; exit 1; else echo OK; fi
 cores
 
@@ -619,7 +624,7 @@ rm -fr project copy
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 mkdir src
 cd src
 cat << EOF > aaa.c

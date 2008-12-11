@@ -12,7 +12,7 @@
 echo $N Create initial repositories .................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 cd "$HERE"
 bk clone $Q project clone
 bk clone $Q project clone2

@@ -86,7 +86,7 @@ echo $N Create initial repository ...................................$NL
 cd "$HERE"
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 bk sane 2> sane.out || { echo failed; cat sane.out; exit 1; }
@@ -106,13 +106,13 @@ do	cp $BK bk$i
 done
 bk new $Q bk?
 bk commit $Q -ycset1
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 echo OK
 
 echo $N clone the workspace .........................................$NL
 bk clone $Q "$HERE/project" "$HERE/copy"
 cd "$HERE/copy"
-if [ ! -f "BitKeeper/etc/SCCS/x.dfile" ]; then echo failed; exit 1; fi
+if bk _test ! -f "BitKeeper/etc/SCCS/x.dfile"; then echo failed; exit 1; fi
 PORT=`port 5000`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT > "$HERE/BKD" 2>&1
 echo OK
@@ -146,7 +146,7 @@ bk ci $Q -i woo.c
 bk commit $Q -ycset1
 bk push $Q -z0 bk://localhost:$PORT
 cd "$HERE/copy/src"
-if [ ! -f SCCS/s.woo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.woo.c; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 
@@ -160,7 +160,7 @@ PORT=`port 5100`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT 
 cd "$HERE/copy/src"
 bk pull -z0 bk://localhost:$PORT >OUT 2>&1
-test -f SCCS/s.zoo.c || {
+bk _test -f SCCS/s.zoo.c || {
 	echo failed
 	cat OUT
 	exit 1
@@ -178,7 +178,7 @@ PORT=`port 5200`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT 
 cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$PORT
-if [ ! -f SCCS/s.boo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.boo.c; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 
@@ -203,7 +203,7 @@ bk ci $Q -i aoo.c
 bk commit $Q -ycset1
 bk push $Q -z6 bk://localhost:$PORT
 cd "$HERE/copy/src"
-if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.aoo.c; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 
@@ -217,7 +217,7 @@ bk clone $Q bk://localhost:$PORT "$HERE/copy2" || {
 	exit 1
 }
 cd "$HERE/copy2/src"
-if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.aoo.c; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 
@@ -231,7 +231,7 @@ PORT=`port 5600`
 bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT -xcd -xpush
 cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$PORT
-if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.coo.c; then echo failed; exit 1; fi
 bk service uninstall $BKDNAME
 echo OK
 

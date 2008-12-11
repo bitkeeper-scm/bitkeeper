@@ -22,7 +22,7 @@ do
 	bk delta $Q -y"comment $i" file1
 done
 bk cp file1 file2 2> /dev/null
-if [ ! -f SCCS/s.file2 ]; then echo Failed to create an s.file; exit 1; fi
+if bk _test ! -f SCCS/s.file2; then echo Failed to create an s.file; exit 1; fi
 bk get $Q file1 file2 
 diff file1 file2
 if [ $? -ne 0 ]; then echo Failed to copy content correctly; exit 1; fi 
@@ -93,7 +93,7 @@ bk cp -f file1 ../copy/file2 2>ERR || {
 	echo should have worked
 	exit 1
 }
-test -f ../copy/SCCS/s.file2 || {
+bk _test -f ../copy/SCCS/s.file2 || {
 	echo said it worked but did not do the work
 	cat ERR
 	exit 1
@@ -105,7 +105,7 @@ bk cp -f file1 ../clone/file2 2>ERR || {
 	echo should have worked
 	exit 1
 }
-test -f ../copy/SCCS/s.file2 || {
+bk _test -f ../copy/SCCS/s.file2 || {
 	echo said it worked but did not do the work
 	cat ERR
 	exit 1

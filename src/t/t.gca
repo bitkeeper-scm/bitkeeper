@@ -18,7 +18,7 @@ commercial project
 echo $N Create graph with some merge, -i, and -x stuff ..............$NL
 echo foo > foo.c
 bk ci $Q -i foo.c
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 bk _get $Q -e foo.c
 bk delta $Q -fy1.2 foo.c
 bk _get $Q -e foo.c
@@ -57,7 +57,7 @@ echo OK
 echo $N Create graph with some weird pathalogical -i and -x .........$NL
 echo bar > bar.c
 bk ci $Q -i bar.c
-if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.bar.c; then echo failed to create history; exit 1; fi
 bk _get $Q -e bar.c
 bk delta $Q -fy1.2 bar.c
 # make 2 new branches and include trunk 1.2 into each

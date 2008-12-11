@@ -29,7 +29,7 @@ unset _BK_DEVELOPER
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -40,7 +40,7 @@ echo 3 > C
 echo 4 > D
 echo 5 > E
 bk ci $Q -i A B C D E
-if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.A; then echo failed to create history; exit 1; fi
 bk commit $S -y"This is a \"Change Set\""
 echo OK
 cores
@@ -63,9 +63,8 @@ bk commit $Q -ywhatever
 KEY=`bk prs -hr+ -d:KEY: LS`
 MONTH=`bk prs -hr+ -d:Dm: LS`
 BADKEY=`echo "$KEY" | sed s/$MONTH/00/`
-mv SCCS/s.ChangeSet SCCS/s-ChangeSet
-sed "s,$KEY,$BADKEY," < SCCS/s-ChangeSet > X
-bk undos X > SCCS/s.ChangeSet
+bk _cat SCCS/s.ChangeSet | sed "s,$KEY,$BADKEY," | bk undos > X
+bk _mv X SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk checksum -f ChangeSet 2>/dev/null
 cd "$HERE/copy"
@@ -86,7 +85,7 @@ bk pull -R $Q "$HERE/project"
 cd "$HERE"
 tar cf copy.tar copy 2> /dev/null
 cd copy
-rm -f RESYNC/SCCS/s.LS
+bk _rm RESYNC/SCCS/s.LS
 bk resolve -t $Q 2>ERRORS
 if [ $? -eq 0 ]; then echo failed to exit with an error; exit 1; fi
 if [ ! -d RESYNC ]; then echo failed to leave RESYNC; exit 1; fi
@@ -102,9 +101,9 @@ cd "$HERE"
 rm -rf copy
 tar xmf copy.tar
 cd copy
-chmod +w RESYNC/SCCS/s.LS
-echo foo >> RESYNC/SCCS/s.LS
-chmod -w RESYNC/SCCS/s.LS
+bk _cat RESYNC/SCCS/s.LS > X
+echo foo >> X
+bk _mv X RESYNC/SCCS/s.LS
 bk resolve -t $Q 2>ERRORS
 if [ $? -eq 0 ]; then echo failed to exit with an error; exit 1; fi
 if [ ! -d RESYNC ]; then echo failed to leave RESYNC; exit 1; fi

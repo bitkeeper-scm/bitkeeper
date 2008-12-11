@@ -15,7 +15,7 @@ PREFIX=file://"$HERE"
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
@@ -24,7 +24,7 @@ echo foo > 'F!O#O$ B%A^R&RR(R)RR'
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
-if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -yCset
@@ -37,11 +37,11 @@ echo $N Clone repository ............................................$NL
 mkdir -p "$HERE/tst"
 cd "$HERE/tst"
 bk clone $Q "$HERE/project" || { echo failed; exit 1; }
-[ -f "$HERE/tst/project/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR' ] || \
+bk _test -f "$HERE/tst/project/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR' || \
 							{ echo failed; exit 1; }
 cd "$HERE"
 bk clone $Q "$HERE/project" "$HERE/copy" || { echo failed; exit 1; }
-[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
@@ -79,8 +79,7 @@ if [ $DO_REMOTE = YES ]; then
  cd "$HERE/copy"
 
  echo $N Pull with explicit remote parent ............................$NL
- bk pull -t $Q localhost:"$HERE/project" > /dev/null 2>&1 ||
-							{ echo failed; exit 1; }
+ bk pull -t $Q localhost:"$HERE/project" || { echo failed; exit 1; }
  revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
@@ -209,7 +208,7 @@ KEY2="`bk prs -hd:KEY: -r+ "$HERE/project/ChangeSet"`"
 echo OK
 
 echo $N Make sure we left the c.ChangeSet file there ................$NL
-test -f RESYNC/SCCS/c.ChangeSet || exit 1
+bk _test -f RESYNC/SCCS/c.ChangeSet || exit 1
 echo OK
 
 echo $N Resolve by hand and push again ..............................$NL
@@ -306,8 +305,8 @@ bk mvdir src src2/src3
 bk commit $Q -ymvdir
 cd "$HERE/copy2"
 bk pull $Q -t "$HERE/project"
-if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
-if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
+if bk _test ! -f src2/src3/SCCS/s.bar.c; then echo failed; exit 1; fi
+if bk _test ! -f src2/src3/SCCS/s.h.h; then echo failed; exit 1; fi
 echo OK
 
 echo $N push to a read locked repository should fail ................$NL
@@ -349,14 +348,15 @@ cd "$HERE/project"
 echo hi > test
 bk new $Q test
 bk commit $Q -ytt || exit 1
-chmod -w SCCS
+oldmode=`bk _stat SCCS | awk -F\| '{ print substr($3, 3) }'`
+bk _chmod 555 SCCS
 cd "$HERE/copy2"
 bk pull $Q || {
 	echo pull failed
-	chmod +w "$HERE/project/SCCS"
+	bk _chmod $oldmode "$HERE/project/SCCS"
 	exit 1
 }
-chmod +w "$HERE/project/SCCS"
+bk _chmod $oldmode "$HERE/project/SCCS"
 echo OK
 
 echo $N Create bad change and pull should fail ......................$NL
@@ -383,15 +383,16 @@ test "$sum" = "$newsum" && {
 	echo newsum should be different $sum $newsum
 	exit 1
 }
-sed "s/K$sum/K$newsum/" < SCCS/s.ChangeSet > SCCS/s.NEW_ChangeSet
-cmp -s SCCS/s.ChangeSet SCCS/s.NEW_ChangeSet && {
+bk _cp SCCS/s.ChangeSet s.ChangeSet
+sed "s/K$sum/K$newsum/" s.ChangeSet > s.NEW_ChangeSet
+cmp -s s.ChangeSet s.NEW_ChangeSet && {
 	echo sed "s/K$sum/K$newsum/" 
 	echo sed failed, the changeset files should be different
-	cat SCCS/s.NEW_ChangeSet
+	cat s.NEW_ChangeSet
 	exit 1
 }
-mv SCCS/s.ChangeSet JUNK
-mv SCCS/s.NEW_ChangeSet SCCS/s.ChangeSet
+bk _mv SCCS/s.ChangeSet JUNK
+bk _mv s.NEW_ChangeSet SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk edit $Q foo
 echo another foo > foo

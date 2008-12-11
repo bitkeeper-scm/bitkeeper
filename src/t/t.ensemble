@@ -355,7 +355,7 @@ bk edit $Q name
 echo him mom > name
 bk delta $Q -yxxx name
 bk commit -yxxx $Q 
-test -f SCCS/d.ChangeSet || {
+bk _test -f SCCS/d.ChangeSet || {
 	echo failed to leave d.file
 	exit 1
 }
@@ -382,7 +382,7 @@ bk edit $Q name
 echo him mom >> name
 bk delta $Q -yxxx name
 bk commit -yxxx $Q
-test -f SCCS/d.ChangeSet || {
+bk _test -f SCCS/d.ChangeSet || {
 	echo failed to leave d.file
 	exit 1
 }

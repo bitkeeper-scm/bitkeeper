@@ -91,7 +91,7 @@ test -w file || {
 	echo file should be writable
 	exit 1
 }
-test -f SCCS/p.file || {
+bk _test -f SCCS/p.file || {
 	echo file should be locked
 	exit 1
 }
@@ -139,14 +139,15 @@ bk abort -f
 bk -r check -acf || exit 1
 echo OK
 
-echo $N What if you don\'t have permisisons to delete a file..........$NL
-chmod -w dir2/SCCS
+echo $N What if you don\'t have permissions to delete a file..........$NL
+oldmode=`bk _stat dir2/SCCS | awk -F\| '{ print substr($3, 3) }'`
+bk _chmod 555 dir2/SCCS
 cd "$HERE/copy2"
 bk mv dir2/gg dir3/gg || exit 1
 bk commit -ymv $Q || exit 1
 bk push > OUT 2>&1
 status=$?
-chmod -R +w "$HERE"
+bk _chmod $oldmode ../proj/dir2/SCCS dir2/SCCS dir3/SCCS
 test $status != 0 || {
 	echo push shouldn\'t have worked
 	cat OUT
@@ -386,7 +387,7 @@ grep -q 'Commands are:' OUT && {
 	echo failed to exit resolver when it should have
 	exit 1
 }
-test -f RESYNC/SCCS/s.xyz || {
+bk _test -f RESYNC/SCCS/s.xyz || {
 	failed to move to xyz
 	exit 1
 }
@@ -839,18 +840,19 @@ proj
 conflict
 EOF
 bk delta $Q -ymerge ff
-rm -f SCCS/r.ff
+bk _rm -f SCCS/r.ff
 cd ../dir2
 bk get $Q -eM 'space file'
 echo "resolved" >> 'space file'
-rm -f 'SCCS/r.space file'
+bk _rm -f 'SCCS/r.space file'
 cd ..
 bk get $Q -eM -g ChangeSet
 bk commit $Q -R -YSCCS/c.ChangeSet
-rm -f SCCS/r.ChangeSet
+bk _rm -f SCCS/r.ChangeSet
 # Now we have a repo with the problem, let's see if resolve can fix it
 # Fake some comments
-echo "comments" > 'dir2/SCCS/c.space file'
+echo "comments" > cfile
+bk _mv cfile 'dir2/SCCS/c.space file'
 cd ..
 echo 'u' | bk resolve -t >OUT 2>ERR || {
 	echo failed
@@ -892,7 +894,7 @@ bk new $Q "$T"
 touch foo
 bk new $Q foo
 bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
-rm -f foo SCCS/?.foo
+bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 cd ..
 bk clone $Q trigger-master trigger-copy
@@ -910,7 +912,7 @@ bk delta $Q -yedit "$T"
 touch foo
 bk new $Q foo
 bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
-rm -f foo SCCS/?.foo
+bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 cd ../trigger-copy
 bk edit $Q "$T"
@@ -919,7 +921,7 @@ bk delta $Q -yedit "$T"
 touch foo
 bk new $Q foo
 bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
-rm -f foo SCCS/?.foo
+bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 bk pull $Q 2>ERR || {
 	echo failed
@@ -1015,7 +1017,7 @@ bk new $Q "$T"
 touch foo
 bk new $Q foo
 bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
-rm -f foo SCCS/?.foo
+bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 cd ..
 bk clone $Q trigger-master trigger-copy
@@ -1026,7 +1028,7 @@ bk delta $Q -yedit "$T"
 touch foo
 bk new $Q foo
 bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
-rm -f foo SCCS/?.foo
+bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 cd ../trigger-copy
 bk edit $Q "$T"
@@ -1035,7 +1037,7 @@ bk delta $Q -yedit "$T"
 touch foo
 bk new $Q foo
 bk prs -r+ -hnd:ROOTKEY: foo | bk -R gone - 2>ERR || exit 1
-rm -f foo SCCS/?.foo
+bk _rm -f foo SCCS/s.foo
 bk commit $Q -ytrig
 bk pull $Q 2>ERR || {
 	echo failed

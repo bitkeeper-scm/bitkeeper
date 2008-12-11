@@ -15,7 +15,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -34,17 +34,17 @@ bk commit $S -y"This is a \"Change Set\" B"
 bk clone $Q "$HERE/project" "$HERE/copy2"
 cd "$HERE/copy2/src"
 bk undo -fqr1.3
-if [ ! -f SCCS/s.foo.c ]
+if bk _test ! -f SCCS/s.foo.c
 then
 	echo failed
 	exit 1
 fi
-if [ -f SCCS/s.new_foo.c ]
+if bk _test -f SCCS/s.new_foo.c
 then
 	echo failed
 	exit 1
 fi
-if [ -f SCCS/s.bar.c ]
+if bk _test -f SCCS/s.bar.c
 then
 	echo failed
 	exit 1
@@ -103,7 +103,7 @@ bk commit -ywhatever $Q
 bk tag $Q RELEASE
 bk tag $Q -r1.2 RELEASE
 bk undo $Q -fr1.3 || exit 1
-grep -q 'R 1.2' SCCS/s.ChangeSet && {
+bk _cat SCCS/s.ChangeSet | grep -q 'R 1.2' && {
 	echo failed to remove the dangling tag
 	exit 1
 }

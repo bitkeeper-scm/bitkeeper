@@ -26,7 +26,7 @@ echo "xx" > file
 ln -s file symlink
 mv file file.tmp
 bk ci $Q -i symlink textfile
-grep -q '^.cOlrwxrwxrwx file' SCCS/s.symlink
+bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx file'
 if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 bk admin -h symlink 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
@@ -39,10 +39,10 @@ bk admin $Q -ilink222 link-name
 if [ $? != 0 ]
 then	echo admin failed to exit 0; exit 1
 fi
-if [ ! -f SCCS/s.link-name ]
+if bk _test ! -f SCCS/s.link-name
 then	echo failed to create link; exit 1
 fi
-grep -q '^.cOlrwxrwxrwx /what/ever' SCCS/s.link-name
+bk _cat SCCS/s.link-name | grep -q '^.cOlrwxrwxrwx /what/ever'
 if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 bk admin -h link-name 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
@@ -72,7 +72,7 @@ if [ $? -ne 0 ]; then echo clean Failed.; exit 1; fi
 mv file2 file2.tmp
 bk ci $Q -y symlink
 rm -f symlink
-grep -q '^.cOlrwxrwxrwx file2' SCCS/s.symlink
+bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx file2'
 if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 bk admin -h symlink 2> ${DEV_NULL}
 if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
@@ -128,7 +128,7 @@ bk unedit symlink
 bk edit -g $Q symlink
 ln -s dir1 symlink
 bk ci $Q -y symlink
-grep -q '^.cOlrwxrwxrwx dir1' SCCS/s.symlink
+bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx dir1'
 if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 echo OK
 
@@ -137,7 +137,7 @@ bk co $Q -l symlink
 rm -f symlink
 ln -f -s this_file_does_not_exist symlink
 bk ci $Q -y symlink
-grep -q '^.cOlrwxrwxrwx this_file_does_not_exist' SCCS/s.symlink
+bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx this_file_does_not_exist'
 if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 echo OK
 
@@ -198,7 +198,7 @@ echo $N Test clean on symlink .......................................$NL
 bk unedit symlink
 bk co $Q -l symlink
 bk clean
-if [ -f SCCS/p.symlink ]; then echo failed; exit 1; fi;
+if bk _test -f SCCS/p.symlink; then echo failed; exit 1; fi;
 echo OK
 
 echo $N Make sure edited symlinks do not fail checks ................$NL

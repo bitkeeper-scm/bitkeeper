@@ -323,7 +323,7 @@ EOF
 bk sfiles > GOT
 cmpfiles WANT GOT
 
-test -f SCCS/d.ChangeSet && {
+bk _test -f SCCS/d.ChangeSet && {
 	echo failed
 	echo left dfile
 	pwd

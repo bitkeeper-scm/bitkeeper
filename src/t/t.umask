@@ -24,23 +24,24 @@ umask 077
 echo $N Create initial repository ...................................$NL
 fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 # commit the config file
 bk commit $S -y"This is \"Change Set\" A"
 echo OK
 
 echo $N Make sure that BitKeeper and subdirs are 0770 mode ..........$NL
-find . -type d -perm 0770 -print | sort -u > LIST
+bk _find -type d | bk _stat | grep 40770 | awk -F\| '{ print $NF }' | \
+	sort -u > LIST
 cat <<EOF > WANT
 .
-./BitKeeper
-./BitKeeper/deleted
-./BitKeeper/deleted/SCCS
-./BitKeeper/etc
-./BitKeeper/etc/SCCS
-./BitKeeper/log
-./BitKeeper/tmp
-./SCCS
+BitKeeper
+BitKeeper/deleted
+BitKeeper/deleted/SCCS
+BitKeeper/etc
+BitKeeper/etc/SCCS
+BitKeeper/log
+BitKeeper/tmp
+SCCS
 EOF
 diff WANT LIST
 if [ $? != 0 ]

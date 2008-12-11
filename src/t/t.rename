@@ -45,8 +45,8 @@ cp -rp gca b
 # Done by hand so we can force the date.
 cd a/src
 mkdir t
-mkdir t/SCCS
-mv SCCS/s.regression.sh t/SCCS
+bk _mkdir t/SCCS
+bk _mv SCCS/s.regression.sh t/SCCS/s.regression.sh
 cd t
 bk get $S -e regression.sh
 cat > INIT <<EOF

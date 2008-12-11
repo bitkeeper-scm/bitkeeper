@@ -121,18 +121,21 @@ bk commit $Q -ynewcset || exit 1
 # already edited file
 bk edit $Q edited || exit 1
 echo new stuff not in cset >> edited
-echo edited comment > SCCS/c.edited
+echo edited comment > c.edited
+bk _mv c.edited SCCS/c.edited
 
 bk edit $Q chg_edit || exit 1
 echo new stuff not in cset >> chg_edit
-echo edited comment > SCCS/c.chg_edit
+echo edited comment > c.chg_edit
+bk _mv c.chg_edit SCCS/c.chg_edit
 
 if [ "$PLATFORM" != "WIN32" ]
 then
 	bk edit $Q edited_symlink
 	rm edited_symlink
 	ln -s file2 edited_symlink
-	echo edited comment > SCCS/c.edited_symlink
+	echo edited comment > c.edited_symlink
+	bk _mv c.edited_symlink SCCS/c.edited_symlink
 fi
 
 BK_USER=u1 bk collapse -el $Q || exit 1
@@ -160,8 +163,8 @@ $unless (:CHANGESET:) {
 ---\n
 ' | perl -pe 's/^([-+]{3} \S+).*/$1/; s/([-l][-rwx]{3})[-rwx]{6}/$1/' > GOT
 
-CREATE_DELETE=`bk gfiles BitKeeper/deleted/SCCS/s..del-create_delete*`
-DELETED=`bk gfiles BitKeeper/deleted/SCCS/s..del-deleted*`
+CREATE_DELETE=`bk get -q -S BitKeeper/deleted; bk gfiles BitKeeper/deleted/.del-create_delete*`
+DELETED=`bk get -q -S BitKeeper/deleted; bk gfiles BitKeeper/deleted/.del-deleted*`
 cat <<EOF > WANT
 ChangeSet 1.4 u3
 BITKEEPER,CSETMARKED,HASH,LONGKEY,EOLN_UNIX

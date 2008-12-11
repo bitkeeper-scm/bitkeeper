@@ -54,7 +54,7 @@ echo OK
 
 echo $N Test admin ..................................................$NL
 bk clean
-cp -f SCCS/s.keyword backup
+bk _cp SCCS/s.keyword backup
 # see that sfile age is known after admin -z
 bk admin -z keyword
 test $T12 -ge `_mtime SCCS/s.keyword` || { echo failed; exit 1; }
@@ -78,8 +78,8 @@ test $T11 -eq `_mtime keyword`		|| { echo failed; exit 1; }
 test $T11 -ge `_mtime SCCS/s.keyword`	|| { echo failed; exit 1; }
 bk admin -z keyword
 # restore
-rm -f SCCS/s.keyword keyword
-mv -f backup SCCS/s.keyword
+bk _rm SCCS/s.keyword keyword
+bk _mv backup SCCS/s.keyword
 echo OK
 
 echo $N Test check will fix things that are off .....................$NL
@@ -106,7 +106,7 @@ echo OK
 
 echo $N Test chmod will move things forward .........................$NL
 # chmod - touchs gfile to now.  this adds delta, which ups sfile time.
-cp -f SCCS/s.keyword backup
+bk _cp SCCS/s.keyword backup
 bk edit $Q keyword
 bk _touch -t $T11 keyword
 BK_CONFIG='checkout:edit!' BK_DATE_TIME_ZONE="$DTZ22" bk chmod +x keyword
@@ -121,14 +121,14 @@ test `_mtime keyword` -ge `_mtime now`	|| {
 	exit 1
 }
 bk unedit keyword
-rm -f SCCS/s.keyword
-mv -f backup SCCS/s.keyword
+bk _rm SCCS/s.keyword
+bk _mv backup SCCS/s.keyword
 echo OK
 
 echo $N Test ci / delta with -u, -l, nothing, -T, etc. ..............$NL
 # ci/delta - with -u/-l, other wise, no gfile
-cp -f SCCS/s.keyword backup
-cp -f SCCS/s.nokeyword nobackup
+bk _cp SCCS/s.keyword backup
+bk _cp SCCS/s.nokeyword nobackup
 # nothing
 bk edit $Q keyword
 echo foo >> keyword
@@ -191,8 +191,8 @@ bk unedit keyword
 bk get $Q -T keyword
 test `_mtime newnow` -ge `_mtime keyword`	|| { echo failed; exit 1; }
 rm -f newnow
-mv -f backup SCCS/s.keyword
-mv -f nobackup SCCS/s.nokeyword
+bk _mv backup SCCS/s.keyword
+bk _mv nobackup SCCS/s.nokeyword
 echo OK
 
 echo $N Test clean - should never move sfiles forward ...............$NL
@@ -222,7 +222,7 @@ echo OK
 
 echo $N Test clone -l should not move sfile times forward ...........$NL
 # if sfile moved forward, it could be newer than gfile in other repo
-touch SCCS/s.keyword
+bk _touch SCCS/s.keyword
 bk get $Q -T keyword
 # verify setup - gfile and sfile are newer than $T11
 test $T11 -lt `_mtime SCCS/s.keyword`	|| { echo failed 1; exit 1; }
@@ -269,7 +269,7 @@ rm -f keyword.copy
 # variable to actually make future delta.
 # This simulates a clone from a machine/repo that is the future,
 # and running 'checkout: get or edit' and getting current time files.
-cp -f SCCS/s.keyword backup
+bk _cp SCCS/s.keyword backup
 bk edit $Q keyword
 echo foo >> keyword
 BK_DATE_TIME_ZONE="$DTZ32" bk delta $Q -ylater keyword
@@ -281,8 +281,8 @@ bk get $Q -TG keyword.copy keyword
 bk _touch newnow
 test `_mtime keyword.copy` -ge `_mtime now`	|| { echo failed 11; exit 1; }
 test `_mtime newnow` -ge `_mtime keyword.copy`	|| { echo failed 12; exit 1; }
-rm -f newnow keyword.copy keyword SCCS/s.keyword
-mv -f backup SCCS/s.keyword
+bk _rm newnow keyword.copy keyword SCCS/s.keyword
+bk _mv backup SCCS/s.keyword
 echo OK
 
 # comments - uses admin to re-write?

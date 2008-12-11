@@ -24,12 +24,12 @@ do	bk co -l $Q branch
 	bk delta -fy'foo' $S branch
 done
 bk admin $Q -fd1.2 branch
-grep -q '^.f d 1.2' SCCS/s.branch
+bk _cat SCCS/s.branch | grep -q '^.f d 1.2'
 if [ $? -ne 0 ]; then echo Failed to add default branch; exit 1; fi
 echo OK
 echo $N Make sure that it creates a new branch ......................$NL
 bk co $Q -l branch
-grep -q '1.2 1.2.1.1 ' SCCS/p.branch
+bk _cat SCCS/p.branch | grep -q '1.2 1.2.1.1 '
 if [ $? -ne 0 ]; then echo Failed to create new branch; exit 1; fi
 echo OK
 # XXX - need to create a file with 1.1 in it and then set default branch

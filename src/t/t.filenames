@@ -15,7 +15,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -26,7 +26,7 @@ echo foo > 'I am foo.c'
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i 'I am foo.c' bar.c h.h
-if [ ! -f SCCS/s.'I am foo.c' ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.'I am foo.c'; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Commit the files ............................................$NL
 bk commit $S -yCset -S"Hi there this is a changeset"
@@ -168,10 +168,10 @@ echo foo > import_dir/src/'s p a c e s'
 touch import_dir/src/boo.c
 ( echo plain; echo no ) | bk import import_dir project > import.out 2>&1
 cd "$HERE/project/src"
-test -f SCCS/s.'s p a c e s' || { echo failed; cat "$HERE/import.out"; exit 1; }
+bk _test -f SCCS/s.'s p a c e s' || { echo failed; cat "$HERE/import.out"; exit 1; }
 bk get $Q 's p a c e s'
 cmp -s 's p a c e s' "$HERE/import_dir/src/"'s p a c e s' &&
-    test -f SCCS/s.boo.c || { echo failed; exit 1; }
+    bk _test -f SCCS/s.boo.c || { echo failed; exit 1; }
 bk get $Q boo.c
 cmp -s boo.c "$HERE/import_dir/src/boo.c" || { echo failed; exit 1; }
 echo OK
@@ -210,7 +210,7 @@ text
 EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
 cd "$HERE/project/src"
-test -f SCCS/s.'S P A C E S' || { echo failed; exit 1; }
+bk _test -f SCCS/s.'S P A C E S' || { echo failed; exit 1; }
 test -f 'S P A C E S,v' && {
 	echo failed to remove ,v file
 	ls
@@ -255,7 +255,7 @@ text
 EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
 cd "$HERE/project/src"
-test -f SCCS/s.'I\ m' || { echo failed; exit 1; }
+bk _test -f SCCS/s.'I\ m' || { echo failed; exit 1; }
 test -f 'I\ m,v' && {
 	echo failed to remove ,v file
 	ls
@@ -299,7 +299,7 @@ text
 EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
 cd "$HERE/project/src"
-test -f SCCS/s.-dash || { echo failed; exit 1; }
+bk _test -f SCCS/s.-dash || { echo failed; exit 1; }
 test -f "-dash,v" && { echo failed to remove ,v file; ls; exit 1; }
 echo OK
 
@@ -339,7 +339,7 @@ text
 EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
 cd "$HERE/project/src"
-test -f SCCS/s.'I"m a little teacup' || { echo failed; exit 1; }
+bk _test -f SCCS/s.'I"m a little teacup' || { echo failed; exit 1; }
 test -f 'I"m a little teacup,v' && { echo failed to remove ,v file; ls; exit 1; }
 echo OK
 fi #-------------------------------------------------------------------

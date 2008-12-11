@@ -15,7 +15,7 @@ unsetHttpProxy
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
@@ -24,7 +24,7 @@ echo foo > 'F!O#O$ B%A^R&RR(R)RR'
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
-if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -yCset
@@ -41,11 +41,11 @@ rm -rf copy copy2
 P=`port 50000`
 bk bkd -q -p$P -ikill
 bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
-[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 cd "$HERE/project"
 bk rcheck bk://localhost:$P/"$HERE/copy" || { echo failed; exit 1; }
 # force a error
-rm -f "$HERE/copy/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR'
+bk _rm "$HERE/copy/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR'
 cd "$HERE/project"
 bk rcheck bk://localhost:$P/"$HERE/copy" |
     grep -q 'Missing file (bk help chk3) bk/.*@bk_regression.bk' || {
@@ -59,11 +59,11 @@ echo OK
 echo $N rcheck via http:// ..........................................$NL
 cd "$HERE"
 bk clone $Q "$HERE/project" http://localhost:$P/"$HERE/copy2"
-[ -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+bk _test -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 cd "$HERE/project"
 bk rcheck http://localhost:$P/"$HERE/copy2" || { echo failed; exit 1; }
 # force a error
-rm -f "$HERE/copy2/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR'
+bk _rm "$HERE/copy2/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR'
 bk rcheck http://localhost:$P/"$HERE/copy2" |
     grep -q 'Missing file (bk help chk3) bk/.*@bk_regression.bk' || {
 	echo failed with bad output

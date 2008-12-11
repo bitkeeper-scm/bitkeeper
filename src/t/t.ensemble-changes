@@ -640,7 +640,7 @@ bk changes -i'prod_file' -nd:I: > GOT
 cmpfiles WANT GOT
 # okay, now test it out
 KEY=`bk log -r+ -nd:ROOTKEY: prod_file`
-rm -f SCCS/?.prod_file prod_file
+bk _rm -f prod_file SCCS/s.prod_file
 bk gone "$KEY" > OUT 2> ERR || exit 1
 bk commit $Q -ygone
 bk changes -i'prod_file' -nd:I: > GOT

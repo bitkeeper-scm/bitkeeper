@@ -15,7 +15,7 @@
 echo $N Create initial repository ...................................$NL
 commercial P1
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -30,7 +30,7 @@ bk clone $Q P1 P2
 if [ ! -d P2 ]; then echo failed to make top level directory; exit 1; fi
 cd P2
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
 echo OK
 echo $N Create series of deltas to the same file quickly ............$NL
@@ -83,14 +83,18 @@ do	A=`bk prs -hr1.1 -d:UTC: "$HERE/P1/"$f`
 	B=`bk prs -hr1.1 -d:UTC: "$HERE/P2/"$f`
 	if [ $A = $B ]
 	then	echo Same timestamp $A for $f@1.1
-		sdiff -w80 "$HERE/P1/SCCS/s."$f "$HERE/P2/SCCS/s."$f
+		bk _cp "$HERE/P1/SCCS/s."$f A
+		bk _cp "$HERE/P2/SCCS/s."$f B
+		sdiff -w80 A B
 		exit 1
 	fi
 	A=`bk prs -hr1.0 -d:UTC: "$HERE/P1/"$f`
 	B=`bk prs -hr1.0 -d:UTC: "$HERE/P2/"$f`
 	if [ $A = $B ]
 	then	echo Same timestamp $A for $f@1.0
-		sdiff -w80 "$HERE/P1/SCCS/s."$f "$HERE/P2/SCCS/s."$f
+		bk _cp "$HERE/P1/SCCS/s."$f A
+		bk _cp "$HERE/P2/SCCS/s."$f B
+		sdiff -w80 A B
 		exit 1
 	fi
 done

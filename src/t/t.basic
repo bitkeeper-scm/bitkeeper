@@ -38,13 +38,13 @@ do	case "$D" in
 	rm -rf root 
 	echo $N Create initial changeset ....................................$NL
 	commercial root
-	if [ ! -f SCCS/s.ChangeSet ]; then echo failed; exit 1; fi
+	if bk _test ! -f SCCS/s.ChangeSet; then echo failed; exit 1; fi
 	if [ X$D != X ]; then mkdir -p $D; fi
 	echo OK
 	cp ../SAVE ${D}foo
 	echo $N checkin with ${D}SCCS/s.foo ${DOTS}.............................$NL
 	bk ci $Q -i ${D}foo
-	if [ ! -f ${D}SCCS/s.foo ]; then echo Failed to create s.foo.; exit 1; fi
+	if bk _test ! -f ${D}SCCS/s.foo; then echo Failed to create s.foo.; exit 1; fi
 	if [ -f ${D}foo ]; then echo Failed to get foo.; exit 1; fi
 	echo OK
 	echo $N checkout with ${D}SCCS/s.foo ${DOTS}............................$NL
@@ -106,9 +106,9 @@ echo foo > s.foo
 echo foo > bar/s.foo
 echo foo > bar/blech/s.foo
 bk _find . | grep s.foo | bk ci $S -i -
-if [ ! -f SCCS/s.s.foo ]; then echo failed on s.s.foo; exit 1; fi
-if [ ! -f bar/SCCS/s.s.foo ]; then echo failed on bar/SCCS/s.s.foo; exit 1; fi
-if [ ! -f bar/blech/SCCS/s.s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
+if bk _test ! -f SCCS/s.s.foo; then echo failed on s.s.foo; exit 1; fi
+if bk _test ! -f bar/SCCS/s.s.foo; then echo failed on bar/SCCS/s.s.foo; exit 1; fi
+if bk _test ! -f bar/blech/SCCS/s.s.foo; then echo failed on bar/blech/s.foo; exit 1; fi
 echo OK
 echo $N Clean files named s.something ...............................$NL
 bk clean; bk clean bar; bk clean bar/blech

@@ -24,6 +24,6 @@ T
 I 1
 E 1
 EOF
-tail -4 SCCS/s.foo | sed s/.// > GOT
+bk _cat SCCS/s.foo | tail -4 | sed s/.// > GOT
 checkfiles WANT GOT
 echo OK

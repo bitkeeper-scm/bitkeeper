@@ -24,7 +24,7 @@ export _BK_SETUP_NOGONE
 echo $N Create initial repository ...................................$NL
 fresh_commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -37,7 +37,7 @@ do	mkdir $dir
 	done
 done
 bk sfiles -x | bk ci $Q -i -
-if [ ! -f d2/SCCS/s.b ]; then echo failed to create files; exit 1; fi
+if bk _test ! -f d2/SCCS/s.b; then echo failed to create files; exit 1; fi
 echo OK
 
 echo $N Commit the data .............................................$NL
@@ -53,21 +53,25 @@ bk edit $Q d1/a || exit 1
 bk delta $Q -fy'new lod' d1/a || exit 1
 bk commit $S -yCset || exit 1
 rev=`bk prs -r+ -hnd:I: ChangeSet`
-perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" SCCS/s.ChangeSet > tmp
-mv SCCS/s.ChangeSet old-s.ChangeSet
-chmod 444 tmp
-mv tmp SCCS/s.ChangeSet
+bk _cp SCCS/s.ChangeSet tmp
+perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" tmp > tmp2
+bk _cp SCCS/s.ChangeSet old-s.ChangeSet
+chmod 444 tmp2
+bk _cp tmp2 SCCS/s.ChangeSet
 bk admin -z SCCS/s.ChangeSet || exit 1
+rm tmp tmp2
 rev=`bk prs -r+ -hnd:I: d1/a`
-perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" d1/SCCS/s.a > tmp
-mv d1/SCCS/s.a old-d1-s.a
-chmod 444 tmp
-mv tmp d1/SCCS/s.a
+bk _cp d1/SCCS/s.a tmp
+perl -pe "binmode(STDOUT); s/ D $rev / D 2.1 /" tmp > tmp2
+bk _cp d1/SCCS/s.a old-d1-s.a
+chmod 444 tmp2
+bk _cp tmp2 d1/SCCS/s.a
 bk admin -z d1/SCCS/s.a
 test `bk prs -r2 -hd:I: ChangeSet` = 2.1 || {
 	echo Failed: could not create fake lod
 	exit 1
 }
+rm -f tmp tmp2
 echo OK
 
 # use tar because clone will not work since it has illegal structures
@@ -119,7 +123,7 @@ bk pull $Q ../project > pull.out 2> pull.err || {
 	echo STDERR
 	cat pull.err
 }
-ls BitKeeper/deleted/SCCS | grep -q skipkeys || {
+bk gfiles BitKeeper/deleted | grep -q skipkeys || {
 	echo Failed: no skipkeys in deleted
 	exit 1
 }

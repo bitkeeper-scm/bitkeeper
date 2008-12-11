@@ -17,7 +17,7 @@ echo $N Create initial repository ...................................$NL
 commercial project
 bk admin -Z
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -29,36 +29,42 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 echo OK
 
 echo $N Check basic park/unpark cycle ...............................$NL
 bk edit $Q foo.c bar.c
 echo foo-new > foo.c
 echo bar-new >> bar.c
-echo "This a comment for bar.c" > SCCS/c.bar.c
-echo "This a cset comment" > "$HERE/project/SCCS/c.ChangeSet"
-cp SCCS/c.bar.c "$HERE/c.ref"
-cp "$HERE/project/SCCS/c.ChangeSet" "$HERE/cc.ref"
+echo "This a comment for bar.c" > c.bar.c
+bk _mv c.bar.c SCCS/c.bar.c
+echo "This a cset comment" > c.ChangeSet
+bk _mv c.ChangeSet "$HERE/project/SCCS/c.ChangeSet"
+bk _cp SCCS/c.bar.c "$HERE/c.ref"
+bk _cp "$HERE/project/SCCS/c.ChangeSet" "$HERE/cc.ref"
 cp foo.c "$HERE/foo.sav"
 cp bar.c "$HERE/bar.sav"
 bk park -y 2> /dev/null || exit 1
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
-if [ -f SCCS/c.bar.c ]; then echo failed; exit 1; fi
-if [ -f "$HERE/project/SCCS/c.ChangeSet" ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/c.bar.c; then echo failed; exit 1; fi
+if bk _test -f "$HERE/project/SCCS/c.ChangeSet"; then echo failed; exit 1; fi
 bk edit $Q bar.c
 bk unpark 2> /dev/null 1>&2 || exit 1
 cmp -s foo.c "$HERE/foo.sav"
 if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
 cmp -s bar.c "$HERE/bar.sav" 
 if [ $? -ne 0 ]; then echo failed 2; od -c bar.c; od -c bar.sav; exit 1; fi
-if [ ! -f SCCS/c.bar.c ]; then echo failed; exit 1; fi
-cmp -s SCCS/c.bar.c "$HERE/c.ref"
+if bk _test ! -f SCCS/c.bar.c; then echo failed; exit 1; fi
+bk _cp SCCS/c.bar.c c.bar.c
+cmp -s c.bar.c "$HERE/c.ref"
 if [ $? -ne 0 ]; then echo failed 3; exit 1; fi
-if [ ! -f "$HERE/project/SCCS/c.ChangeSet" ]; then echo failed; exit 1; fi
-cmp -s "$HERE/project/SCCS/c.ChangeSet" "$HERE/cc.ref"
+rm -f c.bar.c
+if bk _test ! -f "$HERE/project/SCCS/c.ChangeSet"; then echo failed; exit 1; fi
+bk _cp "$HERE/project/SCCS/c.ChangeSet" c.ChangeSet
+cmp -s c.ChangeSet "$HERE/cc.ref"
 if [ $? -ne 0 ]; then echo failed 3; exit 1; fi
+rm -f c.ChangeSet
 echo OK
 
 echo $N Check basic park/unpark via stdin ...........................$NL
@@ -94,7 +100,7 @@ echo $N Check unpark -f with reject file ............................$NL
 bk park -c  2>/dev/null 1>&2
 bk unpark -f  2>/dev/null 1>&2
 if [ ! -f foo.c.rej ]; then echo failed; exit 1; fi
-if [ -f SCCS/t.foo.c.rej ]; then echo failedXXX; exit 1; fi
+if bk _test -f SCCS/t.foo.c.rej; then echo failedXXX; exit 1; fi
 echo OK
 bk unedit foo.c
 cp "$HERE/parkfile"$$ "$HERE/project/BitKeeper/tmp/parkfile_1.sfio"
@@ -123,9 +129,9 @@ bk new $Q -l move_me
 echo "444" >> move_me
 bk park -y 2> /dev/null
 bk edit $Q move_me
-cp "$HERE/project/BitKeeper/etc/SCCS/x.id_cache" x.id_cache
+bk _cp "$HERE/project/BitKeeper/etc/SCCS/x.id_cache" x.id_cache
 bk mv move_me new_me
-mv x.id_cache "$HERE/project/BitKeeper/etc/SCCS/x.id_cache"
+bk _mv x.id_cache "$HERE/project/BitKeeper/etc/SCCS/x.id_cache"
 sed -e "s/111/000/" new_me > new_me.tmp
 mv new_me.tmp new_me
 bk unpark 2>/dev/null 1>&2

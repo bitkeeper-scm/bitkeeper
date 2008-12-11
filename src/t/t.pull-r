@@ -88,7 +88,10 @@ bk pull $Q || {
 	echo failed
 	exit 1
 }
-checkfiles SCCS/s.ChangeSet ../copy/SCCS/s.ChangeSet
+bk _cp SCCS/s.ChangeSet A
+bk _cp ../copy/SCCS/s.ChangeSet B
+checkfiles A B
+rm A B
 echo OK
 
 echo $N Pull -r such that the name has been changed .................$NL

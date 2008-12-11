@@ -474,7 +474,7 @@ echo $N Use the gone file to specify what to remove .................$NL
 cd "$HERE"
 bk clone $Q simple usegone
 cd usegone
-rm -f SCCS/?.a a
+bk _rm -f SCCS/s.a a
 bk -r check -ag | bk gone - 2> ERR
 bk commit $Q -ygone
 bk get $Q -kprBASETAG ChangeSet | bk _sort > BEFORE

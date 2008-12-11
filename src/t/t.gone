@@ -16,7 +16,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 
 echo $N Create some data, commit it, clone it .......................$NL
@@ -24,7 +24,7 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 bk commit $S -yCset
 cd "$HERE"
 bk clone $Q project copy
@@ -37,7 +37,7 @@ echo foo >> foo.c
 bk ci $Q -ywhatever foo.c
 bk commit $Q -ywhatever
 KEY="`bk prs -hr+ -d:ROOTKEY: foo.c`"
-rm -f SCCS/s.foo.c
+bk _rm SCCS/s.foo.c
 bk -r check -a 2> ERR && {
 	echo should have failed
 	exit 1
@@ -285,7 +285,7 @@ cd again2
 bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
-rm SCCS/?.foo
+bk _rm SCCS/s.foo
 bk -r check -ag | bk gone - 2> ERR
 bk commit $Q -ygone
 bk push $Q
@@ -310,11 +310,13 @@ bk commit $Q -yadd || exit 1
 cd ..
 bk clone $Q project copy1 || exit 1
 cd copy1
-KEY=`bk prs -r1.0 -nd:KEY: foo`
+KEY=`bk prs -r1.0 -hnd:KEY: foo`
 bk rm  foo || exit 1
 bk commit $Q -yrm || exit 1
 #bk push $Q || exit 1
+SFILE=`bk sfiles BitKeeper/deleted`
 rm -rf BitKeeper/deleted
+bk _rm -f "$SFILE"
 bk gone $Q "$KEY" || exit 1
 bk commit $Q -ygone || exit 1
 bk push $Q || exit 1
@@ -364,6 +366,8 @@ export BK_GONE
 cd "$HERE"
 bk clone $Q project staging || exit 1
 cd staging
+sfilelist=`bk sfiles secret`
+bk _rm $sfilelist
 rm -rf secret
 bk -r check -ag | bk gone $Q -
 bk get $Q -S $BK_GONE

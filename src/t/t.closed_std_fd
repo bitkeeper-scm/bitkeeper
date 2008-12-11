@@ -15,7 +15,7 @@ bk commit $Q -yfoo
 (bk push $Q "$HERE/copy" 0>&- 1>&- ) || {
 	echo failed; exit 1; }
 cd "$HERE/copy"
-test -f SCCS/s.foo || { echo failed; exit 1; }
+bk _test -f SCCS/s.foo || { echo failed; exit 1; }
 bk -r check -ac || { echo failed; exit 1; }
 echo OK
 
@@ -28,7 +28,7 @@ cd "$HERE/proj"
 (bk pull $Q "$HERE/copy" 0>&- 1>&- ) || {
 	echo failed; exit 1; }
 cd "$HERE/proj"
-test -f SCCS/s.bar || { echo failed; exit 1; }
+bk _test -f SCCS/s.bar || { echo failed; exit 1; }
 bk -r check -ac || { echo failed; exit 1; }
 echo OK
 

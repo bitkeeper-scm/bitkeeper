@@ -600,10 +600,10 @@ grep -q "missing delta" ERR || { echo wrong message; exit 1; }
 echo OK
 
 echo $N Check root key missing in a file ............................$NL
-mv SCCS/s.bar sbar
+bk _mv SCCS/s.bar sbar
 bk changes -vr"THIS_ONE" -nd:GFILE: > OUT 2> ERR || exit 1
 grep -q "Cannot sccs_init" ERR || { echo wrong message; exit 1; }
-mv sbar SCCS/s.bar
+bk _mv sbar SCCS/s.bar
 echo OK
 
 echo $N Check delta key missing with delta key in gone ..............$NL
@@ -622,8 +622,8 @@ echo OK
 echo $N Check root key missing with root key in gone ................$NL
 # set up by previous case:
 # echo "$ROOTKEY" >> BitKeeper/etc/gone
-mv SCCS/s.bar sbar
+bk _mv SCCS/s.bar sbar
 bk changes -vr"THIS_ONE" -nd:GFILE: > OUT || exit 1
-mv sbar SCCS/s.bar
+bk _mv sbar SCCS/s.bar
 cp gone.orig BitKeeper/etc/gone
 echo OK

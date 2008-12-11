@@ -16,7 +16,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -29,7 +29,7 @@ do	mkdir $dir
 	done
 done
 bk sfiles -x | bk ci $Q -i -
-if [ ! -f d3/sub2/SCCS/s.a ]; then echo failed to create files; exit 1; fi
+if bk _test ! -f d3/sub2/SCCS/s.a; then echo failed to create files; exit 1; fi
 echo OK
 
 echo $N Commit the data .............................................$NL
@@ -116,20 +116,20 @@ echo OK
 
 cp -rp "$HERE/project" "$HERE/clean"
 echo $N Make sure that it complains if a file is missing, -a case ...$NL
-mv d1/sub1/SCCS/s.a d1/sub1/SCCS/junk.a
+bk _mv d1/sub1/SCCS/s.a d1/sub1/SCCS/junk.a
 bk -r check -a > OUT 2>&1
 if [ $? -eq 0 ]; then echo failed to exit non-zero; cat OUT; exit 1; fi
 if [ ! -s OUT ]; then echo failed; cat OUT; exit 1; fi
 echo OK
 
 echo $N Make sure that it complains if a file is missing, - case ....$NL
-echo d1/sub1/SCCS/s.a | bk check - > OUT 2>&1
+echo d1/sub1/a | bk check - > OUT 2>&1
 if [ $? -eq 0 ]; then echo failed to exit non-zero; cat OUT; exit 1; fi
 if [ ! -s OUT ]; then echo failed; cat OUT; exit 1; fi
 echo OK
 
 echo $N Make sure that it is happy when we put it back ..............$NL
-mv d1/sub1/SCCS/junk.a d1/sub1/SCCS/s.a
+bk _mv d1/sub1/SCCS/junk.a d1/sub1/SCCS/s.a
 bk -r check -a > OUT 2>&1 || {
 	exit failed to exit cleanly
 	cat OUT
@@ -143,14 +143,14 @@ bk -r check -af > OUT 2>&1 || {
 	echo should have exited cleanly
 	exit 1
 }
-test -f d1/sub1/SCCS/p.a && {
+bk _test -f d1/sub1/SCCS/p.a && {
 	echo failed to unlock the file
 	exit 1
 }
 echo OK
 
 echo $N Make sure it complains about locked files w/ RO gfile........$NL
-bk edit $Q d1/sub1/SCCS/s.a
+bk edit $Q d1/sub1/a
 echo "new stuff" > d1/sub1/a
 chmod 444 d1/sub1/a
 bk -r check -a > OUT 2>&1 && {
@@ -165,7 +165,7 @@ grep -q 'is locked but not writable' OUT || {
 echo OK
 
 echo $N Make sure unedit will fix the above problem .................$NL
-bk unedit d1/sub1/SCCS/s.a
+bk unedit d1/sub1/a
 bk -r check -a > OUT 2>&1 || {
 	echo should have exited cleanly
 	exit 1
@@ -173,7 +173,7 @@ bk -r check -a > OUT 2>&1 || {
 echo OK
 
 echo $N Make sure it fixes locked files w/ unchanged RO gfile........$NL
-bk edit $Q d1/sub1/SCCS/s.a
+bk edit $Q d1/sub1/a
 bk get $Q -r+ -p d1/sub1/a > d1/sub1/a
 chmod 444 d1/sub1/a
 bk -r check -a > OUT 2>&1 || {
@@ -186,7 +186,7 @@ echo $N Make sure it complains unlocked files with rw gfile .........$NL
 bk get $Q d1/sub1/a
 chmod +w d1/sub1/a
 bk -r check -a > OUT 2>&1
-test -f d1/sub1/SCCS/p.a && {
+bk _test -f d1/sub1/SCCS/p.a && {
 	echo should not have created lock file
 	cat OUT
 	exit 1
@@ -205,7 +205,7 @@ echo OK
 
 echo $N Make sure it fixes unlocked files with rw gfile with -f .....$NL
 bk -r check -af > OUT 2>&1
-test -f d1/sub1/SCCS/p.a || {
+bk _test -f d1/sub1/SCCS/p.a || {
 	echo should have created lock file
 	cat OUT
 	exit 1
@@ -220,9 +220,9 @@ echo OK
 echo $N Make sure it autofixes unlocked files with rw gfile .........$NL
 bk edit $Q BitKeeper/etc/config
 echo "autofix:yes" >> BitKeeper/etc/config
-rm d1/sub1/SCCS/p.a
+bk _rm d1/sub1/SCCS/p.a
 bk -r check -a > OUT 2>&1
-test -f d1/sub1/SCCS/p.a || {
+bk _test -f d1/sub1/SCCS/p.a || {
 	echo should have created lock file
 	cat OUT
 	exit 1
@@ -236,12 +236,12 @@ echo OK
 
 echo $N Make sure it removes p.files when no gfile ..................$NL
 rm d1/sub1/a
-test -f d1/sub1/SCCS/p.a || {
+bk _test -f d1/sub1/SCCS/p.a || {
 	echo whoops, where did the p.file go
 	exit 1
 }
 bk -r check -a > OUT 2>&1
-test -f d1/sub1/SCCS/p.a && {
+bk _test -f d1/sub1/SCCS/p.a && {
 	echo should have removed d1/sub1/SCCS/p.a
 	exit 1
 }
@@ -254,7 +254,7 @@ bk -r check -a > OUT 2>&1 && {
 	echo should have failed
 	exit 1
 }
-test -f d1/sub1/SCCS/p.a || {
+bk _test -f d1/sub1/SCCS/p.a || {
 	echo should not have removed d1/sub1/SCCS/p.a
 	cat OUT
 	exit 1
@@ -323,14 +323,15 @@ echo "foobar" > ff
 bk new $Q ff
 bk edit $Q ff
 bk delta -yfoobar $Q ff
-mv SCCS/s.ff ff.tmp
-sed 's/foobar/foobaz/' < ff.tmp > SCCS/s.ff
+bk _mv SCCS/s.ff ff.tmp
+sed 's/foobar/foobaz/' < ff.tmp > ff.tmp2
+bk _mv ff.tmp2 SCCS/s.ff
 rm -f ff.tmp
 bk check -c ff 2> /dev/null && {
 	echo check should have failed
 	exit 1
 }
-rm -f SCCS/s.ff
+bk _rm SCCS/s.ff
 echo OK
 
 echo $N Make sure check complains is cset marks are missing .........$NL
@@ -397,7 +398,7 @@ cd "$HERE"
 rm -rf clone
 bk clone $Q project clone || exit 1
 cd clone
-rm -f SCCS/s.ChangeSet
+bk _rm SCCS/s.ChangeSet
 bk -r check -a >OUT 2>ERRS
 [ -s ERRS ] || {
 	echo "check without a ChangeSet sfile didn't cause an error"
@@ -405,14 +406,14 @@ bk -r check -a >OUT 2>ERRS
 	exit 1
 }
 # restore repo
-cp ../project/SCCS/s.ChangeSet SCCS
+bk _cp ../project/SCCS/s.ChangeSet SCCS/s.ChangeSet
 echo OK
 
 echo $N Make sure .bk_skip and SCCS/.bk_skip works ..................$NL
 # this one should not cause a warning, but the check will complain about
 # missing files
 cd "$HERE/clone"
-touch d1/sub1/SCCS/.bk_skip
+bk _touch d1/sub1/SCCS/.bk_skip
 bk -r check -a >OUT 2>ERRS
 grep -v 'Missing file' ERRS > E2
 test -s E2 && {
@@ -430,7 +431,7 @@ commercial proj2
 echo "hi" > foo
 bk new $Q foo
 bk commit $Q -yfoo
-cp SCCS/s.foo SCCS/s.foo2
+bk _cp SCCS/s.foo SCCS/s.foo2
 bk -r check -afc 2> "$HERE/out"
 grep -q "Is one of these files copied?" "$HERE/out" || { echo failed; exit 1; }
 echo OK

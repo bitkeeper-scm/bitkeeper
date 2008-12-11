@@ -17,7 +17,7 @@
 echo $N Setup test case .............................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo bar > bar.c
@@ -39,10 +39,10 @@ bk delta $Q -fynull bar.c
 bk commit $S -yCset
 cd "$HERE/copy"
 bk pull $Q || exit 1
-test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
+bk _test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
 bk unpull -f $Q || exit 1
-test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
-grep -q 'D 1.2' SCCS/s.bar.c && {
+bk _test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
+bk _cat SCCS/s.bar.c | grep -q 'D 1.2' && {
 	echo failed to remove 1.2 delta in bar.c
 	exit 1
 }
@@ -50,12 +50,12 @@ echo OK
 
 echo $N Check that the unpull prompt works ..........................$NL
 bk pull $Q || exit 1
-test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
+bk _test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
 echo n | bk unpull $Q > OUT && exit 1
-test -f SCCS/s.foo.c || exit 1
+bk _test -f SCCS/s.foo.c || exit 1
 echo y | bk unpull $Q > OUT || exit 1
-test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
-grep -q 'D 1.2' SCCS/s.bar.c && {
+bk _test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
+bk _cat SCCS/s.bar.c | grep -q 'D 1.2' && {
 	echo failed to remove 1.2 delta in bar.c
 	exit 1
 }
@@ -67,14 +67,14 @@ echo snafu > snafu.c
 bk ci $Q -i snafu.c 
 bk commit $S -yCset
 bk pull $Q || exit 1
-test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
+bk _test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
 bk unpull -f $Q || exit 1
-test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
-grep -q 'D 1.2' SCCS/s.bar.c && {
+bk _test -f SCCS/s.foo.c && { echo failed to remove foo.c; exit 1; }
+bk _cat SCCS/s.bar.c | grep -q 'D 1.2' && {
 	echo failed to remove 1.2 delta in bar.c
 	exit 1
 }
-test -f SCCS/s.snafu.c || { echo snafu.c got removed; exit 1; }
+bk _test -f SCCS/s.snafu.c || { echo snafu.c got removed; exit 1; }
 bk -r check -ac || exit 1
 echo OK
 
@@ -82,7 +82,7 @@ echo OK
 echo $N Pull, add local cset, unpull should fail ....................$NL
 cd "$HERE/copy"
 bk pull $Q || exit 1
-test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
+bk _test -f SCCS/s.foo.c || { echo no foo.c; exit 1; }
 bk edit $Q snafu.c
 bk delta $Q -fynull snafu.c
 bk commit $Q -yhoho

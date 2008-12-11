@@ -48,12 +48,12 @@ grep -q "modified has been modified, needs delta" ERR || exit 1
 test -f modified || exit 1
 bk clean -v pnog 2> ERR || exit 1
 grep -q "cleaning plock for pnog" ERR || exit 1
-test -f SCCS/p.pnog && exit 1
+bk _test -f SCCS/p.pnog && exit 1
 bk clean -v dashx 2> ERR && exit 1
 grep -q "dashx has merge|include|exclude, not cleaned" ERR || exit 1
 bk clean -v dashxnog 2> ERR && exit 1
 grep -q "dashxnog has merge|include|exclude, not cleaned" ERR || exit 1
-test -f SCCS/p.dashxnog || exit 1
+bk _test -f SCCS/p.dashxnog || exit 1
 bk clean -v writable 2> ERR || exit 1
 grep -q "Clean writable" ERR || exit 1
 test -f writable && exit 1
@@ -89,7 +89,7 @@ for file in $list; do
 	then	if [ $THERE = 1 ]
 		then	test -f $file || exit 1
 		else	test -f $file && exit 1
-			test -f SCCS/p.$file && exit 1
+			bk _test -f SCCS/p.$file && exit 1
 		fi
 	else	test -f $file || exit 1
 	fi

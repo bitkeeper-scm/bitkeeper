@@ -13,7 +13,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
@@ -22,7 +22,7 @@ echo foo > 'F!O#O$ B%A^R&RR(R)RR'
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
-if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -yCset
@@ -35,7 +35,7 @@ echo $N Clone repository ............................................$NL
 mkdir -p "$HERE/tst"
 cd "$HERE/tst"
 bk clone -l $Q "$HERE/project" || { echo failed; exit 1; }
-test -f "$HERE/tst/project/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR' || {
+bk _test -f "$HERE/tst/project/src/SCCS/s."'F!O#O$ B%A^R&RR(R)RR' || {
 	echo failed
 	exit 1
 }
@@ -53,7 +53,7 @@ cd "$HERE/project"
 bk level 2
 cd "$HERE"
 bk clone -l $Q "$HERE/project" "$HERE/copy" || { echo failed; exit 1; }
-test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
+bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 test -f copy/BitKeeper/log/parent || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
@@ -143,19 +143,20 @@ echo $N Check the s.file updates break links ........................$NL
 # files are really linked and unlinked, but that is not portable.
 cd "$HERE"
 bk clone $Q -l "$HERE/project" "$HERE/markers" || exit 1
-h1=project/src/SCCS/s.h.h
-h2=markers/src/SCCS/s.h.h
-h3=trigger/src/SCCS/s.h.h
-cmp -s $h1 $h2 || exit 1
-cmp -s $h2 $h3 || exit 1
+bk _cp project/src/SCCS/s.h.h h1
+bk _cp markers/src/SCCS/s.h.h h2
+bk _cp trigger/src/SCCS/s.h.h h3
+cmp -s h1 h2 || exit 1
+cmp -s h2 h3 || exit 1
 cd project
 bk admin -fRCS src/h.h
 cd "$HERE"
-cmp -s $h1 $h2 && { 
+bk _cp project/src/SCCS/s.h.h h1
+cmp -s h1 h2 && { 
 	echo failed to break link
 	exit 1
 }
-cmp $h2 $h3 || exit 1
+cmp h2 h3 || exit 1
 echo OK
 #BUG: 2003-03-04-003
 echo $N Clone with links and bad rev does not create dir ............$NL

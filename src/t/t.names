@@ -17,10 +17,10 @@ echo $N Create a file ...............................................$NL
 commercial project
 echo data > foo.c
 bk ci $Q -i foo.c
-mv SCCS/s.foo.c SCCS/s.bar.c
+bk _mv SCCS/s.foo.c SCCS/s.bar.c
 bk names bar.c 2> /dev/null
 if [ $? -ne 0 ]; then echo fail; fi
-if [ ! -f SCCS/s.foo.c ]; then echo fail; fi
+if bk _test ! -f SCCS/s.foo.c; then echo fail; fi
 bk commit $Q -ywhatever
 echo OK
 
@@ -39,7 +39,7 @@ cmp -s date "$HERE/clone/date" || {
 	exit 1
 }
 cd "$HERE/clone"
-test -f SCCS/s.date && {
+bk _test -f SCCS/s.date && {
 	echo should not have data file
 	exit 1
 }
@@ -49,7 +49,7 @@ test -s OUT && {
 	cat OUT
 	exit 1
 }
-test -f SCCS/s.date || {
+bk _test -f SCCS/s.date || {
 	echo failed to propogate data
 	exit 1
 }
@@ -62,7 +62,7 @@ bk new $Q A
 bk commit $Q -ywhatever
 echo B > "$HERE/clone/A"
 cd "$HERE/clone"
-test -f SCCS/s.A && {
+bk _test -f SCCS/s.A && {
 	echo should not have data file
 	exit 1
 }
@@ -78,7 +78,7 @@ test -d RESYNC || {
 	echo should have left the RESYNC dir
 	exit 1
 }
-test -f SCCS/s.A && {
+bk _test -f SCCS/s.A && {
 	echo should not have data file
 	exit 1
 }

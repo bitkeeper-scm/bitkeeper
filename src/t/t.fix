@@ -22,11 +22,11 @@ bk undos X > FILE
 cp FILE SAVE
 bk ci $Q -y'Oops' FILE
 bk fix $Q FILE || exit 1
-if [ ! -f SCCS/p.FILE ]; then echo Failed to edit FILE; exit 1; fi
+if bk _test ! -f SCCS/p.FILE; then echo Failed to edit FILE; exit 1; fi
 writable FILE || { echo Failed to edit File; exit 1; }
 cmp -s SAVE FILE
 if [ $? != 0 ]; then echo failed to restore FILE; diff FILE SAVE; exit 1; fi
-set `cat SCCS/p.FILE`
+set `bk _cat SCCS/p.FILE`
 if [ "X$1" != "X1.1" ]; then echo failed to restore revision; exit 1; fi
 
 ## unfortunately this test doesn't seem to work everywhere, sunx86
@@ -53,7 +53,7 @@ test -w FILE && {
 	echo FILE is writeable
 	exit 1
 }
-test -f SCCS/p.FILE && {
+bk _test -f SCCS/p.FILE && {
 	echo FILE is locked
 	exit 1
 }
@@ -136,24 +136,26 @@ echo OK
 
 echo $N Make sure ChangeSet is not left edited by fix -c ............$NL
 bk fix $Q -c || exit 1
-test -f SCCS/p.ChangeSet && {
+bk _test -f SCCS/p.ChangeSet && {
 	echo Left a lock file
 	exit 1
 }
 echo OK
 
 echo $N Make sure ChangeSet comments were left by fix -c ............$NL
-test -f SCCS/c.ChangeSet || {
+bk _test -f SCCS/c.ChangeSet || {
 	echo No comments
 	exit 1
 }
 echo ChangeSet comments > C
-cmp -s C SCCS/c.ChangeSet || {
+bk _cp SCCS/c.ChangeSet c.ChangeSet
+cmp -s C c.ChangeSet || {
 	echo incorrect comments
 	echo Wanted ChangeSet comments
-	echo got `cat SCCS/c.ChangeSet`
+	echo got `bk _cat SCCS/c.ChangeSet`
 	exit 1
 }
+rm -f c.ChangeSet
 echo OK
 
 #echo $N Make sure multiple deltas in same cset undoes top only ......$NL
@@ -165,7 +167,7 @@ echo OK
 #echo OK
 
 #echo $N Make sure multiple deltas in same cset leaves top c.file ....$NL
-#test -f SCCS/c.ORDER || {
+#bk _test -f SCCS/c.ORDER || {
 #	echo No comment file found
 #	exit 1
 #}
@@ -243,9 +245,9 @@ test "`bk sfiles -gUP`" = RENAME || {
 	bk sfiles -UP
 	exit 1
 }
-test -s SCCS/c.RENAME && {
+bk _test -s SCCS/c.RENAME && {
 	echo c.RENAME should have been empty
-	cat SCCS/c.RENAME
+	bk _cat SCCS/c.RENAME
 	exit 1
 }
 echo OK
@@ -271,21 +273,23 @@ cmp -s NEW SAVE || {
 	echo different contents
 	exit 1
 }
-test -f SCCS/s.NEW && {
+bk _test -f SCCS/s.NEW && {
 	echo should have removed s.NEW
 	exit 1
 }
-test -f SCCS/c.NEW || {
+bk _test -f SCCS/c.NEW || {
 	echo should have left a c.NEW
 	exit 1
 }
 cat <<END > EXPECTED
 New file
 END
-checkfiles EXPECTED SCCS/c.NEW
+bk _cp SCCS/c.NEW c.NEW
+checkfiles EXPECTED c.NEW
+rm -f c.NEW
 test -z "$BK_TESTGUI" || {
 	echo ""
-	cat SCCS/c.NEW
+	bk _cat SCCS/c.NEW
 	echo click commit, it should have NEW marked new
 	bk citool
 }
@@ -334,7 +338,7 @@ rm -rf project clone
 echo $N Create initial repository and file with exclude .............$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 echo foo > foo
 echo bar > bar.c
 bk new $Q foo bar.c
@@ -385,7 +389,7 @@ rm -rf project clone
 echo $N Create initial repository and file with exclude .............$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 echo foo > foo
 echo bar > bar.c
 bk new $Q foo bar.c
@@ -442,7 +446,7 @@ bk commit $Q -ychange
 echo OK
 
 echo $N Remove one of the s.files and attempt a fix -c ..............$NL
-rm -f SCCS/s.whoops
+bk _rm SCCS/s.whoops
 bk fix -c > OUT 2>&1
 EXIT=$?
 for i in blech zorro
@@ -486,7 +490,7 @@ cd ..
 rm -rf facetime
 cd project
 bk tag $Q this_tag_should_be_there || exit 1
-grep -q '^.cS0 l$' SCCS/s.ChangeSet || {
+bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
 	echo no leaf marker in the tag graph
 	exit 1
 }
@@ -512,7 +516,7 @@ test X`bk prs -hnd:REV: -rnnn` = "X" || {
 	echo tag shouldn\'t exist
 	exit 1
 }
-grep -q '^.cS0 l$' SCCS/s.ChangeSet || {
+bk _cat SCCS/s.ChangeSet | grep -q '^.cS0 l$' || {
 	echo no leaf marker in the tag graph after fix -c
 	exit 1
 }
@@ -576,7 +580,7 @@ echo $N Fixing a new file should remove it ..........................$NL
 echo junk > foo2
 bk new $Q foo2 || exit 1
 bk fix foo2 || exit 1
-test -f SCCS/s.foo2 && exit 1
+bk _test -f SCCS/s.foo2 && exit 1
 test -w foo2 || exit 1
 test `cat foo2` = junk || exit 1
 echo OK

@@ -118,7 +118,7 @@ echo OK
 echo $N Merge a graph with some weird pathalogical -i and -x ........$NL
 echo 1.1 > bar.c
 bk ci $Q -i bar.c
-if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.bar.c; then echo failed to create history; exit 1; fi
 bk _get $Q -e bar.c
 echo 1.2 >> bar.c
 bk delta $Q -y1.2 bar.c
