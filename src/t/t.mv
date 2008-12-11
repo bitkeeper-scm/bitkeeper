@@ -26,7 +26,8 @@ bk edit $Q edited edited_no_gfile
 bk get $Q readonly
 rm -f edited_no_gfile readonly_no_gfile
 echo "bar-new" > edited
-echo "comment" > SCCS/c.edited
+echo "comment" > c.edited
+bk _mv c.edited SCCS/c.edited
 echo "extra" > extra
 # make some bad c.file
 mkdir -p SCCS/junk
@@ -46,16 +47,16 @@ if [ ! -f readonly ]; then echo failed; exit 1; fi
 if [ ! -w edited ]; then echo failed; exit 1; fi
 if [ -w readonly ]; then echo failed; exit 1; fi
 if [ -f readonly_no_gfile ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/s.edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/c.edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/d.edited ]; then echo failed d; exit 1; fi
-if [ ! -f SCCS/s.edited_no_gfile ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/s.readonly ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/d.readonly ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.readonly ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/s.readonly_no_gfile ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.readonly_no_gfile ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.edited; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/c.edited; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.edited; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/d.edited; then echo failed d; exit 1; fi
+if bk _test ! -f SCCS/s.edited_no_gfile; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.readonly; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/d.readonly; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.readonly; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.readonly_no_gfile; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.readonly_no_gfile; then echo failed; exit 1; fi
 if [ ! -f extra ]; then echo failed; exit 1; fi
 bk -r check -a || { echo failed; exit 1; }
 echo OK
@@ -65,18 +66,19 @@ bk delta $Q -ynew_content edited
 REV=`bk prs -hnr+ -d:I: edited`
 if [ "$REV" != 1.3 ]; then echo failed; exit 1; fi
 bk edit $Q -i1.1 -x1.2 edited
-echo "comment" > SCCS/c.edited
-cp SCCS/p.edited "$HERE/pfile"
+echo "comment" > c.edited
+bk _mv c.edited SCCS/c.edited
+bk _cp SCCS/p.edited "$HERE/pfile"
 cd ..
 bk mvdir foo2 foo3
 cd foo3
 if [ ! -w edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/s.edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/c.edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/d.edited ]; then echo failed d; exit 1; fi
-grep -q '^1.4 1.5' SCCS/p.edited || { echo failed 1; exit 1; }
-grep -q ' -i1.1 -x1.2$' SCCS/p.edited || { echo failed 1; exit 1; }
+if bk _test ! -f SCCS/s.edited; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/c.edited; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.edited; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/d.edited; then echo failed d; exit 1; fi
+bk _cat SCCS/p.edited | grep -q '^1.4 1.5' || { echo failed 1; exit 1; }
+bk _cat SCCS/p.edited | grep -q ' -i1.1 -x1.2$' || { echo failed 1; exit 1; }
 bk -r check -a || { echo failed; exit 1; }
 echo OK
 echo $N Test bk mvdir with -x -i to exitsing dir ....................$NL
@@ -85,19 +87,20 @@ bk delta $Q -ynew_content edited
 REV=`bk prs -hnr+ -d:I: edited`
 if [ "$REV" != 1.5 ]; then echo failed; exit 1; fi
 bk edit $Q -i1.1 -x1.2 edited
-echo "comment" > SCCS/c.edited
-cp SCCS/p.edited "$HERE/pfile"
+echo "comment" > c.edited
+bk _mv c.edited SCCS/c.edited
+bk _cp SCCS/p.edited "$HERE/pfile"
 cd ..
 mkdir foo4
 bk mv foo3 foo4
 cd foo4/foo3
 if [ ! -w edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/s.edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/c.edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.edited ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/d.edited ]; then echo failed d; exit 1; fi
-grep -q '^1.6 1.7' SCCS/p.edited || { echo failed 1; exit 1; }
-grep -q ' -i1.1 -x1.2$' SCCS/p.edited || { echo failed 1; exit 1; }
+if bk _test ! -f SCCS/s.edited; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/c.edited; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.edited; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/d.edited; then echo failed d; exit 1; fi
+bk _cat SCCS/p.edited | grep -q '^1.6 1.7' || { echo failed 1; exit 1; }
+bk _cat SCCS/p.edited | grep -q ' -i1.1 -x1.2$' || { echo failed 1; exit 1; }
 bk -r check -a || { echo failed; exit 1; }
 echo OK
 

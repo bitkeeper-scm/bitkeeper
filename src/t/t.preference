@@ -14,7 +14,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -182,9 +182,10 @@ bk admin -fRCS foo.c
 bk commit $Q -ynew_stuff
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ -w foo.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
-find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.foo.c; then echo failed; exit 1; fi
+gdate=`bk _stat foo.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.foo.c | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w admin .......................................$NL
@@ -196,9 +197,10 @@ bk admin -FRCS foo.c
 bk commit $Q -ynew_stuff
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ ! -w foo.c ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
-find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.foo.c; then echo failed; exit 1; fi
+gdate=`bk _stat foo.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.foo.c | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w delta .......................................$NL
@@ -210,9 +212,10 @@ bk commit $Q -ynew_stuff
 test -f bam -a -w bam || { echo failed bam; exit 1; }
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ ! -w foo.c ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
-find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.foo.c; then echo failed; exit 1; fi
+gdate=`bk _stat foo.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.foo.c | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:edit w no-nl file with sfiles -c ...................$NL
@@ -237,9 +240,10 @@ test -f bam || { echo failed bam; exit 1; }
 test -w bam && { echo failed bam ro; exit 1; }
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ ! -w foo.c ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
-find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.foo.c; then echo failed; exit 1; fi
+gdate=`bk _stat foo.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.foo.c | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w collapse ....................................$NL
@@ -248,9 +252,9 @@ bk admin -fRCS foo.c || exit 1
 bk collapse -e || exit 1
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ ! -w foo.c ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.foo.c; then echo failed; exit 1; fi
 test -f ChangeSet && exit 1
-test -f SCCS/p.ChangeSet && exit 1
+bk _test -f SCCS/p.ChangeSet && exit 1
 echo OK
 
 echo $N checkout:GET w delta and keywords ...........................$NL
@@ -264,9 +268,10 @@ if [ -w foo.c ]; then echo failed; exit 1; fi
 bk commit $Q -ynew_stuff || exit 1
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ -w foo.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
-find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.foo.c; then echo failed; exit 1; fi
+gdate=`bk _stat foo.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.foo.c | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:GET w delta and no keywords ........................$NL
@@ -278,9 +283,10 @@ if [ -w foo.c ]; then echo failed; exit 1; fi
 bk commit $Q -ynew_stuff || exit 1
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ -w foo.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
-find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.foo.c; then echo failed; exit 1; fi
+gdate=`bk _stat foo.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.foo.c | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:GET w clone ........................................$NL
@@ -289,7 +295,7 @@ bk commit $Q -ycheckout_GET
 bk clone $Q "$HERE/project" "$HERE/copy"
 if [ ! -f "$HERE/copy/src/foo.c" ]; then echo failed; exit 1; fi
 if [ -w "$HERE/copy/src/foo.c" ]; then echo failed; exit 1; fi
-if [ -f "$HERE/copy/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
+if bk _test -f "$HERE/copy/src/SCCS/p.foo.c"; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:GET w chmod ........................................$NL
@@ -297,7 +303,7 @@ test -x foo.c && { echo failed; exit 1; }
 bk chmod 775 foo.c || exit 1
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ -w foo.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.foo.c; then echo failed; exit 1; fi
 test `bk prs -hr+ -nd:RWXMODE: foo.c` = "-rwxrwxr-x" || {
 	echo failed
 	bk prs -hr+ -nd:RWXMODE: foo.c
@@ -306,8 +312,9 @@ test `bk prs -hr+ -nd:RWXMODE: foo.c` = "-rwxrwxr-x" || {
 test "$PLATFORM" != "WIN32" && {
 	test -x foo.c || { echo failed; exit 1; }
 }
-find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+gdate=`bk _stat foo.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.foo.c | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed; exit 1; fi
 bk stripdel $Q -r+ foo.c
 echo OK
 
@@ -334,14 +341,14 @@ bk commit $Q -ycheckout_EDIT
 bk clone $Q "$HERE/project" "$HERE/copy2"
 if [ ! -f "$HERE/copy2/src/foo.c" ]; then echo failed 1; exit 1; fi
 if [ ! -w "$HERE/copy2/src/foo.c" ]; then echo failed 2; exit 1; fi
-if [ ! -f "$HERE/copy2/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/copy2/src/SCCS/p.foo.c"; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w clone -r+....................................$NL
 bk clone $Q -r+ "$HERE/project" "$HERE/copy3" || exit 1
 if [ ! -f "$HERE/copy3/src/foo.c" ]; then echo failed 1; exit 1; fi
 if [ ! -w "$HERE/copy3/src/foo.c" ]; then echo failed 2; exit 1; fi
-if [ ! -f "$HERE/copy3/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/copy3/src/SCCS/p.foo.c"; then echo failed; exit 1; fi
 rm -rf "$HERE/copy3"
 echo OK
 
@@ -353,7 +360,7 @@ test -x foo.c && { echo failed; exit 1; }
 bk chmod 775 foo.c || exit 1
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ ! -w foo.c ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.foo.c; then echo failed; exit 1; fi
 test `bk prs -hr+ -nd:RWXMODE: foo.c` = "-rwxrwxr-x" || {
 	echo failed
 	bk prs -hr+ -nd:RWXMODE: foo.c
@@ -362,8 +369,9 @@ test `bk prs -hr+ -nd:RWXMODE: foo.c` = "-rwxrwxr-x" || {
 test "$PLATFORM" != "WIN32" && {
 	test -x foo.c || { echo failed; exit 1; }
 }
-find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
+gdate=`bk _stat foo.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.foo.c | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed; exit 1; fi
 bk chmod 400 foo.c 2> CHMOD_WARN || {
 	echo failed
 	echo chmod 400 stderr:
@@ -372,9 +380,11 @@ bk chmod 400 foo.c 2> CHMOD_WARN || {
 }
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ ! -w foo.c ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.foo.c; then echo failed; exit 1; fi
 test -x foo.c && { echo failed; exit 1; }
-find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
+gdate=`bk _stat foo.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.foo.c | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed; exit 1; fi
 echo OK
 
 
@@ -397,7 +407,7 @@ if [ ! -f "$HERE/edit_2/src/foo.c" ]; then echo failed 1; exit 1; fi
 bk pull $Q "$HERE/edit_1" || exit 1
 if [ ! -f "$HERE/edit_2/src/foo.c" ]; then echo failed 1; exit 1; fi
 if [ ! -w "$HERE/edit_2/src/foo.c" ]; then echo failed 2; exit 1; fi
-if [ ! -f "$HERE/edit_2/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/edit_2/src/SCCS/p.foo.c"; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w simple file create ..........................$NL
@@ -421,7 +431,7 @@ cd "$HERE/edit_2/src"
 bk pull $Q "$HERE/edit_1"
 if [ ! -f "$HERE/edit_2/src/foo.c" ]; then echo failed 1; exit 1; fi
 if [ ! -w "$HERE/edit_2/src/foo.c" ]; then echo failed 2; exit 1; fi
-if [ ! -f "$HERE/edit_2/src/SCCS/p.foo.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/edit_2/src/SCCS/p.foo.c"; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w resolve simple rename change ................$NL
@@ -432,7 +442,7 @@ cd "$HERE/edit_2/src"
 bk pull $Q "$HERE/edit_1"
 if [ ! -f "$HERE/edit_2/src/foo1.c" ]; then echo failed 1; exit 1; fi
 if [ ! -w "$HERE/edit_2/src/foo1.c" ]; then echo failed 2; exit 1; fi
-if [ ! -f "$HERE/edit_2/src/SCCS/p.foo1.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/edit_2/src/SCCS/p.foo1.c"; then echo failed; exit 1; fi
 echo OK
 
 cd "$HERE"
@@ -452,7 +462,7 @@ bk pull $Q "$HERE/edit_1"
 if [ -f "$HERE/edit_2/src/foo1.c" ]; then echo failed 1; exit 1; fi
 if [ ! -f "$HERE/edit_2/src/renamed.c" ]; then echo failed 1; exit 1; fi
 if [ ! -w "$HERE/edit_2/src/renamed.c" ]; then echo failed 2; exit 1; fi
-if [ ! -f "$HERE/edit_2/src/SCCS/p.renamed.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/edit_2/src/SCCS/p.renamed.c"; then echo failed; exit 1; fi
 echo OK
 
 cd "$HERE"
@@ -471,7 +481,7 @@ bk commit $Q -ydelete_line_1
 bk pull $Q "$HERE/edit_1"
 if [ ! -f "$HERE/edit_2/src/foo1.c" ]; then echo failed 1; exit 1; fi
 if [ ! -w "$HERE/edit_2/src/foo1.c" ]; then echo failed 2; exit 1; fi
-if [ ! -f "$HERE/edit_2/src/SCCS/p.foo1.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/edit_2/src/SCCS/p.foo1.c"; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w resolve automerge flag change ...............$NL
@@ -484,7 +494,7 @@ bk commit $Q -yflags_chg
 bk pull $Q "$HERE/edit_1"
 if [ ! -f "$HERE/edit_2/src/foo1.c" ]; then echo failed 1; exit 1; fi
 if [ ! -w "$HERE/edit_2/src/foo1.c" ]; then echo failed 2; exit 1; fi
-if [ ! -f "$HERE/edit_2/src/SCCS/p.foo1.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/edit_2/src/SCCS/p.foo1.c"; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w resolve rename conflict .....................$NL
@@ -508,29 +518,29 @@ r
 EOF
 if [ ! -f "$HERE/edit_2/src/foo2.c" ]; then echo failed 1; exit 1; fi
 if [ ! -w "$HERE/edit_2/src/foo2.c" ]; then echo failed 2; exit 1; fi
-if [ ! -f "$HERE/edit_2/src/SCCS/p.foo2.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/edit_2/src/SCCS/p.foo2.c"; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w undo ........................................$NL
 cd "$HERE/project"
 echo hi > hi
 bk new $Q hi || exit 1
-if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+if bk _test ! \( -w hi -a -f SCCS/p.hi \); then echo checkout failed; exit 1; fi
 bk commit $Q -yaddhi || exit 1
 echo bye >> hi
 echo new >> src/foo.c
 bk delta $Q -ybye hi src/foo.c || exit 1
-if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+if bk _test ! \( -w hi -a -f SCCS/p.hi \); then echo checkout failed; exit 1; fi
 bk commit $Q -yappendhi || exit 1
 bk undo $Q -fr+ || exit 1
-if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+if bk _test ! \( -w hi -a -f SCCS/p.hi \); then echo checkout failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w names .......................................$NL
 bk clean $Q hi
-mv SCCS/s.hi SCCS/s.junk
+bk _mv SCCS/s.hi SCCS/s.junk
 bk -r names $Q
-if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+if bk _test ! \( -w hi -a -f SCCS/p.hi \); then echo checkout failed; exit 1; fi
 echo OK
 
 echo $N checkout:EDIT w pull ........................................$NL
@@ -583,7 +593,7 @@ test "X$x" = "XSCCS/s.bar.c SCCS/s.foo.c" && {
 	echo files not edited
 	exit 1
 }
-test -f ../SCCS/p.ChangeSet && {
+bk _test -f ../SCCS/p.ChangeSet && {
 	echo ChangeSet file shouldn\'t be locked
 	exit 1
 }
@@ -593,7 +603,7 @@ echo OK
 
 echo $N checkout:EDIT w bk cset -x ..................................$NL
 bk cset $Q -x+ || exit 1
-test -w foo.c -a -f SCCS/p.foo.c || {
+bk _test -w foo.c -a -f SCCS/p.foo.c || {
 	echo checkout of foo.c failed
 	exit 1
 }
@@ -602,7 +612,7 @@ echo OK
 echo $N checkout:EDIT w bk unrm .....................................$NL
 bk rm foo.c || exit 1
 bk unrm -f foo.c > /dev/null || exit 1
-test -w foo.c -a -f SCCS/p.foo.c || {
+bk _test -w foo.c -a -f SCCS/p.foo.c || {
 	echo checkout of foo.c failed
 	exit 1
 }

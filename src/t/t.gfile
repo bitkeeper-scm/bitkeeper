@@ -18,7 +18,7 @@ commercial project
 bk edit $Q BitKeeper/etc/config
 echo "autofix:yes" >> BitKeeper/etc/config
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 echo '%M%' > keywords
 echo '%M%' > none
 echo flagsonly > flagsonly
@@ -44,7 +44,7 @@ bk edit $Q
 $RM -f keywords none flagsonly
 bk -r check -a || exit 1
 for i in keywords none flagsonly
-do	test -f SCCS/p.$i && { echo p.$i; exit 1; }
+do	bk _test -f SCCS/p.$i && { echo p.$i; exit 1; }
 done
 echo OK
 
@@ -67,7 +67,7 @@ echo OK
 echo $N Check missing pfile case 2, i.e., rm SCCS/p.whatever ........$NL
 bk edit $Q
 for i in keywords none flagsonly
-do	$RM -f SCCS/p.$i
+do	bk _rm SCCS/p.$i
 done
 bk -r check -a || exit 1
 for i in keywords none
@@ -92,7 +92,7 @@ test keywords = `cat keywords` || {
 	echo ======= flags ========
 	bk flags keywords
 	echo ======= sfile ========
-	cat SCCS/s.keywords
+	bk _cat SCCS/s.keywords
 	exit 1
 }
 test '%M%' = `cat none` || {
@@ -113,11 +113,11 @@ grep -q 'unlocked, modified, with keywords.' OUT || {
 	cat OUT
 	exit 1
 }
-test -f SCCS/p.none || {
+bk _test -f SCCS/p.none || {
 	echo Could have fixed \"none\" and did not
 	exit 1
 }
-test -f SCCS/p.flagsonly || {
+bk _test -f SCCS/p.flagsonly || {
 	echo Could have fixed \"flagsonly\" and did not
 	exit 1
 }
@@ -146,7 +146,7 @@ test '%M%' = `cat none` || {
 	exit 1
 }
 for i in keywords none flagsonly
-do	$RM -f SCCS/p.$i
+do	bk _rm SCCS/p.$i
 	echo more >> $i
 	cp $i $i.cmp
 done
@@ -159,11 +159,11 @@ grep -q 'unlocked, modified, with keywords.' OUT || {
 	cat OUT
 	exit 1
 }
-test -f SCCS/p.none || {
+bk _test -f SCCS/p.none || {
 	echo Could have fixed \"none\" and did not
 	exit 1
 }
-test -f SCCS/p.flagsonly || {
+bk _test -f SCCS/p.flagsonly || {
 	echo Could have fixed \"flagsonly\" and did not
 	exit 1
 }

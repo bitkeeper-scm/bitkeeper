@@ -213,7 +213,6 @@ raw_cat(int rfd)
 	while ((nr = read(rfd, buf, 1024)) > 0)
 		for (off = 0; nr; nr -= nw, off += nw)
 			if ((nw = write(wfd, buf + off, (size_t)nr)) < 0) {
-				perror("stdout");
 				exit(1);
 			}
 	if (nr < 0) {

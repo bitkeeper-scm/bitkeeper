@@ -216,7 +216,7 @@ X=`bk sfind -x LIST SCCS/s.foo`
 if [ "X$X" != "XLIST" ]; then echo failed; echo $X; exit 1; fi
 echo OK
 echo $N Make sure garbage in SCCS dir behaves .......................$NL
-touch SCCS/OLD-s.foo
+bk _touch SCCS/OLD-s.foo
 bk sfind -xj | sort > SFILES
 sort <<EOF > LIST
 LIST
@@ -228,9 +228,10 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 X=`bk sfind -j SCCS/OLD-s.foo`
 if [ "X$X" != "XSCCS/OLD-s.foo" ]; then echo failed; echo $X; exit 1; fi
 echo OK
+
 echo $N Make sure sfind GFILE lists SCCS/s.GFILE ....................$NL
 if [ -f s.foo ]; then exit 1; fi
-if [ ! -f SCCS/s.s.foo ]; then exit 1; fi
+if bk _test ! -f SCCS/s.s.foo; then exit 1; fi
 FOO="`bk sfind s.foo`"
 if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
 echo OK
@@ -298,8 +299,8 @@ echo $N Test naive mode with s.files in odd places ..................$NL
 date > impostor
 bk ci $Q -i -m'boo!' impostor
 bk co $Q impostor
-mv SCCS/s.impostor s.impostor
-mv impostor SCCS/s.impostor
+bk _mv SCCS/s.impostor s.impostor
+bk _mv impostor SCCS/s.impostor
 bk sfind | sort > SFILES
 sort <<EOF > LIST
 BitKeeper/etc/SCCS/s.collapsed

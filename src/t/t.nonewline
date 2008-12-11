@@ -22,7 +22,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -33,8 +33,8 @@ bk undos -n X > foo.c
 cp foo.c SAVEfoo.c
 echo $N bar$NL > bar.c; cp bar.c SAVEbar.c
 bk ci $Q -i foo.c bar.c 
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
-if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.bar.c; then echo failed to create history; exit 1; fi
 bk get $Q foo.c bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
@@ -51,15 +51,15 @@ bk clone $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 
 echo $N Check resynced files for newline status .....................$NL
 echo foo > X
 bk undos -n X > SAVEfoo.c
 echo $N bar$NL > SAVEbar.c
-if [ ! -f SCCS/s.foo.c ]; then echo failed to resync history; exit 1; fi
-if [ ! -f SCCS/s.bar.c ]; then echo failed to resync history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to resync history; exit 1; fi
+if bk _test ! -f SCCS/s.bar.c; then echo failed to resync history; exit 1; fi
 bk get $Q foo.c bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
@@ -120,7 +120,7 @@ echon "" >> x
 bk delta $Q -ynone x
 bk admin -Znone x
 # XXX nice to have a better test.  When we get the check in the code: use it.
-grep -q '^.E [0-9][0-9]*N$' SCCS/s.x && {
+bk _cat SCCS/s.x | grep -q '^.E [0-9][0-9]*N$' && {
 	echo Fail
 	echo Blank line tagged no newline
 	exit 1
@@ -139,7 +139,7 @@ printf "a\nc\nd\n" > afterdel
 bk delta $Q -y1.3 afterdel
 bk edit $Q -x1.2 afterdel
 bk delta $Q -y1.4 afterdel
-cp SCCS/s.afterdel afterdel.bkup
+bk _cp SCCS/s.afterdel afterdel.bkup
 bk edit $Q afterdel
 printf "a\nb\n" > afterdel
 cp afterdel WANT
@@ -147,7 +147,7 @@ bk delta $Q -y1.4 afterdel
 bk get $Q afterdel
 checkfiles WANT afterdel
 # run through it again, with gzipped sfile
-cp -f afterdel.bkup SCCS/s.afterdel
+bk _cp afterdel.bkup SCCS/s.afterdel
 bk admin -Zgzip afterdel
 bk edit $Q afterdel
 printf "a\nb\n" > afterdel
@@ -169,7 +169,7 @@ bk delta $Q -ynewline beforedel
 bk _get $Q -e -r1.1 beforedel
 printf "a\n\001c" > beforedel
 bk delta $Q -ynonewline beforedel
-cp SCCS/s.beforedel beforedel.bkup
+bk _cp SCCS/s.beforedel beforedel.bkup
 bk get $Q -e -M1.1.1.1 beforedel
 printf "a\n\001c\n" > beforedel
 cp beforedel WANT
@@ -177,7 +177,7 @@ bk delta $Q -y'merge and delete end' beforedel
 bk get $Q beforedel
 checkfiles WANT beforedel
 # run through it again, with gzipped sfile
-cp -f beforedel.bkup SCCS/s.beforedel
+bk _cp beforedel.bkup SCCS/s.beforedel
 bk admin -Zgzip beforedel
 bk get $Q -e -M1.1.1.1 beforedel
 printf "a\n\001c\n" > beforedel

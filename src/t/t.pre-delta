@@ -35,15 +35,15 @@ bk new $Q pass1 fail pass2 > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-test -f SCCS/s.pass1 || {
+bk _test -f SCCS/s.pass1 || {
 	echo failed to make pass1
 	exit 1
 }
-test -f SCCS/s.pass2 || {
+bk _test -f SCCS/s.pass2 || {
 	echo failed to make pass1
 	exit 1
 }
-test -f SCCS/s.fail2 && {
+bk _test -f SCCS/s.fail2 && {
 	echo should not have done fail2
 	exit 1
 }
@@ -59,15 +59,15 @@ bk delta -a -ywhatever $Q pass1 fail pass2 > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-test -f SCCS/s.pass1 || {
+bk _test -f SCCS/s.pass1 || {
 	echo failed to make pass1
 	exit 1
 }
-test -f SCCS/s.pass2 || {
+bk _test -f SCCS/s.pass2 || {
 	echo failed to make pass1
 	exit 1
 }
-test -f SCCS/s.fail2 && {
+bk _test -f SCCS/s.fail2 && {
 	echo should not have done fail2
 	exit 1
 }

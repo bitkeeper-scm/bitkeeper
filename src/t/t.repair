@@ -23,7 +23,7 @@ done
 bk commit $Q -ycomment || exit 1
 bk clone $Q "$HERE/repair1" "$HERE/repair2" || exit 1
 cd "$HERE"/repair2
-rm -f SCCS/s.ChangeSet
+bk _rm SCCS/s.ChangeSet
 bk repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
@@ -34,7 +34,7 @@ bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
 echo OK
 
 echo $N Make sure we can restore an identical file ..................$NL
-rm -f SCCS/s.foo
+bk _rm SCCS/s.foo
 bk repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
@@ -53,7 +53,7 @@ do	bk edit $Q $i
 done
 bk commit $Q -ycomment || exit 1
 cd "$HERE/repair2"
-rm -f SCCS/s.ChangeSet
+bk _rm SCCS/s.ChangeSet
 bk repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
@@ -64,7 +64,7 @@ bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
 echo OK
 
 echo $N Make sure we can restore a file which is ahead...............$NL
-rm -f SCCS/s.foo
+bk _rm SCCS/s.foo
 bk repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
@@ -75,7 +75,7 @@ bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
 echo OK
 
 echo $N Make sure we can restore multiple files which are ahead .....$NL
-rm -f SCCS/s.[a-z]*
+bk _rm SCCS/s.foo SCCS/s.bar SCCS/s.blech SCCS/s.whatsit
 bk repair > OUT 2>&1 || {
 	echo failed
 	cat OUT
@@ -92,7 +92,7 @@ do	bk edit $Q $i
 	bk delta -ywhatever $Q $i
 done
 bk commit $Q -yahead || exit 1
-mv -f SCCS/s.foo save.foo
+bk _mv SCCS/s.foo save.foo
 bk repair > OUT 2>&1 && {
 	echo failed
 	cat OUT
@@ -107,14 +107,14 @@ test -d BitKeeper/repair && {
 	echo failed to clean up repair directory
 	exit 1
 }
-mv -f save.foo SCCS/s.foo 
+bk _mv save.foo SCCS/s.foo 
 bk -r check -ac || exit 1
 bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
 echo OK
 
 echo $N Sane error message if the parent ChangeSet is behind ........$NL
 bk clone $Q "$HERE/repair2" "$HERE/repair3" || exit 1
-rm -f SCCS/s.ChangeSet
+bk _rm SCCS/s.ChangeSet
 bk repair > OUT 2>&1 && {
 	echo failed
 	cat OUT
@@ -128,7 +128,7 @@ grep -q 'The ChangeSet file retrieved from your parent appears to be' OUT || {
 echo OK
 
 echo $N Make sure we can repair with a different parent .............$NL
-rm -f SCCS/s.ChangeSet
+bk _rm SCCS/s.ChangeSet
 bk repair -@"$HERE"/repair3 > OUT 2>&1 || {
 	echo failed
 	cat OUT
@@ -140,7 +140,7 @@ bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
 echo OK
 
 echo $N Make sure we can repair with a named repo and named parent ..$NL
-rm -f SCCS/s.ChangeSet
+bk _rm SCCS/s.ChangeSet
 cd "$HERE"
 bk repair -@"$HERE"/repair3 "$HERE"/repair2 > OUT 2>&1 || {
 	echo failed
@@ -154,7 +154,7 @@ bk changes -r`cat BitKeeper/log/TIP` > /dev/null || exit 1
 echo OK
 
 echo $N Make sure we can repair with a named repo ...................$NL
-rm -f SCCS/s.ChangeSet
+bk _rm SCCS/s.ChangeSet
 bk parent $Q "$HERE"/repair3
 cd "$HERE"
 bk repair "$HERE"/repair2 > OUT 2>&1 || {
@@ -173,7 +173,7 @@ cd "$HERE"
 commercial project
 bk admin -Z
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -187,8 +187,7 @@ echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 bk commit $Q -ycset1
 bk clone $Q "$HERE/project" "$HERE/copy"
-rm -f foo.c SCCS/s.foo.c
-rm -f bar.c SCCS/s.bar.c
+bk _rm -f foo.c SCCS/s.foo.c bar.c SCCS/s.bar.c
 bk -r check -ag | bk gone -q -
 bk commit $Q -yfoo_gone
 cd "$HERE/copy/src"

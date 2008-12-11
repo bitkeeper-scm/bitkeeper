@@ -38,29 +38,32 @@ done
 bk sfiles -l A B | bk clean -
 sleep 1
 bk co $Q -l A/file1
-echo "this is a comment for file1" > A/SCCS/c.file1
-echo "this is a old comment for file1" > A/SCCS/c.file1@1.1
+echo "this is a comment for file1" > c.file1
+bk _mv c.file1 A/SCCS/c.file1
+echo "this is a old comment for file1" > c.file1@1.1
+bk _mv c.file1@1.1 A/SCCS/c.file1@1.1
 bk mv A/file1 B/file1
 # We need this on cygwin (dir cache lag?)
 while true
 do
-	if [ ! -f B/SCCS/s.file1 ]
+	if bk _test ! -f B/SCCS/s.file1
 	then echo waiting; sleep 1
 	else break
 	fi
 done
 # The file should have been moved, but not checked in.
 if [ ! -f B/file1 ]; then echo failed 1; exit 1; fi
-if [ ! -f B/SCCS/s.file1 ]; then echo failed 2; exit 1; fi
-if [ ! -f B/SCCS/p.file1 ]; then echo failed 3; exit 1; fi
-if [ ! -f B/SCCS/c.file1 ]; then echo failed 4; exit 1; fi
-if [ ! -f B/SCCS/c.file1@1.1 ]; then echo failed 4; exit 1; fi
-if [ ! -f A/SCCS/s.file3 ]; then echo failed 5; exit 1; fi
+if bk _test ! -f B/SCCS/s.file1; then echo failed 2; exit 1; fi
+if bk _test ! -f B/SCCS/p.file1; then echo failed 3; exit 1; fi
+if bk _test ! -f B/SCCS/c.file1; then echo failed 4; exit 1; fi
+if bk _test ! -f B/SCCS/c.file1@1.1; then echo failed 4; exit 1; fi
+if bk _test ! -f A/SCCS/s.file3; then echo failed 5; exit 1; fi
 # XXX - I think this is right but am not sure.
 DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
 if [ ${DPATH}X != "B/file1"X ]; then echo failed 5; exit 1; fi
-find B -newer B/file1 | grep -q B/SCCS/s.file
-if [ $? -eq 0 ]; then echo failed 6; exit 1; fi
+gdate=`bk _stat B/file1 | awk -F\| '{ print $10 }'`
+sdate=`bk _stat B/SCCS/s.file1 | awk -F\| '{ print $10 }'`
+if [ $gdate -lt $sdate ]; then echo failed 6; exit 1; fi
 # Now check it in so later tests aren't confused.
 bk ci $Q -yrename B/file1
 bk -r check -a || { echo check exits $?; exit 1; }
@@ -69,8 +72,8 @@ echo OK
 echo $N Test sccsmv w/ unlocked file ................................$NL
 bk mv B/file2 C/file3
 if [ -f C/file3 ]; then echo failed; exit 1; fi
-if [ ! -f C/SCCS/s.file3 ]; then echo failed; exit 1; fi
-if [ -f C/SCCS/p.file3 ]; then echo failed; exit 1; fi
+if bk _test ! -f C/SCCS/s.file3; then echo failed; exit 1; fi
+if bk _test -f C/SCCS/p.file3; then echo failed; exit 1; fi
 DPATH=`bk prs -hr+ -d:DPN: C/file3`
 if [ ${DPATH}X != "C/file3"X ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hr1.1 -d:DPN: C/file3`
@@ -80,8 +83,8 @@ echo OK
 
 echo $N Test sccsmv to directory ....................................$NL
 bk mv B/file1 B/file4 C
-if [ ! -f C/SCCS/s.file1 ]; then echo failed; exit 1; fi
-if [ ! -f C/SCCS/s.file4 ]; then echo failed; exit 1; fi
+if bk _test ! -f C/SCCS/s.file1; then echo failed; exit 1; fi
+if bk _test ! -f C/SCCS/s.file4; then echo failed; exit 1; fi
 if [ -d B ]; then echo failed; exit 1; fi
 mkdir B
 bk mv C/file1 C/file4 B
@@ -93,10 +96,10 @@ mkdir B/B1
 date > B/B1/fileB1
 bk new $Q B/B1/fileB1
 bk mv B "BB BB/CCCC/DDDD"
-if [ ! -f "BB BB/CCCC/DDDD/SCCS/s.file4" ]
+if bk _test ! -f "BB BB/CCCC/DDDD/SCCS/s.file4"
 then	echo failed to move file; exit 1
 fi
-if [ ! -f "BB BB/CCCC/DDDD/B1/SCCS/s.fileB1" ]
+if bk _test ! -f "BB BB/CCCC/DDDD/B1/SCCS/s.fileB1"
 then	echo failed to move fileB1; exit 1
 fi
 bk -r check -a || exit 1
@@ -104,7 +107,7 @@ echo OK
 
 echo $N And move it back ............................................$NL
 bk mv "BB BB/CCCC/DDDD" B || { echo error; exit 1; }
-if [ ! -f B/B1/SCCS/s.fileB1 ]
+if bk _test ! -f B/B1/SCCS/s.fileB1
 then	echo failed to move fileB1; exit 1
 fi
 echo OK
@@ -116,24 +119,24 @@ if [ ! -f B1/fileB1 ]; then echo failed; exit 1; fi
 # move it back
 mv B1 B/B1
 bk mv B/B1 .
-if [ ! -f B1/SCCS/s.fileB1 ]; then echo failed; exit 1; fi
+if bk _test ! -f B1/SCCS/s.fileB1; then echo failed; exit 1; fi
 bk mv B1 B
-if [ ! -f B/B1/SCCS/s.fileB1 ]; then echo failed; exit 1; fi
+if bk _test ! -f B/B1/SCCS/s.fileB1; then echo failed; exit 1; fi
 echo OK
 
 echo $N Test bk rm w/ p locked file .................................$NL
 bk get $Q -e B/file1
 bk rm B/file1
-test -f BitKeeper/deleted/SCCS/s..del-file1* || {
+bk _test -f BitKeeper/deleted/SCCS/s..del-file1* || {
 	echo failed to move file to deleted
 	find . -type f
 	exit 1
 }
-test -f B/SCCS/p.file1 && {
+bk _test -f B/SCCS/p.file1 && {
 	echo failed to clean up old p.file
 	exit 1
 }
-test -f BitKeeper/deleted/SCCS/p..del-file1* && {
+bk _test -f BitKeeper/deleted/SCCS/p..del-file1* && {
 	echo failed to toss p..del
 	exit 1
 }
@@ -160,15 +163,17 @@ bk rm -f foo || {
 	echo rm -f should have worked
 	exit 1
 }
-test -f BitKeeper/deleted/SCCS/s..del-foo* || {
+delfile=`bk sfiles -p BitKeeper/deleted | grep 's..del-foo~'`
+bk _test -f "$delfile" || {
 	echo failed to move file to deleted
 	exit 1
 }
-test -f SCCS/p.foo && {
+bk _test -f SCCS/p.foo && {
 	echo failed to clean up old p.file
 	exit 1
 }
-test -f BitKeeper/deleted/SCCS/p..del-foo* && {
+delpfile=`echo $delfil | sed 's:SCCS/s..del:SCCS/p..del:'`
+bk _test -f "$delpfile" && {
 	echo failed to clean deleted p.file
 	exit 1
 }
@@ -177,7 +182,8 @@ echo OK
 
 echo $N Test bk rm w non p-locked file ..............................$NL
 bk rm C/file3
-test -f BitKeeper/deleted/SCCS/s..del-file3* || {
+delfile=`bk sfiles -p BitKeeper/deleted | grep s..del-file3`
+bk _test -f $delfile || {
 	echo failed to move file to deleted
 	exit 1
 }
@@ -208,9 +214,9 @@ echo $N Test bk unrm ................................................$NL
 cd "$HERE/project"
 bk rm A/file4
 bk unrm A/file4 > /dev/null
-if [ ! -f A/SCCS/s.file4 ]; then echo failed; exit 1; fi
-if [ -f A/SCCS/c.file4 ]; then echo failed; exit 1; fi
-if [ -f A/SCCS/c.file4@1.1 ]; then echo failed; exit 1; fi
+if bk _test ! -f A/SCCS/s.file4; then echo failed; exit 1; fi
+if bk _test -f A/SCCS/c.file4; then echo failed; exit 1; fi
+if bk _test -f A/SCCS/c.file4@1.1; then echo failed; exit 1; fi
 XFILES=`bk -R sfiles -x`
 if [ "$XFILES" != "" ]; then echo failed; echo $XFILES; exit 1; fi
 bk rm A/file4
@@ -220,11 +226,11 @@ echo $N Test mvdir to directory that does not exist .................$NL
 date > C/file6
 bk new $Q C/file6
 bk mvdir C CCCC
-test -f CCCC/SCCS/s.file6 || {
+bk _test -f CCCC/SCCS/s.file6 || {
 	echo failed to move file
 	exit 1
 }
-test -f CCCC/SCCS/s..del-foo || {
+bk _test -f CCCC/SCCS/s..del-foo || {
 	echo failed to move deleted file
 	exit 1
 }
@@ -233,11 +239,12 @@ echo OK
 echo $N Edit G, rm G, should create rm delta ........................$NL
 date > G
 bk new $Q G
-cp SCCS/s.G S.G
+bk _cp SCCS/s.G S.G
 bk edit $Q G
 rm -f G
 bk rm G 2> $DEV_NULL
-cmp -s S.G SCCS/s..del-G
+bk _cp `bk sfiles -p BitKeeper/deleted | grep 's..del-G~'` S..del-G
+cmp -s S.G S..del-G
 if [ $? = 0 ]; then echo Failed to add rm delta; exit 1; fi
 if [ -f p.G ]; then echo Failed to rm p.G; exit 1; fi
 echo OK
@@ -264,7 +271,7 @@ echo OK
 
 echo $N Test check -ag ..............................................$NL
 echo y | bk commit $Q -ycset
-rm -f CCCC/SCCS/s.file6
+bk _rm CCCC/SCCS/s.file6
 bk -r check -a 2>  ck.out
 grep -q 'Missing file (bk help chk3) .*@bk_regression.bk'  ck.out || {
 	echo Bad error message
@@ -321,7 +328,7 @@ bk edit $Q f
 date >> f
 bk mv f newf
 bk pull $Q || exit 1
-if [ ! -f SCCS/s.qqq ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.qqq; then echo failed; exit 1; fi
 echo OK
 
 echo $N Test mv of directory ........................................$NL
@@ -337,7 +344,7 @@ echo sub > sub
 bk new $Q sub || exit 1
 cd ../..
 bk mvdir foo foo2 || exit 1
-if [ -f foo/sub1/SCCS/s.sub ]; then echo failed; exit 1; fi
+if bk _test -f foo/sub1/SCCS/s.sub; then echo failed; exit 1; fi
 echo OK
 
 echo $N Make sure we can not remove BitKeeper files .................$NL
@@ -353,7 +360,7 @@ grep -q 'Will not remove BitKeeper file' OUT || {
 	cat OUT
 	exit 1
 }
-test -f SCCS/s.config || {
+bk _test -f SCCS/s.config || {
 	echo Gave us an error message but removed it anyway
 	exit 1
 }
@@ -367,7 +374,7 @@ grep -q 'Will not remove BitKeeper file' OUT || {
 	cat OUT
 	exit 1
 }
-test -f SCCS/s.ChangeSet || {
+bk _test -f SCCS/s.ChangeSet || {
 	echo Gave us an error message but removed it anyway
 	exit 1
 }
@@ -380,7 +387,7 @@ bk rm -f config 2> OUT || {
 	cat OUT
 	exit 1
 }
-test -f SCCS/s.config && {
+bk _test -f SCCS/s.config && {
 	echo failed to remove file
 	exit 1
 }
@@ -392,7 +399,7 @@ bk rm -f ChangeSet 2> OUT && {
 	echo let us remove the file
 	exit 1
 }
-test -f SCCS/s.ChangeSet || {
+bk _test -f SCCS/s.ChangeSet || {
 	echo removed the ChangeSet file
 	exit 1
 }
@@ -412,7 +419,7 @@ grep -q 'Will not move BitKeeper file' OUT || {
 	cat OUT
 	exit 1
 }
-test -f SCCS/s.config || {
+bk _test -f SCCS/s.config || {
 	echo Gave us an error message but moved it anyway
 	exit 1
 }
@@ -426,7 +433,7 @@ grep -q 'Will not move BitKeeper file' OUT || {
 	cat OUT
 	exit 1
 }
-test -f SCCS/s.ChangeSet || {
+bk _test -f SCCS/s.ChangeSet || {
 	echo Gave us an error message but moved it anyway
 	exit 1
 }
@@ -438,7 +445,7 @@ bk mv -f config JUNK 2> OUT || {
 	echo failed to let us move the file
 	exit 1
 }
-test -f SCCS/s.config && {
+bk _test -f SCCS/s.config && {
 	echo failed to move file
 	exit 1
 }
@@ -450,7 +457,7 @@ bk mv -f ChangeSet JUNK 2> OUT && {
 	echo let us move the file
 	exit 1
 }
-test -f SCCS/s.ChangeSet || {
+bk _test -f SCCS/s.ChangeSet || {
 	echo moved the ChangeSet file
 	exit 1
 }
@@ -537,9 +544,9 @@ echo $N Make sure bk mv work with back slash style dos path..........$NL
         bk new $Q foo.c
 	cd ..
         bk mv .\\src\\foo.c .\\src\\bar.c
-        if [ ! -f src/SCCS/s.bar.c ]; then echo failed; exit 1; fi
+        if bk _test ! -f src/SCCS/s.bar.c; then echo failed; exit 1; fi
 	bk rm src\\bar.c
-        if [ -f src/SCCS/s.bar.c ]; then echo failed 2; exit 1; fi
+        if bk _test -f src/SCCS/s.bar.c; then echo failed 2; exit 1; fi
         echo OK
 fi      #----------------------------------------------------------------
 

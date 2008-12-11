@@ -42,7 +42,7 @@ fi
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 echo $N Create some data ............................................$NL
 cat > file <<EOF
@@ -57,7 +57,7 @@ cat > file <<EOF
 9
 EOF
 bk ci $Q -i file
-if [ ! -f SCCS/s.file ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.file; then echo failed to create history; exit 1; fi
 cp /bin/sh binary
 chmod +w binary
 bk new $Q -b binary

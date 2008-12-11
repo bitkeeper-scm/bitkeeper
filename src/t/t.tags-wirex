@@ -14,7 +14,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo foo > foo
@@ -38,7 +38,7 @@ echo OK
 echo $N Pull and make sure it automerged the tag graph ..............$NL
 cd "$HERE/tags"
 bk pull $Q
-grep -q '^.cS8 6 l' SCCS/s.ChangeSet || {
+bk _cat SCCS/s.ChangeSet | grep -q '^.cS8 6 l' || {
 	echo expected serials 8 and 6 to be merged and a tag leaf
 	exit 1
 }
@@ -67,9 +67,9 @@ echo $N Pull and make sure it automerged the tag graph ..............$NL
 cd "$HERE/tags"
 bk pull $Q || exit 1
 bk admin -hhh || exit 1
-grep -q '^.cS14 9 l' SCCS/s.ChangeSet || {
+bk _cat SCCS/s.ChangeSet | grep -q '^.cS14 9 l' || {
 	echo expected serials 14 and 9 to be merged and a tag leaf
-	grep '^.cS' SCCS/s.ChangeSet
+	bk _cat SCCS/s.ChangeSet | grep '^.cS'
 	exit 1
 }
 echo OK

@@ -484,7 +484,7 @@ test -f "$HERE/BK_PENDING" || {
 	echo failed to copy the file
 	exit 1
 }
-test SCCS/s.c.c${BK_FS}1.1 = `cat "$HERE/BK_PENDING"` || {
+bk _test SCCS/s.c.c${BK_FS}1.1 = `cat "$HERE/BK_PENDING"` || {
 	echo bad file list
 	cat "$HERE/BK_PENDING"
 	exit 1
@@ -1350,7 +1350,7 @@ rm -rf *
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
@@ -1359,7 +1359,7 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -yCset
@@ -1447,7 +1447,7 @@ to test if that works' foo.c > OUT 2>&1 && {
 	echo delta should have failed
 	exit 1
 }
-test -f SCCS/p.foo.c || {
+bk _test -f SCCS/p.foo.c || {
 	echo delta should have failed
 	exit 1
 }
@@ -1498,7 +1498,7 @@ cd "$HERE/aaron/src"
 bk get $Q -e foo.c
 echo bad form, dude >> foo.c
 bk ci -p -ywhatever foo.c > OUT 2>&1
-test -f SCCS/p.foo.c && {
+bk _test -f SCCS/p.foo.c && {
 	echo failed to do the delta
 	cat OUT
 	exit 1
@@ -1522,7 +1522,8 @@ chmod +x pre-delta
 cd "$HERE/delta/src"
 bk get $Q -e foo.c
 echo bad form, dude >> foo.c
-echo Bad comment > SCCS/c.foo.c
+echo Bad comment > c.foo.c
+bk _mv c.foo.c SCCS/c.foo.c
 bk delta foo.c >OUT 2>&1 < /dev/null || {
 	echo should not have errored
 	cat OUT
@@ -1852,11 +1853,11 @@ cd "$HERE/backup"
 TRY=0
 while [ $TRY -lt 10 ] 
 do
-	if [ -f "$HERE/backup/src/SCCS/s.car.c" ]; then break; fi
+	if bk _test -f "$HERE/backup/src/SCCS/s.car.c"; then break; fi
 	sleep 1
 	TRY=`expr $TRY + 1`
 done
-if [ ! -f "$HERE/backup/src/SCCS/s.car.c" ]; then echo failed; exit 1; fi
+if bk _test ! -f "$HERE/backup/src/SCCS/s.car.c"; then echo failed; exit 1; fi
 echo OK
 
 echo $N Make sure we run triggers on a merge commit .................$NL

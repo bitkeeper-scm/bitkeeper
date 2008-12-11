@@ -36,5 +36,3 @@ bk undos X > ref.c
 cmp -s test.c ref.c
 if [ $? -ne 0 ]; then echo Failed; cat test.c; exit 1; fi
 echo OK
-rm -f ref.c test.c SCCS/s.test.c
-

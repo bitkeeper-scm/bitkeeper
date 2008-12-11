@@ -16,7 +16,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 bk edit $Q BitKeeper/etc/config
 echo 'compression:gzip' >> BitKeeper/etc/config
 bk ci $Q -yyy BitKeeper/etc/config
@@ -30,7 +30,7 @@ echo foo > 'F!O#O$ B%A^R&RR(R)RR'
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
-if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -yCset
@@ -42,7 +42,7 @@ echo $N Clone repository ............................................$NL
 cd "$HERE"
 bk clone $Q "$HERE/project" "$HERE/copy" || { echo failed; exit 1; }
 bk -r"$HERE/copy"  admin -Z 
-[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
@@ -258,8 +258,8 @@ bk mvdir src src2/src3
 bk commit $Q -ymvdir
 cd "$HERE/copy2"
 bk pull $Q -t "$HERE/project"
-if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
-if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
+if bk _test ! -f src2/src3/SCCS/s.bar.c; then echo failed; exit 1; fi
+if bk _test ! -f src2/src3/SCCS/s.h.h; then echo failed; exit 1; fi
 echo OK
 
 echo $N pull from read-only server should work fine .................$NL

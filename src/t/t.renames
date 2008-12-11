@@ -61,7 +61,7 @@ echo checkout:get >> BitKeeper/etc/config
 bk ci $Q -yy BitKeeper/etc/config
 bk commit $Q -yy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -72,7 +72,7 @@ echo 3 > 'c C#'
 echo 4 > D
 echo 5 > E
 bk ci $Q -i "A A" B 'c C#' D E
-if [ ! -f SCCS/s."A A" ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s."A A"; then echo failed to create history; exit 1; fi
 bk commit $S -y"This is a \"Change Set\""
 echo OK
 cores
@@ -95,7 +95,7 @@ bk new $Q no_conflicts
 bk commit $Q -ywhatever
 cd "$HERE/copy"
 bk pull -t $Q ../project
-if [ ! -f SCCS/s.no_conflicts ]
+if bk _test ! -f SCCS/s.no_conflicts
 then	echo failed to propogate no_conflicts; exit 1
 fi
 echo OK
@@ -114,7 +114,7 @@ bk pull -t $Q ../project
 # Rename the case orientation only, this test correctness on win32
 cd "$HERE/project"
 bk clean $Q no_conflicts
-mv SCCS/s.no_conflicts SCCS/s.tmp
+bk _mv SCCS/s.no_conflicts SCCS/s.tmp
 bk mv tmp no_Conflicts
 bk commit $Q -ywhatever2
 cd "$HERE/copy"
@@ -256,7 +256,7 @@ fi
 if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
 fi
-if [ -f copy/SCCS/s.REMOTE -o -f copy/REMOTE ]
+if bk _test -f copy/SCCS/s.REMOTE -o -f copy/REMOTE
 then	echo Should not have applied REMOTE
 	cat LOG
 	exit 1
@@ -638,12 +638,12 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
+if bk _test ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+if bk _test "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the copy file"
 then	echo bad data in deleted file; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.5" ]
@@ -672,13 +672,13 @@ then	echo Failed to leave old file in place
 	cat 'B%A!#$%^&)(-_+=];,'
 	exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
+if bk _test ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'
 then	echo Deleted file missing
 	cat OUT
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
+if bk _test "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the project file"
 then	echo bad data in deleted file, should be project; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.5" ]
@@ -900,7 +900,7 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
+if bk _test ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'
 then	echo Deleted file missing
 	cat OUT
 	bk _find .
@@ -973,7 +973,7 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.2" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
+if bk _test ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'
 then	echo Deleted file missing
 	bk _find .
 	exit 1
@@ -1439,28 +1439,28 @@ echo $N Clean the edit and try the first pass of resolve ............$NL
 bk unedit "A A"
 bk takepatch $Q -f PENDING/*
 bk resolve -t $Q -234
-if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]
+if bk _test -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
-if [ -f RESYNC/SCCS/m.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/m.1 ]
+if bk _test -f RESYNC/SCCS/m.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/m.1
 then	echo Failed to move renamed m.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run resolve to completion and make sure it moves A A to Z ...$NL
 bk resolve -t $Q
-if [ -f SCCS/s."A A" ]
+if bk _test -f SCCS/s."A A"
 then	echo failed to move "A A"; exit 1
 fi
-if [ ! -f SCCS/s.Z ]
+if bk _test ! -f SCCS/s.Z
 then	echo failed to create Z; exit 1
 fi
 echo OK
 echo $N Undo that last cset .........................................$NL
 bk undo -fqsr+
-if [ ! -f SCCS/s."A A" ]
+if bk _test ! -f SCCS/s."A A"
 then	echo failed to bring back s."A A"; exit 1
 fi
-if [ -f SCCS/s.Z ]
+if bk _test -f SCCS/s.Z
 then	echo failed to delete s.Z; exit 1
 fi
 if [ -f Z ]
@@ -1479,29 +1479,29 @@ echo same data >> "A A"
 bk ci $Q -y'change as A'
 bk commit $S -y'change as A'
 bk pull -R -t $Q "$HERE/project"
-if [ ! -f RESYNC/SCCS/r.Z ]
+if bk _test ! -f RESYNC/SCCS/r.Z
 then	echo failed to create conflict for Z; exit 1
 fi
 echo OK
 
 echo $N Run pass 1 of resolve and make sure m/r files move ..........$NL
 bk resolve -t $Q -234 
-if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]
+if bk _test -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
-if [ -f RESYNC/SCCS/m.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/m.1 ]
+if bk _test -f RESYNC/SCCS/m.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/m.1
 then	echo Failed to move renamed m.file to RENAMES; exit 1
 fi
-if [ -f RESYNC/SCCS/r.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/r.1 ]
+if bk _test -f RESYNC/SCCS/r.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/r.1
 then	echo Failed to move renamed r.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run pass 2 of resolve and make sure r file moves back .......$NL
 bk resolve -t $Q -134 
-if [ ! -f RESYNC/SCCS/s.Z ]
+if bk _test ! -f RESYNC/SCCS/s.Z
 then	echo Failed to move renamed s.file from RENAMES; exit 1
 fi
-if [ ! -f RESYNC/SCCS/r.Z ]
+if bk _test ! -f RESYNC/SCCS/r.Z
 then	echo Failed to move renamed r.file from RENAMES; exit 1
 fi
 echo OK

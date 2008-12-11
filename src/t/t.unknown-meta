@@ -19,12 +19,12 @@ echo data > GOOD
 bk ci $Q -l -i GOOD
 echo more data >> GOOD
 bk ci $Q -y GOOD
-perl -pe 's/^.cZ/c?/' < SCCS/s.GOOD | bk undos >  tmp
+bk _cat SCCS/s.GOOD | perl -pe 's/^.cZ/c?/' | bk undos >  tmp
 OLDSUM=`sed -n 1p  < tmp | sed 's/^.[hH]//'`
 #adjust checksum
 NEWSUM=`expr $OLDSUM - 27`
 perl -pe s/$OLDSUM\$/$NEWSUM/ < tmp  | bk undos > X
-bk undos X > SCCS/s.BAD
+bk _mv X SCCS/s.BAD
 echo $N Read access test.............................................$NL
 bk admin -h -q BAD 2>${DEV_NULL}
 if [ $? -ne 0 ]; then echo failed.; exit 1; fi

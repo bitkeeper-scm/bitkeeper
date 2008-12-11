@@ -82,19 +82,19 @@ echo OK
 
 echo $N Check synckeys error handling ...............................$NL
 cd "$HERE/project"
-mv SCCS/s.ChangeSet csetfile
+bk _mv SCCS/s.ChangeSet csetfile
 bk synckeys -lk ../copy 2>ERR
 rc=$?
-mv csetfile SCCS/s.ChangeSet
+bk _mv csetfile SCCS/s.ChangeSet
 test $rc = 0 && {
 	echo should have failed
 	cat ERR
 	exit 1
 }
-mv ../copy/SCCS/s.ChangeSet csetfile
+bk _mv ../copy/SCCS/s.ChangeSet csetfile
 bk synckeys -lk ../copy 2>ERR
 rc=$?
-mv csetfile ../copy/SCCS/s.ChangeSet
+bk _mv csetfile ../copy/SCCS/s.ChangeSet
 test $rc = 0 && {
 	echo should have failed
 	cat ERR

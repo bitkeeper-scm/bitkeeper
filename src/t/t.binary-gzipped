@@ -139,7 +139,7 @@ echo OK
 
 echo $N Make a gzipped file ascii ...................................$NL
 bk admin -Znone gzipped
-grep -q '^.f e 0$' SCCS/s.gzipped
+bk _cat SCCS/s.gzipped | grep -q '^.f e 0$'
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 
@@ -151,7 +151,7 @@ echo OK
 
 echo $N Make it gzipped again .......................................$NL
 bk admin -Z gzipped
-grep -q '^.f e 4$' SCCS/s.gzipped
+bk _cat SCCS/s.gzipped | grep -q '^.f e 4$'
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 echo OK
 

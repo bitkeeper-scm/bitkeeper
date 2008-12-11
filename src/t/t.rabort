@@ -15,7 +15,7 @@ unsetHttpProxy
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir BitKeeper/triggers
@@ -31,7 +31,7 @@ echo foo > 'F!O#O$ B%A^R&RR(R)RR'
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
-if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR'; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 20 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -yCset
@@ -48,7 +48,7 @@ rm -rf copy copy2
 P=`port 50000`
 bk bkd -q -p$P -ikill
 bk clone $Q "$HERE/project" bk://localhost:$P/"$HERE/copy"
-[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 cd "$HERE/copy"
 mkdir -p "$HERE/copy/RESYNC/src"
 mkdir -p "$HERE/copy/RESYNC/BitKeeper/tmp"
@@ -61,7 +61,7 @@ echo OK
 echo $N rabort via http:// ..........................................$NL
 cd "$HERE"
 bk clone $Q "$HERE/project" http://localhost:$P/"$HERE/copy2"
-[ -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+bk _test -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 cd "$HERE/copy2"
 mkdir -p "$HERE/copy2/RESYNC/src"
 mkdir -p "$HERE/copy2/RESYNC/BitKeeper/tmp"

@@ -330,7 +330,7 @@ bk clone mynewgcc3 mynewgcc4 > ERR 2>&1
 cd mynewgcc4 || exit 1
 rm -rf gdb
 bk populate -s./gdb ../mynewgcc > OUT 2>&1
-test -d gdb -a -f gdb/SCCS/s.ChangeSet || {
+bk _test -d gdb -a -f gdb/SCCS/s.ChangeSet || {
 	echo failed
 	cat OUT
 	exit 1

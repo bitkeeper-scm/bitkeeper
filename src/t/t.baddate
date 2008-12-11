@@ -15,7 +15,7 @@
 
 echo $N Make sure we can find keys with a date of 0 - 70/01/01 etc ..$NL
 commercial project
-bk base64 -d <<EOF > SCCS/s.Makefile
+bk base64 -d <<EOF > tmp
 AUgyODM1MwoBcyAwMDAwMC8wMDAwMC8wMDAwMAoBZCBEIDEuMSA3MC8wMS8wMSAw
 MDowMDowMCBGYWtlIDIgMQoBYyB3d3R0dHR0c3Nyb29vb29vb25ubm5tbW1sbGxr
 aWlpaGdmZWVlZWVlZWRkZGNjYmFhYWFhTUZDICAgICAgICAgIAoBY0YxCgFjSzI3
@@ -27,6 +27,7 @@ L2tlcm5lbC9NYWtlZmlsZQoBY08tcnctcnctci0tCgFjUjAwMDAwMDAwCgFjVjQK
 AWNYMHg4YjEKAWUKAXUKAVUKAWYgZSAwCgFmIHggMHg4YjEKAXQKAVQKAUkgMQoB
 RSAxCg==
 EOF
+bk _mv tmp SCCS/s.Makefile
 test `bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|19700101000000|00000|00000000"` = "Makefile|1.0" || {
 	echo failed to find the 1.0 delta
 	exit 1

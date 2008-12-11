@@ -16,7 +16,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -25,23 +25,24 @@ echo $N Create some data ............................................$NL
 echo 1 > A
 echo 2 > B
 bk ci $Q -i A B
-if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.A; then echo failed to create history; exit 1; fi
 bk commit $S -y"This is a \"Change Set\""
 echo OK
 
 echo $N Make sure zero sized z.locks are respected ..................$NL
 bk edit $Q A
-touch SCCS/z.A
+bk _touch SCCS/z.A
 bk delta $Q -y'should fail' A > /dev/null 2>&1
-if [ ! -f SCCS/z.A ]; then echo failed, removed zlock; exit 1; fi
+if bk _test ! -f SCCS/z.A; then echo failed, removed zlock; exit 1; fi
 if [ ! -w A ]; then echo failed, removed A; exit 1; fi
 echo OK
 
 echo $N Make sure stale zlocks are discarded ........................$NL
-bk mklock > SCCS/z.A 
+bk mklock > z.A
+bk _mv z.A SCCS/z.A 
 #bk delta $Q -y'should work' A > /dev/null 2>&1
 bk delta $Q -y'should work' A 
-if [ -f SCCS/z.A ]; then echo failed to remove zlock; exit 1; fi
+if bk _test -f SCCS/z.A; then echo failed to remove zlock; exit 1; fi
 if [ -f A ]; then echo failed to remove A; exit 1; fi
 echo OK
 
@@ -182,7 +183,7 @@ cd "$HERE"
 bk clone $Q project clone 2>/dev/null
 EXIT=$?
 if [ $EXIT != 0 ]; then echo failed with exit $EXIT; exit 1; fi
-if [ ! -d clone -o ! -f clone/SCCS/s.A ]; then echo clone failed; exit 1; fi
+if bk _test ! -d clone -o ! -f clone/SCCS/s.A; then echo clone failed; exit 1; fi
 if [ ! -f clone/BitKeeper/log/parent ]; then echo clone failed to set parent; exit 1; fi
 echo OK
 
@@ -192,7 +193,7 @@ cd "$HERE"
 bk clone $Q project clone2
 EXIT=$?
 if [ $EXIT != 0 ]; then echo failed with exit $EXIT; exit 1; fi
-if [ ! -d clone2 -o ! -f clone2/SCCS/s.A ]; then echo clone2 failed; exit 1; fi
+if bk _test ! -d clone2 -o ! -f clone2/SCCS/s.A; then echo clone2 failed; exit 1; fi
 if [ ! -f clone2/BitKeeper/log/parent ]; then echo clone2 failed to set parent; exit 1; fi
 echo OK
 

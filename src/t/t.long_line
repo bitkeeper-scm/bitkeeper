@@ -15,7 +15,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -37,7 +37,7 @@ bk undos long > long.sav
 cp long.sav long
 bk ci $Q -i long
 bk admin -Z long
-if [ ! -f SCCS/s.long ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.long; then echo failed to create history; exit 1; fi
 bk co $Q long
 cmp -s long long.sav
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -61,7 +61,7 @@ bk undos X > long1.ref
 cp long1 long1_1.1.sav
 bk ci $Q -i long1
 bk admin -Z long1
-if [ ! -f SCCS/s.long1 ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.long1; then echo failed to create history; exit 1; fi
 bk co $Q long1
 cmp -s long1 long1.ref
 if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
@@ -84,7 +84,7 @@ bk undos X > long2.ref
 bk ci $Q -i long2
 bk admin -Z long2
 bk admin -fRCS long2
-if [ ! -f SCCS/s.long2 ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.long2; then echo failed to create history; exit 1; fi
 bk co $Q long2
 cmp -s long2 long2.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -101,7 +101,7 @@ bk clone $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 echo $N Check propagation of delta w/ long line .....................$NL
 cd "$HERE/project/src"

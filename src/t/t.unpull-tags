@@ -95,7 +95,7 @@ ORIG=`_tagkeys SECOND | head -1`
 bk pull $Q -R
 { echo l; echo l; } | bk resolve $Q -t 2> ERR || exit 1
 cp BitKeeper/etc/csets-in save-csets-in
-cp SCCS/s.ChangeSet cs
+bk _cp SCCS/s.ChangeSet cs
 chmod +w cs
 bk unpull $Q -f
 FINAL=`_tagkeys SECOND | head -1`
@@ -107,13 +107,14 @@ test "$ORIG" = "$FINAL" || {
 }
 # Roll forward, both to test and to set up the next test
 bk takepatch -af BitKeeper/tmp/unpull.patch || exit 1
-checkfiles cs SCCS/s.ChangeSet
+bk _cp SCCS/s.ChangeSet csB
+checkfiles cs csB
 cp BitKeeper/etc/csets-in save-csets-in
 echo OK
 
 echo $N Make a local tag and see that unpull fails ..................$NL
 bk tag $Q NEWLOCALTIP
-cp SCCS/s.ChangeSet cs
+bk _cp SCCS/s.ChangeSet cs
 chmod +w cs
 bk unpull 2> ERR && {
 	echo Should have failed
@@ -124,5 +125,6 @@ grep -q "unpull: will not unpull because of a local tag" ERR || {
 	cat ERR
 	exit 1 
 }
-checkfiles cs SCCS/s.ChangeSet
+bk _cp SCCS/s.ChangeSet csB
+checkfiles cs csB
 echo OK

@@ -34,10 +34,10 @@ grep -q "Please answer yes or no" import.out && {
 	exit 1
 }
 cd "$HERE/project/src"
-test -f SCCS/s.foo.c || exit 1
+bk _test -f SCCS/s.foo.c || exit 1
 bk get $Q foo.c
 cmp -s foo.c "$HERE/import_dir/src/foo.c"
-test -f SCCS/s.boo.c || exit 1
+bk _test -f SCCS/s.boo.c || exit 1
 bk get $Q boo.c
 cmp boo.c "$HERE/import_dir/src/boo.c" || exit 1
 echo OK
@@ -244,7 +244,7 @@ bk get $Q -r+ -p foo > foo.now
 cmp -s foo.now foo.ref || { echo failed; exit 1; }
 rm -f foo.now foo.ref bar.ref
 if [ -f bar ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.foo ]; then echo failed to unlock foo; exit 1; fi
+if bk _test -f SCCS/p.foo; then echo failed to unlock foo; exit 1; fi
 echo OK
 
 rm -rf "$HERE/A" "$HERE/B" "$HERE/EDIT"/*.rej
@@ -368,13 +368,13 @@ trap 'echo some command failed to exit 0; cat "$HERE/import.out"' 0
 set -e
 ( echo plain; echo no ) | bk import import_dir symlink > import.out 2>&1
 cd "$HERE/symlink/src"
-test -f SCCS/s.foo.c
+bk _test -f SCCS/s.foo.c
 bk get $Q foo.c
 cmp -s foo.c "$HERE/import_dir/src/foo.c"
-test -f SCCS/s.boo.c
+bk _test -f SCCS/s.boo.c
 bk get $Q boo.c
 cmp -s boo.c "$HERE/import_dir/src/boo.c"
-test -f SCCS/s.link
+bk _test -f SCCS/s.link
 bk get $Q link
 cmp -s link "$HERE/import_dir/src/foo.c"
 echo OK
@@ -408,7 +408,7 @@ rm -f export2/src/foo.c
 bk diff -Nru export export2 > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd project
-if [ -f src/SCCS/s.foo ]
+if bk _test -f src/SCCS/s.foo
 then	echo Failed to remove file
 	exit 1
 fi

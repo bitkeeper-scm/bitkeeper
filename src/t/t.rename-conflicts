@@ -27,7 +27,7 @@ unset _BK_DEVELOPER
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
@@ -36,7 +36,7 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 bk commit $S -yCset 
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
@@ -70,12 +70,12 @@ then	echo failed to finish resolve
 	cat OUT
 	exit 1
 fi
-if [ ! -f SCCS/s.CONFLICT ]
+if bk _test ! -f SCCS/s.CONFLICT
 then	echo failed to move s.CONFLICT
 	cat OUT
 	exit 1
 fi
-if [ -f src/SCCS/s.foo.c ]
+if bk _test -f src/SCCS/s.foo.c
 then	echo failed to move src/SCCS/s.foo.c
 	cat OUT
 	exit 1
@@ -102,12 +102,12 @@ then	echo failed to finish resolve
 	cat OUT
 	exit 1
 fi
-if [ ! -f SCCS/s.CONFLICT ]
+if bk _test ! -f SCCS/s.CONFLICT
 then	echo failed to move s.CONFLICT
 	cat OUT
 	exit 1
 fi
-if [ -f src/SCCS/s.foo.c ]
+if bk _test -f src/SCCS/s.foo.c
 then	echo failed to move src/SCCS/s.foo.c
 	cat OUT
 	exit 1

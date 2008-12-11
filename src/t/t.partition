@@ -129,7 +129,7 @@ echo OK
 echo $N Test rollback without -X means src/a is there ...............$NL
 cd copy
 bk undo $Q -sfaROOT || exit 1
-test -f src/SCCS/s.a || {
+bk _test -f src/SCCS/s.a || {
 	echo not there
 	exit 1
 }
@@ -140,7 +140,7 @@ echo $N Test rollback with -X means src/a is not there ..............$NL
 bk partition $Q -X -Cmapfile project xcomps || exit 1
 cd xcomps
 bk undo $Q -sfaROOT || exit 1
-test -f src/SCCS/s.a && {
+bk _test -f src/SCCS/s.a && {
 	echo there
 	exit 1
 }

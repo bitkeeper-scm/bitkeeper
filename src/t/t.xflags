@@ -107,9 +107,11 @@ bk clone $Q -r1.1 . ../clone || exit 1
 cd ../clone
 bk pull $Q || exit 1
 bk admin -z
-cmp -s SCCS/s.xflags ../project/SCCS/s.xflags || {
+bk _cp SCCS/s.xflags A
+bk _cp ../project/SCCS/s.xflags B
+cmp -s A B || {
 	echo files differ
-	diff SCCS/s.xflags ../project/SCCS/s.xflags
+	diff A B
 	exit 1
 }
 bk xflags -s xflags || {
@@ -159,12 +161,15 @@ if [ X"$REV1" != X"$REV2" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Rip out all the flags, put them back, check it ..............$NL
-perl -ne 'print unless /^.cX/ || /^.f x /' SCCS/s.xflags | bk undos > SCCS/s.bad
+bk _cat SCCS/s.xflags | perl -ne 'print unless /^.cX/ || /^.f x /' | bk undos > s.bad
+bk _mv s.bad SCCS/s.bad
 bk admin -z 
 bk xflags bad
-cmp -s SCCS/s.xflags SCCS/s.bad || {
+bk _cp SCCS/s.xflags A
+bk _cp SCCS/s.bad B
+cmp -s A B || {
 	echo failed to restore flags properly
-	sdiff -w80 SCCS/s.xflags SCCS/s.bad
+	sdiff -w80 A B
 	exit 1
 }
 echo OK
@@ -214,7 +219,7 @@ do	echo $N Set flag $f and make sure it is only eoln .$NL
 done
 
 echo $N Make sure check is happy with EOLN_WINDOWS ..................$NL
-rm -f bad SCCS/s.bad
+bk _rm -f bad SCCS/s.bad
 echo foo > dos
 bk new $Q dos
 bk admin -fEOLN_WINDOWS dos

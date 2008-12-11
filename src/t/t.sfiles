@@ -22,10 +22,8 @@ touch s.foo
 touch bar/s.foo
 touch bar/blech/s.foo
 bk delta $Q -i foo s.foo bar/s.foo bar/blech/s.foo
-touch SCCS/c.gone
-touch "SCCS/c.gone${CFS}1.1"
-touch "SCCS/c.gone${CFS}1.2"
-touch bar/SCCS/c.s.foo
+bk _touch SCCS/c.gone "SCCS/c.gone${CFS}1.1" "SCCS/c.gone${CFS}1.2" \
+	bar/SCCS/c.s.foo
 trap '' 0
 set +e
 echo OK
@@ -139,7 +137,8 @@ echo OK
 bk commit $Q -yblah - <GOT
 bk co $Q -l s.foo bar/s.foo
 ls >> bar/s.foo
-echo hi > bar/SCCS/c.s.foo
+echo hi > c.s.foo
+bk _mv c.s.foo bar/SCCS/c.s.foo
 echo $N Check the list of changed files .............................$NL
 bk sfiles -c > GOT
 cat <<EOF > WANT
@@ -221,7 +220,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Check sfiles -vE ............................................$NL
-touch SCCS/JUNK
+bk _touch SCCS/JUNK
 sort <<EOF > WANT
 d------ .
 D------ BitKeeper
@@ -253,7 +252,7 @@ echo OK
 echo $N Check the list of clean, unlocked files .....................$NL
 bk ci $Q -l -yfoo bar/s.foo
 # We used to do this as a side-effect of a delta; no more.  Not our data.
-rm bar/SCCS/c.s.foo
+bk _rm bar/SCCS/c.s.foo
 ls -R >bar/s.foo
 bk ci $Q -mfoo-R bar/s.foo
 bk ci $Q -mblech s.foo
@@ -363,7 +362,7 @@ rm -rf foo
 echo OK
 
 echo $N Make sure garbage in SCCS dir behaves .......................$NL
-touch SCCS/OLD-s.foo
+bk _touch SCCS/OLD-s.foo
 bk sfiles -jx | sort > GOT
 sort <<EOF > WANT
 WANT
@@ -391,8 +390,8 @@ echo OK
 }
 
 echo $N Make sure sfiles GFILE lists SCCS/s.GFILE ...................$NL
-if [ -f s.foo ]; then exit 1; fi
-if [ ! -f SCCS/s.s.foo ]; then exit 1; fi
+if bk _test -f s.foo; then exit 1; fi
+if bk _test ! -f SCCS/s.s.foo; then exit 1; fi
 FOO="`bk sfiles s.foo`"
 if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
 echo OK
@@ -478,8 +477,8 @@ echo $N Test naive mode with s.files in odd places ..................$NL
 date > impostor
 bk ci $Q -i -m'boo!' impostor
 bk co $Q impostor
-mv SCCS/s.impostor s.impostor
-mv impostor SCCS/s.impostor
+bk _mv SCCS/s.impostor s.impostor
+bk _mv impostor SCCS/s.impostor
 bk sfiles | sort > GOT
 sort <<EOF > WANT
 BitKeeper/etc/SCCS/s.collapsed
@@ -543,9 +542,10 @@ fi
 
 echo $N Test sfile -cGjlnvxyp with s.file w no pathname .............$NL
 # create a s.file which has no pathname
-perl -ne 'print unless /^.cP/' SCCS/s.foo  | bk undos > SCCS/s.bad
+bk _cat SCCS/s.foo | perl -ne 'print unless /^.cP/' | bk undos > s.bad
+bk _mv s.bad SCCS/s.bad
 bk admin -z  SCCS/s.bad
-rm -f SCCS/?.impostor
+bk _rm -f SCCS/s.impostor SCCS/d.impostor
 bk sort +1 - > "$HERE/WANT" <<EOF
 j------ SCCS/OLD-s.foo
 j------ SCCS/JUNK
@@ -691,10 +691,8 @@ cd "$HERE/lmtest"
 mkdir DIR_WITH_SCCS
 mkdir DIR_WITH_NO_SCCS
 touch EXTRA1 EXTRA_WITH_COMMENTS DIR_WITH_NO_SCCS/EXTRA2 DIR_WITH_SCCS/EXTRA3
-touch SCCS/c.EXTRA_WITH_COMMENTS
 touch ignored.o
-touch SCCS/JUNK
-touch SCCS/c.NO_SFILE_NO_GFILE
+bk _touch SCCS/JUNK SCCS/c.NO_SFILE_NO_GFILE SCCS/c.EXTRA_WITH_COMMENTS
 cd DIR_WITH_SCCS
 touch NORMAL PENDING MODIFIED LOCKED UNLOCKED GOTTEN NAME MODIFIED_W_COMMENTS
 bk new $Q NORMAL PENDING MODIFIED LOCKED UNLOCKED GOTTEN NAME MODIFIED_W_COMMENTS
@@ -705,8 +703,9 @@ bk delta $Q -fywhatever PENDING
 echo foo > MODIFIED
 echo foo > MODIFIED_W_COMMENTS
 bk co $Q GOTTEN
-mv SCCS/s.NAME SCCS/s.WRONG_NAME
-echo comments > SCCS/c.MODIFIED_W_COMMENTS
+bk _mv SCCS/s.NAME SCCS/s.WRONG_NAME
+echo comments > c.MODIFIED_W_COMMENTS
+bk _mv c.MODIFIED_W_COMMENTS SCCS/c.MODIFIED_W_COMMENTS
 echo OK
 
 echo $N Test summary output .........................................$NL

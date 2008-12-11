@@ -15,7 +15,7 @@ unsetHttpProxy
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 bk sane 2> sane.out || { echo failed; cat sane.out; exit 1; }
@@ -35,13 +35,13 @@ do	dd if=$BK of=bk$i bs=1024000 count=2 >$DEV_NULL 2>&1
 done
 bk new $Q bk?
 bk commit $Q -ycset1
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 echo OK
 
 echo $N clone the workspace .........................................$NL
 bk clone $Q "$HERE/project" "$HERE/copy" || exit 1
 cd "$HERE/copy"
-if [ ! -f "BitKeeper/etc/SCCS/x.dfile" ]; then echo failed; exit 1; fi
+if bk _test ! -f "BitKeeper/etc/SCCS/x.dfile"; then echo failed; exit 1; fi
 P=`port 50000`
 bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
 echo OK
@@ -209,7 +209,7 @@ bk ci $Q -i woo.c || exit 1
 bk commit $Q -ycset1 || exit 1
 bk push $Q -z0 bk://localhost:$P || exit 1
 cd "$HERE/copy/src"
-if [ ! -f SCCS/s.woo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.woo.c; then echo failed; exit 1; fi
 bk lock -U "$HERE/copy"
 bk _kill bk://localhost:$P || exit 1
 echo OK
@@ -225,7 +225,7 @@ bk bkd -q -d -p$P -ikill
 bk lock -U "$HERE/copy"        # needed on Freebsd4
 cd "$HERE/copy/src"
 bk pull $Q -t -z0 bk://localhost:$P
-if [ ! -f SCCS/s.zoo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.zoo.c; then echo failed; exit 1; fi
 bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
 echo OK
@@ -240,7 +240,7 @@ P=`port 50000`
 bk bkd -q -d -p$P -ikill
 cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$P
-if [ ! -f SCCS/s.boo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.boo.c; then echo failed; exit 1; fi
 bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
 echo OK
@@ -267,7 +267,7 @@ bk ci $Q -i aoo.c
 bk commit $Q -ycset1
 bk push $Q -z6 bk://localhost:$P
 cd "$HERE/copy/src"
-if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.aoo.c; then echo failed; exit 1; fi
 bk lock -U "$HERE/copy"
 bk _kill bk://localhost:$P || exit 1
 echo OK
@@ -279,7 +279,7 @@ bk bkd -q -d -p$P -ikill
 bk clone $Q bk://localhost:$P "$HERE/copy2"
 if [ -f BitKeeper/tmp/clone.sfio ]; then echo failed; exit 1; fi
 cd "$HERE/copy2/src"
-if [ ! -f SCCS/s.aoo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.aoo.c; then echo failed; exit 1; fi
 bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
 echo OK
@@ -294,7 +294,7 @@ P=`port 50000`
 bk bkd -q -d -p$P -xcd -xpush -ikill 
 cd "$HERE/copy/src"
 bk pull -t $Q bk://localhost:$P
-if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/s.coo.c; then echo failed; exit 1; fi
 bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
 echo OK

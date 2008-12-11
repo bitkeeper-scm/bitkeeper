@@ -16,7 +16,7 @@ commercial project
 echo $N Make sure delta -i works ....................................$NL
 echo hi there > init
 bk delta $S -i init
-if [ ! -f SCCS/s.init ]; then echo Failed to create s.file; exit 1; fi
+if bk _test ! -f SCCS/s.init; then echo Failed to create s.file; exit 1; fi
 test -f init && {
 	echo failed to remove file
 	exit 1
@@ -25,7 +25,8 @@ echo OK
 
 echo $N Make sure delta -i works with a c.file ......................$NL
 echo hi there > comments
-echo BitKeeper rocks > SCCS/c.comments
+echo BitKeeper rocks > c.comments
+bk _mv c.comments SCCS/c.comments
 echo u | bk delta $S -i comments > OUT 2>&1
 test "BitKeeper rocks" = "`bk prs -hr+ -nd:C: comments`" || {
 	echo failed
@@ -40,18 +41,18 @@ bk delta -i init 2> delta.out
 if [ $? -eq 0 ]; then echo Failed; exit 1; fi
 grep -q "s.init already exists" delta.out
 if [ $? -ne 0 ]; then echo Failed; exit 1; fi
-if [ -f SCCS/z.init ]; then echo Failed, fail to clean zlock; exit 1; fi
+if bk _test -f SCCS/z.init; then echo Failed, fail to clean zlock; exit 1; fi
 rm -f init
 echo OK
 
 echo $N Make sure delta -l works ....................................$NL
-cp SCCS/s.init SCCS/s.T
-X=`wc -c < SCCS/s.T`
+bk _cp SCCS/s.init SCCS/s.T
+X=`bk _cat SCCS/s.T | wc -c`
 bk get $S -e T
 if writable T; then :; else echo Get failed to get file writeable; exit 1; fi
 bk delta $S -fly T
-if [ "`wc -c < SCCS/s.T`" = "$X" ]; then echo Failed to create delta; exit 1; fi
-if [ ! -f SCCS/p.T ]; then echo Failed to leave file locked; exit 1; fi
+if [ "`bk _cat SCCS/s.T | wc -c`" = "$X" ]; then echo Failed to create delta; exit 1; fi
+if bk _test ! -f SCCS/p.T; then echo Failed to leave file locked; exit 1; fi
 if [ ! -f T ]; then echo Failed to get file; exit 1; fi
 if writable T; then :; else echo Failed to leave file writeable; exit 1; fi
 echo OK
@@ -59,12 +60,12 @@ echo OK
 echo $N Make sure delta -il works ...................................$NL
 echo delta -il > init2
 bk delta $S -il init2
-if [ ! -f SCCS/s.init2 ]; then echo failed to create file; exit 1; fi
-if [ ! -f SCCS/p.init2 ]; then echo failed to lock file; exit 1; fi
+if bk _test ! -f SCCS/s.init2; then echo failed to create file; exit 1; fi
+if bk _test ! -f SCCS/p.init2; then echo failed to lock file; exit 1; fi
 bk clean init2
 echo OK
 
-rm -f SCCS/p.T T
+bk _rm T SCCS/p.T
 echo $N Make sure delta -I works with good file .....................$NL
 cat > INITX <<EOF
 D 1.1 97/05/28 23:49:57 joe_user@joes_hostname 0 0 0/0/0
@@ -75,9 +76,9 @@ EOF
 ls > init_test
 bk delta $Q -i -IINITX init_test
 if [ $? != 0 ]; then echo Failed - delta returned an error; exit 1; fi
-grep -q '^.c This is revision 1.1$' SCCS/s.init_test
+bk _cat SCCS/s.init_test | grep -q '^.c This is revision 1.1$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
-grep -q '^.cPthis/is/the/pathname$' SCCS/s.init_test
+bk _cat SCCS/s.init_test | grep -q '^.cPthis/is/the/pathname$'
 if [ $? -ne 0 ]; then echo Failed to add path; exit 1; fi
 echo OK
 
@@ -105,11 +106,11 @@ c This is the line after the blank line.
 EOF
 bk delta $Q -IINITX init_test
 if [ $? != 0 ]; then echo Failed - delta returned an error; exit 1; fi
-grep -q '^.c This is revision 1.2$' SCCS/s.init_test
+bk _cat SCCS/s.init_test | grep -q '^.c This is revision 1.2$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
-grep -q '^.c $' SCCS/s.init_test
+bk _cat SCCS/s.init_test | grep -q '^.c $'
 if [ $? -ne 0 ]; then echo Failed to add blank comment line.; exit 1; fi
-grep -q '^.c This is the line after the blank line.$' SCCS/s.init_test
+bk _cat SCCS/s.init_test | grep -q '^.c This is the line after the blank line.$'
 if [ $? -ne 0 ]; then echo Failed to add last line in comment; exit 1; fi
 echo OK
 
@@ -123,7 +124,7 @@ echo $N Make sure delta prompts for comments ........................$NL
 rm -f T
 bk get $S -e T
 echo "I am the comment" | bk delta $S -f T 2> ${DEV_NULL}
-grep -q '^.c I am the comment$' SCCS/s.T
+bk _cat SCCS/s.T | grep -q '^.c I am the comment$'
 if [ $? -ne 0 ]; then echo Failed to add comment; exit 1; fi
 echo OK
 
@@ -132,13 +133,13 @@ bk get $S -e T
 bk get $S -e init
 (echo "first comment"; echo ".";
 echo "second comment"; echo ".") | bk delta $S -fY 2>${DEV_NULL}
-grep -q '^.c first comment$' SCCS/s.T
+bk _cat SCCS/s.T | grep -q '^.c first comment$'
 if [ $? -ne 0 ]; then echo Failed to add first comment to T; exit 1; fi
-grep -q '^.c first comment$' SCCS/s.init
+bk _cat SCCS/s.init | grep -q '^.c first comment$'
 if [ $? -ne 0 ]; then echo Failed to add first comment to init; exit 1; fi
-grep -q '^.c second comment$' SCCS/s.T
+bk _cat SCCS/s.T | grep -q '^.c second comment$'
 if [ $? -eq 0 ]; then echo Added unwanted second comment to T; exit 1; fi
-grep -q '^.c second comment$' SCCS/s.init
+bk _cat SCCS/s.init | grep -q '^.c second comment$'
 if [ $? -eq 0 ]; then echo Added unwanted second comment to init; exit 1; fi
 echo OK
 
@@ -209,17 +210,19 @@ fi #--------------------------------------------------------------------
 echo $N Make sure delta -i does not check in ........................$NL
 mkdir garbage; cd garbage; touch a b c d e s.c s.f
 bk delta $Q -i
-if [ -d "SCCS" ]; then	echo failed - it did check stuff in; exit 1; fi
+if bk _test -d "SCCS"; then	echo failed - it did check stuff in; exit 1; fi
 echo OK
 
 echo $N Make sure ci -i does not check in ...........................$NL
 bk ci $Q -i
-if [ -d "SCCS" ]; then	echo failed - it did check stuff in; exit 1; fi
+if bk _test -d "SCCS"; then	echo failed - it did check stuff in; exit 1; fi
 echo OK
 
 echo $N Make sure delta -i a b c d does check in ....................$NL
 bk delta $Q -i a b c d e
-if [ ! -d "SCCS" ]; then	echo failed; exit 1; fi
+list=`bk gfiles`
+list=`echo $list`
+if [ "$list" != "a b c d e" ]; then	echo failed; exit 1; fi
 echo OK
 
 if [ $PLATFORM = "WIN32" ]
@@ -249,7 +252,7 @@ export BK_USER BK_HOST
 cd "$HERE/project"
 echo hi > hi.c
 bk ci $Q -i hi.c
-if [ -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.hi.c; then echo failed; exit 1; fi
 bk edit $Q BitKeeper/etc/config
 cp BitKeeper/etc/config config.sav
 bk co $Q -l hi.c
@@ -262,7 +265,7 @@ do
 	echo hello > hi.c
 	bk delta $Q -fyhello hi.c
 	if [ $? -ne 0 ]; then echo failed; exit 1; fi
-	if [ ! -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
+	if bk _test ! -f SCCS/p.hi.c; then echo failed; exit 1; fi
 	if [ ! -f hi.c ]; then echo failed; exit 1; fi
 	writable hi.c || { echo failed; exit 1; }
 done
@@ -275,7 +278,7 @@ echo lo > lo.c
 chmod -w lo.c
 bk ci $Q -i lo.c
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-if [ ! -f SCCS/p.lo.c ]; then echo failed; exit 1; fi
+if bk _test ! -f SCCS/p.lo.c; then echo failed; exit 1; fi
 if [ ! -f lo.c ]; then echo failed; exit 1; fi
 writable lo.c || { echo failed; exit 1; }
 echo OK
@@ -287,10 +290,10 @@ echo mid > mid.c
 echo low > low.c
 bk sfiles -x mid.c low.c | bk ci $Q -i -
 if [ ! -f mid.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.mid.c; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
 if [ ! -f low.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.low.c ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.low.c; then echo failed; exit 1; fi
 if writable low.c; then echo failed; exit 1; fi
 echo OK
 
@@ -300,10 +303,10 @@ echo mid2 > mid.c
 echo low2 > low.c
 bk sfiles -c mid.c low.c | bk ci $Q -ynew -
 if [ ! -f mid.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.mid.c; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
 if [ ! -f low.c ]; then echo failed; exit 1; fi
-if [ -f SCCS/p.low.c ]; then echo failed; exit 1; fi
+if bk _test -f SCCS/p.low.c; then echo failed; exit 1; fi
 if writable low.c; then echo failed; exit 1; fi
 echo OK
 
@@ -320,7 +323,7 @@ test -f mid.c -a -f low.c || {
 	echo failed to leave the files
 	exit 1
 }
-test -f SCCS/p.mid.c -a -f SCCS/p.low.c || {
+bk _test -f SCCS/p.mid.c -a -f SCCS/p.low.c || {
 	echo failed to leave the p.files
 	exit 1
 }
@@ -329,9 +332,11 @@ test -w mid.c -a -w low.c || {
 	exit 1
 }
 # We should have set the mtime back on the s.file
-test "X`find . -newer mid.c | grep ./SCCS/s.mid.c`" = X || {
+gdate=`bk _stat mid.c | awk -F\| '{ print $10 }'`
+sdate=`bk _stat SCCS/s.mid.c | awk -F\| '{ print $10 }'`
+test $gdate -ge $sdate || {
 	echo failed
-	ls -l mid.c SCCS/s.mid.c
+	ls -l mid.c SCCS/s.mid.c*
 	exit 1
 }
 cp config.sav BitKeeper/etc/config
@@ -500,8 +505,9 @@ echo OK
 echo $N Check that bad p.file revisions are caught and fixed ........$NL
 cd "$HERE/project"
 bk edit $Q init3
-mv SCCS/p.init3 P
-sed s/1.2/1.1/ < P > SCCS/p.init3
+bk _mv SCCS/p.init3 P
+sed s/1.2/1.1/ < P > tmp
+bk _mv tmp SCCS/p.init3
 bk delta $Q -fybad init3 > OUT 2>&1 || exit 1
 grep -q 'invalid nextrev 1.1 in p.file, using 1.2 instead' OUT || {
 	echo bad error message
@@ -520,10 +526,11 @@ cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
- ) > SCCS/c.init3
-cp SCCS/c.init3 C
+ ) > c.init3
+bk _mv c.init3 SCCS/c.init3
+bk _cp SCCS/c.init3 C
 bk delta -fqc init3 > OUT 2>&1 < /dev/null || { cat OUT; exit 1; }
-test -f SCCS/p.init3 && {
+bk _test -f SCCS/p.init3 && {
 	echo failed to delta
 	exit 1
 }
@@ -534,7 +541,7 @@ cmp -s C C2 || {
 	diff C C2
 	exit 1
 }
-test -f SCCS/c.init3 && {
+bk _test -f SCCS/c.init3 && {
 	echo failed to clean up the c.file
 	exit 1
 }
@@ -550,16 +557,17 @@ cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
- ) > SCCS/c.init3
-cp SCCS/c.init3 C
+ ) > tmp
+bk _mv tmp SCCS/c.init3
+bk _cp SCCS/c.init3 C
 echo a | bk delta $Q -f init3 > OUT 2>&1
-test -f SCCS/c.init3 || {
+bk _test -f SCCS/c.init3 || {
 	echo deleted c.file
 	exit 1
 }
-grep -q 'And a second line' SCCS/c.init3 || {
+bk _cat SCCS/c.init3 | grep -q 'And a second line' || {
 	echo screwed up contents
-	cat SCCS/c.init3
+	bk _cat SCCS/c.init3
 	exit 1
 }
 echo OK
@@ -569,10 +577,11 @@ cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
- ) > SCCS/c.init3
-cp SCCS/c.init3 C
+ ) > tmp
+bk _mv tmp SCCS/c.init3
+bk _cp SCCS/c.init3 C
 echo u | bk delta $Q -f init3 > OUT 2>&1 || exit 1
-test -f SCCS/p.init3 && {
+bk _test -f SCCS/p.init3 && {
 	echo failed to delta
 	exit 1
 }
@@ -583,7 +592,7 @@ cmp -s C C2 || {
 	diff C C2
 	exit 1
 }
-test -f SCCS/c.init3 && {
+bk _test -f SCCS/c.init3 && {
 	echo failed to clean up the c.file
 	exit 1
 }
@@ -752,13 +761,13 @@ echo $N Check that read-only new files on stdin are flagged .........$NL
 touch bnew
 chmod 444 bnew
 echo bnew | bk ci -a -ynew - 2>ERR || {
-	echo should not fail
-	cat ERR
-	exit 1
+       echo should not fail
+       cat ERR
+       exit 1
 }
 grep -q "ci: bnew: no write permission" ERR || {
-	echo wrong err
-	cat ERR
-	exit 1
+       echo wrong err
+       cat ERR
+       exit 1
 }
 echo OK

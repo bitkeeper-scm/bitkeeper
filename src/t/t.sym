@@ -18,7 +18,7 @@ echo $N Create initial repository with a tagged cset ................$NL
 commercial project
 echo foo > foo.c
 bk ci $Q -i foo.c 
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 bk commit $S -yCset -SCSET
 bk get $S -p ChangeSet > TOT
 bk get $S -prCSET ChangeSet > SYM
@@ -31,13 +31,13 @@ fi
 echo OK
 echo $N Make sure added tags do not get zapped as removed deltas ....$NL
 bk tag -q FOOBAR
-grep -q '^.d R ' SCCS/s.ChangeSet || {
+bk _cat SCCS/s.ChangeSet | grep -q '^.d R ' || {
 	echo failed to add tag
-	cat SCCS/s.ChangeSet
+	bk _cat SCCS/s.ChangeSet
 	exit 1
 }
 bk -r admin -z
-grep -q '^.d R ' SCCS/s.ChangeSet || {
+bk _cat SCCS/s.ChangeSet | grep -q '^.d R ' || {
 	echo admin -z removed tag
 	exit 1
 }

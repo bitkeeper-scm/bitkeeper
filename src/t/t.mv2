@@ -33,7 +33,7 @@ cd bar
 date > xyz
 bk new $Q xyz
 bk mv SCCS foo > OUT 2>&1
-test -d SCCS || {
+bk _test -d SCCS || {
 	echo should not have moved the SCCS directory
 	find .
 	exit 1
@@ -47,7 +47,7 @@ echo OK
 echo $N Make sure that SCCS is not a valid destination ..............$NL
 cd ..
 bk mv bar/xyz SCCS > OUT 2>&1
-test -f SCCS/s.xyz && {
+bk _test -f SCCS/s.xyz && {
 	echo should not have moved the file
 	find .
 	exit 1
@@ -62,7 +62,7 @@ echo $N Make sure that bar/SCCS is not a valid destination ..........$NL
 date > abc
 bk new $Q abc
 bk mv abc bar/SCCS > OUT 2>&1
-test -f bar/SCCS/s.abc && {
+bk _test -f bar/SCCS/s.abc && {
 	echo should not have moved the file
 	find .
 	exit 1

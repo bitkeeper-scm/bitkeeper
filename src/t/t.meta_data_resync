@@ -26,7 +26,7 @@ echo "keyword:sccs,expand1" >> "$HERE/c"
 bk setup -a -f -c"$HERE/c" project
 cd project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -38,7 +38,7 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 echo OK
 
 echo $N Check pending ...............................................$NL
@@ -59,7 +59,7 @@ bk clone $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 echo OK
 
 echo $N Check propagation of permission .............................$NL
@@ -69,8 +69,11 @@ bk commit $S -yperm1
 cd "$HERE/copy"
 bk pull -t $Q "$HERE/project"
 cd "$HERE/copy/src"
-diff "$HERE/project/src/SCCS/s.foo.c"  "$HERE/copy/src/SCCS/s.foo.c"
+bk _cp "$HERE/project/src/SCCS/s.foo.c" A
+bk _cp "$HERE/copy/src/SCCS/s.foo.c" B
+diff A B
 if [ $? -ne 0 ]; then echo failed to propagate permissions; exit 1; fi
+rm -f A B
 echo OK
 
 echo $N Check permission conflict ...................................$NL
@@ -101,25 +104,33 @@ cd "$HERE/project/src"
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
 bk commit $Q -yabc
 # save a copy of SCCS/s.bar.c for the rollback test
-cp SCCS/s.bar.c "$HERE/ref"
+bk _cp SCCS/s.bar.c "$HERE/ref"
 cd "$HERE/copy/src"
 bk pull -t $Q "$HERE/project"
-diff "$HERE/project/src/SCCS/s.bar.c"  "$HERE/copy/src/SCCS/s.bar.c"
+bk _cp "$HERE/project/src/SCCS/s.bar.c" A
+bk _cp "$HERE/copy/src/SCCS/s.bar.c" B
+diff A B
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+rm -f A B
 cd "$HERE/project/src"
 bk admin $Q -FRCS -FYEAR4 bar.c
 bk commit $Q -yabc
 cd "$HERE/copy/src"
 bk pull -t $Q "$HERE/project"
-diff "$HERE/project/src/SCCS/s.bar.c"  "$HERE/copy/src/SCCS/s.bar.c"
+bk _cp "$HERE/project/src/SCCS/s.bar.c" A
+bk _cp "$HERE/copy/src/SCCS/s.bar.c" B
+diff A B
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+rm -f A B
 echo OK
 
 echo $N Check rollback of flags .....................................$NL
 bk clone $Q -r1.5 "$HERE/copy" "$HERE/copy2"
 cd "$HERE/copy2/src"
-diff "$HERE/copy2/src/SCCS/s.bar.c"  "$HERE/ref"
+bk _cp "$HERE/copy2/src/SCCS/s.bar.c" A
+diff A "$HERE/ref"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+rm A
 echo OK
 
 echo $N Check propagation of flags \& permission .....................$NL
@@ -128,8 +139,11 @@ bk admin $Q -fRCS -m-rwxr--r-- bar.c
 bk commit $Q -yabc
 cd "$HERE/copy/src"
 bk pull -t $Q "$HERE/project"
-diff "$HERE/project/src/SCCS/s.bar.c"  "$HERE/copy/src/SCCS/s.bar.c"
+bk _cp "$HERE/project/src/SCCS/s.bar.c" A
+bk _cp "$HERE/copy/src/SCCS/s.bar.c" B
+diff A B
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+rm -f A B
 echo OK
 
 echo $N Check propagation of text field .............................$NL
@@ -140,15 +154,21 @@ bk admin -ttext h.h
 bk commit $Q -yabc
 cd "$HERE/copy/src"
 bk pull -t $Q "$HERE/project"
-diff "$HERE/project/src/SCCS/s.h.h"  "$HERE/copy/src/SCCS/s.h.h"
+bk _cp "$HERE/project/src/SCCS/s.h.h" A
+bk _cp "$HERE/copy/src/SCCS/s.h.h" B
+diff A B
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+rm -f A B
 cd "$HERE/project/src"
 bk admin -T h.h
 bk commit $Q -yabc
 cd "$HERE/copy/src"
 bk pull -t $Q "$HERE/project"
-diff "$HERE/project/src/SCCS/s.h.h"  "$HERE/copy/src/SCCS/s.h.h"
+bk _cp "$HERE/project/src/SCCS/s.h.h" A
+bk _cp "$HERE/copy/src/SCCS/s.h.h" B
+diff A B
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+rm -f A B
 echo OK
 
 echo $N Check propagation of text, flags \& permission ...............$NL
@@ -157,7 +177,9 @@ bk admin -ttext -fYEAR4 -m-rwx-w--w- h.h
 bk commit $Q -yabc
 cd "$HERE/copy/src"
 bk pull -t $Q "$HERE/project"
-diff "$HERE/project/src/SCCS/s.h.h"  "$HERE/copy/src/SCCS/s.h.h"
+bk _cp "$HERE/project/src/SCCS/s.h.h" A
+bk _cp "$HERE/copy/src/SCCS/s.h.h" B
+diff A B
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk prs -r+ -h -d':MODE:\n$each(:FD:){(:FD:)\n}' h.h > CMP1
 cat > X <<EOF

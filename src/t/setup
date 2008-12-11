@@ -34,7 +34,7 @@ cores()
 
 # Note: [ -w file ] always succeeds when you are root.
 writable() {
-	[ -w "$1" ] || return 1
+	bk _test -w "$1" || return 1
 	return 0
 }
 
@@ -105,7 +105,7 @@ _make_repo() {
 	)
 
 	# Make a cached copy
-        (cd "$REPO" && find . -type f | perl -e '
+        (cd "$REPO" && bk _find . -type f | perl -e '
 		# Input is a file name per line
 		# Output is a sorted file list so that sfiles are always
 		# before gfiles And files in same directory are "near"
@@ -150,9 +150,11 @@ _make_repo() {
 _get_cached_repo() {
 	mkdir "$1" || exit 1
 	cd "$1" || exit 1
+	mkdir -p BitKeeper/etc
 	bk sfio -qm -i < "$2"
 	mkdir -p BitKeeper/tmp		# because sfio does not copy dir
-	mkdir -p BitKeeper/deleted/SCCS
+	bk _mkdir BitKeeper/deleted
+	bk _mkdir BitKeeper/deleted/SCCS
 	bk _eula -a
 }
 

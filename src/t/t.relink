@@ -16,7 +16,7 @@
 echo $N Create initial repositories .................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 cd ..
 bk clone -q project clone || exit 1
 bk clone -q project clone2 || exit 1
@@ -132,8 +132,8 @@ echo OK
 echo $N Make sure that no args means relink to the parent ...........$NL
 cd "$HERE/clone"
 bk -r admin -z
-MINE=`/bin/ls -li SCCS/s.ChangeSet | awk '{print $1}'`
-PARENT=`/bin/ls -li "$HERE/project/SCCS/s.ChangeSet" | awk '{print $1}'`
+MINE=`bk _stat SCCS/s.ChangeSet | awk -F\| '{print $2}'`
+PARENT=`bk _stat "$HERE/project/SCCS/s.ChangeSet" | awk -F\| '{print $2}'`
 bk relink 2>OUT || exit 1
 grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 	echo Bad status message
@@ -143,8 +143,8 @@ grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
 echo OK
 
 echo $N Make sure that no args means use the parent inode ...........$NL
-INO=`/bin/ls -li SCCS/s.ChangeSet | awk '{print $1}'`
-test $MINE -eq $INO && {
+INO=`bk _stat SCCS/s.ChangeSet | awk -F\| '{print $2}'`
+test $MINE = $INO && {
 	echo failed
 	exit 1
 }

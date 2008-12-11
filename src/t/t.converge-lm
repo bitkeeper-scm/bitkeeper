@@ -41,7 +41,7 @@ test `bk sfiles -p | wc -l` -eq 0 || {
 	bk sfiles -p
 	exit 1
 }
-test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
+bk _test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
 echo OK
 
 echo $N Clone, add user content, resync, check copies ...............$NL
@@ -54,7 +54,7 @@ bk commit $Q -yuser-content
 cd ../project
 bk pull -R $Q ../copy
 cd RESYNC || exit 1
-test -f BitKeeper/etc/SCCS/s.ignore && { echo Copied ignore; exit 1; }
+bk _test -f BitKeeper/etc/SCCS/s.ignore && { echo Copied ignore; exit 1; }
 cd ..
 bk abort -f
 echo OK
@@ -66,7 +66,7 @@ bk commit $Q -ydate
 bk pull -R $Q ../copy
 cores
 cd RESYNC || exit 1
-test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
+bk _test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
 cd ..
 bk abort -f
 echo OK
@@ -92,7 +92,7 @@ do
     bk commit $Q -y'config test'
     cd "$HERE/project"
     bk pull -R $Q ../copy
-    test -f RESYNC/BitKeeper/etc/$file && {
+    bk _test -f RESYNC/BitKeeper/etc/$file && {
 	    # Could be OK, maybe BK checked it out
 	    bk get -qkp ../copy/BitKeeper/etc/$file > C
 	    cmp -s C RESYNC/BitKeeper/etc/$file || {
@@ -100,7 +100,7 @@ do
 		    exit 1
 	    }
     }
-    test -f RESYNC/BitKeeper/etc/SCCS/s.$file || {
+    bk _test -f RESYNC/BitKeeper/etc/SCCS/s.$file || {
 	    echo failed to update $file file
 	    exit 1
     }
@@ -167,12 +167,14 @@ bk gone $Q copy55
 echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
 JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/gone`
 J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/gone`
-mv BitKeeper/etc/SCCS/s.gone OLD
-perl -pe "s|$JUNK BBB/|$DATE BBB/|" < OLD | bk undos > BitKeeper/etc/SCCS/s.gone
+bk _mv BitKeeper/etc/SCCS/s.gone OLD
+perl -pe "s|$JUNK BBB/|$DATE BBB/|" < OLD | bk undos > tmp
+bk _mv tmp BitKeeper/etc/SCCS/s.gone
 bk admin -z BitKeeper/etc/gone
-mv SCCS/s.ChangeSet OLD2
+bk _mv SCCS/s.ChangeSet OLD2
 sed "s?BitKeeper/etc/gone|$J_UTC?BitKeeper/etc/gone|$UTC?" < OLD2 >  X
-bk undos X > SCCS/s.ChangeSet
+bk undos X > tmp
+bk _mv tmp SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk checksum -f ChangeSet 2> /dev/null
 bk -r check -a || exit 1
@@ -199,7 +201,8 @@ if [ "$KEY" != AAA ]
 then	echo failed to use older key
 	exit 1
 fi
-KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/deleted/SCCS/s.*`
+SFILE=`bk sfiles BitKeeper/deleted`
+KEY=`bk -R prs -hr1.0 '-d:USER:\n' $SFILE`
 if [ "$KEY" != BBB ]
 then	echo failed to delete younger key
 	exit 1
@@ -216,7 +219,7 @@ test -d RESYNC && {
 	echo failed to use existing gone, left RESYNC
 	exit 1
 }
-test -f BitKeeper/etc/SCCS/s.gone || {
+bk _test -f BitKeeper/etc/SCCS/s.gone || {
 	echo failed to restore gone
 	exit 1
 }
@@ -226,7 +229,8 @@ then	echo failed to use older key, got $KEY
 	bk -R prs -nd:USER: BitKeeper/etc/gone
 	exit 1
 fi
-KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/deleted/SCCS/s.*`
+SFILE=`bk sfiles BitKeeper/deleted`
+KEY=`bk -R prs -hr1.0 '-d:USER:\n' $SFILE`
 if [ "$KEY" != BBB ]
 then	echo failed to delete younger key
 	exit 1
@@ -243,9 +247,8 @@ echo $N Force cset derived root key, clone ..........................$NL
 BK_USER=user
 BK_HOST=bk_regression.host.bk
 cd BitKeeper/etc
-perl -ne 's,cPChangeSet,cPBitKeeper/etc/gone,; print unless /^.cC$/ || /^.cS/ || /^.cX/ || /^.f x 0x/;' \
-    < ../../SCCS/s.ChangeSet | bk undos > X
-mv X SCCS/s.gone
+bk _cat ../../SCCS/s.ChangeSet | perl -ne 's,cPChangeSet,cPBitKeeper/etc/gone,; print unless /^.cC$/ || /^.cS/ || /^.cX/ || /^.f x 0x/;' | bk undos > X
+bk _mv X SCCS/s.gone
 bk admin -z gone
 bk stripdel $Q -r1.0.. gone
 bk gone $Q project44
@@ -318,7 +321,7 @@ bk gone $Q project34
 BK_USER=jane
 BK_HOST=kick.dork.bk_regression.bk
 echo y | bk commit -yjane $Q > /dev/null 2>&1
-test -f BitKeeper/etc/SCCS/s.gone || exit 1
+bk _test -f BitKeeper/etc/SCCS/s.gone || exit 1
 test `bk sfiles -p | wc -l` -eq 0 || {
 	echo failed to commit all files
 	bk sfiles -p
@@ -329,7 +332,7 @@ BK_USER=joe
 BK_HOST=blow.dork.bk_regression.bk
 bk gone $Q copy34
 echo y | bk commit -yjoe $Q > /dev/null 2>&1
-test -f BitKeeper/etc/SCCS/s.gone || exit 1
+bk _test -f BitKeeper/etc/SCCS/s.gone || exit 1
 test `bk sfiles -p | wc -l` -eq 0 || {
 	echo failed to commit all files
 	bk sfiles -p

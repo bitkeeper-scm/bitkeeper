@@ -21,7 +21,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -52,8 +52,8 @@ echo OK
 echo $N corrupt the idcache, should rebuild .........................$NL
 cd "$HERE/project"
 echo "hi mom" > X
-cat X BitKeeper/etc/SCCS/x.id_cache > Y
-mv Y BitKeeper/etc/SCCS/x.id_cache
+bk _cat X BitKeeper/etc/SCCS/x.id_cache > Y
+bk _mv Y BitKeeper/etc/SCCS/x.id_cache
 cd "$HERE/project/src"
 bk -r check -a 2>OUT || exit 1
 grep -q 'Rebuilding idcache' OUT || {
@@ -67,9 +67,9 @@ bk sane
 echo $N No write permission on idcache ..............................$NL
 cd "$HERE/project"
 echo "hi mom" > X
-cat X BitKeeper/etc/SCCS/x.id_cache > Y
-cp Y BitKeeper/etc/SCCS/x.id_cache
-chmod -w "$HERE/project/BitKeeper/etc/SCCS/x.id_cache"
+bk _cat X BitKeeper/etc/SCCS/x.id_cache > Y
+chmod -w Y
+bk _mv Y BitKeeper/etc/SCCS/x.id_cache
 cd "$HERE/project/src"
 bk -r check -a 2>OUT || exit 1
 grep -q 'Rebuilding idcache' OUT || {
@@ -77,9 +77,9 @@ grep -q 'Rebuilding idcache' OUT || {
 	cat OUT
 	exit 1
 }
-grep 'hi mom' "$HERE/project/BitKeeper/etc/SCCS/x.id_cache" && {
+bk _cat "$HERE/project/BitKeeper/etc/SCCS/x.id_cache" | grep 'hi mom'  && {
 	echo failed to rewrite cache
-	cat "`bk root`"/BitKeeper/etc/SCCS/x.id_cache
+	bk _cat "`bk root`"/BitKeeper/etc/SCCS/x.id_cache
 	exit 1
 }
 echo OK
@@ -87,17 +87,18 @@ echo OK
 echo $N No write permission on BitKeeper/etc/SCCS ...................$NL
 cd "$HERE/project"
 echo "hi mom" > X
-cat X BitKeeper/etc/SCCS/x.id_cache > Y
-cp Y BitKeeper/etc/SCCS/x.id_cache
-chmod -w "$HERE/project/BitKeeper/etc/SCCS"
+bk _cat X BitKeeper/etc/SCCS/x.id_cache > Y
+bk _cp Y BitKeeper/etc/SCCS/x.id_cache
+oldmode=`bk _stat "$HERE"/project/BitKeeper/etc/SCCS | awk -F\| '{ print substr($3, 3) }'`
+bk _chmod 555 "$HERE/project/BitKeeper/etc/SCCS"
 cd "$HERE/project/src"
 bk -r check -a 2>OUT && {
-	chmod +w "`bk root`"/BitKeeper/etc/SCCS
+	bk _chmod $oldmode "$HERE/project/BitKeeper/etc/SCCS"
 	echo failed to error about write permission
 	cat OUT
 	exit 1
 }
-chmod +w "$HERE/project/BitKeeper/etc/SCCS"
+bk _chmod $oldmode "$HERE/project/BitKeeper/etc/SCCS"
 grep -q 'no write permission' OUT || {
 	echo Bad error message
 	cat OUT
@@ -127,7 +128,7 @@ cd "$HERE/project"
 echo catch me > duplicate
 bk new $Q duplicate
 bk commit $Q -ywhatever
-cp SCCS/s.duplicate "$HERE/clone/SCCS/s.catch_me"
+bk _cp SCCS/s.duplicate "$HERE/clone/SCCS/s.catch_me"
 cd ../clone
 BK_CONFIG=partial_check:off! bk pull >OUT 2>&1 && {
 	echo failed to exit non zero

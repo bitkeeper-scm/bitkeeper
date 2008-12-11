@@ -12,8 +12,9 @@ bk commit $Q -y2 || exit 1
 
 mv nest old
 commercial nest
-mkdir -p nest/SCCS
-mv ../old/SCCS/s.foo nest/SCCS
+mkdir nest
+bk _mkdir nest/SCCS
+bk _mv ../old/SCCS/s.foo nest/SCCS/s.foo
 bk admin -D nest/foo || exit 1
 bk sfiles -P > /dev/null
 bk mv nest/foo foo || exit 1

@@ -39,7 +39,7 @@ cd ../proj
 bk unedit $Q foo5 || exit 1
 bk pull -R $Q ../copy || exit 1
 cd RESYNC
-mv SCCS/s.foo5 ../../FOO5 || exit 1
+bk _mv SCCS/s.foo5 ../../FOO5 || exit 1
 bk -r check -R 2>ERR && {
 	echo check -R should have failed
 	exit 1
@@ -54,7 +54,7 @@ grep -q "Missing file.*foo5" ERR || exit 1
 echo OK
 
 echo $N Make sure resolve fails if RESYNC is missing deltas .........$NL
-mv ../FOO5 RESYNC/SCCS/s.foo5
+bk _mv ../FOO5 RESYNC/SCCS/s.foo5
 cd RESYNC
 bk stripdel $Q -Cr+ foo5 || exit 1
 bk -r check -R 2>ERR && {

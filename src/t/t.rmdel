@@ -61,20 +61,20 @@ if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N Check rmdel TOT .............................................$NL
 bk rmdel -r1.5 FILE
-grep -q "^.d R 1.5" SCCS/s.FILE || {
+bk _cat SCCS/s.FILE | grep -q "^.d R 1.5" || {
 	echo "No removed delta"; exit 1
 }
-grep -q "^.d D 1.5" SCCS/s.FILE && {
+bk _cat SCCS/s.FILE | grep -q "^.d D 1.5" && {
 	echo "Should have removed delta"; exit 1
 }
 echo OK
 echo $N Check rmdel TOB .............................................$NL
 bk undos X > CMP1
 bk rmdel -r1.3.1.2 FILE
-grep -q "^.d R 1.3.1.2" SCCS/s.FILE || {
+bk _cat SCCS/s.FILE | grep -q "^.d R 1.3.1.2" || {
 	echo "No removed delta"; exit 1
 }
-grep -q "^.d D 1.3.1.2" SCCS/s.FILE && {
+bk _cat SCCS/s.FILE | grep -q "^.d D 1.3.1.2" && {
 	echo "Should have removed delta"; exit 1
 }
 echo OK
@@ -95,7 +95,7 @@ bk clone $Q project clone
 if [ ! -d clone ]; then echo failed to make top level directory; exit 1; fi
 cd clone
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
 echo OK
 echo $N Make sure committed deltas can not be rmdel-ed ..............$NL
@@ -118,9 +118,9 @@ if cmp -s save check
 then	echo failed to propagate remove data
 	exit 1
 fi
-if grep -q RMDEL SCCS/s.foo.c
+if bk _cat SCCS/s.foo.c | grep -q RMDEL
 then	echo Failed to remove data from the body of the s.file
-	cat SCCS/s.foo.c
+	bk _cat SCCS/s.foo.c
 	exit 1
 fi
 echo OK

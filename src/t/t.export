@@ -15,7 +15,7 @@
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
@@ -38,7 +38,7 @@ echo OK
 echo $N Create 3rd changeset in which we bk rm foo.c ................$NL
 bk rm foo.c
 bk commit $S -y'rm foo.c'
-if [ -f SCCS/s.foo.c ]
+if bk _test -f SCCS/s.foo.c
 then	echo failed to remove foo.c; exit 1
 fi
 echo OK
@@ -53,10 +53,10 @@ echo OK
 echo $N Create 4th changeset in which we bk rm bar.c ................$NL
 bk rm bar.c
 bk commit $S -y'rm bar.c'
-if [ -f SCCS/s.bar.c ]
+if bk _test -f SCCS/s.bar.c
 then	echo failed to remove bar.c; exit 1
 fi
-if [ -f SCCS/s..del-bar.c ]
+if bk _test -f SCCS/s..del-bar.c
 then	echo failed to remove bar.c into deleted dir; exit 1
 fi
 echo OK
