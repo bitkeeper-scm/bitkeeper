@@ -31,7 +31,7 @@ private	void	load_project(char *dir);
 private	void	free_project(void);
 private void	load_ignore(project *p);
 private	void	ignore_file(char *file);
-private	void	print_components(void);
+private	void	print_components(char *frompath);
 
 typedef struct {
 	u32	Aflg:1;			/* -pA: show all pending deltas */
@@ -127,7 +127,8 @@ fastprint(char *file, struct stat *sb, void *data)
 	    streq(file + len - strlen(CHANGESET) - 1, "/" CHANGESET)) {
 		/* pick out subcomponents */
 		file[len - strlen(CHANGESET) - 1] = 0;
-		components = addLine(components, strdup(file));
+		assert(prodproj);
+		components = addLine(components, proj_relpath(prodproj, file));
 	} else {
 		puts(file);
 	}
@@ -151,7 +152,7 @@ sfiles_main(int ac, char **av)
 		opts.sfiles = 1;
 		walksfiles(".", fastprint, 0);
 		load_project(".");
-		print_components();
+		print_components(0);
 		free_project();
 		return (0);
 	}
@@ -262,6 +263,7 @@ usage:				system("bk help -s sfiles");
 		/* flag running at the root of repo */
 		opts.atRoot = isdir(BKROOT);
 		walk(path);
+		print_components(0);
 	} else if (streq("-", av[optind])) {
 		setmode(0, _O_TEXT); /* read file list in text mode */
 		while (fnext(buf, stdin)) {
@@ -270,6 +272,7 @@ usage:				system("bk help -s sfiles");
 			path = buf;
                         if (isdir(path)) {
 				walk(path);
+				print_components(path);
 			} else {
 				/*
 				 * Kind of hokey but we load the proj based on
@@ -290,6 +293,7 @@ usage:				system("bk help -s sfiles");
                         if (isdir(av[i])) {
                                 path = av[i];
                                 walk(path);
+				print_components(path);
                         } else {
                                 path = av[i];
 				unless (proj) {
@@ -301,7 +305,6 @@ usage:				system("bk help -s sfiles");
                         }
                 }
 	}
-	print_components();
 	if (opts.out != stdout) fclose(opts.out);
 	if (opts.progress) progress(2);
 	free_project();
@@ -1589,49 +1592,61 @@ usage:			fprintf(stderr, "usage: _sfiles_clone [-L]\n");
 }
 
 private void
-print_components(void)
+print_components(char *path)
 {
 	project	*comp;
 	int	i, cwd_len;
-	char	*gfile, *freeme, *p, *cwd;
+	char	*p, *cwd;
 	STATE	state;
 	char	buf[MAXPATH];
+	char	frompath[MAXPATH];
+	char	gfile[MAXPATH];
 
-	if (opts.skip_comps) return;
-	unless (proj && (proj == prodproj)) return;
+	if (opts.skip_comps) goto done;
+	unless (proj && (proj == prodproj)) goto done;
 	unless (opts.out) opts.out = stdout;
 
-	cwd = proj_cwd();
+	if (path) {
+		strcpy(frompath, fullname(path));
+		cwd = frompath;
+	} else {
+		cwd = proj_cwd();
+	}
 	cwd_len = strlen(cwd);
 	components = file2Lines(components,
 	    proj_fullpath(prodproj, "BitKeeper/log/deep-nests"));
 	uniqLines(components, free);
 	EACH (components) {
-		gfile = proj_fullpath(prodproj, components[i]);
-		unless (pathneq(gfile, cwd, cwd_len)) continue;
-		gfile += cwd_len + 1;
+		p = proj_fullpath(prodproj, components[i]);
+		unless (pathneq(p, cwd, cwd_len)) continue;
+		p += cwd_len + 1;
+		if (path) {
+			sprintf(gfile, "%s/%s", path, p);
+		} else {
+			strcpy(gfile, p);
+		}
 		concat_path(buf, gfile, CHANGESET);
 		unless (exists(buf)) continue;
-		// XXX
+		/*
+		 * XXX: might this return 0?
+		 * might it return a different comp if there
+		 * is a cset file  but no repo?
+		 */
 		comp = proj_init(gfile);
 		strcpy(state, "       ");
 		state[TSTATE] = 's';
 		if (proj_isComponent(comp)) {
 			if (opts.pending) {
-				freeme = aprintf("%s/SCCS/s.ChangeSet", gfile);
-				p = strrchr(freeme, '/');
+				p = strrchr(buf, '/');
 				p[1] = 'd';
-				if (exists(freeme)) {
+				if (exists(buf)) {
 					state[PSTATE] = 'p';
-					free(freeme);
-					freeme = aprintf("%s/ChangeSet", gfile);
-					chk_pending(0, freeme, state, 0, 0);
-					free(freeme);
+					sprintf(buf, "%s/ChangeSet", gfile);
+					chk_pending(0, buf, state, 0, 0);
 					proj_free(comp);
 					continue;
 				}
-				free(freeme);
-				freeme = 0;
+				p[1] = 's';
 			}
 			if (opts.names) {
 				unless (patheq(components[i],
@@ -1642,10 +1657,13 @@ print_components(void)
 		} else {
 			state[TSTATE] = 'x';
 		}
-		gfile = aprintf("%s/%sChangeSet", gfile,
-		    ((state[TSTATE] == 'x') && !opts.gfile) ? "SCCS/s." : "");
-		do_print(state, gfile, 0);
-		free(gfile);
+		unless ((state[TSTATE] == 'x') && !opts.gfile) {
+			sprintf(buf, "%s/ChangeSet", gfile);
+		}
+		do_print(state, buf, 0);
 		proj_free(comp);
 	}
+done:
+	freeLines(components, free);
+	components = 0;
 }

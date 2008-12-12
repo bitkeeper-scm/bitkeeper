@@ -72,9 +72,6 @@ grep -q "^gcc$" BitKeeper/log/deep-nests && {
 echo OK
 
 echo $N Check that sfiles does not list deep nests always ...........$NL
-bk sfiles foobar > GOT
-echo gcc/nm/SCCS/s.ChangeSet > WANT
-# fix test if this fails
-checkfiles WANT GOT
-# else ..
-echo "failed (bug )"
+bk sfiles foobar > OUT || exit 1
+test -s OUT && exit 1
+echo OK
