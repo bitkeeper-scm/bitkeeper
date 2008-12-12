@@ -109,6 +109,14 @@ EOF
 cmpfiles OUT WANT
 echo OK
 
+echo $N Project level changes -vv ...................................$NL
+bk -P changes -vv -r+ > OUT || exit 1
+grep -q "1.1/gcc/local1" OUT || {
+	echo wrong diff header
+	cat OUT
+	exit 1
+}
+echo OK
 
 echo $N Demonstrate XML output w extended dspec-syntax ..............$NL
 bk -P changes -v -d'

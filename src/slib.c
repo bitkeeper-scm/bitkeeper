@@ -13453,7 +13453,7 @@ getHistoricPath(sccs *s, char *rev)
 
 	d = sccs_findrev(s, rev);
 	if (d && d->pathname) {
-		return (strdup(d->pathname));
+		return (sccs_prsbuf(s, d, PRS_FORCE, ":DPN:"));
 	} else {
 		return (proj_relpath(s->proj, s->gfile));
 	}
