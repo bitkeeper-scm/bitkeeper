@@ -1747,7 +1747,7 @@ bam_convert_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*p;
-	int	c, i, j, n;
+	int	c, i, j, n, bam_size;
 	int	matched = 0, errors = 0;
 	FILE	*in, *out, *sfiles;
 	char	buf[MAXKEY * 2];
@@ -1784,8 +1784,10 @@ bam_convert_main(int ac, char **av)
 		proj_reset(0);
 	}
 	sfiles = popen("bk sfiles", "r");
+	bam_size = proj_configsize(0, "BAM");
 	while (fnext(buf, sfiles)) {
 		chomp(buf);
+		if (size(buf) < bam_size) continue;
 		unless (s = sccs_init(buf, 0)) continue;
 		unless (HASGRAPH(s)) {
 			sccs_free(s);
@@ -1901,11 +1903,17 @@ uu2bp(sccs *s)
 	 * Use the initial size to determine whether we convert or not.
 	 * It's idempotent and if we guess wrong they can bk rm the file
 	 * and start a new history.
+	 * 2008-11-08 lm added override for nested testing.
 	 */
-	if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
-	sz = size(s->gfile);
-	unlink(s->gfile);
-	if (sz < proj_configsize(s->proj, "BAM")) goto out;
+	if ((t = getenv("_BK_BAM_HISTSIZE")) && (size(s->sfile) > atoi(t))) {
+		/* nothing */
+		;
+	} else {
+		if (sccs_get(s, "1.1", 0, 0, 0, SILENT, "-")) return (8);
+		sz = size(s->gfile);
+		unlink(s->gfile);
+		if (sz < proj_configsize(s->proj, "BAM")) goto out;
+	}
 
 	if ((s->encoding & E_COMP) == E_GZIP) sccs_unzip(s);
 	fprintf(stderr, "Converting %s ", s->gfile);

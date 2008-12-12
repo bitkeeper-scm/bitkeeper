@@ -255,6 +255,7 @@ main(int ac, char **av, char **env)
 				usage();
 			}
 		}
+		if (streq(prog, "check") && getenv("_BK_NO_CHECK")) return (0);
 
 		/* -'?VAR=val&BK_CHDIR=dir' */
 		if (envargs) {

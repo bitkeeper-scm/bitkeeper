@@ -306,10 +306,6 @@ _partition() {
 		    | bk undos -n | bk crypto -hX - | cut -c1-16`
 		verbose "### Removing unwanted files"
 		bk csetprune $QUIET -aSk"$RAND" - < $WA/gonelist || exit 1
-	else	RAND=`echo "no gonelist" | cat BitKeeper/log/ROOTKEY - \
-		    | bk undos -n | bk crypto -hX - | cut -c1-16`
-		verbose "### Newrooting product"
-		bk newroot $QUIET -k"$RAND" || exit 1
 	fi
 
 	# If there is no gone or ignore file, add one
