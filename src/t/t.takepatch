@@ -33,6 +33,30 @@ cd project
 bk makepatch $Q -d -r1.2..+ > "$HERE/patch" || exit 1
 cd "$HERE/clone1"
 bk lease flush -a
+bk takepatch $Q < "$HERE/patch" || exit 1
+test -d RESYNC -a -d PENDING || exit 1
+rm -fr RESYNC PENDING
+# Non writable directory
+BK_PATCHDIR=//usr/bin/junk bk takepatch $Q < "$HERE/patch" 2> ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}			 
+grep -q "takepatch: problems with BK_PATCHDIR=//usr/bin/junk" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+test -d RESYNC && exit 1
+rm -fr RESYNC PENDING
+test -d "$HERE/tmp" && exit 1
+BK_PATCHDIR="$HERE/tmp" bk takepatch $Q < "$HERE/patch" || exit 1
+test -d "$HERE/tmp" || exit 1
+test -d RESYNC -a -d PENDING || exit 1
+rm -fr RESYNC PENDING
+echo OK
+
+echo $N Test basic takepatch -a .....................................$NL
 bk takepatch $Q -a < "$HERE/patch" || exit 1
 bk changes -aqL > c1 || exit 1
 test -s c1 && {
