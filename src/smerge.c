@@ -98,6 +98,14 @@ smerge_main(int ac, char **av)
 	if (p = getenv("SMERGE_EMULATE_BUGS")) {
 		emubugs = atoi(p);
 	}
+	/* A "just in case" hook to disable one or more of the merge
+	 * heuristics.  We can add a BK_MERGE_ENABLE in the future if
+	 * needed.
+	 */
+	if (p = getenv("BK_MERGE_DISABLE")) {
+		enable_mergefcns(p, 0);
+	}
+	if (getenv("BK_MERGE_DIFF3")) do_diff3 = 1;
 
 	mode = MODE_3WAY;
 	while ((c = getopt(ac, av, "234A;a;defghI;l;npr;R;s")) != -1) {
@@ -163,6 +171,17 @@ smerge_main(int ac, char **av)
 	if (fdiff && mode == MODE_3WAY) mode = MODE_GCA;
 	file = av[optind];
 	revs[GCA] = find_gca(file, revs[LEFT], revs[RIGHT]);
+
+	/*
+	 * Disable the merge_content heuristic if the merge GCA is a
+	 * set node and not a single rev.  We have had cases of
+	 * merging two merges that resolve a conflict different just
+	 * deleting everything as a result of this code.  See testcase
+	 * in same cset.
+	 */
+	if (strchr(revs[GCA], '+') || strchr(revs[GCA], '-')) {
+		enable_mergefcns("3", 0);
+	}
 
 	for (i = 0; i < 3; i++) {
 		if (file_init(file, revs[i], anno, &body[i])) {
@@ -950,26 +969,30 @@ do_diff_merge(void)
  *
  * The numbers used below, once shipped, must always mean the same thing.
  * If you evolve this code, use new numbers.
+ *
+ * Currently all functions are enabled by default, we use -1 to mean that
+ * it is enabled, but hasn't been override by the command line.  It gets
+ * set to 1 if a function is explicitly enabled.
  */
 struct mergefcns {
 	char	*name;		/* "name" of function for commandline */
-	int	enable;		/* is this function enabled by default? */
+	int	enable;		/* is this function enabled */
 	int	(*fcn)(conflct *r);
 	char	*help;
 } mergefcns[] = {
-	{"1",	1, merge_same_changes,
+	{"1",	-1, merge_same_changes,
 	"Merge identical changes made by both sides"},
-	{"2",	1, merge_only_one,
+	{"2",	-1, merge_only_one,
 	"Merge when only one side changes"},
-	{"3",	1, merge_content,
+	{"3",	-1, merge_content,
 	"Merge adjacent non-overlapping modifications on both sides"},
-	{"4",	1, merge_common_header,
+	{"4",	-1, merge_common_header,
 	"Merge identical changes at the start of a conflict"},
-	{"7",	1, merge_added_oneside,
+	{"7",	-1, merge_added_oneside,
 	"Split one side add from conflict"},
-	{"5",	1, merge_common_footer,
+	{"5",	-1, merge_common_footer,
 	"Merge identical changes at the end of a conflict"},
-	{"6",	1, merge_common_deletes,
+	{"6",	-1, merge_common_deletes,
 	"Merge identical deletions made by both sides"},
 };
 #define	N_MERGEFCNS (sizeof(mergefcns)/sizeof(struct mergefcns))
