@@ -42,6 +42,7 @@ sccs_rmName(sccs *s)
 	int	try = 0;
 	delta	*d;
 	char	*root;
+	char	*suffix;
 
 	b = basenm(s->sfile);
 	b += 2;
@@ -60,21 +61,21 @@ sccs_rmName(sccs *s)
 	*t++ = '/';
 	d = sccs_ino(s);
 	if (d->random) {
-		r = d->random;
+		/* random =~ s/:/-/g;  fix win32 BAM keys with : in them */
+		suffix = strdup(d->random);
+		while (r = strchr(suffix, ':')) *r = '-';
 	} else {
-		char	buf[50];
-
-		sprintf(buf, "%05u", d->sum);
-		r = buf;
+		suffix = aprintf("%05u", d->sum);
 	}
 	for (try = 0; ; try++) {
 		if (try) {
-			sprintf(t, "s..del-%s~%s~%d", b, r, try);
+			sprintf(t, "s..del-%s~%s~%d", b, suffix, try);
 		} else {
-			sprintf(t, "s..del-%s~%s", b, r);
+			sprintf(t, "s..del-%s~%s", b, suffix);
 		}
 		unless (exists(path)) break;
 	}
+	free(suffix);
 	return (strdup(path));
 }
 
