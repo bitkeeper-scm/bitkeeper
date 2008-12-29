@@ -301,6 +301,7 @@ sendbug
 set
 setup
 sfiles
+_sfiles_bam
 sfio remote
 shrink
 sinfo

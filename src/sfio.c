@@ -29,6 +29,16 @@
  * 	l - local - do not recurse to any BAM servers; typical usage is
  * 		when bk havekeys does -l then sfio wants -l
  * 	r - use \r to terminate output trace - XXX: no padding to erase
+ *
+ * When calling this for a remote BAM server, the command line should
+ * look like this:
+ *     # fetching data
+ *     bk -q@URL -Lr -zo0 -Bstdin sfio -oBq [-l] - < keylist > sfio
+ *     (read lock, compress keys not data, buffer input)
+ *
+ *	# sending data
+ *	bk -q@URL -Lw -z0 sfio -iBq - < sfio
+ *	(write lock, no compression)
  */
 #include "system.h"
 #ifdef SFIO_STANDALONE
@@ -243,7 +253,7 @@ sfio_out(void)
 				return (SFIO_LSTAT);
 			}
 		}
-		byte_count += printf("%04d%s", strlen(buf), buf);
+		byte_count += printf("%04d%s", (int)strlen(buf), buf);
 		if (opts->hardlinks) {
 			sprintf(ln, "%x %x", (u32)sb.st_dev, (u32)sb.st_ino);
 			unless (hash_insertStr(links, ln, buf)) {
@@ -439,7 +449,7 @@ out_bptuple(char *keys, off_t *byte_count)
 		perror(path);
 		return (SFIO_LSTAT);
 	}
-	*byte_count += printf("%04d%s", strlen(keys), keys);
+	*byte_count += printf("%04d%s", (int)strlen(keys), keys);
 	unless (hash_insertStr(opts->sent, path, keys)) {
 		n = out_hardlink(path, &sb, byte_count, opts->sent->vptr);
 	} else {
@@ -475,7 +485,7 @@ err:		send_eof(SFIO_LOOKUP);
 	/*
 	 * XXX - this will fail miserably on loops or locks.
 	 */
-	p = aprintf("bk -q@'%s' -Lr -Bstdin sfio -qoB - < '%s'",
+	p = aprintf("bk -q@'%s' -Lr -Bstdin -zo0 sfio -qoB - < '%s'",
 	    bp_serverURL(), tmpf);
 	f = popen(p, "r");
 	free(p);

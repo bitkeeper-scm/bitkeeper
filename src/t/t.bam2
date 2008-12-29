@@ -65,7 +65,7 @@ echo OK
 echo $N "Verify that bk clone fails if it can't find the bp server ...$NL"
 cd "$HERE"/pmaster
 bk clone $Q . ../gone || exit 1
-bk bam server $Q ../gone || exit 1
+bk bam server $Q -f ../gone || exit 1
 rm -rf ../gone
 cd ..
 bk clone $Q pmaster pcopy2 2> ERR && exit 1
@@ -84,18 +84,78 @@ bk clone $Q pmaster pjunk || exit 1
 cd pjunk
 test -d BitKeeper/BAM && exit 1
 # remove my BAM server	
-bk bam server $Q -r || exit 1
+bk bam server $Q -sr || exit 1
 bk -Ur get $Q 2>ERR && {
 	echo should have failed
 	exit 1
 }
 grep -q "failed to fetch BAM data" ERR || exit 1
+echo OK
+
+echo $N Verify that bam server -r with no server works ..............$NL
+bk bam server -r || exit 1
+echo OK
+
+echo $N Verify that check see missing with server as dot ............$NL
+bk -r check -ac 2> CHECK1 && exit 1
+bk bam server $Q . || exit 1
+bk -r check -ac 2> CHECK2 && exit 1
+grep -q "Failed to locate BAM data for the following deltas:" CHECK1 || exit 1
+cmpfiles CHECK1 CHECK2
+echo OK
+
+echo $N Reset BAM server currently set to dot .......................$NL
+bk bam server -r 2> ERR && exit 1
+grep -q "bk bam server -f -r" ERR || exit 1
+bk bam server -f -r || exit 1
+echo OK
+
+echo $N Verify that bk bam server -r fetches missing data ...........$NL
+bk bam server $Q -f ../pmaster || exit 1
+bk bam server $Q -r || exit 1
+bk bam check -F $Q || exit 1
+echo OK
+
+echo $N Switch to a new bam server and see data transfer ............$NL
 cd ..
-rm -rf pjunk
-cd pcopy
+bk clone $Q pmaster pjunk2 || exit 1
+test -d pjunk2/BitKeeper/BAM && exit 1
+cd pjunk
+bk bam server $Q ../pmaster || exit 1
+bk bam push $Q || exit 1
+bk bam clean $Q -a || exit 1
+bk bam server $Q ../pjunk2 || exit 1
+bk bam check -F $Q || exit 1
+test `echo ../pjunk2/BitKeeper/BAM/*/*.d1 | wc -l` -eq 1 || exit 1
+echo OK
+
+echo $N Try switch bam server when you can\'t reach the old server ...$NL
+bk bam push $Q || exit 1      # push data to sever
+bk bam clean $Q -a || exit 1     # remove it locally
+# break server link (manually, bam server won't let you)
+cat <<EOF > BitKeeper/log/BAM_SERVER
+bk://badhost.example.com/dev
+20080718141848-07:00|work.bitmover.com|/home/bk/projects/dev/newdev|rick|ob0p
+EOF
+bk bam check -F $Q 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+bk bam server $Q ../pjunk 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q "unable to fetch data from old server" ERR || {
+	echo wrong error
+	cat ERR
+	exit 1
+}
 echo OK
 
 echo $N Set up a remote fetch of a file to a -G file ................$NL
+cd "$HERE"/pcopy
 rm -fr BitKeeper/BAM
 bk get $Q -G "pcopy data" bin.data || {
 	echo get failed

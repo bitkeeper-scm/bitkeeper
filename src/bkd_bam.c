@@ -11,6 +11,11 @@ private FILE	*server(int recurse);
  * Currently only -B (for BAM) is implemented.
  * With -B, if the key is a 4 tuple, ignore the first one, that's the size,
  * but send it back so we can calculate the total amount to be sent.
+ *
+ * When calling this for a remote BAM server, the command line should
+ * look like this:
+ *     bk -q@URL -Lr -Bstdin havekeys -B [-l] -
+ *  (read lock, compress both ways, buffer input)
  */
 int
 havekeys_main(int ac, char **av)
@@ -115,7 +120,7 @@ int
 bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 {
 	FILE	*f;
-	int	i, bytes, rc = 1;
+	int	i, bytes, rc = 1, err;
 	u64	sfio;
 	char	*p;
 	char	cmd_file[MAXPATH];
@@ -157,20 +162,26 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 
 	f = 0;
 	buf[0] = 0;
-	while (fnext(buf, r->rf) && strneq(buf, "@STDOUT=", 8)) {
+	while (fnext(buf, r->rf) &&
+	    (strneq(buf, "@STDERR=", 8) || strneq(buf, "@STDOUT=", 8))) {
+		err = (buf[4] == 'E'); /* to stderr? */
 		bytes = atoi(&buf[8]);
 		if (bytes == 0) break;
 		while (bytes > 0) {
 			i = min(sizeof(buf), bytes);
 			if  ((i = fread(buf, 1, i, r->rf)) <= 0) break;
-			unless (f) {
-				p = aprintf("bk sfio -ir%sBb%s -",
-				    quiet ? "q":"", psize(sfio));
-				f = popen(p, "w");
-				free(p);
-				assert(f);
+			if (err) {
+				fwrite(buf, 1, i, stderr);
+			} else {
+				unless (f) {
+					p = aprintf("bk sfio -ir%sBb%s -",
+					    quiet ? "q":"", psize(sfio));
+					f = popen(p, "w");
+					free(p);
+					assert(f);
+				}
+				fwrite(buf, 1, i, f);
 			}
-			fwrite(buf, 1, i, f);
 			bytes -= i;
 		}
 	}

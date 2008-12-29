@@ -26,7 +26,7 @@ bk bam \- BAM utility routines
 .ARG dir
 .br
 .B bk bam server
-.[B] \-lrq
+.[B] \-flqrs
 .[ARG] URL
 .SH DESCRIPTION
 \*(BK Binary Asset Management (BAM) is a licensed subfeature that provides
@@ -125,7 +125,21 @@ set the BAM server from which BAM data will be fetched.
 If the
 .Q \-r
 option is set then the current server URL is deleted.
-.\" also -l list -q quiet
+When the BAM server is changed, this command will automatically query the
+new server and transfer any BAM data it is missing from the old BAM
+server.
+This query and transfer may be suppressed with the
+.Q \-s
+option.
+Use the
+.Q \-f
+option to force changing or removing the BAM server setting if the
+repository is currently defined as a BAM server.
+The
+.Q \-l option causes the existing BAM server URL to be printed for
+scripts.
+And
+.Q \-q can be used to supress status messages when the URL is changed.
 .SH SEE ALSO
 .SA Howto-BAM
 .SH CATEGORY

@@ -455,7 +455,7 @@ bp_fetch(sccs *s, delta *din)
 	/*
 	 * No recursion, we're already remoted.
 	 * No stdin buffering, it's just one key.
-	 */ 
+	 */
 	cmd =
 	    aprintf("bk -q@'%s' -zo0 -Lr sfio -oqBl - |bk -R sfio -iqB -", url);
 	f = popen(cmd, "w");
@@ -919,9 +919,12 @@ bam_pull_main(int ac, char **av)
 	}
 
 	unless (dash) {
+		/* find all BAM files */
+		cmds = addLine(cmds, strdup("bk _sfiles_bam"));
+
 		/* list of all BAM deltas */
 		cmds = addLine(cmds,
-		    aprintf("bk changes -Bv -nd'" BAM_DSPEC "'"));
+		    aprintf("bk prs -hnd'" BAM_DSPEC "' -"));
 
 		/* reduce to list of deltas missing. */
 		cmds = addLine(cmds,
@@ -1032,15 +1035,10 @@ bam_clean_main(int ac, char **av)
 	}
 
 	/* save bp deltas in repo */
-	cmd = strdup("bk -r prs -hnd'" BAM_DSPEC "'");
-	if (check_server) {
+	cmd = strdup("bk _sfiles_bam | bk prs -hnd'" BAM_DSPEC "' -");
+	if (check_server && bp_serverID(1)) {
 		/* remove deltas already in BAM server */
 		p1 = cmd;
-		unless (bp_serverID(1)) {
-			ERROR((stderr, "no BAM server set\n"));
-			free(p1);
-			return (1);
-		}
 		p2 = bp_serverURL();
 		/* No recursion, we just want that server's list */
 		cmd = aprintf("%s | "
@@ -1320,8 +1318,8 @@ none:		ERROR((stderr, "no BAM data in this repository\n"));
 	}
 
 	/* load BAM deltas and hashs (BAM_DSPEC + :BAMSIZE:) */
-	f = popen("bk -r prs -hnd"
-	    "'$if(:BAMHASH:){:BAMSIZE: :BAMHASH: :KEY: :MD5KEY|1.0:}'", "r");
+	f = popen("bk _sfiles_bam | bk prs -hnd"
+	    "'$if(:BAMHASH:){:BAMSIZE: :BAMHASH: :KEY: :MD5KEY|1.0:}' -", "r");
 	assert(f);
 	unless (quiet) fprintf(stderr, "Loading list of BAM deltas ");
 	i = 0;
@@ -1418,7 +1416,7 @@ bam_reattach_main(int ac, char **av)
 	missing = mdbm_mem();
 
 	/* save the hash for all the bp deltas we are missing */
-	f = popen("bk changes -Bv -nd'" BAM_DSPEC "'", "r");
+	f = popen("bk _sfiles_bam | bk prs -hnd'" BAM_DSPEC "' -", "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);
@@ -1523,6 +1521,49 @@ load_logfile(MDBM *m, FILE *f)
 		} else {
 			mdbm_store_str(m, buf, file, MDBM_REPLACE);
 		}
+	}
+	return (0);
+}
+
+/*
+ * A utility command that prints the list of sfiles that may contain BAM
+ * data.  Currently this is all bam files in the latest cset and any
+ * pending files that have never been committed.
+ *
+ * This command is usually used like this:
+ *      bk _sfiles_bam | bk prs -hnd<BAM_DSPEC> -
+ * to find all bam keys in the current repository.
+ */
+int
+sfiles_bam_main(int ac, char **av)
+{
+	FILE	*f;
+	char	*p;
+	char	buf[MAXLINE];
+
+	if (proj_cd2root()) {
+		fprintf(stderr, "Must be in repository.\n");
+		return (-1);
+	}
+	/* find all BAM sfiles in committed csets */
+	if (f = popen("bk rset -a5HBl+", "r")) {
+		while (fnext(buf, f)) {
+			if (p = strchr(buf, '|')) *p = 0;
+			puts(buf);
+		}
+		pclose(f);
+	}
+
+	/* find any pending 1.0 deltas */
+	if (f = popen("bk sfiles -gpA", "r")) {
+		while (fnext(buf, f)) {
+			chomp(buf);
+			if ((p = strchr(buf, '|')) && streq(p+1, "1.0")) {
+				*p = 0;
+				puts(buf);
+			}
+		}
+		pclose(f);
 	}
 	return (0);
 }
@@ -1956,10 +1997,94 @@ out:	sccs_unlock(s, 'z');
 	return (0);
 }
 
+/*
+ * Handle transferring any missing data from the old BAM server URL
+ * to a new URL.  If newurl==0 (or "." or "none"), then the data
+ * is transferred locally.
+ */
+private int
+bam_server_switch(int quiet, char *newurl)
+{
+	char	**cmds = 0;
+	char	*t;
+	int	rc, fd, fd1;
+	char	cmd[MAXLINE];
+	char	keyf[MAXPATH];
+
+	/* No current server, nothing to transfer */
+	unless (bp_serverID(1)) return (0);
+
+	if (newurl && (streq(newurl, ".") || streq(newurl, "none"))) {
+		newurl = 0;
+	}
+
+	/* find all BAM files */
+	cmds = addLine(cmds, strdup("bk _sfiles_bam"));
+
+	/* list of all BAM deltas */
+	cmds = addLine(cmds,
+	    aprintf("bk prs -hnd'" BAM_DSPEC "' -"));
+
+	/* reduce to list of deltas not local */
+	cmds = addLine(cmds,
+	    aprintf("bk havekeys -lB -"));
+
+	if (newurl) {
+		/* remove deltas already at new server */
+		cmds = addLine(cmds,
+		    aprintf("bk -q@'%s' -Lr -Bstdin "
+			"havekeys -lB -",
+			newurl));
+	}
+	bktmp(keyf, 0);
+	fd1 = dup(1);
+	close(1);
+	fd = creat(keyf, 0644);
+	assert(fd == 1);
+	/*
+	 * Use spawn_filterPipeline to avoid a remote connection if it
+	 * isn't needed.
+	 */
+	rc = spawn_filterPipeline(cmds);
+	freeLines(cmds, free);
+	dup2(fd1, 1);
+	close(fd1);
+	if (rc) {
+		fprintf(stderr, "bam server: key query failed\n");
+		return (1);
+	}
+	if (size(keyf) <= 0) {
+		unlink(keyf);
+		return (0);
+	}
+	unless (quiet) printf("Fetching BAM data from old server\n");
+
+	t = cmd;
+	/* read BAM data from remote server */
+	t += sprintf(t, "bk -q@'%s' -Lr -Bstdin -zo0 sfio -oqB - < '%s' | ",
+	    bp_serverURL(), keyf);
+	/* and feed to new BAM server */
+	t += sprintf(t, "bk ");
+	/* that may be remote */
+	if (newurl) t += sprintf(t, "-q@'%s' -z0 -Lw ", newurl);
+	t += sprintf(t, "sfio -iqB -");
+
+	rc = system(cmd);
+	unlink(keyf);
+	if (rc) {
+		fprintf(stderr,
+		    "bam server: unable to fetch data "
+		    "from old server '%s'\n",
+		    bp_serverURL());
+	}
+	return (rc);
+}
+
 int
 bam_server_main(int ac, char **av)
 {
 	int	c, list = 0, quiet = 0, rm = 0;
+	int	nosync = 0, force = 0;
 	char	*server = 0, *repoid;
 	FILE	*f;
 
@@ -1970,11 +2095,13 @@ bam_server_main(int ac, char **av)
 		ERROR((stderr, "not in a repository.\n"));
 		return (1);
 	}
-	while ((c = getopt(ac, av, "lqr")) != -1) {
+	while ((c = getopt(ac, av, "flqrs")) != -1) {
 		switch (c) {
+		    case 'f': force++; break;
 		    case 'l': list++; break;
 		    case 'q': quiet++; break;
 		    case 'r': rm++; break;
+		    case 's': nosync++; break;
 		    default:
 usage:			system("bk help -s BAM");
 			return (1);
@@ -1982,11 +2109,30 @@ usage:			system("bk help -s BAM");
 	}
 	if (rm) {
 		if (av[optind]) goto usage;
-rm:		unlink(BAM_SERVER);
+		if (!force && (server = bp_serverURL()) && streq(server, ".")) {
+			fputs("This repository is currently a BAM server.\n"
+			    "Other repositories may be relying on it.\n"
+			    "If you are sure, run:\n"
+			    "\tbk bam server -f -r\n", stderr);
+			return (1);
+		}
+rm:
+		unless (nosync) {
+			if (bam_server_switch(quiet, 0)) return (1);
+		}
+		unlink(BAM_SERVER);
 		return (0);
 	}
 	if (av[optind]) {
 		if (av[optind+1]) goto usage;
+		if (!force && (server = bp_serverURL()) && streq(server, ".")) {
+			fprintf(stderr,
+			    "This repository is currently a BAM server.\n"
+			    "Other repositories may be relying on it.\n"
+			    "If you are sure you want to alter this, run: \n"
+			    "\tbk bam server -f '%s'\n", av[optind]);
+			return (1);
+		}
 		if (streq(av[optind], "none")) goto rm;
 		server = streq(av[optind], ".") ?
 		    strdup(".") : parent_normalize(av[optind]);
@@ -1995,6 +2141,9 @@ rm:		unlink(BAM_SERVER);
 			    "unable to get id from BAM server %s\n", server));
 			free(server);
 			return (1);
+		}
+		unless (nosync) {
+			if (bam_server_switch(quiet, server)) return (1);
 		}
 		unless (f = fopen(BAM_SERVER, "w")) {
 			perror(BAM_SERVER);
@@ -2012,16 +2161,19 @@ rm:		unlink(BAM_SERVER);
 	}
 
 	if (server = bp_serverURL()) {
-		if (streq(server, ".")) {
-			unless(list) {
-				printf("This repository is the BAM server.\n");
-			}
-		} else {
-			unless (list) printf("BAM server: ");
+		if (list) {
 			printf("%s\n", server);
+		} else if (streq(server, ".")) {
+			printf("This repository is the BAM server.\n");
+		} else {
+			printf("BAM server: %s\n", server);
 		}
 	} else {
-		printf("This repository has no BAM server.\n");
+		if (list) {
+			printf("none\n");
+		} else {
+			printf("This repository has no BAM server.\n");
+		}
 	}
 	return (0);
 }

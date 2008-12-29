@@ -140,12 +140,10 @@ process(char	*root,
 
 	if (is_same(start, end)) return;
 	if (opts.md5keys) {
-		unless (p = key2path(root, idDB)) {
+		unless (path1 = key2path(root, idDB)) {
 			fprintf(stderr, "rset: Can't find %s\n", root);
 			return;
 		}
-		path1 = sccs2name(p);
-		free(p);
 		p = root;
 		for (i = 0; i < 4; i++) {
 			unless (p = strchr(p, '|')) break;
