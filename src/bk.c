@@ -355,6 +355,7 @@ out:
 	fflush(stderr);
 	close(2);
 	cmdlog_end(ret);
+	sfilesDied(1);
 	exit(ret);
 }
 
