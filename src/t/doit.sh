@@ -91,7 +91,12 @@ unix_common_setup()
 	BK_BIN="/build/.bkbin $USER"
 	rm -rf "$BK_BIN"
 	mkdir "$BK_BIN"
-	ln -s "`cd .. && pwd`/bk" "$BK_BIN/bk"
+	if [ X"$RUNBK_LEVEL" = X ]; then
+		ln -s "`cd .. && pwd`/bk" "$BK_BIN/bk"
+	else
+		echo "RUNBK_LEVEL is set, using `bk bin`"
+		ln -s "`bk bin`/bk" "$BK_BIN/bk"
+	fi
 	PATH=/bin:/usr/bin:$PATH:/usr/local/bin:/usr/freeware/bin:/usr/gnu/bin
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	PATH=$BK_BIN:$PATH
