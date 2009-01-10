@@ -1095,3 +1095,156 @@ bk changes -r+ -nd'$each(:C:){(:C:)}' > GOT
 echo Merge > WANT
 cmpfiles WANT GOT
 echo OK
+
+echo $N Show diff between sfiles showing no diff when has diff ......$NL
+# Picking on vr, vl and res_diff as they were using "tip" in their
+# gets which doesn't make sense.
+cd "$HERE"
+rm -fr remote local
+commercial remote
+touch foo
+bk new $Q foo
+bk commit $Q -ynewfiles
+cd ..
+bk clone $Q remote local
+cd local
+bk edit $Q foo
+echo "local content" > foo
+bk delta $Q -yfoo foo
+echo "bar content" > bar
+bk new $Q bar
+bk commit $Q -f
+cd ../remote
+# the null content is used to lock sync the time stamps
+# so that the rename winds up on the branch after the merge
+bk edit $Q foo
+echo "remote content" > foo
+bk delta $Q -yfoo foo
+bk mv foo bar
+bk commit $Q -f
+cd ../local
+{ echo vl; echo vr; echo d; echo q; } | bk pull -qt 2> ERR > GOT && {
+	echo pull passed -- fix test
+	exit 1
+}
+cat <<'EOF' > WANT
+bar content
+remote content
+1c1
+< bar content
+---
+> remote content
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Show duplicate file create/sfile with rl ....................$NL
+# Handcrafted error test from seeing 'cp' on rs->dname in sc_ml
+# and back calculating a test case to create a bug.
+# Coincidentally, error matches message Zahy sent in Aug 4
+cd "$HERE"
+rm -fr remote local
+commercial remote
+touch foo
+bk new $Q foo
+bk commit $Q -ynewfiles
+cd ..
+bk clone $Q remote local
+cd local
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+touch bar
+bk new $Q bar
+bk commit $Q -f
+cd ../remote
+# the null content is used to lock sync the time stamps
+# so that the rename winds up on the branch after the merge
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk mv foo bar
+bk commit $Q -f
+cd ..
+tar cf TAR local
+cd local || exit 1
+{ echo rl; echo y; } | bk pull -qt 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Show duplicate file create/sfile with ml ....................$NL
+# Handcrafted error test from seeing 'cp' on rs->dname in sc_ml
+# and back calculating a test case to create a bug.
+# Coincidentally, error matches message Zahy sent in Aug 4
+cd ..
+rm -fr local
+tar xf TAR || exit 1
+cd local || exit 1
+{ echo ml; echo zoo; } | bk pull -qt 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Show unmerged leaf as part of a pull resolve with rl ........$NL
+cd "$HERE"
+rm -fr remote local
+commercial remote
+touch a b c
+bk new $Q a b c
+bk commit $Q -ynewfiles
+cd ..
+bk clone $Q remote local
+#
+cd local
+touch foo
+bk new $Q foo
+bk commit $Q -yfoo
+#
+cd ../remote
+bk mv a foo
+bk rm foo
+bk commit $Q -yfoo
+bk pull $Q ../local
+#
+cd ../local
+bk rm foo
+touch foo
+bk new $Q foo
+  # Skip this indented block to only create an m
+  # with it get an 'm' and an 'r' and the multiple tips error
+  bk edit $Q a
+  # no sleep and fast machine: prompt with 'a', else prompt with 'del-..'
+  # sleep 3
+  bk delta $Q -fya a
+bk commit $Q -yfoo
+#
+cd ../remote
+bk edit $Q foo
+bk delta $Q -fyfoo foo
+bk commit $Q -yfoo
+#
+cd ..
+rm TAR
+tar cf TAR local
+cd local
+printf "rl\ny\nq\n" | bk pull $Q 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Show unmerged leaf as part of a pull resolve with ml ........$NL
+cd ..
+rm -fr local
+tar xf TAR
+cd local || exit 1
+printf "ml\nzoo\nq\n" | bk pull $Q 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
