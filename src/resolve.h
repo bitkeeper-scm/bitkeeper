@@ -131,7 +131,6 @@ struct resolve {
 names	*res_getnames(char *path, int type);
 char	*mode2a(mode_t m);
 int	more(resolve *rs, char *file);
-char	*res_getlocal(char *gfile);
 resolve	*resolve_init(opts *opts, sccs *s);
 void	automerge(resolve *rs, names *n, int identical);
 int	c_revtool(resolve *rs);

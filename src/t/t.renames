@@ -628,7 +628,7 @@ EOF
 cd copy
 if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
-	cat OUT
+	cat ../OUT
 	bk _find .
 	exit 1
 fi
@@ -638,12 +638,12 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'* ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.5" ]
@@ -663,7 +663,7 @@ cd copy
 bk get $Q 'B%A!#$%^&)(-_+=];,'
 if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
-	cat OUT
+	cat ../OUT
 	bk _find .
 	exit 1
 fi
@@ -672,13 +672,13 @@ then	echo Failed to leave old file in place
 	cat 'B%A!#$%^&)(-_+=];,'
 	exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'* ]
 then	echo Deleted file missing
-	cat OUT
+	cat ../OUT
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*`" != "I am the project file" ]
 then	echo bad data in deleted file, should be project; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.5" ]
@@ -890,7 +890,7 @@ EOF
 cd copy
 if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
-	cat OUT
+	cat ../OUT
 	bk _find .
 	exit 1
 fi
@@ -900,13 +900,13 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'* ]
 then	echo Deleted file missing
-	cat OUT
+	cat ../OUT
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK
@@ -963,7 +963,7 @@ EOF
 cd copy
 if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
-	cat OUT
+	cat ../OUT
 	bk _find .
 	exit 1
 fi
@@ -973,12 +973,12 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.2" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'* ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK

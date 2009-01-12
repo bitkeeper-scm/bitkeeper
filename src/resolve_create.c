@@ -20,46 +20,14 @@ res_abort(resolve *rs)
 }
 
 /*
- * Return the pathname of a _COPY_ of the gfile or checked out gfile.
- * The caller frees the path and unlinks the temp file.
- */
-char	*
-res_getlocal(char *gfile)
-{
-	char	buf[MAXPATH];
-	char	tmp[MAXPATH*2];
-	char	*sfile;
-
-	sprintf(buf, "%s/%s", RESYNC2ROOT, gfile);
-	sfile = name2sccs(buf);
-	unless (exists(sfile) || exists(buf)) {
-		free(sfile);
-		return (0);
-	}
-
-	unless (exists(sfile)) {
-		free(sfile);
-		bktmp(buf, "local");
-		sprintf(tmp, "%s/%s", RESYNC2ROOT, gfile);
-		sys("cp", tmp, buf, SYS);
-		unless (exists(buf)) return (0);
-		return (strdup(buf));
-	}
-	free(sfile);
-
-	sprintf(tmp, "%s/%s", RESYNC2ROOT, gfile);
-	sysio(NULL, buf, NULL, "bk", "get", "-ksp", tmp, SYS);
-	unless (exists(buf)) return (0);
-	return (strdup(buf));
-}
-
-/*
  * Diff the local against the remote;
  */
 private int
 res_diffCommon(resolve *rs, 
     int (*differ)(resolve *rs, char *left, char *right, int wait))
 {
+	char	*rev = 0;
+
 	if (rs->tnames) {
 		differ(rs, rs->tnames->local, rs->tnames->remote, 0);
 		return (0);
@@ -68,7 +36,8 @@ res_diffCommon(resolve *rs,
 		char	right[MAXPATH];
 
 		bktmp(right, "right");
-		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, right)) {
+		if (rs->revs) rev = rs->revs->remote;
+		if (sccs_get(rs->s, rev, 0, 0, 0, SILENT|PRINT, right)) {
 		    	fprintf(stderr, "get failed, can't diff.\n");
 			return (0);
 		}
@@ -85,8 +54,9 @@ res_diffCommon(resolve *rs,
 
 		bktmp(left, "left");
 		bktmp(right, "right");
+		if (rs->revs) rev = rs->revs->remote;
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, left) ||
-		    sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, right)) {
+		    sccs_get(rs->s, rev, 0, 0, 0, SILENT|PRINT, right)) {
 		    	fprintf(stderr, "get failed, can't diff.\n");
 			unlink(left);
 			return (0);
@@ -219,8 +189,9 @@ more(resolve *rs, char *file)
 int
 res_vl(resolve *rs)
 {
-	char	left[MAXPATH];
 	sccs	*s = (sccs*)rs->opaque;
+	char	*rev = 0;
+	char	left[MAXPATH];
 
 	if (rs->tnames) {
 		more(rs, rs->tnames->local);
@@ -240,9 +211,10 @@ res_vl(resolve *rs)
 		s = (sccs*)rs->opaque;
 	} else {
 		s = rs->s;
+		if (rs->revs) rev = rs->revs->local;
 	}
 	bktmp(left, "left");
-	if (sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, left)) {
+	if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, left)) {
 		    fprintf(stderr, "get failed, can't view.\n");
 		return (0);
 	}
@@ -254,16 +226,18 @@ res_vl(resolve *rs)
 int
 res_vr(resolve *rs)
 {
-	char	tmp[MAXPATH];
 	char	*name = rs->s->gfile;
+	char	tmp[MAXPATH];
+	char	rev[MAXPATH];
 
 	if (rs->tnames) {
 		more(rs, rs->tnames->remote);
 		return (0);
 	}
+	sprintf(rev, "-r%s", rs->revs ? rs->revs->remote : "+");
 	if (rs->res_resync) name = rs->dname;
 	bktmp(tmp, "resvr");
-	sysio(0, tmp, 0, "bk", "get", "-qkp", name, SYS);
+	sysio(0, tmp, 0, "bk", "get", "-qkp", rev, name, SYS);
 	more(rs, tmp);
 	unlink(tmp);
 	return (0);
@@ -841,10 +815,10 @@ sc_ml(resolve *rs)
 int
 sc_rml(resolve *rs)
 {
-	char	repo[MAXPATH*2];
-	char	resync[MAXPATH];
-	int	filenum = 0;
-	char	*nm = basenm(((sccs*)rs->opaque)->gfile);
+	char	repo[MAXPATH];
+	char	*resync;
+	sccs	*s = (sccs *)rs->opaque;
+	project	*saveproj;
 
 	unless (rs->opts->force || confirm("Remove local file?")) return (0);
 	unless (ok_local((sccs*)rs->opaque, 0)) {
@@ -855,15 +829,16 @@ sc_rml(resolve *rs)
 	 * the resync directory.
 	 * We emulate much of the work of bk rm here because we can't call
 	 * it directly in the local repository.
+	 * Need to do the save and restore because of the oddness of having
+	 * the sfile in the main repo, but the desired path in the RESYNC,
+	 * and the path returned is absolute based on the proj struct.
 	 */
-	sprintf(resync, "BitKeeper/deleted/SCCS/s..del-%s", nm);
-	sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
-	while (exists(resync) || exists(repo)) {
-		sprintf(resync,
-		    "BitKeeper/deleted/SCCS/s..del-%s~%d", nm, ++filenum);
-		sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
-	}
-	sprintf(repo, "%s/%s", RESYNC2ROOT, ((sccs*)rs->opaque)->sfile);
+	saveproj = s->proj;
+	s->proj = rs->s->proj;
+	resync = sccs_rmName(s);
+	s->proj = saveproj;
+
+	sprintf(repo, "%s/%s", RESYNC2ROOT, s->sfile);
 	if (sys("cp", repo, resync, SYS)) {
 		perror(repo);
 		exit(1);
@@ -873,39 +848,32 @@ sc_rml(resolve *rs)
 	 * Force a delta to lock it down to this name.
 	 */
 	if (sys("bk", "edit", "-q", resync, SYS)) {
-		perror(repo);
+		perror(resync);
 		exit(1);
 	}
 	sprintf(repo, "-PyDelete: %s", ((sccs*)rs->opaque)->gfile);
 	if (sys("bk", "delta", "-f", repo, resync, SYS)) {
-		perror(repo);
+		perror(resync);
 		exit(1);
 	}
 	sccs_sdelta((sccs*)rs->opaque, sccs_ino((sccs*)rs->opaque), repo);
 	saveKey(rs->opts, repo, resync);
+	free(resync);
 	return (EAGAIN);
 }
 
 int
 sc_rmr(resolve *rs)
 {
-	char	repo[MAXPATH*2];
-	char	resync[MAXPATH];
-	int	filenum = 0;
-	char	*nm = basenm(rs->d->pathname);
+	char	*resync;
 
 	unless (rs->opts->force || confirm("Remove remote file?")) return (0);
-	sprintf(resync, "BitKeeper/deleted/SCCS/s..del-%s", nm);
-	sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
-	while (exists(resync) || exists(repo)) {
-		sprintf(resync,
-		    "BitKeeper/deleted/SCCS/s..del-%s~%d", nm, ++filenum);
-		sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
-	}
+	resync = sccs_rmName(rs->s);
 	if (move_remote(rs, resync)) {
 		perror("move_remote");
 		exit(1);
 	}
+	free(resync);
 	return (1);	/* XXX - EAGAIN? */
 }
 
@@ -977,9 +945,10 @@ rc_ml(resolve *rs)
 	}
 	sccs_sdelta(rs->s, sccs_ino(rs->s), key);
 	mdbm_store_str(rs->opts->rootDB, key, to, MDBM_REPLACE);
-	sccs_close(rs->s);
-	sys("bk", "mv", rs->s->sfile, to, SYS);
-	unlink(sccs_Xfile(rs->s, 'm'));
+	if (move_remote(rs, to)) {
+		perror("move_remote");
+		exit(1);
+	}
 	if (rs->opts->resolveNames) rs->opts->renames2++;
 	if (rs->opts->log) {
 		fprintf(rs->opts->log, "rename(%s, %s)\n", rs->s->sfile, to);
@@ -991,17 +960,15 @@ rc_ml(resolve *rs)
 int
 rc_rml(resolve *rs)
 {
-	unless (rs->opts->force || confirm("Remove local file?")) return (0);
-	/*
-	 * In theory we do not have to do a rm -f here because we should
-	 * have handled all the BK metafiles in converge.
-	 */
-	sys("bk", "rm", rs->s->sfile, SYS);
-	unlink(sccs_Xfile(rs->s, 'm'));
-	if (rs->opts->resolveNames) rs->opts->renames2++;
-	if (rs->opts->log) {
-		fprintf(rs->opts->log, "remove(%s)\n", rs->s->sfile);
+	char	*resync;
+
+	unless (rs->opts->force || confirm("Remove left file?")) return (0);
+	resync = sccs_rmName(rs->s);
+	if (move_remote(rs, resync)) {
+		perror("move_remote");
+		exit(1);
 	}
+	free(resync);
 	return (1);
 }
 

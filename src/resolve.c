@@ -638,7 +638,7 @@ pass2_renames(opts *opts)
 		 * code and fall through if they said EAGAIN or just skip
 		 * this one.
 		 */
-		if (slotTaken(opts, rs->dname) == DIR_CONFLICT) {
+		if (rs->d && (slotTaken(opts, rs->dname) == DIR_CONFLICT)) {
 			/* If we are just looking for space, skip this one */
 			unless (opts->resolveNames) goto out;
 			if (opts->noconflicts) {
@@ -659,6 +659,7 @@ pass2_renames(opts *opts)
 		if (rs->gnames) {
 			rename_file(rs);
 		} else {
+			assert(rs->d); /* no rs->gnames implies single tip */
 			create(rs);
 		}
 out:		resolve_free(rs);
@@ -865,12 +866,13 @@ private	int
 rename_file(resolve *rs)
 {
 	opts	*opts = rs->opts;
-	char	*to;
+	char	*to = 0;
 	int	how = 0;
 
 again:
 	if (opts->debug) {
-		fprintf(stderr, ">> rename_file(%s)\n", rs->d->pathname);
+		fprintf(stderr, ">> rename_file(%s - %s)\n",
+			rs->s->gfile, rs->d ? rs->d->pathname : "<conf>");
 	}
 
 	/*
@@ -903,15 +905,9 @@ again:
 	 * If remote moved, and local didn't, ok if !slotTaken.
 	 * If local is moved and remote isn't, ok if RESYNC slot is open.
 	 */
-	if (streq(rs->snames->local, rs->snames->gca)) {
-		to = rs->snames->remote;
+	if (rs->d) {
+		to = rs->dname;
 		if (how = slotTaken(opts, to)) to = 0;
-	} else if (streq(rs->snames->gca, rs->snames->remote)) {
-		to = rs->snames->local;
-		/* XXX - I'm not sure that this makes sense. */
-		if (exists(to)) to = 0;
-	} else {
-		to = 0;
 	}
 	if (to) {
 		char	*mfile;
@@ -1424,6 +1420,8 @@ deleteDirs(char **list)
 int
 slotTaken(opts *opts, char *slot)
 {
+	assert(slot);
+
 	if (opts->debug) fprintf(stderr, "slotTaken(%s) = ", slot);
 
 	if (exists(slot)) {
@@ -1927,7 +1925,7 @@ conflict(opts *opts, char *sfile)
 	s = sccs_init(sfile, INIT_NOCKSUM);
 
 	rs = resolve_init(opts, s);
-	assert(streq(rs->dname, s->sfile));
+	assert(rs->dname && streq(rs->dname, s->sfile));
 
 	d.local = sccs_findrev(s, rs->revs->local);
 	d.gca = sccs_findrev(s, rs->revs->gca);
