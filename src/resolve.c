@@ -755,11 +755,13 @@ create(resolve *rs)
 	sccs	*local;
 	int	ret = 0;
 	int	how;
-	static	char *cnames[4] = {
+	static	char *cnames[] = {
 			"Huh?",
 			"an SCCS file",
 			"a regular file without an SCCS file",
-			"another SCCS file in the patch"
+			"another SCCS file in the patch",
+			"another file already in RESYNC",
+			"an SCCS file that is marked gone"
 		};
 
 	if (opts->debug) {
@@ -1429,6 +1431,11 @@ slotTaken(opts *opts, char *slot)
 		return (RESYNC_CONFLICT);
 	}
 
+	/* load gone from RESYNC */
+	unless (opts->goneDB) {
+		opts->goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+	}
+
 	chdir(RESYNC2ROOT);
 	if (exists(slot)) {
 		char	buf2[MAXKEY];
@@ -1440,7 +1447,17 @@ slotTaken(opts *opts, char *slot)
 		 */
 		sccs_sdelta(local, sccs_ino(local), buf2);
 		sccs_free(local);
-		unless (mdbm_fetch_str(opts->rootDB, buf2)) {
+		if (mdbm_fetch_str(opts->rootDB, buf2)) {
+			/* in resync */
+		} else if (mdbm_fetch_str(opts->goneDB, buf2)) {
+			/* gone file */
+			if (opts->debug) {
+				fprintf(stderr,
+				    "%s exists and is gone\n", slot);
+			}
+			chdir(ROOT2RESYNC);
+			return (GONE_SFILE_CONFLICT);
+		} else {
 			if (opts->debug) {
 				fprintf(stderr,
 				    "%s exists in local repository\n", slot);
@@ -2771,6 +2788,7 @@ freeStuff(opts *opts)
 	if (opts->log && (opts->log != stderr)) fclose(opts->log);
 	if (opts->rootDB) mdbm_close(opts->rootDB);
 	if (opts->idDB) mdbm_close(opts->idDB);
+	if (opts->goneDB) mdbm_close(opts->goneDB);
 }
 
 private void

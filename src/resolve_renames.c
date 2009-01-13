@@ -24,6 +24,10 @@ r_help(resolve *rs)
 			    case SFILE_CONFLICT:
 				r = "wants to move, has sfile conflict.";
 				break;
+			    case GONE_SFILE_CONFLICT:
+				r = "wants to move, has conflict "
+				    "with sfile that is marked gone.";
+				break;
 			    case GFILE_CONFLICT:
 				r = "wants to move, has gfile conflict.";
 				break;
@@ -34,8 +38,18 @@ r_help(resolve *rs)
 		}
 		if (i = slotTaken(rs->opts, rs->snames->local)) {
 			switch (i) {
+			    /*
+			     * The two SFILE below can't happen since
+			     * the local name slot is the same sfile as is
+			     * conflicting, therefore local _should_ always
+			     * work (ie, bet you can't find a way .. :)
+			     */
 			    case SFILE_CONFLICT:
 				l = "wants to move, has sfile conflict.";
+				break;
+			    case GONE_SFILE_CONFLICT:
+				l = "wants to move, has conflict "
+				    "with sfile that is marked gone.";
 				break;
 			    case GFILE_CONFLICT:
 				l = "wants to move, has gfile conflict.";
@@ -106,6 +120,9 @@ r_l(resolve *rs)
 		    case SFILE_CONFLICT:
 			l = "a local sfile.";
 			break;
+		    case GONE_SFILE_CONFLICT:
+			l = "a local sfile that is marked gone.";
+			break;
 		    case GFILE_CONFLICT:
 			l = "a local gfile.";
 			break;
@@ -137,6 +154,9 @@ r_r(resolve *rs)
 		switch (i) {
 		    case SFILE_CONFLICT:
 			l = "a local sfile.";
+			break;
+		    case GONE_SFILE_CONFLICT:
+			l = "a local sfile that is marked gone.";
 			break;
 		    case GFILE_CONFLICT:
 			l = "a local gfile.";

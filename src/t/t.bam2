@@ -618,6 +618,7 @@ y
 EOF
 test $? -eq 0 || {
 	echo failed
+	cat ERR
 	exit 1
 }
 echo OK
