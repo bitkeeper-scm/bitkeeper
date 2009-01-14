@@ -177,7 +177,7 @@ echo OK
 
 echo $N Test bk rm w non p-locked file ..............................$NL
 bk rm C/file3
-test -f BitKeeper/deleted/SCCS/s..del-file3* || {
+test -f BitKeeper/deleted/SCCS/s..del-file2* || {
 	echo failed to move file to deleted
 	exit 1
 }
