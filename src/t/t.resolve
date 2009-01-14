@@ -1067,6 +1067,26 @@ bk pull $Q || {
 }
 echo OK
 
+echo $N Create a resync conflict ....................................$NL
+cd ../project
+bk edit $Q "foo-bar"
+bk delta $Q -fynull-delta "foo-bar" || exit 1
+touch lucky
+bk new $Q lucky
+bk commit $Q -f
+cd ../copy
+bk mv foo-bar lucky
+bk commit $Q -f
+bk pull $Q -R
+bk resolve $Q -c 2> ERR
+bk undo $Q -fsr+
+grep -q "pathname is used by another file already in RESYNC" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 1
+}
+echo OK
+
 echo $N Receive a patch, then resolve and offer a default cmt .......$NL
 bk edit $Q "foo-bar"
 bk delta $Q -fynull "foo-bar"

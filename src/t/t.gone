@@ -248,6 +248,44 @@ grep -q 'Marked gone (bk help chk1): foo.c' MSGS || {
 }
 echo OK
 
+echo $N Demo pushing new file that replaces a gone\'d file ...........$NL
+cd ../project
+bk -r check -ac || exit 1
+echo old > lose_this
+bk new $Q lose_this || exit 1
+bk commit $Q -yold || exit 1
+cd ../copy
+rm SCCS/s.foo.c
+bk pull $Q || exit 1
+cd ../project
+KEY="`bk prs -hr+ -d:ROOTKEY: lose_this`"
+rm -f SCCS/s.lose_this
+bk gone $Q "$KEY" || exit 1
+echo new > lose_this
+bk new $Q lose_this || exit 1
+bk commit $Q -ynew || exit 1
+echo q | bk push ../copy 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "name conflict for ..lose_this" ERR || exit 1
+grep -q "pathname is used by an SCCS file that is marked gone" ERR || exit 1
+echo OK
+
+echo $N Try pulling the same cset ...................................$NL
+cd ../copy
+printf "h\nrl\ny\n" | bk pull 2>ERR >OUT || {
+	echo should have passed
+	cat ERR
+	exit 1
+}
+grep -q "create/sfile marked gone conflict" ERR || {
+	echo wrong message
+	cat ERR
+	exit 1
+}
+echo OK
+
 echo $N Test goned deltas ...........................................$NL
 cd "$HERE/project"
 bk edit $Q bar.c || exit 1
@@ -259,7 +297,7 @@ bk -r check -agg | bk gone $Q -
 bk -r check -af || exit 1
 bk changes -v -r+ -nd:GFILE:@:REV: > OUT || exit 1
 cat <<EOF > WANT
-ChangeSet@1.5
+ChangeSet@1.7
 EOF
 cmpfiles OUT WANT
 echo OK

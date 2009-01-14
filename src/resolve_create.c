@@ -156,6 +156,10 @@ res_mr(resolve *rs)
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", buf);
 		return (0);
+	    case GONE_SFILE_CONFLICT:
+		fprintf(stderr,
+		    "%s exists locally already but is marked gone\n", buf);
+		return (0);
 	    case GFILE_CONFLICT:
 		t = sccs2name(buf);
 		fprintf(stderr, "%s exists locally already\n", t);
@@ -433,6 +437,10 @@ common_ml(resolve *rs, char *p, char *buf)
 	switch (slotTaken(rs->opts, buf)) {
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", buf);
+		return (1);
+	    case GONE_SFILE_CONFLICT:
+		fprintf(stderr,
+		    "%s exists locally already but is marked gone\n", buf);
 		return (1);
 	    case DIR_CONFLICT:
 		getFileConflict(buf, path);
@@ -770,6 +778,10 @@ sc_ml(resolve *rs)
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", to);
 		return (0);
+	    case GONE_SFILE_CONFLICT:
+		fprintf(stderr,
+		    "%s exists locally already but is marked gone\n", buf);
+		return (0);
 	    case GFILE_CONFLICT:
 		tmp = sccs2name(to);
 		fprintf(stderr, "%s exists locally already\n", tmp);
@@ -934,6 +946,10 @@ rc_ml(resolve *rs)
 	    case SFILE_CONFLICT:
 		fprintf(stderr, "%s exists locally already\n", to);
 		return (0);
+	    case GONE_SFILE_CONFLICT:
+		fprintf(stderr,
+		    "%s exists locally already but is marked gone\n", buf);
+		return (0);
 	    case GFILE_CONFLICT:
 		tmp = sccs2name(to);
 		fprintf(stderr, "%s exists locally already\n", tmp);
@@ -1082,6 +1098,17 @@ resolve_create(resolve *rs, int type)
 		rs->opaque = (void*)sccs_init(rs->dname, 0);
 		chdir(ROOT2RESYNC);
 		ret = resolve_loop("create/sfile conflict", rs, sc_funcs);
+		if (rs->opaque) sccs_free((sccs*)rs->opaque);
+		return (ret);
+	    case GONE_SFILE_CONFLICT:
+		if (rs->opts->debug) fprintf(stderr, "GONE SFILE\n");
+		rs->prompt = rs->d->pathname;
+		rs->res_screate = 1;
+		chdir(RESYNC2ROOT);
+		rs->opaque = (void*)sccs_init(rs->dname, 0);
+		chdir(ROOT2RESYNC);
+		ret = resolve_loop("create/sfile marked gone conflict",
+		    rs, sc_funcs);
 		if (rs->opaque) sccs_free((sccs*)rs->opaque);
 		return (ret);
 	    case RESYNC_CONFLICT:
