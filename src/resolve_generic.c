@@ -16,9 +16,6 @@ resolve_init(opts *opts, sccs *s)
 	rs->s = s;
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	rs->key = strdup(buf);
-	rs->d = sccs_top(s);
-	assert(rs->d);	/* XXX: not all files have a 1.0 .  What to do? */
-	rs->dname = name2sccs(rs->d->pathname);
 	if (rs->snames = res_getnames(sccs_Xfile(rs->s, 'm'), 'm')) {
 		rs->gnames	   = new(names);
 		rs->gnames->local  = sccs2name(rs->snames->local);
@@ -28,8 +25,30 @@ resolve_init(opts *opts, sccs *s)
 	rs->revs = res_getnames(sccs_Xfile(rs->s, 'r'), 'r');
 	rs->pager = pager();
 	unless (rs->editor = getenv("EDITOR")) rs->editor = EDITOR;
+	if (rs->snames && !streq(rs->snames->local, rs->snames->remote)) {
+		if (streq(rs->snames->local, rs->snames->gca)) {
+			if (rs->revs) {
+				rs->d = sccs_findrev(rs->s, rs->revs->remote);
+				assert(rs->d);
+			} else {
+				rs->d = sccs_top(rs->s);
+				assert(rs->d);
+			}
+		} else if (streq(rs->snames->remote, rs->snames->gca)) {
+			assert(rs->revs);
+			rs->d = sccs_findrev(rs->s, rs->revs->local);
+			assert(rs->d);
+		}
+	} else {
+		rs->d = sccs_top(rs->s);
+		assert(rs->d);
+	}
+	if (rs->d) {
+		rs->dname = name2sccs(rs->d->pathname);
+	}
 	if (opts->debug) {
-		fprintf(stderr, "rs_init(%s)", rs->d->pathname);
+		fprintf(stderr, "rs_init(%s - %s)",
+			rs->s->gfile, rs->d ? rs->d->pathname : "<conf>");
 		if (rs->snames) fprintf(stderr, " snames");
 		if (rs->revs) fprintf(stderr, " revs");
 		fprintf(stderr, "\n");
@@ -77,7 +96,7 @@ resolve_free(resolve *rs)
 	if (rs->gnames) freenames(rs->gnames, 1);
 	if (rs->snames) freenames(rs->snames, 1);
 	if (rs->revs) freenames(rs->revs, 1);
-	free(rs->dname);
+	if (rs->dname) free(rs->dname);
 	sccs_free(rs->s);
 	free(rs->key);
 	bzero(rs, sizeof(*rs));
@@ -94,13 +113,16 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 	if (rs->opts->debug) {
 		fprintf(stderr, "%s\n", name);
 		fprintf(stderr, "\tsccs: %s\n", rs->s->gfile);
-		fprintf(stderr, "\ttot: %s@%s\n", rs->d->pathname, rs->d->rev);
+		if (rs->d) {
+			fprintf(stderr, "\ttot: %s@%s\n",
+			    rs->d->pathname, rs->d->rev);
+		}
 	}
 
 	if (rs->opts->noconflicts) {
 		fprintf(stderr,
 	    	"Cannot resolve %s for %s in a push\n",
-		name, rs->d->pathname);
+		name, rs->s->gfile);
 		return (1);
 	}
 

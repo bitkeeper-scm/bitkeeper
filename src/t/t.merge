@@ -152,3 +152,85 @@ cmp -s bar.c CMP1
 # will pass if a real 2 parent SCCS merge
 if [ $? -ne 0 ]; then echo Failed; exit 1; fi
 echo OK
+
+echo $N Demonstrate how we can lose lines in a merge.................$NL
+cd "$HERE"
+commercial A
+cat <<EOF >afile
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+EOF
+bk new $Q afile
+bk commit $Q -yfile
+cd "$HERE"
+bk clone $Q A B
+bk clone $Q A C
+bk clone $Q A D
+bk clone $Q A E
+bk clone $Q A F
+cd "$HERE"
+for repo in B C
+do	cd $repo
+	bk edit $Q afile
+	cat <<EOF >afile
+0
+1
+2
+3
+4
+this line changed by $repo
+5
+6
+7
+8
+9
+EOF
+	bk ci $Q -y"$repo fix" afile
+	bk commit $Q -y"$repo fix"
+	cd "$HERE"
+done
+cd "$HERE"/D
+bk pull $Q ../B
+bk pull -R $Q ../C
+(
+echo ul
+echo use local
+echo .
+) | bk resolve $Q >$DEV_NULL 2>&1
+bk cat afile | grep -q "this line changed by B" || {
+	echo failed
+	echo did not use B
+	exit 1
+}
+cd "$HERE"/E
+bk pull $Q ../B
+bk pull -R $Q ../C
+(
+echo ur
+echo use remote
+echo .
+) | bk resolve $Q >$DEV_NULL 2>&1
+bk cat afile | grep -q "this line changed by C" || {
+	echo failed
+	echo did not use B
+	exit 1
+}
+cd "$HERE"/F
+bk pull $Q ../D || exit 1
+echo q | bk pull $Q ../E 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "Conflicts during automerge of afile" ERR || {
+	cat ERR    
+	exit 1
+}
+echo OK

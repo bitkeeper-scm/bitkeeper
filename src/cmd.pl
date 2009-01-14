@@ -320,6 +320,7 @@ sendbug
 set
 setup
 sfiles
+_sfiles_bam
 _sfiles_clone
 sfio remote
 _shellSplit_test

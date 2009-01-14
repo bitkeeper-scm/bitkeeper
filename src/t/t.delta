@@ -757,15 +757,22 @@ bk ci $Q -y'should fail' b 2>ERR || {
 }
 echo OK
 
-echo $N Check that read-only new files on stdin are flagged .........$NL
+echo $N Check that read-only new files on stdin are ok ..............$NL
 touch bnew
 chmod 444 bnew
-echo bnew | bk ci -a -ynew - 2>ERR || {
-       echo should not fail
-       cat ERR
-       exit 1
+echo bnew | bk ci $Q -a -ynew - || exit 1
+echo OK
+
+echo $N But that updates to files can\'t be read-only ................$NL
+bk edit $Q bnew || exit 1
+echo hi > bnew
+chmod 444 bnew
+echo bnew | bk ci $Q -a -ynew - 2>ERR && {
+	echo should fail
+	cat ERR
+	exit 1
 }
-grep -q "ci: bnew: no write permission" ERR || {
+grep -q "delta: bnew is locked but not writable" ERR || {
        echo wrong err
        cat ERR
        exit 1
