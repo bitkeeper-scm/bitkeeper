@@ -6977,7 +6977,7 @@ get_link(sccs *s, char *printOut, int flags, delta *d, int *ln)
 	u16 dsum = 0;
 	delta	*e;
 
-	unless (f) return 2;
+	unless (f && f != (char *)-1) return 2;
 
 	/*
 	 * What we want is to just checksum the symlink.
