@@ -699,6 +699,8 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 	datum	k, v;
 	sccs	*s;
 	delta	*d;
+	char	*path, *here;
+	project	*prod;
 
 	k.dptr = key;
 	k.dsize = strlen(key);
@@ -708,6 +710,36 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 		return (s);
 	}
 	s = sccs_keyinit(proj, key, flags|INIT_NOWARN, idDB);
+
+	/*
+	 * When running in a nested product's RESYNC tree we we can
+	 * descend to the fake component's directories and won't be
+	 * able to find files in those components.
+	 * (ex: 'bk changes -v' in post-commit trigger after merge)
+	 * In this case the resolve of components have already been
+	 * completed so we just look for the already resolved file
+	 * in the original tree.
+	 * NOTE: nothing here is optimized
+	 */
+	if (!s && proj_isComponent(proj) &&
+	    (prod = proj_isResync(proj_product(proj)))) {
+		here = strdup(proj_cwd());
+		chdir(proj_root(prod));
+		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+		if (path = key2path(proj_rootkey(proj), idDB)) {
+			mdbm_close(idDB);
+			proj = proj_init(path);
+			chdir(path);
+			free(path);
+			idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+			chdir(proj_root(prod));
+			s = sccs_keyinit(proj, key, flags|INIT_NOWARN, idDB);
+			proj_free(proj);
+		}
+		mdbm_close(idDB);
+		chdir(here);
+		free(here);
+	}
 	v.dptr = (void *) &s;
 	v.dsize = sizeof (sccs *);
 	if (mdbm_store(graphDB, k, v, MDBM_INSERT)) { /* cache the new entry */
