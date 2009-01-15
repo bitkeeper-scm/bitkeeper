@@ -65,21 +65,19 @@ done
 cd "$HERE/project"
 bk commit $Q -y"more stuff to gcc"
 cd "$HERE/copy"
-bk pull >OUT 2>&1 || {
+
+bk pull $Q || {
 	echo failed
-	cat OUT
 	exit 1
 }
 test -z "`bk changes -qR`" || {
 	echo failed
 	echo Did not pull
 	bk changes -qR
-	cat OUT
 	exit 1
 }
 bk -Ar check -av >OUT 2>&1 || {
 	echo failed
-	cat OUT
 	exit 1
 }
 echo OK
@@ -269,27 +267,50 @@ do
 	bk new $Q -y"modify" file$i
 	bk commit $Q -y"Add $i to file$i"
 done
+bk edit $Q file1
+cp file1 old
+echo "stuff at top" > file1
+cat old >> file1
+rm old
+bk delta $Q -ymodify file1 || exit 1
+bk commit $Q -y"modify file1" || exit 1
 cd "$HERE"/local
 bk edit $Q amerge
 bk delta $Q -fyamerge amerge
 bk commit $Q -y"local gcc"
+mkdir BitKeeper/triggers
+cat <<EOF > BitKeeper/triggers/post-commit.bug
+#!/bin/sh
+
+bk changes -vr+ -nd:DPN:@:REV: > "$HERE"/commit.log || exit 1
+EOF
+chmod +x BitKeeper/triggers/post-commit.bug
 bk pull >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
 }
-grep -q "sccs_init" OUT && {
-	echo failed sccs_init
-	cat OUT
-	exit 1
-}
 
 # check must pass
-bk -Ar check -av >OUT 2>&1 || {
+bk $Q -Ar check -a || {
 	echo failed
 	cat OUT
 	exit 1
 }
+
+grep -q "Cannot sccs_init" OUT && {
+     echo RESYNC changes -v bug
+     cat OUT
+     exit 1
+}
+cat <<EOF > WANT
+ChangeSet@1.7
+amerge@1.3
+gcc/ChangeSet@1.9
+gcc/file1@1.3
+EOF
+
+cmpfiles "$HERE"/commit.log WANT
 
 # gcc/ChangeSet is in product's changeset
 cd "$HERE"/local
@@ -297,6 +318,7 @@ cat <<EOF > WANT
 ChangeSet
 amerge
 gcc/ChangeSet
+gcc/file1
 EOF
 bk changes -nd:GFILE: -vr+ > GOT
 cmpfiles WANT GOT
