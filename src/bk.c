@@ -408,6 +408,7 @@ out:
 	close(1);
 	fflush(stderr);
 	close(2);
+	sfilesDied(1);
 	if (ret < 0) ret = 1;	/* win32 MUST have a positive return */
 	return (ret);
 }

@@ -638,7 +638,7 @@ pass2_renames(opts *opts)
 		 * code and fall through if they said EAGAIN or just skip
 		 * this one.
 		 */
-		if (slotTaken(opts, rs->dname) == DIR_CONFLICT) {
+		if (rs->d && (slotTaken(opts, rs->dname) == DIR_CONFLICT)) {
 			/* If we are just looking for space, skip this one */
 			unless (opts->resolveNames) goto out;
 			if (opts->noconflicts) {
@@ -659,6 +659,7 @@ pass2_renames(opts *opts)
 		if (rs->gnames) {
 			rename_file(rs);
 		} else {
+			assert(rs->d); /* no rs->gnames implies single tip */
 			create(rs);
 		}
 out:		resolve_free(rs);
@@ -754,11 +755,13 @@ create(resolve *rs)
 	sccs	*local;
 	int	ret = 0;
 	int	how;
-	static	char *cnames[4] = {
+	static	char *cnames[] = {
 			"Huh?",
 			"an SCCS file",
 			"a regular file without an SCCS file",
-			"another SCCS file in the patch"
+			"another SCCS file in the patch",
+			"another file already in RESYNC",
+			"an SCCS file that is marked gone"
 		};
 
 	if (opts->debug) {
@@ -865,12 +868,13 @@ private	int
 rename_file(resolve *rs)
 {
 	opts	*opts = rs->opts;
-	char	*to;
+	char	*to = 0;
 	int	how = 0;
 
 again:
 	if (opts->debug) {
-		fprintf(stderr, ">> rename_file(%s)\n", rs->d->pathname);
+		fprintf(stderr, ">> rename_file(%s - %s)\n",
+			rs->s->gfile, rs->d ? rs->d->pathname : "<conf>");
 	}
 
 	/*
@@ -903,15 +907,9 @@ again:
 	 * If remote moved, and local didn't, ok if !slotTaken.
 	 * If local is moved and remote isn't, ok if RESYNC slot is open.
 	 */
-	if (streq(rs->snames->local, rs->snames->gca)) {
-		to = rs->snames->remote;
+	if (rs->d) {
+		to = rs->dname;
 		if (how = slotTaken(opts, to)) to = 0;
-	} else if (streq(rs->snames->gca, rs->snames->remote)) {
-		to = rs->snames->local;
-		/* XXX - I'm not sure that this makes sense. */
-		if (exists(to)) to = 0;
-	} else {
-		to = 0;
 	}
 	if (to) {
 		char	*mfile;
@@ -1424,11 +1422,18 @@ deleteDirs(char **list)
 int
 slotTaken(opts *opts, char *slot)
 {
+	assert(slot);
+
 	if (opts->debug) fprintf(stderr, "slotTaken(%s) = ", slot);
 
 	if (exists(slot)) {
 		if (opts->debug) fprintf(stderr, "%s exists in RESYNC\n", slot);
 		return (RESYNC_CONFLICT);
+	}
+
+	/* load gone from RESYNC */
+	unless (opts->goneDB) {
+		opts->goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	}
 
 	chdir(RESYNC2ROOT);
@@ -1442,7 +1447,17 @@ slotTaken(opts *opts, char *slot)
 		 */
 		sccs_sdelta(local, sccs_ino(local), buf2);
 		sccs_free(local);
-		unless (mdbm_fetch_str(opts->rootDB, buf2)) {
+		if (mdbm_fetch_str(opts->rootDB, buf2)) {
+			/* in resync */
+		} else if (mdbm_fetch_str(opts->goneDB, buf2)) {
+			/* gone file */
+			if (opts->debug) {
+				fprintf(stderr,
+				    "%s exists and is gone\n", slot);
+			}
+			chdir(ROOT2RESYNC);
+			return (GONE_SFILE_CONFLICT);
+		} else {
 			if (opts->debug) {
 				fprintf(stderr,
 				    "%s exists in local repository\n", slot);
@@ -1927,7 +1942,7 @@ conflict(opts *opts, char *sfile)
 	s = sccs_init(sfile, INIT_NOCKSUM);
 
 	rs = resolve_init(opts, s);
-	assert(streq(rs->dname, s->sfile));
+	assert(rs->dname && streq(rs->dname, s->sfile));
 
 	d.local = sccs_findrev(s, rs->revs->local);
 	d.gca = sccs_findrev(s, rs->revs->gca);
@@ -2771,6 +2786,7 @@ freeStuff(opts *opts)
 	if (opts->log && (opts->log != stderr)) fclose(opts->log);
 	if (opts->rootDB) mdbm_close(opts->rootDB);
 	if (opts->idDB) mdbm_close(opts->idDB);
+	if (opts->goneDB) mdbm_close(opts->goneDB);
 }
 
 private void

@@ -15,6 +15,7 @@
 #define	GFILE_CONFLICT		2
 #define	DIR_CONFLICT		3
 #define	RESYNC_CONFLICT		4
+#define	GONE_SFILE_CONFLICT	5
 #define	LOCAL			1
 #define	REMOTE			2
 #define	BACKUP_LIST		"BitKeeper/tmp/resolve_backup_list"
@@ -60,6 +61,7 @@ typedef struct {
 	MDBM	*rootDB;	/* db{ROOTKEY} = pathname in RESYNC */
 	MDBM	*idDB;		/* for the local repository, not RESYNC */
 	MDBM	*checkoutDB;	/* Save the original checkout state files */
+	MDBM	*goneDB;	/* resolved gone files */
 	FILE	*log;		/* if set, log to here */
 	char	**includes;	/* list of globs indicating files to resolve */
 	char	**excludes;	/* list of globs indicating files to skip */
@@ -131,7 +133,6 @@ struct resolve {
 names	*res_getnames(char *path, int type);
 char	*mode2a(mode_t m);
 int	more(resolve *rs, char *file);
-char	*res_getlocal(char *gfile);
 resolve	*resolve_init(opts *opts, sccs *s);
 void	automerge(resolve *rs, names *n, int identical);
 int	c_revtool(resolve *rs);

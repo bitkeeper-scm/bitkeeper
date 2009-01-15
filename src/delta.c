@@ -186,6 +186,7 @@ delta_main(int ac, char **av)
 		    case 'a':					/* doc 2.0 */
 		    	dflags |= DELTA_AUTO;
 			dflags &= ~DELTA_FORCE;
+			sflags &= ~SF_WRITE_OK;
 			break;
 		    case 'b':	/* -b == -Ebinary */		/* doc 2.0 */
 			if (streq(prog, "new")) {

@@ -61,6 +61,20 @@ test $NUM = 2 || {
 }
 echo OK
 
+echo $N Delete bam files ............................................$NL
+# Failed on windows because of the second delete putting a : into file name
+echo bd > bd
+bk new $Q -b bd || exit 1
+bk rm bd || exit 1
+echo bd > bd
+bk new $Q -b bd || exit 1
+bk rm bd || exit 1
+bk -r check -ac 2> ERR || {
+	echo check failed
+	exit 1
+}
+echo OK
+
 echo $N Check that we picked up the right timestamps ................$NL
 bk -Ur bam timestamps -n > OUT
 test -s OUT && {
@@ -75,7 +89,7 @@ mkdir subdir
 cp "$DATA" subdir/data3
 bk new $Q subdir/data3
 NUM=`find BitKeeper/BAM -type f -name '*.d1' -print | wc -l`
-test $NUM = 2 || {
+test $NUM = 3 || {
 	echo wrong number of files
 	find BitKeeper/BAM -type f -name '*.d1' -print
 	exit 1

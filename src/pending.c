@@ -7,7 +7,7 @@ pending_main(int ac, char **av)
 	char	buf[MAXLINE], *tmp;
 	int	c, quiet = 0;
 	char	*dspec =
-":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\\n\
+":COMPONENT::DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\\n\
 $each(:C:){  (:C:)\\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n";
 
 	while ((c = getopt(ac, av, "q")) != -1) { 
