@@ -34,41 +34,68 @@ usage:			system("bk help -s rm");
 	return (errors);
 }
 
+/*
+ * If the desired basename is available in BitKeeper/deleted, then
+ * return a strdup'ed full path that filename.
+ * (Checks RESYNC2ROOT if run in RESYNC)
+ */
+private char *
+slotfree(project *p, char *base)
+{
+	char	path[MAXPATH];
+
+	if (proj_isResync(p)) {
+		sprintf(path, "%s/%s/BitKeeper/deleted/SCCS/%s",
+		    proj_root(p), RESYNC2ROOT, base);
+		if (exists(path)) return (0);
+	}
+	sprintf(path, "%s/BitKeeper/deleted/SCCS/%s",
+	    proj_root(p), base);
+	if (exists(path)) return (0);
+	return (strdup(path));
+}
+
 char *
 sccs_rmName(sccs *s)
 {
-	char	*rand, *t, *base, *root;
+	char	path[MAXPATH];
+	char	*t, *b;
 	int	try = 0;
 	delta	*d;
-	char	path[MAXPATH];
-	char	buf[50];
+	char	*suffix;
 
-	base = basenm(s->sfile);
-	base += 2;
-	unless (root = proj_root(s->proj)) {
-		fprintf(stderr, "sccsrm: cannot find root?\n");
-		return (NULL);
-	}
-
-	sprintf(path, "%s/BitKeeper/deleted/SCCS", root);
-	t = &path[strlen(path)];
-	*t++ = '/';
 	d = sccs_ino(s);
+	assert(d->pathname);
+	b = strdup(basenm(d->pathname));
+	if (strneq(b, ".del-", 5)) {
+		/*
+		 * handle files created in BitKeeper/deleted
+		 * nested partition can do this
+		 * b =~ s/^\.del-([^~]*)~.+/$1/
+		 */
+		t = strdup(b+5);
+		free(b);
+		b = t;
+		if (t = strchr(b, '~')) *t = 0;
+	}
 	if (d->random) {
-		rand = d->random;
+		/* random =~ s/:/-/g;  fix win32 BAM keys with : in them */
+		suffix = strdup(d->random);
+		while (t = strchr(suffix, ':')) *t = '-';
 	} else {
-		sprintf(buf, "%05u", d->sum);
-		rand = buf;
+		suffix = aprintf("%05u", d->sum);
 	}
 	for (try = 0; ; try++) {
 		if (try) {
-			sprintf(t, "s..del-%s~%s~%d", base, rand, try);
+			sprintf(path, "s..del-%s~%s~%d", b, suffix, try);
 		} else {
-			sprintf(t, "s..del-%s~%s", base, rand);
+			sprintf(path, "s..del-%s~%s", b, suffix);
 		}
-		unless (exists(path)) break;
+		if (t = slotfree(s->proj, path)) break;
 	}
-	return (strdup(path));
+	free(b);
+	free(suffix);
+	return (t);
 }
 
 int

@@ -182,7 +182,7 @@ echo OK
 
 echo $N Test bk rm w non p-locked file ..............................$NL
 bk rm C/file3
-delfile=`bk sfiles -p BitKeeper/deleted | grep s..del-file3`
+delfile=`bk sfiles -p BitKeeper/deleted | grep s..del-file2`
 bk _test -f $delfile || {
 	echo failed to move file to deleted
 	exit 1

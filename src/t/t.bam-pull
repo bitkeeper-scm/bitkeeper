@@ -35,7 +35,7 @@ bk bam check -F $Q || exit 1
 echo OK
 
 echo $N Remove my BAM server and pull the needed deltas .............$NL
-bk bam server $Q -r || exit 1
+bk bam server $Q -sr || exit 1
 bk bam check -F $Q 2> ERR && {
 	echo should have errors
 	exit 1
@@ -84,7 +84,7 @@ test -f $FILE || {
 	exit 1
 }
 # Some hackery to flush our BAM data
-bk bam server -r
+bk bam server -fr
 bk bam clean $Q || exit 1
 bk bam server $Q .
 test -f $FILE && {

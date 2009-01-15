@@ -38,7 +38,6 @@ private	char rev[MAXKEY];	/* 1.1.1.1, keys, tags, etc - see HASREVS */
 private	pid_t spid;		/* pid of sfiles for -r */
 
 private	int oksccs(char *s, int flags, int complain);
-private	int sfilesDied(int killit);
 
 /*
  * Get the next file and munge it into an s.file name.
