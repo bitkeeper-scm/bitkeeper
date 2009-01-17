@@ -209,6 +209,7 @@ insertPending(sfile sf)
 		int	i = String_first("|", line) + 1;
 		FILE	cfd;
 
+		comments = "";
 		sf.rev = String_range(line, i, "end");
 		sf.name = "${name}@${sf.rev}";
 		cfd = popen("bk prs -hd:COMMENTS: -r${sf.rev} \"${sf.file}\"",
@@ -1105,6 +1106,14 @@ showFile(sfile sf)
 
 		disableComments();
 		bottomMessage(local.msgs{"pendingFile"}, "notice");
+		if (File_tail(file) eq "ChangeSet") {
+			string	dir = File_dirname(file);
+			Text_insert(local.w_diffs, "end", "\n");
+			Text_insert(local.w_diffs, "end",
+			    bk("changes -v -r${sf.rev} ${dir}"), "");
+			return;
+		}
+
 		pRev = bk("prs -hr${sf.rev} -nd:PARENT: \"${sf.file}\"");
 		Text_insert(local.w_diffs, "end",
 		    "\n bk diffs -up -R${pRev} ${file}\n", "notice");
