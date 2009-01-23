@@ -141,7 +141,7 @@ cmd_clone(int ac, char **av)
 		bzero(&opts, sizeof(eopts));
 		opts.product = 1;
 		opts.product_first = 1;
-		opts.rev = rev ? rev : "+";
+		opts.rev = rev;
 		opts.sc = s;
 		opts.aliases = h;
 		r = ensemble_list(opts);

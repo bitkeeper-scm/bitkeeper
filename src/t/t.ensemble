@@ -610,6 +610,16 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
+echo $N Create a pending deep nested component ......................$NL
+cd gdb || exit 1
+commercial pendingdeepnest
+cd ..
+commercial extradeepnest
+cd ..
+bk attach $Q -C pendingdeepnest
+cd ..
+echo OK
+
 echo $N bk components -Pr+ lists product and components .............$NL
 # valgrind --tool=memcheck --leak-check=full --show-reachable=yes \
 bk components -Pr+ > GOT
@@ -621,11 +631,21 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components -r+ lists components only .....................$NL
+echo $N bk components -r+ lists committed components only ...........$NL
 bk components -r+ > GOT
 cat > WANT <<EOF
 gcc4
 gdb
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N bk components lists committed and pending components only ...$NL
+bk components > GOT
+cat > WANT <<EOF
+gcc4
+gdb
+gdb/pendingdeepnest
 EOF
 cmpfiles WANT GOT
 echo OK
@@ -652,6 +672,20 @@ gcc4
 EOF
 cmpfiles WANT GOT
 echo OK
+
+echo $N bk -A lists committed and pending components ................$NL
+bk -A > GOT
+cat <<EOF > WANT
+#### . ####
+#### gcc4 ####
+#### gdb ####
+#### gdb/pendingdeepnest ####
+EOF
+cmpfiles WANT GOT
+echo OK
+
+# Done with pending component
+rm -fr gdb/pendingdeepnest gdb/extradeepnest
 
 echo $N bk components for undo -r+ ..................................$NL
 echo + | bk components -Plpnd -u - > GOT

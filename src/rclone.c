@@ -141,7 +141,7 @@ rclone_ensemble(remote *r)
 	url = remote_unparse(r);
 	ropts.product = 1;
 	ropts.product_first = 1;
-	ropts.rev = opts.rev ? opts.rev : "+";
+	ropts.rev = opts.rev;
 
 	/*
 	 * Mirror bkd_clone and imply whatever list we have unless they 
