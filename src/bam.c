@@ -1828,7 +1828,11 @@ bam_convert_main(int ac, char **av)
 	bam_size = proj_configsize(0, "BAM");
 	while (fnext(buf, sfiles)) {
 		chomp(buf);
-		if (size(buf) < bam_size) continue;
+		/*
+		 * Tried
+	         * 	if (size(buf) < bam_size) continue;
+		 * but compressed sfiles make this test fail and skip files it shouldn't.
+		 */
 		unless (s = sccs_init(buf, 0)) continue;
 		unless (HASGRAPH(s)) {
 			sccs_free(s);
