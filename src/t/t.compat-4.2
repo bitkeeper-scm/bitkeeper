@@ -1,0 +1,159 @@
+# There are two main things being tested: BAM and Fast-Pull
+# BAM was introduced in 4.1, but we are using a BAM baseline as 4.2
+#
+# 4.3 introduced Fast Pull which includes a whole sfile under some
+# circumstances.
+
+OLDVER=4.2
+OLDBK=/build/bitkeeper-$OLDVER
+
+echo $N Check bitkeeper 4.2 installation ............................$NL
+# Skip this test for Windows VISTA
+OSTYPE=`uname -s`
+case $OSTYPE in
+	MINGW32_NT-6.*) echo skipped; exit 0;;
+esac
+echo license: $BKL_PRO > c
+echo licsign1: $BKL_P1 >> c
+echo licsign2: $BKL_P2 >> c
+echo licsign3: $BKL_P3 >> c
+mv c "`bk dotbk`"/config
+test -d $OLDBK || {
+    # Skip this test if we don't have at least 5gigs free
+    df -k /build 2>/dev/null |
+        perl -e '$_ = <>; $_ = <>; exit 0 if /^\S+\s+\d+\s+\d+\s+(\d+)\s+\d+%/ && $1 > 5e6; exit' || {
+	echo skipped
+	exit 0
+    }
+    bk upgrade $Q -f -n \
+	    http://upgrades.bitkeeper.com/upgrades.$OLDVER >out 2>ERR || {
+	    grep -q "No upgrade for the arch.*found" ERR || {
+		echo skipped
+		exit 0
+	    }
+	    echo image fetch failed
+	    exit 1
+    }
+    # NOTE bk-3.2.x didn't set exit status...
+    echo y | BK_NOLINKS=1 ./bk-$OLDVER-* $OLDBK >out 2>err || exit 1
+    rm $OLDBK/config
+
+    # generate a crypto key for tests
+    $OLDBK/bk crypto -i 1024 $OLDBK/my.sec $OLDBK/my.pub || exit 1
+}
+VER=`$OLDBK/bk version -s`
+test X$VER = X$OLDVER || {
+	echo bk not installed correctly
+	exit 1
+}
+echo OK
+
+echo -------------- fast pull tests
+echo $N Set up a patch new, BAM and many deltas .....................$NL
+rm -fr project copy
+commercial project
+touch send-as-sfile send-as-deltas
+bk new $Q send-as-sfile send-as-deltas || exit 1
+bk commit $Q -SBASE -yfooze || exit 1
+cd ..
+bk clone $Q project copy || exit 1
+cd project
+echo BAMBAM > BAM
+bk new $Q -b BAM || exit 1
+touch newfile
+bk new $Q newfile || exit 1
+bk edit $Q send-as-sfile send-as-deltas || exit 1
+# 9 is the internal baseline for largest that passes as a patch
+for i in 1 2 3 4 5 6 7 8 9; do
+	bk delta $Q -l -f -ymkdeltas send-as-deltas send-as-sfile || exit 1
+done
+# adding a 10th to send-as-sfile means it will move as an sfile
+bk delta $Q -l -f -ysend-as-sfile send-as-sfile || exit 1
+bk unedit $Q send-as-sfile send-as-deltas || exit 1
+bk commit $Q -y'deltas to existing files' || exit 1
+#
+bk makepatch $Q -B -r+ > ../PATCH || exit 1
+bk makepatch $Q -B -C -r+ > ../PATCH-COMPAT || exit 1
+bk send $Q -r+ - > ../SEND || exit 1
+$OLDBK/bk makepatch $Q -B -r+ > ../OLDPATCH || exit 1
+$OLDBK/bk send $Q -r+ - > ../OLDSEND || exit 1
+cd ..
+cmpfiles SEND OLDSEND
+cmpfiles PATCH-COMPAT OLDPATCH
+cmp -s PATCH OLDPATCH && exit 1
+tar cf copy.tar copy
+echo OK
+
+echo $N New patch, old bk, takepatch works, resolve fails ...........$NL
+cd copy || exit 1
+$OLDBK/bk takepatch < ../PATCH || exit 1
+$OLDBK/bk resolve 2> ERR && exit 1
+grep -q "Missing file" ERR || exit 1
+rm -fr RESYNC PENDING
+echo "failed (bug -- should increase PATCH_VER?)"
+
+echo $N Start new and old bkds ......................................$NL
+cd "$HERE"
+OLDP=`port 50000`
+$OLDBK/bk bkd -d -p$OLDP -ikill 2> OLDERR
+NEWP=`port 50001`
+bk bkd -d -p$NEWP -ikill 2> NEWERR
+echo OK
+
+echo $N Push old server new client ..................................$NL
+cd project || exit 1
+bk push $Q bk://localhost:$OLDP/copy || exit 1
+echo OK
+
+echo $N Push new server old client ..................................$NL
+cd ..
+rm -fr copy
+tar xf copy.tar
+cd project || exit 1
+$OLDBK/bk push $Q bk://localhost:$NEWP/copy || exit 1
+echo OK
+
+echo $N Pull old server new client ..................................$NL
+cd ..
+rm -fr copy
+tar xf copy.tar
+cd copy || exit 1
+bk pull $Q bk://localhost:$OLDP/project || exit 1
+echo OK
+
+echo $N Pull new server old client ..................................$NL
+cd ..
+rm -fr copy
+tar xf copy.tar
+cd copy || exit 1
+$OLDBK/bk pull $Q bk://localhost:$NEWP/project || exit 1
+echo OK
+
+echo $N Pull old server new client with local work present ..........$NL
+cd ..
+rm -fr copy
+tar xf copy.tar
+cd copy || exit 1
+touch localfile
+bk new $Q localfile || exit 1
+bk commit $Q -ylocalcset || exit 1
+bk pull $Q bk://localhost:$OLDP/project || exit 1
+echo OK
+
+echo $N Pull new server old client with local work present ..........$NL
+cd ..
+rm -fr copy
+tar xf copy.tar
+cd copy || exit 1
+touch localfile
+bk new $Q localfile || exit 1
+bk commit $Q -ylocalcset || exit 1
+$OLDBK/bk pull $Q bk://localhost:$NEWP/project || exit 1
+echo OK
+
+echo $N Stop new and old bkds .......................................$NL
+cd ..
+bk _kill bk://localhost:$OLDP
+bk _kill bk://localhost:$NEWP
+test -s OLDERR -o -s NEWERR && exit 1
+echo OK

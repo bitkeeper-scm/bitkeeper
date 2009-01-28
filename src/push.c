@@ -444,7 +444,12 @@ genpatch(FILE *wf, char *rev_list, int gzip)
 
 	opts.inBytes = opts.outBytes = 0;
 	n = 2;
-	if (opts.verbose) makepatch[n++] = "-vv";
+	if (opts.verbose) makepatch[n++] = "-v";
+	if (bkd_hasFeature("pSFIO")) {
+		makepatch[n++] = "-M10";
+	} else {
+		makepatch[n++] = "-C"; /* old-bk, compat mode */
+	}
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*

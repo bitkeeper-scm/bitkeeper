@@ -1,4 +1,9 @@
-Release notes for BitKeeper version 4.2.1 (released 14-Jan-2009)
+Release notes for BitKeeper version 4.3 (released 28-Jan-2009)
+
+This release contains a performance fix for push and pulls that do not
+create a merge.  For large transfers the speedup can be dramatic.
+This change required changing the progress messages from pull, push
+and takepatch to be less verbose.
 
 bk bam
   - Fix some licensing issues where a manual 'bk lease renew' was

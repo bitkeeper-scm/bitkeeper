@@ -103,3 +103,207 @@ bk takepatch -a < P 2>ERR || {
 	exit 1
 }
 echo OK
+
+# Test fast pull code paths
+# Set up two csets - new files in the first and updates in the second
+# This is so I can do a patch which is just the second in a pull and
+# see that there is no sfio in the patch in the merge case.
+
+echo $N Set up a patch new, BAM and many deltas .....................$NL
+cd "$HERE"
+rm -fr project copy
+commercial project
+touch send-as-sfile send-as-deltas
+bk new $Q send-as-sfile send-as-deltas || exit 1
+bk commit $Q -SBASE -yfooze || exit 1
+cd ..
+bk clone $Q project copy || exit 1
+cd project
+echo BAMBAM > BAM
+bk new $Q -b BAM || exit 1
+touch newfile
+bk new $Q newfile || exit 1
+bk commit $Q -SFIRST -y'new BAM and plain file' || exit 1
+bk edit $Q send-as-sfile send-as-deltas || exit 1
+# 9 is the internal baseline for largest that passes as a patch
+for i in 1 2 3 4 5 6 7 8 9; do
+	bk delta $Q -l -f -ymkdeltas send-as-deltas send-as-sfile || exit 1
+done
+# adding a 10th to send-as-sfile means it will move as an sfile
+bk delta $Q -l -f -ysend-as-sfile send-as-sfile || exit 1
+bk unedit $Q send-as-sfile send-as-deltas || exit 1
+bk commit $Q -SSECOND -y'deltas to existing files' || exit 1
+bk makepatch $Q -rBASE..+ -M10 > ../PATCH10 || exit 1
+bk makepatch $Q -B -rBASE..+ -M10 > ../BPATCH10 || exit 1
+bk send $Q -rBASE..+ - > ../SEND || exit 1
+cd ..
+tar cf copy.tar copy
+echo OK
+
+echo $N Takepatch with varying number of -vvv gives known response ..$NL
+cd copy
+for m in "" -m; do
+    for v in "" -v -vv -vvv; do
+    	test -d RESYNC && rm -fr RESYNC PENDING
+	BK_NOTTY= bk takepatch $v $m < ../PATCH10 2> LOG$m$v || exit 1
+    done
+done
+test -s LOG && { echo no m or v not empty; cat LOG; exit 1; }
+test -s LOG-m && { echo dash m not empty; cat LOG-m; exit 1; }
+PENDING=`find PENDING -type f -print`
+#
+cat <<EOF > WANT
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
+takepatch: 2 new changesets, 0 conflicts in 5 files
+EOF
+cmpfiles WANT LOG-v
+#
+cat <<EOF > WANT
+Receiving patch ... done.
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
+takepatch: 2 new changesets, 0 conflicts in 5 files
+EOF
+cmpfiles WANT LOG-m-v
+#
+cat <<EOF > WANT
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
+Updating ChangeSet
+Updating send-as-deltas
+Updating BAM
+Updating newfile
+Updating send-as-sfile
+takepatch: 2 new changesets, 0 conflicts in 5 files
+EOF
+cmpfiles WANT LOG-vv
+#
+cat <<EOF > WANT
+Receiving patch ... done.
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
+Updating ChangeSet
+Updating send-as-deltas
+Updating BAM
+Updating newfile
+Updating send-as-sfile
+takepatch: 2 new changesets, 0 conflicts in 5 files
+EOF
+cmpfiles WANT LOG-m-vv
+#
+cat <<EOF > WANT
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
+EOF
+printf "Updating ChangeSet |\010/\010-\010\010, renumbering " >> WANT
+printf "/\010-\010%s\010|\010/\010\010, checking checksums  \n" "\\" >> WANT
+printf "Updating send-as-deltas " >> WANT
+printf "|\010/\010-\010%s\010|\010/\010-\010%s\010|\010/\010 \n" "\\" "\\"  >> WANT
+cat <<EOF >> WANT
+Updating BAM
+Updating newfile
+Updating send-as-sfile
+takepatch: 2 new changesets, 0 conflicts in 5 files
+EOF
+cmpfiles WANT LOG-vvv
+#
+printf "Receiving patch ... |\010/\010-\010%s\010|\010/" "\\" > WANT
+printf "\010-\010%s\010|\010/\010-\010done.\n" "\\" >> WANT
+cat <<EOF >> WANT
+---------------------------------------------------------------------------
+takepatch: saved entire patch in $PENDING
+---------------------------------------------------------------------------
+EOF
+printf "Updating ChangeSet |\010/\010-\010\010, renumbering " >> WANT
+printf "/\010-\010%s\010|\010/\010\010, checking checksums  \n" "\\" >> WANT
+printf "Updating send-as-deltas " >> WANT
+printf "|\010/\010-\010%s\010|\010/\010-\010%s\010|\010/\010 \n" "\\" "\\" >> WANT
+cat <<EOF >> WANT
+Updating BAM
+Updating newfile
+Updating send-as-sfile
+takepatch: 2 new changesets, 0 conflicts in 5 files
+EOF
+cmpfiles WANT LOG-m-vvv
+echo OK
+
+echo $N Resolve fails a makepatch - takepatch because no BAM ........$NL
+bk resolve -a 2>ERR && exit 1
+grep -q "Failed to locate BAM data for the following deltas" ERR || exit 1
+echo OK
+
+echo $N Resolve of a takepatch of send-generated-patch works ........$NL
+bk abort -f
+bk takepatch < ../SEND || exit 1
+bk resolve $Q -a || exit 1
+bk get $Q BAM || exit 1
+echo BAMBAM > WANT
+cmpfiles BAM WANT
+echo OK
+
+echo $N Resolve of a takepatch of makepatch -B -M10 patch works .....$NL
+# This example packs both sfio and sfiles in the sfio
+cd ..
+rm -fr copy
+tar xf copy.tar
+cd copy || exit 1
+bk takepatch < ../BPATCH10 || exit 1
+bk resolve $Q -a || exit 1
+bk get $Q BAM || exit 1
+echo BAMBAM > WANT
+cmpfiles BAM WANT
+echo OK
+
+echo $N Pull of newfiles contains SFIO whether local work or not ....$NL
+cd ..
+rm -fr copy
+tar xf copy.tar
+cd copy || exit 1
+bk pull $Q -RrFIRST || exit 1
+mv PENDING/* update.patch
+rm -fr PENDING RESYNC
+touch localfile
+bk new $Q localfile || exit 1
+bk commit $Q -ylocal-cset || exit 1
+bk pull $Q -RrFIRST || exit 1
+mv PENDING/* merge.patch
+rm -fr PENDING RESYNC
+cmpfiles update.patch merge.patch
+grep -q SFIO update.patch || exit 1
+echo OK
+
+echo $N Pull of modifications contains SFIO in update case only .....$NL
+cd ..
+rm -fr copy
+tar xf copy.tar
+cd copy || exit 1
+bk pull $Q -rFIRST || exit 1
+bk pull $Q -R || exit 1
+mv PENDING/* update.patch
+rm -fr PENDING RESYNC
+bk edit $Q newfile
+echo stuff > newfile
+bk delta $Q -ycontent newfile || exit 1
+bk commit $Q -ynewcontent || exit 1
+bk pull $Q -R || exit 1
+mv PENDING/* merge.patch
+rm -fr PENDING RESYNC
+grep -q SFIO update.patch || exit 1
+grep -q SFIO merge.patch && exit 1
+echo OK
+
+echo $N Resolve SFIO content when it seems the file rolled back .....$NL
+# The patch has 2 csets, the repo has the first one already
+# The local repo adds content to 'newfile' so the RESYNC will
+# have an SCCS/s.newfile without that change
+bk takepatch < ../BPATCH10 || exit 1
+# This fails, even though I'm adding a change which is already there
+bk resolve -a 2> ERR && exit 1
+grep -q "Missing delta (bk help chk2) in newfile" ERR || exit 1
+echo "failed (bug -- when adding a change already there)"

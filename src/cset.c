@@ -20,12 +20,15 @@ typedef	struct cset {
 	int	serial;		/* the revs passed in are serial numbers */
 	int	md5out;		/* the revs printed are as md5keys */
 	int	doBAM;		/* send BAM data */
+	int	compat;		/* do not send new sfiles in sfio */
 
 	/* numbers */
+	int	tooMany;	/* send whole sfiles if # deltas > tooMany */
 	int	verbose;
 	int	notty;
 	int	fromStart;	/* if we did -R1.1..1.2 */
 	int	ndeltas;
+	int	ncsets;
 	int	nfiles;
 	pid_t	pid;		/* adler32 process id */
 	int	lasti;		/* last idx in cweave for cset_diffs */
@@ -33,6 +36,7 @@ typedef	struct cset {
 	char	*csetkey;	/* lie about the cset rootkey */
 	char	**cweave;	/* weave of cset file for this patch */
 	char	**BAM;		/* list of keys we need to send */
+	char	**sfiles;	/* list of whole sfiles we need to send */
 } cset_t;
 
 private	void	csetlist(cset_t *cs, sccs *cset);
@@ -58,13 +62,15 @@ makepatch_main(int ac, char **av)
 
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
-	while ((c = getopt(ac, av, "BCdP:qr|sv")) != -1) {
+	while ((c = getopt(ac, av, "BCdM;P:qr|sv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
 		    case 'B': copts.doBAM = 1; break;
+		    case 'C': copts.compat = 1; break;
 		    case 'd':					/* doc 2.0 */
 			nav[++i] = "-d";
 			break;
+		    case 'M': copts.tooMany = atoi(optarg); break;
 		    case 'P':
 			copts.csetkey = optarg;
 			break;
@@ -92,6 +98,10 @@ makepatch_main(int ac, char **av)
 usage:			system("bk help -s makepatch");
 			return (1);
 		}
+	}
+	if (getenv("_BK_NO_PATCHSFIO")) {
+		copts.compat = 1;
+		copts.tooMany = 0;
 	}
 	unless (range) {
 		nav[++i] = "-m";
@@ -713,18 +723,18 @@ next:		t[-1] = ' ';
 	freeLines(cs->cweave, free);
 	if (cs->verbose && cs->makepatch) {
 		fprintf(stderr,
-		    "makepatch: patch contains %d revisions from %d files\n",
-		    cs->ndeltas, cs->nfiles);
+		    "makepatch: patch contains %d changesets from %d files\n",
+		    cs->ncsets, cs->nfiles);
 	} else if (cs->verbose && cs->mark && cs->ndeltas) {
 		fprintf(stderr,
 		    "cset: marked %d revisions in %d files\n",
 		    cs->ndeltas, cs->nfiles);
 	}
 	if (cs->makepatch) {
-		if (cs->BAM) fputs("== @SFIO@ ==\n\n", stdout);
+		if (cs->BAM || cs->sfiles) fputs("== @SFIO@ ==\n\n", stdout);
 		fputs(PATCH_END, stdout);
 		fflush(stdout);
-		if (cs->BAM) {
+		if (cs->BAM || cs->sfiles) {
 			int	i;
 			FILE	*f;
 
@@ -733,6 +743,12 @@ next:		t[-1] = ' ';
 			 */
 			f = popen("bk sfio -oqB -", "w");
 			EACH(cs->BAM) fprintf(f, "%s\n", cs->BAM[i]);
+			freeLines(cs->BAM, free);
+			cs->BAM = 0;
+			sortLines(cs->sfiles, 0);
+			EACH(cs->sfiles) fprintf(f, "%s\n", cs->sfiles[i]);
+			freeLines(cs->sfiles, free);
+			cs->sfiles = 0;
 			if (pclose(f)) {
 				fprintf(stderr, "BAM sfio -o failed.\n");
 				goto fail;
@@ -1129,8 +1145,9 @@ private	void
 sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;
-	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
-	int	i, n, newfile;
+	int	deltas = 0, csets = 0;
+	int	prs_flags = (PRS_PATCH|SILENT);
+	int	i, n, newfile, hastip;
 	delta	**list;
 	char	*gfile = 0;
 
@@ -1149,17 +1166,37 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * a time when sending the cset diffs.
 	 */
 	newfile = s->tree->flags & D_SET;
+	hastip = s->table->flags & D_SET;
 	list = 0;
 	for (n = 0, d = s->table; d; d = d->next) {
 		unless (d->flags & D_SET) continue;
 		unless (gfile) gfile = CSET(s) ? GCHANGESET : d->pathname;
 		n++;
 		list = (delta **)addLine((char **)list, d);
+		if (d->hash && BAM(s) && copts.doBAM) {
+			cs->BAM = addLine(cs->BAM,
+			    sccs_prsbuf(s, d, PRS_FORCE, BAM_DSPEC));
+		}
 		d->flags &= ~D_SET;
 	}
 	unless (n) return;
 	assert(gfile);
 
+	/*
+	 * If the receiver understands then just send the entire sfile
+	 * for newfiles and for any files with more patches than
+	 * threshold.  Don't send the ChangeSet file.  Also don't send
+	 * a sfile if the tip delta is not part of the patch.
+	 * (pull-r or pending deltas)
+	 */
+	if (!CSET(s) && hastip &&
+	    ((!cs->compat && newfile) ||
+		((cs->tooMany > 0) && (n >= cs->tooMany)))) {
+		cs->sfiles = addLine(cs->sfiles, strdup(s->sfile));
+		free(list);
+		if (cs->verbose > 1) fprintf(stderr, "\n");
+		return;
+	}
 	/*
 	 * For each file, spit out file seperators when the filename
 	 * changes.
@@ -1214,19 +1251,15 @@ sccs_patch(sccs *s, cset_t *cs)
 		s->rstop = s->rstart = d;
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");
+		/* takepatch lists tags+commits so we do too */
+		if (CSET(s)) csets++;
 		if (d->type == 'D') {
 			int	rc = 0;
 
 			// Nested XXX
 			if (CSET(s)) {
 				if (d->added) rc = cset_diffs(cs, d->serial);
-			} else if (BAM(s) && copts.doBAM) {
-				assert(d->hash || (!d->added && !d->deleted));
-				if (d->hash) {
-					cs->BAM = addLine(cs->BAM,
-					    sccs_prsbuf(s, d, 0, BAM_DSPEC));
-				}
-			} else {
+			} else if (!BAM(s)) {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
 			}
 			if (rc) { /* sccs_getdiffs errored */
@@ -1246,6 +1279,7 @@ sccs_patch(sccs *s, cset_t *cs)
 		fprintf(stderr, "\n");
 	}
 	cs->ndeltas += deltas;
+	cs->ncsets += csets;
 	if (list) free(list);
 }
 
