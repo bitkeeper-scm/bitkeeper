@@ -2,6 +2,7 @@
  * Copyright (c) 2000, Andrew Chang & Larry McVoy
  */
 #include "bkd.h"
+#include "bam.h"
 #include "logging.h"
 #include "ensemble.h"
 
@@ -425,7 +426,8 @@ private int
 pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 {
 	int	rc = 0, n, i;
-	FILE	*info;
+	FILE	*info, *f, *fout;
+	char	*t, *p;
 	char	buf[MAXPATH * 2];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
@@ -543,7 +545,23 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			rc = 1;
 			goto done;
 		}
-		if (opts.port) touch("RESYNC/SCCS/d.ChangeSet", 0666);
+		if (opts.port) {
+			touch("RESYNC/SCCS/d.ChangeSet", 0666);
+
+			/* fixing CSETFILE ptr in RESYNC */
+			f = popen("bk sfiles RESYNC", "r");
+			sprintf(buf, "bk admin -C'%s' -", proj_rootkey(0));
+			fout = popen(buf, "w");
+			while (t = fgetline(f)) {
+				p = strrchr(t, '/');
+				/* skip cset files */
+				if (streq(p, "/s.ChangeSet")) continue;
+				fputs(t, fout);
+				fputc('\n', fout);
+			}
+			pclose(f);
+			pclose(fout);
+		}
 		putenv("BK_STATUS=OK");
 		rc = 0;
 	}  else if (strneq(buf, "@UNABLE TO UPDATE BAM SERVER", 28)) {
@@ -766,7 +784,7 @@ out:	if (comps) freeLines(comps, free);
 private int
 pull(char **av, remote *r, char **envVar)
 {
-	int	rc, i;
+	int	rc, i, marker;
 	char	*p;
 	int	got_patch;
 	char	key_list[MAXPATH];
@@ -775,8 +793,10 @@ pull(char **av, remote *r, char **envVar)
 	if (rc = pull_part1(av, r, key_list, envVar)) return (rc);
 	rc = pull_part2(av, r, key_list, envVar);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
+	marker = bp_hasBAM();
 	if (!rc && got_patch &&
-	    (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
+	    (marker || ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
+		unless (marker) touch(BAM_MARKER, 0664);
 		chdir(ROOT2RESYNC);
 		rc = bkd_BAM_part3(r, envVar, opts.quiet,
 		    "- < " CSETS_IN);

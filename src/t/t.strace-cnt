@@ -1,3 +1,8 @@
+# These tests count system calls on a known platform.
+
+# When some tests fail for a know reason run:
+#   STRACE_CNT_SAVE=1 ./doit t.strace-cnt
+# to reset the baseline
 
 DO_CNT="`bk bin`"/t/strace-cnt.pl
 TESTDATA=/home/bk/test_data

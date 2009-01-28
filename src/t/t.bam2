@@ -34,15 +34,21 @@ echo $N Transfer file with sfio -B ..................................$NL
 cd ..
 bk clone $Q pmaster ptest || exit 1
 cd pmaster
+# transfer both keys and files
 bk -r prs -hnd'$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}' > keys
+echo keys >> keys
 bk sfio -qBo - < keys > out || exit 1
 cd ../ptest
+bk bam server -sr || exit 1	# no BAM server
 test -d BitKeeper/BAM && {
 	echo no BAM yet
 	exit 1
 }
+test -e keys && exit 1
 bk sfio -qBi - < ../pmaster/out || exit 1
+test -d BitKeeper/BAM || exit 1
 bk get $Q bin.data || exit 1
+cmpfiles keys ../pmaster/keys
 echo OK
 
 echo $N Set up a remote fetch of a file .............................$NL
