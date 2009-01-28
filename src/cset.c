@@ -1236,18 +1236,7 @@ sccs_patch(sccs *s, cset_t *cs)
 			sccs_pdelta(s, d->parent, stdout);
 			printf("\n");
 		}
-		if (copts.csetkey) {
-			if (d->csetFile) {
-				if (d->flags & D_DUPCSETFILE) {
-					d->flags &= ~D_DUPCSETFILE;
-				} else {
-					free(d->csetFile);
-				}
-				d->csetFile = CSET(s) ?
-				    0 : strdup(copts.csetkey);
-			}
-			if (CSET(s)) d->flags &= ~D_CSET;
-		}
+		if (copts.csetkey && CSET(s)) d->flags &= ~D_CSET;
 		s->rstop = s->rstart = d;
 		if (sccs_prs(s, prs_flags, 0, NULL, stdout)) cset_exit(1);
 		printf("\n");

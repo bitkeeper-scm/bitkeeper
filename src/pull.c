@@ -426,7 +426,8 @@ private int
 pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 {
 	int	rc = 0, n, i;
-	FILE	*info;
+	FILE	*info, *f, *fout;
+	char	*t, *p;
 	char	buf[MAXPATH * 2];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
@@ -544,7 +545,23 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			rc = 1;
 			goto done;
 		}
-		if (opts.port) touch("RESYNC/SCCS/d.ChangeSet", 0666);
+		if (opts.port) {
+			touch("RESYNC/SCCS/d.ChangeSet", 0666);
+
+			/* fixing CSETFILE ptr in RESYNC */
+			f = popen("bk sfiles RESYNC", "r");
+			sprintf(buf, "bk admin -C'%s' -", proj_rootkey(0));
+			fout = popen(buf, "w");
+			while (t = fgetline(f)) {
+				p = strrchr(t, '/');
+				/* skip cset files */
+				if (streq(p, "/s.ChangeSet")) continue;
+				fputs(t, fout);
+				fputc('\n', fout);
+			}
+			pclose(f);
+			pclose(fout);
+		}
 		putenv("BK_STATUS=OK");
 		rc = 0;
 	}  else if (strneq(buf, "@UNABLE TO UPDATE BAM SERVER", 28)) {
