@@ -2,6 +2,7 @@
  * Copyright (c) 2000, Andrew Chang & Larry McVoy
  */
 #include "bkd.h"
+#include "bam.h"
 #include "logging.h"
 
 typedef	struct {
@@ -484,7 +485,7 @@ done:	unlink(probe_list);
 private int
 pull(char **av, opts opts, remote *r, char **envVar)
 {
-	int	rc, i;
+	int	rc, i, marker;
 	char	*p;
 	int	got_patch;
 	char	key_list[MAXPATH];
@@ -496,8 +497,10 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	if (rc = pull_part1(av, opts, r, key_list, envVar)) return (rc);
 	rc = pull_part2(av, opts, r, key_list, envVar);
 	got_patch = ((p = getenv("BK_STATUS")) && streq(p, "OK"));
+	marker = bp_hasBAM();
 	if (!rc && got_patch &&
-	    (bp_hasBAM() || ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
+	    (marker || ((p = getenv("BKD_BAM")) && streq(p, "YES")))) {
+		unless (marker) touch(BAM_MARKER, 0664);
 		chdir(ROOT2RESYNC);
 		rc = bkd_BAM_part3(r, envVar, opts.quiet, "- < " CSETS_IN);
 		chdir(RESYNC2ROOT);

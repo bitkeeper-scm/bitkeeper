@@ -427,19 +427,26 @@ cd someclient || {
 	exit 1
 }
 echo foo > binfile
-bk new $Q -b binfile
-bk commit $Q -ybinfile
-bk push $Q 2> ERR || {
+bk new $Q -b binfile || exit 1
+bk commit $Q -ybinfile || exit 1
+bk push $Q || {
 	echo failed
 	bk _kill bk://localhost:$P
-	cat ERR
 	exit 1
 }
 echo OK
 
 echo $N Test rclone of binpool master ...............................$NL
 cd ../servmaster
-bk bam server $Q . || exit 1
+bk -r check -aB || {
+	bk _kill bk://localhost:$P
+	exit 1
+}
+bk bam server $Q . || {
+	echo bam server failed
+	bk _kill bk://localhost:$P
+	exit 1
+}
 bk clone $Q . bk://localhost:$P/servmaster.copy 2>ERR && {
 	echo should have failed
 	cat ERR
@@ -517,8 +524,8 @@ BK_SHOWPROC="$HERE"/log bk get $Q data > OUT 2>&1 && {
 	ls -lR BitKeeper/BAM
 	exit 1
 }
-grep -q rsfio "$HERE"/log && {
-	echo should not have run rsfio
+grep -q sfio "$HERE"/log && {
+	echo should not have run sfio
 	cat "$HERE"/log 
 	cat OUT
 	exit 1

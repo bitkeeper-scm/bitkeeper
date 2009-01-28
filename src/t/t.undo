@@ -220,21 +220,21 @@ rm -fr project copy
 umask 0
 commercial project
 touch foo
-bk new $Q foo
+bk new $Q foo || exit 1
 cd ..
 cp -r project copy
 cd project
 bk commit $Q -ytrunk
 cd ../copy
-bk parent $Q ../project
-bk stripdel $Q -r+ foo
+bk parent $Q ../project || exit 1
+bk stripdel $Q -r+ foo || exit 1
 TIP=`bk log -r+ -nd:I: foo`
 test "$TIP" = 1.0 || exit 1
-bk chmod 666 foo
+bk chmod 666 foo || exit 1
 TIP=`bk log -r+ -nd:I: foo`
 test "$TIP" = 1.1 || exit 1
-bk commit $Q -ybranch
-bk pull $Q
+bk commit $Q -ybranch || exit 1
+BK_CONFIG='fakegrafts: 1' bk pull $Q || exit 1
 TIP=`bk log -r+ -nd:I: foo`
 test "$TIP" = 1.2 || exit 1
 bk unpull $Q -f || exit 1

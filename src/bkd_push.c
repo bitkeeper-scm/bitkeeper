@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "bam.h"
 
 private	int	do_resolve(char **av);
 
@@ -124,7 +125,7 @@ cmd_push_part2(int ac, char **av)
 	char	bkd_nul = BKD_NUL;
 	u64	sfio;
 	FILE	*f;
-	char	*takepatch[] = { "bk", "takepatch", "-c", "-vvv", 0};
+	char	*takepatch[] = { "bk", "takepatch", "-c", "-vv", 0};
 	char	buf[4096];
 
 	while ((c = getopt(ac, av, "dGnqz|")) != -1) {
@@ -224,8 +225,10 @@ cmd_push_part2(int ac, char **av)
 	}
 	proj_reset(0);
 
-	if (bp_hasBAM() || ((p = getenv("BK_BAM")) && streq(p, "YES"))) {
+	c = bp_hasBAM();
+	if (c || ((p = getenv("BK_BAM")) && streq(p, "YES"))) {
 		// send bp keys
+		unless (c) touch(BAM_MARKER, 0664);
 		putenv("BKD_DAEMON="); /* allow new bkd connections */
 		printf("@BAM@\n");
 		chdir(ROOT2RESYNC);

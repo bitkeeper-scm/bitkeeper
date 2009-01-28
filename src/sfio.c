@@ -66,7 +66,8 @@
 				fputc('\n', stderr)
 
 private	int	sfio_out(void);
-private int	out_file(char *file, struct stat *, off_t *byte_count);
+private int	out_file(char *file, struct stat *, off_t *byte_count,
+		    int useDsum, u32 dsum);
 private int	out_bptuple(char *tuple, off_t *byte_count);
 private int	out_symlink(char *file, struct stat *, off_t *byte_count);
 private int	out_hardlink(char *file,
@@ -79,6 +80,7 @@ private int	in_file(char *file, u32 todo, int extract);
 private	int	mkfile(char *file);
 private	void	send_eof(int status);
 private void	missing(off_t *byte_count);
+private	void	print_status(char *file, u32 sz);
 
 struct {
 	u32	quiet:1;	/* suppress normal verbose output */
@@ -88,6 +90,7 @@ struct {
 	u32	bp_tuple:1;	/* -B rkey dkey bphash path */
 	u32	hardlinks:1;	/* save hardlinks */
 	u32	key2path:1;	/* -K read keys on stdin */
+	u32	sfile2gfile:1;	/* convert sfiles to gfiles when printing */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
@@ -97,6 +100,7 @@ struct {
 	char	**missing;	/* tuples we couldn't find here */
 	u64	todo;		/* -b`psize` - bytes we think we are moving */
 	u64	done;		/* file bytes we've moved so far */
+	int	prevlen;	/* length of previously printed line */
 } *opts;
 
 #define M_IN	1
@@ -113,7 +117,7 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefHiKlmopP;qr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefgHiKlmopP;qr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -127,6 +131,7 @@ sfio_main(int ac, char **av)
 		    case 'B': opts->bp_tuple = 1; break;
 		    case 'e': opts->echo = 1; break;		/* doc 2.3 */
 		    case 'f': opts->force = 1; break;		/* doc */
+		    case 'g': opts->sfile2gfile = 1; break;	/* undoc */
 		    case 'H': opts->hardlinks = 1; break;
 		    case 'i': 					/* doc 2.0 */
 			if (opts->mode) goto usage;
@@ -170,15 +175,6 @@ sfio_main(int ac, char **av)
 		fprintf(stderr, "%s: hardlink-mode not supported on Windows\n",
 		    av[0]);
 		return (1);
-	}
-#endif
-#ifndef	SFIO_STANDALONE
-	if (opts->bp_tuple) {
-		if (proj_cd2root()) {
-			fprintf(stderr, "%s: not in repository\n", av[0]);
-			return (1);
-		}
-		if (proj_isResync(0)) chdir(RESYNC2ROOT);
 	}
 #endif
 	if (opts->mode == M_OUT)       return (sfio_out());
@@ -230,7 +226,7 @@ sfio_out(void)
 	byte_count = 10;
 	while (nextfile(buf)) {
 		chomp(buf);
-		if (opts->bp_tuple) {
+		if (opts->bp_tuple && strchr(buf, '|')) {
 			if (n = out_bptuple(buf, &byte_count)) {
 				send_eof(n);
 				return (n);
@@ -280,7 +276,7 @@ sfio_out(void)
 				return (n);
 			}
 		} else if (S_ISREG(sb.st_mode)) {
-reg:			if (n = out_file(buf, &sb, &byte_count)) {
+reg:			if (n = out_file(buf, &sb, &byte_count, 0, 0)) {
 				send_eof(n);
 				return (n);
 			}
@@ -330,9 +326,7 @@ out_symlink(char *file, struct stat *sp, off_t *byte_count)
 	*byte_count += printf("%010u", sum);
 	assert(opts->doModes);
 	*byte_count += printf("%03o", sp->st_mode & 0777);
-	unless (opts->quiet) {
-		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
-	}
+	print_status(file, 0);
 	return (0);
 }
 
@@ -353,36 +347,21 @@ out_hardlink(char *file, struct stat *sp, off_t *byte_count, char *linkMe)
 	sum += adler32(sum, linkMe, n);
 	*byte_count += printf("%010u", sum);
 	if (opts->doModes) *byte_count += printf("%03o", sp->st_mode & 0777);
-	unless (opts->quiet) {
-		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
-	}
+	print_status(file, 0);
 	return (0);
 }
 
 private int
-out_file(char *file, struct stat *sp, off_t *byte_count)
+out_file(char *file, struct stat *sp, off_t *byte_count, int useDsum, u32 dsum)
 {
 	char	buf[SFIO_BSIZ];
 	int	fd = open(file, 0, 0);
-	int	n, nread = 0, dosum = 1;
+	int	n, nread = 0;
 	u32	sum = 0, sz = (u32)sp->st_size;
-	char	*p;
 
 	if (fd == -1) {
 		perror(file);
 		return (SFIO_OPEN);
-	}
-
-	/*
-	 * For BAM files we already know the expected checksum so
-	 * we don't calculate it again.  If the file is corrupted it
-	 * will be detected when being unpacked.
-	 */
-	if (opts->bp_tuple && (p = strrchr(file, '.')) && (p[1] == 'd') &&
-	    !getenv("_BP_HASHCHARS")) {
-		while (*p != '/') --p;
-		sum = strtoul(p+1, 0, 16);
-		dosum = 0;
 	}
 
 	setmode(fd, _O_BINARY);
@@ -390,7 +369,7 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 	while ((n = readn(fd, buf, sizeof(buf))) > 0) {
 		nread += n;
 		opts->done += n;
-		if (dosum) sum = adler32(sum, buf, n);
+		unless (useDsum) sum = adler32(sum, buf, n);
 		if (fwrite(buf, 1, n, stdout) != n) {
 			if ((errno != EPIPE) || getenv("BK_SHOWPROC")) {
 				perror(file);
@@ -406,23 +385,11 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 		close(fd);
 		return (SFIO_SIZE);
 	}
+	if (useDsum) sum = dsum;
 	*byte_count += printf("%010u", sum);
 	if (opts->doModes) *byte_count += printf("%03o", sp->st_mode & 0777);
 	close(fd);
-	unless (opts->quiet) {
-		if (opts->newline == '\r') {
-			if (opts->todo) {
-				sprintf(buf, "%s (%s of %s)",
-				    file, psize(opts->done), psize(opts->todo));
-			} else {
-				sprintf(buf, "%s (+%s = %s)", 
-				    file, psize(sz), psize(opts->done));
-			}
-			fprintf(stderr, "%-72s\r", buf);
-		} else {
-			fprintf(stderr, "%s%s\n", opts->prefix, file);
-		}
-	}
+	print_status(file, sz);
 	return (0);
 }
 
@@ -430,11 +397,11 @@ out_file(char *file, struct stat *sp, off_t *byte_count)
 private int
 out_bptuple(char *keys, off_t *byte_count)
 {
-	char	*path, *freeme;
-	int	n;
+	char	*path, *fullpath, *p;
+	int	n, sum;
 	struct	stat sb;
 
-	unless (freeme = bp_lookupkeys(0, keys)) {
+	unless (fullpath = bp_lookupkeys(0, keys)) {
 		if (opts->recurse) {
 			opts->missing = addLine(opts->missing, strdup(keys));
 			return (0);
@@ -442,20 +409,32 @@ out_bptuple(char *keys, off_t *byte_count)
 		fprintf(stderr, "lookupkeys(%s) failed\n", keys);
 		return (SFIO_LOOKUP);
 	}
-	path = freeme + strlen(proj_root(0)) + 1;
+	path = fullpath + strlen(proj_root(0)) + 1;
 
 	/* d.file */
-	if (lstat(path, &sb)) {
-		perror(path);
+	if (lstat(fullpath, &sb)) {
+		perror(fullpath);
 		return (SFIO_LSTAT);
 	}
 	*byte_count += printf("%04d%s", (int)strlen(keys), keys);
 	unless (hash_insertStr(opts->sent, path, keys)) {
 		n = out_hardlink(path, &sb, byte_count, opts->sent->vptr);
 	} else {
-		n = out_file(path, &sb, byte_count);
+		/*
+		 * For BAM files we already know the expected checksum so
+		 * we don't calculate it again.  If the file is corrupted it
+		 * will be detected when being unpacked.
+		 */
+		if ((p = strrchr(path, '.')) && (p[1] == 'd') &&
+		    !getenv("_BP_HASHCHARS")) {
+			while (*p != '/') --p;
+			sum = strtoul(p+1, 0, 16);
+			n = out_file(fullpath, &sb, byte_count, 1, sum);
+		} else {
+			n = out_file(fullpath, &sb, byte_count, 0, 0);
+		}
 	}
-	free(freeme);
+	free(fullpath);
 	return (n);
 }
 
@@ -595,7 +574,7 @@ sfio_in(int extract)
 		}
 		datalen[10] = 0;
 		len = 0;
-		if (opts->bp_tuple) {
+		if (opts->bp_tuple && strchr(buf, '|')) {
 			if (in_bptuple(buf, datalen, extract)) return (1);
 		} else if (strneq("SLNK00", datalen, 6)) {
 			sscanf(&datalen[6], "%04d", &len);
@@ -618,7 +597,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 {
 #ifndef	SFIO_STANDALONE
 	int	todo, i, j;
-	char	*p;
+	char	*p, *t;
 	u32	sum = 0, sum2 = 0;
 	char	file[MAXPATH];
 	char	tmp[MAXPATH];
@@ -655,8 +634,13 @@ in_bptuple(char *keys, char *datalen, int extract)
 	} else {
 		sscanf(datalen, "%010d", &todo);
 
+		strcpy(file, proj_root(0));
+		t = file + strlen(file);
+		if (proj_isResync(0)) t += sprintf(t, "/..");
+		*t++ = '/';
+
 		/* extract to new file in BAM pool (adler32 is first in keys) */
-		p = file + sprintf(file, BAM_ROOT "/%c%c/%.*s",
+		p = t + sprintf(t, BAM_ROOT "/%c%c/%.*s",
 		    keys[0], keys[1], 8, keys);
 		/* find unused entry */
 		for (i = 1; ; i++) {
@@ -676,8 +660,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 			}
 		}
 		/* file is now the right name for this data */
-		p = strchr(file, '/'); /* skip BitKeeper/BAM/ */
-		p = strchr(p+1, '/') + 1;
+		p = t + strlen(BAM_ROOT) + 1; /* skip BitKeeper/BAM/ */
 	}
 	mdbm_store_str(proj_BAMindex(0, 1), keys, p, MDBM_REPLACE);
 	bp_logUpdate(0, keys, p);
@@ -736,9 +719,7 @@ in_symlink(char *file, int pathlen, int extract)
 		chmod(file, mode & 0777);
 		 */
 	}
-	unless (opts->quiet) {
-		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
-	}
+	print_status(file, 0);
 	if (opts->echo) printf("%s\n", file);
 	return (0);
 
@@ -783,9 +764,7 @@ in_hardlink(char *file, int pathlen, int extract)
 			goto err;
 		}
 	}
-	unless (opts->quiet) {
-		fprintf(stderr, "%s%s%c", opts->prefix, file, opts->newline);
-	}
+	print_status(file, 0);
 	if (opts->echo) printf("%s\n", file);
 	return (0);
 
@@ -876,33 +855,7 @@ done:	if (readn(0, buf, 10) != 10) {
 			chmod(file, 0444);
 		}
 	}
-	unless (opts->quiet) {
-		if (opts->newline == '\r') {
-			/*
-			 * NOTE: Why the STANDALONE ifdefs here?
-			 * The next block is not in STANDALONE because no
-			 * there is no psize() function.  However, the
-			 * 'else' block is needed to be outside of the
-			 * ifdef because the windows installer runs with
-			 * sfio -im to list the files being unpacked as
-			 * sort of a progress bar.  If this block becomes
-			 * needed in STANDALONE, then add psize() to
-			 * utils/sfio_utils.c
-			 */
-#ifndef	SFIO_STANDALONE
-			if (opts->todo) {
-				sprintf(buf, "%s (%s of %s)",
-				    file, psize(opts->done), psize(opts->todo));
-			} else {
-				sprintf(buf, "%s (+%s = %s)", 
-				    file, psize(sz), psize(opts->done));
-			}
-			fprintf(stderr, "%-72s\r", buf);
-#endif
-		} else {
-			fprintf(stderr, "%s%s\n", opts->prefix, file);
-		}
-	}
+	print_status(file, sz);
 	return (0);
 
 err:	
@@ -911,6 +864,63 @@ err:
 		unlink(file);
 	}
 	return (1);
+}
+
+private void
+print_status(char *file, u32 sz)
+{
+	int	n;
+
+	unless (opts->quiet) {
+		fputs(opts->prefix, stderr);
+		n = strlen(opts->prefix);
+
+#ifndef	SFIO_STANDALONE
+		if (opts->sfile2gfile && (sccs_filetype(file) == 's')) {
+			char	*gfile;
+
+			gfile = sccs2name(file);
+			fputs(gfile, stderr);
+			n += strlen(gfile);
+			free(gfile);
+		}
+		else
+#endif
+		{
+			fputs(file, stderr);
+			n += strlen(file);
+		}
+#ifndef	SFIO_STANDALONE
+		if (sz && (opts->newline == '\r')) {
+			/*
+			 * NOTE: Why the STANDALONE ifdefs here?
+			 * The next block is not in STANDALONE because no
+			 * there is no psize() function.  However, the
+			 * rest of the function is needed outside the
+			 * ifdef because the windows installer runs with
+			 * sfio -im to list the files being unpacked as
+			 * sort of a progress bar.  If this block becomes
+			 * needed in STANDALONE, then add psize() to
+			 * utils/sfio_utils.c
+			 */
+			if (opts->todo) {
+				n += fprintf(stderr, " (%s of %s)",
+				    psize(opts->done), psize(opts->todo));
+			} else {
+				n += fprintf(stderr, " (+%s = %s)",
+				    psize(sz), psize(opts->done));
+			}
+		}
+#endif
+		if (opts->newline == '\r') {
+			if (opts->prevlen > n) {
+				/* overwrite previously printed line */
+				fprintf(stderr, "%*s", (opts->prevlen - n), "");
+			}
+			opts->prevlen = n;
+		}
+		fputc(opts->newline, stderr);
+	}
 }
 
 int

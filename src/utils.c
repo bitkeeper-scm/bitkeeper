@@ -831,8 +831,9 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 * knows which outputs are supported.
 	 *   lkey:1	use leasekey #1 to sign lease requests
 	 *   BAM
+	 *   pSFIO	send whole sfiles in SFIO attached to patches
 	 */
-	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2\n");
+	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2,pSFIO\n");
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
 	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
 	if (p) proj_free(p);
@@ -957,8 +958,9 @@ sendServerInfoBlock(int is_rclone)
 	 * Return a comma seperated list of features supported by the bkd.
 	 *   pull-r	pull -r is parsed correctly
 	 *   BAMv2	support BAM operations (4.1.1 and later)
+	 *   pSFIO	send whole sfiles in SFIO attached to patches
 	 */
-	out("\nFEATURES=pull-r,BAMv2");
+	out("\nFEATURES=pull-r,BAMv2,pSFIO");
 
 	if (repoid = proj_repoID(0)) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
