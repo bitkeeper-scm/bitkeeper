@@ -1,10 +1,3 @@
-Release notes for BitKeeper version XXX (released ##-XXX-2007)
-
-Environment variables that are used to control BitKeeper's behavior
-can not longer be set to an empty string.  So for example:
-  BK_NO_TRIGGERS="" bk push
-won't work.  Use BK_NO_TRIGGERS=1 instead.
-===============================================================================
 Release notes for BitKeeper version 4.2.1 (released 14-Jan-2009)
 
 bk bam
