@@ -37,7 +37,8 @@ cd project/src
 BK_CONFIG="checkout: $TYPE! "
 export BK_CONFIG
 bk clean -v none || exit 1
-bk clean -v get  || exit 1
+bk clean -v get 2> ERR || exit 1
+grep -q "Clean get" ERR || exit 1
 test -f get && exit 1
 bk clean -v edit 2> ERR || exit 1
 grep -q "Clean edit" ERR || exit 1
@@ -53,12 +54,14 @@ grep -q "dashx has merge|include|exclude, not cleaned" ERR || exit 1
 bk clean -v dashxnog 2> ERR && exit 1
 grep -q "dashxnog has merge|include|exclude, not cleaned" ERR || exit 1
 test -f SCCS/p.dashxnog || exit 1
-bk clean -v writable || exit 1
+bk clean -v writable 2> ERR || exit 1
+grep -q "Clean writable" ERR || exit 1
 test -f writable && exit 1
 bk clean -v writablechg 2> ERR && exit 1
 grep -q "writablechg writable, with changes, but not edited" ERR || exit 1
 test -f writablechg || exit 1
-bk clean -v keywords || exit 1
+bk clean -v keywords 2> ERR || exit 1
+grep -q "Clean keywords" ERR || exit 1
 test -f keywords && exit 1
 bk clean -v keywordschg 2> ERR && exit 1
 grep -q "keywordschg writable, with changes, but not edited" ERR || exit 1

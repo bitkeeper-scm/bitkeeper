@@ -1168,7 +1168,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	 * a sfile if the tip delta is not part of the patch.
 	 * (pull-r or pending deltas)
 	 */
-	if (!CSET(s) && hastip &&
+	if (!CSET(s) && hastip && !MONOTONIC(s) &&
 	    ((!cs->compat && newfile) ||
 		((cs->tooMany > 0) && (n >= cs->tooMany)))) {
 		cs->sfiles = addLine(cs->sfiles, strdup(s->sfile));

@@ -376,7 +376,7 @@ tags:			fprintf(opts.out,
 }
 
 private u32
-genpatch(int level, FILE *wf, char *rev_list)
+genpatch(int level, FILE *wf, char *rev_list, int isLocal)
 {
 	char	*makepatch[10] = {"bk", "makepatch", 0};
 	int	fd0, fd, rfd, n, status;
@@ -386,7 +386,11 @@ genpatch(int level, FILE *wf, char *rev_list)
 	n = 2;
 	if (opts.verbose) makepatch[n++] = "-v";
 	if (bkd_hasFeature("pSFIO")) {
-		makepatch[n++] = "-M10";
+		if (isLocal) {
+			makepatch[n++] = "-M3";
+		} else {
+			makepatch[n++] = "-M10";
+		}
 	} else {
 		makepatch[n++] = "-C"; /* old-bk, compat mode */
 	}
@@ -408,14 +412,14 @@ genpatch(int level, FILE *wf, char *rev_list)
 }
 
 private u32
-patch_size(int gzip, char *rev_list)
+patch_size(int gzip, char *rev_list, int isLocal)
 {
 	FILE	*f;
 	u32	n;
 
 	f = fopen(DEVNULL_WR, "w");
 	assert(f);
-	n = genpatch(gzip, f, rev_list);
+	n = genpatch(gzip, f, rev_list, isLocal);
 	fclose(f);
 	return (n);
 }
@@ -508,7 +512,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 	 * 6 is the size of "@END@" string
 	 */
 	if (r->type == ADDR_HTTP) {
-		m = patch_size(gzip, rev_list);
+		m = patch_size(gzip, rev_list, (r->host == 0));
 		assert(m > 0);
 		extra = m + 8 + 6;
 	}
@@ -517,7 +521,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 
 	f = fdopen(dup(r->wfd), "wb"); /* dup() so fclose preserves wfd */
 	fprintf(f, "@PATCH@\n");
-	n = genpatch(gzip, f, rev_list);
+	n = genpatch(gzip, f, rev_list, (r->host == 0));
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(opts.out,
 		    "Error: patch has changed size from %d to %d\n", m, n);
