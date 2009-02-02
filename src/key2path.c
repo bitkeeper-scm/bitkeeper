@@ -44,8 +44,9 @@ key2path(char *key, MDBM *idDB)
 {
 	char	*path;
 
-	path = mdbm_fetch_str(idDB, key);
-	unless (path) {
+	if (path = mdbm_fetch_str(idDB, key)) {
+		path = strdup(path);
+	} else {
 		char    *t, *r;
 
 		for (t = key; *t++ != '|'; );
@@ -55,12 +56,5 @@ key2path(char *key, MDBM *idDB)
 		path = strdup(t);
 		*r = '|';
 	}
-
-	unless (path) {
-		fprintf(stderr, "Can't find path for key %s\n",key);
-		exit(1);
-	}
-
-	if (path) return (strdup(path));
-	return (NULL);
+	return (path);
 }
