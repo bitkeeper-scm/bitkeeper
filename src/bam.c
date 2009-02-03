@@ -1547,33 +1547,51 @@ load_logfile(MDBM *m, FILE *f)
 int
 sfiles_bam_main(int ac, char **av)
 {
-	FILE	*f;
-	char	*p;
-	char	buf[MAXLINE];
+	FILE	*f, *fsfiles;
+	char	*p, *sfile;
+	MDBM	*idDB, *goneDB;
+	char	buf[4096];	// maxline is too short
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "Must be in repository.\n");
 		return (-1);
 	}
+
+	/* start sfiles early to avoid latency */
+	fsfiles = popen("bk sfiles -gpA", "r");
+
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+
 	/* find all BAM sfiles in committed csets */
-	if (f = popen("bk rset -a5HBl+", "r")) {
+	if (f = popen("bk get -qkpr+ ChangeSet", "r")) {
 		while (fnext(buf, f)) {
-			if (p = strchr(buf, '|')) *p = 0;
-			puts(buf);
+			if (p = separator(buf)) *p = 0;
+			while ((--p > buf) && (*p != '|'));
+			unless (strneq(p, "|B:", 3)) continue;
+			unless (p = key2path(buf, idDB)) continue;
+			sfile = name2sccs(p);
+			if (exists(sfile) || !mdbm_fetch_str(goneDB, buf)) {
+				puts(p);
+			}
+			free(p);
+			free(sfile);
 		}
 		pclose(f);
 	}
+	mdbm_close(idDB);
+	mdbm_close(goneDB);
 
 	/* find any pending 1.0 deltas */
-	if (f = popen("bk sfiles -gpA", "r")) {
-		while (fnext(buf, f)) {
+	if (fsfiles) {
+		while (fnext(buf, fsfiles)) {
 			chomp(buf);
 			if ((p = strchr(buf, '|')) && streq(p+1, "1.0")) {
 				*p = 0;
 				puts(buf);
 			}
 		}
-		pclose(f);
+		pclose(fsfiles);
 	}
 	return (0);
 }
