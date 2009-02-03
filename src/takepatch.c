@@ -79,6 +79,8 @@ private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
 private	int	collapsedups;	/* allow csets in BitKeeper/etc/collapsed */
 
+extern	char	*prog;
+
 /*
  * Structure for keys we skip when incoming, used for old LOD keys that
  * we do not want in the open logging tree.
@@ -1650,18 +1652,31 @@ private int
 sfio(MMAP *m)
 {
 	char	*t;
-	FILE	*f;
+	FILE	*f = 0;
+	sccs	*s = 0, *sr = 0;
+	delta	*d;
 	size_t	left, n;
+	char	*flist;
+	int	rc = -1, rlen;
 	char	buf[MAXLINE];
+	char	key[MAXKEY];
 
 	unless ((t = mnext(m)) && strneq(t-1, "\n\n# Patch checksum=", 19)) {
 		return (-1);
 	}
-	sprintf(buf, "bk sfio -igB %s -", (echo > 1) ? "-P'Updating '" : "-q");
 
+	flist = bktmp(0, "sfio_filelist");
+	sprintf(buf, "bk sfio -eigB %s - > '%s'",
+	    (echo > 1) ? "-P'Updating '" : "-q", flist);
+
+	fflush(stdout);
 	chdir(ROOT2RESYNC);
 	f = popen(buf, "w");
 	chdir(RESYNC2ROOT);
+	unless (f) {
+		perror(prog);
+		goto err;
+	};
 	t = mnext(m);
 	t = strchr(t, '\n') + 1;	/* will not have \n if SFIO errored */
 	assert(strneq(t, "SFIO ", 5));
@@ -1671,15 +1686,94 @@ sfio(MMAP *m)
 		left -= n;
 		t += n;
 	} while (left);
-	fflush(f);
 	if (pclose(f)) {
 		fprintf(stderr, "takepatch: BAM sfio -i failed.\n");
-		return (-1);
+		f = 0;
+		goto err;
 	}
-	return (0);
+	/* process each file unpacked */
+	unless (f = fopen(flist, "r")) {
+		perror(prog);
+		goto err;
+	}
+	strcpy(buf, ROOT2RESYNC "/");
+	t = buf + strlen(buf);
+	rlen = sizeof(buf) - strlen(buf); /* space in buf after RESYNC/ */
+	while (fgets(t, rlen, f)) {
+		chomp(t);
+		if (strchr(t, '|')) continue; /* skip BAM keys */
+
+		unless (sr = sccs_init(buf,
+			SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
+			fprintf(stderr, "takepatch: can't open %s\n", buf);
+			goto err;
+		}
+		sccs_sdelta(sr, sccs_ino(sr), key); /* rootkey */
+
+		/* Check the original version of this file */
+		unless (s = sccs_keyinit(0, key, INIT_NOCKSUM, idDB)) {
+			/* must be new file? */
+			sccs_free(sr);
+			sr = 0;
+			continue;
+		}
+		assert(!CSET(s));  /* some more logic is needed for cset */
+
+		/* local diffs are bad */
+		if (sccs_clean(s, SILENT|CLEAN_SHUTUP|CLEAN_CHECKONLY)) {
+			edited = addLine(edited, sccs2name(s->sfile));
+			goto err;
+		}
+		if (s->table->dangling) {
+			fprintf(stderr, "takepatch: monotonic file %s "
+			    "has dangling deltas\n", s->sfile);
+			goto err;
+		}
+		sccs_sdelta(s, s->table, key); /* local tipkey */
+
+		unless (d = sccs_findKey(sr, key)) {
+			/*
+			 * I can't find local tipkey in resync file.
+			 * This might be because it is a pending delta, if
+			 * so complain about that, otherwise just complain.
+			 * Note, it is OK to have a pending delta that
+			 * has been committed in the resync version, the old
+			 * code used to ignore these duplicate deltas.
+			 */
+
+			/* because of pending deltas? */
+			unless (s->table->flags & D_CSET) {
+				SHOUT();
+				getMsg("tp_uncommitted", s->sfile, 0, stderr);
+			} else {
+				fprintf(stderr,
+				    "takepatch: key '%s' not found "
+				    "in sfile %s\n", key, buf);
+			}
+			goto err;
+		}
+		/* mark remote-only deltas */
+		range_walkrevs(sr, d, 0, walkrevs_setFlags, (void*)D_REMOTE);
+		/*
+		 * techically, d->flags |= D_LOCAL, but D_LOCAL goes away
+		 * in /home/bk/bk and the way resolveFiles is written, it
+		 * does the right thing with or without D_LOCAL.
+		 */
+		d->flags |= D_LOCAL;
+		if (sccs_resolveFiles(sr) < 0) goto err;
+		sccs_free(s);
+		sccs_free(sr);
+		s = sr = 0;
+	}
+	rc = 0;
+
+err:	if (f) fclose(f);
+	unlink(flist);
+	free(flist);
+	if (s) sccs_free(s);
+	if (sr) sccs_free(sr);
+	return (rc);
 }
-
-
 
 /*
  * Go find the change set file and do this relative to that.

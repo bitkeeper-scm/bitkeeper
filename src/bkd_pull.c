@@ -331,7 +331,11 @@ err:			printf("ERROR-protocol error in aliases\n");
 			}
 		} else {
 			/* update only pull */
-			makepatch[n++] = "-M10";
+			if (getenv("_BK_BKD_IS_LOCAL")) {
+				makepatch[n++] = "-M3";
+			} else {
+				makepatch[n++] = "-M10";
+			}
 		 }
 	} else {
 		makepatch[n++] = "-C"; /* old-bk, use compat mode */

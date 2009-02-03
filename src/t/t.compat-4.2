@@ -21,7 +21,7 @@ mv c "`bk dotbk`"/config
 test -d $OLDBK || {
     # Skip this test if we don't have at least 5gigs free
     df -k /build 2>/dev/null |
-        perl -e '$_ = <>; $_ = <>; exit 0 if /^\S+\s+\d+\s+\d+\s+(\d+)\s+\d+%/ && $1 > 5e6; exit' || {
+        perl -e '$_ = <>; $_ = <>; exit 0 if /^\S+\s+\d+\s+\d+\s+(\d+)\s+\d+%/ && $1 > 5e6; exit 1' || {
 	echo skipped
 	exit 0
     }

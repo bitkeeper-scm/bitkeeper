@@ -609,6 +609,7 @@ sfio_in(int extract)
 			sscanf(datalen, "%010u", &ulen);
 			if (in_file(buf, ulen, extract)) return (1);
 		}
+		if (opts->echo) printf("%s\n", buf);
 	}
 #ifndef SFIO_STANDALONE
 	save_byte_count(byte_count);
@@ -746,7 +747,6 @@ in_symlink(char *file, int pathlen, int extract)
 		 */
 	}
 	print_status(file, 0);
-	if (opts->echo) printf("%s\n", file);
 	return (0);
 
 err:	
@@ -792,7 +792,6 @@ in_hardlink(char *file, int pathlen, int extract)
 		}
 	}
 	print_status(file, 0);
-	if (opts->echo) printf("%s\n", file);
 	return (0);
 
 err:

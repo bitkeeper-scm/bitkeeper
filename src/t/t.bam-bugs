@@ -123,6 +123,17 @@ bk commit $Q -yxyz
 bk -r check -acc || exit 1
 echo OK
 
+echo $N Make sure we can gone bam files and check works .............$NL
+ROOTKEY=`bk prs -hr+ -nd:ROOTKEY: x`
+rm -f SCCS/s.x
+bk gone $Q "$ROOTKEY"
+bk commit $Q -ygone
+bk bam check $Q || {
+	echo failed
+	exit 1
+}
+echo OK
+
 echo $N Gamelogic - checkin repo1/foo from repo2 updates wrong log ..$NL
 cd "$HERE"
 bk clone $Q project gamelogic
