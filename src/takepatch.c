@@ -1711,7 +1711,7 @@ sfio(MMAP *m)
 		sccs_sdelta(sr, sccs_ino(sr), key); /* rootkey */
 
 		/* Check the original version of this file */
-		unless (s = sccs_keyinit(key, INIT_NOCKSUM, idDB)) {
+		unless (s = sccs_keyinit(0, key, INIT_NOCKSUM, idDB)) {
 			/* must be new file? */
 			sccs_free(sr);
 			sr = 0;

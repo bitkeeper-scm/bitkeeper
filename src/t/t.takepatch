@@ -304,9 +304,9 @@ echo OK
 echo $N Test the details of the spinner check .......................$NL
 grep -v 'uncompressed to' SPINNERCHECK > GOT
 cat <<EOF > WANT
----------------------- Receiving the following csets --------------------------
+---------------------- Receiving the following csets -----------------------
 1.4 
-----------------------------------------------------------------------------
+---------------------------------------------------------------------------
 EOF
 printf "Receiving patch ... |\010/\010-\010done.\n" >> WANT
 cat <<EOF >> WANT
