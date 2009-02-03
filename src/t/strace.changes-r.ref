@@ -11,4 +11,4 @@ read 2719
 rmdir 3
 stat 12
 unlink 12
-write 114
+write 116
