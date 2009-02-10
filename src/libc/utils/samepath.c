@@ -1,6 +1,5 @@
 #include "system.h"
 
-#ifdef WIN32
 int
 samepath(char *a, char *b)
 {
@@ -10,6 +9,8 @@ samepath(char *a, char *b)
 	strcpy(b1, fullname(b));
 	return (patheq(a1, b1));
 }
+
+#ifdef WIN32
 
 /* make comparisons case insensitive and forward slash vs backslash agnostic */
 int
@@ -29,16 +30,6 @@ patheq(char *a, char *b)
 }
 
 #else	/* UNIX */
-
-int
-samepath(char *a, char *b)
-{
-	struct  stat sa, sb;
-
-	if (lstat(a, &sa) == -1) return 0;
-	if (lstat(b, &sb) == -1) return 0;
-	return ((sa.st_dev == sb.st_dev) && (sa.st_ino == sb.st_ino));
-}
 
 int
 patheq(char *a, char *b)

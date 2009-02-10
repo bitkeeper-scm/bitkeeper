@@ -1355,17 +1355,17 @@ sccs_mkroot(char *path)
 {
 	char	buf[MAXPATH];
 
-	sprintf(buf, "%s/SCCS", path);
-	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
-		perror(buf);
-		exit(1);
-	}
 	sprintf(buf, "%s/BitKeeper", path);
 	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/etc", path);
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
+	sprintf(buf, "%s/SCCS", path);
 	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
@@ -1395,6 +1395,7 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
+
 	proj_reset(0);
 }
 
@@ -1482,9 +1483,8 @@ _relativeName(char *gName, int isDir, int mustHaveRmarker, int wantRealName,
 	 */
 	t[s-t] = 0; /* t now points to project root */
 	if (wantRealName && proj_isCaseFoldingFS(proj)) {
-		char here[MAXPATH];
+		char	*here = strdup(proj_cwd());
 
-		fast_getcwd(here, MAXPATH);
 		if (streq(here, t)) {
 			getRealName(++s, NULL, buf2);
 		} else if (chdir(t) == 0) {
@@ -1497,6 +1497,7 @@ _relativeName(char *gName, int isDir, int mustHaveRmarker, int wantRealName,
 			 */
 			strcpy(buf2, ++s);
 		}
+		free(here);
 	} else {
 		strcpy(buf2, ++s);
 	}
@@ -4703,12 +4704,11 @@ sccs_csetInit(u32 flags)
 	char	csetpath[MAXPATH];
 	sccs	*cset = 0;
 
-	unless (rootpath = proj_root(0)) return (0);
-	if (samepath(rootpath, ".")) {
+	if (exists(CHANGESET)) {
 		strcpy(csetpath, CHANGESET);
 	} else {
-		strcpy(csetpath, rootpath);
-		strcat(csetpath, "/" CHANGESET);
+		unless (rootpath = proj_root(0)) return (0);
+		concat_path(csetpath, rootpath, CHANGESET);
 	}
 	debug((stderr, "sccs_csetinit: opening changeset '%s'\n", csetpath));
 	cset = sccs_init(csetpath, flags);

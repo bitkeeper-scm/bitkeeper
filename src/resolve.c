@@ -2109,7 +2109,7 @@ automerge(resolve *rs, names *n, int identical)
 	unless (unlink(rs->s->gfile)) rs->s = sccs_restart(rs->s);
 	if (identical || sameFiles(n->local, n->remote)) {
 		assert(n);
-		sys("cp", n->local, rs->s->gfile, SYS);
+		fileCopy(n->local, rs->s->gfile);
 		goto same;
 	}
 
@@ -2872,7 +2872,7 @@ resolve_cleanup(opts *opts, int what)
 		assert(exists("RESYNC"));
 		assert(dir);
 		unlink(dir);
-		sys("mv", "RESYNC", dir, SYS);
+		rename("RESYNC", dir);
 	} else {
 		if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
 			assert(!exists("RESYNC/ChangeSet"));

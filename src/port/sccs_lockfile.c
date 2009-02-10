@@ -43,13 +43,15 @@ sccs_lockfile(char *file, int waitsecs, int quiet)
 	int	fd;
 	int	uslp = 500;
 	u64	waited = 0;
+	int	rc = -1;
+	int	fs_en = fslayer_enable(0); /* turn off fslayer */
 
 	p = dirname_alloc((char*)file);
 	unless (access(p, W_OK) == 0) {
 		if (chmod(p, 0775)) {
 			fprintf(stderr, "lockfile: %s is not writable.\n", p);
 			free(p);
-			return (-1);
+			goto out;
 		}
 	}
 	free(p);
@@ -59,13 +61,13 @@ retry:	unlink(uniq);
 	unless ((fd = open(uniq, O_CREAT|O_RDWR|O_EXCL, 0644)) >= 0) {
 		fprintf(stderr, "Can't create lockfile %s\n", uniq);
 		free(uniq);
-		return (-1);
+		goto out;
 	}
 	p = aprintf("%u %s %u\n", getpid(), sccs_realhost(), (int)time(0));
 	if (write(fd, p, strlen(p)) != strlen(p)) {
 		perror(file);
 		close(fd);
-		return (-1);
+		goto out;
 	}
 	close(fd);
 
@@ -83,9 +85,8 @@ retry:	unlink(uniq);
 				addLock(uniq, file);
 				free(p);
 				free(uniq);
-				return (0);
-				/* Not reached, avoids gcc warning */
-				goto retry;
+				rc = 0;
+				goto out;
 			}
 			unlink(file);
 		}
@@ -102,14 +103,15 @@ retry:	unlink(uniq);
 				ttyprintf(
 				    "%s: waiting for attribute cache\n", file);
 			}
-		    	sleep(1);
+			sleep(1);
 		}
 
 		if ((links(uniq) == 2) && (ino(uniq) == ino(file))) {
 			addLock(uniq, file);
 			free(uniq);
 			free(p);
-			return (0);
+			rc = 0;
+			goto out;
 		}
 
 		/* Certain NFS deletions are renames to .nfs... and sometimes
@@ -143,7 +145,7 @@ retry:	unlink(uniq);
 err:			unlink(uniq);
 			free(uniq);
 			free(p);
-			return (-1);
+			goto out;
 		}
 		if ((waitsecs != -1) && ((waited / 1000000) >= waitsecs)) {
 			/* One last try to see if it is stale */
@@ -152,10 +154,7 @@ err:			unlink(uniq);
 				fprintf(stderr,
 				    "Timed out waiting for %s\n", file);
 			}
-			unlink(uniq);
-			free(uniq);
-			free(p);
-			return (-1);
+			goto err;
 		}
 		if (!quiet && ((quiet*1000000) > waited)) {
 			fprintf(stderr,
@@ -176,7 +175,8 @@ err:			unlink(uniq);
 		usleep(uslp);
 #endif
 	}
-	/* NOTREACHED */
+out:	fslayer_enable(fs_en);
+	return (rc);
 }
 
 int

@@ -21,12 +21,6 @@
 
 #define	PROD_SELF(p)		(proj_product(p) == (p))
 
-typedef struct dirlist dirlist;
-struct dirlist {
-	char	*dir;
-	dirlist	*next;
-};
-
 struct project {
 	char	*root;		/* fullpath root of the project */
 	char	*rootkey;	/* Root key of ChangeSet file */
@@ -46,6 +40,7 @@ struct project {
 	MDBM	*BAM_idx;	/* BAM index file */
 	int	BAM_write;	/* BAM index file opened for write? */
 	int	sync;		/* sync/fsync data? */
+	int	idxsock;	/* sock to index server for this repo */
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
@@ -55,7 +50,7 @@ struct project {
 
 	/* internal state */
 	int	refcnt;
-	dirlist	*dirs;
+	char	**dirs;
 };
 
 private char	*find_root(char *dir);
@@ -81,33 +76,18 @@ projcache_lookup(char *dir)
 private void
 projcache_store(char *dir, project *p)
 {
-	unless (streq(dir, p->root)) {
-		dirlist	*dl;
-
-		dl = new(dirlist);
-		dl->dir = strdup(dir);
-		dl->next = p->dirs;
-		p->dirs = dl;
-	}
 	hash_store(proj.cache, dir, strlen(dir)+1, &p, sizeof(p));
+	p->dirs = addLine(p->dirs, proj.cache->kptr);
 }
 
 private void
 projcache_delete(project *p)
 {
-	dirlist	*dl;
+	int	i;
 
-	hash_deleteStr(proj.cache, p->root);
-	dl = p->dirs;
-	while (dl) {
-		dirlist	*tmp = dl;
-
-		hash_deleteStr(proj.cache, dl->dir);
-
-		free(dl->dir);
-		dl = dl->next;
-		free(tmp);
-	}
+	EACH(p->dirs) hash_deleteStr(proj.cache, p->dirs[i]);
+	freeLines(p->dirs, 0);
+	p->dirs = 0;
 }
 
 /*
@@ -158,8 +138,6 @@ proj_init(char *dir)
 
 	projcache_store(root, ret);
 	unless (streq(root, fdir)) projcache_store(fdir, ret);
-done:
-	++ret->refcnt;
 
 	if ((t = strrchr(ret->root, '/')) && streq(t, "/RESYNC")) {
 		*t = 0;
@@ -170,6 +148,8 @@ done:
 		}
 		*t = '/';
 	}
+done:
+	++ret->refcnt;
 	return (ret);
 }
 
@@ -202,7 +182,7 @@ find_root(char *dir)
 
 	while (1) {
 		/* convert dir to a full pathname and expand symlinks */
-		dir = fullname(dir);
+		dir = path_canon(dir, buf);
 		unless(isSymlnk(dir)) break;
 
 		/*
@@ -214,15 +194,11 @@ find_root(char *dir)
 		if (IsFullPath(sym)) {
 			strcpy(buf, sym);
 		} else {
-			p = strrchr(dir, '/');
-			*p = 0;
-			concat_path(buf, dir, sym);
+			concat_path(buf, dirname(dir), sym);
 		}
-		dir = buf;
 	}
 
 	/* This code assumes dir is a full pathname with nothing funny */
-	strcpy(buf, dir);
 	p = buf + strlen(buf);
 	*p = '/';
 
@@ -303,13 +279,15 @@ proj_cd2product(void)
  * The returned path is allocated with malloc() and the user must free().
  */
 char *
-proj_relpath(project *p, char *path)
+proj_relpath(project *p, char *in_path)
 {
 	char	*root = proj_root(p);
 	int	len;
+	char	path[MAXPATH];
 
 	assert(root);
-	path = fullname(path);
+	path_canon(in_path, path);
+	TRACE("in=%s, path=%s", in_path, path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {
 		if (!path[len]) {
@@ -722,6 +700,10 @@ proj_reset(project *p)
 			}
 			p->product = INVALID;
 		}
+		if (p->idxsock) {
+			closesocket(p->idxsock);
+			p->idxsock = 0;
+		}
 	} else {
 		/*
 		 * Warning: This loop will call proj_reset() on the
@@ -749,14 +731,20 @@ int
 proj_chdir(char *newdir)
 {
 	int	ret;
+	project	*p;
 
 	ret = chdir(newdir);
 	unless (ret) {
 		unless (getcwd(proj.cwd, sizeof(proj.cwd))) proj.cwd[0] = 0;
-		if (proj.curr) {
-			if (proj.last) proj_free(proj.last);
-			proj.last = proj.curr;
-			proj.curr = 0;
+		p = proj_init(proj.cwd);
+		if (proj.curr != p) {
+			if (proj.curr) {
+				if (proj.last) proj_free(proj.last);
+				proj.last = proj.curr;
+			}
+			proj.curr = p;
+		} else {
+			if (p) proj_free(p);
 		}
 	}
 	return (ret);
@@ -771,7 +759,7 @@ char *
 proj_cwd(void)
 {
 	unless (proj.cwd[0]) {
-		if (proj_chdir(".")) return (0);
+		unless (getcwd(proj.cwd, sizeof(proj.cwd))) proj.cwd[0] = 0;
 	}
 	return (proj.cwd);
 }
@@ -1114,4 +1102,47 @@ proj_isComponent(project *p)
 	if (p->rparent) p = p->rparent;
 	unless (proj_product(p) && p->root) return (0);
 	return (proj_comppath(p) != 0);
+}
+
+int
+proj_idxsock(project *p)
+{
+	FILE	*f;
+	int	c;
+	char	*s, *t;
+	int	first = 1;
+	char	buf[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (0);
+
+	if (p->idxsock) return (p->idxsock);
+
+	concat_path(buf, p->root, ".bk/INDEX");
+	unless (f = fopen(buf, "r")) {
+again:		putenv("_BK_FSLAYER_SKIP=1");
+		c = sys("bk", "indexsvr", proj_root(p), SYS);
+		putenv("_BK_FSLAYER_SKIP=");
+		unless (!c ||
+		    (WIFEXITED(c) && WEXITSTATUS(c) == 1)) {
+			fprintf(stderr, "bk indexsvr failed\n");
+			exit(1);
+		}
+		f = fopen(buf, "r");
+		assert(f);
+	}
+	// read from env?
+	if ((t = fgetline(f)) && (s = strchr(t, ':'))) {
+		*s++ = 0;
+		p->idxsock = tcp_connect(t, atoi(s));
+	} else {
+		p->idxsock = -4;
+	}
+	fclose(f);
+	if (first && (p->idxsock < 0)) {
+		first = 0;
+		goto again;
+	}
+	// need to verify
+	assert(p->idxsock > 0);
+	return (p->idxsock);
 }

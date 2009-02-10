@@ -81,6 +81,7 @@ private	int	mkfile(char *file);
 private	void	send_eof(int status);
 private void	missing(off_t *byte_count);
 private	void	print_status(char *file, u32 sz);
+private	void	where(char *path);
 
 struct {
 	u32	quiet:1;	/* suppress normal verbose output */
@@ -92,6 +93,7 @@ struct {
 	u32	key2path:1;	/* -K read keys on stdin */
 	u32	sfile2gfile:1;	/* convert sfiles to gfiles when printing */
 	u32	lclone:1;	/* lclone-mode, hardlink everything */
+	u32	index:1;	/* -I generate index info sfio */
 	int	mode;		/* M_IN, M_OUT, M_LIST */
 	char	newline;	/* -r makes it \r instead of \n */
 	char	**more;		/* additional list of files to send */
@@ -99,6 +101,7 @@ struct {
 	hash	*sent;		/* list of d.files we have set, for dups */
 	int	recurse;	/* if set, try and find a server on cachemiss */
 	char	**missing;	/* tuples we couldn't find here */
+	char	*lastdir;	/* for -I, a place to remember dirs */
 	u64	todo;		/* -b`psize` - bytes we think we are moving */
 	u64	done;		/* file bytes we've moved so far */
 	int	prevlen;	/* length of previously printed line */
@@ -118,7 +121,7 @@ sfio_main(int ac, char **av)
 	opts->recurse = 1;
 	opts->prefix = "";
 	setmode(0, O_BINARY);
-	while ((c = getopt(ac, av, "a;A;b;BefgHiKLlmopP;qr")) != -1) {
+	while ((c = getopt(ac, av, "a;A;b;BefgHIiKLlmopP;qr")) != -1) {
 		switch (c) {
 		    case 'a':
 			opts->more = addLine(opts->more, strdup(optarg));
@@ -134,6 +137,11 @@ sfio_main(int ac, char **av)
 		    case 'f': opts->force = 1; break;		/* doc */
 		    case 'g': opts->sfile2gfile = 1; break;	/* undoc */
 		    case 'H': opts->hardlinks = 1; break;
+		    case 'I':
+			opts->index = 1;
+			opts->quiet = 1;
+			opts->mode = M_LIST;
+			break;
 		    case 'i': 					/* doc 2.0 */
 			if (opts->mode) goto usage;
 			opts->mode = M_IN;
@@ -529,8 +537,8 @@ sfio_in(int extract)
 	off_t	byte_count = 0;
 
 	bzero(buf, sizeof(buf));
-	if (readn(0, buf, 10) != 10) {
-		perror("read");
+	if (fread(buf, 1, 10, stdin) != 10) {
+		perror("fread");
 		return (1);
 	}
 	unless (strneq(buf, SFIO_VERS, 10)) {
@@ -539,10 +547,10 @@ sfio_in(int extract)
 		return (1);
 	}
 	for (;;) {
-		n = readn(0, buf, 4);
+		n = fread(buf, 1, 4, stdin);
 		if (n == 0) return (0);
 		if (n != 4) {
-			perror("read");
+			perror("fread");
 			return (1);
 		}
 		byte_count += n;
@@ -585,14 +593,15 @@ sfio_in(int extract)
 			fprintf(stderr, "Bad length in sfio\n");
 			return (1);
 		}
-		if (readn(0, buf, len) != len) {
-			perror("read");
+		if (fread(buf, 1, len, stdin) != len) {
+			perror("fread");
 			return (1);
 		}
 		byte_count += len;
 		buf[len] = 0;
-		if (readn(0, datalen, 10) != 10) {
-			perror("read");
+		if (opts->index) where(buf);
+		if (fread(datalen, 1, 10, stdin) != 10) {
+			perror("fread");
 			return (1);
 		}
 		datalen[10] = 0;
@@ -629,10 +638,10 @@ in_bptuple(char *keys, char *datalen, int extract)
 	if (strneq("HLNK00", datalen, 6)) {
 		sscanf(&datalen[6], "%04d", &todo);
 		/* keys linked to older keys we load into file */
-		if (readn(0, file, todo) != todo) return (1);
+		if (fread(file, 1, todo, stdin) != todo) return (1);
 		file[todo] = 0;
 		sum = adler32(0, file, todo);
-		if (readn(0, tmp, 10) != 10) {
+		if (fread(tmp, 1, 10, stdin) != 10) {
 			perror("chksum read");
 			return (1);
 		}
@@ -644,7 +653,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 			return (1);
 		}
 		if (opts->doModes) {
-			if (readn(0, tmp, 3) != 3) {
+			if (fread(tmp, 1, 3, stdin) != 3) {
 				perror("mode read");
 				return (1);
 			}
@@ -708,7 +717,7 @@ in_symlink(char *file, int pathlen, int extract)
 		fprintf(stderr, "symlink with 0 length?\n");
 		return (1);
 	}
-	if (readn(0, buf, pathlen) != pathlen) return (1);
+	if (fread(buf, 1, pathlen, stdin) != pathlen) return (1);
 	buf[pathlen] = 0;
 	sum = adler32(0, buf, pathlen);
 	if (extract) {
@@ -721,7 +730,7 @@ in_symlink(char *file, int pathlen, int extract)
 			}
 		}
 	}
-	if (readn(0, buf, 10) != 10) {
+	if (fread(buf, 1, 10, stdin) != 10) {
 		perror("chksum read");
 		goto err;
 	}
@@ -732,7 +741,7 @@ in_symlink(char *file, int pathlen, int extract)
 		    "Checksum mismatch %u:%u for %s\n", sum, sum2, file);
 		goto err;
 	}
-	if (readn(0, buf, 3) != 3) {
+	if (fread(buf, 1, 3, stdin) != 3) {
 		perror("mode read");
 		goto err;
 	}
@@ -749,7 +758,7 @@ in_symlink(char *file, int pathlen, int extract)
 	print_status(file, 0);
 	return (0);
 
-err:	
+err:
 	if (extract) unlink(file);
 	return (1);
 }
@@ -761,7 +770,7 @@ in_hardlink(char *file, int pathlen, int extract)
 	u32	sum = 0, sum2 = 0;
 
 	assert(pathlen > 0);
-	if (readn(0, buf, pathlen) != pathlen) return (1);
+	if (fread(buf, 1, pathlen, stdin) != pathlen) return (1);
 	buf[pathlen] = 0;
 	sum = adler32(0, buf, pathlen);
 	if (extract) {
@@ -774,7 +783,7 @@ in_hardlink(char *file, int pathlen, int extract)
 			}
 		}
 	}
-	if (readn(0, buf, 10) != 10) {
+	if (fread(buf, 1, 10, stdin) != 10) {
 		perror("chksum read");
 		goto err;
 	}
@@ -786,7 +795,7 @@ in_hardlink(char *file, int pathlen, int extract)
 		goto err;
 	}
 	if (opts->doModes) {
-		if (readn(0, buf, 3) != 3) {
+		if (fread(buf, 1, 3, stdin) != 3) {
 			perror("mode read");
 			goto err;
 		}
@@ -822,7 +831,7 @@ in_file(char *file, u32 todo, int extract)
 	}
 	/* Don't try to read zero bytes.  */
 	unless (todo) goto done;
-	while ((n = readn(0, buf, min(todo, sizeof(buf)))) > 0) {
+	while ((n = fread(buf, 1, min(todo, sizeof(buf)), stdin)) > 0) {
 		todo -= n;
 		opts->done += n;
 		sum = adler32(sum, buf, n);
@@ -842,7 +851,7 @@ in_file(char *file, u32 todo, int extract)
 		fprintf(stderr, "Premature EOF on %s\n", file);
 		goto err;
 	}
-done:	if (readn(0, buf, 10) != 10) {
+done:	if (fread(buf, 1, 10, stdin) != 10) {
 		perror("chksum read");
 		goto err;
 	}
@@ -855,7 +864,7 @@ done:	if (readn(0, buf, 10) != 10) {
 	}
 	if (opts->doModes) {
 		unsigned int imode;  /* mode_t might be a short */
-		if (readn(0, buf, 3) != 3) {
+		if (fread(buf, 1, 3, stdin) != 3) {
 			perror("mode read");
 			goto err;
 		}
@@ -1009,4 +1018,18 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 		goto again;
 	}
 	return (-1);
+}
+
+private void
+where(char *path)
+{
+	char	*dir = dirname_alloc(path);
+
+	if (!opts->lastdir || !streq(opts->lastdir, dir)) {
+		if (opts->lastdir) free(opts->lastdir);
+		opts->lastdir = dir;
+		printf("%s/\n", dir);
+	}
+	/* might be better to print size from last entry instead */
+	printf("%s|%lx\n", basenm(path), ftell(stdin));
 }

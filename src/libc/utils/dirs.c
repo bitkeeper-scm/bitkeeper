@@ -101,6 +101,7 @@ _walkdir(char *dir, struct stat *sbufp, walkfn fn, void *data)
 	files = nLines(lines);
 	/* if >= 2, then == numdirs + 2 */
 	links = sbufp->st_nlink;
+	links = 0;
 	len = strlen(dir);
 	dir[len] = '/';
 	EACH (lines) {

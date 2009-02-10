@@ -164,6 +164,9 @@ int	mkdirf(char *file);
 /* milli.c */
 char *	milli(void);
 
+/* path_canon.c */
+char	*path_canon(char *path, char *dest);
+
 /* putenv.c */
 #define	getenv(s)	safe_getenv(s)
 #define	putenv(s)	safe_putenv("%s", s)
@@ -262,7 +265,11 @@ int	issock(int);
 /* trace.c */
 extern	int bk_trace;
 void	trace_init(char *prog);
-void	trace_msg(char *fmt, char *file, int line, const char *function, ...);
+void	trace_msg(char *fmt, char *file, int line, const char *function, ...)
+#ifdef __GNUC__
+     __attribute__((format (__printf__, 1, 5)))
+#endif
+	;
 void	trace_free(void);
 
 #define	TRACE(format, args...)	\
@@ -270,7 +277,7 @@ void	trace_free(void);
 		trace_msg(format, __FILE__, __LINE__, __FUNCTION__, ##args); \
 	}
 
-#define	HERE()	TRACE(0, 0)
+#define	HERE()	TRACE("", 0)
 
 /* tty.c */
 #define	isatty		myisatty

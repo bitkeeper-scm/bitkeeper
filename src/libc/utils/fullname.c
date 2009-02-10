@@ -9,59 +9,6 @@
 
 private int	hasSymlink(char *path);
 
-
-private inline int
-samefile(char *a, struct stat *sa, char *b, struct stat *sb)
-{
-	assert(sa); assert(sb);
-	if ((sa->st_dev == 0) && (sa->st_ino == 0)) {
-		if (lstat(a, sa) == -1) return 0;
-	}
-	if ((sb->st_dev == 0) && (sb->st_ino == 0)) {
-		if (lstat(b, sb) == -1) return 0;
-	}
-	return ((sa->st_dev == sb->st_dev) && (sa->st_ino == sb->st_ino));
-}
-
-
-char *
-fast_getcwd(char *buf, int len)
-{
-	static	char pwd[MAXPATH] = "";
-	static	struct	stat pwd_sb = {0, 0}; /* cached sb struct for pwd */
-	struct 	stat dot_sb = {0, 0};
-	char	*t;
-
-	if  (pwd[0] && samefile(".", &dot_sb, pwd, &pwd_sb)) {
-		strcpy(buf, pwd);
-		assert(len > strlen(pwd));
-		assert(IsFullPath(buf));
-	} else {
-		pwd_sb.st_ino = 0; /* clear the sb cache */
-		pwd_sb.st_dev = 0;
-		if  ((t = getenv("PWD")) &&
-		    samefile(".", &dot_sb, t, &pwd_sb) &&
-		    !hasSymlink(t)) {
-			strcpy(pwd, t);
-			strcpy(buf, t);
-			assert(len > strlen(pwd));
-			assert(IsFullPath(buf));
-		} else {
-			pwd[0] = 0;
-			pwd_sb.st_ino = 0; /* clear the sb cache */
-			pwd_sb.st_dev = 0;
-			unless ((getcwd)(pwd, sizeof(pwd))) {
-				buf[0] = 0;
-				return (buf);
-			}
-			strcpy(buf, pwd);
-			assert(len > strlen(pwd));
-			assert(IsFullPath(buf));
-		}
-	}
-	return (buf);
-}
-
 private int
 hasSymlink(char *path)
 {
@@ -115,7 +62,7 @@ fullname(char *xfile)
 			 * We chdir to the max possible path before we do
 			 * getcwd().
 			 */
-			fast_getcwd(here, sizeof(here));
+			getcwd(here, sizeof(here));
 			t = &d[strlen(d) - 1];
 			strcpy(tailbuf, basenm(cpath));
 			while (chdir(d) != 0) {
@@ -146,7 +93,7 @@ fullname(char *xfile)
 		 */
 		strcpy(tmp, tail);
 	} else {
-		fast_getcwd(tmp, sizeof(tmp));
+		getcwd(tmp, sizeof(tmp));
 		concat_path(tmp, tmp, tail);
 	}
 

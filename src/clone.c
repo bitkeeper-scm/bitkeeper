@@ -575,13 +575,14 @@ initProject(char *root, remote *r)
 {
 	char	*p, *url, *repoid;
 
-	if (mkdirp(root) || chdir(root)) {
+	if (mkdirp(root)) {
 		perror(root);
 		return (-1);
 	}
 
 	/* XXX - this function exits and that means the bkd is left hanging */
-	sccs_mkroot(".");
+	sccs_mkroot(root);
+	chdir(root);
 	if (proj_product(0)) opts->no_parent = 1;
 
 	putenv("_BK_NEWPROJECT=YES");

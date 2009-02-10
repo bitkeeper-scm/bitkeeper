@@ -110,6 +110,8 @@ int
 hardlinked(char *a, char *b)
 {
 	struct	stat	sa, sb;
+
+	assert(0);
 	if (stat(a, &sa) || stat(b, &sb)) return (0);
 	if ((sa.st_size == sb.st_size) &&
 	    (sa.st_dev == sa.st_dev) &&

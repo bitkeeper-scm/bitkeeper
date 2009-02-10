@@ -101,10 +101,18 @@ print_sb(struct stat *sb, char *fn)
 	szfmt(sb->st_rdev); szfmt(sb->st_size); szfmt(sb->st_atime);
 	szfmt(sb->st_mtime); szfmt(sb->st_ctime);
 	strcat(fmtbuf, "%s\n");
+	/* dev|ino|mode|...|filename */
 	printf(fmtbuf,
-	    sb->st_dev, inode, sb->st_mode,
-	    linkcount(fn, sb), sb->st_uid, sb->st_gid,
-	    sb->st_rdev, sb->st_size, sb->st_atime,
-	    sb->st_mtime, sb->st_ctime,
-	    fn);
+	    sb->st_dev,		/* 0 */
+	    inode,		/* 1 */
+	    sb->st_mode,	/* 2 */
+	    linkcount(fn, sb),	/* 3 */
+	    sb->st_uid,		/* 4 */
+	    sb->st_gid,		/* 5 */
+	    sb->st_rdev,	/* 6 */
+	    sb->st_size,	/* 7 */
+	    sb->st_atime,	/* 8 */
+	    sb->st_mtime,	/* 9 */
+	    sb->st_ctime,	/* 10 */
+	    fn);		/* 11 */
 }
