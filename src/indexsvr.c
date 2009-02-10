@@ -443,6 +443,8 @@ remap_path(char *path)
 #define NBUFS   2
         static  int     cnt = 0;
         static  char    buf[NBUFS][MAXPATH];
+	char	*p;
+	char	suffix[3] = ",X";
 
         char    *ret;
 
@@ -451,6 +453,19 @@ remap_path(char *path)
 	cnt = (cnt + 1) % NBUFS;
 	ret = buf[cnt];
 	concat_path(ret, ".bk", path);
+
+	/* p -> s.foo */
+	p = strrchr(ret, '/') + 1;
+
+	/* we're sometimes called with path/SCCS */
+	unless (*(p + 1) == '.') return (ret);
+
+	/* save the prefix char, it'll become suffix */
+	suffix[1] = *p;
+
+	strcpy(p, p + 2);
+	strcat(p, suffix);
+
 	return (ret);
 }
 
