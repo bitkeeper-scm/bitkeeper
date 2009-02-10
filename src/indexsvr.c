@@ -498,6 +498,7 @@ doidx_quit(project *proj)
 	return (0);
 }
 
+#if 0
 
 int
 doidx_remap(project *proj, char *rel, char **file)
@@ -707,3 +708,127 @@ doidx_access(project *proj, char *rel, int mode)
 	len = send_cmd(sock, buf, len);
 	return (rdstatus(buf[0]));
 }
+
+#else
+
+/* Just access files directly */
+
+int
+doidx_remap(project *proj, char *rel, char **file)
+{
+
+	concat_path(retbuf, proj_root(proj), remap_path(rel));
+	*file = retbuf;
+	return (0);
+}
+
+int
+doidx_utime(project *proj, char *rel, const struct utimbuf *utb)
+{
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj), remap_path(rel));
+	return (utime(buf, utb));
+}
+
+int
+doidx_lstat(project *proj, char *rel, struct stat *sb)
+{
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj), remap_path(rel));
+	return (lstat(buf, sb));
+}
+
+int
+doidx_unlink(project *proj, char *rel)
+{
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj), remap_path(rel));
+	return (unlink(buf));
+}
+
+int
+doidx_rename(project *proj, char *old, char *new)
+{
+	char	buf1[MAXPATH];
+	char	buf2[MAXPATH];
+
+	concat_path(buf1, proj_root(proj), remap_path(old));
+	concat_path(buf2, proj_root(proj), remap_path(new));
+	return (rename(buf1, buf2));
+}
+
+int
+doidx_link(project *proj, char *old, char *new)
+{
+	char	buf1[MAXPATH];
+	char	buf2[MAXPATH];
+
+	concat_path(buf1, proj_root(proj), remap_path(old));
+	concat_path(buf2, proj_root(proj), remap_path(new));
+	return (link(buf1, buf2));
+}
+
+int
+doidx_chmod(project *proj, char *rel, mode_t mode)
+{
+	u8	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj), remap_path(rel));
+	return (chmod(buf, mode));
+}
+
+int
+doidx_mkdir(project *proj, char *dir, mode_t mode)
+{
+	u8	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj), remap_path(dir));
+	if (isSCCS(dir)) {
+		return (mkdirp(buf));
+	} else {
+		return (mkdir(buf, mode));
+	}
+}
+
+int
+doidx_rmdir(project *proj, char *dir)
+{
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj), remap_path(dir));
+	return (rmdir(buf));
+}
+
+char **
+doidx_getdir(project *proj, char *dir)
+{
+	char	**ret;
+	char	tmp[MAXPATH];
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj), remap_path(dir));
+	ret = getdir(remap_path(buf));
+	unless (isSCCS(dir)) {
+		if (streq(dir, ".")) removeLine(ret, ".bk", free);
+		concat_path(tmp, dir, "SCCS");
+		concat_path(buf, proj_root(proj), remap_path(tmp));
+		if (isdir(buf)) {
+			ret = addLine(ret, strdup("SCCS"));
+			uniqLines(ret, free);
+		}
+	}
+	return (ret);
+}
+
+int
+doidx_access(project *proj, char *rel, int mode)
+{
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj), remap_path(rel));
+	return (access(buf, mode));
+}
+#endif
