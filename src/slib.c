@@ -1365,6 +1365,7 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
+	proj_reset(0);
 	sprintf(buf, "%s/SCCS", path);
 	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
@@ -1395,8 +1396,6 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
-
-	proj_reset(0);
 }
 
 /*
