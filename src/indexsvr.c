@@ -29,6 +29,7 @@ private	int	getu32(u8 *p);
 private	void	putu32(u8 **t, u32 val);
 
 private	char	*remap_path(char *path);
+private void	unremap_name(char *name);
 
 
 int
@@ -469,6 +470,24 @@ remap_path(char *path)
 	return (ret);
 }
 
+private void
+unremap_name(char *name)
+{
+	int	l;
+	char	prefix;
+
+	l = strlen(name);
+	if (l < 3) return;
+	unless (name[l - 2] == ',') return;
+
+	prefix = name[l - 1];
+	name[l - 2] = 0;
+	memmove(name + 2, name, l - 2);
+	name[0] = prefix;
+	name[1] = '.';
+	//name[l] = 0;
+}
+
 
 /* client side code ------------------------------------------ */
 
@@ -820,13 +839,18 @@ doidx_rmdir(project *proj, char *dir)
 char **
 doidx_getdir(project *proj, char *dir)
 {
+	int	i;
 	char	**ret;
 	char	tmp[MAXPATH];
 	char	buf[MAXPATH];
 
 	concat_path(buf, proj_root(proj), remap_path(dir));
-	ret = getdir(remap_path(buf));
-	unless (isSCCS(dir)) {
+	ret = getdir(buf);
+	if (isSCCS(dir)) {
+		EACH(ret) {
+			unremap_name(ret[i]);
+		}
+	} else {
 		if (streq(dir, ".")) removeLine(ret, ".bk", free);
 		concat_path(tmp, dir, "SCCS");
 		concat_path(buf, proj_root(proj), remap_path(tmp));
