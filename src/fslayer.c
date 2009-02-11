@@ -3,6 +3,7 @@
 #include "blob.h"
 
 private	project	*findpathf(const char *file, char **rel);
+private	project	*findpathd(const char *dir, char **rel);
 private	project	*findpath(const char *dir, char **rel);
 
 
@@ -145,7 +146,7 @@ fslayer_lstat(const char *path, struct stat *buf)
 		ret = lstat(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpathf(path, &rel)) {
+		if (proj = findpath(path, &rel)) {
 			ret = doidx_lstat(proj, rel, buf);
 			proj_free(proj);
 		} else {
@@ -178,7 +179,7 @@ fslayer_stat(const char *path, struct stat *buf)
 		ret = stat(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpathf(path, &rel)) {
+		if (proj = findpath(path, &rel)) {
 			ret = doidx_lstat(proj, rel, buf);
 			proj_free(proj);
 		} else {
@@ -235,10 +236,10 @@ fslayer_rename(const char *old, const char *new)
 		ret = rename(old, new);
 	} else {
 		noloop  = 1;
-		if (proj1 = findpathf(old, &rel1)) {
+		if (proj1 = findpath(old, &rel1)) {
 			rel1 = strdup(rel1);
 		}
-		proj2 = findpathf(new, &rel2);
+		proj2 = findpath(new, &rel2);
 
 		if (proj1 && (proj1 == proj2)) {
 			ret = doidx_rename(proj1, rel1, rel2);
@@ -265,7 +266,7 @@ fslayer_chmod(const char *path, mode_t mode)
 		ret = chmod(path, mode);
 	} else {
 		noloop = 1;
-		if (proj = findpathf(path, &rel)) {
+		if (proj = findpath(path, &rel)) {
 			ret = doidx_chmod(proj, rel, mode);
 			proj_free(proj);
 		} else {
@@ -289,13 +290,13 @@ fslayer_link(const char *old, const char *new)
 		ret = link(old, new);
 	} else {
 		noloop = 1;
-		if (proj1 = findpathf(old, &rel1)) {
+		if (proj1 = findpath(old, &rel1)) {
 			rel1 = strdup(rel1);
 		}
-		proj2 = findpathf(new, &rel2);
+		proj2 = findpath(new, &rel2);
 
-		if (proj1 && (proj1 == proj2)) {
-			ret = doidx_link(proj1, rel1, rel2);
+		if (proj1 && proj2) {
+			ret = doidx_link(proj1, rel1, proj2, rel2);
 			proj_free(proj1);
 			proj_free(proj2);
 		} else {
@@ -336,7 +337,7 @@ fslayer__getdir(char *dir, struct stat *sb)
 		ret = _getdir(dir, sb);
 	} else {
 		noloop = 1;
-		if (proj = findpath(dir, &rel)) {
+		if (proj = findpathd(dir, &rel)) {
 			ret = doidx_getdir(proj, rel);
 			proj_free(proj);
 		} else {
@@ -383,7 +384,7 @@ fslayer_utime(const char *path, const struct utimbuf *buf)
 		ret = utime(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel)) {
+		if (proj = findpathf(path, &rel)) {
 			ret = doidx_utime(proj, rel, buf);
 			proj_free(proj);
 		} else {
@@ -406,7 +407,7 @@ fslayer_mkdir(const char *path, mode_t mode)
 		ret = mkdir(path, mode);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel)) {
+		if (proj = findpathd(path, &rel)) {
 			ret = doidx_mkdir(proj, rel, mode);
 			proj_free(proj);
 		} else {
@@ -430,7 +431,7 @@ fslayer_rmdir(const char *dir)
 	} else {
 		noloop = 1;
 
-		if (proj = findpath(dir, &rel)) {
+		if (proj = findpathd(dir, &rel)) {
 			ret = doidx_rmdir(proj, rel);
 			proj_free(proj);
 		} else {
@@ -527,7 +528,7 @@ findpathf(const char *file, char **relp)
  * and the relative path to that file from the proj root.
  */
 private project *
-findpath(const char *dir, char **relp)
+findpathd(const char *dir, char **relp)
 {
 	static	char	buf[MAXPATH];
 
@@ -550,4 +551,24 @@ findpath(const char *dir, char **relp)
 		*relp = buf;
 	}
 	return (proj);
+}
+
+/*
+ * give a path that could be a file or directory
+ * call findpath[fd]()
+ */
+private project *
+findpath(const char *obj, char **relp)
+{
+	int	c = isSCCS(obj);
+
+	if (c == 2) {
+		return (findpathd(obj, relp));
+	} else if (c) {
+		return (findpathf(obj, relp));
+	} else if (isdir((char *)obj)) {
+		return (findpathd(obj, relp));
+	} else {
+		return (findpathf(obj, relp));
+	}
 }

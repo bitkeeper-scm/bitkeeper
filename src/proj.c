@@ -41,6 +41,7 @@ struct project {
 	int	BAM_write;	/* BAM index file opened for write? */
 	int	sync;		/* sync/fsync data? */
 	int	idxsock;	/* sock to index server for this repo */
+	int	remap;		/* true == remap SCCS dirs */
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
@@ -686,6 +687,7 @@ proj_reset(project *p)
 		p->leaseok = -1;
 		p->co = 0;
 		p->sync = -1;
+		p->remap = -1;
 		if (p->coDB) {
 			mdbm_close(p->coDB);
 			p->coDB = 0;
@@ -1145,4 +1147,25 @@ again:		putenv("_BK_FSLAYER_SKIP=1");
 	// need to verify
 	assert(p->idxsock > 0);
 	return (p->idxsock);
+}
+
+/*
+ * Return true if this repo uses the old directory remapping.
+ * Not a new repo is always considered to use the new mapping.
+ *
+ * Note: It is assumed that this function is call in the context of a
+ * fslayer_* routine so that files system access is direct.
+ */
+int
+proj_hasOldSCCS(project *p)
+{
+	char	buf[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (1);
+
+	if (p->remap == -1) {
+		concat_path(buf, p->root, "SCCS");
+		p->remap = !isdir(buf);
+	}
+	return (!p->remap);
 }

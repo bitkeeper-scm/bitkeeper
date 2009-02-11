@@ -470,6 +470,13 @@ remap_path(char *path)
 	return (ret);
 }
 
+static void
+full_remap_path(char *buf, project *proj, char *rel)
+{
+	concat_path(buf, proj_root(proj),
+	    (proj_hasOldSCCS(proj)) ? rel : remap_path(rel));
+}
+
 private void
 unremap_name(char *name)
 {
@@ -750,8 +757,7 @@ doidx_access(project *proj, char *rel, int mode)
 int
 doidx_remap(project *proj, char *rel, char **file)
 {
-
-	concat_path(retbuf, proj_root(proj), remap_path(rel));
+	full_remap_path(retbuf, proj, rel);
 	*file = retbuf;
 	return (0);
 }
@@ -761,7 +767,7 @@ doidx_utime(project *proj, char *rel, const struct utimbuf *utb)
 {
 	char	buf[MAXPATH];
 
-	concat_path(buf, proj_root(proj), remap_path(rel));
+	full_remap_path(buf, proj, rel);
 	return (utime(buf, utb));
 }
 
@@ -770,7 +776,7 @@ doidx_lstat(project *proj, char *rel, struct stat *sb)
 {
 	char	buf[MAXPATH];
 
-	concat_path(buf, proj_root(proj), remap_path(rel));
+	full_remap_path(buf, proj, rel);
 	return (lstat(buf, sb));
 }
 
@@ -779,7 +785,7 @@ doidx_unlink(project *proj, char *rel)
 {
 	char	buf[MAXPATH];
 
-	concat_path(buf, proj_root(proj), remap_path(rel));
+	full_remap_path(buf, proj, rel);
 	return (unlink(buf));
 }
 
@@ -789,19 +795,19 @@ doidx_rename(project *proj, char *old, char *new)
 	char	buf1[MAXPATH];
 	char	buf2[MAXPATH];
 
-	concat_path(buf1, proj_root(proj), remap_path(old));
-	concat_path(buf2, proj_root(proj), remap_path(new));
+	full_remap_path(buf1, proj, old);
+	full_remap_path(buf2, proj, new);
 	return (rename(buf1, buf2));
 }
 
 int
-doidx_link(project *proj, char *old, char *new)
+doidx_link(project *proj1, char *old, project *proj2, char *new)
 {
 	char	buf1[MAXPATH];
 	char	buf2[MAXPATH];
 
-	concat_path(buf1, proj_root(proj), remap_path(old));
-	concat_path(buf2, proj_root(proj), remap_path(new));
+	full_remap_path(buf1, proj1, old);
+	full_remap_path(buf2, proj2, new);
 	return (link(buf1, buf2));
 }
 
@@ -810,7 +816,7 @@ doidx_chmod(project *proj, char *rel, mode_t mode)
 {
 	u8	buf[MAXPATH];
 
-	concat_path(buf, proj_root(proj), remap_path(rel));
+	full_remap_path(buf, proj, rel);
 	return (chmod(buf, mode));
 }
 
@@ -819,10 +825,10 @@ doidx_mkdir(project *proj, char *dir, mode_t mode)
 {
 	u8	buf[MAXPATH];
 
-	concat_path(buf, proj_root(proj), remap_path(dir));
+	full_remap_path(buf, proj, dir);
 	if (isSCCS(dir)) {
 		mkdirp(buf);
-		concat_path(buf, proj_root(proj), dirname(dir));
+		full_remap_path(buf, proj, dirname(dir));
 		return (mkdirp(buf));
 	} else {
 		return (mkdir(buf, mode));
@@ -834,7 +840,7 @@ doidx_rmdir(project *proj, char *dir)
 {
 	char	buf[MAXPATH];
 
-	concat_path(buf, proj_root(proj), remap_path(dir));
+	full_remap_path(buf, proj, dir);
 	return (rmdir(buf));
 }
 
@@ -846,7 +852,7 @@ doidx_getdir(project *proj, char *dir)
 	char	tmp[MAXPATH];
 	char	buf[MAXPATH];
 
-	concat_path(buf, proj_root(proj), remap_path(dir));
+	full_remap_path(buf, proj, dir);
 	ret = getdir(buf);
 	if (isSCCS(dir)) {
 		EACH(ret) {
@@ -855,7 +861,7 @@ doidx_getdir(project *proj, char *dir)
 	} else {
 		if (streq(dir, ".")) removeLine(ret, ".bk", free);
 		concat_path(tmp, dir, "SCCS");
-		concat_path(buf, proj_root(proj), remap_path(tmp));
+		full_remap_path(buf, proj, tmp);
 		if (isdir(buf)) {
 			ret = addLine(ret, strdup("SCCS"));
 			uniqLines(ret, free);
@@ -869,7 +875,7 @@ doidx_access(project *proj, char *rel, int mode)
 {
 	char	buf[MAXPATH];
 
-	concat_path(buf, proj_root(proj), remap_path(rel));
+	full_remap_path(buf, proj, rel);
 	return (access(buf, mode));
 }
 #endif
