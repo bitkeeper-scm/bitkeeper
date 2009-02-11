@@ -255,11 +255,11 @@ echo old > lose_this
 bk new $Q lose_this || exit 1
 bk commit $Q -yold || exit 1
 cd ../copy
-rm SCCS/s.foo.c
+bk _rm SCCS/s.foo.c
 bk pull $Q || exit 1
 cd ../project
 KEY="`bk prs -hr+ -d:ROOTKEY: lose_this`"
-rm -f SCCS/s.lose_this
+bk _rm -f SCCS/s.lose_this
 bk gone $Q "$KEY" || exit 1
 echo new > lose_this
 bk new $Q lose_this || exit 1

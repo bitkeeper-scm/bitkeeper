@@ -30,10 +30,12 @@ echo "comment" > c.edited
 bk _mv c.edited SCCS/c.edited
 echo "extra" > extra
 # make some bad c.file
-mkdir -p SCCS/junk
-echo XXX > SCCS/junk/c.junk
-mkdir -p junk/SCCS
-echo XXX > junk/SCCS/c.junk
+bk _mkdir SCCS/junk
+echo XXX > c.junk
+bk _mv c.junk SCCS/junk/c.junk
+bk _mkdir junk/SCCS
+echo XXX > c.junk
+bk _mv c.junk junk/SCCS/c.junk
 echo XXX > c.junk
 cd ..
 # Note: edited_no_gfile will be converted to a readonly file due to 
