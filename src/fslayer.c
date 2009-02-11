@@ -240,8 +240,7 @@ fslayer_rename(const char *old, const char *new)
 		}
 		proj2 = findpathf(new, &rel2);
 
-		assert(proj1 == proj2);
-		if (proj1) {
+		if (proj1 && (proj1 == proj2)) {
 			ret = doidx_rename(proj1, rel1, rel2);
 			proj_free(proj1);
 			proj_free(proj2);
@@ -295,8 +294,7 @@ fslayer_link(const char *old, const char *new)
 		}
 		proj2 = findpathf(new, &rel2);
 
-		assert(proj1 == proj2);
-		if (proj1) {
+		if (proj1 && (proj1 == proj2)) {
 			ret = doidx_link(proj1, rel1, rel2);
 			proj_free(proj1);
 			proj_free(proj2);

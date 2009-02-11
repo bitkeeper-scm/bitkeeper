@@ -821,6 +821,8 @@ doidx_mkdir(project *proj, char *dir, mode_t mode)
 
 	concat_path(buf, proj_root(proj), remap_path(dir));
 	if (isSCCS(dir)) {
+		mkdirp(buf);
+		concat_path(buf, proj_root(proj), dirname(dir));
 		return (mkdirp(buf));
 	} else {
 		return (mkdir(buf, mode));
