@@ -215,7 +215,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 			unlink(SFILES);
 		}
 		EACH_REPO(r) {
-			if (r->new) rmtree(r->path);
+			if (r->new) rmrepo(r->path);
 		}
 
 		/*

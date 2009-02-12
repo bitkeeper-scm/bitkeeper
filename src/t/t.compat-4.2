@@ -8,6 +8,7 @@ OLDVER=4.2
 OLDBK=/build/bitkeeper-$OLDVER
 
 echo $N Check bitkeeper 4.2 installation ............................$NL
+if [ -n "$BK_DEV_SKIPTEST" ]; then echo skipped; exit 0; fi
 # Skip this test for Windows VISTA
 OSTYPE=`uname -s`
 case $OSTYPE in

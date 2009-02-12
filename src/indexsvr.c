@@ -840,6 +840,14 @@ doidx_rmdir(project *proj, char *dir)
 {
 	char	buf[MAXPATH];
 
+	/*
+	 * chances are that code that is hitting this assertion should
+	 * really be calling rmrepo
+	 *
+	 * if that's not that and you hit this, call wayne
+	 */
+	assert(!streq(dir, "."));
+		       
 	full_remap_path(buf, proj, dir);
 	return (rmdir(buf));
 }

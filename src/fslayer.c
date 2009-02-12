@@ -572,3 +572,25 @@ findpath(const char *obj, char **relp)
 		return (findpathf(obj, relp));
 	}
 }
+
+int
+rmrepo(char *repo)
+{
+	int	old, ret = 0;
+	char	buf[MAXPATH];
+
+	/*
+	 * someday, here is where we'll send the signal to kill the
+	 * indexsvr
+	 */
+
+	concat_path(buf, repo, BKROOT);
+	unless (isdir(buf)) {
+		fprintf(stderr, "rmrepo: %s is not a repo\n", repo);
+		return (-1);
+	}
+	old = fslayer_enable(0);
+	ret = rmtree(repo);
+	fslayer_enable(old);
+	return (ret);
+}
