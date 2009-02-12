@@ -7170,19 +7170,20 @@ err:		if (i2) free(i2);
 	else if (HAS_PFILE(s) && !HAS_GFILE(s) && !(flags & NOGFILE)) {
 		pfile	pf;
 		int	rc;
+		char	*gfile = sccs2name(s->sfile);
 
 		/*
 		 * If we have a pfile, no gfile, and we're getting the file,
 		 * the the pfile is leftover crud and we should lose it.
 		 * This happens when someone does "bk edit foo; rm foo".
-		 * The only gotcha I can think of is get -G/tmp/foo but
-		 * I walked the code and I think even that case is OK
-		 * (we should lose get -G).
+		 * The streq below is to see if someone did a get -G,
+		 * difftool used to do that.
 		 *
 		 * Eagle eye Rick points out that we probably don't want to
 		 * lose merge pointers.
 		 */
-		if (sccs_read_pfile("co", s, &pf) == 0) {
+		if (streq(gfile, s->gfile) &&
+		    (sccs_read_pfile("co", s, &pf) == 0)) {
 			rc = 0;
 			if (pf.mRev || pf.iLst || pf.xLst) {
 			    rc = 1;
@@ -7192,9 +7193,12 @@ err:		if (i2) free(i2);
 				s->gfile);
 			}
 			free_pfile(&pf);
+			free(gfile);
 			if (rc) goto err;
 			unlink(s->pfile);
 			s->state &= ~S_PFILE;
+		} else {
+			free(gfile);
 		}
 	}
 
