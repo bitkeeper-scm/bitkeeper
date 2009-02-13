@@ -1,3 +1,9 @@
+Release notes for BitKeeper version 4.3a (released 12-Feb-2009)
+
+Fix a problem where difftool didn't work correctly when run from
+the resolver.
+
+===============================================================================
 Release notes for BitKeeper version 4.3 (released 28-Jan-2009)
 
 This release contains a performance fix for push and pulls that do not

@@ -193,7 +193,7 @@ proc getRev {file rev checkMods} \
 	set pid [pid]
 	incr unique
 	set tmp "$tmp@$rev-$pid$unique"
-	if {[catch {exec bk get -qkTG$tmp -r$rev $file} msg]} {
+	if {[catch {exec bk get -qkTp -r$rev $file > $tmp} msg]} {
 		puts "$msg"
 		exit 1
 	}
