@@ -938,7 +938,7 @@ sfiocmd(int in_repair)
 	len = 100;	/* prefix/postfix */
 	EACH(parent) len += strlen(parent[i]) + 5;
 	buf = malloc(len);
-	strcpy(buf, "bk -q");
+	strcpy(buf, "bk -q -Bstdin");
 	len = strlen(buf);
 	EACH(parent) len += sprintf(&buf[len], " -@'%s'", parent[i]);
 	if (verbose) {
