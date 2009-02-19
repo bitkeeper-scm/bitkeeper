@@ -176,6 +176,23 @@ err:			unlink("BitKeeper/etc/config");
 	mdbm_close(m);
 	m = 0;
 
+	/*
+	 * When creating a new component we need a valid license, but
+	 * while the component is being created it is a new
+	 * repository, but not yet a component.  So the product's
+	 * config file is not visible and if the only license is in
+	 * the product bk won't see a license.  To work around this we
+	 * make sure we have a valid write lease before proceeding.
+	 * We don't check the exit status from lease renew as we may be
+	 * disconnected with a valid write lease already.
+	 */
+	if (in_prod) {
+		chdir(proj_root(in_prod));
+		sys("bk", "lease", "renew", "-qw", SYS);
+		chdir(here);
+		chdir(package_path);
+	}
+
 	if (cset_setup(SILENT)) goto err;
 	unless (eula_accept(accept ? EULA_ACCEPT : EULA_PROMPT, 0)) exit(1);
 	s = sccs_init(s_config, SILENT);
@@ -199,9 +216,8 @@ err:			unlink("BitKeeper/etc/config");
 	enableFastPendingScan();
 	logChangeSet();
 	if (in_prod) {		/* we are a new component, attach ourself */
-		chdir(here);
 		status = sys("bk", "attach",
-		    noCommit ? "-qC" : "-q", package_path, SYS);
+		    noCommit ? "-qC" : "-q", ".", SYS);
 		unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 			fprintf(stderr, "setup: bk attach failed.\n");
 			return (1);
