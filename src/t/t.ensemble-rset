@@ -1,9 +1,5 @@
 
 echo $N Pass with component that has a comma in the name ............$NL
-# When the setup -a mess is sorted out in the product, remove the following
-fresh_commercial accept_lic
-cd ..
-# real test starts here
 nested product
 bk tag $Q START
 bk setup -af foo,bar
