@@ -477,7 +477,8 @@ private int
 chk_dfile(sccs *s)
 {
 	delta	*d;
-	char	*p;
+	char	*p, *dfile;
+	int	rc = 0;
 
 	if (CSET(s) && proj_isProduct(s->proj)) return (0);
 
@@ -492,15 +493,21 @@ chk_dfile(sccs *s)
 	 * as a special case.
 	 */
 
-	p = basenm(s->sfile);
+	dfile = s->sfile;
+	p = basenm(dfile);
 	*p = 'd';
-	if  (!(d->flags & D_CSET) && !exists(s->sfile)) { 
-		*p = 's';
-		getMsg("missing_dfile", s->gfile, '=', stderr);
-		return (1);
+	if (d->flags & D_CSET) {
+		/* nothing pending, cleanup any extra dfiles */
+		unlink(dfile);
+	} else {
+		/* pending */
+		unless (exists(dfile)) {
+			getMsg("missing_dfile", s->gfile, '=', stderr);
+			rc = 1;
+		}
 	}
 	*p = 's';
-	return (0);
+	return (rc);
 
 }
 
