@@ -5,18 +5,21 @@ int
 repogca_main(int ac, char **av)
 {
 	sccs	*s;
-	delta	*d;
+	delta	*d, *p, *lastd;
 	FILE	*f;
 	int	c, i, status;
+	int	all = 0, rc = 1;
 	char	**urls, **nav;
-	char	*dspec = ":REV:\n";
+	char	*dspec = ":JOIN::REV:\n$end{\\n}";
+	char	*begin = 0, *end = 0;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "5d;k")) != -1) {
+	while ((c = getopt(ac, av, "a5d;k")) != -1) {
 		switch (c) {
+		    case 'a': all = 1; break;
 		    case 'd': dspec = optarg; break;
-		    case 'k': dspec = ":KEY:\n"; break;
-		    case '5': dspec = ":MD5KEY:\n"; break;
+		    case 'k': dspec = ":KEY:\\n"; break;
+		    case '5': dspec = ":MD5KEY:\\n"; break;
 		    default:  system("bk help -s repogca"); return (1);
 		}
 	}
@@ -63,13 +66,34 @@ repogca_main(int ac, char **av)
 		fprintf(stderr, "repogca: connection to parent failed\n");
 		return (2);
 	}
+	dspec = strdup(dspec);
+	dspec_collapse(&dspec, &begin, &end);
+	lastd = s->table;
 	for (d = s->table; d; d = d->next) {
-		if ((d->type == 'D') && !(d->flags & D_RED)) {
+		if ((d->type == 'D') && !(d->flags & (D_RED|D_BLUE))) {
+			if (begin) {
+				sccs_prsdelta(s, d, 0, begin, stdout);
+				free(begin);
+				begin = 0;
+			}
+			lastd = d;
 			sccs_prsdelta(s, d, 0, dspec, stdout);
-			sccs_free(s);
-			return (0);
+			rc = 0;
+			unless (all) break;
+			d->flags |= D_BLUE;
+		}
+		if (d->flags & D_BLUE) {
+			if (p = d->parent) p->flags |= D_BLUE;
+			if (d->merge && (p = sfind(s, d->merge))) {
+				p->flags |= D_BLUE;
+			}
 		}
 	}
+	if (end) {
+		sccs_prsdelta(s, lastd, 0, end, stdout);
+		free(end);
+	}
+	free(dspec);
 	sccs_free(s);
-	return (1);
+	return (rc);
 }
