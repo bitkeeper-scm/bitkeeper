@@ -456,3 +456,14 @@ grep -q "File/directory conflict: foo" ERR || {
 	exit 1
 }
 echo OK
+
+echo $N Check should clean up any extra dfiles ......................$NL
+cd "$HERE"/proj2
+bk _rm -f SCCS/s.foo2	# fixup
+bk _touch SCCS/d.foo
+bk -r check -a || exit 1
+bk _test -f SCCS/d.foo && {
+	echo should have deleted dfile
+	exit 1
+}
+echo OK
