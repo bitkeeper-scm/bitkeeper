@@ -10,6 +10,8 @@
 
 echo $N Create initial repository ...................................$NL
 commercial project
+echo time > date
+bk new $Q date
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if bk _test ! -f SCCS/s.ChangeSet; then echo failed to make ChangeSet; exit 1; fi
 mkdir src
@@ -29,9 +31,11 @@ do	bk clone $Q project $i
 done
 for i in a b project
 do	cd "$HERE"/$i
-	date > date
-	bk new $Q date
+	bk edit $Q date
+	echo date > date
+	bk ci $Q -ydate date
 	bk commit $Q -y$i
+	bk changes -kr+ > "$HERE/KEY.$i"
 done
 echo OK
 
@@ -64,6 +68,25 @@ test "X$REPOGCA" = "X$KEY" || {
 	echo Failed
 	echo "Want $KEY"
 	echo "Got  $REPOGCA"
+	exit 1
+}
+echo OK
+
+echo $N Check repogca of a list .....................................$NL
+cd "$HERE/b"
+bk pull $Q ../a
+bk pull $Q ../project
+cd ../a
+bk pull $Q ../project
+# newest cset made in the loop is project
+bk repogca -k ../b > GOT
+cmpfiles ../KEY.project GOT
+# newest cset first
+bk repogca -k -a ../b > GOT
+cat ../KEY.project ../KEY.a > WANT
+cmpfiles WANT GOT
+test `bk repogca -a ../b` = 1.2.1.1,1.3 || {
+	echo wrong output
 	exit 1
 }
 echo OK
