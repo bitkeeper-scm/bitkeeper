@@ -635,17 +635,17 @@ test `wc -l < XXX` -eq 5 || {
 echo OK
 
 echo $N Check that get -G does not care about -i/-x .................$NL
-# doesn't work. who cares?
-bk get -Gmyfoo -hr+ ChangeSet 2> ERR && {
-	echo fix test
+bk get -Gmyfoo -hr+ ChangeSet 2> ERR || {
+	echo failed
+	cat ERR
 	exit 1
 }
-grep -q "myfoo has merge.include.exclude but no gfile, co aborted" ERR || {
+grep -q "myfoo 1.1: 4 lines" ERR || {
 	echo wrong msg
 	cat ERR
 	exit 1
 }
-echo "failed (bug )"
+echo OK
 
 echo $N Check that prs does not care about -i/-x ....................$NL
 bk prs -hr+ -nd:HASHCOUNT: ChangeSet > XXX 2>&1

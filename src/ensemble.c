@@ -32,7 +32,7 @@ private	char	*ensemble_version = "1.0";
  * undo wants a list of components, which is the subset that will change in
  * the undo operation, and delta keys which are the desired tips after undo.
  * We get the list of repos from the range of csets passed in in revs
- * and then we do another pass to get the tips from "rev".
+ * and then we do another pass to get the tips from what is left.
  *
  * [r]clone wants a list of all components in a particular rev and their
  * tip keys.  It passes in the rev and not the list.
@@ -41,6 +41,10 @@ private	char	*ensemble_version = "1.0";
  * the range of csets being moved in the product, and delta keys which are
  * the tips in each component.  "rev" is not passed in, "revs" is the list.
  * The first tip we see for each component is what we want, that's newest.
+ *
+ * Other callers are ensemble_each (such as bk -A), alias, and components
+ * which want to get access to what is pending as well.  The current hack
+ * is if revs and rev == 0, then include pending.
  *
  * The path field is always set to the current path of the component, not
  * the path as of the rev[s].  Note that if the component is not present
@@ -56,22 +60,23 @@ ensemble_list(eopts opts)
 	repos	*r = 0;
 	char	**list = 0;	/* really repos **list */
 	delta	*d, *tip;
-	char	*t;
+	char	*t, *v;
 	int	had_tip = 0, close = 0;
 	int	i;
+	FILE	*pending;
 	MDBM	*idDB = 0;
 	kvpair	kv;
 	char	buf[MAXKEY];
 
-	/* logical xor: one or the other, not both */
-	assert (!opts.rev ^ !opts.revs);
+	/*
+	 * neither, one or the other; not both
+	 * neither if pending is to be listed
+	 */
+	assert(!(opts.rev && opts.revs));
+	assert(!opts.pending || !(opts.rev || opts.revs));
 
 	unless (proj_product(0)) {
 		fprintf(stderr, "ensemble_list called in a non-product.\n");
-		return (0);
-	}
-	unless (opts.rev || opts.revs) {
-		fprintf(stderr, "ensemble_list called with no revs?\n");
 		return (0);
 	}
 	unless (opts.sc) {
@@ -133,6 +138,28 @@ err:				if (close) sccs_free(opts.sc);
 		    opts.rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 			goto err;
 		}
+		if (opts.pending) {
+			/*
+			 * get pending components and replace/add items
+			 * in db returned by sccs_get above.
+			 */
+#define	PNDCOMP	"bk -Ppr log -r+ -nd'$if(:COMPONENT:){:ROOTKEY: :KEY:}'"
+
+			unless (pending = popen(PNDCOMP, "r")) goto err;
+			while (t = fgetline(pending)) {
+				v = separator(t);
+				assert(v);
+				*v++ = 0;
+				if (mdbm_store_str(
+				    opts.sc->mdbm, t, v, MDBM_REPLACE)) {
+					pclose(pending);
+					mdbm_close(opts.sc->mdbm);
+					opts.sc->mdbm = 0;
+					goto err;
+				}
+			}
+			pclose(pending);
+		}
 		EACH_KV(opts.sc->mdbm) {
 			unless (componentKey(kv.val.dptr)) continue;
 			e = new(repo);
@@ -144,6 +171,8 @@ err:				if (close) sccs_free(opts.sc);
 			csetChomp(e->path);
 			list = addLine(list, (void*)e);
 		}
+		mdbm_close(opts.sc->mdbm);
+		opts.sc->mdbm = 0;
 	}
 
 	/*
@@ -210,7 +239,7 @@ err:				if (close) sccs_free(opts.sc);
 	if (opts.deepfirst) reverseLines(list);
 
 	if (opts.product) {
-		if (opts.rev) {			/* undo / [r]clone/ push */
+		unless (opts.revs) {		/* undo / [r]clone/ push */
 			d = sccs_findrev(opts.sc, opts.rev);
 		} else if (had_tip && !opts.undo) {
 			d = tip;
@@ -407,11 +436,12 @@ components_main(int ac, char **av)
 			goto out;
 		}
 	}
-	unless (opts.revs || opts.rev) opts.rev = "+";
 	unless (want) want = L_PATH;
 	if (input) {
 		r = ensemble_fromStream(r, stdin);
 	} else {
+		/* include pending if nothing specified */
+		unless (opts.rev || opts.revs) opts.pending = 1;
 		unless (r = ensemble_list(opts)) exit(0);
 	}
 	if (output) {
@@ -613,7 +643,6 @@ ensemble_each(int quiet, int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.product = 1;
 	opts.product_first = 1;
-	opts.rev = "+";
 	getoptReset();
 	// has to track bk.c's getopt string
 	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
@@ -629,6 +658,11 @@ ensemble_each(int quiet, int ac, char **av)
 	}
 	if (aliases) opts.aliases = alias_list(aliases, 0);
 
+	/*
+	 * Include pending components if no rev is specified
+	 * Handy for 'bk -A ..' to include newly attached components
+	 */
+	unless (opts.rev) opts.pending = 1;
 	unless (list = ensemble_list(opts)) {
 		fprintf(stderr, "No ensemble list?\n");
 		return (1);
@@ -712,7 +746,6 @@ ensemble_deep(char *path)
 	char	*deep = 0;
 	int	len, deeplen = 0;
 
-	op.rev = "+";
 	r = ensemble_list(op);
 	assert(path);
 	len = strlen(path);

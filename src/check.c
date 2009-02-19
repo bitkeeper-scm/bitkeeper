@@ -203,7 +203,6 @@ check_main(int ac, char **av)
 		char	*cp; /* path to this component */
 		int	cplen;
 
-		el_opts.rev = "+";
 		if (proj_isProduct(0)) {
 			el_opts.sc = cset;
 			cp = 0;
@@ -214,6 +213,7 @@ check_main(int ac, char **av)
 		}
 		t = proj_root(0);
 		proj_cd2product();
+		el_opts.pending = 1;
 		r = ensemble_list(el_opts);
 		chdir(t);
 		EACH_REPO(r) {
@@ -938,7 +938,7 @@ sfiocmd(int in_repair)
 	len = 100;	/* prefix/postfix */
 	EACH(parent) len += strlen(parent[i]) + 5;
 	buf = malloc(len);
-	strcpy(buf, "bk -q");
+	strcpy(buf, "bk -q -Bstdin");
 	len = strlen(buf);
 	EACH(parent) len += sprintf(&buf[len], " -@'%s'", parent[i]);
 	if (verbose) {

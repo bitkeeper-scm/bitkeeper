@@ -15,6 +15,26 @@
 test -d "$HERE/home" || mkdir "$HERE/home"
 export BK_TEST_HOME="$HERE/home"
 
+echo $N Make sure we can run diffs on a file that has a merge ptr ......$NL
+commercial project
+echo foo > foo
+bk new $Q -ywhatever foo
+bk edit $Q foo
+echo foo >> foo
+bk delta $Q -ywhatever foo
+bk _get -e $Q -r1.1 foo
+echo bar >> foo
+bk delta $Q -ywhatever foo
+bk get -e $Q -M1.1.1.1 foo
+rm foo
+bk difftool -r1.1.1.1 -r+ foo > OUT 2>&1
+test -s OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
 # might as well use some real-world data
 echo $N Starting difftool in \`bk bin\`\; you must quit manually........$NL
 cd "`bk bin`"

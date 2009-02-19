@@ -1163,7 +1163,7 @@ touch "A A"
 bk new $Q "A A"
 bk commit $Q -ywhatever
 cd "$HERE/copy"
-bk pull -R -t $Q "$HERE/project"
+_BK_NO_PATCHSFIO=1 bk pull -R -t $Q "$HERE/project"
 # Rework the patch to be in the order we want.  We want A first and MOVED 2nd.
 cd PENDING
 FILE=`echo *`

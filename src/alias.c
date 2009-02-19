@@ -505,7 +505,7 @@ dir_expand(char *dir, aliases *mdb, hash *keys)
 		eopts	opts;
 
 		bzero(&opts, sizeof(eopts));
-		opts.rev = "+";
+		opts.pending = 1;
 		opts.sc = mdb->cset;
 		mdb->comps = ensemble_list(opts);
 	}
@@ -531,7 +531,7 @@ dir2key(char *dir, aliases *mdb)
 	assert(mdb);
 	unless (mdb->comps) {
 		bzero(&opts, sizeof(eopts));
-		opts.rev = "+";
+		opts.pending = 1;
 		opts.sc = mdb->cset;
 		mdb->comps = ensemble_list(opts);
 	}
@@ -608,7 +608,7 @@ verifyKey(char *key, aliases *mdb)
 	assert(mdb);
 	unless (mdb->comps) {
 		bzero(&opts, sizeof(eopts));
-		opts.rev = "+";
+		opts.pending = 1;
 		opts.sc = mdb->cset;
 		mdb->comps = ensemble_list(opts);
 	}

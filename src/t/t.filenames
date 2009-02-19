@@ -146,12 +146,7 @@ bk pull -G > /dev/null 2>OUT || {
 	exit 1
 }
 bk -r check -af || exit 1
-grep -q '^src/a a a:.*deltas' OUT || {
-	echo filename wrong in output
-	cat OUT
-	exit 1
-}
-grep -q 'revisions to src/a a a' OUT || {
+grep -q '^Updating src/a a a' OUT || {
 	echo filename wrong in output
 	cat OUT
 	exit 1

@@ -1,8 +1,3 @@
-/*
-sccs_resolveFile() - the gcapath is s->gfile.  Add the error check is that
-left||right->path == s->gfile.
-*/
-
 /* Copyright (c) 1999-2000 L.W.McVoy */
 #include "sccs.h"
 #include "logging.h"
@@ -42,16 +37,15 @@ left||right->path == s->gfile.
 
 private	delta	*getRecord(MMAP *f);
 private void	errorMsg(char *msg, char *arg1, char *arg2);
-private	int	extractPatch(char *name, MMAP *p, int flags);
-private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
-private	int	applyPatch(char *local, int flags, sccs *perfile);
-private	int	applyCsetPatch(char *localPath, int nfound, int flags,
-						sccs *perfile);
+private	int	extractPatch(char *name, MMAP *p);
+private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int*);
+private	int	applyPatch(char *local, sccs *perfile);
+private	int	applyCsetPatch(char *localPath, int nfound, sccs *perfile);
 private	int	getLocals(sccs *s, delta *d, char *name);
 private	void	insertPatch(patch *p);
 private	void	reversePatch(void);
 private	void	initProject(void);
-private	MMAP	*init(char *file, int flags);
+private	MMAP	*init(char *file);
 private	void	cleanup(int what);
 private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
@@ -85,6 +79,8 @@ private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
 private	int	collapsedups;	/* allow csets in BitKeeper/etc/collapsed */
 
+extern	char	*prog;
+
 /*
  * Structure for keys we skip when incoming, used for old LOD keys that
  * we do not want in the open logging tree.
@@ -103,11 +99,10 @@ takepatch_main(int ac, char **av)
 	char	*buf;
 	MMAP	*p;
 	int	c;
-	int	flags = SILENT;
 	int	files = 0;
 	char	*t;
 	int	error = 0;
-	int	remote = 0;
+	int	remote = 0;	/* remote csets */
 	int	resolve = 0;
 	int	textOnly = 0;
 
@@ -131,18 +126,18 @@ takepatch_main(int ac, char **av)
 		    case 'S': saveDirs++; break;		/* doc 2.0 */
 		    case 'T': /* -T is preferred, remove -t in 5.0 */
 		    case 't': textOnly++; break;		/* doc 2.0 */
-		    case 'v': echo++; flags &= ~SILENT; break;	/* doc 2.0 */
+		    case 'v': echo++; break;			/* doc 2.0 */
 		    case 'y': comments = optarg; break;
 		    default: goto usage;
 		}
 	}
 	if (getenv("TAKEPATCH_SAVEDIRS")) saveDirs++;
-	if (getenv("BK_NOTTY") && (echo == 3)) echo = 2;
+	if ((t = getenv("BK_NOTTY")) && *t && (echo == 3)) echo = 2;
 	if (av[optind]) {
 usage:		system("bk help -s takepatch");
 		return (1);
 	}
-	p = init(input, flags);
+	p = init(input);
 	if (newProject) putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) exit(1);
 
@@ -198,7 +193,7 @@ usage:		system("bk help -s takepatch");
 		}
 		*t = 0;
 		files++;
-		rc = extractPatch(&b[3], p, flags);
+		rc = extractPatch(&b[3], p);
 		free(b);
 		if (rc < 0) {
 			error = rc;
@@ -214,15 +209,21 @@ usage:		system("bk help -s takepatch");
 		cleanup(CLEAN_RESYNC);
 	}
 	if (echo) {
+		files = 0;
+		if (f = popen("bk sfiles RESYNC", "r")) {
+			while ((c = getc(f)) > 0) if (c == '\n') ++files;
+			pclose(f);
+		}
+
 		fprintf(stderr,
-		    "takepatch: %d new revision%s, %d conflicts in %d files\n",
+		    "takepatch: %d new changeset%s, %d conflicts in %d files\n",
 		    remote, remote == 1 ? "" : "s", conflicts, files);
 	}
 
 	/* save byte count for logs */
 	f = fopen("BitKeeper/log/byte_count", "w");
 	if (f) {
-		fprintf(f, "%lu\n", size(pendingFile));
+		fprintf(f, "%lu\n", (unsigned long)size(pendingFile));
 		fclose(f);
 	}
 
@@ -364,7 +365,7 @@ shout(void)
  * sent; it might be different than the local name.
  */
 private	int
-extractPatch(char *name, MMAP *p, int flags)
+extractPatch(char *name, MMAP *p)
 {
 	delta	*tmp;
 	sccs	*s = 0;
@@ -523,28 +524,28 @@ error:		if (perfile) sccs_free(perfile);
 		encoding = s->encoding;
 		sccs_findKeyDB(s, 0);
 	}
-	while (extractDelta(name, s, newFile, p, flags, &nfound)) {
+	while (extractDelta(name, s, newFile, p, &nfound)) {
 		if (newFile) newFile = 2;
 	}
 	gfile = sccs2name(name);
 	if (echo>1) {
-		fprintf(stderr, "Applying %3d revisions to %s%s ",
-		    nfound, reallyNew ? "new file " : "", gfile);
-		if ((echo != 2) && (echo != 3)) fprintf(stderr, "\n");
+		fprintf(stderr, "Updating %s", gfile);
+		if (echo == 3) fputc(' ', stderr);
 	}
 	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
-		rc = applyCsetPatch(s ? s->sfile : 0 , nfound, flags, perfile);
+		rc = applyCsetPatch(s ? s->sfile : 0 , nfound, perfile);
 	} else {
 		if (s && s->findkeydb) {
 			mdbm_close(s->findkeydb);
 			s->findkeydb = 0;
 		}
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
-		rc = applyPatch(s ? s->sfile : 0, flags, perfile);
+		rc = applyPatch(s ? s->sfile : 0, perfile);
 		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
+		nfound = 0;	/* only count csets */
 	}
-	if (echo == 2) fprintf(stderr, "\n");
-	if (echo == 3) fprintf(stderr, " \n");
+	if (echo == 3) fputc(' ', stderr);
+	if (echo > 1) fputc('\n', stderr);
 	if (perfile) sccs_free(perfile);
 	if (streq(gfile, "BitKeeper/etc/config")) {
 		/*
@@ -647,7 +648,7 @@ skipkey(sccs *s, char *dkey)
  * Deltas end on the first blank line.
  */
 private	int
-extractDelta(char *name, sccs *s, int newFile, MMAP *f, int flags, int *np)
+extractDelta(char *name, sccs *s, int newFile, MMAP *f, int *np)
 {
 	delta	*d, *parent = 0, *tmp;
 	char	buf[MAXPATH];
@@ -840,7 +841,7 @@ walkrevs_list(sccs *s, delta *d, void *token)
  * is possible to only write the file once.
  */
 private	int
-applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
+applyCsetPatch(char *localPath, int nfound, sccs *perfile)
 {
 	patch	*p;
 	MMAP	*iF;
@@ -852,6 +853,7 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 	int	confThisFile;
 	FILE	*csets = 0, *f;
 	hash	*cdb;
+	int	flags = echo ? 0 : SILENT;
 	char	csets_in[MAXPATH];
 	char	buf[MAXKEY];
 
@@ -1147,7 +1149,7 @@ out:	free(resync);
  * the list.
  */
 private	int
-applyPatch(char *localPath, int flags, sccs *perfile)
+applyPatch(char *localPath, sccs *perfile)
 {
 	patch	*p;
 	MMAP	*iF;
@@ -1158,6 +1160,7 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 	int	pending = 0;
 	int	n = 0;
 	int	confThisFile;
+	int	flags = echo ? 0 : SILENT;
 
 	reversePatch();
 	p = patchList;
@@ -1389,7 +1392,8 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
-	if (BAM(s)) {
+	if (BAM(s) && !bp_hasBAM()) {
+		/* this shouldn't be needed... */
 		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
 	}
 	sccs_free(s);
@@ -1648,36 +1652,128 @@ private int
 sfio(MMAP *m)
 {
 	char	*t;
-	FILE	*f;
+	FILE	*f = 0;
+	sccs	*s = 0, *sr = 0;
+	delta	*d;
 	size_t	left, n;
+	char	*flist;
+	int	rc = -1, rlen;
 	char	buf[MAXLINE];
+	char	key[MAXKEY];
 
 	unless ((t = mnext(m)) && strneq(t-1, "\n\n# Patch checksum=", 19)) {
 		return (-1);
 	}
-	if (echo >= 2) {
-		fprintf(stderr, "Unpacking additional files...\n");
-	}
-	sprintf(buf, "bk sfio -%sirB -", ((echo >= 2) ? "" : "q"));
+
+	flist = bktmp(0, "sfio_filelist");
+	sprintf(buf, "bk sfio -eigB %s - > '%s'",
+	    (echo > 1) ? "-P'Updating '" : "-q", flist);
+
+	fflush(stdout);
+	chdir(ROOT2RESYNC);
 	f = popen(buf, "w");
+	chdir(RESYNC2ROOT);
+	unless (f) {
+		perror(prog);
+		goto err;
+	};
 	t = mnext(m);
 	t = strchr(t, '\n') + 1;	/* will not have \n if SFIO errored */
 	assert(strneq(t, "SFIO ", 5));
 	left = m->end - t;
 	do {
-		n = fwrite(t, 1, left, f);
+		unless (n = fwrite(t, 1, left, f)) break;
 		left -= n;
 		t += n;
 	} while (left);
-	fflush(f);
 	if (pclose(f)) {
 		fprintf(stderr, "takepatch: BAM sfio -i failed.\n");
-		return (-1);
+		f = 0;
+		goto err;
 	}
-	return (0);
+	/* process each file unpacked */
+	unless (f = fopen(flist, "r")) {
+		perror(prog);
+		goto err;
+	}
+	strcpy(buf, ROOT2RESYNC "/");
+	t = buf + strlen(buf);
+	rlen = sizeof(buf) - strlen(buf); /* space in buf after RESYNC/ */
+	while (fgets(t, rlen, f)) {
+		chomp(t);
+		if (strchr(t, '|')) continue; /* skip BAM keys */
+
+		unless (sr = sccs_init(buf,
+			SILENT|INIT_NOCKSUM|INIT_MUSTEXIST)) {
+			fprintf(stderr, "takepatch: can't open %s\n", buf);
+			goto err;
+		}
+		sccs_sdelta(sr, sccs_ino(sr), key); /* rootkey */
+
+		/* Check the original version of this file */
+		unless (s = sccs_keyinit(0, key, INIT_NOCKSUM, idDB)) {
+			/* must be new file? */
+			sccs_free(sr);
+			sr = 0;
+			continue;
+		}
+		assert(!CSET(s));  /* some more logic is needed for cset */
+
+		/* local diffs are bad */
+		if (sccs_clean(s, SILENT|CLEAN_SHUTUP|CLEAN_CHECKONLY)) {
+			edited = addLine(edited, sccs2name(s->sfile));
+			goto err;
+		}
+		if (s->table->dangling) {
+			fprintf(stderr, "takepatch: monotonic file %s "
+			    "has dangling deltas\n", s->sfile);
+			goto err;
+		}
+		sccs_sdelta(s, s->table, key); /* local tipkey */
+
+		unless (d = sccs_findKey(sr, key)) {
+			/*
+			 * I can't find local tipkey in resync file.
+			 * This might be because it is a pending delta, if
+			 * so complain about that, otherwise just complain.
+			 * Note, it is OK to have a pending delta that
+			 * has been committed in the resync version, the old
+			 * code used to ignore these duplicate deltas.
+			 */
+
+			/* because of pending deltas? */
+			unless (s->table->flags & D_CSET) {
+				SHOUT();
+				getMsg("tp_uncommitted", s->sfile, 0, stderr);
+			} else {
+				fprintf(stderr,
+				    "takepatch: key '%s' not found "
+				    "in sfile %s\n", key, buf);
+			}
+			goto err;
+		}
+		/* mark remote-only deltas */
+		range_walkrevs(sr, d, 0, walkrevs_setFlags, (void*)D_REMOTE);
+		/*
+		 * techically, d->flags |= D_LOCAL, but D_LOCAL goes away
+		 * in /home/bk/bk and the way resolveFiles is written, it
+		 * does the right thing with or without D_LOCAL.
+		 */
+		d->flags |= D_LOCAL;
+		if (sccs_resolveFiles(sr) < 0) goto err;
+		sccs_free(s);
+		sccs_free(sr);
+		s = sr = 0;
+	}
+	rc = 0;
+
+err:	if (f) fclose(f);
+	unlink(flist);
+	free(flist);
+	if (s) sccs_free(s);
+	if (sr) sccs_free(sr);
+	return (rc);
 }
-
-
 
 /*
  * Go find the change set file and do this relative to that.
@@ -1689,7 +1785,7 @@ sfio(MMAP *m)
  * patches are read from stdin.
  */
 private	MMAP	*
-init(char *inputFile, int flags)
+init(char *inputFile)
 {
 	char	buf[BUFSIZ];		/* used ONLY for input I/O */
 	char	*root, *t;
@@ -1763,6 +1859,7 @@ init(char *inputFile, int flags)
 		}
 	}
 	if (streq(inputFile, "-")) {
+		if (echo && mkpatch) fprintf(stderr, "Receiving patch ... ");
 		/*
 		 * Save the patch in the pending dir
 		 * and record we're working on it.  We use a .incoming
@@ -1914,7 +2011,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 					st.metadata = 1;
 				}
 			}
-			
+
 			unless (st.preamble) {
 				for (;;) {
 					if (fputs(buf, f) == EOF) {
@@ -1932,51 +2029,16 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				}
 			}
 
-			unless (mkpatch) {
-				unless (fnext(buf, stdin)) {
-					perror("fnext");
-					goto missing;
-				}
-				continue;
-			}
-
-			/*
-			 * Status.
-			 */
-			if (st.filename) {
-				char	*t = strrchr(&buf[3], ' ');
-
-				*t = 0;
-				unless (st.first) {
-					if (echo == 3) fprintf(stderr, "\b");
-					verbose((stderr, ": %d deltas\n", j));
-					j = 0;
-				} else {
-					st.first = 0;
-				}
-				verbose((stderr, "%s", &buf[3]));
-				if (echo == 3) fprintf(stderr, " ");
-			}
-
 			if (st.metablank && (echo == 3) && mkpatch) {
 				fprintf(stderr, "%c\b", spin[j % 4]);
 				j++;
 			}
-
-			if (st.preamble && echo > 5) {
-				fprintf(stderr, "Discard: %s", buf);
-			}
-
 			unless (fnext(buf, stdin)) {
 				perror("fnext");
 				goto missing;
 			}
 		}
 		if (st.preamble) errorMsg("tp_nothingtodo", 0, 0);
-		if (mkpatch) {
-			if (echo == 3) fprintf(stderr, "\b");
-			verbose((stderr, ": %d deltas\n", j));
-		}
 		if (sfiopatch) {
 			while (len = fread(buf, 1, sizeof(buf), stdin)) {
 				fwrite(buf, 1, len, f);
@@ -1996,7 +2058,8 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		cmdlog_addnote("psize", note);
 		free(note);
 		rename(incoming, pendingFile);
-		unless (flags & SILENT) {
+		if (echo) {
+			if (mkpatch) fprintf(stderr, "done.\n");
 			NOTICE();
 			fprintf(stderr,
 			    "takepatch: saved entire patch in %s\n",
