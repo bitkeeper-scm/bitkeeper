@@ -29,6 +29,10 @@ echo OK
 
 echo $N Convert to product ..........................................$NL
 cd "$HERE/project"
+touch BitKeeper/etc/aliases
+bk new $Q BitKeeper/etc/aliases
+echo "default" > BitKeeper/log/COMPONENTS
+bk commit $Q -y"add aliases"
 bk newroot -P $Q
 test "`bk product`" = "This is the product." || {
 	echo failed to make it a product
@@ -129,6 +133,7 @@ echo OK
 echo $N Test that a comp in a prod in a prod gets the right prod ....$NL
 cd "$HERE/project"
 commercial subproduct
+echo 'default' > BitKeeper/log/COMPONENTS
 bk newroot $Q -P
 commercial comp
 cd ..
@@ -434,9 +439,9 @@ cmpfiles WANT GOT
 echo OK
 
 
-echo $N Make sure check will pass if a component is removed .........$NL
+echo $N Make sure check will fail if a component is removed .........$NL
 mv gdb "$HERE/gdb.save"
-bk -r check -ac || {
+bk -r check -ac >ERR 2>&1 && {
 	echo failed
 	exit 1
 }
@@ -453,7 +458,7 @@ bk -r check -ac > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q "check: component 'gcc4' should be 'gcc'" OUT  || {
+grep -q "missing components" OUT  || {
 	echo bad message
 	cat OUT
 	exit 1
@@ -474,6 +479,7 @@ bk changes -v > OUT
 echo OK
 
 echo $N A rename delta in the ChangeSet file should fix things up ...$NL
+mv "$HERE/gdb.save" gdb
 cd gcc4
 bk edit $Q ChangeSet
 bk delta -f $Q -y'Rename gcc -> gcc4'
@@ -513,11 +519,13 @@ bk -r check -ac || {
 echo OK
 
 echo $N See if bk names will fix circular rename ....................$NL
+mv gdb "$HERE/gdb.save"
 mv gcc4 gdb
 mv "$HERE/gdb.save" gcc4
 bk -r check -acf > OUT 2>&1
 test $? = 2 || {
-	bad exit
+	echo failed
+	echo bad exit
 	cat OUT
 	exit 1
 }
@@ -992,6 +1000,7 @@ rm -rf gcc4
 echo OK
 
 echo $N Test bk undo -r+ in a sparse ensemble .......................$NL
+echo "here" > BitKeeper/log/COMPONENTS
 bk undo $Q -fsr+ || {
 	echo failed undo
 	cat OUT

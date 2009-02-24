@@ -460,12 +460,12 @@ echo OK
 
 echo $N Add all components as an alias...............................$NL
 cd "$HERE"/project
-bk components | bk alias ALL - || {
+bk components | bk alias A - || {
 	echo failed
 	exit 1
 }
 bk components > WANT
-bk components -sALL > GOT
+bk components -sA > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -658,7 +658,7 @@ echo OK
 
 echo $N Check alias listing in path mode ............................$NL
 cat > WANT <<EOF
-@ALL
+@A
 ./gcc
 ./gcc/nm
 ./gdb
@@ -678,3 +678,37 @@ do	echo @$x
 done > GOT
 cmpfiles WANT GOT
 echo OK
+
+echo $N Alias -f default does overwrite / replace as expected .......$NL
+cd "$HERE/project"
+# setup a default because none has been defined.
+# Then try to replace it
+bk aliases -f default junk || exit 1
+bk aliases -f default ./gcc
+bk alias default | bk _sort > GOT
+echo ./gcc > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Alias -a of missing components and check fails ..............$NL
+cd "$HERE/project-nm"
+bk alias > GOT
+echo default > WANT
+cmpfiles WANT GOT
+bk alias default > GOT
+echo ./gdb > WANT
+cmpfiles WANT GOT
+# At least one of the next two checks should fail because COMPONENTS
+# file does not reflect what is there.
+bk -r check || exit 1
+rm -fr junk
+bk -r check || exit 1
+# Include missing component as part of COMPONENTS (which has default)
+bk alias -Ca default junk || exit 1
+bk -r check 2> ERR && { echo fix test; exit 1; }
+grep -q "error expanding alias 'default' because junk is not present" ERR || {
+	echo wrong msg
+	exit 1
+}
+# I say this is a ...
+echo "failed (bug )"

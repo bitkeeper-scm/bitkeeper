@@ -213,9 +213,9 @@ check_main(int ac, char **av)
 		}
 		t = proj_root(0);
 		proj_cd2product();
+		chdir(t);
 		el_opts.pending = 1;
 		r = ensemble_list(el_opts);
-		chdir(t);
 		EACH_REPO(r) {
 			if (!cp || strneq(r->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
@@ -394,6 +394,69 @@ check_main(int ac, char **av)
 	}
 	if (goneDB) mdbm_close(goneDB);
 	unless (errors) cset_savetip(cset, 1);
+	/* The _BK_TRANSACTION check is necessary to avoid checking the
+	 * aliases in the middle of a multi-clone */
+	if (!proj_isResync(0) &&
+	    proj_isProduct(0) && !getenv("_BK_TRANSACTION")) {
+		char	**comps;
+		hash	*h;
+		/*
+		 * check that whatever we have in log/COMPONENTS
+		 * is consistent with what's really here
+		 */
+		unless (comps =
+		    file2Lines(0, "BitKeeper/log/COMPONENTS")) {
+			fprintf(stderr, "check: no COMPONENTS file found\n");
+			return (1);
+		}
+		unless (h =
+		    alias_hash(comps, cset, 0, (ALIAS_HERE|ALIAS_PENDING))) {
+			unless (fix) {
+				fprintf(stderr,"check: missing components!\n");
+				freeLines(comps, free);
+				return (1);
+			}
+			/*
+			 * We know what's in COMPONENTS is hosed, but
+			 * we can't be clever and try to synthesize an
+			 * alias, so we just "fix it" by putting the paths of
+			 * the special alias "HERE" in COMPONENTS
+			 */
+			freeLines(comps, free);
+			comps = addLine(0, strdup("here"));
+			unless (h = alias_hash(
+			    comps, cset, 0, ALIAS_HERE|ALIAS_PENDING)) {
+				fprintf(stderr, "WTF? You're hosed!\n");
+				return (1);
+			}
+			freeLines(comps, free);
+			comps = 0;
+			/* XXX: do we have a key2path that DOESN'T
+			 * need the idDB? */
+			unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
+				perror("idcache");
+				return (1);
+			}
+			EACH_HASH(h) {
+				char	*rk = (char*)h->kptr;
+				char	*cmp, *path;
+
+				assert(rk);
+
+				cmp = key2path(rk, idDB);
+				t = strrchr(cmp, '/');
+				assert(t);
+				*t = 0;
+				path = aprintf("./%s", cmp);
+				free(cmp);
+				comps = addLine(comps, path);
+			}
+			mdbm_close(idDB);
+			lines2File(comps, "BitKeeper/log/COMPONENTS");
+		}
+		freeLines(comps, free);
+		hash_free(h);
+	}
 	sccs_free(cset);
 	cset = 0;
 	if (errors && fix) {

@@ -12,7 +12,8 @@ cmd_clone(int ac, char **av)
 {
 	int	c, rc = 1;
 	int	gzip = 0, delay = -1, lclone = 0;
-	char	*p, *rev = 0, *tid = 0;
+	int	tid = 0;
+	char	*p, *rev = 0;
 	char	**aliases = 0;
 	sccs	*s = 0;
 	delta	*d;
@@ -62,7 +63,7 @@ cmd_clone(int ac, char **av)
 	}
 	if (proj_isEnsemble(0)) {
 		unless (bk_hasFeature("SAMv1")) {
-			out("ERROR-please upgrade your BK to a SAMv1 "
+			out("ERROR-please upgrade your BK to a NESTED "
 			    "aware version (5.0 or later)\n");
 			goto out;
 		}
@@ -72,6 +73,7 @@ cmd_clone(int ac, char **av)
 		 * The tid part is because we want to do this in pass1 only.
 		 * XXX - what if we've added one with ensemble add and it
 		 * does not appear in our COMPONENTS file yet?
+		 * XXXX - using THERE would solve that
 		 */
 		unless (aliases || tid) {
 			aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
@@ -106,7 +108,7 @@ cmd_clone(int ac, char **av)
 			}
 		}
 		if (aliases) {
-			h = alias_list(aliases, s);
+			h = alias_hash(aliases, s, rev, ALIAS_HERE);
 			freeLines(aliases, free);
 			unless (h) {
 				goto out;

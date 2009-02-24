@@ -23,6 +23,7 @@ int	spawn_tcl;		/* needed in crypto.c:bk_preSpawnHook() */
 ltc_math_descriptor	ltc_mp;
 char	*prog;
 char	*start_cwd;		/* if -R or -P, where did I start? */
+unsigned int turnTransOff;	/* for transactions, see ensemble.h */
 
 private	char	*buffer = 0;	/* copy of stdin */
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */

@@ -451,7 +451,7 @@ bk pull > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q 'pull: gdb is missing' OUT || {
+grep -q 'gdb is not present' OUT || {
 	echo bad message
 	cat OUT
 	exit 1

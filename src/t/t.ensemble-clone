@@ -314,7 +314,7 @@ bk clone -s./gdb mynewgcc3 mynewgcc4 > ERR 2>&1 && {
 	cat ERR
 	exit 1
 }
-grep -q "clone: gdb not present in" ERR || {
+grep -q "gdb is not present" ERR || {
 	echo diff msg
 	cat ERR
 	exit 1

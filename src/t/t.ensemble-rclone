@@ -81,7 +81,7 @@ echo OK
 echo $N Clone partial product using rclone, should be fine ..........$NL
 cd "$HERE"
 rm -rf copy/gcc
-bk clone $Q copy bk://localhost:$PORT/copy2 || {
+bk clone $Q -sHERE copy bk://localhost:$PORT/copy2 || {
 	echo failed
 	cd copy2
 	bk cmdlog -a

@@ -1,0 +1,332 @@
+echo $N Create an ensemble...........................................$NL
+nested project
+# add some files
+cd "$HERE/project/gcc"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+done
+bk commit $Q -y"Add $i to file$i"
+cd "$HERE/project" && bk commit $Q -y"Commit cset in gcc"
+cd "$HERE/project/gdb"
+for i in 1 2 3 4 5
+do
+	touch file$i
+	echo "stuff $i" > file$i
+	bk new $Q -y"add" file$i
+	bk commit $Q -y"add file $i"
+done
+cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
+cd "$HERE"
+commercial nm
+cd "$HERE"
+commercial man
+cd "$HERE/project"
+bk clone $Q ../nm gcc/nm
+bk clone $Q ../man man
+bk attach $Q gcc/nm
+bk attach $Q man
+bk alias nm ./gcc/nm
+echo OK
+
+echo $N Check cloning missing components ............................$NL
+cd "$HERE"
+bk clone $Q -snm project proj-nm
+bk clone $Q -sall proj-nm nm-clone 2> ERR
+grep -q 'because gcc is not present' ERR || {
+	echo failed msg
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Another check cloning missing components ....................$NL
+bk clone $Q -snm -s./gcc proj-nm nm-clone 2> ERR
+grep -q 'because gcc is not present' ERR || {
+	echo failed msg
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Check -rOLD does not pick up new components thru alias.......$NL
+cd "$HERE"/project
+bk alias gcc ./gcc ./gcc/nm
+cd "$HERE"
+commercial libiberty
+cd "$HERE"/project
+bk clone $Q ../libiberty gcc/libiberty
+bk attach $Q gcc/libiberty
+bk alias -a gcc ./gcc/libiberty
+cd "$HERE"
+bk clone $Q -r1.8 -sgcc project proj-clone
+test -d proj-clone/gcc/libiberty && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Check -rOLD cannot pick up new components thru explicit ref .$NL
+cd "$HERE"
+rm -rf proj-clone
+bk clone $Q -r1.7 -s./gcc/libiberty project proj-clone 2> ERR
+grep -q 'no match for ./gcc/libiberty' ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Move stuff and watch the fur fly ............................$NL
+cd "$HERE"
+bk clone $Q -sthere project mangle
+cd mangle
+bk alias dev ./gcc './gcc/*' gdb
+bk edit $Q gcc/ChangeSet gcc/nm/ChangeSet gcc/libiberty/ChangeSet gdb/ChangeSet
+mkdir src
+mv gcc gdb src
+bk ci $Q -y'Moved' src/gcc/ChangeSet src/gcc/*/ChangeSet src/gdb/ChangeSet
+bk alias -C -r dev './gcc/*'
+bk alias -C -a dev './src/gcc/*'
+bk commit $Q -y'Moved stuff'
+cd "$HERE"
+bk clone $Q -r1.11 -sdev mangle proj-rename 2> ERR
+echo 'failed (bug: need rename)'
+
+echo $N Create a conflict in unpopulated alias, should work .........$NL
+cd "$HERE"
+bk clone $Q -s./gdb project conflict
+cd conflict
+bk alias CONFLICT gcc
+cd ..
+bk clone $Q -s./gdb conflict conflict-clone
+cd conflict
+bk alias -a CONFLICT gcc/nm
+cd ../conflict-clone
+bk alias -a CONFLICT gcc/libiberty
+(echo ''; echo q) | bk pull > OUT 2>&1
+grep -q 'New work has been added locally and remotely' OUT || {
+	echo should have been in resolver
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Resolve the conflict by hand, make sure it works ............$NL
+bk abort -f
+bk alias -f CONFLICT gcc gcc/nm
+bk pull $Q || exit 1
+cd ..
+rm -rf conflict conflict-clone
+echo OK
+
+echo $N Create a conflict in present alias, check error message .....$NL
+cd "$HERE"
+commercial gcov
+cd "$HERE"
+commercial libcpp
+cd "$HERE"
+rm -rf proj-clone
+cd "$HERE"/project
+bk alias dev ./gcc './gcc/*' gdb
+cd ..
+bk clone $Q project proj-clone
+cd "$HERE"/project
+bk clone $Q ../gcov gcc/gcov
+bk attach $Q gcc/gcov
+bk alias -a dev ./gcc/gcov
+cd "$HERE"/proj-clone
+bk clone $Q ../libcpp gcc/libcpp
+bk attach $Q gcc/libcpp
+bk alias -a dev ./gcc/libcpp
+bk pull $Q ../project >OUT 2>&1 <<EOF
+s
+C
+EOF
+test $? -eq 0 || {
+	echo failed
+	cat OUT
+	exit 1
+}
+grep -q '.content conflict. BitKeeper/etc/aliases>>' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo "failed (bug not handled smoothly yet)"
+
+echo $N Alias clone through bk:// ...................................$NL
+cd "$HERE"
+P=`port 50000`
+bk bkd -q -d -p$P -ikill > "$HERE/BKD" 2>&1
+trap "bk _kill bk://localhost:$P" 0 2
+bk clone $Q -sdev bk://localhost:$P/proj-clone clone1 || {
+	echo failed
+	exit 1
+}
+bk clone $Q -sall bk://localhost:$P/clone1 clone2 2> ERR && {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Glob clone through bk:// ....................................$NL
+bk clone $Q -s'./gcc/*' bk://localhost:$P/proj-clone glob1 || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Alias rclone to bk:// .......................................$NL
+bk clone $Q -sdev clone1 bk://localhost:$P/clone2 || {
+	echo failed 1
+	exit 1
+}
+bk clone $Q -sall clone1 bk://localhost:$P/clone3 2> ERR && {
+	echo failed 2
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Glob rclone to bk:// ........................................$NL
+bk clone $Q -s'./gcc/*' proj-clone bk://localhost:$P/glob2 || {
+	echo failed 1
+	exit 1
+}
+cnt=`ls -d glob2/gcc/* | wc -l`
+test $cnt -eq 4 || {
+	echo failed 2
+	exit 1
+}
+echo OK
+
+echo $N Clone deep nested globs .....................................$NL
+cd "$HERE"
+commercial deep
+cd ../proj-clone
+bk clone $Q ../deep gcc/libcpp/deep
+bk attach $Q gcc/libcpp/deep
+cd "$HERE"
+bk clone $Q -s'./gcc/*' bk://localhost:$P/proj-clone glob3 || {
+	echo failed 1
+	exit 1
+}
+test -d glob3/gcc/libcpp/deep || {
+	echo failed 2
+	exit 1
+}
+echo OK
+
+echo $N Remove component, clone previous glob .......................$NL
+rm -rf glob3/gcc/nm
+bk clone $Q -s'./gcc/*' bk://localhost:$P/glob3 glob4 2> ERR && {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Clone alias, remove globbed component, reclone ..............$NL
+bk clone $Q -sdev bk://localhost:$P/proj-clone glob5 || {
+	echo failed
+	exit 1
+}
+rm -rf glob5/gcc/nm
+bk clone $Q -sdev bk://localhost:$P/glob5 glob6 2> ERR && {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Test alias -h ...............................................$NL
+cd "$HERE"
+bk clone $Q bk://localhost:$P/proj-clone dash-h || {
+	echo failed
+	exit 1
+}
+cd dash-h
+bk alias -h > GOT
+cat > WANT <<EOF
+default
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test alias -h foo ...........................................$NL
+bk alias -h gcc > GOT
+cat > WANT <<EOF
+./gcc
+./gcc/libiberty
+./gcc/nm
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test alias -h with missing components .......................$NL
+rm -rf gcc/libcpp
+bk alias -h > GOT 2>&1
+bk sort < GOT > GOT2
+cat > WANT <<EOF
+alias: error expanding alias 'default' because gcc/libcpp is not present
+alias: error expanding alias 'default' because gcc/libcpp/deep is not present
+EOF
+cmpfiles WANT GOT2
+echo OK
+
+echo $N Test alias -h foo with missing components ...................$NL
+bk alias -h dev > GOT 2>&1
+bk sort < GOT > GOT2
+cat > WANT <<EOF
+alias: error expanding alias 'dev' because gcc/libcpp is not present
+alias: error expanding alias 'dev' because gcc/libcpp/deep is not present
+EOF
+cmpfiles WANT GOT2
+echo OK
+
+echo $N Test alias -h foo with unrelated missing components .........$NL
+bk alias -h gcc > GOT 2>&1
+cat > WANT <<EOF
+./gcc
+./gcc/libiberty
+./gcc/nm
+EOF
+echo OK
+
+echo $N Test alias -h on recursive alias ............................$NL
+cd "$HERE"
+bk clone $Q proj-clone dash-h2
+cd dash-h2
+# Remove old aliases
+bk alias -C -r dev
+bk alias -C -r gcc
+bk alias -r nm
+# Make new ones
+bk alias -C libcpp ./gcc/libcpp ./gcc/libcpp/deep
+bk alias -C libiberty ./gcc/libiberty
+bk alias -C nm ./gcc/nm
+bk alias -C gcc ./gcc libcpp libiberty nm
+bk alias -C dev gcc ./gdb
+bk alias enchilada_grande dev ./man
+bk alias -h enchilada_grande > GOT
+cat > WANT <<EOF
+./man
+dev
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test alias -h on recursive alias with a missing component ...$NL
+rm -rf gcc/libcpp/deep
+bk alias -h enchilada_grande > GOT 2>&1
+cat > WANT <<EOF
+alias: error expanding alias 'enchilada_grande' because gcc/libcpp/deep is not present
+EOF
+cmpfiles WANT GOT
+echo OK
+
+#exit 1

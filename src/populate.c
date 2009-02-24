@@ -82,12 +82,15 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 	}
 	s = sccs_csetInit(SILENT);
 	if (aliases) {
-		unless (opts.aliases = alias_list(aliases, s)) return (1);
+		unless (opts.aliases =
+		    alias_hash(aliases, s, 0, ALIAS_PENDING)) {
+			return (1);
+		}
 	}
 	opts.rev = "+";
 	opts.sc = s;
 	repos = ensemble_list(opts);
-	putenv("_BK_TRANSACTION=1");
+	START_TRANSACTION();
 	done = hash_new(HASH_MEMHASH);
 	EACH (urls) {
 		url = urls[i];
@@ -247,7 +250,7 @@ unpopulate_main(int ac, char **av)
 		EACH_HASH(alias_wanted) {
 			new_alias=addLine(new_alias, (char*)alias_wanted->kptr);
 		}
-		comps_wanted = alias_list(new_alias, s);
+		comps_wanted = alias_hash(new_alias, s, 0, ALIAS_PENDING);
 		unless (comps_wanted) goto out;
 	} else {
 		/* we want nothing */
@@ -258,7 +261,7 @@ unpopulate_main(int ac, char **av)
 	EACH_HASH(alias_unwanted) {
 		list = addLine(list, (char*)alias_unwanted->kptr);
 	}
-	comps_unwanted = alias_list(list, s);
+	comps_unwanted = alias_hash(list, s, 0, ALIAS_PENDING);
 	freeLines(list, 0);
 	list = 0;
 	unless (comps_unwanted) goto out;
@@ -271,7 +274,7 @@ unpopulate_main(int ac, char **av)
 	op.aliases = comps_unwanted;
 
 	comps = ensemble_list(op);
-	putenv("_BK_TRANSACTION=1");
+	START_TRANSACTION();
 	/*
 	 * Two passes, the first one to see if it would work, the second
 	 * one to actually remove them.
@@ -326,7 +329,7 @@ unpopulate_main(int ac, char **av)
 	if (lines2File(new_alias, "BitKeeper/log/COMPONENTS")) {
 		perror("BitKeeper/log/COMPONENTS");
 	}
-	putenv("_BK_TRANSACTION=");
+	STOP_TRANSACTION();
 	rc = 0;
 out:	if (alias_unwanted) hash_free(alias_unwanted);
 	if (alias_wanted) hash_free(alias_wanted);

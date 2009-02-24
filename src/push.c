@@ -1073,12 +1073,16 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 */
 	if (opts.aliases) {
 		cset = ropts.sc = sccs_csetInit(SILENT);
-		unless (h = alias_list(opts.aliases, cset)) goto out;
+		unless (h = alias_hash(
+		    opts.aliases, cset, opts.rev, ALIAS_HERE)) {
+			rc = 1;
+			goto out;
+		}
 		ropts.aliases = h;
 	}
 
 	rps = ensemble_list(ropts);
-	putenv("_BK_TRANSACTION=1");
+	START_TRANSACTION();
 	vp = 0;
 	EACH_REPO(rps) {
 		unless (rps->present) vp = addLine(vp, rps->rootkey);
@@ -1160,7 +1164,8 @@ out:
 	if (h) hash_free(h);
 	free(url);
 	ensemble_free(rps);
-	putenv("_BK_TRANSACTION=");
+	STOP_TRANSACTION();
+
 	return (rc);
 }
 

@@ -125,6 +125,7 @@ left in the alias it is automatically deleted from the aliases file.
 .B \-a
 Used to indicate that the alias is to be appended to; an error if no such
 alias exists.
+.tp
 .B \-C
 Normally, modifying the aliases database results in a changeset committing that
 change.
@@ -135,9 +136,11 @@ changes to the product.
 .B \-f
 When creating an alias, the operation will fail if there is a pre-existing
 alias of the same name unless this option is present.
+When appending to an alias, the operation will fail unless there is a
+pre-existing alias of the same name unless this option is present.
 .tp
 .B \-h
-When listing aliases list only those which are present in this repository.
+When listing aliases, list only those which are present in this repository.
 .tp
 .B \-k
 Used when listing aliases; causes the expansion of the alias to be listed

@@ -222,7 +222,7 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	int	status, i, n, which, rc = 0;
 
 	url = remote_unparse(r);
-	putenv("_BK_TRANSACTION=1");
+	START_TRANSACTION();
 	n = 0;
 	EACH_REPO(repos) {
 		unless (repos->present) {
@@ -271,7 +271,7 @@ clone_ensemble(repos *repos, remote *r, char *local)
 			break;
 		}
 	}
-out:	putenv("_BK_TRANSACTION=");
+out:	STOP_TRANSACTION();
 	free(url);
 	return (rc);
 }

@@ -169,7 +169,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		sccs_free(cset);
 
 		EACH_REPO(r) if (r->present && !r->new) n++;
-		putenv("_BK_TRANSACTION=1");
+		START_TRANSACTION();
 		EACH_REPO(r) {
 			if (r->new) continue;
 			unless (r->present) continue;
@@ -199,7 +199,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 			freeLines(vp, free);
 			proj_cd2product();
 		}
-		putenv("_BK_TRANSACTION=");
+		STOP_TRANSACTION();
 		EACH_REPO(r) {
 			unless (r->new) continue;
 			sysio(0,

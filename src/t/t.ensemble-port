@@ -30,6 +30,10 @@ bk new $Q sa_file || exit 1
 bk commit -y'add sa_file' $Q || exit 1
 cd ..
 fresh_commercial project2
+echo default > BitKeeper/log/COMPONENTS
+touch BitKeeper/etc/aliases
+bk new $Q BitKeeper/etc/aliases
+bk commit $Q -y"add aliases file"
 bk newroot -P $Q || exit 1
 
 # XXX hack around ensemble-add restrictions

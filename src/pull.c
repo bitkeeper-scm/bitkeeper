@@ -624,7 +624,7 @@ pull_ensemble(repos *rps, remote *r)
 	char	idname[MAXPATH];
 
 	url = remote_unparse(r);
-	putenv("_BK_TRANSACTION=1");
+	START_TRANSACTION();
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
 	EACH_REPO (rps) {
 		if (rps->present) continue;
@@ -777,7 +777,7 @@ err:					fprintf(stderr, "Could not chdir to "
 	}
 out:	if (comps) freeLines(comps, free);
 	free(url);
-	putenv("_BK_TRANSACTION=");
+	STOP_TRANSACTION();
 	return (rc);
 }
 

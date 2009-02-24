@@ -379,6 +379,7 @@ done
 cd "$HERE/project"
 bk commit $Q -y"add deep stuff"
 cd "$HERE/copy"
+bk populate $Q -r
 bk pull $Q
 bk unpopulate $Q -sprimes -ssubprimes || exit 1
 # make sure the pull did not bring the deeps stuff

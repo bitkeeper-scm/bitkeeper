@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "bam.h"
+#include "ensemble.h"
 
 typedef	struct {
 	u32	debug:1;
@@ -25,12 +26,12 @@ rclone_common(int ac, char **av, opts *opts)
 		switch (c) {
 		    case 'B': opts->bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;
-		    case 'P': opts->product = 1; break;
 		    case 'r': opts->rev = optarg; break; 
 		    case 's':
 			opts->aliases = addLine(opts->aliases, strdup(optarg));
 			break;
-		    case 'T': /* ignored for now */ break;
+		    case 'P': opts->product = 1; /* fall through */
+		    case 'T': START_TRANSACTION(); break;
 		    case 'v': opts->verbose = 1; break;
 		    case 'z':
 			opts->gzip = optarg ? atoi(optarg) : 6;
@@ -86,7 +87,7 @@ cmd_rclone_part1(int ac, char **av)
 	if (sendServerInfoBlock(1)) return (1);
 
 	/*
-	 * No check for SAMv1 here because the other side has to send -P
+	 * No check for NESTED here because the other side has to send -P
 	 * and if they did then they obviously know about nested.
 	 */
 

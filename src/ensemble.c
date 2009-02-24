@@ -420,7 +420,7 @@ components_main(int ac, char **av)
 			opts.undo = 1;
 			break;
 		    default:
-			system("bk help -s components");
+usage:			system("bk help -s components");
 			exit(1);
 		}
 	}
@@ -430,24 +430,38 @@ components_main(int ac, char **av)
 			opts.revs = addLine(opts.revs, strdup(buf));
 		}
 	}
+	if (opts.revs && opts.rev) {
+		fprintf(stderr,
+		    "components: -r or list on stdin, but not both\n");
+		goto usage;
+	}
+	unless (opts.rev || opts.revs) opts.pending = 1;
 	if (aliases) {
-		unless (opts.aliases = alias_list(aliases, 0)) {
+		/*
+		 * XXX: Set here to 'here'? What does that mean as it will 
+		 * simply return 0 or invalid.  Is that what we want?
+		 * I don't think so. Leaving it 0 and having ensemble_list
+		 * below use here to figure things out.
+		 */
+		int	aflags = opts.pending ? ALIAS_PENDING : 0;
+
+		unless (opts.aliases =
+		    alias_hash(aliases, 0, opts.rev, aflags)) {
 			rc = 1;
 			goto out;
 		}
 	}
-	unless (want) want = L_PATH;
 	if (input) {
 		r = ensemble_fromStream(r, stdin);
 	} else {
 		/* include pending if nothing specified */
-		unless (opts.rev || opts.revs) opts.pending = 1;
 		unless (r = ensemble_list(opts)) exit(0);
 	}
 	if (output) {
 		ensemble_toStream(r, stdout);
 		goto out;
 	}
+	unless (want) want = L_PATH;
 	EACH_REPO(r) {
 		if (opts.undo && r->new && !(want & L_NEW)) continue;
 		if (here && !r->present) continue;
@@ -656,7 +670,7 @@ ensemble_each(int quiet, int ac, char **av)
 			aliases = addLine(aliases, optarg);
 		}
 	}
-	if (aliases) opts.aliases = alias_list(aliases, 0);
+	if (aliases) opts.aliases = alias_hash(aliases, 0, 0, ALIAS_HERE);
 
 	/*
 	 * Include pending components if no rev is specified

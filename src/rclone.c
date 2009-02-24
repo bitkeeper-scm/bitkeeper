@@ -151,12 +151,15 @@ rclone_ensemble(remote *r)
 	unless (opts.aliases) {
 		opts.aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
 	}
-	if (opts.aliases) {
-		unless (h = alias_list(opts.aliases, cset)) goto out;
-		ropts.aliases = h;
+	unless (opts.aliases) opts.aliases = addLine(0, strdup("default"));
+	unless (h =
+	    alias_hash(opts.aliases, cset, ropts.rev, ALIAS_HERE)){
+		rc = 1;
+		goto out;
 	}
+	ropts.aliases = h;
 	rps = ensemble_list(ropts);
-	putenv("_BK_TRANSACTION=1");
+	START_TRANSACTION();
 	EACH_REPO(rps) {
 		proj_cd2product();
 		vp = addLine(0, strdup("bk"));
@@ -201,12 +204,11 @@ rclone_ensemble(remote *r)
 	 * XXX - put code in here to finish the transaction.
 	 */
 
-out:
-	sccs_free(cset);
+out:	sccs_free(cset);
 	if (h) hash_free(h);
 	free(url);
 	ensemble_free(rps);
-	putenv("_BK_TRANSACTION=");
+	STOP_TRANSACTION();
 	return (rc);
 }
 
@@ -290,7 +292,7 @@ rclone_part1(remote *r, char **envVar)
 	if (getenv("_BK_TRANSACTION") && !bkd_hasFeature("SAMv1")) {
 		fprintf(stderr,
 		    "clone: please upgrade the remote bkd to a "
-		    "SAMv1 aware version (5.0 or later).\n");
+		    "NESTED aware version (5.0 or later).\n");
 		return (-1);
 	}
 	if (r->type == ADDR_HTTP) disconnect(r, 2);

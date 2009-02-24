@@ -266,9 +266,9 @@ void	trace_msg(char *fmt, char *file, int line, const char *function, ...);
 void	trace_free(void);
 
 #define	TRACE(format, args...)	\
-	if (bk_trace) {						\
+	do { if (bk_trace) \
 		trace_msg(format, __FILE__, __LINE__, __FUNCTION__, ##args); \
-	}
+	} while (0)
 
 #define	HERE()	TRACE(0, 0)
 

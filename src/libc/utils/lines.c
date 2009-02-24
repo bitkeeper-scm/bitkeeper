@@ -172,7 +172,7 @@ freeLines(char **space, void(*freep)(void *ptr))
 {
 	int	i;
 
-	if (!space) return;
+	if (!space || (space == INVALID)) return;
 	if (freep) {
 		EACH(space) freep(space[i]);
 	}

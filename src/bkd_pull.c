@@ -25,7 +25,7 @@ cmd_pull_part1(int ac, char **av)
 	int	status;
 	int	rc = 1;
 	FILE	*f;
-	char	*tid = 0;
+	int	tid = 0;
 	int	port = 0;
 	int	c;
 
@@ -77,7 +77,7 @@ cmd_pull_part1(int ac, char **av)
 		return (1);
 	}
 	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv1")) {
-		out("ERROR-please upgrade your BK to a SAMv1 "
+		out("ERROR-please upgrade your BK to a NESTED "
 		    "aware version (5.0 or later)\n");
 		return (1);
 	}
@@ -117,12 +117,13 @@ cmd_pull_part2(int ac, char **av)
 	int	gzip = 0, dont = 0, verbose = 1, list = 0, triggers_failed = 0;
 	int	rtags, update_only = 0, delay = -1, eat_aliases = 0;
 	char	*port = 0;
+	int	tid = 0;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
-	char	*rev = 0, *tid = 0;
+	char	*rev = 0;
 	char	*p, **aliases = 0;
 	FILE	*f;
-	sccs	*s;
+	sccs	*cset;
 	delta	*d;
 	int	pkflags = PK_LKEY;
 	remote	r;
@@ -159,20 +160,21 @@ cmd_pull_part2(int ac, char **av)
 		out("\n");
 		return (1);
 	}
-	s = sccs_csetInit(0);
-	assert(s && HASGRAPH(s));
+	cset = sccs_csetInit(0);
+	assert(cset && HASGRAPH(cset));
 	if (rev) {
-		unless (d = sccs_findrev(s, rev)) {
+		unless (d = sccs_findrev(cset, rev)) {
 			p = aprintf(
 			    "ERROR-Can't find revision %s\n", rev);
 			out(p);
 			free(p);
 			out("@END@\n");
+			// LMXXX - shouldn't there be a return(1) here?
 		}
 		/*
 		 * Need the 'gone' region marked RED
 		 */
-		range_gone(s, d, D_RED);
+		range_gone(cset, d, D_RED);
 	}
 
 	bzero(&r, sizeof(r));
@@ -181,9 +183,10 @@ cmd_pull_part2(int ac, char **av)
 	/*
 	 * Eat a list of aliases if so instructed.
 	 */
-    	if (eat_aliases) {
+	if (eat_aliases) {
 		unless (getline2(&r, buf, sizeof(buf)) > 0) {
-err:			printf("ERROR-protocol error in aliases\n");
+err:			out("ERROR-protocol error in aliases\n");
+			out("@END@\n");
 			rc = 1;
 			goto done;
 		}
@@ -198,9 +201,9 @@ err:			printf("ERROR-protocol error in aliases\n");
 	 * What we want is: remote => bk _prunekey => keys
 	 */
 	fd = open(keys, O_WRONLY, 0);
- 	if (prunekey(s, &r, 0, fd, pkflags, 1, &local, &rem, &rtags) < 0) {
+ 	if (prunekey(cset, &r, 0, fd, pkflags, 1, &local, &rem, &rtags) < 0) {
 		local = 0;	/* not set on error */
-		sccs_free(s);
+		sccs_free(cset);
 		close(fd);
 		rc = 1;
 		goto done;
@@ -219,7 +222,7 @@ err:			printf("ERROR-protocol error in aliases\n");
 			assert(f);
 			while (fnext(buf, f)) {
 				chomp(buf);
-				d = sccs_findKey(s, buf);
+				d = sccs_findKey(cset, buf);
 				if (d->type == 'D') {
 					printf("%c%s\n", BKD_DATA, d->rev);
 				}
@@ -229,7 +232,7 @@ err:			printf("ERROR-protocol error in aliases\n");
 		printf("@END@\n");
 	}
 	fflush(stdout);
-	sccs_free(s);
+	sccs_free(cset);
 
 	if (update_only && (rem || rtags)) {
 		printf("@NO UPDATE BECAUSE OF LOCAL CSETS OR TAGS@\n");
@@ -289,8 +292,8 @@ err:			printf("ERROR-protocol error in aliases\n");
 		opts.revs = k;
 		if (aliases) {
 			opts.sc = sccs_csetInit(SILENT);
-			opts.aliases = alias_list(aliases, opts.sc);
-			unless (opts.aliases) {
+			unless (opts.aliases =
+			    alias_hash(aliases, opts.sc, rev, ALIAS_HERE)) {
 				printf("ERROR-unable to expand aliases.\n");
 				rc = 1;
 				goto done;
@@ -305,8 +308,6 @@ err:			printf("ERROR-protocol error in aliases\n");
 		ensemble_free(r);
 		goto done;
 	}
-	freeLines(aliases, free);
-
 	fputs("@PATCH@\n", stdout);
 
 	n = 2;
@@ -375,6 +376,7 @@ err:			printf("ERROR-protocol error in aliases\n");
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 
 done:	fflush(stdout);
+	freeLines(aliases, free);
 	if (dont) {
 		unlink(keys);
 		putenv("BK_STATUS=DRYRUN");
