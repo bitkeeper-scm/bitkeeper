@@ -1304,7 +1304,7 @@ int	doidx_remap(project *proj, char *rel, char **file);
 int	doidx_utime(project *proj, char *rel, const struct utimbuf *utb);
 int	doidx_lstat(project *proj, char *rel, struct stat *sb);
 int	doidx_unlink(project *proj, char *rel);
-int	doidx_rename(project *proj, char *old, char *new);
+int	doidx_rename(project *proj1, char *old, project *proj2, char *new);
 int	doidx_link(project *proj1, char *old, project *proj2, char *new);
 int	doidx_chmod(project *proj, char *rel, mode_t mode);
 int	doidx_mkdir(project *proj, char *dir, mode_t mode);

@@ -241,8 +241,8 @@ fslayer_rename(const char *old, const char *new)
 		}
 		proj2 = findpath(new, &rel2);
 
-		if (proj1 && (proj1 == proj2)) {
-			ret = doidx_rename(proj1, rel1, rel2);
+		if (proj1 && proj2) {
+			ret = doidx_rename(proj1, rel1, proj2, rel2);
 			proj_free(proj1);
 			proj_free(proj2);
 		} else {

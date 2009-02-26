@@ -790,13 +790,13 @@ doidx_unlink(project *proj, char *rel)
 }
 
 int
-doidx_rename(project *proj, char *old, char *new)
+doidx_rename(project *proj1, char *old, project *proj2, char *new)
 {
 	char	buf1[MAXPATH];
 	char	buf2[MAXPATH];
 
-	full_remap_path(buf1, proj, old);
-	full_remap_path(buf2, proj, new);
+	full_remap_path(buf1, proj1, old);
+	full_remap_path(buf2, proj2, new);
 	return (rename(buf1, buf2));
 }
 
