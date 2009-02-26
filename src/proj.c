@@ -88,6 +88,7 @@ projcache_store(char *dir, project *p)
 		 * have a copy open.
 		 */
 		assert("dup proj" == 0);
+	}
 	p->dirs = addLine(p->dirs, proj.cache->kptr);
 }
 
