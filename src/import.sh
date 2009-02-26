@@ -340,7 +340,7 @@ transfer_MKS () {
 	transfer "$@"
 	mycd "$2" || exit 1
 	# Double check we are in the BK tree.
-	test -f "BitKeeper/etc/SCCS/s.config" || exit 1
+	bk _test -f "BitKeeper/etc/SCCS/s.config" || exit 1
 	bk _find . -type f | perl -w -e '
 		while (<>) {
 			next if m|/SCCS/|i;
@@ -772,7 +772,7 @@ import_SCCS () {
 	    -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < "${TMP}import$$" ||
 	    Done 1
 	$RM -f "${TMP}cmp$$"
-	test -f SCCS/FAILED && Done 1
+	bk _test -f SCCS/FAILED && Done 1
 }
 
 import_finish () {

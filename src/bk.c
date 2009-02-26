@@ -109,7 +109,6 @@ main(int ac, char **av, char **env)
 		putenv("BK_STDERR=DONE");
 	}
 
-	unless (getenv("BK_TMP")) bktmpenv();
 	/*
 	 * Windows seems to have a problem with stderr under rxvt's.
 	 * Force unbuffered mode.
@@ -163,6 +162,8 @@ main(int ac, char **av, char **env)
 		    "Unable to find the BitKeeper bin directory, aborting\n");
 		return (1);
 	}
+	fslayer_enable(1);
+	unless (getenv("BK_TMP")) bktmpenv();
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
 		printf("%s\n", bin ? bin : "no path found");
 		exit(0);
@@ -571,12 +572,15 @@ bk_cleanup(int ret)
 	 */
 	repository_lockcleanup();
 	proj_reset(0);		/* flush data cached in proj struct */
+	fslayer_enable(0);
 
 	fslayer_cleanup();
 
 #ifndef	NOPROC
 	rmdir_findprocs();
 #endif
+
+#ifdef FH_LEAK
 
 	/*
 	 * Test for filehandles left open at the end of regressions
@@ -610,6 +614,7 @@ bk_cleanup(int ret)
 #endif
 		}
 	}
+#endif
 	bktmpcleanup();
 	trace_free();
 }

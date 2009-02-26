@@ -14,7 +14,17 @@ rmtree(char *dir)
 	unless (ret) {
 		reverseLines(dirs);
 		EACH (dirs) {
+			unless (streq(basenm(dirs[i]), "SCCS")) continue;
 			if (rmdir(dirs[i])) {
+				perror(dirs[i]);
+				ret = 1;
+				break;
+			}
+		}
+		EACH (dirs) {
+			if (streq(basenm(dirs[i]), "SCCS")) continue;
+			if (rmdir(dirs[i])) {
+				perror(dirs[i]);
 				ret = 1;
 				break;
 			}

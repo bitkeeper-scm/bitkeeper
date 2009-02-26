@@ -274,18 +274,22 @@ version_controller (char const *filename, int readonly,
   size_t filenamelen = strlen (filename);
   size_t maxfixlen = sizeof "SCCS/" - 1 + sizeof SCCSPREFIX - 1;
   size_t maxtrysize = filenamelen + maxfixlen + 1;
+  size_t maxstatsize = maxtrysize + sizeof "bk _stat  >/dev/null";
   size_t quotelen = quote_system_arg (0, filename);
   size_t maxgetsize = sizeof CLEARTOOL_CO + quotelen + maxfixlen;
   size_t maxdiffsize =
     (sizeof SCCSDIFF1 + sizeof DEV_NULL - 1
      + 2 * quotelen + maxfixlen);
   char *trybuf = xmalloc (maxtrysize);
+  char *trystat = xmalloc (maxstatsize);
   char const *r = 0;
 
   strcpy (trybuf, filename);
+  sprintf(trystat, "bk _stat %s", filename);
 
 #define try1(f,a1)    (sprintf (trybuf + dir_len, f, a1),    stat (trybuf, &cstat) == 0)
 #define try2(f,a1,a2) (sprintf (trybuf + dir_len, f, a1,a2), stat (trybuf, &cstat) == 0)
+#define try3(f,a1,a2) (sprintf (trystat + dir_len + 9, f, a1, a2), systemic(trystat) == 0)
 
   /* Check that RCS file is not working file.
      Some hosts don't report file name length errors.  */
@@ -318,15 +322,17 @@ version_controller (char const *filename, int readonly,
 
       r = "RCS";
     }
-  else if (try2 ("SCCS/%s%s", SCCSPREFIX, filebase)
-	   || try2 ("%s%s", SCCSPREFIX, filebase))
+  else if ((try2 ("SCCS/%s%s", SCCSPREFIX, filebase)
+	    || try2 ("%s%s", SCCSPREFIX, filebase)) ||
+	   (getenv("BK_REMAP") &&
+	    try3("SCCS/%s%s > /dev/null", SCCSPREFIX, filebase)))
     {
       if (getbuf)
 	{
 	  char *p = *getbuf = xmalloc (maxgetsize);
 	  sprintf (p, readonly ? GET : GET_LOCKED);
 	  p += strlen (p);
-	  p += quote_system_arg (p, trybuf);
+	  p += quote_system_arg (p, filename);
 	  *p = '\0';
 	}
 

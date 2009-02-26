@@ -319,7 +319,7 @@ _partition() {
 		bk log -r+ -nd"$SERIAL\t:ROOTKEY: :KEY:" BitKeeper/etc/gone \
 		    >> $WA/allkeys
 	}
-	test -f BitKeeper/etc/SCCS/s.ignore || {
+	bk _test -f BitKeeper/etc/SCCS/s.ignore || {
 		ADDONE=YES
 		test -f BitKeeper/etc/ignore && rm -f BitKeeper/etc/ignore
 		__newFile BitKeeper/etc/ignore
@@ -640,12 +640,12 @@ _superset() {
 # Dump the repository license, this is not the BKL.
 _repo_license() {
     	__cd2root
-	test -f BitKeeper/etc/SCCS/s.COPYING && {
+	bk _test -f BitKeeper/etc/SCCS/s.COPYING && {
 	    	echo =========== Repository license ===========
 		bk cat BitKeeper/etc/COPYING
 		exit 0
 	}
-	test -f BitKeeper/etc/SCCS/s.REPO_LICENSE && {
+	bk _test -f BitKeeper/etc/SCCS/s.REPO_LICENSE && {
 	    	echo =========== Repository license ===========
 		bk cat BitKeeper/etc/REPO_LICENSE
 		exit 0
@@ -1005,17 +1005,17 @@ _ignore() {		# /* doc 2.0 */
 	if [ "x$1" = x ]
 	then	if [ -f BitKeeper/etc/ignore ]
 		then	cat BitKeeper/etc/ignore
-		else	if [ -f BitKeeper/etc/SCCS/s.ignore ]
+		else	if bk _test -f BitKeeper/etc/SCCS/s.ignore
 			then	bk get -sp BitKeeper/etc/ignore
 			fi
 		fi
 		exit 0
 	fi
-	test -f BitKeeper/etc/SCCS/s.ignore && bk edit -q BitKeeper/etc/ignore
+	bk _test -f BitKeeper/etc/SCCS/s.ignore && bk edit -q BitKeeper/etc/ignore
 	for i
 	do	echo "$i" >> BitKeeper/etc/ignore
 	done
-	if [ -f BitKeeper/etc/SCCS/s.ignore ]
+	if bk _test -f BitKeeper/etc/SCCS/s.ignore
 	then	bk delta -q -y"added $*" BitKeeper/etc/ignore
 	else	bk new -q BitKeeper/etc/ignore
 	fi
@@ -1162,17 +1162,17 @@ _rmgone() {
 
 	# Based on the options used, construct the command
 	# that will be fed to xargs
-	CMD="rm -f"
+	CMD="bk _fslrm"
 	[ "$P" ] && CMD="-p $CMD"
 	[ ! "$Q" ] && CMD="-t $CMD"
-	[ "$N" ] && CMD="echo Would: rm -f"
+	[ "$N" ] && CMD="echo Would: bk _fslrm"
 
 	# Pipe the key, sfile, and gfile for the repository
 	# through awk.  Awk will check if each key against
 	# the keys in the gone file and output the sfile
 	# and gfile.  This, in turn is fed into xargs.
 	__cd2root
-	if [ ! -f BitKeeper/etc/SCCS/s.gone ]
+	if bk _test ! -f BitKeeper/etc/SCCS/s.gone
 	then
 		echo "rmgone: there is no gone file" 1>&2
 		exit 0
@@ -1275,7 +1275,7 @@ __find_merge_errors() {
 
 	echo Searching for merges with possible problems from old versions of bitkeeper...
 	IFS="|"
-	bk sfiles | grep -v SCCS/s.ChangeSet |
+	bk sfiles -g | grep -v ChangeSet |
 	bk prs -hnd'$if(:MERGE:){:GFILE:|:REV:|:PARENT:|:MPARENT:|:GCA2:|:SETGCA:|:TIME_T:|:LI:|:LD:|:LU:}' - |
 	while read g r p m gca setgca timet LI LD LU
 	do	test "$gca" = "$setgca" && continue

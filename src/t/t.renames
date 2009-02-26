@@ -638,12 +638,14 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if bk _test ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*
+LIST=`bk sfiles BitKeeper/deleted/.del-'B%A!#$%^&)(-_+=];,?'`
+if [ "X$LIST" = X ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if bk _test "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*`" != "I am the copy file"
+CONTENTS=`bk get -qp "$LIST"`
+if [ "$CONTENTS" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.5" ]
@@ -672,13 +674,15 @@ then	echo Failed to leave old file in place
 	cat 'B%A!#$%^&)(-_+=];,'
 	exit 1
 fi
-if bk _test ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*
+LIST=`bk sfiles 'BitKeeper/deleted/.del-B%A!#$%^&)(-_+=];,'
+if [ "X$LIST" = X ]
 then	echo Deleted file missing
 	cat ../OUT
 	bk _find .
 	exit 1
 fi
-if bk _test "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*`" != "I am the project file"
+CONTENTS=`bk get -qp "$LIST"`
+if [ "$CONTENTS" != "I am the project file" ]
 then	echo bad data in deleted file, should be project; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.5" ]
@@ -900,7 +904,8 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if bk _test ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*
+LIST=`bk sfiles 'BitKeeper/deleted/.del-B%A!#$%^&)(-_+=];,?'`
+if [ "X$LIST" = X ]
 then	echo Deleted file missing
 	cat ../OUT
 	bk _find .
@@ -973,12 +978,14 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.2" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if bk _test ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*
+LIST=`bk sfiles 'BitKeeper/deleted/.del-B%A!#$%^&)(-_+=];,?'`
+if [ "X$LIST" = X ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*`" != "I am the copy file" ]
+CONTENTS=`bk get -qp "$LIST"`
+if [ "$CONTENTS" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK

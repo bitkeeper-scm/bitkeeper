@@ -90,7 +90,7 @@ _make_repo() {
 		echo "Setup failed!"
 		exit 1
 	}
-	test "$TYPE" = nested && (
+	test "$TYPE" = nested && { (
 		cd "$REPO" || {
 			echo failed to create $REPO
 			exit 1
@@ -100,7 +100,7 @@ _make_repo() {
 		bk commit -q -y"attach gcc, gdb"
 		touch gcc/BitKeeper/tmp/saveme
 		touch gdb/BitKeeper/tmp/saveme
-	)
+	); return; }
 
 	# Make a cached copy
         (cd "$REPO" && bk _find . -type f | perl -e '
@@ -177,12 +177,15 @@ fresh_commercial() {
 # 'nested foo' is a form of 'commercial foo' which gives a nested repo.
 nested() {
 	CF="$BK_CACHE/nested.config"
-	SFIO="$BK_CACHE/nested.sfio"
-	test -f "$SFIO" || {
+	REPO="$BK_CACHE/nested"
+	test -d "$REPO" || {
 		_commercial_config > "$CF"
-		_make_repo nested "$CF" "$SFIO"
+		_make_repo nested "$CF" ignored
 	}
-	_get_cached_repo "$1" "$SFIO"
+	(cd "$BK_CACHE"/nested; bk _eula -a)
+	bk clone -lq "$BK_CACHE/nested" "$1"
+	cd "$1" || exit 1
+	bk parent -qr || exit 1
 }
 
 echon() {

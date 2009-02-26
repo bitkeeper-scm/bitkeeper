@@ -135,7 +135,8 @@ OBJ =	bkver.o cmd.o \
 	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o \
 	bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
-	bkusers.o cat.o changes.o \
+	bkusers.o blob.o \
+	cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	collapse.o comment.o comments.o commit.o compress.o \
 	contrib/cat.o \
@@ -144,12 +145,11 @@ OBJ =	bkver.o cmd.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	delta.o diffs.o diffsplit.o dspec.o \
 	ensemble.o eula.o export.o \
-	find.o findcset.o findkey.o fixlod.o fixtool.o fslayer.o \
-	fsl.o \
+	find.o findcset.o findkey.o fixlod.o fixtool.o fsl.o fslayer.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	idcache.o isascii.o inskeys.o \
+	idcache.o indexsvr.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
 	libcommit.o libdiff.o librange.o \
@@ -170,7 +170,6 @@ OBJ =	bkver.o cmd.o \
 	port/lock_dir.o port/mail.o port/mnext.o \
 	port/notifier.o port/ns_sock_host2ip.o port/platforminit.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
-	port/sccs_root.o \
 	port/svcinfo.o \
 	port/uninstall.o \
 	prs.o pull.o purify.o push.o pwd.o \
@@ -221,7 +220,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h ensemble.h logging.h \
+HDRS	= bam.h bkd.h blob.h ensemble.h logging.h \
 	  purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h bkver.h proj.h redblack.h inskeys.h libc/system.h
 

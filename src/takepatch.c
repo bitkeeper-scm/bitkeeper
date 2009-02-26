@@ -304,7 +304,7 @@ getChangeSet(void)
 {
 	if (exists(CHANGESET)) {
 		unless (exists(ROOT2RESYNC "/" CHANGESET)) {
-			sys("cp", CHANGESET, ROOT2RESYNC "/" CHANGESET, SYS);
+			fileCopy(CHANGESET, ROOT2RESYNC "/" CHANGESET);
 		}
     	}
 }
@@ -1630,7 +1630,7 @@ resync_lock(void)
 		repository_lockers(0);
 		cleanup(0);
 	}
-	unless (mkdir("RESYNC/SCCS", 0777) == 0) {
+	unless (mkdir("RESYNC/BitKeeper", 0777) == 0) {
 		SHOUT();
 		perror("mkdir");
 		cleanup(CLEAN_RESYNC);

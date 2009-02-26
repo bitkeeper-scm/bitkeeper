@@ -40,6 +40,8 @@ struct project {
 	MDBM	*BAM_idx;	/* BAM index file */
 	int	BAM_write;	/* BAM index file opened for write? */
 	int	sync;		/* sync/fsync data? */
+	int	idxsock;	/* sock to index server for this repo */
+	int	remap;		/* true == remap SCCS dirs */
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
@@ -86,7 +88,6 @@ projcache_store(char *dir, project *p)
 		 * have a copy open.
 		 */
 		assert("dup proj" == 0);
-	}
 	p->dirs = addLine(p->dirs, proj.cache->kptr);
 }
 
@@ -108,7 +109,6 @@ private void
 proj_recent(project *p)
 {
 	project	*oldp;
-
 	while (nLines(proj.recent) >= NRECENT) {
 		/*
 		 * don't use the free field in removeLineN because
@@ -226,7 +226,7 @@ find_root(char *dir)
 
 	while (1) {
 		/* convert dir to a full pathname and expand symlinks */
-		dir = fullname(dir);
+		dir = path_canon(dir, buf);
 		unless(isSymlnk(dir)) break;
 
 		/*
@@ -240,11 +240,9 @@ find_root(char *dir)
 		} else {
 			concat_path(buf, dirname(dir), sym);
 		}
-		dir = buf;
 	}
 
 	/* This code assumes dir is a full pathname with nothing funny */
-	strcpy(buf, dir);
 	p = buf + strlen(buf);
 	*p = '/';
 
@@ -325,13 +323,15 @@ proj_cd2product(void)
  * The returned path is allocated with malloc() and the user must free().
  */
 char *
-proj_relpath(project *p, char *path)
+proj_relpath(project *p, char *in_path)
 {
 	char	*root = proj_root(p);
 	int	len;
+	char	path[MAXPATH];
 
 	assert(root);
-	path = fullname(path);
+	path_canon(in_path, path);
+	TRACE("in=%s, path=%s", in_path, path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {
 		if (!path[len]) {
@@ -733,6 +733,7 @@ proj_reset(project *p)
 		p->leaseok = -1;
 		p->co = 0;
 		p->sync = -1;
+		p->remap = -1;
 		if (p->coDB) {
 			mdbm_close(p->coDB);
 			p->coDB = 0;
@@ -821,7 +822,7 @@ char *
 proj_cwd(void)
 {
 	unless (proj.cwd[0]) {
-		if (proj_chdir(".")) return (0);
+		unless (getcwd(proj.cwd, sizeof(proj.cwd))) proj.cwd[0] = 0;
 	}
 	return (proj.cwd);
 }
@@ -1167,4 +1168,68 @@ proj_isComponent(project *p)
 	if (p->rparent) p = p->rparent;
 	unless (proj_product(p) && p->root) return (0);
 	return (proj_comppath(p) != 0);
+}
+
+int
+proj_idxsock(project *p)
+{
+	FILE	*f;
+	int	c;
+	char	*s, *t;
+	int	first = 1;
+	char	buf[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (0);
+
+	if (p->idxsock) return (p->idxsock);
+
+	concat_path(buf, p->root, ".bk/INDEX");
+	unless (f = fopen(buf, "r")) {
+again:		putenv("_BK_FSLAYER_SKIP=1");
+		c = sys("bk", "indexsvr", proj_root(p), SYS);
+		putenv("_BK_FSLAYER_SKIP=");
+		unless (!c ||
+		    (WIFEXITED(c) && WEXITSTATUS(c) == 1)) {
+			fprintf(stderr, "bk indexsvr failed\n");
+			exit(1);
+		}
+		f = fopen(buf, "r");
+		assert(f);
+	}
+	// read from env?
+	if ((t = fgetline(f)) && (s = strchr(t, ':'))) {
+		*s++ = 0;
+		p->idxsock = tcp_connect(t, atoi(s));
+	} else {
+		p->idxsock = -4;
+	}
+	fclose(f);
+	if (first && (p->idxsock < 0)) {
+		first = 0;
+		goto again;
+	}
+	// need to verify
+	assert(p->idxsock > 0);
+	return (p->idxsock);
+}
+
+/*
+ * Return true if this repo uses the old directory remapping.
+ * Not a new repo is always considered to use the new mapping.
+ *
+ * Note: It is assumed that this function is call in the context of a
+ * fslayer_* routine so that files system access is direct.
+ */
+int
+proj_hasOldSCCS(project *p)
+{
+	char	buf[MAXPATH];
+
+	unless (p || (p = curr_proj())) return (1);
+
+	if (p->remap == -1) {
+		concat_path(buf, p->root, "SCCS");
+		p->remap = !isdir(buf);
+	}
+	return (!p->remap);
 }

@@ -369,7 +369,7 @@ int	checking_rmdir(char *dir);
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
-#define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
+#define	IDCACHE_LOCK	"BitKeeper/log/z.id_cache"
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
@@ -819,6 +819,20 @@ typedef struct {
 				 * rsh:[user@]host:/path
 				 */
 
+#define	IDX_QUIT	1
+#define	IDX_READ	2
+#define	IDX_UNLINK	3
+#define	IDX_RENAME	4
+#define	IDX_CHMOD	5
+#define	IDX_GETDIR	6
+#define	IDX_MKDIR	7
+#define	IDX_RMDIR	8
+#define	IDX_UPDATE	9
+#define	IDX_UPDATEFS	10
+#define	IDX_LSTAT	11
+#define	IDX_LINK	12
+#define	IDX_ACCESS	13
+#define IDX_UTIME	14
 
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
@@ -1283,6 +1297,21 @@ char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
 void	fslayer_cleanup(void);
 void	updatePending(sccs *s);
+int	isSCCS(const char *path);
+int	fslayer_enable(int en);
+int	doidx_quit(project *proj);
+int	doidx_remap(project *proj, char *rel, char **file);
+int	doidx_utime(project *proj, char *rel, const struct utimbuf *utb);
+int	doidx_lstat(project *proj, char *rel, struct stat *sb);
+int	doidx_unlink(project *proj, char *rel);
+int	doidx_rename(project *proj1, char *old, project *proj2, char *new);
+int	doidx_link(project *proj1, char *old, project *proj2, char *new);
+int	doidx_chmod(project *proj, char *rel, mode_t mode);
+int	doidx_mkdir(project *proj, char *dir, mode_t mode);
+int	doidx_rmdir(project *proj, char *dir);
+char	**doidx_getdir(project *proj, char *dir);
+int	doidx_access(project *proj, char *file, int mode);
+int	rmrepo(char *repo);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);

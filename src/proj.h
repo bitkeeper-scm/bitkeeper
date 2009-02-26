@@ -59,6 +59,8 @@ int		proj_restoreAllCO(project *p, MDBM *idDB);
 MDBM*		proj_BAMindex(project *p, int write);
 int		proj_sync(project *p);
 char*		proj_comppath(project *p);
+int		proj_idxsock(project *p);
+int		proj_hasOldSCCS(project *p);
 
 #define		chdir	proj_chdir
 

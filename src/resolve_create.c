@@ -807,10 +807,7 @@ sc_ml(resolve *rs)
 		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
 	} while (exists(path));
 	sprintf(cmd, "%s/%s", RESYNC2ROOT, rs->dname);
-	if (sys("cp", "-p", cmd, path, SYS)) {
-		perror(cmd);
-		exit(1);
-	}
+	fileCopy(cmd, path);
 	s = sccs_init(path, INIT_NOCKSUM);
 	sccs_sdelta(s, sccs_ino(s), path);
 	saveKey(rs->opts, path, to);
@@ -851,7 +848,7 @@ sc_rml(resolve *rs)
 	s->proj = saveproj;
 
 	sprintf(repo, "%s/%s", RESYNC2ROOT, s->sfile);
-	if (sys("cp", repo, resync, SYS)) {
+	if (fileCopy(repo, resync)) {
 		perror(repo);
 		exit(1);
 	}
