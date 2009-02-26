@@ -642,18 +642,16 @@ int
 ensemble_each(int quiet, int ac, char **av)
 {
 	repos	*list;
-	project	*p = proj_product(0);
 	int	c;
 	int	errors = 0;
 	int	status;
 	char	**aliases = 0;
 	eopts	opts;
 
-	unless (p) {
+	if (proj_cd2product()) {
 		fprintf(stderr, "Not in an ensemble.\n");
 		return (1);
 	}
-	chdir(proj_root(p));
 	bzero(&opts, sizeof(opts));
 	opts.product = 1;
 	opts.product_first = 1;
@@ -687,8 +685,14 @@ ensemble_each(int quiet, int ac, char **av)
 			printf("#### %s ####\n", list->path);
 			fflush(stdout);
 		}
-		chdir(proj_root(p));
-		if (chdir(list->path)) continue;
+		proj_cd2product();
+		if (chdir(list->path)) {
+			fprintf(stderr,
+			    "bk: unable to chdir to component at %s\n",
+			    list->path);
+			errors |= 1;
+			continue;
+		}
 		status = spawnvp(_P_WAIT, "bk", av);
 		if (WIFEXITED(status)) {
 			errors |= WEXITSTATUS(status);
@@ -966,7 +970,7 @@ usage:		    	system("bk help -s attach");
 		system("bk edit -q ChangeSet");
 		sprintf(buf, "bk delta -f -q -y'attach %s' ChangeSet", relpath);
 		system(buf);
-		proj_reset(0);
+		proj_reset(0);	/* reset proj_isComponent() */
 		ensemble_nestedCheck();
 		if (commit) {
 			list = addLine(list, relpath);

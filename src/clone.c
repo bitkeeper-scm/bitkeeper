@@ -436,10 +436,10 @@ clone(char **av, remote *r, char *local, char **envVar)
 		disconnect(r, 2);
 		goto done;
 	}
-
-	/* Make sure we pick up config info from what we just unpacked */
-	proj_reset(0);
-
+	/*
+	 * no proj_config*() calls before this point, the sfio needs
+	 * to be unpacked before we can read BitKeeper/etc/config.
+	 */
 	if (opts->link) lclone(getenv("BKD_ROOT"));
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
@@ -477,8 +477,6 @@ done:	if (rc) {
 	return (rc);
 }
 
-// XXX - don't we need a proj_reset() in here after we have unpacked a
-// config file?  And a rollback may have changed it?
 private	int
 clone2(remote *r)
 {
@@ -575,13 +573,14 @@ initProject(char *root, remote *r)
 {
 	char	*p, *url, *repoid;
 
-	if (mkdirp(root) || chdir(root)) {
+	if (mkdirp(root)) {
 		perror(root);
 		return (-1);
 	}
 
 	/* XXX - this function exits and that means the bkd is left hanging */
-	sccs_mkroot(".");
+	sccs_mkroot(root);
+	chdir(root);
 	if (proj_product(0)) opts->no_parent = 1;
 
 	putenv("_BK_NEWPROJECT=YES");

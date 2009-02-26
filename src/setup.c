@@ -88,6 +88,7 @@ setup_main(int ac, char **av)
 		perror(package_path);
 		exit(1);
 	}
+	sccs_mkroot(package_path);
 	if (chdir(package_path) != 0) {
 		perror(package_path);
 		exit(1);
@@ -96,7 +97,6 @@ setup_main(int ac, char **av)
 		printf("bk: %s repository exists already, setup fails.\n",
 		package_path);
 	}
-	sccs_mkroot(".");
 	unless (product) {
 		/*
 		 * in_prod will be used later - it is only set if

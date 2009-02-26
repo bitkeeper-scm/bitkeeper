@@ -242,8 +242,6 @@ cmd_push_part2(int ac, char **av)
 		rc = 1;
 		goto done;
 	}
-	proj_reset(0);
-
 	c = bp_hasBAM();
 	if (c || ((p = getenv("BK_BAM")) && streq(p, "YES"))) {
 		// send bp keys

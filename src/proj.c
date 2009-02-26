@@ -21,12 +21,6 @@
 
 #define	PROD_SELF(p)		(proj_product(p) == (p))
 
-typedef struct dirlist dirlist;
-struct dirlist {
-	char	*dir;
-	dirlist	*next;
-};
-
 struct project {
 	char	*root;		/* fullpath root of the project */
 	char	*rootkey;	/* Root key of ChangeSet file */
@@ -55,14 +49,16 @@ struct project {
 
 	/* internal state */
 	int	refcnt;
-	dirlist	*dirs;
+	char	**dirs;		/* list of dirs that map to this project */
 };
 
 private char	*find_root(char *dir);
 
+#define	NRECENT	4		/* save last 4 proj structs */
+
 private struct {
 	project	*curr;
-	project	*last;
+	char	**recent;	/* addlines of upto NRECENT structs */
 	hash	*cache;
 	char	cwd[MAXPATH];
 } proj;
@@ -78,36 +74,52 @@ projcache_lookup(char *dir)
 	return (ret);
 }
 
+/*
+ * The code does a lookup before doing a store, so no need to autocreate
+ * hashes like the routine above does.
+ */
 private void
 projcache_store(char *dir, project *p)
 {
-	unless (streq(dir, p->root)) {
-		dirlist	*dl;
-
-		dl = new(dirlist);
-		dl->dir = strdup(dir);
-		dl->next = p->dirs;
-		p->dirs = dl;
+	unless (hash_insert(proj.cache, dir, strlen(dir)+1, &p, sizeof(p))) {
+		/* we should never init a new project when we already
+		 * have a copy open.
+		 */
+		assert("dup proj" == 0);
 	}
-	hash_store(proj.cache, dir, strlen(dir)+1, &p, sizeof(p));
+	p->dirs = addLine(p->dirs, proj.cache->kptr);
 }
 
 private void
 projcache_delete(project *p)
 {
-	dirlist	*dl;
+	int	i;
 
-	hash_deleteStr(proj.cache, p->root);
-	dl = p->dirs;
-	while (dl) {
-		dirlist	*tmp = dl;
+	EACH(p->dirs) hash_deleteStr(proj.cache, p->dirs[i]);
+	freeLines(p->dirs, 0);
+	p->dirs = 0;
+}
 
-		hash_deleteStr(proj.cache, dl->dir);
+/*
+ * Add proj struct to a list of recently used items.
+ * Delete one if we have collected too many.
+ */
+private void
+proj_recent(project *p)
+{
+	project	*oldp;
 
-		free(dl->dir);
-		dl = dl->next;
-		free(tmp);
+	while (nLines(proj.recent) >= NRECENT) {
+		/*
+		 * don't use the free field in removeLineN because
+		 * proj_free() checks the proj.recent cache and fails.
+		 */
+		oldp = (project *)proj.recent[1];
+		removeLineN(proj.recent, 1, 0);
+		proj_free(oldp);
 	}
+	proj.recent = addLine(proj.recent, p);
+	++p->refcnt;
 }
 
 /*
@@ -156,10 +168,11 @@ proj_init(char *dir)
 	proj_reset(ret);	/* default values */
 	ret->root = root;
 
+	/* remember recent proj structs */
+	proj_recent(ret);
+
 	projcache_store(root, ret);
 	unless (streq(root, fdir)) projcache_store(fdir, ret);
-done:
-	++ret->refcnt;
 
 	if ((t = strrchr(ret->root, '/')) && streq(t, "/RESYNC")) {
 		*t = 0;
@@ -170,23 +183,34 @@ done:
 		}
 		*t = '/';
 	}
+done:
+	++ret->refcnt;
 	return (ret);
 }
 
 void
 proj_free(project *p)
 {
+	int	i;
+
 	assert(p);
 
 	assert(p->refcnt > 0);
 	unless (--p->refcnt == 0) return;
 
+	/* we shouldn't be freeing something that is cached */
+	assert(p != proj.curr);
+	EACH(proj.recent) assert(p != (project *)proj.recent[i]);
+
 	if (p->rparent) {
 		proj_free(p->rparent);
 		p->rparent = 0;
 	}
-	projcache_delete(p);
-
+	if (p->product && (p->product != INVALID) && (p->product != p)) {
+		proj_free(p->product);
+		p->product = 0;
+	}
+	projcache_delete(p);	/* subtle: See SHORTCUT in proj_reset() */
 	proj_reset(p);
 	free(p->root);
 	free(p);
@@ -214,9 +238,7 @@ find_root(char *dir)
 		if (IsFullPath(sym)) {
 			strcpy(buf, sym);
 		} else {
-			p = strrchr(dir, '/');
-			*p = 0;
-			concat_path(buf, dir, sym);
+			concat_path(buf, dirname(dir), sym);
 		}
 		dir = buf;
 	}
@@ -442,7 +464,7 @@ proj_checkout(project *p)
 	char	*s;
 	int	bits = CO_NONE|CO_BAM_NONE;
 
-	unless (p || (p = curr_proj())) p = proj_fakenew();
+	unless (p || (p = curr_proj())) return (bits);
 	if (proj_isResync(p)) return (bits);
 	if (p->co) return (p->co);
 	db = proj_config(p);
@@ -627,7 +649,7 @@ proj_comppath(project *p)
 	char	*t;
 	char	file[MAXPATH];
 
-	unless (p || (p = curr_proj())) p = proj_fakenew();
+	unless (p || (p = curr_proj())) return (0);
 
 	if (p->rparent) p = p->rparent;
 
@@ -676,6 +698,9 @@ proj_repoID(project *p)
 void
 proj_reset(project *p)
 {
+	hash	*h;
+	char	**recent;
+
 	if (p) {
 		if (p->rootkey) {
 			free(p->rootkey);
@@ -716,27 +741,51 @@ proj_reset(project *p)
 			mdbm_close(p->BAM_idx);
 			p->BAM_idx = 0;
 		}
-		if (p->product != INVALID) {
-			if (p->product && (p->product != p)) {
-				proj_free(p->product);
-			}
-			p->product = INVALID;
+		unless (p->product) p->product = INVALID;
+
+		/*
+		 * delete all but primary dir mapping
+		 * SHORTCUT: proj_free() calls projcache_delete() which
+		 * will clear p->dirs.  It is the only case in which
+		 * p->dirs will be empty with the desire being: don't
+		 * put something into it which needs to be freed.
+		 */
+		if (p->dirs) {
+			projcache_delete(p);
+			projcache_store(p->root, p);
 		}
 	} else {
-		/*
-		 * Warning: This loop will call proj_reset() on the
-		 * some projects multiple times.  Currently harmless.
-		 */
-		EACH_HASH(proj.cache) proj_reset(*(project **)proj.cache->vptr);
-		/* free the current project for purify */
+		/* free the cwd project */
 		if (proj.curr) {
-			proj_free(proj.curr);
+			/*
+			 * proj_free() checks proj caches like proj.curr
+			 * so proj.curr must be zero to avoid assert
+			 */
+			p = proj.curr;
 			proj.curr = 0;
+			proj_free(p);
 		}
-		if (proj.last) {
-			proj_free(proj.last);
-			proj.last = 0;
+		/*
+		 * proj_free() checks to see that freed item isn't cached.
+		 * Mark the proj.recent cache as empty before freeing.
+		 */
+		recent = proj.recent;
+		proj.recent = 0;
+		freeLines(recent, (void(*)(void *))proj_free);
+
+		/*
+		 * only proj structs with external references will
+		 * remain
+		 */
+
+		/* use a hash to reset each unique proj struct */
+		h = hash_new(HASH_MEMHASH);
+		EACH_HASH(proj.cache) {
+			hash_insert(h, proj.cache->vptr, sizeof(project *),
+			    0, 0);
 		}
+		EACH_HASH(h) proj_reset(*(project **)h->kptr);
+		hash_free(h);
 	}
 }
 
@@ -749,14 +798,15 @@ int
 proj_chdir(char *newdir)
 {
 	int	ret;
+	project	*p;
 
 	ret = chdir(newdir);
 	unless (ret) {
 		unless (getcwd(proj.cwd, sizeof(proj.cwd))) proj.cwd[0] = 0;
 		if (proj.curr) {
-			if (proj.last) proj_free(proj.last);
-			proj.last = proj.curr;
+			p = proj.curr;
 			proj.curr = 0;
+			proj_free(p);
 		}
 	}
 	return (ret);
@@ -785,7 +835,7 @@ proj_fakenew(void)
 {
 	project	*ret;
 
-	if (ret = projcache_lookup("/")) return (ret);
+	if (ret = projcache_lookup("/.")) return (ret);
 	ret = new(project);
 	ret->root = strdup("/.");
 	ret->rootkey = strdup("SCCS");
@@ -830,6 +880,9 @@ proj_bklbits(project *p)
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
 	unless (p->bklbits) p->bklbits = license_bklbits(proj_bkl(p));
+	if (streq(p->root, "/.")) {
+		p->bklbits |= 0; /* XXX add force read-only bit */
+	}
 	return (p->bklbits);
 }
 

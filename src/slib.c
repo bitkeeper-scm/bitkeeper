@@ -1353,19 +1353,31 @@ branchname(delta *d)
 void
 sccs_mkroot(char *path)
 {
+	project	*proj;
 	char	buf[MAXPATH];
 
-	sprintf(buf, "%s/SCCS", path);
-	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
-		perror(buf);
-		exit(1);
-	}
 	sprintf(buf, "%s/BitKeeper", path);
 	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/etc", path);
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
+	/*
+	 * We have created a new repository, so clear the dir caches of
+	 * the repository above this one in case any of these directories
+	 * map to the wrong repository.
+	 */
+	concat_path(buf, path, "..");
+	if (proj = proj_init(buf)) {
+		proj_reset(proj);
+		proj_free(proj);
+	}
+
+	sprintf(buf, "%s/SCCS", path);
 	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
@@ -1395,7 +1407,6 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
-	proj_reset(0);
 }
 
 /*

@@ -1854,8 +1854,6 @@ init(char *inputFile)
 			fputs("takepatch: can't find package root.\n", stderr);
 			SHOUT2();
 			exit(1);
-		} else {
-			proj_reset(0);
 		}
 	}
 	if (streq(inputFile, "-")) {

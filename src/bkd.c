@@ -244,8 +244,6 @@ do_cmds(void)
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
 			if (Opts.logfile) log_cmd(peer, ac, av);
-			proj_reset(0); /* XXX needed? */
-
 			if (Opts.http_hdr_out) http_hdr();
 			log = !streq(av[0], "putenv");
 			if (log) cmdlog_start(av, httpMode);
