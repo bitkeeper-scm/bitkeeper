@@ -584,6 +584,8 @@ rmrepo(char *repo)
 	 * indexsvr
 	 */
 
+	assert(!streq(basenm(repo), "RESYNC"));
+
 	concat_path(buf, repo, BKROOT);
 	unless (isdir(buf)) {
 		fprintf(stderr, "rmrepo: %s is not a repo\n", repo);
@@ -594,3 +596,28 @@ rmrepo(char *repo)
 	fslayer_enable(old);
 	return (ret);
 }
+
+int
+rmtree_resync(char *repo)
+{
+	int	old, ret = 0;
+	char	*hidden_resync = ".bk/RESYNC";
+
+	/*
+	 * We assume that we're only ever called with "RESYNC"
+	 */
+	assert(streq(repo, "RESYNC"));
+
+	unless (isdir(repo)) {
+		fprintf(stderr, "rmtree_resync: %s has no RESYNC dir\n", repo);
+		return (-1);
+	}
+	old = fslayer_enable(0);
+	ret = rmtree(repo);
+	if (ret) goto out;
+	if (isdir(hidden_resync)) ret = rmtree(hidden_resync);
+out:
+	fslayer_enable(old);
+	return (ret);
+}
+

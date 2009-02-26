@@ -107,7 +107,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			return (UNDO_ERR);
 		}
 		unlink(BACKUP_SFIO);
-		if (rmresync && exists("RESYNC")) rmtree("RESYNC");
+		if (rmresync && exists("RESYNC")) rmtree_resync("RESYNC");
 		freeLines(nav, free);
 		return (UNDO_ERR);
 	}
@@ -303,7 +303,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 	update_log_markers(!quiet);
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
-	rmtree("RESYNC");
+	rmtree_resync("RESYNC");
 	unlink(CSETS_IN);	/* no longer valid */
 	unless (fromclone) {
 		putenv("BK_CSETLIST=");
@@ -535,17 +535,8 @@ moveAndSave(char **fileList)
 		return (-2);
 	}
 
-	strcpy(tmp, "RESYNC/BitKeeper/etc");
-	if (mkdirp(tmp)) {
-		perror(tmp);
-		return (-1);
-	}
-
-	strcpy(tmp, "RESYNC/BitKeeper/tmp");
-	if (mkdirp(tmp)) {
-		perror(tmp);
-		return (-1);
-	}
+	mkdir("RESYNC", 0777);
+	sccs_mkroot("RESYNC");
 
 	/*
 	 * Run sfio under RESYNC, because we pick up the files _after_

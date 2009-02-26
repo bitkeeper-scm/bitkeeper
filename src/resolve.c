@@ -2863,7 +2863,7 @@ resolve_cleanup(opts *opts, int what)
 	if ((what & CLEAN_OK) && exists(buf)) csets_in(opts);
 	if (what & CLEAN_RESYNC) {
 		assert(exists("RESYNC"));
-		if (rmrepo("RESYNC")) {
+		if (rmtree_resync("RESYNC")) {
 			fprintf(stderr, "resolve: rmtree failed\n");
 		}
 	} else if (what & CLEAN_MVRESYNC) {

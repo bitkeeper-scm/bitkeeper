@@ -1312,6 +1312,7 @@ int	doidx_rmdir(project *proj, char *dir);
 char	**doidx_getdir(project *proj, char *dir);
 int	doidx_access(project *proj, char *file, int mode);
 int	rmrepo(char *repo);
+int	rmtree_resync(char *repo);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);
