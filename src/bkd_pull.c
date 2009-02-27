@@ -1,6 +1,6 @@
 #include "bkd.h"
 #include "range.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private void
 listIt(char *keys, int list)
@@ -299,13 +299,13 @@ err:			out("ERROR-protocol error in aliases\n");
 				goto done;
 			}
 		}
-		r = ensemble_list(opts);
+		r = nested_list(opts);
 		printf("@ENSEMBLE@\n");
-		ensemble_toStream(r, stdout);
+		nested_toStream(r, stdout);
 		freeLines(k, free);
 		if (opts.aliases) hash_free(opts.aliases);
 		sccs_free(opts.sc);
-		ensemble_free(r);
+		nested_free(r);
 		goto done;
 	}
 	fputs("@PATCH@\n", stdout);

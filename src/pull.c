@@ -4,7 +4,7 @@
 #include "bkd.h"
 #include "bam.h"
 #include "logging.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private struct {
 	int	list;			/* -l: long listing */
@@ -584,7 +584,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		repos	*repos;
 
 		unless (r->rf) r->rf = fdopen(r->rfd, "r");
-		unless (repos = ensemble_fromStream(0, r->rf)) {
+		unless (repos = nested_fromStream(0, r->rf)) {
 			fprintf(stderr, "Could not read ensemble list\n");
 			putenv("BK_STATUS=FAILED");
 			rc = 1;
@@ -596,7 +596,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		} else {
 			putenv("BK_STATUS=OK");
 		}
-		ensemble_free(repos);
+		nested_free(repos);
 	} else {
 		fprintf(stderr, "protocol error: <%s>\n", buf);
 		while (getline2(r, buf, sizeof(buf)) > 0) {

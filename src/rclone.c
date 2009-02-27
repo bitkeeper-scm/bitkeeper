@@ -1,6 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private	struct {
 	u32	debug:1;		/* -d debug mode */
@@ -158,7 +158,7 @@ rclone_ensemble(remote *r)
 		goto out;
 	}
 	ropts.aliases = h;
-	rps = ensemble_list(ropts);
+	rps = nested_list(ropts);
 	START_TRANSACTION();
 	EACH_REPO(rps) {
 		proj_cd2product();
@@ -207,7 +207,7 @@ rclone_ensemble(remote *r)
 out:	sccs_free(cset);
 	if (h) hash_free(h);
 	free(url);
-	ensemble_free(rps);
+	nested_free(rps);
 	STOP_TRANSACTION();
 	return (rc);
 }

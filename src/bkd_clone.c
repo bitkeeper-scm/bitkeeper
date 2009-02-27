@@ -1,6 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private int	compressed(int level, int lclone);
 
@@ -146,10 +146,10 @@ cmd_clone(int ac, char **av)
 		opts.rev = rev;
 		opts.sc = s;
 		opts.aliases = h;
-		r = ensemble_list(opts);
+		r = nested_list(opts);
 		printf("@ENSEMBLE@\n");
-		ensemble_toStream(r, stdout);
-		ensemble_free(r);
+		nested_toStream(r, stdout);
+		nested_free(r);
 		rc = 0;
 		goto out;
 	}

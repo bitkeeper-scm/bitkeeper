@@ -5,7 +5,7 @@
 #include "cmd.h"
 #include "tomcrypt.h"
 #include "tomcrypt/randseed.h"
-#include "ensemble.h"
+#include "nested.h"
 
 #define	BK "bk"
 
@@ -23,7 +23,7 @@ int	spawn_tcl;		/* needed in crypto.c:bk_preSpawnHook() */
 ltc_math_descriptor	ltc_mp;
 char	*prog;
 char	*start_cwd;		/* if -R or -P, where did I start? */
-unsigned int turnTransOff;	/* for transactions, see ensemble.h */
+unsigned int turnTransOff;	/* for transactions, see nested.h */
 
 private	char	*buffer = 0;	/* copy of stdin */
 private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
@@ -222,7 +222,7 @@ main(int ac, char **av, char **env)
 			    case '@': remote = 1; break;
 			    case 'A': all = 1; break;
 			    case 'C': all = 1; break;
-			    case 'M': break;	// for ensemble each XXX:CONFLICT
+			    case 'M': break;	// for nested_each XXX:CONFLICT
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
@@ -282,7 +282,7 @@ main(int ac, char **av, char **env)
 		}
 		if (all && !getenv("_BK_ITERATOR")) {
 			putenv("_BK_ITERATOR=YES");
-			ret = ensemble_each(quiet, ac, av);
+			ret = nested_each(quiet, ac, av);
 			goto out;
 		}
 
@@ -379,7 +379,7 @@ run:	trace_init(prog);	/* again 'cause we changed prog */
 	 * XXX - we could check to see if we are licensed for SAM and make
 	 * this conditional.
 	 */
-	if (dashr) ensemble_nestedCheck();
+	if (dashr) nested_check();
 	getoptReset();
 	if (exists("gmon.out")) save_gmon();
 

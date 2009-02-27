@@ -2,7 +2,7 @@
 #include "sccs.h"
 #include "logging.h"
 #include "bam.h"
-#include "ensemble.h"
+#include "nested.h"
 #include <time.h>
 #include "range.h"
 
@@ -1029,45 +1029,41 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	if (confThisFile && proj_isProduct(s->proj)) {
-		eopts	opts = {0};
-		repos	*local, *remote;
+		nested	*local, *remote;
+		comp	*c;
 		char	**list;
-		int	fail = 0;
-
-		opts.sc = s;
+		int	i, fail = 0;
 
 		/* set list to what is in local but not remote */
 		list = 0;
 		range_walkrevs(s,
 		    s->remote, s->local, walkrevs_list, (void *)&list);
-		opts.revs = list;
-		local = ensemble_list(opts);
+		local = nested_init(s, 0, list, 0);
 		freeLines(list, 0);
 
 		/* set list to what is in remote but not local */
 		list = 0;
 		range_walkrevs(s,
 		    s->local, s->remote, walkrevs_list, (void *)&list);
-		opts.revs = list;
-		remote = ensemble_list(opts);
+		remote = nested_init(s, 0, list, 0);
 		freeLines(list, 0);
 
 		/* intersection and not here is an error */
-		EACH_REPO (local) {
+		EACH_STRUCT(local->comps, c) {
 			// if it's here, no worries.
-			if (local->present) continue;
+			if (c->present) continue;
 			// if they don't have it then no worries
-			unless (ensemble_find(remote, local->rootkey)) continue;
+			unless (nested_find(remote, c->rootkey)) continue;
 			// OK, worry.
 			fprintf(stderr,
 			    "\n\nUnable to resolve conflict "
 			    "in non-present component '%s'.\n"
 			    "You need to bk populate that component first.\n",
-			    local->path);
+			    c->path);
 		    	fail++;
 		}
-		ensemble_free(local);
-		ensemble_free(remote);
+		nested_free(local);
+		nested_free(remote);
 		if (fail) goto err;
 	}
 	conflicts += confThisFile;

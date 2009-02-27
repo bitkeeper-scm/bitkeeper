@@ -4,7 +4,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "bam.h"
-#include "ensemble.h"
+#include "nested.h"
 
 /*
  * Do not change this struct until we phase out bkd 1.2 support
@@ -285,7 +285,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	int	(*empty)(char*);
 
 	if (getenv("_BK_TRANSACTION")) {
-		empty = ensemble_emptyDir;
+		empty = nested_emptyDir;
 	} else {
 		empty = emptyDir;
 	}
@@ -372,7 +372,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		FILE	*f;
 
 		unless (r->rf) r->rf = fdopen(r->rfd, "r");
-		unless (repos = ensemble_fromStream(0, r->rf)) goto done;
+		unless (repos = nested_fromStream(0, r->rf)) goto done;
 		rc = clone_ensemble(repos, r, local);
 		chdir(local);
 		if (opts->aliases || !exists("BitKeeper/log/COMPONENTS")) {
@@ -394,7 +394,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 			}
 		}
 		fclose(f);
-		ensemble_free(repos);
+		nested_free(repos);
 		p = opts->quiet ? "-fT" : "-fTv";
 		rc += run_check(opts->quiet, checkfiles, p, 0);
 		unlink(checkfiles);
@@ -839,7 +839,7 @@ lclone(char *from)
 		tb.modtime = sb.st_mtime;
 		utime(CHECKED, &tb);
 	}
-	ensemble_nestedCheck();
+	nested_check();
 }
 
 /*

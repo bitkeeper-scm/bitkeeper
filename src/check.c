@@ -8,7 +8,7 @@
 #include "sccs.h"
 #include "range.h"
 #include "bam.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
@@ -215,7 +215,7 @@ check_main(int ac, char **av)
 		proj_cd2product();
 		chdir(t);
 		el_opts.pending = 1;
-		r = ensemble_list(el_opts);
+		r = nested_list(el_opts);
 		EACH_REPO(r) {
 			if (!cp || strneq(r->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
@@ -223,7 +223,7 @@ check_main(int ac, char **av)
 			}
 		}
 		if (cp) free(cp);
-		ensemble_free(r);
+		nested_free(r);
 	}
 
 	/* This can legitimately return NULL */

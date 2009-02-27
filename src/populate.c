@@ -1,5 +1,5 @@
 #include "sccs.h"
-#include "ensemble.h"
+#include "nested.h"
 
 extern	char	*prog;
 
@@ -89,7 +89,7 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 	}
 	opts.rev = "+";
 	opts.sc = s;
-	repos = ensemble_list(opts);
+	repos = nested_list(opts);
 	START_TRANSACTION();
 	done = hash_new(HASH_MEMHASH);
 	EACH (urls) {
@@ -121,7 +121,7 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 				/* failed because the dir was not empty */
 			} else {
 				/* failed and left crud */
-				ensemble_rmtree(repos->path);
+				nested_rmtree(repos->path);
 			}
 		}
 	}
@@ -133,7 +133,7 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 		fprintf(stderr, "populate: failed to fetch %s\n", repos->path);
 		rc = 1;
 	}
-	ensemble_free(repos);
+	nested_free(repos);
 	sccs_free(s);
 
 	if (hash_first(done)) {
@@ -273,7 +273,7 @@ unpopulate_main(int ac, char **av)
 	op.deepfirst = 1;
 	op.aliases = comps_unwanted;
 
-	comps = ensemble_list(op);
+	comps = nested_list(op);
 	START_TRANSACTION();
 	/*
 	 * Two passes, the first one to see if it would work, the second
@@ -315,7 +315,7 @@ unpopulate_main(int ac, char **av)
 		}
 		unless (quiet) printf("Removing '%s'.\n", comps->path);
 		i++;
-		if (ensemble_rmtree(comps->path)) {
+		if (nested_rmtree(comps->path)) {
 			fprintf(stderr, "Failed to remove '%s'\n", comps->path);
 			goto out;
 		};
@@ -338,6 +338,6 @@ out:	if (alias_unwanted) hash_free(alias_unwanted);
 	if (new_alias) freeLines(new_alias, 0);
 	if (comps_wanted) hash_free(comps_wanted);
 	if (comps_unwanted) hash_free(comps_unwanted);
-	if (comps) ensemble_free(comps);
+	if (comps) nested_free(comps);
 	return (rc);
 }

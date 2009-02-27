@@ -1,5 +1,5 @@
 #include "sccs.h"
-#include "ensemble.h"
+#include "nested.h"
 
 typedef struct {
 	repos	*comps;		/* component list as of rev */
@@ -156,7 +156,7 @@ aliases_init(sccs *cset, char *rev, u32 flags)
 	opts.rev = rev;
 	opts.sc = cset;
 	opts.pending = ((flags & ALIAS_PENDING) != 0);
-	mdb->comps = ensemble_list(opts);
+	mdb->comps = nested_list(opts);
 	return (mdb);
 }
 
@@ -199,7 +199,7 @@ alias_hash(char **names, sccs *cset, char *rev, u32 flags)
 			char	*rk = (char*)k->kptr;
 			int	here = *(u8*)k->vptr;
 
-			unless (ensemble_find(mdb->comps, rk)) {
+			unless (nested_find(mdb->comps, rk)) {
 				TRACE("WTF? %s", rk);
 			}
 			if ((flags & ALIAS_HERE) && !here) {
@@ -312,7 +312,7 @@ err:	freeLines(comps, free);
 }
 
 private hash *
-aliasdb_init(char *rev, u32 flags)
+aliasdb_init(nested *n)
 {
 	hash	*ret = 0;
 	char	*p;
@@ -324,12 +324,12 @@ aliasdb_init(char *rev, u32 flags)
 	concat_path(buf, proj_root(proj_product(0)), ALIASES);
 	p = name2sccs(buf);
 	if (s = sccs_init(p, INIT_MUSTEXIST)) {
-		if (flags & ALIAS_PENDING) {
+		if (n->pending) {
 			assert(!rev);
 		} else {
-			csetrev = aprintf("@%s", rev ? rev : "+");
+			csetrev = aprintf("@%s", n->rev ? n->rev : "+");
 		}
-		if ((flags & ALIAS_PENDING) && HAS_GFILE(s)) {
+		if (n->pending && HAS_GFILE(s)) {
 			ret = hash_fromFile(0, s->gfile);
 		} else {
 			bktmp(tmp, "aliasdb");
@@ -343,47 +343,40 @@ aliasdb_init(char *rev, u32 flags)
 	} else if (flags & ALIAS_PENDING) {
 		ret = hash_fromFile(0, buf); /* may have gfile */
 	}
+	free(p);
 	return (ret);
 }
 
 private char **
 aliasdb_show(char *alias, int present, int paths)
 {
-	aliases	*mdb = 0;
-	sccs	*cset = 0;		/* cache it */
-	char	**aliases = 0, **result = 0;
-	hash	*h;
-	char	buf[MAXPATH];
+	nest	*n = 0;
+	comp	*c;
+	char	**list = 0;
 
-	concat_path(buf, proj_root(proj_product(0)), CHANGESET);
-	unless (cset = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT)) return (0);
-	unless (mdb = aliases_init(cset, 0, ALIAS_PENDING)) goto out;
-	unless (hash_fetchStr(mdb->aliasDB, alias)) goto out;
-	if (present) {
-		aliases = addLine(0, alias);
-		unless (h =
-		    alias_hash(aliases, cset, 0, (ALIAS_HERE|ALIAS_PENDING))) {
-			result = INVALID;
+	n = nest_init(0, 0, 0, NESTED_PENDING);
+	list = addLine(0, alias);
+	// XXX: handle errors
+	(void)nest_filterAlias(n, list);
+	freeLines(list, 0);
+	list = 0;
+
+	EACH_STRUCT(n->comps, c) {
+		unless (c->nlink) continue;
+		if (present && !c->present) {
+			freeLines(result, free);
+			list = INVALID;
 			goto out;
 		}
-		hash_free(h);
-	}
-	result = splitLine(mdb->aliasDB->vptr, "\r\n", 0);
-	if (paths) {
-		int	i;
-
-		EACH(result) {
-			if (isKey(result[i])) {
-				ensemble_find(mdb->comps, result[i]);
-				free(result[i]);
-				result[i] = aprintf("./%s", mdb->comps->path);
-			}
+		if (paths) {
+			list = addLines(list, strdup(c->path));
+		} else {
+			list = addLines(list, strdup(c->rootkey));
 		}
 	}
-out:	if (mdb) aliases_free(mdb);
-	if (aliases) freeLines(aliases, 0);
-	if (cset) sccs_free(cset);
-	return (result);
+
+out:	nested_free(n);
+	return (list);
 }
 
 /*
@@ -407,7 +400,7 @@ aliasdb_add(char *alias, char **components, int commit)
 	unless (mdb = aliases_init(0, 0, ALIAS_PENDING)) return (1);
 	EACH (components) {
 		if (isKey(components[i])) {
-			unless (ensemble_find(mdb->comps, components[i])) {
+			unless (nested_find(mdb->comps, components[i])) {
 				fprintf(stderr, "%s: not a component key: "
 				    "'%s'\n", prog, components[i]);
 				errors++;
@@ -531,7 +524,7 @@ private int
 value_expand(char *name, aliases *mdb, hash *keys)
 {
 	if (isKey(name)) {
-		unless (ensemble_find(mdb->comps, name)) {
+		unless (nested_find(mdb->comps, name)) {
 			error("%s: key '%s' is not a component\n", prog, name);
 			return (1);
 		}
@@ -614,7 +607,7 @@ private void
 aliases_free(aliases *mdb)
 {
 	assert(mdb);
-	if (mdb->comps) ensemble_free(mdb->comps);
+	if (mdb->comps) nested_free(mdb->comps);
 	if (mdb->aliasDB) hash_free(mdb->aliasDB);
 	if (mdb->seen) hash_free(mdb->seen);
 	free(mdb);
@@ -654,7 +647,7 @@ dir2key(char *dir, aliases *mdb)
 	}
 	dir = proj_relpath(0, dir);
 	if (p) free(p);
-	p = ensemble_dir2key(mdb->comps, dir);
+	p = nested_dir2key(mdb->comps, dir);
 	free(dir);
 	unless (p) return (0);
 	return (strdup(p));

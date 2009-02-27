@@ -179,7 +179,6 @@ cmdlog
 collapse
 comments
 commit
-components
 config
 cp
 _cpartition
@@ -235,6 +234,7 @@ havekeys remote
 help
 helpsearch
 helptopics
+here
 _httpfetch
 hostme
 id remote

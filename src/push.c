@@ -4,7 +4,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "range.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private	struct {
 	u32	doit:1;
@@ -1081,7 +1081,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		ropts.aliases = h;
 	}
 
-	rps = ensemble_list(ropts);
+	rps = nested_list(ropts);
 	START_TRANSACTION();
 	vp = 0;
 	EACH_REPO(rps) {
@@ -1104,14 +1104,14 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		if (rc == -1) {
 			fprintf(stderr, "push: unknown error.\n");
 			freeLines(vp, 0);
-			ensemble_free(rps);
+			nested_free(rps);
 			return (1);
 		}
 		missing = file2Lines(0, tmp);
 		unlink(tmp);
 		free(tmp);
 		EACH(missing) {
-			status = ensemble_find(rps, missing[i]);
+			status = nested_find(rps, missing[i]);
 			assert(status);
 			fprintf(stderr,
 			    "push: component '%s' is missing in source.\n",
@@ -1119,7 +1119,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		}
 		freeLines(vp, 0);
 		freeLines(missing, free);
-		ensemble_free(rps);
+		nested_free(rps);
 		return (1);
 	}
 		
@@ -1163,7 +1163,7 @@ out:
 	sccs_free(cset);
 	if (h) hash_free(h);
 	free(url);
-	ensemble_free(rps);
+	nested_free(rps);
 	STOP_TRANSACTION();
 
 	return (rc);
