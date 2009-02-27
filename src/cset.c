@@ -667,6 +667,12 @@ csetlist(cset_t *cs, sccs *cset)
 		cs->makepatch = 0;
 		goto fail;
 	}
+	if (!cs->mark && hasLocalWork(ALIASES)) {
+		fprintf(stderr,
+		    "cset: must commit local changes to %s\n", ALIASES);
+		cs->makepatch = 0;
+		goto fail;
+	}
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 
 	/* checksum the output */

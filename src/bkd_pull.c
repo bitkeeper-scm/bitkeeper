@@ -160,6 +160,12 @@ cmd_pull_part2(int ac, char **av)
 		out("\n");
 		return (1);
 	}
+	if (hasLocalWork(ALIASES)) {
+		out("ERROR-must commit local changes to ");
+		out(ALIASES);
+		out("\n");
+		return (1);
+	}
 	cset = sccs_csetInit(0);
 	assert(cset && HASGRAPH(cset));
 	if (rev) {

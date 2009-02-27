@@ -93,6 +93,12 @@ cmd_clone(int ac, char **av)
 		out("\n");
 		goto out;
 	}
+	if (hasLocalWork(ALIASES)) {
+		out("ERROR-must commit local changes to ");
+		out(ALIASES);
+		out("\n");
+		goto out;
+	}
 
 	/* moved down here because we're caching the sccs* */
 	if (rev || aliases) {

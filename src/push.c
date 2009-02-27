@@ -146,6 +146,11 @@ push_main(int ac, char **av)
 		    "push: must commit local changes to %s\n", GONE);
 		return (1);
 	}
+	if (hasLocalWork(ALIASES)) {
+		fprintf(stderr,
+		    "push: must commit local changes to %s\n", ALIASES);
+		return (1);
+	}
 
 	unless (urls) {
 		urls = parent_pushp();

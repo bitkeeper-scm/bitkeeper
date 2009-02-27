@@ -97,6 +97,11 @@ rclone_main(int ac, char **av)
 		    "clone: must commit local changes to %s\n", GONE);
 		exit(1);
 	}
+	if (hasLocalWork(ALIASES)) {
+		fprintf(stderr,
+		    "clone: must commit local changes to %s\n", ALIASES);
+		exit(1);
+	}
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
 	r->gzip_in = gzip;
