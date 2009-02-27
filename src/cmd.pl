@@ -179,6 +179,7 @@ cmdlog
 collapse
 comments
 commit
+components => here
 config
 cp
 _cpartition

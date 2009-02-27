@@ -96,6 +96,7 @@ err:				nested_free(n);
 		EACH_KV(cset->mdbm) {
 			unless (componentKey(kv.val.dptr)) continue;
 			c = new(comp);
+			c->n = n;
 			c->rootkey  = strdup(kv.key.dptr);
 			c->deltakey = strdup(kv.val.dptr);
 			c->path     = key2path(c->deltakey, 0);
@@ -154,6 +155,7 @@ err:				nested_free(n);
 		EACH_KV(cset->mdbm) {
 			unless (componentKey(kv.val.dptr)) continue;
 			c = new(comp);
+			c->n = n;
 			c->rootkey  = strdup(kv.key.dptr);
 			c->deltakey = strdup(kv.val.dptr);
 			c->path     = key2path(c->deltakey, 0);
@@ -187,6 +189,7 @@ err:				nested_free(n);
 			if (isComponent(t)) {
 				free(c->path);
 				c->path = strdup(t);
+				c->realpath = 1;
 			}
 		}
 
@@ -232,7 +235,9 @@ err:				nested_free(n);
 			}
 		}
 		assert(d);
+		n->rev = strdup(d->rev);	/* for aliasdb context */
 		c = new(comp);
+		c->n = n;
 		c->rootkey = strdup(proj_rootkey(cset->proj));
 		sccs_sdelta(cset, d, buf);
 		c->deltakey = strdup(buf);
@@ -248,6 +253,8 @@ err:				nested_free(n);
 		} else {
 			list = addLine(list, (void *)c);
 		}
+	} else {
+		if (rev) n->rev = strdup(rev);	/* for aliasdb context */
 	}
 	if (close) {
 		sccs_free(cset);
@@ -255,6 +262,9 @@ err:				nested_free(n);
 		if (revs) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
 	}
 	n->comps = list;
+	if (flags & NESTED_ALIASDB) {
+		n->aliasdb = aliasdb_init(n->rev, (flags & NESTED_PENDING));
+	}
 	return (n);
 }
 
@@ -264,7 +274,14 @@ nested_filterAlias(nested *n, char **aliases)
 	comp	*c;
 	int	i;
 
-	EACH_STRUCT(n->comps, c) c->nlink = 1;
+	unless (n->aliasdb &&
+	    (n->aliasdb = aliasdb_init(n->rev, n->pending))) {
+	    	return (-1);
+	}
+	EACH_STRUCT(n->comps, c) {
+		/* stub this function for now */
+		c->nlink = 1;
+	}
 	return (0);
 }
 
@@ -358,8 +375,9 @@ nested_free(nested *n)
 	unless (n) return;
 	freeLines(n->comps, compFree);
 	if (n->freecset) sccs_free(n->cset);
-	// if (n->aliasdb) -- free it
-	// if (n->compdb) -- free it
+	if (n->aliasdb) aliasdb_free(n->aliasdb);
+	if (n->rev) free(n->rev);
+	// if (n->compdb) hash_free(n->compdb);
 	free(n);
 }
 
@@ -410,6 +428,7 @@ nested_fromStream(nested *n, FILE *f)
 		pr = atoi(buf+3);
 		/* now add it */
 		c = new(comp);
+		c->n = n;
 		c->rootkey = rk;
 		c->deltakey = dk;
 		c->path = pt;
@@ -689,4 +708,18 @@ int
 nested_rmtree(char *dir)
 {
 	return (nestedWalkdir(dir, compRemove));
+}
+
+/*
+ * For future wiring to have an accurate path when you need it.
+ * Getting the right path for error messages (a useful time to
+ * have the right path) may require an extra sccs_get of the cset file.
+ * So do that when the information is needed.
+ */
+char	*
+comppath(comp *c)
+{
+	assert(c->path);
+	// unless (c->realpath) ...
+	return (c->path);
 }

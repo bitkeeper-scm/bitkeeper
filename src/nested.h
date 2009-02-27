@@ -19,6 +19,10 @@
 hash*	alias_hash(char **names, sccs *cset, char *rev, u32 flags);
 char*	alias_md5(char *name, sccs *cset, char *rev, u32 flags);
 
+/* db routines called by alias */
+hash	*aliasdb_init(char *rev, int pending);
+void	aliasdb_free(hash *db);
+
 extern	unsigned int turnTransOff;
 #define	START_TRANSACTION()						\
 	do {								\
@@ -57,22 +61,28 @@ extern	unsigned int turnTransOff;
 #define	NESTED_PRODUCTFIRST	0x40000000
 #define	NESTED_UNDO		0x80000000
 #define	NESTED_DEEPFIRST	0x01000000
+#define	NESTED_ALIASDB		0x02000000	/* build the aliasdb */
+#define	NESTED_LOOKUP		0x04000000	/* fast lookup db built */
+
+typedef struct nested nested;
 
 typedef struct {
+	nested	*n;			// backpointer
 	char	*rootkey;		// rootkey of the repo
 	char	*deltakey;		// deltakey of repo as of rev
-	char	*path;			// actual path to component or null
-					// not path as of 'rev'
+	char	*path;			// actual path: like GFILE, not DPN
+					// use accesor to fetch
 	int	nlink;			// alias link count
 	u32	new:1;			// if set, the undo will remove this
 	u32	present:1;		// if set, the repo is actually here
 	u32	product:1;		// this is the product
+	u32	realpath:1;		// this path is from idDB
 } comp;
 
-typedef struct {
+struct nested {
 	char	**comps;	// addlines of pointers to components
-	char	*rev;		// tip rev
-	char	**revs;		// region of revs to consider (pull, undo)
+	char	*rev;		// new for push and pull, old for undo
+				// used by aliasdb for context
 	sccs	*cset;		// cache of cset file
 	hash	*aliasdb;	// lazy init'd aliasdb
 	hash	*compdb;	// lazy init rk lookup of &n->comp[i]
@@ -83,7 +93,7 @@ typedef struct {
 	u32	deepfirst:1;	// sort such that deeply nested comps are first
 	u32	pending:1;	// include pending component state
 	u32	freecset:1;	// do a sccs_free(cset) in nested_free()
-} nested;
+};
 
 /*
  * XXX: who frees the revs list? Is this a pass off or ?
@@ -102,5 +112,7 @@ char	*nested_dir2key(nested *n, char *dir);
 void	nested_compFree(void *x);
 int	nested_each(int quiet, int ac, char **av);
 void	nested_check(void);
+
+char	*comp_path(comp *c);
 
 #endif	// _NESTED_H
