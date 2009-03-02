@@ -185,7 +185,7 @@ err:				nested_free(n);
 		 * the idcache so their pathnames may be incorrect.
 		 */
 		if (t = mdbm_fetch_str(idDB, c->rootkey)) {
-			csetChomp(t);
+			csetChomp(t);  // stomps on idDB contents!!
 			if (isComponent(t)) {
 				free(c->path);
 				c->path = strdup(t);
@@ -231,11 +231,18 @@ err:				nested_free(n);
 			flag = D_BLUE;
 			if (flags & NESTED_UNDO) flag = D_SET;
 			for (d = cset->table; d; d = d->next) {
-				if (!TAG(d) && (d->flags & flag)) break;
+				if (TAG(d)) continue;
+				if (d->flags & D_BLUE) {
+					n->tip = strdup(d->rev);
+				}
+				if (d->flags & S_SET) {
+					n->oldtip = strdup(d->rev);
+					break;
+				}
 			}
 		}
 		assert(d);
-		n->rev = strdup(d->rev);	/* for aliasdb context */
+		unless (n->tip) n->tip = strdup(d->rev);
 		c = new(comp);
 		c->n = n;
 		c->rootkey = strdup(proj_rootkey(cset->proj));
@@ -254,7 +261,7 @@ err:				nested_free(n);
 			list = addLine(list, (void *)c);
 		}
 	} else {
-		if (rev) n->rev = strdup(rev);	/* for aliasdb context */
+		if (rev) n->tip = strdup(rev);	/* for aliasdb context */
 	}
 	if (close) {
 		sccs_free(cset);
@@ -263,21 +270,21 @@ err:				nested_free(n);
 	}
 	n->comps = list;
 	if (flags & NESTED_ALIASDB) {
-		n->aliasdb = aliasdb_init(n->rev, (flags & NESTED_PENDING));
+		n->aliasdb = aliasdb_init(n->tip, (flags & NESTED_PENDING));
 	}
 	return (n);
 }
 
+/*
+ * Any error messages are printed to stderr (or bkd) directly
+ * returns -1 if aliases fails to expand
+ */
 int
-nested_filterAlias(nested *n, char **aliases)
+nested_filterAlias(nested *n, hash *aliased, char **aliases)
 {
 	comp	*c;
 	int	i;
 
-	unless (n->aliasdb &&
-	    (n->aliasdb = aliasdb_init(n->rev, n->pending))) {
-	    	return (-1);
-	}
 	EACH_STRUCT(n->comps, c) {
 		/* stub this function for now */
 		c->nlink = 1;
@@ -333,7 +340,7 @@ compSort(const void *a, const void *b)
 }
 
 /* lm3di */
-int
+comp *
 nested_find(nested *n, char *rootkey)
 {
 	comp	*c;
@@ -341,7 +348,7 @@ nested_find(nested *n, char *rootkey)
 
 	assert(n);
 	EACH_STRUCT(n->comps, c) {
-		if (streq(c->rootkey, rootkey)) return (1);
+		if (streq(c->rootkey, rootkey)) return (c);
 	}
 	return (0);
 }
@@ -376,7 +383,8 @@ nested_free(nested *n)
 	freeLines(n->comps, compFree);
 	if (n->freecset) sccs_free(n->cset);
 	if (n->aliasdb) aliasdb_free(n->aliasdb);
-	if (n->rev) free(n->rev);
+	if (n->tip) free(n->tip);
+	if (n->oldtip) free(n->oldtip);
 	// if (n->compdb) hash_free(n->compdb);
 	free(n);
 }
@@ -490,7 +498,7 @@ nested_each(int quiet, int ac, char **av)
 	}
 	if (aliases) {
 		// XXX add error checking when the error paths get made
-		(void)nested_filterAlias(n, aliases);
+		(void)nested_filterAlias(n, 0, aliases);
 		freeLines(aliases, 0);
 		aliases = 0;
 	}

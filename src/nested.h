@@ -73,16 +73,20 @@ typedef struct {
 	char	*path;			// actual path: like GFILE, not DPN
 					// use accesor to fetch
 	int	nlink;			// alias link count
+
+	// bits
+	u32	included:1;		// component modified in 'revs'
 	u32	new:1;			// if set, the undo will remove this
 	u32	present:1;		// if set, the repo is actually here
 	u32	product:1;		// this is the product
+	u32	remotePresent:1;	// scratch for remote present bit
 	u32	realpath:1;		// this path is from idDB
 } comp;
 
 struct nested {
 	char	**comps;	// addlines of pointers to components
-	char	*rev;		// new for push and pull, old for undo
-				// used by aliasdb for context
+	char	*oldtip;	// tip before revs (new tip for undo)
+	char	*tip;		// newest cset in revs
 	sccs	*cset;		// cache of cset file
 	hash	*aliasdb;	// lazy init'd aliasdb
 	hash	*compdb;	// lazy init rk lookup of &n->comp[i]
@@ -104,10 +108,10 @@ int	isComponent(char *path);
 
 nested	*nested_init(sccs *cset, char *rev, char **revs, u32 flags);
 void	nested_free(nested *n);
-int	nested_filterAlias(nested *n, char **aliases);
+int	nested_filterAlias(nested *n, hash *aliasdb, char **aliases);
 nested	*nested_fromStream(nested *n, FILE *in);
 int	nested_toStream(nested *n, FILE *out);
-int	nested_find(nested *n, char *rootkey);
+comp	*nested_find(nested *n, char *rootkey);
 char	*nested_dir2key(nested *n, char *dir);
 void	nested_compFree(void *x);
 int	nested_each(int quiet, int ac, char **av);

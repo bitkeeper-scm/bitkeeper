@@ -327,7 +327,7 @@ aliasdb_init(nested *n)
 		if (n->pending) {
 			assert(!rev);
 		} else {
-			csetrev = aprintf("@%s", n->rev ? n->rev : "+");
+			csetrev = aprintf("@%s", n->tip ? n->tip : "+");
 		}
 		if (n->pending && HAS_GFILE(s)) {
 			ret = hash_fromFile(0, s->gfile);
