@@ -221,15 +221,12 @@ err:				nested_free(n);
 		} else if (had_tip && !(flags & NESTED_UNDO)) {
 			d = tip;
 		} else {			/* push/pull */
-			u32	flag;
 			/*
 			 * Use the latest one, it matches what we do
 			 * in the weave. The newest key will be
 			 * colored D_BLUE while the oldest key will be
 			 * colored D_SET.
 			 */
-			flag = D_BLUE;
-			if (flags & NESTED_UNDO) flag = D_SET;
 			for (d = cset->table; d; d = d->next) {
 				if (TAG(d)) continue;
 				if (d->flags & D_BLUE) {
@@ -270,7 +267,7 @@ err:				nested_free(n);
 	}
 	n->comps = list;
 	if (flags & NESTED_ALIASDB) {
-		n->aliasdb = aliasdb_init(n->tip, (flags & NESTED_PENDING));
+		n->aliasdb = aliasdb_init(0, n->tip, (flags & NESTED_PENDING));
 	}
 	return (n);
 }
@@ -280,14 +277,29 @@ err:				nested_free(n);
  * returns -1 if aliases fails to expand
  */
 int
-nested_filterAlias(nested *n, hash *aliased, char **aliases)
+nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 {
 	comp	*c;
-	int	i;
+	char	**list;
+	int	i, j;
 
-	EACH_STRUCT(n->comps, c) {
-		/* stub this function for now */
-		c->nlink = 1;
+	unless (aliasdb) {
+		unless (n->aliasdb ||
+		    // XXX - do we need a n->proj?
+		    (n->aliasdb = aliasdb_init(0, n->tip, n->pending))) {
+		}
+		aliasdb = n->aliasdb;
+	}
+	// each call resets the counters
+	EACH_STRUCT(n->comps, c) c->nlink = 0;
+	EACH(aliases) {
+		list = aliasdb_expand(aliasdb, aliases[i]);
+		EACH_INDEX(list, j) {
+			c = nested_find(n, list[j]);
+			assert(c);
+			c->nlink += 1;
+		}
+		freeLines(list, 0);	/* keys are pointers into cache */
 	}
 	return (0);
 }

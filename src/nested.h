@@ -20,7 +20,8 @@ hash*	alias_hash(char **names, sccs *cset, char *rev, u32 flags);
 char*	alias_md5(char *name, sccs *cset, char *rev, u32 flags);
 
 /* db routines called by alias */
-hash	*aliasdb_init(char *rev, int pending);
+hash	*aliasdb_init(project *p, char *rev, int pending);
+char	**aliasdb_expand(hash *db, char *alias);
 void	aliasdb_free(hash *db);
 
 extern	unsigned int turnTransOff;

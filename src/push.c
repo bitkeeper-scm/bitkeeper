@@ -1085,7 +1085,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 * remote side's HERE file.
 	 */
 	assert(opts.aliases);
-	h = aliasdb_init(n->oldtip, 0);
+	h = aliasdb_init(0, n->oldtip, 0);
 	if (nested_filterAlias(n, h, opts.aliases) < 0) {
 		// this should pass
 		hash_free(h);
@@ -1096,7 +1096,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	EACH_STRUCT(n->comps, c) {
 		if (c->nlink) c->remotePresent = 1;
 	}
-	h = aliasdb_init(n->tip, 0);
+	h = aliasdb_init(0, n->tip, 0);
 	if (nested_filterAlias(n, h, opts.aliases) < 0) {
 		// this might fail if an alias is not longer valid
 		// XXX error message? (should get something from filterAlias)
