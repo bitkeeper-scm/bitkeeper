@@ -277,7 +277,7 @@ int
 nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 {
 	comp	*c;
-	char	**keys;
+	char	**comps;
 	int	i, j;
 
 	unless (aliases) return (0);
@@ -290,16 +290,10 @@ nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 	}
 	// each call resets the counters
 	EACH_STRUCT(n->comps, c) c->nlink = 0;
-	EACH(aliases) {
-		unless (keys = aliasdb_expand(n, aliasdb, 0, 0, aliases[i])) {
-			return (-1);
-		}
-		EACH_INDEX(keys, j) {
-			c = nested_findKey(n, keys[j]);
-			assert(c);
-			c->nlink += 1;
-		}
-		freeLines(keys, 0);	/* keys are pointers into cache */
+	EACH_INDEX(aliases, j) {
+		comps = aliasdb_expand(n, aliasdb, 0, 0, aliases[j]);
+		if (comps == INVALID) return (1);
+		EACH_STRUCT(comps, c) c->nlink += 1;
 	}
 	return (0);
 }

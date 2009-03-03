@@ -84,9 +84,9 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 	}
 	if (av[optind]) {
 		alias = av[optind++];
-		if ((strcasecmp(alias, "all") == 0) ||
-		    (strcasecmp(alias, "here") == 0) ||
-		    (strcasecmp(alias, "there") == 0)) {
+		if (strieq(alias, "all") ||
+		    strieq(alias, "here") ||
+		    strieq(alias, "there")) {
 		    	reserved = 1;
 		}
 	}
@@ -403,7 +403,7 @@ aliasdb_expand(nested *n, hash *aliasdb, char *cwd, int fix, char *alias)
 	/*
 	 * here and there can not be used inside an alias
 	 */
-	if ((strcasecmp("here", alias)==0) || (strcasecmp("there", alias)==0)) {
+	if (strieq("here", alias) || strieq("there", alias)) {
 		EACH_STRUCT(n->comps, c) {
 			if (c->present) comps = addLine(comps, c);
 		}
@@ -484,16 +484,16 @@ expand(nested *n, hash *aliasdb, hash *keys, hash *seen, char *alias)
 
 	assert(n && aliasdb && keys && seen && alias);
 
-	if ((strcasecmp("here", alias)==0) || (strcasecmp("there", alias)==0)) {
+	if (strieq("here", alias) || strieq("there", alias)) {
 		error("%s: %s not allowed in an alias definition\n",
 		    prog, alias);
 		rc = 1;
-	} else if (strcasecmp("all", alias) == 0) {
+	} else if (strieq("all", alias)) {
 		EACH_STRUCT(n->comps, c) {
 			hash_insertStr(keys, c->rootkey, 0);
 		}
 	} else unless (mval = hash_fetchStr(aliasdb, alias)) {
-		if (strcasecmp("default", alias) == 0) {
+		if (strieq("default", alias)) {
 			rc = expand(n, aliasdb, keys, seen, "all");
 		} else {
 			rc = value(n, keys, alias);
@@ -551,7 +551,13 @@ value(nested *n, hash *keys, char *atom)
 private	char	*
 chkAlias(nested *n, hash *aliasdb, char *cwd, int fix, char *alias)
 {
-	if (hash_fetchStr(aliasdb, alias)) return (alias);
+	if (strieq(alias, "default") ||
+	    strieq(alias, "all") ||
+	    hash_fetchStr(aliasdb, alias)) {
+		if (validName(alias)) return (alias);
+		fprintf(stderr, "%s: invalid alias name %s\n", prog, alias);
+		return(0);
+	}
 	return (chkAtom(n, cwd, fix, alias));
 }
 
@@ -593,8 +599,6 @@ chkAtom(nested *n, char *cwd, int fix, char *atom)
 	} else if (fix && (c = findDir(n, cwd, atom))) {
 		/* directory is a repo, return key; map '.' to product */
 		atom = c->rootkey;
-	} else if (strieq(atom, "default") || strieq(atom, "all")) {
-		/* keywords */
 	} else {
 		fprintf(stderr, "%s: %s must be either a glob, key, "
 		    "or alias.\n", prog, atom);
