@@ -44,12 +44,11 @@ extern	unsigned int turnTransOff;
  * End of crud
  */
 
-#define	NESTED_PENDING		0x10000000
+#define	NESTED_PENDING		0x10000000	/* included pending comps */
 #define	NESTED_PRODUCT		0x20000000
 #define	NESTED_PRODUCTFIRST	0x40000000
 #define	NESTED_UNDO		0x80000000
 #define	NESTED_DEEPFIRST	0x01000000
-#define	NESTED_ALIASDB		0x02000000	/* build the aliasdb */
 #define	NESTED_LOOKUP		0x04000000	/* fast lookup db built */
 
 typedef struct nested nested;

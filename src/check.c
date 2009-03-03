@@ -210,10 +210,8 @@ check_main(int ac, char **av)
 			cp = aprintf("%s/", proj_comppath(0));
 			cplen = strlen(cp);
 		}
-		t = proj_root(0);
-		proj_cd2product();
-		chdir(t);
-		n = nested_init(cset, 0, 0, NESTED_PENDING);
+		n = nested_init(proj_isProduct(0) ? cset : 0,
+		    0, 0, NESTED_PENDING);
 		EACH_STRUCT(n->comps, c) {
 			if (!cp || strneq(c->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
@@ -396,62 +394,41 @@ check_main(int ac, char **av)
 	 * aliases in the middle of a multi-clone */
 	if (!proj_isResync(0) &&
 	    proj_isProduct(0) && !getenv("_BK_TRANSACTION")) {
-		char	**comps;
+		char	**aliases;
+		nested	*n;
+		comp	*c;
+		int	err = 0;
+
 		/*
 		 * check that whatever we have in log/COMPONENTS
 		 * is consistent with what's really here
 		 */
-		unless (comps =
+		unless (aliases =
 		    file2Lines(0, "BitKeeper/log/COMPONENTS")) {
 			fprintf(stderr, "check: no COMPONENTS file found\n");
 			return (1);
 		}
-		unless (1 == 1) {
-		    // XXX check for missing components above
-			unless (fix) {
-				fprintf(stderr,"check: missing components!\n");
-				freeLines(comps, free);
-				return (1);
-			}
-			/*
-			 * We know what's in COMPONENTS is hosed, but
-			 * we can't be clever and try to synthesize an
-			 * alias, so we just "fix it" by putting the paths of
-			 * the special alias "HERE" in COMPONENTS
-			 */
-			freeLines(comps, free);
-			comps = addLine(0, strdup("here"));
-			unless (1 == 1) {
-				// XX: Fixed yet? same function as above
-				fprintf(stderr, "WTF? You're hosed!\n");
-				return (1);
-			}
-			freeLines(comps, free);
-			comps = 0;
-			/* XXX: do we have a key2path that DOESN'T
-			 * need the idDB? */
-			unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
-				perror("idcache");
-				return (1);
-			}
-			if (0){
-				char	*rk;
-				char	*cmp, *path;
-
-				assert(rk);
-
-				cmp = key2path(rk, idDB);
-				t = strrchr(cmp, '/');
-				assert(t);
-				*t = 0;
-				path = aprintf("./%s", cmp);
-				free(cmp);
-				comps = addLine(comps, path);
-			}
-			mdbm_close(idDB);
-			lines2File(comps, "BitKeeper/log/COMPONENTS");
+		n = nested_init(0, 0, 0, NESTED_PENDING);
+		assert(n);
+		if (nested_filterAlias(n, 0, aliases)) {
+			fprintf(stderr, "check: can't expand HERE\n");
+			freeLines(aliases, free);
+			return (1);
 		}
-		freeLines(comps, free);
+		freeLines(aliases, free);
+		EACH_STRUCT(n->comps, c) {
+			if (c->nlink && !c->present) {
+				fprintf(stderr, "check: error expanding aliases as '%s' is not present\n", c->path);
+				err = 1;
+			} else if (!c->nlink && c->present) {
+				fprintf(stderr, "check: comp '%s' is present and shouldn't be.\n", c->path);
+				err = 1;
+			}
+		}
+		if (err) {
+			fprintf(stderr,"check: missing components!\n");
+			return (1);
+		}
 	}
 	sccs_free(cset);
 	cset = 0;

@@ -266,9 +266,6 @@ err:				nested_free(n);
 		if (revs) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
 	}
 	n->comps = list;
-	if (flags & NESTED_ALIASDB) {
-		n->aliasdb = aliasdb_init(0, n->tip, (flags & NESTED_PENDING));
-	}
 	return (n);
 }
 
@@ -294,7 +291,9 @@ nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 	// each call resets the counters
 	EACH_STRUCT(n->comps, c) c->nlink = 0;
 	EACH(aliases) {
-		keys = aliasdb_expand(n, aliasdb, 0, 0, aliases[i]);
+		unless (keys = aliasdb_expand(n, aliasdb, 0, 0, aliases[i])) {
+			return (-1);
+		}
 		EACH_INDEX(keys, j) {
 			c = nested_findKey(n, keys[j]);
 			assert(c);
@@ -531,7 +530,8 @@ nested_each(int quiet, int ac, char **av)
 		aliases = 0;
 	}
 	EACH_STRUCT(n->comps, cp) {
-		unless (cp->present && cp->nlink) continue;
+		unless (cp->present) continue;
+		if (aliases && !cp->nlink) continue;
 		unless (quiet) {
 			printf("#### %s ####\n", cp->path);
 			fflush(stdout);

@@ -593,6 +593,8 @@ chkAtom(nested *n, char *cwd, int fix, char *atom)
 	} else if (fix && (c = findDir(n, cwd, atom))) {
 		/* directory is a repo, return key; map '.' to product */
 		atom = c->rootkey;
+	} else if (strieq(atom, "default") || strieq(atom, "all")) {
+		/* keywords */
 	} else {
 		fprintf(stderr, "%s: %s must be either a glob, key, "
 		    "or alias.\n", prog, atom);
