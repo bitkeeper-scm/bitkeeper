@@ -1053,7 +1053,7 @@ apply:
 			// if it's here, no worries.
 			if (c->present) continue;
 			// if they don't have it then no worries
-			unless (nested_find(remote, c->rootkey)) continue;
+			unless (nested_findKey(remote, c->rootkey)) continue;
 			// OK, worry.
 			fprintf(stderr,
 			    "\n\nUnable to resolve conflict "

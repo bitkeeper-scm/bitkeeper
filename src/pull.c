@@ -33,7 +33,7 @@ private struct {
 } opts;
 
 private int	pull(char **av, remote *r, char **envVar);
-private int	pull_ensemble(repos *rps, remote *r);
+private int	pull_ensemble(nested *n, remote *r);
 private void	resolve_comments(remote *r);
 private	int	resolve(void);
 private	int	takepatch(remote *r);
@@ -581,22 +581,22 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		rc = 0;
 	} else if (streq(buf, "@ENSEMBLE@")) {
 		/* we're pulling from a product */
-		repos	*repos;
+		nested	*nest;
 
 		unless (r->rf) r->rf = fdopen(r->rfd, "r");
-		unless (repos = nested_fromStream(0, r->rf)) {
+		unless (nest = nested_fromStream(0, r->rf)) {
 			fprintf(stderr, "Could not read ensemble list\n");
 			putenv("BK_STATUS=FAILED");
 			rc = 1;
 			goto done;
 		}
 		repository_unlock(0);
-		if (rc = pull_ensemble(repos, r)) {
+		if (rc = pull_ensemble(nest, r)) {
 			putenv("BK_STATUS=FAILED");
 		} else {
 			putenv("BK_STATUS=OK");
 		}
-		nested_free(repos);
+		nested_free(nest);
 	} else {
 		fprintf(stderr, "protocol error: <%s>\n", buf);
 		while (getline2(r, buf, sizeof(buf)) > 0) {
@@ -612,12 +612,13 @@ done:	unlink(probe_list);
 }
 
 private int
-pull_ensemble(repos *rps, remote *r)
+pull_ensemble(nested *n, remote *r)
 {
 	char	*url;
 	char	**vp;
 	char	*name, *path;
 	char	**comps = 0;
+	comp	*c;
 	MDBM	*idDB;
 	FILE	*f, *idfile;
 	int	i, rc = 0, missing = 0, product;
@@ -626,10 +627,10 @@ pull_ensemble(repos *rps, remote *r)
 	url = remote_unparse(r);
 	START_TRANSACTION();
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	EACH_REPO (rps) {
-		if (rps->present) continue;
+	EACH_STRUCT (n->comps, c) {
+		if (c->present) continue;
 		fprintf(stderr,
-		    "pull: %s is missing in %s\n", rps->path, url);
+		    "pull: %s is missing in %s\n", c->path, url);
 		missing++;
 	}
 	if (missing) {
@@ -639,14 +640,14 @@ pull_ensemble(repos *rps, remote *r)
 		rc = 1;
 		goto out;
 	}
-	EACH_REPO (rps) {
+	EACH_STRUCT (n->comps, c) {
 		product = 0;
 		proj_cd2product();
-		if (streq(rps->path, ".")) {
+		if (streq(c->path, ".")) {
 			name = "Product";
 			product = 1;
 		} else {
-			name = rps->path;
+			name = c->path;
 			product = 0;
 		}
 		unless (opts.quiet) {
@@ -654,7 +655,7 @@ pull_ensemble(repos *rps, remote *r)
 			fflush(stdout);
 		}
 		vp = addLine(0, strdup("bk"));
-		if (rps->new) {
+		if (c->new) {
 			vp = addLine(vp, strdup("clone"));
 			EACH(opts.av_clone) {
 				vp = addLine(vp, strdup(opts.av_clone[i]));
@@ -663,9 +664,9 @@ pull_ensemble(repos *rps, remote *r)
 			unless (product) {
 				/* we can't assume the component is in the same
 				 * path here than in the remote location */
-				unless (path = key2path(rps->rootkey, idDB)) {
+				unless (path = key2path(c->rootkey, idDB)) {
 					fprintf(stderr, "Could not find "
-					    "component '%s'\n", rps->path);
+					    "component '%s'\n", c->path);
 					goto err;
 				}
 				csetChomp(path);
@@ -678,7 +679,7 @@ err:					fprintf(stderr, "Could not chdir to "
 					rc = 1;
 					break;
 				}
-				comps = addLine(comps, strdup(rps->path));
+				comps = addLine(comps, strdup(c->path));
 				comps = addLine(comps, path);
 			}
 			vp = addLine(vp, strdup("pull"));
@@ -689,9 +690,9 @@ err:					fprintf(stderr, "Could not chdir to "
 				vp = addLine(vp, strdup(opts.av_pull[i]));
 			}
 		}
-		vp = addLine(vp, aprintf("-r%s", rps->deltakey));
-		vp = addLine(vp, aprintf("%s/%s", url, rps->path));
-		if (rps->new) vp = addLine(vp, strdup(rps->path));
+		vp = addLine(vp, aprintf("-r%s", c->deltakey));
+		vp = addLine(vp, aprintf("%s/%s", url, c->path));
+		if (c->new) vp = addLine(vp, strdup(c->path));
 		vp = addLine(vp, 0);
 		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
 			fprintf(stderr, "Pulling %s failed\n", name);

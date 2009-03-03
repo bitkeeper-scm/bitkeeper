@@ -283,35 +283,24 @@ err:			out("ERROR-protocol error in aliases\n");
 	}
 
 	if (!tid && proj_isProduct(0)) {
-		repos	*r;
-		eopts	opts;
+		nested	*n;
 		char	**k = 0;
+		u32	flags = NESTED_PRODUCT|NESTED_PRODUCTFIRST;
 
-		bzero(&opts, sizeof(eopts));
-		opts.product = 1;
-		opts.product_first = 1;
 		unless (k = file2Lines(0, keys)) {
 			out("ERROR-Could not read list of keys");
 			rc = 1;
 			goto done;
 		}
-		opts.revs = k;
 		if (aliases) {
-			opts.sc = sccs_csetInit(SILENT);
-			unless (opts.aliases =
-			    alias_hash(aliases, opts.sc, rev, ALIAS_HERE)) {
-				printf("ERROR-unable to expand aliases.\n");
-				rc = 1;
-				goto done;
-			}
+			// XXX: error check for here
 		}
-		r = nested_list(opts);
+		n = nested_init(0, 0, k, flags);
+		nested_filterAlias(n, 0, aliases);
 		printf("@ENSEMBLE@\n");
-		nested_toStream(r, stdout);
+		nested_toStream(n, stdout);
 		freeLines(k, free);
-		if (opts.aliases) hash_free(opts.aliases);
-		sccs_free(opts.sc);
-		nested_free(r);
+		nested_free(n);
 		goto done;
 	}
 	fputs("@PATCH@\n", stdout);

@@ -48,7 +48,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 {
 	nested	*n = 0;
 	comp	*c = 0;
-	delta	*d, *tip;
+	delta	*d, *tip = 0;
 	int	i;
 	char	**list = 0;	/* really comps **list */
 	char	*t, *v;
@@ -280,9 +280,10 @@ int
 nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 {
 	comp	*c;
-	char	**list;
+	char	**keys;
 	int	i, j;
 
+	unless (aliases) return (0);
 	unless (aliasdb) {
 		unless (n->aliasdb ||
 		    // XXX - do we need a n->proj?
@@ -293,13 +294,13 @@ nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 	// each call resets the counters
 	EACH_STRUCT(n->comps, c) c->nlink = 0;
 	EACH(aliases) {
-		list = aliasdb_expand(aliasdb, aliases[i]);
-		EACH_INDEX(list, j) {
-			c = nested_find(n, list[j]);
+		keys = aliasdb_expand(n, aliasdb, 0, 0, aliases[i]);
+		EACH_INDEX(keys, j) {
+			c = nested_findKey(n, keys[j]);
 			assert(c);
 			c->nlink += 1;
 		}
-		freeLines(list, 0);	/* keys are pointers into cache */
+		freeLines(keys, 0);	/* keys are pointers into cache */
 	}
 	return (0);
 }
@@ -351,9 +352,24 @@ compSort(const void *a, const void *b)
 	return (strcmp(l->path, r->path));
 }
 
+comp	*
+nested_findMD5(nested *n, char *md5rootkey)
+{
+	comp	*c;
+	int	i;
+	char	buf[MD5LEN];
+
+	assert(n);
+	EACH_STRUCT(n->comps, c) {
+		sccs_key2md5(c->rootkey, c->rootkey, buf);
+		if (streq(buf, md5rootkey)) return (c);
+	}
+	return (0);
+}
+
 /* lm3di */
-comp *
-nested_find(nested *n, char *rootkey)
+comp	*
+nested_findKey(nested *n, char *rootkey)
 {
 	comp	*c;
 	int	i;
@@ -365,15 +381,15 @@ nested_find(nested *n, char *rootkey)
 	return (0);
 }
 
-char	*
-nested_dir2key(nested *n, char *dir)
+comp	*
+nested_findDir(nested *n, char *dir)
 {
 	comp	*c;
 	int	i;
 
 	unless (n && dir) return (0);
 	EACH_STRUCT(n->comps, c) {
-		if (streq(dir, c->path)) return (c->rootkey);
+		if (streq(dir, c->path)) return (c);
 	}
 	return (0);
 }

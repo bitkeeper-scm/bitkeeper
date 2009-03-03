@@ -15,11 +15,11 @@ populate_main(int ac, char **av)
 	char	**vp = 0;
 	char	**cav = 0;
 	char	*checkfiles;
+	comp	*cp;
 	FILE	*f;
 	int	status, rc;
 	sccs	*s;
-	eopts	opts = {0};
-	repos	*repos;
+	nested	*n;
 	hash	*done;
 
 	unless (start_cwd) start_cwd = strdup(proj_cwd());
@@ -81,59 +81,52 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 		aliases = addLine(0, strdup("default"));
 	}
 	s = sccs_csetInit(SILENT);
-	if (aliases) {
-		unless (opts.aliases =
-		    alias_hash(aliases, s, 0, ALIAS_PENDING)) {
-			return (1);
-		}
-	}
-	opts.rev = "+";
-	opts.sc = s;
-	repos = nested_list(opts);
+	n = nested_init(s, 0, 0, 0);
+	nested_filterAlias(n, 0, aliases);
 	START_TRANSACTION();
 	done = hash_new(HASH_MEMHASH);
 	EACH (urls) {
 		url = urls[i];
-		EACH_REPO (repos) {
-			if (repos->present) {
+		EACH_STRUCT(n->comps, cp) {
+			if (cp->present) {
 				unless (quiet) {
 					fprintf(stderr,
 					    "populate: %s is already here.\n",
-					    repos->path);
+					    cp->path);
 				    	}
 				continue;
 			}
-			if (hash_fetchStr(done, repos->path)) continue;
+			if (hash_fetchStr(done, cp->path)) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("clone"));
 			EACH_INDEX(cav, j) vp = addLine(vp, strdup(cav[j]));
-			vp = addLine(vp, aprintf("-r%s", repos->deltakey));
+			vp = addLine(vp, aprintf("-r%s", cp->deltakey));
 			vp = addLine(vp, aprintf("%s?ROOTKEY=%s",
-				url, repos->rootkey));
-			vp = addLine(vp, strdup(repos->path));
+				url, cp->rootkey));
+			vp = addLine(vp, strdup(cp->path));
 			vp = addLine(vp, 0);
 			status = spawnvp(_P_WAIT, "bk", vp + 1);
 			freeLines(vp, free);
 			clonerc = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 			if (clonerc == 0) {
-				hash_storeStr(done, repos->path, 0);
+				hash_storeStr(done, cp->path, 0);
 			} else if (clonerc == 2) {
 				/* failed because the dir was not empty */
 			} else {
 				/* failed and left crud */
-				nested_rmtree(repos->path);
+				nested_rmtree(cp->path);
 			}
 		}
 	}
 	freeLines(cav, free);
 	rc = 0;
-	EACH_REPO (repos) {
-		if (repos->present) continue;
-		if (hash_fetchStr(done, repos->path)) continue;
-		fprintf(stderr, "populate: failed to fetch %s\n", repos->path);
+	EACH_STRUCT(n->comps, cp) {
+		if (cp->present) continue;
+		if (hash_fetchStr(done, cp->path)) continue;
+		fprintf(stderr, "populate: failed to fetch %s\n", cp->path);
 		rc = 1;
 	}
-	nested_free(repos);
+	nested_free(n);
 	sccs_free(s);
 
 	if (hash_first(done)) {
@@ -182,162 +175,5 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 int
 unpopulate_main(int ac, char **av)
 {
-	int	c, i;
-	char	*buf, *cmd;
-	char	**list = 0, **new_alias = 0;
-	hash	*h = 0;
-	hash	*alias_unwanted = 0, *alias_wanted = 0;
-	hash	*comps_wanted = 0, *comps_unwanted = 0;
-	FILE	*f;
-	eopts	op = {0};
-	repos	*comps = 0;
-	sccs	*s = 0;
-	int	quiet = 0, force = 0, rc = 1;
-
-	alias_unwanted = hash_new(HASH_MEMHASH);
-	while ((c = getopt(ac, av, "fqs;")) != -1) {
-		switch (c) {
-		    case 's':
-			hash_insertStr(alias_unwanted, optarg, 0);
-			break;
-		    case 'f': force = 1; break;
-		    case 'q': quiet = 1; break;
-		    default:
-			sys("bk", "help", "-s", "unpopulate", SYS);
-			goto out;
-		}
-	}
-	if (proj_cd2product()) {
-		fprintf(stderr, "%s: must be called in a product.\n", prog);
-		goto out;
-	}
-
-	unless (hash_first(alias_unwanted)) {
-		hash_insertStr(alias_unwanted, "default", 0);
-	}
-
-	alias_wanted = hash_new(HASH_MEMHASH);
-	if (f = fopen("BitKeeper/log/COMPONENTS", "r")) {
-		while (buf=fgetline(f)) hash_insertStr(alias_wanted, buf, 0);
-		fclose(f);
-	} else {
-		hash_insertStr(alias_wanted, "default", 0);
-	}
-
-	/*
-	 * This next 'if' says that you cannot unpopulate aliases that
-	 * are not in the COMPONENTS file. It is an arbitrary restriction that
-	 * I think is unnecessary. lm3di :)
-	 */
-	h = hash_new(HASH_MEMHASH);
-	if (hash_keyDiff3(alias_unwanted, alias_wanted, h) > 0) {
-		fprintf(stderr, "%s: cannot remove ", prog);
-		i = 0;
-		EACH_HASH(h) {
-			fprintf(stderr, "'%s' ", h->kptr);
-			i++;
-		}
-		fprintf(stderr, "because %s not populated.\n",
-		    (i > 1)? "they are" : "it is");
-		goto out;
-	}
-
-	unless (s = sccs_csetInit(SILENT)) goto out;
-
-	if (hash_keyDiff(alias_wanted, alias_unwanted) > 0) {
-		/* turn to keys */
-		new_alias = 0;
-		EACH_HASH(alias_wanted) {
-			new_alias=addLine(new_alias, (char*)alias_wanted->kptr);
-		}
-		comps_wanted = alias_hash(new_alias, s, 0, ALIAS_PENDING);
-		unless (comps_wanted) goto out;
-	} else {
-		/* we want nothing */
-		comps_wanted = hash_new(HASH_MEMHASH);
-	}
-
-	list = 0;
-	EACH_HASH(alias_unwanted) {
-		list = addLine(list, (char*)alias_unwanted->kptr);
-	}
-	comps_unwanted = alias_hash(list, s, 0, ALIAS_PENDING);
-	freeLines(list, 0);
-	list = 0;
-	unless (comps_unwanted) goto out;
-
-	hash_keyDiff(comps_unwanted, comps_wanted);
-
-	op.sc = s;
-	op.rev = "+";
-	op.deepfirst = 1;
-	op.aliases = comps_unwanted;
-
-	comps = nested_list(op);
-	START_TRANSACTION();
-	/*
-	 * Two passes, the first one to see if it would work, the second
-	 * one to actually remove them.
-	 */
-	unless (force) {
-		EACH_REPO(comps) {
-			unless (comps->present) continue;
-			if (chdir(comps->path)) {
-				perror(comps->path);
-				continue; /* maybe error? */
-			}
-			buf = bktmp(0, prog);
-			cmd = aprintf("bk superset > '%s'", buf);
-			if (system(cmd)) {
-				fprintf(stderr, "%s: component '%s' "
-				    "has local changes, not removing.\n",
-				    prog, comps->path);
-				cat(buf);
-				unlink(buf);
-				free(buf);
-				free(cmd);
-				goto out;
-			}
-			unlink(buf);
-			free(buf);
-			free(cmd);
-			proj_cd2product();
-		}
-	}
-	i = 0;
-	EACH_REPO(comps) {
-		unless (comps->present) {
-			unless (quiet) {
-				fprintf(stderr, "%s: %s not present.\n",
-				    prog, comps->path);
-			}
-			continue;
-		}
-		unless (quiet) printf("Removing '%s'.\n", comps->path);
-		i++;
-		if (nested_rmtree(comps->path)) {
-			fprintf(stderr, "Failed to remove '%s'\n", comps->path);
-			goto out;
-		};
-		rmdir(comps->path); /* ok if it fails */
-	}
-	unless (i) {
-		unless (quiet) printf("%s: no components removed.\n", prog);
-	}
-	/* update COMPONENTS file */
-	sortLines(new_alias, 0);
-	if (lines2File(new_alias, "BitKeeper/log/COMPONENTS")) {
-		perror("BitKeeper/log/COMPONENTS");
-	}
-	STOP_TRANSACTION();
-	rc = 0;
-out:	if (alias_unwanted) hash_free(alias_unwanted);
-	if (alias_wanted) hash_free(alias_wanted);
-	if (h) hash_free(h);
-	if (s) sccs_free(s);
-	if (new_alias) freeLines(new_alias, 0);
-	if (comps_wanted) hash_free(comps_wanted);
-	if (comps_unwanted) hash_free(comps_unwanted);
-	if (comps) nested_free(comps);
-	return (rc);
+	return (0);
 }

@@ -214,22 +214,23 @@ send_clone_msg(remote *r, char **envVar)
 }
 
 private int
-clone_ensemble(repos *repos, remote *r, char *local)
+clone_ensemble(nested *nest, remote *r, char *local)
 {
 	char	*url;
 	char	**vp;
 	char	*name, *path;
+	comp	*c;
 	int	status, i, n, which, rc = 0;
 
 	url = remote_unparse(r);
 	START_TRANSACTION();
 	n = 0;
-	EACH_REPO(repos) {
-		unless (repos->present) {
+	EACH_STRUCT(nest->comps, c) {
+		unless (c->present) {
 			if (opts->aliases && !opts->quiet) {
 				fprintf(stderr,
 				    "clone: %s not present in %s\n",
-				    repos->path, url);
+				    c->path, url);
 				rc = 1;
 			}
 			continue;
@@ -238,15 +239,15 @@ clone_ensemble(repos *repos, remote *r, char *local)
 	}
 	if (rc) goto out;
 	which = 1;
-	EACH_REPO(repos) {
-		if (streq(repos->path, ".")) {
+	EACH_STRUCT(nest->comps, c) {
+		if (streq(c->path, ".")) {
 			putenv("_BK_PRODUCT=1");
 			safe_putenv("_BK_REPO_PREFIX=%s", basenm(local));
 		} else {
-			name = repos->path;
+			name = c->path;
 			putenv("_BK_PRODUCT=");
 			safe_putenv("_BK_REPO_PREFIX=%s/%s",
-			    basenm(local), repos->path);
+			    basenm(local), c->path);
 		}
 		name = getenv("_BK_REPO_PREFIX");
 
@@ -258,9 +259,9 @@ clone_ensemble(repos *repos, remote *r, char *local)
 		vp = addLine(0, strdup("bk"));
 		vp = addLine(vp, strdup("clone"));
 		EACH(opts->av) vp = addLine(vp, strdup(opts->av[i]));
-		vp = addLine(vp, aprintf("-r%s", repos->deltakey));
-		vp = addLine(vp, aprintf("%s/%s", url, repos->path));
-		path = aprintf("%s/%s", local, repos->path);
+		vp = addLine(vp, aprintf("-r%s", c->deltakey));
+		vp = addLine(vp, aprintf("%s/%s", url, c->path));
+		path = aprintf("%s/%s", local, c->path);
 		vp = addLine(vp, path);
 		vp = addLine(vp, 0);
 		status = spawnvp(_P_WAIT, "bk", &vp[1]);
@@ -283,6 +284,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	char	*lic;
 	int	rc = 2, do_part2;
 	int	(*empty)(char*);
+	int	i;
 
 	if (getenv("_BK_TRANSACTION")) {
 		empty = nested_emptyDir;
@@ -367,13 +369,14 @@ clone(char **av, remote *r, char *local, char **envVar)
 	}
 	if (streq(buf, "@ENSEMBLE@")) {
 		/* we're cloning a product...  */
-		repos	*repos;
+		nested	*n;
+		comp	*c;
 		char	*checkfiles;
 		FILE	*f;
 
 		unless (r->rf) r->rf = fdopen(r->rfd, "r");
-		unless (repos = nested_fromStream(0, r->rf)) goto done;
-		rc = clone_ensemble(repos, r, local);
+		unless (n = nested_fromStream(0, r->rf)) goto done;
+		rc = clone_ensemble(n, r, local);
 		chdir(local);
 		if (opts->aliases || !exists("BitKeeper/log/COMPONENTS")) {
 			unless (opts->aliases) {
@@ -388,13 +391,13 @@ clone(char **av, remote *r, char *local, char **envVar)
 		checkfiles = bktmp(0, "clonechk");
 		f = fopen(checkfiles, "w");
 		assert(f);
-		EACH_REPO(repos) {
-			unless (streq(".", repos->path)) {
-				fprintf(f, "%s/ChangeSet\n", repos->path);
+		EACH_STRUCT(n->comps, c) {
+			unless (streq(".", c->path)) {
+				fprintf(f, "%s/ChangeSet\n", c->path);
 			}
 		}
 		fclose(f);
-		nested_free(repos);
+		nested_free(n);
 		p = opts->quiet ? "-fT" : "-fTv";
 		rc += run_check(opts->quiet, checkfiles, p, 0);
 		unlink(checkfiles);

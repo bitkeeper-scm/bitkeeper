@@ -134,19 +134,16 @@ rclone_main(int ac, char **av)
 private int
 rclone_ensemble(remote *r)
 {
-	eopts	ropts;
-	repos	*rps = 0;
+	nested	*n = 0;
+	comp	*c;
 	sccs	*cset;
 	hash	*h = 0;
 	char	**vp;
 	char	*name, *url;
 	int	i, status, rc = 0;
+	u32	flags = NESTED_PRODUCT|NESTED_PRODUCTFIRST;
 
-	bzero(&ropts, sizeof(eopts));
 	url = remote_unparse(r);
-	ropts.product = 1;
-	ropts.product_first = 1;
-	ropts.rev = opts.rev;
 
 	/*
 	 * Mirror bkd_clone and imply whatever list we have unless they 
@@ -157,21 +154,21 @@ rclone_ensemble(remote *r)
 		opts.aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
 	}
 	unless (opts.aliases) opts.aliases = addLine(0, strdup("default"));
-	unless (h =
-	    alias_hash(opts.aliases, cset, ropts.rev, ALIAS_HERE)){
+	unless (1 == 1 ) {
+		// test to make sure stuff is here
 		rc = 1;
 		goto out;
 	}
-	ropts.aliases = h;
-	rps = nested_list(ropts);
+	n = nested_init(cset, opts.rev, 0, flags);
+	nested_filterAlias(n, 0, opts.aliases);
 	START_TRANSACTION();
-	EACH_REPO(rps) {
+	EACH_STRUCT(n->comps, c) {
 		proj_cd2product();
 		vp = addLine(0, strdup("bk"));
 		vp = addLine(vp, strdup("clone"));
 		EACH(opts.av) vp = addLine(vp, strdup(opts.av[i]));
-		vp = addLine(vp, aprintf("-r%s", rps->deltakey));
-		if (streq(rps->path, ".")) {
+		vp = addLine(vp, aprintf("-r%s", c->deltakey));
+		if (streq(c->path, ".")) {
 			EACH(opts.aliases) {
 				vp = addLine(vp,
 				    aprintf("-s%s", opts.aliases[i]));
@@ -180,18 +177,18 @@ rclone_ensemble(remote *r)
 			vp = addLine(vp, strdup("."));
 			vp = addLine(vp, strdup(url));
 		} else {
-			name = rps->path;
+			name = c->path;
 			vp = addLine(vp, strdup(name));
-			vp = addLine(vp, aprintf("%s/%s", url, rps->path));
+			vp = addLine(vp, aprintf("%s/%s", url, c->path));
 		}
 		vp = addLine(vp, 0);
 		if (opts.verbose) printf("#### %s ####\n", name);
 		fflush(stdout);
-		unless (rps->present) {
+		unless (c->present) {
 			if (opts.aliases && opts.verbose) {
 				fprintf(stderr,
 				    "clone: %s was not found, skipping.\n",
-				    rps->path);
+				    c->path);
 			}
 			freeLines(vp, free);
 			continue;
@@ -212,7 +209,7 @@ rclone_ensemble(remote *r)
 out:	sccs_free(cset);
 	if (h) hash_free(h);
 	free(url);
-	nested_free(rps);
+	nested_free(n);
 	STOP_TRANSACTION();
 	return (rc);
 }

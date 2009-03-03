@@ -2,6 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "nested.h"
 
 typedef	struct cset {
 	/* bits */

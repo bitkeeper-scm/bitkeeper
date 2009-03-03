@@ -198,13 +198,12 @@ check_main(int ac, char **av)
 	 * XXX include pending component renames
 	 */
 	if (proj_isEnsemble(0)) {
-		repos	*r;
-		eopts	el_opts = {0};
+		nested	*n;
 		char	*cp; /* path to this component */
+		comp	*c;
 		int	cplen;
 
 		if (proj_isProduct(0)) {
-			el_opts.sc = cset;
 			cp = 0;
 			cplen = 0;
 		} else {
@@ -214,16 +213,15 @@ check_main(int ac, char **av)
 		t = proj_root(0);
 		proj_cd2product();
 		chdir(t);
-		el_opts.pending = 1;
-		r = nested_list(el_opts);
-		EACH_REPO(r) {
-			if (!cp || strneq(r->path, cp, cplen)) {
+		n = nested_init(cset, 0, 0, NESTED_PENDING);
+		EACH_STRUCT(n->comps, c) {
+			if (!cp || strneq(c->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
-				    strdup(r->path + cplen));
+				    strdup(c->path + cplen));
 			}
 		}
 		if (cp) free(cp);
-		nested_free(r);
+		nested_free(n);
 	}
 
 	/* This can legitimately return NULL */
@@ -399,7 +397,6 @@ check_main(int ac, char **av)
 	if (!proj_isResync(0) &&
 	    proj_isProduct(0) && !getenv("_BK_TRANSACTION")) {
 		char	**comps;
-		hash	*h;
 		/*
 		 * check that whatever we have in log/COMPONENTS
 		 * is consistent with what's really here
@@ -409,8 +406,8 @@ check_main(int ac, char **av)
 			fprintf(stderr, "check: no COMPONENTS file found\n");
 			return (1);
 		}
-		unless (h =
-		    alias_hash(comps, cset, 0, (ALIAS_HERE|ALIAS_PENDING))) {
+		unless (1 == 1) {
+		    // XXX check for missing components above
 			unless (fix) {
 				fprintf(stderr,"check: missing components!\n");
 				freeLines(comps, free);
@@ -424,8 +421,8 @@ check_main(int ac, char **av)
 			 */
 			freeLines(comps, free);
 			comps = addLine(0, strdup("here"));
-			unless (h = alias_hash(
-			    comps, cset, 0, ALIAS_HERE|ALIAS_PENDING)) {
+			unless (1 == 1) {
+				// XX: Fixed yet? same function as above
 				fprintf(stderr, "WTF? You're hosed!\n");
 				return (1);
 			}
@@ -437,8 +434,8 @@ check_main(int ac, char **av)
 				perror("idcache");
 				return (1);
 			}
-			EACH_HASH(h) {
-				char	*rk = (char*)h->kptr;
+			if (0){
+				char	*rk;
 				char	*cmp, *path;
 
 				assert(rk);
@@ -455,7 +452,6 @@ check_main(int ac, char **av)
 			lines2File(comps, "BitKeeper/log/COMPONENTS");
 		}
 		freeLines(comps, free);
-		hash_free(h);
 	}
 	sccs_free(cset);
 	cset = 0;

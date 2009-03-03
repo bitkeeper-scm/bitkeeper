@@ -114,11 +114,7 @@ cmd_clone(int ac, char **av)
 			}
 		}
 		if (aliases) {
-			h = alias_hash(aliases, s, rev, ALIAS_HERE);
-			freeLines(aliases, free);
-			unless (h) {
-				goto out;
-			}
+			/* XXX make sure everything is here */
 		}
 	}
 
@@ -143,19 +139,14 @@ cmd_clone(int ac, char **av)
 	}
 	if (trigger(av[0], "pre")) goto out;
 	if (!tid && proj_isProduct(0)) {
-		repos	*r;
-		eopts	opts;
+		nested	*n;
+		u32	flags = NESTED_PRODUCT|NESTED_PRODUCTFIRST;
 
-		bzero(&opts, sizeof(eopts));
-		opts.product = 1;
-		opts.product_first = 1;
-		opts.rev = rev;
-		opts.sc = s;
-		opts.aliases = h;
-		r = nested_list(opts);
+		n = nested_init(s, rev, 0, flags);
+		nested_filterAlias(n, 0, aliases);
 		printf("@ENSEMBLE@\n");
-		nested_toStream(r, stdout);
-		nested_free(r);
+		nested_toStream(n, stdout);
+		nested_free(n);
 		rc = 0;
 		goto out;
 	}
