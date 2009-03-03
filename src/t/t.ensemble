@@ -58,14 +58,14 @@ echo OK
 echo $N Add some components .........................................$NL
 bk clone $Q ../gcc gcc
 bk clone $Q ../gdb gdb
-bk attach -C $Q gcc gdb
+bk attach -C $Q gcc gdb || exit 1
 bk sfiles -p > GOT
 cat > WANT <<EOF
 gcc/SCCS/s.ChangeSet
 gdb/SCCS/s.ChangeSet
 EOF
 cmpfiles WANT GOT
-bk commit $Q -y'gcc & gdb'
+bk commit $Q -y'gcc & gdb' || exit 1
 cd gcc
 test "`bk product`" = "This is a component." || {
 	echo failed to make it a component
@@ -132,12 +132,13 @@ echo OK
 
 echo $N Test that a comp in a prod in a prod gets the right prod ....$NL
 cd "$HERE/project"
-commercial subproduct
-echo 'default' > BitKeeper/log/COMPONENTS
-bk newroot $Q -P
+touch c
+bk setup -P -f -cc subproduct || exit 1
+rm c
+cd subproduct
 commercial comp
 cd ..
-bk attach $Q comp
+bk attach $Q comp || exit 1
 cd comp
 echo comp > WANT
 bk -P sfiles -R > GOT
@@ -441,8 +442,9 @@ echo OK
 
 echo $N Make sure check will fail if a component is removed .........$NL
 mv gdb "$HERE/gdb.save"
-bk -r check -ac >ERR 2>&1 && {
-	echo failed
+bk -r check -ac 2>ERR && {
+	echo should have failed
+	cat ERR
 	exit 1
 }
 echo OK

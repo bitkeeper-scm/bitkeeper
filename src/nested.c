@@ -48,11 +48,11 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 {
 	nested	*n = 0;
 	comp	*c = 0;
-	delta	*d, *tip = 0;
+	delta	*d;
 	int	i;
 	char	**list = 0;	/* really comps **list */
 	char	*t, *v;
-	int	had_tip = 0, close = 0;
+	int	close = 0;
 	FILE	*pending;
 	MDBM	*idDB = 0;
 	kvpair	kv;
@@ -79,9 +79,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	assert(CSET(cset) && proj_isProduct(cset->proj));
 
 	if (revs) {
-		/* Tip only means something in non-takepatch */
 		unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
-		tip = sccs_top(cset);
 		EACH(revs) {
 			unless (d = sccs_findrev(cset, revs[i])) {
 				fprintf(stderr,
@@ -90,7 +88,6 @@ err:				nested_free(n);
 				return (0);
 			}
 			d->flags |= (D_SET|D_BLUE);
-			if (d == tip) had_tip = 1;
 		}
 		if (sccs_cat(cset, GET_HASHONLY, 0)) goto err;
 		EACH_KV(cset->mdbm) {
@@ -218,8 +215,6 @@ err:				nested_free(n);
 	if (flags & NESTED_PRODUCT) {
 		unless (revs) {		/* undo / [r]clone/ push */
 			d = sccs_findrev(cset, rev);
-		} else if (had_tip && !(flags & NESTED_UNDO)) {
-			d = tip;
 		} else {			/* push/pull */
 			/*
 			 * Use the latest one, it matches what we do
@@ -229,13 +224,18 @@ err:				nested_free(n);
 			 */
 			for (d = cset->table; d; d = d->next) {
 				if (TAG(d)) continue;
-				if (d->flags & D_BLUE) {
+				if (!(n->tip) && (d->flags & D_BLUE)) {
 					n->tip = strdup(d->rev);
 				}
-				if (d->flags & S_SET) {
+				if (d->flags & D_SET) {
 					n->oldtip = strdup(d->rev);
 					break;
 				}
+			}
+			if (flags & NESTED_UNDO) {
+				d = sccs_findrev(cset, n->oldtip);
+			} else {
+				d = sccs_findrev(cset, n->tip);
 			}
 		}
 		assert(d);
