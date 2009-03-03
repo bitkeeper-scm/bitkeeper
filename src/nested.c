@@ -276,9 +276,14 @@ err:				nested_free(n);
 int
 nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 {
-	char	**comps = aliasdb_expand(n, aliasdb, aliases);
+	char	**comps;
+	int	i;
+	comp	*c;
 
-	return (comps == INVALID);
+	unless (comps = aliasdb_expand(n, aliasdb, aliases)) return (-1);
+	EACH_STRUCT(comps, c) c->alias = 1;
+	freeLines(comps, 0);
+	return (0);
 }
 
 /*

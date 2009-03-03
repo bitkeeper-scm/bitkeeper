@@ -394,34 +394,47 @@ check_main(int ac, char **av)
 	 * aliases in the middle of a multi-clone */
 	if (!proj_isResync(0) &&
 	    proj_isProduct(0) && !getenv("_BK_TRANSACTION")) {
-		char	**aliases;
+		char	**aliases, **comps;
 		nested	*n;
 		comp	*c;
-		int	err = 0;
+		int	j, err = 0;
 
 		/*
 		 * check that whatever we have in log/COMPONENTS
 		 * is consistent with what's really here
 		 */
-		unless (aliases =
-		    file2Lines(0, "BitKeeper/log/COMPONENTS")) {
-			fprintf(stderr, "check: no COMPONENTS file found\n");
+		unless (aliases = file2Lines(0, "BitKeeper/log/COMPONENTS")) {
+			fprintf(stderr, "check: no %s file found\n",
+			    "BitKeeper/log/COMPONENTS");
 			return (1);
 		}
 		n = nested_init(0, 0, 0, NESTED_PENDING);
 		assert(n);
-		if (nested_filterAlias(n, 0, aliases)) {
-			fprintf(stderr, "check: can't expand HERE\n");
-			freeLines(aliases, free);
-			return (1);
+		EACH(aliases) {
+			unless (comps = aliasdb_expandOne(n, 0, aliases[i])) {
+				fprintf(stderr,
+				    "check: unable to expand %s from %s\n",
+				    aliases[i], "BitKeeper/log/COMPONENTS");
+			}
+			EACH_STRUCT_INDEX(comps, c, j) {
+				c->alias = 1;
+				unless (c->present) {
+					fprintf(stderr,
+					    "check: error expanding alias '%s' "
+					    "as '%s' is not present\n",
+					    aliases[i], c->path);
+					err = 1;
+				}
+			}
+			freeLines(comps, 0);
 		}
 		freeLines(aliases, free);
 		EACH_STRUCT(n->comps, c) {
-			if (c->nlink && !c->present) {
-				fprintf(stderr, "check: error expanding aliases as '%s' is not present\n", c->path);
-				err = 1;
-			} else if (!c->nlink && c->present) {
-				fprintf(stderr, "check: comp '%s' is present and shouldn't be.\n", c->path);
+			if (!c->alias && c->present) {
+				fprintf(stderr,
+				    "check: comp '%s' is present and "
+				    "not included in current aliases.\n",
+				    c->path);
 				err = 1;
 			}
 		}

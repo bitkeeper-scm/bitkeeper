@@ -396,28 +396,29 @@ aliasdb_expand(nested *n, hash *aliasdb, char **aliases)
 
 	assert(n);
 	unless (aliases) return (0);
-	EACH_STRUCT(n->comps, c) c->alias = c->nlink = 0;
+	EACH_STRUCT(n->comps, c) c->nlink = 0;
 	EACH_INDEX(aliases, j) {
-		comps = aliasdb_expandOne(n, aliasdb, aliases[j]);
-		if (comps == INVALID) return (INVALID);
+		unless (comps = aliasdb_expandOne(n, aliasdb, aliases[j])) {
+			return (0);
+		}
 		EACH_STRUCT(comps, c) {
 			c->nlink += 1; // deprecated
-			c->alias = 1;
 		}
 		freeLines(comps, 0);
 	}
 	comps = 0;
 	EACH_STRUCT(n->comps, c) {
-		if (c->alias) comps = addLine(comps, c);
+		if (c->nlink) comps = addLine(comps, c);
 	}
+	unless (comps) comps = allocLines(2); /* always return something */
 	n->alias = 1;
 	return (comps);
-	
 }
 
 /*
  * Return a list of pointers to components -- a subset of n->comps
- * in the same order.  Or INVALID if something was amiss.
+ * in the same order.  Or 0 if something was amiss.
+ * (an alias that expands to nothing returns an empty but allocated lines array)
  */
 char	**
 aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
@@ -431,7 +432,7 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 	unless (aliasdb) {
 		unless (n->aliasdb ||
 		    (n->aliasdb = aliasdb_init(0, n->tip, n->pending))) {
-			return (INVALID);
+			goto err;
 		}
 		aliasdb = n->aliasdb;
 	}
@@ -451,16 +452,15 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 	if (expand(n, aliasdb, keys, seen, alias)) {
 		fprintf(stderr,
 		    "%s: expansion of alias %s failed\n", prog, alias);
-		comps = INVALID;
 		goto err;
 	}
-
 	/* output subset of n->comps in n->comps order */
 	EACH_STRUCT(n->comps, c) {
 		if (hash_fetchStr(keys, c->rootkey)) {
 			comps = addLine(comps, c);
 		}
 	}
+	unless (comps) comps = allocLines(2);	/* always return something */
 err:
 	if (seen) hash_free(seen);
 	if (keys) hash_free(keys);

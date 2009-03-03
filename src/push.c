@@ -1061,6 +1061,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	hash	*h;
 	nested	*n;
 	comp	*c;
+	char	**comps;
 	char	**revs;
 	char	**vp;
 	char	*name, *url;
@@ -1086,30 +1087,31 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 */
 	assert(opts.aliases);
 	h = aliasdb_init(0, n->oldtip, 0);
-	if (nested_filterAlias(n, h, opts.aliases) < 0) {
+	unless (comps = aliasdb_expand(n, h, opts.aliases)) {
 		// this should pass
 		hash_free(h);
 		rc = 1;
 		goto out;
 	}
 	hash_free(h);
-	EACH_STRUCT(n->comps, c) {
-		if (c->nlink) c->remotePresent = 1;
-	}
-	h = aliasdb_init(0, n->tip, 0);
-	if (nested_filterAlias(n, h, opts.aliases) < 0) {
+	EACH_STRUCT(comps, c) c->remotePresent = 1;
+	freeLines(comps, 0);
+
+	/* now do the tip aliases */
+	unless (comps = aliasdb_expand(n, 0, opts.aliases)) {
 		// this might fail if an alias is not longer valid
 		// XXX error message? (should get something from filterAlias)
 		hash_free(h);
 		rc = 1;
 		goto out;
 	}
-	hash_free(h);
+	EACH_STRUCT(comps, c) c->alias = 1;
+	freeLines(comps, 0);
 
 	/*
 	 * Find the cases where the push should fail:
 	 *  c->included	   comp modified as part of push
-	 *  c->nlink	   in new aliases (remote needs after push)
+	 *  c->alias	   in new aliases (remote needs after push)
 	 *  c->present	   exists locally
 	 *  c->remotePresent  exists in remote currently
 	 *  c->new	   comp created in this range of csets (do clone)
@@ -1117,7 +1119,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	EACH_STRUCT(n->comps, c) {
 		if (c->included) {
 			/* this component is included in push */
-			if (c->nlink) {
+			if (c->alias) {
 				/* The remote will need this component */
 				if (!c->present) {
 					/* we don't have the data to send */
@@ -1135,7 +1137,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 			}
 		} else {
 			/* not included in push */
-			if (c->nlink && !c->remotePresent) {
+			if (c->alias && !c->remotePresent) {
 				/* remote doesn't have it, but needs it */
 				if (c->present) {
 					/* we do, so force a clone */
@@ -1145,7 +1147,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 					/* remote needs to populate */
 					// XXX error
 				}
-			} else if (!c->nlink && c->remotePresent) {
+			} else if (!c->alias && c->remotePresent) {
 				/* remote will have an extra component */
 				// XXX error
 			}
@@ -1154,7 +1156,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	START_TRANSACTION();
 	EACH_STRUCT(n->comps, c) {
 		/* skip cases with nothing to do */
-		if (!c->included || !c->present || !c->nlink) continue;
+		if (!c->included || !c->present || !c->alias) continue;
 		proj_cd2product();
 		chdir(c->path);
 		vp = addLine(0, strdup("bk"));

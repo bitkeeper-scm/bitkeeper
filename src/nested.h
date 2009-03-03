@@ -79,7 +79,7 @@ struct nested {
 	hash	*aliasdb;	// lazy init'd aliasdb
 	hash	*compdb;	// lazy init rk lookup of &n->comp[i]
 	// bits
-	u32	alias:1;	// alias bits set in components
+	u32	alias:1;	// nlink counts set in components
 	u32	product:1;	// include the product in the list
 	u32	product_first:1;// default is last in list
 	u32	undo:1;		// undo wants the -a inferred from opts.revs
