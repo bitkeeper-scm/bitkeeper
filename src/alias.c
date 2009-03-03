@@ -396,15 +396,21 @@ aliasdb_expand(nested *n, hash *aliasdb, char **aliases)
 
 	assert(n);
 	unless (aliases) return (0);
-	EACH_STRUCT(n->comps, c) c->nlink = 0;
+	EACH_STRUCT(n->comps, c) c->alias = c->nlink = 0;
 	EACH_INDEX(aliases, j) {
 		comps = aliasdb_expandOne(n, aliasdb, aliases[j]);
 		if (comps == INVALID) return (INVALID);
-		EACH_STRUCT(comps, c) c->nlink += 1;
+		EACH_STRUCT(comps, c) {
+			c->nlink += 1; // deprecated
+			c->alias = 1;
+		}
 		freeLines(comps, 0);
 	}
 	comps = 0;
-	EACH_STRUCT(n->comps, c) comps = addLine(comps, c);
+	EACH_STRUCT(n->comps, c) {
+		if (c->alias) comps = addLine(comps, c);
+	}
+	n->alias = 1;
 	return (comps);
 	
 }

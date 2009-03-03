@@ -59,9 +59,10 @@ typedef struct {
 	char	*deltakey;		// deltakey of repo as of rev
 	char	*path;			// actual path: like GFILE, not DPN
 					// use accesor to fetch
-	int	nlink;			// alias link count
+	int	nlink;			// alias link count (deprecated)
 
 	// bits
+	u32	alias:1;		// in the latest alias
 	u32	included:1;		// component modified in 'revs'
 	u32	new:1;			// if set, the undo will remove this
 	u32	present:1;		// if set, the repo is actually here
@@ -78,6 +79,7 @@ struct nested {
 	hash	*aliasdb;	// lazy init'd aliasdb
 	hash	*compdb;	// lazy init rk lookup of &n->comp[i]
 	// bits
+	u32	alias:1;	// alias bits set in components
 	u32	product:1;	// include the product in the list
 	u32	product_first:1;// default is last in list
 	u32	undo:1;		// undo wants the -a inferred from opts.revs
