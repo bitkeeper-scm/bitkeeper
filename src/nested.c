@@ -276,26 +276,9 @@ err:				nested_free(n);
 int
 nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 {
-	comp	*c;
-	char	**comps;
-	int	i, j;
+	char	**comps = aliasdb_expand(n, aliasdb, aliases);
 
-	unless (aliases) return (0);
-	unless (aliasdb) {
-		unless (n->aliasdb ||
-		    // XXX - do we need a n->proj?
-		    (n->aliasdb = aliasdb_init(0, n->tip, n->pending))) {
-		}
-		aliasdb = n->aliasdb;
-	}
-	// each call resets the counters
-	EACH_STRUCT(n->comps, c) c->nlink = 0;
-	EACH_INDEX(aliases, j) {
-		comps = aliasdb_expand(n, aliasdb, 0, 0, aliases[j]);
-		if (comps == INVALID) return (1);
-		EACH_STRUCT(comps, c) c->nlink += 1;
-	}
-	return (0);
+	return (comps == INVALID);
 }
 
 /*

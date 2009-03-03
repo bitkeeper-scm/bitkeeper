@@ -115,8 +115,8 @@ char	*comp_path(comp *c);
 #define	ALIASES	"BitKeeper/etc/aliases"
 
 hash	*aliasdb_init(project *p, char *rev, int pending);
-char	**aliasdb_expand(nested *n, hash *aliasdb, char *cwd,
-	    int fix, char *alias);
+char	**aliasdb_expand(nested *n, hash *aliasdb, char **aliases);
+char	**aliasdb_expandOne(nested *n, hash *aliasdb, char *alias);
 void	aliasdb_free(hash *db);
 
 #endif	// _NESTED_H

@@ -387,19 +387,48 @@ dbWrite(hash *aliasdb, char *comment, int commit)
 
 // =================== functions to read the db ===============
 
+char	**
+aliasdb_expand(nested *n, hash *aliasdb, char **aliases)
+{
+	comp	*c;
+	char	**comps;
+	int	i, j;
+
+	assert(n);
+	unless (aliases) return (0);
+	EACH_STRUCT(n->comps, c) c->nlink = 0;
+	EACH_INDEX(aliases, j) {
+		comps = aliasdb_expandOne(n, aliasdb, aliases[j]);
+		if (comps == INVALID) return (INVALID);
+		EACH_STRUCT(comps, c) c->nlink += 1;
+		freeLines(comps, 0);
+	}
+	comps = 0;
+	EACH_STRUCT(n->comps, c) comps = addLine(comps, c);
+	return (comps);
+	
+}
+
 /*
  * Return a list of pointers to components -- a subset of n->comps
  * in the same order.  Or INVALID if something was amiss.
  */
 char	**
-aliasdb_expand(nested *n, hash *aliasdb, char *cwd, int fix, char *alias)
+aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 {
 	int	i;
 	comp	*c;
 	char	**comps = 0;
 	hash	*keys = 0, *seen = 0;
 
-	assert(n && aliasdb && alias);
+	assert(n && alias);
+	unless (aliasdb) {
+		unless (n->aliasdb ||
+		    (n->aliasdb = aliasdb_init(0, n->tip, n->pending))) {
+			return (INVALID);
+		}
+		aliasdb = n->aliasdb;
+	}
 	/*
 	 * here and there can not be used inside an alias
 	 */
@@ -409,7 +438,6 @@ aliasdb_expand(nested *n, hash *aliasdb, char *cwd, int fix, char *alias)
 		}
 		return (comps);
 	}
-	unless (alias = chkAlias(n, aliasdb, cwd, fix, alias)) goto err;
 
 	keys = hash_new(HASH_MEMHASH);
 	seen = hash_new(HASH_MEMHASH);
@@ -450,7 +478,7 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char *alias,
 			}
 			items = splitLine(val, "\r\n", 0);
 		} else {
-			comps = aliasdb_expand(n, aliasdb, cwd, 1, alias);
+			comps = aliasdb_expandOne(n, aliasdb, alias);
 			if (comps == INVALID) goto err;
 			EACH_STRUCT(comps, c) {
 				items = addLine(items,
