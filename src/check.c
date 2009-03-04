@@ -438,6 +438,7 @@ check_main(int ac, char **av)
 				err = 1;
 			}
 		}
+		nested_free(n);
 		if (err) {
 			fprintf(stderr,"check: missing components!\n");
 			return (1);

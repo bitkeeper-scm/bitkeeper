@@ -120,5 +120,7 @@ hash	*aliasdb_init(project *p, char *rev, int pending);
 char	**aliasdb_expand(nested *n, hash *aliasdb, char **aliases);
 char	**aliasdb_expandOne(nested *n, hash *aliasdb, char *alias);
 void	aliasdb_free(hash *db);
+int	aliasdb_chkAlias(nested *n, hash *aliasdb, char **aliases,
+	    char cwd, int fix);
 
 #endif	// _NESTED_H

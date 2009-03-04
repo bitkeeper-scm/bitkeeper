@@ -49,7 +49,7 @@ alias_main(int ac, char **av)
 	char	*comment = 0;
 	char	**aliases = 0;
 	char	*cwd;
-	int	c, errors;
+	int	c;
 	int	reserved = 0, rc = 1;
 	/* options */
 	int	create = 0, append = 0, force = 0, rm = 0, list = 0;
@@ -57,7 +57,7 @@ alias_main(int ac, char **av)
 
 	cwd = strdup(proj_cwd());
 	if (proj_cd2product()) {
-		fprintf(stderr, "alias: called in a non-product.\n");
+		fprintf(stderr, "%s: called in a non-product.\n", prog);
 		goto err;
 	}
 	while ((c = getopt(ac, av, "aCfkprx")) != -1) {
@@ -119,6 +119,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 			goto usage;
 		}
 	} else {
+		/* XXX something about parsing default? */
 		assert(list && !av[optind]);
 		if (reserved && !showpaths && !showkeys) {
 			fprintf(stderr,
@@ -128,7 +129,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 			goto usage;
 		}
 	}
-	unless (list && alias && (showkeys || showpaths)) {
+	unless (!alias || (list && (showkeys || showpaths))) {
 		unless (validName(alias)) {
 			fprintf(stderr,
 			    "%s: invalid alias name %s.\n", prog, alias);
@@ -153,29 +154,19 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 	 * passes in arg './tcl', then it will get mapped to rootkey
 	 * of the tcl repo.
 	 */
-	errors = 0;
 	for (; (p = av[optind]); ++optind) {
 		if (streq(p, "-") && !av[optind+1]) break; // last is '-'
-
-		unless (p = chkAlias(n, aliasdb, cwd, 1, p)) {
-			errors++;
-		} else {
-			aliases = addLine(aliases, strdup(p));
-		}
+		aliases = addLine(aliases, strdup(p));
 	}
 	/* if last is '-', then fetch params from stdin */
 	if (p) {
 		while (p = fgetline(stdin)) {
-			unless (p = chkAlias(n, aliasdb, cwd, 1, p)) {
-				errors++;
-			} else {
-				aliases = addLine(aliases, strdup(p));
-			}
+			aliases = addLine(aliases, strdup(p));
 		}
 	}
-	if (errors) {
+	if (c = aliasdb_chkAlias(n, aliasdb, aliases, cwd, 1)) {
 		fprintf(stderr, "%s: %d error%s processing aliases\n",
-		    prog, errors, (errors > 1)?"s":"");
+		    prog, c, (c > 1)?"s":"");
 		goto err;
 	}
 
@@ -186,7 +177,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		if (hash_fetchStr(aliasdb, alias)) {
 			unless (force) {
 				fprintf(stderr,
-				    "alias: %s exists, use -f?\n", alias);
+				    "%s: %s exists, use -f?\n", prog, alias);
 				goto err;
 			}
 			if (dbRemove(aliasdb, alias, 0)) goto err;
@@ -479,7 +470,8 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char *alias,
 	if (alias) {
 		unless (showkeys || showpaths) {
 			unless (val = hash_fetchStr(aliasdb, alias)) {
-				fprintf(stderr, "%s: no alias %s\n", alias);
+				fprintf(stderr,
+				    "%s: no alias \"%s\"\n", prog, alias);
 				goto err;
 			}
 			items = splitLine(val, "\r\n", 0);
@@ -521,12 +513,15 @@ expand(nested *n, hash *aliasdb, hash *keys, hash *seen, char *alias)
 	if (strieq("here", alias) || strieq("there", alias)) {
 		error("%s: %s not allowed in an alias definition\n",
 		    prog, alias);
-		rc = 1;
-	} else if (strieq("all", alias)) {
+		return (1);
+	}
+
+	if (strieq("all", alias)) {
 		EACH_STRUCT(n->comps, c) {
 			hash_insertStr(keys, c->rootkey, 0);
 		}
-	} else unless (mval = hash_fetchStr(aliasdb, alias)) {
+	}
+	else unless (mval = hash_fetchStr(aliasdb, alias)) {
 		if (strieq("default", alias)) {
 			rc = expand(n, aliasdb, keys, seen, "all");
 		} else {
@@ -561,8 +556,6 @@ value(nested *n, hash *keys, char *atom)
 	comp	*c;
 	int	i;
 
-	unless (atom = chkAtom(n, 0, 0, atom)) return (1);
-
 	if (isKey(atom)) {
 		hash_insertStr(keys, atom, 0);
 	} else {
@@ -582,63 +575,87 @@ value(nested *n, hash *keys, char *atom)
  * Utilities from here on out
  */
 
-private	char	*
-chkAlias(nested *n, hash *aliasdb, char *cwd, int fix, char *alias)
+int
+aliasdb_chkAlias(nested *n, hash *aliasdb, char **aliases, char cwd, int fix)
 {
-	if (strieq(alias, "default") ||
-	    strieq(alias, "all") ||
-	    hash_fetchStr(aliasdb, alias)) {
-		if (validName(alias)) return (alias);
-		fprintf(stderr, "%s: invalid alias name %s\n", prog, alias);
-		return(0);
-	}
-	return (chkAtom(n, cwd, fix, alias));
-}
-
-/*
- * aliases are made up of aliases and atoms
- * This checks atoms. If the atom is okay, return 0
- * If atom maps to something else (rootkey), return strdup of key
- */
-
-private	char	*
-chkAtom(nested *n, char *cwd, int fix, char *atom)
-{
+	int	i, errors = 0;
 	comp	*c;
+	char	*item;
 
-	if (isKey(atom)) {
-		unless (strchr(atom, '|')) {
+	EACH(aliases) {
+		item = aliases[i];
+
+		/* see if item is in the aliasdb and has a validName */
+		if (strieq(item, "default") ||
+		    strieq(item, "all") ||
+		    hash_fetchStr(aliasdb, item)) {
+			unless (validName(item)) {
+				fprintf(stderr,
+				    "%s: invalid alias name %s\n",
+				    prog, item);
+				errors++;
+			}
+			continue;
+		}
+
+		if (isKey(item)) {
+			/* is it a normal rootkey? */
+			if (strchr(item, '|')) {
+				/* that is in the nested collection? */
+				if (nested_findKey(n, item)) continue;
+
+				/* rootkey but not found */
+				fprintf(stderr,
+				    "%s: not a component rootkey: %s\n",
+				    prog, item);
+				errors++;
+				continue;
+			}
+
+			/* it is an md5 key */
 			unless (fix) {
 				fprintf(stderr,
-				    "%s: illegal md5key atom: '%s'\n",
-				    prog, atom);
-				atom = 0;
-			} else unless (c = nested_findMD5(n, atom)) {
-				fprintf(stderr,
-				    "%s: not a component md5key: '%s'\n",
-				    prog, atom);
-				atom = 0;
-			} else {
-				debug((stderr,
-				    "%s was md5, now rootkey\n", atom));
-				atom = c->rootkey;
+				    "%s: illegal md5key: %s\n", prog, item);
+				errors++;
+				continue;
 			}
-		} else unless (nested_findKey(n, atom)) {
-			fprintf(stderr,
-			    "%s: not a component key: '%s'\n", prog, atom);
-			atom = 0;
+
+			/* try replacing it with a rootkey */
+			unless (c = nested_findMD5(n, item)) {
+				fprintf(stderr,
+				    "%s: not a component md5key: %s\n",
+				    prog, item);
+				errors++;
+				continue;
+			}
+
+			/* okay, we have a rootkey to replace it */
+			debug((stderr, "%s was md5, now rootkey\n", item));
+			free(item);
+			aliases[i] = strdup(c->rootkey);
+			continue;
+		} 
+
+		/* Is it a glob ? */
+		if (is_glob(item)) {
+			continue;
 		}
-	} else if (is_glob(atom)) {
-		/* glob is okay */
-	} else if (fix && (c = findDir(n, cwd, atom))) {
-		/* directory is a repo, return key; map '.' to product */
-		atom = c->rootkey;
-	} else {
+
+		/*
+		 * if this is command line, is it a path which points
+		 * to a repository?
+		 */
+		if (fix && (c = findDir(n, cwd, item))) {
+			free(item);
+			aliases[i] = strdup(c->rootkey);
+			continue;
+		}
+
 		fprintf(stderr, "%s: %s must be either a glob, key, "
-		    "or alias.\n", prog, atom);
-		atom = 0;
+		    "or alias.\n", prog, item);
+		errors++;
 	}
-	return (atom);
+	return (errors);
 }
 
 /*
