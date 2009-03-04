@@ -1058,8 +1058,8 @@ done:
 private int
 push_ensemble(remote *r, char *rev_list, char **envVar)
 {
-	hash	*h;
-	nested	*n;
+	hash	*h = 0;
+	nested	*n = 0;
 	comp	*c;
 	char	**comps;
 	char	**revs;
@@ -1071,7 +1071,10 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 
 	revs = file2Lines(0, rev_list);
 	assert(revs);
-	n = nested_init(0, 0, revs, NESTED_PRODUCT);
+	unless (n = nested_init(0, 0, revs, NESTED_PRODUCT)) {
+		rc = 1;
+		goto out;
+	}
 
 	/*
 	 * - map remote HERE to aliases from remote tip and set in
@@ -1086,22 +1089,27 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 * remote side's HERE file.
 	 */
 	assert(opts.aliases);
-	h = aliasdb_init(0, n->oldtip, 0);
-	unless (comps = aliasdb_expand(n, h, opts.aliases)) {
-		// this should pass
-		hash_free(h);
+	unless (h = aliasdb_init(n, 0, n->oldtip, 0)) {
 		rc = 1;
 		goto out;
 	}
-	hash_free(h);
+	unless (comps = aliasdb_expand(n, h, opts.aliases)) {
+		// this should pass
+		rc = 1;
+		goto out;
+	}
 	EACH_STRUCT(comps, c) c->remotePresent = 1;
 	freeLines(comps, 0);
 
 	/* now do the tip aliases */
-	unless (comps = aliasdb_expand(n, 0, opts.aliases)) {
+	aliasdb_free(h);
+	unless (h = aliasdb_init(n, 0, n->tip, 0)) {
+		rc = 1;
+		goto out;
+	}
+	unless (comps = aliasdb_expand(n, h, opts.aliases)) {
 		// this might fail if an alias is not longer valid
-		// XXX error message? (should get something from filterAlias)
-		hash_free(h);
+		// XXX error message? (will get something from aliasdb_expand)
 		rc = 1;
 		goto out;
 	}
@@ -1190,6 +1198,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	}
 out:
 	free(url);
+	aliasdb_free(h);
 	nested_free(n);
 	STOP_TRANSACTION();
 	return (rc);
