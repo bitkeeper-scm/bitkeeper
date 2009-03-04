@@ -25,7 +25,6 @@ private	int	value(nested *n, hash *keys, char *alias);
 private	int	chkReserved(char *alias, int fix);
 private	int	validName(char *name);
 private	comp	*findDir(nested *n, char *cwd, char *dir);
-private	void	error(const char *fmt, ...);
 
 extern char	*prog;
 
@@ -57,7 +56,7 @@ alias_main(int ac, char **av)
 
 	cwd = strdup(proj_cwd());
 	if (proj_cd2product()) {
-		fprintf(stderr, "%s: called in a non-product.\n", prog);
+		error("%s: called in a non-product.\n", prog);
 		goto err;
 	}
 	while ((c = getopt(ac, av, "aCfkpqr;x")) != -1) {
@@ -80,7 +79,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 	 */
 	if (append && rm) goto usage;
 	if (showkeys && showpaths) {
-		fprintf(stderr, "%s: one of -k or -p but not both\n", prog);
+		error("%s: one of -k or -p but not both\n", prog);
 		goto usage;
 	}
 	if (av[optind]) {
@@ -99,27 +98,24 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 	}
 	if (append || rm || create) {
 		unless (alias) {
-			fprintf(stderr, "%s: no alias specified.\n", prog);
+			error("%s: no alias specified.\n", prog);
 			goto usage;
 		}
 		unless (rmAlias || reserved || validName(alias)) {
-			fprintf(stderr,
-			    "%s: invalid alias name %s.\n", prog, alias);
+			error("%s: invalid alias name %s.\n", prog, alias);
 			goto usage;
 		}
 		if (rev) {
-			fprintf(stderr,
-			    "%s: no -r when altering an alias\n", prog);
+			error("%s: no -r when altering an alias\n", prog);
 			goto usage;
 		}
 		if (showkeys || showpaths) {
-			fprintf(stderr,
-			    "%s: no -k or -p when altering an alias\n", prog);
+			error("%s: no -k or -p when altering an alias\n",
+			    prog);
 			goto usage;
 		}
 		if (reserved && !streq(alias, "default")) {
-			fprintf(stderr,
-			    "%s: reserved name \"%s\" may not be changed.\n",
+			error("%s: reserved name \"%s\" may not be changed.\n",
 			    prog, alias);
 			goto usage;
 		}
@@ -155,7 +151,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		}
 	}
 	if (c = aliasdb_chkAliases(n, aliasdb, aliases, cwd, 1)) {
-		fprintf(stderr, "%s: %d error%s processing aliases\n",
+		error("%s: %d error%s processing aliases\n",
 		    prog, c, (c > 1)?"s":"");
 		goto err;
 	}
@@ -166,8 +162,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 	if (create) {
 		if (hash_fetchStr(aliasdb, alias)) {
 			unless (force) {
-				fprintf(stderr,
-				    "%s: %s exists, use -f?\n", prog, alias);
+				error("%s: %s exists, use -f?\n", prog, alias);
 				goto err;
 			}
 			if (dbRemove(aliasdb, alias, 0)) goto err;
@@ -185,8 +180,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 	if (append) {
 		unless (hash_fetchStr(aliasdb, alias)) {
 			unless (force) {
-				fprintf(stderr,
-				    "%s: %s does not exist.\n", prog, alias);
+				error("%s: %s does not exist.\n", prog, alias);
 				goto err;
 			}
 			comment = aprintf("Create alias %s", alias);
@@ -264,13 +258,11 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 	EACH_HASH(aliasdb) {
 		if (reserved = chkReserved(aliasdb->kptr, 0)) {
 			if (reserved < 0) {
-				fprintf(stderr,
-				    "%s: bad case for key: %s\n",
+				error("%s: bad case for key: %s\n",
 				    prog, aliasdb->kptr);
 				total++;
 			} else unless (streq(aliasdb->kptr, "default")) {
-				fprintf(stderr,
-				    "%s: illegal aliasdb key: %s\n",
+				error("%s: illegal aliasdb key: %s\n",
 				    prog, aliasdb->kptr);
 				total++;
 			}
@@ -279,15 +271,14 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 		}
 		aliases = splitLine(aliasdb->vptr, "\r\n", 0);
 		if (errors = aliasdb_chkAliases(n, aliasdb, aliases, 0, 0)) {
-			fprintf(stderr,
-			    "%s: bad values for key: %s\n",
+			error("%s: bad values for key: %s\n",
 			    prog, aliasdb->kptr);
 			total += errors;
 		}
 		freeLines(aliases, free);
 	}
 	if (total) {
-		fprintf(stderr, "%s: %d error%s initializing aliasdb\n",
+		error("%s: %d error%s initializing aliasdb\n",
 		    prog, total, (total > 1)?"s":"");
 		hash_free(aliasdb);
 		aliasdb = 0;
@@ -317,7 +308,7 @@ dbAdd(hash *aliasdb, char *alias, char **aliases)
 	int	i, rc = 1;
 
 	unless (nLines(aliases)) {
-		fprintf(stderr, "%s: nothing to add\n", prog);
+		error("%s: nothing to add\n", prog);
 		goto err;
 	}
 	if (val = hash_fetchStr(aliasdb, alias)) {
@@ -329,8 +320,7 @@ dbAdd(hash *aliasdb, char *alias, char **aliases)
 	uniqLines(list, free);
 	val = joinLines("\n", list);
 	unless (hash_storeStr(aliasdb, alias, val)) {
-		fprintf(stderr,
-		    "%s: failed to store aliases in %s: %s\n",
+		error("%s: failed to store aliases in %s: %s\n",
 		    prog, alias, val);
 		goto err;
 	}
@@ -353,21 +343,21 @@ dbRemove(hash *aliasdb, char *alias, char **aliases)
 	char	**list = 0;
 
 	unless (p = hash_fetchStr(aliasdb, alias)) {
-		fprintf(stderr, "%s: no such alias %s\n", prog, alias);
+		error("%s: no such alias %s\n", prog, alias);
 		goto err;
 	}
 	if (aliases) {
 		list = splitLine(p, "\r\n", 0);
 		EACH (aliases) {
 			unless (removeLine(list, aliases[i], free)) {
-				fprintf(stderr, "%s: %s is not part of %s\n",
+				error("%s: %s is not part of %s\n",
 				    prog, aliases[i], alias);
 				errors++;
 			}
 		}
 	}
 	if (errors) {
-		fprintf(stderr, "%s: %s not modified\n", prog, alias);
+		error("%s: %s not modified\n", prog, alias);
 		goto err;
 	}
 	if (nLines(list) > 0) {
@@ -457,6 +447,11 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 	hash	*keys = 0, *seen = 0;
 
 	assert(n && alias);
+	/*
+	 * this is a bit rude for now. Set param to 1 when tired
+	 * of chasing down errors.  For now, it lets errors be seen.
+	 */
+
 	if (chkReserved(alias, 0) < 0) goto err;
 
 	unless (aliasdb) {
@@ -481,8 +476,7 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 	seen = hash_new(HASH_MEMHASH);
 	/* resursive expansion fills 'keys' hash with rootkeys */
 	if (expand(n, aliasdb, keys, seen, alias)) {
-		fprintf(stderr,
-		    "%s: expansion of alias %s failed\n", prog, alias);
+		error("%s: expansion of alias %s failed\n", prog, alias);
 		goto err;
 	}
 	/* output subset of n->comps in n->comps order */
@@ -526,7 +520,7 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char *alias,
 		if (!val && streq(alias, "default")) {
 			val = "all";
 		} else if (!val) {
-			fprintf(stderr, "%s: no alias: %s\n", prog, alias);
+			error("%s: no alias: %s\n", prog, alias);
 			goto err;
 		}
 		items = splitLine(val, "\r\n", 0);
@@ -536,7 +530,7 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char *alias,
 	/* if showing keys or paths, the expand any key or value item */
 
 	if (i = chkReserved(alias, 1)) {
-		/* 
+		/*
 		 * This is here to allow keys like 'here' which are
 		 * not allowed in the value string checked in the else block
 		 */
@@ -649,8 +643,7 @@ value(nested *n, hash *keys, char *alias)
 			}
 		}
 	} else {
-		fprintf(stderr,
-		    "%s: alias value problem with: %s\n", prog, alias);
+		error("%s: alias value problem with: %s\n", prog, alias);
 		return (1);
 	}
 	return (0);
@@ -675,11 +668,9 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 			if (reserved < 0) {
 				/* case problem */
 				errors++;
-			}
-			else if (streq(alias, "here") ||
+			} else if (streq(alias, "here") ||
 			    streq(alias, "there")) {
-				fprintf(stderr,
-				    "%s: not allowed as value: %s\n",
+				error("%s: not allowed as value: %s\n",
 				    prog, alias);
 				errors++;
 			}
@@ -688,8 +679,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 		/* see if alias is in the aliasdb and has a validName */
 		if (hash_fetchStr(aliasdb, alias)) {
 			unless (validName(alias)) {
-				fprintf(stderr,
-				    "%s: invalid alias name %s\n",
+				error("%s: invalid alias name %s\n",
 				    prog, alias);
 				errors++;
 			}
@@ -703,8 +693,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 				if (nested_findKey(n, alias)) continue;
 
 				/* rootkey but not found */
-				fprintf(stderr,
-				    "%s: not a component rootkey: %s\n",
+				error("%s: not a component rootkey: %s\n",
 				    prog, alias);
 				errors++;
 				continue;
@@ -712,16 +701,14 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 
 			/* it is an md5 key */
 			unless (fix) {
-				fprintf(stderr,
-				    "%s: illegal md5key: %s\n", prog, alias);
+				error("%s: illegal md5key: %s\n", prog, alias);
 				errors++;
 				continue;
 			}
 
 			/* try replacing it with a rootkey */
 			unless (c = nested_findMD5(n, alias)) {
-				fprintf(stderr,
-				    "%s: not a component md5key: %s\n",
+				error("%s: not a component md5key: %s\n",
 				    prog, alias);
 				errors++;
 				continue;
@@ -732,7 +719,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 			free(alias);
 			aliases[i] = strdup(c->rootkey);
 			continue;
-		} 
+		}
 
 		/* Is it a glob ? */
 		if (is_glob(alias)) {
@@ -750,7 +737,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 			continue;
 		}
 
-		fprintf(stderr, "%s: %s must be either a glob, key, "
+		error("%s: %s must be either a glob, key, "
 		    "or alias.\n", prog, alias);
 		errors++;
 	}
@@ -776,8 +763,7 @@ chkReserved(char *alias, int fix)
 			strcpy(alias, w);
 			rc = 1;
 		} else {
-			fprintf(stderr,
-			    "%s: alias not downcasted: %s\n", prog, alias);
+			error("%s: alias not downcasted: %s\n", prog, alias);
 			rc = -1;
 		}
 	}
@@ -823,44 +809,4 @@ findDir(nested *n, char *cwd, char *dir)
 	c = nested_findDir(n, dir);
 	free(dir);
 	return (c);
-}
-
-/*
- * Return true if the pathname is a is a component relative to
- * the cwd.  Only present components will be detected.
- * We could not if a path is a missing component, but this function
- * won't tell you that.
- */
-int
-isComponent(char *path)
-{
-	int	ret;
-	project	*p = 0;
-	char	buf[MAXPATH];
-
-	sprintf(buf, "%s/%s", path, BKROOT);
-	ret = exists(buf) && (p = proj_init(buf)) && proj_isComponent(p);
-	if (p) proj_free(p);
-	return (ret);
-}
-
-/* XXX should be exported, moved, and given a more unique name */
-private	void
-error(const char *fmt, ...)
-{
-	va_list	ap;
-	char	*retval;
-
-	va_start(ap, fmt);
-	if (vasprintf(&retval, fmt, ap) < 0) retval = 0;
-	va_end(ap);
-	if (retval) {
-		if (getenv("_BK_IN_BKD")) {
-			out("ERROR-");
-			out(retval);
-		} else {
-			fputs(retval, stderr);
-		}
-		free(retval);
-	}
 }

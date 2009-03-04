@@ -741,3 +741,22 @@ comppath(comp *c)
 	// unless (c->realpath) ...
 	return (c->path);
 }
+
+/*
+ * Return true if the pathname is a is a component relative to
+ * the cwd.  Only present components will be detected.
+ * We could not if a path is a missing component, but this function
+ * won't tell you that.
+ */
+int
+isComponent(char *path)
+{
+	int	ret;
+	project	*p = 0;
+	char	buf[MAXPATH];
+
+	sprintf(buf, "%s/%s", path, BKROOT);
+	ret = exists(buf) && (p = proj_init(buf)) && proj_isComponent(p);
+	if (p) proj_free(p);
+	return (ret);
+}

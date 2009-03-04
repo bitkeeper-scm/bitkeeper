@@ -52,6 +52,26 @@ in(char *buf, int n)
 	return (readn(0, buf, n));
 }
 
+void
+error(const char *fmt, ...)
+{
+	va_list	ap;
+	char	*retval;
+
+	va_start(ap, fmt);
+	if (vasprintf(&retval, fmt, ap) < 0) retval = 0;
+	va_end(ap);
+	if (retval) {
+		if (getenv("_BK_IN_BKD")) {
+			out("ERROR-");
+			out(retval);
+		} else {
+			fputs(retval, stderr);
+		}
+		free(retval);
+	}
+}
+
 int
 writen(int to, void *buf, int size)
 {
