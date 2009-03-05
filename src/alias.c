@@ -255,7 +255,15 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 	/*
 	 * this is aliasdb_chkDb(), in case we need a separate entry
 	 */
-	if (rmAlias) goto done;	// disable checks if removing an alias
+
+// Checking is  not ready for prime time because nested_init(..revs..)
+// has not all the components, but just the components in revs.
+// until we have all of them in there, doing this doesn't make sense.
+// I could put a n->revs in the data structure and skip the test because
+// of it.  For now, unbreak things.
+#define	NOCHK	1
+
+	if (NOCHK || rmAlias) goto done; // disable checks if removing an alias
 	EACH_HASH(aliasdb) {
 		if (reserved = chkReserved(aliasdb->kptr, 0)) {
 			if (reserved < 0) {
