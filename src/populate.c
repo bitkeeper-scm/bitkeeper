@@ -18,7 +18,6 @@ populate_main(int ac, char **av)
 	comp	*cp;
 	FILE	*f;
 	int	status, rc;
-	sccs	*s;
 	nested	*n;
 	hash	*done;
 
@@ -74,20 +73,19 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 			fprintf(stderr, "populate: -r or -s but not both.\n");
 			exit(1);
 		}
-		unless (aliases = file2Lines(0, "BitKeeper/log/COMPONENTS")) {
-			aliases = addLine(0, strdup("default"));
-		}
+		aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
 	} else unless (aliases) {
 		aliases = addLine(0, strdup("default"));
 	}
-	s = sccs_csetInit(SILENT);
-	n = nested_init(s, 0, 0, 0);
+	n = nested_init(0, 0, 0, NESTED_PRODUCT);
+	aliasdb_chkAliases(n, 0, aliases, 0, 1);
 	nested_filterAlias(n, 0, aliases);
 	START_TRANSACTION();
 	done = hash_new(HASH_MEMHASH);
 	EACH (urls) {
 		url = urls[i];
 		EACH_STRUCT(n->comps, cp) {
+			if (cp->product) continue;
 			if (cp->present) {
 				unless (quiet) {
 					fprintf(stderr,
@@ -96,6 +94,7 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 				    	}
 				continue;
 			}
+			unless (cp->alias) continue;
 			if (hash_fetchStr(done, cp->path)) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("clone"));
@@ -121,13 +120,12 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 	freeLines(cav, free);
 	rc = 0;
 	EACH_STRUCT(n->comps, cp) {
-		if (cp->present) continue;
+		if (cp->present || !cp->alias) continue;
 		if (hash_fetchStr(done, cp->path)) continue;
 		fprintf(stderr, "populate: failed to fetch %s\n", cp->path);
 		rc = 1;
 	}
 	nested_free(n);
-	sccs_free(s);
 
 	if (hash_first(done)) {
 		/* do consistancy check at end */

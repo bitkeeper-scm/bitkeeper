@@ -173,7 +173,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			vp = addLine(vp, 0);
 			unless (quiet) {
 				printf("#### Undo in %s (%d of %d) ####\n",
-				    c->path, which++, n);
+				    c->path, which++, num);
 				fflush(stdout);
 			}
 			if (chdir(c->path)) {
@@ -226,7 +226,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		nested_free(n);
 		unless (quiet) {
 			printf("#### Undo in Product (%d of %d) ####\n",
-			    which++, n);
+			    which++, num);
 			fflush(stdout);
 		}
 	}

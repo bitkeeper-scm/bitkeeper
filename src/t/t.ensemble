@@ -996,21 +996,16 @@ rm -rf project
 tar xf TAR 
 cd project
 
-echo $N Test bk changes in a sparse ensemble ........................$NL
-bk cset -fl5 -r+ > A
-rm -rf gcc4
-echo OK
-
 echo $N Test bk undo -r+ in a sparse ensemble .......................$NL
-echo "here" > BitKeeper/log/COMPONENTS
+# XXX really should use unpopulate (if it worked)
+rm -rf gcc4
+(cd gdb; bk id) > BitKeeper/log/COMPONENTS
 bk undo $Q -fsr+ || {
 	echo failed undo
-	cat OUT
 	exit 1
 }
 bk $Q -Ar check -ac || {
 	echo failed check
-	cat OUT
 	exit 1
 }
 echo OK

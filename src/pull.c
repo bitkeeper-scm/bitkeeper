@@ -669,7 +669,7 @@ pull_ensemble(nested *n, remote *r)
 					    "component '%s'\n", c->path);
 					goto err;
 				}
-				csetChomp(path);
+				csetChomp(path); /* stomping idDB */
 				if (chdir(path)) {
 err:					fprintf(stderr, "Could not chdir to "
 					    " component '%s'\n", path);

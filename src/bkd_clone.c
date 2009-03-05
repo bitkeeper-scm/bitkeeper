@@ -10,7 +10,7 @@ private int	compressed(int level, int lclone);
 int
 cmd_clone(int ac, char **av)
 {
-	int	c, rc = 1;
+	int	i, c, rc = 1;
 	int	gzip = 0, delay = -1, lclone = 0;
 	int	tid = 0;
 	char	*p, *rev = 0;
@@ -61,25 +61,45 @@ cmd_clone(int ac, char **av)
 		out("ERROR-clone of a component is not allowed, use -s\n");
 		goto out;
 	}
-	if (proj_isEnsemble(0)) {
+	if (proj_isProduct(0)) {
+		int	saw_here;
+
 		unless (bk_hasFeature("SAMv1")) {
 			out("ERROR-please upgrade your BK to a NESTED "
 			    "aware version (5.0 or later)\n");
 			goto out;
 		}
-		/*
-		 * If we're an ensemble and they did not specify any aliases,
-		 * then imply whatever list we may have.
-		 * The tid part is because we want to do this in pass1 only.
-		 * XXX - what if we've added one with ensemble add and it
-		 * does not appear in our COMPONENTS file yet?
-		 * XXXX - using THERE would solve that
-		 */
-		unless (aliases || tid) {
+
+		/* handle here related errors */
+		saw_here = 0;
+		EACH(aliases) {
+			if (strieq(aliases[1], "here") ||
+			    strieq(aliases[1], "there")) {
+				saw_here = 1;
+			}
+		}
+		if (saw_here) {
+			if (nLines(aliases) != 1) {
+				out("ERROR-alias 'here' must be alone\n");
+				goto out;
+			}
+			freeLines(aliases, free);
 			aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
 			unless (aliases) {
-				aliases = addLine(0, strdup("default"));
+				out("ERROR-no BitKeeper/log/COMPONENTS ");
+				out(proj_cwd());
+				out("\n");
+				goto out;
 			}
+		}
+
+		/*
+		 * If we're an ensemble and they did not specify any aliases,
+		 * then imply the default set.
+		 * The tid part is because we want to do this in pass1 only.
+		 */
+		unless (aliases || tid) {
+			aliases = addLine(0, strdup("default"));
 		}
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
@@ -113,9 +133,6 @@ cmd_clone(int ac, char **av)
 				goto out;
 			}
 		}
-		if (aliases) {
-			/* XXX make sure everything is here */
-		}
 	}
 
 	safe_putenv("BK_CSETS=..%s", rev ? rev : "+");
@@ -140,15 +157,24 @@ cmd_clone(int ac, char **av)
 	if (trigger(av[0], "pre")) goto out;
 	if (!tid && proj_isProduct(0)) {
 		nested	*n;
+		comp	*cp;
 		u32	flags = NESTED_PRODUCT|NESTED_PRODUCTFIRST;
 
 		n = nested_init(s, rev, 0, flags);
+		assert(aliases);
+		aliasdb_chkAliases(n, 0, aliases, 0, 1);
 		nested_filterAlias(n, 0, aliases);
-		printf("@ENSEMBLE@\n");
-		nested_toStream(n, stdout);
+		EACH_STRUCT(n->comps, cp) {
+			if (cp->alias && !cp->present) {
+				printf("ERROR-unable to expand aliases\n");
+				goto out;
+			}
+		}
 		nested_free(n);
-		rc = 0;
-		goto out;
+		printf("@COMPONENTS@\n");
+		EACH(aliases) printf("%s\n", aliases[i]);
+		printf("@END@\n");
+		freeLines(aliases, free);
 	}
 	if (s) {
 		sccs_free(s);

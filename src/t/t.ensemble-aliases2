@@ -43,7 +43,7 @@ grep -q 'because gcc is not present' ERR || {
 echo OK
 
 echo $N Another check cloning missing components ....................$NL
-bk clone $Q -snm -s./gcc proj-nm nm-clone 2> ERR
+bk clone $Q -snm -s./gcc proj-nm nm-clone 2> ERR && exit 1
 grep -q 'because gcc is not present' ERR || {
 	echo failed msg
 	cat ERR
@@ -61,7 +61,7 @@ bk clone $Q ../libiberty gcc/libiberty
 bk attach $Q gcc/libiberty
 bk alias -a gcc ./gcc/libiberty
 cd "$HERE"
-bk clone $Q -r1.8 -sgcc project proj-clone
+bk clone $Q -r1.8 -sgcc project proj-clone || exit 1
 test -d proj-clone/gcc/libiberty && {
 	echo failed
 	exit 1
@@ -71,8 +71,8 @@ echo OK
 echo $N Check -rOLD cannot pick up new components thru explicit ref .$NL
 cd "$HERE"
 rm -rf proj-clone
-bk clone $Q -r1.7 -s./gcc/libiberty project proj-clone 2> ERR
-grep -q 'no match for ./gcc/libiberty' ERR || {
+bk clone $Q -r1.7 -s./gcc/libiberty project proj-clone 2> ERR && exit 1
+grep -q "no match for dir './gcc/libiberty'" ERR || {
 	echo failed
 	cat ERR
 	exit 1
@@ -83,17 +83,26 @@ echo $N Move stuff and watch the fur fly ............................$NL
 cd "$HERE"
 bk clone $Q -sthere project mangle
 cd mangle
-bk alias dev ./gcc './gcc/*' gdb
+bk alias dev ./gcc './gcc/*' gdb || exit 1
 bk edit $Q gcc/ChangeSet gcc/nm/ChangeSet gcc/libiberty/ChangeSet gdb/ChangeSet
 mkdir src
 mv gcc gdb src
 bk ci $Q -y'Moved' src/gcc/ChangeSet src/gcc/*/ChangeSet src/gdb/ChangeSet
 bk alias -C -r dev './gcc/*'
 bk alias -C -a dev './src/gcc/*'
-bk commit $Q -y'Moved stuff'
-cd "$HERE"
-bk clone $Q -r1.11 -sdev mangle proj-rename 2> ERR
+bk commit $Q -y'Moved stuff' 2>ERR && exit 1
+cat <<EOF | sort > BAD
+check: error expanding alias 'all' because gcc/nm is not present
+check: error expanding alias 'all' because gcc/libiberty is not present
+check: missing components!
+EOF
+sort ERR > sort_ERR
+cmpfiles BAD sort_ERR
 echo 'failed (bug: need rename)'
+
+# rest of test that should work someday
+#cd "$HERE"
+#bk clone $Q -r1.11 -sdev mangle proj-rename || exit 1
 
 echo $N Create a conflict in unpopulated alias, should work .........$NL
 cd "$HERE"
@@ -258,7 +267,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test alias -h foo ...........................................$NL
-bk alias -h gcc > GOT
+bk alias -h gcc > GOT || exit 1
 cat > WANT <<EOF
 ./gcc
 ./gcc/libiberty
@@ -269,17 +278,17 @@ echo OK
 
 echo $N Test alias -h with missing components .......................$NL
 rm -rf gcc/libcpp
-bk alias -h > GOT 2>&1
+bk alias -h 2> GOT && exit 1
 bk sort < GOT > GOT2
 cat > WANT <<EOF
-alias: error expanding alias 'default' because gcc/libcpp is not present
-alias: error expanding alias 'default' because gcc/libcpp/deep is not present
+alias: error expanding alias 'all' because gcc/libcpp is not present
+alias: error expanding alias 'all' because gcc/libcpp/deep is not present
 EOF
 cmpfiles WANT GOT2
 echo OK
 
 echo $N Test alias -h foo with missing components ...................$NL
-bk alias -h dev > GOT 2>&1
+bk alias -h dev 2> GOT && exit 1
 bk sort < GOT > GOT2
 cat > WANT <<EOF
 alias: error expanding alias 'dev' because gcc/libcpp is not present
@@ -289,7 +298,7 @@ cmpfiles WANT GOT2
 echo OK
 
 echo $N Test alias -h foo with unrelated missing components .........$NL
-bk alias -h gcc > GOT 2>&1
+bk alias -h gcc > GOT || exit 1
 cat > WANT <<EOF
 ./gcc
 ./gcc/libiberty
@@ -299,7 +308,7 @@ echo OK
 
 echo $N Test alias -h on recursive alias ............................$NL
 cd "$HERE"
-bk clone $Q proj-clone dash-h2
+bk clone $Q proj-clone dash-h2 || exit 1
 cd dash-h2
 # Remove old aliases
 bk alias -C -r dev
@@ -322,7 +331,7 @@ echo OK
 
 echo $N Test alias -h on recursive alias with a missing component ...$NL
 rm -rf gcc/libcpp/deep
-bk alias -h enchilada_grande > GOT 2>&1
+bk alias -h enchilada_grande 2> GOT && exit 1
 cat > WANT <<EOF
 alias: error expanding alias 'enchilada_grande' because gcc/libcpp/deep is not present
 EOF
