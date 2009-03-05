@@ -22,6 +22,7 @@ private	int	dbShow(nested *n, hash *aliasdb, char *cwd, char *alias,
 private	int	expand(nested *n, hash *db, hash *keys, hash *seen,
 		    char *alias);
 private	int	value(nested *n, hash *keys, char *alias);
+private	hash	*dbLoad(nested *n, hash *aliasdb);
 private	int	chkReserved(char *alias, int fix);
 private	int	validName(char *name);
 private	comp	*findDir(nested *n, char *cwd, char *dir);
@@ -454,13 +455,7 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 
 	if (chkReserved(alias, 0) < 0) goto err;
 
-	unless (aliasdb) {
-		unless (n->aliasdb ||
-		    (n->aliasdb = aliasdb_init(n, 0, n->tip, n->pending))) {
-			goto err;
-		}
-		aliasdb = n->aliasdb;
-	}
+	unless (aliasdb = dbLoad(n, aliasdb)) goto err;
 
 	/*
 	 * here and there can not be used inside an alias
@@ -653,6 +648,19 @@ value(nested *n, hash *keys, char *alias)
  * Utilities from here on out
  */
 
+private	hash	*
+dbLoad(nested *n, hash *aliasdb)
+{
+	unless (aliasdb) {
+		unless (n->aliasdb ||
+		    (n->aliasdb = aliasdb_init(n, 0, n->tip, n->pending))) {
+			return (0);
+		}
+		aliasdb = n->aliasdb;
+	}
+	return (aliasdb);
+}
+
 int
 aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
     char *cwd, int fix)
@@ -660,6 +668,11 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 	int	i, reserved, errors = 0;
 	comp	*c;
 	char	*alias;
+
+	unless (aliasdb || (aliasdb = dbLoad(n, 0))) {
+		error("%s: cannot initial aliasdb\n", prog);
+		return (1);
+	}
 
 	EACH(aliases) {
 		alias = aliases[i];
@@ -738,7 +751,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 		}
 
 		error("%s: %s must be either a glob, key, "
-		    "or alias.\n", prog, alias);
+		    "alias, or component.\n", prog, alias);
 		errors++;
 	}
 	return (errors);

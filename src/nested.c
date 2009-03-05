@@ -5,7 +5,7 @@
 private	int	compSort(const void *a, const void *b);
 private	void	compFree(void *x);
 private	int	compRemove(char *path, struct stat *statbuf, void *data);
-private	void	setgca(sccs *s, u32 bit, u32 tmp);
+private delta	*setgca(sccs *s, u32 bit, u32 tmp, delta **tip);
 private	char	**nested_deep(char *path);
 private	int	nestedWalkdir(char *dir, walkfn fn);
 private	int	empty(char *path, struct stat *statbuf, void *data);
@@ -48,11 +48,10 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 {
 	nested	*n = 0;
 	comp	*c = 0;
-	delta	*d;
+	delta	*d, *gca;
 	int	i;
 	char	**list = 0;	/* really comps **list */
 	char	*t, *v;
-	int	close = 0;
 	FILE	*pending;
 	MDBM	*idDB = 0;
 	kvpair	kv;
@@ -78,16 +77,25 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	n->cset = cset;
 	assert(CSET(cset) && proj_isProduct(cset->proj));
 
+	n->product = c = new(comp);
+	c->n = n;
+	c->product = 1;
+	c->rootkey = strdup(proj_rootkey(cset->proj));
+	c->path = strdup(".");
+	c->present = 1;
+	// c->deltakey set below
+
 	if (revs) {
-		unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
+		unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED);
 		EACH(revs) {
 			unless (d = sccs_findrev(cset, revs[i])) {
 				fprintf(stderr,
 				    "nested: bad rev %s\n",revs[i]);
-err:				nested_free(n);
+err:				n->comps = list;
+				nested_free(n);
 				return (0);
 			}
-			d->flags |= (D_SET|D_BLUE);
+			d->flags |= D_SET;
 		}
 		if (sccs_cat(cset, GET_HASHONLY, 0)) goto err;
 		EACH_KV(cset->mdbm) {
@@ -102,9 +110,28 @@ err:				nested_free(n);
 			csetChomp(c->path);
 			list = addLine(list, (void *)c);
 		}
-		/* Mark the set gca of the range we marked in revs */
-		setgca(cset, D_SET, D_RED);
+		/* Move D_SET to region from root to old D_SET */
+		gca = setgca(cset, D_SET, D_RED, &d);
 		if (sccs_cat(cset, GET_HASHONLY, 0)) goto err;
+		sccs_clearbits(cset, D_SET);
+
+		if ((flags & NESTED_UNDO) && !gca) {
+			/* XXX can undo do all? There'd be no gca there */
+			fprintf(stderr,
+			    "nested: undo region has more than one tip\n");
+			goto err;
+		}
+		if (flags & NESTED_UNDO) {
+			n->tip = strdup(gca->rev);
+			n->oldtip = strdup(d->rev);
+			sccs_sdelta(cset, gca, buf);
+		} else {
+			n->tip = strdup(d->rev);
+			n->oldtip = strdup(gca->rev);
+			sccs_sdelta(cset, d, buf);
+		}
+		n->product->deltakey = strdup(buf);
+
 		EACH_STRUCT(list, c) {
 			unless (
 			    t = mdbm_fetch_str(cset->mdbm, c->rootkey)) {
@@ -127,6 +154,10 @@ err:				nested_free(n);
 		    rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 			goto err;
 		}
+		if (rev) n->tip = strdup(rev);
+		d = sccs_findrev(cset, rev);
+		sccs_sdelta(cset, d, buf);
+		n->product->deltakey = strdup(buf);
 		if (flags & NESTED_PENDING) {
 			/*
 			 * get pending components and replace/add items
@@ -134,6 +165,7 @@ err:				nested_free(n);
 			 */
 #define	PNDCOMP	"bk -Ppr log -r+ -nd'$if(:COMPONENT:){:ROOTKEY: :KEY:}'"
 
+			n->pending = 1;
 			unless (pending = popen(PNDCOMP, "r")) goto err;
 			while (t = fgetline(pending)) {
 				v = separator(t);
@@ -212,59 +244,20 @@ err:				nested_free(n);
 	sortLines(list, compSort);
 	if (flags & NESTED_DEEPFIRST) reverseLines(list);
 
-	if (flags & NESTED_PRODUCT) {
-		unless (revs) {		/* undo / [r]clone/ push */
-			d = sccs_findrev(cset, rev);
-		} else {			/* push/pull */
-			/*
-			 * Use the latest one, it matches what we do
-			 * in the weave. The newest key will be
-			 * colored D_BLUE while the oldest key will be
-			 * colored D_SET.
-			 */
-			for (d = cset->table; d; d = d->next) {
-				if (TAG(d)) continue;
-				if (!(n->tip) && (d->flags & D_BLUE)) {
-					n->tip = strdup(d->rev);
-				}
-				if (d->flags & D_SET) {
-					n->oldtip = strdup(d->rev);
-					break;
-				}
-			}
-			if (flags & NESTED_UNDO) {
-				d = sccs_findrev(cset, n->oldtip);
-			} else {
-				d = sccs_findrev(cset, n->tip);
-			}
-		}
-		assert(d);
-		unless (n->tip) n->tip = strdup(d->rev);
-		c = new(comp);
-		c->n = n;
-		c->rootkey = strdup(proj_rootkey(cset->proj));
-		sccs_sdelta(cset, d, buf);
-		c->deltakey = strdup(buf);
-		c->path = strdup(".");
-		c->present = 1;
-		if (flags & NESTED_PRODUCTFIRST) {
-			char	**l = 0;
+	unless (flags & NESTED_PRODUCT) {
+		/* don't put the n->product into the list */
+		n->freeproduct = 1;
+	} else if (flags & NESTED_PRODUCTFIRST) {
+		char	**l = 0;
 
-			l = addLine(0, (void *)c);
-			EACH(list) l = addLine(l, list[i]);
-			freeLines(list, 0);
-			list = l;
-		} else {
-			list = addLine(list, (void *)c);
-		}
+		l = addLine(0, n->product);
+		EACH(list) l = addLine(l, list[i]);
+		freeLines(list, 0);
+		list = l;
 	} else {
-		if (rev) n->tip = strdup(rev);	/* for aliasdb context */
+		list = addLine(list, n->product);
 	}
-	if (close) {
-		sccs_free(cset);
-	} else {
-		if (revs) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
-	}
+
 	n->comps = list;
 	return (n);
 }
@@ -289,38 +282,46 @@ nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 /*
  * Mark the set gca of a range
  * Input: some region, like pull -r, is colored.
- * bit - the color of the set region
- * tmp - the color used as a tmp. Assumes all off and leaves it all off
+ * Output: the region between the initial region and root
+ * Return: gca if there is exactly one; also give back tip
  * XXX - why is this here? Is it generic?
+ * Not generic.
  */
-private void
-setgca(sccs *s, u32 bit, u32 tmp)
+private delta	*
+setgca(sccs *s, u32 bit, u32 tmp, delta **tip)
 {
-	delta	*d, *p;
+	delta	*d, *p, *gca = 0;
+	int	count = 0;
 
+	if (tip) *tip = 0;
 	for (d = s->table; d; d = d->next) {
 		if (TAG(d)) continue;
-		if (d->flags & bit) {
+		if ((d->flags & (tmp|bit)) == bit) {
+			if (tip && !*tip) *tip = d;
 			d->flags &= ~bit;
-			if ((p = d->parent) && !(p->flags & bit)) {
-				p->flags |= tmp;
+			if ((p = d->parent) && !(p->flags & (bit|tmp))) {
+				p->flags |= (bit|tmp);
 			}
 			if (d->merge && (p = sfind(s, d->merge)) &&
-			    !(p->flags & bit)) {
-				p->flags |= tmp;
+			    !(p->flags & (bit|tmp))) {
+				p->flags |= (bit|tmp);
 			}
 			continue;
 		}
 		unless (d->flags & tmp) continue;
+		if (d->flags & bit) gca = (count++) ? 0 : d;
 		d->flags &= ~tmp;
 		d->flags |= bit;
 		if (p = d->parent) {
 			p->flags |= tmp;
+			p->flags &= ~bit;
 		}
 		if (d->merge && (p = sfind(s, d->merge))) {
 			p->flags |= tmp;
+			p->flags &= ~bit;
 		}
 	}
+	return (gca);
 }
 
 private int
@@ -390,6 +391,7 @@ nested_free(nested *n)
 {
 	unless (n) return;
 	freeLines(n->comps, compFree);
+	if (n->freeproduct) compFree(n->product);
 	if (n->freecset) sccs_free(n->cset);
 	if (n->aliasdb) aliasdb_free(n->aliasdb);
 	if (n->tip) free(n->tip);
@@ -410,6 +412,7 @@ nested_toStream(nested *n, FILE *f)
 		fprintf(f, "dk:%s\n", c->deltakey);
 		fprintf(f, "pt:%s\n", c->path);
 		fprintf(f, "nw:%d\n", c->new);
+		fprintf(f, "pd:%d\n", c->product);
 		fprintf(f, "pr:%d\n", c->present);
 	}
 	fprintf(f, "@nested_list end@\n"); 
@@ -421,12 +424,13 @@ nested_fromStream(nested *n, FILE *f)
 {
 	char	*buf;
 	char	*rk, *dk, *pt;
-	int	nw, pr;
+	int	nw, pr, pd;
 	comp	*c;
 	char	**list = 0;
 
 	buf = fgetline(f);
-	unless (strneq(buf, "@nested_list ", 15)) return (0);
+	unless (strneq(buf, "@nested_list ", 13)) return (0);
+	unless (n) n = new(nested);
 	while (buf = fgetline(f)) {
 		if (strneq(buf, "@nested_list end@", 19)) break;
 		while (!strneq(buf, "rk:", 3)) continue;
@@ -441,6 +445,9 @@ nested_fromStream(nested *n, FILE *f)
 		assert(strneq(buf, "nw:", 3));
 		nw = atoi(buf+3);
 		buf = fgetline(f);
+		assert(strneq(buf, "pd:", 3));
+		pd = atoi(buf+3);
+		buf = fgetline(f);
 		assert(strneq(buf, "pr:", 3));
 		pr = atoi(buf+3);
 		/* now add it */
@@ -450,10 +457,10 @@ nested_fromStream(nested *n, FILE *f)
 		c->deltakey = dk;
 		c->path = pt;
 		c->new = nw;
+		if (c->product = pd) n->product = c;
 		c->present = pr;
 		list = addLine(list, (void *)c);
 	}
-	unless (n) n = new(nested);
 	freeLines(n->comps, compFree);
 	n->comps = list;
 	return (n);
@@ -492,7 +499,7 @@ nested_each(int quiet, int ac, char **av)
 		} else if (streq("!.", optarg)) {	// XXX -M!. == -C
 			flags &= ~NESTED_PRODUCT;
 		} else {
-			aliases = addLine(aliases, optarg);
+			aliases = addLine(aliases, strdup(optarg));
 		}
 	}
 
@@ -507,13 +514,17 @@ nested_each(int quiet, int ac, char **av)
 	}
 	if (aliases) {
 		// XXX add error checking when the error paths get made
-		(void)nested_filterAlias(n, 0, aliases);
-		freeLines(aliases, 0);
+		if (aliasdb_chkAliases(n, 0, aliases, 0, 1) ||
+		    nested_filterAlias(n, 0, aliases)) {
+		    	errors = 1;
+			goto err;
+		}
+		freeLines(aliases, free);
 		aliases = 0;
 	}
 	EACH_STRUCT(n->comps, cp) {
 		unless (cp->present) continue;
-		if (aliases && !cp->nlink) continue;
+		if (n->alias && !cp->nlink && !cp->product) continue;
 		unless (quiet) {
 			printf("#### %s ####\n", cp->path);
 			fflush(stdout);
@@ -527,6 +538,7 @@ nested_each(int quiet, int ac, char **av)
 			errors |= 1;
 		}
 	}
+err:	freeLines(aliases, free);
 	nested_free(n);
 	return (errors);
 }

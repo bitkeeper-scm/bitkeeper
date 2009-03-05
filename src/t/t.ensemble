@@ -1155,7 +1155,7 @@ echo OK
 
 echo $N Make sure we can remove a component from an alias ...........$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias -r A B
+bk alias -x A B
 echo gdb > WANT
 bk components -sA > GOT
 cmpfiles WANT GOT
@@ -1191,7 +1191,7 @@ test $REV = `bk changes -r+ -d:REV:` || {
 echo OK
 
 echo $N If we modify remove all components it should be a delete ....$NL
-bk alias -r A B C
+bk alias -x A B C
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
 echo Delete alias A > WANT
 cmpfiles WANT GOT
@@ -1260,7 +1260,7 @@ grep -q "recursive alias definition" OUT || {
 echo OK
 
 echo $N Try removing alias recursion ................................$NL
-bk alias -r recursion || exit 1
+bk alias -C -x recursion || exit 1
 bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @recursion'
@@ -1270,7 +1270,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Try removing alias see_recursion ............................$NL
-bk alias -r see_recursion || exit 1
+bk alias -C -x see_recursion || exit 1
 bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @see_recursion'
