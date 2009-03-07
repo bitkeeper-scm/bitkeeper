@@ -1042,7 +1042,7 @@ cd project
 
 echo $N Test simple alias addition ..................................$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias dev gcc4 gdb
+bk alias new dev gcc4 gdb
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo failed to commit change
 	bk cmdlog -a | tail -20
@@ -1087,7 +1087,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Add an alias that names another alias .......................$NL
-bk alias mydev dev
+bk alias new mydev dev
 (
 echo @dev 
     (
@@ -1112,19 +1112,19 @@ echo OK
 
 echo $N Test an alias that names another alias, 2 levels ............$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias -C B gcc4
+bk alias new -C B gcc4
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk alias -C C gdb
+bk alias new -C C gdb
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk alias A B C
+bk alias new A B C
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
 	bk cmdlog -a | tail -20
@@ -1150,7 +1150,7 @@ echo OK
 
 echo $N Make sure we can remove a component from an alias ...........$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias -x A B
+bk alias rm A B
 echo gdb > WANT
 bk components -sA > GOT
 cmpfiles WANT GOT
@@ -1163,7 +1163,7 @@ echo OK
 
 echo $N Make sure we can add a component to an alias ................$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias -a A B
+bk alias add A B
 echo gcc4 > WANT
 echo gdb >> WANT
 bk components -sA > GOT
@@ -1177,7 +1177,7 @@ echo OK
 
 echo $N Adding a component that is already there is a no-op .........$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias -a A B >OUT 2>&1
+bk alias add A B >OUT 2>&1
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have done anything
 	cat OUT
@@ -1186,16 +1186,16 @@ test $REV = `bk changes -r+ -d:REV:` || {
 echo OK
 
 echo $N If we modify remove all components it should be a delete ....$NL
-bk alias -x A B C
+bk alias rm A B C
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
 echo Delete alias A > WANT
 cmpfiles WANT GOT
-bk alias A B C
+bk alias new A B C
 echo OK
 
 echo $N List all alias names ........................................$NL
 bk grep '^@' BitKeeper/etc/aliases | sed 's/^@//' | bk _sort > WANT
-bk alias > GOT
+bk alias show > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -1209,7 +1209,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Adding a directory that does not exist is an error ..........$NL
-bk alias -a A somedir/ 2>ERR && {
+bk alias add A somedir/ 2>ERR && {
 	echo should have failed
 	exit 1
 }
@@ -1219,7 +1219,7 @@ grep -q 'somedir/ must be either a glob, key, alias, or component' ERR || {
 	exit 1
 }
 mkdir somedir
-bk alias -a A somedir/ >ERR 2>&1 && {
+bk alias add A somedir/ >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
@@ -1255,7 +1255,7 @@ grep -q "recursive alias definition" OUT || {
 echo OK
 
 echo $N Try removing alias recursion ................................$NL
-bk alias -C -x recursion || exit 1
+bk alias rm -C recursion || exit 1
 bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @recursion'
@@ -1265,7 +1265,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Try removing alias see_recursion ............................$NL
-bk alias -C -x see_recursion || exit 1
+bk alias rm -C see_recursion || exit 1
 bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @see_recursion'

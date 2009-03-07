@@ -86,6 +86,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	// c->deltakey set below
 
 	if (revs) {
+		n->revs = 1;
 		unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED);
 		EACH(revs) {
 			unless (d = sccs_findrev(cset, revs[i])) {
@@ -514,7 +515,7 @@ nested_each(int quiet, int ac, char **av)
 	}
 	if (aliases) {
 		// XXX add error checking when the error paths get made
-		if (aliasdb_chkAliases(n, 0, aliases, 0, 1) ||
+		if (aliasdb_chkAliases(n, 0, aliases, proj_cwd()) ||
 		    nested_filterAlias(n, 0, aliases)) {
 		    	errors = 1;
 			goto err;

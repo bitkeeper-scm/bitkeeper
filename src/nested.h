@@ -81,6 +81,7 @@ struct nested {
 	comp	*product;	// pointer into comps to the product
 	// bits
 	u32	alias:1;	// nlink counts set in components
+	u32	revs:1;		// revs was used, so list may not be full
 	u32	freeproduct:1;	// n->product not in comps list; free it
 	u32	product_first:1;// default is last in list
 	u32	undo:1;		// undo wants the -a inferred from opts.revs
@@ -121,7 +122,6 @@ hash	*aliasdb_init(nested *n, project *p, char *rev, int pending);
 char	**aliasdb_expand(nested *n, hash *aliasdb, char **aliases);
 char	**aliasdb_expandOne(nested *n, hash *aliasdb, char *alias);
 void	aliasdb_free(hash *db);
-int	aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
-	    char *cwd, int fix);
+int	aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases, char *cwd);
 
 #endif	// _NESTED_H

@@ -162,7 +162,7 @@ cmd_clone(int ac, char **av)
 
 		n = nested_init(s, rev, 0, flags);
 		assert(aliases);
-		aliasdb_chkAliases(n, 0, aliases, 0, 1);
+		aliasdb_chkAliases(n, 0, aliases, proj_cwd());
 		nested_filterAlias(n, 0, aliases);
 		EACH_STRUCT(n->comps, cp) {
 			if (cp->alias && !cp->present) {

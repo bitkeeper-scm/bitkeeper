@@ -1,6 +1,36 @@
 #include "sccs.h"
 #include "nested.h"
 
+private	int	aliasCreate(int ac, char **av);
+private	int	aliasShow(int ac, char **av);
+private	int	dbAdd(hash *aliasdb, char *alias, char **aliases);
+private	int	dbRemove(hash *aliasdb, char *alias, char **aliases);
+private	int	dbWrite(hash *aliasdb, char *comment, int commit);
+private	int	dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
+		    int showkeys, int showpaths);
+private	int	expand(nested *n, hash *db, hash *keys, hash *seen,
+		    char *alias);
+private	int	value(nested *n, hash *keys, char *alias);
+private	hash	*dbLoad(nested *n, hash *aliasdb);
+private	int	chkReserved(char *alias, int fix);
+private	int	validName(char *name);
+private	comp	*findDir(nested *n, char *cwd, char *dir);
+
+extern char	*prog;
+
+/* union of aliasCreate and aliasShow options */
+
+typedef struct {
+	char	*rev;
+	u32	force:1;
+	u32	quiet:1;
+	u32	showkeys:1;
+	u32	showpaths:1;
+	u32	commit:1;
+} opts;
+
+int	rmAlias = 0;
+
 /*
  * aliasdb is a hash -- key is alias and value is string of aliases
  * alias is a name into the hash
@@ -14,133 +44,110 @@
  *
  */
 
-private	int	dbAdd(hash *aliasdb, char *alias, char **aliases);
-private	int	dbRemove(hash *aliasdb, char *alias, char **aliases);
-private	int	dbWrite(hash *aliasdb, char *comment, int commit);
-private	int	dbShow(nested *n, hash *aliasdb, char *cwd, char *alias,
-		    int showkeys, int showpaths);
-private	int	expand(nested *n, hash *db, hash *keys, hash *seen,
-		    char *alias);
-private	int	value(nested *n, hash *keys, char *alias);
-private	hash	*dbLoad(nested *n, hash *aliasdb);
-private	int	chkReserved(char *alias, int fix);
-private	int	validName(char *name);
-private	comp	*findDir(nested *n, char *cwd, char *dir);
-
-extern char	*prog;
-
-int	rmAlias = 0;
-
 /*
- * bk alias [-Cfq] name comp [...]	// create a new one or overwrite (w/ -f)
- * bk alias [-Cq] -a name comp [...]	// append to existing alias
- * bk alias [-Cq] -x name comp [...]	// remove comps from an alias
- * bk alias [-Cq] -x name		// remove entire alias
- * bk alias				// list all aliases
- * bk alias [-kp] name			// show expansion, 1 per line
+ * create a new one or overwrite (w/ -f)
+ * bk alias create [-Cfq] name comp [...]
+ *
+ * bk alias add [-Cfq] name comp [...]	// append to existing alias (-f create)
+ * bk alias rm [-Cq]  name comp [...]	// remove comps from an alias
+ * bk alias rm [-Cq]  name		// remove entire alias
+ * bk alias list			// list all aliases
+ * bk alias list name			// show the value of a db key
+ * bk alias list -k | -p comp [...]	// show the key or path expansion
  */
+
 int
-alias_main(int ac, char **av)
+alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
+{
+	int	c, i;
+	struct {
+		char	*name;
+		int	(*fcn)(int ac, char **av);
+	} cmds[] = {
+		{"new", aliasCreate },
+		{"set", aliasCreate },
+		{"add", aliasCreate },
+		{"rm", aliasCreate },
+		{"show", aliasShow },
+		{0, 0}
+	};
+
+	while ((c = getopt(ac, av, "")) != -1) {
+		switch (c) {
+		    default:
+usage:			system("bk help -s alias");
+			return (1);
+		}
+	}
+	unless (av[optind]) goto usage;
+	for (i = 0; cmds[i].name; i++) {
+		if (streq(av[optind], cmds[i].name)) {
+			ac -= optind;
+			av += optind;
+			getoptReset();
+			return (cmds[i].fcn(ac, av));
+		}
+	}
+	goto usage;
+}
+
+int
+aliasCreate(int ac, char **av)	/* used for create, add, rm */
 {
 	nested	*n = 0;
 	hash	*aliasdb = 0;
 	char	*p, *alias = 0;
-	char	*rev = 0;
 	char	*comment = 0;
 	char	**aliases = 0;
-	char	*cwd;
+	char	*cwd, *cmd;
 	int	c;
 	int	reserved = 0, rc = 1;
-	/* options */
-	int	create = 0, append = 0, force = 0, rm = 0, list = 0;
-	int	quiet = 0, commit = 1, showkeys = 0, showpaths = 0;
+	int	nflags;
+	opts	opts;
 
+	memset(&opts, 0, sizeof(opts));
+	opts.commit = 1;
 	cwd = strdup(proj_cwd());
+	cmd = av[0];
+	if (streq(cmd, "set")) {
+		cmd = "new";
+		opts.force = 1;
+	}
 	if (proj_cd2product()) {
 		error("%s: called in a non-product.\n", prog);
 		goto err;
 	}
-	while ((c = getopt(ac, av, "aCfkpqr;x")) != -1) {
+	while ((c = getopt(ac, av, "Cfq")) != -1) {
 		switch (c) {
-		    case 'a': append = 1; break;
-		    case 'C': commit = 0; break;
-		    case 'f': force = 1; break;
-		    case 'k': showkeys = 1; break;
-		    case 'p': showpaths = 1; break;
-		    case 'q': quiet = 1; break;
-		    case 'r': rev = optarg; break;
-		    case 'x': rm = 1; break;
+		    case 'C': opts.commit = 0; break;
+		    case 'f': opts.force = 1; break;
+		    case 'q': opts.quiet = 1; break;
 		    default:
 usage:			sys("bk", "help", "-s", "alias", SYS);
 			goto err;
 		}
 	}
-	/*
-	 * Check options
-	 */
-	if (append && rm) goto usage;
-	if (showkeys && showpaths) {
-		error("%s: one of -k or -p but not both\n", prog);
+	unless (av[optind]) {
+		error("%s: no alias specified.\n", prog);
 		goto usage;
 	}
-	if (av[optind]) {
-		alias = av[optind++];
-		rmAlias = (rm && !av[optind]); // delete the whole alias
-		// downcast reserved keys if not removing an alias
-		unless (rmAlias) reserved = chkReserved(alias, 1);
-		assert(reserved >= 0);
+	alias = av[optind++];
+	rmAlias = (streq(cmd, "rm") && !av[optind]);
+	// downcast reserved keys if not removing an alias
+	unless (rmAlias) reserved = chkReserved(alias, 1);
+	assert(reserved >= 0);
+	unless (rmAlias || reserved || validName(alias)) goto usage;
+	if (reserved && !streq(alias, "default")) {
+		error("%s: reserved name \"%s\" may not be changed.\n",
+		    prog, alias);
+		goto usage;
 	}
-	if (!append && !rm) {
-		if (alias && av[optind]) {
-			create = 1;
-		} else {
-			list = 1;
-		}
-	}
-	if (append || rm || create) {
-		unless (alias) {
-			error("%s: no alias specified.\n", prog);
-			goto usage;
-		}
-		unless (rmAlias || reserved || validName(alias)) {
-			error("%s: invalid alias name %s.\n", prog, alias);
-			goto usage;
-		}
-		if (rev) {
-			error("%s: no -r when altering an alias\n", prog);
-			goto usage;
-		}
-		if (showkeys || showpaths) {
-			error("%s: no -k or -p when altering an alias\n",
-			    prog);
-			goto usage;
-		}
-		if (reserved && !streq(alias, "default")) {
-			error("%s: reserved name \"%s\" may not be changed.\n",
-			    prog, alias);
-			goto usage;
-		}
-	} else {
-		assert(list && !av[optind]);
-	}
-	/*
-	 * Done checking options.
-	 */
-	unless (n = nested_init(0, rev, 0, rev ? 0 : NESTED_PENDING)) goto err;
-	unless (aliasdb = aliasdb_init(n, 0, rev, rev ? 0 : 1)) goto err;
+	/* get the nest */
+	nflags = NESTED_PRODUCT|NESTED_PENDING;
+	unless (n = nested_init(0, 0, 0, nflags)) goto err;
+	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending)) goto err;
 
-	/* handle list immediately since it's easy */
-	if (list) {
-		rc = dbShow(n, aliasdb, cwd, alias, showkeys, showpaths);
-		goto err;	// really, goto cleanup and leave with rc
-	}
-
-	/*
-	 * the rest of the commands can have a list of args that map
-	 * to aliases. For example, if user is in src/gui/tcltk and
-	 * passes in arg './tcl', then it will get mapped to rootkey
-	 * of the tcl repo.
-	 */
+	/* get the list of aliases to add or remove */
 	for (; (p = av[optind]); ++optind) {
 		if (streq(p, "-") && !av[optind+1]) break; // last is '-'
 		aliases = addLine(aliases, strdup(p));
@@ -151,18 +158,17 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 			aliases = addLine(aliases, strdup(p));
 		}
 	}
-	if (c = aliasdb_chkAliases(n, aliasdb, aliases, cwd, 1)) {
+
+	/* replace vals like ./tcl with a rootkey; downcase reserved words */
+	if (c = aliasdb_chkAliases(n, aliasdb, aliases, cwd)) {
 		error("%s: %d error%s processing aliases\n",
 		    prog, c, (c > 1)?"s":"");
 		goto err;
 	}
 
-	/*
-	 * Don't overwrite unless they told us that's what they wanted.
-	 */
-	if (create) {
+	if (streq(cmd, "new")) {
 		if (hash_fetchStr(aliasdb, alias)) {
-			unless (force) {
+			unless (opts.force) {
 				error("%s: %s exists, use -f?\n", prog, alias);
 				goto err;
 			}
@@ -172,16 +178,15 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 			comment = aprintf("Create alias %s", alias);
 		}
 		if (dbAdd(aliasdb, alias, aliases)) goto err;
-		if (dbWrite(aliasdb, comment, commit)) goto err;
+		if (dbWrite(aliasdb, comment, opts.commit)) goto err;
 	}
 
-	/*
-	 * aliasdb_add means append if existing
-	 */
-	if (append) {
+	if (streq(cmd, "add")) {
 		unless (hash_fetchStr(aliasdb, alias)) {
-			unless (force) {
-				error("%s: %s does not exist.\n", prog, alias);
+			unless (opts.force) {
+				error("%s: %s does not exist.  "
+				    "Use -f or bk alias create\n",
+				    prog, alias);
 				goto err;
 			}
 			comment = aprintf("Create alias %s", alias);
@@ -189,15 +194,78 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 			comment = aprintf("Modify alias %s", alias);
 		}
 		if (dbAdd(aliasdb, alias, aliases)) goto err;
-		if (dbWrite(aliasdb, comment, commit)) goto err;
+		if (dbWrite(aliasdb, comment, opts.commit)) goto err;
 	}
 
-	if (rm) {
+	if (streq(cmd, "rm")) {
 		if (dbRemove(aliasdb, alias, aliases)) goto err;
 		comment = aprintf("Delete alias %s", alias);
-		if (dbWrite(aliasdb, comment, commit)) goto err;
+		if (dbWrite(aliasdb, comment, opts.commit)) goto err;
 	}
 	rc = 0;
+err:
+	free(cwd);
+	nested_free(n);
+	aliasdb_free(aliasdb);
+	freeLines(aliases, free);
+	if (comment) free(comment);
+	return (rc);
+}
+
+private	int
+aliasShow(int ac, char **av)
+{
+	nested	*n = 0;
+	hash	*aliasdb = 0;
+	char	*p;
+	char	*comment = 0;
+	char	**aliases = 0;
+	char	*cwd;
+	int	c;
+	int	rc = 1;
+	int	nflags;
+	opts	opts;
+
+	memset(&opts, 0, sizeof(opts));
+	cwd = strdup(proj_cwd());
+	if (proj_cd2product()) {
+		error("%s: called in a non-product.\n", prog);
+		goto err;
+	}
+
+	while ((c = getopt(ac, av, "kpqr;")) != -1) {
+		switch (c) {
+		    case 'k': opts.showkeys = 1; break;
+		    case 'p': opts.showpaths = 1; break;
+		    case 'q': opts.quiet = 1; break;
+		    case 'r': opts.rev = optarg; break;
+		    default:
+usage:			sys("bk", "help", "-s", "alias", SYS);
+			goto err;
+		}
+	}
+	if (opts.showkeys && opts.showpaths) {
+		error("%s: one of -k or -p but not both\n", prog);
+		goto usage;
+	}
+	/* get the nest */
+	nflags = NESTED_PRODUCT | (opts.rev ? 0 : NESTED_PENDING);
+	unless (n = nested_init(0, opts.rev, 0, nflags)) goto err;
+	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending)) goto err;
+
+	/* slurp in a list of aliases to list */
+	for (; (p = av[optind]); ++optind) {
+		if (streq(p, "-") && !av[optind+1]) break; // last is '-'
+		aliases = addLine(aliases, strdup(p));
+	}
+	/* if last is '-', then fetch params from stdin */
+	if (p) {
+		while (p = fgetline(stdin)) {
+			aliases = addLine(aliases, strdup(p));
+		}
+	}
+
+	rc = dbShow(n, aliasdb, cwd, aliases, opts.showkeys, opts.showpaths);
 err:
 	free(cwd);
 	nested_free(n);
@@ -256,14 +324,9 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 	 * this is aliasdb_chkDb(), in case we need a separate entry
 	 */
 
-// Checking is  not ready for prime time because nested_init(..revs..)
-// has not all the components, but just the components in revs.
-// until we have all of them in there, doing this doesn't make sense.
-// I could put a n->revs in the data structure and skip the test because
-// of it.  For now, unbreak things.
-#define	NOCHK	1
+	// disable checks if partial list or removing an alias
+	if (n->revs || rmAlias) goto done;
 
-	if (NOCHK || rmAlias) goto done; // disable checks if removing an alias
 	EACH_HASH(aliasdb) {
 		if (reserved = chkReserved(aliasdb->kptr, 0)) {
 			if (reserved < 0) {
@@ -279,7 +342,7 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 			unless (validName(aliasdb->kptr)) total++;
 		}
 		aliases = splitLine(aliasdb->vptr, "\r\n", 0);
-		if (errors = aliasdb_chkAliases(n, aliasdb, aliases, 0, 0)) {
+		if (errors = aliasdb_chkAliases(n, aliasdb, aliases, 0)) {
 			error("%s: bad values for key: %s\n",
 			    prog, aliasdb->kptr);
 			total += errors;
@@ -324,6 +387,11 @@ dbAdd(hash *aliasdb, char *alias, char **aliases)
 		list = splitLine(val, "\r\n", 0);
 	}
 	EACH(aliases) {
+		if (streq(alias, "here") || streq(alias, "there")) {
+			error("%s: not allowed as value: %s\n",
+			    prog, alias);
+			goto err;
+		}
 		list = addLine(list, strdup(aliases[i]));
 	}
 	uniqLines(list, free);
@@ -496,66 +564,65 @@ err:
 }
 
 private	int
-dbShow(nested *n, hash *aliasdb, char *cwd, char *alias,
+dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
     int showkeys, int showpaths)
 {
 	char	**items = 0, **comps;
-	char	*val;
+	char	*val, *alias;
 	comp	*c;
 	int	i, rc = 1;
 
-	unless (alias) {
-		/*
-		 * print all the alias keys
-		 * XXX: list reserved words?
-		 */
+	unless (aliases) {
+		/* print all the alias keys */
 		EACH_HASH(aliasdb) {
 			items = addLine(items, strdup(aliasdb->kptr));
 		}
 		goto print;
 	}
 
-	unless (showkeys || showpaths) {
-		/*
-		 * print the val entry from the db; fake default if not there
-		 */
-		val = hash_fetchStr(aliasdb, alias);
-		if (!val && streq(alias, "default")) {
-			val = "all";
-		} else if (!val) {
-			error("%s: no alias: %s\n", prog, alias);
-			goto err;
+	/* if showing keys or paths, the expand any key or value item */
+	if (showkeys || showpaths) {
+		if (aliasdb_chkAliases(n, aliasdb, aliases, cwd)) goto err;
+		unless (comps = aliasdb_expand(n, aliasdb, aliases)) goto err;
+
+		EACH_STRUCT(comps, c) {
+			items = addLine(items,
+			    strdup(showkeys ? c->rootkey : c->path));
 		}
-		items = splitLine(val, "\r\n", 0);
+		freeLines(comps, 0);
 		goto print;
 	}
 
-	/* if showing keys or paths, the expand any key or value item */
-
+	/* list out the contents for a single key */
+	unless (nLines(aliases) == 1) {
+		error("%s: one alias at a time, or use -k or -p\n", prog);
+		goto err;
+	}
+	alias = aliases[1];	// firstLine(aliases);
+	/*
+	 * print the val entry from the db; fake default if not there
+	 */
 	if (i = chkReserved(alias, 1)) {
-		/*
-		 * This is here to allow keys like 'here' which are
-		 * not allowed in the value string checked in the else block
-		 */
-		assert(i > 0);	// when fixing case, no errors can happen
-		val = strdup(alias);
-	} else {
-		/* use lines arry to fix up a single item */
-		items = addLine(0, strdup(alias));
-		if (aliasdb_chkAliases(n, aliasdb, items, cwd, 1)) goto err;
-		val = items[1];	/* firstLine(items) */
-		freeLines(items, 0);
-		items = 0;
+		assert(i >= 0);
+		unless (streq(alias, "default")) {
+			error("%s: use -k or -p when expanding "
+			    "reserved alias; %s\n", prog, alias);
+			goto err;
+		}
 	}
-	comps = aliasdb_expandOne(n, aliasdb, val);
-	free(val);
-	unless (comps) goto err;
-
-	EACH_STRUCT(comps, c) {
-		items = addLine(items,
-		    strdup(showkeys ? c->rootkey : c->path));
+	if ((i == 0) && !validName(alias)) {
+		error("If a path, glob, or key, "
+		    "use -k or -p when expanding\n");
+		goto err;
 	}
-	freeLines(comps, 0);
+	val = hash_fetchStr(aliasdb, alias);
+	if (!val && streq(alias, "default")) {
+		val = "all";
+	} else if (!val) {
+		error("%s: no alias: %s\n", prog, alias);
+		goto err;
+	}
+	items = splitLine(val, "\r\n", 0);
 
 print:
 	sortLines(items, 0);
@@ -587,6 +654,7 @@ expand(nested *n, hash *aliasdb, hash *keys, hash *seen, char *alias)
 
 	if (streq("all", alias)) {
 		EACH_STRUCT(n->comps, c) {
+			if (c->product) continue;
 			hash_insertStr(keys, c->rootkey, 0);
 		}
 		rc = 0;
@@ -641,6 +709,7 @@ value(nested *n, hash *keys, char *alias)
 		if (streq(alias, "./")) alias += 2;
 
 		EACH_STRUCT(n->comps, c) {
+			if (c->product) continue;
 			if (match_one(c->path, alias, 0)) {
 				hash_insertStr(keys, c->rootkey, 0);
 			}
@@ -670,10 +739,9 @@ dbLoad(nested *n, hash *aliasdb)
 }
 
 int
-aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
-    char *cwd, int fix)
+aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases, char *cwd)
 {
-	int	i, reserved, errors = 0;
+	int	i, reserved, errors = 0, fix = (cwd != 0);
 	comp	*c;
 	char	*alias;
 
@@ -687,10 +755,9 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 
 		if (reserved = chkReserved(alias, fix)) {
 			if (reserved < 0) {
-				/* case problem */
-				errors++;
-			} else if (streq(alias, "here") ||
-			    streq(alias, "there")) {
+				errors++; /* case problem */
+			} else if (!fix &&
+			    streq(alias, "here") && streq(alias, "there")) {
 				error("%s: not allowed as value: %s\n",
 				    prog, alias);
 				errors++;
@@ -699,11 +766,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 		}
 		/* see if alias is in the aliasdb and has a validName */
 		if (hash_fetchStr(aliasdb, alias)) {
-			unless (validName(alias)) {
-				error("%s: invalid alias name %s\n",
-				    prog, alias);
-				errors++;
-			}
+			unless (validName(alias)) errors++;
 			continue;
 		}
 
@@ -735,6 +798,20 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 				continue;
 			}
 
+			/* strip out product rootkeys */
+root:			if (streq(c->rootkey, n->product->rootkey)) {
+				unless (fix) {
+					error(
+					    "%s: list has product rookey: %s\n",
+					    prog, alias);
+					errors++;
+					continue;
+				}
+				removeLineN(aliases, i, free);
+				i--;
+				continue;
+			}
+
 			/* okay, we have a rootkey to replace it */
 			debug((stderr, "%s was md5, now rootkey\n", alias));
 			free(alias);
@@ -752,11 +829,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases,
 		 * if this is command line, is it a path which points
 		 * to a repository?
 		 */
-		if (fix && (c = findDir(n, cwd, alias))) {
-			free(alias);
-			aliases[i] = strdup(c->rootkey);
-			continue;
-		}
+		if (fix && (c = findDir(n, cwd, alias))) goto root;
 
 		error("%s: %s must be either a glob, key, "
 		    "alias, or component.\n", prog, alias);
@@ -799,16 +872,18 @@ private	int
 validName(char *name)
 {
 	char	*p;
-	int	valid = 1;
 
-	unless (isalpha(name[0])) return (0);
+	unless (isalpha(name[0])) {
+err:		error("%s: invalid alias name: %s\n", prog, name);
+		return (0);
+	}
 	for (p = name+1; *p; p++) {
 		unless (isalnum(*p) ||
 		    (*p == '_') || (*p == '+') || (*p == '-') || (*p == '=')) {
-			valid = 0;
+		    	goto err;
 		}
 	}
-	return (valid);
+	return (1);
 }
 
 /*

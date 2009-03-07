@@ -1,0 +1,68 @@
+# alias -- read and write the aliasdb
+
+echo $N Test default alias setup ....................................$NL
+nested project
+# That gives us gcc and gdb
+# and a default alias in the db defined to all
+echo default > WANT
+bk alias show > GOT
+cmpfiles WANT GOT
+# 
+echo all > WANT
+bk alias show default > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test illegal entries for alias in the list command ..........$NL
+# bad name - start with alpha, only alphanumeric, +, -, _, = (why '=' ?)
+bk alias show '8foo' 2> ERR && exit 1
+grep -q "alias: invalid alias name: 8foo" ERR || exit 1
+bk alias show "foo#" 2> ERR && exit 1
+grep -q "alias: invalid alias name: foo#" ERR || exit 1
+# valid but non-existent alias
+bk alias show foo 2> ERR && exit 1
+grep -q "alias: no alias: foo" ERR || exit 1
+# valid keyword, but not valid key 
+bk alias show all 2> ERR && exit 1
+grep -q "alias: use -k or -p when expanding reserved alias; all" ERR || exit 1
+bk alias show gdb gcc 2> ERR && exit 1
+grep -q "alias: one alias at a time, or use -k or -p" ERR || exit 1
+echo OK
+
+echo $N Test showing keys with the list command .....................$NL
+bk log -r1.0 -nd:KEY: gcc/ChangeSet gdb/ChangeSet | bk _sort > WANT
+bk alias show -k all > GOT
+cmpfiles WANT GOT
+bk alias show -k default > GOT
+cmpfiles WANT GOT
+bk alias show -k gcc gdb > GOT
+cmpfiles WANT GOT
+MD5=`bk log -r1.0 -nd:MD5KEY: gcc/ChangeSet gdb/ChangeSet`
+bk alias show -k $MD5 > GOT
+cmpfiles WANT GOT
+cd gcc
+bk alias show -k . ../gdb > ../GOT
+cd ..
+cmpfiles WANT GOT
+bk alias show -k 'g*' > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test showing paths with the list command ....................$NL
+printf "gcc\ngdb\n" > WANT
+bk alias show -p all > GOT
+cmpfiles WANT GOT
+bk alias show -p default > GOT
+cmpfiles WANT GOT
+bk alias show -p gcc gdb > GOT
+cmpfiles WANT GOT
+MD5=`bk log -r1.0 -nd:MD5KEY: gcc/ChangeSet gdb/ChangeSet`
+bk alias show -p $MD5 > GOT
+cmpfiles WANT GOT
+cd gcc
+bk alias show -p . ../gdb > ../GOT
+cd ..
+cmpfiles WANT GOT
+bk alias show -p 'g*' > GOT
+cmpfiles WANT GOT
+echo OK
