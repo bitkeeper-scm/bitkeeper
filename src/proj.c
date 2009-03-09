@@ -110,6 +110,7 @@ private void
 proj_recent(project *p)
 {
 	project	*oldp;
+
 	while (nLines(proj.recent) >= NRECENT) {
 		/*
 		 * don't use the free field in removeLineN because
@@ -213,6 +214,10 @@ proj_free(project *p)
 	}
 	projcache_delete(p);	/* subtle: See SHORTCUT in proj_reset() */
 	proj_reset(p);
+	if (p->coDB) {
+		mdbm_close(p->coDB);
+		p->coDB = 0;
+	}
 	free(p->root);
 	free(p);
 }
@@ -735,13 +740,19 @@ proj_reset(project *p)
 		p->co = 0;
 		p->sync = -1;
 		p->remap = -1;
+#if 0
 		if (p->coDB) {
 			mdbm_close(p->coDB);
 			p->coDB = 0;
 		}
+#endif
 		if (p->BAM_idx) {
 			mdbm_close(p->BAM_idx);
 			p->BAM_idx = 0;
+		}
+		if (p->idxsock) {
+			closesocket(p->idxsock);
+			p->idxsock = 0;
 		}
 		unless (p->product) p->product = INVALID;
 
