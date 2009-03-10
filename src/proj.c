@@ -132,6 +132,7 @@ project *
 proj_init(char *dir)
 {
 	project	*ret;
+	int	old;
 	char	*root;
 	char	*t;
 	char	*fdir, *cwd;
@@ -152,7 +153,10 @@ proj_init(char *dir)
 	if (ret = projcache_lookup(fdir)) goto done;
 
 	/* missed the cache */
-	unless (root = find_root(dir)) return (0);
+	old = fslayer_enable(0);
+	root = find_root(dir);
+	fslayer_enable(old);
+	unless (root) return (0);
 
 	unless (streq(root, fdir)) {
 		/* fdir is not a root, was root in cache? */
