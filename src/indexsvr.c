@@ -473,8 +473,15 @@ remap_path(char *path)
 static void
 full_remap_path(char *buf, project *proj, char *rel)
 {
+	int	len;
+
 	concat_path(buf, proj_root(proj),
 	    (proj_hasOldSCCS(proj)) ? rel : remap_path(rel));
+
+	/* buf may end in /., we'll remove that */
+	len = strlen(buf);
+	if (len < 2) return;
+	if (buf[len - 2] == '/' && buf[len - 1] == '.') buf[len - 2] = 0;
 }
 
 private void
