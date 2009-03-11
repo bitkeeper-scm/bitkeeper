@@ -163,8 +163,8 @@ err:		if (undo_list[0]) unlink(undo_list);
 		EACH_STRUCT(n->comps, c) if (c->present && !c->new) num++;
 		START_TRANSACTION();
 		EACH_STRUCT(n->comps, c) {
-			if (c->new) continue;
-			unless (c->present) continue;
+			if (c->product || c->new) continue;
+			unless (c->present && c->included) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("undo"));
 			EACH(nav) vp = addLine(vp, strdup(nav[i]));

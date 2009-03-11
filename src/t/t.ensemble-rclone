@@ -129,7 +129,7 @@ echo OK
 echo $N Test that we can clone using the COMPONENTS file ............$NL
 rm -rf mynewgcc
 cd project
-bk alias justgcc gcc
+bk alias new justgcc gcc
 cd ..
 bk clone $Q -sjustgcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed

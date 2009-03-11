@@ -1064,14 +1064,14 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	char	**comps;
 	char	**revs;
 	char	**vp;
-	char	*name, *url;
-	int	status, i, rc = 0;
+	char	*name, *url, *cwd = 0;
+	int	status, i, j, rc = 0;
 
 	url = remote_unparse(r);
 
 	revs = file2Lines(0, rev_list);
 	assert(revs);
-	unless (n = nested_init(0, 0, revs, NESTED_PRODUCT)) {
+	unless (n = nested_init(0, 0, revs, 0)) {
 		rc = 1;
 		goto out;
 	}
@@ -1089,6 +1089,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 * remote side's HERE file.
 	 */
 	assert(opts.aliases);
+	assert(n->oldtip); /* XXX: works in push but not pull */
 	unless (h = aliasdb_init(n, 0, n->oldtip, 0)) {
 		rc = 1;
 		goto out;
@@ -1125,6 +1126,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 *  c->new	   comp created in this range of csets (do clone)
 	 */
 	EACH_STRUCT(n->comps, c) {
+		if (c->product) continue;
 		if (c->included) {
 			/* this component is included in push */
 			if (c->alias) {
@@ -1162,6 +1164,8 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		}
 	}
 	START_TRANSACTION();
+	cwd = strdup(proj_cwd());
+	n->product->alias = 1;
 	EACH_STRUCT(n->comps, c) {
 		/* skip cases with nothing to do */
 		if (!c->included || !c->present || !c->alias) continue;
@@ -1170,13 +1174,13 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		vp = addLine(0, strdup("bk"));
 		if (c->new) {
 			vp = addLine(vp, strdup("clone"));
-			EACH(opts.av_clone) {
-				vp = addLine(vp, strdup(opts.av_clone[i]));
+			EACH_INDEX(opts.av_clone, j) {
+				vp = addLine(vp, strdup(opts.av_clone[j]));
 			}
 		} else {
 			vp = addLine(vp, strdup("push"));
-			EACH(opts.av_push) {
-				vp = addLine(vp, strdup(opts.av_push[i]));
+			EACH_INDEX(opts.av_push, j) {
+				vp = addLine(vp, strdup(opts.av_push[j]));
 			}
 		}
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
@@ -1197,6 +1201,10 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		}
 	}
 out:
+	if (cwd) {
+		chdir(cwd);
+		free(cwd);
+	}
 	free(url);
 	aliasdb_free(h);
 	nested_free(n);

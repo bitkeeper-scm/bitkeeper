@@ -1,11 +1,17 @@
 #include "sccs.h"
 #include "nested.h"
 
+/*
+ * in case I want to try storing globs in the aliasdb: uncomment
+ */
+// #define CRAZY_GLOB	1
+
 private	int	aliasCreate(int ac, char **av);
 private	int	aliasShow(int ac, char **av);
 private	int	dbAdd(hash *aliasdb, char *alias, char **aliases);
 private	int	dbRemove(hash *aliasdb, char *alias, char **aliases);
-private	int	dbWrite(hash *aliasdb, char *comment, int commit);
+private	int	dbWrite(nested *n, hash *aliasdb, char *comment, int commit);
+private	int	dbChk(nested *n, hash *aliasdb);
 private	int	dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
 		    int showkeys, int showpaths);
 private	int	expand(nested *n, hash *db, hash *keys, hash *seen,
@@ -143,7 +149,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		goto usage;
 	}
 	/* get the nest */
-	nflags = NESTED_PRODUCT|NESTED_PENDING;
+	nflags = NESTED_PENDING;
 	unless (n = nested_init(0, 0, 0, nflags)) goto err;
 	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending)) goto err;
 
@@ -160,7 +166,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 	}
 
 	/* replace vals like ./tcl with a rootkey; downcase reserved words */
-	if (c = aliasdb_chkAliases(n, aliasdb, aliases, cwd)) {
+	if (c = aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) {
 		error("%s: %d error%s processing aliases\n",
 		    prog, c, (c > 1)?"s":"");
 		goto err;
@@ -178,7 +184,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 			comment = aprintf("Create alias %s", alias);
 		}
 		if (dbAdd(aliasdb, alias, aliases)) goto err;
-		if (dbWrite(aliasdb, comment, opts.commit)) goto err;
+		if (dbWrite(n, aliasdb, comment, opts.commit)) goto err;
 	}
 
 	if (streq(cmd, "add")) {
@@ -194,13 +200,13 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 			comment = aprintf("Modify alias %s", alias);
 		}
 		if (dbAdd(aliasdb, alias, aliases)) goto err;
-		if (dbWrite(aliasdb, comment, opts.commit)) goto err;
+		if (dbWrite(n, aliasdb, comment, opts.commit)) goto err;
 	}
 
 	if (streq(cmd, "rm")) {
 		if (dbRemove(aliasdb, alias, aliases)) goto err;
 		comment = aprintf("Delete alias %s", alias);
-		if (dbWrite(aliasdb, comment, opts.commit)) goto err;
+		if (dbWrite(n, aliasdb, comment, opts.commit)) goto err;
 	}
 	rc = 0;
 err:
@@ -249,7 +255,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		goto usage;
 	}
 	/* get the nest */
-	nflags = NESTED_PRODUCT | (opts.rev ? 0 : NESTED_PENDING);
+	nflags = (opts.rev ? 0 : NESTED_PENDING);
 	unless (n = nested_init(0, opts.rev, 0, nflags)) goto err;
 	unless (aliasdb = aliasdb_init(n, 0, n->tip, n->pending)) goto err;
 
@@ -279,10 +285,7 @@ hash	*
 aliasdb_init(nested *n, project *p, char *rev, int pending)
 {
 	hash	*aliasdb = 0;
-	int	total = 0, errors = 0;
-	int	reserved;
 	char	*path = 0;
-	char	**aliases = 0;
 	sccs	*s;
 	char	*csetrev = 0;
 	char	buf[MAXPATH];
@@ -318,44 +321,13 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 		aliasdb = hash_fromFile(0, buf); /* may have gfile */
 	}
 	free(path);
+
 	unless (aliasdb) aliasdb = hash_new(HASH_MEMHASH);
 
-	/*
-	 * this is aliasdb_chkDb(), in case we need a separate entry
-	 */
-
-	// disable checks if partial list or removing an alias
-	if (n->revs || rmAlias) goto done;
-
-	EACH_HASH(aliasdb) {
-		if (reserved = chkReserved(aliasdb->kptr, 0)) {
-			if (reserved < 0) {
-				error("%s: bad case for key: %s\n",
-				    prog, aliasdb->kptr);
-				total++;
-			} else unless (streq(aliasdb->kptr, "default")) {
-				error("%s: illegal aliasdb key: %s\n",
-				    prog, aliasdb->kptr);
-				total++;
-			}
-		} else {
-			unless (validName(aliasdb->kptr)) total++;
-		}
-		aliases = splitLine(aliasdb->vptr, "\r\n", 0);
-		if (errors = aliasdb_chkAliases(n, aliasdb, aliases, 0)) {
-			error("%s: bad values for key: %s\n",
-			    prog, aliasdb->kptr);
-			total += errors;
-		}
-		freeLines(aliases, free);
-	}
-	if (total) {
-		error("%s: %d error%s initializing aliasdb\n",
-		    prog, total, (total > 1)?"s":"");
-		hash_free(aliasdb);
+	if (dbChk(n, aliasdb)) {
+		aliasdb_free(aliasdb);
 		aliasdb = 0;
 	}
-done:
 	return (aliasdb);
 }
 
@@ -380,7 +352,8 @@ dbAdd(hash *aliasdb, char *alias, char **aliases)
 	int	i, rc = 1;
 
 	unless (nLines(aliases)) {
-		error("%s: nothing to add\n", prog);
+		// XXX normal and quiet mode coming...
+		// error("%s: nothing to add\n", prog);
 		goto err;
 	}
 	if (val = hash_fetchStr(aliasdb, alias)) {
@@ -452,11 +425,13 @@ err:
 }
 
 private	int
-dbWrite(hash *aliasdb, char *comment, int commit)
+dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 {
 	int	ret = 0;
 	char	*tmpfile;
 	char	buf[MAXPATH];
+
+	if (ret = dbChk(n, aliasdb)) return (ret);
 
 	(void)system("bk -P edit -q " ALIASES);
 	hash_toFile(aliasdb, ALIASES);
@@ -480,6 +455,60 @@ dbWrite(hash *aliasdb, char *comment, int commit)
 	return (ret);
 }
 
+/*
+ * integrity check the db
+ * XXX: Do we want to have a fix?
+ */
+
+private	int
+dbChk(nested *n, hash *aliasdb)
+{
+	int	reserved;
+	int	total = 0, errors = 0;
+	char	*key;
+	char	**aliases = 0;
+	char	**comps;
+
+	// disable checks if partial list or removing an alias
+	// Used to have n->revs, but now the list is full
+	if (rmAlias || !aliasdb) return (0);
+
+	EACH_HASH(aliasdb) {
+		key = aliasdb->kptr;
+		if (reserved = chkReserved(key, 0)) {
+			if (reserved < 0) {
+				error("%s: bad case for key: %s\n",
+				    prog, key);
+				total++;
+			} else unless (streq(key, "default")) {
+				error("%s: illegal aliasdb key: %s\n",
+				    prog, key);
+				total++;
+			}
+		} else {
+			unless (validName(key)) total++;
+		}
+		aliases = splitLine(aliasdb->vptr, "\r\n", 0);
+		if (errors = aliasdb_chkAliases(n, aliasdb, &aliases, 0)) {
+			error("%s: bad values for key: %s\n",
+			    prog, key);
+			total += errors;
+		}
+		freeLines(aliases, free);
+		/* check for recursion */
+		if (comps = aliasdb_expandOne(n, aliasdb, key)) {
+			freeLines(comps, 0);
+		} else {
+			total++;
+		}
+	}
+	if (total) {
+		error("%s: %d error%s found while checking the aliasdb\n",
+		    prog, total, (total > 1)?"s":"");
+	}
+	return (total);
+}
+
 // =================== functions to read the db ===============
 
 char	**
@@ -497,6 +526,7 @@ aliasdb_expand(nested *n, hash *aliasdb, char **aliases)
 			return (0);
 		}
 		EACH_STRUCT(comps, c) {
+			assert(!c->product);
 			c->nlink += 1; // deprecated
 		}
 		freeLines(comps, 0);
@@ -538,6 +568,7 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 	 */
 	if (streq("here", alias) || streq("there", alias)) {
 		EACH_STRUCT(n->comps, c) {
+			if (c->product) continue;
 			if (c->present) comps = addLine(comps, c);
 		}
 		return (comps);
@@ -553,6 +584,15 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 	/* output subset of n->comps in n->comps order */
 	EACH_STRUCT(n->comps, c) {
 		if (hash_fetchStr(keys, c->rootkey)) {
+			/* 
+			 * I'd like to:  assert(!c->product);
+			 * but clone sends the key over as part of
+			 * a non empty COMPONENTS file. Until the
+			 * full protocol is worked out, filtering them
+			 * here.
+			 */
+			// assert(!c->product);
+			if (c->product) continue;
 			comps = addLine(comps, c);
 		}
 	}
@@ -582,7 +622,7 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
 
 	/* if showing keys or paths, the expand any key or value item */
 	if (showkeys || showpaths) {
-		if (aliasdb_chkAliases(n, aliasdb, aliases, cwd)) goto err;
+		if (aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) goto err;
 		unless (comps = aliasdb_expand(n, aliasdb, aliases)) goto err;
 
 		EACH_STRUCT(comps, c) {
@@ -699,14 +739,15 @@ done:
 private	int
 value(nested *n, hash *keys, char *alias)
 {
-	comp	*c;
-	int	i;
-
 	if (isKey(alias)) {
 		hash_insertStr(keys, alias, 0);
+#ifdef	CRAZY_GLOB
 	} else if (is_glob(alias)) {
+		int	i;
+		comp	*c;
+
 		/* XXX: is this needed */
-		if (streq(alias, "./")) alias += 2;
+		if (strneq(alias, "./", 2)) alias += 2;
 
 		EACH_STRUCT(n->comps, c) {
 			if (c->product) continue;
@@ -714,8 +755,13 @@ value(nested *n, hash *keys, char *alias)
 				hash_insertStr(keys, c->rootkey, 0);
 			}
 		}
+#endif
 	} else {
-		error("%s: alias value problem with: %s\n", prog, alias);
+		error("%s: value must be either a "
+#ifdef	CRAZY_GLOB
+		    "glob, " // add a comma after key below
+#endif
+		    "key or alias: %s\n", prog, alias);
 		return (1);
 	}
 	return (0);
@@ -739,17 +785,23 @@ dbLoad(nested *n, hash *aliasdb)
 }
 
 int
-aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases, char *cwd)
+aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 {
 	int	i, reserved, errors = 0, fix = (cwd != 0);
 	comp	*c;
-	char	*alias;
+	char	*alias, **aliases;
+#ifndef	CRAZY_GLOB
+	char	**globkeys = 0;
+	int	j;
+#endif
 
 	unless (aliasdb || (aliasdb = dbLoad(n, 0))) {
 		error("%s: cannot initial aliasdb\n", prog);
 		return (1);
 	}
 
+	assert(paliases);
+	aliases = *paliases;
 	EACH(aliases) {
 		alias = aliases[i];
 
@@ -774,7 +826,10 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases, char *cwd)
 			/* is it a normal rootkey? */
 			if (strchr(alias, '|')) {
 				/* that is in the nested collection? */
-				if (nested_findKey(n, alias)) continue;
+				if (c = nested_findKey(n, alias)) {
+					if (c->product) goto root;
+					continue;
+				}
 
 				/* rootkey but not found */
 				error("%s: not a component rootkey: %s\n",
@@ -798,8 +853,11 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases, char *cwd)
 				continue;
 			}
 
+			/* okay, we have a rootkey to replace it */
+			debug((stderr, "%s was md5, now rootkey\n", alias));
+
 			/* strip out product rootkeys */
-root:			if (streq(c->rootkey, n->product->rootkey)) {
+root:			if (c->product) {
 				unless (fix) {
 					error(
 					    "%s: list has product rookey: %s\n",
@@ -811,9 +869,6 @@ root:			if (streq(c->rootkey, n->product->rootkey)) {
 				i--;
 				continue;
 			}
-
-			/* okay, we have a rootkey to replace it */
-			debug((stderr, "%s was md5, now rootkey\n", alias));
 			free(alias);
 			aliases[i] = strdup(c->rootkey);
 			continue;
@@ -821,6 +876,22 @@ root:			if (streq(c->rootkey, n->product->rootkey)) {
 
 		/* Is it a glob ? */
 		if (is_glob(alias)) {
+#ifndef	CRAZY_GLOB
+			unless (fix) {
+				error( "%s: glob not allowed: %s\n",
+				    prog, alias);
+			}
+			if (strneq(alias, "./", 2)) alias += 2;
+			EACH_STRUCT_INDEX(n->comps, c, j) {
+				if (c->product) continue;
+				if (match_one(c->path, alias, 0)) {
+					globkeys = addLine(globkeys,
+					    strdup(c->rootkey));
+				}
+			}
+			removeLineN(aliases, i, free);
+			i--;
+#endif
 			/* XXX: remap a relative glob to repo relative? */
 			continue;
 		}
@@ -831,10 +902,29 @@ root:			if (streq(c->rootkey, n->product->rootkey)) {
 		 */
 		if (fix && (c = findDir(n, cwd, alias))) goto root;
 
-		error("%s: %s must be either a glob, key, "
-		    "alias, or component.\n", prog, alias);
+		if (fix) {
+			error("%s: %s must be either a glob, "
+			    "key, alias, or component.\n", prog, alias);
+		} else {
+			error("%s: %s must be either a "
+#ifdef	CRAZY_GLOB
+			    "glob, " // add a comma after key below
+#endif
+			    "key or alias.\n", prog, alias);
+		}
 		errors++;
 	}
+#ifndef	CRAZY_GLOB
+	if (errors) {
+		freeLines(globkeys, free);
+	} else {
+		EACH(globkeys) {
+			aliases = addLine(aliases, globkeys[i]);
+		}
+		freeLines(globkeys, 0);
+		*paliases = aliases;
+	}
+#endif
 	return (errors);
 }
 

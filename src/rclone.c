@@ -141,7 +141,7 @@ rclone_ensemble(remote *r)
 	char	**vp;
 	char	*name, *url;
 	int	i, status, rc = 0;
-	u32	flags = NESTED_PRODUCT|NESTED_PRODUCTFIRST;
+	u32	flags = NESTED_PRODUCTFIRST;
 
 	url = remote_unparse(r);
 

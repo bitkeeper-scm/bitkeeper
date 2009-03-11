@@ -45,7 +45,6 @@ extern	unsigned int turnTransOff;
  */
 
 #define	NESTED_PENDING		0x10000000	/* included pending comps */
-#define	NESTED_PRODUCT		0x20000000
 #define	NESTED_PRODUCTFIRST	0x40000000
 #define	NESTED_UNDO		0x80000000
 #define	NESTED_DEEPFIRST	0x01000000
@@ -57,6 +56,7 @@ typedef struct {
 	nested	*n;			// backpointer
 	char	*rootkey;		// rootkey of the repo
 	char	*deltakey;		// deltakey of repo as of rev
+	char	*lowerkey;		// In a revs, lower deltakey in range
 	char	*path;			// actual path: like GFILE, not DPN
 					// use accesor to fetch
 	int	nlink;			// alias link count (deprecated)
@@ -82,7 +82,6 @@ struct nested {
 	// bits
 	u32	alias:1;	// nlink counts set in components
 	u32	revs:1;		// revs was used, so list may not be full
-	u32	freeproduct:1;	// n->product not in comps list; free it
 	u32	product_first:1;// default is last in list
 	u32	undo:1;		// undo wants the -a inferred from opts.revs
 	u32	deepfirst:1;	// sort such that deeply nested comps are first
@@ -122,6 +121,7 @@ hash	*aliasdb_init(nested *n, project *p, char *rev, int pending);
 char	**aliasdb_expand(nested *n, hash *aliasdb, char **aliases);
 char	**aliasdb_expandOne(nested *n, hash *aliasdb, char *alias);
 void	aliasdb_free(hash *db);
-int	aliasdb_chkAliases(nested *n, hash *aliasdb, char **aliases, char *cwd);
+int	aliasdb_chkAliases(nested *n, hash *aliasdb,
+	    char ***paliases, char *cwd);
 
 #endif	// _NESTED_H

@@ -213,6 +213,7 @@ check_main(int ac, char **av)
 		n = nested_init(proj_isProduct(0) ? cset : 0,
 		    0, 0, NESTED_PENDING);
 		EACH_STRUCT(n->comps, c) {
+			if (c->product) continue;
 			if (!cp || strneq(c->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
 				    strdup(c->path + cplen));
@@ -421,7 +422,7 @@ check_main(int ac, char **av)
 				unless (c->present) {
 					fprintf(stderr,
 					    "check: error expanding alias '%s' "
-					    "as '%s' is not present\n",
+					    "because '%s' is not present\n",
 					    aliases[i], c->path);
 					err = 1;
 				}
@@ -430,6 +431,7 @@ check_main(int ac, char **av)
 		}
 		freeLines(aliases, free);
 		EACH_STRUCT(n->comps, c) {
+			if (c->product) continue;
 			if (!c->alias && c->present) {
 				fprintf(stderr,
 				    "check: comp '%s' is present and "

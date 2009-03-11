@@ -285,7 +285,7 @@ err:			out("ERROR-protocol error in aliases\n");
 	if (!tid && proj_isProduct(0)) {
 		nested	*n;
 		char	**k = 0;
-		u32	flags = NESTED_PRODUCT|NESTED_PRODUCTFIRST;
+		u32	flags = NESTED_PRODUCTFIRST;
 
 		unless (k = file2Lines(0, keys)) {
 			out("ERROR-Could not read list of keys");

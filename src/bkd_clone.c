@@ -158,19 +158,26 @@ cmd_clone(int ac, char **av)
 	if (!tid && proj_isProduct(0)) {
 		nested	*n;
 		comp	*cp;
-		u32	flags = NESTED_PRODUCT|NESTED_PRODUCTFIRST;
+		int	errors = 0;
+		u32	flags = NESTED_PRODUCTFIRST;
 
 		n = nested_init(s, rev, 0, flags);
 		assert(aliases);
-		aliasdb_chkAliases(n, 0, aliases, proj_cwd());
+		aliasdb_chkAliases(n, 0, &aliases, proj_cwd());
 		nested_filterAlias(n, 0, aliases);
 		EACH_STRUCT(n->comps, cp) {
 			if (cp->alias && !cp->present) {
-				printf("ERROR-unable to expand aliases\n");
-				goto out;
+				printf(
+				    "ERROR-unable to expand aliases. "
+				    "Missing: %s\n", cp->path);
+				errors++;
 			}
 		}
 		nested_free(n);
+		if (errors) {
+			freeLines(aliases, free);
+			goto out;
+		}
 		printf("@COMPONENTS@\n");
 		EACH(aliases) printf("%s\n", aliases[i]);
 		printf("@END@\n");

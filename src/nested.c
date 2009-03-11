@@ -5,7 +5,7 @@
 private	int	compSort(const void *a, const void *b);
 private	void	compFree(void *x);
 private	int	compRemove(char *path, struct stat *statbuf, void *data);
-private delta	*setgca(sccs *s, u32 bit, u32 tmp, delta **tip);
+private void	unrange(sccs *s, delta **left, delta **right);
 private	char	**nested_deep(char *path);
 private	int	nestedWalkdir(char *dir, walkfn fn);
 private	int	empty(char *path, struct stat *statbuf, void *data);
@@ -48,12 +48,12 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 {
 	nested	*n = 0;
 	comp	*c = 0;
-	delta	*d, *gca;
+	delta	*d, *left, *right;
 	int	i;
 	char	**list = 0;	/* really comps **list */
 	char	*t, *v;
 	FILE	*pending;
-	MDBM	*idDB = 0;
+	MDBM	*idDB = 0, *revsDB = 0;
 	kvpair	kv;
 	char	buf[MAXKEY];
 
@@ -83,73 +83,114 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	c->rootkey = strdup(proj_rootkey(cset->proj));
 	c->path = strdup(".");
 	c->present = 1;
+	c->included  = 1;
 	// c->deltakey set below
 
 	if (revs) {
 		n->revs = 1;
-		unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED);
+		unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
 		EACH(revs) {
 			unless (d = sccs_findrev(cset, revs[i])) {
 				fprintf(stderr,
 				    "nested: bad rev %s\n",revs[i]);
 err:				n->comps = list;
+				if (revsDB) mdbm_close(revsDB);
 				nested_free(n);
 				return (0);
 			}
 			d->flags |= D_SET;
 		}
 		if (sccs_cat(cset, GET_HASHONLY, 0)) goto err;
+		revsDB = cset->mdbm;	/* save for later */
+		cset->mdbm = 0;
+		/*
+		 * if L..R colors a range, take a range and return L and R
+		 * color the region between what was D_SET and root
+		 */
+		unrange(cset, &left, &right);
+		if (right == INVALID) {
+			fprintf(stderr,
+			    "nested: rev list has more than one tip\n");
+			goto err;
+		}
+
+		if (flags & NESTED_UNDO) {
+			unless (left) {
+				fprintf(stderr, "nested: undo all: "
+				    "just remove the repository\n");
+				goto err;
+			} else if (left == INVALID) {
+				fprintf(stderr, "nested: undo "
+				    "region has more than one tip\n");
+				goto err;
+			}
+			n->tip = strdup(left->rev);
+			n->oldtip = strdup(right->rev);
+			sccs_sdelta(cset, left, buf);
+			n->product->deltakey = strdup(buf);
+			sccs_sdelta(cset, right, buf);
+			n->product->lowerkey = strdup(buf);
+		} else {
+			n->tip = strdup(right->rev);
+			sccs_sdelta(cset, right, buf);
+			n->product->deltakey = strdup(buf);
+			if (left && (left != INVALID)) {
+				n->oldtip = strdup(left->rev);
+				sccs_sdelta(cset, left, buf);
+				n->product->lowerkey = strdup(buf);
+			}
+		}
+
+		if (sccs_cat(cset, GET_HASHONLY, 0)) goto err;
+		sccs_clearbits(cset, D_SET);	/* tidy up */
+
+		/*
+		 * Walk the old picture before revs
+		 */
+		EACH_KV(revsDB) {
+			unless (componentKey(kv.val.dptr)) continue;
+			c = new(comp);
+			c->n = n;
+			c->rootkey  = strdup(kv.key.dptr);
+			c->deltakey = strdup(kv.val.dptr);
+			c->new	    = 1;	// fix in 'if' clause below
+			c->present  = 1;	// fix later
+			c->included = 1;
+			c->path     = key2path(c->deltakey, 0);
+			csetChomp(c->path);
+			list = addLine(list, (void *)c);
+			if (t = mdbm_fetch_str(cset->mdbm, c->rootkey)) {
+				// tip delta key is in t
+				if (flags & NESTED_UNDO) {
+					c->lowerkey = c->deltakey;
+					c->deltakey = strdup(t);
+				} else {
+					c->lowerkey = strdup(t);
+				}
+				c->new = 0;
+				mdbm_delete_str(cset->mdbm, c->rootkey);
+			}
+		}
+		/* 
+		 * here are all the unchanged keys
+		 * XXX: If we need for perf, here's a list to not include
+		 */
 		EACH_KV(cset->mdbm) {
 			unless (componentKey(kv.val.dptr)) continue;
 			c = new(comp);
 			c->n = n;
 			c->rootkey  = strdup(kv.key.dptr);
 			c->deltakey = strdup(kv.val.dptr);
+			c->present  = 1;	// fix later
 			c->path     = key2path(c->deltakey, 0);
-			c->new	    = 1;	// cleared below if not true
-			c->present  = 1;	// ditto
 			csetChomp(c->path);
 			list = addLine(list, (void *)c);
 		}
-		/* Move D_SET to region from root to old D_SET */
-		gca = setgca(cset, D_SET, D_RED, &d);
-		if (sccs_cat(cset, GET_HASHONLY, 0)) goto err;
-		sccs_clearbits(cset, D_SET);
-
-		if ((flags & NESTED_UNDO) && !gca) {
-			/* XXX can undo do all? There'd be no gca there */
-			fprintf(stderr,
-			    "nested: undo region has more than one tip\n");
-			goto err;
-		}
-		if (flags & NESTED_UNDO) {
-			n->tip = strdup(gca->rev);
-			n->oldtip = strdup(d->rev);
-			sccs_sdelta(cset, gca, buf);
-		} else {
-			n->tip = strdup(d->rev);
-			n->oldtip = strdup(gca->rev);
-			sccs_sdelta(cset, d, buf);
-		}
-		n->product->deltakey = strdup(buf);
-
-		EACH_STRUCT(list, c) {
-			unless (
-			    t = mdbm_fetch_str(cset->mdbm, c->rootkey)) {
-				continue;
-			}
-			c->new = 0;
-			/*
-			 * undo wants the keys as of rev,
-			 * which is older.  push wants the key it
-			 * already has, the newest.
-			 */
-			if (flags & NESTED_UNDO) {
-				assert(!streq(c->deltakey, t));
-				free(c->deltakey);
-				c->deltakey = strdup(t);
-			}
-		}
+		/*
+		 * all that is left in revsDB are new rootkeys
+		 */
+		mdbm_close(revsDB);
+		revsDB = 0;
 	} else {
 		if (sccs_get(cset,
 		    rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
@@ -189,8 +230,9 @@ err:				n->comps = list;
 			c->rootkey  = strdup(kv.key.dptr);
 			c->deltakey = strdup(kv.val.dptr);
 			c->path     = key2path(c->deltakey, 0);
-			c->new	    = 1;	// cleared below if not true
 			c->present  = 1;	// ditto
+			c->included  = 1;	// in a rev, all are included
+			c->new	    = 1;	// XXX: t.ensemble only?
 			csetChomp(c->path);
 			list = addLine(list, (void *)c);
 		}
@@ -245,16 +287,14 @@ err:				n->comps = list;
 	sortLines(list, compSort);
 	if (flags & NESTED_DEEPFIRST) reverseLines(list);
 
-	unless (flags & NESTED_PRODUCT) {
-		/* don't put the n->product into the list */
-		n->freeproduct = 1;
-	} else if (flags & NESTED_PRODUCTFIRST) {
+	if (flags & NESTED_PRODUCTFIRST) {
 		char	**l = 0;
 
 		l = addLine(0, n->product);
 		EACH(list) l = addLine(l, list[i]);
 		freeLines(list, 0);
 		list = l;
+		n->product_first = 1;
 	} else {
 		list = addLine(list, n->product);
 	}
@@ -281,48 +321,53 @@ nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 }
 
 /*
- * Mark the set gca of a range
- * Input: some region, like pull -r, is colored.
- * Output: the region between the initial region and root
- * Return: gca if there is exactly one; also give back tip
+ * a range of L..R colors a region of the graph.
+ * given a region of the graph, compute L and R.
+ * If no nodes are colored, no L or R
+ * If all nodes or from R to root are colored, then L = 0, return R
+ * If more than one tip of colored region, R = INVALID
+ * If more than one gca (tip of uncolored region to the left of colored)
+ *   then L = INVALID
  * XXX - why is this here? Is it generic?
  * Not generic.
  */
-private delta	*
-setgca(sccs *s, u32 bit, u32 tmp, delta **tip)
+private void
+unrange(sccs *s, delta **left, delta **right)
 {
-	delta	*d, *p, *gca = 0;
-	int	count = 0;
+	delta	*d, *p;
+	int	color, didright = 0, didleft = 0;
 
-	if (tip) *tip = 0;
+	assert(left && right);
+	*left = *right = 0;
 	for (d = s->table; d; d = d->next) {
+		/* skip uninteresting nodes */
 		if (TAG(d)) continue;
-		if ((d->flags & (tmp|bit)) == bit) {
-			if (tip && !*tip) *tip = d;
-			d->flags &= ~bit;
-			if ((p = d->parent) && !(p->flags & (bit|tmp))) {
-				p->flags |= (bit|tmp);
-			}
-			if (d->merge && (p = sfind(s, d->merge)) &&
-			    !(p->flags & (bit|tmp))) {
-				p->flags |= (bit|tmp);
-			}
-			continue;
+		unless (color = (d->flags & (D_SET|D_RED|D_BLUE))) continue;
+		/*
+		 * How to leave graph:
+		 * if in parent region of D_SET, then leave D_SET, else clear
+		 */
+		d->flags &= ~color;
+		unless (color & D_SET) d->flags |= D_SET;
+		/* grab first tip in D_SET and parent region of D_SET */
+		if (color == D_SET) {
+			*right = didright++ ? INVALID : d;
+		} else if (color == D_BLUE) {
+			*left = didleft++ ? INVALID : d;
 		}
-		unless (d->flags & tmp) continue;
-		if (d->flags & bit) gca = (count++) ? 0 : d;
-		d->flags &= ~tmp;
-		d->flags |= bit;
+		/*
+		 * color parents of D_SET => D_BLUE, and
+		 * parents of nodes in parent region of D_SET => D_RED
+		 */
+		color =	(color & D_SET) ? D_BLUE : D_RED;
+		/* color parents */
 		if (p = d->parent) {
-			p->flags |= tmp;
-			p->flags &= ~bit;
+			p->flags |= color;
 		}
 		if (d->merge && (p = sfind(s, d->merge))) {
-			p->flags |= tmp;
-			p->flags &= ~bit;
+			p->flags |= color;
 		}
 	}
-	return (gca);
 }
 
 private int
@@ -384,6 +429,7 @@ compFree(void *x)
 
 	free(c->rootkey);
 	free(c->deltakey);
+	if (c->lowerkey) free(c->lowerkey);
 	free(c->path);
 }
 
@@ -392,7 +438,6 @@ nested_free(nested *n)
 {
 	unless (n) return;
 	freeLines(n->comps, compFree);
-	if (n->freeproduct) compFree(n->product);
 	if (n->freecset) sccs_free(n->cset);
 	if (n->aliasdb) aliasdb_free(n->aliasdb);
 	if (n->tip) free(n->tip);
@@ -409,6 +454,7 @@ nested_toStream(nested *n, FILE *f)
 
 	fprintf(f, "@nested_list %s@\n", nested_version);
 	EACH_STRUCT(n->comps, c) {
+		unless (c->included) continue;
 		fprintf(f, "rk:%s\n", c->rootkey);
 		fprintf(f, "dk:%s\n", c->deltakey);
 		fprintf(f, "pt:%s\n", c->path);
@@ -458,6 +504,7 @@ nested_fromStream(nested *n, FILE *f)
 		c->deltakey = dk;
 		c->path = pt;
 		c->new = nw;
+		c->included = 1;
 		if (c->product = pd) n->product = c;
 		c->present = pr;
 		list = addLine(list, (void *)c);
@@ -481,6 +528,7 @@ nested_each(int quiet, int ac, char **av)
 	int	flags = 0;
 	int	c, i;
 	int	errors = 0;
+	int	product = 1;
 	int	status;
 	char	**aliases = 0;
 
@@ -489,16 +537,16 @@ nested_each(int quiet, int ac, char **av)
 		return (1);
 	}
 	chdir(proj_root(p));
-	flags |= (NESTED_PRODUCT | NESTED_PRODUCTFIRST);
+	flags |= NESTED_PRODUCTFIRST;
 	getoptReset();
 	// has to track bk.c's getopt string
 	while ((c = getopt(ac, av, "@|1aAB;cCdDgGhjL|lM;npqr|RuUxz;")) != -1) {
-		if (c == 'C') flags &= ~NESTED_PRODUCT;
+		if (c == 'C') product = 0;
 		unless (c == 'M') continue; /* XXX: CONFLICT */
 		if (optarg[0] == '|') {
 			rev = &optarg[1];
 		} else if (streq("!.", optarg)) {	// XXX -M!. == -C
-			flags &= ~NESTED_PRODUCT;
+			product = 0;
 		} else {
 			aliases = addLine(aliases, strdup(optarg));
 		}
@@ -515,7 +563,7 @@ nested_each(int quiet, int ac, char **av)
 	}
 	if (aliases) {
 		// XXX add error checking when the error paths get made
-		if (aliasdb_chkAliases(n, 0, aliases, proj_cwd()) ||
+		if (aliasdb_chkAliases(n, 0, &aliases, proj_cwd()) ||
 		    nested_filterAlias(n, 0, aliases)) {
 		    	errors = 1;
 			goto err;
@@ -525,6 +573,7 @@ nested_each(int quiet, int ac, char **av)
 	}
 	EACH_STRUCT(n->comps, cp) {
 		unless (cp->present) continue;
+		if (!product && cp->product) continue;
 		if (n->alias && !cp->nlink && !cp->product) continue;
 		unless (quiet) {
 			printf("#### %s ####\n", cp->path);
