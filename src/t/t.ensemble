@@ -1431,13 +1431,6 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N Test serializing/deserializing and ensemble..................$NL
-bk components -r+ > WANT
-bk components -r+ -o > SERIALIZED
-bk components -i < SERIALIZED  > GOT
-cmpfiles WANT GOT
-echo OK
-
 # Deep nesting
 echo $N Test that we see a nested component .........................$NL
 cd "$HERE"

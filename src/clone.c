@@ -431,10 +431,12 @@ clone2(remote *r)
 	sccs_rmUncommitted(opts->quiet, f);
 	fclose(f);
 
+	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	if (opts->rev) {
 		/* only product in COMPONENTS */
 		Fprintf("BitKeeper/log/COMPONENTS", "%s\n",
 		    proj_rootkey(0));
+		/* remove any later stuff */
 		rc = after(opts->quiet, opts->rev);
 		if (rc == UNDO_SKIP) {
 			/* undo exits 2 if it has no work to do */
@@ -451,8 +453,6 @@ clone2(remote *r)
 		sys("bk", "populate", "-r", opts->quiet ? "-q" : "--", SYS);
 	}
 
-	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
-	/* remove any later stuff */
 	unless (opts->rev && proj_isProduct(0) && !rc) {
 		/* undo already runs check so we only need this case */
 		p = opts->quiet ? "-fT" : "-fvT";
