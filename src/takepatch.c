@@ -1051,7 +1051,7 @@ apply:
 		/* intersection and not here is an error */
 		EACH_STRUCT(local->comps, c) {
 			// if it's here, no worries.
-			if (c->present) continue;
+			if (c->present || !c->included) continue;
 			// if they don't have it then no worries
 			unless (nested_findKey(remote, c->rootkey)) continue;
 			// OK, worry.

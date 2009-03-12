@@ -404,11 +404,7 @@ check_main(int ac, char **av)
 		 * check that whatever we have in log/COMPONENTS
 		 * is consistent with what's really here
 		 */
-		unless (aliases = file2Lines(0, "BitKeeper/log/COMPONENTS")) {
-			fprintf(stderr, "check: no %s file found\n",
-			    "BitKeeper/log/COMPONENTS");
-			return (1);
-		}
+		aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
 		n = nested_init(0, 0, 0, NESTED_PENDING);
 		assert(n);
 		EACH(aliases) {

@@ -599,7 +599,6 @@ pull_ensemble(remote *r, char **rmt_aliases)
 {
 	char	*url;
 	char	**vp;
-	char	*name;
 	char	**comps = 0;
 	char	**local_aliases;
 	sccs	*s;
@@ -609,12 +608,13 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	nested	*n;
 	comp	*c;
 	hash	*h;
-	char	*arrev;		/* remote tip of aliases file */
 	project	*presync;
 	FILE	*f, *idfile;
-	int	i, rc = 0, errs = 0;
+	int	i, j, rc = 0, errs = 0;
 	char	idname[MAXPATH];
 
+	/* allocate r->params for later */
+	unless (r->params) r->params = hash_new(HASH_MEMHASH);
 	url = remote_unparse(r);
 	START_TRANSACTION();
 	presync = proj_init(ROOT2RESYNC);
@@ -626,7 +626,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 		revs = addLine(revs, d->rev);
 	}
 	fclose(f);
-	n = nested_init(s, 0, revs, NESTED_PRODUCT);
+	n = nested_init(s, 0, revs, 0);
 
 	/*
 	 * Now takepatch should have merged the aliases file in the RESYNC
@@ -635,11 +635,12 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	 * bits.  Then we lookup the local HERE file in the new merged
 	 * tip of aliases to find which components should be local.
 	 */
-	h = aliasdb_init(n, presync, arrev, 0);
+	h = aliasdb_init(n, presync, n->tip, 0);
 	assert(h);
 	comps = aliasdb_expand(n, h, rmt_aliases);
 	assert(comps);
 	EACH_STRUCT(comps, c) c->remotePresent = 1;
+	n->product->remotePresent = 1;
 	freeLines(comps, 0);
 	aliasdb_free(h);
 
@@ -656,6 +657,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	}
 	freeLines(local_aliases, free);
 	EACH_STRUCT(comps, c) c->alias = 1;
+	n->product->alias = 1;	/* we want the product too */
 	freeLines(comps, 0);
 
 	/*
@@ -725,10 +727,9 @@ pull_ensemble(remote *r, char **rmt_aliases)
 		rc = 1;
 		goto out;
 	}
-	EACH_STRUCT (n->comps, c) {
+	EACH_STRUCT_INDEX(n->comps, c, j) {
 		proj_cd2product();
-		unless (c->included) continue;
-		if (c->product) continue;
+		if (c->product || !c->included || !c->alias) continue;
 		unless (opts.quiet) {
 			printf("#### %s ####\n", c->path);
 			fflush(stdout);
@@ -753,16 +754,20 @@ pull_ensemble(remote *r, char **rmt_aliases)
 			}
 		}
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
-		vp = addLine(vp, aprintf("%s?ROOTKEY='%s'", url, c->rootkey));
+
+		/* calculate url to component */
+		hash_storeStr(r->params, "ROOTKEY", c->rootkey);
+		vp = addLine(vp, remote_unparse(r));
 		if (c->new) vp = addLine(vp, strdup(c->path));
 		vp = addLine(vp, 0);
 		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
-			fprintf(stderr, "Pulling %s failed\n", name);
+			fprintf(stderr, "Pulling %s failed\n", c->path);
 			rc = 1;
 		}
 		freeLines(vp, free);
 		if (rc) break;
 	}
+	proj_cd2product();
 	if (rc) goto out;
 
 	/* Now we need to make it such that the resolver in the
@@ -772,7 +777,6 @@ pull_ensemble(remote *r, char **rmt_aliases)
 			printf("#### Resolve in product ####\n");
 			fflush(stdout);
 		}
-		proj_cd2product();
 		if (chdir(ROOT2RESYNC)) {
 			fprintf(stderr,
 			    "Could not find product's RESYNC directory\n");
@@ -791,11 +795,13 @@ pull_ensemble(remote *r, char **rmt_aliases)
 			rc = 1;
 			goto out;
 		}
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT_INDEX(n->comps, c, j) {
 			char	*from, *to;
 			char	*dfile_to, *dfile_from;
 			char	*t;
 
+			if (c->product || !c->included || !c->alias) continue;
+			if (c->new) continue;
 			mkdirp(c->path);
 			sccs_mkroot(c->path);
 			t = aprintf("%s/BitKeeper/log/COMPONENT", c->path);

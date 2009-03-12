@@ -78,7 +78,7 @@ usage:			sys("bk", "help", "-s", "populate", SYS);
 		aliases = addLine(0, strdup("default"));
 	}
 	n = nested_init(0, 0, 0, 0);
-	aliasdb_chkAliases(n, 0, &aliases, proj_cwd());
+	if (aliasdb_chkAliases(n, 0, &aliases, proj_cwd())) return (1);
 	nested_filterAlias(n, 0, aliases);
 	START_TRANSACTION();
 	done = hash_new(HASH_MEMHASH);

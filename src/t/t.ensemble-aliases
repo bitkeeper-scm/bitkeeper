@@ -278,11 +278,10 @@ echo @default
 cd gdb
 bk id
 ) > BitKeeper/etc/aliases
-echo default > BitKeeper/log/COMPONENTS
 bk delta $Q -ygcc BitKeeper/etc/aliases
-bk commit $Q -ygcc
+bk commit $Q -ygcc || exit 1
 cd ..
-bk clone $Q project-nm project-just-gdb
+bk clone $Q project-nm project-just-gdb || exit 1
 cd project-just-gdb
 grep -q default BitKeeper/log/COMPONENTS || {
 	echo bad log

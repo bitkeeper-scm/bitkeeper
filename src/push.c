@@ -1065,6 +1065,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	char	**revs;
 	char	**vp;
 	char	*name, *url, *cwd = 0;
+	int	errs = 0;
 	int	status, i, j, rc = 0;
 
 	url = remote_unparse(r);
@@ -1133,7 +1134,11 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 				/* The remote will need this component */
 				if (!c->present) {
 					/* we don't have the data to send */
-					// XXX error
+					fprintf(stderr,
+					    "push: "
+					    "%s is needed to push to %s\n",
+					    c->path, url);
+					++errs;
 				} else if (!c->remotePresent) {
 					/* they don't have it currently */
 					unless (c->new) c->new = 1;
@@ -1142,7 +1147,10 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 				/* the remote doesn't want this component */
 				if (c->remotePresent) {
 					/* but have it anyway */
-					// XXX error
+					fprintf(stderr,
+					    "push: %s shouldn't be at %s.\n",
+					    c->path, url);
+					++errs;
 				}
 			}
 		} else {
@@ -1155,13 +1163,26 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 					c->included = 1;
 				} else {
 					/* remote needs to populate */
-					// XXX error
+					fprintf(stderr,
+					    "push: component %s needed at %s.",
+					    c->path, url);
+					++errs;
 				}
 			} else if (!c->alias && c->remotePresent) {
 				/* remote will have an extra component */
-				// XXX error
+				fprintf(stderr,
+				    "push: extra component %s at %s.\n",
+				    c->path, url);
+				++errs;
 			}
 		}
+	}
+	if (errs) {
+		fprintf(stderr,
+		    "push: transfer aborted due to erros with %d components.\n",
+		    errs);
+		rc = 1;
+		goto out;
 	}
 	START_TRANSACTION();
 	cwd = strdup(proj_cwd());

@@ -10,8 +10,6 @@ private	char	**nested_deep(char *path);
 private	int	nestedWalkdir(char *dir, walkfn fn);
 private	int	empty(char *path, struct stat *statbuf, void *data);
 
-private	char	*nested_version = "1.0";
-
 /*
  * Return the list of comps for this product.
  * Optionally include the product.
@@ -83,7 +81,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	c->rootkey = strdup(proj_rootkey(cset->proj));
 	c->path = strdup(".");
 	c->present = 1;
-	c->included  = 1;
+	c->included = 1;
 	// c->deltakey set below
 
 	if (revs) {
@@ -258,7 +256,7 @@ err:				n->comps = list;
 		 */
 		if (t = mdbm_fetch_str(idDB, c->rootkey)) {
 			csetChomp(t);  // stomps on idDB contents!!
-			if (isComponent(t)) {
+			if (isComponent(t)) {// XXX assumes product root
 				free(c->path);
 				c->path = strdup(t);
 				c->realpath = 1;
