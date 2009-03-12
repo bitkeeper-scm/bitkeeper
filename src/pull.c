@@ -33,7 +33,7 @@ private struct {
 } opts;
 
 private int	pull(char **av, remote *r, char **envVar);
-private int	pull_ensemble(nested *n, remote *r);
+private int	pull_ensemble(remote *r, char **rmt_aliases);
 private void	resolve_comments(remote *r);
 private	int	resolve(void);
 private	int	takepatch(remote *r);
@@ -360,8 +360,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 {
 	char	msg_file[MAXPATH], buf[MAXPATH * 2];
 	FILE	*f;
-	char	**l;
-	int	i, status, rc;
+	int	status, rc;
 
 	bktmp(msg_file, "pullmsg");
 	f = fopen(msg_file, "w");
@@ -384,16 +383,7 @@ send_keys_msg(remote *r, char probe_list[], char **envVar)
 	if (opts.port) fprintf(f, " '-P%s'", proj_rootkey(0));
 	if (opts.transaction) fprintf(f, " -T");
 	if (opts.update_only) fprintf(f, " -u");
-	if (proj_isProduct(0) &&
-	    (l = file2Lines(0, "BitKeeper/log/COMPONENTS"))) {
-		fprintf(f, " -s\n");
-		fprintf(f, "@COMPONENTS@\n");
-		EACH(l) fprintf(f, "%s\n", l[i]);
-		fprintf(f, "@END@\n");
-		freeLines(l, free);
-	} else {
-		fputs("\n", f);
-	}
+	fputs("\n", f);
 	fclose(f);
 
 	sprintf(buf, "bk _listkey %s %s -q < '%s' >> '%s'",
@@ -428,6 +418,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 	int	rc = 0, n, i;
 	FILE	*info, *f, *fout;
 	char	*t, *p;
+	char	**rmt_aliases = 0;
 	char	buf[MAXPATH * 2];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r)) {
@@ -536,7 +527,12 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		putenv("BK_STATUS=DRYRUN");
 		goto done;
 	}
-
+	if (streq(buf, "@COMPONENTS@")) {
+		while (getline2(r, buf, sizeof(buf)) > 0) {
+			if (buf[0] == '@') break;
+			rmt_aliases = addLine(rmt_aliases, strdup(buf));
+		}
+	}
 	if (streq(buf, "@PATCH@")) {
 		if (i = takepatch(r)) {
 			fprintf(stderr,
@@ -562,6 +558,11 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			pclose(f);
 			pclose(fout);
 		}
+		if (proj_isProduct(0)) {
+			if (rc = pull_ensemble(r, rmt_aliases)) {
+				goto done;
+			}
+		}
 		putenv("BK_STATUS=OK");
 		rc = 0;
 	}  else if (strneq(buf, "@UNABLE TO UPDATE BAM SERVER", 28)) {
@@ -579,24 +580,6 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		}
 		putenv("BK_STATUS=NOTHING");
 		rc = 0;
-	} else if (streq(buf, "@ENSEMBLE@")) {
-		/* we're pulling from a product */
-		nested	*nest;
-
-		unless (r->rf) r->rf = fdopen(r->rfd, "r");
-		unless (nest = nested_fromStream(0, r->rf)) {
-			fprintf(stderr, "Could not read ensemble list\n");
-			putenv("BK_STATUS=FAILED");
-			rc = 1;
-			goto done;
-		}
-		repository_unlock(0);
-		if (rc = pull_ensemble(nest, r)) {
-			putenv("BK_STATUS=FAILED");
-		} else {
-			putenv("BK_STATUS=OK");
-		}
-		nested_free(nest);
 	} else {
 		fprintf(stderr, "protocol error: <%s>\n", buf);
 		while (getline2(r, buf, sizeof(buf)) > 0) {
@@ -612,46 +595,142 @@ done:	unlink(probe_list);
 }
 
 private int
-pull_ensemble(nested *n, remote *r)
+pull_ensemble(remote *r, char **rmt_aliases)
 {
 	char	*url;
 	char	**vp;
-	char	*name, *path;
+	char	*name;
 	char	**comps = 0;
+	char	**local_aliases;
+	sccs	*s;
+	delta	*d;
+	char	**revs = 0;
+	char	*t;
+	nested	*n;
 	comp	*c;
-	MDBM	*idDB;
+	hash	*h;
+	char	*arrev;		/* remote tip of aliases file */
+	project	*presync;
 	FILE	*f, *idfile;
-	int	i, rc = 0, missing = 0, product;
+	int	i, rc = 0, errs = 0;
 	char	idname[MAXPATH];
 
 	url = remote_unparse(r);
 	START_TRANSACTION();
-	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	EACH_STRUCT (n->comps, c) {
-		if (c->present) continue;
-		fprintf(stderr,
-		    "pull: %s is missing in %s\n", c->path, url);
-		missing++;
+	presync = proj_init(ROOT2RESYNC);
+	assert(presync);
+	s = sccs_init(ROOT2RESYNC "/" CHANGESET, INIT_NOCKSUM);
+	f = fopen(ROOT2RESYNC "/" CSETS_IN, "r");
+	while (t = fgetline(f)) {
+		d = sccs_findrev(s, t);
+		revs = addLine(revs, d->rev);
 	}
-	if (missing) {
+	fclose(f);
+	n = nested_init(s, 0, revs, NESTED_PRODUCT);
+
+	/*
+	 * Now takepatch should have merged the aliases file in the RESYNC
+	 * directory and we need to look the remote's HERE file at the
+	 * remote's tip of the alias file to compute the remotePresent
+	 * bits.  Then we lookup the local HERE file in the new merged
+	 * tip of aliases to find which components should be local.
+	 */
+	h = aliasdb_init(n, presync, arrev, 0);
+	assert(h);
+	comps = aliasdb_expand(n, h, rmt_aliases);
+	assert(comps);
+	EACH_STRUCT(comps, c) c->remotePresent = 1;
+	freeLines(comps, 0);
+	aliasdb_free(h);
+
+	h = aliasdb_init(n, presync, "+", 0);
+	assert(h);
+	local_aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
+	unless (comps = aliasdb_expand(n, h, local_aliases)) {
+		/*
+		 * this can fail
+		 */
+		// XXX error message
+		rc = 1;
+		goto out;
+	}
+	freeLines(local_aliases, free);
+	EACH_STRUCT(comps, c) c->alias = 1;
+	freeLines(comps, 0);
+
+	/*
+	 * Find the cases where the push should fail:
+	 *  c->included	   comp modified as part of pull
+	 *  c->alias	   in new aliases (should exist after pull)
+	 *  c->present	   exists locally
+	 *  c->remotePresent  exists in remote currently
+	 *  c->new	   comp created in this range of csets (do clone)
+	 */
+	EACH_STRUCT(n->comps, c) {
+		if (c->included) {
+			/* this component is included in pull */
+			if (c->alias) {
+				/* The local will need this component */
+				if (!c->remotePresent) {
+					/* they don't have the data to send */
+
+					fprintf(stderr,
+					    "pull: %s is missing in %s\n",
+					    c->path, url);
+					++errs;
+				} else if (!c->present) {
+					/* we don't have it currently */
+					unless (c->new) c->new = 1;
+				}
+			} else {
+				/* we don't want this component */
+				if (c->present) {
+					/* but have it anyway */
+					fprintf(stderr,
+					    "pull: %s shouldn't be here.\n",
+					    c->path);
+					++errs;
+				}
+			}
+		} else {
+			/* not included in pull */
+			if (c->alias && !c->present) {
+				/* we don't have it, but need it */
+				if (c->remotePresent) {
+					/* they do, so force a clone */
+					c->new = 1;
+					c->included = 1;
+				} else {
+					/* need it */
+					/* can try populate */
+					fprintf(stderr,
+					    "pull: %s is missing in %s\n",
+					    c->path, url);
+					++errs;
+				}
+			} else if (!c->alias && c->present) {
+				/* We have a component that shouldn't be here */
+				/* try unpopulate */
+				fprintf(stderr,
+				    "pull: %s shouldn't be here.\n",
+				    c->path);
+				++errs;
+			}
+		}
+	}
+	if (errs) {
 		fprintf(stderr,
-		    "pull: update aborted due to %d missing components.\n",
-		    missing);
+		    "pull: update aborted due to errs with %d components.\n",
+		    errs);
 		rc = 1;
 		goto out;
 	}
 	EACH_STRUCT (n->comps, c) {
-		product = 0;
 		proj_cd2product();
-		if (streq(c->path, ".")) {
-			name = "Product";
-			product = 1;
-		} else {
-			name = c->path;
-			product = 0;
-		}
+		unless (c->included) continue;
+		if (c->product) continue;
 		unless (opts.quiet) {
-			printf("#### %s ####\n", name);
+			printf("#### %s ####\n", c->path);
 			fflush(stdout);
 		}
 		vp = addLine(0, strdup("bk"));
@@ -661,37 +740,20 @@ pull_ensemble(nested *n, remote *r)
 				vp = addLine(vp, strdup(opts.av_clone[i]));
 			}
 		} else {
-			unless (product) {
-				/* we can't assume the component is in the same
-				 * path here than in the remote location */
-				unless (path = key2path(c->rootkey, idDB)) {
-					fprintf(stderr, "Could not find "
-					    "component '%s'\n", c->path);
-					goto err;
-				}
-				csetChomp(path); /* stomping idDB */
-				if (chdir(path)) {
-err:					fprintf(stderr, "Could not chdir to "
-					    " component '%s'\n", path);
-					free(path);
-					fprintf(stderr, 
-					    "pull: update aborted.\n");
-					rc = 1;
-					break;
-				}
-				comps = addLine(comps, strdup(c->path));
-				comps = addLine(comps, path);
+			if (chdir(c->path)) {
+				fprintf(stderr, "Could not chdir to "
+				    " component '%s'\n", c->path);
+				fprintf(stderr, "pull: update aborted.\n");
+				rc = 1;
+				break;
 			}
 			vp = addLine(vp, strdup("pull"));
-			if (product && !opts.noresolve) {
-				vp = addLine(vp, strdup("-R"));
-			}
 			EACH(opts.av_pull) {
 				vp = addLine(vp, strdup(opts.av_pull[i]));
 			}
 		}
 		vp = addLine(vp, aprintf("-r%s", c->deltakey));
-		vp = addLine(vp, aprintf("%s/%s", url, c->path));
+		vp = addLine(vp, aprintf("%s?ROOTKEY='%s'", url, c->rootkey));
 		if (c->new) vp = addLine(vp, strdup(c->path));
 		vp = addLine(vp, 0);
 		if (spawnvp(_P_WAIT, "bk", &vp[1])) {
@@ -701,8 +763,8 @@ err:					fprintf(stderr, "Could not chdir to "
 		freeLines(vp, free);
 		if (rc) break;
 	}
-	mdbm_close(idDB);
 	if (rc) goto out;
+
 	/* Now we need to make it such that the resolver in the
 	 * product will work */
 	unless (opts.noresolve) {
@@ -729,26 +791,26 @@ err:					fprintf(stderr, "Could not chdir to "
 			rc = 1;
 			goto out;
 		}
-		EACH (comps) {
+		EACH_STRUCT(n->comps, c) {
 			char	*from, *to;
 			char	*dfile_to, *dfile_from;
 			char	*t;
 
-			mkdirp(comps[i]);
-			sccs_mkroot(comps[i]);
-			t = aprintf("%s/BitKeeper/log/COMPONENT", comps[i]);
+			mkdirp(c->path);
+			sccs_mkroot(c->path);
+			t = aprintf("%s/BitKeeper/log/COMPONENT", c->path);
 			f = fopen(t, "w");
 			free(t);
-			fprintf(f, "%s\n", comps[i]);
+			fprintf(f, "%s\n", c->path);
 			fclose(f);
-			to = aprintf("%s/%s", comps[i], CHANGESET);
+			to = aprintf("%s/%s", c->path, CHANGESET);
 			t = strrchr(to, '/');
 			*(++t) = 'd';
 			dfile_to = strdup(to);
 			*t = 's';
 			i++;
 			from = aprintf("%s/%s/%s", RESYNC2ROOT,
-			    comps[i], CHANGESET);
+			    c->path, CHANGESET);
 			t = strrchr(from, '/');
 			*(++t) = 'd';
 			dfile_from = strdup(from);
@@ -776,8 +838,7 @@ err:					fprintf(stderr, "Could not chdir to "
 		unlink(idname);
 		chdir(RESYNC2ROOT);
 	}
-out:	if (comps) freeLines(comps, free);
-	free(url);
+out:	free(url);
 	STOP_TRANSACTION();
 	return (rc);
 }

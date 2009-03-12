@@ -100,8 +100,6 @@ int	isComponent(char *path);
 nested	*nested_init(sccs *cset, char *rev, char **revs, u32 flags);
 void	nested_free(nested *n);
 int	nested_filterAlias(nested *n, hash *aliasdb, char **aliases);
-nested	*nested_fromStream(nested *n, FILE *in);
-int	nested_toStream(nested *n, FILE *out);
 comp	*nested_findKey(nested *n, char *rootkey);
 comp	*nested_findMD5(nested *n, char *md5rootkey);
 comp	*nested_findDir(nested *n, char *dir);
