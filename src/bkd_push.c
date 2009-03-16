@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "bam.h"
+#include "nested.h"
 
 private	int	do_resolve(char **av);
 
@@ -85,7 +86,7 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
-	if (product && (aliases = file2Lines(0, "BitKeeper/log/COMPONENTS"))) {
+	if (product && (aliases = components_here(0))) {
 		out("@COMPONENTS@\n");
 		EACH(aliases) {
 			out(aliases[i]);

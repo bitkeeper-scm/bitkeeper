@@ -2,12 +2,15 @@
 #include "nested.h"
 #include "bkd.h"
 
+private	int	list_components(char **aliases, int here, int paths, int keys);
+
+
 int
 components_main(int ac, char **av)
 {
 	int	c, i, j, k, clonerc;
 	int	quiet = 0;
-	int	keys = 0, paths = 0, add = 0, rm = 0;
+	int	keys = 0, paths = 0, add = 0, rm = 0, here;
 	char	**urls = 0;
 	char	**aliases = 0;
 	char	**vp = 0;
@@ -78,14 +81,12 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		fprintf(stderr, "%s: must be in an ensemble.\n", prog);
 		return (1);
 	}
-	aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
-	if (streq(subcmd, "here")) {
-		if (paths) return (system("bk _nested -h")); /* XXX hack */
-		printf("bk components here: NYI!\n");
-		return (0);
-	} else if (streq(subcmd, "missing")) {
-		printf("bk components missing: NYI!\n");
-		return (0);
+	aliases = components_here(0);
+	if ((here = streq(subcmd, "here"))  || streq(subcmd, "missing")) {
+		if (av[optind]) goto usage;
+		rc = list_components(aliases, here, paths, keys);
+		freeLines(aliases, free);
+		return (rc);
 	} else if (streq(subcmd, "add")) {
 		add = 1;
 	} else if (streq(subcmd, "rm")) {
@@ -198,5 +199,48 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	unlink(checkfiles);
 	free(checkfiles);
 	freeLines(aliases, free);
+	return (rc);
+}
+
+char **
+components_here(project *p)
+{
+	char	buf[MAXPATH];
+
+	assert(proj_isProduct(p));
+	concat_path(buf, proj_root(p), "BitKeeper/log/COMPONENTS");
+	return (file2Lines(0, buf));
+}
+
+private int
+list_components(char **aliases, int here, int paths, int keys)
+{
+	nested	*n;
+	comp	*c;
+	int	i;
+	int	rc = 0;
+
+	n = nested_init(0, 0, 0, NESTED_PENDING);
+	if (keys || paths) {
+		/* bk components (here|missing) -k|-p */
+		EACH_STRUCT(n->comps, c) {
+			if (c->product) continue;
+			if (here && !c->present) continue;
+			if (!here && c->present) continue;
+
+			if (keys) {
+				printf("%s\n", c->rootkey);
+			} else {
+				printf("%s\n", c->path);
+			}
+		}
+	} else if (here) {
+		/* bk components here */
+		EACH(aliases) printf("%s\n", aliases[i]);
+	} else {
+		/* bk components missing */
+		rc = system("bk alias show -m");
+	}
+	nested_free(n);
 	return (rc);
 }

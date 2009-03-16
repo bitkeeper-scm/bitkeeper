@@ -394,7 +394,7 @@ clone2(remote *r)
 	char	*p, *url;
 	char	*checkfiles;
 	FILE	*f;
-	int	i, rc;
+	int	i, rc = 0;
 	int	did_partial = 0;
 
 	unless (eula_accept(EULA_PROMPT, 0)) {

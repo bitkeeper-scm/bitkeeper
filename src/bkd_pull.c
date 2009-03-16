@@ -121,6 +121,7 @@ cmd_pull_part2(int ac, char **av)
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	char	*rev = 0;
 	char	*p;
+	int	i;
 	FILE	*f;
 	sccs	*cset;
 	delta	*d;
@@ -263,8 +264,11 @@ cmd_pull_part2(int ac, char **av)
 		goto done;
 	}
 	if (proj_isProduct(0)) {
+		char	**comps = components_here(0);
+
 		printf("@COMPONENTS@\n");
-		cat("BitKeeper/log/COMPONENTS");
+		EACH(comps) printf("%s\n", comps[i]);
+		freeLines(comps, free);
 	}
 	fputs("@PATCH@\n", stdout);
 

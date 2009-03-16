@@ -122,4 +122,7 @@ void	aliasdb_free(hash *db);
 int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
 
+/* components.h */
+char	**components_here(project *p);
+
 #endif	// _NESTED_H

@@ -571,17 +571,6 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 
 	unless (aliasdb = dbLoad(n, aliasdb)) goto err;
 
-	/*
-	 * here and there can not be used inside an alias
-	 */
-	if (streq("here", alias) || streq("there", alias)) {
-		EACH_STRUCT(n->comps, c) {
-			if (c->product) continue;
-			if (c->present) comps = addLine(comps, c);
-		}
-		return (comps);
-	}
-
 	keys = hash_new(HASH_MEMHASH);
 	seen = hash_new(HASH_MEMHASH);
 	/* resursive expansion fills 'keys' hash with rootkeys */
@@ -819,8 +808,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 			} else if (streq(alias, "here") ||
 			    streq(alias, "there")) {
 				if (fix) {
-					addkeys = file2Lines(addkeys,
-					    "BitKeeper/log/COMPONENTS");
+					addkeys = components_here(0);
 					removeLineN(aliases, i, free);
 					i--;
 				} else {

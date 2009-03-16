@@ -646,7 +646,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 
 	h = aliasdb_init(n, presync, "+", 0);
 	assert(h);
-	local_aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
+	local_aliases = components_here(0);
 	unless (comps = aliasdb_expand(n, h, local_aliases)) {
 		/*
 		 * this can fail
