@@ -601,11 +601,11 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	char	**vp;
 	char	**comps = 0;
 	char	**local_aliases;
-	sccs	*s;
+	sccs	*s = 0;
 	delta	*d;
 	char	**revs = 0;
 	char	*t;
-	nested	*n;
+	nested	*n = 0;
 	comp	*c;
 	hash	*h;
 	project	*presync;
@@ -845,6 +845,8 @@ pull_ensemble(remote *r, char **rmt_aliases)
 		chdir(RESYNC2ROOT);
 	}
 out:	free(url);
+	sccs_free(s);
+	nested_free(n);
 	STOP_TRANSACTION();
 	return (rc);
 }
