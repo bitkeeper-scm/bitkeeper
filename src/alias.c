@@ -258,6 +258,8 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		error("%s: one of -k or -p but not both\n", prog);
 		goto usage;
 	}
+	/* similar to rm with no params, turn off checks for show with none */
+	rmAlias = !av[optind];
 	/* get the nest */
 	nflags = (opts.rev ? 0 : NESTED_PENDING);
 	unless (n = nested_init(0, opts.rev, 0, nflags)) goto err;
@@ -397,7 +399,9 @@ dbRemove(hash *aliasdb, char *alias, char **aliases)
 	char	**list = 0;
 
 	unless (p = hash_fetchStr(aliasdb, alias)) {
-		error("%s: no such alias %s\n", prog, alias);
+		error("%s: no such alias \"%s\".\n"
+		    "Check to see if listed in \"bk alias show\".\n",
+		    prog, alias);
 		goto err;
 	}
 	if (aliases) {
