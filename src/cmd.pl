@@ -179,7 +179,7 @@ cmdlog
 collapse
 comments
 commit
-components => here
+components
 config
 cp
 _cpartition
@@ -235,7 +235,6 @@ havekeys remote
 help
 helpsearch
 helptopics
-here
 _httpfetch
 hostme
 id remote
@@ -273,6 +272,7 @@ mv
 mvdir
 mydiff
 names
+_nested
 newroot
 opark
 ounpark
@@ -280,7 +280,6 @@ parent
 park
 pending
 _popensystem
-populate
 port => pull
 _probekey restricted
 product
@@ -352,7 +351,6 @@ _unlink
 unlock
 uninstall
 unpark
-unpopulate
 unpull
 unwrap
 upgrade

@@ -137,7 +137,7 @@ OBJ =	bkver.o cmd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
-	collapse.o comment.o comments.o commit.o compress.o \
+	collapse.o comment.o comments.o commit.o components.o compress.o \
 	contrib/cat.o \
 	contrib/test.o \
 	converge.o \
@@ -148,7 +148,7 @@ OBJ =	bkver.o cmd.o \
 	fsl.o \
 	g2bk.o gca.o get.o gethelp.o \
 	gethost.o gettemp.o getuser.o glob.o \
-	gnupatch.o graft.o grep.o help.o here.o host.o hostme.o http.o \
+	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
 	idcache.o isascii.o inskeys.o \
 	key2rev.o key2path.o kill.o kvfile.o \
 	lease.o level.o \
@@ -160,7 +160,7 @@ OBJ =	bkver.o cmd.o \
 	mailsplit.o mtime.o mv.o names.o nested.o newroot.o \
 	opark.o \
 	parent.o park.o partition.o \
-	pending.o populate.o preference.o product.o proj.o \
+	pending.o preference.o product.o proj.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
 	port/gethomedir.o \

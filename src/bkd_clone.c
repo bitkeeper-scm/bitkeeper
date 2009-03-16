@@ -17,7 +17,6 @@ cmd_clone(int ac, char **av)
 	char	**aliases = 0;
 	sccs	*s = 0;
 	delta	*d;
-	hash	*h = 0;
 
 	if (sendServerInfoBlock(0)) goto out;
 	unless (isdir("BitKeeper/etc")) {
@@ -62,37 +61,11 @@ cmd_clone(int ac, char **av)
 		goto out;
 	}
 	if (proj_isProduct(0)) {
-		int	saw_here;
-
 		unless (bk_hasFeature("SAMv1")) {
 			out("ERROR-please upgrade your BK to a NESTED "
 			    "aware version (5.0 or later)\n");
 			goto out;
 		}
-
-		/* handle here related errors */
-		saw_here = 0;
-		EACH(aliases) {
-			if (strieq(aliases[1], "here") ||
-			    strieq(aliases[1], "there")) {
-				saw_here = 1;
-			}
-		}
-		if (saw_here) {
-			if (nLines(aliases) != 1) {
-				out("ERROR-alias 'here' must be alone\n");
-				goto out;
-			}
-			freeLines(aliases, free);
-			aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
-			unless (aliases) {
-				out("ERROR-no BitKeeper/log/COMPONENTS ");
-				out(proj_cwd());
-				out("\n");
-				goto out;
-			}
-		}
-
 		/*
 		 * If we're an ensemble and they did not specify any aliases,
 		 * then imply the default set.
@@ -163,8 +136,12 @@ cmd_clone(int ac, char **av)
 
 		n = nested_init(s, rev, 0, flags);
 		assert(aliases);
-		aliasdb_chkAliases(n, 0, &aliases, proj_cwd());
-		nested_filterAlias(n, 0, aliases);
+		if (aliasdb_chkAliases(n, 0, &aliases, proj_cwd()) ||
+		    nested_filterAlias(n, 0, aliases)) {
+			printf("ERROR-unable to expand aliases.\n");
+			nested_free(n);
+			goto out;
+		}
 		EACH_STRUCT(n->comps, cp) {
 			if (cp->alias && !cp->present) {
 				printf(
@@ -203,7 +180,6 @@ out:	if (delay > 0) sleep(delay);
 
 	putenv("BK_CSETS=");
 	if (s) sccs_free(s);
-	if (h) hash_free(h);
 	return (rc);
 }
 

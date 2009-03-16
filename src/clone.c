@@ -434,8 +434,6 @@ clone2(remote *r)
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	if (opts->rev) {
 		/* only product in COMPONENTS */
-		Fprintf("BitKeeper/log/COMPONENTS", "%s\n",
-		    proj_rootkey(0));
 		/* remove any later stuff */
 		rc = after(opts->quiet, opts->rev);
 		if (rc == UNDO_SKIP) {
@@ -446,11 +444,18 @@ clone2(remote *r)
 			return (-1);
 		}
 	}
-	if (proj_isProduct(0)) {
-		f = fopen("BitKeeper/log/COMPONENTS", "w");
-		EACH(opts->aliases) fprintf(f, "%s\n", opts->aliases[i]);
-		fclose(f);
-		sys("bk", "populate", "-r", opts->quiet ? "-q" : "--", SYS);
+	if (proj_isProduct(0) && !emptyLines(opts->aliases)) {
+		char	**cav = 0;
+
+		cav = addLine(cav, "bk");
+		cav = addLine(cav, "components");
+		cav = addLine(cav, "set");
+		if (opts->quiet) cav = addLine(cav, "-q");
+		if (opts->link) cav = addLine(cav, "-l");
+		EACH(opts->aliases) cav = addLine(cav, opts->aliases[i]);
+		cav = addLine(cav, 0);
+		spawnvp(_P_WAIT, "bk", cav + 1);
+		freeLines(cav, 0);
 	}
 
 	unless (opts->rev && proj_isProduct(0) && !rc) {

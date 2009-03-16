@@ -181,9 +181,9 @@ test -f BitKeeper/log/COMPONENTS || {
 cmpfiles ../mynewgcc/BitKeeper/log/COMPONENTS BitKeeper/log/COMPONENTS
 echo OK
 
-echo $N Add a component with populate -s./gdb .......................$NL
+echo $N Add a component with components add ./gdb ...................$NL
 cd "$HERE/mynewgcc"
-bk populate $Q -s./gdb || exit 1
+bk components add $Q ./gdb || exit 1
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
@@ -199,9 +199,9 @@ test -f BitKeeper/log/COMPONENTS || {
 cmpfiles WANT BitKeeper/log/COMPONENTS
 echo OK
 
-echo $N Check that populate is idempotent ...........................$NL
+echo $N Check that components is idempotent .........................$NL
 cd "$HERE/mynewgcc"
-bk populate $Q -s./gdb || exit 1
+bk components add $Q ./gdb || exit 1
 test -d gdb || {
 	echo failed to get gdb
 	exit 1
@@ -229,7 +229,7 @@ echo $N Pull in new cset without component, then populate ...........$NL
 cd "$HERE/mynewgcc2"
 bk pull -q || exit 1
 BEFORE=`bk changes -r+ -nd:I:`
-bk populate $Q -s./gdb "$HERE/mynewgcc" || exit 1
+bk components add $Q -@"$HERE/mynewgcc" ./gdb  || exit 1
 AFTER=`bk changes -r+ -nd:I:`
 test "$BEFORE" != "$AFTER" && {
 	echo was $BEFORE and now $AFTER
@@ -316,7 +316,7 @@ echo $N Check that we can populate gdb from elsewhere ...............$NL
 bk clone -shere $Q mynewgcc3 mynewgcc4 || exit 1
 cd mynewgcc4 || exit 1
 rm -rf gdb
-bk populate $Q -s./gdb ../mynewgcc || exit 1
+bk components add $Q -@../mynewgcc ./gdb  || exit 1
 bk _test -d gdb -a -f gdb/SCCS/s.ChangeSet || {
 	echo failed
 	cat OUT
@@ -458,7 +458,7 @@ grep -q gcc/deep BitKeeper/log/deep-nests || {
 	exit 1
 }
 bk sfiles -p
-bk components > LIST
+bk _nested > LIST
 grep -q gcc/deep LIST || {
 	echo ensemble list did not list gcc/deep
 	bk components
@@ -467,11 +467,11 @@ grep -q gcc/deep LIST || {
 cd ..
 bk clone $Q -s./gdb project deeppop
 cd deeppop
-bk populate $Q -s./gcc/deep || {
+bk components add $Q ./gcc/deep || {
 	echo failed
 	exit 1
 }
-bk populate $Q -s./gcc 2> ERR || {
+bk components add $Q ./gcc 2> ERR || {
 	echo failed
 	exit 1
 }
@@ -484,14 +484,14 @@ echo $N Test populate with no args ..................................$NL
 cd "$HERE"
 bk clone $Q -s. project product || exit 1
 cd product
-bk components -h > LIST
+bk components here -p > LIST
 test -s LIST && {
 	echo should not have any components yet
 	cat LIST
 	exit 1
 }
-bk populate $Q || exit 1
-bk components -h > GOT
+bk components set $Q default || exit 1
+bk components here -p > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -501,20 +501,13 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test populate in repair mode with nothing to do .............$NL
-bk populate -r 2> GOT || exit 1
-cat > WANT <<EOF
-populate: gcc is already here.
-populate: gcc/deep is already here.
-populate: gdb is already here.
-populate: no components fetched
-EOF
-cmpfiles WANT GOT
+bk components set $Q here || exit 1
 echo OK
 
 echo $N Test populate in repair mode with gdb missing ...............$NL
 rm -rf gdb
-bk populate -r > GOT 2>&1 || exit 1
-bk components -h > GOT
+bk components set $Q here || exit 1
+bk components here -p > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -525,8 +518,8 @@ echo OK
 
 echo $N Test populate in repair mode with gcc/deep missing ..........$NL
 rm -rf gcc/deep
-bk populate -r > GOT 2>&1 || exit 1
-bk components -h > GOT
+bk components set $Q here || exit 1
+bk components here -p > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -537,8 +530,8 @@ echo OK
 
 echo $N Test populate in repair mode with gcc/deep and gcc missing ..$NL
 rm -rf gcc
-bk populate -r > GOT 2>&1 || exit 1
-bk components -h > GOT
+bk components set $Q here || exit 1
+bk components here -p > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -548,7 +541,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Unpopulate all components ...................................$NL
-bk unpopulate $Q || {
+bk components rm $Q here || {
 	echo unpopulate failed
 	exit 1
 }
@@ -564,7 +557,7 @@ echo $N Test populate in repair mode with all components missing ....$NL
 
 echo default > BitKeeper/log/COMPONENTS
 bk populate -r > GOT 2>&1 || exit 1
-bk components -h > GOT
+bk components here -p > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -590,7 +583,7 @@ echo OK
 echo $N Test populate -r with url ...................................$NL
 rm -rf gcc gdb
 bk populate $Q -r ../project || exit 1
-bk components -h > GOT
+bk components here -p > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -602,7 +595,7 @@ echo OK
 echo $N Test populate with url ......................................$NL
 rm -rf gcc gdb
 bk populate $Q ../project || exit 1
-bk components -h > GOT
+bk components here -p > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep

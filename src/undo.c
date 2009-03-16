@@ -160,7 +160,9 @@ err:		if (undo_list[0]) unlink(undo_list);
 			goto err;
 		}
 
-		EACH_STRUCT(n->comps, c) if (c->present && !c->new) num++;
+		EACH_STRUCT(n->comps, c) {
+			if (c->present && c->included && !c->new) num++;
+		}
 		START_TRANSACTION();
 		EACH_STRUCT(n->comps, c) {
 			if (c->product || c->new) continue;
@@ -193,7 +195,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		}
 		STOP_TRANSACTION();
 		EACH_STRUCT(n->comps, c) {
-			unless (c->new) continue;
+			unless (c->new && c->included) continue;
 			sysio(0,
 			    SFILES, 0, "bk", "sfiles", "-gcxp", c->path, SYS);
 			if (size(SFILES) > 0) {
@@ -207,7 +209,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 			unlink(SFILES);
 		}
 		EACH_STRUCT(n->comps, c) {
-			if (c->new) rmtree(c->path);
+			if (c->new && c->included) rmtree(c->path);
 		}
 
 		/*
@@ -218,7 +220,8 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		f = popen(cmd, "w");
 		free(cmd);
 		EACH_STRUCT(n->comps, c) {
-			if (c->new) continue;
+			if (c->product) continue;
+			if (c->new || !c->included) continue;
 			fprintf(f, "%s/SCCS/s.ChangeSet\n", c->path);
 		}
 		pclose(f);

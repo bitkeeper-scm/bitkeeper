@@ -10,6 +10,148 @@ private	char	**nested_deep(char *path);
 private	int	nestedWalkdir(char *dir, walkfn fn);
 private	int	empty(char *path, struct stat *statbuf, void *data);
 
+
+#define	L_ROOT		0x01
+#define	L_DELTA		0x02
+#define	L_PATH		0x04
+#define	L_NEW		0x08
+#define	L_PRESENT	0x10
+#define	L_MISSING	0x20
+
+/*
+ * bk _nested
+ *
+ * This is mostly a debugging function used to test the nested_init()
+ * function in regressions.
+ */
+int
+nested_main(int ac, char **av)
+{
+	int	c, i;
+	int	rc = 0, want = 0;
+	int	here = 0, missing = 0;
+	int	product = 0;
+	char	*p;
+	nested	*n = 0;
+	comp	*cp;
+	u32	flags = 0;
+	char	*rev = 0;
+	char	*cwd;
+	char	**revs = 0;
+	char	**aliases = 0;
+
+	cwd = strdup(proj_cwd());
+	if (proj_cd2product()) {
+		fprintf(stderr,
+		    "%s: needs to be run in a product.\n", av[0]);
+		return (1);
+	}
+	flags |= NESTED_PRODUCTFIRST;
+
+	while ((c = getopt(ac, av, "hl;mPr;s;u")) != -1) {
+		switch (c) {
+		    case 'l':	/* undoc */
+			for (p = optarg; *p; p++) {
+				switch (*p) {
+				    case 'd': want |= L_DELTA; break;
+				    case 'h': want |= L_PRESENT; break;
+				    case 'm': want |= L_MISSING; break;
+				    case 'n': want |= L_NEW; break;
+				    case 'p': want |= L_PATH; break;
+				    case 'r': want |= L_ROOT; break;
+			    	}
+			}
+			break;
+		    case 'm':
+		    	missing = 1;
+			break;
+		    case 'P':
+			product = 1;
+			break;
+		    case 'h':
+			here = 1;
+			break;
+		    case 'r':
+			rev = optarg;
+			break;
+		    case 's':
+			aliases = addLine(aliases, strdup(optarg));
+			break;
+		    case 'u':	/* undoc */
+			flags |= NESTED_UNDO;
+			break;
+		    default:
+usage:			system("bk help -s here");
+			exit(1);
+		}
+	}
+	if (av[optind] && streq(av[optind], "-")) {
+		while (p = fgetline(stdin)) {
+			revs = addLine(revs, strdup(p));
+		}
+	}
+	if (rev && revs) {
+		fprintf(stderr,
+		    "here: -r or list on stdin, but not both\n");
+		goto usage;
+	}
+	unless (rev || revs) flags |= NESTED_PENDING;
+	unless (n = nested_init(0, rev, revs, flags)) {
+		rc = 1;
+		goto out;
+	}
+	if (aliases) {
+		if (aliasdb_chkAliases(n, 0, &aliases, cwd) ||
+		    nested_filterAlias(n, 0, aliases)) {
+			rc = 1;
+			goto out;
+		}
+	}
+	unless (want) want = L_PATH;
+	EACH_STRUCT(n->comps, cp) {
+		if (!product && cp->product) continue;
+		unless (cp->included) continue;
+		if (n->alias && !cp->nlink && !cp->product) continue;
+		if ((flags & NESTED_UNDO) && cp->new && !(want & L_NEW)) {
+			continue;
+		}
+		if (here && !cp->present) continue;
+		if (missing && cp->present) continue;
+		p = "";
+		if (want & L_PATH) {
+			printf("%s", cp->path);
+			p = "|";
+		}
+		if (want & L_DELTA) {
+			printf("%s%s", p, cp->deltakey);
+			p = "|";
+		}
+		if (want & L_ROOT) {
+			printf("%s%s", p, cp->rootkey);
+			p = "|";
+		}
+		if ((want & L_MISSING) && !cp->present)  {
+			printf("%s(missing)", p);
+			p = "|";
+		}
+		if ((want & L_NEW) && cp->new)  {
+			printf("%s(new)", p);
+			p = "|";
+		}
+		if ((want & L_PRESENT) && cp->present)  {
+			printf("%s(present)", p);
+			p = "|";
+		}
+		printf("\n");
+	}
+out:	nested_free(n);
+	free(cwd);
+	freeLines(aliases, 0);
+	freeLines(revs, free);
+	exit(rc);
+}
+
+
 /*
  * Return the list of comps for this product.
  * Optionally include the product.

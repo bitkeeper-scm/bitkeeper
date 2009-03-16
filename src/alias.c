@@ -172,6 +172,12 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		goto err;
 	}
 
+	/*
+	 * XXX
+	 * The 'bk alias' command should not be allowed to change or delete
+	 * any aliases that are currently in the BitKeeper/log/COMPONENTS
+	 * file.  Otherwise the user can invalidate their repository.
+	 */
 	if (streq(cmd, "new")) {
 		if (hash_fetchStr(aliasdb, alias)) {
 			unless (opts.force) {
@@ -791,7 +797,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 	comp	*c;
 	char	*alias, **aliases;
 #ifndef	CRAZY_GLOB
-	char	**globkeys = 0;
+	char	**addkeys = 0;
 	int	j;
 #endif
 
@@ -808,11 +814,18 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 		if (reserved = chkReserved(alias, fix)) {
 			if (reserved < 0) {
 				errors++; /* case problem */
-			} else if (!fix &&
-			    streq(alias, "here") && streq(alias, "there")) {
-				error("%s: not allowed as value: %s\n",
-				    prog, alias);
-				errors++;
+			} else if (streq(alias, "here") ||
+			    streq(alias, "there")) {
+				if (fix) {
+					addkeys = file2Lines(addkeys,
+					    "BitKeeper/log/COMPONENTS");
+					removeLineN(aliases, i, free);
+					i--;
+				} else {
+					error("%s: not allowed as value: %s\n",
+					    prog, alias);
+					errors++;
+				}
 			}
 			continue;
 		}
@@ -885,9 +898,14 @@ root:			if (c->product) {
 			EACH_STRUCT_INDEX(n->comps, c, j) {
 				if (c->product) continue;
 				if (match_one(c->path, alias, 0)) {
-					globkeys = addLine(globkeys,
+					addkeys = addLine(addkeys,
 					    strdup(c->rootkey));
 				}
+			}
+			if (emptyLines(addkeys)) {
+				error("%s: %s does not match any components.\n",
+				    prog, alias);
+				errors++;
 			}
 			removeLineN(aliases, i, free);
 			i--;
@@ -914,17 +932,15 @@ root:			if (c->product) {
 		}
 		errors++;
 	}
-#ifndef	CRAZY_GLOB
 	if (errors) {
-		freeLines(globkeys, free);
+		freeLines(addkeys, free);
 	} else {
-		EACH(globkeys) {
-			aliases = addLine(aliases, globkeys[i]);
+		EACH(addkeys) {
+			aliases = addLine(aliases, addkeys[i]);
 		}
-		freeLines(globkeys, 0);
+		freeLines(addkeys, 0);
 		*paliases = aliases;
 	}
-#endif
 	return (errors);
 }
 
