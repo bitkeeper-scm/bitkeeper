@@ -2,8 +2,6 @@
 #include "sccs.h"
 #include "bam.h"
 
-extern	char	*prog;	/* in bk.c but not sccs.h */
-
 /*
  * csetprune - prune a list of files from a ChangeSet file
  *

@@ -22,8 +22,6 @@ private	int	chkReserved(char *alias, int fix);
 private	int	validName(char *name);
 private	comp	*findDir(nested *n, char *cwd, char *dir);
 
-extern char	*prog;
-
 /* union of aliasCreate and aliasShow options */
 
 typedef struct {

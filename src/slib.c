@@ -4254,7 +4254,6 @@ sccs_init(char *name, u32 flags)
 	static	int _YEAR4;
 	static	char *glob = 0;
 	static	int show = -1;
-	extern	char	*prog;
 
 	if (show == -1) {
 		glob = getenv("BK_SHOWINIT");

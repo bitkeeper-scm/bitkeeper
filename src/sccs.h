@@ -1299,6 +1299,7 @@ extern	char	*BitKeeper;
 extern	time_t	licenseEnd;
 extern	int	spawn_tcl;
 extern	char	*start_cwd;
+extern	char	*prog;
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)

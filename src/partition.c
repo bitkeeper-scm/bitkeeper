@@ -6,8 +6,6 @@
 private	void	createInitialAliases(void);
 private	void	push_hash2lines(hash *h, char *key, char *line);
 
-extern	char	*prog;	/* XXX: time to make this a global like bin? */
-
 int
 cpartition_main(int ac, char **av)
 {

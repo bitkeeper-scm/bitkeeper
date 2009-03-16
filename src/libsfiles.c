@@ -32,7 +32,7 @@ private	int di;			/* index into d */
 private	char prefix[MAXPATH];	/* path/to/dir/SCCS/ */
 private	char buf[MAXPATH];	/* pathname we actually pass back */
 private	int unget;		/* if set, return path again */
-private	char *prog;		/* av[0], sort of */
+private	char *lprog;		/* av[0], sort of */
 private	char *glob;		/* if set, filter through this */
 private	char rev[MAXKEY];	/* 1.1.1.1, keys, tags, etc - see HASREVS */
 private	pid_t spid;		/* pid of sfiles for -r */
@@ -164,7 +164,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 {
 	if (sfilesDied(0)) return (0);
 	rev[0] = 0;
-	prog = cmd;
+	lprog = cmd;
 	flags = Flags;
 	if (getenv("BK_NODIREXPAND")) flags |= SF_NODIREXPAND;
 	if (Av[0]) {
@@ -186,7 +186,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 		if (streq("-", Av[0])) {
 			if (Av[1]) {
 				fprintf(stderr,
-				    "%s: - option must be alone.\n", prog);
+				    "%s: - option must be alone.\n", lprog);
 				sfileDone();
 				return (0);
 			}
@@ -198,7 +198,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			if (flags & SF_NODIREXPAND) return (0);
 			if (Av[1]) {
 				fprintf(stderr,
-				    "%s: directory must be alone.\n", prog);
+				    "%s: directory must be alone.\n", lprog);
 				sfileDone();
 				return (0);
 			}
@@ -253,7 +253,7 @@ sfileDone(void)
 	}
 	if (glob) free(glob);
 	glob = 0;
-	prog = "";
+	lprog = "";
 	if (ret = sfilesDied(0)) {
 		return (ret);
 	}
@@ -314,7 +314,7 @@ oksccs(char *sfile, int flags, int complain)
 
 	unless (sccs_filetype(buf) == 's') {
 		if (complain)
-			fprintf(stderr, "%s: not an s.file: %s\n", prog, sfile);
+			fprintf(stderr, "%s: not an s.file: %s\n", lprog, sfile);
 		return (0);
 	}
 	g = sccs2name(sfile);
@@ -324,10 +324,10 @@ oksccs(char *sfile, int flags, int complain)
 			unless (exists(sfile)) {
 				fprintf(stderr,
 				    "%s: neither '%s' nor '%s' exists.\n",
-				    prog, g, sfile);
+				    lprog, g, sfile);
 			} else {
 				fprintf(stderr,
-				    "%s: no such file: %s\n", prog, g);
+				    "%s: no such file: %s\n", lprog, g);
 			}
 		}
 		free(g);
@@ -336,7 +336,7 @@ oksccs(char *sfile, int flags, int complain)
 	if ((flags&SF_WRITE_OK) && (!ok || !(sbuf.st_mode & 0200))) {
 		if (complain)
 			fprintf(stderr,
-			    "%s: %s: no write permission\n", prog, g);
+			    "%s: %s: no write permission\n", lprog, g);
 		free(g);
 		return (0);
 	}

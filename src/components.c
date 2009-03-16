@@ -2,8 +2,6 @@
 #include "nested.h"
 #include "bkd.h"
 
-extern	char	*prog;
-
 int
 components_main(int ac, char **av)
 {

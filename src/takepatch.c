@@ -79,8 +79,6 @@ private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
 private	int	collapsedups;	/* allow csets in BitKeeper/etc/collapsed */
 
-extern	char	*prog;
-
 /*
  * Structure for keys we skip when incoming, used for old LOD keys that
  * we do not want in the open logging tree.
