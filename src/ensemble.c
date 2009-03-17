@@ -898,7 +898,10 @@ ensemble_emptyDir(char *dir)
 int
 ensemble_rmtree(char *dir)
 {
-	return (ensemble_walkdir(dir, eremove));
+	int	ret = ensemble_walkdir(dir, eremove);
+
+	proj_reset(0);
+	return (ret);
 }
 
 int

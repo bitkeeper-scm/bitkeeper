@@ -594,6 +594,9 @@ rmrepo(char *repo)
 	old = fslayer_enable(0);
 	ret = rmtree(repo);
 	fslayer_enable(old);
+
+	/* reset the projcache */
+	proj_reset(0);
 	return (ret);
 }
 

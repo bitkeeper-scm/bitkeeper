@@ -845,17 +845,28 @@ doidx_mkdir(project *proj, char *dir, mode_t mode)
 int
 doidx_rmdir(project *proj, char *dir)
 {
-	char	buf[MAXPATH];
-
-	/*
-	 * chances are that code that is hitting this assertion should
-	 * really be calling rmrepo
-	 *
-	 * if that's not that and you hit this, call wayne
-	 */
-	assert(!streq(dir, "."));
+	int	idf = 0;
+	char	buf[MAXPATH], buf2[MAXPATH];
 		       
 	full_remap_path(buf, proj, dir);
+
+	/*
+	 * normally, being called with . is no good.  Indicates
+	 * that you're removing a repo/component and you want
+	 * rmrepo() instead.  However, for unpopulate, the code
+	 * is more careful (so that deeply nested components are
+	 * left alone).  That path ends up here so we take some
+	 * care to remove the .bk tree as well.  No .bk tree?
+	 * we'd like to assert but regressions show that's not
+	 * possible either.  Ugh.
+	 */
+	if (streq(dir, ".")) {
+		concat_path(buf2, buf, ".bk");
+		idf = isdir(buf2);
+		assert(idf);
+		rmtree(buf2);
+	}
+
 	return (rmdir(buf));
 }
 
