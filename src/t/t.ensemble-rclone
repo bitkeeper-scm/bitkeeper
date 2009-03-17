@@ -178,8 +178,9 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
+bk components here > GOT
 (cd gcc; bk id) > WANT
-cmpfiles BitKeeper/log/COMPONENTS WANT
+cmpfiles GOT WANT
 echo OK
 
 bk _kill bk://localhost:$PORT

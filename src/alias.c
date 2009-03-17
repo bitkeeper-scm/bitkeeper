@@ -304,9 +304,17 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 		error("%s: aliasdb: not in a product\n", prog);
 		return (0);
 	}
+again:
 	concat_path(buf, proj_root(p), ALIASES);
 	path = name2sccs(buf);
-	if (s = sccs_init(path, INIT_MUSTEXIST)) {
+	s = sccs_init(path, INIT_MUSTEXIST);
+	free(path);
+	if (!s && proj_isResync(p)) {
+		/* if no aliases in RESYNC, use directory above */
+		p = proj_isResync(p);
+		goto again;
+	}
+	if (s) {
 		if (pending) {
 			assert(!rev);
 		} else {
@@ -326,7 +334,6 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 	} else if (pending) {
 		aliasdb = hash_fromFile(0, buf); /* may have gfile */
 	}
-	free(path);
 
 	unless (aliasdb) aliasdb = hash_new(HASH_MEMHASH);
 

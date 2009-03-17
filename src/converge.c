@@ -263,7 +263,8 @@ converge_hash_files(void)
 	char	*q, *t;
 	int	i;
 	char	*files[] = {
-		int2p(6),
+		int2p(7),
+		/* "BitKeeper/etc/aliases", */
 		"BitKeeper/etc/collapsed",
 		"BitKeeper/etc/gone",
 		"BitKeeper/etc/ignore",

@@ -3,6 +3,7 @@
 #include "bkd.h"
 
 private	int	list_components(char **aliases, int here, int paths, int keys);
+private	int	unpopulate_check(comp *c, char **urls);
 
 
 int
@@ -11,6 +12,7 @@ components_main(int ac, char **av)
 	int	c, i, j, k, clonerc;
 	int	quiet = 0;
 	int	keys = 0, paths = 0, add = 0, rm = 0, here;
+	int	force = 0;
 	char	**urls = 0;
 	char	**aliases = 0;
 	char	**vp = 0;
@@ -34,7 +36,7 @@ components_main(int ac, char **av)
 		subcmd = "here";
 		paths = 1;
 	}
-	while ((c = getopt(ac, av, "@|E;klpq")) != -1) {
+	while ((c = getopt(ac, av, "@|fE;klpq")) != -1) {
 		switch(c) {
 		    case '@':
 			list = 0;
@@ -56,6 +58,7 @@ components_main(int ac, char **av)
 			EACH(list) urls = addLine(urls, list[i]);
 			freeLines(list, 0);
 			break;
+		    case 'f': force = 1; break;
 		    case 'E':
 			/* we just error check and pass through to clone */
 			unless (strneq("BKU_", optarg, 4)) {
@@ -124,13 +127,41 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		freeLines(list, free);
 	}
 	nested_filterAlias(n, 0, aliases);
+	n->product->alias = 1;
+
+	/*
+	 * Look to see if removed any components will cause a problem
+	 * and fail early if we see any.
+	 */
+	i = 0;
+	EACH_STRUCT_INDEX(n->comps, cp, j) {
+		if (force) break; /* skip these checks */
+		if (cp->present && !cp->alias) {
+			unless (urls || (urls = parent_allp())) {
+				fprintf(stderr,
+				    "%s: neither parent nor url provided.\n",
+				    prog);
+				goto usage;
+			}
+			if (unpopulate_check(cp, urls)) {
+				fprintf(stderr, "%s: unable to remove %s\n",
+				    prog, cp->path);
+				++i;
+			}
+		}
+	}
+	if (i) return (1);
 	checkfiles = bktmp(0, 0);
 	f = fopen(checkfiles, "w");
 	START_TRANSACTION();
+	/*
+	 * Now add all the new repos and keep a list of repos added
+	 * so we can cleanup if needed.
+	 */
+	list = 0;		/* repos added */
 	EACH_STRUCT_INDEX(n->comps, cp, j) {
-		if (cp->product) continue;
 		if (!cp->present && cp->alias) {
-			unless (urls || (urls = parent_pullp())) {
+			unless (urls || (urls = parent_allp())) {
 				fprintf(stderr,
 				    "%s: neither parent nor url provided.\n",
 				    prog);
@@ -158,6 +189,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 				clonerc =
 				    WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 				if (clonerc == 0) {
+					list = addLine(list, cp);
 					cp->present = 1;
 					fprintf(f, "%s/ChangeSet\n", cp->path);
 					break;
@@ -168,17 +200,44 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 					nested_rmtree(cp->path);
 				}
 			}
+			unless (cp->present) break;
 		}
-		if (cp->present && !cp->alias) {
-			fprintf(stderr, "%s: need to unpopulate %s\n",
+	}
+	/*
+	 * If we failed to add all repos then cleanup and exit.
+	 */
+	rc = 0;
+	EACH_STRUCT(n->comps, cp) {
+		if (!cp->present && cp->alias) {
+			fprintf(stderr, "%s: failed to fetch %s\n",
 			    prog, cp->path);
+			rc = 1;
+		}
+	}
+	if (rc) {
+		EACH_STRUCT(list, cp) nested_rmtree(cp->path);
+		return (rc);
+	}
+	freeLines(list, 0);
+
+	/*
+	 * Now after we sucessfully cloned all new components we can
+	 * remove the ones to be deleted.
+	 */
+	EACH_STRUCT_INDEX(n->comps, cp, j) {
+		if (cp->present && !cp->alias) {
+			if (nested_rmtree(cp->path)) {
+				fprintf(stderr, "%s: remove of %s failed\n",
+				    prog, cp->path);
+				return (1);
+			}
+			cp->present = 0;
 		}
 	}
 	STOP_TRANSACTION();
 	freeLines(cav, free);
 	rc = 0;
 	EACH_STRUCT(n->comps, cp) {
-		if (cp->product) continue;
 		if (!cp->present && cp->alias) {
 			fprintf(stderr, "%s: failed to fetch %s\n",
 			    prog, cp->path);
@@ -243,4 +302,77 @@ list_components(char **aliases, int here, int paths, int keys)
 	}
 	nested_free(n);
 	return (rc);
+}
+
+private int
+unpopulate_check(comp *c, char **urls)
+{
+	FILE	*f;
+	char	*t;
+	int	i, good, errs;
+	char	**av;
+	char	out[MAXPATH];
+
+	if (chdir(c->path)) {
+		perror(c->path);
+		return (1);
+	}
+	f = popen("bk sfiles -gcxp -v", "r");
+	errs = 0;
+	while (t = fgetline(f)) {
+		if (t[0] == 'x') {
+			fprintf(stderr, "Extra file:         ");
+		} else if (t[2] == 'c') {
+			fprintf(stderr, "Modified file:      ");
+		} else if (t[3] == 'p') {
+			fprintf(stderr, "Non-committed file: ");
+		} else {
+			continue;
+		}
+		fprintf(stderr, "%s/%s\n", c->path, t + 8);
+		++errs;
+	}
+	pclose(f);
+	if (errs) goto out;
+	good = 0;
+	bktmp(out, 0);
+	av = addLine(0, "bk");
+	av = addLine(av, "changes");
+	av = addLine(av, "-LD");
+	EACH(urls) {
+		unless (sysio(0, out, DEVNULL_WR,
+			"bk", "changes", "-qLnd:REV:", urls[i], SYS)) {
+			if (size(out) == 0) {
+				/* found no diffs? */
+				good = 1;
+				break;
+			} else {
+				/* found diffs */
+				av = addLine(av, urls[i]);
+			}
+		}
+	}
+	unlink(out);
+	unless (good) {
+		++errs;
+		if (nLines(av) > 3) {
+			fprintf(stderr, "Local changes to %s found:\n",
+			    c->path);
+			av = addLine(av, 0);
+			/* send changes output to stderr */
+			i = dup(1);
+			dup2(2, 1);
+			spawnvp(_P_WAIT, "bk", av+1);
+			dup2(i, 1);
+			close(i);
+		} else {
+			fprintf(stderr,
+			    "No parent with %s to look for local changes\n",
+			    c->path);
+		}
+	}
+	freeLines(av, 0);
+out:	proj_cd2product();
+	if (errs) return (1);
+	return (0);
 }

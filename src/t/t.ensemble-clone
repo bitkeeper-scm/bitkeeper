@@ -162,23 +162,18 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
-test -f BitKeeper/log/COMPONENTS || {
-	echo no COMPONENTS file
-	exit 1
-}
+bk components here > GOT
 (cd gcc; bk id) > WANT
-cmpfiles BitKeeper/log/COMPONENTS WANT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Make sure that the COMPONENTS file propagates on clone ......$NL
 cd "$HERE"
 bk clone -shere $Q mynewgcc mynewgcc2 || exit 1
 cd mynewgcc2
-test -f BitKeeper/log/COMPONENTS || {
-	echo no COMPONENTS file
-	exit 1
-}
-cmpfiles ../mynewgcc/BitKeeper/log/COMPONENTS BitKeeper/log/COMPONENTS
+(cd ../mynewgcc; bk components here) > BEFORE
+bk components here > AFTER
+cmpfiles BEFORE AFTER
 echo OK
 
 echo $N Add a component with components add ./gdb ...................$NL
@@ -191,12 +186,9 @@ test -d gdb || {
 echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
-test -f BitKeeper/log/COMPONENTS || {
-	echo no COMPONENTS file
-	exit 1
-}
+bk components here > GOT
 (cd gcc; bk id; cd ../gdb; bk id) > WANT
-cmpfiles WANT BitKeeper/log/COMPONENTS
+cmpfiles GOT WANT
 echo OK
 
 echo $N Check that components is idempotent .........................$NL
@@ -209,11 +201,8 @@ test -d gdb || {
 echo OK
 
 echo $N Make sure that the COMPONENTS file is still correct .........$NL
-test -f BitKeeper/log/COMPONENTS || {
-	echo no COMPONENTS file
-	exit 1
-}
-cmpfiles WANT BitKeeper/log/COMPONENTS
+bk components here > GOT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Update a component now that it is here ......................$NL
@@ -247,12 +236,9 @@ test -d gdb && {
 	echo should not have gdb
 	exit 1
 }
-test -f BitKeeper/log/COMPONENTS || {
-	echo no COMPONENTS file
-	exit 1
-}
+bk components here > GOT
 (cd gcc; bk id) > WANT
-cmpfiles WANT BitKeeper/log/COMPONENTS
+cmpfiles GOT WANT
 echo OK
 
 echo $N clone -sjunk when no such alias exists should fail ..........$NL
@@ -554,9 +540,8 @@ done
 echo OK
 
 echo $N Test populate in repair mode with all components missing ....$NL
-
 echo default > BitKeeper/log/COMPONENTS
-bk populate -r > GOT 2>&1 || exit 1
+bk components set $Q here || exit 1
 bk components here -p > GOT
 cat > WANT <<EOF
 gcc
@@ -569,20 +554,20 @@ echo OK
 echo $N Test populate with no parent ................................$NL
 bk parent -r $Q
 rm -rf gcc gdb
-bk populate -r > GOT 2>&1 && {
-	cat GOT
+bk components set $Q here 2>ERR && {
+	cat ERR
 	exit 1
 }
-grep -q 'populate: neither parent nor url provided.' GOT || {
+grep -q 'components: neither parent nor url provided.' ERR || {
 	echo bad error message
-	cat GOT
+	cat ERR
 	exit 1
 }
 echo OK
 
 echo $N Test populate -r with url ...................................$NL
 rm -rf gcc gdb
-bk populate $Q -r ../project || exit 1
+bk components set $Q -@../project HERE || exit 1
 bk components here -p > GOT
 cat > WANT <<EOF
 gcc
@@ -594,7 +579,7 @@ echo OK
 
 echo $N Test populate with url ......................................$NL
 rm -rf gcc gdb
-bk populate $Q ../project || exit 1
+bk components set $Q -@../project here || exit 1
 bk components here -p > GOT
 cat > WANT <<EOF
 gcc
@@ -605,13 +590,12 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test unpopulate no parent ...................................$NL
-bk unpopulate $Q >OUT && {
+bk components rm $Q HERE 2>OUT && {
 	echo should have failed
 	cat OUT
 	exit 1
 }
-# XXX - superset is not graceful
-grep -q 'Parent: This repository has no pull parent.' OUT || {
+grep -q 'components: neither parent nor url provided.' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -621,11 +605,12 @@ echo OK
 echo $N Test unpopulate with local extras ...........................$NL
 bk parent $Q ../project
 touch gcc/extra gdb/extra
-bk unpopulate $Q > OUT 2>&1 && {
+bk components rm $Q HERE 2>OUT && {
 	echo unpopulate should have failed
+	cat OUT
 	exit 1
 }
-grep -q 'has local changes' OUT || {
+grep -q 'Extra file' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -641,7 +626,7 @@ echo OK
 echo $N Test unpopulate with local extras forcing it ................$NL
 bk parent $Q ../project
 touch gcc/extra gdb/extra
-bk unpopulate -f $Q || {
+bk components rm -f $Q HERE || {
 	echo unpopulate should not have failed
 	exit 1
 }
@@ -655,20 +640,21 @@ echo OK
 
 echo $N Test unpopulate with local cset .............................$NL
 bk parent $Q ../project
-bk populate $Q
+bk components add $Q all || exit 1
 test -d gdb || exit 1
 (cd gdb
 echo foo > foo
 bk new $Q foo
 bk commit $Q -yfoo
 )
-bk unpopulate $Q >OUT 2>&1 && {
+bk components rm $Q all 2>ERR && {
 	echo unpopulate should have failed
+	cat ERR
 	exit 1
 }
-grep -q 'local changes' OUT || {
+grep -q 'Local changes' ERR || {
 	echo bad error message
-	cat OUT
+	cat ERR
 	exit 1
 }
 for i in `bk components`
@@ -680,8 +666,7 @@ done
 echo OK
 
 echo $N Test unpopulate with local cset forcing it ..................$NL
-bk parent $Q ../project
-bk unpopulate -f $Q || {
+bk components rm -f $Q  all || {
 	echo unpopulate should not have failed
 	exit 1
 }

@@ -39,15 +39,9 @@ echo $N Clone and see that we have a default alias list .............$NL
 cd "$HERE"
 bk clone $Q project clone
 cd clone
-test -f BitKeeper/log/COMPONENTS || {
-	echo failed to create COMPONENTS
-	exit 1
-}
-grep -q default BitKeeper/log/COMPONENTS || {
-	echo bad data
-	cat BitKeeper/log/COMPONENTS
-	exit 1
-}
+bk components here > GOT
+echo default > WANT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Set up a test where we will add another alias ...............$NL
@@ -261,12 +255,14 @@ echo $N Test a default that is just gdb .............................$NL
 cd ..
 bk clone -s./gdb $Q project-nm project-just-gdb || exit 1
 cd project-just-gdb
+bk components here > GOT
 (cd gdb; bk id) > WANT
-cmpfiles WANT BitKeeper/log/COMPONENTS
+cmpfiles GOT WANT
 bk alias set default ./gdb || exit 1
 bk components set $Q default || exit 1
+bk components here > GOT
 echo default > WANT
-cmpfiles WANT BitKeeper/log/COMPONENTS
+cmpfiles GOT WANT
 bk components here -p > GOT
 echo gdb > WANT
 cmpfiles WANT GOT
@@ -344,8 +340,9 @@ bk components add $Q ./junk || {
 }
 test -d junk || exit 1
 bk components set $Q here || exit 1
+bk components here > GOT
 (cd junk; bk id) > WANT
-cmpfiles WANT BitKeeper/log/COMPONENTS
+cmpfiles GOT WANT
 echo OK
 
 echo $N Same thing with a glob that matches junk when we have junk ..$NL
@@ -354,7 +351,8 @@ bk components add $Q './junk*' || {
 	echo populate should not have failed
 	exit 1
 }
-cmpfiles WANT BitKeeper/log/COMPONENTS
+bk components here > GOT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Test alias with non-recursive duplicated definitions.........$NL
