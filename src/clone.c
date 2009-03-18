@@ -306,7 +306,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s\n", buf+6);
 		goto done;
 	}
-	if (streq(buf, "@COMPONENTS@")) {
+	if (streq(buf, "@HERE@")) {
 		freeLines(opts->aliases, free);
 		opts->aliases = 0;
 		while (getline2(r, buf, sizeof (buf)) > 0) {
@@ -433,7 +433,7 @@ clone2(remote *r)
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	if (opts->rev) {
-		/* only product in COMPONENTS */
+		/* only product in HERE */
 		/* remove any later stuff */
 		rc = after(opts->quiet, opts->rev);
 		if (rc == UNDO_SKIP) {

@@ -39,7 +39,7 @@ echo $N Clone and see that we have a default alias list .............$NL
 cd "$HERE"
 bk clone $Q project clone
 cd clone
-bk components here > GOT
+bk alias here > GOT
 echo default > WANT
 cmpfiles GOT WANT
 echo OK
@@ -247,7 +247,7 @@ gdb
 junk
 path/to/libc
 EOF
-bk components here -p > GOT
+bk components here > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -255,15 +255,15 @@ echo $N Test a default that is just gdb .............................$NL
 cd ..
 bk clone -s./gdb $Q project-nm project-just-gdb || exit 1
 cd project-just-gdb
-bk components here > GOT
+bk alias here > GOT
 (cd gdb; bk id) > WANT
 cmpfiles GOT WANT
 bk alias set default ./gdb || exit 1
 bk components set $Q default || exit 1
-bk components here > GOT
+bk alias here > GOT
 echo default > WANT
 cmpfiles GOT WANT
-bk components here -p > GOT
+bk components here > GOT
 echo gdb > WANT
 cmpfiles WANT GOT
 echo OK
@@ -321,7 +321,7 @@ bk components set $Q ./no-such-dir 2>ERR && {
 	cat ERR
 	exit 1
 }
-bk components here -p || exit 1
+bk components here || exit 1
 echo OK
 
 echo $N Same thing with a glob ......................................$NL
@@ -330,7 +330,7 @@ bk components set './no-such-dir*' > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-bk components here -p || exit 1
+bk components here || exit 1
 echo OK
 
 echo $N Populate junk, run populate, should do nothing ..............$NL
@@ -340,7 +340,7 @@ bk components add $Q ./junk || {
 }
 test -d junk || exit 1
 bk components set $Q here || exit 1
-bk components here > GOT
+bk alias here > GOT
 (cd junk; bk id) > WANT
 cmpfiles GOT WANT
 echo OK
@@ -351,7 +351,7 @@ bk components add $Q './junk*' || {
 	echo populate should not have failed
 	exit 1
 }
-bk components here > GOT
+bk alias here > GOT
 cmpfiles GOT WANT
 echo OK
 

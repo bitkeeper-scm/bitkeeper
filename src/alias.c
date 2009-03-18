@@ -8,6 +8,8 @@
 
 private	int	aliasCreate(int ac, char **av);
 private	int	aliasShow(int ac, char **av);
+private	int	aliasHere(int ac, char **av);
+private	int	aliasMissing(int ac, char **av);
 private	int	dbAdd(hash *aliasdb, char *alias, char **aliases);
 private	int	dbRemove(hash *aliasdb, char *alias, char **aliases);
 private	int	dbWrite(nested *n, hash *aliasdb, char *comment, int commit);
@@ -73,6 +75,8 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 		{"add", aliasCreate },
 		{"rm", aliasCreate },
 		{"show", aliasShow },
+		{"here", aliasHere },
+		{"missing", aliasMissing },
 		{0, 0}
 	};
 
@@ -173,7 +177,7 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 	/*
 	 * XXX
 	 * The 'bk alias' command should not be allowed to change or delete
-	 * any aliases that are currently in the BitKeeper/log/COMPONENTS
+	 * any aliases that are currently in the BitKeeper/log/HERE
 	 * file.  Otherwise the user can invalidate their repository.
 	 */
 	if (streq(cmd, "new")) {
@@ -284,6 +288,75 @@ err:
 	aliasdb_free(aliasdb);
 	freeLines(aliases, free);
 	if (comment) free(comment);
+	return (rc);
+}
+
+private	int
+aliasHere(int ac, char **av)
+{
+	char	**aliases;
+	int	c, i;
+	int	rc = 1;
+	opts	opts;
+
+	memset(&opts, 0, sizeof(opts));
+	if (proj_cd2product()) {
+		error("%s: called in a non-product.\n", prog);
+		goto err;
+	}
+
+	while ((c = getopt(ac, av, "")) != -1) {
+		switch (c) {
+		    default:
+			sys("bk", "help", "-s", "alias", SYS);
+			goto err;
+		}
+	}
+	aliases = aliases_here(0);
+	EACH(aliases) printf("%s\n", aliases[i]);
+	freeLines(aliases, free);
+	rc = 0;
+err:
+	return (rc);
+}
+
+char **
+aliases_here(project *p)
+{
+	char	buf[MAXPATH];
+
+	assert(proj_isProduct(p));
+	concat_path(buf, proj_root(p), "BitKeeper/log/HERE");
+	return (file2Lines(0, buf));
+}
+
+/*
+ * bk alias missing
+ *
+ * print all keys in aliasdb where at least one component is missing
+ */
+private	int
+aliasMissing(int ac, char **av)
+{
+	int	c;
+	opts	opts;
+	int	rc = 1;
+
+	memset(&opts, 0, sizeof(opts));
+	if (proj_cd2product()) {
+		error("%s: called in a non-product.\n", prog);
+		goto err;
+	}
+
+	while ((c = getopt(ac, av, "")) != -1) {
+		switch (c) {
+		    default:
+			sys("bk", "help", "-s", "alias", SYS);
+			goto err;
+		}
+	}
+	fprintf(stderr, "bk alias missing NYI!\n");
+err:
 	return (rc);
 }
 
@@ -588,15 +661,7 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 	/* output subset of n->comps in n->comps order */
 	EACH_STRUCT(n->comps, c) {
 		if (hash_fetchStr(keys, c->rootkey)) {
-			/* 
-			 * I'd like to:  assert(!c->product);
-			 * but clone sends the key over as part of
-			 * a non empty COMPONENTS file. Until the
-			 * full protocol is worked out, filtering them
-			 * here.
-			 */
-			// assert(!c->product);
-			if (c->product) continue;
+			assert(!c->product);
 			comps = addLine(comps, c);
 		}
 	}
@@ -815,7 +880,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 			} else if (streq(alias, "here") ||
 			    streq(alias, "there")) {
 				if (fix) {
-					addkeys = components_here(0);
+					addkeys = aliases_here(0);
 					removeLineN(aliases, i, free);
 					i--;
 				} else {

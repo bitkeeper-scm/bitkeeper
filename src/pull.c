@@ -527,7 +527,7 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		putenv("BK_STATUS=DRYRUN");
 		goto done;
 	}
-	if (streq(buf, "@COMPONENTS@")) {
+	if (streq(buf, "@HERE@")) {
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (buf[0] == '@') break;
 			rmt_aliases = addLine(rmt_aliases, strdup(buf));
@@ -646,7 +646,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 
 	h = aliasdb_init(n, presync, "+", 0);
 	assert(h);
-	local_aliases = components_here(0);
+	local_aliases = aliases_here(0);
 	unless (comps = aliasdb_expand(n, h, local_aliases)) {
 		/*
 		 * this can fail

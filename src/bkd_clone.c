@@ -155,7 +155,7 @@ cmd_clone(int ac, char **av)
 			freeLines(aliases, free);
 			goto out;
 		}
-		printf("@COMPONENTS@\n");
+		printf("@HERE@\n");
 		EACH(aliases) printf("%s\n", aliases[i]);
 		printf("@END@\n");
 		freeLines(aliases, free);

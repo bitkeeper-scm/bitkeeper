@@ -443,8 +443,8 @@ _partition() {
 	# Add in the existing keys
 	bk annotate -aS -hR ChangeSet >> $WA/allkeys
 
-	# Setting up aliases and COMPONENTS taken from 'bk setup'
-	echo default > BitKeeper/log/COMPONENTS
+	# Setting up aliases and HERE taken from 'bk setup'
+	echo default > BitKeeper/log/HERE
 	echo @default > BitKeeper/etc/aliases
 	echo all >> BitKeeper/etc/aliases
 	__newFile BitKeeper/etc/aliases

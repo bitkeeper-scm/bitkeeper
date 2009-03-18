@@ -401,17 +401,17 @@ check_main(int ac, char **av)
 		int	j, err = 0;
 
 		/*
-		 * check that whatever we have in log/COMPONENTS
+		 * check that whatever we have in log/HERE
 		 * is consistent with what's really here
 		 */
-		aliases = components_here(0);
+		aliases = aliases_here(0);
 		n = nested_init(0, 0, 0, NESTED_PENDING);
 		assert(n);
 		EACH(aliases) {
 			unless (comps = aliasdb_expandOne(n, 0, aliases[i])) {
 				fprintf(stderr,
 				    "check: unable to expand %s from %s\n",
-				    aliases[i], "BitKeeper/log/COMPONENTS");
+				    aliases[i], "BitKeeper/log/HERE");
 			}
 			EACH_STRUCT_INDEX(comps, c, j) {
 				c->alias = 1;

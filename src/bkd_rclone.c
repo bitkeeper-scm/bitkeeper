@@ -241,14 +241,14 @@ cmd_rclone_part2(int ac, char **av)
 		}
 
 		/*
-		 * Save the COMPONENTS file.
+		 * Save the HERE file.
 		 * chmod because sfio w/o perms doesn't leave it RW.
 		 */
 		if (opts.aliases) {
-			chmod("BitKeeper/log/COMPONENTS", 0666);
+			chmod("BitKeeper/log/HERE", 0666);
 		    	if (lines2File(opts.aliases,
-			    "BitKeeper/log/COMPONENTS")) {
-				perror("BitKeeper/log/COMPONENTS");
+			    "BitKeeper/log/HERE")) {
+				perror("BitKeeper/log/HERE");
 			}
 		}
 	}

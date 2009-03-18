@@ -178,7 +178,7 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
-bk components here > GOT
+bk alias here > GOT
 (cd gcc; bk id) > WANT
 cmpfiles GOT WANT
 echo OK

@@ -162,7 +162,7 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
-bk components here > GOT
+bk alias here > GOT
 (cd gcc; bk id) > WANT
 cmpfiles GOT WANT
 echo OK
@@ -171,8 +171,8 @@ echo $N Make sure that the COMPONENTS file propagates on clone ......$NL
 cd "$HERE"
 bk clone -shere $Q mynewgcc mynewgcc2 || exit 1
 cd mynewgcc2
-(cd ../mynewgcc; bk components here) > BEFORE
-bk components here > AFTER
+(cd ../mynewgcc; bk alias here) > BEFORE
+bk alias here > AFTER
 cmpfiles BEFORE AFTER
 echo OK
 
@@ -186,7 +186,7 @@ test -d gdb || {
 echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
-bk components here > GOT
+bk alias here > GOT
 (cd gcc; bk id; cd ../gdb; bk id) > WANT
 cmpfiles GOT WANT
 echo OK
@@ -201,7 +201,7 @@ test -d gdb || {
 echo OK
 
 echo $N Make sure that the COMPONENTS file is still correct .........$NL
-bk components here > GOT
+bk alias here > GOT
 cmpfiles GOT WANT
 echo OK
 
@@ -236,7 +236,7 @@ test -d gdb && {
 	echo should not have gdb
 	exit 1
 }
-bk components here > GOT
+bk alias here > GOT
 (cd gcc; bk id) > WANT
 cmpfiles GOT WANT
 echo OK
@@ -470,14 +470,14 @@ echo $N Test populate with no args ..................................$NL
 cd "$HERE"
 bk clone $Q -s. project product || exit 1
 cd product
-bk components here -p > LIST
+bk components here > LIST
 test -s LIST && {
 	echo should not have any components yet
 	cat LIST
 	exit 1
 }
 bk components set $Q default || exit 1
-bk components here -p > GOT
+bk components here > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -493,7 +493,7 @@ echo OK
 echo $N Test populate in repair mode with gdb missing ...............$NL
 rm -rf gdb
 bk components set $Q here || exit 1
-bk components here -p > GOT
+bk components here > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -505,7 +505,7 @@ echo OK
 echo $N Test populate in repair mode with gcc/deep missing ..........$NL
 rm -rf gcc/deep
 bk components set $Q here || exit 1
-bk components here -p > GOT
+bk components here > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -517,7 +517,7 @@ echo OK
 echo $N Test populate in repair mode with gcc/deep and gcc missing ..$NL
 rm -rf gcc
 bk components set $Q here || exit 1
-bk components here -p > GOT
+bk components here > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -540,9 +540,9 @@ done
 echo OK
 
 echo $N Test populate in repair mode with all components missing ....$NL
-echo default > BitKeeper/log/COMPONENTS
+echo default > BitKeeper/log/HERE
 bk components set $Q here || exit 1
-bk components here -p > GOT
+bk components here > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -568,7 +568,7 @@ echo OK
 echo $N Test populate -r with url ...................................$NL
 rm -rf gcc gdb
 bk components set $Q -@../project HERE || exit 1
-bk components here -p > GOT
+bk components here > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep
@@ -580,7 +580,7 @@ echo OK
 echo $N Test populate with url ......................................$NL
 rm -rf gcc gdb
 bk components set $Q -@../project here || exit 1
-bk components here -p > GOT
+bk components here > GOT
 cat > WANT <<EOF
 gcc
 gcc/deep

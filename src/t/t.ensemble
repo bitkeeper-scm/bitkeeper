@@ -31,7 +31,7 @@ echo $N Convert to product ..........................................$NL
 cd "$HERE/project"
 touch BitKeeper/etc/aliases
 bk new $Q BitKeeper/etc/aliases
-echo "default" > BitKeeper/log/COMPONENTS
+echo "default" > BitKeeper/log/HERE
 bk commit $Q -y"add aliases"
 bk newroot -P $Q
 test "`bk product`" = "This is the product." || {
@@ -998,7 +998,7 @@ cd project
 echo $N Test bk undo -r+ in a sparse ensemble .......................$NL
 # XXX really should use unpopulate (if it worked)
 rm -rf gcc4
-(cd gdb; bk id) > BitKeeper/log/COMPONENTS
+(cd gdb; bk id) > BitKeeper/log/HERE
 bk undo $Q -fsr+ || {
 	echo failed undo
 	exit 1
@@ -1199,7 +1199,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N List only present components ................................$NL
-bk components here -p > GOT
+bk components here > GOT
 cat > WANT <<EOF
 gcc4
 gdb

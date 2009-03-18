@@ -2,7 +2,7 @@
 #include "nested.h"
 #include "bkd.h"
 
-private	int	list_components(char **aliases, int here, int paths, int keys);
+private	int	list_components(char **aliases, int here, int keys);
 private	int	unpopulate_check(comp *c, char **urls);
 
 
@@ -11,7 +11,7 @@ components_main(int ac, char **av)
 {
 	int	c, i, j, k, clonerc;
 	int	quiet = 0;
-	int	keys = 0, paths = 0, add = 0, rm = 0, here;
+	int	keys = 0, add = 0, rm = 0, here;
 	int	force = 0;
 	char	**urls = 0;
 	char	**aliases = 0;
@@ -34,9 +34,8 @@ components_main(int ac, char **av)
 		--ac;
 	} else {
 		subcmd = "here";
-		paths = 1;
 	}
-	while ((c = getopt(ac, av, "@|fE;klpq")) != -1) {
+	while ((c = getopt(ac, av, "@|fE;klq")) != -1) {
 		switch(c) {
 		    case '@':
 			list = 0;
@@ -70,7 +69,6 @@ components_main(int ac, char **av)
 			break;
 		    case 'k': keys = 1; break;
 		    case 'l': cav = addLine(cav, strdup("-l")); break;
-		    case 'p': paths = 1; break;
 		    case 'q':
 			quiet = 1;
 			cav = addLine(cav, strdup("-q"));
@@ -84,10 +82,10 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		fprintf(stderr, "%s: must be in an ensemble.\n", prog);
 		return (1);
 	}
-	aliases = components_here(0);
+	aliases = aliases_here(0);
 	if ((here = streq(subcmd, "here"))  || streq(subcmd, "missing")) {
 		if (av[optind]) goto usage;
-		rc = list_components(aliases, here, paths, keys);
+		rc = list_components(aliases, here, keys);
 		freeLines(aliases, free);
 		return (rc);
 	} else if (streq(subcmd, "add")) {
@@ -101,7 +99,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	} else {
 		goto usage;
 	}
-	if (keys || paths) goto usage;
+	if (keys) goto usage;
 	unless (av[optind]) goto usage;
 	assert((add && !rm) || (rm && !add));
 	n = nested_init(0, 0, 0, NESTED_PENDING);
@@ -252,7 +250,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	nested_free(n);
 
 	/* do consistancy check at end */
-	unless (rc) lines2File(aliases, "BitKeeper/log/COMPONENTS");
+	unless (rc) lines2File(aliases, "BitKeeper/log/HERE");
 	fclose(f);
 	rc |= run_check(quiet, checkfiles, quiet ? 0 : "-v", 0);
 	unlink(checkfiles);
@@ -261,18 +259,8 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	return (rc);
 }
 
-char **
-components_here(project *p)
-{
-	char	buf[MAXPATH];
-
-	assert(proj_isProduct(p));
-	concat_path(buf, proj_root(p), "BitKeeper/log/COMPONENTS");
-	return (file2Lines(0, buf));
-}
-
 private int
-list_components(char **aliases, int here, int paths, int keys)
+list_components(char **aliases, int here, int keys)
 {
 	nested	*n;
 	comp	*c;
@@ -280,25 +268,17 @@ list_components(char **aliases, int here, int paths, int keys)
 	int	rc = 0;
 
 	n = nested_init(0, 0, 0, NESTED_PENDING);
-	if (keys || paths) {
-		/* bk components (here|missing) -k|-p */
-		EACH_STRUCT(n->comps, c) {
-			if (c->product) continue;
-			if (here && !c->present) continue;
-			if (!here && c->present) continue;
+	/* bk components (here|missing) [-k] */
+	EACH_STRUCT(n->comps, c) {
+		if (c->product) continue;
+		if (here && !c->present) continue;
+		if (!here && c->present) continue;
 
-			if (keys) {
-				printf("%s\n", c->rootkey);
-			} else {
-				printf("%s\n", c->path);
-			}
+		if (keys) {
+			printf("%s\n", c->rootkey);
+		} else {
+			printf("%s\n", c->path);
 		}
-	} else if (here) {
-		/* bk components here */
-		EACH(aliases) printf("%s\n", aliases[i]);
-	} else {
-		/* bk components missing */
-		rc = system("bk alias show -m");
 	}
 	nested_free(n);
 	return (rc);
