@@ -25,7 +25,7 @@ undo_main(int ac,  char **av)
 	char	buf[MAXLINE];
 	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
 	FILE	*f;
-	int	i;
+	int	i, j;
 	int	status;
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
@@ -164,7 +164,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			if (c->present && c->included && !c->new) num++;
 		}
 		START_TRANSACTION();
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT_INDEX(n->comps, c, j) {
 			if (c->product || c->new) continue;
 			unless (c->present && c->included) continue;
 			vp = addLine(0, strdup("bk"));
