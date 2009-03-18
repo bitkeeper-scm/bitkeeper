@@ -1927,7 +1927,7 @@ cset2rev(sccs *s, char *rev)
 		return (ret);
 	}
 
-	unless (rootpath = proj_root(0)) goto ret;
+	unless (rootpath = proj_root(s->proj)) goto ret;
 
 	/*  stat cset file once per process */
 	unless (csetstat.st_mtime) {

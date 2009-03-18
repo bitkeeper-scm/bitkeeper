@@ -465,9 +465,6 @@ bk pull $Q || {
 }
 echo OK
 
-# Not until we do renames
-exit 0
-
 echo $N Try a pull with a moved component............................$NL
 cd "$HERE"
 rm -rf remote local
@@ -490,7 +487,7 @@ cd "$HERE"/remote
 bk commit $Q -y"remote gcc"
 cd "$HERE"/local
 
-bk pull ../project >OUT 2>&1 || {
+bk pull $Q ../project || {
 	echo failed
 	cat OUT
 	exit 1
@@ -500,4 +497,12 @@ test -d gcc && {
 	find gcc
 	# exit 1
 }
-echo '(bug)'
+echo OK
+
+echo $N Do a pull where the remote is using a new alias .............$NL
+cd ../remote
+bk alias new GCC ./gcc || exit 1
+bk components add $Q GCC || exit 1
+cd ../local
+bk pull $Q || exit 1
+echo OK
