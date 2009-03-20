@@ -268,7 +268,7 @@ test -s OUT && {
 echo OK
 
 echo $N Test noisy post-trigger in pull .............................$NL
-bk clone -q -r1.4 "$HERE/project" "$HERE/noise"
+bk clone -q -r1.4 "$HERE/project" "$HERE/noise" || exit 1
 cd "$HERE/noise"
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/post-incoming-noisy <<EOF

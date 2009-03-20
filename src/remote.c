@@ -52,7 +52,7 @@ remote_bk(int quiet, int ac, char **av)
 				freeLines(l, 0);
 				l = 0;
 			} else if (strneq(p, "@@", 2)) {
-				unless (l = file2Lines(urls, p+2)) {
+				unless (l = file2Lines(0, p+2)) {
 					perror(p+2);
 					ret = 1;
 					goto out;

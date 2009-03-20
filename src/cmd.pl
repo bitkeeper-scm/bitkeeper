@@ -272,6 +272,7 @@ mv
 mvdir
 mydiff
 names
+_nested
 newroot
 opark
 ounpark
@@ -279,7 +280,6 @@ parent
 park
 pending
 _popensystem
-populate
 port => pull
 _probekey restricted
 product
@@ -351,7 +351,6 @@ _unlink
 unlock
 uninstall
 unpark
-unpopulate
 unpull
 unwrap
 upgrade

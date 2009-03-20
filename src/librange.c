@@ -539,3 +539,72 @@ range_gone(sccs *s, delta *d, u32 dflags)
 	if (dflags & D_GONE) s->hasgone = 1;
 	return (count);
 }
+
+/*
+ * INPUT: D_SET is some region to consider.
+ * 'right' is tip of D_SET region.
+ * 'left' is tip of other region.
+ * 'all' means consider all nodes outside D_SET for left.
+ * not setting 'all' means only consider nodes in parent region
+ * of D_SET for left.
+ *
+ * In any cases, if left and right are set, then left..right
+ * defines D_SET region.
+ *
+ * Leave with D_SET now D_RED and D_BLUE coloring common nodes to left
+ * and right.
+ * Either left or right can be INVALID if there is more than one tip in their
+ * region.
+ *
+ * Intermediate use of color: D_RED is a parent node in the non D_SET region.
+ * D_BLUE is a parent of the D_SET region (and is not really needed in
+ * the 'all' case -- it is here to have the non-all case work).
+ * D_RED is left cleared.
+ */
+void
+range_unrange(sccs *s, delta **left, delta **right, int all)
+{
+	delta	*d, *p;
+	int	color;
+
+	assert(left && right);
+	*left = *right = 0;
+	for (d = s->table; d; d = d->next) {
+		if (TAG(d)) continue;
+		color = (d->flags & (D_SET|D_RED|D_BLUE));
+		/* parent region of left does not intersect D_SET region */
+		assert((color & (D_SET|D_RED)) != (D_SET|D_RED));
+		unless (all || color) continue;
+		/*
+		 * Color this node to its final value
+		 */
+		d->flags &= ~color;	/* turn all off */
+		if (color & D_SET) {
+			d->flags |= D_RED;
+		} else if (color & D_BLUE) {
+			d->flags |= D_BLUE;
+		}
+
+		/* grab first tip in D_SET and non D_SET regions */
+		if (color & D_SET) {
+			unless (color & D_BLUE) *right = *right ? INVALID : d;
+		} else {
+			unless (color & D_RED) *left = *left ? INVALID : d;
+		}
+		/*
+		 * color parents of D_SET => D_BLUE, and
+		 * parents of non D_SET is D_RED
+		 * Also propagate existing D_RED & D_BLUE.
+		 */
+		color |= ((color & D_SET) ? D_BLUE : D_RED);
+		color &= ~D_SET;
+
+		/* Color parents */
+		if (p = d->parent) {
+			p->flags |= color;
+		}
+		if (d->merge && (p = sfind(s, d->merge))) {
+			p->flags |= color;
+		}
+	}
+}

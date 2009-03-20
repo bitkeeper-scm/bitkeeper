@@ -8,7 +8,7 @@
 #include "sccs.h"
 #include "range.h"
 #include "bam.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private	void	buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
@@ -198,32 +198,29 @@ check_main(int ac, char **av)
 	 * XXX include pending component renames
 	 */
 	if (proj_isEnsemble(0)) {
-		repos	*r;
-		eopts	el_opts = {0};
+		nested	*n;
 		char	*cp; /* path to this component */
+		comp	*c;
 		int	cplen;
 
 		if (proj_isProduct(0)) {
-			el_opts.sc = cset;
 			cp = 0;
 			cplen = 0;
 		} else {
 			cp = aprintf("%s/", proj_comppath(0));
 			cplen = strlen(cp);
 		}
-		t = proj_root(0);
-		proj_cd2product();
-		chdir(t);
-		el_opts.pending = 1;
-		r = ensemble_list(el_opts);
-		EACH_REPO(r) {
-			if (!cp || strneq(r->path, cp, cplen)) {
+		n = nested_init(proj_isProduct(0) ? cset : 0,
+		    0, 0, NESTED_PENDING);
+		EACH_STRUCT(n->comps, c) {
+			if (c->product) continue;
+			if (!cp || strneq(c->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
-				    strdup(r->path + cplen));
+				    strdup(c->path + cplen));
 			}
 		}
 		if (cp) free(cp);
-		ensemble_free(r);
+		nested_free(n);
 	}
 
 	/* This can legitimately return NULL */
@@ -398,64 +395,52 @@ check_main(int ac, char **av)
 	 * aliases in the middle of a multi-clone */
 	if (!proj_isResync(0) &&
 	    proj_isProduct(0) && !getenv("_BK_TRANSACTION")) {
-		char	**comps;
-		hash	*h;
+		char	**aliases, **comps;
+		nested	*n;
+		comp	*c;
+		int	j, err = 0;
+
 		/*
-		 * check that whatever we have in log/COMPONENTS
+		 * check that whatever we have in log/HERE
 		 * is consistent with what's really here
 		 */
-		unless (comps =
-		    file2Lines(0, "BitKeeper/log/COMPONENTS")) {
-			fprintf(stderr, "check: no COMPONENTS file found\n");
+		aliases = aliases_here(0);
+		n = nested_init(0, 0, 0, NESTED_PENDING);
+		assert(n);
+		EACH(aliases) {
+			unless (comps = aliasdb_expandOne(n, 0, aliases[i])) {
+				fprintf(stderr,
+				    "check: unable to expand %s from %s\n",
+				    aliases[i], "BitKeeper/log/HERE");
+			}
+			EACH_STRUCT_INDEX(comps, c, j) {
+				c->alias = 1;
+				unless (c->present) {
+					fprintf(stderr,
+					    "check: error expanding alias '%s' "
+					    "because '%s' is not present\n",
+					    aliases[i], c->path);
+					err = 1;
+				}
+			}
+			freeLines(comps, 0);
+		}
+		freeLines(aliases, free);
+		EACH_STRUCT(n->comps, c) {
+			if (c->product) continue;
+			if (!c->alias && c->present) {
+				fprintf(stderr,
+				    "check: comp '%s' is present and "
+				    "not included in current aliases.\n",
+				    c->path);
+				err = 1;
+			}
+		}
+		nested_free(n);
+		if (err) {
+			fprintf(stderr,"check: missing components!\n");
 			return (1);
 		}
-		unless (h =
-		    alias_hash(comps, cset, 0, (ALIAS_HERE|ALIAS_PENDING))) {
-			unless (fix) {
-				fprintf(stderr,"check: missing components!\n");
-				freeLines(comps, free);
-				return (1);
-			}
-			/*
-			 * We know what's in COMPONENTS is hosed, but
-			 * we can't be clever and try to synthesize an
-			 * alias, so we just "fix it" by putting the paths of
-			 * the special alias "HERE" in COMPONENTS
-			 */
-			freeLines(comps, free);
-			comps = addLine(0, strdup("here"));
-			unless (h = alias_hash(
-			    comps, cset, 0, ALIAS_HERE|ALIAS_PENDING)) {
-				fprintf(stderr, "WTF? You're hosed!\n");
-				return (1);
-			}
-			freeLines(comps, free);
-			comps = 0;
-			/* XXX: do we have a key2path that DOESN'T
-			 * need the idDB? */
-			unless (idDB = loadDB(IDCACHE, 0, DB_IDCACHE)) {
-				perror("idcache");
-				return (1);
-			}
-			EACH_HASH(h) {
-				char	*rk = (char*)h->kptr;
-				char	*cmp, *path;
-
-				assert(rk);
-
-				cmp = key2path(rk, idDB);
-				t = strrchr(cmp, '/');
-				assert(t);
-				*t = 0;
-				path = aprintf("./%s", cmp);
-				free(cmp);
-				comps = addLine(comps, path);
-			}
-			mdbm_close(idDB);
-			lines2File(comps, "BitKeeper/log/COMPONENTS");
-		}
-		freeLines(comps, free);
-		hash_free(h);
 	}
 	sccs_free(cset);
 	cset = 0;

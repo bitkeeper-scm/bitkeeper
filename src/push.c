@@ -4,7 +4,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "range.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private	struct {
 	u32	doit:1;
@@ -144,6 +144,11 @@ push_main(int ac, char **av)
 	if (hasLocalWork(GONE)) {
 		fprintf(stderr,
 		    "push: must commit local changes to %s\n", GONE);
+		return (1);
+	}
+	if (hasLocalWork(ALIASES)) {
+		fprintf(stderr,
+		    "push: must commit local changes to %s\n", ALIASES);
 		return (1);
 	}
 
@@ -323,7 +328,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	}
-	if (streq(buf, "@COMPONENTS@")) {
+	if (streq(buf, "@HERE@")) {
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (buf[0] == '@') break;
 			opts.aliases = addLine(opts.aliases, strdup(buf));
@@ -1053,106 +1058,163 @@ done:
 private int
 push_ensemble(remote *r, char *rev_list, char **envVar)
 {
-	eopts	ropts;
-	repos	*rps = 0;
-	sccs	*cset = 0;
 	hash	*h = 0;
-	char	**vp, **missing;
-	char	*name, *url, *tmp;
-	int	status, i, rc = 0;
-	FILE	*f;
+	nested	*n = 0;
+	comp	*c;
+	char	**comps;
+	char	**revs;
+	char	**vp;
+	char	*name, *url, *cwd = 0;
+	int	errs = 0;
+	int	status, i, j, rc = 0;
 
-	bzero(&ropts, sizeof(eopts));
 	url = remote_unparse(r);
-	ropts.product = 1;
-	ropts.revs = file2Lines(0, rev_list);
-	assert(ropts.revs || ropts.rev);
+
+	revs = file2Lines(0, rev_list);
+	assert(revs);
+	unless (n = nested_init(0, 0, revs, 0)) {
+		rc = 1;
+		goto out;
+	}
 
 	/*
-	 * Filter through their aliases list, if any.
+	 * - map remote HERE to aliases from remote tip and set in
+	 *   c->remotePresent
+	 * - map remote HERE to aliases from local tip and set in
+	 *   c->nlink
+	 * - The c->present bit give us local information
 	 */
-	if (opts.aliases) {
-		cset = ropts.sc = sccs_csetInit(SILENT);
-		unless (h = alias_hash(
-		    opts.aliases, cset, opts.rev, ALIAS_HERE)) {
-			rc = 1;
-			goto out;
-		}
-		ropts.aliases = h;
-	}
 
-	rps = ensemble_list(ropts);
+	/*
+	 * opts.aliases should always be set and is the contents of the
+	 * remote side's HERE file.
+	 */
+	assert(opts.aliases);
+	assert(n->oldtip); /* XXX: works in push but not pull */
+	unless (h = aliasdb_init(n, 0, n->oldtip, 0)) {
+		rc = 1;
+		goto out;
+	}
+	unless (comps = aliasdb_expand(n, h, opts.aliases)) {
+		// this should pass
+		rc = 1;
+		goto out;
+	}
+	EACH_STRUCT(comps, c) c->remotePresent = 1;
+	freeLines(comps, 0);
+
+	/* now do the tip aliases */
+	aliasdb_free(h);
+	unless (h = aliasdb_init(n, 0, n->tip, 0)) {
+		rc = 1;
+		goto out;
+	}
+	unless (comps = aliasdb_expand(n, h, opts.aliases)) {
+		// this might fail if an alias is not longer valid
+		// XXX error message? (will get something from aliasdb_expand)
+		rc = 1;
+		goto out;
+	}
+	EACH_STRUCT(comps, c) c->alias = 1;
+	freeLines(comps, 0);
+
+	/*
+	 * Find the cases where the push should fail:
+	 *  c->included	   comp modified as part of push
+	 *  c->alias	   in new aliases (remote needs after push)
+	 *  c->present	   exists locally
+	 *  c->remotePresent  exists in remote currently
+	 *  c->new	   comp created in this range of csets (do clone)
+	 */
+	EACH_STRUCT(n->comps, c) {
+		if (c->product) continue;
+		if (c->included) {
+			/* this component is included in push */
+			if (c->alias) {
+				/* The remote will need this component */
+				if (!c->present) {
+					/* we don't have the data to send */
+					fprintf(stderr,
+					    "push: "
+					    "%s is needed to push to %s\n",
+					    c->path, url);
+					++errs;
+				} else if (!c->remotePresent) {
+					/* they don't have it currently */
+					unless (c->new) c->new = 1;
+				}
+			} else {
+				/* the remote doesn't want this component */
+				if (c->remotePresent) {
+					/* but have it anyway */
+					fprintf(stderr,
+					    "push: %s shouldn't be at %s.\n",
+					    c->path, url);
+					++errs;
+				}
+			}
+		} else {
+			/* not included in push */
+			if (c->alias && !c->remotePresent) {
+				/* remote doesn't have it, but needs it */
+				if (c->present) {
+					/* we do, so force a clone */
+					c->new = 1;
+					c->included = 1;
+				} else {
+					/* remote needs to populate */
+					fprintf(stderr,
+					    "push: component %s needed at %s.",
+					    c->path, url);
+					++errs;
+				}
+			} else if (!c->alias && c->remotePresent) {
+				/* remote will have an extra component */
+				fprintf(stderr,
+				    "push: extra component %s at %s.\n",
+				    c->path, url);
+				++errs;
+			}
+		}
+	}
+	if (errs) {
+		fprintf(stderr,
+		    "push: transfer aborted due to erros with %d components.\n",
+		    errs);
+		rc = 1;
+		goto out;
+	}
 	START_TRANSACTION();
-	vp = 0;
-	EACH_REPO(rps) {
-		unless (rps->present) vp = addLine(vp, rps->rootkey);
-	}
-	if (vp) {
-		tmp = bktmp(0, "havekeys");
-		name =
-		  aprintf("bk -q@'%s' -Bstdin havekeys -C -l - > '%s'",
-		  url, tmp);
-		f = popen(name, "w");
-		assert(f);
-		EACH(vp) fprintf(f, "%s\n", vp[i]);
-		status = pclose(f);
-		rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-		if (rc == 0) {
-			freeLines(vp, 0);
-			goto OK;
-		}
-		if (rc == -1) {
-			fprintf(stderr, "push: unknown error.\n");
-			freeLines(vp, 0);
-			ensemble_free(rps);
-			return (1);
-		}
-		missing = file2Lines(0, tmp);
-		unlink(tmp);
-		free(tmp);
-		EACH(missing) {
-			status = ensemble_find(rps, missing[i]);
-			assert(status);
-			fprintf(stderr,
-			    "push: component '%s' is missing in source.\n",
-			    rps->path);
-		}
-		freeLines(vp, 0);
-		freeLines(missing, free);
-		ensemble_free(rps);
-		return (1);
-	}
-		
-OK:	EACH_REPO(rps) {
+	cwd = strdup(proj_cwd());
+	n->product->alias = 1;
+	EACH_STRUCT(n->comps, c) {
+		/* skip cases with nothing to do */
+		if (!c->included || !c->present || !c->alias) continue;
 		proj_cd2product();
-		chdir(rps->path);
+		chdir(c->path);
 		vp = addLine(0, strdup("bk"));
-		if (rps->new) {
+		if (c->new) {
 			vp = addLine(vp, strdup("clone"));
-			EACH(opts.av_clone) {
-				vp = addLine(vp, strdup(opts.av_clone[i]));
+			EACH_INDEX(opts.av_clone, j) {
+				vp = addLine(vp, strdup(opts.av_clone[j]));
 			}
 		} else {
 			vp = addLine(vp, strdup("push"));
-			EACH(opts.av_push) {
-				vp = addLine(vp, strdup(opts.av_push[i]));
+			EACH_INDEX(opts.av_push, j) {
+				vp = addLine(vp, strdup(opts.av_push[j]));
 			}
 		}
-		vp = addLine(vp, aprintf("-r%s", rps->deltakey));
-		if (rps->new) vp = addLine(vp, strdup("."));
-		vp = addLine(vp, aprintf("%s/%s", url, rps->path));
+		vp = addLine(vp, aprintf("-r%s", c->deltakey));
+		if (c->new) vp = addLine(vp, strdup("."));
+		vp = addLine(vp, aprintf("%s/%s", url, c->path));
 		vp = addLine(vp, 0);
-		name = streq(rps->path, ".")
+		name = streq(c->path, ".")
 			? "Product"
-			: rps->path;
+			: c->path;
 		if (opts.verbose) printf("#### %s ####\n", name);
 		fflush(stdout);
-		unless (rps->present) {
-			// warning message goes here when aliases are done
-		} else {
-			status = spawnvp(_P_WAIT, "bk", &vp[1]);
-			rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
-		}
+		status = spawnvp(_P_WAIT, "bk", &vp[1]);
+		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
 		freeLines(vp, free);
 		if (rc) {
 			fprintf(stderr, "Pushing %s failed\n", name);
@@ -1160,12 +1222,14 @@ OK:	EACH_REPO(rps) {
 		}
 	}
 out:
-	sccs_free(cset);
-	if (h) hash_free(h);
+	if (cwd) {
+		chdir(cwd);
+		free(cwd);
+	}
 	free(url);
-	ensemble_free(rps);
+	aliasdb_free(h);
+	nested_free(n);
 	STOP_TRANSACTION();
-
 	return (rc);
 }
 

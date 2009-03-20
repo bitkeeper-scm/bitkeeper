@@ -7,6 +7,7 @@ cat(char *file)
 	MMAP	*m = mopen(file, "r");
 
 	unless (m) return (-1);
+	fflush(stdout);
 	unless (write(1, m->mmap, m->size) == m->size) {
 		mclose(m);
 		return (-1);

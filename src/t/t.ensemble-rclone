@@ -81,7 +81,7 @@ echo OK
 echo $N Clone partial product using rclone, should be fine ..........$NL
 cd "$HERE"
 rm -rf copy/gcc
-bk clone $Q -sHERE copy bk://localhost:$PORT/copy2 || {
+bk clone $Q -sgdb copy bk://localhost:$PORT/copy2 || {
 	echo failed
 	cd copy2
 	bk cmdlog -a
@@ -129,7 +129,7 @@ echo OK
 echo $N Test that we can clone using the COMPONENTS file ............$NL
 rm -rf mynewgcc
 cd project
-bk alias justgcc gcc
+bk alias new justgcc gcc || exit 1
 cd ..
 bk clone $Q -sjustgcc project bk://localhost:$PORT/mynewgcc || {
 	echo failed
@@ -178,17 +178,9 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
-test -f BitKeeper/log/COMPONENTS || {
-	echo no COMPONENTS file
-	bk _kill bk://localhost:$PORT
-	exit 1
-}
-test "`cat BitKeeper/log/COMPONENTS`" = "./gcc" || {
-	echo bad content
-	cat BitKeeper/log/COMPONENTS
-	bk _kill bk://localhost:$PORT
-	exit 1
-}
+bk alias here > GOT
+(cd gcc; bk id) > WANT
+cmpfiles GOT WANT
 echo OK
 
 bk _kill bk://localhost:$PORT

@@ -1500,10 +1500,6 @@ findsfiles(char *file, struct stat *sb, void *data)
 			if (exists(file)) si->fn(file, sb, si->data);
 			strcpy(p+5, "COMPONENT");
 			if (exists(file)) si->fn(file, sb, si->data);
-			strcpy(p+5, "CSETFILE");
-			if (exists(file)) si->fn(file, sb, si->data);
-			strcpy(p+5, "COMPONENTS");
-			if (exists(file)) si->fn(file, sb, si->data);
 		}
 		if (prunedirs) {
 			concat_path(buf, si->proj_prefix,

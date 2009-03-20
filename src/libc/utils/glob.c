@@ -41,14 +41,16 @@ is_glob(char *glob)
 			escape = !escape;
 			continue;
 		}
-		if (escape) continue;
+		if (escape) {
+			escape = 0;
+			continue;
+		}
 		switch (*glob) {
 		    case '=':	unless (glob_equals()) break;
 		    case '?':
 		    case '*':
 		    case '[':	return (1);
 		}
-		escape = 0;
 	}
 	return (0);
 }

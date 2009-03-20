@@ -52,6 +52,26 @@ in(char *buf, int n)
 	return (readn(0, buf, n));
 }
 
+void
+error(const char *fmt, ...)
+{
+	va_list	ap;
+	char	*retval;
+
+	va_start(ap, fmt);
+	if (vasprintf(&retval, fmt, ap) < 0) retval = 0;
+	va_end(ap);
+	if (retval) {
+		if (getenv("_BK_IN_BKD")) {
+			out("ERROR-");
+			out(retval);
+		} else {
+			fputs(retval, stderr);
+		}
+		free(retval);
+	}
+}
+
 int
 writen(int to, void *buf, int size)
 {
@@ -743,10 +763,7 @@ putroot(char *where)
 }
 
 /*
- * Send env varibale to remote bkd.
- *
- * NOTE: When editing this function be sure to make the same changes in
- *       clone.c:out_trigger()
+ * Send env variables to remote bkd.
  */
 void
 sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
@@ -860,7 +877,7 @@ getServerInfoBlock(remote *r)
 {
 	int	ret = 1; /* protocol error, never saw @END@ */
 	int	gotseed = 0;
-	int	i, cnt;
+	int	i;
 	char	*newseed;
 	char	buf[4096];
 
@@ -882,14 +899,6 @@ getServerInfoBlock(remote *r)
 		if (strneq(buf, "PROTOCOL", 8)) {
 			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
-			for (cnt = i = 0; buf[i]; i++) {
-				if (buf[i] == '=') ++cnt;
-			}
-			unless (cnt == 1) {
-				fprintf(stderr, "Invalid data from bkd: %s\n",
-				    buf);
-				return (2);
-			}
 			safe_putenv("BKD_%s", buf);
 			if (strneq(buf, "REPO_ID=", 8)) {
 				cmdlog_addnote("rmts", buf+8);
@@ -911,9 +920,7 @@ getServerInfoBlock(remote *r)
 }
 
 /*
- *
- * NOTE: When editing this function be sure to make the same changes in
- *       clone.c:in_trigger()
+ *  Send server env from bkd to client
  */
 int
 sendServerInfoBlock(int is_rclone)

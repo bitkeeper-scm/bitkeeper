@@ -41,6 +41,7 @@ void	range_cset(sccs *s, delta *d);
 time_t	range_cutoff(char *spec);
 void	range_markMeta(sccs *s);
 int	range_gone(sccs *s, delta *d, u32 dflags);
+void	range_unrange(sccs *s, delta **left, delta **right, int all);
 
 int	range_walkrevs(sccs *s, delta *from, delta *to,
     int (*fcn)(sccs *s, delta *d, void *token), void *token);

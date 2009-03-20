@@ -44,9 +44,9 @@ echo > "$HERE/empty"
 for i in 1 2 3 4 5 6 7 8 9 10
 do	bk setup -fc"$HERE/empty" comp$i
 done
-bk alias -C odd comp1 comp3 comp5 comp7 comp9
-bk alias -C even comp2 comp4 comp6 comp8 comp10
-bk alias -C primes comp2 comp3 comp5 comp7
+bk alias new -C odd comp1 comp3 comp5 comp7 comp9
+bk alias new -C even comp2 comp4 comp6 comp8 comp10
+bk alias new -C primes comp2 comp3 comp5 comp7
 bk commit $Q -y"adding components and aliases"
 cd "$HERE"
 bk clone $Q -seven -sodd -sprimes project copy
@@ -54,11 +54,11 @@ echo OK
 
 echo $N Unpopulate even and primes...................................$NL
 cd "$HERE/copy"
-bk unpopulate $Q -seven -sprimes || {
+bk components rm $Q even primes || {
 	echo failed
 	exit 1
 }
-bk components -h > GOT
+bk components here > GOT
 cat <<EOF > WANT
 comp1
 comp3
@@ -67,19 +67,21 @@ comp7
 comp9
 EOF
 cmpfiles GOT WANT
+bk alias here > GOT
 echo odd > WANT
-cmpfiles BitKeeper/log/COMPONENTS WANT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Populate them back...........................................$NL
-bk populate $Q -seven -sprimes || exit 1
+bk components add $Q even primes || exit 1
 cat <<EOF > WANT
-even
 odd
+even
 primes
 EOF
-cmpfiles BitKeeper/log/COMPONENTS WANT
-bk components -h > GOT
+bk alias here > GOT
+cmpfiles GOT WANT
+bk components here > GOT
 cat <<EOF > WANT
 comp1
 comp10
@@ -96,11 +98,11 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate odd...............................................$NL
-bk unpopulate $Q -sodd || {
+bk components rm $Q odd || {
 	echo failed
 	exit 1
 }
-bk components -h > GOT
+bk components here > GOT
 # gotta love our ordering :)
 cat <<EOF > WANT
 comp10
@@ -117,15 +119,16 @@ cat <<EOF > WANT
 even
 primes
 EOF
-cmpfiles BitKeeper/log/COMPONENTS WANT
+bk alias here > GOT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate even..............................................$NL
-bk unpopulate $Q -seven || {
+bk components rm $Q even || {
 	echo failed
 	exit 1
 }
-bk components -h > GOT
+bk components here > GOT
 cat <<EOF > WANT
 comp2
 comp3
@@ -134,25 +137,28 @@ comp7
 EOF
 cmpfiles GOT WANT
 echo primes > WANT
-cmpfiles BitKeeper/log/COMPONENTS WANT
+bk alias here > GOT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate alias not populated is an error...................$NL
-bk unpopulate -sdefault > GOT 2>&1 && exit 1
-grep -q "cannot remove" GOT || {
+bk components rm default 2>ERR && exit 1
+grep -q "can't remove" ERR || {
 	echo failed
+	cat ERR
 	exit 1
 }
-bk unpopulate -sall > GOT 2>&1 && exit 1
-grep -q "cannot remove" GOT || {
+bk components rm all 2> ERR && exit 1
+grep -q "can't remove" ERR || {
 	echo failed
+	cat ERR
 	exit 1
 }
 echo OK
 
 echo $N Populate special alias \'all\' and unpopulate it...............$NL
-bk populate $Q -l -sall || exit 1
-bk components -h > GOT
+bk components add $Q -l all || exit 1
+bk components here > GOT
 cat <<EOF > WANT
 comp1
 comp10
@@ -169,12 +175,13 @@ gdb
 EOF
 cmpfiles GOT WANT
 cat <<EOF > WANT
-all
 primes
+all
 EOF
-cmpfiles BitKeeper/log/COMPONENTS WANT
-bk unpopulate $Q -sall || exit 1
-bk components -h > GOT
+bk alias here > GOT
+cmpfiles GOT WANT
+bk components rm $Q all || exit 1
+bk components here > GOT
 cat <<EOF > WANT
 comp2
 comp3
@@ -185,12 +192,13 @@ cmpfiles GOT WANT
 cat <<EOF > WANT
 primes
 EOF
-cmpfiles BitKeeper/log/COMPONENTS WANT
+bk alias here > GOT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Populate a glob and unpopulate it............................$NL
-bk populate $Q -s'./g*' || exit 1
-bk components -h > GOT
+bk components add $Q './g*' || exit 1
+bk components here > GOT
 cat <<EOF > WANT
 comp2
 comp3
@@ -200,13 +208,11 @@ gcc
 gdb
 EOF
 cmpfiles GOT WANT
-cat <<EOF > WANT
-./g*
-primes
-EOF
-cmpfiles BitKeeper/log/COMPONENTS WANT
-bk unpopulate $Q -s'./g*' || exit 1
-bk components -h > GOT
+(echo primes; cd gcc; bk id; cd ../gdb; bk id) > WANT
+bk alias here > GOT
+cmpfiles GOT WANT
+bk components rm $Q './g*' || exit 1
+bk components here > GOT
 cat <<EOF > WANT
 comp2
 comp3
@@ -217,21 +223,23 @@ cmpfiles GOT WANT
 cat <<EOF > WANT
 primes
 EOF
-cmpfiles BitKeeper/log/COMPONENTS WANT
+bk alias here > GOT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate primes............................................$NL
-bk unpopulate $Q -sprimes || exit 1
-bk components -h > GOT
+bk components rm $Q primes || exit 1
+bk components here > GOT
 cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
-cmpfiles BitKeeper/log/COMPONENTS WANT
+bk alias here > GOT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate a component with changes should fail..............$NL
-bk populate $Q -sprimes || exit 1
-bk components -h > GOT
+bk components add $Q primes || exit 1
+bk components here > GOT
 cat <<EOF > WANT
 comp2
 comp3
@@ -242,17 +250,19 @@ cmpfiles GOT WANT
 cat <<EOF > WANT
 primes
 EOF
-cmpfiles BitKeeper/log/COMPONENTS WANT
+bk alias here > GOT
+cmpfiles GOT WANT
 cd comp2
 touch foobar
 bk new $Q foobar
 cd ..
-bk unpopulate -sprimes > GOT 2>&1 && exit 1
-grep -q 'local changes' GOT || {
+bk components rm primes 2> ERR && exit 1
+grep -q 'Non-committed file' ERR || {
 	echo failed
+	cat ERR
 	exit 1
 }
-bk components -h | grep -q comp2 || {
+bk components here | grep -q comp2 || {
 	echo failed
 	exit 1
 }
@@ -266,11 +276,11 @@ do	cd "$HERE/project/comp$i"
 	SP="$SP comp$i/sub$i"
 done
 cd "$HERE/project"
-bk alias subprimes $SP
+bk alias new subprimes $SP
 cd "$HERE/copy"
 bk pull $Q || exit 1
-bk populate $Q -ssubprimes || exit 1
-bk components -h > GOT
+bk components add $Q subprimes || exit 1
+bk components here > GOT
 cat <<EOF > WANT
 comp2
 comp2/sub2
@@ -285,8 +295,8 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate subprimes.........................................$NL
-bk unpopulate $Q -ssubprimes || exit 1
-bk components -h > GOT
+bk components rm $Q subprimes || exit 1
+bk components here > GOT
 cat <<EOF > WANT
 comp2
 comp3
@@ -297,20 +307,20 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Remove enclosing and populate subcomponents should work......$NL
-rm -rf comp*
-bk populate $Q -ssubprimes || exit 1
-bk components -h > GOT
+rm comp2/SCCS/s.foobar  # crud from above test
+bk components set $Q subprimes || exit 1
+bk components here > GOT
 cat <<EOF > WANT
 comp2/sub2
 comp3/sub3
 comp5/sub5
 comp7/sub7
 EOF
-bk populate $Q -sprimes || {
+bk components add $Q primes || {
 	echo failed
 	exit 1
 }
-bk components -h > GOT
+bk components here > GOT
 cat > WANT <<EOF
 comp2
 comp2/sub2
@@ -325,12 +335,13 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate of subcomponents should work......................$NL
-bk unpopulate $Q -sprimes || exit 1
+bk components rm $Q primes || exit 1
 cat > WANT <<EOF
 subprimes
 EOF
-cmpfiles BitKeeper/log/COMPONENTS WANT
-bk components -h > GOT
+bk alias here > GOT
+cmpfiles GOT WANT
+bk components here > GOT
 cat > WANT <<EOF
 comp2/sub2
 comp3/sub3
@@ -342,27 +353,30 @@ echo OK
 
 echo $N Conflict in deep nest should be detected.....................$NL
 touch comp2/sub23
-bk populate $Q -sprimes > ERR 2>&1 && {
-	echo failed
+bk components add $Q primes 2> ERR && {
+	echo should fail
+	cat ERR
 	exit 1
 }
 grep -q "failed to fetch comp2" ERR || {
 	echo failed
 	echo wrong error message
+	cat ERR
 	exit 1
 }
 grep -q "not empty" ERR || {
 	echo failed
+	cat ERR
 	exit 1
 }
-bk components -h > GOT
+bk alias here > GOT
+echo subprimes > WANT
+cmpfiles GOT WANT
+bk components here > GOT
 cat > WANT <<EOF
 comp2/sub2
-comp3
 comp3/sub3
-comp5
 comp5/sub5
-comp7
 comp7/sub7
 EOF
 cmpfiles GOT WANT
@@ -377,23 +391,28 @@ do	bk setup -C -fc"$HERE/empty" deep$i
 	cd deep$i
 done
 cd "$HERE/project"
-bk commit $Q -y"add deep stuff"
+bk commit $Q -y"add deep stuff" || exit 1
 cd "$HERE/copy"
-bk populate $Q -r
-bk pull $Q
-bk unpopulate $Q -sprimes -ssubprimes || exit 1
+# should only have subprimes currently
+bk alias here > GOT
+echo subprimes > WANT
+cmpfiles GOT WANT
+bk pull $Q || exit 1
+bk components rm $Q subprimes || exit 1
 # make sure the pull did not bring the deeps stuff
 # since it's not in our aliases file
-bk components -h > GOT
+bk components here > GOT
 cat > WANT <<EOF
 EOF
+cmpfiles GOT WANT
+bk alias here > GOT
 cmpfiles GOT WANT
 echo OK
 
 # now start the deep nest fun
 echo $N Populate deep1/deep2/deep3/deep4/deep5.......................$NL
-bk populate $Q -s./deep1/deep2/deep3/deep4/deep5 || exit 1
-bk components -h > GOT
+bk components add $Q ./deep1/deep2/deep3/deep4/deep5 || exit 1
+bk components here > GOT
 cat > WANT <<EOF
 deep1/deep2/deep3/deep4/deep5
 EOF
@@ -401,8 +420,8 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Populate deep1/deep2.........................................$NL
-bk populate $Q -s./deep1/deep2 || exit 1
-bk components -h > GOT
+bk components add $Q ./deep1/deep2 || exit 1
+bk components here > GOT
 cat > WANT <<EOF
 deep1/deep2
 deep1/deep2/deep3/deep4/deep5
@@ -412,11 +431,12 @@ echo OK
 
 echo $N Populate deep1/deep2/deep3 with a conflict...................$NL
 touch deep1/deep2/deep3/conflict
-bk populate $Q -s./deep1/deep2/deep3 >ERR 2>&1 && {
+bk components add $Q ./deep1/deep2/deep3 >ERR 2>&1 && {
 	echo failed
 	exit 1
 }
-bk components -h > GOT
+rm deep1/deep2/deep3/conflict
+bk components here > GOT
 cat > WANT <<EOF
 deep1/deep2
 deep1/deep2/deep3/deep4/deep5
@@ -425,28 +445,21 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Unpopulate deep1/deep2 should work...........................$NL
-# superset thinks there's new work, thus we use -f
-bk unpopulate $Q -f -s./deep1/deep2 || exit 1
-bk components -h > GOT
+bk components rm $Q ./deep1/deep2 || exit 1
+bk components here > GOT
 cat > WANT <<EOF
 deep1/deep2/deep3/deep4/deep5
 EOF
 cmpfiles GOT WANT
-# conflict should still be there
-test -f deep1/deep2/deep3/conflict || {
-	echo failed
-	exit 1
-}
-rm -f deep1/deep2/deep3/conflict
 echo OK
 
 echo $N Repopulate deep1/deep2 with conflict should fail.............$NL
 mkdir deep1/deep2/conflict || exit 1
-bk populate $Q -s./deep1/deep2 > ERR 2>&1 && {
+bk components add $Q ./deep1/deep2 > ERR 2>&1 && {
 	echo failed
 	exit 1
 }
-bk components -h > GOT
+bk components here > GOT
 cat > WANT <<EOF
 deep1/deep2/deep3/deep4/deep5
 EOF
@@ -455,8 +468,8 @@ echo OK
 
 echo $N Remove the conflict, now it works............................$NL
 rmdir deep1/deep2/conflict || exit 1
-bk populate $Q -s./deep1/deep2
-bk components -h > GOT
+bk components add $Q ./deep1/deep2
+bk components here > GOT
 cat > WANT <<EOF
 deep1/deep2
 deep1/deep2/deep3/deep4/deep5
@@ -466,15 +479,15 @@ echo OK
 
 if [ $WINDOWS = NO ]; then
 echo $N Populate with a symlink -- fails.............................$NL
-bk unpopulate $Q -s./deep1/deep2/deep3/deep4/deep5 || exit 1
+bk components rm $Q ./deep1/deep2/deep3/deep4/deep5 || exit 1
 test -d deep1/deep2/deep3/deep4/deep5 && exit 1
 rmdir deep1/deep2/deep3/deep4 || exit 1
 ln -s ../../../../deep1 deep1/deep2/deep3/deep4
-bk populate $Q -s./deep1/deep2/deep3 > ERR 2>&1 && {
+bk components add $Q ./deep1/deep2/deep3 > ERR 2>&1 && {
 	echo failed
 	exit 1
 }
-bk components -h > GOT
+bk components here > GOT
 cat > WANT <<EOF
 deep1/deep2
 EOF
@@ -486,11 +499,11 @@ echo OK
 echo $N Populate with a symlink in a deeper component -- passes......$NL
 mkdir deep1/deep2/deep3/deep4 || exit 1
 ln -s ../../../../deep1 deep1/deep2/deep3/deep4/deep5
-bk populate $Q -s./deep1/deep2/deep3 > ERR 2>&1 || {
+bk components add $Q ./deep1/deep2/deep3 > ERR 2>&1 || {
 	echo failed
 	exit 1
 }
-bk components -h > GOT
+bk components here > GOT
 cat > WANT <<EOF
 deep1/deep2
 deep1/deep2/deep3

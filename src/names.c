@@ -8,7 +8,7 @@
  */
 #include "system.h"
 #include "sccs.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private	 void	pass1(sccs *s);
 private	 void	pass2(u32 flags);

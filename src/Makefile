@@ -129,7 +129,7 @@ BINS	= $(BK) inskeys$(EXE)
 # List of all objects in bk other than bk.o. Keep it sorted.
 # But put bkver.o/cmd.o first, they generate headers.
 OBJ =	bkver.o cmd.o \
-	abort.o adler32.o alias.o admin.o annotate.o \
+	abort.o adler32.o alias.o admin.o annotate.o attach.o \
 	bam.o bkd.o bkd_bam.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
 	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o \
@@ -137,13 +137,13 @@ OBJ =	bkver.o cmd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
-	collapse.o comment.o comments.o commit.o compress.o \
+	collapse.o comment.o comments.o commit.o components.o compress.o \
 	contrib/cat.o \
 	contrib/test.o \
 	converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	delta.o diffs.o diffsplit.o dspec.o \
-	ensemble.o eula.o export.o \
+	eula.o export.o \
 	find.o findcset.o findkey.o fixlod.o fixtool.o fslayer.o \
 	fsl.o \
 	g2bk.o gca.o get.o gethelp.o \
@@ -157,10 +157,10 @@ OBJ =	bkver.o cmd.o \
 	localtm.o lock.o locking.o \
 	logging.o mail.o mdiff.o merge.o mklock.o \
 	mailslot.o \
-	mailsplit.o mtime.o mv.o names.o newroot.o \
+	mailsplit.o mtime.o mv.o names.o nested.o newroot.o \
 	opark.o \
 	parent.o park.o partition.o \
-	pending.o populate.o preference.o proj.o \
+	pending.o preference.o product.o proj.o \
 	port/bkd_server.o \
 	port/check_rsh.o \
 	port/gethomedir.o \
@@ -221,7 +221,7 @@ RANLIB	= ranlib
 # list of C sources in bk
 SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
-HDRS	= bam.h bkd.h ensemble.h logging.h \
+HDRS	= bam.h bkd.h logging.h nested.h \
 	  purify.h range.h rcs.h resolve.h sccs.h \
 	  cmd.h bkver.h proj.h redblack.h inskeys.h libc/system.h
 

@@ -2,6 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "nested.h"
 
 typedef	struct cset {
 	/* bits */
@@ -664,6 +665,12 @@ csetlist(cset_t *cs, sccs *cset)
 	if (!cs->mark && hasLocalWork(GONE)) {
 		fprintf(stderr,
 		    "cset: must commit local changes to %s\n", GONE);
+		cs->makepatch = 0;
+		goto fail;
+	}
+	if (!cs->mark && hasLocalWork(ALIASES)) {
+		fprintf(stderr,
+		    "cset: must commit local changes to %s\n", ALIASES);
 		cs->makepatch = 0;
 		goto fail;
 	}

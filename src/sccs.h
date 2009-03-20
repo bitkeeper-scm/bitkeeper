@@ -1032,6 +1032,7 @@ delta	*user_get(delta *);
 char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
+void	error(const char *fmt, ...);
 MDBM	*loadConfig(project *p, int forcelocal);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s);
@@ -1298,6 +1299,7 @@ extern	char	*BitKeeper;
 extern	time_t	licenseEnd;
 extern	int	spawn_tcl;
 extern	char	*start_cwd;
+extern	char	*prog;
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)

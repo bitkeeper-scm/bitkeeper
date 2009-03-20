@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
-#include "ensemble.h"
+#include "nested.h"
 
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
 #define	UNDO_CSETS  "BitKeeper/tmp/undo_csets"
@@ -25,7 +25,7 @@ undo_main(int ac,  char **av)
 	char	buf[MAXLINE];
 	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
 	FILE	*f;
-	int	i;
+	int	i, j;
 	int	status;
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
@@ -150,63 +150,57 @@ err:		if (undo_list[0]) unlink(undo_list);
 	 * here so unless the other guys are pending we should be cool.
 	 */
 	if (proj_isProduct(0)) {
-		sccs	*cset = sccs_csetInit(0);
-		repos	*r;
+		nested	*n = 0;
+		comp	*c;
 		char	**vp;
-		eopts	opts;
-		int	n = 1, which = 1;
+		int	i, num = 1, which = 1;
 
-		assert(cset);
-		opts.sc = cset;
-		bzero(&opts, sizeof(opts));
-		opts.revs = csetrev_list;
-		opts.undo = 1;
-		unless (r = ensemble_list(opts)) {
+		unless (n = nested_init(0, 0, csetrev_list, NESTED_UNDO)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
-			sccs_free(cset);
 			goto err;
 		}
-		sccs_free(cset);
 
-		EACH_REPO(r) if (r->present && !r->new) n++;
+		EACH_STRUCT(n->comps, c) {
+			if (c->present && c->included && !c->new) num++;
+		}
 		START_TRANSACTION();
-		EACH_REPO(r) {
-			if (r->new) continue;
-			unless (r->present) continue;
+		EACH_STRUCT_INDEX(n->comps, c, j) {
+			if (c->product || c->new) continue;
+			unless (c->present && c->included) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("undo"));
 			EACH(nav) vp = addLine(vp, strdup(nav[i]));
-			cmd = aprintf("-fa%s", r->deltakey);
+			cmd = aprintf("-fa%s", c->deltakey);
 			vp = addLine(vp, cmd);
 			vp = addLine(vp, 0);
 			unless (quiet) {
 				printf("#### Undo in %s (%d of %d) ####\n",
-				    r->path, which++, n);
+				    c->path, which++, num);
 				fflush(stdout);
 			}
-			if (chdir(r->path)) {
+			if (chdir(c->path)) {
 				fprintf(stderr,
-				    "Could not chdir %s\n", r->path);
+				    "Could not chdir %s\n", c->path);
 				exit(199);
 			}
 			rc = spawnvp(_P_WAIT, "bk", &vp[1]);
 			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
 			if (rc && !(fromclone && (rc == UNDO_SKIP))) {
 fail:				fprintf(stderr, "Could not undo %s to %s.\n",
-				    r->path, r->deltakey);
+				    c->path, c->deltakey);
 				exit(199);
 			}
 			freeLines(vp, free);
 			proj_cd2product();
 		}
 		STOP_TRANSACTION();
-		EACH_REPO(r) {
-			unless (r->new) continue;
+		EACH_STRUCT(n->comps, c) {
+			unless (c->new && c->included) continue;
 			sysio(0,
-			    SFILES, 0, "bk", "sfiles", "-gcxp", r->path, SYS);
+			    SFILES, 0, "bk", "sfiles", "-gcxp", c->path, SYS);
 			if (size(SFILES) > 0) {
 				fprintf(stderr,
-				    "Changed/extra files in '%s'\n", r->path);
+				    "Changed/extra files in '%s'\n", c->path);
 				p = aprintf("/bin/cat < '%s' 1>&2", SFILES);
 				system(p);
 				free(p);
@@ -214,8 +208,8 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 			}
 			unlink(SFILES);
 		}
-		EACH_REPO(r) {
-			if (r->new) rmtree(r->path);
+		EACH_STRUCT(n->comps, c) {
+			if (c->new && c->included) rmtree(c->path);
 		}
 
 		/*
@@ -225,16 +219,17 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		cmd = aprintf("bk names %s -", qflag);
 		f = popen(cmd, "w");
 		free(cmd);
-		EACH_REPO(r) {
-			if (r->new) continue;
-			fprintf(f, "%s/SCCS/s.ChangeSet\n", r->path);
+		EACH_STRUCT(n->comps, c) {
+			if (c->product) continue;
+			if (c->new || !c->included) continue;
+			fprintf(f, "%s/SCCS/s.ChangeSet\n", c->path);
 		}
 		pclose(f);
 
-		ensemble_free(r);
+		nested_free(n);
 		unless (quiet) {
 			printf("#### Undo in Product (%d of %d) ####\n",
-			    which++, n);
+			    which++, num);
 			fflush(stdout);
 		}
 	}
