@@ -311,7 +311,7 @@ _partition() {
 	# If there is no gone or ignore file, add one
 	ADDONE=
 	rm -f $WA/allkeys
-	test -f BitKeeper/etc/SCCS/s.gone || {
+	bk _test -f BitKeeper/etc/SCCS/s.gone || {
 		ADDONE=YES
 		test -f BitKeeper/etc/gone && rm -f BitKeeper/etc/gone
 		__newFile BitKeeper/etc/gone
@@ -370,7 +370,7 @@ _partition() {
 	}
 
 	# If there is no config file, add one
-	test -f $WA/repo/BitKeeper/etc/SCCS/s.config || {
+	bk _test -f $WA/repo/BitKeeper/etc/SCCS/s.config || {
 		test -f BitKeeper/etc/config && rm -f BitKeeper/etc/config
 		__newFile BitKeeper/etc/config
 		bk annotate -aS -hR ChangeSet > ../allkeys
