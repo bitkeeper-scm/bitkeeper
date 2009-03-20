@@ -345,10 +345,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		disconnect(r, 2);
 		goto done;
 	}
-	/*
-	 * no proj_config*() calls before this point, the sfio needs
-	 * to be unpacked before we can read BitKeeper/etc/config.
-	 */
+	proj_reset(0);		/* reset proj_product() */
 	if (opts->link) lclone(getenv("BKD_ROOT"));
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
@@ -452,8 +449,12 @@ clone2(remote *r)
 		if (opts->link) cav = addLine(cav, "-l");
 		EACH(opts->aliases) cav = addLine(cav, opts->aliases[i]);
 		cav = addLine(cav, 0);
-		spawnvp(_P_WAIT, "bk", cav + 1);
+		rc = spawnvp(_P_WAIT, "bk", cav + 1);
 		freeLines(cav, 0);
+		if (rc) {
+			fprintf(stderr, "clone: fetch to fetch components\n");
+			return (-1);
+		}
 	}
 
 	unless (opts->rev && proj_isProduct(0) && !rc) {
@@ -503,7 +504,7 @@ initProject(char *root, remote *r)
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(root);
 	chdir(root);
-	if (proj_product(0)) opts->no_parent = 1;
+	if (!opts->no_parent && proj_product(0)) opts->no_parent = 1;
 
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);

@@ -1198,6 +1198,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 			EACH_INDEX(opts.av_clone, j) {
 				vp = addLine(vp, strdup(opts.av_clone[j]));
 			}
+			vp = addLine(vp, strdup("-p"));
 		} else {
 			vp = addLine(vp, strdup("push"));
 			EACH_INDEX(opts.av_push, j) {

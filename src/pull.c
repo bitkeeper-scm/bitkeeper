@@ -740,6 +740,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 			EACH(opts.av_clone) {
 				vp = addLine(vp, strdup(opts.av_clone[i]));
 			}
+			vp = addLine(vp, strdup("-p"));
 		} else {
 			if (chdir(c->path)) {
 				fprintf(stderr, "Could not chdir to "

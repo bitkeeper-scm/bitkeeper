@@ -71,7 +71,11 @@ echo OK
 echo $N Check -rOLD cannot pick up new components thru explicit ref .$NL
 cd "$HERE"
 rm -rf proj-clone
-bk clone $Q -r1.7 -s./gcc/libiberty project proj-clone 2> ERR && exit 1
+bk clone $Q -r1.7 -s./gcc/libiberty project proj-clone 2> ERR && {
+	echo should have failed
+	cat ERR   
+	exit 1
+}
 grep -q "./gcc/libiberty must be either a glob, key, alias, or co" ERR || {
 	echo failed
 	cat ERR

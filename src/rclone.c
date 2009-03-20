@@ -34,7 +34,7 @@ rclone_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
-	while ((c = getopt(ac, av, "B;dE:qr;s;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:pqr;s;w|z|")) != -1) {
 		unless ((c == 'r') || (c == 's')) {
 			if (optarg) {
 				opts.av = addLine(opts.av,
@@ -53,6 +53,7 @@ rclone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'p': break; /* ignore no parent */
 		    case 'q': opts.verbose = 0; break;
 		    case 'r': opts.rev = optarg; break;
 		    case 's':

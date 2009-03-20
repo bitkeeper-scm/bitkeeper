@@ -417,6 +417,16 @@ err:				if (revsDB) mdbm_close(revsDB);
 	}
 	mdbm_close(idDB);
 
+	sortLines(n->comps, compSort);
+	if (flags & NESTED_DEEPFIRST) reverseLines(n->comps);
+
+	if (flags & NESTED_PRODUCTFIRST) {
+		n->comps = unshiftLine(n->comps, n->product);
+		n->product_first = 1;
+	} else {
+		n->comps = pushLine(n->comps, n->product);
+	}
+
 	if (flags & NESTED_UNDO) {
 		unless (n->oldtip) {
 			fprintf(stderr, "nested: undo all: "
@@ -439,16 +449,6 @@ err:				if (revsDB) mdbm_close(revsDB);
 				assert(!c->lowerkey);
 			}
 		}
-	}
-
-	sortLines(n->comps, compSort);
-	if (flags & NESTED_DEEPFIRST) reverseLines(n->comps);
-
-	if (flags & NESTED_PRODUCTFIRST) {
-		n->comps = unshiftLine(n->comps, n->product);
-		n->product_first = 1;
-	} else {
-		n->comps = pushLine(n->comps, n->product);
 	}
 	chdir(cwd);
 	free(cwd);
@@ -603,6 +603,7 @@ nested_each(int quiet, int ac, char **av)
 		unless (cp->present) continue;
 		if (!product && cp->product) continue;
 		if (n->alias && !cp->nlink && !cp->product) continue;
+		unless (cp->included) continue;
 		unless (quiet) {
 			printf("#### %s ####\n", cp->path);
 			fflush(stdout);
@@ -611,7 +612,7 @@ nested_each(int quiet, int ac, char **av)
 		if (chdir(cp->path)) {
 			fprintf(stderr,
 			    "bk: unable to chdir to component at %s\n",
-			    list->path);
+			    cp->path);
 			errors |= 1;
 			continue;
 		}

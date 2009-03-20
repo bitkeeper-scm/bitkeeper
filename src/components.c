@@ -178,6 +178,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 				EACH_INDEX(cav, k) {
 					vp = addLine(vp, strdup(cav[k]));
 				}
+				vp = addLine(vp, strdup("-p"));
 				vp = addLine(vp, aprintf("-r%s", cp->deltakey));
 				vp = addLine(vp, remote_unparse(r));
 				vp = addLine(vp, strdup(cp->path));
