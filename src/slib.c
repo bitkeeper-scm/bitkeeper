@@ -1914,6 +1914,7 @@ cset2rev(sccs *s, char *rev)
 	delta	*ret = 0;
 	char	*s_cset = 0;
 	char	*deltakey;
+	project	*proj;
 	char	rootkey[MAXKEY];
 
 	/*
@@ -1926,8 +1927,9 @@ cset2rev(sccs *s, char *rev)
 		    ret = ret->next);
 		return (ret);
 	}
-
-	unless (rootpath = proj_root(s->proj)) goto ret;
+	proj = s->proj;
+	if (CSET(s) && s->file) proj = proj_product(proj);
+	unless (rootpath = proj_root(proj)) goto ret;
 
 	/*  stat cset file once per process */
 	unless (csetstat.st_mtime) {

@@ -45,6 +45,7 @@ extern	unsigned int turnTransOff;
  */
 
 #define	NESTED_PENDING		0x10000000	/* included pending comps */
+#define	NESTED_PULL		0x20000000	/* This is a pull */
 #define	NESTED_PRODUCTFIRST	0x40000000
 #define	NESTED_UNDO		0x80000000
 #define	NESTED_DEEPFIRST	0x01000000
@@ -64,11 +65,11 @@ typedef struct {
 	// bits
 	u32	alias:1;		// in the latest alias
 	u32	included:1;		// component modified in 'revs'
+	u32	localchanges:1;		// component modified outside 'revs'
 	u32	new:1;			// if set, the undo will remove this
 	u32	present:1;		// if set, the repo is actually here
 	u32	product:1;		// this is the product
 	u32	remotePresent:1;	// scratch for remote present bit
-	u32	realpath:1;		// this path is from idDB
 } comp;
 
 struct nested {
@@ -81,7 +82,6 @@ struct nested {
 	comp	*product;	// pointer into comps to the product
 	// bits
 	u32	alias:1;	// nlink counts set in components
-	u32	revs:1;		// revs was used, so list may not be full
 	u32	product_first:1;// default is last in list
 	u32	undo:1;		// undo wants the -a inferred from opts.revs
 	u32	deepfirst:1;	// sort such that deeply nested comps are first
@@ -108,8 +108,6 @@ int	nested_each(int quiet, int ac, char **av);
 void	nested_check(void);
 int	nested_emptyDir(char *dir);
 int	nested_rmtree(char *dir);
-
-char	*comp_path(comp *c);
 
 /* alias.h */
 

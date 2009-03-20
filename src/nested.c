@@ -5,7 +5,6 @@
 private	int	compSort(const void *a, const void *b);
 private	void	compFree(void *x);
 private	int	compRemove(char *path, struct stat *statbuf, void *data);
-private void	unrange(sccs *s, delta **left, delta **right);
 private	char	**nested_deep(char *path);
 private	int	nestedWalkdir(char *dir, walkfn fn);
 private	int	empty(char *path, struct stat *statbuf, void *data);
@@ -190,11 +189,12 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	comp	*c = 0;
 	delta	*d, *left, *right;
 	int	i;
-	char	**list = 0;	/* really comps **list */
+	char	**weave;
 	char	*t, *v;
 	FILE	*pending;
 	MDBM	*idDB = 0, *revsDB = 0;
-	kvpair	kv;
+	project	*proj;
+	char	*cwd;
 	char	buf[MAXKEY];
 
 	/*
@@ -204,13 +204,16 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	assert(!(rev && revs));
 	assert(!(flags & NESTED_PENDING) || !(rev || revs));
 
-	unless (proj_product(0)) {
-		fprintf(stderr, "nested_list called in a non-product.\n");
-		return (0);
-	}
+	/*
+	 * This code assumes it is run from the product root so,
+	 * make sure we are there.
+	 */
+	cwd = strdup(proj_cwd());
+	if (proj_cd2product()) assert(0);
+
 	n = new(nested);
 	unless (cset) {
-		concat_path(buf, proj_root(proj_product(0)), CHANGESET);
+		concat_path(buf, proj_root(0), CHANGESET);
 		cset = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT);
 		n->freecset = 1;
 	}
@@ -226,220 +229,229 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	c->included = 1;
 	// c->deltakey set below
 
+	n->compdb = hash_new(HASH_MEMHASH);
+	hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,
+	    &c, sizeof(comp *));
+
+	unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
 	if (revs) {
-		n->revs = 1;
-		unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
 		EACH(revs) {
 			unless (d = sccs_findrev(cset, revs[i])) {
 				fprintf(stderr,
 				    "nested: bad rev %s\n",revs[i]);
-err:				n->comps = list;
-				if (revsDB) mdbm_close(revsDB);
+err:				if (revsDB) mdbm_close(revsDB);
 				nested_free(n);
+				chdir(cwd);
+				free(cwd);
 				return (0);
 			}
 			d->flags |= D_SET;
 		}
-		if (sccs_cat(cset, GET_HASHONLY, 0)) goto err;
-		revsDB = cset->mdbm;	/* save for later */
-		cset->mdbm = 0;
-		/*
-		 * if L..R colors a range, take a range and return L and R
-		 * color the region between what was D_SET and root
-		 */
-		unrange(cset, &left, &right);
-		if (right == INVALID) {
-			fprintf(stderr,
-			    "nested: rev list has more than one tip\n");
-			goto err;
-		}
-
-		if (flags & NESTED_UNDO) {
-			unless (left) {
-				fprintf(stderr, "nested: undo all: "
-				    "just remove the repository\n");
-				goto err;
-			} else if (left == INVALID) {
-				fprintf(stderr, "nested: undo "
-				    "region has more than one tip\n");
-				goto err;
-			}
-			n->tip = strdup(left->rev);
-			n->oldtip = strdup(right->rev);
-			sccs_sdelta(cset, left, buf);
-			n->product->deltakey = strdup(buf);
-			sccs_sdelta(cset, right, buf);
-			n->product->lowerkey = strdup(buf);
-		} else {
-			n->tip = strdup(right->rev);
-			sccs_sdelta(cset, right, buf);
-			n->product->deltakey = strdup(buf);
-			if (left && (left != INVALID)) {
-				n->oldtip = strdup(left->rev);
-				sccs_sdelta(cset, left, buf);
-				n->product->lowerkey = strdup(buf);
-			}
-		}
-
-		if (sccs_cat(cset, GET_HASHONLY, 0)) goto err;
-		sccs_clearbits(cset, D_SET);	/* tidy up */
-
-		/*
-		 * Walk the old picture before revs
-		 */
-		EACH_KV(revsDB) {
-			unless (componentKey(kv.val.dptr)) continue;
-			c = new(comp);
-			c->n = n;
-			c->rootkey  = strdup(kv.key.dptr);
-			c->deltakey = strdup(kv.val.dptr);
-			c->new	    = 1;	// fix in 'if' clause below
-			c->present  = 1;	// fix later
-			c->included = 1;
-			c->path     = key2path(c->deltakey, 0);
-			csetChomp(c->path);
-			list = addLine(list, (void *)c);
-			if (t = mdbm_fetch_str(cset->mdbm, c->rootkey)) {
-				// tip delta key is in t
-				if (flags & NESTED_UNDO) {
-					c->lowerkey = c->deltakey;
-					c->deltakey = strdup(t);
-				} else {
-					c->lowerkey = strdup(t);
-				}
-				c->new = 0;
-				mdbm_delete_str(cset->mdbm, c->rootkey);
-			}
-		}
-		/* 
-		 * here are all the unchanged keys
-		 * XXX: If we need for perf, here's a list to not include
-		 */
-		EACH_KV(cset->mdbm) {
-			unless (componentKey(kv.val.dptr)) continue;
-			c = new(comp);
-			c->n = n;
-			c->rootkey  = strdup(kv.key.dptr);
-			c->deltakey = strdup(kv.val.dptr);
-			c->present  = 1;	// fix later
-			c->path     = key2path(c->deltakey, 0);
-			csetChomp(c->path);
-			list = addLine(list, (void *)c);
-		}
-		/*
-		 * all that is left in revsDB are new rootkeys
-		 */
-		mdbm_close(revsDB);
-		revsDB = 0;
 	} else {
-		if (sccs_get(cset,
-		    rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+		unless (d = sccs_findrev(cset, rev)) {
+			fprintf(stderr, "nested: bad rev %s\n", rev);
 			goto err;
 		}
-		if (rev) n->tip = strdup(rev);
-		d = sccs_findrev(cset, rev);
-		sccs_sdelta(cset, d, buf);
-		n->product->deltakey = strdup(buf);
-		if (flags & NESTED_PENDING) {
-			/*
-			 * get pending components and replace/add items
-			 * in db returned by sccs_get above.
-			 */
-#define	PNDCOMP	"bk -Ppr log -r+ -nd'$if(:COMPONENT:){:ROOTKEY: :KEY:}'"
-
-			n->pending = 1;
-			unless (pending = popen(PNDCOMP, "r")) goto err;
-			while (t = fgetline(pending)) {
-				v = separator(t);
-				assert(v);
-				*v++ = 0;
-				if (mdbm_store_str(
-				    cset->mdbm, t, v, MDBM_REPLACE)) {
-					pclose(pending);
-					mdbm_close(cset->mdbm);
-					cset->mdbm = 0;
-					goto err;
-				}
-			}
-			pclose(pending);
-		}
-		EACH_KV(cset->mdbm) {
-			unless (componentKey(kv.val.dptr)) continue;
-			c = new(comp);
-			c->n = n;
-			c->rootkey  = strdup(kv.key.dptr);
-			c->deltakey = strdup(kv.val.dptr);
-			c->path     = key2path(c->deltakey, 0);
-			c->present  = 1;	// ditto
-			c->included  = 1;	// in a rev, all are included
-			c->new	    = 1;	// XXX: t.ensemble only?
-			csetChomp(c->path);
-			list = addLine(list, (void *)c);
-		}
-		mdbm_close(cset->mdbm);
-		cset->mdbm = 0;
+		range_walkrevs(cset, 0, d, walkrevs_setFlags,(void*)D_SET);
 	}
 
 	/*
-	 * Mark entries that are not present and fix up the pathnames.
+	 * if L..R colors a range, take a range and return L and R
+	 */
+	range_unrange(cset, &left, &right, (flags & NESTED_PULL));
+	if (left == INVALID) {
+		fprintf(stderr, "nested: rev list has more than one base\n");
+		goto err;
+	}
+	if (right == INVALID) {
+		fprintf(stderr, "nested: rev list has more than one tip\n");
+		goto err;
+	}
+	unless (right) {
+		fprintf(stderr, "nested: rev list has no tip\n");
+		goto err;
+	}
+
+	n->tip = strdup(right->rev);
+	sccs_sdelta(cset, right, buf);
+	n->product->deltakey = strdup(buf);
+
+	if (left) {
+		n->oldtip = strdup(left->rev);
+		sccs_sdelta(cset, left, buf);
+		n->product->lowerkey = strdup(buf);
+	}
+
+	/*
+	 * walk whole cset weave from newest to oldest and find all
+	 * components.
+	 * XXX: Do this earlier?
 	 */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	EACH_STRUCT(list, c) {
-		project	*p;
+	for (d = cset->table; d; d = d->next) d->flags |= D_SET;
+	weave = cset_mkList(cset);
+	EACH(weave) {
+		t = strchr(weave[i], '\t') + 1; /* rootkey */
+		v = separator(t);
+		*v++ = 0;			/* deltakey */
 
-		/*
-		 * c->path needs to be the pathname where this component
-		 * is at currently not as of the 'rev' above.
-		 * Since the idcache saves the current location we can
-		 * use it to fixup the path.
-		 *
-		 * WARNING: non-present components may not appear in
-		 * the idcache so their pathnames may be incorrect.
-		 */
-		if (t = mdbm_fetch_str(idDB, c->rootkey)) {
-			csetChomp(t);  // stomps on idDB contents!!
-			if (isComponent(t)) {// XXX assumes product root
-				free(c->path);
-				c->path = strdup(t);
-				c->realpath = 1;
+		unless (componentKey(v)) continue;
+
+		d = sfind(cset, atoi(weave[i]));
+		unless (c = nested_findKey(n, t)) {
+			c = new(comp);
+			c->n = n;
+			c->rootkey = strdup(t);
+			c->new = 1; /* new by default */
+			/*
+			 * Set c->path to the current pending location
+			 * from the idcache for present components or
+			 * to the latest deltakey for non-present
+			 * components.  Can get replaced below in the
+			 * pull case with local tip.
+			 */
+			if (c->path = mdbm_fetch_str(idDB, c->rootkey)) {
+				c->path = strdup(c->path);
+			} else {
+				c->path = key2path(v, 0);
 			}
+			dirname(c->path); /* strip /ChangeSet */
+
+			/* mark present components */
+			if (proj = proj_init(c->path)) {
+				if (streq(proj_rootkey(proj), c->rootkey)) {
+					c->present = 1;
+				}
+				proj_free(proj);
+			}
+
+			/* add to list */
+			hash_store(n->compdb, c->rootkey, strlen(c->rootkey)+1,
+			    &c, sizeof(comp *));
+			n->comps = addLine(n->comps, c);
 		}
-
-		/*
-		 * This is trying hard but it may get things wrong
-		 * if people have moved stuff around without letting
-		 * bk get in there and take a look.
-		 *
-		 * I wanted to stomp on c->path if not present but
-		 * the regressions convinced me that wasn't wise.
-		 */
-		if (p = proj_init(c->path)) {
-			unless (streq(proj_rootkey(p), c->rootkey)) {
-				c->present = 0;
+		if (d->flags & D_RED) {
+			/* included in revs or under tip */
+			unless (c->included) {
+				c->included = 1;
+				if (c->deltakey) {
+					assert(!c->lowerkey);
+					c->lowerkey = c->deltakey;
+				}
+				c->deltakey = strdup(v);
 			}
-			proj_free(p);
+		} else unless (c->new) {
+			/* it's known to be not new, so we're done */
+		} else if (flags & NESTED_PULL) {
+			c->new = 0;
+			unless (d->flags & D_BLUE) c->localchanges = 1;
+			unless (c->present) {
+				free(c->path);
+				c->path = key2path(v, 0);
+				dirname(c->path);
+			}
+			if (c->included) {
+				assert(!c->lowerkey);
+				c->lowerkey = strdup(v);
+			} else {
+				assert(!c->deltakey);
+				c->deltakey = strdup(v);
+			}
+		} else if (d->flags & D_BLUE) {
+			c->new = 0;
+			if (c->included) {
+				assert(!c->lowerkey);
+				c->lowerkey = strdup(v);
+			} else {
+				assert(!c->deltakey);
+				c->deltakey = strdup(v);
+			}
 		} else {
-			c->present = 0;
+			/* skip things like repo tip in a push -r case */
+		}
+	}
+	freeLines(weave, free);
+
+	if (flags & NESTED_PENDING) {
+		/*
+		 * get pending components and replace/add items
+		 * in db returned by sccs_get above.
+		 */
+#define	PNDCOMP	"bk -Ppr log -r+ -nd'$if(:COMPONENT:){:ROOTKEY: :KEY:}'"
+
+		n->pending = 1;
+		assert(n->tip);
+		free(n->tip);
+		n->tip = 0;
+		unless (pending = popen(PNDCOMP, "r")) goto err;
+		while (t = fgetline(pending)) {
+			v = separator(t);
+			assert(v);
+			*v++ = 0;
+
+			unless (c = nested_findKey(n, t)) {
+				c = new(comp);
+				c->n = n;
+				c->rootkey = strdup(t);
+				c->new = 1;
+				c->included = 1;
+				if (c->path =
+				    mdbm_fetch_str(idDB, c->rootkey)) {
+					c->path = strdup(c->path);
+				} else {
+					// assert("How can this happen?" == 0);
+					c->path = key2path(v, 0);
+				}
+				dirname(c->path); /* strip /ChangeSet */
+				c->present = 1;
+
+				/* add to list */
+				hash_store(n->compdb,
+				    c->rootkey, strlen(c->rootkey)+1,
+				    &c, sizeof(comp *));
+				n->comps = addLine(n->comps, c);
+			}
+			if (c->deltakey) free(c->deltakey);
+			c->deltakey = strdup(v);
 		}
 	}
 	mdbm_close(idDB);
 
-	sortLines(list, compSort);
-	if (flags & NESTED_DEEPFIRST) reverseLines(list);
+	if (flags & NESTED_UNDO) {
+		unless (n->oldtip) {
+			fprintf(stderr, "nested: undo all: "
+			    "just remove the repository\n");
+			goto err;
+		}
+		/* swap tip and oldtip */
+		t = n->tip;
+		n->tip = n->oldtip;
+		n->oldtip = t;
 
-	if (flags & NESTED_PRODUCTFIRST) {
-		char	**l = 0;
-
-		l = addLine(0, n->product);
-		EACH(list) l = addLine(l, list[i]);
-		freeLines(list, 0);
-		list = l;
-		n->product_first = 1;
-	} else {
-		list = addLine(list, n->product);
+		/* swap deltakey and lowerkey in each component */
+		EACH_STRUCT(n->comps, c) {
+			if (c->included) {
+				t = c->deltakey;
+				c->deltakey = c->lowerkey;
+				c->lowerkey = t;
+			} else {
+				/* Is this a good thing to not set it? */
+				assert(!c->lowerkey);
+			}
+		}
 	}
 
-	n->comps = list;
+	sortLines(n->comps, compSort);
+	if (flags & NESTED_DEEPFIRST) reverseLines(n->comps);
+
+	if (flags & NESTED_PRODUCTFIRST) {
+		n->comps = unshiftLine(n->comps, n->product);
+		n->product_first = 1;
+	} else {
+		n->comps = pushLine(n->comps, n->product);
+	}
+	chdir(cwd);
+	free(cwd);
 	return (n);
 }
 
@@ -458,56 +470,6 @@ nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 	EACH_STRUCT(comps, c) c->alias = 1;
 	freeLines(comps, 0);
 	return (0);
-}
-
-/*
- * a range of L..R colors a region of the graph.
- * given a region of the graph, compute L and R.
- * If no nodes are colored, no L or R
- * If all nodes or from R to root are colored, then L = 0, return R
- * If more than one tip of colored region, R = INVALID
- * If more than one gca (tip of uncolored region to the left of colored)
- *   then L = INVALID
- * XXX - why is this here? Is it generic?
- * Not generic.
- */
-private void
-unrange(sccs *s, delta **left, delta **right)
-{
-	delta	*d, *p;
-	int	color, didright = 0, didleft = 0;
-
-	assert(left && right);
-	*left = *right = 0;
-	for (d = s->table; d; d = d->next) {
-		/* skip uninteresting nodes */
-		if (TAG(d)) continue;
-		unless (color = (d->flags & (D_SET|D_RED|D_BLUE))) continue;
-		/*
-		 * How to leave graph:
-		 * if in parent region of D_SET, then leave D_SET, else clear
-		 */
-		d->flags &= ~color;
-		unless (color & D_SET) d->flags |= D_SET;
-		/* grab first tip in D_SET and parent region of D_SET */
-		if (color == D_SET) {
-			*right = didright++ ? INVALID : d;
-		} else if (color == D_BLUE) {
-			*left = didleft++ ? INVALID : d;
-		}
-		/*
-		 * color parents of D_SET => D_BLUE, and
-		 * parents of nodes in parent region of D_SET => D_RED
-		 */
-		color =	(color & D_SET) ? D_BLUE : D_RED;
-		/* color parents */
-		if (p = d->parent) {
-			p->flags |= color;
-		}
-		if (d->merge && (p = sfind(s, d->merge))) {
-			p->flags |= color;
-		}
-	}
 }
 
 private int
@@ -535,16 +497,12 @@ nested_findMD5(nested *n, char *md5rootkey)
 	return (0);
 }
 
-/* lm3di */
 comp	*
 nested_findKey(nested *n, char *rootkey)
 {
-	comp	*c;
-	int	i;
-
 	assert(n);
-	EACH_STRUCT(n->comps, c) {
-		if (streq(c->rootkey, rootkey)) return (c);
+	if (hash_fetchStr(n->compdb, rootkey)) {
+		return (*(comp **)n->compdb->vptr);
 	}
 	return (0);
 }
@@ -582,7 +540,7 @@ nested_free(nested *n)
 	if (n->aliasdb) aliasdb_free(n->aliasdb);
 	if (n->tip) free(n->tip);
 	if (n->oldtip) free(n->oldtip);
-	// if (n->compdb) hash_free(n->compdb);
+	if (n->compdb) hash_free(n->compdb);
 	free(n);
 }
 
@@ -824,19 +782,21 @@ nestedWalkdir(char *dir, walkfn fn)
 	int	ret;
 	project	*p;
 	char	**list;
+	char	*cwd;
 
-	/* dir is fullpath; we want relative */
-	unless (p = proj_product(0)) {
-		fprintf(stderr, "%s called in a non-product", __FUNCTION__);
-		return (0);
-	}
+	cwd = strdup(proj_cwd());
+	p = proj_product(proj_init(dir));
+	assert(p);		/* fails on something outside a nested tree */
+	chdir(proj_root(p));
 	relpath = proj_relpath(p, dir);
-
+	assert(relpath);
 	list = nested_deep(relpath);
 
 	ret = walkdir(relpath, fn, list);
 	freeLines(list, free);
 	free(relpath);
+	chdir(cwd);
+	free(cwd);
 	return (ret);
 }
 
@@ -860,20 +820,6 @@ int
 nested_rmtree(char *dir)
 {
 	return (nestedWalkdir(dir, compRemove));
-}
-
-/*
- * For future wiring to have an accurate path when you need it.
- * Getting the right path for error messages (a useful time to
- * have the right path) may require an extra sccs_get of the cset file.
- * So do that when the information is needed.
- */
-char	*
-comppath(comp *c)
-{
-	assert(c->path);
-	// unless (c->realpath) ...
-	return (c->path);
 }
 
 /*

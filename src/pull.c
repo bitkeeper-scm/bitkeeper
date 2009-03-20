@@ -626,7 +626,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 		revs = addLine(revs, d->rev);
 	}
 	fclose(f);
-	n = nested_init(s, 0, revs, 0);
+	n = nested_init(s, 0, revs, NESTED_PULL);
 
 	/*
 	 * Now takepatch should have merged the aliases file in the RESYNC
@@ -639,10 +639,10 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	assert(h);
 	comps = aliasdb_expand(n, h, rmt_aliases);
 	assert(comps);
+	aliasdb_free(h);
 	EACH_STRUCT(comps, c) c->remotePresent = 1;
 	n->product->remotePresent = 1;
 	freeLines(comps, 0);
-	aliasdb_free(h);
 
 	h = aliasdb_init(n, presync, "+", 0);
 	assert(h);

@@ -242,6 +242,39 @@ popLine(char **space)
 }
 
 /*
+ * Add item to beginning of array moving everything over one
+ */
+char **
+unshiftLine(char **space, void *line)
+{
+	int	n;
+
+	/* make sure we have at least one null at end */
+	space = addLine(space, 0);
+	n = nLines(space);
+	if (n > 0) memmove(&space[2], &space[1], n * sizeof(void *));
+	space[1] = line;
+	return (space);
+}
+
+/*
+ * remove the first element from the line and return it
+ */
+void *
+shiftLine(char **space)
+{
+	void	*ret;
+	int	n = nLines(space);
+
+	if (n < 1) return (0);
+	ret = space[1];
+	if (n > 1) memmove(&space[1], &space[2], (n-1)*sizeof(void *));
+	space[n] = 0;
+	return (ret);
+}
+
+
+/*
  * Fill a lines array from a file.
  * Each line is chomp()ed.
  */
