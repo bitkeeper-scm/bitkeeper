@@ -67,7 +67,7 @@ comp7
 comp9
 EOF
 cmpfiles GOT WANT
-bk alias here > GOT
+bk alias show here > GOT
 echo odd > WANT
 cmpfiles GOT WANT
 echo OK
@@ -75,11 +75,11 @@ echo OK
 echo $N Populate them back...........................................$NL
 bk components add $Q even primes || exit 1
 cat <<EOF > WANT
-odd
 even
+odd
 primes
 EOF
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 bk components here > GOT
 cat <<EOF > WANT
@@ -119,7 +119,7 @@ cat <<EOF > WANT
 even
 primes
 EOF
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 echo OK
 
@@ -137,7 +137,7 @@ comp7
 EOF
 cmpfiles GOT WANT
 echo primes > WANT
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 echo OK
 
@@ -175,10 +175,10 @@ gdb
 EOF
 cmpfiles GOT WANT
 cat <<EOF > WANT
-primes
 all
+primes
 EOF
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 bk components rm $Q all || exit 1
 bk components here > GOT
@@ -192,7 +192,7 @@ cmpfiles GOT WANT
 cat <<EOF > WANT
 primes
 EOF
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 echo OK
 
@@ -208,8 +208,8 @@ gcc
 gdb
 EOF
 cmpfiles GOT WANT
-(echo primes; cd gcc; bk id; cd ../gdb; bk id) > WANT
-bk alias here > GOT
+(echo primes; cd gcc; bk id; cd ../gdb; bk id) | bk _sort > WANT
+bk alias show here > GOT
 cmpfiles GOT WANT
 bk components rm $Q './g*' || exit 1
 bk components here > GOT
@@ -223,7 +223,7 @@ cmpfiles GOT WANT
 cat <<EOF > WANT
 primes
 EOF
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 echo OK
 
@@ -233,7 +233,7 @@ bk components here > GOT
 cat <<EOF > WANT
 EOF
 cmpfiles GOT WANT
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 echo OK
 
@@ -250,7 +250,7 @@ cmpfiles GOT WANT
 cat <<EOF > WANT
 primes
 EOF
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 cd comp2
 touch foobar
@@ -339,7 +339,7 @@ bk components rm $Q primes || exit 1
 cat > WANT <<EOF
 subprimes
 EOF
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 bk components here > GOT
 cat > WANT <<EOF
@@ -369,7 +369,7 @@ grep -q "not empty" ERR || {
 	cat ERR
 	exit 1
 }
-bk alias here > GOT
+bk alias show here > GOT
 echo subprimes > WANT
 cmpfiles GOT WANT
 bk components here > GOT
@@ -394,7 +394,7 @@ cd "$HERE/project"
 bk commit $Q -y"add deep stuff" || exit 1
 cd "$HERE/copy"
 # should only have subprimes currently
-bk alias here > GOT
+bk alias show here > GOT
 echo subprimes > WANT
 cmpfiles GOT WANT
 bk pull $Q || exit 1
@@ -405,7 +405,7 @@ bk components here > GOT
 cat > WANT <<EOF
 EOF
 cmpfiles GOT WANT
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 echo OK
 

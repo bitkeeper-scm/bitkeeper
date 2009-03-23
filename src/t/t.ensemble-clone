@@ -162,7 +162,7 @@ echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
 cd mynewgcc
-bk alias here > GOT
+bk alias show here > GOT
 (cd gcc; bk id) > WANT
 cmpfiles GOT WANT
 echo OK
@@ -171,8 +171,8 @@ echo $N Make sure that the COMPONENTS file propagates on clone ......$NL
 cd "$HERE"
 bk clone -shere $Q mynewgcc mynewgcc2 || exit 1
 cd mynewgcc2
-(cd ../mynewgcc; bk alias here) > BEFORE
-bk alias here > AFTER
+(cd ../mynewgcc; bk alias show here) > BEFORE
+bk alias show here > AFTER
 cmpfiles BEFORE AFTER
 echo OK
 
@@ -186,7 +186,7 @@ test -d gdb || {
 echo OK
 
 echo $N Make sure that the COMPONENTS file is correct ...............$NL
-bk alias here > GOT
+bk alias show here > GOT
 (cd gcc; bk id; cd ../gdb; bk id) > WANT
 cmpfiles GOT WANT
 echo OK
@@ -201,7 +201,7 @@ test -d gdb || {
 echo OK
 
 echo $N Make sure that the COMPONENTS file is still correct .........$NL
-bk alias here > GOT
+bk alias show here > GOT
 cmpfiles GOT WANT
 echo OK
 
@@ -236,7 +236,7 @@ test -d gdb && {
 	echo should not have gdb
 	exit 1
 }
-bk alias here > GOT
+bk alias show here > GOT
 (cd gcc; bk id) > WANT
 cmpfiles GOT WANT
 echo OK

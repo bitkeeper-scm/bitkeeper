@@ -6,24 +6,6 @@
  */
 // #define CRAZY_GLOB	1
 
-private	int	aliasCreate(int ac, char **av);
-private	int	aliasShow(int ac, char **av);
-private	int	aliasHere(int ac, char **av);
-private	int	aliasMissing(int ac, char **av);
-private	int	dbAdd(hash *aliasdb, char *alias, char **aliases);
-private	int	dbRemove(hash *aliasdb, char *alias, char **aliases);
-private	int	dbWrite(nested *n, hash *aliasdb, char *comment, int commit);
-private	int	dbChk(nested *n, hash *aliasdb);
-private	int	dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
-		    int showkeys, int showpaths);
-private	int	expand(nested *n, hash *db, hash *keys, hash *seen,
-		    char *alias);
-private	int	value(nested *n, hash *keys, char *alias);
-private	hash	*dbLoad(nested *n, hash *aliasdb);
-private	int	chkReserved(char *alias, int fix);
-private	int	validName(char *name);
-private	comp	*findDir(nested *n, char *cwd, char *dir);
-
 /* union of aliasCreate and aliasShow options */
 
 typedef struct {
@@ -33,7 +15,25 @@ typedef struct {
 	u32	showkeys:1;
 	u32	showpaths:1;
 	u32	commit:1;
+	u32	here:1;
+	u32	missing:1;
 } opts;
+
+private	int	aliasCreate(int ac, char **av);
+private	int	aliasShow(int ac, char **av);
+private	int	dbAdd(hash *aliasdb, char *alias, char **aliases);
+private	int	dbRemove(hash *aliasdb, char *alias, char **aliases);
+private	int	dbWrite(nested *n, hash *aliasdb, char *comment, int commit);
+private	int	dbChk(nested *n, hash *aliasdb);
+private	int	dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
+		    opts *o);
+private	int	expand(nested *n, hash *db, hash *keys, hash *seen,
+		    char *alias);
+private	int	value(nested *n, hash *keys, char *alias);
+private	hash	*dbLoad(nested *n, hash *aliasdb);
+private	int	chkReserved(char *alias, int fix);
+private	int	validName(char *name);
+private	comp	*findDir(nested *n, char *cwd, char *dir);
 
 int	rmAlias = 0;
 
@@ -66,6 +66,7 @@ int
 alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 {
 	int	c, i;
+
 	struct {
 		char	*name;
 		int	(*fcn)(int ac, char **av);
@@ -74,9 +75,10 @@ alias_main(int ac, char **av)	/* looks like bam.c:bam_main() */
 		{"set", aliasCreate },
 		{"add", aliasCreate },
 		{"rm", aliasCreate },
+		{"components", aliasShow },
+		{"here", aliasShow },
+		{"missing", aliasShow },
 		{"show", aliasShow },
-		{"here", aliasHere },
-		{"missing", aliasMissing },
 		{0, 0}
 	};
 
@@ -234,7 +236,7 @@ aliasShow(int ac, char **av)
 	char	*p;
 	char	*comment = 0;
 	char	**aliases = 0;
-	char	*cwd;
+	char	*cwd, *cmd;
 	int	c;
 	int	rc = 1;
 	int	nflags;
@@ -242,14 +244,20 @@ aliasShow(int ac, char **av)
 
 	memset(&opts, 0, sizeof(opts));
 	cwd = strdup(proj_cwd());
+	cmd = av[0];
 	if (proj_cd2product()) {
 		error("%s: called in a non-product.\n", prog);
 		goto err;
 	}
 
-	while ((c = getopt(ac, av, "kpqr;")) != -1) {
+	if (streq(cmd, "here")) opts.here = 1;
+	if (streq(cmd, "missing")) opts.missing = 1;
+
+	while ((c = getopt(ac, av, "hkmpqr;")) != -1) {
 		switch (c) {
+		    case 'h': opts.here = 1; break;
 		    case 'k': opts.showkeys = 1; break;
+		    case 'm': opts.missing = 1; break;
 		    case 'p': opts.showpaths = 1; break;
 		    case 'q': opts.quiet = 1; break;
 		    case 'r': opts.rev = optarg; break;
@@ -258,9 +266,16 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 			goto err;
 		}
 	}
+	if (opts.here && opts.missing) {
+		error("%s: here or missing but not both\n", prog);
+		goto usage;
+	}
 	if (opts.showkeys && opts.showpaths) {
 		error("%s: one of -k or -p but not both\n", prog);
 		goto usage;
+	}
+	if (streq(cmd, "components")) {
+		unless (opts.showkeys || opts.showpaths) opts.showpaths = 1;
 	}
 	/* similar to rm with no params, turn off checks for show with none */
 	rmAlias = !av[optind];
@@ -281,42 +296,13 @@ usage:			sys("bk", "help", "-s", "alias", SYS);
 		}
 	}
 
-	rc = dbShow(n, aliasdb, cwd, aliases, opts.showkeys, opts.showpaths);
+	rc = dbShow(n, aliasdb, cwd, aliases, &opts);
 err:
 	free(cwd);
 	nested_free(n);
 	aliasdb_free(aliasdb);
 	freeLines(aliases, free);
 	if (comment) free(comment);
-	return (rc);
-}
-
-private	int
-aliasHere(int ac, char **av)
-{
-	char	**aliases;
-	int	c, i;
-	int	rc = 1;
-	opts	opts;
-
-	memset(&opts, 0, sizeof(opts));
-	if (proj_cd2product()) {
-		error("%s: called in a non-product.\n", prog);
-		goto err;
-	}
-
-	while ((c = getopt(ac, av, "")) != -1) {
-		switch (c) {
-		    default:
-			sys("bk", "help", "-s", "alias", SYS);
-			goto err;
-		}
-	}
-	aliases = aliases_here(0);
-	EACH(aliases) printf("%s\n", aliases[i]);
-	freeLines(aliases, free);
-	rc = 0;
-err:
 	return (rc);
 }
 
@@ -328,36 +314,6 @@ aliases_here(project *p)
 	assert(proj_isProduct(p));
 	concat_path(buf, proj_root(p), "BitKeeper/log/HERE");
 	return (file2Lines(0, buf));
-}
-
-/*
- * bk alias missing
- *
- * print all keys in aliasdb where at least one component is missing
- */
-private	int
-aliasMissing(int ac, char **av)
-{
-	int	c;
-	opts	opts;
-	int	rc = 1;
-
-	memset(&opts, 0, sizeof(opts));
-	if (proj_cd2product()) {
-		error("%s: called in a non-product.\n", prog);
-		goto err;
-	}
-
-	while ((c = getopt(ac, av, "")) != -1) {
-		switch (c) {
-		    default:
-			sys("bk", "help", "-s", "alias", SYS);
-			goto err;
-		}
-	}
-	fprintf(stderr, "bk alias missing NYI!\n");
-err:
-	return (rc);
 }
 
 hash	*
@@ -373,7 +329,8 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 	/*
 	 * XXX: if 'p' then assuming product -- error check it?
 	 */
-	unless (p || (p = proj_product(0))) {
+	assert(n);
+	unless (p || (p = n->cset->proj) || (p = proj_product(0))) {
 		error("%s: aliasdb: not in a product\n", prog);
 		return (0);
 	}
@@ -520,6 +477,8 @@ dbWrite(nested *n, hash *aliasdb, char *comment, int commit)
 	char	buf[MAXPATH];
 
 	if (ret = dbChk(n, aliasdb)) return (ret);
+
+	if (n->cset) sccs_close(n->cset);	/* win32 */
 
 	(void)system("bk -P edit -q " ALIASES);
 	hash_toFile(aliasdb, ALIASES);
@@ -673,33 +632,52 @@ err:
 }
 
 private	int
-dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
-    int showkeys, int showpaths)
+dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, opts *op)
 {
 	char	**items = 0, **comps;
 	char	*val, *alias;
 	comp	*c;
-	int	i, rc = 1;
+	int	i, j, sawall, rc = 1;
+
+	assert(aliasdb);
+	if (op->showpaths || op->showkeys) {
+		if (aliases) {
+			if (aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) {
+				goto err;
+			}
+			unless (comps = aliasdb_expand(n, aliasdb, aliases)) {
+				goto err;
+			}
+		} else {
+			comps = n->comps;
+		}
+
+		EACH_STRUCT(comps, c) {
+			if ((op->missing && c->present) ||
+			    (op->here && !c->present)) {
+				continue;
+			}
+			items = addLine(items,
+			    strdup(op->showkeys ? c->rootkey : c->path));
+		}
+		if (aliases) freeLines(comps, 0);
+		goto print;
+	}
 
 	unless (aliases) {
 		/* print all the alias keys */
 		EACH_HASH(aliasdb) {
 			items = addLine(items, strdup(aliasdb->kptr));
 		}
-		goto print;
+		goto preprint;
 	}
 
-	/* if showing keys or paths, the expand any key or value item */
-	if (showkeys || showpaths) {
-		if (aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) goto err;
-		unless (comps = aliasdb_expand(n, aliasdb, aliases)) goto err;
-
-		EACH_STRUCT(comps, c) {
-			items = addLine(items,
-			    strdup(showkeys ? c->rootkey : c->path));
+	if (op->missing || op->here) {
+		if (aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) {
+			goto err;
 		}
-		freeLines(comps, 0);
-		goto print;
+		EACH(aliases) items = addLine(items, strdup(aliases[i]));
+		goto preprint;
 	}
 
 	/* list out the contents for a single key */
@@ -713,6 +691,10 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
 	 */
 	if (i = chkReserved(alias, 1)) {
 		assert(i >= 0);
+		if (streq(alias, "here")) {
+			items = aliases_here(n->cset->proj);
+			goto preprint;
+		}
 		unless (streq(alias, "default")) {
 			error("%s: use -k or -p when expanding "
 			    "reserved alias; %s\n", prog, alias);
@@ -733,6 +715,26 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases,
 	}
 	items = splitLine(val, "\r\n", 0);
 
+preprint:
+	if (op->missing || op->here) {
+		EACH(items) {
+			val = items[i];
+			sawall = 1;
+			comps = aliasdb_expandOne(n, aliasdb, val);
+			EACH_STRUCT_INDEX(comps, c, j) {
+				unless (c->present) {
+					sawall = 0;
+					break;
+				}
+			}
+			freeLines(comps, 0);
+			unless ((sawall && op->here) ||
+			    (!sawall && op->missing)) {
+				removeLineN(items, i, free);
+				i--;
+			}
+		}
+	}
 print:
 	sortLines(items, 0);
 	EACH(items) printf("%s\n", items[i]);
@@ -880,7 +882,7 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 			} else if (streq(alias, "here") ||
 			    streq(alias, "there")) {
 				if (fix) {
-					addkeys = aliases_here(0);
+					addkeys = aliases_here(n->cset->proj);
 					removeLineN(aliases, i, free);
 					i--;
 				} else {
@@ -942,6 +944,12 @@ root:			if (c->product) {
 				}
 				removeLineN(aliases, i, free);
 				i--;
+				continue;
+			}
+			unless (c->included) {
+				error("%s: component not present: %s\n",
+				    prog, c->path);
+				errors++;
 				continue;
 			}
 			free(alias);

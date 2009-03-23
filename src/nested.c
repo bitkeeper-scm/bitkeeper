@@ -414,6 +414,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 			if (c->deltakey) free(c->deltakey);
 			c->deltakey = strdup(v);
 		}
+		pclose(pending);
 	}
 	mdbm_close(idDB);
 

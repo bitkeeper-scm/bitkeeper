@@ -36,14 +36,17 @@ bk alias \- manage aliases for a list of components
 .br
 .SS LIST ALL ALIASES
 .B bk alias show
+.[B] \-hm
 .br
 .SS SHOW THE VALUE OF AN ALIAS
 .B bk alias show
+.[B] \-hm
 .ARG name
 .br
 .SS SHOW EXPANSION OF AN ALIAS
 .B bk alias show
 .[B] \-kp
+.[B] \-hm
 .ARG component \ ...
 .SH DESCRIPTION
 The 
@@ -136,9 +139,21 @@ alias of the same name unless this option is present.
 When appending to an alias, the operation will fail unless there is a
 pre-existing alias of the same name unless this option is present.
 .tp
+.B \-h
+Filter the output to only shows aliases or components that are here.
+For example, \*[lq]bk alias show -h\*[rq] lists all the aliases which
+have all their components present in this repository.
+.tp
 .B \-k
 Used when showing aliases; causes the expansion of the alias to be listed
 as rootkeys.
+.tp
+.B \-m
+Filter the output to only shows aliases or components that are missing.
+For example, \*[lq]bk alias show -m\*[rq] lists all the aliases which
+have at least one of their components missing in this repository.
+To see what components missing are missing in an alias called gcc,
+\*[lq]bk alias show -m -p gcc\*[rq].
 .tp
 .B \-p
 Used when showing aliases; causes the expansion of the alias to be listed
