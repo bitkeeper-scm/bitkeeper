@@ -310,9 +310,12 @@ char **
 aliases_here(project *p)
 {
 	char	buf[MAXPATH];
+	char	**here;
 
 	assert(proj_isProduct(p));
 	concat_path(buf, proj_root(p), "BitKeeper/log/HERE");
+	if (here = file2Lines(0, buf)) return (here);
+	concat_path(buf, proj_root(p), "BitKeeper/log/COMPONENTS");
 	return (file2Lines(0, buf));
 }
 

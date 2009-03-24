@@ -102,23 +102,6 @@ _tags() {
 	exec bk changes -t ${1+"$@"}
 }
 
-# backward hack for building
-_populate() {
-	COMPS=
-	QUIET=
-	while getopts qs: opt
-	do
-		case "$opt" in
-		q) QUIET=-q;;
-		s) COMPS="$COMPS $OPTARG";;
-		*) echo "populated -s<comp>"; exit 1;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-
-	bk components add $QUIET $COMPS
-}
-
 _credits() {
 	exec bk help credits
 }
