@@ -653,7 +653,8 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, opts *op)
 		}
 
 		EACH_STRUCT(comps, c) {
-			if ((op->missing && c->present) ||
+			if (c->product ||
+			    (op->missing && c->present) ||
 			    (op->here && !c->present)) {
 				continue;
 			}

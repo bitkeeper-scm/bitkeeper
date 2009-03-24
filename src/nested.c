@@ -189,7 +189,6 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	comp	*c = 0;
 	delta	*d, *left, *right;
 	int	i;
-	char	**weave;
 	char	*t, *v;
 	FILE	*pending;
 	MDBM	*idDB = 0, *revsDB = 0;
@@ -285,19 +284,20 @@ err:				if (revsDB) mdbm_close(revsDB);
 	/*
 	 * walk whole cset weave from newest to oldest and find all
 	 * components.
-	 * XXX: Do this earlier?
 	 */
 	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
-	for (d = cset->table; d; d = d->next) d->flags |= D_SET;
-	weave = cset_mkList(cset);
-	EACH(weave) {
-		t = strchr(weave[i], '\t') + 1; /* rootkey */
-		v = separator(t);
-		*v++ = 0;			/* deltakey */
 
+	sccs_rdweaveInit(cset);
+	d = 0;
+	while (t = sccs_nextdata(cset)) {
+		unless (isData(t)) {
+			if (t[1] == 'I') d = sfind(cset, atoi(&t[3]));
+			continue;
+		}
+		v = separator(t);		/* delta key */
 		unless (componentKey(v)) continue;
 
-		d = sfind(cset, atoi(weave[i]));
+		*v++ = 0;			/* t = root, v = deltakey */
 		unless (c = nested_findKey(n, t)) {
 			c = new(comp);
 			c->n = n;
@@ -369,8 +369,9 @@ err:				if (revsDB) mdbm_close(revsDB);
 		} else {
 			/* skip things like repo tip in a push -r case */
 		}
+		v[-1] = ' ';	/* restore possibly in mem weave */
 	}
-	freeLines(weave, free);
+	sccs_rdweaveDone(cset);
 
 	if (flags & NESTED_PENDING) {
 		/*
@@ -590,6 +591,7 @@ nested_each(int quiet, int ac, char **av)
 		fprintf(stderr, "No nested list?\n");
 		return (1);
 	}
+	sccs_close(n->cset);	/* win32 */
 	if (aliases) {
 		// XXX add error checking when the error paths get made
 		if (aliasdb_chkAliases(n, 0, &aliases, proj_cwd()) ||

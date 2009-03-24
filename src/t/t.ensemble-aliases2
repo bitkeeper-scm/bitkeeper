@@ -86,7 +86,9 @@ echo OK
 echo $N Move stuff and watch the fur fly ............................$NL
 cd "$HERE"
 bk clone $Q -sthere project mangle || exit 1
-cmpfiles {project,mangle}/BitKeeper/log/HERE
+(cd project; bk alias show here) > here.project
+(cd mangle; bk alias show here) > here.mangle
+cmpfiles here.project here.mangle
 cd mangle
 bk alias new dev ./gcc './gcc/*' gdb || exit 1
 bk edit $Q gcc/ChangeSet gcc/nm/ChangeSet gcc/libiberty/ChangeSet gdb/ChangeSet

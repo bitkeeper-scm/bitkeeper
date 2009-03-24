@@ -640,7 +640,6 @@ bk alias show | while read x
 do	echo @$x
 	bk alias show -p $x
 done > GOT
-cp GOT ~/p
 cmpfiles WANT GOT
 echo OK
 
