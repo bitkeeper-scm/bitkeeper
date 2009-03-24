@@ -111,7 +111,11 @@ hardlinked(char *a, char *b)
 {
 	struct	stat	sa, sb;
 
-	assert(0);
+	/*
+	 * if our stat is lying about st_ino then this is busted... which
+	 * is the case if the indexsvr code is enabled
+	 */
+	//assert(0);
 	if (stat(a, &sa) || stat(b, &sb)) return (0);
 	if ((sa.st_size == sb.st_size) &&
 	    (sa.st_dev == sa.st_dev) &&
