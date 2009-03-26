@@ -48,7 +48,7 @@ undo_main(int ac,  char **av)
 		unless ((c == 'a') || (c == 'r')) {
 			if (optarg) {
 				nav = addLine(nav,
-				    aprintf("-%c'%s'", c, optarg));
+				    aprintf("-%c%s", c, optarg));
 			} else {
 				nav = addLine(nav, aprintf("-%c", c));
 			}
@@ -153,7 +153,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		nested	*n = 0;
 		comp	*c;
 		char	**vp;
-		int	i, num = 1, which = 1;
+		int	i, num = 0, which = 1;
 
 		unless (n = nested_init(0, 0, csetrev_list, NESTED_UNDO)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
