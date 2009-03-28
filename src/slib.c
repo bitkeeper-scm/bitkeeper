@@ -16899,11 +16899,11 @@ dumpTimestampDB(project *p, hash *db)
 		tsrec   *ts = (tsrec *)db->vptr;
 
 		assert(db->vlen == sizeof(*ts));
-		fprintf(f, "%s%c%lx%c%ld%c0%o%c%lx%c%ld\n",
-		    (char *)db->kptr, BK_FS,
-		    ts->gfile_mtime, BK_FS, ts->gfile_size, BK_FS,
-		    ts->permissions, BK_FS,
-		    ts->sfile_mtime, BK_FS, ts->sfile_size);
+		fprintf(f, "%s|%x|%u|0%o|%x|%u\n",
+		    (char *)db->kptr,
+		    ts->gfile_mtime, ts->gfile_size,
+		    ts->permissions,
+		    ts->sfile_mtime, ts->sfile_size);
 		if (ferror(f)) {
 			/* some error writing the timestamp db so delete it */
 			unlink(tsname);
@@ -16965,7 +16965,7 @@ updateTimestampDB(sccs *s, hash *timestamps, int different)
 
 	assert(s->proj);
 	unless (clock_skew) {
-		char	*p = proj_configval(s->proj, "check_skew");
+		char	*p = proj_configval(s->proj, "clock_skew");
 
 		if (streq(p, "off")) {
 			clock_skew = 2147483647;  /* 2^31 */
