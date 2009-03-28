@@ -660,11 +660,11 @@ typedef struct {
  * Timestamp record format
  */
 typedef struct {
-	time_t	gfile_mtime;
-	off_t	gfile_size;
-	mode_t	permissions;
-	time_t	sfile_mtime;
-	off_t	sfile_size;
+	u32	gfile_mtime;
+	u32	gfile_size;
+	u32	permissions;
+	u32	sfile_mtime;
+	u32	sfile_size;
 } tsrec;
 
 /*
