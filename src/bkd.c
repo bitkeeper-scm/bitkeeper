@@ -25,6 +25,7 @@ bkd_main(int ac, char **av)
 	char	*addr = 0, *p;
 	int	i, c;
 	char	**unenabled = 0;
+	char	**args = 0;
 
 	bzero(&Opts, sizeof(Opts));	/* just in case */
 	Opts.errors_exit = 1;
@@ -41,6 +42,7 @@ bkd_main(int ac, char **av)
 	 * dir and exit.  Used for service.
 	 */
 	while ((c = getopt(ac, av, bkd_getopt)) != -1) {
+		args = addLine(args, aprintf("-%c%s", c, optarg ? optarg : ""));
 		switch (c) {
 		    case 'c': check = 1; break;
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
@@ -82,6 +84,7 @@ bkd_main(int ac, char **av)
 		    case 'U': Opts.unsafe = 1; break;
 		    default: usage();
 	    	}
+		optarg = 0;
 	}
 	EACH(unenabled) exclude(unenabled[i], 0);
 	freeLines(unenabled, 0);
@@ -91,6 +94,11 @@ bkd_main(int ac, char **av)
 		perror(av[optind]);
 		exit(1);
 	}
+
+	unless (p = joinLines(" ", args)) p = strdup("");
+	freeLines(args, free);
+	safe_putenv("_BKD_OPTS=%s", p);
+	free(p);
 
 	if (logRoot && !IsFullPath(logRoot)) {
 		fprintf(stderr,
