@@ -51,13 +51,20 @@ proc cmd_edit {which} \
 			} 
 			catch {file delete $old $merge}
 		} else {
+			set term [GetTerminal]
+			if {$term eq ""} {
+				set edit_busy 0
+				return
+			}
+
 			if {[info exists env(EDITOR)]} {
 				set editor $env(EDITOR)
 			} else {
 				set editor vim
 			}
+
 			set geom "$gc(ci.editWidth)x$gc(ci.editHeight)"
-			set cmd [list xterm -g $geom -e $editor $filename]
+			set cmd [list $term -g $geom -e $editor $filename]
 			set fd [open "| $cmd" r]
 			fileevent $fd readable "eat $fd"
 			vwait edit_busy
