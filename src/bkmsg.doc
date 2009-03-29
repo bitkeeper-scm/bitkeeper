@@ -301,6 +301,8 @@ If you have BitKeeper installed, the proxy information may be seen with:
 $
 #rejected-proxy-trigger
 The lease proxy server rejected your request to use BitKeeper.
+
+#BKARG#
 Contact your site's BitKeeper administrator for more information.
 $
 #http-err
