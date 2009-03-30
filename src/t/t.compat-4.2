@@ -151,6 +151,83 @@ bk commit $Q -ylocalcset || exit 1
 $OLDBK/bk pull $Q bk://localhost:$NEWP/project || exit 1
 echo OK
 
+echo $N Check lease proxy compat ....................................$NL
+cd "$HERE"
+# Do some work to isolate license key
+cp -R .bk .mybk
+mv .mybk/config dotbkconfig
+grep -v '^lic' dotbkconfig > .mybk/config
+BK_DOTBK="$HERE/.mybk"
+export BK_DOTBK
+rm -fr copy
+tar xf copy.tar
+cd copy || exit 1
+bk edit $Q BitKeeper/etc/config
+grep -v '^lic' BitKeeper/etc/config > ../repoconfig
+cp ../repoconfig BitKeeper/etc/config
+bk lease renew 2> ERR && echo lease worked?
+grep -q 'You do not have a license for BitKeeper' ERR || exit 1
+cd ..
+cp -R copy licserve
+cd licserve
+rm BitKeeper/log/repo_id
+bk id -r > newid
+cd ../copy
+echo "licenseurl: bk://localhost:$OLDP" >> BitKeeper/etc/config
+bk lease renew || exit 1
+$OLDBK/bk lease renew || exit 1
+cp ../repoconfig BitKeeper/etc/config
+echo "licenseurl: bk://localhost:$NEWP" >> BitKeeper/etc/config
+bk lease renew || exit 1
+$OLDBK/bk lease renew || exit 1
+cp ../repoconfig BitKeeper/etc/config
+echo "licenseurl: bk://localhost:$OLDP/licserve" >> BitKeeper/etc/config
+bk lease renew || exit 1
+$OLDBK/bk lease renew || exit 1
+cp ../repoconfig BitKeeper/etc/config
+echo "licenseurl: bk://localhost:$NEWP/licserve" >> BitKeeper/etc/config
+bk lease renew || exit 1
+$OLDBK/bk lease renew || exit 1
+echo OK
+
+echo $N Check lease proxy trigger compat ............................$NL
+cd "$HERE"
+mkdir -p BitKeeper/triggers || exit 1
+cd BitKeeper/triggers || exit 1
+cat <<'EOF' > pre-lease-proxy.global
+#!/bin/sh
+echo "My message to you is that the $BK_EVENT failed"
+exit 1
+EOF
+chmod +x pre-lease-proxy.global
+cd ../..
+echo "triggers: $HERE" >> .bk/config
+cd copy
+cp ../repoconfig BitKeeper/etc/config
+echo "licenseurl: bk://localhost:$OLDP/licserve" >> BitKeeper/etc/config
+bk lease renew 2> ERR && exit 1
+grep -q "My message" ERR && exit 1
+$OLDBK/bk lease renew 2> ERR && exit 1
+grep -q "My message" ERR && exit 1
+cp ../repoconfig BitKeeper/etc/config
+echo "licenseurl: bk://localhost:$NEWP/licserve" >> BitKeeper/etc/config
+bk lease renew 2> ERR && exit 1
+grep -q "My message" ERR || exit 1
+$OLDBK/bk lease renew 2> ERR && exit 1
+grep -q "My message" ERR && exit 1
+echo OK
+
+echo $N Show global lease proxy triggers do not fire if not in repo .$NL
+cp ../repoconfig BitKeeper/etc/config
+echo "licenseurl: bk://localhost:$OLDP" >> BitKeeper/etc/config
+bk lease renew || exit 1
+$OLDBK/bk lease renew || exit 1
+cp ../repoconfig BitKeeper/etc/config
+echo "licenseurl: bk://localhost:$NEWP" >> BitKeeper/etc/config
+bk lease renew || exit 1
+$OLDBK/bk lease renew || exit 1
+echo OK
+
 echo $N Stop new and old bkds .......................................$NL
 cd ..
 bk _kill bk://localhost:$OLDP

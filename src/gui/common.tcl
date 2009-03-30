@@ -716,3 +716,10 @@ proc AquaMenus {} \
 if {[tk windowingsystem] eq "aqua"} {
 	AquaMenus
 }
+
+proc GetTerminal {} {
+	set term xterm
+	if {[info exists ::env(TERMINAL)]} { set term $::env(TERMINAL) }
+	if {[auto_execok $term] eq ""} { return }
+	return $term
+}

@@ -15,6 +15,7 @@
 # Except stuff like editor/vi/etc that needs a tty
 
 cat <<EOF > SKIP
+_bkdping
 _locktest
 _newFile
 _register

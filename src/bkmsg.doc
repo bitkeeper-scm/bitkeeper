@@ -202,6 +202,8 @@ within the grace period.  This changeset will be created
 as normal, but you need to contact BitMover to purchase an
 updated license.
 
+CustomerID: #BKARG#
+
 BitMover can be reached at:
    +1-408-370-9911 (international and California)
    888-401-8808 (toll free in the US & Canada) 
@@ -223,6 +225,8 @@ $
 Your license for BitKeeper has expired.  You are beyond the
 grace period and you may not create any changesets until you
 have contacted BitMover to purchase a new license.
+
+License key being used: #BKARG#
 
 BitMover can be reached at:
    +1-408-370-9911 (international and California)
@@ -268,6 +272,10 @@ request:
 
 Please correct the problem or contact BitMover for help. support@bitmover.com
 $
+#lease-msg
+
+#BKARG#
+$
 #unexpected-response
 An unexpected response was received from the remote bkd when making a license
 request:
@@ -293,6 +301,8 @@ If you have BitKeeper installed, the proxy information may be seen with:
 $
 #rejected-proxy-trigger
 The lease proxy server rejected your request to use BitKeeper.
+
+#BKARG#
 Contact your site's BitKeeper administrator for more information.
 $
 #http-err
