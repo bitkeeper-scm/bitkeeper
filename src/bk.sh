@@ -637,6 +637,20 @@ _superset() {
 	exit 1
 }
 
+# Ping bitmover to tell them what bkd version we are running.
+# This is used so BitMover can tell the customer when that bkd needs
+# to be upgraded.
+__bkdping() {
+	( 
+	  echo bk://`bk gethost`:$_BKD_PORT
+	  bk version
+	  ARGS=
+	  test "X$_BKD_OPTS" = X || ARGS=" $_BKD_OPTS"
+	  echo "`bk gethost`|bkd$ARGS|`bk version -s`|`uname -s -r`"
+	) | bk _mail -u http://bitmover.com/cgi-bin/bkdmail \
+	    -s 'bkd version' bkd_version@bitmover.com >/dev/null 2>&1
+}
+
 # Dump the repository license, this is not the BKL.
 _repo_license() {
     	__cd2root

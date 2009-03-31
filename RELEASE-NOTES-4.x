@@ -1,3 +1,21 @@
+Release notes for BitKeeper version 4.3.1 (released 30-Mar-2009)
+
+This is a minor bugfix release, polishing various rough edges.
+
+Document the lease-proxy process (bk help config-etc) and the
+lease-proxy trigger[s] (bk help triggers).  BitMover recommends
+that customers who wish to use lease proxies upgrade both
+clients and servers to this release.
+
+Fix a bug in the timestamp db; some platforms, where printf(3)
+wasn't happy with 64 bit values, had problems.
+
+Minor fix to bk sfiles documentation.
+
+Fix an obscure bug in citool where on X11 based platforms if xterm was
+not installed, trying to use xterm to edit your file hung citool.
+
+===============================================================================
 Release notes for BitKeeper version 4.3a (released 12-Feb-2009)
 
 Fix a problem where difftool didn't work correctly when run from

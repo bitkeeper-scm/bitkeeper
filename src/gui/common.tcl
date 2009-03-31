@@ -721,6 +721,13 @@ if {[tk windowingsystem] eq "aqua"} {
 	AquaMenus
 }
 
+proc GetTerminal {} {
+	set term xterm
+	if {[info exists ::env(TERMINAL)]} { set term $::env(TERMINAL) }
+	if {[auto_execok $term] eq ""} { return }
+	return $term
+}
+
 proc isComponent {path} {
 	catch {exec bk product [file dirname $path]} res
 	return [string match "*component*" $res]
