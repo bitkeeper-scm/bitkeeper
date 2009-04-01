@@ -1100,7 +1100,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		rc = 1;
 		goto out;
 	}
-	EACH_STRUCT(comps, c) c->remotePresent = 1;
+	EACH_STRUCT(comps, c, i) c->remotePresent = 1;
 	freeLines(comps, 0);
 
 	/* now do the tip aliases */
@@ -1115,7 +1115,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		rc = 1;
 		goto out;
 	}
-	EACH_STRUCT(comps, c) c->alias = 1;
+	EACH_STRUCT(comps, c, i) c->alias = 1;
 	freeLines(comps, 0);
 
 	/*
@@ -1126,7 +1126,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 *  c->remotePresent  exists in remote currently
 	 *  c->new	   comp created in this range of csets (do clone)
 	 */
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		if (c->product) continue;
 		if (c->included) {
 			/* this component is included in push */
@@ -1187,7 +1187,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	START_TRANSACTION();
 	cwd = strdup(proj_cwd());
 	n->product->alias = 1;
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		/* skip cases with nothing to do */
 		if (!c->included || !c->present || !c->alias) continue;
 		proj_cd2product();

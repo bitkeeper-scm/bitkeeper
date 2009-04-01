@@ -1047,7 +1047,7 @@ apply:
 		freeLines(list, 0);
 
 		/* intersection and not here is an error */
-		EACH_STRUCT(local->comps, c) {
+		EACH_STRUCT(local->comps, c, i) {
 			// if it's here, no worries.
 			if (c->present || !c->included) continue;
 			// if they don't have it then no worries

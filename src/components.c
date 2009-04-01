@@ -132,7 +132,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	 * and fail early if we see any.
 	 */
 	i = 0;
-	EACH_STRUCT_INDEX(n->comps, cp, j) {
+	EACH_STRUCT(n->comps, cp, j) {
 		if (force) break; /* skip these checks */
 		if (cp->present && !cp->alias) {
 			unless (urls || (urls = parent_allp())) {
@@ -157,7 +157,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	 * so we can cleanup if needed.
 	 */
 	list = 0;		/* repos added */
-	EACH_STRUCT_INDEX(n->comps, cp, j) {
+	EACH_STRUCT(n->comps, cp, j) {
 		if (!cp->present && cp->alias) {
 			unless (urls || (urls = parent_allp())) {
 				fprintf(stderr,
@@ -206,7 +206,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	 * If we failed to add all repos then cleanup and exit.
 	 */
 	rc = 0;
-	EACH_STRUCT(n->comps, cp) {
+	EACH_STRUCT(n->comps, cp, i) {
 		if (!cp->present && cp->alias) {
 			fprintf(stderr, "%s: failed to fetch %s\n",
 			    prog, cp->path);
@@ -214,7 +214,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 	}
 	if (rc) {
-		EACH_STRUCT(list, cp) nested_rmtree(cp->path);
+		EACH_STRUCT(list, cp, i) nested_rmtree(cp->path);
 		return (rc);
 	}
 	freeLines(list, 0);
@@ -223,7 +223,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	 * Now after we sucessfully cloned all new components we can
 	 * remove the ones to be deleted.
 	 */
-	EACH_STRUCT_INDEX(n->comps, cp, j) {
+	EACH_STRUCT(n->comps, cp, j) {
 		if (cp->present && !cp->alias) {
 			if (nested_rmtree(cp->path)) {
 				fprintf(stderr, "%s: remove of %s failed\n",
@@ -236,7 +236,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	STOP_TRANSACTION();
 	freeLines(cav, free);
 	rc = 0;
-	EACH_STRUCT(n->comps, cp) {
+	EACH_STRUCT(n->comps, cp, i) {
 		if (!cp->present && cp->alias) {
 			fprintf(stderr, "%s: failed to fetch %s\n",
 			    prog, cp->path);
@@ -274,7 +274,7 @@ list_components(char **aliases, int here, int keys)
 
 	n = nested_init(0, 0, 0, NESTED_PENDING);
 	/* bk components (here|missing) [-k] */
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		if (c->product) continue;
 		if (here && !c->present) continue;
 		if (!here && c->present) continue;

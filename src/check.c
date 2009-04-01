@@ -212,7 +212,7 @@ check_main(int ac, char **av)
 		}
 		n = nested_init(proj_isProduct(0) ? cset : 0,
 		    0, 0, NESTED_PENDING);
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			if (!cp || strneq(c->path, cp, cplen)) {
 				subrepos = addLine(subrepos,
@@ -413,7 +413,7 @@ check_main(int ac, char **av)
 				    "check: unable to expand %s from %s\n",
 				    aliases[i], "BitKeeper/log/HERE");
 			}
-			EACH_STRUCT_INDEX(comps, c, j) {
+			EACH_STRUCT(comps, c, j) {
 				c->alias = 1;
 				unless (c->present) {
 					fprintf(stderr,
@@ -426,7 +426,7 @@ check_main(int ac, char **av)
 			freeLines(comps, 0);
 		}
 		freeLines(aliases, free);
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			if (!c->alias && c->present) {
 				fprintf(stderr,

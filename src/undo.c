@@ -160,11 +160,11 @@ err:		if (undo_list[0]) unlink(undo_list);
 			goto err;
 		}
 
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT(n->comps, c, i) {
 			if (c->present && c->included && !c->new) num++;
 		}
 		START_TRANSACTION();
-		EACH_STRUCT_INDEX(n->comps, c, j) {
+		EACH_STRUCT(n->comps, c, j) {
 			if (c->product || c->new) continue;
 			unless (c->present && c->included) continue;
 			vp = addLine(0, strdup("bk"));
@@ -194,7 +194,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 			proj_cd2product();
 		}
 		STOP_TRANSACTION();
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT(n->comps, c, i) {
 			unless (c->new && c->included) continue;
 			sysio(0,
 			    SFILES, 0, "bk", "sfiles", "-gcxp", c->path, SYS);
@@ -208,7 +208,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 			}
 			unlink(SFILES);
 		}
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT(n->comps, c, i) {
 			if (c->new && c->included) rmtree(c->path);
 		}
 
@@ -219,7 +219,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		cmd = aprintf("bk names %s -", qflag);
 		f = popen(cmd, "w");
 		free(cmd);
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			if (c->new || !c->included) continue;
 			fprintf(f, "%s/SCCS/s.ChangeSet\n", c->path);

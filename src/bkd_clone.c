@@ -142,7 +142,7 @@ cmd_clone(int ac, char **av)
 			nested_free(n);
 			goto out;
 		}
-		EACH_STRUCT(n->comps, cp) {
+		EACH_STRUCT(n->comps, cp, i) {
 			if (cp->alias && !cp->present) {
 				printf(
 				    "ERROR-unable to expand aliases. "

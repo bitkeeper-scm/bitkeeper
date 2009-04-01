@@ -64,9 +64,8 @@
 #define	EACH_START(x, s, i)	\
     for (i = ((x) < 1) ? 1 : (x); (s) && (i < LSIZ(s)) && (s)[i]; i++)
 #define	EACH(s)				EACH_INDEX(s, i)
-#define	EACH_STRUCT_INDEX(s, c, i) \
+#define	EACH_STRUCT(s, c, i) \
     for (i=1; (s) && (i < LSIZ(s)) && ((c) = (void *)(s)[i]); i++)
-#define	EACH_STRUCT(s, c)		EACH_STRUCT_INDEX(s, c, i)
 #define	emptyLines(s)			(!s || !s[1])
 #define	str_empty(s)			(!s || !s[2])
 #define	data_empty(s)			(!s || !s[2])

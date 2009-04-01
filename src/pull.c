@@ -640,7 +640,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	comps = aliasdb_expand(n, h, rmt_aliases);
 	assert(comps);
 	aliasdb_free(h);
-	EACH_STRUCT(comps, c) c->remotePresent = 1;
+	EACH_STRUCT(comps, c, i) c->remotePresent = 1;
 	n->product->remotePresent = 1;
 	freeLines(comps, 0);
 
@@ -656,7 +656,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 		goto out;
 	}
 	freeLines(local_aliases, free);
-	EACH_STRUCT(comps, c) c->alias = 1;
+	EACH_STRUCT(comps, c, i) c->alias = 1;
 	n->product->alias = 1;	/* we want the product too */
 	freeLines(comps, 0);
 
@@ -668,7 +668,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	 *  c->remotePresent  exists in remote currently
 	 *  c->new	   comp created in this range of csets (do clone)
 	 */
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		if (c->included) {
 			/* this component is included in pull */
 			if (c->alias) {
@@ -727,7 +727,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 		rc = 1;
 		goto out;
 	}
-	EACH_STRUCT_INDEX(n->comps, c, j) {
+	EACH_STRUCT(n->comps, c, j) {
 		proj_cd2product();
 		if (c->product || !c->included || !c->alias) continue;
 		unless (opts.quiet) {
@@ -796,7 +796,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 			rc = 1;
 			goto out;
 		}
-		EACH_STRUCT_INDEX(n->comps, c, j) {
+		EACH_STRUCT(n->comps, c, j) {
 			char	*from, *to;
 			char	*dfile_to, *dfile_from;
 			char	*t;

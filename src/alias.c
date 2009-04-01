@@ -570,19 +570,19 @@ aliasdb_expand(nested *n, hash *aliasdb, char **aliases)
 
 	assert(n);
 	unless (aliases) return (0);
-	EACH_STRUCT(n->comps, c) c->nlink = 0;
+	EACH_STRUCT(n->comps, c, i) c->nlink = 0;
 	EACH_INDEX(aliases, j) {
 		unless (comps = aliasdb_expandOne(n, aliasdb, aliases[j])) {
 			return (0);
 		}
-		EACH_STRUCT(comps, c) {
+		EACH_STRUCT(comps, c, i) {
 			assert(!c->product);
 			c->nlink += 1; // deprecated
 		}
 		freeLines(comps, 0);
 	}
 	comps = 0;
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		if (c->nlink) comps = addLine(comps, c);
 	}
 	unless (comps) comps = allocLines(2); /* always return something */
@@ -621,7 +621,7 @@ aliasdb_expandOne(nested *n, hash *aliasdb, char *alias)
 		goto err;
 	}
 	/* output subset of n->comps in n->comps order */
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		if (hash_fetchStr(keys, c->rootkey)) {
 			assert(!c->product);
 			comps = addLine(comps, c);
@@ -655,7 +655,7 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, opts *op)
 			comps = n->comps;
 		}
 
-		EACH_STRUCT(comps, c) {
+		EACH_STRUCT(comps, c, i) {
 			if (c->product ||
 			    (op->missing && c->present) ||
 			    (op->here && !c->present)) {
@@ -725,7 +725,7 @@ preprint:
 			val = items[i];
 			sawall = 1;
 			comps = aliasdb_expandOne(n, aliasdb, val);
-			EACH_STRUCT_INDEX(comps, c, j) {
+			EACH_STRUCT(comps, c, j) {
 				unless (c->present) {
 					sawall = 0;
 					break;
@@ -768,7 +768,7 @@ expand(nested *n, hash *aliasdb, hash *keys, hash *seen, char *alias)
 	}
 
 	if (streq("all", alias)) {
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			hash_insertStr(keys, c->rootkey, 0);
 		}
@@ -824,7 +824,7 @@ value(nested *n, hash *keys, char *alias)
 		/* XXX: is this needed */
 		if (strneq(alias, "./", 2)) alias += 2;
 
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			if (match_one(c->path, alias, 0)) {
 				hash_insertStr(keys, c->rootkey, 0);
@@ -969,7 +969,7 @@ root:			if (c->product) {
 				    prog, alias);
 			}
 			if (strneq(alias, "./", 2)) alias += 2;
-			EACH_STRUCT_INDEX(n->comps, c, j) {
+			EACH_STRUCT(n->comps, c, j) {
 				if (c->product) continue;
 				if (match_one(c->path, alias, 0)) {
 					addkeys = addLine(addkeys,

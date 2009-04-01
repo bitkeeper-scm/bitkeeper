@@ -157,7 +157,7 @@ rclone_ensemble(remote *r)
 	}
 	n->product->alias = 1;
 	errs = 0;
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		if (c->alias && !c->present) {
 			fprintf(stderr,
 			    "%s: component %s not present.\n",
@@ -170,7 +170,7 @@ rclone_ensemble(remote *r)
 		rc = 1;
 		goto out;
 	}
-	EACH_STRUCT_INDEX(n->comps, c, j) {
+	EACH_STRUCT(n->comps, c, j) {
 		unless (c->alias) continue;
 		proj_cd2product();
 		vp = addLine(0, strdup("bk"));

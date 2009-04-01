@@ -107,7 +107,7 @@ usage:			system("bk help -s here");
 		}
 	}
 	unless (want) want = L_PATH;
-	EACH_STRUCT(n->comps, cp) {
+	EACH_STRUCT(n->comps, cp, i) {
 		if (!product && cp->product) continue;
 		unless (cp->included) continue;
 		if (n->alias && !cp->nlink && !cp->product) continue;
@@ -441,7 +441,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 		n->oldtip = t;
 
 		/* swap deltakey and lowerkey in each component */
-		EACH_STRUCT(n->comps, c) {
+		EACH_STRUCT(n->comps, c, i) {
 			if (c->included) {
 				t = c->deltakey;
 				c->deltakey = c->lowerkey;
@@ -469,7 +469,7 @@ nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
 	comp	*c;
 
 	unless (comps = aliasdb_expand(n, aliasdb, aliases)) return (-1);
-	EACH_STRUCT(comps, c) c->alias = 1;
+	EACH_STRUCT(comps, c, i) c->alias = 1;
 	freeLines(comps, 0);
 	return (0);
 }
@@ -492,7 +492,7 @@ nested_findMD5(nested *n, char *md5rootkey)
 	char	buf[MD5LEN];
 
 	assert(n);
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		sccs_key2md5(c->rootkey, c->rootkey, buf);
 		if (streq(buf, md5rootkey)) return (c);
 	}
@@ -516,7 +516,7 @@ nested_findDir(nested *n, char *dir)
 	int	i;
 
 	unless (n && dir) return (0);
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		if (streq(dir, c->path)) return (c);
 	}
 	return (0);
@@ -602,7 +602,7 @@ nested_each(int quiet, int ac, char **av)
 		freeLines(aliases, free);
 		aliases = 0;
 	}
-	EACH_STRUCT(n->comps, cp) {
+	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->present) continue;
 		if (!product && cp->product) continue;
 		if (n->alias && !cp->nlink && !cp->product) continue;
@@ -694,7 +694,7 @@ nested_deep(char *path)
 	n = nested_init(0, 0, 0, NESTED_PENDING);
 	assert(path);
 	len = strlen(path);
-	EACH_STRUCT(n->comps, c) {
+	EACH_STRUCT(n->comps, c, i) {
 		unless (strneq(c->path, path, len) && (c->path[len] == '/')) {
 			continue;
 		}
