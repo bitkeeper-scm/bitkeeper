@@ -73,6 +73,7 @@ typedef struct {
 } comp;
 
 struct nested {
+	char	**here;		// the contents of the here file
 	char	**comps;	// addlines of pointers to components
 	char	*oldtip;	// tip before revs (new tip for undo)
 	char	*tip;		// newest cset in revs
@@ -98,7 +99,8 @@ int	isComponent(char *path);
 
 nested	*nested_init(sccs *cset, char *rev, char **revs, u32 flags);
 void	nested_free(nested *n);
-int	nested_filterAlias(nested *n, hash *aliasdb, char **aliases);
+int	nested_aliases(nested *n, char *rev, char **aliases, char *cwd,
+	    int pending);
 comp	*nested_findKey(nested *n, char *rootkey);
 comp	*nested_findMD5(nested *n, char *md5rootkey);
 comp	*nested_findDir(nested *n, char *dir);

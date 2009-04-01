@@ -100,8 +100,7 @@ usage:			system("bk help -s here");
 		goto out;
 	}
 	if (aliases) {
-		if (aliasdb_chkAliases(n, 0, &aliases, cwd) ||
-		    nested_filterAlias(n, 0, aliases)) {
+		if (nested_aliases(n, n->tip, aliases, cwd, n->pending)) {
 			rc = 1;
 			goto out;
 		}
@@ -110,7 +109,7 @@ usage:			system("bk help -s here");
 	EACH_STRUCT(n->comps, cp, i) {
 		if (!product && cp->product) continue;
 		unless (cp->included) continue;
-		if (n->alias && !cp->nlink && !cp->product) continue;
+		if (n->alias && !cp->alias && !cp->product) continue;
 		if ((flags & NESTED_UNDO) && cp->new && !(want & L_NEW)) {
 			continue;
 		}
@@ -218,6 +217,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	}
 	n->cset = cset;
 	assert(CSET(cset) && proj_isProduct(cset->proj));
+	n->here = aliases_here(0);	/* cd2product, so get our 'HERE' */
 
 	n->product = c = new(comp);
 	c->n = n;
@@ -460,18 +460,29 @@ err:				if (revsDB) mdbm_close(revsDB);
 /*
  * Any error messages are printed to stderr (or bkd) directly
  * returns -1 if aliases fails to expand
+ * NOTE: product is not part of the aliases
  */
-int
-nested_filterAlias(nested *n, hash *aliasdb, char **aliases)
-{
-	char	**comps;
-	int	i;
-	comp	*c;
 
-	unless (comps = aliasdb_expand(n, aliasdb, aliases)) return (-1);
-	EACH_STRUCT(comps, c, i) c->alias = 1;
+int
+nested_aliases(nested *n, char *rev, char **aliases, char *cwd, int pending)
+{
+	int	i;
+	int	rc = -1;
+	comp	*c;
+	char	**comps = 0;
+	hash	*aliasdb = 0;
+
+	unless (aliasdb = aliasdb_init(n, n->cset->proj, rev, pending)) {
+		goto err;
+	}
+	if (aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) goto err;
+	unless (comps = aliasdb_expand(n, aliasdb, aliases)) goto err;
+	EACH_STRUCT(n->comps, c, i) c->alias = (c->nlink != 0);
+	rc = 0;
+err:
 	freeLines(comps, 0);
-	return (0);
+	aliasdb_free(aliasdb);
+	return (rc);
 }
 
 private int
@@ -543,6 +554,7 @@ nested_free(nested *n)
 	if (n->tip) free(n->tip);
 	if (n->oldtip) free(n->oldtip);
 	if (n->compdb) hash_free(n->compdb);
+	if (n->here) freeLines(n->here, free);
 	free(n);
 }
 
@@ -594,8 +606,8 @@ nested_each(int quiet, int ac, char **av)
 	sccs_close(n->cset);	/* win32 */
 	if (aliases) {
 		// XXX add error checking when the error paths get made
-		if (aliasdb_chkAliases(n, 0, &aliases, proj_cwd()) ||
-		    nested_filterAlias(n, 0, aliases)) {
+		if (nested_aliases(
+		    n, n->tip, aliases, proj_cwd(), n->pending)) {
 		    	errors = 1;
 			goto err;
 		}
@@ -605,7 +617,7 @@ nested_each(int quiet, int ac, char **av)
 	EACH_STRUCT(n->comps, cp, i) {
 		unless (cp->present) continue;
 		if (!product && cp->product) continue;
-		if (n->alias && !cp->nlink && !cp->product) continue;
+		if (n->alias && !cp->alias && !cp->product) continue;
 		unless (cp->included) continue;
 		unless (quiet) {
 			printf("#### %s ####\n", cp->path);

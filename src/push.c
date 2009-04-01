@@ -1058,10 +1058,8 @@ done:
 private int
 push_ensemble(remote *r, char *rev_list, char **envVar)
 {
-	hash	*h = 0;
 	nested	*n = 0;
 	comp	*c;
-	char	**comps;
 	char	**revs;
 	char	**vp;
 	char	*name, *url, *cwd = 0;
@@ -1091,32 +1089,19 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 */
 	assert(opts.aliases);
 	assert(n->oldtip); /* XXX: works in push but not pull */
-	unless (h = aliasdb_init(n, 0, n->oldtip, 0)) {
+	if (nested_aliases(n, n->oldtip, opts.aliases, 0, 0)) {
 		rc = 1;
 		goto out;
 	}
-	unless (comps = aliasdb_expand(n, h, opts.aliases)) {
-		// this should pass
-		rc = 1;
-		goto out;
-	}
-	EACH_STRUCT(comps, c, i) c->remotePresent = 1;
-	freeLines(comps, 0);
+	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
 
 	/* now do the tip aliases */
-	aliasdb_free(h);
-	unless (h = aliasdb_init(n, 0, n->tip, 0)) {
-		rc = 1;
-		goto out;
-	}
-	unless (comps = aliasdb_expand(n, h, opts.aliases)) {
+	if (nested_aliases(n, n->tip, opts.aliases, 0, 0)) {
 		// this might fail if an alias is not longer valid
 		// XXX error message? (will get something from aliasdb_expand)
 		rc = 1;
 		goto out;
 	}
-	EACH_STRUCT(comps, c, i) c->alias = 1;
-	freeLines(comps, 0);
 
 	/*
 	 * Find the cases where the push should fail:
@@ -1228,7 +1213,6 @@ out:
 		free(cwd);
 	}
 	free(url);
-	aliasdb_free(h);
 	nested_free(n);
 	STOP_TRANSACTION();
 	return (rc);

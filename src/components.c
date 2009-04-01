@@ -124,7 +124,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 		freeLines(list, free);
 	}
-	nested_filterAlias(n, 0, aliases);
+	nested_aliases(n, n->tip, aliases, 0, n->pending);
 	n->product->alias = 1;
 
 	/*

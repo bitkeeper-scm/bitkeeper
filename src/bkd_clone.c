@@ -136,8 +136,7 @@ cmd_clone(int ac, char **av)
 
 		n = nested_init(s, rev, 0, flags);
 		assert(aliases);
-		if (aliasdb_chkAliases(n, 0, &aliases, proj_cwd()) ||
-		    nested_filterAlias(n, 0, aliases)) {
+		if (nested_aliases(n, n->tip, aliases, proj_cwd(), 0)) {
 			printf("ERROR-unable to expand aliases.\n");
 			nested_free(n);
 			goto out;

@@ -395,7 +395,7 @@ check_main(int ac, char **av)
 	 * aliases in the middle of a multi-clone */
 	if (!proj_isResync(0) &&
 	    proj_isProduct(0) && !getenv("_BK_TRANSACTION")) {
-		char	**aliases, **comps;
+		char	**comps;
 		nested	*n;
 		comp	*c;
 		int	j, err = 0;
@@ -404,14 +404,13 @@ check_main(int ac, char **av)
 		 * check that whatever we have in log/HERE
 		 * is consistent with what's really here
 		 */
-		aliases = aliases_here(0);
 		n = nested_init(0, 0, 0, NESTED_PENDING);
 		assert(n);
-		EACH(aliases) {
-			unless (comps = aliasdb_expandOne(n, 0, aliases[i])) {
+		EACH(n->here) {
+			unless (comps = aliasdb_expandOne(n, 0, n->here[i])) {
 				fprintf(stderr,
 				    "check: unable to expand %s from %s\n",
-				    aliases[i], "BitKeeper/log/HERE");
+				    n->here[i], "BitKeeper/log/HERE");
 			}
 			EACH_STRUCT(comps, c, j) {
 				c->alias = 1;
@@ -419,13 +418,12 @@ check_main(int ac, char **av)
 					fprintf(stderr,
 					    "check: error expanding alias '%s' "
 					    "because '%s' is not present\n",
-					    aliases[i], c->path);
+					    n->here[i], c->path);
 					err = 1;
 				}
 			}
 			freeLines(comps, 0);
 		}
-		freeLines(aliases, free);
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->product) continue;
 			if (!c->alias && c->present) {

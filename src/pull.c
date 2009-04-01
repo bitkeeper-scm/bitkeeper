@@ -599,16 +599,12 @@ pull_ensemble(remote *r, char **rmt_aliases)
 {
 	char	*url;
 	char	**vp;
-	char	**comps = 0;
-	char	**local_aliases;
 	sccs	*s = 0;
 	delta	*d;
 	char	**revs = 0;
 	char	*t;
 	nested	*n = 0;
 	comp	*c;
-	hash	*h;
-	project	*presync;
 	FILE	*f, *idfile;
 	int	i, j, rc = 0, errs = 0;
 	char	idname[MAXPATH];
@@ -617,8 +613,6 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	unless (r->params) r->params = hash_new(HASH_MEMHASH);
 	url = remote_unparse(r);
 	START_TRANSACTION();
-	presync = proj_init(ROOT2RESYNC);
-	assert(presync);
 	s = sccs_init(ROOT2RESYNC "/" CHANGESET, INIT_NOCKSUM);
 	f = fopen(ROOT2RESYNC "/" CSETS_IN, "r");
 	while (t = fgetline(f)) {
@@ -635,19 +629,11 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	 * bits.  Then we lookup the local HERE file in the new merged
 	 * tip of aliases to find which components should be local.
 	 */
-	h = aliasdb_init(n, presync, n->tip, 0);
-	assert(h);
-	comps = aliasdb_expand(n, h, rmt_aliases);
-	assert(comps);
-	aliasdb_free(h);
-	EACH_STRUCT(comps, c, i) c->remotePresent = 1;
+	nested_aliases(n, n->tip, rmt_aliases, 0, 0);
+	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
 	n->product->remotePresent = 1;
-	freeLines(comps, 0);
 
-	h = aliasdb_init(n, presync, "+", 0);
-	assert(h);
-	local_aliases = aliases_here(0);
-	unless (comps = aliasdb_expand(n, h, local_aliases)) {
+	if (nested_aliases(n, 0, n->here, 0, NESTED_PENDING)) {
 		/*
 		 * this can fail
 		 */
@@ -655,10 +641,7 @@ pull_ensemble(remote *r, char **rmt_aliases)
 		rc = 1;
 		goto out;
 	}
-	freeLines(local_aliases, free);
-	EACH_STRUCT(comps, c, i) c->alias = 1;
 	n->product->alias = 1;	/* we want the product too */
-	freeLines(comps, 0);
 
 	/*
 	 * Find the cases where the push should fail:
