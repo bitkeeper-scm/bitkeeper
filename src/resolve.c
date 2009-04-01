@@ -447,6 +447,7 @@ nameOK(opts *opts, sccs *s)
 	char	buf[MAXPATH];
 	sccs	*local = 0;
 	int	ret;
+	project	*proj;
 
 	if (CSET(s)) return (1); /* ChangeSet won't have conflicts */
 
@@ -460,9 +461,10 @@ nameOK(opts *opts, sccs *s)
 	} else {
 		strcpy(realname, path);
 	}
+	proj = proj_init(RESYNC2ROOT);
 	if (streq(path, realname) &&
 	    (local = sccs_init(path, INIT_NOCKSUM|INIT_MUSTEXIST)) &&
-	    HAS_SFILE(local)) {
+	    HAS_SFILE(local) && (local->proj == proj)) {
 		if (EDITED(local) && sccs_hasDiffs(local, SILENT, 1)) {
 			fprintf(stderr,
 			    "Warning: %s is modified, will not overwrite it.\n",
@@ -477,8 +479,10 @@ nameOK(opts *opts, sccs *s)
 			s->gfile, streq(path, buf) ? "" : "don't ");
 		}
 		sccs_free(local);
+		proj_free(proj);
 		return (streq(path, buf));
 	}
+	proj_free(proj);
 	if (local) sccs_free(local);
 
 	chdir(RESYNC2ROOT);
