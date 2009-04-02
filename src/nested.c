@@ -100,7 +100,7 @@ usage:			system("bk help -s here");
 		goto out;
 	}
 	if (aliases) {
-		if (nested_aliases(n, n->tip, aliases, cwd, n->pending)) {
+		if (nested_aliases(n, n->tip, &aliases, cwd, n->pending)) {
 			rc = 1;
 			goto out;
 		}
@@ -477,7 +477,7 @@ nested_here(project *p)
  */
 
 int
-nested_aliases(nested *n, char *rev, char **aliases, char *cwd, int pending)
+nested_aliases(nested *n, char *rev, char ***aliases, char *cwd, int pending)
 {
 	int	i;
 	int	rc = -1;
@@ -488,8 +488,8 @@ nested_aliases(nested *n, char *rev, char **aliases, char *cwd, int pending)
 	unless (aliasdb = aliasdb_init(n, n->cset->proj, rev, pending)) {
 		goto err;
 	}
-	if (aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) goto err;
-	unless (comps = aliasdb_expand(n, aliasdb, aliases)) goto err;
+	if (aliasdb_chkAliases(n, aliasdb, aliases, cwd)) goto err;
+	unless (comps = aliasdb_expand(n, aliasdb, *aliases)) goto err;
 	EACH_STRUCT(n->comps, c, i) c->alias = (c->nlink != 0);
 	rc = 0;
 err:
@@ -620,7 +620,7 @@ nested_each(int quiet, int ac, char **av)
 	if (aliases) {
 		// XXX add error checking when the error paths get made
 		if (nested_aliases(
-		    n, n->tip, aliases, proj_cwd(), n->pending)) {
+		    n, n->tip, &aliases, proj_cwd(), n->pending)) {
 		    	errors = 1;
 			goto err;
 		}

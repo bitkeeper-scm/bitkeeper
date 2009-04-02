@@ -629,11 +629,11 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	 * bits.  Then we lookup the local HERE file in the new merged
 	 * tip of aliases to find which components should be local.
 	 */
-	nested_aliases(n, n->tip, rmt_aliases, 0, 0);
+	nested_aliases(n, n->tip, &rmt_aliases, 0, 0);
 	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
 	n->product->remotePresent = 1;
 
-	if (nested_aliases(n, 0, n->here, 0, NESTED_PENDING)) {
+	if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)) {
 		/*
 		 * this can fail
 		 */

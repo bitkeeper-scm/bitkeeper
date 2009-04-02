@@ -1089,14 +1089,14 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 */
 	assert(opts.aliases);
 	assert(n->oldtip); /* XXX: works in push but not pull */
-	if (nested_aliases(n, n->oldtip, opts.aliases, 0, 0)) {
+	if (nested_aliases(n, n->oldtip, &opts.aliases, 0, 0)) {
 		rc = 1;
 		goto out;
 	}
 	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
 
 	/* now do the tip aliases */
-	if (nested_aliases(n, n->tip, opts.aliases, 0, 0)) {
+	if (nested_aliases(n, n->tip, &opts.aliases, 0, 0)) {
 		// this might fail if an alias is not longer valid
 		// XXX error message? (will get something from aliasdb_expand)
 		rc = 1;
