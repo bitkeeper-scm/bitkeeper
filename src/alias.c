@@ -306,19 +306,6 @@ err:
 	return (rc);
 }
 
-char **
-aliases_here(project *p)
-{
-	char	buf[MAXPATH];
-	char	**here;
-
-	assert(proj_isProduct(p));
-	concat_path(buf, proj_root(p), "BitKeeper/log/HERE");
-	if (here = file2Lines(0, buf)) return (here);
-	concat_path(buf, proj_root(p), "BitKeeper/log/COMPONENTS");
-	return (file2Lines(0, buf));
-}
-
 hash	*
 aliasdb_init(nested *n, project *p, char *rev, int pending)
 {
@@ -523,6 +510,14 @@ dbChk(nested *n, hash *aliasdb)
 	// Used to have n->revs, but now the list is full
 	if (rmAlias || !aliasdb) return (0);
 
+#ifdef BREAK_UNDO
+	// Check the HERE file entry
+	if (errors = aliasdb_chkAliases(n, aliasdb, &n->here, 0)) {
+		error("%s: 'HERE' file failed integrity check\n", prog);
+		total += errors;
+	}
+#endif
+
 	EACH_HASH(aliasdb) {
 		key = aliasdb->kptr;
 		if (reserved = chkReserved(key, 0)) {
@@ -696,7 +691,9 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, opts *op)
 	if (i = chkReserved(alias, 1)) {
 		assert(i >= 0);
 		if (streq(alias, "here")) {
-			items = aliases_here(n->cset->proj);
+			EACH_INDEX(n->here, j) {
+				items = addLine(items, strdup(n->here[j]));
+			}
 			goto preprint;
 		}
 		unless (streq(alias, "default")) {
@@ -862,13 +859,10 @@ dbLoad(nested *n, hash *aliasdb)
 int
 aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 {
-	int	i, reserved, errors = 0, fix = (cwd != 0);
+	int	i, j, reserved, errors = 0, fix = (cwd != 0);
 	comp	*c;
 	char	*alias, **aliases;
-#ifndef	CRAZY_GLOB
-	char	**addkeys = 0;
-	int	j;
-#endif
+	char	**addkeys = 0, **globkeys = 0;
 
 	unless (aliasdb || (aliasdb = dbLoad(n, 0))) {
 		error("%s: cannot initial aliasdb\n", prog);
@@ -886,7 +880,10 @@ aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 			} else if (streq(alias, "here") ||
 			    streq(alias, "there")) {
 				if (fix) {
-					addkeys = aliases_here(n->cset->proj);
+					EACH_INDEX(n->here, j) {
+						addkeys = addLine(
+						    addkeys, n->here[j]);
+					}
 					removeLineN(aliases, i, free);
 					i--;
 				} else {
@@ -969,17 +966,25 @@ root:			if (c->product) {
 				    prog, alias);
 			}
 			if (strneq(alias, "./", 2)) alias += 2;
+			assert(!globkeys);
 			EACH_STRUCT(n->comps, c, j) {
 				if (c->product) continue;
 				if (match_one(c->path, alias, 0)) {
-					addkeys = addLine(addkeys,
-					    strdup(c->rootkey));
+					globkeys = addLine(
+					    globkeys, c->rootkey);
 				}
 			}
-			if (emptyLines(addkeys)) {
+			unless (globkeys) {
 				error("%s: %s does not match any components.\n",
 				    prog, alias);
 				errors++;
+			} else {
+				EACH_INDEX(globkeys, j) {
+					addkeys = addLine(
+					    addkeys, globkeys[j]);
+				}
+				freeLines(globkeys, 0);
+				globkeys = 0;
 			}
 			removeLineN(aliases, i, free);
 			i--;
@@ -1006,15 +1011,11 @@ root:			if (c->product) {
 		}
 		errors++;
 	}
-	if (errors) {
-		freeLines(addkeys, free);
-	} else {
-		EACH(addkeys) {
-			aliases = addLine(aliases, addkeys[i]);
-		}
-		freeLines(addkeys, 0);
-		*paliases = aliases;
+	EACH(addkeys) {
+		aliases = addLine(aliases, strdup(addkeys[i]));
 	}
+	freeLines(addkeys, 0);
+	*paliases = aliases;
 	return (errors);
 }
 

@@ -217,7 +217,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	}
 	n->cset = cset;
 	assert(CSET(cset) && proj_isProduct(cset->proj));
-	n->here = aliases_here(0);	/* cd2product, so get our 'HERE' */
+	n->here = nested_here(0);	/* cd2product, so get our 'HERE' */
 
 	n->product = c = new(comp);
 	c->n = n;
@@ -455,6 +455,19 @@ err:				if (revsDB) mdbm_close(revsDB);
 	chdir(cwd);
 	free(cwd);
 	return (n);
+}
+
+char **
+nested_here(project *p)
+{
+	char	buf[MAXPATH];
+	char	**here;
+
+	assert(proj_isProduct(p));
+	concat_path(buf, proj_root(p), "BitKeeper/log/HERE");
+	if (here = file2Lines(0, buf)) return (here);
+	concat_path(buf, proj_root(p), "BitKeeper/log/COMPONENTS");
+	return (file2Lines(0, buf));
 }
 
 /*

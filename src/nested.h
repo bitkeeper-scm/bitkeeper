@@ -110,6 +110,7 @@ int	nested_each(int quiet, int ac, char **av);
 void	nested_check(void);
 int	nested_emptyDir(char *dir);
 int	nested_rmtree(char *dir);
+char	**nested_here(project *p);
 
 /* alias.h */
 
@@ -121,6 +122,5 @@ char	**aliasdb_expandOne(nested *n, hash *aliasdb, char *alias);
 void	aliasdb_free(hash *db);
 int	aliasdb_chkAliases(nested *n, hash *aliasdb,
 	    char ***paliases, char *cwd);
-char	**aliases_here(project *p);
 
 #endif	// _NESTED_H

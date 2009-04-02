@@ -112,6 +112,9 @@ bk pending | grep -q "new-comp/ChangeSet@1.2" || {
 }
 echo OK
 
+bk components rm -q new-comp
+# because default is still all, removing the component means it is
+# still there, so really remove it!
 rm -rf new-comp
 
 echo $N id -p on a component should work.............................$NL
@@ -694,6 +697,7 @@ cmpfiles WANT GOT
 echo OK
 
 # Done with pending component
+bk components rm -q gdb/pendingdeepnest
 rm -fr gdb/pendingdeepnest gdb/extradeepnest
 
 echo $N bk _nested for undo -r+ .....................................$NL

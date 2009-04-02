@@ -82,7 +82,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		fprintf(stderr, "%s: must be in an ensemble.\n", prog);
 		return (1);
 	}
-	aliases = aliases_here(0);
+	aliases = nested_here(0);
 	if ((here = streq(subcmd, "here"))  || streq(subcmd, "missing")) {
 		if (av[optind]) goto usage;
 		rc = list_components(aliases, here, keys);

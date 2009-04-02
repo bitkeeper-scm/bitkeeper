@@ -264,7 +264,7 @@ cmd_pull_part2(int ac, char **av)
 		goto done;
 	}
 	if (proj_isProduct(0)) {
-		char	**comps = aliases_here(0);
+		char	**comps = nested_here(0);
 
 		printf("@HERE@\n");
 		EACH(comps) printf("%s\n", comps[i]);

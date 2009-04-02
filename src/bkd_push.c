@@ -86,7 +86,7 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
-	if (product && (aliases = aliases_here(0))) {
+	if (product && (aliases = nested_here(0))) {
 		out("@HERE@\n");
 		EACH(aliases) {
 			out(aliases[i]);
