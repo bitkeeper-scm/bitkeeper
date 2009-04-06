@@ -16413,6 +16413,7 @@ loadDB(char *file, int (*want)(char *), int style)
 	FILE	*f = 0;
 	char	*v;
 	int	idcache = 0, first = 1, quiet = 1;
+	char	*cwd = 0, *t;
 	int	flags;
 	char	buf[MAXLINE];
 	u32	sum = 0;
@@ -16427,9 +16428,20 @@ recache:		first = 0;
 			sum = 0;
 			if (f) fclose(f);
 			if (DB) mdbm_close(DB), DB = 0;
+			unless (streq(file, IDCACHE)) {
+				cwd = strdup(proj_cwd());
+				t = strrchr(file, '/');
+				*t = 0;
+				chdir(file);
+				*t = '/';
+			}
 			if (sccs_reCache(quiet)) {
 				fprintf(stderr, "Failed to rebuild idcache\n");
 				goto out;
+			}
+			if (cwd) {
+				chdir(cwd);
+				free(cwd);
 			}
 			goto again;
 		}
