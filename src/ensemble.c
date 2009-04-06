@@ -727,7 +727,12 @@ ensemble_nestedCheck(void)
 	/* directly nested, let sfiles find it naturally. */
 	if (p == prod) return;	/* use after free ok */
 
-	rel = proj_relpath(prod, proj_root(0));
+	if (rel = proj_comppath(0)) {
+		rel = strdup(rel);
+	} else {
+		/* something that is not a component */
+		rel = proj_relpath(prod, proj_root(0));
+	}
 	hints = aprintf("%s/BitKeeper/log/deep-nests", proj_root(prod));
 	paths = file2Lines(0, hints);
 	unless (removeLine(paths, rel, free)) { /* have rel? */
@@ -907,9 +912,9 @@ attach_main(int ac, char **av)
 	int	commit = 1, quiet = 0, rc = 1;
 	int	c, i;
 	char	*tmp;
-	char	*relpath = 0;
 	char	**list = 0;
 	FILE	*f;
+	char	relpath[MAXPATH];
 	char	buf[MAXLINE];
 	char	pwd[MAXLINE];
 
@@ -949,7 +954,9 @@ usage:		    	system("bk help -s attach");
 			    "attach: %s is already a component\n", av[optind]);
 			goto err;
 		}
-		relpath = proj_relpath(proj_product(0), ".");
+		tmp = proj_relpath(proj_product(0), ".");
+		getRealName(tmp, 0, relpath);
+		free(tmp);
 		sprintf(buf,
 		    "bk newroot %s -y'attach %s'", quiet ? "-q" : "", relpath);
 		if (system(buf)) {
@@ -972,11 +979,7 @@ usage:		    	system("bk help -s attach");
 		system(buf);
 		proj_reset(0);	/* reset proj_isComponent() */
 		ensemble_nestedCheck();
-		if (commit) {
-			list = addLine(list, relpath);
-		} else {
-			free(relpath);
-		}
+		if (commit) list = addLine(list, strdup(relpath));
 		optind++;
 	}
 	if (commit) {

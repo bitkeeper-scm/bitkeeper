@@ -536,9 +536,12 @@ bk -r check -ac || {
 echo OK
 
 echo $N See if sfiles working with deep nested ......................$NL
+# manual component rename
 mv gcc4 gdb
 bk edit $Q gdb/gcc4/ChangeSet
 bk delta $Q -yrename gdb/gcc4/ChangeSet
+echo gdb/gcc4 > gdb/gcc4/BitKeeper/log/COMPONENT
+
 # should work but doesn't at the moment
 bk sfiles | grep -q gdb/gcc4 && {
 	echo fix test
