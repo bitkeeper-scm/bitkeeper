@@ -120,7 +120,7 @@ echo OK
 
 echo "---- nested tests"
 
-CNT=21
+CNT=24
 echo $N "Count the inits for a 'bk clone' ($CNT)........................"$NL
 cd "$HERE"
 nested nest
@@ -139,7 +139,7 @@ bk commit $Q -ynew || exit 1
 check_cnt
 echo OK
 
-CNT=11
+CNT=12
 echo $N "Count the inits for a 'bk -P commit' ($CNT) ..................."$NL
 rm -f "$FILE"
 bk -P commit $Q -ynew || exit 1
@@ -177,7 +177,7 @@ bk changes -Rv > /dev/null || exit 1
 check_cnt
 echo OK
 
-CNT=67
+CNT=66
 echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
 rm "$FILE"
 bk pull -u $Q || exit 1
@@ -192,7 +192,7 @@ bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=80
+CNT=79
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 touch c
 bk setup -f -cc www || exit 1
@@ -212,7 +212,7 @@ bk pull $Q || exit 1
 check_cnt
 echo OK
 
-CNT=40
+CNT=42
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || exit 1

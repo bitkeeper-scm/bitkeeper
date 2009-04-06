@@ -855,6 +855,8 @@ nested_emptyDir(char *dir)
  * if they are not present.
  */
 int
+nested_rmtree(char *dir)
+{
 	return (nestedWalkdir(dir, compRemove));
 }
 
