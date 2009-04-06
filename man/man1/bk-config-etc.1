@@ -11,11 +11,27 @@ This page describes the various configuration keys and their
 possible values.
 .LP
 Each \*(BK repository must have some minimum configuration
-information available in order to properly execute \*(BK commands;
-this information can be stored in a number of different
-locations.
-For more about this and how the \*[BK] configuration is derived
-for a particular repository, see
+information available in order to properly execute \*(BK commands.
+Repository configuration information is searched for in the following 
+places, in order:
+.TP "\fB`bk root`/BitKeeper/etc/config\fP"
+.B \`bk\ root\`/BitKeeper/etc/config
+Repository level config file
+.tp
+.B \`bk\ dotbk\`/config
+Personal config file
+.tp
+.B /etc/BitKeeper/etc/config
+Per-machine config file
+.tp
+.B \`bk\ bin\`/config
+Per-installation config file
+.tp
+.V $BK_CONFIG
+Environment variable
+.LP
+For detailed information about how all the search order works, or to get
+help debugging your configuration, please see
 .BR "bk help config" .
 .SH "CONFIG FILE ENTRIES"
 .SS AUTOFIX
@@ -28,23 +44,19 @@ and that the variable will be passed through as the
 .Q \-f
 option to bk check.
 To enable
-or disable autofix, one of the following should be in
-.B BitKeeper/etc/config
-file:
+or disable autofix, one of the following should be in your configuration:
 .DS
 autofix:yes
 autofix:no
 .DE
-.SS BKWEB PREFERENCES
+.SS BK/WEB PREFERENCES
 .LP
-BKWeb preferences can be specified in the
-.B BitKeeper/etc/config
-file.
+BK/Web preferences can be specified your configuration.
 If these preferences are specified, information given will appear on the
-BKWeb site for the project.
+BK/Web site for the project.
 .TP \fBhomepage\fP
 .B bkweb
-specify the BKWeb address for a project
+specify the BK/Web address for a project
 .tp
 .B homepage
 the home page for your project or company
@@ -64,9 +76,8 @@ Specify checkout mode for a repository.
 If the variable is unset, the default is to not show gfiles unless
 files are checked out.
 To override the default, to have gfiles checked out in read-only
-or read-write mode, a line must be added to the
-.B BitKeeper/etc/config
-file as follows:
+or read-write mode, a line must be added to your configuration
+as follows:
 .DS
 checkout:option
 .DE
@@ -135,9 +146,7 @@ clock_skew: off         # disable trusting of time stamps
 .SS COMPRESSION
 .br
 By default, when you setup a repository the compression algorithm
-will be set to gzip in the
-.B BitKeeper/etc/config
-file with a line as follows:
+will be set to gzip in your configuration as follows:
 .DS
 compression:gzip
 .DE
@@ -151,9 +160,7 @@ what really happens is
 bk new -Zgzip
 .DE
 To make the repository use no compression by default, 
-change the compression line in the
-.B BitKeeper/etc/config
-file to be:
+change the compression line your configuration to be:
 .DS
 compression:none
 .DE
@@ -166,31 +173,18 @@ See
 for more information about the
 .Q \-Z
 option for compression.
-.SS "CONTACT INFORMATION"
-.LP
-By filling in the contact information, you are providing a contact
-person for the project in the event that \*[BK] discovers a 
-problem that requires local intervention.
-The email field is the only required field.
-.DS
-contact:
-email:
-.DE
 .SS "DESCRIPTION"
 .LP
-The config file can contain information that helps describe the project.
-The description field is required.
+The config file must contain a one line description of the contents of
+the repository.
 .DS
-description:
+description: cross-platform C-like GUI programming language
 .DE
-The value for this entry can be anything.
 .SS KEYWORD EXPANSION
 .br
 Keyword expansion is turned OFF by default.  To have keyword expansion
 flags applied to a file automatically upon checkin, add the keyword
-preference to the
-.B BitKeeper/etc/config
-file.
+preference to your configuration.
 .LP
 Keyword preference options are:
 .TP "\fBper repository\fP"
@@ -220,15 +214,32 @@ The use of \*(BK requires a commercial
 license key.  You can obtain a 30-day license for evaluation by
 emailing a request to sales@bitmover.com.
 .LP
-Once a license key is obtained, add lines to
-.B BitKeeper/etc/config
-that look like:
+Once a license key is obtained, add lines to your configuration as follows:
 .DS
 license: <license key>
 licsig1: <sig1>
 licsig2: <sig2>
 licsig3: <sig3>
 .DE
+.SS LICENSE URL
+.LP
+The license key information may be fetched from a license proxy.
+A license proxy is a \*[BK] bkd that has access to a license.
+Instead of placing the license information in your configuration,
+you point at a bkd that has that information in its configuration.
+For example, if your configuration had:
+.DS
+licenseurl: bk://machine/lease-proxy
+.DE
+you might create a mostly empty repository named "lease-proxy",
+that just contained the license keys and any needed triggers.
+BitMover has an example script for this, contact support if you
+would like a copy.
+.LP
+If you wish to limit access to a particular set of users, either on 
+read-only or read-write basis, you may do so using a pre-lease-proxy
+trigger.
+See 'bk help triggers' for more information.
 .SS LINE TERMINATION
 .br
 The \*[UN] and Windows operating systems use different characters to
@@ -256,13 +267,11 @@ Force line termination to the \*[UN] standard (\*(lq\en\*(rq).
 .B windows 
 Force line termination to the Windows standard (\*(lq\er\en\*(rq).
 .LP
-To force the UNIX eoln mode on all platforms use:
+To force the UNIX eoln mode on all platforms, your configuration must
+have this:
 .DS
 eoln:unix
 .DE
-to the
-.B BitKeeper/etc/config
-file.  
 To force Windows line termination use:
 .DS
 eoln:windows
@@ -272,20 +281,13 @@ for exceptions the
 .B bk admin 
 command may be used to set this option on a per file basis.
 .SS NOSYNC
-By default, BitKeeper does an fsync() after each update of a history file
-and a sync() after a resolve.
-Both of these may be performance problems, especially on some Linux file
-systems where a fsync() is implemented as a system wide sync.
-The syncs may be 
-disabled temporarily with
-.DS
-"BK_CONFIG=nosync:on! "
-.DE
-or permanently with
+By default, BitKeeper does an fsync(2) after each update of a history file.
+Some Linux file systems perform poorly because fsync(2) is implemented as
+a system wide sync().
+The syncs may be disabled by adding the following to your configuration:
 .DS
 nosync:on
 .DE
-in the config file.
 .SS PARTIAL CHECK
 .LP
 By default, BitKeeper does a full repository integrity check after
@@ -322,7 +324,7 @@ For example, if you wanted to run triggers from
 .B /etc/BitKeeper/triggers
 and from the repositories'
 .BR BitKeeper/triggers ,
-set the variable as follows:
+set the variable as follows in your configuration:
 .DS
 triggers:	/etc|.
 .DE
@@ -344,9 +346,7 @@ upgrade-url:	http://www.example.com/bk-release/
 The contents of that directory will need to be manually mirrored from BitMover.
 .SS USER PREFERENCES
 .LP
-Repository preferences can be defined in the
-.B BitKeeper/etc/config
-file.
+Repository preferences can be defined in your configuration:
 The general format for the repository preference config file is 
 .DS
 [filter]preference:option

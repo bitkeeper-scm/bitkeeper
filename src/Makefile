@@ -466,7 +466,8 @@ bkl5_hashs.h: mk_bkl5_license_tab.pl  USED_BKL5_LICENSES
 	$(Q)perl mk_bkl5_license_tab.pl  USED_BKL5_LICENSES > $@
 
 # Quick and dirty target so we can make all the gui tools without the rest
-GUI: tclwrap FORCE
+.PHONY: GUI
+GUI: tclwrap
 	@cd gui && make Q=$(Q) gui
 
 gui-nowrap GUI-nowrap:

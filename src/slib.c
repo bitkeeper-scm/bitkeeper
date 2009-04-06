@@ -683,6 +683,7 @@ dinsert(sccs *s, delta *d, int fixDate)
 	if (fixDate) {
 		uniqDelta(s);
 	}
+	sccs_findKeyUpdate(s, d);
 }
 
 /*
@@ -4497,10 +4498,6 @@ skip:
 	if (s->mdbm) {
 		mdbm_close(s->mdbm);
 		s->mdbm = 0;
-	}
-	if (s->findkeydb) {
-		mdbm_close(s->findkeydb);
-		s->findkeydb = 0;
 	}
 	return (s);
 }
@@ -13620,7 +13617,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 {
 	struct kwval *kwval;
 	char	*p, *q, *t;
-	delta	*e;
+	delta	*e = 0;
 	char	*rev;
 
 #define	KW(x)	kw2val(out, x, strlen(x), s, d)
@@ -15649,40 +15646,6 @@ samekeystr(char *a, char *b)
 	return (1);
 }
 
-private int
-samekey(delta *d, char *user, char *host, char *path, time_t date,
-	sum_t *cksump)
-{
-	DATE(d);
-	if (d->date != date) {
-		debug((stderr, "samekey: No date match %s: %d (%s%s) vs %d\n",
-		    d->rev, (u32)d->date, d->sdate,
-		    d->zone ?  d->zone : "", (u32)date));
-		return (0);
-	}
-	debug((stderr, "samekey: DATE matches\n"));
-	debug((stderr, "samekey: USER %s %s\n", d->user, user));
-	unless (streq(d->user, user)) return (0);
-	debug((stderr, "samekey: HOST %s %s\n", d->hostname, host));
-	if (d->hostname) {
-		unless (host && streq(d->hostname, host)) return (0);
-	} else if (host) {
-		return (0);
-	}
-	debug((stderr, "samekey: PATH %s %s\n", d->pathname, path));
-	if (d->pathname) {
-		unless (path && streq(d->pathname, path)) return (0);
-	} else if (path) {
-		return (0);
-	}
-	/* XXX: all d->cksum are valid: we'll assume always there */
-	if (cksump) {
-		unless (d->sum == *cksump) return (0);
-	}
-	debug((stderr, "samekey: MATCH\n"));
-	return (1);
-}
-
 /*
  * This gets a GCA which tends to be on the trunk.
  * Because it doesn't look up the mparent path, it tends not to get
@@ -15937,80 +15900,27 @@ sccs_istagkey(char *key)
 }
 
 /*
- * Make a mdbm of "char delta_key[]" => delta*
- * It is used by sccs_findKey() to quickly return a query.
- * This should be called when many calls to sccs_findKey() are made
- * so that the overall performance of the code will go up.
- *
- * If the 'selectflag' is zero, then all deltas are cached.
- * If it is set, then it is a bit map that will be anded with
- * the d->flags and if non zero, will cache those deltas.
- * This makes it easy to only cache deltas that are tagged
- * cset, D_SET, D_GONE, or whatever is desired.
- *
- * WARNING: calling this function with flags set means
- * that all future calls to sccs_findKey will be limited
- * to only keys in the list will be found.
- * If you use this "feature", and you don't call sccs_free(s)
- * (which erases this cache), then you should:
- *   if (s->findkeydb) {
- *      mdbm_close(s->findkeydb);
- *      s->findkeydb = 0;
- *   }
- */
-MDBM	*
-sccs_findKeyDB(sccs *s, u32 flags)
-{
-	delta	*d;
-	datum	k, v;
-	MDBM	*findkey;
-	char	key[MAXKEY];
-
-	if (s->findkeydb) {	/* do not know if different selection crit */
-		mdbm_close(s->findkeydb);
-		s->findkeydb = 0;
-	}
-
-	findkey = mdbm_mem();
-	for (d = s->table; d; d = d->next) {
-		if (flags && !(d->flags & flags)) continue;
-		sccs_sdelta(s, d, key);
-		k.dptr = key;
-		k.dsize = strlen(key) + 1;
-		v.dptr = (void*)&d;
-		v.dsize = sizeof(d);
-		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
-			fprintf(stderr,
-			    "findkey cache: insert error for %s\n", key);
-			perror("insert");
-			mdbm_close(findkey);
-			return (0);
-		}
-	}
-	s->findkeydb = findkey;
-	return (findkey);
-}
-
-/*
- * Find an MD5 based key.  This is slow, it has to walk the whole table.
- * We walk in newest..oldest order hoping for something recent.
+ * Find an MD5 based key. Uses the findkeydb to be fast.
  */
 delta	*
 sccs_findMD5(sccs *s, char *md5)
 {
-	char	buf[MD5LEN];
-	u32	date;
 	delta	*d;
+	datum	k, v;
 
-	sscanf(md5, "%08x", &date);
-	if (s->tree->date > date) return (0);
-	if (date > s->table->date) return (0);
-	sccs_md5delta(s, s->tree, buf);
-	if (streq(buf, md5)) return (s->tree);
-	for (d = s->table; d; d = d->next) {
-		unless (d->date == date) continue;
-		sccs_md5delta(s, d, buf);
-		if (streq(buf, md5)) return (d);
+	unless (s->findkeydb) s->findkeydb = mdbm_mem();
+	unless (s->keydb_md5) {
+		s->keydb_md5 = 1;
+		for (d = s->table; d; d = d->next) {
+			sccs_findKeyUpdate(s, d);
+		}
+	}
+	k.dptr = md5;
+	k.dsize = strlen(md5) + 1;
+	v = mdbm_fetch(s->findkeydb, k);
+	if (v.dsize) {
+		memcpy(&d, v.dptr, sizeof(d));
+		return (d);
 	}
 	return (0);
 }
@@ -16035,67 +15945,64 @@ isKey(char *key)
 
 /*
  * Take a key like sccs_sdelta makes and find it in the tree.
- *
- * XXX - the findkeydb should be indexed by date and yield the
- * first delta table entry which matches that date.  Then we
- * could use it here and in sccs_findMD5().
  */
 delta *
 sccs_findKey(sccs *s, char *key)
 {
-	char	*parts[6];	/* user, host, path, date as integer */
-	char	*user, *host, *path, *random;
-	sum_t	cksum;
-	sum_t	*cksump = 0;
-	time_t	date;
-	delta	*e;
-	char	buf[MAXKEY];
+	delta	*d;
+	datum	k, v;
 
 	unless (s && HASGRAPH(s)) return (0);
 	debug((stderr, "findkey(%s)\n", key));
 	unless (strchr(key, '|')) return (sccs_findMD5(s, key));
-	if (s->findkeydb) {	/* if cached by calling sccs_findKeyDB() */
-		datum	k, v;
-		k.dptr = key;
-		k.dsize = strlen(key) + 1;
-		v = mdbm_fetch(s->findkeydb, k);
-		if (v.dsize) {
-			memcpy(&e, v.dptr, sizeof(e));
-			return (e);
+
+	unless (s->findkeydb) s->findkeydb = mdbm_mem();
+	unless (s->keydb_long) {
+		s->keydb_long = 1;
+		for (d = s->table; d; d = d->next) {
+			sccs_findKeyUpdate(s, d);
 		}
 	}
-	strcpy(buf, key);
-	explodeKey(buf, parts);
-	user = parts[0];
-	host = parts[1];
-	path = parts[2];
-	/*
-	 * We allow date2time to return 0 because of old Teamware deltas we
-	 * did not fudge in the 3pardata import.
-	 */
-	date = date2time(parts[3], 0, EXACT);
-	if (!date && !streq(&parts[3][2], "700101000000")) return (0);
-	if (parts[4]) {
-		/* If we went into the findkeyDB with a long key and failed
-		 * then we aren't supposed to find this key.
-		 */
-		if (s->findkeydb) return (0);
-		cksum = atoi(parts[4]);
-		cksump = &cksum;
+	k.dptr = key;
+	k.dsize = strlen(key) + 1;
+	v = mdbm_fetch(s->findkeydb, k);
+	if (v.dsize) {
+		memcpy(&d, v.dptr, sizeof(d));
+		return (d);
 	}
-	random = parts[5];
-	if (samekey(s->tree, user, host, path, date, cksump))
-		return (s->tree);
-	for (e = s->table;
-	    e && !samekey(e, user, host, path, date, cksump);
-	    e = e->next);
+	return (0);
+}
 
-	unless (e) return (0);
+void
+sccs_findKeyUpdate(sccs *s, delta *d)
+{
+	datum	k, v;
+	char	*t;
+	char	key[MAXKEY];
 
-	/* Any delta may have random bits (grafted files) */
-	if (random) unless (e->random && streq(e->random, random)) return (0);
+	unless (s->findkeydb) return;
+	if (s->keydb_long) {
+		sccs_sdelta(s, d, key);
+		k.dptr = key;
+		k.dsize = strlen(key) + 1;
+		v.dptr = (void*)&d;
+		v.dsize = sizeof(d);
+		mdbm_store(s->findkeydb, k, v, MDBM_REPLACE);
 
-	return (e);
+		if (!LONGKEY(s) && (t = sccs_iskeylong(k.dptr))) {
+			*t = 0;
+			k.dsize = strlen(k.dptr) + 1;
+			mdbm_store(s->findkeydb, k, v, MDBM_REPLACE);
+		}
+	}
+	if (s->keydb_md5) {
+		sccs_md5delta(s, d, key);
+		k.dptr = key;
+		k.dsize = strlen(key) + 1;
+		v.dptr = (void*)&d;
+		v.dsize = sizeof(d);
+		mdbm_store(s->findkeydb, k, v, MDBM_REPLACE);
+	}
 }
 
 void
@@ -16958,11 +16865,11 @@ dumpTimestampDB(project *p, hash *db)
 		tsrec   *ts = (tsrec *)db->vptr;
 
 		assert(db->vlen == sizeof(*ts));
-		fprintf(f, "%s%c%lx%c%ld%c0%o%c%lx%c%ld\n",
-		    (char *)db->kptr, BK_FS,
-		    ts->gfile_mtime, BK_FS, ts->gfile_size, BK_FS,
-		    ts->permissions, BK_FS,
-		    ts->sfile_mtime, BK_FS, ts->sfile_size);
+		fprintf(f, "%s|%x|%u|0%o|%x|%u\n",
+		    (char *)db->kptr,
+		    ts->gfile_mtime, ts->gfile_size,
+		    ts->permissions,
+		    ts->sfile_mtime, ts->sfile_size);
 		if (ferror(f)) {
 			/* some error writing the timestamp db so delete it */
 			unlink(tsname);
@@ -17037,7 +16944,7 @@ updateTimestampDB(sccs *s, hash *timestamps, int different)
 
 	assert(s->proj);
 	unless (clock_skew) {
-		char	*p = proj_configval(s->proj, "check_skew");
+		char	*p = proj_configval(s->proj, "clock_skew");
 
 		if (streq(p, "off")) {
 			clock_skew = 2147483647;  /* 2^31 */

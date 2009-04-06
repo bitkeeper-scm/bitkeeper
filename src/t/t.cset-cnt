@@ -3,18 +3,23 @@
 
 BK_SHOWINIT="*/s.ChangeSet"
 BK_TTYPRINTF="$HERE/INITs"
+BK_SHOWPROC="$HERE/INITs"
 FILE="$BK_TTYPRINTF"
-export BK_SHOWINIT BK_TTYPRINTF
+export BK_SHOWINIT BK_TTYPRINTF BK_SHOWPROC
+
+check_cnt() {
+	SEEN=`grep init\( "$FILE" | wc -l`
+	test $SEEN -ne $CNT && {
+		echo was $CNT now $SEEN
+		cat "$FILE"
+		exit 1
+	}
+}
 
 CNT=5
 echo $N "Count the inits for a 'bk setup' ($CNT)........................."$NL
 fresh_commercial project
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
 2
@@ -28,12 +33,7 @@ CNT=2
 echo $N "Count the inits for a 'bk clone' ($CNT)........................."$NL
 rm "$FILE"
 bk clone $Q ../project ../copy || exit 1
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
 echo OK
 
 CNT=3
@@ -49,12 +49,7 @@ EOF
 bk ci -yignore2 -u $Q BitKeeper/etc/ignore
 rm "$FILE"
 bk commit $Q -ycommit || exit 1
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
 echo OK
 
 CNT=4
@@ -62,24 +57,14 @@ echo $N "Count the inits for a 'bk changes -L' ($CNT)...................."$NL
 cd ../copy
 rm "$FILE"
 bk changes -L > OUT || exit 1
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
 echo OK
 
 CNT=3
 echo $N "Count the inits for a 'bk changes -R' ($CNT)...................."$NL
 rm "$FILE"
 bk changes -R > OUT || exit 1
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
 echo OK
 
 CNT=16
@@ -94,24 +79,14 @@ bk ci -yignore3 -u $Q BitKeeper/etc/ignore
 bk commit $Q -yignore1 || exit 1
 rm "$FILE"
 BK_CONFIG=partial_check:off! bk pull $Q || exit 1
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
 echo OK
 
 CNT=11
 echo $N "Count the inits for a 'bk unpull' ($CNT)......................."$NL
 rm "$FILE"
 bk unpull -f $Q || exit 1
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
 echo OK
 
 CNT=7
@@ -126,34 +101,120 @@ bk ci -yignore3 -u $Q BitKeeper/etc/ignore
 bk commit $Q -yignore1 || exit 1
 rm "$FILE"
 bk pull -R $Q || exit 1
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
 echo OK
 
 CNT=11
 echo $N "Count the inits for a 'bk resolve' ($CNT)......................"$NL
 rm "$FILE"
 bk resolve $Q || exit 1
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
 echo OK
 
 CNT=12
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || exit 1
-SEEN=`wc -l < "$FILE"`
-test $SEEN -ne $CNT && {
-	echo was $CNT now $SEEN
-	cat "$FILE"
-	exit 1
-}
+check_cnt
+echo OK
+
+echo "---- nested tests"
+
+CNT=21
+echo $N "Count the inits for a 'bk clone' ($CNT)........................"$NL
+cd "$HERE"
+nested nest
+rm "$FILE"
+bk clone $Q . ../nest2 || exit 1
+check_cnt
+echo OK
+
+CNT=4
+echo $N "Count the inits for a 'bk commit' in comp ($CNT) ..............."$NL
+cd gcc
+echo hi > file1
+bk new $Q file1
+rm "$FILE"
+bk commit $Q -ynew || exit 1
+check_cnt
+echo OK
+
+CNT=11
+echo $N "Count the inits for a 'bk -P commit' ($CNT) ..................."$NL
+rm -f "$FILE"
+bk -P commit $Q -ynew || exit 1
+check_cnt
+echo OK
+
+CNT=4
+echo $N "Count the inits for a 'bk -P changes -v' ($CNT)................."$NL
+# create new component
+cd "$HERE"/nest
+touch c
+bk setup -cc -f docs || exit 1
+cd docs
+echo hi > doc
+bk new $Q doc
+bk commit $Q -ydoc || exit 1
+cd ..
+cd gdb
+echo ss > gdbfile
+bk new $Q gdbfile
+bk commit $Q -ygdb || exit 1
+cd ..
+bk commit $Q -ytop || exit 1
+
+rm "$FILE"
+bk changes -v > /dev/null
+check_cnt
+echo OK
+
+CNT=6
+echo $N "Count the inits for a 'bk changes -Rv' ($CNT)..................."$NL
+cd "$HERE"/nest2
+rm "$FILE"
+bk changes -Rv > /dev/null || exit 1
+check_cnt
+echo OK
+
+CNT=67
+echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
+rm "$FILE"
+bk pull -u $Q || exit 1
+check_cnt
+echo OK
+
+
+CNT=39
+echo $N "Count the inits for a 'bk unpull -fs' ($CNT)..................."$NL
+rm "$FILE"
+bk unpull -fs $Q || exit 1
+check_cnt
+echo OK
+
+CNT=80
+echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
+touch c
+bk setup -f -cc www || exit 1
+cd www
+echo kk > 1.html
+bk new $Q 1.html
+bk commit -ywww $Q || exit 1
+cd ../gdb
+echo hi > new
+bk new $Q new || exit 1
+bk commit -ynew $Q || exit 1
+cd ..
+bk commit -ylocal $Q || exit 1
+
+rm "$FILE"
+bk pull $Q || exit 1
+check_cnt
+echo OK
+
+CNT=40
+echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
+rm "$FILE"
+bk push $Q || exit 1
+check_cnt
 echo OK

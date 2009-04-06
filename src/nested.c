@@ -679,7 +679,12 @@ nested_check(void)
 	/* directly nested, let sfiles find it naturally. */
 	if (p == prod) return;	/* use after free ok */
 
-	rel = proj_relpath(prod, proj_root(0));
+	if (rel = proj_comppath(0)) {
+		rel = strdup(rel);
+	} else {
+		/* something that is not a component */
+		rel = proj_relpath(prod, proj_root(0));
+	}
 	hints = aprintf("%s/BitKeeper/log/deep-nests", proj_root(prod));
 	paths = file2Lines(0, hints);
 	unless (removeLine(paths, rel, free)) { /* have rel? */
@@ -850,8 +855,6 @@ nested_emptyDir(char *dir)
  * if they are not present.
  */
 int
-nested_rmtree(char *dir)
-{
 	return (nestedWalkdir(dir, compRemove));
 }
 

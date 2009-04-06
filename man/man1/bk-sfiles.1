@@ -107,27 +107,18 @@ Send output to
 .ARG file
 and progress information to stdout.
 .tp
-.OPTopt \-p A|C
-List files with pending deltas.  If 
+.B \-p
+List files with one or more pending deltas.
+.tp
 .B \-pC
-then list 
-leaves which are not in a changeset as 
-.Q \-pC
-then list leaves which are not in a changeset as 
-.B file|1.3
-If
-.QR \-pA ,
-that implies 
-.QR \-pC ,
-and 
-lists all revisions, not just the tip.
-If
-.BR \-pA ,
-that implies 
-.BR \-pC ,
-and 
-lists all revisions, not just the tip.
-.Q \-pA
+List only the tip delta of files with one or more pending deltas,
+in the following format:
+\*<file\*>|\*<tip_rev\*>.
+.tp
+.B \-pA
+List all pending deltas of files with one or more pending deltas,
+in the following format:
+\*<file\*>|\*<rev\*>.
 .tp
 .B \-P
 Like

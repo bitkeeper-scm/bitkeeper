@@ -749,7 +749,6 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 		/* capture the comments */
 		for (d = s->table; d; d = d->next) comments_load(s, d);
 		sccs_close(s); /* we don't need the delta body */
-		sccs_findKeyDB(s, 0);
 		if (opts.doComp) s->prs_indentC = 1;
 	}
 	return (s);
