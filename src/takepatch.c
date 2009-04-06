@@ -520,10 +520,7 @@ error:		if (perfile) sccs_free(perfile);
 		}
 	}
 	tableGCA = 0;
-	if (s) {
-		encoding = s->encoding;
-		sccs_findKeyDB(s, 0);
-	}
+	if (s) encoding = s->encoding;
 	while (extractDelta(name, s, newFile, p, &nfound)) {
 		if (newFile) newFile = 2;
 	}
@@ -535,10 +532,6 @@ error:		if (perfile) sccs_free(perfile);
 	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
 		rc = applyCsetPatch(s ? s->sfile : 0 , nfound, perfile);
 	} else {
-		if (s && s->findkeydb) {
-			mdbm_close(s->findkeydb);
-			s->findkeydb = 0;
-		}
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
 		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
@@ -934,7 +927,6 @@ apply:
 			iF = p->initMmap;
 			dF = p->diffMmap;
 			cweave_init(s, nfound);
-			sccs_findKeyDB(s, 0);
 			d = cset_insert(s, iF, dF, p->pid);
 			if (!p->local && d->symGraph) remote_tagtip = d;
 			s->bitkeeper = 1;
@@ -959,11 +951,6 @@ apply:
 	}
 	s = sccs_reopen(s);	/* I wish this could be sccs_restart() */
 	assert(s && s->tree);
-
-	unless (sccs_findKeyDB(s, 0)) {
-		assert("takepatch: could not build findKeyDB" == 0);
-	}
-
 	if (cdb = loadCollapsed()) {
 		for (p = patchList; p; p = p->next) {
 			d = sccs_findKey(s, p->me);

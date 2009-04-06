@@ -427,7 +427,6 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		}
 		return (-1);
 	}
-	sccs_findKeyDB(s, 0);   /* load hash table for sccs_findKey() */
 
 	/* Work through the LOD key matches and color the graph. */
 	for ( ;; ) {

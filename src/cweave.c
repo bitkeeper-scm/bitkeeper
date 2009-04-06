@@ -225,33 +225,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	EACH (syms) addsym(s, d, d, 0, NULL, syms[i]);
 	if (syms) freeLines(syms, free);
 
-	if (s->findkeydb) {
-		char	key[MAXKEY];
-		datum	k, v;
-
-		sccs_sdelta(s, d, key);
-		k.dptr = key;
-		k.dsize = strlen(key) + 1;
-		v.dptr = (void*)&d;
-		v.dsize = sizeof(d);
-		if (mdbm_store(s->findkeydb, k, v, MDBM_INSERT)) {
-			fprintf(stderr, "fk cache: insert error for %s\n", key);
-			perror("insert");
-			mdbm_close(s->findkeydb);
-			exit(1);
-		}
-		if (LONGKEY(s)) return (d);
-
-		*strrchr(key, '|') = 0;
-		k.dsize = strlen(key) + 1;
-		if (mdbm_store(s->findkeydb, k, v, MDBM_INSERT)) {
-			fprintf(stderr, "fk cache: insert error for %s\n", key);
-			perror("insert");
-			mdbm_close(s->findkeydb);
-			exit(1);
-		}
-	}
-
+	sccs_findKeyUpdate(s, d);
 	return (d);
 }
 

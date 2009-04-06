@@ -49,7 +49,6 @@ repogca_main(int ac, char **av)
 	addLine(nav, 0);	/* null term list */
 	s = sccs_csetInit(SILENT);
 	assert(s && HASGRAPH(s));
-	sccs_findKeyDB(s, 0);
 
 	f = popenvp(nav + 1, "r");
 	freeLines(nav, free);
