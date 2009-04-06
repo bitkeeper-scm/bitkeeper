@@ -14,8 +14,9 @@ merge_main(int ac, char **av)
 	int	c, i, ret;
 	int	setmerge = 0;
 	sccs	*s;
+	delta	*l, *g, *r;
+	char	*inc, *exc;
 	char	*sname;
-	names	*n;
 	char	*files[3];
 
 	while ((c = getopt(ac, av, "s")) != -1) {
@@ -29,12 +30,13 @@ usage:			system("bk help merge");
 	if (av[optind] && !av[optind+1]) {
 		unless (sname = name2sccs(av[optind])) goto usage;
 		unless (s = sccs_init(sname, 0)) goto usage;
-		unless (n = res_getnames(sccs_Xfile(s, 'r'), 'r')) goto usage;
-		files[0] = getgfile(s, n->local);
-		/* XXX is this the "right" gca? */
-		files[1] = getgfile(s, n->gca);
-		files[2] = getgfile(s, n->remote);
-		freenames(n, 1);
+		unless (sccs_findtips(s, &l, &r)) goto usage;
+		unless (g = sccs_gca(s, l, r, &inc, &exc)) goto usage;
+		if (inc) free(inc);
+		if (exc) free(exc);
+		files[0] = getgfile(s, l->rev);
+		files[1] = getgfile(s, g->rev);
+		files[2] = getgfile(s, r->rev);
 		free(sname);
 		sccs_free(s);
 		freefiles = 1;

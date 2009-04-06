@@ -1,331 +1,351 @@
 #include "system.h"
 #include "sccs.h"
+#include "resolve.h"
 
-#define	CTMP	"BitKeeper/tmp/CONTENTS"
 
-private int	converge(char *file);
-private void	merge(char *gfile);
+/* global state for converge operations */
+typedef struct {
+	MDBM	*idDB;
+	u32	iflags;		/* sccs_init flags */
+	opts	opts;		/* resolve options */
+} State;
 
-/*
- * Return TRUE if s has cset derived root key
- */
-private int
-hasCsetDerivedKey(sccs *s)
-{
-	delta   *d;
-	char	*csetkey;
-	char	*p, *t, *k;
-	char    buf1[MAXKEY], buf2[MAXKEY];
-
-	d = sccs_ino(s);
-	sccs_sdelta(s, d, buf1);
-
-	csetkey = proj_rootkey(s->proj);
-	p = csetkey;
-	t = buf2;
-	while ((*t++ = *p++) != '|');	/* copy user@host */
-	k = d->pathname;
-	while (*k) *t++ = *k++;		/* copy sfile's pathname */
-	p = strchr(p, '|');
-	while ((*t++ = *p++));		/* copy rest of csetkey */
-
-	return (streq(buf1, buf2));
-}
-
-private MDBM *
-list(char *gfile)
-{
-	char	*sfile = name2sccs(gfile);
-	char	*p, *t;
-	char	key[MAXKEY];
-	sccs	*s;
-	FILE	*f;
-	MDBM	*vals = mdbm_mem();
-	char	buf[MAXPATH];
-
-	/*
-	 * Find the full list of files we need work through - which is the
-	 * specified file plus any others which have the same root path.
-	 */
-	if ((s = sccs_init(sfile, 0)) && HASGRAPH(s)) {
-		sccs_sdelta(s, sccs_ino(s), key);
-		mdbm_store_str(vals, key, sfile, 0);
-		sccs_free(s);
-	} else {
-		if (s) sccs_free(s);
-	}
-	sprintf(buf,
-	    "bk prs -r+ "
-	    "-hd':ROOTKEY:\\n:GFILE:\\n' BitKeeper/deleted '.del-%s*'", 
-	    basenm(gfile));
-	f = popen(buf, "r");
-	assert(f);
-	while (fnext(key, f))  {
-		p = strchr(key, '|') + 1;
-		t = strchr(p, '|'); *t = 0;
-		fnext(buf, f);
-		unless (streq(p, gfile)) continue;
-		*t = '|';
-		chop(key);
-		chop(buf);
-		t = name2sccs(buf);
-		mdbm_store_str(vals, key, t, 0);
-		free(t);
-	}
-	pclose(f);
-	free(sfile);
-	return (vals);
-}
+private	void	converge(State *g, char *gfile, char *opts);
+private	void	merge(State *g, char *gfile, char *pathname, char *opts);
+private	sccs	*copy_to_resync(State *g, sccs *s);
+private	void	free_slot(State *g, sccs *s);
 
 /*
- * Generate both lists, if any are unique to the parent,
- * then find a spot for them locally and copy them down.
- * Delta them if we had to rename them.
+ * For certain files in BitKeeper/etc we automerge the contents in
+ * takepatch.  Also since these files can be created on the first use
+ * we need to make sure that files created in parallel are merged and
+ * the oldest file is preserved.  This is so parallel merges will
+ * converge on the same answer.
  */
-private MDBM *
-resync_list(char *gfile)
-{
-	MDBM	*pvals, *vals;
-	kvpair	kv;
-	char	cmd[MAXPATH*2];
-	char	*t;
-	sccs	*s;
-
-	chdir(RESYNC2ROOT);
-	pvals = list(gfile);
-	chdir(ROOT2RESYNC);
-	vals = list(gfile);
-
-	for (kv = mdbm_first(pvals); kv.key.dptr; kv = mdbm_next(pvals)) {
-		if (mdbm_fetch_str(vals, kv.key.dptr)) continue;
-		unless (exists(kv.val.dptr)) {
-			mkdirf(kv.val.dptr);
-			sprintf(cmd, "%s/%s",  RESYNC2ROOT, kv.val.dptr);
-			fileCopy(cmd, kv.val.dptr);
-			mdbm_store_str(vals, kv.key.dptr, kv.val.dptr, 0);
-			continue;
-		}
-
-		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
-		s = sccs_init(cmd, 0); assert(s && HASGRAPH(s));
-		/* reset the proj->root to RESYNC root */
-		proj_free(s->proj);
-		s->proj = proj_init(".");
-		t = sccs_rmName(s);
-		sccs_free(s);
-
-		mkdirf(kv.val.dptr);
-		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
-		fileCopy(cmd, t);
-		sys("bk", "get", "-qe", t, SYS);
-		sys("bk", "delta", "-fdqy'Auto converge rename'", t, SYS);
-		mdbm_store_str(vals, kv.key.dptr, t, 0);
-		free(t);
-	}
-	mdbm_close(pvals);
-	return (vals);
-}
-
-private int
-converge(char *gfile)
-{
-	char	key[MAXKEY];
-	char	*sfile;
-	char	*get[10] = { "bk", "get", "-kpq", 0, 0 };
-	sccs	*s, *winner = 0;
-	MDBM	*vals = resync_list(gfile);
-	kvpair	kv;
-	int	i, fd, fd1;
-
-	/*
-	 * If there was only one file, and it isn't a derived file, done
-	 */
-	for (i = 0, kv = mdbm_first(vals); kv.key.dptr; kv = mdbm_next(vals)) {
-		i++;
-	}
-	if (i == 0) {
-done:		mdbm_close(vals);
-		return (0); /* nothing to do */ 
-	}
-	if (i == 1) {
-		kv = mdbm_first(vals);
-		if ((s = sccs_init(kv.val.dptr, 0)) &&
-		    HASGRAPH(s) && !hasCsetDerivedKey(s)) {
-			sccs_free(s);
-			goto done;
-		}
-		if (s) sccs_free(s);
-	}
-
-	/*
-	 * Get the contents of all files into CTMP, we'll sort -u them later.
-	 * XXX This is really wrong.  Really the files should be run past
-	 *     'bk merge -s' pairwise.  Otherwise deletes will be lost.
-	 *     But this converge code is so rarely run, I don't think it
-	 *     matters.
-	 */
-	unlink(CTMP);
-	fd1 = dup(1); close(1);
-	fd = open(CTMP, O_CREAT|O_WRONLY, 0666);
-	assert(fd == 1);
-	for (kv = mdbm_first(vals); kv.key.dptr; kv = mdbm_next(vals)) {
-		get[3] = kv.val.dptr;
-		if (spawnvp(_P_WAIT, get[0], get)  < 0) {
-			fprintf(stderr, "converge; can't spawn get process\n");
-			exit(1);
-		}
-	}
-	close(1); dup2(fd1, 1); close(fd1);
-
-	/*
-	 * Figure out who is going to win, i.e.,
-	 * the oldest file not changeset key based (that idea didn't work).
-	 * It's OK if there is no winner, we'll create one.
-	 */
-	for (kv = mdbm_first(vals); kv.key.dptr; kv = mdbm_next(vals)) {
-		s = sccs_init(kv.val.dptr, 0);
-		if (hasCsetDerivedKey(s)) {
-			sccs_free(s);
-			continue;	/* don't want that one */
-		}
-		unless (winner) {
-			winner = s;
-			continue;
-		}
-		/* if this is an older one, it  becomes the winner */
-		if (sccs_ino(s)->date < sccs_ino(winner)->date) {
-			sccs_free(winner);
-			winner = s;
-		} else if (sccs_ino(s)->date == sccs_ino(winner)->date) {
-			char	key2[MAXKEY];
-
-			sccs_sdelta(s, sccs_ino(s), key);
-			sccs_sdelta(winner, sccs_ino(winner), key2);
-			if (strcmp(key, key2) < 0) {
-				/* we use lesser values to mean older,
-				 * just like the time_t.
-				 */
-				sccs_free(winner);
-				winner = s;
-			} else {
-				sccs_free(s);
-			}
-		} else {
-			sccs_free(s);
-		}
-	}
-	sfile = name2sccs(gfile);
-
-	/*
-	 * If there is a winner and there is an existing sfile and
-	 * that sfile is not the winner, then bk rm it so we can
-	 * slide this one into place.
-	 */
-	if (winner && exists(sfile) && !streq(sfile, winner->sfile)) {
-		sys("bk", "rm", "-f", gfile, SYS);
-		sccs_close(winner); /* for win32 */
-		sys("bk", "mv", "-f", winner->gfile, gfile, SYS);
-	}
-
-	if (exists(CTMP)) {
-		/*
-		 * Update the winner with the saved content, or
-		 * create a new file with the saved content.
-		 */
-		if (winner) {
-			sccs_free(winner);
-			winner = 0;
-			sys("bk", "get", "-qeg", gfile, SYS);
-			sysio(CTMP, gfile, 0, "bk", "sort", "-u", SYS);
-			sys("bk", "ci", "-qy'Auto converge'", gfile, SYS);
-		} else {
-			/*
-			 * The file may be there because it is cset derived
-			 * and there was no winner.  So we remove it.
-			 */
-			if (exists(sfile)) sys("bk", "rm", "-f", gfile, SYS);
-
-			sysio(CTMP, gfile, 0, "bk", "sort", "-u", SYS);
-			sys("bk", "delta",
-				"-fqiy'Auto converge/create'", gfile, SYS);
-		}
-	}
-	mdbm_close(vals);
-	if (winner) sccs_free(winner);
-	free(sfile);
-	return (1);
-}
-
 void
 converge_hash_files(void)
 {
 	FILE	*f;
-	char	*q, *t;
+	char	*t;
 	int	i;
-	char	*files[] = {
-		int2p(7),
-		/* "BitKeeper/etc/aliases", */
-		"BitKeeper/etc/collapsed",
-		"BitKeeper/etc/gone",
-		"BitKeeper/etc/ignore",
-		"BitKeeper/etc/skipkeys",
-		0
+	char	*bn, *gfile;
+	State	*g;
+	struct	{
+		char	*file;
+		char	*opts;
+	} files[] = {{ "BitKeeper/etc/collapsed", "-s" },
+		     { "BitKeeper/etc/gone", "-s" },
+		     { "BitKeeper/etc/ignore", "-s" },
+		     { "BitKeeper/etc/skipkeys", "-s"},
+		     { 0, 0 }
 	};
-	char key[MAXKEY], gfile[MAXPATH];
 
+	/* everything in this file is run from the RESYNC dir */
 	chdir(ROOT2RESYNC);
+	g = new(State);
+	g->iflags = INIT_NOCKSUM|INIT_MUSTEXIST|SILENT;
+
 	/*
-	 * This list is likely to be small so we just look through them all.
+	 * Find all files in RESYNC that may contain a merge conflict for
+	 * the files above and merge them.
 	 */
-	f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "
-	    "bk prs -r+ -hd':ROOTKEY:\\n:GFILE:\\n' -", "r");
+	f = popen("bk sfiles -g BitKeeper/etc BitKeeper/deleted", "r");
 	assert(f);
-	while (fnext(key, f))  {
-		q = strchr(key, '|') + 1;
-		t = strchr(q, '|'); *t = 0;
-		fnext(gfile, f);
-
-		/* is q in files? */
-		EACH(files) if (streq(q, files[i])) break;
-		unless (files[i]) continue;
-
-		chop(gfile);
-		merge(gfile);
+	while (gfile = fgetline(f))  {
+		/* find basename of file with deleted stuff stripped */
+		bn = basenm(gfile);
+		t = 0;
+		if (strneq(bn, ".del-", 5)) {
+			bn += 5;
+			if (t = strchr(bn, '~')) *t = 0;
+		}
+		for (i = 0; files[i].file; i++) {
+			if (streq(bn, basenm(files[i].file))) {
+				if (t) *t = '~'; /* restore gfile */
+				merge(g, gfile, files[i].file, files[i].opts);
+				break;
+			}
+		}
 	}
 	pclose(f);
+
 	/*
-	 * Do the per file work
+	 * Now for each file, check to see if we need to converge multiple
+	 * versions.
 	 */
-	EACH(files) {
-		converge(files[i]);
-		sys("bk", "clean", "-q", files[i], SYS);
+	for (i = 0; files[i].file; i++) {
+		converge(g, files[i].file, files[i].opts);
 	}
+
+	if (g->idDB) {
+		idcache_write(0, g->idDB);
+		mdbm_close(g->idDB);
+	}
+	free(g);
 	chdir(RESYNC2ROOT);
 }
 
 /*
  * Automerge any updates before converging the inodes.
+ *
+ * as long as 'gfile' was created at the path 'pathname', then
+ * merge with 'bk merge -s gfile'
  */
 private void
-merge(char *gfile)
+merge(State *g, char *gfile, char *pathname, char *opts)
 {
-	char	*rfile = name2sccs(gfile);
-	char	*mfile = name2sccs(gfile);
+	char	*sfile = name2sccs(gfile);
 	char	*t;
+	sccs	*s;
+	resolve	*rs;
+	char	rootkey[MAXKEY];
 
-	t = strrchr(rfile, '/'), t[1] = 'r';
-	t = strrchr(mfile, '/'), t[1] = 'm';
-	unlink(mfile);
-	free(mfile);
-	if (exists(rfile)) {
+	/* skip files with no conflicts */
+	t = strrchr(sfile, '/'), t[1] = 'r';
+	unless (exists(sfile)) {	 /* rfile */
+		t[1] = 'm';
+		unless (exists(sfile)) goto out;
+	}
+	t[1] = 's';
+
+	/* only merge file if it is for the right pathname */
+	s = sccs_init(sfile, g->iflags);
+	unless (streq(sccs_ino(s)->pathname, pathname)) {
+		sccs_free(s);
+		goto out;
+	}
+	sccs_sdelta(s, sccs_ino(s), rootkey);
+	rs = resolve_init(&g->opts, s);
+
+	/* resolve rename conflicts */
+	if (rs->gnames) {
+		unless (g->idDB) g->idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+
+		if (streq(rs->gnames->remote, pathname)) {
+			/* must keep remote copy in place */
+			t = name2sccs(pathname);
+			if (!streq(gfile, pathname) &&
+			    (s = sccs_init(t, g->iflags))) {
+				/*
+				 * Some other file is in the way.
+				 * Get rid of it.
+				 */
+				free_slot(g, s);
+				sccs_free(s);
+			}
+		} else  if (rs->dname) {
+			/* try to resolve to "natural" name */
+			t = name2sccs(rs->dname);
+			if (!streq(gfile, rs->dname) && exists(t)) {
+				/*
+				 * conflicts with another sfile, oh well
+				 * just delete it.
+				 */
+				free(t);
+				t = sccs_rmName(s);
+			}
+		} else {
+			/* resolve conflict by deleting */
+			t = sccs_rmName(s);
+		}
+		move_remote(rs, t); /* fine if this doesn't move */
+
+		/* 's' is stale, but update s->sfile and s->gfile */
+		free(s->sfile);
+		s->sfile = t;
+		free(s->gfile);
+		s->gfile = sccs2name(s->sfile);
+
+		/* mark that it moved */
+		mdbm_store_str(g->idDB, rootkey, s->gfile, MDBM_REPLACE);
+	}
+
+	/* handle contents conflicts */
+	if (rs->revs) {
 		/*
 		 * Both remote and local have updated the file.
 		 * We automerge here, saves trouble later.
 		 */
-		sys("bk", "get", "-qeM", gfile, SYS);
-		sysio(0, gfile, 0, "bk", "merge", "-s", gfile, SYS);
-		sys("bk", "ci", "-qdPyauto-union", gfile, SYS);
-		unlink(rfile);
-	} /* else remote update only */
-	free(rfile);
+		sys("bk", "get", "-qeM", s->gfile, SYS);
+		sysio(0, s->gfile, 0, "bk", "merge", opts, s->gfile, SYS);
+		sys("bk", "ci", "-qdPyauto-union", s->gfile, SYS);
+
+		/* delete rfile */
+		t = strrchr(s->sfile, '/'), t[1] = 'r';
+		unlink(s->sfile);
+		t[1] = 's';
+	}
+	resolve_free(rs);	/* free 's' too */
+out:	free(sfile);
+}
+
+/*
+ * The goal here is to converge on a single copy of a sfile when we
+ * may have had multiple sfiles created in parallel.  So we look for
+ * these create/create conflicts and resolve them by picking the
+ * oldest sfile and merging in the contents of the other sfile.
+ *
+ * Note this function is distributed so it assumes both sides of a
+ * merge have already been converged, so there is no need to look at
+ * any files in the deleted directory.  We have already decided to
+ * ignore them some other time.
+ */
+private void
+converge(State *g, char *gfile, char *opts)
+{
+	sccs	*skeep, *srm, *s;
+	int	rc;
+	resolve	*rs;
+	char	*sfile = name2sccs(gfile);
+	char	key_keep[MAXKEY];
+	char	key_rm[MAXKEY];
+	char	buf[MAXPATH];
+	char	tmp[MAXPATH];
+
+	concat_path(buf, RESYNC2ROOT, sfile);	/* ../sfile */
+	unless (exists(sfile) && exists(buf)) {
+		/* no conflict, we are done */
+		free(sfile);
+		return;
+	}
+
+	skeep = sccs_init(buf, INIT_MUSTEXIST);
+	assert(skeep);
+	sccs_sdelta(skeep, sccs_ino(skeep), key_keep);
+	srm = sccs_init(sfile, INIT_MUSTEXIST);
+	assert(srm);
+	sccs_sdelta(srm, sccs_ino(srm), key_rm);
+
+	if (streq(key_keep, key_rm)) {
+		/* same rootkey, no conflict */
+		sccs_free(skeep);
+		sccs_free(srm);
+		free(sfile);
+		return;
+	}
+	sccs_clean(skeep, SILENT);
+	sccs_clean(srm, SILENT);
+
+	/* pick the older sfile */
+	if ((sccs_ino(srm)->date < sccs_ino(skeep)->date) ||
+	    ((sccs_ino(srm)->date == sccs_ino(skeep)->date) &&
+		(strcmp(key_rm, key_keep) < 0))) {
+		s = skeep;
+		skeep = srm;
+		srm = s;
+		sccs_sdelta(skeep, sccs_ino(skeep), key_keep);
+		sccs_sdelta(srm, sccs_ino(srm), key_rm);
+	}
+	unless (g->idDB) g->idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+
+	/* copy both sfiles to RESYNC */
+	skeep = copy_to_resync(g, skeep);
+	srm = copy_to_resync(g, srm);
+
+	/* get contents of old version */
+	bktmp(tmp, "converge");
+	rc = sccs_get(srm, "+", 0, 0, 0, SILENT|PRINT, tmp);
+	assert(!rc);
+	sccs_free(srm);
+
+	/* Check if something is in the way (other than skeep) */
+	if (s = sccs_init(sfile, g->iflags)) {
+		sccs_sdelta(s, sccs_ino(s), buf);
+		unless (streq(buf, key_keep)) free_slot(g, s);
+		sccs_free(s);
+	}
+
+	/* if skeep is not in the right place move it */
+	unless (samepath(skeep->gfile, gfile)) {
+		rs = resolve_init(&g->opts, skeep);
+		assert(!rs->revs);
+		assert(!rs->snames);
+		move_remote(rs, sfile);
+		rs->s = 0;
+		mdbm_store_str(g->idDB, key_keep, gfile, MDBM_REPLACE);
+		resolve_free(rs);
+	}
+	sccs_free(skeep);	/* done with skeep */
+
+	/* Add other files contents as branch of 1.0 */
+	rc = sys("bk", "_get", "-egqr1.0", gfile, SYS);
+	assert(!rc);
+	mv(tmp , gfile);		/* srm contents saved above */
+	rc = sys("bk", "ci", "-qdPyconverge", gfile, SYS);
+	assert(!rc);
+
+	/*
+	 * merge in new tip
+	 *
+	 * The get -M may fail if the ci above doesn't create a new
+	 * delta, because the old file was empty.  In that case there is
+	 * nothing to union.
+	 */
+	if (!sys("bk", "get", "-qeM", gfile, SYS)) {
+		rc = sysio(0, gfile, 0, "bk", "merge", opts, gfile, SYS);
+		assert(!rc);
+		rc = sys("bk", "ci", "-qdPyauto-union", gfile, SYS);
+		assert(!rc);
+	}
+	free(sfile);
+}
+
+/*
+ * Assume we are in the repository root and move the sfile
+ * for the given sccs* to the RESYNC directory.
+ */
+private sccs *
+copy_to_resync(State *g, sccs *s)
+{
+	resolve	*rs;
+	sccs	*snew;
+	char	*rmName;
+	char	rootkey[MAXKEY];
+
+	/* already in RESYNC? */
+	if (proj_isResync(s->proj)) return (s);
+
+	/* Is it already there? */
+	sccs_sdelta(s, sccs_ino(s), rootkey);
+
+	if (snew = sccs_keyinit(0, rootkey, g->iflags, g->idDB)) {
+		/* Found this rootkey in RESYNC already */
+		sccs_free(s);
+		return (snew);
+	}
+
+	/* so we need copy to RESYNC and then move to the deleted dir */
+	fileCopy(s->sfile, "BitKeeper/etc/SCCS/s.converge-tmp");
+	sccs_free(s);
+	s = sccs_init("BitKeeper/etc/SCCS/s.converge-tmp", g->iflags);
+	rs = resolve_init(&g->opts, s);
+	assert(!rs->revs);
+	assert(!rs->snames);
+	rmName = sccs_rmName(s);
+	move_remote(rs, rmName);
+	resolve_free(rs);
+	s = sccs_init(rmName, g->iflags);
+	mdbm_store_str(g->idDB, rootkey, s->gfile, MDBM_REPLACE);
+	free(rmName);
+	return(s);
+}
+
+/* just delete the sfile to free up its current location */
+private void
+free_slot(State *g, sccs *s)
+{
+	resolve	*rs;
+	char	*rmName, *t;
+	char	key[MAXKEY];
+
+	rs = resolve_init(&g->opts, s);
+	sccs_sdelta(s, sccs_ino(s), key);
+	rmName = sccs_rmName(s);
+	move_remote(rs, rmName);
+	t = sccs2name(rmName);
+	free(rmName);
+	mdbm_store_str(g->idDB, key, t, MDBM_REPLACE);
+	free(t);
+	rs->s = 0;
+	resolve_free(rs);
 }
