@@ -121,26 +121,17 @@ bk alias new CONFLICT gcc
 cd ..
 bk clone $Q -s./gdb conflict conflict-clone
 cd conflict
-bk alias add CONFLICT gcc/nm
+bk alias add CONFLICT ./gcc/nm
 cd ../conflict-clone
-bk alias add CONFLICT gcc/libiberty
-(echo ''; echo q) | bk pull > OUT 2>&1
-grep -q 'New work has been added locally and remotely' OUT || {
-	echo should have been in resolver
-	cat OUT
-	exit 1
-}
-echo OK
-
-echo $N Resolve the conflict by hand, make sure it works ............$NL
-bk abort -f
-bk alias set CONFLICT gcc gcc/nm
+bk alias add CONFLICT ./gcc/libiberty
 bk pull $Q || exit 1
-cd ..
-rm -rf conflict conflict-clone
+bk alias show CONFLICT > GOT
+bk alias show -k ./gcc/nm ./gcc/libiberty | sort > WANT
+echo gcc >> WANT
+cmpfiles GOT WANT
 echo OK
 
-echo $N Create a conflict in present alias, check error message .....$NL
+echo $N Create a conflict in present alias ..........................$NL
 cd "$HERE"
 commercial gcov
 cd "$HERE"
@@ -159,21 +150,17 @@ cd "$HERE"/proj-clone
 bk clone $Q ../libcpp gcc/libcpp
 bk attach $Q gcc/libcpp
 bk alias add dev ./gcc/libcpp
-bk pull $Q -i ../project >OUT 2>&1 <<EOF
-s
-C
-EOF
-test $? -eq 0 || {
-	echo failed
-	cat OUT
+bk components add $Q dev || exit 1
+bk pull $Q ../project || exit 1
+bk alias show -k ./gcc ./gcc/gcov ./gcc/libcpp ./gcc/libiberty \
+	./gcc/nm ./gdb > WANT
+bk alias show dev > GOT
+cmpfiles WANT GOT
+bk alias show here | grep -q dev || {
+	echo should have dev here
 	exit 1
 }
-grep -q '.content conflict. BitKeeper/etc/aliases>>' OUT || {
-	echo failed
-	cat OUT
-	exit 1
-}
-echo "failed (bug not handled smoothly yet)"
+echo OK
 
 echo $N Alias clone through bk:// ...................................$NL
 cd "$HERE"

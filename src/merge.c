@@ -2,9 +2,17 @@
 #include "sccs.h"
 #include "resolve.h"
 
+typedef struct {
+	u32	setmerge:1;
+	u32	hashmerge:1;
+} Opts;
+
 private	char	*getgfile(sccs *s, char *rev);
+private	int	do_hashmerge(Opts *opts, char *files[3]);
 private	int	do_merge(char *files[3]);
 private	int	do_setmerge(char *files[3]);
+private char	*merge_strings(Opts *opts, char *l, char *g, char *r);
+
 
 /* usage bk merge L G R M */
 int
@@ -12,18 +20,20 @@ merge_main(int ac, char **av)
 {
 	int	freefiles = 0;
 	int	c, i, ret;
-	int	setmerge = 0;
 	sccs	*s;
 	delta	*l, *g, *r;
 	char	*inc, *exc;
 	char	*sname;
+	Opts	*opts;
 	char	*files[3];
 
-	while ((c = getopt(ac, av, "s")) != -1) {
+	opts = new(Opts);
+	while ((c = getopt(ac, av, "hs")) != -1) {
 		switch(c) {
-		    case 's': setmerge = 1; break;
+		    case 'h': opts->hashmerge = 1; break;
+		    case 's': opts->setmerge = 1; break;
 		    default:
-usage:			system("bk help merge");
+usage:			system("bk help -s merge");
 			exit(1);
 		}
 	}
@@ -49,7 +59,9 @@ usage:			system("bk help merge");
 		/* redirect stdout to file */
 		freopen(av[optind + 3], "w", stdout);
 	}
-	if (setmerge) {
+	if (opts->hashmerge) {
+		ret = do_hashmerge(opts, files);
+	} else if (opts->setmerge) {
 		ret = do_setmerge(files);
 	} else {
 		ret = do_merge(files);
@@ -143,4 +155,128 @@ getgfile(sccs *s, char *rev)
 		exit(1);
 	}
 	return (tmpf);
+}
+
+/* compare hash data */
+#define	hdcmp(h1, h2) (((h1)->vlen == (h2)->vlen) && \
+	    !memcmp((h1)->vptr, (h2)->vptr, (h1)->vlen))
+
+private int
+do_hashmerge(Opts *opts, char *files[3])
+{
+	hash	*h[3], *hout;
+	int	i;
+
+	for (i = 0; i < 3; i++) {
+		unless (h[i] = hash_fromFile(0, files[i])) {
+			fprintf(stderr, "%s: unable to open %s\n",
+			    prog, files[i]);
+			return (2);
+		}
+	}
+	hout = hash_new(HASH_MEMHASH);
+	EACH_HASH(h[0]) {
+		assert(h[0]->vlen > 0); /* needed for hdcmp */
+		hash_fetchStr(h[1], h[0]->kptr);	/* get gca */
+		/* key exists on left */
+		if (hash_fetchStr(h[2], h[0]->kptr)) {
+			/* and on right */
+			if (hdcmp(h[0], h[2])) {
+				/* l==r so keep l */
+				hash_store(hout,
+				    h[0]->kptr, h[0]->klen,
+				    h[0]->vptr, h[0]->vlen);
+			} else if (hdcmp(h[0], h[1])) {
+				/* l==g so keep r */
+				hash_store(hout,
+				    h[2]->kptr, h[2]->klen,
+				    h[2]->vptr, h[2]->vlen);
+			} else if (hdcmp(h[2], h[1])) {
+				/* r==g so keep l */
+				hash_store(hout,
+				    h[0]->kptr, h[0]->klen,
+				    h[0]->vptr, h[0]->vlen);
+			} else {
+				char	*t;
+
+				// conflict
+				t = merge_strings(opts,
+				    h[0]->vptr, h[1]->vptr, h[2]->vptr);
+				hash_storeStr(hout, h[0]->kptr, t);
+				free(t);
+			}
+			/* remove from h[2] for loop below */
+			hash_deleteStr(h[2], h[0]->kptr);
+		} else {
+			/* not on right */
+
+			if (hdcmp(h[0], h[1])) {
+				/* right deleted, left unmodified => delete */
+			} else {	
+				/* new or modified from gca => keep */
+				hash_store(hout,
+				    h[0]->kptr, h[0]->klen,
+				    h[0]->vptr, h[0]->vlen);
+			}
+		}
+	}
+
+	/* now pickup stuff in r and not in l */
+	EACH_HASH(h[2]) {
+		hash_fetchStr(h[1], h[2]->kptr);
+
+		if (hdcmp(h[2], h[1])) {
+			/* left deleted, right unmodified => delete */
+		} else {	
+			/* new or modified from gca => keep */
+			hash_store(hout,
+			    h[2]->kptr, h[2]->klen,
+			    h[2]->vptr, h[2]->vlen);
+		}
+	}
+	for (i = 0; i < 2; i++) hash_free(h[i]);
+
+	hash_toStream(hout, stdout);
+	hash_free(hout);
+	return (0);
+}
+
+private char *
+merge_strings(Opts *opts, char *l, char *g, char *r)
+{
+	char	*files[3], *of;
+	int	fd1, i;
+	char	*out;
+
+	files[0] = bktmp(0, "merge_l");
+	Fprintf(files[0], "%s", l);
+	files[1] = bktmp(0, "merge_g");
+	if (g) Fprintf(files[1], "%s", g);
+	files[2] = bktmp(0, "merge_r");
+	Fprintf(files[2], "%s", r);
+
+	of = bktmp(0, "merge_o");
+	fflush(stdout);
+	fd1 = dup(1);
+	close(1);
+	open(of, O_WRONLY|O_CREAT, 0666);
+
+	if (opts->setmerge) {
+		do_setmerge(files);
+	} else {
+		do_merge(files);
+	}
+	fflush(stdout);
+	close(1);
+	dup2(fd1, 1);
+	close(fd1);
+
+	out = loadfile(of, 0);
+	for (i = 0; i < 3; i++) {
+		unlink(files[i]);
+		free(files[i]);
+	}
+	unlink(of);
+	free(of);
+	return (out);
 }

@@ -665,12 +665,12 @@ bk merge -z > /dev/null 2> ERR && {
 	echo "Should fail"
 	exit 1
 }
-bk grep -iq usage ERR
-if [ $? -ne 0 ]
-then	echo 'failed (bug shows help page)'
-else	echo "OK, fix test"
-fi
+bk grep -iq usage ERR || {
+	echo "No usage"
+	exit 1
+}
 rm -f ERR
+echo OK
 
 echo $N bk mv with bogus option and missing args ....................$NL
 bk mv -z > /dev/null 2> ERR && {

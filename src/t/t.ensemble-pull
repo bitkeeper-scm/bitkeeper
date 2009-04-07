@@ -506,3 +506,10 @@ bk components add $Q GCC || exit 1
 cd ../local
 bk pull $Q || exit 1
 echo OK
+
+echo $N Now unpull and setup a conflict in aliases ..................$NL
+bk unpull $Q -f || exit 1
+bk alias new GCC ./gdb || exit 1
+bk components add $Q GCC || exit 1
+echo q | bk pull $Q || exit 1
+echo OK

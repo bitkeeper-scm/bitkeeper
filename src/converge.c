@@ -33,7 +33,8 @@ converge_hash_files(void)
 	struct	{
 		char	*file;
 		char	*opts;
-	} files[] = {{ "BitKeeper/etc/collapsed", "-s" },
+	} files[] = {{ "BitKeeper/etc/aliases", "-hs"},
+		     { "BitKeeper/etc/collapsed", "-s" },
 		     { "BitKeeper/etc/gone", "-s" },
 		     { "BitKeeper/etc/ignore", "-s" },
 		     { "BitKeeper/etc/skipkeys", "-s"},

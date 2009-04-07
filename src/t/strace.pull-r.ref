@@ -5,10 +5,10 @@ chmod 37
 close 535
 link 4
 lseek 139
-lstat 804
+lstat 815
 mkdir 19
-open 242
-read 4105
+open 244
+read 4085
 rename 6
 rmdir 3
 stat 25
