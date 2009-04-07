@@ -296,12 +296,7 @@ project44
 EOF
 bk undos X > DATA
 bk get $Q BitKeeper/etc/gone
-cmp -s BitKeeper/etc/gone DATA || {
-	echo failed to union data
-	echo GOT vs WANTED
-	sdiff -w80 BitKeeper/etc/gone DATA
-	exit 1
-}
+cmpfiles BitKeeper/etc/gone DATA
 echo OK
 
 # Create a logging repository, clone, commit in both, 

@@ -97,6 +97,7 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 {
 	char	*sfile = name2sccs(gfile);
 	char	*t;
+	int	rc;
 	sccs	*s;
 	resolve	*rs;
 	char	rootkey[MAXKEY];
@@ -111,6 +112,7 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 
 	/* only merge file if it is for the right pathname */
 	s = sccs_init(sfile, g->iflags);
+	sccs_close(s);
 	unless (streq(sccs_ino(s)->pathname, pathname)) {
 		sccs_free(s);
 		goto out;
@@ -167,9 +169,12 @@ merge(State *g, char *gfile, char *pathname, char *opts)
 		 * Both remote and local have updated the file.
 		 * We automerge here, saves trouble later.
 		 */
-		sys("bk", "get", "-qeM", s->gfile, SYS);
-		sysio(0, s->gfile, 0, "bk", "merge", opts, s->gfile, SYS);
-		sys("bk", "ci", "-qdPyauto-union", s->gfile, SYS);
+		rc = sys("bk", "get", "-qeM", s->gfile, SYS);
+		assert(!rc);
+		rc = sysio(0, s->gfile, 0, "bk", "merge", opts, s->gfile, SYS);
+		assert(!rc);
+		rc = sys("bk", "ci", "-qdPyauto-union", s->gfile, SYS);
+		assert(!rc);
 
 		/* delete rfile */
 		t = strrchr(s->sfile, '/'), t[1] = 'r';
