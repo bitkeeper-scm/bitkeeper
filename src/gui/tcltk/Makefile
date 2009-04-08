@@ -135,13 +135,17 @@ tk/$S/Makefile: tk/$S/configure Makefile
 # fetch tcl subdirectory if needed
 tcl/$S/configure:
 	$(if $(Q), @echo Cloning Tcl,)
-	$(Q)test -d tcl || bk components add $(QUIET) TCLTK
+	$(Q)test -d tcl || bk components add $(QUIET) \
+		-@ -@bk://data.bitmover.com/bk \
+		TCLTK
 	$(Q)(cd tcl && bk -Ur get -qS)
 
 # fetch tk subdirectory if needed
 tk/$S/configure:
 	$(if $(Q), @echo Cloning Tk,)
-	$(Q)test -d tk || bk components add $(QUIET) TCLTK
+	$(Q)test -d tk || bk components add $(QUIET) \
+		-@ -@bk://data.bitmover.com/bk \
+		TCLTK
 	$(Q)(cd tk && bk -Ur get -qS)
 
 pcre: $(LIBPCRE)
@@ -159,13 +163,17 @@ pcre/Makefile: pcre/configure Makefile
 
 pcre/configure: Makefile
 	$(if $(Q), @echo Cloning PCRE,)
-	$(Q)test -d pcre || bk components add $(QUIET) TCLTK
+	$(Q)test -d pcre || bk components add $(QUIET) \
+		-@ -@bk://data.bitmover.com/bk \
+		TCLTK
 	$(Q)(cd pcre && bk -Ur get -qS)
 
 # fetch tktable subdirectory if needed
 tktable/configure:
 	$(if $(Q), @echo Cloning TKTable,)
-	$(Q)test -d tktable || bk components add $(QUIET) TCLTK
+	$(Q)test -d tktable || bk components add $(QUIET) \
+		-@ -@bk://data.bitmover.com/bk \
+		TCLTK
 	$(Q)(cd tktable && bk -Ur get -qS)
 
 # Tktable libs
@@ -202,7 +210,9 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 # fetch tktreectrl subdirectory if needed
 tktreectrl/configure:
 	$(if $(Q), @echo Cloning TKTreeCtrl,)
-	$(Q)test -d tktreectrl || bk components add $(QUIET) TCLTK
+	$(Q)test -d tktreectrl || bk components add $(QUIET) \
+		-@ -@bk://data.bitmover.com/bk \
+		TCLTK
 	$(Q)(cd tktreectrl && bk -Ur get -qS)
 
 # TkTreeCtrl libs
@@ -237,7 +247,9 @@ $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
 
 lib/$(BWIDGET)/pkgIndex.tcl:
 	$(if $(Q), @echo Cloning BWidget,)
-	$(Q)test -d bwidget || bk components add $(QUIET) TCLTK
+	$(Q)test -d bwidget || bk components add $(QUIET) \
+		-@ -@bk://data.bitmover.com/bk \
+		TCLTK
 	$(Q)cd bwidget; bk -Ur get -qS
 	$(if $(Q), @echo Installing BWidget,)
 	$(Q)mkdir -p lib/$(BWIDGET)/lang
@@ -253,7 +265,9 @@ $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl
 
 lib/Tkcon/pkgIndex.tcl:
 	$(if $(Q), @echo Cloning TkCon,)
-	$(Q)test -d tkcon || bk components add $(QUIET) TCLTK
+	$(Q)test -d tkcon || bk components add $(QUIET) \
+		-@ -@bk://data.bitmover.com/bk \
+		TCLTK
 	cd tkcon; bk -Ur get -qS
 	$(if $(Q), @echo Installing TkCon,)
 	$(Q)mkdir -p lib/Tkcon

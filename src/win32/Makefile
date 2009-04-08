@@ -34,7 +34,9 @@ msys: ./msysver.sh FORCE
 	-MSYSVER=`./msysver.sh`; \
 	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
 	then	tar -C$(MSYSBIN) -xpzf $$MSYSVER; \
-	else	test -d msys || bk components add MSYS; \
+	else	test -d msys || bk components add \
+		-@ -@bk://data.bitmover.com/bk \
+		MSYS; \
 		(cd msys && bk -Ugr bk get -S); \
 		(cd msys; bk sfiles -Ug) | \
 			tar -Cmsys -cf- -T- | \
@@ -50,12 +52,16 @@ msys: ./msysver.sh FORCE
 
 bkshellx: FORCE
 	[ -d dll ] || mkdir dll
-	test -d dll/shellx || bk components add WIN32-DLL
+	test -d dll/shellx || bk components add \
+		-@ -@bk://data.bitmover.com/bk \
+		WIN32-DLL
 	cd dll/shellx; bk -Ur get -Sq
 
 bkscc: FORCE
 	[ -d dll ] || mkdir dll
-	test -d dll/scc || bk components add WIN32-DLL
+	test -d dll/scc || bk components add \
+		-@ -@bk://data.bitmover.com/bk \
+		WIN32-DLL
 	cd dll/scc; bk -Ur get -Sq
 
 install: all blat data/bk.ico
