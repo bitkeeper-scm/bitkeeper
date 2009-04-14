@@ -637,7 +637,8 @@ pull_ensemble(remote *r, char **rmt_aliases)
 		/*
 		 * this can fail
 		 */
-		// XXX error message
+		fprintf(stderr, "%s: local aliases no longer valid.\n",
+		    prog);
 		rc = 1;
 		goto out;
 	}
@@ -664,8 +665,11 @@ pull_ensemble(remote *r, char **rmt_aliases)
 					    c->path, url);
 					++errs;
 				} else if (!c->present) {
+					if (c->localchanges) goto npmerge;
 					/* we don't have it currently */
 					unless (c->new) c->new = 1;
+				} else if (c->localchanges) {
+					/* we will merge this component */
 				}
 			} else {
 				/* we don't want this component */
@@ -674,6 +678,13 @@ pull_ensemble(remote *r, char **rmt_aliases)
 					fprintf(stderr,
 					    "pull: %s shouldn't be here.\n",
 					    c->path);
+					++errs;
+				} else if (c->localchanges) {
+					/* merge in non-present component */
+npmerge:				fprintf(stderr,
+					    "%s: Unable to resolve conflict "
+					    "in non-present component '%s'.\n",
+					    prog, c->path);
 					++errs;
 				}
 			}
@@ -754,8 +765,10 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	proj_cd2product();
 	if (rc) goto out;
 
-	/* Now we need to make it such that the resolver in the
-	 * product will work */
+	/*
+	 * Now we need to make it such that the resolver in the
+	 * product will work.
+	 */
 	unless (opts.noresolve) {
 		unless (opts.quiet) {
 			printf("#### Resolve in product ####\n");

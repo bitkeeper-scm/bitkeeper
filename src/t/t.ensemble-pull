@@ -471,9 +471,7 @@ rm -rf remote local
 bk clone $Q null-pull remote
 bk clone $Q remote local
 cd "$HERE"/local
-mv gcc gcc4
-bk edit $Q gcc4/ChangeSet
-bk delta $Q -y'rename' gcc4/ChangeSet
+mvcomp gcc gcc4
 bk commit $Q -y'rename component'
 cd "$HERE"/remote/gcc
 for i in 1 

@@ -806,15 +806,6 @@ badXsum(int a, int b)
 	/* XXX - should clean up everything if this was takepatch -i */
 }
 
-private	int
-walkrevs_list(sccs *s, delta *d, void *token)
-{
-	char	***list = token;
-
-	*list = addLine(*list, d->rev);
-	return (0);
-}
-
 /*
  * Most of the code in this function is copied from applyPatch
  * We may want to merge the two function later.
@@ -1012,44 +1003,6 @@ apply:
 	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
-	}
-	if (confThisFile && proj_isProduct(s->proj)) {
-		nested	*local, *remote;
-		comp	*c;
-		char	**list;
-		int	i, fail = 0;
-
-		/* set list to what is in local but not remote */
-		list = 0;
-		range_walkrevs(s,
-		    s->remote, s->local, walkrevs_list, (void *)&list);
-		local = nested_init(s, 0, list, 0);
-		freeLines(list, 0);
-
-		/* set list to what is in remote but not local */
-		list = 0;
-		range_walkrevs(s,
-		    s->local, s->remote, walkrevs_list, (void *)&list);
-		remote = nested_init(s, 0, list, 0);
-		freeLines(list, 0);
-
-		/* intersection and not here is an error */
-		EACH_STRUCT(local->comps, c, i) {
-			// if it's here, no worries.
-			if (c->present || !c->included) continue;
-			// if they don't have it then no worries
-			unless (nested_findKey(remote, c->rootkey)) continue;
-			// OK, worry.
-			fprintf(stderr,
-			    "\n\nUnable to resolve conflict "
-			    "in non-present component '%s'.\n"
-			    "You need to bk populate that component first.\n",
-			    c->path);
-		    	fail++;
-		}
-		nested_free(local);
-		nested_free(remote);
-		if (fail) goto err;
 	}
 	conflicts += confThisFile;
 	sccs_free(s);
