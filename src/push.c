@@ -1079,7 +1079,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 	 * - map remote HERE to aliases from remote tip and set in
 	 *   c->remotePresent
 	 * - map remote HERE to aliases from local tip and set in
-	 *   c->nlink
+	 *   c->alias
 	 * - The c->present bit give us local information
 	 */
 

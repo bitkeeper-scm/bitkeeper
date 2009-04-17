@@ -185,7 +185,7 @@ check_cnt
 echo OK
 
 
-CNT=39
+CNT=42
 echo $N "Count the inits for a 'bk unpull -fs' ($CNT)..................."$NL
 rm "$FILE"
 bk unpull -fs $Q || exit 1

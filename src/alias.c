@@ -101,7 +101,7 @@ usage:			system("bk help -s alias");
 	goto usage;
 }
 
-int
+private int
 aliasCreate(int ac, char **av)	/* used for create, add, rm */
 {
 	nested	*n = 0;
@@ -556,33 +556,34 @@ dbChk(nested *n, hash *aliasdb)
 
 // =================== functions to read the db ===============
 
-char	**
-aliasdb_expand(nested *n, hash *aliasdb, char **aliases)
+/*
+ * Given an aliasdb and a list of aliases, set c->alias on each component
+ * in 'n' that is contained in those aliases.
+ *
+ * Prints error message and returns non-zero if aliases fail to expand.
+ */
+int
+aliasdb_tag(nested *n, hash *aliasdb, char **aliases)
 {
 	comp	*c;
 	char	**comps;
 	int	i, j;
 
 	assert(n);
-	unless (aliases) return (0);
-	EACH_STRUCT(n->comps, c, i) c->nlink = 0;
+	EACH_STRUCT(n->comps, c, i) c->alias = 0;
 	EACH_INDEX(aliases, j) {
 		unless (comps = aliasdb_expandOne(n, aliasdb, aliases[j])) {
-			return (0);
+			return (-1);
 		}
 		EACH_STRUCT(comps, c, i) {
 			assert(!c->product);
-			c->nlink += 1; // deprecated
+			c->alias = 1;
 		}
 		freeLines(comps, 0);
 	}
-	comps = 0;
-	EACH_STRUCT(n->comps, c, i) {
-		if (c->nlink) comps = addLine(comps, c);
-	}
-	unless (comps) comps = allocLines(2); /* always return something */
+	n->product->alias = 1;
 	n->alias = 1;
-	return (comps);
+	return (0);
 }
 
 /*
@@ -643,23 +644,21 @@ dbShow(nested *n, hash *aliasdb, char *cwd, char **aliases, opts *op)
 			if (aliasdb_chkAliases(n, aliasdb, &aliases, cwd)) {
 				goto err;
 			}
-			unless (comps = aliasdb_expand(n, aliasdb, aliases)) {
+			if (aliasdb_tag(n, aliasdb, aliases)) {
 				goto err;
 			}
-		} else {
-			comps = n->comps;
 		}
 
-		EACH_STRUCT(comps, c, i) {
+		EACH_STRUCT(n->comps, c, i) {
 			if (c->product ||
 			    (op->missing && c->present) ||
 			    (op->here && !c->present)) {
 				continue;
 			}
+			if (n->alias && !c->alias) continue;
 			items = addLine(items,
 			    strdup(op->showkeys ? c->rootkey : c->path));
 		}
-		if (aliases) freeLines(comps, 0);
 		goto print;
 	}
 
@@ -856,6 +855,15 @@ dbLoad(nested *n, hash *aliasdb)
 	return (aliasdb);
 }
 
+/*
+ * Given a list of aliases, verify they are all legal.
+ * Return non-zero and print error messages if problems are
+ * found.
+ *
+ * If 'cwd', then the aliases are expanded from the command line to
+ * the 'standard' form.  Pathnames are mapped to rootkeys and globs
+ * are expanded.
+ */
 int
 aliasdb_chkAliases(nested *n, hash *aliasdb, char ***paliases, char *cwd)
 {
