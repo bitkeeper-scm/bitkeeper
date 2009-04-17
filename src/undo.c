@@ -25,7 +25,7 @@ undo_main(int ac,  char **av)
 	char	buf[MAXLINE];
 	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
 	FILE	*f;
-	int	i, j;
+	int	i, j, errs;
 	int	status;
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
@@ -37,6 +37,7 @@ undo_main(int ac,  char **av)
 	char	*patch = "BitKeeper/tmp/undo.patch";
 	char	*p;
 	char	**nav = 0;
+	project	*proj;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "undo: cannot find package root.\n");
@@ -45,7 +46,7 @@ undo_main(int ac,  char **av)
 
 	fromclone = 0;
 	while ((c = getopt(ac, av, "a:Cfqp;r:sv")) != -1) {
-		unless ((c == 'a') || (c == 'r')) {
+		unless ((c == 'a') || (c == 'r') || (c == 's')) {
 			if (optarg) {
 				nav = addLine(nav,
 				    aprintf("-%c%s", c, optarg));
@@ -155,13 +156,73 @@ err:		if (undo_list[0]) unlink(undo_list);
 		char	**vp;
 		int	i, num = 0, which = 1;
 
-		unless (n = nested_init(0, 0, csetrev_list, NESTED_UNDO)) {
+		unless (n = nested_init(0, 0, csetrev_list, 0)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
 			goto err;
 		}
-
+		/* make sure we can explain the aliases at the new cset */
+		if (nested_aliases(n, n->oldtip, &n->here, 0, 0)) {
+			fprintf(stderr,
+			    "%s: current aliases not valid after undo.\n",
+			    prog);
+			nested_free(n);
+			goto err;
+		}
+		assert(n->product->alias);
+		errs = 0;
 		EACH_STRUCT(n->comps, c, i) {
+			/* handle changing aliases */
+			if (c->present && !c->alias && !c->new) {
+				/*
+				 * a component that is currently present
+				 * but shouldn't be here after the undo.
+				 */
+				fprintf(stderr,
+				    "%s: The old aliases file doesn't include "
+				    "the %s component which is currently "
+				    "present.\n", prog, c->path);
+				++errs;
+			} else if (!c->present && c->alias) {
+				/*
+				 * a component that is missed but should
+				 * be present after the undo.  We need
+				 * to try and populate it.
+				 * Just generate an error for now.
+				 */
+				fprintf(stderr,
+				    "%s: The old aliases file requires the "
+				    "component %s which is not present.\n",
+				    prog, c->path);
+				++errs;
+			}
+
+			/* count number of calls to undo needed */
 			if (c->present && c->included && !c->new) num++;
+
+			unless (c->new && c->included) continue;
+
+			/* foreach repo to be deleted... */
+
+			proj = proj_init(c->path);
+			/* may fail */
+			removeLine(n->here, proj_rootkey(proj), free);
+			proj_free(proj);
+
+			sysio(0,
+			    SFILES, 0, "bk", "sfiles", "-gcxp", c->path, SYS);
+			if (size(SFILES) > 0) {
+				fprintf(stderr,
+				    "Changed/extra files in '%s'\n", c->path);
+				p = aprintf("/bin/cat < '%s' 1>&2", SFILES);
+				system(p);
+				free(p);
+				++errs;
+			}
+			unlink(SFILES);
+		}
+		if (errs) {
+			nested_free(n);
+			goto err;
 		}
 		START_TRANSACTION();
 		EACH_STRUCT(n->comps, c, j) {
@@ -170,7 +231,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("undo"));
 			EACH(nav) vp = addLine(vp, strdup(nav[i]));
-			cmd = aprintf("-fa%s", c->deltakey);
+			cmd = aprintf("-fa%s", c->lowerkey);
 			vp = addLine(vp, cmd);
 			vp = addLine(vp, 0);
 			unless (quiet) {
@@ -186,28 +247,16 @@ err:		if (undo_list[0]) unlink(undo_list);
 			rc = spawnvp(_P_WAIT, "bk", &vp[1]);
 			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
 			if (rc && !(fromclone && (rc == UNDO_SKIP))) {
-fail:				fprintf(stderr, "Could not undo %s to %s.\n",
-				    c->path, c->deltakey);
+				fprintf(stderr, "Could not undo %s to %s.\n",
+				    c->path, c->lowerkey);
+
+				// XXX need to rollback
 				exit(199);
 			}
 			freeLines(vp, free);
 			proj_cd2product();
 		}
 		STOP_TRANSACTION();
-		EACH_STRUCT(n->comps, c, i) {
-			unless (c->new && c->included) continue;
-			sysio(0,
-			    SFILES, 0, "bk", "sfiles", "-gcxp", c->path, SYS);
-			if (size(SFILES) > 0) {
-				fprintf(stderr,
-				    "Changed/extra files in '%s'\n", c->path);
-				p = aprintf("/bin/cat < '%s' 1>&2", SFILES);
-				system(p);
-				free(p);
-				goto fail;
-			}
-			unlink(SFILES);
-		}
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->new && c->included) rmtree(c->path);
 		}
@@ -226,6 +275,7 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		}
 		pclose(f);
 
+		nested_writeHere(n);
 		nested_free(n);
 		unless (quiet) {
 			printf("#### Undo in Product (%d of %d) ####\n",

@@ -631,7 +631,6 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	 */
 	nested_aliases(n, n->tip, &rmt_aliases, 0, 0);
 	EACH_STRUCT(n->comps, c, i) if (c->alias) c->remotePresent = 1;
-	n->product->remotePresent = 1;
 
 	if (nested_aliases(n, 0, &n->here, 0, NESTED_PENDING)) {
 		/*
@@ -641,7 +640,6 @@ pull_ensemble(remote *r, char **rmt_aliases)
 		rc = 1;
 		goto out;
 	}
-	n->product->alias = 1;	/* we want the product too */
 
 	/*
 	 * Find the cases where the push should fail:

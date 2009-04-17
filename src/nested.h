@@ -46,10 +46,8 @@ extern	unsigned int turnTransOff;
 
 #define	NESTED_PENDING		0x10000000	/* included pending comps */
 #define	NESTED_PULL		0x20000000	/* This is a pull */
-#define	NESTED_PRODUCTFIRST	0x40000000
-#define	NESTED_UNDO		0x80000000
-#define	NESTED_DEEPFIRST	0x01000000
-#define	NESTED_LOOKUP		0x04000000	/* fast lookup db built */
+#define	NESTED_PRODUCTFIRST	0x40000000	/* c->p first in c->comps */
+#define	NESTED_DEEPFIRST	0x80000000	/* deeper comps first */
 
 typedef struct nested nested;
 
@@ -57,10 +55,9 @@ typedef struct {
 	nested	*n;			// backpointer
 	char	*rootkey;		// rootkey of the repo
 	char	*deltakey;		// deltakey of repo as of rev
-	char	*lowerkey;		// In a revs, lower deltakey in range
+	char	*lowerkey;		// in pull, local tip
+					// otherwise, gca tip
 	char	*path;			// actual path: like GFILE, not DPN
-					// use accesor to fetch
-	int	nlink;			// alias link count (deprecated)
 
 	// bits
 	u32	alias:1;		// in the latest alias
@@ -82,7 +79,7 @@ struct nested {
 	hash	*compdb;	// lazy init rk lookup of &n->comp[i]
 	comp	*product;	// pointer into comps to the product
 	// bits
-	u32	alias:1;	// nlink counts set in components
+	u32	alias:1;	// components tagged with c->alias
 	u32	product_first:1;// default is last in list
 	u32	undo:1;		// undo wants the -a inferred from opts.revs
 	u32	deepfirst:1;	// sort such that deeply nested comps are first
@@ -90,11 +87,6 @@ struct nested {
 	u32	freecset:1;	// do a sccs_free(cset) in nested_free()
 };
 
-/*
- * XXX: who frees the revs list? Is this a pass off or ?
- * Same with cset?
- * One model is if caller passes in, caller frees.
- */
 int	isComponent(char *path);
 
 nested	*nested_init(sccs *cset, char *rev, char **revs, u32 flags);
@@ -111,13 +103,14 @@ void	nested_check(void);
 int	nested_emptyDir(char *dir);
 int	nested_rmtree(char *dir);
 char	**nested_here(project *p);
+void	nested_writeHere(nested *n);
 
 /* alias.h */
 
 #define	ALIASES	"BitKeeper/etc/aliases"
 
 hash	*aliasdb_init(nested *n, project *p, char *rev, int pending);
-char	**aliasdb_expand(nested *n, hash *aliasdb, char **aliases);
+int	aliasdb_tag(nested *n, hash *aliasdb, char **aliases);
 char	**aliasdb_expandOne(nested *n, hash *aliasdb, char *alias);
 void	aliasdb_free(hash *db);
 int	aliasdb_chkAliases(nested *n, hash *aliasdb,

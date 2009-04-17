@@ -27,7 +27,7 @@ int
 nested_main(int ac, char **av)
 {
 	int	c, i;
-	int	rc = 0, want = 0;
+	int	rc = 0, want = 0, undo = 0;
 	int	here = 0, missing = 0;
 	int	product = 0;
 	char	*p;
@@ -77,7 +77,7 @@ nested_main(int ac, char **av)
 			aliases = addLine(aliases, strdup(optarg));
 			break;
 		    case 'u':	/* undoc */
-			flags |= NESTED_UNDO;
+			undo = 1;
 			break;
 		    default:
 usage:			system("bk help -s here");
@@ -110,7 +110,7 @@ usage:			system("bk help -s here");
 		if (!product && cp->product) continue;
 		unless (cp->included) continue;
 		if (n->alias && !cp->alias && !cp->product) continue;
-		if ((flags & NESTED_UNDO) && cp->new && !(want & L_NEW)) {
+		if (undo && cp->new && !(want & L_NEW)) {
 			continue;
 		}
 		if (here && !cp->present) continue;
@@ -121,7 +121,7 @@ usage:			system("bk help -s here");
 			p = "|";
 		}
 		if (want & L_DELTA) {
-			printf("%s%s", p, cp->deltakey);
+			printf("%s%s", p, undo ? cp->lowerkey : cp->deltakey);
 			p = "|";
 		}
 		if (want & L_ROOT) {
@@ -152,34 +152,35 @@ out:	nested_free(n);
 
 /*
  * Return the list of comps for this product.
- * Optionally include the product.
+ * All components for all revs in the ChangeSet file are returned.
+ * The components are then tagged with a series of booleans about
+ * how they are used.
  *
- * Callers of this are undo, [r]clone, pull, push and they tend to want
- * different things:
+ * input
+ *    cset    ChangeSet file, may be 0.
+ *    revs    list of revs 'included'
+ *    rev     act like revs == ..rev
  *
- * undo wants a list of components, which is the subset that will change in
- * the undo operation, and delta keys which are the desired tips after undo.
- * We get the list of comps from the range of csets passed in in revs
- * and then we do another pass to get the tips from what is left.
+ * usage:
+ *    pull    uses the RESYNC cset file and revs == csets-in
+ *    push    revs == list of csets to push
+ *    clone   revs == ..-r
+ *    undo    revs == set of csets to remove
+
+ * fields per component:
+ *   rootkey
+ *   deltakey	  tip delta in 'revs'
+ *   lowerkey	  oldest delta in history of 'revs' (or localtip for pull)
+ *   path	  local pathname for component
+ *   alias	  set by nested_aliases()
+ *   included	  modified in 'revs'
+ *   localchanges pull-only modified in local work
+ *   new	  created in 'revs'
+ *   present	  exists in tree
+ *   product	  is product?
  *
- * [r]clone wants a list of all components in a particular rev and their
- * tip keys.  It passes in the rev and not the list.
- *
- * pull/push want a list components, which is the subset that changed in
- * the range of csets being moved in the product, and delta keys which are
- * the tips in each component.  "rev" is not passed in, "revs" is the list.
- * The first tip we see for each component is what we want, that's newest.
- *
- * Other callers are nested_each (such as bk -A), alias, and components
- * which want to get access to what is pending as well.  The current hack
- * is if revs and rev == 0, then include pending.
- *
- * The path field is always set to the current path of the component, not
- * the path as of the rev[s].  Note that if the component is not present
- * the path is a best effort guess based on the deltakey or the idcache.
- *
- * The present field is set if the component is in the filesystem.
- *
+ * toplevel fields:
+ *   see nested.h
  */
 nested	*
 nested_init(sccs *cset, char *rev, char **revs, u32 flags)
@@ -256,6 +257,8 @@ err:				if (revsDB) mdbm_close(revsDB);
 
 	/*
 	 * if L..R colors a range, take a range and return L and R
+	 * Leave range colored RED and the intersetion of left and
+	 * right colored BLUE.
 	 */
 	range_unrange(cset, &left, &right, (flags & NESTED_PULL));
 	if (left == INVALID) {
@@ -334,38 +337,31 @@ err:				if (revsDB) mdbm_close(revsDB);
 			/* included in revs or under tip */
 			unless (c->included) {
 				c->included = 1;
-				if (c->deltakey) {
-					assert(!c->lowerkey);
-					c->lowerkey = c->deltakey;
-				}
+				assert(!c->deltakey);
 				c->deltakey = strdup(v);
 			}
 		} else unless (c->new) {
 			/* it's known to be not new, so we're done */
 		} else if (flags & NESTED_PULL) {
 			c->new = 0;
-			unless (d->flags & D_BLUE) c->localchanges = 1;
 			unless (c->present) {
 				free(c->path);
 				c->path = key2path(v, 0);
 				dirname(c->path);
 			}
-			if (c->included) {
-				assert(!c->lowerkey);
-				c->lowerkey = strdup(v);
-			} else {
-				assert(!c->deltakey);
-				c->deltakey = strdup(v);
-			}
+			if (d->flags & D_BLUE) goto GCA;
+			c->localchanges = 1;
 		} else if (d->flags & D_BLUE) {
+			/* in GCA region without NESTED_PULL */
 			c->new = 0;
-			if (c->included) {
-				assert(!c->lowerkey);
-				c->lowerkey = strdup(v);
-			} else {
-				assert(!c->deltakey);
-				c->deltakey = strdup(v);
-			}
+
+			/*
+			 * If we haven't seen a RED delta yet then we
+			 * won't.
+			 */
+GCA:			unless (c->deltakey) c->deltakey = strdup(v);
+			assert(!c->lowerkey);
+			c->lowerkey = strdup(v);
 		} else {
 			/* skip things like repo tip in a push -r case */
 		}
@@ -419,7 +415,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 	}
 	mdbm_close(idDB);
 
-	sortLines(n->comps, compSort);
+	sortLines(n->comps, compSort); /* by c->path */
 	if (flags & NESTED_DEEPFIRST) reverseLines(n->comps);
 
 	if (flags & NESTED_PRODUCTFIRST) {
@@ -429,34 +425,14 @@ err:				if (revsDB) mdbm_close(revsDB);
 		n->comps = pushLine(n->comps, n->product);
 	}
 
-	if (flags & NESTED_UNDO) {
-		unless (n->oldtip) {
-			fprintf(stderr, "nested: undo all: "
-			    "just remove the repository\n");
-			goto err;
-		}
-		/* swap tip and oldtip */
-		t = n->tip;
-		n->tip = n->oldtip;
-		n->oldtip = t;
-
-		/* swap deltakey and lowerkey in each component */
-		EACH_STRUCT(n->comps, c, i) {
-			if (c->included) {
-				t = c->deltakey;
-				c->deltakey = c->lowerkey;
-				c->lowerkey = t;
-			} else {
-				/* Is this a good thing to not set it? */
-				assert(!c->lowerkey);
-			}
-		}
-	}
 	chdir(cwd);
 	free(cwd);
 	return (n);
 }
 
+/*
+ * Return the HERE file as a lines array.
+ */
 char **
 nested_here(project *p)
 {
@@ -471,33 +447,41 @@ nested_here(project *p)
 }
 
 /*
+ * Write n->here back to a file
+ */
+void
+nested_writeHere(nested *n)
+{
+	lines2File(n->here, "BitKeeper/log/HERE");
+	/* old repos break less */
+	lines2File(n->here, "BitKeeper/log/COMPONENTS");
+}
+
+/*
+ * Tag components in 'n' that are included in 'aliases' as of cset 'rev'.
+ * If 'cwd' then aliases are auto-normalized by translating pathnames
+ * into rootkeys and expanding globs.
+ * The product is always tagged.
+ *
  * Any error messages are printed to stderr (or bkd) directly
  * returns -1 if aliases fails to expand
- * NOTE: product is not part of the aliases
  */
-
 int
 nested_aliases(nested *n, char *rev, char ***aliases, char *cwd, int pending)
 {
-	int	i;
 	int	rc = -1;
-	comp	*c;
-	char	**comps = 0;
 	hash	*aliasdb = 0;
 
-	unless (aliasdb = aliasdb_init(n, n->cset->proj, rev, pending)) {
-		goto err;
+	if ((aliasdb = aliasdb_init(n, n->cset->proj, rev, pending)) &&
+	    !aliasdb_chkAliases(n, aliasdb, aliases, cwd) &&
+	    !aliasdb_tag(n, aliasdb, *aliases)) {
+		rc = 0;
 	}
-	if (aliasdb_chkAliases(n, aliasdb, aliases, cwd)) goto err;
-	unless (comps = aliasdb_expand(n, aliasdb, *aliases)) goto err;
-	EACH_STRUCT(n->comps, c, i) c->alias = (c->nlink != 0);
-	rc = 0;
-err:
-	freeLines(comps, 0);
 	aliasdb_free(aliasdb);
 	return (rc);
 }
 
+/* sort components by pathname */
 private int
 compSort(const void *a, const void *b)
 {

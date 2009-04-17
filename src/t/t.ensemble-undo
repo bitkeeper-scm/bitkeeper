@@ -33,3 +33,67 @@ test `bk changes -r+ -nd:REV:` = 1.3 || exit 1
 bk -P undo $Q -fsr+ || exit 1
 test `bk changes -r+ -nd:REV:` = 1.2 || exit 1
 echo OK
+
+echo $N Test undo where the HERE file becomes invalid ...............$NL
+cd ..
+echo hi > gcc/new
+bk new $Q gcc/new || exit 1
+(cd gcc; bk commit $Q -ynew)
+bk commit $Q -ynew
+bk alias new GCC ./gcc || exit 1
+bk components add $Q GCC || exit !
+bk undo -fsa1.2 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "undo: current aliases not valid after undo" ERR || exit 1
+echo OK
+
+echo $N Test undo after adding a new component ......................$NL
+touch c
+bk alias show here > OLDHERE
+bk setup -fcc comp1 || exit 1
+bk undo $Q -fsr+ || exit 1
+test -d comp1 && {
+	echo should have delted comp1
+	exit 1
+}
+bk -r check -ac || exit 1
+bk alias show here > GOT
+cmpfiles GOT OLDHERE
+echo OK
+
+echo $N Undo changes alias needing to unpopulate ....................$NL
+bk alias new FOO ./gcc || exit 1
+bk alias set FOO all || exit 1
+bk components set $Q FOO || exit 1
+bk undo $Q -fsr+ 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q "undo: The old aliases file doesn't include the gdb component which is currently present." ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Undo changes alias needing to populate ......................$NL
+cd ..
+bk clone $Q project copy || exit 1
+cd copy
+bk alias set FOO ./gcc || exit 1
+bk components set $Q FOO || exit 1
+bk undo $Q -fsr+ 2>ERR && {
+	echo should have failed
+	cat ERR
+	exit 1
+}
+grep -q "undo: The old aliases file requires the component gdb which is not present." ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+echo OK
+

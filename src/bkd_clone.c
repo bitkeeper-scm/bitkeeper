@@ -132,9 +132,8 @@ cmd_clone(int ac, char **av)
 		nested	*n;
 		comp	*cp;
 		int	errors = 0;
-		u32	flags = NESTED_PRODUCTFIRST;
 
-		n = nested_init(s, rev, 0, flags);
+		n = nested_init(s, rev, 0, 0);
 		assert(aliases);
 		if (nested_aliases(n, n->tip, &aliases, proj_cwd(), 0)) {
 			printf("ERROR-unable to expand aliases.\n");
