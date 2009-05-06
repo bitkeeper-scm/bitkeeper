@@ -340,7 +340,7 @@ synckeys
 tagmerge
 takepatch
 _tclsh
-_test
+test
 testdates
 _touch
 _unbk
@@ -392,6 +392,7 @@ sccsdiff => diffs
 sfind => sfiles
 _sort => sort
 support => sendbug
+_test => test
 unget => unedit
 user => users
 

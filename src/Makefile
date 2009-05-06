@@ -410,7 +410,7 @@ bkhelp.txt: build $(BK) FORCE
 # It is structured like this so that rebuilding prs doesn't
 # force bk.ver (and thus the bk script) to be regenerated.
 bk.ver: utils/os utils/gnu-os
-	$(Q)bk _test ! -f bk.ver -o ../SCCS/s.ChangeSet -nt bk.ver && { \
+	$(Q)bk test ! -f bk.ver -o ../SCCS/s.ChangeSet -nt bk.ver && { \
 		( echo \
 		    `./bk prs -hr+ -d'$$if(:TAG:){:TAG: }:UTC:\n' ../ChangeSet|\
 		    sed 's/ approved//g';` \
@@ -566,7 +566,7 @@ $(OBJ) bk.o: $(HDRS)
 sccs.h: libc/system.h
 
 tclkey.h: genkeys.pl
-	-bk _test ! -f tclkey.h -o ../SCCS/s.ChangeSet -nt tclkey.h && \
+	$(Q)bk test ! -f tclkey.h -o ../SCCS/s.ChangeSet -nt tclkey.h && \
 	    perl genkeys.pl > tclkey.h
 
 tclwrap: blowfish.o tclwrap.o libc/libc.a
