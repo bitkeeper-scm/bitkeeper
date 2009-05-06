@@ -407,23 +407,23 @@ bkhelp.txt: build $(BK) FORCE
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
 
-# XXX Must be changed when ChangeSet moves to BitKeeper/etc.
 # It is structured like this so that rebuilding prs doesn't
 # force bk.ver (and thus the bk script) to be regenerated.
-bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
-	$(if $(Q),@echo Building $@,)
-	$(Q)( echo \
-	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:\n' ../ChangeSet |\
-	  sed 's/ approved//g';` \
-	  for \
-	  `sh ./utils/os` \
-	) | ./bk undos >bk.v
-	$(Q)mv -f bk.v bk.ver
+bk.ver: utils/os utils/gnu-os
+	$(Q)bk _test ! -f bk.ver -o ../SCCS/s.ChangeSet -nt bk.ver && { \
+		( echo \
+		    `./bk prs -hr+ -d'$$if(:TAG:){:TAG: }:UTC:\n' ../ChangeSet|\
+		    sed 's/ approved//g';` \
+		    for \
+		    `sh ./utils/os` \
+		) | ./bk undos >bk.v; \
+		mv -f bk.v bk.ver; \
+	}
 
 # This must be rebuilt every time because it includes the build time
 bkver.c: FORCE
 	$(if $(Q),@echo Building $@,)
-	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
+	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
 	@if [ ! -x utils/os ]; then bk get -S utils/os; fi
 	$(Q)echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
 	$(Q)echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
@@ -565,8 +565,9 @@ $(OBJ) bk.o: $(HDRS)
 
 sccs.h: libc/system.h
 
-tclkey.h: genkeys.pl ../SCCS/s.ChangeSet
-	perl genkeys.pl > tclkey.h
+tclkey.h: genkeys.pl
+	-bk _test ! -f tclkey.h -o ../SCCS/s.ChangeSet -nt tclkey.h && \
+	    perl genkeys.pl > tclkey.h
 
 tclwrap: blowfish.o tclwrap.o libc/libc.a
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ tclwrap.o blowfish.o libc/libc.a $(XLIBS)
