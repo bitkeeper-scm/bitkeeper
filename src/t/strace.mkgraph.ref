@@ -7,4 +7,4 @@ lseek 43
 lstat 36
 open 6
 read 156
-write 96
+write 97

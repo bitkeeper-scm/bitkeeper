@@ -1,6 +1,6 @@
 #include "bkd.h"
 #include "range.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private void
 listIt(char *keys, int list)
@@ -115,13 +115,13 @@ cmd_pull_part2(int ac, char **av)
 {
 	int	c, n, rc = 0, fd, fd0, rfd, status, local, rem, debug = 0;
 	int	gzip = 0, dont = 0, verbose = 1, list = 0, triggers_failed = 0;
-	int	rtags, update_only = 0, delay = -1, eat_aliases = 0;
+	int	rtags, update_only = 0, delay = -1;
 	char	*port = 0;
-	int	tid = 0;
 	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	char	*rev = 0;
-	char	*p, **aliases = 0;
+	char	*p;
+	int	i;
 	FILE	*f;
 	sccs	*cset;
 	delta	*d;
@@ -130,7 +130,7 @@ cmd_pull_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[MAXKEY];
 
-	while ((c = getopt(ac, av, "dlnP;qr|sTuw|z|")) != -1) {
+	while ((c = getopt(ac, av, "dlnP;qr|Tuw|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -145,8 +145,7 @@ cmd_pull_part2(int ac, char **av)
 			break;
 		    case 'q': verbose = 0; break;
 		    case 'r': rev = optarg; break;
-		    case 's': eat_aliases = 1; break;
-		    case 'T': tid = 1; break;	// On purpose
+		    case 'T': break;	// On purpose
 		    case 'w': delay = atoi(optarg); break;
 		    case 'u': update_only = 1; break;
 		    default: break;
@@ -157,6 +156,12 @@ cmd_pull_part2(int ac, char **av)
 	if (hasLocalWork(GONE)) {
 		out("ERROR-must commit local changes to ");
 		out(GONE);
+		out("\n");
+		return (1);
+	}
+	if (hasLocalWork(ALIASES)) {
+		out("ERROR-must commit local changes to ");
+		out(ALIASES);
 		out("\n");
 		return (1);
 	}
@@ -179,23 +184,6 @@ cmd_pull_part2(int ac, char **av)
 
 	bzero(&r, sizeof(r));
 	r.rf = fdopen(0, "r");
-
-	/*
-	 * Eat a list of aliases if so instructed.
-	 */
-	if (eat_aliases) {
-		unless (getline2(&r, buf, sizeof(buf)) > 0) {
-err:			out("ERROR-protocol error in aliases\n");
-			out("@END@\n");
-			rc = 1;
-			goto done;
-		}
-		unless (streq("@COMPONENTS@", buf)) goto err;
-		while (getline2(&r, buf, sizeof(buf)) > 0) {
-			if (streq("@END@", buf)) break;
-			aliases = addLine(aliases, strdup(buf));
-		}
-	}
 
 	/*
 	 * What we want is: remote => bk _prunekey => keys
@@ -275,38 +263,12 @@ err:			out("ERROR-protocol error in aliases\n");
 		rc = 1;
 		goto done;
 	}
+	if (proj_isProduct(0)) {
+		char	**comps = nested_here(0);
 
-	if (!tid && proj_isProduct(0)) {
-		repos	*r;
-		eopts	opts;
-		char	**k = 0;
-
-		bzero(&opts, sizeof(eopts));
-		opts.product = 1;
-		opts.product_first = 1;
-		unless (k = file2Lines(0, keys)) {
-			out("ERROR-Could not read list of keys");
-			rc = 1;
-			goto done;
-		}
-		opts.revs = k;
-		if (aliases) {
-			opts.sc = sccs_csetInit(SILENT);
-			unless (opts.aliases =
-			    alias_hash(aliases, opts.sc, rev, ALIAS_HERE)) {
-				printf("ERROR-unable to expand aliases.\n");
-				rc = 1;
-				goto done;
-			}
-		}
-		r = ensemble_list(opts);
-		printf("@ENSEMBLE@\n");
-		ensemble_toStream(r, stdout);
-		freeLines(k, free);
-		if (opts.aliases) hash_free(opts.aliases);
-		sccs_free(opts.sc);
-		ensemble_free(r);
-		goto done;
+		printf("@HERE@\n");
+		EACH(comps) printf("%s\n", comps[i]);
+		freeLines(comps, free);
 	}
 	fputs("@PATCH@\n", stdout);
 
@@ -376,7 +338,6 @@ err:			out("ERROR-protocol error in aliases\n");
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 
 done:	fflush(stdout);
-	freeLines(aliases, free);
 	if (dont) {
 		unlink(keys);
 		putenv("BK_STATUS=DRYRUN");

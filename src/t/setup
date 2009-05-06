@@ -188,6 +188,15 @@ nested() {
 	bk parent -qr || exit 1
 }
 
+# move a nested component (helper)
+mvcomp() {
+	 mv "$1" "$2"
+	 bk edit $Q "$2"/ChangeSet || exit 1
+	 bk delta -f $Q -y"Rename $1 -> $2" "$2"/ChangeSet || exit 1
+	 echo "$2" > "$2"/BitKeeper/log/COMPONENT
+}
+
+
 echon() {
 	echo $NX ${1+"$@"}$NXL
 }

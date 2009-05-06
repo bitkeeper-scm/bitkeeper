@@ -66,7 +66,7 @@ bk attach manual_component >OUT 2>&1 || {
 cat <<EOF > WANT
 manual_component
 EOF
-bk components > GOT
+bk _nested > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -146,14 +146,14 @@ bk setup -fc"$HERE/empty" gcc
 # pending should be empty
 bk pending
 echo 'gcc' > WANT
-bk components > GOT
+bk _nested > GOT
 cmpfiles WANT GOT
 cd "$HERE"/p1
 cat <<EOF >WANT
 gcc
 gdb
 EOF
-bk components > GOT
+bk _nested > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -169,7 +169,7 @@ gcc
 gcc/closures
 gdb
 EOF
-bk components > GOT
+bk _nested > GOT
 cmpfiles WANT GOT
 echo OK
 
@@ -192,6 +192,6 @@ gcc/closures
 gcc/s-expr
 gdb
 EOF
-bk components > GOT
+bk _nested > GOT
 cmpfiles WANT GOT
 echo OK

@@ -14,6 +14,11 @@ private char	**trigger_dirs(void);
  *
  * Note: Caller must make sure we are at the package root before
  * calling this function.
+ *
+ * 3 similar variables and what they mean plus an example:
+ * cmd - set by the external world: remote pull
+ * what - the name of the trigger file to check out: {pre|post}-outgoing
+ * event - paased to trigger as BK_EVENT: outgoing pull
  */
 int
 trigger(char *cmd, char *when)
@@ -79,8 +84,8 @@ trigger(char *cmd, char *when)
 		what = event = "fix";
 	} else if (streq(cmd, "collapse")) {
 		what = event = "collapse ";
-	} else if (streq(cmd, "lease-proxy")) {
-		what = event = cmd;
+	} else if (streq(cmd, "remote lease-proxy")) {
+		what = event = "lease-proxy";
 	} else if (streq(cmd, "undo")) {
 		what = event = cmd;
 	} else {
@@ -277,6 +282,14 @@ runTriggers(int remote, char *event, char *what, char *when, char **triggers)
 	 * the output.
 	 */
 	proto = remote && streq(when, "pre");
+	
+	/*
+	 * No triggers in the protocol for lease-proxy, it's handled
+	 * in the lease hash.  Fitting it into the protocol lost the
+	 * annotations that showed where things went wrong.
+	 */
+	if (proto && streq(event, "lease-proxy")) proto = 0;
+
 	if (proto) {
 	    	bkd_data = "D";
 		out = stdout;

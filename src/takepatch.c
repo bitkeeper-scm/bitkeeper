@@ -2,7 +2,7 @@
 #include "sccs.h"
 #include "logging.h"
 #include "bam.h"
-#include "ensemble.h"
+#include "nested.h"
 #include <time.h>
 #include "range.h"
 
@@ -78,8 +78,6 @@ private	char	*comments;	/* -y'comments', pass to resolve. */
 private	char	**errfiles;	/* files had errors during apply */
 private	char	**edited;	/* files that were in modified state */
 private	int	collapsedups;	/* allow csets in BitKeeper/etc/collapsed */
-
-extern	char	*prog;
 
 /*
  * Structure for keys we skip when incoming, used for old LOD keys that
@@ -520,10 +518,7 @@ error:		if (perfile) sccs_free(perfile);
 		}
 	}
 	tableGCA = 0;
-	if (s) {
-		encoding = s->encoding;
-		sccs_findKeyDB(s, 0);
-	}
+	if (s) encoding = s->encoding;
 	while (extractDelta(name, s, newFile, p, &nfound)) {
 		if (newFile) newFile = 2;
 	}
@@ -535,10 +530,6 @@ error:		if (perfile) sccs_free(perfile);
 	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
 		rc = applyCsetPatch(s ? s->sfile : 0 , nfound, perfile);
 	} else {
-		if (s && s->findkeydb) {
-			mdbm_close(s->findkeydb);
-			s->findkeydb = 0;
-		}
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, perfile);
 		if (rc < 0) errfiles = addLine(errfiles, strdup(name));
@@ -815,15 +806,6 @@ badXsum(int a, int b)
 	/* XXX - should clean up everything if this was takepatch -i */
 }
 
-private	int
-walkrevs_list(sccs *s, delta *d, void *token)
-{
-	char	***list = token;
-
-	*list = addLine(*list, d->rev);
-	return (0);
-}
-
 /*
  * Most of the code in this function is copied from applyPatch
  * We may want to merge the two function later.
@@ -934,7 +916,6 @@ apply:
 			iF = p->initMmap;
 			dF = p->diffMmap;
 			cweave_init(s, nfound);
-			sccs_findKeyDB(s, 0);
 			d = cset_insert(s, iF, dF, p->pid);
 			if (!p->local && d->symGraph) remote_tagtip = d;
 			s->bitkeeper = 1;
@@ -959,11 +940,6 @@ apply:
 	}
 	s = sccs_reopen(s);	/* I wish this could be sccs_restart() */
 	assert(s && s->tree);
-
-	unless (sccs_findKeyDB(s, 0)) {
-		assert("takepatch: could not build findKeyDB" == 0);
-	}
-
 	if (cdb = loadCollapsed()) {
 		for (p = patchList; p; p = p->next) {
 			d = sccs_findKey(s, p->me);
@@ -1027,48 +1003,6 @@ apply:
 	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;
 		/* yeah, the count is slightly off if there were conflicts */
-	}
-	if (confThisFile && proj_isProduct(s->proj)) {
-		eopts	opts = {0};
-		repos	*local, *remote;
-		char	**list;
-		int	fail = 0;
-
-		opts.sc = s;
-
-		/* set list to what is in local but not remote */
-		list = 0;
-		range_walkrevs(s,
-		    s->remote, s->local, walkrevs_list, (void *)&list);
-		opts.revs = list;
-		local = ensemble_list(opts);
-		freeLines(list, 0);
-
-		/* set list to what is in remote but not local */
-		list = 0;
-		range_walkrevs(s,
-		    s->local, s->remote, walkrevs_list, (void *)&list);
-		opts.revs = list;
-		remote = ensemble_list(opts);
-		freeLines(list, 0);
-
-		/* intersection and not here is an error */
-		EACH_REPO (local) {
-			// if it's here, no worries.
-			if (local->present) continue;
-			// if they don't have it then no worries
-			unless (ensemble_find(remote, local->rootkey)) continue;
-			// OK, worry.
-			fprintf(stderr,
-			    "\n\nUnable to resolve conflict "
-			    "in non-present component '%s'.\n"
-			    "You need to bk populate that component first.\n",
-			    local->path);
-		    	fail++;
-		}
-		ensemble_free(local);
-		ensemble_free(remote);
-		if (fail) goto err;
 	}
 	conflicts += confThisFile;
 	sccs_free(s);

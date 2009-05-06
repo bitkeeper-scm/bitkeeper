@@ -64,6 +64,8 @@
 #define	EACH_START(x, s, i)	\
     for (i = ((x) < 1) ? 1 : (x); (s) && (i < LSIZ(s)) && (s)[i]; i++)
 #define	EACH(s)				EACH_INDEX(s, i)
+#define	EACH_STRUCT(s, c, i) \
+    for (i=1; (s) && (i < LSIZ(s)) && ((c) = (void *)(s)[i]); i++)
 #define	emptyLines(s)			(!s || !s[1])
 #define	str_empty(s)			(!s || !s[2])
 #define	data_empty(s)			(!s || !s[2])
@@ -75,6 +77,9 @@ char	**splitLine(char *line, char *delim, char **tokens);
 char	**splitLineToLines(char *line, char **tokens);
 char	*joinLines(char *sep, char **space);
 void	*popLine(char **space);
+#define	pushLine(s, l)	addLine(s, l)
+char	**unshiftLine(char **space, void *line);
+void	*shiftLine(char **space);
 void	freeLines(char **space, void(*freep)(void *ptr));
 int	removeLine(char **space, char *s, void(*freep)(void *ptr));
 void	removeLineN(char **space, int rm, void(*freep)(void *ptr));

@@ -1277,6 +1277,7 @@ nt_rename(const char *oldf, const char *newf)
 	DWORD	in, out, attribs;
 	char	buf[BUFSIZ];
 
+	if (streq(oldf, newf)) return (0);
 	if (nt_unlink(newf) && (errno != ENOENT)) {
 		fprintf(stderr, "rename: can't clear destination %s\n", newf);
 		/* keep errno from unlink */

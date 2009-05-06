@@ -4,46 +4,50 @@
 bk alias \- manage aliases for a list of components
 .SH SYNOPSIS
 .B bk alias 
+.B add|new|rm|set|show
 .[B] \-Cf
-.B \-a|\-h|\-k|\-r
 .[B] name
-.[B] component ...
+.[B] component \ ...
 .br
 .SS CREATING AN ALIAS
-.B bk alias 
+.B bk alias new
 .[B] \-Cf
 .ARG name
 .ARG component \ ...
 .br
 .SS REMOVING AN ALIAS
-.B bk alias 
+.B bk alias rm
 .[B] \-C
-.B \-r
 .ARG name
 .br
 .SS ADDING COMPONENTS TO AN ALIAS
-.B bk alias 
-.[B] \-C
+.B bk alias add
+.[B] \-Cf
 .B -a
 .ARG name
 .ARG component \ ...
 .br
 .SS REMOVING COMPONENT[S] FROM AN ALIAS
-.B bk alias 
+.B bk alias rm
 .[B] \-C
-.B \-r
 .ARG name
 .ARG component \ ...
 .br
 .br
 .SS LIST ALL ALIASES
-.B bk alias
-.[B] \-h
+.B bk alias show
+.[B] \-hm
+.br
+.SS SHOW THE VALUE OF AN ALIAS
+.B bk alias show
+.[B] \-hm
+.ARG name
 .br
 .SS SHOW EXPANSION OF AN ALIAS
-.B bk alias
-.[B] \-k
-.ARG name
+.B bk alias show
+.[B] \-kp
+.[B] \-hm
+.ARG component \ ...
 .SH DESCRIPTION
 The 
 .B bk alias
@@ -122,10 +126,6 @@ left in the alias it is automatically deleted from the aliases file.
 .SH OPTIONS
 .TP 
 .tp
-.B \-a
-Used to indicate that the alias is to be appended to; an error if no such
-alias exists.
-.tp
 .B \-C
 Normally, modifying the aliases database results in a changeset committing that
 change.
@@ -140,36 +140,42 @@ When appending to an alias, the operation will fail unless there is a
 pre-existing alias of the same name unless this option is present.
 .tp
 .B \-h
-When listing aliases, list only those which are present in this repository.
+Filter the output to only shows aliases or components that are here.
+For example, \*[lq]bk alias show -h\*[rq] lists all the aliases which
+have all their components present in this repository.
 .tp
 .B \-k
-Used when listing aliases; causes the expansion of the alias to be listed
-as rootkeys instead of pathnames.
+Used when showing aliases; causes the expansion of the alias to be listed
+as rootkeys.
 .tp
-.B \-r
-Used to remove an alias or remove one or more components in the alias.
+.B \-m
+Filter the output to only shows aliases or components that are missing.
+For example, \*[lq]bk alias show -m\*[rq] lists all the aliases which
+have at least one of their components missing in this repository.
+To see what components missing are missing in an alias called gcc,
+\*[lq]bk alias show -m -p gcc\*[rq].
+.tp
+.B \-p
+Used when showing aliases; causes the expansion of the alias to be listed
+as pathnames.
 .SH EXAMPLES
-To create an alias that points to all components in a sparse clone:
-.DS
-$ bk components -h | bk alias HERE -
-.DE
 To create an alias that points to a named list of components:
 .DS
-$ bk alias COMPILER cmd/gcc cmd/as cmd/ld cmd/nm
+$ bk alias new COMPILER cmd/gcc cmd/as cmd/ld cmd/nm
 .DE
 To create a higher level alias that includes the debugger:
 .DS
-$ bk alias DEV-TOOLS cmd/gdb COMPILER
+$ bk alias new DEV-TOOLS cmd/gdb COMPILER
 .DE
 List all aliases:
 .DS
-$ bk alias
+$ bk alias show
 COMPILER
 DEV-TOOLS
 .DE
-List alias expansion:
+List alias path expansion:
 .DS
-$ bk alias COMPILER
+$ bk alias show -p COMPILER
 \&./cmd/as
 \&./cmd/gcc
 \&./cmd/ld
@@ -177,7 +183,7 @@ $ bk alias COMPILER
 .DE
 To remove a component from an alias:
 .DS
-$ bk alias -r COMPILER cmd/nm
+$ bk alias rm COMPILER cmd/nm
 .DE
 .SH NOTES
 The aliases database is a flat text file stored in

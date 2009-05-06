@@ -634,6 +634,8 @@ struct sccs {
 	u32	bamlink:1;	/* BAM gfile is hardlinked to the sfile */
 	u32	used_cfile:1;	/* comments_readcfile found one; for cleanup */
 	u32	modified:1;	/* set if we wrote the s.file */
+	u32	keydb_long:1;	/* findkeydb contains long keys? */
+	u32	keydb_md5:1;	/* findkeydb contains md5 keys? */
 	u32	mem_in:1;	/* s->fh is in-memory FILE* */
 	u32	mem_out:1;	/* s->outfh is in-memory FILE* */
 	u32	file:1;		/* treat as a file in DSPECS */
@@ -665,11 +667,11 @@ typedef struct {
  * Timestamp record format
  */
 typedef struct {
-	time_t	gfile_mtime;
-	off_t	gfile_size;
-	mode_t	permissions;
-	time_t	sfile_mtime;
-	off_t	sfile_size;
+	u32	gfile_mtime;
+	u32	gfile_size;
+	u32	permissions;
+	u32	sfile_mtime;
+	u32	sfile_size;
 } tsrec;
 
 /*
@@ -911,7 +913,7 @@ int	sfilesDied(int killit);
 delta	*sccs_findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
-MDBM	*sccs_findKeyDB(sccs *, u32);
+void	sccs_findKeyUpdate(sccs *s, delta *d);
 int	isKey(char *key);
 delta	*sccs_findMD5(sccs *s, char *md5);                              
 delta	*sccs_dInit(delta *, char, sccs *, int);
@@ -1046,6 +1048,7 @@ delta	*user_get(delta *);
 char	*shell(void);
 int	bk_sfiles(char *opts, int ac, char **av);
 int	outc(char c);
+void	error(const char *fmt, ...);
 MDBM	*loadConfig(project *p, int forcelocal);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s);
@@ -1328,6 +1331,7 @@ extern	char	*BitKeeper;
 extern	time_t	licenseEnd;
 extern	int	spawn_tcl;
 extern	char	*start_cwd;
+extern	char	*prog;
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)

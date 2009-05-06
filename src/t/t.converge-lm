@@ -65,9 +65,7 @@ bk new $Q date
 bk commit $Q -ydate
 bk pull -R $Q ../copy
 cores
-cd RESYNC || exit 1
 bk _test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
-cd ..
 bk abort -f
 echo OK
 
@@ -131,7 +129,7 @@ fi
 echo OK
 # Note that we are in the repository with the newer key in the slot.
 echo $N Pull them, should not ask, should union, oldest in slot .....$NL
-bk pull -t ../project > OUT 2>&1
+bk pull -t $Q ../project || exit 1
 test -d RESYNC && {
 	echo failed to use existing gone, left RESYNC
 	cat OUT
@@ -214,7 +212,7 @@ cd "$HERE"
 rm -rf project copy
 tar xmf SAVE 
 cd project
-echo n | bk pull $Q -t ../copy >/dev/null 2>&1
+bk pull $Q -t ../copy || exit 1
 test -d RESYNC && {
 	echo failed to use existing gone, left RESYNC
 	exit 1
@@ -287,8 +285,8 @@ echo OK
 echo $N Pull, make sure it deletes the OK file and creates new one ..$NL
 bk pull -t $Q ../project
 KEY2=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
-if [ "$KEY" = "$KEY2" ]
-then	echo failed to delete original gone file
+if [ "$KEY" != "$KEY2" ]
+then	echo failed to keep original gone file
 	exit 1
 fi
 sort <<EOF > X
@@ -298,12 +296,7 @@ project44
 EOF
 bk undos X > DATA
 bk get $Q BitKeeper/etc/gone
-cmp -s BitKeeper/etc/gone DATA || {
-	echo failed to union data
-	echo GOT vs WANTED
-	sdiff -w80 BitKeeper/etc/gone DATA
-	exit 1
-}
+cmpfiles BitKeeper/etc/gone DATA
 echo OK
 
 # Create a logging repository, clone, commit in both, 
@@ -363,7 +356,7 @@ then	echo wrong number of gone files in COPY
 fi
 bk rm -f BitKeeper/etc/gone
 bk gone $Q copy44
-echo y | bk commit $Q -yrm-gone > /dev/null 2>&1
+bk commit $Q -yrm-gone || exit 1
 NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/gone`
 if [ "$NEW" = "$OLD" ]
 then	echo failed to move gone into deleted slot and create new one
@@ -384,30 +377,90 @@ then	echo wrong number of gone files after pull
 	exit 1
 fi
 OK=`bk prs -hr1.0 '-d:TIME_T:\n' BitKeeper/etc/gone`
-bk sfiles BitKeeper/deleted |
-bk prs -hr1.0 -d'$if(:DPN:=BitKeeper/etc/gone){:TIME_T: :GFILE:\n}' - |
-while read tt file
-do	if [ $tt -lt $OK ]
-	then	echo "$file is older than BitKeeper/etc/gone"
-		exit 1
-	fi
-	#if [ $tt -eq $OK ]
-	#then	echo "$file is same age as BitKeeper/etc/gone"
-	#fi
-	#if [ $tt -gt $OK ]
-	#then	echo "$file is younger than BitKeeper/etc/gone"
-	#fi
-done
 cat <<EOF > DATA
-copy34
 copy44
 project34
 EOF
 bk get -kp $Q BitKeeper/etc/gone | bk sort > GOT
-cmp -s GOT DATA || {
-	echo failed to union data
-	echo GOT vs WANTED
-	sdiff -w80 GOT DATA
+cmpfiles GOT DATA
+echo OK
+
+# Rick's tests
+
+F=BitKeeper/etc/ignore
+
+echo $N Duplicate line in the same file .............................$NL
+cd "$HERE"
+rm -rf project copy
+commercial project
+cd ..
+bk clone $Q project copy
+# for next test, make a second copy
+bk clone $Q project copy2
+cd project
+bk edit $Q $F
+echo wild >> $F
+bk delta $Q -ywild $F
+bk commit $Q -ywild
+cd ../copy
+bk edit $Q $F
+echo wild >> $F
+bk delta $Q -ywild $F
+bk commit $Q -ywild
+bk pull $Q  || exit 1
+cat <<EOF > WANT
+
+wild
+EOF
+bk get $Q $F
+checkfiles WANT $F
+echo OK
+
+echo $N Duplicate line in the different files .......................$NL
+cd ../copy2
+bk get $Q -kp $F > x
+bk rm -f $F
+mv x $F
+echo wild >> $F
+bk new $Q -ywild $F
+bk commit $Q -ywild
+bk pull -R $Q || exit 1
+bk abort -f
+bk -r check -ac || exit 1
+bk pull $Q || exit 1
+cat <<EOF > WANT
+
+wild
+EOF
+bk get $Q $F
+checkfiles WANT $F
+echo OK
+
+echo $N Push on the rename logic in converge:merge ..................$NL
+cd "$HERE"/copy
+bk unpull $Q -fs
+bk tag $Q SPOT
+# This puts a local rename on the branch where the converge process
+# doesn't see it because the remote name is the trunk name.
+# in merge() the get -M uses the gfile name and the ci uses the gfile
+# name and the delete gets lost.
+bk rm -f $F
+bk commit $Q -ydel
+bk pull $Q || exit 1
+# The file has been deleted -- it shouldn't be here
+test -f $F || {
+	echo fix test
 	exit 1
 }
+echo "failed (bug with name handling)"
+
+echo $N Push on the logic in converge:converge ......................$NL
+bk undo $Q -sfaSPOT
+cd ../project
+bk rm -f $F
+echo wild >> $F
+bk new $Q $F
+bk commit $Q -ydel
+cd ../copy
+bk pull $Q  || exit 1
 echo OK

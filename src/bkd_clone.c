@@ -1,6 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private int	compressed(int level, int lclone);
 
@@ -10,14 +10,13 @@ private int	compressed(int level, int lclone);
 int
 cmd_clone(int ac, char **av)
 {
-	int	c, rc = 1;
+	int	i, c, rc = 1;
 	int	gzip = 0, delay = -1, lclone = 0;
 	int	tid = 0;
 	char	*p, *rev = 0;
 	char	**aliases = 0;
 	sccs	*s = 0;
 	delta	*d;
-	hash	*h = 0;
 
 	if (sendServerInfoBlock(0)) goto out;
 	unless (isdir("BitKeeper/etc")) {
@@ -61,7 +60,7 @@ cmd_clone(int ac, char **av)
 		out("ERROR-clone of a component is not allowed, use -s\n");
 		goto out;
 	}
-	if (proj_isEnsemble(0)) {
+	if (proj_isProduct(0)) {
 		unless (bk_hasFeature("SAMv1")) {
 			out("ERROR-please upgrade your BK to a NESTED "
 			    "aware version (5.0 or later)\n");
@@ -69,17 +68,11 @@ cmd_clone(int ac, char **av)
 		}
 		/*
 		 * If we're an ensemble and they did not specify any aliases,
-		 * then imply whatever list we may have.
+		 * then imply the default set.
 		 * The tid part is because we want to do this in pass1 only.
-		 * XXX - what if we've added one with ensemble add and it
-		 * does not appear in our COMPONENTS file yet?
-		 * XXXX - using THERE would solve that
 		 */
 		unless (aliases || tid) {
-			aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
-			unless (aliases) {
-				aliases = addLine(0, strdup("default"));
-			}
+			aliases = addLine(0, strdup("default"));
 		}
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
@@ -90,6 +83,12 @@ cmd_clone(int ac, char **av)
 	if (hasLocalWork(GONE)) {
 		out("ERROR-must commit local changes to ");
 		out(GONE);
+		out("\n");
+		goto out;
+	}
+	if (hasLocalWork(ALIASES)) {
+		out("ERROR-must commit local changes to ");
+		out(ALIASES);
 		out("\n");
 		goto out;
 	}
@@ -104,13 +103,6 @@ cmd_clone(int ac, char **av)
 				out("ERROR-rev ");
 				out(rev);
 				out(" doesn't exist\n");
-				goto out;
-			}
-		}
-		if (aliases) {
-			h = alias_hash(aliases, s, rev, ALIAS_HERE);
-			freeLines(aliases, free);
-			unless (h) {
 				goto out;
 			}
 		}
@@ -137,21 +129,34 @@ cmd_clone(int ac, char **av)
 	}
 	if (trigger(av[0], "pre")) goto out;
 	if (!tid && proj_isProduct(0)) {
-		repos	*r;
-		eopts	opts;
+		nested	*n;
+		comp	*cp;
+		int	errors = 0;
 
-		bzero(&opts, sizeof(eopts));
-		opts.product = 1;
-		opts.product_first = 1;
-		opts.rev = rev;
-		opts.sc = s;
-		opts.aliases = h;
-		r = ensemble_list(opts);
-		printf("@ENSEMBLE@\n");
-		ensemble_toStream(r, stdout);
-		ensemble_free(r);
-		rc = 0;
-		goto out;
+		n = nested_init(s, rev, 0, 0);
+		assert(aliases);
+		if (nested_aliases(n, n->tip, &aliases, proj_cwd(), 0)) {
+			printf("ERROR-unable to expand aliases.\n");
+			nested_free(n);
+			goto out;
+		}
+		EACH_STRUCT(n->comps, cp, i) {
+			if (cp->alias && !cp->present) {
+				printf(
+				    "ERROR-unable to expand aliases. "
+				    "Missing: %s\n", cp->path);
+				errors++;
+			}
+		}
+		nested_free(n);
+		if (errors) {
+			freeLines(aliases, free);
+			goto out;
+		}
+		printf("@HERE@\n");
+		EACH(aliases) printf("%s\n", aliases[i]);
+		printf("@END@\n");
+		freeLines(aliases, free);
 	}
 	if (s) {
 		sccs_free(s);
@@ -173,7 +178,6 @@ out:	if (delay > 0) sleep(delay);
 
 	putenv("BK_CSETS=");
 	if (s) sccs_free(s);
-	if (h) hash_free(h);
 	return (rc);
 }
 

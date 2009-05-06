@@ -2,6 +2,8 @@
 
 orig_args="$@"
 
+HERE=`pwd`
+
 ms_env()
 {
 	test "$MSYSBUILDENV" || {
@@ -161,4 +163,6 @@ test "X$MAKE" = X && {
 	esac
 }
 test "x$BK_VERBOSE_BUILD" != "x" && { V="V=1"; }
+PATH=$HERE:$PATH
+export PATH
 make -e $V "MAKE=$MAKE" "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"

@@ -443,8 +443,8 @@ _partition() {
 	# Add in the existing keys
 	bk annotate -aS -hR ChangeSet >> $WA/allkeys
 
-	# Setting up aliases and COMPONENTS taken from 'bk setup'
-	echo default > BitKeeper/log/COMPONENTS
+	# Setting up aliases and HERE taken from 'bk setup'
+	echo default > BitKeeper/log/HERE
 	echo @default > BitKeeper/etc/aliases
 	echo all >> BitKeeper/etc/aliases
 	__newFile BitKeeper/etc/aliases
@@ -635,6 +635,20 @@ _superset() {
 	cat $TMP1
 	rm -f $TMP1 $TMP2 $TMP3
 	exit 1
+}
+
+# Ping bitmover to tell them what bkd version we are running.
+# This is used so BitMover can tell the customer when that bkd needs
+# to be upgraded.
+__bkdping() {
+	( 
+	  echo bk://`bk gethost`:$_BKD_PORT
+	  bk version
+	  ARGS=
+	  test "X$_BKD_OPTS" = X || ARGS=" $_BKD_OPTS"
+	  echo "`bk gethost`|bkd$ARGS|`bk version -s`|`uname -s -r`"
+	) | bk _mail -u http://bitmover.com/cgi-bin/bkdmail \
+	    -s 'bkd version' bkd_version@bitmover.com >/dev/null 2>&1
 }
 
 # Dump the repository license, this is not the BKL.

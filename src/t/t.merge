@@ -12,6 +12,178 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+echo $N Test bk merge -h ............................................$NL
+
+# keys l-new, r-new, l-only, r-only, confict, 2new-same, 2new-diff
+#      l-delete, r-delete, delete-both
+cat <<EOF > left
+@l-new
+v1
+v2
+
+@l-only
+v3
+v4
+
+@conflict
+v5
+v6
+
+@2new-same
+v7
+v8
+
+@2new-diff
+v9
+v8
+
+@r-delete
+v2
+v5
+
+EOF
+
+cat <<EOF > gca
+@l-only
+v2
+v4
+
+@r-only
+v3
+v2
+
+@conflict
+v3
+v6
+
+@l-delete
+v7
+v6
+
+@r-delete
+v2
+v5
+
+@delete-both
+v3
+v2
+
+EOF
+
+cat <<EOF > right
+@r-new
+v1
+v2
+
+@l-only
+v2
+v4
+
+@r-only
+v3
+v7
+
+@conflict
+v3
+v9
+
+@2new-same
+v7
+v8
+
+@2new-diff
+v1
+v2
+
+@l-delete
+v7
+v6
+
+EOF
+
+bk merge -hs left gca right out || exit 1
+
+cat <<EOF > want
+@2new-diff
+v1
+v2
+v8
+v9
+
+@2new-same
+v7
+v8
+
+@conflict
+v5
+v9
+
+@l-new
+v1
+v2
+
+@l-only
+v3
+v4
+
+@r-new
+v1
+v2
+
+@r-only
+v3
+v7
+
+EOF
+cmpfiles out want
+
+bk merge -h left gca right out || exit 1
+sed -e 's/^<.*/<<<< left/' -e 's/^>.*/>>>> right/' < out > got
+
+cat <<EOF > want
+@2new-diff
+<<<< left
+v9
+v8
+=======
+v1
+v2
+>>>> right
+
+@2new-same
+v7
+v8
+
+@conflict
+<<<< left
+v5
+v6
+=======
+v3
+v9
+>>>> right
+
+@l-new
+v1
+v2
+
+@l-only
+v3
+v4
+
+@r-new
+v1
+v2
+
+@r-only
+v3
+v7
+
+EOF
+cmpfiles got want
+echo OK
+
+echo $N Setup for following tests ...................................$NL
 commercial project
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
@@ -37,6 +209,8 @@ bk ci $Q -y FILE
 bk _get -e $Q -r1.3.1 FILE
 echo "added in 1.3.1.2" >> FILE
 bk ci $Q -y FILE
+echo OK
+
 echo $N 'Check get -M (1 node from GCA)...............................'$NL
 bk _get $Q -e -r1.5 -M1.3.1.1 FILE
 bk delta $Q -y FILE

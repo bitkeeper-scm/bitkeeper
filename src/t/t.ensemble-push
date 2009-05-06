@@ -258,7 +258,7 @@ bk push > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
-grep -q "libc is not present" OUT || {
+grep -q "libc is needed to push" OUT || {
 	echo bad message
 	cat OUT
 	exit 1

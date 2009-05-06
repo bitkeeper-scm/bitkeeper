@@ -104,7 +104,7 @@ getNumFiles()
 	result = bk("product");
 
 	if (result eq "" || result eq "This is a component."
-	    || catch("exec bk components -h", &result)) {
+	    || catch("exec bk components here", &result)) {
 		if (File_exists("BitKeeper/log/NFILES")
 		    && File_exists("SCCS/s.ChangeSet")) {
 			nftime = File_mtime("BitKeeper/log/NFILES");

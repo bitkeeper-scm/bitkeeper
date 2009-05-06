@@ -262,3 +262,23 @@ bk new $Q dir || exit 1
 bk commit $Q -ywhy || exit 1
 bk push $Q || exit 1
 echo OK
+
+echo $N Change file types and see if we can reget ...................$NL
+cd "$HERE"
+commercial proj2
+echo foo > textfile
+echo "xx" > file
+ln -s file symlink
+mv file file.tmp
+bk ci $Q -i symlink textfile
+grep -q '^.cOlrwxrwxrwx file' SCCS/s.symlink
+bk admin -h symlink 2> ${DEV_NULL}
+bk clean symlink
+bk get $Q -e -g symlink
+touch symlink
+bk get $Q symlink 2>ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK

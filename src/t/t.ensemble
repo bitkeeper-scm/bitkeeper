@@ -31,7 +31,7 @@ echo $N Convert to product ..........................................$NL
 cd "$HERE/project"
 touch BitKeeper/etc/aliases
 bk new $Q BitKeeper/etc/aliases
-echo "default" > BitKeeper/log/COMPONENTS
+echo "default" > BitKeeper/log/HERE
 bk commit $Q -y"add aliases"
 bk newroot -P $Q
 test "`bk product`" = "This is the product." || {
@@ -58,14 +58,14 @@ echo OK
 echo $N Add some components .........................................$NL
 bk clone $Q ../gcc gcc
 bk clone $Q ../gdb gdb
-bk attach -C $Q gcc gdb
+bk attach -C $Q gcc gdb || exit 1
 bk sfiles -p > GOT
 cat > WANT <<EOF
 gcc/SCCS/s.ChangeSet
 gdb/SCCS/s.ChangeSet
 EOF
 cmpfiles WANT GOT
-bk commit $Q -y'gcc & gdb'
+bk commit $Q -y'gcc & gdb' || exit 1
 cd gcc
 test "`bk product`" = "This is a component." || {
 	echo failed to make it a component
@@ -112,6 +112,9 @@ bk pending | grep -q "new-comp/ChangeSet@1.2" || {
 }
 echo OK
 
+bk components rm -q new-comp
+# because default is still all, removing the component means it is
+# still there, so really remove it!
 rm -rf new-comp
 
 echo $N id -p on a component should work.............................$NL
@@ -132,12 +135,13 @@ echo OK
 
 echo $N Test that a comp in a prod in a prod gets the right prod ....$NL
 cd "$HERE/project"
-commercial subproduct
-echo 'default' > BitKeeper/log/COMPONENTS
-bk newroot $Q -P
+touch c
+bk setup -P -f -cc subproduct || exit 1
+rm c
+cd subproduct
 commercial comp
 cd ..
-bk attach $Q comp
+bk attach $Q comp || exit 1
 cd comp
 echo comp > WANT
 bk -P sfiles -R > GOT
@@ -441,8 +445,9 @@ echo OK
 
 echo $N Make sure check will fail if a component is removed .........$NL
 mv gdb "$HERE/gdb.save"
-bk -r check -ac >ERR 2>&1 && {
-	echo failed
+bk -r check -ac 2>ERR && {
+	echo should have failed
+	cat ERR
 	exit 1
 }
 echo OK
@@ -536,9 +541,8 @@ bk -r check -ac || {
 echo OK
 
 echo $N See if sfiles working with deep nested ......................$NL
-mv gcc4 gdb
-bk edit $Q gdb/gcc4/ChangeSet
-bk delta $Q -yrename gdb/gcc4/ChangeSet
+mvcomp gcc4 gdb/gcc4
+
 # should work but doesn't at the moment
 bk sfiles | grep -q gdb/gcc4 && {
 	echo fix test
@@ -628,9 +632,8 @@ bk attach $Q -C pendingdeepnest
 cd ..
 echo OK
 
-echo $N bk components -Pr+ lists product and components .............$NL
-# valgrind --tool=memcheck --leak-check=full --show-reachable=yes \
-bk components -Pr+ > GOT
+echo $N bk _nested -Pr+ lists product and components ................$NL
+bk _nested -Pr+ > GOT
 cat > WANT <<EOF
 .
 gcc4
@@ -639,8 +642,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components -r+ lists committed components only ...........$NL
-bk components -r+ > GOT
+echo $N bk _nested -r+ lists committed components only ..............$NL
+bk _nested -r+ > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -648,8 +651,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components lists committed and pending components only ...$NL
-bk components > GOT
+echo $N bk _nested lists committed and pending components only ......$NL
+bk _nested > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -658,8 +661,8 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components -Pr1.3 lists product and components ...........$NL
-bk components -Pr1.3 > GOT
+echo $N bk _nested -Pr1.3 lists product and components ..............$NL
+bk _nested -Pr1.3 > GOT
 cat > WANT <<EOF
 .
 gcc4
@@ -668,12 +671,12 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components -r1.5 -r1.6 lists just gcc4 ...................$NL
+echo $N bk _nested -r1.5 -r1.6 lists just gcc4 ......................$NL
 cat > LIST <<EOF
 1.5
 1.6
 EOF
-bk components -P - < LIST > GOT
+bk _nested -P - < LIST > GOT
 cat > WANT <<EOF
 .
 gcc4
@@ -693,10 +696,11 @@ cmpfiles WANT GOT
 echo OK
 
 # Done with pending component
+bk components rm -q gdb/pendingdeepnest
 rm -fr gdb/pendingdeepnest gdb/extradeepnest
 
-echo $N bk components for undo -r+ ..................................$NL
-echo + | bk components -Plpnd -u - > GOT
+echo $N bk _nested for undo -r+ .....................................$NL
+echo + | bk _nested -Plpnd -u - > GOT
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
 bk changes -qnd".|:KEY:" -r1.5 .
@@ -705,9 +709,9 @@ bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for undo -r+ with component missing ...........$NL
+echo $N bk _nested for undo -r+ with component missing ..............$NL
 mv gcc4 ..
-echo + | bk components -Plhpnd -u - > GOT
+echo + | bk _nested -Plhpnd -u - > GOT
 mv ../gcc4 .
 # The list should be desired tips of .|1.5 and gcc4|1.6
 (
@@ -717,10 +721,10 @@ bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for push -r+ with component missing............$NL
+echo $N bk _nested for push -r+ with component missing...............$NL
 # now do it the other way
 mv gcc4 ..
-bk components -Plhpnd -r+ > GOT
+bk _nested -Plhpnd -r+ > GOT
 mv ../gcc4 .
 # The list should be the current tips
 (
@@ -731,13 +735,13 @@ bk changes -qnd"gdb|:KEY:|(new)|(present)" -r+ gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for undo -a1.2, check the removes .............$NL
+echo $N bk _nested for undo -a1.2, check the removes ................$NL
 (
 echo 1.6
 echo 1.5
 echo 1.4
 echo 1.3
-) | bk components -Plnp -u - > GOT
+) | bk _nested -Plnp -u - > GOT
 cat > WANT <<EOF
 .
 gcc4|(new)
@@ -746,13 +750,13 @@ EOF
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for undo -a1.2 ................................$NL
+echo $N bk _nested for undo -a1.2 ...................................$NL
 (
 echo 1.6
 echo 1.5
 echo 1.4
 echo 1.3
-) | bk components -Plpd -u - > GOT
+) | bk _nested -Plpd -u - > GOT
 # The list should be desired tips of .|1.2
 # because the other two are removed.
 (
@@ -761,12 +765,12 @@ bk changes -qnd".|:KEY:" -r1.2 .
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for undo -a1.3 ................................$NL
+echo $N bk _nested for undo -a1.3 ...................................$NL
 (
 echo 1.6
 echo 1.5
 echo 1.4
-) | bk components -Plpd -u - > GOT
+) | bk _nested -Plpd -u - > GOT
 # The list should be desired tips of 1.3 (just works out that way)
 (
 bk changes -qnd".|:KEY:" -r1.3 .
@@ -775,8 +779,8 @@ bk changes -qnd"gcc4|:KEY:" -r1.3 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for clone -r+ .................................$NL
-bk components -Plpd -r+ > GOT
+echo $N bk _nested for clone -r+ ....................................$NL
+bk _nested -Plpd -r+ > GOT
 (
 bk changes -qnd".|:KEY:" -r+ .
 bk changes -qnd"gcc4|:KEY:" -r+ gcc4
@@ -785,8 +789,8 @@ bk changes -qnd"gdb|:KEY:" -r+ gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for clone -r1.3 ...............................$NL
-bk components -Plpd -r1.3 > GOT
+echo $N bk _nested for clone -r1.3 ..................................$NL
+bk _nested -Plpd -r1.3 > GOT
 # They are all at 1.3 in 1.3
 (
 bk changes -qnd".|:KEY:" -r1.3 .
@@ -796,8 +800,8 @@ bk changes -qnd"gdb|:KEY:" -r1.3 gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for clone -r1.4 ...............................$NL
-bk components -Plpd -r1.4 > GOT
+echo $N bk _nested for clone -r1.4 ..................................$NL
+bk _nested -Plpd -r1.4 > GOT
 (
 bk changes -qnd".|:KEY:" -r1.4 .
 bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
@@ -806,8 +810,8 @@ bk changes -qnd"gdb|:KEY:" -r1.3 gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for push -r1.6 ................................$NL
-echo 1.6 | bk components -Plpd - > GOT
+echo $N bk _nested for push -r1.6 ...................................$NL
+echo 1.6 | bk _nested -Plpd - > GOT
 # The list should be desired tips of .|1.6 and gcc4|1.9
 (
 bk changes -qnd".|:KEY:" -r1.6 .
@@ -816,8 +820,8 @@ bk changes -qnd"gcc4|:KEY:" -r1.9 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for push -r1.5 ................................$NL
-echo 1.5 | bk components -Plpd - > GOT
+echo $N bk _nested for push -r1.5 ...................................$NL
+echo 1.5 | bk _nested -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.5 .
 bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
@@ -825,8 +829,8 @@ bk changes -qnd"gcc4|:KEY:" -r1.6 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for push -r1.4 ................................$NL
-echo 1.4 | bk components -Plpd - > GOT
+echo $N bk _nested for push -r1.4 ...................................$NL
+echo 1.4 | bk _nested -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.4 .
 bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
@@ -834,8 +838,8 @@ bk changes -qnd"gcc4|:KEY:" -r1.5 gcc4
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for push -r1.3 ................................$NL
-echo 1.3 | bk components -Plnpd - > GOT
+echo $N bk _nested for push -r1.3 ...................................$NL
+echo 1.3 | bk _nested -Plnpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.3 .
 bk changes -qnd"gcc4|:KEY:|(new)" -r1.3 gcc4
@@ -844,21 +848,21 @@ bk changes -qnd"gdb|:KEY:|(new)" -r1.3 gdb
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for push -r1.2 ................................$NL
-echo 1.2 | bk components -Plpd - > GOT
+echo $N bk _nested for push -r1.2 ...................................$NL
+echo 1.2 | bk _nested -Plpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.2 .
 ) > WANT
 cmpfiles WANT GOT
 echo OK
 
-echo $N bk components for push with a gca of 1.2.....................$NL
+echo $N bk _nested for push with a gca of 1.2........................$NL
 (
 echo 1.3
 echo 1.4
 echo 1.5
 echo 1.6
-) | bk components -Plnpd - > GOT
+) | bk _nested -Plnpd - > GOT
 (
 bk changes -qnd".|:KEY:" -r1.6 .
 bk changes -qnd"gcc4|:KEY:|(new)" -r1.9 gcc4
@@ -994,21 +998,16 @@ rm -rf project
 tar xf TAR 
 cd project
 
-echo $N Test bk changes in a sparse ensemble ........................$NL
-bk cset -fl5 -r+ > A
-rm -rf gcc4
-echo OK
-
 echo $N Test bk undo -r+ in a sparse ensemble .......................$NL
-echo "here" > BitKeeper/log/COMPONENTS
+# XXX really should use unpopulate (if it worked)
+rm -rf gcc4
+(cd gdb; bk id) > BitKeeper/log/HERE
 bk undo $Q -fsr+ || {
 	echo failed undo
-	cat OUT
 	exit 1
 }
 bk $Q -Ar check -ac || {
 	echo failed check
-	cat OUT
 	exit 1
 }
 echo OK
@@ -1045,7 +1044,7 @@ cd project
 
 echo $N Test simple alias addition ..................................$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias dev gcc4 gdb
+bk alias new dev gcc4 gdb
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo failed to commit change
 	bk cmdlog -a | tail -20
@@ -1064,7 +1063,7 @@ bk clean BitKeeper/etc/aliases
 echo OK
 
 echo $N Test simple alias expansion .................................$NL
-bk components -sdev > GOT
+bk alias show -p dev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1073,7 +1072,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test simple directory expansion .............................$NL
-bk components -s./gcc4 > GOT
+bk alias show -p ./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 EOF
@@ -1081,7 +1080,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Combine the two .............................................$NL
-bk components -sdev -s./gcc4 > GOT
+bk alias show -p dev ./gcc4 > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1090,7 +1089,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Add an alias that names another alias .......................$NL
-bk alias mydev dev
+bk alias new mydev dev
 (
 echo @dev 
     (
@@ -1105,7 +1104,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Test an alias that names another alias ......................$NL
-bk components -smydev > GOT
+bk alias show -p mydev > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1115,25 +1114,25 @@ echo OK
 
 echo $N Test an alias that names another alias, 2 levels ............$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias -C B gcc4
+bk alias new -C B gcc4
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk alias -C C gdb
+bk alias new -C C gdb
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk alias A B C
+bk alias new A B C
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
 	bk cmdlog -a | tail -20
 	exit 1
 }
-bk components -sA > GOT
+bk alias show -p A > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1153,9 +1152,9 @@ echo OK
 
 echo $N Make sure we can remove a component from an alias ...........$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias -r A B
+bk alias rm A B
 echo gdb > WANT
-bk components -sA > GOT
+bk alias show -p A > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1166,10 +1165,10 @@ echo OK
 
 echo $N Make sure we can add a component to an alias ................$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias -a A B
+bk alias add A B
 echo gcc4 > WANT
 echo gdb >> WANT
-bk components -sA > GOT
+bk alias show -p A > GOT
 cmpfiles WANT GOT
 test $REV = `bk changes -r+ -d:REV:` && {
 	echo should have commited change
@@ -1180,7 +1179,7 @@ echo OK
 
 echo $N Adding a component that is already there is a no-op .........$NL
 REV=`bk changes -r+ -d:REV:`
-bk alias -a A B >OUT 2>&1
+bk alias add A B >OUT 2>&1
 test $REV = `bk changes -r+ -d:REV:` || {
 	echo should not have done anything
 	cat OUT
@@ -1189,21 +1188,21 @@ test $REV = `bk changes -r+ -d:REV:` || {
 echo OK
 
 echo $N If we modify remove all components it should be a delete ....$NL
-bk alias -r A B C
+bk alias rm A B C
 bk changes -r+ -d'$each(:C:){(:C:)\n}' > GOT
 echo Delete alias A > WANT
 cmpfiles WANT GOT
-bk alias A B C
+bk alias new A B C
 echo OK
 
 echo $N List all alias names ........................................$NL
 bk grep '^@' BitKeeper/etc/aliases | sed 's/^@//' | bk _sort > WANT
-bk alias > GOT
+bk alias show > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N List only present components ................................$NL
-bk components -h > GOT
+bk components here > GOT
 cat > WANT <<EOF
 gcc4
 gdb
@@ -1212,7 +1211,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Adding a directory that does not exist is an error ..........$NL
-bk alias -a A somedir/ 2>ERR && {
+bk alias add A somedir/ 2>ERR && {
 	echo should have failed
 	exit 1
 }
@@ -1222,7 +1221,7 @@ grep -q 'somedir/ must be either a glob, key, alias, or component' ERR || {
 	exit 1
 }
 mkdir somedir
-bk alias -a A somedir/ >ERR 2>&1 && {
+bk alias add A somedir/ >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
@@ -1244,7 +1243,7 @@ echo @see_recursion
 echo recursion
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
-bk components -srecursion > OUT 2>&1
+bk alias show -p recursion > OUT 2>&1
 test $? = 1 || {
 	echo should have failed
 	cat OUT
@@ -1258,7 +1257,7 @@ grep -q "recursive alias definition" OUT || {
 echo OK
 
 echo $N Try removing alias recursion ................................$NL
-bk alias -r recursion || exit 1
+bk alias rm -C recursion || exit 1
 bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @recursion'
@@ -1268,7 +1267,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N Try removing alias see_recursion ............................$NL
-bk alias -r see_recursion || exit 1
+bk alias rm -C see_recursion || exit 1
 bk diffs -h -R+ BitKeeper/etc/aliases | grep '< ' > GOT
 (
 echo '< @see_recursion'
@@ -1278,7 +1277,7 @@ cmpfiles WANT GOT
 echo OK
 
 echo $N bk components for clone -r+ but limited to -s./gcc4 .........$NL
-bk components -s./gcc4 -Plpd -r+ > GOT
+bk _nested -s./gcc4 -Plpd -r+ > GOT
 (
 bk changes -qnd".|:KEY:" -r+ .
 bk changes -qnd"gcc4|:KEY:" -r+ gcc4
@@ -1431,13 +1430,6 @@ liberty/BitKeeper/etc/SCCS/s.config
 liberty/BitKeeper/etc/SCCS/s.gone
 liberty/BitKeeper/etc/SCCS/s.ignore
 EOF
-cmpfiles WANT GOT
-echo OK
-
-echo $N Test serializing/deserializing and ensemble..................$NL
-bk components -r+ > WANT
-bk components -r+ -o > SERIALIZED
-bk components -i < SERIALIZED  > GOT
 cmpfiles WANT GOT
 echo OK
 

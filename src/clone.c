@@ -4,7 +4,7 @@
 #include "bkd.h"
 #include "logging.h"
 #include "bam.h"
-#include "ensemble.h"
+#include "nested.h"
 
 /*
  * Do not change this struct until we phase out bkd 1.2 support
@@ -214,69 +214,6 @@ send_clone_msg(remote *r, char **envVar)
 }
 
 private int
-clone_ensemble(repos *repos, remote *r, char *local)
-{
-	char	*url;
-	char	**vp;
-	char	*name, *path;
-	int	status, i, n, which, rc = 0;
-
-	url = remote_unparse(r);
-	START_TRANSACTION();
-	n = 0;
-	EACH_REPO(repos) {
-		unless (repos->present) {
-			if (opts->aliases && !opts->quiet) {
-				fprintf(stderr,
-				    "clone: %s not present in %s\n",
-				    repos->path, url);
-				rc = 1;
-			}
-			continue;
-		}
-		n++;
-	}
-	if (rc) goto out;
-	which = 1;
-	EACH_REPO(repos) {
-		if (streq(repos->path, ".")) {
-			putenv("_BK_PRODUCT=1");
-			safe_putenv("_BK_REPO_PREFIX=%s", basenm(local));
-		} else {
-			name = repos->path;
-			putenv("_BK_PRODUCT=");
-			safe_putenv("_BK_REPO_PREFIX=%s/%s",
-			    basenm(local), repos->path);
-		}
-		name = getenv("_BK_REPO_PREFIX");
-
-		unless (opts->quiet) {
-			printf("#### %s (%d of %d) ####\n", name, which++, n);
-			fflush(stdout);
-		}
-
-		vp = addLine(0, strdup("bk"));
-		vp = addLine(vp, strdup("clone"));
-		EACH(opts->av) vp = addLine(vp, strdup(opts->av[i]));
-		vp = addLine(vp, aprintf("-r%s", repos->deltakey));
-		vp = addLine(vp, aprintf("%s/%s", url, repos->path));
-		path = aprintf("%s/%s", local, repos->path);
-		vp = addLine(vp, path);
-		vp = addLine(vp, 0);
-		status = spawnvp(_P_WAIT, "bk", &vp[1]);
-		freeLines(vp, free);
-		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
-		if (rc) {
-			fprintf(stderr, "Cloning %s failed\n", name);
-			break;
-		}
-	}
-out:	STOP_TRANSACTION();
-	free(url);
-	return (rc);
-}
-
-private int
 clone(char **av, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
@@ -285,7 +222,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 	int	(*empty)(char*);
 
 	if (getenv("_BK_TRANSACTION")) {
-		empty = ensemble_emptyDir;
+		empty = nested_emptyDir;
 	} else {
 		empty = emptyDir;
 	}
@@ -365,46 +302,42 @@ clone(char **av, remote *r, char *local, char **envVar)
 		if (getTriggerInfoBlock(r, !opts->quiet)) goto done;
 		getline2(r, buf, sizeof (buf));
 	}
+	if (strneq(buf, "ERROR-", 6)) {
+		fprintf(stderr, "clone: %s\n", buf+6);
+		goto done;
+	}
 	if (streq(buf, "@ENSEMBLE@")) {
-		/* we're cloning a product...  */
-		repos	*repos;
-		char	*checkfiles;
-		FILE	*f;
+		char	**nav;
+		int	i;
 
-		unless (r->rf) r->rf = fdopen(r->rfd, "r");
-		unless (repos = ensemble_fromStream(0, r->rf)) goto done;
-		rc = clone_ensemble(repos, r, local);
-		chdir(local);
-		if (opts->aliases || !exists("BitKeeper/log/COMPONENTS")) {
-			unless (opts->aliases) {
-				opts->aliases = addLine(0, strdup("default"));
-			}
-			uniqLines(opts->aliases, free);
-			if (lines2File(opts->aliases,
-			    "BitKeeper/log/COMPONENTS")) {
-				perror("BitKeeper/log/COMPONENTS");
-			}
+		freeLines(opts->aliases, free);
+		opts->aliases = addLine(0, strdup("default"));
+
+		while (getline2(r, buf, sizeof (buf)) > 0) {
+			if (strneq(buf, "@ensemble_list end@", 19)) break;
 		}
-		checkfiles = bktmp(0, "clonechk");
-		f = fopen(checkfiles, "w");
-		assert(f);
-		EACH_REPO(repos) {
-			unless (streq(".", repos->path)) {
-				fprintf(f, "%s/ChangeSet\n", repos->path);
-			}
-		}
-		fclose(f);
-		ensemble_free(repos);
-		p = opts->quiet ? "-fT" : "-fTv";
-		rc += run_check(opts->quiet, checkfiles, p, 0);
-		unlink(checkfiles);
-		free(checkfiles);
-		if (rc) {
-			fprintf(stderr, "Consistency check failed, "
-			    "repository left locked.\n");
-			return (-1);
+		START_TRANSACTION();
+		nav = addLine(0, "bk");
+		for (i = 0; av[i]; i++) nav = addLine(nav, av[i]);
+		nav = addLine(nav, av[i]);
+		rc = spawnvp(_P_WAIT, "bk", nav + 1);
+		freeLines(nav, 0);
+		STOP_TRANSACTION();
+		unless (rc) {
+			if (rc = chdir(local)) goto done;
+			unlink("BitKeeper/log/COMPONENTS");
+			rc = clone2(r);
 		}
 		goto done;
+	}
+	if (streq(buf, "@HERE@")) {
+		freeLines(opts->aliases, free);
+		opts->aliases = 0;
+		while (getline2(r, buf, sizeof (buf)) > 0) {
+			if (streq(buf, "@END@")) break;
+			opts->aliases = addLine(opts->aliases, strdup(buf));
+		}
+		getline2(r, buf, sizeof (buf));
 	}
 
 	// XXX - would be nice if we did this before bailing out on any of
@@ -436,10 +369,7 @@ clone(char **av, remote *r, char *local, char **envVar)
 		disconnect(r, 2);
 		goto done;
 	}
-	/*
-	 * no proj_config*() calls before this point, the sfio needs
-	 * to be unpacked before we can read BitKeeper/etc/config.
-	 */
+	proj_reset(0);		/* reset proj_product() */
 	if (opts->link) lclone(getenv("BKD_ROOT"));
 
 	do_part2 = ((p = getenv("BKD_BAM")) && streq(p, "YES")) || bp_hasBAM();
@@ -483,9 +413,8 @@ clone2(remote *r)
 	char	*p, *url;
 	char	*checkfiles;
 	FILE	*f;
-	int	rc;
+	int	i, rc = 0;
 	int	did_partial = 0;
-	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "clone failed license accept check\n");
@@ -515,7 +444,6 @@ clone2(remote *r)
 		if (p) free(p);
 	}
 
-	sprintf(buf, "..%s", opts->rev ? opts->rev : "");
 	checkfiles = bktmp(0, "clonechk");
 	f = fopen(checkfiles, "w");
 	assert(f);
@@ -523,19 +451,38 @@ clone2(remote *r)
 	fclose(f);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
-	/* remove any later stuff */
 	if (opts->rev) {
+		/* only product in HERE */
+		/* remove any later stuff */
 		rc = after(opts->quiet, opts->rev);
 		if (rc == UNDO_SKIP) {
 			/* undo exits 2 if it has no work to do */
-			goto docheck;
 		} else if (rc != 0) {
 			fprintf(stderr,
 			    "Undo failed, repository left locked.\n");
 			return (-1);
 		}
-	} else {
-docheck:	/* undo already runs check so we only need this case */
+	}
+	if (proj_isProduct(0) && !emptyLines(opts->aliases)) {
+		char	**cav = 0;
+
+		cav = addLine(cav, "bk");
+		cav = addLine(cav, "components");
+		cav = addLine(cav, "set");
+		if (opts->quiet) cav = addLine(cav, "-q");
+		if (opts->link) cav = addLine(cav, "-l");
+		EACH(opts->aliases) cav = addLine(cav, opts->aliases[i]);
+		cav = addLine(cav, 0);
+		rc = spawnvp(_P_WAIT, "bk", cav + 1);
+		freeLines(cav, 0);
+		if (rc) {
+			fprintf(stderr, "clone: fetch to fetch components\n");
+			return (-1);
+		}
+	}
+
+	unless (opts->rev && proj_isProduct(0) && !rc) {
+		/* undo already runs check so we only need this case */
 		p = opts->quiet ? "-fT" : "-fvT";
 		if (proj_configbool(0, "partial_check")) {
 			rc = run_check(opts->quiet, checkfiles, p, &did_partial);
@@ -581,7 +528,7 @@ initProject(char *root, remote *r)
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(root);
 	chdir(root);
-	if (proj_product(0)) opts->no_parent = 1;
+	if (!opts->no_parent && proj_product(0)) opts->no_parent = 1;
 
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);
@@ -838,7 +785,7 @@ lclone(char *from)
 		tb.modtime = sb.st_mtime;
 		utime(CHECKED, &tb);
 	}
-	ensemble_nestedCheck();
+	nested_check();
 }
 
 /*

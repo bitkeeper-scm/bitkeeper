@@ -35,24 +35,18 @@ done
 cd "$HERE/project" && bk commit $Q -y"add csets to gdb"
 echo OK
 
-echo $N Clone and see that we have a default alias list ,............$NL
+echo $N Clone and see that we have a default alias list .............$NL
 cd "$HERE"
 bk clone $Q project clone
 cd clone
-test -f BitKeeper/log/COMPONENTS || {
-	echo failed to create COMPONENTS
-	exit 1
-}
-grep -q default BitKeeper/log/COMPONENTS || {
-	echo bad data
-	cat BitKeeper/log/COMPONENTS
-	exit 1
-}
+bk alias show here > GOT
+echo default > WANT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Set up a test where we will add another alias ...............$NL
 cd "$HERE/project"
-bk alias stuff gcc gdb
+bk alias new stuff gcc gdb
 cd ..
 bk clone $Q -sstuff project stuff
 bk clone $Q -sstuff project stuff2
@@ -61,41 +55,42 @@ cd "$HERE/project"
 bk clone $Q ../libc path/to/libc
 bk clone $Q ../libc junk
 bk attach $Q junk path/to/libc
-bk alias -a stuff path/to/libc
+bk alias add stuff path/to/libc
 echo OK
 
 echo $N Test that we can read the name and dirs and globs ...........$NL
-bk components -sstuff | bk _sort > GOT
+bk alias show -p stuff | bk _sort > GOT
 cat << EOF > WANT
 gcc
 gdb
 path/to/libc
 EOF
 checkfiles WANT GOT
-bk components -s./gcc > GOT
+bk alias show -p ./gcc > GOT
 echo gcc > WANT
 checkfiles WANT GOT
 # make sure longer and shorter don't match
-bk components -s./gccc\* 2> ERR > GOT && {
-	echo failed
-	exit 1
-}
-grep -q "components: no match for ./gccc*" ERR || {
-	echo wrong msg
+bk alias show -p ./gccc\* 2>ERR && {
+	echo should fail
 	cat ERR
 	exit 1
 }
-bk components -s./gc/\* 2> ERR > GOT && {
-	echo failed
+cat <<EOF > WANT
+alias: gccc* does not match any components.
+EOF
+checkfiles WANT ERR
+bk alias show -p ./gc/\* 2>ERR && {
+	echo should fail
+	cat ERR
 	exit 1
 }
-grep -q "components: no match for ./gc/*" ERR || {
-	echo wrong msg
-	exit 1
-}
+cat <<EOF > WANT
+alias: gc/* does not match any components.
+EOF
+checkfiles WANT ERR
 # globs that work
 for p in "g*" "gc*" "g*c" "*c" "p*" "path/*"
-do	bk components -s"./$p" | bk _sort
+do	bk alias show -p "./$p" | bk _sort
 	echo ..
 done > GOT
 cat << EOF > WANT
@@ -118,13 +113,14 @@ checkfiles WANT GOT
 echo OK
 
 echo $N Test that what looks like an alias is an alias ..............$NL
-bk alias gcc ./gcc ./gdb
-bk alias samething gcc
-bk components -sgcc > WANT
-bk components -ssamething > GOT
+bk alias new gcc ./gcc ./gdb
+bk alias new samething gcc
+bk alias show -p gcc > WANT
+bk alias show -p samething > GOT
 checkfiles WANT GOT
-bk alias -r gcc
-bk alias -r samething
+# Need -C here as the aliasdb is broken; could see that and require -C
+bk alias rm -C gcc
+bk alias rm samething
 echo OK
 
 echo $N Try a push, should add libc but not junk ....................$NL
@@ -170,19 +166,16 @@ test -d path/to/libc && {
 echo OK
 
 echo $N Try a pull, should add libc but not junk ....................$NL
-bk pull > ../OUT 2>&1 || {
+bk pull $Q || {
 	echo should not have failed
-	cat ../OUT
 	exit 1
 }
 test -d path/to/libc || {
 	echo did not add libc
-	cat ../OUT
 	exit 1
 }
 test -d junk && {
 	echo should not have added junk
-	cat ../OUT
 	exit 1
 }
 echo OK
@@ -206,7 +199,7 @@ echo OK
 
 echo $N Clone backwards, getting just libc, populate junk ...........$NL
 cd "$HERE"
-bk clone -r1.8 -s./path/to/libc project behind > OUT 2>&1
+bk clone $Q -r1.8 -s./path/to/libc project behind || exit 1
 cd behind
 test -d junk && {
 	echo should not have junk
@@ -216,7 +209,7 @@ test -d path/to/libc || {
 	echo should have libc
 	exit 1
 }
-bk populate $Q -s./junk || {
+bk components add $Q ./junk || {
 	echo failed
 	exit 1
 }
@@ -241,13 +234,9 @@ bk clone -s./gcc/nm project project-nm > OUT 2>&1 || {
 }
 echo OK
 
-# XXX - we have a bug so not this way yet
-if false; then
-
 echo $N Set up by populating all ....................................$NL
 cd project-nm
-echo default > BitKeeper/log/COMPONENTS
-bk populate $Q 
+bk components set $Q default || exit 1
 cat > WANT <<EOF
 gcc
 gcc/nm
@@ -255,46 +244,23 @@ gdb
 junk
 path/to/libc
 EOF
-bk components -h > GOT
+bk components here > GOT
 cmpfiles WANT GOT
 echo OK
-
-else 
-
-echo $N Set up by populating most ...................................$NL
-cd project-nm
-bk populate $Q -s./gdb -s./junk -s./path/to/libc
-cat > WANT <<EOF
-gcc/nm
-gdb
-junk
-path/to/libc
-EOF
-bk components -h > GOT
-cmpfiles WANT GOT
-echo OK
-
-fi
 
 echo $N Test a default that is just gdb .............................$NL
-bk edit $Q BitKeeper/etc/aliases
-(
-echo @default
-cd gdb
-bk id
-) > BitKeeper/etc/aliases
-echo default > BitKeeper/log/COMPONENTS
-bk delta $Q -ygcc BitKeeper/etc/aliases
-bk commit $Q -ygcc
 cd ..
-bk clone $Q project-nm project-just-gdb
+bk clone -s./gdb $Q project-nm project-just-gdb || exit 1
 cd project-just-gdb
-grep -q default BitKeeper/log/COMPONENTS || {
-	echo bad log
-	cat BitKeeper/log/COMPONENTS
-	exit 1
-}
-bk components -h > GOT
+bk alias show here > GOT
+(cd gdb; bk id) > WANT
+cmpfiles GOT WANT
+bk alias set default ./gdb || exit 1
+bk components set $Q default || exit 1
+bk alias show here > GOT
+echo default > WANT
+cmpfiles GOT WANT
+bk components here > GOT
 echo gdb > WANT
 cmpfiles WANT GOT
 echo OK
@@ -330,9 +296,8 @@ echo OK
 
 echo $N Test -s. ....................................................$NL
 cd "$HERE"
-bk clone -s. project project-dot > OUT 2>&1 || {
+bk clone -s. $Q project project-dot || {
 	echo failed
-	cat OUT
 	exit 1
 }
 test -d project-dot || {
@@ -348,58 +313,43 @@ echo OK
 
 echo $N Make sure populate -sno-such-dir does not add to COMPONENTS .$NL
 cd project-dot
-cp BitKeeper/log/COMPONENTS .
-bk populate -s./no-such-dir > OUT 2>&1 && {
-	echo populate should have failed
-	cat OUT
+bk components set $Q ./no-such-dir 2>ERR && {
+	echo should have failed
+	cat ERR
 	exit 1
 }
-cmpfiles COMPONENTS BitKeeper/log/COMPONENTS
+bk components here || exit 1
 echo OK
 
 echo $N Same thing with a glob ......................................$NL
-bk populate -s'./no-such-dir*' > OUT 2>&1 && {
+bk components set './no-such-dir*' > OUT 2>&1 && {
 	echo populate should have failed
 	cat OUT
 	exit 1
 }
-cmpfiles COMPONENTS BitKeeper/log/COMPONENTS
+bk components here || exit 1
 echo OK
 
 echo $N Populate junk, run populate, should do nothing ..............$NL
-bk populate -s'./junk' > OUT 2>&1  || {
+bk components add $Q ./junk || {
 	echo should not have failed
-	cat OUT
 	exit 1
 }
 test -d junk || exit 1
-bk populate > OUT 2>&1 
-grep -q 'no match' OUT && {
-	echo failed
-	cat OUT
-	echo COMPONENTS
-	cat BitKeeper/log/COMPONENTS
-	echo matches for ./junk 
-	bk components -s./junk
-	cd ../project
-	echo matches for ./junk in project
-	bk components -s./junk
-	exit 1
-}
-grep -q 'junk is already here.' OUT || {
-	echo bad message
-	cat OUT
-	exit 1
-}
+bk components set $Q here || exit 1
+bk alias show here > GOT
+(cd junk; bk id) > WANT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Same thing with a glob that matches junk when we have junk ..$NL
 test -d junk || exit 1
-bk populate -s'./junk*' > OUT 2>&1 || {
+bk components add $Q './junk*' || {
 	echo populate should not have failed
-	cat OUT
 	exit 1
 }
+bk alias show here > GOT
+cmpfiles GOT WANT
 echo OK
 
 echo $N Test alias with non-recursive duplicated definitions.........$NL
@@ -412,10 +362,10 @@ echo @alias2
 echo alias3
 echo alias3
 echo @alias3
-echo ./gcc
+(cd gcc; bk id)
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
-bk components -salias1 > GOT 2>&1 || {
+bk alias show -p alias1 > GOT 2>&1 || {
 	echo failed
 	cat GOT
 	exit 1
@@ -434,10 +384,10 @@ echo @alias2
 echo alias3
 echo @alias3
 echo alias1
-echo ./gcc
+(cd gcc; bk id)
 ) >> BitKeeper/etc/aliases
 bk delta $Q -ywhatever BitKeeper/etc/aliases
-bk components -salias1 2> ERR && {
+bk alias show -p alias1 2> ERR && {
 	echo failed
 	cat GOT
 	exit 1
@@ -447,52 +397,56 @@ echo OK
 
 echo $N Remove all aliases...........................................$NL
 cd "$HERE"/project
-bk alias | grep -v all | while read x
+bk alias show | grep -v all | while read x
 do
-	bk alias -r $x
+	bk alias rm -C $x 2> ERR || {
+		echo failed
+		cat ERR
+		exit 1
+	}
 done
-test x`bk alias` = x || {
+test x`bk alias show` = x || {
 	echo alias list not empty
-	bk alias
+	bk alias show
 	exit 1
 }
 echo OK
 
 echo $N Add all components as an alias...............................$NL
 cd "$HERE"/project
-bk components | bk alias A - || {
+bk _nested | bk alias new A - || {
 	echo failed
 	exit 1
 }
-bk components > WANT
-bk components -sA > GOT
+bk _nested > WANT
+bk alias show -p A > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Add catch-all glob...........................................$NL
 cd "$HERE"/project
-bk alias all-glob './*' || {
+bk alias new all-glob './*' || {
 	echo failed
 	exit 1
 }
-bk components > WANT
-bk components -sall-glob > GOT
+bk _nested > WANT
+bk alias show -p all-glob > GOT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Invalid alias names should fail..............................$NL
 cd "$HERE"/project
-bk alias 'this is invalid' gcc gdb >ERR 2>&1 && {
+bk alias new 'this is invalid' gcc gdb >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
 }
-bk alias ./foobar gcc gdb >ERR 2>&1 && {
+bk alias new ./foobar gcc gdb >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
 }
-bk alias +foo gcc gdb >ERR 2>&1 && {
+bk alias new +foo gcc gdb >ERR 2>&1 && {
 	echo failed
 	cat ERR
 	exit 1
@@ -526,7 +480,7 @@ echo OK
 
 echo $N bk alias -C should leave pending aliases file................$NL
 cd "$HERE"/project
-bk alias -C dev gcc gdb >ERR 2>&1 || {
+bk alias new -C dev gcc gdb >ERR 2>&1 || {
 	echo failed
 	cat ERR
 	exit 1
@@ -538,22 +492,22 @@ echo OK
 
 echo $N Test show interface..........................................$NL
 cd "$HERE"/project
-for m in `bk alias`
+for m in `bk alias show`
 do
 	echo @$m
-	bk alias -k $m
+	bk alias show -k $m
 done > GOT
 bk cat BitKeeper/etc/aliases > WANT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Try and show an alias that is not there .....................$NL
-bk alias "DOESNOTEXIST" 2> ERR && {
+bk alias show "DOESNOTEXIST" 2> ERR && {
 	echo failed rc
 	cat ERR
 	exit 1
 }
-grep -q "alias: 'DOESNOTEXIST' not found" ERR || {
+grep -q "alias: no alias: DOESNOTEXIST" ERR || {
 	echo failed msg
 	cat ERR
 	exit 1
@@ -561,6 +515,7 @@ grep -q "alias: 'DOESNOTEXIST' not found" ERR || {
 echo OK
 
 echo $N Test creating aliases in a sparse tree ......................$NL
+bk commit $Q -y'aliases'
 (
 cd gcc
 bk id
@@ -575,8 +530,8 @@ test -d gcc && {
 	exit 1
 }
 # Note: trying both forms of "dir" and "./dir"
-bk alias sparse ./gcc gdb || exit 1
-bk alias -k sparse > GOT
+bk alias new sparse ./gcc gdb || exit 1
+bk alias show -k sparse > GOT
 cmpfiles ../WANT GOT
 echo OK
 
@@ -605,12 +560,12 @@ grep -q "check: nm/foo conflicts with component at nm" ERR || exit 1
 echo OK
 
 echo $N Make sure we can not remove the all alias ...................$NL
-bk alias -r all > OUT 2>&1 && {
+bk alias rm all > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 	exit 1
 }
-grep -q 'reserved name "all" may not be changed.' OUT || {
+grep -q 'alias: no such alias "all"' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -618,12 +573,14 @@ grep -q 'reserved name "all" may not be changed.' OUT || {
 echo OK
 
 echo $N Make sure we can not remove the gcc component from all.......$NL
-bk alias -r all ./gcc > OUT 2>&1 && {
+# note: rm has special powers to remove anything in the db that might
+# have accidentally gotten there, like 'all'. So the db is checked.
+bk alias rm all ./gcc > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 	exit 1
 }
-grep -q 'reserved name "all" may not be changed.' OUT || {
+grep -q 'alias: reserved name "all" may not be changed' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
@@ -631,7 +588,7 @@ grep -q 'reserved name "all" may not be changed.' OUT || {
 echo OK
 
 echo $N Make sure we can not add to the all alias ...................$NL
-bk alias -a all ./gcc > OUT 2>&1 && {
+bk alias add all ./gcc > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
 	exit 1
@@ -645,11 +602,11 @@ echo OK
 
 echo $N Using a relative path in bk alias should work................$NL
 cd "$HERE"/project/gcc
-bk alias nm ./nm || {
+bk alias new nm ./nm || {
 	echo failed
 	exit 1
 }
-bk components -snm >GOT
+bk alias show -p nm >GOT
 cat <<EOF >WANT
 gcc/nm
 EOF
@@ -659,22 +616,26 @@ echo OK
 echo $N Check alias listing in path mode ............................$NL
 cat > WANT <<EOF
 @A
-./gcc
-./gcc/nm
-./gdb
-./junk
-./path/to/libc
+gcc
+gcc/nm
+gdb
+junk
+path/to/libc
 @all-glob
-./*
+gcc
+gcc/nm
+gdb
+junk
+path/to/libc
 @dev
-./gcc
-./gdb
+gcc
+gdb
 @nm
-./gcc/nm
+gcc/nm
 EOF
-bk alias | while read x
+bk alias show | while read x
 do	echo @$x
-	bk alias $x
+	bk alias show -p $x
 done > GOT
 cmpfiles WANT GOT
 echo OK
@@ -683,31 +644,22 @@ echo $N Alias -f default does overwrite / replace as expected .......$NL
 cd "$HERE/project"
 # setup a default because none has been defined.
 # Then try to replace it
-bk aliases -f default junk || exit 1
-bk aliases -f default ./gcc
-bk alias default | bk _sort > GOT
-echo ./gcc > WANT
+bk aliases set -C default junk || exit 1
+bk aliases set -C default ./gcc
+bk alias show default > GOT
+bk changes -qr1.0 -nd:KEY: gcc > WANT
 cmpfiles WANT GOT
 echo OK
 
 echo $N Alias -a of missing components and check fails ..............$NL
 cd "$HERE/project-nm"
-bk alias > GOT
-echo default > WANT
-cmpfiles WANT GOT
-bk alias default > GOT
-echo ./gdb > WANT
-cmpfiles WANT GOT
-# At least one of the next two checks should fail because COMPONENTS
-# file does not reflect what is there.
+bk -qA changes -r+ -nd:ROOTKEY: | bk alias set -C default -
 bk -r check || exit 1
 rm -fr junk
-bk -r check || exit 1
-# Include missing component as part of COMPONENTS (which has default)
-bk alias -Ca default junk || exit 1
 bk -r check 2> ERR && { echo fix test; exit 1; }
-grep -q "error expanding alias 'default' because junk is not present" ERR || {
+grep -q "error expanding alias 'default' because 'junk' is not present" ERR || {
 	echo wrong msg
+	cat ERR
 	exit 1
 }
 # I say this is a ...

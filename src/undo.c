@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
-#include "ensemble.h"
+#include "nested.h"
 
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
 #define	UNDO_CSETS  "BitKeeper/tmp/undo_csets"
@@ -25,7 +25,7 @@ undo_main(int ac,  char **av)
 	char	buf[MAXLINE];
 	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
 	FILE	*f;
-	int	i;
+	int	i, j, errs;
 	int	status;
 	int	rmresync = 1;
 	char	**csetrev_list = 0;
@@ -37,6 +37,7 @@ undo_main(int ac,  char **av)
 	char	*patch = "BitKeeper/tmp/undo.patch";
 	char	*p;
 	char	**nav = 0;
+	project	*proj;
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "undo: cannot find package root.\n");
@@ -45,10 +46,10 @@ undo_main(int ac,  char **av)
 
 	fromclone = 0;
 	while ((c = getopt(ac, av, "a:Cfqp;r:sv")) != -1) {
-		unless ((c == 'a') || (c == 'r')) {
+		unless ((c == 'a') || (c == 'r') || (c == 's')) {
 			if (optarg) {
 				nav = addLine(nav,
-				    aprintf("-%c'%s'", c, optarg));
+				    aprintf("-%c%s", c, optarg));
 			} else {
 				nav = addLine(nav, aprintf("-%c", c));
 			}
@@ -150,72 +151,114 @@ err:		if (undo_list[0]) unlink(undo_list);
 	 * here so unless the other guys are pending we should be cool.
 	 */
 	if (proj_isProduct(0)) {
-		sccs	*cset = sccs_csetInit(0);
-		repos	*r;
+		nested	*n = 0;
+		comp	*c;
 		char	**vp;
-		eopts	opts;
-		int	n = 1, which = 1;
+		int	i, num = 0, which = 1;
 
-		assert(cset);
-		opts.sc = cset;
-		bzero(&opts, sizeof(opts));
-		opts.revs = csetrev_list;
-		opts.undo = 1;
-		unless (r = ensemble_list(opts)) {
+		unless (n = nested_init(0, 0, csetrev_list, 0)) {
 			fprintf(stderr, "undo: ensemble failed.\n");
-			sccs_free(cset);
 			goto err;
 		}
-		sccs_free(cset);
+		/* make sure we can explain the aliases at the new cset */
+		if (nested_aliases(n, n->oldtip, &n->here, 0, 0)) {
+			fprintf(stderr,
+			    "%s: current aliases not valid after undo.\n",
+			    prog);
+			nested_free(n);
+			goto err;
+		}
+		assert(n->product->alias);
+		errs = 0;
+		EACH_STRUCT(n->comps, c, i) {
+			/* handle changing aliases */
+			if (c->present && !c->alias && !c->new) {
+				/*
+				 * a component that is currently present
+				 * but shouldn't be here after the undo.
+				 */
+				fprintf(stderr,
+				    "%s: The old aliases file doesn't include "
+				    "the %s component which is currently "
+				    "present.\n", prog, c->path);
+				++errs;
+			} else if (!c->present && c->alias) {
+				/*
+				 * a component that is missed but should
+				 * be present after the undo.  We need
+				 * to try and populate it.
+				 * Just generate an error for now.
+				 */
+				fprintf(stderr,
+				    "%s: The old aliases file requires the "
+				    "component %s which is not present.\n",
+				    prog, c->path);
+				++errs;
+			}
 
-		EACH_REPO(r) if (r->present && !r->new) n++;
+			/* count number of calls to undo needed */
+			if (c->present && c->included && !c->new) num++;
+
+			unless (c->new && c->included) continue;
+
+			/* foreach repo to be deleted... */
+
+			proj = proj_init(c->path);
+			/* may fail */
+			removeLine(n->here, proj_rootkey(proj), free);
+			proj_free(proj);
+
+			sysio(0,
+			    SFILES, 0, "bk", "sfiles", "-gcxp", c->path, SYS);
+			if (size(SFILES) > 0) {
+				fprintf(stderr,
+				    "Changed/extra files in '%s'\n", c->path);
+				p = aprintf("/bin/cat < '%s' 1>&2", SFILES);
+				system(p);
+				free(p);
+				++errs;
+			}
+			unlink(SFILES);
+		}
+		if (errs) {
+			nested_free(n);
+			goto err;
+		}
 		START_TRANSACTION();
-		EACH_REPO(r) {
-			if (r->new) continue;
-			unless (r->present) continue;
+		EACH_STRUCT(n->comps, c, j) {
+			if (c->product || c->new) continue;
+			unless (c->present && c->included) continue;
 			vp = addLine(0, strdup("bk"));
 			vp = addLine(vp, strdup("undo"));
 			EACH(nav) vp = addLine(vp, strdup(nav[i]));
-			cmd = aprintf("-fa%s", r->deltakey);
+			cmd = aprintf("-fa%s", c->lowerkey);
 			vp = addLine(vp, cmd);
 			vp = addLine(vp, 0);
 			unless (quiet) {
 				printf("#### Undo in %s (%d of %d) ####\n",
-				    r->path, which++, n);
+				    c->path, which++, num);
 				fflush(stdout);
 			}
-			if (chdir(r->path)) {
+			if (chdir(c->path)) {
 				fprintf(stderr,
-				    "Could not chdir %s\n", r->path);
+				    "Could not chdir %s\n", c->path);
 				exit(199);
 			}
 			rc = spawnvp(_P_WAIT, "bk", &vp[1]);
 			if (WIFEXITED(rc)) rc = WEXITSTATUS(rc);
 			if (rc && !(fromclone && (rc == UNDO_SKIP))) {
-fail:				fprintf(stderr, "Could not undo %s to %s.\n",
-				    r->path, r->deltakey);
+				fprintf(stderr, "Could not undo %s to %s.\n",
+				    c->path, c->lowerkey);
+
+				// XXX need to rollback
 				exit(199);
 			}
 			freeLines(vp, free);
 			proj_cd2product();
 		}
 		STOP_TRANSACTION();
-		EACH_REPO(r) {
-			unless (r->new) continue;
-			sysio(0,
-			    SFILES, 0, "bk", "sfiles", "-gcxp", r->path, SYS);
-			if (size(SFILES) > 0) {
-				fprintf(stderr,
-				    "Changed/extra files in '%s'\n", r->path);
-				p = aprintf("/bin/cat < '%s' 1>&2", SFILES);
-				system(p);
-				free(p);
-				goto fail;
-			}
-			unlink(SFILES);
-		}
-		EACH_REPO(r) {
-			if (r->new) rmrepo(r->path);
+		EACH_STRUCT(n->comps, c, i) {
+			if (c->new && c->included) rmrepo(c->path);
 		}
 
 		/*
@@ -225,16 +268,18 @@ fail:				fprintf(stderr, "Could not undo %s to %s.\n",
 		cmd = aprintf("bk names %s -", qflag);
 		f = popen(cmd, "w");
 		free(cmd);
-		EACH_REPO(r) {
-			if (r->new) continue;
-			fprintf(f, "%s/SCCS/s.ChangeSet\n", r->path);
+		EACH_STRUCT(n->comps, c, i) {
+			if (c->product) continue;
+			if (c->new || !c->included) continue;
+			fprintf(f, "%s/SCCS/s.ChangeSet\n", c->path);
 		}
 		pclose(f);
 
-		ensemble_free(r);
+		nested_writeHere(n);
+		nested_free(n);
 		unless (quiet) {
 			printf("#### Undo in Product (%d of %d) ####\n",
-			    which++, n);
+			    which++, num);
 			fflush(stdout);
 		}
 	}

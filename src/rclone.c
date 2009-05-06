@@ -1,6 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
-#include "ensemble.h"
+#include "nested.h"
 
 private	struct {
 	u32	debug:1;		/* -d debug mode */
@@ -34,7 +34,7 @@ rclone_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
-	while ((c = getopt(ac, av, "B;dE:qr;s;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "B;dE:pqr;s;w|z|")) != -1) {
 		unless ((c == 'r') || (c == 's')) {
 			if (optarg) {
 				opts.av = addLine(opts.av,
@@ -53,6 +53,7 @@ rclone_main(int ac, char **av)
 				return (1);
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'p': break; /* ignore no parent */
 		    case 'q': opts.verbose = 0; break;
 		    case 'r': opts.rev = optarg; break;
 		    case 's':
@@ -97,6 +98,11 @@ rclone_main(int ac, char **av)
 		    "clone: must commit local changes to %s\n", GONE);
 		exit(1);
 	}
+	if (hasLocalWork(ALIASES)) {
+		fprintf(stderr,
+		    "clone: must commit local changes to %s\n", ALIASES);
+		exit(1);
+	}
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
 	r->gzip_in = gzip;
@@ -129,44 +135,48 @@ rclone_main(int ac, char **av)
 private int
 rclone_ensemble(remote *r)
 {
-	eopts	ropts;
-	repos	*rps = 0;
-	sccs	*cset;
-	hash	*h = 0;
+	nested	*n = 0;
+	comp	*c;
 	char	**vp;
 	char	*name, *url;
-	int	i, status, rc = 0;
+	char	*dstpath;
+	int	errs;
+	int	i, j, status, rc = 0;
+	u32	flags = NESTED_PRODUCTFIRST;
 
-	bzero(&ropts, sizeof(eopts));
 	url = remote_unparse(r);
-	ropts.product = 1;
-	ropts.product_first = 1;
-	ropts.rev = opts.rev;
 
-	/*
-	 * Mirror bkd_clone and imply whatever list we have unless they 
-	 * specified a list already.
-	 */
-	cset = sccs_csetInit(SILENT);
-	unless (opts.aliases) {
-		opts.aliases = file2Lines(0, "BitKeeper/log/COMPONENTS");
-	}
 	unless (opts.aliases) opts.aliases = addLine(0, strdup("default"));
-	unless (h =
-	    alias_hash(opts.aliases, cset, ropts.rev, ALIAS_HERE)){
+	START_TRANSACTION();
+	n = nested_init(0, opts.rev, 0, flags);
+	if (nested_aliases(n, n->tip, &opts.aliases, proj_cwd(), n->pending)) {
+		fprintf(stderr, "%s: unable to expand aliases\n");
 		rc = 1;
 		goto out;
 	}
-	ropts.aliases = h;
-	rps = ensemble_list(ropts);
-	START_TRANSACTION();
-	EACH_REPO(rps) {
+	n->product->alias = 1;
+	errs = 0;
+	EACH_STRUCT(n->comps, c, i) {
+		if (c->alias && !c->present) {
+			fprintf(stderr,
+			    "%s: component %s not present.\n",
+			    prog, c->path);
+			++errs;
+		}
+	}
+	if (errs) {
+		fprintf(stderr, "%s: missing components\n", prog);
+		rc = 1;
+		goto out;
+	}
+	EACH_STRUCT(n->comps, c, j) {
+		unless (c->alias) continue;
 		proj_cd2product();
 		vp = addLine(0, strdup("bk"));
 		vp = addLine(vp, strdup("clone"));
 		EACH(opts.av) vp = addLine(vp, strdup(opts.av[i]));
-		vp = addLine(vp, aprintf("-r%s", rps->deltakey));
-		if (streq(rps->path, ".")) {
+		vp = addLine(vp, aprintf("-r%s", c->deltakey));
+		if (c->product) {
 			EACH(opts.aliases) {
 				vp = addLine(vp,
 				    aprintf("-s%s", opts.aliases[i]));
@@ -175,22 +185,16 @@ rclone_ensemble(remote *r)
 			vp = addLine(vp, strdup("."));
 			vp = addLine(vp, strdup(url));
 		} else {
-			name = rps->path;
-			vp = addLine(vp, strdup(name));
-			vp = addLine(vp, aprintf("%s/%s", url, rps->path));
+			name = c->path;
+			vp = addLine(vp, strdup(c->path));
+			dstpath = key2path(c->deltakey, 0);
+			vp = addLine(vp, aprintf("%s/%s", url,
+				dirname(dstpath)));
+			free(dstpath);
 		}
 		vp = addLine(vp, 0);
 		if (opts.verbose) printf("#### %s ####\n", name);
 		fflush(stdout);
-		unless (rps->present) {
-			if (opts.aliases && opts.verbose) {
-				fprintf(stderr,
-				    "clone: %s was not found, skipping.\n",
-				    rps->path);
-			}
-			freeLines(vp, free);
-			continue;
-		}
 		status = spawnvp(_P_WAIT, "bk", &vp[1]);
 		rc = WIFEXITED(status) ? WEXITSTATUS(status) : 199;
 		freeLines(vp, free);
@@ -199,15 +203,13 @@ rclone_ensemble(remote *r)
 			break;
 		}
 	}
-	
+
 	/*
 	 * XXX - put code in here to finish the transaction.
 	 */
 
-out:	sccs_free(cset);
-	if (h) hash_free(h);
-	free(url);
-	ensemble_free(rps);
+out:	free(url);
+	nested_free(n);
 	STOP_TRANSACTION();
 	return (rc);
 }
