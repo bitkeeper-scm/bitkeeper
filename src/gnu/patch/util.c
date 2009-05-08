@@ -322,10 +322,9 @@ version_controller (char const *filename, int readonly,
 
       r = "RCS";
     }
-  else if ((try2 ("SCCS/%s%s", SCCSPREFIX, filebase)
-	    || try2 ("%s%s", SCCSPREFIX, filebase)) ||
-	   (getenv("BK_REMAP") &&
-	    try3("SCCS/%s%s > /dev/null", SCCSPREFIX, filebase)))
+  else if (try2 ("SCCS/%s%s", SCCSPREFIX, filebase)
+	   || try2 ("%s%s", SCCSPREFIX, filebase)
+	   || try3("SCCS/%s%s > /dev/null", SCCSPREFIX, filebase))
     {
       if (getbuf)
 	{
