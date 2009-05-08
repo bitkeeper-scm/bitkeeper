@@ -412,7 +412,7 @@ if bk _test -f src/SCCS/s.foo
 then	echo Failed to remove file
 	exit 1
 fi
-ls BitKeeper/deleted/SCCS | grep -q "^s..del-foo.c" 
+bk sfiles BitKeeper/deleted/SCCS | grep -q "s..del-foo.c"
 if [ $? -ne 0 ]
 then	echo Can not find deleted file
 	exit 1
@@ -732,6 +732,7 @@ echo "eoln: unix" >> c
 echo "keyword: sccs" >> c
 echo "checkout: edit" >> c
 bk setup -f -cc co_edit || { echo "Setup failed!"; exit 1; }
+mkdir co_edit/SCCS
 cp SCCS/s.co_edit_foo co_edit/SCCS
 cd co_edit
 bk sccs2bk -cx co_edit_foo >OUT 2>ERR || {
