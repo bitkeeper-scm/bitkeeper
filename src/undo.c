@@ -66,7 +66,6 @@ undo_main(int ac,  char **av)
 		    case 's': save = 0; break;			/* doc 2.0 */
 		    case 'v': verbose = 1; break;
 		    default :
-			fprintf(stderr, "unknown option <%c>\n", c);
 usage:			system("bk help -s undo");
 			freeLines(nav, free);
 			return (UNDO_ERR);

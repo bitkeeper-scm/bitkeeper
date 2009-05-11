@@ -15,6 +15,8 @@
 #define	NSTATE	5	/* name state: n,' ' */
 #define	YSTATE	6	/* comments status: y, ' ' */
 
+#define	NO_OUTPUT	100
+
 typedef struct winfo winfo;
 typedef	char	STATE[8];
 
@@ -72,7 +74,7 @@ typedef struct {
 
 /* don't use -z, bk.c needs it. */
 
-private	jmp_buf	sfiles_exit;
+private	jmp_buf	output_closed;
 private hash	*timestamps = 0;
 private options	opts;
 private	project	*proj, *prodproj;
@@ -138,11 +140,12 @@ fastprint(char *file, struct stat *sb, void *data)
 int
 sfiles_main(int ac, char **av)
 {
-        int     c, i;
+        int     c, i, nested = 0;
+	char	**nav, **comps;
 	char	*path, *s, buf[MAXPATH];
 
-	if (setjmp(sfiles_exit)) {
-		return (1); /* error exit */
+	if (setjmp(output_closed)) {
+		return (NO_OUTPUT); /* tell callers our output closed */
 	}
 
 	/* pass in path/to/component/ and note the trailing slash */
@@ -157,7 +160,7 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "^01acCdDeEgGhijlno:p|P|RsSuUvxy")) != -1) {
+	while ((c = getopt(ac, av, "^01acCdDeEgGhijlnNo:p|P|RsSuUvxy")) != -1) {
 		switch (c) {
 		    case '^':	opts.inverse = 1; break;
 		    case '0':	opts.null = 1; break;		/* doc */
@@ -187,6 +190,7 @@ sfiles_main(int ac, char **av)
 		    case 'j':	opts.junk = 1; break;		/* doc 2.0 */
 		    		/* XXX - should list BitKeeper/tmp stuff */
 		    case 'l':   opts.locked = 1; break;		/* doc 2.0 */
+		    case 'N':	nested = 1; break;
 		    case 'n':   opts.names = 1; break;		/* doc 2.0 */
 		    case 'o':					/* doc 2.0 */
 				unless (opts.out = fopen(optarg, "w")) {
@@ -221,6 +225,44 @@ usage:				system("bk help -s sfiles");
 				return (1);
 		}
 	}
+
+	if (nested && proj_product(0) && !getenv("_BK_SFILES_N")) {
+		if (av[optind]) goto usage;
+		putenv("_BK_SFILES_N=1");
+		if (opts.out) fclose(opts.out);
+		proj_cd2product();
+		comps = addLine(0, strdup("."));
+		comps = prog2Lines(comps, "bk components here");
+		nav = addLine(0, "bk");
+		nav = addLine(nav, "sfiles");
+		nav = addLine(nav, "-h");
+		for (i = 1; av[i]; i++) nav = addLine(nav, av[i]);
+		EACH(comps) {
+			nav = addLine(nav, comps[i]);
+			nav = addLine(nav, 0);
+
+			/*
+			 * If you chmod 0 port
+			 * and then run sfiles, it will perror on port
+			 * but keeps going and exits 0.  So this sort
+			 * of emulates that questionable model.
+			 *
+			 * Exception is output is closed.
+			 */
+			if ((c = spawnvp(_P_WAIT, "bk", &nav[1])) &&
+			    WIFEXITED(c) && (WEXITSTATUS(c) == NO_OUTPUT)) {
+			    	break;
+			}
+
+			/* pops last _set_ value, so last and null */
+			popLine(nav);
+		}
+		freeLines(comps, free);
+		freeLines(nav, 0);
+		putenv("_BK_SFILES_N=");
+		return (0);
+	}
+
 	/* backwards compat, remove in 4.0 */
 	if (getenv("BK_NO_TIMESTAMPS")) {
 		fprintf(stderr,
@@ -1083,7 +1125,8 @@ print_it(STATE state, char *gfile, char *rev)
 			if (fprintf(opts.out, "j------ ") != 8) {
 error:				perror("output error");
 				fflush(stderr);
-				longjmp(sfiles_exit, 1); /* back to sfiles_main */
+				/* back to sfiles_main */
+				longjmp(output_closed, 1);
 			}
 		} else {
 			STATE	tmp;

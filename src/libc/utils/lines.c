@@ -273,6 +273,23 @@ shiftLine(char **space)
 	return (ret);
 }
 
+/*
+ * Fill a lines array from output from a program.
+ * Each line is chomp()ed.
+ */
+char	**
+prog2Lines(char **space, char *cmdline)
+{
+	FILE	*f;
+	char	*p;
+
+	unless (cmdline && (f = popen(cmdline, "r"))) return (space);
+	while (p = fgetline(f)) {
+		space = addLine(space, strdup(p));
+	}
+	pclose(f);
+	return (space);
+}
 
 /*
  * Fill a lines array from a file.

@@ -866,7 +866,7 @@ do_relink(char *from, char *to, int quiet, char *here)
 		return (8);
 	}
 	getcwd(frompath, MAXPATH);
-	f = popen("bk sfiles", "r");
+	f = popen("bk sfiles -N", "r");
 	chdir(here);
 	unless (chdir(to) == 0) {
 		fprintf(stderr, "relink: cannot chdir to %s\n", to);

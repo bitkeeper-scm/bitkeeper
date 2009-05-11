@@ -6,7 +6,7 @@ bk \- \*(BK configuration management system front end
 .B bk 
 .[OPTopt] \-@ url
 .[B] \-q
-.[B] \-APR
+.[B] \-ANPR
 .[OPTopt] \-[1acpx]r dir
 .ARG command 
 .[ARG] options
@@ -52,16 +52,39 @@ is the last argument, then the standard input is read and buffered.
 Each remote command receives the same input.
 .tp
 .B \-A
-In a product, this option will cause the command to be run 
-in the product and then in each of the components.
+In a nested collection, this option will cause the command to be run 
+in the product and then in each of the components;
+in a standalone repository this option has no effect.
 The
 .B \-A
 is stripped from the options but all others are passed through.
-For example, to check out all files in the product
-and all component repositories:
+For example, to integrity check the product
+and all component repositories in succession:
 .DS
-$ bk -Ar co
+$ bk -Ar check -acv
 .DE
+.tp
+.B \-N
+In a nested collection,
+starting at the root of the product repository, apply
+.ARG command
+recursively to all files in the product and each of the
+component repositories;
+in a standalone repository this option is the same as
+.BR \-r .
+For example, to check out all files in a nested collection:
+.DS
+$ bk -N co
+.DE
+The difference between this and the 
+.B \-A
+option is that this one runs from the root of the product for all files;
+.B \-A
+runs from the root of the product, then the root of each of the components
+in turn.  Certain commands, such as
+.BR check ,
+will only work with
+.BR \-A .
 .tp
 .B \-P
 Change directories to the root of the product repository before running
@@ -154,6 +177,6 @@ To see if your license is so enabled, run
 bk lease renew
 bk lease show
 .DE
-If the options field has "product" or "product-line" listed then your
+If the options field has "nested" or "nested-pro" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.

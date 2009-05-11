@@ -114,8 +114,7 @@ admin_main(int ac, char **av)
 				touchGfile++;
 				break;
 		    case 'O':	obscure = optarg; break;
-		    default:	fprintf(stderr, "admin: bad option %c.\n", c);
-				goto usage;
+		    default:	goto usage;
 		}
 	}
 	if ((flags & ADMIN_FORMAT) && ((flags & ~(ADMIN_CHECKS|SILENT)) ||
