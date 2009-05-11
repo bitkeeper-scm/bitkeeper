@@ -213,7 +213,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	n = new(nested);
 	unless (cset) {
 		concat_path(buf, proj_root(0), CHANGESET);
-		cset = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT);
+		cset = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST);
 		n->freecset = 1;
 	}
 	n->cset = cset;
