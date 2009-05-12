@@ -1176,7 +1176,7 @@ _rmgone() {
 
 	# Based on the options used, construct the command
 	# that will be fed to xargs
-	CMD="bk _fslrm"
+	CMD="bk _fslrm -f"
 	[ "$P" ] && CMD="-p $CMD"
 	[ ! "$Q" ] && CMD="-t $CMD"
 	[ "$N" ] && CMD="echo Would: bk _fslrm"

@@ -638,7 +638,7 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-LIST=`bk sfiles BitKeeper/deleted/.del-'B%A!#$%^&)(-_+=];,?'`
+LIST=`bk sfiles BitKeeper/deleted`
 if [ "X$LIST" = X ]
 then	echo Deleted file missing
 	bk _find .
@@ -674,7 +674,7 @@ then	echo Failed to leave old file in place
 	cat 'B%A!#$%^&)(-_+=];,'
 	exit 1
 fi
-LIST=`bk sfiles 'BitKeeper/deleted/.del-B%A!#$%^&)(-_+=];,'
+LIST=`bk sfiles BitKeeper/deleted`
 if [ "X$LIST" = X ]
 then	echo Deleted file missing
 	cat ../OUT
@@ -904,14 +904,14 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-LIST=`bk sfiles 'BitKeeper/deleted/.del-B%A!#$%^&)(-_+=];,?'`
+LIST=`bk sfiles 'BitKeeper/deleted'`
 if [ "X$LIST" = X ]
 then	echo Deleted file missing
 	cat ../OUT
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'*`" != "I am the copy file" ]
+if [ "`bk get -qp $LIST`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK
@@ -978,7 +978,7 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.2" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-LIST=`bk sfiles 'BitKeeper/deleted/.del-B%A!#$%^&)(-_+=];,?'`
+LIST=`bk sfiles BitKeeper/deleted`
 if [ "X$LIST" = X ]
 then	echo Deleted file missing
 	bk _find .
@@ -1191,7 +1191,7 @@ FILE=`echo *`
 )
 cat TOP "A A" MOVED | bk _adler32 -w > PATCH
 cd ..
-rm -rf RESYNC
+bk abort -f
 VV=
 if [ X$Q = X ]; then VV=-vv; fi
 bk takepatch $VV -f PENDING/PATCH

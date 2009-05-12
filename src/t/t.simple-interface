@@ -23,6 +23,7 @@ _register
 editor
 graft
 gvim
+indexsvr
 jed
 joe
 jove

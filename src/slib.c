@@ -76,6 +76,10 @@ private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
 		    delta *d, u32 flags, int lines, char *name, FILE *out);
 
+/*
+ * returns 1 if dir is a directory that is not empty
+ * 0 for empty or non-directories
+ */
 int
 emptyDir(char *dir)
 {

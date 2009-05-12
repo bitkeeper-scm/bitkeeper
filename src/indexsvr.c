@@ -866,7 +866,21 @@ doidx_rmdir(project *proj, char *dir)
 {
 	int	idf = 0;
 	char	buf[MAXPATH], buf2[MAXPATH];
-		       
+
+	if (!isSCCS(dir)) {
+		/*
+		 * Can't remove a directory with a SCCS subdir, and
+		 * need to keep .bk directories in sync
+		 */
+		sprintf(buf2, "%s/.bk/%s", proj_root(proj), dir);
+		if (isdir(buf2)) {
+			unless (emptyDir(buf2)) {
+				errno = ENOTEMPTY;
+				return (-1);
+			}
+			rmdir(buf2);
+		}
+	}
 	full_remap_path(buf, proj, dir);
 
 	/*

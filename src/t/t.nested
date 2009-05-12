@@ -10,7 +10,7 @@ echo hi > nest/foo
 bk delta $Q -y2 nest/foo || exit 1
 bk commit $Q -y2 || exit 1
 
-mv nest old
+bk _mv nest old || exit 1
 commercial nest
 mkdir nest
 bk _mkdir nest/SCCS
