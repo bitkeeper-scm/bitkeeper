@@ -1423,14 +1423,6 @@ sccs_unmkroot(char *path)
 		perror(buf);
 	}
 
-	sprintf(buf, "%s/BitKeeper/etc/SCCS", path);
-	if (rmdir(buf) == -1) {
-		perror(buf);
-	}
-	sprintf(buf, "%s/BitKeeper/etc", path);
-	if (rmdir(buf) == -1) {
-		perror(buf);
-	}
 	sprintf(buf, "%s/BitKeeper/deleted/SCCS", path);
 	if (rmdir(buf) == -1) {
 		perror(buf);
@@ -1444,6 +1436,14 @@ sccs_unmkroot(char *path)
 		perror(buf);
 	}
 	sprintf(buf, "%s/BitKeeper/log", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+	sprintf(buf, "%s/BitKeeper/etc/SCCS", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+	sprintf(buf, "%s/BitKeeper/etc", path);
 	if (rmdir(buf) == -1) {
 		perror(buf);
 	}
