@@ -227,6 +227,19 @@ cmpfiles() {
 	}
 }
 
+# args: GOT WANT
+cmpsfiles() {
+	a="$BK_TMP/`basename \"$1\"`.$$"
+	b="$BK_TMP/`basename \"$2\"`.$$"
+	bk _cat "$1" > "$a"
+	bk _cat "$2" > "$b"
+	bk diff -q --ignore-trailing-cr "$a" "$b" || {
+		bk diff -u "$a" "$b"
+		exit 1
+	}
+	rm -f "$a" "$b"
+}
+
 # args: GOT WANT, does a byte for byte comparison
 checkfiles() {
 	cmp -s "$1" "$2" || {
