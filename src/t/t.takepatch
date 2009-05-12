@@ -143,7 +143,7 @@ echo $N Takepatch with varying number of -vvv gives known response ..$NL
 cd copy
 for m in "" -m; do
     for v in "" -v -vv -vvv; do
-    	test -d RESYNC && rm -fr RESYNC PENDING
+	test -d RESYNC && bk abort -f
 	BK_NOTTY= bk takepatch $v $m < ../PATCH3 2> LOG$m$v || exit 1
     done
 done
@@ -230,10 +230,10 @@ cmpfiles WANT LOG-m-vvv
 echo OK
 
 echo $N Renamed sfio file has correct m file with it ................$NL
-test -f RESYNC/SCCS/m.send-as-sfile || { echo failed; exit 1; }
+bk _test -f RESYNC/SCCS/m.send-as-sfile || { echo failed; exit 1; }
 echo "rename SCCS/s.start-as-sfile|SCCS/s.start-as-sfile|SCCS/s.send-as-sfile" \
     > WANT
-cmpfiles RESYNC/SCCS/m.send-as-sfile WANT
+cmpsfiles RESYNC/SCCS/m.send-as-sfile WANT
 echo OK
 
 echo $N Resolve fails a makepatch - takepatch because no BAM ........$NL
