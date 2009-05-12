@@ -12,7 +12,7 @@ UTILS_OBJS = $(patsubst %,utils/%, \
 	mkdir.o \
 	milli.o \
 	mmap.o \
-	path_canon.o putenv.o \
+	putenv.o \
 	rlimit.o rmtree.o \
 	samepath.o sig.o smartrename.o \
 	spawn.o spawnvpio.o spawn_filterpipeline.o \

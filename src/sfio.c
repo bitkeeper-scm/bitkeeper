@@ -228,7 +228,7 @@ sfio_out(void)
 	struct	stat sb;
 	off_t	byte_count = 0;
 	int	n;
-	char	*gfile, *sfile;
+	char	*gfile, *sfile, *t;
 	hash	*links = 0;
 	MDBM	*idDB = 0;
 	char	ln[32];
@@ -287,7 +287,9 @@ sfio_out(void)
 			 * repository.  This sfio will only unpack on the
 			 * same machine as it was created.
 			 */
-			n = out_hardlink(buf, &sb, &byte_count, fullname(buf));
+			t = fullname(buf, 0);
+			n = out_hardlink(buf, &sb, &byte_count, t);
+			free(t);
 			if (n) {
 				send_eof(n);
 				return (n);

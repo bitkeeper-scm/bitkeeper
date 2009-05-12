@@ -89,13 +89,13 @@ usage:			system("bk help -s export");
 		fprintf(stderr, "cannot mkdir %s\n", dst);
 		exit(1);
 	}
-	strcpy(dst_path, fullname(dst));
+	fullname(dst, dst_path);
 	chdir(src);
 	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);
 	}
-	strcpy(src_path, fullname("."));
+	fullname(".", src_path);
 	product = proj_isProduct(0) ? 1 : 0;
 
 	bktmp(file_rev, "file_rev");

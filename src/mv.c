@@ -181,7 +181,7 @@ err:		unless (skip_lock) repository_wrunlock(0);
 		*p = '/';
 	}
 
-	if (sys("mv", from, to, SYS)) {
+	if (rename(from, to)) {
 		fprintf(stderr, "mv %s %s failed\n", from, to);
 		goto err;
 	}

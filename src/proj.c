@@ -236,7 +236,7 @@ find_root(char *dir)
 
 	while (1) {
 		/* convert dir to a full pathname and expand symlinks */
-		dir = path_canon(dir, buf);
+		dir = fullname(dir, buf);
 		unless(isSymlnk(dir)) break;
 
 		/*
@@ -340,7 +340,7 @@ proj_relpath(project *p, char *in_path)
 	char	path[MAXPATH];
 
 	assert(root);
-	path_canon(in_path, path);
+	fullname(in_path, path);
 	TRACE("in=%s, path=%s", in_path, path);
 	len = strlen(root);
 	if (pathneq(root, path, len)) {

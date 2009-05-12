@@ -15,7 +15,9 @@ smartUnlink(char *file)
 	dir = dirname(tmp);
 	if (access(dir, W_OK) == -1) {
 		if (errno != ENOENT) {
-			char	*full = fullname(dir);
+			char	full[MAXPATH];
+
+			fullname(dir, full);
 			fprintf(stderr,
 			    "Unable to unlink %s, dir %s not writable.\n",
 			    file, full);
@@ -26,7 +28,9 @@ smartUnlink(char *file)
 	chmod(file, 0700);
 	unless (rc = unlink(file)) return (0);
 	unless (access(file, 0)) {
-		char	*full = fullname(file);
+		char	full[MAXPATH];
+
+		fullname(file, full);
 		fprintf(stderr,
 		    "unlink: cannot unlink %s, errno = %d\n", full, save);
 	}
@@ -39,6 +43,7 @@ smartRename(char *old, char *new)
 {
 	int	rc;
 	int	save = 0;
+	char	old1[MAXPATH], new1[MAXPATH];
 
 #undef	rename
 	unless (rc = rename(old, new)) return (0);
@@ -53,9 +58,9 @@ smartRename(char *old, char *new)
 		    new, errno));
 	} else {
 		unless (rc = rename(old, new)) return (0);
-		old = fullname(old);
-		new = fullname(new);
-		if (streq(old, new)) return (0);
+		fullname(old, old1);
+		fullname(new, new1);
+		if (streq(old1, new1)) return (0);
 		fprintf(stderr,
 		    "rename: cannot rename from %s to %s, errno=%d\n",
 		    old, new, errno);

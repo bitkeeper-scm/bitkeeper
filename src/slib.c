@@ -1470,7 +1470,7 @@ _relativeName(char *gName, int isDir, int mustHaveRmarker, int wantRealName,
 	char	tmp[MAXPATH];
 	static  char buf2[MAXPATH];
 
-	strcpy(tmp, fullname(gName));
+	fullname(gName, tmp);
 	unless (IsFullPath(tmp)) return (0);
 	tmp[strlen(tmp)+1] = 0;	/* for code below */
 	t = tmp;
@@ -2421,8 +2421,8 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'P':	/* full: /u/lm/smt/sccs/SCCS/s.slib.c */
-			tmp = fullname(s->sfile);
-			strcpy(t, tmp); t += strlen(tmp);
+			fullname(s->sfile, t);
+			t += strlen(t);
 			break;
 
 		    case 'Q':	/* qflag */
@@ -9619,8 +9619,9 @@ out:		sccs_unlock(s, 'z');
 			}
 		}
 		unless (COMMENTS(n)) {
-			sprintf(buf, "BitKeeper file %s", fullname(s->gfile));
-			comments_append(n, strdup(buf));
+			t = fullname(s->gfile, 0);
+			comments_append(n, aprintf("BitKeeper file %s", t));
+			free(t);
 		}
 	}
 	if (BITKEEPER(s)) {

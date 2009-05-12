@@ -16,7 +16,7 @@ commercial project
 echo $N Make sure we do not move SCCS top directories ...............$NL
 mkdir foo
 bk mv SCCS foo > OUT 2>&1
-test -d SCCS || {
+bk _test -d SCCS || {
 	echo should not have moved the SCCS directory
 	find .
 	exit 1

@@ -141,10 +141,10 @@ nfs_parse(char *p)
 		}
 		if (start_cwd && !IsFullPath(p)) {
 			p = aprintf("%s/%s", start_cwd, p);
-			r->path = strdup(fullname(p));
+			r->path = fullname(p, 0);
 			free(p);
 		} else {
-			r->path = strdup(fullname(p));
+			r->path = fullname(p, 0);
 		}
 		r->type = ADDR_FILE;
 		return (r);

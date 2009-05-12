@@ -799,12 +799,31 @@ doidx_unlink(project *proj, char *rel)
 int
 doidx_rename(project *proj1, char *old, project *proj2, char *new)
 {
+	int	rc;
 	char	buf1[MAXPATH];
 	char	buf2[MAXPATH];
 
 	full_remap_path(buf1, proj1, old);
 	full_remap_path(buf2, proj2, new);
-	return (rename(buf1, buf2));
+	if (!(rc = rename(buf1, buf2)) && !isSCCS(old) &&
+	    (proj1 == proj2) && !proj_hasOldSCCS(proj1)) {
+		/*
+		 * maybe we just did:
+		 *    mv old new
+		 * add a:
+		 *    mv .bk/old .bk/new
+		 * just in case.
+		 */
+		concat_path(buf1, proj_root(proj1), ".bk");
+		concat_path(buf1, buf1, old);
+		if (isdir(buf1)) {
+			concat_path(buf2, proj_root(proj2), ".bk");
+			concat_path(buf2, buf2, new);
+			mkdirp(buf2);
+			rename(buf1, buf2);
+		}
+	}
+	return (rc);
 }
 
 int

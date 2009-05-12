@@ -33,14 +33,18 @@ hasSymlink(char *path)
 /*
  * Get full path name of a file
  * Path with symbolic link is converted to the "real" path.
+ *
+ * Filename written to tmp, if tmp==0 then a new buf is malloced
  */
 char	*
-fullname(char *xfile)
+fullname(char *xfile, char *tmp)
 {
-	static	char tmp[MAXPATH];
+	char	buf[MAXPATH];
 	char	tailbuf[MAXPATH], cpath[MAXPATH];
 	char	here[MAXPATH] = "";
 	char	*t, *d, *tail;
+
+	unless (tmp) tmp = buf;
 
 	/*
 	 * Clean the path, because symlink code can't handle trailing slash
@@ -93,25 +97,30 @@ fullname(char *xfile)
 		 */
 		strcpy(tmp, tail);
 	} else {
-		getcwd(tmp, sizeof(tmp));
+		getcwd(tmp, MAXPATH);
 		concat_path(tmp, tmp, tail);
 	}
 
 	cleanPath(tmp, tmp);
 	if (here[0]) chdir(here);
+	if (tmp == buf) tmp = strdup(buf);
 	return (tmp);
 }
 
 #else /* WIN32 */
+
 /*
  * Translate SCCS/s.foo.c to /u/lm/smt/sccs/SCCS/s.foo.c
+ *
+ * Filename written to new, if new==0 then a new buf is malloced
  */
-char	*
-fullname(char *gfile)
+char *
+fullname(char *gfile, char *new)
 {
-	static char	new[MAXPATH];
 	char	pwd[MAXPATH];
+	char	buf[MAXPATH];
 
+	unless (new) new = buf;
 	if (IsFullPath(gfile)) {
 		/*
 		 * If they have a full path name, then just use that.
@@ -132,6 +141,7 @@ fullname(char *gfile)
 	}
 
 	cleanPath(new, new);
+	if (new == buf) new = strdup(buf);
 	return (new);
 }
 #endif /* WIN32 */

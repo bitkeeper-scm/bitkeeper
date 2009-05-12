@@ -5,8 +5,8 @@ samepath(char *a, char *b)
 {
 	char a1[MAXPATH],b1[MAXPATH];
 
-	strcpy(a1, fullname(a));
-	strcpy(b1, fullname(b));
+	fullname(a, a1);
+	fullname(b, b1);
 	return (patheq(a1, b1));
 }
 

@@ -117,7 +117,7 @@ void	fmem_tests(void);
 int	ftrunc(FILE *f, off_t offset);
 
 /* fullname.c */
-char    *fullname(char *path);
+char    *fullname(char *path, char *out);
 
 /* getnull.c */
 char	*getNull(void);
@@ -163,9 +163,6 @@ int	mkdirf(char *file);
 
 /* milli.c */
 char *	milli(void);
-
-/* path_canon.c */
-char	*path_canon(char *path, char *dest);
 
 /* putenv.c */
 #define	getenv(s)	safe_getenv(s)

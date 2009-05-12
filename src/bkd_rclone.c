@@ -99,7 +99,9 @@ cmd_rclone_part1(int ac, char **av)
 	}
 	if (Opts.safe_cd || getenv("BKD_DAEMON")) {
 		char	cwd[MAXPATH];
-		char	*new = fullname(path);
+		char	new[MAXPATH];
+
+		fullname(path, new);
 		localName2bkName(new, new);
 		getcwd(cwd, sizeof(cwd));
 		unless ((strlen(new) >= strlen(cwd)) &&

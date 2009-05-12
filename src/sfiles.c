@@ -1603,7 +1603,7 @@ print_components(char *path)
 	unless (opts.out) opts.out = stdout;
 
 	if (path) {
-		strcpy(frompath, fullname(path));
+		fullname(path, frompath);
 		cwd = frompath;
 	} else {
 		cwd = proj_cwd();

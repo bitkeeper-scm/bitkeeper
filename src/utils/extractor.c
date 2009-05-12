@@ -126,7 +126,7 @@ main(int ac, char **av)
 			exit(1);
 		}
 	} else if (av[1] && (av[1][0] != '-')) {
-		dest = strdup(fullname(av[1]));
+		dest = fullname(av[1], 0);
 #ifndef	WIN32
 		unless (getenv("BK_NOLINKS")) dolinks = 1;
 #endif
