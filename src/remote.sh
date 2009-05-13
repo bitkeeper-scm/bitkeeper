@@ -55,7 +55,7 @@ case $CMD in
 		test -d /cygdrive/c/build/obj && rm -rf /cygdrive/c/build/obj/*
 		test -d /cygdrive/r/build/obj && rm -rf /cygdrive/r/build/obj/*
 	}
-	bk get -S Makefile build.sh
+	bk -qAUr get -qS
 	make build || failed
 	./build image install || failed
 	# save some diskspace for tight machines
