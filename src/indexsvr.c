@@ -438,6 +438,7 @@ putu32(u8 **p, u32 val)
 	*p = t;
 }
 
+/* REPO/dir/SCCS/X.file -> REPO/.bk/dir/SCCS/file,X */
 private char *
 remap_path(char *path)
 {

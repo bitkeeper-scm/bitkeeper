@@ -146,7 +146,7 @@ fslayer_lstat(const char *path, struct stat *buf)
 		ret = lstat(path, buf);
 	} else {
 		noloop = 1;
-		if (proj = findpath(path, &rel)) {
+		if (isSCCS(path) && (proj = findpath(path, &rel))) {
 			ret = doidx_lstat(proj, rel, buf);
 			proj_free(proj);
 		} else {
@@ -516,6 +516,10 @@ findpathf(const char *file, char **relp)
 	}
 	if (relp) {
 		rel = proj_relpath(proj, (char *)file);
+		unless (rel) {
+			ttyprintf("file %s proj %s\n", file, proj_root(proj));
+		}
+		assert(rel);
 		strcpy(buf, rel);
 		free(rel);
 		*relp = buf;
@@ -536,6 +540,7 @@ findpathd(const char *dir, char **relp)
 	project	*proj, *pold;
 	char	pbuf[MAXPATH];
 
+	if (isSymlnk((char *)dir)) return (findpathf(dir, relp));
 	unless (proj = proj_init((char *)dir)) return (0);
 	if (proj_isResync(proj)) {
 		concat_path(pbuf, proj_root(proj), RESYNC2ROOT);
@@ -546,6 +551,10 @@ findpathd(const char *dir, char **relp)
 	}
 	if (relp) {
 		rel = proj_relpath(proj, (char *)dir);
+		unless (rel) {
+			ttyprintf("dir %s proj %s cwd %s\n", dir, proj_root(proj), proj_cwd());
+		}
+		assert(rel);
 		strcpy(buf, rel);
 		free(rel);
 		*relp = buf;

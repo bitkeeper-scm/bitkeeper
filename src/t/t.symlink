@@ -271,7 +271,8 @@ echo "xx" > file
 ln -s file symlink
 mv file file.tmp
 bk ci $Q -i symlink textfile
-grep -q '^.cOlrwxrwxrwx file' SCCS/s.symlink
+bk _cat SCCS/s.symlink | grep -q '^.cOlrwxrwxrwx file'
+if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
 bk admin -h symlink 2> ${DEV_NULL}
 bk clean symlink
 bk get $Q -e -g symlink
