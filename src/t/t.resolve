@@ -178,7 +178,6 @@ for d in proj copy3; do
 done
 cd "$HERE/copy3"
 bk pull -R $Q
-tar cf TAR RESYNC
 echo q | bk resolve -a -d -l 2> OUT && {
 	echo resolve should have failed
 	cat OUT
@@ -281,7 +280,7 @@ cmpfiles CMP1 CMP2
 echo OK
 
 echon Test selective resolve using includes .......................
-rm -rf RESYNC
+bk abort -f
 bk pull -R $Q
 cat <<EOF > WANT
 dir1/ff has 1 conflict block
@@ -316,7 +315,7 @@ grep -q 'Commands are:' OUT && {
 echo OK
 
 echon Test selective resolve using excludes .......................
-rm -rf RESYNC
+bk abort -f
 bk pull -R $Q
 # l - resolves file.copy3 rename conflict
 # ul - resolves dir2/gg content conflict
@@ -340,7 +339,7 @@ grep -q 'Commands are:' OUT && {
 echo OK
 
 echon Test selective resolve specifying a file that needs rename ..
-rm -rf RESYNC
+bk abort -f
 bk pull -R $Q
 # l - resolves file.copy3 rename conflict
 # ul - resolves file.copy3 content conflict
@@ -365,7 +364,7 @@ echo OK
 
 # This test shows that the include is on the name of the file after the rename
 echon Test selective resolve specifying the rename ................
-rm -rf RESYNC
+bk abort -f
 bk pull -R $Q
 # m - resolves file.copy3 rename conflict to xyz
 # ul - resolves xyz content conflict
