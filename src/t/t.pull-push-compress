@@ -267,12 +267,12 @@ cd "$HERE/project"
 echo hi > test
 bk new $Q test
 bk commit $Q -ytt || exit 1
-chmod -w SCCS
+bk _chmod 555 SCCS
 cd "$HERE/copy2"
 bk pull $Q || {
 	echo pull failed
-	chmod +w "$HERE/project/SCCS"
+	bk _chmod 777 "$HERE/project/SCCS"
 	exit 1
 }
-chmod +w "$HERE/project/SCCS"
+bk _chmod 777 "$HERE/project/SCCS"
 echo OK
