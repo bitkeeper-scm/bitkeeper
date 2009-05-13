@@ -41,7 +41,7 @@ struct project {
 	int	BAM_write;	/* BAM index file opened for write? */
 	int	sync;		/* sync/fsync data? */
 	int	idxsock;	/* sock to index server for this repo */
-	int	remap;		/* true == remap SCCS dirs */
+	int	noremap;	/* true == old style SCCS dirs */
 
 	/* checkout state */
 	u32	co;		/* cache of proj_checkout() return */
@@ -743,7 +743,7 @@ proj_reset(project *p)
 		p->leaseok = -1;
 		p->co = 0;
 		p->sync = -1;
-		p->remap = -1;
+		p->noremap = -1;
 #if 0
 		if (p->coDB) {
 			mdbm_close(p->coDB);
@@ -1231,7 +1231,18 @@ again:		putenv("_BK_FSLAYER_SKIP=1");
 
 /*
  * Return true if this repo uses the old directory remapping.
- * Not a new repo is always considered to use the new mapping.
+ * Funky rules:
+ *  root/SCCS exists -> non-remapped
+ *  root/.bk/SCCS exists -> remapped
+ *  BK_NO_REMAP set -> non-remapped
+ *  is product remapped? -> do the same
+ *
+ * The rationale for the funk is to make new components (coming in via
+ * populate, say) behave like the product.  The funk above is to protect
+ * against screwing up existing components in a mixed remapped/non-remapped
+ * ensemble.
+ *
+ * The fall through default (for a new repo) is to do the remapping.
  *
  * Note: It is assumed that this function is call in the context of a
  * fslayer_* routine so that files system access is direct.
@@ -1239,13 +1250,24 @@ again:		putenv("_BK_FSLAYER_SKIP=1");
 int
 proj_hasOldSCCS(project *p)
 {
+	project	*p2;
 	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (1);
 
-	if (p->remap == -1) {
-		concat_path(buf, p->root, "SCCS");
-		p->remap = !isdir(buf);
-	}
-	return (!p->remap);
+	if (p->noremap != -1) return (p->noremap);
+
+	/* See: Funky rules above */
+	concat_path(buf, p->root, "SCCS");
+	if (isdir(buf)) return (p->noremap = 1);
+
+	concat_path(buf, p->root, ".bk/SCCS");
+	if (isdir(buf)) return (p->noremap = 0);
+
+	if (getenv("BK_NO_REMAP")) return (p->noremap = 1);
+
+	if ((p2 = proj_product(p)) && (p != p2))
+		return (p->noremap = proj_hasOldSCCS(p2));
+
+	return (p->noremap = 0);
 }

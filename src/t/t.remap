@@ -1,0 +1,65 @@
+echo $N Check that BK_NO_REMAP works ................................$NL
+BK_NO_REMAP=1 commercial project
+# This should NOT be bk _test
+test ! -f SCCS/s.ChangeSet && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Check that a frankenstein product checks ok .................$NL
+cd "$HERE"
+nested product
+echo > "$HERE/empty"
+for i in 1 3 5 7 9
+do
+    BK_NO_REMAP=1 bk setup -fc"$HERE/empty" comp$i
+done
+for i in 0 2 4 6 8
+do
+    bk setup -fc"$HERE/empty" comp$i
+done
+bk commit $Q -y'adding components'
+bk -Aqr check -ac || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Check populate follows product remapping state - remap ......$NL
+cd "$HERE"
+# I think the -shere should not be necessary but I might be in
+# the minority.
+bk clone -shere $Q product clone
+cd clone
+bk components rm $Q comp0 comp1
+rm -rf comp[01]
+bk components add $Q comp0 comp1
+test -d comp0/SCCS && {
+	echo failed
+	exit 1
+}
+test -d comp1/SCCS && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Check populate follows product remapping state - noremap ....$NL
+cd "$HERE"
+# I think the -shere should not be necessary but I might be in
+# the minority.
+BK_NO_REMAP=1 bk clone -shere $Q product clone2
+cd clone2
+bk components rm $Q comp0 comp1
+rm -rf comp[01]
+bk components add $Q comp0 comp1
+test ! -d comp0/SCCS && {
+	echo failed
+	exit 1
+}
+test ! -d comp1/SCCS && {
+	echo failed
+	exit 1
+}
+echo OK
