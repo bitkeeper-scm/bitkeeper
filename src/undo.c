@@ -258,7 +258,9 @@ err:		if (undo_list[0]) unlink(undo_list);
 		}
 		STOP_TRANSACTION();
 		EACH_STRUCT(n->comps, c, i) {
-			if (c->new && c->included) rmrepo(c->path);
+			if (c->new && c->included && c->present) {
+				rmrepo(c->path);
+			}
 		}
 
 		/*
