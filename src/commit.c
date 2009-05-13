@@ -21,6 +21,7 @@ commit_main(int ac, char **av)
 	char	*sym = 0;
 	int	dflags = 0;
 	c_opts	opts  = {0, 0};
+	char	*sfopts;
 	char	pendingFiles[MAXPATH] = "";
 	char	buf[MAXLINE];
 
@@ -98,8 +99,9 @@ commit_main(int ac, char **av)
 			fclose(f);
 		} else {
 			bktmp(pendingFiles, "pending");
+			sfopts = opts.resync ? "-rpC" : "-pC";
 			if (sysio(0,
-			    pendingFiles, 0, "bk", "sfiles", "-pC", SYS)) {
+			    pendingFiles, 0, "bk", "sfiles", sfopts, SYS)) {
 				unlink(pendingFiles);
 				getMsg("duplicate_IDs", 0, 0, stdout);
 				return (1);

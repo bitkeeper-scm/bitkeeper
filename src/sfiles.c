@@ -55,6 +55,7 @@ typedef struct {
 	u32	onelevel:1;		/* -1: this dir only, don't recurs */
 	u32	pending:1;		/* -p: list pending files */
 	u32	progress:1;		/* -o: send progress to stdout */
+	u32	recurse:1;		/* -r: recurse over repo boundary */
 	u32	sfiles:1;		/* -s: we want sfiles */
 	u32	verbose:1;		/* -v: show markers */
 	u32	subrepos:1;		/* -R: we want subrepo roots */
@@ -160,7 +161,8 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "^01acCdDeEgGhijlnNo:p|P|RsSuUvxy")) != -1) {
+	while ((c = getopt(ac, av, "^01acCdDeEgGhijlnNo:p|P|rRsSuUvxy")) != -1)
+	{
 		switch (c) {
 		    case '^':	opts.inverse = 1; break;
 		    case '0':	opts.null = 1; break;		/* doc */
@@ -215,6 +217,7 @@ sfiles_main(int ac, char **av)
 				}
 				break;
 		    case 'R':	opts.subrepos = 1; break;
+		    case 'r':	opts.recurse = 1; opts.skip_comps = 1; break;
 		    case 's':	opts.sfiles = 1; break;
 		    case 'u':	opts.unlocked = 1; break;	/* doc 2.0 */
 		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
@@ -781,7 +784,8 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 
 	if (S_ISDIR(sb->st_mode)) {
 		if (p && patheq(p, "/SCCS")) return (0);
-		if (p &&((p-file) > wi->rootlen) && patheq(p+1, "BitKeeper")) {
+		if (!opts.recurse && p &&((p-file) > wi->rootlen) &&
+		    patheq(p+1, "BitKeeper")) {
 			/*
 			 * Do not cross into other package roots
 			 * (e.g. RESYNC).

@@ -643,12 +643,13 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	}
 
 	/*
-	 * Find the cases where the push should fail:
+	 * Flags relevant to components:
 	 *  c->included	   comp modified as part of pull
 	 *  c->alias	   in new aliases (should exist after pull)
 	 *  c->present	   exists locally
 	 *  c->remotePresent  exists in remote currently
 	 *  c->new	   comp created in this range of csets (do clone)
+	 *  c->localchanges   comp has local csets
 	 */
 	EACH_STRUCT(n->comps, c, i) {
 		if (c->included) {
@@ -795,8 +796,10 @@ npmerge:				fprintf(stderr,
 			char	*dfile_to, *dfile_from;
 			char	*t;
 
-			if (c->product || !c->included || !c->alias) continue;
-			if (c->new) continue;
+			if (c->product) continue;
+			/* only copy up merges */
+			unless (c->included && c->localchanges) continue;
+
 			mkdirp(c->path);
 			sccs_mkroot(c->path);
 			t = aprintf("%s/BitKeeper/log/COMPONENT", c->path);

@@ -2248,12 +2248,12 @@ pending(int checkComments)
 	int	ret;
 
 	unless (checkComments) {
-		f = popen("bk sfiles -pC", "r");
+		f = popen("bk sfiles -rpC", "r");
 		ret = fgetc(f) != EOF;
 		pclose(f);
 		return (ret);
 	}
-	f = popen("bk sfiles -pCA | bk sccslog -CA -", "r");
+	f = popen("bk sfiles -rpCA | bk sccslog -CA -", "r");
 	while (fnext(buf, f)) {
 		unless (t = strchr(buf, '\t')) {
 			pclose(f);
@@ -2494,7 +2494,7 @@ pass4_apply(opts *opts)
 	save = fopen(BACKUP_LIST, "w+");
 	assert(save);
 	unlink(PASS4_TODO);
-	sprintf(key, "bk sfiles '%s' > " PASS4_TODO, ROOT2RESYNC);
+	sprintf(key, "bk sfiles -r '%s' > " PASS4_TODO, ROOT2RESYNC);
 	if (system(key) || !(f = fopen(PASS4_TODO, "r+")) || !save) {
 		fprintf(stderr, "Unable to create|open " PASS4_TODO);
 		fclose(save);
