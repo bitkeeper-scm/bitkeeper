@@ -133,6 +133,7 @@ extern	int	optind;
 extern	int	opterr;
 extern	int	optopt;
 extern	char	*optarg;
+#define	GETOPT_ERR	256
 int	getopt(int ac, char **av, char *opts);
 void	getoptReset(void);
 

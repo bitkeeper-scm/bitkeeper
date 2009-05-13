@@ -141,7 +141,6 @@ send_main(int ac,  char **av)
 		    case 'w': 	wrapper = optarg; break;	/* doc 2.0 */
 		    case 'u': 	url = optarg; break;
 		    default :
-			fprintf(stderr, "unknown option <%c>\n", c);
 			system("bk help -s send");
 			exit(1);
 		}

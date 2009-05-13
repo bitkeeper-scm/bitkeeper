@@ -310,6 +310,7 @@ hash	*
 aliasdb_init(nested *n, project *p, char *rev, int pending)
 {
 	hash	*aliasdb = 0;
+	project	*prodroot;
 	char	*path = 0;
 	sccs	*s;
 	char	*csetrev = 0;
@@ -324,15 +325,20 @@ aliasdb_init(nested *n, project *p, char *rev, int pending)
 		error("%s: aliasdb: not in a product\n", prog);
 		return (0);
 	}
-again:
 	concat_path(buf, proj_root(p), ALIASES);
 	path = name2sccs(buf);
 	s = sccs_init(path, INIT_MUSTEXIST);
 	free(path);
-	if (!s && proj_isResync(p)) {
+	if (!s && (prodroot = proj_isResync(p))) {
 		/* if no aliases in RESYNC, use directory above */
-		p = proj_isResync(p);
-		goto again;
+		concat_path(buf, proj_root(prodroot), ALIASES);
+		path = name2sccs(buf);
+		if (s = sccs_init(path, INIT_MUSTEXIST)) {
+			/* the sccs_get "-r@<rev>" will use RESYNC cset file */
+			if (s->proj) proj_free(s->proj);
+			s->proj = proj_init(proj_root(p));
+		}
+		free(path);
 	}
 	if (s) {
 		if (pending) {
@@ -344,9 +350,12 @@ again:
 			aliasdb = hash_fromFile(0, s->gfile);
 		} else {
 			bktmp(tmp, "aliasdb");
-			if (!sccs_get(s, csetrev, 0,0,0, SILENT|PRINT, tmp)) {
-				aliasdb = hash_fromFile(0, tmp);
+			if (sccs_get(s, csetrev, 0,0,0, SILENT|PRINT, tmp)) {
+				error("%s: aliases get failed: rev %s\n",
+				    prog, csetrev ? csetrev : "+");
+				return (0);
 			}
+			aliasdb = hash_fromFile(0, tmp);
 			unlink(tmp);
 		}
 		if (csetrev) free(csetrev);

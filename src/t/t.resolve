@@ -850,8 +850,7 @@ bk commit $Q -R -YSCCS/c.ChangeSet
 bk _rm -f SCCS/r.ChangeSet
 # Now we have a repo with the problem, let's see if resolve can fix it
 # Fake some comments
-echo "comments" > cfile
-bk _mv cfile 'dir2/SCCS/c.space file'
+echo "comments" | bk cfile save 'dir2/space file'
 cd ..
 echo 'u' | bk resolve -t >OUT 2>ERR || {
 	echo failed

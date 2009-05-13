@@ -11,7 +11,7 @@ check_cnt() {
 	SEEN=`grep init\( "$FILE" | wc -l`
 	test $SEEN -ne $CNT && {
 		echo was $CNT now $SEEN
-		cat "$FILE"
+		echo list at "$FILE"
 		exit 1
 	}
 }
@@ -177,7 +177,7 @@ bk changes -Rv > /dev/null || exit 1
 check_cnt
 echo OK
 
-CNT=66
+CNT=56
 echo $N "Count the inits for a 'bk pull -u' ($CNT)......................"$NL
 rm "$FILE"
 bk pull -u $Q || exit 1
@@ -192,7 +192,7 @@ bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=79
+CNT=74
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 touch c
 bk setup -f -cc www || exit 1

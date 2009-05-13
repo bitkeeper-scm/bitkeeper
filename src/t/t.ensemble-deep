@@ -75,3 +75,35 @@ echo $N Check that sfiles does not list deep nests always ...........$NL
 bk sfiles foobar > OUT || exit 1
 test -s OUT && exit 1
 echo OK
+
+echo $N Check that a deep nest merge makes it back out ..............$NL
+cd "$HERE"
+rm -fr project copy
+nested project
+cd gcc
+commercial deepnest
+cd ..
+bk attach $Q deepnest
+cd ../..
+bk clone $Q -shere project copy
+cd project/gcc
+touch foo
+bk new $Q foo
+bk commit $Q -f
+cd deepnest
+touch foo
+bk new $Q foo
+bk commit $Q -f
+bk -P commit $Q -f
+cd ../../../copy/gcc
+touch bar
+bk new $Q bar
+bk commit $Q -f
+cd deepnest
+touch bar
+bk new $Q bar
+bk commit $Q -f
+bk -P commit $Q -f
+bk -P pull $Q || exit 1
+bk -qAr check -ac || exit 1
+echo OK

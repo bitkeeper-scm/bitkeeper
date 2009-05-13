@@ -511,3 +511,12 @@ bk alias new GCC ./gdb || exit 1
 bk components add $Q GCC || exit 1
 echo q | bk pull $Q || exit 1
 echo OK
+
+echo $N Now that HERE has GCC alias, pull any cset ..................$NL
+cd ../remote
+touch foo
+bk new $Q foo
+bk commit $Q -f
+cd ../local
+bk pull $Q || exit 1
+echo OK

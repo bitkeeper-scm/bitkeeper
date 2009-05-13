@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "range.h"
+#include "nested.h"
 
 private struct {
 	u32	one:1;		/* -1: stop after printing one entry */
@@ -675,6 +676,13 @@ dumplog(char **list, delta *cset, char *dspec, int flags, FILE *f)
 {
 	slog	*ll;
 	int	i;
+	char	*comppath = 0;
+	
+
+	if (strrchr(cset->pathname, '/')) {
+		comppath = strdup(cset->pathname);
+		csetChomp(comppath);
+	}
 
 	sortLines(list, delta_sort);
 
@@ -683,11 +691,13 @@ dumplog(char **list, delta *cset, char *dspec, int flags, FILE *f)
 	 */
 	EACH(list) {
 		ll = (slog *)list[i];
-		ll->s->changes_cset = cset; /* pass cset pathname to :DPN: */
+		if (ll->s->prs_indentC) ll->s->comppath = comppath;
 		sccs_prsdelta(ll->s, ll->d, flags, dspec, f);
+		ll->s->comppath = 0;
 		free(ll);
 	}
 	freeLines(list, 0);
+	free(comppath);
 }
 
 /*

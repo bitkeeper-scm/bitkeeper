@@ -4270,6 +4270,7 @@ sccs_init(char *name, u32 flags)
 	delta	*d;
 	int	fixstime = 0;
 	static	int _YEAR4;
+	static	int fixpath = -1;
 	static	char *glob = 0;
 	static	int show = -1;
 
@@ -4307,6 +4308,16 @@ sccs_init(char *name, u32 flags)
 		*t = '/';
 	} else {
 		s->proj = proj_init(".");
+	}
+
+	/*
+	 * This weirdness is for dspecs that need the component prefix.
+	 * This is not historically correct but works for recent locations
+	 * of the component.
+	 */
+	if (fixpath == -1) fixpath = (getenv("_BK_FIX_NESTED_PATH") != 0);
+	if (fixpath && proj_isComponent(s->proj)) {
+		s->comppath = proj_comppath(s->proj);
 	}
 
 	if (isCsetFile(s->sfile)) {
@@ -13466,13 +13477,19 @@ mapRev(sccs *s, u32 flags, char *r1, char *r2,
 private char *
 getHistoricPath(sccs *s, char *rev)
 {
-	delta *d;
+	delta	*d;
+	char	*p, *ret;
 
 	d = sccs_findrev(s, rev);
 	if (d && d->pathname) {
 		return (sccs_prsbuf(s, d, PRS_FORCE, ":DPN:"));
 	} else {
-		return (proj_relpath(s->proj, s->gfile));
+		ret = p = proj_relpath(s->proj, s->gfile);
+		if (s->comppath) {
+			ret = aprintf("%s/%s", s->comppath, p);
+			free(p);
+		}
+		return (ret);
 	}
 }
 
@@ -14342,7 +14359,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 	case KW_PATH: /* PATH */ {	/* $if(:DPN:){P :DPN:\n} */
 		if (d->pathname) {
 			fs("P ");
-			fs(d->pathname);
+			KW("DPN");
 			fc('\n');
 			return (strVal);
 		}
@@ -14399,7 +14416,11 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		int	i;
 		symbol	*sym;
 
-		fs(d->pathname ? d->pathname : s->gfile);
+		if (d->pathname) {
+			KW("DPN");
+		} else {
+			fs(s->gfile);
+		}
 		fc(' ');
 		KW("REV");
 		fs("\n  ");
@@ -14841,11 +14862,11 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_RENAME: /* RENAME */ {
 		/* per delta path name if the pathname is a rename */
-		if (d->pathname && !(d->flags & D_DUPPATH)) {
-			fs(d->pathname);
-			return (strVal);
+		unless (d->pathname && !(d->flags & D_DUPPATH)) {
+			/* same, empty */
+			return (nullVal);
 		}
-		return (nullVal);
+		/* different, fall into :DPN: */
 	}
 
 	case KW_DPN: /* DPN */ {
@@ -14854,15 +14875,16 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 			if (s->prs_indentC) {
 				fs(d->pathname);
 			} else {
+				if (s->comppath) {
+					fs(s->comppath);
+					fc('/');
+				}
 				fs(basenm(d->pathname));
 			}
 			return (strVal);
 		} else if (d->pathname) {
-			if (s->prs_indentC && (e = s->changes_cset) &&
-			    (p = strrchr(e->pathname, '/'))) {
-				*p = 0;
-				fs(e->pathname);
-				*p = '/';
+			if (s->comppath) {
+				fs(s->comppath);
 				fc('/');
 			}
 			fs(d->pathname);
@@ -15140,7 +15162,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		n = (names *)s->rrevs;
 		if (n && n->remote &&
 		    (d = findrev(s, n->remote)) && d->pathname) {
-			fs(d->pathname);
+			KW("DPN");
 			return (strVal);
 		}
 		return (nullVal);
@@ -15155,7 +15177,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		n = (names *)s->rrevs;
 		if (n && n->local &&
 		    (d = findrev(s, n->local)) && d->pathname) {
-			fs(d->pathname);
+			KW("DPN");
 			return (strVal);
 		}
 		return (nullVal);
@@ -15169,7 +15191,7 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 		}
 		n = (names *)s->rrevs;
 		if (n && n->gca && (d = findrev(s, n->gca)) && d->pathname) {
-			fs(d->pathname);
+			KW("DPN");
 			return (strVal);
 		}
 		return (nullVal);

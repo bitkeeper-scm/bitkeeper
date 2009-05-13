@@ -30,6 +30,9 @@ nested_main(int ac, char **av)
 	int	rc = 0, want = 0, undo = 0;
 	int	here = 0, missing = 0;
 	int	product = 0;
+	int	all = 0;
+	int	thiscset = 0;
+	sccs	*cset = 0;
 	char	*p;
 	nested	*n = 0;
 	comp	*cp;
@@ -40,15 +43,13 @@ nested_main(int ac, char **av)
 	char	**aliases = 0;
 
 	cwd = strdup(proj_cwd());
-	if (proj_cd2product()) {
-		fprintf(stderr,
-		    "%s: needs to be run in a product.\n", av[0]);
-		return (1);
-	}
 	flags |= NESTED_PRODUCTFIRST;
 
-	while ((c = getopt(ac, av, "hl;mPr;s;u")) != -1) {
+	while ((c = getopt(ac, av, "ahHl;mpPr;s;u")) != -1) {
 		switch (c) {
+		    case 'a':
+		    	all = 1;
+			break;
 		    case 'l':	/* undoc */
 			for (p = optarg; *p; p++) {
 				switch (*p) {
@@ -64,8 +65,14 @@ nested_main(int ac, char **av)
 		    case 'm':
 		    	missing = 1;
 			break;
+		    case 'p':
+			flags |= NESTED_PULL;
+			break;
 		    case 'P':
 			product = 1;
+			break;
+		    case 'H':
+			thiscset = 1;
 			break;
 		    case 'h':
 			here = 1;
@@ -94,8 +101,19 @@ usage:			system("bk help -s here");
 		    "here: -r or list on stdin, but not both\n");
 		goto usage;
 	}
+	if (thiscset) {
+		unless (cset = sccs_csetInit(INIT_MUSTEXIST)) {
+			fprintf(stderr,
+			    "%s: needs to be run in a product.\n", av[0]);
+			return (1);
+		}
+	} else if (proj_cd2product()) {
+		fprintf(stderr,
+		    "%s: needs to be run in a product.\n", av[0]);
+		return (1);
+	}
 	unless (rev || revs) flags |= NESTED_PENDING;
-	unless (n = nested_init(0, rev, revs, flags)) {
+	unless (n = nested_init(cset, rev, revs, flags)) {
 		rc = 1;
 		goto out;
 	}
@@ -108,7 +126,7 @@ usage:			system("bk help -s here");
 	unless (want) want = L_PATH;
 	EACH_STRUCT(n->comps, cp, i) {
 		if (!product && cp->product) continue;
-		unless (cp->included) continue;
+		unless (all || cp->included) continue;
 		if (n->alias && !cp->alias && !cp->product) continue;
 		if (undo && cp->new && !(want & L_NEW)) {
 			continue;
@@ -143,6 +161,7 @@ usage:			system("bk help -s here");
 		printf("\n");
 	}
 out:	nested_free(n);
+	sccs_free(cset);
 	free(cwd);
 	freeLines(aliases, 0);
 	freeLines(revs, free);
@@ -170,7 +189,7 @@ out:	nested_free(n);
  * fields per component:
  *   rootkey
  *   deltakey	  tip delta in 'revs'
- *   lowerkey	  oldest delta in history of 'revs' (or localtip for pull)
+ *   lowerkey	  oldest delta in history of 'revs' (only for undo)
  *   path	  local pathname for component
  *   alias	  set by nested_aliases()
  *   included	  modified in 'revs'
@@ -213,7 +232,7 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	n = new(nested);
 	unless (cset) {
 		concat_path(buf, proj_root(0), CHANGESET);
-		cset = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT);
+		cset = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT|INIT_MUSTEXIST);
 		n->freecset = 1;
 	}
 	n->cset = cset;
@@ -333,37 +352,59 @@ err:				if (revsDB) mdbm_close(revsDB);
 			    &c, sizeof(comp *));
 			n->comps = addLine(n->comps, c);
 		}
-		if (d->flags & D_RED) {
-			/* included in revs or under tip */
-			unless (c->included) {
-				c->included = 1;
-				assert(!c->deltakey);
-				c->deltakey = strdup(v);
-			}
-		} else unless (c->new) {
-			/* it's known to be not new, so we're done */
-		} else if (flags & NESTED_PULL) {
-			c->new = 0;
+		/* RED or BLUE, but never both */
+		assert((d->flags & (D_RED|D_BLUE)) != (D_RED|D_BLUE));
+		
+		/*
+		 * The #define names only make sense when thinking about PULL
+		 *
+		 * for push, REMOTE means LOCAL, and IN_LOCAL is empty
+		 *     and IN_GCA is what the remote repo has before push.
+		 * for undo, REMOTE is what is being undone, and
+		 *     IN_LOCAL is empty and IN_GCA is what things will be
+		 *     like when undo is done
+		 */
+
+#define	IN_GCA(d)	((d)->flags & D_BLUE)
+#define	IN_REMOTE(d)	((d)->flags & D_RED)
+#define	IN_LOCAL(d)	!((d)->flags & (D_RED | D_BLUE))
+
+		if (!c->included && IN_REMOTE(d)) {
+			/* lastest delta included in revs or under tip */
+			c->included = 1;
+			assert(!c->deltakey);
+			c->deltakey = strdup(v);
+		}
+		if (!c->localchanges && (flags & NESTED_PULL) && IN_LOCAL(d)) {
+			/* in local region of pull */
+			c->localchanges = 1;
+
+			/* c->path is local path */
 			unless (c->present) {
 				free(c->path);
 				c->path = key2path(v, 0);
 				dirname(c->path);
 			}
-			if (d->flags & D_BLUE) goto GCA;
-			c->localchanges = 1;
-		} else if (d->flags & D_BLUE) {
-			/* in GCA region without NESTED_PULL */
-			c->new = 0;
-
-			/*
-			 * If we haven't seen a RED delta yet then we
-			 * won't.
-			 */
-GCA:			unless (c->deltakey) c->deltakey = strdup(v);
 			assert(!c->lowerkey);
 			c->lowerkey = strdup(v);
-		} else {
-			/* skip things like repo tip in a push -r case */
+		}
+		if (c->new && IN_GCA(d)) {
+			/* in GCA region, so obviously not new */
+			c->new = 0;
+
+			/* If we haven't seen a REMOTE delta, then we won't. */
+			unless (c->deltakey) c->deltakey = strdup(v);
+
+			/* If we haven't see a LOCAL delta yet then we won't. */
+			unless (c->lowerkey) {
+				c->lowerkey = strdup(v);
+				/* c->path is local path */
+				unless (c->present) {
+					free(c->path);
+					c->path = key2path(v, 0);
+					dirname(c->path);
+				}
+			}
 		}
 		v[-1] = ' ';	/* restore possibly in mem weave */
 	}

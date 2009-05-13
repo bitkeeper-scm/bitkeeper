@@ -61,8 +61,8 @@ save_gmon(void)
 int
 main(int ac, char **av, char **env)
 {
-	int	i, c, si, is_bk = 0, dashr = 0, remote = 0, quiet = 0, all = 0;
-	int	ret;
+	int	i, c, si, ret;
+	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0, all = 0, nested= 0;
 	char	*p, *dir = 0, *locking = 0;
 	char	*envargs = 0;
 	char	sopts[30];
@@ -211,7 +211,7 @@ main(int ac, char **av, char **env)
 		}
 		is_bk = 1;
 		while ((c = getopt(ac, av,
-			"?;@|1aAB;cCdDgGhjL|lM;npPqr|RuUxz;")) != -1) {
+			"?;@|1aAB;cCdDgGhjL|lM;nNpPqr|RuUxz;")) != -1) {
 			switch (c) {
 			    case '1': case 'a': case 'c': case 'd':
 			    case 'D': case 'g': case 'G': case 'j': case 'l':
@@ -221,12 +221,16 @@ main(int ac, char **av, char **env)
 				break;
 			    case '?': envargs = optarg; break;
 			    case '@': remote = 1; break;
-			    case 'A': all = 1; break;
+			    case 'A': 
 			    case 'C': all = 1; break;
 			    case 'M': break;	// for nested_each XXX:CONFLICT
 			    case 'B': buffer = optarg; break;
 			    case 'q': quiet = 1; break;
 			    case 'L': locking = optarg; break;
+			    case 'N':
+				sopts[++si] = 'N';
+				dashr = nested = 1;
+				break;
 			    case 'P':				/* doc 2.0 */
 				start_cwd = strdup(proj_cwd());
 				if (proj_cd2product() && proj_cd2root()) {
@@ -259,6 +263,18 @@ main(int ac, char **av, char **env)
 		}
 		if (streq(prog, "check") && getenv("_BK_NO_CHECK")) return (0);
 
+		/*
+		 * Make -A/-N be honored only in a nested collection.
+		 * If we just ignore them otherwise the right thing
+		 * happens, i.e,
+		 * bk -Ar co => bk -r co
+		 * bk -N co => bk -r co
+		 */
+		if ((nested || all) && !proj_product(0)) {
+			nested = all = 0;
+		}
+		if (nested) putenv("_BK_FIX_NESTED_PATH=YES");
+
 		/* -'?VAR=val&BK_CHDIR=dir' */
 		if (envargs) {
 			hash	*h = hash_new(HASH_MEMHASH);
@@ -281,6 +297,7 @@ main(int ac, char **av, char **env)
 			ret = remote_bk(quiet, ac, av);
 			goto out;
 		}
+
 		if (all && !getenv("_BK_ITERATOR")) {
 			putenv("_BK_ITERATOR=YES");
 			ret = nested_each(quiet, ac, av);
@@ -293,10 +310,14 @@ main(int ac, char **av, char **env)
 					perror(dir);
 					return (1);
 				}
-			} else if (proj_cd2root()) {
-				fprintf(stderr,
-				    "bk: Cannot find package root.\n");
-				return(1);
+			} else {
+				// Silently try and go to the product
+				if (nested) proj_cd2product();
+				if (proj_cd2root()) {
+					fprintf(stderr,
+					    "bk: Cannot find package root.\n");
+					return(1);
+				}
 			}
 		}
 		if (locking) {

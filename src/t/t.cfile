@@ -1,9 +1,34 @@
 
 commercial project
+
+echo $N Make sure cfile command can create a c.file .................$NL
+echo comments | bk cfile save foo
+bk _test -f SCCS/c.foo || {
+	echo "failed (did not create c.file)"
+	exit 1
+}
+echo OK
+
+echo $N Make sure cfile command can print a c.file ..................$NL
+bk cfile print foo > OUT
+grep -q comments OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure cfile command can remove a c.file .................$NL
+bk cfile rm foo
+bk _test -f SCCS/c.foo && {
+	echo "failed (did not unlink c.file)"
+	exit 1
+}
+echo OK
+
 echo $N Make sure bk new -c unlinks the c.file ......................$NL
 echo hi there > foo
-echo comments > c.foo
-bk _mv c.foo SCCS/c.foo
+echo comments | bk cfile save foo
 bk new -c $Q foo > OUT 2>&1 || {
 	echo should not have failed
 	cat OUT
@@ -18,8 +43,7 @@ echo OK
 echo $N Make sure delta -c unlinks the c.file .......................$NL
 bk edit $Q foo
 echo hi there >> foo
-echo comments > c.foo
-bk _mv c.foo SCCS/c.foo
+echo comments | bk cfile save foo
 bk delta -c $Q foo > OUT 2>&1 || {
 	echo should not have failed
 	cat OUT
@@ -33,8 +57,7 @@ echo OK
 
 echo $N Make sure bk new unlinks the c.file after prompting .........$NL
 echo hi there > bar
-echo comments > c.bar
-bk _mv c.bar SCCS/c.bar
+echo comments | bk cfile save bar
 echo u | bk new $Q bar > OUT 2>&1 || {
 	echo should not have failed
 	cat OUT
@@ -54,8 +77,7 @@ echo OK
 echo $N Make sure delta unlinks the c.file after prompting ..........$NL
 bk edit $Q bar
 echo hi there >> bar
-echo comments > c.bar
-bk _mv c.bar SCCS/c.bar
+echo comments | bk cfile save bar
 echo u | bk delta $Q bar > OUT 2>&1 || {
 	echo should not have failed
 	cat OUT
@@ -74,8 +96,7 @@ echo OK
 
 echo $N Make sure bk new -y does not unlink the c.file ..............$NL
 echo hi there > blech
-echo comments > c.blech
-bk _mv c.blech SCCS/c.blech
+echo comments | bk cfile save blech
 bk new -ywhatever $Q blech > OUT 2>&1 || {
 	echo should not have failed
 	cat OUT
@@ -90,8 +111,7 @@ echo OK
 echo $N Make sure delta does not unlink the c.file ..................$NL
 bk edit $Q blech
 echo hi there >> blech
-echo comments > c.blech
-bk _mv c.blech SCCS/c.blech
+echo comments | bk cfile save blech
 bk delta -ywhatever $Q blech > OUT 2>&1 || {
 	echo should not have failed
 	cat OUT
@@ -104,8 +124,7 @@ bk _test -f SCCS/c.blech || {
 echo OK
 
 echo $N Make sure commit -y does not unlink a c.ChangeSet ...........$NL
-echo whatever > c.ChangeSet
-bk _mv c.ChangeSet SCCS/c.ChangeSet
+echo whatever | bk cfile save ChangeSet
 bk commit $Q -yblah || exit 1
 bk _test -f SCCS/c.ChangeSet || {
 	echo unlinked
@@ -143,8 +162,7 @@ echo $N Make sure commit picks up c.ChangeSet and prompts ...........$NL
 bk edit $Q blech
 echo hi there >> blech
 bk ci $Q -ywhatever blech
-echo whatever2 > c.ChangeSet
-bk _mv c.ChangeSet SCCS/c.ChangeSet
+echo whatever2 | bk cfile save ChangeSet
 echo u | bk commit $Q > OUT 2>&1 || exit 1
 bk _test -f SCCS/c.ChangeSet && {
 	echo not unlinked

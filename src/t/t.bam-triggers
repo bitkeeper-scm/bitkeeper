@@ -1522,8 +1522,7 @@ chmod +x pre-delta
 cd "$HERE/delta/src"
 bk get $Q -e foo.c
 echo bad form, dude >> foo.c
-echo Bad comment > c.foo.c
-bk _mv c.foo.c SCCS/c.foo.c
+echo Bad comment | bk cfile save foo.c
 bk delta foo.c >OUT 2>&1 < /dev/null || {
 	echo should not have errored
 	cat OUT

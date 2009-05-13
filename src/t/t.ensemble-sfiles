@@ -111,8 +111,94 @@ cmp -s GOT WANT && {
 }
 echo "failed (bug )"
 
+echo $N bk sfiles -N in a nested collection .........................$NL
+bk sfiles -N > GOT
+cat <<EOF > WANT
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.aliases
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+a/b/SCCS/s.f
+a/b/c1/SCCS/s.f
+a/b/c/SCCS/s.ChangeSet
+a/b/c/BitKeeper/etc/SCCS/s.collapsed
+a/b/c/BitKeeper/etc/SCCS/s.config
+a/b/c/BitKeeper/etc/SCCS/s.gone
+a/b/c/BitKeeper/etc/SCCS/s.ignore
+a/b/c/d/SCCS/s.f
+a/b/c/d/e/SCCS/s.ChangeSet
+a/b/c/d/e/BitKeeper/etc/SCCS/s.collapsed
+a/b/c/d/e/BitKeeper/etc/SCCS/s.config
+a/b/c/d/e/BitKeeper/etc/SCCS/s.gone
+a/b/c/d/e/BitKeeper/etc/SCCS/s.ignore
+a/b/c/d/e/f/SCCS/s.f
+gcc/SCCS/s.ChangeSet
+gcc/BitKeeper/etc/SCCS/s.collapsed
+gcc/BitKeeper/etc/SCCS/s.config
+gcc/BitKeeper/etc/SCCS/s.gone
+gcc/BitKeeper/etc/SCCS/s.ignore
+gdb/SCCS/s.ChangeSet
+gdb/BitKeeper/etc/SCCS/s.collapsed
+gdb/BitKeeper/etc/SCCS/s.config
+gdb/BitKeeper/etc/SCCS/s.gone
+gdb/BitKeeper/etc/SCCS/s.ignore
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N bk sfiles -UN in a nested collection ........................$NL
+bk sfiles -UN > GOT
+grep -v ChangeSet WANT | grep -v BitKeeper > WANT2
+cmpfiles GOT WANT2
+echo OK
+
+echo $N bk sfiles -N vs find in a nested collection .................$NL
+bk sfiles -N | sort > GOT
+find . -type f | grep SCCS/s | sed s/..// | sort > WANT
+cmpfiles GOT WANT
+echo OK
+
+echo $N bk sfiles -r in a nested collection .........................$NL
+bk sfiles -r > GOT
+cat <<EOF > WANT
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.aliases
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+a/b/SCCS/s.f
+a/b/c/SCCS/s.ChangeSet
+a/b/c/BitKeeper/etc/SCCS/s.collapsed
+a/b/c/BitKeeper/etc/SCCS/s.config
+a/b/c/BitKeeper/etc/SCCS/s.gone
+a/b/c/BitKeeper/etc/SCCS/s.ignore
+a/b/c/d/SCCS/s.f
+a/b/c/d/e/SCCS/s.ChangeSet
+a/b/c/d/e/BitKeeper/etc/SCCS/s.collapsed
+a/b/c/d/e/BitKeeper/etc/SCCS/s.config
+a/b/c/d/e/BitKeeper/etc/SCCS/s.gone
+a/b/c/d/e/BitKeeper/etc/SCCS/s.ignore
+a/b/c/d/e/f/SCCS/s.f
+a/b/c1/SCCS/s.f
+gcc/SCCS/s.ChangeSet
+gcc/BitKeeper/etc/SCCS/s.collapsed
+gcc/BitKeeper/etc/SCCS/s.config
+gcc/BitKeeper/etc/SCCS/s.gone
+gcc/BitKeeper/etc/SCCS/s.ignore
+gdb/SCCS/s.ChangeSet
+gdb/BitKeeper/etc/SCCS/s.collapsed
+gdb/BitKeeper/etc/SCCS/s.config
+gdb/BitKeeper/etc/SCCS/s.gone
+gdb/BitKeeper/etc/SCCS/s.ignore
+EOF
+cmpfiles GOT WANT
+echo OK
+
 echo ---- chdir a
-cd a
+cd "$HERE/project/a"
 
 echo $N bk sfiles ...................................................$NL
 bk sfiles > GOT
@@ -162,4 +248,37 @@ cat <<EOF > WANT
 b/SCCS/s.f
 EOF
 cmpfiles GOT WANT
+echo OK
+
+echo $N bk sfiles -r ................................................$NL
+bk sfiles -r > GOT
+cat <<EOF > WANT
+b/SCCS/s.f
+b/c/SCCS/s.ChangeSet
+b/c/BitKeeper/etc/SCCS/s.collapsed
+b/c/BitKeeper/etc/SCCS/s.config
+b/c/BitKeeper/etc/SCCS/s.gone
+b/c/BitKeeper/etc/SCCS/s.ignore
+b/c/d/SCCS/s.f
+b/c/d/e/SCCS/s.ChangeSet
+b/c/d/e/BitKeeper/etc/SCCS/s.collapsed
+b/c/d/e/BitKeeper/etc/SCCS/s.config
+b/c/d/e/BitKeeper/etc/SCCS/s.gone
+b/c/d/e/BitKeeper/etc/SCCS/s.ignore
+b/c/d/e/f/SCCS/s.f
+b/c1/SCCS/s.f
+EOF
+cmpfiles GOT WANT
+echo OK
+
+echo $N bk -N in a non-nested tree should match bk -r ...............$NL
+cd "$HERE"
+commercial non-nested
+for i in a b c d e f 
+do	echo $i > $i
+	bk new $Q $i
+done
+bk -N > A
+bk -r > B
+cmpfiles A B
 echo OK

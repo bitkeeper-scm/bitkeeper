@@ -32,6 +32,12 @@ getoptReset(void)
 	optarg = 0;
 }
 
+/*
+ * Returns:
+ *    - char if option found
+ *    - EOF(-1) if end of arguments reached
+ *    - GETOPT_ERR(256) if unknown option found.
+ */
 int
 getopt(int ac, char **av, char *opts)
 {
@@ -69,7 +75,7 @@ getopt(int ac, char **av, char *opts)
 			n = 1;
 			optind++;
 		}
-		return ('?');
+		return (GETOPT_ERR);
 	}
 
 	/* OK, we found a legit option, let's see what to do with it.
@@ -114,14 +120,14 @@ getopt(int ac, char **av, char *opts)
 		optind++;
 		optopt = *t;
 		debug((stderr, "\twanted another word\n"));
-		return ('?');
+		return (GETOPT_ERR);
 	}
 
 	/* Nope, there had better be another word. */
 	if ((optind + 1 == ac) || (av[optind+1][0] == '-')) {
 		optopt = av[optind][n];
 		debug((stderr, "\twanted another word\n"));
-		return ('?');
+		return (GETOPT_ERR);
 	}
 	optarg = av[optind+1];
 	optind += 2;
@@ -153,7 +159,7 @@ main(int ac, char **av)
 			    comment = optarg;
 			    printf("Got optarg %s with -%c\n", comment, c);
 			    break;
-		    case '?':
+		    case GETOPT_ERR:
 			fprintf(stderr, "bad option %c\n", optopt);
 			break;
 		    default:

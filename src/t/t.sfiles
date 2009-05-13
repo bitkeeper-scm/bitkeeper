@@ -137,8 +137,7 @@ echo OK
 bk commit $Q -yblah - <GOT
 bk co $Q -l s.foo bar/s.foo
 ls >> bar/s.foo
-echo hi > c.s.foo
-bk _mv c.s.foo bar/SCCS/c.s.foo
+echo hi | bk cfile save bar/s.foo
 echo $N Check the list of changed files .............................$NL
 bk sfiles -c > GOT
 cat <<EOF > WANT
@@ -704,8 +703,7 @@ echo foo > MODIFIED
 echo foo > MODIFIED_W_COMMENTS
 bk co $Q GOTTEN
 bk _mv SCCS/s.NAME SCCS/s.WRONG_NAME
-echo comments > c.MODIFIED_W_COMMENTS
-bk _mv c.MODIFIED_W_COMMENTS SCCS/c.MODIFIED_W_COMMENTS
+echo comments | bk cfile save MODIFIED_W_COMMENTS
 echo OK
 
 echo $N Test summary output .........................................$NL

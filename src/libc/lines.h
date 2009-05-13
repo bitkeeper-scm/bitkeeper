@@ -88,6 +88,7 @@ void	sortLines(char **space, int (*compar)(const void *, const void *));
 int	string_sort(const void *a, const void *b);
 int	number_sort(const void *a, const void *b);
 char	**shellSplit(const char *line);
+char	**prog2Lines(char **space, char *file);
 char	**file2Lines(char **space, char *file);
 int	lines2File(char **space, char *file);
 void	uniqLines(char **space, void(*freep)(void *ptr));

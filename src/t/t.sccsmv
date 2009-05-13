@@ -38,10 +38,8 @@ done
 bk sfiles -l A B | bk clean -
 sleep 1
 bk co $Q -l A/file1
-echo "this is a comment for file1" > c.file1
-bk _mv c.file1 A/SCCS/c.file1
-echo "this is a old comment for file1" > c.file1@1.1
-bk _mv c.file1@1.1 A/SCCS/c.file1@1.1
+echo "this is a comment for file1" | bk cfile save A/file1
+echo "this is a old comment for file1" | bk cfile save A/file1@1.1
 bk mv A/file1 B/file1
 # We need this on cygwin (dir cache lag?)
 while true
