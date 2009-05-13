@@ -121,21 +121,18 @@ bk commit $Q -ynewcset || exit 1
 # already edited file
 bk edit $Q edited || exit 1
 echo new stuff not in cset >> edited
-echo edited comment > c.edited
-bk _mv c.edited SCCS/c.edited
+echo edited comment | bk cfile save edited
 
 bk edit $Q chg_edit || exit 1
 echo new stuff not in cset >> chg_edit
-echo edited comment > c.chg_edit
-bk _mv c.chg_edit SCCS/c.chg_edit
+echo edited comment | bk cfile save chg_edit
 
 if [ "$PLATFORM" != "WIN32" ]
 then
 	bk edit $Q edited_symlink
 	rm edited_symlink
 	ln -s file2 edited_symlink
-	echo edited comment > c.edited_symlink
-	bk _mv c.edited_symlink SCCS/c.edited_symlink
+	echo edited comment | bk cfile save edited_symlink
 fi
 
 BK_USER=u1 bk collapse -el $Q || exit 1

@@ -25,8 +25,7 @@ echo OK
 
 echo $N Make sure delta -i works with a c.file ......................$NL
 echo hi there > comments
-echo BitKeeper rocks > c.comments
-bk _mv c.comments SCCS/c.comments
+echo BitKeeper rocks | bk cfile save comments
 echo u | bk delta $S -i comments > OUT 2>&1
 test "BitKeeper rocks" = "`bk prs -hr+ -nd:C: comments`" || {
 	echo failed
@@ -526,9 +525,8 @@ cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
- ) > c.init3
-bk _mv c.init3 SCCS/c.init3
-bk _cp SCCS/c.init3 C
+ ) > C
+bk cfile save init3 < C
 bk delta -fqc init3 > OUT 2>&1 < /dev/null || { cat OUT; exit 1; }
 bk _test -f SCCS/p.init3 && {
 	echo failed to delta
@@ -557,9 +555,8 @@ cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
- ) > tmp
-bk _mv tmp SCCS/c.init3
-bk _cp SCCS/c.init3 C
+) > C
+bk cfile save init3 < C
 echo a | bk delta $Q -f init3 > OUT 2>&1
 bk _test -f SCCS/c.init3 || {
 	echo deleted c.file
@@ -577,9 +574,8 @@ cd "$HERE/project"
 bk edit $Q init3
 ( echo "Auto comment from c.file"
   echo "And a second line" 
- ) > tmp
-bk _mv tmp SCCS/c.init3
-bk _cp SCCS/c.init3 C
+) > C
+bk cfile save init3 < C
 echo u | bk delta $Q -f init3 > OUT 2>&1 || exit 1
 bk _test -f SCCS/p.init3 && {
 	echo failed to delta

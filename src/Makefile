@@ -135,7 +135,7 @@ OBJ =	bkver.o cmd.o \
 	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o \
 	bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
-	bkusers.o cat.o changes.o \
+	bkusers.o cat.o cfile.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	collapse.o comment.o comments.o commit.o components.o compress.o \
 	contrib/cat.o \

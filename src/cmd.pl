@@ -169,6 +169,7 @@ base64
 bkd
 binpool => bam
 cat
+cfile
 changes
 check
 checksum
