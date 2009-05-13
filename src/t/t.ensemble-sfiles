@@ -156,7 +156,7 @@ echo OK
 
 echo $N bk sfiles -N vs find in a nested collection .................$NL
 bk sfiles -N | sort > GOT
-find . -type f | grep SCCS/s | sed s/..// | sort > WANT
+bk _find . -type f | grep SCCS/s | sort > WANT
 cmpfiles GOT WANT
 echo OK
 
