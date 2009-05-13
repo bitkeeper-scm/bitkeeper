@@ -10,6 +10,8 @@
 #    modifications under any license.
 
 PREFIX=file://"$HERE"
+BK_REMOTEBIN="`bk bin`"
+export BK_REMOTEBIN
 
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
