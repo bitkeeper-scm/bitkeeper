@@ -307,7 +307,7 @@ cmpfiles GOT WANT
 echo OK
 
 echo $N Remove enclosing and populate subcomponents should work......$NL
-rm comp2/SCCS/s.foobar  # crud from above test
+bk _rm comp2/SCCS/s.foobar  # crud from above test
 bk components set $Q subprimes || exit 1
 bk components here > GOT
 cat <<EOF > WANT

@@ -101,7 +101,7 @@ void	nested_compFree(void *x);
 int	nested_each(int quiet, int ac, char **av);
 void	nested_check(void);
 int	nested_emptyDir(char *dir);
-int	nested_rmtree(char *dir);
+int	nested_rmcomp(nested *n, comp *c);
 char	**nested_here(project *p);
 void	nested_writeHere(nested *n);
 
