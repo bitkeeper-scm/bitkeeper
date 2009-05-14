@@ -196,7 +196,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 					/* failed because the dir was not empty */
 				} else {
 					/* failed and left crud */
-					nested_rmtree(cp->path);
+					nested_rmcomp(n, cp);
 				}
 			}
 			unless (cp->present) break;
@@ -214,7 +214,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 	}
 	if (rc) {
-		EACH_STRUCT(list, cp, i) nested_rmtree(cp->path);
+		EACH_STRUCT(list, cp, i) nested_rmcomp(n, cp);
 		return (rc);
 	}
 	freeLines(list, 0);
@@ -223,9 +223,10 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	 * Now after we sucessfully cloned all new components we can
 	 * remove the ones to be deleted.
 	 */
+	reverseLines(n->comps);	/* deeply nested first */
 	EACH_STRUCT(n->comps, cp, j) {
 		if (cp->present && !cp->alias) {
-			if (nested_rmtree(cp->path)) {
+			if (nested_rmcomp(n, cp)) {
 				fprintf(stderr, "%s: remove of %s failed\n",
 				    prog, cp->path);
 				return (1);

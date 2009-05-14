@@ -5,8 +5,6 @@
 private	int	compSort(const void *a, const void *b);
 private	void	compFree(void *x);
 private	int	compRemove(char *path, struct stat *statbuf, void *data);
-private	char	**nested_deep(char *path);
-private	int	nestedWalkdir(char *dir, walkfn fn);
 private	int	empty(char *path, struct stat *statbuf, void *data);
 
 
@@ -738,7 +736,7 @@ nested_check(void)
  * and pass in src, then pass back only src/libc.
  */
 private	char	**
-nested_deep(char *path)
+nested_deep(nested *nin, char *path)
 {
 	nested	*n = 0;
 	comp	*c;
@@ -746,7 +744,7 @@ nested_deep(char *path)
 	char	*deep = 0;
 	int	i, len, deeplen = 0;
 
-	n = nested_init(0, 0, 0, NESTED_PENDING);
+	n = nin ? nin : nested_init(0, 0, 0, NESTED_PENDING);
 	assert(path);
 	len = strlen(path);
 	EACH_STRUCT(n->comps, c, i) {
@@ -766,7 +764,7 @@ nested_deep(char *path)
 		deeplen = strlen(deep);
 		list = addLine(list, strdup(deep));
 	}
-	nested_free(n);
+	unless (nin) nested_free(n);
 	return (list);
 }
 
@@ -839,7 +837,7 @@ compRemove(char *path, struct stat *statbuf, void *data)
  * components under the given dir.
  */
 private int
-nestedWalkdir(char *dir, walkfn fn)
+nestedWalkdir(nested *n, char *dir, walkfn fn)
 {
 	char	*relpath;
 	int	ret;
@@ -853,7 +851,7 @@ nestedWalkdir(char *dir, walkfn fn)
 	chdir(proj_root(p));
 	relpath = proj_relpath(p, dir);
 	assert(relpath);
-	list = nested_deep(relpath);
+	list = nested_deep(n, relpath);
 
 	ret = walkdir(relpath, fn, list);
 	freeLines(list, free);
@@ -872,7 +870,7 @@ nestedWalkdir(char *dir, walkfn fn)
 int
 nested_emptyDir(char *dir)
 {
-	return (!nestedWalkdir(dir, empty));
+	return (!nestedWalkdir(0, dir, empty));
 }
 
 /*
@@ -880,11 +878,19 @@ nested_emptyDir(char *dir)
  * if they are not present.
  */
 int
-nested_rmtree(char *dir)
+nested_rmcomp(nested *n, comp *c)
 {
-	int	ret = nestedWalkdir(dir, compRemove);
+	int	ret;
+	char	buf[MAXPATH];
 
+	assert(c->present);
+	unless (ret = nestedWalkdir(n, c->path, compRemove)) {
+		c->present = 0;
+	}
 	proj_reset(0);
+
+	concat_path(buf, c->path, ".bk");
+	rmdir(buf);
 	return (ret);
 }
 

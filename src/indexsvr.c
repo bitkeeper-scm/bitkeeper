@@ -898,7 +898,7 @@ doidx_rmdir(project *proj, char *dir)
 		concat_path(buf2, buf, ".bk");
 		idf = isdir(buf2);
 		assert(idf);
-		rmtree(buf2);
+		rmdir(buf2);
 	}
 
 	return (rmdir(buf));
