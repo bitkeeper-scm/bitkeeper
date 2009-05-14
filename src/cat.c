@@ -2,6 +2,9 @@
 #include "system.h"
 #include "sccs.h"
 
+/* contrib/cat.c */
+int	catfile_main(int argc, char *argv[]);
+
 int
 cat_main(int ac, char **av)
 {

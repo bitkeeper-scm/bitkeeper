@@ -96,7 +96,7 @@ repository_mine(char type)
 {
 	char path[MAXPATH];
 
-	TRACE(0, 0);
+	HERE();
 	if (type == 'r') {
 		rdlockfile(".", path);
 		return (exists(path));

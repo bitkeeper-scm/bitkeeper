@@ -47,8 +47,6 @@ fmem_open(void)
 	f = funopen(fm, fmem_read, fmem_write, fmem_seek, fmem_close);
 	fm->f = f;
 	fmem_resize(fm, MINSZ);	/* alloc min buffer */
-	TRACE("open() %p(%p+%d,%d,%d) = %p",
-	    fm, fm->buf, fm->offset, fm->len, fm->size, f);
 	fmem_setvbuf(fm);
 	return (f);
 }
@@ -96,7 +94,6 @@ fmem_getbuf(FILE *f, size_t *len)
 
 	fm = f->_cookie;
 	assert(fm);
-	HERE();
 	/* discard/flush any currently buffered data */
 	fflush(f);
 	if (len) *len = fm->len; /* optionally return len */
@@ -118,7 +115,6 @@ fmem_retbuf(FILE *f, size_t *len)
 
 	fm = f->_cookie;
 	assert(fm);
-	HERE();
 	/* discard/flush any currently buffered data */
 	fflush(f);
 	if (len) *len = fm->len;	   /* optionally return size */
@@ -142,7 +138,6 @@ fmem_setvbuf(FMEM *fm)
 	char	*buf = fm->buf + fm->offset;
 	size_t	len = fm->size - fm->offset;
 
-	TRACE("%p,%d", buf, len);
 	setvbuf(fm->f, buf, _IOFBF, len);
 }
 
@@ -181,8 +176,6 @@ fmem_read(void *cookie, char *buf, int len)
 	assert(fm);
 	newlen = len;
 	if (newlen + fm->offset > fm->len) newlen = fm->len - fm->offset;
-	TRACE("read(%p(%p+%d,%d), %p, %d) = %d",
-	    fm, fm->buf, fm->offset, fm->len, buf, len, newlen);
 	len = newlen;
 	assert((buf == fm->buf + fm->offset) || (len == 0));
 	assert(len >= 0);
@@ -207,8 +200,6 @@ fmem_write(void *cookie, const char *buf, int len)
 	size_t	newoff;
 
 	assert(fm);
-	TRACE("write(%p(%p+%d,%d,%d), %p, %d)",
-	    fm, fm->buf, fm->offset, fm->len, fm->size, buf, len);
 	newoff = fm->offset + len;
 	if (buf == fm->buf + fm->offset) {
 		assert(newoff <= fm->size);
@@ -234,8 +225,6 @@ fmem_seek(void *cookie, fpos_t offset, int whence)
 	FMEM	*fm = cookie;
 
 	assert(fm);
-	TRACE("seek(%p(%p+%d,%d,%d), %d, %d)",
-	    fm, fm->buf, fm->offset, fm->len, fm->size, (int)offset, whence);
 	switch (whence) {
 	    case SEEK_SET: break;
 	    case SEEK_CUR: offset += fm->offset; break;

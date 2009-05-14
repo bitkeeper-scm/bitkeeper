@@ -275,7 +275,7 @@ void	trace_free(void);
 		trace_msg(format, __FILE__, __LINE__, __FUNCTION__, ##args); \
 	} while (0)
 
-#define	HERE()	TRACE("", 0)
+#define	HERE()	TRACE("%s", "")
 
 /* tty.c */
 #define	isatty		myisatty
