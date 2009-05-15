@@ -57,6 +57,7 @@ touch send-as-sfile send-as-deltas
 bk new $Q send-as-sfile send-as-deltas || exit 1
 bk commit $Q -SBASE -yfooze || exit 1
 cd ..
+BK_NO_REMAP=1 bk clone $Q project copy.noremap || exit 1
 bk clone $Q project copy || exit 1
 cd project
 echo BAMBAM > BAM
@@ -72,10 +73,15 @@ done
 bk delta $Q -l -f -ysend-as-sfile send-as-sfile || exit 1
 bk unedit $Q send-as-sfile send-as-deltas || exit 1
 bk commit $Q -y'deltas to existing files' || exit 1
+(cd "$HERE"; BK_NO_REMAP=1 bk clone $Q project project.noremap || exit 1)
 #
 bk makepatch $Q -B -r+ > ../PATCH || exit 1
 bk makepatch $Q -B -C -r+ > ../PATCH-COMPAT || exit 1
 bk send $Q -r+ - > ../SEND || exit 1
+cd "$HERE"
+mv project project.remap
+mv project.noremap project
+cd project
 $OLDBK/bk makepatch $Q -B -r+ > ../OLDPATCH || exit 1
 $OLDBK/bk send $Q -r+ - > ../OLDSEND || exit 1
 cd ..
@@ -83,10 +89,14 @@ cmpfiles SEND OLDSEND
 cmpfiles PATCH-COMPAT OLDPATCH
 cmp -s PATCH OLDPATCH && exit 1
 tar cf copy.tar copy
+tar cf copy.noremap.tar copy.noremap
+cd "$HERE"
+mv project project.noremap
+mv project.remap project
 echo OK
 
 echo $N New patch, old bk, takepatch works, resolve fails ...........$NL
-cd copy || exit 1
+cd copy.noremap || exit 1
 $OLDBK/bk takepatch < ../PATCH || exit 1
 $OLDBK/bk resolve 2> ERR && exit 1
 grep -q "Missing file" ERR || exit 1
@@ -103,14 +113,14 @@ echo OK
 
 echo $N Push old server new client ..................................$NL
 cd project || exit 1
-bk push $Q bk://localhost:$OLDP/copy || exit 1
+bk push $Q bk://localhost:$OLDP/copy.noremap || exit 1
 echo OK
 
 echo $N Push new server old client ..................................$NL
 cd ..
 rm -fr copy
 tar xf copy.tar
-cd project || exit 1
+cd project.noremap || exit 1
 $OLDBK/bk push $Q bk://localhost:$NEWP/copy || exit 1
 echo OK
 
@@ -119,14 +129,14 @@ cd ..
 rm -fr copy
 tar xf copy.tar
 cd copy || exit 1
-bk pull $Q bk://localhost:$OLDP/project || exit 1
+bk pull $Q bk://localhost:$OLDP/project.noremap || exit 1
 echo OK
 
 echo $N Pull new server old client ..................................$NL
 cd ..
-rm -fr copy
-tar xf copy.tar
-cd copy || exit 1
+rm -fr copy.noremap
+tar xf copy.noremap.tar
+cd copy.noremap || exit 1
 $OLDBK/bk pull $Q bk://localhost:$NEWP/project || exit 1
 echo OK
 
@@ -138,14 +148,14 @@ cd copy || exit 1
 touch localfile
 bk new $Q localfile || exit 1
 bk commit $Q -ylocalcset || exit 1
-bk pull $Q bk://localhost:$OLDP/project || exit 1
+bk pull $Q bk://localhost:$OLDP/project.noremap || exit 1
 echo OK
 
 echo $N Pull new server old client with local work present ..........$NL
 cd ..
-rm -fr copy
-tar xf copy.tar
-cd copy || exit 1
+rm -fr copy.noremap
+tar xf copy.noremap.tar
+cd copy.noremap || exit 1
 touch localfile
 bk new $Q localfile || exit 1
 bk commit $Q -ylocalcset || exit 1
