@@ -8,58 +8,35 @@
 #define	unless(p)	if (!(p))
 #define	private		static
 
-/* Defines */
-#define	L_WALK_CONTINUE		0x00000
-#define	L_WALK_PRE		0x00001
-#define	L_WALK_POST		0x00002
-#define	L_WALK_SKIP_CHILDREN	0x00004
-#define	L_WALK_SKIP_POST	0x00008
-#define	L_WALK_BREAK		0x0000C
-#define	L_WALK_ERROR		0x8000C
+/* Argument type for type_mk* functions. */
+enum typemk_k {
+	PERSIST,	// persist type descriptor across all interps
+	PER_INTERP,	// type descriptor is freed when interp is freed
+};
 
-/* Typedefs */
-typedef struct Ast Ast;
-typedef struct L_block L_block;
-typedef struct L_var_decl L_var_decl;
-typedef struct L_function_decl L_function_decl;
-typedef struct L_stmt L_stmt;
-typedef struct L_toplevel L_toplevel;
-typedef struct L_if_unless L_if_unless;
-typedef struct L_loop L_loop;
-typedef struct L_foreach_loop L_foreach_loop;
-typedef struct L_expr L_expr;
-typedef struct L_type L_type;
-typedef struct L_initializer L_initializer;
+typedef struct Ast	Ast;
+typedef struct Block	Block;
+typedef struct VarDecl	VarDecl;
+typedef struct FnDecl	FnDecl;
+typedef struct ClsDecl	ClsDecl;
+typedef struct Stmt	Stmt;
+typedef struct TopLev	TopLev;
+typedef struct ClsLev	ClsLev;
+typedef struct Class	Class;
+typedef struct Cond	Cond;
+typedef struct Loop	Loop;
+typedef struct ForEach	ForEach;
+typedef struct Expr	Expr;
+typedef struct Type	Type;
+typedef struct Sym	Sym;
 
-/* Enums */
-typedef enum L_expr_kind {
-	L_EXPR_ARRAY_INDEX,
-	L_EXPR_BINARY,
-	L_EXPR_FLOTE,
-	L_EXPR_FUNCALL,
-	L_EXPR_HASH_INDEX,
-	L_EXPR_INTEGER,
-	L_EXPR_INTERPOLATED_STRING,
-	L_EXPR_POST,
-	L_EXPR_PRE,
-	L_EXPR_REGEXP,
-	L_EXPR_STRING,
-	L_EXPR_STRUCT_INDEX,
-	L_EXPR_TERTIARY,
-	L_EXPR_UNARY,
-	L_EXPR_VAR,
-	L_EXPR_PUSH
-} L_expr_kind;
-
-extern char *L_expr_tostr[15];
-typedef enum L_loop_kind {
+typedef enum {
 	L_LOOP_DO,
 	L_LOOP_FOR,
-	L_LOOP_WHILE
-} L_loop_kind;
+	L_LOOP_WHILE,
+} Loop_k;
 
-extern char *L_loop_tostr[3];
-typedef enum L_stmt_kind {
+typedef enum {
 	L_STMT_BLOCK,
 	L_STMT_BREAK,
 	L_STMT_COND,
@@ -69,184 +46,366 @@ typedef enum L_stmt_kind {
 	L_STMT_FOREACH,
 	L_STMT_LOOP,
 	L_STMT_RETURN,
-	L_STMT_PUSH
-} L_stmt_kind;
+	L_STMT_GOTO,
+	L_STMT_LABEL,
+} Stmt_k;
 
-extern char *L_stmt_tostr[9];
-typedef enum L_toplevel_kind {
+typedef enum {
+	L_TOPLEVEL_CLASS,
 	L_TOPLEVEL_FUN,
 	L_TOPLEVEL_GLOBAL,
-	L_TOPLEVEL_INC,
 	L_TOPLEVEL_STMT,
-	L_TOPLEVEL_TYPE,
-	L_TOPLEVEL_TYPEDEF
-} L_toplevel_kind;
+} Toplv_k;
 
-extern char *L_toplevel_tostr[6];
-typedef enum L_type_kind {
-	L_TYPE_ARRAY,
-	L_TYPE_FLOAT,
-	L_TYPE_HASH,
-	L_TYPE_INT,
-	L_TYPE_NUMBER,
-	L_TYPE_POLY,
-	L_TYPE_STRING,
-	L_TYPE_STRUCT,
-	L_TYPE_VAR,
-	L_TYPE_VOID,
-	L_TYPE_WIDGET
-} L_type_kind;
-
-extern char *L_type_tostr[10];
-typedef enum L_node_type {
+typedef enum {
 	L_NODE_BLOCK,
 	L_NODE_EXPR,
 	L_NODE_FOREACH_LOOP,
 	L_NODE_FUNCTION_DECL,
 	L_NODE_IF_UNLESS,
-	L_NODE_INITIALIZER,
 	L_NODE_LOOP,
 	L_NODE_STMT,
 	L_NODE_TOPLEVEL,
-	L_NODE_TYPE,
-	L_NODE_VAR_DECL
-} L_node_type;
-extern char *L_node_type_tostr[11];
+	L_NODE_CLSLEVEL,
+	L_NODE_VAR_DECL,
+	L_NODE_CLASS_DECL,
+} Node_k;
 
-/* Struct declarations */
+/*
+ * An L type name is represented with exactly one instance of a
+ * Type structure.  All references to the type name point to that
+ * structure, so pointer comparison can be used to check for name
+ * equivalence of types.
+ *
+ * L_int, L_float, etc are the global Type pointers for the
+ * pre-defined types.  L_INT, L_FLOAT, etc are the type kinds
+ * (enum) used in the type structure.
+ *
+ * L_NAMEOF is like an address in other languages.  An expression
+ * of this type holds the name of an lvalue (e.g., &p has the value
+ * "p").  The base_type is the type of the name.
+ */
+
+typedef enum {
+	L_INT		= 0x0001,
+	L_FLOAT		= 0x0002,
+	L_STRING	= 0x0004,
+	L_ARRAY		= 0x0008,
+	L_HASH		= 0x0010,
+	L_STRUCT	= 0x0020,
+	L_LIST		= 0x0040,
+	L_VOID		= 0x0080,
+	L_VAR		= 0x0100,
+	L_POLY		= 0x0200,
+	L_NAMEOF	= 0x0400,
+	L_FUNCTION	= 0x0800,
+	L_CLASS		= 0x1000,
+} Type_k;
+
+struct Type {
+	Type_k	kind;
+	Type	*base_type;	// for array, hash, list, nameof, fn ret type
+	Type	*next;		// for linking list types
+	union {
+		struct {
+			Expr	*size;
+		} array;
+		struct {
+			Type	*idx_type;
+		} hash;
+		struct {
+			char	*tag;
+			VarDecl	*members;
+		} struc;
+		struct {
+			VarDecl	*formals;
+		} func;
+		struct {
+			ClsDecl	*clsdecl;
+		} class;
+	} u;
+	Type	*list;  // links all type structures ever allocated
+};
+
 struct Ast {
-	Ast *_trace;
-	L_node_type type;
-	int line_no;
-	int beg;
-	int end;
+	Node_k	type;
+	Ast	*next;	// links all nodes in an AST
+	char	*file;
+	int	line;
+	int	beg;
+	int	end;
 };
 
-struct L_block {
-	Ast node;
-	L_stmt *body;
-	L_var_decl *decls;
+struct Block {
+	Ast	node;
+	Stmt	*body;
+	VarDecl	*decls;
 };
 
-struct L_expr {
-	Ast node;
-	L_expr *a;
-	L_expr *b;
-	L_expr *c;
-	L_expr *indices;
-	L_expr *next;
-	L_expr_kind kind;
-	int op;
+typedef enum {
+	L_EXPR_ID,
+	L_EXPR_CONST,
+	L_EXPR_FUNCALL,
+	L_EXPR_UNOP,
+	L_EXPR_BINOP,
+	L_EXPR_TRINOP,
+	L_EXPR_RE,
+} Expr_k;
+
+typedef enum {
+	L_OP_NONE,
+	L_OP_CAST,
+	L_OP_BANG,
+	L_OP_ADDROF,
+	L_OP_MINUS,
+	L_OP_UMINUS,
+	L_OP_PLUS,
+	L_OP_UPLUS,
+	L_OP_PLUSPLUS_PRE,
+	L_OP_PLUSPLUS_POST,
+	L_OP_MINUSMINUS_PRE,
+	L_OP_MINUSMINUS_POST,
+	L_OP_EQUALS,
+	L_OP_EQPLUS,
+	L_OP_EQMINUS,
+	L_OP_EQSTAR,
+	L_OP_EQSLASH,
+	L_OP_EQPERC,
+	L_OP_EQBITAND,
+	L_OP_EQBITOR,
+	L_OP_EQBITXOR,
+	L_OP_EQLSHIFT,
+	L_OP_EQRSHIFT,
+	L_OP_EQTWID,
+	L_OP_EQDOT,
+	L_OP_STAR,
+	L_OP_SLASH,
+	L_OP_PERC,
+	L_OP_STR_EQ,
+	L_OP_STR_NE,
+	L_OP_STR_GT,
+	L_OP_STR_LT,
+	L_OP_STR_GE,
+	L_OP_STR_LE,
+	L_OP_EQUALEQUAL,
+	L_OP_NOTEQUAL,
+	L_OP_GREATER,
+	L_OP_LESSTHAN,
+	L_OP_GREATEREQ,
+	L_OP_LESSTHANEQ,
+	L_OP_ANDAND,
+	L_OP_OROR,
+	L_OP_LSHIFT,
+	L_OP_RSHIFT,
+	L_OP_BITOR,
+	L_OP_BITAND,
+	L_OP_BITXOR,
+	L_OP_BITNOT,
+	L_OP_DEFINED,
+	L_OP_ARRAY_INDEX,
+	L_OP_HASH_INDEX,
+	L_OP_DOT,
+	L_OP_POINTS,
+	L_OP_CLASS_INDEX,
+	L_OP_INTERP_STRING,
+	L_OP_INTERP_RE,
+	L_OP_LIST,
+	L_OP_KV,
+	L_OP_COMMA,
+	L_OP_ARRAY_SLICE,
+	L_OP_EXPAND,
+	L_OP_EXPAND_ALL,
+	L_OP_CONCAT,
+	L_OP_CMDSUBST,
+	L_OP_TERNARY_COND,
+} Op_k;
+
+/*
+ * Flags for L expression compilation.  Bits are used for simplicity
+ * even though some of these are mutually exclusive.  These are used
+ * in calls to compile_expr() and subordinates and also put in
+ * the Expr AST node.
+ */
+typedef enum {
+	L_EXPR_RE_I   = 0x0001, // expr is an re with "i" qualifier
+	L_EXPR_RE_G   = 0x0002, // expr is an re with "g" qualifier
+	L_EXPR_DEEP   = 0x0004, // expr is the result of a deep dive
+	L_IDX_ARRAY   = 0x0008,	// what kind of thing we're indexing
+	L_IDX_HASH    = 0x0010,
+	L_IDX_STRING  = 0x0020,
+	L_LVALUE      = 0x0040, // if we will be writing the obj
+	L_PUSH_VAL    = 0x0080,	// what we want INST_L_INDEX to leave on
+	L_PUSH_PTR    = 0x0100,	//   the stack
+	L_PUSH_VALPTR = 0x0200,
+	L_PUSH_PTRVAL = 0x0400,
+	L_DISCARD     = 0x0800,	// have compile_expr discard the val, not push
+	L_PUSH_NEW    = 0x1000,	// whether INST_L_DEEP_WRITE should push the
+	L_PUSH_OLD    = 0x2000,	//   new or old value
+	L_NOTUSED     = 0x4000,	// do not update used_p boolean in symtab entry
+	L_NOWARN      = 0x8000,	// issue no err if symbol undefined
+} Expr_f;
+
+struct Expr {
+	Ast	node;
+	Expr_k	kind;
+	Op_k	op;
+	Type	*type;
+	Expr	*a;
+	Expr	*b;
+	Expr	*c;
+	Expr_f	flags;
+	Sym	*sym;  // for id, ptr to symbol table entry
 	union {
-		char *string;
-		double flote;
-		long integer;
+		long	integer;
+		double	flote;
+		char	*string;  // for strlit/id/re/struct-index
+	} u;
+	Expr	*next;
+};
+
+struct ForEach {
+	Ast	node;
+	Expr	*expr;
+	Expr	*key;
+	Expr	*value;
+	Stmt	*body;
+};
+
+struct FnDecl {
+	Ast	node;
+	Block	*body;
+	VarDecl	*decl;
+	FnDecl	*next;
+};
+
+struct ClsDecl {
+	Ast	node;
+	VarDecl	*decl;
+	VarDecl	*clsvars;
+	VarDecl	*instvars;
+	FnDecl	*fns;
+	FnDecl	*constructor;
+	FnDecl	*destructor;
+	Tcl_HashTable *symtab;
+};
+
+struct Cond {
+	Ast	node;
+	Expr	*cond;
+	Stmt	*else_body;
+	Stmt	*if_body;
+};
+
+struct Loop {
+	Ast	node;
+	Expr	*cond;
+	Expr	*post;
+	Expr	*pre;
+	Loop_k	kind;
+	Stmt	*body;
+};
+
+struct Stmt {
+	Ast	node;
+	Stmt	*next;
+	Stmt_k	kind;
+	union {
+		Block	*block;
+		Expr	*expr;
+		ForEach	*foreach;
+		Cond	*cond;
+		Loop	*loop;
+		VarDecl	*decl;
+		char	*label;
 	} u;
 };
 
-struct L_foreach_loop {
-	Ast node;
-	L_expr *expr;
-	L_expr *key;
-	L_expr *value;
-	L_stmt *body;
-};
-
-struct L_function_decl {
-	Ast node;
-	L_block *body;
-	L_expr *name;
-	L_type *return_type;
-	L_var_decl *params;
-	int pattern_p;
-};
-
-struct L_if_unless {
-	Ast node;
-	L_expr *condition;
-	L_stmt *else_body;
-	L_stmt *if_body;
-};
-
-struct L_initializer {
-	Ast node;
-	L_expr *key;
-	L_expr *value;
-	L_initializer *next;
-	L_initializer *next_dim;
-};
-
-struct L_loop {
-	Ast node;
-	L_expr *condition;
-	L_expr *post;
-	L_expr *pre;
-	L_loop_kind kind;
-	L_stmt *body;
-};
-
-struct L_stmt {
-	Ast node;
-	L_stmt *next;
-	L_stmt_kind kind;
+struct TopLev {
+	Ast	node;
+	TopLev	*next;
+	Toplv_k	kind;
 	union {
-		L_block *block;
-		L_expr *expr;
-		L_foreach_loop *foreach;
-		L_if_unless *cond;
-		L_loop *loop;
-		L_var_decl *decl;
+		ClsDecl	*class;
+		FnDecl	*fun;
+		Stmt	*stmt;
+		VarDecl	*global;
 	} u;
 };
 
-struct L_toplevel {
-	Ast node;
-	L_toplevel *next;
-	L_toplevel_kind kind;
-	union {
-		L_expr *inc;
-		L_function_decl *fun;
-		L_stmt *stmt;
-		L_type *type;
-		L_var_decl *global;
-	} u;
+/*
+ * These encode both scope information and the kind of declaration.
+ * Some flags are redundant but were chosen for clarity.
+ */
+typedef enum {
+	SCOPE_LOCAL		= 0x000001, // scope the symbol should go in
+	SCOPE_SCRIPT		= 0x000002, //   visible in current script
+	SCOPE_GLOBAL		= 0x000004, //   visible across scripts
+	SCOPE_CLASS		= 0x000008, //   visible in a class
+	DECL_GLOBAL_VAR		= 0x000010, // the kind of declaration
+	DECL_LOCAL_VAR		= 0x000020,
+	DECL_TEMP		= 0x000040, //   temp variable
+	DECL_FN			= 0x000080, //   regular function
+	DECL_CLASS_VAR		= 0x000100, //   class variable
+	DECL_CLASS_INST_VAR	= 0x000200, //   class instance variable
+	DECL_CLASS_FN		= 0x000400, //   class member fn
+	DECL_CLASS_CONST	= 0x000800, //   class constructor
+	DECL_CLASS_DESTR	= 0x001000, //   class destructor
+	DECL_REST_ARG		= 0x002000, //   ...arg formal parameter
+	DECL_EXTERN		= 0x004000, // decl has extern qualifier
+	DECL_PRIVATE		= 0x008000, // decl has private qualifier
+	DECL_PUBLIC		= 0x010000, // decl has public qualifier
+	DECL_REF		= 0x020000, // decl has & qualifier
+	DECL_UNUSED		= 0x040000, // decl has _unused qualifier
+	FN_PROTO_ONLY		= 0x080000, // compile fn proto only
+	FN_PROTO_AND_BODY	= 0x100000, // compile entire fn decl
+} Decl_f;
+
+struct VarDecl {
+	Ast	node;
+	Expr	*id;
+	char	*tclprefix;	// prepend to L var name to create Tcl var name
+	Expr	*initializer;
+	Type	*type;
+	ClsDecl	*clsdecl;	// for class member fns, class & instance vars
+	VarDecl	*next;
+	Decl_f	flags;
 };
 
-struct L_type {
-	Ast node;
-	L_expr *array_dim;
-	L_expr *struct_tag;
-	L_type *next_dim;
-	L_type_kind kind;
-	L_var_decl *members;
-	int typedef_p;
-};
-
-struct L_var_decl {
-	Ast node;
-	L_expr *name;
-	L_initializer *initial_value;
-	L_type *type;
-	L_var_decl *next;
-	int by_name;
-	int extern_p;
-	int rest_p;
-};
-
-
-/* Prototypes */
-typedef int (*LWalkFunc)(Ast *node, void *data, int order);
-L_block *mk_block(L_var_decl *decls,L_stmt *body, int beg, int end);
-L_expr *mk_expr(L_expr_kind kind,int op,L_expr *a,L_expr *b,L_expr *c,L_expr *indices,L_expr *next, int beg, int end);
-L_foreach_loop *mk_foreach_loop(L_expr *hash,L_expr *key,L_expr *value,L_stmt *body, int beg, int end);
-L_function_decl *mk_function_decl(L_expr *name,L_var_decl *params,L_type *return_type,L_block *body,int pattern_p, int beg, int end);
-L_if_unless *mk_if_unless(L_expr *condition,L_stmt *if_body,L_stmt *else_body, int beg, int end);
-L_initializer *mk_initializer(L_expr *key,L_expr *value,L_initializer *next_dim,L_initializer *next, int beg, int end);
-L_loop *mk_loop(L_loop_kind kind,L_expr *pre,L_expr *condition,L_expr *post,L_stmt *body, int beg, int end);
-L_stmt *mk_stmt(L_stmt_kind kind,L_stmt *next, int beg, int end);
-L_toplevel *mk_toplevel(L_toplevel_kind kind,L_toplevel *next, int beg, int end);
-L_type *mk_type(L_type_kind kind,L_expr *array_dim,L_expr *struct_tag,L_type *next_dim,L_var_decl *members,int typedef_p, int beg, int end);
-L_var_decl *mk_var_decl(L_type *type,L_expr *name,L_initializer *initial_value,int by_name,int extern_p,int rest_p,L_var_decl *next, int beg, int end);
-int L_walk_ast(Ast *node, int order, LWalkFunc func, void *data);
+extern Expr	*ast_mkBinOp(Op_k op, Expr *e1, Expr *e2, int beg, int end);
+extern Block	*ast_mkBlock(VarDecl *decls,Stmt *body, int beg, int end);
+extern ClsDecl	*ast_mkClsDecl(VarDecl *decl, int beg, int end);
+extern Expr	*ast_mkConst(Type *type, int beg, int end);
+extern FnDecl	*ast_mkConstructor(ClsDecl *class);
+extern FnDecl	*ast_mkDestructor(ClsDecl *class);
+extern Expr	*ast_mkExpr(Expr_k kind, Op_k op, Expr *a, Expr *b, Expr *c,
+			    int beg, int end);
+extern Expr	*ast_mkFnCall(Expr *id, Expr *arg_list, int beg, int end);
+extern FnDecl	*ast_mkFnDecl(VarDecl *decl, Block *body, int beg, int end);
+extern ForEach	*ast_mkForeach(Expr *hash, Expr *key, Expr *value,
+			       Stmt *body, int beg, int end);
+extern Expr	*ast_mkId(char *name, int beg, int end);
+extern Cond	*ast_mkIfUnless(Expr *expr, Stmt *if_body, Stmt *else_body,
+				int beg, int end);
+extern Loop	*ast_mkLoop(Loop_k kind, Expr *pre, Expr *cond, Expr *post,
+			    Stmt *body, int beg, int end);
+extern Expr	*ast_mkRegexp(char *re, int beg, int end);
+extern Stmt	*ast_mkStmt(Stmt_k kind, Stmt *next, int beg, int end);
+extern TopLev	*ast_mkTopLevel(Toplv_k kind, TopLev *next, int beg, int end);
+extern Expr	*ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3,
+			      int beg, int end);
+extern Expr	*ast_mkUnOp(Op_k op, Expr *e1, int beg, int end);
+extern VarDecl	*ast_mkVarDecl(Type *type, Expr *name, int beg, int end);
+extern Type	*type_mkArray(Expr *size, Type *base_type,
+			      enum typemk_k disposition);
+extern Type	*type_mkClass(enum typemk_k disposition);
+extern Type	*type_mkFunc(Type *base_type, VarDecl *formals,
+			     enum typemk_k disposition);
+extern Type	*type_mkHash(Type *index_type, Type *base_type,
+			     enum typemk_k disposition);
+extern Type	*type_mkList(Type *a, enum typemk_k disposition);
+extern Type	*type_mkNameOf(Type *base_type, enum typemk_k disposition);
+extern Type	*type_mkScalar(Type_k kind, enum typemk_k disposition);
+extern Type	*type_mkStruct(char *tag, VarDecl *members,
+			       enum typemk_k disposition);
 
 #endif /* L_AST_H */

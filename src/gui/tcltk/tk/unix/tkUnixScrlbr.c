@@ -62,7 +62,9 @@ TkScrollbar *
 TkpCreateScrollbar(
     Tk_Window tkwin)
 {
-    UnixScrollbar *scrollPtr = (UnixScrollbar *)ckalloc(sizeof(UnixScrollbar));
+    UnixScrollbar *scrollPtr = (UnixScrollbar *)
+	    ckalloc(sizeof(UnixScrollbar));
+
     scrollPtr->troughGC = None;
     scrollPtr->copyGC = None;
 
@@ -406,8 +408,8 @@ TkpConfigureScrollbar(
     unixScrollPtr->troughGC = new;
     if (unixScrollPtr->copyGC == None) {
 	gcValues.graphics_exposures = False;
-	unixScrollPtr->copyGC = Tk_GetGC(scrollPtr->tkwin, GCGraphicsExposures,
-	    &gcValues);
+	unixScrollPtr->copyGC = Tk_GetGC(scrollPtr->tkwin,
+		GCGraphicsExposures, &gcValues);
     }
 }
 
@@ -436,6 +438,7 @@ TkpScrollbarPosition(
     int x, int y)		/* Coordinates within scrollPtr's window. */
 {
     int length, width, tmp;
+    register const int inset = scrollPtr->inset;
 
     if (scrollPtr->vertical) {
 	length = Tk_Height(scrollPtr->tkwin);
@@ -448,8 +451,7 @@ TkpScrollbarPosition(
 	width = Tk_Height(scrollPtr->tkwin);
     }
 
-    if ((x < scrollPtr->inset) || (x >= (width - scrollPtr->inset))
-	    || (y < scrollPtr->inset) || (y >= (length - scrollPtr->inset))) {
+    if (x<inset || x>=width-inset || y<inset || y>=length-inset) {
 	return OUTSIDE;
     }
 
@@ -458,7 +460,7 @@ TkpScrollbarPosition(
      * TkpDisplayScrollbar. Be sure to keep the two consistent.
      */
 
-    if (y < (scrollPtr->inset + scrollPtr->arrowLength)) {
+    if (y < inset + scrollPtr->arrowLength) {
 	return TOP_ARROW;
     }
     if (y < scrollPtr->sliderFirst) {
@@ -467,7 +469,7 @@ TkpScrollbarPosition(
     if (y < scrollPtr->sliderLast) {
 	return SLIDER;
     }
-    if (y >= (length - (scrollPtr->arrowLength + scrollPtr->inset))) {
+    if (y >= length - (scrollPtr->arrowLength + inset)) {
 	return BOTTOM_ARROW;
     }
     return BOTTOM_GAP;

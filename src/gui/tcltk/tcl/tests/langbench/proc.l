@@ -9,6 +9,7 @@ int h(int v1, int v2, int v3) { return i(v1, v2, v3, 4); }
 int i(int v1, int v2, int v3, int v4) { return j(v1, v2, v3, v4, 5); }
 int j(int v1, int v2, int v3, int v4, int v5) { return v1 + v2 + v3 + v4 + v5; }
 
+void
 main()
 {
 	int	n = 100000;	// there are 10 procs, so .1M iterations

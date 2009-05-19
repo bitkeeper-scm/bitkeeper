@@ -609,8 +609,8 @@ Tk_TableObjCmd(clientData, interp, objc, objv)
     }
     TableInitTags(tablePtr);
 
-    Tcl_SetStringObj(Tcl_GetObjResult(interp),
-		     Tk_PathName(tablePtr->tkwin), -1);
+    Tcl_SetObjResult(interp,
+	    Tcl_NewStringObj(Tk_PathName(tablePtr->tkwin), -1));
     return TCL_OK;
 }
 
@@ -726,7 +726,7 @@ TableWidgetObjCmd(clientData, interp, objc, objv)
 	    if (!(tablePtr->flags & HAS_ACTIVE) ||
 		    (tablePtr->flags & ACTIVE_DISABLED) ||
 		    tablePtr->state == STATE_DISABLED) {
-		Tcl_SetIntObj(Tcl_GetObjResult(interp), -1);
+		Tcl_SetObjResult(interp, Tcl_NewIntObj(-1));
 		break;
 	    } else if (objc == 3) {
 		if (TableGetIcursorObj(tablePtr, objv[2], NULL) != TCL_OK) {
@@ -736,7 +736,7 @@ TableWidgetObjCmd(clientData, interp, objc, objv)
 		TableRefresh(tablePtr, tablePtr->activeRow,
 			tablePtr->activeCol, CELL);
 	    }
-	    Tcl_SetIntObj(Tcl_GetObjResult(interp), tablePtr->icursor);
+	    Tcl_SetObjResult(interp, Tcl_NewIntObj(tablePtr->icursor));
 	    break;
 
 	case CMD_INDEX: {
@@ -757,10 +757,10 @@ TableWidgetObjCmd(clientData, interp, objc, objv)
 		char buf[INDEX_BUFSIZE];
 		/* recreate the index, just in case it got bounded */
 		TableMakeArrayIndex(row, col, buf);
-		Tcl_SetStringObj(Tcl_GetObjResult(interp), buf, -1);
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(buf, -1));
 	    } else {	/* INDEX row|col */
-		Tcl_SetIntObj(Tcl_GetObjResult(interp),
-			(*which == 'r') ? row : col);
+		Tcl_SetObjResult(interp,
+			Tcl_NewIntObj((*which == 'r') ? row : col));
 	    }
 	    break;
 	}
@@ -832,10 +832,10 @@ TableWidgetObjCmd(clientData, interp, objc, objv)
 		    break;
 		case CMD_SEL_PRESENT: {
 		    Tcl_HashSearch search;
+		    int present = (Tcl_FirstHashEntry(tablePtr->selCells,
+				    &search) != NULL);
 
-		    Tcl_SetBooleanObj(Tcl_GetObjResult(interp),
-			    (Tcl_FirstHashEntry(tablePtr->selCells, &search)
-				    != NULL));
+		    Tcl_SetObjResult(interp, Tcl_NewBooleanObj(present));
 		    break;
 		}
 		case CMD_SEL_SET:
@@ -869,8 +869,7 @@ TableWidgetObjCmd(clientData, interp, objc, objv)
 		result = TableValidateChange(tablePtr, row, col, (char *) NULL,
 			(char *) NULL, -1);
 		tablePtr->validate = i;
-		Tcl_SetBooleanObj(Tcl_GetObjResult(interp),
-			(result == TCL_OK));
+		Tcl_SetObjResult(interp, Tcl_NewBooleanObj(result == TCL_OK));
 		result = TCL_OK;
 	    }
 	    break;
@@ -880,7 +879,7 @@ TableWidgetObjCmd(clientData, interp, objc, objv)
 		Tcl_WrongNumArgs(interp, 2, objv, NULL);
 		result = TCL_ERROR;
 	    } else {
-		Tcl_SetStringObj(Tcl_GetObjResult(interp), PACKAGE_VERSION, -1);
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(PACKAGE_VERSION, -1));
 	    }
 	    break;
 
@@ -1675,7 +1674,13 @@ TableUndisplay(register Table *tablePtr)
     seen[3] = col;
 }
 
-#if defined(MAC_TCL) || defined(UNDER_CE) || (defined(WIN32) && defined(TCL_THREADS)) || defined(MAC_OSX_TK)
+/*
+ * Generally we should be able to use XSetClipRectangles on X11, but
+ * the addition of Xft drawing to Tk 8.5+ completely ignores the clip
+ * rectangles.  Thus turn it off for all cases until clip rectangles
+ * are known to be respected. [Bug 1805350]
+ */
+#if 1 || defined(MAC_TCL) || defined(UNDER_CE) || (defined(WIN32) && defined(TCL_THREADS)) || defined(MAC_OSX_TK)
 #define NO_XSETCLIP
 #endif
 /*
@@ -3837,7 +3842,7 @@ TableValidateChange(tablePtr, r, c, old, new, index)
     } else {
 	code = (bool) ? TCL_OK : TCL_BREAK;
     }
-    Tcl_SetStringObj(Tcl_GetObjResult(interp), (char *) NULL, 0);
+    Tcl_SetObjResult(interp, Tcl_NewObj());
 
     /*
      * If ->validate has become VALIDATE_NONE during the validation,

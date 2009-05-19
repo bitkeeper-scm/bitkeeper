@@ -1,15 +1,15 @@
 /*
  * tkMacOSXMenus.c --
  *
- *	These calls set up and manage the menubar for the
- *	Macintosh version of Tk.
+ *	These calls set up and manage the menubar for the Macintosh version of
+ *	Tk.
  *
  * Copyright (c) 1995-1996 Sun Microsystems, Inc.
- * Copyright 2001, Apple Computer, Inc.
+ * Copyright (c) 2001, Apple Computer, Inc.
  * Copyright (c) 2005-2007 Daniel A. Steffen <das@users.sourceforge.net>
  *
- * See the file "license.terms" for information on usage and redistribution
- * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+ * See the file "license.terms" for information on usage and redistribution of
+ * this file, and for a DISCLAIMER OF ALL WARRANTIES.
  *
  * RCS: @(#) $Id$
  */
@@ -34,14 +34,13 @@ MenuRef tkAppleMenu;
 MenuRef tkFileMenu;
 MenuRef tkEditMenu;
 
-static Tcl_Interp * gInterp = NULL;	    /* Standard menu interpreter. */
+static Tcl_Interp *gInterp = NULL;	    /* Standard menu interpreter. */
 static EventHandlerRef menuEventHandlerRef = NULL;
 
-static void GenerateEditEvent(int flag);
-static Tcl_Obj* GetWidgetDemoPath(Tcl_Interp *interp);
-static OSStatus MenuEventHandlerProc(EventHandlerCallRef callRef,
-	EventRef event, void *userData);
-
+static void		GenerateEditEvent(int flag);
+static Tcl_Obj *	GetWidgetDemoPath(Tcl_Interp *interp);
+static OSStatus		MenuEventHandlerProc(EventHandlerCallRef callRef,
+			    EventRef event, void *userData);
 
 /*
  *----------------------------------------------------------------------
@@ -59,11 +58,11 @@ static OSStatus MenuEventHandlerProc(EventHandlerCallRef callRef,
  *----------------------------------------------------------------------
  */
 
-Tcl_Obj*
+static Tcl_Obj *
 GetWidgetDemoPath(
     Tcl_Interp *interp)
 {
-    Tcl_Obj *libpath , *result = NULL;
+    Tcl_Obj *libpath, *result = NULL;
 
     libpath = Tcl_GetVar2Ex(gInterp, "tk_library", NULL, TCL_GLOBAL_ONLY);
     if (libpath) {
@@ -102,6 +101,8 @@ TkMacOSXHandleMenuSelect(
     Tk_Window tkwin;
     Window window;
     TkDisplay *dispPtr;
+    Tcl_CmdInfo dummy;
+    int code;
 
     if (theItem == 0) {
 	TkMacOSXClearMenubarActive();
@@ -109,89 +110,87 @@ TkMacOSXHandleMenuSelect(
     }
 
     switch (theMenu) {
-	case kAppleMenu:
-	    switch (theItem) {
-		case kAppleAboutItem:
-		    {
-			Tcl_CmdInfo dummy;
-			if (optionKeyPressed || gInterp == NULL ||
-			    Tcl_GetCommandInfo(gInterp,
-				"tkAboutDialog", &dummy) == 0) {
-			    TkAboutDlg();
-			} else {
-			    if (Tcl_EvalEx(gInterp, "tkAboutDialog", -1,
-				    TCL_EVAL_GLOBAL) != TCL_OK) {
-				Tcl_BackgroundError(gInterp);
-			    }
-			    Tcl_ResetResult(gInterp);
-			}
-			break;
-		    }
+    case kAppleMenu:
+	switch (theItem) {
+	case kAppleAboutItem:
+	    if (optionKeyPressed || gInterp == NULL ||
+		Tcl_GetCommandInfo(gInterp, "tkAboutDialog", &dummy) == 0) {
+		TkAboutDlg();
+	    } else {
+		code = Tcl_EvalEx(gInterp, "tkAboutDialog", -1,
+			TCL_EVAL_GLOBAL);
+		if (code != TCL_OK) {
+		    Tcl_BackgroundException(gInterp, code);
+		}
+		Tcl_ResetResult(gInterp);
 	    }
 	    break;
-	case kFileMenu:
-	    switch (theItem) {
-		case kSourceItem:
-		    if (gInterp) {
-			if(Tcl_EvalEx(gInterp, "tk_getOpenFile -filetypes {"
-				"{{TCL Scripts} {.tcl} TEXT} "
-				"{{Text Files} {} TEXT}}", -1, TCL_EVAL_GLOBAL)
-				== TCL_OK) {
-			    Tcl_Obj *path = Tcl_GetObjResult(gInterp);
-			    int len;
-			    
-			    Tcl_GetStringFromObj(path, &len);
-			    if (len) {
-				Tcl_IncrRefCount(path);
-				if (Tcl_FSEvalFile(gInterp, path)
-					== TCL_ERROR) {
-				    Tcl_BackgroundError(gInterp);
-				}
-				Tcl_DecrRefCount(path);
-			    }
-			}
-			Tcl_ResetResult(gInterp);
-		    }
-		    break;
-		case kDemoItem:
-		    if (gInterp) {
-			Tcl_Obj *path = GetWidgetDemoPath(gInterp);
+	}
+	break;
+    case kFileMenu:
+	switch (theItem) {
+	case kSourceItem:
+	    if (gInterp) {
+		if (Tcl_EvalEx(gInterp, "tk_getOpenFile -filetypes {"
+			"{{TCL Scripts} {.tcl} TEXT} {{Text Files} {} TEXT}}",
+			-1, TCL_EVAL_GLOBAL) == TCL_OK) {
+		    Tcl_Obj *path = Tcl_GetObjResult(gInterp);
+		    int len;
 
-			if (path) {
-			    Tcl_IncrRefCount(path);
-			    if (Tcl_FSEvalFile(gInterp, path)
-				    == TCL_ERROR) {
-				Tcl_BackgroundError(gInterp);
-			    }
-			    Tcl_DecrRefCount(path);
-			    Tcl_ResetResult(gInterp);
+		    Tcl_GetStringFromObj(path, &len);
+		    if (len) {
+			Tcl_IncrRefCount(path);
+			code = Tcl_FSEvalFile(gInterp, path);
+			if (code != TCL_OK) {
+			    Tcl_BackgroundException(gInterp, code);
 			}
+			Tcl_DecrRefCount(path);
 		    }
-		    break;
-		case kCloseItem:
-		    /* Send close event */
-		    window = TkMacOSXGetXWindow(ActiveNonFloatingWindow());
-		    dispPtr = TkGetDisplayList();
-		    tkwin = Tk_IdToWindow(dispPtr->display, window);
-		    TkGenWMDestroyEvent(tkwin);
-		    break;
+		}
+		Tcl_ResetResult(gInterp);
 	    }
 	    break;
-	case kEditMenu:
-	    /*
-	     * This implementation just send the keysyms Tk thinks are
-	     * associated with function keys that do Cut, Copy & Paste on
-	     * a Sun keyboard.
-	     */
-	    GenerateEditEvent(theItem);
+	case kDemoItem:
+	    if (gInterp) {
+		Tcl_Obj *path = GetWidgetDemoPath(gInterp);
+
+		if (path) {
+		    Tcl_IncrRefCount(path);
+		    code = Tcl_FSEvalFile(gInterp, path);
+		    if (code != TCL_OK) {
+			Tcl_BackgroundException(gInterp, code);
+		    }
+		    Tcl_DecrRefCount(path);
+		    Tcl_ResetResult(gInterp);
+		}
+	    }
 	    break;
-	default:
-	    TkMacOSXDispatchMenuEvent(theMenu, theItem);
+	case kCloseItem:
+	    /* Send close event */
+	    window = TkMacOSXGetXWindow(ActiveNonFloatingWindow());
+	    dispPtr = TkGetDisplayList();
+	    tkwin = Tk_IdToWindow(dispPtr->display, window);
+	    TkGenWMDestroyEvent(tkwin);
 	    break;
+	}
+	break;
+    case kEditMenu:
+	/*
+	 * This implementation just send the keysyms Tk thinks are associated
+	 * with function keys that do Cut, Copy & Paste on a Sun keyboard.
+	 */
+
+	GenerateEditEvent(theItem);
+	break;
+    default:
+	TkMacOSXDispatchMenuEvent(theMenu, theItem);
+	break;
     }
+
     /*
      * Finally we unhighlight the menu.
      */
+
     HiliteMenu(0);
 }
 
@@ -327,6 +326,7 @@ TkMacOSXInitMenus(
      * kEventCommandUpdateStatus handler), unless the kHICommandPreferences
      * menu item has previously been enabled manually. [Bug 1481503]
      */
+
     EnableMenuCommand(NULL, kHICommandPreferences);
 
     DrawMenuBar();
@@ -338,8 +338,8 @@ TkMacOSXInitMenus(
  *
  * GenerateEditEvent --
  *
- *	Takes an edit menu item and posts the corasponding a virtual
- *	event to Tk's event queue.
+ *	Takes an edit menu item and posts the corasponding a virtual event to
+ *	Tk's event queue.
  *
  * Results:
  *	None.
@@ -380,22 +380,29 @@ GenerateEditEvent(
 
     XQueryPointer(NULL, None, NULL, NULL,
 	    &event.x_root, &event.y_root, &x, &y, &event.state);
-    tkwin = Tk_TopCoordsToWindow(tkwin, x, y, &event.x, &event.y);
+    Tk_TopCoordsToWindow(tkwin, x, y, &event.x, &event.y);
     event.same_screen = true;
 
     switch (flag) {
-	case EDIT_CUT:
-	    event.name = Tk_GetUid("Cut");
-	    break;
-	case EDIT_COPY:
-	    event.name = Tk_GetUid("Copy");
-	    break;
-	case EDIT_PASTE:
-	    event.name = Tk_GetUid("Paste");
-	    break;
-	case EDIT_CLEAR:
-	    event.name = Tk_GetUid("Clear");
-	    break;
+    case EDIT_CUT:
+	event.name = Tk_GetUid("Cut");
+	break;
+    case EDIT_COPY:
+	event.name = Tk_GetUid("Copy");
+	break;
+    case EDIT_PASTE:
+	event.name = Tk_GetUid("Paste");
+	break;
+    case EDIT_CLEAR:
+	event.name = Tk_GetUid("Clear");
+	break;
     }
     Tk_QueueWindowEvent((XEvent *) &event, TCL_QUEUE_TAIL);
 }
+
+/*
+ * Local Variables:
+ * fill-column: 78
+ * c-basic-offset: 4
+ * End:
+ */

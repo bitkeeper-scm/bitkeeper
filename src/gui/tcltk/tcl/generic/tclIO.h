@@ -132,7 +132,7 @@ typedef struct Channel {
     struct ChannelState *state; /* Split out state information */
     ClientData instanceData;	/* Instance-specific data provided by creator
 				 * of channel. */
-    Tcl_ChannelType *typePtr;	/* Pointer to channel type structure. */
+    const Tcl_ChannelType *typePtr; /* Pointer to channel type structure. */
     struct Channel *downChanPtr;/* Refers to channel this one was stacked
 				 * upon. This reference is NULL for normal
 				 * channels. See Tcl_StackChannel. */
@@ -158,7 +158,7 @@ typedef struct Channel {
  */
 
 typedef struct ChannelState {
-    CONST char *channelName;	/* The name of the channel instance in Tcl
+    const char *channelName;	/* The name of the channel instance in Tcl
 				 * commands. Storage is owned by the generic
 				 * IO code, is dynamically allocated. */
     int	flags;			/* ORed combination of the flags defined
@@ -219,7 +219,8 @@ typedef struct ChannelState {
 				 * handlers ("fileevent") on this channel. */
     int bufSize;		/* What size buffers to allocate? */
     Tcl_TimerToken timer;	/* Handle to wakeup timer for this channel. */
-    CopyState *csPtr;		/* State of background copy, or NULL. */
+    CopyState *csPtrR;		/* State of background copy for which channel is input, or NULL. */
+    CopyState *csPtrW;		/* State of background copy for which channel is output, or NULL. */
     Channel *topChanPtr;	/* Refers to topmost channel in a stack. Never
 				 * NULL. */
     Channel *bottomChanPtr;	/* Refers to bottommost channel in a stack.
@@ -338,6 +339,9 @@ typedef struct ChannelState {
 					 * Used by Channel Tcl_Obj type to
 					 * determine if we have to revalidate
 					 * the channel. */
+#define CHANNEL_CLOSEDWRITE	(1<<21)	/* Channel write side has been closed.
+					 * No further Tcl-level write IO on
+					 * the channel is allowed. */
 
 /*
  * For each channel handler registered in a call to Tcl_CreateChannelHandler,

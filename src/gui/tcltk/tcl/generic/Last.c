@@ -3,321 +3,320 @@
  * As of Feb 2008 it is maintained by hand.
  */
 #include "tclInt.h"
-#include "Last.h"
+#include "Lcompile.h"
 
-extern void *ast_trace_root;
-extern int L_line_number;
-extern int L_token_offset;
-
-char *L_expr_tostr[15] = {
-	"L_EXPR_ARRAY_INDEX",
-	"L_EXPR_BINARY",
-	"L_EXPR_FLOTE",
-	"L_EXPR_FUNCALL",
-	"L_EXPR_HASH_INDEX",
-	"L_EXPR_INTEGER",
-	"L_EXPR_INTERPOLATED_STRING",
-	"L_EXPR_POST",
-	"L_EXPR_PRE",
-	"L_EXPR_REGEXP",
-	"L_EXPR_STRING",
-	"L_EXPR_STRUCT_INDEX",
-	"L_EXPR_TERTIARY",
-	"L_EXPR_UNARY",
-	"L_EXPR_VAR"
-};
-
-char *L_loop_tostr[3] = {
-	"L_LOOP_DO",
-	"L_LOOP_FOR",
-	"L_LOOP_WHILE"
-};
-
-char *L_stmt_tostr[9] = {
-	"L_STMT_BLOCK",
-	"L_STMT_BREAK",
-	"L_STMT_COND",
-	"L_STMT_CONTINUE",
-	"L_STMT_DECL",
-	"L_STMT_EXPR",
-	"L_STMT_FOREACH",
-	"L_STMT_LOOP",
-	"L_STMT_RETURN"
-};
-
-char *L_toplevel_tostr[6] = {
-	"L_TOPLEVEL_FUN",
-	"L_TOPLEVEL_GLOBAL",
-	"L_TOPLEVEL_INC",
-	"L_TOPLEVEL_STMT",
-	"L_TOPLEVEL_TYPE",
-	"L_TOPLEVEL_TYPEDEF"
-};
-
-char *L_type_tostr[10] = {
-	"L_TYPE_ARRAY",
-	"L_TYPE_FLOAT",
-	"L_TYPE_HASH",
-	"L_TYPE_INT",
-	"L_TYPE_NUMBER",
-	"L_TYPE_POLY",
-	"L_TYPE_STRING",
-	"L_TYPE_STRUCT",
-	"L_TYPE_VAR",
-	"L_TYPE_VOID"
-};
-
-char *L_node_type_tostr[11] = {
-	"L_NODE_BLOCK",
-	"L_NODE_EXPR",
-	"L_NODE_FOREACH_LOOP",
-	"L_NODE_FUNCTION_DECL",
-	"L_NODE_IF_UNLESS",
-	"L_NODE_INITIALIZER",
-	"L_NODE_LOOP",
-	"L_NODE_STMT",
-	"L_NODE_TOPLEVEL",
-	"L_NODE_TYPE",
-	"L_NODE_VAR_DECL"
-};
-
-
-/* constructors for the L language */
-L_block *
-mk_block(L_var_decl *decls,L_stmt *body, int beg, int end)
+private void
+ast_init(void *node, Node_k type, int beg, int end)
 {
-	L_block *block;
+	Ast	*ast = (Ast *)node;
 
-	block = (L_block *)ckalloc(sizeof(L_block));
-	memset(block, 0, sizeof(L_block));
-	block->body = body;
+	ast->file   = L->file;
+	ast->line   = L->line;
+	ast->type   = type;
+	ast->beg    = beg;
+	ast->end    = end;
+	ast->next   = L->ast_list;
+	L->ast_list = (void *)ast;
+}
+
+Block *
+ast_mkBlock(VarDecl *decls, Stmt *body, int beg, int end)
+{
+	Block	*block = (Block *)ckalloc(sizeof(Block));
+	memset(block, 0, sizeof(Block));
+	block->body  = body;
 	block->decls = decls;
-	((Ast *)block)->_trace = ast_trace_root;
-	ast_trace_root = (void *)block;
-	((Ast *)block)->line_no = L_line_number;
-	((Ast *)block)->type = L_NODE_BLOCK;
-	((Ast *)block)->beg = beg;
-	((Ast *)block)->end = end;
+	ast_init(block, L_NODE_BLOCK, beg, end);
 	return (block);
 }
 
-L_expr *
-mk_expr(L_expr_kind kind, int op, L_expr *a, L_expr *b,
-    L_expr *c, L_expr *indices, L_expr *next, int beg, int end)
+Expr *
+ast_mkExpr(Expr_k kind, Op_k op, Expr *a, Expr *b, Expr *c, int beg, int end)
 {
-	L_expr *expression;
-
-	expression = (L_expr *)ckalloc(sizeof(L_expr));
-	memset(expression, 0, sizeof(L_expr));
-	expression->a = a;
-	expression->b = b;
-	expression->c = c;
-	expression->indices = indices;
-	expression->next = next;
-	expression->kind = kind;
-	expression->op = op;
-	((Ast *)expression)->_trace = ast_trace_root;
-	ast_trace_root = (void *)expression;
-	((Ast *)expression)->line_no = L_line_number;
-	((Ast *)expression)->type = L_NODE_EXPR;
-	((Ast *)expression)->beg = beg;
-	((Ast *)expression)->end = end;
-	return (expression);
+	Expr	*expr = (Expr *)ckalloc(sizeof(Expr));
+	memset(expr, 0, sizeof(Expr));
+	expr->a    = a;
+	expr->b    = b;
+	expr->c    = c;
+	expr->kind = kind;
+	expr->op   = op;
+	ast_init(expr, L_NODE_EXPR, beg, end);
+	return (expr);
 }
 
-L_foreach_loop *
-mk_foreach_loop(L_expr *expr, L_expr *key,
-    L_expr *value, L_stmt *body, int beg, int end)
+ForEach *
+ast_mkForeach(Expr *expr, Expr *key, Expr *value, Stmt *body,
+	      int beg, int end)
 {
-	L_foreach_loop *foreach_loop;
-
-	foreach_loop = (L_foreach_loop *)ckalloc(sizeof(L_foreach_loop));
-	memset(foreach_loop, 0, sizeof(L_foreach_loop));
-	foreach_loop->expr = expr;
-	foreach_loop->key = key;
-	foreach_loop->value = value;
-	foreach_loop->body = body;
-	((Ast *)foreach_loop)->_trace = ast_trace_root;
-	ast_trace_root = (void *)foreach_loop;
-	((Ast *)foreach_loop)->line_no = L_line_number;
-	((Ast *)foreach_loop)->type = L_NODE_FOREACH_LOOP;
-	((Ast *)foreach_loop)->beg = beg;
-	((Ast *)foreach_loop)->end = end;
-	return (foreach_loop);
+	ForEach	*foreach = (ForEach *)ckalloc(sizeof(ForEach));
+	memset(foreach, 0, sizeof(ForEach));
+	foreach->expr  = expr;
+	foreach->key   = key;
+	foreach->value = value;
+	foreach->body  = body;
+	ast_init(foreach, L_NODE_FOREACH_LOOP, beg, end);
+	return (foreach);
 }
 
-L_function_decl *
-mk_function_decl(L_expr *name, L_var_decl *params,
-    L_type *return_type, L_block *body, int pattern_p, int beg, int end)
+FnDecl *
+ast_mkFnDecl(VarDecl *decl, Block *body, int beg, int end)
 {
-	L_function_decl *function_decl;
-
-	function_decl =
-	    (L_function_decl *)ckalloc(sizeof(L_function_decl));
-	memset(function_decl, 0, sizeof(L_function_decl));
-	function_decl->body = body;
-	function_decl->name = name;
-	function_decl->return_type = return_type;
-	function_decl->params = params;
-	function_decl->pattern_p = pattern_p;
-	((Ast *)function_decl)->_trace = ast_trace_root;
-	ast_trace_root = (void *)function_decl;
-	((Ast *)function_decl)->line_no = L_line_number;
-	((Ast *)function_decl)->type =
-	    L_NODE_FUNCTION_DECL;
-	((Ast *)function_decl)->beg = beg;
-	((Ast *)function_decl)->end = end;
-	return (function_decl);
+	FnDecl *fndecl = (FnDecl *)ckalloc(sizeof(FnDecl));
+	memset(fndecl, 0, sizeof(FnDecl));
+	fndecl->body = body;
+	fndecl->decl = decl;
+	ast_init(fndecl, L_NODE_FUNCTION_DECL, beg, end);
+	return (fndecl);
 }
 
-L_if_unless *
-mk_if_unless(L_expr *condition, L_stmt *if_body,
-    L_stmt *else_body, int beg, int end)
+Cond *
+ast_mkIfUnless(Expr *expr, Stmt *if_body, Stmt *else_body, int beg, int end)
 {
-	L_if_unless *if_unless;
-
-	if_unless = (L_if_unless *)ckalloc(sizeof(L_if_unless));
-	memset(if_unless, 0, sizeof(L_if_unless));
-	if_unless->condition = condition;
-	if_unless->else_body = else_body;
-	if_unless->if_body = if_body;
-	((Ast *)if_unless)->_trace = ast_trace_root;
-	ast_trace_root = (void *)if_unless;
-	((Ast *)if_unless)->line_no = L_line_number;
-	((Ast *)if_unless)->type = L_NODE_IF_UNLESS;
-	((Ast *)if_unless)->beg = beg;
-	((Ast *)if_unless)->end = end;
-	return (if_unless);
+	Cond *cond = (Cond *)ckalloc(sizeof(Cond));
+	memset(cond, 0, sizeof(Cond));
+	cond->cond      = expr;
+	cond->else_body = else_body;
+	cond->if_body   = if_body;
+	ast_init(cond, L_NODE_IF_UNLESS, beg, end);
+	return (cond);
 }
 
-L_initializer *
-mk_initializer(L_expr *key, L_expr *value,
-    L_initializer *next_dim, L_initializer *next, int beg, int end)
+Loop *
+ast_mkLoop(Loop_k kind, Expr *pre, Expr *cond, Expr *post, Stmt *body,
+	   int beg, int end)
 {
-	L_initializer *initializer;
-
-	initializer = (L_initializer *)ckalloc(sizeof(L_initializer));
-	memset(initializer, 0, sizeof(L_initializer));
-	initializer->key = key;
-	initializer->value = value;
-	initializer->next = next;
-	initializer->next_dim = next_dim;
-	((Ast *)initializer)->_trace = ast_trace_root;
-	ast_trace_root = (void *)initializer;
-	((Ast *)initializer)->line_no = L_line_number;
-	((Ast *)initializer)->type = L_NODE_INITIALIZER;
-	((Ast *)initializer)->beg = beg;
-	((Ast *)initializer)->end = end;
-	return (initializer);
-}
-
-L_loop *
-mk_loop(L_loop_kind kind, L_expr *pre, L_expr *condition,
-    L_expr *post, L_stmt *body, int beg, int end)
-{
-	L_loop *loop;
-
-	loop = (L_loop *)ckalloc(sizeof(L_loop));
-	memset(loop, 0, sizeof(L_loop));
-	loop->condition = condition;
+	Loop *loop = (Loop *)ckalloc(sizeof(Loop));
+	memset(loop, 0, sizeof(Loop));
+	loop->cond = cond;
 	loop->post = post;
-	loop->pre = pre;
+	loop->pre  = pre;
 	loop->kind = kind;
 	loop->body = body;
-	((Ast *)loop)->_trace = ast_trace_root;
-	ast_trace_root = (void *)loop;
-	((Ast *)loop)->line_no = L_line_number;
-	((Ast *)loop)->type = L_NODE_LOOP;
-	((Ast *)loop)->beg = beg;
-	((Ast *)loop)->end = end;
+	ast_init(loop, L_NODE_LOOP, beg, end);
 	return (loop);
 }
 
-L_stmt *
-mk_stmt(L_stmt_kind kind, L_stmt *next, int beg, int end)
+Stmt *
+ast_mkStmt(Stmt_k kind, Stmt *next, int beg, int end)
 {
-	L_stmt *statement;
-
-	statement = (L_stmt *)ckalloc(sizeof(L_stmt));
-	memset(statement, 0, sizeof(L_stmt));
-	statement->next = next;
-	statement->kind = kind;
-	((Ast *)statement)->_trace = ast_trace_root;
-	ast_trace_root = (void *)statement;
-	((Ast *)statement)->line_no = L_line_number;
-	((Ast *)statement)->type = L_NODE_STMT;
-	((Ast *)statement)->beg = beg;
-	((Ast *)statement)->end = end;
-	return (statement);
+	Stmt *stmt = (Stmt *)ckalloc(sizeof(Stmt));
+	memset(stmt, 0, sizeof(Stmt));
+	stmt->next = next;
+	stmt->kind = kind;
+	ast_init(stmt, L_NODE_STMT, beg, end);
+	return (stmt);
 }
 
-L_toplevel *
-mk_toplevel(L_toplevel_kind kind,
-    L_toplevel *next, int beg, int end)
+TopLev *
+ast_mkTopLevel(Toplv_k kind, TopLev *next, int beg, int end)
 {
-	L_toplevel *toplevel;
-
-	toplevel =
-	    (L_toplevel *)ckalloc(sizeof(L_toplevel));
-	memset(toplevel, 0, sizeof(L_toplevel));
-	toplevel->next = next;
-	toplevel->kind = kind;
-	((Ast *)toplevel)->_trace = ast_trace_root;
-	ast_trace_root = (void *)toplevel;
-	((Ast *)toplevel)->line_no = L_line_number;
-	((Ast *)toplevel)->type = L_NODE_TOPLEVEL;
-	((Ast *)toplevel)->beg = beg;
-	((Ast *)toplevel)->end = end;
-	return (toplevel);
+	TopLev *toplev = (TopLev *)ckalloc(sizeof(TopLev));
+	memset(toplev, 0, sizeof(TopLev));
+	toplev->next = next;
+	toplev->kind = kind;
+	ast_init(toplev, L_NODE_TOPLEVEL, beg, end);
+	return (toplev);
 }
 
-L_type *
-mk_type(L_type_kind kind, L_expr *array_dim, L_expr *struct_tag,
-    L_type *next_dim, L_var_decl *members, int typedef_p, int beg, int end)
+VarDecl *
+ast_mkVarDecl(Type *type, Expr *id, int beg, int end)
 {
-	L_type *type;
+	VarDecl *vardecl = (VarDecl *)ckalloc(sizeof(VarDecl));
+	memset(vardecl, 0, sizeof(VarDecl));
+	vardecl->id   = id;
+	vardecl->type = type;
+	ast_init(vardecl, L_NODE_VAR_DECL, beg, end);
+	return (vardecl);
+}
 
-	type = (L_type *)ckalloc(sizeof(L_type));
-	memset(type, 0, sizeof(L_type));
-	type->array_dim = array_dim;
-	type->struct_tag = struct_tag;
-	type->next_dim = next_dim;
+ClsDecl *
+ast_mkClsDecl(VarDecl *decl, int beg, int end)
+{
+	ClsDecl *clsdecl = (ClsDecl *)ckalloc(sizeof(ClsDecl));
+	memset(clsdecl, 0, sizeof(ClsDecl));
+	clsdecl->decl   = decl;
+	ast_init(clsdecl, L_NODE_CLASS_DECL, beg, end);
+	return (clsdecl);
+}
+
+/* Build a default constructor if the user didn't provide one. */
+FnDecl *
+ast_mkConstructor(ClsDecl *class)
+{
+	char	*name;
+	Type	*type;
+	Expr	*id;
+	VarDecl	*decl;
+	Block	*block;
+	FnDecl	*fn;
+
+	type  = type_mkFunc(class->decl->type, NULL, PER_INTERP);
+	name  = cksprintf("%s_new", class->decl->id->u.string);
+	id    = ast_mkId(name, 0, 0);
+	decl  = ast_mkVarDecl(type, id, 0, 0);
+	decl->flags |= SCOPE_GLOBAL | DECL_CLASS_FN | DECL_PUBLIC |
+		DECL_CLASS_CONST;
+	decl->clsdecl = class;
+	block = ast_mkBlock(NULL, NULL, 0, 0);
+	fn    = ast_mkFnDecl(decl, block, 0, 0);
+
+	return (fn);
+}
+
+/* Build a default destructor if the user didn't provide one. */
+FnDecl *
+ast_mkDestructor(ClsDecl *class)
+{
+	char	*name;
+	Type	*type;
+	Expr	*id, *self;
+	VarDecl	*decl, *parm;
+	Block	*block;
+	FnDecl	*fn;
+
+	self = ast_mkId("self", 0, 0);
+	parm = ast_mkVarDecl(class->decl->type, self, 0, 0);
+	parm->flags = SCOPE_LOCAL | DECL_LOCAL_VAR;
+	type = type_mkFunc(L_void, parm, PER_INTERP);
+	name = cksprintf("%s_delete", class->decl->id->u.string);
+	id   = ast_mkId(name, 0, 0);
+	decl = ast_mkVarDecl(type, id, 0, 0);
+	decl->flags |= SCOPE_GLOBAL | DECL_CLASS_FN | DECL_PUBLIC |
+		DECL_CLASS_DESTR;
+	decl->clsdecl = class;
+	block = ast_mkBlock(NULL, NULL, 0, 0);
+	fn    = ast_mkFnDecl(decl, block, 0, 0);
+
+	return (fn);
+}
+
+Expr *
+ast_mkUnOp(Op_k op, Expr *e1, int beg, int end)
+{
+	return (ast_mkExpr(L_EXPR_UNOP, op, e1, NULL, NULL, beg, end));
+}
+
+Expr *
+ast_mkBinOp(Op_k op, Expr *e1, Expr *e2, int beg, int end)
+{
+	return (ast_mkExpr(L_EXPR_BINOP, op, e1, e2, NULL, beg, end));
+}
+
+Expr *
+ast_mkTrinOp(Op_k op, Expr *e1, Expr *e2, Expr *e3, int beg, int end)
+{
+	return (ast_mkExpr(L_EXPR_TRINOP, op, e1, e2, e3, beg, end));
+}
+
+Expr *
+ast_mkConst(Type *type, int beg, int end)
+{
+	Expr *e = ast_mkExpr(L_EXPR_CONST, L_OP_NONE, NULL, NULL, NULL,
+			    beg, end);
+	e->type = type;
+	return (e);
+}
+
+Expr *
+ast_mkRegexp(char *re, int beg, int end)
+{
+	Expr *e = ast_mkExpr(L_EXPR_RE, L_OP_NONE, NULL, NULL, NULL, beg, end);
+	e->u.string = re;
+	e->type = L_string;
+	return (e);
+}
+
+Expr *
+ast_mkFnCall(Expr *id, Expr *arg_list, int beg, int end)
+{
+	Expr *e = ast_mkExpr(L_EXPR_FUNCALL, L_OP_NONE, id, arg_list, NULL,
+			    beg, end);
+	return (e);
+}
+
+Expr *
+ast_mkId(char *name, int beg, int end)
+{
+	Expr *e = ast_mkExpr(L_EXPR_ID, L_OP_NONE, NULL, NULL, NULL, beg, end);
+	e->u.string = ckstrdup(name);
+	return (e);
+}
+
+private Type *
+type_alloc(Type_k kind, enum typemk_k disposition)
+{
+	Type *type = (Type *)ckalloc(sizeof(Type));
+	memset(type, 0, sizeof(Type));
 	type->kind = kind;
-	type->members = members;
-	type->typedef_p = typedef_p;
-	((Ast *)type)->_trace = ast_trace_root;
-	ast_trace_root = (void *)type;
-	((Ast *)type)->line_no = L_line_number;
-	((Ast *)type)->type = L_NODE_TYPE;
-	((Ast *)type)->beg = beg;
-	((Ast *)type)->end = end;
+	unless (disposition == PERSIST) {
+		type->list   = L->type_list;
+		L->type_list = type;
+	}
 	return (type);
 }
 
-L_var_decl *
-mk_var_decl(L_type *type, L_expr *name,
-    L_initializer *initial_value, int by_name, int extern_p, int rest_p,
-    L_var_decl *next, int beg, int end)
+Type *
+type_mkScalar(Type_k kind, enum typemk_k disposition)
 {
-	L_var_decl *variable_decl;
-
-	variable_decl =
-	    (L_var_decl *)ckalloc(sizeof(L_var_decl));
-	memset(variable_decl, 0, sizeof(L_var_decl));
-	variable_decl->name = name;
-	variable_decl->initial_value = initial_value;
-	variable_decl->type = type;
-	variable_decl->next = next;
-	variable_decl->by_name = by_name;
-	variable_decl->extern_p = extern_p;
-	variable_decl->rest_p = rest_p;
-	((Ast *)variable_decl)->_trace = ast_trace_root;
-	ast_trace_root = (void *)variable_decl;
-	((Ast *)variable_decl)->line_no = L_line_number;
-	((Ast *)variable_decl)->type =
-	    L_NODE_VAR_DECL;
-	((Ast *)variable_decl)->beg = beg;
-	((Ast *)variable_decl)->end = end;
-	return (variable_decl);
+	Type *type = type_alloc(kind, disposition);
+	return (type);
 }
 
+Type *
+type_mkArray(Expr *size, Type *base_type, enum typemk_k disposition)
+{
+	Type *type = type_alloc(L_ARRAY, disposition);
+	type->u.array.size = size;
+	type->base_type    = base_type;
+	return (type);
+}
+
+Type *
+type_mkHash(Type *index_type, Type *base_type, enum typemk_k disposition)
+{
+	Type *type = type_alloc(L_HASH, disposition);
+	type->u.hash.idx_type = index_type;
+	type->base_type       = base_type;
+	return (type);
+}
+
+Type *
+type_mkStruct(char *tag, VarDecl *members, enum typemk_k disposition)
+{
+	Type *type = type_alloc(L_STRUCT, disposition);
+	type->u.struc.tag     = ckstrdup(tag);
+	type->u.struc.members = members;
+	return (type);
+}
+
+Type *
+type_mkNameOf(Type *base_type, enum typemk_k disposition)
+{
+	Type *type = type_alloc(L_NAMEOF, disposition);
+	type->base_type = base_type;
+	return (type);
+}
+
+Type *
+type_mkFunc(Type *ret_type, VarDecl *formals, enum typemk_k disposition)
+{
+	Type *type = type_alloc(L_FUNCTION, disposition);
+	type->base_type      = ret_type;
+	type->u.func.formals = formals;
+	return (type);
+}
+
+Type *
+type_mkList(Type *a, enum typemk_k disposition)
+{
+	Type *type = type_alloc(L_LIST, disposition);
+	type->base_type = a;
+	return (type);
+}
+
+Type *
+type_mkClass(enum typemk_k disposition)
+{
+	Type *type = type_alloc(L_CLASS, disposition);
+	return (type);
+}

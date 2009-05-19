@@ -251,10 +251,7 @@ proc ttk::copyBindings {from to} {
     }
 }
 
-## Standard mousewheel bindings.
-#
-# Usage: [ttk::copyBindings TtkScrollable $bindtag]
-# adds mousewheel support to a scrollable widget.
+### Mousewheel bindings.
 #
 # Platform inconsistencies:
 #
@@ -276,6 +273,35 @@ proc ttk::copyBindings {from to} {
 # MouseWheel scrolling is accelerated on X11, which is conventional
 # for Tk and appears to be conventional for other toolkits (although
 # Gtk+ and Qt do not appear to use as large a factor).
+#
+
+## ttk::bindMouseWheel $bindtag $command...
+#	Adds basic mousewheel support to $bindtag.
+#	$command will be passed one additional argument
+#	specifying the mousewheel direction (-1: up, +1: down).
+#
+
+proc ttk::bindMouseWheel {bindtag callback} {
+    switch -- [tk windowingsystem] {
+	x11 {
+	    bind $bindtag <ButtonPress-4> "$callback -1"
+	    bind $bindtag <ButtonPress-5> "$callback +1"
+	}
+	win32 {
+	    bind $bindtag <MouseWheel> [append callback { [expr {-(%D/120)}]}]
+	}
+	aqua {
+	    bind $bindtag <MouseWheel> [append callback { [expr {-(%D)}]} ]
+	}
+    }
+}
+
+## Mousewheel bindings for standard scrollable widgets.
+#
+# Usage: [ttk::copyBindings TtkScrollable $bindtag]
+#
+# $bindtag should be for a widget that supports the
+# standard scrollbar protocol.
 #
 
 switch -- [tk windowingsystem] {

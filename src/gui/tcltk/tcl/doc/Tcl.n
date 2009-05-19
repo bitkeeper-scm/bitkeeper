@@ -50,7 +50,6 @@ as ordinary characters and included in the word.
 Command substitution, variable substitution, and backslash substitution
 are performed on the characters between the quotes as described below.
 The double-quotes are not retained as part of the word.
-.VS 8.5 br
 .IP "[5] \fBArgument expansion.\fR"
 If a word starts with the string
 .QW {*}
@@ -64,7 +63,6 @@ substituted. For instance,
 .QW "cmd a {*}{b c} d {*}{e f}"
 is equivalent to
 .QW "cmd a b c d e f" .
-.VE 8.5
 .IP "[6] \fBBraces.\fR"
 If the first character of a word is an open brace
 .PQ {
@@ -107,11 +105,13 @@ Variable substitution may take any of the following forms:
 .RS
 .TP 15
 \fB$\fIname\fR
+.
 \fIName\fR is the name of a scalar variable;  the name is a sequence
 of one or more characters that are a letter, digit, underscore,
 or namespace separators (two or more colons).
 .TP 15
 \fB$\fIname\fB(\fIindex\fB)\fR
+.
 \fIName\fR gives the name of an array variable and \fIindex\fR gives
 the name of an element within that array.
 \fIName\fR must contain only letters, digits, underscores, and
@@ -120,9 +120,19 @@ Command substitutions, variable substitutions, and backslash
 substitutions are performed on the characters of \fIindex\fR.
 .TP 15
 \fB${\fIname\fB}\fR
-\fIName\fR is the name of a scalar variable.  It may contain any
-characters whatsoever except for close braces.
-.LP
+.
+\fIName\fR is the name of a scalar variable or array element.  It may contain
+any characters whatsoever except for close braces.  It indicates an array
+element if \fIname\fR is in the form
+.QW \fIarrayName\fB(\fIindex\fB)\fR
+where \fIarrayName\fR does not contain any open parenthesis characters,
+.QW \fB(\fR ,
+or close brace characters,
+.QW \fB}\fR ,
+and \fIindex\fR can be any sequence of characters except for close brace
+characters.  No further
+substitutions are performed during the parsing of \fIname\fR.
+.PP
 There may be any number of variable substitutions in a single word.
 Variable substitution is not performed on words enclosed in braces.
 .RE
@@ -193,7 +203,7 @@ be 0.
 The hexadecimal digits \fIhhhh\fR (one, two, three, or four of them) give a
 sixteen-bit hexadecimal value for the Unicode character that will be
 inserted.
-.LP
+.PP
 Backslash substitution is not performed on words enclosed in braces,
 except for backslash-newline as described above.
 .RE
@@ -218,13 +228,15 @@ no substitutions are performed before making the recursive
 call and no additional substitutions are performed on the result
 of the nested script.
 .RS
-.LP
+.PP
 Substitutions take place from left to right, and each substitution is
 evaluated completely before attempting to evaluate the next.  Thus, a
 sequence like
+.PP
 .CS
 set y [set x 0][incr x][incr x]
 .CE
+.PP
 will always set the variable \fIy\fR to the value, \fI012\fR.
 .RE
 .IP "[12] \fBSubstitution and word boundaries.\fR"
@@ -233,3 +245,7 @@ except for argument expansion as specified in rule [5].
 For example, during variable substitution the entire value of
 the variable becomes part of a single word, even if the variable's
 value contains spaces.
+'\" Local Variables:
+'\" mode: nroff
+'\" fill-column: 78
+'\" End:

@@ -44,7 +44,6 @@ the safe interpreter. On X11 if you want the embedded window
 to use another display than the default one, specify it with
 \fB\-display\fR.
 See the \fBSECURITY ISSUES\fR section below for implementation details.
-
 .SH "SECURITY ISSUES"
 .PP
 Please read the \fBsafe\fR manual page for Tcl to learn about the basic
@@ -70,14 +69,11 @@ interpreter.
 .PP
 On X11, conflicting \fB\-use\fR and \fB\-display\fR are likely
 to generate a fatal X error.
-
 .SH "SEE ALSO"
 safe(n), interp(n), library(n), load(n), package(n), source(n), unknown(n)
- 
 .SH KEYWORDS
 alias, auto\-loading, auto_mkindex, load, master interpreter, safe
 interpreter, slave interpreter, source
-
 '\" Local Variables:
 '\" mode: nroff
 '\" End:

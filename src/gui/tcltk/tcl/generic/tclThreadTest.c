@@ -7,6 +7,7 @@
  *	Conservation Through Innovation, Limited, with their permission.
  *
  * Copyright (c) 1998 by Sun Microsystems, Inc.
+ * Copyright (c) 2006-2008 by Joe Mistachkin.  All rights reserved.
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -31,11 +32,13 @@ extern int	Tcltest_Init(Tcl_Interp *interp);
  */
 
 typedef struct ThreadSpecificData {
-    Tcl_ThreadId  threadId;          /* Tcl ID for this thread */
-    Tcl_Interp *interp;              /* Main interpreter for this thread */
-    int flags;                       /* See the TP_ defines below... */
-    struct ThreadSpecificData *nextPtr;	/* List for "thread names" */
-    struct ThreadSpecificData *prevPtr;	/* List for "thread names" */
+    Tcl_ThreadId threadId;	/* Tcl ID for this thread */
+    Tcl_Interp *interp;		/* Main interpreter for this thread */
+    int flags;			/* See the TP_ defines below... */
+    struct ThreadSpecificData *nextPtr;
+				/* List for "thread names" */
+    struct ThreadSpecificData *prevPtr;
+				/* List for "thread names" */
 } ThreadSpecificData;
 static Tcl_ThreadDataKey dataKey;
 
@@ -50,7 +53,7 @@ static struct ThreadSpecificData *threadList;
  * The following bit-values are legal for the "flags" field of the
  * ThreadSpecificData structure.
  */
-#define TP_Dying               0x001 /* This thread is being cancelled */
+#define TP_Dying		0x001 /* This thread is being canceled */
 
 /*
  * An instance of the following structure contains all information that is
@@ -59,7 +62,7 @@ static struct ThreadSpecificData *threadList;
  */
 
 typedef struct ThreadCtrl {
-    char *script;		/* The Tcl command this thread should
+    const char *script;	/* The Tcl command this thread should
 				 * execute */
     int flags;			/* Initial value of the "flags" field in the
 				 * ThreadSpecificData structure for the new
@@ -105,6 +108,7 @@ static ThreadEventResult *resultList;
  * This is for simple error handling when a thread script exits badly.
  */
 
+static Tcl_ThreadId mainThreadId;
 static Tcl_ThreadId errorThreadId;
 static char *errorProcString;
 
@@ -122,11 +126,13 @@ EXTERN int		TclThread_Init(Tcl_Interp *interp);
 EXTERN int		Tcl_ThreadObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
-EXTERN int		TclCreateThread(Tcl_Interp *interp, char *script,
+EXTERN int		TclCreateThread(Tcl_Interp *interp, const char *script,
 			    int joinable);
 EXTERN int		TclThreadList(Tcl_Interp *interp);
 EXTERN int		TclThreadSend(Tcl_Interp *interp, Tcl_ThreadId id,
-			    char *script, int wait);
+			    const char *script, int wait);
+EXTERN int		TclThreadCancel(Tcl_Interp *interp, Tcl_ThreadId id,
+			    const char *result, int flags);
 
 #undef TCL_STORAGE_CLASS
 #define TCL_STORAGE_CLASS DLLIMPORT
@@ -149,7 +155,7 @@ static void		ThreadExitProc(ClientData clientData);
  *	Initialize the test thread command.
  *
  * Results:
- *      TCL_OK if the package was properly initialized.
+ *	TCL_OK if the package was properly initialized.
  *
  * Side effects:
  *	Add the "testthread" command to the interp.
@@ -161,9 +167,17 @@ int
 TclThread_Init(
     Tcl_Interp *interp)		/* The current Tcl interpreter */
 {
+    /*
+     * If the main thread Id has not been set, do it now.
+     */
 
-    Tcl_CreateObjCommand(interp, "testthread", Tcl_ThreadObjCmd,
-	    (ClientData) NULL, NULL);
+    Tcl_MutexLock(&threadMutex);
+    if ((long) mainThreadId == 0) {
+	mainThreadId = Tcl_GetCurrentThread();
+    }
+    Tcl_MutexUnlock(&threadMutex);
+
+    Tcl_CreateObjCommand(interp, "testthread", Tcl_ThreadObjCmd, NULL, NULL);
     return TCL_OK;
 }
 
@@ -176,10 +190,12 @@ TclThread_Init(
  *	This procedure is invoked to process the "testthread" Tcl command. See
  *	the user documentation for details on what it does.
  *
+ *	thread cancel ?-unwind? id ?result?
  *	thread create ?-joinable? ?script?
- *	thread send id ?-async? script
+ *	thread send ?-async? id script
+ *	thread event
  *	thread exit
- *	thread info id
+ *	thread id ?-main?
  *	thread names
  *	thread wait
  *	thread errorproc proc
@@ -204,17 +220,19 @@ Tcl_ThreadObjCmd(
 {
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
     int option;
-    static const char *threadOptions[] = {
-	"create", "exit", "id", "join", "names",
-	"send", "wait", "errorproc", NULL
+    static const char *const threadOptions[] = {
+	"cancel", "create", "event", "exit", "id",
+	"join", "names", "send", "wait", "errorproc",
+	NULL
     };
     enum options {
-	THREAD_CREATE, THREAD_EXIT, THREAD_ID, THREAD_JOIN, THREAD_NAMES,
-	THREAD_SEND, THREAD_WAIT, THREAD_ERRORPROC
+	THREAD_CANCEL, THREAD_CREATE, THREAD_EVENT, THREAD_EXIT,
+	THREAD_ID, THREAD_JOIN, THREAD_NAMES, THREAD_SEND,
+	THREAD_WAIT, THREAD_ERRORPROC
     };
 
     if (objc < 2) {
-	Tcl_WrongNumArgs(interp, 1, objv, "option ?args?");
+	Tcl_WrongNumArgs(interp, 1, objv, "option ?arg ...?");
 	return TCL_ERROR;
     }
     if (Tcl_GetIndexFromObj(interp, objv[1], threadOptions, "option", 0,
@@ -235,8 +253,36 @@ Tcl_ThreadObjCmd(
     }
 
     switch ((enum options)option) {
+    case THREAD_CANCEL: {
+	long id;
+	const char *result;
+	int flags, arg;
+
+	if ((objc < 3) || (objc > 5)) {
+	    Tcl_WrongNumArgs(interp, 2, objv, "?-unwind? id ?result?");
+	    return TCL_ERROR;
+	}
+	flags = 0;
+	arg = 2;
+	if ((objc == 4) || (objc == 5)) {
+	    if (strcmp("-unwind", Tcl_GetString(objv[arg])) == 0) {
+		flags = TCL_CANCEL_UNWIND;
+		arg++;
+	    }
+	}
+	if (Tcl_GetLongFromObj(interp, objv[arg], &id) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+	arg++;
+	if (arg < objc) {
+	    result = Tcl_GetString(objv[arg]);
+	} else {
+	    result = NULL;
+	}
+	return TclThreadCancel(interp, (Tcl_ThreadId) id, result, flags);
+    }
     case THREAD_CREATE: {
-	char *script;
+	const char *script;
 	int joinable, len;
 
 	if (objc == 2) {
@@ -254,9 +300,8 @@ Tcl_ThreadObjCmd(
 
 	    script = Tcl_GetStringFromObj(objv[2], &len);
 
-	    if ((len > 1) &&
-		    (script [0] == '-') && (script [1] == 'j') &&
-		    (0 == strncmp (script, "-joinable", (size_t) len))) {
+	    if ((len > 1) && (script[0] == '-') && (script[1] == 'j') &&
+		    (0 == strncmp(script, "-joinable", (size_t) len))) {
 		joinable = 1;
 		script = "testthread wait";	/* Just enter event loop */
 	    } else {
@@ -272,11 +317,8 @@ Tcl_ThreadObjCmd(
 	     */
 
 	    script = Tcl_GetStringFromObj(objv[2], &len);
-
-	    joinable = ((len > 1) &&
-		    (script [0] == '-') && (script [1] == 'j') &&
-		    (0 == strncmp(script, "-joinable", (size_t) len)));
-
+	    joinable = ((len > 1) && (script[0] == '-') && (script[1] == 'j')
+		    && (0 == strncmp(script, "-joinable", (size_t) len)));
 	    script = Tcl_GetString(objv[3]);
 	} else {
 	    Tcl_WrongNumArgs(interp, 2, objv, "?-joinable? ?script?");
@@ -293,8 +335,24 @@ Tcl_ThreadObjCmd(
 	Tcl_ExitThread(0);
 	return TCL_OK;
     case THREAD_ID:
-	if (objc == 2) {
-	    Tcl_Obj *idObj = Tcl_NewLongObj((long) Tcl_GetCurrentThread());
+	if (objc == 2 || objc == 3) {
+	    Tcl_Obj *idObj;
+
+	    /*
+	     * Check if they want the main thread id or the current thread id.
+	     */
+
+	    if (objc == 2) {
+		idObj = Tcl_NewLongObj((long) Tcl_GetCurrentThread());
+	    } else if (objc == 3
+		    && strcmp("-main", Tcl_GetString(objv[2])) == 0) {
+		Tcl_MutexLock(&threadMutex);
+		idObj = Tcl_NewLongObj((long) mainThreadId);
+		Tcl_MutexUnlock(&threadMutex);
+	    } else {
+		Tcl_WrongNumArgs(interp, 2, objv, NULL);
+		return TCL_ERROR;
+	    }
 
 	    Tcl_SetObjResult(interp, idObj);
 	    return TCL_OK;
@@ -314,11 +372,11 @@ Tcl_ThreadObjCmd(
 	    return TCL_ERROR;
 	}
 
-	result = Tcl_JoinThread ((Tcl_ThreadId) id, &status);
+	result = Tcl_JoinThread((Tcl_ThreadId) id, &status);
 	if (result == TCL_OK) {
-	    Tcl_SetIntObj (Tcl_GetObjResult (interp), status);
+	    Tcl_SetIntObj(Tcl_GetObjResult(interp), status);
 	} else {
-	    char buf [20];
+	    char buf[20];
 
 	    sprintf(buf, "%ld", id);
 	    Tcl_AppendResult(interp, "cannot join thread ", buf, NULL);
@@ -333,7 +391,7 @@ Tcl_ThreadObjCmd(
 	return TclThreadList(interp);
     case THREAD_SEND: {
 	long id;
-	char *script;
+	const char *script;
 	int wait, arg;
 
 	if ((objc != 4) && (objc != 5)) {
@@ -358,12 +416,20 @@ Tcl_ThreadObjCmd(
 	script = Tcl_GetString(objv[arg]);
 	return TclThreadSend(interp, (Tcl_ThreadId) id, script, wait);
     }
+    case THREAD_EVENT: {
+	if (objc > 2) {
+	    Tcl_WrongNumArgs(interp, 2, objv, NULL);
+	    return TCL_ERROR;
+	}
+	Tcl_SetObjResult(interp, Tcl_NewIntObj(Tcl_DoOneEvent(TCL_ALL_EVENTS | TCL_DONT_WAIT)));
+	return TCL_OK;
+    }
     case THREAD_ERRORPROC: {
 	/*
 	 * Arrange for this proc to handle thread death errors.
 	 */
 
-	char *proc;
+	const char *proc;
 
 	if (objc != 3) {
 	    Tcl_WrongNumArgs(interp, 2, objv, "proc");
@@ -381,9 +447,36 @@ Tcl_ThreadObjCmd(
 	return TCL_OK;
     }
     case THREAD_WAIT:
+	if (objc > 2) {
+	    Tcl_WrongNumArgs(interp, 2, objv, "");
+	    return TCL_ERROR;
+	}
 	while (1) {
+
+	    /*
+	     * If the script has been unwound, bail out immediately.  This
+	     * does not follow the recommended guidelines for how extensions
+	     * should handle the script cancellation functionality because
+	     * this is not a "normal" extension.  Most extensions do not have
+	     * a command that simply enters an infinite Tcl event loop.
+	     * Normal extensions should not specify the TCL_CANCEL_UNWIND when
+	     * calling Tcl_Canceled to check if the command has been canceled.
+	     */
+
+	    if (Tcl_Canceled(interp,
+		    TCL_LEAVE_ERR_MSG | TCL_CANCEL_UNWIND) == TCL_ERROR) {
+		break;
+	    }
 	    (void) Tcl_DoOneEvent(TCL_ALL_EVENTS);
 	}
+
+	/*
+	 * If we get to this point, we have been canceled by another thread,
+	 * which is considered to be an "error".
+	 */
+
+	ThreadErrorProc(interp);
+	return TCL_OK;
     }
     return TCL_OK;
 }
@@ -409,7 +502,7 @@ Tcl_ThreadObjCmd(
 int
 TclCreateThread(
     Tcl_Interp *interp,		/* Current interpreter. */
-    char *script,		/* Script to execute */
+    const char *script,		/* Script to execute */
     int joinable)		/* Flag, joinable thread or not */
 {
     ThreadCtrl ctrl;
@@ -425,7 +518,7 @@ TclCreateThread(
     if (Tcl_CreateThread(&id, NewTestThread, (ClientData) &ctrl,
 	    TCL_THREAD_STACK_DEFAULT, joinable) != TCL_OK) {
 	Tcl_MutexUnlock(&threadMutex);
-        Tcl_AppendResult(interp, "can't create a new thread", NULL);
+	Tcl_AppendResult(interp, "can't create a new thread", NULL);
 	ckfree((char *) ctrl.script);
 	return TCL_ERROR;
     }
@@ -473,7 +566,7 @@ Tcl_ThreadCreateType
 NewTestThread(
     ClientData clientData)
 {
-    ThreadCtrl *ctrlPtr = (ThreadCtrl*)clientData;
+    ThreadCtrl *ctrlPtr = clientData;
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
     int result;
     char *threadEvalScript;
@@ -508,7 +601,7 @@ NewTestThread(
     threadEvalScript = ckalloc(strlen(ctrlPtr->script)+1);
     strcpy(threadEvalScript, ctrlPtr->script);
 
-    Tcl_CreateThreadExitHandler(ThreadExitProc, (ClientData) threadEvalScript);
+    Tcl_CreateThreadExitHandler(ThreadExitProc, threadEvalScript);
 
     /*
      * Notify the parent we are alive.
@@ -521,7 +614,7 @@ NewTestThread(
      * Run the script.
      */
 
-    Tcl_Preserve((ClientData) tsdPtr->interp);
+    Tcl_Preserve(tsdPtr->interp);
     result = Tcl_Eval(tsdPtr->interp, threadEvalScript);
     if (result != TCL_OK) {
 	ThreadErrorProc(tsdPtr->interp);
@@ -532,7 +625,7 @@ NewTestThread(
      */
 
     ListRemove(tsdPtr);
-    Tcl_Release((ClientData) tsdPtr->interp);
+    Tcl_Release(tsdPtr->interp);
     Tcl_DeleteInterp(tsdPtr->interp);
     Tcl_ExitThread(result);
 
@@ -707,7 +800,7 @@ int
 TclThreadSend(
     Tcl_Interp *interp,		/* The current interpreter. */
     Tcl_ThreadId id,		/* Thread Id of other interpreter. */
-    char *script,		/* The script to evaluate. */
+    const char *script,		/* The script to evaluate. */
     int wait)			/* If 1, we block for the result. */
 {
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
@@ -740,7 +833,7 @@ TclThreadSend(
      */
 
     if (threadId == Tcl_GetCurrentThread()) {
-        Tcl_MutexUnlock(&threadMutex);
+	Tcl_MutexUnlock(&threadMutex);
 	return Tcl_GlobalEval(interp, script);
     }
 
@@ -787,7 +880,7 @@ TclThreadSend(
      */
 
     threadEventPtr->event.proc = ThreadEventProc;
-    Tcl_ThreadQueueEvent(threadId, (Tcl_Event *)threadEventPtr,
+    Tcl_ThreadQueueEvent(threadId, (Tcl_Event *) threadEventPtr,
 	    TCL_QUEUE_TAIL);
     Tcl_ThreadAlert(threadId);
 
@@ -802,7 +895,7 @@ TclThreadSend(
 
     Tcl_ResetResult(interp);
     while (resultPtr->result == NULL) {
-        Tcl_ConditionWait(&resultPtr->done, &threadMutex, NULL);
+	Tcl_ConditionWait(&resultPtr->done, &threadMutex, NULL);
     }
 
     /*
@@ -845,6 +938,61 @@ TclThreadSend(
 /*
  *------------------------------------------------------------------------
  *
+ * TclThreadCancel --
+ *
+ *    Cancels a script in another thread.
+ *
+ * Results:
+ *    A standard Tcl result.
+ *
+ * Side effects:
+ *    None.
+ *
+ *------------------------------------------------------------------------
+ */
+
+int
+TclThreadCancel(
+    Tcl_Interp *interp,		/* The current interpreter. */
+    Tcl_ThreadId id,		/* Thread Id of other interpreter. */
+    const char *result,		/* The result or NULL for default. */
+    int flags)			/* Flags for Tcl_CancelEval. */
+{
+    ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
+    int found;
+    Tcl_ThreadId threadId = (Tcl_ThreadId) id;
+
+    /*
+     * Verify the thread exists.
+     */
+
+    Tcl_MutexLock(&threadMutex);
+    found = 0;
+    for (tsdPtr = threadList ; tsdPtr ; tsdPtr = tsdPtr->nextPtr) {
+	if (tsdPtr->threadId == threadId) {
+	    found = 1;
+	    break;
+	}
+    }
+    if (!found) {
+	Tcl_MutexUnlock(&threadMutex);
+	Tcl_AppendResult(interp, "invalid thread id", NULL);
+	return TCL_ERROR;
+    }
+
+    /*
+     * Since Tcl_CancelEval can be safely called from any thread,
+     * we do it now.
+     */
+
+    Tcl_MutexUnlock(&threadMutex);
+    Tcl_ResetResult(interp);
+    return Tcl_CancelEval(tsdPtr->interp, Tcl_NewStringObj(result, -1), 0, flags);
+}
+
+/*
+ *------------------------------------------------------------------------
+ *
  * ThreadEventProc --
  *
  *    Handle the event in the target thread.
@@ -864,7 +1012,7 @@ ThreadEventProc(
     int mask)
 {
     ThreadSpecificData *tsdPtr = TCL_TSD_INIT(&dataKey);
-    ThreadEvent *threadEventPtr = (ThreadEvent *)evPtr;
+    ThreadEvent *threadEventPtr = (ThreadEvent *) evPtr;
     ThreadEventResult *resultPtr = threadEventPtr->resultPtr;
     Tcl_Interp *interp = tsdPtr->interp;
     int code;
@@ -876,13 +1024,11 @@ ThreadEventProc(
 	errorCode = "THREAD";
 	errorInfo = "";
     } else {
-	Tcl_Preserve((ClientData) interp);
+	Tcl_Preserve(interp);
 	Tcl_ResetResult(interp);
-	Tcl_CreateThreadExitHandler(ThreadFreeProc,
-		(ClientData) threadEventPtr->script);
+	Tcl_CreateThreadExitHandler(ThreadFreeProc, threadEventPtr->script);
 	code = Tcl_GlobalEval(interp, threadEventPtr->script);
-	Tcl_DeleteThreadExitHandler(ThreadFreeProc,
-		(ClientData) threadEventPtr->script);
+	Tcl_DeleteThreadExitHandler(ThreadFreeProc, threadEventPtr->script);
 	if (code != TCL_OK) {
 	    errorCode = Tcl_GetVar(interp, "errorCode", TCL_GLOBAL_ONLY);
 	    errorInfo = Tcl_GetVar(interp, "errorInfo", TCL_GLOBAL_ONLY);
@@ -909,7 +1055,7 @@ ThreadEventProc(
 	Tcl_MutexUnlock(&threadMutex);
     }
     if (interp != NULL) {
-	Tcl_Release((ClientData) interp);
+	Tcl_Release(interp);
     }
     return 1;
 }
@@ -999,17 +1145,17 @@ static void
 ThreadExitProc(
     ClientData clientData)
 {
-    char *threadEvalScript = (char *) clientData;
+    char *threadEvalScript = clientData;
     ThreadEventResult *resultPtr, *nextPtr;
     Tcl_ThreadId self = Tcl_GetCurrentThread();
 
     Tcl_MutexLock(&threadMutex);
 
     if (threadEvalScript) {
-	ckfree((char *) threadEvalScript);
+	ckfree(threadEvalScript);
 	threadEvalScript = NULL;
     }
-    Tcl_DeleteEvents((Tcl_EventDeleteProc *)ThreadDeleteEvent, NULL);
+    Tcl_DeleteEvents((Tcl_EventDeleteProc *) ThreadDeleteEvent, NULL);
 
     for (resultPtr = resultList ; resultPtr ; resultPtr = nextPtr) {
 	nextPtr = resultPtr->nextPtr;
@@ -1037,7 +1183,7 @@ ThreadExitProc(
 	     * going to call free on it.
 	     */
 
-	    char *msg = "target thread died";
+	    const char *msg = "target thread died";
 
 	    resultPtr->result = ckalloc(strlen(msg)+1);
 	    strcpy(resultPtr->result, msg);

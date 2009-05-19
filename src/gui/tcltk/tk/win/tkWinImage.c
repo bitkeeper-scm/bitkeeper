@@ -641,7 +641,7 @@ XGetImage(
 	imagePtr = XGetImageZPixmap(display, d, x, y,
 		width, height, plane_mask, format);
     } else {
-	char *errMsg = NULL;
+	const char *errMsg = NULL;
 	char infoBuf[sizeof(BITMAPINFO) + sizeof(RGBQUAD)];
 	BITMAPINFO *infoPtr = (BITMAPINFO*)infoBuf;
 

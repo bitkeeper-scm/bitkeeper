@@ -742,7 +742,7 @@ Tcl_PackageObjCmd(
     int objc,			/* Number of arguments. */
     Tcl_Obj *const objv[])	/* Argument objects. */
 {
-    static const char *pkgOptions[] = {
+    static const char *const pkgOptions[] = {
 	"forget",  "ifneeded", "names",   "prefer",   "present",
 	"provide", "require",  "unknown", "vcompare", "versions",
 	"vsatisfies", NULL
@@ -760,10 +760,11 @@ Tcl_PackageObjCmd(
     Tcl_HashSearch search;
     Tcl_HashTable *tablePtr;
     const char *version;
-    char *argv2, *argv3, *argv4, *iva = NULL, *ivb = NULL;
+    const char *argv2, *argv3, *argv4;
+    char *iva = NULL, *ivb = NULL;
 
     if (objc < 2) {
-	Tcl_WrongNumArgs(interp, 1, objv, "option ?arg arg ...?");
+	Tcl_WrongNumArgs(interp, 1, objv, "option ?arg ...?");
 	return TCL_ERROR;
     }
 
@@ -773,7 +774,7 @@ Tcl_PackageObjCmd(
     }
     switch ((enum pkgOptions) optionIndex) {
     case PKG_FORGET: {
-	char *keyString;
+	const char *keyString;
 
 	for (i = 2; i < objc; i++) {
 	    keyString = TclGetString(objv[i]);
@@ -949,7 +950,7 @@ Tcl_PackageObjCmd(
 	if (objc < 3) {
 	requireSyntax:
 	    Tcl_WrongNumArgs(interp, 2, objv,
-		    "?-exact? package ?requirement...?");
+		    "?-exact? package ?requirement ...?");
 	    return TCL_ERROR;
 	}
 
@@ -1015,7 +1016,7 @@ Tcl_PackageObjCmd(
 	break;
     }
     case PKG_PREFER: {
-	static const char *pkgPreferOptions[] = {
+	static const char *const pkgPreferOptions[] = {
 	    "latest", "stable", NULL
 	};
 
@@ -1100,7 +1101,7 @@ Tcl_PackageObjCmd(
 
 	if (objc < 4) {
 	    Tcl_WrongNumArgs(interp, 2, objv,
-		    "version requirement requirement...");
+		    "version ?requirement ...?");
 	    return TCL_ERROR;
 	}
 
@@ -1645,7 +1646,7 @@ AddRequirementsToResult(
 
 	for (i = 0; i < reqc; i++) {
 	    int length;
-	    char *v = Tcl_GetStringFromObj(reqv[i], &length);
+	    const char *v = Tcl_GetStringFromObj(reqv[i], &length);
 
 	    if ((length & 0x1) && (v[length/2] == '-')
 		    && (strncmp(v, v+((length+1)/2), length/2) == 0)) {
@@ -1868,6 +1869,8 @@ Tcl_PkgInitStubsCheck(
 	}
 	if (count == 1) {
 	    if (0 != strncmp(version, actualVersion, strlen(version))) {
+		/* Construct error message */
+		Tcl_PkgPresent(interp, "Tcl", version, 1);
 		return NULL;
 	    }
 	} else {

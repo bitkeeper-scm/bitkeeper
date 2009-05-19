@@ -861,8 +861,8 @@ TableGetIndex(tablePtr, str, row_p, col_p)
 	    r = tablePtr->activeRow+tablePtr->rowOffset;
 	    c = tablePtr->activeCol+tablePtr->colOffset;
 	} else {
-	    Tcl_SetStringObj(Tcl_GetObjResult(tablePtr->interp),
-			     "no \"active\" cell in table", -1);
+	    Tcl_SetObjResult(tablePtr->interp,
+		    Tcl_NewStringObj("no \"active\" cell in table", -1));
 	    return TCL_ERROR;
 	}
     } else if (len > 1 && strncmp(str, "anchor", len) == 0) {	/* anchor */
@@ -870,8 +870,8 @@ TableGetIndex(tablePtr, str, row_p, col_p)
 	    r = tablePtr->anchorRow+tablePtr->rowOffset;
 	    c = tablePtr->anchorCol+tablePtr->colOffset;
 	} else {
-	    Tcl_SetStringObj(Tcl_GetObjResult(tablePtr->interp),
-			     "no \"anchor\" cell in table", -1);
+	    Tcl_SetObjResult(tablePtr->interp,
+		    Tcl_NewStringObj("no \"anchor\" cell in table", -1));
 	    return TCL_ERROR;
 	}
     } else if (strncmp(str, "end", len) == 0) {		/* end */
@@ -1233,7 +1233,6 @@ Table_SpanCmd(ClientData clientData, register Tcl_Interp *interp,
     register Table *tablePtr = (Table *) clientData;
     int rs, cs, row, col, i;
     Tcl_HashEntry *entryPtr;
-    Tcl_Obj *objPtr, *resultPtr;
 
     if (objc < 2 || (objc > 4 && (objc&1))) {
 	Tcl_WrongNumArgs(interp, 2, objv,
@@ -1241,11 +1240,10 @@ Table_SpanCmd(ClientData clientData, register Tcl_Interp *interp,
 	return TCL_ERROR;
     }
 
-    resultPtr = Tcl_GetObjResult(interp);
-
     if (objc == 2) {
 	if (tablePtr->spanTbl) {
 	    Tcl_HashSearch search;
+	    Tcl_Obj *objPtr, *resultPtr = Tcl_NewObj();
 
 	    for (entryPtr = Tcl_FirstHashEntry(tablePtr->spanTbl, &search);
 		 entryPtr != NULL; entryPtr = Tcl_NextHashEntry(&search)) {
@@ -1256,6 +1254,7 @@ Table_SpanCmd(ClientData clientData, register Tcl_Interp *interp,
 					  -1);
 		Tcl_ListObjAppendElement(NULL, resultPtr, objPtr);
 	    }
+	    Tcl_SetObjResult(interp, resultPtr);
 	}
 	return TCL_OK;
     } else if (objc == 3) {
@@ -1266,8 +1265,8 @@ Table_SpanCmd(ClientData clientData, register Tcl_Interp *interp,
 	if (tablePtr->spanTbl &&
 	    (entryPtr = Tcl_FindHashEntry(tablePtr->spanTbl,
 					  Tcl_GetString(objv[2]))) != NULL) {
-	    Tcl_SetStringObj(resultPtr,
-			     (char *)Tcl_GetHashValue(entryPtr), -1);
+	    Tcl_SetObjResult(interp,
+		    Tcl_NewStringObj((char *)Tcl_GetHashValue(entryPtr), -1));
 	}
 	return TCL_OK;
     } else {
@@ -1347,7 +1346,7 @@ Table_HiddenCmd(ClientData clientData, register Tcl_Interp *interp,
 	if (entryPtr != NULL &&
 	    (span = (char *)Tcl_GetHashValue(entryPtr)) != NULL) {
 	    /* this is a hidden cell */
-	    Tcl_SetStringObj(Tcl_GetObjResult(interp), span, -1);
+	    Tcl_SetObjResult(interp, Tcl_NewStringObj(span, -1));
 	}
 	return TCL_OK;
     }
@@ -1363,10 +1362,10 @@ Table_HiddenCmd(ClientData clientData, register Tcl_Interp *interp,
 	    continue;
 	}
 	/* We only reach here if it doesn't satisfy "hidden" criteria */
-	Tcl_SetBooleanObj(Tcl_GetObjResult(interp), 0);
+	Tcl_SetObjResult(interp, Tcl_NewBooleanObj(0));
 	return TCL_OK;
     }
-    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), 1);
+    Tcl_SetObjResult(interp, Tcl_NewBooleanObj(1));
     return TCL_OK;
 }
 

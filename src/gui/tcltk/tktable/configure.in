@@ -16,7 +16,7 @@
 # so you can encode the package version directly into the source files.
 #-----------------------------------------------------------------------
 
-AC_INIT([Tktable], [2.9])
+AC_INIT([Tktable], [2.10])
 
 #--------------------------------------------------------------------
 # Call TEA_INIT as the first TEA_ macro to set up initial vars.
@@ -24,7 +24,7 @@ AC_INIT([Tktable], [2.9])
 # as well as PKG_LIB_FILE and PKG_STUB_LIB_FILE.
 #--------------------------------------------------------------------
 
-TEA_INIT([3.5])
+TEA_INIT([3.7])
 
 AC_CONFIG_AUX_DIR(tclconfig)
 
@@ -77,7 +77,7 @@ TEA_ADD_SOURCES([tkTable.c tkTableWin.c tkTableTag.c tkTableEdit.c
 TEA_ADD_INCLUDES([-I. -I\"`${CYGPATH} ${srcdir}/generic`\"])
 TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
-TEA_ADD_TCL_SOURCES([library/tkTable.tcl])
+TEA_ADD_TCL_SOURCES([library/tkTable.tcl library/tktable.py])
 
 #--------------------------------------------------------------------
 # __CHANGE__

@@ -16,7 +16,6 @@ selection \- Manipulate the X selection
 .SH SYNOPSIS
 \fBselection \fIoption\fR ?\fIarg arg ...\fR?
 .BE
-
 .SH DESCRIPTION
 .PP
 This command provides a Tcl interface to the X selection mechanism and
@@ -130,6 +129,7 @@ containing \fIwindow\fR, or an empty string if no window in this
 application owns the selection.  \fISelection\fR defaults to PRIMARY and
 \fIwindow\fR defaults to
 .QW . .
+.RS
 .PP
 The second form of \fBselection own\fR causes \fIwindow\fR to become
 the new owner of \fIselection\fR on \fIwindow\fR's display, returning
@@ -138,7 +138,9 @@ that it has lost the selection.
 If \fIcommand\fR is specified, it is a Tcl script to execute when
 some other window claims ownership of the selection away from
 \fIwindow\fR.  \fISelection\fR defaults to PRIMARY.
+.RE
 .SH EXAMPLES
+.PP
 On X11 platforms, one of the standard selections available is the
 SECONDARY selection. Hardly anything uses it, but here is how to read
 it using Tk:
@@ -155,14 +157,14 @@ foreach type [\fBselection get\fR \-type TARGETS] {
 .CE
 .PP
 To claim the selection, you must first set up a handler to supply the
-data for the selection.  Then you have to claim the selection...
+data for the selection. Then you have to claim the selection...
 .CS
 # Set up the data handler ready for incoming requests
 set foo "This is a string with some data in it... blah blah"
 \fBselection handle\fR \-selection SECONDARY . getData
 proc getData {offset maxChars} {
    puts "Retrieving selection starting at $offset"
-   return [string range $::foo $offset [expr {$offset+$maxChars}]]
+   return [string range $::foo $offset [expr {$offset+$maxChars-1}]]
 }
 
 # Now we grab the selection itself
@@ -176,3 +178,6 @@ proc lost {} {
 clipboard(n)
 .SH KEYWORDS
 clear, format, handler, ICCCM, own, selection, target, type
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

@@ -107,7 +107,7 @@ TkpDefineNativeBitmaps(void)
 
 	    nativeIconPtr->id = builtInPtr->id;
 	    nativeIconPtr->type = builtInPtr->type;
-	    predefPtr->source = (char *) nativeIconPtr;
+	    predefPtr->source = nativeIconPtr;
 	    predefPtr->width = builtInPtr->size;
 	    predefPtr->height = builtInPtr->size;
 	    predefPtr->native = 1;
@@ -137,7 +137,7 @@ TkpDefineNativeBitmaps(void)
 Pixmap
 TkpCreateNativeBitmap(
     Display *display,
-    CONST char *source)		/* Info about the icon to build. */
+    const void *source)		/* Info about the icon to build. */
 {
     Pixmap pix;
     Rect destRect;
@@ -195,7 +195,7 @@ TkpCreateNativeBitmap(
 Pixmap
 TkpGetNativeAppBitmap(
     Display *display,		/* The display. */
-    CONST char *name,		/* The name of the bitmap. */
+    const char *name,		/* The name of the bitmap. */
     int *width,			/* The width & height of the bitmap. */
     int *height)
 {
@@ -249,9 +249,9 @@ TkpGetNativeAppBitmap(
 	Str255 dummy;
 
 	/*
-	 * We need to first paint the background white. Also, for
-	 * some reason we *must* use GetCIcon instead of GetNamedResource
-	 * for PlotCIcon to work - so we use GetResInfo to get the id.
+	 * We need to first paint the background white. Also, for some reason
+	 * we *must* use GetCIcon instead of GetNamedResource for PlotCIcon to
+	 * work - so we use GetResInfo to get the id.
 	 */
 
 	RGBForeColor(&white);

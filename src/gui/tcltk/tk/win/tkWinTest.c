@@ -24,18 +24,21 @@ HWND tkWinCurrentDialog;
 
 static int		TestclipboardObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
-			    Tcl_Obj *CONST objv[]);
+			    Tcl_Obj *const objv[]);
 static int		TestwineventCmd(ClientData clientData,
-			    Tcl_Interp *interp, int argc, CONST char **argv);
+			    Tcl_Interp *interp, int argc, const char **argv);
 static int		TestfindwindowObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
-			    Tcl_Obj *CONST objv[]);
+			    Tcl_Obj *const objv[]);
 static int		TestgetwindowinfoObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
-			    Tcl_Obj *CONST objv[]);
+			    Tcl_Obj *const objv[]);
+static int		TestwinlocaleObjCmd(ClientData clientData,
+			    Tcl_Interp *interp, int objc,
+			    Tcl_Obj *const objv[]);
 MODULE_SCOPE int	TkplatformtestInit(Tcl_Interp *interp);
+static Tk_GetSelProc		SetSelectionResult;
 
-
 /*
  *----------------------------------------------------------------------
  *
@@ -69,7 +72,8 @@ TkplatformtestInit(
 	    (ClientData) Tk_MainWindow(interp), NULL);
     Tcl_CreateObjCommand(interp, "testgetwindowinfo", TestgetwindowinfoObjCmd,
 	    (ClientData) Tk_MainWindow(interp), NULL);
-
+    Tcl_CreateObjCommand(interp, "testwinlocale", TestwinlocaleObjCmd,
+	    (ClientData) Tk_MainWindow(interp), NULL);
     return TCL_OK;
 }
 
@@ -103,13 +107,15 @@ AppendSystemError(
     Tcl_Obj *resultPtr = Tcl_GetObjResult(interp);
 
     length = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM
+	    | FORMAT_MESSAGE_IGNORE_INSERTS
 	    | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, error,
 	    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (WCHAR *) &wMsgPtr,
 	    0, NULL);
     if (length == 0) {
 	char *msgPtr;
 
-	length = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM
+	length = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM 
+		| FORMAT_MESSAGE_IGNORE_INSERTS
 		| FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, error,
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (char *) &msgPtr,
 		0, NULL);
@@ -122,7 +128,7 @@ AppendSystemError(
     }
     if (length == 0) {
 	if (error == ERROR_CALL_NOT_IMPLEMENTED) {
-	    msg = "function not supported under Win32s";
+	    msg = (char *)"function not supported under Win32s";
 	} else {
 	    sprintf(msgBuf, "unknown error: %ld", error);
 	    msg = msgBuf;
@@ -176,45 +182,30 @@ AppendSystemError(
  */
 
 static int
+SetSelectionResult(
+    ClientData dummy,
+    Tcl_Interp *interp,
+    const char *selection)
+{
+    Tcl_AppendResult(interp, selection, NULL);
+    return TCL_OK;
+}
+
+static int
 TestclipboardObjCmd(
     ClientData clientData,	/* Main window for application. */
     Tcl_Interp *interp,		/* Current interpreter. */
     int objc,			/* Number of arguments. */
-    Tcl_Obj *CONST objv[])	/* Argument values. */
+    Tcl_Obj *const objv[])	/* Argument values. */
 {
-    TkWindow *winPtr = (TkWindow *) clientData;
-    HGLOBAL handle;
-    char *data;
-    int code = TCL_OK;
+    Tk_Window tkwin = (Tk_Window) clientData;
 
     if (objc != 1) {
 	Tcl_WrongNumArgs(interp, 1, objv, NULL);
 	return TCL_ERROR;
     }
-    if (OpenClipboard(NULL)) {
-	/*
-	 * We could consider using CF_UNICODETEXT on NT, but then we would
-	 * have to convert it from External. Instead we'll just take this and
-	 * do "bytestring" at the Tcl level for Unicode inclusive text
-	 */
-
-	handle = GetClipboardData(CF_TEXT);
-	if (handle != NULL) {
-	    data = GlobalLock(handle);
-	    Tcl_AppendResult(interp, data, NULL);
-	    GlobalUnlock(handle);
-	} else {
-	    Tcl_AppendResult(interp, "null clipboard handle", NULL);
-	    code = TCL_ERROR;
-	}
-	CloseClipboard();
-	return code;
-    } else {
-	Tcl_AppendResult(interp, "couldn't open clipboard: ", NULL);
-	AppendSystemError(interp, GetLastError());
-	return TCL_ERROR;
-    }
-    return TCL_OK;
+    return TkSelGetSelection(interp, tkwin, Tk_InternAtom(tkwin, "CLIPBOARD"),
+	    XA_STRING, SetSelectionResult, NULL);
 }
 
 /*
@@ -239,7 +230,7 @@ TestwineventCmd(
     ClientData clientData,	/* Main window for application. */
     Tcl_Interp *interp,		/* Current interpreter. */
     int argc,			/* Number of arguments. */
-    CONST char **argv)		/* Argument strings. */
+    const char **argv)		/* Argument strings. */
 {
     HWND hwnd = 0;
     HWND child = 0;
@@ -306,6 +297,8 @@ TestwineventCmd(
 	    child = GetWindow(child, GW_HWNDNEXT);
 	}
 	if (child == NULL) {
+	    Tcl_AppendResult(interp, "could not find a control matching \"",
+		argv[2], "\"", NULL);
 	    return TCL_ERROR;
 	}
     }
@@ -348,7 +341,7 @@ TestwineventCmd(
 	    wParam = MAKEWPARAM(id, 0);
 	    lParam = (LPARAM)child;
 	}
-	sprintf(buf, "%d", SendMessage(hwnd, message, wParam, lParam));
+	sprintf(buf, "%d", (int) SendMessage(hwnd, message, wParam, lParam));
 	Tcl_SetResult(interp, buf, TCL_VOLATILE);
 	break;
     }
@@ -356,7 +349,7 @@ TestwineventCmd(
 	char buf[TCL_INTEGER_SPACE];
 
 	sprintf(buf, "%d",
-		SendDlgItemMessage(hwnd, id, message, wParam, lParam));
+		(int)SendDlgItemMessage(hwnd, id, message, wParam, lParam));
 	Tcl_SetResult(interp, buf, TCL_VOLATILE);
 	break;
     }
@@ -367,7 +360,7 @@ TestwineventCmd(
 /*
  *  testfindwindow title ?class?
  *	Find a Windows window using the FindWindow API call. This takes the window
- *	title and optionally the window class and if found returns the HWND and 
+ *	title and optionally the window class and if found returns the HWND and
  *	raises an error if the window is not found.
  *	eg: testfindwindow Console TkTopLevel
  *	    Can find the console window if it is visible.
@@ -380,21 +373,27 @@ TestfindwindowObjCmd(
     ClientData clientData,	/* Main window for application. */
     Tcl_Interp *interp,		/* Current interpreter. */
     int objc,			/* Number of arguments. */
-    Tcl_Obj *CONST objv[])	/* Argument values. */
+    Tcl_Obj *const objv[])	/* Argument values. */
 {
-    TkWindow *winPtr = (TkWindow *) clientData;
-    const char *title = NULL, *class = NULL;
+    const TCHAR  *title = NULL, *class = NULL;
+    Tcl_DString titleString, classString;
     HWND hwnd = NULL;
     int r = TCL_OK;
+
+    Tcl_DStringInit(&classString);
+    Tcl_DStringInit(&titleString);
 
     if (objc < 2 || objc > 3) {
         Tcl_WrongNumArgs(interp, 1, objv, "title ?class?");
         return TCL_ERROR;
     }
-    title = Tcl_GetString(objv[1]);
-    if (objc == 3)
-        class = Tcl_GetString(objv[2]);
-    hwnd = FindWindowA(class, title);
+
+    title = Tcl_WinUtfToTChar(Tcl_GetString(objv[1]), -1, &titleString);
+    if (objc == 3) {
+        class = Tcl_WinUtfToTChar(Tcl_GetString(objv[2]), -1, &classString);
+    }
+
+    hwnd  = tkWinProcs->findWindow(class, title);
 
     if (hwnd == NULL) {
 	Tcl_SetObjResult(interp, Tcl_NewStringObj("failed to find window: ", -1));
@@ -403,15 +402,21 @@ TestfindwindowObjCmd(
     } else {
         Tcl_SetObjResult(interp, Tcl_NewLongObj((long)hwnd));
     }
+
+    Tcl_DStringFree(&titleString);
+    Tcl_DStringFree(&classString);
     return r;
-    
+
 }
 
 static BOOL CALLBACK
-EnumChildrenProc(HWND hwnd, LPARAM lParam)
+EnumChildrenProc(
+    HWND hwnd,
+    LPARAM lParam)
 {
-    Tcl_Obj *listObj = (Tcl_Obj *)lParam;
-    Tcl_ListObjAppendElement(NULL, listObj, Tcl_NewLongObj((long)hwnd));
+    Tcl_Obj *listObj = (Tcl_Obj *) lParam;
+
+    Tcl_ListObjAppendElement(NULL, listObj, Tcl_NewLongObj((long) hwnd));
     return TRUE;
 }
 
@@ -420,10 +425,10 @@ TestgetwindowinfoObjCmd(
     ClientData clientData,
     Tcl_Interp *interp,
     int objc,
-    Tcl_Obj *CONST objv[])
+    Tcl_Obj *const objv[])
 {
     HWND hwnd = NULL;
-    Tcl_Obj *resObj = NULL, *classObj = NULL, *textObj = NULL;
+    Tcl_Obj *dictObj = NULL, *classObj = NULL, *textObj = NULL;
     Tcl_Obj *childrenObj = NULL;
     char buf[512];
     int cch, cchBuf = tkWinProcs->useWide ? 256 : 512;
@@ -435,26 +440,22 @@ TestgetwindowinfoObjCmd(
 
     if (Tcl_GetLongFromObj(interp, objv[1], (long *)&hwnd) != TCL_OK)
 	return TCL_ERROR;
-    
-    if (tkWinProcs->useWide) {
-	cch = GetClassNameW(hwnd, (LPWSTR)buf, sizeof(buf)/sizeof(WCHAR));
-	classObj = Tcl_NewUnicodeObj((LPWSTR)buf, cch);
-    } else {
-	cch = GetClassNameA(hwnd, (LPSTR)buf, sizeof(buf));
-	classObj = Tcl_NewStringObj((LPSTR)buf, cch);
-    }
+
+    cch = tkWinProcs->getClassName(hwnd, buf, cchBuf);
     if (cch == 0) {
     	Tcl_SetResult(interp, "failed to get class name: ", TCL_STATIC);
     	AppendSystemError(interp, GetLastError());
     	return TCL_ERROR;
-    }	
+    } else {
+	Tcl_DString ds;
+	Tcl_WinTCharToUtf(buf, -1, &ds);
+	classObj = Tcl_NewStringObj(Tcl_DStringValue(&ds), Tcl_DStringLength(&ds));
+	Tcl_DStringFree(&ds);
+    }
 
-    resObj = Tcl_NewListObj(0, NULL);
-    Tcl_ListObjAppendElement(interp, resObj, Tcl_NewStringObj("class", -1));
-    Tcl_ListObjAppendElement(interp, resObj, classObj);
-
-    Tcl_ListObjAppendElement(interp, resObj, Tcl_NewStringObj("id", -1));
-    Tcl_ListObjAppendElement(interp, resObj, 
+    dictObj = Tcl_NewDictObj();
+    Tcl_DictObjPut(interp, dictObj, Tcl_NewStringObj("class", 5), classObj);
+    Tcl_DictObjPut(interp, dictObj, Tcl_NewStringObj("id", 2),
 	Tcl_NewLongObj(GetWindowLong(hwnd, GWL_ID)));
 
     cch = tkWinProcs->getWindowText(hwnd, (LPTSTR)buf, cchBuf);
@@ -464,17 +465,32 @@ TestgetwindowinfoObjCmd(
 	textObj = Tcl_NewStringObj((LPCSTR)buf, cch);
     }
 
-    Tcl_ListObjAppendElement(interp, resObj, Tcl_NewStringObj("text", -1));
-    Tcl_ListObjAppendElement(interp, resObj, textObj);
+    Tcl_DictObjPut(interp, dictObj, Tcl_NewStringObj("text", 4), textObj);
+    Tcl_DictObjPut(interp, dictObj, Tcl_NewStringObj("parent", 6),
+	Tcl_NewLongObj((long)GetParent(hwnd)));
 
     childrenObj = Tcl_NewListObj(0, NULL);
     EnumChildWindows(hwnd, EnumChildrenProc, (LPARAM)childrenObj);
-    Tcl_ListObjAppendElement(interp, resObj, Tcl_NewStringObj("children", -1));
-    Tcl_ListObjAppendElement(interp, resObj, childrenObj);
+    Tcl_DictObjPut(interp, dictObj, Tcl_NewStringObj("children", -1), childrenObj);
 
-    Tcl_SetObjResult(interp, resObj);
+    Tcl_SetObjResult(interp, dictObj);
     return TCL_OK;
-}   
+}
+
+static int
+TestwinlocaleObjCmd(
+    ClientData clientData,	/* Main window for application. */
+    Tcl_Interp *interp,		/* Current interpreter. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *const objv[])	/* Argument values. */
+{
+    if (objc != 1) {
+	Tcl_WrongNumArgs(interp, 1, objv, NULL);
+	return TCL_ERROR;
+    }
+    Tcl_SetObjResult(interp, Tcl_NewIntObj((int)GetThreadLocale()));
+    return TCL_OK;
+}
 
 /*
  * Local Variables:

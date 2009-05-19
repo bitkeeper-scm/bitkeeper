@@ -28,7 +28,7 @@
  * Forward declarations for procedures defined later in this file:
  */
 
-static void		WishPanic(CONST char *format, ...);
+static void		WishPanic(const char *format, ...);
 #ifdef TK_TEST
 extern int		Tktest_Init(Tcl_Interp *interp);
 #endif /* TK_TEST */
@@ -224,7 +224,7 @@ error:
 
 void
 WishPanic(
-    CONST char *format, ...)
+    const char *format, ...)
 {
     va_list argList;
     char buf[1024];

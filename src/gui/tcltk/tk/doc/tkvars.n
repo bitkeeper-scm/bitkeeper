@@ -14,7 +14,6 @@
 .SH NAME
 tkvars \- Variables used or set by Tk
 .BE
-
 .SH DESCRIPTION
 .PP
 The following Tcl variables are either set or used by Tk at various times
@@ -75,6 +74,8 @@ any Tk release that includes changes that are not backward compatible
 work with the new release).  The minor version number increases with
 each new release of Tk, except that it resets to zero whenever the
 major version number changes.
-
 .SH KEYWORDS
 variables, version, text
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

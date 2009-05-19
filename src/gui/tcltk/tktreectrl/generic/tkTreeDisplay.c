@@ -166,8 +166,8 @@ Range_Free(TreeCtrl *tree, Range *range)
  * Range_Redo --
  *
  *	This procedure puts all ReallyVisible() TreeItems into a list of
- *	Ranges. If tree->wrapMode is TREE_WRAP_NONE there will only be a
- *	single Range.
+ *	Ranges. If tree->wrapMode is TREE_WRAP_NONE and no visible items
+ *	have the -wrap=true option there will only be a single Range.
  *
  * Results:
  *	None.
@@ -352,6 +352,8 @@ Range_Redo(
 	    item = TreeItem_NextVisible(tree, item);
 	    if (item == NULL)
 		break;
+	    if (TreeItem_GetWrap(tree, item))
+		break;
 	}
 	/* Since we needed to calculate the height or width of this range,
 	 * we don't need to do it later in Range_TotalWidth/Height() */
@@ -470,7 +472,11 @@ Range_TotalWidth(
 
 	/* If wrapping is disabled, then use the column width,
 	 * since it may expand to fill the window */
+#if 1
+	if ((tree->wrapMode == TREE_WRAP_NONE) && (tree->itemWrapCount <= 0))
+#else
 	if (tree->wrapMode == TREE_WRAP_NONE)
+#endif
 	    return range->totalWidth = TreeColumn_UseWidth(tree->columnVis);
 
 	/* Single item column, fixed width for all ranges */
@@ -997,7 +1003,7 @@ Increment_AddX(
     TreeDInfo dInfo = tree->dInfo;
     int visWidth = Tree_ContentWidth(tree);
 
-    while ((visWidth > 1) &&
+    while ((visWidth > 1) && (dInfo->xScrollIncrementCount > 0) &&
 	    (offset - dInfo->xScrollIncrements[dInfo->xScrollIncrementCount - 1]
 		    > visWidth)) {
 	size = Increment_AddX(tree,
@@ -1040,7 +1046,7 @@ Increment_AddY(
     TreeDInfo dInfo = tree->dInfo;
     int visHeight = Tree_ContentHeight(tree);
 
-    while ((visHeight > 1) &&
+    while ((visHeight > 1) && (dInfo->yScrollIncrementCount > 0) &&
 	    (offset - dInfo->yScrollIncrements[dInfo->yScrollIncrementCount - 1]
 		    > visHeight)) {
 	size = Increment_AddY(tree,
@@ -3461,6 +3467,46 @@ skipLock:
 /*
  *--------------------------------------------------------------
  *
+ * InvalidateWhitespace --
+ *
+ *	Subtract a rectangular area from the current whitespace
+ *	region.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *--------------------------------------------------------------
+ */
+
+static void
+InvalidateWhitespace(
+    TreeCtrl *tree,		/* Widget info. */
+    int x1, int y1,		/* Window coords to invalidate. */
+    int x2, int y2)		/* Window coords to invalidate. */
+{
+    TreeDInfo dInfo = tree->dInfo;
+
+    if ((x1 < x2 && y1 < y2) && TkRectInRegion(dInfo->wsRgn, x1, y1,
+	    x2 - x1, y2 - y1)) {
+	XRectangle rect;
+	TkRegion rgn = Tree_GetRegion(tree);
+
+	rect.x = x1;
+	rect.y = y1;
+	rect.width = x2 - x1;
+	rect.height = y2 - y1;
+	TkUnionRectWithRegion(&rect, rgn, rgn);
+	TkSubtractRegion(dInfo->wsRgn, rgn, dInfo->wsRgn);
+	Tree_FreeRegion(tree, rgn);
+    }
+}
+
+/*
+ *--------------------------------------------------------------
+ *
  * InvalidateDItemX --
  *
  *	Mark a horizontal span of a DItem as dirty (needing to be
@@ -3974,6 +4020,30 @@ ScrollHorizontalSimple(
     }
     Tree_FreeRegion(tree, damageRgn);
     Tree_InvalidateArea(tree, dirtyMin, minY, dirtyMax, maxY);
+
+    /* Invalidate the part of the whitespace that the content was copied
+     * over. This fixes the case where items are deleted and the list
+     * scrolls left: the deleted-item pixels were scrolled right over the
+     * old whitespace. */
+    if (offset > 0) {
+#if 1
+	TkRegion rgn = Tree_GetRegion(tree);
+	XRectangle rect;
+	rect.x = dInfo->bounds[0];
+	rect.y = dInfo->bounds[1];
+	rect.width = dInfo->bounds[2] - rect.x;
+	rect.height = dInfo->bounds[3] - rect.y;
+	TkUnionRectWithRegion(&rect, rgn, rgn);
+	TkSubtractRegion(rgn, dInfo->wsRgn, rgn);
+	Tree_OffsetRegion(rgn, offset, 0);
+	TkSubtractRegion(dInfo->wsRgn, rgn, dInfo->wsRgn);
+	Tree_FreeRegion(tree, rgn);
+#else
+	dirtyMin = minX + width;
+	dirtyMax = maxX;
+	InvalidateWhitespace(tree, dirtyMin, minY, dirtyMax, maxY);
+#endif
+    }
 }
 
 /*
@@ -4027,7 +4097,7 @@ ScrollVerticalSimple(
 
     offset = dInfo->yOrigin - tree->yOrigin;
 
-    /* We only scroll the content, not the whitespace */
+    /* Scroll the items, not the whitespace to the right */
     x = 0 - tree->xOrigin + Tree_TotalWidth(tree);
     if (x < maxX)
 	maxX = x;
@@ -4072,6 +4142,30 @@ ScrollVerticalSimple(
     }
     Tree_FreeRegion(tree, damageRgn);
     Tree_InvalidateArea(tree, minX, dirtyMin, maxX, dirtyMax);
+
+    /* Invalidate the part of the whitespace that the content was copied
+     * over. This fixes the case where items are deleted and the list
+     * scrolls up: the deleted-item pixels were scrolled down over the
+     * old whitespace. */
+    if (offset > 0) {
+#if 1
+	TkRegion rgn = Tree_GetRegion(tree);
+	XRectangle rect;
+	rect.x = dInfo->bounds[0];
+	rect.y = dInfo->bounds[1];
+	rect.width = dInfo->bounds[2] - rect.x;
+	rect.height = dInfo->bounds[3] - rect.y;
+	TkUnionRectWithRegion(&rect, rgn, rgn);
+	TkSubtractRegion(rgn, dInfo->wsRgn, rgn);
+	Tree_OffsetRegion(rgn, 0, offset);
+	TkSubtractRegion(dInfo->wsRgn, rgn, dInfo->wsRgn);
+	Tree_FreeRegion(tree, rgn);
+#else
+	dirtyMin = minY + height;
+	dirtyMax = maxY;
+	InvalidateWhitespace(tree, minX, dirtyMin, maxX, dirtyMax);
+#endif
+    }
 }
 
 /*
@@ -4829,7 +4923,12 @@ ComplexWhitespace(
 	    TreeColumn_BackgroundCount(tree->columnTail) == 0)
 	return 0;
 
+#if 1
+    if (!tree->vertical || (tree->wrapMode != TREE_WRAP_NONE) ||
+	(tree->itemWrapCount > 0))
+#else
     if (!tree->vertical || tree->wrapMode != TREE_WRAP_NONE)
+#endif
 	return 0;
 
     if (tree->itemHeight <= 0 && tree->minItemHeight <= 0)
@@ -6420,11 +6519,11 @@ Tree_SetOriginY(
     yOrigin += Tree_ContentTop(tree); /* origin -> canvas */
     index = Increment_FindY(tree, yOrigin);
 
-    /* Don't scroll too far left */
+    /* Don't scroll too far up */
     if (index < 0)
 	index = 0;
 
-    /* Don't scroll too far right */
+    /* Don't scroll too far down */
     if (index > indexMax)
 	index = indexMax;
 
@@ -6437,6 +6536,64 @@ Tree_SetOriginY(
     dInfo->incrementTop = index;
 
     Tree_EventuallyRedraw(tree);
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * Tree_GetOriginX --
+ *
+ *	Return the horizontal scroll position.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	May update the horizontal scroll position.
+ *	If the horizontal scroll position changes, then the widget is
+ *	redisplayed at idle time.
+ *
+ *--------------------------------------------------------------
+ */
+
+int
+Tree_GetOriginX(
+    TreeCtrl *tree		/* Widget info. */
+    )
+{
+    /* Update the value if needed. */
+    Tree_SetOriginX(tree, tree->xOrigin);
+
+    return tree->xOrigin;
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * Tree_GetOriginY --
+ *
+ *	Return the vertical scroll position.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	May update the vertical scroll position.
+ *	If the vertical scroll position changes, then the widget is
+ *	redisplayed at idle time.
+ *
+ *--------------------------------------------------------------
+ */
+
+int
+Tree_GetOriginY(
+    TreeCtrl *tree		/* Widget info. */
+    )
+{
+    /* Update the value if needed. */
+    Tree_SetOriginY(tree, tree->yOrigin);
+
+    return tree->yOrigin;
 }
 
 /*
@@ -6923,6 +7080,40 @@ TreeDisplay_FreeColumnDInfo(
 /*
  *--------------------------------------------------------------
  *
+ * Tree_ShouldDisplayLockedColumns --
+ *
+ *	Figure out if we are allowed to draw any locked columns.
+ *
+ * Results:
+ *	TRUE if locked columns should be displayed, otherwise FALSE.
+ *
+ * Side effects:
+ *	None.
+ *
+ *--------------------------------------------------------------
+ */
+
+int
+Tree_ShouldDisplayLockedColumns(
+    TreeCtrl *tree		/* Widget info. */
+    )
+{
+    if (!tree->vertical)
+	return 0;
+
+    if (tree->wrapMode != TREE_WRAP_NONE)
+	return 0;
+
+    Tree_UpdateItemIndex(tree); /* update tree->itemWrapCount */
+    if (tree->itemWrapCount > 0)
+	return 0;
+    
+    return 1;
+}
+
+/*
+ *--------------------------------------------------------------
+ *
  * Tree_DInfoChanged --
  *
  *	Set some DINFO_xxx flags and schedule a redisplay.
@@ -7020,19 +7211,7 @@ Tree_InvalidateArea(
     }
 
     /* Invalidate part of the whitespace */
-    if ((x1 < x2 && y1 < y2) && TkRectInRegion(dInfo->wsRgn, x1, y1,
-	    x2 - x1, y2 - y1)) {
-	XRectangle rect;
-	TkRegion rgn = Tree_GetRegion(tree);
-
-	rect.x = x1;
-	rect.y = y1;
-	rect.width = x2 - x1;
-	rect.height = y2 - y1;
-	TkUnionRectWithRegion(&rect, rgn, rgn);
-	TkSubtractRegion(dInfo->wsRgn, rgn, dInfo->wsRgn);
-	Tree_FreeRegion(tree, rgn);
-    }
+    InvalidateWhitespace(tree, x1, y1, x2, y2);
 
     if (tree->debug.enable && tree->debug.display && tree->debug.eraseColor) {
 	XFillRectangle(tree->display, Tk_WindowId(tree->tkwin),
@@ -7401,7 +7580,7 @@ Tree_DumpDInfo(
     static CONST char *optionNames[] = {
 	"alloc", "ditem", "onscreen", "range", (char *) NULL
     };
-#undef	DUMP_ALLOC
+#undef DUMP_ALLOC // [BUG 2233922] SunOS: build error
     enum { DUMP_ALLOC, DUMP_DITEM, DUMP_ONSCREEN, DUMP_RANGE };
 
     if (objc != 4) {

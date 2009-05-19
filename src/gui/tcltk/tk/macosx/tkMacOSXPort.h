@@ -18,21 +18,6 @@
 #ifndef _TKMACPORT
 #define _TKMACPORT
 
-/*
- * Macro to use instead of "void" for arguments that must have
- * type "void *" in ANSI C; maps them to type "char *" in
- * non-ANSI systems. This macro may be used in some of the include
- * files below, which is why it is defined here.
- */
-
-#ifndef VOID
-#   ifdef __STDC__
-#	define VOID void
-#   else
-#	define VOID char
-#   endif
-#endif
-
 #include <stdio.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -140,8 +125,6 @@
  * The following functions are not used on the Mac, so we stub them out.
  */
 
-#define TkFreeWindowId(dispPtr,w)
-#define TkInitXId(dispPtr)
 #define TkpButtonSetDefaults(specPtr) {}
 #define TkpCmapStressed(tkwin,colormap) (0)
 #define TkpFreeColor(tkColPtr)

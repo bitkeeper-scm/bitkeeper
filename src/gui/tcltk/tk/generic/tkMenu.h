@@ -241,8 +241,6 @@ typedef struct TkMenuEntry {
  * Menu states
  */
 
-MODULE_SCOPE char *tkMenuStateStrings[];
-
 #define ENTRY_ACTIVE 0
 #define ENTRY_NORMAL 1
 #define ENTRY_DISABLED 2
@@ -494,12 +492,12 @@ typedef struct TkMenuOptionTables {
 MODULE_SCOPE int	TkActivateMenuEntry(TkMenu *menuPtr, int index);
 MODULE_SCOPE void	TkBindMenu(Tk_Window tkwin, TkMenu *menuPtr);
 MODULE_SCOPE TkMenuReferences*TkCreateMenuReferences(Tcl_Interp *interp,
-			    char *name);
+			    const char *name);
 MODULE_SCOPE void	TkDestroyMenu(TkMenu *menuPtr);
 MODULE_SCOPE void	TkEventuallyRecomputeMenu(TkMenu *menuPtr);
 MODULE_SCOPE void	TkEventuallyRedrawMenu(TkMenu *menuPtr,
 			    TkMenuEntry *mePtr);
-MODULE_SCOPE TkMenuReferences*TkFindMenuReferences(Tcl_Interp *interp, char *name);
+MODULE_SCOPE TkMenuReferences*TkFindMenuReferences(Tcl_Interp *interp, const char *name);
 MODULE_SCOPE TkMenuReferences*TkFindMenuReferencesObj(Tcl_Interp *interp,
 			    Tcl_Obj *namePtr);
 MODULE_SCOPE int	TkFreeMenuReferences(TkMenuReferences *menuRefPtr);

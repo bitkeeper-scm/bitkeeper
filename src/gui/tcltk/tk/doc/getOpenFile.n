@@ -159,6 +159,7 @@ Extensions without a full stop character (e.g.
 .QW ~ )
 are allowed but may not work on all platforms.
 .SH EXAMPLE
+.PP
 .CS
 set types {
     {{Text Files}       {.txt}        }
@@ -178,3 +179,6 @@ if {$filename != ""} {
 tk_chooseDirectory
 .SH KEYWORDS
 file selection dialog
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

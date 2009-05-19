@@ -53,7 +53,7 @@ namespace eval ::tcl::tm {
 
     # The regex pattern a file name has to match to make it a Tcl Module.
 
-    set pkgpattern {^([_[:alpha:]][:_[:alnum:]]*)-([[:digit:]].*)[.]tm$}
+    set pkgpattern {^([_[:alpha:]][\:_[:alnum:]]*)-([[:digit:]].*)[.]tm$}
 
     # Export the public API
 
@@ -79,7 +79,7 @@ namespace eval ::tcl::tm {
 #	paths to search for Tcl Modules. The subcommand 'list' has no
 #	sideeffects.
 
-proc ::tcl::tm::add {path args} {
+proc ::tcl::tm::add {args} {
     # PART OF THE ::tcl::tm::path ENSEMBLE
     #
     # The path is added at the head to the list of module paths.
@@ -102,7 +102,7 @@ proc ::tcl::tm::add {path args} {
     # paths to the official state var.
 
     set newpaths $paths
-    foreach p [linsert $args 0 $path] {
+    foreach p $args {
 	if {$p in $newpaths} {
 	    # Ignore a path already on the list.
 	    continue
@@ -143,7 +143,7 @@ proc ::tcl::tm::add {path args} {
     return
 }
 
-proc ::tcl::tm::remove {path args} {
+proc ::tcl::tm::remove {args} {
     # PART OF THE ::tcl::tm::path ENSEMBLE
     #
     # Removes the path from the list of module paths. The command is
@@ -151,7 +151,7 @@ proc ::tcl::tm::remove {path args} {
 
     variable paths
 
-    foreach p [linsert $args 0 $path] {
+    foreach p $args {
 	set pos [lsearch -exact $paths $p]
 	if {$pos >= 0} {
 	    set paths [lreplace $paths $pos $pos]
@@ -214,11 +214,11 @@ proc ::tcl::tm::UnknownHandler {original name args} {
 
 	set satisfied 0
 	foreach path $paths {
-	    if {![file exists $path]} {
+	    if {![interp issafe] && ![file exists $path]} {
 		continue
 	    }
 	    set currentsearchpath [file join $path $pkgroot]
-	    if {![file exists $currentsearchpath]} {
+	    if {![interp issafe] && ![file exists $currentsearchpath]} {
 		continue
 	    }
 	    set strip [llength [file split $path]]
@@ -254,7 +254,18 @@ proc ::tcl::tm::UnknownHandler {original name args} {
 		    # means something else without the namespace
 		    # specifier.
 
-		    package ifneeded $pkgname $pkgversion [::list source -encoding utf-8 $file]
+		    # NOTE. When making changes to the format of the
+		    # provide command generated below CHECK that the
+		    # 'LOCATE' procedure in core file
+		    # 'platform/shell.tcl' still understands it, or,
+		    # if not, update its implementation appropriately.
+		    #
+		    # Right now LOCATE's implementation assumes that
+		    # the path of the package file is the last element
+		    # in the list.
+
+		    package ifneeded $pkgname $pkgversion \
+			"[::list package provide $pkgname $pkgversion];[::list source -encoding utf-8 $file]"
 
 		    # We abort in this unknown handler only if we got
 		    # a satisfying candidate for the requested
@@ -352,9 +363,13 @@ proc ::tcl::tm::roots {paths} {
     foreach pa $paths {
 	set p [file join $pa tcl$major]
 	for {set n $minor} {$n >= 0} {incr n -1} {
-	    path add [file normalize [file join $p ${major}.${n}]]
+	    set px [file join $p ${major}.${n}]
+	    if {![interp issafe]} { set px [file normalize $px] }
+	    path add $px
 	}
-	path add [file normalize [file join $p site-tcl]]
+	set px [file join $p site-tcl]
+	if {![interp issafe]} { set px [file normalize $px] }
+	path add $px 
     }
     return
 }
@@ -362,4 +377,4 @@ proc ::tcl::tm::roots {paths} {
 # Initialization. Set up the default paths, then insert the new
 # handler into the chain.
 
-::tcl::tm::Defaults
+if {![interp issafe]} { ::tcl::tm::Defaults }

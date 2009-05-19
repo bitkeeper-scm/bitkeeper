@@ -179,10 +179,10 @@ GetMyHandle(void)
 }
 
 BOOL WINAPI
-DllMain(hInst, reason, reserved)
-    HINSTANCE hInst;	/* Library instance handle. */
-    DWORD reason;	/* Reason this function is being called. */
-    LPVOID reserved;	/* Not used. */
+DllMain(
+    HINSTANCE hInst,	/* Library instance handle. */
+    DWORD reason,	/* Reason this function is being called. */
+    LPVOID reserved)	/* Not used. */
 {
     if (reason == DLL_PROCESS_ATTACH) {
 	thisModule = (HMODULE) hInst;

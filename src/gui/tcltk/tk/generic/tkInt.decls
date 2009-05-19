@@ -13,6 +13,8 @@
 # RCS: @(#) $Id$
 
 library tk
+
+##############################################################################
 
 # Define the unsupported generic interfaces.
 
@@ -62,21 +64,21 @@ declare 10 generic {
 declare 11 generic {
     unsigned long TkCreateBindingProcedure(Tcl_Interp *interp,
 	    Tk_BindingTable bindingTable, ClientData object,
-	    CONST char *eventString, TkBindEvalProc *evalProc,
+	    const char *eventString, TkBindEvalProc *evalProc,
 	    TkBindFreeProc *freeProc, ClientData clientData)
 }
 declare 12 generic {
     TkCursor *TkCreateCursorFromData(Tk_Window tkwin,
-	    CONST char *source, CONST char *mask, int width, int height,
+	    const char *source, const char *mask, int width, int height,
 	    int xHot, int yHot, XColor fg, XColor bg)
 }
 declare 13 generic {
     int TkCreateFrame(ClientData clientData, Tcl_Interp *interp,
-	    int argc, char **argv, int toplevel, char *appName)
+	    int argc, const char *const *argv, int toplevel, const char *appName)
 }
 declare 14 generic {
     Tk_Window TkCreateMainWindow(Tcl_Interp *interp,
-	    CONST char *screenName, char *baseName)
+	    const char *screenName, const char *baseName)
 }
 declare 15 generic {
     Time TkCurrentTime(TkDisplay *dispPtr)
@@ -99,11 +101,11 @@ declare 20 generic {
 	    Display *display, Drawable drawable, GC gc, GC outlineGC)
 }
 declare 21 generic {
-    int TkFindStateNum(Tcl_Interp *interp, CONST char *option,
-	    CONST TkStateMap *mapPtr, CONST char *strKey)
+    int TkFindStateNum(Tcl_Interp *interp, const char *option,
+	    const TkStateMap *mapPtr, const char *strKey)
 }
 declare 22 generic {
-    char *TkFindStateString(CONST TkStateMap *mapPtr, int numKey)
+    char *TkFindStateString(const TkStateMap *mapPtr, int numKey)
 }
 declare 23 generic {
     void TkFocusDeadWindow(TkWindow *winPtr)
@@ -129,8 +131,9 @@ declare 29 generic {
     void TkpFreeCursor(TkCursor *cursorPtr)
 }
 declare 30 generic {
-    char *TkGetBitmapData(Tcl_Interp *interp, char *string, char *fileName,
-	    int *widthPtr, int *heightPtr, int *hotXPtr, int *hotYPtr)
+    char *TkGetBitmapData(Tcl_Interp *interp, const char *string,
+	    const char *fileName, int *widthPtr, int *heightPtr,
+	    int *hotXPtr, int *hotYPtr)
 }
 declare 31 generic {
     void TkGetButtPoints(double p1[], double p2[],
@@ -141,14 +144,14 @@ declare 32 generic {
 	    Tk_Window tkwin, Tk_Uid string)
 }
 declare 33 generic {
-    CONST84_RETURN char *TkGetDefaultScreenName(Tcl_Interp *interp,
-	    CONST char *screenName)
+    const char *TkGetDefaultScreenName(Tcl_Interp *interp,
+	    const char *screenName)
 }
 declare 34 generic {
     TkDisplay *TkGetDisplay(Display *display)
 }
 declare 35 generic {
-    int TkGetDisplayOf(Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[],
+    int TkGetDisplayOf(Tcl_Interp *interp, int objc, Tcl_Obj *const objv[],
 	    Tk_Window *tkwinPtr)
 }
 declare 36 generic {
@@ -224,7 +227,7 @@ declare 57 generic {
     void TkpClaimFocus(TkWindow *topLevelPtr, int force)
 }
 declare 58 generic {
-    void TkpDisplayWarning(CONST char *msg, CONST char *title)
+    void TkpDisplayWarning(const char *msg, const char *title)
 }
 declare 59 generic {
     void TkpGetAppName(Tcl_Interp *interp, Tcl_DString *name)
@@ -255,7 +258,7 @@ declare 67 generic {
     void TkpMenuNotifyToplevelCreate(Tcl_Interp *interp1, char *menuName)
 }
 declare 68 generic {
-    TkDisplay *TkpOpenDisplay(CONST char *display_name)
+    TkDisplay *TkpOpenDisplay(const char *display_name)
 }
 declare 69 generic {
     int TkPointerEvent(XEvent *eventPtr, TkWindow *winPtr)
@@ -276,16 +279,13 @@ declare 74 generic {
     void TkpSetMainMenubar(Tcl_Interp *interp, Tk_Window tkwin, char *menuName)
 }
 declare 75 generic {
-    int TkpUseWindow(Tcl_Interp *interp, Tk_Window tkwin, CONST char *string)
-}
-declare 76 generic {
-    int TkpWindowWasRecentlyDeleted(Window win, TkDisplay *dispPtr)
+    int TkpUseWindow(Tcl_Interp *interp, Tk_Window tkwin, const char *string)
 }
 declare 77 generic {
     void TkQueueEventForAllChildren(TkWindow *winPtr, XEvent *eventPtr)
 }
 declare 78 generic {
-    int TkReadBitmapFile(Display *display, Drawable d, CONST char *filename,
+    int TkReadBitmapFile(Display *display, Drawable d, const char *filename,
 	    unsigned int *width_return, unsigned int *height_return,
 	    Pixmap *bitmap_return, int *x_hot_return, int *y_hot_return)
 }
@@ -317,7 +317,7 @@ declare 85 generic {
 	    char *oldMenuName, char *menuName)
 }
 declare 86 generic {
-    KeySym TkStringToKeysym(char *name)
+    KeySym TkStringToKeysym(const char *name)
 }
 declare 87 generic {
     int TkThickPolyLineToArea(double *coordPtr, int numPoints,
@@ -358,26 +358,26 @@ declare 97 generic {
 # new for 8.1
 
 declare 98 generic {
-    Tcl_Obj *TkDebugBitmap(Tk_Window tkwin, char *name)
+    Tcl_Obj *TkDebugBitmap(Tk_Window tkwin, const char *name)
 }
 declare 99 generic {
-    Tcl_Obj *TkDebugBorder(Tk_Window tkwin, char *name)
+    Tcl_Obj *TkDebugBorder(Tk_Window tkwin, const char *name)
 }
 declare 100 generic {
-    Tcl_Obj *TkDebugCursor(Tk_Window tkwin, char *name)
+    Tcl_Obj *TkDebugCursor(Tk_Window tkwin, const char *name)
 }
 declare 101 generic {
-    Tcl_Obj *TkDebugColor(Tk_Window tkwin, char *name)
+    Tcl_Obj *TkDebugColor(Tk_Window tkwin, const char *name)
 }
 declare 102 generic {
     Tcl_Obj *TkDebugConfig(Tcl_Interp *interp, Tk_OptionTable table)
 }
 declare 103 generic {
-    Tcl_Obj *TkDebugFont(Tk_Window tkwin, char *name)
+    Tcl_Obj *TkDebugFont(Tk_Window tkwin, const char *name)
 }
 declare 104 generic {
     int TkFindStateNumObj(Tcl_Interp *interp, Tcl_Obj *optionPtr,
-	    CONST TkStateMap *mapPtr, Tcl_Obj *keyPtr)
+	    const TkStateMap *mapPtr, Tcl_Obj *keyPtr)
 }
 declare 105 generic {
     Tcl_HashTable *TkGetBitmapPredefTable(void)
@@ -400,7 +400,7 @@ declare 110 generic {
 }
 declare 111 generic {
     Tcl_Obj *TkpGetSystemDefault(Tk_Window tkwin,
-	    CONST char *dbName, CONST char *className)
+	    const char *dbName, const char *className)
 }
 declare 112 generic {
     void TkpMenuThreadInit(void)
@@ -429,14 +429,14 @@ declare 119 {aqua win} {
 	    TkRegion src, TkRegion dr_return)
 }
 declare 121 aqua {
-    Pixmap TkpCreateNativeBitmap(Display *display, CONST char *source)
+    Pixmap TkpCreateNativeBitmap(Display *display, const void *source)
 }
 declare 122 aqua {
     void TkpDefineNativeBitmaps(void)
 }
 declare 124 aqua {
     Pixmap TkpGetNativeAppBitmap(Display *display,
- 	    CONST char *name, int *width, int *height)
+ 	    const char *name, int *width, int *height)
 }
 declare 135 generic {
     void TkpDrawHighlightBorder(Tk_Window tkwin, GC fgGC, GC bgGC,
@@ -481,10 +481,10 @@ declare 147 generic {
 }
 declare 148 generic {
     Tk_Window TkToplevelWindowForCommand(Tcl_Interp *interp,
-	    CONST char *cmdName)
+	    const char *cmdName)
 }
 declare 149 generic {
-    CONST Tk_OptionSpec *TkGetOptionSpec(CONST char *name,
+    const Tk_OptionSpec *TkGetOptionSpec(const char *name,
 	    Tk_OptionTable optionTable)
 }
 
@@ -511,13 +511,97 @@ declare 154 generic {
 # entries needed only by tktest:
 declare 156 generic {
     int TkpTestembedCmd(ClientData clientData, Tcl_Interp *interp, int argc,
-	    CONST char **argv)
+	    const char **argv)
 }
 declare 157 generic {
     int TkpTesttextCmd(ClientData dummy, Tcl_Interp *interp, int argc,
-	    CONST char **argv)
+	    const char **argv)
 }
-
+declare 158 generic {
+    int TkSelGetSelection(Tcl_Interp *interp, Tk_Window tkwin,
+	    Atom selection, Atom target, Tk_GetSelProc *proc,
+	    ClientData clientData)
+}
+declare 159 generic {
+    int TkTextGetIndex(Tcl_Interp *interp, struct TkText *textPtr,
+	    const char *string, struct TkTextIndex *indexPtr)
+}
+declare 160 generic {
+    int TkTextIndexBackBytes(const struct TkText *textPtr,
+	    const struct TkTextIndex *srcPtr, int count,
+	    struct TkTextIndex *dstPtr)
+}
+declare 161 generic {
+    int TkTextIndexForwBytes(const struct TkText *textPtr,
+	    const struct TkTextIndex *srcPtr, int count,
+	    struct TkTextIndex *dstPtr)
+}
+declare 162 generic {
+    struct TkTextIndex *TkTextMakeByteIndex(TkTextBTree tree,
+	    const struct TkText *textPtr, int lineIndex,
+	    int byteIndex, struct TkTextIndex *indexPtr)
+}
+declare 163 generic {
+    int TkTextPrintIndex(const struct TkText *textPtr,
+	    const struct TkTextIndex *indexPtr, char *string)
+}
+declare 164 generic {
+    struct TkTextSegment *TkTextSetMark(struct TkText *textPtr,
+	    const char *name, struct TkTextIndex *indexPtr)
+}
+declare 165 generic {
+    int TkTextXviewCmd(struct TkText *textPtr, Tcl_Interp *interp,
+	    int objc, Tcl_Obj *const objv[])
+}
+declare 166 generic {
+    void TkTextChanged(struct TkSharedText *sharedTextPtr,
+	    struct TkText *textPtr, const struct TkTextIndex *index1Ptr,
+	    const struct TkTextIndex *index2Ptr)
+}
+declare 167 generic {
+    int	TkBTreeNumLines(TkTextBTree tree,
+	    const struct TkText *textPtr)
+}
+declare 168 generic {
+    void TkTextInsertDisplayProc(struct TkText *textPtr,
+	    struct TkTextDispChunk *chunkPtr, int x, int y,
+	    int height, int baseline, Display *display,
+	    Drawable dst, int screenY)
+}
+# Next group of functions exposed due to [Bug 2768945].
+declare 169 generic {
+    int TkStateParseProc(ClientData clientData, Tcl_Interp *interp,
+	    Tk_Window tkwin, const char *value, char *widgRec, int offset)
+}
+declare 170 generic {
+    const char *TkStatePrintProc(ClientData clientData, Tk_Window tkwin,
+	    char *widgRec, int offset, Tcl_FreeProc **freeProcPtr)
+}
+declare 171 generic {
+    int TkCanvasDashParseProc(ClientData clientData, Tcl_Interp *interp,
+	    Tk_Window tkwin, const char *value, char *widgRec, int offset)
+}
+declare 172 generic {
+    const char *TkCanvasDashPrintProc(ClientData clientData, Tk_Window tkwin,
+	    char *widgRec, int offset, Tcl_FreeProc **freeProcPtr)
+}
+declare 173 generic {
+    int TkOffsetParseProc(ClientData clientData, Tcl_Interp *interp,
+	    Tk_Window tkwin, const char *value, char *widgRec, int offset)
+}
+declare 174 generic {
+    const char *TkOffsetPrintProc(ClientData clientData, Tk_Window tkwin,
+	    char *widgRec, int offset, Tcl_FreeProc **freeProcPtr)
+}
+declare 175 generic {
+    int TkPixelParseProc(ClientData clientData, Tcl_Interp *interp,
+	    Tk_Window tkwin, const char *value, char *widgRec, int offset)
+}
+declare 176 generic {
+    const char *TkPixelPrintProc(ClientData clientData, Tk_Window tkwin,
+	    char *widgRec, int offset, Tcl_FreeProc **freeProcPtr)
+}
+
 ##############################################################################
 
 # Define the platform specific internal Tcl interface. These functions are
@@ -530,12 +614,6 @@ interface tkIntPlat
 
 declare 0 x11 {
     void TkCreateXEventSource(void)
-}
-declare 1 x11 {
-    void TkFreeWindowId(TkDisplay *dispPtr, Window w)
-}
-declare 2 x11 {
-    void TkInitXId(TkDisplay *dispPtr)
 }
 declare 3 x11 {
     int TkpCmapStressed(Tk_Window tkwin, Colormap colormap)
@@ -553,7 +631,7 @@ declare 7 x11 {
     void TkUnixSetMenubar(Tk_Window tkwin, Tk_Window menubar)
 }
 declare 8 x11 {
-    int TkpScanWindowId(Tcl_Interp *interp, CONST char *string, Window *idPtr)
+    int TkpScanWindowId(Tcl_Interp *interp, const char *string, Window *idPtr)
 }
 declare 9 x11 {
     void TkWmCleanup(TkDisplay *dispPtr)
@@ -561,16 +639,13 @@ declare 9 x11 {
 declare 10 x11 {
     void TkSendCleanup(TkDisplay *dispPtr)
 }
-declare 11 x11 {
-    void TkFreeXId(TkDisplay *dispPtr)
-}
 declare 12 x11 {
     int TkpWmSetState(TkWindow *winPtr, int state)
 }
 # only needed by tktest:
 declare 13 x11 {
     int TkpTestsendCmd(ClientData clientData, Tcl_Interp *interp, int argc,
-	    CONST char **argv)
+	    const char **argv)
 }
 
 ################################
@@ -592,7 +667,7 @@ declare 5 win {
     void TkpPrintWindowId(char *buf, Window window)
 }
 declare 6 win {
-    int TkpScanWindowId(Tcl_Interp *interp, CONST char *string, Window *idPtr)
+    int TkpScanWindowId(Tcl_Interp *interp, const char *string, Window *idPtr)
 }
 declare 7 win {
     void TkpSetCapture(TkWindow *winPtr)
@@ -677,7 +752,7 @@ declare 31 win {
 }
 declare 32 win {
     Tcl_Obj *TkWinGetMenuSystemDefault(Tk_Window tkwin,
-	    CONST char *dbName, CONST char *className)
+	    const char *dbName, const char *className)
 }
 declare 33 win {
     int TkWinGetPlatformId(void)
@@ -701,7 +776,7 @@ declare 0 aqua {
 
 # removed duplicates from tkInt table
 #declare 1 aqua {
-#    Pixmap TkpCreateNativeBitmap(Display *display, CONST char *source)
+#    Pixmap TkpCreateNativeBitmap(Display *display, const void *source)
 #}
 #
 #declare 2 aqua {
@@ -1102,7 +1177,7 @@ declare 61 win {
     Status XSendEvent(Display *d, Window w, Bool b, long l, XEvent *x)
 }
 declare 62 win {
-    void XSetCommand(Display *d, Window w, CONST char **c, int i)
+    void XSetCommand(Display *d, Window w, const char **c, int i)
 }
 declare 63 win {
     void XSetIconName(Display *d, Window w, _Xconst char *c)
@@ -1579,3 +1654,7 @@ declare 90 aqua {
 declare 91 aqua {
     int XSync(Display *display, Bool flag)
 }
+
+# Local Variables:
+# mode: tcl
+# End:

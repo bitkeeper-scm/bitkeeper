@@ -211,6 +211,8 @@ typedef struct TkWinProcs {
     BOOL (WINAPI *insertMenu)(HMENU hMenu, UINT uPosition, UINT uFlags,
 	    UINT uIDNewItem, LPCTSTR lpNewItem);
     int (WINAPI *getWindowText)(HWND hWnd, LPCTSTR lpString, int nMaxCount);
+    HWND (WINAPI *findWindow)(LPCTSTR lpClassName, LPCTSTR lpWindowName);
+    int (WINAPI *getClassName)(HWND hwnd, LPTSTR lpClassName, int nMaxCount);
 } TkWinProcs;
 
 EXTERN TkWinProcs *tkWinProcs;

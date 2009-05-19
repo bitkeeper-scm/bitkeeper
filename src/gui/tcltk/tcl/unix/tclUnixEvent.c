@@ -12,6 +12,8 @@
  */
 
 #include "tclInt.h"
+#ifndef HAVE_COREFOUNDATION	/* Darwin/Mac OS X CoreFoundation notifier is
+				 * in tclMacOSXNotify.c */
 
 /*
  *----------------------------------------------------------------------
@@ -64,7 +66,7 @@ Tcl_Sleep(
 	}
 
 	if ((vdelay.sec != 0) || (vdelay.usec != 0)) {
-	    (*tclScaleTimeProcPtr) (&vdelay, tclTimeClientData);
+	    tclScaleTimeProcPtr(&vdelay, tclTimeClientData);
 	}
 
 	delay.tv_sec  = vdelay.sec;
@@ -85,6 +87,7 @@ Tcl_Sleep(
     }
 }
 
+#endif /* HAVE_COREFOUNDATION */
 /*
  * Local Variables:
  * mode: c

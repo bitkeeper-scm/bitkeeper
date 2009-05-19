@@ -20,6 +20,7 @@ ttk::panedwindow \- Multi-pane container window
 .fi
 .BE
 .SH DESCRIPTION
+.PP
 A \fBttk::panedwindow\fR widget displays a number of subwindows, stacked
 either vertically or horizontally.  The user may adjust the relative sizes
 of the subwindows by dragging the sash between panes.
@@ -43,24 +44,29 @@ specifies the desired height of the widget in pixels.
 Otherwise, the requested height is determined by the height
 of the managed windows.
 .SH "PANE OPTIONS"
+.PP
 The following options may be specified for each pane:
 .OP \-weight weight Weight
 An integer specifying the relative stretchability of the pane.
 When the paned window is resized, the extra space is added
 or subtracted to each pane proportionally to its \fB\-weight\fR.
 .SH "WIDGET COMMAND"
+.PP
 Supports the standard \fBconfigure\fR, \fBcget\fR, \fBstate\fR, 
 and \fBinstate\fR commands; see \fIttk::widget(n)\fR for details.
 Additional commands:
 .TP
 \fIpathname \fBadd\fR \fIsubwindow\fR \fIoptions...\fR
 Adds a new pane to the window.
-\fIsubwindow\fR must be a direct child of the paned window \fIpathname\fR.
 See \fBPANE OPTIONS\fR for the list of available options.
 .TP
 \fIpathname \fBforget\fR \fIpane\fR
 Removes the specified subpane from the widget.
 \fIpane\fR is either an integer index or the name of a managed subwindow.
+.TP
+\fIpathname\fR \fBidentify\fR \fIx y\fR
+Returns the index of the sash at point \fIx,y\fR,
+or the empty string if \fIx,y\fR is not over a sash.
 .TP
 \fIpathname \fBinsert\fR \fIpos\fR \fIsubwindow\fR \fIoptions...\fR
 Inserts a pane at the specified position.
@@ -90,9 +96,8 @@ and the total size of the widget.
 .\" depending on which changed most recently.
 Returns the new position of sash number \fIindex\fR.
 .\" Full story: new position may be different than the requested position.
-.TP
-\fIpathname\fR \fBidentify\fR \fIx y\fR
-Returns the index of the sash at point \fIx,y\fR,
-or the empty string if \fIx,y\fR is not over a sash.
 .SH "SEE ALSO"
 ttk::widget(n), ttk::notebook(n), panedwindow(n)
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

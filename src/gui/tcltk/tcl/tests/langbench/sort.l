@@ -1,17 +1,4 @@
-
-/*
- * L doesn't know about the builtins in foreach loops so this is a trick
- * I picked up from the regressions to fake a type.  Yucky but it works.
- * We need an extern keyword.
- */
-string[]
-sort(string list[])
-{
-	string	sorted[] = lsort(list);
-
-	return (sorted);
-}
-
+void
 main(int ac, string av[])
 {
 	int	i;

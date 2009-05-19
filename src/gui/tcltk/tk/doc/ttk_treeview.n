@@ -15,6 +15,7 @@ ttk::treeview \- hierarchical multicolumn data display widget
 \fBttk::treeview\fR \fIpathname \fR?\fIoptions\fR?
 .BE
 .SH DESCRIPTION
+.PP
 The \fBttk::treeview\fR widget displays a hierarchical collection of items.
 Each item has a textual label, an optional image, 
 and an optional list of data values.
@@ -58,11 +59,8 @@ A list of column identifiers
 specifying which data columns are displayed 
 and the order in which they appear, 
 or the string \fB#all\fP.
-.RS
-.PP
-If set to \fB#all\fP (the default), all columns are shown in the order
-given.
-.RE
+If set to \fB#all\fP (the default),
+all columns are shown in the order given.
 .OP \-height height Height
 Specifies the number of rows which should be visible.
 Note:
@@ -98,13 +96,14 @@ The default is \fBtree headings\fR, i.e., show all elements.
 even if \fB\-show tree\fR is not specified.
 .RE
 .SH "WIDGET COMMAND"
+.PP
 .TP
 \fIpathname \fBbbox\fR \fIitem\fR ?\fIcolumn\fR?
 Returns the bounding box (relative to the treeview widget's window)
 of the specified \fIitem\fR
 in the form \fIx y width height\fR.
 If \fIcolumn\fR is specified, returns the bounding box of that cell.
-If the \fIitem\fR is not visible 
+If the \fIitem\fR is not visible
 (i.e., if it is a descendant of a closed item or is scrolled offscreen),
 returns the empty list.
 .TP
@@ -215,12 +214,35 @@ or the empty string if no such \fIcomponent\fR is present at that position.
 The following subcommands are supported:
 .RS
 .TP
-\fIpathname \fBidentify row\fR \fIx y\fR
+\fIpathname \fBidentify region\fR \fI x y\fR
+.RS
+Returns one of:
+.IP heading
+Tree heading area;
+use [\fBpathname identify column \fIx y\fR]
+to determine the heading number.
+.IP separator
+Space between two column headings;
+[\fBpathname identify column \fIx y\fR]
+will return the display column identifier
+of the heading to left of the separator.
+.IP tree
+The tree area.
+.IP cell
+A data cell.
+.RE
+\fIpathname \fBidentify item\fR \fIx y\fR
 Returns the item ID of the item at position \fIy\fR.
 .TP
 \fIpathname \fBidentify column\fR \fIx y\fR
 Returns the data column identifier of the cell at position \fIx\fR.
 The tree column has ID \fB#0\fR.
+.TP
+\fIpathname \fBidentify element\fR \fIx y\fR
+The element at position \fIx,y\fR.
+.TP
+\fIpathname \fBidentify row\fR \fIx y\fR
+Obsolescent synonym for \fIpathname \fBidentify item\fR.
 .PP
 See \fBCOLUMN IDENTIFIERS\fR for a discussion of display columns
 and data columns.
@@ -310,7 +332,7 @@ Toggle the selection state of each item in \fIitemList\fR.
 .TP
 \fIpathname \fBset\fR \fIitem\fR ?\fIcolumn\fR? ?\fIvalue\fR?
 With one argument, returns a dictionary of column/value pairs
-for the specified \fIitem\fR.  
+for the specified \fIitem\fR.
 With two arguments, returns the current value of the specified \fIcolumn\fR.
 With three arguments, sets the value of column \fIcolumn\fR
 in item \fIitem\fR to the specified \fIvalue\fR.
@@ -349,6 +371,12 @@ returns the value of that option
 With no additional arguments, 
 returns a dictionary of the option settings for \fItagName\fR.
 See \fBTAG OPTIONS\fR for the list of available options.
+.TP
+\fIpathName \fBtag has\fR \fItagName\fR ?\fIitem\fR?
+If \fIitem\fR is specified, returns 1 or 0
+depending on whether the specified item has the named tag.
+Otherwise, returns a list of all items which have
+the specified tag.
 .RE
 .TP
 \fIpathName \fBxview \fIargs\fR
@@ -357,6 +385,7 @@ Standard command for horizontal scrolling; see \fIwidget(n)\fR.
 \fIpathName \fByview \fIargs\fR
 Standard command for vertical scrolling; see \fIttk::widget(n)\fR.
 .SH "ITEM OPTIONS"
+.PP
 The following item options may be specified for items
 in the \fBinsert\fR and \fBitem\fR widget commands.
 .OP \-text text Text
@@ -380,6 +409,7 @@ should be displayed (\fB\-open true\fR) or hidden (\fB\-open false\fR).
 .OP \-tags tags Tags
 A list of tags associated with this item.  
 .SH "TAG OPTIONS"
+.PP
 The following options may be specified on tags:
 .IP \fB\-foreground\fR
 Specifies the text foreground color.
@@ -395,6 +425,7 @@ Specifies the item image, in case the item's \fB\-image\fR option is empty.
 .PP
 \fI(@@@ TODO: sort out order of precedence for options)\fR
 .SH "COLUMN IDENTIFIERS"
+.PP
 Column identifiers take any of the following forms:
 .IP \(bu
 A symbolic name from the list of \fB\-columns\fR.
@@ -419,6 +450,7 @@ If \fB\-displaycolumns\fR is not set,
 then data column \fIn\fR is displayed in display column \fB#\fIn+1\fR.
 Again, \fBcolumn #0 always refers to the tree column\fR.
 .SH "VIRTUAL EVENTS"
+.PP
 The treeview widget generates the following virtual events.
 .IP <<TreeviewSelect>>
 Generated whenever the selection changes.
@@ -434,3 +466,6 @@ to determine the affected item or items.
 '\" of the virtual event.
 .SH "SEE ALSO"
 ttk::widget(n), listbox(n), image(n), bind(n)
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

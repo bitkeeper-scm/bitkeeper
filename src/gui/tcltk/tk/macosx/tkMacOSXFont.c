@@ -5,7 +5,7 @@
  *	font package interface. This version uses ATSU instead of Quickdraw.
  *
  * Copyright 2002-2004 Benjamin Riefenstahl, Benjamin.Riefenstahl@epost.de
- * Copyright (c) 2006-2007 Daniel A. Steffen <das@users.sourceforge.net>
+ * Copyright (c) 2006-2008 Daniel A. Steffen <das@users.sourceforge.net>
  *
  * Some functions were originally copied verbatim from the QuickDraw version
  * of tkMacOSXFont.c, which had these copyright notices:
@@ -213,13 +213,15 @@ static const Tcl_UniChar *UpdateLineBuffer(const MacFont *fontPtr,
  * Initialization and setup of a font data structure.
  */
 
-static void InitFont(Tk_Window tkwin, FMFontFamily familyId,
-	const char *familyName, int size, int qdStyle, MacFont *fontPtr);
+static const char *FamilyNameForFamilyID(FMFontFamily familyId);
+static void InitFont(FMFontFamily familyId, const char *familyName,
+	int size, int qdStyle, MacFont *fontPtr);
 static void InitATSUObjects(FMFontFamily familyId, short qdsize, short qdStyle,
 	ATSUFontID *fontIdPtr, ATSUTextLayout *layoutPtr, ATSUStyle *stylePtr);
 static void InitATSUStyle(ATSUFontID fontId, short ptSize, short qdStyle,
 	ATSUStyle style);
-static void SetFontFeatures(ATSUFontID fontId, int fixed, ATSUStyle style);
+static void SetFontFeatures(ATSUFontID fontId, int fixed, short size,
+	ATSUStyle style);
 static void AdjustFontHeight(MacFont *fontPtr);
 static void InitATSULayout(const TkMacOSXDrawingContext *drawingContextPtr,
 	ATSUTextLayout layout, int fixed);
@@ -260,7 +262,10 @@ static OSStatus GetThemeFontAndFamily(const ThemeFontID themeFontId,
 static void InitSystemFonts(TkMainInfo *mainPtr);
 static int CreateNamedSystemFont(Tcl_Interp *interp, Tk_Window tkwin,
 	const char* name, TkFontAttributes *faPtr);
-
+static void		DrawCharsInContext(Display *display,
+			    Drawable drawable, GC gc, Tk_Font tkfont,
+			    const char *source, int numBytes, int rangeStart,
+			    int rangeLength, int x, int y, double angle);
 
 /*
  *-------------------------------------------------------------------------
@@ -470,7 +475,7 @@ TkpGetNativeFont(
     CopyPascalStringToC(fontName, (char*)fontName);
 
     fontPtr = (MacFont *) ckalloc(sizeof(MacFont));
-    InitFont(tkwin, fontFamily, (char*)fontName, fontSize, fontStyle, fontPtr);
+    InitFont(fontFamily, (char*)fontName, fontSize, fontStyle, fontPtr);
 
     return (TkFont *) fontPtr;
 }
@@ -549,7 +554,8 @@ TkpGetFontFromAttributes(
 	fontPtr = (MacFont *) tkFontPtr;
 	ReleaseFont(fontPtr);
     }
-    InitFont(tkwin, familyId, name, faPtr->size, qdStyle, fontPtr);
+    InitFont(familyId, name, TkFontGetPoints(tkwin, faPtr->size),
+	    qdStyle, fontPtr);
 
     return (TkFont *) fontPtr;
 }
@@ -1132,8 +1138,31 @@ Tk_DrawChars(
     int x, int y)		/* Coordinates at which to place origin of the
 				 * string when drawing. */
 {
-    TkpDrawCharsInContext(display, drawable, gc, tkfont, source, numBytes,
-	    0, numBytes, x, y);
+    DrawCharsInContext(display, drawable, gc, tkfont, source, numBytes,
+	    0, numBytes, x, y, 0.0);
+}
+
+void
+TkpDrawAngledChars(
+    Display *display,		/* Display on which to draw. */
+    Drawable drawable,		/* Window or pixmap in which to draw. */
+    GC gc,			/* Graphics context for drawing characters. */
+    Tk_Font tkfont,		/* Font in which characters will be drawn;
+				 * must be the same as font used in GC. */
+    const char *source,		/* UTF-8 string to be displayed. Need not be
+				 * '\0' terminated. All Tk meta-characters
+				 * (tabs, control characters, and newlines)
+				 * should be stripped out of the string that
+				 * is passed to this function. If they are not
+				 * stripped out, they will be displayed as
+				 * regular printing characters. */
+    int numBytes,		/* Number of bytes in string. */
+    double x, double y,		/* Coordinates at which to place origin of
+				 * string when drawing. */
+    double angle)		/* What angle to put text at, in degrees. */
+{
+    DrawCharsInContext(display, drawable, gc, tkfont, source, numBytes,
+	    0, numBytes, x, y, angle);
 }
 
 /*
@@ -1176,6 +1205,32 @@ TkpDrawCharsInContext(
     int x, int y)		/* Coordinates at which to place origin of the
 				 * whole (not just the range) string when
 				 * drawing. */
+{
+    DrawCharsInContext(display, drawable, gc, tkfont, source, numBytes,
+	    rangeStart, rangeLength, x, y, 0.0);
+}
+
+static void
+DrawCharsInContext(
+    Display *display,		/* Display on which to draw. */
+    Drawable drawable,		/* Window or pixmap in which to draw. */
+    GC gc,			/* Graphics context for drawing characters. */
+    Tk_Font tkfont,		/* Font in which characters will be drawn; must
+				 * be the same as font used in GC. */
+    const char * source,	/* UTF-8 string to be displayed. Need not be
+				 * '\0' terminated. All Tk meta-characters
+				 * (tabs, control characters, and newlines)
+				 * should be stripped out of the string that
+				 * is passed to this function. If they are not
+				 * stripped out, they will be displayed as
+				 * regular printing characters. */
+    int numBytes,		/* Number of bytes in string. */
+    int rangeStart,		/* Index of first byte to draw. */
+    int rangeLength,		/* Length of range to draw in bytes. */
+    int x, int y,		/* Coordinates at which to place origin of the
+				 * whole (not just the range) string when
+				 * drawing. */
+    double angle)
 {
     const MacFont * fontPtr = (const MacFont *) tkfont;
     MacDrawable *macWin = (MacDrawable *) drawable;
@@ -1238,6 +1293,16 @@ TkpDrawCharsInContext(
 
     urstart = Tcl_NumUtfChars(source, rangeStart);
     urlen = Tcl_NumUtfChars(source+rangeStart,rangeLength);
+
+    /*
+     * Rotate the coordinate system for Quarz drawing.
+     */
+
+    if (drawingContext.context && angle != 0.0) {
+	CGContextConcatCTM(drawingContext.context, CGAffineTransformTranslate(
+		CGAffineTransformRotate(CGAffineTransformMakeTranslation(
+		x, y), angle * PI/180.0), -x, -y));
+    }
 
     ChkErr(ATSUDrawText, fontPtr->atsuLayout, lineOffset+urstart, urlen, fx,
 	    fy);
@@ -1372,6 +1437,48 @@ UpdateLineBuffer(
 /*
  *---------------------------------------------------------------------------
  *
+ * FamilyNameForFamilyID --
+ *
+ *	Helper for InitFont() and TkMacOSXFontDescriptionForFMFontInfo().
+ *	Retrieves font family names for a given font family ID.
+ *
+ * Results:
+ *	Font family name or NULL.
+ *
+ * Side effects:
+ *	None.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+static const char *
+FamilyNameForFamilyID(
+    FMFontFamily familyId)
+{
+    OSStatus err;
+    char name[256] = "";
+    const MacFontFamily * familyPtr = NULL;
+
+    err = ChkErr(GetFontFamilyName, familyId, name, sizeof(name));
+    if (err == noErr) {
+	/*
+	 * We find the canonical font name, so we can avoid unnecessary
+	 * memory management.
+	 */
+
+	familyPtr = FindFontFamily(name);
+#ifdef TK_MAC_DEBUG_FONTS
+	if (!familyPtr) {
+	    TkMacOSXDbgMsg("Font family '%s' not found", name);
+	}
+#endif
+    }
+    return familyPtr ? familyPtr->name : NULL;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * InitFont --
  *
  *	Helper for TkpGetNativeFont() and TkpGetFontFromAttributes().
@@ -1393,7 +1500,6 @@ UpdateLineBuffer(
 
 static void
 InitFont(
-    Tk_Window tkwin,		/* For display where font will be used. */
     FMFontFamily familyId,	/* The font family to initialize for. */
     const char * familyName,	/* The font family name, if known. Otherwise
 				 * this can be NULL. */
@@ -1402,45 +1508,24 @@ InitFont(
     MacFont * fontPtr)		/* Filled with information constructed from the
 				 * above arguments. */
 {
-    OSStatus err;
     FontInfo fi;
     TkFontAttributes * faPtr;
     TkFontMetrics * fmPtr;
-    short points;
     int periodWidth, wWidth;
 
     if (size == 0) {
 	size = GetDefFontSize();
     }
-    points = (short) TkFontGetPoints(tkwin, size);
-    ChkErr(FetchFontInfo, familyId, points, qdStyle, &fi);
-    if (familyName == NULL) {
-	char name[256] = "";
-	const MacFontFamily * familyPtr;
-
-	err = ChkErr(GetFontFamilyName, familyId, name, sizeof(name));
-	if (err == noErr) {
-	    /*
-	     * We find the canonical font name, so we can avoid unnecessary
-	     * memory management.
-	     */
-
-	    familyPtr = FindFontFamily(name);
-	    if (familyPtr != NULL) {
-		familyName = familyPtr->name;
-	    } else {
-#ifdef TK_MAC_DEBUG_FONTS
-		TkMacOSXDbgMsg("Font family '%s' not found", name);
-#endif
-	    }
-	}
+    ChkErr(FetchFontInfo, familyId, size, qdStyle, &fi);
+    if (!familyName) {
+	familyName = FamilyNameForFamilyID(familyId);
     }
 
     fontPtr->font.fid = (Font) fontPtr;
 
     faPtr = &fontPtr->font.fa;
     faPtr->family = familyName;
-    faPtr->size = points;
+    faPtr->size = size;
     faPtr->weight = (qdStyle & bold) ? TK_FW_BOLD : TK_FW_NORMAL;
     faPtr->slant = (qdStyle & italic) ? TK_FS_ITALIC : TK_FS_ROMAN;
     faPtr->underline = ((qdStyle & underline) != 0);
@@ -1461,17 +1546,18 @@ InitFont(
     fmPtr->maxWidth = fi.widMax;
 
     fontPtr->qdFont = familyId;
-    fontPtr->qdSize = points;
+    fontPtr->qdSize = size;
     fontPtr->qdStyle = (short) qdStyle;
 
-    InitATSUObjects(familyId, points, qdStyle, &fontPtr->atsuFontId,
+    InitATSUObjects(familyId, size, qdStyle, &fontPtr->atsuFontId,
 	    &fontPtr->atsuLayout, &fontPtr->atsuStyle);
 
     Tk_MeasureChars((Tk_Font)fontPtr, ".", 1, -1, 0, &periodWidth);
     Tk_MeasureChars((Tk_Font)fontPtr, "W", 1, -1, 0, &wWidth);
     fmPtr->fixed = periodWidth == wWidth;
 
-    SetFontFeatures(fontPtr->atsuFontId, fmPtr->fixed, fontPtr->atsuStyle);
+    SetFontFeatures(fontPtr->atsuFontId, fmPtr->fixed, size,
+	    fontPtr->atsuStyle);
 
     AdjustFontHeight(fontPtr);
 }
@@ -1624,6 +1710,7 @@ static void
 SetFontFeatures(
     ATSUFontID fontId,		/* The font id to use. */
     int fixed,			/* Is this a fixed font? */
+    short size,			/* Size of the font */
     ATSUStyle style)		/* The style handle to configure. */
 {
     /*
@@ -1642,6 +1729,19 @@ SetFontFeatures(
 	ChkErr(ATSUSetFontFeatures, style, sizeof(fixed_featureTypes) /
 		sizeof(fixed_featureTypes[0]), fixed_featureTypes,
 		fixed_featureSelectors);
+	if (size <= 10) {
+	    /*
+	     * Disable antialiasing of fixed-width fonts with sizes <= 10
+	     */
+
+	    const ATSStyleRenderingOptions options = kATSStyleNoAntiAliasing;
+	    const ATSUAttributeTag styleTag = kATSUStyleRenderingOptionsTag;
+	    const ByteCount styleSize = sizeof(ATSStyleRenderingOptions);
+	    const ConstATSUAttributeValuePtr styleValue = &options;
+
+	    ChkErr(ATSUSetAttributes, style, 1, &styleTag, &styleSize,
+		    (ATSUAttributeValuePtr*) &styleValue);
+	}
     }
 }
 
@@ -1892,7 +1992,7 @@ FindFontFamilyOrAlias(
     const char *name)		/* Name or alias name of the font to find. */
 {
     const MacFontFamily * familyPtr;
-    char ** aliases;
+    const char *const * aliases;
     int i;
 
     familyPtr = FindFontFamily(name);
@@ -1918,7 +2018,7 @@ FindFontFamilyOrAliasOrFallback(
 {
     const MacFontFamily * familyPtr;
     const char * fallback;
-    char *** fallbacks;
+    const char *const *const * fallbacks;
     int i, j;
 
     familyPtr = FindFontFamilyOrAlias(name);
@@ -2090,7 +2190,9 @@ GetFontFamilyName(
 
     /*
      * QuickDraw font names are encoded with the script that the font uses.
-     * So we determine that encoding and than we reencode the name.
+     * So we determine that encoding and than we reencode the name.  We
+     * pre-set the encoding with the default value, so we do not need to
+     * check result codes here.
      */
 
     encoding = kTextEncodingMacRoman;
@@ -2100,19 +2202,27 @@ GetFontFamilyName(
 	    NULL);
 
     /*
-     * Note: We could use Tcl facilities to do the re-encoding here. We'd
+     * Note: We could use Tcl facilities to do the re-encoding here.  We'd
      * have to maintain tables to map OS encoding codes to Tcl encoding names
-     * like tkMacOSXFont.c did. Using native re-encoding directly instead is
-     * a lot easier and future-proof than that. There is one snag, though: I
-     * have seen CFStringGetCString() crash with invalid encoding ids. But
+     * like tkMacOSXFont.c did.  Using native re-encoding directly instead is
+     * a lot easier and future-proof than that.  There is one snag, though: I
+     * have seen CFStringGetCString() crash with invalid encoding ids.  But
      * than if that happens it would be a bug in
      * FMGetFontFamilyTextEncoding() or RevertTextEncodingToScriptInfo().
+     * Another problem is that users have seen CFStringCreate return null
+     * (Bug #2548661).  This is due to font names with a bad encoding.
      */
 
     cfString = CFStringCreateWithPascalStringNoCopy(
 	    NULL, nativeName, nameencoding, kCFAllocatorNull);
-    CFStringGetCString(
-	    cfString, name, numBytes, kCFStringEncodingUTF8);
+    if (cfString == NULL) {
+        TkMacOSXDbgMsg("CFStringCreate: "
+                "'%.*s' could not be decoded with encoding %d",
+                nativeName[0], nativeName+1, (int) nameencoding);
+        return kTextMalformedInputErr;
+    }
+
+    CFStringGetCString(cfString, name, numBytes, kCFStringEncodingUTF8);
     CFRelease(cfString);
 
     return noErr;
@@ -2417,6 +2527,103 @@ TkMacOSXInitControlFontStyle(
 /*
  *----------------------------------------------------------------------
  *
+ * TkMacOSXFMFontInfoForFont --
+ *
+ *	Retrieve FontManager/ATSUI font information for a Tk font.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+MODULE_SCOPE void
+TkMacOSXFMFontInfoForFont(
+    Tk_Font tkfont,
+    FMFontFamily *fontFamilyPtr,
+    FMFontStyle *fontStylePtr,
+    FMFontSize *fontSizePtr,
+    ATSUStyle *fontATSUStylePtr)
+{
+    const MacFont * fontPtr = (MacFont *) tkfont;
+
+    if (fontFamilyPtr) {
+	*fontFamilyPtr = fontPtr->qdFont;
+    }
+    if (fontStylePtr) {
+	*fontStylePtr = fontPtr->qdStyle;
+    }
+    if (fontSizePtr) {
+	*fontSizePtr = fontPtr->qdSize;
+    }
+    if (fontATSUStylePtr) {
+	*fontATSUStylePtr = fontPtr->atsuStyle;
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TkMacOSXFontDescriptionForFMFontInfo --
+ *
+ *	Get text description of a font specified by FontManager info.
+ *
+ * Results:
+ *	List object or NULL.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+MODULE_SCOPE Tcl_Obj *
+TkMacOSXFontDescriptionForFMFontInfo(
+    FMFontFamily fontFamily,
+    FMFontStyle fontStyle,
+    FMFontSize fontSize,
+    FMFont fontID)
+{
+    Tcl_Obj *objv[6];
+    int i = 0;
+
+    if (fontFamily != kInvalidFontFamily && fontStyle != -1) {
+	const char *familyName = FamilyNameForFamilyID(fontFamily);
+
+	if (familyName) {
+	    objv[i++] = Tcl_NewStringObj(familyName, -1);
+	    objv[i++] = Tcl_NewIntObj(fontSize);
+#define S(s) Tcl_NewStringObj(STRINGIFY(s),(int)(sizeof(STRINGIFY(s))-1))
+	    objv[i++] = (fontStyle & bold)	? S(bold)   : S(normal);
+	    objv[i++] = (fontStyle & italic)	? S(italic) : S(roman);
+	    if (fontStyle & underline) objv[i++] = S(underline);
+	    /*if (fontStyle & overstrike) objv[i++] = S(overstrike);*/
+#undef S
+	}
+    } else if (fontID != kInvalidFont) {
+	CFStringRef fontName = NULL;
+	Tcl_Obj *fontNameObj = NULL;
+
+	ChkErr(ATSFontGetName, FMGetATSFontRefFromFont(fontID),
+		kATSOptionFlagsDefault, &fontName);
+	if (fontName) {
+	    fontNameObj = TkMacOSXGetStringObjFromCFString(fontName);
+	    CFRelease(fontName);
+	}
+	if (fontNameObj) {
+	    objv[i++] = fontNameObj;
+	    objv[i++] = Tcl_NewIntObj(fontSize);
+	}
+    }
+    return i ? Tcl_NewListObj(i, objv) : NULL;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * TkMacOSXUseAntialiasedText --
  *
  *	Enables or disables application-wide use of antialiased text (where
@@ -2462,3 +2669,12 @@ TkMacOSXUseAntialiasedText(
     antialiasedTextEnabled = enable;
     return TCL_OK;
 }
+
+/*
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 4
+ * fill-column: 79
+ * coding: utf-8
+ * End:
+ */

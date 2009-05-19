@@ -45,7 +45,7 @@ BUILDING AND INSTALLING THE WIDGET
 
 1. Uncompress and unpack the distribution
 
-   ON UNIX:
+   ON UNIX and OS X:
 	gzip -cd Tktable<version>.tar.gz | tar xf -
 
    ON WINDOWS:
@@ -58,7 +58,7 @@ BUILDING AND INSTALLING THE WIDGET
 
 2. Configure
 
-   ON UNIX:
+   ON UNIX and OS X:
         cd Tktable<version>
 	./configure
 
@@ -84,17 +84,12 @@ BUILDING AND INSTALLING THE WIDGET
    executing wish from a path with a space in it, but the DLL builds just
    fine.  A DLL should be available where you found this archive.
 
-   ON MACINTOSH:
-   
-   Hack the CodeWarrior XML project mac_tkTable.mcp.xml until it works and
-   compile.  The access path to the Tcl/Tk source tree will probably need
-   adjusting.  A DLL should be available where you found this archive.
-
 3. Make and Install
 
-   ON UNIX or WINDOWS (with cygwin):
+   ON UNIX< OS X or WINDOWS (with cygwin):
 	make
 	make test (OPTIONAL)
+	make demo (OPTIONAL)
 	make install
 
    ON WINDOWS (makefile.vc):
@@ -102,16 +97,12 @@ BUILDING AND INSTALLING THE WIDGET
 	nmake -f makefile.vc test (OPTIONAL)
 	nmake -f makefile.vc install
 
-   ON MACINTOSH:
-	Place Tktable.shlb in the Tool Command Language folder
-
    tkTable is built to comply to the latest tcl package conventions.
    There is also a specific "make static" for those who need it.
 
 4. Use it
 
    Start a regular wish interpreter, 'load' the library, and use the table.
-   Or use the "tablewish" interpreter that has the 'table' command built in.
    There are a few test scripts in the demos directory which you can source.
 
 5. Read the documentation
@@ -120,6 +111,9 @@ BUILDING AND INSTALLING THE WIDGET
    subdirectory.  These describe the table widget's features and commands
    in depth.  If something is confusing, just to try it out.
 
+6. Python users
+
+   There is a library/tktable.py wrapper for use with Python/Tkinter.
 
 THINGS TO WATCH OUT FOR
 

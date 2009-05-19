@@ -7,7 +7,7 @@
 # $Id$
 #
 # restart with tclsh \
-exec tclsh8.0 "$0" "$@"
+exec tclsh "$0" ${1+"$@"}
 
 # Max string length
 # (some C compiler have a 2048 chars limits (so 2047 real chars with

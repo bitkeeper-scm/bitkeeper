@@ -83,8 +83,9 @@ if {[info commands testthread] == "testthread" && [file exists $httpdFile]} {
 }
 
 test http-1.1 {http::config} {
+    http::config -useragent UserAgent
     http::config
-} [list -accept */* -proxyfilter http::ProxyRequired -proxyhost {} -proxyport {} -urlencoding utf-8 -useragent "Tcl http client package $version"]
+} [list -accept */* -proxyfilter http::ProxyRequired -proxyhost {} -proxyport {} -urlencoding utf-8 -useragent "UserAgent"]
 test http-1.2 {http::config} {
     http::config -proxyfilter
 } http::ProxyRequired
@@ -330,12 +331,22 @@ test http-3.23 {http::geturl parse failures} -body {
 test http-3.24 {http::geturl parse failures} -body {
     http::geturl http://somewhere/path?%query
 } -returnCodes error -result {Illegal encoding character usage "%qu" in URL path}
+test http-3.25 {http::meta} {
+    set token [http::geturl $url -timeout 2000]
+    array set m [http::meta $token]
+    lsort [array names m]
+} {Content-Length Content-Type Date}
+test http-3.26 {http::meta} {
+    set token [http::geturl $url -headers {X-Check 1} -timeout 2000]
+    array set m [http::meta $token]
+    lsort [array names m]
+} {Content-Length Content-Type Date X-Check}
 
 test http-4.1 {http::Event} {
     set token [http::geturl $url -keepalive 0]
     upvar #0 $token data
     array set meta $data(meta)
-    expr ($data(totalsize) == $meta(Content-Length))
+    expr {($data(totalsize) == $meta(Content-Length))}
 } 1
 test http-4.2 {http::Event} {
     set token [http::geturl $url]
@@ -364,11 +375,12 @@ test http-4.4 {http::Event} {
 test http-4.5 {http::Event} {
     set testfile [makeFile "" testfile]
     set out [open $testfile w]
+    fconfigure $out -translation lf
     set token [http::geturl $url -channel $out]
     close $out
     upvar #0 $token data
     removeFile $testfile
-    expr $data(currentsize) == $data(totalsize)
+    expr {$data(currentsize) == $data(totalsize)}
 } 1
 test http-4.6 {http::Event} {
     set testfile [makeFile "" testfile]
@@ -530,3 +542,7 @@ if {[info exists removeHttpd]} {
 
 rename bgerror {}
 ::tcltest::cleanupTests
+
+# Local variables:
+# mode: tcl
+# End:

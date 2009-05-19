@@ -18,7 +18,7 @@
 #include "tommath.h"
 #include <limits.h>
 
-extern TclTomMathStubs tclTomMathStubs;
+MODULE_SCOPE const TclTomMathStubs * const tclTomMathConstStubsPtr;
 
 /*
  *----------------------------------------------------------------------
@@ -45,7 +45,7 @@ TclTommath_Init(
     /* TIP #268: Full patchlevel instead of just major.minor */
 
     if (Tcl_PkgProvideEx(interp, "tcl::tommath", TCL_PATCH_LEVEL,
-			 (ClientData)&tclTomMathStubs) != TCL_OK) {
+	    (ClientData) tclTomMathConstStubsPtr) != TCL_OK) {
 	return TCL_ERROR;
     }
     return TCL_OK;

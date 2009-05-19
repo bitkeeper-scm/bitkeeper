@@ -45,9 +45,11 @@ For example, the location of the Tk library is kept in the variable
 To access the procedures in the Tcl library, an application should
 source the file \fBinit.tcl\fR in the library, for example with
 the Tcl command
+.PP
 .CS
 \fBsource [file join [info library] init.tcl]\fR
 .CE
+.PP
 If the library procedure \fBTcl_Init\fR is invoked from an application's
 \fBTcl_AppInit\fR procedure, this happens automatically.
 The code in \fBinit.tcl\fR will define the \fBunknown\fR procedure
@@ -65,7 +67,7 @@ named by \fIcmd\fR.  If not, it returns an empty string.  This command
 examines the directories in the current search path (given by the PATH
 environment variable) in its search for an executable file named
 \fIcmd\fR.  On Windows platforms, the search is expanded with the same
-directories and file extensions as used by \fBexec\fR. \fBAuto_exec\fR
+directories and file extensions as used by \fBexec\fR. \fBAuto_execok\fR
 remembers information about previous searches in an array named
 \fBauto_execs\fR;  this avoids the path search in future calls for the
 same \fIcmd\fR.  The command \fBauto_reset\fR may be used to force
@@ -106,6 +108,7 @@ cached index information may be deleted with the command
 reload the index database from disk.
 .TP
 \fBauto_mkindex \fIdir pattern pattern ...\fR
+.
 Generates an index suitable for use by \fBauto_load\fR.  The command
 searches \fIdir\fR for all files whose names match any of the
 \fIpattern\fR arguments (matching is done with the \fBglob\fR
@@ -114,10 +117,11 @@ in all the matching files, and stores the index information in a file
 named \fBtclIndex\fR in \fIdir\fR. If no pattern is given a pattern of
 \fB*.tcl\fR will be assumed.  For example, the command
 .RS
+.PP
 .CS
 \fBauto_mkindex foo *.tcl\fR
 .CE
-.LP
+.PP
 will read all the \fB.tcl\fR files in subdirectory \fBfoo\fR and
 generate a new index file \fBfoo/tclIndex\fR.
 .PP
@@ -143,6 +147,7 @@ code or procedure names with special characters like \fB$\fR,
 .RE
 .TP
 \fBauto_reset\fR
+.
 Destroys all the information cached by \fBauto_execok\fR and
 \fBauto_load\fR.  This information will be re-read from disk the next
 time it is needed.  \fBAuto_reset\fR also deletes any procedures
@@ -294,6 +299,9 @@ considered to be a word character.  On Windows platforms, words are
 comprised of any character that is not a space, tab, or newline.  Under
 Unix, words are comprised of numbers, letters or underscores.
 .SH "SEE ALSO"
-info(n), re_syntax(n)
+info(n), re_syntax(n), tclvars(n)
 .SH KEYWORDS
 auto-exec, auto-load, library, unknown, word, whitespace 
+'\"Local Variables:
+'\"mode: nroff
+'\"End:

@@ -1763,7 +1763,8 @@ _tclsh() {
 
 _wish() {
 	AQUAWISH="`bk bin`/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
-	if [ -z "$DISPLAY" -a -x "$AQUAWISH" ] ; then
+	if [ \( -z "$DISPLAY" -o "`echo $DISPLAY | cut -c1-11`" = "/tmp/launch" \) \
+	    -a -x "$AQUAWISH" ] ; then
 		WISH="$AQUAWISH"
 	else
 		TCL_LIBRARY=`bk bin`/gui/lib/tcl8.5

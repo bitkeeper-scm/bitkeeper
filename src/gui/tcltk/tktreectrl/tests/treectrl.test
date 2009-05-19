@@ -495,11 +495,11 @@ test treectrl-8.16 {selection includes: item is not selected} -body {
 
 test treectrl-9.1 {see: missing args} -body {
     .t see
-} -returnCodes error -result {wrong # args: should be ".t see item"}
+} -returnCodes error -result {wrong # args: should be ".t see item ?column? ?option value ...?"}
 
-test treectrl-9.2 {see: too many args} -body {
-    .t see foo bar
-} -returnCodes error -result {wrong # args: should be ".t see item"}
+test treectrl-9.2 {see: bogus option} -body {
+    .t see first -bar
+} -returnCodes error -result {bad option "-bar": must be -center}
 
 test treectrl-9.3 {see: invalid item} -body {
     .t see foo
@@ -507,6 +507,22 @@ test treectrl-9.3 {see: invalid item} -body {
 
 test treectrl-9.4 {see: bottom most item} -body {
     .t see "root bottom"
+} -result {}
+
+test treectrl-9.5 {see: last item, bad column} -body {
+    .t see last foo
+} -returnCodes error -result {column "foo" doesn't exist}
+
+test treectrl-9.6 {see: missing option value} -body {
+    .t see first -center
+} -returnCodes error -result {missing value for "-center" option}
+
+test treectrl-9.7 {see: bogus option value} -body {
+    .t see first -center xz
+} -returnCodes error -result {bad -center value "xz": *} -match glob
+
+test treectrl-9.8 {see: -center xy} -body {
+    .t see first -center xy
 } -result {}
 
 test treectrl-10.1 {range: missing args} -body {

@@ -122,7 +122,7 @@ static void		InitBitmapObj(Tcl_Obj *objPtr);
  * field of the Tcl_Obj points to a TkBitmap object.
  */
 
-Tcl_ObjType tkBitmapObjType = {
+const Tcl_ObjType tkBitmapObjType = {
     "bitmap",			/* name */
     FreeBitmapObjProc,		/* freeIntRepProc */
     DupBitmapObjProc,		/* dupIntRepProc */
@@ -459,11 +459,23 @@ GetBitmap(
  */
 
 int
-Tk_DefineBitmap(
+Tk_OldDefineBitmap(
     Tcl_Interp *interp,		/* Interpreter to use for error reporting. */
     const char *name,		/* Name to use for bitmap. Must not already be
 				 * defined as a bitmap. */
     const char *source,		/* Address of bits for bitmap. */
+    int width,			/* Width of bitmap. */
+    int height)			/* Height of bitmap. */
+{
+    return Tk_DefineBitmap(interp, name, source, width, height);
+}
+
+int
+Tk_DefineBitmap(
+    Tcl_Interp *interp,		/* Interpreter to use for error reporting. */
+    const char *name,		/* Name to use for bitmap. Must not already be
+				 * defined as a bitmap. */
+    const void *source,		/* Address of bits for bitmap. */
     int width,			/* Width of bitmap. */
     int height)			/* Height of bitmap. */
 {
@@ -795,10 +807,20 @@ DupBitmapObjProc(
 
 	/* ARGSUSED */
 Pixmap
-Tk_GetBitmapFromData(
+Tk_OldGetBitmapFromData(
     Tcl_Interp *interp,		/* Interpreter to use for error reporting. */
     Tk_Window tkwin,		/* Window in which bitmap will be used. */
     const char *source,		/* Bitmap data for bitmap shape. */
+    int width, int height)	/* Dimensions of bitmap. */
+{
+	return Tk_GetBitmapFromData(interp, tkwin, source, width, height);
+}
+
+Pixmap
+Tk_GetBitmapFromData(
+    Tcl_Interp *interp,		/* Interpreter to use for error reporting. */
+    Tk_Window tkwin,		/* Window in which bitmap will be used. */
+    const void *source,		/* Bitmap data for bitmap shape. */
     int width, int height)	/* Dimensions of bitmap. */
 {
     DataKey nameKey;
@@ -967,7 +989,7 @@ InitBitmapObj(
     Tcl_GetString(objPtr);
     typePtr = objPtr->typePtr;
     if ((typePtr != NULL) && (typePtr->freeIntRepProc != NULL)) {
-	(*typePtr->freeIntRepProc)(objPtr);
+	typePtr->freeIntRepProc(objPtr);
     }
     objPtr->typePtr = &tkBitmapObjType;
     objPtr->internalRep.twoPtrValue.ptr1 = NULL;
@@ -1012,25 +1034,25 @@ BitmapInit(
 	dummy = Tcl_CreateInterp();
 	Tcl_InitHashTable(&tsdPtr->predefBitmapTable, TCL_STRING_KEYS);
 
-	Tk_DefineBitmap(dummy, "error", (char *) error_bits,
+	Tk_DefineBitmap(dummy, "error", error_bits,
 		error_width, error_height);
-	Tk_DefineBitmap(dummy, "gray75", (char *) gray75_bits,
+	Tk_DefineBitmap(dummy, "gray75", gray75_bits,
 		gray75_width, gray75_height);
-	Tk_DefineBitmap(dummy, "gray50", (char *) gray50_bits,
+	Tk_DefineBitmap(dummy, "gray50", gray50_bits,
 		gray50_width, gray50_height);
-	Tk_DefineBitmap(dummy, "gray25", (char *) gray25_bits,
+	Tk_DefineBitmap(dummy, "gray25", gray25_bits,
 		gray25_width, gray25_height);
-	Tk_DefineBitmap(dummy, "gray12", (char *) gray12_bits,
+	Tk_DefineBitmap(dummy, "gray12", gray12_bits,
 		gray12_width, gray12_height);
-	Tk_DefineBitmap(dummy, "hourglass", (char *) hourglass_bits,
+	Tk_DefineBitmap(dummy, "hourglass", hourglass_bits,
 		hourglass_width, hourglass_height);
-	Tk_DefineBitmap(dummy, "info", (char *) info_bits,
+	Tk_DefineBitmap(dummy, "info", info_bits,
 		info_width, info_height);
-	Tk_DefineBitmap(dummy, "questhead", (char *) questhead_bits,
+	Tk_DefineBitmap(dummy, "questhead", questhead_bits,
 		questhead_width, questhead_height);
-	Tk_DefineBitmap(dummy, "question", (char *) question_bits,
+	Tk_DefineBitmap(dummy, "question", question_bits,
 		question_width, question_height);
-	Tk_DefineBitmap(dummy, "warning", (char *) warning_bits,
+	Tk_DefineBitmap(dummy, "warning", warning_bits,
 		warning_width, warning_height);
 
 	TkpDefineNativeBitmaps();
@@ -1091,7 +1113,7 @@ TkReadBitmapFile(
 {
     char *data;
 
-    data = TkGetBitmapData(NULL, NULL, (char *) filename,
+    data = TkGetBitmapData(NULL, NULL, filename,
 	    (int *) width_return, (int *) height_return, x_hot_return,
 	    y_hot_return);
     if (data == NULL) {
@@ -1127,7 +1149,7 @@ Tcl_Obj *
 TkDebugBitmap(
     Tk_Window tkwin,		/* The window in which the bitmap will be used
 				 * (not currently used). */
-    char *name)			/* Name of the desired color. */
+    const char *name)		/* Name of the desired color. */
 {
     TkBitmap *bitmapPtr;
     Tcl_HashEntry *hashPtr;

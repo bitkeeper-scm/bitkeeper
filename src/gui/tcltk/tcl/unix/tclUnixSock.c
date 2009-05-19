@@ -42,7 +42,7 @@ InitializeHostName(
     int *lengthPtr,
     Tcl_Encoding *encodingPtr)
 {
-    CONST char *native = NULL;
+    const char *native = NULL;
 
 #ifndef NO_UNAME
     struct utsname u;
@@ -94,7 +94,7 @@ InitializeHostName(
      * Fix suggested by Viktor Dukhovni (viktor@esm.com)
      */
 
-#    if defined(SYS_NMLN) && SYS_NMLEN >= 256
+#    if defined(SYS_NMLN) && (SYS_NMLEN >= 256)
     char buffer[SYS_NMLEN];
 #    else
     char buffer[256];
@@ -107,8 +107,8 @@ InitializeHostName(
 
     *encodingPtr = Tcl_GetEncoding(NULL, NULL);
     *lengthPtr = strlen(native);
-    *valuePtr = ckalloc((unsigned int) (*lengthPtr)+1);
-    memcpy(*valuePtr, (void *) native, (size_t)(*lengthPtr)+1);
+    *valuePtr = ckalloc((unsigned) (*lengthPtr) + 1);
+    memcpy(*valuePtr, native, (size_t)(*lengthPtr)+1);
 }
 
 /*
@@ -129,7 +129,7 @@ InitializeHostName(
  *----------------------------------------------------------------------
  */
 
-CONST char *
+const char *
 Tcl_GetHostName(void)
 {
     return Tcl_GetString(TclGetProcessGlobalValue(&hostName));

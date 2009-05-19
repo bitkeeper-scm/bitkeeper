@@ -20,15 +20,15 @@
 AC_DEFUN([SC_PATH_TCLCONFIG], [
     AC_MSG_CHECKING([the location of tclConfig.sh])
 
-    if test -d ../../tcl8.5$1/win;  then
-	TCL_BIN_DIR_DEFAULT=../../tcl8.5$1/win
-    elif test -d ../../tcl8.5/win;  then
-	TCL_BIN_DIR_DEFAULT=../../tcl8.5/win
+    if test -d ../../tcl8.6$1/win;  then
+	TCL_BIN_DIR_DEFAULT=../../tcl8.6$1/win
+    elif test -d ../../tcl8.6/win;  then
+	TCL_BIN_DIR_DEFAULT=../../tcl8.6/win
     else
 	TCL_BIN_DIR_DEFAULT=../../tcl/win
     fi
     
-    AC_ARG_WITH(tcl, [  --with-tcl=DIR          use Tcl 8.5 binaries from DIR],
+    AC_ARG_WITH(tcl, [  --with-tcl=DIR          use Tcl 8.6 binaries from DIR],
 	    TCL_BIN_DIR=$withval, TCL_BIN_DIR=`cd $TCL_BIN_DIR_DEFAULT; pwd`)
     if test ! -d $TCL_BIN_DIR; then
 	AC_MSG_ERROR(Tcl directory $TCL_BIN_DIR does not exist)
@@ -60,15 +60,15 @@ AC_DEFUN([SC_PATH_TCLCONFIG], [
 AC_DEFUN([SC_PATH_TKCONFIG], [
     AC_MSG_CHECKING([the location of tkConfig.sh])
 
-    if test -d ../../tk8.5$1/win;  then
-	TK_BIN_DIR_DEFAULT=../../tk8.5$1/win
-    elif test -d ../../tk8.5/win;  then
-	TK_BIN_DIR_DEFAULT=../../tk8.5/win
+    if test -d ../../tk8.6$1/win;  then
+	TK_BIN_DIR_DEFAULT=../../tk8.6$1/win
+    elif test -d ../../tk8.6/win;  then
+	TK_BIN_DIR_DEFAULT=../../tk8.6/win
     else
 	TK_BIN_DIR_DEFAULT=../../tk/win
     fi
     
-    AC_ARG_WITH(tk, [  --with-tk=DIR          use Tk 8.5 binaries from DIR],
+    AC_ARG_WITH(tk, [  --with-tk=DIR          use Tk 8.6 binaries from DIR],
 	    TK_BIN_DIR=$withval, TK_BIN_DIR=`cd $TK_BIN_DIR_DEFAULT; pwd`)
     if test ! -d $TK_BIN_DIR; then
 	AC_MSG_ERROR(Tk directory $TK_BIN_DIR does not exist)
@@ -619,8 +619,12 @@ AC_DEFUN([SC_CONFIG_CFLAGS], [
 	    # The space-based-path will work for the Makefile, but will
 	    # not work if AC_TRY_COMPILE is called.  TEA has the
 	    # TEA_PATH_NOSPACE to avoid this issue.
-	    CC="\"${PATH64}/cl.exe\" -I\"${MSSDK}/Include\" \
-		-I\"${MSSDK}/Include/crt\" -I\"${MSSDK}/Include/crt/sys\""
+	    # Check if _WIN64 is already recognized, and if so we don't
+	    # need to modify CC.
+	    AC_CHECK_DECL([_WIN64], [],
+			  [CC="\"${PATH64}/cl.exe\" -I\"${MSSDK}/Include\" \
+			 -I\"${MSSDK}/Include/crt\" \
+			 -I\"${MSSDK}/Include/crt/sys\""])
 	    RC="\"${MSSDK}/bin/rc.exe\""
 	    CFLAGS_DEBUG="-nologo -Zi -Od ${runtime}d"
 	    # Do not use -O2 for Win64 - this has proved buggy in code gen.
@@ -796,13 +800,13 @@ AC_DEFUN([SC_CONFIG_CFLAGS], [
 #------------------------------------------------------------------------
 
 AC_DEFUN([SC_WITH_TCL], [
-    if test -d ../../tcl8.5$1/win;  then
-	TCL_BIN_DEFAULT=../../tcl8.5$1/win
+    if test -d ../../tcl8.6$1/win;  then
+	TCL_BIN_DEFAULT=../../tcl8.6$1/win
     else
-	TCL_BIN_DEFAULT=../../tcl8.5/win
+	TCL_BIN_DEFAULT=../../tcl8.6/win
     fi
     
-    AC_ARG_WITH(tcl, [  --with-tcl=DIR          use Tcl 8.5 binaries from DIR],
+    AC_ARG_WITH(tcl, [  --with-tcl=DIR          use Tcl 8.6 binaries from DIR],
 	    TCL_BIN_DIR=$withval, TCL_BIN_DIR=`cd $TCL_BIN_DEFAULT; pwd`)
     if test ! -d $TCL_BIN_DIR; then
 	AC_MSG_ERROR(Tcl directory $TCL_BIN_DIR does not exist)

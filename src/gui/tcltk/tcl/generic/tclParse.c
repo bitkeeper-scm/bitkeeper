@@ -13,7 +13,6 @@
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
  *
- * RCS: @(#) $Id$
  */
 
 #include "tclInt.h"
@@ -551,7 +550,7 @@ comments:
 	    }
 
 	    if (isLiteral) {
-		int elemCount = 0, code = TCL_OK;
+		int elemCount = 0, code = TCL_OK, nakedbs = 0;
 		const char *nextElem, *listEnd, *elemStart;
 
 		/*
@@ -573,21 +572,37 @@ comments:
 		 */
 
 		while (nextElem < listEnd) {
+		    int size, brace;
+
 		    code = TclFindElement(NULL, nextElem, listEnd - nextElem,
-			    &elemStart, &nextElem, NULL, NULL);
-		    if (code != TCL_OK) break;
+			    &elemStart, &nextElem, &size, &brace);
+		    if (code != TCL_OK) {
+			break;
+		    }
+		    if (!brace) {
+			const char *s;
+
+			for(s=elemStart;size>0;s++,size--) {
+			    if ((*s)=='\\') {
+				nakedbs=1;
+				break;
+			    }
+			}
+		    }
 		    if (elemStart < listEnd) {
 			elemCount++;
 		    }
 		}
 
-		if (code != TCL_OK) {
+		if ((code != TCL_OK) || nakedbs) {
 		    /*
-		     * Some list element could not be parsed. This means the
-		     * literal string was not in fact a valid list. Defer the
-		     * handling of this to compile/eval time, where code is
-		     * already in place to report the "attempt to expand a
-		     * non-list" error.
+		     * Some  list element  could not  be parsed,  or contained
+		     * naked  backslashes. This means  the literal  string was
+		     * not  in fact  a  valid nor  canonical  list. Defer  the
+		     * handling of  this to  compile/eval time, where  code is
+		     * already  in place to  report the  "attempt to  expand a
+		     * non-list" error or expand lists that require
+		     * substitution.
 		     */
 
 		    tokenPtr->type = TCL_TOKEN_EXPAND_WORD;
@@ -994,21 +1009,21 @@ TclParseBackslash(
 	 */
 
 	if (isdigit(UCHAR(*p)) && (UCHAR(*p) < '8')) {	/* INTL: digit */
-	    result = (unsigned char)(*p - '0');
+	    result = UCHAR(*p - '0');
 	    p++;
 	    if ((numBytes == 2) || !isdigit(UCHAR(*p))	/* INTL: digit */
 		    || (UCHAR(*p) >= '8')) {
 		break;
 	    }
 	    count = 3;
-	    result = (unsigned char)((result << 3) + (*p - '0'));
+	    result = UCHAR((result << 3) + (*p - '0'));
 	    p++;
 	    if ((numBytes == 3) || !isdigit(UCHAR(*p))	/* INTL: digit */
 		    || (UCHAR(*p) >= '8')) {
 		break;
 	    }
 	    count = 4;
-	    result = (unsigned char)((result << 3) + (*p - '0'));
+	    result = UCHAR((result << 3) + (*p - '0'));
 	    break;
 	}
 
@@ -1070,9 +1085,12 @@ ParseComment(
 	char type;
 	int scanned;
 
-	scanned = TclParseAllWhiteSpace(p, numBytes);
-	p += scanned;
-	numBytes -= scanned;
+	do {
+	    scanned = ParseWhiteSpace(p, numBytes,
+		    &parsePtr->incomplete, &type);
+	    p += scanned;
+	    numBytes -= scanned;
+	} while (numBytes && (*p == '\n') && (p++,numBytes--));
 
 	if ((numBytes == 0) || (*p != '#') || (strncmp(p, "#lang", 5) == 0)) {
 	    break;
@@ -1987,7 +2005,7 @@ Tcl_SubstObj(
     int length, tokensLeft, code;
     Tcl_Token *endTokenPtr;
     Tcl_Obj *result, *errMsg = NULL;
-    CONST char *p = TclGetStringFromObj(objPtr, &length);
+    const char *p = TclGetStringFromObj(objPtr, &length);
     Tcl_Parse *parsePtr = (Tcl_Parse *)
 	    TclStackAlloc(interp, sizeof(Tcl_Parse));
 
@@ -2278,16 +2296,17 @@ TclSubstTokens(
 	    break;
 
 	case TCL_TOKEN_COMMAND: {
-	    Interp *iPtr = (Interp *) interp;
-
-	    iPtr->numLevels++;
-	    code = TclInterpReady(interp);
-	    if (code == TCL_OK) {
-		/* TIP #280: Transfer line information to nested command */
+  	    Interp *iPtr = (Interp *) interp;
+	    
+	    /* TIP #280: Transfer line information to nested command */
+ 	    iPtr->numLevels++;
+  	    code = TclInterpReady(interp);
+  	    if (code == TCL_OK) {
 		code = TclEvalEx(interp, tokenPtr->start+1, tokenPtr->size-2,
 			0, line);
 	    }
 	    iPtr->numLevels--;
+	    TclResetCancellation(interp, 0);
 	    appendObj = Tcl_GetObjResult(interp);
 	    break;
 	}

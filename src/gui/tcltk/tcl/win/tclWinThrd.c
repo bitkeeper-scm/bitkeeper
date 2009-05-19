@@ -5,6 +5,7 @@
  *
  * Copyright (c) 1998 by Sun Microsystems, Inc.
  * Copyright (c) 1999 by Scriptics Corporation
+ * Copyright (c) 2008 by George Peter Staplin
  *
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -153,6 +154,10 @@ TclpThreadCreate(
     HANDLE tHandle;
 
     EnterCriticalSection(&joinLock);
+
+    *idPtr = 0; /* must initialize as Tcl_Thread is a pointer and
+                 * on WIN64 sizeof void* != sizeof unsigned
+		 */
 
 #if defined(_MSC_VER) || defined(__MSVCRT__) || defined(__BORLANDC__)
     tHandle = (HANDLE) _beginthreadex(NULL, (unsigned) stackSize, proc,
@@ -491,6 +496,7 @@ Tcl_MutexLock(
     Tcl_Mutex *mutexPtr)	/* The lock */
 {
     CRITICAL_SECTION *csPtr;
+
     if (*mutexPtr == NULL) {
 	MASTER_LOCK;
 
@@ -531,6 +537,7 @@ Tcl_MutexUnlock(
     Tcl_Mutex *mutexPtr)	/* The lock */
 {
     CRITICAL_SECTION *csPtr = *((CRITICAL_SECTION **)mutexPtr);
+
     LeaveCriticalSection(csPtr);
 }
 
@@ -556,6 +563,7 @@ TclpFinalizeMutex(
     Tcl_Mutex *mutexPtr)
 {
     CRITICAL_SECTION *csPtr = *(CRITICAL_SECTION **)mutexPtr;
+
     if (csPtr != NULL) {
 	DeleteCriticalSection(csPtr);
 	ckfree((char *) csPtr);
@@ -589,7 +597,7 @@ void
 Tcl_ConditionWait(
     Tcl_Condition *condPtr,	/* Really (WinCondition **) */
     Tcl_Mutex *mutexPtr,	/* Really (CRITICAL_SECTION **) */
-    Tcl_Time *timePtr)		/* Timeout on waiting period */
+    const Tcl_Time *timePtr) /* Timeout on waiting period */
 {
     WinCondition *winCondPtr;	/* Per-condition queue head */
     CRITICAL_SECTION *csPtr;	/* Caller's Mutex, after casting */
@@ -628,8 +636,7 @@ Tcl_ConditionWait(
 	     * and initializing that may drop back into the Master Lock.
 	     */
 
-	    Tcl_CreateThreadExitHandler(FinalizeConditionEvent,
-		    (ClientData) tsdPtr);
+	    Tcl_CreateThreadExitHandler(FinalizeConditionEvent, tsdPtr);
 	}
     }
 
@@ -641,11 +648,11 @@ Tcl_ConditionWait(
 	 */
 
 	if (*condPtr == NULL) {
-	    winCondPtr = (WinCondition *)ckalloc(sizeof(WinCondition));
+	    winCondPtr = (WinCondition *) ckalloc(sizeof(WinCondition));
 	    InitializeCriticalSection(&winCondPtr->condLock);
 	    winCondPtr->firstPtr = NULL;
 	    winCondPtr->lastPtr = NULL;
-	    *condPtr = (Tcl_Condition)winCondPtr;
+	    *condPtr = (Tcl_Condition) winCondPtr;
 	    TclRememberCondition(condPtr);
 	}
 	MASTER_UNLOCK;
@@ -690,7 +697,8 @@ Tcl_ConditionWait(
     while (!timeout && (tsdPtr->flags & WIN_THREAD_BLOCKED)) {
 	ResetEvent(tsdPtr->condEvent);
 	LeaveCriticalSection(&winCondPtr->condLock);
-	if (WaitForSingleObject(tsdPtr->condEvent, wtime) == WAIT_TIMEOUT) {
+	if (WaitForSingleObjectEx(tsdPtr->condEvent, wtime,
+		TRUE) == WAIT_TIMEOUT) {
 	    timeout = 1;
 	}
 	EnterCriticalSection(&winCondPtr->condLock);
@@ -755,6 +763,7 @@ Tcl_ConditionNotify(
 {
     WinCondition *winCondPtr;
     ThreadSpecificData *tsdPtr;
+
     if (*condPtr != NULL) {
 	winCondPtr = *((WinCondition **)condPtr);
 
@@ -811,6 +820,7 @@ FinalizeConditionEvent(
     ClientData data)
 {
     ThreadSpecificData *tsdPtr = (ThreadSpecificData *) data;
+
     tsdPtr->flags = WIN_THREAD_UNINIT;
     CloseHandle(tsdPtr->condEvent);
 }
@@ -854,6 +864,9 @@ TclpFinalizeCondition(
     }
 }
 
+
+
+
 /*
  * Additions by AOL for specialized thread memory allocator.
  */
@@ -889,7 +902,7 @@ TclpFreeAllocMutex(
 void *
 TclpGetAllocCache(void)
 {
-    VOID *result;
+    void *result;
 
     if (!once) {
 	/*
@@ -954,6 +967,61 @@ TclpFreeAllocCache(
 
 }
 #endif /* USE_THREAD_ALLOC */
+
+
+void *
+TclpThreadCreateKey(void)
+{
+    DWORD *key;
+
+    key = TclpSysAlloc(sizeof *key, 0);
+    if (key == NULL) {
+	Tcl_Panic("unable to allocate thread key!");
+    }
+
+    *key = TlsAlloc();
+
+    if (*key == TLS_OUT_OF_INDEXES) {
+	Tcl_Panic("unable to allocate thread-local storage");
+    }
+
+    return key;
+}
+
+void
+TclpThreadDeleteKey(
+    void *keyPtr)
+{
+    DWORD *key = keyPtr;
+
+    if (!TlsFree(*key)) {
+	Tcl_Panic("unable to delete key");
+    }
+
+    TclpSysFree(keyPtr);
+}
+
+void
+TclpThreadSetMasterTSD(
+    void *tsdKeyPtr,
+    void *ptr)
+{
+    DWORD *key = tsdKeyPtr;
+
+    if (!TlsSetValue(*key, ptr)) {
+	Tcl_Panic("unable to set master TSD value");
+    }
+}
+
+void *
+TclpThreadGetMasterTSD(
+    void *tsdKeyPtr)
+{
+    DWORD *key = tsdKeyPtr;
+
+    return TlsGetValue(*key);
+}
+
 #endif /* TCL_THREADS */
 
 /*

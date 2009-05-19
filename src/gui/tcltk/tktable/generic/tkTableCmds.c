@@ -746,7 +746,7 @@ Table_CurvalueCmd(ClientData clientData, register Tcl_Interp *interp,
 	TableRefresh(tablePtr, tablePtr->activeRow, tablePtr->activeCol, CELL);
     }
 
-    Tcl_SetStringObj(Tcl_GetObjResult(interp), tablePtr->activeBuf, -1);
+    Tcl_SetObjResult(interp, Tcl_NewStringObj(tablePtr->activeBuf, -1));
     return TCL_OK;
 }
 

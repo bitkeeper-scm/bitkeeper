@@ -1,3 +1,32 @@
+2008-11-14  Jeff Hobbs  <jeffh@ActiveState.com>
+
+	**** 2.10 TAGGED FOR RELEASE ****
+
+	* generic/tkTable.c: Set NO_XSETCLIP universally as Tk 8.5/Xft
+	seems to ignore XSetClipRectangles.  This may slow things down a
+	little, but draws correctly. [Bug 1805350]
+
+	* UPGRADING.txt (removed): no longer need this old v1 upgrade doc.
+
+	* README.txt: remove refs to mac classic stuff, update notes
+
+	* configure, configure.in, tclconfig/tcl.m4: Update to TEA 3.7
+	* tests/tkTable.test, unix/tktable.spec, generic/version.h:
+	* demos/loadtable.tcl: Update version to 2.10
+	* Makefile.in: update dist target, include library/tktable.py
+
+	* demos/tktable.py: note that this version is outdated
+	* library/tktable.py (NEW): Added new version of tktable wrapper
+	for Python/Tkinter from GPolo.  Not 100% compatible with previous
+	version. [Patch 2244167]
+
+	* generic/tkTableTag.c (Table_TagCmd): remove interp->result set
+	work-around for old bug as i->result is no longer exposed in 8.6.
+
+	* generic/tkTable.c:     Use safe Tcl_SetObjResult instead of trying
+	* generic/tkTableCell.c: to set existing objResult value.
+	* generic/tkTableCmds.c: 
+
 2006-07-10  Jeff Hobbs  <jeffh@ActiveState.com>
 
 	* license.txt (bourbon_ware): Be less restrictive in the

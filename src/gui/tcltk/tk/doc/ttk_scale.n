@@ -15,6 +15,7 @@ ttk::scale \- Create and manipulate a scale widget
 \fBttk::scale \fIpathName \fR?\fIoptions...\fR?
 .BE
 .SH DESCRIPTION
+.PP
 A \fBttk::scale\fR widget is typically used to control the numeric value of a
 linked variable that varies uniformly over some range. A scale displays a
 \fIslider\fR that can be moved along over a \fItrough\fR, with the relative
@@ -49,6 +50,7 @@ value of the variable changes, the scale will update to reflect this value.
 Whenever the scale is manipulated interactively, the variable will be modified
 to reflect the scale's new value.
 .SH "WIDGET COMMAND"
+.PP
 .TP
 \fIpathName \fBcget \fIoption\fR
 .
@@ -65,6 +67,10 @@ Get the current value of the \fB\-value\fR option, or the value corresponding
 to the coordinates \fIx,y\fR if they are specified. \fIX\fR and \fIy\fR are
 pixel coordinates relative to the scale widget origin.
 .TP
+\fIpathName \fBidentify\fR \fIx y\fR
+Returns the name of the element at position \fIx\fR, \fIy\fR.
+See \fIttk::widget(n)\fR.
+.TP
 \fIpathName \fBinstate \fIstatespec\fR ?\fIscript\fR?
 .
 Test the widget state; see \fIttk::widget(n)\fR.
@@ -80,18 +86,13 @@ named in the \fB\-variable\fR option) does not cause such clipping.
 .
 Modify or query the widget state; see \fIttk::widget(n)\fR.
 .SH "INTERNAL COMMANDS"
+.PP
 .TP
 \fIpathName \fBcoords \fR?\fIvalue\fR?
 .
 Get the coordinates corresponding to \fIvalue\fR, or the coordinates
 corresponding to the current value of the \fB\-value\fR option if \fIvalue\fR
 is omitted.
-.TP
-\fIpathName \fBidentify \fIx y\fR
-.
-Returns the name of the element under the point given by \fIx\fR and \fIy\fR,
-or an empty string if the point does not lie in any element of the scale.
-\fIX\fR and \fIy\fR are pixel coordinates relative to the scale widget origin.
 .SH "SEE ALSO"
 ttk::widget(n), scale(n)
 .SH KEYWORDS

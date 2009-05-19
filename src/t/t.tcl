@@ -66,7 +66,7 @@ fi
 
 echo $N Test that PCRE is working....................................$NL
 cat <<EOF > pcre.l
-main()
+void main()
 {
 	string s[] = split("axbxc", "x");
 	if (defined(s[0])) {

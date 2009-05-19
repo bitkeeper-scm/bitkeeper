@@ -1,3 +1,9 @@
+#
+# #### OUTDATE MODULE ####
+# This has been superceded by the tktable.py that ships in the lib area.
+# This is kept for compatibility as the newer wrapper is not 100% compatible.
+# #### OUTDATE MODULE ####
+#
 # This file is taken from the usenet:
 #    http://groups.google.com/groups?selm=351A52BC.27EA0BE2%40desys.de
 #    From: Klaus Roethemeyer <klaus.roethemeyer at desys.de>

@@ -19,7 +19,7 @@
  * Prototypes for functions defined later in this file:
  */
 
-static List *		NewListIntRep(int objc, Tcl_Obj *CONST objv[]);
+static List *		NewListIntRep(int objc, Tcl_Obj *const objv[]);
 static void		DupListInternalRep(Tcl_Obj *srcPtr, Tcl_Obj *copyPtr);
 static void		FreeListInternalRep(Tcl_Obj *listPtr);
 static int		SetListFromAny(Tcl_Interp *interp, Tcl_Obj *objPtr);
@@ -38,7 +38,7 @@ static void		UpdateStringOfList(Tcl_Obj *listPtr);
  * storage to avoid an auxiliary stack.
  */
 
-Tcl_ObjType tclListType = {
+const Tcl_ObjType tclListType = {
     "list",			/* name */
     FreeListInternalRep,	/* freeIntRepProc */
     DupListInternalRep,		/* dupIntRepProc */
@@ -72,7 +72,7 @@ Tcl_ObjType tclListType = {
 static List *
 NewListIntRep(
     int objc,
-    Tcl_Obj *CONST objv[])
+    Tcl_Obj *const objv[])
 {
     List *listRepPtr;
 
@@ -149,7 +149,7 @@ NewListIntRep(
 Tcl_Obj *
 Tcl_NewListObj(
     int objc,			/* Count of objects referenced by objv. */
-    Tcl_Obj *CONST objv[])	/* An array of pointers to Tcl objects. */
+    Tcl_Obj *const objv[])	/* An array of pointers to Tcl objects. */
 {
     return Tcl_DbNewListObj(objc, objv, "unknown", 0);
 }
@@ -159,7 +159,7 @@ Tcl_NewListObj(
 Tcl_Obj *
 Tcl_NewListObj(
     int objc,			/* Count of objects referenced by objv. */
-    Tcl_Obj *CONST objv[])	/* An array of pointers to Tcl objects. */
+    Tcl_Obj *const objv[])	/* An array of pointers to Tcl objects. */
 {
     List *listRepPtr;
     Tcl_Obj *listPtr;
@@ -227,8 +227,8 @@ Tcl_NewListObj(
 Tcl_Obj *
 Tcl_DbNewListObj(
     int objc,			/* Count of objects referenced by objv. */
-    Tcl_Obj *CONST objv[],	/* An array of pointers to Tcl objects. */
-    CONST char *file,		/* The name of the source file calling this
+    Tcl_Obj *const objv[],	/* An array of pointers to Tcl objects. */
+    const char *file,		/* The name of the source file calling this
 				 * function; used for debugging. */
     int line)			/* Line number in the source file; used for
 				 * debugging. */
@@ -269,8 +269,8 @@ Tcl_DbNewListObj(
 Tcl_Obj *
 Tcl_DbNewListObj(
     int objc,			/* Count of objects referenced by objv. */
-    Tcl_Obj *CONST objv[],	/* An array of pointers to Tcl objects. */
-    CONST char *file,		/* The name of the source file calling this
+    Tcl_Obj *const objv[],	/* An array of pointers to Tcl objects. */
+    const char *file,		/* The name of the source file calling this
 				 * function; used for debugging. */
     int line)			/* Line number in the source file; used for
 				 * debugging. */
@@ -305,7 +305,7 @@ void
 Tcl_SetListObj(
     Tcl_Obj *objPtr,		/* Object whose internal rep to init. */
     int objc,			/* Count of objects referenced by objv. */
-    Tcl_Obj *CONST objv[])	/* An array of pointers to Tcl objects. */
+    Tcl_Obj *const objv[])	/* An array of pointers to Tcl objects. */
 {
     List *listRepPtr;
 
@@ -428,7 +428,16 @@ Tcl_ListObjGetElements(
     if (listPtr->typePtr != &tclListType) {
 	int result, length;
 
-	(void) TclGetStringFromObj(listPtr, &length);
+	/*
+	 * Don't get the string version of a dictionary; that transformation
+	 * is not lossy, but is expensive.
+	 */
+
+	if (listPtr->typePtr == &tclDictType) {
+	    (void) Tcl_DictObjSize(NULL, listPtr, &length);
+	} else {
+	    (void) TclGetStringFromObj(listPtr, &length);
+	}
 	if (!length) {
 	    *objcPtr = 0;
 	    *objvPtr = NULL;
@@ -774,7 +783,7 @@ Tcl_ListObjReplace(
     int first,			/* Index of first element to replace. */
     int count,			/* Number of elements to replace. */
     int objc,			/* Number of objects to insert. */
-    Tcl_Obj *CONST objv[])	/* An array of objc pointers to Tcl objects to
+    Tcl_Obj *const objv[])	/* An array of objc pointers to Tcl objects to
 				 * insert. */
 {
     List *listRepPtr;
@@ -1081,8 +1090,8 @@ TclLindexFlat(
     Tcl_IncrRefCount(listPtr);
 
     for (i=0 ; i<indexCount && listPtr ; i++) {
-	int index, listLen;
-	Tcl_Obj **elemPtrs, *sublistCopy;
+	int index, listLen = 0;
+	Tcl_Obj **elemPtrs = NULL, *sublistCopy;
 
 	/*
 	 * Here we make a private copy of the current sublist, so we avoid any
@@ -1167,8 +1176,8 @@ TclLsetList(
     Tcl_Obj *indexArgPtr,	/* Index or index-list arg to 'lset'. */
     Tcl_Obj *valuePtr)		/* Value arg to 'lset'. */
 {
-    int indexCount;		/* Number of indices in the index list. */
-    Tcl_Obj **indices;		/* Vector of indices in the index list. */
+    int indexCount = 0;		/* Number of indices in the index list. */
+    Tcl_Obj **indices = NULL;	/* Vector of indices in the index list. */
     Tcl_Obj *retValuePtr;	/* Pointer to the list to be returned. */
     int index;			/* Current index in the list - discarded. */
     Tcl_Obj *indexListCopy;
@@ -1262,7 +1271,7 @@ TclLsetFlat(
 				/* Index args. */
     Tcl_Obj *valuePtr)		/* Value arg to 'lset'. */
 {
-    int index, result;
+    int index, result, len;
     Tcl_Obj *subListPtr, *retValuePtr, *chainPtr;
 
     /*
@@ -1317,7 +1326,7 @@ TclLsetFlat(
 	 * WARNING: the macro TclGetIntForIndexM is not safe for
 	 * post-increments, avoid '*indexArray++' here.
 	 */
-	
+
 	if (TclGetIntForIndexM(interp, *indexArray, elemCount - 1, &index)
 		!= TCL_OK)  {
 	    /* ...the index we're trying to use isn't an index at all. */
@@ -1326,7 +1335,7 @@ TclLsetFlat(
 	}
 	indexArray++;
 
-	if (index < 0 || index >= elemCount) {
+	if (index < 0 || index > elemCount) {
 	    /* ...the index points outside the sublist. */
 	    Tcl_SetObjResult(interp,
 		    Tcl_NewStringObj("list index out of range", -1));
@@ -1343,7 +1352,11 @@ TclLsetFlat(
 	result = TCL_OK;
 	if (--indexCount) {
 	    parentList = subListPtr;
-	    subListPtr = elemPtrs[index];
+	    if (index == elemCount) {
+		subListPtr = Tcl_NewObj();
+	    } else {
+		subListPtr = elemPtrs[index];
+	    }
 	    if (Tcl_IsShared(subListPtr)) {
 		subListPtr = Tcl_DuplicateObj(subListPtr);
 	    }
@@ -1357,7 +1370,11 @@ TclLsetFlat(
 	     * make and store another copy.
 	     */
 
-	    TclListObjSetElement(NULL, parentList, index, subListPtr);
+	    if (index == elemCount) {
+		Tcl_ListObjAppendElement(NULL, parentList, subListPtr);
+	    } else {
+		TclListObjSetElement(NULL, parentList, index, subListPtr);
+	    }
 	    if (Tcl_IsShared(subListPtr)) {
 		subListPtr = Tcl_DuplicateObj(subListPtr);
 		TclListObjSetElement(NULL, parentList, index, subListPtr);
@@ -1408,9 +1425,9 @@ TclLsetFlat(
     }
 
     if (result != TCL_OK) {
-	/* 
+	/*
 	 * Error return; message is already in interp. Clean up
-	 * any excess memory. 
+	 * any excess memory.
 	 */
 	if (retValuePtr != listPtr) {
 	    Tcl_DecrRefCount(retValuePtr);
@@ -1419,7 +1436,12 @@ TclLsetFlat(
     }
 
     /* Store valuePtr in proper sublist and return */
-    TclListObjSetElement(NULL, subListPtr, index, valuePtr);
+    Tcl_ListObjLength(NULL, subListPtr, &len);
+    if (index == len) {
+	Tcl_ListObjAppendElement(NULL, subListPtr, valuePtr);
+    } else {
+	TclListObjSetElement(NULL, subListPtr, index, valuePtr);
+    }
     Tcl_InvalidateStringRep(subListPtr);
     Tcl_IncrRefCount(retValuePtr);
     return retValuePtr;
@@ -1556,6 +1578,43 @@ TclListObjSetElement(
 /*
  *----------------------------------------------------------------------
  *
+ * TclListWalk --
+ *
+ *	Recursively walk a list depth-first and call a call-back function
+ *	for each leaf element.  This function does *not* shimmer the object
+ *	to a list if it isn't already of list type.
+ *
+ * Results:
+ *	None, beyond the call-backs.
+ *
+ * Side effects:
+ *	None.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TclListWalk(
+    Tcl_Obj *objPtr,			/* Object to walk. */
+    void (*fn)(Tcl_Obj *, void *),	/* Call-back function. */
+    void *arg)				/* Call-back function argument. */
+{
+    int i, objc;
+    Tcl_Obj **objv;
+
+    if (objPtr->typePtr == &tclListType) {
+	TclListObjGetElements(NULL, objPtr, &objc, &objv);
+	for (i = 0; i < objc; ++i) {
+	    TclListWalk(objv[i], fn, arg);
+	}
+    } else {
+	fn(objPtr, arg);
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * FreeListInternalRep --
  *
  *	Deallocate the storage associated with a list object's internal
@@ -1648,7 +1707,8 @@ SetListFromAny(
     Tcl_Interp *interp,		/* Used for error reporting if not NULL. */
     Tcl_Obj *objPtr)		/* The object to convert. */
 {
-    char *string, *s;
+    const char *string;
+    char *s;
     const char *elemStart, *nextElem;
     int lenRemain, length, estCount, elemSize, hasBrace, i, j, result;
     const char *limit;		/* Points just after string's last byte. */
@@ -1656,6 +1716,59 @@ SetListFromAny(
     register Tcl_Obj **elemPtrs;
     register Tcl_Obj *elemPtr;
     List *listRepPtr;
+
+    /*
+     * Dictionaries are a special case; they have a string representation such
+     * that *all* valid dictionaries are valid lists. Hence we can convert
+     * more directly.
+     */
+
+    if (objPtr->typePtr == &tclDictType) {
+	Tcl_Obj *keyPtr, *valuePtr;
+	Tcl_DictSearch search;
+	int done, size;
+
+	/*
+	 * Create the new list representation. Note that we do not need to do
+	 * anything with the string representation as the transformation (and
+	 * the reverse back to a dictionary) are both order-preserving. Also
+	 * note that since we know we've got a valid dictionary (by
+	 * representation) we also know that fetching the size of the
+	 * dictionary or iterating over it will not fail.
+	 */
+
+	Tcl_DictObjSize(NULL, objPtr, &size);
+	listRepPtr = NewListIntRep(size > 0 ? 2*size : 1, NULL);
+	if (!listRepPtr) {
+	    Tcl_SetResult(interp,
+		    "insufficient memory to allocate list working space",
+		    TCL_STATIC);
+	    Tcl_SetErrorCode(interp, "TCL", "MEMORY", NULL);
+	    return TCL_ERROR;
+	}
+	listRepPtr->elemCount = 2 * size;
+
+	/*
+	 * Populate the list representation.
+	 */
+
+	elemPtrs = &listRepPtr->elements;
+	Tcl_DictObjFirst(NULL, objPtr, &search, &keyPtr, &valuePtr, &done);
+	i = 0;
+	while (!done) {
+	    elemPtrs[i++] = keyPtr;
+	    elemPtrs[i++] = valuePtr;
+	    Tcl_IncrRefCount(keyPtr);
+	    Tcl_IncrRefCount(valuePtr);
+	    Tcl_DictObjNext(&search, &keyPtr, &valuePtr, &done);
+	}
+
+	/*
+	 * Swap the representations.
+	 */
+
+	goto commitRepresentation;
+    }
 
     /*
      * Get the string representation. Make it up-to-date if necessary.
@@ -1690,6 +1803,7 @@ SetListFromAny(
     if (!listRepPtr) {
 	Tcl_SetObjResult(interp, Tcl_NewStringObj(
 		"Not enough memory to allocate the list internal rep", -1));
+	Tcl_SetErrorCode(interp, "TCL", "MEMORY", NULL);
 	return TCL_ERROR;
     }
     elemPtrs = &listRepPtr->elements;
@@ -1705,6 +1819,9 @@ SetListFromAny(
 		Tcl_DecrRefCount(elemPtr);
 	    }
 	    ckfree((char *) listRepPtr);
+	    if (interp != NULL) {
+		Tcl_SetErrorCode(interp, "TCL", "VALUE", "LIST", NULL);
+	    }
 	    return result;
 	}
 	if (elemStart >= limit) {
@@ -1742,9 +1859,10 @@ SetListFromAny(
      * Tcl_GetStringFromObj, to use that old internalRep.
      */
 
+  commitRepresentation:
     listRepPtr->refCount++;
     TclFreeIntRep(objPtr);
-    objPtr->internalRep.twoPtrValue.ptr1 = (void *) listRepPtr;
+    objPtr->internalRep.twoPtrValue.ptr1 = listRepPtr;
     objPtr->internalRep.twoPtrValue.ptr2 = NULL;
     objPtr->typePtr = &tclListType;
     return TCL_OK;
@@ -1780,7 +1898,8 @@ UpdateStringOfList(
     List *listRepPtr = (List *) listPtr->internalRep.twoPtrValue.ptr1;
     int numElems = listRepPtr->elemCount;
     register int i;
-    char *elem, *dst;
+    const char *elem;
+    char *dst;
     int length;
     Tcl_Obj **elemPtrs;
 

@@ -7,7 +7,7 @@
 #	replaced in the actual Makefile.
 #
 # Copyright (c) 1999 Scriptics Corporation.
-# Copyright (c) 2003 ActiveState Corporation.
+# Copyright (c) 2003-2008 ActiveState Software
 #
 # See the file "license.terms" for information on usage and redistribution
 # of this file, and for a DISCLAIMER OF ALL WARRANTIES.
@@ -251,6 +251,9 @@ html:
 test: binaries libraries
 	$(WISH) `@CYGPATH@ $(srcdir)/tests/all.tcl` $(TESTFLAGS) | cat
 
+demo: binaries libraries
+	$(WISH) `@CYGPATH@ $(srcdir)/demos/debug.tcl` $(TESTFLAGS) | cat
+
 shell: binaries libraries
 	@$(WISH) $(SCRIPT)
 
@@ -432,8 +435,9 @@ starkit: starkit-clean
 # You should not have to modify this target.
 #========================================================================
 
-#COMPRESS	= tar cvf $(PKG_DIR).tar $(PKG_DIR); compress $(PKG_DIR).tar
-COMPRESS	= gtar zcvf $(PKG_DIR).tar.gz $(PKG_DIR)
+TAR		= tar
+#COMPRESS	= $(TAR) cvf $(PKG_DIR).tar $(PKG_DIR); compress $(PKG_DIR).tar
+COMPRESS	= $(TAR) zcvf $(PKG_DIR).tar.gz $(PKG_DIR)
 DIST_ROOT	= /tmp/dist
 DIST_DIR	= $(DIST_ROOT)/$(PKG_DIR)
 
@@ -455,30 +459,25 @@ dist: dist-clean
 	chmod +x $(DIST_DIR)/tclconfig/install-sh
 
 	mkdir $(DIST_DIR)/demos
-	cp -p $(srcdir)/demos/*.tcl $(srcdir)/demos/*.py \
-		$(srcdir)/demos/*.gif $(DIST_DIR)/demos/
+	cp -p $(srcdir)/demos/*.{tcl,py,gif} $(DIST_DIR)/demos/
 
 	mkdir $(DIST_DIR)/doc
-	cp -p $(srcdir)/doc/*.html $(srcdir)/doc/*.n $(DIST_DIR)/doc/
+	cp -p $(srcdir)/doc/*.{html,n} $(DIST_DIR)/doc/
 
 	mkdir $(DIST_DIR)/generic
-	cp -p $(srcdir)/generic/*.c $(srcdir)/generic/*.h $(DIST_DIR)/generic/
+	cp -p $(srcdir)/generic/*.[ch] $(DIST_DIR)/generic/
 
 	mkdir $(DIST_DIR)/library
-	cp -p $(srcdir)/library/*.tcl $(DIST_DIR)/library/
+	cp -p $(srcdir)/library/*.{tcl,py} $(DIST_DIR)/library/
 
 	mkdir $(DIST_DIR)/tests
-	cp -p $(srcdir)/tests/*.tcl $(srcdir)/tests/*.test $(DIST_DIR)/tests/
+	cp -p $(srcdir)/tests/*.{tcl,test} $(DIST_DIR)/tests/
 
 	mkdir $(DIST_DIR)/unix
 	cp -p $(srcdir)/unix/tktable.spec $(DIST_DIR)/unix/
 
 	mkdir $(DIST_DIR)/win
 	cp -p $(srcdir)/win/makefile.vc $(DIST_DIR)/win/
-
-	mkdir $(DIST_DIR)/mac
-	cp -p $(srcdir)/mac/*.xml $(srcdir)/mac/*.h $(srcdir)/mac/*.r \
-		$(DIST_DIR)/mac/
 
 	(cd $(DIST_ROOT); $(COMPRESS);)
 

@@ -135,7 +135,7 @@ test iocmd-4.8 {read command with incorrect combination of arguments} {
     set x [list [catch {read -nonewline $f 20 z} msg] $msg $::errorCode]
     close $f
     set x
-} {1 {wrong # args: should be "read channelId ?numChars?" or "read ?-nonewline? channelId"} NONE}
+} {1 {wrong # args: should be "read channelId ?numChars?" or "read ?-nonewline? channelId"} {TCL WRONGARGS}}
 test iocmd-4.9 {read command} {
     list [catch {read stdin foo} msg] $msg $::errorCode
 } {1 {bad argument "foo": should be "nonewline"} NONE}
@@ -150,25 +150,26 @@ test iocmd-4.11 {read command} {
     string compare [string tolower $x] \
 	[list 1 [format "channel \"%s\" wasn't opened for reading" $f] none]
 } 0
-test iocmd-4.12 {read command} {
+test iocmd-4.12 {read command} -setup {
     set f [open $path(test1)]
-    set x [list [catch {read $f 12z} msg] $msg $::errorCode]
+} -body {
+    list [catch {read $f 12z} msg] $msg $::errorCode
+} -cleanup {
     close $f
-    set x
-} {1 {expected integer but got "12z"} NONE}
+} -result {1 {expected integer but got "12z"} {TCL VALUE NUMBER}}
 
-test iocmd-5.1 {seek command} {
-    list [catch {seek} msg] $msg
-} {1 {wrong # args: should be "seek channelId offset ?origin?"}}
-test iocmd-5.2 {seek command} {
-    list [catch {seek a b c d e f g} msg] $msg
-} {1 {wrong # args: should be "seek channelId offset ?origin?"}}
-test iocmd-5.3 {seek command} {
-    list [catch {seek stdin gugu} msg] $msg
-} {1 {expected integer but got "gugu"}}
-test iocmd-5.4 {seek command} {
-    list [catch {seek stdin 100 gugu} msg] $msg
-} {1 {bad origin "gugu": must be start, current, or end}}
+test iocmd-5.1 {seek command} -returnCodes error -body {
+    seek
+} -result {wrong # args: should be "seek channelId offset ?origin?"}
+test iocmd-5.2 {seek command} -returnCodes error -body {
+    seek a b c d e f g
+} -result {wrong # args: should be "seek channelId offset ?origin?"}
+test iocmd-5.3 {seek command} -returnCodes error -body {
+    seek stdin gugu
+} -result {expected integer but got "gugu"}
+test iocmd-5.4 {seek command} -returnCodes error -body {
+    seek stdin 100 gugu
+} -result {bad origin "gugu": must be start, current, or end}
 
 test iocmd-6.1 {tell command} {
     list [catch {tell} msg] $msg
@@ -182,20 +183,34 @@ test iocmd-6.3 {tell command} {
 
 test iocmd-7.1 {close command} {
     list [catch {close} msg] $msg
-} {1 {wrong # args: should be "close channelId"}}
+} {1 {wrong # args: should be "close channelId ?direction?"}}
 test iocmd-7.2 {close command} {
     list [catch {close a b c d e} msg] $msg
-} {1 {wrong # args: should be "close channelId"}}
+} {1 {wrong # args: should be "close channelId ?direction?"}}
 test iocmd-7.3 {close command} {
     list [catch {close aaa} msg] $msg
 } {1 {can not find channel named "aaa"}}
+test iocmd-7.4 {close command} -setup {
+    set chan [open [info script] r]
+} -body {
+    chan close $chan bar
+} -cleanup {
+    close $chan
+} -returnCodes error -result "bad direction \"bar\": must be read or write"
+test iocmd-7.5 {close command} -setup {
+    set chan [open [info script] r]
+} -body {
+    chan close $chan write
+} -cleanup {
+    close $chan
+} -returnCodes error -result "Half-close of write-side not possible, side not opened or already closed"
 
 test iocmd-8.1 {fconfigure command} {
     list [catch {fconfigure} msg] $msg
-} {1 {wrong # args: should be "fconfigure channelId ?optionName? ?value? ?optionName value?..."}}
+} {1 {wrong # args: should be "fconfigure channelId ?-option value ...?"}}
 test iocmd-8.2 {fconfigure command} {
     list [catch {fconfigure a b c d e f} msg] $msg
-} {1 {wrong # args: should be "fconfigure channelId ?optionName? ?value? ?optionName value?..."}}
+} {1 {wrong # args: should be "fconfigure channelId ?-option value ...?"}}
 test iocmd-8.3 {fconfigure command} {
     list [catch {fconfigure a b} msg] $msg
 } {1 {can not find channel named "a"}}
@@ -338,10 +353,10 @@ test iocmd-8.19 {fconfigure command / win tty channel} -constraints {nonPortable
 
 test iocmd-9.1 {eof command} {
     list [catch {eof} msg] $msg $::errorCode
-} {1 {wrong # args: should be "eof channelId"} NONE}
+} {1 {wrong # args: should be "eof channelId"} {TCL WRONGARGS}}
 test iocmd-9.2 {eof command} {
     list [catch {eof a b} msg] $msg $::errorCode
-} {1 {wrong # args: should be "eof channelId"} NONE}
+} {1 {wrong # args: should be "eof channelId"} {TCL WRONGARGS}}
 test iocmd-9.3 {eof command} {
     catch {close file100}
     list [catch {eof file100} msg] $msg $::errorCode
@@ -526,6 +541,27 @@ test iocmd-13.10.2 {open for append, O_APPEND} -setup {
     # Ensure that channels are gone, even if body failed to do so
     foreach ch $chans {catch {close $ch}}
 } -result {0 1 2 3 4 5 6 7 8 9}
+test ioCmd-13.11 {open ... a+ must not use O_APPEND: Bug 1773127} -setup {
+    set f [makeFile {} ioutil41.tmp]
+    set fid [open $f wb]
+    puts -nonewline $fid 123
+    close $fid
+} -body {
+    set fid [open $f ab+]
+    puts -nonewline $fid 456
+    seek $fid 2
+    set d [read $fid 2]
+    seek $fid 4
+    puts -nonewline $fid x
+    close $fid
+    set fid [open $f rb]
+    append d [read $fid]
+    close $fid
+    return $d
+} -cleanup {
+    removeFile $f
+} -result 341234x6
+
 
 test iocmd-14.1 {file id parsing errors} {
     list [catch {eof gorp} msg] $msg $::errorCode
@@ -616,11 +652,10 @@ close $wfile
 test iocmd-20.0 {chan, wrong#args} {
     catch {chan} msg
     set msg
-} {wrong # args: should be "chan subcommand ?argument ...?"}
-test iocmd-20.1 {chan, unknown method} {
-    catch {chan foo} msg
-    set msg
-} {unknown or ambiguous subcommand "foo": must be blocked, close, configure, copy, create, eof, event, flush, gets, names, pending, postevent, puts, read, seek, tell, or truncate}
+} {wrong # args: should be "chan subcommand ?arg ...?"}
+test iocmd-20.1 {chan, unknown method} -body {
+    chan foo
+} -returnCodes error -match glob -result {unknown or ambiguous subcommand "foo": must be *}
 
 # --- --- --- --------- --------- ---------
 # chan create, and method "initalize"
@@ -758,6 +793,11 @@ test iocmd-21.19 {chan create, init failure -> no channel, no finalize} -match g
 # --- --- --- --------- --------- ---------
 # Helper commands to record the arguments to handler methods.
 
+# Stored in a script so that the threads and interpreters needing this
+# code do not need their own copy but can access this variable.
+
+set helperscript {
+
 proc note  {item}  {global res; lappend res $item; return}
 proc track {}      {upvar args item; note $item; return}
 proc notes {items} {foreach i $items {note $i}}
@@ -785,6 +825,10 @@ proc onfinal {} {
     if {[lindex $hargs 0] ne "finalize"} {return}
     return -code return ""
 }
+}
+
+# Set everything up in the main thread.
+eval $helperscript
 
 # --- --- --- --------- --------- ---------
 # method finalize
@@ -1039,7 +1083,7 @@ test iocmd-24.6 {chan write, bad result, zero-length write} -match glob -body {
     close $c
     rename foo {}
     set res
-} -result {{write rc* snarf} 1 {write wrote more than requested}}
+} -result {{write rc* snarf} 1 {write wrote nothing}}
 test iocmd-24.7 {chan write, failed write, error return} -match glob -body {
     set res {}
     proc foo {args} {oninit; onfinal; track; return -code error BOOM!}
@@ -1795,6 +1839,102 @@ test iocmd-31.7 {chan postevent, posted events do happen} -match glob -body {
     rename foo {}
     set res
 } -result {{watch rc* write} {} TOCK {} {watch rc* {}}}
+test iocmd-31.8 {chan postevent after close throws error} -match glob -setup {
+    proc foo {args} {oninit; onfinal; track; return}
+    proc dummy args { return }
+    set c [chan create {r w} foo]
+    fileevent $c readable dummy
+} -body {
+    close $c
+    chan postevent $c read
+} -cleanup {
+    rename foo   {}
+    rename dummy {}
+} -returnCodes error -result {can not find reflected channel named "rc*"}
+
+# --- === *** ###########################
+# 'Pull the rug' tests. Create channel in a interpreter A, move to
+# other interpreter B, destroy the origin interpreter (A) before or
+# during access from B. Must not crash, must return proper errors.
+
+test iocmd-32.0 {origin interpreter of moved channel gone} -match glob -body {
+
+    set ida [interp create];#puts <<$ida>>
+    set idb [interp create];#puts <<$idb>>
+
+    # Magic to get the test* commands in the slaves
+    load {} Tcltest $ida
+    load {} Tcltest $idb
+
+    # Set up channel in interpreter
+    interp eval $ida $helperscript
+    set chan [interp eval $ida {
+	proc foo {args} {oninit seek; onfinal; track; return}
+	set chan [chan create {r w} foo]
+	fconfigure $chan -buffering none
+	set chan
+    }]
+
+    # Move channel to 2nd interpreter.
+    interp eval $ida [list testchannel cut    $chan]
+    interp eval $idb [list testchannel splice $chan]
+
+    # Kill origin interpreter, then access channel from 2nd interpreter.
+    interp delete $ida
+
+    set     res {}
+    lappend res [catch {interp eval $idb [list puts  $chan shoo]} msg] $msg
+    lappend res [catch {interp eval $idb [list tell  $chan]}      msg] $msg
+    lappend res [catch {interp eval $idb [list seek  $chan 1]}    msg] $msg
+    lappend res [catch {interp eval $idb [list gets  $chan]}      msg] $msg
+    lappend res [catch {interp eval $idb [list close $chan]}      msg] $msg
+    set res
+
+} -constraints {testchannel} \
+    -result {1 {Owner lost} 1 {Owner lost} 1 {Owner lost} 1 {Owner lost} 1 {Owner lost}}
+
+test iocmd-32.1 {origin interpreter of moved channel destroyed during access} -match glob -body {
+
+    set ida [interp create];#puts <<$ida>>
+    set idb [interp create];#puts <<$idb>>
+
+    # Magic to get the test* commands in the slaves
+    load {} Tcltest $ida
+    load {} Tcltest $idb
+
+    # Set up channel in thread
+    set chan [interp eval $ida $helperscript]
+    set chan [interp eval $ida {
+	proc foo {args} {
+	    oninit; onfinal; track;
+	    # destroy interpreter during channel access
+	    # Actually not possible for an interp to destroy itself.
+	    interp delete {}
+	    return}
+	set chan [chan create {r w} foo]
+	fconfigure $chan -buffering none
+	set chan
+    }]
+
+    # Move channel to 2nd thread.
+    interp eval $ida [list testchannel cut    $chan]
+    interp eval $idb [list testchannel splice $chan]
+
+    # Run access from interpreter B, this will give us a synchronous
+    # response.
+
+    interp eval $idb [list set chan $chan]
+    interp eval $idb [list set mid $tcltest::mainThread]
+    set res [interp eval $idb {
+	# wait a bit, give the main thread the time to start its event
+	# loop to wait for the response from B
+	after 2000
+	catch { puts $chan shoo } res
+	set res
+    }]
+    set res
+} -constraints {testchannel impossible} \
+    -result {Owner lost}
 
 # ### ### ### ######### ######### #########
 ## Same tests as above, but exercising the code forwarding and
@@ -3183,6 +3323,90 @@ test iocmd.tf-31.8 {chan postevent, bad input} -match glob -body {
     set res
 } -constraints {testchannel testthread} \
     -result {{can not find reflected channel named "rc*"}}
+
+# --- === *** ###########################
+# 'Pull the rug' tests. Create channel in a thread A, move to other
+# thread B, destroy the origin thread (A) before or during access from
+# B. Must not crash, must return proper errors.
+
+test iocmd.tf-32.0 {origin thread of moved channel gone} -match glob -body {
+
+    #puts <<$tcltest::mainThread>>main
+    set tida [testthread create];#puts <<$tida>>
+    set tidb [testthread create];#puts <<$tidb>>
+
+    # Set up channel in thread
+    testthread send $tida $helperscript
+    set chan [testthread send $tida {
+	proc foo {args} {oninit seek; onfinal; track; return}
+	set chan [chan create {r w} foo]
+	fconfigure $chan -buffering none
+	set chan
+    }]
+
+    # Move channel to 2nd thread.
+    testthread send $tida [list testchannel cut    $chan]
+    testthread send $tidb [list testchannel splice $chan]
+
+    # Kill origin thread, then access channel from 2nd thread.
+    testthread send -async $tida {testthread exit}
+    after 100
+
+    set     res {}
+    lappend res [catch {testthread send $tidb [list puts  $chan shoo]} msg] $msg
+
+    lappend res [catch {testthread send $tidb [list tell  $chan]}      msg] $msg
+    lappend res [catch {testthread send $tidb [list seek  $chan 1]}    msg] $msg
+    lappend res [catch {testthread send $tidb [list gets  $chan]}      msg] $msg
+    lappend res [catch {testthread send $tidb [list close $chan]}      msg] $msg
+    tcltest::threadReap
+    set res
+
+} -constraints {testchannel testthread} \
+    -result {1 {Owner lost} 1 {Owner lost} 1 {Owner lost} 1 {Owner lost} 1 {Owner lost}}
+
+test iocmd.tf-32.1 {origin thread of moved channel destroyed during access} -match glob -body {
+
+    #puts <<$tcltest::mainThread>>main
+    set tida [testthread create];#puts <<$tida>>
+    set tidb [testthread create];#puts <<$tidb>>
+
+    # Set up channel in thread
+    set chan [testthread send $tida $helperscript]
+    set chan [testthread send $tida {
+	proc foo {args} {
+	    oninit; onfinal; track;
+	    # destroy thread during channel access
+	    testthread exit
+	    return}
+	set chan [chan create {r w} foo]
+	fconfigure $chan -buffering none
+	set chan
+    }]
+
+    # Move channel to 2nd thread.
+    testthread send $tida [list testchannel cut    $chan]
+    testthread send $tidb [list testchannel splice $chan]
+
+    # Run access from thread B, wait for response from A (A is not
+    # using event loop at this point, so the event pile up in the
+    # queue.
+
+    testthread send $tidb [list set chan $chan]
+    testthread send $tidb [list set mid $tcltest::mainThread]
+    testthread send -async $tidb {
+	# wait a bit, give the main thread the time to start its event
+	# loop to wait for the response from B
+	after 2000
+	catch { puts $chan shoo } res
+	testthread send -async $mid [list set ::res $res]
+    }
+    vwait ::res
+
+    tcltest::threadReap
+    set res
+} -constraints {testchannel testthread} \
+    -result {Owner lost}
 
 # ### ### ### ######### ######### #########
 

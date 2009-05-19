@@ -570,13 +570,75 @@ AC_DEFUN([SC_WITH_PCRE], [
 	])
 
     if test x"${ac_cv_c_pcre}" = x ; then
-	AC_MSG_WARN([Can't find PCRE configuration, PCRE won't be used])
+	AC_MSG_ERROR([Can't find PCRE configuration])
     else
 	AC_MSG_RESULT([found PCRE configuration at ${ac_cv_c_pcre}])
     fi
     AC_SUBST([PCRE_INCLUDE])
     AC_SUBST([PCRE_LIBS])
 ])
+
+#------------------------------------------------------------------------
+# SC_WITH_TOMMATH --
+#
+#	Finds the TOMMATH header and library files for use with Tcl
+#
+# Arguments:
+#	none
+#
+# Results:
+#
+#	Adds the following arguments to configure:
+#		--with-tommath=/path/to/tommath
+#
+#	Sets the following vars:
+#		TOMMATH_DIR
+#------------------------------------------------------------------------
+
+AC_DEFUN([SC_WITH_TOMMATH], [
+    AC_ARG_WITH(tommath,
+	AC_HELP_STRING([--with-tommath],
+	    [directory containing tommath headers and libraries]),
+	[with_tommath=${withval}])
+    AC_MSG_CHECKING([for TOMMATH configuration])
+
+    AC_CACHE_VAL(ac_cv_c_tommath,[
+	    # First check to see if --with-tommath was specified.
+	    if test x"${with_tommath}" != x ; then
+		if test -f "${with_tommath}/tommath.h" ; then
+		    ac_cv_c_tommath=`(cd ${with_tommath}; pwd)`
+		    TOMMATH_DIR="${ac_cv_c_tommath}"
+		else
+		    AC_MSG_ERROR([${with_tommath} directory doesn't contain tommath header and/or library])
+		fi
+	    fi
+
+	    # test a couple of locations where tommath can be
+	    if test x"${ac_cv_c_tommath}" = x ; then
+		for i in \
+			`ls -d ${exec_prefix} 2>/dev/null` \
+			`ls -d ${prefix} 2>/dev/null` \
+			`ls -d ../../tommath 2>/dev/null` \
+			`ls -d ../../../../tommath 2>/dev/null` \
+			; do
+		    if test -f "${i}/tommath.h" ; then
+			ac_cv_c_tommath=`(cd $i; pwd)`
+			TOMMATH_DIR="${ac_cv_c_tommath}"
+			break
+		    fi
+		done
+	    fi
+
+	])
+
+    if test x"${ac_cv_c_tommath}" = x ; then
+	AC_MSG_ERROR([Can't find TOMMATH ])
+    else
+	AC_MSG_RESULT([found TOMMATH at ${ac_cv_c_tommath}])
+    fi
+    AC_SUBST([TOMMATH_DIR])
+])
+
 
 #------------------------------------------------------------------------
 # SC_ENABLE_PCRE --
@@ -802,44 +864,7 @@ AC_DEFUN([SC_ENABLE_THREADS], [
 
 	# Does the pthread-implementation provide
 	# 'pthread_attr_setstacksize' ?
-
-	ac_saved_libs=$LIBS
-	LIBS="$LIBS $THREADS_LIBS"
 	AC_CHECK_FUNCS(pthread_attr_setstacksize)
-	AC_CHECK_FUNC(pthread_attr_get_np,tcl_ok=yes,tcl_ok=no)
-	if test $tcl_ok = yes ; then
-	    AC_DEFINE(HAVE_PTHREAD_ATTR_GET_NP, 1,
-		[Do we want a BSD-like thread-attribute interface?])
-	    AC_CACHE_CHECK([for pthread_attr_get_np declaration],
-		tcl_cv_grep_pthread_attr_get_np, [
-		AC_EGREP_HEADER(pthread_attr_get_np, pthread.h,
-		    tcl_cv_grep_pthread_attr_get_np=present,
-		    tcl_cv_grep_pthread_attr_get_np=missing)])
-	    if test $tcl_cv_grep_pthread_attr_get_np = missing ; then
-		AC_DEFINE(ATTRGETNP_NOT_DECLARED, 1,
-		    [Is pthread_attr_get_np() declared in <pthread.h>?])
-	    fi
-	else
-	    AC_CHECK_FUNC(pthread_getattr_np,tcl_ok=yes,tcl_ok=no)
-	    if test $tcl_ok = yes ; then
-		AC_DEFINE(HAVE_PTHREAD_GETATTR_NP, 1,
-		    [Do we want a Linux-like thread-attribute interface?])
-		AC_CACHE_CHECK([for pthread_getattr_np declaration],
-		    tcl_cv_grep_pthread_getattr_np, [
-		    AC_EGREP_HEADER(pthread_getattr_np, pthread.h,
-			tcl_cv_grep_pthread_getattr_np=present,
-			tcl_cv_grep_pthread_getattr_np=missing)])
-		if test $tcl_cv_grep_pthread_getattr_np = missing ; then
-		    AC_DEFINE(GETATTRNP_NOT_DECLARED, 1,
-			[Is pthread_getattr_np declared in <pthread.h>?])
-		fi
-	    fi
-	fi
-	if test $tcl_ok = no; then
-	    # Darwin thread stacksize API
-	    AC_CHECK_FUNCS(pthread_get_stacksize_np)
-	fi
-	LIBS=$ac_saved_libs
     else
 	TCL_THREADS=0
     fi
@@ -1264,10 +1289,13 @@ AC_DEFUN([SC_CONFIG_CFLAGS], [
     ECHO_VERSION='`echo ${VERSION}`'
     TCL_LIB_VERSIONS_OK=ok
     CFLAGS_DEBUG=-g
-    CFLAGS_OPTIMIZE=-O
     AS_IF([test "$GCC" = yes], [
-	CFLAGS_WARNING="-Wall -Wno-implicit-int"
-    ], [CFLAGS_WARNING=""])
+	CFLAGS_OPTIMIZE="-O2"
+	CFLAGS_WARNING="-Wall"
+    ], [
+	CFLAGS_OPTIMIZE=-O
+	CFLAGS_WARNING=""
+    ])
     TCL_NEEDS_EXP_FILE=0
     TCL_BUILD_EXP_FILE=""
     TCL_EXP_FILE=""
@@ -1281,16 +1309,19 @@ dnl AC_CHECK_TOOL(AR, ar)
     LD_LIBRARY_PATH_VAR="LD_LIBRARY_PATH"
     PLAT_OBJS=""
     PLAT_SRCS=""
+    LDAIX_SRC=""
+    AS_IF([test x"${SHLIB_VERSION}" = x], [SHLIB_VERSION="1.0"])
     case $system in
 	AIX-*)
 	    AS_IF([test "${TCL_THREADS}" = "1" -a "$GCC" != "yes"], [
 		# AIX requires the _r compiler when gcc isn't being used
 		case "${CC}" in
-		    *_r)
+		    *_r|*_r\ *)
 			# ok ...
 			;;
 		    *)
-			CC=${CC}_r
+			# Make sure only first arg gets _r
+		    	CC=`echo "$CC" | sed -e 's/^\([[^ ]]*\)/\1_r/'`
 			;;
 		esac
 		AC_MSG_RESULT([Using $CC for compiling with threads])
@@ -1340,6 +1371,7 @@ dnl AC_CHECK_TOOL(AR, ar)
 		LD_SEARCH_FLAGS=${CC_SEARCH_FLAGS}
 		TCL_NEEDS_EXP_FILE=1
 		TCL_EXPORT_FILE_SUFFIX='${VERSION}.exp'
+		LDAIX_SRC='$(UNIX_DIR)/ldAix'
 	    ])
 
 	    # AIX v<=4.1 has some different flags than 4.2+
@@ -1439,6 +1471,8 @@ dnl AC_CHECK_TOOL(AR, ar)
 		SHLIB_LD='${CC} -shared'
 		SHLIB_LD_LIBS='${LIBS}'
 		LD_SEARCH_FLAGS=${CC_SEARCH_FLAGS}
+	    ], [
+		CFLAGS="$CFLAGS -z"
 	    ])
 
 	    # Users may want PA-RISC 1.1/2.0 portable code - needs HP cc
@@ -1488,6 +1522,7 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    SHLIB_SUFFIX=".so"
 	    DL_OBJS="tclLoadDl.o"
 	    DL_LIBS=""
+	    AC_LIBOBJ(mkstemp)
 	    AS_IF([test $doRpath = yes], [
 		CC_SEARCH_FLAGS='-Wl,-rpath,${LIB_RUNTIME_DIR}'
 		LD_SEARCH_FLAGS='-rpath ${LIB_RUNTIME_DIR}'])
@@ -1499,6 +1534,7 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    SHLIB_SUFFIX=".so"
 	    DL_OBJS="tclLoadDl.o"
 	    DL_LIBS=""
+	    AC_LIBOBJ(mkstemp)
 	    AS_IF([test $doRpath = yes], [
 		CC_SEARCH_FLAGS='-Wl,-rpath,${LIB_RUNTIME_DIR}'
 		LD_SEARCH_FLAGS='-rpath ${LIB_RUNTIME_DIR}'])
@@ -1525,6 +1561,7 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    SHLIB_SUFFIX=".so"
 	    DL_OBJS="tclLoadDl.o"
 	    DL_LIBS=""
+	    AC_LIBOBJ(mkstemp)
 	    AS_IF([test $doRpath = yes], [
 		CC_SEARCH_FLAGS='-Wl,-rpath,${LIB_RUNTIME_DIR}'
 		LD_SEARCH_FLAGS='-rpath ${LIB_RUNTIME_DIR}'])
@@ -1580,10 +1617,6 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    # files in compat/*.c is being linked in.
 
 	    AS_IF([test x"${USE_COMPAT}" != x],[CFLAGS="$CFLAGS -fno-inline"])
-
-	    # XIM peeking works under XFree86.
-	    AC_DEFINE(PEEK_XCLOSEIM, 1, [May we use XIM peeking safely?])
-
 	    ;;
 	GNU*)
 	    SHLIB_CFLAGS="-fPIC"
@@ -1648,7 +1681,7 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    AS_IF([test $tcl_cv_ld_elf = yes], [
 		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so'
 	    ], [
-		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so.1.0'
+		SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so.${SHLIB_VERSION}'
 	    ])
 
 	    # Ancient FreeBSD doesn't handle version numbers with dots.
@@ -1657,6 +1690,7 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    TCL_LIB_VERSIONS_OK=nodots
 	    ;;
 	OpenBSD-*)
+	    CFLAGS_OPTIMIZE='-O2'
 	    SHLIB_CFLAGS="-fPIC"
 	    SHLIB_LD='${CC} -shared ${SHLIB_CFLAGS}'
 	    SHLIB_LD_LIBS='${LIBS}'
@@ -1666,7 +1700,7 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    AS_IF([test $doRpath = yes], [
 		CC_SEARCH_FLAGS='-Wl,-rpath,${LIB_RUNTIME_DIR}'])
 	    LD_SEARCH_FLAGS=${CC_SEARCH_FLAGS}
-	    SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so.1.0'
+	    SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so.${SHLIB_VERSION}'
 	    AC_CACHE_CHECK([for ELF], tcl_cv_ld_elf, [
 		AC_EGREP_CPP(yes, [
 #ifdef __ELF__
@@ -1976,7 +2010,7 @@ dnl AC_CHECK_TOOL(AR, ar)
 	    # requires an extra version number at the end of .so file names.
 	    # So, the library has to have a name like libtcl75.so.1.0
 
-	    SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so.1.0'
+	    SHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.so.${SHLIB_VERSION}'
 	    UNSHARED_LIB_SUFFIX='${TCL_TRIM_DOTS}.a'
 	    TCL_LIB_VERSIONS_OK=nodots
 	    ;;
@@ -2046,15 +2080,46 @@ dnl AC_CHECK_TOOL(AR, ar)
 		    ])
 		], [AS_IF([test "$arch" = "amd64 i386"], [
 		    AS_IF([test "$GCC" = yes], [
-			AC_MSG_WARN([64bit mode not supported with GCC on $system])
+			case $system in
+			    SunOS-5.1[[1-9]]*|SunOS-5.[[2-9]][[0-9]]*)
+				do64bit_ok=yes
+				CFLAGS="$CFLAGS -m64"
+				LDFLAGS="$LDFLAGS -m64";;
+			    *)
+				AC_MSG_WARN([64bit mode not supported with GCC on $system]);;
+			esac
 		    ], [
 			do64bit_ok=yes
-			CFLAGS="$CFLAGS -xarch=amd64"
-			LDFLAGS="$LDFLAGS -xarch=amd64"
+			case $system in
+			    SunOS-5.1[[1-9]]*|SunOS-5.[[2-9]][[0-9]]*)
+				CFLAGS="$CFLAGS -m64"
+				LDFLAGS="$LDFLAGS -m64";;
+			    *)
+				CFLAGS="$CFLAGS -xarch=amd64"
+				LDFLAGS="$LDFLAGS -xarch=amd64";;
+			esac
 		    ])
 		], [AC_MSG_WARN([64bit mode not supported for $arch])])])
 	    ])
-	    
+
+	    #--------------------------------------------------------------------
+	    # On Solaris 5.x i386 with the sunpro compiler we need to link
+	    # with sunmath to get floating point rounding control
+	    #--------------------------------------------------------------------
+	    AS_IF([test "$GCC" = yes],[use_sunmath=no],[
+		arch=`isainfo`
+		AC_MSG_CHECKING([whether to use -lsunmath for fp rounding control])
+		AS_IF([test "$arch" = "amd64 i386"], [
+			AC_MSG_RESULT([yes])
+			MATH_LIBS="-lsunmath $MATH_LIBS"
+			AC_CHECK_HEADER(sunmath.h)
+			use_sunmath=yes
+			], [
+			AC_MSG_RESULT([no])
+			use_sunmath=no
+		])
+	    ])
+
 	    # Note: need the LIBS below, otherwise Tk won't find Tcl's
 	    # symbols when dynamically loaded into tclsh.
 
@@ -2067,20 +2132,25 @@ dnl AC_CHECK_TOOL(AR, ar)
 		CC_SEARCH_FLAGS='-Wl,-R,${LIB_RUNTIME_DIR}'
 		LD_SEARCH_FLAGS=${CC_SEARCH_FLAGS}
 		AS_IF([test "$do64bit_ok" = yes], [
-		    # We need to specify -static-libgcc or we need to
-		    # add the path to the sparv9 libgcc.
-		    SHLIB_LD="$SHLIB_LD -m64 -mcpu=v9 -static-libgcc"
-		    # for finding sparcv9 libgcc, get the regular libgcc
-		    # path, remove so name and append 'sparcv9'
-		    #v9gcclibdir="`gcc -print-file-name=libgcc_s.so` | ..."
-		    #CC_SEARCH_FLAGS="${CC_SEARCH_FLAGS},-R,$v9gcclibdir"
+		    AS_IF([test "$arch" = "sparcv9 sparc"], [
+			# We need to specify -static-libgcc or we need to
+			# add the path to the sparv9 libgcc.
+			SHLIB_LD="$SHLIB_LD -m64 -mcpu=v9 -static-libgcc"
+			# for finding sparcv9 libgcc, get the regular libgcc
+			# path, remove so name and append 'sparcv9'
+			#v9gcclibdir="`gcc -print-file-name=libgcc_s.so` | ..."
+			#CC_SEARCH_FLAGS="${CC_SEARCH_FLAGS},-R,$v9gcclibdir"
+		    ], [AS_IF([test "$arch" = "amd64 i386"], [
+			SHLIB_LD="$SHLIB_LD -m64 -static-libgcc"
+		    ])])
 		])
 	    ], [
+		AS_IF([test "$use_sunmath" = yes], [textmode=textoff],[textmode=text])
 		case $system in
 		    SunOS-5.[[1-9]][[0-9]]*)
-			SHLIB_LD='${CC} -G -z text ${LDFLAGS}';;
+			SHLIB_LD="\${CC} -G -z $textmode \${LDFLAGS}";;
 		    *)
-			SHLIB_LD='/usr/ccs/bin/ld -G -z text';;
+			SHLIB_LD="/usr/ccs/bin/ld -G -z $textmode";;
 		esac
 		CC_SEARCH_FLAGS='-Wl,-R,${LIB_RUNTIME_DIR}'
 		LD_SEARCH_FLAGS='-R ${LIB_RUNTIME_DIR}'
@@ -2204,6 +2274,7 @@ dnl # preprocessing tests use only CPPFLAGS.
     AC_SUBST(DL_OBJS)
     AC_SUBST(PLAT_OBJS)
     AC_SUBST(PLAT_SRCS)
+    AC_SUBST(LDAIX_SRC)
     AC_SUBST(CFLAGS)
     AC_SUBST(CFLAGS_DEBUG)
     AC_SUBST(CFLAGS_OPTIMIZE)
@@ -2500,7 +2571,7 @@ AC_DEFUN([SC_PATH_X], [
 	XLIBSW=nope
 	dirs="/usr/unsupported/lib /usr/local/lib /usr/X386/lib /usr/X11R6/lib /usr/X11R5/lib /usr/lib/X11R5 /usr/lib/X11R4 /usr/openwin/lib /usr/X11/lib /usr/sww/X11/lib"
 	for i in $dirs ; do
-	    if test -r $i/libX11.a -o -r $i/libX11.so -o -r $i/libX11.sl; then
+	    if test -r $i/libX11.a -o -r $i/libX11.so -o -r $i/libX11.sl -o -r $i/libX11.dylib; then
 		AC_MSG_RESULT([$i])
 		XLIBSW="-L$i -lX11"
 		x_libraries="$i"
@@ -3367,6 +3438,17 @@ AC_DEFUN([SC_TCL_GETGRNAM_R], [AC_CHECK_FUNC(getgrnam_r, [
 	    [Define to 1 if getgrnam_r is available.])
     fi
 ])])
+
+AC_DEFUN([AC_PROG_BISON],[
+	AC_CHECK_PROGS(BISON,[bison],no)
+	export BISON;
+	if test $BISON = "no" ;
+	then
+		AC_MSG_ERROR([Unable to find bison]);
+	fi
+	AC_SUBST(BISON)
+])
+
 
 # Local Variables:
 # mode: autoconf

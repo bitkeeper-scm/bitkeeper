@@ -158,7 +158,7 @@ TkSelGetSelection(
      * Pass the data off to the selection procedure.
      */
 
-    result = (*proc)(clientData, interp, Tcl_DStringValue(&ds));
+    result = proc(clientData, interp, Tcl_DStringValue(&ds));
     Tcl_DStringFree(&ds);
     CloseClipboard();
     return result;

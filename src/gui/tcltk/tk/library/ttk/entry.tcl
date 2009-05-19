@@ -34,6 +34,10 @@ namespace eval ttk {
     }
 }
 
+### Option database settings.
+#
+option add *TEntry.cursor [ttk::cursor text]
+
 ### Bindings.
 #
 # Removed the following standard Tk bindings:
@@ -224,7 +228,7 @@ proc ttk::entry::See {w {index insert}} {
 #	position following the next end-of-word position.
 #
 set ::ttk::entry::State(startNext) \
-	[string equal $tcl_platform(platform) "windows"]
+	[string equal $::tcl_platform(platform) "windows"]
 
 proc ttk::entry::NextWord {w start} {
     variable State

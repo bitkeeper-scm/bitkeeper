@@ -12,7 +12,6 @@
 .SH NAME
 keysyms \- keysyms recognized by Tk
 .BE
-
 .SH DESCRIPTION
 .PP
 Tk recognizes many keysyms when specifying key bindings (e.g. 
@@ -922,9 +921,10 @@ Hyper_L                          65517     0xffed
 Hyper_R                          65518     0xffee
 Delete                           65535     0xffff
 .CE
-
 .SH "SEE ALSO"
 bind
-
 .SH KEYWORDS
 keysym, bind, binding
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

@@ -60,16 +60,15 @@
 #include "tkMacOSXDefault.h"
 #include "tkEntry.h"
 
-static ThemeButtonKind ComputeIncDecParameters (int height, int *width);
-
+static ThemeButtonKind	ComputeIncDecParameters(int height, int *width);
+
 /*
  *--------------------------------------------------------------
  *
  * ComputeIncDecParameters --
  *
- *	This procedure figures out which of the kThemeIncDec
- *	buttons to use. It also sets width to the width of the
- *	IncDec button.
+ *	This procedure figures out which of the kThemeIncDec buttons to use.
+ *	It also sets width to the width of the IncDec button.
  *
  * Results:
  *	The ThemeButtonKind of the button we should use.
@@ -79,8 +78,11 @@ static ThemeButtonKind ComputeIncDecParameters (int height, int *width);
  *
  *--------------------------------------------------------------
  */
+
 static ThemeButtonKind
-ComputeIncDecParameters(int height, int *width)
+ComputeIncDecParameters(
+    int height,
+    int *width)
 {
     ThemeButtonKind kind;
 
@@ -112,18 +114,17 @@ ComputeIncDecParameters(int height, int *width)
 
     return kind;
 }
-
+
 /*
  *--------------------------------------------------------------
  *
  * TkpDrawEntryBorderAndFocus --
  *
- *	This procedure redraws the border of an entry window.
- *	It overrides the generic border drawing code if the
- *	entry widget parameters are such that the native widget
- *	drawing is a good fit.
- *	This version just returns 1, so platforms that don't
- *	do special native drawing don't have to implement it.
+ *	This procedure redraws the border of an entry window. It overrides the
+ *	generic border drawing code if the entry widget parameters are such
+ *	that the native widget drawing is a good fit. This version just
+ *	returns 1, so platforms that don't do special native drawing don't
+ *	have to implement it.
  *
  * Results:
  *	1 if it has drawn the border, 0 if not.
@@ -133,8 +134,12 @@ ComputeIncDecParameters(int height, int *width)
  *
  *--------------------------------------------------------------
  */
+
 int
-TkpDrawEntryBorderAndFocus(Entry *entryPtr, Drawable d, int isSpinbox)
+TkpDrawEntryBorderAndFocus(
+    Entry *entryPtr,
+    Drawable d,
+    int isSpinbox)
 {
     Rect bounds;
     TkMacOSXDrawingContext dc;
@@ -145,9 +150,9 @@ TkpDrawEntryBorderAndFocus(Entry *entryPtr, Drawable d, int isSpinbox)
     MacDrawable *macDraw = (MacDrawable *) d;
 
     /*
-     * I use 6 as the borderwidth. 2 of the 5 go into the actual frame the
-     * 3 are because the Mac OS Entry widgets leave more space around the
-     * Text than Tk does on X11.
+     * I use 6 as the borderwidth. 2 of the 5 go into the actual frame the 3
+     * are because the Mac OS Entry widgets leave more space around the Text
+     * than Tk does on X11.
      */
 
     if (entryPtr->borderWidth != MAC_OSX_ENTRY_BORDER
@@ -157,9 +162,9 @@ TkpDrawEntryBorderAndFocus(Entry *entryPtr, Drawable d, int isSpinbox)
     }
 
     /*
-     * For the spinbox, we have to make the entry part smaller by the size
-     * of the buttons. We also leave 2 pixels to the left (as per the HIG)
-     * and space for one pixel to the right, 'cause it makes the buttons look
+     * For the spinbox, we have to make the entry part smaller by the size of
+     * the buttons. We also leave 2 pixels to the left (as per the HIG) and
+     * space for one pixel to the right, 'cause it makes the buttons look
      * nicer.
      */
 
@@ -175,17 +180,17 @@ TkpDrawEntryBorderAndFocus(Entry *entryPtr, Drawable d, int isSpinbox)
     }
 
    /*
-    * The focus ring is drawn with an Alpha at the outside
-    * part of the ring, so we have to draw over the edges of the
-    * ring before drawing the focus or the text will peep through.
+    * The focus ring is drawn with an Alpha at the outside part of the ring,
+    * so we have to draw over the edges of the ring before drawing the focus
+    * or the text will peep through.
     */
 
     bgGC = Tk_GCForColor(entryPtr->highlightBgColorPtr, d);
     TkDrawInsetFocusHighlight(entryPtr->tkwin, bgGC, MAC_OSX_FOCUS_WIDTH, d, 0);
 
     /*
-     * Inset the entry Frame by the maximum width of the focus rect,
-     * which is 3 according to the Carbon docs.
+     * Inset the entry Frame by the maximum width of the focus rect, which is
+     * 3 according to the Carbon docs.
      */
 
     bounds.left = macDraw->xOff + MAC_OSX_FOCUS_WIDTH;
@@ -203,8 +208,8 @@ TkpDrawEntryBorderAndFocus(Entry *entryPtr, Drawable d, int isSpinbox)
     DrawThemeEditTextFrame(&bounds, drawState);
     if (entryPtr->flags & GOT_FOCUS) {
 	/*
-	 * Don't call this if we don't have the focus, because then it
-	 * erases the focus rect to white, but we've already drawn the
+	 * Don't call this if we don't have the focus, because then it erases
+	 * the focus rect to white, but we've already drawn the
 	 * highlightbackground above.
 	 */
 
@@ -216,17 +221,17 @@ TkpDrawEntryBorderAndFocus(Entry *entryPtr, Drawable d, int isSpinbox)
     TkMacOSXRestoreDrawingContext(&dc);
     return 1;
 }
+
 /*
  *--------------------------------------------------------------
  *
  * TkpDrawSpinboxButtons --
  *
- *	This procedure redraws the buttons of an spinbox widget.
- *	It overrides the generic button drawing code if the
- *	spinbox widget parameters are such that the native widget
- *	drawing is a good fit.
- *	This version just returns 0, so platforms that don't
- *	do special native drawing don't have to implement it.
+ *	This procedure redraws the buttons of an spinbox widget. It overrides
+ *	the generic button drawing code if the spinbox widget parameters are
+ *	such that the native widget drawing is a good fit. This version just
+ *	returns 0, so platforms that don't do special native drawing don't
+ *	have to implement it.
  *
  * Results:
  *	1 if it has drawn the border, 0 if not.
@@ -238,7 +243,9 @@ TkpDrawEntryBorderAndFocus(Entry *entryPtr, Drawable d, int isSpinbox)
  */
 
 int
-TkpDrawSpinboxButtons(Spinbox *sbPtr, Drawable d)
+TkpDrawSpinboxButtons(
+    Spinbox *sbPtr,
+    Drawable d)
 {
     Rect inBounds;
     ThemeButtonKind inKind;
@@ -265,10 +272,9 @@ TkpDrawSpinboxButtons(Spinbox *sbPtr, Drawable d)
     }
 
     /*
-     * The actual sizes of the IncDec button are 21 for the normal,
-     * 18 for the small and 15 for the mini. But the spinbox still
-     * looks okay if the entry is a little bigger than this, so we
-     * give it a little slop.
+     * The actual sizes of the IncDec button are 21 for the normal, 18 for the
+     * small and 15 for the mini. But the spinbox still looks okay if the
+     * entry is a little bigger than this, so we give it a little slop.
      */
 
     inKind = ComputeIncDecParameters(buttonHeight, &incDecWidth);
@@ -297,9 +303,10 @@ TkpDrawSpinboxButtons(Spinbox *sbPtr, Drawable d)
     inBounds.top = macDraw->yOff + MAC_OSX_FOCUS_WIDTH;
     inBounds.bottom = macDraw->yOff + Tk_Height(tkwin) - MAC_OSX_FOCUS_WIDTH;
 
-    /* We had to make the entry part of the window smaller so that we
-     * wouldn't overdraw the spin buttons with the focus highlight. So
-     * now we have to draw the highlightbackground.
+    /*
+     * We had to make the entry part of the window smaller so that we wouldn't
+     * overdraw the spin buttons with the focus highlight. So now we have to
+     * draw the highlightbackground.
      */
 
     bgGC = Tk_GCForColor(sbPtr->entry.highlightBgColorPtr, d);
@@ -317,4 +324,3 @@ TkpDrawSpinboxButtons(Spinbox *sbPtr, Drawable d)
     TkMacOSXRestoreDrawingContext(&dc);
     return 1;
 }
-

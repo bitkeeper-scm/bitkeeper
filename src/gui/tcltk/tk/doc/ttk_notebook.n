@@ -20,6 +20,7 @@ ttk::notebook \- Multi-paned container widget
 .fi
 .BE
 .SH DESCRIPTION
+.PP
 A \fBttk::notebook\fR widget manages a collection of windows 
 and displays a single one at a time.
 Each slave window is associated with a \fItab\fR,
@@ -49,6 +50,7 @@ specifies the desired width of the pane area
 (not including internal padding).
 Otherwise, the maximum width of all panes is used.
 .SH "TAB OPTIONS"
+.PP
 The following options may be specified for individual notebook panes:
 .OP \-state state State
 Either \fBnormal\fR, \fBdisabled\fR or \fBhidden\fR.  
@@ -80,6 +82,7 @@ in the text string.
 The underlined character is used for mnemonic activation
 if \fBttk::notebook::enableTraversal\fR is called.
 .SH "TAB IDENTIFIERS"
+.PP
 The \fItabid\fR argument to the following commands may take
 any of the following forms:
 .IP \(bu
@@ -101,6 +104,7 @@ which returns the number of tabs
 (only valid for
 .QW "\fIpathname \fBindex\fR" ).
 .SH "WIDGET COMMAND"
+.PP
 .TP
 \fIpathname \fBadd\fR \fIwindow\fR ?\fIoptions...\fR?
 Adds a new tab to the notebook.
@@ -123,6 +127,10 @@ Hides the tab specified by \fItabid\fR.
 The tab will not be displayed, but the associated window
 remains managed by the notebook and its configuration remembered.
 Hidden tabs may be restored with the \fBadd\fR command.
+.TP
+\fIpathName \fBidentify\fR \fIx y\fR
+Returns the name of the element at position \fIx\fR, \fIy\fR.
+See \fIttk::widget(n)\fR.
 .TP
 \fIpathname \fBindex\fR \fItabid\fR
 Returns the numeric index of the tab specified by \fItabid\fR,
@@ -162,6 +170,7 @@ See \fBTAB OPTIONS\fR for the available options.
 \fIpathname \fBtabs\fR
 Returns the list of windows managed by the notebook.
 .SH "KEYBOARD TRAVERSAL"
+.PP
 To enable keyboard traversal for a toplevel window
 containing a notebook widget \fI$nb\fR, call:
 .CS
@@ -183,9 +192,11 @@ including nested notebooks.
 However, notebook traversal only works properly if all panes
 are direct children of the notebook.
 .SH "VIRTUAL EVENTS"
+.PP
 The notebook widget generates a \fB<<NotebookTabChanged>>\fR
 virtual event after a new tab is selected.
 .SH "EXAMPLE"
+.PP
 .CS
 pack [\fBttk::notebook\fR .nb]
 \.nb add [frame .nb.f1] \-text "First tab"
@@ -197,3 +208,6 @@ ttk::notebook::enableTraversal .nb
 ttk::widget(n), grid(n)
 .SH "KEYWORDS"
 pane, tab
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

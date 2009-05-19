@@ -258,7 +258,7 @@ CreateProc(
 {
     Window window;
     HWND parent;
-    char *class;
+    const char *class;
     WinButton *butPtr = (WinButton *)instanceData;
 
     parent = Tk_GetHWND(parentWin);
@@ -1287,7 +1287,7 @@ ButtonProc(
 	    if (code != TCL_OK && code != TCL_CONTINUE
 		    && code != TCL_BREAK) {
 		Tcl_AddErrorInfo(interp, "\n    (button invoke)");
-		Tcl_BackgroundError(interp);
+		Tcl_BackgroundException(interp, code);
 	    }
 	    Tcl_Release((ClientData)interp);
 	}

@@ -15,7 +15,7 @@
 #include "tcl.h"
 
 static int	TesteventloopCmd(ClientData clientData,
-		    Tcl_Interp *interp, int argc, CONST char **argv);
+		    Tcl_Interp *interp, int argc, const char **argv);
 extern void	InitNotifier(void);
 
 /*
@@ -47,7 +47,7 @@ Tclxttest_Init(
     XtToolkitInitialize();
     InitNotifier();
     Tcl_CreateCommand(interp, "testeventloop", TesteventloopCmd,
-            (ClientData) 0, NULL);
+	    (ClientData) 0, NULL);
     return TCL_OK;
 }
 
@@ -74,7 +74,7 @@ TesteventloopCmd(
     ClientData clientData,	/* Not used. */
     Tcl_Interp *interp,		/* Current interpreter. */
     int argc,			/* Number of arguments. */
-    CONST char **argv)		/* Argument strings. */
+    const char **argv)		/* Argument strings. */
 {
     static int *framePtr = NULL;/* Pointer to integer on stack frame of
 				 * innermost invocation of the "wait"
@@ -82,7 +82,7 @@ TesteventloopCmd(
 
    if (argc < 2) {
 	Tcl_AppendResult(interp, "wrong # arguments: should be \"", argv[0],
-                " option ... \"", NULL);
+		" option ... \"", NULL);
         return TCL_ERROR;
     }
     if (strcmp(argv[1], "done") == 0) {

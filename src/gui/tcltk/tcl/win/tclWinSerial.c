@@ -179,16 +179,16 @@ static ThreadSpecificData *SerialInit(void);
 static int		SerialInputProc(ClientData instanceData, char *buf,
 			    int toRead, int *errorCode);
 static int		SerialOutputProc(ClientData instanceData,
-			    CONST char *buf, int toWrite, int *errorCode);
+			    const char *buf, int toWrite, int *errorCode);
 static void		SerialSetupProc(ClientData clientData, int flags);
 static void		SerialWatchProc(ClientData instanceData, int mask);
 static void		ProcExitHandler(ClientData clientData);
 static int		SerialGetOptionProc(ClientData instanceData,
-			    Tcl_Interp *interp, CONST char *optionName,
+			    Tcl_Interp *interp, const char *optionName,
 			    Tcl_DString *dsPtr);
 static int		SerialSetOptionProc(ClientData instanceData,
-			    Tcl_Interp *interp, CONST char *optionName,
-			    CONST char *value);
+			    Tcl_Interp *interp, const char *optionName,
+			    const char *value);
 static DWORD WINAPI	SerialWriterThread(LPVOID arg);
 static void		SerialThreadActionProc(ClientData instanceData,
 			    int action);
@@ -1002,7 +1002,7 @@ SerialInputProc(
 static int
 SerialOutputProc(
     ClientData instanceData,	/* Serial state. */
-    CONST char *buf,		/* The data buffer. */
+    const char *buf,		/* The data buffer. */
     int toWrite,		/* How many bytes to write? */
     int *errorCode)		/* Where to store error code. */
 {
@@ -1434,7 +1434,7 @@ SerialWriterThread(
 HANDLE
 TclWinSerialReopen(
     HANDLE handle,
-    CONST TCHAR *name,
+    const TCHAR *name,
     DWORD access)
 {
     ThreadSpecificData *tsdPtr;
@@ -1450,8 +1450,8 @@ TclWinSerialReopen(
     if (CloseHandle(handle) == FALSE) {
 	return INVALID_HANDLE_VALUE;
     }
-    handle = (*tclWinProcs->createFileProc)(name, access, 0, 0,
-	    OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
+    handle = tclWinProcs->createFileProc(name, access, 0, 0, OPEN_EXISTING,
+	    FILE_FLAG_OVERLAPPED, 0);
     return handle;
 }
 
@@ -1651,17 +1651,17 @@ static int
 SerialSetOptionProc(
     ClientData instanceData,	/* File state. */
     Tcl_Interp *interp,		/* For error reporting - can be NULL. */
-    CONST char *optionName,	/* Which option to set? */
-    CONST char *value)		/* New value for option. */
+    const char *optionName,	/* Which option to set? */
+    const char *value)		/* New value for option. */
 {
     SerialInfo *infoPtr;
     DCB dcb;
     BOOL result, flag;
     size_t len, vlen;
     Tcl_DString ds;
-    CONST TCHAR *native;
+    const TCHAR *native;
     int argc;
-    CONST char **argv;
+    const char **argv;
 
     infoPtr = (SerialInfo *) instanceData;
 
@@ -1685,7 +1685,7 @@ SerialSetOptionProc(
 	    return TCL_ERROR;
 	}
 	native = Tcl_WinUtfToTChar(value, -1, &ds);
-	result = (*tclWinProcs->buildCommDCBProc)(native, &dcb);
+	result = tclWinProcs->buildCommDCBProc(native, &dcb);
 	Tcl_DStringFree(&ds);
 
 	if (result == FALSE) {
@@ -2031,7 +2031,7 @@ static int
 SerialGetOptionProc(
     ClientData instanceData,	/* File state. */
     Tcl_Interp *interp,		/* For error reporting - can be NULL. */
-    CONST char *optionName,	/* Option to get. */
+    const char *optionName,	/* Option to get. */
     Tcl_DString *dsPtr)		/* Where to store value(s). */
 {
     SerialInfo *infoPtr;
@@ -2056,7 +2056,7 @@ SerialGetOptionProc(
     }
     if (len==0 || (len>2 && (strncmp(optionName, "-mode", len) == 0))) {
 	char parity;
-	char *stop;
+	const char *stop;
 	char buf[2 * TCL_INTEGER_SPACE + 16];
 
 	if (!GetCommState(infoPtr->handle, &dcb)) {

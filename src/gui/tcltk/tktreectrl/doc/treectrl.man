@@ -4,10 +4,11 @@
   of this file, and for a DISCLAIMER OF ALL WARRANTIES.
 
   $Id$}
-][manpage_begin treectrl n 2.2.6]
+]
+[manpage_begin treectrl n 2.2.9]
 [moddesc {Tk Commands}]
 [titledesc {Create and manipulate hierarchical multicolumn widgets}]
-[require treectrl 2.2.6]
+[require treectrl 2.2.9]
 
 [description]
 [list_begin definitions] 
@@ -294,6 +295,11 @@ leaves indentation space to display the expand/collapse button next to the
 root item. The default value is false.
 The item option [option -button] determines whether the root item has a button.
 
+[tkoption_def -showrootchildbuttons showRootChildButtons ShowRootChildButtons]
+Specifies a boolean value that determines whether this widget
+should draw the expand/collapse buttons next to children of the root item.
+The default value is true.
+
 [tkoption_def -showrootlines showRootLines ShowRootLines]
 Specifies a boolean value that determines whether this widget
 should draw the connecting lines between children of the root item.
@@ -318,21 +324,24 @@ not request any size at all.
 
 [tkoption_def -wrap wrap Wrap]
 Specifies whether items are arranged in a 1- or 2-dimensional layout.
-
+[nl]
 If the value is an empty string (the default), then items are arranged from top
 to bottom (-orient vertical) or from left to right (-orient horizontal) in
 a 1-dimensional layout.
-
-If the value is "[emph N] [const items]", then a no more than [emph N] items will appear in
+[nl]
+If the value is "[emph N] [const items]", then no more than [emph N] items will appear in
 a vertical group (-orient vertical) or horizontal group (-orient horizontal).
-
-If the value is "[emph N] [const pixels]", then a no vertical group of items will be
+[nl]
+If the value is "[emph N] [const pixels]", then no vertical group of items will be
 taller than [emph N] pixels (-orient vertical) or no horizontal group of items will
 be wider than [emph N] pixels (-orient horizontal).
-
+[nl]
 If the value is [const window], then a no vertical group of items will be
 taller than the window (-orient vertical) or no horizontal group of items will
 be wider than the window (-orient horizontal).
+[nl]
+It is also possible to cause wrapping to occur on a per-item basis by using
+the item option -wrap.  See the [cmd {item create}] command for that option.
 
 [tkoption_def -xscrolldelay xScrollDelay ScrollDelay]
 This option controls how quickly horizontal scrolling occurs while dragging
@@ -1069,6 +1078,7 @@ the meaning of each option):
 [opt_def [option -height] [arg height]]
 [opt_def [option -tags] [arg tagList]]
 [opt_def [option -visible] [arg boolean]]
+[opt_def [option -wrap] [arg boolean]]
 
 [list_end]
 
@@ -1145,6 +1155,11 @@ indicates that the item should be displayed in the list. The item will only be
 displayed if:
 a) each ancestor is a descendant of the root item (not an orphan);
 and b) each ancestor's [option -visible] option is true 
+
+[opt_def [option -wrap] [arg boolean]]
+[arg Boolean] must have one of the forms accepted by [fun Tcl_GetBoolean]. It
+indicates that this item should be the first one in a horizontal range or
+vertical range of items. See also the widget option [option -wrap].
 
 [list_end]
 
@@ -1882,39 +1897,23 @@ to produce the effect of dragging the treectrl at high speed through its window.
 The return value is an empty string.
 [list_end]
 
-[call [arg pathName] [cmd state] [arg option] [arg args]]
-This command is used to manipulate the list of user-defined states,
-see section [sectref STATES] below.
-The exact behavior of the command depends on the [arg option] argument
-that follows the [cmd state] argument.
-The following forms of the command are supported:
-
-[list_begin definitions]
-[call [arg pathName] [cmd {state define}] [arg stateName]]
-Defines a new state with the name [arg stateName],
-which must not be the name of an existing state.
-
-[call [arg pathName] [cmd {state linkage}] [arg stateName]]
-Returns a string indicating
-whether the specified state is user-defined
-by means of the [cmd {state define}] widget command ([const dynamic])
-or predefined by the treectrl widget itself ([const static]).
-
-[call [arg pathName] [cmd {state names}]]
-Returns a list containing the names of all user-defined states.
-
-[call [arg pathName] [cmd {state undefine}] [opt [arg {stateName ...}]]]
-Every [arg stateName] must be the name of a user-defined state.
-Removes this state from the list of user-defined states.
-[list_end]
-
-[call [arg pathName] [cmd see] [arg itemDesc]]
-Adjust the view in the treectrl so that the item
-described by [arg itemDesc] is visible.
+[call [arg pathName] [cmd see] [arg itemDesc] [opt [arg columnDesc]] [opt [arg {option value ...}]]]
+Adjust the view in the treectrl so that the item described by [arg itemDesc]
+is visible.
 If the item is already visible then the command has no effect;
 otherwise the treectrl scrolls to bring the item into view,
 and the corresponding [const <Scroll-x>] and/or [const <Scroll-y>]
-events are generated.
+events are generated. If [arg columnDesc] is specified then a specific column
+of the item is scrolled into view instead of the entire item.
+[nl]
+The following options are supported:
+[list_begin opt]
+[opt_def [option -center] [arg flags]]
+[arg Flags] is a string that contains zero or more of the characters [const x]
+or [const y]. This option is used to center the item horizontally and/or
+vertically in the window.  The item will be centered regardless of whether it
+is already visible.
+[list_end]
 
 [call [arg pathName] [cmd selection] [arg option] [arg args]]
 This command is used to adjust the selection within a treectrl.
@@ -1985,6 +1984,32 @@ Any unselected items in [arg select] are added to the selection,
 and any selected items in [arg deselect] are removed from the selection (except
 for those items which are also in [arg select]).
 A [const <Selection>] event is generated if any items were selected or deselected.
+[list_end]
+
+[call [arg pathName] [cmd state] [arg option] [arg args]]
+This command is used to manipulate the list of user-defined states,
+see section [sectref STATES] below.
+The exact behavior of the command depends on the [arg option] argument
+that follows the [cmd state] argument.
+The following forms of the command are supported:
+
+[list_begin definitions]
+[call [arg pathName] [cmd {state define}] [arg stateName]]
+Defines a new state with the name [arg stateName],
+which must not be the name of an existing state.
+
+[call [arg pathName] [cmd {state linkage}] [arg stateName]]
+Returns a string indicating
+whether the specified state is user-defined
+by means of the [cmd {state define}] widget command ([const dynamic])
+or predefined by the treectrl widget itself ([const static]).
+
+[call [arg pathName] [cmd {state names}]]
+Returns a list containing the names of all user-defined states.
+
+[call [arg pathName] [cmd {state undefine}] [opt [arg {stateName ...}]]]
+Every [arg stateName] must be the name of a user-defined state.
+Removes this state from the list of user-defined states.
 [list_end]
 
 [call [arg pathName] [cmd style] [arg option] [opt [arg element]] \

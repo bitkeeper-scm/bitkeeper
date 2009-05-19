@@ -37,7 +37,9 @@
  */
 
 #define NOBJALLOC	800
-#define NOBJHIGH	1200
+
+/* Actual definition moved to tclInt.h */
+#define NOBJHIGH	ALLOC_NOBJHIGH
 
 /*
  * The following union stores accounting information for each block including
@@ -97,7 +99,9 @@ typedef struct Bucket {
 
 /*
  * The following structure defines a cache of buckets and objs, of which there
- * will be (at most) one per thread.
+ * will be (at most) one per thread. Any changes need to be reflected in the
+ * struct AllocCache defined in tclInt.h, possibly also in the initialisation
+ * code in Tcl_CreateInterp().
  */
 
 typedef struct Cache {
@@ -490,6 +494,10 @@ TclpRealloc(
  *	May move Tcl_Obj's from shared cached or allocate new Tcl_Obj's if
  *	list is empty.
  *
+ * Note:
+ *	If this code is updated, the changes need to be reflected in the macro
+ *	TclAllocObjStorageEx() defined in tclInt.h
+ *
  *----------------------------------------------------------------------
  */
 
@@ -558,6 +566,10 @@ TclThreadAllocObj(void)
  *
  * Side effects:
  *	May move free Tcl_Obj's to shared list upon hitting high water mark.
+ *
+ * Note:
+ *	If this code is updated, the changes need to be reflected in the macro
+ *	TclAllocObjStorageEx() defined in tclInt.h
  *
  *----------------------------------------------------------------------
  */
@@ -973,8 +985,8 @@ TclFinalizeThreadAlloc(void)
     unsigned int i;
 
     for (i = 0; i < NBUCKETS; ++i) {
-        TclpFreeAllocMutex(bucketInfo[i].lockPtr);
-        bucketInfo[i].lockPtr = NULL;
+	TclpFreeAllocMutex(bucketInfo[i].lockPtr);
+	bucketInfo[i].lockPtr = NULL;
     }
 
     TclpFreeAllocMutex(objLockPtr);

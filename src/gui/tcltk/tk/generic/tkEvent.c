@@ -75,7 +75,7 @@ typedef struct TkWindowEvent {
  * Array of event masks corresponding to each X event:
  */
 
-static unsigned long eventMasks[TK_LASTEVENT] = {
+static unsigned long realEventMasks[MappingNotify+1] = {
     0,
     0,
     KeyPressMask,			/* KeyPress */
@@ -113,7 +113,10 @@ static unsigned long eventMasks[TK_LASTEVENT] = {
     0,					/* SelectionNotify */
     ColormapChangeMask,			/* ColormapNotify */
     0,					/* ClientMessage */
-    0,					/* Mapping Notify */
+    0					/* Mapping Notify */
+};
+
+static unsigned long virtualEventMasks[TK_LASTEVENT-VirtualEvent] = {
     VirtualEventMask,			/* VirtualEvents */
     ActivateMask,			/* ActivateNotify */
     ActivateMask,			/* DeactivateNotify */
@@ -244,16 +247,10 @@ InvokeFocusHandlers(
     }
 
     /*
-     * MouseWheel events are not focus specific on Mac OS X.
+     * Only key-related events are directed according to the focus.
      */
 
-#ifdef MAC_OSX_TK
-#define FOCUS_DIRECTED_EVENT_MASK (KeyPressMask|KeyReleaseMask)
-#else
-#define	FOCUS_DIRECTED_EVENT_MASK (KeyPressMask|KeyReleaseMask|MouseWheelMask)
-#endif
-
-    if (mask & FOCUS_DIRECTED_EVENT_MASK) {
+    if (mask & (KeyPressMask|KeyReleaseMask)) {
 	(*winPtrPtr)->dispPtr->lastEventTime = eventPtr->xkey.time;
 	*winPtrPtr = TkFocusKeyEvent(*winPtrPtr, eventPtr);
 	if (*winPtrPtr == NULL) {
@@ -356,6 +353,12 @@ CreateXIC(
 	XFree(preedit_attlist);
     }
 
+
+    if (winPtr->inputContext == NULL) {
+	/* XCreateIC failed. */
+	return;
+    }
+    
     /*
      * Adjust the window's event mask if the IM requires it.
      */
@@ -489,7 +492,7 @@ GetTkWindowFromXEvent(
  *
  * GetEventMaskFromXEvent --
  *
- *	The event type is looked up in our eventMasks table, and may be
+ *	The event type is looked up in our eventMasks tables, and may be
  *	changed to a different mask depending on the state of the event and
  *	window members.
  *
@@ -506,7 +509,23 @@ static unsigned long
 GetEventMaskFromXEvent(
     XEvent *eventPtr)
 {
-    unsigned long mask = eventMasks[eventPtr->xany.type];
+    unsigned long mask;
+
+    /*
+     * Get the event mask from the correct table. Note that there are two
+     * tables here because that means we no longer need this code to rely on
+     * the exact value of VirtualEvent, which has caused us problems in the
+     * past when X11 changed the value of LASTEvent. [Bug ???]
+     */
+
+    if (eventPtr->xany.type <= MappingNotify) {
+	mask = realEventMasks[eventPtr->xany.type];
+    } else if (eventPtr->xany.type >= VirtualEvent
+	    && eventPtr->xany.type<TK_LASTEVENT) {
+	mask = virtualEventMasks[eventPtr->xany.type - VirtualEvent];
+    } else {
+	mask = 0;
+    }
 
     /*
      * Events selected by StructureNotify require special handling. They look
@@ -771,7 +790,7 @@ InvokeGenericHandlers(
 	    int done;
 
 	    tsdPtr->handlersActive++;
-	    done = (*curPtr->proc)(curPtr->clientData, eventPtr);
+	    done = curPtr->proc(curPtr->clientData, eventPtr);
 	    tsdPtr->handlersActive--;
 	    if (done) {
 		return done;
@@ -1364,7 +1383,7 @@ Tk_HandleEvent(
 	for (handlerPtr = winPtr->handlerList; handlerPtr != NULL; ) {
 	    if ((handlerPtr->mask & mask) != 0) {
 		ip.nextHandler = handlerPtr->nextPtr;
-		(*(handlerPtr->proc))(handlerPtr->clientData, eventPtr);
+		handlerPtr->proc(handlerPtr->clientData, eventPtr);
 		handlerPtr = ip.nextHandler;
 	    } else {
 		handlerPtr = handlerPtr->nextPtr;
@@ -1768,7 +1787,7 @@ WindowEventProc(
 	return 0;
     }
     if (tsdPtr->restrictProc != NULL) {
-	result = (*tsdPtr->restrictProc)(tsdPtr->restrictArg, &wevPtr->event);
+	result = tsdPtr->restrictProc(tsdPtr->restrictArg, &wevPtr->event);
 	if (result != TK_PROCESS_EVENT) {
 	    if (result == TK_DEFER_EVENT) {
 		return 0;
@@ -2034,7 +2053,7 @@ TkFinalize(
 
 	firstExitPtr = exitPtr->nextPtr;
 	Tcl_MutexUnlock(&exitMutex);
-	(*exitPtr->proc)(exitPtr->clientData);
+	exitPtr->proc(exitPtr->clientData);
 	ckfree((char *) exitPtr);
 	Tcl_MutexLock(&exitMutex);
     }
@@ -2084,7 +2103,7 @@ TkFinalizeThread(
 	     */
 
 	    tsdPtr->firstExitPtr = exitPtr->nextPtr;
-	    (*exitPtr->proc)(exitPtr->clientData);
+	    exitPtr->proc(exitPtr->clientData);
 	    ckfree((char *) exitPtr);
 	}
     }

@@ -16,7 +16,6 @@ clipboard \- Manipulate Tk clipboard
 .SH SYNOPSIS
 \fBclipboard \fIoption\fR ?\fIarg arg ...\fR?
 .BE
-
 .SH DESCRIPTION
 .PP
 This command provides a Tcl interface to the Tk clipboard,
@@ -91,6 +90,7 @@ or FILE_NAME.  \fIType\fR defaults to STRING.  This command is
 equivalent to
 .QW "\fBselection get \-selection CLIPBOARD\fR" .
 .SH EXAMPLES
+.PP
 Get the current contents of the clipboard.
 .CS
 if {[catch {\fBclipboard get\fR} contents]} {
@@ -143,9 +143,10 @@ bind $c <<Paste>> {
    }
 }
 .CE
-
 .SH "SEE ALSO"
 interp(n), selection(n)
-
 .SH KEYWORDS
 clear, format, clipboard, append, selection, type
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

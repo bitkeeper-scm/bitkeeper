@@ -9,6 +9,7 @@ fib(int n)
 	}
 }
 
+void
 main()
 {
 	int	i;
