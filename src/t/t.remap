@@ -6,6 +6,7 @@ test ! -f SCCS/s.ChangeSet && {
 	exit 1
 }
 echo OK
+exit 0
 
 echo $N Check that a frankenstein product checks ok .................$NL
 cd "$HERE"
