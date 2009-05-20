@@ -868,7 +868,7 @@ doidx_rmdir(project *proj, char *dir)
 	int	idf = 0;
 	char	buf[MAXPATH], buf2[MAXPATH];
 
-	if (!isSCCS(dir)) {
+	if (!isSCCS(dir) && !streq(dir, ".")) {
 		/*
 		 * Can't remove a directory with a SCCS subdir, and
 		 * need to keep .bk directories in sync
