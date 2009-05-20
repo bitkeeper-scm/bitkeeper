@@ -6,7 +6,6 @@ test ! -f SCCS/s.ChangeSet && {
 	exit 1
 }
 echo OK
-exit 0
 
 # Clear the cache of the non-remapped repo
 rm -rf "$HERE/../cache/commercial"*
