@@ -7,6 +7,12 @@ test ! -f SCCS/s.ChangeSet && {
 }
 echo OK
 
+# Clear the cache of the non-remapped repo
+rm -rf "$HERE/../cache/commercial"*
+# some sh versions don't scope vars in "VAR=1 func_call"
+# so this is prophylactic.
+unset BK_NO_REMAP
+
 echo $N Check that a frankenstein product checks ok .................$NL
 cd "$HERE"
 nested product
