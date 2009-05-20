@@ -1,0 +1,62 @@
+#!/bin/sh -x
+
+# Port some collection of tcl/tk repos
+# Input: a directory which has in repos created by importing CVS
+# The names of the repos are the same names as in src/gui/tcltk/*:
+#   tcl tk tktable tktreectrl pcre ....
+#
+# repo is a clone -shere of /home/bk/bk or something similar
+# it is expected to be fully populated with TCL stuff
+
+# Just make things go a little quicker and generate less spam
+BK_CONFIG='checkout: none! '
+BK_NO_TRIGGERS=1
+export BK_NO_TRIGGERS BK_CONFIG
+
+# Command line check: two path relative or absolute existing directories
+test "$#" -eq 2 || {
+	echo "Usage: <prog> import-dir new-repo"
+	exit 1
+}
+
+impdir="$1"
+repo="$2"
+
+test -d "$impdir" || {
+	echo "import directory $impdir is not a directory"
+	exit 1
+}
+
+# Get an absolute version of the import directory
+impdir="`cd "$impdir" && pwd`"
+
+test -e "$repo" || {
+	echo "new repo $repo is not a directory"
+	exit 1
+}
+
+# Expect impdir to have repos with same name as tcl/tk repos in bk product
+
+cd "$repo" || exit 1
+bk components add -q TCLTK || exit 1
+cd src/gui/tcltk || exit 1
+bk portal -q || {
+	echo "Making $repo a portal"
+	bk portal .
+}
+(cd "$impdir" && bk sfiles -R) | while read component; do
+	cd $component || {
+		echo "failed to cd to $PWD/$component"
+		exit 1
+	}
+	# merge can happen and stdin is tied up
+	bk port "$impdir/$component" < /dev/tty || {
+		echo "port $component failed"
+		exit 1
+	}
+	cd ..
+done || exit 1
+
+bk -P commit -y"updated TCL/TK from $impdir" || exit 1
+
+echo done
