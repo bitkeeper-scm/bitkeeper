@@ -39,7 +39,8 @@ case $CMD in
 	}
 	sleep 5		# give the other guys time to get rcp'ed and started
 
-	echo y | BK_NOTTY=YES bk clone -sdefault -z0 $URL $BKDIR || {
+	echo y | \
+	    BK_NOTTY=YES BK_NO_REMAP=1 bk clone -sdefault -z0 $URL $BKDIR || {
 		failed
 	}
 
