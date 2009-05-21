@@ -1,17 +1,15 @@
 echo $N Check that BK_NO_REMAP works ................................$NL
+# make a fresh, uncached, unmapped repo
 BK_NO_REMAP=1
 export BK_NO_REMAP
-commercial project
+fresh_commercial project
+unset BK_NO_REMAP
 # This should NOT be bk _test
 test ! -f SCCS/s.ChangeSet && {
 	echo failed
 	exit 1
 }
 echo OK
-
-# Clear the cache of the non-remapped repo
-rm -rf "$HERE/../cache/commercial"*
-unset BK_NO_REMAP
 
 echo $N Check that a frankenstein product checks ok .................$NL
 cd "$HERE"
