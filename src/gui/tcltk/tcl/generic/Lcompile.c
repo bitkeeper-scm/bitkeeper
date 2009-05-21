@@ -209,7 +209,8 @@ Tcl_LObjCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 
 	/* Parse options from both the Tcl command and the tclsh cmd line. */
 	L->options = parse_options(objc-1, (Tcl_Obj **)objv);
-	if (Tcl_ListObjGetElements(L->interp, L->global->argv, &argc,
+	if (L->global->argv &&
+	    Tcl_ListObjGetElements(L->interp, L->global->argv, &argc,
 				   &argvList) == TCL_OK) {
 		L->options |= parse_options(argc-1, argvList);
 	}
