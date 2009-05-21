@@ -243,12 +243,14 @@ fslayer_rename(const char *old, const char *new)
 
 		if (proj1 && proj2) {
 			ret = doidx_rename(proj1, rel1, proj2, rel2);
-			proj_free(proj1);
-			proj_free(proj2);
 		} else {
 			ret = rename(old, new);
 		}
-		if (proj1) free(rel1);
+		if (proj1) {
+			free(rel1);
+			proj_free(proj1);
+		}
+		if (proj2) proj_free(proj2);
 		STRACE((strace, "rename(%s, %s) = %d\n", old, new, ret));
 		noloop = 0;
 	}
@@ -297,12 +299,14 @@ fslayer_link(const char *old, const char *new)
 
 		if (proj1 && proj2) {
 			ret = doidx_link(proj1, rel1, proj2, rel2);
-			proj_free(proj1);
-			proj_free(proj2);
 		} else {
 			ret = link(old, new);
 		}
-		if (proj1) free(rel1);
+		if (proj1) {
+			free(rel1);
+			proj_free(proj1);
+		}
+		if (proj2) proj_free(proj2);
 		STRACE((strace, "link(%s, %s) = %d\n", old, new, ret));
 		noloop = 0;
 	}
@@ -502,17 +506,18 @@ findpathf(const char *file, char **relp)
 	static	char	buf[MAXPATH];
 
 	char	*rel;
-	project	*proj, *pold;
+	project	*proj, *proot;
 	char	pbuf[MAXPATH];
 
 	strcpy(pbuf, file);
 	unless (proj = proj_init(dirname(pbuf))) return (0);
-	if (proj_isResync(proj)) {
-		concat_path(pbuf, proj_root(proj), RESYNC2ROOT);
-		pold = proj;
-		proj = proj_init(pbuf);
-		assert(proj);
-		proj_free(pold);
+	if (proot = proj_isResync(proj)) {
+		proj_free(proj);
+		proj = proj_init(proj_root(proot));
+	}
+	if (proj_hasOldSCCS(proj)) {
+		proj_free(proj);
+		return (0);
 	}
 	if (relp) {
 		rel = proj_relpath(proj, (char *)file);
@@ -537,22 +542,23 @@ findpathd(const char *dir, char **relp)
 	static	char	buf[MAXPATH];
 
 	char	*rel;
-	project	*proj, *pold;
-	char	pbuf[MAXPATH];
+	project	*proj, *proot;
 
 	if (isSymlnk((char *)dir)) return (findpathf(dir, relp));
 	unless (proj = proj_init((char *)dir)) return (0);
-	if (proj_isResync(proj)) {
-		concat_path(pbuf, proj_root(proj), RESYNC2ROOT);
-		pold = proj;
-		proj = proj_init(pbuf);
-		assert(proj);
-		proj_free(pold);
+	if (proot = proj_isResync(proj)) {
+		proj_free(proj);
+		proj = proj_init(proj_root(proot));
+	}
+	if (proj_hasOldSCCS(proj)) {
+		proj_free(proj);
+		return (0);
 	}
 	if (relp) {
 		rel = proj_relpath(proj, (char *)dir);
 		unless (rel) {
-			ttyprintf("dir %s proj %s cwd %s\n", dir, proj_root(proj), proj_cwd());
+			ttyprintf("dir %s proj %s cwd %s\n",
+			    dir, proj_root(proj), proj_cwd());
 		}
 		assert(rel);
 		strcpy(buf, rel);

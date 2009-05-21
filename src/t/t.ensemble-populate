@@ -50,6 +50,7 @@ bk alias new -C primes comp2 comp3 comp5 comp7
 bk commit $Q -y"adding components and aliases"
 cd "$HERE"
 bk clone $Q -seven -sodd -sprimes project copy
+bk clone $Q -sodd project odd
 echo OK
 
 echo $N Unpopulate even and primes...................................$NL
@@ -72,8 +73,19 @@ echo odd > WANT
 cmpfiles GOT WANT
 echo OK
 
-echo $N Populate them back...........................................$NL
-bk components add $Q even primes || exit 1
+echo $N Populate them back from a repo that does not have them ......$NL
+bk components add $Q -@../odd even primes 2> GOT && exit 1
+cat <<EOF > WANT
+components: failed to fetch comp10
+components: failed to fetch comp2
+components: failed to fetch comp4
+components: failed to fetch comp6
+components: failed to fetch comp8
+EOF
+echo OK
+
+echo $N Populate them back through the 2nd url in the list ..........$NL
+bk components add $Q -@../odd -@ even primes || exit 1
 cat <<EOF > WANT
 even
 odd
@@ -511,3 +523,24 @@ EOF
 cmpfiles GOT WANT
 echo OK
 fi
+
+echo ---- Test unmapped repos ......................................
+echo $N Create an not-remapped component ............................$NL
+cd "$HERE/copy"
+BK_NO_REMAP=1 bk setup -fc../empty not-remapped || exit 1
+test -d not-remapped/SCCS || exit 1
+test -d not-remapped/.bk && exit 1
+echo OK
+
+echo $N Try to unpopulate it -- should fail because no parent .......$NL
+bk components rm $Q not-remapped > GOT 2>&1 && exit 1
+cat <<'EOF' > WANT
+No parent with not-remapped to look for local changes
+components: unable to remove not-remapped
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Try to force unpopulate it ..................................$NL
+bk components rm $Q -f not-remapped || exit 1
+echo OK

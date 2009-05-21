@@ -9,7 +9,7 @@
 /*
  * Do not change this struct until we phase out bkd 1.2 support
  */
-struct {
+private	struct {
 	u32	no_parent:1;		/* -p: do not set parent pointer */
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */

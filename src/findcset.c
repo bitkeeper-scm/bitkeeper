@@ -44,8 +44,8 @@ typedef	struct {
 					 */
 } fopts;
 
-fopts	opts;
-delta	*oldest;			/* The oldest user delta */
+private	fopts	opts;
+private	delta	*oldest;		/* The oldest user delta */
 
 
 int

@@ -22,6 +22,7 @@ components_main(int ac, char **av)
 	remote	*r;
 	comp	*cp;
 	FILE	*f;
+	int	bitbucket, save;	/* file descriptors */
 	int	status, rc;
 	nested	*n;
 	char	*subcmd = 0;
@@ -183,7 +184,14 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 				vp = addLine(vp, remote_unparse(r));
 				vp = addLine(vp, strdup(cp->path));
 				vp = addLine(vp, 0);
+				bitbucket = open(DEVNULL_WR, O_WRONLY, 0);
+				assert(bitbucket >= 0);
+				save = dup(2);
+				dup2(bitbucket, 2);
+				close(bitbucket);
 				status = spawnvp(_P_WAIT, "bk", vp + 1);
+				dup2(save,2);
+				close(save);
 				freeLines(vp, free);
 				clonerc =
 				    WIFEXITED(status) ? WEXITSTATUS(status) : 1;
@@ -193,8 +201,14 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 					fprintf(f, "%s/ChangeSet\n", cp->path);
 					break;
 				} else if (clonerc == 2) {
-					/* failed because the dir was not empty */
-				} else {
+					/*
+					 * failed: the dir was not empty
+					 * no use trying other urls
+					 */
+					fprintf(stderr, "%s: %s not empty\n",
+					    prog, cp->path);
+					break;
+				} else if (exists(cp->path)) {
 					/* failed and left crud */
 					nested_rmcomp(n, cp);
 				}
@@ -214,7 +228,9 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 		}
 	}
 	if (rc) {
-		EACH_STRUCT(list, cp, i) nested_rmcomp(n, cp);
+		EACH_STRUCT(list, cp, i) {
+			if (cp->present) nested_rmcomp(n, cp);
+		}
 		return (rc);
 	}
 	freeLines(list, 0);

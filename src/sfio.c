@@ -83,7 +83,7 @@ private void	missing(off_t *byte_count);
 private	void	print_status(char *file, u32 sz);
 private	void	where(char *path);
 
-struct {
+private	struct {
 	u32	quiet:1;	/* suppress normal verbose output */
 	u32	doModes:1;	/* vm1.4 - sends permissions */
 	u32	echo:1;		/* echo files to stdout as they are written */
