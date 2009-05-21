@@ -97,8 +97,11 @@ fullname(char *xfile, char *tmp)
 		 */
 		strcpy(tmp, tail);
 	} else {
-		getcwd(tmp, MAXPATH);
-		concat_path(tmp, tmp, tail);
+		/*
+		 * either tmp is buf or it is passed it. Either works.
+		 */
+		getcwd(buf, MAXPATH);
+		concat_path(tmp, buf, tail);
 	}
 
 	cleanPath(tmp, tmp);
