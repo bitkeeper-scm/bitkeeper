@@ -324,8 +324,8 @@ opendir(const char *dirname)
 	}
 
 	d = &dtbl[i];
-	bm2ntfname(dirname, tmp_buf);
-	strcat(tmp_buf, "\\*.*");
+	strcpy(tmp_buf, dirname);
+	strcat(tmp_buf, "/*.*");
 	if ((d->dh = _findfirst(tmp_buf, &found_file)) == -1L) {
 		errno = 0; /* clear the noise error */
 		return (NULL);
@@ -591,7 +591,6 @@ _expnPath(char *cmdname, char *ext, char *fullCmdPath)
 	if (strchr(cmdbuf, '/')) {
 		strcpy(fullCmdPath, cmdbuf);
 		if (_access(fullCmdPath, 0) != 0) fullCmdPath[0] = 0;
-		bm2ntfname(fullCmdPath, fullCmdPath);
 		return fullCmdPath;
 	}
 
@@ -602,8 +601,7 @@ _expnPath(char *cmdname, char *ext, char *fullCmdPath)
 	p = path;
 	t = strtok(p, path_delim);
 	while (t) {
-		sprintf(fullCmdPath, "%s\\%s", t, cmdbuf);
-		bm2ntfname(fullCmdPath, fullCmdPath);
+		sprintf(fullCmdPath, "%s/%s", t, cmdbuf);
 		if (_access(fullCmdPath, 0) == 0) return (fullCmdPath);
 		t = strtok(NULL, path_delim);
 	}
@@ -612,7 +610,6 @@ _expnPath(char *cmdname, char *ext, char *fullCmdPath)
 	 * Try the dot path, we need this for shell script
 	 */
 	strcpy(fullCmdPath, cmdbuf);
-	bm2ntfname(fullCmdPath, fullCmdPath);
 	if (_access(fullCmdPath, 0) == 0) return (fullCmdPath);
 
 	fullCmdPath[0] = 0;
@@ -1063,14 +1060,12 @@ done:
 int
 nt_chmod(const char * file, int mode)
 {
-	char	ntfname[1024];
 	int	attributes = FILE_ATTRIBUTE_NORMAL;
 
-	bm2ntfname(file, ntfname);
 	if ((mode & _S_IWRITE) == 0) {
 		attributes |= FILE_ATTRIBUTE_READONLY;
 	}
-	if (!SetFileAttributes(ntfname, attributes)) {
+	if (!SetFileAttributes(file, attributes)) {
 		(void)GetLastError(); /* set errno */
 		return (-1);
 	}

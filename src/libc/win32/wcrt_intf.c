@@ -98,15 +98,14 @@ _exists(char *file)
 int
 nt_open(const char *filename, int flag, int pmode)
 {
-	char	buf[1024];
 	int	fd, save;
 
 	flag |= _O_NOINHERIT;
-	fd = _open(bm2ntfname(filename, buf), flag, pmode);
+	fd = _open(filename, flag, pmode);
 	if (fd < 0) {
 		save = errno;
 		if ((GetLastError() == ERROR_ACCESS_DENIED) &&
-		    (flag & O_CREAT) && (flag & O_EXCL) && _exists(buf)) {
+		    (flag & O_CREAT) && (flag & O_EXCL) && _exists(filename)) {
 			errno = EEXIST;
 		} else {
 			errno = save;	/* use errno set by _open */
@@ -168,21 +167,19 @@ nt_access(const char *file, int mode)
 int
 nt_mkdir (char *dirname)
 {
-	char	ntfname[1024];
 	char	*p;
 	int	rc;
 
-	bm2ntfname(dirname, ntfname);
-	if (rc = _mkdir(ntfname)) return (rc);
+	if (rc = _mkdir(dirname)) return (rc);
 
 	/* make SCCS dirs hidden */
-	if (p = strrchr(ntfname, '\\')) {
+	if (p = strrchr(dirname, '/')) {
 		++p;
 	} else {
-		p = ntfname;
+		p = dirname;
 	}
 	if (strcasecmp(p, "SCCS") == 0) {
-		SetFileAttributes(ntfname, FILE_ATTRIBUTE_HIDDEN);
+		SetFileAttributes(dirname, FILE_ATTRIBUTE_HIDDEN);
 	}
 	return (0);
 }
@@ -210,7 +207,6 @@ mkstemp(char *template)
 	int	fd;
 	char	*result;
 
-	bm2ntfname(template, template);
 	result = _mktemp(template);
 	if (!result) return (-1);
 	fd = _open(result, _O_CREAT|_O_EXCL|_O_BINARY|_O_SHORT_LIVED, 0600);
