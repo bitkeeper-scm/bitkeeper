@@ -1,5 +1,7 @@
 echo $N Check that BK_NO_REMAP works ................................$NL
-BK_NO_REMAP=1 commercial project
+BK_NO_REMAP=1
+export BK_NO_REMAP
+commercial project
 # This should NOT be bk _test
 test ! -f SCCS/s.ChangeSet && {
 	echo failed
@@ -9,8 +11,6 @@ echo OK
 
 # Clear the cache of the non-remapped repo
 rm -rf "$HERE/../cache/commercial"*
-# some sh versions don't scope vars in "VAR=1 func_call"
-# so this is prophylactic.
 unset BK_NO_REMAP
 
 echo $N Check that a frankenstein product checks ok .................$NL
