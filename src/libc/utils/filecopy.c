@@ -40,16 +40,13 @@ fileCopy(char *from, char *to)
 int
 fileCopy(char *from, char *to)
 {
-	char	nt_from[MAXPATH], nt_to[MAXPATH];
 	int	rc;
 	char	tofile[MAXPATH];
 
 	strcpy(tofile, to);	/* 'to' might be read only */
 	mkdirf(tofile);
 	unlink(tofile);
-	bm2ntfname(from, nt_from);
-	bm2ntfname(to, nt_to);
-	if ((rc = CopyFile(nt_from , nt_to, 0)) == 0) {
+	if ((rc = CopyFile(from , to, 0)) == 0) {
 		fprintf(stderr,
 		    "fileCopy: failed; win32 error = %lu\n", GetLastError());
 	}

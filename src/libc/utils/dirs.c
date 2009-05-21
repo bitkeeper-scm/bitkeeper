@@ -220,8 +220,8 @@ _getdir(char *dir, struct stat *sb1)
 	long	dh;
 	int	retry = 5;
 
-	bm2ntfname(dir, buf);
-	strcat(buf, "\\*.*");
+	strcpy(buf, dir);
+	strcat(buf, "/*.*");
 again:
 	if ((dh =  _findfirst(buf, &found_file)) == -1L) {
 		if (errno == ENOENT) return (0);
