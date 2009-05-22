@@ -267,6 +267,7 @@ char const *
 version_controller (char const *filename, int readonly,
 		    struct stat const *filestat, char **getbuf, char **diffbuf)
 {
+#define BK_STAT	"bk _stat "
   struct stat cstat;
   char const *filebase = base_name (filename);
   char const *dotslash = *filename == '-' ? "./" : "";
@@ -274,7 +275,7 @@ version_controller (char const *filename, int readonly,
   size_t filenamelen = strlen (filename);
   size_t maxfixlen = sizeof "SCCS/" - 1 + sizeof SCCSPREFIX - 1;
   size_t maxtrysize = filenamelen + maxfixlen + 1;
-  size_t maxstatsize = maxtrysize + sizeof "bk _stat  >/dev/null";
+  size_t maxstatsize = maxtrysize + sizeof(BK_STAT " > " NULL_DEVICE);
   size_t quotelen = quote_system_arg (0, filename);
   size_t maxgetsize = sizeof CLEARTOOL_CO + quotelen + maxfixlen;
   size_t maxdiffsize =
@@ -289,7 +290,7 @@ version_controller (char const *filename, int readonly,
 
 #define try1(f,a1)    (sprintf (trybuf + dir_len, f, a1),    stat (trybuf, &cstat) == 0)
 #define try2(f,a1,a2) (sprintf (trybuf + dir_len, f, a1,a2), stat (trybuf, &cstat) == 0)
-#define try3(f,a1,a2) (sprintf (trystat + dir_len + 9, f, a1, a2), systemic(trystat) == 0)
+#define try3(f,a1,a2) (sprintf (trystat + dir_len + sizeof(BK_STAT)-1, f, a1, a2), systemic(trystat) == 0)
 
   /* Check that RCS file is not working file.
      Some hosts don't report file name length errors.  */
@@ -324,7 +325,7 @@ version_controller (char const *filename, int readonly,
     }
   else if (try2 ("SCCS/%s%s", SCCSPREFIX, filebase)
 	   || try2 ("%s%s", SCCSPREFIX, filebase)
-	   || try3("SCCS/%s%s > /dev/null", SCCSPREFIX, filebase))
+	   || try3("SCCS/%s%s > " NULL_DEVICE, SCCSPREFIX, filebase))
     {
       if (getbuf)
 	{
