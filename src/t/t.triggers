@@ -950,8 +950,8 @@ bk pull $Q 2>ERR && {
 	echo failed to exit non zero with failed pre-apply trigger
 	exit 1
 }
-X="RESYNC-*"
-test "$X" || {
+X=`find . -maxdepth 1 -name 'RESYNC-*' | wc -l`
+test "$X" -eq 1 || {
 	echo failed to leave RESYNC
 	exit 1
 }
@@ -961,6 +961,10 @@ test -d PENDING || {
 }
 echo '>> Trigger "pre-apply" (exit status was 3)' > WANT
 cmpfiles ERR WANT
+test -d RESYNC-*/.bk || {
+	echo failed to create blobified RESYNC
+	exit 1
+}
 echo OK
 
 echo $N Do it again to see that it can rename RESYNC twice ..........$NL
@@ -972,8 +976,8 @@ test -d "RESYNC" && {
 	echo failed to rename RESYNC
 	exit 1
 }
-X="RESYNC-*"
-test "$X" || {
+X=`find . -maxdepth 1 -name 'RESYNC-*' | wc -l`
+test "$X" -eq 2 || {
 	echo failed to leave RESYNC
 	exit 1
 }

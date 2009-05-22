@@ -476,8 +476,7 @@ full_remap_path(char *buf, project *proj, char *rel)
 {
 	int	len;
 
-	concat_path(buf, proj_root(proj),
-	    (proj_hasOldSCCS(proj)) ? rel : remap_path(rel));
+	concat_path(buf, proj_root(proj), remap_path(rel));
 
 	/* buf may end in /., we'll remove that */
 	len = strlen(buf);
@@ -806,8 +805,7 @@ doidx_rename(project *proj1, char *old, project *proj2, char *new)
 
 	full_remap_path(buf1, proj1, old);
 	full_remap_path(buf2, proj2, new);
-	if (!(rc = rename(buf1, buf2)) && !isSCCS(old) &&
-	    (proj1 == proj2) && !proj_hasOldSCCS(proj1)) {
+	if (!(rc = rename(buf1, buf2)) && !isSCCS(old) && (proj1 == proj2)) {
 		/*
 		 * maybe we just did:
 		 *    mv old new
@@ -818,10 +816,24 @@ doidx_rename(project *proj1, char *old, project *proj2, char *new)
 		concat_path(buf1, proj_root(proj1), ".bk");
 		concat_path(buf1, buf1, old);
 		if (isdir(buf1)) {
-			concat_path(buf2, proj_root(proj2), ".bk");
-			concat_path(buf2, buf2, new);
-			mkdirp(buf2);
-			rename(buf1, buf2);
+			/*
+			 * support the magic: RESYNC is a repo with its .bk
+			 * in the product.  Renaming it to something else
+			 * means the .bk needs to be put back inside of the
+			 * new repo
+			 */
+			if (streq(old, "RESYNC") && !streq(new, "RESYNC")) {
+				concat_path(buf2, proj_root(proj2), new);
+				concat_path(buf2, buf2, ".bk");
+				assert(!exists(buf2));
+				mkdirf(buf2);
+				rename(buf1, buf2);
+			} else {
+				concat_path(buf2, proj_root(proj2), ".bk");
+				concat_path(buf2, buf2, new);
+				mkdirf(buf2);
+				rename(buf1, buf2);
+			}
 		}
 	}
 	return (rc);

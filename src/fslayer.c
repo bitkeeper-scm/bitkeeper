@@ -512,8 +512,13 @@ findpathf(const char *file, char **relp)
 	strcpy(pbuf, file);
 	unless (proj = proj_init(dirname(pbuf))) return (0);
 	if (proot = proj_isResync(proj)) {
+		/* 
+		 * if in RESYNC, use the project root.
+		 * Next line is like a proj_dup() -- it incs refcnt
+		 */
+		proot = proj_init(proj_root(proot));
 		proj_free(proj);
-		proj = proj_init(proj_root(proot));
+		proj = proot;
 	}
 	if (proj_hasOldSCCS(proj)) {
 		proj_free(proj);
@@ -547,8 +552,13 @@ findpathd(const char *dir, char **relp)
 	if (isSymlnk((char *)dir)) return (findpathf(dir, relp));
 	unless (proj = proj_init((char *)dir)) return (0);
 	if (proot = proj_isResync(proj)) {
+		/* 
+		 * if in RESYNC, use the project root.
+		 * Next line is like a proj_dup() -- it incs refcnt
+		 */
+		proot = proj_init(proj_root(proot));
 		proj_free(proj);
-		proj = proj_init(proj_root(proot));
+		proj = proot;
 	}
 	if (proj_hasOldSCCS(proj)) {
 		proj_free(proj);
