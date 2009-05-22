@@ -222,7 +222,8 @@ SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bam.h bkd.h blob.h logging.h nested.h \
 	  purify.h range.h rcs.h resolve.h sccs.h \
-	  cmd.h bkver.h proj.h redblack.h inskeys.h libc/system.h
+	  cmd.h bkver.h proj.h redblack.h inskeys.h libc/system.h \
+	  libc/fslayer/win_remap.h
 
 # list of non-C sources in bk
 SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \

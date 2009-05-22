@@ -56,6 +56,7 @@ foreach $fcn (@fcns) {
 
     print S "#define\tFSLAYER_NODEFINES\n";
     print S "#include \"system.h\"\n";
+    print S "#include \"win_remap.h\"\n";
     print S "\n";
     print S "$data{$fcn}{RET}\n";
     print S "fslayer_$fcn($data{$fcn}{ARGS})\n";

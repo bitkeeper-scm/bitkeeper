@@ -4,19 +4,9 @@
 #ifndef	_RE_MAP_H_
 #define	_RE_MAP_H_
 
-/* functions that expect file name as input */ 
-#define open(x,f,p)		nt_open(x, f, p)
-#define unlink(f)		nt_unlink(f)
-#define rename(oldf, newf)	nt_rename(oldf, newf)
-#define access(f, m)		nt_access(f, m)
-#define chmod(f, m)		nt_chmod(f, m)
-#define stat(f, b)              nt_stat(f, b)
-#define	link(f1, f2)		nt_link(f1, f2)
-#define lstat(f, b)		nt_stat(f, b)
-#define	utime(a, b)		nt_utime(a, b)
+/* Most of this moved to fslayer.c */
 #define symlink(a, b)		(-1) /* always return fail */
 #define	readlink(a, b, c)	(-1) /* always return fail */
-#define	rmdir(d)		nt_rmdir(d)
 
 /* functions that return file name as output */
 #define tmpnam(x)		nt_tmpnam(x)

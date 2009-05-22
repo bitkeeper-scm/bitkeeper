@@ -1,6 +1,7 @@
 #define	FSLAYER_NODEFINES
 #include "sccs.h"
 #include "blob.h"
+#include "libc/fslayer/win_remap.h"
 
 private	project	*findpathf(const char *file, char **rel);
 private	project	*findpathd(const char *dir, char **rel);
