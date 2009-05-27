@@ -19,23 +19,13 @@ realBasename(const char *path, char *realname)
 	HANDLE	h;
 	WIN32_FIND_DATA	data;
 	char	*p;
-	int	i, j, len;
-	char	buf[MAXPATH];
 
-	len = strlen(path);
-	for (i = 0, j = 0; i < len;) {
-		if (path[i] == '?' || path[i] == '*') {
-			buf[j++] = '\\';
-		}
-		buf[j++] = path[i++];
-	}
-	buf[j] = '\0';
-	if ((h = FindFirstFile(buf, &data)) == INVALID_HANDLE_VALUE) {
-		unless (p = strrchr(buf, '/')) p = strrchr(buf, '\\');
-		if (p) {
+	if ((h = FindFirstFile(path, &data)) == INVALID_HANDLE_VALUE) {
+		assert(strchr(path, '\\') == 0);
+		if (p = strrchr(path, '/')) {
 			strcpy(realname, ++p);
 		} else {
-			strcpy(realname, buf);
+			strcpy(realname, path);
 		}
 	} else {
 		strcpy(realname, data.cFileName);
