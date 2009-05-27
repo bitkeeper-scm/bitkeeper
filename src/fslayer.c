@@ -354,6 +354,27 @@ fslayer__getdir(char *dir, struct stat *sb)
 	return (ret);
 }
 
+char *
+fslayer_realBasename(const char *path, char *realname)
+{
+	char	*rel, *ret = 0;
+	project	*proj;
+	
+	if (noloop) {
+		ret = realBasename(path, realname);
+	} else {
+		noloop = 1;
+		if (isSCCS(path) && (proj = findpath(path, &rel))) {
+ 			ret = doidx_realBasename(proj, rel, realname);
+			proj_free(proj);
+		} else {
+			ret = realBasename(path, realname);
+		}
+		noloop = 0;
+	}
+	return (ret);
+}
+
 int
 fslayer_access(const char *path, int mode)
 {

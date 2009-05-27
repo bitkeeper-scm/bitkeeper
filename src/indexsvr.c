@@ -787,6 +787,20 @@ doidx_lstat(project *proj, char *rel, struct stat *sb)
 	return (lstat(buf, sb));
 }
 
+char *
+doidx_realBasename(project *proj, char *rel, char *realname)
+{
+	char	*ret;
+	char	buf[MAXPATH];
+
+	full_remap_path(buf, proj, rel);
+	ret = realBasename(buf, realname);
+	if (isSCCS(rel)) {
+		unremap_name(realname);
+	}
+	return (ret);
+}
+
 int
 doidx_unlink(project *proj, char *rel)
 {

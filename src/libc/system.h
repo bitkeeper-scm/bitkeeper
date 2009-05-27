@@ -175,6 +175,9 @@ void	safe_putenv(char *fmt, ...)
      ;
 char	*safe_getenv(char *var);
 
+/* realbasename.c */
+char*	realBasename(const char *path, char *realname);
+
 /* rlimit.c */
 void	core(void);
 

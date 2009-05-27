@@ -179,9 +179,7 @@ int
 getRealName(char *path, MDBM *db, char *realname)
 {
 	char	**parts;
-	int	i, j, k;
-	WIN32_FIND_DATA found;
-	HANDLE	h;
+	int	i;
 	char	buf[MAXPATH];
 	char	buf2[MAXPATH];
 	char	buf3[MAXPATH];
@@ -202,27 +200,10 @@ getRealName(char *path, MDBM *db, char *realname)
 		    streq(parts[i], "..") || streq(parts[i], ".")) {
 			concat_path(buf, buf, parts[i]);
 			continue;
-		} 
+		}
 		concat_path(buf2, buf, parts[i]);
-		/* check for * and ? and escape them. */
-		for (j = k = 0; buf2[j]; ) {
-			if ((buf2[j] == '?') || (buf2[j] == '*')) {
-				buf3[k++] = '\\';
-			}
-			buf3[k++] = buf2[j++];
-		}
-		buf3[k] = 0;
-		if ((h = FindFirstFile(buf3, &found)) == INVALID_HANDLE_VALUE) {
-			/*
-			 * If we get here they gave us a path to a file that
-			 * doesn't exist.  So we just pray that it is a long
-			 * style path.  Sigh.  I hate Winblows.
-			 */
-			concat_path(buf, buf, parts[i]);
-		} else {
-			concat_path(buf, buf, found.cFileName);
-			FindClose(h);
-		}
+		realBasename(buf2, buf3);
+		concat_path(buf, buf, buf3);
 	}
 	strcpy(realname, buf);
 	freeLines(parts, free);

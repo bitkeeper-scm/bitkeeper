@@ -102,3 +102,4 @@ int	fslayer_access(const char *path, int mode);
 int	fslayer_utime(const char *path, const struct utimbuf *buf);
 int	fslayer_mkdir(const char *path, mode_t mode);
 int	fslayer_rmdir(const char *path);
+char*	fslayer_realBasename(const char *path, char *realname);

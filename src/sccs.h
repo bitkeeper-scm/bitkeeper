@@ -1313,6 +1313,7 @@ int	doidx_chmod(project *proj, char *rel, mode_t mode);
 int	doidx_mkdir(project *proj, char *dir, mode_t mode);
 int	doidx_rmdir(project *proj, char *dir);
 char	**doidx_getdir(project *proj, char *dir);
+char	*doidx_realBasename(project *proj, char *rel, char *realname);
 int	doidx_access(project *proj, char *file, int mode);
 int	rmrepo(char *repo);
 int	rmtree_resync(char *repo);
