@@ -950,7 +950,7 @@ bk pull $Q 2>ERR && {
 	echo failed to exit non zero with failed pre-apply trigger
 	exit 1
 }
-X=`find . -maxdepth 1 -name 'RESYNC-*' | wc -l`
+X=`ls -d RESYNC-* | wc -l`
 test "$X" -eq 1 || {
 	echo failed to leave RESYNC
 	exit 1
@@ -976,7 +976,7 @@ test -d "RESYNC" && {
 	echo failed to rename RESYNC
 	exit 1
 }
-X=`find . -maxdepth 1 -name 'RESYNC-*' | wc -l`
+X=`ls -d RESYNC-* | wc -l`
 test "$X" -eq 2 || {
 	echo failed to leave RESYNC
 	exit 1
