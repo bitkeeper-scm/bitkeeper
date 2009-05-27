@@ -1206,6 +1206,10 @@ nt_unlink(const char *file)
 		h = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE, 0,
 		    OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE, 0);
 		unless (h == INVALID_HANDLE_VALUE) break;
+		if ((i == 0) && isdir(file)) {
+			errno = EISDIR;
+			return (-1);
+		}
 		unless (win32_flags & WIN32_RETRY) {
 fail:			errno = EBUSY;
 			return (-1);
