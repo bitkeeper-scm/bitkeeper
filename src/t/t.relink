@@ -23,6 +23,9 @@ bk clone -q project clone2 || exit 1
 bk clone -q project clone3 || exit 1
 echo OK
 
+# Pointless to check this on windows, it needs fslayer lovin.
+test -d project/.bk -a "$PLATFORM" = "WIN32" && exit 0
+
 echo $N Try to relink them ..........................................$NL
 NFILE=`bk sfiles project | wc -l`
 NFILE=`expr $NFILE + 0`	# trim the white space
