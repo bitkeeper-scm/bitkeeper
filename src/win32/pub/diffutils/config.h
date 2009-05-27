@@ -34,6 +34,7 @@
 #include "utsname.h"
 #include "re_map_decl.h"
 #include "re_map.h"
+#include "fslayer/win_remap.h"
 
 #undef	SHORT_FILE_NAMES 
 #undef	INHIBIT_STRING_HEADER

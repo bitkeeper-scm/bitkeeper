@@ -22,6 +22,7 @@
 #include "dirent.h"
 #include "re_map_decl.h"
 #include "re_map.h"
+#include "fslayer/win_remap.h"
 
 #define	STDC_HEADERS	1
 #define	HAVE_MALLOC_H	1
@@ -54,5 +55,3 @@
 #define HAVE_MKTEMP	1
 #define HAVE_VPRINTF	1
 #define	HAVE_STRERROR	1
-
-#include "fslayer/fslayer.h"

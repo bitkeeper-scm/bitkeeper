@@ -133,14 +133,20 @@ fullname(char *gfile, char *new)
 	} else {
 		unless (nt_getcwd(pwd, sizeof(pwd))) {
 			new[0] = 0;
-			return (new);
+			return (new == buf ? strdup("") : new);
 		}
 		/*
 		 * TODO we should store the PWD info
 		 * in the project struct or some here
 		 * so it will be faster on the next call
 		 */
-		concat_path(new, pwd, gfile);
+
+		/*
+		 * May 2009, do the concat path into buf because
+		 * it can't handle buf/gfile being the same.
+		 */
+		concat_path(buf, pwd, gfile);
+		if (new != buf) strcpy(new, buf);
 	}
 
 	cleanPath(new, new);

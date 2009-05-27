@@ -9,6 +9,8 @@ concat_path(char *buf, char *first, char *second)
 {
 	int	len;
 
+	assert(buf != second);
+
 	unless (first && *first) {
 		strcpy(buf, second);
 		return;
