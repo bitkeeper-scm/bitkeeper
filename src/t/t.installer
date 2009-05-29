@@ -322,15 +322,6 @@ test -d "$BIN" && {
 	cat OUT
 	exit 1
 }
-# make sure PATH doesn't have BK in it
-if [ "x$OLDUSRPATH" != "xentry not found" ];
-then	bk _registry get "$USRPATHKEY" Path | grep "DEAD BEEF" > TEXT && {
-		echo failed
-		echo BitKeeper left in User PATH
-		cat TEXT OUT
-		exit 1
-	}
-fi
 bk _registry get "$SYSPATHKEY" Path | grep "DEAD BEEF" > TEXT && {
 	echo failed
 	echo BitKeeper left in System PATH
@@ -367,15 +358,6 @@ BK="$HERE/DEADBEEF/bk"
 	cat OUT
 	exit 1
 }
-# make sure PATH STILL has BK in it
-if [ "x$OLDUSRPATH" != "xentry not found" ];
-then	bk _registry get "$USRPATHKEY" Path | grep "DEADBEEF" > TEXT || {
-		echo failed
-		echo Uninstaller in upgrade mode removed BK from USRPATH
-		cat TEXT OUT
-		exit 1
-	}
-fi
 bk _registry get "$SYSPATHKEY" Path | grep "DEADBEEF" > TEXT || {
 	echo failed $?
 	echo Uninstaller in upgrade mode removed BK from SYSPATH
