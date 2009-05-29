@@ -81,7 +81,7 @@ _restore "$SHELLXKEY" networkDrive "$OLDNETDRIVE"
 _restore	"$SHELLXKEY" LocalDrive "$OLDLOCALDRIVE"
 # Restore PATH so that old BK works again
 test "x$OLDUSRPATH" != "xentry not found" && {
-	restore "$USRPATHKEY" Path expand_sz:"$OLDUSRPATH"
+	_restore "$USRPATHKEY" Path expand_sz:"$OLDUSRPATH"
 }
 _restore "$SYSPATHKEY" Path expand_sz:"$OLDSYSPATH"
 # Tell other apps that we changed the Path
