@@ -1,12 +1,12 @@
 #!/bin/sh -x
 
 # Port some collection of tcl/tk repos
-# Input: a directory which has in repos created by importing CVS
+# Option input: a directory which has in repos created by importing CVS
 # The names of the repos are the same names as in src/gui/tcltk/*:
 #   tcl tk tktable tktreectrl pcre ....
 #
 # repo is a clone -shere of /home/bk/bk or something similar
-# it is expected to be fully populated with TCL stuff
+# If not populated with TCLTK components, it will be.
 
 # Just make things go a little quicker and generate less spam
 BK_CONFIG='checkout: none! '
@@ -14,37 +14,31 @@ BK_NO_TRIGGERS=1
 export BK_NO_TRIGGERS BK_CONFIG
 
 # Command line check: two path relative or absolute existing directories
-test "$#" -eq 2 || {
-	echo "Usage: <prog> import-dir new-repo"
+test "$#" -gt 1 && {
+	echo "Usage: import-update [import-dir]" >&2
 	exit 1
 }
 
-impdir="$1"
-repo="$2"
+impdir=/home/bk/imports/bk
+test $# -gt 0 && impdir="$1"
 
 test -d "$impdir" || {
-	echo "import directory $impdir is not a directory"
+	echo "import directory $impdir is not a directory" >&2
+	echo "Usage: import-update [import-dir]" >&2
 	exit 1
 }
 
 # Get an absolute version of the import directory
 impdir="`cd "$impdir" && pwd`"
 
-test -e "$repo" || {
-	echo "new repo $repo is not a directory"
-	exit 1
-}
-
 # Expect impdir to have repos with same name as tcl/tk repos in bk product
 
-cd "$repo" || exit 1
-bk components add -q TCLTK || exit 1
-cd src/gui/tcltk || exit 1
-bk portal -q || {
-	echo "Making $repo a portal"
-	bk portal .
-}
+bk components add -@ -@bk://work/bk -q TCLTK || exit 1
+bk -P portal -q || bk -P portal .
 (cd "$impdir" && bk sfiles -R) | while read component; do
+	# weed out subdirectories, like old/*
+	echo "$component" | grep -q / && continue
+	# else it has to be there
 	cd $component || {
 		echo "failed to cd to $PWD/$component"
 		exit 1
@@ -56,6 +50,10 @@ bk portal -q || {
 	}
 	cd ..
 done || exit 1
+
+# I could go either way on this: button it up or leave it open for testing.
+# This makes a rollback point to try various things out.
+# use bk -P fix -c (or collapse) to remake the product cset if desired.
 
 bk -P commit -y"updated TCL/TK from $impdir" || exit 1
 
