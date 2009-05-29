@@ -251,7 +251,7 @@ Arrays are zero-indexed.  Here's how you get at elements in an array:
     puts(animals[1]);              # prints "llama"
 
 The special pre-defined identifier C<END> is index of the last element
-of an array, unless the array is empty and then END is undef:
+of an array, unless the array is empty and then END is -1:
 
     puts(animals[END]);       # last element, prints "owl"
 
@@ -271,8 +271,8 @@ Slices are for reading values only, you cannot write to a slice.
     animals[1..END];          # gives all except the first element
 
 In this last example where END is used, you must be careful, because if
-the array is empty, END will be undef, and using undef as an array
-index causes a run-time error.
+the array is empty, END will be -1, and an array slice where the
+second index is less than the first causes a run-time error.
 
 You can add on to the end of an array no matter how many elements
 it already has:
@@ -281,6 +281,10 @@ it already has:
 
 The & means that animals is passed by reference, because it will
 be changed.  This is discussed more later.
+
+Another way to append:
+
+    animals[END+1] = "tiger";
 
 You can remove an element from an array but only from the end:
 
@@ -869,7 +873,7 @@ Read only.
 
 An int containing the index of the last character of a non-empty
 string or the last element of a non-empty array.  If the array or
-string is empty, END is undef.  Valid only inside of a string or array
+string is empty, END is -1.  Valid only inside of a string or array
 subscript.  Read only.
 
 =item undef

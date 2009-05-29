@@ -288,7 +288,6 @@ include_pop()
 	"int"		return T_INT;
 	"float"		return T_FLOAT;
 	"poly"		return T_POLY;
-	"var"		return T_VAR;
 	"split"		return T_SPLIT;
 	"if"		return T_IF;
 	"else"		return T_ELSE;
@@ -308,7 +307,6 @@ include_pop()
 	"constructor"	return T_CONSTRUCTOR;
 	"destructor"	return T_DESTRUCTOR;
 	"expand"	return T_EXPAND;
-	"in"		return T_IN;
 	"_unused"	return T_UNUSED;
 	"goto"		return T_GOTO;
 	"=>"		return T_ARROW;

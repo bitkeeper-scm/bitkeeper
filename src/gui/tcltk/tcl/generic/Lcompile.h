@@ -190,7 +190,6 @@ extern Type	*L_int;
 extern Type	*L_float;
 extern Type	*L_string;
 extern Type	*L_void;
-extern Type	*L_var;
 extern Type	*L_poly;
 
 static inline int

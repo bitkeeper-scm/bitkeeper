@@ -72,37 +72,105 @@ extern int	L_lex (void);
 	} Typename;
 }
 
-%token T_LPAREN "("
-%token T_RPAREN ")"
-%token T_LBRACE "{"
-%token T_RBRACE "}"
-%token T_LBRACKET "["
-%token T_RBRACKET "]"
-%token T_SEMI ";"
-%token T_EXTERN
-%token T_EQTWID
-%token T_IF
-%token T_UNLESS
-%token T_ELSE
-%token T_RETURN
-%token T_COMMA ","
-%token T_DOT "."
-%token T_STRCAT
-%token T_POINTS "->"
+%token T_ANDAND "&&"
 %token T_ARROW "=>"
+%token T_BANG "!"
+%token T_BITAND "&"
+%token T_BITOR "|"
+%token T_BITNOT "~"
+%token T_BITXOR "^"
+%token T_BREAK "break"
+%token T_CLASS "class"
 %token T_COLON ":"
+%token T_COMMA ","
+%token T_CONSTRUCTOR "constructor"
+%token T_CONTINUE "continue"
+%token T_DEFINED "defined"
+%token T_DESTRUCTOR "destructor"
+%token T_DO "do"
+%token T_DOT "."
+%token T_DOTDOT ".."
+%token T_ELLIPSIS "..."
+%token T_ELSE "else"
+%token T_EQ "eq"
+%token T_EQBITAND "&="
+%token T_EQBITOR "|="
+%token T_EQBITXOR "^="
+%token T_EQDOT ".="
+%token T_EQLSHIFT "<<="
+%token T_EQMINUS "-="
+%token T_EQPERC "%="
+%token T_EQPLUS "+="
+%token T_EQRSHIFT ">>="
+%token T_EQSTAR "*="
+%token T_EQSLASH "/="
+%token T_EQTWID "=~"
+%token T_EQUALS "="
+%token T_EQUALEQUAL "=="
+%token T_EXPAND "(expand)"
+%token T_EXTERN "extern"
+%token T_FLOAT "float"
+%token <f> T_FLOAT_LITERAL "float constant"
+%token T_FOR "for"
+%token T_FOREACH "foreach"
+%token T_GOTO "goto"
+%token T_GE "ge"
+%token T_GREATER ">"
+%token T_GREATEREQ ">="
+%token T_GT "gt"
+%token <s> T_ID "id"
+%token T_IF "if"
+%token T_INSTANCE "instance"
+%token T_INT "int"
+%token <i> T_INT_LITERAL "integer constant"
+%token T_LBRACE "{"
+%token T_LBRACKET "["
+%token T_LE "le"
+%token <s> T_LEFT_INTERPOL "${"
+%token T_LESSTHAN "<"
+%token T_LESSTHANEQ "<="
+%token T_LPAREN "("
+%token T_LSHIFT "<<"
+%token T_LT "lt"
+%token T_MINUS "-"
+%token T_MINUSMINUS "--"
+%token T_NE "ne"
+%token T_NOTEQUAL "!="
+%token T_OROR "||"
+%token <s> T_PATTERN "pattern function"
+%token T_PERC "%"
+%token T_PLUS "+"
+%token T_PLUSPLUS "++"
+%token T_POINTS "->"
+%token T_POLY "poly"
+%token T_PRIVATE "private"
+%token T_PUBLIC "public"
 %token T_QUESTION "?"
-%token T_RIGHT_INTERPOL T_PLUSPLUS T_MINUSMINUS
-%token <s> T_ID T_STR_LITERAL T_LEFT_INTERPOL T_RE T_SUBST T_RE_MODIFIER
-%token <s> T_STR_BACKTICK T_PATTERN
-%token <i> T_INT_LITERAL
-%token <f> T_FLOAT_LITERAL
-%token <Typename> T_TYPE
-%token T_WHILE T_FOR T_DO T_STRUCT T_TYPEDEF T_DEFINED
-%token T_POLY T_VOID T_VAR T_STRING T_INT T_FLOAT
-%token T_FOREACH T_IN T_BREAK T_CONTINUE T_ELLIPSIS T_CLASS
-%token T_SPLIT T_DOTDOT T_INSTANCE T_PRIVATE T_PUBLIC
-%token T_CONSTRUCTOR T_DESTRUCTOR T_EXPAND T_UNUSED T_GOTO
+%token T_RBRACE "}"
+%token T_RBRACKET "]"
+%token <s> T_RE "regular expression"
+%token <s> T_RE_MODIFIER "regexp modifier"
+%token T_RETURN "return"
+%token T_RIGHT_INTERPOL "} (end of interpolation)"
+%token T_RPAREN ")"
+%token T_RSHIFT ">>"
+%token T_SEMI ";"
+%token T_SLASH "/"
+%token T_SPLIT "split"
+%token T_STAR "*"
+%token <s> T_STR_BACKTICK "`"
+%token <s> T_STR_LITERAL "string constant"
+%token T_STRCAT " . "
+%token T_STRING "string"
+%token T_STRUCT "struct"
+%token <s> T_SUBST "=~ s/a/b/"
+%token <Typename> T_TYPE "type name"
+%token T_TYPEDEF "typedef"
+%token T_UNLESS "unless"
+%token T_UNUSED "unused"
+%token T_VOID "void"
+%token T_WHILE "while"
+%token END 0 "end of file"
 
 /*
  * This follows the C operator-precedence rules, from lowest to
@@ -512,13 +580,19 @@ iteration_stmt:
 	;
 
 foreach_stmt:
-	  T_FOREACH "(" id "=>" id T_IN expr ")" stmt
+	  T_FOREACH "(" id "=>" id id expr ")" stmt
 	{
 		$$ = ast_mkForeach($7, $3, $5, $9, @1.beg, @9.end);
+		unless (isid($6, "in")) {
+			L_synerr("syntax error -- expected 'in' in foreach");
+		}
 	}
-	| T_FOREACH "(" id_list T_IN expr ")" stmt
+	| T_FOREACH "(" id_list id expr ")" stmt
 	{
 		$$ = ast_mkForeach($5, $3, NULL, $7, @1.beg, @7.end);
+		unless (isid($4, "in")) {
+			L_synerr("syntax error -- expected 'in' in foreach");
+		}
 	}
 	;
 
@@ -1217,7 +1291,6 @@ scalar_type_specifier:
 	| T_INT		{ $$ = L_int; }
 	| T_FLOAT	{ $$ = L_float; }
 	| T_POLY	{ $$ = L_poly; }
-	| T_VAR		{ $$ = L_var; }
 	| T_VOID	{ $$ = L_void; }
 	| T_TYPE	{ $$ = $1.t; ckfree($1.s); }
 	;

@@ -1239,7 +1239,7 @@ void decl_1_0_fun3() { }
 int fdecl_1_0_un4() { }
 void decl_1_0_fun5(int foo) { }
 hash decl_1_0_fun6(hash foo, hash bar[], hash baz[23]) { }
-void decl_1_0_fun7(int foo, float bar, hash baz, string quux, poly quuux, var quuuux) { }
+void decl_1_0_fun7(int foo, float bar, hash baz, string quux, poly quuux) { }
 void decl_1_0_fun8() {
         int foo, bar[], baz[84][42][1];
         string foo1[19], mani[], padmi = "hum";
@@ -1633,7 +1633,7 @@ void if_1_4(void)
 	if (0) puts("1 broken"); else puts("1 even more broken");
 }
 #lang tcl
-} -returnCodes error -match glob -result "*3: L Error: syntax error, unexpected T_ELSE\n"
+} -returnCodes error -match glob -result "*3: L Error: syntax error, unexpected else\n"
 
 
 test unless-1.0 {unless statements} -body {
@@ -3404,7 +3404,7 @@ void end_2()
 	unless (e1 == 2) puts("bad 3.4");
 	e1 = -1;
 	if (defined({}[e1=END])) puts("bad 3.5");
-	if (defined(e1)) puts("bad 3.6");
+	unless (e1 == -1) puts("bad 3.6");
 
 	/* Check nested ENDs. */
 	e1 = e2 = e3 = -1;
@@ -3433,15 +3433,15 @@ void end_3()
 	string	s;
 	string	atoz="abcdefghijklmnopqrstuvwxyz";
 
-	s = " ";
+	s = "";
 	for (i = 0; i < 26; ++i) {
 		s[END+1] = atoz[i];
 	}
 	for (i = 0; i < 26; ++i) {
-		unless (s[i+1] eq atoz[i]) printf("bad 1.1 i=%d", i);
+		unless (s[i] eq atoz[i]) printf("bad 1.1 i=%d", i);
 	}
-	if (defined(s[i+1])) puts("bad 1.2");
-	unless (s eq " abcdefghijklmnopqrstuvwxyz") puts("bad 1.3");
+	if (defined(s[i])) puts("bad 1.2");
+	unless (s eq "abcdefghijklmnopqrstuvwxyz") puts("bad 1.3");
 }
 end_3();
 } -output {}
@@ -3450,26 +3450,36 @@ test end-4 {test END usage for array append} -body {
 #lang L
 void end_4()
 {
-	int	i;
+	int	e1, e2, i;
 	int	a[], aa[][];
 
-	a = {0};
-	for (i = 1; i < 100; ++i) {
+	a = {};
+	for (i = 0; i < 100; ++i) {
 		a[END+1] = i;
 	}
-	for (i = 1; i < 100; ++i) {
+	for (i = 0; i < 100; ++i) {
 		unless (a[i] == i) printf("bad 1.1 i=%d\n", i);
 	}
 	if (defined(a[i])) puts("bad 1.2");
 
-	aa = { {0} };
-	for (i = 1; i < 10; ++i) {
-		aa[END][END+1] = i;
+	aa = {};
+	e1 = e2 = -2;
+	aa[(e1=END)+1][(e2=END)+1] = 100;
+	unless ((e1 == -1) && (e2 == -1)) puts("bad 2.1");
+	unless (aa[e1=END][e2=END] == 100) puts("bad 2.2");
+	unless ((e1 == 0) && (e2 == 0)) puts("bad 2.3");
+
+	aa = {};
+	for (i = 0; i < 10; ++i) {
+		aa[END+1][END+1] = i;
+		aa[END][END+1]   = 10*i;
 	}
-	for (i = 1; i < 10; ++i) {
-		unless (aa[0][i] == i) puts("bad 3.2");
+	for (i = 0; i < 10; ++i) {
+		unless (aa[i][0] == i) puts("bad 3.1");
+		unless (aa[i][1] == 10*i) puts("bad 3.2");
+		if (defined(aa[i][2])) puts("bad 3.3");
 	}
-	if (defined(aa[0][i])) puts("bad 3.3");
+	if (defined(aa[i][0])) puts("bad 3.4");
 }
 end_4();
 } -output {}
@@ -3481,8 +3491,7 @@ int end_5_f(int lim, int n)
 	int	a[], e, i;
 
 	/* Put n things into a[]. */
-	a[0] = 0;
-	for (i = 1; i < n; ++i) a[END+1] = i;
+	for (i = 0; i < n; ++i) a[END+1] = i;
 
 	if (n < lim) {
 		/* e should get END+1; i.e., the # of things in a[] */
@@ -3497,7 +3506,7 @@ void end_5()
 	 * This test makes sure we can have lots of different ENDs all
 	 * stacked up at once.
 	 */
-	end_5_f(100, 1);
+	end_5_f(100, 0);
 }
 end_5();
 } -output {}
@@ -3553,25 +3562,6 @@ void end_8()
 	unless (join(" ", a[END-1..END-1]) eq "5") puts("bad 1.7");
 }
 end_8();
-} -output {}
-
-test end-9 {test that END is undef if array/string is empty} -body {
-#lang L
-void end_9()
-{
-	int	e;
-	string	s = "";
-	string	a[] = {};
-
-	/* Don't index using END, just grab and test its value. */
-
-	s[e=END,0];
-	if (defined(e)) puts("bad 1");
-
-	a[e=END,0];
-	if (defined(e)) puts("bad 2");
-}
-end_9();
 } -output {}
 
 test end-10 {check END ignored in comma expression} -body {
@@ -4358,6 +4348,56 @@ void loop_1_2_8()
 .*8: L Error: foreach expression must be array, hash, or string
 .*9: L Error: foreach expression must be array, hash, or string
 }
+
+test loop-1.2.9 {test foreach syntax errors} -body {
+#lang L
+void loop_1_2_9()
+{
+	string	k, v;
+	string	h{string};
+
+	/*
+	 * This test was added after un-reserving the keyword "in",
+	 * used in foreach loops.  In the grammar, "in" was replaced
+	 * with an id.  Verify that using anything other than "in" is
+	 * a syntax error.
+	 */
+
+	foreach (k=>v bad h) ;
+}
+} -returnCodes error -match regexp -result {.*13: L Error: syntax error.*
+}
+
+test loop-1.2.10 {test foreach syntax errors} -body {
+#lang L
+void loop_1_2_10()
+{
+	string	k, v;
+	string	h{string};
+
+	/*
+	 * Second part of above test (we can test only one syntax
+	 * error at a time).
+	 */
+
+	foreach (k bad "xyz") ;
+}
+} -returnCodes error -match regexp -result {.*11: L Error: syntax error.*
+}
+
+test loop-1.2.11 {test that "in" is not reserved} -body {
+#lang L
+void loop_1_2_11()
+{
+	/*
+	 * Verify that "in" is no longer a reserved word.
+	 */
+
+	int	in = 123;
+	unless (in == 123) puts("bad");
+}
+loop_1_2_11();
+} -output {}
 
 test loop-1.3 {continue statements} -body {
 #lang L
@@ -6116,17 +6156,14 @@ test deep-3.1 {check reading an undefined array index} -body {
 void
 deep_3_1()
 {
-	int	e;
 	int	a[] = {};
 
 	/*
 	 * Reading an array element with an undefined index is legal
-	 * and should return undef.  END is undefined here because
-	 * the array is empty.
+	 * and should return undef.
 	 */
 
-	if (defined(a[e=END])) puts("bad 1");
-	if (defined(e)) puts("bad 2");
+	if (defined(a[undef])) puts("bad 1");
 }
 deep_3_1();
 } -output {}
@@ -6140,10 +6177,10 @@ deep_3_2()
 
 	/*
 	 * Writing an array element with an undefined index is
-	 * illegal.  END is undefined here because the array is empty.
+	 * illegal.
 	 */
 
-	a[END] = 0;  // run-time error
+	a[undef] = 0;  // run-time error
 }
 deep_3_2();
 } -returnCodes error -match regexp -result {cannot write to undefined array index}
@@ -6153,17 +6190,14 @@ test deep-3.3 {check reading an undefined string index} -body {
 void
 deep_3_3()
 {
-	int	e;
 	string	s = "";
 
 	/*
 	 * Reading a string element with an undefined index is legal
-	 * and should return undef.  END is undefined here because
-	 * the string is empty.
+	 * and should return undef.
 	 */
 
-	if (defined(s[e=END])) puts("bad 1");
-	if (defined(e)) puts("bad 2");
+	if (defined(s[undef])) puts("bad 1");
 }
 deep_3_3();
 } -output {}
@@ -6177,10 +6211,10 @@ deep_3_4()
 
 	/*
 	 * Writing a string element with an undefined index is
-	 * illegal.  END is undefined here because the string is empty.
+	 * illegal.
 	 */
 
-	s[END] = "bad";  // run-time error
+	s[undef] = "bad";  // run-time error
 }
 deep_3_4();
 } -returnCodes error -match regexp -result {cannot write to undefined string index}
@@ -6364,34 +6398,6 @@ void reference_1_1_tweak(struct reference_1_1_point &foo) {
 reference_1_1();
 } -output {}
 
-test reference-1.2 {widget pointer thingys} -body {
-#lang L
-int
-reference_1_2()
-{
-	int	a;
-
-	a = 5;
-	printf("%s %s\n", variable: &a);
-	eval("puts [set ::Lptr::[list 1 a]]");
-}
-#lang tcl
-reference_1_2
-} -output "-variable ::Lptr::1 a\n5\n"
-
-test reference-1.3 {widget pointers via the Lptr namespace} -body {
-#lang L
-void reference_1_3()
-{
-  int reference_1_3_foo = 0;
-  printf("%s, %s\n", variable: &reference_1_3_foo);
-  eval("set {::Lptr::1 reference_1_3_foo} 93");
-  puts(reference_1_3_foo);
-}
-#lang tcl
-reference_1_3
-} -output "-variable, ::Lptr::1 reference_1_3_foo\n93\n"
-
 test reference-1.4 {test multiple reference arguments} -body {
 #lang L
 void reference_1_4_foo1(string &s1, string &s2)
@@ -6496,6 +6502,209 @@ void reference_1_5_5(string &arg5, string arg5,  string &arg5) {}
 .*5: L Error: multiple declaration of local &arg5
 .*5: L Error: multiple declaration of local arg5
 .*5: L Error: multiple declaration of local arg5
+}
+
+test pointer-1 {check L pointers} -body {
+#lang L
+string pointer_1_g;
+private string g;
+private string ga[];
+class pointer_1_cls {
+	public	string s;
+	public	string sa[];
+	instance {
+		public	string si;
+		public	string sia[];
+	}
+}
+private pointer_1_cls g_obj;
+private int getobj_count = 0;
+private pointer_1_cls get_obj()
+{
+	unless (defined(g_obj)) g_obj = pointer_1_cls_new();
+	++getobj_count;
+	return (g_obj);
+}
+private void chk(_unused string opt, poly var, string want, string new)
+{
+	string  have;
+
+	unless (var =~ /::Lptr::/) puts("bad chk.1");
+	eval("set have [set $var]");
+	unless (have eq want) puts("bad chk.2");
+	eval("set $var $new");
+	eval("set have [set $var]");
+	unless (have eq new) puts("bad chk.3");
+}
+void pointer_1()
+{
+	string  s;
+	string	sa[];
+	struct {
+		string	s1;
+		string	s2;
+	} st;
+	pointer_1_cls obj = pointer_1_cls_new();
+
+	/*
+	 * These check that the L variable or array/struct member and
+	 * the anonymous variable whose name gets passed to chk() are
+	 * linked in both directions.  A change in one should cause an
+	 * identical change in the other.
+	 *
+	 * Locals, public globals, private globals, etc all are tested
+	 * to ensure that pointers work with all the various kinds of
+	 * Tcl variable name mangling that L does.
+	 */
+
+	s = "testing";
+	chk(textvariable: &s, s, "new");
+	unless (s eq "new") puts("bad 1.1");
+	s = "testing2";
+	chk(textvariable: &s, s, "new2");
+	unless (s eq "new2") puts("bad 1.2");
+
+	sa[3] = "testing";
+	chk(textvariable: &sa[3], sa[3], "new");
+	unless (sa[3] eq "new") puts("bad 2.1");
+	sa[3] = "testing2";
+	chk(textvariable: &sa[3], sa[3], "new2");
+	unless (sa[3] eq "new2") puts("bad 2.2");
+
+	pointer_1_g = "testing";
+	chk(textvariable: &pointer_1_g, pointer_1_g, "new");
+	unless (pointer_1_g eq "new") puts("bad 3.1");
+	pointer_1_g = "testing2";
+	chk(textvariable: &pointer_1_g, pointer_1_g, "new2");
+	unless (pointer_1_g eq "new2") puts("bad 3.2");
+
+	g = "testing";
+	chk(textvariable: &g, g, "new");
+	unless (g eq "new") puts("bad 4.1");
+	g = "testing2";
+	chk(textvariable: &g, g, "new2");
+	unless (g eq "new2") puts("bad 4.2");
+
+	ga[3] = "testing";
+	chk(textvariable: &ga[3], ga[3], "new");
+	unless (ga[3] eq "new") puts("bad 5.1");
+	ga[3] = "testing2";
+	chk(textvariable: &ga[3], ga[3], "new2");
+	unless (ga[3] eq "new2") puts("bad 5.2");
+
+	st.s1 = "testing";
+	chk(textvariable: &st.s1, st.s1, "new");
+	unless (st.s1 eq "new") puts("bad 10.1");
+	st.s1 = "testing2";
+	chk(textvariable: &st.s1, st.s1, "new2");
+	unless (st.s1 eq "new2") puts("bad 10.2");
+
+	st.s2 = "testing";
+	chk(textvariable: &st.s2, st.s2, "new");
+	unless (st.s2 eq "new") puts("bad 11.1");
+	st.s2 = "testing2";
+	chk(textvariable: &st.s2, st.s2, "new2");
+	unless (st.s2 eq "new2") puts("bad 11.2");
+
+	pointer_1_cls->s = "testing";
+	chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new");
+	unless (pointer_1_cls->s eq "new") puts("bad 20.1");
+	pointer_1_cls->s = "testing2";
+	chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new2");
+	unless (pointer_1_cls->s eq "new2") puts("bad 20.2");
+
+	pointer_1_cls->sa[3] = "testing";
+	chk(textvariable: &pointer_1_cls->sa[3], pointer_1_cls->sa[3], "new");
+	unless (pointer_1_cls->sa[3] eq "new") puts("bad 21.1");
+	pointer_1_cls->sa[3] = "testing2";
+	chk(textvariable: &pointer_1_cls->sa[3], pointer_1_cls->sa[3], "new2");
+	unless (pointer_1_cls->sa[3] eq "new2") puts("bad 21.2");
+
+	obj->si = "testing";
+	chk(textvariable: &obj->si, obj->si, "new");
+	unless (obj->si eq "new") puts("bad 22.1");
+	obj->si = "testing2";
+	chk(textvariable: &obj->si, obj->si, "new2");
+	unless (obj->si eq "new2") puts("bad 22.2");
+
+	obj->sia[3] = "testing";
+	chk(textvariable: &obj->sia[3], obj->sia[3], "new");
+	unless (obj->sia[3] eq "new") puts("bad 22.1");
+	obj->sia[3] = "testing2";
+	chk(textvariable: &obj->sia[3], obj->sia[3], "new2");
+	unless (obj->sia[3] eq "new2") puts("bad 22.2");
+
+	/*
+	 * The getobj_count counts how many times get_obj() was called,
+	 * to verify that &fn()->var evaluates fn exactly once.
+	 */
+	get_obj()->si = "testing";
+	unless (getobj_count == 1) puts("bad 23.1");
+	chk(textvariable: &get_obj()->si, get_obj()->si, "new");
+	unless (getobj_count == 3) puts("bad 23.2");
+	unless (get_obj()->si eq "new") puts("bad 23.3");
+	get_obj()->si = "testing2";
+	unless (getobj_count == 5) puts("bad 23.4");
+	chk(textvariable: &get_obj()->si, get_obj()->si, "new2");
+	unless (getobj_count == 7) puts("bad 23.5");
+	unless (get_obj()->si eq "new2") puts("bad 23.6");
+}
+pointer_1();
+} -output {}
+
+test pointer-2 {check L pointer identification} -body {
+#lang L
+private void chk(_unused string opt, poly arg, string varname)
+{
+	unless (arg =~ /${varname}/) puts("bad chk.1");
+}
+void pointer_2()
+{
+	string	s;
+
+	/* These are L pointers. */
+	chk(textvariable: &s, "::Lptr::");
+	chk(tvariable: &s, "::Lptr::");
+	chk(variable: &s, "::Lptr::");
+
+	/* These are reference parameters, not pointers. */
+	chk(ariable: &s, "s");
+	chk(o: &s, "s");
+}
+pointer_2();
+} -output {}
+
+test pointer-3 {check L pointer errors} -body {
+#lang L -nowarn
+class pointer_3_cls {}
+private void chk(_unused string opt, _unused poly arg) {}
+void pointer_3()
+{
+	string	saa[][];
+	string	h{string};
+
+	/*
+	 * These should all issue errors, not crash the compiler.
+	 */
+	chk(textvariable: &undeclared1);
+	chk(textvariable: &undeclared2[2]);
+	chk(textvariable: &undeclared3.s);
+	chk(textvariable: &undeclared4->s);
+	chk(textvariable: &pointer_3_cls->undeclared1);
+	chk(textvariable: &pointer_3_cls->undeclared2[3]);
+	chk(textvariable: &saa[1][2]);
+	chk(textvariable: &h{"bad"});
+	chk(textvariable: &chk);
+}
+} -returnCodes error -match regexp -result {.*11: L Error: undeclared variable: undeclared1
+.*12: L Error: undeclared variable: undeclared2
+.*13: L Error: undeclared variable: undeclared3
+.*14: L Error: undeclared variable: undeclared4
+.*15: L Error: undeclared1 is not a member of class pointer_3_cls
+.*16: L Error: undeclared2 is not a member of class pointer_3_cls
+.*17: L Error: multiple indices not supported with &
+.*18: L Error: illegal operand to &
+.*19: L Error: illegal operand to &
 }
 
 test typedef-1.0 {basic typedef support} -body {
@@ -7068,7 +7277,7 @@ void defined_1_10()
 	defined_1_10_foo(&undef);  // err
 }
 defined_1_10();
-} -returnCodes error -match regexp -result {.*4: L Error: cannot take reference of argument
+} -returnCodes error -match regexp -result {.*4: L Error: illegal operand to &
 }
 
 test toplevel-1.0 {Toplevel code in L} -body {
@@ -10871,17 +11080,17 @@ void lvalue_5()
 }
 #lang tcl
 lvalue_5
-} -returnCodes {error} -match regexp -result {.*7: L Error: cannot take reference of argument
-.*8: L Error: cannot take reference of argument
-.*9: L Error: cannot take reference of argument
-.*10: L Error: cannot take reference of argument
-.*11: L Error: cannot take reference of argument
-.*12: L Error: cannot take reference of argument
-.*13: L Error: cannot take reference of argument
-.*14: L Error: cannot take reference of argument
-.*15: L Error: cannot take reference of argument
-.*16: L Error: cannot take reference of argument
-.*17: L Error: cannot take reference of argument
+} -returnCodes {error} -match regexp -result {.*7: L Error: illegal operand to &
+.*8: L Error: illegal operand to &
+.*9: L Error: illegal operand to &
+.*10: L Error: illegal operand to &
+.*11: L Error: illegal operand to &
+.*12: L Error: illegal operand to &
+.*13: L Error: illegal operand to &
+.*14: L Error: illegal operand to &
+.*15: L Error: illegal operand to &
+.*16: L Error: illegal operand to &
+.*17: L Error: illegal operand to &
 }
 
 test builtin-1 {check keys built-in} -body {
@@ -11217,8 +11426,8 @@ void line_file_2()
 }
 } -returnCodes {error} -match regexp -result {.*5: L Error: invalid l-value in assignment
 .*6: L Error: invalid l-value in assignment
-.*7: L Error: cannot take reference of argument
-.*8: L Error: cannot take reference of argument
+.*7: L Error: illegal operand to &
+.*8: L Error: illegal operand to &
 }
 
 test lregex-1 {test a trivial regex} -body {

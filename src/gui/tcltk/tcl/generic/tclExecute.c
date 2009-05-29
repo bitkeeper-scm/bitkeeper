@@ -7906,13 +7906,19 @@ TclExecuteByteCode(
 	currTopLevObj = varPtr->value.objPtr;
 	if (currTopLevObj != newTopLevObj) {  // update the local only if needed
 	    /* XXX see if this case should be handled. */
-	    if (!TclIsVarDirectWritable(varPtr)) {
-		Tcl_Panic("!TclIsVarDirectWritable in INST_L_DEEP_WRITE");
+	    if (TclIsVarDirectWritable(varPtr)) {
+		varPtr->value.objPtr = newTopLevObj;
+	    } else {
+		DECACHE_STACK_INFO();
+		if (!TclPtrSetVar(interp, varPtr, NULL, NULL, NULL,
+				  newTopLevObj, TCL_LEAVE_ERR_MSG, idx)) {
+		    Tcl_Panic("could not set var in INST_L_DEEP_WRITE");
+		}
+		CACHE_STACK_INFO();
 	    }
 	    if (currTopLevObj != NULL) {
 		TclDecrRefCount(currTopLevObj);
 	    }
-	    varPtr->value.objPtr = newTopLevObj;
 	} else {
 	    TclDecrRefCount(newTopLevObj);  // drop ref from deepPtr
 	}
@@ -8077,12 +8083,8 @@ TclExecuteByteCode(
 
     case INST_L_READ_SIZE: {
 	int length = L_sizes_top();
-	/* If the array or string length is 0, END gets the undef value. */
-	if (length >= 0) {
-	    objResultPtr = Tcl_NewIntObj(length);
-	} else {
-	    objResultPtr = *L_undefObjPtrPtr();
-	}
+	objResultPtr = Tcl_NewIntObj(length);
+	TRACE(("=> %d\n", length));
 	NEXT_INST_F(1, 0, 1);
     }
 
@@ -9485,8 +9487,7 @@ StringForResultCode(
  *	pointer (i.e., a Tcl_Obj ** pointer into the lists's internal element
  *	array).  If the index is < 0 or beyond the last element, a pointer to
  *	the L undef object is returned instead.  If the index has the value
- *	undef, always return the undef object as the element value.  This was
- *	added so that a[END] has the value undef if the array "a" is empty.
+ *	undef, always return the undef object as the element value.
  *
  *	For an l-value, if the indexed element is shared, an un-shared copy is
  *	made so that the indexed object later can be written in-place.  Also,

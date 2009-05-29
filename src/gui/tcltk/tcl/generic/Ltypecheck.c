@@ -28,7 +28,6 @@ L_typeck_init()
 		L_float  = type_mkScalar(L_FLOAT, PERSIST);
 		L_string = type_mkScalar(L_STRING, PERSIST);
 		L_void   = type_mkScalar(L_VOID, PERSIST);
-		L_var    = type_mkScalar(L_VAR, PERSIST);
 		L_poly   = type_mkScalar(L_POLY, PERSIST);
 	}
 }
@@ -51,7 +50,6 @@ type_str(Type_k kind)
 	if (kind & L_FLOAT)    str_add("float");
 	if (kind & L_STRING)   str_add("string");
 	if (kind & L_VOID)     str_add("void");
-	if (kind & L_VAR)      str_add("var");
 	if (kind & L_POLY)     str_add("poly");
 	if (kind & L_HASH)     str_add("hash");
 	if (kind & L_STRUCT)   str_add("struct");
@@ -332,7 +330,6 @@ L_typeck_same(Type *a, Type *b)
 	    case L_FLOAT:
 	    case L_STRING:
 	    case L_VOID:
-	    case L_VAR:
 		return (1);
 	    case L_ARRAY:
 		/* Element types must match (array sizes are ignored). */

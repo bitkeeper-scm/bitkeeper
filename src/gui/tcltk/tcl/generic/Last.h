@@ -95,11 +95,10 @@ typedef enum {
 	L_STRUCT	= 0x0020,
 	L_LIST		= 0x0040,
 	L_VOID		= 0x0080,
-	L_VAR		= 0x0100,
-	L_POLY		= 0x0200,
-	L_NAMEOF	= 0x0400,
-	L_FUNCTION	= 0x0800,
-	L_CLASS		= 0x1000,
+	L_POLY		= 0x0100,
+	L_NAMEOF	= 0x0200,
+	L_FUNCTION	= 0x0400,
+	L_CLASS		= 0x0800,
 } Type_k;
 
 struct Type {

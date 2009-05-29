@@ -375,6 +375,17 @@ void struct_typedef_1_1()
 struct_typedef_1_1
 } -output "X = 66\nFOO {66 63}\n"
 
+test list-1 {check list creation bug} -body {
+#lang L
+void list_1()
+{
+	/* This used to trip an assert. */
+	{undeclared_variable};
+}
+list_1();
+} -returnCodes {error} -match regexp -result {.*4: L Error: undeclared variable.*
+}
+
 # cleanup
 ::tcltest::cleanupTests
 return
