@@ -4,37 +4,37 @@ L
 
 =head1 SYNOPSIS
 
-L [options] script.l args
+L [options] script.l [args]
 
 =head1 DESCRIPTION
 
 L is a little interpreted language that draws heavily from C and Perl.
-From C, L gets C syntax, types (int, float, string), complex types
-(arrays, structs).
+From C, L gets C syntax, simple types (int, float, string), and
+complex types (arrays, structs).
 From Perl, L gets associative arrays and regular expressions (PCRE).
 And from neither, L gets its own simplistic form of classes.
 
 L stands for "little" as in little language.  The idea was to distill
 the useful parts of other languages and combine them into a scripting
-language, with type checking, classes (not full blown OO but useful none
-the less), and direct access to a cross platform graphical toolkit.
+language, with type checking, classes (not full-blown OO but useful none
+the less), and direct access to a cross-platform graphical toolkit.
 
-L provides a set of builtin functions, drawn from Perl and/or the 
+L provides a set of built-in functions, drawn from Perl and the 
 standard C library.
 
 L is built on top of the Tcl/TK system.  The L compiler generates Tcl
 byte codes and uses the Tcl calling convention.  This means that L and
-Tcl code may be intermixed if needed.  More importantly, it means that
-L may use all of the TK widgets.  The net result is a type checked
-scripting language which may be used for cross platform GUIs.
+Tcl code may be intermixed.  More importantly, it means that
+L may use all of the TK widgets.  The net result is a type-checked
+scripting language which may be used for cross-platform GUIs.
 
-L is open source under the same license as the Tcl/TK license (BSD like).
+L is open source under the same license as Tcl/TK BSD like).
 
 =head1 RUNNING L PROGRAMS
 
 You can run an L program from the command line.
 
-    L [options] progname.l
+    L [options] progname.l [args]
 
 Alternatively, put this as the first line of your script, but make
 sure your script is executable (C<chmod 755 script.l> under Unix).
@@ -57,14 +57,20 @@ Treat all types as C<poly>.  This effectively disables type checking.
 
 =back
 
+The optional [args] is a white-space separated list of arguments that
+are passed to the script's main() function as an argument count (argc)
+and an array of strings (argv).
+
 =head1 SYNTAX
 
 An L script or program consists of one or more statements.  These may
 be executable statements, variable or type declarations, or function
-or class declarations.  Statements not enclosed in functions are said
-to be at the C<top level> and are executed in the order they are
-written.  There is no need to have a C<main()> function, but if one is
-present, it is executed after all of the top-level statements.
+or class declarations.  Statements outside of functions are said
+to be at the C<top level> and are executed in the order they appear,
+although you can use a C<return> statement to bail out.
+There is no need to have a C<main()> function, but if one is
+present, it is executed after all of the top-level statements
+(even if you did a C<return> from the top level).
 
     puts("This is printed first.");
     void main()
@@ -174,10 +180,8 @@ be any L expression:
 
     printf("i = %d\n", i);  // prints i = 6
 
-If an initial value is omitted, an appropriate one is supplied.  Ints
-get 0, floats get 0.0, strings get "", arrays and hashes start out
-empty, and each struct member gets an initial value appropriate for
-its type.
+If an initial value is omitted, the variable starts out with the
+undefined value C<undef>, discussed more below.
 
 =over 4
 
@@ -204,6 +208,11 @@ to get a character or range of characters, or to change a character
     s2 = s1[1];     // s2 gets "e"
     s2 = s1[1..3];  // s2 gets "ell"
     s1[1] = "x";    // changes s1 to "hxllo"
+    s1[END+1] = "there";    // changes s1 to "hxllothere"
+
+The pre-defined identifier C<END> is index of the last character,
+or -1 is the string is empty.  You always can write to one past the end
+of a string to append to it, but writing beyond END+1 is an error.
 
 =item Undef
 
@@ -250,7 +259,7 @@ Arrays are zero-indexed.  Here's how you get at elements in an array:
     puts(animals[0]);              # prints "camel"
     puts(animals[1]);              # prints "llama"
 
-The special pre-defined identifier C<END> is index of the last element
+The pre-defined identifier C<END> is index of the last element
 of an array, unless the array is empty and then END is -1:
 
     puts(animals[END]);       # last element, prints "owl"
@@ -436,7 +445,7 @@ commas.  This is discussed more later.
 
 =item Poly
 
-Sometimes you don't want L to do type checking. (XXX need example.)
+Sometimes you don't want L to do type checking.
 In this case, you use the C<poly> type, which is compatible with
 any type.  Poly effectively disables type checking, allowing you
 to use or assign values without regard to their types.  Obviously,
@@ -567,39 +576,25 @@ of the last formal parameter name and omit its type:
 Inside the function, C<args> has type array of poly, allowing any
 number of parameters of any type to be passed.
 
-=head2 Tcl and Pattern Functions
+=head2 The main() Function
 
-L has something called a C<pattern function> which is an exception to
-some of these rules.  A pattern function call is one whose name is
-capitalized and has an underscore (except at the end), like this:
+If main() is present, it is called after all of the top-level statements
+have executed.  The main() function may defined in any of the following
+ways:
 
-    Foo_bar(a, b, c);
+   void main() {}
+   void main(int argc, string argv[]) {}
+   void main(int argc, string argv[], string env{string}) {}
 
-Pattern function calls obey two special rules.  First, if C<Foo_*>
-is declared as a function, then the compiler translates the call
-to this:
+The C<argv> array is populated from any arguments that appear after the
+script name on the L command line:
 
-    Foo_*("bar", a, b, c);
+   L script.l arg1 arg2 arg3
 
-Second, if C<Foo_*> does not exist, then the call becomes
-
-    <a>(bar, b, c);
-
-where <a> means that the I<value> of C<a> is the function name
-to call.
-
-XXX explain why these are useful. XXX
-
-L also has a feature to facilitate calling tcl functions where options
-are passed as C<-option>:
-
-    func(option1:);            // passes "-option1"
-    func(option2: value, arg); // passes "-option2 value arg"
-
-Without this, you would have to say:
-
-    func("-option1");
-    func("-option2", value, arg);
+The C<env> hash is populated with the environment variables present
+when L is invoked.  Although you can change this hash, writes to it
+are not reflected back into the environment.  To do that use the
+C<setenv> library function.
 
 =head2 Function Pointers
 
@@ -677,9 +672,8 @@ version of C<if (!I<condition>)>.
         ...
     }
 
-The braces are not required, but with nested C<if/else>'s they are
-advised so it is clear which C<else> belongs to which C<if>.  If
-braces are omitted, an C<else> binds to the closest C<if>.
+The braces are not required except for the else clause except when the
+else has another C<if> or C<unless>.
 
 =item while
 
@@ -763,6 +757,201 @@ result due to bypassing the loop set-up.  Do not bypass a variable
 declaration or else the variable will be inaccessible.
 
 =back
+
+=head1 INCLUDES
+
+L has an C<include> statement like the one in the C pre-processor.
+An include can appear anywhere a statement can appear as long as it begins
+in the first column and is contained entirely on one line:
+
+    include("types.l");
+    include("globals.l);
+    void main()
+    {
+        ...
+    }
+
+L remembers which files have been included and will not include a file
+more than once, allowing you to have include files that include each
+other.
+
+=head1 HERE DOCUMENTS
+
+Sometimes you need to assign a multi-line string to a variable.
+C<Here documents> help with that:
+
+    string s;
+
+    s = <<END
+    This is the first line in s.
+    This is the second.
+    And the last.
+    END
+
+Everything in the line starting after the initial <<END delimeter and
+before the final END delimeter get put into the variable C<s>.  You
+can use any identifier you want as the delimeter, it doesn't have
+to be END.
+
+The text inside the here document undergoes interpolation.  If you
+don't want that, put the initial delimeter inside of single quotes:
+
+    s = <<'END'
+    None of this text is interpolated.
+    So this ${xyz} appears literally as '${xyz}'.
+    END
+
+=head1 WORKING WITH TCL/TK
+
+L is built on top of Tcl: L functions are compiled down to Tcl procs,
+L local variables are just Tcl variables local to the proc, and L global
+variables are Tcl globals.
+Although L is designed to hide its Tcl underpinnings, sometimes it is
+useful for L and Tcl to cooperate.
+
+=head2 Mixing L and Tcl Code
+
+When you invoke L with a script whose name ends in C<.l>, the script
+must contain only L code.
+If you run a C<.tcl> script, you can mix L and Tcl:
+
+    puts "This is Tcl code"
+    #lang L
+    printf("This is L code\n");
+    #lang tcl
+    puts "Back to Tcl code"
+
+You also can run L code from within Tcl by passing the L code to the
+Tcl command named C<L>:
+
+    puts "Tcl code again"
+    L { printf("Called from the L Tcl command.\n"); }
+
+=head2 Calling Tcl from L
+
+You call a Tcl proc from L like you would an L function:
+
+    string s = "hello world";
+    puts(s);
+
+In this example, C<puts> is the Tcl command that outputs its argument
+to the C<stdout> channel.
+
+If you want argument type checking, you can provide a prototype for the Tcl
+functions you call.  Otherwise, no type checking is performed.
+
+In Tcl, options usually are passed as strings like "-option1" or "-option2".
+L has a feature to pass these options more pleasantly:
+
+    func(option1:);            // passes "-option1"
+    func(option2: value, arg); // passes "-option2", value, arg
+
+Without this, you would have to say:
+
+    func("-option1");
+    func("-option2", value, arg);
+
+If you need to execute arbitrary Tcl code rather than just call a proc,
+you pass it to Tcl's C<eval> command:
+
+    eval("puts {you guessed it, Tcl code again}");
+
+=head2 Calling L from Tcl
+
+L functions are easily called from Tcl, because an L function
+C<foo> compiles down to a Tcl proc named C<foo> in the global
+namespace.
+Let's say this is run from a script named C<script.tcl>:
+
+    #lang L
+    int avg(...args)
+    {
+        int i, sum=0;
+        unless (length(args)) return (0);
+        foreach (i in args) sum += i;
+        return (sum/length(args));
+    }
+    #lang tcl
+    set x [avg 4 5 6]
+    puts "The average is $x"
+
+The L code defines a proc named C<avg> which the Tcl code then calls.
+
+An exception is that C<private> L functions are not callable from Tcl
+because their names are mangled to make them unique.
+
+=head2 Variables
+
+Because L globals are just Tcl variables, you can access L variables
+from Tcl code.  Here is an example from the L library:
+
+    int size(string path)
+    {
+        int sz;
+
+        if (catch("set sz [file size $path]")) {
+            return (-1);
+        } else {
+            return (sz);
+        }
+    }
+
+In the Tcl code, C<$path> refers to the L formal parameter C<path>,
+and the L local C<sz> is set to the file size.  This example also
+illustrates how you can use Tcl's exception-handling facility
+to catch an exception raised within some Tcl code.
+
+An exception is that L global names are mangled with a prepended
+underscore (_), so to access the L global C<foo> from Tcl, you need
+to refer to C<$_foo>.  Another exception is that private L global
+names are mangled so much (to make them unique) that they are
+not accessible from Tcl.
+
+=head2 Namespaces
+
+You can access Tcl procs and variables in namespaces other than
+the global namespace by qualifying the name:
+
+    extern string ::mynamespace::myvar;
+
+    /* Print a bytecode disassembly of the proc "foo". */
+    puts(::tcl::unsupported::disassemble("proc", "foo"));
+
+    /* Print a variable in another namespace. */
+    puts(::mynamespace::myvar);
+
+=head2 Calling Tk
+
+To help call Tk widgets, L has a C<pattern function> call where the
+function name is capitalized and contains an underscore, like this:
+
+    Foo_bar(a, b, c);
+
+The call is translated to
+
+    <a>(bar, b, c);
+
+where <a> means that the I<value> of C<a> becomes the function name
+to call.
+
+*** Need to get an example from someone ***
+
+Another feature is useful for calling Tk widgets that take the I<name>
+of a variable whose value is updated when the user changes a widget
+field.  You can use an L variable like this:
+
+    string msg;
+    ttk::label(".foo", textvariable: &msg);
+
+The ampersand (&) in front of C<msg> alludes to a C pointer but this
+is actually a type of bridge between the L variable C<msg> and an
+anonymous global variable created by L and passed to the widget.  This
+mechanism lets you pass class or class instance variables,
+structure members, and array elements in addition to local or global
+variables.
+
+L uses this special bridge whenever the option name ends in
+"variable", as "textvariable" does in the example above.
 
 =head1 OPERATORS
 
@@ -883,6 +1072,45 @@ undef value can be assigned to variables to make them not defined.
 The value of undef is the empty string ("").  Read only.
 
 =back
+
+=head1 RESERVED WORDS
+
+The following identifiers are reserved.  They cannot be used for
+variable, function, or type names:
+
+    break
+    class
+    constructor
+    continue
+    destructor
+    do
+    else
+    eq
+    expand
+    extern
+    float
+    for
+    foreach
+    ge
+    goto
+    gt
+    if
+    instance
+    int
+    le
+    lt
+    ne
+    poly
+    private
+    public
+    return
+    split
+    string
+    struct
+    typedef
+    unless
+    void
+    while
 
 =head1 BUILT-IN AND LIBRARY FUNCTIONS
 
@@ -1323,7 +1551,7 @@ newline, append " in <filename> at line <linenum>\n".
 
 =back
 
-=head2 Manipulating complex structures
+=head1 MANIPULATING COMPLEX STRUCTURES
 
 L has built-in operators for turning complex data structures into
 something else: (expand), (expand all), and (tcl).
@@ -1334,7 +1562,7 @@ It is identical to tcl's {*}:
 
     void foo(string a, string b, string c);
 
-    string v[] = "one two three";
+    string v[] = { "one", "two", "three" };
 
     foo((expand)v);	// passes three string arguments to foo
 
