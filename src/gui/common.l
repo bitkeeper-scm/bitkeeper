@@ -4,14 +4,14 @@ struct	{
 	string	cmd_quit;	    // Command to quit the tool
 	string	cmd_next;	    // Command to move to the next thing
 	string	cmd_prev;	    // Command to move to the previous thing
-	widget	w_top;		    // Toplevel window of the tool
-	widget	w_main;		    // Main widget for scrolling and focus
-	widget	w_search;	    // Text box that is the main search widget
-	widget	w_searchBar;	    // Standard search bar for all tools
+	string	w_top;		    // Toplevel window of the tool
+	string	w_main;		    // Main widget for scrolling and focus
+	string	w_search;	    // Text box that is the main search widget
+	string	w_searchBar;	    // Standard search bar for all tools
 	int	search_case;	    // Search case-sensitive
 	float	search_idx[2];	    // Current search index
 	int	search_highlight;   // Highlight all search matches?
-	widget	w_scrollbars{widget}[]; // Hash of scrollbars and their widgets
+	string	w_scrollbars{string}[]; // Hash of scrollbars and their widgets
 } _bk;
 
 _bk.cmd_quit = "exit";
@@ -42,7 +42,7 @@ bk_init()
 		bk_dieError("_bk.w_top must be set before bk_init()", 1);
 	}
 
-	_bk.wm = Tk_windowingsystem();
+	_bk.wm = tk_windowingsystem();
 	bk_initPlatform();
 	getConfig(_bk.tool);
 	loadState(_bk.tool);
@@ -125,7 +125,7 @@ bk_exit(...args)
 void
 bk_message(string title, string message)
 {
-	if (Tk_windowingsystem() eq "win32") {
+	if (tk_windowingsystem() eq "win32") {
 		tk_messageBox(title: title, message: message);
 	} else {
 		puts("stdout", message);
@@ -135,7 +135,7 @@ bk_message(string title, string message)
 void
 bk_error(string title, string message)
 {
-	if (Tk_windowingsystem() eq "win32") {
+	if (tk_windowingsystem() eq "win32") {
 		tk_messageBox(title: title, message: message);
 	} else {
 		puts("stderr", message);
@@ -165,11 +165,11 @@ bk_usage()
 	bk_dieError(usage, 1);
 }
 
-widget[]
-getAllWidgets(widget top)
+string[]
+getAllWidgets(string top)
 {
-	widget	w, widgets[];
-	widget	list[];
+	string	w, widgets[];
+	string	list[];
 
 	widgets = winfo("children", top);
 	foreach (w in widgets) {
@@ -183,15 +183,15 @@ getAllWidgets(widget top)
 }
 
 void
-attachScrollbar(widget sb, ...args)
+attachScrollbar(string sb, ...args)
 {
 	int	i;
 	poly	w;
-	widget	widg, widgets[];
+	string	widg, widgets[];
 	string	orient = Scrollbar_cget(sb, orient:);
 
 	foreach (w in args) {
-		widgets[i++] = (widget)w;
+		widgets[i++] = w;
 	}
 	if (orient eq "horizontal") {
 		Scrollbar_configure(sb, command: "${widgets[0]} xview");
@@ -211,9 +211,9 @@ attachScrollbar(widget sb, ...args)
 }
 
 void
-setScrollbar(widget sb, widget w, float first, float last)
+setScrollbar(string sb, string w, float first, float last)
 {
-	widget	widg;
+	string	widg;
 	float	x, y;
 	float	xview[], yview[];
 
@@ -224,19 +224,19 @@ setScrollbar(widget sb, widget w, float first, float last)
 	x = xview[0];
 	y = yview[0];
 	foreach (widg in _bk.w_scrollbars{w}) {
-		if (widg == w) continue;
+		if (widg eq w) continue;
 		Widget_xview(widg, "moveto", x);
 		Widget_yview(widg, "moveto", y);
 	}
 }
 
 void
-scrollMouseWheel(widget w, int x, int y, int delta)
+scrollMouseWheel(string w, int x, int y, int delta)
 {
 	int	d = delta;
-	widget	widg = Winfo_containing(x, y);
+	string	widg = winfo_containing(x, y);
 
-	if (widg == "") widg = w;
+	if (widg eq "") widg = w;
 	if (_bk.wm eq "aqua") {
 		d = -delta;
 	} else if (_bk.wm eq "x11") {
