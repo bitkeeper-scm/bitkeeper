@@ -1460,7 +1460,7 @@ Some brief examples:
 
     // This loop reads from stdin, and prints non-blank lines.
     string buf;
-    while (fgetline(stdin, &buf)) {
+    while (defined(buf = fgetline(stdin)) {
         unless (buf =~ /^$/) puts(buf);
     }
 

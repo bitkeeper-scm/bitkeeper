@@ -89,7 +89,7 @@ bk(string cmdline)
 	string	result;
 
 	fd = popen("bk ${cmdline}", "r");
-	result = read(fd);
+	result = fgetline(fd);
 	catch("close ${fd}");
 	return(trim(result));
 }
@@ -98,11 +98,11 @@ int
 getNumFiles()
 {
 	int	i;
-	int	res;
 	int	nftime, cstime;
 	FILE	fd;
 	string	result;
-	string	nfiles = "0";
+	int	nfiles = 0;
+	string	nfilestr;
 
 	setStatus("Getting file count...");
 
@@ -116,9 +116,9 @@ getNumFiles()
 			cstime = mtime("SCCS/s.ChangeSet");
 			if (nftime > cstime) {
 				fd = fopen("BitKeeper/log/NFILES", "r");
-				res = fgetline(fd, &nfiles);
+				nfilestr = fgetline(fd);
 				fclose(fd);
-				if (res) return ((int)nfiles);
+				if (defined(nfiles)) return ((int)nfilestr);
 			}
 		}
 	} else {
@@ -131,16 +131,18 @@ getNumFiles()
 			components[i++] = joinpath(root, line);
 			if (exists(file)) {
 				fd = fopen(file, "r");
-				nfiles += read(fd);
+				nfilestr = fgetline(fd);
 				fclose(fd);
+				if (defined(nfilestr)) nfiles += (int)nfilestr;
 			}
 		}
 	}
 	unless (nfiles) {
-		nfiles = bk("-R prs -hr+ -nd:HASHCOUNT: ChangeSet");
+		nfilestr = bk("-R prs -hr+ -nd:HASHCOUNT: ChangeSet");
+		if (defined(nfilestr)) nfiles += (int)nfilestr;
 	}
 	components[i] = root;
-	return ((int)nfiles);
+	return (nfiles);
 }
 
 string
@@ -210,7 +212,7 @@ insertPending(sfile sf)
 	string	name = sf.name;
 	string	comments;
 
-	while (fgetline(fd, &line)) {
+	while (defined(line = fgetline(fd))) {
 		FILE	cfd;
 
 		line =~ /(.*)|(.*)/;
@@ -219,7 +221,7 @@ insertPending(sfile sf)
 		sf.name = "${name}@${sf.rev}";
 		cfd = popen("bk prs -hd:COMMENTS: -r${sf.rev} \"${sf.file}\"",
 		    "r");
-		while (fgetline(cfd, &line)) {
+		while (defined(line = fgetline(cfd))) {
 			append(&comments, line[2..END], "\n");
 		}
 		fclose(cfd);
@@ -233,7 +235,7 @@ readSfilesProgress(FILE fd)
 {
 	string	line;
 
-	if (fgetline(fd, &line)) {
+	if (defined(line = fgetline(fd))) {
 		// list = {sfiles, extras, dirs, changed}
 		int	list[4] = (int[])line;
 
@@ -269,8 +271,11 @@ readSfilesOutput()
 
 	sfiles_reading = 1;
 	seek(fd, pos, "start");
-	data = read(fd);
-	if (data eq "") return;
+	data = fgetline(fd);
+	if (defined(data)) {
+		fclose(fd);
+		return;
+	}
 	lines = split(data, "\n");
 	len = llength(lines);
 	if (data[END] ne "\n") {
@@ -281,7 +286,7 @@ readSfilesOutput()
 	fclose(fd);
 
 	foreach (line in lines) {
-		file = join(lrange(split(line, " "), 1, "end"), " ");
+		file = join(" ", lrange(split(line, " "), 1, "end"));
 		extra = line[0] eq "x";
 		modified = line[2] eq "c";
 		pending = line[3] eq "p";
@@ -992,7 +997,7 @@ getComments(sfile sf)
 		comments = read(nonewline:, fd);
 		fclose(fd);
 	}
-	if (comments eq "" && defined(templates{sf.file})) {
+	if ((comments eq "") && defined(templates{sf.file})) {
 		comments = templates{sf.file};
 	}
 	return (comments);
@@ -1123,7 +1128,7 @@ showFile(sfile sf)
 	}
 
 	gets(fd); gets(fd); gets(fd);
-	while (fgetline(fd, &line)) {
+	while (defined(line = fgetline(fd))) {
 		c = line[0];
 		tag = "";
 		if (c eq "+") {
@@ -1411,7 +1416,7 @@ triggerRead(string sock)
 {
 	string	line;
 
-	if (!fgetline(sock, &line) || eof(sock)) {
+	if (!defined(line = fgetline(sock)) || eof(sock)) {
 		close(sock);
 	} else {
 		insertBottomText("${line}\n", 0);
@@ -1522,55 +1527,54 @@ initMsgs()
 {
 // Don't make comments wider than 65 chars
 //--------|---------|---------|---------|---------|---------|----
-	msgs{"nonrc"} = "
-  Not currently under revision control. 
-  Click on the file-type icon or start typing comments 
-  if you want to include this file in the current ChangeSet\n";
-	msgs{"gotCset"} = "
-  Click \[Commit] again to check in and create this ChangeSet,
-  or type Control-l to go back to back and work on the comments.\n";
-	msgs{"onlyPending"} = "
-  Since there are only pending files selected, you must
-  create a ChangeSet comment in order to commit.\n
-  Type Control-l to go back and provide ChangeSet comments.\n";
-	msgs{"noCset"} = "
-  Notice: this will not group and commit the deltas listed below
-  into a ChangeSet, because there are no ChangeSet comments.
-  Click \[Checkin] again to check in only the commented deltas,
-  or type Control-l to go back and provide ChangeSet comments.\n";
-	msgs{"resolveCset"} = "
-  You must provide comments for the ChangeSet file when resolving.
-  Type Control-l to go back and do so.\n";
-	msgs{"noCsetOK"} = "
-  Click \[Checkin] again to check in and create these deltas,
-  or type Control-l to go back to back and work on the comments.\n";
-	msgs{"unedit"} = "
-  Click \[Discard] again if you really want to unedit this file,
-  or type Control-l to go back and work on the comments.\n
-  Warning!  The changes to this file shown below will be lost.\n";
-	msgs{"deleteNew"} = "
-  Click \[Discard] again if you really want to delete this file,
-  or type Control-l to leave this file in place.\n
-  Warning!  The file below will be deleted if you click \[Discard]\n";
-	msgs{"noFileComments"} = "
-No files have comments yet, so no ChangeSet can be created.
-Type Control-l to go back and provide some comments.\n";
-	msgs{"changeset"} = "
-Please describe the change which is implemented in the deltas listed below.
-Describe the change as an idea or concept; your description will be used by
-other people to decide to use or not to use this changeset.
-
-If you provide a description, the deltas will be grouped into a ChangeSet,
-making them available to others.  If you do not want to do that yet, just
-click Commit without typing in comments here and no ChangeSet will be made.";
-	msgs{"pendingFile"} =
-" This delta has been previously checked in and is in pending state.
- That means that you can not modify these comments, and that this delta
- will be included in the ChangeSet when you next create a ChangeSet.";
-	msgs{"repoLocked"} =
-"This repository is locked.
-A checkin cannot be made at this time.
-Try again later.";
+	msgs{"nonrc"} = "\n"
+"  Not currently under revision control. \n"
+"  Click on the file-type icon or start typing comments \n"
+"  if you want to include this file in the current ChangeSet\n";
+	msgs{"gotCset"} = "\n"
+"  Click \[Commit] again to check in and create this ChangeSet,\n"
+"  or type Control-l to go back to back and work on the comments.\n";
+	msgs{"onlyPending"} = "\n"
+"  Since there are only pending files selected, you must\n"
+"  create a ChangeSet comment in order to commit.\n\n"
+"  Type Control-l to go back and provide ChangeSet comments.\n";
+	msgs{"noCset"} = "\n"
+"  Notice: this will not group and commit the deltas listed below\n"
+"  into a ChangeSet, because there are no ChangeSet comments.\n"
+"  Click \[Checkin] again to check in only the commented deltas,\n"
+"  or type Control-l to go back and provide ChangeSet comments.\n";
+	msgs{"resolveCset"} = "\n"
+"  You must provide comments for the ChangeSet file when resolving.\n"
+"  Type Control-l to go back and do so.\n";
+	msgs{"noCsetOK"} = "\n"
+"  Click \[Checkin] again to check in and create these deltas,\n"
+"  or type Control-l to go back to back and work on the comments.\n";
+	msgs{"unedit"} = "\n"
+"  Click \[Discard] again if you really want to unedit this file,\n"
+"  or type Control-l to go back and work on the comments.\n\n"
+"  Warning!  The changes to this file shown below will be lost.\n";
+	msgs{"deleteNew"} = "\n"
+"  Click \[Discard] again if you really want to delete this file,\n"
+"  or type Control-l to leave this file in place.\n\n"
+"  Warning!  The file below will be deleted if you click \[Discard]\n";
+	msgs{"noFileComments"} = "\n"
+"No files have comments yet, so no ChangeSet can be created.\n"
+"Type Control-l to go back and provide some comments.\n";
+	msgs{"changeset"} = "\n"
+"Please describe the change which is implemented in the deltas listed below.\n"
+"Describe the change as an idea or concept; your description will be used by\n"
+"other people to decide to use or not to use this changeset.\n\n"
+"If you provide a description, the deltas will be grouped into a ChangeSet,\n"
+"making them available to others.  If you do not want to do that yet, just\n"
+"click Commit without typing in comments here and no ChangeSet will be made.";
+	msgs{"pendingFile"} = \
+" This delta has been previously checked in and is in pending state.\n"
+" That means that you can not modify these comments, and that this delta\n"
+" will be included in the ChangeSet when you next create a ChangeSet.";
+	msgs{"repoLocked"} = \
+"This repository is locked.\n"
+"A checkin cannot be made at this time.\n"
+"Try again later.";
 }
 
 void
