@@ -42,7 +42,7 @@ typedef	struct	sfile {
 	string	root;		    // root directory of the repo
 	int	resolve;	    // is this commit from the resolver
 	int	partial;	    // is this a partial commit from resolve
-	int	nfiles;		    // number of files in repo
+	int	nfiles = 0;	    // number of files in repo
 	int	pos;		    // current position in sfiles output file
 	int	inProduct;	    // whether we're in a product or not
 	int	sfiles_last;	    // last count of sfiles read
@@ -89,15 +89,21 @@ bk(string cmdline)
 	string	result;
 
 	fd = popen("bk ${cmdline}", "r");
-	result = fgetline(fd);
+	result = fread(fd, -1);
 	catch("close ${fd}");
 	return(trim(result));
+}
+
+string
+joinpath(...args)
+{
+	return(file("join", (expand)args));
 }
 
 int
 getNumFiles()
 {
-	int	i;
+	int	i = 0;
 	int	nftime, cstime;
 	FILE	fd;
 	string	result;
@@ -247,7 +253,7 @@ readSfilesProgress(FILE fd)
 				    (100 * sfiles_done) / nfiles);
 			}
 			if (!sfiles_reading
-			    && fsize(tmpsfile) > pos) {
+			    && size(tmpsfile) > pos) {
 				readSfilesOutput();
 			}
 		}
@@ -271,14 +277,14 @@ readSfilesOutput()
 
 	sfiles_reading = 1;
 	seek(fd, pos, "start");
-	data = fgetline(fd);
-	if (defined(data)) {
+	data = fread(fd, -1);
+	unless (defined(data)) {
 		fclose(fd);
 		return;
 	}
 	lines = split(data, "\n");
 	len = llength(lines);
-	if (data[END] ne "\n") {
+	if (data ne "" && data[END] ne "\n") {
 		seek(fd, length(lines[len-1]) * -1, "current");
 		lines = lrange(lines, 0, "end-1");
 	}
@@ -1030,11 +1036,11 @@ showFileContents(sfile sf)
 		Text_insert(w_diffs, "end",
 		    "${sf.name}:\t(new file) type: ${type}");
 	} else if (type eq "file") {
-		int	size = fsize(sf.file);
+		int	fsize = size(sf.file);
 		int	bytes = (int)gc("ci.display_bytes");
 		string	contents;
 		Text_insert(w_diffs, "end",
-		    "${sf.name}:\t(new file) ${size} bytes\n\n");
+		    "${sf.name}:\t(new file) ${fsize} bytes\n\n");
 		contents = bk("_strings \"${sf.file}\"");
 		if (bytes > 0) {
 			contents = contents[0..bytes];
@@ -1644,7 +1650,7 @@ main(int argc, string argv[])
 	// Initialize the ChangeSet template if it exists.
 	templates{"ChangeSet"} = bk("-R cat BitKeeper/templates/commit");
 
-	unless (_initialized) {
+	unless (defined(_initialized)) {
 		initMsgs();
 		createImages();
 		_initialized = 1;
