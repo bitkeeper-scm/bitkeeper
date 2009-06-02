@@ -114,7 +114,7 @@ getNumFiles()
 
 	result = bk("product");
 
-	if (result eq "" || result eq "This is a component."
+	if ((result eq "") || (result eq "This is a component.")
 	    || catch("exec bk components here", &result)) {
 		if (exists("BitKeeper/log/NFILES")
 		    && exists("SCCS/s.ChangeSet")) {
@@ -203,7 +203,7 @@ insertFile(sfile sf)
 	}
 	sf.node = ListBox_insert(w_files, idx, "#auto",
 	    text: sf.name, image: img, data: sf.name);
-	if (sf.type ne "cset" && sf.comments ne "") {
+	if ((sf.type ne "cset") && (sf.comments ne "")) {
 		updateCommentCount(sf, 1);
 	}
 	files{sf.name} = sf;
@@ -253,7 +253,7 @@ readSfilesProgress(FILE fd)
 				    (100 * sfiles_done) / nfiles);
 			}
 			if (!sfiles_reading
-			    && size(tmpsfile) > pos) {
+			    && (size(tmpsfile) > pos)) {
 				readSfilesOutput();
 			}
 		}
@@ -284,7 +284,7 @@ readSfilesOutput()
 	}
 	lines = split(data, "\n");
 	len = llength(lines);
-	if (data ne "" && data[END] ne "\n") {
+	if ((data ne "") && (data[END] ne "\n")) {
 		seek(fd, length(lines[len-1]) * -1, "current");
 		lines = lrange(lines, 0, "end-1");
 	}
@@ -629,11 +629,11 @@ commentChanged()
 	sfile	sf = getSelectedFile();
 	string	comments = getCurrentComments();
 
-	if (comments eq "" && sf.comments ne "") {
+	if ((comments eq "") && (sf.comments ne "")) {
 		files{sf.name}.comments = comments;
 		updateCommentCount(sf, -1);
 		redrawFile(sf.node);
-	} else if (comments ne "" && sf.comments eq "") {
+	} else if ((comments ne "") && (sf.comments eq "")) {
 		files{sf.name}.comments = comments;
 		updateCommentCount(sf, 1);
 		redrawFile(sf.node);
@@ -671,7 +671,7 @@ toggleFile(string node)
 	sfile	sf = files{file};
 
 	if (sf.type eq "cset") return;
-	if (sf.type eq "new" && sf.comments eq "") {
+	if ((sf.type eq "new") && (sf.comments eq "")) {
 		writeComments(sf, "New BitKeeper file ``${sf.name}''");
 		updateCommentCount(sf, 1);
 	} else {
@@ -705,7 +705,7 @@ toggleAllNewFiles()
 	string	file;
 
 	foreach (file => sf in files) {
-		if (sf.type eq "new" && sf.comments eq "") {
+		if ((sf.type eq "new") && (sf.comments eq "")) {
 			toggleFile(sf.node);
 		}
 	}
@@ -740,7 +740,7 @@ updateButtons()
 		configureButton("history", text: "Unignore",
 		    command: "unignoreFile");
 	}
-	if (cnt_commented && files{"ChangeSet"}.comments ne "") {
+	if (cnt_commented && (files{"ChangeSet"}.comments ne "")) {
 		configureButton("checkin", text: "Commit");
 	} else if (sf.type eq "pending") {
 		configureButton("checkin", state: "disabled");
@@ -781,7 +781,7 @@ isUserComment(sfile sf, string comments)
 	if (comments eq "") return (0);
 	if (sf.type eq "pending") return (0);
 	return (!defined(templates{sf.name})
-	    || comments ne templates{sf.name});
+	    || (comments ne templates{sf.name}));
 }
 
 int
@@ -1250,7 +1250,7 @@ doCommit()
 		}
 		if (sf.excluded) continue;
 		if (sf.type eq "cset") continue;
-		if (isUserComment(sf, sf.comments) || sf.type eq "pending") {
+		if (isUserComment(sf, sf.comments) || (sf.type eq "pending")) {
 			i = llength(commit{comp});
 			commit{comp}[i] = sf.file;
 			if (sf.type ne "pending") {
@@ -1325,8 +1325,8 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 		}
 	}
 
-	if (files{"ChangeSet"}.comments ne ""
-	    && (llength(commit) || comp eq root)) {
+	if ((files{"ChangeSet"}.comments ne "")
+	    && (llength(commit) || (comp eq root))) {
 		FILE	fd;
 		string	err;
 		string	line;
@@ -1370,8 +1370,8 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 			    "-l${tmp1}", "-Y${tmp2}");
 		}
 
-		if (bgExecInfo("stderr") ne ""
-		    || bgExecInfo("stdout") ne "") {
+		if ((bgExecInfo("stderr") ne "")
+		    || (bgExecInfo("stdout") ne "")) {
 			string	type = "-I";
 			string	title = "bk commit";
 			string	message;
@@ -1481,7 +1481,7 @@ discardChanges()
 {
 	sfile	sf = getSelectedFile();
 
-	if (sf.type eq "cset" || sf.type eq "pending") return;
+	if ((sf.type eq "cset") || (sf.type eq "pending")) return;
 	saveComments();
 	unless (doDiscard) {
 		doDiscard = 1;
@@ -1627,7 +1627,7 @@ main(int argc, string argv[])
 
 	if (llength(files) == 0) {
 		root = ".";
-	} else if (llength(files) == 1 && isdir(files[0])) {
+	} else if ((llength(files) == 1) && isdir(files[0])) {
 		root = files[0];
 	} else {
 		string	file;
