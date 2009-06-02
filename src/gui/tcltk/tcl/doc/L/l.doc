@@ -1244,6 +1244,12 @@ C<stdin>, C<stdout>, and C<stderr> are pre-defined.
 
 Return 0 on success, -1 on error.
 
+=proto string fread(FILE f, int numBytes)
+
+Read at most numBytes from the given FILE handle, or read the entire
+file if numBytes == -1.
+Return undef on error.
+
 =proto string ftype(string path)
 
 Return the type of file at the given path. Type can be C<directory>, C<file>,

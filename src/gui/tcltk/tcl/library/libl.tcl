@@ -222,6 +222,23 @@ fprintf(_unused FILE f, _unused string fmt, _unused ...args)
 	}
 }
 
+string
+fread(_unused FILE f, _unused int numBytes)
+{
+	string	buf;
+
+	if (numBytes == -1) {
+		if (catch("set buf [read $f]")) {
+			return (undef);
+		}
+	} else {
+		if (catch("set buf [read $f $numBytes]")) {
+			return (undef);
+		}
+	}
+	return (buf);
+}
+
 int
 frename(_unused string oldPath, _unused string newPath)
 {

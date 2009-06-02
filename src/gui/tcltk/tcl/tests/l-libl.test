@@ -328,6 +328,56 @@ fopen1();
 fopen(bad3, r) = couldn't open "bad3": no such file or directory
 } -output {}
 
+test fread-1 {test fread} -setup {
+	set fname [makeFile "012345678901234567" fread_test .]
+} -body {
+#lang L
+void fread1()
+{
+	FILE	f;
+	string	buf;
+
+	f = fopen("fread_test", "r");
+	unless (defined(f)) puts("bad 1.1");
+
+	buf = fread(f, 5);
+	unless (defined(buf)) puts("bad 2.1");
+	unless (buf eq "01234") puts("bad 2.2");
+	buf = fread(f, 5);
+	unless (defined(buf)) puts("bad 2.3");
+	unless (buf eq "56789") puts("bad 2.4");
+	buf = fread(f, 5);
+	unless (defined(buf)) puts("bad 2.5");
+	unless (buf eq "01234") puts("bad 2.6");
+	buf = fread(f, 5);
+	unless (defined(buf)) puts("bad 2.7");
+	unless (buf eq "567") puts("bad 2.8");
+
+	fclose(f);
+
+	f = fopen("fread_test", "r");
+	unless (defined(f)) puts("bad 3.1");
+
+	buf = fread(f, -1);
+	unless (defined(buf)) puts("bad 4.1");
+	unless (buf eq "012345678901234567\n") puts("bad 4.2");
+
+	fclose(f);
+}
+fread1();
+} -cleanup {
+	file delete -force $fname
+} -output {}
+
+test fread-2 {test fread error} -body {
+#lang L
+void fread2()
+{
+	if (defined(fread(undef, 1))) puts("bad 1");
+}
+fread2();
+} -output {}
+
 test ftype-1 {test ftpye} -setup {
 	set fname1 [makeFile {test} ftype_test1 .]
 	set fname2 [makeFile {test} {ftype test 2} .]
