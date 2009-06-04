@@ -17,13 +17,13 @@ pages: ../bk-macros ../man.tmac man2help.pl verify-dspecs FORCE
 	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- $(PAGES:%=../man1/%)
 
 helptxt2: pages
-	@cat -- $(PAGES:../man1/%.1=%-1.fmt) | $(BK) undos > helptxt2
+	@cat -- $(shell ls *-1.fmt | $(BK) sort) | $(BK) undos > helptxt2
 
 summaries: helptxt2 ../bk-macros help2sum.pl FORCE
 	-@$(BK) get -qS
 	@perl -Ssw ./help2sum.pl helptxt2
 	@for i in $(SUM); \
-	do	cat $$i.done; \
+	do	if test -f $$i.done; then cat $$i.done; fi \
 	done > helptxt
 	@cat helptxt2 >> helptxt
 	@/bin/rm -f helptxt2

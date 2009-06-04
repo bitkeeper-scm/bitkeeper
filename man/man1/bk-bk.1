@@ -6,7 +6,8 @@ bk \- \*(BK configuration management system front end
 .B bk 
 .[OPTopt] \-@ url
 .[B] \-q
-.[B] \-ANPR
+.ie \n[NESTED] .[B] \-ANPR
+.el .[B] \-R
 .[OPTopt] \-[1acpx]r dir
 .ARG command 
 .[ARG] options
@@ -51,6 +52,7 @@ If
 is the last argument, then the standard input is read and buffered.
 Each remote command receives the same input.
 .tp
+.if \n[NESTED] \{\
 .B \-A
 In a nested collection, this option will cause the command to be run 
 in the product and then in each of the components;
@@ -93,6 +95,7 @@ Same as
 .B \-R
 in a non-nested collection.
 .tp
+.\}
 .B \-q
 For remote commands (\-@) or multi-repository commands (\-A), the output
 from running the command in each repository is prefixed with a header:
@@ -169,6 +172,7 @@ $ bk -cxr diffs -Nu
 .SA sfiles
 .SH CATEGORY
 .B Repository
+.if \n[NESTED] \{\
 .SH AVAILABILITY
 The \-A/\-P options of this command are an optional feature of \*[BK]
 and must be enabled in your license.
@@ -180,3 +184,4 @@ bk lease show
 If the options field has "nested" or "nested-pro" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
+.\}
