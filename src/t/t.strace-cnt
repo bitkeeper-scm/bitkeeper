@@ -115,12 +115,12 @@ BK_STRACE="$FILE" bk push $Q || exit 1
 echo OK
 
 echo $N Count the calls in a large sccs_init ........................$NL
-cp "`bk bin`"/SCCS/s.slib.c SCCS
+bk _cp "`bk bin`"/SCCS/s.slib.c SCCS/s.slib.c || exit 1
 # delta past the bk-4.1.1 version of slib.c
 bk prs  -r47bc54abHgFhmT32MELop4T29i8gOQ.. -hnd'slib.c|:REV:' > REVS
 bk stripdel -Cq - < REVS
 rm -f "$FILE"
 BK_STRACE="$FILE" bk prs slib.c > OUT || exit 1
 "$DO_CNT" mkgraph "$FILE" || exit 1
-rm -f SCCS/s.slib.c
+bk _rm -f SCCS/s.slib.c
 echo OK
