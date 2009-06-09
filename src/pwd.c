@@ -103,3 +103,18 @@ dotbk_main(int ac, char **av)
 	}
 	return (0);
 }
+
+int
+realpath_main(int ac, char **av)
+{
+	char	buf[MAXPATH], real[MAXPATH];
+
+	if (av[1]) {
+		strcpy(buf, av[1]);
+	} else {
+		getcwd(buf, sizeof(buf));
+	}
+	getRealName(buf, NULL, real);
+	printf("%s => %s\n", buf, real);
+	return (0);
+}

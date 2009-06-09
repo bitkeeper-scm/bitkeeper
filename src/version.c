@@ -30,7 +30,6 @@ version_main(int ac, char **av)
 void
 bkversion(FILE *f)
 {
-	FILE	*f1;
 	float	exp;
 	char	*key;
 	char	buf[MAXLINE];
@@ -43,13 +42,7 @@ bkversion(FILE *f)
 	}
 	getMsg("version", buf, 0, f);
 
-	if (f1 = popen("uname -s -r", "r")) {
-		if (fnext(buf, f1)) {
-			chomp(buf);
-			fprintf(f, "Running on: %s\n", buf);
-		}
-		pclose(f1);
-	}
+	fprintf(f, "Running on: %s\n", platform());
 	if (test_release) {
 		exp = ((time_t)build_timet - time(0)) / (24*3600.0) + 14;
 		if (exp > 0) {
