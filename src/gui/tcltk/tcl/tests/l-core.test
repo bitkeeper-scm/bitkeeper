@@ -7280,6 +7280,231 @@ defined_1_10();
 } -returnCodes error -match regexp -result {.*4: L Error: illegal operand to &
 }
 
+test undef-1 {check undef built-in} -body {
+#lang L
+void undef_1()
+{
+	string	s;
+	string	a[], a2[];
+	string	h{string}, h2{string};
+
+	h = { "k1"=>"v1", "k2"=>"v2", "k3"=>"v3" };
+	h2 = h;
+	undef(h{"k1"});
+	unless (length(h) == 2) puts("bad 1.1");
+	unless ((h{"k2"} eq "v2") && (h{"k3"} eq "v3")) puts("bad 1.2");
+	undef(h{"k2"});
+	unless (length(h) == 1) puts("bad 1.3");
+	unless (h{"k3"} eq "v3") puts("bad 1.4");
+	undef(h{"k3"});
+	unless (length(h) == 0) puts("bad 1.5");
+	unless (defined(h)) puts("bad 1.6");
+
+	/* Make sure deleting from h didn't affect a copy of h. */
+	unless (length(h2) == 3) puts("bad 2.1");
+	unless ((h2{"k1"} eq "v1") && (h2{"k2"} eq "v2")) puts("bad 2.2");
+	unless (h2{"k3"} eq "v3") puts("bad 2.3");
+
+	/*
+	 * Deleting a non-existent hash element is legal.  Deep-dive
+	 * semantics says to create the element, then it gets deleted.
+	 */
+	h = {};
+	undef(h{"not_here"});
+	unless (length(h) == 0) puts("bad 3.1");
+	unless (defined(h)) puts("bad 3.2");
+
+	a = { "1", "2", "3" };
+	a2 = a;
+	undef(a[0]);
+	unless (length(a) == 2) puts("bad 4.1");
+	unless ((a[0] eq "2") && (a[1] eq "3")) puts("bad 4.2");
+	undef(a[0]);
+	unless (length(a) == 1) puts("bad 4.3");
+	unless (a[0] eq "3") puts("bad 4.4");
+	undef(a[0]);
+	unless (length(a) == 0) puts("bad 4.5");
+	unless (defined(a)) puts("bad 4.6");
+
+	/* Make sure deleting from "a" didn't affect a copy of "a". */
+	unless (length(a2) == 3) puts("bad 5.1");
+	unless ((a2[0] eq "1") && (a2[1] eq "2")) puts("bad 5.2");
+	unless (a2[2] eq "3") puts("bad 5.3");
+
+	/*
+	 * Deleting a non-existent array element is legal.  Deep-dive
+	 * semantics says to create the element (AND all before it),
+	 * then it gets deleted but all the elements before it remain.
+	 */
+	a = {};
+	undef(a[3]);
+	unless (length(a) == 3) puts("bad 6.1");
+	unless (defined(a)) puts("bad 6.2");
+	if (defined(a[0]) || defined(a[1]) || defined(a[2])) puts("bad 6.3");
+
+	s = "0123456789";
+	undef(s[0]);
+	unless (s eq "123456789") puts("bad 10.1");
+	undef(s[1]);
+	unless (s eq "13456789") puts("bad 10.2");
+	undef(s[7]);
+	unless (s eq "1345678") puts("bad 10.3");
+
+	/* undef(var) is like var=undef. */
+	s = "testing";
+	undef(s);
+	if (defined(s)) puts("bad 20.1");
+}
+undef_1();
+} -output {}
+
+test undef-2 {check undef built-in on nested arrays and hashes} -body {
+#lang L
+void undef_2()
+{
+	int	a[][] = { {1,2,3}, {4,5,6}, {7,8,9} };
+	int	h{int}{int} = {
+		1 => { 10=>10, 20=>20, 30=>30 },
+		2 => { 10=>10, 20=>20, 30=>30 },
+		3 => { 10=>10, 20=>20, 30=>30 },
+	};
+
+	undef(h{2});
+	unless (length(h) == 2) puts("bad 1.1");
+
+	undef(h{1}{20});
+	unless (length(h{1}) == 2) puts("bad 2.1");
+	unless ((h{1}{10} == 10) && (h{1}{30} == 30)) puts("bad 2.2");
+	undef(h{1}{10});
+	unless (length(h{1}) == 1) puts("bad 2.3");
+	unless (h{1}{30} == 30) puts("bad 2.4");
+	undef(h{1}{30});
+	unless (length(h{1}) == 0) puts("bad 2.5");
+
+	unless (length(h) == 2) puts("bad 3.1");
+	undef(h{1});
+	unless (length(h) == 1) puts("bad 3.3");
+	unless (length(h{3}) == 3) puts("bad 3.4");
+
+	undef(a[1]);
+	unless (length(a) == 2) puts("bad 4.1");
+	unless (length(a[0]) == 3) puts("bad 4.2");
+	unless (length(a[1]) == 3) puts("bad 4.3");
+	unless ((a[0][0] == 1) && (a[0][1] == 2)) puts("bad 4.4");
+	unless (a[0][2] == 3) puts("bad 4.5");
+
+	undef(a[1][1]);
+	unless (length(a[1]) == 2) puts("bad 5.1");
+	unless ((a[1][0] == 7) && (a[1][1] == 9)) puts("bad 5.2");
+
+	undef(a[0]);
+	unless (length(a) == 1) puts("bad 6.1");
+	unless (length(a[0]) == 2) puts("bad 6.2");
+	undef(a[0]);
+	unless (length(a) == 0) puts("bad 6.3");
+}
+undef_2();
+} -output {}
+
+test undef-3 {check undef built-in on class variables} -body {
+#lang L
+class undef_3_cls {
+	public	string hcls{string};
+	public	string acls[];
+	public	string scls;
+	instance {
+		public	string hins{string};
+		public	string ains[];
+		public	string sins;
+	}
+}
+void undef_3()
+{
+	undef_3_cls obj = undef_3_cls_new();
+
+	undef_3_cls->hcls = { "k1"=>"v1", "k2"=>"v2", "k3"=>"v3" };
+	undef(undef_3_cls->hcls{"k1"});
+	unless (length(undef_3_cls->hcls) == 2) puts("bad 1.1");
+	unless (undef_3_cls->hcls{"k2"} eq "v2") puts("bad 1.2");
+	unless (undef_3_cls->hcls{"k3"} eq "v3") puts("bad 1.3");
+	undef(undef_3_cls->hcls{"k2"});
+	unless (length(undef_3_cls->hcls) == 1) puts("bad 1.4");
+	unless (undef_3_cls->hcls{"k3"} eq "v3") puts("bad 1.5");
+	undef(undef_3_cls->hcls{"k3"});
+	unless (length(undef_3_cls->hcls) == 0) puts("bad 1.6");
+	unless (defined(undef_3_cls->hcls)) puts("bad 1.7");
+
+	undef_3_cls->acls = { "1", "2", "3" };
+	undef(undef_3_cls->acls[0]);
+	unless (length(undef_3_cls->acls) == 2) puts("bad 2.1");
+	unless (undef_3_cls->acls[0] eq "2") puts("bad 2.2");
+	unless (undef_3_cls->acls[1] eq "3") puts("bad 2.3");
+	undef(undef_3_cls->acls[0]);
+	unless (length(undef_3_cls->acls) == 1) puts("bad 2.4");
+	unless (undef_3_cls->acls[0] eq "3") puts("bad 2.5");
+	undef(undef_3_cls->acls[0]);
+	unless (length(undef_3_cls->acls) == 0) puts("bad 2.6");
+	unless (defined(undef_3_cls->acls)) puts("bad 2.7");
+
+	obj->hins = { "k1"=>"v1", "k2"=>"v2", "k3"=>"v3" };
+	undef(obj->hins{"k1"});
+	unless (length(obj->hins) == 2) puts("bad 3.1");
+	unless (obj->hins{"k2"} eq "v2") puts("bad 3.2");
+	unless (obj->hins{"k3"} eq "v3") puts("bad 3.3");
+	undef(obj->hins{"k2"});
+	unless (length(obj->hins) == 1) puts("bad 3.4");
+	unless (obj->hins{"k3"} eq "v3") puts("bad 3.5");
+	undef(obj->hins{"k3"});
+	unless (length(obj->hins) == 0) puts("bad 3.6");
+	unless (defined(obj->hins)) puts("bad 3.7");
+
+	obj->ains = { "1", "2", "3" };
+	undef(obj->ains[0]);
+	unless (length(obj->ains) == 2) puts("bad 4.1");
+	unless (obj->ains[0] eq "2") puts("bad 4.2");
+	unless (obj->ains[1] eq "3") puts("bad 4.3");
+	undef(obj->ains[0]);
+	unless (length(obj->ains) == 1) puts("bad 4.4");
+	unless (obj->ains[0] eq "3") puts("bad 4.5");
+	undef(obj->ains[0]);
+	unless (length(obj->ains) == 0) puts("bad 4.6");
+	unless (defined(obj->ains)) puts("bad 4.7");
+
+	undef_3_cls->scls = "testing";
+	undef(undef_3_cls->scls);
+	if (defined(undef_3_cls->scls)) puts("bad 5.1");
+
+	obj->sins = "testing";
+	undef(obj->sins);
+	if (defined(obj->sins)) puts("bad 6.1");
+}
+undef_3();
+} -output {}
+
+test undef-4 {check undef built-in errors} -body {
+#lang L
+private string[] foo() { return {"x"}; }
+void undef_4()
+{
+	string	a[];
+	struct { int i,j; } st;
+
+	undef();
+	undef(a[0], a[1]);
+	undef(a[1..3]);
+	undef(foo());
+	undef(st.i);
+	undef(3);
+}
+undef_4();
+} -returnCodes error -match regexp -result {.*7: L Error: incorrect # args to undef
+.*8: L Error: incorrect # args to undef
+.*9: L Error: illegal l-value in undef\(\)
+.*10: L Error: illegal l-value in undef\(\)
+.*11: L Error: cannot undef\(\) a struct field
+.*12: L Error: illegal l-value in undef\(\)
+}
+
 test toplevel-1.0 {Toplevel code in L} -body {
 #lang L
 int toplevel_1_0_i = 2;

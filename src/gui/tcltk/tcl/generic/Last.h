@@ -226,22 +226,23 @@ typedef enum {
  * the Expr AST node.
  */
 typedef enum {
-	L_EXPR_RE_I   = 0x0001, // expr is an re with "i" qualifier
-	L_EXPR_RE_G   = 0x0002, // expr is an re with "g" qualifier
-	L_EXPR_DEEP   = 0x0004, // expr is the result of a deep dive
-	L_IDX_ARRAY   = 0x0008,	// what kind of thing we're indexing
-	L_IDX_HASH    = 0x0010,
-	L_IDX_STRING  = 0x0020,
-	L_LVALUE      = 0x0040, // if we will be writing the obj
-	L_PUSH_VAL    = 0x0080,	// what we want INST_L_INDEX to leave on
-	L_PUSH_PTR    = 0x0100,	//   the stack
-	L_PUSH_VALPTR = 0x0200,
-	L_PUSH_PTRVAL = 0x0400,
-	L_DISCARD     = 0x0800,	// have compile_expr discard the val, not push
-	L_PUSH_NEW    = 0x1000,	// whether INST_L_DEEP_WRITE should push the
-	L_PUSH_OLD    = 0x2000,	//   new or old value
-	L_NOTUSED     = 0x4000,	// do not update used_p boolean in symtab entry
-	L_NOWARN      = 0x8000,	// issue no err if symbol undefined
+	L_EXPR_RE_I   = 0x00001, // expr is an re with "i" qualifier
+	L_EXPR_RE_G   = 0x00002, // expr is an re with "g" qualifier
+	L_EXPR_DEEP   = 0x00004, // expr is the result of a deep dive
+	L_IDX_ARRAY   = 0x00008, // what kind of thing we're indexing
+	L_IDX_HASH    = 0x00010,
+	L_IDX_STRING  = 0x00020,
+	L_LVALUE      = 0x00040, // if we will be writing the obj
+	L_DELETE      = 0x00080, // delete the obj from its parent hash/array
+	L_PUSH_VAL    = 0x00100, // what we want INST_L_INDEX to leave on
+	L_PUSH_PTR    = 0x00200, //   the stack
+	L_PUSH_VALPTR = 0x00400,
+	L_PUSH_PTRVAL = 0x00800,
+	L_DISCARD     = 0x01000, // have compile_expr discard the val, not push
+	L_PUSH_NEW    = 0x02000, // whether INST_L_DEEP_WRITE should push the
+	L_PUSH_OLD    = 0x04000, //   new or old value
+	L_NOTUSED     = 0x08000, // do not update used_p boolean in symtab entry
+	L_NOWARN      = 0x10000, // issue no err if symbol undefined
 } Expr_f;
 
 struct Expr {
