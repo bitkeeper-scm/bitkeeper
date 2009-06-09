@@ -125,6 +125,7 @@ private void	compile_stmts(Stmt *stmt);
 private int	compile_trinOp(Expr *expr);
 private void	compile_twiddle(Expr *expr);
 private void	compile_twiddleSubst(Expr *expr);
+private int	compile_undef(Expr *expr);
 private int	compile_unOp(Expr *expr);
 private int	compile_var(Expr *expr, Expr_f flags);
 private void	compile_varDecl(VarDecl *decl);
@@ -184,6 +185,7 @@ static struct {
 	{ "rename",	compile_rename },
 	{ "sort",	compile_sort },
 	{ "split",	compile_split },
+	{ "undef",	compile_undef },
 };
 
 /*
@@ -1376,6 +1378,45 @@ compile_assert(Expr *expr)
 	emit_invoke(2);
 	ckfree(cond_txt);
 	fixup_jmps(jmp);
+	expr->type = L_void;
+	return (0);  // stack effect
+}
+
+private int
+compile_undef(Expr *expr)
+{
+	int	n;
+	Expr	*arg = expr->b;
+
+	n = compile_exprs(arg, L_PUSH_PTR | L_LVALUE);
+	unless (n == 1) {
+		L_errf(expr, "incorrect # args to undef");
+		goto done;
+	}
+	unless (arg->sym) {
+		L_errf(expr, "illegal l-value in undef()");
+		goto done;
+	}
+	if (((arg->op == L_OP_DOT) || (arg->op == L_OP_POINTS)) &&
+	    isstruct(arg->a)) {
+		L_errf(expr, "cannot undef() a struct field");
+		goto done;
+	}
+	/*
+	 * If arg is a deep dive, delete the hash or array element.
+	 * If arg is a variable, treat undef(var) like var=undef.
+	 */
+	if (arg->flags & L_EXPR_DEEP) {
+		TclEmitInstInt4(INST_L_DEEP_WRITE,
+				arg->sym->idx,
+				L->frame->envPtr);
+		TclEmitInt4(L_DELETE, L->frame->envPtr);
+	} else {
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		emit_store_scalar(arg->sym->idx);
+		emit_pop();
+	}
+ done:
 	expr->type = L_void;
 	return (0);  // stack effect
 }

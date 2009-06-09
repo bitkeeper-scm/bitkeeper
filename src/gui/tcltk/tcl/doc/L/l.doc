@@ -214,6 +214,12 @@ The pre-defined identifier C<END> is index of the last character,
 or -1 is the string is empty.  You always can write to one past the end
 of a string to append to it, but writing beyond END+1 is an error.
 
+You delete a character within a string by indexing the string and
+setting it to "" (the empty string), or by using the C<undef()> built-in:
+
+    s[3] = "";    // deletes fourth character of s
+    undef(s[3]);  // also deletes fourth character
+
 =item Undef
 
 Sometimes you want to signify that a variable has no legal value, such
@@ -222,6 +228,10 @@ constant called C<undef> which you can assign to anything.
 
     int_var = undef;
     array_var = undef;
+
+This is different than the C<undef()> built-in I<function> which
+deletes array, hash, or string elements and which is described
+later.
 
 You can test whether something has the value undef or a regular value
 with the built-in function C<defined()>:
@@ -295,10 +305,19 @@ Another way to append:
 
     animals[END+1] = "tiger";
 
-You can remove an element from an array but only from the end:
+You can remove an element from the end of an array with C<pop>:
 
     string birds[] = { "robin", "dove", "cardinal" };
     string next = pop(&birds);   // next gets "cardinal"
+
+Or you can remove from anywhere in an array with C<undef>:
+
+    string dev_team[] = { "larry", "curly", "mo" };
+    undef(dev_team[0]);  // delete "larry" from dev_team
+
+When you delete an element, all subsequent elements slide down
+by one index.  Note that undef() works only on a variable; it
+cannot remove an element from a function return value, for example.
 
 You also can directly assign to any array index even if the array
 hasn't yet grown up to that index.  If you assign more than one past
@@ -358,6 +377,14 @@ obtain a sorted array of keys like this:
 
 The C<length> built-in works on hashes too and returns the number of
 key/value pairs.
+
+You remove an element from a hash with C<undef>:
+
+    undef(grades{"Tom"});  // removes "Tom" from the hash
+
+It is not an error to remove something that's not in the hash.  Note
+that undef() works only on a variable; it cannot remove an element
+from a function return value, for example.
 
 When declaring a hash, it is legal to put the braces after the base
 type instead of the name.  This is useful in function prototypes that
@@ -1539,6 +1566,14 @@ Return a copy of the string that is in all upper case.
 
 Return a copy of the string that has been trimmed of any leading and
 trailing whitespace.
+
+=proto void undef(<array>[index])
+
+=proto void undef(<string>[index])
+
+=proto void undef(<hash>{index})
+
+Remove an array, string, or hash element from the specified variable.
 
 =proto int unlink(string path)
 
