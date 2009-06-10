@@ -2,9 +2,6 @@
 #include "sccs.h"
 #include "logging.h"
 
-extern	int	test_release;
-extern	unsigned build_timet;
-
 int
 version_main(int ac, char **av)
 {
@@ -30,8 +27,10 @@ version_main(int ac, char **av)
 void
 bkversion(FILE *f)
 {
+	FILE	*f1;
 	float	exp;
-	char	*key;
+	time_t	now = time(0);
+	char	*key, *t;
 	char	buf[MAXLINE];
 
 	buf[0] = 0;
@@ -41,8 +40,32 @@ bkversion(FILE *f)
 		free(key);
 	}
 	getMsg("version", buf, 0, f);
+	strftime(buf, sizeof(buf), "%a %b %d %Y %H:%M:%S %Z",
+		 localtimez(&build_timet, 0));
+	fprintf(f, "Built on: %s (%s ago)\n", buf,
+	    age(now - build_timet, " "));
 
 	fprintf(f, "Running on: %s\n", platform());
+
+	/* latest version information */
+	concat_path(buf, getDotBk(), "latest-bkver");
+	if (f1 = fopen(buf, "r")) {
+		fnext(buf, f1);
+		chomp(buf);
+		fclose(f1);
+		if (t = strchr(buf, ',')) {
+			*t++ = 0;
+		}
+		unless (streq(buf, bk_vers)) {
+			fprintf(f, "Latest version: %s", buf);
+			if (t) {
+				fprintf(f, " (released %s ago)",
+				    age(now - sccs_date2time(t, 0), " "));
+			}
+			fprintf(f, "\n");
+		}
+	}
+
 	if (test_release) {
 		exp = ((time_t)build_timet - time(0)) / (24*3600.0) + 14;
 		if (exp > 0) {

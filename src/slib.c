@@ -933,6 +933,8 @@ age(time_t when, char *space)
 		}							\
 	}
 
+	DOIT(1, MINUTE, "seconds");		/* first 3 minutes as seconds */
+	DOIT(MINUTE, HOUR, "minutes");		/* first 3 hours as minutes */
 	DOIT(HOUR, DAY, "hours");		/* first 3 days as hours */
 	DOIT(DAY, WEEK, "days");		/* first 3 weeks as days */
 	DOIT(WEEK, MONTH, "weeks");		/* first 3 months as days */

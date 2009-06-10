@@ -368,8 +368,8 @@ bk.script: bk.sh port/$(SYS)_platform.sh
 bkmsg.txt: bkmsg.doc bk.ver FORCE
 	PWD=`pwd`; \
 	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
-	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in $$PWD?" | \
-	sed "s/@built_date@/`date`/" > bkmsg.txt
+	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in $$PWD?" \
+		> bkmsg.txt
 
 bkhelp.txt: build $(BK) FORCE
 	@bk get -S ../man/man2help/Makefile
@@ -396,10 +396,11 @@ bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 
 # This must be rebuilt every time because it includes the build time
 bkver.c: FORCE
-	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
+	echo "#include \"sccs.h\"" > bk.v
+	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet >> bk.v
 	@if [ ! -x utils/os ]; then bk get -S utils/os; fi
 	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
-	echo "unsigned build_timet = "`perl -e "print time"`";" >> bk.v
+	echo "time_t build_timet = "`perl -e "print time"`";" >> bk.v
 	echo "int test_release = "$(TRIAL)";" >> bk.v
 	mv -f bk.v bkver.c
 
@@ -409,6 +410,8 @@ bkver.h: Makefile
 	echo "extern char *bk_utc;" >> $@
 	echo "extern char *bk_time;" >> $@
 	echo "extern char *bk_platform;" >> $@
+	echo "extern time_t build_timet;" >> $@
+	echo "extern int test_release;" >> $@
 	echo "#define bk_commercial() $(COMMERCIAL)" >> $@
 
 
