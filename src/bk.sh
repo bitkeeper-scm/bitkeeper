@@ -1646,6 +1646,37 @@ __conflict() {
 	}
 }
 
+# run command with the 'latest' version of bk
+_latest() {
+	LATEST=`bk dotbk`/latest
+	TMP=/tmp/bk-latest.$$
+
+	# fetch latest version of bk
+	if [ -d "$LATEST" ]
+	then	"$LATEST"/bk upgrade -q >/dev/null 2>&1
+	else	CWD=`pwd`
+		mkdir $TMP
+		cd $TMP
+		bk upgrade -dqf 2> /dev/null || {
+			echo download of latest bk failed
+			cd /
+			rm -rf $TMP
+			exit 1
+		}
+		cd "$CWD"
+		$TMP/bk* "$LATEST" 2> /dev/null
+		rm -rf $TMP
+       fi
+
+	printf "Run cmd with " 1>&2
+	"$LATEST"/bk version -s 1>&2
+
+	# now run command with new bk
+	exec "$LATEST"/bk ${1+"$@"}
+}
+
+
+
 # ------------- main ----------------------
 __platformInit
 __init
