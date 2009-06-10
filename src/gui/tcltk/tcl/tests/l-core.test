@@ -7280,6 +7280,41 @@ defined_1_10();
 } -returnCodes error -match regexp -result {.*4: L Error: illegal operand to &
 }
 
+test defined-1.11 {check that assignment to part of an obj makes it defined} -body {
+#lang L
+void defined_1_11()
+{
+	string	s;
+	string	a[];
+	string	aa[][];
+	string	h{string};
+	string	hh{string}{string};
+
+	if (defined(s)) puts("bad 1.1");
+	s[0] = "x";
+	unless (defined(s)) puts("bad 1.2");
+
+	if (defined(a)) puts("bad 2.1");
+	a[0] = "x";
+	unless (defined(a)) puts("bad 2.2");
+
+	if (defined(aa)) puts("bad 3.1");
+	a[0][0] = "x";
+	unless (defined(a)) puts("bad 3.2");
+	unless (defined(a[0])) puts("bad 3.3");
+
+	if (defined(h)) puts("bad 4.1");
+	h{"k"} = "v";
+	unless (defined(h)) puts("bad 4.2");
+
+	if (defined(hh)) puts("bad 5.1");
+	hh{"k1"}{"k2"} = "v";
+	unless (defined(hh)) puts("bad 5.2");
+	unless (defined(hh{"k1"})) puts("bad 5.3");
+}
+defined_1_11();
+} -output {}
+
 test toplevel-1.0 {Toplevel code in L} -body {
 #lang L
 int toplevel_1_0_i = 2;
