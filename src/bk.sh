@@ -515,9 +515,16 @@ _unrm () {
 	fi
 	if [ "$NUM" -gt 1 ]
 	then
-		echo "-------------------------"
-		echo "$NUM possible files found"
-		echo "-------------------------"
+		if [ "$FORCE" = "yes" ]
+		then
+			echo "------------------------------------------"
+			echo "$NUM possible files found, choosing newest"
+			echo "------------------------------------------"
+		else
+			echo "-------------------------"
+			echo "$NUM possible files found"
+			echo "-------------------------"
+		fi
 		echo ""
 	fi
 
@@ -551,7 +558,9 @@ _unrm () {
 		case "X$ans" in
 		    Xy|XY)
 			echo "Moving \"$DELDIR/$GFILE\" -> \"$RPATH\""
-			bk -R mv -u "$DELDIR/$GFILE" "$RPATH"
+			bk -R mv -f -u "$DELDIR/$GFILE" "$RPATH"
+			bk -R unedit "$RPATH" 	# follow checkout modes
+			break
 			;;
 		    Xq|XQ)
 			break
@@ -561,7 +570,6 @@ _unrm () {
 			echo ""
 			echo ""
 		esac
-		bk -R unedit "$RPATH" 	# follow checkout modes
 	done < $LIST 
 	rm -f $LIST $TMPFILE
 }
