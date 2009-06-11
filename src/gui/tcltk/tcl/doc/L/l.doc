@@ -672,8 +672,14 @@ version of C<if (!I<condition>)>.
         ...
     }
 
-The braces are not required except for the else clause except when the
-else has another C<if> or C<unless>.
+The braces are not required except for an else clause that is not
+another C<if> or C<unless>.
+
+=item ?:
+
+L has C's ternary conditional operator:
+
+    max = x > y ? x: y;
 
 =item while
 
