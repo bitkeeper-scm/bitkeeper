@@ -9784,18 +9784,25 @@ L_deepDive(
     Tcl_Obj *idxObj,
     Expr_f flags)
 {
+    Tcl_Obj **ret = NULL;
+
     switch (flags & (L_IDX_ARRAY | L_IDX_HASH | L_IDX_STRING)) {
 	case L_IDX_ARRAY:
-	    return (L_deepDiveArray(interp, obj, idxObj, flags));
+	    ret = L_deepDiveArray(interp, obj, idxObj, flags);
+	    break;
 	case L_IDX_HASH:
-	    return (L_deepDiveHash(interp, obj, idxObj, flags));
+	    ret = L_deepDiveHash(interp, obj, idxObj, flags);
+	    break;
 	case L_IDX_STRING:
-	    return (L_deepDiveString(interp, obj, idxObj, flags));
+	    ret = L_deepDiveString(interp, obj, idxObj, flags);
+	    break;
 	default:
 	    L_bomb("L_deepDive internal error");
 	    break;
     }
-    return (NULL);
+    /* If we're going to write to obj, mark it as defined now. */
+    if (ret && (flags & L_LVALUE)) obj->undef = 0;
+    return (ret);
 }
 
 /*
