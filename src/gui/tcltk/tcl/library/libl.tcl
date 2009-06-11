@@ -82,7 +82,7 @@ abs(int i)
 string
 basename(string path)
 {
-	return (file("tail", path));
+	return (File_tail(path));
 }
 
 string
@@ -145,13 +145,13 @@ die(string message)
 string
 dirname(string path)
 {
-	return (file("dirname", path));
+	return (File_dirname(path));
 }
 
 int
 exists(string path)
 {
-	return (file("exists", path));
+	return (File_exists(path));
 }
 
 int
@@ -270,7 +270,7 @@ getdir(string dir, string pattern)
 string
 getenv(string varname)
 {
-	if (info("exists", "::env(${varname})")) {
+	if (Info_exists("::env(${varname})")) {
 		return (set("::env(${varname})"));
 	} else {
 		return ("");
@@ -280,31 +280,31 @@ getenv(string varname)
 string
 img_create(...args)
 {
-	return (image("create", "photo", (expand)args));
+	return (Image_createPhoto((expand)args));
 }
 
 int
 isdouble(poly n)
 {
-	return (string("is", "double", n));
+	return (String_isDouble(n));
 }
 
 int
 isdir(string path)
 {
-	return (file("isdirectory", path));
+	return (File_isdirectory(path));
 }
 
 int
 isinteger(poly n)
 {
-	return (string("is", "integer", n));
+	return (String_isInteger(n));
 }
 
 int
 isreg(string path)
 {
-	return (file("isfile", path));
+	return (File_isfile(path));
 }
 
 int
@@ -316,7 +316,7 @@ islink(string path)
 int
 isspace(string buf)
 {
-	return (string("is", "space", buf));
+	return (String_isSpace(buf));
 }
 
 int
@@ -376,7 +376,7 @@ mtime(_unused string path)
 string
 normalize(string path)
 {
-	return (file("normalize", path));
+	return (File_normalize(path));
 }
 
 int
@@ -526,13 +526,13 @@ stdio_getLastError()
 int
 strchr(string s, string c)
 {
-	return (string("first", c, s));
+	return (String_first(c, s));
 }
 
 int
 streq(string a, string b)
 {
-	return (string("compare", a, b) eq "0");
+	return (String_compare(a, b) eq "0");
 }
 
 int
@@ -544,13 +544,13 @@ strlen(string s)
 int
 strneq(string a, string b, int n)
 {
-	return (string("equal", length: n, a, b) ne "0");
+	return (String_equal(length: n, a, b) ne "0");
 }
 
 int
 strrchr(string s, string c)
 {
-	return (string("last", c, s));
+	return (String_last(c, s));
 }
 
 int
@@ -579,19 +579,19 @@ system(_unused string cmd)
 string
 tolower(string s)
 {
-	return (string("tolower", s));
+	return (String_tolower(s));
 }
 
 string
 toupper(string s)
 {
-	return (string("toupper", s));
+	return (String_toupper(s));
 }
 
 string
 trim(string s)
 {
-	return (string("trim", s));
+	return (String_trim(s));
 }
 
 int
@@ -636,11 +636,11 @@ update_idletasks()
 string[]
 winfo_children(string w)
 {
-	return (winfo("children", w));
+	return (Winfo_children(w));
 }
 
 string
 winfo_containing(int x, int y)
 {
-	return (winfo("containing", x, y));
+	return (Winfo_containing(x, y));
 }

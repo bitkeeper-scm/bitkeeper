@@ -136,19 +136,20 @@
      T_UNLESS = 352,
      T_UNUSED = 353,
      T_VOID = 354,
-     T_WHILE = 355,
-     LOWEST = 356,
-     ADDRESS = 357,
-     UMINUS = 358,
-     UPLUS = 359,
-     PREFIX_INCDEC = 360,
-     HIGHEST = 361
+     T_WIDGET = 355,
+     T_WHILE = 356,
+     LOWEST = 357,
+     ADDRESS = 358,
+     UMINUS = 359,
+     UPLUS = 360,
+     PREFIX_INCDEC = 361,
+     HIGHEST = 362
    };
 #endif
 
 
 /* Copy the first part of user declarations.  */
-#line 1 "/Users/rob/bk/bk-tcl86-L-nobison-win/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 1 "/Users/rob/bk/bk-L-widget/src/gui/tcltk/tcl/generic/Lgrammar.y"
 
 /*
  * Copyright (c) 2006-2008 BitMover, Inc.
@@ -165,7 +166,7 @@ extern int	L_lex (void);
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE 
-#line 53 "/Users/rob/bk/bk-tcl86-L-nobison-win/src/gui/tcltk/tcl/generic/Lgrammar.y"
+#line 53 "/Users/rob/bk/bk-L-widget/src/gui/tcltk/tcl/generic/Lgrammar.y"
 {
 	long	i;
 	double	f;
@@ -188,7 +189,7 @@ typedef union YYSTYPE
 	} Typename;
 }
 /* Line 2616 of glr.c.  */
-#line 192 "Lgrammar.h"
+#line 193 "Lgrammar.h"
 	YYSTYPE;
 # define YYSTYPE_IS_DECLARED 1
 # define YYSTYPE_IS_TRIVIAL 1

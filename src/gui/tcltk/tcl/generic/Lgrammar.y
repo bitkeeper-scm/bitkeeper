@@ -169,6 +169,7 @@ extern int	L_lex (void);
 %token T_UNLESS "unless"
 %token T_UNUSED "unused"
 %token T_VOID "void"
+%token T_WIDGET "widget"
 %token T_WHILE "while"
 %token END 0 "end of file"
 
@@ -182,7 +183,7 @@ extern int	L_lex (void);
 %nonassoc T_IF T_UNLESS T_RETURN T_ID T_STR_LITERAL T_LEFT_INTERPOL
 %nonassoc T_STR_BACKTICK T_INT_LITERAL T_FLOAT_LITERAL T_TYPE T_WHILE
 %nonassoc T_FOR T_DO T_DEFINED T_STRING T_FOREACH T_BREAK T_CONTINUE
-%nonassoc T_SPLIT T_GOTO
+%nonassoc T_SPLIT T_GOTO T_WIDGET
 %left T_COMMA
 %nonassoc T_ELSE T_SEMI
 %right T_EQUALS T_EQPLUS T_EQMINUS T_EQSTAR T_EQSLASH T_EQPERC
@@ -1291,6 +1292,7 @@ scalar_type_specifier:
 	| T_INT		{ $$ = L_int; }
 	| T_FLOAT	{ $$ = L_float; }
 	| T_POLY	{ $$ = L_poly; }
+	| T_WIDGET	{ $$ = L_widget; }
 	| T_VOID	{ $$ = L_void; }
 	| T_TYPE	{ $$ = $1.t; ckfree($1.s); }
 	;

@@ -285,6 +285,7 @@ include_pop()
 	"return"	return T_RETURN;
 	"void"		return T_VOID;
 	"string"	return T_STRING;
+	"widget"	return T_WIDGET;
 	"int"		return T_INT;
 	"float"		return T_FLOAT;
 	"poly"		return T_POLY;

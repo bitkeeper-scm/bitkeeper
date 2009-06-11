@@ -99,6 +99,7 @@ typedef enum {
 	L_NAMEOF	= 0x0200,
 	L_FUNCTION	= 0x0400,
 	L_CLASS		= 0x0800,
+	L_WIDGET	= 0x1000,
 } Type_k;
 
 struct Type {
