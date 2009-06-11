@@ -940,6 +940,7 @@ int	sccs_findtips(sccs *s, delta **a, delta **b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
+void	sfind_update(sccs *s, delta *d);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 
