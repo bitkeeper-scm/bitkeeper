@@ -336,7 +336,7 @@ clone2(remote *r)
 	char	*p, *url;
 	char	*checkfiles;
 	FILE	*f;
-	int	rc;
+	int	rc, didcheck = 0;
 	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
@@ -377,17 +377,18 @@ clone2(remote *r)
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */
 	if (opts->rev) {
-		rc = after(opts->quiet, opts->rev);
-		if (rc == 2) {
-			/* undo exits 2 if it has no work to do */
-			goto docheck;
-		} else if (rc != 0) {
+		unless (rc = after(opts->quiet, opts->rev)) {
+			didcheck = 1;
+		} else if (rc == 2) {
+			/* No error, but nothing done: still run check */
+		} else {
 			fprintf(stderr,
 			    "Undo failed, repository left locked.\n");
 			return (-1);
 		}
-	} else {
-docheck:	/* undo already runs check so we only need this case */
+	}
+	if (!didcheck && (size(checkfiles) || full_check())) {
+		/* undo already runs check so we only need this case */
 		unless (opts->quiet) {
 			fprintf(stderr, "Running consistency check ...\n");
 		}
@@ -402,6 +403,7 @@ docheck:	/* undo already runs check so we only need this case */
 			    "repository left locked.\n");
 			return (-1);
 		}
+		didcheck = 1;
 	}
 	unlink(checkfiles);
 	free(checkfiles);
@@ -553,8 +555,13 @@ sccs_rmUncommitted(int quiet, FILE *f)
 	}
 	EACH (files) {
 		if (f && exists(files[i])) fprintf(f, "%s\n", files[i]);
-
-		/* remove d.file.  If is there is an lclone */
+		/*
+		 * remove d.file.  If is there is a clone or lclone
+		 * Note: stripdel removes dfile only if sfiles was removed.
+		 * That is so emptydir processing works.
+		 * This can be removed if stripdel were to hand unlinking
+		 * of dfile in all cases.
+		 */
 		s = strrchr(files[i], '/');
 		assert(s[1] == 's');
 		s[1] = 'd';

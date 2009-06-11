@@ -1,7 +1,7 @@
 #include "bkd.h"
 #include "logging.h"
 
-private int	compressed(int);
+private int	compressed(int, char *);
 
 /*
  * Send the sfio file to stdout
@@ -44,9 +44,12 @@ cmd_clone(int ac, char **av)
 	    	}
 	}
 	if (rev) {
-		sccs	*s = sccs_csetInit(SILENT);
+		sccs	*s = sccs_csetInit(SILENT|INIT_NOCKSUM);
+
 		if (s) {
 			delta	*d = sccs_findrev(s, rev);
+			delta	*top = sccs_top(s);
+
 			sccs_free(s);
 			unless (d) {
 				out("ERROR-rev ");
@@ -55,6 +58,8 @@ cmd_clone(int ac, char **av)
 				drain();
 				return (1);
 			}
+			/* rev == tip is the same as no rev */
+			if (d == top) rev = 0;
 		}
 	}
 	if (bp_hasBAM() && !bk_hasFeature("BAMv2")) {
@@ -94,7 +99,7 @@ cmd_clone(int ac, char **av)
 	}
 	if (trigger(av[0], "pre")) return (1);
 	printf("@SFIO@\n");
-	rc = compressed(gzip);
+	rc = compressed(gzip, rev);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (trigger(av[0], "post")) exit (1);
@@ -111,14 +116,17 @@ cmd_clone(int ac, char **av)
 }
 
 private int
-compressed(int level)
+compressed(int level, char *rev)
 {
-	int	status, fd;
-	char	*tmpf1, *tmpf2;
-	FILE	*fh;
+	int	status, fd, i;
+	char	*tmpf1, *tmpf2, *p;
+	FILE	*pending, *fh;
 	char	*sfiocmd;
 	char	*cmd;
 	int	rc = 1;
+	char	*files[] = { "CSETFILE", "NFILES", "ROOTKEY", "TIP", 0};
+	char	*modes = "";
+	char	buf[MAXPATH];
 
 	/*
 	 * Generate list of sfiles and log markers to transfer to
@@ -130,14 +138,38 @@ compressed(int level)
 	tmpf2 = bktmp(0, "clone2");
 	fh = fopen(tmpf1, "w");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");
+	if (exists(DFILE)) {
+		/*
+		 * If we're here, then let's send the d.files so that
+		 * sccs_rmUncommitted() can call sfiles -p and have it
+		 * run fast.
+		 */
+		fprintf(fh, DFILE "\n");
+		pending = popen("bk sfiles -p", "r");
+		while (fnext(buf, pending)) {
+			p = strrchr(buf, '/');
+			assert(p && (p[1] == 's'));
+			p[1] = 'd';
+			fputs(buf, fh);
+		}
+		pclose(pending);
+	}
+	unless (full_check() || rev || !bk_hasFeature("mSFIO")) {
+		fprintf(fh, CHECKED "\n");
+		for (i = 0; files[i]; i++) {
+			sprintf(buf, "BitKeeper/log/%s", files[i]);
+			if (exists(buf)) fprintf(fh, "%s\n", buf);
+		}
+		modes = "m";
+	}
 	fclose(fh);
 	cmd = aprintf("bk sfiles > '%s'", tmpf2);
 	status = system(cmd);
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
 
-	sfiocmd = aprintf("cat '%s' '%s' | bk sort | bk sfio -oq",
-	    tmpf1, tmpf2);
+	sfiocmd = aprintf("cat '%s' '%s' | bk sort | bk sfio -oq%s",
+	    tmpf1, tmpf2, modes);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);

@@ -90,6 +90,7 @@ doit(sccs *s, s_opts opts)
 	delta	*e;
 	int	left, n;
 	int	flags = 0;
+	char	*p;
 
 	if (opts.quiet) flags |= SILENT;
 
@@ -132,6 +133,12 @@ doit(sccs *s, s_opts opts)
 		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
 		sccs_close(s); /* for win32 */
 		unlink(s->sfile);
+		/* remove d.file - from [l]clone - so rmEmptyDir works*/
+		p = strrchr(s->sfile, '/');
+		assert(p[1] == 's');
+		p[1] = 'd';
+		unlink(s->sfile);
+		p[1] = 's';
 		sccs_rmEmptyDirs(s->sfile);
 		return (0);
 	}

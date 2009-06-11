@@ -835,7 +835,9 @@ walk(char *indir)
 		load_ignore(proj);
 		unless (opts.fixdfile) {
 			sprintf(tmp, "%s/%s", proj_root(proj), DFILE);
-			opts.dfile = exists(tmp);
+			unless (opts.dfile = exists(tmp)) {
+				if (p = getenv("_BK_SLOW_WALK")) touch(p, 0666);
+			}
 		}
 	} else {
 		/*
