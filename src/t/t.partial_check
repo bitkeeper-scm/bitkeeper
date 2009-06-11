@@ -121,3 +121,105 @@ bk _touch -t $THEN $CHECKED
 BK_CONFIG="check_frequency: 15! " bk takepatch -af PATCH 2> ERR && exit 1
 grep -q "Missing file.*keywords" ERR || exit 1
 echo OK
+
+# For clone performance, check out an n-dim matrix of
+#  partial check on or off
+#  no DFILE marker on source side
+#  pending / no pending files as part of clone
+#  revision - none, tip, lower
+
+cd "$HERE"
+rm -fr project copy
+RESULTS="$HERE/RESULTS"
+
+theTest() {
+	cd ..
+	rm -f SLOW RAN_CHECK
+	_BK_RAN_CHECK=../RAN_CHECK _BK_SLOW_WALK=../SLOW \
+	    bk clone $Q ${1+$1} project copy
+	rm -fr copy
+	cd project
+}
+
+echo $N Matrix clone tests to check performance assumptions .........$NL
+# make 2 files (foo, bar) 1 cset (foo) 2 ready to be pending (foo, bar)
+commercial project
+touch foo bar
+bk new $Q foo bar
+bk commit $Q -SBASE -yfiles
+bk edit $Q foo
+echo foo > foo
+bk delta $Q -yjustfoo foo
+bk commit $Q -yjustfoo
+# leave edited ready to make pending
+bk edit $Q foo bar
+echo life >> foo
+echo life >> bar
+
+for partial_check in off on; do
+    BK_CONFIG="partial_check: $partial_check! "
+    export BK_CONFIG
+    for dfile in 0 1; do
+	if [ $dfile = 1 ]
+	then	touch BitKeeper/etc/SCCS/x.dfile
+	else	rm -f BitKeeper/etc/SCCS/x.dfile
+	fi
+	for rev in -r+ -rBASE "" -lrBASE -l; do
+            for pending in 1 0; do
+		bk -r check -ac
+	        test $pending = 1 && bk delta $Q -yboth foo bar
+		theTest $rev
+		printf "partial:$partial_check\t$rev\tD:$dfile P:$pending\t" \
+		    >> "$RESULTS"
+		test -f ../SLOW && printf "slow" >> "$RESULTS"
+		test -f ../RAN_CHECK && printf "\tran-check" >> "$RESULTS"
+		echo >> "$RESULTS"
+	        test $pending = 1 && bk fix foo bar
+	    done
+        done
+    done
+done
+cat <<'EOF' > WANT
+partial:off	-r+	D:0 P:1	slow	ran-check
+partial:off	-r+	D:0 P:0	slow	ran-check
+partial:off	-rBASE	D:0 P:1	slow	ran-check
+partial:off	-rBASE	D:0 P:0	slow	ran-check
+partial:off		D:0 P:1	slow	ran-check
+partial:off		D:0 P:0	slow	ran-check
+partial:off	-lrBASE	D:0 P:1	slow	ran-check
+partial:off	-lrBASE	D:0 P:0	slow	ran-check
+partial:off	-l	D:0 P:1	slow	ran-check
+partial:off	-l	D:0 P:0	slow	ran-check
+partial:off	-r+	D:1 P:1		ran-check
+partial:off	-r+	D:1 P:0		ran-check
+partial:off	-rBASE	D:1 P:1		ran-check
+partial:off	-rBASE	D:1 P:0		ran-check
+partial:off		D:1 P:1		ran-check
+partial:off		D:1 P:0		ran-check
+partial:off	-lrBASE	D:1 P:1		ran-check
+partial:off	-lrBASE	D:1 P:0		ran-check
+partial:off	-l	D:1 P:1		ran-check
+partial:off	-l	D:1 P:0		ran-check
+partial:on	-r+	D:0 P:1	slow	ran-check
+partial:on	-r+	D:0 P:0	slow
+partial:on	-rBASE	D:0 P:1	slow	ran-check
+partial:on	-rBASE	D:0 P:0	slow	ran-check
+partial:on		D:0 P:1	slow	ran-check
+partial:on		D:0 P:0	slow
+partial:on	-lrBASE	D:0 P:1	slow	ran-check
+partial:on	-lrBASE	D:0 P:0	slow	ran-check
+partial:on	-l	D:0 P:1	slow	ran-check
+partial:on	-l	D:0 P:0	slow
+partial:on	-r+	D:1 P:1		ran-check
+partial:on	-r+	D:1 P:0	
+partial:on	-rBASE	D:1 P:1		ran-check
+partial:on	-rBASE	D:1 P:0		ran-check
+partial:on		D:1 P:1		ran-check
+partial:on		D:1 P:0	
+partial:on	-lrBASE	D:1 P:1		ran-check
+partial:on	-lrBASE	D:1 P:0		ran-check
+partial:on	-l	D:1 P:1		ran-check
+partial:on	-l	D:1 P:0	
+EOF
+cmpfiles WANT "$RESULTS"
+echo OK
