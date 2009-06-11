@@ -77,6 +77,7 @@ private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
 		    delta *d, u32 flags, int lines, char *name, FILE *out);
+private	void	sfindRealloc(sccs *s);
 
 int
 emptyDir(char *dir)
@@ -715,32 +716,44 @@ dinsert(sccs *s, delta *d, int fixDate)
 	}
 }
 
+void
+sfind_update(sccs *s, delta *d)
+{
+	if (s->ser2delta && (d->serial < s->ser2dsize)) {
+		s->ser2delta[d->serial] = d;
+	}
+}
+
 /*
  * Find the delta referenced by the serial number.
+ * The first call will allocate but any deltas added after the
+ * first call will be searched for the slow way.
  */
 delta *
 sfind(sccs *s, ser_t serial)
 {
 	delta	*t;
 
+	unless (serial) return (0);
 	assert(serial <= s->nextserial);
-	if (serial >= s->ser2dsize) goto realloc;
-	if (s->ser2delta && s->ser2delta[serial]) return (s->ser2delta[serial]);
-	if (s->ser2delta) {
-		for (t = s->table; t; t = t->next) {
-			if (t->serial == serial) {
-				assert(serial < s->ser2dsize);
-				s->ser2delta[serial] = t;
-				return (t);
-			}
-		}
-		return (0);
+	unless (s->ser2delta) sfindRealloc(s);
+	if (serial < s->ser2dsize) {
+		return (s->ser2delta[serial]);
 	}
+	for (t = s->table; t; t = t->next) {
+		unless (t->serial > serial) break;
+	}
+	if (t->serial == serial) return (t);
+	return (0);
+}
 
-realloc:
+private	void
+sfindRealloc(sccs *s)
+{
+	delta	*t;
+
 	if (s->ser2delta) free(s->ser2delta);
-	/* We leave a little extra room for sccs_delta. */
-	s->ser2dsize = s->nextserial+10;
+	s->ser2dsize = s->nextserial;
 	s->ser2delta = calloc(s->ser2dsize, sizeof(delta*));
 	for (t = s->table; t; t = t->next) {
 		if (t->serial >= s->ser2dsize) {
@@ -750,7 +763,6 @@ realloc:
 		assert(t->serial < s->ser2dsize);
 		s->ser2delta[t->serial] = t;
 	}
-	return (s->ser2delta[serial]);
 }
 
 /*
