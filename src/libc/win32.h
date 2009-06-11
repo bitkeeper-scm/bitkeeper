@@ -92,6 +92,7 @@ int	Reserved(char *basename);
 #define	WIN32_RETRY	0x00000002	/* when an operation fails, retry */
 
 int	win_supported(void);
+char	*win_verstr(void);
 int	win32flags_get(void);
 void	win32flags_set(int flags);
 void	win32flags_clear(int flags);

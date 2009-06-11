@@ -262,3 +262,38 @@ bk new $Q dir || exit 1
 bk commit $Q -ywhy || exit 1
 bk push $Q || exit 1
 echo OK
+
+echo $N Pull after replacing a dir with symlink to another repo .....$NL
+cd "$HERE"
+rm -rf *
+commercial project
+mkdir src
+touch src/foo
+bk new $Q src/foo
+bk commit $Q -yfoo
+cd ..
+bk clone $Q project copy || exit 1
+
+# Need to have this older, so deleted is the trunk name for foo
+cd copy
+bk rmdir src
+# This is the wacky part - it's a symlink to another repo
+ln -s "$HERE/project/src" src
+bk new $Q src || exit 1
+# Things don't fail if it is not checked out.
+# workaround: bk clean src; bk pull
+bk get $Q src
+bk commit $Q -yfoo || exit 1
+
+# Any delta will do -- just need to create a 2 tipped file
+cd ../project
+bk edit $Q src/foo
+bk delta $Q -fyfoo src/foo
+bk commit $Q -yfoo || exit 1
+
+# Before fix nameOK would look into other repo and see file is
+# in same place even though it has been deleted in this repo.
+# The M file was then deleted and no action in pass1 or pass2 happened
+cd ../copy
+bk pull $Q || exit 1
+echo OK

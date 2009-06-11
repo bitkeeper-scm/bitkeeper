@@ -160,8 +160,8 @@ next:				freeLines(data, free);
 	if (platforms) {	/* didn't find this platform */
 		uniqLines(platforms, free);
 		unless (streq(platform, "?")) {
-			fprintf(stderr, 
-			    "No upgrade for the for arch %s found. "
+			fprintf(stderr,
+			    "No upgrade for the arch %s found. "
 			    "Available architectures for %s:\n",
 			    platform, version);
 			EACH(platforms) fprintf(stderr, "  %s\n", platforms[i]);
@@ -315,15 +315,20 @@ private	int
 noperms(char *target)
 {
 	struct	stat sb;
+	char	*test_file;
+	int	rc = 1;
 
 	/*
-	 * If chmod works, I must have perms right?
 	 * Assumes subdirs are ok.
 	 */
-	if (lstat(target, &sb)) return (1);
-	if (chmod(target, 0770)) return (1);
-	if (chmod(target, sb.st_mode)) return (1);
-	return (0);
+	unless (test_file = aprintf("%s/upgrade_test.tmp", target)) return (1);
+	if (touch(test_file, 0644) < 0) goto out;
+	if (lstat(test_file, &sb)) goto out;
+	if (unlink(test_file)) goto out;
+	rc = 0;
+out:
+	free(test_file);
+	return (rc);
 }
 
 /*

@@ -941,6 +941,7 @@ int	sccs_findtips(sccs *s, delta **a, delta **b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
+void	sfind_update(sccs *s, delta *d);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 
@@ -1151,6 +1152,7 @@ int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
 int	run_check(int quiet, char *partial, char *opts, int *did_partial);
+int	full_check(void);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);

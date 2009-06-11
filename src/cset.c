@@ -41,7 +41,6 @@ typedef	struct cset {
 
 private	void	csetlist(cset_t *cs, sccs *cset);
 private	int	marklist(char *file);
-private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
 private	delta	*mkChangeSet(sccs *cset, char *files, FILE *diffs);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
@@ -893,35 +892,6 @@ doSet(sccs *sc)
 				printf("%c%s\n", BK_FS, d->rev);
 			}
 		}
-	}
-}
-
-/*
- * Print out everything leading from start to d, not including start.
- */
-private void
-csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d)
-{
-	int	i;
-
-	unless (d) return;
-	debug((stderr, "cD(%s, %s)\n", sc->gfile, d->rev));
-	if ((d == start) || (d->flags & D_SET)) return;
-	d->flags |= D_SET;
-	csetDeltas(cs, sc, start, d->parent);
-	/*
-	 * We don't need the merge pointer, it is part of the include list.
-	 * if (d->merge) csetDeltas(sc, start, sfind(sc, d->merge));
-	 */
-	EACH(d->include) {
-		delta	*e = sfind(sc, d->include[i]);
-
-		csetDeltas(cs, sc, e->parent, e);
-	}
-	// XXX - fixme - removed deltas not done.
-	// Is this an issue?  I think makepatch handles them.
-	unless (cs->makepatch) {
-		if (d->type == 'D') printf("%s%c%s\n", sc->gfile, BK_FS, d->rev);
 	}
 }
 

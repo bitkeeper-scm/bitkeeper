@@ -891,7 +891,9 @@ load_project(char *dir)
 		load_ignore(proj);
 		unless (opts.fixdfile) {
 			concat_path(tmp, proj_root(proj), DFILE);
-			opts.dfile = exists(tmp);
+			unless (opts.dfile = exists(tmp)) {
+				if (p = getenv("_BK_SLOW_WALK")) touch(p, 0666);
+			}
 		}
 	} else {
 		if (newproj) proj_free(newproj);

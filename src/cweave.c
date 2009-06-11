@@ -154,7 +154,10 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 			int	i;
 			if (e->serial < serial) break; /* optimization */
 
-			if (e->serial >= serial) e->serial++;
+			if (e->serial >= serial) {
+				e->serial++;
+				sfind_update(s, e);
+			}
 			if (e->pserial >= serial) e->pserial++;
 			if (e->merge >= serial) e->merge++;
 			if (e->ptag >= serial) e->ptag++;
@@ -180,14 +183,16 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		d->pserial = p->serial;
 		d->parent = p;
 	}
-	sccs_inherit(s, d);
-	if ((d->type == 'D') && (s->tree != d)) d->same = 1;
 
 	/*
 	 * Fix up d->serial
 	 */
 	d->serial = serial;
+	sfind_update(s, d);
 	assert((d->serial == 0) || (d->serial > d->pserial));
+
+	sccs_inherit(s, d);
+	if ((d->type == 'D') && (s->tree != d)) d->same = 1;
 
 	/*
 	 * Save dF info, used by cset_write() later

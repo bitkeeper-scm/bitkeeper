@@ -9,9 +9,6 @@
 
 #define	BK "bk"
 
-extern	int	test_release;
-extern	unsigned build_timet;
-
 char	*editor = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
@@ -162,14 +159,6 @@ main(int ac, char **av, char **env)
 		    "Unable to find the BitKeeper bin directory, aborting\n");
 		return (1);
 	}
-	if (av[1] && streq(av[1], "bin") && !av[2]) {
-		printf("%s\n", bin ? bin : "no path found");
-		exit(0);
-	}
-	if (av[1] && streq(av[1], "path") && !av[2]) {
-		printf("%s\n", getenv("PATH"));
-		exit(0);
-	}
 
 	/*
 	 * Determine if this should be a trial version of bk.
@@ -179,20 +168,6 @@ main(int ac, char **av, char **env)
 	if (test_release && (time(0) > (time_t)build_timet + 3600*24*14)) {
 		version_main(0, 0);
 		exit(1);
-	}
-
-	/* bk _realpath is mainly for win32 */
-	if (av[1] && streq(av[1], "_realpath") && (!av[2] || !av[3])) {
-		char buf[MAXPATH], real[MAXPATH];
-
-		if (av[2]) {
-			strcpy(buf, av[2]);
-		} else {
-			getcwd(buf, sizeof(buf));
-		}
-		getRealName(buf, NULL, real);
-		printf("%s => %s\n", buf, real);
-		exit(0);
 	}
 
 	/*
