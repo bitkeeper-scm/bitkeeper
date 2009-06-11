@@ -6,13 +6,12 @@ private void	prevs(delta *d);
 private void	_prevs(delta *d);
 private void	puser(char *u);
 private void	pd(char *prefix, delta *d);
-private void	renumber(delta *d);
+private void	renumber(sccs *s);
 private	delta	*ancestor(sccs *s, delta *d);
 private int	flags;
 private sccs	*s;
 private int	sort;	/* append -timet */
 private int	tags;	/* append '*' to tagged revisions */
-private int	ser;
 private	char	*rev;
 private	delta	*tree;	/* oldest node we're displaying */
 
@@ -58,8 +57,7 @@ usage:			fprintf(stderr,
 	if (sfileNext() || !name) goto usage;
 
 	if (name && (s = sccs_init(name, INIT_NOCKSUM)) && HASGRAPH(s)) {
-		ser = 0;
-		renumber(s->table);
+		renumber(s);
 		if (n) {
 			for (c = n, e = sccs_top(s); e && c--; e = e->parent);
 			if (e) e = ancestor(s, e);
@@ -103,10 +101,16 @@ next:		sccs_free(s);
  * - increments only for real deltas, not meta
  */
 private void
-renumber(delta *d)
+renumber(sccs *s)
 {
-	if (d->next) renumber(d->next);
-	if (d->type == 'D') d->pserial = ser++;
+	delta	*d;
+	int	i;
+	int	ser = 0;
+
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, i)) continue;
+		if (d->type == 'D') d->pserial = ser++;
+	}
 }
 
 private void

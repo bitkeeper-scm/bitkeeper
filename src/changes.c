@@ -411,15 +411,6 @@ pdelta(delta *e)
 	return (fflush(opts.f) || opts.one);
 }
 
-private int
-recurse(delta *d)
-{
-	if (d->next) {
-		if (recurse(d->next)) return (1);
-	}
-	return (pdelta(d));
-}
-
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
@@ -475,6 +466,7 @@ doit(int dash)
 	pid_t	pid;
 	sccs	*s = 0;
 	delta	*e;
+	int	i;
 	int	rc = 1;
 	MDBM	*csetDB = 0;
 
@@ -561,7 +553,9 @@ doit(int dash)
 		opts.s = s;
 		opts.spec = spec;
 		if (opts.forwards) {
-			recurse(s->table);
+			for (i = 1; i < s->nextserial; i++) {
+				if ((e = sfind(s, i)) && pdelta(e)) break;
+			}
 		} else {
 			for (e = s->table; e; e = e->next) {
 				if (pdelta(e)) break;
