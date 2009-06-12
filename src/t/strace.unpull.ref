@@ -8,7 +8,7 @@ lseek 158
 lstat 975
 mkdir 13
 open 218
-read 1018
+read 1019
 rename 13
 rmdir 10
 stat 16
