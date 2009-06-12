@@ -895,6 +895,8 @@ private void
 pruneEmpty(sccs *s, sccs *sb)
 {
 	int	i;
+	delta	*n;
+
 	sc = s;
 	scb = sb;
 	for (i = 1; i < sc->nextserial; i++) {

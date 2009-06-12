@@ -412,8 +412,7 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 	}
 	if (cmd) {
 		/* Handle restricted commands */
-		if ((cmd->restricted && !bk_isSubCmd) ||
-		    (cmd->pro && !bk_commercial())) {
+		if (cmd->restricted && !bk_isSubCmd) {
 			/* error message matches shell message */
 			cmd = 0;
 		}

@@ -91,7 +91,6 @@ doit(sccs *s, s_opts opts)
 	char	*p;
 	int	left, n;
 	int	flags = 0;
-	char	*p;
 
 	if (opts.quiet) flags |= SILENT;
 

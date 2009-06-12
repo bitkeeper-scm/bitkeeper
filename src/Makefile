@@ -26,9 +26,6 @@ URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
-# Is this building a commercial-only release of bk
-COMMERCIAL = 0
-
 ifeq "$(OSTYPE)" "msys"
 	SYS=win32
 	EXE=.exe
@@ -218,7 +215,7 @@ SRCS	= bk.c $(OBJ:.o=.c)
 # list of headers in bk
 HDRS	= bam.h bkd.h ensemble.h logging.h \
 	  purify.h range.h rcs.h resolve.h sccs.h \
-	  cmd.h bkver.h proj.h redblack.h inskeys.h libc/system.h
+	  cmd.h proj.h redblack.h inskeys.h libc/system.h
 
 # list of non-C sources in bk
 SCRSRCS	= bk.sh import.sh kwextract.pl uuwrap.sh unuuwrap.sh \
@@ -292,7 +289,7 @@ clean: FORCE
 	$(Q)$(RM) $(OBJ) bk.o inskeys.o inskeys_main.o $(BINS) $(SCRIPTS) \
 	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
-		bkver.h tclkey.h core *.bb *.bbg *.da *.gcov \
+		tclkey.h core *.bb *.bbg *.da *.gcov \
 		bk.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
@@ -426,18 +423,6 @@ bkver.c: FORCE
 	$(Q)echo "time_t build_timet = "`perl -e "print time"`";" >> bk.v
 	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
 	$(Q)mv -f bk.v bkver.c
-
-bkver.h:
-	$(if $(Q),@echo Building $@,)
-	$(Q)echo "/* auto-generated file */" > $@
-	$(Q)echo "extern char *bk_vers;" >> $@
-	$(Q)echo "extern char *bk_utc;" >> $@
-	$(Q)echo "extern char *bk_time;" >> $@
-	$(Q)echo "extern char *bk_platform;" >> $@
-	$(Q)echo "#define bk_commercial() $(COMMERCIAL)" >> $@
-	$(Q)echo "extern time_t build_timet;" >> $@
-	$(Q)echo "extern int test_release;" >> $@
-
 
 bkver.o: bkver.c
 

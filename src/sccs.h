@@ -396,7 +396,6 @@ int	checking_rmdir(char *dir);
 typedef	u32		ser_t;
 typedef	unsigned short	sum_t;
 
-#include "bkver.h"
 #include "cmd.h"
 
 /*
@@ -1299,6 +1298,12 @@ extern	char	*BitKeeper;
 extern	time_t	licenseEnd;
 extern	int	spawn_tcl;
 extern	char	*start_cwd;
+extern	char	*bk_vers;
+extern	char	*bk_utc;
+extern	char	*bk_time;
+extern	char	*bk_platform;
+extern	time_t	build_timet;
+extern	int	test_release;
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)
 #define	changesetKey(k) (strstr(k, "|ChangeSet|") != (char*)0)

@@ -486,7 +486,6 @@ clone2(remote *r)
 	char	*checkfiles;
 	FILE	*f;
 	int	rc, didcheck = 0;
-	int	did_partial = 0;
 	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
@@ -541,28 +540,27 @@ clone2(remote *r)
 		/* undo already runs check so we only need this case */
 		p = opts->quiet ? "-fT" : "-fvT";
 		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(opts->quiet, checkfiles, p, &did_partial);
+			rc = run_check(opts->quiet, checkfiles, p, &didcheck);
 		} else {
-			rc = run_check(opts->quiet, 0, p, 0);
+			rc = run_check(opts->quiet, 0, p, &didcheck);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
 			    "repository left locked.\n");
 			return (-1);
 		}
-		didcheck = 1;
 	}
 	unlink(checkfiles);
 	free(checkfiles);
 
 	/*
-	 * lclone brings the CHECKED file over, meaning a partial_check
+	 * clone brings the CHECKED file over, meaning a partial_check
 	 * might actually be partial.  Normally check is relied on to
-	 * checkout all files.  But it might not happen in the lclone
-	 * case.  If we actually did a partial check, get the rest
-	 * of the files.
+	 * checkout all files.  But it might not happen in
+	 * partial_check mode.  If we actually did a partial check,
+	 * get the rest of the files.
 	 */
-	if (did_partial &&
+	if (!didcheck &&
 	    (proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT))) {
 		unless (opts->quiet) {
 			fprintf(stderr, "Checking out files...\n");

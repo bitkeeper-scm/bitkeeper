@@ -2,7 +2,7 @@
 #include "logging.h"
 #include "ensemble.h"
 
-private int	compressed(int level, int lclone, char *rev);
+private int	compressed(int level, int lclone);
 
 /*
  * Send the sfio file to stdout
@@ -156,7 +156,7 @@ cmd_clone(int ac, char **av)
 		s = 0;
 	}
 	printf("@SFIO@\n");
-	rc = compressed(gzip, lclone, rev);
+	rc = compressed(gzip, lclone);
 	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (trigger(av[0], "post")) goto out;
@@ -176,15 +176,16 @@ out:	if (delay > 0) sleep(delay);
 }
 
 private int
-compressed(int level, int lclone, char *rev)
+compressed(int level, int lclone)
 {
-	int	status, fd, i;
-	char	*p;
-	FILE	*pending, *fh;
+	int	status, fd;
+	FILE	*fh;
 	char	*sfiocmd;
 	char	*larg = (lclone ? "-L" : "");
+	char	*marg = (bk_hasFeature("mSFIO") ? "-m" : "");
 
-	sfiocmd = aprintf("bk _sfiles_clone %s | bk sfio -oq %s", larg, larg);
+	sfiocmd = aprintf("bk _sfiles_clone %s %s | bk sfio -oq %s %s",
+	    larg, marg, larg, marg);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);

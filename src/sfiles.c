@@ -881,6 +881,7 @@ private void
 load_project(char *dir)
 {
 	project	*newproj;
+	char	*p;
 	char	tmp[MAXPATH];
 
 	newproj = proj_init(dir);
@@ -1447,7 +1448,8 @@ struct sinfo {
 	void	*data;		/* pass this to the fn() */
 	int	rootlen;	/* the len of the dir passed to walksfiles() */
 	char	*proj_prefix;	/* the prefix needed to make a relpath */
-	int	is_clone;	/* special clone walkfn */
+	u32	is_clone:1;	/* special clone walkfn */
+	u32	is_modes:1;	/* -m in clone walkfn */
 };
 
 private int
@@ -1502,6 +1504,16 @@ findsfiles(char *file, struct stat *sb, void *data)
 			if (exists(file)) si->fn(file, sb, si->data);
 			strcpy(p+5, "COMPONENTS");
 			if (exists(file)) si->fn(file, sb, si->data);
+			if (si->is_modes) {
+				strcpy(p+5, "NFILES");
+				if (exists(file)) si->fn(file, sb, si->data);
+				strcpy(p+5, "ROOTKEY");
+				if (exists(file)) si->fn(file, sb, si->data);
+				strcpy(p+5, "TIP");
+				if (exists(file)) si->fn(file, sb, si->data);
+				strcpy(p+5, "checked");
+				if (exists(file)) si->fn(file, sb, si->data);
+			}
 		}
 		if (prunedirs) {
 			concat_path(buf, si->proj_prefix,
@@ -1565,12 +1577,14 @@ sfiles_clone_main(int ac, char **av)
 {
 	int	c;
 	int	lclone = 0;
+	int	modes = 0;	/* sfio sets modes so more stuff is ok */
 	int	rc = 2;
 	sinfo	si = {0};
 
-	while ((c = getopt(ac, av, "L")) != -1) {
+	while ((c = getopt(ac, av, "Lm")) != -1) {
 		switch (c) {
 		    case 'L': lclone = 1; break;
+		    case 'm': modes = 1; break;
 		    default:
 usage:			fprintf(stderr, "usage: _sfiles_clone [-L]\n");
 			return (1);
@@ -1584,6 +1598,7 @@ usage:			fprintf(stderr, "usage: _sfiles_clone [-L]\n");
 	si.rootlen = 1;
 	si.proj_prefix = "/";
 	si.is_clone = 1;
+	if (modes) si.is_modes = 1;
 	rc = walkdir(".", findsfiles, &si);
 	free_project();
 	return (rc);
