@@ -142,7 +142,8 @@ private void	frame_resumeBody();
 private void	frame_resumePrologue();
 private char	*get_text(Expr *expr);
 private Type	*iscallbyname(VarDecl *formal);
-private int	ispatternfn(char *name, Expr **Foo_star, Expr **bar);
+private int	ispatternfn(char *name, Expr **foo, Expr **Foo_star,
+			    Expr **opts, int *nopts);
 private Label	*label_lookup(Stmt *stmt, Label_f flags);
 private void	list_mapReverse(Expr *l, int (*fn)(Expr *, Expr_f), int arg);
 private int	parse_options(int ac, Tcl_Obj **av);
@@ -169,6 +170,7 @@ Type	*L_string;
 Type	*L_void;
 Type	*L_var;
 Type	*L_poly;
+Type	*L_widget;
 
 /*
  * L built-in functions.
@@ -1522,37 +1524,56 @@ compile_expr(Expr *expr, Expr_f flags)
 
 /*
  * If a function-call name begins with a cap and has an _ inside, it
- * looks like a pattern call.  From a name like "Foo_Bar" create these
- * strings: "Foo_*" "bar".  Return them as Expr's since that's what
- * the caller needs.  The Expr's need not be freed explicitly since
- * all AST nodes are deallocated upon exit.
+ * looks like a pattern call.  From a name like "Foo_barBazBlech"
+ * create Expr const nodes "foo", "Foo_*" and a linked list of Expr
+ * const nodes for "bar", "baz", and "blech".  Note that the returned
+ * Expr's need not be freed explicitly since all AST nodes are
+ * deallocated by the compiler.
  */
 private int
-ispatternfn(char *name, Expr **Foo_star, Expr **bar)
+ispatternfn(char *name, Expr **foo, Expr **Foo_star, Expr **opts, int *nopts)
 {
-	char	*buf, *p;
+	int	i;
+	char	*buf, *p, *under;
+	Expr	*e;
 
 	unless ((name[0] >= 'A') && (name[0] <= 'Z') &&
 		(p = strchr(name, '_')) && p[1]) {  // _ cannot be last
 		return (FALSE);
 	}
 
-	*p = '\0';
+	under = p;
+	*under = '\0';
+
+	/* Build foo from Foo_bar. */
+	buf = cksprintf("%s", name);
+	buf[0] = tolower(buf[0]);
+	*foo = ast_mkId(buf, 0, 0);
+	ckfree(buf);
 
 	/* Build Foo_* from Foo_bar. */
-	buf = ckalloc(strlen(name) + 3);
-	strcpy(buf, name);
-	strcat(buf, "_*");
+	buf = cksprintf("%s_*", name);
 	*Foo_star = ast_mkId(buf, 0, 0);
 	ckfree(buf);
 
-	/* Build bar from Foo_bar. */
-	buf = ckalloc(strlen(p+1) + 1);
-	strcpy(buf, p+1);
-	*bar = ast_mkConst(L_string, 0, 0);
-	(*bar)->u.string = buf;
+	/* Build a list of bar,Baz,Blech nodes from barBazBlech. */
+	++p;
+	*opts  = NULL;
+	*nopts = 0;
+	while (*p) {
+		*p = tolower(*p);
+		buf = ckalloc(strlen(p) + 1);
+		for (i = 0; *p && islower(*p); ++p, ++i) {
+			buf[i] = *p;
+		}
+		buf[i] = 0;
+		e = ast_mkConst(L_string, 0, 0);
+		e->u.string = buf;
+		APPEND_OR_SET(Expr, next, *opts, e);
+		++(*nopts);
+	}
 
-	*p = '_';
+	*under = '_';
 
 	return (TRUE);
 }
@@ -1560,28 +1581,37 @@ ispatternfn(char *name, Expr **Foo_star, Expr **bar)
 /*
  * Rules for compiling a function call like "foo(arg)":
  *
- * - Call foo.  If foo isn't declared, that's OK, we just won't
- *   have a prototype to type-check against.
+ * - If foo is a variable of type name-of function, assume it contains
+ *   the name of the function to call.
  *
- * For a function call like "Foo_bar(a,b,c)", where the name starts with
- * [A-Z] and has an _ in it (except at the end), we have what's called
- * a "pattern function":
+ * - Otherwise call foo.  If foo isn't declared, that's OK, we just
+ *   won't have a prototype to type-check against.
+ *
+ * For a function call like "Foo_bar(a,b,c)" or "Foo_barBazBlech(a,b,c)",
+ * where the name starts with [A-Z] and has an _ in it (except at the
+ * end), we have what's called a "pattern function".  The "bar", "baz",
+ * and "blech" are the "options", and "a", "b", and "c" are the "arguments".
  *
  * - If Foo_bar happens to be a declared function, handle as above.
  *
- * - If the function Foo_* is defined, change the call to Foo_*(bar,a,b,c).
+ * - If the function Foo_* is defined, change the call to
+ *   Foo_*(bar,Baz,Blech,a,b,c).
  *
- * - Else change the call to *a(bar,b,c) where *a means that the value
- *   of the argument "a" becomes the function name.  It is an error for
- *   "a" to not exist (no args) or to not be of type string.
+ * - If "a" is not of widget type, change the call to
+ *   foo(bar,Baz,Blech,a,b,c).
+ *
+ * - If "a" is a widget type, change the call to *a(bar,Baz,Blech,b,c)
+ *   where *a means that the value of the argument "a" becomes the
+ *   function name.
  */
 private int
 compile_fnCall(Expr *expr)
 {
-	int	expand, i, num_parms;
+	int	expand, i, nopts;
+	int	num_parms = 0;
 	int	typchk = FALSE;
 	char	*name;
-	Expr	*Foo_star, *bar, *p;
+	Expr	*foo, *Foo_star, *opts, *p;
 	Sym	*sym;
 	VarDecl	*formals = NULL;
 
@@ -1627,39 +1657,50 @@ compile_fnCall(Expr *expr)
 		/* Name is declared but isn't a function or fn pointer. */
 		L_errf(expr, "'%s' is declared but not as a function", name);
 		expr->type = L_poly;
-	} else if (ispatternfn(name, &Foo_star, &bar)) {
+	} else if (ispatternfn(name, &foo, &Foo_star, &opts, &nopts)) {
 		/* Pattern function.  Figure out which kind. */
 		if ((sym = sym_lookup(Foo_star, L_NOWARN))) {
-			/* Foo_* is defined -- compile Foo_*(bar,a,b,c). */
+			/* Foo_* is defined -- compile Foo_*(opts,a,b,c). */
 			push_str(Foo_star->u.string);
-			bar->next = expr->b;
-			expr->b = bar;
+			APPEND(Expr, next, opts, expr->b);
+			expr->b = opts;
 			formals = sym->type->u.func.formals;
 			typchk = TRUE;
-			expr->type = sym->type;
+			expr->type = sym->type->base_type;
 		} else {
-			/* Compile as *a(bar,b,c). */
-			expr->type = L_poly;
-			unless (expr->b) {
-				L_errf(expr,
-				       "pattern function call has no args");
-				return (0);  // stack effect
-			}
+			/* Push first arg, then check its type. */
 			compile_expr(expr->b, L_PUSH_VAL);
-			unless (isstring(expr->b)) {
-				L_errf(expr->b,
-				       "first arg to pattern function is "
-				       "not string");
+			if (!expr->b) {
+				/* No args, compile as foo(opts). */
+				push_str(foo->u.string);
+				num_parms = push_parms(opts);
+			} else if (iswidget(expr->b)) {
+				/* Compile as *a(opts,b,c). */
+				APPEND(Expr, next, opts, expr->b->next);
+				expr->b = opts;
+			} else {
+				/* Compile as foo(opts,a,b,c). */
+				// a
+				push_str(foo->u.string);
+				// a foo
+				TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
+				// foo a
+				num_parms = push_parms(opts);
+				// foo a <opts>
+				TclEmitInstInt1(INST_ROT, nopts,
+						L->frame->envPtr);
+				// foo <opts> a
+				expr->b = expr->b->next;
+				++num_parms;
 			}
-			bar->next = expr->b->next;
-			expr->b = bar;
+			expr->type = L_poly;
 		}
 	} else {
 		/* Call to an undeclared function. */
 		push_str(name);
 		expr->type = L_poly;
 	}
-	num_parms = push_parms(expr->b);
+	num_parms += push_parms(expr->b);
 	if (expand) {
 		emit_invoke_expanded();
 	} else {
@@ -1975,8 +2016,10 @@ compile_binOp(Expr *expr, Expr_f flags)
 	    case L_OP_STR_LE:
 		compile_expr(expr->a, L_PUSH_VAL);
 		compile_expr(expr->b, L_PUSH_VAL);
-		L_typeck_expect(L_STRING, expr->a, "in string comparison");
-		L_typeck_expect(L_STRING, expr->b, "in string comparison");
+		L_typeck_expect(L_STRING|L_WIDGET, expr->a,
+				"in string comparison");
+		L_typeck_expect(L_STRING|L_WIDGET, expr->b,
+				"in string comparison");
 		emit_instrForLOp(expr);
 		expr->type = L_int;
 		return (1);
@@ -2446,7 +2489,7 @@ compile_condition(Expr *cond)
 	compile_expr(cond, L_PUSH_VAL);
 	if (isvoid(cond)) {
 		L_errf(cond, "void type illegal in predicate");
-	} else if (isstring(cond)) {
+	} else if (isstring(cond) || iswidget(cond)) {
 		push_str("0");
 		TclEmitOpcode(INST_NEQ, L->frame->envPtr);
 	} else unless (isscalar(cond)) {

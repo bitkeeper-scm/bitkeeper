@@ -27,6 +27,7 @@ L_typeck_init()
 		L_int    = type_mkScalar(L_INT, PERSIST);
 		L_float  = type_mkScalar(L_FLOAT, PERSIST);
 		L_string = type_mkScalar(L_STRING, PERSIST);
+		L_widget = type_mkScalar(L_WIDGET, PERSIST);
 		L_void   = type_mkScalar(L_VOID, PERSIST);
 		L_poly   = type_mkScalar(L_POLY, PERSIST);
 	}
@@ -49,6 +50,7 @@ type_str(Type_k kind)
 	if (kind & L_INT)      str_add("int");
 	if (kind & L_FLOAT)    str_add("float");
 	if (kind & L_STRING)   str_add("string");
+	if (kind & L_WIDGET)   str_add("widget");
 	if (kind & L_VOID)     str_add("void");
 	if (kind & L_POLY)     str_add("poly");
 	if (kind & L_HASH)     str_add("hash");
@@ -309,7 +311,7 @@ typeck_list(Type *a, Type *b)
 
 /*
  * Determine if two types are structurally equivalent.  Note that
- * polys match anything.
+ * polys match anything and strings and widgets are compatible.
  */
 int
 L_typeck_same(Type *a, Type *b)
@@ -318,6 +320,11 @@ L_typeck_same(Type *a, Type *b)
 
 	/* Polys match anything. */
 	if ((a->kind == L_POLY) || (b->kind == L_POLY)) return (1);
+
+	/* Strings and widgets are compatible. */
+	if ((a->kind & (L_STRING|L_WIDGET)) && (b->kind & (L_STRING|L_WIDGET))){
+		return (1);
+	}
 
 	if ((a->kind == L_LIST) || (b->kind == L_LIST)) {
 		return (typeck_list(a, b));
@@ -329,6 +336,7 @@ L_typeck_same(Type *a, Type *b)
 	    case L_INT:
 	    case L_FLOAT:
 	    case L_STRING:
+	    case L_WIDGET:
 	    case L_VOID:
 		return (1);
 	    case L_ARRAY:

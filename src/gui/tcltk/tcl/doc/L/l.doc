@@ -538,9 +538,7 @@ it is not limited to just variables:
 =head1 FUNCTIONS
 
 L's functions are much like functions in C.  Like variable names,
-function names B<cannot> begin with an underscore (_).  However, a
-special kind of function called a C<pattern function> can end with
-C<_*>; these are described later.
+function names B<cannot> begin with an underscore (_).
 
 Each function must be declared with a return type and a
 formal-parameter list:
@@ -565,6 +563,12 @@ Unlike Perl, when calling a function you must use parentheses around
 the arguments:
 
     sum(a, b);
+
+L does a special kind of call called a C<pattern function> call
+when the function name is capitalized and contains an underscore;
+these are useful for calling Tcl commands and are described later.
+Normal function names should avoid being both capitalized and
+with an underscore.
 
 Parameters are passed by value by default.  To pass by reference,
 you use a C<&> in the declaration and in the function call:
@@ -878,6 +882,17 @@ Without this, you would have to say:
     func("-option1");
     func("-option2", value, arg);
 
+A similar feature is for passing sub-commands to Tcl commands:
+
+    String_length("xyzzy");   // calls string("length", "xyzzy");
+    String_isSpace(s);        // calls string("is", "space", s);
+
+Whenever the function name is capitalized and contains an underscore,
+the sequence of capitalized names after the underscore are converted
+to (lower case) arguments (although capitalizing the
+first name after the underscore is optional).
+This is called a C<pattern function> call.
+
 If you need to execute arbitrary Tcl code rather than just call a proc,
 you pass it to Tcl's C<eval> command:
 
@@ -949,19 +964,13 @@ the global namespace by qualifying the name:
 
 =head2 Calling Tk
 
-To help call Tk widgets, L has a C<pattern function> call where the
-function name is capitalized and contains an underscore, like this:
+To help call Tk widgets, L has a C<widget> type that is used with the
+pattern function calls described above.  A widget value behaves like
+a string except in a pattern function call where it is the name
+of the widget to call:
 
-    Foo_bar(a, b, c);
-
-The call is translated to
-
-    <a>(bar, b, c);
-
-where <a> means that the I<value> of C<a> becomes the function name
-to call.
-
-*** Need to get an example from someone ***
+    widget w = "mywidget";
+    Foo_bar(w, a, b);   // calls mywidget(bar, a, b)
 
 Another feature is useful for calling Tk widgets that take the I<name>
 of a variable whose value is updated when the user changes a widget
