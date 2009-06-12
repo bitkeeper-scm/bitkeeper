@@ -425,7 +425,7 @@ proc widgets {} \
 		global licenseInfo
 		global fixedFont
 
-		set wizData(licenseAccept) ""
+		set wizData(licenseAccept) 0
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
@@ -622,13 +622,6 @@ proc widgets {} \
 				-variable ::runtime(enableShellxLocal) \
 				-onvalue 1 \
 				-offvalue 0 
-			    checkbutton $w.shellx-remote \
-				-anchor w \
-				-text "Enable Explorer integration on NETWORK drives" \
-				-borderwidth 1 \
-				-variable ::runtime(enableShellxNetwork) \
-				-onvalue 1 \
-				-offvalue 0 
 			    checkbutton $w.bkscc \
 				-anchor w \
 				-text "Enable Visual Studio integration" \
@@ -640,7 +633,6 @@ proc widgets {} \
 			    frame $w.spacer1 -height 8 -borderwidth 0 
 			    pack $w.spacer1 -side top -fill x
 			    pack $w.shellx-local -side top -fill x -anchor w
-			    pack $w.shellx-remote -side top -fill x -anchor w
 			    pack $w.bkscc -side top -fill x -anchor w
 			    after idle [list focus $w.shellx-local]
 		    } else {

@@ -11,7 +11,8 @@ test $OSTYPE = cygwin && {
 	bk bkd -R >/dev/null 2>&1
 }
 BK_NOTTY=YES
-export PATH BK_NOTTY
+BK_NO_REMAP=1
+export PATH BK_NOTTY BK_NO_REMAP
 
 test X$LOG = X && LOG=LOG-$BK_USER
 cd /build

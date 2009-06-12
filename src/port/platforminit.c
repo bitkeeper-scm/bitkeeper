@@ -29,6 +29,7 @@ platformInit(char **av)
 			      "IFS", " \t\n",
 			      "ENV", "",
 			      "BASH_ENV", "", 0};
+	char	delim[2];
 	char	buf2[MAXPATH];
 
 	if ((p = getenv("BK_DEBUG_PLATFORM")) && *p) {
@@ -210,15 +211,18 @@ platformInit(char **av)
 	 * The regressions set this variable when they want to
 	 * limit which programs can be run from within bk.
 	 */
-	if (t = getenv("BK_LIMITPATH")) p = t;
+	if (t = getenv("BK_LIMITPATH")) {
+		strcpy(buf2, t);
+		p = buf2;
+	}
 
 	/* Make a string with the : or ; for strcspn() and joinLines() */
-	buf2[0] = PATH_DELIM;
-	buf2[1] = 0;
+	delim[0] = PATH_DELIM;
+	delim[1] = 0;
 
 	/* process dirs in existing PATH */
 	while (*p) {
-		t = p + strcspn(p, buf2);
+		t = p + strcspn(p, delim);
 		if (*t) *t++ = 0;
 		unless (mdbm_store_str(uniq, p, "", MDBM_INSERT)) {
 			newpath = addLine(newpath, strdup(p));
@@ -227,7 +231,7 @@ platformInit(char **av)
 	}
 	mdbm_close(uniq);
 
-	p = joinLines(buf2, newpath);
+	p = joinLines(delim, newpath);
 	freeLines(newpath, free);
 	safe_putenv("PATH=%s", p);
 	verbose((stderr, "set PATH='%s'\n", p));
@@ -245,57 +249,71 @@ platformInit(char **av)
 	}
 }
 
-#ifdef WIN32
-private char *
-winplatform(void)
+int
+bin_main(int ac, char **av)
 {
-        OSVERSIONINFO osinfo;
-	int	major, minor;
-	char	*p;
-
-        osinfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-        if (GetVersionEx(&osinfo) == 0) {
-                fprintf(stderr,
-		    "winplatform: Warning: cannot get os version\n");
-                return ("unavailable");
-        }
-
-	major = osinfo.dwMajorVersion;
-	minor = osinfo.dwMinorVersion;
-	if (osinfo.dwPlatformId == VER_PLATFORM_WIN32_NT) {
-		/* Win/XP, Win/2K, Win/NT */
-		if ((major == 4) && (minor == 0)) {
-			p = strdup("Windows/NT");
-		} else if ((major == 5) && (minor == 0)) {
-			p = strdup("Windows/2000");
-		} else if ((major == 5) && (minor == 1)) {
-			p = strdup("Windows/XP");
-		} else if ((major == 5) && (minor == 2)) {
-			p = strdup("Windows/2003");
-		} else if ((major == 6) && (minor == 0)) {
-			p = strdup("Windows/Vista");
-		}  else {
-			p = aprintf("NT-%d.%d", major, minor);
-		}
-	}  else {
-		p = aprintf("unknown-%d.%d", major, minor);
-	}
-	return (p);
+	if (av[1]) return (1);
+	puts(bin);
+	return (0);
 }
+
+int
+path_main(int ac, char **av)
+{
+	if (av[1]) return (1);
+	puts(getenv("PATH"));
+	return (0);
+}
+
+/* return malloc'ed string with extra version info for platform */
+private char *
+platformextra(void)
+{
+#ifdef WIN32
+	return (win_verstr());
+#else
+	FILE	*fp;
+	char	*ret = 0;
+	char	buf[256];
+
+#ifdef	MACOS_VER
+	if (fp = popen("/usr/bin/sw_vers -productVersion", "r")) {
+#else
+	if (fp = popen("uname -r", "r")) {
 #endif
+		if (fnext(buf, fp)) {
+			chomp(buf);
+			ret = strdup(buf);
+		}
+		pclose(fp);
+	}
+	return (ret);
+#endif
+}
 
 
 char *
 platform(void)
 {
 	static char *p;
+	char	*extra;
 
 	if (p) return (p);
 
-#ifdef WIN32
-	p = aprintf("%s,%s",  bk_platform, winplatform());
-#else
-	p = bk_platform;
-#endif
-	return(p);
+	if (extra = platformextra()) {
+		p = aprintf("%s,%s",  bk_platform, extra);
+		free(extra);
+	} else {
+		p = bk_platform;
+	}
+
+	return (p);
+}
+
+int
+platform_main(int ac, char **av)
+{
+	if (av[1]) return (1);
+	puts(platform());
+	return (0);
 }

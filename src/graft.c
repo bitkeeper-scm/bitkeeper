@@ -9,7 +9,7 @@
 #include "sccs.h"
 
 private	void	sccs_patch(sccs *w, sccs *l);
-private void	_patch(delta *d);
+private void	_patch(sccs *s);
 void		sccs_graft(sccs *s1, sccs *s2);
 
 int
@@ -65,8 +65,6 @@ sccs_graft(sccs *s1, sccs *s2)
 	sccs_patch(winner, loser);
 }
 
-private	sccs *sc;
-
 /*
  * Note: takepatch depends on table order so don't change that.
  * Note2: this is ripped off from cset.c.
@@ -85,8 +83,7 @@ sccs_patch(sccs *winner, sccs *loser)
 	printf("\n");
 	sccs_pdelta(winner, winner->tree, stdout);
 	printf("\n");
-	sc = loser;
-	_patch(loser->table);
+	_patch(loser);
 
 #if 0
 	/*
@@ -116,25 +113,27 @@ sccs_patch(sccs *winner, sccs *loser)
 }
 
 private void
-_patch(delta *d)
+_patch(sccs *s)
 {
+	int	i;
+	delta	*d;
 	int	flags = PRS_PATCH|SILENT;
 
-	unless (d) return;
-	if (d->next) _patch(d->next);
-
-	if (d->parent) {
-		sccs_pdelta(sc, d->parent, stdout);
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, i)) continue;
+		if (d->parent) {
+			sccs_pdelta(s, d->parent, stdout);
+			printf("\n");
+		} else {
+			flags |= PRS_GRAFT;
+		}
+		s->rstop = s->rstart = d;
+		sccs_prs(s, flags, 0, NULL, stdout);
 		printf("\n");
-	} else {
-		flags |= PRS_GRAFT;
+		if (d->type == 'D') {
+			assert(!(s->state & S_CSET));
+			sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
+		}
+		printf("\n");
 	}
-	sc->rstop = sc->rstart = d;
-	sccs_prs(sc, flags, 0, NULL, stdout);
-	printf("\n");
-	if (d->type == 'D') {
-		assert(!(sc->state & S_CSET));
-		sccs_getdiffs(sc, d->rev, GET_BKDIFFS, "-");
-	}
-	printf("\n");
 }

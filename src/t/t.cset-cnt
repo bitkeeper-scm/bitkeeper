@@ -29,7 +29,7 @@ bk ci -yignore1 -u $Q BitKeeper/etc/ignore
 bk commit $Q -yignore1 || exit 1
 echo OK
 
-CNT=2
+CNT=1
 echo $N "Count the inits for a 'bk clone' ($CNT)........................."$NL
 rm "$FILE"
 bk clone $Q ../project ../copy || exit 1

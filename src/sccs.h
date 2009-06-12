@@ -396,7 +396,6 @@ int	checking_rmdir(char *dir);
 typedef	u32		ser_t;
 typedef	unsigned short	sum_t;
 
-#include "bkver.h"
 #include "cmd.h"
 
 /*
@@ -944,6 +943,7 @@ int	sccs_findtips(sccs *s, delta **a, delta **b);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(project *proj, char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
+void	sfind_update(sccs *s, delta *d);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
 
@@ -1155,6 +1155,7 @@ int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
 int	run_check(int quiet, char *partial, char *opts, int *did_partial);
+int	full_check(void);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
 char	*hashstr(char *str, int len);
@@ -1301,6 +1302,12 @@ extern	char	*BitKeeper;
 extern	time_t	licenseEnd;
 extern	int	spawn_tcl;
 extern	char	*start_cwd;
+extern	char	*bk_vers;
+extern	char	*bk_utc;
+extern	char	*bk_time;
+extern	char	*bk_platform;
+extern	time_t	build_timet;
+extern	int	test_release;
 extern	char	*prog;
 
 #define	componentKey(k) (strstr(k, "/ChangeSet|") != (char*)0)

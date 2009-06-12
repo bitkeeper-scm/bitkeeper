@@ -503,6 +503,7 @@ out:
 		unlink(CHECKED);
 		touch(CHECKED, 0666);
 	}
+	if (t = getenv("_BK_RAN_CHECK")) touch(t, 0666);
 	return (errors);
 }
 

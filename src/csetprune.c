@@ -815,16 +815,6 @@ _pruneEmpty(delta *d)
 {
 	delta	*m;
 
-	/*
-	 * Build reverse table order on stack,
-	 * but skip over tag deltas
-	 */
-	for ( ; d ; d = d->next) {
-		if (d->type == 'D') break;
-	}
-	unless (d && d->next) return;	/* don't prune root */
-	_pruneEmpty(d->next);
-
 	debug((stderr, "%s ", d->rev));
 	if (d->merge) {
 		debug((stderr, "\n"));
@@ -902,9 +892,16 @@ _pruneEmpty(delta *d)
 private void
 pruneEmpty(sccs *s, sccs *sb)
 {
+	int	i;
+	delta	*n;
+
 	sc = s;
 	scb = sb;
-	_pruneEmpty(sc->table);
+	for (i = 1; i < sc->nextserial; i++) {
+		unless ((n = sfind(sc, i)) && n->next && !TAG(n)) continue;
+		_pruneEmpty(n);
+	}
+
 	verbose((stderr, "Rebuilding Tag Graph...\n"));
 	(flags & PRUNE_NEW_TAG_GRAPH) ? rebuildTags(sc) : fixTags(sc);
 	sccs_reDup(sc);

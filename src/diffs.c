@@ -2,6 +2,8 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "logging.h"	/* lease_check() */
+
 
 private int	nulldiff(char *name, u32 kind, u32 flags);
 
@@ -109,7 +111,7 @@ usage:			system("bk help -s diffs");
 	}
 
 	if ((rargs.rstart && (boundaries || Rev)) || (boundaries && Rev)) {
-		fprintf(stderr, "%s: -C/-R must be alone\n", av[0]);
+		fprintf(stderr, "%s: -R must be alone\n", av[0]);
 		return (1);
 	}
 
@@ -242,9 +244,6 @@ usage:			system("bk help -s diffs");
 		 * TOT.
 		 * EDITED() doesn't work because they could have chmod +w
 		 * the file.
-		 *
-		 * XXX - I'm not sure this works with -C but we'll fix it in
-		 * the 3.1 tree.
 		 */
 		if (!r1 && (!HAS_GFILE(s) || (!force && !WRITABLE(s)))) {
 			goto next;
@@ -253,6 +252,7 @@ usage:			system("bk help -s diffs");
 		/*
 		 * Optimize out the case where we have a locked file with
 		 * no changes at TOT.
+		 * XXX: the following doesn't make sense because of PFILE:
 		 * EDITED() doesn't work because they could have chmod +w
 		 * the file.
 		 */
@@ -270,6 +270,17 @@ usage:			system("bk help -s diffs");
 				}
 				printf("Binary file %s differs\n", s->gfile);
 				goto next;
+			}
+		}
+		/*
+		 * If diffing against an edited file and tip,
+		 * then we need a write lease.
+		 * This includes: bk diffs foo; bk diffs -r+ foo; 
+		 * but not bk diffs -r1.42 foo if 1.42 is not tip
+		 */
+		if (!r2 && WRITABLE(s) && HAS_PFILE(s)) {
+			if (!r1 || (sccs_top(s) == sccs_findrev(s, r1))) {
+				lease_check(s->proj, O_WRONLY, s);
 			}
 		}
 

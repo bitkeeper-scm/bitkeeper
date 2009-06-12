@@ -533,7 +533,15 @@ sfio_in(int extract)
 		perror("read");
 		return (1);
 	}
-	unless (strneq(buf, SFIO_VERS, 10)) {
+	if (strneq(buf, SFIO_NOMODE, 10)) {
+		if (opts->doModes) {
+			fprintf(stderr,
+			    "sfio: modes requested but not sent.\n");
+			return (1);
+		}
+	} else if (strneq(buf, SFIO_MODE, 10)) {
+		opts->doModes = 1;
+	} else {
 		fprintf(stderr,
 		    "Version mismatch [%s]<>[%s]\n", buf, SFIO_VERS);
 		return (1);
