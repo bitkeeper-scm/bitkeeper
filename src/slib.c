@@ -11537,7 +11537,7 @@ out:
 		unless (d = sfind(s, j)) continue;
 		ser++;
 		if (ser != j) {
-			if (flags & SILENT) {
+			unless (flags & SILENT) {
 				fprintf(stderr, "Remap %s:%d ->%d\n",
 				    s->gfile, j, ser);
 			}
