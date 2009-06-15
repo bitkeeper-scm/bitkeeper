@@ -161,8 +161,8 @@ for partial_check in off on; do
     export BK_CONFIG
     for dfile in 0 1; do
 	if [ $dfile = 1 ]
-	then	touch BitKeeper/etc/SCCS/x.dfile
-	else	rm -f BitKeeper/etc/SCCS/x.dfile
+	then	bk _touch BitKeeper/etc/SCCS/x.dfile
+	else	bk _rm -f BitKeeper/etc/SCCS/x.dfile
 	fi
 	for rev in -r+ -rBASE "" -lrBASE -l; do
             for pending in 1 0; do
