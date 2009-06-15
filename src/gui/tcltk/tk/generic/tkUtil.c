@@ -20,7 +20,7 @@
  * object, used for quickly finding a mapping in a TkStateMap.
  */
 
-Tcl_ObjType tkStateKeyObjType = {
+const Tcl_ObjType tkStateKeyObjType = {
     "statekey",			/* name */
     NULL,			/* freeIntRepProc */
     NULL,			/* dupIntRepProc */
@@ -123,7 +123,7 @@ TkStateParseProc(
  *--------------------------------------------------------------
  */
 
-char *
+const char *
 TkStatePrintProc(
     ClientData clientData,	/* Ignored. */
     Tk_Window tkwin,		/* Window containing canvas widget. */
@@ -224,7 +224,7 @@ TkOrientParseProc(
  *--------------------------------------------------------------
  */
 
-char *
+const char *
 TkOrientPrintProc(
     ClientData clientData,	/* Ignored. */
     Tk_Window tkwin,		/* Window containing canvas widget. */
@@ -396,7 +396,7 @@ TkOffsetParseProc(
  *----------------------------------------------------------------------
  */
 
-char *
+const char *
 TkOffsetPrintProc(
     ClientData clientData,	/* not used */
     Tk_Window tkwin,		/* not used */
@@ -495,7 +495,7 @@ TkPixelParseProc(
  *----------------------------------------------------------------------
  */
 
-char *
+const char *
 TkPixelPrintProc(
     ClientData clientData,	/* not used */
     Tk_Window tkwin,		/* not used */
@@ -950,7 +950,7 @@ TkFindStateNumObj(
 	if (strcmp(key, mPtr->strKey) == 0) {
 	    typePtr = keyPtr->typePtr;
 	    if ((typePtr != NULL) && (typePtr->freeIntRepProc != NULL)) {
-		(*typePtr->freeIntRepProc)(keyPtr);
+		typePtr->freeIntRepProc(keyPtr);
 	    }
 	    keyPtr->internalRep.twoPtrValue.ptr1 = (void *) mapPtr;
 	    keyPtr->internalRep.twoPtrValue.ptr2 = INT2PTR(mPtr->numKey);
@@ -977,6 +977,204 @@ TkFindStateNumObj(
     return mPtr->numKey;
 }
 
+/*
+ * ----------------------------------------------------------------------
+ *
+ * TkBackgroundEvalObjv --
+ *
+ *	Evaluate a command while ensuring that we do not affect the
+ *	interpreters state. This is important when evaluating script
+ *	during background tasks.
+ *
+ * Results:
+ *	A standard Tcl result code.
+ *
+ * Side Effects:
+ *	The interpreters variables and code may be modified by the script
+ *	but the result will not be modified.
+ *
+ * ----------------------------------------------------------------------
+ */
+
+int
+TkBackgroundEvalObjv(
+    Tcl_Interp *interp,
+    int objc,
+    Tcl_Obj *const *objv,
+    int flags)
+{
+    Tcl_DString errorInfo, errorCode;
+    Tcl_SavedResult state;
+    int n, r = TCL_OK;
+
+    Tcl_DStringInit(&errorInfo);
+    Tcl_DStringInit(&errorCode);
+
+    Tcl_Preserve(interp);
+
+    /*
+     * Record the state of the interpreter
+     */
+
+    Tcl_SaveResult(interp, &state);
+    Tcl_DStringAppend(&errorInfo,
+	Tcl_GetVar(interp, "errorInfo", TCL_GLOBAL_ONLY), -1);
+    Tcl_DStringAppend(&errorCode,
+	Tcl_GetVar(interp, "errorCode", TCL_GLOBAL_ONLY), -1);
+
+    /*
+     * Evaluate the command and handle any error.
+     */
+
+    for (n = 0; n < objc; ++n) {
+	Tcl_IncrRefCount(objv[n]);
+    }
+    r = Tcl_EvalObjv(interp, objc, objv, flags);
+    for (n = 0; n < objc; ++n) {
+	Tcl_DecrRefCount(objv[n]);
+    }
+    if (r == TCL_ERROR) {
+        Tcl_AddErrorInfo(interp, "\n    (background event handler)");
+        Tcl_BackgroundException(interp, r);
+    }
+
+    Tcl_Release(interp);
+
+    /*
+     * Restore the state of the interpreter
+     */
+
+    Tcl_SetVar(interp, "errorInfo",
+	Tcl_DStringValue(&errorInfo), TCL_GLOBAL_ONLY);
+    Tcl_SetVar(interp, "errorCode",
+	Tcl_DStringValue(&errorCode), TCL_GLOBAL_ONLY);
+    Tcl_RestoreResult(interp, &state);
+
+    /*
+     * Clean up references.
+     */
+
+    Tcl_DStringFree(&errorInfo);
+    Tcl_DStringFree(&errorCode);
+
+    return r;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TkMakeEnsemble --
+ *
+ *	Create an ensemble from a table of implementation commands.
+ *	This may be called recursively to create sub-ensembles.
+ *
+ * Results:
+ *	Handle for the ensemble, or NULL if creation of it fails.
+ *
+ *----------------------------------------------------------------------
+ */
+
+Tcl_Command
+TkMakeEnsemble(
+    Tcl_Interp *interp,
+    const char *namespace,
+    const char *name,
+    ClientData clientData,
+    const TkEnsemble map[])
+{
+    Tcl_Namespace *namespacePtr = NULL;
+    Tcl_Command ensemble = NULL;
+    Tcl_Obj *dictObj = NULL, *nameObj;
+    Tcl_DString ds;
+    int i;
+
+    if (map == NULL) {
+	return NULL;
+    }
+
+    Tcl_DStringInit(&ds);
+
+    namespacePtr = Tcl_FindNamespace(interp, namespace, NULL, 0);
+    if (namespacePtr == NULL) {
+        namespacePtr = Tcl_CreateNamespace(interp, namespace, NULL, NULL);
+        if (namespacePtr == NULL) {
+            Tcl_Panic("failed to create namespace \"%s\"", namespace);
+        }
+    }
+
+    nameObj = Tcl_NewStringObj(name, -1);
+    ensemble = Tcl_FindEnsemble(interp, nameObj, 0);
+    Tcl_DecrRefCount(nameObj);
+    if (ensemble == NULL) {
+        ensemble = Tcl_CreateEnsemble(interp, name,
+	    namespacePtr, TCL_ENSEMBLE_PREFIX);
+        if (ensemble == NULL) {
+            Tcl_Panic("failed to create ensemble \"%s\"", name);
+        }
+    }
+
+    Tcl_DStringSetLength(&ds, 0);
+    Tcl_DStringAppend(&ds, namespace, -1);
+    if (!(strlen(namespace) == 2 && namespace[1] == ':')) {
+	Tcl_DStringAppend(&ds, "::", -1);
+    }
+    Tcl_DStringAppend(&ds, name, -1);
+
+    dictObj = Tcl_NewObj();
+    for (i = 0; map[i].name != NULL ; ++i) {
+	Tcl_Obj *nameObj, *fqdnObj;
+
+	nameObj = Tcl_NewStringObj(map[i].name, -1);
+	fqdnObj = Tcl_NewStringObj(Tcl_DStringValue(&ds),
+	    Tcl_DStringLength(&ds));
+	Tcl_AppendStringsToObj(fqdnObj, "::", map[i].name, NULL);
+	Tcl_DictObjPut(NULL, dictObj, nameObj, fqdnObj);
+	if (map[i].proc) {
+	    Tcl_CreateObjCommand(interp, Tcl_GetString(fqdnObj),
+		map[i].proc, clientData, NULL);
+	} else if (map[i].subensemble) {
+	    TkMakeEnsemble(interp, Tcl_DStringValue(&ds),
+		map[i].name, clientData, map[i].subensemble);
+	}
+    }
+
+    if (ensemble) {
+	Tcl_SetEnsembleMappingDict(interp, ensemble, dictObj);
+    }
+
+    Tcl_DStringFree(&ds);
+    return ensemble;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TkSendVirtualEvent --
+ *
+ * 	Send a virtual event notification to the specified target window.
+ * 	Equivalent to "event generate $target <<$eventName>>"
+ *
+ * 	Note that we use Tk_QueueWindowEvent, not Tk_HandleEvent,
+ * 	so this routine does not reenter the interpreter.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TkSendVirtualEvent(Tk_Window target, const char *eventName)
+{
+    XEvent event;
+
+    memset(&event, 0, sizeof(event));
+    event.xany.type = VirtualEvent;
+    event.xany.serial = NextRequest(Tk_Display(target));
+    event.xany.send_event = False;
+    event.xany.window = Tk_WindowId(target);
+    event.xany.display = Tk_Display(target);
+    ((XVirtualEvent *) &event)->name = Tk_GetUid(eventName);
+
+    Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
+}
 /*
  * Local Variables:
  * mode: c

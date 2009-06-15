@@ -8,12 +8,12 @@
 '\"
 '\"   $Id$
 .so man.macros
-.TH "treectrl" n 2.2.6 treectrl "Tk Commands"
+.TH "treectrl" n 2.2.9 treectrl "Tk Commands"
 .BS
 .SH NAME
 treectrl \- Create and manipulate hierarchical multicolumn widgets
 .SH SYNOPSIS
-package require \fBtreectrl  2.2.6\fR
+package require \fBtreectrl  2.2.9\fR
 .sp
 \fBtreectrl\fR \fIpathName\fR ?\fIoptions\fR?
 .sp
@@ -291,17 +291,7 @@ package require \fBtreectrl  2.2.6\fR
 .sp
 \fIpathName\fR \fBscan dragto\fR \fIx\fR \fIy\fR ?\fIgain\fR?
 .sp
-\fIpathName\fR \fBstate\fR \fIoption\fR \fIargs\fR
-.sp
-\fIpathName\fR \fBstate define\fR \fIstateName\fR
-.sp
-\fIpathName\fR \fBstate linkage\fR \fIstateName\fR
-.sp
-\fIpathName\fR \fBstate names\fR
-.sp
-\fIpathName\fR \fBstate undefine\fR ?\fIstateName ...\fR?
-.sp
-\fIpathName\fR \fBsee\fR \fIitemDesc\fR
+\fIpathName\fR \fBsee\fR \fIitemDesc\fR ?\fIcolumnDesc\fR? ?\fIoption value ...\fR?
 .sp
 \fIpathName\fR \fBselection\fR \fIoption\fR \fIargs\fR
 .sp
@@ -318,6 +308,16 @@ package require \fBtreectrl  2.2.6\fR
 \fIpathName\fR \fBselection includes\fR \fIitemDesc\fR
 .sp
 \fIpathName\fR \fBselection modify\fR \fIselect\fR \fIdeselect\fR
+.sp
+\fIpathName\fR \fBstate\fR \fIoption\fR \fIargs\fR
+.sp
+\fIpathName\fR \fBstate define\fR \fIstateName\fR
+.sp
+\fIpathName\fR \fBstate linkage\fR \fIstateName\fR
+.sp
+\fIpathName\fR \fBstate names\fR
+.sp
+\fIpathName\fR \fBstate undefine\fR ?\fIstateName ...\fR?
 .sp
 \fIpathName\fR \fBstyle\fR \fIoption\fR ?\fIelement\fR? ?\fIarg arg ...\fR?
 .sp
@@ -876,6 +876,18 @@ The item option \fB-button\fR determines whether the root item has a button.
 .LP
 .nf
 .ta 6c
+Command-Line Switch:	\fB-showrootchildbuttons\fR
+Database Name:	\fBshowRootChildButtons\fR
+Database Class:	\fBShowRootChildButtons\fR
+
+.fi
+.IP
+Specifies a boolean value that determines whether this widget
+should draw the expand/collapse buttons next to children of the root item.
+The default value is true.
+.LP
+.nf
+.ta 6c
 Command-Line Switch:	\fB-showrootlines\fR
 Database Name:	\fBshowRootLines\fR
 Database Class:	\fBShowRootLines\fR
@@ -933,17 +945,24 @@ Database Class:	\fBWrap\fR
 .fi
 .IP
 Specifies whether items are arranged in a 1- or 2-dimensional layout.
+.sp
 If the value is an empty string (the default), then items are arranged from top
 to bottom (-orient vertical) or from left to right (-orient horizontal) in
 a 1-dimensional layout.
-If the value is "\fIN\fR \fBitems\fR", then a no more than \fIN\fR items will appear in
+.sp
+If the value is "\fIN\fR \fBitems\fR", then no more than \fIN\fR items will appear in
 a vertical group (-orient vertical) or horizontal group (-orient horizontal).
-If the value is "\fIN\fR \fBpixels\fR", then a no vertical group of items will be
+.sp
+If the value is "\fIN\fR \fBpixels\fR", then no vertical group of items will be
 taller than \fIN\fR pixels (-orient vertical) or no horizontal group of items will
 be wider than \fIN\fR pixels (-orient horizontal).
+.sp
 If the value is \fBwindow\fR, then a no vertical group of items will be
 taller than the window (-orient vertical) or no horizontal group of items will
 be wider than the window (-orient horizontal).
+.sp
+It is also possible to cause wrapping to occur on a per-item basis by using
+the item option -wrap.  See the \fBitem create\fR command for that option.
 .LP
 .nf
 .ta 6c
@@ -1689,6 +1708,8 @@ the meaning of each option):
 \fB\fB-tags\fR\fR \fItagList\fR
 .TP
 \fB\fB-visible\fR\fR \fIboolean\fR
+.TP
+\fB\fB-wrap\fR\fR \fIboolean\fR
 .RE
 .TP
 \fIpathName\fR \fBitem count\fR ?\fIitemDesc\fR?
@@ -1763,6 +1784,11 @@ indicates that the item should be displayed in the list. The item will only be
 displayed if:
 a) each ancestor is a descendant of the root item (not an orphan);
 and b) each ancestor's \fB-visible\fR option is true
+.TP
+\fB\fB-wrap\fR\fR \fIboolean\fR
+\fIBoolean\fR must have one of the forms accepted by \fBTcl_GetBoolean\fR. It
+indicates that this item should be the first one in a horizontal range or
+vertical range of items. See also the widget option \fB-wrap\fR.
 .RE
 .TP
 \fIpathName\fR \fBitem delete\fR \fIfirst\fR ?\fIlast\fR?
@@ -2454,39 +2480,24 @@ to produce the effect of dragging the treectrl at high speed through its window.
 The return value is an empty string.
 .RE
 .TP
-\fIpathName\fR \fBstate\fR \fIoption\fR \fIargs\fR
-This command is used to manipulate the list of user-defined states,
-see section \fBSTATES\fR below.
-The exact behavior of the command depends on the \fIoption\fR argument
-that follows the \fBstate\fR argument.
-The following forms of the command are supported:
-.RS
-.TP
-\fIpathName\fR \fBstate define\fR \fIstateName\fR
-Defines a new state with the name \fIstateName\fR,
-which must not be the name of an existing state.
-.TP
-\fIpathName\fR \fBstate linkage\fR \fIstateName\fR
-Returns a string indicating
-whether the specified state is user-defined
-by means of the \fBstate define\fR widget command (\fBdynamic\fR)
-or predefined by the treectrl widget itself (\fBstatic\fR).
-.TP
-\fIpathName\fR \fBstate names\fR
-Returns a list containing the names of all user-defined states.
-.TP
-\fIpathName\fR \fBstate undefine\fR ?\fIstateName ...\fR?
-Every \fIstateName\fR must be the name of a user-defined state.
-Removes this state from the list of user-defined states.
-.RE
-.TP
-\fIpathName\fR \fBsee\fR \fIitemDesc\fR
-Adjust the view in the treectrl so that the item
-described by \fIitemDesc\fR is visible.
+\fIpathName\fR \fBsee\fR \fIitemDesc\fR ?\fIcolumnDesc\fR? ?\fIoption value ...\fR?
+Adjust the view in the treectrl so that the item described by \fIitemDesc\fR
+is visible.
 If the item is already visible then the command has no effect;
 otherwise the treectrl scrolls to bring the item into view,
 and the corresponding \fB<Scroll-x>\fR and/or \fB<Scroll-y>\fR
-events are generated.
+events are generated. If \fIcolumnDesc\fR is specified then a specific column
+of the item is scrolled into view instead of the entire item.
+.sp
+The following options are supported:
+.RS
+.TP
+\fB\fB-center\fR\fR \fIflags\fR
+\fIFlags\fR is a string that contains zero or more of the characters \fBx\fR
+or \fBy\fR. This option is used to center the item horizontally and/or
+vertically in the window.  The item will be centered regardless of whether it
+is already visible.
+.RE
 .TP
 \fIpathName\fR \fBselection\fR \fIoption\fR \fIargs\fR
 This command is used to adjust the selection within a treectrl.
@@ -2559,6 +2570,32 @@ Any unselected items in \fIselect\fR are added to the selection,
 and any selected items in \fIdeselect\fR are removed from the selection (except
 for those items which are also in \fIselect\fR).
 A \fB<Selection>\fR event is generated if any items were selected or deselected.
+.RE
+.TP
+\fIpathName\fR \fBstate\fR \fIoption\fR \fIargs\fR
+This command is used to manipulate the list of user-defined states,
+see section \fBSTATES\fR below.
+The exact behavior of the command depends on the \fIoption\fR argument
+that follows the \fBstate\fR argument.
+The following forms of the command are supported:
+.RS
+.TP
+\fIpathName\fR \fBstate define\fR \fIstateName\fR
+Defines a new state with the name \fIstateName\fR,
+which must not be the name of an existing state.
+.TP
+\fIpathName\fR \fBstate linkage\fR \fIstateName\fR
+Returns a string indicating
+whether the specified state is user-defined
+by means of the \fBstate define\fR widget command (\fBdynamic\fR)
+or predefined by the treectrl widget itself (\fBstatic\fR).
+.TP
+\fIpathName\fR \fBstate names\fR
+Returns a list containing the names of all user-defined states.
+.TP
+\fIpathName\fR \fBstate undefine\fR ?\fIstateName ...\fR?
+Every \fIstateName\fR must be the name of a user-defined state.
+Removes this state from the list of user-defined states.
 .RE
 .TP
 \fIpathName\fR \fBstyle\fR \fIoption\fR ?\fIelement\fR? ?\fIarg arg ...\fR?

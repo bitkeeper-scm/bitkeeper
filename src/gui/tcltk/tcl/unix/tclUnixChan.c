@@ -218,6 +218,9 @@ static void		TcpAccept(ClientData data, int mask);
 static int		TcpBlockModeProc(ClientData data, int mode);
 static int		TcpCloseProc(ClientData instanceData,
 			    Tcl_Interp *interp);
+static int		TcpClose2Proc(ClientData instanceData,
+				      Tcl_Interp *interp,
+				      int flags);
 static int		TcpGetHandleProc(ClientData instanceData,
 			    int direction, ClientData *handlePtr);
 static int		TcpGetOptionProc(ClientData instanceData,
@@ -318,7 +321,7 @@ static Tcl_ChannelType tcpChannelType = {
     TcpGetOptionProc,		/* Get option proc. */
     TcpWatchProc,		/* Initialize notifier. */
     TcpGetHandleProc,		/* Get OS handles out of channel. */
-    NULL,			/* close2proc. */
+    TcpClose2Proc,		/* Close2 proc. */
     TcpBlockModeProc,		/* Set blocking or non-blocking mode.*/
     NULL,			/* flush proc. */
     NULL,			/* handler proc. */
@@ -1828,14 +1831,13 @@ TcpBlockModeProc(
  *
  * WaitForConnect --
  *
- *	Waits for a connection on an asynchronously opened socket to be
- *	completed.
+ *	Wait for a connection on an asynchronously opened socket to be
+ *	completed.  In nonblocking mode, just test if the connection
+ *	has completed without blocking.
  *
  * Results:
- *	None.
- *
- * Side effects:
- *	The socket is connected after this function returns.
+ * 	0 if the connection has completed, -1 if still in progress
+ * 	or there is an error.
  *
  *----------------------------------------------------------------------
  */
@@ -1862,9 +1864,6 @@ WaitForConnect(
 	errno = 0;
 	state = TclUnixWaitForFile(statePtr->fd,
 		TCL_WRITABLE | TCL_EXCEPTION, timeOut);
-	if (!(statePtr->flags & TCP_ASYNC_SOCKET)) {
-	    (void) TclUnixSetBlockingMode(statePtr->fd, TCL_MODE_BLOCKING);
-	}
 	if (state & TCL_EXCEPTION) {
 	    return -1;
 	}
@@ -1910,11 +1909,10 @@ TcpInputProc(
     int *errorCodePtr)		/* Where to store error code. */
 {
     TcpState *statePtr = (TcpState *) instanceData;
-    int bytesRead, state;
+    int bytesRead;
 
     *errorCodePtr = 0;
-    state = WaitForConnect(statePtr, errorCodePtr);
-    if (state != 0) {
+    if (WaitForConnect(statePtr, errorCodePtr) != 0) {
 	return -1;
     }
     bytesRead = recv(statePtr->fd, buf, (size_t) bufSize, 0);
@@ -1962,11 +1960,9 @@ TcpOutputProc(
 {
     TcpState *statePtr = (TcpState *) instanceData;
     int written;
-    int state;				/* Of waiting for connection. */
 
     *errorCodePtr = 0;
-    state = WaitForConnect(statePtr, errorCodePtr);
-    if (state != 0) {
+    if (WaitForConnect(statePtr, errorCodePtr) != 0) {
 	return -1;
     }
     written = send(statePtr->fd, buf, (size_t) toWrite, 0);
@@ -2018,6 +2014,57 @@ TcpCloseProc(
 	errorCode = errno;
     }
     ckfree((char *) statePtr);
+
+    return errorCode;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TcpClose2Proc --
+ *
+ *	This function is called by the generic IO level to perform the channel
+ *	type specific part of a half-close: namely, a shutdown() on a socket.
+ *
+ * Results:
+ *	0 if successful, the value of errno if failed.
+ *
+ * Side effects:
+ *	Shuts down one side of the socket.
+ *
+ *----------------------------------------------------------------------
+ */
+
+static int
+TcpClose2Proc(
+    ClientData instanceData,	/* The socket to close. */
+    Tcl_Interp *interp,		/* For error reporting. */
+    int flags)			/* Flags that indicate which side to close. */
+{
+    TcpState *statePtr = (TcpState *) instanceData;
+    int errorCode = 0;
+    int sd;
+
+    /*
+     * Shutdown the OS socket handle.
+     */
+    switch(flags)
+	{
+	case TCL_CLOSE_READ:
+	    sd=SHUT_RD;
+	    break;
+	case TCL_CLOSE_WRITE:
+	    sd=SHUT_WR;
+	    break;
+	default:
+	    if (interp) {
+		Tcl_AppendResult(interp, "Socket close2proc called bidirectionally", NULL);
+	    }
+	    return TCL_ERROR;
+	}
+    if (shutdown(statePtr->fd,sd)<0) {
+	errorCode = errno;
+    }
 
     return errorCode;
 }
@@ -2279,25 +2326,23 @@ CreateSocket(
 				 * attempt to do an async connect. Otherwise
 				 * do a synchronous connect or bind. */
 {
-    int status, sock, asyncConnect, curState, origState;
+    int status = 0, sock = -1;
     struct sockaddr_in sockaddr;	/* socket address */
     struct sockaddr_in mysockaddr;	/* Socket address for client */
     TcpState *statePtr;
     const char *errorMsg = NULL;
 
-    sock = -1;
-    origState = 0;
     if (!CreateSocketAddress(&sockaddr, host, port, 0, &errorMsg)) {
-	goto addressError;
+	goto error;
     }
     if ((myaddr != NULL || myport != 0) &&
 	    !CreateSocketAddress(&mysockaddr, myaddr, myport, 1, &errorMsg)) {
-	goto addressError;
+	goto error;
     }
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
-	goto addressError;
+	goto error;
     }
 
     /*
@@ -2313,7 +2358,6 @@ CreateSocket(
 
     TclSockMinimumBuffers(sock, SOCKET_BUFSIZE);
 
-    asyncConnect = 0;
     status = 0;
     if (server) {
 	/*
@@ -2321,9 +2365,9 @@ CreateSocket(
 	 * specified port.
 	 */
 
-	status = 1;
-	(void) setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *) &status,
-		sizeof(status));
+	int reuseaddr = 1;
+	(void) setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, 
+		      (char *) &reuseaddr, sizeof(reuseaddr));
 	status = bind(sock, (struct sockaddr *) &sockaddr,
 		sizeof(struct sockaddr));
 	if (status != -1) {
@@ -2331,13 +2375,13 @@ CreateSocket(
 	}
     } else {
 	if (myaddr != NULL || myport != 0) {
-	    curState = 1;
+	    int reuseaddr = 1;
 	    (void) setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
-		    (char *) &curState, sizeof(curState));
+		    (char *) &reuseaddr, sizeof(reuseaddr));
 	    status = bind(sock, (struct sockaddr *) &mysockaddr,
 		    sizeof(struct sockaddr));
 	    if (status < 0) {
-		goto bindError;
+		goto error;
 	    }
 	}
 
@@ -2350,38 +2394,36 @@ CreateSocket(
 
 	if (async) {
 	    status = TclUnixSetBlockingMode(sock, TCL_MODE_NONBLOCKING);
-	} else {
-	    status = 0;
-	}
-	if (status > -1) {
-	    status = connect(sock, (struct sockaddr *) &sockaddr,
-		    sizeof(sockaddr));
 	    if (status < 0) {
-		if (errno == EINPROGRESS) {
-		    asyncConnect = 1;
-		    status = 0;
-		}
-	    } else {
-		/*
-		 * Here we are if the connect succeeds. In case of an
-		 * asynchronous connect we have to reset the channel to
-		 * blocking mode. This appears to happen not very often, but
-		 * e.g. on a HP 9000/800 under HP-UX B.11.00 we enter this
-		 * stage. [Bug: 4388]
-		 */
-
-		if (async) {
-		    status = TclUnixSetBlockingMode(sock, TCL_MODE_BLOCKING);
-		}
+		goto error;
 	    }
+	}
+
+	status = connect(sock, (struct sockaddr *) &sockaddr,
+		sizeof(sockaddr));
+	if (status < 0) {
+	    if (errno == EINPROGRESS) {
+		status = 0;
+	    } else {
+		goto error;
+	    }
+	} 
+	if (async) {
+	    /*
+	     * Restore blocking mode.
+	     */
+	    status = TclUnixSetBlockingMode(sock, TCL_MODE_BLOCKING);
 	}
     }
 
-  bindError:
     if (status < 0) {
+error:
 	if (interp != NULL) {
 	    Tcl_AppendResult(interp, "couldn't open socket: ",
 		    Tcl_PosixError(interp), NULL);
+	    if (errorMsg != NULL) {
+		Tcl_AppendResult(interp, " (", errorMsg, ")", NULL);
+	    }
 	}
 	if (sock != -1) {
 	    close(sock);
@@ -2394,26 +2436,10 @@ CreateSocket(
      */
 
     statePtr = (TcpState *) ckalloc((unsigned) sizeof(TcpState));
-    statePtr->flags = 0;
-    if (asyncConnect) {
-	statePtr->flags = TCP_ASYNC_CONNECT;
-    }
+    statePtr->flags = async ? TCP_ASYNC_CONNECT : 0;
     statePtr->fd = sock;
 
     return statePtr;
-
-  addressError:
-    if (sock != -1) {
-	close(sock);
-    }
-    if (interp != NULL) {
-	Tcl_AppendResult(interp, "couldn't open socket: ",
-		Tcl_PosixError(interp), NULL);
-	if (errorMsg != NULL) {
-	    Tcl_AppendResult(interp, " (", errorMsg, ")", NULL);
-	}
-    }
-    return NULL;
 }
 
 /*
@@ -2798,7 +2824,7 @@ TcpAccept(
 	    "auto crlf");
 
     if (sockState->acceptProc != NULL) {
-	(*sockState->acceptProc)(sockState->acceptProcData,
+	sockState->acceptProc(sockState->acceptProcData,
 		newSockState->channel, inet_ntoa(addr.sin_addr),
 		ntohs(addr.sin_port));
     }
@@ -2828,7 +2854,7 @@ TclpGetDefaultStdChannel(
     Tcl_Channel channel = NULL;
     int fd = 0;			/* Initializations needed to prevent */
     int mode = 0;		/* compiler warning (used before set). */
-    char *bufMode = NULL;
+    const char *bufMode = NULL;
 
     /*
      * Some #def's to make the code a little clearer!
@@ -2986,6 +3012,8 @@ Tcl_GetOpenFile(
     return TCL_ERROR;
 }
 
+#ifndef HAVE_COREFOUNDATION	/* Darwin/Mac OS X CoreFoundation notifier is
+				 * in tclMacOSXNotify.c */
 /*
  *----------------------------------------------------------------------
  *
@@ -3023,12 +3051,21 @@ TclUnixWaitForFile(
 {
     Tcl_Time abortTime = {0, 0}, now; /* silence gcc 4 warning */
     struct timeval blockTime, *timeoutPtr;
-    int index, numFound, result = 0;
-    fd_mask bit;
-    fd_mask readyMasks[3*MASK_SIZE];
-    fd_mask *maskp[3];		/* This array reflects the readable/writable
-				 * conditions that were found to exist by the
-				 * last call to select. */
+    int numFound, result = 0;
+    fd_set readableMask;
+    fd_set writableMask;
+    fd_set exceptionalMask;
+
+#ifndef _DARWIN_C_SOURCE
+    /*
+     * Sanity check fd.
+     */
+
+    if (fd >= FD_SETSIZE) {
+	Tcl_Panic("TclUnixWaitForFile can't handle file id %d", fd);
+	/* must never get here, or select masks overrun will occur below */
+    }
+#endif
 
     /*
      * If there is a non-zero finite timeout, compute the time when we give
@@ -3053,16 +3090,12 @@ TclUnixWaitForFile(
     }
 
     /*
-     * Initialize the ready masks and compute the mask offsets.
+     * Initialize the select masks.
      */
 
-    if (fd >= FD_SETSIZE) {
-	Tcl_Panic("TclWaitForFile can't handle file id %d", fd);
-	/* must never get here, or readyMasks overrun will occur below */
-    }
-    memset(readyMasks, 0, 3*MASK_SIZE*sizeof(fd_mask));
-    index = fd / (NBBY*sizeof(fd_mask));
-    bit = ((fd_mask)1) << (fd % (NBBY*sizeof(fd_mask)));
+    FD_ZERO(&readableMask);
+    FD_ZERO(&writableMask);
+    FD_ZERO(&exceptionalMask);
 
     /*
      * Loop in a mini-event loop of our own, waiting for either the file to
@@ -3084,41 +3117,33 @@ TclUnixWaitForFile(
 	}
 
 	/*
-	 * Set the appropriate bit in the ready masks for the fd.
+	 * Setup the select masks for the fd.
 	 */
 
-	if (mask & TCL_READABLE) {
-	    readyMasks[index] |= bit;
+	if (mask & TCL_READABLE)  {
+	    FD_SET(fd, &readableMask);
 	}
-	if (mask & TCL_WRITABLE) {
-	    (readyMasks+MASK_SIZE)[index] |= bit;
+	if (mask & TCL_WRITABLE)  {
+	    FD_SET(fd, &writableMask);
 	}
 	if (mask & TCL_EXCEPTION) {
-	    (readyMasks+2*(MASK_SIZE))[index] |= bit;
+	    FD_SET(fd, &exceptionalMask);
 	}
 
 	/*
 	 * Wait for the event or a timeout.
 	 */
 
-	/*
-	 * This is needed to satisfy GCC 3.3's strict aliasing rules.
-	 */
-
-	maskp[0] = &readyMasks[0];
-	maskp[1] = &readyMasks[MASK_SIZE];
-	maskp[2] = &readyMasks[2*MASK_SIZE];
-	numFound = select(fd+1, (SELECT_MASK *) maskp[0],
-		(SELECT_MASK *) maskp[1],
-		(SELECT_MASK *) maskp[2], timeoutPtr);
+	numFound = select(fd + 1, &readableMask, &writableMask,
+		&exceptionalMask, timeoutPtr);
 	if (numFound == 1) {
-	    if (readyMasks[index] & bit) {
+	    if (FD_ISSET(fd, &readableMask))   {
 		SET_BITS(result, TCL_READABLE);
 	    }
-	    if ((readyMasks+MASK_SIZE)[index] & bit) {
+	    if (FD_ISSET(fd, &writableMask))  {
 		SET_BITS(result, TCL_WRITABLE);
 	    }
-	    if ((readyMasks+2*(MASK_SIZE))[index] & bit) {
+	    if (FD_ISSET(fd, &exceptionalMask)) { 
 		SET_BITS(result, TCL_EXCEPTION);
 	    }
 	    result &= mask;
@@ -3145,6 +3170,7 @@ TclUnixWaitForFile(
     }
     return result;
 }
+#endif /* HAVE_COREFOUNDATION */
 
 /*
  *----------------------------------------------------------------------

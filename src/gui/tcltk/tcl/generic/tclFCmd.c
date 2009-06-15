@@ -23,9 +23,9 @@ static int		CopyRenameOneFile(Tcl_Interp *interp,
 			    int copyFlag, int force);
 static Tcl_Obj *	FileBasename(Tcl_Interp *interp, Tcl_Obj *pathPtr);
 static int		FileCopyRename(Tcl_Interp *interp,
-			    int objc, Tcl_Obj *CONST objv[], int copyFlag);
+			    int objc, Tcl_Obj *const objv[], int copyFlag);
 static int		FileForceOption(Tcl_Interp *interp,
-			    int objc, Tcl_Obj *CONST objv[], int *forcePtr);
+			    int objc, Tcl_Obj *const objv[], int *forcePtr);
 
 /*
  *---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ TclFileRenameCmd(
     Tcl_Interp *interp,		/* Interp for error reporting or recursive
 				 * calls in the case of a tricky rename. */
     int objc,			/* Number of arguments. */
-    Tcl_Obj *CONST objv[])	/* Argument strings passed to Tcl_FileCmd. */
+    Tcl_Obj *const objv[])	/* Argument strings passed to Tcl_FileCmd. */
 {
     return FileCopyRename(interp, objc, objv, 0);
 }
@@ -79,7 +79,7 @@ TclFileCopyCmd(
     Tcl_Interp *interp,		/* Used for error reporting or recursive calls
 				 * in the case of a tricky copy. */
     int objc,			/* Number of arguments. */
-    Tcl_Obj *CONST objv[])	/* Argument strings passed to Tcl_FileCmd. */
+    Tcl_Obj *const objv[])	/* Argument strings passed to Tcl_FileCmd. */
 {
     return FileCopyRename(interp, objc, objv, 1);
 }
@@ -105,7 +105,7 @@ static int
 FileCopyRename(
     Tcl_Interp *interp,		/* Used for error reporting. */
     int objc,			/* Number of arguments. */
-    Tcl_Obj *CONST objv[],	/* Argument strings passed to Tcl_FileCmd. */
+    Tcl_Obj *const objv[],	/* Argument strings passed to Tcl_FileCmd. */
     int copyFlag)		/* If non-zero, copy source(s). Otherwise,
 				 * rename them. */
 {
@@ -121,7 +121,7 @@ FileCopyRename(
     if ((objc - i) < 2) {
 	Tcl_AppendResult(interp, "wrong # args: should be \"",
 		TclGetString(objv[0]), " ", TclGetString(objv[1]),
-		" ?options? source ?source ...? target\"", NULL);
+		" ?-option value ...? source ?source ...? target\"", NULL);
 	return TCL_ERROR;
     }
 
@@ -220,7 +220,7 @@ int
 TclFileMakeDirsCmd(
     Tcl_Interp *interp,		/* Used for error reporting. */
     int objc,			/* Number of arguments */
-    Tcl_Obj *CONST objv[])	/* Argument strings passed to Tcl_FileCmd. */
+    Tcl_Obj *const objv[])	/* Argument strings passed to Tcl_FileCmd. */
 {
     Tcl_Obj *errfile;
     int result, i, j, pobjc;
@@ -340,7 +340,7 @@ int
 TclFileDeleteCmd(
     Tcl_Interp *interp,		/* Used for error reporting */
     int objc,			/* Number of arguments */
-    Tcl_Obj *CONST objv[])	/* Argument strings passed to Tcl_FileCmd. */
+    Tcl_Obj *const objv[])	/* Argument strings passed to Tcl_FileCmd. */
 {
     int i, force, result;
     Tcl_Obj *errfile;
@@ -351,12 +351,6 @@ TclFileDeleteCmd(
 	return TCL_ERROR;
     }
     i += 2;
-    if ((objc - i) < 1) {
-	Tcl_AppendResult(interp, "wrong # args: should be \"",
-		TclGetString(objv[0]), " ", TclGetString(objv[1]),
-		" ?options? file ?file ...?\"", NULL);
-	return TCL_ERROR;
-    }
 
     errfile = NULL;
     result = TCL_OK;
@@ -522,12 +516,13 @@ CopyRenameOneFile(
 	}
 
 	/*
-	 * Prevent copying or renaming a file onto itself. Under Windows, stat
-	 * always returns 0 for st_ino. However, the Windows-specific code
-	 * knows how to deal with copying or renaming a file on top of itself.
-	 * It might be a good idea to write a stat that worked.
+	 * Prevent copying or renaming a file onto itself. On Windows since
+	 * 8.5 we do get an inode number, however the unsigned short field is
+	 * insufficient to accept the Win32 API file id so it is truncated to
+	 * 16 bits and we get collisions. See bug #2015723.
 	 */
 
+#ifndef WIN32
 	if ((sourceStatBuf.st_ino != 0) && (targetStatBuf.st_ino != 0)) {
 	    if ((sourceStatBuf.st_ino == targetStatBuf.st_ino) &&
 		    (sourceStatBuf.st_dev == targetStatBuf.st_dev)) {
@@ -535,6 +530,7 @@ CopyRenameOneFile(
 		goto done;
 	    }
 	}
+#endif
 
 	/*
 	 * Prevent copying/renaming a file onto a directory and vice-versa.
@@ -819,7 +815,7 @@ static int
 FileForceOption(
     Tcl_Interp *interp,		/* Interp, for error return. */
     int objc,			/* Number of arguments. */
-    Tcl_Obj *CONST objv[],	/* Argument strings.  First command line
+    Tcl_Obj *const objv[],	/* Argument strings.  First command line
 				 * option, if it exists, begins at 0. */
     int *forcePtr)		/* If the "-force" was specified, *forcePtr is
 				 * filled with 1, otherwise with 0. */
@@ -920,13 +916,13 @@ FileBasename(
  *	    Tcl_Interp *interp;	    The interp to report errors with. Since
  *				    this is an object-based API, the object
  *				    form of the result should be used.
- *	    CONST char *fileName;   This is extracted using
+ *	    const char *fileName;   This is extracted using
  *				    Tcl_TranslateFileName.
  *	    TclObj **attrObjPtrPtr; A new object to hold the attribute is
  *				    allocated and put here.
  *	The first two parameters of the callback used to write out the
  *	attributes are the same. The third parameter is:
- *	    CONST *attrObjPtr;	    A pointer to the object that has the new
+ *	    const *attrObjPtr;	    A pointer to the object that has the new
  *				    attribute.
  *	They both return standard TCL errors; if the routine to get an
  *	attribute fails, no object is allocated and *attrObjPtrPtr is
@@ -945,17 +941,18 @@ int
 TclFileAttrsCmd(
     Tcl_Interp *interp,		/* The interpreter for error reporting. */
     int objc,			/* Number of command line arguments. */
-    Tcl_Obj *CONST objv[])	/* The command line objects. */
+    Tcl_Obj *const objv[])	/* The command line objects. */
 {
     int result;
-    CONST char ** attributeStrings;
-    Tcl_Obj* objStrings = NULL;
+    const char *const *attributeStrings;
+    const char **attributeStringsAllocated = NULL;
+    Tcl_Obj *objStrings = NULL;
     int numObjStrings = -1;
     Tcl_Obj *filePtr;
 
     if (objc < 3) {
 	Tcl_WrongNumArgs(interp, 2, objv,
-		"name ?option? ?value? ?option value ...?");
+		"name ?-option value ...?");
 	return TCL_ERROR;
     }
 
@@ -1001,13 +998,14 @@ TclFileAttrsCmd(
 	if (Tcl_ListObjLength(interp, objStrings, &numObjStrings) != TCL_OK) {
 	    goto end;
 	}
-	attributeStrings = (CONST char **) TclStackAlloc(interp,
-		(1+numObjStrings) * sizeof(char*));
+	attributeStringsAllocated = (const char **)
+		TclStackAlloc(interp, (1+numObjStrings) * sizeof(char *));
 	for (index = 0; index < numObjStrings; index++) {
 	    Tcl_ListObjIndex(interp, objStrings, index, &objPtr);
-	    attributeStrings[index] = TclGetString(objPtr);
+	    attributeStringsAllocated[index] = TclGetString(objPtr);
 	}
-	attributeStrings[index] = NULL;
+	attributeStringsAllocated[index] = NULL;
+	attributeStrings = attributeStringsAllocated;
     }
     if (objc == 0) {
 	/*
@@ -1107,12 +1105,12 @@ TclFileAttrsCmd(
     result = TCL_OK;
 
   end:
-    if (numObjStrings != -1) {
+    if (attributeStringsAllocated != NULL) {
 	/*
 	 * Free up the array we allocated.
 	 */
 
-	TclStackFree(interp, (void *)attributeStrings);
+	TclStackFree(interp, (void *)attributeStringsAllocated);
 
 	/*
 	 * We don't need this object that was passed to us any more.

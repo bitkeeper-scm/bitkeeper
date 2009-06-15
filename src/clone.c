@@ -413,8 +413,7 @@ clone2(remote *r)
 	char	*p, *url;
 	char	*checkfiles;
 	FILE	*f;
-	int	i, rc = 0;
-	int	did_partial = 0;
+	int	i, rc = 0, didcheck = 0;
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "clone failed license accept check\n");
@@ -454,10 +453,11 @@ clone2(remote *r)
 	if (opts->rev) {
 		/* only product in HERE */
 		/* remove any later stuff */
-		rc = after(opts->quiet, opts->rev);
-		if (rc == UNDO_SKIP) {
-			/* undo exits 2 if it has no work to do */
-		} else if (rc != 0) {
+		unless (rc = after(opts->quiet, opts->rev)) {
+			didcheck = 1;
+		} else if (rc == UNDO_SKIP) {
+			/* No error, but nothing done: still run check */
+		} else {
 			fprintf(stderr,
 			    "Undo failed, repository left locked.\n");
 			return (-1);
@@ -480,14 +480,13 @@ clone2(remote *r)
 			return (-1);
 		}
 	}
-
-	unless (opts->rev && proj_isProduct(0) && !rc) {
+	if (!didcheck && (size(checkfiles) || full_check())) {
 		/* undo already runs check so we only need this case */
 		p = opts->quiet ? "-fT" : "-fvT";
 		if (proj_configbool(0, "partial_check")) {
-			rc = run_check(opts->quiet, checkfiles, p, &did_partial);
+			rc = run_check(opts->quiet, checkfiles, p, &didcheck);
 		} else {
-			rc = run_check(opts->quiet, 0, p, 0);
+			rc = run_check(opts->quiet, 0, p, &didcheck);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
@@ -499,13 +498,13 @@ clone2(remote *r)
 	free(checkfiles);
 
 	/*
-	 * lclone brings the CHECKED file over, meaning a partial_check
+	 * clone brings the CHECKED file over, meaning a partial_check
 	 * might actually be partial.  Normally check is relied on to
-	 * checkout all files.  But it might not happen in the lclone
-	 * case.  If we actually did a partial check, get the rest
-	 * of the files.
+	 * checkout all files.  But it might not happen in
+	 * partial_check mode.  If we actually did a partial check,
+	 * get the rest of the files.
 	 */
-	if (did_partial &&
+	if (!didcheck &&
 	    (proj_checkout(0) & (CO_GET|CO_EDIT|CO_BAM_GET|CO_BAM_EDIT))) {
 		unless (opts->quiet) {
 			fprintf(stderr, "Checking out files...\n");
@@ -654,8 +653,13 @@ sccs_rmUncommitted(int quiet, FILE *f)
 	}
 	EACH (files) {
 		if (f && exists(files[i])) fprintf(f, "%s\n", files[i]);
-
-		/* remove d.file */
+		/*
+		 * remove d.file.  If is there is a clone or lclone
+		 * Note: stripdel removes dfile only if sfiles was removed.
+		 * That is so emptydir processing works.
+		 * This can be removed if stripdel were to hand unlinking
+		 * of dfile in all cases.
+		 */
 		s = strrchr(files[i], '/');
 		assert(s[1] == 's');
 		s[1] = 'd';

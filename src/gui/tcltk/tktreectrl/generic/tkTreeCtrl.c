@@ -236,6 +236,9 @@ static Tk_OptionSpec optionSpecs[] = {
     {TK_OPTION_BOOLEAN, "-showrootbutton", "showRootButton",
      "ShowRootButton", "0", -1, Tk_Offset(TreeCtrl, showRootButton),
      0, (ClientData) NULL, TREE_CONF_RELAYOUT},
+    {TK_OPTION_BOOLEAN, "-showrootchildbuttons", "showRootChildButtons",
+     "ShowRootChildButtons", "1", -1, Tk_Offset(TreeCtrl, showRootChildButtons),
+     0, (ClientData) NULL, TREE_CONF_RELAYOUT},
     {TK_OPTION_STRING, "-takefocus", "takeFocus", "TakeFocus",
      DEF_LISTBOX_TAKE_FOCUS, -1, Tk_Offset(TreeCtrl, takeFocus),
      TK_OPTION_NULL_OK, 0, 0},
@@ -314,6 +317,7 @@ static void TreeDestroy(char *memPtr);
 static void TreeCmdDeletedProc(ClientData clientData);
 static void TreeWorldChanged(ClientData instanceData);
 static void TreeComputeGeometry(TreeCtrl *tree);
+static int TreeSeeCmd(TreeCtrl *tree, int objc, Tcl_Obj *CONST objv[]);
 static int TreeStateCmd(TreeCtrl *tree, int objc, Tcl_Obj *CONST objv[]);
 static int TreeSelectionCmd(Tcl_Interp *interp, TreeCtrl *tree, int objc,
     Tcl_Obj *CONST objv[]);
@@ -905,12 +909,18 @@ static int TreeWidgetCmd(
 
 	    sprintf(buf, "item %s%d", tree->itemPrefix, TreeItem_GetID(tree, item)); /* TreeItem_ToObj() */
 	    depth = TreeItem_GetDepth(tree, item);
-	    if (tree->showRoot || tree->showButtons || tree->showLines)
-		depth++;
-	    if (tree->showRoot && tree->showButtons && tree->showRootButton)
-		depth++;
 	    if (item == tree->root)
 		depth = (tree->showButtons && tree->showRootButton) ? 1 : 0;
+	    else if (tree->showRoot)
+	    {
+		depth++;
+		if (tree->showButtons && tree->showRootButton)
+		    depth++;
+	    }
+	    else if (tree->showButtons && tree->showRootChildButtons)
+		depth += 1;
+	    else if (tree->showLines && tree->showRootLines)
+		depth += 1;
 
 	    lock = (hit == TREE_AREA_LEFT) ? COLUMN_LOCK_LEFT :
 		(hit == TREE_AREA_RIGHT) ? COLUMN_LOCK_RIGHT :
@@ -1104,65 +1114,7 @@ static int TreeWidgetCmd(
 	}
 
 	case COMMAND_SEE: {
-	    TreeItem item;
-	    int x, y, w, h;
-	    int visWidth = Tree_ContentWidth(tree);
-	    int visHeight = Tree_ContentHeight(tree);
-	    int xOrigin = tree->xOrigin;
-	    int yOrigin = tree->yOrigin;
-	    int minX = Tree_ContentLeft(tree);
-	    int minY = Tree_ContentTop(tree);
-	    int maxX = Tree_ContentRight(tree);
-	    int maxY = Tree_ContentBottom(tree);
-	    int index, offset;
-
-	    if (objc != 3) {
-		Tcl_WrongNumArgs(interp, 2, objv, "item");
-		goto error;
-	    }
-	    if (TreeItem_FromObj(tree, objv[2], &item, IFO_NOT_NULL) != TCL_OK)
-		goto error;
-
-	    /* Canvas coords */
-	    if (Tree_ItemBbox(tree, item, COLUMN_LOCK_NONE, &x, &y, &w, &h) < 0)
-		break;
-
-	    if ((C2Wx(x) > maxX) || (C2Wx(x + w) <= minX) || (w <= visWidth)) {
-		if ((C2Wx(x) < minX) || (w > visWidth)) {
-		    index = Increment_FindX(tree, x);
-		    offset = Increment_ToOffsetX(tree, index);
-		    xOrigin = C2Ox(offset);
-		}
-		else if (C2Wx(x + w) > maxX) {
-		    index = Increment_FindX(tree, x + w - visWidth);
-		    offset = Increment_ToOffsetX(tree, index);
-		    if (offset < x + w - visWidth) {
-			index++;
-			offset = Increment_ToOffsetX(tree, index);
-		    }
-		    xOrigin = C2Ox(offset);
-		}
-	    }
-
-	    if ((C2Wy(y) > maxY) || (C2Wy(y + h) <= minY) || (h <= visHeight)) {
-		if ((C2Wy(y) < minY) || (h > visHeight)) {
-		    index = Increment_FindY(tree, y);
-		    offset = Increment_ToOffsetY(tree, index);
-		    yOrigin = C2Oy(offset);
-		}
-		else if (C2Wy(y + h) > maxY) {
-		    index = Increment_FindY(tree, y + h - visHeight);
-		    offset = Increment_ToOffsetY(tree, index);
-		    if (offset < y + h - visHeight) {
-			index++;
-			offset = Increment_ToOffsetY(tree, index);
-		    }
-		    yOrigin = C2Oy(offset);
-		}
-	    }
-
-	    Tree_SetOriginX(tree, xOrigin);
-	    Tree_SetOriginY(tree, yOrigin);
+	    result = TreeSeeCmd(tree, objc, objv);
 	    break;
 	}
 
@@ -2155,6 +2107,178 @@ Tree_FreeImage(
 	    ckfree((char *) ref);
 	}
     }
+}
+
+/*
+ *--------------------------------------------------------------
+ *
+ * TreeSeeCmd --
+ *
+ *	This procedure is invoked to process the [see] widget
+ *	command.  See the user documentation for details on what
+ *	it does.
+ *
+ * Results:
+ *	A standard Tcl result.
+ *
+ * Side effects:
+ *	See the user documentation.
+ *
+ *--------------------------------------------------------------
+ */
+
+static int
+TreeSeeCmd(
+    TreeCtrl *tree,		/* Widget info. */
+    int objc,			/* Number of arguments. */
+    Tcl_Obj *CONST objv[]	/* Argument values. */
+    )
+{
+    Tcl_Interp *interp = tree->interp;
+    TreeItem item;
+    TreeColumn treeColumn = NULL;
+    int x, y, w, h;
+    int visWidth = Tree_ContentWidth(tree);
+    int visHeight = Tree_ContentHeight(tree);
+    int xOrigin = Tree_GetOriginX(tree);
+    int yOrigin = Tree_GetOriginY(tree);
+    int minX = Tree_ContentLeft(tree);
+    int minY = Tree_ContentTop(tree);
+    int maxX = Tree_ContentRight(tree);
+    int maxY = Tree_ContentBottom(tree);
+    int index, offset;
+    int centerX = 0, centerY = 0;
+
+    if (objc < 3) {
+	Tcl_WrongNumArgs(interp, 2, objv, "item ?column? ?option value ...?");
+	return TCL_ERROR;
+    }
+    if (TreeItem_FromObj(tree, objv[2], &item, IFO_NOT_NULL) != TCL_OK)
+	return TCL_ERROR;
+
+    if (objc > 3) {
+	int i, k, len, firstOption = 3;
+	char *s = Tcl_GetStringFromObj(objv[3], &len);
+	if (s[0] != '-') {
+	    if (TreeColumn_FromObj(tree, objv[3], &treeColumn,
+		    CFO_NOT_NULL | CFO_NOT_TAIL) != TCL_OK)
+		return TCL_ERROR;
+	    firstOption = 4;
+	}
+
+	for (i = firstOption; i < objc; i += 2)
+	{
+	    static CONST char *optionNames[] = {
+		"-center", (char *) NULL
+	    };
+	    if (Tcl_GetIndexFromObj(interp, objv[i], optionNames,
+		    "option", 0, &index) != TCL_OK) {
+		return TCL_ERROR;
+	    }
+	    if (i + 1 == objc) {
+		FormatResult(interp, "missing value for \"%s\" option",
+			optionNames[index]);
+		return TCL_ERROR;
+	    }
+	    switch (index)
+	    {
+		case 0: { /* -center */
+		    char *s = Tcl_GetStringFromObj(objv[i+1], &len);
+		    for (k = 0; k < len; k++) {
+			switch (s[k]) {
+			    case 'x': case 'X': centerX = 1; break;
+			    case 'y': case 'Y': centerY = 1; break;
+			    default: {
+				Tcl_ResetResult(tree->interp);
+				Tcl_AppendResult(tree->interp,
+				    "bad -center value \"",
+				    s, "\": must be a string ",
+				    "containing zero or more of x and y",
+				    (char *) NULL);
+				return TCL_ERROR;
+			    }
+			}
+		    }
+		    break;
+		}
+	    }
+	}
+    }
+
+    /* Get the item bounds in canvas coords. */
+    if (Tree_ItemBbox(tree, item, COLUMN_LOCK_NONE, &x, &y, &w, &h) < 0)
+	return TCL_OK;
+
+    if (treeColumn != NULL) {
+	x += TreeColumn_Offset(treeColumn);
+	w = TreeColumn_UseWidth(treeColumn);
+    }
+
+    /* No horizontal scrolling for locked columns. */
+    if ((treeColumn != NULL) &&
+	    (TreeColumn_Lock(treeColumn) != COLUMN_LOCK_NONE)) {
+	/* nothing */
+
+    /* Center the item or column horizontally. */
+    } else if (centerX) {
+	index = Increment_FindX(tree, x + w/2 - visWidth/2);
+	offset = Increment_ToOffsetX(tree, index);
+	if (offset < x + w/2 - visWidth/2) {
+	    index++;
+	    offset = Increment_ToOffsetX(tree, index);
+	}
+	xOrigin = C2Ox(offset);
+
+    /* Scroll horizontally a minimal amount. */
+    } else if ((C2Wx(x) > maxX) || (C2Wx(x + w) <= minX) || (w <= visWidth)) {
+	if ((C2Wx(x) < minX) || (w > visWidth)) {
+	    index = Increment_FindX(tree, x);
+	    offset = Increment_ToOffsetX(tree, index);
+	    xOrigin = C2Ox(offset);
+	}
+	else if (C2Wx(x + w) > maxX) {
+	    index = Increment_FindX(tree, x + w - visWidth);
+	    offset = Increment_ToOffsetX(tree, index);
+	    if (offset < x + w - visWidth) {
+		index++;
+		offset = Increment_ToOffsetX(tree, index);
+	    }
+	    xOrigin = C2Ox(offset);
+	}
+    }
+
+    /* Center the item or column vertically. */
+    if (centerY) {
+	index = Increment_FindY(tree, y + h/2 - visHeight/2);
+	offset = Increment_ToOffsetY(tree, index);
+	if (offset < y + h/2 - visHeight/2) {
+	    index++;
+	    offset = Increment_ToOffsetY(tree, index);
+	}
+	yOrigin = C2Oy(offset);
+
+    /* Scroll vertically a minimal amount. */
+    } else if ((C2Wy(y) > maxY) || (C2Wy(y + h) <= minY) || (h <= visHeight)) {
+	if ((C2Wy(y) < minY) || (h > visHeight)) {
+	    index = Increment_FindY(tree, y);
+	    offset = Increment_ToOffsetY(tree, index);
+	    yOrigin = C2Oy(offset);
+	}
+	else if (C2Wy(y + h) > maxY) {
+	    index = Increment_FindY(tree, y + h - visHeight);
+	    offset = Increment_ToOffsetY(tree, index);
+	    if (offset < y + h - visHeight) {
+		index++;
+		offset = Increment_ToOffsetY(tree, index);
+	    }
+	    yOrigin = C2Oy(offset);
+	}
+    }
+
+    Tree_SetOriginX(tree, xOrigin);
+    Tree_SetOriginY(tree, yOrigin);
+
+    return TCL_OK;
 }
 
 /*
@@ -3229,11 +3353,11 @@ A_YviewCmd(
 		break;
 	}
 
-	/* Don't scroll too far left */
+	/* Don't scroll too far up */
 	if (index < 0)
 	    index = 0;
 
-	/* Don't scroll too far right */
+	/* Don't scroll too far down */
 	if (index > indexMax)
 	    index = indexMax;
 

@@ -53,7 +53,11 @@ bind TreeCtrl <Shift-KeyPress-Down> {
     TreeCtrl::Extend %W below
 }
 bind TreeCtrl <KeyPress-Left> {
-    TreeCtrl::SetActiveItem %W [TreeCtrl::LeftRight %W active -1]
+    if {[%W cget -orient] eq "vertical" && [%W cget -wrap] eq ""} {
+	%W item collapse [%W item id active]
+    } else {
+	TreeCtrl::SetActiveItem %W [TreeCtrl::LeftRight %W active -1]
+    }
 }
 bind TreeCtrl <Shift-KeyPress-Left> {
     TreeCtrl::Extend %W left
@@ -62,7 +66,11 @@ bind TreeCtrl <Control-KeyPress-Left> {
     %W xview scroll -1 pages
 }
 bind TreeCtrl <KeyPress-Right> {
-    TreeCtrl::SetActiveItem %W [TreeCtrl::LeftRight %W active 1]
+    if {[%W cget -orient] eq "vertical" && [%W cget -wrap] eq ""} {
+	%W item expand [%W item id active]
+    } else {
+	TreeCtrl::SetActiveItem %W [TreeCtrl::LeftRight %W active 1]
+    }
 }
 bind TreeCtrl <Shift-KeyPress-Right> {
     TreeCtrl::Extend %W right
@@ -247,6 +255,49 @@ proc ::TreeCtrl::ColumnCanMoveHere {w column before} {
 	[$w column compare $before <= "last lock $lock next"]}]
 }
 
+# ::TreeCtrl::ColumnsBbox --
+#
+# Returns the bounding box of an area of the header.  The [bbox] command
+# can't be used if the items area is completely obscured. [BUG 2355369]
+#
+# Arguments:
+# w		The treectrl widget.
+# area		left, content or right
+
+proc ::TreeCtrl::ColumnsBbox {w area} {
+    if {[$w bbox header] eq ""} return
+    scan [$w bbox header] "%d %d %d %d" x1 y1 x2 y2
+
+    # If the items area is not obscured then use the [bbox] command.
+    if {[$w bbox $area] ne ""} {
+	scan [$w bbox $area] "%d %d %d %d" x1 dummy x2 dummy
+	return "$x1 $y1 $x2 $y2"
+    }
+
+    set contentLeft $x1
+    if {[$w column id "last visible lock left"] ne ""} {
+	scan [$w column bbox "last visible lock left"] "%d %d %d %d" a b c d
+	set contentLeft $c
+    } elseif {$area eq "left"} {
+	return ""
+    }
+
+    set contentRight $x2
+    if {[$w column id "first visible lock right"] ne ""} {
+	scan [$w column bbox "first visible lock right"] "%d %d %d %d" a b c d
+	set contentRight $a
+    } elseif {$area eq "right"} {
+	return ""
+    }
+
+    switch -- $area {
+	left { set result "$x1 $y1 $contentLeft $y2" }
+	content { set result "$contentLeft $y1 $contentRight $y2" }
+	right { set result "$contentRight $y1 $x2 $y2" }
+    }
+    return $result
+}
+
 # ::TreeCtrl::ColumnDragFindBefore --
 #
 # This is called when dragging a column header. The result is 1 if the given
@@ -270,7 +321,10 @@ proc ::TreeCtrl::ColumnDragFindBefore {w x y dragColumn indColumn_ indSide_} {
 	none {set area content}
 	right {set area right}
     }
-    scan [$w bbox $area] "%d %d %d %d" minX y1 maxX y2
+
+# BUG 2355369
+#    scan [$w bbox $area] "%d %d %d %d" minX y1 maxX y2
+    scan [ColumnsBbox $w $area] "%d %d %d %d" minX y1 maxX y2
     if {$x < $minX} {
 	set x $minX
     }
@@ -1078,7 +1132,11 @@ proc ::TreeCtrl::AutoScanCancel {w} {
 
 proc ::TreeCtrl::ColumnDragScrollCheck {w x y} {
     variable Priv
-    scan [$w contentbox] "%d %d %d %d" x1 y1 x2 y2
+
+# BUG 2355369
+#    scan [$w contentbox] "%d %d %d %d" x1 y1 x2 y2
+    scan [ColumnsBbox $w content] "%d %d %d %d" x1 y1 x2 y2
+
     if {($x < $x1) || ($x >= $x2)} {
 	if {![info exists Priv(autoscan,afterId,$w)]} {
 	    set bbox1 [$w column bbox $Priv(column)]

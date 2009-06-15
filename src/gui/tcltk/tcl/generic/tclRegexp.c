@@ -108,7 +108,7 @@ static int		SetRegexpFromAny(Tcl_Interp *interp, Tcl_Obj *objPtr);
  * compiled form of the regular expression.
  */
 
-Tcl_ObjType tclRegexpType = {
+const Tcl_ObjType tclRegexpType = {
     "regexp",				/* name */
     FreeRegexpInternalRep,		/* freeIntRepProc */
     DupRegexpInternalRep,		/* dupIntRepProc */
@@ -678,7 +678,7 @@ Tcl_GetRegExpFromObj(
 {
     int length;
     TclRegexp *regexpPtr;
-    char *pattern;
+    const char *pattern;
 
     /*
      * This is OK because we only actually interpret this value properly as a
@@ -765,7 +765,7 @@ TclRegAbout(
 	{0,			NULL}
     };
     const struct infoname *inf;
-    Tcl_Obj *infoObj;
+    Tcl_Obj *infoObj, *resultObj;
 
     /*
      * The reset here guarantees that the interpreter result is empty and
@@ -781,7 +781,8 @@ TclRegAbout(
      * well and Tcl has other limits that constrain things as well...
      */
 
-    Tcl_ListObjAppendElement(NULL, Tcl_GetObjResult(interp),
+    resultObj = Tcl_NewObj();
+    Tcl_ListObjAppendElement(NULL, resultObj,
 	    Tcl_NewIntObj((int) regexpPtr->re.re_nsub));
 
     /*
@@ -795,7 +796,8 @@ TclRegAbout(
 		    Tcl_NewStringObj(inf->text, -1));
 	}
     }
-    Tcl_ListObjAppendElement(NULL, Tcl_GetObjResult(interp), infoObj);
+    Tcl_ListObjAppendElement(NULL, resultObj, infoObj);
+    Tcl_SetObjResult(interp, resultObj);
 
     return 0;
 }

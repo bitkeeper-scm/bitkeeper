@@ -15,7 +15,7 @@ resource 'vers' (2) {
 	TBL_MAJOR_VERSION, TBL_MINOR_VERSION,
 	final, 0x00, verUS,
 	PACKAGE_VERSION,
-	"tkTable " PACKAGE_VERSION " © 1997-2002"
+	"tkTable " PACKAGE_VERSION " © 1997-2008"
 };
 
 /*
@@ -42,6 +42,6 @@ read 'TEXT' (3000, "tkTable", purgeable, preload) "tkTable.tcl";
 data 'TEXT' (4000, "pkgIndex", purgeable, preload) {
 	"if {[catch {package require Tcl 8.2}]} return\n"
 	"package ifneeded Tktable " PACKAGE_VERSION " "
-+	"\"package require Tk 8.2; "
-+	"[list load [file join $dir Tktable[info sharedlibextension]] Tktable]\""
+	"\"package require Tk 8.2; "
+	"[list load [file join $dir Tktable[info sharedlibextension]] Tktable]\""
 };

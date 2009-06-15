@@ -205,7 +205,7 @@ test event-5.3 {HandleBgErrors: [Bug 1670155]} -setup {
     rename demo {}
     rename trial {}
 } -result {}
-test event-5.3 {Default [interp bgerror] handler} -body {
+test event-5.3.1 {Default [interp bgerror] handler} -body {
     ::tcl::Bgerror
 } -returnCodes error -match glob -result {*msg options*}
 test event-5.4 {Default [interp bgerror] handler} -body {

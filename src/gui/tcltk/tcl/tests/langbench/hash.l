@@ -1,3 +1,4 @@
+void
 main(int ac, string av[])
 {
 	int	i;

@@ -16,15 +16,14 @@
 #include "tkMacOSXPrivate.h"
 #include "tkMacOSXEvent.h"
 #include "tkMacOSXDebug.h"
-
 
 /*
  *----------------------------------------------------------------------
  *
  * TkMacOSXFlushWindows --
  *
- *	This routine flushes all the Carbon windows of the application. It
- *	is called by XSync().
+ *	This routine flushes all the Carbon windows of the application. It is
+ *	called by XSync().
  *
  * Results:
  *	None.
@@ -62,10 +61,10 @@ TkMacOSXFlushWindows(void)
  *	This dispatches a filtered Carbon event to the appropriate handler
  *
  *	Note on MacEventStatus.stopProcessing: Please be conservative in the
- *	individual handlers and don't assume the event is fully handled
- *	unless you *really* need to ensure that other handlers don't see the
- *	event anymore. Some OS manager or library might be interested in
- *	events even after they are already handled on the Tk level.
+ *	individual handlers and don't assume the event is fully handled unless
+ *	you *really* need to ensure that other handlers don't see the event
+ *	anymore. Some OS manager or library might be interested in events even
+ *	after they are already handled on the Tk level.
  *
  * Results:
  *	0 on success
@@ -83,32 +82,35 @@ TkMacOSXProcessEvent(
     MacEventStatus *statusPtr)
 {
     switch (eventPtr->eClass) {
-	case kEventClassMouse:
-	    TkMacOSXProcessMouseEvent(eventPtr, statusPtr);
-	    break;
-	case kEventClassWindow:
-	    TkMacOSXProcessWindowEvent(eventPtr, statusPtr);
-	    break;
-	case kEventClassKeyboard:
-	    TkMacOSXProcessKeyboardEvent(eventPtr, statusPtr);
-	    break;
-	case kEventClassApplication:
-	    TkMacOSXProcessApplicationEvent(eventPtr, statusPtr);
-	    break;
-	case kEventClassAppearance:
-	    TkMacOSXProcessAppearanceEvent(eventPtr, statusPtr);
-	    break;
-	case kEventClassMenu:
-	    TkMacOSXProcessMenuEvent(eventPtr, statusPtr);
-	    break;
-	case kEventClassCommand:
-	    TkMacOSXProcessCommandEvent(eventPtr, statusPtr);
-	    break;
-	default: {
-	    TkMacOSXDbgMsg("Unrecognised event: %s",
-		    TkMacOSXCarbonEventToAscii(eventPtr->eventRef));
-	    break;
-	}
+    case kEventClassMouse:
+	TkMacOSXProcessMouseEvent(eventPtr, statusPtr);
+	break;
+    case kEventClassWindow:
+	TkMacOSXProcessWindowEvent(eventPtr, statusPtr);
+	break;
+    case kEventClassKeyboard:
+	TkMacOSXProcessKeyboardEvent(eventPtr, statusPtr);
+	break;
+    case kEventClassApplication:
+	TkMacOSXProcessApplicationEvent(eventPtr, statusPtr);
+	break;
+    case kEventClassAppearance:
+	TkMacOSXProcessAppearanceEvent(eventPtr, statusPtr);
+	break;
+    case kEventClassMenu:
+	TkMacOSXProcessMenuEvent(eventPtr, statusPtr);
+	break;
+    case kEventClassCommand:
+	TkMacOSXProcessCommandEvent(eventPtr, statusPtr);
+	break;
+    case kEventClassFont:
+	TkMacOSXProcessFontEvent(eventPtr, statusPtr);
+	break;
+    default: {
+	TkMacOSXDbgMsg("Unrecognised event: %s",
+		TkMacOSXCarbonEventToAscii(eventPtr->eventRef));
+	break;
+    }
     }
     return 0;
 }
@@ -118,8 +120,8 @@ TkMacOSXProcessEvent(
  *
  * TkMacOSXProcessMenuEvent --
  *
- *	This routine processes the event in eventPtr, and
- *	generates the appropriate Tk events from it.
+ *	This routine processes the event in eventPtr, and generates the
+ *	appropriate Tk events from it.
  *
  * Results:
  *	True if event(s) are generated - false otherwise.
@@ -137,61 +139,65 @@ TkMacOSXProcessMenuEvent(
 {
     int menuContext;
     OSStatus err;
+    MenuRef menu;
+    MenuItemIndex index;
 
     switch (eventPtr->eKind) {
-	case kEventMenuBeginTracking:
-	case kEventMenuEndTracking:
-	case kEventMenuOpening:
-	case kEventMenuTargetItem:
-	    break;
-	default:
-	    return 0;
-	    break;
+    case kEventMenuBeginTracking:
+    case kEventMenuEndTracking:
+    case kEventMenuOpening:
+    case kEventMenuTargetItem:
+	break;
+    default:
+	return 0;
     }
-    err = ChkErr(GetEventParameter, eventPtr->eventRef, kEventParamMenuContext,
-	    typeUInt32, NULL, sizeof(menuContext), NULL, &menuContext);
-    if (err == noErr && ((menuContext & kMenuContextMenuBarTracking) ||
-	    (menuContext & kMenuContextPopUpTracking))) {
+    err = ChkErr(GetEventParameter, eventPtr->eventRef,
+	    kEventParamMenuContext, typeUInt32, NULL, sizeof(menuContext),
+	    NULL, &menuContext);
+    if (err != noErr) {
+	return 0;
+    }
+
+    if ((menuContext & kMenuContextMenuBarTracking) ||
+	    (menuContext & kMenuContextPopUpTracking)) {
 	switch (eventPtr->eKind) {
-	    MenuRef menu;
+	case kEventMenuBeginTracking:
+	    TkMacOSXClearMenubarActive();
 
-	    case kEventMenuBeginTracking:
-		TkMacOSXClearMenubarActive();
+	    /*
+	     * Handle -postcommand
+	     */
 
-		/*
-		 * Handle -postcommand
-		 */
+	    TkMacOSXPreprocessMenu();
+	    TkMacOSXTrackingLoop(1);
+	    break;
+	case kEventMenuEndTracking:
+	    TkMacOSXTrackingLoop(0);
+	    break;
+	case kEventMenuOpening:
+	    err = ChkErr(GetEventParameter, eventPtr->eventRef,
+		    kEventParamDirectObject, typeMenuRef, NULL, sizeof(menu),
+		    NULL, &menu);
+	    if (err != noErr) {
+		return 0;
+	    }
+	    TkMacOSXClearActiveMenu(menu);
+	    return TkMacOSXGenerateParentMenuSelectEvent(menu);
+	case kEventMenuTargetItem:
+	    err = ChkErr(GetEventParameter, eventPtr->eventRef,
+		    kEventParamDirectObject, typeMenuRef, NULL, sizeof(menu),
+		    NULL, &menu);
+	    if (err != noErr) {
+		return 0;
+	    }
 
-		TkMacOSXPreprocessMenu();
-		TkMacOSXTrackingLoop(1);
-		break;
-	    case kEventMenuEndTracking:
-		TkMacOSXTrackingLoop(0);
-		break;
-	    case kEventMenuOpening:
-		err = ChkErr(GetEventParameter, eventPtr->eventRef,
-			kEventParamDirectObject, typeMenuRef, NULL,
-			sizeof(menu), NULL, &menu);
-		if (err == noErr) {
-		    TkMacOSXClearActiveMenu(menu);
-		    return TkMacOSXGenerateParentMenuSelectEvent(menu);
-		}
-		break;
-	    case kEventMenuTargetItem:
-		err = ChkErr(GetEventParameter, eventPtr->eventRef,
-			kEventParamDirectObject, typeMenuRef, NULL,
-			sizeof(menu), NULL, &menu);
-		if (err == noErr) {
-		    MenuItemIndex index;
-
-		    err = ChkErr(GetEventParameter, eventPtr->eventRef,
-			    kEventParamMenuItemIndex, typeMenuItemIndex, NULL,
-			    sizeof(index), NULL, &index);
-		    if (err == noErr) {
-			return TkMacOSXGenerateMenuSelectEvent(menu, index);
-		    }
-		}
-		break;
+	    err = ChkErr(GetEventParameter, eventPtr->eventRef,
+		    kEventParamMenuItemIndex, typeMenuItemIndex, NULL,
+		    sizeof(index), NULL, &index);
+	    if (err != noErr) {
+		return 0;
+	    }
+	    return TkMacOSXGenerateMenuSelectEvent(menu, index);
 	}
     }
     return 0;
@@ -202,8 +208,8 @@ TkMacOSXProcessMenuEvent(
  *
  * TkMacOSXProcessCommandEvent --
  *
- *	This routine processes the event in eventPtr, and
- *	generates the appropriate Tk events from it.
+ *	This routine processes the event in eventPtr, and generates the
+ *	appropriate Tk events from it.
  *
  * Results:
  *	True if event(s) are generated - false otherwise.
@@ -217,29 +223,37 @@ TkMacOSXProcessMenuEvent(
 MODULE_SCOPE int
 TkMacOSXProcessCommandEvent(
     TkMacOSXEvent *eventPtr,
-    MacEventStatus * statusPtr)
+    MacEventStatus *statusPtr)
 {
     HICommand command;
     int menuContext;
     OSStatus err;
 
     switch (eventPtr->eKind) {
-	case kEventCommandProcess:
-	case kEventCommandUpdateStatus:
-	    break;
-	default:
-	    return 0;
-	    break;
+    case kEventCommandProcess:
+    case kEventCommandUpdateStatus:
+	break;
+    default:
+	return 0;
     }
+
     err = ChkErr(GetEventParameter, eventPtr->eventRef,
 	    kEventParamDirectObject, typeHICommand, NULL, sizeof(command),
 	    NULL, &command);
-    if (err == noErr && (command.attributes & kHICommandFromMenu)) {
+    if (err != noErr) {
+	return 0;
+    }
+
+    if (command.attributes & kHICommandFromMenu) {
 	if (eventPtr->eKind == kEventCommandProcess) {
 	    err = ChkErr(GetEventParameter, eventPtr->eventRef,
 		    kEventParamMenuContext, typeUInt32, NULL,
 		    sizeof(menuContext), NULL, &menuContext);
-	    if (err == noErr && (menuContext & kMenuContextMenuBar) &&
+	    if (err != noErr) {
+		return 0;
+	    }
+
+	    if ((menuContext & kMenuContextMenuBar) &&
 		    (menuContext & kMenuContextMenuBarTracking)) {
 		TkMacOSXHandleMenuSelect(GetMenuID(command.menu.menuRef),
 			command.menu.menuItemIndex,
@@ -248,7 +262,9 @@ TkMacOSXProcessCommandEvent(
 	    }
 	} else {
 	    Tcl_CmdInfo dummy;
-	    if (command.commandID == kHICommandPreferences && eventPtr->interp) {
+
+	    if (command.commandID == kHICommandPreferences
+		    && eventPtr->interp != NULL) {
 		if (Tcl_GetCommandInfo(eventPtr->interp,
 			"::tk::mac::ShowPreferences", &dummy)) {
 		    if (!IsMenuItemEnabled(command.menu.menuRef,
@@ -270,3 +286,11 @@ TkMacOSXProcessCommandEvent(
     }
     return 0;
 }
+
+/*
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 4
+ * fill-column: 78
+ * End:
+ */

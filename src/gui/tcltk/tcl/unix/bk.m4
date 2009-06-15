@@ -16,7 +16,7 @@
 #		BK_DIR	Full path to the src directory in the BK repository
 #----------------------------------------------------------------------
 
-AC_DEFUN(SC_PATH_BK, [
+AC_DEFUN([SC_PATH_BK], [
 	if test x"${no_bk}" = x ; then
 		# reset no_bk in case something fails
 		no_bk=true

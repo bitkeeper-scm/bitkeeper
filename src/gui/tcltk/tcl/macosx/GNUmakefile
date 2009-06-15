@@ -76,7 +76,7 @@ OBJ_DIR			= ${OBJROOT}/${BUILD_STYLE}
 
 empty			:=
 space			:= ${empty} ${empty}
-objdir			:= $(subst ${space},\ ,${OBJ_DIR})
+objdir			= $(subst ${space},\ ,${OBJ_DIR})
 
 develop_make_args	:= BUILD_STYLE=Development CONFIGURE_ARGS=--enable-symbols
 deploy_make_args	:= BUILD_STYLE=Deployment INSTALL_TARGET=install-strip \
@@ -108,7 +108,7 @@ ifeq (${EMBEDDED_BUILD},)
 INSTALL_TARGETS		+= install-private-headers
 endif
 ifeq (${INSTALL_BUILD}_${EMBEDDED_BUILD}_${BUILD_STYLE},1__Deployment)
-INSTALL_TARGETS		+= html-tcl
+INSTALL_TARGETS		+= install-packages html-tcl
 ifneq (${INSTALL_MANPAGES},)
 INSTALL_TARGETS		+= install-doc
 endif

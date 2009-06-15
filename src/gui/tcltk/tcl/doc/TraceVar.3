@@ -123,14 +123,16 @@ Whenever one of the specified operations occurs on the variable,
 \fIproc\fR will be invoked.
 It should have arguments and result that match the type
 \fBTcl_VarTraceProc\fR:
+.PP
 .CS
-typedef char *Tcl_VarTraceProc(
+typedef char *\fBTcl_VarTraceProc\fR(
         ClientData \fIclientData\fR,
         Tcl_Interp *\fIinterp\fR,
         char *\fIname1\fR,
         char *\fIname2\fR,
         int \fIflags\fR);
 .CE
+.PP
 The \fIclientData\fR and \fIinterp\fR parameters will
 have the same values as those passed to \fBTcl_TraceVar\fR when the
 trace was created.

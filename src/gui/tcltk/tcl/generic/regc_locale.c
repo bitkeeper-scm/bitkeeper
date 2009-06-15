@@ -790,14 +790,14 @@ cclass(
     struct cvec *cv = NULL;
     Tcl_DString ds;
     const char *np;
-    const char **namePtr;
+    const char *const *namePtr;
     int i, index;
 
     /*
      * The following arrays define the valid character class names.
      */
 
-    static const char *classNames[] = {
+    static const char *const classNames[] = {
 	"alnum", "alpha", "ascii", "blank", "cntrl", "digit", "graph",
 	"lower", "print", "punct", "space", "upper", "xdigit", NULL
     };

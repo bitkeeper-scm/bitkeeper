@@ -571,7 +571,6 @@ $
 BitKeeper version is @version@
 Options: #BKARG#
 Built by: @builder@
-Built on: @built_date@
 $
 #config_preamble
 This is the BitKeeper configuration for this package.

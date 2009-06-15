@@ -75,6 +75,7 @@ private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
 private	void	prefix(sccs *s,
 		    delta *d, u32 flags, int lines, char *name, FILE *out);
+private	void	sfindRealloc(sccs *s);
 
 /*
  * returns 1 if dir is a directory that is not empty
@@ -690,32 +691,44 @@ dinsert(sccs *s, delta *d, int fixDate)
 	sccs_findKeyUpdate(s, d);
 }
 
+void
+sfind_update(sccs *s, delta *d)
+{
+	if (s->ser2delta && (d->serial < s->ser2dsize)) {
+		s->ser2delta[d->serial] = d;
+	}
+}
+
 /*
  * Find the delta referenced by the serial number.
+ * The first call will allocate but any deltas added after the
+ * first call will be searched for the slow way.
  */
 delta *
 sfind(sccs *s, ser_t serial)
 {
 	delta	*t;
 
+	unless (serial) return (0);
 	assert(serial <= s->nextserial);
-	if (serial >= s->ser2dsize) goto realloc;
-	if (s->ser2delta && s->ser2delta[serial]) return (s->ser2delta[serial]);
-	if (s->ser2delta) {
-		for (t = s->table; t; t = t->next) {
-			if (t->serial == serial) {
-				assert(serial < s->ser2dsize);
-				s->ser2delta[serial] = t;
-				return (t);
-			}
-		}
-		return (0);
+	unless (s->ser2delta) sfindRealloc(s);
+	if (serial < s->ser2dsize) {
+		return (s->ser2delta[serial]);
 	}
+	for (t = s->table; t; t = t->next) {
+		unless (t->serial > serial) break;
+	}
+	if (t->serial == serial) return (t);
+	return (0);
+}
 
-realloc:
+private	void
+sfindRealloc(sccs *s)
+{
+	delta	*t;
+
 	if (s->ser2delta) free(s->ser2delta);
-	/* We leave a little extra room for sccs_delta. */
-	s->ser2dsize = s->nextserial+10;
+	s->ser2dsize = s->nextserial;
 	s->ser2delta = calloc(s->ser2dsize, sizeof(delta*));
 	for (t = s->table; t; t = t->next) {
 		if (t->serial >= s->ser2dsize) {
@@ -725,7 +738,6 @@ realloc:
 		assert(t->serial < s->ser2dsize);
 		s->ser2delta[t->serial] = t;
 	}
-	return (s->ser2delta[serial]);
 }
 
 /*
@@ -863,31 +875,26 @@ sccs_date2time(char *date, char *zone)
 }
 
 /*
- * The prev pointer is a more recent delta than this one,
- * so make sure that the prev date is > that this one.
+ * Make sure that dates always increase in serial order.
+ * XXX: note, this does not need to be true to have a valid bk graph
+ * If the keys sort alphabetically with time the same, that is good enough.
  */
-private void
-fixDates(delta *prev, delta *d)
-{
-	DATE(d);
-
-	/* recurse forwards first */
-	if (d->next) fixDates(d, d->next);
-
-	/* When we get here, we're done. */
-	unless (prev) return;
-
-	if (prev->date <= d->date) {
-		int	f = (d->date - prev->date) + 1;
-		prev->dateFudge += f;
-		prev->date += f;
-	}
-}
-
 void
 sccs_fixDates(sccs *s)
 {
-	fixDates(0, s->table);
+	int	i, f;
+	delta	*d, *prev = 0;
+
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, i)) continue;
+		DATE(d);
+		if (prev && (prev->date <= d->date)) {
+			f = (d->date - prev->date) + 1;
+			prev->dateFudge += f;
+			prev->date += f;
+		}
+		prev = d;
+	}
 }
 
 char	*
@@ -908,6 +915,8 @@ age(time_t when, char *space)
 		}							\
 	}
 
+	DOIT(1, MINUTE, "seconds");		/* first 3 minutes as seconds */
+	DOIT(MINUTE, HOUR, "minutes");		/* first 3 hours as minutes */
 	DOIT(HOUR, DAY, "hours");		/* first 3 days as hours */
 	DOIT(DAY, WEEK, "days");		/* first 3 weeks as days */
 	DOIT(WEEK, MONTH, "weeks");		/* first 3 months as days */
@@ -1300,29 +1309,6 @@ sccsrev(delta *d)
 }
 
 /*
- * Return true if you can get to p by work upwards from d
- */
-private int
-ancestor(sccs *s, delta *d, delta *p)
-{
-	delta	*e;
-
-	unless (d) return (0);
-	unless (d->serial >= p->serial) return (0);
-
-	/* try the easy path first */
-	for (e = d; e; e = e->parent) {
-		if (e == p) return (1);
-	}
-
-	/* walk the merge parents */
-	for (e = d; e; e = e->parent) {
-		if (e->merge && ancestor(s, sfind(s, e->merge), p)) return (1);
-	}
-	return (0);
-}
-
-/*
  * This one assumes SCCS style branch numbering, i.e., x.y.z.d
  */
 private int
@@ -1605,6 +1591,9 @@ private ser_t	R[4];
 /*
  * This one uses the globals set up below.  This hack makes this library
  * !MT safe.  Which it wasn't anyway.
+ * XXX: wouldn't it have been simpler to use what kid and sibling mean
+ * to just walk to the place of interest?  No stack windup, no recurse
+ * higher perf, simpler code, saner walk, etc.
  */
 private delta *
 _rfind(delta *d)
@@ -9119,12 +9108,30 @@ sccs_info(sccs *s, u32 flags)
 
 /*
  * Work backwards and count all the lines for this delta.
+ *
+ * XXX: This is wrong and if it comes up a number that is close, that
+ *      is because of probability and luck.  This ignores lines added
+ *      and deleted on any branches.  In other words, if I add 10 lines
+ *      on the trunk and 10 lines somewhere else on the branch, then merge,
+ *      the merge will have +0 and -0 and this alg only considers trunk,
+ *      so it will show 10 fewer lines than real.  Now it is also wrong to
+ *      then include the branch in the walk, because of deletes -- if there
+ *      is a delete on a branch and the trunk, then no way to know if they
+ *      were the same line or different lines.  The only way around it
+ *      is to walk the weave and see.
+ *      This is only used to output after a delta so that it is wrong
+ *      doesn't really matter.
  */
 private int
 count_lines(delta *d)
 {
-	if (!d) return (0);
-	return (count_lines(d->parent) + d->added - d->deleted);
+	int	count = 0;
+
+	while (d) {
+		count += d->added - d->deleted;
+		d = d->parent;
+	}
+	return (count);
 }
 
 /*
@@ -10804,9 +10811,8 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 int
 sccs_xflags(delta *d)
 {
-	unless (d) return (0);
-	if (d->flags & D_XFLAGS) return (d->xflags);
-	if (d->parent) return (sccs_xflags(d->parent));
+	while (d && !(d->flags & D_XFLAGS)) d = d->parent;
+	if (d) return (d->xflags);
 	return (0); /* old sfile, xflags values unknown */
 }                    
 
@@ -11450,25 +11456,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 #undef	OUT
 }
 
-private	char *scompress_file;
-
-private int
-scompress(delta *d)
-{
-	int	s;
-
-	unless (d) return (1);
-	s = scompress(d->next);
-	if (s != d->serial) {
-		if (scompress_file) {
-			fprintf(stderr,
-			    "Remap %s:%d ->%d\n", scompress_file, d->serial, s);
-		}
-		d->serial = s;
-	}
-	return (d->serial + 1);
-}
-
 /*
  * Remve any gaps in the serial numbers.
  * Should be called after a stripdel.
@@ -11477,10 +11464,10 @@ int
 sccs_scompress(sccs *s, int flags)
 {
 	FILE	*sfile = 0;
-	int	ser, error = 0, locked = 0, i;
+	int	ser, error = 0, locked = 0, i, j;
 	char	*buf;
 	delta	*d;
-	ser_t	*orig, *remap;
+	ser_t	*remap;
 
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr, "scompress: can't get lock on %s\n", s->sfile);
@@ -11493,22 +11480,22 @@ out:
 	}
 #define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
 
-	orig = calloc(sizeof(ser_t), s->nextserial);
 	remap = calloc(sizeof(ser_t), s->nextserial);
-	for (i = 0, d = s->table; d; d = d->next) orig[i++] = d->serial;
 
-	if (flags & SILENT) {
-		scompress_file = 0;
-	} else {
-		scompress_file = s->gfile;
-	}
-	scompress(s->table);
-	for (i = 0, d = s->table; d; d = d->next, i++) {
+	ser = 0;
+	for (j = 1; j < s->nextserial; j++) {
+		unless (d = sfind(s, j)) continue;
+		ser++;
+		if (ser != j) {
+			unless (flags & SILENT) {
+				fprintf(stderr, "Remap %s:%d ->%d\n",
+				    s->gfile, j, ser);
+			}
+			d->serial = ser;
+		}
 		if (d->next) assert(d->serial == (d->next->serial + 1));
-		remap[orig[i]] = d->serial;
-	}
+		remap[j] = ser;
 
-	for (d = s->table; d; d = d->next) {
 		d->pserial = remap[d->pserial];
 		if (d->ptag) d->ptag = remap[d->ptag];
 		if (d->mtag) d->mtag = remap[d->mtag];
@@ -15601,27 +15588,6 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 	return (0);
 }
 
-/*
- * return the number of nodes, including this one, in this subgraph.
- */
-private int
-numNodes(delta *d)
-{
-	if (!d || (d->type != 'D')) return (0);
-
-	return (1 + numNodes(d->kid) + numNodes(d->siblings));
-}
-
-private void
-addNodes(sccs *s, delta **list, int j, delta *d)
-{
-	if (!d || (d->type != 'D')) return;
-	list[j++] = d;
-	addNodes(s, list, j, d->kid);
-	while (list[j]) j++;
-	addNodes(s, list, j, d->siblings);
-}
-
 private inline int
 samekeystr(char *a, char *b)
 {
@@ -16642,11 +16608,12 @@ out:	if (s) sccs_free(s);
 void
 sccs_color(sccs *s, delta *d)
 {
-        unless (d && !(d->flags & D_RED)) return;
-        assert(d->type == 'D');
-        sccs_color(s, d->parent);
-        if (d->merge) sccs_color(s, sfind(s, d->merge));
-        d->flags |= D_RED;
+        while (d && !(d->flags & D_RED)) {
+        	assert(d->type == 'D');
+        	d->flags |= D_RED;
+        	if (d->merge) sccs_color(s, sfind(s, d->merge));
+        	d = d->parent;
+	}
 }
 
 /*

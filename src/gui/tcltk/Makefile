@@ -3,7 +3,7 @@ OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
 BKROOT	:= $(shell bk -P root)
 
 # The Tk version is tied to the Tcl version so you only need to change TCL
-TCLVERSION := 8.5
+TCLVERSION := 8.6
 
 ifeq "$(OSTYPE)" "msys"
 	S := win
@@ -12,7 +12,7 @@ ifeq "$(OSTYPE)" "msys"
 	STRIP := true
 	XFTSUPPORT :=
 	SHARED := --enable-shared
-	PCRE_OBJ:= bin/tcl85.dll
+	PCRE_OBJ:= bin/tcl$(subst .,,$(TCLVERSION)).dll
 else
 	S := unix
 	EXE :=
@@ -44,7 +44,7 @@ else
 endif
 
 ifdef	DEBUG_TCL
-	SYMBOLS	:= --enable-symbols
+	SYMBOLS	:= --enable-symbols=all
 endif
 
 ifdef	Q
@@ -63,10 +63,10 @@ else
 # For Tcl/Tk 8.5
 DDEVERSION := 1.3
 REGVERSION := 1.2
-TKTABLE := Tktable2.9
+TKTABLE := Tktable2.10
 
 LIBTKTABLE := lib$(TKTABLE)$(SO)
-TREECTRL := treectrl2.2.6
+TREECTRL := treectrl2.2.9
 LIBTREECTRL := libtreectrl2.2$(SO)
 BWIDGET := BWidget1.8
 TCLBUILD := ../build/tcl/Tcl.framework
@@ -83,6 +83,7 @@ AQUAEXTENSIONS := $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE) \
 endif
 
 LIBTOMCRYPT=$(BKROOT)/src/tomcrypt/libtomcrypt.a
+TOMMATH=$(BKROOT)/src/tommath
 LIBPCRE=$(BKROOT)/src/gui/tcltk/pcre/local/lib/libpcre.a
 
 CC := gcc
@@ -123,8 +124,9 @@ tcl/$S/Makefile: tcl/$S/configure $(LIBPCRE) Makefile
 	$(if $(Q),@echo Configuring Tcl,)
 	$(Q)cd tcl/$S; \
 	./configure $(QUIET) \
-	    --disable-info-body --enable-pcre --with-pcre=../../pcre/local \
-	    $(ENABLE_64BIT) $(SHARED) $(SYMBOLS)
+	    --disable-info-body --enable-pcre=default --with-pcre=../../pcre/local \
+	    $(ENABLE_64BIT) $(SHARED) $(SYMBOLS) \
+	    --with-tommath=$(TOMMATH)
 
 tk/$S/Makefile: tk/$S/configure Makefile
 	$(if $(Q),@echo Configuring Tk,)
@@ -312,8 +314,13 @@ bin/tclsh$(EXE): tcl/$S/Makefile
 	cd tcl/$S && \
 	$(MAKE) Q=$(Q) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    XLIBS="$(LIBTOMCRYPT)" \
-	    install-binaries install-libraries
-	mv bin/tclsh* bin/tclsh$(EXE)
+	    l-tests install-binaries install-libraries
+	if [ -x bin/tclsh$(TCLVERSION)$(EXE) ] ; then \
+		mv bin/tclsh$(TCLVERSION)$(EXE) bin/tclsh$(EXE) ; \
+	fi
+	if [ ! -x bin/tclsh$(EXE) ] ; then \
+		echo Could not find bin/tclsh$(EXE) ; \
+	fi
 	if [ -d usr/local/lib/dde$(DDEVERSION) ] ; then \
 		mv usr/local/lib/dde$(DDEVERSION) lib/tcl$(TCLVERSION) ; \
 	fi
@@ -321,7 +328,9 @@ bin/tclsh$(EXE): tcl/$S/Makefile
 		mv usr/local/lib/reg$(REGVERSION) lib/tcl$(TCLVERSION); \
 	fi
 	rm -rf include usr lib/tcl$(TCLVERSION)/tcltest*
-	$(STRIP) bin/tclsh$(EXE)
+	if [ -z "$(DEBUG_TCL)" ] ; then \
+		$(STRIP) bin/tclsh$(EXE) ; \
+	fi
 	strings -a $(PCRE_OBJ) | grep -q "pcre_exec"
 
 bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
@@ -338,7 +347,9 @@ bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
 	    mv tmp/* .; \
 	    rmdir tmp
 	mv bin/wish* bin/bkgui$(EXE)
-	$(STRIP) bin/bkgui$(EXE)
+	if [ -z "$(DEBUG_TCL)" ] ; then \
+		$(STRIP) bin/bkgui$(EXE); \
+	fi
 
 mkapp: FORCE
 	-bk get mkapp
@@ -346,7 +357,8 @@ mkapp: FORCE
 bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) bin/bkgui$(EXE) mkapp
 	$(MAKE) -C tcl/macosx XLIBS="$(LIBTOMCRYPT)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --disable-info-body \
-	    --enable-pcre --with-pcre=../../../pcre/local" embedded
+	    --enable-pcre --with-pcre=../../../pcre/local \
+	    --with-tommath=$(TOMMATH)" embedded
 	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT)" embedded
 	./mkapp BitKeeper 1.0 BkAp "BitMover, Inc" com.bitmover.bk "$(WISHPATH)"

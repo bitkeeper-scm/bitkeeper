@@ -802,7 +802,7 @@ TransformSeekProc(
 {
     TransformChannelData *dataPtr = instanceData;
     Tcl_Channel parent = Tcl_GetStackedChannel(dataPtr->self);
-    Tcl_ChannelType *parentType = Tcl_GetChannelType(parent);
+    const Tcl_ChannelType *parentType = Tcl_GetChannelType(parent);
     Tcl_DriverSeekProc *parentSeekProc = Tcl_ChannelSeekProc(parentType);
 
     if ((offset == 0) && (mode == SEEK_CUR)) {
@@ -866,7 +866,7 @@ TransformWideSeekProc(
 {
     TransformChannelData *dataPtr = instanceData;
     Tcl_Channel parent = Tcl_GetStackedChannel(dataPtr->self);
-    Tcl_ChannelType *parentType	= Tcl_GetChannelType(parent);
+    const Tcl_ChannelType *parentType	= Tcl_GetChannelType(parent);
     Tcl_DriverSeekProc *parentSeekProc = Tcl_ChannelSeekProc(parentType);
     Tcl_DriverWideSeekProc *parentWideSeekProc =
 	    Tcl_ChannelWideSeekProc(parentType);

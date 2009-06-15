@@ -635,14 +635,14 @@ expnPath(char *cmdname, char *fullCmdPath)
 	return fullCmdPath;
 }
 
-static	OSVERSIONINFO	osinfo;
+static	OSVERSIONINFOEX	osinfo;
 
 static	void
 get_osinfo(void)
 {
 	if (!osinfo.dwOSVersionInfoSize) {
-		osinfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-		if (GetVersionEx(&osinfo) == 0) {
+		osinfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+		if (GetVersionEx((OSVERSIONINFO *)&osinfo) == 0) {
 			fprintf(stderr, "Warning: cannot get os version\n");
 			osinfo.dwOSVersionInfoSize = 0;
 		}
@@ -677,6 +677,74 @@ is_vista(void)
 {
 	get_osinfo();
 	return (osinfo.dwMajorVersion == 6);
+}
+
+
+/* from http://msdn.microsoft.com/en-us/library/ms684139(VS.85).aspx */
+
+typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+
+LPFN_ISWOW64PROCESS fnIsWow64Process;
+
+BOOL IsWow64(void)
+{
+    BOOL bIsWow64 = FALSE;
+
+    fnIsWow64Process = (LPFN_ISWOW64PROCESS) GetProcAddress(
+        GetModuleHandle(TEXT("kernel32")),"IsWow64Process");
+  
+    if (NULL != fnIsWow64Process)
+    {
+        if (!fnIsWow64Process(GetCurrentProcess(),&bIsWow64))
+        {
+            // handle error
+        }
+    }
+    return bIsWow64;
+}
+
+
+/* return malloc'ed version string */
+char *
+win_verstr(void)
+{
+	int	major, minor;
+	char	*p, *t;
+
+	major = osinfo.dwMajorVersion;
+	minor = osinfo.dwMinorVersion;
+	if (osinfo.dwPlatformId == VER_PLATFORM_WIN32_NT) {
+		/* Win/XP, Win/2K, Win/NT */
+		if ((major == 4) && (minor == 0)) {
+			p = strdup("Windows/NT");
+		} else if ((major == 5) && (minor == 0)) {
+			p = strdup("Windows/2000");
+		} else if ((major == 5) && (minor == 1)) {
+			p = strdup("Windows/XP");
+		} else if ((major == 5) && (minor == 2)) {
+			p = strdup("Windows/2003");
+		} else if ((major == 6) && (minor == 0)) {
+			p = strdup("Windows/Vista");
+		} else if ((major == 6) && (minor == 1)) {
+			p = strdup("Windows/7");
+		}  else {
+			p = aprintf("NT-%d.%d", major, minor);
+		}
+	}  else {
+		p = aprintf("unknown-%d.%d", major, minor);
+	}
+	if (osinfo.wServicePackMajor) {
+		t = p;
+		p = aprintf("%s-sp%d", t, osinfo.wServicePackMajor);
+		free(t);
+	}
+	if (IsWow64()) {
+		t = p;
+		p = aprintf("%s-64", t);
+		free(t);
+	}
+
+	return (p);
 }
 
 #define	MAXPATH	1024

@@ -115,7 +115,7 @@ DisplayExitHandler(
 
 TkDisplay *
 TkpOpenDisplay(
-    CONST char *displayNameStr)
+    const char *displayNameStr)
 {
     TkDisplay *dispPtr;
     Display *display = XOpenDisplay(displayNameStr);
@@ -155,8 +155,6 @@ TkpCloseDisplay(
     TkDisplay *dispPtr)
 {
     TkSendCleanup(dispPtr);
-
-    TkFreeXId(dispPtr);
 
     TkWmCleanup(dispPtr);
 
@@ -289,6 +287,14 @@ TransferXEventsToTcl(
 
     while (QLength(display) > 0) {
 	XNextEvent(display, &event);
+#ifdef GenericEvent
+	if (event.type == GenericEvent) {
+	    xGenericEvent *xgePtr = (xGenericEvent *) &event;
+
+	    Tcl_Panic("Wild GenericEvent; panic! (extension=%d,evtype=%d)",
+		    xgePtr->extension, xgePtr->evtype);
+	}
+#endif
 	if (event.type != KeyPress && event.type != KeyRelease) {
 	    if (XFilterEvent(&event, None)) {
 		continue;

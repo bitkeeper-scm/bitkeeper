@@ -1,0 +1,60 @@
+#!/bin/sh -x
+
+# Port some collection of tcl/tk repos
+# Option input: a directory which has in repos created by importing CVS
+# The names of the repos are the same names as in src/gui/tcltk/*:
+#   tcl tk tktable tktreectrl pcre ....
+#
+# repo is a clone -shere of /home/bk/bk or something similar
+# If not populated with TCLTK components, it will be.
+
+# Just make things go a little quicker and generate less spam
+BK_CONFIG='checkout: none! '
+BK_NO_TRIGGERS=1
+export BK_NO_TRIGGERS BK_CONFIG
+
+# Command line check: two path relative or absolute existing directories
+test "$#" -gt 1 && {
+	echo "Usage: import-update [import-dir]" >&2
+	exit 1
+}
+
+impdir=/home/bk/imports/bk
+test $# -gt 0 && impdir="$1"
+
+test -d "$impdir" || {
+	echo "import directory $impdir is not a directory" >&2
+	echo "Usage: import-update [import-dir]" >&2
+	exit 1
+}
+
+# Get an absolute version of the import directory
+impdir="`cd "$impdir" && pwd`"
+
+# Expect impdir to have repos with same name as tcl/tk repos in bk product
+
+bk components add -@ -@bk://work/bk -q TCLTK || exit 1
+bk -P portal -q || bk -P portal .
+(cd "$impdir" && bk sfiles -R) | while read component; do
+	# weed out subdirectories, like old/*
+	echo "$component" | grep -q / && continue
+	# else it has to be there
+	cd $component || {
+		echo "failed to cd to $PWD/$component"
+		exit 1
+	}
+	# merge can happen and stdin is tied up
+	bk port "$impdir/$component" < /dev/tty || {
+		echo "port $component failed"
+		exit 1
+	}
+	cd ..
+done || exit 1
+
+# I could go either way on this: button it up or leave it open for testing.
+# This makes a rollback point to try various things out.
+# use bk -P fix -c (or collapse) to remake the product cset if desired.
+
+bk -P commit -y"updated TCL/TK from $impdir" || exit 1
+
+echo done

@@ -20,7 +20,6 @@ photo \- Full-color images
 .SH SYNOPSIS
 \fBimage create photo \fR?\fIname\fR? ?\fIoptions\fR?
 .BE
-
 .SH DESCRIPTION
 .PP
 A photo is an image whose pixels can display any color or be
@@ -28,7 +27,11 @@ transparent.  A photo image is stored internally in full color (32
 bits per pixel), and is displayed using dithering if necessary.  Image
 data for a photo image can be obtained from a file or a string, or it
 can be supplied from
-C code through a procedural interface.  At present, only GIF and PPM/PGM
+C code through a procedural interface.  At present, only
+.VS 8.6
+PNG,
+.VE 8.6
+GIF and PPM/PGM
 formats are supported, but an interface exists to allow additional
 image file formats to be added easily.  A photo image is transparent
 in regions where no image data has been supplied
@@ -43,7 +46,8 @@ Photos support the following \fIoptions\fR:
 \fB\-data \fIstring\fR
 Specifies the contents of the image as a string.  The string should
 contain binary data or, for some formats, base64-encoded data (this is
-currently guaranteed to be supported for GIF images).  The format of the
+currently guaranteed to be supported for PNG and GIF images). The
+format of the
 string must be one of those for which there is an image file format
 handler that will accept string data.  If both the \fB\-data\fR
 and \fB\-file\fR options are specified, the \fB\-file\fR option takes
@@ -363,8 +367,8 @@ The photo image code is structured to allow handlers for additional
 image file formats to be added easily.  The photo image code maintains
 a list of these handlers.  Handlers are added to the list by
 registering them with a call to \fBTk_CreatePhotoImageFormat\fR.  The
-standard Tk distribution comes with handlers for PPM/PGM and GIF formats,
-which are automatically registered on initialization.
+standard Tk distribution comes with handlers for PPM/PGM, PNG and GIF
+formats, which are automatically registered on initialization.
 .PP
 When reading an image file or processing
 string data specified with the \fB\-data\fR configuration option, the
@@ -388,6 +392,27 @@ that, which the handler can use, for example, to specify which variant
 to use of the formats supported by the handler.
 Note that not all image handlers may support writing transparency data
 to a file, even where the target image format does.
+.SS "FORMAT SUBOPTIONS"
+.PP
+.VS 8.6
+Some image formats support sub-options, which are specified at the time that
+the image is loaded using additional words in the \fB\-format\fR option. At
+the time of writing, the following are supported:
+.TP
+\fBgif \-index\fI indexValue\fR
+.
+When parsing a multi-part GIF image, Tk normally only accesses the first
+image. By giving the \fB\-index\fR sub-option, the \fIindexValue\fR'th value
+may be used instead. The \fIindexValue\fR must be an integer from 0 up to the
+number of image parts in the GIF data.
+.TP
+\fBpng \-alpha\fI alphaValue\fR
+.
+An additional alpha filtering for the overall image, which allows the
+background on which the image is displayed to show through. This usually also
+has the effect of desaturating the image. The \fIalphaValue\fR must be between
+0.0 and 1.0.
+.VE 8.6
 .SH "COLOR ALLOCATION"
 .PP
 When a photo image is displayed in a window, the photo image code
@@ -423,8 +448,10 @@ The photo image type was designed and implemented by Paul Mackerras,
 based on his earlier photo widget and some suggestions from
 John Ousterhout.
 .SH EXAMPLE
+.PP
 Load an image from a file and tile it to the size of a window, which
 is useful for producing a tiled background:
+.PP
 .CS
 # These lines should be called once
 \fBimage create photo\fR untiled \-file "theFile.ppm"
@@ -436,9 +463,23 @@ set width  [winfo width .someWidget]
 set height [winfo height .someWidget]
 tiled \fBcopy\fR untiled \-to 0 0 $width $height \-shrink
 .CE
-
+.PP
+.VS 8.6
+The PNG image loader allows the application of an additional alpha factor
+during loading, which is useful for generating images suitable for disabled
+buttons:
+.PP
+.CS
+\fBimage create photo\fR icon \-file "icon.png"
+\fBimage create photo\fR iconDisabled \-file "icon.png" \e
+        \-format "png \-alpha 0.5"
+button .b \-image icon \-disabledimage iconDisabled
+.CE
+.VE 8.6
 .SH "SEE ALSO"
 image(n)
-
 .SH KEYWORDS
 photo, image, color
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

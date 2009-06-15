@@ -110,7 +110,8 @@ Database Class: <b>BrowseCommand</b>
 <p><p>
 Specifies a command which will be evaluated anytime the active
 cell changes. It uses the %-substition model described in COMMAND
-SUBSTITUTION below.
+SUBSTITUTION below. Any changes to the active cell while
+the command is running are ignored to prevent recursion.
 
 <p><p>
 Command-Line Name:<b>-cache</b><br>
@@ -219,7 +220,7 @@ tag has been defined using the <b>tag</b> <b>col</b> widget method. If no tag
 is found, it will evaluate the named procedure passing the column
 number in question as the sole argument. The procedure is
 expected to return the name of a tag to use, or a null string.
-Errors occuring during the evaluation of the procedure, or the
+Errors occurring during the evaluation of the procedure, or the
 return of an invalid tag name are silently ignored.
 
 <p><p>
@@ -591,10 +592,10 @@ Database Class: <b>SelectType</b>
 
 <p><p>
 Specifies one of several types of selection for the table. The
-value of the option may be one of <b>row</b>, <b>col</b>, <b>cell</b>, or <b>both</b> (meaning
-<b>row</b> <b>&amp;&amp;</b> <b>col</b>); the default value is <b>cell</b>. These types define
-whether an entire row/col is affected when a cell's selection is
-changed (set or clear).
+value of the option may be one of <b>row</b>, <b>col</b>, <b>cell</b>, or <b>both</b>
+(meaning <b>row</b> <b>&amp;&amp;</b> <b>col</b>); the default value is <b>cell</b>. These types
+define whether an entire row/col is affected when a cell's
+selection is changed (set or clear).
 
 <p><p>
 Command-Line Name:<b>-sparsearray</b><br>
@@ -694,8 +695,8 @@ will be created if it doesn't already exist or is a simple variable.
 Keys used by the table in the array are of the form
 <i>row</i>,<i>col</i> for cells and the special key <i>active</i> which contains the
 value of the active cell buffer. The Tcl array is managed as a
-sparse array (the table doesn't require all valid indices have
-values). No stored value for an index is equivalent to the
+sparse array (the table does not require that all valid indices
+have values). No stored value for an index is equivalent to the
 empty string, and clearing a cell will remove that index from
 the Tcl array, unless the <b>-sparsearray</b> options is set to 0.
 
@@ -993,10 +994,10 @@ assigned to it. The priority of a tag can be modified by the ``<i>path</i><b>_N<
 <b>tag</b> <b>lower</b>'' and ``<i>pathName</i> <b>tag</b> <b>raise</b>'' widget commands.
 
 <p><p>
-If a cell has several tags associated with it that define the same display
-options (eg - a <b>title</b> cell with specific <b>row</b> and <b>cell</b> tags), then
-the options of the highest priority tag are used. If a particular display
-option hasn't been specified for a particular tag, or if it is
+If a cell has several tags associated with it that define the same
+display options (eg - a <b>title</b> cell with specific <b>row</b> and <b>cell</b> tags),
+then the options of the highest priority tag are used. If a particular
+display option hasn't been specified for a particular tag, or if it is
 specified as an empty string, then that option will not be used; the
 next-highest-priority tag's option will be used instead. If no tag
 specifies a particular display option, then the default style for the
@@ -1457,7 +1458,7 @@ has several forms, depending on the <i>option</i>:
 <p><p>
 <i>pathName</i> <b>insert</b> <b>active</b> <i>index</i> <i>value</i>
 The <i>value</i> is a text string which is inserted at the <i>index</i>
-postion of the active cell. The cursor is then positioned
+position of the active cell. The cursor is then positioned
 after the new text. <i>index</i> can be a number, <b>insert</b>
 or <b>end</b>.
 
@@ -1669,12 +1670,12 @@ otherwise it is raised to one above <i>aboveThis</i>.
 <p><p>
 <i>pathName</i> <b>tag</b> <b>row</b> <i>tagName</i> ?<i>row</i> <i>...</i>?
 With no arguments, prints out the list of rows that use
-the <i>tag</i>. Otherwise it sets the specified columns to use
-the named tag, replacing any tag that may have been set
-using this method before. If <i>tagName</i> is {}, the rows are
-reset to use the default tag. Tags added during -rowtagcommand
-evaluation do not register here. If <i>tagName</i> does
-not exist, it will be created with the default options.
+the <i>tag</i>. Otherwise it sets the specified rows to use the
+named tag, replacing any tag that may have been set using
+this method before. If <i>tagName</i> is {}, the rows are reset
+to use the default tag. Tags added during -rowtagcommand
+evaluation do not register here. If <i>tagName</i> does not
+exist, it will be created with the default options.
 
 <p><p>
 <i>pathName</i> <b>validate</b> <i>index</i><br>
@@ -1687,8 +1688,8 @@ was validated.
 <i>pathName</i> <b>width</b> ?<i>col</i>? ?<i>value</i> <i>col</i> <i>value</i> <i>...</i>?
 If no <i>col</i> is specified, returns a list describing all cols for
 which a width has been set. If <b>col</b> is specified with no value,
-it prints out the width of that col in characters (positive
-number) or pixels (negative number). If one or more <i>col-value</i>
+it prints out the width of that col in characters (positive number)
+or pixels (negative number). If one or more <i>col-value</i>
 pairs are specified, then it sets each col to be that width in
 characters (positive number) or pixels (negative number). If
 <i>value</i> is <i>default</i>, then the col uses the default width, specified
@@ -1789,17 +1790,11 @@ according to <i>number</i> and <i>what</i>. <i>Number</i> must be an integer.
 one of these. If <i>what</i> is <b>units</b>, the view adjusts left or
 right by <i>number</i> cells on the display; if it is <b>pages</b> then
 the view adjusts by <i>number</i> screenfuls. If <i>number</i> is negative
-
-<dl>
-
-<dt>then cells farther to the left become visible; </dt></dt>
-<dd>if
+then cells farther to the left become visible; if
 it is positive then cells farther to the right become
 visible.
 
-<p></dd>
-</dl>
-<p>
+<p><p>
 <i>pathName</i> <b>yview</b> <i>?args</i>?<br>
 
 This command is used to query and change the vertical position

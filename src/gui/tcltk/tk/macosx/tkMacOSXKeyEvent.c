@@ -1,8 +1,8 @@
 /*
  * tkMacOSXKeyEvent.c --
  *
- *	This file implements functions that decode & handle keyboard events
- *	on MacOS X.
+ *	This file implements functions that decode & handle keyboard events on
+ *	MacOS X.
  *
  * Copyright 2001, Apple Computer, Inc.
  * Copyright (c) 2006-2007 Daniel A. Steffen <das@users.sourceforge.net>
@@ -10,49 +10,43 @@
  * See the file "license.terms" for information on usage and redistribution of
  * this file, and for a DISCLAIMER OF ALL WARRANTIES.
  *
- *	The following terms apply to all files originating from Apple
- *	Computer, Inc. ("Apple") and associated with the software
- *	unless explicitly disclaimed in individual files.
+ *	The following terms apply to all files originating from Apple Computer,
+ *	Inc. ("Apple") and associated with the software unless explicitly
+ *	disclaimed in individual files.
  *
+ *	Apple hereby grants permission to use, copy, modify, distribute, and
+ *	license this software and its documentation for any purpose, provided
+ *	that existing copyright notices are retained in all copies and that
+ *	this notice is included verbatim in any distributions. No written
+ *	agreement, license, or royalty fee is required for any of the
+ *	authorized uses. Modifications to this software may be copyrighted by
+ *	their authors and need not follow the licensing terms described here,
+ *	provided that the new terms are clearly indicated on the first page of
+ *	each file where they apply.
  *
- *	Apple hereby grants permission to use, copy, modify,
- *	distribute, and license this software and its documentation
- *	for any purpose, provided that existing copyright notices are
- *	retained in all copies and that this notice is included
- *	verbatim in any distributions. No written agreement, license,
- *	or royalty fee is required for any of the authorized
- *	uses. Modifications to this software may be copyrighted by
- *	their authors and need not follow the licensing terms
- *	described here, provided that the new terms are clearly
- *	indicated on the first page of each file where they apply.
+ *	IN NO EVENT SHALL APPLE, THE AUTHORS OR DISTRIBUTORS OF THE SOFTWARE BE
+ *	LIABLE TO ANY PARTY FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR
+ *	CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OF THIS SOFTWARE, ITS
+ *	DOCUMENTATION, OR ANY DERIVATIVES THEREOF, EVEN IF APPLE OR THE AUTHORS
+ *	HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. APPLE, THE AUTHORS
+ *	AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES, INCLUDING, BUT
+ *	NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR
+ *	A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. THIS SOFTWARE IS PROVIDED
+ *	ON AN "AS IS" BASIS, AND APPLE,THE AUTHORS AND DISTRIBUTORS HAVE NO
+ *	OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR
+ *	MODIFICATIONS.
  *
- *
- *	IN NO EVENT SHALL APPLE, THE AUTHORS OR DISTRIBUTORS OF THE
- *	SOFTWARE BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT, SPECIAL,
- *	INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OF
- *	THIS SOFTWARE, ITS DOCUMENTATION, OR ANY DERIVATIVES THEREOF,
- *	EVEN IF APPLE OR THE AUTHORS HAVE BEEN ADVISED OF THE
- *	POSSIBILITY OF SUCH DAMAGE.  APPLE, THE AUTHORS AND
- *	DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES, INCLUDING,
- *	BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY,
- *	FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.	 THIS
- *	SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND APPLE,THE
- *	AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE
- *	MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
- *
- *	GOVERNMENT USE: If you are acquiring this software on behalf
- *	of the U.S. government, the Government shall have only
- *	"Restricted Rights" in the software and related documentation
- *	as defined in the Federal Acquisition Regulations (FARs) in
- *	Clause 52.227.19 (c) (2).  If you are acquiring the software
- *	on behalf of the Department of Defense, the software shall be
- *	classified as "Commercial Computer Software" and the
- *	Government shall have only "Restricted Rights" as defined in
- *	Clause 252.227-7013 (c) (1) of DFARs.  Notwithstanding the
- *	foregoing, the authors grant the U.S. Government and others
- *	acting in its behalf permission to use and distribute the
- *	software in accordance with the terms specified in this
- *	license.
+ *	GOVERNMENT USE: If you are acquiring this software on behalf of the
+ *	U.S. government, the Government shall have only "Restricted Rights" in
+ *	the software and related documentation as defined in the Federal
+ *	Acquisition Regulations (FARs) in Clause 52.227.19 (c) (2). If you are
+ *	acquiring the software on behalf of the Department of Defense, the
+ *	software shall be classified as "Commercial Computer Software" and the
+ *	Government shall have only "Restricted Rights" as defined in Clause
+ *	252.227-7013 (c) (1) of DFARs. Notwithstanding the foregoing, the
+ *	authors grant the U.S. Government and others acting in its behalf
+ *	permission to use and distribute the software in accordance with the
+ *	terms specified in this license.
  *
  * RCS: @(#) $Id$
  */
@@ -92,28 +86,31 @@ static UInt32 deadKeyStateDown = 0;
  * Declarations for functions used only in this file.
  */
 
-static int InitKeyData(KeyEventData *keyEventDataPtr);
-static int InitKeyEvent(XEvent *eventPtr, KeyEventData *e, UInt32 savedKeyCode,
-    UInt32 savedModifiers);
-static int GenerateKeyEvent(UInt32 eKind, KeyEventData *e, UInt32 savedKeyCode,
-    UInt32 savedModifiers, const UniChar *chars, int numChars);
-static int GetKeyboardLayout(Ptr *resourcePtr, TextEncoding *encodingPtr);
-static TextEncoding GetKCHREncoding(ScriptCode script, SInt32 layoutid);
-static int KeycodeToUnicodeViaUnicodeResource(UniChar *uniChars, int maxChars,
-    Ptr uchr, EventKind eKind, UInt32 keycode, UInt32 modifiers,
-    UInt32 *deadKeyStatePtr);
-static int KeycodeToUnicodeViaKCHRResource(UniChar *uniChars, int maxChars,
-    Ptr kchr, TextEncoding encoding, EventKind eKind, UInt32 keycode,
-    UInt32 modifiers, UInt32 *deadKeyStatePtr);
-
+static int		GenerateKeyEvent(UInt32 eKind, KeyEventData *e,
+			    UInt32 savedKeyCode, UInt32 savedModifiers,
+			    const UniChar *chars, int numChars);
+static TextEncoding	GetKCHREncoding(ScriptCode script, SInt32 layoutid);
+static int		GetKeyboardLayout(Ptr *resourcePtr,
+			    TextEncoding *encodingPtr);
+static int		InitKeyData(KeyEventData *keyEventDataPtr);
+static int		InitKeyEvent(XEvent *eventPtr, KeyEventData *e,
+			    UInt32 savedKeyCode, UInt32 savedModifiers);
+static int		KeycodeToUnicodeViaKCHRResource(UniChar *uniChars,
+			    int maxChars, Ptr kchr, TextEncoding encoding,
+			    EventKind eKind, UInt32 keycode, UInt32 modifiers,
+			    UInt32 *deadKeyStatePtr);
+static int		KeycodeToUnicodeViaUnicodeResource(UniChar *uniChars,
+			    int maxChars, Ptr uchr, EventKind eKind,
+			    UInt32 keycode, UInt32 modifiers,
+			    UInt32 *deadKeyStatePtr);
 
 /*
  *----------------------------------------------------------------------
  *
  * TkMacOSXProcessKeyboardEvent --
  *
- *	This routine processes the event in eventPtr, and
- *	generates the appropriate Tk events from it.
+ *	This routine processes the event in eventPtr, and generates the
+ *	appropriate Tk events from it.
  *
  * Results:
  *	True if event(s) are generated - false otherwise.
@@ -150,18 +147,17 @@ TkMacOSXProcessKeyboardEvent(
      * accelerators through IsMenuKeyEvent. Tk treats accelerators as mere
      * decoration, and the user has to install bindings to get them to fire.
      *
-     * However, the only way to trigger the Hide & Hide Others functions
-     * is by invoking the Menu command for Hide. So there is no nice way to
-     * provide a Tk command to hide the app which would be available for a
-     * binding. So I am going to hijack Command-H and Command-Shift-H
-     * here, and run the menu commands. Since the HI Guidelines explicitly
-     * reserve these for Hide, this isn't such a bad thing. Also, if you do
-     * rebind Command-H to another menu item, Hide will lose its binding.
+     * However, the only way to trigger the Hide & Hide Others functions is by
+     * invoking the Menu command for Hide. So there is no nice way to provide a
+     * Tk command to hide the app which would be available for a binding. So I
+     * am going to hijack Command-H and Command-Shift-H here, and run the menu
+     * commands. Since the HI Guidelines explicitly reserve these for Hide,
+     * this isn't such a bad thing. Also, if you do rebind Command-H to another
+     * menu item, Hide will lose its binding.
      *
-     * Note that I don't really do anything at this point,
-     * I just mark stopProcessing as 0 and return, and then the
-     * RecieveAndProcessEvent code will dispatch the event to the default
-     * handler.
+     * Note that I don't really do anything at this point, I just mark
+     * stopProcessing as 0 and return, and then the RecieveAndProcessEvent code
+     * will dispatch the event to the default handler.
      */
 
     if ((eventPtr->eKind == kEventRawKeyDown
@@ -172,21 +168,20 @@ TkMacOSXProcessKeyboardEvent(
 
 	GetMenuItemCommandID (menuRef, menuItemIndex, &menuCmd);
 	switch (menuCmd) {
-	    case kHICommandHide:
-	    case kHICommandHideOthers:
-	    case kHICommandShowAll:
-	    case kHICommandPreferences:
-	    case kHICommandQuit:
-		statusPtr->stopProcessing = 0;
+	case kHICommandHide:
+	case kHICommandHideOthers:
+	case kHICommandShowAll:
+	case kHICommandPreferences:
+	case kHICommandQuit:
+	    statusPtr->stopProcessing = 0;
 
-		/*
-		 * TODO: may not be on event on queue.
-		 */
+	    /*
+	     * TODO: may not be on event on queue.
+	     */
 
-		return 0;
-		break;
-	    default:
-		break;
+	    return 0;
+	default:
+	    break;
 	}
     }
 
@@ -214,23 +209,23 @@ TkMacOSXProcessKeyboardEvent(
     }
 
     switch (eventPtr->eKind) {
-	case kEventRawKeyUp:
-	case kEventRawKeyDown:
-	case kEventRawKeyRepeat: {
-	    UInt32 *deadKeyStatePtr;
+    case kEventRawKeyUp:
+    case kEventRawKeyDown:
+    case kEventRawKeyRepeat: {
+	UInt32 *deadKeyStatePtr;
 
-	    if (kEventRawKeyDown == eventPtr->eKind) {
-		deadKeyStatePtr = &deadKeyStateDown;
-	    } else {
-		deadKeyStatePtr = &deadKeyStateUp;
-	    }
-
-	    uniCharsLen = TkMacOSXKeycodeToUnicode(uniChars,
-		    sizeof(uniChars)/sizeof(*uniChars), eventPtr->eKind,
-		    keyEventData.keyCode, keyEventData.keyModifiers,
-		    deadKeyStatePtr);
-	    break;
+	if (kEventRawKeyDown == eventPtr->eKind) {
+	    deadKeyStatePtr = &deadKeyStateDown;
+	} else {
+	    deadKeyStatePtr = &deadKeyStateUp;
 	}
+
+	uniCharsLen = TkMacOSXKeycodeToUnicode(uniChars,
+		sizeof(uniChars)/sizeof(*uniChars), eventPtr->eKind,
+		keyEventData.keyCode, keyEventData.keyModifiers,
+		deadKeyStatePtr);
+	break;
+    }
     }
 
     if (kEventRawKeyUp == eventPtr->eKind) {
@@ -274,14 +269,14 @@ TkMacOSXProcessKeyboardEvent(
     if (eventGenerated == 0) {
 	savedKeyCode = keyEventData.message;
 	return false;
-    } else if (eventGenerated == -1) {
+    }
+    if (eventGenerated == -1) {
 	savedKeyCode = 0;
 	statusPtr->stopProcessing = 0;
 	return false;
-    } else {
-	savedKeyCode = 0;
-	return true;
     }
+    savedKeyCode = 0;
+    return true;
 }
 
 /*
@@ -289,15 +284,15 @@ TkMacOSXProcessKeyboardEvent(
  *
  * GenerateKeyEvent --
  *
- *	Given Macintosh keyUp, keyDown & autoKey events (in their "raw"
- *	form) and a list of unicode characters this function generates the
+ *	Given Macintosh keyUp, keyDown & autoKey events (in their "raw" form)
+ *	and a list of unicode characters this function generates the
  *	appropriate X key events.
  *
- *	Parameter eKind is a raw keyboard event. e contains the data sent
- *	with the event. savedKeyCode and savedModifiers contain the values
- *	from the last event that came before (see
- *	TkMacOSXProcessKeyboardEvent()). chars/numChars has the Unicode
- *	characters for which we want to create events.
+ *	Parameter eKind is a raw keyboard event. e contains the data sent with
+ *	the event. savedKeyCode and savedModifiers contain the values from the
+ *	last event that came before (see TkMacOSXProcessKeyboardEvent()).
+ *	chars/numChars has the Unicode characters for which we want to create
+ *	events.
  *
  * Results:
  *	1 if an event was generated, -1 for any error.
@@ -332,9 +327,9 @@ GenerateKeyEvent(
 	}
 
 	/*
-	 * Use special '-1' to signify a special keycode to our
-	 * platform specific code in tkMacOSXKeyboard.c. This is
-	 * rather like what happens on Windows.
+	 * Use special '-1' to signify a special keycode to our platform
+	 * specific code in tkMacOSXKeyboard.c. This is rather like what
+	 * happens on Windows.
 	 */
 
 	event.xany.send_event = -1;
@@ -345,43 +340,42 @@ GenerateKeyEvent(
 
 	event.xkey.keycode = (e->keyModifiers ^ savedModifiers);
 	Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
-
     } else {
 	for (i = 0; i < numChars; ++i) {
 	    /*
 	     * Encode one char in the trans_chars array that was already
-	     * introduced for MS Windows. Don't encode the string, if it is
-	     * a control character but was not generated with a real control
+	     * introduced for MS Windows. Don't encode the string, if it is a
+	     * control character but was not generated with a real control
 	     * modifier. Such control characters get generated by KeyTrans()
-	     * for special keys, but we rather want to identify those by
-	     * their KeySyms.
+	     * for special keys, but we rather want to identify those by their
+	     * KeySyms.
 	     */
 
 	    event.xkey.trans_chars[0] = 0;
 	    if ((controlKey & e->keyModifiers) || (chars[i] >= ' ')) {
-		int done;
-		done = Tcl_UniCharToUtf(chars[i],event.xkey.trans_chars);
+		int done = Tcl_UniCharToUtf(chars[i],event.xkey.trans_chars);
+
 		event.xkey.trans_chars[done] = 0;
 	    }
 
 	    switch(eKind) {
-		case kEventRawKeyDown:
-		    event.xany.type = KeyPress;
-		    Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
-		    break;
-		case kEventRawKeyUp:
-		    event.xany.type = KeyRelease;
-		    Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
-		    break;
-		case kEventRawKeyRepeat:
-		    event.xany.type = KeyRelease;
-		    Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
-		    event.xany.type = KeyPress;
-		    Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
-		    break;
-		default:
-		    TkMacOSXDbgMsg("Invalid parameter eKind %ld", eKind);
-		    return -1;
+	    case kEventRawKeyDown:
+		event.xany.type = KeyPress;
+		Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
+		break;
+	    case kEventRawKeyUp:
+		event.xany.type = KeyRelease;
+		Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
+		break;
+	    case kEventRawKeyRepeat:
+		event.xany.type = KeyRelease;
+		Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
+		event.xany.type = KeyPress;
+		Tk_QueueWindowEvent(&event, TCL_QUEUE_TAIL);
+		break;
+	    default:
+		TkMacOSXDbgMsg("Invalid parameter eKind %ld", eKind);
+		return -1;
 	    }
 	}
     }
@@ -394,12 +388,12 @@ GenerateKeyEvent(
  *
  * InitKeyData --
  *
- *	This routine initializes a KeyEventData structure by asking the OS
- *	and Tk for all the global information needed here.
+ *	This routine initializes a KeyEventData structure by asking the OS and
+ *	Tk for all the global information needed here.
  *
  * Results:
- *	True if the current front window can be found in Tk data structures
- *	- false otherwise.
+ *	True if the current front window can be found in Tk data structures,
+ *	false otherwise.
  *
  * Side Effects:
  *	None
@@ -417,10 +411,10 @@ InitKeyData(
     if (keyEventDataPtr->whichWindow == NULL) {
 	return false;
     }
+
     XQueryPointer(NULL, None, NULL, NULL, &keyEventDataPtr->global_x,
 	    &keyEventDataPtr->global_y, &keyEventDataPtr->local_x,
 	    &keyEventDataPtr->local_y, &keyEventDataPtr->state);
-
     return true;
 }
 
@@ -442,26 +436,26 @@ InitKeyData(
  */
 
 /*
- * We have a general problem here. How do we handle 'Option-char'
- * keypresses?	The problem is that we might want to bind to some of these
- * (e.g. Cmd-Opt-d is 'uncomment' in Alpha). OTOH Option-d actually produces
- * a real character on MacOS, namely a mathematical delta.
+ * We have a general problem here. How do we handle 'Option-char' keypresses?
+ * The problem is that we might want to bind to some of these (e.g. Cmd-Opt-d
+ * is 'uncomment' in Alpha). OTOH Option-d actually produces a real character
+ * on MacOS, namely a mathematical delta.
  *
  * The current behaviour is that a binding goes by the combinations of
- * modifiers and base keysym, that is Option-d. The string value of the
- * event is the mathematical delta character, so if no binding calls
- * [break], the text widget will insert that character.
+ * modifiers and base keysym, that is Option-d. The string value of the event
+ * is the mathematical delta character, so if no binding calls [break], the
+ * text widget will insert that character.
  *
  * Note that this is similar to control combinations on all platforms. They
  * also generate events that have the base character as keysym and a real
- * control character as character value. So Ctrl+C gets us the keysym XK_C,
- * the modifier Control (so you can bind <Control-C>) and a string value as
+ * control character as character value. So Ctrl+C gets us the keysym XK_C, the
+ * modifier Control (so you can bind <Control-C>) and a string value as
  * "\u0003".
  *
  * For a different solutions we may want for the event to contain keysyms for
- * *both* the 'Opt-d' side of things and the mathematical delta. Then a
- * binding on Opt-d will trigger, but a binding on mathematical delta would
- * also trigger. This would require changes in the core, though.
+ * *both* the 'Opt-d' side of things and the mathematical delta. Then a binding
+ * on Opt-d will trigger, but a binding on mathematical delta would also
+ * trigger. This would require changes in the core, though.
  */
 
 static int
@@ -476,9 +470,8 @@ InitKeyEvent(
     TkDisplay *dispPtr;
 
     /*
-     * The focus must be in the FrontWindow on the Macintosh.
-     * We then query Tk to determine the exact Tk window
-     * that owns the focus.
+     * The focus must be in the FrontWindow on the Macintosh. We then query Tk
+     * to determine the exact Tk window that owns the focus.
      */
 
     window = TkMacOSXGetXWindow(e->whichWindow);
@@ -507,7 +500,7 @@ InitKeyEvent(
     eventPtr->xkey.window = Tk_WindowId(tkwin);
     eventPtr->xkey.display = Tk_Display(tkwin);
     eventPtr->xkey.root = XRootWindow(Tk_Display(tkwin), 0);
-    eventPtr->xkey.state =  e->state;
+    eventPtr->xkey.state = e->state;
     eventPtr->xkey.trans_chars[0] = 0;
 
     Tk_TopCoordsToWindow(tkwin, e->local_x, e->local_y, &eventPtr->xkey.x,
@@ -515,7 +508,6 @@ InitKeyEvent(
 
     eventPtr->xkey.keycode = e->ch | ((savedKeyCode & charCodeMask) << 8) |
 	    ((e->message&keyCodeMask) << 8);
-
     return 1;
 }
 
@@ -530,10 +522,10 @@ InitKeyEvent(
  *	Keyboard Layout Services, where available.
  *
  * Results:
- *	1 if there is returned a Unicode 'uchr' resource in *resourcePtr, 0
- *	if it is a classic 'KCHR' resource. A pointer to the actual resource
- *	data goes into *resourcePtr. If the resource is a 'KCHR' resource,
- *	the corresponding Mac encoding goes into *encodingPtr.
+ *	1 if there is returned a Unicode 'uchr' resource in *resourcePtr, 0 if
+ *	it is a classic 'KCHR' resource. A pointer to the actual resource data
+ *	goes into *resourcePtr. If the resource is a 'KCHR' resource, the
+ *	corresponding Mac encoding goes into *encodingPtr.
  *
  * Side effects:
  *	Sets some internal static variables.
@@ -565,7 +557,6 @@ GetKeyboardLayout(
     KLGetCurrentKeyboardLayout(&currentLayout);
 
     if (currentLayout != NULL) {
-
 	/*
 	 * The layout pointer could in theory be the same for different
 	 * layouts, only the id gives us the information that the
@@ -574,15 +565,13 @@ GetKeyboardLayout(
 	 */
 
 	KLGetKeyboardLayoutProperty(currentLayout, kKLIdentifier,
-		(const void**)&currentLayoutId);
+		(const void **) &currentLayoutId);
 
 	if ((lastLayout != currentLayout)
 		|| (lastLayoutId != currentLayoutId)) {
-
 #ifdef TK_MAC_DEBUG_KEYBOARD
 	    TkMacOSXDbgMsg("Use KLS");
 #endif
-
 	    hasLayoutChanged = true;
 
 	    /*
@@ -595,13 +584,11 @@ GetKeyboardLayout(
 	    KCHR = NULL;
 
 	    if ((KLGetKeyboardLayoutProperty(currentLayout,
-				    kKLuchrData, (const void**)&uchr)
-			    == noErr)
+		    kKLuchrData, (const void **) &uchr) == noErr)
 		    && (uchr != NULL)) {
 		/* done */
 	    } else if ((KLGetKeyboardLayoutProperty(currentLayout,
-				    kKLKCHRData, (const void**)&KCHR)
-			    == noErr)
+		    kKLKCHRData, (const void**)&KCHR) == noErr)
 		    && (KCHR != NULL)) {
 		/* done */
 	    }
@@ -627,9 +614,8 @@ GetKeyboardLayout(
 	 * lastEncoding.
 	 *
 	 * If we didn't get a new 'KCHR' and if we have no 'uchr' either, get
-	 * some 'KCHR' from the OS cache and leave lastEncoding at its
-	 * current value. This should better not happen, it doesn't really
-	 * work.
+	 * some 'KCHR' from the OS cache and leave lastEncoding at its current
+	 * value. This should better not happen, it doesn't really work.
 	 */
 
 	if (KCHR) {
@@ -640,18 +626,17 @@ GetKeyboardLayout(
 		    lastEncoding & ~0xFFFFL);
 #endif
 	} else if (!uchr) {
-	    KCHR = (Ptr)(intptr_t)GetScriptManagerVariable(smKCHRCache);
+	    KCHR = (Ptr)(intptr_t) GetScriptManagerVariable(smKCHRCache);
 	}
     }
 
     if (uchr) {
 	*resourcePtr = uchr;
 	return 1;
-    } else {
-	*resourcePtr = KCHR;
-	*encodingPtr = lastEncoding;
-	return 0;
     }
+    *resourcePtr = KCHR;
+    *encodingPtr = lastEncoding;
+    return 0;
 }
 
 /*
@@ -698,13 +683,13 @@ GetKCHREncoding(
     }
 
     /*
-     * GetTextEncodingFromScriptInfo() doesn't know about more exotic
-     * layouts. This provides a fallback for good measure. In an ideal
-     * world, exotic layouts would always provide a 'uchr' resource anyway,
-     * so we wouldn't need this.
+     * GetTextEncodingFromScriptInfo() doesn't know about more exotic layouts.
+     * This provides a fallback for good measure. In an ideal world, exotic
+     * layouts would always provide a 'uchr' resource anyway, so we wouldn't
+     * need this.
      *
-     * We can add more keyboard layouts, if we get actual complaints. Farsi
-     * or other Celtic/Gaelic layouts would be candidates.
+     * We can add more keyboard layouts, if we get actual complaints. Farsi or
+     * other Celtic/Gaelic layouts would be candidates.
      */
 
     switch (layoutid) {
@@ -713,8 +698,8 @@ GetKCHREncoding(
 	 * Iceland for legacy applications.
 	 */
 
-	case 1800: case 1821:
-	    return kTextEncodingMacIcelandic;
+    case 1800: case 1821:
+	return kTextEncodingMacIcelandic;
 
 	/*
 	 * Irish and Welsh. These layouts are mentioned in <Script.h>.
@@ -723,13 +708,13 @@ GetKCHREncoding(
 	 * can't locate layouts of this type for testing.
 	 */
 
-	case 581: case 779:
-	    return kTextEncodingMacCeltic;
+    case 581: case 779:
+	return kTextEncodingMacCeltic;
     }
 
     /*
-     * The valid script codes are also the valid default encoding codes, so
-     * if nothing else helps, fall back on those.
+     * The valid script codes are also the valid default encoding codes, so if
+     * nothing else helps, fall back on those.
      */
 
     return script;
@@ -741,19 +726,18 @@ GetKCHREncoding(
  * KeycodeToUnicodeViaUnicodeResource --
  *
  *	Given MacOS key event data this function generates the Unicode
- *	characters. It does this using a 'uchr' and the UCKeyTranslate
- *	API.
+ *	characters. It does this using a 'uchr' and the UCKeyTranslate API.
  *
- *	The parameter deadKeyStatePtr can be NULL, if no deadkey handling
- *	is needed.
+ *	The parameter deadKeyStatePtr can be NULL, if no deadkey handling is
+ *	needed.
  *
- *	Tested and known to work with US, Hebrew, Greek and Russian layouts
- *	as well as "Unicode Hex Input".
+ *	Tested and known to work with US, Hebrew, Greek and Russian layouts as
+ *	well as "Unicode Hex Input".
  *
  * Results:
  *	The number of characters generated if any, 0 if we are waiting for
- *	another byte of a dead-key sequence. Fills in the uniChars array
- *	with a Unicode string.
+ *	another byte of a dead-key sequence. Fills in the uniChars array with a
+ *	Unicode string.
  *
  * Side Effects:
  *	None
@@ -789,18 +773,18 @@ KeycodeToUnicodeViaUnicodeResource(
     }
 
     switch(eKind) {
-	case kEventRawKeyDown:
-	    action = kUCKeyActionDown;
-	    break;
-	case kEventRawKeyUp:
-	    action = kUCKeyActionUp;
-	    break;
-	case kEventRawKeyRepeat:
-	    action = kUCKeyActionAutoKey;
-	    break;
-	default:
-	    TkMacOSXDbgMsg("Invalid parameter eKind %d", eKind);
-	    return 0;
+    case kEventRawKeyDown:
+	action = kUCKeyActionDown;
+	break;
+    case kEventRawKeyUp:
+	action = kUCKeyActionUp;
+	break;
+    case kEventRawKeyRepeat:
+	action = kUCKeyActionAutoKey;
+	break;
+    default:
+	TkMacOSXDbgMsg("Invalid parameter eKind %d", eKind);
+	return 0;
     }
 
     err = ChkErr(UCKeyTranslate, (const UCKeyboardLayout *) uchr, keycode,
@@ -816,7 +800,7 @@ KeycodeToUnicodeViaUnicodeResource(
     }
 
     /*
-     * some IMEs leave residue :-(
+     * Some IMEs leave residue. :-(
      */
 
     *deadKeyStatePtr = 0;
@@ -836,13 +820,13 @@ KeycodeToUnicodeViaUnicodeResource(
  *	Given MacOS key event data this function generates the Unicode
  *	characters. It does this using a 'KCHR' and the KeyTranslate API.
  *
- *	The parameter deadKeyStatePtr can be NULL, if no deadkey handling
- *	is needed.
+ *	The parameter deadKeyStatePtr can be NULL, if no deadkey handling is
+ *	needed.
  *
  * Results:
  *	The number of characters generated if any, 0 if we are waiting for
- *	another byte of a dead-key sequence. Fills in the uniChars array
- *	with a Unicode string.
+ *	another byte of a dead-key sequence. Fills in the uniChars array with a
+ *	Unicode string.
  *
  * Side Effects:
  *	None
@@ -864,8 +848,9 @@ KeycodeToUnicodeViaKCHRResource(
     UInt32 result;
     char macBuff[3];
     char *macStr;
-    int macStrLen;
+    int macStrLen, uniStrLen;
     UInt32 dummy_state = 0;
+    CFStringRef cfString;
 
     if (NULL == deadKeyStatePtr) {
 	deadKeyStatePtr = &dummy_state;
@@ -877,9 +862,9 @@ KeycodeToUnicodeViaKCHRResource(
     if ((0 == result) && (0 != dummy_state)) {
 	/*
 	 * 'dummy_state' gets only filled if the caller did not want deadkey
-	 * processing (deadKeyStatePtr was NULL originally), but we still
-	 * have a deadkey. We just push the keycode for the space bar to get
-	 * the real key value.
+	 * processing (deadKeyStatePtr was NULL originally), but we still have
+	 * a deadkey. We just push the keycode for the space bar to get the
+	 * real key value.
 	 */
 
 	result = KeyTranslate(kchr, 0x31, deadKeyStatePtr);
@@ -895,26 +880,26 @@ KeycodeToUnicodeViaKCHRResource(
     }
 
     macBuff[0] = (char) (result >> 16);
-    macBuff[1] = (char)	 result;
+    macBuff[1] = (char) result;
     macBuff[2] = 0;
 
     if (0 != macBuff[0]) {
 	/*
-	 * If the first byte is valid, the second is too
+	 * If the first byte is valid, the second is too.
 	 */
 
 	macStr = macBuff;
 	macStrLen = 2;
     } else if (0 != macBuff[1]) {
 	/*
-	 * Only the second is valid
+	 * Only the second is valid.
 	 */
 
 	macStr = macBuff+1;
 	macStrLen = 1;
     } else {
 	/*
-	 * No valid bytes at all -- shouldn't happen
+	 * No valid bytes at all -- shouldn't happen.
 	 */
 
 	macStr = NULL;
@@ -923,42 +908,37 @@ KeycodeToUnicodeViaKCHRResource(
 
     if (macStrLen <= 0) {
 	return 0;
-    } else {
-
-	/*
-	 * Use the CFString conversion routines. This is the easiest and
-	 * most compatible way to get from an 8-bit string and a MacOS script
-	 * code to a Unicode string.
-	 *
-	 * FIXME: The system ships with an Irish 'KCHR' but without the
-	 * corresponding macCeltic encoding, which triggers the error below.
-	 * Tcl doesn't have the macCeltic encoding either right now, so until
-	 * we get that, we can just as well stick to this code. The right
-	 * fix would be to use the Tcl encodings and add macCeltic and
-	 * probably others there. Suitable Unicode data files for the
-	 * missing encodings are available from www.evertype.com.
-	 */
-
-	CFStringRef cfString;
-	int uniStrLen;
-
-	cfString = CFStringCreateWithCStringNoCopy(NULL, macStr, encoding,
-		kCFAllocatorNull);
-	if (cfString == NULL) {
-	    TkMacOSXDbgMsg("CFString: Can't convert with encoding %ld",
-		    encoding);
-	    return 0;
-	}
-
-	uniStrLen = CFStringGetLength(cfString);
-	if (uniStrLen > maxChars) {
-	    uniStrLen = maxChars;
-	}
-	CFStringGetCharacters(cfString, CFRangeMake(0,uniStrLen), uniChars);
-	CFRelease(cfString);
-
-	return uniStrLen;
     }
+
+    /*
+     * Use the CFString conversion routines. This is the easiest and most
+     * compatible way to get from an 8-bit string and a MacOS script code to a
+     * Unicode string.
+     *
+     * FIXME: The system ships with an Irish 'KCHR' but without the
+     * corresponding macCeltic encoding, which triggers the error below. Tcl
+     * doesn't have the macCeltic encoding either right now, so until we get
+     * that, we can just as well stick to this code. The right fix would be to
+     * use the Tcl encodings and add macCeltic and probably others
+     * there. Suitable Unicode data files for the missing encodings are
+     * available from www.evertype.com.
+     */
+
+    cfString = CFStringCreateWithCStringNoCopy(NULL, macStr, encoding,
+	    kCFAllocatorNull);
+    if (cfString == NULL) {
+	TkMacOSXDbgMsg("CFString: Can't convert with encoding %ld", encoding);
+	return 0;
+    }
+
+    uniStrLen = CFStringGetLength(cfString);
+    if (uniStrLen > maxChars) {
+	uniStrLen = maxChars;
+    }
+    CFStringGetCharacters(cfString, CFRangeMake(0,uniStrLen), uniChars);
+    CFRelease(cfString);
+
+    return uniStrLen;
 }
 
 /*
@@ -969,16 +949,15 @@ KeycodeToUnicodeViaKCHRResource(
  *	Given MacOS key event data this function generates the Unicode
  *	characters. It does this using OS resources and APIs.
  *
- *	The parameter deadKeyStatePtr can be NULL, if no deadkey handling
- *	is needed.
+ *	The parameter deadKeyStatePtr can be NULL, if no deadkey handling is
+ *	needed.
  *
- *	This function is called from XKeycodeToKeysym() in
- *	tkMacOSKeyboard.c.
+ *	This function is called from XKeycodeToKeysym() in tkMacOSKeyboard.c.
  *
  * Results:
  *	The number of characters generated if any, 0 if we are waiting for
- *	another byte of a dead-key sequence. Fills in the uniChars array
- *	with a Unicode string.
+ *	another byte of a dead-key sequence. Fills in the uniChars array with a
+ *	Unicode string.
  *
  * Side Effects:
  *	None
@@ -997,20 +976,14 @@ TkMacOSXKeycodeToUnicode(
 {
     Ptr resource = NULL;
     TextEncoding encoding;
-    int len;
 
-
-    if (GetKeyboardLayout(&resource,&encoding)) {
-	len = KeycodeToUnicodeViaUnicodeResource(
-	    uniChars, maxChars, resource, eKind,
-	    keycode, modifiers, deadKeyStatePtr);
+    if (GetKeyboardLayout(&resource, &encoding)) {
+	return KeycodeToUnicodeViaUnicodeResource(uniChars, maxChars,
+		resource, eKind, keycode, modifiers, deadKeyStatePtr);
     } else {
-	len = KeycodeToUnicodeViaKCHRResource(
-	    uniChars, maxChars, resource, encoding, eKind,
-	    keycode, modifiers, deadKeyStatePtr);
+	return KeycodeToUnicodeViaKCHRResource(uniChars, maxChars, resource,
+		encoding, eKind, keycode, modifiers, deadKeyStatePtr);
     }
-
-    return len;
 }
 
 /*
@@ -1039,6 +1012,7 @@ XGrabKeyboard(
     Time time)
 {
     keyboardGrabWinPtr = Tk_IdToWindow(display, grab_window);
+
     return GrabSuccess;
 }
 
@@ -1076,6 +1050,7 @@ XUngrabKeyboard(
  * Side effects:
  *	None.
  *
+ *----------------------------------------------------------------------
  */
 
 Tk_Window
@@ -1089,10 +1064,9 @@ TkMacOSXGetCapture(void)
  *
  * TkpSetCapture --
  *
- *	This function captures the mouse so that all future events
- *	will be reported to this window, even if the mouse is outside
- *	the window. If the specified window is NULL, then the mouse
- *	is released.
+ *	This function captures the mouse so that all future events will be
+ *	reported to this window, even if the mouse is outside the window. If
+ *	the specified window is NULL, then the mouse is released.
  *
  * Results:
  *	None.
@@ -1119,9 +1093,10 @@ TkpSetCapture(
 	    w = winPtr;
 	    m = kWindowModalityAppModal;
 	} else if (grabWinPtr) {
-	    w = (TkWindow*)grabWinPtr;
+	    w = (TkWindow *) grabWinPtr;
 	    m = kWindowModalityNone;
 	}
+
 	if (w && w->window != None && TkMacOSXHostToplevelExists(w)) {
 	    ChkErr(SetWindowModality, TkMacOSXDrawableWindow(w->window), m,
 		    NULL);
@@ -1136,9 +1111,9 @@ TkpSetCapture(
  *
  * Tk_SetCaretPos --
  *
- *	This enables correct placement of the XIM caret. This is called
- *	by widgets to indicate their cursor placement, and the caret
- *	location is used by TkpGetString to place the XIM caret.
+ *	This enables correct placement of the XIM caret. This is called by
+ *	widgets to indicate their cursor placement, and the caret location is
+ *	used by TkpGetString to place the XIM caret.
  *
  * Results:
  *	None
@@ -1183,3 +1158,12 @@ TkMacOSXInitKeyboard(
 
     GetKeyboardLayout(&resource, &encoding);
 }
+
+/*
+ * Local Variables:
+ * mode: c
+ * c-basic-offset: 4
+ * fill-column: 79
+ * coding: utf-8
+ * End:
+ */

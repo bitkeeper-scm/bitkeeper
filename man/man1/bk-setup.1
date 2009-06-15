@@ -5,7 +5,8 @@
 bk setup \- create a new \*(BK package
 .SH SYNOPSIS
 .B bk setup
-.[B] \-CfpP
+.ie \n[NESTED] .[B] \-CfpP
+.el .[B] \-fp
 .[OPTreq] \-F key\fB=\fIval
 .[OPTreq] \-c config_file
 .ARG directory
@@ -38,6 +39,7 @@ file automatically.
 The first file found is used.
 .SH OPTIONS
 .TP \-c\*<config_file\*>
+.if \n[NESTED] \{\
 .B \-C
 When run inside a product, setup will create a component.
 With -C, do not commit this new component to the product.
@@ -47,6 +49,7 @@ in the pending state.  The -C option can not be used with -P.
 In all other cases (outside a product and with no -P), the
 -C option will be ignored.
 .tp
+.\}
 .OPTreq \-c config_file
 Use 
 .ARG config_file
@@ -59,10 +62,12 @@ Don't ask for confirmation.
 Override default values for the specified field.
 Typically used in combination with a config template.
 .tp
+.if \n[NESTED] \{\
 .B \-P
 The repository being created is a product repository, i.e., will have
 component repositories.
 .tp
+.\}
 .B \-p
 print the field names to stdout (used by setuptool).
 .SH EXAMPLES
@@ -138,13 +143,16 @@ repository, see
 .SH "SEE ALSO"
 .SA Howto
 .SA Howto-setup
+.if \n[NESTED] \{\
 .SA Howto-product
+.\}
 .SA attach
 .SA config-etc
 .SA import
 .SA setuptool
 .SH CATEGORY
 .B Repository
+.if \n[NESTED] \{\
 .SH AVAILABILITY
 The ability for setup to create a component in a product
 repository is an optional feature of \*[BK]
@@ -157,3 +165,4 @@ bk lease show
 If the options field has "product" or "product-line" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
+.\}

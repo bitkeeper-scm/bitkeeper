@@ -281,7 +281,7 @@ VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win
 
 pkgIndex.tcl:
 	(\
-	echo 'if {[catch {package require Tk @TK_VERSION@}]} return';\
+	echo 'if {[catch {package require Tcl @TK_VERSION@}]} return';\
 	echo 'set script "load \"[file join $$dir $(PKG_LIB_FILE)]\" $(PACKAGE_NAME)"';\
 	echo 'package ifneeded $(PACKAGE_NAME) $(PACKAGE_PATCHLEVEL) $$script'\
 	) > pkgIndex.tcl

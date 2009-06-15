@@ -39,7 +39,7 @@ int
 Tcl_RecordAndEval(
     Tcl_Interp *interp,		/* Token for interpreter in which command will
 				 * be executed. */
-    CONST char *cmd,		/* Command to record. */
+    const char *cmd,		/* Command to record. */
     int flags)			/* Additional flags. TCL_NO_EVAL means only
 				 * record: don't execute command.
 				 * TCL_EVAL_GLOBAL means use Tcl_GlobalEval
@@ -123,8 +123,8 @@ Tcl_RecordAndEvalObj(
 
     result = Tcl_GetCommandInfo(interp, "history", &info);
 
-    if (result && (info.objProc == TclObjInterpProc)) {
-	Proc *procPtr = (Proc *)(info.objClientData);
+    if (result && (info.deleteProc == TclProcDeleteProc)) {
+	Proc *procPtr = (Proc *) info.objClientData;
 	call = (procPtr->cmdPtr->compileProc != TclCompileNoOp);
     }
 

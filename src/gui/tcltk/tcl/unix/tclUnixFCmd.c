@@ -86,7 +86,7 @@ static int		SetPermissionsAttribute(Tcl_Interp *interp,
 			    int objIndex, Tcl_Obj *fileName,
 			    Tcl_Obj *attributePtr);
 static int		GetModeFromPermString(Tcl_Interp *interp,
-			    char *modeStringPtr, mode_t *modePtr);
+			    const char *modeStringPtr, mode_t *modePtr);
 #if defined(HAVE_CHFLAGS) && defined(UF_IMMUTABLE)
 static int		GetReadOnlyAttribute(Tcl_Interp *interp, int objIndex,
 			    Tcl_Obj *fileName, Tcl_Obj **attributePtrPtr);
@@ -99,7 +99,7 @@ static int		SetReadOnlyAttribute(Tcl_Interp *interp, int objIndex,
  */
 
 typedef int (TraversalProc)(Tcl_DString *srcPtr, Tcl_DString *dstPtr,
-	CONST Tcl_StatBuf *statBufPtr, int type, Tcl_DString *errorPtr);
+	const Tcl_StatBuf *statBufPtr, int type, Tcl_DString *errorPtr);
 
 /*
  * Constants and variables necessary for file attributes subcommand.
@@ -116,7 +116,7 @@ typedef int (TraversalProc)(Tcl_DString *srcPtr, Tcl_DString *dstPtr,
  */
 
 extern TclFileAttrProcs tclpFileAttrProcs[];
-extern char *tclpFileAttrStrings[];
+extern const char *const tclpFileAttrStrings[];
 
 #else
 enum {
@@ -131,8 +131,8 @@ enum {
     UNIX_INVALID_ATTRIBUTE /* lint - last enum value needs no trailing , */
 };
 
-MODULE_SCOPE CONST char *tclpFileAttrStrings[];
-CONST char *tclpFileAttrStrings[] = {
+MODULE_SCOPE const char *const tclpFileAttrStrings[];
+const char *const tclpFileAttrStrings[] = {
     "-group", "-owner", "-permissions",
 #if defined(HAVE_CHFLAGS) && defined(UF_IMMUTABLE)
     "-readonly",
@@ -143,8 +143,8 @@ CONST char *tclpFileAttrStrings[] = {
     NULL
 };
 
-MODULE_SCOPE CONST TclFileAttrProcs tclpFileAttrProcs[];
-CONST TclFileAttrProcs tclpFileAttrProcs[] = {
+MODULE_SCOPE const TclFileAttrProcs tclpFileAttrProcs[];
+const TclFileAttrProcs tclpFileAttrProcs[] = {
     {GetGroupAttribute, SetGroupAttribute},
     {GetOwnerAttribute, SetOwnerAttribute},
     {GetPermissionsAttribute, SetPermissionsAttribute},
@@ -179,19 +179,20 @@ CONST TclFileAttrProcs tclpFileAttrProcs[] = {
  * Declarations for local procedures defined in this file:
  */
 
-static int		CopyFileAtts(CONST char *src,
-			    CONST char *dst, CONST Tcl_StatBuf *statBufPtr);
-static int		DoCopyFile(CONST char *srcPtr, CONST char *dstPtr,
-			    CONST Tcl_StatBuf *statBufPtr);
-static int		DoCreateDirectory(CONST char *pathPtr);
+static int		CopyFileAtts(const char *src,
+			    const char *dst, const Tcl_StatBuf *statBufPtr);
+static const char *	DefaultTempDir(void);
+static int		DoCopyFile(const char *srcPtr, const char *dstPtr,
+			    const Tcl_StatBuf *statBufPtr);
+static int		DoCreateDirectory(const char *pathPtr);
 static int		DoRemoveDirectory(Tcl_DString *pathPtr,
 			    int recursive, Tcl_DString *errorPtr);
-static int		DoRenameFile(CONST char *src, CONST char *dst);
+static int		DoRenameFile(const char *src, const char *dst);
 static int		TraversalCopy(Tcl_DString *srcPtr,
-			    Tcl_DString *dstPtr, CONST Tcl_StatBuf *statBufPtr,
+			    Tcl_DString *dstPtr, const Tcl_StatBuf *statBufPtr,
 			    int type, Tcl_DString *errorPtr);
 static int		TraversalDelete(Tcl_DString *srcPtr,
-			    Tcl_DString *dstPtr, CONST Tcl_StatBuf *statBufPtr,
+			    Tcl_DString *dstPtr, const Tcl_StatBuf *statBufPtr,
 			    int type, Tcl_DString *errorPtr);
 static int		TraverseUnixTree(TraversalProc *traversalProc,
 			    Tcl_DString *sourcePtr, Tcl_DString *destPtr,
@@ -205,11 +206,11 @@ static int		TraverseUnixTree(TraversalProc *traversalProc,
  * passing the standard MAXPATHLEN size resolved arg.
  */
 
-static char *		Realpath(CONST char *path, char *resolved);
+static char *		Realpath(const char *path, char *resolved);
 
 char *
 Realpath(
-    CONST char *path,
+    const char *path,
     char *resolved)
 {
     memset(resolved, 0, MAXPATHLEN);
@@ -301,9 +302,9 @@ TclpObjRenameFile(
 
 static int
 DoRenameFile(
-    CONST char *src,		/* Pathname of file or dir to be renamed
+    const char *src,		/* Pathname of file or dir to be renamed
 				 * (native). */
-    CONST char *dst)		/* New pathname of file or directory
+    const char *dst)		/* New pathname of file or directory
 				 * (native). */
 {
     if (rename(src, dst) == 0) {			/* INTL: Native. */
@@ -411,7 +412,7 @@ TclpObjCopyFile(
     Tcl_Obj *srcPathPtr,
     Tcl_Obj *destPathPtr)
 {
-    CONST char *src = Tcl_FSGetNativePath(srcPathPtr);
+    const char *src = Tcl_FSGetNativePath(srcPathPtr);
     Tcl_StatBuf srcStatBuf;
 
     if (TclOSlstat(src, &srcStatBuf) != 0) {		/* INTL: Native. */
@@ -423,9 +424,9 @@ TclpObjCopyFile(
 
 static int
 DoCopyFile(
-    CONST char *src,		/* Pathname of file to be copied (native). */
-    CONST char *dst,		/* Pathname of file to copy to (native). */
-    CONST Tcl_StatBuf *statBufPtr)
+    const char *src,		/* Pathname of file to be copied (native). */
+    const char *dst,		/* Pathname of file to copy to (native). */
+    const Tcl_StatBuf *statBufPtr)
 				/* Used to determine filetype. */
 {
     Tcl_StatBuf dstStatBuf;
@@ -509,10 +510,10 @@ DoCopyFile(
 
 int
 TclUnixCopyFile(
-    CONST char *src,		/* Pathname of file to copy (native). */
-    CONST char *dst,		/* Pathname of file to create/overwrite
+    const char *src,		/* Pathname of file to copy (native). */
+    const char *dst,		/* Pathname of file to create/overwrite
 				 * (native). */
-    CONST Tcl_StatBuf *statBufPtr,
+    const Tcl_StatBuf *statBufPtr,
 				/* Used to determine mode and blocksize. */
     int dontCopyAtts)		/* If flag set, don't copy attributes. */
 {
@@ -526,6 +527,8 @@ TclUnixCopyFile(
 #else
 #define BINMODE
 #endif
+
+#define DEFAULT_COPY_BLOCK_SIZE 4069
 
     if ((srcFd = TclOSopen(src, O_RDONLY BINMODE, 0)) < 0) { /* INTL: Native */
 	return TCL_ERROR;
@@ -553,11 +556,11 @@ TclUnixCopyFile(
 	if (fstatfs(srcFd, &fs, sizeof(fs), 0) == 0) {
 	    blockSize = fs.f_bsize;
 	} else {
-	    blockSize = 4096;
+	    blockSize = DEFAULT_COPY_BLOCK_SIZE;
 	}
     }
 #else
-    blockSize = 4096;
+    blockSize = DEFAULT_COPY_BLOCK_SIZE;
 #endif /* HAVE_ST_BLKSIZE */
 
     /*
@@ -568,7 +571,7 @@ TclUnixCopyFile(
      */
 
     if (blockSize <= 0) {
-	blockSize = 4096;
+	blockSize = DEFAULT_COPY_BLOCK_SIZE;
     }
     buffer = ckalloc(blockSize);
     while (1) {
@@ -631,7 +634,7 @@ TclpObjDeleteFile(
 
 int
 TclpDeleteFile(
-    CONST char *path)		/* Pathname of file to be removed (native). */
+    const char *path)		/* Pathname of file to be removed (native). */
 {
     if (unlink(path) != 0) {				/* INTL: Native. */
 	return TCL_ERROR;
@@ -674,7 +677,7 @@ TclpObjCreateDirectory(
 
 static int
 DoCreateDirectory(
-    CONST char *path)		/* Pathname of directory to create (native). */
+    const char *path)		/* Pathname of directory to create (native). */
 {
     mode_t mode;
 
@@ -821,7 +824,7 @@ DoRemoveDirectory(
 				 * filled with UTF-8 name of file causing
 				 * error. */
 {
-    CONST char *path;
+    const char *path;
     mode_t oldPerm = 0;
     int result;
 
@@ -919,7 +922,7 @@ TraverseUnixTree(
     				 * files. */
 {
     Tcl_StatBuf statBuf;
-    CONST char *source, *errfile;
+    const char *source, *errfile;
     int result, sourceLen;
     int targetLen;
 #ifndef HAVE_FTS
@@ -927,7 +930,7 @@ TraverseUnixTree(
     Tcl_DirEntry *dirEntPtr;
     DIR *dirPtr;
 #else
-    CONST char *paths[2] = {NULL, NULL};
+    const char *paths[2] = {NULL, NULL};
     FTS *fts = NULL;
     FTSENT *ent;
 #endif
@@ -946,7 +949,7 @@ TraverseUnixTree(
 	 * Process the regular file
 	 */
 
-	return (*traverseProc)(sourcePtr, targetPtr, &statBuf, DOTREE_F,
+	return traverseProc(sourcePtr, targetPtr, &statBuf, DOTREE_F,
 		errorPtr);
     }
 #ifndef HAVE_FTS
@@ -959,7 +962,7 @@ TraverseUnixTree(
 	errfile = source;
 	goto end;
     }
-    result = (*traverseProc)(sourcePtr, targetPtr, &statBuf, DOTREE_PRED,
+    result = traverseProc(sourcePtr, targetPtr, &statBuf, DOTREE_PRED,
 	    errorPtr);
     if (result != TCL_OK) {
 	closedir(dirPtr);
@@ -1033,7 +1036,7 @@ TraverseUnixTree(
 	 * that directory.
 	 */
 
-	result = (*traverseProc)(sourcePtr, targetPtr, &statBuf, DOTREE_POSTD,
+	result = traverseProc(sourcePtr, targetPtr, &statBuf, DOTREE_POSTD,
 		errorPtr);
     }
 #else /* HAVE_FTS */
@@ -1056,7 +1059,7 @@ TraverseUnixTree(
 	unsigned short pathlen = ent->fts_pathlen - sourceLen;
 	int type;
 	Tcl_StatBuf *statBufPtr = NULL;
-	
+
 	if (info == FTS_DNR || info == FTS_ERR || info == FTS_NS) {
 	    errfile = ent->fts_path;
 	    break;
@@ -1087,7 +1090,7 @@ TraverseUnixTree(
 		statBufPtr = (Tcl_StatBuf *) ent->fts_statp;
 	    }
 	}
-	result = (*traverseProc)(sourcePtr, targetPtr, statBufPtr, type,
+	result = traverseProc(sourcePtr, targetPtr, statBufPtr, type,
 		errorPtr);
 	if (result != TCL_OK) {
 	    break;
@@ -1137,7 +1140,7 @@ static int
 TraversalCopy(
     Tcl_DString *srcPtr,	/* Source pathname to copy (native). */
     Tcl_DString *dstPtr,	/* Destination pathname of copy (native). */
-    CONST Tcl_StatBuf *statBufPtr,
+    const Tcl_StatBuf *statBufPtr,
 				/* Stat info for file specified by srcPtr. */
     int type,			/* Reason for call - see TraverseUnixTree(). */
     Tcl_DString *errorPtr)	/* If non-NULL, uninitialized or free DString
@@ -1201,7 +1204,7 @@ static int
 TraversalDelete(
     Tcl_DString *srcPtr,	/* Source pathname (native). */
     Tcl_DString *ignore,	/* Destination pathname (not used). */
-    CONST Tcl_StatBuf *statBufPtr,
+    const Tcl_StatBuf *statBufPtr,
 				/* Stat info for file specified by srcPtr. */
     int type,			/* Reason for call - see TraverseUnixTree(). */
     Tcl_DString *errorPtr)	/* If non-NULL, uninitialized or free DString
@@ -1249,9 +1252,9 @@ TraversalDelete(
 
 static int
 CopyFileAtts(
-    CONST char *src,		/* Path name of source file (native). */
-    CONST char *dst,		/* Path name of target file (native). */
-    CONST Tcl_StatBuf *statBufPtr)
+    const char *src,		/* Path name of source file (native). */
+    const char *dst,		/* Path name of target file (native). */
+    const Tcl_StatBuf *statBufPtr)
 				/* Stat info for source file */
 {
     struct utimbuf tval;
@@ -1332,7 +1335,7 @@ GetGroupAttribute(
 	*attributePtrPtr = Tcl_NewIntObj((int) statBuf.st_gid);
     } else {
 	Tcl_DString ds;
-	CONST char *utf;
+	const char *utf;
 
 	utf = Tcl_ExternalToUtfDString(NULL, groupPtr->gr_name, -1, &ds);
 	*attributePtrPtr = Tcl_NewStringObj(utf, -1);
@@ -1387,7 +1390,7 @@ GetOwnerAttribute(
 	*attributePtrPtr = Tcl_NewIntObj((int) statBuf.st_uid);
     } else {
 	Tcl_DString ds;
-	CONST char *utf;
+	const char *utf;
 
 	utf = Tcl_ExternalToUtfDString(NULL, pwPtr->pw_name, -1, &ds);
 	*attributePtrPtr = Tcl_NewStringObj(utf, Tcl_DStringLength(&ds));
@@ -1465,12 +1468,12 @@ SetGroupAttribute(
 {
     long gid;
     int result;
-    CONST char *native;
+    const char *native;
 
     if (Tcl_GetLongFromObj(NULL, attributePtr, &gid) != TCL_OK) {
 	Tcl_DString ds;
 	struct group *groupPtr = NULL;
-	CONST char *string;
+	const char *string;
 	int length;
 
 	string = Tcl_GetStringFromObj(attributePtr, &length);
@@ -1531,12 +1534,12 @@ SetOwnerAttribute(
 {
     long uid;
     int result;
-    CONST char *native;
+    const char *native;
 
     if (Tcl_GetLongFromObj(NULL, attributePtr, &uid) != TCL_OK) {
 	Tcl_DString ds;
 	struct passwd *pwPtr = NULL;
-	CONST char *string;
+	const char *string;
 	int length;
 
 	string = Tcl_GetStringFromObj(attributePtr, &length);
@@ -1596,8 +1599,8 @@ SetPermissionsAttribute(
     long mode;
     mode_t newMode;
     int result = TCL_ERROR;
-    CONST char *native;
-    char *modeStringPtr = TclGetString(attributePtr);
+    const char *native;
+    const char *modeStringPtr = TclGetString(attributePtr);
     int scanned = TclParseAllWhiteSpace(modeStringPtr, -1);
 
     /*
@@ -1681,7 +1684,8 @@ SetPermissionsAttribute(
 Tcl_Obj *
 TclpObjListVolumes(void)
 {
-    Tcl_Obj *resultPtr = Tcl_NewStringObj("/", 1);
+    Tcl_Obj *resultPtr;
+    TclNewLiteralStringObj(resultPtr, "/");
 
     Tcl_IncrRefCount(resultPtr);
     return resultPtr;
@@ -1709,7 +1713,7 @@ TclpObjListVolumes(void)
 static int
 GetModeFromPermString(
     Tcl_Interp *interp,		/* The interp we are using for errors. */
-    char *modeStringPtr,	/* Permissions string */
+    const char *modeStringPtr, /* Permissions string */
     mode_t *modePtr)		/* pointer to the mode value */
 {
     mode_t newMode;
@@ -1902,14 +1906,14 @@ TclpObjNormalizePath(
     Tcl_Obj *pathPtr,
     int nextCheckpoint)
 {
-    char *currentPathEndPosition;
+    const char *currentPathEndPosition;
     int pathLen;
     char cur;
-    char *path = Tcl_GetStringFromObj(pathPtr, &pathLen);
+    const char *path = Tcl_GetStringFromObj(pathPtr, &pathLen);
 #ifndef NO_REALPATH
     char normPath[MAXPATHLEN];
     Tcl_DString ds;
-    CONST char *nativePath;
+    const char *nativePath;
 #endif
 
     /*
@@ -1962,7 +1966,7 @@ TclpObjNormalizePath(
 	     */
 
 	    Tcl_DString ds;
-	    CONST char *nativePath;
+	    const char *nativePath;
 	    int accessOk;
 
 	    nativePath = Tcl_UtfToExternalDString(NULL, path,
@@ -2088,6 +2092,126 @@ TclpObjNormalizePath(
     return nextCheckpoint;
 }
 
+/*
+ *----------------------------------------------------------------------
+ *
+ * TclpOpenTemporaryFile --
+ *
+ *	Creates a temporary file, possibly based on the supplied bits and
+ *	pieces of template supplied in the first three arguments. If the
+ *	fourth argument is non-NULL, it contains a Tcl_Obj to store the name
+ *	of the temporary file in (and it is caller's responsibility to clean
+ *	up). If the fourth argument is NULL, try to arrange for the temporary
+ *	file to go away once it is no longer needed.
+ *
+ * Results:
+ *	A read-write Tcl Channel open on the file.
+ *
+ *----------------------------------------------------------------------
+ */
+
+Tcl_Channel
+TclpOpenTemporaryFile(
+    Tcl_Obj *dirObj,
+    Tcl_Obj *basenameObj,
+    Tcl_Obj *extensionObj,
+    Tcl_Obj *resultingNameObj)
+{
+    Tcl_Channel chan;
+    Tcl_DString template, tmp;
+    const char *string;
+    int len, fd;
+
+    if (dirObj) {
+	string = Tcl_GetStringFromObj(dirObj, &len);
+	Tcl_UtfToExternalDString(NULL, string, len, &template);
+    } else {
+	Tcl_DStringInit(&template);
+	Tcl_DStringAppend(&template, DefaultTempDir(), -1); /* INTL: native */
+    }
+
+    Tcl_DStringAppend(&template, "/", -1);
+
+    if (basenameObj) {
+	string = Tcl_GetStringFromObj(basenameObj, &len);
+	Tcl_UtfToExternalDString(NULL, string, len, &tmp);
+	Tcl_DStringAppend(&template, Tcl_DStringValue(&tmp), -1);
+	Tcl_DStringFree(&tmp);
+    } else {
+	Tcl_DStringAppend(&template, "tcl", -1);
+    }
+
+    Tcl_DStringAppend(&template, "_XXXXXX", -1);
+
+#ifdef HAVE_MKSTEMPS
+    if (extensionObj) {
+	string = Tcl_GetStringFromObj(extensionObj, &len);
+	Tcl_UtfToExternalDString(NULL, string, len, &tmp);
+	Tcl_DStringAppend(&template, Tcl_DStringValue(&tmp), -1);
+	fd = mkstemps(Tcl_DStringValue(&template), Tcl_DStringLength(&tmp));
+	Tcl_DStringFree(&tmp);
+    } else
+#endif
+    {
+	fd = mkstemp(Tcl_DStringValue(&template));
+    }
+
+    if (fd == -1) {
+	return NULL;
+    }
+    chan = Tcl_MakeFileChannel(INT2PTR(fd), TCL_READABLE|TCL_WRITABLE);
+    if (resultingNameObj) {
+	Tcl_ExternalToUtfDString(NULL, Tcl_DStringValue(&template),
+		Tcl_DStringLength(&template), &tmp);
+	Tcl_SetStringObj(resultingNameObj, Tcl_DStringValue(&tmp),
+		Tcl_DStringLength(&tmp));
+	Tcl_DStringFree(&tmp);
+    } else {
+	/*
+	 * Try to delete the file immediately since we're not reporting the
+	 * name to anyone. Note that we're *not* handling any errors from
+	 * this!
+	 */
+
+	unlink(Tcl_DStringValue(&template));
+	errno = 0;
+    }
+    Tcl_DStringFree(&template);
+
+    return chan;
+}
+
+/*
+ * Helper that does *part* of what tempnam() does.
+ */
+
+static const char *
+DefaultTempDir(void)
+{
+    const char *dir;
+    struct stat buf;
+
+    dir = getenv("TMPDIR");
+    if (dir && dir[0] && stat(dir, &buf) == 0 && S_ISDIR(buf.st_mode)
+	    && access(dir, W_OK)) {
+	return dir;
+    }
+
+#ifdef P_tmpdir
+    dir = P_tmpdir;
+    if (stat(dir, &buf) == 0 && S_ISDIR(buf.st_mode) && access(dir, W_OK)) {
+	return dir;
+    }
+#endif
+
+    /*
+     * Assume that "/tmp" is always an existing writable directory; we've no
+     * recovery mechanism if it isn't.
+     */
+
+    return "/tmp";
+}
+
 #if defined(HAVE_CHFLAGS) && defined(UF_IMMUTABLE)
 /*
  *----------------------------------------------------------------------
@@ -2156,9 +2280,8 @@ SetReadOnlyAttribute(
     Tcl_Obj *attributePtr)	/* The attribute to set. */
 {
     Tcl_StatBuf statBuf;
-    int result;
-    int readonly;
-    CONST char *native;
+    int result, readonly;
+    const char *native;
 
     if (Tcl_GetBooleanFromObj(interp, attributePtr, &readonly) != TCL_OK) {
 	return TCL_ERROR;

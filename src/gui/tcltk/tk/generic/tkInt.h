@@ -43,7 +43,7 @@
 #    ifdef BIG_ENDIAN
 #	 if BYTE_ORDER == BIG_ENDIAN
 #	     undef WORDS_BIGENDIAN
-#	     define WORDS_BIGENDIAN
+#	     define WORDS_BIGENDIAN 1
 #	 endif
 #    endif
 #    ifdef LITTLE_ENDIAN
@@ -102,6 +102,7 @@ typedef struct TkpCursor_ *TkpCursor;
 typedef struct TkRegion_ *TkRegion;
 typedef struct TkStressedCmap TkStressedCmap;
 typedef struct TkBindInfo_ *TkBindInfo;
+typedef struct Busy *TkBusy;
 
 /*
  * Function types.
@@ -113,7 +114,7 @@ typedef void (TkBindFreeProc)(ClientData clientData);
 
 /*
  * One of the following structures is maintained for each cursor in use in the
- * system. This structure is used by tkCursor.c and the various system
+ * system. This structure is used by tkCursor.c and the various system-
  * specific cursor files.
  */
 
@@ -670,6 +671,7 @@ typedef struct TkMainInfo {
 				 * ::tk::AlwaysShowSelection variable. */
     struct TkMainInfo *nextPtr;	/* Next in list of all main windows managed by
 				 * this process. */
+    Tcl_HashTable busyTable;	/* Information used by [tk busy] command. */
 } TkMainInfo;
 
 /*
@@ -679,7 +681,7 @@ typedef struct TkMainInfo {
  */
 
 typedef struct {
-    const char *source;		/* Bits for bitmap. */
+    const void *source;		/* Bits for bitmap. */
     int width, height;		/* Dimensions of bitmap. */
     int native;			/* 0 means generic (X style) bitmap, 1 means
     				 * native style bitmap. */
@@ -852,6 +854,17 @@ typedef struct TkWindow {
 } TkWindow;
 
 /*
+ * The following structure is used with TkMakeEnsemble to create ensemble
+ * commands and optionally to create sub-ensembles.
+ */
+
+typedef struct TkEnsemble {
+    const char *name;
+    Tcl_ObjCmdProc *proc;
+    const struct TkEnsemble *subensemble;
+} TkEnsemble;
+
+/*
  * The following structure is used as a two way map between integers and
  * strings, usually to map between an internal C representation and the
  * strings used in Tcl.
@@ -931,28 +944,54 @@ extern TkDisplay *tkDisplayList;
  * be properly registered with Tcl:
  */
 
-MODULE_SCOPE Tcl_ObjType tkBorderObjType;
-MODULE_SCOPE Tcl_ObjType tkBitmapObjType;
-MODULE_SCOPE Tcl_ObjType tkColorObjType;
-MODULE_SCOPE Tcl_ObjType tkCursorObjType;
-MODULE_SCOPE Tcl_ObjType tkFontObjType;
-MODULE_SCOPE Tcl_ObjType tkOptionObjType;
-MODULE_SCOPE Tcl_ObjType tkStateKeyObjType;
-MODULE_SCOPE Tcl_ObjType tkTextIndexType;
+MODULE_SCOPE const Tcl_ObjType tkBorderObjType;
+MODULE_SCOPE const Tcl_ObjType tkBitmapObjType;
+MODULE_SCOPE const Tcl_ObjType tkColorObjType;
+MODULE_SCOPE const Tcl_ObjType tkCursorObjType;
+MODULE_SCOPE const Tcl_ObjType tkFontObjType;
+MODULE_SCOPE const Tcl_ObjType tkOptionObjType;
+MODULE_SCOPE const Tcl_ObjType tkStateKeyObjType;
+MODULE_SCOPE const Tcl_ObjType tkTextIndexType;
 
 /*
  * Miscellaneous variables shared among Tk modules but not exported to the
  * outside world:
  */
 
-MODULE_SCOPE Tk_SmoothMethod	tkBezierSmoothMethod;
+MODULE_SCOPE const Tk_SmoothMethod tkBezierSmoothMethod;
 MODULE_SCOPE Tk_ImageType	tkBitmapImageType;
 MODULE_SCOPE Tk_PhotoImageFormat tkImgFmtGIF;
 MODULE_SCOPE void		(*tkHandleEventProc) (XEvent* eventPtr);
+MODULE_SCOPE Tk_PhotoImageFormat tkImgFmtPNG;
 MODULE_SCOPE Tk_PhotoImageFormat tkImgFmtPPM;
 MODULE_SCOPE TkMainInfo		*tkMainWindowList;
 MODULE_SCOPE Tk_ImageType	tkPhotoImageType;
 MODULE_SCOPE Tcl_HashTable	tkPredefBitmapTable;
+
+/*
+ * The definition of pi, at least from the perspective of double-precision
+ * floats.
+ */
+
+#ifndef PI
+#ifdef M_PI
+#define PI	M_PI
+#else
+#define PI	3.14159265358979323846
+#endif
+#endif
+
+/*
+ * The following magic value is stored in the "send_event" field of FocusIn
+ * and FocusOut events. This allows us to separate "real" events coming from
+ * the server from those that we generated.
+ */
+
+#define GENERATED_FOCUS_EVENT_MAGIC	((Bool) 0x547321ac)
+
+/*
+ * Exported internals.
+ */
 
 #include "tkIntDecls.h"
 
@@ -981,6 +1020,9 @@ MODULE_SCOPE int	Tk_BindObjCmd(ClientData clientData,
 MODULE_SCOPE int	Tk_BindtagsObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
+MODULE_SCOPE int	Tk_BusyObjCmd(ClientData clientData,
+			    Tcl_Interp *interp, int objc,
+			    Tcl_Obj *const objv[]);
 MODULE_SCOPE int	Tk_ButtonObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
@@ -997,9 +1039,6 @@ MODULE_SCOPE int	Tk_ChooseColorObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
 MODULE_SCOPE int	Tk_ChooseDirectoryObjCmd(ClientData clientData,
-			    Tcl_Interp *interp, int objc,
-			    Tcl_Obj *const objv[]);
-MODULE_SCOPE int	Tk_ChooseFontObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
 MODULE_SCOPE int	Tk_DestroyObjCmd(ClientData clientData,
@@ -1093,9 +1132,6 @@ MODULE_SCOPE int	Tk_SpinboxObjCmd(ClientData clientData,
 MODULE_SCOPE int	Tk_TextObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
-MODULE_SCOPE int	Tk_TkObjCmd(ClientData clientData,
-			    Tcl_Interp *interp, int objc,
-			    Tcl_Obj *const objv[]);
 MODULE_SCOPE int	Tk_TkwaitObjCmd(ClientData clientData,
 			    Tcl_Interp *interp, int objc,
 			    Tcl_Obj *const objv[]);
@@ -1111,6 +1147,9 @@ MODULE_SCOPE int	Tk_WinfoObjCmd(ClientData clientData,
 MODULE_SCOPE int	Tk_WmObjCmd(ClientData clientData, Tcl_Interp *interp,
 			    int objc, Tcl_Obj *const objv[]);
 
+MODULE_SCOPE int	Tk_GetDoublePixelsFromObj(Tcl_Interp *interp,
+			    Tk_Window tkwin, Tcl_Obj *objPtr,
+			    double *doublePtr);
 MODULE_SCOPE void	TkEventInit(void);
 MODULE_SCOPE void	TkRegisterObjTypes(void);
 MODULE_SCOPE int	TkCreateMenuCmd(Tcl_Interp *interp);
@@ -1119,30 +1158,12 @@ MODULE_SCOPE int	TkDeadAppCmd(ClientData clientData,
 MODULE_SCOPE int	TkCanvasGetCoordObj(Tcl_Interp *interp,
 			    Tk_Canvas canvas, Tcl_Obj *obj,
 			    double *doublePtr);
-MODULE_SCOPE int	TkCanvasDashParseProc(ClientData clientData,
-			    Tcl_Interp *interp, Tk_Window tkwin,
-			    const char *value, char *widgRec, int offset);
-MODULE_SCOPE char *	TkCanvasDashPrintProc(ClientData clientData,
-			    Tk_Window tkwin, char *widgRec, int offset,
-			    Tcl_FreeProc **freeProcPtr);
 MODULE_SCOPE int	TkGetDoublePixels(Tcl_Interp *interp, Tk_Window tkwin,
 			    const char *string, double *doublePtr);
-MODULE_SCOPE int	TkOffsetParseProc(ClientData clientData,
-			    Tcl_Interp *interp, Tk_Window tkwin,
-			    const char *value, char *widgRec, int offset);
-MODULE_SCOPE char *	TkOffsetPrintProc(ClientData clientData,
-			    Tk_Window tkwin, char *widgRec, int offset,
-			    Tcl_FreeProc **freeProcPtr);
 MODULE_SCOPE int	TkOrientParseProc(ClientData clientData,
 			    Tcl_Interp *interp, Tk_Window tkwin,
 			    const char *value, char *widgRec, int offset);
-MODULE_SCOPE char *	TkOrientPrintProc(ClientData clientData,
-			    Tk_Window tkwin, char *widgRec, int offset,
-			    Tcl_FreeProc **freeProcPtr);
-MODULE_SCOPE int	TkPixelParseProc(ClientData clientData,
-			    Tcl_Interp *interp, Tk_Window tkwin,
-			    const char *value, char *widgRec, int offset);
-MODULE_SCOPE char *	TkPixelPrintProc(ClientData clientData,
+MODULE_SCOPE const char * TkOrientPrintProc(ClientData clientData,
 			    Tk_Window tkwin, char *widgRec, int offset,
 			    Tcl_FreeProc **freeProcPtr);
 MODULE_SCOPE int	TkPostscriptImage(Tcl_Interp *interp, Tk_Window tkwin,
@@ -1151,20 +1172,14 @@ MODULE_SCOPE int	TkPostscriptImage(Tcl_Interp *interp, Tk_Window tkwin,
 MODULE_SCOPE int	TkSmoothParseProc(ClientData clientData,
 			    Tcl_Interp *interp, Tk_Window tkwin,
 			    const char *value, char *recordPtr, int offset);
-MODULE_SCOPE char *	TkSmoothPrintProc(ClientData clientData,
+MODULE_SCOPE const char * TkSmoothPrintProc(ClientData clientData,
 			    Tk_Window tkwin, char *recordPtr, int offset,
-			    Tcl_FreeProc **freeProcPtr);
-MODULE_SCOPE int	TkStateParseProc(ClientData clientData,
-			    Tcl_Interp *interp, Tk_Window tkwin,
-			    const char *value, char *widgRec, int offset);
-MODULE_SCOPE char *	TkStatePrintProc(ClientData clientData,
-			    Tk_Window tkwin, char *widgRec, int offset,
 			    Tcl_FreeProc **freeProcPtr);
 MODULE_SCOPE int	TkTileParseProc(ClientData clientData,
 			    Tcl_Interp *interp, Tk_Window tkwin,
 			    const char *value, char *widgRec, int offset);
-MODULE_SCOPE char *	TkTilePrintProc(ClientData clientData, Tk_Window tkwin,
-			    char *widgRec, int offset,
+MODULE_SCOPE const char * TkTilePrintProc(ClientData clientData,
+			    Tk_Window tkwin, char *widgRec, int offset,
 			    Tcl_FreeProc **freeProcPtr);
 MODULE_SCOPE void       TkMapTopFrame(Tk_Window tkwin);
 MODULE_SCOPE XEvent *	TkpGetBindingXEvent(Tcl_Interp *interp);
@@ -1179,7 +1194,7 @@ MODULE_SCOPE void	TkpBuildRegionFromAlphaData(TkRegion region,
 			    unsigned height, unsigned char *dataPtr,
 			    unsigned pixelStride, unsigned lineStride);
 MODULE_SCOPE void	TkPrintPadAmount(Tcl_Interp *interp,
-			    char *buffer, int pad1, int pad2);
+			    const char *buffer, int pad1, int pad2);
 MODULE_SCOPE int	TkParsePadAmount(Tcl_Interp *interp,
 			    Tk_Window tkwin, Tcl_Obj *objPtr,
 			    int *pad1Ptr, int *pad2Ptr);
@@ -1200,6 +1215,36 @@ MODULE_SCOPE void	TkUnderlineCharsInContext(Display *display,
 			    int firstByte, int lastByte);
 MODULE_SCOPE void	TkpGetFontAttrsForChar(Tk_Window tkwin, Tk_Font tkfont,
 			    Tcl_UniChar c, struct TkFontAttributes *faPtr);
+MODULE_SCOPE Tcl_Obj *	TkNewWindowObj(Tk_Window tkwin);
+MODULE_SCOPE void	TkpShowBusyWindow(TkBusy busy);
+MODULE_SCOPE void	TkpHideBusyWindow(TkBusy busy);
+MODULE_SCOPE void	TkpMakeTransparentWindowExist(Tk_Window tkwin,
+			    Window parent);
+MODULE_SCOPE void	TkpCreateBusy(Tk_FakeWin *winPtr, Tk_Window tkRef,
+			    Window *parentPtr, Tk_Window tkParent,
+			    TkBusy busy);
+MODULE_SCOPE void	TkDrawAngledTextLayout(Display *display,
+			    Drawable drawable, GC gc, Tk_TextLayout layout,
+			    int x, int y, double angle, int firstChar,
+			    int lastChar);
+MODULE_SCOPE void	TkpDrawAngledChars(Display *display,Drawable drawable,
+			    GC gc, Tk_Font tkfont, const char *source,
+			    int numBytes, double x, double y, double angle);
+MODULE_SCOPE void	TkUnderlineAngledTextLayout(Display *display,
+			    Drawable drawable, GC gc, Tk_TextLayout layout,
+			    int x, int y, double angle, int underline);
+MODULE_SCOPE int	TkIntersectAngledTextLayout(Tk_TextLayout layout,
+			    int x,int y, int width, int height, double angle);
+MODULE_SCOPE int	TkBackgroundEvalObjv(Tcl_Interp *interp,
+			    int objc, Tcl_Obj *const *objv, int flags);
+MODULE_SCOPE void	TkSendVirtualEvent(Tk_Window tgtWin, const char *eventName);
+MODULE_SCOPE Tcl_Command TkMakeEnsemble(Tcl_Interp *interp,
+			    const char *namespace, const char *name,
+			    ClientData clientData, const TkEnsemble *map);
+MODULE_SCOPE int	TkInitTkCmd(Tcl_Interp *interp,
+			    ClientData clientData);
+MODULE_SCOPE int	TkInitFontchooser(Tcl_Interp *interp,
+			    ClientData clientData);
 
 /*
  * Unsupported commands.

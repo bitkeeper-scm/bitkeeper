@@ -70,7 +70,7 @@ static TkWinProcs asciiProcs = {
 	    WPARAM wParam, LPARAM lParam)) CallWindowProcA,
     (LRESULT (WINAPI *)(HWND hWnd, UINT Msg, WPARAM wParam,
 	    LPARAM lParam)) DefWindowProcA,
-    (ATOM (WINAPI *)(CONST WNDCLASS *lpWndClass)) RegisterClassA,
+    (ATOM (WINAPI *)(const WNDCLASS *lpWndClass)) RegisterClassA,
     (BOOL (WINAPI *)(HWND hWnd, LPCTSTR lpString)) SetWindowTextA,
     (HWND (WINAPI *)(DWORD dwExStyle, LPCTSTR lpClassName,
 	    LPCTSTR lpWindowName, DWORD dwStyle, int x, int y,
@@ -79,6 +79,8 @@ static TkWinProcs asciiProcs = {
     (BOOL (WINAPI *)(HMENU hMenu, UINT uPosition, UINT uFlags,
 	    UINT uIDNewItem, LPCTSTR lpNewItem)) InsertMenuA,
     (int (WINAPI *)(HWND hWnd, LPCTSTR lpString, int nMaxCount)) GetWindowTextA,
+    (HWND (WINAPI *)(LPCTSTR lpClassName, LPCTSTR lpWindowName)) FindWindowA,
+    (int (WINAPI *)(HWND hwnd, LPTSTR lpClassName, int nMaxCount)) GetClassNameA,
 };
 
 static TkWinProcs unicodeProcs = {
@@ -88,7 +90,7 @@ static TkWinProcs unicodeProcs = {
 	    WPARAM wParam, LPARAM lParam)) CallWindowProcW,
     (LRESULT (WINAPI *)(HWND hWnd, UINT Msg, WPARAM wParam,
 	    LPARAM lParam)) DefWindowProcW,
-    (ATOM (WINAPI *)(CONST WNDCLASS *lpWndClass)) RegisterClassW,
+    (ATOM (WINAPI *)(const WNDCLASS *lpWndClass)) RegisterClassW,
     (BOOL (WINAPI *)(HWND hWnd, LPCTSTR lpString)) SetWindowTextW,
     (HWND (WINAPI *)(DWORD dwExStyle, LPCTSTR lpClassName,
 	    LPCTSTR lpWindowName, DWORD dwStyle, int x, int y,
@@ -97,6 +99,8 @@ static TkWinProcs unicodeProcs = {
     (BOOL (WINAPI *)(HMENU hMenu, UINT uPosition, UINT uFlags,
 	    UINT uIDNewItem, LPCTSTR lpNewItem)) InsertMenuW,
     (int (WINAPI *)(HWND hWnd, LPCTSTR lpString, int nMaxCount)) GetWindowTextW,
+    (HWND (WINAPI *)(LPCTSTR lpClassName, LPCTSTR lpWindowName)) FindWindowW,
+    (int (WINAPI *)(HWND hwnd, LPTSTR lpClassName, int nMaxCount)) GetClassNameW,
 };
 
 TkWinProcs *tkWinProcs;
@@ -464,10 +468,10 @@ TkWinGetPlatformTheme(void)
  *----------------------------------------------------------------------
  */
 
-CONST char *
+const char *
 TkGetDefaultScreenName(
     Tcl_Interp *interp,		/* Not used. */
-    CONST char *screenName)	/* If NULL, use default string. */
+    const char *screenName)	/* If NULL, use default string. */
 {
     if ((screenName == NULL) || (screenName[0] == '\0')) {
 	screenName = winScreenName;
@@ -589,7 +593,7 @@ TkWinDisplayChanged(
 
 TkDisplay *
 TkpOpenDisplay(
-    CONST char *display_name)
+    const char *display_name)
 {
     Screen *screen;
     TkWinDrawable *twdPtr;
@@ -1002,10 +1006,26 @@ GenerateXEvent(
     LPARAM lParam)
 {
     XEvent event;
-    TkWindow *winPtr = (TkWindow *)Tk_HWNDToWindow(hwnd);
+    TkWindow *winPtr;
     ThreadSpecificData *tsdPtr = (ThreadSpecificData *)
 	    Tcl_GetThreadData(&dataKey, sizeof(ThreadSpecificData));
 
+    if (message == WM_MOUSEWHEEL) {
+	POINTS rootPoint = MAKEPOINTS(lParam);
+	POINT pos;
+
+	/*
+	 * Redirect mousewheel events to the window containing the cursor.
+	 * That feels much less strange to users, and is how all the other
+	 * platforms work.
+	 */
+
+	pos.x = rootPoint.x;
+	pos.y = rootPoint.y;
+	hwnd = WindowFromPoint(pos);
+    }
+
+    winPtr = (TkWindow *) Tk_HWNDToWindow(hwnd);
     if (!winPtr || winPtr->window == None) {
 	return;
     }
@@ -1103,11 +1123,6 @@ GenerateXEvent(
 	break;
 
     case WM_MOUSEWHEEL:
-	/*
-	 * The mouse wheel event is closer to a key event than a mouse event
-	 * in that the message is sent to the window that has focus.
-	 */
-
     case WM_CHAR:
     case WM_UNICHAR:
     case WM_SYSKEYDOWN:

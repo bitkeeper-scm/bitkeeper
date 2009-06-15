@@ -57,7 +57,7 @@ Tk_ClassProcs tkpButtonProcs = {
  */
 
 /* XPM */
-static char *button_images[] = {
+static const char *button_images[] = {
     /* width height ncolors chars_per_pixel */
     "52 26 7 1",
     /* colors */

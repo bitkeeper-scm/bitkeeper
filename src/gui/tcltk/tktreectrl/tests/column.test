@@ -56,7 +56,7 @@ test column-1.5 {configure: create and fill a column} -body {
 } -result {1}
 
 test column-1.6 {configure: create another column} -body {
-	.t column create
+    .t column create
     .t column configure 1 -tags column1
 } -result {}
 
@@ -97,6 +97,10 @@ test column-3.3 {column configure: list all options} -body {
 test column-3.4 {column configure: tail column} -body {
     .t column configure tail
 } -result {{-arrow {} {} none none} *} -match glob
+
+test column-3.4a {column configure: invalid option} -body {
+    .t column configure tail -foo
+} -returnCodes error -result {unknown option "-foo"}
 
 test column-3.5 {column configure: invalid -arrow} -body {
     .t column configure column1 -arrow straight

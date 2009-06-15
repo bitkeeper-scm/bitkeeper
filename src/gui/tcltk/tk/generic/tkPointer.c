@@ -268,7 +268,7 @@ Tk_UpdatePointer(
      * between the current button state and the last known button state.
      */
 
-    for (b = Button1; b <= Button3; b++) {
+    for (b = Button1; b <= Button5; b++) {
 	mask = ButtonMask(b);
 	if (changes & mask) {
 	    if (state & mask) {
@@ -309,14 +309,12 @@ Tk_UpdatePointer(
 
 		/*
 		 * ButtonRelease - Release the mouse capture and clear the
-		 * restrict window when the last button is released and we
-		 * aren't in a global grab.
+		 * restrict window when the last button is released. If we
+		 * are in a global grab, restore the grab window capture.
 		 */
 
 		if ((tsdPtr->lastState & ALL_BUTTONS) == mask) {
-		    if (!tsdPtr->grabWinPtr) {
-			TkpSetCapture(NULL);
-		    }
+		    TkpSetCapture(tsdPtr->grabWinPtr);
 		}
 
 		/*

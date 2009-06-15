@@ -2,7 +2,7 @@
 
 # RCS: @(#) $Id$
 
-set VERSION 2.2.6
+set VERSION 2.2.9
 
 package require Tk 8.4
 
@@ -558,7 +558,7 @@ proc MakeSourceWindow {} {
 	    set font {Courier 9}
 	}
     }
-    text $f.t -font $font -tabs [font measure $font 1234] -wrap none \
+    text $f.t -font $font -tabs [font measure $font 12345678] -wrap none \
 	-yscrollcommand "$f.sv set" -xscrollcommand "$f.sh set"
     $::scrollbarCmd $f.sv -orient vertical -command "$f.t yview"
     $::scrollbarCmd $f.sh -orient horizontal -command "$f.t xview"
@@ -901,6 +901,8 @@ proc MakeMainWindow {} {
     [DemoList] notify install <Edit-accept>
     ###
 
+    [DemoList] notify install <DemoColumnVisibility>
+
     return
 }
 
@@ -971,6 +973,9 @@ proc MakeListPopup {T} {
 	-command {$Popup(T) configure -doublebuffer $Popup(doublebuffer)}
     $m add cascade -label Buffering -menu $m2
 
+    set m2 [menu $m.mItemWrap -tearoff no]
+    $m add cascade -label "Item Wrap" -menu $m2
+
     set m2 [menu $m.mLineStyle -tearoff no]
     $m2 add radiobutton -label "dot" -variable Popup(linestyle) -value dot \
 	-command {$Popup(T) configure -linestyle $Popup(linestyle)}
@@ -999,12 +1004,14 @@ proc MakeListPopup {T} {
 	-command {$Popup(T) configure -showheader $Popup(showheader)}
     $m2 add checkbutton -label "Lines" -variable Popup(showlines) \
 	-command {$Popup(T) configure -showlines $Popup(showlines)}
-    $m2 add checkbutton -label "Root Lines" -variable Popup(showrootlines) \
-	-command {$Popup(T) configure -showrootlines $Popup(showrootlines)}
     $m2 add checkbutton -label "Root" -variable Popup(showroot) \
 	-command {$Popup(T) configure -showroot $Popup(showroot)}
     $m2 add checkbutton -label "Root Button" -variable Popup(showrootbutton) \
 	-command {$Popup(T) configure -showrootbutton $Popup(showrootbutton)}
+    $m2 add checkbutton -label "Root Child Buttons" -variable Popup(showrootchildbuttons) \
+	-command {$Popup(T) configure -showrootchildbuttons $Popup(showrootchildbuttons)}
+    $m2 add checkbutton -label "Root Child Lines" -variable Popup(showrootlines) \
+	-command {$Popup(T) configure -showrootlines $Popup(showrootlines)}
     $m add cascade -label Show -menu $m2
 
     set m2 [menu $m.mSpan -tearoff no]
@@ -1154,17 +1161,36 @@ proc ShowPopup {T x y X Y} {
     set Popup(showbuttons) [$T cget -showbuttons]
     set Popup(showheader) [$T cget -showheader]
     set Popup(showlines) [$T cget -showlines]
-    set Popup(showrootlines) [$T cget -showrootlines]
     set Popup(showroot) [$T cget -showroot]
     set Popup(showrootbutton) [$T cget -showrootbutton]
+    set Popup(showrootchildbuttons) [$T cget -showrootchildbuttons]
+    set Popup(showrootlines) [$T cget -showrootlines]
     set m $menu.mVisible
     $m delete 0 end
     foreach C [$T column list] {
 	set break [expr {!([$T column order $C] % 20)}]
 	set Popup(visible,$C) [$T column cget $C -visible]
-	$m add checkbutton -label "Column $C \"[$T column cget $C -text]\" \[[$T column cget $C -image]\]" -variable Popup(visible,$C) \
-	    -command "$T column configure $C -visible \$Popup(visible,$C)" \
+	$m add checkbutton \
+	    -label "Column $C \"[$T column cget $C -text]\" \[[$T column cget $C -image]\]" \
+	    -variable Popup(visible,$C) \
+	    -command "$T column configure $C -visible \$Popup(visible,$C) ;
+		TreeCtrl::TryEvent $T DemoColumnVisibility {} {C $C}" \
 	    -columnbreak $break
+    }
+
+    set m $menu.mItemWrap
+    $m delete 0 end
+    $m add command -label "All Off" -command {$Popup(T) item configure all -wrap off}
+    $m add command -label "All On" -command {$Popup(T) item configure all -wrap on}
+    if {$id ne ""} {
+	if {[lindex $id 0] eq "item"} {
+	    set item [lindex $id 1]
+	    if {[$T item cget $item -wrap]} {
+		$m add command -label "Item $item Off" -command "$T item configure $item -wrap off"
+	    } else {
+		$m add command -label "Item $item On" -command "$T item configure $item -wrap on"
+	    }
+	}
     }
 
     set m $menu.mSpan
@@ -1229,6 +1255,7 @@ proc InitDemoList {} {
 	"MailWasher" DemoMailWasher mailwasher.tcl \
 	"Bitmaps" DemoBitmaps bitmaps.tcl \
 	"iMovie" DemoIMovie imovie.tcl \
+	"iMovie (Wrap)" DemoIMovieWrap imovie.tcl \
 	"Firefox Privacy" DemoFirefoxPrivacy firefox.tcl \
 	"Textvariable" DemoTextvariable textvariable.tcl \
 	"Big List" DemoBigList biglist.tcl \
@@ -1504,7 +1531,7 @@ proc DemoClear {} {
 	destroy $child
     }
 
-    $T item configure root -button no
+    $T item configure root -button no -wrap no
     $T item expand root
 
     # Restore some happy defaults to the demo list
@@ -1512,7 +1539,7 @@ proc DemoClear {} {
 	-yscrollincrement 0 -itemheight 0 -showheader yes \
 	-background white -scrollmargin 0 -xscrolldelay 50 -yscrolldelay 50 \
 	-buttonbitmap "" -buttonimage "" -backgroundmode row \
-	-indent 19 -backgroundimage "" \
+	-indent 19 -backgroundimage "" -showrootchildbuttons yes \
 	-showrootlines yes -minitemheight 0 -borderwidth [expr {$::tileFull ? 0 : 6}] \
 	-highlightthickness [expr {$::tileFull ? 0 : 3}] -usetheme yes -cursor {} \
 	-itemwidth 0 -itemwidthequal no -itemwidthmultiple 0 \

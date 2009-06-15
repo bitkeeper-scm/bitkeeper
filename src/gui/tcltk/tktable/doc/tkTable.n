@@ -272,6 +272,8 @@ the forms acceptable to \fBTk_GetPixels\fR.
 .OP "\-browsecommand or \-browsecmd" browseCommand BrowseCommand
 Specifies a command which will be evaluated anytime the active cell changes.
 It uses the %\-substition model described in COMMAND SUBSTITUTION below.
+Any changes to the active cell while the command is running are ignored to
+prevent recursion.
 .OP \-cache cache Cache
 A boolean value that specifies whether an internal cache of the table
 contents should be kept.  This greatly enhances speed performance when used
@@ -322,7 +324,7 @@ the table widget will first check to see if a tag has been defined using the
 \fBtag col\fR widget method.  If no tag is found, it will evaluate the named
 procedure passing the column number in question as the sole argument.  The
 procedure is expected to return the name of a tag to use, or a null string.
-Errors occuring during the evaluation of the procedure, or the return of an
+Errors occurring during the evaluation of the procedure, or the return of an
 invalid tag name are silently ignored.
 .OP \-colwidth colWidth ColWidth
 Default column width, interpreted as characters in the default font when
@@ -495,8 +497,8 @@ Global Tcl array variable to attach to the table's C array.  It will be
 created if it doesn't already exist or is a simple variable.  Keys used by
 the table in the array are of the form \fIrow\fR,\fIcol\fR for cells and
 the special key \fIactive\fR which contains the value of the active cell
-buffer.  The Tcl array is managed as a sparse array (the table doesn't
-require all valid indices have values).  No stored value for an index is
+buffer.  The Tcl array is managed as a sparse array (the table does not
+require that all valid indices have values).  No stored value for an index is
 equivalent to the empty string, and clearing a cell will remove that index
 from the Tcl array, unless the \fB\-sparsearray\fR options is set to 0.
 .OP \-width width Width
@@ -1028,7 +1030,7 @@ forms, depending on the \fIoption\fR:
 .TP
 \fIpathName \fBinsert active\fR \fIindex value\fR
 The \fIvalue\fR is a text string which is inserted at the \fIindex\fR
-postion of the active cell.  The cursor is then positioned after the
+position of the active cell.  The cursor is then positioned after the
 new text. \fIindex\fR can be a number, \fBinsert\fR or \fBend\fR.
 .TP
 \fIpathName \fBinsert cols\fR ?\fIswitches\fR? \fIindex\fR ?\fIcount\fR?
@@ -1191,7 +1193,7 @@ one above \fIaboveThis\fR.
 .TP
 \fIpathName \fBtag row\fR \fItagName\fR ?\fIrow ...\fR?
 With no arguments, prints out the list of rows that use the \fItag\fR.
-Otherwise it sets the specified columns to use the named tag, replacing any
+Otherwise it sets the specified rows to use the named tag, replacing any
 tag that may have been set using this method before.  If \fItagName\fR is
 {}, the rows are reset to use the default tag.  Tags added during
 \-rowtagcommand evaluation do not register here.  If \fItagName\fR does

@@ -29,6 +29,7 @@ is changed (using
 and the remaining files are \*(lqreparented\*(rq
 to the new ChangeSet file.
 .SH OPTIONS 
+.if \n[NESTED] \{\
 .TP -C\*<component-list\*>n
 .OPTreq \-c component-path
 Specify a path to rebase the repository.
@@ -45,6 +46,7 @@ know to ignore files in src/libc.
 Keep empty cset nodes.
 Only needed as part of creating an product.
 .tp
+.\}
 .B \-g
 Add the rootkeys from the gone file to the list of keys to prune.
 .tp
@@ -56,10 +58,12 @@ This is needed when doing a csetprunes over time on
 same key set and wanting the resulting repository to communicate
 with a repository created by an earlier csetprune.
 .tp
+.if \n[NESTED] \{\
 .B \-N
 Do not compress the serials in the changeset file.
 Needed for building a product.
 .tp
+.\}
 .B \-q
 Do the operation quietly.
 .tp
@@ -71,9 +75,11 @@ with a repository created by an earlier csetprune.
 Without this option, the internal symbol graph structure is
 streamlined.
 .tp
+.if \n[NESTED] \{\
 .B \-X
 Prune files that move across a component boundary and are no longer
 in that component as of the time of the prune.
+.\}
 .SH "GENERATING KEYS"
 .LP
 The

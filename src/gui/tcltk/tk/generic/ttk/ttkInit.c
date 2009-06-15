@@ -46,7 +46,7 @@ int Ttk_GetCompoundFromObj(
  * Legal values for the -orient option.
  * See also: enum Ttk_Orient.
  */
-CONST char *ttkOrientStrings[] = {
+const char *ttkOrientStrings[] = {
     "horizontal", "vertical", NULL
 };
 

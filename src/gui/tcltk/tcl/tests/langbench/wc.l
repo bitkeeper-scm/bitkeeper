@@ -10,7 +10,7 @@ wordsplit(string str)
 	chars = split(str, "");
 	foreach (c in chars) {
 		if (string("is", "space", c)) {
-			if (String_length(word) > 0) {
+			if (length(word) > 0) {
 				push(&list, word);
 			}
 			word = "";
@@ -18,7 +18,7 @@ wordsplit(string str)
 			append(&word, c);
 		}
 	}
-	if (String_length(word) > 0) {
+	if (length(word) > 0) {
 		push(&list, word);
 	}
 	return (list);
@@ -40,6 +40,7 @@ doit(string file)
 	return (n);
 }
 
+void
 main(int ac, string av[])
 {
 	int	total, i;

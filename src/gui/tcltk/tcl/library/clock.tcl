@@ -687,7 +687,8 @@ proc ::tcl::clock::format { args } {
     # name in the 'FormatProc' array to avoid losing its internal
     # representation, which contains the name resolution.
     
-    set procName ::tcl::clock::formatproc'$format'$locale
+    set procName formatproc'$format'$locale
+    set procName [namespace current]::[string map {: {\:} \\ {\\}} $procName]
     if {[info exists FormatProc($procName)]} {
 	set procName $FormatProc($procName)
     } else {
@@ -1531,7 +1532,8 @@ proc ::tcl::clock::ParseClockScanFormat {formatString locale} {
     # Check whether the format has been parsed previously, and return
     # the existing recognizer if it has.
 
-    set procName [namespace current]::scanproc'$formatString'$locale
+    set procName scanproc'$formatString'$locale
+    set procName [namespace current]::[string map {: {\:} \\ {\\}} $procName]
     if { [namespace which $procName] != {} } {
 	return $procName
     }
@@ -3214,7 +3216,7 @@ proc ::tcl::clock::SetupTimeZone { timezone } {
 	    # again with a time zone file - this time without a colon
 
 	    if { [catch { LoadTimeZoneFile $timezone }]
-		 && [catch { ZoneinfoFile $timezone } - opts] } {
+		 && [catch { LoadZoneinfoFile $timezone } - opts] } {
 		dict unset opts -errorinfo
 		return -options $opts "time zone $timezone not found"
 	    }
@@ -3883,23 +3885,42 @@ proc ::tcl::clock::ProcessPosixTimeZone { z } {
 			      * $dstSignum }]
     }
 
-    # Fill in defaults for US DST rules
+    # Fill in defaults for European or US DST rules
 
     if { [dict get $z startDayOfYear] eq {} 
 	 && [dict get $z startMonth] eq {} } {
+	if {($stdHours>=0) && ($stdHours<=12)} {
+	    dict set z startWeekOfMonth 5
+	    if {$stdHours>2} {
+		dict set z startHours 2
+	    } else {
+		dict set z startHours [expr {$stdHours+1}]
+	    }
+	} else {
+	    dict set z startWeekOfMonth 2
+	    dict set z startHours 2
+	}
 	dict set z startMonth 3
-	dict set z startWeekOfMonth 2
 	dict set z startDayOfWeek 0
-	dict set z startHours 2
 	dict set z startMinutes 0
 	dict set z startSeconds 0
     }
     if { [dict get $z endDayOfYear] eq {} 
 	 && [dict get $z endMonth] eq {} } {
-	dict set z endMonth 11
-	dict set z endWeekOfMonth 1
+	if {($stdHours>=0) && ($stdHours<=12)} {
+	    dict set z endMonth 10
+	    dict set z endWeekOfMonth 5
+	    if {$stdHours>2} {
+		dict set z endHours 3
+	    } else {
+		dict set z endHours [expr {$stdHours+2}]
+	    }
+	} else {
+	    dict set z endMonth 11
+	    dict set z endWeekOfMonth 1
+	    dict set z endHours 2
+	}
 	dict set z endDayOfWeek 0
-	dict set z endHours 2
 	dict set z endMinutes 0
 	dict set z endSeconds 0
     }
@@ -4357,8 +4378,8 @@ proc ::tcl::clock::add { clockval args } {
 		}
 		default {
 		    return -code error \
-			-errorcode [list CLOCK badSwitch $flag] \
-			"bad switch \"$flag\",\
+			-errorcode [list CLOCK badSwitch $a] \
+			"bad switch \"$a\",\
                          must be -gmt, -locale or -timezone"
 		}
 	    }

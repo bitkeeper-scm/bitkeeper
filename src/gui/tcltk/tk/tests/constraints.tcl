@@ -138,6 +138,42 @@ namespace eval tk {
             focus -force .focus.e
             destroy .focus
 	}
+
+
+        namespace export imageInit imageFinish imageCleanup imageNames
+        variable ImageNames
+        proc imageInit {} {
+            variable ImageNames
+            if {![info exists ImageNames]} {
+                set ImageNames [lsort [image names]]
+            }
+            imageCleanup
+            if {[lsort [image names]] ne $ImageNames} {
+                return -code error "IMAGE NAMES mismatch: [image names] != $ImageNames"
+            }
+        }
+        proc imageFinish {} {
+            variable ImageNames
+            if {[lsort [image names]] ne $ImageNames} {
+                return -code error "images remaining: [image names] != $ImageNames"
+            }
+            imageCleanup
+        }
+        proc imageCleanup {} {
+            variable ImageNames
+            foreach img [image names] {
+                if {$img ni $ImageNames} {image delete $img}
+            }
+        }
+        proc imageNames {} {
+            variable ImageNames
+            set r {}
+            foreach img [image names] {
+                if {$img ni $ImageNames} {lappend r $img}
+            }
+            return $r
+        }
+
     }
 }
 
@@ -146,6 +182,7 @@ namespace import -force tk::test::*
 namespace import -force tcltest::testConstraint
 testConstraint notAqua [expr {[tk windowingsystem] ne "aqua"}]
 testConstraint aqua [expr {[tk windowingsystem] eq "aqua"}]
+testConstraint nonwin [expr {[tk windowingsystem] ne "win32"}]
 testConstraint userInteraction 0
 testConstraint nonUnixUserInteraction [expr {
     [testConstraint userInteraction] || 
@@ -181,7 +218,7 @@ testConstraint testwrapper   [llength [info commands testwrapper]]
 # constraint to see what sort of fonts are available
 testConstraint fonts 1
 destroy .e
-entry .e -width 0 -font {Helvetica -12} -bd 1
+entry .e -width 0 -font {Helvetica -12} -bd 1 -highlightthickness 1
 .e insert end a.bcd
 if {([winfo reqwidth .e] != 37) || ([winfo reqheight .e] != 20)} {
     testConstraint fonts 0
@@ -241,7 +278,6 @@ namespace import -force tcltest::removeDirectory
 namespace import -force tcltest::interpreter
 namespace import -force tcltest::testsDirectory
 namespace import -force tcltest::cleanupTests
-namespace import -force tcltest::bytestring
 
 deleteWindows
 wm geometry . {}

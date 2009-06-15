@@ -1,0 +1,1099 @@
+# Test the L library.
+# Copyright (c) 2009 BitMover, Inc.
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest 2
+    namespace import -force ::tcltest::*
+    testConstraint exec [llength [info commands exec]]
+}
+
+if {$::tcl_platform(platform) eq "windows"} {
+    set _windows 1
+} else {
+    set _windows 0
+}
+
+test basename-1 {test basename} -body {
+#lang L
+void basename1()
+{
+	unless (basename("x") eq "x") puts("bad 1");
+	unless (basename("") eq "") puts("bad 2");
+	unless (basename("/x/y") eq "y") puts("bad 3");
+	unless (basename("/path/to/file") eq "file") puts("bad 4");
+	unless (basename("path/to/file") eq "file") puts("bad 5");
+	unless (basename("with spaces/to/f ile") eq "f ile") puts("bad 6");
+	unless (basename("with brace/to/f {}le") eq "f {}le") puts("bad 7");
+	unless (basename("with quotes/f \"\'le") eq "f \"\'le") puts("bad 8");
+}
+basename1();
+} -output {}
+
+test chdir-1 {test chdir} -setup {
+	file mkdir testdir1
+	file mkdir {test dir 2}
+	file mkdir testdir\{3\}
+	if {!$_windows} {file mkdir {testdir "'4}}
+	# '"
+} -body {
+#lang L
+void chdir1()
+{
+	unless (chdir("testdir1") == 0) puts("bad 1.1");
+	unless (basename(pwd()) eq "testdir1") puts("bad 1.2");
+	unless (chdir("..") == 0) puts("bad 1.3");
+
+	unless (chdir("test dir 2") == 0) puts("bad 2.1");
+	unless (basename(pwd()) eq "test dir 2") puts("bad 2.2");
+	unless (chdir("..") == 0) puts("bad 2.3");
+
+	unless (chdir("testdir{3}") == 0) puts("bad 3.1");
+	unless (basename(pwd()) eq "testdir{3}") puts("bad 3.2");
+	unless (chdir("..") == 0) puts("bad 3.3");
+
+	unless (platform() eq "windows") {
+		unless (chdir("testdir \"\'4") == 0) puts("bad 4.1");
+		unless (basename(pwd()) eq "testdir \"\'4") puts("bad 4.2");
+		unless (chdir("..") == 0) puts("bad 4.3");
+	}
+
+	unless (chdir("does-not-exist") == -1) puts("bad 10.1");
+}
+chdir1();
+} -cleanup {
+	file delete -force testdir1
+	file delete -force {test dir 2}
+	file delete -force testdir\{3\}
+	if {!$_windows} {file delete -force {testdir "'4}}
+	# '"
+} -output {}
+
+test caller-1 {test caller} -body {
+#lang L
+void caller1_foo()
+{
+	unless (caller(0) eq "caller1_foo") puts("bad 2.1");
+	unless (caller(1) eq "caller1") puts("bad 2.2");
+}
+void caller1()
+{
+	unless (caller(0) eq "caller1") puts("bad 1.1");
+	if (defined(caller(1000))) puts("bad 1.2");
+}
+caller1();
+} -output {}
+
+test chmod-1 {test chmod} -constraints tempNotWin -setup {
+	set fname1 [makeFile {test} chmod_test1 .]
+	set fname2 [makeFile {test} {chmod test 2} .]
+	set fname3 [makeFile {test} chmodtest\{3\} .]
+	set fname4 [makeFile {test} {chmod test \"\'4} .]
+} -body {
+#lang L
+void chmod1(string nm)
+{
+	FILE	f;
+	struct stat stat;
+
+	f = fopen(nm, "r");
+	unless (defined(f)) puts("bad 1.1");
+	unless (chmod(nm, "444") == 0) puts("bad 1.2");
+	unless (lstat(nm, &stat) == 0) puts("bad 1.3");
+	unless (stat.st_mode & 0444) puts("bad 1.4");
+	unless (chmod(nm, "666") == 0) puts("bad 1.5");
+	unless (lstat(nm, &stat) == 0) puts("bad 1.6");
+	unless (stat.st_mode & 0666) puts("bad 1.7");
+	fclose(f);
+
+	unless (chmod("does-not-exist", "755") == -1) puts("bad 10.1");
+}
+#lang tcl
+chmod1 $fname1
+chmod1 $fname2
+chmod1 $fname3
+chmod1 $fname4
+} -cleanup {
+	  removeFile $fname1
+	  removeFile $fname2
+	  removeFile $fname3
+	  removeFile $fname4
+} -output {}
+
+test chown-1 {test chown} -constraints tempNotWin -setup {
+	set fname1 [makeFile {test} chown_test1 .]
+	set fname2 [makeFile {test} {chown test 2} .]
+	set fname3 [makeFile {test} chowntest\{3\} .]
+	set fname4 [makeFile {test} {chown test \"\'4} .]
+} -body {
+#lang L
+/*
+ * This isn't the greatest test, because we can't be sure which users
+ * or groups are available on the test machine.  So we create some
+ * files, get the current users and groups, and chown the file with
+ * those, verifying that this doesn't change the file user or group.
+ */
+void chown1(string nm)
+{
+	FILE	f;
+	string	group, owner;
+
+	f = fopen(nm, "r");
+	unless (defined(f)) puts("bad 1.1");
+	owner = file("attributes", nm, "-owner");
+	group = file("attributes", nm, "-group");
+
+	unless (chown(owner, "", nm) == 0) puts("bad 1.2");
+	unless (file("attributes", nm, "-owner") eq owner) puts("bad 1.3");
+
+	unless (chown("", group, nm) == 0) puts("bad 1.4");
+	unless (file("attributes", nm, "-group") eq group) puts("bad 1.5");
+
+	unless (chown(owner, group, nm) == 0) puts("bad 1.6");
+	unless (file("attributes", nm, "-owner") eq owner) puts("bad 1.7");
+	unless (file("attributes", nm, "-group") eq group) puts("bad 1.8");
+
+	fclose(f);
+
+	unless (chmod("does-not-exist", "755") == -1) puts("bad 10.1");
+}
+#lang tcl
+chown1 $fname1
+chown1 $fname2
+chown1 $fname3
+chown1 $fname4
+} -cleanup {
+	  removeFile $fname1
+	  removeFile $fname2
+	  removeFile $fname3
+	  removeFile $fname4
+} -output {}
+
+test dirname-1 {test dirname} -body {
+#lang L
+void dirname1()
+{
+	unless (dirname("x") eq ".") puts("bad 1");
+	unless (dirname("") eq ".") puts("bad 2");
+	unless (dirname("/x/y") eq "/x") puts("bad 3");
+	unless (dirname("/path/to/file") eq "/path/to") puts("bad 4");
+	unless (dirname("path/to/file") eq "path/to") puts("bad 5");
+	unless (dirname("with spaces/to/f ile") eq "with spaces/to") {
+		puts("bad 6");
+	}
+	unless (platform() eq "windows") {
+		unless (dirname("with \"\'quotes/to/f ile") eq
+			"with \"\'quotes/to") {
+			puts("bad 7");
+		}
+	}
+}
+dirname1();
+} -output {}
+
+test env-1 {setenv, getenv, and unsetenv} -body {
+#lang L
+void env1()
+{
+	setenv("LIBLTEST", "123");
+	unless (getenv("LIBLTEST") eq "123") puts("bad 1");
+	unsetenv("LIBLTEST");
+	unless (getenv("LIBLTEST") eq "") puts("bad 2");
+
+	unless (getenv("PATH") ne "") puts("bad 3");
+}
+env1();
+} -output {}
+
+test exists-1 {test exists} -setup {
+	set fname1 [makeFile {test} exists_test1 .]
+	set fname2 [makeFile {test} {exists test 2} .]
+	set fname3 [makeFile {test} existstest\{3\} .]
+	if {!$_windows} {set fname4 [makeFile {test} {exists test \"\'4} .]}
+} -body {
+#lang L
+void exists1(string nm)
+{
+	unless (exists(nm)) puts("bad 1");
+
+}
+if (exists("does-not-exist")) puts("bad 2");
+#lang tcl
+exists1 $fname1
+exists1 $fname2
+exists1 $fname3
+if {!$_windows} {exists1 $fname4}
+} -cleanup {
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $fname3
+	if {!$_windows} {removeFile $fname4}
+} -output {}
+
+test fclose-1 {test fclose errors} -body {
+#lang L
+void fclose1()
+{
+	fclose("bad");
+	unless (stdio_lasterr eq 'can not find channel named "bad"') {
+		puts("bad 1");
+	}
+}
+fclose1();
+} -output {}
+
+test fgetline-1 {test fgetline} -setup {
+	set fname [makeFile "line1\nline2\nline3" fgetline_test .]
+} -body {
+#lang L
+void fgetline1()
+{
+	int	i;
+	FILE	f;
+	string	buf;
+
+	f = fopen("fgetline_test", "r");
+	unless (defined(f)) puts("bad 1");
+
+	i = 1;
+	while (defined(buf = fgetline(f))) {
+		unless (buf eq "line${i}") printf("bad 2 i=%d\n", i);
+		++i;
+	}
+	unless (i == 4) puts("bad 3");
+
+	fclose(f);
+}
+fgetline1();
+} -cleanup {
+	file delete -force $fname
+} -output {}
+
+test file-1 {test fopen/fclose/fprintf/fgetline} -body {
+#lang L
+void file1(string nm)
+{
+	FILE	f;
+	string	buf;
+
+	f = fopen(nm, "w");
+	unless (defined(f)) puts("bad 1.1");
+	unless (fprintf(f, "file-1 test\n") == 0) puts("bad 1.2");
+	unless (fclose(f) == 0) puts("bad 1.3");
+
+	f = fopen(nm, "r");
+	unless (defined(f)) puts("bad 2.1");
+	unless (defined(buf = fgetline(f))) puts("bad 2.2");
+	unless (buf eq "file-1 test") puts("bad 2.3");
+	unless (fclose(f) == 0) puts("bad 2.4");
+
+	unlink(nm);
+}
+file1("filetest1");
+file1("file test 2");
+file1("file test {3}");
+unless (platform() eq "windows") file1("file test \"4\'");
+} -output {}
+
+test file-2 {test fopen/fclose/fprintf/fgetline errors} -setup {
+	file delete -force "does not exist"
+} -body {
+#lang L
+void file2()
+{
+	FILE	f;
+	string	buf;
+
+	if (defined(f = fopen("does not exist", "rw"))) puts("bad 1");
+
+	unless (fclose(f) == -1) puts("bad 2");
+	if (defined(buf = fgetline(f))) puts("bad 3");
+	unless (fprintf(f, "bad") == -1) puts("bad 4");
+}
+file2();
+} -output {}
+
+test fopen-1 {test fopen errors} -body {
+#lang L
+void fopen1()
+{
+	if (defined(fopen("bad1", "r"))) puts("bad 1");
+	unless (stdio_lasterr eq 'couldn\'t open "bad1": no such file or directory') {
+		puts("bad 2");
+	}
+	if (defined(fopen("bad2", "rv"))) puts("bad 3");
+	if (defined(fopen("bad3", "vrv"))) puts("bad 4");
+}
+fopen1();
+} -errorOutput {fopen(bad2, r) = couldn't open "bad2": no such file or directory
+fopen(bad3, r) = couldn't open "bad3": no such file or directory
+} -output {}
+
+test fread-1 {test fread} -setup {
+	set fname [makeFile "012345678901234567" fread_test .]
+} -body {
+#lang L
+void fread1()
+{
+	FILE	f;
+	string	buf;
+
+	f = fopen("fread_test", "r");
+	unless (defined(f)) puts("bad 1.1");
+
+	buf = fread(f, 5);
+	unless (defined(buf)) puts("bad 2.1");
+	unless (buf eq "01234") puts("bad 2.2");
+	buf = fread(f, 5);
+	unless (defined(buf)) puts("bad 2.3");
+	unless (buf eq "56789") puts("bad 2.4");
+	buf = fread(f, 5);
+	unless (defined(buf)) puts("bad 2.5");
+	unless (buf eq "01234") puts("bad 2.6");
+	buf = fread(f, 5);
+	unless (defined(buf)) puts("bad 2.7");
+	unless (buf eq "567") puts("bad 2.8");
+
+	fclose(f);
+
+	f = fopen("fread_test", "r");
+	unless (defined(f)) puts("bad 3.1");
+
+	buf = fread(f, -1);
+	unless (defined(buf)) puts("bad 4.1");
+	unless (buf eq "012345678901234567\n") puts("bad 4.2");
+
+	fclose(f);
+}
+fread1();
+} -cleanup {
+	file delete -force $fname
+} -output {}
+
+test fread-2 {test fread error} -body {
+#lang L
+void fread2()
+{
+	if (defined(fread(undef, 1))) puts("bad 1");
+}
+fread2();
+} -output {}
+
+test ftype-1 {test ftpye} -setup {
+	set fname1 [makeFile {test} ftype_test1 .]
+	set fname2 [makeFile {test} {ftype test 2} .]
+	set fname3 [makeFile {test} ftypetest\{3\} .]
+	if {!$_windows} {set fname4 [makeFile {test} {ftype test \"\'4} .]}
+	set fdirname1 ftypedir1
+	set fdirname2 {ftype dir 2}
+	set fdirname3 ftypedir\{3\}
+	if {!$_windows} {set fdirname4 {ftypedir "'4}}
+	# '"
+	file mkdir $fdirname1
+	file mkdir $fdirname2
+	file mkdir $fdirname3
+	if {!$_windows} {file mkdir $fdirname4}
+} -body {
+#lang L
+void ftype1(string nm, string t)
+{
+	unless (ftype(nm) eq t) puts("bad 1");
+}
+#lang tcl
+ftype1 $fname1 file
+ftype1 $fname2 file
+ftype1 $fname3 file
+if {!$_windows} {ftype1 $fname4 file}
+ftype1 $fdirname1 directory
+ftype1 $fdirname2 directory
+ftype1 $fdirname3 directory
+if {!$_windows} {ftype1 $fdirname4 directory}
+} -cleanup {
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $fname3
+	if {!$_windows} {removeFile $fname4}
+	file delete -force $fdirname1
+	file delete -force $fdirname2
+	file delete -force $fdirname3
+	if {!$_windows} {file delete -force $fdirname4}
+} -output {}
+
+test ftype-2 {test ftype errors} -setup {
+	file delete -force "does not exist"
+} -body {
+#lang L
+void ftype2()
+{
+	if (defined(ftype("does not exist"))) puts("bad 1");
+}
+ftype2();
+} -output {}
+
+test getdir1 {test getdir} -setup {
+	file mkdir getdirtest
+	set fname1 [makeFile {test1} f1 getdirtest]
+	set fname2 [makeFile {test2} f2 getdirtest]
+	set fname3 [makeFile {test3} f3 getdirtest]
+	file delete -force "does not exist"
+} -body {
+#lang L
+void getdir1()
+{
+	string	dirs[];
+
+	dirs = sort(getdir("getdirtest", "*"));
+	unless (length(dirs) == 3) puts("bad 1.1");
+	unless (dirs[0] eq "getdirtest/f1") puts("bad 1.2");
+	unless (dirs[1] eq "getdirtest/f2") puts("bad 1.3");
+	unless (dirs[2] eq "getdirtest/f3") puts("bad 1.4");
+
+	dirs = getdir("getdirtest", "f2");
+	unless (length(dirs) == 1) puts("bad 2.1");
+	unless (dirs[0] eq "getdirtest/f2") puts("bad 2.2");
+
+	dirs = getdir("getdirtest", "*3");
+	unless (length(dirs) == 1) puts("bad 3.1");
+	unless (dirs[0] eq "getdirtest/f3") puts("bad 3.2");
+
+	dirs = getdir("does not exist", "*");
+	unless (length(dirs) == 0) puts("bad 10.1");
+}
+getdir1();
+} -cleanup {
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $fname3
+	file delete -force getdirtest
+} -output {}
+
+test is-1 {test isdouble/isdir/isinteger/isreg/islink} -setup {
+	set fdirname1 istestdir1
+	set fdirname2 {is test dir2}
+	set fdirname3 istestdir\{3\}
+	if {!$_windows} {set fdirname4 {istestdir "' 4}}
+	# '"
+	file mkdir $fdirname1
+	file mkdir $fdirname2
+	file mkdir $fdirname3
+	if {!$_windows} {file mkdir $fdirname4}
+	set fname1 [makeFile {test} istestfile1 .]
+	set fname2 [makeFile {test} {is test file 2} .]
+	set fname3 [makeFile {test} istestfile\{3\} .]
+	if {!$_windows} {set fname4 [makeFile {test} {is test file \"\'4} .]}
+	if {!$_windows} {
+		set flink1 islink1
+		set flink2 {is link 2}
+		set flink3 islink\{3\}
+		set flink4 {is link \"\'4}
+		file delete -force $flink1 $flink2 $flink3 $flink4
+		file link $flink1 $fname1
+		file link $flink2 $fname1
+		file link $flink3 $fname1
+		file link $flink4 $fname1
+	} else {
+		set flink1 ""
+		set flink2 ""
+		set flink3 ""
+		set flink4 ""
+	}
+	file delete -force "does not exist"
+} -body {
+#lang L
+void is1(string dirnm, string filenm, string linknm)
+{
+	unless (isdouble(3.14159)) puts("bad 1.1");
+	if (isdouble("not")) puts("bad 1.2");
+
+	unless (isinteger(3)) puts("bad 2.1");
+	if (isinteger(3.14159)) puts("bad 2.2");
+	if (isinteger("not")) puts("bad 2.3");
+
+	unless (isdir(dirnm)) puts("bad 3.1");
+	unless (isreg(filenm)) puts("bad 4.1");
+	unless (platform() eq "windows") {
+		unless (islink(linknm)) puts("bad 5.1");
+	}
+
+	if (isdir("does not exist")) puts("bad 10.1");
+	if (isreg("does not exist")) puts("bad 10.2");
+	unless (platform() eq "windows") {
+		if (islink("does not exist")) puts("bad 10.3");
+	}
+}
+#lang tcl
+is1 $fdirname1 $fname1 $flink1
+is1 $fdirname2 $fname2 $flink2
+is1 $fdirname3 $fname3 $flink3
+if {!$_windows} {is1 $fdirname4 $fname4 $flink4}
+} -cleanup {
+	if {!$_windows} {file delete -force $flink1 $flink2 $flink3 $flink4}
+	file delete -force $fdirname1 $fdirname2 $fdirname3
+	if {!$_windows} {file delete -force $fdirname4}
+	removeFile $fname1
+	removeFile $fname2
+	removeFile $fname3
+	if {!$_windows} {removeFile $fname4}
+} -output {}
+
+test link-1 {test link} -constraints tempNotWin -setup {
+	set fname [makeFile {123456} linktest .]
+	file delete -force linktest2
+} -body {
+#lang L
+void link1()
+{
+	/* Error if target does not exist. */
+	unless (link("link", "does not exist") == -1) puts("bad 1.1");
+
+	/*
+	 * This isn't supported on all platforms, so if it returns
+	 * failure, don't check for the link.
+	 */
+	if (link("linktest2", "linktest") == 0) {
+		if (islink("linktest2")) puts("bad 2.1");
+	}
+	unless (size("linktest") == size("linktest2")) puts("bad 2.2");
+}
+link1();
+} -cleanup {
+	file delete -force linktest linktest2
+} -output {}
+
+test mkdir-1 {test mkdir} -setup {
+	set fname [makeFile {test} mkdir_file .]
+} -body {
+#lang L
+void mkdir1()
+{
+	string	f1 = "mkdir1";
+	string	f2 = "mk dir 2";
+	string	f3 = "mkdir{3}";
+	string	f4 = "mkdir\"\'4";
+
+	unless (mkdir(f1) == 0) puts("bad 1.1");
+	unless (mkdir(f2) == 0) puts("bad 1.2");
+	unless (mkdir(f3) == 0) puts("bad 1.3");
+	unless (platform() eq "windows") {
+		unless (mkdir(f4) == 0) puts("bad 1.4");
+	}
+
+	unless (ftype(f1) eq "directory") puts("bad 2.1");
+	unless (ftype(f2) eq "directory") puts("bad 2.2");
+	unless (ftype(f3) eq "directory") puts("bad 2.3");
+	unless (platform() eq "windows") {
+		unless (ftype(f4) eq "directory") puts("bad 2.4");
+	}
+
+	unlink(f1);
+	unlink(f2);
+	unlink(f3);
+	unless (platform() eq "windows") {
+		unlink(f4);
+	}
+
+	/* Check that the entire path is created. */
+	unless (mkdir("path/to/the/file") == 0) puts("bad 3.1");
+	unless (ftype("path") eq "directory") puts("bad 3.2");
+	unless (ftype("path/to") eq "directory") puts("bad 3.3");
+	unless (ftype("path/to/the") eq "directory") puts("bad 3.4");
+	unless (ftype("path/to/the/file") eq "directory") puts("bad 3.5");
+	unlink("path/to/the/file");
+	unlink("path/to/the");
+	unlink("path/to");
+	unlink("path");
+
+	/* Error if file already exists as a regular file. */
+	unless (mkdir("mkdir_file") == -1) puts("bad 4.1");
+}
+mkdir1();
+} -cleanup {
+	file delete -force $fname
+} -output {}
+
+test mtime-1 {test mtime} -setup {
+	set fname [makeFile {test} mtime_file .]
+	file delete -force "does not exist"
+} -body {
+#lang L
+void mtime1()
+{
+	/*
+	 * Check the success is returned.  Not sure how to check that
+	 * the return value is actually correct.
+	 */
+	unless (mtime("mtime_file") > 0) puts("bad 1");
+
+	/* Check error case. */
+	unless (mtime("does not exist") == 0) puts("bad 2");
+}
+mtime1();
+} -cleanup {
+	file delete -force $fname
+} -output {}
+
+test normalize-1 {test normalize} -body {
+#lang L
+void normalize1()
+{
+	unless (normalize("") eq "") puts("bad 1");
+	unless (normalize("./x") eq (pwd() . "/x")) puts("bad 2");
+}
+normalize1();
+} -output {}
+
+test popen-1 {test popen/pclose} -setup {
+	set fname [makeFile "line1\nline2\nline3\n" popen_file .]
+} -body {
+#lang L
+void popen1()
+{
+	int	i;
+	FILE	f;
+	string	buf;
+
+	f = popen("cat popen_file", "r");
+	unless (defined(f)) puts("bad 1");
+
+	i = 1;
+	while (defined(buf = fgetline(f))) {
+		unless (buf eq "line${i}") printf("bad i=%d\n", i);
+		++i;
+	}
+	unless (i == 4) puts("bad 2");
+
+	unless (pclose(f) == 0) puts("bad 3");
+
+	/* Check error case. */
+	f = popen("what-the-heck bad-command", "r");
+	if (defined(f)) puts("bad 10");
+}
+popen1();
+} -output {}
+
+test popen-2 {test popen errors} -body {
+#lang L
+void popen2()
+{
+	if (defined(popen("bad-cmd1", "r"))) puts("bad 1");
+	unless (stdio_lasterr =~ /couldn\'t execute \"bad cmd1\"/) {
+		puts("bad 2");
+	}
+
+	if (defined(popen("bad-cmd2", "rv"))) puts("bad 5");
+	if (defined(popen("bad-cmd3", "vrv"))) puts("bad 6");
+}
+popen2();
+} -match regexp -errorOutput {popen\(bad-cmd2, r\) = couldn't execute "bad-cmd2".*
+popen\(bad-cmd3, r\) = couldn't execute "bad-cmd3".*
+} -output {}
+
+test printf-1 {test printf} -body {
+#lang L
+void printf1()
+{
+	printf("Test1\n");
+	printf("Test%s\n", "2");
+	printf("Test%d - last one\n", 3);
+}
+printf1();
+} -output {Test1
+Test2
+Test3 - last one
+}
+
+test rename-1 {test rename} -setup {
+	set fname1 [makeFile {test} rename_test1 .]
+	set fname2 [makeFile {test} {rename test 2} .]
+	set fname3 [makeFile {test} renametest\{3\} .]
+	if {!$_windows} {set fname4 [makeFile {test} {rename test \"\'4} .]}
+} -body {
+#lang L
+void rename1(string old)
+{
+	FILE	f;
+	string	buf;
+	string	new = old . "-renamed";
+
+	unless (rename(old, new) == 0) puts("bad 1.1");
+	f = fopen(new, "r");
+	unless (defined(f)) puts("bad 2.1");
+	unless (defined(buf = fgetline(f))) puts("bad 2.2");
+	unless (buf eq "test") puts("bad 2.3");
+	if (defined(buf = fgetline(f))) puts("bad 2.4");
+	unless (fclose(f) == 0) puts("bad 2.5");
+
+	unlink(new);
+}
+#lang tcl
+rename1 $fname1
+rename1 $fname2
+rename1 $fname3
+if {!$_windows} {rename1 $fname4}
+} -output {}
+
+test rename-2 {test rename errors} -setup {
+	file delete -force "does not exist"
+} -body {
+#lang L
+void rename2()
+{
+	unless (rename("does not exist", "bad") == -1) puts("bad 1");
+}
+rename2();
+} -output {}
+
+test require-1 {test require errors} -body {
+#lang L
+void require1()
+{
+	if (defined(require("non-existent package for sure"))) puts("bad");
+}
+require1();
+} -output {}
+
+test rmdir-1 {test rmdir} -setup {
+	set fdirname1 rmdir1
+	set fdirname2 {rm dir 2}
+	set fdirname3 rmdir\{3\}
+	if {!$_windows} {set fdirname4 {rmdir "' 4}}
+	# '"
+	set fdirname5 rmdir_nonempty
+	file mkdir $fdirname1
+	file mkdir $fdirname2
+	file mkdir $fdirname3
+	if {!$_windows} {file mkdir $fdirname4}
+	file mkdir $fdirname5
+	file delete -force "does not exist"
+	set fname [makeFile {test} file rmdir_nonempty]
+} -body {
+#lang L
+void rmdir1a(string nm)
+{
+	unless (rmdir(nm) == 0) puts("bad 1");
+	unless (rmdir("does not exist") == 0) puts("bad 2");
+}
+void rmdir1b(string nm)
+{
+	/* Check error case (trying to remove non-empty directory). */
+	unless (rmdir(nm) == -1) puts("bad 3");
+}
+#lang tcl
+rmdir1a $fdirname1
+rmdir1a $fdirname2
+rmdir1a $fdirname3
+if {!$_windows} {rmdir1a $fdirname4}
+rmdir1b $fdirname5
+} -cleanup {
+	file delete -force $fdirname1 $fdirname2 $fdirname3
+	if {!$_windows} {file delete -force $fdirname4}
+	file delete -force $fname $fdirname5
+} -output {}
+
+test size-1 {test size} -setup {
+	set fname1 [makeFile {123456} size1 .]
+	set fname2 [makeFile {123456} {si ze 2} .]
+	set fname3 [makeFile {123456} size\{3\} .]
+	if {!$_windows} {set fname4 [makeFile {123456} {size "' 4} .]}
+	# '"
+	file delete -force "does not exist"
+} -body {
+#lang L
+void size1(string nm)
+{
+	unless (size(nm) == 7) printf("bad 1 for '%s'\n", nm);
+	unless (size("does not exist") == -1) puts("bad 2");
+}
+#lang tcl
+size1 $fname1
+size1 $fname2
+size1 $fname3
+if {!$_windows} {size1 $fname4}
+} -cleanup {
+	file delete -force $fname1 $fname2 $fname3
+	if {!$_windows} {file delete -force $fname4}
+} -output {}
+
+test sleep-1 {test sleep} -body {
+#lang L
+void sleep1()
+{
+	/*
+	 * Touch a file before and after a sleep(3) and check that the
+	 * two mod times are at least two seconds apart.
+	 */
+
+	int	t1, t2;
+	FILE	f;
+
+	f = fopen("sleep_test", "w");
+	unless (defined(f)) puts("bad 1");
+	fprintf(f, "test1\n");
+	fclose(f);
+	t1 = mtime("sleep_test");
+
+	sleep(3);
+
+	f = fopen("sleep_test", "a");
+	unless (defined(f)) puts("bad 2");
+	fprintf(f, "test2\n");
+	fclose(f);
+	t2 = mtime("sleep_test");
+
+	unless ((t2 - t1) >= 2) puts("bad 3");
+
+	unlink("sleep_test");
+}
+sleep1();
+} -output {}
+
+test sprintf-1 {test sprintf} -body {
+#lang L
+void sprintf1()
+{
+	string	s;
+
+	s = sprintf("Test1");
+	unless (s eq "Test1") puts("bad 1");
+
+	s = sprintf("Test%s", "2");
+	unless (s eq "Test2") puts("bad 2");
+
+	s = sprintf("Test%s%d", "3", 4);
+	unless (s eq "Test34") puts("bad 3");
+}
+sprintf1();
+} -output {}
+
+test stat-1 {test lstat and stat} -setup {
+	# put 33 digits into the files
+	set fname1 [makeFile {123456789012345678901234567890123} statfile1 .]
+	set fname2 [makeFile {123456789012345678901234567890123} {stat file 2} .]
+	set fname3 [makeFile {123456789012345678901234567890123} statfile\{3\} .]
+	if {!$_windows} {
+		set fname4 [makeFile {123456789012345678901234567890123} {stat file \"\' 4} .]
+	}
+	file delete -force "does not exist"
+} -body {
+#lang L
+void stat1(string target)
+{
+	string	lnk = target . "_link";
+	struct stat buf;
+
+	/*
+	 * Links aren't supported on all platforms, so don't test
+	 * lstat if the link can't be created.
+	 */
+	unlink(lnk);
+	if (symlink(lnk, target) == 0) {
+		unless (lstat(lnk, &buf) == 0) puts("bad 1.1");
+		if (buf.st_size == 34) puts("bad 1.2");
+		unless (buf.st_type eq "link") puts("bad 1.3");
+	}
+	unlink(lnk);
+
+	/* Error if file does not exist. */
+	unless (lstat("does not exist", &buf) == -1) puts("bad 2.1");
+
+	unless (stat(target, &buf) == 0) puts("bad 5.1");
+	unless (buf.st_size == 34) puts("bad 5.2");
+	unless (buf.st_type eq "file") puts("bad 5.3");
+	unless (buf.st_mtime == mtime(target)) puts("bad 5.4");
+}
+#lang tcl
+stat1 $fname1
+stat1 $fname2
+stat1 $fname3
+if {!$_windows} {stat1 $fname4}
+} -cleanup {
+	file delete -force $fname1 $fname2 $fname3
+	if {!$_windows} {file delete -force $fname4}
+} -output {}
+
+test strchr-1 {test strchr} -body {
+#lang L
+void strchr1()
+{
+	unless (strchr("abcabc", "a") == 0) puts("bad 1");
+	unless (strchr("abcabc", "b") == 1) puts("bad 2");
+	unless (strchr("abcabc", "c") == 2) puts("bad 3");
+	unless (strchr("abcabc", "d") == -1) puts("bad 4");
+}
+strchr1();
+} -output {}
+
+test streq-1 {test streq} -body {
+#lang L
+void streq1()
+{
+	unless (streq("abc", "abc") == 1) puts("bad 1");
+	unless (streq("abc", "cba") == 0) puts("bad 2");
+}
+streq1();
+} -output {}
+
+test strlen-1 {test strlen} -body {
+#lang L
+void strlen1()
+{
+	int	i;
+	int	n = 10;
+	string	s;
+
+	for (s = "", i = 0; i < n; ++i) {
+		unless (strlen(s) == i) printf("bad 1 i=%d\n", i);
+		s = s . "x";
+	}
+}
+strlen1();
+} -output {}
+
+test strneq-1 {test strneq} -body {
+#lang L
+void strneq1()
+{
+	unless (strneq("abc", "abc", 10) == 1) puts("bad 1");
+	unless (strneq("abc", "cba", 10) == 0) puts("bad 2");
+	unless (strneq("abc", "abc", 3) == 1) puts("bad 3");
+	unless (strneq("abc", "cba", 3) == 0) puts("bad 4");
+	unless (strneq("abc", "abc", 2) == 1) puts("bad 5");
+	unless (strneq("abc", "cba", 2) == 0) puts("bad 6");
+
+	unless (strneq("abc", "abd", 2) == 1) puts("bad 7");
+	unless (strneq("abc", "aaa", 1) == 1) puts("bad 8");
+}
+strneq1();
+
+} -output {}
+
+test strrchr-1 {test strrchr} -body {
+#lang L
+void strrchr1()
+{
+	unless (strrchr("abcabc", "a") == 3) puts("bad 1");
+	unless (strrchr("abcabc", "b") == 4) puts("bad 2");
+	unless (strrchr("abcabc", "c") == 5) puts("bad 3");
+	unless (strrchr("abcabc", "d") == -1) puts("bad 4");
+}
+strrchr1();
+} -output {}
+
+test symlink-1 {test symlink} -constraints tempNotWin -setup {
+	set fname [makeFile {test} linktest .]
+	file delete -force linktest2
+} -body {
+#lang L
+void symlink1()
+{
+	/* Error if target does not exist. */
+	unless (symlink("link", "does not exist") == -1) puts("bad 1.1");
+
+	/*
+	 * This isn't supported on all platforms, so if it returns
+	 * failure, don't check for the symlink.
+	 */
+	if (symlink("linktest2", "linktest") == 0) {
+		unless (islink("linktest2")) puts("bad 2.1");
+	}
+}
+symlink1();
+} -cleanup {
+	file delete -force linktest linktest2
+} -output {}
+
+test system-1 {test system/pclose} -setup {
+	set fname [makeFile "line1\nline2\nline3" system_file .]
+} -body {
+#lang L
+void system1()
+{
+	string	s;
+
+	s = system("cat system_file");
+	unless (s eq "line1\nline2\nline3") puts("bad 1");
+
+	/* Check error case. */
+	s = system("what-the-heck bad-command");
+	if (defined(s)) puts("bad 2");
+}
+system1();
+} -output {}
+
+test tolower-1 {test tolower} -body {
+#lang L
+void tolower1()
+{
+	unless (tolower("abcde") eq "abcde") puts("bad 1");
+	unless (tolower("ABCDE") eq "abcde") puts("bad 2");
+	unless (tolower("AbCdE") eq "abcde") puts("bad 3");
+	unless (tolower("") eq "") puts("bad 4");
+}
+tolower1();
+} -output {}
+
+test toupper-1 {test toupper} -body {
+#lang L
+void toupper1()
+{
+	unless (toupper("abcde") eq "ABCDE") puts("bad 1");
+	unless (toupper("ABCDE") eq "ABCDE") puts("bad 2");
+	unless (toupper("AbCdE") eq "ABCDE") puts("bad 3");
+	unless (toupper("") eq "") puts("bad 5");
+}
+toupper1();
+} -output {}
+
+test trim-1 {test trim} -body {
+#lang L
+void trim1()
+{
+	unless (trim("") eq "") puts("bad 1");
+	unless (trim(" ") eq "") puts("bad 2");
+	unless (trim("    ") eq "") puts("bad 3");
+	unless (trim("abc") eq "abc") puts("bad 4");
+	unless (trim(" abc") eq "abc") puts("bad 5");
+	unless (trim("abc ") eq "abc") puts("bad 6");
+	unless (trim("   abc") eq "abc") puts("bad 7");
+	unless (trim("abc   ") eq "abc") puts("bad 8");
+	unless (trim("\tabc") eq "abc") puts("bad 9");
+	unless (trim("abc\t") eq "abc") puts("bad 10");
+	unless (trim("\nabc") eq "abc") puts("bad 11");
+	unless (trim("abc\n") eq "abc") puts("bad 12");
+}
+trim1();
+} -output {}
+
+test unlink-1 {test lunlink and unlink} -setup {
+	set fname1 [makeFile {test} unlinkfile1 .]
+	set fname2 [makeFile {test} {unlink file 2} .]
+	set fname3 [makeFile {test} unlinkfile\{3\} .]
+	if {!$_windows} {set fname4 [makeFile {test} {unlink file \"\' 4} .]}
+	file delete -force "does not exist"
+} -body {
+#lang L
+void unlink1(string nm)
+{
+	unless (unlink(nm) == 0) puts("bad 1");
+	if (exists(nm)) puts("bad 2");
+}
+#lang tcl
+unlink1 $fname1
+unlink1 $fname2
+unlink1 $fname3
+if {!$_windows} {unlink1 $fname4}
+} -cleanup {
+	file delete -force $fname1 $fname2 $fname3
+	if {!$_windows} {file delete -force $fname4}
+} -output {}
+
+test warn-1 {test warn} -body {
+#lang L
+void warn1()
+{
+	warn("warning test");
+}
+warn1();
+} -errorOutput "warning test\n" -output {}
+
+::tcltest::cleanupTests
+return

@@ -221,6 +221,30 @@ if [ "$XFILES" != "" ]; then echo failed; echo $XFILES; exit 1; fi
 bk rm A/file4
 echo OK
 
+echo $N Test bk unrm on a file in BitKeeper area ....................$NL
+touch BitKeeper/etc/foo
+bk new $Q BitKeeper/etc/foo
+bk rm -f BitKeeper/etc/foo
+bk unrm BitKeeper/etc/foo > OUT 2>&1
+grep -q 'Will not' OUT && {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Test bk unrm -f .............................................$NL
+touch A/file4
+bk new $Q A/file4
+bk rm A/file4
+bk unrm -f A/file4 > OUT 2>&1
+grep -q '2 possible files found, choosing newest' OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+echo OK
+
 echo $N Test mvdir to directory that does not exist .................$NL
 date > C/file6
 bk new $Q C/file6

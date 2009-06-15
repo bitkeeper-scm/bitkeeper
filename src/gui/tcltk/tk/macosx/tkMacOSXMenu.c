@@ -7,8 +7,8 @@
  * Copyright 2001, Apple Computer, Inc.
  * Copyright (c) 2005-2007 Daniel A. Steffen <das@users.sourceforge.net>
  *
- * See the file "license.terms" for information on usage and redistribution
- * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+ * See the file "license.terms" for information on usage and redistribution of
+ * this file, and for a DISCLAIMER OF ALL WARRANTIES.
  *
  * RCS: @(#) $Id$
  */
@@ -69,15 +69,14 @@ typedef struct MenuEntryUserData {
  */
 
 typedef struct EntryGeometry {
-    int accelTextStart;		/* Offset into the accel string where
-				 * the text starts. Everything before
-				 * this is modifier key descriptions.
-				 */
+    int accelTextStart;		/* Offset into the accel string where the text
+				 * starts. Everything before this is modifier
+				 * key descriptions. */
     int modifierWidth;		/* Width of modifier symbols. */
     int accelTextWidth;		/* Width of the text after the modifier
 				 * keys. */
-    int nonAccelMargin;		/* The width of the margin for entries
-				 * without accelerators. */
+    int nonAccelMargin;		/* The width of the margin for entries without
+				 * accelerators. */
     int modifierNum;		/* Number of modifiers */
     Tcl_UniChar modifierUniChars[MODIFIER_NUM];
 				/* Modifiers in unicode */
@@ -92,22 +91,21 @@ typedef struct TopLevelMenubarList {
     struct TopLevelMenubarList *nextPtr;
 				/* The next window in the list. */
     Tk_Window tkwin;		/* The toplevel window. */
-    TkMenu *menuPtr;		/* The menu associated with this
-				 * toplevel. */
+    TkMenu *menuPtr;		/* The menu associated with this toplevel. */
 } TopLevelMenubarList;
 
 /*
  * Platform-specific flags for menus.
  *
- * MENU_APPLE_MENU		0 indicates a custom Apple menu has
- *				not been installed; 1 a custom Apple
- *				menu has been installed.
- * MENU_HELP_MENU		0 indicates a custom Help menu has
- *				not been installed; 1 a custom Help
- *				menu has been installed.
- * MENU_RECONFIGURE_PENDING	1 indicates that an idle handler has
- *				been scheduled to reconfigure the
- *				Macintosh MenuHandle.
+ * MENU_APPLE_MENU		0 indicates a custom Apple menu has not been
+ *				installed; 1 a custom Apple menu has been
+ *				installed.
+ * MENU_HELP_MENU		0 indicates a custom Help menu has not been
+ *				installed; 1 a custom Help menu has been
+ *				installed.
+ * MENU_RECONFIGURE_PENDING	1 indicates that an idle handler has been
+ *				scheduled to reconfigure the Macintosh
+ *				MenuHandle.
  */
 
 #define MENU_APPLE_MENU			MENU_PLATFORM_FLAG1
@@ -118,33 +116,32 @@ typedef struct TopLevelMenubarList {
 				 * menus. */
 #define MENUBAR_REDRAW_PENDING 1
 
-static int gNoTkMenus = 0;	/* This is used by Tk_MacOSXTurnOffMenus as the
-				 * flag that Tk is not to draw any menus. */
+static int gNoTkMenus = 0;	/* This is used by Tk_MacOSXTurnOffMenus as
+				 * the flag that Tk is not to draw any
+				 * menus. */
 
 static Tcl_HashTable commandTable;
-				/* The list of menuInstancePtrs associated with
-				 * menu ids */
+				/* The list of menuInstancePtrs associated
+				 * with menu ids. */
 static short currentAppleMenuID;
 				/* The id of the current Apple menu. 0 for
 				 * none. */
 static short currentHelpMenuID; /* The id of the current Help menu. 0 for
 				 * none. */
 static Tcl_Interp *currentMenuBarInterp;
-				/* The interpreter of the window that owns
-				 * the current menubar. */
+				/* The interpreter of the window that owns the
+				 * current menubar. */
 static char *currentMenuBarName;
 				/* Malloced. Name of current menu in menu bar.
 				 * NULL if no menu set. TO DO: make this a
 				 * DString. */
 static Tk_Window currentMenuBarOwner;
 				/* Which window owns the current menu bar. */
-static int inPostMenu;		/* We cannot be re-entrant like X
-				 * windows. */
-static short lastMenuID;	/* To pass to NewMenu; need to figure out
-				 * a good way to do this. */
-static short lastCascadeID;
-				/* Cascades have to have ids that are
-				 * less than 256. */
+static int inPostMenu;		/* We cannot be re-entrant like X windows. */
+static short lastMenuID;	/* To pass to NewMenu; need to figure out a
+				 * good way to do this. */
+static short lastCascadeID;	/* Cascades have to have ids that are less
+				 * than 256. */
 static int menuBarFlags;	/* Used for whether the menu bar needs
 				 * redrawing or not. */
 
@@ -160,6 +157,7 @@ static TopLevelMenubarList *windowListPtr;
  * Array of unicode, charcode and utf representations of the most common
  * special menu symbols.
  */
+
 typedef struct MenuSymbol {
     const Tcl_UniChar unicode;
     const char charCode;
@@ -202,97 +200,117 @@ static SInt16 menuSeparatorHeight = 0;
  * Forward declarations for procedures defined later in this file:
  */
 
-MODULE_SCOPE int TkMacOSXGetNewMenuID(Tcl_Interp *interp, TkMenu *menuInstPtr,
-	int cascade, short *menuIDPtr);
-MODULE_SCOPE void TkMacOSXFreeMenuID(short menuID);
+MODULE_SCOPE int	TkMacOSXGetNewMenuID(Tcl_Interp *interp,
+			    TkMenu *menuInstPtr, int cascade,
+			    short *menuIDPtr);
+MODULE_SCOPE void	TkMacOSXFreeMenuID(short menuID);
 
-static void CompleteIdlers(TkMenu *menuPtr);
-static void DrawMenuBarWhenIdle(ClientData clientData);
-static void DrawMenuEntryAccelerator(TkMenu *menuPtr, TkMenuEntry *mePtr,
-	Drawable d, GC gc, Tk_Font tkfont, const Tk_FontMetrics *fmPtr,
-	Tk_3DBorder activeBorder, int x, int y, int width, int height,
-	int drawArrow);
-static void DrawMenuEntryBackground(TkMenu *menuPtr, TkMenuEntry *mePtr,
-	Drawable d, Tk_3DBorder activeBorder, Tk_3DBorder bgBorder, int x,
-	int y, int width, int heigth);
-static void DrawMenuEntryIndicator(TkMenu *menuPtr, TkMenuEntry *mePtr,
-	Drawable d, GC gc, GC indicatorGC, Tk_Font tkfont,
-	const Tk_FontMetrics *fmPtr, int x, int y, int width, int height);
-static void DrawMenuEntryLabel(TkMenu * menuPtr, TkMenuEntry *mePtr,
-	Drawable d, GC gc, Tk_Font tkfont, const Tk_FontMetrics *fmPtr, int x,
-	int y, int width, int height);
-static void DrawMenuSeparator(TkMenu *menuPtr, TkMenuEntry *mePtr, Drawable d,
-	GC gc, Tk_Font tkfont, const Tk_FontMetrics *fmPtr, int x, int y,
-	int width, int height);
-static void DrawTearoffEntry(TkMenu *menuPtr, TkMenuEntry *mePtr, Drawable d,
-	GC gc, Tk_Font tkfont, const Tk_FontMetrics *fmPtr, int x, int y,
-	int width, int height);
-static void EventuallyInvokeMenu(ClientData data);
-static void GetEntryText(TkMenuEntry *mePtr, Tcl_DString *dStringPtr);
-static void GetMenuAccelGeometry(TkMenu *menuPtr, TkMenuEntry *mePtr,
-	Tk_Font tkfont, const Tk_FontMetrics *fmPtr, int *modWidthPtr,
-	int *textWidthPtr, int *heightPtr);
-static void GetMenuLabelGeometry(TkMenuEntry *mePtr, Tk_Font tkfont,
-	const Tk_FontMetrics *fmPtr, int *widthPtr, int *heightPtr);
-static void GetMenuIndicatorGeometry(TkMenu *menuPtr, TkMenuEntry *mePtr,
-	Tk_Font tkfont, const Tk_FontMetrics *fmPtr, int *widthPtr,
-	int *heightPtr);
-static void GetMenuSeparatorGeometry(TkMenu *menuPtr, TkMenuEntry *mePtr,
-	Tk_Font tkfont, const Tk_FontMetrics *fmPtr, int *widthPtr,
-	int *heightPtr);
-static TkMenuEntry* GetParentMenuEntry(TkMenu *menuPtr);
-static void GetTearoffEntryGeometry(TkMenu *menuPtr, TkMenuEntry *mePtr,
-	Tk_Font tkfont, const Tk_FontMetrics *fmPtr, int *widthPtr,
-	int *heightPtr);
-static char FindMarkCharacter(TkMenuEntry *mePtr);
-static int GetUtfMarkCharacter(char markChar, const char **markUtfPtr);
-static TkMenu* MenuPtrForMenuRef(MenuRef menu);
-static int ParseAccelerators(const char **accelStringPtr, int *modifierNumPtr,
-	Tcl_UniChar *modifierUniChars, int *modifierWidth);
-static void MenuSelectEvent(TkMenu *menuPtr);
-static void ReconfigureIndividualMenu(TkMenu *menuPtr, MenuHandle macMenuHdl,
-	int base);
-static void ReconfigureMacintoshMenu(ClientData clientData);
-static void RecursivelyClearActiveMenu(TkMenu *menuPtr);
-static void RecursivelyDeleteMenu(TkMenu *menuPtr);
-static void RecursivelyInsertMenu(TkMenu *menuPtr);
-static void SetDefaultMenubar(void);
-static int SetMenuCascade(TkMenu *menuPtr);
+static void		CompleteIdlers(TkMenu *menuPtr);
+static void		DrawMenuBarWhenIdle(ClientData clientData);
+static void		DrawMenuEntryAccelerator(TkMenu *menuPtr,
+			    TkMenuEntry *mePtr, Drawable d, GC gc,
+			    Tk_Font tkfont, const Tk_FontMetrics *fmPtr,
+			    Tk_3DBorder activeBorder, int x, int y, int width,
+			    int height, int drawArrow);
+static void		DrawMenuEntryBackground(TkMenu *menuPtr,
+			    TkMenuEntry *mePtr, Drawable d,
+			    Tk_3DBorder activeBorder, Tk_3DBorder bgBorder,
+			    int x, int y, int width, int heigth);
+static void		DrawMenuEntryIndicator(TkMenu *menuPtr,
+			    TkMenuEntry *mePtr, Drawable d, GC gc,
+			    GC indicatorGC, Tk_Font tkfont,
+			    const Tk_FontMetrics *fmPtr, int x, int y,
+			    int width, int height);
+static void		DrawMenuEntryLabel(TkMenu *menuPtr,TkMenuEntry *mePtr,
+			    Drawable d, GC gc, Tk_Font tkfont,
+			    const Tk_FontMetrics *fmPtr, int x, int y,
+			    int width, int height);
+static void		DrawMenuSeparator(TkMenu *menuPtr, TkMenuEntry *mePtr,
+			    Drawable d, GC gc, Tk_Font tkfont,
+			    const Tk_FontMetrics *fmPtr, int x, int y,
+			    int width, int height);
+static void		DrawTearoffEntry(TkMenu *menuPtr, TkMenuEntry *mePtr,
+			    Drawable d, GC gc, Tk_Font tkfont,
+			    const Tk_FontMetrics *fmPtr, int x, int y,
+			    int width, int height);
+static void		EventuallyInvokeMenu(ClientData data);
+static void		GetEntryText(TkMenuEntry *mePtr,
+			    Tcl_DString *dStringPtr);
+static void		GetMenuAccelGeometry(TkMenu *menuPtr,
+			    TkMenuEntry *mePtr, Tk_Font tkfont,
+			    const Tk_FontMetrics *fmPtr, int *modWidthPtr,
+			    int *textWidthPtr, int *heightPtr);
+static void		GetMenuLabelGeometry(TkMenuEntry *mePtr,
+			    Tk_Font tkfont, const Tk_FontMetrics *fmPtr,
+			    int *widthPtr, int *heightPtr);
+static void		GetMenuIndicatorGeometry(TkMenu *menuPtr,
+			    TkMenuEntry *mePtr, Tk_Font tkfont,
+			    const Tk_FontMetrics *fmPtr, int *widthPtr,
+			    int *heightPtr);
+static void		GetMenuSeparatorGeometry(TkMenu *menuPtr,
+			    TkMenuEntry *mePtr, Tk_Font tkfont,
+			    const Tk_FontMetrics *fmPtr, int *widthPtr,
+			    int *heightPtr);
+static TkMenuEntry *	GetParentMenuEntry(TkMenu *menuPtr);
+static void		GetTearoffEntryGeometry(TkMenu *menuPtr,
+			    TkMenuEntry *mePtr, Tk_Font tkfont,
+			    const Tk_FontMetrics *fmPtr, int *widthPtr,
+			    int *heightPtr);
+static char		FindMarkCharacter(TkMenuEntry *mePtr);
+static int		GetUtfMarkCharacter(char markChar,
+			    const char **markUtfPtr);
+static TkMenu *		MenuPtrForMenuRef(MenuRef menu);
+static int		ParseAccelerators(const char **accelStringPtr,
+			    int *modifierNumPtr,
+			    Tcl_UniChar *modifierUniChars,
+			    int *modifierWidth);
+static void		MenuSelectEvent(TkMenu *menuPtr);
+static void		ReconfigureIndividualMenu(TkMenu *menuPtr,
+			    MenuHandle macMenuHdl, int base);
+static void		ReconfigureMacintoshMenu(ClientData clientData);
+static void		RecursivelyClearActiveMenu(TkMenu *menuPtr);
+static void		RecursivelyDeleteMenu(TkMenu *menuPtr);
+static void		RecursivelyInsertMenu(TkMenu *menuPtr);
+static void		SetDefaultMenubar(void);
+static int		SetMenuCascade(TkMenu *menuPtr);
 
 #ifdef USE_TK_MDEF
 #define SCREEN_MARGIN 5
 static MacDrawable macMDEFDrawable;
 				/* Drawable for use by MDEF code */
-static int MDEFScrollFlag = 0;	/* Used so that popups don't scroll too soon.*/
+static int MDEFScrollFlag = 0;	/* Used so that popups don't scroll too
+				 * soon. */
 static MenuItemDrawingUPP tkThemeMenuItemDrawingUPP;
-				/* Points to the UPP for theme Item drawing. */
+				/* Points to the UPP for theme Item
+				 * drawing. */
 static Tcl_Obj *useMDEFVar;
 
-static void  DrawMenuBackground(TkMenu *menuPtr, Rect *menuRectPtr,
-	Drawable d);
-static void MenuDefProc(short message, MenuHandle menu, Rect *menuRectPtr,
-	Point hitPt, short *whichItem );
-static void HandleMenuHiliteMsg(MenuRef menu, Rect *menuRectPtr, Point hitPt,
-	SInt16 *whichItem, TkMenu *menuPtr);
-static void HandleMenuDrawMsg(MenuRef menu, Rect *menuRectPtr, Point hitPt,
-	SInt16 *whichItem, TkMenu *menuPtr);
-static void HandleMenuFindItemMsg(MenuRef menu, Rect *menuRectPtr,
-	Point hitPt, SInt16 *whichItem, TkMenu *menuPtr);
-static void HandleMenuPopUpMsg(MenuRef menu, Rect *menuRectPtr, Point hitPt,
-	SInt16 *whichItem, TkMenu *menuPtr);
-static void HandleMenuCalcItemMsg(MenuRef menu, Rect *menuRectPtr, Point hitPt,
-	SInt16 *whichItem, TkMenu *menuPtr);
-static void AppearanceEntryDrawWrapper(TkMenuEntry *mePtr, Rect * menuRectPtr,
-	MenuTrackingData *mtdPtr, Drawable d, Tk_FontMetrics *fmPtr,
-	Tk_Font tkfont, int erase);
-static pascal void ThemeMenuItemDrawingProc(const Rect *inBounds,
-	SInt16 inDepth, Boolean inIsColorDevice, SInt32 inUserData);
+static void		DrawMenuBackground(TkMenu *menuPtr, Rect *menuRectPtr,
+			    Drawable d);
+static void		MenuDefProc(short message, MenuHandle menu,
+			    Rect *menuRectPtr, Point hitPt, short *whichItem);
+static void		HandleMenuHiliteMsg(MenuRef menu, Rect *menuRectPtr,
+			    Point hitPt, SInt16 *whichItem, TkMenu *menuPtr);
+static void		HandleMenuDrawMsg(MenuRef menu, Rect *menuRectPtr,
+			    Point hitPt, SInt16 *whichItem, TkMenu *menuPtr);
+static void		HandleMenuFindItemMsg(MenuRef menu, Rect *menuRectPtr,
+			    Point hitPt, SInt16 *whichItem, TkMenu *menuPtr);
+static void		HandleMenuPopUpMsg(MenuRef menu, Rect *menuRectPtr,
+			    Point hitPt, SInt16 *whichItem, TkMenu *menuPtr);
+static void		HandleMenuCalcItemMsg(MenuRef menu, Rect *menuRectPtr,
+			    Point hitPt, SInt16 *whichItem, TkMenu *menuPtr);
+static void		AppearanceEntryDrawWrapper(TkMenuEntry *mePtr,
+			    Rect *menuRectPtr, MenuTrackingData *mtdPtr,
+			    Drawable d, Tk_FontMetrics *fmPtr, Tk_Font tkfont,
+			    int erase);
+static pascal void	ThemeMenuItemDrawingProc(const Rect *inBounds,
+			    SInt16 inDepth, Boolean inIsColorDevice,
+			    SInt32 inUserData);
 #else /* USE_TK_MDEF */
 #   define useMDEF 0
 #endif /* USE_TK_MDEF */
 
 #define IS_THEME_MENU_FONT(tkfont) (strcmp(Tk_NameOfFont(tkfont), "menu") == 0)
-
 
 /*
  *----------------------------------------------------------------------
@@ -332,6 +350,7 @@ DrawThemeText(
      * first determine the baseline of the text and then adjust the bounds
      * rect so the baseline aligns with the overall baseline of the menu item.
      */
+
     if (font == kThemeMenuItemCmdKeyFont) {
 	Point size;
 	SInt16 cmdKeyBaseline;
@@ -374,7 +393,7 @@ MeasureThemeText(
     Point pt;
 
     ChkErr(GetThemeTextDimensions, string, font, kThemeStateActive, false, &pt,
-	NULL);
+	    NULL);
     return pt.h;
 }
 
@@ -388,12 +407,11 @@ MeasureThemeText(
  *	level. See TkMacOSXGetNewMenuID for more information.
  *
  * Results:
- *	Returns TCL_OK if the id was not in use. Returns TCL_ERROR if the
- *	id was in use.
+ *	Returns TCL_OK if the id was not in use. Returns TCL_ERROR if the id
+ *	was in use.
  *
  * Side effects:
- *	A hash table entry in the command table is created with a NULL
- *	value.
+ *	A hash table entry in the command table is created with a NULL value.
  *
  *----------------------------------------------------------------------
  */
@@ -421,33 +439,33 @@ TkMacOSXUseMenuID(
  *
  * TkMacOSXGetNewMenuID --
  *
- *	Allocates a new menu id and marks it in use. Each menu on the
- *	mac must be designated by a unique id, which is a short. In
- *	addition, some ids are reserved by the system. Since Tk uses
- *	mostly dynamic menus, we must allocate and free these ids on
- *	the fly. We use the id as a key into a hash table; if there
- *	is no hash entry, we know that we can use the id.
+ *	Allocates a new menu id and marks it in use. Each menu on the mac must
+ *	be designated by a unique id, which is a short. In addition, some ids
+ *	are reserved by the system. Since Tk uses mostly dynamic menus, we
+ *	must allocate and free these ids on the fly. We use the id as a key
+ *	into a hash table; if there is no hash entry, we know that we can use
+ *	the id.
  *
- *	Carbon allows a much larger number of menus than the old APIs.
- *	I believe this is 32768, but am not sure. This code just uses
- *	2000 as the upper limit. Unfortunately tk leaks menus when
- *	cloning, under some circumstances (see bug on sourceforge).
+ *	Carbon allows a much larger number of menus than the old APIs. I
+ *	believe this is 32768, but am not sure. This code just uses 2000 as
+ *	the upper limit. Unfortunately tk leaks menus when cloning, under some
+ *	circumstances (see bug on sourceforge).
  *
  * Results:
- *	Returns TCL_OK if succesful; TCL_ERROR if there are no more
- *	ids of the appropriate type to allocate. menuIDPtr contains
- *	the new id if succesful.
+ *	Returns TCL_OK if succesful; TCL_ERROR if there are no more ids of the
+ *	appropriate type to allocate. menuIDPtr contains the new id if
+ *	succesful.
  *
  * Side effects:
- *	An entry is created for the menu in the command hash table,
- *	and the hash entry is stored in the appropriate field in the
- *	menu data structure.
+ *	An entry is created for the menu in the command hash table, and the
+ *	hash entry is stored in the appropriate field in the menu data
+ *	structure.
  *
  *----------------------------------------------------------------------
  */
 
 int
- TkMacOSXGetNewMenuID(
+TkMacOSXGetNewMenuID(
     Tcl_Interp *interp,		/* Used for error reporting */
     TkMenu *menuPtr,		/* The menu we are working with */
     int cascade,		/* 0 if we are working with a normal menu;
@@ -460,9 +478,9 @@ int
     short returnID = *menuIDPtr;
 
     /*
-     * The following code relies on shorts and unsigned chars wrapping
-     * when the highest value is incremented. Also, the values between
-     * 236 and 255 inclusive are reserved for DA's by the Mac OS.
+     * The following code relies on shorts and unsigned chars wrapping when
+     * the highest value is incremented. Also, the values between 236 and 255
+     * inclusive are reserved for DA's by the Mac OS.
      */
 
     if (!cascade) {
@@ -488,8 +506,8 @@ int
 	}
     } else {
 	/*
-	 * Cascade ids must be between 0 and 235 only, so they must be
-	 * dealt with separately.
+	 * Cascade ids must be between 0 and 235 only, so they must be dealt
+	 * with separately.
 	 */
 
 	short curID = lastCascadeID + 1;
@@ -519,7 +537,7 @@ int
 	Tcl_AppendResult(interp, "No more menus can be allocated.", NULL);
 	return TCL_ERROR;
     }
-    Tcl_SetHashValue(commandEntryPtr, (char *) menuPtr);
+    Tcl_SetHashValue(commandEntryPtr, menuPtr);
     *menuIDPtr = returnID;
     return TCL_OK;
 }
@@ -563,8 +581,8 @@ TkMacOSXFreeMenuID(
  *
  * MenuPtrForMenuRef --
  *
- *	Returns a pointer to the TkMenu corresponding to a given
- *	Carbon MenuRef.
+ *	Returns a pointer to the TkMenu corresponding to a given Carbon
+ *	MenuRef.
  *
  * Results:
  *	Returns a pointer to a TkMenu or NULL.
@@ -575,17 +593,17 @@ TkMacOSXFreeMenuID(
  *----------------------------------------------------------------------
  */
 
-TkMenu*
+TkMenu *
 MenuPtrForMenuRef(
     MenuRef menu)
 {
     TkMenu *menuPtr = NULL;
     MenuID menuID = GetMenuID(menu);
-    Tcl_HashEntry *commandEntryPtr = Tcl_FindHashEntry(&commandTable,
-	    (char*)(intptr_t)menuID);
+    Tcl_HashEntry *commandEntryPtr =
+	    Tcl_FindHashEntry(&commandTable, (char*)(intptr_t)menuID);
 
     if (commandEntryPtr) {
-	menuPtr = (TkMenu *) Tcl_GetHashValue(commandEntryPtr);
+	menuPtr = Tcl_GetHashValue(commandEntryPtr);
     }
     return menuPtr;
 }
@@ -637,8 +655,8 @@ GetParentMenuEntry(
  *	Returns a standard TCL error.
  *
  * Side effects:
- *	Allocates a Macintosh menu handle and puts in the platformData
- *	field of the menuPtr.
+ *	Allocates a Macintosh menu handle and puts in the platformData field
+ *	of the menuPtr.
  *
  *----------------------------------------------------------------------
  */
@@ -723,7 +741,7 @@ TkpNewMenu(
     }
 
     menuPtr->menuFlags |= MENU_RECONFIGURE_PENDING;
-    Tcl_DoWhenIdle(ReconfigureMacintoshMenu, (ClientData) menuPtr);
+    Tcl_DoWhenIdle(ReconfigureMacintoshMenu, menuPtr);
     return TCL_OK;
 }
 
@@ -750,7 +768,7 @@ TkpDestroyMenu(
     MenuRef macMenuHdl = ((MacMenu *) menuPtr->platformData)->menuHdl;
 
     if (menuPtr->menuFlags & MENU_RECONFIGURE_PENDING) {
-	Tcl_CancelIdleCall(ReconfigureMacintoshMenu, (ClientData) menuPtr);
+	Tcl_CancelIdleCall(ReconfigureMacintoshMenu, menuPtr);
 	menuPtr->menuFlags &= ~MENU_RECONFIGURE_PENDING;
     }
     if (GetMenuID(macMenuHdl) == currentHelpMenuID) {
@@ -796,7 +814,7 @@ TkpDestroyMenu(
 
 int
 SetMenuCascade(
-    TkMenu* menuPtr)		/* The menu we are setting up to be a
+    TkMenu *menuPtr)		/* The menu we are setting up to be a
 				 * cascade. */
 {
     MenuHandle macMenuHdl = ((MacMenu *) menuPtr->platformData)->menuHdl;
@@ -839,7 +857,7 @@ TkpDestroyMenuEntry(
     if ((menuPtr->platformData != NULL)
 	    && !(menuPtr->menuFlags & MENU_RECONFIGURE_PENDING)) {
 	menuPtr->menuFlags |= MENU_RECONFIGURE_PENDING;
-	Tcl_DoWhenIdle(ReconfigureMacintoshMenu, (ClientData) menuPtr);
+	Tcl_DoWhenIdle(ReconfigureMacintoshMenu, menuPtr);
     }
 }
 
@@ -849,9 +867,9 @@ TkpDestroyMenuEntry(
  * GetEntryText --
  *
  *	Given a menu entry, gives back the text that should go in it.
- *	Separators should be done by the caller, as they have to be
- *	handled specially. This is primarily used to do a substitution
- *	between "..." and the ellipsis character which looks nicer.
+ *	Separators should be done by the caller, as they have to be handled
+ *	specially. This is primarily used to do a substitution between "..."
+ *	and the ellipsis character which looks nicer.
  *
  * Results:
  *	itemText points to the new text for the item.
@@ -915,9 +933,9 @@ GetEntryText(
  *
  * FindMarkCharacter --
  *
- *	Finds the Macintosh mark character based on the font of the
- *	item. We calculate a good mark character based on the font
- *	that this item is rendered in.
+ *	Finds the Macintosh mark character based on the font of the item. We
+ *	calculate a good mark character based on the font that this item is
+ *	rendered in.
  *
  * Results:
  *	Mark char.
@@ -957,8 +975,8 @@ FindMarkCharacter(
  *
  * GetUtfMarkCharacter --
  *
- *	Get the utf8 string for the given mark character, taking into
- *	account the special menu font char codes.
+ *	Get the utf8 string for the given mark character, taking into account
+ *	the special menu font char codes.
  *
  * Results:
  *	Length of returned utf8 string.
@@ -1081,29 +1099,27 @@ ParseAccelerators(
  *	Processes configurations for menu entries.
  *
  * Results:
- *	Returns standard TCL result. If TCL_ERROR is returned, then
- *	the interp's result contains an error message.
+ *	Returns standard TCL result. If TCL_ERROR is returned, then the
+ *	interp's result contains an error message.
  *
  * Side effects:
- *	Configuration information get set for mePtr; old resources
- *	get freed, if any need it.
+ *	Configuration information get set for mePtr; old resources get freed,
+ *	if any need it.
  *
  *----------------------------------------------------------------------
  */
 
 int
 TkpConfigureMenuEntry(
-    TkMenuEntry *mePtr) 	/* Information about menu entry; may
-				 * or may not already have values for
-				 * some fields. */
+    TkMenuEntry *mePtr) 	/* Information about menu entry; may or may
+				 * not already have values for some fields. */
 {
     TkMenu *menuPtr = mePtr->menuPtr;
     EntryGeometry *geometryPtr = (EntryGeometry *) mePtr->platformEntryData;
 
     /*
-     * Cascade menus have to have menu IDs of less than 256. So
-     * we need to change the child menu if this has been configured
-     * for a cascade item.
+     * Cascade menus have to have menu IDs of less than 256. So we need to
+     * change the child menu if this has been configured for a cascade item.
      */
 
     if (mePtr->type == CASCADE_ENTRY) {
@@ -1135,10 +1151,10 @@ TkpConfigureMenuEntry(
     }
 
     /*
-     * We need to parse the accelerator string. If it has the strings
-     * for Command, Control, Shift or Option, we need to flag it
-     * so we can draw the symbols for it. We also need to precalcuate
-     * the position of the first real character we are drawing.
+     * We need to parse the accelerator string. If it has the strings for
+     * Command, Control, Shift or Option, we need to flag it so we can draw
+     * the symbols for it. We also need to precalcuate the position of the
+     * first real character we are drawing.
      */
 
     if (0 == mePtr->accelLength) {
@@ -1157,7 +1173,7 @@ TkpConfigureMenuEntry(
 
     if (!(menuPtr->menuFlags & MENU_RECONFIGURE_PENDING)) {
 	menuPtr->menuFlags |= MENU_RECONFIGURE_PENDING;
-	Tcl_DoWhenIdle(ReconfigureMacintoshMenu, (ClientData) menuPtr);
+	Tcl_DoWhenIdle(ReconfigureMacintoshMenu, menuPtr);
     }
 
     return TCL_OK;
@@ -1168,11 +1184,10 @@ TkpConfigureMenuEntry(
  *
  * ReconfigureIndividualMenu --
  *
- *	This routine redoes the guts of the menu. It works from
- *	a base item and offset, so that a regular menu will
- *	just have all of its items added, but the help menu will
- *	have all of its items appended after the apple-defined
- *	items.
+ *	This routine redoes the guts of the menu. It works from a base item
+ *	and offset, so that a regular menu will just have all of its items
+ *	added, but the help menu will have all of its items appended after the
+ *	apple-defined items.
  *
  * Results:
  *	None.
@@ -1186,14 +1201,12 @@ TkpConfigureMenuEntry(
 void
 ReconfigureIndividualMenu(
     TkMenu *menuPtr,		/* The menu we are affecting. */
-    MenuHandle macMenuHdl,	/* The macintosh menu we are affecting.
-				 * Will not necessarily be
-				 * menuPtr->platformData because this could
-				 * be the help menu. */
-    int base)			/* The last index that we do not want
-				 * touched. 0 for normal menus;
-				 * # of system help menu items
-				 * for help menus. */
+    MenuHandle macMenuHdl,	/* The macintosh menu we are affecting. Will
+				 * not necessarily be menuPtr->platformData
+				 * because this could be the help menu. */
+    int base)			/* The last index that we do not want touched.
+				 * 0 for normal menus; # of system help menu
+				 * items for help menus. */
 {
     int count;
     int index;
@@ -1206,7 +1219,7 @@ ReconfigureIndividualMenu(
      */
 
     TkMacOSXInitNamedDebugSymbol(HIToolbox, void, DebugPrintMenu,
-	MenuRef menu);
+	    MenuRef menu);
     if (DebugPrintMenu) {
 	DebugPrintMenu(macMenuHdl);
     }
@@ -1232,8 +1245,8 @@ ReconfigureIndividualMenu(
 	mePtr = menuPtr->entries[index - 1];
 
 	/*
-	 * We have to do separators separately because SetMenuItemText
-	 * does not parse meta-characters.
+	 * We have to do separators separately because SetMenuItemText does
+	 * not parse meta-characters.
 	 */
 
 	if (mePtr->type == SEPARATOR_ENTRY) {
@@ -1251,7 +1264,7 @@ ReconfigureIndividualMenu(
 		CFRelease(cfStr);
 	    } else {
 		AppendMenuItemTextWithCFString(macMenuHdl, CFSTR ("<Error>"),
-		    0, 0, NULL);
+			0, 0, NULL);
 	    }
 	    Tcl_DStringFree(&itemTextDString);
 
@@ -1273,7 +1286,7 @@ ReconfigureIndividualMenu(
 	    if ((mePtr->type == CHECK_BUTTON_ENTRY)
 		    || (mePtr->type == RADIO_BUTTON_ENTRY)) {
 		CheckMenuItem(macMenuHdl, base + index, (mePtr->entryFlags
-		& ENTRY_SELECTED) && mePtr->indicatorOn);
+			& ENTRY_SELECTED) && mePtr->indicatorOn);
 		if (mePtr->indicatorOn
 			&& (mePtr->entryFlags & ENTRY_SELECTED)) {
 		    SetItemMark(macMenuHdl, base + index,
@@ -1292,26 +1305,27 @@ ReconfigureIndividualMenu(
 			ChkErr(SetMenuItemHierarchicalID, macMenuHdl,
 				base + index, GetMenuID(childMenuHdl));
 		    }
+
 		    /*
 		     * If we changed the highligthing of this menu, its
-		     * children all have to be reconfigured so that
-		     * their state will be reflected in the menubar.
+		     * children all have to be reconfigured so that their
+		     * state will be reflected in the menubar.
 		     */
 
 		    if (!(mePtr->childMenuRefPtr->menuPtr->menuFlags
-				& MENU_RECONFIGURE_PENDING)) {
+			    & MENU_RECONFIGURE_PENDING)) {
 			mePtr->childMenuRefPtr->menuPtr->menuFlags
 				|= MENU_RECONFIGURE_PENDING;
 			Tcl_DoWhenIdle(ReconfigureMacintoshMenu,
-				(ClientData) mePtr->childMenuRefPtr->menuPtr);
+				mePtr->childMenuRefPtr->menuPtr);
 		    }
 		}
 	    }
 
 	    if ((mePtr->type != CASCADE_ENTRY) && (mePtr->accelPtr != NULL)) {
 		int accelLen, modifiers = 0, hasCmd = 0;
-		EntryGeometry *geometryPtr =
-			(EntryGeometry*)mePtr->platformEntryData;
+		EntryGeometry *geometryPtr = (EntryGeometry *)
+			mePtr->platformEntryData;
 		int offset = geometryPtr->accelTextStart;
 		char *accel = Tcl_GetStringFromObj(mePtr->accelPtr, &accelLen);
 
@@ -1341,6 +1355,7 @@ ReconfigureIndividualMenu(
 		    /*
 		     * Convert from accelerator names to Carbon menu glyphs.
 		     */
+
 		    struct Glyph {
 			const char *name;
 			const size_t len;
@@ -1418,27 +1433,26 @@ ReconfigureIndividualMenu(
  *
  * ReconfigureMacintoshMenu --
  *
- *	Rebuilds the Macintosh MenuHandle items from the menu. Called
- *	usually as an idle handler, but can be called synchronously
- *	if the menu is about to be posted.
+ *	Rebuilds the Macintosh MenuHandle items from the menu. Called usually
+ *	as an idle handler, but can be called synchronously if the menu is
+ *	about to be posted.
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	Configuration information get set for mePtr; old resources
- *	get freed, if any need it.
+ *	Configuration information get set for mePtr; old resources get freed,
+ *	if any need it.
  *
  *----------------------------------------------------------------------
  */
 
 void
 ReconfigureMacintoshMenu(
-    ClientData clientData)	/* Information about menu entry; may
-				 * or may not already have values for
-				 * some fields. */
+    ClientData clientData)	/* Information about menu entry; may or may
+				 * not already have values for some fields. */
 {
-    TkMenu *menuPtr = (TkMenu *) clientData;
+    TkMenu *menuPtr = clientData;
     MenuHandle macMenuHdl = ((MacMenu *) menuPtr->platformData)->menuHdl;
     MenuHandle helpMenuHdl = NULL;
 
@@ -1452,6 +1466,7 @@ ReconfigureMacintoshMenu(
 
     if (GetMenuID(macMenuHdl) == currentHelpMenuID) {
 	MenuItemIndex helpIndex;
+
 	HMGetHelpMenu(&helpMenuHdl,&helpIndex);
 	if (helpMenuHdl != NULL) {
 	    ReconfigureIndividualMenu(menuPtr, helpMenuHdl, helpIndex - 1);
@@ -1471,8 +1486,8 @@ ReconfigureMacintoshMenu(
  *
  * CompleteIdlers --
  *
- *	Completes all idle handling so that the menus are in sync when
- *	the user invokes them with the mouse.
+ *	Completes all idle handling so that the menus are in sync when the
+ *	user invokes them with the mouse.
  *
  * Results:
  *	None.
@@ -1490,8 +1505,8 @@ CompleteIdlers(
     int i;
 
     if (menuPtr->menuFlags & MENU_RECONFIGURE_PENDING) {
-	Tcl_CancelIdleCall(ReconfigureMacintoshMenu, (ClientData) menuPtr);
-	ReconfigureMacintoshMenu((ClientData) menuPtr);
+	Tcl_CancelIdleCall(ReconfigureMacintoshMenu, menuPtr);
+	ReconfigureMacintoshMenu(menuPtr);
     }
 
     for (i = 0; i < menuPtr->numEntries; i++) {
@@ -1543,9 +1558,10 @@ TkpPostMenu(
 
 	inPostMenu++;
 	result = TkPreprocessMenu(menuPtr);
+
 	/*
-	 * The post commands could have deleted the menu, which means
-	 * we are dead and should go away.
+	 * The post commands could have deleted the menu, which means we are
+	 * dead and should go away.
 	 */
 
 	if (result != TCL_OK || !menuPtr->tkwin) {
@@ -1592,9 +1608,8 @@ endPostMenu:
  * TkpMenuNewEntry --
  *
  *	Adds a pointer to a new menu entry structure with the platform-
- *	specific fields filled in. The Macintosh uses the
- *	platformEntryData field of the TkMenuEntry record to store
- *	geometry information.
+ *	specific fields filled in. The Macintosh uses the platformEntryData
+ *	field of the TkMenuEntry record to store geometry information.
  *
  * Results:
  *	Standard TCL error.
@@ -1610,8 +1625,8 @@ int
 TkpMenuNewEntry(
     TkMenuEntry *mePtr)		/* The menu we are adding an entry to */
 {
-    EntryGeometry *geometryPtr =
-	    (EntryGeometry *) ckalloc(sizeof(EntryGeometry));
+    EntryGeometry *geometryPtr = (EntryGeometry *)
+	    ckalloc(sizeof(EntryGeometry));
     TkMenu *menuPtr = mePtr->menuPtr;
 
     geometryPtr->accelTextStart = 0;
@@ -1623,7 +1638,7 @@ TkpMenuNewEntry(
     mePtr->platformEntryData = (TkMenuPlatformEntryData) geometryPtr;
     if (!(menuPtr->menuFlags & MENU_RECONFIGURE_PENDING)) {
 	menuPtr->menuFlags |= MENU_RECONFIGURE_PENDING;
-	Tcl_DoWhenIdle(ReconfigureMacintoshMenu, (ClientData) menuPtr);
+	Tcl_DoWhenIdle(ReconfigureMacintoshMenu, menuPtr);
     }
     return TCL_OK;
 }
@@ -1692,31 +1707,29 @@ DrawMenuBarWhenIdle(
     if (currentAppleMenuID != 0) {
 	hashEntryPtr = Tcl_FindHashEntry(&commandTable,
 		(char*)(intptr_t)currentAppleMenuID);
-	appleMenuPtr = (TkMenu *) Tcl_GetHashValue(hashEntryPtr);
+	appleMenuPtr = Tcl_GetHashValue(hashEntryPtr);
 	TkpDestroyMenu(appleMenuPtr);
 	TkpNewMenu(appleMenuPtr);
 	appleMenuPtr->menuFlags &= ~MENU_APPLE_MENU;
 	appleMenuPtr->menuFlags |= MENU_RECONFIGURE_PENDING;
-	Tcl_DoWhenIdle(ReconfigureMacintoshMenu, (ClientData) appleMenuPtr);
+	Tcl_DoWhenIdle(ReconfigureMacintoshMenu, appleMenuPtr);
     }
 
     if (currentHelpMenuID != 0) {
 	hashEntryPtr = Tcl_FindHashEntry(&commandTable,
 		(char*)(intptr_t)currentHelpMenuID);
-	helpMenuPtr = (TkMenu *) Tcl_GetHashValue(hashEntryPtr);
+	helpMenuPtr = Tcl_GetHashValue(hashEntryPtr);
 	TkpDestroyMenu(helpMenuPtr);
 	TkpNewMenu(helpMenuPtr);
 	helpMenuPtr->menuFlags &= ~MENU_HELP_MENU;
 	helpMenuPtr->menuFlags |= MENU_RECONFIGURE_PENDING;
-	Tcl_DoWhenIdle(ReconfigureMacintoshMenu,
-		(ClientData) helpMenuPtr);
+	Tcl_DoWhenIdle(ReconfigureMacintoshMenu, helpMenuPtr);
     }
 
     /*
-     * We need to find the clone of this menu that is the menubar.
-     * Once we do that, for every cascade in the menu, we need to
-     * insert the Mac menu in the Mac menubar. Finally, we need
-     * to redraw the menubar.
+     * We need to find the clone of this menu that is the menubar. Once we do
+     * that, for every cascade in the menu, we need to insert the Mac menu in
+     * the Mac menubar. Finally, we need to redraw the menubar.
      */
 
     menuRefPtr = NULL;
@@ -1809,16 +1822,15 @@ DrawMenuBarWhenIdle(
 		TkMacOSXGetNewMenuID(appleMenuPtr->interp, appleMenuPtr, 0,
 			&appleID);
 		macMenuHdl = NewMenu(appleID, "\p\024");
-		appleMenuPtr->platformData =
-			(TkMenuPlatformData) ckalloc(sizeof(MacMenu));
+		appleMenuPtr->platformData = (TkMenuPlatformData)
+			ckalloc(sizeof(MacMenu));
 		((MacMenu *)appleMenuPtr->platformData)->menuHdl
 			= macMenuHdl;
 		appleMenuPtr->menuFlags |= MENU_APPLE_MENU;
 		if (!(appleMenuPtr->menuFlags
 			& MENU_RECONFIGURE_PENDING)) {
 		    appleMenuPtr->menuFlags |= MENU_RECONFIGURE_PENDING;
-		    Tcl_DoWhenIdle(ReconfigureMacintoshMenu,
-			    (ClientData) appleMenuPtr);
+		    Tcl_DoWhenIdle(ReconfigureMacintoshMenu, appleMenuPtr);
 		}
 		InsertMenu(macMenuHdl, 0);
 		RecursivelyInsertMenu(appleMenuPtr);
@@ -1853,8 +1865,7 @@ DrawMenuBarWhenIdle(
 			    & MENU_RECONFIGURE_PENDING)) {
 			helpMenuPtr->menuFlags
 				|= MENU_RECONFIGURE_PENDING;
-			Tcl_DoWhenIdle(ReconfigureMacintoshMenu,
-				(ClientData) helpMenuPtr);
+			Tcl_DoWhenIdle(ReconfigureMacintoshMenu, helpMenuPtr);
 		    }
 		    macMenuHdl =
 			    ((MacMenu *) helpMenuPtr->platformData)->menuHdl;
@@ -1910,8 +1921,8 @@ DrawMenuBarWhenIdle(
 
 void
 RecursivelyInsertMenu(
-    TkMenu *menuPtr)		/* All of the cascade items in this menu
-				 * will be inserted into the mac menubar. */
+    TkMenu *menuPtr)		/* All of the cascade items in this menu will
+				 * be inserted into the mac menubar. */
 {
     int i;
     TkMenu *cascadeMenuPtr;
@@ -1950,8 +1961,8 @@ RecursivelyInsertMenu(
 
 void
 RecursivelyDeleteMenu(
-    TkMenu *menuPtr)		/* All of the cascade items in this menu
-				 * will be deleted from the mac menubar. */
+    TkMenu *menuPtr)		/* All of the cascade items in this menu will
+				 * be deleted from the mac menubar. */
 {
     int i;
     TkMenu *cascadeMenuPtr;
@@ -2010,8 +2021,8 @@ SetDefaultMenubar(void)
  *
  * TkpSetMainMenubar --
  *
- *	Puts the menu associated with a window into the menubar. Should
- *	only be called when the window is in front.
+ *	Puts the menu associated with a window into the menubar. Should only
+ *	be called when the window is in front.
  *
  * Results:
  *	None.
@@ -2026,9 +2037,8 @@ void
 TkpSetMainMenubar(
     Tcl_Interp *interp,		/* The interpreter of the application */
     Tk_Window tkwin,		/* The frame we are setting up */
-    char *menuName)		/* The name of the menu to put in front.
-				 * If NULL, use the default menu bar.
-				 */
+    char *menuName)		/* The name of the menu to put in front. If
+				 * NULL, use the default menu bar. */
 {
     TkWindow *winPtr = (TkWindow *) tkwin;
     WindowRef macWindowPtr;
@@ -2107,8 +2117,8 @@ TkpSetMainMenubar(
  *	None.
  *
  * Side effects:
- *	On Windows and UNIX, associates the platform menu with the
- *	platform window.
+ *	On Windows and UNIX, associates the platform menu with the platform
+ *	window.
  *
  *----------------------------------------------------------------------
  */
@@ -2155,8 +2165,8 @@ TkpSetWindowMenuBar(
  *
  * EventuallyInvokeMenu --
  *
- *	This IdleTime callback actually invokes the menu command
- *	scheduled in TkMacOSXDispatchMenuEvent.
+ *	This IdleTime callback actually invokes the menu command scheduled in
+ *	TkMacOSXDispatchMenuEvent.
  *
  * Results:
  *	None.
@@ -2171,8 +2181,7 @@ void
 EventuallyInvokeMenu (
     ClientData data)
 {
-    struct MenuCommandHandlerData *realData =
-	    (struct MenuCommandHandlerData *) data;
+    struct MenuCommandHandlerData *realData = data;
     int code;
 
     code = TkInvokeMenu(realData->menuPtr->interp, realData->menuPtr,
@@ -2180,7 +2189,7 @@ EventuallyInvokeMenu (
 
     if (code != TCL_OK && code != TCL_CONTINUE && code != TCL_BREAK) {
 	Tcl_AddErrorInfo(realData->menuPtr->interp, "\n    (menu invoke)");
-	Tcl_BackgroundError(realData->menuPtr->interp);
+	Tcl_BackgroundException(realData->menuPtr->interp, code);
     }
 
     if (realData->menuPtr->tkwin) {
@@ -2197,8 +2206,8 @@ EventuallyInvokeMenu (
  *
  * TkMacOSXDispatchMenuEvent --
  *
- *	Given a menu id and an item, dispatches the command associated
- *	with it.
+ *	Given a menu id and an item, dispatches the command associated with
+ *	it.
  *
  * Results:
  *	None.
@@ -2249,21 +2258,21 @@ TkMacOSXDispatchMenuEvent(
 			&& (index > menuPtr->numEntries + 1)) {
 		    /*
 		     * We don't need to do anything here, the standard
-		     * Application event handler will open the built-in
-		     * Apple menu item for us.
+		     * Application event handler will open the built-in Apple
+		     * menu item for us.
 		     */
+
 		    result = TCL_OK;
 		} else {
-		    struct MenuCommandHandlerData *data
-			    = (struct MenuCommandHandlerData *)
+		    struct MenuCommandHandlerData *data =
+			    (struct MenuCommandHandlerData *)
 			    ckalloc(sizeof(struct MenuCommandHandlerData));
 
 		    Tcl_Preserve(menuPtr->interp);
 		    Tcl_Preserve(menuPtr);
 		    data->menuPtr = menuPtr;
 		    data->index = index - 1;
-		    Tcl_DoWhenIdle(EventuallyInvokeMenu,
-			    (ClientData) data);
+		    Tcl_DoWhenIdle(EventuallyInvokeMenu, data);
 		    /* result = TkInvokeMenu(menuPtr->interp, menuPtr, index - 1); */
 		}
 	    } else {
@@ -2508,15 +2517,15 @@ DrawMenuEntryIndicator(
 		    encoding = kTextEncodingMacKeyboardGlyphs;
 		}
 		switch (mePtr->state) {
-		    case ENTRY_ACTIVE:
-			drawState = kThemeStatePressed;
-			break;
-		    case ENTRY_DISABLED:
-			drawState = kThemeStateInactive;
-			break;
-		    default:
-			drawState = kThemeStateActive;
-			break;
+		case ENTRY_ACTIVE:
+		    drawState = kThemeStatePressed;
+		    break;
+		case ENTRY_DISABLED:
+		    drawState = kThemeStateInactive;
+		    break;
+		default:
+		    drawState = kThemeStateActive;
+		    break;
 		}
 		cfStr = CFStringCreateWithBytes(NULL, (UInt8*)&mark, 1,
 			encoding, false);
@@ -2549,15 +2558,15 @@ DrawMenuEntryIndicator(
  *	Nothing
  *
  * Side effects:
- *	Commands are output to X to display the menu in its
- *	current mode.
+ *	Commands are output to X to display the menu in its current mode.
  *
  *----------------------------------------------------------------------
  */
+
 void
 DrawMenuBackground(
     TkMenu *menuPtr,
-    Rect     *menuRectPtr,	/* The menu rect */
+    Rect *menuRectPtr,		/* The menu rect */
     Drawable d)			/* What we are drawing into */
 {
     Tk_3DBorder border;
@@ -2583,8 +2592,7 @@ DrawMenuBackground(
  *	None.
  *
  * Side effects:
- *	Commands are output to X to display the menu in its
- *	current mode.
+ *	Commands are output to X to display the menu in its current mode.
  *
  *----------------------------------------------------------------------
  */
@@ -2616,15 +2624,15 @@ DrawMenuEntryAccelerator(
 	    ThemeDrawState drawState;
 
 	    switch (mePtr->state) {
-		case ENTRY_ACTIVE:
-		    drawState = kThemeStatePressed;
-		    break;
-		case ENTRY_DISABLED:
-		    drawState = kThemeStateInactive;
-		    break;
-		default:
-		    drawState = kThemeStateActive;
-		    break;
+	    case ENTRY_ACTIVE:
+		drawState = kThemeStatePressed;
+		break;
+	    case ENTRY_DISABLED:
+		drawState = kThemeStateInactive;
+		break;
+	    default:
+		drawState = kThemeStateActive;
+		break;
 	    }
 	    if ((mePtr->entryFlags & ENTRY_ACCEL_MASK) == 0) {
 		leftEdge -= geometryPtr->modifierWidth;
@@ -2642,7 +2650,7 @@ DrawMenuEntryAccelerator(
 		    CFRelease(cfStr);
 		}
 	    } else {
-		Tk_DrawChars(menuPtr->display, d, gc, tkfont, accel + 
+		Tk_DrawChars(menuPtr->display, d, gc, tkfont, accel +
 			geometryPtr->accelTextStart, mePtr->accelLength -
 			geometryPtr->accelTextStart, leftEdge, baseline);
 	    }
@@ -2677,8 +2685,7 @@ DrawMenuEntryAccelerator(
  *	None.
  *
  * Side effects:
- *	Commands are output to X to display the menu in its
- *	current mode.
+ *	Commands are output to X to display the menu in its current mode.
  *
  *----------------------------------------------------------------------
  */
@@ -2715,8 +2722,8 @@ DrawMenuSeparator(
  *
  * AppearanceEntryDrawWrapper --
  *
- *	It routes to the Appearance Managers DrawThemeEntry, which will
- *	then call us back after setting up the drawing context.
+ *	It routes to the Appearance Managers DrawThemeEntry, which will then
+ *	call us back after setting up the drawing context.
  *
  * Results:
  *	A menu entry is drawn
@@ -2726,6 +2733,7 @@ DrawMenuSeparator(
  *
  *----------------------------------------------------------------------
  */
+
 void
 AppearanceEntryDrawWrapper(
     TkMenuEntry *mePtr,
@@ -2776,9 +2784,9 @@ AppearanceEntryDrawWrapper(
 	DrawMenuBackground(mePtr->menuPtr, &itemRect, d);
     }
     DrawThemeMenuItem(menuRectPtr, &itemRect,
-	mtdPtr->virtualMenuTop, mtdPtr->virtualMenuBottom, theState,
-	theType | kThemeMenuItemNoBackground, tkThemeMenuItemDrawingUPP,
-	(unsigned long) &meData);
+	    mtdPtr->virtualMenuTop, mtdPtr->virtualMenuBottom, theState,
+	    theType | kThemeMenuItemNoBackground, tkThemeMenuItemDrawingUPP,
+	    (unsigned long) &meData);
     if (erase) {
 	EnableScreenUpdates();
     }
@@ -2799,6 +2807,7 @@ AppearanceEntryDrawWrapper(
  *
  *----------------------------------------------------------------------
  */
+
 pascal void
 ThemeMenuItemDrawingProc(
     const Rect *inBounds,
@@ -2820,8 +2829,8 @@ ThemeMenuItemDrawingProc(
  *
  * TkMacOSXHandleTearoffMenu() --
  *
- *	This routine sees if the MDEF has set a menu and a mouse position
- *	for tearing off and makes a tearoff menu if it has.
+ *	This routine sees if the MDEF has set a menu and a mouse position for
+ *	tearing off and makes a tearoff menu if it has.
  *
  * Results:
  *	menuPtr->interp will have the result of the tearoff command.
@@ -2845,16 +2854,16 @@ TkMacOSXHandleTearoffMenu(void)
  *
  * TkpInitializeMenuBindings --
  *
- *	For every interp, initializes the bindings for Windows
- *	menus. Does nothing on Mac or XWindows.
+ *	For every interp, initializes the bindings for Windows menus. Does
+ *	nothing on Mac or XWindows.
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	C-level bindings are setup for the interp which will
- *	handle Alt-key sequences for menus without beeping
- *	or interfering with user-defined Alt-key bindings.
+ *	C-level bindings are setup for the interp which will handle Alt-key
+ *	sequences for menus without beeping or interfering with user-defined
+ *	Alt-key bindings.
  *
  *--------------------------------------------------------------
  */
@@ -2875,16 +2884,15 @@ TkpInitializeMenuBindings(
  *
  * TkpComputeMenubarGeometry --
  *
- *	This procedure is invoked to recompute the size and
- *	layout of a menu that is a menubar clone.
+ *	This procedure is invoked to recompute the size and layout of a menu
+ *	that is a menubar clone.
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	Fields of menu entries are changed to reflect their
- *	current positions, and the size of the menu window
- *	itself may be changed.
+ *	Fields of menu entries are changed to reflect their current positions,
+ *	and the size of the menu window itself may be changed.
  *
  *--------------------------------------------------------------
  */
@@ -2907,8 +2915,7 @@ TkpComputeMenubarGeometry(
  *	None.
  *
  * Side effects:
- *	Commands are output to X to display the menu in its
- *	current mode.
+ *	Commands are output to X to display the menu in its current mode.
  *
  *----------------------------------------------------------------------
  */
@@ -2958,12 +2965,11 @@ DrawTearoffEntry(
  *
  * TkMacOSXSetHelpMenuItemCount --
  *
- *	Has to be called after the first call to InsertMenu. Sets
- *	up the global variable for the number of items in the
- *	unmodified help menu.
- *	NB. Nobody uses this any more, since you can get the number
- *	of system help items from HMGetHelpMenu trivially.
- *	But it is in the stubs table...
+ *	Has to be called after the first call to InsertMenu. Sets up the
+ *	global variable for the number of items in the unmodified help menu.
+ *	NB. Nobody uses this any more, since you can get the number of system
+ *	help items from HMGetHelpMenu trivially. But it is in the stubs
+ *	table...
  *
  * Results:
  *	None.
@@ -3027,8 +3033,8 @@ TkMacOSXMenuClick(void)
  *
  * TkpDrawMenuEntry --
  *
- *	Draws the given menu entry at the given coordinates with the
- *	given attributes.
+ *	Draws the given menu entry at the given coordinates with the given
+ *	attributes.
  *
  * Results:
  *	None.
@@ -3066,9 +3072,9 @@ TkpDrawMenuEntry(
     int adjustedHeight = height - 2 * padY;
 
     /*
-     * Choose the gc for drawing the foreground part of the entry.
-     * Under Appearance, we pass a null (appearanceGC) to tell
-     * ourselves not to change whatever color the appearance manager has set.
+     * Choose the gc for drawing the foreground part of the entry. Under
+     * Appearance, we pass a null (appearanceGC) to tell ourselves not to
+     * change whatever color the appearance manager has set.
      */
 
     if ((mePtr->state == ENTRY_ACTIVE) && !strictMotif) {
@@ -3119,9 +3125,9 @@ TkpDrawMenuEntry(
     }
 
     /*
-     * Need to draw the entire background, including padding. On Unix,
-     * for menubars, we have to draw the rest of the entry taking
-     * into account the padding.
+     * Need to draw the entire background, including padding. On Unix, for
+     * menubars, we have to draw the rest of the entry taking into account the
+     * padding.
      */
 
     DrawMenuEntryBackground(menuPtr, mePtr, d, activeBorder, bgBorder, x, y,
@@ -3150,16 +3156,15 @@ TkpDrawMenuEntry(
  *
  * TkpComputeStandardMenuGeometry --
  *
- *	This procedure is invoked to recompute the size and
- *	layout of a menu that is not a menubar clone.
+ *	This procedure is invoked to recompute the size and layout of a menu
+ *	that is not a menubar clone.
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	Fields of menu entries are changed to reflect their
- *	current positions, and the size of the menu window
- *	itself may be changed.
+ *	Fields of menu entries are changed to reflect their current positions,
+ *	and the size of the menu window itself may be changed.
  *
  *--------------------------------------------------------------
  */
@@ -3189,20 +3194,19 @@ TkpComputeStandardMenuGeometry(
 	    &activeBorderWidth);
     x = y = borderWidth;
     indicatorSpace = labelWidth = accelWidth = maxAccelTextWidth = 0;
-    windowHeight = windowWidth = maxWidth = lastColumnBreak = 0;
-    maxModifierWidth = nonAccelMargin = maxNonAccelMargin = 0;
+    windowHeight = maxWidth = lastColumnBreak = 0;
+    maxModifierWidth = maxNonAccelMargin = 0;
     maxEntryWithAccelWidth = maxEntryWithoutAccelWidth = 0;
     maxIndicatorSpace = 0;
 
     /*
-     * On the Mac especially, getting font metrics can be quite slow,
-     * so we want to do it intelligently. We are going to precalculate
-     * them and pass them down to all of the measuring and drawing
-     * routines. We will measure the font metrics of the menu once.
-     * If an entry does not have its own font set, then we give
-     * the geometry/drawing routines the menu's font and metrics.
-     * If an entry has its own font, we will measure that font and
-     * give all of the geometry/drawing the entry's font and metrics.
+     * On the Mac especially, getting font metrics can be quite slow, so we
+     * want to do it intelligently. We are going to precalculate them and pass
+     * them down to all of the measuring and drawing routines. We will measure
+     * the font metrics of the menu once. If an entry does not have its own
+     * font set, then we give the geometry/drawing routines the menu's font
+     * and metrics. If an entry has its own font, we will measure that font
+     * and give all of the geometry/drawing the entry's font and metrics.
      */
 
     menuFont = Tk_GetFontFromObj(menuPtr->tkwin, menuPtr->fontPtr);
@@ -3261,7 +3265,7 @@ TkpComputeStandardMenuGeometry(
 	    lastColumnBreak = i;
 	    y = borderWidth;
 	}
-	geometryPtr = (EntryGeometry *) mePtr->platformEntryData;
+	/*geometryPtr = (EntryGeometry *) mePtr->platformEntryData;*/ /* dead code */
 
 	if (mePtr->type == SEPARATOR_ENTRY) {
 	    GetMenuSeparatorGeometry(menuPtr, mePtr, tkfont,
@@ -3273,13 +3277,12 @@ TkpComputeStandardMenuGeometry(
 	    mePtr->height = height;
 	} else {
 	    /*
-	     * For each entry, compute the height required by that
-	     * particular entry, plus three widths:  the width of the
-	     * label, the width to allow for an indicator to be displayed
-	     * to the left of the label (if any), and the width of the
-	     * accelerator to be displayed to the right of the label
-	     * (if any). These sizes depend, of course, on the type
-	     * of the entry.
+	     * For each entry, compute the height required by that particular
+	     * entry, plus three widths: the width of the label, the width to
+	     * allow for an indicator to be displayed to the left of the label
+	     * (if any), and the width of the accelerator to be displayed to
+	     * the right of the label (if any). These sizes depend, of course,
+	     * on the type of the entry.
 	     */
 
 	    GetMenuLabelGeometry(mePtr, tkfont, fmPtr, &labelWidth, &height);
@@ -3381,8 +3384,8 @@ TkpComputeStandardMenuGeometry(
     windowHeight += borderWidth;
 
     /*
-     * The X server doesn't like zero dimensions, so round up to at least
-     * 1 (a zero-sized menu should never really occur, anyway).
+     * The X server doesn't like zero dimensions, so round up to at least 1 (a
+     * zero-sized menu should never really occur, anyway).
      */
 
     if (windowWidth <= 0) {
@@ -3406,8 +3409,7 @@ TkpComputeStandardMenuGeometry(
  *	None.
  *
  * Side effects:
- *	Commands are output to X to display the menu in its
- *	current mode.
+ *	Commands are output to X to display the menu in its current mode.
  *
  *----------------------------------------------------------------------
  */
@@ -3468,47 +3470,47 @@ DrawMenuEntryLabel(
 	int fullWidth = (imageWidth > textWidth ? imageWidth : textWidth);
 
 	switch ((enum compound) mePtr->compound) {
-	    case COMPOUND_TOP:
-		textXOffset = (fullWidth - textWidth)/2;
-		textYOffset = imageHeight/2 + 2;
-		imageXOffset = (fullWidth - imageWidth)/2;
-		imageYOffset = -textHeight/2;
-		break;
-	    case COMPOUND_BOTTOM:
-		textXOffset = (fullWidth - textWidth)/2;
-		textYOffset = -imageHeight/2;
-		imageXOffset = (fullWidth - imageWidth)/2;
-		imageYOffset = textHeight/2 + 2;
-		break;
-	    case COMPOUND_LEFT:
-		/*
-		 * Position image in the indicator space to the left of the
-		 * entries, unless this entry is a radio|check button because
-		 * then the indicator space will be used.
-		 */
+	case COMPOUND_TOP:
+	    textXOffset = (fullWidth - textWidth)/2;
+	    textYOffset = imageHeight/2 + 2;
+	    imageXOffset = (fullWidth - imageWidth)/2;
+	    imageYOffset = -textHeight/2;
+	    break;
+	case COMPOUND_BOTTOM:
+	    textXOffset = (fullWidth - textWidth)/2;
+	    textYOffset = -imageHeight/2;
+	    imageXOffset = (fullWidth - imageWidth)/2;
+	    imageYOffset = textHeight/2 + 2;
+	    break;
+	case COMPOUND_LEFT:
+	    /*
+	     * Position image in the indicator space to the left of the
+	     * entries, unless this entry is a radio|check button because then
+	     * the indicator space will be used.
+	     */
 
-		textXOffset = imageWidth + 2 - menuTextLeadingEdgeMargin;
-		if ((mePtr->type != CHECK_BUTTON_ENTRY)
-			&& (mePtr->type != RADIO_BUTTON_ENTRY)) {
-		    textXOffset -= indicatorSpace;
-		    imageXOffset = -indicatorSpace;
-		}
-		if (textXOffset < 0) {
-		    textXOffset = 0;
-		}
-		break;
-	    case COMPOUND_RIGHT:
-		imageXOffset = textWidth + 2 - menuTextTrailingEdgeMargin;
-		break;
-	    case COMPOUND_CENTER:
-		textXOffset = (fullWidth - textWidth)/2;
-		imageXOffset = (fullWidth - imageWidth)/2;
-		break;
-	    case COMPOUND_NONE:
-	    	/*
-	    	 * Never reached.
-	    	 */
-		break;
+	    textXOffset = imageWidth + 2 - menuTextLeadingEdgeMargin;
+	    if ((mePtr->type != CHECK_BUTTON_ENTRY)
+		    && (mePtr->type != RADIO_BUTTON_ENTRY)) {
+		textXOffset -= indicatorSpace;
+		imageXOffset = -indicatorSpace;
+	    }
+	    if (textXOffset < 0) {
+		textXOffset = 0;
+	    }
+	    break;
+	case COMPOUND_RIGHT:
+	    imageXOffset = textWidth + 2 - menuTextTrailingEdgeMargin;
+	    break;
+	case COMPOUND_CENTER:
+	    textXOffset = (fullWidth - textWidth)/2;
+	    imageXOffset = (fullWidth - imageWidth)/2;
+	    break;
+	case COMPOUND_NONE:
+	    /*
+	     * Never reached.
+	     */
+	    break;
 	}
     }
 
@@ -3562,16 +3564,15 @@ DrawMenuEntryLabel(
  *
  * DrawMenuEntryBackground --
  *
- *	This procedure draws the background part of a menu entry.
- *	Under Appearance, we only draw the background if the entry's
- *	border is set, we DO NOT inherit it from the menu...
+ *	This procedure draws the background part of a menu entry. Under
+ *	Appearance, we only draw the background if the entry's border is set,
+ *	we DO NOT inherit it from the menu...
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	Commands are output to X to display the menu in its
- *	current mode.
+ *	Commands are output to X to display the menu in its current mode.
  *
  *----------------------------------------------------------------------
  */
@@ -3656,43 +3657,43 @@ GetMenuLabelGeometry(
 		switch ((enum compound) mePtr->compound) {
 		    int margin;
 
-		    case COMPOUND_TOP:
-		    case COMPOUND_BOTTOM:
-			if (textWidth > *widthPtr) {
-			    *widthPtr = textWidth;
-			}
-			*heightPtr += textHeight + 2;
-			break;
-		    case COMPOUND_LEFT:
-			margin = *widthPtr + 2;
-			if (margin > menuTextLeadingEdgeMargin) {
-			    margin = menuTextLeadingEdgeMargin;
-			}
-			*widthPtr += textWidth + 2 - margin;
-			if (textHeight > *heightPtr) {
-			    *heightPtr = textHeight;
-			}
-			break;
-		    case COMPOUND_RIGHT:
-			margin = menuTextTrailingEdgeMargin;
-			*widthPtr += textWidth + 2 - margin;
-			if (textHeight > *heightPtr) {
-			    *heightPtr = textHeight;
-			}
-			break;
-		    case COMPOUND_CENTER:
-			if (textWidth > *widthPtr) {
-			    *widthPtr = textWidth;
-			}
-			if (textHeight > *heightPtr) {
-			    *heightPtr = textHeight;
-			}
-			break;
-		    case COMPOUND_NONE:
-			/*
-			 * Never reached.
-			 */
-			break;
+		case COMPOUND_TOP:
+		case COMPOUND_BOTTOM:
+		    if (textWidth > *widthPtr) {
+			*widthPtr = textWidth;
+		    }
+		    *heightPtr += textHeight + 2;
+		    break;
+		case COMPOUND_LEFT:
+		    margin = *widthPtr + 2;
+		    if (margin > menuTextLeadingEdgeMargin) {
+			margin = menuTextLeadingEdgeMargin;
+		    }
+		    *widthPtr += textWidth + 2 - margin;
+		    if (textHeight > *heightPtr) {
+			*heightPtr = textHeight;
+		    }
+		    break;
+		case COMPOUND_RIGHT:
+		    margin = menuTextTrailingEdgeMargin;
+		    *widthPtr += textWidth + 2 - margin;
+		    if (textHeight > *heightPtr) {
+			*heightPtr = textHeight;
+		    }
+		    break;
+		case COMPOUND_CENTER:
+		    if (textWidth > *widthPtr) {
+			*widthPtr = textWidth;
+		    }
+		    if (textHeight > *heightPtr) {
+			*heightPtr = textHeight;
+		    }
+		    break;
+		case COMPOUND_NONE:
+		    /*
+		     * Never reached.
+		     */
+		    break;
 		}
 		goto labelGeomDone;
 	    }
@@ -3701,7 +3702,7 @@ GetMenuLabelGeometry(
 	*heightPtr = textHeight;
     }
 
-labelGeomDone:
+  labelGeomDone:
     *heightPtr += menuItemExtraHeight;
     *widthPtr += menuItemExtraWidth;
 }
@@ -3784,8 +3785,8 @@ TkMacOSXGenerateMenuSelectEvent(
  *
  * MenuSelectEvent --
  *
- *	Generates a "MenuSelect" virtual event. This can be used to
- *	do context-sensitive menu help.
+ *	Generates a "MenuSelect" virtual event. This can be used to do
+ *	context-sensitive menu help.
  *
  * Results:
  *	None.
@@ -3925,8 +3926,8 @@ TkMacOSXClearMenubarActive(void)
  * TkpMenuNotifyToplevelCreate --
  *
  *	This routine reconfigures the menu and the clones indicated by
- *	menuName becuase a toplevel has been created and any system
- *	menus need to be created. Only applicable to Windows.
+ *	menuName becuase a toplevel has been created and any system menus need
+ *	to be created. Only applicable to Windows.
  *
  * Results:
  *	None.
@@ -4024,8 +4025,7 @@ TkpMenuInit(void)
  *
  * TkpMenuThreadInit --
  *
- *	Does platform-specific initialization of thread-specific
- *	menu state.
+ *	Does platform-specific initialization of thread-specific menu state.
  *
  * Results:
  *	None.
@@ -4070,15 +4070,15 @@ TkMacOSXPreprocessMenu(void)
 	if ((mbRefPtr != NULL) && (mbRefPtr->menuPtr != NULL)) {
 	    int code;
 
-	    Tcl_Preserve((ClientData) currentMenuBarInterp);
+	    Tcl_Preserve(currentMenuBarInterp);
 	    code = TkPreprocessMenu(mbRefPtr->menuPtr->masterMenuPtr);
 	    if ((code != TCL_OK) && (code != TCL_CONTINUE)
 		    && (code != TCL_BREAK)) {
 		Tcl_AddErrorInfo(currentMenuBarInterp,
 			"\n    (menu preprocess)");
-		Tcl_BackgroundError(currentMenuBarInterp);
+		Tcl_BackgroundException(currentMenuBarInterp, code);
 	    }
-	    Tcl_Release((ClientData) currentMenuBarInterp);
+	    Tcl_Release(currentMenuBarInterp);
 	}
     }
 }
@@ -4090,16 +4090,16 @@ TkMacOSXPreprocessMenu(void)
  *
  * MenuDefProc --
  *
- *	This routine is the MDEF handler for Tk. It receives all messages
- *	for the menu and dispatches them.
+ *	This routine is the MDEF handler for Tk. It receives all messages for
+ *	the menu and dispatches them.
  *
  * Results:
  *	None.
  *
  * Side effects:
  *	This routine causes menus to be drawn and will certainly allocate
- *	memory as a result. Also, the menu can scroll up and down, and
- *	various other interface actions can take place.
+ *	memory as a result. Also, the menu can scroll up and down, and various
+ *	other interface actions can take place.
  *
  *----------------------------------------------------------------------
  */
@@ -4108,12 +4108,12 @@ void
 MenuDefProc(
     SInt16 message,		/* What action are we taking? */
     MenuRef menu,		/* The menu we are working with */
-    Rect *menuRectPtr,		/* A pointer to the rect for the
-				 * whole menu. */
-    Point hitPt,		/* Where the mouse was clicked for
-				 * the appropriate messages. */
-    SInt16 *whichItem)		/* Output result. Which item was
-				 * hit by the user? */
+    Rect *menuRectPtr,		/* A pointer to the rect for the whole
+				 * menu. */
+    Point hitPt,		/* Where the mouse was clicked for the
+				 * appropriate messages. */
+    SInt16 *whichItem)		/* Output result. Which item was hit by the
+				 * user? */
 {
     TkMenu *menuPtr;
     Tcl_HashEntry *commandEntryPtr;
@@ -4121,57 +4121,52 @@ MenuDefProc(
 
     menuID = GetMenuID(menu);
     commandEntryPtr = Tcl_FindHashEntry(&commandTable, (char*)(intptr_t)menuID);
-
-    if (commandEntryPtr) {
-	menuPtr = (TkMenu *) Tcl_GetHashValue(commandEntryPtr);
-    } else {
-	menuPtr = NULL;
-    }
+    if (!commandEntryPtr) return;
+    menuPtr = Tcl_GetHashValue(commandEntryPtr);
 
     switch (message) {
-	case kMenuInitMsg:
-	    *whichItem = noErr;
-	    break;
-	case kMenuDisposeMsg:
-	    break;
-	case kMenuHiliteItemMsg:
-	    HandleMenuHiliteMsg(menu, menuRectPtr, hitPt, whichItem, menuPtr);
-	    break;
-	case kMenuCalcItemMsg:
-	    HandleMenuCalcItemMsg(menu, menuRectPtr, hitPt, whichItem,
-		    menuPtr);
-	    break;
-	case kMenuDrawItemsMsg:
+    case kMenuInitMsg:
+	*whichItem = noErr;
+	break;
+    case kMenuDisposeMsg:
+	break;
+    case kMenuHiliteItemMsg:
+	HandleMenuHiliteMsg(menu, menuRectPtr, hitPt, whichItem, menuPtr);
+	break;
+    case kMenuCalcItemMsg:
+	HandleMenuCalcItemMsg(menu, menuRectPtr, hitPt, whichItem, menuPtr);
+	break;
+    case kMenuDrawItemsMsg:
 #ifdef TK_MAC_DEBUG_MENUS
-	    TkMacOSXDbgMsg("MDEF: DrawItemsMsg");
+	TkMacOSXDbgMsg("MDEF: DrawItemsMsg");
 #endif
-	    /*
-	     * We do nothing  here, because we don't support the Menu Managers
-	     * dynamic item groups
-	     */
-	    break;
-	case kMenuThemeSavvyMsg:
-	    *whichItem = kThemeSavvyMenuResponse;
-	    break;
-	case kMenuSizeMsg:
+	/*
+	 * We do nothing here, because we don't support the Menu Managers
+	 * dynamic item groups
+	 */
+
+	break;
+    case kMenuThemeSavvyMsg:
+	*whichItem = kThemeSavvyMenuResponse;
+	break;
+    case kMenuSizeMsg:
 #ifdef TK_MAC_DEBUG_MENUS
-	    TkMacOSXDbgMsg("MDEF: SizeMsg %d, %d", hitPt.h, hitPt.v);
+	TkMacOSXDbgMsg("MDEF: SizeMsg %d, %d", hitPt.h, hitPt.v);
 #endif
-	    SetMenuWidth(menu, hitPt.h < menuPtr->totalWidth ?	hitPt.h :
-		    menuPtr->totalWidth);
-	    SetMenuHeight(menu, hitPt.v < menuPtr->totalHeight ? hitPt.v :
-		    menuPtr->totalHeight);
-	    break;
-	case kMenuDrawMsg:
-	    HandleMenuDrawMsg(menu, menuRectPtr, hitPt, whichItem, menuPtr);
-	    break;
-	case kMenuFindItemMsg:
-	    HandleMenuFindItemMsg(menu, menuRectPtr, hitPt, whichItem,
-		    menuPtr);
-	    break;
-	case kMenuPopUpMsg:
-	    HandleMenuPopUpMsg(menu, menuRectPtr, hitPt, whichItem, menuPtr);
-	    break;
+	SetMenuWidth(menu, hitPt.h < menuPtr->totalWidth ? hitPt.h :
+		menuPtr->totalWidth);
+	SetMenuHeight(menu, hitPt.v < menuPtr->totalHeight ? hitPt.v :
+		menuPtr->totalHeight);
+	break;
+    case kMenuDrawMsg:
+	HandleMenuDrawMsg(menu, menuRectPtr, hitPt, whichItem, menuPtr);
+	break;
+    case kMenuFindItemMsg:
+	HandleMenuFindItemMsg(menu, menuRectPtr, hitPt, whichItem, menuPtr);
+	break;
+    case kMenuPopUpMsg:
+	HandleMenuPopUpMsg(menu, menuRectPtr, hitPt, whichItem, menuPtr);
+	break;
     }
 }
 
@@ -4202,7 +4197,7 @@ HandleMenuHiliteMsg(
     OSStatus err;
     Tk_Font tkfont;
     Tk_FontMetrics fontMetrics;
-    MDEFHiliteItemData *hidPtr = (MDEFHiliteItemData *)whichItem;
+    MDEFHiliteItemData *hidPtr = (MDEFHiliteItemData *) whichItem;
     int oldItem = hidPtr->previousItem - 1;
     int newItem = hidPtr->newItem - 1;
     MenuTrackingData mtd, *mtdPtr = &mtd;
@@ -4260,9 +4255,9 @@ HandleMenuDrawMsg(
     TkMenuEntry *mePtr;
     int i;
     Rect menuClipRect, bounds;
-    MDEFDrawData *ddPtr = (MDEFDrawData*)whichItem;
+    MDEFDrawData *ddPtr = (MDEFDrawData *) whichItem;
     MenuTrackingData *mtdPtr = &(ddPtr->trackingData);
-    TkWindow *winPtr = (TkWindow*)menuPtr->tkwin;
+    TkWindow *winPtr = (TkWindow *) menuPtr->tkwin;
 
     GetPort(&macMDEFDrawable.grafPtr);
     GetPortBounds(macMDEFDrawable.grafPtr, &bounds);
@@ -4342,9 +4337,8 @@ HandleMenuDrawMsg(
     }
 
     /*
-     * Now, actually draw the menu. Don't draw entries that
-     * are higher than the top arrow, and don't draw entries
-     * that are lower than the bottom.
+     * Now, actually draw the menu. Don't draw entries that are higher than
+     * the top arrow, and don't draw entries that are lower than the bottom.
      */
 
     for (i = 0; i < menuPtr->numEntries; i++) {
@@ -4365,20 +4359,21 @@ HandleMenuDrawMsg(
  *
  * HandleMenuFindItemMsg --
  *
- *	Handles the MenuDefProc's FindItems message. We have to
- *	respond by filling in the itemSelected, itemUnderMouse and
- *	itemRect fields. This is also the time to scroll the menu if
- *	it is too long to fit on the screen.
+ *	Handles the MenuDefProc's FindItems message. We have to respond by
+ *	filling in the itemSelected, itemUnderMouse and itemRect fields. This
+ *	is also the time to scroll the menu if it is too long to fit on the
+ *	screen.
  *
  * Results:
- *	The Menu system is informed of the selected item & the item
- *	under the mouse.
+ *	The Menu system is informed of the selected item & the item under the
+ *	mouse.
  *
  * Side effects:
  *	The menu might get scrolled.
  *
  *----------------------------------------------------------------------
  */
+
 void
 HandleMenuFindItemMsg(
     MenuRef menu,
@@ -4402,6 +4397,7 @@ HandleMenuFindItemMsg(
 
 #ifdef TK_MAC_DEBUG_MENUS
     static Point lastHitPt = {0, 0};
+
     if (hitPt.h != lastHitPt.h || hitPt.v != lastHitPt.v) {
 	lastHitPt = hitPt;
 	TkMacOSXDbgMsg("MDEF: FindItemMsg: %d, %d", hitPt.h, hitPt.v);
@@ -4450,8 +4446,8 @@ HandleMenuFindItemMsg(
     }
     if (scrollDirection == DONT_SCROLL) {
 	/*
-	 * Find out which item was hit. If it is the same as the old item,
-	 * we don't need to do anything.
+	 * Find out which item was hit. If it is the same as the old item, we
+	 * don't need to do anything.
 	 */
 
 	if (PtInRect(hitPt, menuRectPtr)) {
@@ -4599,8 +4595,8 @@ HandleMenuFindItemMsg(
  *
  * HandleMenuPopUpMsg --
  *
- *	Handles the MenuDefProc's PopUp message. The menu is
- *	posted with the selected item at the point given in hitPt.
+ *	Handles the MenuDefProc's PopUp message. The menu is posted with the
+ *	selected item at the point given in hitPt.
  *
  * Results:
  *	A menu is posted.
@@ -4610,6 +4606,7 @@ HandleMenuFindItemMsg(
  *
  *----------------------------------------------------------------------
  */
+
 void
 HandleMenuPopUpMsg(
     MenuRef menu,
@@ -4634,8 +4631,8 @@ HandleMenuPopUpMsg(
     GetQDGlobalsScreenBits(&screenBits);
 
     /*
-     * Note that for some oddball reason, h and v are reversed in the
-     * point given to us by the MDEF.
+     * Note that for some oddball reason, h and v are reversed in the point
+     * given to us by the MDEF.
      */
 
     oldItem = *whichItem;
@@ -4691,14 +4688,13 @@ HandleMenuPopUpMsg(
  *
  * HandleMenuCalcItemMsg --
  *
- *	Handles the MenuDefProc's CalcItem message. It is supposed
- *	to calculate the Rect of the menu entry in whichItem in the
- *	menu, and put that in menuRectPtr. I assume this works, but I
- *	have never seen the MenuManager send this message.
+ *	Handles the MenuDefProc's CalcItem message. It is supposed to
+ *	calculate the Rect of the menu entry in whichItem in the menu, and put
+ *	that in menuRectPtr. I assume this works, but I have never seen the
+ *	MenuManager send this message.
  *
  * Results:
- *	The Menu Manager is informed of the bounding rect of a
- *	menu rect.
+ *	The Menu Manager is informed of the bounding rect of a menu rect.
  *
  * Side effects:
  *	None.
@@ -4743,3 +4739,10 @@ HandleMenuCalcItemMsg(
 #endif
 }
 #endif /* USE_TK_MDEF */
+
+/*
+ * Local Variables:
+ * fill-column: 78
+ * c-basic-offset: 4
+ * End:
+ */

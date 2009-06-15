@@ -87,7 +87,7 @@ static const Tk_SegType tkTextEmbWindowType = {
  * Definitions for alignment values:
  */
 
-static char *alignStrings[] = {
+static const char *const alignStrings[] = {
     "baseline", "bottom", "center", "top", NULL
 };
 
@@ -143,7 +143,7 @@ TkTextWindowCmd(
 				 * objv[1] is "window". */
 {
     int optionIndex;
-    static const char *windOptionStrings[] = {
+    static const char *const windOptionStrings[] = {
 	"cget", "configure", "create", "names", NULL
     };
     enum windOptions {
@@ -152,7 +152,7 @@ TkTextWindowCmd(
     register TkTextSegment *ewPtr;
 
     if (objc < 3) {
-	Tcl_WrongNumArgs(interp, 2, objv, "option ?arg arg ...?");
+	Tcl_WrongNumArgs(interp, 2, objv, "option ?arg ...?");
 	return TCL_ERROR;
     }
     if (Tcl_GetIndexFromObj(interp, objv[2], windOptionStrings,
@@ -204,7 +204,7 @@ TkTextWindowCmd(
 	TkTextSegment *ewPtr;
 
 	if (objc < 4) {
-	    Tcl_WrongNumArgs(interp, 3, objv, "index ?option value ...?");
+	    Tcl_WrongNumArgs(interp, 3, objv, "index ?-option value ...?");
 	    return TCL_ERROR;
 	}
 	if (TkTextGetObjIndex(interp, textPtr, objv[3], &index) != TCL_OK) {
@@ -265,7 +265,7 @@ TkTextWindowCmd(
 	 */
 
 	if (objc < 4) {
-	    Tcl_WrongNumArgs(interp, 3, objv, "index ?option value ...?");
+	    Tcl_WrongNumArgs(interp, 3, objv, "index ?-option value ...?");
 	    return TCL_ERROR;
 	}
 	if (TkTextGetObjIndex(interp, textPtr, objv[3], &index) != TCL_OK) {
@@ -911,7 +911,7 @@ EmbWinLayoutProc(
 	}
 	if (code != TCL_OK) {
 	createError:
-	    Tcl_BackgroundError(textPtr->interp);
+	    Tcl_BackgroundException(textPtr->interp, code);
 	    goto gotWindow;
 	}
 	Tcl_DStringInit(&name);

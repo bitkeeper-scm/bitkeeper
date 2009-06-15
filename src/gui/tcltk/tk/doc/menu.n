@@ -48,7 +48,7 @@ to invoke whenever the menu is torn off.  The actual command will
 consist of the value of this option, followed by a space, followed
 by the name of the menu window, followed by a space, followed by
 the name of the name of the torn off menu window.  For example, if
-the option's is
+the option's value is
 .QW "\fBa b\fR"
 and menu \fB.x.y\fR is torn off to
 create a new menu \fB.x.tearoff1\fR, then the command
@@ -252,8 +252,8 @@ whenever the window's menubar is in front. The first items in the menu
 are provided by Mac OS X.
 .PP
 When Tk sees a System menu on Windows, its items are appended to the 
-system menu that the menubar is attached to. This menu has an icon
-representing a spacebar, and can be invoked with the mouse or by typing
+system menu that the menubar is attached to. This menu is tied to the 
+application icon and can be invoked with the mouse or by typing
 Alt+Spacebar.  Due to limitations in the Windows API, any font changes,
 colors, images, bitmaps, or tearoff images will not appear in the
 system menu.
@@ -625,10 +625,8 @@ empty string. This subcommand does not work on Windows and the
 Macintosh, as those platforms have their own way of unposting menus.
 .TP
 \fIpathName \fBxposition \fIindex\fR
-.VS 8.5
 Returns a decimal string giving the x-coordinate within the menu
 window of the leftmost pixel in the entry specified by \fIindex\fR.
-.VE 8.5
 .TP
 \fIpathName \fByposition \fIindex\fR
 Returns a decimal string giving the y-coordinate within the menu
@@ -638,7 +636,7 @@ window of the topmost pixel in the entry specified by \fIindex\fR.
 The default bindings support four different ways of using menus:
 .TP
 \fBPulldown Menus in Menubar\fR
-This is the most command case. You create a menu widget that will become the
+This is the most common case. You create a menu widget that will become the
 menu bar. You then add cascade entries to this menu, specifying the
 pull down menus you wish to use in your menu bar. You then create all
 of the pulldowns. Once you have done this, specify the menu using the
@@ -744,3 +742,6 @@ entries.
 bind(n), menubutton(n), ttk::menubutton(n), toplevel(n)
 .SH KEYWORDS
 menu, widget
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

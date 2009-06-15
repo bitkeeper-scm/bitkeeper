@@ -876,9 +876,16 @@ _unrm () {
 	fi
 	if [ "$NUM" -gt 1 ]
 	then
-		echo "-------------------------"
-		echo "$NUM possible files found"
-		echo "-------------------------"
+		if [ "$FORCE" = "yes" ]
+		then
+			echo "------------------------------------------"
+			echo "$NUM possible files found, choosing newest"
+			echo "------------------------------------------"
+		else
+			echo "-------------------------"
+			echo "$NUM possible files found"
+			echo "-------------------------"
+		fi
 		echo ""
 	fi
 
@@ -912,7 +919,9 @@ _unrm () {
 		case "X$ans" in
 		    Xy|XY)
 			echo "Moving \"$DELDIR/$GFILE\" -> \"$RPATH\""
-			bk -R mv -u "$DELDIR/$GFILE" "$RPATH"
+			bk -R mv -f -u "$DELDIR/$GFILE" "$RPATH"
+			bk -R unedit "$RPATH" 	# follow checkout modes
+			break
 			;;
 		    Xq|XQ)
 			break
@@ -922,7 +931,6 @@ _unrm () {
 			echo ""
 			echo ""
 		esac
-		bk -R unedit "$RPATH" 	# follow checkout modes
 	done < $LIST 
 	rm -f $LIST $TMPFILE
 }
@@ -1763,7 +1771,8 @@ _tclsh() {
 
 _wish() {
 	AQUAWISH="`bk bin`/gui/bin/BitKeeper.app/Contents/MacOS/BitKeeper"
-	if [ -z "$DISPLAY" -a -x "$AQUAWISH" ] ; then
+	if [ \( -z "$DISPLAY" -o "`echo $DISPLAY | cut -c1-11`" = "/tmp/launch" \) \
+	    -a -x "$AQUAWISH" ] ; then
 		WISH="$AQUAWISH"
 	else
 		TCL_LIBRARY=`bk bin`/gui/lib/tcl8.5
@@ -2006,6 +2015,37 @@ __conflict() {
 		echo "    Remote path:  $RPN"
 	}
 }
+
+# run command with the 'latest' version of bk
+_latest() {
+	LATEST=`bk dotbk`/latest
+	TMP=/tmp/bk-latest.$$
+
+	# fetch latest version of bk
+	if [ -d "$LATEST" ]
+	then	"$LATEST"/bk upgrade -q >/dev/null 2>&1
+	else	CWD=`pwd`
+		mkdir $TMP
+		cd $TMP
+		bk upgrade -dqf 2> /dev/null || {
+			echo download of latest bk failed
+			cd /
+			rm -rf $TMP
+			exit 1
+		}
+		cd "$CWD"
+		$TMP/bk* "$LATEST" 2> /dev/null
+		rm -rf $TMP
+       fi
+
+	printf "Run cmd with " 1>&2
+	"$LATEST"/bk version -s 1>&2
+
+	# now run command with new bk
+	exec "$LATEST"/bk ${1+"$@"}
+}
+
+
 
 # ------------- main ----------------------
 __platformInit

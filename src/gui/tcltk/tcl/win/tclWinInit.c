@@ -85,12 +85,12 @@ typedef struct {
 
 
 #define NUMPLATFORMS 4
-static char* platforms[NUMPLATFORMS] = {
+static const char *const platforms[NUMPLATFORMS] = {
     "Win32s", "Windows 95", "Windows NT", "Windows CE"
 };
 
 #define NUMPROCESSORS 11
-static char* processors[NUMPROCESSORS] = {
+static const char *const processors[NUMPROCESSORS] = {
     "intel", "mips", "alpha", "ppc", "shx", "arm", "ia64", "alpha64", "msil",
     "amd64", "ia32_on_win64"
 };
@@ -103,8 +103,8 @@ static TclInitProcessGlobalValueProc	InitializeDefaultLibraryDir;
 static ProcessGlobalValue defaultLibraryDir =
 	{0, 0, NULL, NULL, InitializeDefaultLibraryDir, NULL, NULL};
 
-static void		AppendEnvironment(Tcl_Obj *listPtr, CONST char *lib);
-static int		ToUtf(CONST WCHAR *wSrc, char *dst);
+static void		AppendEnvironment(Tcl_Obj *listPtr, const char *lib);
+static int		ToUtf(const WCHAR *wSrc, char *dst);
 
 /*
  *---------------------------------------------------------------------------
@@ -180,7 +180,7 @@ TclpInitLibraryPath(
 #define LIBRARY_SIZE	    32
     Tcl_Obj *pathPtr;
     char installLib[LIBRARY_SIZE];
-    char *bytes;
+    const char *bytes;
 
     pathPtr = Tcl_NewObj();
 
@@ -210,7 +210,7 @@ TclpInitLibraryPath(
 
     *encodingPtr = NULL;
     bytes = Tcl_GetStringFromObj(pathPtr, lengthPtr);
-    *valuePtr = ckalloc((unsigned int)(*lengthPtr)+1);
+    *valuePtr = ckalloc((unsigned)(*lengthPtr)+1);
     memcpy(*valuePtr, bytes, (size_t)(*lengthPtr)+1);
     Tcl_DecrRefCount(pathPtr);
 }
@@ -237,14 +237,14 @@ TclpInitLibraryPath(
 static void
 AppendEnvironment(
     Tcl_Obj *pathPtr,
-    CONST char *lib)
+    const char *lib)
 {
     int pathc;
     WCHAR wBuf[MAX_PATH];
     char buf[MAX_PATH * TCL_UTF_MAX];
     Tcl_Obj *objPtr;
     Tcl_DString ds;
-    CONST char **pathv;
+    const char **pathv;
     char *shortlib;
 
     /*
@@ -290,7 +290,7 @@ AppendEnvironment(
 	 */
 
 	if ((pathc > 0) && (lstrcmpiA(shortlib, pathv[pathc - 1]) != 0)) {
-	    CONST char *str;
+	    const char *str;
 
 	    /*
 	     * TCL_LIBRARY is set but refers to a different tcl installation
@@ -380,7 +380,7 @@ InitializeDefaultLibraryDir(
 
 static int
 ToUtf(
-    CONST WCHAR *wSrc,
+    const WCHAR *wSrc,
     char *dst)
 {
     char *start;
@@ -465,7 +465,7 @@ TclpSetInterfaces(void)
     TclWinSetInterfaces(useWide);
 }
 
-CONST char *
+const char *
 Tcl_GetEncodingNameFromEnvironment(
     Tcl_DString *bufPtr)
 {
@@ -497,7 +497,7 @@ void
 TclpSetVariables(
     Tcl_Interp *interp)		/* Interp to initialize. */
 {
-    CONST char *ptr;
+    const char *ptr;
     char buffer[TCL_INTEGER_SPACE * 2];
     SYSTEM_INFO sysInfo, *sysInfoPtr = &sysInfo;
     OemId *oemId;
@@ -584,6 +584,12 @@ TclpSetVariables(
     Tcl_SetVar2(interp, "tcl_platform", "user", Tcl_DStringValue(&ds),
 	    TCL_GLOBAL_ONLY);
     Tcl_DStringFree(&ds);
+
+    /*
+     * Define what the platform PATH separator is. [TIP #315]
+     */
+
+    Tcl_SetVar2(interp, "tcl_platform","pathSeparator", ";", TCL_GLOBAL_ONLY);
 }
 
 /*
@@ -608,7 +614,7 @@ TclpSetVariables(
 
 int
 TclpFindVariable(
-    CONST char *name,		/* Name of desired environment variable
+    const char *name,		/* Name of desired environment variable
 				 * (UTF-8). */
     int *lengthPtr)		/* Used to return length of name (for
 				 * successful searches) or number of non-NULL
@@ -616,7 +622,7 @@ TclpFindVariable(
 				 * searches). */
 {
     int i, length, result = -1;
-    register CONST char *env, *p1, *p2;
+    register const char *env, *p1, *p2;
     char *envUpper, *nameUpper;
     Tcl_DString envString;
 

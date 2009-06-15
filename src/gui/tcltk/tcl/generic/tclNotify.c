@@ -19,7 +19,14 @@
 
 #include "tclInt.h"
 
-extern TclStubs tclStubs;
+/*
+ * Module-scope struct of notifier hooks that are checked in the default
+ * notifier functions (for overriding via Tcl_SetNotifier).
+ */
+
+Tcl_NotifierProcs tclNotifierHooks = {
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+};
 
 /*
  * For each event source (created with Tcl_CreateEventSource) there is a
@@ -128,7 +135,7 @@ TclInitNotifier(void)
 
 	tsdPtr = TCL_TSD_INIT(&dataKey);
 	tsdPtr->threadId = threadId;
-	tsdPtr->clientData = tclStubs.tcl_InitNotifier();
+	tsdPtr->clientData = Tcl_InitNotifier();
 	tsdPtr->initialized = 1;
 	tsdPtr->nextPtr = firstNotifierPtr;
 	firstNotifierPtr = tsdPtr;
@@ -184,9 +191,7 @@ TclFinalizeNotifier(void)
 
     Tcl_MutexLock(&listLock);
 
-    if (tclStubs.tcl_FinalizeNotifier) {
-	tclStubs.tcl_FinalizeNotifier(tsdPtr->clientData);
-    }
+    Tcl_FinalizeNotifier(tsdPtr->clientData);
     Tcl_MutexFinalize(&(tsdPtr->queueMutex));
     for (prevPtrPtr = &firstNotifierPtr; *prevPtrPtr != NULL;
 	    prevPtrPtr = &((*prevPtrPtr)->nextPtr)) {
@@ -213,9 +218,8 @@ TclFinalizeNotifier(void)
  *	None.
  *
  * Side effects:
- *	Overstomps part of the stub vector. This relies on hooks added to the
- *	default functions in case those are called directly (i.e., not through
- *	the stub table.)
+ *	Set the tclNotifierHooks global, which is checked in the default
+ *	notifier functions.
  *
  *----------------------------------------------------------------------
  */
@@ -224,16 +228,7 @@ void
 Tcl_SetNotifier(
     Tcl_NotifierProcs *notifierProcPtr)
 {
-#if !defined(__WIN32__) /* UNIX */
-    tclStubs.tcl_CreateFileHandler = notifierProcPtr->createFileHandlerProc;
-    tclStubs.tcl_DeleteFileHandler = notifierProcPtr->deleteFileHandlerProc;
-#endif
-    tclStubs.tcl_SetTimer = notifierProcPtr->setTimerProc;
-    tclStubs.tcl_WaitForEvent = notifierProcPtr->waitForEventProc;
-    tclStubs.tcl_InitNotifier = notifierProcPtr->initNotifierProc;
-    tclStubs.tcl_FinalizeNotifier = notifierProcPtr->finalizeNotifierProc;
-    tclStubs.tcl_AlertNotifier = notifierProcPtr->alertNotifierProc;
-    tclStubs.tcl_ServiceModeHook = notifierProcPtr->serviceModeHookProc;
+    tclNotifierHooks = *notifierProcPtr;
 }
 
 /*
@@ -304,7 +299,7 @@ Tcl_CreateEventSource(
  *	None.
  *
  * Side effects:
- *	The given event source is cancelled, so its function will never again
+ *	The given event source is canceled, so its function will never again
  *	be called. If no such source exists, nothing happens.
  *
  *----------------------------------------------------------------------
@@ -540,7 +535,7 @@ Tcl_DeleteEvents(
     prevPtr = NULL;
     evPtr = tsdPtr->firstEventPtr;
     while (evPtr != NULL) {
-	if ((*proc)(evPtr, clientData) == 1) {
+	if (proc(evPtr, clientData) == 1) {
 	    /*
 	     * This event should be deleted. Unlink it.
 	     */
@@ -672,7 +667,7 @@ Tcl_ServiceEvent(
 	 */
 
 	Tcl_MutexUnlock(&(tsdPtr->queueMutex));
-	result = (*proc)(evPtr, flags);
+	result = proc(evPtr, flags);
 	Tcl_MutexLock(&(tsdPtr->queueMutex));
 
 	if (result) {
@@ -774,9 +769,7 @@ Tcl_SetServiceMode(
 
     oldMode = tsdPtr->serviceMode;
     tsdPtr->serviceMode = mode;
-    if (tclStubs.tcl_ServiceModeHook) {
-	tclStubs.tcl_ServiceModeHook(mode);
-    }
+    Tcl_ServiceModeHook(mode);
     return oldMode;
 }
 
@@ -801,7 +794,7 @@ Tcl_SetServiceMode(
 
 void
 Tcl_SetMaxBlockTime(
-    Tcl_Time *timePtr)		/* Specifies a maximum elapsed time for the
+    const Tcl_Time *timePtr)		/* Specifies a maximum elapsed time for the
 				 * next blocking operation in the event
 				 * tsdPtr-> */
 {
@@ -938,7 +931,7 @@ Tcl_DoOneEvent(
 	for (sourcePtr = tsdPtr->firstEventSourcePtr; sourcePtr != NULL;
 		sourcePtr = sourcePtr->nextPtr) {
 	    if (sourcePtr->setupProc) {
-		(sourcePtr->setupProc)(sourcePtr->clientData, flags);
+		sourcePtr->setupProc(sourcePtr->clientData, flags);
 	    }
 	}
 	tsdPtr->inTraversal = 0;
@@ -967,7 +960,7 @@ Tcl_DoOneEvent(
 	for (sourcePtr = tsdPtr->firstEventSourcePtr; sourcePtr != NULL;
 		sourcePtr = sourcePtr->nextPtr) {
 	    if (sourcePtr->checkProc) {
-		(sourcePtr->checkProc)(sourcePtr->clientData, flags);
+		sourcePtr->checkProc(sourcePtr->clientData, flags);
 	    }
 	}
 
@@ -1077,13 +1070,13 @@ Tcl_ServiceAll(void)
     for (sourcePtr = tsdPtr->firstEventSourcePtr; sourcePtr != NULL;
 	    sourcePtr = sourcePtr->nextPtr) {
 	if (sourcePtr->setupProc) {
-	    (sourcePtr->setupProc)(sourcePtr->clientData, TCL_ALL_EVENTS);
+	    sourcePtr->setupProc(sourcePtr->clientData, TCL_ALL_EVENTS);
 	}
     }
     for (sourcePtr = tsdPtr->firstEventSourcePtr; sourcePtr != NULL;
 	    sourcePtr = sourcePtr->nextPtr) {
 	if (sourcePtr->checkProc) {
-	    (sourcePtr->checkProc)(sourcePtr->clientData, TCL_ALL_EVENTS);
+	    sourcePtr->checkProc(sourcePtr->clientData, TCL_ALL_EVENTS);
 	}
     }
 
@@ -1136,9 +1129,7 @@ Tcl_ThreadAlert(
     Tcl_MutexLock(&listLock);
     for (tsdPtr = firstNotifierPtr; tsdPtr; tsdPtr = tsdPtr->nextPtr) {
 	if (tsdPtr->threadId == threadId) {
-	    if (tclStubs.tcl_AlertNotifier) {
-		tclStubs.tcl_AlertNotifier(tsdPtr->clientData);
-	    }
+	    Tcl_AlertNotifier(tsdPtr->clientData);
 	    break;
 	}
     }

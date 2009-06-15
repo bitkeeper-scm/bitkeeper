@@ -251,8 +251,7 @@ MODULE_SCOPE int TclUnixSetBlockingMode(int fd, int mode);
 #endif
 
 #ifdef GETTOD_NOT_DECLARED
-EXTERN int		gettimeofday _ANSI_ARGS_((struct timeval *tp,
-			    struct timezone *tzp));
+EXTERN int		gettimeofday(struct timeval *tp, struct timezone *tzp);
 #endif
 
 /*
@@ -595,31 +594,13 @@ typedef int socklen_t;
 #define TclpExit		exit
 
 #ifdef TCL_THREADS
-EXTERN struct tm *     	TclpLocaltime(CONST time_t *);
-EXTERN struct tm *     	TclpGmtime(CONST time_t *);
+EXTERN struct tm *     	TclpLocaltime(const time_t *);
+EXTERN struct tm *     	TclpGmtime(const time_t *);
 EXTERN char *          	TclpInetNtoa(struct in_addr);
 /* #define localtime(x)	TclpLocaltime(x)
  * #define gmtime(x)	TclpGmtime(x)    */
 #   undef inet_ntoa
 #   define inet_ntoa(x)	TclpInetNtoa(x)
-#   ifdef HAVE_PTHREAD_ATTR_GET_NP
-#	define TclpPthreadGetAttrs	pthread_attr_get_np
-#	ifdef ATTRGETNP_NOT_DECLARED
-/*
- * Assume it is in pthread_np.h if it isn't in pthread.h. [Bug 1064882]
- * We might need to revisit this in the future. :^(
- */
-#	    include <pthread.h>
-#	    include <pthread_np.h>
-#	endif
-#   else
-#	ifdef HAVE_PTHREAD_GETATTR_NP
-#	    define TclpPthreadGetAttrs	pthread_getattr_np
-#	    ifdef GETATTRNP_NOT_DECLARED
-EXTERN int pthread_getattr_np _ANSI_ARGS_((pthread_t, pthread_attr_t *));
-#	    endif
-#	endif /* HAVE_PTHREAD_GETATTR_NP */
-#   endif /* HAVE_PTHREAD_ATTR_GET_NP */
 #endif /* TCL_THREADS */
 
 /*

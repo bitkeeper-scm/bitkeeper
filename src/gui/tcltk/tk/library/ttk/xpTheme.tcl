@@ -31,19 +31,12 @@ namespace eval ttk::theme::xpnative {
 
 	# Treeview:
 	ttk::style configure Heading -font TkHeadingFont
-	ttk::style configure Row -background SystemWindow
-	ttk::style configure Cell -background SystemWindow
-	ttk::style map Row \
-	    -background [list selected SystemHighlight] \
-	    -foreground [list selected SystemHighlightText] ;
-	ttk::style map Cell \
-	    -background [list selected SystemHighlight] \
-	    -foreground [list selected SystemHighlightText] ;
-	ttk::style map Item \
+	ttk::style configure Treeview -background SystemWindow
+	ttk::style map Treeview \
 	    -background [list selected SystemHighlight] \
 	    -foreground [list selected SystemHighlightText] ;
 
-	ttk::style configure TLabelframe -foreground "#0046d5"
+	ttk::style configure TLabelframe.Label -foreground "#0046d5"
 
 	# OR: -padding {3 3 3 6}, which some apps seem to use.
 	ttk::style configure TEntry -padding {2 2 2 4}
@@ -59,6 +52,13 @@ namespace eval ttk::theme::xpnative {
 	    -focusfill	[list {readonly focus} SystemHighlight] \
 	    ;
 
+	ttk::style configure TSpinbox -padding {2 0 14 0}
+	ttk::style map TSpinbox \
+	    -selectbackground [list !focus SystemWindow] \
+	    -selectforeground [list !focus SystemWindowText] \
+	    ;
+
 	ttk::style configure Toolbutton -padding {4 4}
+
     }
 }

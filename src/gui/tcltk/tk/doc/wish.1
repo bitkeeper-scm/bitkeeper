@@ -17,10 +17,8 @@ wish \- Simple windowing shell
 \fBwish\fR ?\fB\-encoding \fIname\fR? ?\fIfileName arg arg ...\fR?
 .SH OPTIONS
 .IP "\fB\-encoding \fIname\fR" 20
-.VS 8.5
 Specifies the encoding of the text stored in \fIfileName\fR.
 This option is only recognized prior to the \fIfileName\fR argument.
-.VE 8.5
 .IP "\fB\-colormap \fInew\fR" 20
 Specifies that the window should have a new private colormap instead of
 using the default colormap for the screen.
@@ -168,7 +166,7 @@ following three lines:
 .CS
 \fB#!/bin/sh
 # the next line restarts using wish \e
-exec wish "$0" "$@"\fR
+exec wish "$0" ${1+"$@"}\fR
 .CE
 This approach has three advantages over the approach in the previous
 paragraph.  First, the location of the \fBwish\fR binary does not have

@@ -166,6 +166,7 @@ attach
 bam
 BAM => bam
 base64
+bin
 bkd
 binpool => bam
 cat
@@ -280,7 +281,9 @@ opark
 ounpark
 parent
 park
+path
 pending
+platform
 _popensystem
 port => pull
 _probekey restricted
@@ -298,6 +301,7 @@ _rclone
 rcs2bk
 rcsparse
 receive
+_realpath
 regex
 _registry
 renumber

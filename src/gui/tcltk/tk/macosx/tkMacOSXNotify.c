@@ -31,8 +31,8 @@ static Tcl_ThreadDataKey dataKey;
 static void TkMacOSXNotifyExitHandler(ClientData clientData);
 static void CarbonEventsSetupProc(ClientData clientData, int flags);
 static void CarbonEventsCheckProc(ClientData clientData, int flags);
-
-/*
+
+/*
  *----------------------------------------------------------------------
  *
  * Tk_MacOSXSetupTkNotifier --
@@ -66,15 +66,20 @@ Tk_MacOSXSetupTkNotifier(void)
 	GetMainEventQueue();
 
 	tsdPtr->initialized = 1;
-	/* Install Carbon events event source in main event loop thread. */
+
+	/*
+	 * Install Carbon events event source in main event loop thread.
+	 */
+
 	if (GetCurrentEventLoop() == GetMainEventLoop()) {
 	    if (!pthread_main_np()) {
 		/*
-		 * Panic if the Carbon main event loop thread (i.e. the
-		 * thread  where HIToolbox was first loaded) is not the
-		 * main application thread, as Carbon does not support
-		 * this properly.
+		 * Panic if the Carbon main event loop thread (i.e. the thread
+		 * where HIToolbox was first loaded) is not the main
+		 * application thread, as Carbon does not support this
+		 * properly.
 		 */
+
 		Tcl_Panic("Tk_MacOSXSetupTkNotifier: %s",
 		    "first [load] of TkAqua has to occur in the main thread!");
 	    }
@@ -103,8 +108,8 @@ Tk_MacOSXSetupTkNotifier(void)
  */
 
 static void
-TkMacOSXNotifyExitHandler(clientData)
-    ClientData clientData;	/* Not used. */
+TkMacOSXNotifyExitHandler(
+    ClientData clientData)	/* Not used. */
 {
     ThreadSpecificData *tsdPtr = Tcl_GetThreadData(&dataKey,
 	    sizeof(ThreadSpecificData));
@@ -119,24 +124,24 @@ TkMacOSXNotifyExitHandler(clientData)
  *
  * CarbonEventsSetupProc --
  *
- *	This procedure implements the setup part of the Carbon Events
- *	event source. It is invoked by Tcl_DoOneEvent before entering
- *	the notifier to check for events.
+ *	This procedure implements the setup part of the Carbon Events event
+ *	source. It is invoked by Tcl_DoOneEvent before entering the notifier
+ *	to check for events.
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	If Carbon events are queued, then the maximum block time will be
- *	set to 0 to ensure that the notifier returns control to Tcl.
+ *	If Carbon events are queued, then the maximum block time will be set
+ *	to 0 to ensure that the notifier returns control to Tcl.
  *
  *----------------------------------------------------------------------
  */
 
 static void
-CarbonEventsSetupProc(clientData, flags)
-    ClientData clientData;
-    int flags;
+CarbonEventsSetupProc(
+    ClientData clientData,
+    int flags)
 {
     static Tcl_Time blockTime = { 0, 0 };
 
@@ -144,7 +149,7 @@ CarbonEventsSetupProc(clientData, flags)
 	return;
     }
 
-    if (GetNumEventsInQueue((EventQueueRef)clientData)) {
+    if (GetNumEventsInQueue((EventQueueRef) clientData)) {
 	Tcl_SetMaxBlockTime(&blockTime);
     }
 }
@@ -154,8 +159,7 @@ CarbonEventsSetupProc(clientData, flags)
  *
  * CarbonEventsCheckProc --
  *
- *	This procedure processes events sitting in the Carbon event
- *	queue.
+ *	This procedure processes events sitting in the Carbon event queue.
  *
  * Results:
  *	None.
@@ -167,9 +171,9 @@ CarbonEventsSetupProc(clientData, flags)
  */
 
 static void
-CarbonEventsCheckProc(clientData, flags)
-    ClientData clientData;
-    int flags;
+CarbonEventsCheckProc(
+    ClientData clientData,
+    int flags)
 {
     int numFound;
     OSStatus err = noErr;
@@ -178,9 +182,12 @@ CarbonEventsCheckProc(clientData, flags)
 	return;
     }
 
-    numFound = GetNumEventsInQueue((EventQueueRef)clientData);
+    numFound = GetNumEventsInQueue((EventQueueRef) clientData);
 
-    /* Avoid starving other event sources: */
+    /*
+     * Avoid starving other event sources:
+     */
+
     if (numFound > 4) {
 	numFound = 4;
     }

@@ -189,7 +189,7 @@ TestvolumetypeCmd(
 #define VOL_BUF_SIZE 32
     int found;
     char volType[VOL_BUF_SIZE];
-    char *path;
+    const char *path;
 
     if (objc > 2) {
 	Tcl_WrongNumArgs(interp, 1, objv, "?name?");
@@ -421,7 +421,7 @@ TestExceptionCmd(
     int objc,				/* Argument count */
     Tcl_Obj *const objv[])		/* Argument vector */
 {
-    static const char *cmds[] = {
+    static const char *const cmds[] = {
 	"access_violation", "datatype_misalignment", "array_bounds",
 	"float_denormal", "float_divbyzero", "float_inexact",
 	"float_invalidop", "float_overflow", "float_stack", "float_underflow",
@@ -700,10 +700,10 @@ TestplatformChmod(
 
     acl_readOnly_found = FALSE;
     for (j = 0; j < ACLSize.AceCount; j++) {
-	PACL *pACE2;
+	LPVOID pACE2;
 	ACE_HEADER *phACE2;
 
-	if (!getAceProc(curAcl, j, (LPVOID *) &pACE2)) {
+	if (!getAceProc(curAcl, j, &pACE2)) {
 	    goto done;
 	}
 
@@ -736,7 +736,7 @@ TestplatformChmod(
 	 * Copy the current ACE from the old to the new ACL.
 	 */
 
-	if (!addAceProc(newAcl, ACL_REVISION, MAXDWORD, pACE2,
+	if (!addAceProc(newAcl, ACL_REVISION, MAXDWORD, (PACL *) pACE2,
 		((PACE_HEADER) pACE2)->AceSize)) {
 	    goto done;
 	}

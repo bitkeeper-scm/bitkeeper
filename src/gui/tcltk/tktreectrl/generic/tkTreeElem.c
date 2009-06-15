@@ -3443,8 +3443,13 @@ TreeElement_GetSortData(
 		}
 	    }
 	    if (elemX->textCfg != NULL) {
-		if (TclGetLong(tree->interp, elemX->textCfg, lv) != TCL_OK)
+		Tcl_Obj	*tmp;
+		tmp = Tcl_NewStringObj(elemX->textCfg, -1);
+		if (Tcl_GetLongFromObj(tree->interp, tmp, lv) != TCL_OK) {
+		    Tcl_DecrRefCount(tmp);
 		    return TCL_ERROR;
+		}
+		Tcl_DecrRefCount(tmp);
 		break;
 	    }
 	    FormatResult(tree->interp, "can't get a long from an empty -text value");

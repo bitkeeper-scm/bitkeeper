@@ -2771,6 +2771,8 @@ Column_DoLayout(
     }
 #endif
 
+    padList[0] = 0;
+
     if (column->arrow != ARROW_NONE) {
 	Column_GetArrowSize(column, &partArrow.width, &partArrow.height);
 	partArrow.padX[PAD_TOP_LEFT] = column->arrowPadX[PAD_TOP_LEFT];
@@ -3820,6 +3822,8 @@ TreeColumnCmd(
 	return TCL_ERROR;
     }
 
+    TreeColumnList_Init(tree, &columns, 0);
+
     switch (index) {
 	case COMMAND_BBOX: {
 	    int left, top, width, height;
@@ -3919,7 +3923,6 @@ TreeColumnCmd(
 		if (Column_Config(column, objc - 4, objv + 4, FALSE) != TCL_OK)
 		    goto errorExit;
 	    }
-	    TreeColumnList_Free(&columns);
 	    break;
 	}
 
@@ -3974,7 +3977,7 @@ TreeColumnCmd(
 
 	/* T column delete first ?last? */
 	case COMMAND_DELETE: {
-	    TreeColumnList columns, column2s;
+	    TreeColumnList column2s;
 	    TreeColumn prev, next;
 	    int flags = CFO_NOT_NULL | CFO_NOT_TAIL;
 	    TreeItem item;
@@ -3990,11 +3993,11 @@ TreeColumnCmd(
 		flags |= CFO_NOT_MANY;
 	    if (TreeColumnList_FromObj(tree, objv[3], &columns,
 		    flags) != TCL_OK)
-		return TCL_ERROR;
+		goto errorExit;
 	    if (objc == 5) {
 		if (TreeColumnList_FromObj(tree, objv[4], &column2s,
 			CFO_NOT_NULL | CFO_NOT_TAIL) != TCL_OK)
-		    return TCL_ERROR;
+		    goto errorExit;
 	    }
 	    COLUMN_FOR_EACH(column, &columns, (objc == 5) ? &column2s : NULL,
 		    &citer) {
@@ -4094,9 +4097,8 @@ doneDELETE:
 	    /* Indicate that all items must recalculate their list of spans. */
 	    TreeItem_SpansInvalidate(tree, NULL);
 
-	    TreeItemList_Free(&columns);
 	    if (objc == 5)
-		TreeItemList_Free(&column2s);
+		TreeColumnList_Free(&column2s);
 	    break;
 	}
 
@@ -4207,7 +4209,6 @@ doneDELETE:
 		Tcl_ListObjAppendElement(interp, listObj,
 			TreeColumn_ToObj(tree, column));
 	    }
-	    TreeColumnList_Free(&columns);
 	    Tcl_SetObjResult(interp, listObj);
 	    break;
 	}
@@ -4360,6 +4361,7 @@ doneDELETE:
 	}
     }
 
+    TreeColumnList_Free(&columns);
     return TCL_OK;
 
 errorExit:
@@ -4755,6 +4757,7 @@ DrawHeaderLeft(
     TreeColumn column = tree->columnLockLeft;
     Tk_Window tkwin = tree->tkwin;
     int x = Tree_HeaderLeft(tree), y = Tree_HeaderTop(tree);
+    int height = tree->headerHeight;
     TreeDrawable td2;
 
     td2.width = Tk_Width(tkwin);
@@ -4772,9 +4775,10 @@ DrawHeaderLeft(
 
     DrawDragIndicator(tree, td2.drawable, COLUMN_LOCK_LEFT);
 
+    height = MIN(height, Tree_BorderBottom(tree) - Tree_BorderTop(tree));
     XCopyArea(tree->display, td2.drawable, td.drawable,
 	    tree->copyGC, Tree_HeaderLeft(tree), y,
-	    x - Tree_HeaderLeft(tree), tree->headerHeight,
+	    x - Tree_HeaderLeft(tree), height,
 	    Tree_HeaderLeft(tree), y);
 
     Tk_FreePixmap(tree->display, td2.drawable);
@@ -4789,6 +4793,7 @@ DrawHeaderRight(
     TreeColumn column = tree->columnLockRight;
     Tk_Window tkwin = tree->tkwin;
     int x = Tree_ContentRight(tree), y = Tree_HeaderTop(tree);
+    int height = tree->headerHeight;
     TreeDrawable td2;
 
     td2.width = Tk_Width(tkwin);
@@ -4806,9 +4811,10 @@ DrawHeaderRight(
 
     DrawDragIndicator(tree, td2.drawable, COLUMN_LOCK_RIGHT);
 
+    height = MIN(height, Tree_BorderBottom(tree) - Tree_BorderTop(tree));
     XCopyArea(tree->display, td2.drawable, td.drawable,
 	    tree->copyGC, Tree_ContentRight(tree), y,
-	    x - Tree_ContentRight(tree), tree->headerHeight,
+	    x - Tree_ContentRight(tree), height,
 	    Tree_ContentRight(tree), y);
 
     Tk_FreePixmap(tree->display, td2.drawable);
@@ -4915,9 +4921,10 @@ Tree_DrawHeader(
     }
 
     if (tree->doubleBuffer == DOUBLEBUFFER_ITEM) {
+	height = MIN(tree->headerHeight, Tree_BorderBottom(tree) - Tree_BorderTop(tree));
 	XCopyArea(tree->display, pixmap, drawable,
 		tree->copyGC, Tree_HeaderLeft(tree), y,
-		Tree_HeaderWidth(tree), tree->headerHeight,
+		Tree_HeaderWidth(tree), height,
 		Tree_HeaderLeft(tree), y);
 
 	Tk_FreePixmap(tree->display, pixmap);
@@ -5587,18 +5594,25 @@ Tree_WidthOfLeftColumns(
     TreeCtrl *tree		/* Widget info. */
     )
 {
-    int showLocked = tree->vertical && (tree->wrapMode == TREE_WRAP_NONE);
+    if (tree->widthOfColumnsLeft >= 0)
+	return tree->widthOfColumnsLeft;
 
-    if (!showLocked) {
+    if (!Tree_ShouldDisplayLockedColumns(tree)) {
+	TreeColumn column = tree->columnLockLeft;
+	while (column != NULL && column->lock == COLUMN_LOCK_LEFT) {
+	    column->useWidth = 0;
+	    column = column->next;
+	}
 	tree->columnCountVisLeft = 0;
-	return tree->widthOfColumnsLeft = 0;
+	tree->widthOfColumnsLeft = 0;
+	return 0;
     }
-    if (tree->widthOfColumnsLeft < 0) {
-	tree->widthOfColumnsLeft = LayoutColumns(
-	    tree->columnLockLeft,
-	    NULL,
-	    &tree->columnCountVisLeft);
-    }
+
+    tree->widthOfColumnsLeft = LayoutColumns(
+	tree->columnLockLeft,
+	NULL,
+	&tree->columnCountVisLeft);
+
     return tree->widthOfColumnsLeft;
 }
 
@@ -5627,18 +5641,25 @@ Tree_WidthOfRightColumns(
     TreeCtrl *tree		/* Widget info. */
     )
 {
-    int showLocked = tree->vertical && (tree->wrapMode == TREE_WRAP_NONE);
+    if (tree->widthOfColumnsRight >= 0)
+	return tree->widthOfColumnsRight;
 
-    if (!showLocked) {
+    if (!Tree_ShouldDisplayLockedColumns(tree)) {
+	TreeColumn column = tree->columnLockRight;
+	while (column != NULL && column->lock == COLUMN_LOCK_RIGHT) {
+	    column->useWidth = 0;
+	    column = column->next;
+	}
 	tree->columnCountVisRight = 0;
-	return tree->widthOfColumnsRight = 0;
+	tree->widthOfColumnsRight = 0;
+	return 0;
     }
-    if (tree->widthOfColumnsRight < 0) {
-	tree->widthOfColumnsRight = LayoutColumns(
-	    tree->columnLockRight,
-	    NULL,
-	    &tree->columnCountVisRight);
-    }
+
+    tree->widthOfColumnsRight = LayoutColumns(
+	tree->columnLockRight,
+	NULL,
+	&tree->columnCountVisRight);
+
     return tree->widthOfColumnsRight;
 }
 

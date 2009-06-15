@@ -28,7 +28,7 @@ test -d $OLDBK || {
     }
     bk upgrade $Q -f -n \
 	    http://upgrades.bitkeeper.com/upgrades.$OLDVER >out 2>ERR || {
-	    grep -q "No upgrade for the arch.*found" ERR || {
+	    grep -q "No upgrade for the arch.*found" ERR && {
 		echo skipped
 		exit 0
 	    }

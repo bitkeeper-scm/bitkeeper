@@ -65,11 +65,13 @@ sub man2help
 	$cmd = "groff -I.. -dBKVER=$BKVER -rhelpdoc=1 -P-u -P-b -Tascii < tmp";
 	open(G, "$cmd |");
 	$nl = 0;
+	$lines = 0;
 	while (<G>) {
 		if (/^$/) {
 			$nl = 1;
 			next;
 		}
+		$lines++;
 		print O "\n" if ($nl);
 		print O;
 		$nl = 0;
@@ -78,6 +80,7 @@ sub man2help
 	print O "\$\n";
 	close(O);
 	close(G);
+	unlink $output unless $lines > 0;
 }
 
 &main;

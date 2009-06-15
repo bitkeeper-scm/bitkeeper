@@ -172,3 +172,6 @@ spinning
 .RE
 .SH KEYWORDS
 cursor, option
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

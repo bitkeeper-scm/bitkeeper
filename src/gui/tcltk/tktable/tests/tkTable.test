@@ -16,7 +16,7 @@
 package require tcltest
 namespace import -force ::tcltest::*
 
-set ::VERSION 2.9
+set ::VERSION 2.10
 package require Tktable $::VERSION
 
 eval destroy [winfo children .]

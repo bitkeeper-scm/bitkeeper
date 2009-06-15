@@ -440,7 +440,7 @@ proc genStubs::makeDecl {name decl index} {
 			[lindex $arg 2]
 		if {[string length $line] + [string length $next] \
 			+ $pad > 76} {
-		    append text $line \n
+		    append text [string trimright $line] \n
 		    set line "\t\t\t\t"
 		    set pad 28
 		}
@@ -458,7 +458,7 @@ proc genStubs::makeDecl {name decl index} {
 			[lindex $arg 2]
 		if {[string length $line] + [string length $next] \
 			+ $pad > 76} {
-		    append text $line \n
+		    append text [string trimright $line] \n
 		    set line "\t\t\t\t"
 		    set pad 28
 		}
@@ -972,6 +972,7 @@ proc genStubs::emitMacros {name textVar} {
 proc genStubs::emitHeader {name} {
     variable outDir
     variable hooks
+    variable libraryName
 
     set capName [string toupper [string index $name 0]]
     append capName [string range $name 1 end]
@@ -983,21 +984,22 @@ proc genStubs::emitHeader {name} {
 	foreach hook $hooks($name) {
 	    set capHook [string toupper [string index $hook 0]]
 	    append capHook [string range $hook 1 end]
-	    append text "    struct ${capHook}Stubs *${hook}Stubs;\n"
+	    append text "    const struct ${capHook}Stubs *${hook}Stubs;\n"
 	}
 	append text "} ${capName}StubHooks;\n"
     }
     append text "\ntypedef struct ${capName}Stubs {\n"
     append text "    int magic;\n"
-    append text "    struct ${capName}StubHooks *hooks;\n\n"
+    append text "    const struct ${capName}StubHooks *hooks;\n\n"
 
     emitSlots $name text
 
     append text "} ${capName}Stubs;\n"
 
-    append text "\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n"
-    append text "extern ${capName}Stubs *${name}StubsPtr;\n"
-    append text "#ifdef __cplusplus\n}\n#endif\n"
+    set upName [string toupper $libraryName]
+    append text "\n#if defined(USE_${upName}_STUBS) && !defined(USE_${upName}_STUB_PROCS)\n"
+    append text "extern const ${capName}Stubs *${name}StubsPtr;"
+    append text "\n#endif /* defined(USE_${upName}_STUBS) && !defined(USE_${upName}_STUB_PROCS) */\n"
 
     emitMacros $name text
 
@@ -1046,7 +1048,7 @@ proc genStubs::emitInit {name textVar} {
     append capName [string range $name 1 end]
 
     if {[info exists hooks($name)]} {
-	append text "\nstatic ${capName}StubHooks ${name}StubHooks = \{\n"
+	append text "\nstatic const ${capName}StubHooks ${name}StubHooks = \{\n"
 	set sep "    "
 	foreach sub $hooks($name) {
 	    append text $sep "&${sub}Stubs"
@@ -1054,7 +1056,7 @@ proc genStubs::emitInit {name textVar} {
 	}
 	append text "\n\};\n"
     }
-    append text "\n${capName}Stubs ${name}Stubs = \{\n"
+    append text "\nstatic const ${capName}Stubs ${name}Stubs = \{\n"
     append text "    TCL_STUB_MAGIC,\n"
     if {[info exists hooks($name)]} {
 	append text "    &${name}StubHooks,\n"
@@ -1155,7 +1157,7 @@ proc genStubs::init {} {
 if {[string length [namespace which lassign]] == 0} {
     proc lassign {valueList args} {
 	if {[llength $args] == 0} {
-	    error "wrong # args: lassign list varname ?varname..?"
+	    error "wrong # args: should be \"lassign list varName ?varName ...?\""
 	}
 	uplevel [list foreach $args $valueList {break}]
 	return [lrange $valueList [llength $args] end]

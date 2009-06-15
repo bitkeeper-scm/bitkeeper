@@ -288,6 +288,7 @@ TK_OBJS = \
 	tkAtom.$(OBJEXT) \
 	tkBind.$(OBJEXT) \
 	tkBitmap.$(OBJEXT) \
+	tkBusy.$(OBJEXT) \
 	tkButton.$(OBJEXT) \
 	tkCanvArc.$(OBJEXT) \
 	tkCanvBmap.$(OBJEXT) \
@@ -319,8 +320,10 @@ TK_OBJS = \
 	tkImage.$(OBJEXT) \
 	tkImgBmap.$(OBJEXT) \
 	tkImgGIF.$(OBJEXT) \
+	tkImgPNG.$(OBJEXT) \
 	tkImgPPM.$(OBJEXT) \
 	tkImgPhoto.$(OBJEXT) \
+	tkImgPhInstance.$(OBJEXT) \
 	tkImgUtil.$(OBJEXT) \
 	tkListbox.$(OBJEXT) \
 	tkMacWinMenu.$(OBJEXT) \
@@ -354,7 +357,6 @@ TK_OBJS = \
 	tkUtil.$(OBJEXT) \
 	tkVisual.$(OBJEXT) \
 	tkStubInit.$(OBJEXT) \
-	tkStubLib.$(OBJEXT) \
 	tkWindow.$(OBJEXT) \
 	$(TTK_OBJS)
 
@@ -522,8 +524,8 @@ install-libraries: libraries
 	    $(INSTALL_DATA) $$i $(INCLUDE_INSTALL_DIR)/X11; \
 	    done;
 	@echo "Installing library files to $(SCRIPT_INSTALL_DIR)";
-	@for i in $(ROOT_DIR)/library/*.tcl $(GENERIC_DIR)/prolog.ps \
-	        $(ROOT_DIR)/library/tclIndex $(UNIX_DIR)/tkAppInit.c; \
+	@for i in $(ROOT_DIR)/library/*.tcl $(ROOT_DIR)/library/tclIndex \
+		$(UNIX_DIR)/tkAppInit.c; \
 	    do \
 	    $(INSTALL_DATA) $$i $(SCRIPT_INSTALL_DIR); \
 	    done;

@@ -13,6 +13,7 @@
 ttk::widget \- Standard options and commands supported by Tk themed widgets
 .BE
 .SH DESCRIPTION
+.PP
 This manual describes common widget options and commands.
 .SH "STANDARD OPTIONS"
 The following options are supported by all Tk themed widgets:
@@ -40,6 +41,7 @@ See \fIoptions(n)\fR in the Tk reference manual for the full description.
 .OP \-style style Style
 May be used to specify a custom widget style.
 .SH "SCROLLABLE WIDGET OPTIONS"
+.PP
 The following options are supported by widgets that
 are controllable by a scrollbar.  
 See \fIscrollbar(n)\fR for more information
@@ -71,6 +73,7 @@ then no command will be executed.
 A command prefix, used to communicate with vertical scrollbars.
 See the description of \fB\-xscrollcommand\fR above for details.
 .SH "LABEL OPTIONS"
+.PP
 The following options are supported by labels, buttons,
 and other button-like widgets:
 .OP \-text text Text
@@ -123,8 +126,8 @@ This is a write-only option:
 setting it changes the widget state, 
 but the \fBstate\fR widget command 
 does not affect the \fB\-state\fR option.
-
 .SH COMMANDS
+.PP
 .TP
 \fIpathName \fBcget\fR \fIoption\fR
 Returns the current value of the configuration option given
@@ -144,6 +147,12 @@ and current value.
 .\" Note: Ttk widgets don't use TK_OPTION_SYNONYM.
 If no \fIoption\fR is specified, returns a list describing all of
 the available options for \fIpathName\fR.
+.TP
+\fIpathName \fBidentify\fR \fIx y\fR
+Returns the name of the element under the point given 
+by \fIx\fR and \fIy\fR, or an empty string if the point does
+not lie within any element.
+\fIx\fR and \fIy\fR are pixel coordinates relative to the widget.
 .TP 
 \fIpathName \fBinstate\fR \fIstatespec\fR ?\fIscript\fR?
 Test the widget's state.
@@ -170,6 +179,7 @@ If \fIstateSpec\fR is not specified,
 returns a list of the currently-enabled state flags.
 .RE
 .SH "WIDGET STATES"
+.PP
 The widget state is a bitmap of independent state flags.
 Widget state flags include:
 .TP
@@ -224,11 +234,20 @@ state, and for buttons with \fB\-default active\fR.
 The widget's value is invalid.
 (Potential uses: scale widget value out of bounds, 
 entry widget value failed validation.)
+.TP
+\fBhover\fR
+The mouse cursor is within the widget.
+This is similar to the \fBactive\fP state;
+it is used in some themes for widgets that
+provide distinct visual feedback for
+the active widget in addition to the active element
+within the widget.
 .PP
 A \fIstate specification\fR or \fIstateSpec\fR is a list
 of state names, optionally prefixed with an exclamation point (!)
 indicating that the bit is off.
 .SH EXAMPLES
+.PP
 .CS
 set b [ttk::button .b]
 
@@ -245,3 +264,6 @@ $b state !disabled
 ttk::intro(n), style(n)
 .SH KEYWORDS
 state, configure, option
+'\" Local Variables:
+'\" mode: nroff
+'\" End:

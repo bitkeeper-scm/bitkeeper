@@ -8,7 +8,9 @@ bk clone \- create a new copy of a package
 .[OPTreq] \-B url
 .[OPTequal] \-E e v
 .[OPTreq] \-r rev
+.if \n[NESTED] \{\
 .[OPTreq] \-s comp
+.\}
 .ARG from
 .[ARG] to
 .SH DESCRIPTION
@@ -76,6 +78,7 @@ Clone using hard links instead of copying the data.
 This is faster and saves disk space, but only works 
 within filesystems supporting hard links.
 .tp
+.if \n[NESTED] \{\
 .OPTreq \-s comp
 When cloning a product, limit the components to the subset implied by
 .ARG comp .
@@ -84,6 +87,7 @@ specified components.
 .ARG comp
 may be a component or an alias for a set of components.
 .tp
+.\}
 .B \-q
 Run quietly.
 .tp
@@ -111,6 +115,7 @@ for more information.
 .br
 .B Repository
 .\" help://lclone
+.if \n[NESTED] \{\
 .SH AVAILABILITY
 The \-s option of this command is an optional feature of \*[BK]
 and must be enabled in your license.
@@ -122,3 +127,4 @@ bk lease show
 If the options field has "product" or "product-line" listed then your
 license has this feature enabled.
 If not, contact BitMover sales.
+.\}

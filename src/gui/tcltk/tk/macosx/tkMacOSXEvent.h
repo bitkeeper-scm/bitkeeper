@@ -98,6 +98,8 @@ MODULE_SCOPE int TkMacOSXProcessMenuEvent(TkMacOSXEvent *e,
 	MacEventStatus *statusPtr);
 MODULE_SCOPE int TkMacOSXProcessCommandEvent(TkMacOSXEvent *e,
 	MacEventStatus *statusPtr);
+MODULE_SCOPE int TkMacOSXProcessFontEvent(TkMacOSXEvent *e,
+	MacEventStatus *statusPtr);
 MODULE_SCOPE int TkMacOSXKeycodeToUnicode(
 	UniChar * uniChars, int maxChars,
 	EventKind eKind,

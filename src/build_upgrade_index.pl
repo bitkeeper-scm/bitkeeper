@@ -83,6 +83,7 @@ $_ = `bk set -d -r$base -r$version -tt 2> /dev/null`;
 die if $? != 0;  # version doesn't exist in this release
 	
 foreach (split(/\n/, $_)) {
+    next unless /^bk-/;		# only include bk tags
     $obsoletes{$_} = 1;
 }
 chdir $olddir;

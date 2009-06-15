@@ -1,8 +1,8 @@
 /*
  * tkMacOSXDebug.c --
  *
- *	Implementation of Macintosh specific functions for debugging MacOS events,
- *	regions, etc...
+ *	Implementation of Macintosh specific functions for debugging MacOS
+ *	events, regions, etc...
  *
  * Copyright 2001, Apple Computer, Inc.
  * Copyright (c) 2006-2007 Daniel A. Steffen <das@users.sourceforge.net>
@@ -73,185 +73,186 @@ typedef struct {
 } MyEventNameList;
 
 static MyEventName windowEventNames [] = {
- {  kEventWindowUpdate,"Update"},
- {  kEventWindowDrawContent,"DrawContent"},
- {  kEventWindowActivated,"Activated"},
- {  kEventWindowDeactivated,"Deactivated"},
- {  kEventWindowGetClickActivation,"GetClickActivation"},
- {  kEventWindowShowing,"Showing"},
- {  kEventWindowHiding,"Hiding"},
- {  kEventWindowShown,"Shown"},
- {  kEventWindowHidden,"Hidden"},
- {  kEventWindowBoundsChanging,"BoundsChanging"},
- {  kEventWindowBoundsChanged,"BoundsChanged"},
- {  kEventWindowResizeStarted,"ResizeStarted"},
- {  kEventWindowResizeCompleted,"ResizeCompleted"},
- {  kEventWindowDragStarted,"DragStarted"},
- {  kEventWindowDragCompleted,"DragCompleted"},
- {  kEventWindowClickDragRgn,"ClickDragRgn"},
- {  kEventWindowClickResizeRgn,"ClickResizeRgn"},
- {  kEventWindowClickCollapseRgn,"ClickCollapseRgn"},
- {  kEventWindowClickCloseRgn,"ClickCloseRgn"},
- {  kEventWindowClickZoomRgn,"ClickZoomRgn"},
- {  kEventWindowClickContentRgn,"ClickContentRgn"},
- {  kEventWindowClickProxyIconRgn,"ClickProxyIconRgn"},
- {  kEventWindowCursorChange,"CursorChange" },
- {  kEventWindowCollapse,"Collapse"},
- {  kEventWindowCollapsed,"Collapsed"},
- {  kEventWindowCollapseAll,"CollapseAll"},
- {  kEventWindowExpand,"Expand"},
- {  kEventWindowExpanded,"Expanded"},
- {  kEventWindowExpandAll,"ExpandAll"},
- {  kEventWindowCollapse,"Collapse"},
- {  kEventWindowClose,"Close"},
- {  kEventWindowClosed,"Closed"},
- {  kEventWindowCloseAll,"CloseAll"},
- {  kEventWindowZoom,"Zoom"},
- {  kEventWindowZoomed,"Zoomed"},
- {  kEventWindowZoomAll,"ZoomAll"},
- {  kEventWindowContextualMenuSelect,"ContextualMenuSelect"},
- {  kEventWindowPathSelect,"PathSelect"},
- {  kEventWindowGetIdealSize,"GetIdealSize"},
- {  kEventWindowGetMinimumSize,"GetMinimumSize"},
- {  kEventWindowGetMaximumSize,"GetMaximumSize"},
- {  kEventWindowConstrain,"Constrain"},
- {  kEventWindowHandleContentClick,"HandleContentClick"},
- {  kEventWindowProxyBeginDrag,"ProxyBeginDra}"},
- {  kEventWindowProxyEndDrag,"ProxyEndDrag"},
- {  kEventWindowFocusAcquired,"FocusAcquired"},
- {  kEventWindowFocusRelinquish,"FocusRelinquish"},
- {  kEventWindowDrawFrame,"DrawFrame"},
- {  kEventWindowDrawPart,"DrawPart"},
- {  kEventWindowGetRegion,"GetRegion"},
- {  kEventWindowHitTest,"HitTest"},
- {  kEventWindowInit,"Init"},
- {  kEventWindowDispose,"Dispose"},
- {  kEventWindowDragHilite,"DragHilite"},
- {  kEventWindowModified,"Modified"},
- {  kEventWindowSetupProxyDragImage,"SetupProxyDragImage"},
- {  kEventWindowStateChanged,"StateChanged"},
- {  kEventWindowMeasureTitle,"MeasureTitle"},
- {  kEventWindowDrawGrowBox,"DrawGrowBox"},
- {  kEventWindowGetGrowImageRegion,"GetGrowImageRegion"},
- {  kEventWindowPaint,"Paint"},
- { 0, NULL },
+    { kEventWindowUpdate,"Update"},
+    { kEventWindowDrawContent,"DrawContent"},
+    { kEventWindowActivated,"Activated"},
+    { kEventWindowDeactivated,"Deactivated"},
+    { kEventWindowGetClickActivation,"GetClickActivation"},
+    { kEventWindowShowing,"Showing"},
+    { kEventWindowHiding,"Hiding"},
+    { kEventWindowShown,"Shown"},
+    { kEventWindowHidden,"Hidden"},
+    { kEventWindowBoundsChanging,"BoundsChanging"},
+    { kEventWindowBoundsChanged,"BoundsChanged"},
+    { kEventWindowResizeStarted,"ResizeStarted"},
+    { kEventWindowResizeCompleted,"ResizeCompleted"},
+    { kEventWindowDragStarted,"DragStarted"},
+    { kEventWindowDragCompleted,"DragCompleted"},
+    { kEventWindowClickDragRgn,"ClickDragRgn"},
+    { kEventWindowClickResizeRgn,"ClickResizeRgn"},
+    { kEventWindowClickCollapseRgn,"ClickCollapseRgn"},
+    { kEventWindowClickCloseRgn,"ClickCloseRgn"},
+    { kEventWindowClickZoomRgn,"ClickZoomRgn"},
+    { kEventWindowClickContentRgn,"ClickContentRgn"},
+    { kEventWindowClickProxyIconRgn,"ClickProxyIconRgn"},
+    { kEventWindowCursorChange,"CursorChange" },
+    { kEventWindowCollapse,"Collapse"},
+    { kEventWindowCollapsed,"Collapsed"},
+    { kEventWindowCollapseAll,"CollapseAll"},
+    { kEventWindowExpand,"Expand"},
+    { kEventWindowExpanded,"Expanded"},
+    { kEventWindowExpandAll,"ExpandAll"},
+    { kEventWindowCollapse,"Collapse"},
+    { kEventWindowClose,"Close"},
+    { kEventWindowClosed,"Closed"},
+    { kEventWindowCloseAll,"CloseAll"},
+    { kEventWindowZoom,"Zoom"},
+    { kEventWindowZoomed,"Zoomed"},
+    { kEventWindowZoomAll,"ZoomAll"},
+    { kEventWindowContextualMenuSelect,"ContextualMenuSelect"},
+    { kEventWindowPathSelect,"PathSelect"},
+    { kEventWindowGetIdealSize,"GetIdealSize"},
+    { kEventWindowGetMinimumSize,"GetMinimumSize"},
+    { kEventWindowGetMaximumSize,"GetMaximumSize"},
+    { kEventWindowConstrain,"Constrain"},
+    { kEventWindowHandleContentClick,"HandleContentClick"},
+    { kEventWindowProxyBeginDrag,"ProxyBeginDra}"},
+    { kEventWindowProxyEndDrag,"ProxyEndDrag"},
+    { kEventWindowFocusAcquired,"FocusAcquired"},
+    { kEventWindowFocusRelinquish,"FocusRelinquish"},
+    { kEventWindowDrawFrame,"DrawFrame"},
+    { kEventWindowDrawPart,"DrawPart"},
+    { kEventWindowGetRegion,"GetRegion"},
+    { kEventWindowHitTest,"HitTest"},
+    { kEventWindowInit,"Init"},
+    { kEventWindowDispose,"Dispose"},
+    { kEventWindowDragHilite,"DragHilite"},
+    { kEventWindowModified,"Modified"},
+    { kEventWindowSetupProxyDragImage,"SetupProxyDragImage"},
+    { kEventWindowStateChanged,"StateChanged"},
+    { kEventWindowMeasureTitle,"MeasureTitle"},
+    { kEventWindowDrawGrowBox,"DrawGrowBox"},
+    { kEventWindowGetGrowImageRegion,"GetGrowImageRegion"},
+    { kEventWindowPaint,"Paint"},
+    { 0, NULL },
 };
 
 static MyEventName mouseEventNames [] = {
- {  kEventMouseMoved, "Moved"},
- {  kEventMouseUp, "Up"},
- {  kEventMouseDown, "Down"},
- {  kEventMouseDragged, "Dragged"},
- {  kEventMouseWheelMoved, "WheelMoved"},
- { 0, NULL}
+    { kEventMouseMoved, "Moved"},
+    { kEventMouseUp, "Up"},
+    { kEventMouseDown, "Down"},
+    { kEventMouseDragged, "Dragged"},
+    { kEventMouseWheelMoved, "WheelMoved"},
+    { 0, NULL}
 };
 
 static MyEventName keyboardEventNames [] = {
- { kEventRawKeyDown, "Down"},
- { kEventRawKeyRepeat, "Repeat"},
- { kEventRawKeyUp, "Up"},
- { kEventRawKeyModifiersChanged, "ModifiersChanged"},
- { kEventHotKeyPressed, "HotKeyPressed"},
- { kEventHotKeyReleased, "HotKeyReleased"},
- { 0, NULL}
+    { kEventRawKeyDown, "Down"},
+    { kEventRawKeyRepeat, "Repeat"},
+    { kEventRawKeyUp, "Up"},
+    { kEventRawKeyModifiersChanged, "ModifiersChanged"},
+    { kEventHotKeyPressed, "HotKeyPressed"},
+    { kEventHotKeyReleased, "HotKeyReleased"},
+    { 0, NULL}
 };
 
 static MyEventName appEventNames [] = {
- { kEventAppActivated, "Activated"},
- { kEventAppDeactivated, "Deactivated"},
- { kEventAppQuit, "Quit"},
- { kEventAppLaunchNotification, "LaunchNotification"},
- { kEventAppLaunched, "Launched"},
- { kEventAppTerminated, "Terminated"},
- { kEventAppFrontSwitched, "FrontSwitched"},
- { 0, NULL}
+    { kEventAppActivated, "Activated"},
+    { kEventAppDeactivated, "Deactivated"},
+    { kEventAppQuit, "Quit"},
+    { kEventAppLaunchNotification, "LaunchNotification"},
+    { kEventAppLaunched, "Launched"},
+    { kEventAppTerminated, "Terminated"},
+    { kEventAppFrontSwitched, "FrontSwitched"},
+    { 0, NULL}
 };
 
 static MyEventName menuEventNames [] = {
- { kEventMenuBeginTracking, "BeginTracking"},
- { kEventMenuEndTracking, "EndTracking"},
- { kEventMenuChangeTrackingMode, "ChangeTrackingMode"},
- { kEventMenuOpening, "Opening"},
- { kEventMenuClosed, "Closed"},
- { kEventMenuTargetItem, "TargetItem"},
- { kEventMenuMatchKey, "MatchKey"},
- { kEventMenuEnableItems, "EnableItems"},
- { kEventMenuDispose, "Dispose"},
- { 0, NULL }
+    { kEventMenuBeginTracking, "BeginTracking"},
+    { kEventMenuEndTracking, "EndTracking"},
+    { kEventMenuChangeTrackingMode, "ChangeTrackingMode"},
+    { kEventMenuOpening, "Opening"},
+    { kEventMenuClosed, "Closed"},
+    { kEventMenuTargetItem, "TargetItem"},
+    { kEventMenuMatchKey, "MatchKey"},
+    { kEventMenuEnableItems, "EnableItems"},
+    { kEventMenuDispose, "Dispose"},
+    { 0, NULL }
 };
 
 static MyEventName controlEventNames [] = {
- { kEventControlInitialize, "Initialize" },
- { kEventControlDispose, "Dispose" },
- { kEventControlGetOptimalBounds, "GetOptimalBounds" },
- { kEventControlHit, "Hit" },
- { kEventControlSimulateHit, "SimulateHit" },
- { kEventControlHitTest, "HitTest" },
- { kEventControlDraw, "Draw" },
- { kEventControlApplyBackground, "ApplyBackground" },
- { kEventControlApplyTextColor, "ApplyTextColor" },
- { kEventControlSetFocusPart, "SetFocusPart" },
- { kEventControlGetFocusPart, "GetFocusPart" },
- { kEventControlActivate, "Activate" },
- { kEventControlDeactivate, "Deactivate" },
- { kEventControlSetCursor, "SetCursor" },
- { kEventControlContextualMenuClick, "ContextualMenuClick" },
- { kEventControlClick, "Click" },
- { kEventControlTrack, "Track" },
- { kEventControlGetScrollToHereStartPoint, "GetScrollToHereStartPoint" },
- { kEventControlGetIndicatorDragConstraint, "GetIndicatorDragConstraint" },
- { kEventControlIndicatorMoved, "IndicatorMoved" },
- { kEventControlGhostingFinished, "GhostingFinished" },
- { kEventControlGetActionProcPart, "GetActionProcPart" },
- { kEventControlGetPartRegion, "GetPartRegion" },
- { kEventControlGetPartBounds, "GetPartBounds" },
- { kEventControlSetData, "SetData" },
- { kEventControlGetData, "GetData" },
- { kEventControlValueFieldChanged, "ValueFieldChanged" },
- { kEventControlAddedSubControl, "AddedSubControl" },
- { kEventControlRemovingSubControl, "RemovingSubControl" },
- { kEventControlBoundsChanged, "BoundsChanged" },
- { kEventControlOwningWindowChanged, "OwningWindowChanged" },
- { kEventControlArbitraryMessage, "ArbitraryMessage" },
- { 0, NULL }
+    { kEventControlInitialize, "Initialize" },
+    { kEventControlDispose, "Dispose" },
+    { kEventControlGetOptimalBounds, "GetOptimalBounds" },
+    { kEventControlHit, "Hit" },
+    { kEventControlSimulateHit, "SimulateHit" },
+    { kEventControlHitTest, "HitTest" },
+    { kEventControlDraw, "Draw" },
+    { kEventControlApplyBackground, "ApplyBackground" },
+    { kEventControlApplyTextColor, "ApplyTextColor" },
+    { kEventControlSetFocusPart, "SetFocusPart" },
+    { kEventControlGetFocusPart, "GetFocusPart" },
+    { kEventControlActivate, "Activate" },
+    { kEventControlDeactivate, "Deactivate" },
+    { kEventControlSetCursor, "SetCursor" },
+    { kEventControlContextualMenuClick, "ContextualMenuClick" },
+    { kEventControlClick, "Click" },
+    { kEventControlTrack, "Track" },
+    { kEventControlGetScrollToHereStartPoint, "GetScrollToHereStartPoint" },
+    { kEventControlGetIndicatorDragConstraint, "GetIndicatorDragConstraint" },
+    { kEventControlIndicatorMoved, "IndicatorMoved" },
+    { kEventControlGhostingFinished, "GhostingFinished" },
+    { kEventControlGetActionProcPart, "GetActionProcPart" },
+    { kEventControlGetPartRegion, "GetPartRegion" },
+    { kEventControlGetPartBounds, "GetPartBounds" },
+    { kEventControlSetData, "SetData" },
+    { kEventControlGetData, "GetData" },
+    { kEventControlValueFieldChanged, "ValueFieldChanged" },
+    { kEventControlAddedSubControl, "AddedSubControl" },
+    { kEventControlRemovingSubControl, "RemovingSubControl" },
+    { kEventControlBoundsChanged, "BoundsChanged" },
+    { kEventControlOwningWindowChanged, "OwningWindowChanged" },
+    { kEventControlArbitraryMessage, "ArbitraryMessage" },
+    { 0, NULL }
 };
 
 static MyEventName commandEventNames [] = {
- { kEventCommandProcess, "Process" },
- { kEventCommandUpdateStatus, "UpdateStatus" },
- { 0, NULL }
+    { kEventCommandProcess, "Process" },
+    { kEventCommandUpdateStatus, "UpdateStatus" },
+    { 0, NULL }
 };
 
 static MyEventNameList eventNameList [] = {
- { kEventClassWindow, windowEventNames },
- { kEventClassMouse, mouseEventNames },
- { kEventClassKeyboard, keyboardEventNames },
- { kEventClassApplication, appEventNames },
- { kEventClassMenu, menuEventNames },
- { kEventClassControl, controlEventNames },
- { kEventClassCommand, commandEventNames },
- { 0, NULL}
+    { kEventClassWindow, windowEventNames },
+    { kEventClassMouse, mouseEventNames },
+    { kEventClassKeyboard, keyboardEventNames },
+    { kEventClassApplication, appEventNames },
+    { kEventClassMenu, menuEventNames },
+    { kEventClassControl, controlEventNames },
+    { kEventClassCommand, commandEventNames },
+    { 0, NULL}
 };
 
 #ifdef TK_MACOSXDEBUG_UNUSED
 static MyEventName classicEventNames [] = {
- { nullEvent,"nullEvent" },
- { mouseDown,"mouseDown" },
- { mouseUp,"mouseUp" },
- { keyDown,"keyDown" },
- { keyUp,"keyUp" },
- { autoKey,"autoKey" },
- { updateEvt,"updateEvt" },
- { diskEvt,"diskEvt" },
- { activateEvt,"activateEvt" },
- { osEvt,"osEvt" },
- { kHighLevelEvent,"kHighLevelEvent" },
- { 0, NULL }
+    { nullEvent,"nullEvent" },
+    { mouseDown,"mouseDown" },
+    { mouseUp,"mouseUp" },
+    { keyDown,"keyDown" },
+    { keyUp,"keyUp" },
+    { autoKey,"autoKey" },
+    { updateEvt,"updateEvt" },
+    { diskEvt,"diskEvt" },
+    { activateEvt,"activateEvt" },
+    { osEvt,"osEvt" },
+    { kHighLevelEvent,"kHighLevelEvent" },
+    { 0, NULL }
 };
 #endif /* TK_MACOSXDEBUG_UNUSED */
 
 MODULE_SCOPE char *
-TkMacOSXCarbonEventToAscii(EventRef eventRef)
+TkMacOSXCarbonEventToAscii(
+    EventRef eventRef)
 {
     EventClass eventClass;
     EventKind eventKind;
@@ -276,7 +277,7 @@ TkMacOSXCarbonEventToAscii(EventRef eventRef)
 	    list++;
 	}
     }
-   while (names && names->name) {
+    while (names && names->name) {
        if (eventKind == names->kind) {
 	   snprintf(buf, 250, "%-20s", names->name);
 	   break;
@@ -292,105 +293,118 @@ TkMacOSXCarbonEventToAscii(EventRef eventRef)
 
 #ifdef TK_MACOSXDEBUG_UNUSED
 MODULE_SCOPE char *
-TkMacOSXCarbonEventKindToAscii(EventRef eventRef, char * buf )
+TkMacOSXCarbonEventKindToAscii(
+    EventRef eventRef,
+    char *buf)
 {
-   EventClass eventClass;
-   EventKind  eventKind;
-   MyEventNameList * list = eventNameList;
-   MyEventName	   * names = NULL;
-   int		     found = 0;
-   eventClass = GetEventClass(eventRef);
-   eventKind = GetEventKind(eventRef);
-   while (list->names && (!names) ) {
-       if (eventClass == list -> c) {
-	   names = list -> names;
-       } else {
-	   list++;
-       }
-   }
-   if (names) {
-       found = 0;
-       while ( names->name && !found ) {
-	   if (eventKind == names->kind) {
-	       sprintf(buf,"%s",names->name);
-	       found = 1;
-	   } else {
-	       names++;
-	   }
-       }
+    EventClass eventClass;
+    EventKind eventKind;
+    MyEventNameList *list = eventNameList;
+    MyEventName *names = NULL;
+    int found = 0;
+
+    eventClass = GetEventClass(eventRef);
+    eventKind = GetEventKind(eventRef);
+    while (list->names && (!names) ) {
+	if (eventClass == list -> c) {
+	    names = list -> names;
+	} else {
+	    list++;
+	}
+    }
+    if (names) {
+	found = 0;
+	while (names->name && !found) {
+	    if (eventKind == names->kind) {
+		sprintf(buf,"%s",names->name);
+		found = 1;
+	    } else {
+		names++;
+	    }
+	}
     }
     if (!found) {
-	sprintf ( buf,"%d", eventKind );
-     } else {
-	sprintf ( buf,"%d", eventKind );
-     }
-     return buf;
+	sprintf(buf,"%d", eventKind);
+    } else {
+	sprintf(buf,"%d", eventKind);
+    }
+    return buf;
 }
 
 MODULE_SCOPE char *
-TkMacOSXClassicEventToAscii(EventRecord * eventPtr, char * buf )
+TkMacOSXClassicEventToAscii(
+    EventRecord *eventPtr,
+    char *buf)
 {
-    MyEventName	    * names = NULL;
+    MyEventName *names = NULL;
     int found = 0;
     names = classicEventNames;
-    while ( names -> name && !found )
+    while (names -> name && !found) {
 	if (eventPtr->what == names->kind) {
-	    int * iPtr;
+	    int *iPtr;
 	    char cBuf[8];
-	    iPtr=(int *) &cBuf;
+
+	    iPtr = (int *) &cBuf;
 	    *iPtr = eventPtr->message;
 	    cBuf[4] = 0;
 	    sprintf(buf, "%-16s %08x %04x %s", names->name,
-		    (int) eventPtr->message,
-		    eventPtr->modifiers,
-		    cBuf);
+		    (int) eventPtr->message, eventPtr->modifiers, cBuf);
 	    found = 1;
 	} else {
-	  names++;
+	    names++;
 	}
+    }
     if (!found) {
-	       sprintf(buf,"%-16d %08x %08x, %s",
-		       eventPtr->what, (int) eventPtr->message,
-		       eventPtr->modifiers, buf);
+	sprintf(buf,"%-16d %08x %08x, %s", eventPtr->what,
+		(int) eventPtr->message, eventPtr->modifiers, buf);
     }
     return buf;
-
 }
 
 MODULE_SCOPE void
-TkMacOSXPrintPoint(char * tag, Point * p )
+TkMacOSXPrintPoint(
+    char *tag,
+    Point *p)
 {
     TkMacOSXDbgMsg("%s %4d %4d", tag,p->h,p->v );
 }
 
 MODULE_SCOPE void
-TkMacOSXPrintRect(char * tag, Rect * r )
+TkMacOSXPrintRect(
+    char *tag,
+    Rect *r)
 {
     TkMacOSXDbgMsg("%s %4d %4d %4d %4d (%dx%d)",
-	tag, r->left, r->top, r->right, r->bottom,
-	r->right - r->left + 1, r->bottom - r->top + 1);
+	    tag, r->left, r->top, r->right, r->bottom,
+	    r->right - r->left + 1, r->bottom - r->top + 1);
 }
 
 MODULE_SCOPE void
-TkMacOSXPrintRegion(char * tag, RgnHandle rgn )
+TkMacOSXPrintRegion(
+    char *tag,
+    RgnHandle rgn)
 {
     Rect r;
+
     GetRegionBounds(rgn,&r);
     TkMacOSXPrintRect(tag,&r);
 }
 
 MODULE_SCOPE void
-TkMacOSXPrintWindowTitle(char * tag, WindowRef window )
+TkMacOSXPrintWindowTitle(
+    char *tag,
+    WindowRef window)
 {
     Str255 title;
-    GetWTitle(window,title);
-    title [title[0] + 1] = 0;
-    TkMacOSXDbgMsg("%s %s", tag, title +1 );
+
+    GetWTitle(window, title);
+    title[title[0] + 1] = 0;
+    TkMacOSXDbgMsg("%s %s", tag, title+1);
 }
 
 typedef struct {
- int	msg;
- char * name;
+    int	msg;
+    char *name;
 } MsgName;
 
 static MsgName msgNames [] = {
@@ -408,18 +422,19 @@ static MsgName msgNames [] = {
 };
 
 MODULE_SCOPE char *
-TkMacOSXMenuMessageToAscii(int msg, char * s)
+TkMacOSXMenuMessageToAscii(
+    int msg,
+    char *s)
 {
-    MsgName * msgNamePtr;
-    for (msgNamePtr = msgNames;msgNamePtr->name;) {
+    MsgName *msgNamePtr;
+
+    for (msgNamePtr=msgNames ; msgNamePtr->name ; msgNamePtr++) {
 	if (msgNamePtr->msg == msg) {
 	   strcpy(s,msgNamePtr->name);
 	   return s;
-	} else {
-	    msgNamePtr++;
 	}
     }
-    sprintf(s,"unknown : %d", msg );
+    sprintf(s, "unknown : %d", msg);
     return s;
 }
 
@@ -436,9 +451,12 @@ static MsgName trackingNames [] = {
 };
 
 MODULE_SCOPE char *
-TkMacOSXMouseTrackingResultToAscii(MouseTrackingResult r, char * buf)
+TkMacOSXMouseTrackingResultToAscii(
+    MouseTrackingResult r,
+    char *buf)
 {
-    MsgName * namePtr;
+    MsgName *namePtr;
+
     for (namePtr = trackingNames; namePtr->name; namePtr++) {
 	if (namePtr->msg == r) {
 	    strcpy(buf, namePtr->name);
@@ -478,7 +496,6 @@ TkMacOSXDebugFlashRegion(
 	}
     }
 }
-#endif /* TK_MAC_DEBUG */
 
 #include <mach-o/dyld.h>
 #include <mach-o/nlist.h>
@@ -488,19 +505,17 @@ TkMacOSXDebugFlashRegion(
  *
  * TkMacOSXGetNamedDebugSymbol --
  *
+ *	Dynamically acquire address of a named symbol from a loaded dynamic
+ *	library, so that we can use API that may not be available on all OS
+ *	versions. For debugging purposes, if we cannot find the symbol with
+ *	the usual dynamic library APIs, we manually walk the symbol table of
+ *	the loaded library. This allows access to unexported symbols such as
+ *	private_extern internal debugging functions. If module is NULL or the
+ *	empty string, search all loaded libraries (could be very expensive and
+ *	should be avoided).
  *
- *	Dynamically acquire address of a named symbol from a loaded
- *	dynamic library, so that we can use API that may not be
- *	available on all OS versions.
- *	For debugging purposes, if we cannot find the symbol with the
- *	usual dynamic library APIs, we manually walk the symbol table
- *	of the loaded library. This allows access to unexported
- *	symbols such as private_extern internal debugging functions.
- *	If module is NULL or the empty string, search all loaded
- *	libraries (could be very expensive and should be avoided).
- *
- *	THIS FUCTION IS ONLY TO BE USED FOR DEBUGGING PURPOSES, IT MAY
- *	BREAK UNEXPECTEDLY IN THE FUTURE !
+ *	THIS FUCTION IS ONLY TO BE USED FOR DEBUGGING PURPOSES, IT MAY BREAK
+ *	UNEXPECTEDLY IN THE FUTURE!
  *
  * Results:
  *	Address of given symbol or NULL if unavailable.
@@ -513,10 +528,11 @@ TkMacOSXDebugFlashRegion(
 
 MODULE_SCOPE void *
 TkMacOSXGetNamedDebugSymbol(
-    const char* module,
-    const char* symbol)
+    const char *module,
+    const char *symbol)
 {
-    void* addr = TkMacOSXGetNamedSymbol(module, symbol);
+    void *addr = TkMacOSXGetNamedSymbol(module, symbol);
+
 #ifndef __LP64__
     if (!addr) {
 	const struct mach_header *mh = NULL;
@@ -575,7 +591,7 @@ TkMacOSXGetNamedDebugSymbol(
 			    nsect += ns;
 			}
 		    } else if (!st && lc->cmd == LC_SYMTAB) {
-			st = (struct symtab_command*) lc;
+			st = (struct symtab_command *) lc;
 			break;
 		    }
 		    lc = (struct load_command *)((char *) lc + lc->cmdsize);
@@ -587,11 +603,14 @@ TkMacOSXGetNamedDebugSymbol(
 		    uint32_t strsize = st->strsize;
 		    int32_t strx;
 
-		    /* Offset file positions by difference to actual position
-		       in memory of last segment before symbol table: */
+		    /*
+		     * Offset file positions by difference to actual position
+		     * in memory of last segment before symbol table:
+		     */
+
 		    base = (intptr_t) sg->vmaddr + slide - sg->fileoff;
-		    strings = (char*)(base + st->stroff);
-		    sym = (struct nlist*)(base + st->symoff);
+		    strings = (char *) (base + st->stroff);
+		    sym = (struct nlist *) (base + st->symoff);
 		    m = st->nsyms;
 		    for (j = 0; j < m; j++) {
 			/* Find symbol with given name in __text section */
@@ -616,3 +635,11 @@ TkMacOSXGetNamedDebugSymbol(
 #endif /* __LP64__ */
     return addr;
 }
+#endif /* TK_MAC_DEBUG */
+
+/*
+ * Local Variables:
+ * c-basic-offset: 4
+ * fill-column: 78
+ * End:
+ */
