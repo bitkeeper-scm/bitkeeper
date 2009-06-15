@@ -33,6 +33,7 @@ echo "extra" > extra
 bk _mkdir SCCS/junk
 echo XXX > c.junk
 bk _mv c.junk SCCS/junk/c.junk
+mkdir junk
 bk _mkdir junk/SCCS
 echo XXX > c.junk
 bk _mv c.junk junk/SCCS/c.junk

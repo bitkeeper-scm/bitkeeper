@@ -40,6 +40,7 @@ echo OK
 echo $N Make sure stale zlocks are discarded ........................$NL
 bk mklock > z.A
 bk _mv z.A SCCS/z.A 
+bk 2>/dev/null	# reuse bad pid on win2k, otherwise lock is not stale
 #bk delta $Q -y'should work' A > /dev/null 2>&1
 bk delta $Q -y'should work' A 
 if bk _test -f SCCS/z.A; then echo failed to remove zlock; exit 1; fi

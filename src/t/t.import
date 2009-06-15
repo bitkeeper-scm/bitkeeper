@@ -732,8 +732,8 @@ echo "eoln: unix" >> c
 echo "keyword: sccs" >> c
 echo "checkout: edit" >> c
 bk setup -f -cc co_edit || { echo "Setup failed!"; exit 1; }
-mkdir co_edit/SCCS
-cp SCCS/s.co_edit_foo co_edit/SCCS
+bk _mkdir co_edit/SCCS
+bk _cp SCCS/s.co_edit_foo co_edit/SCCS/s.co_edit_foo
 cd co_edit
 bk sccs2bk -cx co_edit_foo >OUT 2>ERR || {
 	echo FAILED
