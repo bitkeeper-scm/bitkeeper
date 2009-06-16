@@ -11,8 +11,7 @@ test $OSTYPE = cygwin && {
 	bk bkd -R >/dev/null 2>&1
 }
 BK_NOTTY=YES
-BK_NO_REMAP=1
-export PATH BK_NOTTY BK_NO_REMAP
+export PATH BK_NOTTY
 
 test X$LOG = X && LOG=LOG-$BK_USER
 cd /build
@@ -57,8 +56,12 @@ case $CMD in
 		test -d /cygdrive/c/build/obj && rm -rf /cygdrive/c/build/obj/*
 		test -d /cygdrive/r/build/obj && rm -rf /cygdrive/r/build/obj/*
 	}
-	set +e
-	bk -qAUr get -qS
+	bk get -S Makefile build.sh
+	test -d SCCS || {
+		set +e
+		bk -qAUr get -qS	# ignore windows errors on symlinks
+		set -e
+	}
 	make build || failed
 	./build image install || failed
 	# save some diskspace for tight machines

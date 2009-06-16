@@ -744,12 +744,6 @@ proj_reset(project *p)
 		p->co = 0;
 		p->sync = -1;
 		p->noremap = -1;
-#if 0
-		if (p->coDB) {
-			mdbm_close(p->coDB);
-			p->coDB = 0;
-		}
-#endif
 		if (p->BAM_idx) {
 			mdbm_close(p->BAM_idx);
 			p->BAM_idx = 0;

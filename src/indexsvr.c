@@ -911,14 +911,8 @@ doidx_rmdir(project *proj, char *dir)
 	full_remap_path(buf, proj, dir);
 
 	/*
-	 * normally, being called with . is no good.  Indicates
-	 * that you're removing a repo/component and you want
-	 * rmrepo() instead.  However, for unpopulate, the code
-	 * is more careful (so that deeply nested components are
-	 * left alone).  That path ends up here so we take some
-	 * care to remove the .bk tree as well.  No .bk tree?
-	 * we'd like to assert but regressions show that's not
-	 * possible either.  Ugh.
+	 * Being called with "." means we are deleting the whole repository
+	 * so make sure we delete .bk as well.
 	 */
 	if (streq(dir, ".")) {
 		concat_path(buf2, buf, ".bk");

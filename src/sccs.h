@@ -356,7 +356,6 @@ int	checking_rmdir(char *dir);
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	BK_CONFIG_URL	getenv("BK_CONFIG_URL")
 #define	BK_CONFIG_URL2	getenv("BK_CONFIG_URL2")
-#define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKDIR		"BitKeeper"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
@@ -1316,8 +1315,6 @@ int	doidx_rmdir(project *proj, char *dir);
 char	**doidx_getdir(project *proj, char *dir);
 char	*doidx_realBasename(project *proj, char *rel, char *realname);
 int	doidx_access(project *proj, char *file, int mode);
-int	rmrepo(char *repo);
-int	rmtree_resync(char *repo);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);

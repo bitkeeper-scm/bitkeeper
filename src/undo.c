@@ -107,7 +107,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			return (UNDO_ERR);
 		}
 		unlink(BACKUP_SFIO);
-		if (rmresync && exists("RESYNC")) rmtree_resync("RESYNC");
+		if (rmresync && exists("RESYNC")) rmtree("RESYNC");
 		freeLines(nav, free);
 		return (UNDO_ERR);
 	}
@@ -258,7 +258,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		STOP_TRANSACTION();
 		EACH_STRUCT(n->comps, c, i) {
 			if (c->new && c->included && c->present) {
-				rmrepo(c->path);
+				rmtree(c->path);
 			}
 		}
 
@@ -349,7 +349,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	update_log_markers(!quiet);
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
-	rmtree_resync("RESYNC");
+	rmtree("RESYNC");
 	unlink(CSETS_IN);	/* no longer valid */
 	unless (fromclone) {
 		putenv("BK_CSETLIST=");
