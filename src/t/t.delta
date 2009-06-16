@@ -335,7 +335,8 @@ gdate=`bk _stat mid.c | awk -F\| '{ print $10 }'`
 sdate=`bk _stat SCCS/s.mid.c | awk -F\| '{ print $10 }'`
 test $gdate -ge $sdate || {
 	echo failed
-	ls -l mid.c SCCS/s.mid.c*
+	ls -l mid.c
+	bk _find SCCS | grep '^SCCS/s.mid.c'
 	exit 1
 }
 cp config.sav BitKeeper/etc/config

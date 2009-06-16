@@ -71,6 +71,7 @@ do	case "$D" in
 	then
 	    # OK, now try it with s.names, no SCCS/
 	    echo $N checkin with ${D}s.foo ${DOTS}..................................$NL
+	    # Non blob stuff in ATT code path, so let this go..
 	    rm -rf ${D}foo ${D}SCCS
 	    cp SAVE ${D}foo
 	    bk ci $Q -i ${D}s.foo

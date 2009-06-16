@@ -403,7 +403,7 @@ test -f subdir/foo.c || {
 }
 test `cat subdir/foo.c` = foo.c || {
 	echo incorrect contents
-	cat subdir/bar.c
+	cat subdir/foo.c
 	exit 1
 }
 echo OK
@@ -455,8 +455,8 @@ rm -f bar.c
 	echo failed to exit cleanly
 	exit 1
 }
-test -f bar.c && {
-	echo got bar.c in . not in subdir
+test -f foo.c && {
+	echo got foo.c in . not in subdir
 	exit 1
 }
 test -f subdir/foo.c || {
@@ -465,7 +465,7 @@ test -f subdir/foo.c || {
 }
 test `cat subdir/foo.c` = foo.c || {
 	echo incorrect contents
-	cat subdir/bar.c
+	cat subdir/foo.c
 	exit 1
 }
 echo OK
@@ -530,7 +530,7 @@ bk get -e -x+ foo.c 2> ERR && exit 1
 grep -q 'Writable foo\.c exists' ERR || exit 1
 # set to just edit, mv foo.c bar.c and test
 bk unedit foo.c
-rm -f bar.c SCCS/?.bar.c
+test -f bar.c && exit 1		# shouldn't be there; just checking
 mv foo.c bar.c
 bk _mv SCCS/s.foo.c SCCS/s.bar.c
 bk _mv SCCS/p.foo.c SCCS/p.bar.c

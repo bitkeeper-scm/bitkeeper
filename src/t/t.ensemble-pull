@@ -342,7 +342,7 @@ bk _test -f SCCS/d.ChangeSet && {
 	echo failed
 	echo left dfile
 	pwd
-	ls SCCS
+	bk _find SCCS
 	exit 1
 }
 echo OK

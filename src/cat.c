@@ -2,9 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 
-/* contrib/cat.c */
-int	catfile_main(int argc, char *argv[]);
-
 int
 cat_main(int ac, char **av)
 {
@@ -13,9 +10,6 @@ cat_main(int ac, char **av)
 	int	skip_bin = 0, rc = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	int	c, gfile;
-
-	/* maybe run regular BSD cat (contrib/cat.c)  */
-	if (streq(av[0], "_cat")) return (catfile_main(ac, av));
 
 	while ((c = getopt(ac, av, "B")) != -1) {
 		switch (c) {

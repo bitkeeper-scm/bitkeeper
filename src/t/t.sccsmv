@@ -206,7 +206,7 @@ echo OK
 echo $N Test sccsrm and empty directory .............................$NL
 cd "$HERE/project/D"
 bk rm file5 || { echo failed.; exit 1; }
-if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
+if bk _test -d SCCS; then echo fail to remove empty SCCS; exit 1; fi
 echo OK
 
 echo $N Test bk unrm ................................................$NL

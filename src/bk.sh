@@ -1187,7 +1187,7 @@ _rmgone() {
 	CMD="bk _fslrm -f"
 	[ "$P" ] && CMD="-p $CMD"
 	[ ! "$Q" ] && CMD="-t $CMD"
-	[ "$N" ] && CMD="echo Would: bk _fslrm"
+	[ "$N" ] && CMD="echo Would remove"
 
 	# Pipe the key, sfile, and gfile for the repository
 	# through awk.  Awk will check if each key against

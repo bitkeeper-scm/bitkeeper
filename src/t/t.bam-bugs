@@ -125,7 +125,7 @@ echo OK
 
 echo $N Make sure we can gone bam files and check works .............$NL
 ROOTKEY=`bk prs -hr+ -nd:ROOTKEY: x`
-rm -f SCCS/s.x
+bk _fslrm -f SCCS/s.x
 bk gone $Q "$ROOTKEY"
 bk commit $Q -ygone
 bk bam check $Q || {

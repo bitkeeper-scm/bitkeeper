@@ -46,6 +46,7 @@ perl -p -e 's/ D 1\.1\.1\.1 / D 1.5 /;' -e 's/ D 1\.2 / D 1.1.1.1 /;'  \
 	-e 's/ D 1\.5 / D 1.2 /' sfoo | bk undos > X
 bk _mv X SCCS/s.foo.c 
 bk admin $Q -z foo.c
+# XXX: this is using ATT mode, so SCCS dir exists
 cmp -s sfoo SCCS/s.foo.c
 if [ $? -eq 0 ]; then echo Failed to alter revions; exit 1; fi
 bk renumber $Q foo.c

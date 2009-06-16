@@ -34,6 +34,9 @@ echo OK
 
 test "$PLATFORM" != "WIN32" && {
 echo $N Test symlink create .........................................$NL
+cd ..
+cp -rp project symtest
+cd symtest
 echo "xx" > symfile
 ln -s symfile symlink
 echo "ln -s symfile symlink" > make_sym.sh
@@ -47,6 +50,6 @@ cat symlink > file
 diff symfile file > /dev/null
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-rm -rf file symfile symlink SCCS
+cd ../project
 }
 exit 0

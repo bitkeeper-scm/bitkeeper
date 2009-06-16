@@ -846,7 +846,7 @@ echo "resolved" >> 'space file'
 bk _rm -f 'SCCS/r.space file'
 cd ..
 bk get $Q -eM -g ChangeSet
-bk commit $Q -R -YSCCS/c.ChangeSet
+bk commit $Q -R -c
 bk _rm -f SCCS/r.ChangeSet
 # Now we have a repo with the problem, let's see if resolve can fix it
 # Fake some comments

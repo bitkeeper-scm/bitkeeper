@@ -50,7 +50,7 @@ echo star > '*.c'
 bk new $Q './*.c'
 bk _test -f 'SCCS/s.*.c' || {
 	echo failed to create '*.c'
-	ls SCCS
+	bk _find SCCS
 	exit 1
 }
 echo OK
@@ -96,7 +96,7 @@ echo equal > '=.c'
 bk new $Q './=.c'
 bk _test -f 'SCCS/s.=.c' || {
 	echo failed to create '=.c'
-	ls SCCS
+	bk _find SCCS
 	exit 1
 }
 echo OK

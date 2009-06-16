@@ -170,6 +170,7 @@ bin
 bkd
 binpool => bam
 cat
+_catfile	# bsd contrib/cat.c
 cfile
 changes
 check
@@ -373,7 +374,7 @@ zone
 
 #aliases of builtin functions
 add => delta
-_cat => cat
+_cat => _catfile
 ci => delta
 enter => delta
 new => delta

@@ -500,6 +500,7 @@ cd "$HERE"
 # import.sh:validate_SCCS()
 cp -r import_sccs import_sccs_linked
 cd import_sccs_linked/src
+test -d SCCS || { echo fix blobbed test; exit 1; }
 rm -fr SCCS
 ln -s ../../import_sccs/src/SCCS SCCS
 bk get $Q
@@ -883,7 +884,7 @@ echo $N Make sure that traditional RCS imports works ................$NL
 cd "$HERE"
 commercial import-lmbench
 bk import $Q -ftRCS $TESTDATA/lmbench . || exit 1
-bk test -f results/SCCS/s.Makefile || exit 1
+bk _test -f results/SCCS/s.Makefile || exit 1
 echo OK
 }
 
@@ -925,7 +926,7 @@ commercial import-CVS.1
 bk import -quftCVS $TESTDATA/import-CVS.1 . || exit 1
 bk get -q
 P1=`bk sfiles BitKeeper/deleted/SCCS | grep "s..del-pkginfo"`
-bk test -f "$P1" || {
+bk _test -f "$P1" || {
 	echo failed to get pkginfo from the Attic
 	exit 1
 }

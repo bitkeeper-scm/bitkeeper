@@ -99,8 +99,17 @@ _walkdir(char *dir, struct stat *sbufp, walkfn fn, void *data)
 	lines = _getdir(dir, sbufp);
 	sortLines(lines, extsort);
 	files = nLines(lines);
-	/* if >= 2, then == numdirs + 2 */
-	links = sbufp->st_nlink;
+	/*
+	 * XXX
+	 * was: links = sbufp->st_nlink; // if >= 2, then == numdirs + 2
+	 *
+	 * Set links=0 below to effectively disable the optimizations
+	 * to stop calling lstat() on each directory entry after all
+	 * subdirectories have been found.  This is because with a
+	 * remapped repository st_nlink of a directory is wrong.  It
+	 * counts .bk which the code doesn't see and doesn't count
+	 * SCCS which the code does see.
+	 */
 	links = 0;
 	len = strlen(dir);
 	dir[len] = '/';

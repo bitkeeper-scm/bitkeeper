@@ -49,5 +49,3 @@ if [ $? -eq 0 ]; then echo failed.; exit 1; fi
 bk rmdel -r1.2 BAD 2>${DEV_NULL}
 if [ $? -eq 0 ]; then echo failed.; exit 1; fi
 echo OK
-rm -rf GOOD BAD tmp SCCS
-
