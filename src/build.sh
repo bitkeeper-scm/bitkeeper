@@ -45,7 +45,7 @@ case "X`uname -s`" in
 esac
 export KEYFILE
 case "X`uname -s`" in
-	XAIX)	CCXTRA="-DHAVE_LOCALZONE -DNOPROC"
+	XAIX)	CCXTRA="-DHAVE_LOCALZONE -DNOPROC -mminimal-toc"
 		;;
 	XCYGWIN*|XMINGW*)
 		ms_env;
