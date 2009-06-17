@@ -5,10 +5,10 @@
 # bk get -Sq
 
 configure: configure.in config.hin stamp-h.in
-	touch configure
+	sleep 1; touch configure
 
 config.hin: stamp-h.in
-	touch config.hin
+	sleep 1; touch config.hin
 
 stamp-h.in: configure.in
-	touch stamp-h.in
+	sleep 1; touch stamp-h.in
