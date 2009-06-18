@@ -345,7 +345,7 @@ int	checking_rmdir(char *dir);
 #define	DB_NOBLANKS	0x10		/* keys must have values or skip */
 #define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
 #define	DB_CONFIG	0x40		/* config file format */
-#define	DB_IDCACHE	DB_KEYFORMAT|DB_NODUPS
+#define	DB_IDCACHE	(0x80|DB_KEYFORMAT|DB_NODUPS)
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 #define	MD5LEN	32	/* really 30: 8 hex time + 22 base-64 MD5 of key */
@@ -367,8 +367,10 @@ int	checking_rmdir(char *dir);
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
-#define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
-#define	IDCACHE_LOCK	"BitKeeper/log/z.id_cache"
+#define	getIDCACHE(p)	(proj_hasOldSCCS(p) ? \
+				"BitKeeper/etc/SCCS/x.id_cache" : \
+				"BitKeeper/log/x.id_cache")
+#define	IDCACHE		getIDCACHE(0)
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"

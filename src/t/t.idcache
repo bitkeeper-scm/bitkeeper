@@ -18,6 +18,14 @@
 # LODs
 # per file information (flags, etc.)
 
+if [ "$BK_NO_REMAP" ]
+then
+	IDCACHE=BitKeeper/etc/SCCS/x.id_cache
+else
+	IDCACHE=BitKeeper/log/x.id_cache
+fi
+
+
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -52,8 +60,8 @@ echo OK
 echo $N corrupt the idcache, should rebuild .........................$NL
 cd "$HERE/project"
 echo "hi mom" > X
-bk _cat X BitKeeper/etc/SCCS/x.id_cache > Y
-bk _mv Y BitKeeper/etc/SCCS/x.id_cache
+bk _cat X $IDCACHE > Y
+bk _mv Y $IDCACHE
 cd "$HERE/project/src"
 bk -r check -a 2>OUT || exit 1
 grep -q 'Rebuilding idcache' OUT || {
@@ -67,9 +75,9 @@ bk sane
 echo $N No write permission on idcache ..............................$NL
 cd "$HERE/project"
 echo "hi mom" > X
-bk _cat X BitKeeper/etc/SCCS/x.id_cache > Y
+bk _cat X $IDCACHE > Y
 chmod -w Y
-bk _mv Y BitKeeper/etc/SCCS/x.id_cache
+bk _mv Y $IDCACHE
 cd "$HERE/project/src"
 bk -r check -a 2>OUT || exit 1
 grep -q 'Rebuilding idcache' OUT || {
@@ -77,9 +85,9 @@ grep -q 'Rebuilding idcache' OUT || {
 	cat OUT
 	exit 1
 }
-bk _cat "$HERE/project/BitKeeper/etc/SCCS/x.id_cache" | grep 'hi mom'  && {
+bk _cat "$HERE/project/$IDCACHE" | grep 'hi mom'  && {
 	echo failed to rewrite cache
-	bk _cat "`bk root`"/BitKeeper/etc/SCCS/x.id_cache
+	bk _cat "`bk root`"/$IDCACHE
 	exit 1
 }
 echo OK
@@ -87,8 +95,8 @@ echo OK
 echo $N No write permission on BitKeeper/etc/SCCS ...................$NL
 cd "$HERE/project"
 echo "hi mom" > X
-bk _cat X BitKeeper/etc/SCCS/x.id_cache > Y
-bk _cp Y BitKeeper/etc/SCCS/x.id_cache
+bk _cat X $IDCACHE > Y
+bk _cp Y $IDCACHE
 oldmode=`bk _stat "$HERE"/project/BitKeeper/etc/SCCS | awk -F\| '{ print substr($3, 3) }'`
 bk _chmod 555 "$HERE/project/BitKeeper/etc/SCCS"
 cd "$HERE/project/src"

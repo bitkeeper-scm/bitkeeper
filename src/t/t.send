@@ -13,6 +13,13 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+if [ "$BK_NO_REMAP" ]
+then
+	IDCACHE=BitKeeper/etc/SCCS/x.id_cache
+else
+	IDCACHE=BitKeeper/log/x.id_cache
+fi
+
 echo $N Create initial repository ...................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -53,8 +60,8 @@ cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE/copy"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE"
 bk _rm project/BitKeeper/etc/SCCS/x.dfile
-bk _rm project/BitKeeper/etc/SCCS/x.id_cache
-bk _rm copy/BitKeeper/etc/SCCS/x.id_cache
+bk _rm project/$IDCACHE
+bk _rm copy/$IDCACHE
 rm -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
 rm -f copy/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
@@ -121,8 +128,8 @@ if [ ! -d ../uu/BitKeeper ]; then echo failed to receive; exit 1; fi
 cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE/uu"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE"
-bk _rm project/BitKeeper/etc/SCCS/x.id_cache
-bk _rm uu/BitKeeper/etc/SCCS/x.id_cache
+bk _rm project/$IDCACHE
+bk _rm uu/$IDCACHE
 rm -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
 rm -f uu/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
@@ -141,8 +148,8 @@ done
 cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE/csets"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE"
-bk _rm project/BitKeeper/etc/SCCS/x.id_cache
-bk _rm csets/BitKeeper/etc/SCCS/x.id_cache
+bk _rm project/$IDCACHE
+bk _rm csets/$IDCACHE
 rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
 rm -f csets/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
@@ -187,8 +194,8 @@ bk send $Q -r+ - | bk receive -at ../csets
 cd "$HERE/project"; bk -r clean; bk -r admin -Zgzip; rm -f XXX YYY
 cd "$HERE/csets"; bk -r clean; bk -r admin -Zgzip
 cd "$HERE"
-bk _rm project/BitKeeper/etc/SCCS/x.id_cache
-bk _rm csets/BitKeeper/etc/SCCS/x.id_cache
+bk _rm project/$IDCACHE
+bk _rm csets/$IDCACHE
 rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
 rm -f csets/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*

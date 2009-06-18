@@ -12,6 +12,13 @@
 #
 CHECKED=BitKeeper/log/checked
 
+if [ "$BK_NO_REMAP" ]
+then
+	IDCACHE=BitKeeper/etc/SCCS/x.id_cache
+else
+	IDCACHE=BitKeeper/log/x.id_cache
+fi
+
 echo $N Create initial repository ...................................$NL
 commercial project
 bk edit $Q BitKeeper/etc/config
@@ -35,7 +42,7 @@ cd ../project
 # update the check timestamp
 bk -r check -ac || exit 1
 bk pull $Q ../copy || exit 1
-bk _cat BitKeeper/etc/SCCS/x.id_cache | grep -q '|file|.* file2' || {
+bk _cat $IDCACHE | grep -q '|file|.* file2' || {
 	echo idcache not updated!
 }
 echo OK

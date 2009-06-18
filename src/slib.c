@@ -16321,14 +16321,14 @@ loadDB(char *file, int (*want)(char *), int style)
 
 	// XXX awc->lm: we should check the z lock here
 	// someone could be updating the file...
-	idcache = strstr(file, IDCACHE) ? 1 : 0;
+	idcache = (style == DB_IDCACHE) ? 1 : 0;
 again:	unless (f = fopen(file, "rt")) {
 		if (first && idcache) {
 recache:		first = 0;
 			sum = 0;
 			if (f) fclose(f);
 			if (DB) mdbm_close(DB), DB = 0;
-			unless (streq(file, IDCACHE)) {
+			unless (strneq(file, "BitKeeper/", 10)) {
 				cwd = strdup(proj_cwd());
 				t = strrchr(file, '/');
 				*t = 0;
@@ -16422,7 +16422,7 @@ out:		if (f) fclose(f);
 		switch (mdbm_store_str(DB, buf, v, flags)) {
 		    case 0: break;
 		    case 1:
-		    	if ((style == DB_NODUPS)) {
+		    	if ((style & DB_NODUPS)) {
 				fprintf(stderr,
 				    "Duplicate key '%s' in %s.\n", buf, file);
 				fprintf(stderr,

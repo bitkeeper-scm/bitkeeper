@@ -173,7 +173,7 @@ idcache_write(project *p, MDBM *idDB)
 	char	id_lock[MAXPATH];
 
 	root = proj_root(p);
-	sprintf(id_tmp, "%s/%s.new", root, IDCACHE);
+	sprintf(id_tmp, "%s/%s.new", root, getIDCACHE(p));
 	unless (f = fopen(id_tmp, "w")) {
 		perror(id_tmp);
 		return (1);
@@ -193,8 +193,14 @@ idcache_write(project *p, MDBM *idDB)
 	fprintf(f, "#$sum$ %u\n", id_sum);
 	fclose(f);
 
-	sprintf(id_lock, "%s/%s", root, IDCACHE_LOCK);
-	sprintf(buf, "%s/%s", root, IDCACHE);
+	if (proj_hasOldSCCS(p)) {
+		sprintf(id_lock, "%s/%s",
+		    root, "BitKeeper/etc/SCCS/z.id_cache");
+	} else {
+		sprintf(id_lock, "%s/%s",
+		    root, "BitKeeper/log/z.id_cache");
+	}
+	sprintf(buf, "%s/%s", root, getIDCACHE(p));
 	if (sccs_lockfile(id_lock, 16, 0)) {
 		fprintf(stderr, "Not updating cache due to locking.\n");
 		unlink(id_tmp);
