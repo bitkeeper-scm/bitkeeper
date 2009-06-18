@@ -247,7 +247,7 @@ update_idcache(sccs *s, char *old, char *new)
 	 * This code ripped off from sfiles -r.
 	 */
 again:	
-	sprintf(path, "%s/%s", root, IDCACHE);
+	sprintf(path, "%s/%s", root, getIDCACHE(s->proj));
 	unless (idDB = loadDB(path, 0, DB_IDCACHE)) {
 		fprintf(stderr, "Creating new idcache.\n");
 		idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);

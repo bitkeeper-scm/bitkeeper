@@ -1062,7 +1062,7 @@ proj_restoreAllCO(project *p, MDBM *idDB)
 
 	if (proj_isResync(p)) return (0);
 	unless (idDB) {
-		t = aprintf("%s/%s", proj_root(p), IDCACHE);
+		t = aprintf("%s/%s", proj_root(p), getIDCACHE(p));
 		idDB = loadDB(t, 0, DB_IDCACHE);
 		free(t);
 		unless (idDB) {
@@ -1237,31 +1237,42 @@ again:		putenv("_BK_FSLAYER_SKIP=1");
  * ensemble.
  *
  * The fall through default (for a new repo) is to do the remapping.
- *
- * Note: It is assumed that this function is call in the context of a
- * fslayer_* routine so that files system access is direct.
  */
 int
 proj_hasOldSCCS(project *p)
 {
 	project	*p2;
+	int	en;
 	char	buf[MAXPATH];
 
 	unless (p || (p = curr_proj())) return (1);
 
 	if (p->noremap != -1) return (p->noremap);
 
+	en = fslayer_enable(0);
+
 	/* See: Funky rules above */
 	concat_path(buf, p->root, "SCCS");
-	if (isdir(buf)) return (p->noremap = 1);
+	if (isdir(buf)) {
+		p->noremap = 1;
+		goto out;
+	}
 
 	concat_path(buf, p->root, ".bk/SCCS");
-	if (isdir(buf)) return (p->noremap = 0);
+	if (isdir(buf)) {
+		p->noremap = 0;
+		goto out;
+	}
+	if (getenv("BK_NO_REMAP")) {
+		p->noremap = 1;
+		goto out;
+	}
+	if ((p2 = proj_product(p)) && (p != p2)) {
+		p->noremap = proj_hasOldSCCS(p2);
+		goto out;
+	}
 
-	if (getenv("BK_NO_REMAP")) return (p->noremap = 1);
-
-	if ((p2 = proj_product(p)) && (p != p2))
-		return (p->noremap = proj_hasOldSCCS(p2));
-
-	return (p->noremap = 0);
+	p->noremap = 0;
+ out:	fslayer_enable(en);
+	return (p->noremap);
 }

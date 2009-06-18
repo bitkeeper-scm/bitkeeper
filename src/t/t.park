@@ -13,6 +13,13 @@
 # Copyright (c) 2000 Andrew Chang
 # %K%
 
+if [ "$BK_NO_REMAP" ]
+then
+	IDCACHE=BitKeeper/etc/SCCS/x.id_cache
+else
+	IDCACHE=BitKeeper/log/x.id_cache
+fi
+
 echo $N Create initial repository ...................................$NL
 commercial project
 bk admin -Z
@@ -129,9 +136,9 @@ bk new $Q -l move_me
 echo "444" >> move_me
 bk park -y 2> /dev/null
 bk edit $Q move_me
-bk _cp "$HERE/project/BitKeeper/etc/SCCS/x.id_cache" x.id_cache
+bk _cp "$HERE/project/$IDCACHE" x.id_cache
 bk mv move_me new_me
-bk _mv x.id_cache "$HERE/project/BitKeeper/etc/SCCS/x.id_cache"
+bk _mv x.id_cache "$HERE/project/$IDCACHE"
 sed -e "s/111/000/" new_me > new_me.tmp
 mv new_me.tmp new_me
 bk unpark 2>/dev/null 1>&2
