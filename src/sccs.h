@@ -821,21 +821,6 @@ typedef struct {
 				 * rsh:[user@]host:/path
 				 */
 
-#define	IDX_QUIT	1
-#define	IDX_READ	2
-#define	IDX_UNLINK	3
-#define	IDX_RENAME	4
-#define	IDX_CHMOD	5
-#define	IDX_GETDIR	6
-#define	IDX_MKDIR	7
-#define	IDX_RMDIR	8
-#define	IDX_UPDATE	9
-#define	IDX_UPDATEFS	10
-#define	IDX_LSTAT	11
-#define	IDX_LINK	12
-#define	IDX_ACCESS	13
-#define IDX_UTIME	14
-
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);

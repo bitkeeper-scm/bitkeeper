@@ -575,8 +575,6 @@ bk_cleanup(int ret)
 	rmdir_findprocs();
 #endif
 
-#ifdef FH_LEAK
-
 	/*
 	 * Test for filehandles left open at the end of regressions
 	 * We only do with if bk exits successful as we can't fix
@@ -609,7 +607,6 @@ bk_cleanup(int ret)
 #endif
 		}
 	}
-#endif
 	bktmpcleanup();
 	trace_free();
 }

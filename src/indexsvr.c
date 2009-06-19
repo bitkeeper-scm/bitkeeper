@@ -3,6 +3,26 @@
 /* files smaller than SMALL are kept in memory */
 #define	SMALL	1024
 
+/*
+ * Table of command opcodes for messages from bk to index server.
+ * This commands can be cross version so the list needs to be stable.
+ * See the handle_cmd() switch statement below for syntax.
+ */
+#define	IDX_QUIT	1
+#define	IDX_READ	2
+#define	IDX_UNLINK	3
+#define	IDX_RENAME	4
+#define	IDX_CHMOD	5
+#define	IDX_GETDIR	6
+#define	IDX_MKDIR	7
+#define	IDX_RMDIR	8
+#define	IDX_UPDATE	9
+#define	IDX_UPDATEFS	10
+#define	IDX_LSTAT	11
+#define	IDX_LINK	12
+#define	IDX_ACCESS	13
+#define IDX_UTIME	14
+
 typedef struct {
 	char	*name;
 	int	blob;		/* index of blob -1 == on disk */
