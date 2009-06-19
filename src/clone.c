@@ -266,6 +266,10 @@ clone(char **av, remote *r, char *local, char **envVar)
 			disconnect(r, 2);
 			goto done;
 		}
+	} else if (getenv("_BK_TRANSACTION") &&
+	    strneq(buf, "ERROR-cannot use key", 20 )) {
+		/* populate doesn't need to propagate error message */
+		exit(1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
