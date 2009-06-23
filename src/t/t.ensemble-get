@@ -1,0 +1,83 @@
+echo $N bk sfiles -cg should not print ChangeSet files...............$NL
+nested product
+# add a deep nested one
+cd ..
+commercial nm
+bk -r edit $Q
+cd "$HERE/product"
+bk clone $Q ../nm gcc/nm
+bk attach $Q gcc/nm
+
+# check them out
+bk -r get $Q
+
+bk -qA sfiles -cg >"$HERE/OUT"
+test -s "$HERE/OUT" && {
+	echo failed
+	ls -l "$HERE/OUT"
+	cat "$HERE/OUT"
+	exit 1
+}
+
+bk -qAr edit $Q
+
+bk -qA sfiles -cg >"$HERE/OUT"
+test -s "$HERE/OUT" && {
+	echo failed
+	cat "$HERE/OUT"
+	exit 1
+}
+echo OK
+
+echo $N Make sure clean removes the ChangeSet files in an extra .....$NL
+mv ../nm . || exit 1
+cd nm || exit 1
+test -f ChangeSet || {
+	echo "failed -- no ChangeSet"
+	exit 1
+}
+bk -r clean $Q || {
+	echo failed
+	bk -r clean -v
+	exit 1
+}
+test -f ChangeSet && {
+	echo "failed -- still a ChangeSet"
+	exit 1
+}
+cd ..
+echo OK
+
+echo $N Make sure clean removes the ChangeSet files..................$NL
+# assert that there is something to clean
+test -f gcc/ChangeSet || {
+	echo "failed -- no gcc/ChangeSet"
+	exit 1
+}
+
+bk -qAr clean $Q || {
+	echo failed
+	bk -qAr clean -v
+	exit 1
+}
+
+rc=0
+msg=""
+test -f ChangeSet && {
+	rc=1
+	msg="Checked out product ChangeSet file\n"
+}
+test -f gcc/ChangeSet && {
+	rc=1
+	msg="${msg}Checked out gcc ChangeSet file\n"
+}
+test -f gcc/nm/ChangeSet && {
+	rc=1
+	msg="${msg}Checked out gcc/nm ChangeSet file\n"
+}
+test $rc = 0 || {
+	echo failed
+	printf "$msg"
+	exit 1
+}
+echo OK

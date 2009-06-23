@@ -1515,12 +1515,12 @@ _relativeName(char *gName, int isDir, int mustHaveRmarker, int wantRealName,
  * Trim off the RESYNC/ part of the pathname, that's garbage.
  */
 private char	*
-relativeName(sccs *sc, int mustHaveRmarker)
+relativeName(sccs *sc, int mustHaveRmarker, project *proj)
 {
 	char	*s, *g;
 
 	g = sccs2name(sc->sfile);
-	s = _relativeName(g, 0, mustHaveRmarker, 1, sc->proj);
+	s = _relativeName(g, 0, mustHaveRmarker, 1, proj);
 	free(g);
 	unless (s) return (0);
 
@@ -8261,8 +8261,18 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 	}
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 1, 1, s->proj);
-		if (r && !streq(d->pathname, r)) RET(1);
+		char	*r;
+		project	*proj;
+
+		if (CSET(s) && proj_isComponent(s->proj)) {
+			proj = proj_product(s->proj);
+		} else {
+			proj = s->proj;
+		}
+		if ((r = _relativeName(s->gfile, 0, 1, 1, proj))
+		    && !streq(d->pathname, r)) {
+		    	RET(1);
+		}
 	}
 
 	/*
@@ -8846,9 +8856,15 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	if (BITKEEPER(s)) {
-		char *t = relativeName(s, 1);
+		char	*t;
+		project	*proj;
 
-		unless (t) {
+		if (CSET(s) && proj_isComponent(s->proj)) {
+			proj = proj_product(s->proj);
+		} else {
+			proj = s->proj;
+		}
+		unless (t = relativeName(s, 1, proj)) {
 			fprintf(stderr,
 			"%s: cannot compute relative path, no project root ?\n",
 				s->gfile);
@@ -9478,7 +9494,7 @@ out:		sccs_unlock(s, 'z');
 
 	/* pathname, we need this below */
 	buf[0] = 0;
-	t = relativeName(s, 0);
+	t = relativeName(s, 0, s->proj);
 	assert(t);
 	strcpy(buf, t);
 
