@@ -7969,6 +7969,9 @@ TclExecuteByteCode(
 		    TclGetIntFromObj(NULL, deepPtr->idxObj, &i);
 		    ret = Tcl_ListObjReplace(interp, deepPtr->parentObj,
 					     i, 1, 0, NULL);
+		} else {
+		    /* Not array or hash? error! */
+		    ret = TCL_ERROR;
 		}
 		if (ret != TCL_OK) {
 		    Tcl_Panic("err deleting element in INST_L_DEEP_WRITE");
