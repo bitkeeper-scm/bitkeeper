@@ -123,6 +123,7 @@ fmem_retbuf(FILE *f, size_t *len)
 	/* truncate */
 	fm->buf = 0;
 	fm->len = fm->size = fm->offset = 0;
+	fmem_setvbuf(fm);
 	/*
 	 * NOTE: It is OK to leave fm->buf==0 here.  If the user
 	 * chooses to write again then stdio will allocate it's own
@@ -289,7 +290,7 @@ fmem_tests(void)
 	rc = fclose(f);
 	assert(rc == 0);
 
-	/* write two cars at a time */
+	/* write two chars at a time */
 	f = fmem_open();
 	assert(f);
 	for (i = 0; i < 2000; i++) {
@@ -309,12 +310,16 @@ fmem_tests(void)
 	}
 	p = fmem_retbuf(f, &len);
 	assert(len == 2*i);
+	assert(ftell(f) == 0);
+	fprintf(f, "this shouldn't touch the previous buffer");
 	for (c = 0; c < i; c++) {
 		assert(p[2*c] == 'f');
 		assert(p[2*c+1] == ('0' + (c % 10)));
 	}
 	assert(p[2*c] == 0);
-	assert(ftell(f) == 0);
+	free(p);
+	p = fmem_retbuf(f, &len);
+	assert(streq(p, "this shouldn't touch the previous buffer"));
 	free(p);
 	p = fmem_retbuf(f, &len);
 	assert(streq(p, ""));
