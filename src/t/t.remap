@@ -2,7 +2,7 @@ echo $N Check that BK_NO_REMAP works ................................$NL
 # make a fresh, uncached, unmapped repo
 BK_NO_REMAP=1
 export BK_NO_REMAP
-fresh_commercial project
+fresh_commercial noremap
 unset BK_NO_REMAP
 # This should NOT be bk _test
 test ! -f SCCS/s.ChangeSet && {
@@ -63,6 +63,40 @@ test ! -d comp0/SCCS && {
 	exit 1
 }
 test ! -d comp1/SCCS && {
+	echo failed
+	exit 1
+}
+echo OK
+
+cd ..
+echo $N Verify that a clone from noremap to remap works .............$NL
+bk clone $Q noremap remap || exit 1
+test -d remap/SCCS && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Verify that a clone from remap to noremap works .............$NL
+BK_NO_REMAP=1 bk clone $Q remap noremap2 || exit 1
+test -d noremap2/SCCS || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Verify that a lclone from noremap to remap works ............$NL
+rm -rf remap noremap2
+bk clone -l $Q noremap remap || exit 1
+test -d remap/SCCS && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Verify that a lclone from remap to noremap works ............$NL
+BK_NO_REMAP=1 bk clone -l $Q remap noremap2 || exit 1
+test -d noremap2/SCCS || {
 	echo failed
 	exit 1
 }
