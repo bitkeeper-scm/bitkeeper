@@ -83,12 +83,6 @@ _switch_char(const char *ofn, char *nfn, char ochar, char nchar)
 	return (nfn);
 }
 
-private int
-_exists(char *file)
-{
-	return (GetFileAttributes(file) != INVALID_FILE_ATTRIBUTES);
-}
-
 
 /*
  * Our version of open, does two additional things
@@ -105,7 +99,8 @@ nt_open(const char *filename, int flag, int pmode)
 	if (fd < 0) {
 		save = errno;
 		if ((GetLastError() == ERROR_ACCESS_DENIED) &&
-		    (flag & O_CREAT) && (flag & O_EXCL) && _exists(filename)) {
+		    (flag & O_CREAT) && (flag & O_EXCL) &&
+		    (GetFileAttributes(filename) != INVALID_FILE_ATTRIBUTES)) {
 			errno = EEXIST;
 		} else {
 			errno = save;	/* use errno set by _open */
