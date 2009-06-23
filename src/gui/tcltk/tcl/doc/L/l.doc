@@ -703,15 +703,6 @@ version of C<if (!I<condition>)>.
         ...
     }
 
-The braces are not required except for an else clause that is not
-another C<if> or C<unless>.
-
-=item ?:
-
-L has C's ternary conditional operator:
-
-    max = x > y ? x: y;
-
 =item while
 
     while ( condition ) {
@@ -890,8 +881,8 @@ Without this, you would have to say:
 
 A similar feature is for passing sub-commands to Tcl commands:
 
-    String_length("xyzzy");   // calls string("length", "xyzzy");
-    String_isSpace(s);        // calls string("is", "space", s);
+    String_length("xyzzy");   // like tcl's [string length xyzzy]
+    String_isSpace(s);        // like tcl's [string is space $s]
 
 Whenever the function name is capitalized and contains an underscore,
 the sequence of capitalized names after the underscore are converted
@@ -925,8 +916,7 @@ Let's say this is run from a script named C<script.tcl>:
 
 The L code defines a proc named C<avg> which the Tcl code then calls.
 
-An exception is that C<private> L functions are not callable from Tcl
-because their names are mangled to make them unique.
+An exception is that C<private> L functions are not callable from Tcl.
 
 =head2 Variables
 
@@ -975,8 +965,8 @@ pattern function calls described above.  A widget value behaves like
 a string except in a pattern function call where it is the name
 of the widget to call:
 
-    widget w = "mywidget";
-    Foo_bar(w, a, b);   // calls mywidget(bar, a, b)
+    widget w = Text_new();
+    Text_insert(w, "end", "hi!");   // like tcl's $w insert end hi!
 
 Another feature is useful for calling Tk widgets that take the I<name>
 of a variable whose value is updated when the user changes a widget
@@ -993,7 +983,8 @@ structure members, and array elements in addition to local or global
 variables.
 
 L uses this special bridge whenever the option name ends in
-"variable", as "textvariable" does in the example above.
+"variable", as "textvariable" does in the example above (yes,
+this is a hack).
 
 =head1 OPERATORS
 
@@ -1286,7 +1277,7 @@ C<stdin>, C<stdout>, and C<stderr> are pre-defined.
 
 Return 0 on success, -1 on error.
 
-=proto string fread(FILE f, int numBytes)
+=proto string freadn(FILE f, int numBytes)
 
 Read at most numBytes from the given FILE handle, or read the entire
 file if numBytes == -1.

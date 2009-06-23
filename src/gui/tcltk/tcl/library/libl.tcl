@@ -223,7 +223,7 @@ fprintf(_unused FILE f, _unused string fmt, _unused ...args)
 }
 
 string
-fread(_unused FILE f, _unused int numBytes)
+freadn(_unused FILE f, _unused int numBytes)
 {
 	string	buf;
 
