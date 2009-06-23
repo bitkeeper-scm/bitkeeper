@@ -491,11 +491,15 @@ remap_path(char *path)
 	return (ret);
 }
 
-static void
+private	void
 full_remap_path(char *buf, project *proj, char *rel)
 {
 	int	len;
 
+	unless (proj) {
+		strcpy(buf, rel);
+		return;
+	}
 	concat_path(buf, proj_root(proj), remap_path(rel));
 
 	/* buf may end in /., we'll remove that */
@@ -839,7 +843,8 @@ doidx_rename(project *proj1, char *old, project *proj2, char *new)
 
 	full_remap_path(buf1, proj1, old);
 	full_remap_path(buf2, proj2, new);
-	if (!(rc = rename(buf1, buf2)) && !isSCCS(old) && (proj1 == proj2)) {
+	if (!(rc = rename(buf1, buf2)) &&
+	    proj1 && (proj1 == proj2) && !isSCCS(old)) {
 		/*
 		 * maybe we just did:
 		 *    mv old new

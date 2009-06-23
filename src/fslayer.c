@@ -237,20 +237,13 @@ fslayer_rename(const char *old, const char *new)
 		ret = rename(old, new);
 	} else {
 		noloop  = 1;
-		if (proj1 = findpath(old, &rel1)) {
-			rel1 = strdup(rel1);
-		}
+		proj1 = findpath(old, &rel1);
+		if (rel1) rel1 = strdup(rel1);
 		proj2 = findpath(new, &rel2);
 
-		if (proj1 && proj2) {
-			ret = doidx_rename(proj1, rel1, proj2, rel2);
-		} else {
-			ret = rename(old, new);
-		}
-		if (proj1) {
-			free(rel1);
-			proj_free(proj1);
-		}
+		ret = doidx_rename(proj1, rel1, proj2, rel2);
+		if (rel1) free(rel1);
+		if (proj1) proj_free(proj1);
 		if (proj2) proj_free(proj2);
 		STRACE((strace, "rename(%s, %s) = %d\n", old, new, ret));
 		noloop = 0;
@@ -293,20 +286,13 @@ fslayer_link(const char *old, const char *new)
 		ret = link(old, new);
 	} else {
 		noloop = 1;
-		if (proj1 = findpath(old, &rel1)) {
-			rel1 = strdup(rel1);
-		}
+		proj1 = findpath(old, &rel1);
+		if (rel1) rel1 = strdup(rel1);
 		proj2 = findpath(new, &rel2);
 
-		if (proj1 && proj2) {
-			ret = doidx_link(proj1, rel1, proj2, rel2);
-		} else {
-			ret = link(old, new);
-		}
-		if (proj1) {
-			free(rel1);
-			proj_free(proj1);
-		}
+		ret = doidx_link(proj1, rel1, proj2, rel2);
+		if (rel1) free(rel1);
+		if (proj1) proj_free(proj1);
 		if (proj2) proj_free(proj2);
 		STRACE((strace, "link(%s, %s) = %d\n", old, new, ret));
 		noloop = 0;
@@ -532,19 +518,25 @@ findpathf(const char *file, char **relp)
 	char	pbuf[MAXPATH];
 
 	strcpy(pbuf, file);
-	unless (proj = proj_init(dirname(pbuf))) return (0);
+	unless (proj = proj_init(dirname(pbuf))) {
+noproj:		if (relp) {
+			strcpy(buf, file);
+			*relp = buf;
+		}
+		return (0);
+	}
+	if (proj_hasOldSCCS(proj)) {
+		proj_free(proj);
+		goto noproj;
+	}
 	if (proot = proj_isResync(proj)) {
-		/* 
+		/*
 		 * if in RESYNC, use the project root.
 		 * Next line is like a proj_dup() -- it incs refcnt
 		 */
 		proot = proj_init(proj_root(proot));
 		proj_free(proj);
 		proj = proot;
-	}
-	if (proj_hasOldSCCS(proj)) {
-		proj_free(proj);
-		return (0);
 	}
 	if (relp) {
 		rel = proj_relpath(proj, (char *)file);
@@ -572,19 +564,25 @@ findpathd(const char *dir, char **relp)
 	project	*proj, *proot;
 
 	if (isSymlnk((char *)dir)) return (findpathf(dir, relp));
-	unless (proj = proj_init((char *)dir)) return (0);
+	unless (proj = proj_init((char *)dir)) {
+noproj:		if (relp) {
+			strcpy(buf, dir);
+			*relp = buf;
+		}
+		return (0);
+	}
+	if (proj_hasOldSCCS(proj)) {
+		proj_free(proj);
+		goto noproj;
+	}
 	if (proot = proj_isResync(proj)) {
-		/* 
+		/*
 		 * if in RESYNC, use the project root.
 		 * Next line is like a proj_dup() -- it incs refcnt
 		 */
 		proot = proj_init(proj_root(proot));
 		proj_free(proj);
 		proj = proot;
-	}
-	if (proj_hasOldSCCS(proj)) {
-		proj_free(proj);
-		return (0);
 	}
 	if (relp) {
 		rel = proj_relpath(proj, (char *)dir);

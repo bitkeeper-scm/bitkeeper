@@ -1250,6 +1250,10 @@ proj_hasOldSCCS(project *p)
 	if (p->noremap != -1) return (p->noremap);
 
 	en = fslayer_enable(0);
+	if (p->rparent) {
+		p->noremap = proj_hasOldSCCS(p->rparent);
+		goto out;
+	}
 
 	/* See: Funky rules above */
 	concat_path(buf, p->root, "SCCS");
