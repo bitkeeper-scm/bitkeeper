@@ -172,7 +172,7 @@ getMsgv(char *msg_name, char **bkargs, char *prefix, char b, FILE *outf)
 	}
 	if (found && b) line(b, outf);
 	while (fgets(buf, sizeof(buf), f)) {
-		char	*p;
+		char	*p, *b;
 
 		if (first && (buf[0] == '#')) continue;
 		first = 0;
@@ -184,21 +184,25 @@ getMsgv(char *msg_name, char **bkargs, char *prefix, char b, FILE *outf)
 		 * #BKARG#%d# is the Nth arg.
 		 */
 		if (p = strstr(buf, "#BKARG#")) {
-			*p = 0;
-			p += 7;
-			/* #BKARG#%d# */
-			if (isdigit(*p)) {
-				n = atoi(p);
-				p = strchr(p, '#');
-				assert(p);
-				p++;
-			} else {
-				n = 1;
-			}
-			assert(n <= nLines(bkargs));
-			fputs(buf, outf);
-			fputs(bkargs[n], outf);
-			fputs(p, outf);
+			b = buf;
+			do {
+				*p = 0;
+				p += 7;
+				/* #BKARG#%d# */
+				if (isdigit(*p)) {
+					n = atoi(p);
+					p = strchr(p, '#');
+					assert(p);
+					p++;
+				} else {
+					n = 1;
+				}
+				assert(n <= nLines(bkargs));
+				fputs(b, outf);
+				fputs(bkargs[n], outf);
+				b = p;
+			} while (p = strstr(b, "#BKARG#"));
+			fputs(b, outf);
 		} else if (p = strstr(buf, "#BKEXEC#")) {
 			if (f1 = popen(&p[8], "r")) {
 				while (fgets(buf, sizeof (buf), f1)) {

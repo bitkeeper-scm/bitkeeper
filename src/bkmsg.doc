@@ -1405,3 +1405,6 @@ remote version of BitKeeper, or use:
   bk clone -r<rev> <remote-URL> <local-temp-repo>
   bk pull <local-temp-repo>
 $
+#test-args
+lead:#BKARG##BKARG#1##BKARG#2# #BKARG#3#BKARG#2#BKARG#:trail
+$

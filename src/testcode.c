@@ -62,6 +62,26 @@ filtertest2_main(int ac, char **av)
 	return (0);
 }
 
+void
+getMsg_tests(void)
+{
+	char	**args, *p;
+	FILE	*f;
+
+	f = fmem_open();
+	assert(f);
+	args = addLine(0, "-one+");
+	args = addLine(args, "-two+");
+	args = addLine(args, "-three+");
+	args = addLine(args, "-four+");
+	getMsgv("test-args", args, 0, 0, f);
+	p = fmem_retbuf(f, 0);
+	assert(streq(p, "lead:-one+-one+-two+ -three+BKARG#2-one+:trail\n"));
+	free(p);
+	fclose(f);
+	freeLines(args, 0);
+}
+
 /* run specialized code tests */
 int
 unittests_main(int ac, char **av)
@@ -69,5 +89,6 @@ unittests_main(int ac, char **av)
 	if (av[1]) return (1);
 
 	fmem_tests();
+	getMsg_tests();
 	return (0);
 }
