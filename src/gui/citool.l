@@ -68,18 +68,18 @@ typedef	struct	sfile {
 				    // becomes 1 after the first button press
 				    // signaling that we're ready to commit
 	int	doDiscard;	    // switch to require clicking discard twice
-	string	w_top;		    // toplevel window widget
-	string	w_upperF;	    // upper frame widget
-	string	w_lowerF;	    // lower frame widget
-	string	w_fileF;	    // scrolled window that holds the file list
-	string	w_files;	    // file list box
-	string	w_commentF;	    // scrolled window that holds the comments
-	string	w_comments;	    // comments text box
-	string	w_diffs;	    // diffs (lower) text box
-	string	w_buttons;	    // frame that holds the buttons
-	string	w_statusF;	    // status bar frame
-	string	w_status;	    // status label on the bottom of the window
-	string	w_progress;	    // progress bar on the status bar
+	widget	w_top;		    // toplevel window widget
+	widget	w_upperF;	    // upper frame widget
+	widget	w_lowerF;	    // lower frame widget
+	widget	w_fileF;	    // scrolled window that holds the file list
+	widget	w_files;	    // file list box
+	widget	w_commentF;	    // scrolled window that holds the comments
+	widget	w_comments;	    // comments text box
+	widget	w_diffs;	    // diffs (lower) text box
+	widget	w_buttons;	    // frame that holds the buttons
+	widget	w_statusF;	    // status bar frame
+	widget	w_status;	    // status label on the bottom of the window
+	widget	w_progress;	    // progress bar on the status bar
     // }
 
 string
@@ -89,7 +89,7 @@ bk(string cmdline)
 	string	result;
 
 	fd = popen("bk ${cmdline}", "r");
-	result = fread(fd, -1);
+	result = freadn(fd, -1);
 	catch("close ${fd}");
 	return(trim(result));
 }
@@ -277,7 +277,7 @@ readSfilesOutput()
 
 	sfiles_reading = 1;
 	seek(fd, pos, "start");
-	data = fread(fd, -1);
+	data = freadn(fd, -1);
 	unless (defined(data)) {
 		fclose(fd);
 		return;
@@ -406,7 +406,7 @@ configureButton(string buttonName, ...args)
 void
 insertTopText(string text, int clearTextBox)
 {
-	string	textbox = w_comments;
+	widget	textbox = w_comments;
 	string	state = Text_cget(textbox, state:);
 
 	Text_configure(textbox, state: "normal");
@@ -420,7 +420,7 @@ insertTopText(string text, int clearTextBox)
 void
 insertBottomText(string text, int clearTextBox)
 {
-	string	textbox = w_diffs;
+	widget	textbox = w_diffs;
 	string	state = Text_cget(textbox, state:);
 
 	Text_configure(textbox, state: "normal");
@@ -500,8 +500,8 @@ gui()
 	    selectfill: 1, selectforeground: "white");
 	ScrolledWindow_setwidget(w_fileF, w_files);
 	// grid("configure", "${w_fileF}.vscroll", rowspan: 2);
-	ListBox_bindText(w_files, "<1>", "selectFile");
-	ListBox_bindImage(w_files, "<1>", "toggleFile");
+	::ListBox::bindText(w_files, "<1>", "selectFile");
+	::ListBox::bindImage(w_files, "<1>", "toggleFile");
 
 	ScrolledWindow(w_commentF, background: gc("BG"), auto: "none");
 	grid(w_commentF, row: 1, column: 0, sticky: "nesw");
@@ -530,12 +530,12 @@ gui()
 	    text: "Edit", menu: "${w_buttons}.edit.menu");
 	pack("${w_buttons}.edit", side: "top", fill: "x");
 	menu("${w_buttons}.edit.menu", tearoff: 0);
-	Menu_add("${w_buttons}.edit.menu", "command",
+	Menu_add((widget)"${w_buttons}.edit.menu", "command",
 	    label: "Fmtool", command: "launchFmtool");
-	Menu_add("${w_buttons}.edit.menu", "command",
+	Menu_add((widget)"${w_buttons}.edit.menu", "command",
 	    label: "TK editor", command: "launchTkEditor");
 	if (gc("x11")) {
-		Menu_add("${w_buttons}.edit.menu",
+		Menu_add((widget)"${w_buttons}.edit.menu",
 		    "command", label: "Xterm editor",
 		    command: "launchXtermEditor");
 	}
@@ -715,7 +715,7 @@ void
 updateButtons()
 {
 	sfile	sf = getSelectedFile();
-	string	b, buttons[] = winfo_children(w_buttons);
+	widget	b, buttons[] = winfo_children(w_buttons);
 
 	foreach (b in buttons) {
 		Button_configure(b, state: "normal");
@@ -910,7 +910,7 @@ void
 quit()
 {
 	int	x, y;
-	string	top = ".c";
+	widget	top = ".c";
 	string	bg = gc("ci.saveBG");
 	string	image;
 
@@ -1069,8 +1069,8 @@ showFile(sfile sf)
 
 	if (sf.type eq "cset") {
 		string	node, nodes[];
-		string	listBox = w_files;
-		string	textBox = w_diffs;
+		widget	listBox = w_files;
+		widget	textBox = w_diffs;
 
 		if (cnt_commented == 0) {
 			bottomMessage(msgs{"noFileComments"}, "warning");
