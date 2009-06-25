@@ -1682,12 +1682,12 @@ compile_fnCall(Expr *expr)
 				/* Compile as foo(opts,a,b,c). */
 				// a
 				push_str(foo->u.string);
-				// a foo
-				TclEmitInstInt1(INST_ROT, 1, L->frame->envPtr);
-				// foo a
 				num_parms = push_parms(opts);
-				// foo a <opts>
-				TclEmitInstInt1(INST_ROT, nopts,
+				ASSERT(num_parms == nopts);
+				// a foo <opts>
+				TclEmitInstInt1(isexpand(expr->b)?
+						    INST_EXPAND_ROT : INST_ROT,
+						nopts + 1,
 						L->frame->envPtr);
 				// foo <opts> a
 				expr->b = expr->b->next;

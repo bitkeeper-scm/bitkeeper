@@ -9651,6 +9651,252 @@ pattern_1_2();
 .*11: L Error: too many arguments for function Pattern122_foo
 }
 
+test pattern-1.3 {check pattern function call with (expand) args} -body {
+#lang L
+string pattern13(...args)
+{
+	poly	p;
+	string	ret = "pattern13";
+	foreach (p in args) ret .= " ${p}";
+	return (ret);
+}
+void pattern_1_3()
+{
+	int	i;
+	string	got, want;
+	string	args[], args2[];
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args);
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 1.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, "a");
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 2.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, "a", "b");
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b";
+		unless (got eq want) {
+			printf("bad 3.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, "a", "b", "c");
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b c";
+		unless (got eq want) {
+			printf("bad 4.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar((expand)args);
+		want = "pattern13 foo bar";
+		if (length(args)) want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 5.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar((expand)args, "a");
+		want = "pattern13 foo bar";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 6.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar((expand)args, "a", "b");
+		want = "pattern13 foo bar";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b";
+		unless (got eq want) {
+			printf("bad 7.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar((expand)args, "a", "b", "c");
+		want = "pattern13 foo bar";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b c";
+		unless (got eq want) {
+			printf("bad 8.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBarBaz((expand)args);
+		want = "pattern13 foo bar baz";
+		if (length(args)) want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 9.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBarBaz((expand)args, "a");
+		want = "pattern13 foo bar baz";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 10.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBarBaz((expand)args, "a", "b");
+		want = "pattern13 foo bar baz";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b";
+		unless (got eq want) {
+			printf("bad 11.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBarBaz((expand)args, "a", "b", "c");
+		want = "pattern13 foo bar baz";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b c";
+		unless (got eq want) {
+			printf("bad 12.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	args2 = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, (expand)args2, "a");
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 20.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	args2 = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, (expand)args2, "a");
+		want = "pattern13 foo";
+		if (length(args))  want .= " " . join(" ", args);
+		if (length(args2)) want .= " " . join(" ", args2);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 20.2 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+		args2[END+1] = (string)(i*100);
+	}
+
+	args = {};
+	args2 = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, "a", (expand)args2);
+		want = "pattern13 foo";
+		if (length(args))  want .= " " . join(" ", args);
+		want .= " a";
+		if (length(args2)) want .= " " . join(" ", args2);
+		unless (got eq want) {
+			printf("bad 20.3 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+		args2[END+1] = (string)(i*100);
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo("a", (expand)args);
+		want = "pattern13 foo a";
+		if (length(args))  want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 21.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo("a", "b", (expand)args);
+		want = "pattern13 foo a b";
+		if (length(args))  want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 21.2 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar("a", (expand)args);
+		want = "pattern13 foo bar a";
+		if (length(args))  want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 21.3 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar("a", "b", (expand)args);
+		want = "pattern13 foo bar a b";
+		if (length(args))  want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 21.4 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+	}
+}
+pattern_1_3();
+} -output {}
+
 test include-1.0 {include files} -setup {
 	set fname [makeFile {
 			++include_1_0;

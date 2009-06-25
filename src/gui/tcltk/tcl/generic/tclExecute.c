@@ -2754,6 +2754,28 @@ TclExecuteByteCode(
 	NEXT_INST_F(5, 0, 0);
     }
 
+    case INST_EXPAND_ROT: {
+	int depth;
+	int opnd = TclGetUInt1AtPtr(pc+1);
+	Tcl_Obj *objPtr = auxObjList;
+	char *save;
+
+	if (objPtr == NULL) {
+	    TRACE(("%u => error: aux stack empty", opnd));
+	    result = TCL_ERROR;
+	    goto checkForCatch;
+	}
+	depth = CURR_DEPTH - (int)objPtr->internalRep.twoPtrValue.ptr1;
+	save = ckalloc(opnd * sizeof(Tcl_Obj *));
+	memmove(save, &OBJ_AT_DEPTH(opnd-1), opnd*sizeof(Tcl_Obj *));
+	memmove(&OBJ_AT_DEPTH(depth-opnd-1), &OBJ_AT_DEPTH(depth-1),
+		(depth-opnd)*sizeof(Tcl_Obj *));
+	memmove(&OBJ_AT_DEPTH(depth-1), save, opnd*sizeof(Tcl_Obj *));
+	ckfree(save);
+	TRACE(("%u %u =>", opnd, depth));
+	NEXT_INST_F(2, 0, 0);
+    }
+
     case INST_EXPR_STK: {
 	/*
 	 * Moved here to support transforming the eval of an expression to
