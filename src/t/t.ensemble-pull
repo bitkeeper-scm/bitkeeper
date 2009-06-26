@@ -259,6 +259,11 @@ do
 done
 cd "$HERE"/remote
 bk commit $Q -y"remote gcc"
+cd "$HERE"/local
+echo junk > fff
+bk new $Q fff
+bk commit $Q -y'new file'
+bk tag $Q OLD
 cd "$HERE"/local/gcc
 for i in 6 7 8 9
 do
@@ -281,7 +286,8 @@ mkdir BitKeeper/triggers
 cat <<EOF > BitKeeper/triggers/post-commit.bug
 #!/bin/sh
 
-bk changes -vr+ -nd:DPN:@:REV: > "$HERE"/commit.log || exit 1
+bk changes -v -r+ -nd:DPN:@:REV: > "$HERE"/commit.log 2>&1 || exit 1
+bk changes -v -rOLD -nd:DPN:@:REV: >> "$HERE"/commit.log 2>&1 || exit 1
 EOF
 chmod +x BitKeeper/triggers/post-commit.bug
 bk pull $Q || {
@@ -301,6 +307,9 @@ ChangeSet@1.7
 amerge@1.3
 gcc/ChangeSet@1.9
 gcc/file1@1.3
+ChangeSet@1.5.1.1
+fff@1.1
+fff@1.0
 EOF
 
 cmpfiles "$HERE"/commit.log WANT

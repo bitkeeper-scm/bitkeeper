@@ -731,8 +731,8 @@ sccs_keyinitAndCache(project *proj, char *key, int flags, MDBM *idDB, MDBM *grap
 	 * in the original tree.
 	 * NOTE: nothing here is optimized
 	 */
-	if (!s && proj_isComponent(proj) &&
-	    (prod = proj_isResync(proj_product(proj)))) {
+	if (!s && (prod = proj_product(proj)) &&
+	    (prod = proj_isResync(prod))) {
 		here = strdup(proj_cwd());
 		chdir(proj_root(prod));
 		idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
