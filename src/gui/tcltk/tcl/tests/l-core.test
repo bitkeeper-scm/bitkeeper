@@ -718,6 +718,16 @@ void cmdsubst_1()
 cmdsubst_1();
 } -output {}
 
+test cmdsubst-2 {test command substitution errors} -body {
+#lang L
+void cmdsubst_2()
+{
+	string	s = `a-nonexistent-command arg`;
+	if (defined(s)) puts("bad 1");
+}
+cmdsubst_2();
+} -output {}
+
 test proc-1.0 {Test L function definition.} -body {
 #lang L
 void proc_1_0(void) {

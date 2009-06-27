@@ -1945,8 +1945,7 @@ compile_unOp(Expr *expr)
 		expr->type = L_poly;
 		break;
 	    case L_OP_CMDSUBST:
-		TclEmitOpcode(INST_EXPAND_START, L->frame->envPtr);
-		push_str("::exec");
+		push_str("::system");
 		if (expr->a) {
 			compile_expr(expr->a, L_PUSH_VAL);
 			push_str(expr->u.string);
@@ -1954,12 +1953,7 @@ compile_unOp(Expr *expr)
 		} else {
 			push_str(expr->u.string);
 		}
-		/* ::exec wants an argv list, so split the cmd string. */
-		TclEmitInstInt1(INST_L_SPLIT, 1, L->frame->envPtr);
-		TclEmitInstInt4(INST_EXPAND_STKTOP,
-				L->frame->envPtr->currStackDepth,
-				L->frame->envPtr);
-		emit_invoke_expanded();
+		emit_invoke(2);
 		expr->type = L_string;
 		break;
 	    default:

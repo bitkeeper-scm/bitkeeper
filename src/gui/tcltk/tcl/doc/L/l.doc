@@ -1170,7 +1170,7 @@ modeled after the standard C library and/or Perl.
 Execute the command (the string enclosed within back-ticks) and
 substitute its output as the value of the expression.  The command is
 executed using the Tcl C<exec> command which understands I/O
-re-direction and pipes.
+re-direction and pipes.  On error, the value is undef.
 
 =proto int abs(int val)
 
