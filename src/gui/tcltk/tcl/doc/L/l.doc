@@ -299,7 +299,10 @@ it already has:
     push(&animals, "tiger");
 
 The & means that animals is passed by reference, because it will
-be changed.  This is discussed more later.
+be changed.  This is discussed more later.  You also can push
+more than one element at a time:
+
+    push(&animals, "bear", "mouse", "lemur");
 
 Another way to append:
 
@@ -749,7 +752,7 @@ array:
         printf("This char is %s\n", char);
     }
 
-If you want to stride through more than one array or character in
+If you want to stride through more than one array element or character in
 each iteration, just use a list of value variables instead of one:
 
     foreach (e1,e2,e3 in myarray) {
@@ -759,6 +762,16 @@ each iteration, just use a list of value variables instead of one:
 If the array or string length isn't a multiple of three, the
 stragglers get the value undef on the last iteration.  Strides
 work only for arrays and strings, not hashes.
+
+After completing the loop and falling through, all loop counters
+become undefined (they get the C<undef> value).  If the loop
+is prematurely ended with a C<break> or by jumping out of the
+loop with a C<goto>, the loop counters keep their values.
+
+=item break and continue
+
+L has C<break> and C<continue> statements that behave like C's.
+They work in all L loops including C<foreach> loops.
 
 =item goto
 
@@ -1440,10 +1453,10 @@ command.  Return the FILE handle on success, or undef on error.
 Format arguments and print to stdout, as in printf(3).
 Return 0 on success, -1 on error.
 
-=proto void push(type &array[], type element)
+=proto void push(type &array[], type element1, type element2, ...)
 
 Push one or more elements onto the end of C<array>.  Equivalent to
-saying array[length(array)] = element.
+saying array[END+1] = element1, array[END+1] = element2, ...
 
 =proto type pop(type &array[])
 

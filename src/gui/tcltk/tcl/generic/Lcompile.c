@@ -430,10 +430,10 @@ compile_clsDecl(ClsDecl *clsdecl)
 	frame_resumeBody();
 
 	compile_varDecls(clsdecl->clsvars);
-	compile_fnDecl(clsdecl->constructor, FN_PROTO_AND_BODY);
-	compile_fnDecl(clsdecl->destructor, FN_PROTO_AND_BODY);
 	/* Process function decls first, then compile the bodies. */
 	compile_fnDecls(clsdecl->fns, FN_PROTO_ONLY);
+	compile_fnDecl(clsdecl->constructor, FN_PROTO_AND_BODY);
+	compile_fnDecl(clsdecl->destructor, FN_PROTO_AND_BODY);
 	compile_fnDecls(clsdecl->fns, FN_PROTO_AND_BODY);
 
 	frame_pop();
@@ -1183,23 +1183,18 @@ compile_split(Expr *expr)
 private int
 compile_push(Expr *expr)
 {
-	int	idx;
+	int	i, idx;
 	Expr	*arg, *array;
 
-	unless (expr->b && expr->b->next && !expr->b->next->next) {
+	unless (expr->b && expr->b->next) {
 		L_errf(expr, "incorrect # arguments to push");
 		goto done;
 	}
 	array = expr->b->a;
 	arg   = expr->b->next;
 	compile_expr(array, L_DISCARD);
-	compile_expr(arg, L_PUSH_VAL);
 	unless (isaddrof(expr->b) && array && (isarray(array)||ispoly(array))) {
 		L_errf(expr, "first arg to push not an array reference (&)");
-		goto done;
-	}
-	unless (L_typeck_compat(array->type->base_type, arg->type)) {
-		L_errf(expr, "pushing incompatible type onto array");
 		goto done;
 	}
 	unless (array->sym) {
@@ -1207,12 +1202,21 @@ compile_push(Expr *expr)
 		goto done;
 	}
 	idx = array->sym->idx;  // local slot # for array
-	if (idx <= 255) {
-		TclEmitInstInt1(INST_LAPPEND_SCALAR1, idx, L->frame->envPtr);
-	} else {
-		TclEmitInstInt4(INST_LAPPEND_SCALAR4, idx, L->frame->envPtr);
+	for (i = 2; arg; arg = arg->next, ++i) {
+		compile_expr(arg, L_PUSH_VAL);
+		unless (L_typeck_compat(array->type->base_type, arg->type)) {
+			L_errf(expr,
+			 "arg #%d to push has type incompatible with array", i);
+		}
+		if (idx <= 255) {
+			TclEmitInstInt1(INST_LAPPEND_SCALAR1, idx,
+					L->frame->envPtr);
+		} else {
+			TclEmitInstInt4(INST_LAPPEND_SCALAR4, idx,
+					L->frame->envPtr);
+		}
+		emit_pop();
 	}
-	emit_pop();
  done:
 	expr->type = L_void;
 	return (0);  // stack effect
@@ -1556,7 +1560,7 @@ ispatternfn(char *name, Expr **foo, Expr **Foo_star, Expr **opts, int *nopts)
 	*Foo_star = ast_mkId(buf, 0, 0);
 	ckfree(buf);
 
-	/* Build a list of bar,Baz,Blech nodes from barBazBlech. */
+	/* Build a list of bar,baz,blech nodes from barBazBlech. */
 	++p;
 	*opts  = NULL;
 	*nopts = 0;
@@ -1595,12 +1599,12 @@ ispatternfn(char *name, Expr **foo, Expr **Foo_star, Expr **opts, int *nopts)
  * - If Foo_bar happens to be a declared function, handle as above.
  *
  * - If the function Foo_* is defined, change the call to
- *   Foo_*(bar,Baz,Blech,a,b,c).
+ *   Foo_*(bar,baz,blech,a,b,c).
  *
  * - If "a" is not of widget type, change the call to
- *   foo(bar,Baz,Blech,a,b,c).
+ *   foo(bar,baz,blech,a,b,c).
  *
- * - If "a" is a widget type, change the call to *a(bar,Baz,Blech,b,c)
+ * - If "a" is a widget type, change the call to *a(bar,baz,blech,b,c)
  *   where *a means that the value of the argument "a" becomes the
  *   function name.
  */
@@ -2850,6 +2854,16 @@ compile_foreachArray(ForEach *loop)
 			TclUpdateInstInt1AtPc(INST_JUMP1, -jumpBackDist,jumpPc);
 		}
 	}
+
+	/* Set the value variables to undef. */
+	TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+	for (var = loop->key; var; var = var->next) {
+		Sym *s = sym_lookup(var, 0);
+		ASSERT(s);
+		emit_store_scalar(s->idx);
+	}
+	emit_pop();
+
 	fixup_jmps(break_jumps);
 }
 
@@ -2924,6 +2938,13 @@ compile_foreachHash(ForEach *loop)
 	/* All done.  Cleanup the values that DICT_FIRST/DICT_NEXT left. */
 	emit_pop();
 	emit_pop();
+
+	/* Set key and/or value counters to undef. */
+	TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+	emit_store_scalar(key->idx);
+	if (val) emit_store_scalar(val->idx);
+	emit_pop();
+
 	fixup_jmps(break_jumps);
 	/* XXX We need to ensure that DICT_DONE happens in the face of
 	   exceptions, so that the refcount on the dict will be
@@ -3008,6 +3029,14 @@ compile_foreachString(ForEach *loop)
 	TclEmitOpcode(INST_LT, L->frame->envPtr);
 	jmp_dist = currOffset(L->frame->envPtr) - body_off;
 	TclEmitInstInt4(INST_JUMP_TRUE4, -jmp_dist, L->frame->envPtr);
+
+	/* Set the loop counters to undef. */
+	TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+	for (id = loop->key; id; id = id->next) {
+		emit_store_scalar(id->sym->idx);
+	}
+	emit_pop();
+
 	fixup_jmps(break_jmps);
 }
 
@@ -3863,8 +3892,20 @@ sym_store(VarDecl *decl)
 			if (hPtr) Tcl_DeleteHashEntry(hPtr);
 			L->mains_ast = L->ast;
 		} else if (hPtr) {
-			L_errf(decl, "multiple declaration of global %s", name);
-			return (NULL);
+			if (decl->flags & DECL_EXTERN) {
+				sym = (Sym *)Tcl_GetHashValue(hPtr);
+				if (L_typeck_same(decl->type, sym->type)) {
+					return (sym);
+				}
+				L_errf(decl,
+				       "extern re-declaration type does not "
+				       "match other declaration");
+				return (NULL);
+			} else {
+				L_errf(decl,
+				    "multiple declaration of global %s", name);
+				return (NULL);
+			}
 		}
 		break;
 	    case SCOPE_CLASS:
