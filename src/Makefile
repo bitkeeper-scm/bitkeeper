@@ -274,7 +274,7 @@ clean: FORCE
 	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		bkver.h tclkey.h core *.bb *.bbg *.da *.gcov \
-		bk.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
+		bk.ico Academic.lic Basic.lic Pro.lic \
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
@@ -431,11 +431,6 @@ import: import.sh port/$(SYS)_platform.sh
 	cat port/$(SYS)_platform.sh import.sh > import.T
 	chmod +x import.T
 	mv -f import.T import
-
-logging.o: bkl5_hashs.h
-
-bkl5_hashs.h: mk_bkl5_license_tab.pl  USED_BKL5_LICENSES
-	perl mk_bkl5_license_tab.pl  USED_BKL5_LICENSES > $@
 
 # Quick and dirty target so we can make all the gui tools without the rest
 GUI: tclwrap FORCE
