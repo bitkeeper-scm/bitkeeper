@@ -2711,9 +2711,11 @@ fixup_jmps(Jmp *j)
 		jmp_pc = L->frame->envPtr->codeStart + j->offset;
 		switch (j->size) {
 		    case 1:
+			ASSERT(*jmp_pc == j->op);
 			TclUpdateInstInt1AtPc(j->op, target, jmp_pc);
 			break;
 		    case 4:
+			ASSERT(*jmp_pc == j->op);
 			TclUpdateInstInt4AtPc(j->op, target, jmp_pc);
 			break;
 		    default:
@@ -2759,9 +2761,7 @@ compile_foreachArray(ForEach *loop)
 	Expr		*var;
 	ForeachInfo	*info;
 	ForeachVarList	*varlist;
-	unsigned char	*jumpPc;
-	JumpFixup	jumpFalseFixup;
-	Jmp		*break_jumps, *continue_jumps;
+	Jmp		*break_jumps, *continue_jumps, *false_jump;
 	int		jumpBackDist, jumpBackOffset, infoIndex;
 
 	/*
@@ -2816,7 +2816,7 @@ compile_foreachArray(ForEach *loop)
 	/* Top of the loop.  Step, and jump out if done. */
 	continue_off = currOffset(L->frame->envPtr);
 	TclEmitInstInt4(INST_FOREACH_STEP4, infoIndex, L->frame->envPtr);
-	TclEmitForwardJump(L->frame->envPtr, TCL_FALSE_JUMP, &jumpFalseFixup);
+	false_jump = emit_jmp_fwd(INST_JUMP_FALSE4);
 
 	/* Loop body. */
 	frame_push(loop, NULL, LOOP|SEARCH);
@@ -2835,19 +2835,7 @@ compile_foreachArray(ForEach *loop)
 		TclEmitInstInt1(INST_JUMP1, -jumpBackDist, L->frame->envPtr);
 	}
 
-	/* Fixup jumps. */
-	if (TclFixupForwardJumpToHere(L->frame->envPtr, &jumpFalseFixup, 127)) {
-		/* Update the jump back to the loop top since it also
-		   moved down. */
-		jumpBackOffset += 3;
-		jumpPc = (L->frame->envPtr->codeStart + jumpBackOffset);
-		jumpBackDist += 3;
-		if (jumpBackDist > 120) {
-			TclUpdateInstInt4AtPc(INST_JUMP4, -jumpBackDist,jumpPc);
-		} else {
-			TclUpdateInstInt1AtPc(INST_JUMP1, -jumpBackDist,jumpPc);
-		}
-	}
+	fixup_jmps(false_jump);
 
 	/* Set the value variables to undef. */
 	TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
