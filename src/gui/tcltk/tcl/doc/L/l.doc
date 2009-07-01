@@ -947,16 +947,13 @@ from Tcl code.  Here is an example from the L library:
         }
     }
 
-In the Tcl code, C<$path> refers to the L formal parameter C<path>,
+In this Tcl code, C<$path> refers to the L formal parameter C<path>,
 and the L local C<sz> is set to the file size.  This example also
 illustrates how you can use Tcl's exception-handling facility
 to catch an exception raised within some Tcl code.
 
-An exception is that L global names are mangled with a prepended
-underscore (_), so to access the L global C<foo> from Tcl, you need
-to refer to C<$_foo>.  Another exception is that private L global
-names are mangled so much (to make them unique) that they are
-not accessible from Tcl.
+An exception is that private L global names are mangled (to
+make them unique per-file) so they are not accessible from Tcl.
 
 =head2 Namespaces
 
