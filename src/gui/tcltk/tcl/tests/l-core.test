@@ -6519,17 +6519,49 @@ This was a string.
 
 test reference-1.1 {L references} -body {
 #lang L
-struct reference_1_1_point { int x, y; };
-
-void reference_1_1() {
-  struct reference_1_1_point a = { 0, 0 };
-  unless ((a.x == 0) && (a.y == 0)) puts("bad 1");
-  reference_1_1_tweak(&a);
-  unless ((a.x == 2) && (a.y == 0)) puts("bad 2");
+private int global;
+int ref_11_global;
+struct reference_1_1_point {
+	int x, y;
+};
+private void setvar(int &var, int val)
+{
+	var = val;
 }
+class ref_11_cls {
+	public	int cpub;
+	instance {
+		public	int cinst;
+	}
+	constructor ref_11_cls_new()
+	{
+		setvar(&cpub, 123);
+		unless (cpub == 123) puts("bad c.1");
+		setvar(&cinst, 456);
+		unless (cinst == 456) puts("bad c.2");
+	}
+}
+void reference_1_1()
+{
+	ref_11_cls	o;
+	struct reference_1_1_point a = { 0, 0 };
 
-void reference_1_1_tweak(struct reference_1_1_point &foo) {
-  foo->x = 2;
+	unless ((a.x == 0) && (a.y == 0)) puts("bad 1");
+	reference_1_1_tweak(&a);
+	unless ((a.x == 2) && (a.y == 0)) puts("bad 2");
+
+	o = ref_11_cls_new();
+	unless (ref_11_cls->cpub == 123) puts("bad 3.1");
+	unless (o->cinst == 456) puts("bad 3.2");
+
+	setvar(&global, 789);
+	unless (global == 789) puts("bad 4.1");
+	setvar(&ref_11_global, 1100);
+	unless (ref_11_global == 1100) puts("bad 4.2");
+}
+void reference_1_1_tweak(struct reference_1_1_point &foo)
+{
+	foo->x = 2;
 }
 reference_1_1();
 } -output {}
@@ -6651,6 +6683,41 @@ class pointer_1_cls {
 	instance {
 		public	string si;
 		public	string sia[];
+	}
+	constructor pointer_1_cls_new()
+	{
+		si = "testing";
+		chk(textvariable: &si, si, "new");
+		unless (si eq "new") puts("bad c1.1");
+		si = "testing2";
+		chk(textvariable: &si, si, "new2");
+		unless (si eq "new2") puts("bad c1.2");
+		self->si = "testing3";
+		chk(textvariable: &self->si, self->si, "new3");
+		unless (si eq "new3") puts("bad c1.3");
+		self->si = "testing4";
+		chk(textvariable: &self->si, self->si, "new4");
+		unless (si eq "new4") puts("bad c1.4");
+
+		sia[3] = "testing";
+		chk(textvariable: &sia[3], sia[3], "new");
+		unless (sia[3] eq "new") puts("bad c2.1");
+		sia[3] = "testing2";
+		chk(textvariable: &sia[3], sia[3], "new2");
+		unless (sia[3] eq "new2") puts("bad c2.2");
+
+		s = "testing";
+		chk(textvariable: &s, s, "new");
+		unless (s eq "new") puts("bad c4.1");
+		s = "testing2";
+		chk(textvariable: &s, s, "new2");
+		unless (s eq "new2") puts("bad c4.2");
+		pointer_1_cls->s = "testing3";
+		chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new3");
+		unless (pointer_1_cls->s eq "new3") puts("bad c4.3");
+		pointer_1_cls->s = "testing4";
+		chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new4");
+		unless (pointer_1_cls->s eq "new4") puts("bad c4.4");
 	}
 }
 private pointer_1_cls g_obj;

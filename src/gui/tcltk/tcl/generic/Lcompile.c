@@ -427,6 +427,7 @@ compile_clsDecl(ClsDecl *clsdecl)
 	push_str("::L::_class_%s", clsdecl->decl->id->u.string);
 	push_str("variable __num 0");
 	emit_invoke(4);
+	emit_pop();
 	frame_resumeBody();
 
 	compile_varDecls(clsdecl->clsvars);
@@ -568,6 +569,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		ASSERT(clsdecl && clsname && self_sym);
 		push_str("::L::_class_%s::__num", clsname);
 		TclEmitInstInt1(INST_INCR_STK_IMM, 1, L->frame->envPtr);
+		emit_pop();
 		push_str("::namespace");
 		push_str("eval");
 		push_str("::L::_instance_%s", clsname);
@@ -577,6 +579,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		emit_store_scalar(self_sym->idx);
 		push_str("");
 		emit_invoke(4);
+		emit_pop();
 		frame_resumeBody();
 		compile_varDecls(clsdecl->instvars);
 	}
@@ -608,6 +611,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		push_str("delete");
 		emit_load_scalar(self_sym->idx);
 		emit_invoke(3);
+		emit_pop();
 	}
 
 	/*
@@ -1382,6 +1386,7 @@ compile_assert(Expr *expr)
 	push_str("ASSERTION FAILED %s:%d: %s\n", expr->node.file,
 		 expr->node.line, cond_txt);
 	emit_invoke(2);
+	emit_pop();
 	ckfree(cond_txt);
 	fixup_jmps(jmp);
 	expr->type = L_void;
@@ -1840,8 +1845,9 @@ push_pointer(Expr *expr)
 		} else if (!e->a->sym) {
 			// Undeclared var; compile_expr() already issued error.
 		} else if (e->a->sym->decl->flags &
-			   (DECL_GLOBAL_VAR | DECL_LOCAL_VAR | DECL_TEMP)) {
-			emit_pop();
+			   (DECL_GLOBAL_VAR | DECL_LOCAL_VAR |
+			    DECL_CLASS_INST_VAR | DECL_TEMP)) {
+			emit_pop();  // throw away val b/c we want the name
 			push_str(e->a->sym->tclname);
 			push_index(e);
 			emit_invoke(4);
@@ -1915,7 +1921,8 @@ compile_unOp(Expr *expr)
 		if (!(expr->a->flags & L_EXPR_DEEP) &&
 		    (expr->a->sym && (expr->a->sym->decl->flags &
 				      (DECL_FN | DECL_GLOBAL_VAR |
-				       DECL_LOCAL_VAR | DECL_TEMP)))) {
+				       DECL_LOCAL_VAR | DECL_CLASS_VAR |
+				       DECL_CLASS_INST_VAR | DECL_TEMP)))) {
 			push_str(expr->a->sym->tclname);
 			expr->type = type_mkNameOf(expr->a->type, PER_INTERP);
 		} else {

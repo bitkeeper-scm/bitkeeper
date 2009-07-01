@@ -7912,34 +7912,12 @@ TclExecuteByteCode(
 	}
 #endif
 
-	/*
-	 * If the local pointed to a shared object when it was indexed, the
-	 * INST_L_INDEX code made an un-shared copy of the obj and cached it
-	 * in deepPtr.  In that case, update the local to point to the
-	 * un-shared copy; the old value loses a refcnt and the new value
-	 * (toplevObj) gains one.  In any case, the new value always loses one
-	 * refcnt from deepPtr.
-	 */
 	varPtr = &(compiledLocals[idx]);
 	while (TclIsVarLink(varPtr)) {
 	    varPtr = varPtr->value.linkPtr;
 	}
 	currTopLevObj = varPtr->value.objPtr;
-	if (currTopLevObj != newTopLevObj) {  // update the local only if needed
-	    if (TclIsVarDirectWritable(varPtr)) {
-		varPtr->value.objPtr = newTopLevObj;
-	    } else {
-		DECACHE_STACK_INFO();
-		if (!TclPtrSetVar(interp, varPtr, NULL, NULL, NULL,
-				  newTopLevObj, TCL_LEAVE_ERR_MSG, idx)) {
-		    Tcl_Panic("could not set var in INST_L_DEEP_WRITE");
-		}
-		CACHE_STACK_INFO();
-	    }
-	    if (currTopLevObj != NULL) {
-		TclDecrRefCount(currTopLevObj);
-	    }
-	} else {
+	if (currTopLevObj == newTopLevObj) {
 	    TclDecrRefCount(newTopLevObj);  // drop ref from deepPtr
 	}
 #ifdef TCL_COMPILE_DEBUG
@@ -8002,6 +7980,38 @@ TclExecuteByteCode(
 		*(deepPtr->elemPtrPtr) = rvalObj;
 	    }
 	}
+
+	/*
+	 * If the local pointed to a shared object when it was indexed, the
+	 * INST_L_INDEX code made an un-shared copy of the obj and cached it
+	 * in deepPtr.  In that case, update the local to point to the
+	 * un-shared copy; the old value loses a refcnt and the new value
+	 * (newToplevObj) gains one.  In any case, the new value always loses
+	 * one refcnt from deepPtr.
+	 */
+	if (currTopLevObj != newTopLevObj) {  // update the local only if needed
+	    if (TclIsVarDirectWritable(varPtr)) {
+		varPtr->value.objPtr = newTopLevObj;
+		// newTopLevObj loses one ref from deepPtr and gains one from
+		// varPtr so no change.
+		if (currTopLevObj != NULL) {
+		    TclDecrRefCount(currTopLevObj);
+		}
+	    } else {
+		DECACHE_STACK_INFO();
+		if (!TclPtrSetVar(interp, varPtr, NULL, NULL, NULL,
+				  newTopLevObj, TCL_LEAVE_ERR_MSG, idx)) {
+		    Tcl_Panic("could not set var in INST_L_DEEP_WRITE");
+		}
+		CACHE_STACK_INFO();
+		TclDecrRefCount(newTopLevObj);  // drop ref from deepPtr
+	    }
+	}
+#ifdef TCL_COMPILE_DEBUG
+	if (newTopLevObj->refCount != 1) {
+	    Tcl_Panic("Deep writing a bad newTopLevObj refCount!");
+	}
+#endif
 
 	switch (flags & (L_PUSH_OLD|L_PUSH_NEW|L_DELETE)) {
 	    case L_PUSH_OLD:
