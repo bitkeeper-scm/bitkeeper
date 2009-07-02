@@ -1967,14 +1967,68 @@ void syntax_1_2() {
 syntax_1_2
 } -output "syntax_1_2.\nfoo bar ASDF baz zot\n"
 
-test syntax-1.3 {keywords} -body {
+test syntax-1.3 {tcl options short-cut} -body {
 #lang L
-void syntax_1_3() {
-	printf("%s, %s, %s\n", foo: "bar", baz:);
+private string args(...args)
+{
+	return(join(" ", args));
 }
-#lang tcl
-syntax_1_3
-} -output "-foo, bar, -baz\n"
+void syntax_1_3()
+{
+	/*
+	 * Test the Tcl option syntax (option:), and specifically that
+	 * it works even with reserved words.  The scanner includes
+	 * the colon when scanning these just for this reason.
+	 */
+
+	unless (args(one:) eq "-one") puts("bad 1");
+	unless (args(one: "x") eq "-one x") puts("bad 2");
+	unless (args(one:,"x") eq "-one x") puts("bad 3");
+	unless (args(one: "x","y") eq "-one x y") puts("bad 4");
+	unless (args(one:,"x","y") eq "-one x y") puts("bad 5");
+	unless (args(one: "x", two:) eq "-one x -two") puts("bad 6");
+	unless (args(one:,"x", two:) eq "-one x -two") puts("bad 7");
+	unless (args(one:,"x", two: "y") eq "-one x -two y") puts("bad 8");
+	unless (args(one:,"x", two:,"y") eq "-one x -two y") puts("bad 9");
+	unless (args(one:, two:) eq "-one -two") puts("bad 10");
+	unless (args(one:, two:, three:) eq "-one -two -three") puts("bad 11");
+
+	unless (args(break:) eq "-break") puts("bad 20");
+	unless (args(class:) eq "-class") puts("bad 21");
+	unless (args(constructor:) eq "-constructor") puts("bad 22");
+	unless (args(continue:) eq "-continue") puts("bad 23");
+	unless (args(destructor:) eq "-destructor") puts("bad 24");
+	unless (args(do:) eq "-do") puts("bad 25");
+	unless (args(else:) eq "-else") puts("bad 26");
+	unless (args(eq:) eq "-eq") puts("bad 27");
+	unless (args(expand:) eq "-expand") puts("bad 28");
+	unless (args(extern:) eq "-extern") puts("bad 29");
+	unless (args(float:) eq "-float") puts("bad 30");
+	unless (args(for:) eq "-for") puts("bad 31");
+	unless (args(foreach:) eq "-foreach") puts("bad 32");
+	unless (args(ge:) eq "-ge") puts("bad 33");
+	unless (args(goto:) eq "-goto") puts("bad 34");
+	unless (args(gt:) eq "-gt") puts("bad 35");
+	unless (args(if:) eq "-if") puts("bad 36");
+	unless (args(instance:) eq "-instance") puts("bad 37");
+	unless (args(int:) eq "-int") puts("bad 38");
+	unless (args(le:) eq "-le") puts("bad 39");
+	unless (args(lt:) eq "-lt") puts("bad 40");
+	unless (args(ne:) eq "-ne") puts("bad 41");
+	unless (args(poly:) eq "-poly") puts("bad 42");
+	unless (args(private:) eq "-private") puts("bad 43");
+	unless (args(public:) eq "-public") puts("bad 44");
+	unless (args(return:) eq "-return") puts("bad 45");
+	unless (args(split:) eq "-split") puts("bad 46");
+	unless (args(string:) eq "-string") puts("bad 47");
+	unless (args(struct:) eq "-struct") puts("bad 48");
+	unless (args(typedef:) eq "-typedef") puts("bad 49");
+	unless (args(unless:) eq "-unless") puts("bad 50");
+	unless (args(void:) eq "-void") puts("bad 51");
+	unless (args(while:) eq "-while") puts("bad 52");
+}
+syntax_1_3();
+} -output {}
 
 test syntax-1.4 {string appendation} -body {
 #lang L

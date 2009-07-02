@@ -337,6 +337,11 @@ include_pop()
 					return T_ID;
 				}
 			}
+	{ID}:		{
+				L_lval.s = ckstrdup(yytext);
+				L_lval.s[yyleng-1] = 0;  // strip the :
+				return T_ID_COLON;
+			}
 	([A-Z]|::)([0-9a-zA-Z]|::)*_\*	{
 				L_lval.s = ckstrdup(yytext);
 				return T_PATTERN;

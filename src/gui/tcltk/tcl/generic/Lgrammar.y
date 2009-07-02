@@ -119,6 +119,7 @@ extern int	L_lex (void);
 %token T_GREATEREQ ">="
 %token T_GT "gt"
 %token <s> T_ID "id"
+%token <s> T_ID_COLON "id:"
 %token T_IF "if"
 %token T_INSTANCE "instance"
 %token T_INT "int"
@@ -180,7 +181,7 @@ extern int	L_lex (void);
 %left LOWEST
 // The next four %nonassoc lines are defined to resolve a conflict with
 // labeled statements (see the stmt nonterm).
-%nonassoc T_IF T_UNLESS T_RETURN T_ID T_STR_LITERAL T_LEFT_INTERPOL
+%nonassoc T_IF T_UNLESS T_RETURN T_ID T_ID_COLON T_STR_LITERAL T_LEFT_INTERPOL
 %nonassoc T_STR_BACKTICK T_INT_LITERAL T_FLOAT_LITERAL T_TYPE T_WHILE
 %nonassoc T_FOR T_DO T_DEFINED T_STRING T_FOREACH T_BREAK T_CONTINUE
 %nonassoc T_SPLIT T_GOTO T_WIDGET
@@ -460,15 +461,15 @@ fundecl_tail1:
 	;
 
 stmt:
-	  T_ID ":" stmt
+	  T_ID_COLON stmt
 	{
 		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1.beg, @2.end);
 		$$->u.label = $1;
-		$$->next = $3;
+		$$->next = $2;
 	}
-	| T_ID ":" %prec LOWEST
+	| T_ID_COLON %prec LOWEST
 	{
-		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1.beg, @2.end);
+		$$ = ast_mkStmt(L_STMT_LABEL, NULL, @1.beg, @1.end);
 		$$->u.label = $1;
 	}
 	| unlabeled_stmt
@@ -683,17 +684,17 @@ parameter_decl:
 
 argument_expr_list:
 	  expr %prec T_COMMA
-	| T_ID ":"
+	| T_ID_COLON
 	{
-		$$ = ast_mkConst(L_string, @1.beg, @2.end);
+		$$ = ast_mkConst(L_string, @1.beg, @1.end);
 		$$->u.string = cksprintf("-%s", $1);
 	}
-	| T_ID ":" expr %prec T_COMMA
+	| T_ID_COLON expr %prec T_COMMA
 	{
-		Expr *e = ast_mkConst(L_string, @1.beg, @2.end);
+		Expr *e = ast_mkConst(L_string, @1.beg, @1.end);
 		e->u.string = cksprintf("-%s", $1);
-		$3->next = e;
-		$$ = $3;
+		$2->next = e;
+		$$ = $2;
 		$$->node.beg = @1.beg;
 	}
 	| argument_expr_list "," expr
@@ -702,22 +703,22 @@ argument_expr_list:
 		$$ = $3;
 		$$->node.end = @3.end;
 	}
-	| argument_expr_list "," T_ID ":"
+	| argument_expr_list "," T_ID_COLON
 	{
-		Expr *e = ast_mkConst(L_string, @3.beg, @4.end);
+		Expr *e = ast_mkConst(L_string, @3.beg, @3.end);
 		e->u.string = cksprintf("-%s", $3);
 		e->next = $1;
 		$$ = e;
-		$$->node.end = @4.end;
+		$$->node.end = @3.end;
 	}
-	| argument_expr_list "," T_ID ":" expr %prec T_COMMA
+	| argument_expr_list "," T_ID_COLON expr %prec T_COMMA
 	{
-		Expr *e = ast_mkConst(L_string, @3.beg, @4.end);
+		Expr *e = ast_mkConst(L_string, @3.beg, @3.end);
 		e->u.string = cksprintf("-%s", $3);
-		$5->next = e;
+		$4->next = e;
 		e->next = $1;
-		$$ = $5;
-		$$->node.end = @5.end;
+		$$ = $4;
+		$$->node.end = @4.end;
 	}
 	;
 
