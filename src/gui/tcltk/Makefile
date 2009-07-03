@@ -357,7 +357,7 @@ mkapp: FORCE
 bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) bin/bkgui$(EXE) mkapp
 	$(MAKE) -C tcl/macosx XLIBS="$(LIBTOMCRYPT)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --disable-info-body \
-	    --enable-pcre --with-pcre=../../../pcre/local \
+	    --enable-pcre=default --with-pcre=../../../pcre/local \
 	    --with-tommath=$(TOMMATH)" embedded
 	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT)" embedded
