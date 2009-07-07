@@ -7,7 +7,6 @@ _bk.w_main = ".citool.lower.diffs";
 _bk.w_search = ".citool.lower.diffs";
 
 extern string filename;
-extern string errorCode;
 extern int edit_busy;
 edit_busy = 0;
 
@@ -24,27 +23,24 @@ typedef	struct	sfile {
 	int	excluded;	// file is excluded or not?
 } sfile;
 
-// class citool {
-    // Class variables.
-    int	    _initialized;
-    string  msgs{string};	    // standard messages
-    string  img_new;	    // Tk image for new/extra files
-    string  img_cset;	    // Tk image for the changeset file
-    string  img_done;	    // Tk image for files that are ready to go
-    string  img_exclude;	    // Tk image for files to exclude from cset
-    string  img_modified;	    // Tk image for modified by not commented
+int	    _initialized;
+string  msgs{string};	    // standard messages
+string  img_new;	    // Tk image for new/extra files
+string  img_cset;	    // Tk image for the changeset file
+string  img_done;	    // Tk image for files that are ready to go
+string  img_exclude;	    // Tk image for files to exclude from cset
+string  img_modified;	    // Tk image for modified by not commented
 
-    // Instance variables.
-    // instance {
+struct {
 	int	argc;		    // argc from the command line
 	string	argv[];		    // argv from the command line
 	string	cwd;		    // current directory
 	string	root;		    // root directory of the repo
 	int	resolve;	    // is this commit from the resolver
 	int	partial;	    // is this a partial commit from resolve
-	int	nfiles = 0;	    // number of files in repo
+	int	nfiles;		    // number of files in repo
 	int	pos;		    // current position in sfiles output file
-	int	inProduct;	    // whether we're in a product or not
+	int	nested;		    // are we dealing with a nested repo?
 	int	sfiles_last;	    // last count of sfiles read
 	int	sfiles_done;	    // total count of sfiles read
 	int	sfiles_reading;	    // lock variable for reading sfiles output
@@ -80,7 +76,7 @@ typedef	struct	sfile {
 	string	w_statusF;	    // status bar frame
 	string	w_status;	    // status label on the bottom of the window
 	string	w_progress;	    // progress bar on the status bar
-    // }
+} self;
 
 string
 bk(string cmdline)
@@ -103,58 +99,22 @@ joinpath(...args)
 int
 getNumFiles()
 {
-	int	i = 0;
-	int	nftime, cstime;
-	FILE	fd;
-	string	result;
-	int	nfiles = 0;
-	string	nfilestr;
-
 	setStatus("Getting file count...");
+	return ((int)bk("nfiles"));
+}
 
-	result = bk("product");
+int
+nested()
+{
+	string	res = bk("product");
 
-	if ((result eq "") || (result eq "This is a component.")
-	    || catch("exec bk components here", &result)) {
-		if (exists("BitKeeper/log/NFILES")
-		    && exists("SCCS/s.ChangeSet")) {
-			nftime = mtime("BitKeeper/log/NFILES");
-			cstime = mtime("SCCS/s.ChangeSet");
-			if (nftime > cstime) {
-				fd = fopen("BitKeeper/log/NFILES", "r");
-				nfilestr = fgetline(fd);
-				fclose(fd);
-				if (defined(nfiles)) return ((int)nfilestr);
-			}
-		}
-	} else {
-		string	line, lines[] = split(result, "\n");
-
-		inProduct = 1;
-		foreach (line in lines) {
-			string	file = joinpath(line, "BitKeeper/log/NFILES");
-
-			components[i++] = joinpath(root, line);
-			if (exists(file)) {
-				fd = fopen(file, "r");
-				nfilestr = fgetline(fd);
-				fclose(fd);
-				if (defined(nfilestr)) nfiles += (int)nfilestr;
-			}
-		}
-	}
-	unless (nfiles) {
-		nfilestr = bk("-R prs -hr+ -nd:HASHCOUNT: ChangeSet");
-		if (defined(nfilestr)) nfiles += (int)nfilestr;
-	}
-	components[i] = root;
-	return (nfiles);
+	return (res ne "");
 }
 
 string
 getSelectedNode()
 {
-	return (ListBox_selection(w_files, "get"));
+	return (ListBox_selection(self.w_files, "get"));
 }
 
 sfile
@@ -165,16 +125,17 @@ getSelectedFile()
 	
 	node = getSelectedNode();
 	if (node ne "") {
-		file = ListBox_itemcget(w_files, node, data:);
-		return (files{file});
+		file = ListBox_itemcget(self.w_files, node, data:);
+		return (self.files{file});
 	}
 }
 
 string
 getRelativePath(string path, string root)
 {
-	if (root eq "") root = root;
-	return (regsub("^${root}/", path, ""));
+	if (root eq "") root = self.root;
+	path =~ s|^${root}/||;
+	return (path);
 }
 
 void
@@ -183,37 +144,37 @@ insertFile(sfile sf)
 	string	img = sf.icon;
 	string	idx = "end";
 
-	unless (partial) {
+	unless (self.partial) {
 		idx = "end-1";
 	}
 
-	sf.component = sfiles_component;
+	sf.component = self.sfiles_component;
 	if (sf.type eq "new") {
-		++cnt_new;
-		++cnt_total;
+		++self.cnt_new;
+		++self.cnt_total;
 	} else if (sf.type eq "pending") {
-		++cnt_pending;
-		++cnt_total;
+		++self.cnt_pending;
+		++self.cnt_total;
 	} else if (sf.type eq "modified") {
-		++cnt_modified;
-		++cnt_total;
+		++self.cnt_modified;
+		++self.cnt_total;
 	}
 	if (isUserComment(sf, sf.comments)) {
 		img = img_done;
 	}
-	sf.node = ListBox_insert(w_files, idx, "#auto",
+	sf.node = ListBox_insert(self.w_files, idx, "#auto",
 	    text: sf.name, image: img, data: sf.name);
 	if ((sf.type ne "cset") && (sf.comments ne "")) {
 		updateCommentCount(sf, 1);
 	}
-	files{sf.name} = sf;
-	if (cnt_total == 1) moveNext();
+	self.files{sf.name} = sf;
+	if (self.cnt_total == 1) moveNext();
 }
 
 void
 insertPending(sfile sf)
 {
-	FILE	fd = popen("bk sfiles -gpA ${sf.file}", "r");
+	FILE	fd = popen("bk sfiles -gpA \"${sf.file}\"", "r");
 	string	line;
 	string	name = sf.name;
 	string	comments;
@@ -221,7 +182,7 @@ insertPending(sfile sf)
 	while (defined(line = fgetline(fd))) {
 		FILE	cfd;
 
-		line =~ /(.*)|(.*)/;
+		line =~ /(.*)\|(.*)/;
 		comments = "";
 		sf.rev = $2;
 		sf.name = "${name}@${sf.rev}";
@@ -245,23 +206,23 @@ readSfilesProgress(FILE fd)
 		// list = {sfiles, extras, dirs, changed}
 		int	list[4] = (int[])line;
 
-		if (list[0] != sfiles_last) {
-			sfiles_done += list[0] - sfiles_last;
-			sfiles_last = list[0];
-			if (nfiles > 0) {
-				Progressbar_configure(w_progress, value:
-				    (100 * sfiles_done) / nfiles);
+		if (list[0] != self.sfiles_last) {
+			self.sfiles_done += list[0] - self.sfiles_last;
+			self.sfiles_last = list[0];
+			if (self.nfiles > 0) {
+				Progressbar_configure(self.w_progress, value:
+				    (100 * self.sfiles_done) / self.nfiles);
 			}
-			if (!sfiles_reading
-			    && (size(tmpsfile) > pos)) {
+			if (!self.sfiles_reading
+			    && (size(self.tmpsfile) > self.pos)) {
 				readSfilesOutput();
 			}
 		}
 	} else {
 		fclose(fd);
 		readSfilesOutput();
-		pos = 0;
-		sfiles_last = 0;
+		self.pos = 0;
+		self.sfiles_last = 0;
 		set("::done", 1);
 	}
 }
@@ -272,11 +233,11 @@ readSfilesOutput()
 	int	len;
 	int	extra, modified, pending, hasComments;
 	string	file, data, line, lines[];
-	FILE	fd = fopen(tmpsfile, "r");
+	FILE	fd = fopen(self.tmpsfile, "r");
 	sfile	sf;
 
-	sfiles_reading = 1;
-	seek(fd, pos, "start");
+	self.sfiles_reading = 1;
+	seek(fd, self.pos, "start");
 	data = fread(fd, -1);
 	unless (defined(data)) {
 		fclose(fd);
@@ -288,7 +249,7 @@ readSfilesOutput()
 		seek(fd, length(lines[len-1]) * -1, "current");
 		lines = lrange(lines, 0, "end-1");
 	}
-	pos = tell(fd);
+	self.pos = tell(fd);
 	fclose(fd);
 
 	foreach (line in lines) {
@@ -298,7 +259,7 @@ readSfilesOutput()
 		pending = line[3] eq "p";
 		hasComments = line[6] eq "y";
 		sf.file = file;
-		sf.name = getRelativePath(file, root);
+		sf.name = getRelativePath(file, self.root);
 		sf.ignored = 0;
 		sf.excluded = 0;
 		sf.comments = "";
@@ -325,7 +286,7 @@ readSfilesOutput()
 
 		insertFile(sf);
 	}
-	sfiles_reading = 0;
+	self.sfiles_reading = 0;
 	updateStatus();
 }
 
@@ -334,9 +295,9 @@ findFiles()
 {
 	FILE	fd;
 	sfile	sf;
-	string	cmd = "bk sfiles -vgxcyp -o${tmpsfile} ";
+	string	cmd = "bk sfiles -vgxcyp -o${self.tmpsfile} ";
 
-	unless (partial) {
+	unless (self.partial) {
 		sf.type = "cset";
 		sf.name = "ChangeSet";
 		sf.file = "ChangeSet";
@@ -347,36 +308,36 @@ findFiles()
 		insertFile(sf);
 	}
 
-	if (inProduct) {
+	if (self.nested) {
 		string	comp;
 
-		foreach (comp in components) {
-			cd(comp);
+		foreach (comp in self.components) {
+			chdir(comp);
 			setenv("_BK_PREFIX", "${comp}/");
-			sfiles_component = comp;
+			self.sfiles_component = comp;
 			fd = popen(cmd, "r");
 			fconfigure(fd, blocking: 0, buffering: "line");
 			fileevent(fd, "readable", "readSfilesProgress ${fd}");
 			vwait("::done");
-			cd(root);
+			chdir(self.root);
 		}
-		sfiles_component = "";
+		self.sfiles_component = "";
 		setenv("_BK_PREFIX", "");
 	} else {
-		append(&cmd, argv);
+		append(&cmd, self.argv);
 		fd = popen(cmd, "r");
 		fconfigure(fd, blocking: 0, buffering: "line");
 		fileevent(fd, "readable", "readSfilesProgress ${fd}");
 		vwait("::done");
 	}
 
-	if (cnt_total == 0) {
+	if (self.cnt_total == 0) {
 		bk_error("No files found", "No files found to checkin");
 		exit();
 	}
 
-	Progressbar_configure(w_progress, value: 100);
-	StatusBar_remove(w_statusF, w_progress,
+	Progressbar_configure(self.w_progress, value: 100);
+	StatusBar_remove(self.w_statusF, self.w_progress,
 	    background: gc("BG"));
 	updateStatus();
 	updateButtons();
@@ -385,7 +346,7 @@ findFiles()
 void
 addButton(string buttonName, string text, string command)
 {
-	string	path = "${w_buttons}.${buttonName}";
+	string	path = "${self.w_buttons}.${buttonName}";
 
 	button(path,
 	    font: gc("ci.buttonFont"),
@@ -398,7 +359,7 @@ addButton(string buttonName, string text, string command)
 void
 configureButton(string buttonName, ...args)
 {
-	string	path = "${w_buttons}.${buttonName}";
+	string	path = "${self.w_buttons}.${buttonName}";
 
 	eval("${path}", "configure", args);
 }
@@ -406,7 +367,7 @@ configureButton(string buttonName, ...args)
 void
 insertTopText(string text, int clearTextBox)
 {
-	string	textbox = w_comments;
+	string	textbox = self.w_comments;
 	string	state = Text_cget(textbox, state:);
 
 	Text_configure(textbox, state: "normal");
@@ -420,7 +381,7 @@ insertTopText(string text, int clearTextBox)
 void
 insertBottomText(string text, int clearTextBox)
 {
-	string	textbox = w_diffs;
+	string	textbox = self.w_diffs;
 	string	state = Text_cget(textbox, state:);
 
 	Text_configure(textbox, state: "normal");
@@ -434,29 +395,29 @@ insertBottomText(string text, int clearTextBox)
 void
 scrollToBottom()
 {
-	Text_see(w_diffs, "end");
+	Text_see(self.w_diffs, "end");
 }
 
 void
 topMessage(string message, string tag)
 {
-	Text_configure(w_comments, state: "normal");
-	Text_delete(w_comments, 1.0, "end");
-	Text_insert(w_comments, "end", message, tag);
-	Text_insert(w_comments, "end", "\n", tag);
-	Text_configure(w_comments, state: "disabled");
+	Text_configure(self.w_comments, state: "normal");
+	Text_delete(self.w_comments, 1.0, "end");
+	Text_insert(self.w_comments, "end", message, tag);
+	Text_insert(self.w_comments, "end", "\n", tag);
+	Text_configure(self.w_comments, state: "disabled");
 }
 
 void
 bottomMessage(string message, string tag)
 {
-	string	state = Text_cget(w_diffs, state:);
+	string	state = Text_cget(self.w_diffs, state:);
 
-	Text_configure(w_diffs, state: "normal");
-	Text_delete(w_diffs, 1.0, "end");
-	Text_insert(w_diffs, "end", message, tag);
-	Text_insert(w_diffs, "end", "\n", tag);
-	Text_configure(w_diffs, state: state);
+	Text_configure(self.w_diffs, state: "normal");
+	Text_delete(self.w_diffs, 1.0, "end");
+	Text_insert(self.w_diffs, "end", message, tag);
+	Text_insert(self.w_diffs, "end", "\n", tag);
+	Text_configure(self.w_diffs, state: state);
 }
 
 void
@@ -464,18 +425,18 @@ gui()
 {
 	string	top = ".citool";
 
-	w_top      = top;
-	w_upperF   = "${top}.upper";
-	w_fileF    = "${top}.upper.files";
-	w_files    = "${top}.upper.files.l";
-	w_commentF = "${top}.upper.comments";
-	w_comments = "${top}.upper.comments.t";
-	w_buttons  = "${top}.upper.buttons";
-	w_lowerF   = "${top}.lower";
-	w_diffs    = "${top}.lower.diffs";
-	w_statusF  = "${top}.status";
-	w_status   = "${top}.status.text";
-	w_progress = "${top}.status.progress";
+	self.w_top      = top;
+	self.w_upperF   = "${top}.upper";
+	self.w_fileF    = "${top}.upper.files";
+	self.w_files    = "${top}.upper.files.l";
+	self.w_commentF = "${top}.upper.comments";
+	self.w_comments = "${top}.upper.comments.t";
+	self.w_buttons  = "${top}.upper.buttons";
+	self.w_lowerF   = "${top}.lower";
+	self.w_diffs    = "${top}.lower.diffs";
+	self.w_statusF  = "${top}.status";
+	self.w_status   = "${top}.status.text";
+	self.w_progress = "${top}.status.progress";
 
 	toplevel(top, background: gc("BG"));
 	wm("withdraw", top);
@@ -485,57 +446,57 @@ gui()
 	grid("rowconfigure", top, 1, weight: 1);
 	grid("columnconfigure", top, 0, weight: 1);
 
-	frame(w_upperF, background: gc("BG"));
-	grid(w_upperF, row: 0, column: 0, sticky: "ew");
+	frame(self.w_upperF, background: gc("BG"));
+	grid(self.w_upperF, row: 0, column: 0, sticky: "ew");
 
-	grid("rowconfigure", w_upperF, 0, weight: 1);
-	grid("columnconfigure", w_upperF, 0, weight: 1);
+	grid("rowconfigure", self.w_upperF, 0, weight: 1);
+	grid("columnconfigure", self.w_upperF, 0, weight: 1);
 
-	ScrolledWindow(w_fileF, background: gc("BG"), auto: "none");
-	grid(w_fileF, row: 0, column: 0, sticky: "ew");
+	ScrolledWindow(self.w_fileF, background: gc("BG"), auto: "none");
+	grid(self.w_fileF, row: 0, column: 0, sticky: "ew");
 
-	ListBox(w_files, font: gc("ci.fixedFont"),
+	ListBox(self.w_files, font: gc("ci.fixedFont"),
 	    background: gc("ci.listBG"), foreground: gc("ci.textFG"),
 	    height: gc("ci.filesHeight"), padx: 20, deltay: 20,
 	    selectfill: 1, selectforeground: "white");
-	ScrolledWindow_setwidget(w_fileF, w_files);
-	// grid("configure", "${w_fileF}.vscroll", rowspan: 2);
-	ListBox_bindText(w_files, "<1>", "selectFile");
-	ListBox_bindImage(w_files, "<1>", "toggleFile");
+	ScrolledWindow_setwidget(self.w_fileF, self.w_files);
+	// grid("configure", "${self.w_fileF}.vscroll", rowspan: 2);
+	ListBox_bindText(self.w_files, "<1>", "selectFile");
+	ListBox_bindImage(self.w_files, "<1>", "toggleFile");
 
-	ScrolledWindow(w_commentF, background: gc("BG"), auto: "none");
-	grid(w_commentF, row: 1, column: 0, sticky: "nesw");
+	ScrolledWindow(self.w_commentF, background: gc("BG"), auto: "none");
+	grid(self.w_commentF, row: 1, column: 0, sticky: "nesw");
 
-	text(w_comments, relief: "sunken", borderwidth: 1,
+	text(self.w_comments, relief: "sunken", borderwidth: 1,
 	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 1,
 	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
 	    width: 70, height: gc("ci.commentsHeight"), state: "disabled");
-	ScrolledWindow_setwidget(w_commentF,w_comments);
-	bind(w_comments, "<KeyRelease>", "commentChanged");
-	Text_tag(w_comments, "configure", "message",
+	ScrolledWindow_setwidget(self.w_commentF, self.w_comments);
+	bind(self.w_comments, "<KeyRelease>", "commentChanged");
+	Text_tag(self.w_comments, "configure", "message",
 	    background: gc("ci.noticeColor"));
-	Text_tag(w_comments, "configure", "warning",
+	Text_tag(self.w_comments, "configure", "warning",
 	    background: gc("ci.warnColor"));
 
-	frame(w_buttons, background: gc("BG"));
-	grid(w_buttons, row: 0, column: 1,
+	frame(self.w_buttons, background: gc("BG"));
+	grid(self.w_buttons, row: 0, column: 1,
 	    rowspan: 2, sticky: "ne");
 	addButton("cut", "Cut", "cutComments");
 	addButton("paste", "Paste", "pasteComments");
 	configureButton("paste", state: "disabled");
 	addButton("checkin", "Checkin", "doCommit");
-	menubutton("${w_buttons}.edit",
+	menubutton("${self.w_buttons}.edit",
 	    background: gc("ci.buttonColor"), highlightthickness: 1,
 	    indicatoron: 1, font: gc("ci.buttonFont"), relief: "raised",
-	    text: "Edit", menu: "${w_buttons}.edit.menu");
-	pack("${w_buttons}.edit", side: "top", fill: "x");
-	menu("${w_buttons}.edit.menu", tearoff: 0);
-	Menu_add("${w_buttons}.edit.menu", "command",
+	    text: "Edit", menu: "${self.w_buttons}.edit.menu");
+	pack("${self.w_buttons}.edit", side: "top", fill: "x");
+	menu("${self.w_buttons}.edit.menu", tearoff: 0);
+	Menu_add("${self.w_buttons}.edit.menu", "command",
 	    label: "Fmtool", command: "launchFmtool");
-	Menu_add("${w_buttons}.edit.menu", "command",
+	Menu_add("${self.w_buttons}.edit.menu", "command",
 	    label: "TK editor", command: "launchTkEditor");
 	if (gc("x11")) {
-		Menu_add("${w_buttons}.edit.menu",
+		Menu_add("${self.w_buttons}.edit.menu",
 		    "command", label: "Xterm editor",
 		    command: "launchXtermEditor");
 	}
@@ -545,38 +506,38 @@ gui()
 	addButton("help", "Help", "launchHelptool");
 	addButton("quit", "Quit", "quit");
 
-	ScrolledWindow(w_lowerF, background: gc("BG"), auto: "none");
-	grid(w_lowerF, row: 1, column: 0, sticky: "nesw");
+	ScrolledWindow(self.w_lowerF, background: gc("BG"), auto: "none");
+	grid(self.w_lowerF, row: 1, column: 0, sticky: "nesw");
 
-	text(w_diffs, relief: "sunken", borderwidth: 1,
+	text(self.w_diffs, relief: "sunken", borderwidth: 1,
 	    font: gc("ci.fixedFont"), wrap: "none", highlightthickness: 1,
 	    background: gc("ci.textBG"), foreground: gc("ci.textFG"),
 	    width: 81, height: gc("ci.diffHeight"), state: "disabled");
-	ScrolledWindow_setwidget(w_lowerF, w_diffs);
-	Text_tag(w_diffs, "configure", "newTag",
+	ScrolledWindow_setwidget(self.w_lowerF, self.w_diffs);
+	Text_tag(self.w_diffs, "configure", "newTag",
 	    background: gc("ci.newColor"));
-	Text_tag(w_diffs, "configure", "oldTag",
+	Text_tag(self.w_diffs, "configure", "oldTag",
 	    background: gc("ci.oldColor"));
-	Text_tag(w_diffs, "configure", "warning",
+	Text_tag(self.w_diffs, "configure", "warning",
 	    background: gc("ci.warnColor"));
-	Text_tag(w_diffs, "configure", "notice",
+	Text_tag(self.w_diffs, "configure", "notice",
 	    background: gc("ci.noticeColor"));
 
 	if (gc("aqua")) {
-		StatusBar(w_statusF, showresize: 0, background: gc("BG"));
-		grid(w_statusF, row: 2, column: 0, sticky: "ew",
+		StatusBar(self.w_statusF, showresize: 0, background: gc("BG"));
+		grid(self.w_statusF, row: 2, column: 0, sticky: "ew",
 		    padx: "0 15");
 	} else {
-		StatusBar(w_statusF, background: gc("BG"));
-		grid(w_statusF, row: 2, column: 0, sticky: "ew");
+		StatusBar(self.w_statusF, background: gc("BG"));
+		grid(self.w_statusF, row: 2, column: 0, sticky: "ew");
 	}
 
-	label(w_status, anchor: "w",
+	label(self.w_status, anchor: "w",
 	    background: gc("BG"),
 	    font: gc("ci.fixedFont"));
-	StatusBar_add(w_statusF, w_status, sticky: "ew", weight: 1);
-	ttk::progressbar(w_progress);
-	StatusBar_add(w_statusF, w_progress,
+	StatusBar_add(self.w_statusF, self.w_status, sticky: "ew", weight: 1);
+	ttk::progressbar(self.w_progress);
+	StatusBar_add(self.w_statusF, self.w_progress,
 	    separator: 0, sticky: "e");
 	updateStatus();
 
@@ -597,30 +558,30 @@ void
 selectFile(string node)
 {
 	string	sel = getSelectedNode();
-	string	file = ListBox_itemcget(w_files, node, data:);
+	string	file = ListBox_itemcget(self.w_files, node, data:);
 
 	filename = file;
 	if (sel ne "") {
 		saveComments();
 	}
 
-	commitSwitch = 0;
-	doDiscard = 0;
-	ListBox_selection(w_files, "set", node);
-	ListBox_see(w_files, node);
+	self.commitSwitch = 0;
+	self.doDiscard = 0;
+	ListBox_selection(self.w_files, "set", node);
+	ListBox_see(self.w_files, node);
 	updateButtons();
-	showFile(files{file});
+	showFile(self.files{file});
 }
 
 void
 refreshSelectedFile()
 {
 	string	node = getSelectedNode();
-	int	yview[] = Text_yview(w_diffs);
+	int	yview[] = Text_yview(self.w_diffs);
 	int	y = yview[0];
 
 	selectFile(node);
-	Text_yview(w_diffs, "moveto", y);
+	Text_yview(self.w_diffs, "moveto", y);
 }
 
 void
@@ -630,11 +591,11 @@ commentChanged()
 	string	comments = getCurrentComments();
 
 	if ((comments eq "") && (sf.comments ne "")) {
-		files{sf.name}.comments = comments;
+		self.files{sf.name}.comments = comments;
 		updateCommentCount(sf, -1);
 		redrawFile(sf.node);
 	} else if ((comments ne "") && (sf.comments eq "")) {
-		files{sf.name}.comments = comments;
+		self.files{sf.name}.comments = comments;
 		updateCommentCount(sf, 1);
 		redrawFile(sf.node);
 	}
@@ -643,21 +604,21 @@ commentChanged()
 void
 redrawFile(string node)
 {
-	string	file = ListBox_itemcget(w_files, node, data:);
-	sfile	sf = files{file};
+	string	file = ListBox_itemcget(self.w_files, node, data:);
+	sfile	sf = self.files{file};
 
-	if (files{file}.excluded) {
-		ListBox_itemconfigure(w_files, node,
+	if (self.files{file}.excluded) {
+		ListBox_itemconfigure(self.w_files, node,
 		    image: img_exclude);
-	} else if (isUserComment(sf, files{file}.comments)) {
-		ListBox_itemconfigure(w_files, node,
+	} else if (isUserComment(sf, self.files{file}.comments)) {
+		ListBox_itemconfigure(self.w_files, node,
 		    image: img_done);
 	} else {
-		ListBox_itemconfigure(w_files, node,
-		    image: files{file}.icon);
+		ListBox_itemconfigure(self.w_files, node,
+		    image: self.files{file}.icon);
 	}
-	if (files{file}.ignored) {
-		ListBox_itemconfigure(w_files, node,
+	if (self.files{file}.ignored) {
+		ListBox_itemconfigure(self.w_files, node,
 		    foreground: "gray");
 	}
 	updateStatus();
@@ -667,8 +628,8 @@ redrawFile(string node)
 void
 toggleFile(string node)
 {
-	string	file = ListBox_itemcget(w_files, node, data:);
-	sfile	sf = files{file};
+	string	file = ListBox_itemcget(self.w_files, node, data:);
+	sfile	sf = self.files{file};
 
 	if (sf.type eq "cset") return;
 	if ((sf.type eq "new") && (sf.comments eq "")) {
@@ -676,16 +637,16 @@ toggleFile(string node)
 		updateCommentCount(sf, 1);
 	} else {
 		if (sf.excluded) {
-			files{file}.excluded = 0;
-			--cnt_excluded;
+			self.files{file}.excluded = 0;
+			--self.cnt_excluded;
 		} else {
-			files{file}.excluded = 1;
-			++cnt_excluded;
+			self.files{file}.excluded = 1;
+			++self.cnt_excluded;
 		}
 	}
 	redrawFile(node);
 	if (node eq getSelectedNode()) {
-		ListBox_selection(w_files, "clear");
+		ListBox_selection(self.w_files, "clear");
 		selectFile(node);
 	}
 }
@@ -704,8 +665,8 @@ toggleAllNewFiles()
 	sfile	sf;
 	string	file;
 
-	foreach (file => sf in files) {
-		if ((sf.type eq "new") && (sf.comments eq "")) {
+	foreach (file => sf in self.files) {
+		if (sf.type eq "new") {
 			toggleFile(sf.node);
 		}
 	}
@@ -715,13 +676,13 @@ void
 updateButtons()
 {
 	sfile	sf = getSelectedFile();
-	string	b, buttons[] = winfo_children(w_buttons);
+	string	b, buttons[] = winfo_children(self.w_buttons);
 
 	foreach (b in buttons) {
 		Button_configure(b, state: "normal");
 	}
 
-	if (clipboard eq "") {
+	if (self.clipboard eq "") {
 		configureButton("paste", state: "disabled");
 	}
 
@@ -740,7 +701,7 @@ updateButtons()
 		configureButton("history", text: "Unignore",
 		    command: "unignoreFile");
 	}
-	if (cnt_commented && (files{"ChangeSet"}.comments ne "")) {
+	if (self.cnt_commented && (self.files{"ChangeSet"}.comments ne "")) {
 		configureButton("checkin", text: "Commit");
 	} else if (sf.type eq "pending") {
 		configureButton("checkin", state: "disabled");
@@ -750,7 +711,7 @@ updateButtons()
 void
 setStatus(string status)
 {
-	Label_configure(w_status, text: status);
+	Label_configure(self.w_status, text: status);
 	update();
 }
 
@@ -759,17 +720,17 @@ updateStatus()
 {
 	string	status;
 
-	if (sfiles_component ne "") {
-		string	comp = getRelativePath(sfiles_component,
-		    root);
+	if (self.sfiles_component ne "") {
+		string	comp = getRelativePath(self.sfiles_component, self.root);
+
 		status = "Scanning ${comp}...";
 	} else {
-		append(&status, "${cnt_newC}/${cnt_new} "
+		append(&status, "${self.cnt_newC}/${self.cnt_new} "
 		    "new files selected, ");
-		append(&status, "${cnt_modifiedC}/${cnt_modified} "
+		append(&status, "${self.cnt_modifiedC}/${self.cnt_modified} "
 		    "modified files selected");
-		if (cnt_excluded) {
-			append(&status, ", ${cnt_excluded} excluded");
+		if (self.cnt_excluded) {
+			append(&status, ", ${self.cnt_excluded} excluded");
 		}
 	}
 	setStatus(status);
@@ -780,51 +741,36 @@ isUserComment(sfile sf, string comments)
 {
 	if (comments eq "") return (0);
 	if (sf.type eq "pending") return (0);
-	return (!defined(templates{sf.name})
-	    || (comments ne templates{sf.name}));
-}
-
-int
-commentFileExists(sfile sf)
-{
-	return (exists(commentFile(sf)));
+	return (!defined(self.templates{sf.name})
+	    || (comments ne self.templates{sf.name}));
 }
 
 void
-deleteCommentFile(sfile sf)
+deleteCommentFile(string file)
 {
-	unlink(commentFile(sf));
+	bk("cfile rm \"${file}\"");
 }
 
 void
 enableComments()
 {
-	Text_configure(w_comments, state: "normal");
+	Text_configure(self.w_comments, state: "normal");
 }
 
 void
 disableComments()
 {
-	Text_configure(w_comments, state: "disabled");
+	Text_configure(self.w_comments, state: "disabled");
 }
 
 void
 writeComments(sfile sf, string comments)
 {
 	FILE	fd;
-	string	cfile = commentFile(sf);
-	string	dir = dirname(cfile);
-
-	unless (exists(dir)) {
-		mkdir(dir);
-		if (gc("windows")) {
-			file("attributes", dir, hidden: 1);
-		}
-	}
 
 	if (isUserComment(sf, comments)) {
-		files{sf.name}.comments = comments;
-		fd = fopen(cfile, "w");
+		self.files{sf.name}.comments = comments;
+		fd = popen("bk cfile save \"${sf.file}\"", "w");
 		puts(fd, comments);
 		fclose(fd);
 	}
@@ -834,15 +780,15 @@ void
 updateCommentCount(sfile sf, int n)
 {
 	if (sf.type eq "new") {
-		cnt_newC += n;
+		self.cnt_newC += n;
 	} else if (sf.type eq "pending") {
-		cnt_pendingC += n;
+		self.cnt_pendingC += n;
 	} else if (sf.type eq "modified") {
-		cnt_modifiedC += n;
+		self.cnt_modifiedC += n;
 	} else {
 		return;
 	}
-	cnt_commented += n;
+	self.cnt_commented += n;
 	updateStatus();
 }
 
@@ -853,14 +799,14 @@ saveComments()
 	string	comments;
 	sfile	sf = getSelectedFile();
 
-	if (Text_cget(w_comments, state:) ne "normal") return;
+	if (Text_cget(self.w_comments, state:) ne "normal") return;
 	comments = getCurrentComments();
 	if (comments eq "") {
 		if (sf.comments ne "") {
 			updateCommentCount(sf, -1);
 		}
-		files{sf.name}.comments = comments;
-		deleteCommentFile(sf);
+		self.files{sf.name}.comments = comments;
+		deleteCommentFile(sf.file);
 	} else {
 		foreach (key => msg in msgs) {
 			if (comments eq msg) return;
@@ -870,8 +816,8 @@ saveComments()
 				updateCommentCount(sf, 1);
 			}
 			writeComments(sf, comments);
-		} else if (commentFileExists(sf)) {
-			deleteCommentFile(sf);
+		} else {
+			deleteCommentFile(sf.file);
 		}
 	}
 	redrawFile(sf.node);
@@ -881,11 +827,11 @@ void
 moveNext()
 {
 	string	sel = getSelectedNode();
-	int	idx = ListBox_index(w_files, sel);
+	int	idx = ListBox_index(self.w_files, sel);
 	string	item;
 
-	item = ListBox_items(w_files, ++idx);
-	if (Listbox_exists(w_files, item)) {
+	item = ListBox_items(self.w_files, ++idx);
+	if (Listbox_exists(self.w_files, item)) {
 		selectFile(item);
 	}
 }
@@ -894,12 +840,12 @@ void
 movePrevious()
 {
 	string	sel = getSelectedNode();
-	int	idx = ListBox_index(w_files, sel);
+	int	idx = ListBox_index(self.w_files, sel);
 	string	item;
 
 	if (idx < 0) return;
-	item = ListBox_items(w_files, --idx);
-	if (Listbox_exists(w_files, item)) {
+	item = ListBox_items(self.w_files, --idx);
+	if (Listbox_exists(self.w_files, item)) {
 		selectFile(item);
 	}
 }
@@ -915,7 +861,7 @@ quit()
 	string	image;
 
 	saveComments();
-	if (cnt_newC + cnt_modifiedC) {
+	if (self.cnt_newC + self.cnt_modifiedC) {
 		if (catch("toplevel ${top}")) return;
 		Toplevel_configure(top, borderwidth: 0, background: bg);
 		image = joinpath(getenv("BK_BIN"), "gui", "images",
@@ -932,25 +878,25 @@ quit()
 		    background: gc("ci.quitSaveBG"),
 		    activebackground: gc("ci.quitSaveActiveBG"),
 		    text: "Quit but save comments",
-		    command: "set ::quit pending");
+		    command: "set ::_quit pending");
 		pack(".c.save", padx: 2, pady: 3, fill: "x");
 		button(".c.cancel", font: gc("ci.noticeFont"),
 		    text: "Do not exit citool",
-		    command: "set ::quit cancel");
+		    command: "set ::_quit cancel");
 		pack(".c.cancel", padx: 2, pady: 3, fill: "x");
 		button(".c.quit", font: gc("ci.noticeFont"),
 		    background: gc("ci.quitNosaveBG"),
 		    activebackground: gc("ci.quitNosaveBG"),
 		    activeforeground: gc("ci.quitNosaveActiveBG"),
 		    text: "Quit without saving comments",
-		    command: "set ::quit all");
+		    command: "set ::_quit all");
 		pack(".c.quit", padx: 2, pady: 3, fill: "x");
 
-		x = winfo("rootx", w_top)
-		    + winfo("width", w_top) - 220;
-		y = winfo("rooty", w_top) + 203;
+		x = winfo("rootx", self.w_top)
+		    + winfo("width", self.w_top) - 220;
+		y = winfo("rooty", self.w_top) + 203;
 		wm("geometry", ".c", "+${x}+${y}");
-		wm("transient", ".c", w_top);
+		wm("transient", ".c", self.w_top);
 		grab(".c");
 		vwait("::_quit");
 		destroy(".c");
@@ -963,7 +909,7 @@ quit()
 		}
 	}
 
-	unlink(tmpsfile);
+	unlink(self.tmpsfile);
 	bk_exit();
 }
 
@@ -981,30 +927,17 @@ createImages()
 }
 
 string
-commentFile(sfile sf)
-{
-	string	dir = dirname(sf.file);
-	string	file = joinpath(dir, "SCCS", "c.${basename(sf.file)}");
-
-	return (file);
-}
-
-string
 getComments(sfile sf)
 {
-	string	cfile = commentFile(sf);
 	string	comments;
 
 	if (sf.type eq "pending") {
 		comments = sf.comments;
-	} else if (exists(cfile)) {
-		FILE	fd = fopen(cfile, "r");
-
-		comments = read(nonewline:, fd);
-		fclose(fd);
+	} else {
+		comments = bk("cfile print \"${sf.file}\"");
 	}
-	if ((comments eq "") && defined(templates{sf.file})) {
-		comments = templates{sf.file};
+	if ((comments eq "") && defined(self.templates{sf.file})) {
+		comments = self.templates{sf.file};
 	}
 	return (comments);
 }
@@ -1012,45 +945,45 @@ getComments(sfile sf)
 void
 clearComments()
 {
-	string	state = Text_cget(w_comments, state:);
+	string	state = Text_cget(self.w_comments, state:);
 
 	enableComments();
-	Text_delete(w_comments, 1.0, "end");
-	Text_configure(w_comments, state: state);
+	Text_delete(self.w_comments, 1.0, "end");
+	Text_configure(self.w_comments, state: state);
 }
 
 string
 getCurrentComments()
 {
-	return(Text_get(w_comments, 1.0, "end - 1 char"));
+	return(Text_get(self.w_comments, 1.0, "end - 1 char"));
 }
 
 void
 showFileContents(sfile sf)
 {
 	string	type = ftype(sf.file);
-	string	state = Text_cget(w_diffs, state:);
+	string	state = Text_cget(self.w_diffs, state:);
 
-	Text_configure(w_diffs, state: "normal");
+	Text_configure(self.w_diffs, state: "normal");
 	if (type eq "link") {
-		Text_insert(w_diffs, "end",
+		Text_insert(self.w_diffs, "end",
 		    "${sf.name}:\t(new file) type: ${type}");
 	} else if (type eq "file") {
 		int	fsize = size(sf.file);
 		int	bytes = (int)gc("ci.display_bytes");
 		string	contents;
-		Text_insert(w_diffs, "end",
+		Text_insert(self.w_diffs, "end",
 		    "${sf.name}:\t(new file) ${fsize} bytes\n\n");
 		contents = bk("_strings \"${sf.file}\"");
 		if (bytes > 0) {
 			contents = contents[0..bytes];
 		}
-		Text_insert(w_diffs, "end", "${contents}\n");
+		Text_insert(self.w_diffs, "end", "${contents}\n");
 	} else {
-		Text_insert(w_diffs, "end",
+		Text_insert(self.w_diffs, "end",
 		    "${sf.name}:\tUNSUPPORTED FILE TYPE (${type})");
 	}
-	Text_configure(w_diffs, state: state);
+	Text_configure(self.w_diffs, state: state);
 }
 
 void
@@ -1059,22 +992,21 @@ showFile(sfile sf)
 	FILE	fd;
 	string	c, tag, line;
 
-
 	// Insert comments into the comment box.
 	enableComments();
 	insertTopText(getComments(sf), 1);
-	Text_configure(w_diffs, state: "normal");
-	Text_delete(w_diffs, 1.0, "end");
-	after("idle", "focus ${w_comments}");
+	Text_configure(self.w_diffs, state: "normal");
+	Text_delete(self.w_diffs, 1.0, "end");
+	after("idle", "focus ${self.w_comments}");
 
 	if (sf.type eq "cset") {
 		string	node, nodes[];
-		string	listBox = w_files;
-		string	textBox = w_diffs;
+		string	listBox = self.w_files;
+		string	textBox = self.w_diffs;
 
-		if (cnt_commented == 0) {
+		if (self.cnt_commented == 0) {
 			bottomMessage(msgs{"noFileComments"}, "warning");
-			Text_configure(w_diffs, state: "disabled");
+			Text_configure(self.w_diffs, state: "disabled");
 			disableComments();
 			return;
 		}
@@ -1084,7 +1016,7 @@ showFile(sfile sf)
 		foreach (node in nodes) {
 			string	lines[];
 			string	file = ListBox_itemcget(listBox, node, data:);
-			sfile	s = files{file};
+			sfile	s = self.files{file};
 
 			if (s.excluded) continue;
 			if (s.type eq "cset") continue;
@@ -1099,38 +1031,36 @@ showFile(sfile sf)
 		return;
 	} else if (sf.type eq "new") {
 		showFileContents(sf);
-		Text_configure(w_diffs, state: "disabled");
+		Text_configure(self.w_diffs, state: "disabled");
 		return;
 	}
 
 	if (sf.rev eq "") {
-		string	sinfo = bk("sinfo ${sf.file}");
+		string	sinfo = bk("sinfo \"${sf.file}\"");
 
-		sinfo = getRelativePath(sinfo, root);
-		Text_insert(w_diffs, "end", sinfo);
-		Text_insert(w_diffs, "end", "\n\n");
+		sinfo = getRelativePath(sinfo, self.root);
+		Text_insert(self.w_diffs, "end", sinfo);
+		Text_insert(self.w_diffs, "end", "\n\n");
 
-		fd = popen("bk diffs -up ${sf.file}", "r");
+		fd = popen("bk diffs -up \"${sf.file}\"", "r");
 	} else {
 		// Pending file.
-		string	pRev;
 		string	file = getRelativePath(sf.file, sf.component);
 
 		disableComments();
 		bottomMessage(msgs{"pendingFile"}, "notice");
 		if (basename(file) eq "ChangeSet") {
 			string	dir = dirname(file);
-			Text_insert(w_diffs, "end", "\n");
-			Text_insert(w_diffs, "end",
-			    bk("changes -v -r${sf.rev} ${dir}"), "");
+			Text_insert(self.w_diffs, "end", "\n");
+			Text_insert(self.w_diffs, "end",
+			    bk("changes -v -r${sf.rev} \"${dir}\""), "");
+			Text_configure(self.w_diffs, state: "disabled");
 			return;
 		}
-
-		pRev = bk("prs -hr${sf.rev} -nd:PARENT: \"${sf.file}\"");
-		Text_insert(w_diffs, "end",
-		    "\n bk diffs -up -R${pRev} ${file}\n", "notice");
-		Text_insert(w_diffs, "end", "\n");
-		fd = popen("bk diffs -up -R${pRev} \"${file}\"", "r");
+		Text_insert(self.w_diffs, "end",
+		    "\n bk diffs -up -R${sf.rev} ${file}\n", "notice");
+		Text_insert(self.w_diffs, "end", "\n");
+		fd = popen("bk diffs -up -R${sf.rev} \"${sf.file}\"", "r");
 	}
 
 	gets(fd); gets(fd); gets(fd);
@@ -1142,17 +1072,17 @@ showFile(sfile sf)
 		} else if (c eq "-") {
 			tag = "oldTag";
 		}
-		Text_insert(w_diffs, "end", "${line}\n", tag);
+		Text_insert(self.w_diffs, "end", "${line}\n", tag);
 	}
 	fclose(fd);
-	Text_configure(w_diffs, state: "disabled");
+	Text_configure(self.w_diffs, state: "disabled");
 }
 
 void
 cutComments()
 {
-	clipboard = getCurrentComments();
-	if (Text_cget(w_comments, state:) eq "normal") {
+	self.clipboard = getCurrentComments();
+	if (Text_cget(self.w_comments, state:) eq "normal") {
 		clearComments();
 		saveComments();
 	}
@@ -1162,8 +1092,8 @@ cutComments()
 void
 pasteComments()
 {
-	if (Text_cget(w_comments, state:) eq "normal") {
-		insertTopText(clipboard, 1);
+	if (Text_cget(self.w_comments, state:) eq "normal") {
+		insertTopText(self.clipboard, 1);
 		saveComments();
 	}
 	moveNext();
@@ -1225,14 +1155,14 @@ doCommit()
 		return;
 	}
 
-	unless (cnt_commented) {
+	unless (self.cnt_commented) {
 		bottomMessage(msgs{"noFileComments"}, "warning");
 		return;
 	}
 
-	unless (commitSwitch) {
-		commitSwitch = 1;
-		if (files{"ChangeSet"}.comments eq "") {
+	unless (self.commitSwitch) {
+		self.commitSwitch = 1;
+		if (self.files{"ChangeSet"}.comments eq "") {
 			topMessage(msgs{"noCset"}, "message");
 		} else {
 			topMessage(msgs{"gotCset"}, "message");
@@ -1240,9 +1170,9 @@ doCommit()
 		return;
 	}
 
-	foreach (file => sf in files) {
+	foreach (file => sf in self.files) {
 		comp = sf.component;
-		if (comp eq "") comp = root;
+		if (comp eq "") comp = self.root;
 		if (sf.ignored) {
 			i = llength(ignore{comp});
 			ignore{comp}[i] = sf.file;
@@ -1261,24 +1191,24 @@ doCommit()
 	}
 
 	insertBottomText("Committing changes...\n", 1);
-	if (inProduct) {
-		foreach (comp in components) {
-			if (comp eq root) continue;
+	if (self.nested) {
+		foreach (comp in self.components) {
+			if (comp eq self.root) continue;
 			commitComponent(comp, ignore{comp}, checkin{comp},
 			    commit{comp});
 			if (llength(commit{comp})) {
 				// If a change was committed in the component,
 				// we want to add its ChangeSet file to the
 				// list of files to commit in the product.
-				i = llength(commit{root});
-				commit{root}[i] =
+				i = llength(commit{self.root});
+				commit{self.root}[i] =
 				    joinpath(comp, "ChangeSet");
 			}
 		}
 	}
 
-	commitComponent(comp, ignore{comp}, checkin{comp}, commit{comp});
-	deleteCommentFile(files{"ChangeSet"});
+	commitComponent(self.root, ignore{self.root}, checkin{self.root}, commit{self.root});
+	deleteCommentFile("ChangeSet");
 	deletePendingComments();
 	exit();
 }
@@ -1288,7 +1218,7 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 {
 	string	file;
 
-	cd(comp);
+	chdir(comp);
 	if (llength(ignore)) {
 		foreach (file in ignore) {
 			exec("bk", "ignore", file);
@@ -1299,11 +1229,11 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 		FILE	fd = popen("bk ci -a -c -", "w");
 		string	error;
 
-		if (comp eq root) {
+		if (comp eq self.root) {
 			insertBottomText("Checking in files...", 0);
 		} else {
 			insertBottomText("Checking in files for "
-			    "${getRelativePath(comp, root)}...\n", 0);
+			    "${getRelativePath(comp, self.root)}...\n", 0);
 		}
 		scrollToBottom();
 		foreach (file in checkin) {
@@ -1316,7 +1246,7 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 			insertBottomText("\n", 0);
 			update();
 		}
-		if (errorCode ne "NONE") {
+		if (errorCode[0] ne "NONE") {
 			string	msg = "The checkin failed.  See the "
 			    "bottom pane for the reason.\n\ncitool "
 			    "will exit when you click OK.\n";
@@ -1325,8 +1255,8 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 		}
 	}
 
-	if ((files{"ChangeSet"}.comments ne "")
-	    && (llength(commit) || (comp eq root))) {
+	if ((self.files{"ChangeSet"}.comments ne "")
+	    && (llength(commit) || (comp eq self.root))) {
 		FILE	fd;
 		string	err;
 		string	line;
@@ -1336,7 +1266,7 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 		string	tmp2 = tmpfile("bk_cicomment");
 
 		fd = fopen(tmp2, "w");
-		puts(nonewline:, fd, files{"ChangeSet"}.comments);
+		puts(nonewline:, fd, self.files{"ChangeSet"}.comments);
 		fclose(fd);
 
 		fd = fopen(tmp1, "w");
@@ -1348,21 +1278,21 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 		}
 		fclose(fd);
 
-		trigger_sock = socket(myaddr: "localhost",
+		self.trigger_sock = socket(myaddr: "localhost",
 		    server: "triggerAccept", 0);
-		list = fconfigure(trigger_sock, sockname:);
+		list = fconfigure(self.trigger_sock, sockname:);
 		setenv("_BK_TRIGGER_SOCK", "localhost:${list[2]}");
 
 		msg = "Committing";
-		if (comp ne root) {
-			append(&msg," in ${getRelativePath(comp, root)}");
-		} else if (inProduct) {
+		if (comp ne self.root) {
+			append(&msg," in ${getRelativePath(comp, self.root)}");
+		} else if (self.nested) {
 			append(&msg," in product");
 		}
 		insertBottomText("${msg}...\n", 0);
 		scrollToBottom();
 		update();
-		unless (resolve) {
+		unless (self.resolve) {
 			err = bgExec("bk", "commit", "-dq",
 			    "-l${tmp1}", "-Y${tmp2}");
 		} else {
@@ -1402,9 +1332,10 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 			unlink(out);
 		}
 
-		// unlink(tmp1, tmp2);
+		unlink(tmp1);
+		unlink(tmp2);
 	}
-	cd(root);
+	chdir(self.root);
 }
 
 void
@@ -1433,14 +1364,11 @@ void
 deleteAllComments()
 {
 	sfile	sf;
-	string	file, cfile;
+	string	file;
 
-	foreach (file => sf in files) {
-		cfile = commentFile(sf);
-		if (sf.type eq "pending") {
-			append(&cfile, "@", sf.rev);
-		}
-		unlink(cfile);
+	foreach (file => sf in self.files) {
+		if (sf.type eq "pending") append(&file, "@", sf.rev);
+		deleteCommentFile(file);
 	}
 }
 
@@ -1448,13 +1376,12 @@ void
 deletePendingComments()
 {
 	sfile	sf;
-	string	file, cfile;
+	string	file;
 
-	foreach (file => sf in files) {
+	foreach (file => sf in self.files) {
 		unless (sf.type eq "pending") continue;
-		cfile = commentFile(sf);
-		append(&cfile, "@", sf.rev);
-		unlink(cfile);
+		append(&file, "@", sf.rev);
+		deleteCommentFile(file);
 	}
 }
 
@@ -1463,7 +1390,7 @@ ignoreFile()
 {
 	sfile	sf = getSelectedFile();
 
-	files{sf.name}.ignored = 1;
+	self.files{sf.name}.ignored = 1;
 	redrawFile(sf.node);
 }
 
@@ -1472,7 +1399,7 @@ unignoreFile()
 {
 	sfile	sf = getSelectedFile();
 
-	files{sf.name}.ignored = 0;
+	self.files{sf.name}.ignored = 0;
 	redrawFile(sf.node);
 }
 
@@ -1483,8 +1410,8 @@ discardChanges()
 
 	if ((sf.type eq "cset") || (sf.type eq "pending")) return;
 	saveComments();
-	unless (doDiscard) {
-		doDiscard = 1;
+	unless (self.doDiscard) {
+		self.doDiscard = 1;
 		if (sf.type eq "new") {
 			topMessage(msgs{"deleteNew"}, "message");
 		} else {
@@ -1493,24 +1420,24 @@ discardChanges()
 		return;
 	}
 
-	doDiscard = 0;
+	self.doDiscard = 0;
 	if (sf.type eq "new") {
 		unlink(sf.file);
 	} else {
 		exec("bk", "unedit", sf.file);
 	}
 
-	--cnt_total;
+	--self.cnt_total;
 	if (sf.type eq "new") {
-		--cnt_new;
+		--self.cnt_new;
 	} else if (sf.type eq "modified") {
-		--cnt_modified;
+		--self.cnt_modified;
 	}
 	if (sf.comments ne "") updateCommentCount(sf, -1);
 	moveNext();
 	updateStatus();
-	deleteCommentFile(sf);
-	ListBox_delete(w_files, sf.node);
+	deleteCommentFile(sf.file);
+	ListBox_delete(self.w_files, sf.node);
 }
 
 int
@@ -1573,11 +1500,11 @@ initMsgs()
 "If you provide a description, the deltas will be grouped into a ChangeSet,\n"
 "making them available to others.  If you do not want to do that yet, just\n"
 "click Commit without typing in comments here and no ChangeSet will be made.";
-	msgs{"pendingFile"} = \
+	msgs{"pendingFile"} =
 " This delta has been previously checked in and is in pending state.\n"
 " That means that you can not modify these comments, and that this delta\n"
 " will be included in the ChangeSet when you next create a ChangeSet.";
-	msgs{"repoLocked"} = \
+	msgs{"repoLocked"} =
 "This repository is locked.\n"
 "A checkin cannot be made at this time.\n"
 "Try again later.";
@@ -1587,48 +1514,54 @@ void
 main(int argc, string argv[])
 {
 	string	arg, files[];
+	FILE	f;
 
 	bk_init();
 
 	catch("set ::auto_path [list $::env(BK_BIN)/gui/lib]");
 	require("BWidget");
 
-	cwd = pwd();
-	argc = argc;
-	argv = argv;
-	pos = 0;
-	inProduct = 0;
-	sfiles_last = 0;
-	sfiles_done = 0;
-	sfiles_reading = 0;
-	resolve = 0;
-	partial = 0;
-	commitSwitch = 0;
-	doDiscard = 0;
-	cnt_new = 0;
-	cnt_newC = 0;
-	cnt_total = 0;
-	cnt_excluded = 0;
-	cnt_pending = 0;
-	cnt_pendingC = 0;
-	cnt_modified = 0;
-	cnt_modifiedC = 0;
-	cnt_commented = 0;
+	self.cwd = pwd();
+	self.argc = argc;
+	self.nested = 0;
+	self.nfiles = 0;
+	self.pos = 0;
+	self.sfiles_last = 0;
+	self.sfiles_done = 0;
+	self.sfiles_reading = 0;
+	self.resolve = 0;
+	self.partial = 0;
+	self.commitSwitch = 0;
+	self.doDiscard = 0;
+	self.cnt_new = 0;
+	self.cnt_newC = 0;
+	self.cnt_total = 0;
+	self.cnt_excluded = 0;
+	self.cnt_pending = 0;
+	self.cnt_pendingC = 0;
+	self.cnt_modified = 0;
+	self.cnt_modifiedC = 0;
+	self.cnt_commented = 0;
 
 	foreach (arg in argv) {
 		if (arg eq "-R") {
-			resolve = 1;
+			self.resolve = 1;
 		} else if (arg eq "-P") {
-			partial = 1;
+			self.partial = 1;
 		} else {
 			push(&files, arg);
+			self.argv[END+1] = arg;
 		}
 	}
 
 	if (llength(files) == 0) {
-		root = ".";
+		// If no files or directory were passed on the command-line, we
+		// check to see if we're in a nested component or product and
+		// make the root product our directory.
+		self.root = `bk -P pwd`;
+		self.nested = nested();
 	} else if ((llength(files) == 1) && isdir(files[0])) {
-		root = files[0];
+		self.root = `bk root files[0]`;
 	} else {
 		string	file;
 
@@ -1637,18 +1570,29 @@ main(int argc, string argv[])
 		}
 	}
 
-	if (isdir(root)) {
-		root = exec("bk", "root", root);
-		cd(root);
-	}
-
 	gui();
 
-	nfiles = getNumFiles();
-	tmpsfile = tmpfile("bk_cilist");
+	if (self.nested) {
+		f = popen("bk components here -c", "r");
+		while (defined(arg = fgetline(f))) {
+			if (arg eq ".") {
+				arg = self.root;
+			} else {
+				arg = joinpath(self.root, arg);
+			}
+			self.components[END+1] = arg;
+		}
+		pclose(f);
+	}
+
+	if (isdir(self.root)) chdir(self.root);
+
+	self.nfiles = getNumFiles();
+
+	self.tmpsfile = tmpfile("bk_cilist");
 
 	// Initialize the ChangeSet template if it exists.
-	templates{"ChangeSet"} = bk("-R cat BitKeeper/templates/commit");
+	self.templates{"ChangeSet"} = bk("-R cat BitKeeper/templates/commit");
 
 	unless (defined(_initialized)) {
 		initMsgs();
@@ -1658,4 +1602,3 @@ main(int argc, string argv[])
 
 	findFiles();
 }
-// } /* class citool */

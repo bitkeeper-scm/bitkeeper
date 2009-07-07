@@ -740,3 +740,13 @@ proc isChangeSetFile {path} {
 	}
 	return 0
 }
+
+proc sccsFile {type file} {
+	return [file join [file dirname $file] SCCS $type.[file tail $file]]
+}
+
+proc sccsFileExists {type file} {
+	set file [sccsFile $type $file]
+	if {[catch {exec bk _test -f $file}]} { return 0 }
+	return 1
+}

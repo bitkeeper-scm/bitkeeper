@@ -41,7 +41,14 @@ case $CMD in
 
 	echo y | \
 	    BK_NOTTY=YES BK_NO_REMAP=1 bk clone -sdefault -z0 $URL $BKDIR || {
-		failed
+		# set REGRESSION to leave dirs writable
+		BK_REGRESSION=1 bk upgrade -f http://work/upgrades.cluster || {
+			failed
+		}
+	    	echo y | BK_NOTTY=YES BK_NO_REMAP=1 \
+		    bk clone -sdefault -z0 $URL $BKDIR || {
+			failed
+		}
 	}
 
 	DOTBK=`bk dotbk`
