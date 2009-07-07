@@ -590,6 +590,48 @@ void leak_7_1_main()
 leak_7_1_main();
 } -constraints memory -output "0\n"
 
+test leak-8.1 {leaks with undef() on hashes} -body {
+#lang L
+void leak_8_1_main()
+{
+	int		end, i, tmp;
+
+	end = getbytes();
+	for (i = 0; i < 5; ++i) {
+		string	h{string} = { "1"=>"1", "2"=>"2", "3"=>"3", "4"=>"4" };
+		undef(h{"1"});
+		undef(h{"2"});
+		undef(h{"3"});
+		undef(h{"4"});
+		tmp = end;
+		end = getbytes();
+	}
+	puts(end - tmp);
+}
+leak_8_1_main();
+} -constraints memory -output "0\n"
+
+test leak-8.2 {leaks with undef() on arrays} -body {
+#lang L
+void leak_8_2_main()
+{
+	int		end, i, tmp;
+
+	end = getbytes();
+	for (i = 0; i < 5; ++i) {
+		int	a[] = { 1, 2, 3, 4 };
+		undef(a[0]);
+		undef(a[0]);
+		undef(a[0]);
+		undef(a[0]);
+		tmp = end;
+		end = getbytes();
+	}
+	puts(end - tmp);
+}
+leak_8_2_main();
+} -constraints memory -output "0\n"
+
 # cleanup
 ::tcltest::cleanupTests
 return

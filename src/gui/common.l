@@ -4,10 +4,10 @@ struct	{
 	string	cmd_quit;	    // Command to quit the tool
 	string	cmd_next;	    // Command to move to the next thing
 	string	cmd_prev;	    // Command to move to the previous thing
-	string	w_top;		    // Toplevel window of the tool
-	string	w_main;		    // Main widget for scrolling and focus
-	string	w_search;	    // Text box that is the main search widget
-	string	w_searchBar;	    // Standard search bar for all tools
+	widget	w_top;		    // Toplevel window of the tool
+	widget	w_main;		    // Main widget for scrolling and focus
+	widget	w_search;	    // Text box that is the main search widget
+	widget	w_searchBar;	    // Standard search bar for all tools
 	int	search_case;	    // Search case-sensitive
 	float	search_idx[2];	    // Current search index
 	int	search_highlight;   // Highlight all search matches?

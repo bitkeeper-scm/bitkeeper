@@ -558,6 +558,7 @@ Tcl_ListObjAppendElement(
 	(void) TclGetStringFromObj(listPtr, &length);
 	if (!length) {
 	    Tcl_SetListObj(listPtr, 1, &objPtr);
+	    listPtr->undef = 0;
 	    return TCL_OK;
 	}
 
@@ -618,6 +619,7 @@ Tcl_ListObjAppendElement(
     elemPtrs[numElems] = objPtr;
     Tcl_IncrRefCount(objPtr);
     listRepPtr->elemCount++;
+    listPtr->undef = 0;
 
     /*
      * Invalidate any old string representation since the list's internal

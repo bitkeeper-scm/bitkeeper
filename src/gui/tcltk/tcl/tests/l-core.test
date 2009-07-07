@@ -718,6 +718,16 @@ void cmdsubst_1()
 cmdsubst_1();
 } -output {}
 
+test cmdsubst-2 {test command substitution errors} -body {
+#lang L
+void cmdsubst_2()
+{
+	string	s = `a-nonexistent-command arg`;
+	if (defined(s)) puts("bad 1");
+}
+cmdsubst_2();
+} -output {}
+
 test proc-1.0 {Test L function definition.} -body {
 #lang L
 void proc_1_0(void) {
@@ -1172,16 +1182,25 @@ var_1_3
 }
 
 test var-1.4 {Test extern variables} -body {
-set tclvar "this is an extern variable"
+set var_1_4_v1 "extern test 1"
+set var_1_4_v2 "extern test 2"
+namespace eval var_1_4_ns {
+	variable foo "extern test 3"
+}
 #lang L
-extern string tclvar;
+extern string var_1_4_v1;
+extern string ::var_1_4_v2;
+extern string var_1_4_ns::foo;
+extern string ::var_1_4_ns::foo;  // really the same var as var_1_4_ns::foo
 void var_1_4()
 {
-	puts(tclvar);
+	unless (var_1_4_v1 eq "extern test 1") puts("bad 1");
+	unless (::var_1_4_v2 eq "extern test 2") puts("bad 2");
+	unless (var_1_4_ns::foo eq "extern test 3") puts("bad 3");
+	unless (::var_1_4_ns::foo eq "extern test 3") puts("bad 4");
 }
-#lang tcl
-var_1_4
-} -output "this is an extern variable\n"
+var_1_4();
+} -output {}
 
 test var-1.5 {Variable function names} -body {
 #lang L
@@ -1349,8 +1368,6 @@ void decl_1_6()
 		}
 	}
 }
-extern int decl_1_6_extern;
-extern int decl_1_6_extern;  // error -- multiply declared at global scope
 int decl_1_6_g2;  // error -- multiply declared at global scope
 void decl_1_6_bad()
 {
@@ -1362,9 +1379,8 @@ void decl_1_6_bad()
 .*24: L Error: undeclared variable: decl_1_6_extern
 .*33: L Error: multiple declaration of local l
 .*35: L Error: multiple declaration of local l2
-.*40: L Error: multiple declaration of global decl_1_6_extern
-.*41: L Error: multiple declaration of global decl_1_6_g2
-.*44: L Error: externs legal only at global scope
+.*39: L Error: multiple declaration of global decl_1_6_g2
+.*42: L Error: externs legal only at global scope
 }
 
 test decl-1.7 {Check scoping rules for globals and externs} -body {
@@ -1404,6 +1420,25 @@ void decl_1_7()
 #lang tcl
 decl_1_7
 } -output ""
+
+test decl-1.7.5 {check legal multiple extern variable declarations} -body {
+set decl_1_7_5_var "extern test"
+#lang L
+extern string decl_1_7_5_var;
+extern string decl_1_7_5_var;  // legal -- has same type as prior declaration
+void decl_1_7_5()
+{
+	unless (decl_1_7_5_var eq "extern test") puts("bad 1");
+}
+decl_1_7_5();
+} -output {}
+
+test decl-1.7.6 {check illegal multiple extern variable declarations} -body {
+#lang L
+extern string decl_1_7_6_var;
+extern int decl_1_7_6_var;  // err -- not the same type
+} -returnCodes error -match regexp -result {.*2: L Error: extern re-declaration type does not match other declaration
+}
 
 test decl-1.8 {Check illegal variable names} -body {
 #lang L -nowarn
@@ -1932,14 +1967,68 @@ void syntax_1_2() {
 syntax_1_2
 } -output "syntax_1_2.\nfoo bar ASDF baz zot\n"
 
-test syntax-1.3 {keywords} -body {
+test syntax-1.3 {tcl options short-cut} -body {
 #lang L
-void syntax_1_3() {
-	printf("%s, %s, %s\n", foo: "bar", baz:);
+private string args(...args)
+{
+	return(join(" ", args));
 }
-#lang tcl
-syntax_1_3
-} -output "-foo, bar, -baz\n"
+void syntax_1_3()
+{
+	/*
+	 * Test the Tcl option syntax (option:), and specifically that
+	 * it works even with reserved words.  The scanner includes
+	 * the colon when scanning these just for this reason.
+	 */
+
+	unless (args(one:) eq "-one") puts("bad 1");
+	unless (args(one: "x") eq "-one x") puts("bad 2");
+	unless (args(one:,"x") eq "-one x") puts("bad 3");
+	unless (args(one: "x","y") eq "-one x y") puts("bad 4");
+	unless (args(one:,"x","y") eq "-one x y") puts("bad 5");
+	unless (args(one: "x", two:) eq "-one x -two") puts("bad 6");
+	unless (args(one:,"x", two:) eq "-one x -two") puts("bad 7");
+	unless (args(one:,"x", two: "y") eq "-one x -two y") puts("bad 8");
+	unless (args(one:,"x", two:,"y") eq "-one x -two y") puts("bad 9");
+	unless (args(one:, two:) eq "-one -two") puts("bad 10");
+	unless (args(one:, two:, three:) eq "-one -two -three") puts("bad 11");
+
+	unless (args(break:) eq "-break") puts("bad 20");
+	unless (args(class:) eq "-class") puts("bad 21");
+	unless (args(constructor:) eq "-constructor") puts("bad 22");
+	unless (args(continue:) eq "-continue") puts("bad 23");
+	unless (args(destructor:) eq "-destructor") puts("bad 24");
+	unless (args(do:) eq "-do") puts("bad 25");
+	unless (args(else:) eq "-else") puts("bad 26");
+	unless (args(eq:) eq "-eq") puts("bad 27");
+	unless (args(expand:) eq "-expand") puts("bad 28");
+	unless (args(extern:) eq "-extern") puts("bad 29");
+	unless (args(float:) eq "-float") puts("bad 30");
+	unless (args(for:) eq "-for") puts("bad 31");
+	unless (args(foreach:) eq "-foreach") puts("bad 32");
+	unless (args(ge:) eq "-ge") puts("bad 33");
+	unless (args(goto:) eq "-goto") puts("bad 34");
+	unless (args(gt:) eq "-gt") puts("bad 35");
+	unless (args(if:) eq "-if") puts("bad 36");
+	unless (args(instance:) eq "-instance") puts("bad 37");
+	unless (args(int:) eq "-int") puts("bad 38");
+	unless (args(le:) eq "-le") puts("bad 39");
+	unless (args(lt:) eq "-lt") puts("bad 40");
+	unless (args(ne:) eq "-ne") puts("bad 41");
+	unless (args(poly:) eq "-poly") puts("bad 42");
+	unless (args(private:) eq "-private") puts("bad 43");
+	unless (args(public:) eq "-public") puts("bad 44");
+	unless (args(return:) eq "-return") puts("bad 45");
+	unless (args(split:) eq "-split") puts("bad 46");
+	unless (args(string:) eq "-string") puts("bad 47");
+	unless (args(struct:) eq "-struct") puts("bad 48");
+	unless (args(typedef:) eq "-typedef") puts("bad 49");
+	unless (args(unless:) eq "-unless") puts("bad 50");
+	unless (args(void:) eq "-void") puts("bad 51");
+	unless (args(while:) eq "-while") puts("bad 52");
+}
+syntax_1_3();
+} -output {}
 
 test syntax-1.4 {string appendation} -body {
 #lang L
@@ -2668,6 +2757,7 @@ test cast-1.3 { Cast to string } -body {
 void cast_1_3()
 {
 	string	s;
+	widget	w = "w";
 	poly	p = "p";
 	int	a[] = { 1, 2 };
 	int	h{string} = { "a"=>1, "b"=>2 };
@@ -2683,6 +2773,9 @@ void cast_1_3()
 
 	s = (string)"ok";
 	unless (s eq "ok") puts("bad 3");
+
+	s = (string)w;
+	unless (s eq "w") puts("bad 4");
 
 	s = (string)a;
 	unless (s eq "1 2") puts("bad 5");
@@ -2707,21 +2800,24 @@ void cast_1_4()
 	int	i;
 	float	f;
 	string	s;
+	widget	w;
 	int	h{string};
 
 	i = (int)cast_1_4;
 	f = (float)cast_1_4;
 	s = (string)cast_1_4;
 	s = (tcl)cast_1_4;
+	w = (widget)cast_1_4;
 	h = (hash)cast_1_4;
 }
 #lang tcl
 cast_1_4
-} -returnCodes {error} -match regexp -result {.*8: L Error: type function illegal
-.*9: L Error: type function illegal
+} -returnCodes {error} -match regexp -result {.*9: L Error: type function illegal
 .*10: L Error: type function illegal
 .*11: L Error: type function illegal
 .*12: L Error: type function illegal
+.*13: L Error: type function illegal
+.*14: L Error: type function illegal
 }
 
 test cast-1.5 {cast to hash} -body {
@@ -4168,50 +4264,84 @@ loop_1_2_4()
 		/* Just do whatever to rack up bytecodes. */
 		int	x = 1, y = 1, z = 1;
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19) puts("bad 1.1");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199) puts("bad 1.2");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999) puts("bad 1.3");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19999) puts("bad 1.4");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199999) puts("bad 1.5");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999999) puts("bad 1.6");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19999999) puts("bad 1.7");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199999999) puts("bad 1.8");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999999999) puts("bad 1.9");
+		x = y = z = 1;
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19) puts("bad 2.1");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199) puts("bad 2.2");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999) puts("bad 2.3");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19999) puts("bad 2.4");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199999) puts("bad 2.5");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999999) puts("bad 2.6");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19999999) puts("bad 2.7");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199999999) puts("bad 2.8");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
-		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
-		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999999999) puts("bad 2.9");
 		printf("a has %d\n", i);
 	}
 	foreach (k=>v in h) {
 		/* Just do whatever to rack up bytecodes. */
 		int	x = 1, y = 1, z = 1;
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19) puts("bad 3.1");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199) puts("bad 3.2");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999) puts("bad 3.3");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19999) puts("bad 3.4");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199999) puts("bad 3.5");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999999) puts("bad 3.6");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19999999) puts("bad 3.7");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199999999) puts("bad 3.8");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999999999) puts("bad 3.9");
+		x = y = z = 1;
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19) puts("bad 4.1");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199) puts("bad 4.2");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999) puts("bad 4.3");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19999) puts("bad 4.4");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199999) puts("bad 4.5");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999999) puts("bad 4.6");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 19999999) puts("bad 4.7");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 199999999) puts("bad 4.8");
 		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
-		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
-		x = x+y*z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y+z+x*y;
+		unless (x == 1999999999) puts("bad 4.9");
 		printf("h has %d=>%d\n", k, v);
 	}
 	printf("end\n");
@@ -4257,13 +4387,13 @@ void loop_1_2_6()
 
 	a = "x";
 	foreach (a in "") puts("bad 1.1");
-	unless (a eq "x") puts("bad 1.2");
+	if (defined(a)) puts("bad 1.2");
 
 	/* as[0] has the value undef */
 	a = "x";
 	if (defined(as[0])) puts("bad 2.0");
 	foreach(a in as[0]) puts("bad 2.1");
-	unless (a eq "x") puts("bad 2.2");
+	if (defined(a)) puts("bad 2.2");
 
 	i = 0;
 	foreach(a in "0123456789") {
@@ -4397,6 +4527,66 @@ void loop_1_2_11()
 	unless (in == 123) puts("bad");
 }
 loop_1_2_11();
+} -output {}
+
+test loop-1.2.12 {check that loop counter is undef on foreach loop fall-through} -body {
+#lang L
+void loop_1_2_12()
+{
+	int	i;
+	string	k, s, t, u, v;
+	string	as[];
+	string	ah{string};
+
+	s = "abc";
+	i = 0;
+	t = "xyz";
+	unless (defined(t)) puts("bad 1.1");
+	foreach (t in s) { ++i; }
+	unless (i == 3) puts("bad 1.2");
+	if (defined(t)) puts("bad 1.3");
+
+	s = "abcd";
+	i = 0;
+	t = u = "xyz";
+	unless (defined(t) && defined(u)) puts("bad 2.1");
+	foreach (t,u in s) { ++i; }
+	unless (i == 2) puts("bad 2.2");
+	if (defined(t) || defined(u)) puts("bad 2.3");
+
+	as = { "1", "2", "3" };
+	i = 0;
+	s = "xyz";
+	unless (defined(s)) puts("bad 2.1");
+	foreach (s in as) { ++i; }
+	unless (i == 3) puts("bad 3.2");
+	if (defined(s)) puts("bad 3.3");
+
+	as = { "1", "2", "3", "4" };
+	i = 0;
+	s = t = "xyz";
+	unless (defined(s) && defined(t)) puts("bad 4.1");
+	foreach (s,t in as) { ++i; }
+	unless (i == 2) puts("bad 4.2");
+	if (defined(s) || defined(t)) puts("bad 4.3");
+
+	ah = { "k1"=>"1", "k2"=>"2", "k3"=>"3" };
+	i = 0;
+	k = "xyz";
+	unless (defined(k)) puts("bad 5.1");
+	foreach (k in ah) { ++i; }
+	unless (i == 3) puts("bad 5.2");
+	if (defined(k)) puts("bad 5.3");
+
+	i = 0;
+	k = "xyz";
+	v = "qrs";
+	unless (defined(k) && defined(v)) puts("bad 4.1");
+	foreach (k=>v in ah) { ++i; }
+	unless (i == 3) puts("bad 4.2");
+	if (defined(k) || defined(v)) puts("bad 4.3");
+}
+loop_1_2_12();
 } -output {}
 
 test loop-1.3 {continue statements} -body {
@@ -6383,17 +6573,49 @@ This was a string.
 
 test reference-1.1 {L references} -body {
 #lang L
-struct reference_1_1_point { int x, y; };
-
-void reference_1_1() {
-  struct reference_1_1_point a = { 0, 0 };
-  unless ((a.x == 0) && (a.y == 0)) puts("bad 1");
-  reference_1_1_tweak(&a);
-  unless ((a.x == 2) && (a.y == 0)) puts("bad 2");
+private int global;
+int ref_11_global;
+struct reference_1_1_point {
+	int x, y;
+};
+private void setvar(int &var, int val)
+{
+	var = val;
 }
+class ref_11_cls {
+	public	int cpub;
+	instance {
+		public	int cinst;
+	}
+	constructor ref_11_cls_new()
+	{
+		setvar(&cpub, 123);
+		unless (cpub == 123) puts("bad c.1");
+		setvar(&cinst, 456);
+		unless (cinst == 456) puts("bad c.2");
+	}
+}
+void reference_1_1()
+{
+	ref_11_cls	o;
+	struct reference_1_1_point a = { 0, 0 };
 
-void reference_1_1_tweak(struct reference_1_1_point &foo) {
-  foo->x = 2;
+	unless ((a.x == 0) && (a.y == 0)) puts("bad 1");
+	reference_1_1_tweak(&a);
+	unless ((a.x == 2) && (a.y == 0)) puts("bad 2");
+
+	o = ref_11_cls_new();
+	unless (ref_11_cls->cpub == 123) puts("bad 3.1");
+	unless (o->cinst == 456) puts("bad 3.2");
+
+	setvar(&global, 789);
+	unless (global == 789) puts("bad 4.1");
+	setvar(&ref_11_global, 1100);
+	unless (ref_11_global == 1100) puts("bad 4.2");
+}
+void reference_1_1_tweak(struct reference_1_1_point &foo)
+{
+	foo->x = 2;
 }
 reference_1_1();
 } -output {}
@@ -6515,6 +6737,41 @@ class pointer_1_cls {
 	instance {
 		public	string si;
 		public	string sia[];
+	}
+	constructor pointer_1_cls_new()
+	{
+		si = "testing";
+		chk(textvariable: &si, si, "new");
+		unless (si eq "new") puts("bad c1.1");
+		si = "testing2";
+		chk(textvariable: &si, si, "new2");
+		unless (si eq "new2") puts("bad c1.2");
+		self->si = "testing3";
+		chk(textvariable: &self->si, self->si, "new3");
+		unless (si eq "new3") puts("bad c1.3");
+		self->si = "testing4";
+		chk(textvariable: &self->si, self->si, "new4");
+		unless (si eq "new4") puts("bad c1.4");
+
+		sia[3] = "testing";
+		chk(textvariable: &sia[3], sia[3], "new");
+		unless (sia[3] eq "new") puts("bad c2.1");
+		sia[3] = "testing2";
+		chk(textvariable: &sia[3], sia[3], "new2");
+		unless (sia[3] eq "new2") puts("bad c2.2");
+
+		s = "testing";
+		chk(textvariable: &s, s, "new");
+		unless (s eq "new") puts("bad c4.1");
+		s = "testing2";
+		chk(textvariable: &s, s, "new2");
+		unless (s eq "new2") puts("bad c4.2");
+		pointer_1_cls->s = "testing3";
+		chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new3");
+		unless (pointer_1_cls->s eq "new3") puts("bad c4.3");
+		pointer_1_cls->s = "testing4";
+		chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new4");
+		unless (pointer_1_cls->s eq "new4") puts("bad c4.4");
 	}
 }
 private pointer_1_cls g_obj;
@@ -6753,6 +7010,10 @@ typedef string t3;
 typedef string t3;
 typedef string t3;
 
+typedef widget t4;
+typedef widget t4;
+typedef widget t4;
+
 typedef poly t5;
 typedef poly t5;
 typedef poly t5;
@@ -6794,6 +7055,7 @@ test typedef-1.2 {test redefining different typedefs} -body {
 typedef int t12;
 typedef float t12;
 typedef string t12;
+typedef widget t12;
 typedef poly t12;     // not an error, but perhaps should be
 typedef int t12[];
 typedef int t12[2];
@@ -6837,20 +7099,21 @@ typedef struct s5 { int x,y; } s12_6;
 typedef struct s6 { int x; } s12_6;
 } -returnCodes error -match regexp -result {.*2: L Error: Cannot redefine type t12
 .*3: L Error: Cannot redefine type t12
-.*5: L Error: Cannot redefine type t12
+.*4: L Error: Cannot redefine type t12
 .*6: L Error: Cannot redefine type t12
 .*7: L Error: Cannot redefine type t12
 .*8: L Error: Cannot redefine type t12
-.*17: L Error: Cannot redefine type a12_3
-.*20: L Error: Cannot redefine type h12_1
-.*23: L Error: Cannot redefine type h12_2
-.*26: L Error: Cannot redefine type h12_3
-.*29: L Error: Cannot redefine type s12_1
-.*32: L Error: Cannot redefine type s12_2
-.*35: L Error: Cannot redefine type s12_3
-.*38: L Error: Cannot redefine type s12_4
-.*41: L Error: Cannot redefine type s12_5
-.*44: L Error: Cannot redefine type s12_6
+.*9: L Error: Cannot redefine type t12
+.*18: L Error: Cannot redefine type a12_3
+.*21: L Error: Cannot redefine type h12_1
+.*24: L Error: Cannot redefine type h12_2
+.*27: L Error: Cannot redefine type h12_3
+.*30: L Error: Cannot redefine type s12_1
+.*33: L Error: Cannot redefine type s12_2
+.*36: L Error: Cannot redefine type s12_3
+.*39: L Error: Cannot redefine type s12_4
+.*42: L Error: Cannot redefine type s12_5
+.*45: L Error: Cannot redefine type s12_6
 }
 
 test typedef-1.3 {test some typedef cases} -body {
@@ -7279,6 +7542,295 @@ void defined_1_10()
 defined_1_10();
 } -returnCodes error -match regexp -result {.*4: L Error: illegal operand to &
 }
+
+test defined-1.11 {check that assignment to part of an obj makes it defined} -body {
+#lang L
+void defined_1_11()
+{
+	string	s;
+	string	a[];
+	string	aa[][];
+	string	h{string};
+	string	hh{string}{string};
+
+	if (defined(s)) puts("bad 1.1");
+	s[0] = "x";
+	unless (defined(s)) puts("bad 1.2");
+
+	if (defined(a)) puts("bad 2.1");
+	a[0] = "x";
+	unless (defined(a)) puts("bad 2.2");
+
+	if (defined(aa)) puts("bad 3.1");
+	a[0][0] = "x";
+	unless (defined(a)) puts("bad 3.2");
+	unless (defined(a[0])) puts("bad 3.3");
+
+	if (defined(h)) puts("bad 4.1");
+	h{"k"} = "v";
+	unless (defined(h)) puts("bad 4.2");
+
+	if (defined(hh)) puts("bad 5.1");
+	hh{"k1"}{"k2"} = "v";
+	unless (defined(hh)) puts("bad 5.2");
+	unless (defined(hh{"k1"})) puts("bad 5.3");
+}
+defined_1_11();
+} -output {}
+
+test undef-1 {check undef built-in} -body {
+#lang L
+void undef_1()
+{
+	string	s;
+	string	a[], a2[];
+	string	h{string}, h2{string};
+
+	h = { "k1"=>"v1", "k2"=>"v2", "k3"=>"v3" };
+	h2 = h;
+	undef(h{"k1"});
+	unless (length(h) == 2) puts("bad 1.1");
+	unless ((h{"k2"} eq "v2") && (h{"k3"} eq "v3")) puts("bad 1.2");
+	undef(h{"k2"});
+	unless (length(h) == 1) puts("bad 1.3");
+	unless (h{"k3"} eq "v3") puts("bad 1.4");
+	undef(h{"k3"});
+	unless (length(h) == 0) puts("bad 1.5");
+	unless (defined(h)) puts("bad 1.6");
+
+	/* Make sure deleting from h didn't affect a copy of h. */
+	unless (length(h2) == 3) puts("bad 2.1");
+	unless ((h2{"k1"} eq "v1") && (h2{"k2"} eq "v2")) puts("bad 2.2");
+	unless (h2{"k3"} eq "v3") puts("bad 2.3");
+
+	/*
+	 * Deleting a non-existent hash element is legal.  Deep-dive
+	 * semantics says to create the element, then it gets deleted.
+	 */
+	h = {};
+	undef(h{"not_here"});
+	unless (length(h) == 0) puts("bad 3.1");
+	unless (defined(h)) puts("bad 3.2");
+
+	a = { "1", "2", "3" };
+	a2 = a;
+	undef(a[0]);
+	unless (length(a) == 2) puts("bad 4.1");
+	unless ((a[0] eq "2") && (a[1] eq "3")) puts("bad 4.2");
+	undef(a[0]);
+	unless (length(a) == 1) puts("bad 4.3");
+	unless (a[0] eq "3") puts("bad 4.4");
+	undef(a[0]);
+	unless (length(a) == 0) puts("bad 4.5");
+	unless (defined(a)) puts("bad 4.6");
+
+	/* Make sure deleting from "a" didn't affect a copy of "a". */
+	unless (length(a2) == 3) puts("bad 5.1");
+	unless ((a2[0] eq "1") && (a2[1] eq "2")) puts("bad 5.2");
+	unless (a2[2] eq "3") puts("bad 5.3");
+
+	/*
+	 * Deleting a non-existent array element is legal.  Deep-dive
+	 * semantics says to create the element (AND all before it),
+	 * then it gets deleted but all the elements before it remain.
+	 */
+	a = {};
+	undef(a[3]);
+	unless (length(a) == 3) puts("bad 6.1");
+	unless (defined(a)) puts("bad 6.2");
+	if (defined(a[0]) || defined(a[1]) || defined(a[2])) puts("bad 6.3");
+
+	s = "0123456789";
+	undef(s[0]);
+	unless (s eq "123456789") puts("bad 10.1");
+	undef(s[1]);
+	unless (s eq "13456789") puts("bad 10.2");
+	undef(s[7]);
+	unless (s eq "1345678") puts("bad 10.3");
+
+	/* undef(var) is like var=undef. */
+	s = "testing";
+	undef(s);
+	if (defined(s)) puts("bad 20.1");
+}
+undef_1();
+} -output {}
+
+test undef-2 {check undef built-in on nested arrays and hashes} -body {
+#lang L
+void undef_2()
+{
+	int	a[][] = { {1,2,3}, {4,5,6}, {7,8,9} };
+	int	h{int}{int} = {
+		1 => { 10=>10, 20=>20, 30=>30 },
+		2 => { 10=>10, 20=>20, 30=>30 },
+		3 => { 10=>10, 20=>20, 30=>30 },
+	};
+
+	undef(h{2});
+	unless (length(h) == 2) puts("bad 1.1");
+
+	undef(h{1}{20});
+	unless (length(h{1}) == 2) puts("bad 2.1");
+	unless ((h{1}{10} == 10) && (h{1}{30} == 30)) puts("bad 2.2");
+	undef(h{1}{10});
+	unless (length(h{1}) == 1) puts("bad 2.3");
+	unless (h{1}{30} == 30) puts("bad 2.4");
+	undef(h{1}{30});
+	unless (length(h{1}) == 0) puts("bad 2.5");
+
+	unless (length(h) == 2) puts("bad 3.1");
+	undef(h{1});
+	unless (length(h) == 1) puts("bad 3.3");
+	unless (length(h{3}) == 3) puts("bad 3.4");
+
+	undef(a[1]);
+	unless (length(a) == 2) puts("bad 4.1");
+	unless (length(a[0]) == 3) puts("bad 4.2");
+	unless (length(a[1]) == 3) puts("bad 4.3");
+	unless ((a[0][0] == 1) && (a[0][1] == 2)) puts("bad 4.4");
+	unless (a[0][2] == 3) puts("bad 4.5");
+
+	undef(a[1][1]);
+	unless (length(a[1]) == 2) puts("bad 5.1");
+	unless ((a[1][0] == 7) && (a[1][1] == 9)) puts("bad 5.2");
+
+	undef(a[0]);
+	unless (length(a) == 1) puts("bad 6.1");
+	unless (length(a[0]) == 2) puts("bad 6.2");
+	undef(a[0]);
+	unless (length(a) == 0) puts("bad 6.3");
+}
+undef_2();
+} -output {}
+
+test undef-3 {check undef built-in on class variables} -body {
+#lang L
+class undef_3_cls {
+	public	string hcls{string};
+	public	string acls[];
+	public	string scls;
+	instance {
+		public	string hins{string};
+		public	string ains[];
+		public	string sins;
+	}
+}
+void undef_3()
+{
+	undef_3_cls obj = undef_3_cls_new();
+
+	undef_3_cls->hcls = { "k1"=>"v1", "k2"=>"v2", "k3"=>"v3" };
+	undef(undef_3_cls->hcls{"k1"});
+	unless (length(undef_3_cls->hcls) == 2) puts("bad 1.1");
+	unless (undef_3_cls->hcls{"k2"} eq "v2") puts("bad 1.2");
+	unless (undef_3_cls->hcls{"k3"} eq "v3") puts("bad 1.3");
+	undef(undef_3_cls->hcls{"k2"});
+	unless (length(undef_3_cls->hcls) == 1) puts("bad 1.4");
+	unless (undef_3_cls->hcls{"k3"} eq "v3") puts("bad 1.5");
+	undef(undef_3_cls->hcls{"k3"});
+	unless (length(undef_3_cls->hcls) == 0) puts("bad 1.6");
+	unless (defined(undef_3_cls->hcls)) puts("bad 1.7");
+
+	undef_3_cls->acls = { "1", "2", "3" };
+	undef(undef_3_cls->acls[0]);
+	unless (length(undef_3_cls->acls) == 2) puts("bad 2.1");
+	unless (undef_3_cls->acls[0] eq "2") puts("bad 2.2");
+	unless (undef_3_cls->acls[1] eq "3") puts("bad 2.3");
+	undef(undef_3_cls->acls[0]);
+	unless (length(undef_3_cls->acls) == 1) puts("bad 2.4");
+	unless (undef_3_cls->acls[0] eq "3") puts("bad 2.5");
+	undef(undef_3_cls->acls[0]);
+	unless (length(undef_3_cls->acls) == 0) puts("bad 2.6");
+	unless (defined(undef_3_cls->acls)) puts("bad 2.7");
+
+	obj->hins = { "k1"=>"v1", "k2"=>"v2", "k3"=>"v3" };
+	undef(obj->hins{"k1"});
+	unless (length(obj->hins) == 2) puts("bad 3.1");
+	unless (obj->hins{"k2"} eq "v2") puts("bad 3.2");
+	unless (obj->hins{"k3"} eq "v3") puts("bad 3.3");
+	undef(obj->hins{"k2"});
+	unless (length(obj->hins) == 1) puts("bad 3.4");
+	unless (obj->hins{"k3"} eq "v3") puts("bad 3.5");
+	undef(obj->hins{"k3"});
+	unless (length(obj->hins) == 0) puts("bad 3.6");
+	unless (defined(obj->hins)) puts("bad 3.7");
+
+	obj->ains = { "1", "2", "3" };
+	undef(obj->ains[0]);
+	unless (length(obj->ains) == 2) puts("bad 4.1");
+	unless (obj->ains[0] eq "2") puts("bad 4.2");
+	unless (obj->ains[1] eq "3") puts("bad 4.3");
+	undef(obj->ains[0]);
+	unless (length(obj->ains) == 1) puts("bad 4.4");
+	unless (obj->ains[0] eq "3") puts("bad 4.5");
+	undef(obj->ains[0]);
+	unless (length(obj->ains) == 0) puts("bad 4.6");
+	unless (defined(obj->ains)) puts("bad 4.7");
+
+	undef_3_cls->scls = "testing";
+	undef(undef_3_cls->scls);
+	if (defined(undef_3_cls->scls)) puts("bad 5.1");
+
+	obj->sins = "testing";
+	undef(obj->sins);
+	if (defined(obj->sins)) puts("bad 6.1");
+}
+undef_3();
+} -output {}
+
+test undef-4 {check undef built-in errors} -body {
+#lang L
+private string[] foo() { return {"x"}; }
+void undef_4()
+{
+	string	a[];
+	struct { int i,j; } st;
+
+	undef();
+	undef(a[0], a[1]);
+	undef(a[1..3]);
+	undef(foo());
+	undef(st.i);
+	undef(3);
+}
+undef_4();
+} -returnCodes error -match regexp -result {.*7: L Error: incorrect # args to undef
+.*8: L Error: incorrect # args to undef
+.*9: L Error: illegal l-value in undef\(\)
+.*10: L Error: illegal l-value in undef\(\)
+.*11: L Error: cannot undef\(\) a struct field
+.*12: L Error: illegal l-value in undef\(\)
+}
+
+test undef-5 {check that undefined list goes to defined} -body {
+#lang L
+void undef_5()
+{
+	string	a[] = {"x"};
+
+	a = undef;
+	if (defined(a)) puts("bad 1.1");
+	a[END+1] = "x";
+	unless (defined(a)) puts("bad 1.2");
+
+	a = undef;
+	if (defined(a)) puts("bad 2.1");
+	push(&a, "x");
+	unless (defined(a)) puts("bad 2.2");
+
+	a = undef;
+	if (defined(a)) puts("bad 3.1");
+	a[0] = "x";
+	unless (defined(a)) puts("bad 3.2");
+
+	a = undef;
+	if (defined(a)) puts("bad 4.1");
+	a[10] = "x";
+	unless (defined(a)) puts("bad 4.2");
+}
+undef_5();
+} -output {}
 
 test toplevel-1.0 {Toplevel code in L} -body {
 #lang L
@@ -8061,7 +8613,7 @@ typecheck_4_3()
 .*12: L Error: predicate must be scalar
 }
 
-test typehceck-4.4 {scalars as condition expressions} -body {
+test typecheck-4.4 {scalars as condition expressions} -body {
 #lang L
 void
 typecheck_4_4()
@@ -8071,6 +8623,7 @@ typecheck_4_4()
 	int	i = 0;
 	float	f = 0.0;
 	string	s1 = "0", s2 = "1";
+	widget	w = "0";
 	poly	p = "0";
 
 	if (i) puts("bad 1");
@@ -8080,6 +8633,7 @@ typecheck_4_4()
 	if (s1) puts("bad 3");
 	unless (s2) puts("bad 4");
 
+	if (w) puts("bad 5");
 	if (p) puts("bad 6");
 }
 typecheck_4_4();
@@ -8357,6 +8911,7 @@ typecheck_6_1()
 	string	s;
 	struct { int i,j; } st;
 	poly	p;
+	widget	w;
 	typecheck_6_1_cls o;
 
 	/* Errors -- first arg not a reference (&). */
@@ -8367,10 +8922,7 @@ typecheck_6_1()
 	push(s, i);
 	push(st, i);
 	push(p, i);
-
-	/* Error -- too many arguments. */
-	push(a, i, j);
-	push(a, i, j, j);
+	push(w, i);
 
 	/* Error -- too few arguments. */
 	push(&a);
@@ -8382,23 +8934,25 @@ typecheck_6_1()
 	push(&f, i);
 	push(&s, i);
 	push(&st, i);
+	push(&w, i);
 	push(&1, i);
 	push(&3.14159, i);
 	push(&o, i);
 }
 #lang tcl
 typecheck_6_1
-} -returnCodes {error} -match regexp -result {.*:14: L Error: first arg to push not an array reference.*
-.*:15: L Error: first arg to push not an array reference.*
+} -returnCodes {error} -match regexp -result {.*:15: L Error: first arg to push not an array reference.*
 .*:16: L Error: first arg to push not an array reference.*
 .*:17: L Error: first arg to push not an array reference.*
 .*:18: L Error: first arg to push not an array reference.*
 .*:19: L Error: first arg to push not an array reference.*
 .*:20: L Error: first arg to push not an array reference.*
-.*:23: L Error: incorrect # arguments to push
-.*:24: L Error: incorrect # arguments to push
-.*:27: L Error: incorrect # arguments to push
-.*:28: L Error: incorrect # arguments to push
+.*:21: L Error: first arg to push not an array reference.*
+.*:22: L Error: first arg to push not an array reference.*
+.*:25: L Error: incorrect # arguments to push
+.*:26: L Error: incorrect # arguments to push
+.*:29: L Error: first arg to push not an array reference.*
+.*:30: L Error: first arg to push not an array reference.*
 .*:31: L Error: first arg to push not an array reference.*
 .*:32: L Error: first arg to push not an array reference.*
 .*:33: L Error: first arg to push not an array reference.*
@@ -8406,7 +8960,6 @@ typecheck_6_1
 .*:35: L Error: first arg to push not an array reference.*
 .*:36: L Error: first arg to push not an array reference.*
 .*:37: L Error: first arg to push not an array reference.*
-.*:38: L Error: first arg to push not an array reference.*
 }
 
 test typecheck-6.2 {type check errors with push built-in 2} -body {
@@ -8417,6 +8970,7 @@ typecheck_6_2()
 {
 	int	ai[];
 	string	as[], s;
+	widget	aw[], w;
 	float	af[], f;
 	int	aa[][], a[];		// array of array, and an array
 	int	ah[]{int}, h{int};	// array of hash, and a hash
@@ -8440,20 +8994,32 @@ typecheck_6_2()
 	push(&ai, ah);
 	push(&ai, st);
 	push(&ai, ast);
+	push(&ai, w);
+	push(&ai, aw);
+
+	push(&ai, 1, f);
+	push(&ai, s, f);
+	push(&ai, 1, 1, 1, f);
 }
 #lang tcl
 typecheck_6_2
-} -returnCodes {error} -match regexp -result {.*:18: L Error: pushing incompatible type onto array
-.*:20: L Error: pushing incompatible type onto array
-.*:21: L Error: pushing incompatible type onto array
-.*:22: L Error: pushing incompatible type onto array
-.*:23: L Error: pushing incompatible type onto array
-.*:24: L Error: pushing incompatible type onto array
-.*:25: L Error: pushing incompatible type onto array
-.*:26: L Error: pushing incompatible type onto array
-.*:27: L Error: pushing incompatible type onto array
-.*:28: L Error: pushing incompatible type onto array
-.*:29: L Error: pushing incompatible type onto array
+} -returnCodes {error} -match regexp -result {.*:19: L Error: arg #2 to push has type incompatible with array
+.*:21: L Error: arg #2 to push has type incompatible with array
+.*:22: L Error: arg #2 to push has type incompatible with array
+.*:23: L Error: arg #2 to push has type incompatible with array
+.*:24: L Error: arg #2 to push has type incompatible with array
+.*:25: L Error: arg #2 to push has type incompatible with array
+.*:26: L Error: arg #2 to push has type incompatible with array
+.*:27: L Error: arg #2 to push has type incompatible with array
+.*:28: L Error: arg #2 to push has type incompatible with array
+.*:29: L Error: arg #2 to push has type incompatible with array
+.*:30: L Error: arg #2 to push has type incompatible with array
+.*:31: L Error: arg #2 to push has type incompatible with array
+.*:32: L Error: arg #2 to push has type incompatible with array
+.*:34: L Error: arg #3 to push has type incompatible with array
+.*:35: L Error: arg #2 to push has type incompatible with array
+.*:35: L Error: arg #3 to push has type incompatible with array
+.*:36: L Error: arg #5 to push has type incompatible with array
 }
 
 test typecheck-6.3 {type check push built-in} -body {
@@ -8463,6 +9029,7 @@ typecheck_6_3()
 {
 	int	ai[], i;
 	string	as[], s;
+	widget	aw[], w;
 	float	af[], f;
 	poly	ap[], p;
 	int	aa[][], a[];		// array of array, and an array
@@ -8487,15 +9054,22 @@ typecheck_6_3()
 	push(&ap, "s");
 	push(&ap, i);
 	push(&ap, s);
+	push(&ap, w);
 	push(&ap, f);
 	push(&ap, p);
 	push(&ap, ai);
 	push(&ap, as);
 	push(&ap, af);
 	push(&ap, ap);
+	push(&ap, aw);
 	push(&ap, ast);
 	push(&ap, h);
 	push(&ap, st);
+
+	push(&aw, w);
+	push(&aw, (widget)"w");
+	push(&aw, s);  // legal to push strings onto a widget array
+	push(&aw, "w");
 
 	push(&ah, h);
 
@@ -8519,6 +9093,50 @@ void typecheck_7_1()
 typecheck_7_1();
 } -returnCodes error -match regexp -result {.*6: L Error: parameter 1 has incompatible type
 }
+
+test typecheck-8.1 {widget and string type compatibility} -body {
+#lang L
+void typecheck_8_1()
+{
+	poly	p = "p";
+	string	s = "s";
+	widget	w = "w";
+
+	p = s;
+	unless (p eq "s") puts("bad 1");
+	p = w;
+	unless (p eq "w") puts("bad 2");
+	p = p;
+	unless (p eq "w") puts("bad 3");
+	p = "p";
+	s = p;
+	unless (s eq "p") puts("bad 4");
+	s = s;
+	unless (s eq "p") puts("bad 5");
+	s = w;
+	unless (s eq "w") puts("bad 6");
+	s = "s";
+	w = p;
+	unless (w eq "p") puts("bad 7");
+	w = s;
+	unless (w eq "s") puts("bad 8");
+	w = w;
+	unless (w eq "s") puts("bad 9");
+	w = "w";
+
+	unless (p ne s) puts("bad 10");
+	unless (s ne p) puts("bad 11");
+	unless (p ne w) puts("bad 12");
+	unless (w ne p) puts("bad 13");
+	unless (s ne w) puts("bad 14");
+	unless (w ne s) puts("bad 15");
+	unless (p eq p) puts("bad 16");
+	unless (s eq s) puts("bad 17");
+	unless (w eq w) puts("bad 18");
+}
+#lang tcl
+typecheck_8_1
+} -output {}
 
 test typecheck-9.1 {illegal types in function prototype declarations} -body {
 #lang L
@@ -9163,72 +9781,133 @@ main()
 
 test pattern-1.0 {L pattern functions} -body {
 #lang L
-poly Pattern_()
+string Pattern1_()
 {
 	// This is NOT a pattern function (because the _ is trailing).
-	puts("Pattern_");
+	return("Pattern1_");
 }
-poly Pattern_foo(int a, int b)
+string Pattern1_foo(int a, int b)
 {
-	puts("Pattern_foo special case ${a} ${b}");
+	return("Pattern1_foo ${a} ${b}");
 }
-poly Pattern_*(int a, int b)
+string Pattern1_*(...args)
 {
-	puts("Pattern_* ${$1} ${a} ${b}");
+	poly	p;
+	string	ret = "Pattern1_* ${$1}";
+	foreach (p in args) ret .= " ${p}";
+	return (ret);
 }
-void pattern2(string f, string s, int a)
+string pattern2(...args)
 {
-	puts("Pattern2 ${f} ${s} ${a}");
+	poly	p;
+	string	ret = "pattern2";
+	foreach (p in args) ret .= " ${p}";
+	return (ret);
 }
-void p1_0_widget(string f, int a)
+string p1_0_widget(...args)
 {
-	puts("widget ${f} ${a}");
+	poly	p;
+	string	ret = "p1_0_widget";
+	foreach (p in args) ret .= " ${p}";
+	return (ret);
 }
 void pattern_1_0()
 {
-	string	w = "p1_0_widget";
+	string	s;
+	widget	w = "p1_0_widget";
 
-	Pattern_foo(1, 2);  // calls Pattern_foo(1, 2)
-	Pattern_bar(3, 4);  // calls Pattern_*(3, 4) where $1 gets "bar"
-	Pattern_baz(5, 6);  // calls Pattern_*(5, 6) where $1 gets "baz"
-	Pattern_();	    // calls Pattern_()
-	Pattern2_bar(w, 1); // calls p1_0_widget("bar", 1)
+	s = Pattern1_foo(1, 2);	// calls Pattern1_foo(1, 2)
+	unless (s eq "Pattern1_foo 1 2") puts("bad 1.1");
+
+	s = Pattern1_bar();	// calls Pattern1_*("bar")
+	unless (s eq "Pattern1_* bar") puts("bad 2.1");
+	s = Pattern1_bar(3);	// calls Pattern1_*("bar", 3)
+	unless (s eq "Pattern1_* bar 3") puts("bad 2.2");
+	s = Pattern1_bar(3, 4);	// calls Pattern1_*("bar", 3, 4)
+	unless (s eq "Pattern1_* bar 3 4") puts("bad 2.3");
+
+	s = Pattern1_Bar();	// calls Pattern1_*("bar")
+	unless (s eq "Pattern1_* bar") puts("bad 3.1");
+	s = Pattern1_Bar(3);	// calls Pattern1_*("bar", 3)
+	unless (s eq "Pattern1_* bar 3") puts("bad 3.2");
+	s = Pattern1_Bar(3, 4);	// calls Pattern1_*("bar", 3, 4)
+	unless (s eq "Pattern1_* bar 3 4") puts("bad 3.3");
+
+	s = Pattern1_barBaz();
+	unless (s eq "Pattern1_* bar baz") puts("bad 4.1");
+	s = Pattern1_barBaz(3);
+	unless (s eq "Pattern1_* bar baz 3") puts("bad 4.2");
+	s = Pattern1_barBaz(3, 4);
+	unless (s eq "Pattern1_* bar baz 3 4") puts("bad 4.3");
+
+	s = Pattern1_barBazBlech();
+	unless (s eq "Pattern1_* bar baz blech") puts("bad 5.1");
+	s = Pattern1_barBazBlech(3);
+	unless (s eq "Pattern1_* bar baz blech 3") puts("bad 5.2");
+	s = Pattern1_barBazBlech(3, 4);
+	unless (s eq "Pattern1_* bar baz blech 3 4") puts("bad 5.3");
+
+	s = Pattern2_bar();	// calls pattern2("bar")
+	unless (s eq "pattern2 bar") puts("bad 6.1");
+	s = Pattern2_bar(5);	// calls pattern2("bar", 5)
+	unless (s eq "pattern2 bar 5") puts("bad 6.2");
+	s = Pattern2_bar(5, 6);	// calls pattern2("bar", 5, 6)
+	unless (s eq "pattern2 bar 5 6") puts("bad 6.3");
+
+	s = Pattern2_Bar();
+	unless (s eq "pattern2 bar") puts("bad 7.1");
+	s = Pattern2_Bar(5);
+	unless (s eq "pattern2 bar 5") puts("bad 7.2");
+	s = Pattern2_Bar(5, 6);
+	unless (s eq "pattern2 bar 5 6") puts("bad 7.3");
+
+	s = Pattern2_barBaz();
+	unless (s eq "pattern2 bar baz") puts("bad 8.1");
+	s = Pattern2_barBaz(5);
+	unless (s eq "pattern2 bar baz 5") puts("bad 8.2");
+	s = Pattern2_barBaz(5, 6);
+	unless (s eq "pattern2 bar baz 5 6") puts("bad 8.3");
+
+	s = Pattern2_barBazBlech();
+	unless (s eq "pattern2 bar baz blech") puts("bad 9.1");
+	s = Pattern2_barBazBlech(5);
+	unless (s eq "pattern2 bar baz blech 5") puts("bad 9.2");
+	s = Pattern2_barBazBlech(5, 6);
+	unless (s eq "pattern2 bar baz blech 5 6") puts("bad 9.3");
+
+	s = Pattern1_();	// calls Pattern1_()
+	unless (s eq "Pattern1_") puts("bad 10.1");
+
+	s = Pattern2_bar(w);	// calls p1_0_widget("bar")
+	unless (s eq "p1_0_widget bar") puts("bad 20.1");
+	s = Pattern2_bar(w, 1);	// calls p1_0_widget("bar", 1)
+	unless (s eq "p1_0_widget bar 1") puts("bad 20.2");
+	s = Pattern2_bar(w, 1, 2); // calls p1_0_widget("bar", 1, 2)
+	unless (s eq "p1_0_widget bar 1 2") puts("bad 20.3");
+
+	s = Pattern2_Bar(w);
+	unless (s eq "p1_0_widget bar") puts("bad 21.1");
+	s = Pattern2_Bar(w, 1);
+	unless (s eq "p1_0_widget bar 1") puts("bad 21.2");
+	s = Pattern2_Bar(w, 1, 2);
+	unless (s eq "p1_0_widget bar 1 2") puts("bad 21.3");
+
+	s = Pattern2_barBaz(w);
+	unless (s eq "p1_0_widget bar baz") puts("bad 22.1");
+	s = Pattern2_barBaz(w, 1);
+	unless (s eq "p1_0_widget bar baz 1") puts("bad 22.2");
+	s = Pattern2_barBaz(w, 1, 2);
+	unless (s eq "p1_0_widget bar baz 1 2") puts("bad 22.3");
+
+	s = Pattern2_barBazBlech(w);
+	unless (s eq "p1_0_widget bar baz blech") puts("bad 23.1");
+	s = Pattern2_barBazBlech(w, 1);
+	unless (s eq "p1_0_widget bar baz blech 1") puts("bad 23.2");
+	s = Pattern2_barBazBlech(w, 1, 2);
+	unless (s eq "p1_0_widget bar baz blech 1 2") puts("bad 23.3");
 }
 pattern_1_0();
-#lang tcl
-} -output {Pattern_foo special case 1 2
-Pattern_* bar 3 4
-Pattern_* baz 5 6
-Pattern_
-widget bar 1
-}
-
-test pattern-1.1 {L pattern function errors} -body {
-#lang L
-void pattern_1_1()
-{
-	string	a[];
-	string	h{string};
-	poly	p;
-
-	/*
-	 * By assigning the return value to a variable, we verify
-	 * that the compiler assigns a return type (poly) even
-	 * in the face of an error.
-	 */
-
-	p = Foo_bar();
-	p = Foo_bar(1);
-	p = Foo_bar(1.1);
-	p = Foo_bar(a);
-	p = Foo_bar(h);
-}
-} -returnCodes {error} -match regexp -result {.*13: L Error: pattern function call has no args
-.*14: L Error: first arg to pattern function is not string
-.*15: L Error: first arg to pattern function is not string
-.*16: L Error: first arg to pattern function is not string
-.*17: L Error: first arg to pattern function is not string
-}
+} -output {}
 
 test pattern-1.2 {check pattern function argument type checking} -body {
 #lang L -nowarn
@@ -9252,6 +9931,252 @@ pattern_1_2();
 .*10: L Error: not enough arguments for function Pattern122_foo
 .*11: L Error: too many arguments for function Pattern122_foo
 }
+
+test pattern-1.3 {check pattern function call with (expand) args} -body {
+#lang L
+string pattern13(...args)
+{
+	poly	p;
+	string	ret = "pattern13";
+	foreach (p in args) ret .= " ${p}";
+	return (ret);
+}
+void pattern_1_3()
+{
+	int	i;
+	string	got, want;
+	string	args[], args2[];
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args);
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 1.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, "a");
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 2.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, "a", "b");
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b";
+		unless (got eq want) {
+			printf("bad 3.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, "a", "b", "c");
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b c";
+		unless (got eq want) {
+			printf("bad 4.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar((expand)args);
+		want = "pattern13 foo bar";
+		if (length(args)) want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 5.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar((expand)args, "a");
+		want = "pattern13 foo bar";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 6.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar((expand)args, "a", "b");
+		want = "pattern13 foo bar";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b";
+		unless (got eq want) {
+			printf("bad 7.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar((expand)args, "a", "b", "c");
+		want = "pattern13 foo bar";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b c";
+		unless (got eq want) {
+			printf("bad 8.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBarBaz((expand)args);
+		want = "pattern13 foo bar baz";
+		if (length(args)) want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 9.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBarBaz((expand)args, "a");
+		want = "pattern13 foo bar baz";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 10.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBarBaz((expand)args, "a", "b");
+		want = "pattern13 foo bar baz";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b";
+		unless (got eq want) {
+			printf("bad 11.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBarBaz((expand)args, "a", "b", "c");
+		want = "pattern13 foo bar baz";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a b c";
+		unless (got eq want) {
+			printf("bad 12.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	args2 = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, (expand)args2, "a");
+		want = "pattern13 foo";
+		if (length(args)) want .= " " . join(" ", args);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 20.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1] = (string)i;
+	}
+
+	args = {};
+	args2 = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, (expand)args2, "a");
+		want = "pattern13 foo";
+		if (length(args))  want .= " " . join(" ", args);
+		if (length(args2)) want .= " " . join(" ", args2);
+		want .= " a";
+		unless (got eq want) {
+			printf("bad 20.2 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+		args2[END+1] = (string)(i*100);
+	}
+
+	args = {};
+	args2 = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo((expand)args, "a", (expand)args2);
+		want = "pattern13 foo";
+		if (length(args))  want .= " " . join(" ", args);
+		want .= " a";
+		if (length(args2)) want .= " " . join(" ", args2);
+		unless (got eq want) {
+			printf("bad 20.3 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+		args2[END+1] = (string)(i*100);
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo("a", (expand)args);
+		want = "pattern13 foo a";
+		if (length(args))  want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 21.1 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_foo("a", "b", (expand)args);
+		want = "pattern13 foo a b";
+		if (length(args))  want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 21.2 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar("a", (expand)args);
+		want = "pattern13 foo bar a";
+		if (length(args))  want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 21.3 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+	}
+
+	args = {};
+	for (i = 0; i < 10; ++i) {
+		got  = Pattern13_fooBar("a", "b", (expand)args);
+		want = "pattern13 foo bar a b";
+		if (length(args))  want .= " " . join(" ", args);
+		unless (got eq want) {
+			printf("bad 21.4 got '%s' want '%s'\n", got, want);
+		}
+		args[END+1]  = (string)i;
+	}
+}
+pattern_1_3();
+} -output {}
 
 test include-1.0 {include files} -setup {
 	set fname [makeFile {
@@ -9660,6 +10585,10 @@ src_mappings_1()
 	poly p2 = 2;
 	poly p3, p4;
 	poly p5, p6 = 6, p7;
+	widget w1;
+	widget w2 = "w2";
+	widget w3, w4;
+	widget w5, w6 = "w6", w7;
 	int ai1[];
 	int ai2[2];
 	int ai3[] = {3};
@@ -9729,6 +10658,13 @@ src_mappings_1
 .*Command \d+: "p5"
 .*Command \d+: "p6 = 6"
 .*Command \d+: "p7"
+.*Command \d+: "w1"
+.*Command \d+: "w2 = \\"w2\\""
+.*Command \d+: "w3"
+.*Command \d+: "w4"
+.*Command \d+: "w5"
+.*Command \d+: "w6 = \\"w6\\""
+.*Command \d+: "w7"
 .*Command \d+: "ai1\[\]"
 .*Command \d+: "ai2\[2\]"
 .*Command \d+: "ai3\[\] = \{3\}"
@@ -9817,6 +10753,7 @@ src_mappings_2()
 	/* Check that each binary and unary operator gets a mapping. */
 	(tcl)i;
 	(string)i;
+	(widget)i;
 	(float)i;
 	!i;
 	~i;
@@ -9914,6 +10851,7 @@ src_mappings_2
 .*Command \d+: "f1\(2\)"
 .*Command \d+: "\(tcl\)i"
 .*Command \d+: "\(string\)i"
+.*Command \d+: "\(widget\)i"
 .*Command \d+: "\(float\)i"
 .*Command \d+: "!i"
 .*Command \d+: "~i"
@@ -11401,6 +12339,27 @@ void builtin_12()
 .*9: L Error: type void illegal
 }
 
+test builtin-13 {check multiple values to push built-in} -body {
+#lang L
+void builtin_13()
+{
+	int	a[];
+
+	push(&a, 1);
+	unless (length(a) == 1) puts("bad 1.1");
+	unless (a[0] == 1) puts("bad 1.2");
+
+	push(&a, 2, 3);
+	unless (length(a) == 3) puts("bad 2.1");
+	unless ((a[1] == 2) && (a[2] == 3)) puts("bad 2.2");
+
+	push(&a, 4, 5, 6);
+	unless (length(a) == 6) puts("bad 3.1");
+	unless ((a[3] == 4) && (a[4] == 5) && (a[5] == 6)) puts("bad 3.2");
+}
+builtin_13();
+} -output {}
+
 test line-file-1 {test __LINE__ and __FILE__} -body {
 #lang L
 void line_file_1()
@@ -11697,6 +12656,50 @@ void class_1_7_main()
 } -returnCodes {error} -match regexp -result {.*14: L Error: . illegal on objects; use -> instead
 }
 
+test class-1.8 {check calling private member functions} -body {
+#lang L
+/*
+ * Check that private member functions can be called from the
+ * constructor and destructor, whether they are declared before or
+ * after the call site.
+ */
+private int cnt1 = 0;
+private int cnt2 = 0;
+class class_1_8
+{
+	private void p1() { ++cnt1; }
+	constructor class_1_8_new()
+	{
+		p1();
+		p2();
+	}
+	destructor class_1_8_delete(class_1_8 self)
+	{
+		p1();
+		p2();
+	}
+	public void class_1_8_foo(class_1_8 self)
+	{
+		p1();
+		p2();
+	}
+	private void p2() { ++cnt2; }
+}
+void class_1_8_main()
+{
+	class_1_8 o = class_1_8_new();
+	unless (cnt1 == 1) puts("bad 1.1");
+	unless (cnt2 == 1) puts("bad 1.2");
+	class_1_8_foo(o);
+	unless (cnt1 == 2) puts("bad 2.1");
+	unless (cnt2 == 2) puts("bad 2.2");
+	class_1_8_delete(o);
+	unless (cnt1 == 3) puts("bad 3.1");
+	unless (cnt2 == 3) puts("bad 3.2");
+}
+class_1_8_main();
+} -output {}
+
 test class-2.1 {check missing class constructor} -body {
 #lang L
 class class_2_1
@@ -11925,7 +12928,7 @@ class class_2_13
 	void class_2_13_new(class_2_13 self) {}  // err
 	private void class_2_13_new(class_2_13 self) {}  // err
 }
-} -returnCodes {error} -match regexp -result {.*4: L Error: function class_2_13_new already declared
+} -returnCodes {error} -match regexp -result {.*3: L Error: does not match other declaration of class_2_13_new
 .*5: L Error: function class_2_13_new already declared
 }
 
@@ -11936,7 +12939,7 @@ class class_2_14
 	void class_2_14_new(class_2_14 self) {}  // err
 	private void class_2_14_new(class_2_14 self) {}  // err
 }
-} -returnCodes {error} -match regexp -result {.*3: L Error: function class_2_14_new already declared
+} -returnCodes {error} -match regexp -result {.*5: L Error: does not match other declaration of class_2_14_new
 .*4: L Error: function class_2_14_new already declared
 }
 

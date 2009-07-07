@@ -333,7 +333,7 @@ void pattern_1_2_foo(...args)
 
 void pattern_1_2()
 {
-	string w = "pattern_1_2_foo";
+	widget w = "pattern_1_2_foo";
 	Text_insert(w, "end", "FOO");
 }
 pattern_1_2();
