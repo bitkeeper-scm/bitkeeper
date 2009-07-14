@@ -297,7 +297,7 @@ clean: FORCE
 		tclkey.h core *.bb *.bbg *.da *.gcov \
 		bk.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
-		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
+		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
 		diff.exe diff3.exe hidestring.exe inskeys_main.o patch.exe
 	$(Q)$(RM) -r tmp
@@ -337,13 +337,12 @@ nonet nonet_test localtest:
 
 realtest: $(ALL) t/doit
 	-cd gui/tcltk && $(MAKE) clobber
-	-./bk get -qS t/setup t/win32/win32_common t/x.chk_env
-	-./bk -rt get -qS 't.*'
+	-bk get -qS t/setup t/win32/win32_common
+	bk -rt get -qS 't.*'
 	cd t && ./doit -i -f
 
 guitest: $(ALL) t/doit
-	-./bk get -qS t/SCCS/s.g.* t/setup t/win32/win32_common \
-	    t/x.chk_env t/guitest.tcl
+	-bk get -qS t/SCCS/s.g.* t/setup t/win32/win32_common t/guitest.tcl
 	cd t && ./doit -g -i -f
 
 t/doit: t/doit.sh substvars
@@ -357,7 +356,6 @@ t/guitest: t/guitest.tcl tclwrap
 FORCE:
 
 gnu: $(BK) libc/libc.a FORCE
-	@bk get -sS gnu/Makefile
 	@cd gnu && $(MAKE) Q=$(Q) BINDIR=$(BINDIR)
 
 win32: FORCE
@@ -388,15 +386,11 @@ bk.script: bk.sh port/$(SYS)_platform.sh
 	cat port/$(SYS)_platform.sh bk.sh > bk.script
 	chmod +x bk.script 
 
-bkmsg.txt: bkmsg.doc bk.ver FORCE
-	PWD=`pwd`; \
-	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
-	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in $$PWD?" \
-		> bkmsg.txt
+bkmsg.txt: bkmsg.doc
+	cp $< $@
 
-bkhelp.txt: build $(BK) FORCE
-	@bk get -S ../man/man2help/Makefile
-	@cd ../man/man2help && ../../src/build helptxt
+bkhelp.txt: FORCE
+	@cd ../man/man2help && $(MAKE) helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
 
 ../doc/bk_refcard.ps: FORCE
@@ -405,36 +399,20 @@ bkhelp.txt: build $(BK) FORCE
 
 ../doc/bk_refcard.pdf: ../doc/bk_refcard.ps
 
-# It is structured like this so that rebuilding prs doesn't
-# force bk.ver (and thus the bk script) to be regenerated.
-bk.ver: utils/os utils/gnu-os
-	$(Q)bk _test ! -f bk.ver -o ../SCCS/s.ChangeSet -nt bk.ver && { \
-		( echo \
-		    `./bk prs -hr+ -d'$$if(:TAG:){:TAG: }:UTC:\n' ../ChangeSet|\
-		    sed 's/ approved//g';` \
-		    for \
-		    `sh ./utils/os` \
-		) | ./bk undos >bk.v; \
-		mv -f bk.v bk.ver; \
-	}
 
 # This must be rebuilt every time because it includes the build time
-bkver.c: FORCE
+bkver.c: utils/os utils/gnu-os FORCE
 	$(if $(Q),@echo Building $@,)
 	$(Q)echo "#include \"sccs.h\"" > bk.v
-	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet >> bk.v
-	@if [ ! -x utils/os ]; then bk get -S utils/os; fi
+	$(Q)bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\nchar *bk_tag = ":TAG:";\n' ../ChangeSet >> bk.v
 	$(Q)echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
-	$(Q)echo "time_t build_timet = "`perl -e "print time"`";" >> bk.v
 	$(Q)echo "int test_release = "$(TRIAL)";" >> bk.v
+	$(Q)echo "time_t bk_build_timet = "`perl -e "print time"`";" >> bk.v
+	$(Q)echo "char *bk_build_user = \""`bk getuser`@`bk gethost -r`"\";" >> bk.v
+	$(Q)echo "char *bk_build_dir = \""`pwd`"\";" >> bk.v
 	$(Q)mv -f bk.v bkver.c
 
 bkver.o: bkver.c
-
-# Because we need the execute bit on
-utils/os utils/gnu-os: $(BK)
-	@if [ ! -x utils/os ]; then ./bk get -S utils/os; fi
-	@if [ ! -x utils/gnu-os ]; then ./bk get -S utils/gnu-os; fi
 
 %: %.sh
 	$(if $(Q),@echo Building $@,)
@@ -456,10 +434,10 @@ bkl5_hashs.h: mk_bkl5_license_tab.pl  USED_BKL5_LICENSES
 # Quick and dirty target so we can make all the gui tools without the rest
 .PHONY: GUI
 GUI: tclwrap
-	@cd gui && make Q=$(Q) gui
+	@cd gui && $(MAKE) Q=$(Q) gui
 
 gui-nowrap GUI-nowrap:
-	@cd gui && make Q=$(Q) nowrap
+	@cd gui && $(MAKE) Q=$(Q) nowrap
 
 install: installdir
 	tmp/bitkeeper/bk _eula -a
@@ -578,15 +556,14 @@ kw2val_lookup.c: slib.c kw2val.pl
 hidestring: hidestring.c	
 	$(CC) $(CC_FAST) -o hidestring hidestring.c
 
-MLA.lic: MLA.preamble Enterprise.lic.txt $(BK)
+MLA.lic: MLA.preamble Enterprise.lic.txt
 	$(if $(Q),@echo Encrypting $@,)
 	$(Q)cat MLA.preamble Enterprise.lic.txt | \
-	    ./bk crypto -E 048d6aa55c30b3b4 > MLA.lic
+	    bk crypto -E 048d6aa55c30b3b4 > MLA.lic
 
-%.lic: %.lic.txt bkupgrade.key $(BK)
-	$(BK) co -Sq $<
+%.lic: %.lic.txt bkupgrade.key
 	$(if $(Q),@echo Encrypting $@,)
-	$(Q)./bk crypto -E 048d6aa55c30b3b4 < $< > $@
+	$(Q)bk crypto -E 048d6aa55c30b3b4 < $< > $@
 
 check-syntax:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -S ${CHK_SOURCES} -o /dev/null

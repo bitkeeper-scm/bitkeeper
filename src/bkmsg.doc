@@ -567,11 +567,6 @@ tree.
 
 The error caused by this undo is:
 $
-#version
-BitKeeper version is @version@
-Options: #BKARG#
-Built by: @builder@
-$
 #config_preamble
 This is the BitKeeper configuration for this package.
 
