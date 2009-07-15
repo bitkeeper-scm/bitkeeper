@@ -159,14 +159,12 @@ insertFile(sfile sf)
 		++self.cnt_modified;
 		++self.cnt_total;
 	}
-	if (isUserComment(sf, sf.comments)) {
+	if (isUserComment(sf, sf.comments) || (sf.type eq "pending")) {
 		img = img_done;
+		updateCommentCount(sf, 1);
 	}
 	sf.node = ListBox_insert(self.w_files, idx, "#auto",
 	    text: sf.name, image: img, data: sf.name);
-	if ((sf.type ne "cset") && (sf.comments ne "")) {
-		updateCommentCount(sf, 1);
-	}
 	self.files{sf.name} = sf;
 	if (self.cnt_total == 1) moveNext();
 }
@@ -254,6 +252,7 @@ readSfilesOutput()
 
 	foreach (line in lines) {
 		file = join(" ", lrange(split(line, " "), 1, "end"));
+		if (file =~ /^~/) file = "./${file}";
 		extra = line[0] eq "x";
 		modified = line[2] eq "c";
 		pending = line[3] eq "p";
@@ -590,11 +589,12 @@ commentChanged()
 	sfile	sf = getSelectedFile();
 	string	comments = getCurrentComments();
 
-	if ((comments eq "") && (sf.comments ne "")) {
+	if (sf.type eq "pending") return;
+	if ((comments eq "") && (isUserComment(sf, sf.comments))) {
 		self.files{sf.name}.comments = comments;
 		updateCommentCount(sf, -1);
 		redrawFile(sf.node);
-	} else if ((comments ne "") && (sf.comments eq "")) {
+	} else if ((comments ne "") && (!isUserComment(sf, sf.comments))) {
 		self.files{sf.name}.comments = comments;
 		updateCommentCount(sf, 1);
 		redrawFile(sf.node);
@@ -675,6 +675,7 @@ toggleAllNewFiles()
 void
 updateButtons()
 {
+	sfile	cset;
 	sfile	sf = getSelectedFile();
 	string	b, buttons[] = winfo_children(self.w_buttons);
 
@@ -701,7 +702,8 @@ updateButtons()
 		configureButton("history", text: "Unignore",
 		    command: "unignoreFile");
 	}
-	if (self.cnt_commented && (self.files{"ChangeSet"}.comments ne "")) {
+	cset = self.files{"ChangeSet"};
+	if (self.cnt_commented && (isUserComment(cset, cset.comments))) {
 		configureButton("checkin", text: "Commit");
 	} else if (sf.type eq "pending") {
 		configureButton("checkin", state: "disabled");
@@ -721,8 +723,9 @@ updateStatus()
 	string	status;
 
 	if (self.sfiles_component ne "") {
-		string	comp = getRelativePath(self.sfiles_component, self.root);
+		string	comp;
 
+		comp = getRelativePath(self.sfiles_component, self.root);
 		status = "Scanning ${comp}...";
 	} else {
 		append(&status, "${self.cnt_newC}/${self.cnt_new} "
@@ -802,7 +805,7 @@ saveComments()
 	if (Text_cget(self.w_comments, state:) ne "normal") return;
 	comments = getCurrentComments();
 	if (comments eq "") {
-		if (sf.comments ne "") {
+		if (isUserComment(sf, sf.comments)) {
 			updateCommentCount(sf, -1);
 		}
 		self.files{sf.name}.comments = comments;
@@ -812,7 +815,7 @@ saveComments()
 			if (comments eq msg) return;
 		}
 		if (isUserComment(sf, comments)) {
-			if (sf.comments eq "") {
+			unless (isUserComment(sf, sf.comments)) {
 				updateCommentCount(sf, 1);
 			}
 			writeComments(sf, comments);
@@ -828,12 +831,15 @@ moveNext()
 {
 	string	sel = getSelectedNode();
 	int	idx = ListBox_index(self.w_files, sel);
-	string	item;
+	string	item, file;
 
-	item = ListBox_items(self.w_files, ++idx);
-	if (Listbox_exists(self.w_files, item)) {
-		selectFile(item);
+	while (1) {
+	    item = ListBox_items(self.w_files, ++idx);
+	    unless (Listbox_exists(self.w_files, item)) return;
+	    file = Listbox_itemcget(self.w_files, item, data:);
+	    if (self.files{file}.type ne "pending") break;
 	}
+	selectFile(item);
 }
 
 void
@@ -963,6 +969,12 @@ showFileContents(sfile sf)
 {
 	string	type = ftype(sf.file);
 	string	state = Text_cget(self.w_diffs, state:);
+
+	unless (exists(sf.file)) {
+		puts("Removing non-existent file \"${sf.name}\" from list box");
+		removeFile(sf);
+		return;
+	}
 
 	Text_configure(self.w_diffs, state: "normal");
 	if (type eq "link") {
@@ -1144,6 +1156,7 @@ doCommit()
 {
 	int	i;
 	sfile	sf;
+	sfile	cset = self.files{"ChangeSet"};
 	string	file, comp;
 	string	ignore{string}[];
 	string	commit{string}[];
@@ -1162,10 +1175,10 @@ doCommit()
 
 	unless (self.commitSwitch) {
 		self.commitSwitch = 1;
-		if (self.files{"ChangeSet"}.comments eq "") {
-			topMessage(msgs{"noCset"}, "message");
-		} else {
+		if (isUserComment(cset, cset.comments)) {
 			topMessage(msgs{"gotCset"}, "message");
+		} else {
+			topMessage(msgs{"noCset"}, "message");
 		}
 		return;
 	}
@@ -1217,6 +1230,7 @@ void
 commitComponent(string comp, string ignore[], string checkin[], string commit[])
 {
 	string	file;
+	sfile	cset = self.files{"ChangeSet"};
 
 	chdir(comp);
 	if (llength(ignore)) {
@@ -1255,7 +1269,7 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 		}
 	}
 
-	if ((self.files{"ChangeSet"}.comments ne "")
+	if (isUserComment(cset, cset.comments)
 	    && (llength(commit) || (comp eq self.root))) {
 		FILE	fd;
 		string	err;
@@ -1266,7 +1280,7 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 		string	tmp2 = tmpfile("bk_cicomment");
 
 		fd = fopen(tmp2, "w");
-		puts(nonewline:, fd, self.files{"ChangeSet"}.comments);
+		puts(nonewline:, fd, cset.comments);
 		fclose(fd);
 
 		fd = fopen(tmp1, "w");
@@ -1404,6 +1418,33 @@ unignoreFile()
 }
 
 void
+removeFile(sfile sf)
+{
+	sfile	sel = getSelectedFile();
+
+	if (sf.type eq "new") {
+		unlink(sf.file);
+	} else {
+		exec("bk", "unedit", sf.file);
+	}
+
+	--self.cnt_total;
+	if (sf.type eq "new") {
+		--self.cnt_new;
+	} else if (sf.type eq "modified") {
+		--self.cnt_modified;
+	}
+	if (isUserComment(sf, sf.comments)) updateCommentCount(sf, -1);
+	if (sf.file eq sel.file) {
+		moveNext();
+		updateStatus();
+	}
+	deleteCommentFile(sf.file);
+	ListBox_delete(self.w_files, sf.node);
+	self.files{sf.name} = undef;
+}
+
+void
 discardChanges()
 {
 	sfile	sf = getSelectedFile();
@@ -1421,23 +1462,7 @@ discardChanges()
 	}
 
 	self.doDiscard = 0;
-	if (sf.type eq "new") {
-		unlink(sf.file);
-	} else {
-		exec("bk", "unedit", sf.file);
-	}
-
-	--self.cnt_total;
-	if (sf.type eq "new") {
-		--self.cnt_new;
-	} else if (sf.type eq "modified") {
-		--self.cnt_modified;
-	}
-	if (sf.comments ne "") updateCommentCount(sf, -1);
-	moveNext();
-	updateStatus();
-	deleteCommentFile(sf.file);
-	ListBox_delete(self.w_files, sf.node);
+	removeFile(sf);
 }
 
 int
@@ -1508,6 +1533,115 @@ initMsgs()
 "This repository is locked.\n"
 "A checkin cannot be made at this time.\n"
 "Try again later.";
+}
+
+// Test functions.
+// 
+// These are very simple functions called by the testing harness to query
+// internal information from tool.
+
+string
+test_getFiles()
+{
+	string	data, text, node, nodes[];
+
+	nodes = ListBox_items(self.w_files);
+	foreach (node in nodes) {
+		text = ListBox_itemcget(self.w_files, node, text:);
+		data .= text . "\n";
+	}
+	return (data);
+
+}
+
+string
+test_getComments()
+{
+	return (getCurrentComments());
+}
+
+string
+test_getDiffs()
+{
+	return(Text_get(self.w_diffs, 1.0, "end - 1 char"));
+}
+                                                              
+void                                                          
+test_selectFile(string file)                                  
+{
+	selectFile(self.files{file}.node);                    
+}                                                             
+
+void
+test_selectNext()
+{
+	moveNext();
+}
+
+int
+test_findFileInList(string file, sfile &sf)
+{
+	int	node, nodes[];
+
+	nodes = ListBox_items(self.w_files);
+	foreach (node in nodes) {
+		if (ListBox_itemcget(self.w_files, node, text:) eq file) {
+			sf = self.files{file};
+			return (node);
+		}
+	}
+	return (-1);
+}
+
+void
+test_fileIsInList(string file)
+{
+	sfile	sf;
+
+	if (test_findFileInList(file, &sf) == -1) {
+		puts("${file} is not in the file list, but it should be");
+		exit(1);
+	}
+}
+
+void
+test_fileIsNotInList(string file)
+{
+	sfile	sf;
+
+	unless (test_findFileInList(file, &sf) == -1) {
+		puts("${file} is in the file list, but it should not be");
+		exit(1);
+	}
+}
+
+void
+test_fileHasIcon(string file, string want)
+{
+	sfile	sf;
+	string	icon = "unknown";
+	int	node = test_findFileInList(file, &sf);
+
+	unless (node == -1) {
+		string	img = ListBox_itemcget(self.w_files, node, image:);
+
+		if (img eq img_new) {
+			icon = "extra";
+		} else if (img eq img_cset) {
+			icon = "cset";
+		} else if (img eq img_done) {
+			icon = "done";
+		} else if (img eq img_exclude) {
+			icon = "excluded";
+		} else if (img eq img_modified) {
+			icon = "modified";
+		}
+	}
+
+	if (want ne icon) {
+		puts("${file} has the ${icon} icon but it should be ${want}");
+		exit(1);
+	}
 }
 
 void
@@ -1593,6 +1727,9 @@ main(int argc, string argv[])
 
 	// Initialize the ChangeSet template if it exists.
 	self.templates{"ChangeSet"} = bk("-R cat BitKeeper/templates/commit");
+	if (self.templates{"ChangeSet"} ne "") {
+		self.templates{"ChangeSet"} .= "\n";
+	}
 
 	unless (defined(_initialized)) {
 		initMsgs();

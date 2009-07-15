@@ -17,22 +17,14 @@ export BK_TEST_HOME="$HERE/home"
 OUT="$HERE/out"
 RC="`bk dotbk`/rev.rc"
 
-echo $N Create initial repository ...................................$NL
-commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-echo OK
-
 echo $N Create some data ............................................$NL
+commercial project
 cd "$HERE/project/BitKeeper/etc"
 mkdir "$HERE/project/src"
 cd "$HERE/project/src"
 for f in file1 file2 file3 file4 file5 ; do
     echo "this is $f" > $f 
-    bk ci $Q -i -y'new file' $f
-    if [ ! -f SCCS/s.$f ]; then echo failed to create file $f ; exit 1 ; fi
+    bk ci $Q -i -y'new file' $f || exit 1
 done
 bk commit $Q -y'initial checkin' 
 bk tag $Q "BabySteps"

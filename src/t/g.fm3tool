@@ -18,15 +18,8 @@ export _BK_PREVENT_RESOLVE_RERUN=YES
 OUT="$HERE/out"
 RC="`bk dotbk`/fm3.rc"
 
-echo $N Create initial repository ...................................$NL
-commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-echo OK
-
 echo $N Create some data ............................................$NL
+commercial project
 cd "$HERE/project/BitKeeper/etc"
 mkdir "$HERE/project/src"
 cd "$HERE/project/src"
@@ -48,9 +41,8 @@ cat >file2 <<EOF
 6: this is part of the original file
 7: this is part of the original file
 EOF
-bk ci $Q -i file1 file2
+bk ci $Q -i file1 file2 || exit 1
 bk commit $Q -y"initial checkin"
-if [ ! -f SCCS/s.file1 ]; then echo failed to create history; exit 1; fi
 # create clones
 cd "$HERE"
 bk clone $Q "$HERE/project" "$HERE/remote"

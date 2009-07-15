@@ -221,7 +221,9 @@ port() {
 
 # args: GOT WANT
 cmpfiles() {
-	bk diff -q --ignore-trailing-cr "$1" "$2" || {
+	OUTPUT=`bk diff -q --ignore-trailing-cr "$1" "$2"` || {
+		echo failed
+		echo $OUTPUT
 		bk diff -u "$1" "$2"
 		exit 1
 	}

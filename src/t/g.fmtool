@@ -17,15 +17,8 @@ export BK_TEST_HOME="$HERE/home"
 OUT="$HERE/out"
 RC="`bk dotbk`/fm.rc"
 
-echo $N Create initial repository ...................................$NL
-commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-echo OK
-
 echo $N Create some data ............................................$NL
+commercial project
 cd "$HERE/project/BitKeeper/etc"
 mkdir "$HERE/project/src"
 cd "$HERE/project/src"
@@ -33,8 +26,7 @@ echo "Common to both" > left
 echo "Common to both" > right
 echo "This is the right file" >> right
 echo "THis is the left file"  >> left
-bk ci $Q -i left right
-if [ ! -f SCCS/s.left ]; then echo failed to create history; exit 1; fi
+bk ci $Q -i left right || exit 1
 echo OK
 
 echo $N Simple startup and exit......................................$NL

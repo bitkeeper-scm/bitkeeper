@@ -32,6 +32,9 @@ while {[string match {-*} [lindex $argv 0]]} {
 set test_tool [lindex $argv 0]
 set test_program [file join [exec bk bin] gui lib $test_tool]
 set test_toplevel .
+if {$test_tool eq "newcitool"} { set test_toplevel ".citool" }
+
+set test_timeout 15000
 
 # simulate button click on a widget. Index is of the form @x,y.
 # if target is a text widget, index may also be of the form
@@ -55,62 +58,70 @@ proc test_buttonClick {button target index} \
 	    -x $x -y $y
 }
 
-# simulates pressing a button with the given label or pathname
-# If the button isn't visible, wait until it is.
-proc test_buttonPress {target {button 1}} \
+proc test_findWidget {target} \
 {
-	global test_done
+	global test_widget
 
 	if {[string match .* $target]} {
-		# target is a specific widget
-		set widget $target
-	} else {
-		# target is a button label; find the button with the
-		# specified label (searching though all commands that
-		# look like a widget is a bit quicker than stepping
-		# through the tree looking at each widget and its children)
-		# since the button may not yet exist, keep trying for
-		# a few seconds
-		set widget ""
-		set test_done 0
-		after 5000 {set test_done 1}
-		while {!$test_done} {
-			foreach w [info commands .*] {
-				if {[catch {$w cget -text} label]} continue
-				if {[string match $target $label] && 
-				    [winfo viewable $w]} {
-					set widget $w
-					break
-				}
-			}
-			if {$widget ne ""} {
-				after cancel {set test_done 1}
-				break
-			} 
-			update
-		}
-		if {![winfo exists $widget]} {
-			return -code error "can't find button that matches '$target'"
+	    # target is a specific widget
+	    set test_widget $target
+	    return $target
+	}
+
+	foreach w [info commands .*] {
+		if {[catch {$w cget -text} label]} { continue }
+		if {[string match $target $label]} {
+			set test_widget $w
+			return $w
 		}
 	}
+
+	after 250 [info level 0]
+	return
+}
+
+# simulates pressing a button with the given label or pathname
+# If the button isn't visible, wait until it is.
+proc test_buttonPress {target args} \
+{
+	test_timeoutSet
+
+	if {[lindex $args 0] eq "then"} {
+		test_buttonPressAfter [lindex $args 1]
+	}
+
+	if {[test_findWidget $target] eq ""} {
+		tkwait variable ::test_widget
+	}
+	set widget $::test_widget
 
 	if {![winfo viewable $widget]} {
 		tkwait visibility $widget
 	}
-	
+
 	set rootx [winfo rootx $widget]
 	set rooty [winfo rooty $widget]
+	set opts  [list -rootx $rootx -rooty $rooty]
 	# Many tk bindings expect an <Enter> event to
 	# preceed a buttonpress event, so we fake that
 	# too
-	event generate $widget <Enter> \
-	    -rootx $rootx -rooty $rooty
-	event generate $widget <ButtonPress-$button> \
-	    -rootx $rootx -rooty $rooty -x 1 -y 1
-	event generate $widget <ButtonRelease-$button> \
-	    -rootx $rootx -rooty $rooty -x 1 -y 1
+	event generate $widget <Enter> {*}$opts
+	event generate $widget <ButtonPress-1> {*}$opts -x 1 -y 1
+	event generate $widget <ButtonRelease-1> {*}$opts -x 1 -y 1
+	test_timeoutCancel
 	update idletasks
 	return $widget
+}
+
+proc test_buttonPressAfter {target {n 0}} \
+{
+	set widget [test_findWidget $target]
+	if {$widget eq "" || ![winfo viewable $widget]} {
+		if {$n == 0} { test_timeoutSet }
+		after 250 [list test_buttonPressAfter $target [incr n]]
+	} else {
+		test_buttonPress $target
+	}
 }
 
 # this forces the input focus to be a window that has the -takefocus
@@ -374,10 +385,24 @@ proc test_geometry {w} \
 
 proc test_die {code} \
 {
-	after 15000 {
-		puts stderr "Aborted due to timeout"
-		exit $code
-	}
+	test_timeoutSet
+}
+
+proc test_timeoutSet {} \
+{
+	global timeoutId
+	global test_timeout
+
+	test_timeoutCancel
+	set msg "Aborted due to timeout"
+	set timeoutId [after $test_timeout "puts stderr \"$msg\"; exit 99"]
+}
+
+proc test_timeoutCancel {} \
+{
+	global timeoutId
+
+	if {[info exists timeoutId]} { after cancel $timeoutId }
 }
 
 # Citool has a rather annoying design in that it calls
@@ -421,6 +446,6 @@ set test_err [catch {
 } result]
 
 if {$test_err} {
-	puts $errorInfo
+	puts stderr $errorInfo
 	exit 1
 }

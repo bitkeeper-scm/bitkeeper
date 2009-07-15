@@ -12,14 +12,8 @@
 # Copyright (c) 2001 Larry McVoy
 # %K%
 
-commercial project
-echo $N Create initial repository ...................................$NL
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-echo OK
 echo $N Clone the repo, create data, merge ..........................$NL
+commercial project
 echo foo > foo
 bk new $Q foo
 bk commit $Q -yproject
@@ -33,16 +27,13 @@ bk edit $Q foo
 echo fu fu >> foo
 bk ci $Q -yfoo foo
 bk commit $Q -yclone
-bk pull $Q
-echo
-echo
-echo Just comment and commit
-echo
-(echo ul; echo C; echo q) | bk resolve $Q -l
-cat <<EOF > CMP
-1.3
-1.4
-EOF
+bk pull -R $Q
+(echo ul; echo comment; echo) | bk resolve $Q 2> ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+bk changes -fkr1.3,1.4 > CMP
 cmp CMP BitKeeper/etc/csets-in || {
 	echo failed to update csets-in properly
 	cat BitKeeper/etc/csets-in

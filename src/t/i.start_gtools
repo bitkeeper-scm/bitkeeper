@@ -19,51 +19,35 @@ MYHOST="`bk gethost`"
 echo $N Test setuptool ..............................................$NL
 bk setuptool > /dev/null 2>&1
 echo OK
-echo $N Create initial repository ...................................$NL
-commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-echo OK
+
 echo $N Create some data ............................................$NL
+commercial project
 cd "$HERE/project/BitKeeper/etc"
 mkdir "$HERE/project/src"
 cd "$HERE/project/src"
-ed <<EOF >/dev/null 2>&1
-a
-Test File %W%
-stuff
-stuff
-stuff
-stuff
-stuff
-.
-2,\$t.
-2,\$t.
-2,\$t.
-2,\$t.
-2,\$t.
-2,\$t.
-2,\$t.
-w foo
+perl <<'EOF' > foo
+print "Test File %W%\n";
+for (1 .. 640) { print "stuff\n"; }
 EOF
 bk ci $Q -i foo 
-if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
 bk edit $Q foo
-ed foo <<EOF >/dev/null 2>&1
-100,120s/stuff/more stuff/
-200,300s/stuff/more stuff with a really long line/
-400,420s/stuff/yuck/
-w
+perl <<'EOF' > foo
+print "Test File %W%\n";
+for (1 .. 98) { print "stuff\n"; }
+for (1 .. 21) { print "more stuff\n"; }
+for (1 .. 79) { print "stuff\n"; }
+for (1 .. 101) { print "more stuff with a really long line\n"; }
+for (1 .. 99) { print "stuff\n"; }
+for (1 .. 21) { print "yuck\n"; }
+for (1 .. 221) { print "stuff\n"; }
 EOF
 bk ci $Q  -y"test of difftool" foo 
 bk commit $Q -y"test of difftool"
 echo OK
-echo $N Test revtool  ...............................................$NL
+echo $N Test revtool ................................................$NL
 bk revtool
 echo OK
-echo $N Test citool   ...............................................$NL
+echo $N Test citool .................................................$NL
 bk edit $Q foo
 echo foo > foo
 bk citool
@@ -74,7 +58,7 @@ echo OK
 echo $N Test renametool .............................................$NL
 echo -e "foo\nbar" | bk renametool
 echo OK
-echo $N Test fmtool  ................................................$NL
+echo $N Test fmtool .................................................$NL
 cd "$HERE/project/src"
 bk edit $Q
 echo foo >> foo
@@ -84,11 +68,10 @@ echo foobaz >> foobaz
 echo foobar >> foobar
 bk ci $Q -i foobar foobaz
 bk ci $Q -y"added a line" foo
-if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
 bk co $Q
 bk fmtool foo foobar out > /dev/null 2>&1
 echo OK
-echo $N Test fm3tool  ...............................................$NL
+echo $N Test fm3tool ................................................$NL
 cd "$HERE/project/src"
 bk edit $Q foobaz
 echo local >> foobaz

@@ -332,7 +332,7 @@ proc getFiles {} \
 	if {[llength $files] >= 1} {
 		.menu.fmb configure -text "Files ([llength $files])"
 		set menu(widget) [menu .menu.fmb.menu]
-		if {$gc(aqua) && $::tk_version eq "8.5"} {
+		if {$gc(aqua)} {
 			# fake a menu entry so that the indices match
 			# this is so lame
 			$menu(widget) add command -label "" \

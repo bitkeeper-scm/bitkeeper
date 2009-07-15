@@ -1,0 +1,93 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2005 Larry McVoy
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+
+echo $N Create some data ............................................$NL
+commercial project
+mkdir src
+cd src
+for f in file1 file2 ; do
+	echo "this is $f" > $f
+	bk ci $Q -i -y'new file' $f || exit 1
+done
+cd ..
+bk commit $Q -y'initial checkin'
+echo OK
+
+echo $N click a button by name ......................................$NL
+bk guitest > "$OUT" 2>&1 <<'EOF'
+	button .b -text "Foo"
+	pack .b
+	test_buttonPress "Foo"
+	exit
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo "failed"
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+echo OK
+
+echo $N click a button by widget path ...............................$NL
+bk guitest > "$OUT" 2>&1 <<'EOF'
+	button .b -text "Foo"
+	pack .b
+	test_buttonPress .b
+	exit
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo "failed"
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+echo OK
+
+echo $N click a button with a wildcard pattern ......................$NL
+bk guitest > "$OUT" 2>&1 <<'EOF'
+	button .b -text "Foobar"
+	pack .b
+	test_buttonPress "Foo*"
+	exit
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo "failed"
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+echo OK
+
+echo $N click a button and wait for a timeout .......................$NL
+bk guitest > "$OUT" 2>&1 <<'EOF'
+	button .b -text "Foobar"
+	pack .b
+	set ::test_timeout 1000
+	test_buttonPress "Foo"
+	exit
+EOF
+err=$?
+test $err -ne 99 && {
+	echo "failed"
+	cat "$OUT"
+	echo "exited $err; expected 99"
+	exit 1
+}
+echo OK
