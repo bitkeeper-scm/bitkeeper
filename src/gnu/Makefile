@@ -35,19 +35,19 @@ install: all
 os: ../utils/os ../utils/gnu-os
 	$(Q)(cd ../utils && ./os) > _os
 	$(Q)echo BIN-`cat _os` > os
-	$(Q)/bin/rm -f _os
+	$(Q)rm -f _os
 
 # win32, can not clean the current Makefile when we are
 # running this make file
 .PHONY: clean
 clean: os
 	$(if $(Q),@echo Cleaning gnu,)
-	-@OS=$(_OS); \
-	$(Q)for i in $(DIRS); \
+	-$(Q)OS=$(_OS); \
+	for i in $(DIRS); \
 	do	(cd $$i && rm -rf BIN-* ); \
 	done
-	-@rm -rf bin
-	$(Q)$(RM) os config.cache
+	-$(Q)rm -rf bin
+	$(Q)rm -f os config.cache
 
 clobber: clean
 	-$(Q)bk -r. clean

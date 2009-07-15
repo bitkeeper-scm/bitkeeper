@@ -18,10 +18,8 @@ libc = Library("libc", stubs + Split('''
 	mdbm/hash.c
 	mdbm/mdbm.c
 	mdbm/mtst.c
-	regex/grep.c
 	regex/re_fail.c
 	regex/regex.c
-	stdio/_fseeko.c
 	stdio/_ftello.c
 	stdio/asprintf.c
 	stdio/fclose.c
@@ -101,12 +99,10 @@ libc = Library("libc", stubs + Split('''
 	string/strchr.c
 	string/strcmp.c
 	string/strcnt.c
-	string/strcoll.c
 	string/strcpy.c
 	string/strcspn.c
 	string/strdup.c
 	string/strlen.c
-	string/strmode.c
 	string/strncat.c
 	string/strncmp.c
 	string/strncpy.c
@@ -117,7 +113,6 @@ libc = Library("libc", stubs + Split('''
 	string/strspn.c
 	string/strstr.c
 	string/strtok.c
-	string/strxfrm.c
 	tcp/tcp.c
 	utils/cleanpath.c
 	utils/concat_path.c
@@ -169,11 +164,12 @@ libc = Library("libc", stubs + Split('''
 	zlib/inflate.c
 	zlib/inftrees.c
 	zlib/infutil.c
-	zlib/maketree.c
 	zlib/trees.c
 	zlib/uncompr.c
 	zlib/zutil.c
 '''),
 	CPPPATH=".")
+
+Program('mtst', ['mdbm/mtst.o', libc])
 
 Return("libc");

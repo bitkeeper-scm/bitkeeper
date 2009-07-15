@@ -1319,9 +1319,12 @@ extern	int	spawn_tcl;
 extern	char	*start_cwd;
 extern	char	*bk_vers;
 extern	char	*bk_utc;
+extern	char	*bk_tag;
 extern	char	*bk_time;
 extern	char	*bk_platform;
-extern	time_t	build_timet;
+extern	time_t	bk_build_timet;
+extern	char	*bk_build_user;
+extern	char	*bk_build_dir;
 extern	int	test_release;
 extern	char	*prog;
 

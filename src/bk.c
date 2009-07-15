@@ -167,7 +167,7 @@ main(int ac, char **av, char **env)
 	 * Add versions that are not tagged will automaticly expire
 	 * in 2 weeks.
 	 */
-	if (test_release && (time(0) > (time_t)build_timet + 3600*24*14)) {
+	if (test_release && (time(0) > (time_t)bk_build_timet + 3600*24*14)) {
 		version_main(0, 0);
 		exit(1);
 	}
