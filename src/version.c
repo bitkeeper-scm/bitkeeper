@@ -39,11 +39,16 @@ bkversion(FILE *f)
 		license_info(key, buf, 0);
 		free(key);
 	}
-	getMsg("version", buf, 0, f);
+	fprintf(f, "BitKeeper version is ");
+	if (*bk_tag) fprintf(f, "%s ", bk_tag);
+	fprintf(f, "%s for %s\n", bk_utc, bk_platform);
+	fprintf(f, "Options: %s\n", buf);
+	fprintf(f, "Built by: %s in %s\n", bk_build_user, bk_build_dir);
+
 	strftime(buf, sizeof(buf), "%a %b %d %Y %H:%M:%S %Z",
-		 localtimez(&build_timet, 0));
+	    localtimez(&bk_build_timet, 0));
 	fprintf(f, "Built on: %s (%s ago)\n", buf,
-	    age(now - build_timet, " "));
+	    age(now - bk_build_timet, " "));
 
 	fprintf(f, "Running on: %s\n", platform());
 
@@ -67,7 +72,7 @@ bkversion(FILE *f)
 	}
 
 	if (test_release) {
-		exp = ((time_t)build_timet - time(0)) / (24*3600.0) + 14;
+		exp = ((time_t)bk_build_timet - time(0)) / (24*3600.0) + 14;
 		if (exp > 0) {
 			fprintf(f, "Expires in: %.1f days (test release).\n",
 			    exp);

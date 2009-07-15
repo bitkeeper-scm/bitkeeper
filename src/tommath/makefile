@@ -155,7 +155,6 @@ poster: poster.tex
 docs:   docdvi
 	dvipdf tommath
 	rm -f tommath.log tommath.aux tommath.dvi tommath.idx tommath.toc tommath.lof
-	bk clean tommath.ind tommath.ilg
 	cd pics ; MAKE=${MAKE} ${MAKE} clean
 
 #LTM user manual
@@ -176,7 +175,6 @@ pretty:
 
 clean:
 	$(if $(Q),@echo Cleaning tommath,)
-	$(Q)bk clean *.ilg *.ind tommath.tex
 	$(Q)rm -f *.bat *.pdf *.o *.a *.obj *.lib *.exe *.dll etclib/*.o demo/demo.o test ltmtest mpitest mtest/mtest mtest/mtest.exe \
 	tags.local \
         *.idx *.toc *.log *.aux *.dvi *.lof *.ps *.log *.s mpi.c *.da *.dyn *.dpi `find . -type f | grep [~] | xargs` *.lo *.la

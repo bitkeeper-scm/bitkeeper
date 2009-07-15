@@ -31,9 +31,7 @@ SRC	= appState.tcl bugform.tcl buglib.tcl ciedit.tcl citool.tcl \
 default: notes/BUILD
 	@cat notes/BUILD
 
-gui guis:  ../tclwrap lib images
-	@cd tcltk && $(MAKE)
-	@$(MAKE) $(GUIS)
+gui guis:  ../tclwrap lib images tcltk $(GUIS)
 	@echo GUIs are up-to-date
 
 lib:
@@ -57,22 +55,24 @@ images: FORCE
 tcltk: FORCE
 	cd tcltk && $(MAKE)
 
-test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup ../t/x.chk_env
-	@../bk get -S ../t/SCCS/s.g.* 
+test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup
+	@bk get -S ../t/SCCS/s.g.* 
 	@(cd ../t && ./doit -g g.*)
 
 $(DOIT):
 	@cd .. && $(MAKE) t/doit
 
-clean-here clobber-here: FORCE
+clean-here: FORCE
 	-rm -f $(GUIS) TAGS
 	-rm -rf bin lib images
+
+clobber-here: clean-here FORCE
 	-bk -r. clean
 
-clean clobber: FORCE
-	-rm -f $(GUIS) TAGS
-	-rm -rf bin lib images
-	-bk -r. clean
+clean: clean-here FORCE
+	-cd tcltk && $(MAKE) clean
+
+clobber: clobber-here FORCE
 	-cd tcltk && $(MAKE) clobber
 
 install: $(GUIS)

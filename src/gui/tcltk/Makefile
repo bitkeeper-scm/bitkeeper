@@ -134,20 +134,29 @@ tk/$S/Makefile: tk/$S/configure Makefile
 	./configure $(QUIET) \
 	    $(ENABLE_64BIT) $(XSSSUPPORT) $(XFTSUPPORT) $(SHARED) $(SYMBOLS)
 
-# fetch tcl subdirectory if needed
-tcl/$S/configure:
-	$(if $(Q), @echo Cloning Tcl,)
-	$(Q)test -d tcl || bk components add $(QUIET) \
+# Use the <dir>/ChangeLog file as a marker that the file has been populated
+CHANGELOGS =  \
+	tcl/ChangeLog \
+	tk/ChangeLog \
+	tktable/ChangeLog \
+	tktreectrl/ChangeLog \
+	bwidget/ChangeLog \
+	pcre/ChangeLog \
+	tkcon/ChangeLog
+
+$(CHANGELOGS):
+	$(if $(Q), @echo Cloning TclTk repos,)
+	$(Q) BK_CONFIG='checkout:get!' bk components add $(QUIET) \
 		-@ -@bk://data.bitmover.com/bk \
 		TCLTK
+	$(Q) bk get -S $(CHANGELOGS)
+
+# fetch tcl subdirectory if needed
+tcl/$S/configure: tcl/ChangeLog
 	$(Q)(cd tcl && bk -Ur get -qS)
 
 # fetch tk subdirectory if needed
-tk/$S/configure:
-	$(if $(Q), @echo Cloning Tk,)
-	$(Q)test -d tk || bk components add $(QUIET) \
-		-@ -@bk://data.bitmover.com/bk \
-		TCLTK
+tk/$S/configure: tk/ChangeLog
 	$(Q)(cd tk && bk -Ur get -qS)
 
 pcre: $(LIBPCRE)
@@ -163,19 +172,11 @@ pcre/Makefile: pcre/configure Makefile
 	$(Q)(cd pcre && \
 	    ./configure $(QUIET) --disable-cpp --disable-shared  --prefix=)
 
-pcre/configure: Makefile
-	$(if $(Q), @echo Cloning PCRE,)
-	$(Q)test -d pcre || bk components add $(QUIET) \
-		-@ -@bk://data.bitmover.com/bk \
-		TCLTK
+pcre/configure: Makefile pcre/ChangeLog
 	$(Q)(cd pcre && bk -Ur get -qS)
 
 # fetch tktable subdirectory if needed
-tktable/configure:
-	$(if $(Q), @echo Cloning TKTable,)
-	$(Q)test -d tktable || bk components add $(QUIET) \
-		-@ -@bk://data.bitmover.com/bk \
-		TCLTK
+tktable/configure: tktable/ChangeLog
 	$(Q)(cd tktable && bk -Ur get -qS)
 
 # Tktable libs
@@ -210,11 +211,7 @@ $(BKAPP)/Contents/lib/$(TKTABLE)/$(LIBTKTABLE): tktable/configure
 	    libdir=lib bindir=Resources install
 
 # fetch tktreectrl subdirectory if needed
-tktreectrl/configure:
-	$(if $(Q), @echo Cloning TKTreeCtrl,)
-	$(Q)test -d tktreectrl || bk components add $(QUIET) \
-		-@ -@bk://data.bitmover.com/bk \
-		TCLTK
+tktreectrl/configure: tktreectrl/ChangeLog
 	$(Q)(cd tktreectrl && bk -Ur get -qS)
 
 # TkTreeCtrl libs
@@ -247,11 +244,7 @@ $(BKAPP)/Contents/lib/$(TREECTRL)/$(LIBTREECTRL): tktreectrl/configure
 	$(MAKE) prefix= exec_prefix= DESTDIR=../$(BKAPP)/Contents/ \
 	    libdir=lib bindir=Resources install
 
-lib/$(BWIDGET)/pkgIndex.tcl:
-	$(if $(Q), @echo Cloning BWidget,)
-	$(Q)test -d bwidget || bk components add $(QUIET) \
-		-@ -@bk://data.bitmover.com/bk \
-		TCLTK
+lib/$(BWIDGET)/pkgIndex.tcl: bwidget/ChangeLog
 	$(Q)cd bwidget; bk -Ur get -qS
 	$(if $(Q), @echo Installing BWidget,)
 	$(Q)mkdir -p lib/$(BWIDGET)/lang
@@ -265,11 +258,7 @@ $(BKAPP)/Contents/lib/$(BWIDGET)/pkgIndex.tcl: lib/$(BWIDGET)/pkgIndex.tcl
 	test -d $(BKAPP)/Contents/lib || mkdir $(BKAPP)/Contents/lib
 	cp -fRPH lib/$(BWIDGET) $(BKAPP)/Contents/lib
 
-lib/Tkcon/pkgIndex.tcl:
-	$(if $(Q), @echo Cloning TkCon,)
-	$(Q)test -d tkcon || bk components add $(QUIET) \
-		-@ -@bk://data.bitmover.com/bk \
-		TCLTK
+lib/Tkcon/pkgIndex.tcl: tkcon/ChangeLog
 	cd tkcon; bk -Ur get -qS
 	$(if $(Q), @echo Installing TkCon,)
 	$(Q)mkdir -p lib/Tkcon
@@ -357,7 +346,7 @@ mkapp: FORCE
 bin/BitKeeper.app/Contents/MacOS/BitKeeper: bin/tclsh$(EXE) bin/bkgui$(EXE) mkapp
 	$(MAKE) -C tcl/macosx XLIBS="$(LIBTOMCRYPT)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT) --disable-info-body \
-	    --enable-pcre --with-pcre=../../../pcre/local \
+	    --enable-pcre=default --with-pcre=../../../pcre/local \
 	    --with-tommath=$(TOMMATH)" embedded
 	$(MAKE) -C tk/macosx XLIBS="$(LIBTOMCRYPT) $(LIBPCRE)" \
 	    EXTRA_CONFIGURE_ARGS="--with-bk=$(BKROOT)" embedded
@@ -368,7 +357,10 @@ clean-obj: FORCE
 	-test -d tk && cd tk/$S && test -f Makefile && $(MAKE) distclean
 	-test -d tktable && cd tktable && test -f Makefile && $(MAKE) distclean
 	-test -d tktreectrl && cd tktreectrl && test -f Makefile && $(MAKE) distclean
-	-test -d pcre && cd pcre && test -f Makefile && $(MAKE) distclean
+	-test -d pcre && cd pcre && { \
+		test -f Makefile && $(MAKE) distclean; \
+		rm -rf local; \
+	}
 	-@$(MAKE) clean-config
 
 clean-config: FORCE
@@ -377,19 +369,11 @@ clean-config: FORCE
 	done
 
 clean: clean-obj FORCE
-	-test -d tcl && cd tcl && bk -r clean
-	-test -d tk && cd tk && bk -r clean
-	-test -d tkcon && cd tkcon && bk -r clean
-	-test -d tktable && cd tktable && bk -r clean
-	-test -d tktreectrl && cd tktreectrl && bk -r clean
-	-test -d bwidget && cd bwidget && bk -r clean
-	-test -d pcre && cd pcre && bk -r clean
-	-rm -rf build
-	-bk -r. clean
-
-clobber:
-	@$(MAKE) clean
 	rm -rf bin lib man build include usr share
+	-rm -rf build
+
+clobber: clean FORCE
+	-bk sfiles -r | bk clean -	# clean here and all subrepos
 
 rmcache: version.sh
 	rm -f `./version.sh`

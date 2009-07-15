@@ -12,17 +12,12 @@
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
 commercial project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
 cd src
 echo foo > 'F!O#O$ B%A^R&RR(R)RR'
 echo bar > bar.c
 echo h > h.h
-bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
-if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h || exit 1
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $Q -yCset
@@ -33,10 +28,10 @@ cores
 echo $N Clone repository ............................................$NL
 cd "$HERE"
 bk clone $Q "$HERE/project" "$HERE/copy" || { echo failed; exit 1; }
-[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+bk _test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
-[ "x$parent" = "xfile:/$HERE/project" ] || { echo wrong parent $parent ; exit 1; }
+[ "x$parent" = "xfile://$HERE/project" ] || { echo wrong parent $parent ; exit 1; }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 echo OK
 echo $N Pull with no changes in child ...............................$NL
@@ -66,29 +61,33 @@ if [ $DO_REMOTE = YES ]; then
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
  echo OK
+ echo $N Pull with explicit local parent .............................$NL
+ cd "$HERE/copy"
+ URL="$HERE/project"
+ bk pull -t $Q "$URL" || { echo failed; exit 1; }
+ revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
+ [ $revs -eq 2 ] || { echo failed; exit 1; }
+ cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
+ echo OK
+ echo $N Pull with explicit local parent and username ................$NL
+ bk pull -t $Q $USER@$HOSTNAME:"$HERE/project" || { echo failed; exit 1; }
+ revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
+ [ $revs -eq 2 ] || { echo failed; exit 1; }
+ echo OK
 else
  echo Pull with explicit remote parent ............................skipped
  echo Pull with explicit remote parent and username................skipped
+ echo Pull with explicit local parent .............................skipped
+ echo Pull with explicit local parent and username ................skipped
 fi
-echo $N Pull with explicit local parent .............................$NL
-cd "$HERE/copy"
-HOSTNAME="`bk gethost`"
-bk pull -t $Q $HOSTNAME:"$HERE/project" || { echo failed; exit 1; }
-revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
-[ $revs -eq 2 ] || { echo failed; exit 1; }
-cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
-echo OK
-echo $N Pull with explicit local parent and username ................$NL
-bk pull -t $Q $USER@$HOSTNAME:"$HERE/project" || { echo failed; exit 1; }
-revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
-[ $revs -eq 2 ] || { echo failed; exit 1; }
-echo OK
+
 echo $N Pull from subdirectory of repository ........................$NL
 cd src
 bk pull -t $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' 'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
+
 echo $N Pull with mergeable changes in child ........................$NL
 bk get $Q -e bar.c
 echo line three >>bar.c
@@ -158,7 +157,7 @@ KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 cd "$HERE"
 tar cf PUSH.tar project copy
 cd "$HERE/copy"
-bk push -t -a $Q 2> resolve.out
+_BK_PREVENT_RESOLVE_RERUN=1 bk push -t -a $Q 2> resolve.out
 test $? -ne 0 || { echo failed; cat resolve.out; exit 1; }
 grep -q 'unresolved conflicts, nothing is applied' resolve.out || {
 	echo should have had conflicts, but did not
@@ -169,6 +168,8 @@ KEY2="`bk prs -hd:KEY: -r+ "$HERE/project/ChangeSet"`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 echo $N Resolve by hand and push again ..............................$NL
+# XXX: Remove hack when gone file no longer is an extra in the RESYNC
+rm -f RESYNC/BitKeeper/etc/gone
 # OK, now make sure that the discard button is disabled
 bk resolve $Q -F <<EOF >resolve.out 2>&1
 m
@@ -179,7 +180,7 @@ u
 EOF
 [ $? -eq 0 ] || { echo resolve failed; cat resolve.out; exit 1; }
 L=`bk get $Q -p src/h.h | wc -l`
-[ $L -eq 5 ] || { echo merge failed; exit 1; }
+[ $L -eq 7 ] || { echo merge failed; exit 1; }
 cd "$HERE/project"; checkLocks; cd "$HERE/copy"; checkLocks
 cd "$HERE"
 cp -rp project project2

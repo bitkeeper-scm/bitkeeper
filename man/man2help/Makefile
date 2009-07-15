@@ -1,5 +1,5 @@
 
-BK = ../../src/bk
+BK = bk
 
 # Override Solaris make.rules
 .SCCS_GET:

@@ -77,6 +77,8 @@ echo OK
 
 echon Checking citool behavior ....................................
 rm -f OUT
+# XXX: Remove hack when gone file no longer is an extra in the RESYNC
+rm -f RESYNC/BitKeeper/etc/gone
 echo
 echo "================================================================="
 echo "Resolve by choosing first the right addition, then the left."

@@ -2,7 +2,6 @@
 #include "nested.h"
 #include "bkd.h"
 
-private	int	list_components(char **aliases, int here, int keys);
 private	int	unpopulate_check(comp *c, char **urls);
 
 
@@ -10,9 +9,8 @@ int
 components_main(int ac, char **av)
 {
 	int	c, i, j, k, clonerc;
-	int	quiet = 0;
-	int	keys = 0, add = 0, rm = 0, here;
-	int	force = 0;
+	int	keys = 0, add = 0, rm = 0, here = 0, quiet = 0, force = 0;
+	int	citool = 0;
 	char	**urls = 0;
 	char	**aliases = 0;
 	char	**vp = 0;
@@ -25,6 +23,8 @@ components_main(int ac, char **av)
 	int	status, rc;
 	nested	*n;
 	char	*subcmd = 0;
+	project	*prod;
+	char	*first = 0;
 
 	unless (start_cwd) start_cwd = strdup(proj_cwd());
 
@@ -35,7 +35,7 @@ components_main(int ac, char **av)
 	} else {
 		subcmd = "here";
 	}
-	while ((c = getopt(ac, av, "@|fE;klq")) != -1) {
+	while ((c = getopt(ac, av, "@|cE;fklq")) != -1) {
 		switch(c) {
 		    case '@':
 			list = 0;
@@ -57,7 +57,7 @@ components_main(int ac, char **av)
 			EACH(list) urls = addLine(urls, list[i]);
 			freeLines(list, 0);
 			break;
-		    case 'f': force = 1; break;
+		    case 'c': citool = 1; break;
 		    case 'E':
 			/* we just error check and pass through to clone */
 			unless (strneq("BKU_", optarg, 4)) {
@@ -67,6 +67,7 @@ components_main(int ac, char **av)
 			}
 			cav = addLine(cav, aprintf("-E%s", optarg));
 			break;
+		    case 'f': force = 1; break;
 		    case 'k': keys = 1; break;
 		    case 'l': cav = addLine(cav, strdup("-l")); break;
 		    case 'q':
@@ -75,19 +76,51 @@ components_main(int ac, char **av)
 			break;
 		    default:
 usage:			sys("bk", "help", "-s", prog, SYS);
+			freeLines(aliases, free);
+			if (first) free(first);
 			return (1);
 		}
 	}
-	if (proj_cd2product()) {
-		fprintf(stderr, "%s: must be in an ensemble.\n", prog);
+	unless (prod = proj_product(0)) {
+		fprintf(stderr, "%s: must be in an nested collection.\n", prog);
 		return (1);
 	}
+	if (citool && proj_isComponent(0)) {
+		first = strdup(proj_comppath(0));
+	}
+	(void)proj_cd2product();
 	aliases = nested_here(0);
-	if ((here = streq(subcmd, "here"))  || streq(subcmd, "missing")) {
+	if ((here = streq(subcmd, "here")) || streq(subcmd, "missing")) {
 		if (av[optind]) goto usage;
-		rc = list_components(aliases, here, keys);
+		assert(!citool || (here && !keys));
+		if (first) printf("%s\n", first);
+		if (citool) printf(".\n");
+		n = nested_init(0, 0, 0, NESTED_PENDING);
+		nested_aliases(n, n->tip, &aliases, 0, n->pending);
+		EACH_STRUCT(n->comps, cp, i) {
+			if (cp->product) continue;
+			if (cp->present && !cp->alias) {
+			    	fprintf(stderr,
+				    "WARN: %s: %s is present but not in "
+				    "in HERE alias\n", prog, cp->path);
+			} else if (!cp->present && cp->alias) {
+			    	fprintf(stderr,
+				    "WARN: %s: %s is not present but is in "
+				    "in HERE alias\n", prog, cp->path);
+			}
+			if (here && !cp->present) continue;
+			if (!here && cp->present) continue;
+			if (first && streq(first, cp->path)) continue;
+			if (keys) {
+				printf("%s\n", cp->rootkey);
+			} else {
+				printf("%s\n", cp->path);
+			}
+		}
+		nested_free(n);
 		freeLines(aliases, free);
-		return (rc);
+		if (first) free(first);
+		return (0);
 	} else if (streq(subcmd, "add")) {
 		add = 1;
 	} else if (streq(subcmd, "rm")) {
@@ -99,6 +132,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	} else {
 		goto usage;
 	}
+	if (first) free(first);
 	if (keys) goto usage;
 	unless (av[optind]) goto usage;
 	assert((add && !rm) || (rm && !add));
@@ -270,31 +304,6 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	unlink(checkfiles);
 	free(checkfiles);
 	freeLines(aliases, free);
-	return (rc);
-}
-
-private int
-list_components(char **aliases, int here, int keys)
-{
-	nested	*n;
-	comp	*c;
-	int	i;
-	int	rc = 0;
-
-	n = nested_init(0, 0, 0, NESTED_PENDING);
-	/* bk components (here|missing) [-k] */
-	EACH_STRUCT(n->comps, c, i) {
-		if (c->product) continue;
-		if (here && !c->present) continue;
-		if (!here && c->present) continue;
-
-		if (keys) {
-			printf("%s\n", c->rootkey);
-		} else {
-			printf("%s\n", c->path);
-		}
-	}
-	nested_free(n);
 	return (rc);
 }
 

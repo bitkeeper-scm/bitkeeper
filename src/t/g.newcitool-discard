@@ -1,0 +1,79 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2005 Larry McVoy
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/ci.rc"
+
+echo $N Create some data ............................................$NL
+commercial project
+mkdir src
+cd src
+for f in file1 file2 ; do
+	echo "this is $f" > $f
+	bk ci $Q -i -y'new file' $f || exit 1
+done
+cd ..
+bk commit $Q -y'initial checkin'
+echo OK
+
+echo $N discard button ..............................................$NL
+bk get $Q -e src/file1
+echo "# gratuitous change" >> src/file1
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	global w
+	# discard must be done twice to actually do discard
+	test_buttonPress "Discard"
+	test_buttonPress "Discard"
+	test_buttonPress "Quit"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+f=`bk sfiles -cg`
+test X$f = "X" || {
+	echo failed
+	echo "changes to src/file1 were not discarded"
+	exit 1
+}
+echo OK
+
+# make sure transient messages aren't saved as comments
+echo $N aborted discard, transient message not saved ................$NL
+bk get $Q -e src/file1 src/file2
+echo "foo" >> src/file1
+echo "foo" >> src/file2
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_inputString "Comments for file1"
+	# press discard, then cancel by doing control-l
+	test_buttonPress "Discard"
+	# at this point the comment window should say something like
+	# "Press discard again or press ^l to cancel..."
+	# do a ^n, which normally triggers the saveComments code
+	test_inputString "^n" ;# control-n to move to next file
+	test_buttonPress "Quit" then "Quit but save*"
+EOF
+cat "$OUT"
+bk _test -f src/SCCS/c.file1 || {
+	echo failed
+	echo "comment file not created"
+	exit 1
+}
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+echo "Comments for file1" > GOT
+bk cfile print src/file1 > WANT
+cmpfiles WANT GOT
+echo OK

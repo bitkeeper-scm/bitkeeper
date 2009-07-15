@@ -277,14 +277,9 @@ proc getConfig {prog} \
                 }
         }
 
-	if {$::tk_version eq "8.5"} {
-		option add *Text.tabStyle wordprocessor
-		option add *Text.tabs [expr \
-		    {$gc($app.tabwidth) * [font measure $gc($app.fixedFont) 0]}]
-	} else {
-		# using our hacked version of Tk that implements -tabwidth
-		option add *Text.tabwidth $gc($app.tabwidth) userDefault
-	}
+	option add *Text.tabStyle wordprocessor
+	option add *Text.tabs [expr \
+	    {$gc($app.tabwidth) * [font measure $gc($app.fixedFont) 0]}]
 }
 
 proc initFonts {app var} \

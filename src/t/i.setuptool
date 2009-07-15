@@ -17,5 +17,10 @@ export BK_TEST_HOME="$HERE/home"
 
 echo $N Starting setuptool in the regression test dir ...............$NL
 cd "$HERE"
-bk setuptool "$HERE/project"
+bk setuptool "$HERE/project" 2> ERR || { echo failed; exit 1; }
+grep -q "The repository was successfully created." ERR || {
+	echo wrong mesg
+	cat ERR
+	exit 1
+}
 echo OK

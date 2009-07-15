@@ -62,7 +62,6 @@ bk_initGui()
 void
 bk_initBindings()
 {
-	string	cmdkey = "Control";
 	string	w, widgets[];
 
 	// Add a special BK bindtag to every widget
@@ -74,10 +73,14 @@ bk_initBindings()
 		bindtags(w, "BK ${tags}");
 	}
 
-	if (_bk.wm eq "aqua") cmdkey = "Command";
-	bind("all", "<${cmdkey}-p>", _bk.cmd_prev);
-	bind("all", "<${cmdkey}-n>", _bk.cmd_next);
-	bind("all", "<${cmdkey}-q>", _bk.cmd_quit);
+	bind("all", "<Control-p>", _bk.cmd_prev);
+	bind("all", "<Control-n>", _bk.cmd_next);
+	bind("all", "<Control-q>", _bk.cmd_quit);
+	if (_bk.wm eq "aqua") {
+		bind("all", "<Command-p>", _bk.cmd_prev);
+		bind("all", "<Command-n>", _bk.cmd_next);
+		bind("all", "<Command-q>", _bk.cmd_quit);
+	}
 
 	bind("all", "<Control-b>",  "${_bk.w_main} yview scroll -1 pages");
 	bind("all", "<Control-e>",  "${_bk.w_main} yview scroll  1 units");

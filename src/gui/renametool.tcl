@@ -592,17 +592,6 @@ proc Undo {} \
 	}
 }
 
-proc sccsFile {type file} \
-{
-	set dir [file dirname $file]
-	set tail [file tail $file]
-	if {$dir == ""} {
-		return [file join SCCS "$type.$tail"]
-	} else {
-		return [file join $dir SCCS "$type.$tail"]
-	}
-}
-
 # Try to find a match to the file on the left.
 # 1) Try a basename match
 # 2) Try a partial basename match (both ways)
@@ -661,24 +650,12 @@ proc Apply {} \
 	set NEW [open "|bk new $QUIET -" w]
 	while {$buf != ""} {
 		if {[regexp {^bk mv (.*) (.*)$} $buf dummy from to]} {
-			# want to move the [sp].file by hand, the caller
-			# of this tool will check them in.
-			set sfrom [sccsFile s $from]
-			set pfrom [sccsFile p $from]
-			set sto [sccsFile s $to]
-			set pto [sccsFile p $to]
-			if {[file exists $sto]} {
+			if {[sccsFileExists s $to]} {
 				set status 1
-				set msg "$sto exists"
+				set msg "$to already exists"
 			} else {
-				set dir [file dirname $sto]
-				if {[file exists $dir] == 0} {
-					file mkdir $dir
-				}
-				file rename -- $sfrom $sto
-				file rename -- $pfrom $pto
-				set status 0
-				set msg ""
+				file delete $to
+				set status [catch {exec bk mv -l $from $to} msg]
 			}
 		} elseif {[regexp {^bk rm (.*)$} $buf dummy rm]} {
 			set status [catch {exec bk rm $rm} msg]

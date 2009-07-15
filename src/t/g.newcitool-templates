@@ -1,0 +1,208 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/ci.rc"
+CSETCMTS="$HERE/project/SCCS/c.ChangeSet"
+
+echo $N Create some data ............................................$NL
+commercial project
+mkdir src
+cd src
+for f in file1 file2 ; do
+	echo "this is $f" > $f
+	bk ci $Q -i -y'new file' $f || exit 1
+done
+bk commit $Q -y'initial checkin'
+bk get $Q -e file1
+echo "gratuitous change" >> file1
+echo OK
+
+echo $N no template means comments should be empty ..................$NL
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	test_inputString "comments for file1"
+	test_selectFile ChangeSet
+	test_fileHasIcon ChangeSet cset
+	set comments [test_getComments]
+	if {$comments ne ""} {
+		puts "Template comments are not correct."
+		exit 1
+	}
+	test_buttonPress Quit then "Quit without*"
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo "failed"
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+echo OK
+
+echo $N commit template shows up in changeset comments...............$NL
+cd "`bk root`"
+mkdir BitKeeper/templates
+echo "Template..." > BitKeeper/templates/commit
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	test_inputString "comments for file1"
+	test_selectFile ChangeSet
+	test_fileHasIcon ChangeSet cset
+	set comments [test_getComments]
+	if {$comments ne "Template...\n"} {
+		puts "Template comments are not correct."
+		exit 1
+	}
+	test_buttonPress Quit then "Quit but save*"
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo "failed"
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+bk _test -f "$CSETCMTS" && {
+	echo "failed"
+	echo "c.ChangeSet file was created when it shouldn't have been"
+	exit 1
+}
+echo OK
+
+echo $N editing changeset comments updates icon, saves comments......$NL
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile ChangeSet
+	test_inputString "foo"
+	set comments [test_getComments]
+	if {$comments ne "Template...\nfoo"} {
+		puts "Template comments are not correct."
+		puts "$comments"
+		exit 1
+	}
+	test_buttonPress Quit then "Quit but save*"
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo "failed"
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+bk _test -f "$CSETCMTS" || {
+	echo "failed"
+	echo "c.ChangeSet file was not created when it should have been"
+	exit 1
+}
+echo OK
+
+# this relies on the fact that the c. file exists from the previous
+# test run
+echo $N editing changeset which reverts to template..................$NL
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile ChangeSet
+	test_fileHasIcon ChangeSet done
+
+	# delete the trailing foo, which makes the comments the same
+	# as the template.
+	test_inputString [string repeat \010 3]
+	set comments [test_getComments]
+	if {$comments ne "Template...\n"} {
+		puts "bogus comments after edit: '$comments'"
+		exit 1
+	}
+	test_buttonPress Quit then "Quit but save*"
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo "failed"
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+bk _test -f "$CSETCMTS" && {
+	echo "failed"
+	echo "c.ChangeSet file exists when it should have been deleted"
+	exit 1
+}
+echo OK
+
+echo $N comments==template, no cset created..........................$NL
+TIP=`bk changes -r+ -nd:REV:`
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_buttonPress Checkin
+	test_buttonPress Checkin
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo "failed"
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+NEWTIP=`bk changes -r+ -nd:REV:`
+test "X$TIP" = "X$NEWTIP" || {
+	echo "failed"
+	echo "a changeset was created when there were no cset comments"
+	exit 1
+}
+echo OK
+
+echo $N comments!=template, cset created.............................$NL
+TIP=`bk changes -r+ -nd:REV:`
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile ChangeSet
+	test_inputString "\010foo";# delete trailing newline...
+	test_buttonPress Commit
+	test_buttonPress Commit
+EOF
+test $? -ne 0 && { echo failed; cat "$OUT"; exit 1 ; }
+NEWTIP=`bk changes -r+ -nd:REV:`
+test "X$TIP" = "X$NEWTIP" && {
+	echo "failed"
+	echo "a changeset was not created when there should have been"
+	exit 1
+}
+CMTS=`bk changes -nr+ -d:COMMENTS:`
+EXPECTED="C Template...foo"
+test "$CMTS" = "$EXPECTED" || {
+	echo failed
+	echo "Expected changeset comments '$EXPECTED', got '$CMTS'"
+	exit 1
+}
+echo OK
+
+echo $N comments==template, only pending.............................$NL
+TIP=`bk changes -r+ -nd:REV:`
+echo "hello world" > src/file3
+bk ci $Q -i -y'new file' src/file3
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_selectFile ChangeSet
+	test_buttonPress Checkin
+	test_buttonPress Checkin
+	# this second one should do nothing if the GUI is working correctly
+	test_buttonPress Checkin
+	test_buttonPress Quit
+	# should be no need to press a button on the confirmation dialog;
+	# the confirmation dialog shouldn't even appear since there are
+	# no comments to save...
+EOF
+err=$?
+test $err -ne 0 && (echo failed; echo exited $err expected 0 ; exit 1)
+NEWTIP=`bk changes -r+ -nd:REV:`
+test "X$TIP" = "X$NEWTIP" || {
+	echo "failed"
+	echo "a changeset was created when there should not have been"
+	exit 1
+}
+echo OK
