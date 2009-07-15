@@ -153,7 +153,6 @@ private int	push_lit(Expr *expr);
 private int	push_parms(Expr *actuals);
 private void	push_pointer(Expr *lval);
 private int	push_regexpModifiers(Expr *regexp);
-private void	re_gatherTxt(Expr *e, Tcl_Obj *s);
 private int	re_submatchCnt(Expr *re);
 private VarDecl	*struct_lookupMember(Type *t, Expr *idx, int *offset);
 private Sym	*sym_lookup(Expr *id, Expr_f flags);
@@ -2264,59 +2263,26 @@ compile_trinOp(Expr *expr)
 }
 
 /*
- * Gather all the non-interpolated parts of a string or regexp
- * expression and concat them into a Tcl_Obj.  Used by
- * re_submatchCnt() below.
- */
-private void
-re_gatherTxt(Expr *e, Tcl_Obj *s)
-{
-	switch (e->kind) {
-	    case L_EXPR_RE:
-	    case L_EXPR_CONST:
-		if (isstring(e)) Tcl_AppendToObj(s, e->u.string, -1);
-		break;
-	    case L_EXPR_BINOP:
-	    case L_EXPR_TRINOP:
-		if ((e->op == L_OP_INTERP_RE) || (e->op == L_OP_INTERP_STRING)){
-			re_gatherTxt(e->a, s);
-			re_gatherTxt(e->b, s);
-			if (e->c) re_gatherTxt(e->c, s);
-		}
-		break;
-	    default:
-		break;
-	}
-}
-
-/*
  * Estimate how many submatches are in the given regexp.  These are
- * the sub-expressions within parens.  Since regexp's can be
- * interpolated, we can't always get this exact, so just look at the
- * non-interpolated parts of the string.
+ * the sub-expressions within parens.  If the regexp includes an
+ * interpolated string, we can't get this exact, so just assume
+ * the maximum (9) in that case.
  */
 private int
 re_submatchCnt(Expr *re)
 {
-	int		n = 0;
+	int		n = 9;
 	Tcl_Obj		*const_regexp;
 	Tcl_RegExp	compiled;
 
-	const_regexp = Tcl_NewObj();
-	Tcl_IncrRefCount(const_regexp);
-
-	re_gatherTxt(re, const_regexp);
-
-	compiled = Tcl_GetRegExpFromObj(L->interp, const_regexp,
+	if (re->kind == L_EXPR_RE) {
+		const_regexp = Tcl_NewStringObj(re->u.string, -1);
+		Tcl_IncrRefCount(const_regexp);
+		compiled = Tcl_GetRegExpFromObj(L->interp, const_regexp,
 					TCL_REG_ADVANCED);
-	unless (compiled) {
-		L_warnf(re, "cannot get submatch count in"
-			    " interpolated regular expression");
-	} else {
-		n = ((TclRegexp *)compiled)->re.re_nsub;
+		Tcl_DecrRefCount(const_regexp);
+		if (compiled) n = ((TclRegexp *)compiled)->re.re_nsub;
 	}
-
-	Tcl_DecrRefCount(const_regexp);
 	return (n);
 }
 

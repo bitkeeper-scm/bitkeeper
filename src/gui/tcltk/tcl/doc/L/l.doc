@@ -1756,6 +1756,7 @@ used to capture the results of parts of the regexp match for later use.
 The results end up in C<$1>, C<$2> and so on (but note that if you want
 to interpolate those in a string the syntax is a little convoluted: 
 C<"matched ${$1} and ${$2}">).  
+You can use up to nine captures ($1 - $9).
 
     // A cheap and nasty way to break an e-mail address into parts.
     if (email =~ /([^@]+)@(.+)/) {

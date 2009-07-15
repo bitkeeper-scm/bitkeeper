@@ -6551,6 +6551,55 @@ regexp_1_5()
 regexp_1_5
 } -output ""
 
+test regexp-1.6 {regexp capture variables in interpolated regexp} -body {
+#lang L
+void regexp_1_6()
+{
+	string	r1 = "(1)";
+	string	r2 = "(1)(2)(3)(4)(5)(6)(7)(8)(9)";
+
+	unless ("x1y" =~ /x${r1}y/) puts("bad 1.1");
+	unless ($0 eq "x1y") puts("bad 1.2");
+	unless ($1 eq "1") puts("bad 1.3");
+
+	unless ("x123456789y" =~ /x${r2}y/) puts("bad 2.1");
+	unless ($0 eq "x123456789y") puts("bad 2.2");
+	unless ($1 eq "1") puts("bad 2.3");
+	unless ($2 eq "2") puts("bad 2.4");
+	unless ($3 eq "3") puts("bad 2.5");
+	unless ($4 eq "4") puts("bad 2.6");
+	unless ($5 eq "5") puts("bad 2.7");
+	unless ($6 eq "6") puts("bad 2.8");
+	unless ($7 eq "7") puts("bad 2.9");
+	unless ($8 eq "8") puts("bad 2.10");
+	unless ($9 eq "9") puts("bad 2.11");
+}
+regexp_1_6();
+} -output {}
+
+test regexp-1.7 {check number of regexp capture variables available} -body {
+#lang L
+void regexp_1_7()
+{
+	/*
+	 * This is more of a performance check.  Ensure that in a
+	 * regexp with no interpolations that no unneeded capture
+	 * variables are allocated.
+	 */
+
+	puts($1);  // error -- no regexp seen yet, so $1 is not yet declared
+
+	"x" =~ /(x)/;  // declares $1
+	puts($2);  // error
+
+	"x" =~ /(x)(y)/;  // declares $1 and $2
+	puts($3);  // error
+}
+} -returnCodes error -match regexp -result {.*9: L Error: undeclared variable: \$1
+.*12: L Error: undeclared variable: \$2
+.*15: L Error: undeclared variable: \$3
+}
+
 test reference-1.0 {L references} -body {
 #lang L -nowarn
 void reference_1_0() {
