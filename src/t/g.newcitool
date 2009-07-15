@@ -1,0 +1,355 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+# rick@lenox61.bitmover.com|g.citool|20090528163046|26168
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+RC="`bk dotbk`/ci.rc"
+
+echo $N Create some data ............................................$NL
+commercial project
+mkdir src
+cd src
+for f in file1 file2 file3 file4 file5 ; do
+	echo "this is $f" > $f
+	bk ci $Q -i -y'new file' $f || exit 1
+done
+bk commit $Q -y'initial checkin' || exit 1
+echo OK
+
+echo $N Simple startup and exit with nothing to check in.............$NL
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	test_buttonPress Quit
+EOF
+err=$?
+test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
+test "X$PLATFORM" != XWIN32 && {
+	expected='No files found to checkin'
+	grep -q "$expected" "$OUT" || {
+		echo failed
+		echo "expected: '$expected'"
+		echo "  actual: '`cat "$OUT"`'"
+		exit 1
+	}
+}
+echo OK
+
+echo $N Simple startup and exit with modified files .................$NL
+bk get $Q -e file1
+echo "new line" >> file1
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	# at this point Quit should just quit (as opposed to popping up the
+	# annoying "do you want to save the comments" dialog).
+	test_buttonPress Quit
+EOF
+err=$?
+test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+test -s "$OUT" && {
+	echo failed
+	echo "expected: '$expected'"
+	echo "  actual: '`cat "$OUT"`'"
+	exit 1
+}
+bk unget file1
+echo OK
+
+echo $N Simple startup and exit with a directory as the argument.....$NL
+bk get $Q -e file1
+echo "new line" >> file1
+bk guitest newcitool . >"$OUT" 2>&1 <<'EOF'
+	# at this point Quit should just quit (as opposed to popping up the
+	# annoying "do you want to save the comments" dialog).
+	test_buttonPress Quit
+EOF
+err=$?
+test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+test -s "$OUT" && {
+	echo failed
+	echo "expected: '$expected'"
+	echo "  actual: '`cat "$OUT"`'"
+	exit 1
+}
+bk unget file1
+echo OK
+
+echo $N Simple startup and exit with a file as the argument..........$NL
+bk get $Q -e file1
+echo "new line" >> file1
+bk guitest newcitool file1 >"$OUT" 2>&1 <<'EOF'
+	# at this point Quit should just quit (as opposed to popping up the
+	# annoying "do you want to save the comments" dialog).
+	test_buttonPress Quit
+EOF
+err=$?
+test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+test -s "$OUT" && {
+	echo failed
+	echo "expected: '$expected'"
+	echo "  actual: '`cat "$OUT"`'"
+	exit 1
+}
+bk unget file1
+echo OK
+
+echo $N Simple startup and exit with a multiple files as arguments...$NL
+bk get $Q -e file1
+bk get $Q -e file2
+echo "new line" >> file1
+echo "new line" >> file2
+bk guitest newcitool file1 file 2>"$OUT" 2>&1 <<'EOF'
+	# at this point Quit should just quit (as opposed to popping up the
+	# annoying "do you want to save the comments" dialog).
+	test_buttonPress Quit
+EOF
+err=$?
+test $err -ne 0 && { echo failed; echo "exited $err; expected 0"; exit 1; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+test -s "$OUT" && {
+	echo failed
+	echo "expected: '$expected'"
+	echo "  actual: '`cat "$OUT"`'"
+	exit 1
+}
+bk unget file1
+bk unget file2
+echo OK
+
+echo $N Create dotbk/ci.rc ..........................................$NL
+test -f "$RC" && rm -f "$RC"
+bk get $Q -e file1
+echo "new line" >> file1
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	# at this point Quit should just quit (as opposed to popping up the
+	# annoying "do you want to save the comments" dialog). We need to
+	# quit versus exit to simulate what the user is doing.
+	test_buttonPress Quit
+EOF
+err=$?
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+test -f "$RC" || { echo "failed" ; exit 1; }
+bk unget file1
+echo "OK"
+
+echo $N bug 2004-01-23-01 Pending files included in cset comment ....$NL
+bk edit $Q file1
+bk edit $Q file2
+echo "new line" >> file1
+echo "new line" >> file2
+bk delta $Q -y'pending delta 1' file1
+bk delta $Q -y'pending delta 2' file2
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile ChangeSet
+	set text [test_getDiffs]
+	set pattern "*src/file1*pending delta 1*src/file2*pending delta 2*"
+	if {![string match $pattern $text]} {
+		puts "didn't find pending comments in lower window:"
+		puts $text
+	}
+	# don't need to exit gracefully...
+	exit 0
+EOF
+test -s "$OUT" && { echo failed; cat "$OUT" ; exit 1 ; }
+# go ahead and commit; the cset will be useful in later tests
+bk commit $Q -y'pending file test'
+echo "OK"
+
+echo $N "Quit Dialog - select 'Save Comments' ........................$NL"
+cd "`bk root`"
+# clean out old cfiles
+bk _find . -name "c.*" | while read name; do bk _rm "$name"; done
+bk edit $Q src/file1
+echo "another new line" >> src/file1
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	test_inputString "testing..."
+	test_selectFile ChangeSet
+	test_inputString "testing..."
+	test_buttonPress "Quit" then "Quit but save*"
+EOF
+test -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+cfiles=`bk sfiles -gxy | wc -l`
+test $cfiles -eq 2 || {
+	echo failed
+	echo "expected 2 cfiles, found $cfiles"
+	exit 1
+}
+echo "OK"
+
+echo $N "Quit Dialog - select 'Quit without saving'...................$NL"
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile ChangeSet
+	test_inputString  "testing..."
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+err=$?
+test -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+test $err -eq 99 && { echo "failed (exit $err)" ; exit 1 ; }
+cfiles=`bk _find . -name 'c.*' | wc -l`
+test $cfiles -eq 0 || {
+	echo failed
+	echo "expected 0 cfiles, found $cfiles"
+	bk _find . -name 'c.*'
+	exit 1
+}
+echo "OK"
+
+# this is an odd case. If we have a new file that is deleted while
+# newcitool is running it ends up getting removed from the list and
+# a message spits out on stderr.
+# This test was added because this code path was touched by the
+# commit template code and needed to be tested, but since it also
+# tests a code path unrelated to templates it's in this file rather than
+# the g.newcitool-templates
+echo $N new file disappears out from under us........................$NL
+echo "/* this is temporary */" >> src/bogus.c
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	# src/bogus.c should now be in the file list....
+	file delete src/bogus.c
+	# this should trigger the code path that actually removes the
+	# file from the list...
+	test_selectFile src/bogus.c
+	test_fileIsNotInList src/bogus.c
+	test_buttonPress "Quit"
+	# there should be no comments so there won't be a confirmation dialog...
+EOF
+echo "Removing non-existent file \"src/bogus.c\" from list box" > expected
+cmpfiles expected "$OUT"
+rm expected
+echo OK
+
+# similar to the above but the removed file has a c. file
+echo $N new file, with comments, disappears out from under us........$NL
+echo "/* this is temporary */" >> src/bogus.c
+echo "whatever..." | bk cfile save src/bogus.c
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	# src/bogus.c should now be in the file list....
+	file delete src/bogus.c
+	# this should trigger the code path that actually removes the
+	# file from the list...
+	test_selectFile src/bogus.c
+	test_fileIsNotInList src/bogus.c
+	test_buttonPress "Quit"
+	# there should be no comments so there won't be a confirmation dialog...
+EOF
+echo "Removing non-existent file \"src/bogus.c\" from list box" > expected
+cmpfiles expected "$OUT"
+rm expected
+echo OK
+
+echo $N modified files with pending deltas...........................$NL
+cd src
+bk edit $Q file1
+echo 'stuff' >> file1
+bk delta $Q -ypending file1
+bk edit $Q file1
+echo 'more stuff' >> file1
+cd ..
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	set txt [test_getFiles]
+	set rc 0
+	if {![regexp -- {src/file1@1.3\n} $txt]} {
+		puts stderr "Did not find pending delta for file1"
+		set rc 1
+	}
+	if {![regexp -- {src/file1\n} $txt]} {
+		puts stderr "Did not find modified file file1"
+		set rc 1
+	}
+	if {$rc != 0} {exit $rc}
+	test_buttonPress "Quit"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo OK
+
+echo $N files with tildes and spaces in names........................$NL
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+bk unedit src/file1
+# create a bunch of really weird filenames (thanks Rick!)
+echo foo > ./~foo
+echo foo > src/~foo
+echo foo > "~ spaces in file name"
+mkdir "spaces in dir name"
+echo foo > "spaces in dir name/~ spaces in file name"
+mkdir "./~src"
+echo foo > "./~src/file"
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	foreach i [list 1 2 3 4 5] {
+		test_inputString "This is a comment"
+		test_inputString "^n"
+	}
+	test_buttonPress "Quit" then "Quit but save*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo "This is a comment" > WANT
+bk cfile print ./~foo > GOT
+cmpfiles WANT GOT
+bk cfile print src/~foo > GOT
+cmpfiles WANT GOT
+bk cfile print "~ spaces in file name" > GOT
+cmpfiles WANT GOT
+bk cfile print "spaces in dir name/~ spaces in file name" > GOT
+cmpfiles WANT GOT
+bk cfile print "./~src/file" > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N last test again but with absolute paths......................$NL
+rm -f WANT GOT
+bk _find . -name "c.*" | while read name; do bk _rm "$name"; done
+bk guitest newcitool "`pwd`" > "$OUT" 2>&1 <<'EOF'
+	foreach i [list 1 2 3 4 5] {
+	test_inputString "This is a comment"
+	test_inputString "^n"
+	}
+	test_buttonPress "Quit" then "Quit but save*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
+echo "This is a comment" > WANT
+bk cfile print ./~foo > GOT
+cmpfiles WANT GOT
+bk cfile print src/~foo > GOT
+cmpfiles WANT GOT
+bk cfile print "~ spaces in file name" > GOT
+cmpfiles WANT GOT
+bk cfile print "spaces in dir name/~ spaces in file name" > GOT
+cmpfiles WANT GOT
+bk cfile print "./~src/file" > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Check in a file but do not make a ChangeSet..................$NL
+cd "$HERE"
+commercial pending
+echo "hi" > foo.c
+bk new $Q foo.c
+bk commit $Q -y.
+bk edit $Q foo.c
+echo "hi there" > foo.c
+OUT=$HERE/OUT
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile foo.c
+	test_inputString "comments for foo.c"
+	test_buttonPress "Checkin"
+	test_buttonPress "Checkin"
+EOF
+cat > "$HERE"/WANT <<EOF
+SCCS/s.foo.c|1.2
+EOF
+bk sfiles -pC > "$HERE"/GOT
+cmpfiles "$HERE/WANT" "$HERE/GOT"
+echo OK

@@ -1,0 +1,110 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+
+test -d "$HERE/home" || mkdir "$HERE/home"
+export BK_TEST_HOME="$HERE/home"
+OUT="$HERE/out"
+
+echo $N Create some data ............................................$NL
+commercial project
+mkdir src
+cd src
+for f in file1 file2 file3 ; do
+	echo "this is $f" > $f
+	bk ci $Q -i -y'new file' $f || exit 1
+done
+bk commit $Q -y'initial checkin'
+echo OK
+
+echo $N adding comments changes the icons for files..................$NL
+bk get $Q -e file1 file2
+echo "gratuitous change" >> file1
+echo "gratuitous change" >> file2
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_fileHasIcon ChangeSet cset
+	test_fileHasIcon src/file1 modified
+	test_fileHasIcon src/file2 modified
+	test_inputString "testing..."
+	test_fileHasIcon ChangeSet cset
+	test_fileHasIcon src/file1 done
+	test_fileHasIcon src/file2 modified
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo failed
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+echo OK
+
+echo $N adding comments changes the icons for ChangeSet file.........$NL
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_inputString "this should be for file1..."
+	test_selectFile ChangeSet
+	test_inputString "ChangeSet comment..."
+	test_fileHasIcon ChangeSet done
+	test_fileHasIcon src/file1 done
+	test_fileHasIcon src/file2 modified
+	test_buttonPress Quit then "Quit but save*"
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo failed
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+echo OK
+
+echo $N removing comments from a file changes the icon...............$NL
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	# this assumes the previous test added exactly 27 chars
+	test_inputString [string repeat \010 27]
+	test_fileHasIcon ChangeSet done
+	test_fileHasIcon src/file1 modified
+	test_fileHasIcon src/file2 modified
+	test_buttonPress Quit then "Quit but save*"
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo failed
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+echo OK
+
+echo $N removing comments from ChangeSet changes the icon............$NL
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_inputString "this should be for file1..."
+	test_selectFile ChangeSet
+	test_fileHasIcon ChangeSet done
+	test_fileHasIcon src/file1 done
+	test_fileHasIcon src/file2 modified
+	# this assumes the previous test added exactly 20 chars
+	test_inputString [string repeat \010 20]
+	test_fileHasIcon ChangeSet cset
+	test_fileHasIcon src/file1 done
+	test_fileHasIcon src/file2 modified
+	test_buttonPress Quit then "Quit but save*"
+EOF
+err=$?
+test $err -ne 0 -o -s "$OUT" && {
+	echo failed
+	cat "$OUT"
+	echo "exited $err; expected 0"
+	exit 1
+}
+echo OK

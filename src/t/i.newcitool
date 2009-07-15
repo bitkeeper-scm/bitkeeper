@@ -26,6 +26,15 @@ bk newcitool || exit 1
 cd ..
 echo OK
 
+echo $N Run newcitool in product - checkin but don\'t commit .........$NL
+echo data > file
+bk newcitool || exit 1
+echo OK
+
+echo $N Run newcitool in product - now commit the file ..............$NL
+bk newcitool || exit 1
+echo OK
+
 echo $N Run newcitool in product - go ahead and commit ..............$NL
 echo data > extra
 bk newcitool || exit 1

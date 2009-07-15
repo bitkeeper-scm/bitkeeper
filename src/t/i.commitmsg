@@ -12,32 +12,15 @@
 # Copyright (c) 2001 Larry McVoy
 # %K%
 
-MYHOST="`bk gethost`"
-echo $N Create initial repository ...................................$NL
-echo "logging: none" > "$HERE/c"
-echo "single_user: user1" >>"$HERE/c"
-echo "single_host: $MYHOST" >>"$HERE/c"
-echo "description: BitKeeper Test repository" >> "$HERE/c"   
-echo "email: nobody@nowhere.bk" >> "$HERE/c"
-echo "seats: 2" >>"$HERE/c"
-bk setup -f -c"$HERE/c" project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
-echo OK
-
 echo $N Create some data ............................................$NL
-mkdir "$HERE/project/src"
-cd "$HERE/project/src"
+commercial project
+mkdir src
+cd src
 echo foo > foo.c
 echo bar > bar.c
 bk ci $Q -i foo.c bar.c
 echo h > h.h
-bk ci $Q -i h.h
-if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+bk ci $Q -i h.h || exit 1
 echo OK
 
 echo $N Attempt citool with commit which errors .....................$NL
@@ -51,7 +34,7 @@ echo "The repository is currently locked against updates, try later."
 exit 1
 EOF
 chmod +x "$HERE/project/BitKeeper/triggers/pre-commit"
-echo foo > "$HERE/project/SCCS/c.ChangeSet"
+echo foo | bk cfile save "$HERE/project/ChangeSet"
 bk citool
 echo OK
 echo You should have seen a popup, if you did not this test failed
@@ -65,7 +48,7 @@ echo "Yo poppa likes it"
 exit 0
 EOF
 chmod +x "$HERE/project/BitKeeper/triggers/pre-commit"
-echo foo > "$HERE/project/SCCS/c.ChangeSet"
+echo foo | bk cfile save "$HERE/project/ChangeSet"
 bk citool
 echo OK
 echo You should have seen a popup, if you did not this test failed
@@ -83,7 +66,7 @@ echo you did not accept the license.
 exit 1
 ' > BitKeeper/triggers/pre-commit
 chmod +x BitKeeper/triggers/pre-commit
-echo foo > SCCS/c.ChangeSet
+echo foo | bk cfile save ChangeSet
 bk citool
 bk sfiles -p > XXX
 test -s XXX || {
@@ -113,7 +96,7 @@ echo you did not accept the license.
 exit 1
 ' > BitKeeper/triggers/pre-commit
 chmod +x BitKeeper/triggers/pre-commit
-echo foo > SCCS/c.ChangeSet
+echo foo | bk cfile save ChangeSet
 rm -f XXX
 bk citool
 bk sfiles -p > XXX
@@ -124,25 +107,22 @@ test -s XXX && {
 chmod -x "$HERE/project/BitKeeper/triggers/pre-commit"
 echo OK
 
-echo $N Attempt citool with a bad license signature......$NL
+echo $N Attempt citool with a bad license signature .................$NL
 cd "$HERE/interactive"
-bk edit $Q BitKeeper/etc/config
-# note that one of the signatures is purposefully bogus...
-cd "$HERE/interactive"
-cat > BitKeeper/etc/config << EOF
-license: BKL5386d89d03935edd00001200fffff
-licsign1: YgAAAo0AAAADgAAAAMUmMTTh4+BGjWWnrwvKsg/g8pcqo5+GEe78c0bXAjjQOBdH
-licsign2: kN5i7hpD1DFPrRsch295t3oop5U/7e4hisefNmwaLIQAC07xitzmbw6PdeL2uokv
-licsign3: xyzzy
-logging: private@me.com
-EOF
-echo foo > SCCS/c.ChangeSet
 bk edit $Q src/foo.c
 echo "more foo" >> src/foo.c
-echo "yada yada" > src/SCCS/c.foo.c
+echo "yada yada" | bk cfile save src/foo.c
+echo foo | bk cfile save ChangeSet
 rm -f XXX
-bk citool
-bk sfiles -p > XXX
+bk lease flush -a
+# just read lease
+bk lease renew
+bk edit $Q BitKeeper/etc/config
+# hack a signature so it is wacky
+sed 's/licsign2: ..../licsign2: xxxxxxxx/' < BitKeeper/etc/config > c
+mv c BitKeeper/etc/config
+bk citool && { echo failed; exit 1; }
+bk sfiles -cp > XXX
 test -s XXX || {
      echo Did not fail the commit
      exit 1
@@ -150,4 +130,3 @@ test -s XXX || {
 echo OK
 echo "You should have seen a popup explaining the license signature was bad"
 echo "and you should have had to exit citool manually."
-exit 0

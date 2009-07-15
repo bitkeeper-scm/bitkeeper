@@ -24,23 +24,15 @@ bk new $Q file1 || exit 1
 bk commit $Q -yfirst file1 || exit 1
 bk edit $Q file1 || exit 1
 echo "	XXXXXX" >> file1
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-P=`bk pending | wc -l`
-if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
 
 echo $N 'Sanity check that gc(tabwidth) affects text widgets..........'$NL
 echo 'set gc(tabwidth) 4' > "$CONFIG"
 bk guitest difftool >"$OUT" 2>&1 <<'EOF'
-    if {$::tk_version eq "8.5"} {
-        set tabs [.diffs.right cget -tabs]
-        set font [.diffs.right cget -font]
-        set fontsize [font measure $font 0]
-        set tabwidth [expr {$tabs / $fontsize}]
-    } else {
-        set tabwidth [.diffs.right cget -tabwidth]
-    }
+    set tabs [.diffs.right cget -tabs]
+    set font [.diffs.right cget -font]
+    set fontsize [font measure $font 0]
+    set tabwidth [expr {$tabs / $fontsize}]
     puts "tab width: $tabwidth"
     exit 0
 EOF
@@ -58,14 +50,10 @@ echo $N Tool-specific setting overrides global setting...............$NL
 echo 'set gc(tabwidth) 4' > "$CONFIG"
 echo 'set gc(diff.tabwidth) 6' > "$CONFIG"
 bk guitest difftool >"$OUT" 2>&1 <<'EOF'
-    if {$::tk_version eq "8.5"} {
-        set tabs [.diffs.right cget -tabs]
-        set font [.diffs.right cget -font]
-        set fontsize [font measure $font 0]
-        set tabwidth [expr {$tabs / $fontsize}]
-    } else {
-        set tabwidth [.diffs.right cget -tabwidth]
-    }
+    set tabs [.diffs.right cget -tabs]
+    set font [.diffs.right cget -font]
+    set fontsize [font measure $font 0]
+    set tabwidth [expr {$tabs / $fontsize}]
     puts "tab width: $tabwidth"
     exit 0
 EOF

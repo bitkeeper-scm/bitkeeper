@@ -58,6 +58,9 @@ FILE    stderr = "stderr";
 FILE    stdout = "stdout";
 string	stdio_lasterr;
 
+extern	string errorCode[];
+
+
 struct	stat {
 	int	st_dev;
 	int	st_ino;
@@ -566,14 +569,13 @@ symlink(_unused string sourcePath, _unused string targetPath)
 string
 system(_unused string cmd)
 {
-	string	err, output;
+	string	res;
 
-	if (catch("set output [exec {*}$cmd]", &err)) {
-		stdio_lasterr = err;
+	if (catch("exec {*}$cmd", &res)) {
+		stdio_lasterr = res;
 		return (undef);
-	} else {
-		return (output);
 	}
+	return (res);
 }
 
 string

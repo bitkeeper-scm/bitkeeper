@@ -15,13 +15,13 @@
 OUT="$HERE/out"
 
 echo $N Calling citool outside of a repo.............................$NL
-bk guitest citool >$OUT 2>&1 <<'EOF'
+bk guitest citool > "$OUT" 2>&1 <<'EOF'
 	exit 0
 EOF
 echo OK
 
 echo $N Calling csettool outside of a repo...........................$NL
-bk guitest csettool >$OUT 2>&1 <<'EOF'
+bk guitest csettool > "$OUT" 2>&1 <<'EOF'
 	exit 0
 EOF
 echo OK
@@ -30,12 +30,14 @@ echo $N Calling difftool outside of a repo...........................$NL
 bk guitest difftool >GOT 2>&1 <<'EOF'
 	exit 0
 EOF
-echo "There were no files available to diff" > WANT
-cmpfiles WANT GOT
+test "X$PLATFORM" != XWIN32 && {
+	echo "There were no files available to diff" > WANT
+	cmpfiles WANT GOT
+}
 echo OK
 
 echo $N Calling revtool outside of a repo............................$NL
-bk guitest revtool >$OUT 2>&1 <<'EOF'
+bk guitest revtool > "$OUT" 2>&1 <<'EOF'
 	exit 0
 EOF
 echo OK

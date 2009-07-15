@@ -1001,22 +1001,23 @@ symlink1();
 	file delete -force linktest linktest2
 } -output {}
 
-test system-1 {test system/pclose} -setup {
+test backtick-1 {test backtick} -setup {
 	set fname [makeFile "line1\nline2\nline3" system_file .]
 } -body {
 #lang L
-void system1()
+void backtick1()
 {
 	string	s;
 
-	s = system("cat system_file");
+	s = `cat system_file`;
 	unless (s eq "line1\nline2\nline3") puts("bad 1");
 
 	/* Check error case. */
-	s = system("what-the-heck bad-command");
-	if (defined(s)) puts("bad 2");
+	// not yet
+	// s = `what-the-heck bad-command`;
+	// if (defined(s)) puts("bad 2");
 }
-system1();
+backtick1();
 } -output {}
 
 test tolower-1 {test tolower} -body {

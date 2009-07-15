@@ -1930,10 +1930,7 @@ proc save {} \
 		}
 		set f [open $outfile w]
 	} else {
-		set base [file tail $filename]
-		set dir [file dirname $filename]
-		set pfile "$dir/SCCS/p.$base"
-		if {[file exists $pfile] == 0} {
+		if {![sccsFileExists p $filename]} {
 			puts "The file is not edited, will not save"
 			exit 1
 		}

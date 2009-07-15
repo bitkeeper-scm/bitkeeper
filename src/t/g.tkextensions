@@ -18,7 +18,7 @@ CONFIG="`bk dotbk`/config-gui"
 
 echo $N 'Checking for right version of Tk.............................' $NL
 bk guitest >"$OUT" 2>&1 <<'EOF'
-    if {$::tk_version eq "8.5"} {
+    if {$::tk_version eq "8.6"} {
         exit 0
     } else {
         exit 1
@@ -75,7 +75,7 @@ echo "OK"
 echo $N Checking for PCRE............................................$NL
 bk guitest >GOT 2>&1 <<'EOF'
 L {
-pcre()
+void pcre()
 {
 	string s[] = split("axbxc", "x");
 	if (defined(s[0])) {
