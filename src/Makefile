@@ -468,7 +468,7 @@ installdir: utils/registry.tcl
 trial_image trial-image:
 	$(MAKE) trial _image
 
-image: $(BK)
+image:
 	$(MAKE) p
 	$(MAKE) _image
 

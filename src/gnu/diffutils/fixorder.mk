@@ -4,11 +4,11 @@
 # bk get -Sq configure.in configure config.hin
 # bk get -Sq
 
-configure: configure.in config.hin stamp-h.in
-	sleep 1; touch configure
+configure: config.hin
+	bk get -q $@
 
 config.hin: stamp-h.in
-	sleep 1; touch config.hin
+	bk get -q $@
 
 stamp-h.in: configure.in
-	sleep 1; touch stamp-h.in
+	bk get -q $@

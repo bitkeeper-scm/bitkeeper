@@ -19,7 +19,9 @@ all: os exe
 		( \
 		echo $$i; \
 		unset CFLAGS; \
-		cd $$i; ../../bk get -q checkout; sh checkout; \
+		cd $$i; \
+		bk get -Sq; \
+		$(MAKE) -f fixorder.mk; \
 		cd $$OS; test -f Makefile || sh ../configure $(CONFIG); \
 		$(MAKE) Q=$(Q) \
 		); \

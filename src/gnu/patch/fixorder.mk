@@ -8,13 +8,10 @@
 # bk get -Sq
 
 configure: aclocal.m4 config.hin
-	touch configure
+	bk get -q $@
 
 config.hin: configure.in
-	touch config.hin
+	bk get -q $@
 
 aclocal.m4: configure.in
-	touch aclocal.m4
-
-configure.in: m4
-	touch configure.in
+	bk get -q $@
