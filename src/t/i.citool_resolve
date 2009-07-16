@@ -46,8 +46,6 @@ bk delta $Q -ycopy 'foo bar' baz
 bk commit $Q -ycopy
 cd ..
 bk pull $Q -R
-# XXX: Remove hack when gone file no longer is an extra in the RESYNC
-rm -f RESYNC/BitKeeper/etc/gone
 cd RESYNC/src
 bk edit $Q -M 'foo bar' baz
 bk edit $Q -M 'foo bar' baz
