@@ -1,7 +1,7 @@
 void
 bk_initSearch()
 {
-	string	bar = "${_bk.w_top}.__searchBar";
+	widget	bar = "${_bk.w_top}.__searchBar";
 
 	if (_bk.w_search eq "") return;
 
@@ -53,7 +53,7 @@ bk_initSearch()
 void
 popupSearchBar(string text, int search)
 {
-	string	bar = _bk.w_searchBar;
+	widget	bar = _bk.w_searchBar;
 
 	bind("${bar}.e", "<Escape>", "closeSearchBar");
 	if (search) {
@@ -69,20 +69,20 @@ popupSearchBar(string text, int search)
 	}
 
 	grid(bar, column: 0, columnspan: 100, sticky: "ew");
-	Label_configure("${bar}.l", text: text);
+	Label_configure((widget)"${bar}.l", text: text);
 	if (search) {
 		grid("${bar}.buttons");
 	} else {
 		grid("remove", "${bar}.buttons");
 	}
-	Entry_selection("${bar}.e", "clear");
-	Entry_selection("${bar}.e", "range", 0, "end");
+	Entry_selection((widget)"${bar}.e", "clear");
+	Entry_selection((widget)"${bar}.e", "range", 0, "end");
 	update_idletasks();
 	focus(force:, "${bar}.e");
 }
 
 void
-toggleGoto(string w, int force)
+toggleGoto(widget w, int force)
 {
 	string	wclass = winfo("class", w);
 
@@ -94,7 +94,7 @@ toggleGoto(string w, int force)
 }
 
 void
-toggleSearch(string w, int force)
+toggleSearch(widget w, int force)
 {
 	string	wclass = winfo("class", w);
 
@@ -115,9 +115,9 @@ closeSearchBar()
 void
 searchGoto()
 {
-	string	idx = Entry_get("${_bk.w_searchBar}.e");
+	string	idx = Entry_get((widget)"${_bk.w_searchBar}.e");
 
-	Label_configure("${_bk.w_searchBar}.msg", text: "");
+	Label_configure((widget)"${_bk.w_searchBar}.msg", text: "");
 	if (String_is("integer", strict:, idx)) {
 		if ((int)idx < 0) {
 			idx = "end ${idx} lines";
@@ -127,7 +127,7 @@ searchGoto()
 	}
 
 	if (catch("${_bk.w_search} see \"${idx}\"")) {
-		Label_configure("${_bk.w_searchBar}.msg",
+		Label_configure((widget)"${_bk.w_searchBar}.msg",
 		    text: "Bad line number");
 		return;
 	}
@@ -142,10 +142,10 @@ searchTypeAhead()
 	int	len, wrapped;
 	string	opts[] = {"-regexp", "-count", "len"};
 	string	msg, stop;
-	string	search = Entry_get("${_bk.w_searchBar}.e");
+	string	search = Entry_get((widget)"${_bk.w_searchBar}.e");
 
 	Text_tag(_bk.w_search, "remove", "searchMatch", 1.0, "end");
-	Label_configure("${_bk.w_searchBar}.msg", text: "");
+	Label_configure((widget)"${_bk.w_searchBar}.msg", text: "");
 
 	if (search eq "") return;
 
@@ -173,14 +173,14 @@ searchTypeAhead()
 		float	idx2 = Text_index(_bk.w_search, "${idx} + ${len} c");
 
 		if (wrapped) {
-			Label_configure("${_bk.w_searchBar}.msg",
+			Label_configure((widget)"${_bk.w_searchBar}.msg",
 			    text: msg);
 		}
 
 		Text_tag(_bk.w_search, "add", "searchMatch", idx, idx2);
 		Text_see(_bk.w_search, idx);
 	} else {
-		Label_configure("${_bk.w_searchBar}.msg",
+		Label_configure((widget)"${_bk.w_searchBar}.msg",
 		    text: "Phrase not found");
 	}
 }
@@ -192,10 +192,10 @@ searchSearch(int dir)
 	int	i, len, wrapped;
 	string	opts[] = {"-regexp", "-count", "len"};
 	string	msg, stop, start;
-	string	search = Entry_get("${_bk.w_searchBar}.e");
+	string	search = Entry_get((widget)"${_bk.w_searchBar}.e");
 
 	Text_tag(_bk.w_search, "remove", "searchMatch", 1.0, "end");
-	Label_configure("${_bk.w_searchBar}.msg", text: "");
+	Label_configure((widget)"${_bk.w_searchBar}.msg", text: "");
 
 	if (search eq "") return;
 
@@ -235,7 +235,7 @@ searchSearch(int dir)
 		float	idx2 = Text_index(_bk.w_search, "${idx} + ${len} c");
 
 		if (wrapped) {
-			Label_configure("${_bk.w_searchBar}.msg",
+			Label_configure((widget)"${_bk.w_searchBar}.msg",
 			    text: msg);
 		}
 
@@ -245,7 +245,7 @@ searchSearch(int dir)
 		Text_tag(_bk.w_search, "add", "searchMatch", idx, idx2);
 		Text_see(_bk.w_search, idx);
 	} else {
-		Label_configure("${_bk.w_searchBar}.msg",
+		Label_configure((widget)"${_bk.w_searchBar}.msg",
 		    text: "Phrase not found");
 	}
 }
@@ -261,7 +261,7 @@ searchToggleHighlight()
 	Text_tag(_bk.w_search, "remove", "searchHighlight", 1.0, "end");
 	unless (_bk_search_highlight) return;
 
-	search = Entry_get("${_bk.w_searchBar}.e");
+	search = Entry_get((widget)"${_bk.w_searchBar}.e");
 	i = llength(opts);
 	unless (_bk_search_case) {
 		opts[i++] = "-nocase";
