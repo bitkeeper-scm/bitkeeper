@@ -285,6 +285,7 @@ include_pop()
 	"return"	return T_RETURN;
 	"void"		return T_VOID;
 	"string"	return T_STRING;
+	"widget"	return T_WIDGET;
 	"int"		return T_INT;
 	"float"		return T_FLOAT;
 	"poly"		return T_POLY;
@@ -335,6 +336,11 @@ include_pop()
 					L_lval.s = ckstrdup(yytext);
 					return T_ID;
 				}
+			}
+	{ID}:		{
+				L_lval.s = ckstrdup(yytext);
+				L_lval.s[yyleng-1] = 0;  // strip the :
+				return T_ID_COLON;
 			}
 	([A-Z]|::)([0-9a-zA-Z]|::)*_\*	{
 				L_lval.s = ckstrdup(yytext);

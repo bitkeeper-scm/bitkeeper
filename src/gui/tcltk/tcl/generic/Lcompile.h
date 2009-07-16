@@ -191,6 +191,7 @@ extern Type	*L_float;
 extern Type	*L_string;
 extern Type	*L_void;
 extern Type	*L_poly;
+extern Type	*L_widget;
 
 static inline int
 isarray(Expr *expr)
@@ -223,6 +224,11 @@ isstring(Expr *expr)
 	return (expr->type && (expr->type->kind == L_STRING));
 }
 static inline int
+iswidget(Expr *expr)
+{
+	return (expr->type && (expr->type->kind == L_WIDGET));
+}
+static inline int
 isvoid(Expr *expr)
 {
 	return (expr->type && (expr->type->kind == L_VOID));
@@ -238,6 +244,7 @@ isscalar(Expr *expr)
 	return (expr->type && (expr->type->kind & (L_INT |
 						   L_FLOAT |
 						   L_STRING |
+						   L_WIDGET |
 						   L_POLY)));
 }
 static inline int
