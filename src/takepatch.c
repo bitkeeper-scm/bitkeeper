@@ -51,7 +51,6 @@ private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private	int	skipPatch(MMAP *p);
-private	void	getGone(void);
 private	void	getChangeSet(void);
 private	void	loadskips(void);
 private int	sfio(MMAP *m);
@@ -246,13 +245,6 @@ usage:		system("bk help -s takepatch");
 	 */
 	if (conflicts) converge_hash_files();
 
-	/* 
-	 * We need the Gone file even for no conflict case
-	 * Because user may have deleted the sfile in the
-	 * local tree,
-	 */
-	getGone();
-
 	/*
 	 * There are instances (contrived) where the ChangeSet
 	 * file will not be in the RESYNC tree.  Make sure that
@@ -279,22 +271,6 @@ usage:		system("bk help -s takepatch");
 		error = WEXITSTATUS(i);
 	}
 	exit(error);
-}
-
-private void
-getGone(void)
-{
-	char	*p, *cmd;
-
-	if (exists(SGONE)) {
-		p = aprintf("RESYNC/%s", SGONE);
-		unless (exists(p)) {
-			cmd = aprintf("bk cat %s > RESYNC/%s", GONE, GONE);
-			system(cmd);
-			free(cmd);
-		}
-		free(p);
-    	}
 }
 
 private void

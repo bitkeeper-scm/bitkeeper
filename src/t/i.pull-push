@@ -168,8 +168,6 @@ KEY2="`bk prs -hd:KEY: -r+ "$HERE/project/ChangeSet"`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 echo $N Resolve by hand and push again ..............................$NL
-# XXX: Remove hack when gone file no longer is an extra in the RESYNC
-rm -f RESYNC/BitKeeper/etc/gone
 # OK, now make sure that the discard button is disabled
 bk resolve $Q -F <<EOF >resolve.out 2>&1
 m

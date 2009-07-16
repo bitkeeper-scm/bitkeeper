@@ -290,6 +290,17 @@ bk changes -v -r+ -nd:DPN:@:REV: > "$HERE"/commit.log 2>&1 || exit 1
 bk changes -v -rOLD -nd:DPN:@:REV: >> "$HERE"/commit.log 2>&1 || exit 1
 EOF
 chmod +x BitKeeper/triggers/post-commit.bug
+cat <<EOF > BitKeeper/triggers/pre-resolve.bug
+#!/bin/sh
+
+# we should not have a gone file in RESYNC
+test -f BitKeeper/etc/gone && {
+     echo RESYNC shouldn\'t have a gone file
+     exit 1
+}
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-resolve.bug
 bk pull $Q || {
 	echo failed
 	exit 1
