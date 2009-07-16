@@ -125,6 +125,7 @@ private void	compile_stmts(Stmt *stmt);
 private int	compile_trinOp(Expr *expr);
 private void	compile_twiddle(Expr *expr);
 private void	compile_twiddleSubst(Expr *expr);
+private int	compile_undef(Expr *expr);
 private int	compile_unOp(Expr *expr);
 private int	compile_var(Expr *expr, Expr_f flags);
 private void	compile_varDecl(VarDecl *decl);
@@ -141,7 +142,8 @@ private void	frame_resumeBody();
 private void	frame_resumePrologue();
 private char	*get_text(Expr *expr);
 private Type	*iscallbyname(VarDecl *formal);
-private int	ispatternfn(char *name, Expr **Foo_star, Expr **bar);
+private int	ispatternfn(char *name, Expr **foo, Expr **Foo_star,
+			    Expr **opts, int *nopts);
 private Label	*label_lookup(Stmt *stmt, Label_f flags);
 private void	list_mapReverse(Expr *l, int (*fn)(Expr *, Expr_f), int arg);
 private int	parse_options(int ac, Tcl_Obj **av);
@@ -151,7 +153,6 @@ private int	push_lit(Expr *expr);
 private int	push_parms(Expr *actuals);
 private void	push_pointer(Expr *lval);
 private int	push_regexpModifiers(Expr *regexp);
-private void	re_gatherTxt(Expr *e, Tcl_Obj *s);
 private int	re_submatchCnt(Expr *re);
 private VarDecl	*struct_lookupMember(Type *t, Expr *idx, int *offset);
 private Sym	*sym_lookup(Expr *id, Expr_f flags);
@@ -168,6 +169,7 @@ Type	*L_string;
 Type	*L_void;
 Type	*L_var;
 Type	*L_poly;
+Type	*L_widget;
 
 /*
  * L built-in functions.
@@ -184,6 +186,7 @@ static struct {
 	{ "rename",	compile_rename },
 	{ "sort",	compile_sort },
 	{ "split",	compile_split },
+	{ "undef",	compile_undef },
 };
 
 /*
@@ -423,13 +426,14 @@ compile_clsDecl(ClsDecl *clsdecl)
 	push_str("::L::_class_%s", clsdecl->decl->id->u.string);
 	push_str("variable __num 0");
 	emit_invoke(4);
+	emit_pop();
 	frame_resumeBody();
 
 	compile_varDecls(clsdecl->clsvars);
-	compile_fnDecl(clsdecl->constructor, FN_PROTO_AND_BODY);
-	compile_fnDecl(clsdecl->destructor, FN_PROTO_AND_BODY);
 	/* Process function decls first, then compile the bodies. */
 	compile_fnDecls(clsdecl->fns, FN_PROTO_ONLY);
+	compile_fnDecl(clsdecl->constructor, FN_PROTO_AND_BODY);
+	compile_fnDecl(clsdecl->destructor, FN_PROTO_AND_BODY);
 	compile_fnDecls(clsdecl->fns, FN_PROTO_AND_BODY);
 
 	frame_pop();
@@ -564,6 +568,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		ASSERT(clsdecl && clsname && self_sym);
 		push_str("::L::_class_%s::__num", clsname);
 		TclEmitInstInt1(INST_INCR_STK_IMM, 1, L->frame->envPtr);
+		emit_pop();
 		push_str("::namespace");
 		push_str("eval");
 		push_str("::L::_instance_%s", clsname);
@@ -573,6 +578,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		emit_store_scalar(self_sym->idx);
 		push_str("");
 		emit_invoke(4);
+		emit_pop();
 		frame_resumeBody();
 		compile_varDecls(clsdecl->instvars);
 	}
@@ -604,6 +610,7 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 		push_str("delete");
 		emit_load_scalar(self_sym->idx);
 		emit_invoke(3);
+		emit_pop();
 	}
 
 	/*
@@ -1179,23 +1186,18 @@ compile_split(Expr *expr)
 private int
 compile_push(Expr *expr)
 {
-	int	idx;
+	int	i, idx;
 	Expr	*arg, *array;
 
-	unless (expr->b && expr->b->next && !expr->b->next->next) {
+	unless (expr->b && expr->b->next) {
 		L_errf(expr, "incorrect # arguments to push");
 		goto done;
 	}
 	array = expr->b->a;
 	arg   = expr->b->next;
 	compile_expr(array, L_DISCARD);
-	compile_expr(arg, L_PUSH_VAL);
 	unless (isaddrof(expr->b) && array && (isarray(array)||ispoly(array))) {
 		L_errf(expr, "first arg to push not an array reference (&)");
-		goto done;
-	}
-	unless (L_typeck_compat(array->type->base_type, arg->type)) {
-		L_errf(expr, "pushing incompatible type onto array");
 		goto done;
 	}
 	unless (array->sym) {
@@ -1203,12 +1205,21 @@ compile_push(Expr *expr)
 		goto done;
 	}
 	idx = array->sym->idx;  // local slot # for array
-	if (idx <= 255) {
-		TclEmitInstInt1(INST_LAPPEND_SCALAR1, idx, L->frame->envPtr);
-	} else {
-		TclEmitInstInt4(INST_LAPPEND_SCALAR4, idx, L->frame->envPtr);
+	for (i = 2; arg; arg = arg->next, ++i) {
+		compile_expr(arg, L_PUSH_VAL);
+		unless (L_typeck_compat(array->type->base_type, arg->type)) {
+			L_errf(expr,
+			 "arg #%d to push has type incompatible with array", i);
+		}
+		if (idx <= 255) {
+			TclEmitInstInt1(INST_LAPPEND_SCALAR1, idx,
+					L->frame->envPtr);
+		} else {
+			TclEmitInstInt4(INST_LAPPEND_SCALAR4, idx,
+					L->frame->envPtr);
+		}
+		emit_pop();
 	}
-	emit_pop();
  done:
 	expr->type = L_void;
 	return (0);  // stack effect
@@ -1374,8 +1385,48 @@ compile_assert(Expr *expr)
 	push_str("ASSERTION FAILED %s:%d: %s\n", expr->node.file,
 		 expr->node.line, cond_txt);
 	emit_invoke(2);
+	emit_pop();
 	ckfree(cond_txt);
 	fixup_jmps(jmp);
+	expr->type = L_void;
+	return (0);  // stack effect
+}
+
+private int
+compile_undef(Expr *expr)
+{
+	int	n;
+	Expr	*arg = expr->b;
+
+	n = compile_exprs(arg, L_PUSH_PTR | L_LVALUE);
+	unless (n == 1) {
+		L_errf(expr, "incorrect # args to undef");
+		goto done;
+	}
+	unless (arg->sym) {
+		L_errf(expr, "illegal l-value in undef()");
+		goto done;
+	}
+	if (((arg->op == L_OP_DOT) || (arg->op == L_OP_POINTS)) &&
+	    isstruct(arg->a)) {
+		L_errf(expr, "cannot undef() a struct field");
+		goto done;
+	}
+	/*
+	 * If arg is a deep dive, delete the hash or array element.
+	 * If arg is a variable, treat undef(var) like var=undef.
+	 */
+	if (arg->flags & L_EXPR_DEEP) {
+		TclEmitInstInt4(INST_L_DEEP_WRITE,
+				arg->sym->idx,
+				L->frame->envPtr);
+		TclEmitInt4(L_DELETE, L->frame->envPtr);
+	} else {
+		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+		emit_store_scalar(arg->sym->idx);
+		emit_pop();
+	}
+ done:
 	expr->type = L_void;
 	return (0);  // stack effect
 }
@@ -1481,37 +1532,56 @@ compile_expr(Expr *expr, Expr_f flags)
 
 /*
  * If a function-call name begins with a cap and has an _ inside, it
- * looks like a pattern call.  From a name like "Foo_Bar" create these
- * strings: "Foo_*" "bar".  Return them as Expr's since that's what
- * the caller needs.  The Expr's need not be freed explicitly since
- * all AST nodes are deallocated upon exit.
+ * looks like a pattern call.  From a name like "Foo_barBazBlech"
+ * create Expr const nodes "foo", "Foo_*" and a linked list of Expr
+ * const nodes for "bar", "baz", and "blech".  Note that the returned
+ * Expr's need not be freed explicitly since all AST nodes are
+ * deallocated by the compiler.
  */
 private int
-ispatternfn(char *name, Expr **Foo_star, Expr **bar)
+ispatternfn(char *name, Expr **foo, Expr **Foo_star, Expr **opts, int *nopts)
 {
-	char	*buf, *p;
+	int	i;
+	char	*buf, *p, *under;
+	Expr	*e;
 
 	unless ((name[0] >= 'A') && (name[0] <= 'Z') &&
 		(p = strchr(name, '_')) && p[1]) {  // _ cannot be last
 		return (FALSE);
 	}
 
-	*p = '\0';
+	under = p;
+	*under = '\0';
+
+	/* Build foo from Foo_bar. */
+	buf = cksprintf("%s", name);
+	buf[0] = tolower(buf[0]);
+	*foo = ast_mkId(buf, 0, 0);
+	ckfree(buf);
 
 	/* Build Foo_* from Foo_bar. */
-	buf = ckalloc(strlen(name) + 3);
-	strcpy(buf, name);
-	strcat(buf, "_*");
+	buf = cksprintf("%s_*", name);
 	*Foo_star = ast_mkId(buf, 0, 0);
 	ckfree(buf);
 
-	/* Build bar from Foo_bar. */
-	buf = ckalloc(strlen(p+1) + 1);
-	strcpy(buf, p+1);
-	*bar = ast_mkConst(L_string, 0, 0);
-	(*bar)->u.string = buf;
+	/* Build a list of bar,baz,blech nodes from barBazBlech. */
+	++p;
+	*opts  = NULL;
+	*nopts = 0;
+	while (*p) {
+		*p = tolower(*p);
+		buf = ckalloc(strlen(p) + 1);
+		for (i = 0; *p && islower(*p); ++p, ++i) {
+			buf[i] = *p;
+		}
+		buf[i] = 0;
+		e = ast_mkConst(L_string, 0, 0);
+		e->u.string = buf;
+		APPEND_OR_SET(Expr, next, *opts, e);
+		++(*nopts);
+	}
 
-	*p = '_';
+	*under = '_';
 
 	return (TRUE);
 }
@@ -1519,28 +1589,37 @@ ispatternfn(char *name, Expr **Foo_star, Expr **bar)
 /*
  * Rules for compiling a function call like "foo(arg)":
  *
- * - Call foo.  If foo isn't declared, that's OK, we just won't
- *   have a prototype to type-check against.
+ * - If foo is a variable of type name-of function, assume it contains
+ *   the name of the function to call.
  *
- * For a function call like "Foo_bar(a,b,c)", where the name starts with
- * [A-Z] and has an _ in it (except at the end), we have what's called
- * a "pattern function":
+ * - Otherwise call foo.  If foo isn't declared, that's OK, we just
+ *   won't have a prototype to type-check against.
+ *
+ * For a function call like "Foo_bar(a,b,c)" or "Foo_barBazBlech(a,b,c)",
+ * where the name starts with [A-Z] and has an _ in it (except at the
+ * end), we have what's called a "pattern function".  The "bar", "baz",
+ * and "blech" are the "options", and "a", "b", and "c" are the "arguments".
  *
  * - If Foo_bar happens to be a declared function, handle as above.
  *
- * - If the function Foo_* is defined, change the call to Foo_*(bar,a,b,c).
+ * - If the function Foo_* is defined, change the call to
+ *   Foo_*(bar,baz,blech,a,b,c).
  *
- * - Else change the call to *a(bar,b,c) where *a means that the value
- *   of the argument "a" becomes the function name.  It is an error for
- *   "a" to not exist (no args) or to not be of type string.
+ * - If "a" is not of widget type, change the call to
+ *   foo(bar,baz,blech,a,b,c).
+ *
+ * - If "a" is a widget type, change the call to *a(bar,baz,blech,b,c)
+ *   where *a means that the value of the argument "a" becomes the
+ *   function name.
  */
 private int
 compile_fnCall(Expr *expr)
 {
-	int	expand, i, num_parms;
+	int	expand, i, nopts;
+	int	num_parms = 0;
 	int	typchk = FALSE;
 	char	*name;
-	Expr	*Foo_star, *bar, *p;
+	Expr	*foo, *Foo_star, *opts, *p;
 	Sym	*sym;
 	VarDecl	*formals = NULL;
 
@@ -1586,39 +1665,50 @@ compile_fnCall(Expr *expr)
 		/* Name is declared but isn't a function or fn pointer. */
 		L_errf(expr, "'%s' is declared but not as a function", name);
 		expr->type = L_poly;
-	} else if (ispatternfn(name, &Foo_star, &bar)) {
+	} else if (ispatternfn(name, &foo, &Foo_star, &opts, &nopts)) {
 		/* Pattern function.  Figure out which kind. */
 		if ((sym = sym_lookup(Foo_star, L_NOWARN))) {
-			/* Foo_* is defined -- compile Foo_*(bar,a,b,c). */
+			/* Foo_* is defined -- compile Foo_*(opts,a,b,c). */
 			push_str(Foo_star->u.string);
-			bar->next = expr->b;
-			expr->b = bar;
+			APPEND(Expr, next, opts, expr->b);
+			expr->b = opts;
 			formals = sym->type->u.func.formals;
 			typchk = TRUE;
-			expr->type = sym->type;
+			expr->type = sym->type->base_type;
 		} else {
-			/* Compile as *a(bar,b,c). */
-			expr->type = L_poly;
-			unless (expr->b) {
-				L_errf(expr,
-				       "pattern function call has no args");
-				return (0);  // stack effect
-			}
+			/* Push first arg, then check its type. */
 			compile_expr(expr->b, L_PUSH_VAL);
-			unless (isstring(expr->b)) {
-				L_errf(expr->b,
-				       "first arg to pattern function is "
-				       "not string");
+			if (!expr->b) {
+				/* No args, compile as foo(opts). */
+				push_str(foo->u.string);
+				num_parms = push_parms(opts);
+			} else if (iswidget(expr->b)) {
+				/* Compile as *a(opts,b,c). */
+				APPEND(Expr, next, opts, expr->b->next);
+				expr->b = opts;
+			} else {
+				/* Compile as foo(opts,a,b,c). */
+				// a
+				push_str(foo->u.string);
+				num_parms = push_parms(opts);
+				ASSERT(num_parms == nopts);
+				// a foo <opts>
+				TclEmitInstInt1(isexpand(expr->b)?
+						    INST_EXPAND_ROT : INST_ROT,
+						nopts + 1,
+						L->frame->envPtr);
+				// foo <opts> a
+				expr->b = expr->b->next;
+				++num_parms;
 			}
-			bar->next = expr->b->next;
-			expr->b = bar;
+			expr->type = L_poly;
 		}
 	} else {
 		/* Call to an undeclared function. */
 		push_str(name);
 		expr->type = L_poly;
 	}
-	num_parms = push_parms(expr->b);
+	num_parms += push_parms(expr->b);
 	if (expand) {
 		emit_invoke_expanded();
 	} else {
@@ -1754,8 +1844,9 @@ push_pointer(Expr *expr)
 		} else if (!e->a->sym) {
 			// Undeclared var; compile_expr() already issued error.
 		} else if (e->a->sym->decl->flags &
-			   (DECL_GLOBAL_VAR | DECL_LOCAL_VAR | DECL_TEMP)) {
-			emit_pop();
+			   (DECL_GLOBAL_VAR | DECL_LOCAL_VAR |
+			    DECL_CLASS_INST_VAR | DECL_TEMP)) {
+			emit_pop();  // throw away val b/c we want the name
 			push_str(e->a->sym->tclname);
 			push_index(e);
 			emit_invoke(4);
@@ -1829,7 +1920,8 @@ compile_unOp(Expr *expr)
 		if (!(expr->a->flags & L_EXPR_DEEP) &&
 		    (expr->a->sym && (expr->a->sym->decl->flags &
 				      (DECL_FN | DECL_GLOBAL_VAR |
-				       DECL_LOCAL_VAR | DECL_TEMP)))) {
+				       DECL_LOCAL_VAR | DECL_CLASS_VAR |
+				       DECL_CLASS_INST_VAR | DECL_TEMP)))) {
 			push_str(expr->a->sym->tclname);
 			expr->type = type_mkNameOf(expr->a->type, PER_INTERP);
 		} else {
@@ -1859,8 +1951,7 @@ compile_unOp(Expr *expr)
 		expr->type = L_poly;
 		break;
 	    case L_OP_CMDSUBST:
-		TclEmitOpcode(INST_EXPAND_START, L->frame->envPtr);
-		push_str("::exec");
+		push_str("::system");
 		if (expr->a) {
 			compile_expr(expr->a, L_PUSH_VAL);
 			push_str(expr->u.string);
@@ -1868,12 +1959,7 @@ compile_unOp(Expr *expr)
 		} else {
 			push_str(expr->u.string);
 		}
-		/* ::exec wants an argv list, so split the cmd string. */
-		TclEmitInstInt1(INST_L_SPLIT, 1, L->frame->envPtr);
-		TclEmitInstInt4(INST_EXPAND_STKTOP,
-				L->frame->envPtr->currStackDepth,
-				L->frame->envPtr);
-		emit_invoke_expanded();
+		emit_invoke(2);
 		expr->type = L_string;
 		break;
 	    default:
@@ -1934,8 +2020,10 @@ compile_binOp(Expr *expr, Expr_f flags)
 	    case L_OP_STR_LE:
 		compile_expr(expr->a, L_PUSH_VAL);
 		compile_expr(expr->b, L_PUSH_VAL);
-		L_typeck_expect(L_STRING, expr->a, "in string comparison");
-		L_typeck_expect(L_STRING, expr->b, "in string comparison");
+		L_typeck_expect(L_STRING|L_WIDGET, expr->a,
+				"in string comparison");
+		L_typeck_expect(L_STRING|L_WIDGET, expr->b,
+				"in string comparison");
 		emit_instrForLOp(expr);
 		expr->type = L_int;
 		return (1);
@@ -2175,59 +2263,26 @@ compile_trinOp(Expr *expr)
 }
 
 /*
- * Gather all the non-interpolated parts of a string or regexp
- * expression and concat them into a Tcl_Obj.  Used by
- * re_submatchCnt() below.
- */
-private void
-re_gatherTxt(Expr *e, Tcl_Obj *s)
-{
-	switch (e->kind) {
-	    case L_EXPR_RE:
-	    case L_EXPR_CONST:
-		if (isstring(e)) Tcl_AppendToObj(s, e->u.string, -1);
-		break;
-	    case L_EXPR_BINOP:
-	    case L_EXPR_TRINOP:
-		if ((e->op == L_OP_INTERP_RE) || (e->op == L_OP_INTERP_STRING)){
-			re_gatherTxt(e->a, s);
-			re_gatherTxt(e->b, s);
-			if (e->c) re_gatherTxt(e->c, s);
-		}
-		break;
-	    default:
-		break;
-	}
-}
-
-/*
  * Estimate how many submatches are in the given regexp.  These are
- * the sub-expressions within parens.  Since regexp's can be
- * interpolated, we can't always get this exact, so just look at the
- * non-interpolated parts of the string.
+ * the sub-expressions within parens.  If the regexp includes an
+ * interpolated string, we can't get this exact, so just assume
+ * the maximum (9) in that case.
  */
 private int
 re_submatchCnt(Expr *re)
 {
-	int		n = 0;
+	int		n = 9;
 	Tcl_Obj		*const_regexp;
 	Tcl_RegExp	compiled;
 
-	const_regexp = Tcl_NewObj();
-	Tcl_IncrRefCount(const_regexp);
-
-	re_gatherTxt(re, const_regexp);
-
-	compiled = Tcl_GetRegExpFromObj(L->interp, const_regexp,
+	if (re->kind == L_EXPR_RE) {
+		const_regexp = Tcl_NewStringObj(re->u.string, -1);
+		Tcl_IncrRefCount(const_regexp);
+		compiled = Tcl_GetRegExpFromObj(L->interp, const_regexp,
 					TCL_REG_ADVANCED);
-	unless (compiled) {
-		L_warnf(re, "cannot get submatch count in"
-			    " interpolated regular expression");
-	} else {
-		n = ((TclRegexp *)compiled)->re.re_nsub;
+		Tcl_DecrRefCount(const_regexp);
+		if (compiled) n = ((TclRegexp *)compiled)->re.re_nsub;
 	}
-
-	Tcl_DecrRefCount(const_regexp);
 	return (n);
 }
 
@@ -2405,7 +2460,7 @@ compile_condition(Expr *cond)
 	compile_expr(cond, L_PUSH_VAL);
 	if (isvoid(cond)) {
 		L_errf(cond, "void type illegal in predicate");
-	} else if (isstring(cond)) {
+	} else if (isstring(cond) || iswidget(cond)) {
 		push_str("0");
 		TclEmitOpcode(INST_NEQ, L->frame->envPtr);
 	} else unless (isscalar(cond)) {
@@ -2629,9 +2684,11 @@ fixup_jmps(Jmp *j)
 		jmp_pc = L->frame->envPtr->codeStart + j->offset;
 		switch (j->size) {
 		    case 1:
+			ASSERT(*jmp_pc == j->op);
 			TclUpdateInstInt1AtPc(j->op, target, jmp_pc);
 			break;
 		    case 4:
+			ASSERT(*jmp_pc == j->op);
 			TclUpdateInstInt4AtPc(j->op, target, jmp_pc);
 			break;
 		    default:
@@ -2677,9 +2734,7 @@ compile_foreachArray(ForEach *loop)
 	Expr		*var;
 	ForeachInfo	*info;
 	ForeachVarList	*varlist;
-	unsigned char	*jumpPc;
-	JumpFixup	jumpFalseFixup;
-	Jmp		*break_jumps, *continue_jumps;
+	Jmp		*break_jumps, *continue_jumps, *false_jump;
 	int		jumpBackDist, jumpBackOffset, infoIndex;
 
 	/*
@@ -2734,7 +2789,7 @@ compile_foreachArray(ForEach *loop)
 	/* Top of the loop.  Step, and jump out if done. */
 	continue_off = currOffset(L->frame->envPtr);
 	TclEmitInstInt4(INST_FOREACH_STEP4, infoIndex, L->frame->envPtr);
-	TclEmitForwardJump(L->frame->envPtr, TCL_FALSE_JUMP, &jumpFalseFixup);
+	false_jump = emit_jmp_fwd(INST_JUMP_FALSE4);
 
 	/* Loop body. */
 	frame_push(loop, NULL, LOOP|SEARCH);
@@ -2753,19 +2808,17 @@ compile_foreachArray(ForEach *loop)
 		TclEmitInstInt1(INST_JUMP1, -jumpBackDist, L->frame->envPtr);
 	}
 
-	/* Fixup jumps. */
-	if (TclFixupForwardJumpToHere(L->frame->envPtr, &jumpFalseFixup, 127)) {
-		/* Update the jump back to the loop top since it also
-		   moved down. */
-		jumpBackOffset += 3;
-		jumpPc = (L->frame->envPtr->codeStart + jumpBackOffset);
-		jumpBackDist += 3;
-		if (jumpBackDist > 120) {
-			TclUpdateInstInt4AtPc(INST_JUMP4, -jumpBackDist,jumpPc);
-		} else {
-			TclUpdateInstInt1AtPc(INST_JUMP1, -jumpBackDist,jumpPc);
-		}
+	fixup_jmps(false_jump);
+
+	/* Set the value variables to undef. */
+	TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+	for (var = loop->key; var; var = var->next) {
+		Sym *s = sym_lookup(var, 0);
+		ASSERT(s);
+		emit_store_scalar(s->idx);
 	}
+	emit_pop();
+
 	fixup_jmps(break_jumps);
 }
 
@@ -2840,6 +2893,13 @@ compile_foreachHash(ForEach *loop)
 	/* All done.  Cleanup the values that DICT_FIRST/DICT_NEXT left. */
 	emit_pop();
 	emit_pop();
+
+	/* Set key and/or value counters to undef. */
+	TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+	emit_store_scalar(key->idx);
+	if (val) emit_store_scalar(val->idx);
+	emit_pop();
+
 	fixup_jmps(break_jumps);
 	/* XXX We need to ensure that DICT_DONE happens in the face of
 	   exceptions, so that the refcount on the dict will be
@@ -2924,6 +2984,14 @@ compile_foreachString(ForEach *loop)
 	TclEmitOpcode(INST_LT, L->frame->envPtr);
 	jmp_dist = currOffset(L->frame->envPtr) - body_off;
 	TclEmitInstInt4(INST_JUMP_TRUE4, -jmp_dist, L->frame->envPtr);
+
+	/* Set the loop counters to undef. */
+	TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
+	for (id = loop->key; id; id = id->next) {
+		emit_store_scalar(id->sym->idx);
+	}
+	emit_pop();
+
 	fixup_jmps(break_jmps);
 }
 
@@ -3779,8 +3847,20 @@ sym_store(VarDecl *decl)
 			if (hPtr) Tcl_DeleteHashEntry(hPtr);
 			L->mains_ast = L->ast;
 		} else if (hPtr) {
-			L_errf(decl, "multiple declaration of global %s", name);
-			return (NULL);
+			if (decl->flags & DECL_EXTERN) {
+				sym = (Sym *)Tcl_GetHashValue(hPtr);
+				if (L_typeck_same(decl->type, sym->type)) {
+					return (sym);
+				}
+				L_errf(decl,
+				       "extern re-declaration type does not "
+				       "match other declaration");
+				return (NULL);
+			} else {
+				L_errf(decl,
+				    "multiple declaration of global %s", name);
+				return (NULL);
+			}
 		}
 		break;
 	    case SCOPE_CLASS:
