@@ -240,10 +240,11 @@ typedef enum {
 	L_PUSH_VALPTR = 0x00400,
 	L_PUSH_PTRVAL = 0x00800,
 	L_DISCARD     = 0x01000, // have compile_expr discard the val, not push
-	L_PUSH_NEW    = 0x02000, // whether INST_L_DEEP_WRITE should push the
-	L_PUSH_OLD    = 0x04000, //   new or old value
-	L_NOTUSED     = 0x08000, // do not update used_p boolean in symtab entry
-	L_NOWARN      = 0x10000, // issue no err if symbol undefined
+	L_PUSH_NAME   = 0x02000, // have compile_expr push the name not the val
+	L_PUSH_NEW    = 0x04000, // whether INST_L_DEEP_WRITE should push the
+	L_PUSH_OLD    = 0x08000, //   new or old value
+	L_NOTUSED     = 0x10000, // do not update used_p boolean in symtab entry
+	L_NOWARN      = 0x20000, // issue no err if symbol undefined
 } Expr_f;
 
 struct Expr {

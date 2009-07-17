@@ -6600,30 +6600,10 @@ void regexp_1_7()
 .*15: L Error: undeclared variable: \$3
 }
 
-test reference-1.0 {L references} -body {
-#lang L -nowarn
-void reference_1_0() {
-  string foo = "this is a string";
-  printf("so far, so good: %s\n", foo);
-  reference_1_0_aux("bleh", &foo);
-  printf("%s\n", foo);
-}
-
-void reference_1_0_aux(string dummy, string &bob) {
-  printf("foot: %s\n", bob);
-  bob = "This was a string.";
-}
-#lang tcl
-reference_1_0
-} -output "so far, so good: this is a string
-foot: this is a string
-This was a string.
-"
-
 test reference-1.1 {L references} -body {
 #lang L
-private int global;
-int ref_11_global;
+private int ref_11_g_private;
+int ref_11_g_public;
 struct reference_1_1_point {
 	int x, y;
 };
@@ -6646,21 +6626,32 @@ class ref_11_cls {
 }
 void reference_1_1()
 {
+	int		local;
 	ref_11_cls	o;
 	struct reference_1_1_point a = { 0, 0 };
 
-	unless ((a.x == 0) && (a.y == 0)) puts("bad 1");
+	unless ((a.x == 0) && (a.y == 0)) puts("bad 1.1");
 	reference_1_1_tweak(&a);
-	unless ((a.x == 2) && (a.y == 0)) puts("bad 2");
+	unless ((a.x == 2) && (a.y == 0)) puts("bad 1.2");
+
+	setvar(&local, 222);
+	unless (local == 222) puts("bad 2.1");
 
 	o = ref_11_cls_new();
 	unless (ref_11_cls->cpub == 123) puts("bad 3.1");
 	unless (o->cinst == 456) puts("bad 3.2");
 
-	setvar(&global, 789);
-	unless (global == 789) puts("bad 4.1");
-	setvar(&ref_11_global, 1100);
-	unless (ref_11_global == 1100) puts("bad 4.2");
+	setvar(&ref_11_cls->cpub, 234);
+	unless (ref_11_cls->cpub == 234) puts("bad 3.3");
+
+	setvar(&o->cinst, 567);
+	unless (o->cinst == 567) puts("bad 3.4");
+
+	setvar(&ref_11_g_public, 1100);
+	unless (ref_11_g_public == 1100) puts("bad 4.1");
+
+	setvar(&ref_11_g_private, 1200);
+	unless (ref_11_g_private == 1200) puts("bad 4.2");
 }
 void reference_1_1_tweak(struct reference_1_1_point &foo)
 {
@@ -6777,205 +6768,114 @@ void reference_1_5_5(string &arg5, string arg5,  string &arg5) {}
 
 test pointer-1 {check L pointers} -body {
 #lang L
-string pointer_1_g;
-private string g;
-private string ga[];
+string	pointer_1_g_public;
+private	string	pointer_1_g_private;
+private string chk(_unused string opt, poly var)
+{
+	return (var);
+}
 class pointer_1_cls {
 	public	string s;
-	public	string sa[];
 	instance {
 		public	string si;
-		public	string sia[];
 	}
 	constructor pointer_1_cls_new()
 	{
-		si = "testing";
-		chk(textvariable: &si, si, "new");
-		unless (si eq "new") puts("bad c1.1");
-		si = "testing2";
-		chk(textvariable: &si, si, "new2");
-		unless (si eq "new2") puts("bad c1.2");
-		self->si = "testing3";
-		chk(textvariable: &self->si, self->si, "new3");
-		unless (si eq "new3") puts("bad c1.3");
-		self->si = "testing4";
-		chk(textvariable: &self->si, self->si, "new4");
-		unless (si eq "new4") puts("bad c1.4");
+		string	nm;
 
-		sia[3] = "testing";
-		chk(textvariable: &sia[3], sia[3], "new");
-		unless (sia[3] eq "new") puts("bad c2.1");
-		sia[3] = "testing2";
-		chk(textvariable: &sia[3], sia[3], "new2");
-		unless (sia[3] eq "new2") puts("bad c2.2");
-
-		s = "testing";
-		chk(textvariable: &s, s, "new");
-		unless (s eq "new") puts("bad c4.1");
-		s = "testing2";
-		chk(textvariable: &s, s, "new2");
-		unless (s eq "new2") puts("bad c4.2");
-		pointer_1_cls->s = "testing3";
-		chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new3");
-		unless (pointer_1_cls->s eq "new3") puts("bad c4.3");
-		pointer_1_cls->s = "testing4";
-		chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new4");
-		unless (pointer_1_cls->s eq "new4") puts("bad c4.4");
+		nm = chk(textvariable: &pointer_1_g_public);
+		unless (nm eq "::pointer_1_g_public") {
+			puts("bad c1.1");
+		}
+		nm = chk(textvariable: &pointer_1_g_private);
+		unless (nm =~ /::_[0-9]+%l_toplevel_pointer_1_g_private/) {
+			puts("bad c1.2");
+			puts(nm);
+		}
+		nm = chk(textvariable: &s);
+		unless (nm eq "::L::_class_pointer_1_cls::s") {
+			puts("bad c1.3");
+		}
+		nm = chk(textvariable: &si);
+		unless (nm eq "::L::_instance_pointer_1_cls1::si") {
+			puts("bad c1.4");
+		}
 	}
-}
-private pointer_1_cls g_obj;
-private int getobj_count = 0;
-private pointer_1_cls get_obj()
-{
-	unless (defined(g_obj)) g_obj = pointer_1_cls_new();
-	++getobj_count;
-	return (g_obj);
-}
-private void chk(_unused string opt, poly var, string want, string new)
-{
-	string  have;
-
-	unless (var =~ /::Lptr::/) puts("bad chk.1");
-	eval("set have [set $var]");
-	unless (have eq want) puts("bad chk.2");
-	eval("set $var $new");
-	eval("set have [set $var]");
-	unless (have eq new) puts("bad chk.3");
 }
 void pointer_1()
 {
-	string  s;
-	string	sa[];
-	struct {
-		string	s1;
-		string	s2;
-	} st;
+	string  nm;
 	pointer_1_cls obj = pointer_1_cls_new();
 
-	/*
-	 * These check that the L variable or array/struct member and
-	 * the anonymous variable whose name gets passed to chk() are
-	 * linked in both directions.  A change in one should cause an
-	 * identical change in the other.
-	 *
-	 * Locals, public globals, private globals, etc all are tested
-	 * to ensure that pointers work with all the various kinds of
-	 * Tcl variable name mangling that L does.
-	 */
-
-	s = "testing";
-	chk(textvariable: &s, s, "new");
-	unless (s eq "new") puts("bad 1.1");
-	s = "testing2";
-	chk(textvariable: &s, s, "new2");
-	unless (s eq "new2") puts("bad 1.2");
-
-	sa[3] = "testing";
-	chk(textvariable: &sa[3], sa[3], "new");
-	unless (sa[3] eq "new") puts("bad 2.1");
-	sa[3] = "testing2";
-	chk(textvariable: &sa[3], sa[3], "new2");
-	unless (sa[3] eq "new2") puts("bad 2.2");
-
-	pointer_1_g = "testing";
-	chk(textvariable: &pointer_1_g, pointer_1_g, "new");
-	unless (pointer_1_g eq "new") puts("bad 3.1");
-	pointer_1_g = "testing2";
-	chk(textvariable: &pointer_1_g, pointer_1_g, "new2");
-	unless (pointer_1_g eq "new2") puts("bad 3.2");
-
-	g = "testing";
-	chk(textvariable: &g, g, "new");
-	unless (g eq "new") puts("bad 4.1");
-	g = "testing2";
-	chk(textvariable: &g, g, "new2");
-	unless (g eq "new2") puts("bad 4.2");
-
-	ga[3] = "testing";
-	chk(textvariable: &ga[3], ga[3], "new");
-	unless (ga[3] eq "new") puts("bad 5.1");
-	ga[3] = "testing2";
-	chk(textvariable: &ga[3], ga[3], "new2");
-	unless (ga[3] eq "new2") puts("bad 5.2");
-
-	st.s1 = "testing";
-	chk(textvariable: &st.s1, st.s1, "new");
-	unless (st.s1 eq "new") puts("bad 10.1");
-	st.s1 = "testing2";
-	chk(textvariable: &st.s1, st.s1, "new2");
-	unless (st.s1 eq "new2") puts("bad 10.2");
-
-	st.s2 = "testing";
-	chk(textvariable: &st.s2, st.s2, "new");
-	unless (st.s2 eq "new") puts("bad 11.1");
-	st.s2 = "testing2";
-	chk(textvariable: &st.s2, st.s2, "new2");
-	unless (st.s2 eq "new2") puts("bad 11.2");
-
-	pointer_1_cls->s = "testing";
-	chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new");
-	unless (pointer_1_cls->s eq "new") puts("bad 20.1");
-	pointer_1_cls->s = "testing2";
-	chk(textvariable: &pointer_1_cls->s, pointer_1_cls->s, "new2");
-	unless (pointer_1_cls->s eq "new2") puts("bad 20.2");
-
-	pointer_1_cls->sa[3] = "testing";
-	chk(textvariable: &pointer_1_cls->sa[3], pointer_1_cls->sa[3], "new");
-	unless (pointer_1_cls->sa[3] eq "new") puts("bad 21.1");
-	pointer_1_cls->sa[3] = "testing2";
-	chk(textvariable: &pointer_1_cls->sa[3], pointer_1_cls->sa[3], "new2");
-	unless (pointer_1_cls->sa[3] eq "new2") puts("bad 21.2");
-
-	obj->si = "testing";
-	chk(textvariable: &obj->si, obj->si, "new");
-	unless (obj->si eq "new") puts("bad 22.1");
-	obj->si = "testing2";
-	chk(textvariable: &obj->si, obj->si, "new2");
-	unless (obj->si eq "new2") puts("bad 22.2");
-
-	obj->sia[3] = "testing";
-	chk(textvariable: &obj->sia[3], obj->sia[3], "new");
-	unless (obj->sia[3] eq "new") puts("bad 22.1");
-	obj->sia[3] = "testing2";
-	chk(textvariable: &obj->sia[3], obj->sia[3], "new2");
-	unless (obj->sia[3] eq "new2") puts("bad 22.2");
-
-	/*
-	 * The getobj_count counts how many times get_obj() was called,
-	 * to verify that &fn()->var evaluates fn exactly once.
-	 */
-	get_obj()->si = "testing";
-	unless (getobj_count == 1) puts("bad 23.1");
-	chk(textvariable: &get_obj()->si, get_obj()->si, "new");
-	unless (getobj_count == 3) puts("bad 23.2");
-	unless (get_obj()->si eq "new") puts("bad 23.3");
-	get_obj()->si = "testing2";
-	unless (getobj_count == 5) puts("bad 23.4");
-	chk(textvariable: &get_obj()->si, get_obj()->si, "new2");
-	unless (getobj_count == 7) puts("bad 23.5");
-	unless (get_obj()->si eq "new2") puts("bad 23.6");
+	nm = chk(textvariable: &pointer_1_g_public);
+	unless (nm eq "::pointer_1_g_public") {
+		puts("bad 1.1");
+	}
+	nm = chk(textvariable: &pointer_1_g_private);
+	unless (nm =~ /::_[0-9]+%l_toplevel_pointer_1_g_private/) {
+		puts("bad 1.2");
+	}
+	nm = chk(textvariable: &pointer_1_cls->s);
+	unless (nm eq "::L::_class_pointer_1_cls::s") {
+		puts("bad 1.3");
+	}
+	nm = chk(textvariable: &obj->si);
+	unless (nm eq "::L::_instance_pointer_1_cls1::si") {
+		puts("bad 1.4");
+	}
 }
 pointer_1();
 } -output {}
 
 test pointer-2 {check L pointer identification} -body {
 #lang L
+string	pointer_2_g;
 private void chk(_unused string opt, poly arg, string varname)
 {
 	unless (arg =~ /${varname}/) puts("bad chk.1");
+}
+private string joinargs(...args)
+{
+	string	ret, s;
+
+	foreach (s in args) {
+		if (defined(ret)) {
+			ret .= " " . s;
+		} else {
+			ret = s;
+		}
+	}
+	return (ret);
 }
 void pointer_2()
 {
 	string	s;
 
 	/* These are L pointers. */
-	chk(textvariable: &s, "::Lptr::");
-	chk(tvariable: &s, "::Lptr::");
-	chk(variable: &s, "::Lptr::");
+	s = joinargs(textvariable: &pointer_2_g);
+	unless (s eq "-textvariable ::pointer_2_g") puts("bad 1.1");
+	s = joinargs(tvariable: &pointer_2_g);
+	unless (s eq "-tvariable ::pointer_2_g") puts("bad 1.2");
+	s = joinargs(variable: &pointer_2_g);
+	unless (s eq "-variable ::pointer_2_g") puts("bad 1.3");
 
 	/* These are reference parameters, not pointers. */
-	chk(ariable: &s, "s");
-	chk(o: &s, "s");
+	s = joinargs(ariable: &s);
+	unless (s eq "-ariable s") puts("bad 2.1");
+	s = joinargs(o: &s);
+	unless (s eq "-o s") puts("bad 2.2");
+
+	/* Mix of L pointers and ref parms. */
+	s = joinargs(textvariable: &pointer_2_g, &s);
+	unless (s eq "-textvariable ::pointer_2_g s") puts("bad 3.1");
+	s = joinargs(textvariable: &pointer_2_g, &s, &s);
+	unless (s eq "-textvariable ::pointer_2_g s s") puts("bad 3.2");
+	s = joinargs(&s, textvariable: &pointer_2_g);
+	unless (s eq "s -textvariable ::pointer_2_g") puts("bad 3.3");
+	s = joinargs(&s, &s, textvariable: &pointer_2_g);
+	unless (s eq "s s -textvariable ::pointer_2_g") puts("bad 3.4");
+	s = joinargs(&s, textvariable: &pointer_2_g, &s);
+	unless (s eq "s -textvariable ::pointer_2_g s") puts("bad 3.5");
 }
 pointer_2();
 } -output {}
@@ -6986,6 +6886,8 @@ class pointer_3_cls {}
 private void chk(_unused string opt, _unused poly arg) {}
 void pointer_3()
 {
+	string	s;
+	string	sa[];
 	string	saa[][];
 	string	h{string};
 
@@ -6998,19 +6900,23 @@ void pointer_3()
 	chk(textvariable: &undeclared4->s);
 	chk(textvariable: &pointer_3_cls->undeclared1);
 	chk(textvariable: &pointer_3_cls->undeclared2[3]);
+	chk(textvariable: &s);
+	chk(textvariable: &sa[1]);
 	chk(textvariable: &saa[1][2]);
 	chk(textvariable: &h{"bad"});
 	chk(textvariable: &chk);
 }
-} -returnCodes error -match regexp -result {.*11: L Error: undeclared variable: undeclared1
-.*12: L Error: undeclared variable: undeclared2
-.*13: L Error: undeclared variable: undeclared3
-.*14: L Error: undeclared variable: undeclared4
-.*15: L Error: undeclared1 is not a member of class pointer_3_cls
-.*16: L Error: undeclared2 is not a member of class pointer_3_cls
-.*17: L Error: multiple indices not supported with &
-.*18: L Error: illegal operand to &
+} -returnCodes error -match regexp -result {.*13: L Error: undeclared variable: undeclared1
+.*14: L Error: undeclared variable: undeclared2
+.*15: L Error: undeclared variable: undeclared3
+.*16: L Error: undeclared variable: undeclared4
+.*17: L Error: undeclared1 is not a member of class pointer_3_cls
+.*18: L Error: undeclared2 is not a member of class pointer_3_cls
 .*19: L Error: illegal operand to &
+.*20: L Error: illegal operand to &
+.*21: L Error: illegal operand to &
+.*22: L Error: illegal operand to &
+.*23: L Error: illegal operand to &
 }
 
 test typedef-1.0 {basic typedef support} -body {

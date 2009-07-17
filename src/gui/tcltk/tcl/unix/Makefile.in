@@ -319,7 +319,7 @@ GENERIC_OBJS = regcomp.o regexec.o regfree.o regerror.o tclAlloc.o \
 OO_OBJS = tclOO.o tclOOBasic.o tclOOCall.o tclOODefineCmds.o tclOOInfo.o \
 	tclOOMethod.o tclOOStubInit.o
 
-L_OBJS = Lscanner-pregen.o Lgrammar-pregen.o Lcompile.o Last.o LPointerObj.o \
+L_OBJS = Lscanner-pregen.o Lgrammar-pregen.o Lcompile.o Last.o \
 	Ltypecheck.o
 
 TOMMATH_OBJS = bncore.o bn_reverse.o bn_fast_s_mp_mul_digs.o \
@@ -496,7 +496,6 @@ L_SRCS = \
 	$(GENERIC_DIR)/Lgrammar.y \
 	$(GENERIC_DIR)/Lcompile.c \
 	$(GENERIC_DIR)/Ltypecheck.c \
-	$(GENERIC_DIR)/LPointerObj.c \
 	$(GENERIC_DIR)/Last.c
 
 STUB_SRCS = \
@@ -1356,9 +1355,6 @@ Ltypecheck.o: $(GENERIC_DIR)/Ltypecheck.c $(L_HDRS)
 
 Last.o: $(GENERIC_DIR)/Last.c $(L_HDRS) 
 	$(CC) -c $(CC_SWITCHES) $(GENERIC_DIR)/Last.c
-
-LPointerObj.o: $(GENERIC_DIR)/LPointerObj.c
-	$(CC) -c $(CC_SWITCHES) $(GENERIC_DIR)/LPointerObj.c
 
 
 bncore.o: $(TOMMATH_DIR)/bncore.c $(MATHHDRS)

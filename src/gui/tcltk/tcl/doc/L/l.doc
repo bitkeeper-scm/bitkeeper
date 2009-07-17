@@ -985,16 +985,14 @@ field.  You can use an L variable like this:
     string msg;
     ttk::label(".foo", textvariable: &msg);
 
-The ampersand (&) in front of C<msg> alludes to a C pointer but this
-is actually a type of bridge between the L variable C<msg> and an
-anonymous global variable created by L and passed to the widget.  This
-mechanism lets you pass class or class instance variables,
-structure members, and array elements in addition to local or global
-variables.
+The ampersand (&) in front of C<msg> alludes to a C pointer but it
+really passes just the name of the variable.  L does this when the
+option name ends in "variable", as "textvariable" does in the example
+above (yes, this is a hack).
 
-L uses this special bridge whenever the option name ends in
-"variable", as "textvariable" does in the example above (yes,
-this is a hack).
+You can do this with globals, class variables, or class instance
+variables, and only with a variable and not an array, structure, or
+hash element.
 
 =head1 OPERATORS
 
