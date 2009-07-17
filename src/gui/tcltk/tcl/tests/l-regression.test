@@ -121,22 +121,6 @@ multi_dimensional_1_0
 -- halt --
 }
 
-test references-1.0 {magic -variable should only affect next pointer} -body {
-#lang L
-int
-references_1_0()
-{
-	int	a, b, c;
-
-	a = 5;
-	printf("%s - %s - %s - %s", variable: &a, &b, &c);
-}
-#lang tcl
-references_1_0
-} -output {-variable - ::Lptr::1 a - b - c}
-
-
-
 test initializers-1.0 {initialize a whole array at once} -body {
 #lang L
 void initializers_1_1() {

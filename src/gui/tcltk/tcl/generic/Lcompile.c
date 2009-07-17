@@ -1473,6 +1473,11 @@ get_text(Expr *expr)
  * an l-value but you also need the r-value, such as when
  * compiling ++/-- or =~.
  *
+ * Passing in L_PUSH_NAME means the fully qualified name of the
+ * variable is left on the stack and is valid only for certain 
+ * kinds variables (like globals, class variables, or class
+ * instance variables).
+ *
  * L_PUSH_VAL		push value onto stack, unless deep dive and
  *			you also request a deep-ptr
  * L_PUSH_PTR		if deep dive, push deep-ptr onto stack
@@ -1480,6 +1485,7 @@ get_text(Expr *expr)
  * L_PUSH_VALPTR	if deep dive, push value then deep-ptr onto stack
  * L_LVALUE		if deep dive, create an un-shared copy for writing
  * L_DISCARD		evaluate expr then discard its value
+ * L_PUSH_NAME		push fully qualified name of variable, not the value
  */
 private int
 compile_expr(Expr *expr, Expr_f flags)
@@ -1721,8 +1727,7 @@ compile_fnCall(Expr *expr)
 private int
 compile_var(Expr *expr, Expr_f flags)
 {
-	int	n = 1;
-	Sym	*sym;
+	Sym	*self, *sym;
 
 	ASSERT(expr->op == L_EXPR_ID);
 
@@ -1735,27 +1740,63 @@ compile_var(Expr *expr, Expr_f flags)
 			       "END illegal outside of a string or array index");
 		}
 		expr->type = L_int;
+		return (1);
 	} else if (!strcmp(expr->u.string, "undef")) {
 		TclEmitOpcode(INST_L_PUSH_UNDEF, L->frame->envPtr);
 		expr->type = L_poly;
+		return (1);
 	} else if (!strcmp(expr->u.string, "__FILE__")) {
 		push_str(expr->node.file);
 		expr->type = L_string;
+		return (1);
 	} else if (!strcmp(expr->u.string, "__LINE__")) {
 		push_str("%d", expr->node.line);
 		expr->type = L_int;
-	} else if ((sym = sym_lookup(expr, flags))) {
-		if (flags & L_PUSH_VAL) {
-			emit_load_scalar(sym->idx);
-		} else {
-			n = 0;
-		}
-		expr->type = sym->type;
-	} else {
+		return (1);
+	}
+
+	unless ((sym = sym_lookup(expr, flags))) {
 		// Undeclared variable.
 		expr->type = L_poly;
+		return (1);
 	}
-	return (n);  // stack effect
+	expr->type = sym->type;
+	if (flags & L_PUSH_VAL) {
+		emit_load_scalar(sym->idx);
+	} else if (flags & L_PUSH_NAME) {
+		switch (sym->decl->flags & (DECL_GLOBAL_VAR | DECL_LOCAL_VAR |
+					    DECL_FN | DECL_CLASS_INST_VAR |
+					    DECL_CLASS_VAR)) {
+		    case DECL_GLOBAL_VAR:
+			if (sym->decl->flags & DECL_PRIVATE) {
+				push_str("::_%s_%s", L->toplev, sym->name);
+			} else {
+				push_str("::%s", sym->name);
+			}
+			break;
+		    case DECL_LOCAL_VAR:
+		    case DECL_FN:
+			push_str(sym->tclname);
+			break;
+		    case DECL_CLASS_VAR:
+			push_str("::L::_class_%s::%s",
+				 sym->decl->clsdecl->decl->id->u.string,
+				 sym->name);
+			break;
+		    case DECL_CLASS_INST_VAR:
+			self = sym_lookup(ast_mkId("self", 0, 0), L_NOWARN);
+			ASSERT(self);
+			emit_load_scalar(self->idx);
+			push_str("::%s", sym->name);
+			TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
+			break;
+		    default:
+			ASSERT(0);
+		}
+	} else {
+		return (0);
+	}
+	return (1);
 }
 
 private int
@@ -1813,55 +1854,21 @@ push_pointer(Expr *expr)
 {
 	Expr	*e = expr->a;
 
-	push_str("::pointer");
-	push_str("new");
-
 	/*
-	 * Separate out the cases because the following all are legal
-	 * for an L pointer:
+	 * Only the following are legal for an L pointer:
 	 *
-	 * &var
+	 * &global_var
 	 * &classname->var
 	 * &object->var
-	 * &array[<expr>]
-	 * &struct.member
-	 * &classname->array[<expr>]
-	 * &classname->struct.member
-	 * &object->array[<expr>]
-	 * &object->struct.member
 	 */
-
-	if ((e->op == L_OP_ARRAY_INDEX) ||
-	    (e->op == L_OP_DOT) ||
-	    (e->op == L_OP_POINTS)) {
-		compile_expr(e->a, L_PUSH_VAL);
-		if (e->a->flags & L_EXPR_DEEP) {
-			L_errf(expr, "multiple indices not supported with &");
-		} else if (isclass(e->a)) {
-			compile_clsInstDeref(e, L_DISCARD);
-			push_str(e->sym->tclname);
-			emit_invoke(3);
-		} else if (!e->a->sym) {
-			// Undeclared var; compile_expr() already issued error.
-		} else if (e->a->sym->decl->flags &
-			   (DECL_GLOBAL_VAR | DECL_LOCAL_VAR |
-			    DECL_CLASS_INST_VAR | DECL_TEMP)) {
-			emit_pop();  // throw away val b/c we want the name
-			push_str(e->a->sym->tclname);
-			push_index(e);
-			emit_invoke(4);
-		} else {
-			L_errf(expr, "illegal operand to &");
-		}
-	} else {
-		// Handle remaining cases with & operator.
-		compile_expr(expr, L_PUSH_VAL);
-		if (expr->a->sym && (expr->a->sym->decl->flags & DECL_FN)) {
-			L_errf(expr, "illegal operand to &");
-		}
-		emit_invoke(3);
-	}
+	compile_expr(e, L_PUSH_NAME);
 	expr->type = L_poly;
+	unless (e->sym) return;  // not a variable, or undeclared variable
+	unless (e->sym->decl->flags & (DECL_GLOBAL_VAR |
+				       DECL_CLASS_VAR |
+				       DECL_CLASS_INST_VAR)) {
+		L_errf(expr, "illegal operand to &");
+	}
 }
 
 private int
@@ -1912,17 +1919,16 @@ compile_unOp(Expr *expr)
 		break;
 	    case L_OP_ADDROF:
 		/*
-		 * Compile &var -- push the tcl name of var.  This
+		 * Compile &var -- push the name of var.  This
 		 * works for function names, regular variables, and
 		 * class variables (&x, &classname->var, &obj->var).
 		 */
-		compile_expr(expr->a, L_DISCARD);
+		compile_expr(expr->a, L_PUSH_NAME);
 		if (!(expr->a->flags & L_EXPR_DEEP) &&
 		    (expr->a->sym && (expr->a->sym->decl->flags &
 				      (DECL_FN | DECL_GLOBAL_VAR |
 				       DECL_LOCAL_VAR | DECL_CLASS_VAR |
-				       DECL_CLASS_INST_VAR | DECL_TEMP)))) {
-			push_str(expr->a->sym->tclname);
+				       DECL_CLASS_INST_VAR)))) {
 			expr->type = type_mkNameOf(expr->a->type, PER_INTERP);
 		} else {
 			L_errf(expr, "illegal operand to &");
@@ -3228,6 +3234,13 @@ compile_clsDeref(Expr *expr, Expr_f flags)
 		       varnm, clsnm);
 	}
 
+	if (flags & L_PUSH_NAME) {
+		push_str("::L::_class_%s::%s", clsnm, sym->name);
+		expr->sym  = sym;
+		expr->type = sym->type;
+		return (1);  // stack effect
+	}
+
 	tmpidx  = tmp_getFree(&tmpnm);
 	tmpid   = ast_mkId(tmpnm, 0, 0);
 	tmpdecl = ast_mkVarDecl(sym->type, tmpid, 0, 0);
@@ -3291,6 +3304,15 @@ compile_clsInstDeref(Expr *expr, Expr_f flags)
 	unless (sym->decl->flags & DECL_CLASS_INST_VAR) {
 		L_errf(expr, "%s is not an instance variable of class %s",
 		       varnm, clsnm);
+	}
+
+	if (flags & L_PUSH_NAME) {
+		// Caller already pushed obj value, so concat var name to it.
+		push_str("::%s", sym->name);
+		TclEmitInstInt1(INST_CONCAT1, 2, L->frame->envPtr);
+		expr->sym  = sym;
+		expr->type = sym->type;
+		return (1);  // stack effect
 	}
 
 	tmpidx  = tmp_getFree(&tmpnm);
