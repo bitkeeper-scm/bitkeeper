@@ -134,7 +134,7 @@ ast_mkClsDecl(VarDecl *decl, int beg, int end)
 {
 	ClsDecl *clsdecl = (ClsDecl *)ckalloc(sizeof(ClsDecl));
 	memset(clsdecl, 0, sizeof(ClsDecl));
-	clsdecl->decl   = decl;
+	clsdecl->decl = decl;
 	ast_init(clsdecl, L_NODE_CLASS_DECL, beg, end);
 	return (clsdecl);
 }

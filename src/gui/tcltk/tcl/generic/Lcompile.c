@@ -407,8 +407,6 @@ compile_clsDecl(ClsDecl *clsdecl)
 	ASSERT(clsdecl->constructor);
 	ASSERT(clsdecl->destructor);
 
-	clsdecl->decl->type->u.class.clsdecl = clsdecl;
-
 	/*
 	 * A class creates two scopes, one for the class symbols and
 	 * the other for its top-level code (class variable
@@ -432,6 +430,8 @@ compile_clsDecl(ClsDecl *clsdecl)
 	compile_varDecls(clsdecl->clsvars);
 	/* Process function decls first, then compile the bodies. */
 	compile_fnDecls(clsdecl->fns, FN_PROTO_ONLY);
+	compile_fnDecl(clsdecl->constructor, FN_PROTO_ONLY);
+	compile_fnDecl(clsdecl->destructor, FN_PROTO_ONLY);
 	compile_fnDecl(clsdecl->constructor, FN_PROTO_AND_BODY);
 	compile_fnDecl(clsdecl->destructor, FN_PROTO_AND_BODY);
 	compile_fnDecls(clsdecl->fns, FN_PROTO_AND_BODY);
@@ -991,6 +991,8 @@ compile_return(Stmt *stmt)
 			   !isid(stmt->u.expr, "self")) {
 			L_errf(stmt, "class constructor must return 'self'");
 		}
+	} else unless (isvoidtype(ret_type)) {
+		L_errf(stmt, "must specify return value");
 	} else {
 		push_str("");  // no return value -- push a ""
 	}

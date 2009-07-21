@@ -1914,6 +1914,11 @@ test return-3.9 {hash return value from array function disallowed} -body {
 int[] return_3_9() { hash h; return h; }
 } -returnCodes error -match regexp -result ".*incompatible return type"
 
+test return-3.10 {void return value from non-void function disallowed} -body {
+#lang L
+int return_3_10_int() { return; }
+} -returnCodes error -match regexp -result ".*must specify return value"
+
 test syntax-1.0 {single-line comments a la C++} -body {
 #lang L
 void syntax_1_0() {
@@ -12654,6 +12659,72 @@ void class_1_8_main()
 }
 class_1_8_main();
 } -output {}
+
+test class-1.9 {check calling class member fns before they are declared} -body {
+#lang L
+/*
+ * Check the error cases to make sure that the proto is being
+ * processed before the call site even though it comes after.
+ */
+class class_1_9
+{
+	void class_1_9_f1(class_1_9 self)
+	{
+		class_1_9 o = class_1_9_new(123);  // error -- too many args
+		class_1_9_f2(o, 123);  // error
+	}
+	constructor class_1_9_new()
+	{
+		class_1_9_f2(self, 123);  // error
+		class_1_9_free(self, 123);  // error
+	}
+	destructor class_1_9_free(class_1_9 self)
+	{
+		class_1_9_f2(self, 123);  // error
+	}
+	void class_1_9_f2(class_1_9 self)
+	{
+	}
+}
+} -returnCodes {error} -match regexp -result {.*14: L Error: too many arguments for function class_1_9_f2
+.*15: L Error: too many arguments for function class_1_9_free
+.*19: L Error: too many arguments for function class_1_9_f2
+.*9: L Error: too many arguments for function class_1_9_new
+.*10: L Error: too many arguments for function class_1_9_f2
+}
+
+test class-1.10 {check forward class declarations} -body {
+#lang L
+class class_1_10a
+{
+	constructor class_1_10a_new() {}
+}
+class class_1_10a;  // ok -- class_1_10a already declared
+class class_1_10a;  // ok -- class_1_10a already declared
+class class_1_10b;  // forward declaration
+private class_1_10a obj_a;
+private class_1_10b obj_b;
+class class_1_10b
+{
+	constructor class_1_10b_new() {}
+}
+void class_1_10_main()
+{
+	obj_a = class_1_10a_new();
+	obj_b = class_1_10b_new();
+}
+class_1_10_main();
+} -output {}
+
+test class-1.11 {check forward class declaration errors} -body {
+#lang L
+class class_1_11a {}
+class class_1_11a {}  // error -- already declared
+typedef int class_1_11_t;
+class class_1_11_t;  // error -- not a class type
+} -returnCodes {error} -match regexp -result {.*2: L Error: redeclaration of class_1_11a
+.*4: L Error: class_1_11_t not a class type
+}
 
 test class-2.1 {check missing class constructor} -body {
 #lang L

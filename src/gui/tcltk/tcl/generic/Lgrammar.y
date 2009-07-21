@@ -205,7 +205,7 @@ extern int	L_lex (void);
 %left HIGHEST
 
 %type <TopLev> toplevel_code
-%type <ClsDecl> class_decl
+%type <ClsDecl> class_decl class_decl_tail
 %type <FnDecl> function_decl fundecl_tail fundecl_tail1
 %type <Stmt> stmt single_stmt compound_stmt stmt_list optional_else
 %type <Stmt> unlabeled_stmt
@@ -238,8 +238,14 @@ start:	  toplevel_code
 toplevel_code:
 	  toplevel_code class_decl
 	{
-		$$ = ast_mkTopLevel(L_TOPLEVEL_CLASS, $1, @1.beg, @2.end);
-		$$->u.class = $2;
+		if ($2) {
+			$$ = ast_mkTopLevel(L_TOPLEVEL_CLASS, $1, @1.beg,
+					    @2.end);
+			$$->u.class = $2;
+		} else {
+			// Don't create a node for a forward class declaration.
+			$$ = $1;
+		}
 	}
 	| toplevel_code function_decl
 	{
@@ -290,6 +296,7 @@ class_decl:
 	  T_CLASS id "{"
 	{
 		/*
+		 * This is a new class declaration.
 		 * Alloc the VarDecl now and associate it with
 		 * the class name so that it is available while
 		 * parsing the class body.
@@ -297,14 +304,64 @@ class_decl:
 		Type	*t = type_mkClass(PER_INTERP);
 		VarDecl	*d = ast_mkVarDecl(t, $2, @1.beg, 0);
 		ClsDecl	*c = ast_mkClsDecl(d, @1.beg, 0);
+		t->u.class.clsdecl = c;
+		ASSERT(!L_typedef_lookup($2->u.string));
 		L_typedef_store(d);
 		$<ClsDecl>$ = c;
+	} class_decl_tail
+	{
+		$$ = $5;
+		/* silence unused warning */
+		(void)$<ClsDecl>4;
 	}
+	| T_CLASS T_TYPE "{"
+	{
+		/*
+		 * This is a class declaration where the type name was
+		 * previously declared.  Use the ClsDecl from the
+		 * prior decl.
+		 */
+		ClsDecl	*c = $2.t->u.class.clsdecl;
+		unless (c->decl->flags & DECL_FORWARD) {
+			L_err("redeclaration of %s", $2.s);
+		}
+		ASSERT(isclasstype(c->decl->type));
+		c->decl->flags &= ~DECL_FORWARD;
+		$<ClsDecl>$ = c;
+	} class_decl_tail
+	{
+		$$ = $5;
+		/* silence unused warning */
+		(void)$<ClsDecl>4;
+	}
+	| T_CLASS id ";"
+	{
+		/* This is a forward class declaration. */
+		Type	*t = type_mkClass(PER_INTERP);
+		VarDecl	*d = ast_mkVarDecl(t, $2, @1.beg, @3.end);
+		ClsDecl	*c = ast_mkClsDecl(d, @1.beg, @3.end);
+		ASSERT(!L_typedef_lookup($2->u.string));
+		t->u.class.clsdecl = c;
+		d->flags |= DECL_FORWARD;
+		L_typedef_store(d);
+		$<ClsDecl>$ = NULL;
+	}
+	| T_CLASS T_TYPE ";"
+	{
+		/* Empty declaration of an already declared type. */
+		unless (isclasstype($2.t)) {
+			L_err("%s not a class type", $2.s);
+		}
+		$<ClsDecl>$ = NULL;
+	}
+	;
+
+class_decl_tail:
 	class_code "}"
 	{
-		$$ = $<ClsDecl>4;
-		$$->node.end       = @6.end;
-		$$->decl->node.end = @6.end;
+		$$ = $<ClsDecl>0;
+		$$->node.end       = @2.end;
+		$$->decl->node.end = @2.end;
 		/* If constructor or destructor were omitted, make defaults. */
 		unless ($$->constructor) {
 			$$->constructor = ast_mkConstructor($$);

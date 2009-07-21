@@ -288,6 +288,11 @@ isnameoftype(Type *type)
 	return (type->kind == L_NAMEOF);
 }
 static inline int
+isclasstype(Type *type)
+{
+	return (type->kind == L_CLASS);
+}
+static inline int
 isaddrof(Expr *expr)
 {
 	return ((expr->kind == L_EXPR_UNOP) && (expr->op == L_OP_ADDROF));
