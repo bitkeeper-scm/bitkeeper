@@ -1374,6 +1374,19 @@ _install()
 	then
 		test $VERBOSE = YES && echo "Updating registry and path ..."
 		gui/bin/tclsh gui/lib/registry.tcl $UPGRADE $DLLOPTS "$DEST"
+		bk _startmenu set -i"$DEST/bk.ico" \
+			"BitKeeper Documentation" "$DEST/bk.exe" "helptool"
+		bk _startmenu set -i"$DEST/bk.ico" \
+			"Submit bug report" "$DEST/bk.exe" "sendbug"
+		bk _startmenu set -i"$DEST/bk.ico" \
+			"Request BitKeeper Support" "$DEST/bk.exe" "support"
+		bk _startmenu set -i"$DEST/bk.ico" \
+			"Uninstall BitKeeper" "$DEST/bk.exe" "uninstall"
+		bk _startmenu set "Quick Reference" "$DEST/bk_refcard.pdf"
+		bk _startmenu set "BitKeeper on the Web" \
+			"http://www.bitkeeper.com"
+		bk _startmenu set "BitKeeper Test Drive" \
+			"http://www.bitkeeper.com/Test.html"
 		test $REGSHELLX = YES && __register_dll "$DEST"/BkShellX.dll
 	fi
 
