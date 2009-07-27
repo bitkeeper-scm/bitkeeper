@@ -1283,6 +1283,10 @@ char	*goneFile(void);
 char	*sgoneFile(void);
 int	keycmp(const void *k1, const void *k2);
 int	key_sort(const void *a, const void *b);
+int	startmenu_list(u32, char *);
+int	startmenu_rm(u32, char *);
+int	startmenu_get(u32, char *path);
+int	startmenu_set(u32, char *, char *, char *, char *);
 
 #ifdef	WIN32
 void	notifier_changed(char *fullpath);

@@ -312,6 +312,7 @@ sinfo
 smerge
 _shellSplit_test
 sort
+_startmenu
 _stat
 _stattest
 status
