@@ -315,18 +315,14 @@ if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N push to a read locked repository should fail ................$NL
-bk lock -tr "$HERE/project" >L &
-bk lock -L "$HERE/project"
-LOCKURL=`cat L`
+ReadLock "$HERE/project" L
 bk push -c0 "$HERE/project" > OUT 2>&1
 grep -q 'Unable to lock repository for update' OUT || {
 	echo failed
 	cat OUT
 	exit 1
 }
-bk _kill $LOCKURL
-cd "$HERE/project"
-bk lock -U
+Unlock $L
 echo OK
 
 echo $N push to unrelated project should error ......................$NL

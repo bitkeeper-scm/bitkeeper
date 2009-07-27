@@ -635,12 +635,16 @@ echo $N Clone C1 to C2 with part in C1 and rest in S w/ S wlocked ...$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
-cd S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ..
+LOCK=foobar
+WriteLock S L
+test $LOCK = foobar || {
+	Unlock $L
+	echo failed
+	echo Lock API is busted
+	exit 1
+}
 bk clone -Bnone C1 C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 test -d C2 && {
 	echo should not have cloned
 	find C2 -print
@@ -655,12 +659,9 @@ echo OK
 
 echo $N Clone C1 to C2 with part in C1 and rest in S w/ S rlocked ...$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ..
+ReadLock S L
 bk clone -Bnone C1 C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 test -d C2 && {
 	echo should not have cloned
 	find C2 -print
@@ -678,12 +679,10 @@ cd "$HERE"
 cd C1
 bk bam push -aq
 rm -rf BitKeeper/BAM
-cd ../S
-bk lock -wt > ../LOCK &
-bk lock -L
 cd ..
+WriteLock S L
 bk clone -Bnone C1 C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 test -d C2 && {
 	echo should not have cloned
 	find C2 -print
@@ -698,28 +697,22 @@ echo OK
 
 echo $N Clone C1 to C2 with all in S with S rlocked .................$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ..
+ReadLock S L
 bk clone -Bnone $Q C1 C2 || {
-	bk _kill `cat LOCK`
+	Unlock $L
 	echo clone should have worked
 	exit 1
 }
-bk _kill `cat LOCK`
+Unlock $L
 echo OK
 
 echo $N rClone C1 to C2 with part in C1 and rest in S w/ S wlocked ..$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
-cd S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ..
+WriteLock S L
 bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
 test -f C2/SCCS/s.ChangeSet && {
@@ -736,12 +729,9 @@ echo OK
 
 echo $N rClone C1 to C2 with part in C1 and rest in S w/ S rlocked ..$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ..
+ReadLock S L
 bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
 test -f C2/SCCS/s.ChangeSet && {
@@ -763,12 +753,10 @@ tar xf TAR
 cd C1
 bk bam push -aq
 rm -rf BitKeeper/BAM
-cd ../S
-bk lock -wt > ../LOCK &
-bk lock -L
 cd ..
+WriteLock S L
 bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
 test -f C2/SCCS/s.ChangeSet && {
@@ -785,16 +773,13 @@ echo OK
 
 echo $N rClone C1 to C2 with all in S with S rlocked ................$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ..
+ReadLock S L
 bk clone -Bnone $Q C1 bk://localhost:$P/C2 || {
-	bk _kill `cat LOCK`
+	Unlock $L
 	echo clone should have worked
 	exit 1
 }
-bk _kill `cat LOCK`
+Unlock $L
 echo OK
 
 echo $N Push C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
@@ -802,12 +787,10 @@ cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
 bk clone -Bnone -r1.1 $Q C1 C2
-cd S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ../C1
+WriteLock S L
+cd C1
 bk push ../C2 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C2 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -822,12 +805,10 @@ echo OK
 
 echo $N Push C1 to C2 with part in C1 and rest in S w/ S rlocked ....$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ../C1
+ReadLock S L
+cd C1
 bk push ../C2 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C2 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -845,12 +826,9 @@ cd "$HERE"
 cd C1
 bk bam push -aq
 rm -rf BitKeeper/BAM
-cd ../S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ../C1
+WriteLock ../S L
 bk push ../C2 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C2 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -865,16 +843,14 @@ echo OK
 
 echo $N Push C1 to C2 with all in S with S rlocked ..................$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ../C1
+ReadLock S L
+cd C1
 bk push $Q ../C2 || {
-	bk _kill `cat ../LOCK`
+	Unlock $L
 	echo push should work
 	exit 1
 }
-bk _kill `cat ../LOCK`
+Unlock $L
 echo OK
 
 echo $N Pull C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
@@ -882,12 +858,10 @@ cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
 bk clone -Bnone -r1.1 $Q C1 C2
-cd S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ../C2
+WriteLock S L
+cd C2
 bk pull ../C1 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -R ../C1 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -902,12 +876,10 @@ echo OK
 
 echo $N Pull C1 to C2 with part in C1 and rest in S w/ S rlocked ....$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ../C2
+ReadLock S L
+cd C2
 bk pull ../C1 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C1 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -925,12 +897,10 @@ cd "$HERE"
 cd C1
 bk bam push -aq
 rm -rf BitKeeper/BAM
-cd ../S
-bk lock -wt > ../LOCK &
-bk lock -L
+WriteLock ../S L
 cd ../C2
 bk pull ../C1 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C1 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -945,14 +915,12 @@ echo OK
 
 echo $N Pull C1 to C2 with all in S with S rlocked ..................$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ../C2
+ReadLock S L
+cd C2
 bk pull $Q ../C1 || {
-	bk _kill `cat ../LOCK`
+	Unlock $L
 	echo push should work
 	exit 1
 }
-bk _kill `cat ../LOCK`
+Unlock $L
 echo OK

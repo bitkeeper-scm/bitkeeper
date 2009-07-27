@@ -15,6 +15,44 @@
 # *IMPORTANT* This file should be kept small, it is called in the main loop
 #	      of doit.sh
 
+Lock()
+{
+	local	TMPFILE PROC LOCK
+	local	DIR="$1" VAR="$2" W="$3"
+	local	CWD="`pwd`"
+	cd "$DIR"
+	TMPFILE=/tmp/RLOCK$$
+	bk lock -${W}t > "$TMPFILE" &
+	PROC=$!
+	bk lock -L
+	while [ ! -s "$TMPFILE" ] ;
+	do	bk _usleep 500
+	done
+	LOCK=`cat $TMPFILE`
+	cd "$CWD"
+	eval $VAR="\"$PROC $LOCK\""
+}
+
+# Usage: ReadLock "$DIR" VAR
+ReadLock()
+{
+	Lock "$1" $2 r
+}
+
+# Usage: WriteLock "$DIR" VAR
+WriteLock()
+{
+	Lock "$1" $2 w
+}
+
+# Usage: Unlock $VAR
+Unlock()
+{
+	local	PROC="$1" LOCK="$2"
+	bk _kill $LOCK
+	wait $PROC >$DEV_NULL 2>&1
+}
+
 cores()
 {
 	# Win32 have no core file
