@@ -13,3 +13,26 @@ waitpid-test-01 || {
 	exit 1
 }
 echo OK
+
+echo $N Test for expected ARCHITECTURE env variables ................$NL
+# See this page to learn about env var setting:
+# http://msdn.microsoft.com/en-us/library/aa384274(VS.85).aspx
+# Arguments against hardcoding the list of architecture:
+# http://blogs.msdn.com/oldnewthing/archive/2005/02/01/364563.aspx
+# But at this time the installer is going with the hard coded list
+# So test here to see that things work
+test "$PROCESSOR_ARCHITECTURE" = "x86" || {
+	echo "failed: bk/msys not running as x86 (32bit)?"
+	echo "Fix this and next test"
+	echo Proc arch = "$PROCESSOR_ARCHITECTURE"
+	exit 1
+}
+# assumes "$PROCESSOR_ARCHITECTURE" = "x86"
+test X"$PROCESSOR_ARCHITEW6432" = X -o \
+     "$PROCESSOR_ARCHITEW6432" = "AMD64" || {
+	echo "failed: unexpected architecture"
+	echo Proc arch = "$PROCESSOR_ARCHITECTURE"
+	echo Proc arch 6432 = "$PROCESSOR_ARCHITEW6432"
+	exit 1
+}
+echo OK

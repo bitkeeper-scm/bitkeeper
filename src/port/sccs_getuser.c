@@ -48,10 +48,15 @@ sccs_getuser(void)
 #else
 	if (s) return (s);
 #endif
+	/* User is impersonating, we allow that */
 	s = getenv("BK_USER");
-#ifndef WIN32
+
+	/* Unix and/or cygwin, we need this for rsh w/o password on win */
 	unless (s && s[0]) s = getenv("USER");
-#endif
+
+	/* Windows, cygwin or cmd.exe */
+	unless (s && s[0]) s = getenv("USERNAME");
+
 	if (s && streq(s, "root")) {
 		char	*tmp = sccs_realuser();
 
