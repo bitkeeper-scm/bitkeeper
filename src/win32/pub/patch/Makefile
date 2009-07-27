@@ -16,7 +16,7 @@ H = $(SRC)/argmatch.h $(SRC)/common.h $(SRC)/inp.h $(SRC)/patchlevel.h \
 	$(SRC)/version.h config.h
 
 all: patch
-	cp patch.exe ../../../
+	cp patch.exe ../../../mend.exe
 
 patch: $(OBJS)
 
@@ -32,4 +32,4 @@ clean clean-obj clobber:
 
 install: all
 	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
-	cp patch.exe $(BINDIR)/
+	cp patch.exe $(BINDIR)/mend.exe

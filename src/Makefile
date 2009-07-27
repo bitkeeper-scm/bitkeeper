@@ -36,7 +36,7 @@ ifeq "$(OSTYPE)" "msys"
 	# BINDIR should really be :C:/Program Files/BitKeeper
 	# The shell can not handle space in pathname, so
 	# we use the short name here
-	BINDIR="C:/Progra~1/BitKeeper"
+	BINDIR := $(shell bk pwd -s "`bk _registry get 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion' ProgramFilesDir`/BitKeeper")
 	INSTALL=installdir
 	RESOURCE=bkres.o
 	UWT_C=$(patsubst %,win32/uwtlib/%.c, wapi_intf wcrt_intf)
@@ -278,7 +278,7 @@ clean: FORCE
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		diff.exe diff3.exe hidestring.exe inskeys_main.o patch.exe
+		diff.exe diff3.exe hidestring.exe inskeys_main.o mend.exe
 	$(RM) -r tmp
 
 clobber: clean FORCE
@@ -442,7 +442,6 @@ gui-nowrap GUI-nowrap:
 install: installdir
 	tmp/bitkeeper/bk _eula -a
 	tmp/bitkeeper/bk install -d -f $(BINDIR)
-	-$(BINDIR)/bk links /usr/bin
 
 installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1

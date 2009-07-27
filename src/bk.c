@@ -393,7 +393,16 @@ cmd_run(char *prog, int is_bk, int ac, char **av)
 		return (spawn_cmd(_P_WAIT, argv));
 
 	    case CMD_CPROG:		/* Handle C programs */
-		return (spawn_cmd(_P_WAIT, av));
+		argv[0] = cmd->name;
+		for (i = 1; av[i]; i++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				return(1);
+			}
+			argv[i] = av[i];
+		}
+		argv[i] = 0;
+		return (spawn_cmd(_P_WAIT, argv));
 
 	    case CMD_BK_SH:
 		/* Handle GUI test */
