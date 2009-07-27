@@ -1387,7 +1387,15 @@ _install()
 			"http://www.bitkeeper.com"
 		bk _startmenu set "BitKeeper Test Drive" \
 			"http://www.bitkeeper.com/Test.html"
-		test $REGSHELLX = YES && __register_dll "$DEST"/BkShellX.dll
+		if [ "$REGSHELLX" = "YES" ]
+		then
+			__register_dll "$DEST"/BkShellX.dll
+			if [ "$PROCESSOR_ARCHITECTURE" = "AMD64" -o \
+				"$PROCESSOR_ARCHITEW6432" = "AMD64" ]
+			then
+				__register_dll "$DEST"/BkShellX64.dll
+			fi
+		fi
 	fi
 
 	test $CRANKTURN = YES && exit 0
