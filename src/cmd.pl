@@ -312,6 +312,7 @@ sinfo
 smerge
 _shellSplit_test
 sort
+_startmenu
 _stat
 _stattest
 status
@@ -362,6 +363,7 @@ info => sinfo
 _key2path => key2path
 _mail => mail
 pager => more
+patch => mend
 _preference => config
 rechksum => checksum
 rev2cset => r2c
@@ -402,7 +404,7 @@ import shell
 resync shell
 
 # c programs
-patch cprog
+mend cprog
 cmp cprog
 diff cprog
 diff3 cprog

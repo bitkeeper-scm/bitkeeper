@@ -2,7 +2,6 @@
 # e.g. tclsh registry.tcl "c:/bitkeeper"
 
 package require registry
-package require dde
 
 proc main {} \
 {
@@ -58,12 +57,10 @@ proc main {} \
 		# failed, almost certainly because user doesn't have
 		# admin privs. Whatever the reason we can still do
 		# the startmenu and path stuff for this user
-		startmenu_install $destination
 		addpath user $destination
 		set exit 2
 	} else {
 		# life is good; registry was updated
-		startmenu_install $destination
 		addpath system $destination
 		set exit 0
 	}
@@ -120,37 +117,6 @@ proc registry_install {destination} \
 
 }
 
-proc startmenu_install {dest {group "BitKeeper"}} \
-{
-	global env shortcutlog tcl_platform
-
-	set bk [file join $dest bk.exe]
-	set installLog [file join $dest install.log]
-
-	lappend shortcutlog "CreateGroup \"$group\""
-	# by not specifying whether this is a common or user group 
-	# it will default to common if the user has admin privs and
-	# user if not.
-	progman CreateGroup "$group,"
-	progman AddItem "$bk helptool,BitKeeper Documentation,,,,,,,1"
-	progman AddItem "$bk sendbug,Submit bug report,,,,,,,1"
-	progman AddItem "$bk support,Request BitKeeper Support,,,,,,,1"
-	progman AddItem "$bk uninstall,Uninstall BitKeeper,,,,,C:\\,,1"
-	progman AddItem "$dest\\bk_refcard.pdf,Quick Reference,,,,,,,0"
-	progman AddItem "http://www.bitkeeper.com,BitKeeper on the Web,,,,,,,1"
-	progman AddItem "http://www.bitkeeper.com/Test.html,BitKeeper Test Drive,,,,,,,1"
-}
-# use dde to talk to the program manager
-proc progman {command details} \
-{
-	global reglog
-
-	set command "\[$command ($details)\]"
-
-	if {[catch {dde execute PROGMAN PROGMAN $command} error]} {
-		lappend reglog "error $error"
-	}
-}
 # perform a registry operation and save pertinent information to
 # a log
 proc reg {command args} \

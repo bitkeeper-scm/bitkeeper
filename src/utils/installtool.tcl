@@ -47,8 +47,13 @@ proc initGlobals {} \
 	set runtime(upgradeCheckbutton) 0
 	if {$tcl_platform(platform) == "windows"} {
 		set runtime(enableSccDLL) 1
-		set runtime(enableShellxLocal) 1
-		set runtime(enableShellxNetwork) 0
+		if {$::tcl_platform(osVersion) < 5.1} {
+			set runtime(shellxCheckbutton) 0
+			set runtime(enableShellxLocal) 0
+		} else {
+			set runtime(shellxCheckbutton) 1
+			set runtime(enableShellxLocal) 1
+		}
 		set key {HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft}
 		append key {\Windows\CurrentVersion}
 		if {[catch {package require registry}]} {
@@ -65,7 +70,6 @@ proc initGlobals {} \
 	} else {
 		set runtime(enableSccDLL) 0
 		set runtime(enableShellxLocal) 0
-		set runtime(enableShellxNetwork) 0
 		set runtime(symlinkDir) "/usr/bin"
 		set runtime(places) {
 			/usr/libexec/bitkeeper 
@@ -140,7 +144,6 @@ proc install {} \
 	if {$runtime(hasWinAdminPrivs)} {
 		if {$runtime(enableSccDLL)}	   {lappend command -s}
 		if {$runtime(enableShellxLocal)}   {lappend command -l}
-		if {$runtime(enableShellxNetwork)} {lappend command -n}
 	}
 	if {$runtime(doSymlinks)} {lappend command -S}
 
@@ -615,13 +618,15 @@ proc widgets {} \
 		    if {$runtime(hasWinAdminPrivs)} {
 			    $this stepconfigure InstallDLLs \
 				-description [unwrap $::strings(InstallDLLs)]
-			    checkbutton $w.shellx-local \
-				-anchor w \
-				-text "Enable Explorer integration on LOCAL drives" \
-				-borderwidth 1 \
-				-variable ::runtime(enableShellxLocal) \
-				-onvalue 1 \
-				-offvalue 0 
+			    if {$runtime(shellxCheckbutton)} {
+				    checkbutton $w.shellx-local \
+					-anchor w \
+					-text "Enable Windows Explorer integration (local drives only)" \
+					-borderwidth 1 \
+					-variable ::runtime(enableShellxLocal) \
+					-onvalue 1 \
+					-offvalue 0 
+			    }
 			    checkbutton $w.bkscc \
 				-anchor w \
 				-text "Enable Visual Studio integration" \
@@ -632,9 +637,11 @@ proc widgets {} \
 
 			    frame $w.spacer1 -height 8 -borderwidth 0 
 			    pack $w.spacer1 -side top -fill x
-			    pack $w.shellx-local -side top -fill x -anchor w
 			    pack $w.bkscc -side top -fill x -anchor w
-			    after idle [list focus $w.shellx-local]
+			    if {$runtime(shellxCheckbutton)} {
+				    pack $w.shellx-local -side top -fill x -anchor w
+				    after idle [list focus $w.shellx-local]
+			    }	
 		    } else {
 			    $this stepconfigure InstallDLLs \
 				-description [unwrap $::strings(InstallDLLsNoAdmin)]
