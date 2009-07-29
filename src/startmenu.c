@@ -59,6 +59,7 @@ usage:
 	if (opts.list) {
 		return (startmenu_list(opts.user, av[optind]));
 	}
+	unless(av[optind]) goto usage;
 	if (opts.rm) {
 		return (startmenu_rm(opts.user, av[optind]));
 	}

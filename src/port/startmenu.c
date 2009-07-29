@@ -64,9 +64,8 @@ bkmenupath(u32 user, int create)
 		return (0);
 	}
 	if (!exists(mpath)) {
-		fprintf(stderr, "_startmenu: no BitKeeper menus installed\n");
-		/* pretty harsh, eh? ;) */
-		exit(1);
+		free(mpath);
+		return (0);
 	}
 	return (mpath);
 }
