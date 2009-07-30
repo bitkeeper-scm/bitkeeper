@@ -47,10 +47,6 @@ __RCSID("$NetBSD: vsprintf.c,v 1.14 2005/02/09 21:35:47 kleink Exp $");
 #include "reentrant.h"
 #include "local.h"
 
-#ifdef _FORTIFY_SOURCE
-#undef vsprintf
-#endif
-
 int
 vsprintf(str, fmt, ap)
 	char *str;

@@ -45,9 +45,6 @@ __RCSID("$NetBSD: gets.c,v 1.15 2003/08/07 16:43:27 agc Exp $");
 #include <stdio.h>
 #include "reentrant.h"
 #include "local.h"
-#ifdef _FORTIFY_SOURCE
-#undef gets
-#endif
 
 __warn_references(gets, "warning: this program uses gets(), which is unsafe.")
 

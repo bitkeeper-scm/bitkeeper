@@ -49,10 +49,6 @@ __RCSID("$NetBSD: sprintf.c,v 1.14 2005/02/09 21:35:47 kleink Exp $");
 #include "reentrant.h"
 #include "local.h"
 
-#ifdef _FORTIFY_SOURCE
-#undef sprintf
-#endif
-
 int
 sprintf(char *str, char const *fmt, ...)
 {
