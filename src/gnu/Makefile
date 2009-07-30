@@ -1,10 +1,10 @@
 _OS=`cat os`
 DIRS=patch diffutils
 EXE=`sh exe`
-PATCH_BINS=patch/$(_OS)/patch$(EXE)
+PATCH_BIN=patch/$(_OS)/patch$(EXE)
 DIFF_BINS= diffutils/$(_OS)/diff$(EXE) diffutils/$(_OS)/diff3$(EXE) \
 	diffutils/$(_OS)/sdiff$(EXE)  diffutils/$(_OS)/cmp$(EXE)
-BINS=$(PATCH_BINS) $(DIFF_BINS)
+BINS=$(PATCH_BIN) $(DIFF_BINS)
 CONFIG=--cache-file=../../config.cache --quiet
 
 # Override Solaris make.rules
@@ -28,11 +28,13 @@ all: os exe
 	done
 	rm -rf bin
 	mkdir bin
-	cp $(BINS) bin
+	cp $(DIFF_BINS) bin
+	cp $(PATCH_BIN) bin/mend$(EXE)
 
 install: all
 	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
-	cp -f $(BINS) $(BINDIR)
+	cp -f $(DIFF_BINS) $(BINDIR)
+	cp -f $(PATCH_BIN) $(BINDIR)/mend$(EXE)
 
 os: ../utils/os ../utils/gnu-os
 	$(Q)(cd ../utils && ./os) > _os

@@ -1,17 +1,15 @@
 #!/bin/bash
 
-# The build script sets this so I'm not sure why we bother here.
-# XXX - the build script should be merged into this.
-PATH=/bin:/usr/bin:/usr/bsd:/usr/local/bin:/usr/gnu/bin:/usr/freeware/bin:/usr/ccs/bin
-
 umask 0
 
-test $OSTYPE = cygwin && {
-	PATH=$PATH:/cygdrive/c/WINDOWS/system32::/cygdrive/c/PROGRA~1/BITKEE~1
-	bk bkd -R >/dev/null 2>&1
+test $OSTYPE != cygwin && {
+	# The build script sets PATH, but we need to find 'make' on sun.
+	PATH=/bin:/usr/bin:/usr/bsd:/usr/local/bin:/usr/gnu/bin
+	PATH=$PATH:/usr/freeware/bin:/usr/ccs/bin
+	export PATH
 }
 BK_NOTTY=YES
-export PATH BK_NOTTY
+export BK_NOTTY
 
 test X$LOG = X && LOG=LOG-$BK_USER
 cd /build

@@ -1,27 +1,50 @@
 #include "../sccs.h"
 
-/*
- * Copyright (c) 2001 Andrew Chang       All rights reserved.
- */
-
 #ifdef WIN32
+#include <Shlwapi.h>	/* brings in shlobj.h, which has CSIDL_APPDATA */
+	/*
+	 * according to this MS, the var below is defined as 0 in
+	 * /Program Files/Microsoft Visual Studio 8/VC/PlatformSDK/Include/
+	 *     ShlObj.h
+	 * However, our msys's /build/buildenv/mingw/include/shlobj.h 
+	 * does not have it defined, so we do it here, and will have
+	 * a compiler failure if ever defined differently.
+	 */
+#define	SHGFP_TYPE_CURRENT	0
+#define	FLAGS	(CSIDL_APPDATA|CSIDL_FLAG_CREATE)
+
 char *
 getHomeDir(void)
 {
         char	*homeDir;
-	char	buf[MAXPATH];
-
-#define KEY "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
+	char	user[MAXPATH], buf[MAXPATH];
 
 	if (homeDir = getenv("BK_TEST_HOME")) {
 		homeDir = strdup(homeDir);
 		return homeDir;
 	}
-	unless (homeDir = reg_get(KEY, "AppData", 0)) return (0);
-	concat_path(buf, homeDir, "BitKeeper");
-	free(homeDir);
-	unless (exists(buf)) mkdir(buf, 0640);
-        return strdup(buf);
+	unless (SUCCEEDED(
+	    SHGetFolderPath(NULL, FLAGS, NULL, SHGFP_TYPE_CURRENT, buf))) {
+		return (0);
+	}
+	nt2bmfname(buf, buf);
+
+	/*
+	 * This is really weird that we end up with .../BitKeeper/_bk
+	 * but the rickmeister says no change in a dot release and he
+	 * is right.
+	 */
+	concat_path(buf, buf, "BitKeeper");
+
+	/*
+	 * Once in a while I manage to mess up windows to the point that
+	 * SHGetFolderPath() doesn't give me a unique path.  Make it be so.
+	 */
+	sprintf(user, "/%s/", sccs_getuser());
+	unless (strstr(buf, user)) concat_path(buf, buf, sccs_getuser());
+
+	unless (exists(buf)) mkdirp(buf);
+        return (strdup(buf));
 }
 #else
 char *

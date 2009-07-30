@@ -3,7 +3,7 @@
 #ifdef	WIN32
 
 #define	MAILSLOT	"\\\\.\\mailslot\\bitmover\\shellx"
-#define	REGKEY	"HKEY_LOCAL_MACHINE\\Software\\bitmover"	\
+#define	REGKEY	"HKEY_CURRENT_USER\\Software\\bitmover"	\
 		"\\bitkeeper\\shellx\\mailslots"
 
 private	char **list;

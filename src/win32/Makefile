@@ -74,6 +74,7 @@ install: all blat data/bk.ico
 	mkdir $(BINDIR)/Icons
 	cp -f `bk gfiles dll/shellx/lib/Icons '*.ico'` $(BINDIR)/Icons
 	cp -f dll/shellx/lib/BkShellX.dll $(BINDIR)
+	cp -f dll/shellx/lib/BkShellX64.dll $(BINDIR)
 	cd pub/blat && make BINDIR=$(BINDIR) install
 	cd pub/diffutils && make BINDIR=$(BINDIR) install
 	cd pub/patch && make BINDIR=$(BINDIR) install
