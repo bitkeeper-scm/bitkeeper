@@ -33,7 +33,7 @@ ifeq "$(OSTYPE)" "msys"
 	# BINDIR should really be :C:/Program Files/BitKeeper
 	# The shell can not handle space in pathname, so
 	# we use the short name here
-	BINDIR="C:/Progra~1/BitKeeper"
+	BINDIR := $(shell bk pwd -s "`bk _registry get 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion' ProgramFilesDir`/BitKeeper")
 	INSTALL=installdir
 	RESOURCE=bkres.o
 	UWT_C=$(patsubst %,win32/uwtlib/%.c, wapi_intf wcrt_intf)
@@ -164,6 +164,7 @@ OBJ =	bkver.o cmd.o \
 	port/notifier.o port/ns_sock_host2ip.o port/platforminit.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o \
+	port/startmenu.o \
 	port/svcinfo.o \
 	port/uninstall.o \
 	prs.o pull.o purify.o push.o pwd.o \
@@ -179,8 +180,8 @@ OBJ =	bkver.o cmd.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs2bk.o \
 	sccslog.o sccs_mv.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfio.o shellcmd.o shrink.o sinfo.o \
-	slib.o smerge.o sort.o stat.o stattest.o status.o \
-	stripdel.o surgery.o synckeys.o \
+	slib.o smerge.o sort.o startmenu.o \
+	stat.o stattest.o status.o stripdel.o surgery.o synckeys.o \
 	tagmerge.o testcode.o tclsh.o takepatch.o testdates.o touch.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o uninstall.o unlink.o unlock.o unpull.o unwrap.o upgrade.o \
@@ -290,11 +291,11 @@ clean: FORCE
 	    $(LOCALSRC) $(PSRC) $(PROGS)
 	$(Q)$(RM) tags TAGS tags.local cscope.out substvars a.out cmd.c cmd.h \
 		tclkey.h core *.bb *.bbg *.da *.gcov \
-		bk.ico bkl5_hashs.h Academic.lic Basic.lic Pro.lic \
+		bk.ico Academic.lic Basic.lic Pro.lic \
 		Enterprise.lic MLA.lic bkl.lic bkcl.lic tclwrap$(EXE) \
 		tclwrap.o blowfish.o bkmsg.txt bkhelp.txt build bkver.c bk.ver \
 		t/doit t/guitest kw2val_lookup.c bkres.o svcmgr.exe \
-		diff.exe diff3.exe hidestring.exe inskeys_main.o patch.exe
+		diff.exe diff3.exe hidestring.exe inskeys_main.o mend.exe
 	$(Q)$(RM) -r tmp
 
 clobber: clean FORCE
@@ -442,12 +443,6 @@ import: import.sh port/$(SYS)_platform.sh
 	chmod +x import.T
 	mv -f import.T import
 
-logging.o: bkl5_hashs.h
-
-bkl5_hashs.h: mk_bkl5_license_tab.pl  USED_BKL5_LICENSES
-	$(if $(Q),@echo Building $@,)
-	$(Q)perl mk_bkl5_license_tab.pl  USED_BKL5_LICENSES > $@
-
 # Quick and dirty target so we can make all the gui tools without the rest
 GUI: tclwrap FORCE
 	@cd gui && make Q=$(Q) gui
@@ -458,7 +453,6 @@ gui-nowrap GUI-nowrap:
 install: installdir
 	tmp/bitkeeper/bk _eula -a
 	tmp/bitkeeper/bk install -d -f $(BINDIR)
-	-$(BINDIR)/bk links /usr/bin
 
 installdir: utils/registry.tcl
 	rm -rf $(IMGDIR) || exit 1
@@ -541,6 +535,10 @@ build: build.sh
 .c.o:
 	$(if $(Q),@echo CC $<,)
 	$(Q)$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+
+port/startmenu.o: port/startmenu.c $(HDRS)
+	$(if $(Q),@echo CC $<,)
+	$(Q)$(CC) $(CFLAGS) -fno-strict-aliasing $(CPPFLAGS) -c $< -o $@
 
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends

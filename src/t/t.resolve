@@ -269,6 +269,7 @@ echo OK
 
 echon Testing locking of RESYNC dir ...............................
 bk lock -tfRESYNC/BitKeeper/tmp/resolve_lock > L &
+PID=$!
 bk lock -LfRESYNC/BitKeeper/tmp/resolve_lock > /dev/null
 LOCKURL=`cat L`
 bk undos << EOF > CMP1
@@ -276,6 +277,7 @@ Could not get lock on RESYNC directory.
 EOF
 bk resolve -q 2>&1 | head -1 > CMP2
 bk _kill $LOCKURL
+wait $PID
 cmpfiles CMP1 CMP2
 echo OK
 
@@ -715,8 +717,7 @@ echo OK
 
 echo $N Make sure that we get a lock in pass4 .......................$NL
 cd "$HERE/locktest"
-bk lock -tr > PORT &
-bk lock -L
+ReadLock . L
 ( 
   echo 'l'
   echo 'm'
@@ -726,10 +727,10 @@ bk lock -L
 grep -q 'Waiting for write lock...' OUT || {
 	echo failed
 	cat OUT
-	bk _kill `cat PORT`
+	Unlock $L
 	exit 1
 }
-bk _kill `cat PORT`
+Unlock $L
 echo OK
 
 echo $N Keep keywords in an sccs merge ..............................$NL

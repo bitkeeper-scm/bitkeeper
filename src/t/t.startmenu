@@ -1,0 +1,43 @@
+if [ X$PLATFORM != X"WIN32" ]
+then
+	echo "For win32 only...............................................skipped"
+	exit 0;
+fi
+
+cleanup() {
+	bk _startmenu rm -u 2>/dev/null
+}
+
+cleanup
+echo $N Test _startmenu set -u ......................................$NL
+bk _startmenu set -u -i"$(bk pwd -w $(bk bin))\\bk.ico" \
+    "BK Regression Item" \
+    "$(bk pwd -w $(bk bin))\\bk.exe" "helptool" > ERR 2>&1 || {
+	echo fail
+	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Test _startmenu get -u ......................................$NL
+cat >WANT <<EOF
+-u -i"$(bk pwd -w $(bk bin))\\bk.ico" "BK Regression Item" "$(bk pwd -w $(bk bin))\\bk.exe" "helptool"
+EOF
+bk _startmenu get -u "BK Regression Item" > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test _startmenu list -u .....................................$NL
+cat >WANT <<EOF
+BK Regression Item.lnk
+EOF
+bk _startmenu list -u > GOT
+cmpfiles GOT WANT
+echo OK
+
+echo $N Test _startmenu rm -u .......................................$NL
+bk _startmenu rm -u "BK Regression Item" || {
+    echo fail
+    exit 1
+}
+echo OK

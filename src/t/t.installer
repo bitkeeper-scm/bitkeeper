@@ -311,6 +311,12 @@ test -f "$BK" || {
 	exit 1
 }
 "$BK" uninstall -f >OUT 2>&1
+test $? -ne 0 && {
+	echo failed
+	echo "uninstall exited non-zero"
+	cat OUT
+	exit 1
+}
 test -d "$BIN" && {
 	echo failed
 	echo "$BIN" still exists

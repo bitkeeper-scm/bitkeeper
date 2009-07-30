@@ -24,7 +24,6 @@ private	FILE *dfd;	/* Debug FD */
 
 private void	delete_onReboot(char *path);
 private	char	*path_sansBK(char *path);
-private void	remove_shortcuts(void);
 private int	unregister_shellx(char *path);
 
 int
@@ -246,7 +245,8 @@ uninstall(char *path, int upgrade)
 		freeLines(keys, free);
 	}
 	/* Remove Start Menu shortcuts */
-	remove_shortcuts();
+	startmenu_rm(0, 0);
+	startmenu_rm(1, 0);
 	/* Finally remove the BitKeeper_nul file creted by getnull.c */
 	if (GetTempPath(sizeof(buf), buf)) {
 		strcat(buf, "/BitKeeper_nul");
@@ -297,33 +297,6 @@ delete_onReboot(char *path)
 	reg_set(RUNONCEKEY, id, 0, cmd, 0);
 	free(id);
 	free(cmd);
-}
-
-private void
-remove_shortcuts(void)
-{
-	LPITEMIDLIST	sfolder;
-	int		i;
-	int		ids[2] = {CSIDL_STARTMENU, CSIDL_COMMON_STARTMENU};
-	char		fpath[MAX_PATH];
-	char		buf[MAX_PATH];
-
-	for (i = 0; i < 2; i++) {
-		if (SHGetSpecialFolderLocation(0, ids[i], &sfolder) == S_OK) {
-			if (SHGetPathFromIDList(sfolder, fpath)) {
-				sprintf(buf, "%s\\%s", fpath,
-				    "Programs\\BitKeeper");
-				if (exists(buf)) {
-					if (dfd) {
-						fprintf(dfd,
-						    "Removing Shortcut %s\n",
-						    buf);
-					}
-					rmtree(buf);
-				}
-			}
-		}
-	}
 }
 
 private int
