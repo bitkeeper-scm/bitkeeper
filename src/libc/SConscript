@@ -113,6 +113,7 @@ libc = Library("libc", stubs + Split('''
 	string/strspn.c
 	string/strstr.c
 	string/strtok.c
+	string/trim.c
 	tcp/tcp.c
 	utils/cleanpath.c
 	utils/concat_path.c
