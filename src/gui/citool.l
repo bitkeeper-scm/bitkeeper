@@ -714,7 +714,7 @@ void
 setStatus(string status)
 {
 	Label_configure(self.w_status, text: status);
-	update();
+	Update_idletasks();
 }
 
 void
@@ -1187,8 +1187,7 @@ doCommit()
 		comp = sf.component;
 		if (comp eq "") comp = self.root;
 		if (sf.ignored) {
-			i = llength(ignore{comp});
-			ignore{comp}[i] = sf.file;
+			ignore{comp}[END+1] = getRelativePath(sf.file, comp);
 			continue;
 		}
 		if (sf.excluded) continue;
@@ -1237,6 +1236,7 @@ commitComponent(string comp, string ignore[], string checkin[], string commit[])
 		foreach (file in ignore) {
 			exec("bk", "ignore", file);
 		}
+		commit[END+1] = "BitKeeper/etc/ignore";
 	}
 
 	if (llength(checkin)) {
@@ -1441,7 +1441,7 @@ removeFile(sfile sf)
 	}
 	deleteCommentFile(sf.file);
 	ListBox_delete(self.w_files, sf.node);
-	self.files{sf.name} = undef;
+	undef(self.files{sf.name});
 }
 
 void
