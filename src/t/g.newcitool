@@ -353,3 +353,22 @@ EOF
 bk sfiles -pC > "$HERE"/GOT
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
+
+echo $N Ignore a file and commit ....................................$NL
+cd "$HERE"
+echo "hi" > ignore.this
+OUT=$HERE/OUT
+bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
+	test_selectFile ignore.this
+	test_buttonPress "Ignore"
+	test_selectFile ChangeSet
+	test_inputString  "testing..."
+	test_buttonPress "Commit"
+	test_buttonPress "Commit"
+EOF
+cat > "$HERE"/WANT <<EOF
+x------ ignore.this
+EOF
+bk sfiles -ixv ignore.this > "$HERE"/GOT
+cmpfiles "$HERE/WANT" "$HERE/GOT"
+echo OK
