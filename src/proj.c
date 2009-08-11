@@ -1115,8 +1115,6 @@ proj_BAMindex(project *p, int write)
 
 	unless (p || (p = curr_proj())) return (0);
 
-	if (p->rparent) p = p->rparent;
-
 	if (p->BAM_idx) {
 		if (write && !p->BAM_write) {
 			mdbm_close(p->BAM_idx);
@@ -1126,7 +1124,8 @@ proj_BAMindex(project *p, int write)
 		}
 	}
 	/* open a new BAM pool */
-	concat_path(idx, p->root, BAM_DB);
+	bp_dataroot(p, idx);
+	concat_path(idx, idx, BAM_DB);
 	if (write || exists(idx)) {
 		p->BAM_idx = mdbm_open(idx,
 		    write ? O_RDWR|O_CREAT : O_RDONLY, 0666, 8192);

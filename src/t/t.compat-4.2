@@ -52,16 +52,34 @@ echo OK
 echo -------------- fast pull tests
 echo $N Set up a patch new, BAM and many deltas .....................$NL
 rm -fr project copy
-commercial project
+# don't do "FOO=1 shell-function" but break out env setting and clearing
+# use uncached form of commercial since env is different
+_BK_BAM_V2=1
+BK_NO_REMAP=1
+export _BK_BAM_V2 BK_NO_REMAP
+fresh_commercial project.noremap
+echo BAMBAM > BAM
+bk new $Q -b BAM || exit 1
+bk commit $Q -ybamdata
+test -d SCCS || exit 1
+test -f BitKeeper/BAM/index.db || exit 1
+cd ..
+bk clone $Q project.noremap copy.noremap || exit 1
+unset _BK_BAM_V2
+unset BK_NO_REMAP
+bk clone $Q project.noremap project
+bk clone $Q project copy
+cd copy.noremap
+bk parent $Q ../project
+cd ../project
+# verify new style BAM and BLOB
+test -d SCCS && exit 1
+test -d BitKeeper/BAM -a ! -f BitKeeper/BAM/index.db || exit 1
 touch send-as-sfile send-as-deltas
 bk new $Q send-as-sfile send-as-deltas || exit 1
 bk commit $Q -SBASE -yfooze || exit 1
-cd ..
-BK_NO_REMAP=1 bk clone $Q project copy.noremap || exit 1
-bk clone $Q project copy || exit 1
-cd project
-echo BAMBAM > BAM
-bk new $Q -b BAM || exit 1
+bk push $Q ../copy
+bk push $Q ../copy.noremap
 touch newfile
 bk new $Q newfile || exit 1
 bk edit $Q send-as-sfile send-as-deltas || exit 1
@@ -73,7 +91,7 @@ done
 bk delta $Q -l -f -ysend-as-sfile send-as-sfile || exit 1
 bk unedit $Q send-as-sfile send-as-deltas || exit 1
 bk commit $Q -y'deltas to existing files' || exit 1
-(cd "$HERE"; BK_NO_REMAP=1 bk clone $Q project project.noremap || exit 1)
+bk push $Q ../project.noremap || exit 1
 #
 bk makepatch $Q -B -r+ > ../PATCH || exit 1
 bk makepatch $Q -B -C -r+ > ../PATCH-COMPAT || exit 1

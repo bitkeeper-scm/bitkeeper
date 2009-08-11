@@ -1,6 +1,7 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "bam.h"
 
 private int	newroot(char *ranbits, int quiet, int product, char *comment);
 private void	update_rootlog(sccs *s, char *key, char *comment);
@@ -56,7 +57,7 @@ newroot(char *ranbits, int quiet, int product, char *comments)
 {
 	sccs	*s;
 	int	rc = 0, i;
-	char	*p;
+	char	*p, *oldbamdir;
 	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
@@ -78,6 +79,9 @@ newroot(char *ranbits, int quiet, int product, char *comments)
 		fprintf(stderr, "Cannot init ChangeSet.\n");
 		exit(1);
 	}
+
+	oldbamdir = bp_dataroot(0, 0);
+
 	/* create initial ROOTLOG, if needed. */
 	EACH (s->text) {
 		if (streq(s->text[i], "@ROOTLOG")) {
@@ -133,6 +137,7 @@ newroot(char *ranbits, int quiet, int product, char *comments)
 	sccs_free(s);
 	unlink("BitKeeper/log/ROOTKEY");
 	unlink("BitKeeper/log/CSETFILE");
+	proj_reset(0);
 	if (product) {
 		touch("BitKeeper/log/PRODUCT", 0664);
 		unless (exists("BitKeeper/etc/SCCS/s.aliases")) {
@@ -161,6 +166,14 @@ newroot(char *ranbits, int quiet, int product, char *comments)
 		sccs_free(s);
 	}
 	pclose(f);
+
+	/* move BAM data if location changed */
+	if (isdir(oldbamdir)) {
+		p = bp_dataroot(0, 0);
+		unless (streq(oldbamdir, p)) rename(oldbamdir, p);
+		free(p);
+	}
+	free(oldbamdir);
 
 	unless (quiet) fprintf(stderr, "\n");
 	return (rc);

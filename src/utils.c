@@ -833,7 +833,9 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 					    bp);
 				}
 			}
-			unless (bp = bp_serverID(0)) bp = repo;
+			unless (bp = bp_serverID(0)) {
+				bp = proj_repoID(proj_product(0));
+			}
 			if (strchr(bp, ' ')) {
 				fprintf(f,
 				    "putenv 'BK_BAM_SERVER_ID=%s'\n", bp);

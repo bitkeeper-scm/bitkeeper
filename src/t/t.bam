@@ -98,10 +98,11 @@ echo OK
 
 echo $N Force a fake hash and see if that worked ....................$NL
 cp "$DATA" fake_hash
+RK=`bk id | sed 's/|/-/g'`
 _BK_FAKE_HASH=deadbeef bk new $Q fake_hash
 test -d BitKeeper/BAM || exit 1
-test -f BitKeeper/BAM/de/deadbeef.d1 || exit 2
-if [ -w BitKeeper/BAM/de/deadbeef.d1 ]
+test -f BitKeeper/BAM/$RK/de/deadbeef.d1 || exit 2
+if [ -w BitKeeper/BAM/$RK/de/deadbeef.d1 ]
 then	echo failed
 	echo file in BAM storage is writable
 	ls -l BitKeeper/BAM/de/deadbeef.d1
@@ -116,7 +117,7 @@ test -w fake_hash && {
 	ls -l
 	exit 1
 }
-mv BitKeeper/BAM/de/deadbeef.d1 BitKeeper/BAM/de/deadbeef.SAVE
+mv BitKeeper/BAM/$RK/de/deadbeef.d1 BitKeeper/BAM/$RK/de/deadbeef.SAVE
 _BK_FAKE_HASH=deadbeef bk get $Q fake_hash > OUT 2>&1 && {
 	echo should have failed
 	cat OUT
@@ -127,12 +128,12 @@ test -w fake_hash && {
 	ls -l fake_hash
 	exit 1
 }
-mv BitKeeper/BAM/de/deadbeef.SAVE BitKeeper/BAM/de/deadbeef.d1
+mv BitKeeper/BAM/$RK/de/deadbeef.SAVE BitKeeper/BAM/$RK/de/deadbeef.d1
 echo OK
 
 echo $N See if a failed get -Gchanges the gfile state ...............$NL
 _BK_FAKE_HASH=deadbeef bk get $Q fake_hash
-mv BitKeeper/BAM/de/deadbeef.d1 BitKeeper/BAM/de/deadbeef.SAVE
+mv BitKeeper/BAM/$RK/de/deadbeef.d1 BitKeeper/BAM/$RK/de/deadbeef.SAVE
 _BK_FAKE_HASH=deadbeef bk get $Q -Gjunk fake_hash > OUT 2>&1 && {
 	echo should have failed
 	exit 1
@@ -146,7 +147,7 @@ test -f junk && {
 	echo should not have left junk
 	exit 1
 }
-mv BitKeeper/BAM/de/deadbeef.SAVE BitKeeper/BAM/de/deadbeef.d1
+mv BitKeeper/BAM/$RK/de/deadbeef.SAVE BitKeeper/BAM/$RK/de/deadbeef.d1
 echo OK
 
 echo $N Same data should just get added to the same BAM file ........$NL
@@ -224,7 +225,7 @@ test -f fake_hash || {
 cmp -s "$DATA" fake_hash || {
 	echo wrong data
 	cmp  "$DATA" data
-	ls -l "$DATA" data BitKeeper/BAM/de/deadbeef.d1
+	ls -l "$DATA" data BitKeeper/BAM/$RK/de/deadbeef.d1
 	exit 1
 }
 echo OK

@@ -442,7 +442,7 @@ out_bptuple(char *keys, off_t *byte_count)
 		fprintf(stderr, "lookupkeys(%s) failed\n", keys);
 		return (SFIO_LOOKUP);
 	}
-	path = fullpath + strlen(proj_root(0)) + 1;
+	path = fullpath + strlen(proj_root(proj_product(0))) + 1;
 
 	/* d.file */
 	if (lstat(fullpath, &sb)) {
@@ -676,15 +676,14 @@ in_bptuple(char *keys, char *datalen, int extract)
 		}
 		p = strcpy(file, p); /* mdbm can't write pointers to itself */
 	} else {
+
 		sscanf(datalen, "%010d", &todo);
 
-		strcpy(file, proj_root(0));
+		bp_dataroot(0, file);
 		t = file + strlen(file);
-		if (proj_isResync(0)) t += sprintf(t, "/..");
-		*t++ = '/';
 
 		/* extract to new file in BAM pool (adler32 is first in keys) */
-		p = t + sprintf(t, BAM_ROOT "/%c%c/%.*s",
+		p = t + sprintf(t, "/%c%c/%.*s",
 		    keys[0], keys[1], 8, keys);
 		/* find unused entry */
 		for (i = 1; ; i++) {
@@ -704,7 +703,7 @@ in_bptuple(char *keys, char *datalen, int extract)
 			}
 		}
 		/* file is now the right name for this data */
-		p = t + strlen(BAM_ROOT) + 1; /* skip BitKeeper/BAM/ */
+		p = t + 1; /* p points to %c%c/%s.%d in BAM/[<ROOTKEY>/] */
 	}
 	mdbm_store_str(proj_BAMindex(0, 1), keys, p, MDBM_REPLACE);
 	bp_logUpdate(0, keys, p);

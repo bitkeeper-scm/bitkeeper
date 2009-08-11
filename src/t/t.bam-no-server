@@ -23,9 +23,7 @@ cd clone
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM >> OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -53,9 +51,7 @@ cd lclone
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM >> OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -76,9 +72,7 @@ bk pull $Q
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM >> OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -100,9 +94,7 @@ cd ../push
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM >> OUT
 test -s OUT && {
 	echo failed
 	cat OUT
@@ -121,9 +113,7 @@ cd rclone
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM >> OUT
 test -s OUT && {
 	echo failed
 	cat OUT

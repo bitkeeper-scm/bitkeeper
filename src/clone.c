@@ -544,24 +544,26 @@ initProject(char *root, remote *r)
 	if (getenv("BKD_BAM")) {
 		if (touch(BAM_MARKER, 0664)) perror(BAM_MARKER);
 	}
-	if (bam_repoid) {
-		url = strdup(bam_url);
-		repoid = bam_repoid;
-	} else if (bam_url) {
-		assert(streq(bam_url, ".") || streq(bam_url, "none"));
-		url = strdup(bam_url);
-		repoid = proj_repoID(0);
-	} else if (p = getenv("BKD_BAM_SERVER_URL")) {
-		url = streq(p, ".") ? remote_unparse(r) : strdup(p);
-		repoid = getenv("BKD_BAM_SERVER_ID");
-	} else {
-		url = 0;
-	}
-	if (url) {
-		unless (streq(url, "none")) {
-			bp_setBAMserver(0, url, repoid);
+	unless (opts->no_parent) {
+		if (bam_repoid) {
+			url = strdup(bam_url);
+			repoid = bam_repoid;
+		} else if (bam_url) {
+			assert(streq(bam_url, ".") || streq(bam_url, "none"));
+			url = strdup(bam_url);
+			repoid = proj_repoID(0);
+		} else if (p = getenv("BKD_BAM_SERVER_URL")) {
+			url = streq(p, ".") ? remote_unparse(r) : strdup(p);
+			repoid = getenv("BKD_BAM_SERVER_ID");
+		} else {
+			url = 0;
 		}
-		free(url);
+		if (url) {
+			unless (streq(url, "none")) {
+				bp_setBAMserver(0, url, repoid);
+			}
+			free(url);
+		}
 	}
 	return (0);
 }
@@ -774,14 +776,21 @@ lclone(char *from)
 {
 	struct	stat sb;
 	struct	utimbuf tb;
+	project	*srcproj;
 	char	buf[MAXPATH];
+	char	dstidx[MAXPATH];
 
-	unlink(BAM_DB);	/* break link */
-	concat_path(buf, from,  BAM_MARKER);
+	bp_dataroot(0, buf);
+	concat_path(buf, buf, BAM_DB);
+	unlink(buf);	/* break link */
+	concat_path(buf, from, BAM_MARKER);
 	if (exists(buf)) {
 		touch(BAM_MARKER, 0664);
-		concat_path(buf, from, BAM_INDEX);
-		fileCopy(buf, BAM_INDEX);
+		srcproj = proj_init(from);
+		bp_indexfile(srcproj, buf);
+		proj_free(srcproj);
+		bp_indexfile(0, dstidx);
+		fileCopy(buf, dstidx);
 		system("bk bam reload");
 	}
 

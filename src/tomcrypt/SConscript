@@ -120,11 +120,11 @@ libtomcrypt = Library('tomcrypt', Split('''
 	src/prngs/rng_make_prng.c
 	src/prngs/sprng.c
 	src/prngs/yarrow.c'''),
-	CPPFLAGS="$CPPFLAGS -DLTC_SOURCE -DTCL_NOROLC",
+	CPPFLAGS="$CPPFLAGS -O -DLTC_SOURCE -DTCL_NOROLC",
 	CPPPATH=["src/headers", "../tommath"])
 
 Object("src/ciphers/aes/aes_enc.o", "src/ciphers/aes/aes.c",
-	CPPFLAGS="$CPPFLAGS -DENCRYPT_ONLY",
+	CPPFLAGS="$CPPFLAGS -O -DENCRYPT_ONLY",
 	CPPPATH=["src/headers", "../tommath"])				
 
 Return("libtomcrypt")
