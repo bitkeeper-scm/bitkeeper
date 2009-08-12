@@ -11610,6 +11610,33 @@ void composite_2()
 composite_2
 } -output {}
 
+test composite-2.2 {check hash of array composite constants} -body {
+#lang L
+void composite_2_2()
+{
+	/*
+	 * This checks that lists used as array constants need not all
+	 * have the same number of elements to satisfy the type
+	 * checker.
+	 */
+
+	string	h{string}[] = {
+		"k1" => { "1" },
+		"k2" => { "1", "2", "3" },
+		"k3" => { "1", "2" }
+	};
+
+	unless (length(h) == 3) puts("bad 1.1");
+	unless (length(h{"k1"}) == 1) puts("bad 1.2");
+	unless (length(h{"k2"}) == 3) puts("bad 1.3");
+	unless (length(h{"k3"}) == 2) puts("bad 1.4");
+	unless (join(" ", h{"k1"}) eq "1") puts("bad 1.5");
+	unless (join(" ", h{"k2"}) eq "1 2 3") puts("bad 1.6");
+	unless (join(" ", h{"k3"}) eq "1 2") puts("bad 1.7");
+}
+composite_2_2();
+} -output {}
+
 test composite-3 {check type errors with composite values} -body {
 #lang L -nowarn
 void composite_3_as(string[] a) {}

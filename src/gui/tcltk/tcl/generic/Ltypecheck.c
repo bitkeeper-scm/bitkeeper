@@ -296,14 +296,14 @@ typeck_list(Type *a, Type *b)
 	    case L_LIST:
 		/*
 		 * Two list types are compatible iff element types
-		 * match up one-for-one.
+		 * match up, although one can have more.
 		 */
 		for (; t && l; t = t->next, l = l->next) {
 			unless (L_typeck_same(l->base_type, t->base_type)) {
 				return (0);
 			}
 		}
-		return !(l || t);  // not the same if one has more elements
+		return (1);
 	    default:
 		return (0);
 	}
