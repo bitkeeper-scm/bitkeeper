@@ -1368,6 +1368,9 @@ _install()
 	then
 		test $VERBOSE = YES && echo "Updating registry and path ..."
 		gui/bin/tclsh gui/lib/registry.tcl $UPGRADE $DLLOPTS "$DEST"
+		# Clean out existing startmenu
+		bk _startmenu rm
+		# Make new entries
 		bk _startmenu set -i"$DEST/bk.ico" \
 			"BitKeeper Documentation" "$DEST/bk.exe" "helptool"
 		bk _startmenu set -i"$DEST/bk.ico" \
