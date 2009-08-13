@@ -772,14 +772,14 @@ proc_1_2 "val1" "val2"
 
 test proc-1.3 {Test variable arity functions} -body {
 #lang L
-string proc_1_3_foo(...stuff) {
+void proc_1_3_foo(...stuff) {
 	int i;
 	for (i=0; defined(stuff[i]); i++) {
 		printf("%s ", stuff[i]);
 	}
 	printf("\n");
 }
-string proc_1_3_bar(int a, ...stuff) {
+void proc_1_3_bar(int a, ...stuff) {
 	puts(a);
 	puts(stuff);
 }
@@ -1918,6 +1918,19 @@ test return-3.10 {void return value from non-void function disallowed} -body {
 #lang L
 int return_3_10_int() { return; }
 } -returnCodes error -match regexp -result ".*must specify return value"
+
+test return-3.11 {check not returning a value from functon error} -body {
+#lang L
+private string f()
+{
+	if (0) return ("not taken");
+}
+void return_3_10();
+{
+	f();
+}
+return_3_10();
+} -returnCodes error -match regexp -result {no value returned from function}
 
 test syntax-1.0 {single-line comments a la C++} -body {
 #lang L
@@ -11192,10 +11205,10 @@ test function-1.3.2 {check function prototypes 3} -body {
  * Check that a void formal-parameter list is treated exactly like no
  * parameters.
  */
-string function_1_3_2_f1();
-string function_1_3_2_f2();
-string function_1_3_2_f3(void);
-string function_1_3_2_f4(void);
+void function_1_3_2_f1();
+void function_1_3_2_f2();
+void function_1_3_2_f3(void);
+void function_1_3_2_f4(void);
 void
 function_1_3_2()
 {
@@ -11205,10 +11218,10 @@ function_1_3_2()
 	function_1_3_2_f4();
 }
 function_1_3_2();
-string function_1_3_2_f1()     { puts("f1"); }
-string function_1_3_2_f2(void) { puts("f2"); }
-string function_1_3_2_f3()     { puts("f3"); }
-string function_1_3_2_f4(void) { puts("f4"); }
+void function_1_3_2_f1()     { puts("f1"); }
+void function_1_3_2_f2(void) { puts("f2"); }
+void function_1_3_2_f3()     { puts("f3"); }
+void function_1_3_2_f4(void) { puts("f4"); }
 } -output {f1
 f2
 f3

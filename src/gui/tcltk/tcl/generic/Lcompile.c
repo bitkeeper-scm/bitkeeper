@@ -614,15 +614,24 @@ compile_fnDecl(FnDecl *fun, Decl_f flags)
 	}
 
 	/*
-	 * Emit a "fall off the end" implicit return.  Class
-	 * constructors return the value of "self".
+	 * Emit a "fall off the end" implicit return for void
+	 * functions.  Class constructors return the value of "self".
+	 * Non-void functions throw an exception if you fall
+	 * off the end.
 	 */
 	if (isClsConstructor(decl)) {
 		emit_load_scalar(self_sym->idx);
-	} else {
+		TclEmitOpcode(INST_DONE, L->frame->envPtr);
+	} else if (isvoidtype(decl->type->base_type)) {
 		push_str("");
+		TclEmitOpcode(INST_DONE, L->frame->envPtr);
+	} else {
+		push_str("::throw");
+		push_str("{FUNCTION NO-RETURN-VALUE "
+			 "{no value returned from function}}");
+		push_str("no value returned from function");
+		emit_invoke(3);
 	}
-	TclEmitOpcode(INST_DONE, L->frame->envPtr);
 
 	frame_pop();
 }
