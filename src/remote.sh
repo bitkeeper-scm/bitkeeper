@@ -39,13 +39,28 @@ case $CMD in
 
 	echo y | \
 	    BK_NOTTY=YES BK_NO_REMAP=1 bk clone -sdefault -z0 $URL $BKDIR || {
-		# set REGRESSION to leave dirs writable
-		BK_REGRESSION=1 bk upgrade -f http://work/upgrades.cluster || {
-			failed
+	        DIR=upgrade-$BK_USER
+		rm -rf $DIR
+		mkdir $DIR
+		cd $DIR || {
+		    echo failed to make upgrade dir
+		    exit 1
 		}
+		bk upgrade -df http://work/upgrades.cluster || {
+		    echo bk upgrade download failed
+		    exit 1
+		}
+		# set REGRESSION to leave dirs writable
+		BK_REGRESSION=1 ./bk* -u || {
+		    echo bk upgrade failed
+		    exit 1
+		}
+		cd ..
+		rm -rf $DIR
 	    	echo y | BK_NOTTY=YES BK_NO_REMAP=1 \
 		    bk clone -sdefault -z0 $URL $BKDIR || {
-			failed
+			echo reclone failed
+			exit 1
 		}
 	}
 
