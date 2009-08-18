@@ -1326,7 +1326,7 @@ sccsdir(winfo *wi)
 void
 enableFastPendingScan(void)
 {
-	touch(DFILE, 0666);
+	unless (exists(DFILE)) touch(DFILE, 0666);
 }
 
 /*

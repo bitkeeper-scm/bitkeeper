@@ -1,0 +1,31 @@
+
+echo $N Create initial repository ...................................$NL
+commercial project
+echo OK
+
+echo $N Create a bunch of files .....................................$NL
+for i in 0 1 2 3 4 5 6 7 8 9
+do
+    for j in 0 1 2 3 4 5 6 7 8 9
+    do
+	file=$i$j
+	touch $file
+	bk new $Q $file
+	bk _usleep 4000
+    done
+done
+echo OK
+
+echo $N Create a bunch of deltas.....................................$NL
+bk -Ur edit $Q
+for i in 0 1 2 3 4 5 6 7 8 9
+do
+    for j in 0 1 2 3 4 5 6 7 8 9
+    do
+	file=$i$j
+	echo foo >> $file
+	bk delta -ywhatever $Q $file
+    done
+done
+echo OK
+

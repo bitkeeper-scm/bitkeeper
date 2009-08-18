@@ -58,6 +58,7 @@ sccs_lockfile(char *file, int waitsecs, int quiet)
 retry:	unlink(uniq);
 	unless ((fd = open(uniq, O_CREAT|O_RDWR|O_EXCL, 0644)) >= 0) {
 		fprintf(stderr, "Can't create lockfile %s\n", uniq);
+		perror(uniq);
 		free(uniq);
 		return (-1);
 	}

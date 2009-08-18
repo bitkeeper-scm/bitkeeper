@@ -1,0 +1,26 @@
+
+echo $N Create initial repository ...................................$NL
+commercial project
+echo OK
+
+cd ..
+tar cf TAR project
+for iter in 1 2 3 4 5 6 7 8 9 0
+do	cd project
+
+echo $N Create a pile of new versioned files ........................$NL
+for i in 0 1 2 3 4 5 6 7 8 9
+do
+    for j in 0 1 2 3 4 5 6 7 8 9
+    do
+	file=$i$j
+	touch $file
+    done
+done
+bk -xr new $Q || exit 1
+echo OK
+
+cd ..
+rm -rf project
+tar xf TAR
+done
