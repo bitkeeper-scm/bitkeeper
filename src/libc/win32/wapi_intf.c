@@ -1206,6 +1206,110 @@ stuck(char *fmt, const char *arg)
 	}
 }
 
+/*
+ * XXX: Only used in nt_fopen() and nt_open() below. I guess because
+ * we don't want to type nt_stat() since this file is not remapped? At
+ * any rate, seems like this could be safely deleted and regular
+ * nt_stat() used instead. NOT CHANGING in a bugfix release: See RTI
+ * 2008-08-02-001 for more context.
+ */
+private int
+_exists(char *file)
+{
+	return (GetFileAttributes(file) != INVALID_FILE_ATTRIBUTES);
+}
+
+/*
+ * Our version of fopen, does additional things
+ * a) Translate Bitmover filename to Win32 (i.e NT) path name
+ * b) Make fd uninheritable
+ * c) Retries to get around virus scanners
+ */
+FILE *
+nt_fopen(const char *filename, const char *mode)
+{
+	int	fd, i = 0;
+	FILE	*f;
+	char	buf[MAXPATH];
+	int	error;
+
+	for (;;) {
+		if (f = fopen(bm2ntfname(filename, buf), mode)) break;
+		error = GetLastError();
+		if ((*mode == 'w') && (error == ERROR_ACCESS_DENIED)) {
+			if (_exists(buf)) unlink(buf);
+			unless (win32_flags & WIN32_RETRY) break;
+			Sleep(++i * INC);
+			if (i > NOISY) {
+				stuck("fopen: retrying on %s\n", filename);
+			}
+			if (waited(i) > WAITMAX) {
+				stuck("bailing out on %s\n", filename);
+				errno = EBUSY;
+				break;
+			}
+		} else {
+			/* no retry for reads, or for _real_ errors. */
+			break;
+		}
+	}
+	unless (f) {
+		debug((stderr,
+			"nt_fopen: fail to open file %s, mode %s (%d)\n",
+			filename, mode, error));
+		return (0);
+	}
+
+	fd = _fileno(f);
+	if (fd >= 0) make_fd_uninheritable(fd);
+	return (f);
+}
+
+/*
+ * Our version of open, does two additional things
+ * a) Turn off inherite flag
+ * b) Translate Bitmover filename to Win32 (i.e NT) path name
+ */
+int
+nt_open(const char *filename, int flag, int pmode)
+{
+	char	buf[1024];
+	int	fd, error, i = 0;
+
+	flag |= _O_NOINHERIT;
+	for (;;) {
+		fd = _open(bm2ntfname(filename, buf), flag, pmode);
+		if (fd >= 0) return (fd);
+		error = GetLastError();
+		if ((error == ERROR_ACCESS_DENIED) &&
+		    ((flag & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL)) &&
+		    _exists(buf)) {
+			/*
+			 * special case where we don't retry, see
+			 * utils.c:savefile()
+			 */
+			errno = EEXIST;
+			break;
+		} else if ((error == ERROR_ACCESS_DENIED) ||
+		    (error == ERROR_SHARING_VIOLATION)) {
+			unless (win32_flags & WIN32_RETRY) break;
+			Sleep(++i * INC);
+			if (i > NOISY) {
+				stuck("open: retrying on %s\n", filename);
+			}
+			if (waited(i) > WAITMAX) {
+				errno = EBUSY;
+				stuck("bailing out on %s\n", filename);
+				break;
+			}
+		} else {
+			/* don't retry for any other errors */
+			break;
+		}
+	}
+	return (fd);
+}
+
 int
 nt_rmdir(char *dir)
 {

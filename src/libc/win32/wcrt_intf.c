@@ -83,70 +83,6 @@ _switch_char(const char *ofn, char *nfn, char ochar, char nchar)
 	return (nfn);
 }
 
-/*
- * Our version of fopen, does two additional things
- * a) Translate Bitmover filename to Win32 (i.e NT) path name
- * b) Make fd uninheritable
- */
-FILE *
-nt_fopen(const char *filename, const char *mode)
-{
-	FILE	*f;
-	char	buf[1024];
-	int	fd;
-
-	f = fopen(bm2ntfname(filename, buf), mode);
-	if (f == NULL) {
-		debug((stderr,
-		    "nt_fopen: fail to open file %s, mode %s\n",
-		    filename, mode));
-		return (NULL);
-	}
-
-	fd = _fileno(f);
-	if (fd >= 0) make_fd_uninheritable(fd);
-	return (f);
-}
-
-
-private int
-_exists(char *file)
-{
-	return (GetFileAttributes(file) != INVALID_FILE_ATTRIBUTES);
-}
-
-
-/*
- * Our version of open, does two additional things
- * a) Turn off inherite flag
- * b) Translate Bitmover filename to Win32 (i.e NT) path name
- */
-int
-nt_open(const char *filename, int flag, int pmode)
-{
-	char	buf[1024];
-	int	fd;
-
-	flag |= _O_NOINHERIT;
-	fd = _open(bm2ntfname(filename, buf), flag, pmode);
-	if (fd < 0) {
-		switch (GetLastError()) {
-		  case ERROR_SHARING_VIOLATION: errno = EAGAIN; break;
-		  case ERROR_ACCESS_DENIED:
-			if ((flag & O_CREAT) &&
-			    		(flag & O_EXCL) && _exists(buf)) {
-				errno = EEXIST;
-			} else {
-				errno = EACCES;
-			};
-			break;
-		  default: break; /* use errno set by _open() */
-		}
-	}
-	return (fd);
-}
-
-
 int
 nt_dup(int fd)
 {
@@ -329,6 +265,6 @@ bk_GetLastError(void)
 		debug = (p && *p) ? 1 : 0;
 	}
 
-	if (debug) fprintf(stderr, "GetLastError() = %u\n", ret);
+	if (debug) fprintf(stderr, "GetLastError() = %u\n", (unsigned int)ret);
 	return (ret);
 }
