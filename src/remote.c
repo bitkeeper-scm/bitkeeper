@@ -124,7 +124,7 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	tmpf = bktmp(0, "rcmd");
 	f = fopen(tmpf, "w");
 	assert(f);
-	sendEnv(f, NULL, r, SENDENV_NOREPO);
+	sendEnv(f, NULL, r, proj_root(0) ? 0 : SENDENV_NOREPO);
 	if (r->path) add_cd_command(f, r);
 	/* Force the command name to "bk" because full paths aren't allowed */
 	fprintf(f, "bk ");
