@@ -6,7 +6,7 @@ private int export_patch(char *, char *, char **, char **, int, int);
 int
 export_main(int ac,  char **av)
 {
-	int	i, c, count, trim = 0;
+	int	i, c, count, trim = 0, ret = 0;
 	int	vflag = 0, hflag = 0, kflag = 0, tflag = 0, wflag = 0;
 	char	*rev = NULL, *diff_style = "u";
 	char	file_rev[MAXPATH];
@@ -159,6 +159,9 @@ usage:			system("bk help -s export");
 		s->gfile = strdup(output);
 		if (sccs_get(s, q, 0, 0, 0, flags, "-")) {
 			fprintf(stderr, "cannot export to %s\n", output);
+			ret = 1;
+			sccs_free(s);
+			goto out;
 		}
 		sccs_free(s);
 		if (wflag && !lstat(output, &sb) && S_ISREG(sb.st_mode)) {
@@ -166,9 +169,10 @@ usage:			system("bk help -s export");
 		}
 next:		;
 	}
+out:
 	fclose(f);
 	unlink(file_rev);
-	return (0);
+	return (ret);
 }
 
 private int
