@@ -29,7 +29,7 @@ admin_main(int ac, char **av)
 	char	*name;
 	char	*compp = 0;
 	int	error = 0;
-	int	dopath = 0, rmCsets = 0, newCset = 0;
+	int	addCsets = 0, dopath = 0, rmCsets = 0, newCset = 0;
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 	char	*csetFile = 0;
@@ -42,7 +42,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "a;C|d;e;E;f;F;i|M;m;O;p|P|r;S;t|y|Z|0DhHnqsTuz"))
+	    getopt(ac, av, "a;AC|d;e;E;f;F;i|M;m;O;p|P|r;S;t|y|Z|0DhHnqsTuz"))
 	       != -1) {
 		switch (c) {
 		/* user|group */
@@ -90,6 +90,8 @@ admin_main(int ac, char **av)
 		/* singletons */
 		    case '0':					/* doc 2.0 */
 			flags |= ADMIN_ADD1_0|NEWCKSUM; break;
+		    case 'A':					/* doc 2.0 */
+			addCsets = 1; flags |= NEWCKSUM; break;
 		    case 'C':					/* doc 2.0 */
 			csetFile = optarg; newCset++; flags |= NEWCKSUM; break;
 		    case 'D':					/* doc 2.0 */
@@ -230,6 +232,20 @@ admin_main(int ac, char **av)
 			flags |= NEWCKSUM;
 		}
 		if (rmCsets) sccs_clearbits(sc, D_CSET);
+		/*
+		 * Put cset marks in ALL deltas.  Probably only useful
+		 * for restoring the ChangeSet file's marks after
+		 * detaching a component repo.
+		 */
+		if (addCsets) {
+			delta	*d;
+
+			for (d = sc->table; d; d = d->next) {
+				unless (d->next) break;
+				if (TAG(d)) continue;
+				d->flags |= D_CSET;
+			}
+		}
 		if (doDates) sccs_fixDates(sc);
 		if (merge) {
 			if (setMerge(sc, merge, rev) == -1) {
