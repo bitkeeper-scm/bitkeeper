@@ -140,7 +140,7 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	/* force -B if no BAM server */
-	if (doBAM || !bp_serverID(1)) {
+	if (doBAM || !bp_serverID(buf, 1)) {
 		bp_missing = allocLines(64);
 	}
 	/* We need write perm on the tmp dirs, etc. */

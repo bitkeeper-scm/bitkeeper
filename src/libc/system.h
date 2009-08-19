@@ -237,12 +237,14 @@ void	syserr(const char *postfix);
 
 /* system.c */
 #define	system(cmd)	safe_system(cmd)
+#define	systemf		safe_systemf
 #define	popen(f, m)	safe_popen(f, m)
 #define	pclose(f)	safe_pclose(f)
 #undef	fclose
 #define	fclose(f)	safe_fclose(f)
 
 int	safe_system(char *cmd);
+int	safe_systemf(char *fmt, ...);
 FILE *	safe_popen(char *cmd, char *type);
 FILE *	popenvp(char *av[], char *type);
 int	safe_pclose(FILE *f);

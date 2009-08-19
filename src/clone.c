@@ -14,6 +14,9 @@ private	struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
 	u32	link:1;			/* -l: lclone-mode */
+	u32	nocommit:1;		/* -C: do not commit (attach cmd) */
+	u32	attach:1;		/* is attach command? */
+	u32	detach:1;		/* is detach command? */
 	int	delay;			/* wait for (ssh) to drain */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
@@ -23,6 +26,7 @@ private	struct {
 	char	*to;			/* where to put it */
 } *opts;
 
+private	int	attach(void);
 private int	clone(char **, remote *, char *, char **);
 private	int	clone2(remote *r);
 private void	parent(remote *r);
@@ -40,12 +44,14 @@ int
 clone_main(int ac, char **av)
 {
 	int	c, rc;
-	int	gzip = 6;
+	int	attach_only = 0, gzip = 6;
 	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dE:lpqr;s;w|z|")) != -1) {
+	if (streq(prog, "attach")) opts->attach = 1;
+	if (streq(prog, "detach")) opts->detach = 1;
+	while ((c = getopt(ac, av, "B;CdE:lNpqr;s;w|z|")) != -1) {
 		unless ((c == 'r') || (c == 's')) {
 			if (optarg) {
 				opts->av = addLine(opts->av,
@@ -56,6 +62,7 @@ clone_main(int ac, char **av)
 		}
 		switch (c) {
 		    case 'B': bam_url = optarg; break;
+		    case 'C': opts->nocommit = 1; break;
 		    case 'd': opts->debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
 			unless (strneq("BKU_", optarg, 4)) {
@@ -65,6 +72,7 @@ clone_main(int ac, char **av)
 			}
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'l': opts->link = 1; break;		/* doc 2.0 */
+		    case 'N': attach_only = 1; break;		/* undoc 2.0 */
 		    case 'p': opts->no_parent = 1; break;
 		    case 'q': opts->quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts->rev = optarg; break;	/* doc 2.0 */
@@ -81,6 +89,19 @@ clone_main(int ac, char **av)
 	    	}
 		optarg = 0;
 	}
+	if (attach_only && !opts->attach) {
+		fprintf(stderr, "%s: -N valid only in attach command\n", av[0]);
+		exit(1);
+	}
+	if (attach_only && (bam_url || opts->link || opts->no_parent ||
+			    opts->rev || opts->aliases)) {
+		fprintf(stderr, "attach: -N illegal with other options\n");
+		exit(1);
+	}
+	if (opts->nocommit && !opts->attach) {
+		fprintf(stderr, "clone: -C valid only in attach command\n");
+		exit(1);
+	}
 	if (opts->link && bam_url) {
 		fprintf(stderr,
 		    "clone: -l and -B are not supported together.\n");
@@ -96,6 +117,10 @@ clone_main(int ac, char **av)
 		opts->to = av[optind + 1];
 		l = remote_parse(opts->to, REMOTE_BKDURL);
 	}
+	if (opts->attach && !opts->to && !proj_product(0)) {
+		fprintf(stderr, "%s: not in a product\n", av[0]);
+		exit(1);
+	}
 
 	/*
 	 * Trigger note: it is meaningless to have a pre clone trigger
@@ -106,6 +131,10 @@ clone_main(int ac, char **av)
 	if (r->host) {
 		if (opts->link) {
 			fprintf(stderr, "clone: no -l for remote sources.\n");
+			return (1);
+		}
+		if (opts->detach || attach_only) {
+			fprintf(stderr, "%s: source must be local\n", av[0]);
 			return (1);
 		}
 	} else {
@@ -125,6 +154,12 @@ clone_main(int ac, char **av)
 		chdir(here);
 	}
 	if (opts->to) {
+		if (attach_only) {
+			fprintf(stderr,
+			    "attach: only one repo valid with -N\n");
+			exit(1);
+		}
+
 		/*
 		 * Source and destination cannot both be remote 
 		 */
@@ -149,9 +184,33 @@ clone_main(int ac, char **av)
 				    "clone: no -l for remote targets.\n");
 				return (1);
 			}
+			if (opts->attach) {
+				fprintf(stderr,
+				    "attach: destination must be local\n");
+				return (1);
+			}
 			getoptReset();
-			av[0] = "_rclone";
+			if (opts->detach) {
+				av[0] = "_rclone_detach";
+			} else {
+				av[0] = "_rclone";
+			}
 			return (rclone_main(ac, av));
+		} else if (opts->attach) {
+			project	*prod = 0, *proj;
+
+			// Dest path must be somewhere under a product.
+			// Note that proj_init() works if l->path is under a bk
+			// repo even if all dirs in the path do not exist.
+			if (proj = proj_init(l->path)) {
+				prod = proj_product(proj);
+				proj_free(proj);
+			}
+			unless (prod) {
+				fprintf(stderr, "attach: %s not in a product\n",
+				    l->path);
+				return (1);
+			}
 		}
 	}
 
@@ -164,7 +223,15 @@ clone_main(int ac, char **av)
 		}
 	}
 	if (opts->debug) r->trace = 1;
-	rc = clone(av, r, l ? l->path : 0, envVar);
+	if (attach_only) {
+		assert(r->path);
+		if (rc = chdir(r->path)) {
+			fprintf(stderr, "attach: not a BitKeeper repository\n");
+		}
+	} else {
+		rc = clone(av, r, l ? l->path : 0, envVar);
+	}
+	if (opts->attach && !rc) rc = attach();
 	free(opts->from);
 	freeLines(envVar, free);
 	freeLines(opts->av, free);
@@ -198,6 +265,8 @@ send_clone_msg(remote *r, char **envVar)
 	if (opts->rev) fprintf(f, " '-r%s'", opts->rev);
 	if (opts->quiet) fprintf(f, " -q");
 	if (opts->delay) fprintf(f, " -w%d", opts->delay);
+	if (opts->attach) fprintf(f, " -A");
+	if (opts->detach) fprintf(f, " -D");
 	if (getenv("_BK_TRANSACTION")) {
 		fprintf(f, " -T");
 	} else {
@@ -394,6 +463,7 @@ clone2(remote *r)
 	char	*checkfiles;
 	FILE	*f;
 	int	i, rc = 0, didcheck = 0;
+	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "clone failed license accept check\n");
@@ -405,9 +475,9 @@ clone2(remote *r)
 	(void)proj_repoID(0);		/* generate repoID */
 
 	/* validate bam server URL */
-	if (url = bp_serverURL()) {
+	if (!proj_isComponent(0) && (url = bp_serverURL(0))) {
 		p = bp_serverURL2ID(url);
-		unless (p && streq(p, bp_serverID(0))) {
+		unless (p && streq(p, bp_serverID(buf, 0))) {
 			if (p) free(p);
 			p = remote_unparse(r);
 			fprintf(stderr,
@@ -420,6 +490,7 @@ clone2(remote *r)
 			// So we can still pass check says Dr Wayne
 			putenv("_BK_CHECK_NO_BAM_FETCH=1");
 		}
+		free(url);
 		if (p) free(p);
 	}
 
@@ -428,6 +499,8 @@ clone2(remote *r)
 	assert(f);
 	sccs_rmUncommitted(opts->quiet, f);
 	fclose(f);
+
+	if (opts->detach && detach(opts->quiet)) return (-1);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	if (opts->rev) {
@@ -756,18 +829,23 @@ lclone(char *from)
 	char	buf[MAXPATH];
 	char	dstidx[MAXPATH];
 
-	bp_dataroot(0, buf);
-	concat_path(buf, buf, BAM_DB);
-	unlink(buf);	/* break link */
 	concat_path(buf, from, BAM_MARKER);
 	if (exists(buf)) {
 		touch(BAM_MARKER, 0664);
 		srcproj = proj_init(from);
 		bp_indexfile(srcproj, buf);
 		proj_free(srcproj);
-		bp_indexfile(0, dstidx);
-		fileCopy(buf, dstidx);
-		system("bk bam reload");
+		if (exists(buf)) {
+			/*
+			 * Copy the BAM.index file (breaking hardlink
+			 * on new-BAM repos) and rebuild the index.db
+			 * file.  This will also break the hardlink on
+			 * index.db.
+			 */
+			bp_indexfile(0, dstidx);
+			fileCopy(buf, dstidx);
+			system("bk bam reload");
+		}
 	}
 
 	/* copy timestamp on CHECKED file */
@@ -966,4 +1044,86 @@ relink(char *a, char *b)
 		return (1);
 	}
 	return (0);
+}
+
+private int
+attach(void)
+{
+	int	rc;
+	char	*tmp;
+	char	buf[MAXLINE];
+	char	relpath[MAXPATH];
+	FILE	*f;
+
+	unless (isdir(BKROOT)) {
+		fprintf(stderr, "attach: not a BitKeeper repository\n");
+		return (-1);
+	}
+	tmp = proj_relpath(proj_product(0), ".");
+	getRealName(tmp, 0, relpath);
+	free(tmp);
+	if (proj_isComponent(0)) {
+		fprintf(stderr, "attach: %s is already a component\n", relpath);
+		return (-1);
+	}
+	rc = systemf("bk newroot %s -y'attach %s'",
+		     opts->quiet?"-q":"", relpath);
+	rc = rc || systemf("bk admin -D -C'%s' ChangeSet",
+			   proj_rootkey(proj_product(0)));
+	if (rc) {
+		fprintf(stderr, "attach failed\n");
+		return (-1);
+	}
+	unless (Fprintf("BitKeeper/log/COMPONENT", "%s\n", relpath)) {
+		fprintf(stderr, "attach: failed to write COMPONENT file\n");
+		return (-1);
+	}
+	if (system("bk edit -q ChangeSet") ||
+	    systemf("bk delta -f -q -y'attach %s' ChangeSet", relpath)) {
+		fprintf(stderr, "attach: failed to make new cset\n");
+		return (-1);
+	}
+	concat_path(buf, proj_root(proj_product(0)), "BitKeeper/log/HERE");
+	if (f = fopen(buf, "a")) {
+		fprintf(f, "%s\n", proj_rootkey(0));
+	}
+	if (!f || fclose(f)) {
+		fprintf(stderr, "attach: failed to write HERE file\n");
+		return (-1);
+	}
+	proj_reset(0);	/* to reset proj_isComponent() */
+	nested_check();
+	unless (opts->nocommit) {
+		proj_cd2product();
+		sprintf(buf,
+			"bk -P commit -y'attach %s' %s -",
+			relpath,
+			opts->quiet? "-q" : "");
+		if (f = popen(buf, "w")) {
+			fprintf(f, "%s/SCCS/s.ChangeSet|+\n", relpath);
+		}
+		return (!f || pclose(f));
+	}
+	return (0);
+}
+
+int
+detach(int quiet)
+{
+	assert(isdir(BKROOT));
+	if (unlink("BitKeeper/log/COMPONENT")) {
+		fprintf(stderr, "detach: failed to unlink COMPONENT\n");
+		return (-1);
+	}
+	if (systemf("bk newroot %s -y'detach'", quiet ? "-q" : "")) {
+		fprintf(stderr, "detach: failed to newroot\n");
+		return (-1);
+	}
+	if (system("bk edit -q ChangeSet") ||
+	    system("bk delta -f -q -ydetach ChangeSet")) {
+		fprintf(stderr, "detach: failed to make a new cset\n");
+		return (-1);
+	}
+	/* Restore ChangeSet cset marks and path. */
+	return (system("bk admin -A -p ChangeSet"));
 }

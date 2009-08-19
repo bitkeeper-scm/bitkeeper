@@ -124,11 +124,12 @@ server(int recurse)
 {
 	char	*p;
 	FILE	*f;
+	char	buf[MAXPATH];
 
 	unless (recurse) return (stdout);
-	unless (bp_serverID(1)) return (stdout);
+	unless (bp_serverID(buf, 1)) return (stdout);
 	p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -B -l -",
-	    bp_serverURL());
+	    bp_serverURL(buf));
 	f = popen(p, "w");
 	free(p);
 	return (f ? f : stdout);

@@ -512,9 +512,10 @@ bp_fetch(sccs *s, delta *din)
 {
 	FILE	*f;
 	char	*url, *cmd, *keys;
+	char	buf[MAXLINE];
 
-	unless (bp_serverID(1)) return (0);	/* no need to update myself */
-	url = bp_serverURL();
+	unless (bp_serverID(buf, 1)) return (0);/* no need to update myself */
+	url = bp_serverURL(buf);
 	assert(url);
 
 	unless (din = bp_fdelta(s, din)) return (-1);
@@ -586,7 +587,7 @@ bp_updateServer(char *range, char *list, int quiet)
 	putenv("BKD_DAEMON="); /* allow new bkd connections */
 
 	/* no need to update myself */
-	unless (repoID = bp_serverID(1)) return (0);
+	unless (repoID = bp_serverID(buf,1)) return (0);
 
 	/*
 	 * If we're in a transaction with the server then skip updating,
@@ -596,9 +597,6 @@ bp_updateServer(char *range, char *list, int quiet)
 	p = (p && *p) ? getenv("BK_REPO_ID") : getenv("BKD_REPO_ID");
 // unless (p && *p) ttyprintf("No BK[D]_REPO_ID\n");
 	if (p && streq(repoID, p)) return (0);
-
-	url = bp_serverURL();
-	assert(url);
 
 	tmpkeys = bktmp(0, 0);
 
@@ -650,6 +648,8 @@ bp_updateServer(char *range, char *list, int quiet)
 // ttyprintf("sending %u bytes\n", (u32)size(tmpkeys));
 	tmpkeys2 = bktmp(0, 0);
 	/* For now, we are not recursing to a chained server */
+	url = bp_serverURL(0);
+	assert(url);
 	p = aprintf("-q@%s", url);
 	rc = sysio(tmpkeys, tmpkeys2, 0,
 	    "bk", p, "-Lr", "-Bstdin", "havekeys", "-Bl", "-", SYS);
@@ -679,6 +679,7 @@ bp_updateServer(char *range, char *list, int quiet)
 		rc = system(cmd);
 		free(cmd);
 	}
+	free(url);
 	unlink(tmpkeys);
 	free(tmpkeys);
 	unlink(tmpkeys2);
@@ -695,55 +696,52 @@ bp_updateServer(char *range, char *list, int quiet)
 	return (rc);
 }
 
-/* not a cache, need to move to proj_ for that. */
-private char *server_url, *server_repoid;
-
 private int
-load_bamserver(void)
+load_bamserver(char *url, char *repoid)
 {
-	FILE	*f;
+	FILE	*f = 0;
 	project	*prod;
+	int	rc = -1;
 	char	cfile[MAXPATH];
 	char	buf[MAXLINE];
 
-	if (server_url) {
-		free(server_url);
-		server_url = 0;
-	}
-	if (server_repoid) {
-		free(server_repoid);
-		server_repoid = 0;
-	}
 	prod = proj_product(0);
 	strcpy(cfile, proj_root(prod));
 	if (proj_isResync(prod)) concat_path(cfile, cfile, RESYNC2ROOT);
 	concat_path(cfile, cfile, BAM_SERVER);
-	unless (f = fopen(cfile, "r")) return (-1);
-	unless (fnext(buf, f)) return (-1);
+	unless (f = fopen(cfile, "r")) goto err;
+	unless (fnext(buf, f)) goto err;
 	chomp(buf);
-	server_url = strdup(buf);
-	unless (fnext(buf, f)) return (-1);
+	if (url) strcpy(url, buf);
+	unless (fnext(buf, f)) goto err;
 	chomp(buf);
-	server_repoid = strdup(buf);
-	fclose(f);
-	return (0);
+	if (repoid) strcpy(repoid, buf);
+	rc = 0;
+err:	if (f) fclose(f);
+	return (rc);
 }
 
 /*
  * Return the URL to the current BAM_server.  This server has been contacted
  * at least once from this repository, so it is probably valid.
  * Return 0, if no URL is found.
+ * if url==0, then return malloc'ed string, otherwise return url.
  */
 char	*
-bp_serverURL(void)
+bp_serverURL(char *url)
 {
-	char	*url;
+	char	*p;
+	char	buf[MAXLINE];
 
-	if (url = getenv("_BK_FORCE_BAM_URL")) {
-		return (streq(url, "none") ? 0 :url);
+	unless (url) url = buf;
+
+	if (p = getenv("_BK_FORCE_BAM_URL")) {
+		if (streq(url, "none")) return (0);
+		strcpy(url, p);
+	} else {
+		if (load_bamserver(url, 0)) return (0);
 	}
-	load_bamserver();
-	return (server_url);
+	return ((url == buf) ? strdup(url) : url);
 }
 
 /*
@@ -754,19 +752,25 @@ bp_serverURL(void)
  * Return 0, if no URL is found.
  */
 char *
-bp_serverID(int notme)
+bp_serverID(char *repoid, int notme)
 {
-	char	*repoid;
+	char	*p;
+	char	buf[MAXLINE];
 
-	if (repoid = getenv("_BK_FORCE_BAM_REPOID")) {
-		return (streq(repoid, "none") ? 0 : repoid);
+	unless (repoid) repoid = buf;
+
+	if (p = getenv("_BK_FORCE_BAM_REPOID")) {
+		if (streq(repoid, "none")) return (0);
+		strcpy(repoid, p);
+	} else {
+		if (load_bamserver(0, repoid)) return (0);
+
+		if (*repoid && notme &&
+		    streq(repoid, proj_repoID(proj_product(0)))) {
+			return (0);
+		}
 	}
-	load_bamserver();
-	if (server_repoid && notme &&
-	    streq(server_repoid, proj_repoID(proj_product(0)))) {
-		return (0);
-	}
-	return (server_repoid);
+	return ((repoid == buf) ? strdup(buf) : repoid);
 }
 
 /*
@@ -858,6 +862,7 @@ bp_fetchData(void)
 	char	*remote_repoID;	/* repoID of remote bp_server */
 	char	*p = getenv("_BK_IN_BKD");
 	int	inbkd = p && *p;
+	char	localbuf[MAXPATH];
 
 	/*
 	 * Note that we could be in the middle of a transaction that changes
@@ -869,7 +874,7 @@ bp_fetchData(void)
 		return (0);
 	}
 
-	local_repoID = bp_serverID(0);
+	local_repoID = bp_serverID(localbuf, 0);
 	// ttyprintf("Our serverID is   %s\n", local_repoID);
 	remote_repoID =
 	    getenv(inbkd ? "BK_BAM_SERVER_ID" : "BKD_BAM_SERVER_ID");
@@ -973,7 +978,7 @@ bam_pull_main(int ac, char **av)
 			ERROR((stderr, "only one URL allowed\n"));
 			return (1);
 		}
-		url = av[optind];
+		url = strdup(av[optind]);
 		unless (id = bp_serverURL2ID(url)) {
 			ERROR((stderr, "unable to pull from %s\n", url));
 			return (1);
@@ -984,7 +989,7 @@ bam_pull_main(int ac, char **av)
 			ERROR((stderr, "need URL or -a\n"));
 			return (1);
 		}
-		unless (url = bp_serverURL()) {
+		unless (url = bp_serverURL(0)) {
 			return (0);/* no server to pull from */
 		}
 	}
@@ -1012,7 +1017,7 @@ bam_pull_main(int ac, char **av)
 	} else {
 		cmds = addLine(cmds, strdup("bk sfio -irB -"));
 	}
-
+	free(url);
 	rc = spawn_filterPipeline(cmds);
 	freeLines(cmds, free);
 	return (rc);
@@ -1099,7 +1104,7 @@ bam_clean_main(int ac, char **av)
 		}
 		return (0);
 	}
-	p1 = bp_serverID(0);
+	p1 = bp_serverID(buf, 0);
 	if (p1 && streq(p1, proj_repoID(proj_product(0)))) {
 		ERROR((stderr, "will not run in a BAM server.\n"));
 		return (1);
@@ -1111,10 +1116,10 @@ bam_clean_main(int ac, char **av)
 
 	/* save bp deltas in repo */
 	cmd = strdup("bk _sfiles_bam | bk prs -hnd'" BAM_DSPEC "' -");
-	if (check_server && bp_serverID(1)) {
+	if (check_server && bp_serverID(buf, 1)) {
 		/* remove deltas already in BAM server */
 		p1 = cmd;
-		p2 = bp_serverURL();
+		p2 = bp_serverURL(buf);
 		/* No recursion, we just want that server's list */
 		cmd = aprintf("%s | "
 			"bk -q@'%s' -Lr -Bstdin havekeys -Bl -", p1, p2);
@@ -1306,18 +1311,18 @@ bp_check_findMissing(int quiet, char **missing)
 	char	buf[MAXLINE];
 
 	if (emptyLines(missing)) return (0);
-	if (bp_serverID(1)) {
+	if (bp_serverID(buf, 1)) {
 		unless (quiet) {
 			fprintf(stderr,
 			    "Looking for %d missing files in %s\n",
 			    nLines(missing),
-			    bp_serverURL());
+			    bp_serverURL(buf));
 		}
 
 		tmp = bktmp(0, 0);
 		/* no recursion, we are remoted to the server already */
 		p = aprintf("bk -q@'%s' -Lr -Bstdin havekeys -Bl - > '%s'",
-		    bp_serverURL(), tmp);
+		    bp_serverURL(buf), tmp);
 		f = popen(p, "w");
 		free(p);
 		assert(f);
@@ -1325,7 +1330,7 @@ bp_check_findMissing(int quiet, char **missing)
 		if (pclose(f)) {
 			fprintf(stderr,
 			    "Failed to contact BAM server at %s\n",
-			    bp_serverURL());
+			    bp_serverURL(buf));
 			rc = 1;
 		} else {
 			EACH(missing) {	/* clear array in place */
@@ -1758,6 +1763,7 @@ bam_reload_main(int ac, char **av)
 	}
 	bp_dataroot(0, buf);
 	concat_path(buf, buf, BAM_DB);
+	unlink(buf);
 	m = mdbm_open(buf, O_RDWR|O_CREAT, 0666, 4096);
 	load_logfile(m, f);
 	mdbm_close(m);
@@ -2123,9 +2129,10 @@ bam_server_switch(int quiet, char *newurl)
 	int	rc, fd, fd1;
 	char	cmd[MAXLINE];
 	char	keyf[MAXPATH];
+	char	buf[MAXLINE];
 
 	/* No current server, nothing to transfer */
-	unless (bp_serverID(1)) return (0);
+	unless (bp_serverID(buf, 1)) return (0);
 
 	if (newurl && (streq(newurl, ".") || streq(newurl, "none"))) {
 		newurl = 0;
@@ -2175,7 +2182,7 @@ bam_server_switch(int quiet, char *newurl)
 	t = cmd;
 	/* read BAM data from remote server */
 	t += sprintf(t, "bk -q@'%s' -Lr -Bstdin -zo0 sfio -oqB - < '%s' | ",
-	    bp_serverURL(), keyf);
+	    bp_serverURL(buf), keyf);
 	/* and feed to new BAM server */
 	t += sprintf(t, "bk ");
 	/* that may be remote */
@@ -2188,7 +2195,7 @@ bam_server_switch(int quiet, char *newurl)
 		fprintf(stderr,
 		    "bam server: unable to fetch data "
 		    "from old server '%s'\n",
-		    bp_serverURL());
+		    bp_serverURL(buf));
 	}
 	return (rc);
 }
@@ -2200,6 +2207,7 @@ bam_server_main(int ac, char **av)
 	int	nosync = 0, force = 0;
 	char	*server = 0, *repoid;
 	FILE	*f;
+	char	buf[MAXLINE];
 
 #undef	ERROR
 #define	ERROR(x)	{ fprintf(stderr, "BAM server: "); fprintf x ; }
@@ -2223,7 +2231,8 @@ usage:			system("bk help -s BAM");
 	}
 	if (rm) {
 		if (av[optind]) goto usage;
-		if (!force && (server = bp_serverURL()) && streq(server, ".")) {
+		if (!force && (server = bp_serverURL(buf)) &&
+		    streq(server, ".")) {
 			fputs("This repository is currently a BAM server.\n"
 			    "Other repositories may be relying on it.\n"
 			    "If you are sure, run:\n"
@@ -2239,7 +2248,7 @@ rm:
 	}
 	if (av[optind]) {
 		if (av[optind+1]) goto usage;
-		if (!force && (server = bp_serverURL()) && streq(server, ".")) {
+		if (!force && (server = bp_serverURL(buf)) && streq(server, ".")) {
 			fprintf(stderr,
 			    "This repository is currently a BAM server.\n"
 			    "Other repositories may be relying on it.\n"
@@ -2274,7 +2283,7 @@ rm:
 		return (0);
 	}
 
-	if (server = bp_serverURL()) {
+	if (server = bp_serverURL(buf)) {
 		if (list) {
 			printf("%s\n", server);
 		} else if (streq(server, ".")) {

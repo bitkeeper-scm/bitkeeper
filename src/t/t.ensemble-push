@@ -211,8 +211,7 @@ cd "$HERE"
 commercial libc
 cd "$HERE"/copy
 BEFORE=`bk parent -l`
-bk clone $Q ../libc libc
-bk attach $Q libc
+bk attach $Q ../libc libc
 AFTER=`bk parent -l`
 test "$BEFORE" = "$AFTER" || {
 	echo failed to leave parent pointer alone

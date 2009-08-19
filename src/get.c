@@ -355,7 +355,7 @@ bp_fetchkeys(char *me, int quiet, char **keys, u64 todo)
 {
 	int	i;
 	FILE	*f;
-	char	*server = bp_serverURL();
+	char	*server = bp_serverURL(0);
 	char	buf[MAXPATH];
 
 	unless (server) {
@@ -374,6 +374,7 @@ bp_fetchkeys(char *me, int quiet, char **keys, u64 todo)
 	f = popen(buf, "w");
 	EACH(keys) fprintf(f, "%s\n", keys[i]);
 	i = pclose(f);
+	free(server);
 	return (i != 0);
 }
 
