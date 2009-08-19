@@ -5,8 +5,7 @@ test -d gcc/BitKeeper/tmp -a -d gdb/BitKeeper/tmp || exit 1
 cd ..
 commercial nm
 cd "$HERE/project"
-bk clone $Q ../nm gcc/nm
-bk attach $Q gcc/nm
+bk attach $Q ../nm gcc/nm
 echo OK
 
 echo $N Check that we see all components ............................$NL
@@ -83,7 +82,7 @@ nested project
 cd gcc
 commercial deepnest
 cd ..
-bk attach $Q deepnest
+bk attach $Q -N deepnest
 cd ../..
 bk clone $Q -shere project copy
 cd project/gcc

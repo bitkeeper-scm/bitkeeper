@@ -162,7 +162,6 @@ _adler32
 admin
 alias
 annotate
-attach
 bam
 BAM => bam
 base64
@@ -375,6 +374,8 @@ zone
 
 #aliases of builtin functions
 add => delta
+attach => clone
+detach => clone
 _cat => _catfile
 ci => delta
 enter => delta

@@ -58,7 +58,7 @@ commercial manual_component
 cd "$HERE"
 mv manual_component product
 cd product
-bk attach manual_component >OUT 2>&1 || {
+bk attach -N manual_component >OUT 2>&1 || {
 	echo failed
 	cat OUT
 	exit 1
@@ -72,7 +72,7 @@ echo OK
 
 echo $N Re-attaching the same component should fail..................$NL
 cd "$HERE"/product
-bk attach manual_component >GOT 2>&1 && {
+bk attach -N manual_component >GOT 2>&1 && {
 	echo failed
 	cat GOT
 	exit 1
@@ -182,7 +182,7 @@ touch foo
 bk new $Q foo
 bk commit $Q -f
 cd ..
-bk attach $Q s-expr || exit 1
+bk attach $Q -N s-expr || exit 1
 cd s-expr
 bk -cpr
 cd ../..

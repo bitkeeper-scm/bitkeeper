@@ -5,6 +5,7 @@
 private	struct {
 	u32	debug:1;		/* -d debug mode */
 	u32	verbose:1;		/* -q shut up */
+	u32	detach:1;		/* is detach command? */
 	char	*rev;
 	char	*bam_url;		/* -B URL */
 	u32	in, out;
@@ -33,6 +34,10 @@ rclone_main(int ac, char **av)
 	remote	*l, *r;
 
 	bzero(&opts, sizeof(opts));
+	if (streq(av[0], "_rclone_detach")) {
+		opts.detach = 1;
+		av[0] = "_rclone";
+	}
 	opts.verbose = 1;
 	while ((c = getopt(ac, av, "B;dE:pqr;s;w|z|")) != -1) {
 		unless ((c == 'r') || (c == 's')) {
@@ -88,9 +93,13 @@ rclone_main(int ac, char **av)
 		fprintf(stderr, "%s is not a BitKeeper root\n", av[optind]);
 		exit(1);
 	}
-	if (!getenv("_BK_TRANSACTION") && proj_isComponent(0)) {
+	if (!getenv("_BK_TRANSACTION") && proj_isComponent(0) && !opts.detach) {
 		fprintf(stderr,
 		    "clone: clone of a component is not allowed, use -s\n");
+		exit(1);
+	}
+	if (opts.detach && !proj_isComponent(0)) {
+		fprintf(stderr, "detach: can detach only a component\n");
 		exit(1);
 	}
 	if (hasLocalWork(GONE)) {
@@ -120,7 +129,7 @@ rclone_main(int ac, char **av)
 		return (1);
 	}
 
-	if (!getenv("_BK_TRANSACTION") && proj_isEnsemble(0)) {
+	if (!getenv("_BK_TRANSACTION") && proj_isEnsemble(0) && !opts.detach) {
 		rc = rclone_ensemble(r);
 	} else {
 		rc = rclone(av, r, envVar);
@@ -463,6 +472,7 @@ send_sfio_msg(remote *r, char **envVar)
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);
+	if (opts.detach) fprintf(f, " -D");
 	EACH(opts.aliases) fprintf(f, " '-s%s'", opts.aliases[i]);
 	if (r->path) fprintf(f, " '%s'", r->path);
 	fputs("\n", f);
