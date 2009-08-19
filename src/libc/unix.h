@@ -38,7 +38,6 @@
 #define pathneq(a, b, n) strneq(a, b, n)
 #define sameuser(a,b)	(!strcmp(a, b))
 #define	fileBusy(f)	(0) 
-#define wishConsoleVisible()	(1)
 #define	mixedCasePath()	1
 #define reserved(f)	(0)		/* No reserved names on unix */
 

@@ -49,7 +49,6 @@
 #define	IsFullPath(f)	nt_is_full_path_name(f)
 #define	strieq(a, b)	!strcasecmp(a, b)
 #define	pathneq(a, b, n) !strncasecmp(a, b, n)
-#define wishConsoleVisible() (0)
 #define	mixedCasePath()	0
 
 #define	gethostbyname(h)	(nt_loadWinSock(), gethostbyname(h))
