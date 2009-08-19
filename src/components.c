@@ -294,11 +294,7 @@ usage:			sys("bk", "help", "-s", prog, SYS);
 	nested_free(n);
 
 	/* do consistancy check at end */
-	unless (rc) {
-		lines2File(aliases, "BitKeeper/log/HERE");
-		/* old repos break less */
-		lines2File(aliases, "BitKeeper/log/COMPONENTS");
-	}
+	unless (rc) lines2File(aliases, "BitKeeper/log/HERE");
 	fclose(f);
 	rc |= run_check(quiet, checkfiles, quiet ? 0 : "-v", 0);
 	unlink(checkfiles);

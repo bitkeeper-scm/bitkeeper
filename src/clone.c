@@ -310,30 +310,6 @@ clone(char **av, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s\n", buf+6);
 		goto done;
 	}
-	if (streq(buf, "@ENSEMBLE@")) {
-		char	**nav;
-		int	i;
-
-		freeLines(opts->aliases, free);
-		opts->aliases = addLine(0, strdup("default"));
-
-		while (getline2(r, buf, sizeof (buf)) > 0) {
-			if (strneq(buf, "@ensemble_list end@", 19)) break;
-		}
-		START_TRANSACTION();
-		nav = addLine(0, "bk");
-		for (i = 0; av[i]; i++) nav = addLine(nav, av[i]);
-		nav = addLine(nav, av[i]);
-		rc = spawnvp(_P_WAIT, "bk", nav + 1);
-		freeLines(nav, 0);
-		STOP_TRANSACTION();
-		unless (rc) {
-			if (rc = chdir(local)) goto done;
-			unlink("BitKeeper/log/COMPONENTS");
-			rc = clone2(r);
-		}
-		goto done;
-	}
 	if (streq(buf, "@HERE@")) {
 		freeLines(opts->aliases, free);
 		opts->aliases = 0;
