@@ -258,7 +258,7 @@ cmd_pull_part2(int ac, char **av)
 
 	if (rc = bp_updateServer(0, keys, SILENT)) {
 		printf("@UNABLE TO UPDATE BAM SERVER %s (%s)@\n",
-		    bp_serverURL(),
+		    bp_serverURL(buf),
 		    (rc == 2) ? "can't get lock" : "unknown reason");
 		rc = 1;
 		goto done;

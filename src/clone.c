@@ -418,6 +418,7 @@ clone2(remote *r)
 	char	*checkfiles;
 	FILE	*f;
 	int	i, rc = 0, didcheck = 0;
+	char	buf[MAXLINE];
 
 	unless (eula_accept(EULA_PROMPT, 0)) {
 		fprintf(stderr, "clone failed license accept check\n");
@@ -429,9 +430,9 @@ clone2(remote *r)
 	(void)proj_repoID(0);		/* generate repoID */
 
 	/* validate bam server URL */
-	if (url = bp_serverURL()) {
+	if (!proj_isComponent(0) && (url = bp_serverURL(0))) {
 		p = bp_serverURL2ID(url);
-		unless (p && streq(p, bp_serverID(0))) {
+		unless (p && streq(p, bp_serverID(buf, 0))) {
 			if (p) free(p);
 			p = remote_unparse(r);
 			fprintf(stderr,
@@ -444,6 +445,7 @@ clone2(remote *r)
 			// So we can still pass check says Dr Wayne
 			putenv("_BK_CHECK_NO_BAM_FETCH=1");
 		}
+		free(url);
 		if (p) free(p);
 	}
 
@@ -780,18 +782,23 @@ lclone(char *from)
 	char	buf[MAXPATH];
 	char	dstidx[MAXPATH];
 
-	bp_dataroot(0, buf);
-	concat_path(buf, buf, BAM_DB);
-	unlink(buf);	/* break link */
 	concat_path(buf, from, BAM_MARKER);
 	if (exists(buf)) {
 		touch(BAM_MARKER, 0664);
 		srcproj = proj_init(from);
 		bp_indexfile(srcproj, buf);
 		proj_free(srcproj);
-		bp_indexfile(0, dstidx);
-		fileCopy(buf, dstidx);
-		system("bk bam reload");
+		if (exists(buf)) {
+			/*
+			 * Copy the BAM.index file (breaking hardlink
+			 * on new-BAM repos) and rebuild the index.db
+			 * file.  This will also break the hardlink on
+			 * index.db.
+			 */
+			bp_indexfile(0, dstidx);
+			fileCopy(buf, dstidx);
+			system("bk bam reload");
+		}
 	}
 
 	/* copy timestamp on CHECKED file */

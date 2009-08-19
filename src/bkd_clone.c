@@ -17,6 +17,7 @@ cmd_clone(int ac, char **av)
 	char	**aliases = 0;
 	sccs	*s = 0;
 	delta	*d;
+	char	buf[MAXLINE];
 
 	if (sendServerInfoBlock(0)) goto out;
 	unless (isdir("BitKeeper/etc")) {
@@ -112,7 +113,7 @@ cmd_clone(int ac, char **av)
 	/* has to be here, we use the OK below as a marker. */
 	if (rc = bp_updateServer(getenv("BK_CSETS"), 0, SILENT)) {
 		printf("ERROR-unable to update BAM server %s (%s)\n",
-		    bp_serverURL(),
+		    bp_serverURL(buf),
 		    (rc == 2) ? "can't get lock" : "unknown reason");
 		goto out;
 	}

@@ -31,6 +31,7 @@ rclone_main(int ac, char **av)
 	char	*url;
 	char    **envVar = 0;
 	remote	*l, *r;
+	char	buf[MAXLINE];
 
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
@@ -112,7 +113,7 @@ rclone_main(int ac, char **av)
 	 * a master (not necessarily this one).  If they point at a different
 	 * server Dr Wayne says we'll magically fill in the missing parts.
 	 */
-	if (!opts.bam_url && (url = bp_serverURL()) && streq(url, ".")) {
+	if (!opts.bam_url && (url = bp_serverURL(buf)) && streq(url, ".")) {
 		fprintf(stderr,
 		    "clone: when cloning a BAM server -B<url> is required.\n"
 		    "<url> must name a BAM server reachable from %s\n",
@@ -300,7 +301,7 @@ rclone_part1(remote *r, char **envVar)
 	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	if (rc = bp_updateServer(getenv("BK_CSETS"), 0, !opts.verbose)) {
 		fprintf(stderr, "Unable to update BAM server %s (%s)\n",
-		    bp_serverURL(),
+		    bp_serverURL(buf),
 		    (rc == 2) ? "can't get lock" : "unknown reason");
 		return (-1);
 	}
