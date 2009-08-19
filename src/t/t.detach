@@ -1,0 +1,287 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2009 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+#
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Setup .......................................................$NL
+cd "$HERE"
+commercial standalone1
+echo file1 >file1
+bk new -q file1 || exit 1
+bk commit -q -y'add file1' || exit 2
+cd "$HERE"
+commercial standalone2
+cd "$HERE"
+nested nested1
+bk attach -q "$HERE/standalone1" component1 || exit 3
+cd "$HERE"
+nested nested2
+cd "$HERE"
+P=`port 50000`
+bk bkd -q -p$P -ikill || exit 4
+trap "bk _kill bk://localhost:$P" 0
+echo OK
+
+echo $N Test non-local source error .................................$NL
+cd "$HERE/nested1"
+bk detach bk://localhost/file ../bad 2>GOT && {
+	echo should have failed
+	cat GOT
+	exit 1
+}
+grep -q 'source must be local' GOT || {
+	echo unexpected output
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Test detaching a stand-alone repo error, local dest .........$NL
+cd "$HERE/nested1"
+bk clone -q ../standalone1 || exit 1
+bk detach standalone1 bad 2>GOT && {
+	echo should have failed
+	cat GOT
+	exit 1
+}
+grep -q 'can detach only a component' GOT || {
+	echo unexpected output
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Test detaching a stand-alone repo error, remote dest ........$NL
+cd "$HERE/nested1"
+bk detach standalone1 bk://localhost/bad 2>GOT && {
+	echo should have failed
+	cat GOT
+	exit 1
+}
+grep -q 'can detach only a component' GOT || {
+	echo unexpected output
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Test destination repo already there error ...................$NL
+cd "$HERE/nested1"
+bk detach component1 ../standalone1 2>GOT 1>&1 && {
+	echo should have failed
+	cat GOT
+	exit 1
+}
+grep -q 'standalone1 exists and is not empty' GOT || {
+	echo unexpected output
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Basic detach functionality ..................................$NL
+cd "$HERE/nested1"
+bk detach -q component1 ../detached1 2>GOT 1>&2 || {
+	echo should have worked
+	cat GOT
+	exit 1
+}
+# Check that component1 is still in the product.
+bk components | grep -q component1 || exit 1
+cd component1 || exit 1
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd ..
+# Check that a new repo was detached.
+cd ../detached1 || {
+	echo could not cd to detached 1
+	exit 1
+}
+test -f BitKeeper/log/COMPONENT && {
+	echo COMPONENT file not removed by detach
+	exit 1
+}
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd ..
+echo OK
+
+echo $N Check clone of detached repo ................................$NL
+bk clone -q detached1 detached1-clone || {
+	echo could not clone detached repo
+	exit 1
+}
+cd detached1-clone
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd ..
+echo OK
+
+echo $N Check re-attaching a detached repo ..........................$NL
+# You wouldn't necessarily do this normally in practice, but it
+# helps check that a detached repo isn't totally messed up.
+cd "$HERE/nested1"
+bk attach -q ../detached1 reattached1 || exit 1
+bk detach -q reattached1 ../detached1b || exit 1
+bk attach -q ../detached1b reattached2 || exit 1
+echo OK
+
+echo $N Check clone -r of detached repo .............................$NL
+cd "$HERE"
+bk clone -q -r1.1 detached1 detached1-clone-1.1 || {
+	echo could not clone -r1.1 detached repo
+	exit 1
+}
+echo OK
+
+echo $N Check 'detach <path>' functionality ...........................$NL
+cd "$HERE"
+bk detach -q "$HERE/nested1/component1" 2>GOT 1>&2 || {
+	echo should have worked
+	cat GOT
+	exit 1
+}
+cd "$HERE/nested1"
+bk components | grep -q component1 || exit 1
+cd component1 || exit 1
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd "$HERE/component1" || exit 1
+test -f BitKeeper/log/COMPONENT && {
+	echo COMPONENT file not removed by detach
+	exit 1
+}
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd ..
+echo OK
+
+echo $N Check 'detach <path> <dir>' functionality .....................$NL
+cd "$HERE"
+bk detach -q "$HERE/nested1/component1" detached2 2>GOT 1>&2 || {
+	echo should have worked
+	cat GOT
+	exit 1
+}
+cd "$HERE/nested1"
+bk components | grep -q component1 || exit 1
+cd component1 || exit 1
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd "$HERE/detached2" || exit 1
+test -f BitKeeper/log/COMPONENT && {
+	echo COMPONENT file not removed by detach
+	exit 1
+}
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd ..
+echo OK
+
+echo $N Check 'detach <path> <path>' functionality ....................$NL
+cd "$HERE"
+bk detach -q "$HERE/nested1/component1" "$HERE/detached3" 2>GOT 1>&2 || {
+	echo should have worked
+	cat GOT
+	exit 1
+}
+cd "$HERE/nested1"
+bk components | grep -q component1 || exit 1
+cd component1 || exit 1
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd "$HERE/detached3" || exit 1
+test -f BitKeeper/log/COMPONENT && {
+	echo COMPONENT file not removed by detach
+	exit 1
+}
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd ..
+echo OK
+
+echo $N Check 'detach <dir> <remote>' functionality ...................$NL
+cd "$HERE/nested1"
+bk detach -q component1 bk://localhost:$P/detached4 2>GOT 1>&2 || {
+	echo should have worked
+	cat GOT
+	exit 1
+}
+cd "$HERE/nested1"
+bk components | grep -q component1 || exit 1
+cd component1 || exit 1
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd "$HERE/detached4" || exit 1
+test -f BitKeeper/log/COMPONENT && {
+	echo COMPONENT file not removed by detach
+	exit 1
+}
+bk cat file1 >GOT || exit 1
+cat <<EOF >WANT
+file1
+EOF
+cmpfiles GOT WANT
+cd ..
+echo OK
+
+echo $N Check detach -r .............................................$NL
+cd "$HERE/nested1"
+bk detach -q -r1.1 component1 ../standalone1-1.1 2>GOT 1>&2 || {
+	echo should have worked
+	cat GOT
+	exit 1
+}
+bk components | grep -q component1 || exit 1
+cd "$HERE/standalone1-1.1" || exit 1
+test "`bk log -d:REV: -r+ ChangeSet`" = "1.1" || {
+	echo bad rev
+	exit 1
+}
+echo OK
+
+echo $N Check keys are same except for root and tip of detached .....$NL
+cd "$HERE/nested1/component1"
+bk changes -kr1.0.. > "$HERE/WANT"
+cd "$HERE/detached4"
+PTIP=`bk changes -r+ -nd:PARENT:`
+bk changes -kr1.0..$PTIP > "$HERE/GOT"
+cd "$HERE"
+cmpfiles WANT GOT
+echo OK

@@ -1264,6 +1264,7 @@ int	bp_hasBAM(void);
 u32	send_BAM_sfio(FILE *wf, char *bp_keys, u64 bpsz, int gzip);
 int	bkd_BAM_part3(remote *r, char **env, int quiet, char *range);
 int	bp_sendkeys(FILE *f, char *range, u64 *bytes, int gzip);
+int	detach(int quiet);
 int	zgets_hread(void *token, u8 **buf);
 int	zgets_hfread(void *token, u8 **buf);
 void	zputs_hfwrite(void *token, u8 *data, int len);

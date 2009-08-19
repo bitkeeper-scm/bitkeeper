@@ -5,8 +5,7 @@ cd ..
 commercial nm
 bk -r edit $Q
 cd "$HERE/product"
-bk clone $Q ../nm gcc/nm
-bk attach $Q gcc/nm
+bk attach $Q ../nm gcc/nm
 
 # check them out
 bk -r get $Q
