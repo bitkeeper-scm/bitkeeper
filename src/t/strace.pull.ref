@@ -5,7 +5,7 @@ chmod 69
 close 431
 link 7
 lseek 279
-lstat 1114
+lstat 1118
 mkdir 24
 open 405
 read 5118
