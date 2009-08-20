@@ -146,3 +146,13 @@ bk delta $Q -ywhatever ../gamelogic/data
 cd ../gamelogic
 bk -r check -ac || exit 1
 echo OK
+
+echo $N Show that an lclone of an old BAM dir works .................$NL
+cd "$HERE"
+_BK_BAM_V2=1 bk clone $Q project project.old || exit 1
+bk clone $Q -l project.old copy.new || exit 1
+cd copy.new
+bk bam check $Q || exit 1
+test -f BitKeeper/BAM/index.db || exit 1
+test `find BitKeeper/BAM -name '*@*' -print | wc -l` = 0 || exit 1
+echo OK

@@ -11,12 +11,13 @@ int
 cmd_clone(int ac, char **av)
 {
 	int	i, c, rc = 1;
-	int	gzip = 0, delay = -1, lclone = 0;
+	int	attach = 0, detach = 0, gzip = 0, delay = -1, lclone = 0;
 	int	tid = 0;
 	char	*p, *rev = 0;
 	char	**aliases = 0;
 	sccs	*s = 0;
 	delta	*d;
+	char	buf[MAXLINE];
 
 	if (sendServerInfoBlock(0)) goto out;
 	unless (isdir("BitKeeper/etc")) {
@@ -24,8 +25,14 @@ cmd_clone(int ac, char **av)
 		out("@END@\n");
 		goto out;
 	}
-	while ((c = getopt(ac, av, "lqr;s;Tw;z|")) != -1) {
+	while ((c = getopt(ac, av, "ADlqr;s;Tw;z|")) != -1) {
 		switch (c) {
+		    case 'A':
+			attach = 1;
+			break;
+		    case 'D':
+			detach = 1;
+			break;
 		    case 'l':
 			lclone = 1;
 			break;
@@ -56,14 +63,26 @@ cmd_clone(int ac, char **av)
 	/*
 	 * This is where we would put in an exception for bk port.
 	 */
-	if (!tid && proj_isComponent(0)) {
+	if (!tid && proj_isComponent(0) && !detach) {
 		out("ERROR-clone of a component is not allowed, use -s\n");
+		goto out;
+	}
+	if (attach && proj_isComponent(0)) {
+		out("ERROR-cannot attach a component\n");
+		goto out;
+	}
+	if (detach && !proj_isComponent(0)) {
+		out("ERROR-can detach only a component\n");
 		goto out;
 	}
 	if (proj_isProduct(0)) {
 		unless (bk_hasFeature("SAMv1")) {
 			out("ERROR-please upgrade your BK to a NESTED "
 			    "aware version (5.0 or later)\n");
+			goto out;
+		}
+		if (attach) {
+			out("ERROR-cannot attach a product\n");
 			goto out;
 		}
 		/*
@@ -112,7 +131,7 @@ cmd_clone(int ac, char **av)
 	/* has to be here, we use the OK below as a marker. */
 	if (rc = bp_updateServer(getenv("BK_CSETS"), 0, SILENT)) {
 		printf("ERROR-unable to update BAM server %s (%s)\n",
-		    bp_serverURL(),
+		    bp_serverURL(buf),
 		    (rc == 2) ? "can't get lock" : "unknown reason");
 		goto out;
 	}

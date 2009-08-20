@@ -472,15 +472,6 @@ _partition() {
 	exit 0
 }
 
-# This should take a list of components,
-# verify that each is a component,
-# save their rootkeys,
-# rm -rf them,
-# csetprune them out of the product.
-_detach() {
-	echo Not implemented
-}
-
 # superset - see if the parent is ahead
 _superset() {
 	__cd2root

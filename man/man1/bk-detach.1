@@ -1,35 +1,30 @@
 .if \n[NESTED] \{\
 .so ../bk-macros
-.TH "bk attach" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.TH "bk detach" "\*[BKVER]" %E% "\*(BC" "\*(UM"
 .SH NAME
-bk attach \- attach a component repository to a product repository
+bk detach \- create a stand-alone clone of a component repository
 .SH SYNOPSIS
-bk attach
-.[B] \-qlC
+bk detach
+.[B] \-ql
 .[OPTreq] \-B url
 .[OPTequal] \-E e v
 .[OPTreq] \-r rev
-.ARG from
-.[ARG] component
+.ARG component
+.[ARG] to
 .SH DESCRIPTION
 The 
-.B bk attach
+.B bk detach
 command is a form of
 .BR "bk clone"
-used to attach a component repository to a product repository.
-The specified repository is cloned and becomes a component within
-the product. This command must be run from within the product.
+used to create a stand-alone clone of a component repository which
+is in a product repository.
+.LP
 .SH OPTIONS
 .TP \-E\*<env\*>=\*<val\*>
 .OPTreq \-B url
 Set the BAM server url to 
 .ARG url
 in the destination repository.
-.tp
-.B \-C
-Do not commit the component to the product.
-Use this option when you wish to combine the attach event with other
-changes to the product.
 .tp
 .OPTequal \-E env val
 Export an environment variable to the 
@@ -54,8 +49,8 @@ Clone the repository up to and including cset
 A changeset number or changeset key can be used to specify
 .ARG rev .
 .SH SEE ALSO
+.SA attach
 .SA clone
-.SA detach
 .SA setup
 .SH CATEGORY
 .B Product

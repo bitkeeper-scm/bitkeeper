@@ -787,7 +787,7 @@ push_part2(char **av,
 			/* push BAM data to server */
 			fprintf(stderr,
 			    "push: unable to update BAM server %s (%s)\n",
-			    bp_serverURL(),
+			    bp_serverURL(buf),
 			    (i == 2) ? "can't get lock" : "unknown reason");
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;

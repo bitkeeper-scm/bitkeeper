@@ -482,7 +482,7 @@ missing(off_t *byte_count)
 	int	i;
 	char	buf[BUFSIZ];
 
-	unless (bp_serverID(1)) {
+	unless (bp_serverID(buf, 1)) {
 err:		send_eof(SFIO_LOOKUP);
 		return;
 	}
@@ -498,7 +498,7 @@ err:		send_eof(SFIO_LOOKUP);
 	 * XXX - this will fail miserably on loops or locks.
 	 */
 	p = aprintf("bk -q@'%s' -Lr -Bstdin -zo0 sfio -qoB - < '%s'",
-	    bp_serverURL(), tmpf);
+	    bp_serverURL(buf), tmpf);
 	f = popen(p, "r");
 	free(p);
 	unless (f) goto err;

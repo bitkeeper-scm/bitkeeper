@@ -148,6 +148,23 @@ safe_system(char *cmd)
 	return (status);
 }
 
+/*
+ * Like safe_system() but takes printf-like args.
+ */
+int
+safe_systemf(char *fmt, ...)
+{
+	int	rc;
+	char	*cmd = 0;
+	va_list	ap;
+
+	va_start(ap, fmt);
+	unless ((rc = vasprintf(&cmd, fmt, ap)) < 0) rc = safe_system(cmd);
+	va_end(ap);
+	free(cmd);
+	return (rc);
+}
+
 #define	MAX_POPEN	20
 
 static struct {

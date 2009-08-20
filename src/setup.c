@@ -217,7 +217,7 @@ err:			unlink("BitKeeper/etc/config");
 	logChangeSet();
 	if (in_prod) {		/* we are a new component, attach ourself */
 		status = sys("bk", "attach",
-		    noCommit ? "-qC" : "-q", ".", SYS);
+		    noCommit ? "-qC" : "-q", "-N", ".", SYS);
 		unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 			fprintf(stderr, "setup: bk attach failed.\n");
 			return (1);
