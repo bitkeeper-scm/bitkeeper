@@ -314,6 +314,18 @@ isid(Expr *expr, char *s)
 	return ((expr->kind == L_EXPR_ID) && !strcmp(expr->u.string, s));
 }
 /*
+ * Return the flags that match the kind of variable we can
+ * dereference: globals, locals, class variables, and class instance
+ * variables.
+ */
+static inline int
+canDeref(Sym *sym)
+{
+	return (sym->decl->flags & (DECL_GLOBAL_VAR | DECL_LOCAL_VAR |
+				    DECL_FN | DECL_CLASS_INST_VAR |
+				    DECL_CLASS_VAR));
+}
+/*
  * This checks whether the Expr node is a deep-dive operation that has
  * left a deep-ptr on the run-time stack.
  */

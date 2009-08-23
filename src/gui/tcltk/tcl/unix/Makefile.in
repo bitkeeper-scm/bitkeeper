@@ -687,7 +687,7 @@ test-tcl: tcltest
 	$(SHELL_ENV) ./tcltest $(TOP_DIR)/tests/all.tcl $(TESTFLAGS)
 
 l-test l-tests test-l test-L:
-	$(MAKE) test TESTFLAGS+="-file l-*"
+	$(MAKE) test TESTFLAGS+="-file l-*.test"
 
 gdb-test: tcltest
 	@echo "set env @LD_LIBRARY_PATH_VAR@=\"`pwd`:$${@LD_LIBRARY_PATH_VAR@}\"" > gdb.run

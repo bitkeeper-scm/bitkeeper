@@ -1485,8 +1485,8 @@ get_text(Expr *expr)
  * compiling ++/-- or =~.
  *
  * Passing in L_PUSH_NAME means the fully qualified name of the
- * variable is left on the stack and is valid only for certain 
- * kinds variables (like globals, class variables, or class
+ * variable is left on the stack and is valid only for certain
+ * kinds of variables (globals, locals, class variables, or class
  * instance variables).
  *
  * L_PUSH_VAL		push value onto stack, unless deep dive and
@@ -1774,10 +1774,9 @@ compile_var(Expr *expr, Expr_f flags)
 	expr->type = sym->type;
 	if (flags & L_PUSH_VAL) {
 		emit_load_scalar(sym->idx);
+		return (1);
 	} else if (flags & L_PUSH_NAME) {
-		switch (sym->decl->flags & (DECL_GLOBAL_VAR | DECL_LOCAL_VAR |
-					    DECL_FN | DECL_CLASS_INST_VAR |
-					    DECL_CLASS_VAR)) {
+		switch (canDeref(sym)) {
 		    case DECL_GLOBAL_VAR:
 			if (sym->decl->flags & DECL_PRIVATE) {
 				push_str("::_%s_%s", L->toplev, sym->name);
@@ -1804,9 +1803,13 @@ compile_var(Expr *expr, Expr_f flags)
 		    default:
 			ASSERT(0);
 		}
+		return (1);
 	} else {
+		/* Push nothing. */
 		return (0);
 	}
+	/* Not reached. */
+	ASSERT(0);
 	return (1);
 }
 
@@ -1875,9 +1878,9 @@ push_pointer(Expr *expr)
 	compile_expr(e, L_PUSH_NAME);
 	expr->type = L_poly;
 	unless (e->sym) return;  // not a variable, or undeclared variable
-	unless (e->sym->decl->flags & (DECL_GLOBAL_VAR |
-				       DECL_CLASS_VAR |
-				       DECL_CLASS_INST_VAR)) {
+	/* can't use local vars or functions from a widget */
+	if ((e->sym->decl->flags & (DECL_LOCAL_VAR | DECL_FN)) ||
+	    !canDeref(e->sym)) {
 		L_errf(expr, "illegal operand to &");
 	}
 }
@@ -1936,10 +1939,7 @@ compile_unOp(Expr *expr)
 		 */
 		compile_expr(expr->a, L_PUSH_NAME);
 		if (!(expr->a->flags & L_EXPR_DEEP) &&
-		    (expr->a->sym && (expr->a->sym->decl->flags &
-				      (DECL_FN | DECL_GLOBAL_VAR |
-				       DECL_LOCAL_VAR | DECL_CLASS_VAR |
-				       DECL_CLASS_INST_VAR)))) {
+		    (expr->a->sym && canDeref(expr->a->sym))) {
 			expr->type = type_mkNameOf(expr->a->type, PER_INTERP);
 		} else {
 			L_errf(expr, "illegal operand to &");
