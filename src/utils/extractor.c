@@ -48,11 +48,12 @@ static char MSYS_ERROR[] =
 "Thanks!\n";
 #endif
 
-struct opts {
+typedef struct opts {
 	u32	shellx:1;
 	u32	scc:1;
 	u32	upgrade:1;
-};
+} opts;
+
 #ifdef WIN32
 char	*options = "slu";
 #else
@@ -75,45 +76,7 @@ char*	getbkpath(void);
 void	symlinks(void);
 int	hasDisplay(void);
 char	*getBinDir(void);
-
-void
-usage(void)
-{
-#ifdef WIN32
-	fprintf(stderr, "usage: %s [-l][-s][-u || <directory>]\n", prog);
-#else
-	fprintf(stderr, "usage: %s [-u || <directory>]\n", prog);
-#endif
-	fprintf(stderr,
-"Installs BitKeeper on the system.\n"
-"\n"
-"With no arguments this installer will unpack itself in a temp\n"
-"directory and then start a graphical installer to walk through the\n"
-"installation.\n"
-"\n"
-"If a directory is provided on the command line then a default\n"
-"installation is written to that directory.\n"
-"\n"
-"The -u option is for batch upgrades.  The existing BitKeeper is\n"
-"found on your PATH and then this version is installed over the top\n"
-"of it.  If no existing version of BitKeeper can be found, then a\n"
-"new installation is written to %s\n"
-"\n"
-#ifdef WIN32
-"Administrator privileges are required for a full installation.  If\n"
-"installing from a non-privileged account, then the installer will only\n"
-"be able to do a partial install.\n"
-#else
-"Normally symlinks are created in /usr/bin for 'bk' and common SCCS\n"
-"tools.  If the user doesn't have permissions to write in /usr/bin\n"
-"or BK_NOLINKS is set then this step will be skipped.\n"
-"\n"
-"If DISPLAY is not set in the environment, then the destination must\n"
-"be set on the command line.\n"
-#endif
-	    , bindir);
-	exit(1);
-}
+void	usage(void);
 
 int
 main(int ac, char **av)
@@ -125,7 +88,7 @@ main(int ac, char **av)
 	char	*dest = 0, *bkpath = 0, *tmp = findtmp();
 	char	tmpdir[MAXPATH], buf[MAXPATH], pwd[MAXPATH];
 	char	*p;
-	struct opts opts;
+	opts	opts;
 #ifdef	WIN32
 	HCURSOR h;
 
@@ -312,10 +275,9 @@ main(int ac, char **av)
 		    }
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
 #ifdef WIN32
-		sprintf(buf, "bk install %s %s %s %s \"%s\"",
+		sprintf(buf, "bk install %s %s %s \"%s\"",
 		    opts.shellx ? "-l" : "",
 		    opts.scc ? "-s" : "",
-		    dolinks ? "-S" : "",
 		    opts.upgrade ? "-u" : "",
 		    dest);
 #else
@@ -394,6 +356,47 @@ out:	cd(tmpdir);
 	 * Bitchin'
 	 */
 	exit(rc);
+}
+
+void
+usage(void)
+{
+#ifdef WIN32
+	fprintf(stderr, "usage: %s [-l][-s][-u || <directory>]\n", prog);
+#else
+	fprintf(stderr, "usage: %s [-u || <directory>]\n", prog);
+#endif
+	fprintf(stderr,
+"Installs BitKeeper on the system.\n"
+"\n"
+"With no arguments this installer will unpack itself in a temp\n"
+"directory and then start a graphical installer to walk through the\n"
+"installation.\n"
+"\n"
+"If a directory is provided on the command line then a default\n"
+"installation is written to that directory.\n"
+"\n"
+"The -u option is for batch upgrades.  The existing BitKeeper is\n"
+"found on your PATH and then this version is installed over the top\n"
+"of it.  If no existing version of BitKeeper can be found, then a\n"
+"new installation is written to %s\n"
+"\n"
+#ifdef WIN32
+"Administrator privileges are required for a full installation.  If\n"
+"installing from a non-privileged account, then the installer will only\n"
+"be able to do a partial install.\n"
+#else
+"Normally symlinks are created in /usr/bin for 'bk' and common SCCS\n"
+"tools.  If the user doesn't have permissions to write in /usr/bin\n"
+"or BK_NOLINKS is set then this step will be skipped.\n"
+#endif
+#if !defined(WIN32) && !defined (__APPLE__)
+"\n"
+"If DISPLAY is not set in the environment, then the destination must\n"
+"be set on the command line.\n"
+#endif
+	    , bindir);
+	exit(1);
 }
 
 char *
