@@ -131,9 +131,27 @@ perms(char *file)
 	struct	stat sbuf;
 
 	if (lstat(file, &sbuf)) return (0);
-	/* symlinks have all perms set */
-	if (S_ISLNK(sbuf.st_mode)) return (1);
 	return (sbuf.st_mode);
+}
+
+/*
+ * Determine if a file is writable by someone.  This does NOT
+ * determine if the file is writable by this process.  Use access(2)
+ * for that.  This is mainly used for testing if a gfile has been
+ * edited.
+ */
+int
+writable(char *s)
+{
+	struct  stat sbuf;
+
+	if (lstat(s, &sbuf)) return (0);
+	if (S_ISLNK(sbuf.st_mode)) return (1);
+	if (sbuf.st_mode & 0222) return (1);
+
+	/* Set errno like access(2) because we use this as an error check */
+	errno = EACCES;
+	return (0);
 }
 
 #ifdef WIN32

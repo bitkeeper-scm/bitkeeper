@@ -2709,7 +2709,8 @@ writeCheck(sccs *s, MDBM *db)
 		if (mdbm_store_str(db, path, "", MDBM_INSERT)) return (0);
 		unless (lstat(path, &sb)) {
 			if (S_ISDIR(sb.st_mode)) {
-				if (access(path, W_OK) != 0) {
+				unless (writable(path) &&
+				    (access(path, W_OK) == 0)) {
 					fprintf(stderr,
 					    "No write permission: %s\n", path);
 					return (1);

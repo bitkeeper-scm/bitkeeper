@@ -43,7 +43,7 @@ b_commit(resolve *rs)
 {
 	if (rs->opts->debug) fprintf(stderr, "commit(%s)\n", rs->s->gfile);
 
-	unless (exists(rs->s->gfile) && (access(rs->s->gfile, W_OK) == 0)) {
+	unless (exists(rs->s->gfile) && writable(rs->s->gfile)) {
 		fprintf(stderr, "%s has not been merged\n", rs->s->gfile);
 		return (0);
 	}

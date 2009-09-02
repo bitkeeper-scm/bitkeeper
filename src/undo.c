@@ -388,7 +388,7 @@ clean_file(char **fileList)
 	}
 	EACH(fileList) {
 		name = sccs2name(fileList[i]);
-		if (!(perms(name) & 0222) && (unlink(name) == 0)) {
+		if (!writable(name) && (unlink(name) == 0)) {
 			free(name);
 			continue;
 		} /* else let clean try and sort it out */

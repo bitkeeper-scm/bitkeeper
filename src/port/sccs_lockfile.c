@@ -45,7 +45,7 @@ sccs_lockfile(char *file, int waitsecs, int quiet)
 	u64	waited = 0;
 
 	p = dirname_alloc((char*)file);
-	unless ((perms(p) & 0775) == 0775) chmod(p, 0775);
+	unless (writable(p)) chmod(p, 0775);
 
 	/*
 	 * Could be that the chmod doesn't allow access if we're

@@ -98,6 +98,7 @@ print_sb(struct stat *sb, char *fn)
  * Usage: bk _access <file> [r|w|x]
  * defaults to F_OK.
  */
+int
 access_main(int ac, char **av)
 {
 	int	mode = F_OK;

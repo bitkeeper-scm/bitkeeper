@@ -193,10 +193,11 @@ clone(char **av, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s exists already\n", local);
 		usage();
 	}
-	if (local ? test_mkdirp(local) : access(".", W_OK)) {
+	if (local ? test_mkdirp(local) : 
+		(!writable(".") || access(".", W_OK))) {
 		fprintf(stderr, "clone: %s: %s\n",
 			(local ? local : "current directory"), strerror(errno));
-		usage();
+		exit(1);
 	}
 	safe_putenv("BK_CSETS=..%s", opts->rev ? opts->rev : "+");
 	if (bkd_connect(r, opts->gzip, !opts->quiet)) goto done;
