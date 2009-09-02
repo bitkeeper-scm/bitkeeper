@@ -595,6 +595,13 @@ echo ''
 	rm -rf "$TMPDIR" || exit 1
 	mkdir -p "$TMPDIR" || exit 1
 
+	# log any stuck win32 retry loops
+	_BK_LOG_WINDOWS_ERRORS="$TMPDIR/stuck.$$"
+	export _BK_LOG_WINDOWS_ERRORS
+	rm -f "$_BK_LOG_WINDOWS_ERRORS"
+	touch "$_BK_LOG_WINDOWS_ERRORS"
+
+	
 	# Save the list of file currently in $TMPDIR
 	# check it again for tmp file leak when we are in clean_up()
 	touch "$TMPDIR/T.${USER} new"
@@ -622,6 +629,13 @@ echo ''
 				BADOUTPUT="$i $BADOUTPUT"
 			fi
 		}
+	}
+	
+	test -s "$_BK_LOG_WINDOWS_ERRORS" && {
+		echo
+		echo Unexpected stuck windows loops
+		cat "$_BK_LOG_WINDOWS_ERRORS"
+		BADOUTPUT="$i $BADOUTPUT"
 	}
 
 	if [ "$PAUSE" = "YES" ]

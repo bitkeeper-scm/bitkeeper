@@ -160,15 +160,18 @@ zgets_hread(void *token, u8 **buf)
 		return (i-2);
 	} else {
 		/* called from zgets_done */
-		if (len != 0) {
-			ttyprintf("failed to find trailer\n");
-		}
+
+		/*
+		 * if len != 0, then we didn't see a valid trailer at the end
+		 * of the stream.
+		 */
+		i = (len != 0) ? -1 : 0;
 		if (data) {
 			free(data);
 			data = 0;
 			len = -1;
 		}
-		return (0);
+		return (i);
 	}
 }
 
@@ -202,14 +205,17 @@ zgets_hfread(void *token, u8 **buf)
 		return (i);
 	} else {
 		/* called from zgets_done */
-		if (len != 0) {
-			ttyprintf("failed to find trailer\n");
-		}
+
+		/*
+		 * if len != 0, then we didn't see a valid trailer at the end
+		 * of the stream.
+		 */
+		i = (len != 0) ? -1 : 0;
 		if (data) {
 			free(data);
 			data = 0;
 		}
-		return (0);
+		return (i);
 	}
 }
 

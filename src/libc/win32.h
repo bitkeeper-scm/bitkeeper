@@ -96,6 +96,7 @@ char	*win_verstr(void);
 int	win32flags_get(void);
 void	win32flags_set(int flags);
 void	win32flags_clear(int flags);
+void	win32_retry(int times);
 
 /* win32/reg.c */
 int	reg_broadcast(char *key, int timeout);

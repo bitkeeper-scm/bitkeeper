@@ -35,7 +35,7 @@ rmtreewalk(char *file, struct stat *sb, void *data)
 		}
 		*dirs = addLine(*dirs, strdup(file));
 	} else {
-		if (unlink(file)) {
+		if (unlink(file) && (errno != ENOENT)) {
 			perror(file);
 			return (1);
 		}
