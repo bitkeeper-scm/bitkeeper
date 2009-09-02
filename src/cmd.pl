@@ -158,6 +158,7 @@ __DATA__
 # builtin functions (sorted)
 _g2bk
 abort
+_access
 _adler32
 admin
 annotate

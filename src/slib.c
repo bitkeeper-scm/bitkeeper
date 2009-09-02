@@ -1811,28 +1811,6 @@ again:	if (rev[0] == '@') {
 }
 
 /*
- * Find the first delta that is > date.
- *
- * XXX - if there are two children, this finds only one of them.
- */
-private delta *
-findDate(delta *d, time_t date)
-{
-	time_t	d2;
-	delta	*tmp, *tmp2;
-
-	if (!d) return (0);
-	d2 = DATE(d);
-	if (d2 >= date) return (d);
-	for (tmp = d->kid; tmp; tmp = tmp->siblings) {
-		if (samebranch(tmp, d) && (tmp2 = findDate(tmp, date))) {
-			return (tmp2);
-		}
-	}
-	return (0);
-}
-
-/*
  * Take a date and return the delta closest to that date.
  *
  * The roundup parameter determines how to round inexact dates (ie 2001)
@@ -9499,10 +9477,10 @@ checkin(sccs *s,
 	unless (flags & NEWFILE) {
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
-out:		sccs_unlock(s, 'z');
+out:		if (sfile) fclose(sfile);
+		sccs_unlock(s, 'z');
 		sccs_unlock(s, 'x');
 		if (prefilled) sccs_freetree(prefilled);
-		if (sfile) fclose(sfile);
 		if (gfile && (gfile != stdin)) fclose(gfile);
 		s->state |= S_WARNED;
 		return (-1);

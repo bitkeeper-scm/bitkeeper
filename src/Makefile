@@ -369,9 +369,10 @@ bk.script: bk.sh port/$(SYS)_platform.sh
 
 bkmsg.txt: bkmsg.doc bk.ver FORCE
 	PWD=`pwd`; \
-	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
-	sed "s?@builder@?`./bk getuser`@`./bk gethost -r` in $$PWD?" \
+	sed "s|@version@|`cat bk.ver`|" bkmsg.doc | \
+	sed "s|@builder@|`./bk getuser`@`./bk gethost -r` in $${PWD}|" \
 		> bkmsg.txt
+	test -s bkmsg.txt || exit 1
 
 bkhelp.txt: build $(BK) FORCE
 	@bk get -S ../man/man2help/Makefile
