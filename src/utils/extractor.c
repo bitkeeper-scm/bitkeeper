@@ -9,36 +9,9 @@
 #endif
 #ifdef	WIN32
 #define	PFKEY		"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
-#define	SFIOCMD		"sfio.exe -im < sfioball"
 #define	WIN_UNSUPPORTED	"Windows 2000 or later required to install BitKeeper"
-#else
-#define	SFIOCMD		"sfio.exe -iqm < sfioball"
 #endif
 #define	TMP		"bksetup"
-
-static char LICENSE_ERROR[] =
-"You do not have a license for BitKeeper and you need one\n"
-"to install the software\n"
-"You can get a temporary license by sending a mail request\n"
-"to sales@bitmover.com.\n"
-"\n"
-"BitMover can be reached at:\n"
-"   +1-408-370-9911 (international and California)\n"
-"   888-401-8808 (toll free in the US & Canada)\n"
-"during business hours (PST) or via email at sales@bitmover.com.\n"
-"Thanks!\n";
-
-static char UPGRADE_ERROR[] =
-"You requested an automatic upgrade, but you don't seem to have\n"
-"BitKeeper installed on your machine. Make sure that the directory\n"
-"where you installed BitKeeper is in your PATH environment variable\n"
-"and that you can run 'bk version'\n"
-"\n"
-"If you still have trouble, BitMover can be reached at:\n"
-"   +1-408-370-9911 (international and California)\n"
-"   888-401-8808 (toll free in the US & Canada)\n"
-"during business hours (PST) or via email at sales@bitmover.com.\n"
-"Thanks!\n";
 
 #ifdef	WIN32
 static char MSYS_ERROR[] =
@@ -49,9 +22,9 @@ static char MSYS_ERROR[] =
 #endif
 
 typedef struct opts {
-	u32	shellx:1;
-	u32	scc:1;
-	u32	upgrade:1;
+	u32	shellx:1;	/* -l: install shellx extension */
+	u32	scc:1;		/* -s: install visual studio dll */
+	u32	upgrade:1;	/* -u: batch upgrade, no prompts */
 } opts;
 
 #ifdef WIN32
@@ -75,7 +48,7 @@ char*	findtmp(void);
 char*	getbkpath(void);
 void	symlinks(void);
 int	hasDisplay(void);
-char	*getBinDir(void);
+char	*defaultBin(void);
 void	usage(void);
 
 int
@@ -126,7 +99,7 @@ main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	prog = av[0];
-	bindir = getBinDir();
+	bindir = defaultBin();
 
 	/* rxvt bugs */
 	setbuf(stderr, 0);
@@ -140,8 +113,8 @@ main(int ac, char **av)
 	bkpath = getbkpath();
 	while ((c = getopt(ac, av, options)) != -1) {
 		switch (c) {
-		    case 's': opts.scc = 1; break;
 		    case 'l': opts.shellx = 1; break;
+		    case 's': opts.scc = 1; break;
 		    case 'u': opts.upgrade = 1; break;
 		    case '?':
 			fprintf(stderr, "bad option %c\n", optopt);
@@ -153,10 +126,7 @@ main(int ac, char **av)
 	}
 
 	if (opts.upgrade) {
-		unless (dest = bkpath) {
-			fprintf(stderr, UPGRADE_ERROR);
-			exit(1);
-		}
+		unless (dest = bkpath) dest = bindir;
 	} else if (av[optind]) {
 		dest = strdup(fullname(av[optind]));
 #ifndef	WIN32
@@ -194,7 +164,7 @@ main(int ac, char **av)
 	extract("sfioball", data_data, data_size, tmpdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
-	if (system(SFIOCMD)) {
+	if (system("sfio.exe -imq < sfioball")) {
 		if (errno == EPERM) {
 			fprintf(stderr,
 "bk install failed because it was unabled to execute sfio in %s.\n"
@@ -264,15 +234,14 @@ main(int ac, char **av)
 	if (dest) {
 		putenv("BK_NO_GUI_PROMPT=1");
 		buf[0] = 0;
-		if (f = popen("bk _logging 2>"DEVNULL_WR, "r")) {
-			fnext(buf, f);
-			pclose(f);
-		}
-		unless (strstr(buf, "license is current")) {
-			    fprintf(stderr, LICENSE_ERROR);
+		/*
+		 * This is silent unless we have an error.  And if there is
+		 * an error we want that error to print out.
+		 */
+		if (system("bk lease renew")) {
 			    rc = 1;
 			    goto out;
-		    }
+		}
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
 #ifdef WIN32
 		sprintf(buf, "bk install %s %s %s \"%s\"",
@@ -400,13 +369,16 @@ usage(void)
 }
 
 char *
-getBinDir(void)
+defaultBin(void)
 {
 #ifdef WIN32
 	char	*bindir;
-	char	*buf;
+	char	*p, *buf;
 
 	if (buf = reg_get(PFKEY, "ProgramFilesDir", 0)) {
+		for (p = buf; *p; p++) {
+			if (*p == '\\') *p = '/';
+		}
 		bindir = aprintf("%s/BitKeeper", buf);
 		free(buf);
 	} else {
