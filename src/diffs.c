@@ -163,7 +163,7 @@ usage:			system("bk help -s diffs");
 		unless (force || rargs.rstart || boundaries || Rev || sfileRev()) {
 			char	*gfile = sccs2name(name);
 
-			unless (writable(gfile) ||
+			unless ((access(gfile, W_OK) == 0) ||
 			    ((kind&DF_GNUN) && !exists(name) && exists(gfile))){
 				free(gfile);
 				goto next;

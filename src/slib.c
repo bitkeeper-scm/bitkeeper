@@ -6231,7 +6231,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	} else {
 		/* With -G/somewhere/foo.c we need to check the gfile again */
 		if (flags & GET_NOREGET) flags |= SILENT;
-		if (WRITABLE_REG(s) && writable(s->gfile)) {
+		if (WRITABLE_REG(s) && (perms(s->gfile) & 0222)) {
 			verbose((stderr, "Writable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char*)-1);

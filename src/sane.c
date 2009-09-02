@@ -211,7 +211,7 @@ again:	unless (exists(path) && isdir(path)) {
 		}
 		return (0);
 	}
-	if (access(path, W_OK) != 0) {
+	unless (access(path, W_OK) == 0) {
 		fprintf(stderr, "sane: no write permission on %s\n", path);
 		return (1);
 	}
@@ -238,7 +238,7 @@ again:	unless (exists(path)) {
 		}
 		return (0);
 	}
-	if (access(path, W_OK) != 0) {
+	unless (access(path, W_OK) == 0) {
 		fprintf(stderr, "sane: no write permission on %s\n", path);
 		return (1);
 	}

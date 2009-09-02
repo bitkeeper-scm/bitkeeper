@@ -115,14 +115,14 @@ nt_tmpdir()
 
 	/* try hard to find a suitable TMP directory */
 	for (pp = env; *pp; pp++) {
-		if ((p = getenv(*pp)) && (!access(p, 6)) ) {
+		if ((p = getenv(*pp)) && (!access(p, W_OK|R_OK)) ) {
 			tmpdir = p;
 			break;
 		}
 	}
 	unless (tmpdir) {
 		for (pp = paths; *pp; pp++) {
-			if (access(*pp, 6) == 0) {
+			if (access(*pp, W_OK|R_OK) == 0) {
 				tmpdir = *pp;
 				break;
 			}
@@ -598,7 +598,7 @@ _expnPath(char *cmdname, char *ext, char *fullCmdPath)
 	/* Ignore PATH if cmdbuf contains full or partial path */
 	if (strchr(cmdbuf, '/')) {
 		strcpy(fullCmdPath, cmdbuf);
-		if (_access(fullCmdPath, 0) != 0) fullCmdPath[0] = 0;
+		if (access(fullCmdPath, F_OK) != 0) fullCmdPath[0] = 0;
 		bm2ntfname(fullCmdPath, fullCmdPath);
 		return fullCmdPath;
 	}
@@ -612,7 +612,7 @@ _expnPath(char *cmdname, char *ext, char *fullCmdPath)
 	while (t) {
 		sprintf(fullCmdPath, "%s\\%s", t, cmdbuf);
 		bm2ntfname(fullCmdPath, fullCmdPath);
-		if (_access(fullCmdPath, 0) == 0) return (fullCmdPath);
+		if (access(fullCmdPath, F_OK) == 0) return (fullCmdPath);
 		t = strtok(NULL, path_delim);
 	}
 
@@ -621,7 +621,7 @@ _expnPath(char *cmdname, char *ext, char *fullCmdPath)
 	 */
 	strcpy(fullCmdPath, cmdbuf);
 	bm2ntfname(fullCmdPath, fullCmdPath);
-	if (_access(fullCmdPath, 0) == 0) return (fullCmdPath);
+	if (access(fullCmdPath, F_OK) == 0) return (fullCmdPath);
 
 	fullCmdPath[0] = 0;
 	return fullCmdPath;
@@ -1478,6 +1478,7 @@ nt_mvdir(const char *oldf, const char *newf)
 {
 	HANDLE	h;
 	int	i;
+	char	*dir;
 
 	for (i = 1; i <= retries; i++) {
 		h = CreateFile(oldf, GENERIC_READ, 0, 0,
@@ -1496,6 +1497,33 @@ fail:			errno = EBUSY;
 	}
 
 	safeCloseHandle(h);
+
+	/*
+	 * Make sure we can write the directory before looping,
+	 * Oscar ported tcl's access so this should work.
+	 */
+	dir = dirname_alloc((char*)oldf);
+	if (nt_access(dir, W_OK) != 0) {
+		free(dir);
+		return (-1);
+	}
+	free(dir);
+
+	/*
+	 * If the new file exists and is a dir, then test that,
+	 * otherwise test the parent dir.
+	 */
+	if (isdir((char*)newf)) {
+		dir = strdup(newf);
+	} else {
+		dir = dirname_alloc((char*)newf);
+	}
+	if (nt_access(dir, W_OK) != 0) {
+		free(dir);
+		return (-1);
+	}
+	free(dir);
+
 	for (i = 1; i <= retries; i++) {
 		if (MoveFileEx(oldf, newf, 0)) return (0);
 		unless (win32_flags & WIN32_RETRY) goto fail;

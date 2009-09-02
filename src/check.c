@@ -677,7 +677,7 @@ private int
 readonly_gfile(sccs *s)
 {
 	/* XXX slow in checkout:edit mode */
-	if ((HAS_PFILE(s) && HAS_GFILE(s) && !writable(s->gfile))) {
+	if ((HAS_PFILE(s) && HAS_GFILE(s) && ((perms(s->gfile)&0222)!=0222))) {
 		if (gfile_unchanged(s) == 1) {
 			if (unlink(s->pfile)) {
 				perror(s->pfile);

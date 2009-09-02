@@ -123,21 +123,18 @@ hardlinked(char *a, char *b)
 #endif
 
 /*
- * Determine if a file is writable by someone.  This does NOT
- * determine if the file is writable by this process.  Use access(2)
- * for that.  This is mainly used for testing if a gfile has been
- * edited.
+ * Get the permissions of a file.
  */
 int
-writable(char *s)
+perms(char *file)
 {
 	struct	stat sbuf;
 
-	if (lstat(s, &sbuf)) return (0);
+	if (lstat(file, &sbuf)) return (0);
+	/* symlinks have all perms set */
 	if (S_ISLNK(sbuf.st_mode)) return (1);
-	return ((sbuf.st_mode & 0222) != 0);
+	return (sbuf.st_mode);
 }
-
 
 #ifdef WIN32
 off_t
@@ -239,7 +236,7 @@ Reserved(char *baseName)
  * On Vista, _get_osfhandle() which is documented to return INVALID_HANDLE_VALUE
  * has been observed to return -2.  Grr.
  */
-#define INVALID_HANDLE_VALUE_VISTA -2
+#define INVALID_HANDLE_VALUE_VISTA ((HANDLE)-2)
 void
 closeBadFds(void)
 {
