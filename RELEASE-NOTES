@@ -1,10 +1,17 @@
-Release notes for BitKeeper version 4.4 (released 3-Aug-2009)
+Release notes for BitKeeper version 4.4 (released 24-Aug-2009)
 
 This release is mostly a bugfix release with the exception of slightly
 changing the bk repair interface, hence 4.4 instead of 4.3.2.
 
 This release enables BitKeeper (including the Explorer Shell extension)
 to work on 64-bit versions of Windows (XP/64, Vista/64, 2008 server).
+
+BitKeeper is now tested, and works, in the presence of the following
+Windows anti-virus scanners:
+
+    - McAfee
+    - Kaspersky
+    - Norton
 
 Bugfixes / polish
 
@@ -14,6 +21,7 @@ Bugfixes / polish
   confused BitKeeper.
 - Fix some usability bugs in the BitKeeper installer.
 - Various performance enhancements in partial_check mode.
+- Fix a bug where bk export would exit 0 after failing due to a full disk.
 
 New / modified commands
 

@@ -248,23 +248,16 @@ if [ $KEY2 -ne 100 ]; then
 fi
 echo OK
 
-echo $N Installer should honor command line options..................$NL
-BK="$HERE/DEAD BEEF/bk"
-echo y | "$BK" install -vf -s -l -n "$HERE/DEAD2" > OUT 2>&1 || {
+echo $N Make sure the installer accepts command line options.........$NL
+echo y | ./bk-academic-licensed -s -l "$HERE/DEAD2" > OUT 2>&1 || {
 	echo failed $?
-	echo Installer failed to install
+	echo Installer failed to install with -s -l
 	cat OUT
 	exit 1
 }
-KEY1=`bk _registry get "$SHELLXKEY" networkDrive` || exit 1
-KEY2=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
 
 if [ $KEY1 -ne 1 ]; then
-	echo failed
-	echo Failed to set networkDrive: $KEY1
-	exit 1
-fi
-if [ $KEY2 -ne 1 ]; then
 	echo failed
 	echo Failed to set LocalDrive: $KEY2
 	exit 1

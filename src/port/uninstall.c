@@ -29,7 +29,7 @@ private int	unregister_shellx(char *path);
 int
 uninstall(char *path, int upgrade)
 {
-	char	*data, *envpath, *old_ver, *uninstall_cmd;
+	char	*bkmenu, *data, *envpath, *old_ver, *uninstall_cmd;
 	char	**keys = 0, **values = 0;
 	int	i;
 	char	buf[MAXPATH];
@@ -245,8 +245,29 @@ uninstall(char *path, int upgrade)
 		freeLines(keys, free);
 	}
 	/* Remove Start Menu shortcuts */
-	startmenu_rm(0, 0);
-	startmenu_rm(1, 0);
+	for (i = 0; i < 2; i++) {
+		bkmenu = bkmenupath(i, 0);
+		if (!bkmenu) continue;
+		sprintf(buf, "%s.old%d", bkmenu, getpid());
+		if (rename(bkmenu, buf)) {
+			/* XXX - complain? */
+			free(bkmenu);
+			continue;
+		}
+		free(bkmenu);
+		if (rmtree(buf)) {
+			fprintf(stderr,
+			    "Could not delete BitKeeper start menus:\n"
+			    "\t%s\nWill be deleted on next reboot.\n",
+			    buf);
+			if (dfd) fprintf(dfd,
+			    "Could not delete BitKeeper start menus:\n"
+			    "\t%s\nWill be deleted on next reboot.\n",
+			    buf);
+			delete_onReboot(buf);
+		}
+	}
+
 	/* Finally remove the BitKeeper_nul file creted by getnull.c */
 	if (GetTempPath(sizeof(buf), buf)) {
 		strcat(buf, "/BitKeeper_nul");

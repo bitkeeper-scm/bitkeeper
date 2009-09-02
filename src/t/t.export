@@ -349,3 +349,46 @@ bk export -w "$HERE/project" "$HERE/exp-sym"
 islink "$HERE/exp-sym/src/symlnk" || { echo failed; exit 1; }
 echo OK
 fi #---------------------------------------------------------------------
+
+if [ "`uname -s`" = "Darwin" ]; then
+
+img_cleanup() {
+	# Clean up
+	local mntpoint=$1
+	local device=`df | awk -v MP="$1$" '$0 ~ MP {print $1}'`
+	test -z "$device" && {
+		echo Could not find device
+		exit 1
+	}
+	cd "$HERE"
+	hdiutil detach ${Q:+-quiet} $device
+	rm -f regression.dmg
+}
+
+echo $N Check that exporting to a full disk will fail ...............$NL
+cd "$HERE"
+# Create a small Mac volume and mount it; do test there
+hdiutil create -quiet -size 10m -fs HFS+J -volname Regression regression.dmg
+mkdir regression
+REG="$HERE/regression"
+hdiutil attach ${Q:+-quiet} -mountpoint "$REG" regression.dmg
+test $? = 0 || {
+	echo failed
+	echo Could not mount disk image
+}
+trap 'img_cleanup "$REG"' 0
+cd regression
+commercial project
+awk 'BEGIN { for (i = 0; i < 75000; i++) printf("line %d\n", i); }' > file
+bk new $Q file
+bk commit $Q -y'added files'
+bk get $Q file
+cd ..
+bk export project export 2>"$HERE/ERR" && {
+    echo fail
+    cat "$HERE/ERR"
+    exit 1
+}
+echo OK
+
+fi	# if Darwin

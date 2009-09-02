@@ -238,7 +238,7 @@ usage:			sys("bk", "help", "-s", av[0], SYS);
 	if (!cset) return (101);
 	copts.mixed = !LONGKEY(cset);
 
-	if (list && !rargs.rstart && !copts.dash) {
+	if (list && !rargs.rstart && !copts.dash && !copts.remark) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
 		cset_exit(1);

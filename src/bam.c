@@ -132,7 +132,7 @@ bp_get(sccs *s, delta *din, u32 flags, char *gfile)
 	char	hash[10];
 
 	s->bamlink = 0;
-	d = bp_fdelta(s, din);
+	unless (d = bp_fdelta(s, din)) return (-1);
 	unless (dfile = bp_lookup(s, d)) return (EAGAIN);
 	unless (m = mopen(dfile, "rb")) {
 		free(dfile);
