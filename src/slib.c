@@ -9499,10 +9499,10 @@ checkin(sccs *s,
 	unless (flags & NEWFILE) {
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
-out:		sccs_unlock(s, 'z');
+out:		if (sfile) fclose(sfile);
+		sccs_unlock(s, 'z');
 		sccs_unlock(s, 'x');
 		if (prefilled) sccs_freetree(prefilled);
-		if (sfile) fclose(sfile);
 		if (gfile && (gfile != stdin)) fclose(gfile);
 		s->state |= S_WARNED;
 		return (-1);

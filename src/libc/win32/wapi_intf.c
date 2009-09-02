@@ -54,6 +54,11 @@
 
 static	int	win32_flags = WIN32_NOISY | WIN32_RETRY;
 
+/* Win32 Retry Loops */
+static	int	retries = 32;	/* how many times to retry */
+#define	INC	100	/* milliseconds, we do 100, 200, 300, 400, etc */
+#define	NOISY	10	/* start telling them after NOISY sleeps (~5 sec) */
+
 /* get, set , and clear the flags for the operation of the win32
  * emulation layer look at the static int above and src/libc/win32.h
  * for the allowed values
@@ -76,6 +81,18 @@ void
 win32flags_clear(int flags)
 {
 	win32_flags &= ~flags;
+}
+
+void
+win32_retry(int times)
+{
+	unless (times) {
+		win32flags_clear(WIN32_RETRY);
+		retries = 1;
+	} else {
+		win32flags_set(WIN32_RETRY);
+		retries = times;
+	}
 }
 
 /*
@@ -1161,19 +1178,6 @@ nt_chdir(char *dir)
 	return (!SetCurrentDirectory(dir));
 }
 
-#define	INC	100
-#define	NOISY	5	/* start telling them after INC * NOISY ms */
-#define	WAITMAX	600	/* /10 to get seconds */
-
-private int
-waited(int i)
-{
-	int	total = 0;
-
-	while (i) total += i--;
-	return (total);
-}
-
 private char *
 error2msg(int error)
 {
@@ -1191,77 +1195,103 @@ error2msg(int error)
 	return (ret);
 }
 
+#define	stuck(e, times, format, args...)				\
+	_stuck(e, times, 0, format, __FILE__, __LINE__, __FUNCTION__, ##args)
+
+#define	bail(e, times, format, args...)					\
+	_stuck(e, times, 1, format, __FILE__, __LINE__, __FUNCTION__, ##args)
+
 private void
-stuck(char *fmt, const char *arg)
+_stuck(DWORD e, int times, int bailed, char *format,
+    char *file, int line, const char *func, ...)
 {
-	DWORD	e;
-	char	*m = 0;
+	char	*m = 0, *fmt = 0;
+	int	save;
+	FILE	*f;
+	va_list	ap;
 
-	if (win32_flags & WIN32_NOISY) {
-		fprintf(stderr, fmt, arg);
-		e = GetLastError();
-		m = error2msg(e);
-		fprintf(stderr, "error (%4ld): %s\n", e, m?m:"Unknown");
-		if (m) free(m);
+	/* Avoid recursion if we can't log */
+	save = win32_flags;
+	win32_flags = 0;
+
+	m = error2msg(e);
+	fmt = aprintf("%s@%d(%2d): %s\n%4ld: %s\n",
+	    func, line, times, format, e, m ? m : "Unknown");
+	va_start(ap, func);
+	if ((save & WIN32_NOISY) && (times > NOISY)) {
+		vfprintf(stderr, fmt, ap);
 	}
+	if (bailed) {
+		if (f = efopen("_BK_LOG_WINDOWS_ERRORS")) {
+			vfprintf(f, fmt, ap);
+			fclose(f);
+		}
+	}
+	va_end(ap);
+	if (fmt) free(fmt);
+	if (m) free(m);
+	win32_flags = save;
 }
 
 /*
- * XXX: Only used in nt_fopen() and nt_open() below. I guess because
- * we don't want to type nt_stat() since this file is not remapped? At
- * any rate, seems like this could be safely deleted and regular
- * nt_stat() used instead. NOT CHANGING in a bugfix release: See RTI
- * 2008-08-02-001 for more context.
+ * Translate from fopen's char * mode to open's binary mode
+ * Blatantly cribbed from stdio's __sflags() routine.
  */
-private int
-_exists(char *file)
+private inline int
+_sflags(const char *mode, int* optr)
 {
-	return (GetFileAttributes(file) != INVALID_FILE_ATTRIBUTES);
+	int	m, o;
+
+	assert(mode);
+	switch (*mode++) {
+	    case 'r':
+		m = O_RDONLY;
+		o = 0;
+		break;
+	    case 'w':
+		m = O_WRONLY;
+		o = O_CREAT | O_TRUNC;
+		break;
+	    case 'a':
+		m = O_WRONLY;
+		o = O_CREAT | O_APPEND;
+		break;
+	    default:
+		errno = EINVAL;
+		return (0);
+
+	}
+	for (; *mode; mode++) {
+		switch (*mode) {
+		    case '+':
+			m = O_RDWR;
+			break;
+		    case 't':
+			o |= O_TEXT;
+			break;
+		    case 'b':
+			o |= O_BINARY;
+			break;
+		    default:
+			break;
+		}
+	}
+	*optr = m | o;
+	return (1);
 }
 
 /*
- * Our version of fopen, does additional things
- * a) Translate Bitmover filename to Win32 (i.e NT) path name
- * b) Make fd uninheritable
- * c) Retries to get around virus scanners
+ * Just calls nt_open
  */
 FILE *
 nt_fopen(const char *filename, const char *mode)
 {
-	int	fd, i = 0;
 	FILE	*f;
-	char	buf[MAXPATH];
-	int	error;
+	int	m, fd;
 
-	for (;;) {
-		if (f = fopen(bm2ntfname(filename, buf), mode)) break;
-		error = GetLastError();
-		if ((*mode == 'w') && (error == ERROR_ACCESS_DENIED)) {
-			if (_exists(buf)) unlink(buf);
-			unless (win32_flags & WIN32_RETRY) break;
-			Sleep(++i * INC);
-			if (i > NOISY) {
-				stuck("fopen: retrying on %s\n", filename);
-			}
-			if (waited(i) > WAITMAX) {
-				stuck("bailing out on %s\n", filename);
-				errno = EBUSY;
-				break;
-			}
-		} else {
-			/* no retry for reads, or for _real_ errors. */
-			break;
-		}
-	}
-	unless (f) {
-		debug((stderr,
-			"nt_fopen: fail to open file %s, mode %s (%d)\n",
-			filename, mode, error));
-		return (0);
-	}
-
-	fd = _fileno(f);
-	if (fd >= 0) make_fd_uninheritable(fd);
+	unless (_sflags(mode, &m)) return (0);
+	if ((fd = nt_open(filename, m, 0666)) < 0) return (0);
+	f = fdopen(fd, mode);
 	return (f);
 }
 
@@ -1274,51 +1304,68 @@ int
 nt_open(const char *filename, int flag, int pmode)
 {
 	char	buf[1024];
-	int	fd, error, i = 0;
+	int	fd, error = 0, i;
+	DWORD	attrs;
 
 	flag |= _O_NOINHERIT;
-	for (;;) {
+	for (i = 1; i <= retries; i++) {
 		fd = _open(bm2ntfname(filename, buf), flag, pmode);
 		if (fd >= 0) return (fd);
 		error = GetLastError();
-		if ((error == ERROR_ACCESS_DENIED) &&
-		    ((flag & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL)) &&
-		    _exists(buf)) {
+		unless (win32_flags & WIN32_RETRY) return (-1);
+		if (streq(filename, DEV_TTY)) return (-1);
+		if ((i == 1) && (error == ERROR_ACCESS_DENIED) &&
+		    ((attrs = GetFileAttributes(buf)) != INVALID_FILE_ATTRIBUTES)) {
 			/*
-			 * special case where we don't retry, see
-			 * utils.c:savefile()
+			 * Try to recognize some of the error cases
+			 * without entering the wait loop below.
 			 */
-			errno = EEXIST;
-			break;
-		} else if ((error == ERROR_ACCESS_DENIED) ||
+			if (((flag & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))) {
+				/*
+				 * special case where we don't retry, see
+				 * utils.c:savefile()
+				 */
+				errno = EEXIST;
+				return (-1);
+			} else if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
+				errno = EISDIR;
+				return (-1);
+			} else if ((attrs & FILE_ATTRIBUTE_READONLY) &&
+			    (flag & (O_WRONLY|O_RDWR))) {
+				/*
+				 * We are trying to write a readonly
+				 * file, the access denied error
+				 * message is correct.
+				 */
+				errno = EACCES;
+				return (-1);
+			}
+		}
+		if ((error == ERROR_ACCESS_DENIED) ||
 		    (error == ERROR_SHARING_VIOLATION)) {
-			unless (win32_flags & WIN32_RETRY) break;
-			Sleep(++i * INC);
-			if (i > NOISY) {
-				stuck("open: retrying on %s\n", filename);
-			}
-			if (waited(i) > WAITMAX) {
-				errno = EBUSY;
-				stuck("bailing out on %s\n", filename);
-				break;
-			}
+			unless (win32_flags & WIN32_RETRY) return (-1);
+			Sleep(i * INC);
+			stuck(error, i, "retrying on %s", filename);
 		} else {
 			/* don't retry for any other errors */
-			break;
+			return (-1);
 		}
 	}
-	return (fd);
+	errno = EBUSY;
+	bail(error, i, "bailing out on %s", filename);
+	return (-1);
 }
 
 int
 nt_rmdir(char *dir)
 {
 	HANDLE	h;
-	int	err, i = 0;
+	int	err, i = 1, j = 1;
+	char	**files;
 
 again:
 	h = CreateFile(dir, GENERIC_READ, FILE_SHARE_DELETE,
-		       0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+	       0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
 	if (h == INVALID_HANDLE_VALUE) {
 		switch (err = GetLastError()) {
 		    case ERROR_FILE_NOT_FOUND:
@@ -1327,30 +1374,61 @@ again:
 			return (-1);
 		    default:
 			fprintf(stderr,
-				"rmdir(%s): unexpected win32 error %d\n",
-				dir, err);
+			    "rmdir(%s): unexpected win32 error %d\n",
+			    dir, err);
 			/* FALLTHROUGH */
 		    case ERROR_SHARING_VIOLATION:
 			unless (win32_flags & WIN32_RETRY) {
 fail:				errno = EBUSY;
 				return (-1);
 			}
-			Sleep(++i * INC);
-			if (i > NOISY) {
-				stuck("rmdir: retrying lock on %s\n", dir);
-			}
-			if (waited(i) > WAITMAX) {
-				stuck("bailing out on %s\n\n", dir);
+			Sleep(i * INC);
+			stuck(err, i, "retrying lock on %s", dir);
+
+			if (i++ > retries) {
+				bail(err, i, "bailing out on %s", dir);
 				goto fail;
 			}
 			goto again;
 		}
 	}
+
 	unless (RemoveDirectory(dir)) {
 		safeCloseHandle(h);
 		switch (err = GetLastError()) {
 		    case ERROR_DIR_NOT_EMPTY:
-			errno = ENOTEMPTY;
+			/* See if it's really not empty */
+			if (files = getdir(dir)) {
+				int	i;
+				char	buf[MAXPATH];
+
+				EACH(files) {
+					concat_path(buf, dir, files[i]);
+					if (GetFileAttributes(buf) !=
+					    INVALID_FILE_ATTRIBUTES) {
+						/* nope, not emtpy */
+						freeLines(files, free);
+						goto fail2;
+					}
+				}
+				freeLines(files, free);
+			}
+			/* We might be waiting for an antivirus. */
+			unless (win32_flags & WIN32_RETRY) {
+fail2:				errno = ENOTEMPTY;
+				return (-1);
+			}
+			Sleep(j * INC);
+			stuck(err, j, "retrying on %s", dir);
+			if (j++ > retries) {
+				bail(err, j, "bailing out on %s", dir);
+				goto fail2;
+			}
+			/*
+			 * We've already closed the handle, so we need
+			 * to do the whole thing again.
+			 */
+			goto again;
 			break;
 		    default:
 			fprintf(stderr, "rmdir(%s): failed win32 err %ld\n",
@@ -1368,7 +1446,7 @@ int
 nt_unlink(const char *file)
 {
 	HANDLE	h;
-	int	i = 0, rc = 0;
+	int	i;
 
 	if (!SetFileAttributes(file, FILE_ATTRIBUTE_NORMAL)) {
 		errno = ENOENT;
@@ -1379,25 +1457,20 @@ nt_unlink(const char *file)
 	 * deleted.  When we have this handle, we know no one else can
 	 * read or write the file. Mark the file to be deleted on close.
 	 */
-	for ( ;; ) {
+	for (i = 1; i <= retries; i++) {
 		h = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE, 0,
 		    OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE, 0);
-		unless (h == INVALID_HANDLE_VALUE) break;
-		unless (win32_flags & WIN32_RETRY) {
-fail:			errno = EBUSY;
-			return (-1);
+		unless (h == INVALID_HANDLE_VALUE) {
+			safeCloseHandle(h); /* real delete happens here */
+			return (0);
 		}
-		Sleep(++i * INC);
-		if (i > NOISY) {
-			stuck("unlink: retrying lock on %s\n", file);
-		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", file);
-			goto fail;
-		}
+		unless (win32_flags & WIN32_RETRY) goto fail;
+		Sleep(i * INC);
+		stuck(GetLastError(), i, "retrying lock on %s", file);
 	}
-	safeCloseHandle(h); /* real delete happens here */
-	return (rc);
+	bail(GetLastError(), i, "bailing out on %s", file);
+fail:	errno = EBUSY;
+	return (-1);
 }
 
 private int
@@ -1406,46 +1479,39 @@ nt_mvdir(const char *oldf, const char *newf)
 	HANDLE	h;
 	int	i;
 
-	for (i = 0;; ) {
-		h = CreateFile(oldf, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+	for (i = 1; i <= retries; i++) {
+		h = CreateFile(oldf, GENERIC_READ, 0, 0,
+		    OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
 		unless (h == INVALID_HANDLE_VALUE) break;
 		unless (win32_flags & WIN32_RETRY) {
 fail:			errno = EBUSY;
 			return (-1);
 		}
-		Sleep(++i * INC);
-		if (i > NOISY) {
-			stuck("rename: wait for source %s\n", oldf);
-		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", oldf);
-			goto fail;
-		}
+		Sleep(i * INC);
+		stuck(GetLastError(), i, "wait for source %s", oldf);
 	}
-	safeCloseHandle(h);
-	for (i = 0; ; ) {
-		if (MoveFileEx(oldf, newf, 0)) return (0);
-		Sleep(++i * INC);
-		unless (win32_flags & WIN32_RETRY) goto fail;
-		if (i > NOISY) {
-			char	buf[2000];
+	if (i > retries) {
+		bail(GetLastError(), i, "bailing out on %s", oldf);
+		goto fail;
+	}
 
-			sprintf(buf, "%s -> %s", oldf, newf);
-			stuck("mvdir: retrying %s\n", (const char*)buf);
-		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", oldf);
-			goto fail;
-		}
+	safeCloseHandle(h);
+	for (i = 1; i <= retries; i++) {
+		if (MoveFileEx(oldf, newf, 0)) return (0);
+		unless (win32_flags & WIN32_RETRY) goto fail;
+		Sleep(i * INC);
+		stuck(GetLastError(), i, "retrying %s -> %s", oldf, newf);
 	}
-	return (-1);
+	bail(GetLastError(), i, "bailing out on %s", oldf);
+	goto fail;
+	/* NOT REACHED */
 }
 
 int
 nt_rename(const char *oldf, const char *newf)
 {
 	HANDLE	from, to;
-	int	i, err, rc = 0;
+	int	i, err = 0, rc = 0;
 	DWORD	in, out, attribs;
 	char	buf[BUFSIZ];
 
@@ -1461,7 +1527,7 @@ nt_rename(const char *oldf, const char *newf)
 	}
 	if (attribs & FILE_ATTRIBUTE_DIRECTORY) return (nt_mvdir(oldf, newf));
 
-	for (i = 0;; ) {
+	for (i = 1; i <= retries; i++) {
 		to = CreateFile(newf, GENERIC_WRITE,
 		    0, 0, CREATE_ALWAYS, attribs, 0);
 		unless (to == INVALID_HANDLE_VALUE) break;
@@ -1477,31 +1543,29 @@ nt_rename(const char *oldf, const char *newf)
 fail:			errno = EBUSY;
 			return (-1);
 		}
-		Sleep(++i * INC);
-		if (i > NOISY) {
-			stuck("rename: wait for dest %s\n", newf);
-		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", newf);
-			goto fail;
-		}
+		Sleep(i * INC);
+		stuck(err, i, "retry rename of %s", oldf);
 	}
+	if (i > retries) {
+		bail(err, i, "bailing out on %s", newf);
+		goto fail;
+	}
+
 	/* make sure we can delete the original file when we are done */
 	SetFileAttributes(oldf, FILE_ATTRIBUTE_NORMAL);
-	for (i = 0;; ) {
+	for (i = 1; i <= retries; i++) {
 		from = CreateFile(oldf, GENERIC_READ, FILE_SHARE_DELETE,
 		       0, OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE, 0);
 		unless (from == INVALID_HANDLE_VALUE) break;
 		unless (win32_flags & WIN32_RETRY) goto fail;
-		Sleep(++i * INC);
-		if (i > NOISY) {
-			stuck("rename: wait for source %s\n", oldf);
-		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", oldf);
-			goto fail;
-		}
+		Sleep(i * INC);
+		stuck(GetLastError(), i, "wait for source %s", oldf);
 	}
+	if (i > retries) {
+		bail(GetLastError(), i, "bailing out on %s", oldf);
+		goto fail;
+	}
+
 	while (ReadFile(from, buf, sizeof(buf), &in, 0) && (in > 0)) {
 		WriteFile(to, buf, in, &out, 0);
 		if (in != out) {

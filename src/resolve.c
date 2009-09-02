@@ -2870,6 +2870,7 @@ resolve_cleanup(opts *opts, int what)
 	if (what & CLEAN_RESYNC) {
 		assert(exists("RESYNC"));
 		if (rmtree("RESYNC")) {
+			perror("RESYNC");
 			fprintf(stderr, "resolve: rmtree failed\n");
 		}
 	} else if (what & CLEAN_MVRESYNC) {
