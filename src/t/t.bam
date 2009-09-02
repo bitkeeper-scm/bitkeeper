@@ -178,6 +178,17 @@ awk -F'|' '$2 == "data" && $5 ~ /^B:/ { print; }' < ChangeSet > OUT
 test -s OUT || exit 1
 echo OK
 
+echo $N Fetch the 1.0 delta .........................................$NL
+bk get -p -r1.0 subdir/data3 2> OUT && {
+	exit 1
+}
+cat <<EOF > WANT
+BAM: unable to find BAM delta in subdir/data3
+get of subdir/SCCS/s.data3 failed, skipping it.
+EOF
+cmpfiles OUT WANT
+echo OK
+
 echo $N Make a patch, check for BAM data ............................$NL
 find BitKeeper/BAM -type f | bk sort > "$HERE"/WANT
 bk makepatch -B -r1.0.. > "$HERE"/ALL
