@@ -14,6 +14,10 @@
 # 2) do a pull with an automerge delta, unpull, make sure that both are gone
 # 3) pull, add a cset, make sure unpull fails
 # 4) undo the locally added cset, unpull again, should succeed
+# 5) pull with a new file, local repo has same new file committed, resolve,
+#    unpull, make sure that new file is gone
+# 6) pull with a new file, local repo has same new file uncommitted, resolve,
+#    unpull, make sure that new file is gone
 echo $N Setup test case .............................................$NL
 commercial project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -106,4 +110,76 @@ bk unpull -f $Q > OUT 2>&1 && {
 	cat OUT
 	exit 1
 }
+echo OK
+
+# 5) pull with a new file, local repo has same new file committed, resolve,
+#    unpull, make sure that new file is gone
+echo $N Pull new file with local conflict, then unpull ..............$NL
+cd "$HERE"
+commercial project2
+cd ..
+bk clone $Q project2 copy2 || exit 1
+cd project2
+echo from project2 >file
+bk new $Q file || exit 2
+bk commit $Q -y'add file' || exit 3
+cd ../copy2
+echo from copy2 >file
+bk new $Q file || exit 4
+bk commit $Q -y'add file' || exit 5
+bk pull $Q -R ../project2 || exit 6
+# rl is to remove local file.
+bk resolve -a $Q <<EOF > OUT 2>&1 || exit 7
+rl
+y
+EOF
+bk changes -fr1.2,1.3 -nd:KEY: > WANT || exit 8
+cmpfiles WANT BitKeeper/etc/csets-in
+test "`bk log -r1.3 -nd:MERGE:`" = "1.3" || exit 10
+bk cat file | grep -q 'from project2' || exit 11
+bk unpull -f $Q || exit 12
+test `bk changes -r+ -nd:REV:` = 1.2 || exit 13
+bk cat file | grep -q 'from copy2' || exit 14
+cd "$HERE"
+rm -rf project2 copy2
+echo OK
+
+# 6) pull with a new file, local repo has same new file uncommitted, resolve,
+#    unpull, make sure that new file is gone
+echo $N Pull new file with local uncommitted conflict, then unpull ..$NL
+cd "$HERE"
+commercial project2
+cd ..
+bk clone $Q project2 copy2 || exit 1
+cd project2
+echo from project2 >file
+bk new $Q file || exit 2
+bk commit $Q -y'add file' || exit 3
+cd ../copy2
+echo from copy2 >file
+# Add but do not commit "file" this time.
+bk new $Q file || exit 4
+bk pull $Q -R ../project2 || exit 5
+# rl is to remove local file.
+cat <<EOF > IN
+rl
+y
+EOF
+bk resolve -a $Q < IN > OUT 2>&1 || {
+	echo should have worked
+	cat OUT
+	exit 6
+}
+bk changes -fr1.2,1.3 -nd:KEY: > WANT || exit 7
+cmpfiles WANT BitKeeper/etc/csets-in
+test "`bk log -r1.3 -nd:MERGE:`" = "" || exit 9
+bk cat file | grep -q 'from project2' || exit 10
+bk unpull -f $Q || exit 11
+test `bk changes -r+ -nd:REV:` = 1.1 || exit 12
+# The local file was never committed.  Should it be there now?
+# XXX figure out and enable one of these.
+#bk cat file | grep -q 'from copy2' && exit 13   # no
+#bk cat file | grep -q 'from copy2' || exit 13   # yes
+cd "$HERE"
+rm -rf project2 copy2
 echo OK

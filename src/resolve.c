@@ -48,6 +48,7 @@ private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
 private char	**find_files(opts *opts, int pfiles);
+private	int	moveupComponent(void);
 
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
@@ -159,6 +160,33 @@ resolve_main(int ac, char **av)
 	if (proj_isCaseFoldingFS(0)) {
 		localDB = mdbm_mem();
 		resyncDB = mdbm_mem();
+	}
+	if (proj_isProduct(0)) {
+		FILE	*f = popen("bk sfiles -g", "r");
+		char	*t;
+		int	rc = 0;
+		char	buf[MAXPATH];
+
+		while (fnext(buf, f)) {
+			chomp(buf);
+			unless (t = strrchr(buf, '/')) continue;
+			unless (streq(t, "/ChangeSet")) continue;
+			strcpy(t, "/RESYNC");
+			if (isdir(buf)) {
+				unless (rc) {
+					rc = 1;
+					fprintf(stderr,
+					    "resolve: product resolve cannot "
+					    "start until all components have "
+					    "completed.\nMissing:\n");
+				}
+				fprintf(stderr, "\t%s\n", buf);
+			}
+		}
+		pclose(f);
+		if (rc) return (rc);
+		mkdirp("RESYNC/BitKeeper/log");
+		touch("RESYNC/BitKeeper/log/PRODUCT", 0644);
 	}
 	c = passes(&opts);
 	if (localDB) mdbm_close(localDB);
@@ -1599,7 +1627,6 @@ err:		if (s) sccs_free(s);
 	        fprintf(stderr, "Get of ChangeSet failed\n");
 	        goto err;
 	}
-	opts->willMerge = 1;
 	return (0);
 }
 
@@ -1749,7 +1776,6 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		/* We may restore it if we bail early */
 		rename(sccs_Xfile(s, 'r'), "BitKeeper/tmp/r.ChangeSet");
 		resolve_free(rs);
-		opts->willMerge = 1;
 	} else if (exists("SCCS/p.ChangeSet")) {
 		/*
 		 * The only way I can think of this happening is if we are
@@ -1861,7 +1887,7 @@ nocommit:
 				    "all files, aborting.\n");
 				resolve_cleanup(opts, 0);
 			}
-			opts->didMerge = opts->willMerge;
+			opts->didCommit = 1;
 		}
 		return (0);
 	}
@@ -2327,7 +2353,7 @@ commit(opts *opts)
 	i = spawnvp(_P_WAIT, "bk", cmds);
 	if (cmt) free(cmt);
 	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
-		opts->didMerge = opts->willMerge;
+		opts->didCommit = 1;
 		return;
 	}
 	fprintf(stderr, "Commit aborted, no changes applied.\n");
@@ -2680,11 +2706,16 @@ err:			unapply(save);
 		system("bk clean BitKeeper/etc");
 		goto err;
 	}
+	if (opts->didCommit && proj_isComponent(0)) {
+		if (moveupComponent()) goto err;
+	}
 	fclose(save);
 	unlink(BACKUP_LIST);
 	unlink(BACKUP_SFIO);
 	unlink(APPLIED);
 	unlink(PASS4_TODO);
+
+
 	flags = CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING;
 	resolve_cleanup(opts, flags);
 	/* NOTREACHED */
@@ -2802,12 +2833,12 @@ csets_in(opts *opts)
 	char	s_cset[] = CHANGESET;
 	char	buf[MAXPATH];
 
-	if (opts->didMerge) {
+	if (opts->didCommit) {
 		chdir(ROOT2RESYNC);
 		s = sccs_init(s_cset, 0);
 		assert(s && HASGRAPH(s));
 		d = sccs_top(s);
-		assert(d && d->merge);
+		assert(d);
 		in = fopen(CSETS_IN, "r");	/* RESYNC one */
 		assert(in);
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CSETS_IN);
@@ -2999,4 +3030,77 @@ find_files(opts *opts, int pfiles)
 	cinfo.pfiles_only = pfiles;
 	walksfiles(".", resolvewalk, &cinfo);
 	return (cinfo.files);
+}
+
+/*
+ * Called from a nested component's repo root after a sucessful resolve
+ * that did a merge.
+ * This function moves the new ChangeSet file to the product's RESYNC
+ * so that it can be part of the resolve to run in the product.
+ */
+private int
+moveupComponent(void)
+{
+	project	*comp = proj_init(".");
+	char	*cpath = proj_comppath(comp);
+	int	rc = 0;
+	MDBM	*idDB;
+	char	*t, *from, *to;
+	char	*dfile_to, *dfile_from;
+	char	buf[MAXPATH];
+
+	concat_path(buf, proj_root(proj_product(comp)), ROOT2RESYNC);
+	unless (isdir(buf)) return (0); /* no product RESYNC */
+	chdir(buf);
+
+	/*
+	 * Copy all the component's ChangeSet files to the
+	 * product's RESYNC directory
+	 */
+	if (mkdirp(cpath)) return (1);
+	sccs_mkroot(cpath);
+	t = aprintf("%s/BitKeeper/log/COMPONENT", cpath);
+	Fprintf(t, "%s\n", cpath);
+	free(t);
+
+	to = aprintf("%s/%s", cpath, CHANGESET);
+	t = strrchr(to, '/');
+	*(++t) = 'd';
+	dfile_to = strdup(to);
+	*t = 's';
+
+	from = aprintf("%s/%s/%s", RESYNC2ROOT,
+	    cpath, CHANGESET);
+	t = strrchr(from, '/');
+	*(++t) = 'd';
+	dfile_from = strdup(from);
+	*t = 's';
+
+	if (fileCopy(from, to)) {
+		fprintf(stderr, "Could not copy '%s' to "
+		    "'%s'\n", from, to);
+		rc = 1;
+	} else {
+		if (exists(dfile_from)) {
+			touch(dfile_to, 0644);
+			unlink(dfile_from);
+		}
+	}
+	free(dfile_from);
+	free(dfile_to);
+	free(from);
+	free(to);
+	if (rc) return (rc);
+
+	/* update idcache with the changed location */
+	idDB = loadDB(IDCACHE, 0, DB_IDCACHE);
+	concat_path(buf, cpath, GCHANGESET);
+	mdbm_store_str(idDB, proj_rootkey(comp), buf, MDBM_REPLACE);
+	idcache_write(0, idDB);
+	mdbm_close(idDB);
+
+	/* go back where we came from */
+	chdir(proj_root(comp));
+	proj_free(comp);
+	return (rc);
 }

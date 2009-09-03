@@ -44,8 +44,7 @@ typedef struct {
 	u32	force:1;	/* for forcing commits with unmerged changes */
 	u32	advance:1;	/* advance after merging if commit works */
 	u32	verbose:1;	/* be verbose on gets, etc */
-	u32	willMerge:1;	/* set if we will create a merge delta */
-	u32	didMerge:1;	/* set if we created a cset merge delta */
+	u32	didCommit:1;	/* set if we created a cset */
 	u32	from_pullpush:1;/* set if we are being called from pull/push */
 	u32	partial:1;	/* partial resolve - don't commit changeset */
 	u32	autoOnly:1;	/* do as much as possible automatically &exit */

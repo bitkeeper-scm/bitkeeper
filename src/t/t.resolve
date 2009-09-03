@@ -394,6 +394,31 @@ bk _test -f RESYNC/SCCS/s.xyz || {
 }
 echo OK
 
+echon Test selective resolve with uncomitted new-file conflict ....
+cd "$HERE"
+bk clone $Q proj copy3b || exit 1
+cd proj
+echo new > newfile
+bk new $Q newfile || exit 2
+bk commit $Q -y'add newfile' || exit 3
+cd ../copy3b
+echo new > dummy
+bk new $Q dummy || exit 35 
+bk commit $Q -f
+echo new > newfile
+bk new $Q newfile || exit 4
+bk pull -R $Q || exit 5
+cat <<EOF > IN
+rl
+y
+EOF
+bk resolve newfile <IN > OUT 2>&1 || {
+	echo should have worked
+	cat OUT
+	exit 6
+}
+echo OK
+
 echo $N Do a \'rr\' when given a create/gfile conflict ................$NL
 cd "$HERE"
 rm -rf copy2
