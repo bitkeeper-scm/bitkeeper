@@ -1303,9 +1303,10 @@ nt_fopen(const char *filename, const char *mode)
 int
 nt_open(const char *filename, int flag, int pmode)
 {
-	char	buf[1024];
-	int	fd, error = 0, i;
+	int	fd, error = 0, i, acc, ret;
 	DWORD	attrs;
+	char	*p;
+	char	buf[1024];
 
 	flag |= _O_NOINHERIT;
 	for (i = 1; i <= retries; i++) {
@@ -1340,10 +1341,29 @@ nt_open(const char *filename, int flag, int pmode)
 				errno = EACCES;
 				return (-1);
 			}
+			
+			/*
+			 * OK, none of that worked, try the nt_access() code.
+			 * This catches the case that the files are owner
+			 * only perms.
+			 */
+			if (flag & O_CREAT) {
+				acc = W_OK;
+				p = dirname_alloc(filename);
+			} else {
+				if (flag & (O_WRONLY|O_RDWR)) {
+					acc = W_OK;
+				} else {
+					acc = R_OK;
+				}
+				p = strdup(filename);
+			}
+			ret = nt_access(p, acc);
+			free(p);
+			if (ret) return (-1);
 		}
 		if ((error == ERROR_ACCESS_DENIED) ||
 		    (error == ERROR_SHARING_VIOLATION)) {
-			unless (win32_flags & WIN32_RETRY) return (-1);
 			Sleep(i * INC);
 			stuck(error, i, "retrying on %s", filename);
 		} else {
@@ -1447,6 +1467,7 @@ nt_unlink(const char *file)
 {
 	HANDLE	h;
 	int	i;
+	char	*dir;
 
 	if (!SetFileAttributes(file, FILE_ATTRIBUTE_NORMAL)) {
 		errno = ENOENT;
@@ -1465,6 +1486,16 @@ nt_unlink(const char *file)
 			return (0);
 		}
 		unless (win32_flags & WIN32_RETRY) goto fail;
+		if (i == 1) {
+			dir = dirname_alloc((char*)file);
+			if (nt_access(dir, W_OK) != 0) {
+				free(dir);
+				return (-1);
+			}
+			free(dir);
+			/* On windows if you can't write it you can't delete */
+			if (nt_access(file, W_OK) != 0) return (-1);
+		}
 		Sleep(i * INC);
 		stuck(GetLastError(), i, "retrying lock on %s", file);
 	}

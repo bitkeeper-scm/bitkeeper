@@ -8723,7 +8723,6 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	    case 1:	/* diffs */
 		return (0);
 	    case 2:	/* diff ran into problems */
-		fprintf(stderr, "Arrrrg.  Diff errored\n");
 		return (-1);
 	    default:	/* unknown? */
 		fprintf(stderr, "Unknown exit from diff.\n");
@@ -8819,6 +8818,7 @@ sccs_clean(sccs *s, u32 flags)
 	pfile	pf;
 	char	tmpfile[MAXPATH];
 	delta	*d;
+	int	ret;
 
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
@@ -8840,11 +8840,13 @@ sccs_clean(sccs *s, u32 flags)
 		 * Go look and see if there are any diffs and if not,
 		 * clean it. (The GET_EXPAND ignores keywords)
 		 */
-		unless (_hasDiffs(s, sccs_top(s), GET_EXPAND, 0, &dummy)) {
+		ret = _hasDiffs(s, sccs_top(s), GET_EXPAND, 0, &dummy);
+		unless (ret) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
 			return (0);
 		}
+		if (ret < 0) return (1);
 		fprintf(stderr,
 		    "%s writable, with changes, but not edited.\n", s->gfile);
 		unless (flags & PRINT) return (1);
