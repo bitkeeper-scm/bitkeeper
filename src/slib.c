@@ -8277,6 +8277,13 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 
 #define	RET(x)	{ different = x; goto out; }
 
+	unless (HAS_GFILE(s)) RET(0);
+	unless (s->mode & 0444) {
+		errno = EACCES;
+		perror(s->gfile);
+		RET(-1);
+	}
+
 	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
 
 	if (S_ISLNK(s->mode)) {
