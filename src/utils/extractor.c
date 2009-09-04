@@ -351,6 +351,10 @@ usage(void)
 "new installation is written to %s\n"
 "\n"
 #ifdef WIN32
+"The -s option enables the bkscc dll for Visual Studio integration.\n"
+"\n"
+"The -l option enables the shell extension for Windows Explorer.\n"
+"\n"
 "Administrator privileges are required for a full installation.  If\n"
 "installing from a non-privileged account, then the installer will only\n"
 "be able to do a partial install.\n"
