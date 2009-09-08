@@ -605,9 +605,8 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	char	*t;
 	nested	*n = 0;
 	comp	*c;
-	FILE	*f, *idfile;
+	FILE	*f;
 	int	i, j, rc = 0, errs = 0;
-	char	idname[MAXPATH];
 
 	/* allocate r->params for later */
 	unless (r->params) r->params = hash_new(HASH_MEMHASH);
@@ -762,86 +761,6 @@ npmerge:				fprintf(stderr,
 		if (rc) break;
 	}
 	proj_cd2product();
-	if (rc) goto out;
-
-	/*
-	 * Now we need to make it such that the resolver in the
-	 * product will work.
-	 */
-	unless (opts.noresolve) {
-		unless (opts.quiet) {
-			printf("#### Resolve in product ####\n");
-			fflush(stdout);
-		}
-		if (chdir(ROOT2RESYNC)) {
-			fprintf(stderr,
-			    "Could not find product's RESYNC directory\n");
-			rc = 1;
-			goto out;
-		}
-		mkdirp("BitKeeper/log");
-		touch("BitKeeper/log/PRODUCT", 0644);
-		/*
-		 * Copy all the component's ChangeSet files to the
-		 * product's RESYNC directory
-		 */
-		bktmp(idname, "idfile");
-		unless (idfile = fopen(idname, "w")) {
-			perror("idname");
-			rc = 1;
-			goto out;
-		}
-		EACH_STRUCT(n->comps, c, j) {
-			char	*from, *to;
-			char	*dfile_to, *dfile_from;
-			char	*t;
-
-			if (c->product) continue;
-			/* only copy up merges */
-			unless (c->included && c->localchanges) continue;
-
-			mkdirp(c->path);
-			sccs_mkroot(c->path);
-			t = aprintf("%s/BitKeeper/log/COMPONENT", c->path);
-			f = fopen(t, "w");
-			free(t);
-			fprintf(f, "%s\n", c->path);
-			fclose(f);
-			to = aprintf("%s/%s", c->path, CHANGESET);
-			t = strrchr(to, '/');
-			*(++t) = 'd';
-			dfile_to = strdup(to);
-			*t = 's';
-			i++;
-			from = aprintf("%s/%s/%s", RESYNC2ROOT,
-			    c->path, CHANGESET);
-			t = strrchr(from, '/');
-			*(++t) = 'd';
-			dfile_from = strdup(from);
-			*t = 's';
-
-			if (fileCopy(from, to)) {
-				fprintf(stderr, "Could not copy '%s' to "
-				    "'%s'\n", from, to);
-				rc = 1;
-			}
-			if (exists(dfile_from)) {
-				touch(dfile_to, 0644);
-				unlink(dfile_from);
-			}
-			fputs(to, idfile);
-			fputc('\n', idfile);
-			free(dfile_from);
-			free(dfile_to);
-			free(from);
-			free(to);
-			if (rc) goto out;
-		}
-		fclose(idfile);
-		idcache_update(idname);
-		unlink(idname);
-		chdir(RESYNC2ROOT);
-	}
 out:	free(url);
 	sccs_free(s);
 	nested_free(n);

@@ -31,7 +31,7 @@ cd ../copy
 bk get $Q file || exit 1
 test -w file && exit 1
 bk prs -r+ -hnd'BAM clean: would remove :BAMFILE:' file |
-    sed 's/BitKeeper\/BAM\///' > WANT
+    sed 's/BitKeeper\/BAM\/[^\/]*\///' > WANT
 bk bam index || exit 1
 bk bam clean $Q -an 2>GOT || exit 1
 cmpfiles GOT WANT

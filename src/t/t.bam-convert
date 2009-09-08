@@ -52,7 +52,11 @@ echo $N Now try and BAM convert it and see what we get ..............$NL
 # bk clone -q ../proj ../save
 # Restore BAM to config file
 cp c BitKeeper/etc/config
-bk bam convert > OUT 2>&1 || exit 1
+bk bam convert > OUT 2>&1 || {
+	echo failed
+	cat OUT
+	exit 1
+}
 for i in 1 2 3
 do	bk get -kpqr1.$i data > data-1.$i
 	cmp data-1.$i ../data-1.$i || touch busted

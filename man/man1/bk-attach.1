@@ -5,31 +5,57 @@
 bk attach \- attach a component repository to a product repository
 .SH SYNOPSIS
 bk attach
-.[B] \-Cq
-.ARG component \ .\|.\|.
+.[B] \-qlC
+.[OPTreq] \-B url
+.[OPTequal] \-E e v
+.[OPTreq] \-r rev
+.ARG from
+.[ARG] component
 .SH DESCRIPTION
 The 
 .B bk attach
-command is used to attach one or more repositories to a product repository.
-The specified repositories become components.
-This command is fairly similar to "bk new file" except it works on 
-a repository instead of a file.
-.LP
-The component must be within the product, either created with 
-.B bk setup
-or copied with
-.BR "bk clone" .
+command is a form of
+.BR "bk clone"
+used to attach a component repository to a product repository.
+The specified repository is cloned and becomes a component within
+the product. This command must be run from within the product.
 .SH OPTIONS
-.TP
+.TP \-E\*<env\*>=\*<val\*>
+.OPTreq \-B url
+Set the BAM server url to 
+.ARG url
+in the destination repository.
+.tp
 .B \-C
-do not commit the component[s] to the product.
+Do not commit the component to the product.
 Use this option when you wish to combine the attach event with other
 changes to the product.
-.TP
+.tp
+.OPTequal \-E env val
+Export an environment variable to the 
+.B bkd
+running in the remote \*(BK repository.
+Typically used to pass information to remote triggers.
+Only variables with the prefix
+.V BKU_
+are allowed.
+.tp
+.B \-l
+Clone using hard links instead of copying the data.  
+This is faster and saves disk space, but only works 
+within filesystems supporting hard links.
+.tp
 .B \-q 
-run quietly when attaching a component.
+Run quietly.
+.tp
+.OPTreq \-r rev
+Clone the repository up to and including cset 
+.ARG rev .
+A changeset number or changeset key can be used to specify
+.ARG rev .
 .SH SEE ALSO
 .SA clone
+.SA detach
 .SA setup
 .SH CATEGORY
 .B Product

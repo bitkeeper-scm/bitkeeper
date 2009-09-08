@@ -49,9 +49,7 @@ cd C2
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
 grep -q missing OUT && {
 	echo failed
 	cat OUT
@@ -72,9 +70,7 @@ cd C2
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
 grep -q missing OUT && {
 	echo failed
 	cat OUT
@@ -95,9 +91,7 @@ cd C2
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
 grep -q missing OUT && {
 	echo failed
 	cat OUT
@@ -119,9 +113,7 @@ bk pull $Q
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
 grep -q missing OUT && {
 	echo failed
 	cat OUT
@@ -149,9 +141,7 @@ cd ../C2
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
 grep -q missing OUT && {
 	echo failed
 	cat OUT
@@ -178,9 +168,7 @@ bk pull $Q ../C1
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done >> OUT
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing >> OUT
 grep -q missing OUT && {
 	echo failed
 	cat OUT
@@ -202,9 +190,9 @@ cp "$DATA" data.c1
 echo blah >> data.c1
 bk new $Q data.c1
 bk commit -ywhatever $Q
-find BitKeeper/BAM/?? -type f -print > "$HERE/BAMFILES"
+find BitKeeper/BAM/*/?? -type f -print > "$HERE/BAMFILES"
 cd "$HERE/S"
-find BitKeeper/BAM/?? -type f -print >> "$HERE/BAMFILES"
+find BitKeeper/BAM/*/?? -type f -print >> "$HERE/BAMFILES"
 cd "$HERE"
 tar cf TAR S C1
 rm -rf C2
@@ -223,9 +211,7 @@ bk bam check -q || {
 	echo failed to get all BAM data
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done > "$HERE/OUT"
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing > "$HERE"/OUT
 cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f "$x" || echo $x is missing
@@ -257,9 +243,7 @@ bk bam check -q || {
 	echo failed to get all BAM data
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done > "$HERE/OUT"
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing > "$HERE"/OUT
 cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
@@ -291,9 +275,7 @@ bk bam check -q || {
 	echo failed to get all BAM data
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done > "$HERE/OUT"
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing > "$HERE"/OUT
 cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
@@ -327,9 +309,7 @@ bk bam check -q || {
 	echo failed to get all BAM data
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
-do	test -f $i || echo $i is missing
-done > "$HERE/OUT"
+test -f BitKeeper/log/BAM || echo BitKeeper/log/BAM is missing > "$HERE"/OUT
 cd ../S
 cat "$HERE/BAMFILES" | while read x
 do	test -f $x || echo $x is missing
@@ -362,12 +342,12 @@ cd C1
 bk bam check -q || exit 1
 # The data.c2 file is the only one unique to C2 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
-test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
 	echo unexpected BAM files
-	find BitKeeper/BAM/?? -type f -print
+	find BitKeeper/BAM/*/?? -type f -print
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
+for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i
 done >> OUT
 grep -q missing OUT && {
@@ -390,12 +370,12 @@ cd C1
 bk bam check -q || exit 1
 # The data.c2 file is the only one unique to C2 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
-test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
 	echo unexpected BAM files
-	find BitKeeper/BAM/?? -type f -print
+	find BitKeeper/BAM/*/?? -type f -print
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
+for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
@@ -419,12 +399,12 @@ bk pull $Q
 bk bam check -q || exit 1
 # The data.c2 file is the only one unique to C2 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
-test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
 	echo unexpected BAM files
-	find BitKeeper/BAM/?? -type f -print
+	find BitKeeper/BAM/*/?? -type f -print
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
+for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
@@ -449,12 +429,12 @@ cd ../C1
 bk bam check -q || exit 1
 # The data.c2 file is the only one unique to C2 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
-test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
 	echo unexpected BAM files
-	find BitKeeper/BAM/?? -type f -print
+	find BitKeeper/BAM/*/?? -type f -print
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
+for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
@@ -501,12 +481,12 @@ bk clone $Q -Bbk://localhost:$P/S C3 C4
 cd C4
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
-test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
 	echo unexpected BAM files
-	find BitKeeper/BAM/?? -type f -print
+	find BitKeeper/BAM/*/?? -type f -print
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
+for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
@@ -530,7 +510,7 @@ echo OK
 echo $N Flush the local data so we know we go to the server .........$NL
 cd "$HERE/C3"
 bk bam clean -a $Q
-test `find BitKeeper/BAM -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 2 || {
 	echo failed to flush
 	find BitKeeper/BAM -type f -print
 	exit 1
@@ -544,12 +524,12 @@ bk clone $Q -Bbk://localhost:$P/S C3 C4
 cd C4
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
-test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
 	echo unexpected BAM files
-	find BitKeeper/BAM/?? -type f -print
+	find BitKeeper/BAM/*/?? -type f -print
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
+for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
@@ -576,12 +556,12 @@ bk clone $Q -Bbk://localhost:$P/S C3 bk://localhost:$P/C5
 cd C5
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
-test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
 	echo unexpected BAM files
-	find BitKeeper/BAM/?? -type f -print
+	find BitKeeper/BAM/*/?? -type f -print
 	exit 1
 }
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
+for i in BitKeeper/log/BAM BitKeeper/log/BAM_SERVER
 do	test -f $i || echo $i is missing
 done >> OUT
 grep -q missing OUT && {
@@ -607,9 +587,9 @@ bk push $Q ../C5 || exit 1
 cd ../C5
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
-test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
 	echo unexpected BAM files
-	find BitKeeper/BAM/?? -type f -print
+	find BitKeeper/BAM/*/?? -type f -print
 	exit 1
 }
 echo OK
@@ -623,9 +603,9 @@ grep -q "no BAM data" ERR || exit 1
 bk pull $Q ../C3
 # The data.c3 file is the only one unique to C3 repo so that's the one
 # we expect to see here.  And just that one, the rest are in the server.
-test `find BitKeeper/BAM/?? -type f -print | wc -l` -eq 1 || {
+test `find BitKeeper/BAM/*/?? -type f -print | wc -l` -eq 1 || {
 	echo unexpected BAM files
-	find BitKeeper/BAM/?? -type f -print
+	find BitKeeper/BAM/*/?? -type f -print
 	exit 1
 }
 echo OK
@@ -635,12 +615,16 @@ echo $N Clone C1 to C2 with part in C1 and rest in S w/ S wlocked ...$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
-cd S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ..
+LOCK=foobar
+WriteLock S L
+test $LOCK = foobar || {
+	Unlock $L
+	echo failed
+	echo Lock API is busted
+	exit 1
+}
 bk clone -Bnone C1 C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 test -d C2 && {
 	echo should not have cloned
 	find C2 -print
@@ -655,12 +639,9 @@ echo OK
 
 echo $N Clone C1 to C2 with part in C1 and rest in S w/ S rlocked ...$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ..
+ReadLock S L
 bk clone -Bnone C1 C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 test -d C2 && {
 	echo should not have cloned
 	find C2 -print
@@ -678,12 +659,10 @@ cd "$HERE"
 cd C1
 bk bam push -aq
 rm -rf BitKeeper/BAM
-cd ../S
-bk lock -wt > ../LOCK &
-bk lock -L
 cd ..
+WriteLock S L
 bk clone -Bnone C1 C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 test -d C2 && {
 	echo should not have cloned
 	find C2 -print
@@ -698,28 +677,22 @@ echo OK
 
 echo $N Clone C1 to C2 with all in S with S rlocked .................$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ..
+ReadLock S L
 bk clone -Bnone $Q C1 C2 || {
-	bk _kill `cat LOCK`
+	Unlock $L
 	echo clone should have worked
 	exit 1
 }
-bk _kill `cat LOCK`
+Unlock $L
 echo OK
 
 echo $N rClone C1 to C2 with part in C1 and rest in S w/ S wlocked ..$NL
 cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
-cd S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ..
+WriteLock S L
 bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
 bk _test -f C2/SCCS/s.ChangeSet && {
@@ -736,12 +709,9 @@ echo OK
 
 echo $N rClone C1 to C2 with part in C1 and rest in S w/ S rlocked ..$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ..
+ReadLock S L
 bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
 bk _test -f C2/SCCS/s.ChangeSet && {
@@ -763,12 +733,10 @@ tar xf TAR
 cd C1
 bk bam push -aq
 rm -rf BitKeeper/BAM
-cd ../S
-bk lock -wt > ../LOCK &
-bk lock -L
 cd ..
+WriteLock S L
 bk clone -Bnone C1 bk://localhost:$P/C2 > OUT 2>&1
-bk _kill `cat LOCK`
+Unlock $L
 # This one will leave an empty repo, can't be helped if we want to do it 
 # post pre-incoming triggers.
 bk _test -f C2/SCCS/s.ChangeSet && {
@@ -785,16 +753,13 @@ echo OK
 
 echo $N rClone C1 to C2 with all in S with S rlocked ................$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ..
+ReadLock S L
 bk clone -Bnone $Q C1 bk://localhost:$P/C2 || {
-	bk _kill `cat LOCK`
+	Unlock $L
 	echo clone should have worked
 	exit 1
 }
-bk _kill `cat LOCK`
+Unlock $L
 echo OK
 
 echo $N Push C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
@@ -802,12 +767,10 @@ cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
 bk clone -Bnone -r1.1 $Q C1 C2
-cd S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ../C1
+WriteLock S L
+cd C1
 bk push ../C2 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C2 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -822,12 +785,10 @@ echo OK
 
 echo $N Push C1 to C2 with part in C1 and rest in S w/ S rlocked ....$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ../C1
+ReadLock S L
+cd C1
 bk push ../C2 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C2 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -845,12 +806,9 @@ cd "$HERE"
 cd C1
 bk bam push -aq
 rm -rf BitKeeper/BAM
-cd ../S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ../C1
+WriteLock ../S L
 bk push ../C2 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C2 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -865,16 +823,14 @@ echo OK
 
 echo $N Push C1 to C2 with all in S with S rlocked ..................$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ../C1
+ReadLock S L
+cd C1
 bk push $Q ../C2 || {
-	bk _kill `cat ../LOCK`
+	Unlock $L
 	echo push should work
 	exit 1
 }
-bk _kill `cat ../LOCK`
+Unlock $L
 echo OK
 
 echo $N Pull C1 to C2 with part in C1 and rest in S w/ S wlocked ....$NL
@@ -882,12 +838,10 @@ cd "$HERE"
 rm -rf S C1 C2
 tar xf TAR
 bk clone -Bnone -r1.1 $Q C1 C2
-cd S
-bk lock -wt > ../LOCK &
-bk lock -L
-cd ../C2
+WriteLock S L
+cd C2
 bk pull ../C1 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -R ../C1 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -902,12 +856,10 @@ echo OK
 
 echo $N Pull C1 to C2 with part in C1 and rest in S w/ S rlocked ....$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ../C2
+ReadLock S L
+cd C2
 bk pull ../C1 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C1 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -925,12 +877,10 @@ cd "$HERE"
 cd C1
 bk bam push -aq
 rm -rf BitKeeper/BAM
-cd ../S
-bk lock -wt > ../LOCK &
-bk lock -L
+WriteLock ../S L
 cd ../C2
 bk pull ../C1 > OUT 2>&1
-bk _kill `cat ../LOCK`
+Unlock $L
 bk changes -L ../C1 > LOCAL
 test -s LOCAL || {
 	echo should not have sent csets without BAM data
@@ -945,14 +895,12 @@ echo OK
 
 echo $N Pull C1 to C2 with all in S with S rlocked ..................$NL
 cd "$HERE"
-cd S
-bk lock -rt > ../LOCK &
-bk lock -L
-cd ../C2
+ReadLock S L
+cd C2
 bk pull $Q ../C1 || {
-	bk _kill `cat ../LOCK`
+	Unlock $L
 	echo push should work
 	exit 1
 }
-bk _kill `cat ../LOCK`
+Unlock $L
 echo OK

@@ -314,19 +314,26 @@ next:				freeLines(data, free);
 private	int
 noperms(char *target)
 {
-	struct	stat sb;
+	struct	stat sb, sbdir;
 	char	*test_file;
 	int	rc = 1;
 
 	/*
 	 * Assumes subdirs are ok.
 	 */
+	sbdir.st_mode = 0;
 	unless (test_file = aprintf("%s/upgrade_test.tmp", target)) return (1);
-	if (touch(test_file, 0644) < 0) goto out;
+	if (touch(test_file, 0644)) {
+		/* can't create file in dir, try change dir perms */
+		if (lstat(target, &sbdir)) goto out;
+		if (chmod(target, 0775)) goto out;
+		if (touch(test_file, 0644)) goto out;
+	}
 	if (lstat(test_file, &sb)) goto out;
 	if (unlink(test_file)) goto out;
 	rc = 0;
 out:
+	if (sbdir.st_mode) chmod(target, sbdir.st_mode); /* restore perms */
 	free(test_file);
 	return (rc);
 }

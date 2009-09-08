@@ -6,6 +6,7 @@ typedef	struct {
 	u32	debug:1;
 	u32	verbose:1;
 	u32	product:1;
+	u32	detach:1;
 	int	gzip;
 	char    *rev;
 	char	*bam_url;
@@ -22,10 +23,11 @@ rclone_common(int ac, char **av, opts *opts)
 	char	*p;
 
 	bzero(opts, sizeof(*opts));
-	while ((c = getopt(ac, av, "B;dPr;s;Tvz|")) != -1) {
+	while ((c = getopt(ac, av, "B;dDPr;s;Tvz|")) != -1) {
 		switch (c) {
 		    case 'B': opts->bam_url = optarg; break;
 		    case 'd': opts->debug = 1; break;
+		    case 'D': opts->detach = 1; break;
 		    case 'r': opts->rev = optarg; break; 
 		    case 's':
 			opts->aliases = addLine(opts->aliases, strdup(optarg));
@@ -365,6 +367,8 @@ rclone_end(opts *opts)
 
 	/* remove any uncommited stuff */
 	sccs_rmUncommitted(quiet, 0);
+
+	if (opts->detach && detach(quiet)) return (-1);
 
 	putenv("_BK_DEVELOPER="); /* don't whine about checkouts */
 	/* remove any later stuff */

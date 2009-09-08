@@ -15232,16 +15232,22 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 	case KW_BAMENTRY: /* BAMENTRY */
 		if (BAM(s) && (p = bp_lookup(s, d))) {
-			if (q = strstr(p, "/BitKeeper/BAM/")) {
-				fs(q + 15);
-			}
+			q = bp_dataroot(s->proj, 0);
+			assert(q);
+			t = p + strlen(q) + 1;
+			free(q);
+			fs(t);
 			free(p);
 			return (strVal);
 		}
 		return (nullVal);
 	case KW_BAMFILE: /* BAMFILE */
 		if (BAM(s) && (p = bp_lookup(s, d))) {
-			q = proj_relpath(s->proj, p);
+			project	*prod = proj_product(s->proj);
+
+			/* XXX: what should do if non-prod RESYNC? */
+			unless (prod) prod = s->proj;
+			q = proj_relpath(prod, p);
 			free(p);
 			fs(q);
 			free(q);
@@ -15262,9 +15268,10 @@ kw2val(FILE *out, char *kw, int len, sccs *s, delta *d)
 
 			sccs_sdelta(s, d, key);
 			sccs_md5delta(s, s->tree, b64);
-			t = strstr(p, "/BitKeeper/BAM/");
-			assert(t);
-			t += 15;
+			q = bp_dataroot(s->proj, 0);
+			assert(q);
+			t = p + strlen(q) + 1;
+			free(q);
 			q = aprintf("%s %s %s %s", d->hash, key, b64, t);
 			fs(q);
 			fc(' ');

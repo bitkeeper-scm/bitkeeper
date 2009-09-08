@@ -16,8 +16,7 @@ bk new $Q foo || exit 1
 bk commit $Q -y'add foo' || exit 1
 cd ..
 nested project
-bk clone $Q ../bash-sa bash
-bk attach $Q bash
+bk attach $Q ../bash-sa bash
 cd bash
 bk edit $Q foo || exit 1
 echo stuff in project >> foo || exit 1
@@ -50,12 +49,10 @@ bk newroot -P $Q || exit 1
 #bk -r admin -C`bk id` || exit 1
 #bk -r check -a || exit 1
 cd ../project2
-bk clone $Q ../bash-sa mybash
-bk clone $Q ../standalone sa2
-bk attach $Q mybash sa2
+bk attach $Q ../bash-sa mybash
+bk attach $Q ../standalone sa2
 cd ../project
-bk clone $Q ../standalone sa1
-bk attach $Q sa1 
+bk attach $Q ../standalone sa1
 cd ..
 bk clone $Q project project-copy || exit 1
 echo OK
@@ -166,11 +163,9 @@ bk edit $Q foo
 bk delta $Q -fyfoo foo
 bk commit $Q -yfoo
 cd ../project
-bk clone $Q ../branch branch
-bk attach $Q branch
+bk attach $Q ../branch branch
 cd ../project2
-bk clone $Q ../branch2 branch2
-bk attach $Q branch2
+bk attach $Q ../branch2 branch2
 cd branch2
 bk port $Q ../../project/branch || exit 1
 cd ..

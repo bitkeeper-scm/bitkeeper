@@ -13,7 +13,8 @@ bk edit $Q file
 echo 236 > file
 bk ci -y236 $Q file || exit 1
 bk commit $Q -y236 || exit 1
-rm BitKeeper/BAM/01/01d700a5.d2
+RK=`bk id | sed 's/|/-/g'`
+rm BitKeeper/BAM/$RK/01/01d700a5.d2
 
 cd ../copy
 bk edit $Q file

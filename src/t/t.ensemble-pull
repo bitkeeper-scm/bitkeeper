@@ -367,12 +367,156 @@ bk _test -f SCCS/d.ChangeSet && {
 }
 echo OK
 
+echo $N Do it again, but in two steps: bk pull -R and bk resolve -a .$NL
+cd "$HERE"/local
+bk unpull $Q -sf || exit 1
+bk pull $Q -R
+bk resolve $Q -a 2>ERR && {
+	echo should fail
+	cat ERR
+	exit 1
+}
+cat <<EOF > WANT
+resolve: product resolve cannot start until all components have completed.
+Missing:
+	gcc/RESYNC
+	x/y/z/comp/RESYNC
+EOF
+cmpfiles ERR WANT
+bk $Q -C resolve $Q -a 2>/dev/null || {
+	echo failed
+	exit 1
+}
+bk resolve $Q -a || {
+	echo failed
+	exit 1
+}
+# gcc/ChangeSet is in product's changeset
+cd "$HERE"/local
+cat <<EOF > WANT
+ChangeSet
+amerge
+gcc/ChangeSet
+gcc/file1
+EOF
+bk changes -nd:GFILE: -vr+ > GOT
+cmpfiles WANT GOT
+# Files were actually pulled
+cd "$HERE"/local/gcc
+cat <<EOF >WANT
+SCCS/s.ChangeSet
+SCCS/s.bam
+SCCS/s.file1
+SCCS/s.file2
+SCCS/s.file3
+SCCS/s.file4
+SCCS/s.file5
+SCCS/s.file6
+SCCS/s.file7
+SCCS/s.file8
+SCCS/s.file9
+BitKeeper/etc/SCCS/s.collapsed
+BitKeeper/etc/SCCS/s.config
+BitKeeper/etc/SCCS/s.gone
+BitKeeper/etc/SCCS/s.ignore
+EOF
+bk sfiles > GOT
+cmpfiles WANT GOT
+echo OK
+
+echo $N Pull with committed new-file conflict in component...........$NL
+cd "$HERE"
+nested project2
+cd ..
+bk clone $Q project2 copy2 || exit 1
+# Add a new file to project2/gcc.
+cd project2/gcc
+echo "from project2" >conflict-test
+bk new $Q conflict-test || exit 2
+bk commit $Q -y'add conflict-test in project2' || exit 3
+bk -P commit $Q -y'add conflict-test in project2/gcc' || exit 4
+# Add a new file with the same name to copy2/gcc.
+cd ../../copy2/gcc
+echo "from copy2" >conflict-test
+bk new $Q conflict-test || exit 5
+bk commit $Q -y'add conflict-test in copy2' || exit 6
+bk -P commit $Q -y'add conflict-test in copy2/gcc' || exit 7
+cd ..
+# Pull project2 into copy2 but do not resolve.
+bk pull $Q -R ../project2 || exit 8
+# Product-level resolve should issue error at this point.
+bk resolve $Q -a 2> GOT && exit 9
+grep -q "product resolve cannot start" GOT || exit 10
+# Resolve in the component -- rr is to remove remote file.
+cd gcc
+bk resolve -a $Q <<EOF > OUT 2>&1 || exit 11
+rr
+y
+EOF
+# Should get the new-file cset and a merge cset.
+bk changes -fr1.3,1.4 -nd:KEY: > WANT || exit 12
+cmpfiles WANT BitKeeper/etc/csets-in
+test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || exit 14
+bk cat conflict-test | grep -q 'from copy2' || exit 15
+# Resolve in the product should work now.
+cd ..
+bk resolve -a $Q || exit 16
+# The product should get the new-file cset and a merge cset.
+bk changes -fr1.3,1.4 -nd:KEY: > WANT || exit 17
+cmpfiles WANT BitKeeper/etc/csets-in
+test "`bk log -r1.4 -nd:MERGE:`" = "1.4" || exit 19
+cd "$HERE"
+rm -rf project2 copy2
+echo OK
+
+echo $N Pull with uncomitted new-file conflict in component..........$NL
+cd "$HERE"
+nested project2
+cd ..
+bk clone $Q project2 copy2 || exit 1
+# Add a new file to project2/gcc.
+cd project2/gcc
+echo "from project2" >conflict-test
+bk new $Q conflict-test || exit 2
+bk commit $Q -y'add conflict-test in project2' || exit 3
+bk -P commit $Q -y'add conflict-test in project2/gcc' || exit 4
+# Add a new file with the same name to copy2/gcc, but do NOT commit it.
+cd ../../copy2/gcc
+echo "from copy2" >conflict-test
+bk new $Q conflict-test || exit 5
+cd ..
+# Pull project2 into copy2 but do not resolve.
+bk pull $Q -R ../project2 || exit 6
+# Product-level resolve should issue error at this point.
+bk resolve $Q -a 2> GOT && exit 7
+grep -q "product resolve cannot start" GOT || exit 8
+# Resolve in the component -- rr is to remove remote file.
+cd gcc
+bk resolve -a $Q <<EOF > OUT 2>&1 || exit 9
+rr
+y
+EOF
+# Should get the new-file cset and a merge cset.
+bk changes -fr1.3,1.4 -nd:KEY: > WANT || exit 10
+cmpfiles WANT BitKeeper/etc/csets-in
+test "`bk log -r1.4 -nd:MERGE:`" = "" || exit 12
+bk cat conflict-test | grep -q 'from copy2' || exit 13
+# Resolve in the product should work now.
+cd ..
+bk resolve -a $Q || exit 14
+# The product should get the new-file cset and another cset.
+bk changes -fr1.3,1.4 -nd:KEY: > WANT || exit 15
+cmpfiles WANT BitKeeper/etc/csets-in
+test "`bk log -r1.4 -nd:MERGE:`" = "" || exit 16
+cd "$HERE"
+rm -rf project2 copy2
+echo OK
 
 echo $N Try a pull that adds a component.............................$NL
 cd "$HERE/project"
 commercial newcomp
 cd ..
-bk attach $Q newcomp
+bk attach $Q -N newcomp
 cd "$HERE/copy"
 bk pull >OUT 2>&1 || {
 	echo failed
@@ -428,7 +572,6 @@ cd ..
 bk commit $Q -ywhatever
 bk pull $Q ../project || {
 	echo pull failed
-	cat ERR
 	exit 1
 }
 echo OK

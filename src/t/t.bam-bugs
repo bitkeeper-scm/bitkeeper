@@ -66,7 +66,7 @@ echo $N Check for wagerworks auto-edit bug - with bam server ........$NL
 bk unpull -fsq || exit 1
 bk bam server -q ../project
 bk bam clean -a > /dev/null 2>&1
-find BitKeeper/BAM -type f | grep -v index.db > FILES
+find BitKeeper/BAM -type f | grep -v index.db | grep -v BAM.index > FILES
 test -s FILES && {
 	echo failed to flush data
 	cat FILES
@@ -97,22 +97,23 @@ for i in x y z
 do	cp "$DATA" $i
 	echo $i >> $i
 done
-BEFORE=`wc -l < BitKeeper/log/BAM.index`
+RK=`bk id | sed 's/|/-/g'`
+BEFORE=`wc -l < BitKeeper/BAM/$RK/BAM.index`
 bk new $Q x y z
-AFTER=`wc -l < BitKeeper/log/BAM.index`
+AFTER=`wc -l < BitKeeper/BAM/$RK/BAM.index`
 test `expr $BEFORE + 3` -eq $AFTER || {
-	echo did not add 3 lines to BitKeeper/log/BAM.index
+	echo did not add 3 lines to BitKeeper/BAM/$RK/BAM.index
 	exit 1
 }
 bk commit $Q -yxyz
 bk -r check -ac || exit 1
 echo OK
-cp BitKeeper/log/BAM.index .
+cp BitKeeper/BAM/$RK/BAM.index .
 
 echo $N Make sure we can regenerate the lines in BAM.index ..........$NL
 bk prs -hr+ -nd'$if(:BAMHASH:){:BAMLOG:}' x > GOT
 FILE=`bk prs -hr+ -nd'$if(:BAMHASH:){:BAMENTRY:}' x`
-grep "$FILE" BitKeeper/log/BAM.index > WANT
+grep "$FILE" BitKeeper/BAM/$RK/BAM.index > WANT
 cmpfiles WANT GOT
 echo OK
 
@@ -144,4 +145,14 @@ cd ../project
 bk delta $Q -ywhatever ../gamelogic/data
 cd ../gamelogic
 bk -r check -ac || exit 1
+echo OK
+
+echo $N Show that an lclone of an old BAM dir works .................$NL
+cd "$HERE"
+_BK_BAM_V2=1 bk clone $Q project project.old || exit 1
+bk clone $Q -l project.old copy.new || exit 1
+cd copy.new
+bk bam check $Q || exit 1
+test -f BitKeeper/BAM/index.db || exit 1
+test `find BitKeeper/BAM -name '*@*' -print | wc -l` = 0 || exit 1
 echo OK

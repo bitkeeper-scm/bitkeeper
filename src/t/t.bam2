@@ -443,11 +443,12 @@ do
 	bk new -b $Q $i || exit 1
 done
 
+RK=`bk id | sed 's/|/-/g'`
 bk get $Q || exit 1
 cmpfiles t.155 155
-cmpfiles 155 BitKeeper/BAM/01/01d700a5.d1
+cmpfiles 155 BitKeeper/BAM/$RK/01/01d700a5.d1
 cmpfiles t.317 317
-cmpfiles 317 BitKeeper/BAM/01/01d700a5.d3
+cmpfiles 317 BitKeeper/BAM/$RK/01/01d700a5.d3
 
 bk clean || exit 1
 bk stripdel $Q -r.. 155 || exit 1
@@ -455,9 +456,9 @@ bk BAM clean $Q || exit 1
 bk BAM check $Q || exit 1
 bk get $Q || exit 1
 cmpfiles t.236 236
-cmpfiles 236 BitKeeper/BAM/01/01d700a5.d1
+cmpfiles 236 BitKeeper/BAM/$RK/01/01d700a5.d1
 cmpfiles t.317 317
-cmpfiles 317 BitKeeper/BAM/01/01d700a5.d2
+cmpfiles 317 BitKeeper/BAM/$RK/01/01d700a5.d2
 echo 155 > 155
 bk new -b $Q 155 || exit 1
 bk clean || exit 1
@@ -467,12 +468,12 @@ bk BAM clean $Q || exit 1
 bk BAM check $Q || exit 1
 bk get $Q || exit 1
 cmpfiles t.155 155
-cmpfiles 155 BitKeeper/BAM/01/01d700a5.d1
+cmpfiles 155 BitKeeper/BAM/$RK/01/01d700a5.d1
 echo OK
 
 echo $N Test BAM check ..............................................$NL
-chmod u+w BitKeeper/BAM/01/01d700a5.d1
-echo 1 > BitKeeper/BAM/01/01d700a5.d1
+chmod u+w BitKeeper/BAM/$RK/01/01d700a5.d1
+echo 1 > BitKeeper/BAM/$RK/01/01d700a5.d1
 bk BAM check -q 2>ERR && {
 	echo should have failed
 	exit 1
@@ -485,7 +486,7 @@ bk -r check -acc 2>ERR && {
 }
 grep -q 'has a hash mismatch' ERR || exit 1
 test `wc -l < ERR` -eq 2 || exit 1
-rm BitKeeper/BAM/01/01d700a5.d1
+rm BitKeeper/BAM/$RK/01/01d700a5.d1
 bk BAM check -q 2>ERR && {
 	echo should have failed
 	cat ERR
@@ -500,7 +501,7 @@ bk -r check -aB 2>ERR && {
 }
 grep -q 'Failed to locate' ERR || exit 1
 test `wc -l < ERR` -eq 2 || exit 1
-echo 155 > BitKeeper/BAM/01/01d700a5.d1
+echo 155 > BitKeeper/BAM/$RK/01/01d700a5.d1
 bk BAM check $Q || exit 1
 echo OK
 
@@ -510,9 +511,9 @@ echo 201 > 201
 bk new -b $Q 201 || exit 1
 bk commit $Q -y201 || exit 1
 bk get $Q 201
-test -e ../pmaster/BitKeeper/BAM/01/01c4009d.d1 && exit 1
+test -e ../pmaster/BitKeeper/BAM/$RK/01/01c4009d.d1 && exit 1
 bk BAM push $Q || exit 1
-cmpfiles 201 ../pmaster/BitKeeper/BAM/01/01c4009d.d1
+cmpfiles 201 ../pmaster/BitKeeper/BAM/$RK/01/01c4009d.d1
 
 bk undo $Q -fsa1.4 || exit 1
 
@@ -522,7 +523,7 @@ echo OK
 
 # Use BAM log to make sure that data isn't moved more
 # than necessary
-BLOG=BitKeeper/log/BAM.index
+BLOG=BitKeeper/BAM/$RK/BAM.index
 # mychecklog <file> <# expected items>
 mychecklog() {
 	test -e $1 || {

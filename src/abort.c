@@ -79,13 +79,14 @@ abort_patch(int leavepatch)
 	 * Get the patch file name from RESYNC before deleting RESYNC.
 	 */
 	sprintf(buf, "%s/%s", ROOT2RESYNC, "BitKeeper/tmp/patch");
-	unless (f = fopen(buf, "r")) {
-		fprintf(stderr, "Warning: no BitKeeper/tmp/patch\n");
-		pendingFile[0] = 0;
-	} else {
-		fnext(pendingFile, f);
-		chop(pendingFile);
+
+	/* One of our regressions makes an empty BitKeeper/tmp/patch */
+	pendingFile[0] = 0;
+	if (f = fopen(buf, "r")) {
+		if (fnext(pendingFile, f)) chop(pendingFile);
 		fclose(f);
+	} else {
+		fprintf(stderr, "Warning: no BitKeeper/tmp/patch\n");
 	}
 
 	assert(exists("RESYNC"));

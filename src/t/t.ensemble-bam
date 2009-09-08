@@ -1,7 +1,9 @@
 echo $N Create initial repository and clone .........................$NL
 nested server
-bk $Q -A bam server $Q .
-bk clone $Q ../server ../clone
+bk $Q bam server $Q .
+bk clone $Q ../server ../clone || exit 1
+# clone shouldn't have BAM data yet
+test -d ../clone/BitKeeper/BAM && exit 1
 echo OK
 
 echo $N Create some binary data and check BAM .......................$NL
@@ -13,7 +15,8 @@ perl -e 'sysread(STDIN, $buf, 81920);
 syswrite(STDOUT, $buf, 81920);' < $BK > "$DATA"
 cp "$DATA" data
 bk new $Q data || exit 1
-test -d BitKeeper/BAM || exit 1
+RK=`bk id | sed 's/|/-/g'`
+test -d ../BitKeeper/BAM/$RK || exit 1
 bk commit $Q -ybam
 cd ..
 bk commit $Q -ybam
@@ -26,8 +29,7 @@ echo OK
 
 echo $N Create some binary data and check BAM .......................$NL
 cd clone
-bk pull $Q
-cd gdb
+bk pull $Q || exit 1
 test -d BitKeeper/BAM && {
 	echo should not have bam dir
 	find BitKeeper/BAM
@@ -36,9 +38,9 @@ test -d BitKeeper/BAM && {
 echo OK
 
 echo $N Create a new component with BAM data ........................$NL
-cd ..
 bk setup -f bam_comp || exit 1
 cd bam_comp
+RK=`bk id | sed 's/|/-/g'`
 echo junk > file1
 bk new $Q -b file1 || exit
 bk commit $Q -ybam2 || exit 1
@@ -48,6 +50,13 @@ echo OK
 echo $N Pull repo with new BAM component ............................$NL
 cd "$HERE"/clone2
 bk pull $Q ../clone || exit 1
+echo OK
+
+echo $N Check that data from new component was pushed to server .....$NL
+# server should have bam data for bam_comp
+test -d ../server/BitKeeper/BAM/$RK || exit 1
+# but shouldn't have bam_comp itself
+test -d ../server/bam_comp && exit 1
 echo OK
 
 echo $N Clone of repo with new BAM component ........................$NL

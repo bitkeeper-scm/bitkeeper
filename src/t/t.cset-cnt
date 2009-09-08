@@ -192,7 +192,7 @@ bk unpull -fs $Q || exit 1
 check_cnt
 echo OK
 
-CNT=73
+CNT=71
 echo $N "Count the inits for a 'bk pull' w merge ($CNT)................."$NL
 touch c
 bk setup -f -cc www || exit 1

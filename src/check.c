@@ -140,7 +140,7 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	/* force -B if no BAM server */
-	if (doBAM || !bp_serverID(1)) {
+	if (doBAM || !bp_serverID(buf, 1)) {
 		bp_missing = allocLines(64);
 	}
 	/* We need write perm on the tmp dirs, etc. */
@@ -1858,13 +1858,7 @@ usage:			system("bk help -s repair");
 	nav[++i] = 0;
 	assert(i < 20);
 
-	if (av[optind+1]) goto usage;
-	if (av[optind]) {
-		if (chdir(av[optind])) {
-			perror(av[optind]);
-			return (1);
-		}
-	}
+	if (av[optind]) goto usage;
 	status = spawnvp(_P_WAIT, nav[0], nav);
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));

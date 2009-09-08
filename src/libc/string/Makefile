@@ -10,7 +10,8 @@ STRING_OBJS = $(patsubst %,string/%, \
 	strcasecmp.o strcat.o strchr.o strcmp.o strcnt.o \
 	strcpy.o strcspn.o strdup.o \
 	strlen.o strncat.o strncmp.o strncpy.o strndup.o strpbrk.o strrchr.o \
-	strsep.o strspn.o strstr.o strcasestr.o strtok.o)
+	strsep.o strspn.o strstr.o strcasestr.o strtok.o \
+	trim.o)
 
 STRING_HDRS = string.h
 

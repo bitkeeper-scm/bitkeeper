@@ -43,7 +43,7 @@ test -f data -a -f moredata || {
 	exit 1
 }
 # 2 files and the index.db
-test `find BitKeeper/BAM -type f -print | wc -l` -eq 3 || {
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 4 || {
 	echo fetched too much data
 	find BitKeeper/BAM -type f -print
 	exit 1
@@ -53,11 +53,8 @@ echo OK
 echo $N Take a clone of clone and see that it has a server ..........$NL
 cd "$HERE"
 bk clone $Q clone copy
-cd project
-bk lock -tr >L &
-bk lock -L
-LOCKURL=`cat L`
-cd ../copy
+ReadLock project L
+cd copy
 bk BAM server $Q bk://localhost:$P/project
 cp "$BK" a
 bk new $Q -b a
@@ -65,10 +62,10 @@ bk commit $Q -ybig
 bk push $Q bk://localhost:$P/clone 2> ERR && {
 	echo should have failed
 	cat ERR
-	bk _kill $LOCKURL
+	Unlock $L
 	exit 1
 }
-bk _kill $LOCKURL
+Unlock $L
 grep -q "can't get lock" ERR || {
 	echo wrong msg
 	cat ERR
@@ -80,11 +77,12 @@ echo $N lclone should replicate the BAM data ........................$NL
 cd "$HERE"
 bk clone $Q -l project lclone
 cd lclone
+RK=`bk id | sed 's/|/-/g'`
 (cd ../project && find BitKeeper/BAM -type f -print ) |
 while read x
 do	test -f $x || echo $x is missing
 done > OUT 2>&1
-for i in BitKeeper/log/BAM.index BitKeeper/log/BAM
+for i in BitKeeper/BAM/$RK/BAM.index BitKeeper/log/BAM
 do	test -f $i || echo $i
 done >> OUT
 test -s OUT && {
@@ -115,9 +113,10 @@ test -f data -a -f moredata || {
 	echo co failed
 	exit 1
 }
-# 2 files and the index.db
-test `find BitKeeper/BAM -type f -print | wc -l` -eq 3 || {
+# 2 files and index.db & BAM.index
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 4 || {
 	echo fetched too much data
+	find BitKeeper/BAM -type f
 	exit 1
 }
 echo OK
@@ -145,7 +144,7 @@ test -f data -a -f moredata || {
 	exit 1
 }
 # 2 files and the index.db
-test `find BitKeeper/BAM -type f -print | wc -l` -eq 3 || {
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 4 || {
 	echo fetched too much data
 	exit 1
 }
@@ -170,7 +169,7 @@ test -f data -a -f moredata || {
 	exit 1
 }
 # 2 files and the index.db
-test `find BitKeeper/BAM -type f -print | wc -l` -eq 3 || {
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 4 || {
 	echo fetched too much data
 	exit 1
 }
@@ -190,7 +189,7 @@ do	bk cat data > data.$i
 	bk new $Q data.$i
 done
 bk commit $Q -ymore
-find BitKeeper/BAM -type f -print | grep -v index.db > ../LIST
+find BitKeeper/BAM -type f -print | grep -v index.db | grep -v BAM.index > ../LIST
 test `wc -l < ../LIST` -eq 2 || {
 	echo did not create the right number of BAM files
 	cat ../LIST
@@ -221,7 +220,7 @@ test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
 	exit 1
 }
 # 4 files and the index.db
-test `find BitKeeper/BAM -type f -print | wc -l` -eq 5 || {
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 6 || {
 	echo fetched too much data
 	find BitKeeper/BAM -type f -print
 	exit 1
@@ -264,7 +263,7 @@ test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
 	exit 1
 }
 # 4 files and the index.db
-test `find BitKeeper/BAM -type f -print | wc -l` -eq 5 || {
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 6 || {
 	echo fetched too much data
 	find BitKeeper/BAM -type f -print
 	exit 1
@@ -306,7 +305,7 @@ test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
 	exit 1
 }
 # 4 files and the index.db
-test `find BitKeeper/BAM -type f -print | wc -l` -eq 5 || {
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 6 || {
 	echo fetched too much data
 	find BitKeeper/BAM -type f -print
 	exit 1
@@ -342,7 +341,7 @@ test -f data -a -f moredata -a -f data.1 -a -f data.2 || {
 	exit 1
 }
 # 4 files and the index.db
-test `find BitKeeper/BAM -type f -print | wc -l` -eq 5 || {
+test `find BitKeeper/BAM -type f -print | wc -l` -eq 6 || {
 	echo fetched too much data
 	find BitKeeper/BAM -type f -print
 	exit 1

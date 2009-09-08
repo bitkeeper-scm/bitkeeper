@@ -385,6 +385,7 @@ setup_env()
 	_BK_DEVELOPER=YES
 	export _BK_DEVELOPER
 	unset BK_NO_TRIGGERS
+	unset BK_NO_REMAP
 }
 
 clean_up()
@@ -437,7 +438,10 @@ clean_up()
 
 	for i in 1 2 3 4 5 6 7 8 9 0
 	do
-		rm -rf "$HERE" 2>/dev/null
+		rm -rf "$HERE" 2>/dev/null || {
+			find "$HERE" -type d -exec chmod +w {} \;
+			rm -rf "$HERE" 2>/dev/null
+		}
 		test -d "$HERE" || break
 		sleep 1
 	done
@@ -451,7 +455,12 @@ clean_up()
 
 init_main_loop()
 {
-	if [ -d "$BK_REGRESSION" ]; then rm -rf "$BK_REGRESSION"; fi
+	test -d "$BK_REGRESSION" && {
+		rm -rf "$BK_REGRESSION" 2>/dev/null || {
+			find "$BK_REGRESSION" -type d -exec chmod +w {} \;
+			rm -rf "$BK_REGRESSION"
+		}
+	}
 
 	if [ -d "$BK_REGRESSION" ];
 	then echo "failed to rm $BK_REGRESSION"; exit 1;

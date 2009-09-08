@@ -1,0 +1,38 @@
+
+echo $N Test bam sfio in a standalone ...............................$NL
+commercial project
+# nested project
+# cd gcc || exit 1
+echo BAM > foo
+cp foo bar
+bk new $Q -b foo bar
+RK="`bk changes -r+ -nd:ROOTKEY: | sed 's?|?-?g'`"
+ENTRY=`bk prs -r+ -hnd:BAMENTRY: foo`
+cwd="$HERE"/project
+cat <<EOF > WANT
+$cwd/BitKeeper/BAM/$RK/$ENTRY
+BitKeeper/BAM/$RK/$ENTRY
+EOF
+dspec='$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}'
+bk log -r+ -nd"$dspec" bar foo | bk sfio -oB - > out 2> GOT
+checkfiles WANT GOT
+echo OK
+
+echo $N Test bam sfio in a product component ........................$NL
+cd "$HERE"
+nested nested
+cwd="$HERE"/nested
+cd gcc || exit 1
+echo BAM > foo
+cp foo bar
+bk new $Q -b foo bar
+RK="`bk changes -r+ -nd:ROOTKEY: | sed 's?|?-?g'`"
+ENTRY=`bk prs -r+ -hnd:BAMENTRY: foo`
+cat <<EOF > WANT
+$cwd/BitKeeper/BAM/$RK/$ENTRY
+BitKeeper/BAM/$RK/$ENTRY
+EOF
+dspec='$if(:BAMHASH:){:BAMHASH: :KEY: :MD5KEY|1.0:}'
+bk log -r+ -nd"$dspec" bar foo | bk sfio -oB - > out 2> GOT
+checkfiles WANT GOT
+echo OK

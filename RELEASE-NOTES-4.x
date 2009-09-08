@@ -1,3 +1,36 @@
+Release notes for BitKeeper version 4.4 (released 3-Aug-2009)
+
+This release is mostly a bugfix release with the exception of slightly
+changing the bk repair interface, hence 4.4 instead of 4.3.2.
+
+This release enables BitKeeper (including the Explorer Shell extension)
+to work on 64-bit versions of Windows (XP/64, Vista/64, 2008 server).
+
+Bugfixes / polish
+
+- Fix a bug where BitKeeper would stop working on Windows machines with
+  small stacks.
+- Handle a situation where making a symlink to another repository
+  confused BitKeeper.
+- Fix some usability bugs in the BitKeeper installer.
+- Various performance enhancements in partial_check mode.
+
+New / modified commands
+
+bk latest
+   - New command that allows users to try a given command using the
+     'latest' version of BitKeeper. See bk help bk-latest for more information.
+bk repair
+   - No longer takes an optional repository to repair. The command needs
+     to be run in the repository that needs to be repaired.
+bk unrm
+   - Various bugfixes. It should now work as explained in the documentation.
+bk version
+   - More information about the machine BitKeeper is running on.
+   - Prints the latest version of BitKeeper available for download and
+     how long ago it was released. See bk help upgrade.
+   
+===============================================================================
 Release notes for BitKeeper version 4.3.1 (released 30-Mar-2009)
 
 This is a minor bugfix release, polishing various rough edges.

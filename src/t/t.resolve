@@ -269,6 +269,7 @@ echo OK
 
 echon Testing locking of RESYNC dir ...............................
 bk lock -tfRESYNC/BitKeeper/tmp/resolve_lock > L &
+PID=$!
 bk lock -LfRESYNC/BitKeeper/tmp/resolve_lock > /dev/null
 LOCKURL=`cat L`
 bk undos << EOF > CMP1
@@ -276,6 +277,7 @@ Could not get lock on RESYNC directory.
 EOF
 bk resolve -q 2>&1 | head -1 > CMP2
 bk _kill $LOCKURL
+wait $PID
 cmpfiles CMP1 CMP2
 echo OK
 
@@ -389,6 +391,31 @@ grep -q 'Commands are:' OUT && {
 bk _test -f RESYNC/SCCS/s.xyz || {
 	failed to move to xyz
 	exit 1
+}
+echo OK
+
+echon Test selective resolve with uncomitted new-file conflict ....
+cd "$HERE"
+bk clone $Q proj copy3b || exit 1
+cd proj
+echo new > newfile
+bk new $Q newfile || exit 2
+bk commit $Q -y'add newfile' || exit 3
+cd ../copy3b
+echo new > dummy
+bk new $Q dummy || exit 35 
+bk commit $Q -f
+echo new > newfile
+bk new $Q newfile || exit 4
+bk pull -R $Q || exit 5
+cat <<EOF > IN
+rl
+y
+EOF
+bk resolve newfile <IN > OUT 2>&1 || {
+	echo should have worked
+	cat OUT
+	exit 6
 }
 echo OK
 
@@ -715,8 +742,7 @@ echo OK
 
 echo $N Make sure that we get a lock in pass4 .......................$NL
 cd "$HERE/locktest"
-bk lock -tr > PORT &
-bk lock -L
+ReadLock . L
 ( 
   echo 'l'
   echo 'm'
@@ -726,10 +752,10 @@ bk lock -L
 grep -q 'Waiting for write lock...' OUT || {
 	echo failed
 	cat OUT
-	bk _kill `cat PORT`
+	Unlock $L
 	exit 1
 }
-bk _kill `cat PORT`
+Unlock $L
 echo OK
 
 echo $N Keep keywords in an sccs merge ..............................$NL

@@ -1,0 +1,68 @@
+.if \n[NESTED] \{\
+.so ../bk-macros
+.TH "bk detach" "\*[BKVER]" %E% "\*(BC" "\*(UM"
+.SH NAME
+bk detach \- create a stand-alone clone of a component repository
+.SH SYNOPSIS
+bk detach
+.[B] \-ql
+.[OPTreq] \-B url
+.[OPTequal] \-E e v
+.[OPTreq] \-r rev
+.ARG component
+.[ARG] to
+.SH DESCRIPTION
+The 
+.B bk detach
+command is a form of
+.BR "bk clone"
+used to create a stand-alone clone of a component repository which
+is in a product repository.
+.LP
+.SH OPTIONS
+.TP \-E\*<env\*>=\*<val\*>
+.OPTreq \-B url
+Set the BAM server url to 
+.ARG url
+in the destination repository.
+.tp
+.OPTequal \-E env val
+Export an environment variable to the 
+.B bkd
+running in the remote \*(BK repository.
+Typically used to pass information to remote triggers.
+Only variables with the prefix
+.V BKU_
+are allowed.
+.tp
+.B \-l
+Clone using hard links instead of copying the data.  
+This is faster and saves disk space, but only works 
+within filesystems supporting hard links.
+.tp
+.B \-q 
+Run quietly.
+.tp
+.OPTreq \-r rev
+Clone the repository up to and including cset 
+.ARG rev .
+A changeset number or changeset key can be used to specify
+.ARG rev .
+.SH SEE ALSO
+.SA attach
+.SA clone
+.SA setup
+.SH CATEGORY
+.B Product
+.SH AVAILABILITY
+This command is an optional feature of \*[BK]
+and must be enabled in your license.
+To see if your license has this enabled, run 
+.DS
+bk lease renew
+bk lease show
+.DE
+If the options field has "product" or "product-line" listed then your
+license has this feature enabled.
+If not, contact BitMover sales.
+.\}

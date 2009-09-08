@@ -1,0 +1,34 @@
+
+# show that a single bam server can handle
+# multiple different rootkeys.
+
+
+echo $N Setup bam server ............................................$NL
+commercial server
+bk bam server $Q . || exit 1
+cd ..
+bk clone $Q server copy1 || exit 1
+cd copy1
+echo 1 > file1
+bk new -b $Q file1
+bk commit -yfile1 $Q || exit 1
+bk bam push $Q || exit 1
+echo OK
+
+echo $N Setup other repos that share the same server ................$NL
+cd ..
+echo 'BAM: 1' > c
+for n in 2 3
+do
+	bk setup -cc -f repo$n || exit 1
+	cd repo$n
+	bk bam server $Q ../server
+	echo $n > file$n
+	bk new -b $Q file$n || exit 1
+	bk commit -yfile$n $Q || exit 1
+	bk bam push $Q || exit 1
+	bk bam clean -a $Q || exit 1
+	bk get $Q file$n || exit 1
+	cd ..
+done
+echo OK

@@ -772,6 +772,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	char	*user, *host, *repo, *proj, *bp;
 	char	*lic;
 	project	*p = proj_init(".");
+	char	buf[MAXLINE];
 
 	/*
 	 * Send any vars the user requested first so that they can't
@@ -822,7 +823,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 				fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 			}
 			if (bp_hasBAM()) fprintf(f, "putenv BK_BAM=YES\n");
-			if (bp = bp_serverURL()) {
+			if (bp = bp_serverURL(buf)) {
 				if (strchr(bp, ' ')) {
 					fprintf(f,
 					    "putenv 'BK_BAM_SERVER_URL=%s'\n",
@@ -833,7 +834,9 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 					    bp);
 				}
 			}
-			unless (bp = bp_serverID(0)) bp = repo;
+			unless (bp = bp_serverID(buf, 0)) {
+				bp = proj_repoID(proj_product(0));
+			}
 			if (strchr(bp, ' ')) {
 				fprintf(f,
 				    "putenv 'BK_BAM_SERVER_ID=%s'\n", bp);
@@ -928,6 +931,7 @@ sendServerInfoBlock(int is_rclone)
 {
 	char	*repoid, *rootkey, *p, *errs = 0;
 	char	buf[MAXPATH];
+	char	bp[MAXLINE];
 
 	out("@SERVER INFO@\n");
 	unless (is_rclone) {
@@ -962,7 +966,7 @@ sendServerInfoBlock(int is_rclone)
 		out(eula_name());
 		out("\n");
 		if (bp_hasBAM()) out("BAM=YES\n");
-		if (p = bp_serverURL()) {
+		if (p = bp_serverURL(bp)) {
 			sprintf(buf, "BAM_SERVER_URL=%s\n", p);
 			out(buf);
 		}
@@ -992,7 +996,7 @@ sendServerInfoBlock(int is_rclone)
 	if (repoid = proj_repoID(0)) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
-		unless (p = bp_serverID(0)) p = repoid;
+		unless (p = bp_serverID(bp, 0)) p = repoid;
 		sprintf(buf, "\nBAM_SERVER_ID=%s", p);
 		out(buf);
 	}

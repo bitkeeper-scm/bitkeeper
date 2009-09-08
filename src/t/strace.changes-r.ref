@@ -7,7 +7,7 @@ lseek 21
 lstat 93
 mkdir 5
 open 80
-read 2748
+read 2747
 rmdir 3
 stat 9
 unlink 12

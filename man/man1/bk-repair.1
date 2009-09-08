@@ -5,7 +5,6 @@ bk repair \- attempt to repair a repository
 .SH SYNOPSIS
 .B bk repair
 [\fB\-@\fP\*<url\*>]
-.[ARG] repo
 .SH DESCRIPTION
 Because \*[BK] files are stored in the file system they are sometimes
 mistakenly removed or moved, resulting in an inconsistent repository.
@@ -28,8 +27,7 @@ repository.
 .LP
 The 
 .B bk repair
-command expects to be run in a repository but an alternative repository
-may be named on the command line.
+command expects to be run in the repository to be fixed.
 .LP
 If the repository has nothing to repair the command will exit silently.
 .SH NOTES
