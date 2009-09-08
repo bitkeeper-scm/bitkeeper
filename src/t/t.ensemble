@@ -1582,3 +1582,12 @@ bk _nested -Ha -r1.3 -ld > WANT
 echo 1.3 | bk _nested -p -Ha -ld - > GOT
 cmpfiles WANT GOT
 echo OK
+
+echo $N Test that bk root with -P gives the right answer.............$NL
+cd "$HERE/project"
+R=`bk root -P ../remote/gcc`
+test "$R" = "$HERE/remote" || {
+	echo failed
+	exit 1
+}
+echo OK

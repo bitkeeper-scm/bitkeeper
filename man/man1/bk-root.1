@@ -4,6 +4,7 @@
 bk root \- print the path name to the root of the repository
 .SH SYNOPSIS
 .B bk root
+.B [\-P]
 .[ARG] "directory \fB|\fP file"
 .SH DESCRIPTION
 This command prints the full pathname to the root of the repository.
@@ -17,5 +18,8 @@ If a directory or file is specified,
 .B bk root
 will try to find the 
 project root of that file or directory.
+.LP
+With the -P option, bk root will print
+the product root.
 .SH CATEGORY
 .B Admin
