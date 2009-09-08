@@ -217,18 +217,17 @@ echo OK
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
 echo $N Make sure we preserve registry settings and use long paths...$NL
-# Strangely, the accepted trick for an unprompted install does not
-# seem to work with the academic image...
 rm -rf "$DOTBK"/*
 cp accepted.academic.saved "$DOTBK"/accepted
-echo y | ./bk-academic-licensed "$HERE/DEAD BEEF" > OUT 2>&1 || {
+./bk-academic-licensed "$HERE/DEAD BEEF" > OUT 2>&1 || {
 	echo failed $?
 	echo Installer failed to install
 	cat OUT
 	exit 1
 }
+# XXX: careful leaving this setting: in -u,
+# bk.sh _install tests for the var = 1
 bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
-
 # We need the new BK to come first in the path, so we mangle it by hand
 P=`bk _registry get "$SYSPATHKEY" Path`
 P="$HERE/DEAD BEEF;$P"
@@ -319,18 +318,19 @@ bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
 # before the first -u test else the uninstall test fails
 bk _registry set "$SYSPATHKEY" Path expand_sz:"$P"
 PATH="$P" ./bk-academic-licensed -u -l > OUT 2>&1 || {
-	  echo failed $?
-	  echo Installer failed to upgrade with -l
-	  cat OUT
-	  exit 1
+	bk _registry set "$SYSPATHKEY" Path expand_sz:"$OP"
+	echo failed $?
+	echo Installer failed to upgrade with -l
+	cat OUT
+	exit 1
 }
 KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
-
-if [ $KEY1 -ne 1 ]; then
+test $KEY1 -eq 1 || {
+	bk _registry set "$SYSPATHKEY" Path expand_sz:"$OP"
 	echo failed
 	echo Failed to set LocalDrive: $KEY1
 	exit 1
-fi
+}
 bk _registry set "$SYSPATHKEY" Path expand_sz:"$OP"
 echo OK
 

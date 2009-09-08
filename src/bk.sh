@@ -1232,6 +1232,8 @@ _install()
 	then
 		SHELLX_KEY="HKEY_LOCAL_MACHINE\\Software\\bitmover\\bitkeeper\\shellx"
 		LOCAL_SHELLX=`bk _registry get $SHELLX_KEY LocalDrive`
+		# NOTE: if the above fails, LOCAL_SHELLX will be
+		# "entry not found"
 		test "$LOCAL_SHELLX" = 1 && {
 			REGSHELLX=YES;
 		}
