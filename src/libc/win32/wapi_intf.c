@@ -715,6 +715,9 @@ BOOL IsWow64(void)
 }
 
 
+#define	CUR_VER \
+	"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"
+
 /* return malloc'ed version string */
 char *
 win_verstr(void)
@@ -735,7 +738,12 @@ win_verstr(void)
 		} else if ((major == 5) && (minor == 2)) {
 			p = strdup("Windows/2003");
 		} else if ((major == 6) && (minor == 0)) {
-			p = strdup("Windows/Vista");
+			p = reg_get(CUR_VER, "ProductName", 0);
+			if (p && strstr(p, "Server")) {
+				p = strdup("Windows/2008-Server");
+			} else {
+				p = strdup("Windows/Vista");
+			}
 		} else if ((major == 6) && (minor == 1)) {
 			p = strdup("Windows/7");
 		}  else {
@@ -1315,7 +1323,7 @@ nt_open(const char *filename, int flag, int pmode)
 		error = GetLastError();
 		unless (win32_flags & WIN32_RETRY) return (-1);
 		if (streq(filename, DEV_TTY)) return (-1);
-		if ((i == 1) && (error == ERROR_ACCESS_DENIED) &&
+		if ((error == ERROR_ACCESS_DENIED) &&
 		    ((attrs = GetFileAttributes(buf)) != INVALID_FILE_ATTRIBUTES)) {
 			/*
 			 * Try to recognize some of the error cases
@@ -1466,7 +1474,7 @@ int
 nt_unlink(const char *file)
 {
 	HANDLE	h;
-	int	i;
+	int	i, error;
 	char	*dir;
 
 	if (!SetFileAttributes(file, FILE_ATTRIBUTE_NORMAL)) {
@@ -1485,19 +1493,25 @@ nt_unlink(const char *file)
 			safeCloseHandle(h); /* real delete happens here */
 			return (0);
 		}
+		error = GetLastError();
+
+		unless (exists(file)) return (-1);
+
 		unless (win32_flags & WIN32_RETRY) goto fail;
-		if (i == 1) {
-			dir = dirname_alloc((char*)file);
-			if (nt_access(dir, W_OK) != 0) {
-				free(dir);
-				return (-1);
-			}
+
+
+		dir = dirname_alloc((char*)file);
+		if (nt_access(dir, W_OK) != 0) {
 			free(dir);
-			/* On windows if you can't write it you can't delete */
-			if (nt_access(file, W_OK) != 0) return (-1);
+			return (-1);
 		}
+		free(dir);
+
+		/* On windows if you can't write it you can't delete */
+		if (nt_access(file, W_OK) != 0) return (-1);
+
 		Sleep(i * INC);
-		stuck(GetLastError(), i, "retrying lock on %s", file);
+		stuck(error, i, "retrying lock on %s", file);
 	}
 	bail(GetLastError(), i, "bailing out on %s", file);
 fail:	errno = EBUSY;
@@ -1532,33 +1546,32 @@ fail:			errno = EBUSY;
 	for (i = 1; i <= retries; i++) {
 		if (MoveFileEx(oldf, newf, 0)) return (0);
 		unless (win32_flags & WIN32_RETRY) goto fail;
-		if (i == 1) {
-			/*
-			 * Make sure we can write the directory before looping,
-			 * Oscar ported tcl's access so this should work.
-			 */
-			dir = dirname_alloc((char*)oldf);
-			if (nt_access(dir, W_OK) != 0) {
-				free(dir);
-				return (-1);
-			}
+		/*
+		 * Make sure we can write the directory before looping,
+		 * Oscar ported tcl's access so this should work.
+		 */
+		dir = dirname_alloc((char*)oldf);
+		if (nt_access(dir, W_OK) != 0) {
 			free(dir);
-
-			/*
-			 * If the new file exists and is a dir, then test that,
-			 * otherwise test the parent dir.
-			 */
-			if (isdir((char*)newf)) {
-				dir = strdup(newf);
-			} else {
-				dir = dirname_alloc((char*)newf);
-			}
-			if (nt_access(dir, W_OK) != 0) {
-				free(dir);
-				return (-1);
-			}
-			free(dir);
+			return (-1);
 		}
+		free(dir);
+
+		/*
+		 * If the new file exists and is a dir, then test that,
+		 * otherwise test the parent dir.
+		 */
+		if (isdir((char*)newf)) {
+			dir = strdup(newf);
+		} else {
+			dir = dirname_alloc((char*)newf);
+		}
+		if (nt_access(dir, W_OK) != 0) {
+			free(dir);
+			return (-1);
+		}
+		free(dir);
+
 		Sleep(i * INC);
 		stuck(GetLastError(), i, "retrying %s -> %s", oldf, newf);
 	}
