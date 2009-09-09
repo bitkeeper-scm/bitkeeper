@@ -80,11 +80,8 @@ __smakebuf(fp)
 		fp->_bf._size = 1;
 		return;
 	}
-#ifdef	NOTBK
-	__cleanup = _cleanup;
-#else
-	atexit(_cleanup);
-#endif
+	__atexit_cleanup();
+
 	flags |= __SMBF;
 	fp->_bf._base = fp->_p = p;
 	fp->_bf._size = size;

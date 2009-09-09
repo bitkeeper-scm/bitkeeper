@@ -191,12 +191,23 @@ f_prealloc()
  *
  * The name `_cleanup' is, alas, fairly well known outside stdio.
  */
-void
-_cleanup()
+static void
+_cleanup(void)
 {
 	/* (void) _fwalk(fclose); */
 	(void) fflush(NULL);			/* `cheating' */
 }
+
+void
+__atexit_cleanup(void)
+{
+	static	int	didit;
+
+	if (didit) return;
+	atexit(_cleanup);
+	didit = 1;
+}
+
 
 /*
  * __sinit() is called whenever stdio's internal variables must be set up.
@@ -210,6 +221,6 @@ __sinit()
 		_FILEEXT_SETUP(&usual[i], &usualext[i]);
 
 	/* make sure we clean up on exit */
-	atexit(_cleanup);
+	__atexit_cleanup();
 	__sdidinit = 1;
 }

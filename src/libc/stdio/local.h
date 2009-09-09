@@ -96,8 +96,12 @@ extern int	__swrite(void *, char const *, int);
 extern fpos_t	__sseek(void *, fpos_t, int);
 extern int	__sclose(void *);
 extern void	__sinit(void);
+#ifdef	NOTBK
 extern void	_cleanup(void);
 extern void	(*__cleanup)(void);
+#else
+extern void	__atexit_cleanup(void);
+#endif
 extern void	__smakebuf(FILE *);
 extern int	__swhatbuf(FILE *, size_t *, int *);
 extern int	_fwalk(int (*)(FILE *));

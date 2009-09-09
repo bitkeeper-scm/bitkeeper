@@ -165,11 +165,7 @@ nbf:
 		/* begin/continue reading, or stay in intermediate state */
 		fp->_w = 0;
 	}
-#ifdef	NOTBK
-	__cleanup = _cleanup;
-#else
-	atexit(_cleanup);
-#endif
+	__atexit_cleanup();
 
 	FUNLOCKFILE(fp);
 	return (ret);
