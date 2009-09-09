@@ -1662,18 +1662,23 @@ int
 kill(pid_t pid, int sig)
 {
 	HANDLE hProc;
+	int	rc = 0;
+	DWORD	bits = SYNCHRONIZE;
 
-	if (sig != 0) {
-		debug((stderr, "only signal 0 is supported on NT\n"));
+	if ((sig != 0) && (sig != SIGKILL)) {
 		errno = EINVAL;
 		return (-1);
 	}
-	if ((hProc = OpenProcess(SYNCHRONIZE, 0, pid)) == (HANDLE) NULL) {
+	if (sig == SIGKILL) bits |= PROCESS_TERMINATE;
+	if ((hProc = OpenProcess(bits, 0, pid)) == (HANDLE) NULL) {
 		errno = ESRCH;
 		return (-1);
 	}
+	if (sig == SIGKILL) {
+		unless (TerminateProcess(hProc, 255)) rc = -1;
+	}
 	safeCloseHandle(hProc);
-	return (0);
+	return (rc);
 }
 
 int

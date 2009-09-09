@@ -340,7 +340,13 @@ out:
 	fflush(stderr);
 	close(2);
 	cmdlog_end(ret);
+
+	/* close stdin so that sfiles will bail out */
+	close(0);
+
+	/* belt and suspenders */
 	sfilesDied(1);
+
 	exit(ret);
 }
 
