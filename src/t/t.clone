@@ -69,6 +69,33 @@ bk clone $Q project project2 2> OUT || {
 cat OUT
 echo OK
 
+test "$PLATFORM" = "WIN32" || {
+
+echo $N Test clone from source which is a symlink ...................$NL
+ln -s project symlink
+P=`port 60000`
+bk bkd -q -p$P -ikill
+mkdir dest
+cd dest
+bk clone $Q bk://localhost:$P/symlink || {
+	echo clone should have worked
+	bk _kill http://localhost:$P
+	exit 1
+}
+bk _kill http://localhost:$P
+test -d project && {
+	echo failed, I wanted symlink not project
+	exit 1
+}
+test -d symlink || {
+	echo failed, I dunno what I got but it is not symlink
+	ls
+	exit 1
+}
+echo OK
+
+}
+
 echo $N Test null clonemod ..........................................$NL
 cd "$HERE"/project
 bk commit $Q -ystuff

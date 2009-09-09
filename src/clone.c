@@ -37,7 +37,7 @@ int
 clone_main(int ac, char **av)
 {
 	int	c, rc;
-	char	**envVar = 0;
+	char	*dest = 0, **envVar = 0;
 	remote 	*r = 0;
 	int	link = 0;
 
@@ -74,9 +74,9 @@ clone_main(int ac, char **av)
 	if (opts->quiet) putenv("BK_QUIET_TRIGGERS=YES");
 	unless (av[optind]) usage();
 	localName2bkName(av[optind], av[optind]);
-	if (av[optind + 1]) {
+	if (dest = av[optind + 1]) {
 		if (av[optind + 2]) usage();
-		localName2bkName(av[optind + 1], av[optind + 1]);
+		localName2bkName(dest, dest);
 	}
 
 	/*
@@ -106,9 +106,9 @@ clone_main(int ac, char **av)
 		return (lclone(r, av[optind+1]));
 		/* NOT REACHED */
 	}
-	if (av[optind + 1]) {
+	if (dest) {
 		remote	*l;
-		l = remote_parse(av[optind + 1], REMOTE_BKDURL);
+		l = remote_parse(dest, REMOTE_BKDURL);
 		unless (l) {
 err:			if (r) remote_free(r);
 			if (l) remote_free(l);
@@ -131,6 +131,8 @@ err:			if (r) remote_free(r);
 			return (rclone_main(ac, av));
 		}
 		remote_free(l);
+	} else {
+		if (r->path) dest = basenm(r->path);
 	}
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
@@ -142,7 +144,7 @@ err:			if (r) remote_free(r);
 		}
 	}
 	if (opts->debug) r->trace = 1;
-	rc = clone(av, r, av[optind+1], envVar);
+	rc = clone(av, r, dest, envVar);
 	freeLines(envVar, free);
 	remote_free(r);
 	return (rc);
