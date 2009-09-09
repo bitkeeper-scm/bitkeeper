@@ -273,7 +273,7 @@ usage:				system("bk help -s sfiles");
                 }
 	}
 	if (opts.out) fclose(opts.out);
-	if (opts.progress) progress(2);
+	if (opts.progress) progress(1);
 	return (0);
 }
 
@@ -899,9 +899,6 @@ progress(int force)
 	if (write(1, buf, strlen(buf)) != strlen(buf)) exit(1);
 	s_last = s_count;
 	x_last = x_count;
-	if (force == 2) {
-		usleep(300000);		/* let TK update */
-	}
 }
 
 private int
