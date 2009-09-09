@@ -145,7 +145,10 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	} else {
 		fprintf(f, "bk -zo0 -Bstdin sfio -oqBl -\n");
 	}
-	if (rc = bp_sendkeys(f, range, &sfio)) goto done;
+	if (rc = bp_sendkeys(f, range, &sfio)) {
+		fclose(f);
+		goto done;
+	}
 	fprintf(f, "rdunlock\n");
 	fprintf(f, "quit\n");
 	fclose(f);
