@@ -8,6 +8,7 @@ typedef	struct	mem {
 	struct	mem *next;
 } mem_t;
 
+private void	slurp(FILE *f, char ***linesp, mem_t **memp, int *np);
 private	int	(*sortfcn)(const void *a, const void *b);
 private	int	sortfield = 0;
 
@@ -54,14 +55,13 @@ field_sort(const void *a, const void *b)
 int
 sort_main(int ac, char **av)
 {
-	char	buf[MAXKEY*2];
-	char	*p;
 	char	**lines = allocLines(50000);
 	char	*last = 0;
 	int	n = 0;
 	int	uflag = 0, rflag = 0, nflag = 0;
 	int	i, c;
 	mem_t	*mem;
+	FILE	*f;
 
 	while ((c = getopt(ac, av, "k:nru")) != -1) {
 		switch (c) {
@@ -79,22 +79,18 @@ sort_main(int ac, char **av)
 		perror("malloc");
 		exit(1);
 	}
-	setmode(0, _O_TEXT);  /* no-op on unix */
-	while (fgets(buf, sizeof(buf), stdin)) {
-		chop(buf);
-		i = strlen(buf) + 1;
-		unless (mem->left > i) {
-			unless (mem = moreMem(mem)) {
-				perror("malloc");
+	if (av[optind]) {
+		while (av[optind]) {
+			unless (f = fopen(av[optind], "r")) {
+				perror(av[optind]);
 				exit(1);
 			}
+			slurp(f, &lines, &mem, &n);
+			fclose(f);
+			optind++;
 		}
-		p = mem->avail;
-		strcpy(p, buf);
-		mem->avail += i;
-		mem->left -= i;
-		lines = addLine(lines, p);
-		n++;
+	} else {
+		slurp(stdin, &lines, &mem, &n);
 	}
 	sortfcn = nflag ? number_sort : string_sort;
 	qsort((void*)&lines[1], n, sizeof(char *),
@@ -113,4 +109,35 @@ sort_main(int ac, char **av)
 		mem = memnext;
 	}
 	return (0);
+}
+
+private void
+slurp(FILE *f, char ***linesp, mem_t **memp, int *np)
+{
+	char	**lines = *linesp;
+	mem_t	*mem = *memp;
+	char	*p;
+	int	i;
+	int	n = *np;
+	char	buf[MAXKEY*2];
+
+	while (fgets(buf, sizeof(buf), f)) {
+		chomp(buf);
+		i = strlen(buf) + 1;
+		unless (mem->left > i) {
+			unless (mem = moreMem(mem)) {
+				perror("malloc");
+				exit(1);
+			}
+		}
+		p = mem->avail;
+		strcpy(p, buf);
+		mem->avail += i;
+		mem->left -= i;
+		lines = addLine(lines, p);
+		n++;
+	}
+	*linesp = lines;
+	*memp = mem;
+	*np = n;
 }
