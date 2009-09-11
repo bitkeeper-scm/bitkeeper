@@ -168,8 +168,8 @@ compressed(int level, char *rev)
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
 
-	sfiocmd = aprintf("cat '%s' '%s' | bk sort | bk sfio -oq%s",
-	    tmpf1, tmpf2, modes);
+	sfiocmd =
+	    aprintf("bk sort '%s' '%s' | bk sfio -oq%s", tmpf1, tmpf2, modes);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);
