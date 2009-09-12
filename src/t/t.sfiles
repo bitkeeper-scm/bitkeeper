@@ -546,7 +546,7 @@ echo $N Test sfile -cGjlnvxyp with s.file w no pathname .............$NL
 perl -ne 'print unless /^.cP/' SCCS/s.foo  | bk undos > SCCS/s.bad
 bk admin -z  SCCS/s.bad
 rm -f SCCS/?.impostor
-bk sort +1 - > "$HERE/WANT" <<EOF
+bk sort -k1 > "$HERE/WANT" <<EOF
 j------ SCCS/OLD-s.foo
 j------ SCCS/JUNK
 j------ SCCS/c.gone
@@ -558,9 +558,9 @@ slc-G-- BitKeeper/etc/SCCS/s.ignore
 su---n- SCCS/s.bad
 su--G-- BitKeeper/etc/SCCS/s.config
 EOF
-bk sfiles -cGjlnvxyp | bk sort +1 > "$HERE/GOT" || { echo failed 1; exit 1; }
+bk sfiles -cGjlnvxyp | bk sort -k1 > "$HERE/GOT" || { echo failed 1; exit 1; }
 cmp -s "$HERE/WANT" "$HERE/GOT" || {
-	echo failed 2
+	echo failed 1
 	sdiff -w80 "$HERE/WANT" "$HERE/GOT"
 	ls SCCS
 	exit 1
@@ -568,7 +568,7 @@ cmp -s "$HERE/WANT" "$HERE/GOT" || {
 echo OK
 
 echo $N Test sfile -cdDGjlnvxyp with s.file w no pathname ...........$NL
-bk sort +1 > "$HERE/WANT" <<EOF
+bk sort -k1 > "$HERE/WANT" <<EOF
 j------ SCCS/OLD-s.foo
 j------ SCCS/JUNK
 j------ SCCS/c.gone
@@ -588,7 +588,7 @@ d------ BitKeeper/etc
 d------ bar
 d------ bar/blech
 EOF
-bk sfiles -cdDGjlnvxyp | bk sort +1 > "$HERE/GOT" || { echo failed 1; exit 1; }
+bk sfiles -cdDGjlnvxyp | bk sort -k1 > "$HERE/GOT" || { echo failed 1; exit 1; }
 cmp -s "$HERE/WANT" "$HERE/GOT" || {
 	echo failed 2
 	sdiff -w80 "$HERE/WANT" "$HERE/GOT"
@@ -597,7 +597,7 @@ cmp -s "$HERE/WANT" "$HERE/GOT" || {
 echo OK
 
 echo $N Test limiting sfiles to one level ...........................$NL
-bk sort +1 > "$HERE/WANT" <<EOF
+bk sort -k1 > "$HERE/WANT" <<EOF
 j------ SCCS/OLD-s.foo
 j------ SCCS/JUNK
 j------ SCCS/c.gone
@@ -609,7 +609,7 @@ D------ BitKeeper
 d------ .
 d------ bar
 EOF
-bk sfiles -1cdDjlnvxyp | bk sort +1 > "$HERE/GOT" || { echo failed 1; exit 1; }
+bk sfiles -1cdDjlnvxyp | bk sort -k1 > "$HERE/GOT" || { echo failed 1; exit 1; }
 cmp -s "$HERE/WANT" "$HERE/GOT" || {
 	echo failed 2
 	sdiff -w80 "$HERE/WANT" "$HERE/GOT"
@@ -764,7 +764,7 @@ x------ DIR_WITH_SCCS/EXTRA3
 x------ EXTRA1
 x-----y EXTRA_WITH_COMMENTS
 EOF
-bk sfiles -vixcdDGjnRup | bk sort +1 > "$HERE/GOT"
+bk sfiles -vixcdDGjnRup | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
@@ -800,13 +800,13 @@ x------ lmtest/EXTRA1
 x-----y lmtest/EXTRA_WITH_COMMENTS
 EOF
 cd "$HERE"
-bk sfiles -vixcdDGjnRup lmtest | bk sort +1 > "$HERE/GOT"
+bk sfiles -vixcdDGjnRup lmtest | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Test citool output from inside a repo .......................$NL
 cd "$HERE/lmtest"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 x------ DIR_WITH_NO_SCCS/EXTRA2
 x------ DIR_WITH_SCCS/EXTRA3
 slc-G-- DIR_WITH_SCCS/MODIFIED
@@ -815,13 +815,13 @@ su-p--- DIR_WITH_SCCS/PENDING
 x------ EXTRA1
 x-----y EXTRA_WITH_COMMENTS
 EOF
-bk sfiles -vgxcyp | bk sort +1 > "$HERE/GOT"
+bk sfiles -vgxcyp | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
 echo $N Test citool output from outside a repo ......................$NL
 cd "$HERE"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 x------ lmtest/DIR_WITH_NO_SCCS/EXTRA2
 x------ lmtest/DIR_WITH_SCCS/EXTRA3
 slc-G-- lmtest/DIR_WITH_SCCS/MODIFIED
@@ -831,7 +831,7 @@ x------ lmtest/EXTRA1
 x-----y lmtest/EXTRA_WITH_COMMENTS
 EOF
 cd "$HERE"
-bk sfiles -vgxcyp lmtest | bk sort +1 > "$HERE/GOT"
+bk sfiles -vgxcyp lmtest | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
@@ -1006,7 +1006,7 @@ echo OK
 
 echo $N Look for sfiles from the root in verbose mode ...............$NL
 cd "$HERE/lmtest"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 su----- BitKeeper/etc/SCCS/s.collapsed
 su--G-- BitKeeper/etc/SCCS/s.config
 su--G-- BitKeeper/etc/SCCS/s.gone
@@ -1021,7 +1021,7 @@ su----- SCCS/s.ChangeSet
 slc-G-- DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -vs | bk sort +1 > "$HERE/GOT"
+bk sfiles -vs | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
@@ -1120,12 +1120,12 @@ echo OK
 
 echo $N Look for locked sfiles from the root in verbose mode ........$NL
 cd "$HERE/lmtest"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 sl--G-- DIR_WITH_SCCS/SCCS/s.LOCKED
 slc-G-- DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -vl | bk sort +1 > "$HERE/GOT"
+bk sfiles -vl | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
@@ -1159,7 +1159,7 @@ echo OK
 
 echo $N Look for unlocked sfiles from the root in verbose mode ......$NL
 cd "$HERE/lmtest"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 su----- BitKeeper/etc/SCCS/s.collapsed
 su--G-- BitKeeper/etc/SCCS/s.config
 su--G-- BitKeeper/etc/SCCS/s.gone
@@ -1171,7 +1171,7 @@ su----- DIR_WITH_SCCS/SCCS/s.UNLOCKED
 su----- DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 su----- SCCS/s.ChangeSet
 EOF
-bk sfiles -vu | bk sort +1 > "$HERE/GOT"
+bk sfiles -vu | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
@@ -1197,11 +1197,11 @@ echo OK
 
 echo $N Look for changed sfiles from the root in verbose mode .......$NL
 cd "$HERE/lmtest"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 slc-G-- DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -vc | bk sort +1 > "$HERE/GOT"
+bk sfiles -vc | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
@@ -1226,10 +1226,10 @@ echo OK
 
 echo $N Look for pending sfiles from the root in verbose mode .......$NL
 cd "$HERE/lmtest"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 su-p--- DIR_WITH_SCCS/SCCS/s.PENDING
 EOF
-bk sfiles -vp | bk sort +1 > "$HERE/GOT"
+bk sfiles -vp | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
@@ -1260,7 +1260,7 @@ echo OK
 
 echo $N Look for gotten sfiles from the root in verbose mode ........$NL
 cd "$HERE/lmtest"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 su--G-- BitKeeper/etc/SCCS/s.config
 su--G-- BitKeeper/etc/SCCS/s.gone
 su--G-- BitKeeper/etc/SCCS/s.ignore
@@ -1269,7 +1269,7 @@ sl--G-- DIR_WITH_SCCS/SCCS/s.LOCKED
 slc-G-- DIR_WITH_SCCS/SCCS/s.MODIFIED
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 EOF
-bk sfiles -vG | bk sort +1 > "$HERE/GOT"
+bk sfiles -vG | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
@@ -1294,10 +1294,10 @@ echo OK
 
 echo $N Look for mislocated files from the root in verbose mode .....$NL
 cd "$HERE/lmtest"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 su---n- DIR_WITH_SCCS/SCCS/s.WRONG_NAME
 EOF
-bk sfiles -vn | bk sort +1 > "$HERE/GOT"
+bk sfiles -vn | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
@@ -1322,11 +1322,11 @@ echo OK
 
 echo $N Look for files with comments from the root in verbose mode ..$NL
 cd "$HERE/lmtest"
-bk sort +1 <<EOF > "$HERE/WANT"
+bk sort -k1 <<EOF > "$HERE/WANT"
 slc-G-y DIR_WITH_SCCS/SCCS/s.MODIFIED_W_COMMENTS
 x-----y EXTRA_WITH_COMMENTS
 EOF
-bk sfiles -vy | bk sort +1 > "$HERE/GOT"
+bk sfiles -vy | bk sort -k1 > "$HERE/GOT"
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
