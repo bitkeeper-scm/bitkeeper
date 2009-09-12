@@ -134,8 +134,8 @@ perl -e '
 bk service uninstall $BKDNAME
 test -d junk/BitKeeper/etc || exit 4
 rm -fr junk
-# If it took 3 times longer to do the SVC, something is fishy
-expr `cat BKDTIME` '*' 3 '>' `cat SVCTIME` > EXPR || {
+# If it took 4 times longer to do the SVC, something is fishy
+expr `cat BKDTIME` '*' 4 '>' `cat SVCTIME` > EXPR || {
 	echo failed BKDTIME SVCTIME
 	cat BKDTIME
 	cat SVCTIME
