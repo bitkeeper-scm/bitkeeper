@@ -512,7 +512,11 @@ Tcl_RegExpExecObj(
 	/*
 	 * Store last offset to support Tcl_RegExpGetInfo translation.
 	 */
-	regexpPtr->details.rm_extend.rm_so = offset;
+	if (match == PCRE_ERROR_NOMATCH) {
+	    regexpPtr->details.rm_extend.rm_so = -1;
+	} else {
+	    regexpPtr->details.rm_extend.rm_so = offset;
+	}
 
 	/*
 	 * Check for errors.
@@ -636,14 +640,13 @@ Tcl_RegExpGetInfo(
 	    tsdPtr->matches[i].end = matches[i*2+1] - last;
 	}
 	infoPtr->matches = tsdPtr->matches;
-	infoPtr->extendStart = 0; /* XXX support? */
 #else
 	Tcl_Panic("Cannot get info for PCRE match");
 #endif
     } else {
 	infoPtr->matches = (Tcl_RegExpIndices *) regexpPtr->matches;
-	infoPtr->extendStart = regexpPtr->details.rm_extend.rm_so;
     }
+    infoPtr->extendStart = regexpPtr->details.rm_extend.rm_so;
 }
 
 /*
