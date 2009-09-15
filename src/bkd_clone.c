@@ -181,6 +181,9 @@ compressed(int level, int lclone)
 	int	status, fd;
 	FILE	*fh;
 	char	*sfiocmd;
+	char	*larg = (lclone ? "-L" : "");
+	char	*marg = (bk_hasFeature("mSFIO") ? "-m" : "");
+
 	sfiocmd = aprintf("bk _sfiles_clone %s %s | bk sfio -oq %s %s",
 	    larg, marg, larg, marg);
 	fh = popen(sfiocmd, "r");

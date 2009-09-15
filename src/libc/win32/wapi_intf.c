@@ -1252,68 +1252,6 @@ _stuck(DWORD e, int times, int bailed, char *format,
 }
 
 /*
- * Translate from fopen's char * mode to open's binary mode
- * Blatantly cribbed from stdio's __sflags() routine.
- */
-private inline int
-_sflags(const char *mode, int* optr)
-{
-	int	m, o;
-
-	assert(mode);
-	switch (*mode++) {
-	    case 'r':
-		m = O_RDONLY;
-		o = 0;
-		break;
-	    case 'w':
-		m = O_WRONLY;
-		o = O_CREAT | O_TRUNC;
-		break;
-	    case 'a':
-		m = O_WRONLY;
-		o = O_CREAT | O_APPEND;
-		break;
-	    default:
-		errno = EINVAL;
-		return (0);
-
-	}
-	for (; *mode; mode++) {
-		switch (*mode) {
-		    case '+':
-			m = O_RDWR;
-			break;
-		    case 't':
-			o |= O_TEXT;
-			break;
-		    case 'b':
-			o |= O_BINARY;
-			break;
-		    default:
-			break;
-		}
-	}
-	*optr = m | o;
-	return (1);
-}
-
-/*
- * Just calls nt_open
- */
-FILE *
-nt_fopen(const char *filename, const char *mode)
-{
-	FILE	*f;
-	int	m, fd;
-
-	unless (_sflags(mode, &m)) return (0);
-	if ((fd = nt_open(filename, m, 0666)) < 0) return (0);
-	f = fdopen(fd, mode);
-	return (f);
-}
-
-/*
  * Our version of open, does two additional things
  * a) Turn off inherite flag
  * b) Translate Bitmover filename to Win32 (i.e NT) path name
