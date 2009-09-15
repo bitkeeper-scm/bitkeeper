@@ -55,7 +55,7 @@ bkd_main(int ac, char **av)
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
 			Opts.logfile
-			    = optarg ? strdup(fullname(optarg)) : LOG_STDERR;
+			    = optarg ? fullname(optarg, 0) : LOG_STDERR;
 			break;
 		    case 'V':	/* XXX - should be documented */
 			Opts.vhost_dirpath = strdup(optarg); break;

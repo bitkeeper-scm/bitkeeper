@@ -45,7 +45,7 @@ clone_main(int ac, char **av)
 {
 	int	c, rc;
 	int	attach_only = 0, gzip = 6;
-	char	*dest = 0, **envVar = 0;
+	char	**envVar = 0;
 	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));

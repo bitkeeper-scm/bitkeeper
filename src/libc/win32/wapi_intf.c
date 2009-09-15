@@ -1257,17 +1257,17 @@ nt_open(const char *filename, int flag, int pmode)
 	int	fd, error = 0, i, acc, ret;
 	DWORD	attrs;
 	char	*p;
-	char	buf[1024];
 
 	flag |= _O_NOINHERIT;
 	for (i = 1; i <= retries; i++) {
-		fd = _open(bm2ntfname(filename, buf), flag, pmode);
+		fd = _open(filename, flag, pmode);
 		if (fd >= 0) return (fd);
 		error = GetLastError();
 		unless (win32_flags & WIN32_RETRY) return (-1);
 		if (streq(filename, DEV_TTY)) return (-1);
 		if ((error == ERROR_ACCESS_DENIED) &&
-		    ((attrs = GetFileAttributes(buf)) != INVALID_FILE_ATTRIBUTES)) {
+		    ((attrs = GetFileAttributes(filename)) !=
+			INVALID_FILE_ATTRIBUTES)) {
 			/*
 			 * Try to recognize some of the error cases
 			 * without entering the wait loop below.
@@ -1300,7 +1300,7 @@ nt_open(const char *filename, int flag, int pmode)
 			 */
 			if (flag & O_CREAT) {
 				acc = W_OK;
-				p = dirname_alloc(filename);
+				p = dirname_alloc((char *)filename);
 			} else {
 				if (flag & (O_WRONLY|O_RDWR)) {
 					acc = W_OK;
@@ -1369,12 +1369,12 @@ fail:				errno = EBUSY;
 		switch (err = GetLastError()) {
 		    case ERROR_DIR_NOT_EMPTY:
 			/* See if it's really not empty */
-			if (files = getdir(dir)) {
+			if (files = getdir((char *)dir)) {
 				int	i;
 				char	buf[MAXPATH];
 
 				EACH(files) {
-					concat_path(buf, dir, files[i]);
+					concat_path(buf, (char *)dir, files[i]);
 					if (GetFileAttributes(buf) !=
 					    INVALID_FILE_ATTRIBUTES) {
 						/* nope, not emtpy */
@@ -1417,6 +1417,7 @@ int
 nt_unlink(const char *file)
 {
 	HANDLE	h;
+	DWORD	attribs;
 	int	i, error;
 	char	*dir;
 
@@ -1438,7 +1439,12 @@ nt_unlink(const char *file)
 		}
 		error = GetLastError();
 
-		unless (exists(file)) return (-1);
+		attribs = GetFileAttributes(file);
+		if (attribs == INVALID_FILE_ATTRIBUTES) return (-1);
+		if (attribs & FILE_ATTRIBUTE_DIRECTORY) {
+			errno = EISDIR;
+			return (-1);
+		}
 
 		unless (win32_flags & WIN32_RETRY) goto fail;
 

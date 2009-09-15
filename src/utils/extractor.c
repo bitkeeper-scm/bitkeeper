@@ -128,7 +128,7 @@ main(int ac, char **av)
 	if (opts.upgrade) {
 		unless (dest = bkpath) dest = bindir;
 	} else if (av[optind]) {
-		dest = fullname(av[optind]);
+		dest = fullname(av[optind], 0);
 #ifndef	WIN32
 		unless (getenv("BK_NOLINKS")) dolinks = 1;
 #endif

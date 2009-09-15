@@ -35,9 +35,9 @@ do	for line in 1 2 3 4 5 6 7 8
 	done
 	bk new $Q $file
 done
-cp SCCS/s.A backup
+bk _cp SCCS/s.A backup
 bk commit $Q -ywhatever
-cp -f backup SCCS/s.A
+bk _cp backup SCCS/s.A
 echo A > WANT
 bk sfiles -gP > GOT
 cmpfiles WANT GOT
