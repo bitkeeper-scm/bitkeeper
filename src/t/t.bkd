@@ -70,8 +70,11 @@ cd "$HERE/project"
 P=`port 50000`
 bk bkd -d -D -l -p$P -ikill 2> "$HERE/STDERR" &
 cd "$HERE/copy"
-bk _usleep 250000	# let the other guy get started
-bk changes -r+ bk://localhost:$P/"$HERE/project" > changes.out 2>&1
+for i in 1 2 3 4 5
+do	bk changes -r+ bk://localhost:$P/"$HERE/project" > changes.out 2>&1
+	test $? = 0 && break
+	sleep 1
+done
 bk lock -U "$HERE/project"
 bk _kill bk://localhost:$P || exit 1
 grep -q changes "$HERE/STDERR" || {

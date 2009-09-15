@@ -78,6 +78,8 @@ test -f relative/config && {
 echo OK
 
 echo $N Absolute path installation, no config file...................$NL
+# Save accepted file for later unprompted install test
+cp "$DOTBK"/accepted accepted.saved
 rm -f "$DOTBK"/accepted
 echo y | "$BK_INSTALLER" "$HERE/absolute" > OUT 2>&1
 grep -q LICENSE OUT || {
@@ -190,20 +192,42 @@ test -f embedded/config || {
 	cat OUT
 	exit 1
 }
+cp "$DOTBK"/accepted accepted.academic.saved
+echo OK
+
+echo $N Check unprompted install is possible with accepted file......$NL
+# Create a pro embedded installer
+cp "$BK_INSTALLER" bk-pro
+echo "license: $BKL_PRO" > c
+echo "licsign1: $BKL_P1" >> c
+echo "licsign2: $BKL_P2" >> c
+echo "licsign3: $BKL_P3" >> c
+cp "$BK_INSTALLER" bk-pro
+bk inskeys bk-pro c > OUT 2>&1
+rm -rf "$DOTBK"/*
+cp accepted.saved "$DOTBK"/accepted
+./bk-pro-licensed "$HERE/DEAD4" > OUT 2>&1 || {
+	echo failed $?
+	echo Installer failed to install with accepted file
+	cat OUT
+	exit 1
+}
 echo OK
 
 if [ X$PLATFORM = X"WIN32" ]
 then #-------------------- WIN32 tests ---------------------
 echo $N Make sure we preserve registry settings and use long paths...$NL
-echo y | ./bk-academic-licensed "$HERE/DEAD BEEF" > OUT 2>&1 || {
+rm -rf "$DOTBK"/*
+cp accepted.academic.saved "$DOTBK"/accepted
+./bk-academic-licensed "$HERE/DEAD BEEF" > OUT 2>&1 || {
 	echo failed $?
 	echo Installer failed to install
 	cat OUT
 	exit 1
 }
-bk _registry set $SHELLXKEY networkDrive 100 || exit 1
+# XXX: careful leaving this setting: in -u,
+# bk.sh _install tests for the var = 1
 bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
-
 # We need the new BK to come first in the path, so we mangle it by hand
 P=`bk _registry get "$SYSPATHKEY" Path`
 P="$HERE/DEAD BEEF;$P"
@@ -233,40 +257,27 @@ bk _registry get "$SYSPATHKEY" Path | grep "DEAD BEEF" >TEXT || {
 	tail -16 OUT
 	exit 1
 }
-KEY1=`bk _registry get "$SHELLXKEY" networkDrive` || exit 1
-KEY2=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
 
 if [ $KEY1 -ne 100 ]; then
 	echo failed
-	echo Failed to preserve networkDrive: $KEY1
-	exit 1
-fi
-if [ $KEY2 -ne 100 ]; then
-	echo failed
-	echo Failed to preserve LocalDrive: $KEY2
+	echo Failed to preserve LocalDrive: $KEY1
 	exit 1
 fi
 echo OK
 
-echo $N Installer should honor command line options..................$NL
-BK="$HERE/DEAD BEEF/bk"
-echo y | "$BK" install -vf -s -l -n "$HERE/DEAD2" > OUT 2>&1 || {
+echo $N Make sure the installer accepts command line options.........$NL
+./bk-academic-licensed -s -l "$HERE/DEAD2" > OUT 2>&1 || {
 	echo failed $?
-	echo Installer failed to install
+	echo Installer failed to install with -s -l
 	cat OUT
 	exit 1
 }
-KEY1=`bk _registry get "$SHELLXKEY" networkDrive` || exit 1
-KEY2=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
 
 if [ $KEY1 -ne 1 ]; then
 	echo failed
-	echo Failed to set networkDrive: $KEY1
-	exit 1
-fi
-if [ $KEY2 -ne 1 ]; then
-	echo failed
-	echo Failed to set LocalDrive: $KEY2
+	echo Failed to set LocalDrive: $KEY1
 	exit 1
 fi
 CTRLPROV="HKEY_LOCAL_MACHINE\\Software\\SourceCodeControlProvider"
@@ -298,6 +309,29 @@ test "$PROVKEY2" = "$PK1" || {
 	echo InstalledSCCProviders was "$PROVKEY2" instead of "$PK1"
 	exit 1
 }
+echo OK
+
+echo $N Make sure -l will stomp previous setting.....................$NL
+OP=`bk _registry get "$SYSPATHKEY" Path`
+bk _registry set $SHELLXKEY LocalDrive 100 || exit 1
+# Depends on $P from above, make the path same as it was
+# before the first -u test else the uninstall test fails
+bk _registry set "$SYSPATHKEY" Path expand_sz:"$P"
+PATH="$P" ./bk-academic-licensed -u -l > OUT 2>&1 || {
+	bk _registry set "$SYSPATHKEY" Path expand_sz:"$OP"
+	echo failed $?
+	echo Installer failed to upgrade with -l
+	cat OUT
+	exit 1
+}
+KEY1=`bk _registry get "$SHELLXKEY" LocalDrive` || exit 1
+test $KEY1 -eq 1 || {
+	bk _registry set "$SYSPATHKEY" Path expand_sz:"$OP"
+	echo failed
+	echo Failed to set LocalDrive: $KEY1
+	exit 1
+}
+bk _registry set "$SYSPATHKEY" Path expand_sz:"$OP"
 echo OK
 
 echo $N Make sure uninstaller works as advertised....................$NL
@@ -430,7 +464,7 @@ echo OK
 
 echo $N Make sure uninstaller removes symlinks.......................$NL
 BIN="$HERE/DEADBEEF.1"
-echo y | ./bk-academic-licensed "$BIN" >OUT 2>&1
+./bk-academic-licensed "$BIN" >OUT 2>&1
 test -f "$BIN/bk" || {
 	echo failed
 	echo installer failed
@@ -461,7 +495,7 @@ echo OK
 
 echo $N Uninstaller in upgrade mode should not remove symlinks.......$NL
 BIN="$HERE/DEADBEEF.2"
-echo y | ./bk-academic-licensed "$BIN" >OUT 2>&1
+./bk-academic-licensed "$BIN" >OUT 2>&1
 test -f "$BIN/bk" || {
 	echo failed
 	echo installer failed

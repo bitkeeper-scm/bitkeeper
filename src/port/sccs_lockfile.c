@@ -45,19 +45,25 @@ sccs_lockfile(char *file, int waitsecs, int quiet)
 	u64	waited = 0;
 
 	p = dirname_alloc((char*)file);
+	unless (writable(p)) chmod(p, 0775);
+
+	/*
+	 * Could be that the chmod doesn't allow access if we're
+	 * using ACLs (e.g. Windows)
+	 */
 	unless (access(p, W_OK) == 0) {
-		if (chmod(p, 0775)) {
-			fprintf(stderr, "lockfile: %s is not writable.\n", p);
-			free(p);
-			return (-1);
-		}
+		fprintf(stderr, "lockfile: %s is not writable.\n", p);
+		free(p);
+		return (-1);
 	}
 	free(p);
+
 	uniq = uniqfile(file, getpid(), sccs_realhost());
 
 retry:	unlink(uniq);
 	unless ((fd = open(uniq, O_CREAT|O_RDWR|O_EXCL, 0644)) >= 0) {
 		fprintf(stderr, "Can't create lockfile %s\n", uniq);
+		perror(uniq);
 		free(uniq);
 		return (-1);
 	}

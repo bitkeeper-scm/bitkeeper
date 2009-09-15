@@ -595,6 +595,13 @@ echo ''
 	rm -rf "$TMPDIR" || exit 1
 	mkdir -p "$TMPDIR" || exit 1
 
+	# log any stuck win32 retry loops
+	_BK_LOG_WINDOWS_ERRORS="$TMPDIR/stuck.$$"
+	export _BK_LOG_WINDOWS_ERRORS
+	rm -f "$_BK_LOG_WINDOWS_ERRORS"
+	touch "$_BK_LOG_WINDOWS_ERRORS"
+
+	
 	# capture all ttyprintf output
 	BK_TTYPRINTF="$TMPDIR/TTY.$$"
 	#export BK_TTYPRINTF    # uncomment to enable
@@ -628,6 +635,13 @@ echo ''
 				BADOUTPUT="$i $BADOUTPUT"
 			fi
 		}
+	}
+	
+	test -s "$_BK_LOG_WINDOWS_ERRORS" && {
+		echo
+		echo Unexpected stuck windows loops
+		cat "$_BK_LOG_WINDOWS_ERRORS"
+		BADOUTPUT="$i $BADOUTPUT"
 	}
 	test -s "$BK_TTYPRINTF" && {
 		echo

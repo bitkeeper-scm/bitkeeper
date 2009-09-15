@@ -39,7 +39,7 @@ startmenu_set(u32 user, char *linkpath, char *target, char *args)
 
 #include <shlobj.h>
 
-private char *
+char *
 bkmenupath(u32 user, int create)
 {
 	LPITEMIDLIST	id;

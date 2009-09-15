@@ -36,3 +36,33 @@ test X"$PROCESSOR_ARCHITEW6432" = X -o \
 	exit 1
 }
 echo OK
+
+echo $N See that open still works with no retry .....................$NL
+commercial project
+BK_WIN_NORETRY=0 bk changes -r+ -ndx > GOT || exit 1
+echo x > WANT
+cmpfiles WANT GOT
+echo OK
+
+echo $N See that sfile command pipeline does not hang ...............$NL
+# Build a repo big enough that the sfiles list will fill the pipeline
+for i in 0 1; do
+	mkdir directory-$i
+	for j in 0 1 2 3 4 5 6 7 8 9; do
+		for k in 0 1 2 3 4 5 6 7 8 9; do
+			touch directory-$i/emptyfile-$i$j$k
+			bk new $Q directory-$i/emptyfile-$i$j$k
+		done
+	done
+done
+bk commit $Q -y'added many files'
+bk -r exit 1 >/dev/null 2>&1 &
+PID=$!
+# Give the background bk a chance to finish
+sleep 2
+ps | grep -q " $PID " && {
+	echo failed
+	kill $PID
+	exit 1
+}
+echo OK

@@ -49,7 +49,6 @@
 #define	IsFullPath(f)	nt_is_full_path_name(f)
 #define	strieq(a, b)	!strcasecmp(a, b)
 #define	pathneq(a, b, n) !strncasecmp(a, b, n)
-#define wishConsoleVisible() (0)
 #define	mixedCasePath()	0
 
 #define	gethostbyname(h)	(nt_loadWinSock(), gethostbyname(h))
@@ -96,6 +95,7 @@ char	*win_verstr(void);
 int	win32flags_get(void);
 void	win32flags_set(int flags);
 void	win32flags_clear(int flags);
+void	win32_retry(int times);
 
 /* win32/reg.c */
 int	reg_broadcast(char *key, int timeout);

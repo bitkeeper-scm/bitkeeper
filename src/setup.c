@@ -140,6 +140,7 @@ again:
 		system(buf);
 	} else {
 		unless (f1 = fopen(config_path, "rt")) {
+			perror(config_path);
 			fprintf(stderr, "setup: can't open %s\n", config_path);
 			fprintf(stderr, "You need to use a fullpath\n");
 			exit(1);

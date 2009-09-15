@@ -1583,9 +1583,6 @@ _install()
 		l) DLLOPTS="-l $DLLOPTS" # enable bkshellx for local drives
 		   REGSHELLX=YES
 		   ;;
-		n) DLLOPTS="-n $DLLOPTS" # enable bkshellx for network drives
-		   REGSHELLX=YES
-		   ;;
 		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
 		d) CRANKTURN=YES;;# do not change permissions, dev install
 		f) FORCE=1;;	# force
@@ -1596,12 +1593,13 @@ _install()
 		   exit 1;;
 		esac
 	done
-	if [ "X$OSTYPE" = "Xmsys" -a "$UPGRADE" = "-u" ]
+	if [ "X$OSTYPE" = "Xmsys" -a "$UPGRADE" = "-u" -a "$REGSHELLX" = "NO" ]
 	then
 		SHELLX_KEY="HKEY_LOCAL_MACHINE\\Software\\bitmover\\bitkeeper\\shellx"
 		LOCAL_SHELLX=`bk _registry get $SHELLX_KEY LocalDrive`
-		NETWORK_SHELLX=`bk _registry get $SHELLX_KEY networkDrive`
-		test "$LOCAL_SHELLX" = 1 -o "$NETWORK_SHELLX" = 1 && {
+		# NOTE: if the above fails, LOCAL_SHELLX will be
+		# "entry not found"
+		test "$LOCAL_SHELLX" = 1 && {
 			REGSHELLX=YES;
 		}
 	fi
@@ -1733,6 +1731,9 @@ _install()
 	then
 		test $VERBOSE = YES && echo "Updating registry and path ..."
 		gui/bin/tclsh gui/lib/registry.tcl $UPGRADE $DLLOPTS "$DEST"
+		# Clean out existing startmenu
+		bk _startmenu rm
+		# Make new entries
 		bk _startmenu set -i"$DEST/bk.ico" \
 			"BitKeeper Documentation" "$DEST/bk.exe" "helptool"
 		bk _startmenu set -i"$DEST/bk.ico" \

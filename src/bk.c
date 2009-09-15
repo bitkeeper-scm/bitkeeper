@@ -75,6 +75,16 @@ main(int ac, char **av, char **env)
 		exit(1);
 	}
 
+#ifdef	WIN32
+	/*
+	 * See if the win32 layer needs to enable retry loops. This
+	 * can be set to the number of times to try, but if it's set
+	 * to anything other than a number (or zero) it means don't
+	 * retry.
+	 */
+	if (p = getenv("BK_WIN_NORETRY")) win32_retry(strtol(p, 0, 10));
+#endif
+
 	signal(SIGPIPE, SIG_IGN); /* no-op on win32 */
 
 	/*
@@ -382,7 +392,13 @@ out:
 	close(1);
 	fflush(stderr);
 	close(2);
+
+	/* close stdin so that sfiles will bail out */
+	close(0);
+
+	/* belt and suspenders */
 	sfilesDied(1);
+
 	if (ret < 0) ret = 1;	/* win32 MUST have a positive return */
 	return (ret);
 }

@@ -2707,7 +2707,8 @@ writeCheck(sccs *s, MDBM *db)
 		if (mdbm_store_str(db, path, "", MDBM_INSERT)) return (0);
 		unless (lstat(path, &sb)) {
 			if (S_ISDIR(sb.st_mode)) {
-				if (access(path, W_OK) != 0) {
+				unless (writable(path) &&
+				    (access(path, W_OK) == 0)) {
 					fprintf(stderr,
 					    "No write permission: %s\n", path);
 					return (1);
@@ -2868,6 +2869,7 @@ resolve_cleanup(opts *opts, int what)
 	if (what & CLEAN_RESYNC) {
 		assert(exists("RESYNC"));
 		if (rmtree("RESYNC")) {
+			perror("RESYNC");
 			fprintf(stderr, "resolve: rmtree failed\n");
 		}
 	} else if (what & CLEAN_MVRESYNC) {

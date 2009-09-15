@@ -160,7 +160,8 @@ usage:			system("bk help -s diffs");
 		 * This is a big performance win.
 		 * 2005-06: Endpoints meaning extended for diffs -N.
 		 */
-		unless (force || rargs.rstart || boundaries || Rev || sfileRev()) {
+		unless (force ||
+		    rargs.rstart || boundaries || Rev || sfileRev()) {
 			char	*gfile = sccs2name(name);
 
 			unless (writable(gfile) ||

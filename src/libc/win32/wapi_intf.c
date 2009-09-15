@@ -54,6 +54,11 @@
 
 static	int	win32_flags = WIN32_NOISY | WIN32_RETRY;
 
+/* Win32 Retry Loops */
+static	int	retries = 32;	/* how many times to retry */
+#define	INC	100	/* milliseconds, we do 100, 200, 300, 400, etc */
+#define	NOISY	10	/* start telling them after NOISY sleeps (~5 sec) */
+
 /* get, set , and clear the flags for the operation of the win32
  * emulation layer look at the static int above and src/libc/win32.h
  * for the allowed values
@@ -78,6 +83,18 @@ win32flags_clear(int flags)
 	win32_flags &= ~flags;
 }
 
+void
+win32_retry(int times)
+{
+	unless (times) {
+		win32flags_clear(WIN32_RETRY);
+		retries = 1;
+	} else {
+		win32flags_set(WIN32_RETRY);
+		retries = times;
+	}
+}
+
 /*
  * This function returns the path name of the tmp directory.
  * It also sets the TMP environment variable to the tmp directory found.
@@ -98,14 +115,14 @@ nt_tmpdir()
 
 	/* try hard to find a suitable TMP directory */
 	for (pp = env; *pp; pp++) {
-		if ((p = getenv(*pp)) && (!access(p, 6)) ) {
+		if ((p = getenv(*pp)) && (!nt_access(p, W_OK|R_OK)) ) {
 			tmpdir = p;
 			break;
 		}
 	}
 	unless (tmpdir) {
 		for (pp = paths; *pp; pp++) {
-			if (access(*pp, 6) == 0) {
+			if (nt_access(*pp, W_OK|R_OK) == 0) {
 				tmpdir = *pp;
 				break;
 			}
@@ -590,7 +607,7 @@ _expnPath(char *cmdname, char *ext, char *fullCmdPath)
 	/* Ignore PATH if cmdbuf contains full or partial path */
 	if (strchr(cmdbuf, '/')) {
 		strcpy(fullCmdPath, cmdbuf);
-		if (_access(fullCmdPath, 0) != 0) fullCmdPath[0] = 0;
+		if (nt_access(fullCmdPath, F_OK) != 0) fullCmdPath[0] = 0;
 		bm2ntfname(fullCmdPath, fullCmdPath);
 		return fullCmdPath;
 	}
@@ -604,7 +621,7 @@ _expnPath(char *cmdname, char *ext, char *fullCmdPath)
 	while (t) {
 		sprintf(fullCmdPath, "%s\\%s", t, cmdbuf);
 		bm2ntfname(fullCmdPath, fullCmdPath);
-		if (_access(fullCmdPath, 0) == 0) return (fullCmdPath);
+		if (nt_access(fullCmdPath, F_OK) == 0) return (fullCmdPath);
 		t = strtok(NULL, path_delim);
 	}
 
@@ -613,7 +630,7 @@ _expnPath(char *cmdname, char *ext, char *fullCmdPath)
 	 */
 	strcpy(fullCmdPath, cmdbuf);
 	bm2ntfname(fullCmdPath, fullCmdPath);
-	if (_access(fullCmdPath, 0) == 0) return (fullCmdPath);
+	if (nt_access(fullCmdPath, F_OK) == 0) return (fullCmdPath);
 
 	fullCmdPath[0] = 0;
 	return fullCmdPath;
@@ -707,6 +724,9 @@ BOOL IsWow64(void)
 }
 
 
+#define	CUR_VER \
+	"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"
+
 /* return malloc'ed version string */
 char *
 win_verstr(void)
@@ -727,7 +747,12 @@ win_verstr(void)
 		} else if ((major == 5) && (minor == 2)) {
 			p = strdup("Windows/2003");
 		} else if ((major == 6) && (minor == 0)) {
-			p = strdup("Windows/Vista");
+			p = reg_get(CUR_VER, "ProductName", 0);
+			if (p && strstr(p, "Server")) {
+				p = strdup("Windows/2008-Server");
+			} else {
+				p = strdup("Windows/Vista");
+			}
 		} else if ((major == 6) && (minor == 1)) {
 			p = strdup("Windows/7");
 		}  else {
@@ -1171,19 +1196,6 @@ nt_chdir(char *dir)
 	return (!SetCurrentDirectory(dir));
 }
 
-#define	INC	100
-#define	NOISY	5	/* start telling them after INC * NOISY ms */
-#define	WAITMAX	600	/* /10 to get seconds */
-
-private int
-waited(int i)
-{
-	int	total = 0;
-
-	while (i) total += i--;
-	return (total);
-}
-
 private char *
 error2msg(int error)
 {
@@ -1201,30 +1213,197 @@ error2msg(int error)
 	return (ret);
 }
 
-private void
-stuck(char *fmt, const char *arg)
-{
-	DWORD	e;
-	char	*m = 0;
+#define	stuck(e, times, format, args...)				\
+	_stuck(e, times, 0, format, __FILE__, __LINE__, __FUNCTION__, ##args)
 
-	if (win32_flags & WIN32_NOISY) {
-		fprintf(stderr, fmt, arg);
-		e = GetLastError();
-		m = error2msg(e);
-		fprintf(stderr, "error (%4ld): %s\n", e, m?m:"Unknown");
-		if (m) free(m);
+#define	bail(e, times, format, args...)					\
+	_stuck(e, times, 1, format, __FILE__, __LINE__, __FUNCTION__, ##args)
+
+private void
+_stuck(DWORD e, int times, int bailed, char *format,
+    char *file, int line, const char *func, ...)
+{
+	char	*m = 0, *fmt = 0;
+	int	save;
+	FILE	*f;
+	va_list	ap;
+
+	/* Avoid recursion if we can't log */
+	save = win32_flags;
+	win32_flags = 0;
+
+	m = error2msg(e);
+	fmt = aprintf("%s@%d(%2d): %s\n%4ld: %s\n",
+	    func, line, times, format, e, m ? m : "Unknown");
+	va_start(ap, func);
+	if ((save & WIN32_NOISY) && (times > NOISY)) {
+		vfprintf(stderr, fmt, ap);
 	}
+	if (bailed) {
+		if (f = efopen("_BK_LOG_WINDOWS_ERRORS")) {
+			vfprintf(f, fmt, ap);
+			fclose(f);
+		}
+	}
+	va_end(ap);
+	if (fmt) free(fmt);
+	if (m) free(m);
+	win32_flags = save;
+}
+
+/*
+ * Translate from fopen's char * mode to open's binary mode
+ * Blatantly cribbed from stdio's __sflags() routine.
+ */
+private inline int
+_sflags(const char *mode, int* optr)
+{
+	int	m, o;
+
+	assert(mode);
+	switch (*mode++) {
+	    case 'r':
+		m = O_RDONLY;
+		o = 0;
+		break;
+	    case 'w':
+		m = O_WRONLY;
+		o = O_CREAT | O_TRUNC;
+		break;
+	    case 'a':
+		m = O_WRONLY;
+		o = O_CREAT | O_APPEND;
+		break;
+	    default:
+		errno = EINVAL;
+		return (0);
+
+	}
+	for (; *mode; mode++) {
+		switch (*mode) {
+		    case '+':
+			m = O_RDWR;
+			break;
+		    case 't':
+			o |= O_TEXT;
+			break;
+		    case 'b':
+			o |= O_BINARY;
+			break;
+		    default:
+			break;
+		}
+	}
+	*optr = m | o;
+	return (1);
+}
+
+/*
+ * Just calls nt_open
+ */
+FILE *
+nt_fopen(const char *filename, const char *mode)
+{
+	FILE	*f;
+	int	m, fd;
+
+	unless (_sflags(mode, &m)) return (0);
+	if ((fd = nt_open(filename, m, 0666)) < 0) return (0);
+	f = fdopen(fd, mode);
+	return (f);
+}
+
+/*
+ * Our version of open, does two additional things
+ * a) Turn off inherite flag
+ * b) Translate Bitmover filename to Win32 (i.e NT) path name
+ */
+int
+nt_open(const char *filename, int flag, int pmode)
+{
+	int	fd, error = 0, i, acc, ret;
+	DWORD	attrs;
+	char	*p;
+	char	buf[1024];
+
+	flag |= _O_NOINHERIT;
+	for (i = 1; i <= retries; i++) {
+		fd = _open(bm2ntfname(filename, buf), flag, pmode);
+		if (fd >= 0) return (fd);
+		error = GetLastError();
+		unless (win32_flags & WIN32_RETRY) return (-1);
+		if (streq(filename, DEV_TTY)) return (-1);
+		if ((error == ERROR_ACCESS_DENIED) &&
+		    ((attrs = GetFileAttributes(buf)) != INVALID_FILE_ATTRIBUTES)) {
+			/*
+			 * Try to recognize some of the error cases
+			 * without entering the wait loop below.
+			 */
+			if (((flag & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL))) {
+				/*
+				 * special case where we don't retry, see
+				 * utils.c:savefile()
+				 */
+				errno = EEXIST;
+				return (-1);
+			} else if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
+				errno = EISDIR;
+				return (-1);
+			} else if ((attrs & FILE_ATTRIBUTE_READONLY) &&
+			    (flag & (O_WRONLY|O_RDWR))) {
+				/*
+				 * We are trying to write a readonly
+				 * file, the access denied error
+				 * message is correct.
+				 */
+				errno = EACCES;
+				return (-1);
+			}
+			
+			/*
+			 * OK, none of that worked, try the nt_access() code.
+			 * This catches the case that the files are owner
+			 * only perms.
+			 */
+			if (flag & O_CREAT) {
+				acc = W_OK;
+				p = dirname_alloc(filename);
+			} else {
+				if (flag & (O_WRONLY|O_RDWR)) {
+					acc = W_OK;
+				} else {
+					acc = R_OK;
+				}
+				p = strdup(filename);
+			}
+			ret = nt_access(p, acc);
+			free(p);
+			if (ret) return (-1);
+		}
+		if ((error == ERROR_ACCESS_DENIED) ||
+		    (error == ERROR_SHARING_VIOLATION)) {
+			Sleep(i * INC);
+			stuck(error, i, "retrying on %s", filename);
+		} else {
+			/* don't retry for any other errors */
+			return (-1);
+		}
+	}
+	errno = EBUSY;
+	bail(error, i, "bailing out on %s", filename);
+	return (-1);
 }
 
 int
 nt_rmdir(const char *dir)
 {
 	HANDLE	h;
-	int	err, i = 0;
+	int	err, i = 1, j = 1;
+	char	**files;
 
 again:
 	h = CreateFile(dir, GENERIC_READ, FILE_SHARE_DELETE,
-		       0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+	       0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
 	if (h == INVALID_HANDLE_VALUE) {
 		switch (err = GetLastError()) {
 		    case ERROR_FILE_NOT_FOUND:
@@ -1232,28 +1411,69 @@ again:
 			return (-1);
 		    default:
 			fprintf(stderr,
-				"rmdir(%s): unexpected win32 error %d\n",
-				dir, err);
+			    "rmdir(%s): unexpected win32 error %d\n",
+			    dir, err);
 			/* FALLTHROUGH */
 		    case ERROR_SHARING_VIOLATION:
 			unless (win32_flags & WIN32_RETRY) {
 fail:				errno = EBUSY;
 				return (-1);
 			}
-			Sleep(++i * INC);
-			if (i > NOISY) {
-				stuck("rmdir: retrying lock on %s\n", dir);
-			}
-			if (waited(i) > WAITMAX) {
-				stuck("bailing out on %s\n\n", dir);
+			Sleep(i * INC);
+			stuck(err, i, "retrying lock on %s", dir);
+
+			if (i++ > retries) {
+				bail(err, i, "bailing out on %s", dir);
 				goto fail;
 			}
 			goto again;
 		}
 	}
+
 	unless (RemoveDirectory(dir)) {
 		(void)GetLastError(); /* set errno */
 		safeCloseHandle(h);
+		switch (err = GetLastError()) {
+		    case ERROR_DIR_NOT_EMPTY:
+			/* See if it's really not empty */
+			if (files = getdir(dir)) {
+				int	i;
+				char	buf[MAXPATH];
+
+				EACH(files) {
+					concat_path(buf, dir, files[i]);
+					if (GetFileAttributes(buf) !=
+					    INVALID_FILE_ATTRIBUTES) {
+						/* nope, not emtpy */
+						freeLines(files, free);
+						goto fail2;
+					}
+				}
+				freeLines(files, free);
+			}
+			/* We might be waiting for an antivirus. */
+			unless (win32_flags & WIN32_RETRY) {
+fail2:				errno = ENOTEMPTY;
+				return (-1);
+			}
+			Sleep(j * INC);
+			stuck(err, j, "retrying on %s", dir);
+			if (j++ > retries) {
+				bail(err, j, "bailing out on %s", dir);
+				goto fail2;
+			}
+			/*
+			 * We've already closed the handle, so we need
+			 * to do the whole thing again.
+			 */
+			goto again;
+			break;
+		    default:
+			fprintf(stderr, "rmdir(%s): failed win32 err %ld\n",
+				dir, GetLastError());
+			errno = EINVAL;
+			break;
+		}
 		return (-1);
 	}
 	safeCloseHandle(h);
@@ -1264,7 +1484,8 @@ int
 nt_unlink(const char *file)
 {
 	HANDLE	h;
-	int	i = 0, rc = 0;
+	int	i, error;
+	char	*dir;
 
 	if (!SetFileAttributes(file, FILE_ATTRIBUTE_NORMAL)) {
 		errno = ENOENT;
@@ -1275,25 +1496,36 @@ nt_unlink(const char *file)
 	 * deleted.  When we have this handle, we know no one else can
 	 * read or write the file. Mark the file to be deleted on close.
 	 */
-	for ( ;; ) {
+	for (i = 1; i <= retries; i++) {
 		h = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE, 0,
 		    OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE, 0);
-		unless (h == INVALID_HANDLE_VALUE) break;
-		unless (win32_flags & WIN32_RETRY) {
-fail:			errno = EBUSY;
+		unless (h == INVALID_HANDLE_VALUE) {
+			safeCloseHandle(h); /* real delete happens here */
+			return (0);
+		}
+		error = GetLastError();
+
+		unless (exists(file)) return (-1);
+
+		unless (win32_flags & WIN32_RETRY) goto fail;
+
+
+		dir = dirname_alloc((char*)file);
+		if (nt_access(dir, W_OK) != 0) {
+			free(dir);
 			return (-1);
 		}
-		Sleep(++i * INC);
-		if (i > NOISY) {
-			stuck("unlink: retrying lock on %s\n", file);
-		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", file);
-			goto fail;
-		}
+		free(dir);
+
+		/* On windows if you can't write it you can't delete */
+		if (nt_access(file, W_OK) != 0) return (-1);
+
+		Sleep(i * INC);
+		stuck(error, i, "retrying lock on %s", file);
 	}
-	safeCloseHandle(h); /* real delete happens here */
-	return (rc);
+	bail(GetLastError(), i, "bailing out on %s", file);
+fail:	errno = EBUSY;
+	return (-1);
 }
 
 private int
@@ -1301,47 +1533,68 @@ nt_mvdir(const char *oldf, const char *newf)
 {
 	HANDLE	h;
 	int	i;
+	char	*dir;
 
-	for (i = 0;; ) {
-		h = CreateFile(oldf, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+	for (i = 1; i <= retries; i++) {
+		h = CreateFile(oldf, GENERIC_READ, 0, 0,
+		    OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
 		unless (h == INVALID_HANDLE_VALUE) break;
 		unless (win32_flags & WIN32_RETRY) {
 fail:			errno = EBUSY;
 			return (-1);
 		}
-		Sleep(++i * INC);
-		if (i > NOISY) {
-			stuck("rename: wait for source %s\n", oldf);
-		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", oldf);
-			goto fail;
-		}
+		Sleep(i * INC);
+		stuck(GetLastError(), i, "wait for source %s", oldf);
 	}
-	safeCloseHandle(h);
-	for (i = 0; ; ) {
-		if (MoveFileEx(oldf, newf, 0)) return (0);
-		Sleep(++i * INC);
-		unless (win32_flags & WIN32_RETRY) goto fail;
-		if (i > NOISY) {
-			char	buf[2000];
+	if (i > retries) {
+		bail(GetLastError(), i, "bailing out on %s", oldf);
+		goto fail;
+	}
 
-			sprintf(buf, "%s -> %s", oldf, newf);
-			stuck("mvdir: retrying %s\n", (const char*)buf);
+	safeCloseHandle(h);
+
+	for (i = 1; i <= retries; i++) {
+		if (MoveFileEx(oldf, newf, 0)) return (0);
+		unless (win32_flags & WIN32_RETRY) goto fail;
+		/*
+		 * Make sure we can write the directory before looping,
+		 * Oscar ported tcl's access so this should work.
+		 */
+		dir = dirname_alloc((char*)oldf);
+		if (nt_access(dir, W_OK) != 0) {
+			free(dir);
+			return (-1);
 		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", oldf);
-			goto fail;
+		free(dir);
+
+		/*
+		 * If the new file exists and is a dir, then test that,
+		 * otherwise test the parent dir.
+		 */
+		if (isdir((char*)newf)) {
+			dir = strdup(newf);
+		} else {
+			dir = dirname_alloc((char*)newf);
 		}
+		if (nt_access(dir, W_OK) != 0) {
+			free(dir);
+			return (-1);
+		}
+		free(dir);
+
+		Sleep(i * INC);
+		stuck(GetLastError(), i, "retrying %s -> %s", oldf, newf);
 	}
-	return (-1);
+	bail(GetLastError(), i, "bailing out on %s", oldf);
+	goto fail;
+	/* NOT REACHED */
 }
 
 int
 nt_rename(const char *oldf, const char *newf)
 {
 	HANDLE	from, to;
-	int	i, err, rc = 0;
+	int	i, err = 0, rc = 0;
 	DWORD	in, out, attribs;
 	char	buf[BUFSIZ];
 
@@ -1357,7 +1610,7 @@ nt_rename(const char *oldf, const char *newf)
 	}
 	if (attribs & FILE_ATTRIBUTE_DIRECTORY) return (nt_mvdir(oldf, newf));
 
-	for (i = 0;; ) {
+	for (i = 1; i <= retries; i++) {
 		to = CreateFile(newf, GENERIC_WRITE,
 		    0, 0, CREATE_ALWAYS, attribs, 0);
 		unless (to == INVALID_HANDLE_VALUE) break;
@@ -1368,31 +1621,29 @@ nt_rename(const char *oldf, const char *newf)
 fail:			errno = EBUSY;
 			return (-1);
 		}
-		Sleep(++i * INC);
-		if (i > NOISY) {
-			stuck("rename: wait for dest %s\n", newf);
-		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", newf);
-			goto fail;
-		}
+		Sleep(i * INC);
+		stuck(err, i, "retry rename of %s", oldf);
 	}
+	if (i > retries) {
+		bail(err, i, "bailing out on %s", newf);
+		goto fail;
+	}
+
 	/* make sure we can delete the original file when we are done */
 	SetFileAttributes(oldf, FILE_ATTRIBUTE_NORMAL);
-	for (i = 0;; ) {
+	for (i = 1; i <= retries; i++) {
 		from = CreateFile(oldf, GENERIC_READ, FILE_SHARE_DELETE,
 		       0, OPEN_EXISTING, FILE_FLAG_DELETE_ON_CLOSE, 0);
 		unless (from == INVALID_HANDLE_VALUE) break;
 		unless (win32_flags & WIN32_RETRY) goto fail;
-		Sleep(++i * INC);
-		if (i > NOISY) {
-			stuck("rename: wait for source %s\n", oldf);
-		}
-		if (waited(i) > WAITMAX) {
-			stuck("bailing out on %s\n", oldf);
-			goto fail;
-		}
+		Sleep(i * INC);
+		stuck(GetLastError(), i, "wait for source %s", oldf);
 	}
+	if (i > retries) {
+		bail(GetLastError(), i, "bailing out on %s", oldf);
+		goto fail;
+	}
+
 	while (ReadFile(from, buf, sizeof(buf), &in, 0) && (in > 0)) {
 		WriteFile(to, buf, in, &out, 0);
 		if (in != out) {
@@ -1416,18 +1667,23 @@ int
 kill(pid_t pid, int sig)
 {
 	HANDLE hProc;
+	int	rc = 0;
+	DWORD	bits = SYNCHRONIZE;
 
-	if (sig != 0) {
-		debug((stderr, "only signal 0 is supported on NT\n"));
+	if ((sig != 0) && (sig != SIGKILL)) {
 		errno = EINVAL;
 		return (-1);
 	}
-	if ((hProc = OpenProcess(SYNCHRONIZE, 0, pid)) == (HANDLE) NULL) {
+	if (sig == SIGKILL) bits |= PROCESS_TERMINATE;
+	if ((hProc = OpenProcess(bits, 0, pid)) == (HANDLE) NULL) {
 		errno = ESRCH;
 		return (-1);
 	}
+	if (sig == SIGKILL) {
+		unless (TerminateProcess(hProc, 255)) rc = -1;
+	}
 	safeCloseHandle(hProc);
-	return (0);
+	return (rc);
 }
 
 int

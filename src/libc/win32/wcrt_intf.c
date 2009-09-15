@@ -83,39 +83,6 @@ _switch_char(const char *ofn, char *nfn, char ochar, char nchar)
 	return (nfn);
 }
 
-private int
-_exists(char *file)
-{
-	return (GetFileAttributes(file) != INVALID_FILE_ATTRIBUTES);
-}
-
-
-/*
- * Our version of open, does two additional things
- * a) Turn off inherite flag
- * b) Translate Bitmover filename to Win32 (i.e NT) path name
- */
-int
-nt_open(const char *filename, int flag, int pmode)
-{
-	char	buf[1024];
-	int	fd, save;
-
-	flag |= _O_NOINHERIT;
-	fd = _open(bm2ntfname(filename, buf), flag, pmode);
-	if (fd < 0) {
-		save = errno;
-		if ((GetLastError() == ERROR_ACCESS_DENIED) &&
-		    (flag & O_CREAT) && (flag & O_EXCL) && _exists(buf)) {
-			errno = EEXIST;
-		} else {
-			errno = save;	/* use errno set by _open */
-		}
-	}
-	return (fd);
-}
-
-
 int
 nt_dup(int fd)
 {
@@ -137,30 +104,129 @@ nt_dup2(int fd1, int fd2)
 	return (fd2);
 }
 
+/*
+ * See if a file is executable or not. On Windows this just means it
+ * ends in ".exe", ".com", or ".bat".
+ */
+static int
+winExec(const char *file)
+{
+	int	len;
+
+	assert(file);
+	len = strlen(file);
+	if (len < 5) return (0);
+	if (file[len-4] != '.') return (0);
+	if (streq(file+len-3, "exe") ||
+	    streq(file+len-3, "com") ||
+	    streq(file+len-3, "bat")) {
+		return (1);
+	}
+	return (0);
+}
+
 int
 nt_access(const char *file, int mode)
 {
 	DWORD	attrs = GetFileAttributes(file);
-	char	*buf;
+	char	*buf = 0;
 
 	if (attrs == INVALID_FILE_ATTRIBUTES) {
 		(void)GetLastError(); /* set errno */
-		if ((mode & X_OK) == X_OK) {
+		if (((mode & X_OK) == X_OK) && !winExec(file)) {
+			int	rc = -1;
 			buf = aprintf("%s.exe", file);
 			attrs = GetFileAttributes(buf);
-			free(buf);
 			if (attrs != INVALID_FILE_ATTRIBUTES) {
-				/* No need to test for W_OK.
-				 * X_OK is never used with W_OK (I hope)
+				/*
+				 * Try again with new extension, for
+				 * completeness we should really try
+				 * .com and .bat too.
 				 */
-				return (0);
+				rc = nt_access(buf, mode);
 			}
+			free(buf);
+			return (rc);
 		}
 		return (-1);
 	}
-	if ((attrs & FILE_ATTRIBUTE_READONLY) && (mode & W_OK)) {
-		errno = EACCES;
-		return (-1);
+
+	if (mode != F_OK) {
+		SECURITY_DESCRIPTOR	*sd = 0;
+		unsigned long		size;
+		GENERIC_MAPPING		map;
+		HANDLE			h = 0;
+		DWORD			desiredAccess = 0;
+		DWORD			grantedAccess = 0;
+		BOOL			gotAccess = FALSE;
+		PRIVILEGE_SET		pset;
+		DWORD			pset_size = sizeof(PRIVILEGE_SET);
+		int			error;
+
+		size = 0;
+		/* first call just to get the size */
+		GetFileSecurity(file, OWNER_SECURITY_INFORMATION |
+		    GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+		    0, 0, &size);
+		error = GetLastError();
+		if (error != ERROR_INSUFFICIENT_BUFFER) return (-1);
+		/* now we know the size... sigh */
+		unless (sd = calloc(1, size)) goto error;
+		unless (GetFileSecurity(file,
+			OWNER_SECURITY_INFORMATION |
+			GROUP_SECURITY_INFORMATION |
+			DACL_SECURITY_INFORMATION, sd, size, &size)) {
+			goto error;
+		}
+		unless (ImpersonateSelf(SecurityImpersonation)) goto error;
+		unless (OpenThreadToken(GetCurrentThread(),
+			TOKEN_DUPLICATE | TOKEN_QUERY, 0, &h)) {
+			RevertToSelf();
+			goto error;
+		}
+		RevertToSelf();
+		if (mode & R_OK) desiredAccess |= FILE_GENERIC_READ;
+		if (mode & W_OK) desiredAccess |= FILE_GENERIC_WRITE;
+		if (mode & X_OK) desiredAccess |= FILE_GENERIC_EXECUTE;
+
+		memset(&map, 0, sizeof(GENERIC_MAPPING));
+		map.GenericRead = FILE_GENERIC_READ;
+		map.GenericWrite = FILE_GENERIC_WRITE;
+		map.GenericExecute = FILE_GENERIC_EXECUTE;
+		map.GenericAll = FILE_ALL_ACCESS;
+
+		unless (AccessCheck(sd, h, desiredAccess, &map,
+			&pset, &pset_size, &grantedAccess, &gotAccess)) {
+error:
+			/*
+			 * Again, GetLastError() sets errno in dev, so
+			 * delete the errno = EACCESS line when
+			 * merging.
+			 */
+			GetLastError();
+			errno = EACCES;
+			if (sd) free(sd);
+			if (h) CloseHandle(h);
+			return (-1);
+		}
+		free(sd);
+		CloseHandle(h);
+		unless (gotAccess) {
+			errno = EACCES;
+			return (-1);
+		}
+
+		/*
+		 * For dirs we're done, but for files we still need to
+		 * check the 'attr' value.
+		 */
+
+		if ((mode & W_OK) &&
+		    !(attrs & FILE_ATTRIBUTE_DIRECTORY) &&
+		    (attrs & FILE_ATTRIBUTE_READONLY)) {
+			errno = EACCES;
+			return (-1);
+		}
 	}
 	return (0);
 }
@@ -261,6 +327,6 @@ bk_GetLastError(void)
 		debug = (p && *p) ? 1 : 0;
 	}
 
-	if (debug) fprintf(stderr, "GetLastError() = %u\n", ret);
+	if (debug) fprintf(stderr, "GetLastError() = %u\n", (unsigned int)ret);
 	return (ret);
 }

@@ -9,36 +9,9 @@
 #endif
 #ifdef	WIN32
 #define	PFKEY		"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
-#define	SFIOCMD		"sfio.exe -im < sfioball"
 #define	WIN_UNSUPPORTED	"Windows 2000 or later required to install BitKeeper"
-#else
-#define	SFIOCMD		"sfio.exe -iqm < sfioball"
 #endif
 #define	TMP		"bksetup"
-
-static char LICENSE_ERROR[] =
-"You do not have a license for BitKeeper and you need one\n"
-"to install the software\n"
-"You can get a temporary license by sending a mail request\n"
-"to sales@bitmover.com.\n"
-"\n"
-"BitMover can be reached at:\n"
-"   +1-408-370-9911 (international and California)\n"
-"   888-401-8808 (toll free in the US & Canada)\n"
-"during business hours (PST) or via email at sales@bitmover.com.\n"
-"Thanks!\n";
-
-static char UPGRADE_ERROR[] =
-"You requested an automatic upgrade, but you don't seem to have\n"
-"BitKeeper installed on your machine. Make sure that the directory\n"
-"where you installed BitKeeper is in your PATH environment variable\n"
-"and that you can run 'bk version'\n"
-"\n"
-"If you still have trouble, BitMover can be reached at:\n"
-"   +1-408-370-9911 (international and California)\n"
-"   888-401-8808 (toll free in the US & Canada)\n"
-"during business hours (PST) or via email at sales@bitmover.com.\n"
-"Thanks!\n";
 
 #ifdef	WIN32
 static char MSYS_ERROR[] =
@@ -47,6 +20,20 @@ static char MSYS_ERROR[] =
 "and run the installer from there.\n"
 "Thanks!\n";
 #endif
+
+typedef struct opts {
+	u32	shellx:1;	/* -l: install shellx extension */
+	u32	scc:1;		/* -s: install visual studio dll */
+	u32	upgrade:1;	/* -u: batch upgrade, no prompts */
+} opts;
+
+#ifdef WIN32
+char	*options = "slu";
+#else
+char	*options = "u";
+#endif
+char	*prog;
+char	*bindir;
 
 extern unsigned int sfio_size;
 extern unsigned char sfio_data[];
@@ -61,19 +48,20 @@ char*	findtmp(void);
 char*	getbkpath(void);
 void	symlinks(void);
 int	hasDisplay(void);
-char	*getBinDir(void);
+char	*defaultBin(void);
+void	usage(void);
 
 int
 main(int ac, char **av)
 {
-	int	i;
-	int	rc = 0, dolinks = 0, upgrade = 0, embeddedkey = 0;
+	int	i, c;
+	int	rc = 0, dolinks = 0, embeddedkey = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
 	char	*dest = 0, *bkpath = 0, *tmp = findtmp();
-	char	*bindir = getBinDir();
 	char	tmpdir[MAXPATH], buf[MAXPATH], pwd[MAXPATH];
 	char	*p;
+	opts	opts;
 #ifdef	WIN32
 	HCURSOR h;
 
@@ -109,6 +97,10 @@ main(int ac, char **av)
 	_fmode = _O_BINARY;
 #endif
 
+	bzero(&opts, sizeof(opts));
+	prog = av[0];
+	bindir = defaultBin();
+
 	/* rxvt bugs */
 	setbuf(stderr, 0);
 	setbuf(stdout, 0);
@@ -119,49 +111,31 @@ main(int ac, char **av)
 	 * If they want to upgrade, go find that dir before we fix the path.
 	 */
 	bkpath = getbkpath();
-	if (av[1] && (streq(av[1], "-u") || streq(av[1], "--upgrade"))) {
-		upgrade = 1;
-		unless (dest = bkpath) {
-			fprintf(stderr, UPGRADE_ERROR);
-			exit(1);
+	while ((c = getopt(ac, av, options)) != -1) {
+		switch (c) {
+		    case 'l': opts.shellx = 1; break;
+		    case 's': opts.scc = 1; break;
+		    case 'u': opts.upgrade = 1; break;
+		    case '?':
+			fprintf(stderr, "bad option %c\n", optopt);
+			usage();
+		    default:
+			fprintf(stderr, "unknown ret %d\n", c);
+			usage();
 		}
-	} else if (av[1] && (av[1][0] != '-')) {
-		dest = strdup(fullname(av[1]));
+	}
+
+	if (opts.upgrade) {
+		unless (dest = bkpath) dest = bindir;
+	} else if (av[optind]) {
+		dest = strdup(fullname(av[optind]));
 #ifndef	WIN32
 		unless (getenv("BK_NOLINKS")) dolinks = 1;
 #endif
-	} else if (av[1] && !hasDisplay()) {
-		fprintf(stderr, "usage: %s [-u || <directory>]\n", av[0]);
-		fprintf(stderr,
-"Installs BitKeeper on the system.\n"
-"\n"
-"With no arguments this installer will unpack itself in a temp\n"
-"directory and then start a graphical installer to walk through the\n"
-"installation.\n"
-"\n"
-"If a directory is provided on the command line then a default\n"
-"installation is written to that directory.\n"
-"\n"
-"The -u option is for batch upgrades.  The existing BitKeeper is\n"
-"found on your PATH and then this version is installed over the top\n"
-"of it.  If no existing version of BitKeeper can be found, then a\n"
-"new installation is written to %s\n"
-"\n"
-#ifdef WIN32
-"Administrator privileges are required for a full installation.  If\n"
-"installing from a non-privileged account, then the installer will only\n"
-"be able to do a partial install.\n"
-#else
-"Normally symlinks are created in /usr/bin for 'bk' and common SCCS\n"
-"tools.  If the user doesn't have permissions to write in /usr/bin\n"
-"or BK_NOLINKS is set then this step will be skipped.\n"
-"\n"
-"If DISPLAY is not set in the environment, then the destination must\n"
-"be set on the command line.\n"
-#endif
-			, bindir);
-		exit(1);
+	} else if (!hasDisplay()) {
+		usage();
 	}
+
 	sprintf(tmpdir, "%s/%s%u", tmp, TMP, pid);
 #ifdef	WIN32
 	h = SetCursor(LoadCursor(0, IDC_WAIT));
@@ -190,7 +164,7 @@ main(int ac, char **av)
 	extract("sfioball", data_data, data_size, tmpdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
-	if (system(SFIOCMD)) {
+	if (system("sfio.exe -imq < sfioball")) {
 		if (errno == EPERM) {
 			fprintf(stderr,
 "bk install failed because it was unabled to execute sfio in %s.\n"
@@ -260,20 +234,27 @@ main(int ac, char **av)
 	if (dest) {
 		putenv("BK_NO_GUI_PROMPT=1");
 		buf[0] = 0;
-		if (f = popen("bk _logging 2>"DEVNULL_WR, "r")) {
-			fnext(buf, f);
-			pclose(f);
-		}
-		unless (strstr(buf, "license is current")) {
-			    fprintf(stderr, LICENSE_ERROR);
+		/*
+		 * This is silent unless we have an error.  And if there is
+		 * an error we want that error to print out.
+		 */
+		if (system("bk lease renew")) {
 			    rc = 1;
 			    goto out;
-		    }
+		}
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
+#ifdef WIN32
+		sprintf(buf, "bk install %s %s %s \"%s\"",
+		    opts.shellx ? "-l" : "",
+		    opts.scc ? "-s" : "",
+		    opts.upgrade ? "-u" : "",
+		    dest);
+#else
 		sprintf(buf, "bk install %s %s \"%s\"",
-			dolinks ? "-S" : "",
-			upgrade ? "-u" : "",
-			dest);
+		    dolinks ? "-S" : "",
+		    opts.upgrade ? "-u" : "",
+		    dest);
+#endif
 		unless (rc = system(buf)) {
 			fprintf(stderr, "\nInstalled version information:\n\n");
 			sprintf(buf, "'%s/bk' version", dest);
@@ -346,14 +327,62 @@ out:	cd(tmpdir);
 	exit(rc);
 }
 
+void
+usage(void)
+{
+#ifdef WIN32
+	fprintf(stderr, "usage: %s [-l][-s][-u || <directory>]\n", prog);
+#else
+	fprintf(stderr, "usage: %s [-u || <directory>]\n", prog);
+#endif
+	fprintf(stderr,
+"Installs BitKeeper on the system.\n"
+"\n"
+"With no arguments this installer will unpack itself in a temp\n"
+"directory and then start a graphical installer to walk through the\n"
+"installation.\n"
+"\n"
+"If a directory is provided on the command line then a default\n"
+"installation is written to that directory.\n"
+"\n"
+"The -u option is for batch upgrades.  The existing BitKeeper is\n"
+"found on your PATH and then this version is installed over the top\n"
+"of it.  If no existing version of BitKeeper can be found, then a\n"
+"new installation is written to %s\n"
+"\n"
+#ifdef WIN32
+"The -s option enables the bkscc dll for Visual Studio integration.\n"
+"\n"
+"The -l option enables the shell extension for Windows Explorer.\n"
+"\n"
+"Administrator privileges are required for a full installation.  If\n"
+"installing from a non-privileged account, then the installer will only\n"
+"be able to do a partial install.\n"
+#else
+"Normally symlinks are created in /usr/bin for 'bk' and common SCCS\n"
+"tools.  If the user doesn't have permissions to write in /usr/bin\n"
+"or BK_NOLINKS is set then this step will be skipped.\n"
+#endif
+#if !defined(WIN32) && !defined (__APPLE__)
+"\n"
+"If DISPLAY is not set in the environment, then the destination must\n"
+"be set on the command line.\n"
+#endif
+	    , bindir);
+	exit(1);
+}
+
 char *
-getBinDir(void)
+defaultBin(void)
 {
 #ifdef WIN32
 	char	*bindir;
-	char	*buf;
+	char	*p, *buf;
 
 	if (buf = reg_get(PFKEY, "ProgramFilesDir", 0)) {
+		for (p = buf; *p; p++) {
+			if (*p == '\\') *p = '/';
+		}
 		bindir = aprintf("%s/BitKeeper", buf);
 		free(buf);
 	} else {

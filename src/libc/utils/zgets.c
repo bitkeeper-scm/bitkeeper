@@ -316,7 +316,7 @@ zgets_done(zgetbuf *in)
 	if (err) fprintf(stderr, "zgets: decompression failure %d\n", err);
 	free(in->buf);
 	/* signal end to callback */
-	in->callback(in->token, 0);
+	if (in->callback(in->token, 0) < 0) err = -1;
 	free(in);
 	return (err);
 }

@@ -10,7 +10,8 @@ test $OSTYPE != cygwin && {
 }
 BK_NOTTY=YES
 BK_NO_REMAP=1
-export BK_NOTTY BK_NO_REMAP
+_BK_BAM_V2=1
+export BK_NOTTY BK_NO_REMAP _BK_BAM_V2
 
 test X$LOG = X && LOG=LOG-$BK_USER
 cd /build
