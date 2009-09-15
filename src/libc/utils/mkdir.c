@@ -40,11 +40,12 @@ test_mkdirp(char *dir)
 		strcpy(buf, "./");
 		strcat(buf, dir);
 	}
-	while ((ret = access(buf, W_OK)) == -1 && (errno == ENOENT)) {
+	while (((ret = access(buf, W_OK)) == -1) && (errno == ENOENT)) {
 		t = strrchr(buf, '/');
 		unless (t) break;
 		*t = 0;
 	}
+	if (!ret && !writable(buf)) ret = -1;
 	return (ret);
 }
 

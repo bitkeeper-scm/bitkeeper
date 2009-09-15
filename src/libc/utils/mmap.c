@@ -31,10 +31,7 @@ mopen(char *file, char *mode)
 		oflags = O_RDWR;
 		mprot |= PROT_WRITE;
 	}
-	unless ((fd = open(file, oflags, 0)) >= 0) {
-		perror(file);
-		return (0);
-	}
+	unless ((fd = open(file, oflags, 0)) >= 0) return (0);
 
 	unless (fstat(fd, &st) == 0) {
 		perror(file);

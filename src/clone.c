@@ -45,7 +45,7 @@ clone_main(int ac, char **av)
 {
 	int	c, rc;
 	int	attach_only = 0, gzip = 6;
-	char	**envVar = 0;
+	char	*dest = 0, **envVar = 0;
 	remote 	*r = 0, *l = 0;
 
 	opts = calloc(1, sizeof(*opts));
@@ -212,6 +212,8 @@ clone_main(int ac, char **av)
 				return (1);
 			}
 		}
+	} else {
+		if (r->path) opts->to = basenm(r->path);
 	}
 
 	if (bam_url && !streq(bam_url, ".") && !streq(bam_url, "none")) {
@@ -229,7 +231,7 @@ clone_main(int ac, char **av)
 			fprintf(stderr, "attach: not a BitKeeper repository\n");
 		}
 	} else {
-		rc = clone(av, r, l ? l->path : 0, envVar);
+		rc = clone(av, r, l ? l->path : opts->to, envVar);
 	}
 	if (opts->attach && !rc) rc = attach();
 	free(opts->from);
@@ -299,7 +301,8 @@ clone(char **av, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s exists and is not empty\n", local);
 		exit(2);
 	}
-	if (local ? test_mkdirp(local) : access(".", W_OK)) {
+	if (local ? test_mkdirp(local) : 
+		(!writable(".") || access(".", W_OK))) {
 		fprintf(stderr, "clone: %s: %s\n",
 			(local ? local : "current directory"), strerror(errno));
 		usage(av[0]);

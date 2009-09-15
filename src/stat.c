@@ -116,3 +116,34 @@ print_sb(struct stat *sb, char *fn)
 	    sb->st_ctime,	/* 10 */
 	    fn);		/* 11 */
 }
+
+/*
+ * Usage: bk _access <file> [r|w|x]
+ * defaults to F_OK.
+ */
+int
+access_main(int ac, char **av)
+{
+	int	mode = F_OK;
+
+	unless (av[1]) {
+usage:		fprintf(stderr, "usage: bk _access <file> [r|w|x]\n");
+		exit(1);
+	}
+	if (av[2]) {
+		switch (av[2][0]) {
+		    case 'r': mode = R_OK; break;
+		    case 'w': mode = W_OK; break;
+		    case 'x': mode = X_OK; break;
+		    default: goto usage;
+		}
+	}
+	if (access(av[1], mode) == 0) {
+		printf("%s OK\n", av[1]);
+		return (0);
+	} else {
+		printf("%s FAILED\n", av[1]);
+		perror("access");
+		return (1);
+	}
+}

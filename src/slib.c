@@ -8231,6 +8231,13 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 
 #define	RET(x)	{ different = x; goto out; }
 
+	unless (HAS_GFILE(s)) RET(0);
+	unless (s->mode & 0444) {
+		errno = EACCES;
+		perror(s->gfile);
+		RET(-1);
+	}
+
 	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
 
 	if (S_ISLNK(s->mode)) {
@@ -8665,7 +8672,6 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	    case 1:	/* diffs */
 		return (0);
 	    case 2:	/* diff ran into problems */
-		fprintf(stderr, "Arrrrg.  Diff errored\n");
 		return (-1);
 	    default:	/* unknown? */
 		fprintf(stderr, "Unknown exit from diff.\n");
@@ -8761,6 +8767,7 @@ sccs_clean(sccs *s, u32 flags)
 	pfile	pf;
 	char	tmpfile[MAXPATH];
 	delta	*d;
+	int	ret;
 
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && HASGRAPH(s)) {
@@ -8782,11 +8789,13 @@ sccs_clean(sccs *s, u32 flags)
 		 * Go look and see if there are any diffs and if not,
 		 * clean it. (The GET_EXPAND ignores keywords)
 		 */
-		unless (_hasDiffs(s, sccs_top(s), GET_EXPAND, 0, &dummy)) {
+		ret = _hasDiffs(s, sccs_top(s), GET_EXPAND, 0, &dummy);
+		unless (ret) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
 			return (0);
 		}
+		if (ret < 0) return (1);
 		fprintf(stderr,
 		    "%s writable, with changes, but not edited.\n", s->gfile);
 		unless (flags & PRINT) return (1);
@@ -9431,10 +9440,10 @@ checkin(sccs *s,
 	unless (flags & NEWFILE) {
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
-out:		sccs_unlock(s, 'z');
+out:		if (sfile) fclose(sfile);
+		sccs_unlock(s, 'z');
 		sccs_unlock(s, 'x');
 		if (prefilled) sccs_freetree(prefilled);
-		if (sfile) fclose(sfile);
 		if (gfile && (gfile != stdin)) fclose(gfile);
 		s->state |= S_WARNED;
 		return (-1);

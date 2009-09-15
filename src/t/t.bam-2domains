@@ -419,9 +419,39 @@ grep -q missing OUT && {
 }
 echo OK
 
-echo $N Push C2 to C1, should send unique BAM data ..................$NL
+echo $N Pull C2 to C1, with the BAM server offline ..................$NL
 cd "$HERE"
 rm -rf C1
+bk clone -Bbk://localhost:$P/S -r1.1 $Q C2 C1
+cd C1
+bk _kill bk://localhost:$P
+bk pull $Q 2> ERR && {
+	echo fix test
+	exit 1
+}
+grep -q "nt_unlink" ERR && {
+	echo failed
+	cat ERR
+	exit 1
+}
+grep -q "BAM fetch failed, aborting pull" ERR || {
+	echo wrong msg
+	cat ERR
+	exit 2
+}
+# restart BKD
+cd "$HERE"
+P=`port 50000`
+bk bkd -d -p$P -ikill 
+trap "bk _kill bk://localhost:$P; bk _kill bk://localhost:$P2" 0
+echo "failed (bug should fetch BAM data)"
+
+echo $N Push C2 to C1, should send unique BAM data ..................$NL
+cd "$HERE"
+rm -rf C1 || {
+	echo failed rm
+	exit 12
+}
 bk clone -Bbk://localhost:$P/S -r1.1 $Q C2 C1
 cd C2
 bk push $Q ../C1

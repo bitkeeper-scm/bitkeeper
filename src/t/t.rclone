@@ -86,6 +86,70 @@ grep -q 'illegal cd' OUT || {
 }
 bk _kill http://localhost:$P || exit 1
 echo OK
+
+echo $N rClone to bk://url without path should fail .................$NL
+mkdir EMPTY
+cd EMPTY
+P=`port 60000`
+bk bkd -q -p$P -ikill
+cd ..
+bk clone "$HERE/project" bk://localhost:$P 2> OUT && {
+	echo should have failed
+	cat OUT
+	bk _kill http://localhost:$P
+	exit 1
+}
+grep -q 'needs a path component.' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N rClone to http://url without path should fail ...............$NL
+bk clone "$HERE/project" http://localhost:$P 2> OUT && {
+	echo should have failed
+	cat OUT
+	bk _kill http://localhost:$P
+	exit 1
+}
+grep -q 'needs a path component.' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N rClone to bk://url with . path should work ..................$NL
+bk clone "$HERE/project" bk://localhost:$P/. 2> OUT || {
+	echo should have worked
+	cat OUT
+	bk _kill http://localhost:$P
+	exit 1
+}
+test -d EMPTY/BitKeeper/etc || {
+	echo did not create repo
+	bk _kill http://localhost:$P
+	exit 1
+}
+echo OK
+
+echo $N rClone to bk://url with non-. path should work ..............$NL
+bk clone "$HERE/project" bk://localhost:$P/REPO 2> OUT || {
+	echo should have worked
+	cat OUT
+	bk _kill http://localhost:$P
+	exit 1
+}
+test -d EMPTY/REPO/BitKeeper/etc || {
+	echo did not create repo
+	bk _kill http://localhost:$P
+	exit 1
+}
+echo OK
+
+bk _kill http://localhost:$P || exit 1
+
 echo $N Make sure rclone respect checkout preference ................$NL
 cd "$HERE/project/BitKeeper/etc"
 bk edit $Q config

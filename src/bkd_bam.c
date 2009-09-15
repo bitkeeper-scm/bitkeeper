@@ -172,7 +172,10 @@ bkd_BAM_part3(remote *r, char **envVar, int quiet, char *range)
 	} else {
 		fprintf(f, "bk -zo0 -Bstdin sfio -oqBl -\n");
 	}
-	if (rc = bp_sendkeys(f, range, &sfio, r->gzip)) goto done;
+	if (rc = bp_sendkeys(f, range, &sfio, r->gzip)) {
+		fclose(f);
+		goto done;
+	}
 	fprintf(f, "rdunlock\n");
 	fprintf(f, "quit\n");
 	fclose(f);

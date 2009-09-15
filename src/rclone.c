@@ -77,7 +77,7 @@ rclone_main(int ac, char **av)
 	}
 
 	/*
-	 * Validate argument
+	 * Validate arguments
 	 */
 	unless (av[optind] && av[optind + 1]) usage();
 	l = remote_parse(av[optind], REMOTE_BKDURL);
@@ -115,6 +115,11 @@ rclone_main(int ac, char **av)
 	}
 	r = remote_parse(av[optind + 1], REMOTE_BKDURL);
 	unless (r) usage();
+	if (r->host && !r->path) {
+		fprintf(stderr,
+		    "clone: %s needs a path component.\n", av[optind + 1]);
+		exit(1);
+	}
 	r->gzip_in = gzip;
 
 	/*

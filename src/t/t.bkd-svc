@@ -109,12 +109,43 @@ bk commit $Q -ycset1
 if bk _test ! -f SCCS/s.foo.c; then echo failed to create history; exit 1; fi
 echo OK
 
-echo $N clone the workspace .........................................$NL
-bk clone $Q "$HERE/project" "$HERE/copy"
-cd "$HERE/copy"
-if bk _test ! -f "BitKeeper/etc/SCCS/x.dfile"; then echo failed; exit 1; fi
+echo $N Time differences between service and regular bkd ............$NL
+cd "$HERE"
+bk clone $Q project copy || exit 1
+test -d copy/BitKeeper/etc || { echo failed; exit 2; }
 PORT=`port 5000`
-bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT > "$HERE/BKD" 2>&1
+bk bkd -d -p$PORT -ikill || exit 3
+perl -e '
+	$start = time;
+	system("bk clone -q bk://localhost:$ARGV[0]/copy junk") && die;
+	$stop = time;
+	print 1 + $stop - $start, "\n";
+' $PORT > BKDTIME || exit 4
+bk _kill bk://localhost:$PORT
+test -d junk/BitKeeper/etc || exit 5
+rm -fr junk
+bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT
+perl -e '
+	$start = time;
+	system("bk clone -q bk://localhost:$ARGV[0]/copy junk") && die;
+	$stop = time;
+	print 1 + $stop - $start, "\n";
+' $PORT > SVCTIME || exit 6
+bk service uninstall $BKDNAME
+test -d junk/BitKeeper/etc || exit 4
+rm -fr junk
+# If it took 4 times longer to do the SVC, something is fishy
+expr `cat BKDTIME` '*' 4 '>' `cat SVCTIME` > EXPR || {
+	echo failed BKDTIME SVCTIME
+	cat BKDTIME
+	cat SVCTIME
+	exit 8
+}
+echo OK
+
+echo $N start up the service in copy ................................$NL
+cd "$HERE/copy"
+bk service install $BKDNAME $GZIP -EBK_REGRESSION=1 -p$PORT
 echo OK
 
 echo $N die part way through a clone and make sure we clean locks ...$NL
