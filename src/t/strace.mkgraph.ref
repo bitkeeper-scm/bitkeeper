@@ -2,8 +2,8 @@
 _getdir 1
 chmod 1
 close 4
-lseek 47
+lseek 43
 lstat 20
 open 5
 read 160
-write 98
+write 99
