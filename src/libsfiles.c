@@ -288,7 +288,7 @@ sfilesDied(int killit)
 	if (spid) {
 		opt = WNOHANG;
 		if (killit) {
-			kill(spid, SIGTERM);
+			if (kill(spid, SIGTERM)) kill(spid, SIGKILL);
 			opt = 0;
 		}
 		if (spid == waitpid(spid, &ret, opt)) {

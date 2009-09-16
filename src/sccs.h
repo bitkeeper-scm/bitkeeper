@@ -1288,6 +1288,7 @@ int	startmenu_list(u32, char *);
 int	startmenu_rm(u32, char *);
 int	startmenu_get(u32, char *path);
 int	startmenu_set(u32, char *, char *, char *, char *);
+char	*bkmenupath(int, int);
 char	*bk_searchFile(char *base);
 void	dspec_collapse(char **dspec, char **begin, char **end);
 void	fslayer_cleanup(void);

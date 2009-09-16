@@ -28,14 +28,26 @@ bk prs -hr1.0 -nd:FLAGS: ChangeSet | grep -q LONGKEY || {
 }
 echo OK
 
-echo $N Make sure that we can remove an earlier cset ................$NL
+echo $N Make sure that we can remark all the csets ..................$NL
 for file in A B C
 do	for line in 1 2 3 4 5 6 7 8
 	do	echo $line $file >> $file
 	done
 	bk new $Q $file
 done
+bk _cp SCCS/s.A backup
 bk commit $Q -ywhatever
+bk _cp backup SCCS/s.A
+echo A > WANT
+bk sfiles -gP > GOT
+cmpfiles WANT GOT
+bk -r check -ac 2> ERR && { echo failed; exit 1; }
+grep -q "Missing delta" ERR || { echo failed; exit 2; }
+bk cset -C || { echo failed; exit 3; }
+bk -r check -ac || { echo failed; exit 4; }
+echo OK
+
+echo $N Make sure that we can remove an earlier cset ................$NL
 bk cset $Q -x+
 bk co $Q A
 if [ "`cat A`" != "" ]

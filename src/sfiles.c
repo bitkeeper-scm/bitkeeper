@@ -351,7 +351,7 @@ usage:				system("bk help -s sfiles");
                 }
 	}
 	if (opts.out != stdout) fclose(opts.out);
-	if (opts.progress) progress(2);
+	if (opts.progress) progress(1);
 	free_project();
 	return (0);
 }
@@ -1028,9 +1028,6 @@ progress(int force)
 	if (write(1, buf, strlen(buf)) != strlen(buf)) exit(1);
 	s_last = s_count;
 	x_last = x_count;
-	if (force == 2) {
-		usleep(300000);		/* let TK update */
-	}
 }
 
 private int
@@ -1486,7 +1483,7 @@ sccsdir(winfo *wi)
 void
 enableFastPendingScan(void)
 {
-	touch(DFILE, 0666);
+	unless (exists(DFILE)) touch(DFILE, 0666);
 }
 
 /*

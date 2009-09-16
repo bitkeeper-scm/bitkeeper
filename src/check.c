@@ -778,7 +778,7 @@ private int
 readonly_gfile(sccs *s)
 {
 	/* XXX slow in checkout:edit mode */
-	if ((HAS_PFILE(s) && HAS_GFILE(s) && !writable(s->gfile))) {
+	if (HAS_PFILE(s) && HAS_GFILE(s) && !writable(s->gfile)) {
 		if (gfile_unchanged(s) == 1) {
 			if (unlink(s->pfile)) {
 				perror(s->pfile);

@@ -51,7 +51,7 @@ case $CMD in
 		    exit 1
 		}
 		# set REGRESSION to leave dirs writable
-		BK_REGRESSION=1 ./bk* -u || {
+		echo y | BK_REGRESSION=1 ./bk* -u || {
 		    echo bk upgrade failed
 		    exit 1
 		}
