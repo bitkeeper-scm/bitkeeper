@@ -14,52 +14,125 @@ test "$PLATFORM" = "WIN32" || grep -q "usage:	bk citool " ERR || {
 rm -f ERR
 echo OK
 
-echo $N Run newcitool in a component - go ahead and commit ..........$NL
+echo $N Run in only gdb - go ahead and commit .......................$NL
 echo old > gcc/file
-bk new $Q gcc/file
+echo old > gdb/file
+bk new $Q gcc/file gdb/file
 (cd gcc; bk commit $Q -f)
+(cd gdb; bk commit $Q -f)
 bk commit $Q -f
-bk edit $Q gcc/file
+bk edit $Q gcc/file gdb/file
 echo new > gcc/file
-cd gcc
+echo new > gdb/file
+cd gdb
+bk newcitool . || exit 1
+echo OK
+
+echo $N Start in gdb, but show whole product - go ahead and commit ..$NL
 bk newcitool || exit 1
 cd ..
 echo OK
 
-echo $N Run newcitool in product - checkin but don\'t commit .........$NL
+echo $N Run in product - checkin but don\'t commit ...................$NL
 echo data > file
 bk newcitool || exit 1
 echo OK
 
-echo $N Run newcitool in product - now commit the file ..............$NL
+echo $N Run in product - now commit the cset ........................$NL
 bk newcitool || exit 1
 echo OK
 
-echo $N Run newcitool in product - go ahead and commit ..............$NL
-echo data > extra
-bk newcitool || exit 1
-echo OK
-
-echo $N Run newcitool in product with only a component diff .........$NL
+echo $N Run in product with only a component diff - please commit ...$NL
 bk edit $Q gcc/file
 echo latest > gcc/file
 bk newcitool || exit 1
 echo OK
 
-echo $N Run newcitool in product with only a component extra ........$NL
+echo $N Run in product with only a component extra - please commit ..$NL
 echo check it in > gcc/comp-extra
 bk newcitool || exit 1
 echo OK
 
-echo $N Run newcitool in product with a product and component diff ..$NL
+echo $N Run in component with a product and component diff ..........$NL
 bk edit $Q extra
 echo more >> extra
 bk edit $Q gcc/file
 echo more >> gcc/file
 bk newcitool || exit 1
-P=`bk -Apqr | wc -l`
+P=`bk -Acpqr | wc -l`
 if [ $P -ne 0 ]; then
 	echo "FAILED"
 	exit 1
 fi
+echo OK
+
+echo $N Run with multiple pending commented deltas - just commit ....$NL
+for count in 1 2 3 4 5 6
+do
+	echo $count > foo
+	bk delta $Q -la -y"Comment $count" foo
+done
+echo "multiple deltas" | bk cfile save ChangeSet
+bk newcitool
+echo OK
+
+echo $N Run same in component, comment only component cset file .....$NL
+cd gcc
+for count in 1 2 3 4 5 6
+do
+	echo $count > foo
+	bk delta $Q -la -y"Comment $count" foo
+done
+echo "multiple deltas" | bk cfile save ChangeSet
+bk newcitool
+echo OK
+
+echo $N Run in collapsed clone -- just commit .......................$NL
+#
+# When I (georgn) coded this I expected citool to show me something like:
+#
+# collapsed@1.5:  comment 5
+# collapsed@1.4:  comment 5\n----\ncomment 4
+# collapsed@1.1:  comment 5\n----\n....\ncomment 1
+#
+# I can't seem to reproduce the bug I was looking for and instead
+# see citool not seeing files to change
+#
+cd "$HERE"
+bk clone $Q project copy
+cd copy
+for count in 1 2 3 4 5
+do
+	echo $count > collapsed
+	bk delta $Q -la -y"Comment $count" collapsed
+	bk commit $Q -y"Commit $count"
+done
+touch newfile
+bk new $Q newfile
+bk collapse -eda`bk repogca`
+bk newcitool
+echo OK
+
+echo $N "Select 'bar', click 'Cut' twice, click 'Paste' - did it? ....$NL"
+cd "$HERE/project"
+touch bar
+bk new $Q bar
+bk edit $Q bar
+echo "bar" >> bar
+echo "Added and changed bar" > c.bar
+bk _mv c.bar SCCS/c.bar
+bk newcitool
+echo OK
+
+echo $N "filename rev@+, check marks by all? .........................$NL"
+touch t.att t.rev@+
+bk new $Q t.att t.rev@+
+bk edit $Q t.att t.rev@+
+echo 1 > t.att
+echo 2 > c.t.att
+bk _mv c.t.att SCCS/c.t.att
+echo 3 > t.rev@+
+echo 4 > c.t.rev@+
+bk _mv c.t.rev@+ SCCS/c.t.rev@+
+bk newcitool
 echo OK
