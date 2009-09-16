@@ -354,21 +354,55 @@ bk sfiles -pC > "$HERE"/GOT
 cmpfiles "$HERE/WANT" "$HERE/GOT"
 echo OK
 
-echo $N Ignore a file and commit ....................................$NL
-cd "$HERE"
-echo "hi" > ignore.this
-OUT=$HERE/OUT
+echo $N Check for cut twice bug .....................................$NL
 bk guitest newcitool >"$OUT" 2>&1 <<'EOF'
-	test_selectFile ignore.this
-	test_buttonPress "Ignore"
-	test_selectFile ChangeSet
-	test_inputString  "testing..."
-	test_buttonPress "Commit"
-	test_buttonPress "Commit"
+	test_selectFile "ChangeSet"
+	test_inputString "cset comments"
+	test_buttonPress "Cut"
+	test_buttonPress "Cut"
+	test_buttonPress "Paste"
+
+	if {[test_getComments] ne "cset comments"} {
+		puts stderr "Pasted comment is not correct."
+		puts stderr "Comment is '[test_getComments]'"
+		puts stderr "Should be  'cset comments'"
+		exit 1
+	}
+
+	test_buttonPress "Quit" then "Quit without saving*"
 EOF
-cat > "$HERE"/WANT <<EOF
-x------ ignore.this
-EOF
-bk sfiles -ixv ignore.this > "$HERE"/GOT
-cmpfiles "$HERE/WANT" "$HERE/GOT"
+test $? -ne 0 -o -s "$OUT" && { echo failed; cat "$OUT"; exit 1; }
 echo OK
+
+echo $N Test weird filenaems with comments ..........................$NL
+cd "$HERE/project"
+# clean up from previous tests
+bk sfiles -x | xargs rm -f
+
+echo foo > ./~foo
+echo "comment" | bk cfile save ./~foo
+echo foo > src/~foo
+echo "comment" | bk cfile save src/~foo
+echo foo > "./~ spaces in file name"
+echo "comment" | bk cfile save "./~ spaces in file name"
+mkdir -p "spaces in dir name"
+echo foo > "spaces in dir name/~ spaces in file name"
+echo "comment" | bk cfile save "spaces in dir name/~ spaces in file name"
+mkdir -p "./~src"
+echo foo > "./~src/file"
+echo "comment" | bk cfile save "./~src/file"
+echo foo > "t.att"
+echo "comment" | bk cfile save "t.att"
+echo foo > "t.rev@+"
+echo "comment" | bk cfile save "t.rev@+"
+
+bk guitest newcitool > "$OUT" 2>&1 <<'EOF'
+	test_fileHasIcon "./~foo" done
+	test_fileHasIcon "./~ spaces in file name" done
+	test_fileHasIcon "spaces in dir name/~ spaces in file name" done
+	test_fileHasIcon "./~src/file" done
+	test_fileHasIcon "t.att" done
+	test_fileHasIcon "t.rev@+" done
+	test_buttonPress "Quit" then "Quit without saving*"
+EOF
+test $? -ne 0 -o -s "$OUT" && { echo $N "failed (bug known) "$NL; cat "$OUT"; }

@@ -1093,7 +1093,10 @@ showFile(sfile sf)
 void
 cutComments()
 {
-	self.clipboard = getCurrentComments();
+	string	comments = getCurrentComments();
+
+	if (comments eq "") return;
+	self.clipboard = comments;
 	if (Text_cget(self.w_comments, state:) eq "normal") {
 		clearComments();
 		saveComments();
