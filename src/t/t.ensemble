@@ -132,6 +132,17 @@ test "`cat GOT`" = "$ROOTKEY" || {
 }
 echo OK
 
+echo $N Test that a standalone in a prod gets the right prod ........$NL
+cd "$HERE/project"
+commercial comp
+# there are no sub repos in this standalone repo inside a product
+printf "" > WANT
+bk -P sfiles -R > GOT
+checkfiles WANT GOT
+cd ..
+rm -fr comp
+echo OK
+
 echo $N Test that a comp in a prod in a prod gets the right prod ....$NL
 cd "$HERE/project"
 touch c

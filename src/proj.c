@@ -320,9 +320,14 @@ proj_cd2root(void)
 int
 proj_cd2product(void)
 {
-	project	*p;
+	project	*p, *prod;
 
-	if (p = proj_product(0)) return (proj_chdir(proj_root(p)));
+	unless (p = curr_proj()) return (-1);
+	if (p->rparent) p = p->rparent;
+	prod = proj_product(p);
+	if ((p == prod) || proj_isComponent(p)) {
+		return (proj_chdir(proj_root(prod)));
+	}
 	return (-1);
 }
 

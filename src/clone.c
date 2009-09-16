@@ -583,7 +583,6 @@ initProject(char *root, remote *r)
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(root);
 	chdir(root);
-	if (!opts->no_parent && proj_product(0)) opts->no_parent = 1;
 
 	putenv("_BK_NEWPROJECT=YES");
 	if (sane(0, 0)) return (-1);
@@ -1069,6 +1068,8 @@ attach(void)
 		fprintf(stderr, "attach: %s is already a component\n", relpath);
 		return (-1);
 	}
+	/* remove any existing parent */
+	system("bk parent -qr");
 	rc = systemf("bk newroot %s -y'attach %s'",
 		     opts->quiet?"-q":"", relpath);
 	rc = rc || systemf("bk admin -D -C'%s' ChangeSet",

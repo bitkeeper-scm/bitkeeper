@@ -225,7 +225,9 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 	 * make sure we are there.
 	 */
 	cwd = strdup(proj_cwd());
-	if (proj_cd2product()) assert(0);
+	proj = proj_product(0);
+	assert(proj);
+	chdir(proj_root(proj));
 
 	n = new(nested);
 	unless (cset) {

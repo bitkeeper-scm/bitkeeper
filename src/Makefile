@@ -388,7 +388,7 @@ bk.script: bk.sh port/$(SYS)_platform.sh
 	chmod +x bk.script 
 
 bkmsg.txt: bkmsg.doc
-	cp $< $@
+	cp -f $< $@
 
 bkhelp.txt: FORCE
 	@cd ../man/man2help && $(MAKE) helptxt

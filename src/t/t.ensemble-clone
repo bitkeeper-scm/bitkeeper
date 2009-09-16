@@ -95,6 +95,28 @@ cd project
 bk sfiles -R | grep -v gcc > ../LIST
 cd ..
 
+echo $N Show that I can clone a product under another product .......$NL
+cd project
+bk clone $Q ../copy junk || exit 1
+cd junk || exit 2
+bk parent -l | grep -q copy || exit 3
+cd ..
+rm -rf junk
+cd ..
+echo OK
+
+echo $N Show that I can clone a standalone repo undo a product ......$NL
+commercial standalone
+cd ../project
+bk clone $Q ../standalone junk2 || exit 1
+cd junk2 || exit 2
+bk parent -l | grep -q standalone || exit 3
+cd ..
+rm -rf junk2
+cd ..
+rm -rf standalone
+echo OK
+
 echo $N Test that -skey clones work .................................$NL
 KEY=`bk changes -r+ -q -d:ROOTKEY: project/gcc`
 rm -rf mynewgcc
