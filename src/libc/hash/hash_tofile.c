@@ -65,15 +65,14 @@ out:	freeLines(fieldlist, 0);
 
 /*
  * Read a file written by the function above and add keys to 'h'
- * overwriting any existing keys.  If h==0 and path exists,
- * then a new hash is returned.
+ * overwriting any existing keys.
+ * If h==0 and path doesn't exist or is empty, then 0 is returned.
  */
 hash *
 hash_fromFile(hash *h, char *path)
 {
 	FILE	*f;
 
-	unless (h) h = hash_new(HASH_MEMHASH);
 	if (f = fopen(path, "r")) {
 		h = hash_fromStream(h, f);
 		fclose(f);
@@ -83,8 +82,10 @@ hash_fromFile(hash *h, char *path)
 
 /*
  * Read a stream written by the function above and add keys to 'h'
- * overwriting any existing keys.  If h==0, then a new hash is
- * returned.
+ * overwriting any existing keys.
+ * The function returns at EOF or when a line with just "@\n" is
+ * encountered.  (record separator to put multiple KV's in a file)
+ * If h==0, then a new hash is created if any data is found.
  */
 hash *
 hash_fromStream(hash *h, FILE *f)
@@ -98,12 +99,12 @@ hash_fromStream(hash *h, FILE *f)
 	char	data[256];
 
 	assert(f);
-	unless (h) h = hash_new(HASH_MEMHASH);
 	while (line = fgetline(f)) {
 		if ((line[0] == '@') && (line[1] != '@')) {
-			if (streq(line, "@END@")) break;
+			unless (line[1]) break; /* @ == end of record */
 			if (key || val) {
 				/* save old key */
+				unless (h) h = hash_new(HASH_MEMHASH);
 				savekey(h, base64, key, val);
 				key = 0;
 				val = 0;
@@ -131,7 +132,10 @@ hash_fromStream(hash *h, FILE *f)
 			}
 		}
 	}
-	if (key || val) savekey(h, base64, key, val);
+	if (key || val) {
+		unless (h) h = hash_new(HASH_MEMHASH);
+		savekey(h, base64, key, val);
+	}
 	return (h);
 }
 
@@ -251,6 +255,8 @@ hashfile_test_main(int ac, char **av)
 	hash_insert(h, "binary", strlen("binary")+1, bdata, sizeof(bdata));
 	hash_insertStr(h, "end", "@END@\n");
 	hash_insertStr(h, "marker", "@@");
+	hash_insertStr(h, "eor", "@");
+	hash_insertStr(h, "eorn", "@\n");
 	hash_insert(h, "strnonl", 8, "strnonl", 7);
 	hash_insertStr(h, "multiline", "a\nb\nc\nd\n");
 	unless (f = fopen(av[1], "w")) {
@@ -291,6 +297,18 @@ hashfile_test_main(int ac, char **av)
 	}
 	unless (hash_fetchStr(h, "marker") &&
 	    streq(h->vptr, "@@")) {
+		fprintf(stderr, "marker failed\n");
+		rc = 1;
+		goto out;
+	}
+	unless (hash_fetchStr(h, "eor") &&
+	    streq(h->vptr, "@")) {
+		fprintf(stderr, "marker failed\n");
+		rc = 1;
+		goto out;
+	}
+	unless (hash_fetchStr(h, "eorn") &&
+	    streq(h->vptr, "@\n")) {
 		fprintf(stderr, "marker failed\n");
 		rc = 1;
 		goto out;
