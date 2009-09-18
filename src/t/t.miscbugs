@@ -9,6 +9,13 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+echon Running msys doesn\'t move dotbk .............................
+PATH1=`BK_DOTBK= TMP= TMPDIR= bk dotbk | tr '[A-Z]' '[a-z]'`
+PATH2=`BK_DOTBK= TMP= TMPDIR= bk bk dotbk | tr '[A-Z]' '[a-z]'`
+# cmp lowercase to avoid problems on Win32
+test "$PATH1" = "$PATH2" || exit 1
+echo OK
+
 echon Max line length .............................................
 commercial project
 awk 'BEGIN {for (i = 0; i < 2047; i++) printf "."; printf "\n"}' >long

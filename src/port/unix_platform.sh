@@ -9,15 +9,8 @@ __platformInit()
 {
 	# Unix specific stuff
 	CLEAR=clear
-	GUI_BIN=$BIN
 	RM=/bin/rm
-	ECHO=echo
 	TMP=/tmp/
-	DEV_NULL=/dev/null
-	if [ -x /usr/bin/mailx ]
-	then	MAIL_CMD=/usr/bin/mailx
-	else	MAIL_CMD=mail
-	fi
 	if [ -x /usr/bin/nawk ]
 	then	AWK=/usr/bin/nawk
 	else	AWK=awk
@@ -26,5 +19,4 @@ __platformInit()
 	tcl=""
 	test "X$EDITOR" = X && EDITOR=vi
 	WINDOWS=NO
-	export PAGER EDITOR GUI_BIN RM ECHO TMP DEV_NULL MAIL_CMD AWK WINDOWS
 }

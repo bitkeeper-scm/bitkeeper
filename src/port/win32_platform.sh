@@ -24,12 +24,10 @@ __platformInit()
 	# WIN32 specific stuff
 	CLEAR=cls
 	TMP=`__nativepath /tmp`/
-	DEV_NULL=nul
 	WINDOWS=YES
 	AWK=awk
 	ext=".exe"
 	tcl=".tcl"
 	test "X$EDITOR" = X && EDITOR=notepad.exe
 	RM=rm
-	export EDITOR TMP DEV_NULL AWK RM WINDOWS
 }
