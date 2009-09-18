@@ -34,6 +34,7 @@ private	void	free_project(void);
 private void	load_ignore(project *p);
 private	void	ignore_file(char *file);
 private	void	print_components(char *frompath);
+private	void	walk_deepComponents(char *path, walkfn fn, void *data);
 
 typedef struct {
 	u32	Aflg:1;			/* -pA: show all pending deltas */
@@ -121,20 +122,8 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 private int
 fastprint(char *file, struct stat *sb, void *data)
 {
-	int	len;
-
 	file += 2;
-	/* if (file =~ /\/SCCS\/s.ChangeSet$/) */
-	len = strlen(file);
-	if ((len > strlen(CHANGESET)) &&
-	    streq(file + len - strlen(CHANGESET) - 1, "/" CHANGESET)) {
-		/* pick out subcomponents */
-		file[len - strlen(CHANGESET) - 1] = 0;
-		assert(prodproj);
-		components = addLine(components, proj_relpath(prodproj, file));
-	} else {
-		puts(file);
-	}
+	puts(file);
 	return (0);
 }
 
@@ -155,9 +144,6 @@ sfiles_main(int ac, char **av)
 	if ((ac == 1) && !opts.prefix)  {
 		opts.sfiles = 1;
 		walksfiles(".", fastprint, 0);
-		load_project(".");
-		print_components(0);
-		free_project();
 		return (0);
 	}
 
@@ -308,7 +294,6 @@ usage:				system("bk help -s sfiles");
 		/* flag running at the root of repo */
 		opts.atRoot = isdir(BKROOT);
 		walk(path);
-		print_components(0);
 	} else if (streq("-", av[optind])) {
 		setmode(0, _O_TEXT); /* read file list in text mode */
 		while (fnext(buf, stdin)) {
@@ -317,7 +302,6 @@ usage:				system("bk help -s sfiles");
 			path = buf;
                         if (isdir(path)) {
 				walk(path);
-				print_components(path);
 			} else {
 				/*
 				 * Kind of hokey but we load the proj based on
@@ -338,7 +322,6 @@ usage:				system("bk help -s sfiles");
                         if (isdir(av[i])) {
                                 path = av[i];
                                 walk(path);
-				print_components(path);
                         } else {
                                 path = av[i];
 				unless (proj) {
@@ -1002,6 +985,7 @@ walk(char *indir)
 	walkdir(dir, sfiles_walk, &wi);
 	if (wi.sccsdir) sccsdir(&wi);
 	if (proj) free(wi.proj_prefix);
+	unless (opts.onelevel) print_components(dir);
 	if (opts.timestamps && timestamps && proj) {
 		dumpTimestampDB(proj, timestamps);
 		hash_free(timestamps);
@@ -1516,12 +1500,23 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 */
 			strcat(file, "/etc");
 			if (exists(file)) {
-				if (proj == prodproj) {  /* this is product */
-					*p = 0;
+				project	*tmp;
+
+				*p = 0;
+				tmp = proj_init(file);
+				if (!si->is_clone && (proj == prodproj) &&
+				    tmp && proj_isComponent(tmp)) {
+					/* this is a component */
 					sprintf(p, "/SCCS/s.ChangeSet");
 					si->fn(file, 0, si->data);
-					*p = '/';
+					*p = 0;
+
+					/* also list deep components here */
+					walk_deepComponents(file,
+					    si->fn, si->data);
 				}
+				if (tmp) proj_free(tmp);
+				strcpy(p, "/BitKeeper"); /* restore file */
 				return (-2);
 			}
 		}
@@ -1613,6 +1608,7 @@ walksfiles(char *dir, walkfn fn, void *data)
 	}
 	rc = walkdir(dir, findsfiles, &si);
 	if (proj) free(si.proj_prefix);
+	freeLines(components, free);	/* set by walk_deepComponents() */
 	free_project();
 	return (rc);
 }
@@ -1665,12 +1661,8 @@ print_components(char *path)
 	unless (proj && (proj == prodproj)) goto done;
 	unless (opts.out) opts.out = stdout;
 
-	if (path) {
-		fullname(path, frompath);
-		cwd = frompath;
-	} else {
-		cwd = proj_cwd();
-	}
+	fullname(path, frompath);
+	cwd = frompath;
 	cwd_len = strlen(cwd);
 	components = file2Lines(components,
 	    proj_fullpath(prodproj, "BitKeeper/log/deep-nests"));
@@ -1679,11 +1671,7 @@ print_components(char *path)
 		p = proj_fullpath(prodproj, components[i]);
 		unless (pathneq(p, cwd, cwd_len)) continue;
 		p += cwd_len + 1;
-		if (path) {
-			sprintf(gfile, "%s/%s", path, p);
-		} else {
-			strcpy(gfile, p);
-		}
+		sprintf(gfile, "%s/%s", path, p);
 		concat_path(buf, gfile, CHANGESET);
 		unless (exists(buf)) continue;
 		/*
@@ -1725,4 +1713,38 @@ print_components(char *path)
 done:
 	freeLines(components, free);
 	components = 0;
+}
+
+private void
+walk_deepComponents(char *path, walkfn fn, void *data)
+{
+	int	i, cwd_len;
+	char	*p, *cwd;
+	project	*comp;
+	char	buf[MAXPATH];
+	char	frompath[MAXPATH];
+	char	gfile[MAXPATH];
+
+	fullname(path, frompath);
+	cwd = frompath;
+	cwd_len = strlen(cwd);
+	unless (components) {
+		components = file2Lines(0,
+		    proj_fullpath(prodproj, "BitKeeper/log/deep-nests"));
+		uniqLines(components, free);
+	}
+	EACH(components) {
+		p = proj_fullpath(prodproj, components[i]);
+		unless ((strlen(p) > cwd_len) && pathneq(p, cwd, cwd_len)) {
+			continue; /* only look at components under path */
+		}
+		p += cwd_len + 1;
+		sprintf(gfile, "%s/%s", path, p);
+		concat_path(buf, gfile, CHANGESET);
+		unless (exists(buf)) continue;
+
+		comp = proj_init(gfile);
+		if (proj_isComponent(comp)) fn(buf, 0, data);
+		proj_free(comp);
+	}
 }
