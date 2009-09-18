@@ -769,8 +769,9 @@ private void
 http_anno(char *page)
 {
 	FILE	*f;
+	char	*src, *t, *p;
 	char	buf[4096];
-	int	n, empty = 1;
+	int	empty = 1;
 	char	*rev = hash_fetchStr(qin, "REV");
 	char	*freeme;
 
@@ -784,6 +785,7 @@ http_anno(char *page)
 	free(freeme);
 
 	printf("<pre><font size=3>");
+	unless (rev) rev = "+";
 	sprintf(buf, "bk annotate -Aru -r'%s' '%s'", rev, fpath);
 
 	/*
@@ -794,9 +796,27 @@ http_anno(char *page)
 		    " | sed -e's/| license:.*$/| license: XXXXXXXXXXXXX/'");
 	}
 	f = popen(buf, "r");
-	while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+	while (t = fgetline(f)) {
+		int	closeTag = 0;
+
 		empty = 0;
-		htmlify(buf, n);
+
+		/* search for C functions */
+		if (src = strchr(t, '|')) {
+			src += 2;	/* skip '| ' */
+			p = src;
+			while (*p && (isalnum(*p) || (*p == '_'))) p++;
+			if (*p == '(') {
+				printf("<a name=\"%.*s\">", p-src, src);
+				closeTag=1;
+			}
+		}
+		htmlify(t, strlen(t));
+		if (closeTag) {
+			printf("</a>");
+			closeTag = 0;
+		}
+		putchar('\n');
 	}
 	pclose(f);
 	if (empty) puts("\nEmpty file");

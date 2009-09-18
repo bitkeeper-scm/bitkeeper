@@ -1,0 +1,79 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2009 BitMover
+
+echo $N Create initial repository ...................................$NL
+commercial project
+cat << EOF > file1.c
+private	int	sub(int a, int b);
+private	int	sub2(int a, int b);
+
+int
+main(int ac, char *av[])
+{
+	int	ret = sub(1, 2);
+
+	sub2(1, 2);
+	return (ret);
+}
+
+private	int
+sub(int a, int b)
+{
+	// the code
+	return (0);
+}
+EOF
+bk new $Q file1.c
+cat <<EOF > file2.c
+
+/*
+ * test out a C function found in a common style used elsewhere
+ */
+int sub2(int a, int b) {
+	// the code
+	return (0);
+}
+
+EOF
+bk new $Q file2.c
+bk commit $Q -y"file1 and file2"
+echo OK
+
+echo $N Fetch an annotated file with tags on C functions ............$NL
+bk bkd > OUT << EOF
+get /file1.c?PAGE=anno
+EOF
+grep '<a name=' OUT | tr -s ' ' > GOT
+U=`bk getuser -r`
+cat <<EOF > WANT
+<a name="main">bk/$U 1.1 | main(int ac, char *av[])</a>
+<a name="sub">bk/$U 1.1 | sub(int a, int b)</a>
+EOF
+cmpfiles WANT GOT
+echo OK
+
+echo $N Test that non-BitMover style C functions work................$NL
+bk bkd > OUT <<EOF
+get /file2.c?PAGE=anno
+EOF
+grep '<a name=' OUT | tr -s ' ' > GOT
+U=`bk getuser -r`
+cat <<EOF > WANT
+<a name="sub">bk/$U 1.1 | int sub2(int a, int b) {</a>
+EOF
+cmp -s GOT WANT && {
+	echo fixme
+	echo Congratulations, you fixed a bug. Now fix the testcase.
+	exit 1
+}
+echo failed \(bug \)
