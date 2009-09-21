@@ -308,7 +308,7 @@ cset_setup(int flags)
 	int	fd;
 
 	cset = sccs_init(csetFile, flags & SILENT);
-	assert(cset->proj);
+	assert(cset && cset->proj);
 
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
 	unless (d = host_get(d)) goto intr;

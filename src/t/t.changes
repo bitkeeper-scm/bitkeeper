@@ -694,3 +694,15 @@ EOF
 cmpfiles GOT WANT
 unset BK_CONFIG
 echo OK
+
+echo $N Changes should not crash without a cset file ................$NL
+cd "$HERE"/copy
+rm -f SCCS/s.ChangeSet
+bk changes -R 2>ERR && exit 1
+cat <<EOF > WANT
+changes: missing ChangeSet file
+EOF
+cmpfiles ERR WANT
+cd ..
+rm -rf copy
+echo OK

@@ -1028,7 +1028,10 @@ fetch_changeset(void)
 	}
 	fgets(buf, sizeof(buf), f);
 	chomp(buf);
-	s = sccs_init(CHANGESET, 0);
+	unless (s = sccs_init(CHANGESET, INIT_MUSTEXIST)) {
+		fprintf(stderr, "Can't initialize ChangeSet file\n");
+		exit(1);
+	}
 	unless (d = sccs_findrev(s, buf)) {
 		getMsg("chk5", buf, '=', stderr);
 		exit(1);
