@@ -769,3 +769,20 @@ grep -q "delta: bnew is locked but not writable" ERR || {
 	exit 1
 }
 echo OK
+
+HP=`bk gethost -r | sed 's/hp.*/hp/p'`
+if [ "$HP" = "hp" ]; then
+echo $N Check that delta on file owned by diff group member works ...$NL
+touch notmine
+bk new $Q notmine
+bk admin -FSCCS notmine
+bk edit $Q notmine
+echo foo >> notmine
+chown beth notmine
+bk delta $Q -u -y'change happens' notmine 2>ERR || {
+	echo failed
+	cat ERR
+	exit 1
+}
+echo OK
+fi
