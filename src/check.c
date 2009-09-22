@@ -352,6 +352,7 @@ check_main(int ac, char **av)
 	}
 	if (goneDB) mdbm_close(goneDB);
 	unless (errors) cset_savetip(cset, 1);
+	repos_update(cset);
 	sccs_free(cset);
 	cset = 0;
 	if (errors && fix) {

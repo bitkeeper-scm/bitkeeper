@@ -7,7 +7,6 @@ do_mkdir(char *dir, int mode)
 	int	save;
 
 	if (ret = mkdir(dir, mode)) {
-		if (errno == EEXIST)  return (0);
 		save = errno;
 		if (isdir_follow(dir)) return (0);
 		errno = save;

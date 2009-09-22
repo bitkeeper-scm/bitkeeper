@@ -160,7 +160,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o \
 	r2c.o randombits.o range.o rcheck.o rclone.o \
 	rcs2bk.o rcsparse.o \
 	receive.o redblack.o regex.o registry.o renumber.o \
-	repo.o repogca.o resolve.o \
+	repo.o repos.o repogca.o resolve.o \
 	remote.o resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
