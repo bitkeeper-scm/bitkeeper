@@ -394,6 +394,7 @@ check_main(int ac, char **av)
 	}
 	if (goneDB) mdbm_close(goneDB);
 	unless (errors) cset_savetip(cset, 1);
+	repos_update(cset);
 	sccs_free(cset);
 	cset = 0;
 	if (errors && fix) {
@@ -1080,7 +1081,10 @@ fetch_changeset(void)
 	fgets(buf, sizeof(buf), f);
 	chomp(buf);
 	fclose(f);
-	s = sccs_init(CHANGESET, 0);
+	unless (s = sccs_init(CHANGESET, INIT_MUSTEXIST)) {
+		fprintf(stderr, "Can't initialize ChangeSet file\n");
+		exit(1);
+	}
 	unless (d = sccs_findrev(s, buf)) {
 		getMsg("chk5", buf, '=', stderr);
 		exit(1);

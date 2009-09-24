@@ -619,11 +619,12 @@ fix_delta(delta *template, delta *d, int fudge)
 private void
 mkDeterministicKeys(void)
 {
-	int	iflags = INIT_NOCKSUM|SILENT;
+	int	iflags = INIT_NOCKSUM|INIT_MUSTEXIST|SILENT;
 	sccs	*cset;
 	delta	*d2;
 
 	cset = sccs_init(CHANGESET, iflags);
+	assert(cset);
 
 	/*
 	 * Fix 1.0 delta of the ChangeSet file

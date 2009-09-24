@@ -372,7 +372,6 @@ err:			printf("ERROR-protocol error in aliases\n");
 			rc = 1;
 		}
 	}
-	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 
 done:	fflush(stdout);
 	if (dont) {

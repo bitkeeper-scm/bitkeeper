@@ -214,7 +214,7 @@ tcp_pair(int fds[2])
 void
 tcp_ndelay(int sock, int val)
 {
-#ifdef	TCP_NDELAY
+#ifdef	TCP_NODELAY
 	if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
 	    SOCK_OPT_CAST  &val, sizeof(val))) {
 		fprintf(stderr, "TCP_NODELAY failed %s(%d)\n",

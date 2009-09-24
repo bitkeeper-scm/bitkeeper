@@ -157,7 +157,6 @@ cmd_clone(int ac, char **av)
 	}
 	printf("@SFIO@\n");
 	rc = compressed(gzip, lclone);
-	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (trigger(av[0], "post")) goto out;
 
