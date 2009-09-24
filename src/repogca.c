@@ -46,7 +46,7 @@ repogca_main(int ac, char **av)
 		EACH (urls) nav = addLine(nav, urls[i]);
 		freeLines(urls, 0);
 	}
-	addLine(nav, 0);	/* null term list */
+	nav = addLine(nav, 0);	/* null term list */
 	s = sccs_csetInit(SILENT);
 	assert(s && HASGRAPH(s));
 

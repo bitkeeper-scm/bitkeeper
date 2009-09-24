@@ -262,7 +262,12 @@ usage:			system("bk help -s changes");
 		pid = mkpager();
 		putenv("BK_PAGER=cat");
 		proj_cd2root();
-		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
+		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM|INIT_MUSTEXIST);
+		unless (s_cset) {
+			fprintf(stderr, "changes: missing ChangeSet file\n");
+			rc = 1;
+			goto out;
+		}
 	}
 	if (opts.local) {
 		if (rc = doit_local(nac, nav, lurls)) goto out;
@@ -304,7 +309,12 @@ usage:			system("bk help -s changes");
 			fprintf(stderr, "Can't find package root\n");
 			exit(1);
 		}
-		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM);
+		s_cset = sccs_csetInit(SILENT|INIT_NOCKSUM|INIT_MUSTEXIST);
+		unless (s_cset) {
+			fprintf(stderr, "changes: missing ChangeSet file\n");
+			rc = 1;
+			goto out;
+		}
 		unless (av[optind]) {
 			rc = doit(0); /* bk changes */
 		} else {
