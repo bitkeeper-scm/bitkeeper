@@ -1074,6 +1074,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		rc = 1;
 		goto out;
 	}
+	unless (n->tip) goto prod;	/* tag only push */
 
 	/*
 	 * - map remote HERE to aliases from remote tip and set in
@@ -1169,6 +1170,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 		rc = 1;
 		goto out;
 	}
+prod:
 	START_TRANSACTION();
 	cwd = strdup(proj_cwd());
 	n->product->alias = 1;
@@ -1190,7 +1192,7 @@ push_ensemble(remote *r, char *rev_list, char **envVar)
 				vp = addLine(vp, strdup(opts.av_push[j]));
 			}
 		}
-		vp = addLine(vp, aprintf("-r%s", c->deltakey));
+		if (c->deltakey) vp = addLine(vp, aprintf("-r%s", c->deltakey));
 		if (c->new) vp = addLine(vp, strdup("."));
 		vp = addLine(vp, aprintf("%s/%s", url, c->path));
 		vp = addLine(vp, 0);

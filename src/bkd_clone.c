@@ -152,7 +152,10 @@ cmd_clone(int ac, char **av)
 		comp	*cp;
 		int	errors = 0;
 
-		n = nested_init(s, rev, 0, 0);
+		unless (n = nested_init(s, rev, 0, 0)) {
+			printf("ERROR-nested_init failed\n");
+			goto out;
+		}
 		assert(aliases);
 		if (nested_aliases(n, n->tip, &aliases, proj_cwd(), 0)) {
 			printf("ERROR-unable to expand aliases.\n");

@@ -264,6 +264,24 @@ grep -q "libc is needed to push" OUT || {
 }
 echo OK
 
+echo $N Try a tag-only push .........................................$NL
+cd ../full
+bk -r check -ac || exit 1
+bk tag $Q -r1.3 oldtag || exit 2
+bk push $Q || exit 3
+cd ../project
+test `bk prs -hnd:REV: -roldtag ChangeSet` = 1.3 || exit 4
+echo OK
+
+echo $N Now push tag along with another cset ........................$NL
+bk unpull -f $Q || exit 1
+cd ../full
+touch tagf
+bk new $Q tagf || exit 2
+bk commit $Q -ytagf || exit 3
+bk push $Q || exit 4
+echo OK
+
 echo $N Try same push through a BKD..................................$NL
 cd "$HERE"
 rm -rf project
@@ -313,3 +331,4 @@ grep -q "cannot cd to .*/copy/gcc4" ERR || {
 cd ..
 rm -fr project
 echo "failed (bug )"
+

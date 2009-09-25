@@ -254,6 +254,8 @@ nested_init(sccs *cset, char *rev, char **revs, u32 flags)
 
 	unless (n->freecset) sccs_clearbits(cset, D_SET|D_RED|D_BLUE);
 	if (revs) {
+		int	nontag = 0;
+
 		EACH(revs) {
 			unless (d = sccs_findrev(cset, revs[i])) {
 				fprintf(stderr,
@@ -264,8 +266,11 @@ err:				if (revsDB) mdbm_close(revsDB);
 				free(cwd);
 				return (0);
 			}
+			if (TAG(d)) continue;
 			d->flags |= D_SET;
+			nontag = 1;
 		}
+		unless (nontag) goto prod; /* tag only push, pull, undo */
 	} else {
 		unless (d = sccs_findrev(cset, rev)) {
 			fprintf(stderr, "nested: bad rev %s\n", rev);
@@ -458,7 +463,7 @@ err:				if (revsDB) mdbm_close(revsDB);
 
 	sortLines(n->comps, compSort); /* by c->path */
 	if (flags & NESTED_DEEPFIRST) reverseLines(n->comps);
-
+prod:
 	if (flags & NESTED_PRODUCTFIRST) {
 		n->comps = unshiftLine(n->comps, n->product);
 		n->product_first = 1;
@@ -742,6 +747,7 @@ nested_deep(nested *nin, char *path)
 	int	i, len, deeplen = 0;
 
 	n = nin ? nin : nested_init(0, 0, 0, NESTED_PENDING);
+	assert(n);
 	assert(path);
 	len = strlen(path);
 	EACH_STRUCT(n->comps, c, i) {

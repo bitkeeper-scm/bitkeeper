@@ -600,12 +600,9 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	char	*url;
 	char	**vp;
 	sccs	*s = 0;
-	delta	*d;
 	char	**revs = 0;
-	char	*t;
 	nested	*n = 0;
 	comp	*c;
-	FILE	*f;
 	int	i, j, rc = 0, errs = 0;
 
 	/* allocate r->params for later */
@@ -613,13 +610,12 @@ pull_ensemble(remote *r, char **rmt_aliases)
 	url = remote_unparse(r);
 	START_TRANSACTION();
 	s = sccs_init(ROOT2RESYNC "/" CHANGESET, INIT_NOCKSUM);
-	f = fopen(ROOT2RESYNC "/" CSETS_IN, "r");
-	while (t = fgetline(f)) {
-		d = sccs_findrev(s, t);
-		revs = addLine(revs, d->rev);
-	}
-	fclose(f);
+	revs = file2Lines(0, ROOT2RESYNC "/" CSETS_IN);
+	unless (revs) goto out;
 	n = nested_init(s, 0, revs, NESTED_PULL);
+	assert(n);
+	freeLines(revs, free);
+	unless (n->tip) goto out;	/* tags only */
 
 	/*
 	 * Now takepatch should have merged the aliases file in the RESYNC
