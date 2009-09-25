@@ -47,6 +47,21 @@ cmp -s $D/HASH $BUILD/HASH.want && {
 	exit 0
 }
 
+test "$1" = "-i" && {
+	echo "HASHes differ:"
+	echo "HASH contains:"
+	cat $D/HASH
+	echo ----
+	echo "HASH.want contains:"
+	cat $BUILD/HASH.want
+	echo ----
+	bk prompt -g "Remove old buildenv?"
+	test $? -eq 1 && {
+		rm -f $BUILD/HASH.want
+		exit 0
+	}
+}
+
 echo removing old buildenv
 rm -rf $D || {
 	echo cannot remove $D

@@ -33,7 +33,7 @@ rem  just in case bk is not already on our PATH
 rem PATH="%PATH%;C:\Program Files\BitKeeper"
 cd src
 bk get -S ./update_buildenv
-bk sh ./update_buildenv
+bk sh ./update_buildenv -i
 set HOME=%CD%
 if exist r:\build\buildenv\bin GOTO USE_R
 if exist c:\build\buildenv\bin c:\build\buildenv\bin\sh --login -i
