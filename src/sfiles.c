@@ -20,7 +20,6 @@
 typedef struct winfo winfo;
 typedef	char	STATE[8];
 
-private	void	append_rev(MDBM *db, char *name, char *rev);
 private int	chk_diffs(sccs *s);
 private void	do_print(char state[6], char *gfile, char *rev);
 private void	file(char *f);
@@ -678,36 +677,11 @@ struct winfo {
 private void
 add_to_winfo(winfo *wi, char *file, int sccs)
 {
-	char	*p;
-
 	unless (wi->sDB) wi->sDB = mdbm_mem();
 	unless (wi->gDB) wi->gDB = mdbm_mem();
 
-	if (sccs) {
-		if (pathneq("s.", file, 2)) {
-			wi->sfiles = addLine(wi->sfiles, strdup(file));
-		} else {
-			if (pathneq("c.", file, 2)) {
-				/*
-				 * If there is no @rev, make sure we
-				 * don't miss the case where we have
-				 * both a c.file and c.file@rev
-				 */
-				if (p = strrchr(file, '@')) {
-					*p++ = 0;
-				} else {
-					p = "";
-				}
-				/*
-				 * Special handling for c.file@rev entry
-				 * append the @rev part to the value field
-				 * so we can print the correct file
-				 * name if it turns out to be a junk file.
-				 */
-				append_rev(wi->sDB, file, p);
-				return;
-			}
-		}
+	if (sccs && pathneq("s.", file, 2)) {
+		wi->sfiles = addLine(wi->sfiles, strdup(file));
 	}
 	mdbm_store_str((sccs ? wi->sDB : wi->gDB), file, "", MDBM_INSERT);
 }
@@ -1221,22 +1195,6 @@ do_print(STATE buf, char *gfile, char *rev)
 	if (doit) print_it(state, gfile, rev);
 }
 
-private void
-append_rev(MDBM *db, char *name, char *rev)
-{
-	char	*buf = 0;
-	char	*t;
-
-	t = mdbm_fetch_str(db, name);
-	if (t) {
-		t = buf = aprintf("%s,%s", t, rev);
-	} else {
-		t = rev;
-	}
-	mdbm_store_str(db, name, t, MDBM_REPLACE);
-	if (buf) free(buf);
-}
-
 /*
  * Called for each directory traversed by sfiles_walk()
  */
@@ -1377,7 +1335,7 @@ sccsdir(winfo *wi)
 		concat_path(buf, dir, "SCCS");
 		EACH_KV (sDB) {
 			/*
-			 * Ignore x.files is the SCCS dir if the matching
+			 * Ignore x.files in the SCCS dir if the matching
 			 * s.file exists.
 			 * Ignore SCCS/c.JUNK if JUNK exists.
 			 * Ignore SCCS/c.JUNK if s.JUNK exists.
@@ -1395,44 +1353,18 @@ sccsdir(winfo *wi)
 				    case 'c':
 					strcpy(buf1, kv.key.dptr + 2);
 				    	if (mdbm_fetch_str(gDB, buf1)) {
-						/* We'll flag it below */
 						continue;
 					}
-					sprintf(buf1, "s.%s", kv.key.dptr + 2);
+					strcpy(buf1, kv.key.dptr);
+					buf1[0] = 's';
 				    	if (mdbm_fetch_str(sDB, buf1)) {
-						/* We caught it above */
 						continue;
 					}
 					break;
 				}
 			}
 			concat_path(buf1, buf, kv.key.dptr);
-			if (kv.val.dsize == 0) {
-				do_print("j      ", buf1, 0);
-			} else {
-				/*
-				 * We only get here when we get
-				 * c.file@rev entries. Extract the @rev part
-				 * from kv.val.ptr and append it to buf1 to
-				 * reconstruct the correct file name.
-				 * i.e c.file@rev
-				 */
-				p = kv.val.dptr;
-				while (p) {
-					char *q, *t, buf2[MAXPATH];
-
-					q = strchr(p, ',');
-					if (q) *q++ = 0;
-					if (*p) {
-						t = buf2;
-						sprintf(buf2, "%s@%s", buf1, p);
-					} else {
-						t = buf1;
-					}
-					do_print("j      ", t, 0);
-					p = q;
-				}
-			}
+			do_print("j      ", buf1, 0);
 		}
 	}
 
