@@ -87,7 +87,7 @@ opts_2();
 } -output {good}
 
 test opts-3 {test command options 3} -body {
-#lang L -n
+#lang L -w
 void opts_3()
 {
 	int	not_used;  // not used warning should be suppressed
@@ -126,6 +126,46 @@ void opts_6()
 opts_6();
 } -output {4}
 
+test opts-6.1.1 {test -n command option} -body {
+#lang L -n
+void opts_6_1_1()
+{
+	/* -n means compile but do not run */
+	puts("should not see this");
+}
+opts_6_1_1();
+} -output {}
+
+test opts-6.1.2 {test -norun command option} -body {
+#lang L -norun
+void opts_6_1_2()
+{
+	/* -norun means compile but do not run */
+	puts("should not see this");
+}
+opts_6_1_2();
+} -output {}
+
+test opts-6.1.3 {test --norun command option} -body {
+#lang L --norun
+void opts_6_1_3()
+{
+	/* --norun means compile but do not run */
+	puts("should not see this");
+}
+opts_6_1_3();
+} -output {}
+
+test opts-6.2 {test that --norun option compiles} -body {
+#lang L --norun
+void opts_6_2()
+{
+	string s = "This is
+	an error";
+}
+opts_6_2();
+} -returnCodes error -match regexp -result {.*missing string terminator.*}
+
 test opts-7 {test -nowarn command-line option} -setup {
 	set file [makeFile {
 			private void f() {
@@ -141,13 +181,32 @@ test opts-7 {test -nowarn command-line option} -setup {
 	# the command-line options are handled correctly.
 	set s1 [exec [interpreter] -nowarn $file]
 	set s2 [exec [interpreter] --nowarn $file]
-	set s3 [exec [interpreter] -n $file]
+	set s3 [exec [interpreter] -w $file]
 	puts $s1
 	puts $s2
 	puts $s3
 } -cleanup {
 	removeFile $file
 } -output "good\ngood\ngood\n"
+
+test opts-7.1 {test -norun command-line option} -setup {
+	set file [makeFile {
+			puts("should not get run");
+		  } opts7.1.l .]
+} -constraints {
+	exec
+} -body {
+	# The script created above should be compiled but not run
+	# if the command-line options are handled correctly.
+	set s1 [exec [interpreter] -norun $file]
+	set s2 [exec [interpreter] --norun $file]
+	set s3 [exec [interpreter] -n $file]
+	puts $s1
+	puts $s2
+	puts $s3
+} -cleanup {
+	removeFile $file
+} -output "\n\n\n"
 
 test opts-8 {test -poly command-line option} -setup {
 	set file [makeFile {
@@ -188,7 +247,7 @@ test opts-9 {test multiple command-line options} -setup {
 	# the command-line options are handled correctly.
 	set s1 [exec [interpreter] -poly -nowarn $file]
 	set s2 [exec [interpreter] --poly --nowarn $file]
-	set s3 [exec [interpreter] -P -n $file]
+	set s3 [exec [interpreter] -P -w $file]
 	puts $s1
 	puts $s2
 	puts $s3

@@ -251,17 +251,21 @@ parse_options(int ac, Tcl_Obj **av)
 	int	i, index;
 	int	opts = 0;
 	static	CONST char *options[] = {
+		"--norun",
+		"-norun",
+		"-n",
+		"--nowarn",
+		"-nowarn",
+		"-w",
 		"--poly",
 		"-poly",
 		"-P",
-		"--nowarn",
-		"-nowarn",
-		"-n",
 		NULL
 	};
 	enum	options {
+		L_NORUN_1, L_NORUN_2, L_NORUN_3,
+		L_NOWARN_1, L_NOWARN_2, L_NOWARN_3,
 		L_POLY_1, L_POLY_2, L_POLY_3,
-		L_NOWARN_1, L_NOWARN_2, L_NOWARN_3
 	};
 
 	for (i = 1; i < ac; ++i) {
@@ -270,15 +274,14 @@ parse_options(int ac, Tcl_Obj **av)
 			continue;
 		}
 		switch ((enum options)index) {
-		    case L_POLY_1:
-		    case L_POLY_2:
-		    case L_POLY_3:
-			opts |= L_OPT_POLY;
+		    case L_NORUN_1: case L_NORUN_2: case L_NORUN_3:
+			opts |= L_OPT_NORUN;
 			break;
-		    case L_NOWARN_1:
-		    case L_NOWARN_2:
-		    case L_NOWARN_3:
+		    case L_NOWARN_1: case L_NOWARN_2: case L_NOWARN_3:
 			opts |= L_OPT_NOWARN;
+			break;
+		    case L_POLY_1: case L_POLY_2: case L_POLY_3:
+			opts |= L_OPT_POLY;
 			break;
 		    default:
 			ASSERT(0);
@@ -390,6 +393,8 @@ L_CompileScript(void *ast)
 		Tcl_SetObjResult(L->interp, L->errs);
 		return (TCL_ERROR);
 	}
+
+	if (L->options & L_OPT_NORUN) return (TCL_OK);
 
 	/* Invoke the top-level code that was just compiled. */
 	if (L->frame->envPtr) {
