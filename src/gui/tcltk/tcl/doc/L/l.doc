@@ -45,7 +45,12 @@ Options:
 
 =over 4
 
-=item B<-n | --nowarn>
+=item B<-n | --norun>
+
+Compile only (do not run).  This is useful to check for compilation
+errors.
+
+=item B<-w | --nowarn>
 
 Disable compiler warnings.  This is useful when you know you have
 unused variables or other warnings that you don't want to be

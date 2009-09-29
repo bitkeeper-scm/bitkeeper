@@ -18,8 +18,9 @@
 
 /* L command-line options. */
 typedef enum {
-	L_OPT_POLY	= 0x0001,
+	L_OPT_NORUN	= 0x0001,
 	L_OPT_NOWARN	= 0x0002,
+	L_OPT_POLY	= 0x0004,
 } Lopt_f;
 
 /* For jump fix-ups. */
