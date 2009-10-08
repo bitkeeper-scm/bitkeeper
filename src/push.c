@@ -544,6 +544,12 @@ err:		return (PUSH_ERROR);
 			    getenv("BKD_LEVEL"));
 			goto err;
 		}
+		if (proj_isProduct(0) && !bkd_hasFeature("SAMv2")) {
+			fprintf(stderr,
+			    "push: please upgrade the remote bkd to a "
+			    "SAMv2 aware version (5.0 or later).\n");
+			goto err;
+		}
 		if ((bp_hasBAM() ||
 		     ((p = getenv("BKD_BAM")) && streq(p, "YES"))) &&
 		     !bkd_hasFeature("BAMv2")) {

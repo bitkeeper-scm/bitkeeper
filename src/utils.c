@@ -875,7 +875,7 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	 *   pSFIO	send whole sfiles in SFIO attached to patches
 	 *   mSFIO	will accept modes with sfio.
 	 */
-	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2,SAMv1,mSFIO");
+	fprintf(f, "putenv BK_FEATURES=lkey:1,BAMv2,SAMv2,mSFIO");
 	unless (getenv("_BK_NO_PATCHSFIO")) fputs(",pSFIO", f);
 	fputc('\n', f);
 	unless (r->seed) bkd_seed(0, 0, &r->seed);
@@ -997,7 +997,7 @@ sendServerInfoBlock(int is_rclone)
 	 *   BAMv2	support BAM operations (4.1.1 and later)
 	 *   pSFIO	send whole sfiles in SFIO attached to patches
 	 */
-	out("\nFEATURES=pull-r,BAMv2,SAMv1");
+	out("\nFEATURES=pull-r,BAMv2,SAMv2");
 	unless (getenv("_BK_NO_PATCHSFIO")) out(",pSFIO");
 
 	if (repoid = proj_repoID(0)) {

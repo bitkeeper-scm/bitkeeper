@@ -76,7 +76,7 @@ cmd_pull_part1(int ac, char **av)
 		out("\n");
 		return (1);
 	}
-	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv1")) {
+	if (proj_isEnsemble(0) && !bk_hasFeature("SAMv2")) {
 		out("ERROR-please upgrade your BK to a NESTED "
 		    "aware version (5.0 or later)\n");
 		return (1);
