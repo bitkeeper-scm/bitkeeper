@@ -84,8 +84,29 @@ P=`port 50000`
 bk bkd -q -d -p$P -ikill
 bk clone $Q clone3 bk://localhost:$P/clone4 || {
 	echo rclone failed
-	bk _kill bk://localhost:$P || exit 1
+	bk _kill bk://localhost:$P
 	exit 1
 }
 bk _kill bk://localhost:$P || exit 1
+echo OK
+
+echo $N Try a push via HTTP with BAM data............................$NL
+cd "$HERE"
+bk clone $Q server clone5
+cd clone5
+bk $Q bam server $Q .
+echo junk > file1
+bk new $Q -b file1 || exit
+bk commit $Q -ybam2 || exit 1
+cd "$HERE"
+P=`port 50000`
+bk bkd -q -d -p$P -ikill
+cd clone5
+bk push $Q http://localhost:$P/server 2>&1 > OUT || {
+	echo failed
+	cat OUT
+	bk _kill bk://localhost:$P
+	exit 1
+}
+bk _kill bk://localhost:$P
 echo OK

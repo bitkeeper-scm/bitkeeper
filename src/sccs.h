@@ -328,6 +328,7 @@ int	checking_rmdir(char *dir);
 #define CMD_RDUNLOCK	0x00000020	/* read unlock */
 #define CMD_RETRYLOCK	0x00000040	/* if lock failed, retry */
 #define CMD_BAM		0x00000080	/* optional next pass if BAM */
+#define	CMD_NESTED	0x00000100	/* optional next pass if NESTED */
 
 /*
  * Undo exit status for nothing to undo.
@@ -529,6 +530,7 @@ extern	char *upgrade_msg;
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
 #define	WRITER_LOCK	"BitKeeper/writer/lock"
+#define	NESTED_WRITER_LOCK "BitKeeper/writer/nested_lock"
 
 #define	LOCK_WR_BUSY	"ERROR-Unable to lock repository for update."
 #define	LOCK_RD_BUSY	"ERROR-Can't get read lock on the repository."

@@ -129,7 +129,7 @@ OBJ =	bkver.o cmd.o \
 	abort.o adler32.o alias.o admin.o annotate.o \
 	bam.o bkd.o bkd_bam.o bkd_cd.o \
 	bkd_changes.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_http.o \
-	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o \
+	bkd_id.o bkd_kill.o bkd_license.o bkd_misc.o bkd_nested.o \
 	bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rclone.o bkd_rootkey.o bkd_status.o bkd_synckeys.o bkd_version.o \
 	bkusers.o blob.o \

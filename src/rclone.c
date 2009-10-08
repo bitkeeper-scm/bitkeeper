@@ -476,6 +476,7 @@ send_sfio_msg(remote *r, char **envVar)
 	assert(f);
 	sendEnv(f, envVar, r, 0);
 	fprintf(f, "rclone_part2");
+	if (proj_isProduct(0)) fprintf(f, " -P");
 	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (opts.bam_url) fprintf(f, " '-B%s'", opts.bam_url);

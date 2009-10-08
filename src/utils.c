@@ -572,6 +572,7 @@ send_file(remote *r, char *file, int extra)
 	int	rc, len;
 	char	*q, *hdr;
 
+	assert(r->wfd >= 0);	/* we should be connected */
 	m = mopen(file, "r");
 	assert(m);
 	assert(strneq(m->mmap, "putenv ", 7));
@@ -770,10 +771,12 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 {
 	int	i;
 	char	*user, *host, *repo, *proj, *bp;
+	char	*t;
 	char	*lic;
 	project	*p = proj_init(".");
 	char	buf[MAXLINE];
 
+	assert(r->wfd >= 0);	/* we should be connected */
 	/*
 	 * Send any vars the user requested first so that they can't
 	 * overwrite any of the standard variables.
@@ -799,6 +802,10 @@ sendEnv(FILE *f, char **envVar, remote *r, u32 flags)
 	fprintf(f, "putenv BK_REALUSER=%s\n", sccs_realuser());
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
 	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
+
+	if (t = getenv("BKD_NESTED_LOCK")) {
+		fprintf(f, "putenv 'BK_NESTED_LOCK=%s'\n", t);
+	}
 
 	unless (flags & SENDENV_NOREPO) {
 		/*
@@ -1007,6 +1014,10 @@ sendServerInfoBlock(int is_rclone)
 	/* only send back a seed if we received one */
 	if (p = getenv("BKD_SEED")) {
 		out("\nSEED=");
+		out(p);
+	}
+	if (p = getenv("BKD_NESTED_LOCK")) {
+		out("\nNESTED_LOCK=");
 		out(p);
 	}
 	if (proj_isComponent(0)) {

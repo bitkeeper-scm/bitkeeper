@@ -1,0 +1,95 @@
+Reader/writer locking in a nested collection
+
+Also See:
+	http://dev-wiki.bitmover.com/Nested/Locking
+	http://dev-wiki.bitmover.com/Nested/Transactions
+[Wed Sep 30 11:11:05 PDT 2009] - I don't know how current those
+are when you are looking at them, but at least now they provide
+a variety of insight to what has been thought or tried.
+
+Intro
+
+The safeguarding of nested operations is built on repository locking.
+See the src/Notes/LOCKING file for a description of the single repository
+locking setup.
+
+The nested collection locking scheme is based on maintaining a RESYNC
+directory in the product along with a way to know which job owns the
+RESYNC.
+
+The idea is that a RESYNC directory is like a read lock: pulls and
+clones can occur.
+
+In addition to that, we'd also like component repository updates
+(push, pull) to happen -- if the RESYNC lock is ours.
+
+To have this work, the meaning of repository locked includes seeing
+if the product repository has a RESYNC directory.  And if we are seeking
+to get a component repository write lock, if the RESYNC directory is ours.
+Look in locking.c for nested_mine() calls.
+
+File(s)
+	Mark that a nested write is in progress
+	#define NESTED_WRITER_LOCK "BitKeeper/writer/nested_lock"
+
+It contains:
+	rand_getBytes((void *)&random, 4);
+
+	if (getenv("_BK_IN_BKD")) {
+		user = getenv("BK_REALUSER");
+		host = getenv("BK_REALHOST");
+	} else {
+		user = sccs_user();
+		host = sccs_host();
+	}
+
+	t = aprintf("%s|%s|%s|%d|%u|%u", user, host, prog,
+	    time(0), getpid(), random);
+
+This is then also kept in an enviroment variable, BK_NESTED_LOCK or
+BKD_NESTED_LOCK,
+which is passed back and forth between bk and bkd.  The env variable
+must match the NESTED_WRITER_LOCK file contents or write access is
+denied.
+
+The locking.c:nested_*() doesn't have any fancy locking of its own, but
+works in the window when the product repository is write locked.
+After the RESYNC directory has been created, the repository can then
+be unlocked for others to use it as a resource for reading, until the
+nested function is ready to end, in which the product repo gets write
+locked again.
+
+Implementation
+
+The nested locking is only on the write side of a push, pull, clone
+or undo.
+
+The passing of the BK_NESTED_LOCK and BKD_NESTED_LOCK is in the sendEnv and
+sendServerInfoBlock pair in utils.c
+
+Changes to how the product RESYNC is taken into account for repository
+locking is in locking.c (see nested_mine calls)
+
+See 'bk grep nested_wrlock' for where the setting of the RESYNC ownership
+is done.   And nested_commit and nested_abort for termination of ownership.
+The client side can call cmd_nested in the bkd with options
+'commit' or 'abort'.
+
+Questions
+
+Should commit respect a nested lock?  It could mess up a push to
+have a commit done while a push is going on.  I don't believe a
+push cares about locking at the moment.
+
+Alternatives
+
+For http, add a token to the NESTED_WRITER_LOCK file that this is an
+http lock and therefore can't use pid to stale the lock, but can use a
+time window.  Mentioned in one of the emails shown in :
+	http://dev-wiki.bitmover.com/Nested/Transactions
+
+Building on that, the cmd_log() table could drop unlock and
+instead just list locks on each step.  The lock would not only
+take if it already had it, it would update the time so that a
+long held http lock would work if there were many subrepos.
+Anyway, that's drifting a bit from here.

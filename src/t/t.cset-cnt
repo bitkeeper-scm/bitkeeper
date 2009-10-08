@@ -3,12 +3,12 @@
 
 BK_SHOWINIT="*/s.ChangeSet"
 BK_TTYPRINTF="$HERE/INITs"
-BK_SHOWPROC="$HERE/INITs"
 FILE="$BK_TTYPRINTF"
-export BK_SHOWINIT BK_TTYPRINTF BK_SHOWPROC
+export BK_SHOWINIT BK_TTYPRINTF
 
+# Put _only_ inits in the INITs file, otherwise there could be races
 check_cnt() {
-	SEEN=`grep init\( "$FILE" | wc -l`
+	SEEN=`cat "$FILE" | wc -l`
 	test $SEEN -ne $CNT && {
 		echo was $CNT now $SEEN
 		echo list at "$FILE"
@@ -212,7 +212,7 @@ bk pull $Q || exit 1
 check_cnt
 echo OK
 
-CNT=41
+CNT=40
 echo $N "Count the inits for a 'bk push' ($CNT)........................."$NL
 rm "$FILE"
 bk push $Q || exit 1

@@ -39,12 +39,6 @@
 #  difference - test -L and -R commands for doing difference across wire
 #  other - pull -n testing that was here before (move to pull?)
 
-# Have this be global
-fail() {
-	echo failed
-	exit 1
-}
-
 echo $N Create repositories and see if changes works ................$NL
 # simple - get user name of current tip make a few deltas with new name
 commercial simple

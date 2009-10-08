@@ -534,6 +534,16 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 		}
 	}
 	if (streq(buf, "@PATCH@")) {
+		char	*nlid = 0;
+
+		if (opts.product) {
+			assert(!getenv("BK_NESTED_LOCK"));
+			unless (nlid = nested_wrlock(0)) {
+				fprintf(stderr, "%s\n", nested_errmsg(0));
+				return (1);
+			}
+			safe_putenv("BK_NESTED_LOCK=%s", nlid);
+		}
 		if (i = takepatch(r)) {
 			fprintf(stderr,
 			    "Pull failed: takepatch exited %d.\n", i);
@@ -559,8 +569,15 @@ pull_part2(char **av, remote *r, char probe_list[], char **envVar)
 			pclose(fout);
 		}
 		if (proj_isProduct(0)) {
+			assert(nlid);
 			if (rc = pull_ensemble(r, rmt_aliases)) {
+				if (nested_abort(nlid)) {
+					fprintf(stderr, "%s", nested_errmsg(0));
+				}
 				goto done;
+			}
+			if (nested_unlock(nlid)) {
+				fprintf(stderr, "%s", nested_errmsg(0));
 			}
 		}
 		putenv("BK_STATUS=OK");
