@@ -388,12 +388,12 @@ bkhelp.txt: build $(BK) FORCE
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
 # It is structured like this so that rebuilding prs doesn't
 # force bk.ver (and thus the bk script) to be regenerated.
-bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
+bk.ver: ../SCCS/s.ChangeSet utils/bk_version
 	( echo \
 	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:\n' ../ChangeSet |\
 	  sed 's/ approved//g';` \
 	  for \
-	  `sh ./utils/os` \
+	  `sh ./utils/bk_version` \
 	) | ./bk undos >bk.v
 	mv -f bk.v bk.ver
 
@@ -401,8 +401,8 @@ bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 bkver.c: FORCE
 	echo "#include \"sccs.h\"" > bk.v
 	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet >> bk.v
-	@if [ ! -x utils/os ]; then bk get -S utils/os; fi
-	echo "char *bk_platform = \""`./utils/os`"\";" >> bk.v
+	@if [ ! -x utils/bk_version ]; then bk get -S utils/bk_version; fi
+	echo "char *bk_platform = \""`./utils/bk_version`"\";" >> bk.v
 	echo "time_t build_timet = "`perl -e "print time"`";" >> bk.v
 	echo "int test_release = "$(TRIAL)";" >> bk.v
 	mv -f bk.v bkver.c
@@ -421,9 +421,8 @@ bkver.h: Makefile
 bkver.o: bkver.c
 
 # Because we need the execute bit on
-utils/os utils/gnu-os: $(BK)
-	@if [ ! -x utils/os ]; then ./bk get -S utils/os; fi
-	@if [ ! -x utils/gnu-os ]; then ./bk get -S utils/gnu-os; fi
+utils/bk_version: $(BK)
+	@if [ ! -x utils/bk_version ]; then ./bk get -S utils/bk_version; fi
 
 %: %.sh
 	$(RM) $@
