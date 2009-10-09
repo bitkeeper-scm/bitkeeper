@@ -29,6 +29,7 @@ Lock()
 	do	bk _usleep 500
 	done
 	LOCK=`cat $TMPFILE`
+	rm -f "$TMPFILE"
 	cd "$CWD"
 	eval $VAR="\"$PROC $LOCK\""
 }
