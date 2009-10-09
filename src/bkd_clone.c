@@ -12,7 +12,7 @@ cmd_clone(int ac, char **av)
 {
 	int	i, c, rc = 1;
 	int	attach = 0, detach = 0, gzip = 0, delay = -1, lclone = 0;
-	int	tid = 0;
+	int	nlid = 0;
 	char	*p, *rev = 0;
 	char	**aliases = 0;
 	sccs	*s = 0;
@@ -52,8 +52,11 @@ cmd_clone(int ac, char **av)
 		    case 's':
 			aliases = addLine(aliases, strdup(optarg));
 			break;
-		    case 'T':	/* eventually, this will be a trans_id */
-			tid = 1;	// On purpose, will go away w/ trans
+		    case 'T':	/*
+				 * eventually, this will be
+				 * getenv("BK_NESTED_LOCK")
+				 */
+			nlid = 1;
 			break;
 		    default:
 			out("ERROR-unknown option\n");
@@ -63,7 +66,7 @@ cmd_clone(int ac, char **av)
 	/*
 	 * This is where we would put in an exception for bk port.
 	 */
-	if (!tid && proj_isComponent(0) && !detach) {
+	if (!nlid && proj_isComponent(0) && !detach) {
 		out("ERROR-clone of a component is not allowed, use -s\n");
 		goto out;
 	}
@@ -88,9 +91,9 @@ cmd_clone(int ac, char **av)
 		/*
 		 * If we're an ensemble and they did not specify any aliases,
 		 * then imply the default set.
-		 * The tid part is because we want to do this in pass1 only.
+		 * The nlid part is because we want to do this in pass1 only.
 		 */
-		unless (aliases || tid) {
+		unless (aliases || nlid) {
 			aliases = addLine(0, strdup("default"));
 		}
 	}
@@ -147,7 +150,7 @@ cmd_clone(int ac, char **av)
 		goto out;
 	}
 	if (trigger(av[0], "pre")) goto out;
-	if (!tid && proj_isProduct(0)) {
+	if (!nlid && proj_isProduct(0)) {
 		nested	*n;
 		comp	*cp;
 		int	errors = 0;

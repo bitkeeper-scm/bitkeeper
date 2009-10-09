@@ -51,6 +51,7 @@ struct cmd cmds[] = {
   { "license", "license_1.3", "fetch license keys", cmd_license },
   { "rdlock", "rdlock", "read lock the repository", cmd_rdlock },
   { "rdunlock", "rdunlock", "remove read lock from repository", cmd_rdunlock },
+  { "nested", "nested", "nested locking support", cmd_nested},
   { "wrlock", "wrlock", "write lock the repository", cmd_wrlock },
   { "wrunlock", "wrunlock", "remove write lock from repository", cmd_wrunlock},
   { 0, 0, 0 }

@@ -76,6 +76,8 @@ int	cmd_rdunlock(int ac, char **av);
 int	cmd_wrlock(int ac, char **av);
 int	cmd_wrunlock(int ac, char **av);
 
+int	cmd_nested(int ac, char **av);
+
 struct cmd {
 	char	*name;		/* command name */
 	char	*realname;	/* real command name */
@@ -165,4 +167,6 @@ int	unsafe_cd(char *path);
 int	bkd_seed(char *oldseed, char *newval, char **newout);
 void	bkd_saveSeed(char *repoid, char *seed);
 char	*bkd_restoreSeed(char *repoid);
+
+int	bkd_doResolve(char **av);
 #endif

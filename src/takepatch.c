@@ -1535,7 +1535,8 @@ resync_lock(void)
 	 * Note: bk's mkdir will pass if RESYNC already exists so we need
 	 * to test that separately.
 	 */
-	if (isdir("RESYNC") || mkdir("RESYNC", 0777)) {
+	if ((isdir("RESYNC") && !nested_mine(getenv("BK_NESTED_LOCK")))
+	    || mkdir("RESYNC", 0777)) {
 		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
 		repository_lockers(0);
 		cleanup(0);

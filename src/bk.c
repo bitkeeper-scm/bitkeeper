@@ -56,7 +56,7 @@ save_gmon(void)
 }
 
 int
-main(int ac, char **av, char **env)
+main(int volatile ac, char **av, char **env)
 {
 	int	i, c, si, ret;
 	int	is_bk = 0, dashr = 0, remote = 0, quiet = 0, all = 0, nested= 0;
@@ -657,15 +657,16 @@ private	struct {
 	    CMD_BYTES|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BAM},
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
 	{"remote push part2",
-	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK|CMD_BAM},
+	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK|CMD_BAM|CMD_NESTED},
 	{"remote push part3",
-	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
+	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK|CMD_NESTED},
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT|CMD_BAM},
 	{"remote rclone part3", CMD_BYTES|CMD_FAST_EXIT},
 	{"remote quit", CMD_FAST_EXIT},
 	{"remote rdlock", CMD_RDLOCK},
 	{"remote rdunlock", CMD_WRUNLOCK},
+	{"remote nested", CMD_WRLOCK},
 	{"remote wrlock", CMD_WRLOCK},
 	{"remote wrunlock", CMD_WRUNLOCK},
 	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
@@ -701,6 +702,12 @@ cmdlog_start(char **av, int httpMode)
 	    (((p = getenv("BK_BAM")) && streq(p, "YES")) || bp_hasBAM())){
 		/* in BAM-mode, allow another part */
 		cmdlog_flags &= ~CMD_FAST_EXIT;
+		unless (httpMode) cmdlog_flags &= ~(CMD_RDUNLOCK|CMD_WRUNLOCK);
+	}
+
+	if ((cmdlog_flags & CMD_NESTED) && proj_isProduct(0)) {
+		/* in nested, allow another part too */
+		cmdlog_flags &= ~ CMD_FAST_EXIT;
 		unless (httpMode) cmdlog_flags &= ~(CMD_RDUNLOCK|CMD_WRUNLOCK);
 	}
 

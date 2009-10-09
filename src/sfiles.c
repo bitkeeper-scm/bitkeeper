@@ -1471,8 +1471,6 @@ findsfiles(char *file, struct stat *sb, void *data)
 			 * include from the BitKeeper/log dir
 			 */
 			p[4] = '/';
-			strcpy(p+5, "PRODUCT");
-			if (exists(file)) si->fn(file, sb, si->data);
 			strcpy(p+5, "COMPONENT");
 			if (exists(file)) si->fn(file, sb, si->data);
 			if (si->is_modes) {

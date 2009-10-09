@@ -1,0 +1,897 @@
+repo_setup() {
+	cd "$HERE"
+	rm -rf clone clone[1-4]
+	bk clone $Q product clone1 || fail
+	bk clone $Q product clone2 || fail
+	bk clone $Q product clone3 || fail
+	test "x$1" = "xcsets-in-components" && {
+		shift
+		# Create a cset in clone1/gcc.
+		cd "$HERE/clone1/gcc"
+		echo new >new1
+		bk new $Q new1 || fail
+		bk commit $Q -y'add new1' || fail
+		bk -P commit $Q -y'add gcc/new1' || fail
+		# Create a cset in clone2/gcc.
+		cd "$HERE/clone2/gcc"
+		echo new >new2
+		bk new $Q new2 || fail
+		bk commit $Q -y'add new2' || fail
+		bk -P commit $Q -y'add gcc/new2' || fail
+		# Create a cset in clone3/gcc.
+		cd "$HERE/clone3/gcc"
+		echo new >new3
+		bk new $Q new3 || fail
+		bk commit $Q -y'add new3' || fail
+		bk -P commit $Q -y'add gcc/new3' || fail
+	}
+	test "x$1" = "xcsets-in-products" && {
+		shift
+		# Create a cset in the clone1 product.
+		cd "$HERE/clone1"
+		echo new >new1
+		bk new $Q new1 || fail
+		bk commit $Q -y'add new1' || fail
+		# Create a cset in the clone2 product.
+		cd "$HERE/clone2"
+		echo new >new2
+		bk new $Q new2 || fail
+		bk commit $Q -y'add new2' || fail
+		# Create a cset in the clone3 product.
+		cd "$HERE/clone3"
+		echo new >new3
+		bk new $Q new3 || fail
+		bk commit $Q -y'add new3' || fail
+	}
+	cd "$HERE"
+}
+
+echo $N Setup .......................................................$NL
+TMP="$HERE/.tmp"
+mkdir -p "$TMP"
+cd "$HERE"
+commercial standalone
+cd "$HERE"
+nested product
+cat <<EOF >trigger
+#!/bin/bash
+I_AM=\`basename "\$BK_ROOT"\`-\$BK_TRIGGER
+echo "\${I_AM} being run"
+I_AM_HERE="$TMP/\$I_AM".here
+test -f "$TMP/\$I_AM" || exit 0
+touch "\$I_AM_HERE"
+while test -f "$TMP/\$I_AM"
+do	sleep 1
+done
+rm -f "\$I_AM_HERE"
+exit 0
+EOF
+chmod +x trigger || fail
+mkdir -p BitKeeper/triggers gcc/BitKeeper/triggers gdb/BitKeeper/triggers
+cp trigger BitKeeper/triggers/pre-incoming
+cp trigger BitKeeper/triggers/post-incoming
+cp trigger gcc/BitKeeper/triggers/pre-incoming
+cp trigger gcc/BitKeeper/triggers/post-incoming
+cp trigger gdb/BitKeeper/triggers/pre-incoming
+cp trigger gdb/BitKeeper/triggers/post-incoming
+bk new $Q BitKeeper/triggers/pre-incoming || fail
+bk new $Q BitKeeper/triggers/post-incoming || fail
+bk new $Q gcc/BitKeeper/triggers/pre-incoming || fail
+bk new $Q gcc/BitKeeper/triggers/post-incoming || fail
+bk new $Q gdb/BitKeeper/triggers/pre-incoming || fail
+bk new $Q gdb/BitKeeper/triggers/post-incoming || fail
+cd gcc || fail
+bk commit $Q -ytriggers || fail
+cd ../gdb || fail
+bk commit $Q -ytriggers || fail
+cd ..
+bk commit $Q -ytriggers || fail
+# Create a cset in the gcc component, to give something
+# to bk undo later.
+cd gcc
+echo for_undo >to-undo
+bk new $Q to-undo || fail
+bk commit $Q -y'add to-undo' || fail
+bk -P commit $Q -y'add gcc/to-undo' || fail
+bk tag $Q for-undo || fail
+cd "$HERE"
+P=`port 50000`
+bk bkd -q -d -p$P -ikill || fail
+trap "bk _kill bk://localhost:$P" 0
+echo OK
+
+echo ---- While clone to destination in progress
+repo_setup csets-in-components
+# Clone clone1 to clone but cause the clone to spin in
+# the product's post-incoming trigger.
+test -f "$TMP/clone-post-incoming.here" && fail
+touch "$TMP/clone-post-incoming"
+cd "$HERE"
+bk clone $Q clone1 clone 2>OUT &
+PID=$!
+# Wait for the pull to be in progress.
+while ! test -f "$TMP/clone-post-incoming.here"
+do	sleep 1
+done
+
+# Now try various operations.
+# NOTE: some of these are commented out because otherwise the push
+# fails or hangs.
+# Clone of product.
+echo $N Cloning should fail..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug clone does not take readlock\)
+
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "failed to lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gcc component.  This should fail.
+echo $N Commit in locked component should fail.......................$NL
+cd "$HERE/clone/gcc"
+echo new >new10
+bk new $Q new10 >ERR 2>&1 || fail you fixed a bug
+# grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+# BK_IGNORE_WRLOCK=YES bk new $Q new10 >ERR 2>&1 && fail fix test
+# bk commit $Q -ynew10 >ERR 2>&1 && fail
+# grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug clone trigger bug\)
+
+# Commit in the gdb component.
+echo $N Commit in other component should fail........................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug commit not done\)
+
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q for-undo >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original clone finished............................$NL
+# Let the clone complete.
+cd ..
+rm "$TMP/clone-post-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || \
+	fail -f "$HERE/clone1/PUSH" push failed with status $STATUS
+test -f "$TMP/gcc-post-incoming.here" && fail
+# Verify that the push into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
+echo OK
+
+echo ---- While local push to component in progress [pre-incoming]
+repo_setup csets-in-components
+# Push clone1 into clone but cause the gcc push to spin in
+# the pre-incoming trigger.
+bk clone $Q product clone || fail
+test -f "$TMP/gcc-pre-incoming.here" && fail
+touch "$TMP/gcc-pre-incoming"
+cd "$HERE/clone1"
+bk push $Q "$HERE/clone" >PUSH 2>&1 &
+PID=$!
+# Wait for the push to be in progress.
+while ! test -f "$TMP/gcc-pre-incoming.here"
+do	sleep 1
+done
+# Now try various operations.
+# NOTE: some of these are commented out because otherwise the push
+# fails or hangs.
+# Clone of product.
+echo $N Cloning should fail..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "failed to lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gcc component.  This should fail.
+echo $N delta in locked component should fail........................$NL
+cd "$HERE/clone/gcc"
+echo new >new10
+bk new $Q new10 >ERR 2>&1 && fail should have failed
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gdb component.
+echo $N Commit in other component should fail........................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug commit not done\)
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q for-undo >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original push completed............................$NL
+# Let the push complete.
+rm "$TMP/gcc-pre-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || \
+	fail -f "$HERE/clone1/PUSH" push failed with status $STATUS
+test -f "$TMP/gcc-pre-incoming.here" && fail
+# Verify that the push into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
+echo OK
+
+echo ---- While local push to component in progress [post-incoming]
+repo_setup csets-in-components
+# Push clone1 into clone but cause the gcc push to spin in
+# the post-incoming trigger.
+bk clone $Q product clone || fail
+test -f "$TMP/gcc-post-incoming.here" && fail
+touch "$TMP/gcc-post-incoming"
+cd "$HERE/clone1"
+bk push $Q "$HERE/clone" >PUSH 2>&1 &
+PID=$!
+# Wait for the push to be in progress.
+while ! test -f "$TMP/gcc-post-incoming.here"
+do	sleep 1
+done
+# Now try various operations.
+# Now try various operations.
+# NOTE: some of these are commented out because otherwise the push
+# fails or hangs.
+# Clone of product.
+echo $N Cloning should fail..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug clone not done\)
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "failed to lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+
+echo OK
+# Commit in the gcc component.  This should fail.
+echo $N delta in a locked component should fail......................$NL
+cd "$HERE/clone/gcc"
+echo new >new10
+bk new $Q new10 >ERR 2>&1 && fail -f ERR
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gdb component.
+echo $N Commit in other component should fail........................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug commit not done\)
+
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q for-undo >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original push completed............................$NL
+rm "$TMP/gcc-post-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || {
+	echo push failed with status $STATUS:
+	cat "$HERE/clone1/PUSH"
+	fail
+}
+test -f "$TMP/gcc-post-incoming.here" && fail
+# Verify that the push into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
+echo OK
+
+echo ---- While remote push to component in progress [pre-incoming]
+repo_setup csets-in-components
+# Push clone1 into clone but cause the gcc push to spin in
+# the pre-incoming trigger.
+bk clone $Q product clone || fail
+test -f "$TMP/gcc-pre-incoming.here" && fail
+touch "$TMP/gcc-pre-incoming"
+cd "$HERE/clone1"
+bk push $Q bk://localhost:$P/clone >PUSH 2>&1 &
+PID=$!
+# Wait for the push to be in progress.
+while ! test -f "$TMP/gcc-pre-incoming.here"
+do	sleep 1
+done
+
+# Now try various operations.
+# NOTE: some of these are commented out because otherwise the push
+# fails or hangs.
+# Clone of product.
+echo $N Cloning should fail..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "failed to lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gcc component.  This should fail.
+echo $N delta in locked component should fail........................$NL
+cd "$HERE/clone/gcc"
+echo new >new10
+bk new $Q new10 >ERR 2>&1 && fail should have failed
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gdb component.
+echo $N Commit in other component should fail........................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug commit not done\)
+
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q for-undo >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original push completed............................$NL
+rm "$TMP/gcc-pre-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || 
+     fail -f "$HERE/clone1/PUSH" push failed with status $STATUS
+test -f "$TMP/gcc-pre-incoming.here" && fail
+# Verify that the push into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
+cd "$HERE"
+echo OK
+
+echo ---- While remote push to component in progress [post-incoming]
+repo_setup csets-in-components
+# Push clone1 into clone but cause the gcc push to spin in
+# the post-incoming trigger.
+bk clone $Q product clone || fail
+test -f "$TMP/gcc-post-incoming.here" && fail
+touch "$TMP/gcc-post-incoming"
+cd "$HERE/clone1"
+bk push $Q bk://localhost:$P/clone >PUSH 2>&1 &
+PID=$!
+# Wait for the push to be in progress.
+while ! test -f "$TMP/gcc-post-incoming.here"
+do	sleep 1
+done
+
+# Now try various operations.
+# NOTE: some of these are commented out because otherwise the push
+# fails or hangs.
+# Clone of product.
+echo $N Cloning should fail..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug clone does not take realock\)
+
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "failed to lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gcc component.  This should fail.
+echo $N delta in locked component should fail........................$NL
+cd "$HERE/clone/gcc"
+echo new >new10
+bk new $Q new10 >ERR 2>&1 && fail should have failed
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gdb component.
+echo $N Commit in other component should fail........................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug commit not done\)
+
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q for-undo >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original push completed............................$NL
+rm "$TMP/gcc-post-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || fail
+test -f "$TMP/gcc-post-incoming.here" && fail
+# Verify that the push into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
+echo OK
+
+echo ---- While component pull in progress [pre-incoming]
+repo_setup csets-in-components
+bk clone $Q product clone || fail
+# Pull clone1 into clone but cause the gcc pull to spin in
+# the pre-incoming trigger.
+test -f "$TMP/gcc-pre-incoming.here" && fail
+touch "$TMP/gcc-pre-incoming"
+cd "$HERE/clone" || fail
+bk pull $Q "$HERE/clone1" &
+PID=$!
+# Wait for the pull to be in progress.
+while ! test -f "$TMP/gcc-pre-incoming.here"
+do	sleep 1
+done
+
+# Now try various operations.
+# NOTE: some of these are commented out because otherwise the push
+# fails or hangs.
+# Clone of product.
+echo $N Cloning should fail..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "failed to lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gcc component.  This should fail.
+echo $N delta in locked component should fail........................$NL
+cd "$HERE/clone/gcc"
+echo new >new10
+bk new $Q new10 >ERR 2>&1 && fail should have failed
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gdb component.
+echo $N Commit in other component should fail........................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug commit not done\)
+
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q for-undo >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original push completed............................$NL
+cd ..
+rm "$TMP/gcc-pre-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || fail
+test -f "$TMP/gcc-pre-incoming.here" && fail
+# Verify that the pull into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
+echo OK
+
+echo ---- While component pull in progress [post-incoming]
+repo_setup csets-in-components
+bk clone $Q product clone || fail
+# Pull clone1 into clone but cause the gcc pull to spin in
+# the post-incoming trigger.
+test -f "$TMP/gcc-post-incoming.here" && fail
+touch "$TMP/gcc-post-incoming"
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone1" &
+PID=$!
+# Wait for the pull to be in progress.
+while ! test -f "$TMP/gcc-post-incoming.here"
+do	sleep 1
+done
+
+# Now try various operations.
+# NOTE: some of these are commented out because otherwise the push
+# fails or hangs.
+# Clone of product.
+echo $N Cloning should fail..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "failed to lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gcc component.  This should fail.
+echo $N delta in locked component should fail........................$NL
+cd "$HERE/clone/gcc"
+echo new >new10
+bk new $Q new10 >ERR 2>&1 && fail should have failed
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gdb component.
+echo $N Commit in other component should fail........................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug commit not done\)
+
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q for-undo >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original push completed............................$NL
+cd ..
+rm "$TMP/gcc-post-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || fail
+test -f "$TMP/gcc-post-incoming.here" && fail
+# Verify that the pull into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add gcc/new1" || fail
+echo OK
+
+echo ---- While product-only pull in progress [pre-incoming]
+repo_setup csets-in-products
+bk clone $Q product clone || fail
+# Pull clone1 into clone but cause the pull to spin in
+# the pre-incoming trigger.
+test -f "$TMP/clone-pre-incoming.here" && fail
+touch "$TMP/clone-pre-incoming"
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone1" &
+PID=$!
+# Wait for the pull to be in progress.
+while ! test -f "$TMP/clone-pre-incoming.here"
+do	sleep 1
+done
+
+# Now try various operations.
+# NOTE: some of these are commented out because otherwise the push
+# fails or hangs.
+# Clone of product.
+echo $N Cloning should fail..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR && fail -f ERR
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "failed to lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gdb component.
+echo $N Commit in component should work..............................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug commit not done\)
+
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q for-undo >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original push completed............................$NL
+cd ..
+rm "$TMP/clone-pre-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || fail
+test -f "$TMP/clone-pre-incoming.here" && fail
+# Verify that the pull into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add new1" || fail
+echo OK
+
+echo ---- While product-only pull in progress [post-incoming]
+repo_setup csets-in-products
+bk clone $Q product clone || fail
+# Pull clone1 into clone but cause the pull to spin in
+# the post-incoming trigger.
+test -f "$TMP/clone-post-incoming.here" && fail
+touch "$TMP/clone-post-incoming"
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone1" &
+PID=$!
+# Wait for the pull to be in progress.
+while ! test -f "$TMP/clone-post-incoming.here"
+do	sleep 1
+done
+
+# Now try various operations.
+# NOTE: some of these are commented out because otherwise the push
+# fails or hangs.
+# Clone of product.
+echo $N Cloning should work..........................................$NL
+cd "$HERE"
+bk clone $Q clone clone4 2>ERR || fail -f ERR
+echo OK
+
+# Pull into clone.
+echo $N Pulling should fail..........................................$NL
+cd "$HERE/clone"
+bk pull $Q "$HERE/clone2" >ERR 2>&1 && fail should have failed
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Attach in clone.
+echo $N Attaching should fail........................................$NL
+cd "$HERE/clone"
+bk attach $Q "$HERE/standalone" >ERR 2>&1 && fail
+grep -q "failed to lock product" ERR || fail -f ERR wrong error
+echo OK
+
+# Push into clone.
+echo $N Pushing should fail..........................................$NL
+cd "$HERE/clone3"
+bk push $Q -c0 "$HERE/clone" >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR && fail you fixed a bug
+echo failed \(bug wrong error\)
+
+# Commit in the product.  This should fail.
+echo $N Commit in product should fail................................$NL
+cd "$HERE/clone"
+echo new >pnew
+bk new $Q pnew >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+# Commit in the gdb component.
+echo $N Commit in other component should fail........................$NL
+cd "$HERE/clone/gdb"
+echo new >new
+bk new $Q new >ERR 2>&1 || fail
+bk commit $Q -y'new file' >ERR 2>&1 || fail you fixed a bug
+#grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo failed \(bug commit not done\)
+
+# Undo a cset in the gcc component.
+echo $N Undo should fail.............................................$NL
+cd "$HERE/clone"
+bk undo $Q for-undo >ERR 2>&1 && fail
+grep -q "Entire repository is locked" ERR || fail -f ERR wrong error
+echo OK
+
+echo $N Make sure original push completed............................$NL
+cd ..
+rm "$TMP/clone-post-incoming"
+wait $PID
+STATUS=$?
+test $STATUS = 0 -o $STATUS = 127 || fail
+test -f "$TMP/clone-post-incoming.here" && fail
+# Verify that the pull into clone worked.
+cd "$HERE/clone"
+test "`bk changes -r+ -nd':C:'`" = "add new1" || fail
+echo OK
