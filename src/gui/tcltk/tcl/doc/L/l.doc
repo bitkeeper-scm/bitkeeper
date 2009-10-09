@@ -203,6 +203,11 @@ When one of these types is expected, supplying another one usually is
 an error, except that an int always can be used as a float.  You can
 override this behavior with a type cast, discussed below.
 
+Hex and octal integer constants are specified like this:
+
+    int space = 0x20;
+    int escape = 0o33;
+
 Strings have a special feature where they can be indexed like arrays,
 to get a character or range of characters, or to change a character
 (but you cannot change a range of characters):
@@ -1170,7 +1175,8 @@ modeled after the standard C library and/or Perl.
 Execute the command (the string enclosed within back-ticks) and
 substitute its output as the value of the expression.  The command is
 executed using the Tcl C<exec> command which understands I/O
-re-direction and pipes.  On error, the value is undef.
+re-direction and pipes.  The command string is interpolated.
+On error, the value is undef.
 
 =proto int abs(int val)
 
@@ -1437,6 +1443,11 @@ path with all "../" and "./" removed.
 Close an open pipe created by popen().
 Return 0 on success, -1 on error.
 
+=proto type pop(type &array[])
+
+Remove an element from the end of C<array>.
+Return undef if the array is empty.
+
 =proto FILE popen(string cmd, string mode)
 
 Open a pipe to the command C<cmd>.  The returned FILE handle may be
@@ -1457,11 +1468,6 @@ Return 0 on success, -1 on error.
 
 Push one or more elements onto the end of C<array>.  Equivalent to
 saying array[END+1] = element1, array[END+1] = element2, ...
-
-=proto type pop(type &array[])
-
-Remove an element from the end of C<array>.
-Return undef if the array is empty.
 
 =proto int rename(string oldpath, string newpath)
 
@@ -1540,7 +1546,7 @@ Return 1 if the two strings are equal, else return 0.
 
 =proto string[] split(string s, string sep)
 
-=proto string[] split(string s, sep, int limit)
+=proto string[] split(string s, string sep, int limit)
 
 Split a string into substrings.
 In the first variation, the string is split on whitespace.
