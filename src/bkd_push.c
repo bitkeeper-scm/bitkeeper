@@ -171,7 +171,7 @@ cmd_push_part2(int ac, char **av)
 		    case 'd': debug = 1; break;
 		    case 'G': putenv("BK_NOTTY=1"); break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
-		    case 'P': product = 1;
+		    case 'P': product = 1; break;
 		    case 'q': takepatch[3] = 0; break; /* remove -vvv */
 		    default: break;
 		}
