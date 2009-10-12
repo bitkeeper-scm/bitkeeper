@@ -1,0 +1,56 @@
+echo $N Setup a nested pull -R ......................................$NL
+nested project
+bk clone $Q . ../copy || exit 1
+for r in gcc gdb
+do	cd $r
+	echo hi > file
+	bk new $Q file || exit 2
+	bk edit $Q BitKeeper/etc/config || exit 3
+	echo junk:1 >> BitKeeper/etc/config
+	bk ci -yjunk $Q BitKeeper/etc/config || exit 4
+	bk commit $Q -yhi || exit 5
+	cd ..
+done
+bk commit $Q -ytop || exit 6
+cd ../copy
+for r in gcc gdb
+do	cd $r
+	echo hi > file2
+	bk new $Q file2 || exit 7
+	bk commit $Q -yhi2 || exit 8
+	cd ..
+done
+bk commit $Q -ytop2 || exit 9
+echo OK
+
+echo $N Pull with a conflict in second comp .........................$NL
+bk edit $Q gdb/BitKeeper/etc/config
+echo bad >> gdb/BitKeeper/etc/config
+bk pull $Q 2>ERR && exit 1
+cat <<EOF > WANT
+
+=================================== ERROR ====================================
+The following files are modified locally and in the patch:
+	BitKeeper/etc/config
+For more information run "bk help tp1"
+==============================================================================
+Errors during update of the following files:
+BitKeeper/etc/SCCS/s.config
+==============================================================================
+Pull failed: takepatch exited 1.
+Pulling gdb failed
+EOF
+sed -n '2,$p' ERR > GOT  # skip first line (patch name)
+cmpfiles WANT GOT
+echo OK
+
+echo $N Now abort and repull ........................................$NL
+bk abort -f || exit 1
+bk unedit gdb/BitKeeper/etc/config || exit 2
+bk pull $Q 2>ERR && exit 3
+# the tree is really messed up here
+grep -q '1.4 is a merge but is missing a required' ERR || exit 4
+grep -q 'pending deltas but no d.file' ERR || exit 5
+grep -q 'marked delta 1.3 should be in ChangeSet but is not' ERR || exit 6
+grep -q 'RESYNC directory left intact' ERR || exit 7
+echo OK
