@@ -164,7 +164,6 @@ listkey_main(int ac, char **av)
 	delta	*d = 0;
 	int	i, c, debug = 0, quiet = 0, nomatch = 1;
 	int	sndRev = 0;
-	int	matched_tot = 0;
 	int	ForceFullPatch = 0; /* force a "makepatch -r.." */
 	int	origroot = 0;
 	char	key[MAXKEY], rootkey[MAXKEY], origkey[MAXKEY];
@@ -274,7 +273,6 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 			continue;
 		}
 		if (!d && (d = sccs_findKey(s, lines[i]))) {
-			if (i == 1) matched_tot = 1;
 			sccs_color(s, d);
 			if (debug) {
 				fprintf(stderr, "listkey: found a match key\n");
@@ -416,10 +414,7 @@ prunekey(sccs *s, remote *r, hash *skip, int outfd, int flags,
 		unless (quiet) fprintf(stderr, "%s\n", &key[7]);
 		return (-1);
 	}
-	if (streq(key, "@EMPTY TREE@")) {
-		rc = -3;
-		goto empty;
-	}
+	if (streq(key, "@EMPTY TREE@")) goto empty;
 	unless (streq(key, "@LOD MATCH@")) {
 		unless (quiet) {
 			fprintf(stderr,
@@ -583,6 +578,7 @@ send_sync_msg(remote *r)
 			writen(r->wfd, buf, i);
 		}
 		fclose(f);
+		send_file_extra_done(r);
 	}
 	unlink(probef);
 	free(probef);

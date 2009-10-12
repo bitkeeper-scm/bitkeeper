@@ -238,6 +238,7 @@ cmd_push_part2(int ac, char **av)
 	f = fdopen(pfd, "wb");
 	dup2(fd2, 2); close(fd2);
 	/* stdin needs to be unbuffered when calling takepatch... */
+	assert(!Opts.use_stdio);
 	gunzipAll2fh(0, f, 0, 0);
 	fclose(f);
 	getline(0, buf, sizeof(buf));
@@ -406,6 +407,7 @@ cmd_push_part3(int ac, char **av)
 		inbytes = outbytes = 0;
 		f = fdopen(pfd, "wb");
 		/* stdin needs to be unbuffered when calling sfio */
+		assert(!Opts.use_stdio);
 		gunzipAll2fh(0, f, &inbytes, &outbytes);
 		fclose(f);
 		getline(0, buf, sizeof(buf));

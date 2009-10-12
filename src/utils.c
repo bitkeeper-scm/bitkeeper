@@ -46,10 +46,34 @@ outfd(int to, char *buf)
 	return (writen(to, buf, strlen(buf)));
 }
 
+/*
+ * read a character at a time from stdin on the bkd.
+ * returns EOF(-1) for EOF or ERROR!
+ */
 int
-in(char *buf, int n)
+bkd_getc(void)
 {
-	return (readn(0, buf, n));
+	u8	c;
+	int	ret;
+
+	if (Opts.use_stdio) {
+		/*
+		 * The goal here is to just consume the current stdio buffer
+		 * and then refer back to character at a time IO.
+		 * This is currently necessary because pull_part2 uses stdio
+		 * for prunekeys, but part3 using direct IO for bk-remote
+		 * to unpack BAM data.
+		 * Yes, assume internals knowledge of our stdio library.
+		 */
+		if (stdin->_r > 0) {
+			ret = getc(stdin);
+			if (stdin->_r == 0) Opts.use_stdio = 0;
+			return (ret);
+		}
+		Opts.use_stdio = 0;
+	}
+	if (read(0, &c, 1) != 1) return (EOF);
+	return ((int)c);
 }
 
 void
@@ -127,11 +151,12 @@ fd2file(int from, char *to)
 
 /*
  * Currently very lame because it does 1 byte at a time I/O
+ * Usually used in bkd.
  */
 int
 getline(int in, char *buf, int size)
 {
-	int	ret, i = 0;
+	int	i = 0;
 	char	c;
 	static	int echo = -1;
 
@@ -143,8 +168,7 @@ getline(int in, char *buf, int size)
 	size--;
 	unless (size) return (-3);
 	for (;;) {
-		switch (ret = read(in, &c, 1)) {
-		    case 1:
+		if ((c = bkd_getc()) != EOF) {
 			if (echo == 2) fprintf(stderr, "[%c]\n", c);
 			if (((buf[i] = c) == '\n') || (c == '\r')) {
 				buf[i] = 0;
@@ -158,13 +182,11 @@ getline(int in, char *buf, int size)
 				buf[i] = 0;
 				return (-2);
 			}
-			break;
-
-		    default:
+		} else {
 			buf[i] = 0;
 			if (echo) {
-				if (ret) perror("getline");
-				fprintf(stderr, "[%s]=%d\n", buf, ret);
+				fprintf(stderr,
+				    "%u [%s] (unterminated)\n", getpid(), buf);
 			}
 			return (-1);
 		}
@@ -564,13 +586,21 @@ send_msg(remote *r, char *msg, int mlen, int extra)
 	return (0);
 }
 
-
+/*
+ * send commands to bkd
+ *
+ * if extra>0 then that many more bytes are to be included in this
+ * connection and will be send to r->wfd next.
+ * In this case send_file_extra_done() must be called after this
+ * extra data is sent.
+ */
 int
 send_file(remote *r, char *file, int extra)
 {
 	MMAP	*m;
 	int	rc, len;
 	char	*q, *hdr;
+	int	no_extra = (extra == 0);
 
 	assert(r->wfd >= 0);	/* we should be connected */
 	m = mopen(file, "r");
@@ -578,6 +608,7 @@ send_file(remote *r, char *file, int extra)
 	assert(strneq(m->mmap, "putenv ", 7));
 	len = m->size;
 
+	if (r->type == ADDR_HTTP) extra += 5;	/* "quit\n" */
 	q = secure_hashstr(m->mmap, len, makestring(KEY_BK_AUTH_HMAC));
 	hdr = aprintf("putenv BK_AUTH_HMAC=%d|%d|%s\n", len, extra, q);
 	free(q);
@@ -594,6 +625,33 @@ send_file(remote *r, char *file, int extra)
 		}
 	}
 	mclose(m);
+	unless (rc) {
+		r->need_exdone = 1;
+		if (no_extra) rc = send_file_extra_done(r);
+	}
+	return (rc);
+}
+
+/*
+ * When extra data is sent after send_file() this call marks the end
+ * of the extra data.
+ */
+int
+send_file_extra_done(remote *r)
+{
+	int	rc = 0;
+
+	assert(r->need_exdone);
+	r->need_exdone = 0;
+	if (r->type == ADDR_HTTP) {
+		if (writen(r->wfd, "quit\n", 5) != 5) {
+			remote_perror(r, "sf_extra");
+			rc = -1;
+		}
+		if (r->trace) {
+			fprintf(stderr, "quit\n");
+		}
+	}
 	return (rc);
 }
 
@@ -638,6 +696,7 @@ void
 disconnect(remote *r, int how)
 {
 	assert((how >= 0) && (how <= 2));
+	assert(!r->need_exdone);
 
 	switch (how) {
 	    case 0:	if (r->rfd == -1) break;

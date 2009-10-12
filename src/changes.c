@@ -1258,6 +1258,7 @@ send_part1_msg(remote *r, char **av)
 		fclose(f);
 		unlink(probef);
 		free(probef);
+		send_file_extra_done(r);
 	}
 	return (rc);
 }
@@ -1285,6 +1286,7 @@ send_end_msg(remote *r, char *msg)
 	rc = send_file(r, msgfile, strlen(msg));
 	writen(r->wfd, msg, strlen(msg));
 	unlink(msgfile);
+	send_file_extra_done(r);
 	return (rc);
 }
 
@@ -1318,8 +1320,9 @@ send_part2_msg(remote *r, char **av, char *key_list)
 		/* mark the seen key, so we can skip it on next repo */
 		unless (opts.showdups) hash_storeStr(seen, buf, "");
 	}
-	writen(r->wfd, "@END@\n", 6);
 	fclose(f);
+	writen(r->wfd, "@END@\n", 6);
+	send_file_extra_done(r);
 	return (rc);
 }
 

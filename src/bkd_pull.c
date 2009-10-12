@@ -183,7 +183,8 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	bzero(&r, sizeof(r));
-	r.rf = fdopen(0, "r");
+	r.rf = stdin;
+	Opts.use_stdio = 1;
 
 	/*
 	 * What we want is: remote => bk _prunekey => keys
@@ -251,6 +252,7 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	if (dont) {
+		fputs("@END@\n", stdout);
 		fflush(stdout);
 		rc = 0;
 		goto done;

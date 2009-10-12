@@ -496,6 +496,9 @@ send_sfio_msg(remote *r, char **envVar)
 		m = send_sfio(0, r->gzip);
 		assert(m > 0);
 		extra = m + 7 + 6;
+	} else {
+		/* if not http, just pass on that we are sending extra */
+		extra = 1;
 	}
 	rc = send_file(r, buf, extra);
 	unlink(buf);
@@ -509,6 +512,7 @@ send_sfio_msg(remote *r, char **envVar)
 		return (-1);
 	}
 	writen(r->wfd, "@END@\n", 6);
+	send_file_extra_done(r);
 	return (rc);
 }
 
@@ -575,6 +579,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 			return (-1);
 		}
 		fputs("@END@\n", f);
+		send_file_extra_done(r);
 		fclose(f);
 	}
 

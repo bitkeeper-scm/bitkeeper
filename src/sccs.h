@@ -318,19 +318,6 @@ int	checking_rmdir(char *dir);
 #define D_TEXT		0x80000000	/* delta has updated text */
 
 /*
- * Flags for command log
- */
-#define CMD_BYTES	0x00000001	/* log command byte count */
-#define CMD_FAST_EXIT	0x00000002	/* exit when done */
-#define CMD_WRLOCK	0x00000004	/* write lock */
-#define CMD_RDLOCK	0x00000008	/* read lock */
-#define CMD_WRUNLOCK	0x00000010	/* write unlock */
-#define CMD_RDUNLOCK	0x00000020	/* read unlock */
-#define CMD_RETRYLOCK	0x00000040	/* if lock failed, retry */
-#define CMD_BAM		0x00000080	/* optional next pass if BAM */
-#define	CMD_NESTED	0x00000100	/* optional next pass if NESTED */
-
-/*
  * Undo exit status for nothing to undo.
  */
 #define	UNDO_ERR	1		/* exitcode for errors */
@@ -793,6 +780,7 @@ typedef struct {
 	u16	badconnect:1;	/* if set, connect failed */
 	u16	withproxy:1;	/* connected via a proxy */
 	u16	remote_cmd:1;	/* client wants to run command via bkd */
+	u16	need_exdone:1;	/* need call to send_file_extra_done() */
 	int	rfd;		/* read fd for the remote channel */
 	FILE	*rf;		/* optional stream handle for remote channel */
 	int	wfd;		/* write fd for the remote channel */

@@ -270,6 +270,7 @@ done:
 	}
 	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	trigger(av[0], "post");
+	fputs("@END@\n", stdout);
 	repository_unlock(0);
 	putenv("BK_CSETS=");
 	return (rc);
@@ -318,6 +319,7 @@ cmd_rclone_part3(int ac, char **av)
 		inbytes = outbytes = 0;
 		f = fdopen(pfd, "wb");
 		/* stdin needs to be unbuffered when calling sfio */
+		assert(!Opts.use_stdio);
 		gunzipAll2fh(0, f, &inbytes, &outbytes);
 		fclose(f);
 		getline(0, buf, sizeof(buf));
@@ -358,6 +360,7 @@ done:
 	}
 	safe_putenv("BK_CSETS=..%s", opts.rev ? opts.rev : "+");
 	trigger(av[0], "post");
+	fputs("@END@\n", stdout);
 	repository_unlock(0);
 	putenv("BK_CSETS=");
 	return (rc);
@@ -403,6 +406,7 @@ getsfio(void)
 	}
 	f = fdopen(pfd, "wb");
 	/* stdin needs to be unbuffered here */
+	assert(!Opts.use_stdio);
 	gunzipAll2fh(0, f, &in, &out);
 	fclose(f);
 	waitpid(pid, &status, 0);

@@ -985,6 +985,7 @@ send_part1_msg(remote *r, char **envVar)
 			writen(r->wfd, buf, i);
 		}
 		fclose(f);
+		send_file_extra_done(r);
 	}
 	unlink(probef);
 	free(probef);
@@ -1053,6 +1054,7 @@ send_end_msg(remote *r, char *msg, char **envVar)
 	send_file(r, msgfile, strlen(msg));
 	writen(r->wfd, msg, strlen(msg));
 	unlink(msgfile);
+	send_file_extra_done(r);
 	receive_serverInfoBlock(r);
 }
 
@@ -1108,6 +1110,9 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 		fclose(f);
 		assert(m > 0);
 		extra = m + 8 + 6;
+	} else {
+		/* if not http, just pass on that we are sending extra */
+		extra = 1;
 	}
 
 	rc = send_file(r, msgfile, extra);
@@ -1124,6 +1129,7 @@ send_patch_msg(remote *r, char rev_list[], char **envVar)
 	}
 	fprintf(f, "@END@\n");
 	fclose(f);
+	send_file_extra_done(r);
 
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {
@@ -1239,6 +1245,7 @@ send_BAM_msg(remote *r, char *bp_keys, char **envVar, u64 bpsz)
 		}
 		fprintf(f, "@END@\n");
 		fclose(f);
+		send_file_extra_done(r);
 	}
 
 	if (unlink(msgfile)) perror(msgfile);

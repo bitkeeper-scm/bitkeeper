@@ -193,6 +193,7 @@ cmd_bk(int ac, char **av)
 	if (line = getenv("_BK_REMOTEGZIP")) gzip = atoi(line);
 	if (gzip & GZ_FROMREMOTE) {
 		/* this read needs to be unbuffered below... */
+		assert(!Opts.use_stdio);
 		zin=zgets_initCustom(&zgets_hread, int2p(0));
 	}
 	if (gzip & GZ_TOREMOTE) {

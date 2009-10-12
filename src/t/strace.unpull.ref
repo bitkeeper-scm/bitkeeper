@@ -2,13 +2,13 @@
 _getdir 74
 access 65
 chmod 35
-close 248
+close 246
 link 2
 lseek 162
-lstat 647
+lstat 637
 mkdir 15
-open 200
-read 1024
+open 195
+read 1019
 rename 11
 rmdir 13
 stat 9

@@ -13,8 +13,6 @@ char	*editor = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
 jmp_buf	exit_buf;
-char	cmdlog_buffer[MAXPATH*4];
-int	cmdlog_flags;
 int	bk_isSubCmd = 0;	/* if 1, BK called us and sent seed */
 int	spawn_tcl;		/* needed in crypto.c:bk_preSpawnHook() */
 ltc_math_descriptor	ltc_mp;
@@ -28,7 +26,9 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 
 private	void	bk_atexit(void);
 private	void	bk_cleanup(int ret);
-private	int	cmdlog_repo;
+private	char	cmdlog_buffer[MAXPATH*4];
+private	int	cmdlog_flags;
+private	int	cmdlog_locks;
 private int	cmd_run(char *prog, int is_bk, int ac, char **av);
 private int	usage(void);
 private	void	showproc_start(char **av);
@@ -636,41 +636,44 @@ bk_cleanup(int ret)
 	trace_free();
 }
 
+/*
+ * If a command is listed below, then it will be logged in
+ * BitKeeper/log/repo_log, in addition to the cmd_log.
+ * Also optional flags for commands can be specified.
+ */
 private	struct {
 	char	*name;
 	int	flags;
+#define	CMD_BYTES	0x00000001	/* log command byte count */
+#define	CMD_WRLOCK	0x00000002	/* write lock */
+#define	CMD_RDLOCK	0x00000004	/* read lock */
+#define	CMD_REPOLOG	0x00000008	/* log in repolog, all below */
+#define	CMD_QUIT	0x00000010	/* mark quit command */
 } repolog[] = {
-	{"abort", CMD_FAST_EXIT},
-	{"check", CMD_FAST_EXIT},
-	{"collapse", CMD_WRLOCK|CMD_WRUNLOCK},
-	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
-	{"fix", CMD_WRLOCK|CMD_WRUNLOCK},
-	{"license", CMD_FAST_EXIT},
-	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_WRUNLOCK},
-	{"push", CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote clone",
-	    CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BAM},
+	{"abort", 0},
+	{"check", 0},
+	{"collapse", CMD_WRLOCK},
+	{"commit", CMD_WRLOCK},
+	{"fix", CMD_WRLOCK},
+	{"pull", CMD_BYTES|CMD_WRLOCK},
+	{"push", CMD_BYTES|CMD_RDLOCK},
+	{"remote changes part1", CMD_RDLOCK},
+	{"remote changes part2", CMD_RDLOCK},
+	{"remote clone", CMD_BYTES|CMD_RDLOCK},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
-	{"remote pull part2",
-	    CMD_BYTES|CMD_RDUNLOCK|CMD_FAST_EXIT|CMD_BAM},
+	{"remote pull part2", CMD_BYTES|CMD_RDLOCK},
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
-	{"remote push part2",
-	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK|CMD_BAM|CMD_NESTED},
-	{"remote push part3",
-	    CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK|CMD_NESTED},
+	{"remote push part2", CMD_BYTES|CMD_WRLOCK},
+	{"remote push part3", CMD_BYTES|CMD_WRLOCK},
 	{"remote rclone part1", CMD_BYTES},
-	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT|CMD_BAM},
-	{"remote rclone part3", CMD_BYTES|CMD_FAST_EXIT},
-	{"remote quit", CMD_FAST_EXIT},
+	{"remote rclone part2", CMD_BYTES},
+	{"remote rclone part3", CMD_BYTES},
+	{"remote quit", CMD_QUIT},
 	{"remote rdlock", CMD_RDLOCK},
-	{"remote rdunlock", CMD_WRUNLOCK},
 	{"remote nested", CMD_WRLOCK},
 	{"remote wrlock", CMD_WRLOCK},
-	{"remote wrunlock", CMD_WRUNLOCK},
-	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"undo", CMD_WRLOCK|CMD_WRUNLOCK},
+	{"synckeys", CMD_RDLOCK},
+	{"undo", CMD_WRLOCK},
 	{ 0, 0 },
 };
 
@@ -680,36 +683,25 @@ cmdlog_start(char **av, int httpMode)
 	int	i, len, do_lock = 1;
 	int	is_remote = strneq("remote ", av[0], 7);
 	char	*repo1, *repo2;
-	char	*p;
 
 	cmdlog_buffer[0] = 0;
-	cmdlog_repo = 0;
 	cmdlog_flags = 0;
-
 	for (i = 0; repolog[i].name; i++) {
 		if (streq(repolog[i].name, av[0])) {
 			cmdlog_flags = repolog[i].flags;
-			cmdlog_repo = i;
+			cmdlog_flags |= CMD_REPOLOG;
 			break;
 		}
 	}
-
 	/*
-	 * If either side of the connection thinks it has BAM data then
-	 * we will add in the extra data passes to the protocol.
-	 * Unless this is an http connection, don't unlock and exit
-	 * after this command.
+	 * cmdlog_locks remember all the repository locks obtained by
+	 * this process so if another command wants the same lock type
+	 * we won't try to get it again.  This is used for example in
+	 * pull part1,2,3 so with each http:// connection will
+	 * reaquire the lock, but a normal bk:// connection will only
+	 * get the lock once.
 	 */
-	if ((cmdlog_flags & CMD_BAM) && !httpMode &&
-	    (((p = getenv("BK_BAM")) && streq(p, "YES")) || bp_hasBAM())){
-		/* in BAM-mode, allow another part */
-		cmdlog_flags &= ~(CMD_FAST_EXIT|CMD_RDUNLOCK|CMD_WRUNLOCK);
-	}
-
-	if ((cmdlog_flags & CMD_NESTED) && !httpMode && proj_isProduct(0)) {
-		/* in nested, allow another part too */
-		cmdlog_flags &= ~(CMD_FAST_EXIT|CMD_RDUNLOCK|CMD_WRUNLOCK);
-	}
+	cmdlog_flags &= ~cmdlog_locks;
 
 	/*
 	 * When in http mode, since push/pull part 1 and part 2 run in
@@ -718,15 +710,8 @@ cmdlog_start(char **av, int httpMode)
 	 * we enter part 2, with the up-to-date pid.
 	 */
 	if (httpMode) {
-		if (cmdlog_flags & CMD_WRLOCK) cmdlog_flags |= CMD_WRUNLOCK;
-		if (cmdlog_flags & CMD_WRUNLOCK) cmdlog_flags |= CMD_WRLOCK;
-		if (cmdlog_flags & CMD_RDLOCK) cmdlog_flags |= CMD_RDUNLOCK;
-		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
 		if (streq(av[0], "remote push part3")) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=YES");
-		}
-		if (cmdlog_flags & (CMD_RDUNLOCK|CMD_WRUNLOCK)) {
-			cmdlog_flags |= CMD_FAST_EXIT;
 		}
 	}
 
@@ -793,6 +778,7 @@ cmdlog_start(char **av, int httpMode)
 			if (is_remote) drain();
 			exit(1);
 		}
+		cmdlog_locks |= CMD_WRLOCK;
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		if (i = repository_rdlock()) {
@@ -819,6 +805,7 @@ cmdlog_start(char **av, int httpMode)
 			if (is_remote) drain();
 			exit(1);
 		}
+		cmdlog_locks |= CMD_RDLOCK;
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
 	if (is_remote) {
@@ -886,7 +873,7 @@ write_log(char *file, int rotate, char *format, ...)
 int
 cmdlog_end(int ret)
 {
-	int	flags = cmdlog_flags & CMD_FAST_EXIT;
+	int	rc = cmdlog_flags & CMD_QUIT;
 	char	*log;
 	int	len, savelen;
 	kvpair	kv;
@@ -895,7 +882,7 @@ cmdlog_end(int ret)
 	unless (cmdlog_buffer[0]) goto out;
 
 	/* add last minute notes */
-	if (cmdlog_repo && (cmdlog_flags&CMD_BYTES)) {
+	if (cmdlog_flags & CMD_BYTES) {
 		char	buf[20];
 
 		sprintf(buf, "%u", (u32)get_byte_count());
@@ -929,23 +916,18 @@ cmdlog_end(int ret)
 	mdbm_close(notes);
 	notes = 0;
 	write_log("cmd_log", 0, "%s", log);
-	if (cmdlog_repo) write_log("repo_log", LOG_MAXSIZE, "%s", log);
-	free(log);
-
-	/*
-	 * If error and repo command, force unlock, force exit
-	 * See also bkd.c, bottom of do_cmds().
-	 */
-	if ((cmdlog_flags & (CMD_RDLOCK|CMD_WRLOCK|CMD_BAM)) && ret) {
-		cmdlog_flags |= CMD_RDUNLOCK|CMD_WRUNLOCK;
-		cmdlog_flags |= CMD_FAST_EXIT;
+	if (cmdlog_flags & CMD_REPOLOG) {
+		write_log("repo_log", LOG_MAXSIZE, "%s", log);
 	}
-	if (cmdlog_flags & (CMD_WRUNLOCK|CMD_RDUNLOCK)) repository_unlock(0);
+	free(log);
+	if (!strneq(cmdlog_buffer, "remote ", 7) &&
+	    (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK))) {
+		repository_unlock(0);
+	}
 out:
 	cmdlog_buffer[0] = 0;
-	cmdlog_repo = 0;
 	cmdlog_flags = 0;
-	return (flags);
+	return (rc);
 }
 
 int

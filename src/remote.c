@@ -163,12 +163,15 @@ doit(char **av, char *url, int quiet, u32 bytes, char *input, int gzip)
 	}
 	if (zout) zputs_done(zout);
 	fclose(f);
-	rc = send_file(r, tmpf, 5);
+	if (r->type == ADDR_HTTP) assert(!dostream);
+	rc = send_file(r, tmpf, dostream ? 1 : 0);
 	unlink(tmpf);
 	free(tmpf);
 	if (rc) goto out;
-	if (dostream) stream_stdin(r, gzip);
-	writen(r->wfd, "quit\n", 5);
+	if (dostream) {
+		stream_stdin(r, gzip);
+		send_file_extra_done(r);
+	}
 	unless (r->rf) r->rf = fdopen(r->rfd, "r");
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	line = (getline2(r, buf, sizeof(buf)) > 0) ? buf : 0;

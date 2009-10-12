@@ -86,13 +86,13 @@ struct cmd {
 };
 
 typedef struct {
-	u32	errors_exit:1;		/* exit on any error */
 	u32	foreground:1;		/* don't fork for daemons, etc. */
 	u32	http_hdr_out:1;		/* print http header to output */
 	u32	quiet:1;		/* quiet mode */
 	u32	safe_cd:1;		/* do not allow chdir up */
 	u32	kill_ok:1;		/* enable kill socket */
 	u32	unsafe:1;		/* allow unsafe (aka remote) commands */
+	u32	use_stdio:1;		/* read stdin from stdio in bkd */
 	int	alarm;			/* exit after this many seconds */
 	char	*pidfile;		/* write the daemon pid here */
 	char	*logfile;		/* if set, log commands to here */
@@ -109,8 +109,6 @@ typedef struct {
 
 extern	struct cmd cmds[];
 extern	bkdopts Opts;
-extern	char cmdlog_buffer[];
-extern	char *logRoot;
 
 void	bkd_server(int ac, char **av);
 
@@ -126,7 +124,7 @@ pid_t	bkd(remote *r);
 int	gzipAll2fh(int rfd, FILE *wf, int level, int *in, int *out,
     int verbose);
 int	gunzipAll2fh(int rfd, FILE *wf, int *in, int *out);
-int	in(char *s, int len);
+int	bkd_getc(void);
 int	outfd(int fd, char*buf);
 
 int	read_blk(remote *r, char *c, int len);
@@ -134,6 +132,7 @@ sccs *	mk_probekey(FILE *f);
 int	getline2(remote *r, char *buf, int size); 
 int	get_ok(remote *r, char *read_ahead, int verbose); 
 int	send_file(remote *r, char *file, int extra);
+int	send_file_extra_done(remote *r);
 int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
 int	bkd_connect(remote *r);

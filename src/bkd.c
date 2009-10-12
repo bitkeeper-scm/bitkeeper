@@ -14,8 +14,7 @@ private	void	usage(void);
 private	int	do_cmds(void);
 private int	svc_uninstall(void);
 
-char		*bkd_getopt = "cCdDeE:hi:l|L:p:P:qRSt:UV:x:";
-char 		*logRoot;
+char		*bkd_getopt = "cCdDeE:hi:l|p:P:qRSt:UV:x:";
 private char	**exCmds;
 
 int
@@ -28,7 +27,6 @@ bkd_main(int ac, char **av)
 	char	**args = 0;
 
 	bzero(&Opts, sizeof(Opts));	/* just in case */
-	Opts.errors_exit = 1;
 
 	/*
 	 * Any commands off by default should be added here like so:
@@ -79,7 +77,6 @@ bkd_main(int ac, char **av)
 		    case 'x': exclude(optarg, 1); break;	/* doc 2.0 */
 		    case 'e': break;				/* obsolete */
 		    case 'E': putenv(optarg); break;		/* undoc */
-		    case 'L': logRoot = strdup(optarg); break;	/* undoc */
 		    case 'q': Opts.quiet = 1; break; 		/* undoc */
 		    case 't': Opts.alarm = atoi(optarg); break;	/* undoc */
 		    case 'U': Opts.unsafe = 1; break;
@@ -100,12 +97,6 @@ bkd_main(int ac, char **av)
 	freeLines(args, free);
 	safe_putenv("_BKD_OPTS=%s", p);
 	free(p);
-
-	if (logRoot && !IsFullPath(logRoot)) {
-		fprintf(stderr,
-		    "bad log root: %s: must be a full path name\n", logRoot);
-		return (1);
-	}
 
 	unless (Opts.vhost_dirpath) Opts.vhost_dirpath = strdup(".");
 
@@ -269,17 +260,10 @@ do_cmds(void)
 			}
 			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
-			if (log &&
-			    (cmdlog_end(ret) & CMD_FAST_EXIT)) {
-				drain();
-				return (ret);
-			}
+			if (log && cmdlog_end(ret)) break;
 			if (ret != 0) {
-				if (Opts.errors_exit) {
-					out("ERROR-exiting\n");
-					drain();
-					return (ret);
-				}
+				out("ERROR-exiting\n");
+				break;
 			}
 		} else if (av[0]) {
 			EACH(exCmds) {
@@ -472,7 +456,7 @@ nextbyte(char *buf, int size, void *unused)
 
 	if (content_len == 0) return (0);
 	--content_len;
-	unless (in(&ret, 1)) return (0);
+	if ((ret = bkd_getc()) == EOF) return (0);
 	if (hmac.buf) {
 		hmac.buf[hmac.i++] = ret;
 		if (hmac.i == hmac.len) {
@@ -553,7 +537,6 @@ nextline:
 		content_len = r.contentlen;
 		http_hdr();
 		*httpMode = 1;
-		ac = i = 0;
 		inspace = 1;
 		goto nextline;
 	}
