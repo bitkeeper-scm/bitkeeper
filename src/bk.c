@@ -697,18 +697,18 @@ cmdlog_start(char **av, int httpMode)
 	/*
 	 * If either side of the connection thinks it has BAM data then
 	 * we will add in the extra data passes to the protocol.
+	 * Unless this is an http connection, don't unlock and exit
+	 * after this command.
 	 */
-	if ((cmdlog_flags & CMD_BAM) &&
+	if ((cmdlog_flags & CMD_BAM) && !httpMode &&
 	    (((p = getenv("BK_BAM")) && streq(p, "YES")) || bp_hasBAM())){
 		/* in BAM-mode, allow another part */
-		cmdlog_flags &= ~CMD_FAST_EXIT;
-		unless (httpMode) cmdlog_flags &= ~(CMD_RDUNLOCK|CMD_WRUNLOCK);
+		cmdlog_flags &= ~(CMD_FAST_EXIT|CMD_RDUNLOCK|CMD_WRUNLOCK);
 	}
 
-	if ((cmdlog_flags & CMD_NESTED) && proj_isProduct(0)) {
+	if ((cmdlog_flags & CMD_NESTED) && !httpMode && proj_isProduct(0)) {
 		/* in nested, allow another part too */
-		cmdlog_flags &= ~ CMD_FAST_EXIT;
-		unless (httpMode) cmdlog_flags &= ~(CMD_RDUNLOCK|CMD_WRUNLOCK);
+		cmdlog_flags &= ~(CMD_FAST_EXIT|CMD_RDUNLOCK|CMD_WRUNLOCK);
 	}
 
 	/*
@@ -724,6 +724,9 @@ cmdlog_start(char **av, int httpMode)
 		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
 		if (streq(av[0], "remote push part3")) {
 			putenv("_BK_IGNORE_RESYNC_LOCK=YES");
+		}
+		if (cmdlog_flags & (CMD_RDUNLOCK|CMD_WRUNLOCK)) {
+			cmdlog_flags |= CMD_FAST_EXIT;
 		}
 	}
 
